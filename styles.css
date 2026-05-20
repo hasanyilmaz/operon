@@ -416,6 +416,23 @@
 	overflow: visible;
 }
 
+.operon-chip,
+.operon-live-preview-chip,
+.operon-live-preview-edit,
+.operon-tag-chip,
+.operon-reading-task-icon,
+.operon-task-wikilink-action {
+	box-sizing: border-box;
+	min-width: 0;
+	min-height: 0;
+	height: auto;
+	font-family: inherit;
+	font-style: inherit;
+	text-transform: none;
+	letter-spacing: 0;
+	background-image: none;
+}
+
 .operon-live-preview-chip {
 	display: inline-flex;
 	align-items: center;
@@ -1764,11 +1781,16 @@
 }
 
 .operon-inline-compact-chip {
+	height: 18px;
+	min-height: 18px;
+	line-height: 1;
 	gap: 6px;
 }
 
 .operon-inline-compact-chip.is-icon-only {
+	width: 28px;
 	min-width: 28px;
+	max-width: 28px;
 	padding-inline: 8px;
 	justify-content: center;
 }
@@ -1784,11 +1806,15 @@
 
 .operon-inline-compact-chip.is-icon-only.is-hover-open,
 .operon-inline-compact-chip.is-icon-only.is-peek-open {
+	width: auto;
+	max-width: none;
 	min-width: unset;
 	padding-inline: 10px;
 }
 
 .operon-inline-compact-chip.is-icon-only.is-measuring-expand {
+	width: auto;
+	max-width: none;
 	min-width: unset;
 	padding-inline: 10px;
 }
@@ -1812,6 +1838,7 @@
 	top: var(--operon-icon-only-floating-top, 0);
 	width: var(--operon-icon-only-floating-width, auto);
 	z-index: 24;
+	max-width: none;
 	min-width: unset;
 	padding-inline: 10px;
 }

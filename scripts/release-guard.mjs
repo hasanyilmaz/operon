@@ -67,6 +67,27 @@ function assertIncludes(relativePath, needle, label) {
 	}
 }
 
+function cssRules(relativePath) {
+	const text = readText(relativePath);
+	return [...text.matchAll(/([^{}]+)\{([^{}]+)\}/g)].map(([, selectorText, body]) => ({
+		selectors: selectorText.split(',').map(selector => selector.trim()),
+		body,
+	}));
+}
+
+function assertCssRuleContains(relativePath, selector, requiredDeclarations, label) {
+	const rule = cssRules(relativePath).find(candidate => candidate.selectors.includes(selector));
+	if (!rule) {
+		fail(`${relativePath}: ${label}: missing rule for ${selector}`);
+		return;
+	}
+	for (const declaration of requiredDeclarations) {
+		if (!rule.body.includes(declaration)) {
+			fail(`${relativePath}: ${label}: ${selector} must include ${declaration}`);
+		}
+	}
+}
+
 function compareLocaleFiles() {
 	const en = flattenStringLeaves(readJson('i18n/locales/en.json'));
 	const tr = flattenStringLeaves(readJson('i18n/locales/tr.json'));
@@ -119,7 +140,34 @@ function checkReleaseWorkflow() {
 }
 
 function checkCssScorecard() {
-	assertNoMatch('styles.css', /!important\b/, 'future CSS changes must avoid !important');
+	const bannedCssPatterns = [
+		[/!important\b/, 'future CSS changes must avoid !important'],
+		[/\ball\s*:\s*unset\b/, 'use explicit scoped resets instead of all: unset'],
+		[/\bdisplay\s*:\s*contents\b/, 'avoid display: contents because Obsidian compatibility checks flag it'],
+		[/\bcolumn-gap\s*:/, 'use gap shorthand instead of column-gap for Obsidian CSS compatibility'],
+		[/\brow-gap\s*:/, 'use gap shorthand instead of row-gap for Obsidian CSS compatibility'],
+		[/\btext-decoration-(line|color)\s*:/, 'avoid text-decoration subproperties flagged by Obsidian CSS lint'],
+	];
+
+	for (const [pattern, label] of bannedCssPatterns) {
+		assertNoMatch('styles.css', pattern, label);
+	}
+
+	for (const selector of ['.operon-chip', '.operon-live-preview-chip', '.operon-live-preview-edit', '.operon-task-wikilink-action']) {
+		assertCssRuleContains(
+			'styles.css',
+			selector,
+			['box-sizing: border-box;', 'min-height: 0;', 'height: auto;', 'background-image: none;'],
+			'inline chip and action controls must reset Obsidian button defaults',
+		);
+	}
+
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-inline-compact-chip',
+		['height: 18px;', 'min-height: 18px;', 'line-height: 1;'],
+		'inline compact chips must keep a stable visual height',
+	);
 }
 
 function checkDocs() {
