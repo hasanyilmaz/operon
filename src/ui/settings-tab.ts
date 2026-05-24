@@ -2440,7 +2440,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			containerEl: card.actionsEl,
 			label: t('tooltips', 'editKanbanPreset', { name: presetName }),
 			ariaLabel: t('tooltips', 'editKanbanPreset', { name: presetName }),
-			text: 'Edit',
 			wide: true,
 			onClick: () => {
 				this.openKanbanPresetSettingsModal(preset.id, refresh);
