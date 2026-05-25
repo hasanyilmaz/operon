@@ -2416,8 +2416,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.fileTasksFolder,
 	);
 	out.createDailyNotesAsOperonTask = src.createDailyNotesAsOperonTask === true;
-	out.trackerTaskDescriptionClickAction = src.trackerTaskDescriptionClickAction === 'openTaskEditor'
-		? 'openTaskEditor'
+	out.trackerTaskDescriptionClickAction = src.trackerTaskDescriptionClickAction === 'jumpToSource'
+		? 'jumpToSource'
 		: DEFAULT_SETTINGS.trackerTaskDescriptionClickAction;
 	out.flowTimeMode = src.flowTimeMode === 'flowtime'
 		? 'flowtime'
