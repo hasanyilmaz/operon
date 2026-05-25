@@ -2243,7 +2243,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('settings', 'externalCalendarEditAria', { name: displayName }),
 			ariaLabel: t('settings', 'externalCalendarEditAria', { name: displayName }),
 			tooltip: t('settings', 'externalCalendarEditTooltip'),
-			text: 'Edit',
+			text: t('buttons', 'edit'),
 			wide: true,
 			onClick: () => {
 				this.openExternalCalendarSourceEditModal(source, false);
@@ -2440,6 +2440,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			containerEl: card.actionsEl,
 			label: t('tooltips', 'editKanbanPreset', { name: presetName }),
 			ariaLabel: t('tooltips', 'editKanbanPreset', { name: presetName }),
+			text: t('buttons', 'edit'),
 			wide: true,
 			onClick: () => {
 				this.openKanbanPresetSettingsModal(preset.id, refresh);
@@ -2986,7 +2987,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			containerEl: card.actionsEl,
 			label: t('calendar', 'editPreset', { name: presetName }),
 			ariaLabel: t('calendar', 'editPreset', { name: presetName }),
-			text: 'Edit',
+			text: t('buttons', 'edit'),
 			wide: true,
 			onClick: () => {
 				this.openCalendarPresetSettingsModal(preset.id, refresh);
@@ -4874,7 +4875,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('filterSets', 'editFilterNamed', { name: filterSet.name }),
 			ariaLabel: t('filterSets', 'editFilterNamed', { name: filterName }),
 			tooltip: t('filterSets', 'editFilterNamed', { name: filterName }),
-			text: t('filterSets', 'edit'),
+			text: t('buttons', 'edit'),
 			wide: true,
 			onClick: () => {
 				const clone = cloneFilterSet(filterSet);
