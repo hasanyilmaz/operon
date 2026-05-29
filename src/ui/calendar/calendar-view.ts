@@ -1,9 +1,9 @@
-import { ItemView, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
-import { formatUiTime } from '../../core/ui-time-format';
+import { formatUiMinuteOfDay, formatUiTime } from '../../core/ui-time-format';
 import { localNow, localToday } from '../../core/local-time';
 import { OperonIndexer } from '../../indexer/indexer';
-import { buildVisibleCalendarDates, queryCalendarItems, shiftCalendarDateKey } from '../../systems/calendar-query';
+import { buildVisibleCalendarDates, queryCalendarItems, queryCalendarItemsForVisibleDates, shiftCalendarDateKey } from '../../systems/calendar-query';
 import { filterTasksForCalendar, stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
 import {
 	buildCalendarSidebarTaskPoolSearchText,
@@ -33,6 +33,7 @@ import {
 	CalendarItem,
 	ExternalCalendarTaskSeed,
 	CalendarLeafState,
+	CalendarMobileViewMode,
 	normalizeCalendarLeafState,
 	CalendarPreset,
 	CalendarSlotSelection,
@@ -92,6 +93,117 @@ const CALENDAR_MOBILE_SIDEBAR_MEDIA_QUERY = [
 	'(max-width: 720px) and (hover: none)',
 	'(max-width: 720px) and (pointer: coarse)',
 ].join(', ');
+const CALENDAR_MOBILE_DATE_STRIP_WEEK_OFFSETS = [-1, 0, 1] as const;
+const CALENDAR_MOBILE_TIME_GRID_MINUTES_PER_DAY = 24 * 60;
+const CALENDAR_MOBILE_TIME_GRID_SCALE = 1.35;
+const CALENDAR_MOBILE_TIME_GRID_DEFAULT_SCROLL_MINUTE = 8 * 60;
+const CALENDAR_MOBILE_TIME_GRID_BUFFER_DAYS_PER_SIDE = 3;
+const CALENDAR_MOBILE_TOUCH_INTENT_DISTANCE_PX = 8;
+const CALENDAR_MOBILE_TOUCH_CANCEL_DISTANCE_PX = 10;
+const CALENDAR_MOBILE_EMPTY_SWIPE_OWNERSHIP_DISTANCE_PX = 5;
+const CALENDAR_MOBILE_EMPTY_SWIPE_OWNERSHIP_DOMINANCE_RATIO = 1;
+const CALENDAR_MOBILE_EMPTY_SWIPE_DISTANCE_PX = 36;
+const CALENDAR_MOBILE_EMPTY_SWIPE_DOMINANCE_RATIO = 1.35;
+const CALENDAR_MOBILE_EMPTY_SWIPE_ANIMATION_MS = 120;
+const CALENDAR_MOBILE_EMPTY_SELECTION_LONG_PRESS_MS = 260;
+const CALENDAR_MOBILE_TASK_PRESS_DRAG_MS = 120;
+const CALENDAR_MOBILE_TASK_LONG_PRESS_MS = 260;
+const CALENDAR_TOUCH_TAP_EDITOR_DELAY_MS = 80;
+const CALENDAR_TOUCH_CLICK_SUPPRESSION_MS = 800;
+
+export type CalendarMobileTimedTaskGestureIntent = 'pending' | 'scroll' | 'drag';
+export type CalendarMobileEmptyAreaSwipeIntent = 'pending' | 'previous' | 'next';
+
+export function resolveCalendarMobileTimedTaskGestureIntent(input: {
+	deltaX: number;
+	deltaY: number;
+	elapsedMs: number;
+	intentDistancePx: number;
+	pressDragMs: number;
+}): CalendarMobileTimedTaskGestureIntent {
+	const absX = Math.abs(input.deltaX);
+	const absY = Math.abs(input.deltaY);
+	const distance = Math.hypot(input.deltaX, input.deltaY);
+	const intentDistance = Math.max(1, input.intentDistancePx);
+	const pressDragMs = Math.max(0, input.pressDragMs);
+	const quickVerticalScroll = absY > intentDistance
+		&& absY > absX * 1.15
+		&& input.elapsedMs < pressDragMs;
+	if (quickVerticalScroll) return 'scroll';
+	const horizontalDragIntent = absX >= intentDistance && absX > absY * 1.05;
+	const pressDragIntent = input.elapsedMs >= pressDragMs && distance >= intentDistance;
+	return input.elapsedMs >= pressDragMs && (horizontalDragIntent || pressDragIntent)
+		? 'drag'
+		: 'pending';
+}
+
+export function resolveCalendarMobileEmptyAreaSwipeIntent(input: {
+	deltaX: number;
+	deltaY: number;
+	swipeDistancePx: number;
+	dominanceRatio: number;
+}): CalendarMobileEmptyAreaSwipeIntent {
+	const absX = Math.abs(input.deltaX);
+	const absY = Math.abs(input.deltaY);
+	const distance = Math.max(1, input.swipeDistancePx);
+	const dominanceRatio = Math.max(1, input.dominanceRatio);
+	if (absX < distance || absX <= absY * dominanceRatio) return 'pending';
+	return input.deltaX < 0 ? 'next' : 'previous';
+}
+
+export function shouldOwnCalendarMobileEmptyAreaHorizontalSwipe(input: {
+	deltaX: number;
+	deltaY: number;
+	ownershipDistancePx: number;
+	dominanceRatio: number;
+}): boolean {
+	const absX = Math.abs(input.deltaX);
+	const absY = Math.abs(input.deltaY);
+	const distance = Math.max(1, input.ownershipDistancePx);
+	const dominanceRatio = Math.max(1, input.dominanceRatio);
+	return absX > distance && absX > absY * dominanceRatio;
+}
+
+function parseCalendarMobileDateKey(dateKey: string): Date | null {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+	if (!match) return null;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const date = new Date(year, month - 1, day);
+	return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+		? date
+		: null;
+}
+
+function formatCalendarMobileDateKey(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, '0');
+	const day = String(date.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
+}
+
+export function buildCalendarMobileWeekDates(anchorDate: string, weekOffset = 0): string[] {
+	const anchor = parseCalendarMobileDateKey(anchorDate) ?? parseCalendarMobileDateKey(localToday());
+	if (!anchor) return [];
+	const dayOfWeek = anchor.getDay();
+	const mondayDelta = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+	const monday = new Date(anchor);
+	monday.setDate(anchor.getDate() + mondayDelta + (Math.round(weekOffset) * 7));
+	return Array.from({ length: 7 }, (_, index) => {
+		const date = new Date(monday);
+		date.setDate(monday.getDate() + index);
+		return formatCalendarMobileDateKey(date);
+	});
+}
+
+export function shiftCalendarMobileWeekAnchor(anchorDate: string, weekDelta: number): string {
+	const anchor = parseCalendarMobileDateKey(anchorDate);
+	if (!anchor) return anchorDate;
+	const next = new Date(anchor);
+	next.setDate(anchor.getDate() + (Math.round(weekDelta) * 7));
+	return formatCalendarMobileDateKey(next);
+}
 
 interface AllDayPlacement {
 	item: CalendarItem;
@@ -125,6 +237,9 @@ interface CalendarAllDayDropContext {
 	visibleDates: string[];
 	laneHeight: number;
 	previewLane: number;
+	cells?: HTMLElement[];
+	activeColumn?: number | null;
+	isMobile?: boolean;
 }
 
 interface CalendarTimedDropContext {
@@ -136,6 +251,7 @@ interface CalendarTimedDropContext {
 	metrics: CalendarTimedMetrics;
 	preset: CalendarPreset;
 	settings: OperonSettings;
+	isMobile?: boolean;
 }
 
 interface CalendarMultiWeekInDayDropContext {
@@ -184,6 +300,15 @@ interface TimedHorizontalRenderWindow {
 	bufferDaysAfter: number;
 }
 
+interface CalendarMobileTimeGridRenderWindow {
+	anchorDate: string;
+	visibleDates: string[];
+	bufferedDates: string[];
+	visibleStartBufferIndex: number;
+	bufferDaysBefore: number;
+	bufferDaysAfter: number;
+}
+
 type CalendarDragEndReason = 'commit' | 'cancel' | 'abort';
 
 interface CalendarActiveDragSession {
@@ -209,9 +334,15 @@ interface CalendarStatusCycleTrace {
 	taskId: string;
 }
 
+type CalendarMobileQuickSettingsPatch = Partial<Pick<
+	OperonSettings,
+	'calendarMobileShowProjectedOccurrences' | 'calendarMobileShowExternalCalendars' | 'calendarMobileColorSource'
+>>;
+
 export interface CalendarViewCallbacks {
-	getExternalCalendarItems?: (rangeStart: string, rangeEnd: string, presetId?: string) => CalendarItem[];
+	getExternalCalendarItems?: (rangeStart: string, rangeEnd: string, presetId?: string, showExternalCalendarsOverride?: boolean) => CalendarItem[];
 	onTimedSlotSelection?: (selection: CalendarSlotSelection) => void | Promise<void>;
+	onMobileTimedSlotCreate?: (selection: CalendarSlotSelection) => void | Promise<void>;
 	onTimedItemMove?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onTimedItemResizeStart?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onTimedItemResizeEnd?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
@@ -232,6 +363,7 @@ export interface CalendarViewCallbacks {
 	onToggleProjectedOccurrences?: (presetId: string, nextValue: boolean) => void | Promise<void>;
 	onToggleExternalCalendars?: (presetId: string, nextValue: boolean) => void | Promise<void>;
 	onCycleTaskColorSource?: (presetId: string, nextSource: CalendarPreset['colorSource']) => void | Promise<void>;
+	onMobileCalendarSettingsChange?: (patch: CalendarMobileQuickSettingsPatch) => void | Promise<void>;
 	onSyncExternalCalendars?: () => void | Promise<void>;
 	onExternalItemCreateTask?: (seed: ExternalCalendarTaskSeed) => void | Promise<void>;
 	onCalendarDragInteractionEnd?: () => void | Promise<void>;
@@ -242,7 +374,7 @@ export class CalendarView extends ItemView {
 	private readonly getSettings: () => OperonSettings;
 	private readonly getPinnedCache: () => PinnedCache | null;
 	private readonly getRepeatSeriesEntries: () => RepeatSeriesEntry[];
-	private readonly getExternalCalendarItems: (rangeStart: string, rangeEnd: string, presetId?: string) => CalendarItem[];
+	private readonly getExternalCalendarItems: (rangeStart: string, rangeEnd: string, presetId?: string, showExternalCalendarsOverride?: boolean) => CalendarItem[];
 	private readonly callbacks: CalendarViewCallbacks;
 	private state: CalendarLeafState | null = null;
 	private timedScrollEl: HTMLElement | null = null;
@@ -294,11 +426,18 @@ export class CalendarView extends ItemView {
 	private timedHorizontalStripEl: HTMLElement | null = null;
 	private timedHorizontalClipEl: HTMLElement | null = null;
 	private timedHorizontalDayWidthPx = 0;
+	private mobileTimeGridScrollEl: HTMLElement | null = null;
+	private lastMobileTimeGridScrollTop = 0;
+	private restoreMobileTimeGridScrollOnNextRender = false;
+	private mobileTimeGridScrollRestoreBudget = 0;
+	private forceMobileTimeGridSmartScrollOnNextRender = false;
+	private lastMobileAgendaFocusKey: string | null = null;
 	private activeCalendarDragSession: CalendarActiveDragSession | null = null;
 	private pendingRenderAfterCalendarDrag = false;
 	private readonly calendarDragGhosts = new Set<HTMLElement>();
 	private readonly optimisticTaskPatches = new Map<string, CalendarOptimisticTaskPatch>();
 	private optimisticPatchCleanupTimer: number | null = null;
+	private mobileDateStripScrollTimer: number | null = null;
 	private renderGeneration = 0;
 	private readonly renderAnimationFrames = new Set<number>();
 	private readonly renderTimeouts = new Set<number>();
@@ -309,7 +448,7 @@ export class CalendarView extends ItemView {
 		getSettings: () => OperonSettings,
 		getPinnedCache: () => PinnedCache | null,
 		getRepeatSeriesEntries: () => RepeatSeriesEntry[],
-		getExternalCalendarItems: ((rangeStart: string, rangeEnd: string, presetId?: string) => CalendarItem[]) | undefined,
+		getExternalCalendarItems: ((rangeStart: string, rangeEnd: string, presetId?: string, showExternalCalendarsOverride?: boolean) => CalendarItem[]) | undefined,
 		callbacks: CalendarViewCallbacks = {},
 	) {
 		super(leaf);
@@ -403,7 +542,11 @@ export class CalendarView extends ItemView {
 				return;
 			}
 			if (this.renderFrame !== null) return;
-			this.captureActiveMultiWeekSurfaceScroll();
+			if (this.mobileTimeGridScrollEl?.isConnected) {
+				this.captureMobileTimeGridScrollForRender();
+			} else {
+				this.captureActiveMultiWeekSurfaceScroll();
+			}
 			this.preserveScrollOnNextRender = true;
 			this.renderFrame = window.requestAnimationFrame(() => {
 				this.renderFrame = null;
@@ -431,19 +574,23 @@ export class CalendarView extends ItemView {
 					`reconcileMs=${Math.round(enginePerfNow() - startedAt)}`,
 				);
 			};
-			if (!patch) {
-				logResult('full-render', 'no-optimistic-patch', false);
-				return false;
-			}
-			if (patch.source !== 'status-surface') {
-				logResult('full-render', patch.source ? `source-${patch.source}` : 'source-unknown', false);
-				return false;
-			}
-			const task = this.indexer.getTask(trace.taskId);
-			if (!task || !isOptimisticTaskPatchPersisted(task, patch)) {
-				logResult('full-render', task ? 'not-persisted' : 'task-missing', false);
-				return false;
-			}
+		if (!patch) {
+			logResult('full-render', 'no-optimistic-patch', false);
+			return false;
+		}
+		if (patch.source !== 'status-surface') {
+			logResult('full-render', patch.source ? `source-${patch.source}` : 'source-unknown', false);
+			return false;
+		}
+		if (this.shouldFullRenderMobileStatusPatch(patch)) {
+			logResult('full-render', 'mobile-completed-visibility', false);
+			return false;
+		}
+		const task = this.indexer.getTask(trace.taskId);
+		if (!task || !isOptimisticTaskPatchPersisted(task, patch)) {
+			logResult('full-render', task ? 'not-persisted' : 'task-missing', false);
+			return false;
+		}
 			const nextSignature = this.buildRenderedCalendarTaskSignature(trace.taskId);
 			const signatureChanged = !this.areCalendarTaskRenderSignaturesEqual(patch.renderSignature ?? [], nextSignature);
 			if (signatureChanged) {
@@ -580,40 +727,62 @@ export class CalendarView extends ItemView {
 			if (Object.keys(normalized).length === 0 && !patchInput.checkbox) {
 				return { applied: false, domPatched: 0, fallbackReason: 'patch-empty', renderMode: 'dom' };
 			}
-			const patch: CalendarOptimisticTaskPatch = {
-				fieldValues: normalized,
-				checkbox: patchInput.checkbox,
-				expiresAt: Date.now() + 10000,
-				renderSignature: this.buildRenderedCalendarTaskSignature(taskId),
-				source,
-			};
-			this.optimisticTaskPatches.set(taskId, patch);
-			this.scheduleOptimisticTaskPatchCleanup();
-			const domPatch = this.applyCalendarStatusDomPatch(taskId, patch);
-			if (domPatch.patchedCount === 0) {
-				this.captureActiveCalendarScrollForRender();
-				this.preserveScrollOnNextRender = true;
-				this.render();
-				return {
-					applied: true,
-					domPatched: 0,
-					fallbackReason: domPatch.fallbackReason,
-					renderMode: 'full',
-				};
-			}
+		const patch: CalendarOptimisticTaskPatch = {
+			fieldValues: normalized,
+			checkbox: patchInput.checkbox,
+			expiresAt: Date.now() + 10000,
+			renderSignature: this.buildRenderedCalendarTaskSignature(taskId),
+			source,
+		};
+		this.optimisticTaskPatches.set(taskId, patch);
+		this.scheduleOptimisticTaskPatchCleanup();
+		if (this.shouldFullRenderMobileStatusPatch(patch)) {
+			this.captureActiveCalendarScrollForRender();
+			this.preserveScrollOnNextRender = true;
+			this.render();
 			return {
 				applied: true,
-				domPatched: domPatch.patchedCount,
-				fallbackReason: domPatch.fallbackReason,
-				renderMode: 'dom',
+				domPatched: 0,
+				fallbackReason: 'mobile-completed-visibility',
+				renderMode: 'full',
 			};
 		}
-
-		private buildOptimisticStatusPatch(taskId: string): OptimisticStatusPatchResult | null {
-			const task = this.indexer.getTask(taskId);
-			if (!task) return null;
-			return buildOptimisticStatusPatch(task, this.getSettings());
+		const domPatch = this.applyCalendarStatusDomPatch(taskId, patch);
+		if (domPatch.patchedCount === 0) {
+			this.captureActiveCalendarScrollForRender();
+			this.preserveScrollOnNextRender = true;
+			this.render();
+			return {
+				applied: true,
+					domPatched: 0,
+					fallbackReason: domPatch.fallbackReason,
+				renderMode: 'full',
+			};
 		}
+		return {
+			applied: true,
+			domPatched: domPatch.patchedCount,
+			fallbackReason: domPatch.fallbackReason,
+			renderMode: 'dom',
+		};
+	}
+
+	private shouldFullRenderMobileStatusPatch(patch: CalendarOptimisticTaskPatch): boolean {
+		if (!this.isMobileCalendarCurrentlyRendered()) return false;
+		const patchedCheckbox = patch.checkbox ?? patch.fieldValues['_checkbox'];
+		if (patchedCheckbox !== 'done' && patchedCheckbox !== 'cancelled') return false;
+		const settings = this.getSettings();
+		const viewMode = this.resolveMobileCalendarViewMode(this.ensureState(), settings);
+		return viewMode === 'agenda'
+			? settings.calendarMobileAgendaShowCompletedItems !== true
+			: settings.calendarMobileShowCompletedItems !== true;
+	}
+
+	private buildOptimisticStatusPatch(taskId: string): OptimisticStatusPatchResult | null {
+		const task = this.indexer.getTask(taskId);
+		if (!task) return null;
+		return buildOptimisticStatusPatch(task, this.getSettings());
+	}
 
 		private applyCalendarStatusDomPatch(
 			taskId: string,
@@ -644,7 +813,7 @@ export class CalendarView extends ItemView {
 					button.style.removeProperty('color');
 				}
 				const root = button.closest<HTMLElement>(
-					'.operon-calendar-timed-item, .operon-calendar-all-day-item, .operon-calendar-sidebar-task-pool-row',
+					'.operon-calendar-timed-item, .operon-calendar-all-day-item, .operon-calendar-mobile-item, .operon-calendar-sidebar-task-pool-row',
 				);
 				if (root) patchedRoots.add(root);
 			}
@@ -656,6 +825,7 @@ export class CalendarView extends ItemView {
 					&& (
 						root.hasClass('operon-calendar-timed-item')
 						|| root.hasClass('operon-calendar-all-day-item')
+						|| root.hasClass('operon-calendar-mobile-item')
 					)
 				) {
 					this.applyCalendarTaskFieldColor(root, renderedTask.fieldValues, preset, settings);
@@ -872,25 +1042,36 @@ export class CalendarView extends ItemView {
 		}
 
 	render(): void {
-			this.finishActiveCalendarDragSession('abort', null, false);
-			this.invalidateRenderGeneration();
-			const renderGeneration = this.renderGeneration;
-			this.pendingRenderAfterCalendarDrag = false;
+		this.finishActiveCalendarDragSession('abort', null, false);
+		this.invalidateRenderGeneration();
+		const renderGeneration = this.renderGeneration;
+		this.pendingRenderAfterCalendarDrag = false;
 		this.clearCalendarDragGhosts();
 		this.clearRenderTimers();
-			this.hideCalendarHoverMenu(true);
+		this.hideCalendarHoverMenu(true);
 		const container = this.containerEl.children[1] as HTMLElement;
 		closeFloatingPanelsForRoot(container);
 		closeIconOnlyChipPreviewsForRoot(container);
 		this.surfaceScrollEl = null;
+		this.mobileTimeGridScrollEl = null;
 		this.allDayDropContext = null;
 		this.timedDropContext = null;
 		this.multiWeekAllDayDropContexts = [];
 		this.multiWeekInDayDropContexts = [];
 		const settings = this.getSettings();
 		const state = this.ensureState();
-		const preset = settings.calendarPresets.find(entry => entry.id === state.presetId) ?? settings.calendarPresets[0];
-		this.syncLeafTitle(preset?.name);
+		const useMobileCalendar = this.isMobileCalendarLayoutEligible(container, settings);
+		const mobileViewMode = this.resolveMobileCalendarViewMode(state, settings);
+		const mobileAnchorDate = this.resolveMobileCalendarAnchorDate(state);
+		const sourcePreset = useMobileCalendar
+			? this.resolveMobileCalendarSourcePreset(settings, state)
+			: settings.calendarPresets.find(entry => entry.id === state.presetId) ?? settings.calendarPresets[0];
+		const preset = sourcePreset && useMobileCalendar
+			? this.buildMobileCalendarRenderPreset(sourcePreset, settings)
+			: sourcePreset;
+		this.syncLeafTitle(useMobileCalendar && preset
+			? `${this.getMobileCalendarViewLabel(mobileViewMode)} · ${preset.name}`
+			: preset?.name);
 		if (!preset) {
 			container.empty();
 			container.addClass('operon-calendar-view');
@@ -901,12 +1082,16 @@ export class CalendarView extends ItemView {
 			const raw = settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
 			return raw ? stripFilterViewOnlyOptions(raw) : null;
 		})();
-		const queryAnchorDate = preset.surfaceType === 'multiWeek'
+		const queryAnchorDate = useMobileCalendar
+			? mobileAnchorDate
+			: preset.surfaceType === 'multiWeek'
 			? this.resolveMultiWeekRangeStart(state.anchorDate, preset, settings.calendarWeekStart)
 			: state.anchorDate;
-		const renderPresetKey = `${preset.id}|${queryAnchorDate}`;
+		const renderPresetKey = useMobileCalendar
+			? `mobile|${preset.id}|${mobileViewMode}|${queryAnchorDate}`
+			: `${preset.id}|${queryAnchorDate}`;
 		const preserveScroll = this.restoreScrollOnNextRender
-			|| (this.preserveScrollOnNextRender && this.lastRenderPresetKey === renderPresetKey);
+			|| (!useMobileCalendar && this.preserveScrollOnNextRender && this.lastRenderPresetKey === renderPresetKey);
 		this.preserveScrollOnNextRender = false;
 		this.restoreScrollOnNextRender = false;
 		if (this.lastRenderPresetKey && this.lastRenderPresetKey !== renderPresetKey) {
@@ -920,7 +1105,9 @@ export class CalendarView extends ItemView {
 			settings.priorities,
 			this.getPinnedCache(),
 		);
-		const queryPreset = preset.surfaceType === 'multiWeek'
+		const queryPreset = useMobileCalendar
+			? this.buildMobileCalendarQueryPreset(preset, mobileViewMode, settings)
+			: preset.surfaceType === 'multiWeek'
 			? {
 				dayCount: this.getMultiWeekVisibleDayCount(preset),
 				showWeekends: preset.showWeekends,
@@ -928,13 +1115,36 @@ export class CalendarView extends ItemView {
 				showProjectedOccurrences: preset.showProjectedOccurrences,
 			}
 			: preset;
-		const query = queryCalendarItems(
-			scopedTasks,
-			queryAnchorDate,
-			queryPreset,
-			this.getRepeatSeriesEntries(),
-		);
-		const timedRenderWindow = preset.surfaceType === 'timeGrid'
+			const mobileAgendaDates = useMobileCalendar && mobileViewMode === 'agenda'
+				? this.buildMobileAgendaFixedDates(queryAnchorDate, settings)
+				: null;
+			const mobileTimeGridRenderWindow = useMobileCalendar && mobileViewMode !== 'agenda'
+				? this.buildMobileTimeGridRenderWindow(
+					queryAnchorDate,
+					buildVisibleCalendarDates(queryAnchorDate, queryPreset.dayCount, true, 1),
+				)
+				: null;
+			const query = mobileAgendaDates
+				? queryCalendarItemsForVisibleDates(
+					scopedTasks,
+					mobileAgendaDates,
+					queryPreset,
+					this.getRepeatSeriesEntries(),
+				)
+				: mobileTimeGridRenderWindow
+				? queryCalendarItemsForVisibleDates(
+					scopedTasks,
+					mobileTimeGridRenderWindow.bufferedDates,
+					queryPreset,
+					this.getRepeatSeriesEntries(),
+				)
+				: queryCalendarItems(
+					scopedTasks,
+					queryAnchorDate,
+					queryPreset,
+					this.getRepeatSeriesEntries(),
+			);
+		const timedRenderWindow = !useMobileCalendar && preset.surfaceType === 'timeGrid'
 			? this.buildTimedHorizontalRenderWindow(state.anchorDate, preset, query.visibleDates)
 			: null;
 		const timedQuery = timedRenderWindow
@@ -954,6 +1164,7 @@ export class CalendarView extends ItemView {
 			query.rangeStart <= timedQuery.rangeStart ? query.rangeStart : timedQuery.rangeStart,
 			query.rangeEnd >= timedQuery.rangeEnd ? query.rangeEnd : timedQuery.rangeEnd,
 			preset.id,
+			useMobileCalendar ? settings.calendarMobileShowExternalCalendars : undefined,
 		);
 		if (externalItems.length > 0) {
 			const createdTaskKeys = this.buildCreatedExternalEventTaskKeySet(scopedTasks);
@@ -978,6 +1189,17 @@ export class CalendarView extends ItemView {
 			...timedQuery.items.filter(item => item.kind === 'timed'),
 			...externalItems.filter(item => item.kind === 'timed'),
 		];
+		const mobileAgendaFocusKey = useMobileCalendar && mobileViewMode === 'agenda'
+			? this.buildMobileAgendaFocusKey(mobileAnchorDate, settings)
+			: null;
+		const shouldFocusMobileAgendaAnchor = mobileAgendaFocusKey !== null
+			&& this.lastMobileAgendaFocusKey !== mobileAgendaFocusKey;
+		const mobileAgendaScrollTop = mobileAgendaFocusKey !== null && !shouldFocusMobileAgendaAnchor
+			? this.captureRenderedMobileAgendaScrollTop()
+			: null;
+		if (mobileAgendaFocusKey === null) {
+			this.lastMobileAgendaFocusKey = null;
+		}
 
 		container.empty();
 		container.addClass('operon-calendar-view');
@@ -991,7 +1213,38 @@ export class CalendarView extends ItemView {
 		root.classList.toggle('is-surface-time-grid', preset.surfaceType === 'timeGrid');
 		root.classList.toggle('is-surface-multi-week', preset.surfaceType === 'multiWeek');
 		this.applyCalendarPresetTheme(root, preset);
-		let contentContainer: HTMLElement;
+		if (useMobileCalendar) {
+			root.addClass('operon-calendar-mobile-root');
+			root.classList.toggle('is-mobile-agenda', mobileViewMode === 'agenda');
+			root.classList.toggle('is-mobile-day', mobileViewMode === 'day');
+			root.classList.toggle('is-mobile-three-day', mobileViewMode === 'threeDay');
+			if (mobileAgendaFocusKey !== null) {
+				this.lastMobileAgendaFocusKey = mobileAgendaFocusKey;
+			}
+			this.renderMobileCalendarSurface(
+				root,
+				state,
+				preset,
+				settings,
+				mobileViewMode,
+				mobileAnchorDate,
+				query.visibleDates,
+				scheduledItems,
+				dueItems,
+				finishedItems,
+				timedItems,
+				activeFilter,
+					scopedTasks.length,
+					shouldFocusMobileAgendaAnchor,
+					mobileAgendaScrollTop,
+					mobileTimeGridRenderWindow,
+				);
+			this.restoreSurfaceScrollOnNextRender = false;
+				this.bindLayoutRefresh(root);
+				return;
+			}
+			this.clearMobileTimeGridScrollRenderIntents();
+			let contentContainer: HTMLElement;
 		if (state.navigationMode === 'sidebar') {
 			contentContainer = this.renderSidebarShell(root, state, preset, query.visibleDates);
 		} else {
@@ -1052,6 +1305,1865 @@ export class CalendarView extends ItemView {
 		if (leafWithHeader.tabHeaderEl) {
 			setAccessibleLabelWithoutTooltip(leafWithHeader.tabHeaderEl, title);
 		}
+	}
+
+	private isMobileCalendarLayoutEligible(container: HTMLElement, settings: OperonSettings): boolean {
+		if (settings.calendarMobileEnabled !== true) return false;
+		if (!Platform.isPhone) return false;
+		const ownerWindow = getOwnerWindow(container);
+		const width = Math.max(
+			1,
+			Math.round(container.clientWidth || container.getBoundingClientRect().width || ownerWindow.innerWidth),
+		);
+		return width <= settings.calendarMobileMaxWidthPx;
+	}
+
+	private resolveMobileCalendarViewMode(
+		state: CalendarLeafState,
+		settings: OperonSettings,
+	): CalendarMobileViewMode {
+		return state.mobileViewMode ?? settings.calendarMobileDefaultView;
+	}
+
+	private resolveMobileCalendarAnchorDate(state: CalendarLeafState): string {
+		return state.mobileAnchorDate || state.anchorDate || localToday();
+	}
+
+	private resolveMobileCalendarSourcePreset(
+		settings: OperonSettings,
+		state: CalendarLeafState,
+	): CalendarPreset | null {
+		const presetId = state.mobileSourcePresetId
+			?? settings.calendarMobileDefaultSourcePresetId
+			?? settings.calendarDefaultPresetId
+			?? null;
+		return settings.calendarPresets.find(entry => entry.id === presetId)
+			?? settings.calendarPresets.find(entry => entry.id === settings.calendarMobileDefaultSourcePresetId)
+			?? settings.calendarPresets.find(entry => entry.id === settings.calendarDefaultPresetId)
+			?? settings.calendarPresets[0]
+			?? null;
+	}
+
+	private buildMobileCalendarRenderPreset(preset: CalendarPreset, settings: OperonSettings): CalendarPreset {
+		return {
+			...preset,
+			showProjectedOccurrences: settings.calendarMobileShowProjectedOccurrences,
+			showExternalCalendars: settings.calendarMobileShowExternalCalendars,
+			colorSource: settings.calendarMobileColorSource,
+		};
+	}
+
+	private buildMobileCalendarQueryPreset(
+		_preset: CalendarPreset,
+		viewMode: CalendarMobileViewMode,
+		settings: OperonSettings,
+	): Pick<CalendarPreset, 'dayCount' | 'showWeekends' | 'todayPosition' | 'showProjectedOccurrences'> {
+		const dayCount = viewMode === 'threeDay'
+			? 3
+			: viewMode === 'day'
+				? 1
+				: settings.calendarMobileAgendaPastDays + settings.calendarMobileAgendaFutureDays + 1;
+		return {
+			dayCount,
+			showWeekends: true,
+			todayPosition: 1,
+			showProjectedOccurrences: settings.calendarMobileShowProjectedOccurrences,
+		};
+	}
+
+	private buildMobileTimeGridRenderWindow(anchorDate: string, visibleDates: string[]): CalendarMobileTimeGridRenderWindow {
+		const visibleDayCount = Math.max(1, visibleDates.length || 1);
+		const bufferDaysPerSide = CALENDAR_MOBILE_TIME_GRID_BUFFER_DAYS_PER_SIDE;
+		const bufferedDates = buildVisibleCalendarDates(
+			anchorDate,
+			visibleDayCount + (bufferDaysPerSide * 2),
+			true,
+			bufferDaysPerSide + 1,
+		);
+		const visibleStartBufferIndex = resolveTimedHorizontalVisibleStartIndex(
+			bufferedDates,
+			visibleDates,
+			anchorDate,
+			bufferDaysPerSide,
+		);
+		return {
+			anchorDate,
+			visibleDates: [...visibleDates],
+			bufferedDates,
+			visibleStartBufferIndex,
+			bufferDaysBefore: bufferDaysPerSide,
+			bufferDaysAfter: bufferDaysPerSide,
+		};
+	}
+
+	private buildMobileAgendaFixedDates(anchorDate: string, settings: OperonSettings): string[] {
+		const startDate = shiftCalendarDateKey(anchorDate, -settings.calendarMobileAgendaPastDays);
+		const endDate = shiftCalendarDateKey(anchorDate, settings.calendarMobileAgendaFutureDays);
+		const dates: string[] = [];
+		let cursor = startDate;
+		while (cursor && cursor <= endDate) {
+			dates.push(cursor);
+			const next = shiftCalendarDateKey(cursor, 1);
+			if (next === cursor) break;
+			cursor = next;
+		}
+		return dates;
+	}
+
+	private buildMobileAgendaFocusKey(anchorDate: string, settings: OperonSettings): string {
+		return [
+			anchorDate,
+			settings.calendarMobileAgendaPastDays,
+			settings.calendarMobileAgendaFutureDays,
+		].join('|');
+	}
+
+	private captureRenderedMobileAgendaScrollTop(): number | null {
+		const host = this.containerEl.children[1] as HTMLElement | undefined;
+		const scrollEl = host?.querySelector<HTMLElement>(
+			'.operon-calendar-mobile-root.is-mobile-agenda .operon-calendar-mobile-content',
+		);
+		return scrollEl
+			? Math.max(0, Math.round(scrollEl.scrollTop))
+			: null;
+	}
+
+	private getMobileCalendarViewLabel(viewMode: CalendarMobileViewMode): string {
+		if (viewMode === 'threeDay') return t('calendar', 'mobileViewThreeDay');
+		if (viewMode === 'day') return t('calendar', 'mobileViewDay');
+		return t('calendar', 'mobileViewAgenda');
+	}
+
+	private renderMobileCalendarSurface(
+		root: HTMLElement,
+		state: CalendarLeafState,
+		preset: CalendarPreset,
+		settings: OperonSettings,
+		viewMode: CalendarMobileViewMode,
+		anchorDate: string,
+		visibleDates: string[],
+		scheduledItems: CalendarItem[],
+		dueItems: CalendarItem[],
+		finishedItems: CalendarItem[],
+		timedItems: CalendarItem[],
+		activeFilter: FilterSet | null,
+			scopedTaskCount: number,
+			shouldFocusAgendaAnchor: boolean,
+			agendaScrollTop: number | null,
+			mobileTimeGridRenderWindow: CalendarMobileTimeGridRenderWindow | null,
+		): void {
+		this.renderMobileCalendarHeader(root, state, preset, settings, viewMode, anchorDate);
+		const content = root.createDiv('operon-calendar-mobile-content');
+		content.classList.toggle('is-timegrid', viewMode !== 'agenda');
+		const visibleBuckets = this.buildMobileCalendarVisibleBuckets(
+			scheduledItems,
+			dueItems,
+			finishedItems,
+			timedItems,
+			settings,
+			viewMode,
+		);
+			const visibleItemCount = visibleBuckets.scheduled.length
+				+ visibleBuckets.due.length
+				+ visibleBuckets.finished.length
+				+ visibleBuckets.timed.length;
+			if (viewMode === 'agenda') {
+				this.clearMobileTimeGridScrollRenderIntents();
+				this.renderMobileAgenda(content, visibleDates, visibleBuckets, preset, settings, anchorDate, {
+					focusAnchor: shouldFocusAgendaAnchor,
+					restoreScrollTop: agendaScrollTop,
+				});
+				if (visibleItemCount === 0 && activeFilter && scopedTaskCount === 0) {
+				content.createDiv({
+					cls: 'operon-calendar-mobile-agenda-filter-empty',
+					text: t('calendar', 'noCalendarFilterMatches'),
+				});
+			}
+			} else if (mobileTimeGridRenderWindow) {
+				this.renderMobileTimeGrid(content, mobileTimeGridRenderWindow, visibleBuckets, preset, settings, viewMode);
+			}
+		}
+
+	private buildMobileCalendarVisibleBuckets(
+		scheduledItems: CalendarItem[],
+		dueItems: CalendarItem[],
+		finishedItems: CalendarItem[],
+		timedItems: CalendarItem[],
+		settings: OperonSettings,
+		viewMode: CalendarMobileViewMode,
+	): {
+		scheduled: CalendarItem[];
+		due: CalendarItem[];
+		finished: CalendarItem[];
+		timed: CalendarItem[];
+	} {
+		const showCompleted = viewMode === 'agenda'
+			? settings.calendarMobileAgendaShowCompletedItems
+			: settings.calendarMobileShowCompletedItems;
+		return {
+			scheduled: settings.calendarMobileShowAllDayItems
+				? this.filterMobileCalendarCompletedItems(scheduledItems, showCompleted)
+				: [],
+			due: settings.calendarMobileShowDueMarkers
+				? this.filterMobileCalendarCompletedItems(dueItems, showCompleted)
+				: [],
+			finished: showCompleted
+				? finishedItems
+				: [],
+			timed: this.filterMobileCalendarCompletedItems(timedItems, showCompleted),
+		};
+	}
+
+	private filterMobileCalendarCompletedItems(items: CalendarItem[], showCompleted: boolean): CalendarItem[] {
+		if (showCompleted) return items;
+		return items.filter(item => item.origin === 'external' || item.renderSnapshot.checkbox === 'open');
+	}
+
+	private renderMobileCalendarHeader(
+		root: HTMLElement,
+		state: CalendarLeafState,
+		preset: CalendarPreset,
+		settings: OperonSettings,
+		viewMode: CalendarMobileViewMode,
+		anchorDate: string,
+	): void {
+		const header = root.createDiv('operon-calendar-mobile-header');
+		this.renderMobileDateStrip(header, state, anchorDate);
+		this.renderMobileCalendarActionStrip(header, state, preset, settings, viewMode, anchorDate);
+	}
+
+	private renderMobileCalendarActionStrip(
+		container: HTMLElement,
+		state: CalendarLeafState,
+		preset: CalendarPreset,
+		settings: OperonSettings,
+		viewMode: CalendarMobileViewMode,
+		anchorDate: string,
+	): void {
+		const actions = container.createDiv('operon-calendar-mobile-action-strip');
+		const today = localToday();
+		const showProjectedOccurrences = settings.calendarMobileShowProjectedOccurrences !== false;
+		const projectedLabel = showProjectedOccurrences
+			? t('calendar', 'hideFutureOccurrences')
+			: t('calendar', 'showFutureOccurrences');
+		this.renderMobileCalendarActionButton(actions, {
+			icon: showProjectedOccurrences ? 'eye' : 'eye-off',
+			label: projectedLabel,
+			isOn: showProjectedOccurrences,
+			onClick: () => {
+				void this.callbacks.onMobileCalendarSettingsChange?.({
+					calendarMobileShowProjectedOccurrences: !showProjectedOccurrences,
+				});
+			},
+		});
+
+		const selectedExternalCalendarCount = settings.externalCalendars
+			.filter(source => source.enabled && preset.externalCalendarVisibility[source.id] === true)
+			.length;
+		const hasSelectedExternalCalendars = selectedExternalCalendarCount > 0;
+		const showExternalCalendars = settings.calendarMobileShowExternalCalendars !== false;
+		const externalCalendarsLabel = hasSelectedExternalCalendars
+			? showExternalCalendars
+				? t('calendar', 'hideExternalCalendars')
+				: t('calendar', 'showExternalCalendars')
+			: t('calendar', 'noExternalCalendarsSelectedForPreset');
+		this.renderMobileCalendarActionButton(actions, {
+			icon: showExternalCalendars && hasSelectedExternalCalendars ? 'calendar-check' : 'calendar-off',
+			label: externalCalendarsLabel,
+			isOn: showExternalCalendars && hasSelectedExternalCalendars,
+			disabled: !hasSelectedExternalCalendars,
+			onClick: () => {
+				if (!hasSelectedExternalCalendars) return;
+				void this.callbacks.onMobileCalendarSettingsChange?.({
+					calendarMobileShowExternalCalendars: !showExternalCalendars,
+				});
+			},
+		});
+
+		const currentColorSource = normalizeTaskColorSource(settings.calendarMobileColorSource, CALENDAR_TASK_COLOR_SOURCES, 'taskColor');
+		const nextColorSource = getNextTaskColorSource(currentColorSource, CALENDAR_TASK_COLOR_SOURCES, 'taskColor');
+		const colorSourceLabel = t('calendar', 'cycleTaskColorSourceTooltip', {
+			current: getTaskColorSourceLabel(currentColorSource),
+			next: getTaskColorSourceLabel(nextColorSource),
+		});
+		this.renderMobileCalendarActionButton(actions, {
+			icon: getTaskColorSourceIcon(currentColorSource),
+			label: colorSourceLabel,
+			onClick: () => {
+				void this.callbacks.onMobileCalendarSettingsChange?.({
+					calendarMobileColorSource: nextColorSource,
+				});
+			},
+		});
+
+		const syncExternalCalendarsLabel = t('commands', 'updateExternalCalendars');
+		this.renderMobileCalendarActionButton(actions, {
+			icon: 'calendar-sync',
+			label: syncExternalCalendarsLabel,
+			onClick: () => {
+				void this.callbacks.onSyncExternalCalendars?.();
+			},
+		});
+
+		this.renderMobileCalendarViewCycleButton(actions, state, viewMode);
+		this.renderMobileCalendarSourcePresetButton(actions, preset, settings);
+		this.renderMobileCalendarActionButton(actions, {
+			icon: 'calendar-arrow-down',
+			label: t('calendar', 'mobileGoToToday'),
+			isOn: anchorDate === today,
+			onClick: () => {
+				if (viewMode === 'agenda' && anchorDate === today && this.scrollRenderedMobileAgendaToDate(today)) {
+					return;
+				}
+				if (viewMode !== 'agenda') {
+					this.requestMobileTimeGridSmartScrollOnNextRender();
+					if (anchorDate === today) {
+						this.render();
+						return;
+					}
+				}
+				void this.updateLeafState({
+					...state,
+					mobileAnchorDate: today,
+				});
+			},
+		});
+	}
+
+	private getNextMobileCalendarViewMode(viewMode: CalendarMobileViewMode): CalendarMobileViewMode {
+		if (viewMode === 'agenda') return 'day';
+		if (viewMode === 'day') return 'threeDay';
+		return 'agenda';
+	}
+
+	private renderMobileCalendarViewCycleButton(
+		container: HTMLElement,
+		state: CalendarLeafState,
+		viewMode: CalendarMobileViewMode,
+	): void {
+		const nextViewMode = this.getNextMobileCalendarViewMode(viewMode);
+		const currentLabel = this.getMobileCalendarViewLabel(viewMode);
+		const nextLabel = this.getMobileCalendarViewLabel(nextViewMode);
+		const label = t('calendar', 'mobileCycleView', {
+			current: currentLabel,
+			next: nextLabel,
+		});
+		const button = container.createEl('button', {
+			text: currentLabel,
+			cls: 'operon-calendar-mobile-icon-button operon-calendar-mobile-action-button operon-calendar-mobile-view-cycle-button is-on',
+			attr: {
+				type: 'button',
+			},
+		});
+		setAccessibleLabelWithoutTooltip(button, label);
+		bindOperonHoverTooltip(button, { content: label, taskColor: null });
+		button.addEventListener('click', (event) => {
+			event.preventDefault();
+			void this.updateLeafState({
+				...state,
+				mobileViewMode: nextViewMode,
+			});
+		});
+	}
+
+	private renderMobileCalendarActionButton(
+		container: HTMLElement,
+		options: {
+			icon: string;
+			label: string;
+			isOn?: boolean;
+			disabled?: boolean;
+			onClick: () => void;
+		},
+	): HTMLButtonElement {
+		const attr: Record<string, string> = { type: 'button' };
+		if (typeof options.isOn === 'boolean') attr['aria-pressed'] = String(options.isOn);
+		if (options.disabled) attr['aria-disabled'] = 'true';
+		const button = container.createEl('button', {
+			cls: 'operon-calendar-mobile-icon-button operon-calendar-mobile-action-button',
+			attr,
+		});
+		button.classList.toggle('is-on', options.isOn === true);
+		button.classList.toggle('is-off', options.isOn === false);
+		button.classList.toggle('is-disabled', options.disabled === true);
+		setIcon(button, options.icon);
+		setAccessibleLabelWithoutTooltip(button, options.label);
+		bindOperonHoverTooltip(button, { content: options.label, taskColor: null });
+		button.addEventListener('click', (event) => {
+			event.preventDefault();
+			if (options.disabled) return;
+			options.onClick();
+		});
+		return button;
+	}
+
+	private renderMobileCalendarSourcePresetButton(
+		container: HTMLElement,
+		preset: CalendarPreset,
+		settings: OperonSettings,
+	): void {
+		const wrapper = container.createDiv('operon-calendar-mobile-source-select-wrap');
+		const trigger = wrapper.createDiv('operon-calendar-mobile-icon-button operon-calendar-mobile-source-select-trigger');
+		setIcon(trigger, 'calendar-days');
+		const presetSelect = wrapper.createEl('select', {
+			cls: 'operon-calendar-mobile-source-select',
+		});
+		for (const entry of settings.calendarPresets) {
+			const option = presetSelect.createEl('option', { text: entry.name });
+			option.value = entry.id;
+			option.selected = entry.id === preset.id;
+		}
+		setAccessibleLabelWithoutTooltip(presetSelect, t('calendar', 'mobileSourcePreset'));
+		presetSelect.addEventListener('change', () => {
+			void this.updateLeafState({
+				...this.ensureState(),
+				mobileSourcePresetId: presetSelect.value,
+			});
+		});
+	}
+
+	private renderMobileDateStrip(
+		container: HTMLElement,
+		state: CalendarLeafState,
+		anchorDate: string,
+	): void {
+		const weekPages = this.buildMobileDateStripWeekPages(anchorDate);
+		const strip = container.createDiv('operon-calendar-mobile-date-strip');
+		for (const page of weekPages) {
+			const weekEl = strip.createDiv('operon-calendar-mobile-date-week');
+			weekEl.dataset.weekOffset = String(page.offset);
+			weekEl.classList.toggle('is-current', page.offset === 0);
+			for (const dateKey of page.dates) {
+				const button = weekEl.createEl('button', {
+					cls: 'operon-calendar-mobile-date-button',
+					attr: {
+						type: 'button',
+						'aria-pressed': String(dateKey === anchorDate),
+					},
+				});
+				button.dataset.dateKey = dateKey;
+					button.classList.toggle('is-active', dateKey === anchorDate);
+					button.classList.toggle('is-today', dateKey === localToday());
+					button.createSpan({
+						text: this.formatMobileMonthLabel(dateKey),
+						cls: 'operon-calendar-mobile-date-month',
+					});
+					button.createSpan({
+						text: this.formatMobileDateNumber(dateKey),
+						cls: 'operon-calendar-mobile-date-number',
+				});
+				button.addEventListener('click', () => {
+					void this.updateLeafState({
+						...state,
+						mobileAnchorDate: dateKey,
+					});
+				});
+			}
+		}
+		this.bindMobileDateStripScroll(strip, anchorDate);
+	}
+
+	private buildMobileDateStripWeekPages(anchorDate: string): Array<{ offset: number; dates: string[] }> {
+		return CALENDAR_MOBILE_DATE_STRIP_WEEK_OFFSETS.map(offset => ({
+			offset,
+			dates: buildCalendarMobileWeekDates(anchorDate, offset),
+		}));
+	}
+
+	private bindMobileDateStripScroll(strip: HTMLElement, anchorDate: string): void {
+		let isProgrammaticScroll = true;
+		const generation = this.renderGeneration;
+		this.requestRenderAnimationFrame(generation, () => {
+			const currentWeek = strip.querySelector<HTMLElement>('.operon-calendar-mobile-date-week.is-current');
+			currentWeek?.scrollIntoView({ block: 'nearest', inline: 'center' });
+			this.setRenderTimeout(generation, () => {
+				isProgrammaticScroll = false;
+			}, 140);
+		});
+
+		strip.addEventListener('scroll', () => {
+			if (isProgrammaticScroll) return;
+			if (this.mobileDateStripScrollTimer !== null) {
+				window.clearTimeout(this.mobileDateStripScrollTimer);
+				this.renderTimeouts.delete(this.mobileDateStripScrollTimer);
+				this.mobileDateStripScrollTimer = null;
+			}
+			this.mobileDateStripScrollTimer = this.setRenderTimeout(generation, () => {
+				this.mobileDateStripScrollTimer = null;
+				const weekOffset = this.findCenteredMobileDateStripWeekOffset(strip);
+				if (!weekOffset) return;
+				const currentState = this.ensureState();
+				const currentAnchorDate = this.resolveMobileCalendarAnchorDate(currentState);
+				const targetDate = shiftCalendarMobileWeekAnchor(currentAnchorDate, weekOffset);
+				if (targetDate === currentAnchorDate) return;
+				void this.updateLeafState({
+					...currentState,
+					mobileAnchorDate: targetDate,
+				});
+			}, 180);
+		}, { passive: true });
+	}
+
+	private findCenteredMobileDateStripWeekOffset(strip: HTMLElement): number | null {
+		const stripRect = strip.getBoundingClientRect();
+		if (stripRect.width <= 0) return null;
+		const centerX = stripRect.left + (stripRect.width / 2);
+		let closestOffset: number | null = null;
+		let closestDistance = Number.POSITIVE_INFINITY;
+		for (const week of Array.from(strip.querySelectorAll<HTMLElement>('.operon-calendar-mobile-date-week'))) {
+			const rawOffset = week.dataset.weekOffset;
+			if (!rawOffset) continue;
+			const offset = Number(rawOffset);
+			if (!Number.isFinite(offset)) continue;
+			const rect = week.getBoundingClientRect();
+			const distance = Math.abs((rect.left + (rect.width / 2)) - centerX);
+			if (distance < closestDistance) {
+				closestDistance = distance;
+				closestOffset = Math.round(offset);
+			}
+		}
+		return closestOffset;
+	}
+
+	private renderMobileAgenda(
+		container: HTMLElement,
+		visibleDates: string[],
+		buckets: {
+			scheduled: CalendarItem[];
+			due: CalendarItem[];
+			finished: CalendarItem[];
+			timed: CalendarItem[];
+		},
+			preset: CalendarPreset,
+			settings: OperonSettings,
+			anchorDate: string,
+			options: {
+				focusAnchor: boolean;
+				restoreScrollTop: number | null;
+			},
+		): void {
+		const list = container.createDiv('operon-calendar-mobile-agenda');
+		for (const dateKey of visibleDates) {
+			const dayItems = this.collectMobileCalendarItemsForDate(dateKey, buckets);
+			const group = list.createDiv('operon-calendar-mobile-agenda-day');
+			group.dataset.dateKey = dateKey;
+			group.classList.toggle('is-empty', dayItems.length === 0);
+			group.classList.toggle('is-anchor', dateKey === anchorDate);
+			this.renderMobileDayHeading(group, dateKey);
+			if (dayItems.length === 0) {
+				group.createDiv({
+					cls: 'operon-calendar-mobile-agenda-empty-day',
+					text: t('calendar', 'mobileAgendaEmptyDay'),
+				});
+			} else {
+				const itemsEl = group.createDiv('operon-calendar-mobile-item-list');
+				for (const entry of dayItems) {
+					this.renderMobileCalendarItem(itemsEl, entry.item, preset, settings, entry.kind);
+				}
+				}
+			}
+			if (options.focusAnchor) {
+				this.focusMobileAgendaAnchorDate(container, anchorDate);
+			} else if (options.restoreScrollTop !== null) {
+				this.restoreMobileAgendaScrollTop(container, options.restoreScrollTop);
+			}
+		}
+
+	private focusMobileAgendaAnchorDate(scrollEl: HTMLElement, anchorDate: string): void {
+		const generation = this.renderGeneration;
+		this.requestRenderAnimationFrame(generation, () => {
+			if (!scrollEl.isConnected) return;
+			const anchorEl = scrollEl.querySelector<HTMLElement>(
+				`.operon-calendar-mobile-agenda-day[data-date-key="${anchorDate}"]`,
+			);
+			if (!anchorEl) return;
+			const scrollRect = scrollEl.getBoundingClientRect();
+			const anchorRect = anchorEl.getBoundingClientRect();
+			const offset = anchorRect.top - scrollRect.top;
+			scrollEl.scrollTop = Math.max(0, Math.round(scrollEl.scrollTop + offset - 4));
+		});
+	}
+
+	private restoreMobileAgendaScrollTop(scrollEl: HTMLElement, scrollTop: number): void {
+		const generation = this.renderGeneration;
+		this.requestRenderAnimationFrame(generation, () => {
+			if (!scrollEl.isConnected) return;
+			const maxScrollTop = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
+			scrollEl.scrollTop = Math.max(0, Math.min(maxScrollTop, scrollTop));
+		});
+	}
+
+	private scrollRenderedMobileAgendaToDate(dateKey: string): boolean {
+		const host = this.containerEl.children[1] as HTMLElement | undefined;
+		const scrollEl = host?.querySelector<HTMLElement>(
+			'.operon-calendar-mobile-root.is-mobile-agenda .operon-calendar-mobile-content',
+		);
+		if (!scrollEl) return false;
+		if (!scrollEl.querySelector(`.operon-calendar-mobile-agenda-day[data-date-key="${dateKey}"]`)) {
+			return false;
+		}
+		this.focusMobileAgendaAnchorDate(scrollEl, dateKey);
+		return true;
+	}
+
+	private renderMobileTimeGrid(
+		container: HTMLElement,
+		renderWindow: CalendarMobileTimeGridRenderWindow,
+		buckets: {
+			scheduled: CalendarItem[];
+			due: CalendarItem[];
+			finished: CalendarItem[];
+			timed: CalendarItem[];
+		},
+		preset: CalendarPreset,
+		settings: OperonSettings,
+		viewMode: CalendarMobileViewMode,
+	): void {
+		const metrics = this.buildMobileTimeGridMetrics();
+		const visibleDates = renderWindow.visibleDates;
+		const bufferedDates = renderWindow.bufferedDates;
+		const timeGrid = container.createDiv('operon-calendar-mobile-timegrid');
+		timeGrid.classList.toggle('is-three-day', viewMode === 'threeDay');
+		timeGrid.style.setProperty('--operon-calendar-mobile-timegrid-days', String(Math.max(1, visibleDates.length)));
+		timeGrid.style.setProperty('--operon-calendar-mobile-timegrid-buffered-days', String(Math.max(1, bufferedDates.length)));
+		this.renderMobileTimeGridHeader(timeGrid, renderWindow);
+		this.renderMobileTimeGridAllDayRail(timeGrid, renderWindow, buckets, preset, settings);
+
+		const viewport = timeGrid.createDiv('operon-calendar-mobile-timegrid-viewport');
+		this.mobileTimeGridScrollEl = viewport;
+		viewport.addEventListener('scroll', () => {
+			this.hideCalendarHoverMenu(true);
+			this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
+		}, { passive: true });
+		const section = viewport.createDiv('operon-calendar-mobile-timegrid-section');
+		const gutter = section.createDiv('operon-calendar-mobile-timegrid-gutter');
+		gutter.style.height = `${metrics.gridHeight}px`;
+		this.renderMobileTimeGridGutterLabels(gutter, visibleDates[0] ?? localToday(), metrics, settings);
+
+		const daysClip = section.createDiv('operon-calendar-mobile-timegrid-days-clip');
+		const daysGrid = daysClip.createDiv('operon-calendar-mobile-timegrid-days-grid operon-calendar-mobile-timegrid-buffer-track');
+		this.applyMobileTimeGridBufferedTrackStyle(daysGrid, renderWindow);
+		daysGrid.style.height = `${metrics.gridHeight}px`;
+		const hoverGuideOverlay = section.createDiv('operon-calendar-hover-guide-overlay operon-calendar-mobile-hover-guide-overlay');
+		this.renderMobileTimeGridDayColumns(daysGrid, bufferedDates, metrics, settings, section, gutter, hoverGuideOverlay, timeGrid, visibleDates.length);
+		this.renderMobileTimeGridItems(daysGrid, bufferedDates, buckets.timed, preset, settings, metrics, section, gutter, hoverGuideOverlay);
+		this.scheduleMobileTimeGridInitialScroll(viewport, visibleDates, buckets.timed, metrics);
+	}
+
+	private applyMobileTimeGridBufferedTrackStyle(track: HTMLElement, renderWindow: CalendarMobileTimeGridRenderWindow): void {
+		const visibleDayCount = Math.max(1, renderWindow.visibleDates.length);
+		const bufferedDayCount = Math.max(visibleDayCount, renderWindow.bufferedDates.length);
+		const visibleStart = Math.max(0, Math.min(bufferedDayCount - visibleDayCount, renderWindow.visibleStartBufferIndex));
+		track.style.gridTemplateColumns = `repeat(${bufferedDayCount}, minmax(0, 1fr))`;
+		track.style.width = `${(bufferedDayCount / visibleDayCount) * 100}%`;
+		track.setCssProps({
+			'--operon-calendar-mobile-buffer-base-x': `${-(visibleStart / bufferedDayCount) * 100}%`,
+			'--operon-calendar-mobile-buffer-swipe-x': '0px',
+		});
+	}
+
+	private resolveMobileTimeGridBufferedSwipeDayWidth(timeGrid: HTMLElement, visibleDayCount: number): number {
+		const clip = timeGrid.querySelector<HTMLElement>('.operon-calendar-mobile-timegrid-days-clip')
+			?? timeGrid.querySelector<HTMLElement>('.operon-calendar-mobile-timegrid-header-clip');
+		const clipWidth = clip?.getBoundingClientRect().width ?? 0;
+		return clipWidth > 0
+			? clipWidth / Math.max(1, visibleDayCount)
+			: 48;
+	}
+
+	private renderMobileDayHeading(container: HTMLElement, dateKey: string): void {
+		const heading = container.createDiv('operon-calendar-mobile-day-heading');
+		heading.classList.toggle('is-today', dateKey === localToday());
+		heading.createDiv({
+			text: this.formatDayLabel(dateKey),
+			cls: 'operon-calendar-mobile-day-heading-date',
+		});
+		heading.createDiv({
+			text: this.formatMobileAgendaWeekdayLabel(dateKey),
+			cls: 'operon-calendar-mobile-day-heading-weekday',
+		});
+	}
+
+	private buildMobileTimeGridMetrics(): CalendarTimedMetrics {
+		return {
+			hiddenRange: {
+				enabled: false,
+				startMinutes: 0,
+				endMinutes: 0,
+			},
+			isHiddenExpanded: true,
+			scale: CALENDAR_MOBILE_TIME_GRID_SCALE,
+			collapsedBandHeight: 0,
+			gridHeight: Math.round(CALENDAR_MOBILE_TIME_GRID_MINUTES_PER_DAY * CALENDAR_MOBILE_TIME_GRID_SCALE),
+		};
+	}
+
+	private renderMobileTimeGridHeader(container: HTMLElement, renderWindow: CalendarMobileTimeGridRenderWindow): void {
+		const header = container.createDiv('operon-calendar-mobile-timegrid-header');
+		header.createDiv('operon-calendar-mobile-timegrid-gutter-spacer');
+		const clip = header.createDiv('operon-calendar-mobile-timegrid-header-clip');
+		const days = clip.createDiv('operon-calendar-mobile-timegrid-header-days operon-calendar-mobile-timegrid-buffer-track');
+		this.applyMobileTimeGridBufferedTrackStyle(days, renderWindow);
+		for (const dateKey of renderWindow.bufferedDates) {
+			const day = days.createEl('button', {
+				cls: 'operon-calendar-mobile-timegrid-day-header',
+				attr: { type: 'button' },
+			});
+			day.classList.toggle('is-today', dateKey === localToday());
+			day.createSpan({
+				text: this.formatWeekdayLabel(dateKey),
+				cls: 'operon-calendar-mobile-timegrid-day-weekday',
+			});
+			day.createSpan({
+				text: this.formatMobileDateNumber(dateKey),
+				cls: 'operon-calendar-mobile-timegrid-day-number',
+			});
+			day.addEventListener('click', () => {
+				void this.callbacks.onOpenDailyNote?.(dateKey);
+			});
+		}
+	}
+
+	private renderMobileTimeGridAllDayRail(
+		container: HTMLElement,
+		renderWindow: CalendarMobileTimeGridRenderWindow,
+		buckets: {
+			scheduled: CalendarItem[];
+			due: CalendarItem[];
+			finished: CalendarItem[];
+			timed: CalendarItem[];
+		},
+		preset: CalendarPreset,
+		settings: OperonSettings,
+	): void {
+		const rail = container.createDiv('operon-calendar-mobile-timegrid-all-day');
+		const entriesByDate = new Map<string, Array<{ item: CalendarItem; kind: 'allDay' | 'due' | 'finished' }>>();
+		const getEntries = (dateKey: string): Array<{ item: CalendarItem; kind: 'allDay' | 'due' | 'finished' }> => {
+			const existing = entriesByDate.get(dateKey);
+			if (existing) return existing;
+			const entries = this.resolveMobileTimeGridAllDayEntries(dateKey, buckets);
+			entriesByDate.set(dateKey, entries);
+			return entries;
+		};
+		const visibleEntryCount = renderWindow.visibleDates.reduce((maxCount, dateKey) => Math.max(maxCount, getEntries(dateKey).length), 0);
+		rail.style.setProperty('--operon-calendar-mobile-all-day-rail-height', `${this.resolveMobileAllDayRailHeight(settings, visibleEntryCount)}px`);
+		const maxVisibleHeight = this.resolveMobileAllDayVisibleTaskHeight(settings);
+		if (maxVisibleHeight !== null) {
+			rail.style.setProperty('--operon-calendar-mobile-all-day-max-height', `${maxVisibleHeight}px`);
+		}
+		rail.createDiv({
+			text: t('calendar', 'allDay'),
+			cls: 'operon-calendar-mobile-timegrid-all-day-label',
+		});
+		const clip = rail.createDiv('operon-calendar-mobile-timegrid-all-day-clip');
+		const days = clip.createDiv('operon-calendar-mobile-timegrid-all-day-days operon-calendar-mobile-timegrid-buffer-track');
+		this.applyMobileTimeGridBufferedTrackStyle(days, renderWindow);
+		const cells: HTMLElement[] = [];
+		for (const dateKey of renderWindow.bufferedDates) {
+			const cell = days.createDiv('operon-calendar-mobile-timegrid-all-day-cell');
+			cell.dataset.dateKey = dateKey;
+			cells.push(cell);
+			for (const entry of getEntries(dateKey)) {
+				this.renderMobileTimeGridPill(cell, entry.item, preset, settings, entry.kind);
+			}
+		}
+		const overlay = days.createDiv('operon-calendar-mobile-timegrid-all-day-overlay');
+		this.allDayDropContext = {
+			body: days,
+			overlay,
+			visibleDates: [...renderWindow.bufferedDates],
+			laneHeight: 28,
+			previewLane: 0,
+			cells,
+			activeColumn: null,
+			isMobile: true,
+		};
+	}
+
+	private resolveMobileTimeGridAllDayEntries(
+		dateKey: string,
+		buckets: {
+			scheduled: CalendarItem[];
+			due: CalendarItem[];
+			finished: CalendarItem[];
+		},
+	): Array<{ item: CalendarItem; kind: 'allDay' | 'due' | 'finished' }> {
+		return this.sortMobileCalendarEntries([
+			...this.getItemsIntersectingDate(buckets.scheduled, dateKey).map(item => ({ item, kind: 'allDay' as const })),
+			...this.getItemsIntersectingDate(buckets.due, dateKey).map(item => ({ item, kind: 'due' as const })),
+			...this.getItemsIntersectingDate(buckets.finished, dateKey).map(item => ({ item, kind: 'finished' as const })),
+		]);
+	}
+
+	private resolveMobileAllDayRailHeight(settings: OperonSettings, visibleTaskCount: number): number {
+		const limit = settings.calendarMobileAllDayVisibleTaskLimit;
+		const visibleRows = limit === 'all'
+			? visibleTaskCount
+			: Math.min(visibleTaskCount, limit);
+		return Math.max(34, (visibleRows * 28) + 10);
+	}
+
+	private resolveMobileAllDayVisibleTaskHeight(settings: OperonSettings): number | null {
+		const limit = settings.calendarMobileAllDayVisibleTaskLimit;
+		if (limit === 'all') return null;
+		return Math.max(44, (limit * 28) + 10);
+	}
+
+	private renderMobileTimeGridPill(
+		container: HTMLElement,
+		item: CalendarItem,
+		preset: CalendarPreset,
+		settings: OperonSettings,
+		kind: 'allDay' | 'due' | 'finished',
+	): void {
+		const itemEl = container.createDiv(`operon-calendar-mobile-timegrid-pill operon-calendar-mobile-item is-${kind}`);
+		itemEl.dataset.operonId = item.taskId;
+		itemEl.addClass(`is-${item.renderSnapshot.checkbox}`);
+		this.applyCalendarProjectionClasses(itemEl, item);
+		if (item.origin === 'external') itemEl.addClass('is-external');
+		this.applyCalendarItemColor(itemEl, item, preset, settings);
+		const hoverTrigger = this.renderCalendarItemLabel(itemEl, item, settings, true);
+		this.bindPrimaryItemClick(itemEl, item);
+		if (hoverTrigger) {
+			this.bindHoverMenuTarget(hoverTrigger, item);
+		}
+		if (kind === 'allDay' && this.canEditCalendarItemPlacement(item)) {
+			itemEl.addClass('is-draggable');
+			this.bindMobileAllDayPillInteraction(itemEl, item, settings);
+		} else if (kind === 'allDay') {
+			itemEl.addClass('is-read-only');
+		}
+	}
+
+	private bindMobileAllDayPillInteraction(
+		itemEl: HTMLElement,
+		item: CalendarItem,
+		settings: OperonSettings,
+	): void {
+				let pendingTouchDrag: {
+					pointerId: number;
+					initialClientX: number;
+					initialClientY: number;
+					latestClientX: number;
+					latestClientY: number;
+					previousClientY: number;
+					mode: 'pending' | 'scrolling';
+					timerId: ReturnType<Window['setTimeout']>;
+					ownerWindow: Window;
+					onPointerMove: (event: PointerEvent) => void;
+					onPointerUp: (event: PointerEvent) => void;
+				onPointerCancel: (event: PointerEvent) => void;
+				onWindowBlur: () => void;
+			} | null = null;
+			let activeMoveCleanup: (() => void) | null = null;
+			let dragState: {
+				pointerId: number;
+				timedSelection: CalendarSlotSelection | null;
+				timedPreviewEl: HTMLElement | null;
+				dragGhostEl: HTMLElement | null;
+				suppressClickOnFinish: boolean;
+			} | null = null;
+			let touchDragActiveBody: HTMLElement | null = null;
+
+				const isTouchPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
+				const resolveTouchTapDistancePx = (): number => CALENDAR_MOBILE_TOUCH_CANCEL_DISTANCE_PX;
+				const resolveMobileSlotMinutes = (): number => Math.max(15, Math.round(settings.calendarMobileSlotMinutes || 30));
+
+				const suppressNextTouchClick = (): void => {
+					const ownerWindow = getOwnerWindow(itemEl);
+					itemEl.dataset.suppressCalendarClick = 'true';
+					ownerWindow.setTimeout(() => {
+						if (itemEl.dataset.suppressCalendarClick === 'true') {
+							delete itemEl.dataset.suppressCalendarClick;
+						}
+					}, CALENDAR_TOUCH_CLICK_SUPPRESSION_MS);
+				};
+
+				const suppressNextTouchClickAtWindow = (ownerWindow: Window): void => {
+					let cleanupTimer: ReturnType<Window['setTimeout']> | null = null;
+					const cleanup = (): void => {
+						ownerWindow.removeEventListener('click', onClick, true);
+						if (cleanupTimer !== null) {
+							ownerWindow.clearTimeout(cleanupTimer);
+							cleanupTimer = null;
+						}
+					};
+					const onClick = (clickEvent: MouseEvent): void => {
+						const target = asHTMLElement(clickEvent.target, itemEl);
+						if (!target || !itemEl.contains(target)) return;
+						clickEvent.preventDefault();
+						clickEvent.stopPropagation();
+						clickEvent.stopImmediatePropagation();
+						cleanup();
+					};
+					ownerWindow.addEventListener('click', onClick, true);
+					cleanupTimer = ownerWindow.setTimeout(cleanup, CALENDAR_TOUCH_CLICK_SUPPRESSION_MS);
+				};
+
+				const setTouchDragActiveClass = (): void => {
+					const body = getOwnerBody(itemEl);
+					if (touchDragActiveBody && touchDragActiveBody !== body) {
+						touchDragActiveBody.classList.remove('operon-calendar-touch-drag-active');
+					}
+				touchDragActiveBody = body;
+				touchDragActiveBody.classList.add('operon-calendar-touch-drag-active');
+			};
+
+			const clearTouchDragActiveClass = (): void => {
+				touchDragActiveBody?.classList.remove('operon-calendar-touch-drag-active');
+				touchDragActiveBody = null;
+			};
+
+			const clearActiveMove = (): void => {
+				activeMoveCleanup?.();
+				activeMoveCleanup = null;
+			};
+
+			const clearPendingTouchDrag = (): void => {
+				if (!pendingTouchDrag) return;
+				const pending = pendingTouchDrag;
+				pending.ownerWindow.clearTimeout(pending.timerId);
+				pending.ownerWindow.removeEventListener('pointermove', pending.onPointerMove, true);
+				pending.ownerWindow.removeEventListener('pointerup', pending.onPointerUp, true);
+				pending.ownerWindow.removeEventListener('pointercancel', pending.onPointerCancel, true);
+				pending.ownerWindow.removeEventListener('blur', pending.onWindowBlur, true);
+					itemEl.removeClass('is-touch-drag-pending');
+					pendingTouchDrag = null;
+				};
+
+				const getPendingDistance = (clientX: number, clientY: number, pending = pendingTouchDrag): number => {
+					if (!pending) return Number.POSITIVE_INFINITY;
+					return Math.hypot(clientX - pending.initialClientX, clientY - pending.initialClientY);
+				};
+
+				const scrollMobileAllDayRailBy = (deltaY: number): void => {
+					if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.5) return;
+					const viewport = itemEl.closest<HTMLElement>('.operon-calendar-mobile-timegrid-all-day-days');
+					if (!viewport) return;
+					const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+					viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + deltaY));
+				};
+
+				const openEditorFromTouchTap = (): void => {
+					if (!this.callbacks.onItemAction) return;
+					const ownerWindow = getOwnerWindow(itemEl);
+					suppressNextTouchClick();
+					suppressNextTouchClickAtWindow(ownerWindow);
+					ownerWindow.setTimeout(() => {
+						if (!itemEl.isConnected) return;
+						void this.callbacks.onItemAction?.(item.taskId, 'openEditor');
+					}, CALENDAR_TOUCH_TAP_EDITOR_DELAY_MS);
+				};
+
+				const clearTimedPreview = (): void => {
+					if (!dragState) return;
+					dragState.timedSelection = null;
+					dragState.timedPreviewEl?.remove();
+					dragState.timedPreviewEl = null;
+				this.timedDropContext?.hoverGuideOverlay.empty();
+			};
+
+			const updateFromPointer = (clientX: number, clientY: number): void => {
+				if (!dragState) return;
+				this.updateCalendarDragGhostPosition(dragState.dragGhostEl, clientX, clientY);
+				const context = this.timedDropContext;
+				if (!context?.isMobile) {
+					clearTimedPreview();
+					return;
+				}
+				const timedRect = context.daysGrid.getBoundingClientRect();
+				const insideTimed = clientX >= timedRect.left
+					&& clientX <= timedRect.right
+					&& clientY >= timedRect.top
+					&& clientY <= timedRect.bottom;
+				if (!insideTimed) {
+					clearTimedPreview();
+					return;
+				}
+				const position = this.resolveTimedGridPosition(
+					context.daysGrid,
+					context.visibleDates,
+					context.metrics,
+					clientX,
+					clientY,
+				);
+				const dateKey = context.visibleDates[position.dayIndex] ?? item.startDate;
+				const mobileSlotMinutes = resolveMobileSlotMinutes();
+				const duration = this.resolveCalendarTaskDurationMinutes(item, mobileSlotMinutes);
+				const endMinute = Math.min(24 * 60, position.minuteOfDay + duration);
+				const selection = buildTimedSlotSelection(
+					dateKey,
+					position.minuteOfDay,
+					endMinute,
+					CALENDAR_TIMED_SNAP_MINUTES,
+				);
+				selection.slotMinutes = mobileSlotMinutes;
+				dragState.timedSelection = selection;
+				if (!dragState.timedPreviewEl) {
+					dragState.timedPreviewEl = context.daysGrid.createDiv('operon-calendar-timed-transfer-preview operon-calendar-mobile-timed-transfer-preview');
+				}
+				const previewStart = this.extractMinuteOfDay(selection.start);
+				const previewEnd = Math.min(24 * 60, previewStart + duration);
+				this.applyTimedPlacementStyle(
+					dragState.timedPreviewEl,
+					position.dayIndex,
+					0,
+					1,
+					previewStart,
+					previewEnd,
+					context.visibleDates.length,
+					context.metrics,
+				);
+				context.hoverGuideOverlay.empty();
+				this.renderTimedSelectionGuides(
+					context.section,
+					context.gutter,
+					context.daysGrid,
+					context.hoverGuideOverlay,
+					dateKey,
+					previewStart,
+					previewEnd,
+					context.metrics,
+					'var(--interactive-accent)',
+					context.settings,
+					position.dayIndex,
+					context.visibleDates.length,
+				);
+			};
+
+			const clearDragState = (): void => {
+				if (!dragState) return;
+				this.releaseCalendarPointerCapture(itemEl, dragState.pointerId);
+				itemEl.removeClass('is-dragging');
+				itemEl.removeClass('operon-calendar-drag-source-hidden');
+				this.removeCalendarDragGhost(dragState.dragGhostEl);
+				dragState.timedPreviewEl?.remove();
+				this.timedDropContext?.hoverGuideOverlay.empty();
+				clearActiveMove();
+				clearTouchDragActiveClass();
+			};
+
+			const finishDrag = (reason: CalendarDragEndReason, event: PointerEvent | null): void => {
+				if (!dragState) return;
+				if (event && event.pointerId !== dragState.pointerId) return;
+				clearPendingTouchDrag();
+				if (event) {
+					updateFromPointer(event.clientX, event.clientY);
+				}
+				const selection = dragState.timedSelection;
+				const suppressClickOnFinish = dragState.suppressClickOnFinish;
+				clearDragState();
+				dragState = null;
+				if (suppressClickOnFinish) {
+					itemEl.dataset.suppressCalendarClick = 'true';
+				}
+				if (reason !== 'commit' || !selection) return;
+				const writebackPlan = buildTimedCalendarWritebackPlanForExistingCalendarAssignment(
+					selection,
+					item.renderSnapshot.fieldValues,
+					{ preserveExistingDuration: true },
+				);
+				this.captureMobileTimeGridScrollForRender();
+				this.invokeCalendarDropCallback(
+					item.taskId,
+					writebackPlan.payload,
+					() => this.callbacks.onAllDayItemDropToTimed?.(item.taskId, selection),
+				);
+			};
+
+			const bindActiveMove = (pointerId: number, ownerWindow: Window): void => {
+				clearActiveMove();
+				const onPointerMove = (event: PointerEvent): void => {
+					if (event.pointerId !== pointerId) return;
+					event.preventDefault();
+					event.stopPropagation();
+					updateFromPointer(event.clientX, event.clientY);
+				};
+				ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
+				activeMoveCleanup = () => ownerWindow.removeEventListener('pointermove', onPointerMove, true);
+			};
+
+			const startDrag = (
+				pointerId: number,
+				clientX: number,
+				clientY: number,
+				ownerWindow: Window,
+				suppressClickOnFinish: boolean,
+			): void => {
+				clearPendingTouchDrag();
+				this.hideCalendarHoverMenu(true);
+				itemEl.addClass('is-dragging');
+				itemEl.addClass('operon-calendar-drag-source-hidden');
+				setTouchDragActiveClass();
+				dragState = {
+					pointerId,
+					timedSelection: null,
+					timedPreviewEl: null,
+					dragGhostEl: this.createCalendarDragGhost(itemEl, 'operon-calendar-mobile-all-day-drag-ghost'),
+					suppressClickOnFinish,
+				};
+				this.beginCalendarDragSession(itemEl, pointerId, finishDrag);
+				try {
+					itemEl.setPointerCapture?.(pointerId);
+				} catch {
+					// Pointer capture is best-effort in mobile WebViews.
+				}
+				bindActiveMove(pointerId, ownerWindow);
+				updateFromPointer(clientX, clientY);
+			};
+
+				const startPendingTouchDrag = (event: PointerEvent): void => {
+					clearPendingTouchDrag();
+					event.preventDefault();
+					event.stopPropagation();
+					const ownerWindow = getOwnerWindow(itemEl);
+					const pointerId = event.pointerId;
+					try {
+						itemEl.setPointerCapture?.(pointerId);
+					} catch {
+						// Pointer capture is best-effort in mobile WebViews.
+					}
+					const onPointerMove = (moveEvent: PointerEvent): void => {
+						const pending = pendingTouchDrag;
+						if (!pending || moveEvent.pointerId !== pointerId) return;
+						moveEvent.preventDefault();
+						moveEvent.stopPropagation();
+						pending.latestClientX = moveEvent.clientX;
+						pending.latestClientY = moveEvent.clientY;
+						if (pending.mode === 'scrolling') {
+							scrollMobileAllDayRailBy(pending.previousClientY - moveEvent.clientY);
+							pending.previousClientY = moveEvent.clientY;
+							return;
+						}
+						if (getPendingDistance(moveEvent.clientX, moveEvent.clientY, pending) > resolveTouchTapDistancePx()) {
+							pending.mode = 'scrolling';
+							pending.ownerWindow.clearTimeout(pending.timerId);
+							itemEl.removeClass('is-touch-drag-pending');
+							scrollMobileAllDayRailBy(pending.previousClientY - moveEvent.clientY);
+							pending.previousClientY = moveEvent.clientY;
+						}
+					};
+					const onPointerUp = (upEvent: PointerEvent): void => {
+						const pending = pendingTouchDrag;
+						if (!pending || upEvent.pointerId !== pointerId) return;
+						upEvent.preventDefault();
+						upEvent.stopPropagation();
+						if (pending.mode === 'scrolling') {
+							clearPendingTouchDrag();
+							this.releaseCalendarPointerCapture(itemEl, pointerId);
+							return;
+						}
+						const shouldOpenEditor = getPendingDistance(upEvent.clientX, upEvent.clientY, pending) <= resolveTouchTapDistancePx();
+						clearPendingTouchDrag();
+						this.releaseCalendarPointerCapture(itemEl, pointerId);
+						if (shouldOpenEditor) {
+							openEditorFromTouchTap();
+						}
+					};
+					const onPointerCancel = (cancelEvent: PointerEvent): void => {
+						if (!pendingTouchDrag || cancelEvent.pointerId !== pointerId) return;
+						cancelEvent.preventDefault();
+						clearPendingTouchDrag();
+						this.releaseCalendarPointerCapture(itemEl, pointerId);
+					};
+					const onWindowBlur = (): void => clearPendingTouchDrag();
+					const timerId = ownerWindow.setTimeout(() => {
+						const pending = pendingTouchDrag;
+						if (!pending || pending.pointerId !== pointerId) return;
+					startDrag(pointerId, pending.latestClientX, pending.latestClientY, ownerWindow, true);
+				}, CALENDAR_MOBILE_TASK_LONG_PRESS_MS);
+				pendingTouchDrag = {
+					pointerId,
+					initialClientX: event.clientX,
+						initialClientY: event.clientY,
+						latestClientX: event.clientX,
+						latestClientY: event.clientY,
+						previousClientY: event.clientY,
+						mode: 'pending',
+						timerId,
+						ownerWindow,
+						onPointerMove,
+						onPointerUp,
+					onPointerCancel,
+					onWindowBlur,
+				};
+				itemEl.addClass('is-touch-drag-pending');
+				ownerWindow.addEventListener('pointermove', onPointerMove, true);
+				ownerWindow.addEventListener('pointerup', onPointerUp, true);
+				ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+				ownerWindow.addEventListener('blur', onWindowBlur, true);
+			};
+
+			itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
+				if (event.button !== 0) return;
+				const target = asHTMLElement(event.target, itemEl);
+				if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button')) return;
+				if (isTouchPointer(event)) {
+					startPendingTouchDrag(event);
+					return;
+				}
+				event.preventDefault();
+				event.stopPropagation();
+				startDrag(event.pointerId, event.clientX, event.clientY, getOwnerWindow(itemEl), false);
+			});
+
+			itemEl.addEventListener('pointerup', (event: PointerEvent) => this.finishActiveCalendarDragSession('commit', event));
+			itemEl.addEventListener('pointercancel', (event: PointerEvent) => this.finishActiveCalendarDragSession('cancel', event));
+		}
+
+	private renderMobileTimeGridGutterLabels(
+		gutter: HTMLElement,
+		dateKey: string,
+		metrics: CalendarTimedMetrics,
+		settings: OperonSettings,
+	): void {
+		for (let hour = 0; hour <= 24; hour++) {
+			const label = gutter.createDiv('operon-calendar-mobile-timegrid-time-label');
+			label.style.top = `${hour === 24 ? Math.max(0, metrics.gridHeight - 1) : this.minuteToGridOffset(hour * 60, metrics)}px`;
+			label.createSpan({ text: formatUiMinuteOfDay(this.app, settings, dateKey, hour * 60) });
+			if (hour === 0) label.addClass('is-first');
+			if (hour === 24) label.addClass('is-last');
+		}
+	}
+
+	private renderMobileTimeGridDayColumns(
+		daysGrid: HTMLElement,
+		visibleDates: string[],
+		metrics: CalendarTimedMetrics,
+		settings: OperonSettings,
+		section: HTMLElement,
+		gutter: HTMLElement,
+		hoverGuideOverlay: HTMLElement,
+		timeGrid: HTMLElement,
+		visibleDayCount: number,
+	): void {
+		const slotMinutes = Math.max(15, this.getSettings().calendarMobileSlotMinutes || 30);
+		for (const dateKey of visibleDates) {
+			const column = daysGrid.createDiv('operon-calendar-mobile-timegrid-day-column');
+			column.classList.toggle('is-today', dateKey === localToday());
+			const dayDate = this.parseDateKey(dateKey);
+			column.classList.toggle('is-weekend', dayDate?.getDay() === 0 || dayDate?.getDay() === 6);
+			for (let minute = 0; minute <= CALENDAR_MOBILE_TIME_GRID_MINUTES_PER_DAY; minute += slotMinutes) {
+				const line = column.createDiv('operon-calendar-mobile-timegrid-line');
+				line.classList.toggle('is-hour', minute % 60 === 0);
+				line.style.top = `${minute === CALENDAR_MOBILE_TIME_GRID_MINUTES_PER_DAY
+					? Math.max(0, metrics.gridHeight - 1)
+					: this.minuteToGridOffset(minute, metrics)}px`;
+			}
+			if (dateKey === localToday()) {
+				this.attachNowIndicator(column, metrics);
+			}
+			this.bindMobileTimeGridSelection(column, dateKey, settings, metrics, section, gutter, hoverGuideOverlay, timeGrid, visibleDayCount);
+		}
+	}
+
+	private bindMobileTimeGridSelection(
+		column: HTMLElement,
+		dateKey: string,
+		settings: OperonSettings,
+		metrics: CalendarTimedMetrics,
+		section: HTMLElement,
+		gutter: HTMLElement,
+		hoverGuideOverlay: HTMLElement,
+		timeGrid: HTMLElement,
+		renderedDayCount: number,
+	): void {
+		let selectionState: {
+			pointerId: number;
+			anchorMinute: number;
+			currentMinute: number;
+			selectionEl: HTMLElement;
+			activeCleanup: (() => void) | null;
+		} | null = null;
+		type PendingMobileTouchSelection = {
+			pointerId: number;
+			initialClientX: number;
+			initialClientY: number;
+			latestClientY: number;
+			mode: 'pending' | 'swiping';
+			swipeIntent: Exclude<CalendarMobileEmptyAreaSwipeIntent, 'pending'> | null;
+			timerId: ReturnType<Window['setTimeout']>;
+			ownerWindow: Window;
+			cleanup: () => void;
+		};
+		let pendingTouchSelection: PendingMobileTouchSelection | null = null;
+
+		const isTouchPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
+		const resolveLongPressMs = (): number => CALENDAR_MOBILE_EMPTY_SELECTION_LONG_PRESS_MS;
+		const resolveCancelDistancePx = (): number => CALENDAR_MOBILE_TOUCH_CANCEL_DISTANCE_PX;
+		const generation = this.renderGeneration;
+		const isBlockedMobileEmptyAreaGestureTarget = (target: HTMLElement | null): boolean => Boolean(target?.closest(
+			'.operon-calendar-mobile-timegrid-item, .operon-calendar-mobile-item, .operon-calendar-item-action-button, .operon-calendar-status-button',
+		));
+
+			const clearMobileSwipeVisual = (): void => {
+				timeGrid.removeClass('is-mobile-empty-swipe-active');
+				timeGrid.removeClass('is-mobile-empty-swipe-snapping');
+				timeGrid.setCssProps({ '--operon-calendar-mobile-buffer-swipe-x': '0px' });
+			};
+
+		const clearPendingTouchSelection = (): void => {
+			if (!pendingTouchSelection) return;
+			const pending = pendingTouchSelection;
+			pending.ownerWindow.clearTimeout(pending.timerId);
+			pending.cleanup();
+			this.releaseCalendarPointerCapture(column, pending.pointerId);
+			pendingTouchSelection = null;
+			clearMobileSwipeVisual();
+		};
+
+		const buildSingleSlotSelection = (clientY: number): CalendarSlotSelection => {
+			const startMinute = this.resolveTimedMinuteOffset(column, clientY, metrics);
+			return buildTimedSlotSelection(
+				dateKey,
+				startMinute,
+				startMinute + settings.calendarMobileSlotMinutes,
+				settings.calendarMobileSlotMinutes,
+			);
+		};
+
+		const clearSelectionState = (): void => {
+			if (!selectionState) return;
+			selectionState.activeCleanup?.();
+			selectionState.selectionEl.remove();
+			hoverGuideOverlay.empty();
+			getOwnerBody(column).classList.remove('operon-calendar-touch-drag-active');
+			column.removeClass('is-selecting');
+			selectionState = null;
+		};
+
+		const renderSelection = (): CalendarSlotSelection | null => {
+			if (!selectionState) return null;
+			const selection = buildTimedSlotSelection(
+				dateKey,
+				selectionState.anchorMinute,
+				selectionState.currentMinute,
+				settings.calendarMobileSlotMinutes,
+			);
+			const startMinutes = this.extractMinuteOfDay(selection.start);
+			const endMinutes = this.extractMinuteOfDay(selection.end);
+			const top = this.minuteToGridOffset(startMinutes, metrics);
+			const height = Math.max(1, this.minuteToGridOffset(endMinutes, metrics) - top);
+			selectionState.selectionEl.style.top = `${Math.max(0, top)}px`;
+			selectionState.selectionEl.style.height = `${height}px`;
+			this.renderTimedSelectionGuides(
+				section,
+				gutter,
+				column,
+				hoverGuideOverlay,
+				dateKey,
+				startMinutes,
+				endMinutes,
+				metrics,
+				'var(--interactive-accent)',
+				settings,
+			);
+			return selection;
+		};
+
+		const updateSelectionFromY = (clientY: number): CalendarSlotSelection | null => {
+			if (!selectionState) return null;
+			selectionState.currentMinute = this.resolveTimedMinuteOffset(column, clientY, metrics);
+			return renderSelection();
+		};
+
+		const invokeMobileSlotCreate = (selection: CalendarSlotSelection): void => {
+			const callback = this.callbacks.onMobileTimedSlotCreate ?? this.callbacks.onTimedSlotSelection;
+			if (!callback) return;
+			this.captureMobileTimeGridScrollForRender();
+			void callback(selection);
+		};
+
+			const setMobileSwipeVisualOffset = (deltaX: number): void => {
+				const dayWidth = this.resolveMobileTimeGridBufferedSwipeDayWidth(timeGrid, renderedDayCount);
+				const maxOffset = Math.max(24, dayWidth * 0.82);
+				const offset = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
+				timeGrid.addClass('is-mobile-empty-swipe-active');
+				timeGrid.removeClass('is-mobile-empty-swipe-snapping');
+				timeGrid.setCssProps({ '--operon-calendar-mobile-buffer-swipe-x': `${offset}px` });
+			};
+
+		const commitMobileSwipe = (intent: Exclude<CalendarMobileEmptyAreaSwipeIntent, 'pending'>): void => {
+				const dayDelta = intent === 'next' ? 1 : -1;
+				const dayWidth = this.resolveMobileTimeGridBufferedSwipeDayWidth(timeGrid, renderedDayCount);
+				this.captureMobileTimeGridScrollForRender();
+				timeGrid.addClass('is-mobile-empty-swipe-active');
+				timeGrid.addClass('is-mobile-empty-swipe-snapping');
+				timeGrid.setCssProps({ '--operon-calendar-mobile-buffer-swipe-x': `${dayDelta > 0 ? -dayWidth : dayWidth}px` });
+				this.setRenderTimeout(generation, () => {
+					void this.shiftMobileCalendarAnchorByDays(dayDelta).finally(clearMobileSwipeVisual);
+				}, CALENDAR_MOBILE_EMPTY_SWIPE_ANIMATION_MS);
+		};
+
+		const stopMobileHorizontalSwipeEvent = (event: Event): void => {
+			if (event.cancelable) {
+				event.preventDefault();
+			}
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+		};
+
+		const applyMobileHorizontalSwipeMove = (
+			event: Event,
+			pending: PendingMobileTouchSelection,
+			deltaX: number,
+			deltaY: number,
+		): boolean => {
+			const swipeIntent = resolveCalendarMobileEmptyAreaSwipeIntent({
+				deltaX,
+				deltaY,
+				swipeDistancePx: CALENDAR_MOBILE_EMPTY_SWIPE_DISTANCE_PX,
+				dominanceRatio: CALENDAR_MOBILE_EMPTY_SWIPE_DOMINANCE_RATIO,
+			});
+			const ownsHorizontalSwipe = shouldOwnCalendarMobileEmptyAreaHorizontalSwipe({
+				deltaX,
+				deltaY,
+				ownershipDistancePx: CALENDAR_MOBILE_EMPTY_SWIPE_OWNERSHIP_DISTANCE_PX,
+				dominanceRatio: CALENDAR_MOBILE_EMPTY_SWIPE_OWNERSHIP_DOMINANCE_RATIO,
+			});
+			if (pending.mode === 'swiping' || swipeIntent !== 'pending') {
+				stopMobileHorizontalSwipeEvent(event);
+				pending.mode = 'swiping';
+				pending.swipeIntent = swipeIntent !== 'pending'
+					? swipeIntent
+					: pending.swipeIntent;
+				pending.ownerWindow.clearTimeout(pending.timerId);
+				setMobileSwipeVisualOffset(deltaX);
+				return true;
+			}
+			if (ownsHorizontalSwipe) {
+				stopMobileHorizontalSwipeEvent(event);
+				pending.ownerWindow.clearTimeout(pending.timerId);
+				return true;
+			}
+			return false;
+		};
+
+		const finishSelection = (reason: CalendarDragEndReason, event: PointerEvent | null): void => {
+			if (!selectionState) return;
+			const pointerId = selectionState.pointerId;
+			if (event && event.pointerId !== pointerId) return;
+			const selection = event ? updateSelectionFromY(event.clientY) : renderSelection();
+			this.releaseCalendarPointerCapture(column, pointerId);
+			clearSelectionState();
+			if (reason !== 'commit' || !selection) return;
+			invokeMobileSlotCreate(selection);
+		};
+
+		const bindActiveSelectionWindowEvents = (pointerId: number, ownerWindow: Window): (() => void) => {
+			const onPointerMove = (event: PointerEvent): void => {
+				if (event.pointerId !== pointerId) return;
+				event.preventDefault();
+				updateSelectionFromY(event.clientY);
+			};
+			const onPointerUp = (event: PointerEvent): void => {
+				if (event.pointerId !== pointerId) return;
+				event.preventDefault();
+				this.finishActiveCalendarDragSession('commit', event);
+			};
+			const onPointerCancel = (event: PointerEvent): void => {
+				if (event.pointerId !== pointerId) return;
+				this.finishActiveCalendarDragSession('cancel', event);
+			};
+			const onBlur = (): void => this.finishActiveCalendarDragSession('cancel', null);
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
+			ownerWindow.addEventListener('pointerup', onPointerUp, true);
+			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('blur', onBlur, true);
+			return () => {
+				ownerWindow.removeEventListener('pointermove', onPointerMove, true);
+				ownerWindow.removeEventListener('pointerup', onPointerUp, true);
+				ownerWindow.removeEventListener('pointercancel', onPointerCancel, true);
+				ownerWindow.removeEventListener('blur', onBlur, true);
+			};
+		};
+
+		const startSelection = (pointerId: number, clientY: number, ownerWindow: Window): void => {
+			clearPendingTouchSelection();
+			this.hideCalendarHoverMenu(true);
+			const anchorMinute = this.resolveTimedMinuteOffset(column, clientY, metrics);
+			const selectionEl = column.createDiv('operon-calendar-timed-selection operon-calendar-mobile-timegrid-selection');
+			column.addClass('is-selecting');
+			getOwnerBody(column).classList.add('operon-calendar-touch-drag-active');
+			selectionState = {
+				pointerId,
+				anchorMinute,
+				currentMinute: anchorMinute,
+				selectionEl,
+				activeCleanup: null,
+			};
+			selectionState.activeCleanup = bindActiveSelectionWindowEvents(pointerId, ownerWindow);
+			this.beginCalendarDragSession(column, pointerId, finishSelection);
+			try {
+				column.setPointerCapture?.(pointerId);
+			} catch {
+				// Pointer capture can be unavailable in embedded mobile WebViews.
+			}
+			renderSelection();
+		};
+
+		const startPendingTouchSelection = (event: PointerEvent): void => {
+			clearPendingTouchSelection();
+			const ownerWindow = getOwnerWindow(column);
+			const pointerId = event.pointerId;
+			let latestClientY = event.clientY;
+			const cleanupFns: Array<() => void> = [];
+			const cleanup = (): void => {
+				for (const fn of cleanupFns) fn();
+				cleanupFns.length = 0;
+			};
+			const cancelIfMovedTooFar = (clientX: number, clientY: number): boolean => {
+				const pending = pendingTouchSelection;
+				if (!pending) return true;
+				const distance = Math.hypot(clientX - pending.initialClientX, clientY - pending.initialClientY);
+				if (distance <= resolveCancelDistancePx()) return false;
+				clearPendingTouchSelection();
+				return true;
+			};
+			const onPointerMove = (moveEvent: PointerEvent): void => {
+				if (moveEvent.pointerId !== pointerId) return;
+				latestClientY = moveEvent.clientY;
+				if (pendingTouchSelection) {
+					pendingTouchSelection.latestClientY = moveEvent.clientY;
+				}
+				const pending = pendingTouchSelection;
+				if (!pending) return;
+				const deltaX = moveEvent.clientX - pending.initialClientX;
+				const deltaY = moveEvent.clientY - pending.initialClientY;
+				if (applyMobileHorizontalSwipeMove(moveEvent, pending, deltaX, deltaY)) {
+					return;
+				}
+				cancelIfMovedTooFar(moveEvent.clientX, moveEvent.clientY);
+			};
+			const onTouchMove = (touchEvent: TouchEvent): void => {
+				const pending = pendingTouchSelection;
+				if (!pending) return;
+				const touch = touchEvent.touches.item(0) ?? touchEvent.changedTouches.item(0);
+				if (!touch) return;
+				latestClientY = touch.clientY;
+				pending.latestClientY = touch.clientY;
+				const deltaX = touch.clientX - pending.initialClientX;
+				const deltaY = touch.clientY - pending.initialClientY;
+				if (applyMobileHorizontalSwipeMove(touchEvent, pending, deltaX, deltaY)) {
+					return;
+				}
+			};
+			const onPointerUp = (upEvent: PointerEvent): void => {
+				const pending = pendingTouchSelection;
+				if (!pending || upEvent.pointerId !== pointerId) return;
+				upEvent.preventDefault();
+				upEvent.stopPropagation();
+				upEvent.stopImmediatePropagation();
+				if (pending.mode === 'swiping') {
+					const swipeIntent = pending.swipeIntent;
+					clearPendingTouchSelection();
+					if (swipeIntent) {
+						commitMobileSwipe(swipeIntent);
+					}
+					return;
+				}
+				const shouldCreateSingleSlot = Math.hypot(
+					upEvent.clientX - pending.initialClientX,
+					upEvent.clientY - pending.initialClientY,
+				) <= resolveCancelDistancePx();
+				clearPendingTouchSelection();
+				if (!shouldCreateSingleSlot) return;
+				invokeMobileSlotCreate(buildSingleSlotSelection(upEvent.clientY));
+			};
+			const onPointerCancel = (cancelEvent: PointerEvent): void => {
+				if (cancelEvent.pointerId !== pointerId) return;
+				clearPendingTouchSelection();
+			};
+			const onBlur = (): void => clearPendingTouchSelection();
+			const timerId = ownerWindow.setTimeout(() => {
+				if (!pendingTouchSelection || pendingTouchSelection.pointerId !== pointerId) return;
+				clearPendingTouchSelection();
+				startSelection(pointerId, latestClientY, ownerWindow);
+			}, resolveLongPressMs());
+
+			pendingTouchSelection = {
+				pointerId,
+				initialClientX: event.clientX,
+				initialClientY: event.clientY,
+				latestClientY,
+				mode: 'pending',
+				swipeIntent: null,
+				timerId,
+				ownerWindow,
+				cleanup,
+			};
+			try {
+				column.setPointerCapture?.(pointerId);
+			} catch {
+				// Pointer capture is best-effort in embedded mobile WebViews.
+			}
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
+			ownerWindow.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
+			ownerWindow.addEventListener('pointerup', onPointerUp, true);
+			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('blur', onBlur, true);
+			cleanupFns.push(
+				() => ownerWindow.removeEventListener('pointermove', onPointerMove, true),
+				() => ownerWindow.removeEventListener('touchmove', onTouchMove, true),
+				() => ownerWindow.removeEventListener('pointerup', onPointerUp, true),
+				() => ownerWindow.removeEventListener('pointercancel', onPointerCancel, true),
+				() => ownerWindow.removeEventListener('blur', onBlur, true),
+			);
+		};
+
+		column.addEventListener('pointerdown', (event: PointerEvent) => {
+			if (event.button !== 0) return;
+			const target = asHTMLElement(event.target, column);
+			if (isBlockedMobileEmptyAreaGestureTarget(target)) return;
+			if (isTouchPointer(event)) {
+				event.stopPropagation();
+				startPendingTouchSelection(event);
+				return;
+			}
+			event.preventDefault();
+			startSelection(event.pointerId, event.clientY, getOwnerWindow(column));
+		});
+
+		column.addEventListener('pointermove', (event: PointerEvent) => {
+			if (!selectionState || selectionState.pointerId !== event.pointerId) return;
+			updateSelectionFromY(event.clientY);
+		});
+
+		column.addEventListener('touchstart', (event: TouchEvent) => {
+			const target = asHTMLElement(event.target, column);
+			if (isBlockedMobileEmptyAreaGestureTarget(target)) return;
+			event.stopPropagation();
+		}, { capture: true, passive: true });
+
+		column.addEventListener('pointerup', (event: PointerEvent) => this.finishActiveCalendarDragSession('commit', event));
+		column.addEventListener('pointercancel', (event: PointerEvent) => this.finishActiveCalendarDragSession('cancel', event));
+	}
+
+	private renderMobileTimeGridItems(
+		daysGrid: HTMLElement,
+		visibleDates: string[],
+		timedItems: CalendarItem[],
+		preset: CalendarPreset,
+		settings: OperonSettings,
+		metrics: CalendarTimedMetrics,
+		section: HTMLElement,
+		gutter: HTMLElement,
+		hoverGuideOverlay: HTMLElement,
+	): void {
+		const overlay = daysGrid.createDiv('operon-calendar-mobile-timegrid-overlay');
+		overlay.style.height = `${metrics.gridHeight}px`;
+		this.timedDropContext = {
+			section,
+			gutter,
+			daysGrid,
+			hoverGuideOverlay,
+			visibleDates: [...visibleDates],
+			metrics,
+			preset,
+			settings,
+			isMobile: true,
+		};
+		const placements = this.buildTimedGridVisualPlacements(timedItems, visibleDates);
+		for (const placement of placements) {
+			this.renderMobileTimeGridItem(overlay, daysGrid, placement, visibleDates, preset, settings, metrics, section, gutter, hoverGuideOverlay);
+		}
+		this.updateNowIndicators();
+		if (this.nowIndicatorEntries.length > 0) {
+			this.nowIndicatorTimer = window.setInterval(() => this.updateNowIndicators(), 30000);
+		}
+	}
+
+	private renderMobileTimeGridItem(
+		container: HTMLElement,
+		daysGrid: HTMLElement,
+		placement: TimedGridVisualPlacement,
+		visibleDates: string[],
+		preset: CalendarPreset,
+		settings: OperonSettings,
+		metrics: CalendarTimedMetrics,
+		section: HTMLElement,
+		gutter: HTMLElement,
+		hoverGuideOverlay: HTMLElement,
+	): void {
+		const totalDays = visibleDates.length;
+		const block = container.createDiv('operon-calendar-mobile-timegrid-item operon-calendar-mobile-item');
+		block.dataset.operonId = placement.item.taskId;
+		block.addClass(`is-${placement.item.renderSnapshot.checkbox}`);
+		this.applyCalendarProjectionClasses(block, placement.item);
+		if (placement.item.origin === 'external') block.addClass('is-external');
+		if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
+		if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
+		this.applyTimedPlacementStyle(
+			block,
+			placement.dayIndex,
+			placement.lane,
+			placement.laneCount,
+			placement.startMinutes,
+			placement.endMinutes,
+			totalDays,
+			metrics,
+			placement,
+		);
+		this.applyCalendarItemColor(block, placement.item, preset, settings);
+		const content = block.createDiv('operon-calendar-mobile-timegrid-item-content');
+		const title = content.createDiv('operon-calendar-mobile-timegrid-item-title');
+		const hoverTrigger = this.renderCalendarItemLabel(title, placement.item, settings, true);
+		content.createDiv({
+			text: this.formatTimedRange(placement.item, settings),
+			cls: 'operon-calendar-mobile-timegrid-item-time',
+		});
+		block.createDiv('operon-calendar-timed-drag-label');
+		this.bindPrimaryItemClick(block, placement.item);
+		if (hoverTrigger) {
+			this.bindHoverMenuTarget(hoverTrigger, placement.item);
+		}
+		if (this.canEditCalendarItemPlacement(placement.item)) {
+			block.addClass('is-draggable');
+			this.bindTimedItemInteraction(block, daysGrid, placement, visibleDates, metrics, settings, section, gutter, hoverGuideOverlay);
+		} else {
+			block.addClass('is-read-only');
+		}
+	}
+
+	private scheduleMobileTimeGridInitialScroll(
+		viewport: HTMLElement,
+		visibleDates: string[],
+		timedItems: CalendarItem[],
+		metrics: CalendarTimedMetrics,
+	): void {
+		const generation = this.renderGeneration;
+		this.requestRenderAnimationFrame(generation, () => {
+			if (this.forceMobileTimeGridSmartScrollOnNextRender) {
+				this.forceMobileTimeGridSmartScrollOnNextRender = false;
+				this.clearMobileTimeGridScrollRestoreIntent();
+			} else if (this.restoreMobileTimeGridScrollOnNextRender || this.mobileTimeGridScrollRestoreBudget > 0) {
+				viewport.scrollTop = this.lastMobileTimeGridScrollTop;
+				this.restoreMobileTimeGridScrollOnNextRender = false;
+				this.mobileTimeGridScrollRestoreBudget = Math.max(0, this.mobileTimeGridScrollRestoreBudget - 1);
+				return;
+			}
+			const minute = this.resolveMobileTimeGridInitialScrollMinute(visibleDates, timedItems);
+			viewport.scrollTop = Math.max(0, this.minuteToGridOffset(minute, metrics) - 72);
+		});
+	}
+
+	private resolveMobileTimeGridInitialScrollMinute(visibleDates: string[], timedItems: CalendarItem[]): number {
+		if (visibleDates.includes(localToday())) {
+			const now = new Date();
+			return Math.max(0, (now.getHours() * 60) + now.getMinutes() - 90);
+		}
+		const placements = this.buildTimedPlacements(timedItems, visibleDates);
+		const firstPlacement = placements.sort((left, right) => left.startMinutes - right.startMinutes)[0];
+		if (firstPlacement) {
+			return Math.max(0, firstPlacement.startMinutes - 60);
+		}
+		return CALENDAR_MOBILE_TIME_GRID_DEFAULT_SCROLL_MINUTE;
+	}
+
+	private renderMobileCalendarItem(
+		container: HTMLElement,
+		item: CalendarItem,
+		preset: CalendarPreset,
+		settings: OperonSettings,
+		kind: 'timed' | 'allDay' | 'due' | 'finished',
+	): void {
+		const itemEl = container.createDiv(`operon-calendar-mobile-item is-${kind}`);
+		itemEl.addClass(`is-${item.renderSnapshot.checkbox}`);
+		this.applyCalendarProjectionClasses(itemEl, item);
+		if (item.origin === 'external') itemEl.addClass('is-external');
+		this.applyCalendarItemColor(itemEl, item, preset, settings);
+		const main = itemEl.createDiv('operon-calendar-mobile-item-main');
+		const hoverTrigger = this.renderCalendarItemLabel(main, item, settings, true);
+		const meta = itemEl.createDiv('operon-calendar-mobile-item-meta');
+		const metaLabel = kind === 'timed'
+			? this.formatTimedRange(item, settings)
+			: this.getMobileCalendarItemKindLabel(kind);
+		meta.setText(metaLabel);
+		this.bindPrimaryItemClick(itemEl, item);
+		if (hoverTrigger) {
+			this.bindHoverMenuTarget(hoverTrigger, item);
+		}
+	}
+
+	private async shiftMobileCalendarAnchorByDays(dayDelta: number): Promise<void> {
+		if (!dayDelta) return;
+		const state = this.ensureState();
+		await this.updateLeafState({
+			...state,
+			mobileAnchorDate: shiftCalendarDateKey(this.resolveMobileCalendarAnchorDate(state), dayDelta),
+		});
+	}
+
+	private collectMobileCalendarItemsForDate(
+		dateKey: string,
+		buckets: {
+			scheduled: CalendarItem[];
+			due: CalendarItem[];
+			finished: CalendarItem[];
+			timed: CalendarItem[];
+		},
+	): Array<{ item: CalendarItem; kind: 'timed' | 'allDay' | 'due' | 'finished' }> {
+		return this.sortMobileCalendarEntries([
+			...this.getItemsIntersectingDate(buckets.scheduled, dateKey).map(item => ({ item, kind: 'allDay' as const })),
+			...this.getItemsIntersectingDate(buckets.due, dateKey).map(item => ({ item, kind: 'due' as const })),
+			...this.getItemsIntersectingDate(buckets.finished, dateKey).map(item => ({ item, kind: 'finished' as const })),
+			...this.getItemsIntersectingDate(buckets.timed, dateKey).map(item => ({ item, kind: 'timed' as const })),
+		]);
+	}
+
+	private sortMobileCalendarEntries<T extends { item: CalendarItem }>(entries: T[]): T[] {
+		return [...entries].sort((left, right) => this.compareMobileCalendarItems(left.item, right.item));
+	}
+
+	private compareMobileCalendarItems(left: CalendarItem, right: CalendarItem): number {
+		const leftKindRank = this.getMobileCalendarKindRank(left.kind);
+		const rightKindRank = this.getMobileCalendarKindRank(right.kind);
+		if (leftKindRank !== rightKindRank) return leftKindRank - rightKindRank;
+		const leftTime = left.startDateTime ?? '';
+		const rightTime = right.startDateTime ?? '';
+		if (leftTime !== rightTime) return leftTime.localeCompare(rightTime);
+		return (left.renderSnapshot.description || left.taskId).localeCompare(right.renderSnapshot.description || right.taskId);
+	}
+
+	private getMobileCalendarKindRank(kind: CalendarItem['kind']): number {
+		if (kind === 'allDayScheduled') return 0;
+		if (kind === 'dueMarker') return 1;
+		if (kind === 'timed') return 2;
+		return 3;
+	}
+
+	private getItemsIntersectingDate(items: CalendarItem[], dateKey: string): CalendarItem[] {
+		return items.filter(item => item.startDate <= dateKey && item.endDate >= dateKey);
+	}
+
+	private getMobileCalendarItemKindLabel(kind: 'timed' | 'allDay' | 'due' | 'finished'): string {
+		if (kind === 'allDay') return t('calendar', 'allDay');
+		if (kind === 'due') return t('calendar', 'due');
+		if (kind === 'finished') return t('calendar', 'finished');
+		return t('calendar', 'mobileTimed');
+	}
+
+	private formatMobileDateNumber(dateKey: string): string {
+		const date = this.parseDateKey(dateKey);
+		if (!date) return dateKey.slice(-2);
+		return new Intl.DateTimeFormat(getAppLocale(this.app), { day: 'numeric' }).format(date);
+	}
+
+	private formatMobileMonthLabel(dateKey: string): string {
+		const date = this.parseDateKey(dateKey);
+		if (!date) return dateKey.slice(5, 7);
+		const locale = getAppLocale(this.app);
+		return new Intl.DateTimeFormat(locale, {
+			month: 'short',
+		}).format(date).replace(/\.$/, '').toLocaleUpperCase(locale);
+	}
+
+	private formatMobileAgendaWeekdayLabel(dateKey: string): string {
+		const date = this.parseDateKey(dateKey);
+		if (!date) return dateKey;
+		return new Intl.DateTimeFormat(getAppLocale(this.app), {
+			weekday: 'long',
+		}).format(date);
 	}
 
 	private renderTimeGridSurface(
@@ -2978,7 +5090,7 @@ export class CalendarView extends ItemView {
 			const offset = this.minuteToGridOffset(hour * 60, metrics);
 			label.style.top = `${hour === 24 ? Math.max(0, metrics.gridHeight - 1) : offset}px`;
 			label.createSpan({
-				text: hour === 24 ? '23:59' : `${String(hour).padStart(2, '0')}:00`,
+				text: formatUiMinuteOfDay(this.app, settings, visibleDates[0] ?? localToday(), hour * 60),
 			});
 		}
 
@@ -3219,6 +5331,9 @@ export class CalendarView extends ItemView {
 			initialClientY: number;
 			latestClientX: number;
 			latestClientY: number;
+			previousClientY: number;
+			startedAtMs: number;
+			mode: 'pending' | 'scrolling';
 			timerId: ReturnType<Window['setTimeout']>;
 			ownerWindow: Window;
 			onPointerMove: (event: PointerEvent) => void;
@@ -3229,6 +5344,7 @@ export class CalendarView extends ItemView {
 		let activeTouchWindowMoveCleanup: (() => void) | null = null;
 		let touchDragActiveBody: HTMLElement | null = null;
 		const dragLabel = block.querySelector<HTMLElement>('.operon-calendar-timed-drag-label');
+		const isMobileTimeGridItem = block.hasClass('operon-calendar-mobile-timegrid-item');
 
 		const isTouchDragPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
 
@@ -3244,6 +5360,14 @@ export class CalendarView extends ItemView {
 			return Math.max(4, Math.min(24, Math.round(raw)));
 		};
 
+		const resolvePressDragMs = (): number => CALENDAR_MOBILE_TASK_PRESS_DRAG_MS;
+		const resolveTouchDragTimerMs = (): number => isMobileTimeGridItem
+			? CALENDAR_MOBILE_TASK_LONG_PRESS_MS
+			: resolveTouchLongPressMs();
+		const resolveTouchTapDistancePx = (): number => isMobileTimeGridItem
+			? CALENDAR_MOBILE_TOUCH_CANCEL_DISTANCE_PX
+			: resolveTouchCancelDistancePx();
+
 		const suppressNextTouchClick = (): void => {
 			const ownerWindow = getOwnerWindow(block);
 			block.dataset.suppressCalendarClick = 'true';
@@ -3251,7 +5375,28 @@ export class CalendarView extends ItemView {
 				if (block.dataset.suppressCalendarClick === 'true') {
 					delete block.dataset.suppressCalendarClick;
 				}
-			}, 800);
+			}, CALENDAR_TOUCH_CLICK_SUPPRESSION_MS);
+		};
+
+		const suppressNextTouchClickAtWindow = (ownerWindow: Window): void => {
+			let cleanupTimer: ReturnType<Window['setTimeout']> | null = null;
+			const cleanup = (): void => {
+				ownerWindow.removeEventListener('click', onClick, true);
+				if (cleanupTimer !== null) {
+					ownerWindow.clearTimeout(cleanupTimer);
+					cleanupTimer = null;
+				}
+			};
+			const onClick = (clickEvent: MouseEvent): void => {
+				const target = asHTMLElement(clickEvent.target, block);
+				if (!target || !block.contains(target)) return;
+				clickEvent.preventDefault();
+				clickEvent.stopPropagation();
+				clickEvent.stopImmediatePropagation();
+				cleanup();
+			};
+			ownerWindow.addEventListener('click', onClick, true);
+			cleanupTimer = ownerWindow.setTimeout(cleanup, CALENDAR_TOUCH_CLICK_SUPPRESSION_MS);
 		};
 
 		const setTouchDragActiveClass = (): void => {
@@ -3306,6 +5451,32 @@ export class CalendarView extends ItemView {
 			return Math.hypot(clientX - pending.initialClientX, clientY - pending.initialClientY);
 		};
 
+		const scrollMobileTimeGridBy = (deltaY: number): void => {
+			if (!Number.isFinite(deltaY) || Math.abs(deltaY) < 0.5) return;
+			const viewport = this.mobileTimeGridScrollEl?.isConnected
+				? this.mobileTimeGridScrollEl
+				: block.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport');
+			if (!viewport) return;
+			const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+			viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, viewport.scrollTop + deltaY));
+			this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
+		};
+
+			const startTouchMoveDragFromPending = (
+				pending: NonNullable<typeof pendingTouchDrag>,
+				clientX: number,
+				clientY: number,
+			): void => {
+				clearPendingTouchDrag(false);
+				startDragFromPointer(pending.pointerId, clientX, clientY, 'move', {
+					allowAllDayDrop: isMobileTimeGridItem,
+					suppressClickOnFinish: true,
+				});
+				setTouchDragActiveClass();
+				bindActiveTouchWindowMove(pending.pointerId, pending.ownerWindow);
+				updateFromPointer(clientX, clientY);
+			};
+
 		const renderEditGuides = (dayIndex: number, startMinutes: number, endMinutes: number): void => {
 			const dateKey = visibleDates[dayIndex] ?? visibleDates[segment.dayIndex] ?? '';
 			const sectionRect = section.getBoundingClientRect();
@@ -3343,17 +5514,17 @@ export class CalendarView extends ItemView {
 			const nextDayIndex = dragState?.currentDayIndex ?? segment.dayIndex;
 			const nextStart = dragState?.currentStartMinutes ?? segment.startMinutes;
 			const nextEnd = dragState?.currentEndMinutes ?? segment.endMinutes;
-				this.applyTimedPlacementStyle(
-					block,
-					nextDayIndex,
-					segment.lane,
-					segment.laneCount,
-					nextStart,
-					nextEnd,
-					visibleDates.length,
-					metrics,
-					segment,
-				);
+			this.applyTimedPlacementStyle(
+				block,
+				nextDayIndex,
+				segment.lane,
+				segment.laneCount,
+				nextStart,
+				nextEnd,
+				visibleDates.length,
+				metrics,
+				segment,
+			);
 			if (dragLabel) {
 				const dateKey = visibleDates[nextDayIndex] ?? visibleDates[segment.dayIndex] ?? '';
 				dragLabel.setText(this.formatTimedDragLabel(dateKey, nextStart, nextEnd, settings));
@@ -3406,10 +5577,14 @@ export class CalendarView extends ItemView {
 					const nextDate = this.allDayDropContext.visibleDates[nextColumn] ?? null;
 					dragState.dropTarget = 'allDay';
 					dragState.allDayDate = nextDate;
-						block.addClass('operon-calendar-drag-source-hidden');
+					this.setMobileAllDayDropHighlight(this.allDayDropContext, nextColumn);
+					block.addClass('operon-calendar-drag-source-hidden');
 					hoverGuideOverlay.empty();
 					if (!dragState.allDayPreviewEl) {
 						dragState.allDayPreviewEl = this.allDayDropContext.overlay.createDiv('operon-calendar-all-day-transfer-preview');
+						if (this.allDayDropContext.isMobile) {
+							dragState.allDayPreviewEl.addClass('operon-calendar-mobile-all-day-transfer-preview');
+						}
 					}
 					if (nextDate) {
 						this.applyAllDayPlacementStyle(
@@ -3426,11 +5601,12 @@ export class CalendarView extends ItemView {
 			}
 			dragState.dropTarget = 'timed';
 			dragState.allDayDate = null;
+			this.clearMobileAllDayDropHighlight(this.allDayDropContext);
 			if (dragState.allDayPreviewEl) {
 				dragState.allDayPreviewEl.remove();
 				dragState.allDayPreviewEl = null;
 			}
-				block.removeClass('operon-calendar-drag-source-hidden');
+			block.removeClass('operon-calendar-drag-source-hidden');
 			const position = resolveGridPosition(clientX, clientY);
 			const duration = Math.max(CALENDAR_TIMED_SNAP_MINUTES, segment.endMinutes - segment.startMinutes);
 
@@ -3493,25 +5669,68 @@ export class CalendarView extends ItemView {
 		};
 
 		const openEditorFromTouchTap = (): void => {
+			const ownerWindow = getOwnerWindow(block);
 			suppressNextTouchClick();
-			void this.callbacks.onItemAction?.(segment.item.taskId, 'openEditor');
+			suppressNextTouchClickAtWindow(ownerWindow);
+			ownerWindow.setTimeout(() => {
+				if (!block.isConnected) return;
+				void this.callbacks.onItemAction?.(segment.item.taskId, 'openEditor');
+			}, CALENDAR_TOUCH_TAP_EDITOR_DELAY_MS);
 		};
 
 		const startPendingTouchDrag = (event: PointerEvent): void => {
 			clearPendingTouchDrag(true);
-			event.preventDefault();
-			event.stopPropagation();
 			this.hideCalendarHoverMenu(true);
 			const ownerWindow = getOwnerWindow(block);
 			const pointerId = event.pointerId;
+			if (isMobileTimeGridItem) {
+				event.preventDefault();
+				event.stopPropagation();
+				try {
+					block.setPointerCapture?.(pointerId);
+				} catch {
+					// Pointer capture is best-effort in mobile WebViews.
+				}
+			}
 			const onPointerMove = (moveEvent: PointerEvent): void => {
 				const pending = pendingTouchDrag;
 				if (!pending || moveEvent.pointerId !== pointerId) return;
-				moveEvent.preventDefault();
 				pending.latestClientX = moveEvent.clientX;
 				pending.latestClientY = moveEvent.clientY;
-				if (getTouchPendingDistance(moveEvent.clientX, moveEvent.clientY, pending) > resolveTouchCancelDistancePx()) {
-					clearPendingTouchDrag(true);
+				const deltaX = moveEvent.clientX - pending.initialClientX;
+				const deltaY = moveEvent.clientY - pending.initialClientY;
+				const distance = Math.hypot(deltaX, deltaY);
+				if (!isMobileTimeGridItem) {
+					if (distance > resolveTouchCancelDistancePx()) {
+						clearPendingTouchDrag(true);
+					}
+					return;
+				}
+				moveEvent.preventDefault();
+				moveEvent.stopPropagation();
+				if (pending.mode === 'scrolling') {
+					scrollMobileTimeGridBy(pending.previousClientY - moveEvent.clientY);
+					pending.previousClientY = moveEvent.clientY;
+					return;
+				}
+				const elapsedMs = pending.ownerWindow.performance.now() - pending.startedAtMs;
+				const intent = resolveCalendarMobileTimedTaskGestureIntent({
+					deltaX,
+					deltaY,
+					elapsedMs,
+					intentDistancePx: CALENDAR_MOBILE_TOUCH_INTENT_DISTANCE_PX,
+					pressDragMs: resolvePressDragMs(),
+				});
+				if (intent === 'scroll') {
+					pending.mode = 'scrolling';
+					block.removeClass('is-touch-drag-pending');
+					pending.ownerWindow.clearTimeout(pending.timerId);
+					scrollMobileTimeGridBy(pending.previousClientY - moveEvent.clientY);
+					pending.previousClientY = moveEvent.clientY;
+					return;
+				}
+				if (intent === 'drag') {
+					startTouchMoveDragFromPending(pending, moveEvent.clientX, moveEvent.clientY);
 				}
 			};
 			const onPointerUp = (upEvent: PointerEvent): void => {
@@ -3519,7 +5738,11 @@ export class CalendarView extends ItemView {
 				if (!pending || upEvent.pointerId !== pointerId) return;
 				upEvent.preventDefault();
 				upEvent.stopPropagation();
-				const shouldOpenEditor = getTouchPendingDistance(upEvent.clientX, upEvent.clientY, pending) <= resolveTouchCancelDistancePx();
+				if (pending.mode === 'scrolling') {
+					clearPendingTouchDrag(true);
+					return;
+				}
+				const shouldOpenEditor = getTouchPendingDistance(upEvent.clientX, upEvent.clientY, pending) <= resolveTouchTapDistancePx();
 				clearPendingTouchDrag(true);
 				if (shouldOpenEditor) {
 					openEditorFromTouchTap();
@@ -3530,18 +5753,18 @@ export class CalendarView extends ItemView {
 				cancelEvent.preventDefault();
 				clearPendingTouchDrag(true);
 			};
-			const onWindowBlur = (): void => clearPendingTouchDrag(true);
-			const timerId = ownerWindow.setTimeout(() => {
-				const pending = pendingTouchDrag;
-				if (!pending || pending.pointerId !== pointerId) return;
-				clearPendingTouchDrag(false);
-				startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, 'move', {
-					allowAllDayDrop: false,
-					suppressClickOnFinish: true,
-				});
-				setTouchDragActiveClass();
-				bindActiveTouchWindowMove(pointerId, ownerWindow);
-			}, resolveTouchLongPressMs());
+				const onWindowBlur = (): void => clearPendingTouchDrag(true);
+				const timerId = ownerWindow.setTimeout(() => {
+					const pending = pendingTouchDrag;
+					if (!pending || pending.pointerId !== pointerId) return;
+					clearPendingTouchDrag(false);
+					startDragFromPointer(pointerId, pending.latestClientX, pending.latestClientY, 'move', {
+						allowAllDayDrop: isMobileTimeGridItem,
+						suppressClickOnFinish: true,
+					});
+					setTouchDragActiveClass();
+					bindActiveTouchWindowMove(pointerId, ownerWindow);
+				}, resolveTouchDragTimerMs());
 
 			pendingTouchDrag = {
 				pointerId,
@@ -3549,6 +5772,9 @@ export class CalendarView extends ItemView {
 				initialClientY: event.clientY,
 				latestClientX: event.clientX,
 				latestClientY: event.clientY,
+				previousClientY: event.clientY,
+				startedAtMs: ownerWindow.performance.now(),
+				mode: 'pending',
 				timerId,
 				ownerWindow,
 				onPointerMove,
@@ -3557,12 +5783,7 @@ export class CalendarView extends ItemView {
 				onWindowBlur,
 			};
 			block.addClass('is-touch-drag-pending');
-			try {
-				block.setPointerCapture?.(pointerId);
-			} catch {
-				// Pointer capture is best-effort in mobile WebViews.
-			}
-			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
+			ownerWindow.addEventListener('pointermove', onPointerMove, true);
 			ownerWindow.addEventListener('pointerup', onPointerUp, true);
 			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
 			ownerWindow.addEventListener('blur', onWindowBlur, true);
@@ -3573,7 +5794,7 @@ export class CalendarView extends ItemView {
 			const target = asHTMLElement(event.target, block);
 			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button')) return;
 			if (isTouchDragPointer(event)) {
-				if (settings.calendarTouchTimeGridTaskMoveEnabled !== false) {
+				if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {
 					startPendingTouchDrag(event);
 				}
 				return;
@@ -3609,11 +5830,12 @@ export class CalendarView extends ItemView {
 			const mode = dragState.mode;
 			const suppressClickOnFinish = dragState.suppressClickOnFinish;
 			this.releaseCalendarPointerCapture(block, pointerId);
-			block.removeClass('is-dragging');
-			block.classList.remove('is-live-editing');
-			block.removeClass('operon-calendar-drag-source-hidden');
-			dragState.allDayPreviewEl?.remove();
-			hoverGuideOverlay.empty();
+				block.removeClass('is-dragging');
+				block.classList.remove('is-live-editing');
+				block.removeClass('operon-calendar-drag-source-hidden');
+				this.clearMobileAllDayDropHighlight(this.allDayDropContext);
+				dragState.allDayPreviewEl?.remove();
+				hoverGuideOverlay.empty();
 			const dropTarget = dragState.dropTarget;
 			dragState = null;
 			if (suppressClickOnFinish) {
@@ -4483,10 +6705,19 @@ export class CalendarView extends ItemView {
 			event.preventDefault();
 			event.stopPropagation();
 			this.hideCalendarHoverMenu(true);
+			if (this.isMobileCalendarCurrentlyRendered()) {
+				void this.shiftMobileCalendarAnchorByDays(delta);
+				return;
+			}
 			void this.shiftCalendarAnchorByDays(delta, true);
 		};
 		this.calendarNavigationDocument = getOwnerDocument(this.containerEl);
 		this.calendarNavigationDocument.addEventListener('keydown', this.calendarNavigationKeydownHandler, true);
+	}
+
+	private isMobileCalendarCurrentlyRendered(): boolean {
+		const host = this.containerEl.children[1] as HTMLElement | undefined;
+		return !!host?.querySelector('.operon-calendar-mobile-root');
 	}
 
 	private unbindCalendarNavigationKeys(): void {
@@ -4651,10 +6882,17 @@ export class CalendarView extends ItemView {
 		return resolveTaskDisplayIcon(settings, fieldValues, checkbox);
 	}
 
-		private resolveCurrentCalendarPreset(settings = this.getSettings()): CalendarPreset | null {
-			const state = this.ensureState();
-			return settings.calendarPresets.find(entry => entry.id === state.presetId)
-				?? settings.calendarPresets[0]
+			private resolveCurrentCalendarPreset(settings = this.getSettings()): CalendarPreset | null {
+				const state = this.ensureState();
+				const host = this.containerEl?.children?.[1] as HTMLElement | undefined;
+				if (host?.querySelector('.operon-calendar-mobile-root')) {
+					const sourcePreset = this.resolveMobileCalendarSourcePreset(settings, state);
+					return sourcePreset
+						? this.buildMobileCalendarRenderPreset(sourcePreset, settings)
+						: null;
+				}
+				return settings.calendarPresets.find(entry => entry.id === state.presetId)
+					?? settings.calendarPresets[0]
 				?? null;
 		}
 
@@ -5008,6 +7246,23 @@ export class CalendarView extends ItemView {
 		return null;
 	}
 
+	private setMobileAllDayDropHighlight(context: CalendarAllDayDropContext | null, column: number): void {
+		if (!context?.isMobile || !context.cells) return;
+		const safeColumn = Math.max(0, Math.min(context.cells.length - 1, column));
+		if (context.activeColumn === safeColumn) return;
+		this.clearMobileAllDayDropHighlight(context);
+		context.activeColumn = safeColumn;
+		context.cells[safeColumn]?.addClass('is-drop-target');
+	}
+
+	private clearMobileAllDayDropHighlight(context: CalendarAllDayDropContext | null): void {
+		if (!context?.isMobile || !context.cells) return;
+		for (const cell of context.cells) {
+			cell.removeClass('is-drop-target');
+		}
+		context.activeColumn = null;
+	}
+
 	private resolveMultiWeekInDayDropTarget(
 		clientX: number,
 		clientY: number,
@@ -5275,7 +7530,7 @@ export class CalendarView extends ItemView {
 		if (this.nowIndicatorEntries.length === 0) return;
 		const now = new Date();
 		const minuteOfDay = now.getHours() * 60 + now.getMinutes();
-		const label = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+		const label = formatUiMinuteOfDay(this.app, this.getSettings(), localToday(), minuteOfDay);
 
 		for (const entry of this.nowIndicatorEntries) {
 			entry.lineEl.style.top = `${this.minuteToGridOffset(minuteOfDay, entry.metrics)}px`;
@@ -5316,6 +7571,8 @@ export class CalendarView extends ItemView {
 			if (target?.closest('.operon-calendar-hover-menu')) return;
 			if (container.dataset.suppressCalendarClick === 'true') {
 				delete container.dataset.suppressCalendarClick;
+				event.preventDefault();
+				event.stopPropagation();
 				return;
 			}
 			if (item.origin === 'external') {
@@ -5693,6 +7950,28 @@ export class CalendarView extends ItemView {
 		this.restoreSurfaceScrollOnNextRender = true;
 	}
 
+	private captureMobileTimeGridScrollForRender(): void {
+		if (!this.mobileTimeGridScrollEl || !this.mobileTimeGridScrollEl.isConnected) return;
+		this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(this.mobileTimeGridScrollEl.scrollTop));
+		this.restoreMobileTimeGridScrollOnNextRender = true;
+		this.mobileTimeGridScrollRestoreBudget = Math.max(this.mobileTimeGridScrollRestoreBudget, 2);
+	}
+
+	private clearMobileTimeGridScrollRestoreIntent(): void {
+		this.restoreMobileTimeGridScrollOnNextRender = false;
+		this.mobileTimeGridScrollRestoreBudget = 0;
+	}
+
+	private clearMobileTimeGridScrollRenderIntents(): void {
+		this.forceMobileTimeGridSmartScrollOnNextRender = false;
+		this.clearMobileTimeGridScrollRestoreIntent();
+	}
+
+	private requestMobileTimeGridSmartScrollOnNextRender(): void {
+		this.forceMobileTimeGridSmartScrollOnNextRender = true;
+		this.clearMobileTimeGridScrollRestoreIntent();
+	}
+
 	private captureActiveMultiWeekSurfaceScroll(): void {
 		const state = this.state;
 		if (!state) return;
@@ -5702,6 +7981,10 @@ export class CalendarView extends ItemView {
 	}
 
 	private captureActiveCalendarScrollForRender(): void {
+		if (this.mobileTimeGridScrollEl?.isConnected) {
+			this.captureMobileTimeGridScrollForRender();
+			return;
+		}
 		const state = this.state;
 		if (!state) return;
 		const preset = this.getSettings().calendarPresets.find(entry => entry.id === state.presetId) ?? this.getSettings().calendarPresets[0];
@@ -5766,6 +8049,9 @@ export class CalendarView extends ItemView {
 		}));
 		const changed = !this.areLeafStatesEqual(previousState, nextState);
 		const activePreset = this.getSettings().calendarPresets.find(entry => entry.id === nextState.presetId) ?? this.getSettings().calendarPresets[0];
+		if (changed && this.mobileTimeGridScrollEl?.isConnected) {
+			this.captureMobileTimeGridScrollForRender();
+		}
 		if (changed && activePreset?.surfaceType === 'multiWeek') {
 			this.captureMultiWeekSurfaceScroll();
 		}
@@ -5819,6 +8105,8 @@ export class CalendarView extends ItemView {
 			defaultShowDueMarkers: settings.calendarShowDueMarkers,
 			defaultShowInDayLane: true,
 			defaultShowFinishedLane: true,
+			defaultMobileViewMode: settings.calendarMobileDefaultView,
+			defaultMobileSourcePresetId: settings.calendarMobileDefaultSourcePresetId ?? settings.calendarDefaultPresetId ?? settings.calendarPresets[0]?.id ?? null,
 		});
 	}
 
@@ -5898,7 +8186,10 @@ export class CalendarView extends ItemView {
 			&& left.showAllDayLane === right.showAllDayLane
 			&& left.showDueMarkers === right.showDueMarkers
 			&& left.showInDayLane === right.showInDayLane
-			&& left.showFinishedLane === right.showFinishedLane;
+			&& left.showFinishedLane === right.showFinishedLane
+			&& left.mobileViewMode === right.mobileViewMode
+			&& left.mobileSourcePresetId === right.mobileSourcePresetId
+			&& left.mobileAnchorDate === right.mobileAnchorDate;
 	}
 
 	private renderFilterEmptyState(
@@ -5969,6 +8260,7 @@ export class CalendarView extends ItemView {
 			window.clearTimeout(timer);
 		}
 		this.renderTimeouts.clear();
+		this.mobileDateStripScrollTimer = null;
 		this.layoutRefreshCleanup?.();
 		this.layoutRefreshCleanup = null;
 		if (this.nowIndicatorTimer) {

@@ -5,13 +5,13 @@
  * Spec Section 4.2.
  */
 
-import { App, Component, MarkdownRenderer, Setting, Notice, getIcon, setIcon, TFile } from 'obsidian';
+import { App, Component, MarkdownRenderer, Setting, Notice, getIcon, setIcon, TFile, Platform } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { PinnedCache } from '../storage/pinned-cache';
 
 import { IndexedTask, ParsedTask, OperonField } from '../types/fields';
 import { CANONICAL_KEY_MAP } from '../types/keys';
-import { OperonSettings, TaskEditorWorkflowPickerKey } from '../types/settings';
+import { OperonSettings, TaskEditorMobileCoreToolKey, TaskEditorWorkflowPickerKey } from '../types/settings';
 import { generateOperonId, generateRepeatSeriesId } from '../core/id-generator';
 import {
 	resolveAutomationWorkflowStatus,
@@ -43,7 +43,11 @@ import {
 	ManualEstimateReallocationProposal,
 } from '../systems/estimate-reallocation';
 import { TrackerSession } from '../types/tracker';
-import { positionFloatingElement } from './field-pickers/common';
+import {
+	TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT,
+	TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT,
+	positionFloatingElement,
+} from './field-pickers/common';
 import { showDatePicker } from './field-pickers/date-picker';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { showIconPicker } from './field-pickers/icon-picker';
@@ -51,6 +55,7 @@ import { showPriorityPicker } from './field-pickers/priority-picker';
 import { showRepeatPicker } from './field-pickers/repeat-picker';
 import { showRepeatSkipPicker } from './field-pickers/repeat-skip-picker';
 import { showStatusPicker } from './field-pickers/status-picker';
+import { showEstimatePicker } from './field-pickers/estimate-picker';
 import {
 	ConfirmActionComparisonRow,
 	ConfirmActionComparisonTable,
@@ -281,10 +286,19 @@ export class TaskEditorContent {
 	private editVersion = 0;
 	private selectDescriptionOnMount = false;
 	private descriptionInputEl: HTMLTextAreaElement | null = null;
+	private noteInputEl: HTMLTextAreaElement | null = null;
 	private initialDescriptionFocusTimers: WindowTimeoutHandle[] = [];
 	private rootEl: HTMLElement | null = null;
 	private shellEl: HTMLElement | null = null;
 	private mainPanelEl: HTMLElement | null = null;
+	private mobileNoteWrapEl: HTMLElement | null = null;
+	private mobileNoteOpen = false;
+	private mobilePickerOpenDepth = 0;
+	private mobileCoreToolbarEl: HTMLElement | null = null;
+	private mobileCoreToolsEl: HTMLElement | null = null;
+	private mobileCoreOverflowFrame: number | null = null;
+	private mobilePickerCloseFrame: number | null = null;
+	private mobileCoreButtonRefreshers = new Set<() => void>();
 	private fileBodyPanelEl: HTMLElement | null = null;
 	private fileBodyBackdropEl: HTMLButtonElement | null = null;
 	private fileBodyToggleButtonEl: HTMLButtonElement | null = null;
@@ -297,6 +311,29 @@ export class TaskEditorContent {
 	private embedPreviewComponent: Component | null = null;
 	private fileBodyMediaQuery: MediaQueryList | null = null;
 	private fileBodyMediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null;
+	private readonly mobileCoreScrollHandler = () => this.scheduleMobileCoreToolbarOverflowState();
+	private readonly mobileResizeHandler = () => {
+		if (this.mobilePickerOpenDepth > 0) return;
+		this.autoSizeMobileTextareas();
+		this.scheduleMobileCoreToolbarOverflowState();
+	};
+	private readonly mobilePickerOpenHandler = () => {
+		this.mobilePickerOpenDepth += 1;
+		this.clearMobilePickerCloseFrame();
+		this.clearInitialDescriptionFocusTimers();
+	};
+	private readonly mobilePickerCloseHandler = () => {
+		this.mobilePickerOpenDepth = Math.max(0, this.mobilePickerOpenDepth - 1);
+		if (this.mobilePickerOpenDepth > 0) return;
+		this.clearMobilePickerCloseFrame();
+		this.mobilePickerCloseFrame = getActiveWindow().requestAnimationFrame(() => {
+			this.mobilePickerCloseFrame = null;
+			if (this.mobilePickerOpenDepth > 0) return;
+			this.autoSizeMobileTextareas();
+			this.scheduleMobileCoreToolbarOverflowState();
+			this.scheduleMobileDescriptionRefocus();
+		});
+	};
 
 	constructor(
 		app: App,
@@ -558,6 +595,7 @@ export class TaskEditorContent {
 		const root = this.rootEl;
 		if (!input || !root) return;
 		if (!input.isConnected || !root.isConnected) return;
+		if (Platform.isPhone && root.ownerDocument.querySelector('.operon-task-editor-mobile-picker-surface')) return;
 
 		input.focus();
 		if (this.selectDescriptionOnMount) {
@@ -567,6 +605,17 @@ export class TaskEditorContent {
 
 		const end = input.value.length;
 		input.setSelectionRange(end, end);
+	}
+
+	private scheduleMobileDescriptionRefocus(): void {
+		if (!Platform.isPhone) return;
+		const ownerWindow = getActiveWindow();
+		ownerWindow.requestAnimationFrame(() => {
+			const root = this.rootEl;
+			if (!root?.isConnected) return;
+			if (root.ownerDocument.querySelector('.operon-task-editor-mobile-picker-surface')) return;
+			this.focusDescriptionField();
+		});
 	}
 
 	public applyInitialDescriptionFocus(): void {
@@ -742,6 +791,669 @@ export class TaskEditorContent {
 		this.renderActions(container);
 	}
 
+	private renderMobileTaskEditorBody(container: HTMLElement): void {
+		const body = container.createDiv('operon-task-editor-mobile-body');
+		const primary = body.createDiv('operon-task-editor-mobile-primary');
+		this.renderMobileDescription(primary);
+		this.renderMobileNote(primary);
+		this.renderMobileCoreToolbar(body);
+
+		const workflow = body.createDiv('operon-task-editor-mobile-workflow');
+		this.renderWorkflowPickers(workflow);
+	}
+
+	private renderMobileDescription(container: HTMLElement): void {
+		const textarea = container.createEl('textarea', {
+			cls: 'operon-editor-description-textarea operon-task-editor-mobile-description',
+			attr: {
+				placeholder: t('taskEditor', 'descriptionPlaceholder'),
+				rows: '1',
+			},
+		});
+		setAccessibleLabelWithoutTooltip(textarea, t('taskEditor', 'description'));
+		textarea.value = this.description;
+		this.descriptionInputEl = textarea;
+		const resize = () => this.autoSizeMobileTextarea(textarea, 44);
+		resize();
+		textarea.addEventListener('input', () => {
+			this.description = textarea.value;
+			resize();
+			this.markEdited();
+			this.refreshCoreTrackerControl?.();
+			this.refreshTrackingSessionsSection?.();
+			this.refreshMobileCoreButtons();
+		});
+	}
+
+	private renderMobileNote(container: HTMLElement): void {
+		const wrap = container.createDiv('operon-task-editor-mobile-note-wrap');
+		this.mobileNoteWrapEl = wrap;
+		const textarea = wrap.createEl('textarea', {
+			cls: 'operon-editor-note-textarea operon-task-editor-mobile-note',
+			attr: {
+				placeholder: t('taskEditor', 'notesPlaceholder'),
+				rows: '1',
+			},
+		});
+		setAccessibleLabelWithoutTooltip(textarea, t('taskEditor', 'notes'));
+		textarea.value = this.fieldValues['note'] ?? '';
+		this.noteInputEl = textarea;
+		const resize = () => this.autoSizeMobileTextarea(textarea, 44);
+		resize();
+		textarea.addEventListener('input', () => {
+			const normalized = this.normalizeInlineTextFieldValue(textarea.value);
+			if (normalized !== textarea.value) {
+				textarea.value = normalized;
+			}
+			if (normalized.trim()) {
+				this.fieldValues['note'] = normalized;
+			} else {
+				delete this.fieldValues['note'];
+			}
+			resize();
+			this.markEdited();
+			this.refreshMobileCoreButtons();
+		});
+		this.updateMobileNoteVisibility();
+	}
+
+	private renderMobileCoreToolbar(container: HTMLElement): void {
+		const toolbar = container.createDiv('operon-task-editor-mobile-core-toolbar');
+		const tools = toolbar.createDiv('operon-task-editor-mobile-core-tools');
+		this.mobileCoreToolbarEl = toolbar;
+		this.mobileCoreToolsEl = tools;
+		tools.addEventListener('scroll', this.mobileCoreScrollHandler, { passive: true });
+
+		for (const item of this.settings.taskEditorMobileCoreTools) {
+			if (!item.visible) continue;
+			this.renderMobileCoreTool(tools, item.key);
+		}
+	}
+
+	private renderMobileCoreTool(container: HTMLElement, key: TaskEditorMobileCoreToolKey): void {
+		switch (key) {
+			case 'goToSource':
+				if (this.hasFileBodyContext()) this.renderMobileGoToSourceButton(container);
+				break;
+			case 'play':
+				this.renderMobileTrackerButton(container);
+				break;
+			case 'note':
+				this.renderMobileNoteButton(container);
+				break;
+			case 'taskIcon':
+				this.renderMobileIconButton(container);
+				break;
+			case 'taskColor':
+				this.renderMobileColorButton(container);
+				break;
+			case 'priority':
+				this.renderMobilePriorityButton(container);
+				break;
+			case 'status':
+				this.renderMobileStatusButton(container);
+				break;
+			case 'dateStarted':
+				this.renderMobileDateButton(container, 'dateStarted', t('taskEditor', 'started'), t('taskEditor', 'startDatePlaceholder'));
+				break;
+			case 'dateScheduled':
+				this.renderMobileDateButton(container, 'dateScheduled', t('taskEditor', 'scheduled'), t('taskEditor', 'scheduledDatePlaceholder'));
+				break;
+			case 'dateDue':
+				this.renderMobileDateButton(container, 'dateDue', t('taskEditor', 'dueDate'), t('taskEditor', 'dueDatePlaceholder'));
+				break;
+			case 'datetimeStart':
+				this.renderMobileDatetimeButton(container, 'datetimeStart', t('taskEditor', 'datetimeStart'));
+				break;
+			case 'estimate':
+				this.renderMobileEstimateButton(container);
+				break;
+			case 'datetimeEnd':
+				this.renderMobileDatetimeButton(container, 'datetimeEnd', t('taskEditor', 'datetimeEnd'));
+				break;
+			case 'repeat':
+				this.renderMobileRepeatButton(container);
+				break;
+			case 'dateCompleted':
+				this.renderMobileDateButton(container, 'dateCompleted', t('taskEditor', 'finished'), t('taskEditor', 'finishedDatePlaceholder'));
+				break;
+			case 'dateCancelled':
+				this.renderMobileDateButton(container, 'dateCancelled', t('taskEditor', 'cancelled'), t('taskEditor', 'cancelledDatePlaceholder'));
+				break;
+			case 'remove':
+				this.renderMobileRemoveButton(container);
+				break;
+		}
+	}
+
+	private renderMobileGoToSourceButton(container: HTMLElement): void {
+		const label = t('taskEditor', 'goToSource');
+		const button = this.createMobileCoreButton(container, label, 'goToSource', () => this.openFileBodySource());
+		this.setMobileCoreButtonIcon(button, 'external-link');
+	}
+
+	private renderMobileTrackerButton(container: HTMLElement): void {
+		const button = this.createMobileCoreButton(container, t('taskEditor', 'trackerStartButton'), 'play', () => {
+			runAsyncAction('task editor tracker toggle failed', async () => {
+				const currentId = this.getCurrentOperonId();
+				if (currentId && this.timeTracker.isTimerRunning(currentId)) {
+					await this.timeTracker.stop('manual');
+					this.syncTrackingFieldsFromIndex();
+					this.refreshMobileCoreButtons();
+					return;
+				}
+
+				const operonId = await this.ensureTaskReadyForTracking();
+				if (!operonId) return;
+				const started = await this.timeTracker.start(operonId, 'editor');
+				if (!started) return;
+				this.syncWorkflowFieldsFromIndex();
+				this.syncTrackingFieldsFromIndex();
+				this.refreshMobileCoreButtons();
+			});
+		});
+
+		const refresh = () => {
+			const operonId = this.getCurrentOperonId();
+			const isRunning = !!operonId && this.timeTracker.isTimerRunning(operonId);
+			const canStart = !!this.description.trim();
+			const label = isRunning ? t('taskEditor', 'trackerStopButton') : t('taskEditor', 'trackerStartButton');
+			this.setMobileCoreButtonIcon(button, isRunning ? 'square' : 'play');
+			this.setMobileCoreButtonState(button, isRunning, isRunning ? 'var(--color-red)' : null);
+			button.disabled = !isRunning && !canStart;
+			button.classList.toggle('is-running', isRunning);
+			this.setMobileCoreButtonLabel(button, label);
+		};
+		this.refreshCoreTrackerControl = refresh;
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileNoteButton(container: HTMLElement): void {
+		const button = this.createMobileCoreButton(container, t('taskEditor', 'notes'), 'note', () => {
+			this.setMobileNoteOpen(true, true);
+			this.refreshMobileCoreButtons();
+		});
+		const refresh = () => {
+			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon('note'));
+			this.setMobileCoreButtonState(button, this.mobileNoteOpen || !!(this.fieldValues['note'] ?? '').trim());
+		};
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileIconButton(container: HTMLElement): void {
+		const button = this.createMobileCoreButton(container, t('taskEditor', 'taskIcon'), 'taskIcon', () => {
+			button.addClass('is-picker-open');
+			showIconPicker(button, {
+				value: this.fieldValues['taskIcon'],
+				query: '',
+				onSelect: iconId => {
+					this.fieldValues['taskIcon'] = iconId;
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClear: () => {
+					delete this.fieldValues['taskIcon'];
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
+		});
+		const refresh = () => {
+			const value = (this.fieldValues['taskIcon'] ?? '').trim();
+			this.setMobileCoreButtonIcon(button, value || this.getCoreFieldIcon('taskIcon'));
+			this.setMobileCoreButtonState(button, !!value);
+		};
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileColorButton(container: HTMLElement): void {
+		const button = this.createMobileCoreButton(container, t('taskEditor', 'taskColor'), 'taskColor', () => {
+			colorInput.click();
+		});
+		const colorInput = container.createEl('input', {
+			cls: 'operon-task-editor-mobile-color-input',
+			attr: { type: 'color' },
+		});
+		const currentColor = this.getTaskColorHex();
+		if (currentColor) colorInput.value = currentColor;
+
+		const refresh = () => {
+			const hex = this.getTaskColorHex();
+			button.empty();
+			if (hex) {
+				const dot = button.createSpan('operon-task-editor-mobile-color-dot');
+				dot.style.background = hex;
+			} else {
+				this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon('taskColor'));
+			}
+			this.setMobileCoreButtonState(button, !!hex, hex || null);
+		};
+		colorInput.addEventListener('input', () => {
+			const hex = colorInput.value;
+			this.fieldValues['taskColor'] = hex.replace(/^#/, '');
+			this.applyThemeColor();
+			this.markEdited();
+			this.refreshMobileCoreButtons();
+		});
+		button.addEventListener('contextmenu', event => {
+			event.preventDefault();
+			delete this.fieldValues['taskColor'];
+			colorInput.value = '#000000';
+			this.applyThemeColor();
+			this.markEdited();
+			this.refreshMobileCoreButtons();
+		});
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobilePriorityButton(container: HTMLElement): void {
+		const button = this.createMobileCoreButton(container, t('taskEditor', 'priority'), 'priority', () => {
+			button.addClass('is-picker-open');
+			showPriorityPicker(button, {
+				priorities: this.settings.priorities,
+				value: this.fieldValues['priority'],
+				onSelect: value => {
+					if (value) this.fieldValues['priority'] = value;
+					else delete this.fieldValues['priority'];
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClear: () => {
+					delete this.fieldValues['priority'];
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
+		});
+		const refresh = () => {
+			const value = (this.fieldValues['priority'] ?? '').trim();
+			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon('priority'));
+			this.setMobileCoreButtonState(button, !!value, this.getPriorityColor(value));
+			this.setMobileCoreButtonLabel(button, value ? `${t('taskEditor', 'priority')}: ${value}` : t('taskEditor', 'priority'));
+		};
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileStatusButton(container: HTMLElement): void {
+		const button = this.createMobileCoreButton(container, t('taskEditor', 'status'), 'status', () => {
+			button.addClass('is-picker-open');
+			showStatusPicker(button, {
+				pipelines: this.settings.pipelines,
+				value: this.fieldValues['status'],
+				onSelect: value => {
+					this.fieldValues['status'] = value;
+					this.syncCheckboxWithWorkflowStatus();
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClear: () => {
+					delete this.fieldValues['status'];
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
+		});
+		const refresh = () => {
+			const value = (this.fieldValues['status'] ?? '').trim();
+			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon('status'));
+			this.setMobileCoreButtonState(button, !!value, this.getStatusColor(value));
+			this.setMobileCoreButtonLabel(button, value ? `${t('taskEditor', 'status')}: ${value}` : t('taskEditor', 'status'));
+		};
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileDateButton(container: HTMLElement, key: string, label: string, placeholderText = label): void {
+		const button = this.createMobileCoreButton(container, label, key, () => {
+			button.addClass('is-picker-open');
+			showDatePicker(button, {
+				app: this.app,
+				fieldKey: key,
+				value: this.fieldValues[key],
+				canRemove: !!this.fieldValues[key],
+				onSelect: value => {
+					this.applyDraftFieldRules({ [key]: value }, [key]);
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onRemove: () => {
+					this.applyDraftFieldRules({ [key]: '' }, [key]);
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
+		});
+		const refresh = () => {
+			const value = (this.fieldValues[key] ?? '').trim();
+			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon(key));
+			this.setMobileCoreButtonState(button, !!value || (key === 'dateCompleted' && this.checkbox === 'done') || (key === 'dateCancelled' && this.checkbox === 'cancelled'), this.getMobileDateTone(key, value));
+			this.setMobileCoreButtonLabel(button, value ? `${label}: ${formatTaskEditorDate(value)}` : placeholderText);
+		};
+		this.registerSchedulingDraftRefresher(refresh);
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileDatetimeButton(container: HTMLElement, key: 'datetimeStart' | 'datetimeEnd', label: string): void {
+		const button = this.createMobileCoreButton(container, label, key, () => {
+			if (key === 'datetimeEnd' && !(this.fieldValues['datetimeStart'] ?? '').trim()) {
+				new Notice(t('taskEditor', 'datetimeEndRequiresStart'));
+				return;
+			}
+			button.addClass('is-picker-open');
+			showDatetimePicker(button, {
+				app: this.app,
+				settings: { timeFormat: this.settings.timeFormat },
+				fieldKey: key,
+				value: this.fieldValues[key],
+				canRemove: !!this.fieldValues[key],
+				onSelect: value => {
+					this.applyDraftFieldRules({ [key]: value }, [key]);
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onRemove: () => {
+					this.applyDraftFieldRules({ [key]: '' }, [key]);
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
+		});
+		const refresh = () => {
+			const value = (this.fieldValues[key] ?? '').trim();
+			const hasStart = !!(this.fieldValues['datetimeStart'] ?? '').trim();
+			button.disabled = key === 'datetimeEnd' && !hasStart;
+			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon(key));
+			this.setMobileCoreButtonState(button, !!value);
+			this.setMobileCoreButtonLabel(button, value ? `${label}: ${formatTaskEditorDatetime(this.app, this.settings, value)}` : label);
+		};
+		this.registerSchedulingDraftRefresher(refresh);
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileEstimateButton(container: HTMLElement): void {
+		const button = this.createMobileCoreButton(container, t('taskEditor', 'estimateMinutesShort'), 'estimate', () => {
+			button.addClass('is-picker-open');
+			showEstimatePicker(button, {
+				value: this.fieldValues['estimate'],
+				canRemove: !!(this.fieldValues['estimate'] ?? '').trim(),
+				onSelect: value => {
+					this.applyDraftFieldRules({ estimate: value }, ['estimate']);
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onRemove: () => {
+					this.applyDraftFieldRules({ estimate: '' }, ['estimate']);
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
+		});
+		const refresh = () => {
+			const seconds = Number.parseInt(this.fieldValues['estimate'] ?? '0', 10);
+			const hasValue = Number.isFinite(seconds) && seconds > 0;
+			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon('estimate'));
+			this.setMobileCoreButtonState(button, hasValue);
+			this.setMobileCoreButtonLabel(button, hasValue ? t('taskEditor', 'estimateChip', { duration: formatDurationHuman(seconds) }) : t('taskEditor', 'estimateMinutesShort'));
+		};
+		this.registerSchedulingDraftRefresher(refresh);
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileRepeatButton(container: HTMLElement): void {
+		const button = this.createMobileCoreButton(container, t('taskEditor', 'repeat'), 'repeat', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			button.addClass('is-picker-open');
+			showRepeatPicker(button, {
+				value: this.fieldValues['repeat'],
+				repeatEnd: this.fieldValues['datetimeRepeatEnd'],
+				repeatSeriesId: this.fieldValues['repeatSeriesId'],
+				taskColor: this.fieldValues['taskColor'],
+				dateScheduled: this.fieldValues['dateScheduled'],
+				dateDue: this.fieldValues['dateDue'],
+				taskFormat: this.fileBodyContext?.format ?? 'inline',
+				inlineCompletionMode: this.inlineCompletionMode,
+				onSave: ({ repeat, datetimeRepeatEnd, dateScheduled, inlineCompletionMode }) => {
+					this.fieldValues['repeat'] = repeat;
+					if (datetimeRepeatEnd) this.fieldValues['datetimeRepeatEnd'] = datetimeRepeatEnd;
+					else delete this.fieldValues['datetimeRepeatEnd'];
+					if (dateScheduled) {
+						this.fieldValues['dateScheduled'] = dateScheduled;
+					}
+					if (parseRepeatRule(repeat) && !this.fieldValues['repeatSeriesId']) {
+						this.fieldValues['repeatSeriesId'] = generateRepeatSeriesId();
+					}
+					this.inlineCompletionMode = inlineCompletionMode;
+					this.syncDerivedRepeatFieldsFromDraft();
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+					this.refreshSchedulingDraftControls();
+				},
+				onClear: () => {
+					delete this.fieldValues['repeat'];
+					delete this.fieldValues['datetimeRepeatEnd'];
+					delete this.fieldValues['repeatSeriesId'];
+					this.inlineCompletionMode = DEFAULT_INLINE_REPEAT_COMPLETION_MODE;
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+					this.refreshSchedulingDraftControls();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
+		});
+		const refresh = () => {
+			const value = (this.fieldValues['repeat'] ?? '').trim();
+			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon('repeat'));
+			this.setMobileCoreButtonState(button, !!value);
+			this.setMobileCoreButtonLabel(button, value ? `${t('taskEditor', 'repeat')}: ${value}` : t('taskEditor', 'repeat'));
+		};
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileRemoveButton(container: HTMLElement): void {
+		if (!this.existingTask || !this.onRequestDelete) return;
+		const button = this.createMobileCoreButton(container, t('buttons', 'remove'), 'remove', () => {
+			void this.handleRemoveTaskClick();
+		});
+		button.addClass('is-danger');
+		this.setMobileCoreButtonIcon(button, 'trash-2');
+		this.setMobileCoreButtonState(button, true, 'var(--color-red)');
+	}
+
+	private createMobileCoreButton(
+		container: HTMLElement,
+		label: string,
+		key: string,
+		onClick: (event: MouseEvent) => void,
+	): HTMLButtonElement {
+		const button = container.createEl('button', {
+			cls: 'operon-task-editor-mobile-core-button',
+			attr: {
+				type: 'button',
+				'data-core-key': key,
+			},
+		});
+		this.setMobileCoreButtonLabel(button, label);
+		button.addEventListener('click', event => {
+			event.preventDefault();
+			onClick(event);
+		});
+		return button;
+	}
+
+	private setMobileCoreButtonLabel(button: HTMLButtonElement, label: string): void {
+		setAccessibleLabelWithoutTooltip(button, label);
+		button.title = label;
+	}
+
+	private setMobileCoreButtonIcon(button: HTMLButtonElement, iconId: string): void {
+		button.empty();
+		if (iconId) {
+			setIcon(button, iconId);
+			return;
+		}
+		button.createSpan('operon-task-editor-mobile-core-icon-placeholder');
+	}
+
+	private setMobileCoreButtonState(button: HTMLButtonElement, active: boolean, color: string | null = null): void {
+		button.classList.toggle('is-active', active);
+		button.setAttr('aria-pressed', String(active));
+		if (color) {
+			button.style.setProperty('--operon-task-editor-mobile-tool-color', color);
+		} else {
+			button.style.removeProperty('--operon-task-editor-mobile-tool-color');
+		}
+	}
+
+	private getTaskColorHex(): string | null {
+		const value = (this.fieldValues['taskColor'] ?? '').trim().replace(/^#/, '');
+		if (!/^([0-9a-fA-F]{6})$/.test(value)) return null;
+		return `#${value}`;
+	}
+
+	private getPriorityColor(value: string): string | null {
+		if (!value) return null;
+		return this.settings.priorities.find(priority => priority.label === value)?.color ?? null;
+	}
+
+	private getStatusColor(value: string): string | null {
+		if (!value) return null;
+		return resolveWorkflowStatus(this.settings.pipelines, value)?.definition.color ?? null;
+	}
+
+	private getMobileDateTone(key: string, value: string): string | null {
+		if (key === 'dateCompleted') return value || this.checkbox === 'done' ? 'var(--color-green)' : null;
+		if (key === 'dateCancelled') return value || this.checkbox === 'cancelled' ? 'var(--color-red)' : null;
+		if (key !== 'dateDue' && key !== 'dateScheduled') return null;
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+		const today = localToday();
+		if (value < today) return 'var(--color-red)';
+		if (value === today) return 'var(--color-blue)';
+		return null;
+	}
+
+	private autoSizeMobileTextarea(textarea: HTMLTextAreaElement, minHeightPx: number): void {
+		const style = window.getComputedStyle(textarea);
+		const fontSize = Number.parseFloat(style.fontSize) || 15;
+		const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.35;
+		const verticalChrome = [
+			style.paddingTop,
+			style.paddingBottom,
+			style.borderTopWidth,
+			style.borderBottomWidth,
+		].reduce((total, value) => total + (Number.parseFloat(value) || 0), 0);
+		const maxHeight = Math.ceil(verticalChrome + (lineHeight * 4));
+		const minHeight = Math.min(maxHeight, Math.max(minHeightPx, Math.ceil(verticalChrome + lineHeight)));
+		textarea.setCssProps({ height: '0px' });
+		const nextHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
+		textarea.style.height = `${Math.ceil(nextHeight)}px`;
+	}
+
+	private autoSizeMobileTextareas(): void {
+		if (!Platform.isPhone) return;
+		if (this.descriptionInputEl) {
+			this.autoSizeMobileTextarea(this.descriptionInputEl, 44);
+		}
+		if (this.noteInputEl) {
+			this.autoSizeMobileTextarea(this.noteInputEl, 44);
+		}
+	}
+
+	private updateMobileNoteVisibility(): void {
+		const wrap = this.mobileNoteWrapEl;
+		if (!wrap) return;
+		const hasNote = !!(this.fieldValues['note'] ?? '').trim();
+		wrap.toggleClass('is-hidden', !this.mobileNoteOpen && !hasNote);
+	}
+
+	private setMobileNoteOpen(open: boolean, focus = false): void {
+		this.mobileNoteOpen = open;
+		this.updateMobileNoteVisibility();
+		if (!open) return;
+		if (this.noteInputEl) {
+			this.autoSizeMobileTextarea(this.noteInputEl, 44);
+		}
+		if (!focus) return;
+		getActiveWindow().requestAnimationFrame(() => {
+			const input = this.noteInputEl;
+			if (!input || !input.isConnected) return;
+			input.focus();
+			const end = input.value.length;
+			input.setSelectionRange(end, end);
+		});
+	}
+
+	private refreshMobileCoreButtons(): void {
+		for (const refresh of this.mobileCoreButtonRefreshers) {
+			refresh();
+		}
+	}
+
+	private scheduleMobileCoreToolbarOverflowState(): void {
+		if (!Platform.isPhone || !this.mobileCoreToolbarEl || !this.mobileCoreToolsEl) return;
+		if (this.mobileCoreOverflowFrame != null) return;
+		this.mobileCoreOverflowFrame = getActiveWindow().requestAnimationFrame(() => {
+			this.mobileCoreOverflowFrame = null;
+			this.updateMobileCoreToolbarOverflowState();
+		});
+	}
+
+	private updateMobileCoreToolbarOverflowState(): void {
+		const toolbar = this.mobileCoreToolbarEl;
+		const tools = this.mobileCoreToolsEl;
+		if (!toolbar || !tools || !toolbar.isConnected || !tools.isConnected) return;
+		const maxScrollLeft = Math.max(0, tools.scrollWidth - tools.clientWidth);
+		const scrollLeft = Math.max(0, tools.scrollLeft);
+		const isScrollable = maxScrollLeft > 1;
+		toolbar.toggleClass('is-scrollable-left', isScrollable && scrollLeft > 1);
+		toolbar.toggleClass('is-scrollable-right', isScrollable && scrollLeft < maxScrollLeft - 1);
+	}
+
+	private clearMobileCoreToolbarState(): void {
+		this.mobileCoreToolsEl?.removeEventListener('scroll', this.mobileCoreScrollHandler);
+		if (this.mobileCoreOverflowFrame != null) {
+			getActiveWindow().cancelAnimationFrame(this.mobileCoreOverflowFrame);
+			this.mobileCoreOverflowFrame = null;
+		}
+		this.mobileCoreToolbarEl = null;
+		this.mobileCoreToolsEl = null;
+	}
+
+	private clearMobilePickerCloseFrame(): void {
+		if (this.mobilePickerCloseFrame == null) return;
+		getActiveWindow().cancelAnimationFrame(this.mobilePickerCloseFrame);
+		this.mobilePickerCloseFrame = null;
+	}
+
 	/**
 	 * Mount the editor UI into the given container element.
 	 * Clears the container first, then renders all sections.
@@ -749,9 +1461,20 @@ export class TaskEditorContent {
 	mountInto(container: HTMLElement): void {
 		container.empty();
 		container.addClass('operon-task-editor');
+		container.toggleClass('operon-task-editor-mobile', Platform.isPhone);
+		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
+		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
 		this.rootEl = container;
+		container.addEventListener(TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
+		container.addEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
 		this.schedulingDraftRefreshers.clear();
+		this.mobileCoreButtonRefreshers.clear();
+		this.clearMobileCoreToolbarState();
 		this.clearInitialDescriptionFocusTimers();
+		window.removeEventListener('resize', this.mobileResizeHandler);
+		if (Platform.isPhone) {
+			window.addEventListener('resize', this.mobileResizeHandler);
+		}
 		this.trackerUnsubscribe?.();
 		this.trackerUnsubscribe = this.timeTracker.subscribe((event) => {
 			if (event !== 'tick') {
@@ -762,13 +1485,14 @@ export class TaskEditorContent {
 				this.syncTrackingFieldsFromIndex();
 			}
 			this.refreshCoreTrackerControl?.();
+			this.refreshMobileCoreButtons();
 			if (event !== 'tick') {
 				this.refreshTrackingSessionsSection?.();
 			}
 		});
 
 		this.shellEl = container.createDiv('operon-task-editor-shell');
-		if (this.hasFileBodyContext()) {
+		if (!Platform.isPhone && this.hasFileBodyContext()) {
 			this.registerFileBodyViewportListener();
 			this.fileBodyBackdropEl = this.shellEl.createEl('button', {
 				cls: 'operon-task-editor-file-panel-backdrop',
@@ -783,9 +1507,17 @@ export class TaskEditorContent {
 		}
 
 		this.mainPanelEl = this.shellEl.createDiv('operon-task-editor-main-panel');
-		this.renderTaskEditorBody(this.mainPanelEl);
+		if (Platform.isPhone) {
+			this.mobileNoteOpen = !!(this.fieldValues['note'] ?? '').trim();
+			this.renderMobileTaskEditorBody(this.mainPanelEl);
+		} else {
+			this.renderTaskEditorBody(this.mainPanelEl);
+		}
 		this.applyThemeColor();
-		this.updateFileBodyLayout();
+		if (!Platform.isPhone) {
+			this.updateFileBodyLayout();
+		}
+		this.scheduleMobileCoreToolbarOverflowState();
 	}
 
 	async refreshAfterExternalSubtaskCreated(): Promise<void> {
@@ -801,19 +1533,29 @@ export class TaskEditorContent {
 		this.refreshEstimateReallocationControl = null;
 		this.refreshParentContextSection = null;
 		this.refreshTrackingSessionsSection = null;
+		this.mobileCoreButtonRefreshers.clear();
 		this.descriptionInputEl = null;
+		this.noteInputEl = null;
 		this.fileBodyToggleButtonEl = null;
 		for (const el of this.bodyDropdowns) el.remove();
 		this.bodyDropdowns = [];
+		this.clearMobileCoreToolbarState();
 		this.clearInitialDescriptionFocusTimers();
 
-		if (this.fileBodyPanelEl) {
+		if (!Platform.isPhone && this.fileBodyPanelEl) {
 			this.renderFileBodyPanel(this.fileBodyPanelEl);
 		}
 		this.mainPanelEl.empty();
-		this.renderTaskEditorBody(this.mainPanelEl);
+		if (Platform.isPhone) {
+			this.renderMobileTaskEditorBody(this.mainPanelEl);
+		} else {
+			this.renderTaskEditorBody(this.mainPanelEl);
+		}
 		this.applyThemeColor();
-		this.updateFileBodyLayout();
+		if (!Platform.isPhone) {
+			this.updateFileBodyLayout();
+		}
+		this.scheduleMobileCoreToolbarOverflowState();
 	}
 
 	beginCloseSave(): Promise<boolean> {
@@ -831,10 +1573,12 @@ export class TaskEditorContent {
 	 * Cleanup: clear timers. Call when the container is being torn down.
 	 */
 	destroy(options: { skipCloseSave?: boolean } = {}): void {
+		window.removeEventListener('resize', this.mobileResizeHandler);
 		this.trackerUnsubscribe?.();
 		this.trackerUnsubscribe = null;
 		this.unregisterFileBodyViewportListener();
 		this.schedulingDraftRefreshers.clear();
+		this.mobileCoreButtonRefreshers.clear();
 		this.refreshCoreTrackerControl = null;
 		this.refreshEstimateReallocationControl = null;
 		this.refreshParentContextSection = null;
@@ -848,10 +1592,17 @@ export class TaskEditorContent {
 		this.fileBodyPanelEl = null;
 		this.fileBodyBackdropEl = null;
 		this.fileBodyToggleButtonEl = null;
+		this.mobileNoteWrapEl = null;
+		this.mobilePickerOpenDepth = 0;
+		this.clearMobilePickerCloseFrame();
+		this.clearMobileCoreToolbarState();
 		this.mainPanelEl = null;
 		this.shellEl = null;
+		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
+		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
 		this.rootEl = null;
 		this.descriptionInputEl = null;
+		this.noteInputEl = null;
 		this.clearInitialDescriptionFocusTimers();
 
 		if (!options.skipCloseSave && this.hasBeenEdited && this.description.trim()) {
@@ -920,6 +1671,7 @@ export class TaskEditorContent {
 		this.syncDerivedRepeatFieldsFromDraft();
 		this.refreshSchedulingDraftControls();
 		this.refreshEstimateReallocationControl?.();
+		this.refreshMobileCoreButtons();
 	}
 
 	// --- Renderers ---
@@ -1251,7 +2003,7 @@ export class TaskEditorContent {
 			cls: 'operon-editor-picker-anchor-text',
 		});
 		const iconWrap = button.createSpan('operon-editor-picker-anchor-icon');
-		setIcon(iconWrap, 'search');
+		setIcon(iconWrap, Platform.isPhone ? 'chevron-right' : 'search');
 		button.dataset.placeholder = placeholder;
 		button.dataset.placeholderTarget = text.className;
 		return button;
@@ -1457,7 +2209,7 @@ export class TaskEditorContent {
 			closePicker = showTagPicker(anchor, {
 				app: this.app,
 				value: selectedValues,
-				closeOnSelect: false,
+				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (values) => {
 					const nextValues = normalizeListValues(values.map(value => value.replace(/^#/, '')));
 					if (areStringArraysEqual(selectedValues, nextValues)) return;
@@ -1778,6 +2530,10 @@ export class TaskEditorContent {
 			if (!item.visible) continue;
 			this.renderWorkflowPicker(container, item.key);
 		}
+	}
+
+	private shouldCloseWorkflowPickerOnSelect(): boolean {
+		return Platform.isPhone;
 	}
 
 	private renderWorkflowPicker(container: HTMLElement, key: TaskEditorWorkflowPickerKey): void {
@@ -2832,7 +3588,7 @@ export class TaskEditorContent {
 				settingsKeyMappings: this.settings.keyMappings,
 				allTasks: this.indexer.getAllTasks(),
 				value: selectedValues,
-				closeOnSelect: false,
+				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (values) => {
 					const nextValues = normalizeListValues(values);
 					if (areStringArraysEqual(selectedValues, nextValues)) return;
@@ -2900,7 +3656,7 @@ export class TaskEditorContent {
 				settingsKeyMappings: this.settings.keyMappings,
 				allTasks: this.indexer.getAllTasks(),
 				value: selectedValues,
-				closeOnSelect: false,
+				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (values) => {
 					const nextValues = normalizeListValues(values);
 					if (areStringArraysEqual(selectedValues, nextValues)) return;
@@ -2972,7 +3728,7 @@ export class TaskEditorContent {
 				settingsKeyMappings: this.settings.keyMappings,
 				allTasks: this.indexer.getAllTasks(),
 				value: selectedValues,
-				closeOnSelect: false,
+				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (values) => {
 					const nextValues = normalizeListValues(values);
 					if (areStringArraysEqual(selectedValues, nextValues)) return;
@@ -3045,7 +3801,7 @@ export class TaskEditorContent {
 				oppositeValue: this.fieldValues[oppositeFieldKey] ?? '',
 				allTasks: this.indexer.getAllTasks(),
 				excludedIds: currentTaskId ? [currentTaskId] : [],
-				closeOnSelect: false,
+				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (payload) => {
 					const nextIds = normalizeListValues(splitTaskListValue(payload[fieldKey]).filter(id => id !== currentTaskId));
 					const nextValue = (payload[fieldKey] ?? '').trim();
@@ -3157,7 +3913,7 @@ export class TaskEditorContent {
 				value: selectedIds,
 				allTasks: this.indexer.getAllTasks(),
 				excludedIds: Array.from(excludedIds),
-				closeOnSelect: false,
+				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onChange: (operonIds) => syncParentLinks(operonIds),
 				onClose: () => {
 					closePicker = null;
@@ -3329,6 +4085,7 @@ export class TaskEditorContent {
 			else delete this.fieldValues[key];
 			this.syncExistingTaskFieldSnapshot(key, value);
 		}
+		this.refreshMobileCoreButtons();
 	}
 
 	private syncWorkflowFieldsFromIndex(): void {
@@ -3345,6 +4102,7 @@ export class TaskEditorContent {
 		if (this.existingTask) {
 			this.existingTask.checkbox = indexed.checkbox;
 		}
+		this.refreshMobileCoreButtons();
 	}
 
 	private syncExistingTaskFieldSnapshot(key: string, value: string): void {

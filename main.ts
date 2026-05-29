@@ -6,7 +6,7 @@
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, editorLivePreviewField } from 'obsidian';
+import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, editorLivePreviewField, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { OperonStorage } from './src/storage/operon-storage';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
@@ -95,6 +95,7 @@ import { debugTaskFieldSuggestion } from './src/ui/task-field-suggest';
 import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
 import { resolveReadingInlineTaskFromText } from './src/ui/reading-task-operon-id';
 import { enhanceReadingTaskFileWikilinks } from './src/ui/reading-task-wikilink-overlay';
+import { MobileGlobalTaskFab } from './src/ui/mobile-global-task-fab';
 import { OPERON_COMPACT_CHIP_HOVER_SOURCE } from './src/ui/compact-chip-link-preview';
 import { closeFloatingPanelsForRoot } from './src/ui/field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './src/ui/icon-only-chip-preview';
@@ -129,6 +130,7 @@ import {
 import { openTaskFieldPicker } from './src/ui/task-field-picker-dispatch';
 import { applyFileTaskPropertyVisibility } from './src/ui/file-task-property-visibility';
 import { PinnedTasksDock } from './src/ui/pinned-tasks-dock';
+import { PinnedTasksSidebarView, PINNED_TASKS_SIDEBAR_VIEW_TYPE } from './src/ui/pinned-tasks-sidebar-view';
 import { PinnedCache } from './src/storage/pinned-cache';
 import { FilterView, FILTER_VIEW_TYPE } from './src/ui/filter-view';
 import { registerEmbedFilterProcessor, refreshEmbedFilters, EmbedFilterDeps } from './src/ui/embed-filter-processor';
@@ -210,7 +212,7 @@ import {
 	resolveTaskCreatorFileTargetFolderOverride as resolveTaskCreatorFileTargetFolderOverrideDecision,
 	resolveTaskCreatorInlinePlacement,
 } from './src/core/task-creator-target-resolver';
-import { DEFAULT_INLINE_TASK_TARGET_FILE, FilterSet, normalizeInlineTaskHeadingKeyword, OperonSettings } from './src/types/settings';
+import { DEFAULT_INLINE_TASK_TARGET_FILE, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, FilterSet, normalizeInlineTaskHeadingKeyword, OperonSettings } from './src/types/settings';
 import {
 	type InlineRepeatCompletionMode,
 	normalizeInlineCompletionMode,
@@ -227,6 +229,8 @@ import {
 	KanbanCellActionId,
 	KanbanLeafState,
 	KanbanPreset,
+	buildKanbanLaneCollapseScopeKey,
+	buildKanbanStatusCollapseScopeKey,
 	normalizeKanbanLeafState,
 } from './src/types/kanban';
 import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask } from './src/types/fields';
@@ -343,6 +347,7 @@ interface OpenTaskCreatorOptions {
 	submitMode?: TaskCreatorSubmitMode;
 	onSubmitInline?: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
 	onSubmitFile?: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
+	initialOutsidePointerGraceMs?: number;
 }
 
 interface TaskCreatorInlineCreationOptions {
@@ -510,9 +515,12 @@ interface MarkdownTaskSurfaceRefreshResult {
 	skippedEmbeddedEditors: number;
 }
 
+type DuplicateAlertStatusBarState = 'hidden' | 'conflict' | 'resolved';
+
 const OPERON_ID_PLACEHOLDER_VALUE_PATTERN = /^\{\{operonId[0-9A-Za-z]?\}\}$/;
 const RAW_TASK_CREATION_BULK_NOTICE_THRESHOLD = 4;
 const RAW_TASK_CREATION_NOTICE_SUPPRESSION_TTL_MS = 30_000;
+const DUPLICATE_ALERT_RESOLVED_HIDE_DELAY_MS = 10_000;
 
 export default class OperonPlugin extends Plugin {
 	storage!: OperonStorage;
@@ -552,12 +560,19 @@ export default class OperonPlugin extends Plugin {
 	private workflowNormalizationInProgress = new Set<string>();
 	private trackerStatusBar: TimeTrackerStatusBar | null = null;
 	private pinnedDock: PinnedTasksDock | null = null;
+	private mobileGlobalTaskFab: MobileGlobalTaskFab | null = null;
 	private taskCreatorModal: TaskCreatorModal | null = null;
 	private pinnedCache: PinnedCache | null = null;
 	private externalCalendarService: ExternalCalendarService | null = null;
 	private duplicateOperonIdModal: DuplicateOperonIdModal | null = null;
 	private duplicateConflictCounts: Map<string, number> = new Map();
 	private duplicateConflictAutoOpenSuppressionDepth = 0;
+	private duplicateAlertStatusBarEl: HTMLElement | null = null;
+	private duplicateAlertTimer: WindowTimeoutHandle | null = null;
+	private duplicateAlertResolvedTimer: WindowTimeoutHandle | null = null;
+	private duplicateAlertStatusBarState: DuplicateAlertStatusBarState = 'hidden';
+	private duplicateAlertPendingFocusOperonId: string | null = null;
+	private duplicateAlertLastNoticeSignature: string | null = null;
 	private unsubscribePinnedCache: (() => void) | null = null;
 	private startupReady = false;
 	private refreshViewsCallCount = 0;
@@ -571,6 +586,46 @@ export default class OperonPlugin extends Plugin {
 
 	private isPinnedDockDisabledOnCurrentDevice(): boolean {
 		return this.settings.pinnedDockDisableOnMobile && Platform.isPhone;
+	}
+
+	private isPinnedTasksSidebarForcedOnCurrentDevice(): boolean {
+		return Platform.isMobile || Platform.isMobileApp || Platform.isPhone;
+	}
+
+	private shouldOpenPinnedTasksInSidebar(): boolean {
+		return this.isPinnedTasksSidebarForcedOnCurrentDevice()
+			|| this.settings.pinnedTasksDesktopSurface === 'sidebar';
+	}
+
+	async openPinnedTasksSurface(): Promise<void> {
+		if (this.shouldOpenPinnedTasksInSidebar()) {
+			await this.openPinnedTasksSidebarView();
+			return;
+		}
+		if (this.isPinnedDockDisabledOnCurrentDevice()) {
+			await this.openPinnedTasksSidebarView();
+			return;
+		}
+		this.pinnedDock?.toggle();
+	}
+
+	async openPinnedTasksSidebarView(): Promise<void> {
+		const existing = this.app.workspace.getLeavesOfType(PINNED_TASKS_SIDEBAR_VIEW_TYPE)[0];
+		if (existing) {
+			await existing.setViewState({ type: PINNED_TASKS_SIDEBAR_VIEW_TYPE, active: true });
+			callUnknownMethod(existing.view, 'markDirty');
+			callUnknownMethod(existing.view, 'render');
+			await this.app.workspace.revealLeaf(existing);
+			return;
+		}
+
+		const leaf = this.settings.pinnedTasksSidebarSide === 'right'
+			? this.app.workspace.getRightLeaf(false)
+			: this.app.workspace.getLeftLeaf(false);
+		if (!leaf) return;
+
+		await leaf.setViewState({ type: PINNED_TASKS_SIDEBAR_VIEW_TYPE, active: true });
+		await this.app.workspace.revealLeaf(leaf);
 	}
 
 	private syncFilterSetsFromStore(): void {
@@ -707,7 +762,12 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private getExternalCalendarItemsForRange(rangeStart: string, rangeEnd: string, presetId?: string): CalendarItem[] {
+	private getExternalCalendarItemsForRange(
+		rangeStart: string,
+		rangeEnd: string,
+		presetId?: string,
+		showExternalCalendarsOverride?: boolean,
+	): CalendarItem[] {
 		if (!this.externalCalendarService) return [];
 		const events = this.externalCalendarService.getCachedEvents(rangeStart, rangeEnd);
 		const preset = presetId ? this.settings.calendarPresets.find(p => p.id === presetId) : undefined;
@@ -717,7 +777,7 @@ export default class OperonPlugin extends Plugin {
 			rangeStart,
 			rangeEnd,
 			preset?.externalCalendarVisibility,
-			preset?.showExternalCalendars,
+			showExternalCalendarsOverride ?? preset?.showExternalCalendars,
 		);
 	}
 
@@ -936,6 +996,13 @@ export default class OperonPlugin extends Plugin {
 			showFinishedLane: typeof state?.showFinishedLane === 'boolean'
 				? state.showFinishedLane
 				: true,
+			mobileViewMode: state?.mobileViewMode ?? this.settings.calendarMobileDefaultView,
+			mobileSourcePresetId: typeof state?.mobileSourcePresetId === 'string' && state.mobileSourcePresetId.trim()
+				? state.mobileSourcePresetId
+				: this.settings.calendarMobileDefaultSourcePresetId ?? defaultPresetId,
+			mobileAnchorDate: typeof state?.mobileAnchorDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(state.mobileAnchorDate)
+				? state.mobileAnchorDate
+				: localToday(),
 		};
 
 		await leaf.setViewState({
@@ -966,6 +1033,8 @@ export default class OperonPlugin extends Plugin {
 			availablePresetIds,
 			availableStatusIds: pipeline?.statuses.map(status => status.id) ?? [],
 			defaultPresetId: fallbackPresetId,
+			statusCollapseScopeKey: buildKanbanStatusCollapseScopeKey(preset?.id ?? null, preset?.pipelineId ?? null),
+			laneCollapseScopeKey: buildKanbanLaneCollapseScopeKey(preset?.id ?? null, preset?.pipelineId ?? null, preset?.swimlaneBy ?? null),
 		});
 
 		await leaf.setViewState({
@@ -1035,8 +1104,7 @@ export default class OperonPlugin extends Plugin {
 		this.writer = new TaskWriter(this.app, this.indexer, this.settings.keyMappings, {
 			onBeforeWriteFile: filePath => this.markInternalTaskWrite(filePath),
 			onDuplicateConflict: operonId => {
-				this.openDuplicateOperonIdModal(operonId);
-				new Notice(t('notifications', 'duplicateOperonIdBlocked'));
+				this.scheduleDuplicateConflictAlert(operonId);
 			},
 		});
 		this.dependencyManager = new DependencyManager(this.indexer, this.writer);
@@ -1059,8 +1127,7 @@ export default class OperonPlugin extends Plugin {
 			this.totalEstimateCalculator,
 			() => this.settings,
 			(operonId) => {
-				this.openDuplicateOperonIdModal(operonId);
-				new Notice(t('notifications', 'duplicateOperonIdBlocked'));
+				this.scheduleDuplicateConflictAlert(operonId);
 			},
 			async (operonId) => {
 				await this.aggregateCoordinator.refreshDurationAfterTaskIds([operonId]);
@@ -1151,6 +1218,8 @@ export default class OperonPlugin extends Plugin {
 				// Re-apply language override, then refresh views
 					initI18n(getAppLocale(this.app), this.settings.language);
 				this.trackerStatusBar?.render();
+				this.refreshDuplicateAlertStatusBar();
+				this.mobileGlobalTaskFab?.refresh();
 				this.refreshViews();
 			},
 			this.indexer,
@@ -1187,6 +1256,7 @@ export default class OperonPlugin extends Plugin {
 			() => this.openFlowTimeView(),
 		);
 		this.trackerStatusBar.initialize();
+		this.initializeDuplicateAlertStatusBar();
 
 		// Run startup maintenance after layout is ready
 		this.app.workspace.onLayoutReady(() => {
@@ -1212,10 +1282,9 @@ export default class OperonPlugin extends Plugin {
 				runAsyncAction('open kanban from ribbon failed', () => this.openKanbanView());
 			});
 
-			this.addRibbonIcon('pin', t('commands', 'togglePinnedDock'), () => {
-				if (this.isPinnedDockDisabledOnCurrentDevice()) return;
-				this.pinnedDock?.toggle();
-			});
+				this.addRibbonIcon('pin', t('commands', 'openPinnedTasks'), () => {
+					runAsyncAction('open pinned tasks from ribbon failed', () => this.openPinnedTasksSurface());
+				});
 
 			this.scheduleYamlPropertyVisibilityRefresh(150);
 
@@ -1279,6 +1348,10 @@ export default class OperonPlugin extends Plugin {
 				clearWindowTimeout(this.indexSideEffectTimer);
 				this.indexSideEffectTimer = null;
 			}
+		this.clearDuplicateAlertTimer();
+		this.clearDuplicateAlertResolvedTimer();
+		this.hideDuplicateAlertStatusBar();
+		this.duplicateAlertStatusBarEl = null;
 		this.trackerStatusBar?.destroy();
 		this.trackerStatusBar = null;
 		this.unsubscribePinnedCache?.();
@@ -1335,8 +1408,44 @@ export default class OperonPlugin extends Plugin {
 					refreshLayout: () => this.pinnedDock?.refreshLayout(),
 				},
 			this.storage.pinned,
+			);
+			this.addChild(this.pinnedDock);
+
+			this.registerView(PINNED_TASKS_SIDEBAR_VIEW_TYPE, (leaf) =>
+				new PinnedTasksSidebarView(
+					leaf,
+					this.indexer,
+					this.settings,
+					this.timeTracker,
+					{
+						openTaskEditor: openEditorForId,
+						cycleStatus: (operonId) => this.cycleTaskStatusById(operonId),
+						onContextualAction: (taskId, actionId) => this.handleContextualMenuAction(taskId, actionId),
+						toggleTimer: (taskId) => this.toggleTimerForTask(taskId, 'command'),
+					},
+					this.storage.pinned,
+				)
+			);
+
+			this.mobileGlobalTaskFab = new MobileGlobalTaskFab(
+				this.app,
+				this.settings,
+			{
+				openTaskCreator: () => this.openTaskCreator(),
+				shouldHideForActiveView: () => (
+					this.settings.mobileGlobalTaskFabHideInCalendar === true
+					&& this.app.workspace.getActiveViewOfType(CalendarView) != null
+				) || (
+					this.settings.mobileGlobalTaskFabHideInKanban === true
+					&& this.app.workspace.getActiveViewOfType(KanbanView) != null
+				),
+				onPositionChange: async (position) => {
+					this.settings.mobileGlobalTaskFabPosition = position;
+					await this.storage.saveSettings();
+				},
+			},
 		);
-		this.addChild(this.pinnedDock);
+		this.addChild(this.mobileGlobalTaskFab);
 
 		// Filter View
 		this.registerView(FILTER_VIEW_TYPE, (leaf) =>
@@ -1426,16 +1535,17 @@ export default class OperonPlugin extends Plugin {
 			)
 		);
 
-			this.registerView(CALENDAR_VIEW_TYPE, (leaf) =>
+		this.registerView(CALENDAR_VIEW_TYPE, (leaf) =>
 			new CalendarView(
 				leaf,
 				this.indexer,
 				() => this.settings,
 				() => this.pinnedCache,
 				() => this.storage.repeatSeries.getAllEntries(),
-				(rangeStart, rangeEnd, presetId) => this.getExternalCalendarItemsForRange(rangeStart, rangeEnd, presetId),
+				(rangeStart, rangeEnd, presetId, showExternalCalendarsOverride) => this.getExternalCalendarItemsForRange(rangeStart, rangeEnd, presetId, showExternalCalendarsOverride),
 				{
 					onTimedSlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
+					onMobileTimedSlotCreate: (selection) => this.handleMobileCalendarSlotCreate(leaf, selection),
 					onTimedItemMove: (taskId, selection) => this.handleCalendarTimedMove(taskId, selection),
 					onTimedItemResizeStart: (taskId, selection) => this.handleCalendarTimedResize(taskId, selection),
 					onTimedItemResizeEnd: (taskId, selection) => this.handleCalendarTimedResize(taskId, selection),
@@ -1484,6 +1594,11 @@ export default class OperonPlugin extends Plugin {
 						const preset = this.settings.calendarPresets.find(entry => entry.id === presetId);
 						if (!preset) return;
 						preset.colorSource = nextSource;
+						await this.storage.saveSettings();
+						this.refreshViews();
+					},
+					onMobileCalendarSettingsChange: async (patch) => {
+						Object.assign(this.settings, patch);
 						await this.storage.saveSettings();
 						this.refreshViews();
 					},
@@ -1557,8 +1672,45 @@ export default class OperonPlugin extends Plugin {
 		runAsyncAction('task file open failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', false));
 	}
 
+	private initializeDuplicateAlertStatusBar(): void {
+		const statusBarItem = this.addStatusBarItem();
+		statusBarItem.addClass('operon-duplicate-alert-status-bar');
+		statusBarItem.addClass('is-hidden');
+		this.duplicateAlertStatusBarEl = statusBarItem;
+	}
+
 	private buildDuplicateConflictCounts(snapshot: DuplicateRegistrySnapshot): Map<string, number> {
 		return new Map(snapshot.conflicts.map(conflict => [conflict.operonId, conflict.instances.length]));
+	}
+
+	private getDuplicateAlertDuplicateCount(snapshot: DuplicateRegistrySnapshot): number {
+		return snapshot.conflicts.reduce((total, conflict) => total + Math.max(0, conflict.instances.length - 1), 0);
+	}
+
+	private getDuplicateAlertDelayMs(): number {
+		const delaySeconds = Math.floor(this.settings.duplicateAlertDelaySeconds);
+		const normalizedSeconds = (DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS as readonly number[]).includes(delaySeconds)
+			? delaySeconds
+			: 10;
+		return normalizedSeconds * 1000;
+	}
+
+	private buildDuplicateAlertSignature(snapshot: DuplicateRegistrySnapshot): string {
+		return snapshot.conflicts
+			.map(conflict => `${conflict.operonId}:${conflict.instances.length}`)
+			.sort()
+			.join('|');
+	}
+
+	private findDuplicateConflictIncrease(snapshot: DuplicateRegistrySnapshot, previousCounts: Map<string, number>): string | null {
+		return snapshot.conflicts.find(conflict => conflict.instances.length > (previousCounts.get(conflict.operonId) ?? 0))?.operonId ?? null;
+	}
+
+	private hasDuplicateConflictDecrease(previousCounts: Map<string, number>, nextCounts: Map<string, number>): boolean {
+		for (const [operonId, previousCount] of previousCounts) {
+			if ((nextCounts.get(operonId) ?? 0) < previousCount) return true;
+		}
+		return false;
 	}
 
 	private isDuplicateConflictAutoOpenSuppressed(): boolean {
@@ -1571,15 +1723,166 @@ export default class OperonPlugin extends Plugin {
 		const nextCounts = this.buildDuplicateConflictCounts(snapshot);
 		const autoOpenSuppressed = this.isDuplicateConflictAutoOpenSuppressed();
 		const focusOperonId = allowAutoOpen && !autoOpenSuppressed
-			? snapshot.conflicts.find(conflict => (conflict.instances.length > (previousCounts.get(conflict.operonId) ?? 0)))?.operonId ?? null
+			? this.findDuplicateConflictIncrease(snapshot, previousCounts)
 			: null;
 		if (!autoOpenSuppressed) {
 			this.duplicateConflictCounts = nextCounts;
 		}
 		this.duplicateOperonIdModal?.refresh(focusOperonId);
 		if (focusOperonId) {
-			this.openDuplicateOperonIdModal(focusOperonId);
+			this.scheduleDuplicateConflictAlert(focusOperonId);
+			return;
 		}
+		if (autoOpenSuppressed) return;
+
+		const duplicateCount = this.getDuplicateAlertDuplicateCount(snapshot);
+		if (duplicateCount === 0) {
+			this.handleDuplicateConflictsResolved();
+		} else {
+			if (this.duplicateAlertLastNoticeSignature !== null && this.hasDuplicateConflictDecrease(previousCounts, nextCounts)) {
+				this.duplicateAlertLastNoticeSignature = this.buildDuplicateAlertSignature(snapshot);
+			}
+			if (this.duplicateAlertStatusBarState === 'conflict') {
+				this.renderDuplicateAlertStatusBar('conflict', duplicateCount);
+			}
+		}
+	}
+
+	private scheduleDuplicateConflictAlert(focusOperonId: string | null = null): void {
+		const snapshot = this.indexer.getDuplicateRegistry();
+		if (this.getDuplicateAlertDuplicateCount(snapshot) === 0) {
+			this.handleDuplicateConflictsResolved();
+			return;
+		}
+
+		this.clearDuplicateAlertResolvedTimer();
+		if (this.duplicateAlertStatusBarState === 'resolved') {
+			this.hideDuplicateAlertStatusBar();
+		}
+
+		this.duplicateAlertPendingFocusOperonId = focusOperonId
+			?? this.duplicateAlertPendingFocusOperonId
+			?? snapshot.conflicts[0]?.operonId
+			?? null;
+		this.clearDuplicateAlertTimer();
+		this.duplicateAlertTimer = setWindowTimeout(() => {
+			this.duplicateAlertTimer = null;
+			this.showDelayedDuplicateConflictAlert();
+		}, this.getDuplicateAlertDelayMs());
+	}
+
+	private showDelayedDuplicateConflictAlert(): void {
+		const snapshot = this.indexer.getDuplicateRegistry();
+		const duplicateCount = this.getDuplicateAlertDuplicateCount(snapshot);
+		if (duplicateCount === 0) {
+			this.handleDuplicateConflictsResolved();
+			return;
+		}
+
+		this.clearDuplicateAlertResolvedTimer();
+		this.renderDuplicateAlertStatusBar('conflict', duplicateCount);
+		const signature = this.buildDuplicateAlertSignature(snapshot);
+		if (signature !== this.duplicateAlertLastNoticeSignature) {
+			new Notice(this.formatDuplicateAlertNotice(duplicateCount));
+			this.duplicateAlertLastNoticeSignature = signature;
+		}
+		if (this.settings.duplicateAlertAutoOpenManager) {
+			this.openDuplicateOperonIdModal(this.duplicateAlertPendingFocusOperonId ?? snapshot.conflicts[0]?.operonId ?? null);
+		}
+		this.duplicateAlertPendingFocusOperonId = null;
+	}
+
+	private formatDuplicateAlertNotice(duplicateCount: number): string {
+		return duplicateCount === 1
+			? t('notifications', 'duplicateOperonIdAlertOne')
+			: t('notifications', 'duplicateOperonIdAlertMany', { count: String(duplicateCount) });
+	}
+
+	private handleDuplicateConflictsResolved(): void {
+		this.clearDuplicateAlertTimer();
+		this.duplicateAlertPendingFocusOperonId = null;
+		this.duplicateAlertLastNoticeSignature = null;
+		if (this.duplicateAlertStatusBarState === 'conflict') {
+			this.renderDuplicateAlertStatusBar('resolved');
+			this.clearDuplicateAlertResolvedTimer();
+			this.duplicateAlertResolvedTimer = setWindowTimeout(() => {
+				this.duplicateAlertResolvedTimer = null;
+				if (this.duplicateAlertStatusBarState === 'resolved') {
+					this.hideDuplicateAlertStatusBar();
+				}
+			}, DUPLICATE_ALERT_RESOLVED_HIDE_DELAY_MS);
+		} else if (this.duplicateAlertStatusBarState !== 'resolved') {
+			this.hideDuplicateAlertStatusBar();
+		}
+	}
+
+	private clearDuplicateAlertTimer(): void {
+		if (!this.duplicateAlertTimer) return;
+		clearWindowTimeout(this.duplicateAlertTimer);
+		this.duplicateAlertTimer = null;
+	}
+
+	private clearDuplicateAlertResolvedTimer(): void {
+		if (!this.duplicateAlertResolvedTimer) return;
+		clearWindowTimeout(this.duplicateAlertResolvedTimer);
+		this.duplicateAlertResolvedTimer = null;
+	}
+
+	private refreshDuplicateAlertStatusBar(): void {
+		if (this.duplicateAlertStatusBarState === 'conflict') {
+			const duplicateCount = this.getDuplicateAlertDuplicateCount(this.indexer.getDuplicateRegistry());
+			if (duplicateCount > 0) {
+				this.renderDuplicateAlertStatusBar('conflict', duplicateCount);
+				return;
+			}
+		}
+		if (this.duplicateAlertStatusBarState === 'resolved') {
+			this.renderDuplicateAlertStatusBar('resolved');
+		}
+	}
+
+	private renderDuplicateAlertStatusBar(state: Exclude<DuplicateAlertStatusBarState, 'hidden'>, duplicateCount = 0): void {
+		const rootEl = this.duplicateAlertStatusBarEl;
+		if (!rootEl) return;
+
+		rootEl.empty();
+		rootEl.removeClass('is-hidden');
+		rootEl.removeClass('is-conflict');
+		rootEl.removeClass('is-resolved');
+		rootEl.addClass(`is-${state}`);
+		this.duplicateAlertStatusBarState = state;
+
+		const label = state === 'conflict'
+			? t('duplicateOperonId', 'statusBarConflictLabel', { count: String(duplicateCount) })
+			: t('duplicateOperonId', 'statusBarResolvedLabel');
+		const button = rootEl.createEl('button', {
+			cls: `operon-duplicate-alert-status-bar-button is-${state}`,
+			attr: {
+				type: 'button',
+				'aria-label': label,
+				title: label,
+			},
+		});
+		setIcon(button, state === 'conflict' ? 'shield-alert' : 'shield-check');
+		if (state === 'conflict') {
+			button.createSpan({
+				cls: 'operon-duplicate-alert-status-bar-count',
+				text: String(duplicateCount),
+			});
+		}
+		button.addEventListener('click', () => {
+			this.openDuplicateOperonIdModal();
+		});
+	}
+
+	private hideDuplicateAlertStatusBar(): void {
+		this.duplicateAlertStatusBarState = 'hidden';
+		const rootEl = this.duplicateAlertStatusBarEl;
+		if (!rootEl) return;
+		rootEl.empty();
+		rootEl.removeClass('is-conflict');
+		rootEl.removeClass('is-resolved');
+		rootEl.addClass('is-hidden');
 	}
 
 	private async withDuplicateConflictAutoOpenSuppressed<T>(operation: () => Promise<T>): Promise<T> {
@@ -1624,9 +1927,8 @@ export default class OperonPlugin extends Plugin {
 
 	private redirectDuplicateOperonIdAction(operonId: string, showNotice = true): boolean {
 		if (!this.indexer.hasDuplicateOperonIdConflict(operonId)) return false;
-		this.openDuplicateOperonIdModal(operonId);
 		if (showNotice) {
-			new Notice(t('notifications', 'duplicateOperonIdBlocked'));
+			this.scheduleDuplicateConflictAlert(operonId);
 		}
 		return true;
 	}
@@ -1665,6 +1967,17 @@ export default class OperonPlugin extends Plugin {
 				return;
 			}
 		}
+	}
+
+	private handleMobileCalendarSlotCreate(
+		leaf: import('obsidian').WorkspaceLeaf,
+		selection: CalendarSlotSelection,
+	): void {
+		setWindowTimeout(() => {
+			this.openCalendarTaskCreator(leaf, selection, 'both', null, '', {
+				initialOutsidePointerGraceMs: 700,
+			});
+		}, 0);
 	}
 
 	private async handleExternalCalendarItemCreate(
@@ -2991,10 +3304,12 @@ export default class OperonPlugin extends Plugin {
 		submitMode: TaskCreatorSubmitMode,
 		initialDraft: TaskCreatorDraft | null = null,
 		initialDescription = '',
+		openOptions: Pick<OpenTaskCreatorOptions, 'initialOutsidePointerGraceMs'> = {},
 	): void {
 		const draft = initialDraft ?? buildCalendarTaskCreatorDraft(selection, initialDescription);
 		this.openTaskCreator(draft, {
 			submitMode,
+			...openOptions,
 			onSubmitFile: (nextDraft) => this.createCalendarFileTaskFromCreatorDraft(leaf, selection, nextDraft),
 			onSubmitInline: (nextDraft) => this.createCalendarInlineTaskFromCreatorDraft(leaf, selection, nextDraft),
 		});
@@ -5311,9 +5626,12 @@ export default class OperonPlugin extends Plugin {
 		if (isPrimaryPass) {
 			const freezeCalendarRefresh = this.shouldFreezeCalendarRefresh();
 			const freezeKanbanRefresh = this.shouldFreezeKanbanRefresh();
-			const pinnedStartedAt = perfContext ? enginePerfNow() : 0;
-			this.pinnedDock?.render();
-			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'pinned', pinnedStartedAt);
+				const pinnedStartedAt = perfContext ? enginePerfNow() : 0;
+				this.pinnedDock?.render();
+				for (const leaf of this.app.workspace.getLeavesOfType(PINNED_TASKS_SIDEBAR_VIEW_TYPE)) {
+					callUnknownMethod(leaf.view, 'render');
+				}
+				this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'pinned', pinnedStartedAt);
 			const filtersStartedAt = perfContext ? enginePerfNow() : 0;
 			for (const leaf of this.app.workspace.getLeavesOfType(FILTER_VIEW_TYPE)) {
 				if (hasUnknownMethod(leaf.view, 'renderIfVisibleOrInvalidate')) {
@@ -5444,6 +5762,9 @@ export default class OperonPlugin extends Plugin {
 
 	private refreshTimerStateSurfaces(): void {
 		this.pinnedDock?.render();
+		for (const leaf of this.app.workspace.getLeavesOfType(PINNED_TASKS_SIDEBAR_VIEW_TYPE)) {
+			callUnknownMethod(leaf.view, 'render');
+		}
 		for (const leaf of this.app.workspace.getLeavesOfType(FILTER_VIEW_TYPE)) {
 			if (hasUnknownMethod(leaf.view, 'renderIfVisibleOrInvalidate')) {
 				callUnknownMethod(leaf.view, 'renderIfVisibleOrInvalidate');
@@ -7797,8 +8118,9 @@ export default class OperonPlugin extends Plugin {
 				this.settings.lastUsedFileTaskTemplateId = template.id;
 				await this.storage.saveSettings();
 			},
-			getAllRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
-			onSubmitInline: options.onSubmitInline ?? ((draft) => this.createInlineTaskFromCreatorDraft(draft)),
+				getAllRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
+				initialOutsidePointerGraceMs: options.initialOutsidePointerGraceMs,
+				onSubmitInline: options.onSubmitInline ?? ((draft) => this.createInlineTaskFromCreatorDraft(draft)),
 			onSubmitFile: options.onSubmitFile ?? ((draft) => this.startFileTaskCreationFromCreatorDraft(draft)),
 			onSubmitFailure: (draft, createType) => {
 				if (createType !== 'inline') return;
@@ -10671,10 +10993,18 @@ export default class OperonPlugin extends Plugin {
 			},
 		});
 
-		// Toggle Pinned Tasks floating dock
-		this.addCommand({
-			id: 'toggle-pinned-dock',
-			name: t('commands', 'togglePinnedDock'),
+			this.addCommand({
+				id: 'open-pinned-tasks',
+				name: t('commands', 'openPinnedTasks'),
+				callback: () => {
+					runAsyncAction('open pinned tasks command failed', () => this.openPinnedTasksSurface());
+				},
+			});
+
+			// Toggle Pinned Tasks floating dock
+			this.addCommand({
+				id: 'toggle-pinned-dock',
+				name: t('commands', 'togglePinnedDock'),
 			callback: () => {
 				if (this.isPinnedDockDisabledOnCurrentDevice()) return;
 				this.pinnedDock?.toggle();

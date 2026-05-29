@@ -27,3 +27,11 @@ export function formatUiTime(app: App, settings: TimeFormatSettings, value: stri
 		hour12: settings.timeFormat === '12h',
 	}).format(date);
 }
+
+export function formatUiMinuteOfDay(app: App, settings: TimeFormatSettings, dateKey: string, minuteOfDay: number): string {
+	const clamped = Math.max(0, Math.min(24 * 60, Math.round(minuteOfDay)));
+	const displayMinute = clamped >= 24 * 60 ? (24 * 60) - 1 : clamped;
+	const hours = String(Math.floor(displayMinute / 60)).padStart(2, '0');
+	const minutes = String(displayMinute % 60).padStart(2, '0');
+	return formatUiTime(app, settings, `${dateKey}T${hours}:${minutes}:00`);
+}

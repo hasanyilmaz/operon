@@ -1,9 +1,11 @@
 import { Setting, getIcon } from 'obsidian';
 import { t } from '../../core/i18n';
+import { asHTMLElement } from '../../core/dom-compat';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { showIconPicker } from '../field-pickers/icon-picker';
 import { runSettingsAsync } from './async-settings-action';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
+import type { FloatingHostOptions } from '../field-pickers/common';
 
 export interface SettingsIconPickerRowOptions {
 	containerEl: HTMLElement;
@@ -23,6 +25,21 @@ export interface SettingsIconPickerRowHandle {
 	setting: Setting;
 	buttonEl: HTMLButtonElement;
 	setValue: (value: string) => void;
+}
+
+const SETTINGS_FLOATING_HOST_CLASS = 'operon-settings-floating-host';
+
+export function getSettingsIconPickerFloatingOptions(anchor: HTMLElement): FloatingHostOptions {
+	const settingsRoot = asHTMLElement(anchor.closest('.operon-settings-tab-root'), anchor);
+	if (!settingsRoot) return {};
+
+	const scrollHost = asHTMLElement(anchor.closest('.vertical-tab-content, .modal-content'), anchor) ?? settingsRoot;
+	scrollHost.addClass(SETTINGS_FLOATING_HOST_CLASS);
+	return {
+		floatingHost: scrollHost,
+		floatingScrollHost: scrollHost,
+		constrainToFloatingHost: true,
+	};
 }
 
 function formatIconPickerAriaLabel(name: string, value: string, placeholder: string): string {
@@ -86,6 +103,7 @@ export function renderSettingsIconPickerRow(options: SettingsIconPickerRowOption
 	const openPicker = (): void => {
 		if (closeIconPicker) return;
 		closeIconPicker = showIconPicker(buttonEl, {
+			...getSettingsIconPickerFloatingOptions(buttonEl),
 			value: currentValue,
 			query: '',
 			onSelect: iconId => {

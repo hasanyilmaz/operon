@@ -51,6 +51,8 @@ export interface InterfaceIconToggleSectionOptions<
 	setItems: (items: TItem[]) => void;
 	getLabel: (key: TKey) => string;
 	getIcon: (key: TKey) => string;
+	canMoveUp?: (item: TItem, index: number, items: TItem[]) => boolean;
+	canMoveDown?: (item: TItem, index: number, items: TItem[]) => boolean;
 	save: () => Promise<void>;
 	getActionToggles?: () => InterfaceIconActionToggle[];
 	actionTogglesTitle?: string;
@@ -277,9 +279,10 @@ export function renderInterfaceIconToggleSection<
 			setting.addExtraButton(button => {
 				button.setIcon('arrow-up');
 				applyExtraButtonTooltip(button, options.moveUpLabel);
-				button.setDisabled(index === 0);
+				const canMoveUp = index > 0 && (options.canMoveUp?.(item, index, items) ?? true);
+				button.setDisabled(!canMoveUp);
 				button.onClick(async () => {
-					if (index === 0) return;
+					if (!canMoveUp) return;
 					options.setItems(moveInterfaceItem(items, index, index - 1));
 					await options.save();
 					rerenderRowsPreservingScroll(section, renderRows);
@@ -289,9 +292,10 @@ export function renderInterfaceIconToggleSection<
 			setting.addExtraButton(button => {
 				button.setIcon('arrow-down');
 				applyExtraButtonTooltip(button, options.moveDownLabel);
-				button.setDisabled(index === items.length - 1);
+				const canMoveDown = index < items.length - 1 && (options.canMoveDown?.(item, index, items) ?? true);
+				button.setDisabled(!canMoveDown);
 				button.onClick(async () => {
-					if (index >= items.length - 1) return;
+					if (!canMoveDown) return;
 					options.setItems(moveInterfaceItem(items, index, index + 1));
 					await options.save();
 					rerenderRowsPreservingScroll(section, renderRows);
@@ -363,10 +367,10 @@ function renderInterfaceIconRowListSection<
 				label: options.moveUpLabel,
 				tooltip: options.moveUpLabel,
 				icon: 'arrow-up',
-				disabled: index === 0,
+				disabled: index === 0 || !(options.canMoveUp?.(item, index, items) ?? true),
 				errorContext: options.visibilityErrorContext,
 				onClick: async () => {
-					if (index === 0) return;
+					if (index === 0 || !(options.canMoveUp?.(item, index, items) ?? true)) return;
 					options.setItems(moveInterfaceItem(items, index, index - 1));
 					await options.save();
 					rerenderRowsPreservingScroll(sectionEl, renderRows);
@@ -378,10 +382,10 @@ function renderInterfaceIconRowListSection<
 				label: options.moveDownLabel,
 				tooltip: options.moveDownLabel,
 				icon: 'arrow-down',
-				disabled: index >= items.length - 1,
+				disabled: index >= items.length - 1 || !(options.canMoveDown?.(item, index, items) ?? true),
 				errorContext: options.visibilityErrorContext,
 				onClick: async () => {
-					if (index >= items.length - 1) return;
+					if (index >= items.length - 1 || !(options.canMoveDown?.(item, index, items) ?? true)) return;
 					options.setItems(moveInterfaceItem(items, index, index + 1));
 					await options.save();
 					rerenderRowsPreservingScroll(sectionEl, renderRows);

@@ -21,13 +21,19 @@ interface FloatingPanelRecord {
 	close: () => void;
 }
 
-export interface FloatingPositionOptions {
+export interface FloatingHostOptions {
+	floatingHost?: HTMLElement;
+	floatingScrollHost?: HTMLElement | Window;
+	constrainToFloatingHost?: boolean;
+}
+
+export interface FloatingPositionOptions extends FloatingHostOptions {
 	gap?: number;
 	margin?: number;
 	matchWidth?: number;
 }
 
-export interface FloatingPanelOptions {
+export interface FloatingPanelOptions extends FloatingHostOptions {
 	retainInputFocus?: boolean;
 	focusInputSelector?: string;
 }
@@ -39,11 +45,96 @@ interface FloatingHostContext {
 }
 
 const activeFloatingPanels = new Set<FloatingPanelRecord>();
+export const MOBILE_PICKER_OPEN_EVENT = 'operon-mobile-picker-open';
+export const MOBILE_PICKER_CLOSE_EVENT = 'operon-mobile-picker-close';
+export const TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT = 'operon-task-editor-mobile-picker-open';
+export const TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT = 'operon-task-editor-mobile-picker-close';
+const TASK_EDITOR_MOBILE_SURFACE_MIN_WIDTH = 180;
+const TASK_EDITOR_MOBILE_DESCRIPTION_SELECTOR = '.operon-task-editor-mobile-description';
+const TASK_EDITOR_MOBILE_CORE_TOOLBAR_SELECTOR = '.operon-task-editor-mobile-core-toolbar';
+const TASK_CREATOR_MOBILE_SURFACE_MIN_WIDTH = 180;
+const TASK_CREATOR_MOBILE_ROOT_SELECTOR = '.operon-task-creator';
+const TASK_CREATOR_MOBILE_MODAL_SELECTOR = '.operon-task-creator-modal-mobile';
+const TASK_CREATOR_MOBILE_TOOLBAR_SELECTOR = '.operon-task-creator-toolbar';
+const TASK_CREATOR_MOBILE_ACTION_ROW_SELECTOR = '.operon-task-creator-action-row';
+
+interface MobilePickerSurfaceContext {
+	kind: 'task-editor' | 'task-creator';
+	root: HTMLElement;
+	panelHost: HTMLElement;
+	surfaceClass: string;
+	openEvents: string[];
+	closeEvents: string[];
+}
 
 function isEditablePanelFocus(element: Element | null, panel: HTMLElement): boolean {
 	const htmlElement = asHTMLElement(element, panel);
 	if (!htmlElement || !panel.contains(htmlElement)) return false;
 	return htmlElement.matches('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
+}
+
+function getTaskEditorMobileRoot(anchorEl: HTMLElement | null): HTMLElement | null {
+	return asHTMLElement(anchorEl?.closest('.operon-task-editor-mobile') ?? null, anchorEl);
+}
+
+function shouldUseTaskEditorMobileSurface(anchorEl: HTMLElement | null, options: FloatingHostOptions = {}): boolean {
+	return !options.floatingHost && getTaskEditorMobileRoot(anchorEl) != null;
+}
+
+function getTaskEditorMobilePanelHost(root: HTMLElement | null, fallback: HTMLElement): HTMLElement {
+	return asHTMLElement(root?.closest('.operon-task-editor-modal, .modal') ?? null, root) ?? fallback;
+}
+
+function getTaskCreatorMobileRoot(anchorEl: HTMLElement | null): HTMLElement | null {
+	const root = asHTMLElement(anchorEl?.closest(TASK_CREATOR_MOBILE_ROOT_SELECTOR) ?? null, anchorEl);
+	if (!root) return null;
+	return root.closest(TASK_CREATOR_MOBILE_MODAL_SELECTOR) ? root : null;
+}
+
+function getTaskCreatorMobilePanelHost(root: HTMLElement | null, fallback: HTMLElement): HTMLElement {
+	return asHTMLElement(root?.closest('.operon-task-creator-modal, .modal') ?? null, root) ?? fallback;
+}
+
+function getMobilePickerSurfaceContext(
+	anchorEl: HTMLElement | null,
+	options: FloatingHostOptions,
+	fallbackHost: HTMLElement,
+): MobilePickerSurfaceContext | null {
+	if (shouldUseTaskEditorMobileSurface(anchorEl, options)) {
+		const root = getTaskEditorMobileRoot(anchorEl);
+		if (!root) return null;
+		return {
+			kind: 'task-editor',
+			root,
+			panelHost: getTaskEditorMobilePanelHost(root, fallbackHost),
+			surfaceClass: 'operon-task-editor-mobile-picker-surface',
+			openEvents: [MOBILE_PICKER_OPEN_EVENT, TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT],
+			closeEvents: [MOBILE_PICKER_CLOSE_EVENT, TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT],
+		};
+	}
+
+	if (!options.floatingHost) {
+		const root = getTaskCreatorMobileRoot(anchorEl);
+		if (root) {
+			return {
+				kind: 'task-creator',
+				root,
+				panelHost: getTaskCreatorMobilePanelHost(root, fallbackHost),
+				surfaceClass: 'operon-task-creator-mobile-picker-surface',
+				openEvents: [MOBILE_PICKER_OPEN_EVENT],
+				closeEvents: [MOBILE_PICKER_CLOSE_EVENT],
+			};
+		}
+	}
+
+	return null;
+}
+
+function dispatchMobilePickerEvent(context: MobilePickerSurfaceContext | null, eventNames: string[]): void {
+	if (!context) return;
+	for (const eventName of eventNames) {
+		context.root.dispatchEvent(new CustomEvent(eventName, { bubbles: true }));
+	}
 }
 
 export function resolvePickerApp(anchor: HTMLElement | DOMRect, app?: App): App | undefined {
@@ -58,7 +149,15 @@ function resolveRect(anchor: HTMLElement | DOMRect): DOMRect {
 	return anchor as DOMRect;
 }
 
-function resolveHostContext(anchor: HTMLElement | DOMRect): FloatingHostContext {
+function resolveHostContext(anchor: HTMLElement | DOMRect, options: FloatingHostOptions = {}): FloatingHostContext {
+	if (options.floatingHost) {
+		return {
+			host: options.floatingHost,
+			constrainToHost: options.constrainToFloatingHost ?? false,
+			scrollHost: options.floatingScrollHost ?? getOwnerWindow(options.floatingHost),
+		};
+	}
+
 	const anchorEl = asHTMLElement(anchor);
 	if (!anchorEl) {
 		return { host: getActiveDocument().body, constrainToHost: false, scrollHost: getActiveWindow() };
@@ -76,11 +175,13 @@ function resolveHostContext(anchor: HTMLElement | DOMRect): FloatingHostContext 
 		};
 	}
 
-	const taskCreatorHost = asHTMLElement(anchorEl.closest(
-		'.operon-task-creator-modal-container, .operon-task-creator-modal',
-	), anchorEl);
+	const taskCreatorHost = asHTMLElement(anchorEl.closest('.operon-task-creator-modal-container'), anchorEl);
 	if (taskCreatorHost) {
-		return { host: taskCreatorHost, constrainToHost: false, scrollHost: ownerWindow };
+		return {
+			host: taskCreatorHost,
+			constrainToHost: true,
+			scrollHost: asHTMLElement(anchorEl.closest('.modal-content'), anchorEl) ?? ownerWindow,
+		};
 	}
 
 	const obsidianModalHost = asHTMLElement(anchorEl.closest('.modal'), anchorEl);
@@ -100,13 +201,23 @@ export function positionFloatingElement(
 	anchor: HTMLElement | DOMRect,
 	options: FloatingPositionOptions = {},
 ): void {
+	const anchorEl = asHTMLElement(anchor);
 	const rect = resolveRect(anchor);
-	const { host, constrainToHost } = resolveHostContext(anchor);
+	const { host, constrainToHost } = resolveHostContext(anchor, options);
 	const hostWindow = getOwnerWindow(host);
 	const hostIsBody = host === getOwnerBody(host);
 	const margin = options.margin ?? 8;
 	const gap = options.gap ?? 6;
 	const useHostBounds = constrainToHost && !hostIsBody;
+	const mobileSurfaceContext = getMobilePickerSurfaceContext(anchorEl, options, host);
+	if (useHostBounds && mobileSurfaceContext) {
+		if (mobileSurfaceContext.kind === 'task-editor') {
+			positionTaskEditorMobileSurface(panel, host, hostWindow, margin);
+		} else {
+			positionTaskCreatorMobileSurface(panel, mobileSurfaceContext.root, hostWindow, margin);
+		}
+		return;
+	}
 	const DOMRectCtor = (hostWindow as Window & { DOMRect?: typeof DOMRect }).DOMRect ?? DOMRect;
 	const hostRect = useHostBounds
 		? host.getBoundingClientRect()
@@ -157,6 +268,101 @@ export function positionFloatingElement(
 	panel.style.left = `${Math.round(left)}px`;
 }
 
+function positionTaskEditorMobileSurface(
+	panel: HTMLElement,
+	host: HTMLElement,
+	hostWindow: Window,
+	margin: number,
+): void {
+	const hostRect = host.getBoundingClientRect();
+	const visibleLeft = Math.max(hostRect.left, 0);
+	const visibleRight = Math.min(hostRect.right, hostWindow.innerWidth);
+	const visibleTop = Math.max(hostRect.top, 0);
+	const visibleBottom = hostWindow.innerHeight;
+	const surfaceTop = resolveTaskEditorMobileSurfaceTop(host, visibleTop, visibleBottom);
+	const availableWidth = Math.max(
+		TASK_EDITOR_MOBILE_SURFACE_MIN_WIDTH,
+		visibleRight - visibleLeft - margin * 2,
+	);
+	const availableHeight = Math.max(1, visibleBottom - surfaceTop - margin * 2);
+	const left = visibleLeft + margin;
+	const top = surfaceTop + margin;
+
+	panel.style.width = `${Math.round(availableWidth)}px`;
+	panel.style.maxWidth = `${Math.round(availableWidth)}px`;
+	panel.style.maxHeight = `${Math.round(availableHeight)}px`;
+	panel.style.left = `${Math.round(left)}px`;
+	panel.style.top = `${Math.round(top)}px`;
+}
+
+function resolveTaskEditorMobileSurfaceTop(
+	host: HTMLElement,
+	visibleTop: number,
+	visibleBottom: number,
+): number {
+	const coreToolbar = asHTMLElement(host.querySelector(TASK_EDITOR_MOBILE_CORE_TOOLBAR_SELECTOR), host);
+	if (coreToolbar) {
+		const toolbarRect = coreToolbar.getBoundingClientRect();
+		if (toolbarRect.bottom > visibleTop && toolbarRect.top < visibleBottom) {
+			return Math.max(visibleTop, toolbarRect.bottom);
+		}
+	}
+
+	const description = asHTMLElement(host.querySelector(TASK_EDITOR_MOBILE_DESCRIPTION_SELECTOR), host);
+	if (!description) return visibleTop;
+	const descriptionRect = description.getBoundingClientRect();
+	if (descriptionRect.bottom <= visibleTop || descriptionRect.top >= visibleBottom) return visibleTop;
+	return Math.max(visibleTop, descriptionRect.bottom);
+}
+
+function positionTaskCreatorMobileSurface(
+	panel: HTMLElement,
+	root: HTMLElement,
+	hostWindow: Window,
+	margin: number,
+): void {
+	const modal = asHTMLElement(root.closest(TASK_CREATOR_MOBILE_MODAL_SELECTOR), root) ?? root;
+	const modalRect = modal.getBoundingClientRect();
+	const visibleLeft = Math.max(modalRect.left, 0);
+	const visibleRight = Math.min(modalRect.right, hostWindow.innerWidth);
+	const visibleTop = Math.max(modalRect.top, 0);
+	const visibleBottom = Math.min(modalRect.bottom, hostWindow.innerHeight);
+	const surfaceTop = resolveTaskCreatorMobileSurfaceTop(root, visibleTop, visibleBottom);
+	const availableWidth = Math.max(
+		TASK_CREATOR_MOBILE_SURFACE_MIN_WIDTH,
+		visibleRight - visibleLeft - margin * 2,
+	);
+	const availableHeight = Math.max(1, visibleBottom - surfaceTop - margin * 2);
+	const left = visibleLeft + margin;
+	const top = surfaceTop + margin;
+
+	panel.style.width = `${Math.round(availableWidth)}px`;
+	panel.style.maxWidth = `${Math.round(availableWidth)}px`;
+	panel.style.maxHeight = `${Math.round(availableHeight)}px`;
+	panel.style.left = `${Math.round(left)}px`;
+	panel.style.top = `${Math.round(top)}px`;
+}
+
+function resolveTaskCreatorMobileSurfaceTop(
+	root: HTMLElement,
+	visibleTop: number,
+	visibleBottom: number,
+): number {
+	const actionRow = asHTMLElement(root.querySelector(TASK_CREATOR_MOBILE_ACTION_ROW_SELECTOR), root);
+	if (actionRow) {
+		const actionRect = actionRow.getBoundingClientRect();
+		if (actionRect.bottom > visibleTop && actionRect.top < visibleBottom) {
+			return Math.max(visibleTop, actionRect.bottom);
+		}
+	}
+
+	const toolbar = asHTMLElement(root.querySelector(TASK_CREATOR_MOBILE_TOOLBAR_SELECTOR), root);
+	if (!toolbar) return visibleTop;
+	const toolbarRect = toolbar.getBoundingClientRect();
+	if (toolbarRect.bottom <= visibleTop || toolbarRect.top >= visibleBottom) return visibleTop;
+	return Math.max(visibleTop, toolbarRect.bottom);
+}
+
 export function createFloatingPanel(
 	anchor: HTMLElement | DOMRect,
 	className: string,
@@ -164,12 +370,27 @@ export function createFloatingPanel(
 	options: FloatingPanelOptions = {},
 ): FloatingPanel {
 	const anchorEl = asHTMLElement(anchor);
-	const panel = createOwnerElement(anchorEl, 'div');
+	const { host, constrainToHost, scrollHost } = resolveHostContext(anchor, options);
+	const mobileSurfaceContext = getMobilePickerSurfaceContext(anchorEl, options, host);
+	const panelHost = mobileSurfaceContext?.panelHost ?? host;
+	const panel = createOwnerElement(anchorEl ?? host, 'div');
 	panel.className = className;
-	const { host, constrainToHost, scrollHost } = resolveHostContext(anchor);
+	if (mobileSurfaceContext) {
+		panel.classList.add('operon-mobile-picker-surface', mobileSurfaceContext.surfaceClass);
+	}
+	const positionOptions: FloatingPositionOptions = {
+		floatingHost: options.floatingHost,
+		floatingScrollHost: options.floatingScrollHost,
+		constrainToFloatingHost: options.constrainToFloatingHost,
+	};
 	const hostDocument = getOwnerDocument(host);
 	const hostWindow = getOwnerWindow(host);
-	panel.style.position = constrainToHost ? 'absolute' : 'fixed';
+	const visualViewport = mobileSurfaceContext ? hostWindow.visualViewport : null;
+	panel.style.position = mobileSurfaceContext || !constrainToHost ? 'fixed' : 'absolute';
+	if (mobileSurfaceContext) {
+		panel.addClass('is-opening');
+		positionFloatingElement(panel, anchor, positionOptions);
+	}
 	let rafId = 0;
 	let focusRetentionTimer = 0;
 	let retainedFocusInput: HTMLElement | null = null;
@@ -189,7 +410,7 @@ export function createFloatingPanel(
 				cleanup();
 				return;
 			}
-			positionFloatingElement(panel, anchor);
+			positionFloatingElement(panel, anchor, positionOptions);
 		});
 	};
 	const sizeObserver = new ResizeObserver(() => schedulePosition());
@@ -234,9 +455,12 @@ export function createFloatingPanel(
 		hostDocument.removeEventListener('mousedown', onOutside, true);
 		hostDocument.removeEventListener('keydown', onKeyDown, true);
 		scrollHost.removeEventListener('scroll', schedulePosition, true);
-		hostWindow.removeEventListener('resize', cleanup);
+		hostWindow.removeEventListener('resize', mobileSurfaceContext ? schedulePosition : cleanup);
+		visualViewport?.removeEventListener('resize', schedulePosition);
+		visualViewport?.removeEventListener('scroll', schedulePosition);
 		hostWindow.removeEventListener('blur', cleanup);
 		onClose?.();
+		dispatchMobilePickerEvent(mobileSurfaceContext, mobileSurfaceContext?.closeEvents ?? []);
 	};
 	record.close = cleanup;
 
@@ -250,7 +474,8 @@ export function createFloatingPanel(
 		if (event.key === 'Escape') cleanup();
 	};
 
-	host.appendChild(panel);
+	dispatchMobilePickerEvent(mobileSurfaceContext, mobileSurfaceContext?.openEvents ?? []);
+	panelHost.appendChild(panel);
 	activeFloatingPanels.add(record);
 	if (options.retainInputFocus) {
 		panel.addEventListener('focusin', onPanelFocusIn);
@@ -263,12 +488,17 @@ export function createFloatingPanel(
 			cleanup();
 			return;
 		}
-		positionFloatingElement(panel, anchor);
+		positionFloatingElement(panel, anchor, positionOptions);
+		if (mobileSurfaceContext) {
+			panel.removeClass('is-opening');
+		}
 		sizeObserver.observe(panel);
 		hostDocument.addEventListener('mousedown', onOutside, true);
 		hostDocument.addEventListener('keydown', onKeyDown, true);
 		scrollHost.addEventListener('scroll', schedulePosition, true);
-		hostWindow.addEventListener('resize', cleanup);
+		hostWindow.addEventListener('resize', mobileSurfaceContext ? schedulePosition : cleanup);
+		visualViewport?.addEventListener('resize', schedulePosition);
+		visualViewport?.addEventListener('scroll', schedulePosition);
 		hostWindow.addEventListener('blur', cleanup);
 	});
 	return { panel, close: cleanup };

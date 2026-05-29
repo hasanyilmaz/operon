@@ -47,6 +47,7 @@ export function showFileTaskTemplatePicker(
 	let activeIndex = Math.max(0, matches.findIndex(candidate => candidate.option.id === selectedId));
 
 	const selectTemplate = (template: FileTaskTemplateOption): void => {
+		if (completed) return;
 		completed = true;
 		options.onSelect(template);
 		close();
@@ -81,14 +82,17 @@ export function showFileTaskTemplatePicker(
 			});
 			button.addEventListener('pointerdown', event => {
 				event.preventDefault();
+				event.stopPropagation();
 				selectTemplate(candidate.option);
 			});
 			button.addEventListener('mousedown', event => {
 				event.preventDefault();
+				event.stopPropagation();
 				selectTemplate(candidate.option);
 			});
 			button.addEventListener('click', event => {
 				event.preventDefault();
+				event.stopPropagation();
 				selectTemplate(candidate.option);
 			});
 

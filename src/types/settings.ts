@@ -8,11 +8,14 @@ import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, create
 import { CANONICAL_KEYS } from './keys';
 import {
 	CalendarAppearanceMode,
+	CalendarColorSource,
+	CalendarMobileViewMode,
 	CalendarPreset,
 	CalendarSurfaceType,
 	cloneDefaultCalendarPresets,
 	createCalendarPresetId,
 	normalizeBuiltInCalendarPreset,
+	normalizeCalendarMobileViewMode,
 } from './calendar';
 import {
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS,
@@ -46,10 +49,16 @@ import {
 	sanitizeExcludedFoldersForFileTasksFolder,
 } from '../core/settings-folder-rules';
 
-export const CURRENT_SETTINGS_VERSION = 80;
+export const CURRENT_SETTINGS_VERSION = 84;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 1;
 
 export type FallbackTaskIconSource = 'pipelineStatusIcon' | 'priorityIcon' | 'stateIcon';
+export type PinnedTasksDesktopSurface = 'floating' | 'sidebar';
+export type PinnedTasksSidebarSide = 'left' | 'right';
+export interface MobileGlobalTaskFabPosition {
+	xRatio: number;
+	yRatio: number;
+}
 
 const DEFAULT_CALENDAR_DEFAULT_PRESET_ID = 'calendar-preset-3day';
 const DEFAULT_KANBAN_DEFAULT_PRESET_ID = 'kanban-preset-default';
@@ -117,6 +126,15 @@ export const CALENDAR_AUTO_SCROLL_POSITION_OPTIONS = [0.1, 0.2, 0.3, 0.4, 0.5] a
 export const CALENDAR_SIDEBAR_WIDTH_MIN = 240;
 export const CALENDAR_SIDEBAR_WIDTH_MAX = 720;
 export const CALENDAR_SIDEBAR_WIDTH_PX_OPTIONS = [240, 280, 320, 360, 400, 480, 560, 640, 720] as const;
+export const CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN = 320;
+export const CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX = 1200;
+export const CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS = [15, 30, 60] as const;
+export const CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS = [0, 3, 7, 14, 30] as const;
+export const CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS = [7, 14, 21, 30, 60] as const;
+export const CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS = ['all', 4, 5, 6, 7] as const;
+export type CalendarMobileAgendaPastDays = typeof CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS[number];
+export type CalendarMobileAgendaFutureDays = typeof CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS[number];
+export type CalendarMobileAllDayVisibleTaskLimit = typeof CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS[number];
 const CONTEXTUAL_MENU_ACTION_ID_SET = new Set<ContextualMenuActionId>(
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.map(action => action.id),
 );
@@ -127,8 +145,9 @@ export const KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN = 1;
 export const KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX = 30;
 export const KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN = 600;
 export const KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX = 1200;
-export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN = 12;
+export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN = 6;
 export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX = 48;
+export const DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS = [10, 30, 60, 120] as const;
 export type TrackerTaskDescriptionClickAction = 'jumpToSource' | 'openTaskEditor';
 export type FlowTimeMode = 'tracktime' | 'flowtime';
 export type InlineTaskSaveMode = 'daily-notes' | 'specific-file' | 'active-file' | 'ask-every-time';
@@ -306,6 +325,28 @@ export const TASK_EDITOR_WORKFLOW_PICKER_ORDER = [
 
 export type TaskEditorWorkflowPickerKey = typeof TASK_EDITOR_WORKFLOW_PICKER_ORDER[number];
 
+export const TASK_EDITOR_MOBILE_CORE_TOOL_ORDER = [
+	'goToSource',
+	'play',
+	'note',
+	'taskIcon',
+	'taskColor',
+	'priority',
+	'status',
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'datetimeStart',
+	'estimate',
+	'datetimeEnd',
+	'repeat',
+	'dateCompleted',
+	'dateCancelled',
+	'remove',
+] as const;
+
+export type TaskEditorMobileCoreToolKey = typeof TASK_EDITOR_MOBILE_CORE_TOOL_ORDER[number];
+
 export const INLINE_TASK_COMPACT_CHIP_ORDER = [
 	'priority',
 	'status',
@@ -374,6 +415,26 @@ export const TASK_CREATOR_FALLBACK_FIELD_ICONS: Record<TaskCreatorToolbarFieldKe
 	links: 'link',
 };
 
+export const TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS: Record<TaskEditorMobileCoreToolKey, string> = {
+	goToSource: 'external-link',
+	play: 'play',
+	note: 'notebook-pen',
+	taskIcon: 'shapes',
+	taskColor: 'palette',
+	priority: 'flag',
+	status: 'circle-dot',
+	dateStarted: 'plane-takeoff',
+	dateScheduled: 'calendar-cog',
+	dateDue: 'calendar-clock',
+	datetimeStart: 'between-horizontal-start',
+	estimate: 'equal-approximately',
+	datetimeEnd: 'between-horizontal-end',
+	repeat: 'repeat',
+	dateCompleted: 'calendar-check',
+	dateCancelled: 'calendar-x',
+	remove: 'trash-2',
+};
+
 export interface TaskCreatorToolbarItem {
 	key: TaskCreatorToolbarFieldKey;
 	visible: boolean;
@@ -381,6 +442,11 @@ export interface TaskCreatorToolbarItem {
 
 export interface TaskEditorWorkflowPickerItem {
 	key: TaskEditorWorkflowPickerKey;
+	visible: boolean;
+}
+
+export interface TaskEditorMobileCoreToolItem {
+	key: TaskEditorMobileCoreToolKey;
 	visible: boolean;
 }
 
@@ -510,6 +576,10 @@ function buildDefaultTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerIt
 		{ key: 'blocking', visible: false },
 		{ key: 'blockedBy', visible: false },
 	];
+}
+
+function buildDefaultTaskEditorMobileCoreToolItems(): TaskEditorMobileCoreToolItem[] {
+	return TASK_EDITOR_MOBILE_CORE_TOOL_ORDER.map(key => ({ key, visible: true }));
 }
 
 export function buildCompatibilityTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerItem[] {
@@ -756,6 +826,8 @@ export interface OperonSettings {
 	taskCreatorToolbar: TaskCreatorToolbarItem[];
 	/** Ordered, user-customizable picker rows shown in the Task Editor workflow area. */
 	taskEditorWorkflowPickers: TaskEditorWorkflowPickerItem[];
+	/** Ordered, phone-only core action icons shown in the Task Editor compact toolbar. */
+	taskEditorMobileCoreTools: TaskEditorMobileCoreToolItem[];
 	/** Ordered, user-customizable compact inline-task chips used in live preview conceal and reading view. */
 	inlineTaskCompactChips: InlineTaskCompactChipItem[];
 	/** Ordered, user-customizable compact filter chips used by filter surfaces. */
@@ -814,6 +886,8 @@ export interface OperonSettings {
 	inlineBackgroundIntensity: number;
 
 	// Pinned tasks
+	pinnedTasksDesktopSurface: PinnedTasksDesktopSurface;
+	pinnedTasksSidebarSide: PinnedTasksSidebarSide;
 	pinnedTaskItemWidth: number;
 	pinnedDockPosition: 'bottom-center' | 'bottom-left' | 'bottom-right';
 	pinnedDockX: number | null;
@@ -823,6 +897,10 @@ export interface OperonSettings {
 	pinnedDockLayout: 'horizontal' | 'vertical' | 'grid';
 	pinnedDockGridCols: 2 | 3 | 4 | 5;
 	pinnedDockDisableOnMobile: boolean;
+	mobileGlobalTaskFabEnabled: boolean;
+	mobileGlobalTaskFabHideInCalendar: boolean;
+	mobileGlobalTaskFabHideInKanban: boolean;
+	mobileGlobalTaskFabPosition: MobileGlobalTaskFabPosition | null;
 	pinnedDockAutoCloseEnabled: boolean;
 	pinnedDockAutoPin: boolean;
 	pinnedDockAutoUnpinFinished: boolean;
@@ -860,6 +938,21 @@ export interface OperonSettings {
 	calendarTouchTimeGridTaskMoveEnabled: boolean;
 	calendarTouchDragLongPressMs: number;
 	calendarTouchDragCancelDistancePx: number;
+	calendarMobileEnabled: boolean;
+	calendarMobileMaxWidthPx: number;
+	calendarMobileDefaultView: CalendarMobileViewMode;
+	calendarMobileDefaultSourcePresetId: string | null;
+	calendarMobileSlotMinutes: number;
+	calendarMobileShowProjectedOccurrences: boolean;
+	calendarMobileShowExternalCalendars: boolean;
+	calendarMobileColorSource: CalendarColorSource;
+	calendarMobileShowDueMarkers: boolean;
+	calendarMobileShowAllDayItems: boolean;
+	calendarMobileAgendaPastDays: CalendarMobileAgendaPastDays;
+	calendarMobileAgendaFutureDays: CalendarMobileAgendaFutureDays;
+	calendarMobileAgendaShowCompletedItems: boolean;
+	calendarMobileAllDayVisibleTaskLimit: CalendarMobileAllDayVisibleTaskLimit;
+	calendarMobileShowCompletedItems: boolean;
 
 	// Kanban
 	kanbanPresets: KanbanPreset[];
@@ -869,10 +962,14 @@ export interface OperonSettings {
 	kanbanMobileLayoutChromeEnabled: boolean;
 	kanbanMobileLayoutMaxWidthPx: number;
 	kanbanMobileCompactSwimlaneWidthPx: number;
+	kanbanMobileSwimlaneRailAlwaysVisible: boolean;
+	kanbanMobileHorizontalStatusSnapEnabled: boolean;
 
 	// Indexer
 	indexEventDebounceMs: number;
 	fullReindexOnStartup: boolean;
+	duplicateAlertAutoOpenManager: boolean;
+	duplicateAlertDelaySeconds: number;
 	taskStatsBackfillVersion: number;
 
 	// File task templates
@@ -1117,6 +1214,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	estimateAutoReallocation: false,
 	taskCreatorToolbar: buildDefaultTaskCreatorToolbarItems(),
 	taskEditorWorkflowPickers: buildDefaultTaskEditorWorkflowPickerItems(),
+	taskEditorMobileCoreTools: buildDefaultTaskEditorMobileCoreToolItems(),
 	inlineTaskCompactChips: buildDefaultInlineTaskCompactChipItems(),
 	filterTaskCompactChips: buildDefaultFilterTaskCompactChipItems(),
 	taskFinderCompactChips: buildDefaultTaskFinderCompactChipItems(),
@@ -1149,6 +1247,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	inlineExpandedMetadataDensity: 'medium',
 	inlineBackgroundIntensity: 0.18,
 
+	pinnedTasksDesktopSurface: 'floating',
+	pinnedTasksSidebarSide: 'left',
 	pinnedTaskItemWidth: 240,
 	pinnedDockPosition: 'bottom-center',
 	pinnedDockX: null,
@@ -1158,6 +1258,10 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	pinnedDockLayout: 'vertical',
 	pinnedDockGridCols: 2,
 	pinnedDockDisableOnMobile: true,
+	mobileGlobalTaskFabEnabled: true,
+	mobileGlobalTaskFabHideInCalendar: false,
+	mobileGlobalTaskFabHideInKanban: false,
+	mobileGlobalTaskFabPosition: null,
 	pinnedDockAutoCloseEnabled: true,
 	pinnedDockAutoPin: false,
 	pinnedDockAutoUnpinFinished: true,
@@ -1193,6 +1297,21 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	calendarTouchTimeGridTaskMoveEnabled: true,
 	calendarTouchDragLongPressMs: 260,
 	calendarTouchDragCancelDistancePx: 10,
+	calendarMobileEnabled: true,
+	calendarMobileMaxWidthPx: 720,
+	calendarMobileDefaultView: 'agenda',
+	calendarMobileDefaultSourcePresetId: DEFAULT_CALENDAR_DEFAULT_PRESET_ID,
+	calendarMobileSlotMinutes: 30,
+	calendarMobileShowProjectedOccurrences: true,
+	calendarMobileShowExternalCalendars: true,
+	calendarMobileColorSource: 'taskColor',
+	calendarMobileShowDueMarkers: true,
+	calendarMobileShowAllDayItems: true,
+	calendarMobileAgendaPastDays: 3,
+	calendarMobileAgendaFutureDays: 14,
+	calendarMobileAgendaShowCompletedItems: false,
+	calendarMobileAllDayVisibleTaskLimit: 'all',
+	calendarMobileShowCompletedItems: false,
 
 	kanbanPresets: cloneDefaultKanbanPresets(),
 	kanbanDefaultPresetId: DEFAULT_KANBAN_DEFAULT_PRESET_ID,
@@ -1200,10 +1319,14 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	kanbanMaxVisibleTasksPerCell: 7,
 	kanbanMobileLayoutChromeEnabled: true,
 	kanbanMobileLayoutMaxWidthPx: 900,
-	kanbanMobileCompactSwimlaneWidthPx: 24,
+	kanbanMobileCompactSwimlaneWidthPx: 6,
+	kanbanMobileSwimlaneRailAlwaysVisible: true,
+	kanbanMobileHorizontalStatusSnapEnabled: true,
 
 	indexEventDebounceMs: 250,
 	fullReindexOnStartup: false,
+	duplicateAlertAutoOpenManager: false,
+	duplicateAlertDelaySeconds: 10,
 	taskStatsBackfillVersion: 0,
 
 	fileTaskTemplateFolder: '',
@@ -1260,6 +1383,7 @@ export const NUMERIC_CONSTRAINTS = {
 	calendarDefaultScrollHour: { min: 0, max: 23 },
 	calendarTouchDragLongPressMs: { min: 150, max: 600 },
 	calendarTouchDragCancelDistancePx: { min: 4, max: 24 },
+	calendarMobileMaxWidthPx: { min: CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, max: CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX },
 	kanbanExpandedColumnWidthPx: { min: KANBAN_EXPANDED_COLUMN_WIDTH_MIN, max: KANBAN_EXPANDED_COLUMN_WIDTH_MAX },
 	kanbanMaxVisibleTasksPerCell: { min: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, max: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX },
 	kanbanMobileLayoutMaxWidthPx: { min: KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, max: KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX },
@@ -1506,15 +1630,19 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 		: null;
 	const collapseEmptyColumns = typeof src.collapseEmptyColumns === 'boolean'
 		? src.collapseEmptyColumns
-		: src.showEmptyColumns === true;
+		: typeof src.showEmptyColumns === 'boolean'
+			? !src.showEmptyColumns
+			: true;
 	const collapseEmptySwimlanes = typeof src.collapseEmptySwimlanes === 'boolean'
 		? src.collapseEmptySwimlanes
-		: src.showEmptySwimlanes !== false;
+		: typeof src.showEmptySwimlanes === 'boolean'
+			? !src.showEmptySwimlanes
+			: true;
 	const autoCollapseFinishedColumns = typeof src.autoCollapseFinishedColumns === 'boolean'
 		? src.autoCollapseFinishedColumns
 		: typeof src.autoHideFinishedTasks === 'boolean'
 			? src.autoHideFinishedTasks
-			: true;
+			: false;
 	const sortMode = normalizeKanbanSortMode(src.sortMode);
 	const sortRules = normalizeKanbanSortRules(src.sortRules);
 
@@ -1615,6 +1743,67 @@ function normalizeCalendarTouchDragCancelDistancePx(raw: unknown): number {
 		return DEFAULT_SETTINGS.calendarTouchDragCancelDistancePx;
 	}
 	return Math.max(4, Math.min(24, Math.round(raw)));
+}
+
+function normalizeMobileGlobalTaskFabPosition(raw: unknown): MobileGlobalTaskFabPosition | null {
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+	const record = raw as Record<string, unknown>;
+	const xRatio = record.xRatio;
+	const yRatio = record.yRatio;
+	if (typeof xRatio !== 'number' || !Number.isFinite(xRatio)) return null;
+	if (typeof yRatio !== 'number' || !Number.isFinite(yRatio)) return null;
+	return {
+		xRatio: Math.max(0, Math.min(1, xRatio)),
+		yRatio: Math.max(0, Math.min(1, yRatio)),
+	};
+}
+
+function normalizeCalendarMobileMaxWidthPx(raw: unknown): number {
+	if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+		return DEFAULT_SETTINGS.calendarMobileMaxWidthPx;
+	}
+	return Math.max(
+		CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN,
+		Math.min(CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, Math.round(raw)),
+	);
+}
+
+function normalizeCalendarMobileSlotMinutes(raw: unknown): number {
+	if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+		return DEFAULT_SETTINGS.calendarMobileSlotMinutes;
+	}
+	const rounded = Math.round(raw);
+	return CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS.includes(rounded as typeof CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS[number])
+		? rounded
+		: DEFAULT_SETTINGS.calendarMobileSlotMinutes;
+}
+
+function normalizeCalendarMobileAgendaPastDays(raw: unknown): CalendarMobileAgendaPastDays {
+	const parsed = typeof raw === 'string'
+		? Number.parseInt(raw, 10)
+		: raw;
+	return CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS.includes(parsed as CalendarMobileAgendaPastDays)
+		? parsed as CalendarMobileAgendaPastDays
+		: DEFAULT_SETTINGS.calendarMobileAgendaPastDays;
+}
+
+function normalizeCalendarMobileAgendaFutureDays(raw: unknown): CalendarMobileAgendaFutureDays {
+	const parsed = typeof raw === 'string'
+		? Number.parseInt(raw, 10)
+		: raw;
+	return CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS.includes(parsed as CalendarMobileAgendaFutureDays)
+		? parsed as CalendarMobileAgendaFutureDays
+		: DEFAULT_SETTINGS.calendarMobileAgendaFutureDays;
+}
+
+function normalizeCalendarMobileAllDayVisibleTaskLimit(raw: unknown): CalendarMobileAllDayVisibleTaskLimit {
+	if (raw === 'all') return 'all';
+	const parsed = typeof raw === 'string'
+		? Number.parseInt(raw, 10)
+		: raw;
+	return CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS.includes(parsed as CalendarMobileAllDayVisibleTaskLimit)
+		? parsed as CalendarMobileAllDayVisibleTaskLimit
+		: DEFAULT_SETTINGS.calendarMobileAllDayVisibleTaskLimit;
 }
 
 function normalizeContextualMenuOpenDelayMs(raw: unknown): number {
@@ -2241,11 +2430,21 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (!['bottom-center', 'bottom-left', 'bottom-right'].includes(out.pinnedDockPosition)) {
 		out.pinnedDockPosition = DEFAULT_SETTINGS.pinnedDockPosition;
 	}
+	if (!['floating', 'sidebar'].includes(out.pinnedTasksDesktopSurface)) {
+		out.pinnedTasksDesktopSurface = DEFAULT_SETTINGS.pinnedTasksDesktopSurface;
+	}
+	if (!['left', 'right'].includes(out.pinnedTasksSidebarSide)) {
+		out.pinnedTasksSidebarSide = DEFAULT_SETTINGS.pinnedTasksSidebarSide;
+	}
 	out.pinnedDockColorSource = normalizeTaskColorSource(
 		out.pinnedDockColorSource,
 		PINNED_DOCK_TASK_COLOR_SOURCES,
 		DEFAULT_SETTINGS.pinnedDockColorSource,
 	);
+	out.mobileGlobalTaskFabEnabled = src.mobileGlobalTaskFabEnabled !== false;
+	out.mobileGlobalTaskFabHideInCalendar = src.mobileGlobalTaskFabHideInCalendar === true;
+	out.mobileGlobalTaskFabHideInKanban = src.mobileGlobalTaskFabHideInKanban === true;
+	out.mobileGlobalTaskFabPosition = normalizeMobileGlobalTaskFabPosition(src.mobileGlobalTaskFabPosition);
 	if (!['monday', 'sunday'].includes(out.calendarWeekStart)) {
 		out.calendarWeekStart = DEFAULT_SETTINGS.calendarWeekStart;
 	}
@@ -2357,6 +2556,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			? DEFAULT_SETTINGS.taskEditorWorkflowPickers
 			: buildCompatibilityTaskEditorWorkflowPickerItems(),
 	);
+	out.taskEditorMobileCoreTools = normalizeTaskEditorMobileCoreTools(src.taskEditorMobileCoreTools);
 	out.inlineTaskCompactChips = normalizeInlineTaskCompactChips(src.inlineTaskCompactChips);
 	out.filterTaskCompactChips = normalizeFilterTaskCompactChips(src);
 	out.taskFinderCompactChips = normalizeTaskFinderCompactChips(src.taskFinderCompactChips);
@@ -2463,12 +2663,50 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	} else {
 		out.calendarDefaultPresetId = normalizeOptionalString(src.calendarDefaultPresetId) ?? null;
 	}
+	out.calendarMobileEnabled = src.calendarMobileEnabled !== false;
+	out.calendarMobileMaxWidthPx = normalizeCalendarMobileMaxWidthPx(src.calendarMobileMaxWidthPx);
+	out.calendarMobileDefaultView = normalizeCalendarMobileViewMode(
+		src.calendarMobileDefaultView,
+		DEFAULT_SETTINGS.calendarMobileDefaultView,
+	);
+	out.calendarMobileDefaultSourcePresetId = (() => {
+		const fallbackPresetId = out.calendarDefaultPresetId && out.calendarPresets.some(preset => preset.id === out.calendarDefaultPresetId)
+			? out.calendarDefaultPresetId
+			: out.calendarPresets[0]?.id ?? null;
+		const rawPresetId = typeof src.calendarMobileDefaultSourcePresetId === 'string'
+			? src.calendarMobileDefaultSourcePresetId
+			: null;
+		return rawPresetId && out.calendarPresets.some(preset => preset.id === rawPresetId)
+			? rawPresetId
+			: fallbackPresetId;
+	})();
+	out.calendarMobileSlotMinutes = normalizeCalendarMobileSlotMinutes(src.calendarMobileSlotMinutes);
+	out.calendarMobileShowProjectedOccurrences = src.calendarMobileShowProjectedOccurrences !== false;
+	out.calendarMobileShowExternalCalendars = src.calendarMobileShowExternalCalendars !== false;
+	out.calendarMobileColorSource = normalizeTaskColorSource(
+		src.calendarMobileColorSource,
+		CALENDAR_TASK_COLOR_SOURCES,
+		DEFAULT_SETTINGS.calendarMobileColorSource,
+	);
+	out.calendarMobileShowDueMarkers = src.calendarMobileShowDueMarkers !== false;
+	out.calendarMobileShowAllDayItems = src.calendarMobileShowAllDayItems !== false;
+	out.calendarMobileAgendaPastDays = normalizeCalendarMobileAgendaPastDays(src.calendarMobileAgendaPastDays);
+	out.calendarMobileAgendaFutureDays = normalizeCalendarMobileAgendaFutureDays(src.calendarMobileAgendaFutureDays);
+	out.calendarMobileAgendaShowCompletedItems = typeof src.calendarMobileAgendaShowCompletedItems === 'boolean'
+		? src.calendarMobileAgendaShowCompletedItems
+		: DEFAULT_SETTINGS.calendarMobileAgendaShowCompletedItems;
+	out.calendarMobileAllDayVisibleTaskLimit = normalizeCalendarMobileAllDayVisibleTaskLimit(src.calendarMobileAllDayVisibleTaskLimit);
+	out.calendarMobileShowCompletedItems = typeof src.calendarMobileShowCompletedItems === 'boolean'
+		? src.calendarMobileShowCompletedItems
+		: DEFAULT_SETTINGS.calendarMobileShowCompletedItems;
 	out.kanbanPresets = normalizeKanbanPresets(src.kanbanPresets);
 	out.kanbanExpandedColumnWidthPx = normalizeKanbanExpandedColumnWidthPx(src.kanbanExpandedColumnWidthPx);
 	out.kanbanMaxVisibleTasksPerCell = normalizeKanbanMaxVisibleTasksPerCell(src.kanbanMaxVisibleTasksPerCell);
 	out.kanbanMobileLayoutChromeEnabled = src.kanbanMobileLayoutChromeEnabled !== false;
 	out.kanbanMobileLayoutMaxWidthPx = normalizeKanbanMobileLayoutMaxWidthPx(src.kanbanMobileLayoutMaxWidthPx);
 	out.kanbanMobileCompactSwimlaneWidthPx = normalizeKanbanMobileCompactSwimlaneWidthPx(src.kanbanMobileCompactSwimlaneWidthPx);
+	out.kanbanMobileSwimlaneRailAlwaysVisible = src.kanbanMobileSwimlaneRailAlwaysVisible !== false;
+	out.kanbanMobileHorizontalStatusSnapEnabled = src.kanbanMobileHorizontalStatusSnapEnabled !== false;
 	if (Array.isArray(src.kanbanPresets)) {
 		if (
 			typeof src.kanbanDefaultPresetId === 'string'
@@ -2626,6 +2864,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.flowTimeMode = src.flowTimeMode === 'flowtime'
 		? 'flowtime'
 		: DEFAULT_SETTINGS.flowTimeMode;
+	out.duplicateAlertDelaySeconds = normalizeAllowedNumber(
+		Math.floor(out.duplicateAlertDelaySeconds),
+		DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS,
+		DEFAULT_SETTINGS.duplicateAlertDelaySeconds,
+	);
 	out.taskStatsBackfillVersion = normalizeTaskStatsBackfillVersion(src.taskStatsBackfillVersion);
 
 	out.settingsVersion = CURRENT_SETTINGS_VERSION;
@@ -2699,6 +2942,53 @@ export function normalizeTaskEditorWorkflowPickers(
 	}
 
 	return normalized;
+}
+
+export function normalizeTaskEditorMobileCoreTools(
+	raw: unknown,
+	fallback: TaskEditorMobileCoreToolItem[] = buildDefaultTaskEditorMobileCoreToolItems(),
+): TaskEditorMobileCoreToolItem[] {
+	if (!Array.isArray(raw)) {
+		return orderTaskEditorMobileCoreTools(fallback.map(item => ({ ...item })));
+	}
+
+	const allowed = new Set<TaskEditorMobileCoreToolKey>(TASK_EDITOR_MOBILE_CORE_TOOL_ORDER);
+	const normalized: TaskEditorMobileCoreToolItem[] = [];
+	const seen = new Set<TaskEditorMobileCoreToolKey>();
+
+	for (const item of raw) {
+		if (!item || typeof item !== 'object') continue;
+		const key = (item as Record<string, unknown>).key;
+		const visible = (item as Record<string, unknown>).visible;
+		if (typeof key !== 'string' || !allowed.has(key as TaskEditorMobileCoreToolKey)) continue;
+		const typedKey = key as TaskEditorMobileCoreToolKey;
+		if (seen.has(typedKey)) continue;
+		seen.add(typedKey);
+		normalized.push({
+			key: typedKey,
+			visible: typeof visible === 'boolean'
+				? visible
+				: fallback.find(candidate => candidate.key === typedKey)?.visible ?? true,
+		});
+	}
+
+	for (const item of fallback) {
+		if (seen.has(item.key)) continue;
+		insertMissingOrderedItem(normalized, { ...item }, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER);
+	}
+
+	return orderTaskEditorMobileCoreTools(normalized);
+}
+
+function orderTaskEditorMobileCoreTools(items: TaskEditorMobileCoreToolItem[]): TaskEditorMobileCoreToolItem[] {
+	const first = items.find(item => item.key === 'goToSource');
+	const last = items.find(item => item.key === 'remove');
+	const middle = items.filter(item => item.key !== 'goToSource' && item.key !== 'remove');
+	return [
+		...(first ? [first] : []),
+		...middle,
+		...(last ? [last] : []),
+	];
 }
 
 function normalizeInlineTaskCompactChips(raw: unknown): InlineTaskCompactChipItem[] {

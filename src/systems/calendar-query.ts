@@ -19,7 +19,8 @@ export interface CalendarQueryResult {
 	items: CalendarItem[];
 }
 
-type CalendarQueryPreset = Pick<CalendarPreset, 'dayCount' | 'showWeekends' | 'todayPosition'> & Partial<Pick<CalendarPreset, 'showProjectedOccurrences'>>;
+export type CalendarQueryPreset = Pick<CalendarPreset, 'dayCount' | 'showWeekends' | 'todayPosition'> & Partial<Pick<CalendarPreset, 'showProjectedOccurrences'>>;
+export type CalendarRangeQueryPreset = Partial<Pick<CalendarPreset, 'showProjectedOccurrences'>>;
 
 export interface CalendarQueryOptions {
 	todayKey?: string;
@@ -33,7 +34,32 @@ export function queryCalendarItems(
 	options: CalendarQueryOptions = {},
 ): CalendarQueryResult {
 	const visibleDates = buildVisibleCalendarDates(anchorDate, preset.dayCount, preset.showWeekends, preset.todayPosition);
-	const rangeStart = visibleDates[0] ?? normalizeDate(anchorDate);
+	return queryCalendarItemsForVisibleDates(
+		tasks,
+		visibleDates,
+		preset,
+		repeatSeriesEntries,
+		options,
+	);
+}
+
+export function queryCalendarItemsForVisibleDates(
+	tasks: IndexedTask[],
+	visibleDatesInput: string[],
+	preset: CalendarRangeQueryPreset = {},
+	repeatSeriesEntries: RepeatSeriesEntry[] = [],
+	options: CalendarQueryOptions = {},
+): CalendarQueryResult {
+	const visibleDates = normalizeVisibleDates(visibleDatesInput);
+	if (visibleDates.length === 0) {
+		return {
+			visibleDates: [],
+			rangeStart: '',
+			rangeEnd: '',
+			items: [],
+		};
+	}
+	const rangeStart = visibleDates[0];
 	const rangeEnd = visibleDates[visibleDates.length - 1] ?? rangeStart;
 	const items: CalendarItem[] = [];
 	const latestOccurrenceBySeries = buildLatestOccurrenceMap(tasks);
@@ -75,6 +101,16 @@ export function queryCalendarItems(
 		rangeEnd,
 		items,
 	};
+}
+
+function normalizeVisibleDates(visibleDates: string[]): string[] {
+	const normalized = Array.from(new Set(
+		visibleDates
+			.map(date => normalizeDate(date))
+			.filter((date): date is string => !!date),
+	));
+	normalized.sort();
+	return normalized;
 }
 
 export function buildVisibleCalendarDates(

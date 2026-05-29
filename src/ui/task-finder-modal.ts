@@ -1,4 +1,4 @@
-import { App, getIcon, Modal, setIcon } from 'obsidian';
+import { App, getIcon, Modal, Platform, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { OperonIndexer } from '../indexer/indexer';
 import {
@@ -64,6 +64,8 @@ export class TaskFinderModal extends Modal {
 	private includeFileButton!: HTMLButtonElement;
 	private includeCancelledButton!: HTMLButtonElement;
 	private includeFinishedButton!: HTMLButtonElement;
+	private toolbarEl: HTMLElement | null = null;
+	private toolsEl: HTMLElement | null = null;
 	private selectedProjectEl!: HTMLElement;
 	private resultsEl!: HTMLElement;
 	private emptyEl!: HTMLElement;
@@ -82,11 +84,21 @@ export class TaskFinderModal extends Modal {
 	private currentResults: TaskFinderResult[] = [];
 	private resolved = false;
 	private chipOverflowFrame: number | null = null;
+	private toolbarOverflowFrame: number | null = null;
 	private readonly outsidePointerHandler = (event: PointerEvent) => {
 		if (this.modalEl.contains(event.target as Node)) return;
 		this.close();
 	};
-	private readonly resizeHandler = () => this.scheduleChipOverflowLayout();
+	private readonly resizeHandler = () => {
+		this.scheduleChipOverflowLayout();
+		this.updateMobileViewportHeight();
+		this.scheduleToolbarOverflowState();
+	};
+	private readonly visualViewportHandler = () => {
+		this.updateMobileViewportHeight();
+		this.scheduleToolbarOverflowState();
+	};
+	private readonly toolbarScrollHandler = () => this.scheduleToolbarOverflowState();
 
 	constructor(
 		app: App,
@@ -101,10 +113,16 @@ export class TaskFinderModal extends Modal {
 	onOpen(): void {
 		this.containerEl.addClass('operon-task-finder-modal-container');
 		this.modalEl.addClass('operon-task-finder-modal');
+		if (Platform.isPhone) {
+			this.containerEl.addClass('operon-task-finder-modal-container-mobile');
+			this.modalEl.addClass('operon-task-finder-modal-mobile');
+		}
 		this.contentEl.empty();
 		this.contentEl.addClass('operon-task-finder');
 		this.containerEl.addEventListener('pointerdown', this.outsidePointerHandler);
 		window.addEventListener('resize', this.resizeHandler);
+		this.registerMobileViewportListeners();
+		this.updateMobileViewportHeight();
 		this.applyInitialScope();
 
 		const searchWrap = this.contentEl.createDiv('operon-task-finder-search-wrap');
@@ -123,104 +141,107 @@ export class TaskFinderModal extends Modal {
 		this.inputEl.addEventListener('keydown', event => this.handleKeydown(event));
 
 		const toolbar = this.contentEl.createDiv('operon-task-finder-toolbar');
+		this.toolbarEl = toolbar;
 		const tools = toolbar.createDiv('operon-task-finder-tools');
+		this.toolsEl = tools;
+		tools.addEventListener('scroll', this.toolbarScrollHandler, { passive: true });
 		const projectGroup = tools.createDiv('operon-task-finder-tool-group');
 		const projectFilterGroup = tools.createDiv('operon-task-finder-tool-group');
 		const formatGroup = tools.createDiv('operon-task-finder-tool-group');
 		const stateGroup = tools.createDiv('operon-task-finder-tool-group');
 		this.createModeButton(projectGroup, 'pc', 'list-tree', t('modals', 'taskFinderProjectTasks'));
 		this.createModeButton(projectGroup, 'pt', 'network', t('modals', 'taskFinderProjectTree'));
-			this.overdueButton = projectFilterGroup.createEl('button', {
-				cls: 'operon-task-finder-tool',
-				attr: {
-					type: 'button',
-				},
-			});
+		this.overdueButton = projectFilterGroup.createEl('button', {
+			cls: 'operon-task-finder-tool',
+			attr: {
+				type: 'button',
+			},
+		});
 		this.overdueButton.addEventListener('pointerdown', event => event.preventDefault());
 		this.overdueButton.addEventListener('click', () => {
 			this.toggleOverdueTasks();
 		});
-			const overdueIcon = this.overdueButton.createSpan('operon-task-finder-tool-icon');
-			setIcon(overdueIcon, 'calendar-search');
-			setAccessibleLabelWithoutTooltip(this.overdueButton, t('modals', 'taskFinderOverdue'));
-			this.happensTodayButton = projectFilterGroup.createEl('button', {
-				cls: 'operon-task-finder-tool',
-				attr: {
-					type: 'button',
-				},
-			});
+		const overdueIcon = this.overdueButton.createSpan('operon-task-finder-tool-icon');
+		setIcon(overdueIcon, 'calendar-search');
+		setAccessibleLabelWithoutTooltip(this.overdueButton, t('modals', 'taskFinderOverdue'));
+		this.happensTodayButton = projectFilterGroup.createEl('button', {
+			cls: 'operon-task-finder-tool',
+			attr: {
+				type: 'button',
+			},
+		});
 		this.happensTodayButton.addEventListener('pointerdown', event => event.preventDefault());
 		this.happensTodayButton.addEventListener('click', () => {
 			this.toggleHappensTodayTasks();
 		});
-			const happensTodayIcon = this.happensTodayButton.createSpan('operon-task-finder-tool-icon');
-			setIcon(happensTodayIcon, 'zap');
-			setAccessibleLabelWithoutTooltip(this.happensTodayButton, t('modals', 'taskFinderHappensToday'));
-			this.recentModifiedButton = projectFilterGroup.createEl('button', {
-				cls: 'operon-task-finder-tool',
-				attr: {
-					type: 'button',
-				},
-			});
+		const happensTodayIcon = this.happensTodayButton.createSpan('operon-task-finder-tool-icon');
+		setIcon(happensTodayIcon, 'zap');
+		setAccessibleLabelWithoutTooltip(this.happensTodayButton, t('modals', 'taskFinderHappensToday'));
+		this.recentModifiedButton = projectFilterGroup.createEl('button', {
+			cls: 'operon-task-finder-tool',
+			attr: {
+				type: 'button',
+			},
+		});
 		this.recentModifiedButton.addEventListener('pointerdown', event => event.preventDefault());
 		this.recentModifiedButton.addEventListener('click', () => {
 			this.toggleRecentModifiedTasks();
 		});
-			const recentModifiedIcon = this.recentModifiedButton.createSpan('operon-task-finder-tool-icon');
-			setIcon(recentModifiedIcon, 'monitor-cog');
-			setAccessibleLabelWithoutTooltip(this.recentModifiedButton, t('modals', 'taskFinderRecentModified'));
-			this.includeInlineButton = formatGroup.createEl('button', {
-				cls: 'operon-task-finder-tool operon-task-finder-format-button',
-				attr: {
-					type: 'button',
-				},
-			});
+		const recentModifiedIcon = this.recentModifiedButton.createSpan('operon-task-finder-tool-icon');
+		setIcon(recentModifiedIcon, 'monitor-cog');
+		setAccessibleLabelWithoutTooltip(this.recentModifiedButton, t('modals', 'taskFinderRecentModified'));
+		this.includeInlineButton = formatGroup.createEl('button', {
+			cls: 'operon-task-finder-tool operon-task-finder-format-button',
+			attr: {
+				type: 'button',
+			},
+		});
 		this.includeInlineButton.addEventListener('pointerdown', event => event.preventDefault());
 		this.includeInlineButton.addEventListener('click', () => {
 			this.toggleFormatScope('inline');
 		});
-			const includeInlineIcon = this.includeInlineButton.createSpan('operon-task-finder-tool-icon');
-			setIcon(includeInlineIcon, 'list-todo');
-			setAccessibleLabelWithoutTooltip(this.includeInlineButton, t('modals', 'taskFinderIncludeInline'));
-			this.includeFileButton = formatGroup.createEl('button', {
-				cls: 'operon-task-finder-tool operon-task-finder-format-button',
-				attr: {
-					type: 'button',
-				},
-			});
+		const includeInlineIcon = this.includeInlineButton.createSpan('operon-task-finder-tool-icon');
+		setIcon(includeInlineIcon, 'list-todo');
+		setAccessibleLabelWithoutTooltip(this.includeInlineButton, t('modals', 'taskFinderIncludeInline'));
+		this.includeFileButton = formatGroup.createEl('button', {
+			cls: 'operon-task-finder-tool operon-task-finder-format-button',
+			attr: {
+				type: 'button',
+			},
+		});
 		this.includeFileButton.addEventListener('pointerdown', event => event.preventDefault());
 		this.includeFileButton.addEventListener('click', () => {
 			this.toggleFormatScope('file');
 		});
-			const includeFileIcon = this.includeFileButton.createSpan('operon-task-finder-tool-icon');
-			setIcon(includeFileIcon, 'scroll-text');
-			setAccessibleLabelWithoutTooltip(this.includeFileButton, t('modals', 'taskFinderIncludeFile'));
-			this.includeCancelledButton = stateGroup.createEl('button', {
-				cls: 'operon-task-finder-tool',
-				attr: {
-					type: 'button',
-				},
-			});
+		const includeFileIcon = this.includeFileButton.createSpan('operon-task-finder-tool-icon');
+		setIcon(includeFileIcon, 'scroll-text');
+		setAccessibleLabelWithoutTooltip(this.includeFileButton, t('modals', 'taskFinderIncludeFile'));
+		this.includeCancelledButton = stateGroup.createEl('button', {
+			cls: 'operon-task-finder-tool',
+			attr: {
+				type: 'button',
+			},
+		});
 		this.includeCancelledButton.addEventListener('pointerdown', event => event.preventDefault());
 		this.includeCancelledButton.addEventListener('click', () => {
 			this.toggleIncludeCancelledTasks();
 		});
-			const includeCancelledIcon = this.includeCancelledButton.createSpan('operon-task-finder-tool-icon');
-			setIcon(includeCancelledIcon, 'square-x');
-			setAccessibleLabelWithoutTooltip(this.includeCancelledButton, t('modals', 'taskFinderIncludeCancelled'));
-			this.includeFinishedButton = stateGroup.createEl('button', {
-				cls: 'operon-task-finder-tool',
-				attr: {
-					type: 'button',
-				},
-			});
+		const includeCancelledIcon = this.includeCancelledButton.createSpan('operon-task-finder-tool-icon');
+		setIcon(includeCancelledIcon, 'square-x');
+		setAccessibleLabelWithoutTooltip(this.includeCancelledButton, t('modals', 'taskFinderIncludeCancelled'));
+		this.includeFinishedButton = stateGroup.createEl('button', {
+			cls: 'operon-task-finder-tool',
+			attr: {
+				type: 'button',
+			},
+		});
 		this.includeFinishedButton.addEventListener('pointerdown', event => event.preventDefault());
 		this.includeFinishedButton.addEventListener('click', () => {
 			this.toggleIncludeFinishedTasks();
 		});
-			const includeFinishedIcon = this.includeFinishedButton.createSpan('operon-task-finder-tool-icon');
-			setIcon(includeFinishedIcon, 'square-check-big');
-			setAccessibleLabelWithoutTooltip(this.includeFinishedButton, t('modals', 'taskFinderIncludeFinished'));
+		const includeFinishedIcon = this.includeFinishedButton.createSpan('operon-task-finder-tool-icon');
+		setIcon(includeFinishedIcon, 'square-check-big');
+		setAccessibleLabelWithoutTooltip(this.includeFinishedButton, t('modals', 'taskFinderIncludeFinished'));
 
 		this.selectedProjectEl = this.contentEl.createDiv('operon-task-finder-selected-project');
 		this.resultsEl = this.contentEl.createDiv('operon-task-finder-results');
@@ -234,10 +255,19 @@ export class TaskFinderModal extends Modal {
 	onClose(): void {
 		this.containerEl.removeEventListener('pointerdown', this.outsidePointerHandler);
 		window.removeEventListener('resize', this.resizeHandler);
+		this.unregisterMobileViewportListeners();
+		this.toolsEl?.removeEventListener('scroll', this.toolbarScrollHandler);
 		if (this.chipOverflowFrame !== null) {
 			window.cancelAnimationFrame(this.chipOverflowFrame);
 			this.chipOverflowFrame = null;
 		}
+		if (this.toolbarOverflowFrame !== null) {
+			window.cancelAnimationFrame(this.toolbarOverflowFrame);
+			this.toolbarOverflowFrame = null;
+		}
+		this.containerEl.style.removeProperty('--operon-task-finder-mobile-viewport-height');
+		this.toolbarEl = null;
+		this.toolsEl = null;
 		this.contentEl.empty();
 		this.persistDefaultScopeIfNeeded();
 		if (!this.resolved) {
@@ -246,15 +276,15 @@ export class TaskFinderModal extends Modal {
 	}
 
 	private createModeButton(container: HTMLElement, mode: ProjectSearchMode, iconName: string, label: string): void {
-			const button = container.createEl('button', {
-				cls: 'operon-task-finder-tool operon-task-finder-mode-button',
-				attr: {
-					type: 'button',
-				},
-			});
-			const icon = button.createSpan('operon-task-finder-tool-icon');
-			setIcon(icon, iconName);
-			setAccessibleLabelWithoutTooltip(button, label);
+		const button = container.createEl('button', {
+			cls: 'operon-task-finder-tool operon-task-finder-mode-button',
+			attr: {
+				type: 'button',
+			},
+		});
+		const icon = button.createSpan('operon-task-finder-tool-icon');
+		setIcon(icon, iconName);
+		setAccessibleLabelWithoutTooltip(button, label);
 		button.addEventListener('pointerdown', event => event.preventDefault());
 		button.addEventListener('click', () => {
 			this.toggleProjectMode(mode);
@@ -349,6 +379,7 @@ export class TaskFinderModal extends Modal {
 		this.activeIndex = Math.min(Math.max(this.activeIndex, 0), Math.max(0, visibleCount - 1));
 		this.renderResults();
 		this.renderFooter();
+		this.scheduleToolbarOverflowState();
 	}
 
 	private renderButtons(): void {
@@ -439,12 +470,12 @@ export class TaskFinderModal extends Modal {
 			text: this.selectedProject.description || this.selectedProject.operonId,
 		});
 		this.renderTaskChipLine(body, this.selectedProject);
-			const clearButton = this.selectedProjectEl.createEl('button', {
-				cls: 'operon-task-finder-selected-clear',
-				attr: { type: 'button' },
-			});
-			setIcon(clearButton, 'x');
-			setAccessibleLabelWithoutTooltip(clearButton, t('modals', 'taskFinderClearSelectedProject'));
+		const clearButton = this.selectedProjectEl.createEl('button', {
+			cls: 'operon-task-finder-selected-clear',
+			attr: { type: 'button' },
+		});
+		setIcon(clearButton, 'x');
+		setAccessibleLabelWithoutTooltip(clearButton, t('modals', 'taskFinderClearSelectedProject'));
 		clearButton.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -578,7 +609,52 @@ export class TaskFinderModal extends Modal {
 		const computedStyle = window.getComputedStyle(this.resultsEl);
 		const gap = Number.parseFloat(computedStyle.rowGap || computedStyle.gap || '0') || 0;
 		const measuredHeight = Math.ceil(rowHeight + gap * Math.max(0, measuredRows.length - 1));
-		this.resultsEl.style.maxHeight = `min(${measuredHeight}px, calc(80dvh - 210px))`;
+		const viewportLimit = Platform.isPhone
+			? this.selectedProject && this.projectMode
+				? 'max(80px, calc(var(--operon-task-finder-mobile-viewport-height, 100dvh) - 260px))'
+				: 'max(96px, calc(var(--operon-task-finder-mobile-viewport-height, 100dvh) - 188px))'
+			: 'calc(80dvh - 210px)';
+		this.resultsEl.style.maxHeight = `min(${measuredHeight}px, ${viewportLimit})`;
+	}
+
+	private registerMobileViewportListeners(): void {
+		if (!Platform.isPhone) return;
+		window.visualViewport?.addEventListener('resize', this.visualViewportHandler);
+		window.visualViewport?.addEventListener('scroll', this.visualViewportHandler);
+	}
+
+	private unregisterMobileViewportListeners(): void {
+		if (!Platform.isPhone) return;
+		window.visualViewport?.removeEventListener('resize', this.visualViewportHandler);
+		window.visualViewport?.removeEventListener('scroll', this.visualViewportHandler);
+	}
+
+	private updateMobileViewportHeight(): void {
+		if (!Platform.isPhone) return;
+		const height = window.visualViewport?.height ?? window.innerHeight;
+		if (!Number.isFinite(height) || height <= 0) return;
+		this.containerEl.style.setProperty('--operon-task-finder-mobile-viewport-height', `${Math.round(height)}px`);
+	}
+
+	private scheduleToolbarOverflowState(): void {
+		if (!Platform.isPhone || !this.toolbarEl || !this.toolsEl) return;
+		if (this.toolbarOverflowFrame !== null) {
+			window.cancelAnimationFrame(this.toolbarOverflowFrame);
+		}
+		this.toolbarOverflowFrame = window.requestAnimationFrame(() => {
+			this.toolbarOverflowFrame = null;
+			this.updateToolbarOverflowState();
+		});
+	}
+
+	private updateToolbarOverflowState(): void {
+		if (!this.toolbarEl || !this.toolsEl) return;
+		const maxScrollLeft = Math.max(0, this.toolsEl.scrollWidth - this.toolsEl.clientWidth);
+		const scrollLeft = this.toolsEl.scrollLeft;
+		const hasLeftOverflow = scrollLeft > 1;
+		const hasRightOverflow = scrollLeft < maxScrollLeft - 1;
+		this.toolbarEl.toggleClass('is-scrollable-left', hasLeftOverflow);
+		this.toolbarEl.toggleClass('is-scrollable-right', hasRightOverflow);
 	}
 
 	private toggleFormatScope(format: 'inline' | 'file'): void {

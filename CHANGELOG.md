@@ -9,10 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.1.0] - 2026-05-30
+
+### New
+- Added a mobile-first Calendar surface with Agenda, Day, and 3 Days views, including touch creation, swipe navigation, drag/drop scheduling, external calendars, projected occurrences, and phone-focused controls.
+- Added a mobile global quick-create button that opens Task Creator from phone screens, can be dragged to a remembered position, can optionally hide in Calendar or Kanban, and still stays out of modal and keyboard flows.
+- Added a Pinned Tasks sidebar mode with a desktop display setting, keyboard-accessible task rows, desktop contextual quick actions, and mobile-first sidebar behavior, so pinned tasks remain easy to reach on touch screens without changing the existing floating dock state.
+- Added delayed duplicate `operonId` alerts with a status bar indicator and Core settings for popup auto-open and alert delay, so automation-heavy workflows are not interrupted by immediate conflict popups.
+- Added Kanban mobile layout controls for mobile mode, max width, swimlane rail visibility, rail width, and horizontal status snap defaults.
+
+### Improved
+- Improved Kanban mobile layout by keeping headers fixed and using compact swimlane rails to give narrow touch screens more usable board space.
+- Improved Kanban mobile snap mode so dragging a card near the left or right edge advances to the adjacent status column.
+- Improved Kanban mobile dragging so holding a card near the top or bottom edge scrolls through tall swimlane boards.
+- Improved Kanban mobile card gestures so short swipes on a card scroll the cell or board on the intended axis, while long-press still starts card dragging with a visible drag preview.
+- Improved Kanban mobile cell quick-add so tapping an empty cell reveals a smaller centered add button without changing desktop hover behavior.
+- Improved Kanban mobile search controls so task finder icons wrap onto additional rows and the scope picker stays within the phone viewport instead of being clipped on narrow screens.
+- Improved the Kanban search field by replacing the long placeholder with a compact scan-search icon.
+- Improved the Kanban toolbar on phones by replacing crowded board buttons with a compact board selector.
+- Improved Task Finder on phones with a compact full-width layout and horizontally scrollable scope buttons, making search easier to use when the mobile keyboard reduces screen space.
+- Improved Task Creator on phones with a compact keyboard-aware layout, horizontally scrollable field toolbar, and shorter template action label.
+- Improved Task Creator on phones so field pickers open in one consistent surface, creator actions stay directly below the toolbar, and the creator fills the available mobile panel area.
+- Improved mobile Calendar Agenda with configurable past and future day windows, optional completed-item visibility, and Today refocus, making longer phone agendas predictable while keeping empty days stable and scannable.
+- Improved mobile Calendar Day and 3 Days scroll behavior so task edits and refreshes keep the current time position, while Today still jumps to a useful current-time focus.
+- Improved mobile Calendar Day and 3 Days swipe transitions with a small sliding day buffer, making adjacent day changes feel smoother on phones.
+- Improved Mobile settings with a dedicated top-level tab and General, Task Editor, Calendar, and Kanban subtabs.
+- Improved Mobile Task Editor settings so canonical toolbar fields show inline task tokens while non-canonical actions keep their plain keys.
+- Improved Task Editor on phones with a compact description-first layout, fixed description/note/core controls, configurable core icon rail, full-width workflow selection rows, auto-closing mobile workflow pickers, and a modal-contained, layout-isolated picker surface that opens without disturbing the editor behind it.
+
+### Changed
+- Mobile Calendar now activates only on phones, preserving desktop Calendar behavior in narrow desktop sidebars.
+- Duplicate `operonId` conflicts now default to a delayed notice and status bar alert instead of opening the duplicate manager immediately; the manager can still be opened manually or re-enabled for automatic opening.
+- Kanban collapse rules now treat empty swimlanes according to visible tasks after auto-collapsed finished columns are ignored, matching what users see on the board.
+- New Kanban presets now start with finished-column auto-collapse disabled, matching the first-board default while preserving existing preset choices.
+
+### Fixed
+- Fixed Operon Settings jumping back to the top after changing or reordering settings lower in the page.
+- Fixed tapping Calendar time-grid tasks on touch devices so a short tap opens the task editor after the new long-press drag gesture.
+- Fixed Calendar time-grid hour labels and the current-time marker so they follow the 12-hour or 24-hour time format setting.
+- Fixed Kanban auto-collapse toggles sometimes not expanding auto-collapsed columns or swimlanes until another render happened.
+- Fixed saved Kanban collapse state leaking across pipeline or swimlane grouping changes in the same preset.
+- Fixed Kanban mobile layout controls not activating in the Obsidian mobile app when the coarse pointer media query is unavailable.
+- Fixed Settings task and pipeline status icon pickers opening invisibly in themes that transform Obsidian settings modals.
+- Fixed Task Creator floating pickers opening invisibly in themes that transform or clip Obsidian modals.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 682/682 Phase 5 regression checks.
+
 ## [1.0.7] - 2026-05-27
 
 ### New
 - Added a Completed copy option for When done recurring inline tasks, so users can replace the completed row with the next occurrence when past completed copies are not useful.
+- Added Calendar touch controls for timed time-grid dragging, letting touch users enable task moves and tune long-press delay and cancel distance.
 
 ### Improved
 - Improved Calendar touch dragging for timed tasks, so phone, tablet, and pen users can long-press a time-grid task and move it without changing desktop drag behavior.

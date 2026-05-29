@@ -63,6 +63,8 @@ export interface KanbanLeafState {
 	collapsedLaneKeys: string[];
 	collapsedStatusIdsByPreset: Record<string, string[]>;
 	collapsedLaneKeysByPreset: Record<string, string[]>;
+	collapsedStatusIdsByScope: Record<string, string[]>;
+	collapsedLaneKeysByScope: Record<string, string[]>;
 	expandedPreviewParentIds: string[];
 }
 
@@ -70,6 +72,8 @@ export interface KanbanLeafStateNormalizationOptions {
 	availablePresetIds: string[];
 	availableStatusIds: string[];
 	defaultPresetId: string | null;
+	statusCollapseScopeKey?: string | null;
+	laneCollapseScopeKey?: string | null;
 }
 
 export interface KanbanDropContext {
@@ -145,6 +149,25 @@ export function createDefaultKanbanSortRules(): KanbanSortRule[] {
 	}];
 }
 
+export function buildKanbanStatusCollapseScopeKey(
+	presetId: string | null | undefined,
+	pipelineId: string | null | undefined,
+): string | null {
+	const presetPart = normalizeCollapseScopePart(presetId);
+	if (!presetPart) return null;
+	return `${presetPart}::${normalizeCollapseScopePart(pipelineId) ?? 'none'}`;
+}
+
+export function buildKanbanLaneCollapseScopeKey(
+	presetId: string | null | undefined,
+	pipelineId: string | null | undefined,
+	swimlaneBy: KanbanSwimlaneBy | null | undefined,
+): string | null {
+	const statusScope = buildKanbanStatusCollapseScopeKey(presetId, pipelineId);
+	if (!statusScope) return null;
+	return `${statusScope}::${normalizeCollapseScopePart(swimlaneBy) ?? 'none'}`;
+}
+
 export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset {
 	if (!isLegacyDefaultKanbanPreset(preset)) {
 		return {
@@ -216,6 +239,8 @@ export function normalizeKanbanLeafState(
 	const expandedSource = Array.isArray(rawState.expandedPreviewParentIds) ? rawState.expandedPreviewParentIds : [];
 	const collapsedStatusIdsByPreset = normalizePresetCollapseMap(rawState.collapsedStatusIdsByPreset, options.availablePresetIds);
 	const collapsedLaneKeysByPreset = normalizePresetCollapseMap(rawState.collapsedLaneKeysByPreset, options.availablePresetIds);
+	const collapsedStatusIdsByScope = normalizeCollapseScopeMap(rawState.collapsedStatusIdsByScope);
+	const collapsedLaneKeysByScope = normalizeCollapseScopeMap(rawState.collapsedLaneKeysByScope);
 	const collapsedStatusIds = Array.isArray(rawState.collapsedStatusIds)
 		? collapsedSource
 			.filter((value): value is string => typeof value === 'string')
@@ -233,34 +258,52 @@ export function normalizeKanbanLeafState(
 	const presetCollapsedLaneKeys = presetId
 		? collapsedLaneKeysByPreset[presetId] ?? []
 		: [];
-	if (presetId) {
-		if (presetCollapsedStatusIds.length > 0 || collapsedStatusIds.length > 0) {
-			collapsedStatusIdsByPreset[presetId] = Array.from(new Set(
-				(presetCollapsedStatusIds.length > 0 ? presetCollapsedStatusIds : collapsedStatusIds)
-					.filter(value => options.availableStatusIds.includes(value)),
-			));
-		}
-		if (presetCollapsedLaneKeys.length > 0 || collapsedLaneKeys.length > 0) {
-			collapsedLaneKeysByPreset[presetId] = Array.from(new Set(
-				(presetCollapsedLaneKeys.length > 0 ? presetCollapsedLaneKeys : collapsedLaneKeys),
-			));
-		}
+	const hasScopedStatusEntry = hasCollapseMapEntry(collapsedStatusIdsByScope, options.statusCollapseScopeKey);
+	const hasScopedLaneEntry = hasCollapseMapEntry(collapsedLaneKeysByScope, options.laneCollapseScopeKey);
+	const hasPresetStatusEntry = hasCollapseMapEntry(collapsedStatusIdsByPreset, presetId);
+	const hasPresetLaneEntry = hasCollapseMapEntry(collapsedLaneKeysByPreset, presetId);
+	const activeCollapsedStatusIds = hasScopedStatusEntry && options.statusCollapseScopeKey
+		? collapsedStatusIdsByScope[options.statusCollapseScopeKey].filter(value => options.availableStatusIds.includes(value))
+		: hasPresetStatusEntry
+			? presetCollapsedStatusIds
+			: collapsedStatusIds;
+	const activeCollapsedLaneKeys = hasScopedLaneEntry && options.laneCollapseScopeKey
+		? collapsedLaneKeysByScope[options.laneCollapseScopeKey]
+		: hasPresetLaneEntry
+			? presetCollapsedLaneKeys
+			: collapsedLaneKeys;
+	if (!hasScopedStatusEntry && options.statusCollapseScopeKey && activeCollapsedStatusIds.length > 0) {
+		collapsedStatusIdsByScope[options.statusCollapseScopeKey] = Array.from(new Set(
+			activeCollapsedStatusIds.filter(value => options.availableStatusIds.includes(value)),
+		));
+	}
+	if (!hasScopedLaneEntry && options.laneCollapseScopeKey && activeCollapsedLaneKeys.length > 0) {
+		collapsedLaneKeysByScope[options.laneCollapseScopeKey] = Array.from(new Set(activeCollapsedLaneKeys));
 	}
 
 	return {
 		presetId,
 		searchQuery,
 		collapsedStatusIds: Array.from(new Set(
-			(presetCollapsedStatusIds.length > 0 ? presetCollapsedStatusIds : collapsedStatusIds)
+			activeCollapsedStatusIds
 				.filter(value => options.availableStatusIds.includes(value)),
 		)),
-		collapsedLaneKeys: Array.from(new Set(
-			presetCollapsedLaneKeys.length > 0 ? presetCollapsedLaneKeys : collapsedLaneKeys,
-		)),
+		collapsedLaneKeys: Array.from(new Set(activeCollapsedLaneKeys)),
 		collapsedStatusIdsByPreset,
 		collapsedLaneKeysByPreset,
+		collapsedStatusIdsByScope,
+		collapsedLaneKeysByScope,
 		expandedPreviewParentIds: Array.from(new Set(expandedPreviewParentIds)),
 	};
+}
+
+function normalizeCollapseScopePart(value: string | null | undefined): string | null {
+	const trimmed = typeof value === 'string' ? value.trim() : '';
+	return trimmed || null;
+}
+
+function hasCollapseMapEntry(map: Record<string, string[]>, key: string | null | undefined): key is string {
+	return typeof key === 'string' && key in map;
 }
 
 function normalizePresetCollapseMap(
@@ -273,6 +316,18 @@ function normalizePresetCollapseMap(
 	for (const [presetId, value] of Object.entries(raw as Record<string, unknown>)) {
 		if (!allowedPresetIds.has(presetId) || !Array.isArray(value)) continue;
 		normalized[presetId] = Array.from(new Set(
+			value.filter((entry): entry is string => typeof entry === 'string' && !!entry.trim()),
+		));
+	}
+	return normalized;
+}
+
+function normalizeCollapseScopeMap(raw: unknown): Record<string, string[]> {
+	if (!raw || typeof raw !== 'object') return {};
+	const normalized: Record<string, string[]> = {};
+	for (const [scopeKey, value] of Object.entries(raw as Record<string, unknown>)) {
+		if (!scopeKey.trim() || !Array.isArray(value)) continue;
+		normalized[scopeKey] = Array.from(new Set(
 			value.filter((entry): entry is string => typeof entry === 'string' && !!entry.trim()),
 		));
 	}

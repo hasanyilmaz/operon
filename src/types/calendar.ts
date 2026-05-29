@@ -12,6 +12,8 @@ export type CalendarColorSource = CalendarTaskColorSource;
 export type CalendarAppearanceMode = 'theme' | 'anupuccin-light' | 'anupuccin-dark' | 'catppuccin-dark' | 'atom-light' | 'atom-dark' | 'flexoki-light' | 'flexoki-dark';
 export type CalendarNavigationMode = 'toolbar' | 'sidebar';
 export type CalendarSurfaceType = 'timeGrid' | 'multiWeek';
+export const CALENDAR_MOBILE_VIEW_MODES = ['agenda', 'day', 'threeDay'] as const;
+export type CalendarMobileViewMode = typeof CALENDAR_MOBILE_VIEW_MODES[number];
 
 export interface CalendarPreset {
 	id: string;
@@ -50,6 +52,9 @@ export interface CalendarLeafState {
 	showDueMarkers: boolean;
 	showInDayLane: boolean;
 	showFinishedLane: boolean;
+	mobileViewMode: CalendarMobileViewMode;
+	mobileSourcePresetId: string | null;
+	mobileAnchorDate: string;
 }
 
 export interface CalendarLeafStateNormalizationOptions {
@@ -65,6 +70,8 @@ export interface CalendarLeafStateNormalizationOptions {
 	defaultShowDueMarkers: boolean;
 	defaultShowInDayLane: boolean;
 	defaultShowFinishedLane: boolean;
+	defaultMobileViewMode: CalendarMobileViewMode;
+	defaultMobileSourcePresetId: string | null;
 }
 
 export type CalendarItemKind = 'timed' | 'allDayScheduled' | 'dueMarker' | 'finishedMarker';
@@ -342,6 +349,15 @@ export function createCalendarPresetId(): string {
 	return `cp_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+export function normalizeCalendarMobileViewMode(
+	value: unknown,
+	fallback: CalendarMobileViewMode = 'agenda',
+): CalendarMobileViewMode {
+	return CALENDAR_MOBILE_VIEW_MODES.includes(value as CalendarMobileViewMode)
+		? value as CalendarMobileViewMode
+		: fallback;
+}
+
 export function normalizeCalendarLeafState(
 	state: Partial<CalendarLeafState> | null | undefined,
 	options: CalendarLeafStateNormalizationOptions,
@@ -390,6 +406,19 @@ export function normalizeCalendarLeafState(
 	const showFinishedLane = typeof state?.showFinishedLane === 'boolean'
 		? state.showFinishedLane
 		: options.defaultShowFinishedLane;
+	const mobileViewMode = normalizeCalendarMobileViewMode(state?.mobileViewMode, options.defaultMobileViewMode);
+	const fallbackMobileSourcePresetId = options.defaultMobileSourcePresetId && options.availablePresetIds.includes(options.defaultMobileSourcePresetId)
+		? options.defaultMobileSourcePresetId
+		: fallbackPresetId;
+	const requestedMobileSourcePresetId = typeof state?.mobileSourcePresetId === 'string' && state.mobileSourcePresetId.trim()
+		? state.mobileSourcePresetId
+		: fallbackMobileSourcePresetId;
+	const mobileSourcePresetId = requestedMobileSourcePresetId && options.availablePresetIds.includes(requestedMobileSourcePresetId)
+		? requestedMobileSourcePresetId
+		: fallbackMobileSourcePresetId;
+	const mobileAnchorDate = typeof state?.mobileAnchorDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(state.mobileAnchorDate)
+		? state.mobileAnchorDate
+		: anchorDate;
 
 	return {
 		presetId,
@@ -404,5 +433,8 @@ export function normalizeCalendarLeafState(
 		showDueMarkers,
 		showInDayLane,
 		showFinishedLane,
+		mobileViewMode,
+		mobileSourcePresetId,
+		mobileAnchorDate,
 	};
 }

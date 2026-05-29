@@ -1,10 +1,10 @@
 import { getIcon, getIconIds } from 'obsidian';
 import { t } from '../../core/i18n';
-import { createButton, createFloatingPanel, focusFloatingInput } from './common';
+import { createButton, createFloatingPanel, focusFloatingInput, type FloatingHostOptions } from './common';
 import { searchLucideIcons } from './icon-search';
 import { getOwnerWindow } from '../../core/dom-compat';
 
-interface IconPickerOptions {
+interface IconPickerOptions extends FloatingHostOptions {
 	value?: string;
 	query?: string;
 	retainInputFocus?: boolean;
@@ -30,6 +30,9 @@ export function showIconPicker(anchor: HTMLElement | DOMRect, options: IconPicke
 	const { panel, close } = createFloatingPanel(anchor, 'operon-floating-panel operon-icon-picker-panel', () => {
 		if (!completed) options.onClose?.();
 	}, {
+		floatingHost: options.floatingHost,
+		floatingScrollHost: options.floatingScrollHost,
+		constrainToFloatingHost: options.constrainToFloatingHost,
 		retainInputFocus: options.retainInputFocus,
 	});
 

@@ -17,6 +17,7 @@ import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { resolveTaskColorSourceForTask } from '../core/task-color-source';
 import { WindowTimeoutHandle, clearWindowTimeout, createOwnerElement, getOwnerBody, getOwnerDocument, getOwnerWindow, setWindowTimeout } from '../core/dom-compat';
 import { asyncHandler } from '../core/async-action';
+import { getPinnedTasksForDisplay } from '../core/pinned-task-query';
 
 export interface PinnedDockCallbacks {
 	openTaskEditor: (operonId: string) => void;
@@ -299,18 +300,7 @@ export class PinnedTasksDock extends Component {
 	}
 
 	private getPinnedTasks(): IndexedTask[] {
-		const priorities = this.settings.priorities.map(p => p.label);
-		return this.indexer.getAllTasks()
-			.filter(task => this.pinnedCache.isPinned(task.operonId))
-			.sort((a, b) => {
-				const ai = priorities.indexOf(a.fieldValues['priority'] ?? '');
-				const bi = priorities.indexOf(b.fieldValues['priority'] ?? '');
-				const pa = ai === -1 ? priorities.length : ai;
-				const pb = bi === -1 ? priorities.length : bi;
-				if (pa !== pb) return pa - pb;
-				// Same priority: more recently modified first (left)
-				return (b.datetimeModified ?? '').localeCompare(a.datetimeModified ?? '');
-			});
+		return getPinnedTasksForDisplay(this.indexer, this.pinnedCache, this.settings.priorities);
 	}
 
 	private renderStatusIcon(btn: HTMLElement, task: IndexedTask): void {

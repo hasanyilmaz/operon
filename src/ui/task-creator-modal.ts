@@ -11,6 +11,7 @@ import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { showDependencyTaskPicker } from './field-pickers/dependency-task-picker';
 import { showFileTaskTemplatePicker } from './field-pickers/file-task-template-picker';
 import { showSubtasksPicker } from './field-pickers/subtasks-picker';
+import { MOBILE_PICKER_CLOSE_EVENT, MOBILE_PICKER_OPEN_EVENT } from './field-pickers/common';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import {
 	debugTaskFieldSuggestion,
@@ -76,6 +77,7 @@ export interface TaskCreatorModalOptions {
 	onSubmitFile: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
 	onSubmitFailure?: (draft: TaskCreatorDraft, createType: TaskCreatorCreateType) => void | Promise<void>;
 	onCancel?: () => void;
+	initialOutsidePointerGraceMs?: number;
 }
 
 interface SuggestionState {
@@ -395,6 +397,26 @@ export class TaskCreatorModal extends Modal {
 	private initialDescriptionFocusTimers: WindowTimeoutHandle[] = [];
 	private initialDescriptionFocusInterrupted = false;
 	private isDescriptionComposing = false;
+	private ignoreOutsidePointerUntil = 0;
+	private toolbarOverflowFrame: number | null = null;
+	private mobilePickerOpenDepth = 0;
+	private readonly resizeHandler = () => {
+		this.updateMobileViewportHeight();
+		this.autoSizeRenderedTextareas();
+		this.scheduleToolbarOverflowState();
+	};
+	private readonly visualViewportHandler = () => {
+		this.updateMobileViewportHeight();
+		this.scheduleToolbarOverflowState();
+	};
+	private readonly mobilePickerOpenHandler = () => {
+		this.mobilePickerOpenDepth += 1;
+	};
+	private readonly mobilePickerCloseHandler = () => {
+		this.mobilePickerOpenDepth = Math.max(0, this.mobilePickerOpenDepth - 1);
+		window.setTimeout(() => this.updateMobileViewportHeight(), 80);
+	};
+	private readonly toolbarScrollHandler = () => this.scheduleToolbarOverflowState();
 
 	constructor(app: App, options: TaskCreatorModalOptions) {
 		super(app);
@@ -416,9 +438,16 @@ export class TaskCreatorModal extends Modal {
 		this.titleEl.addClass('operon-task-creator-title');
 		this.titleEl.setText(t('modals', 'taskCreatorTitle'));
 		this.contentEl.empty();
+		window.addEventListener('resize', this.resizeHandler);
+		this.registerMobileViewportListeners();
+		this.updateMobileViewportHeight();
+		this.registerMobilePickerListeners();
 		this.render();
 		this.applyThemeColor();
 		this.allowDirectClose = false;
+		if (this.options.initialOutsidePointerGraceMs && this.options.initialOutsidePointerGraceMs > 0) {
+			this.ignoreOutsidePointerUntil = Date.now() + Math.round(this.options.initialOutsidePointerGraceMs);
+		}
 		this.escapeScopeHandler = this.scope.register(null, 'Escape', () => {
 			this.handleEscapeIntent();
 			return false;
@@ -436,11 +465,21 @@ export class TaskCreatorModal extends Modal {
 			this.scope.unregister(this.escapeScopeHandler);
 			this.escapeScopeHandler = null;
 		}
+		window.removeEventListener('resize', this.resizeHandler);
+		this.unregisterMobileViewportListeners();
+		this.unregisterMobilePickerListeners();
+		this.mobilePickerOpenDepth = 0;
 		window.removeEventListener('keydown', this.handleWindowKeydownCapture, true);
 		window.removeEventListener('keydown', this.handleInitialDescriptionFocusKeydown, true);
 		this.containerEl.removeEventListener('mousedown', this.handleContainerPointerDown, true);
 		this.containerEl.removeEventListener('click', this.handleContainerPointerDown, true);
 		this.containerEl.removeEventListener('mousedown', this.handleInitialDescriptionFocusPointerDown, true);
+		this.toolsEl?.removeEventListener('scroll', this.toolbarScrollHandler);
+		if (this.toolbarOverflowFrame !== null) {
+			window.cancelAnimationFrame(this.toolbarOverflowFrame);
+			this.toolbarOverflowFrame = null;
+		}
+		this.containerEl.style.removeProperty('--operon-task-creator-mobile-viewport-height');
 		this.clearInitialDescriptionFocusGuard();
 		this.colorInputEl?.remove();
 		this.colorInputEl = null;
@@ -498,6 +537,7 @@ export class TaskCreatorModal extends Modal {
 
 		this.metadataRowEl = body.createDiv('operon-task-creator-toolbar');
 		this.toolsEl = this.metadataRowEl.createDiv('operon-task-creator-tools');
+		this.toolsEl.addEventListener('scroll', this.toolbarScrollHandler, { passive: true });
 		for (const key of this.getVisibleToolbarFieldOrder()) {
 			const button = this.toolsEl.createEl('button', {
 				cls: 'operon-task-creator-tool',
@@ -549,6 +589,7 @@ export class TaskCreatorModal extends Modal {
 		this.renderFieldButtons();
 		this.renderSubmitControls();
 		this.renderNoteVisibility();
+		this.scheduleToolbarOverflowState();
 	}
 
 	private readonly handleDescriptionInput = (): void => {
@@ -622,8 +663,14 @@ export class TaskCreatorModal extends Modal {
 
 	private readonly handleContainerPointerDown = (event: MouseEvent): void => {
 		if (this.isOutsideConfirmOpen || this.resolved) return;
+		if (Date.now() < this.ignoreOutsidePointerUntil) return;
 		const target = event.target as Node | null;
 		if (!target) return;
+		const targetElement = target.nodeType === 1 ? target as Element : target.parentElement;
+		if (targetElement?.closest('.operon-floating-panel')) {
+			this.suppressOutsidePointerBriefly();
+			return;
+		}
 		if (this.modalEl.contains(target)) return;
 
 		event.preventDefault();
@@ -685,6 +732,10 @@ export class TaskCreatorModal extends Modal {
 		this.descriptionEl.focus();
 		this.descriptionEl.setSelectionRange(caret, caret);
 		this.syncSuggestions();
+	}
+
+	private suppressOutsidePointerBriefly(): void {
+		this.ignoreOutsidePointerUntil = Date.now() + 700;
 	}
 
 	private startInitialDescriptionFocusGuard(): void {
@@ -785,8 +836,10 @@ export class TaskCreatorModal extends Modal {
 			value: this.draft.fileTemplateId,
 			options: templateOptions,
 			onSelect: template => {
+				this.suppressOutsidePointerBriefly();
 				this.draft.fileTemplateId = template.id;
 				void this.options.onFileTemplateSelected?.(template);
+				this.closeActivePicker();
 				this.renderSubmitControls();
 				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
 			},
@@ -807,7 +860,80 @@ export class TaskCreatorModal extends Modal {
 
 	private autoSizeTextarea(textarea: HTMLTextAreaElement): void {
 		textarea.setCssProps({ height: '0px' });
-		textarea.style.height = `${Math.max(textarea.scrollHeight, 44)}px`;
+		const measuredHeight = Math.max(textarea.scrollHeight, 44);
+		if (!Platform.isPhone) {
+			textarea.style.height = `${measuredHeight}px`;
+			return;
+		}
+
+		const style = window.getComputedStyle(textarea);
+		const lineHeight = Number.parseFloat(style.lineHeight || '') || 24.8;
+		const paddingTop = Number.parseFloat(style.paddingTop || '') || 0;
+		const paddingBottom = Number.parseFloat(style.paddingBottom || '') || 0;
+		const borderTop = Number.parseFloat(style.borderTopWidth || '') || 0;
+		const borderBottom = Number.parseFloat(style.borderBottomWidth || '') || 0;
+		const maxMobileHeight = Math.ceil(lineHeight * 4 + paddingTop + paddingBottom + borderTop + borderBottom);
+		const nextHeight = Math.min(measuredHeight, Math.max(44, maxMobileHeight));
+		textarea.style.height = `${nextHeight}px`;
+	}
+
+	private autoSizeRenderedTextareas(): void {
+		if (!Platform.isPhone || !this.descriptionEl?.isConnected) return;
+		this.autoSizeTextarea(this.descriptionEl);
+		if (this.noteEl?.isConnected) {
+			this.autoSizeTextarea(this.noteEl);
+		}
+	}
+
+	private registerMobileViewportListeners(): void {
+		if (!Platform.isPhone) return;
+		window.visualViewport?.addEventListener('resize', this.visualViewportHandler);
+		window.visualViewport?.addEventListener('scroll', this.visualViewportHandler);
+	}
+
+	private unregisterMobileViewportListeners(): void {
+		if (!Platform.isPhone) return;
+		window.visualViewport?.removeEventListener('resize', this.visualViewportHandler);
+		window.visualViewport?.removeEventListener('scroll', this.visualViewportHandler);
+	}
+
+	private registerMobilePickerListeners(): void {
+		if (!Platform.isPhone) return;
+		this.contentEl.addEventListener(MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
+		this.contentEl.addEventListener(MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
+	}
+
+	private unregisterMobilePickerListeners(): void {
+		if (!Platform.isPhone) return;
+		this.contentEl.removeEventListener(MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
+		this.contentEl.removeEventListener(MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
+	}
+
+	private updateMobileViewportHeight(): void {
+		if (!Platform.isPhone) return;
+		if (this.mobilePickerOpenDepth > 0) return;
+		const height = window.visualViewport?.height ?? window.innerHeight;
+		if (!Number.isFinite(height) || height <= 0) return;
+		this.containerEl.style.setProperty('--operon-task-creator-mobile-viewport-height', `${Math.round(height)}px`);
+	}
+
+	private scheduleToolbarOverflowState(): void {
+		if (!Platform.isPhone || !this.metadataRowEl?.isConnected || !this.toolsEl?.isConnected) return;
+		if (this.toolbarOverflowFrame !== null) {
+			window.cancelAnimationFrame(this.toolbarOverflowFrame);
+		}
+		this.toolbarOverflowFrame = window.requestAnimationFrame(() => {
+			this.toolbarOverflowFrame = null;
+			this.updateToolbarOverflowState();
+		});
+	}
+
+	private updateToolbarOverflowState(): void {
+		if (!this.metadataRowEl?.isConnected || !this.toolsEl?.isConnected) return;
+		const maxScrollLeft = Math.max(0, this.toolsEl.scrollWidth - this.toolsEl.clientWidth);
+		const scrollLeft = this.toolsEl.scrollLeft;
+		this.metadataRowEl.toggleClass('is-scrollable-left', scrollLeft > 1);
+		this.metadataRowEl.toggleClass('is-scrollable-right', scrollLeft < maxScrollLeft - 1);
 	}
 
 	private syncSuggestions(): void {
@@ -1231,7 +1357,8 @@ export class TaskCreatorModal extends Modal {
 
 	private renderSubmitControls(): void {
 		const selectedTemplate = this.getSelectedFileTemplate();
-		const templateLabel = selectedTemplate?.name || t('taskEditor', 'pickFileTaskTemplate');
+		const templateLabel = selectedTemplate?.name || (Platform.isPhone ? t('taskEditor', 'pickFileTaskTemplateShort') : t('taskEditor', 'pickFileTaskTemplate'));
+		const templateAccessibleLabel = selectedTemplate?.name || t('taskEditor', 'pickFileTaskTemplate');
 		const templateControlEnabled = isTaskCreatorTemplateControlEnabled(this.submitMode, this.activeCreateType);
 		this.templateButtonEl.toggleClass('is-active', !!selectedTemplate);
 		this.templateButtonEl.toggleClass('is-picker-open', !!this.activePickerClose && this.templateButtonEl.hasClass('is-picker-open'));
@@ -1243,6 +1370,13 @@ export class TaskCreatorModal extends Modal {
 			text: templateLabel,
 		});
 		this.templateButtonEl.removeAttribute('title');
+		this.templateButtonEl.removeAttribute('aria-label');
+		if (Platform.isPhone) {
+			this.templateButtonEl.setAttribute('aria-label', templateAccessibleLabel);
+			if (selectedTemplate) {
+				this.templateButtonEl.setAttribute('title', selectedTemplate.name);
+			}
+		}
 		if (selectedTemplate) {
 			window.requestAnimationFrame(() => {
 				if (!labelEl.isConnected) return;
@@ -1431,6 +1565,7 @@ export class TaskCreatorModal extends Modal {
 			return;
 		}
 		if (this.isOutsideConfirmOpen) return;
+		if (Date.now() < this.ignoreOutsidePointerUntil) return;
 		if (!this.hasUnsavedDraft()) {
 			this.forceClose();
 			return;
