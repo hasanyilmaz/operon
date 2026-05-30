@@ -1973,11 +1973,27 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getTaskCreatorToolbarFieldLabel(key: TaskCreatorToolbarFieldKey): string {
-		if (key === 'note') return t('taskEditor', 'notes');
+		if (key === 'taskIcon') return t('taskEditor', 'taskIcon');
+		if (key === 'taskColor') return t('taskEditor', 'taskColor');
+		if (key === 'priority') return t('taskEditor', 'priority');
+		if (key === 'status') return t('taskEditor', 'status');
+		if (key === 'parentTask') return t('taskEditor', 'parentTask');
+		if (key === 'contexts') return t('taskEditor', 'contexts');
+		if (key === 'links') return t('taskEditor', 'links');
+		if (key === 'dateStarted') return t('taskEditor', 'started');
+		if (key === 'dateScheduled') return t('taskEditor', 'scheduled');
+		if (key === 'dateDue') return t('taskEditor', 'dueDate');
+		if (key === 'pinned') return t('settings', 'taskCreatorToolbarPinned');
+		if (key === 'datetimeStart') return t('taskEditor', 'datetimeStart');
+		if (key === 'datetimeEnd') return t('taskEditor', 'datetimeEnd');
+		if (key === 'estimate') return t('taskEditor', 'estimateMinutes');
+		if (key === 'repeat') return t('taskEditor', 'repeat');
 		if (key === 'subtasks') return t('taskEditor', 'subtasks');
 		if (key === 'blocking') return t('taskEditor', 'blocking');
 		if (key === 'blockedBy') return t('taskEditor', 'blockedBy');
-		if (key === 'pinned') return t('settings', 'taskCreatorToolbarPinned');
+		if (key === 'tags') return t('taskEditor', 'tags');
+		if (key === 'assignees') return t('taskEditor', 'assignees');
+		if (key === 'note') return t('taskEditor', 'notes');
 		const mapping = this.settings.keyMappings.find(candidate => candidate.canonicalKey === key);
 		return mapping?.visiblePropertyName?.trim() || key;
 	}
@@ -1988,8 +2004,24 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getInlineTaskCompactChipLabel(key: InlineTaskCompactChipKey): string {
-		if (key === 'tags') return t('settings', 'chipTags');
+		if (key === 'priority') return t('settings', 'chipPriority');
 		if (key === 'status') return t('settings', 'chipStatus');
+		if (key === 'parentTask') return t('settings', 'chipDateDue');
+		if (key === 'dateStarted') return t('settings', 'chipDateStarted');
+		if (key === 'dateScheduled') return t('settings', 'chipDateScheduled');
+		if (key === 'dateDue') return t('settings', 'chipDateDue');
+		if (key === 'datetimeStart') return t('settings', 'chipDatetimeStart');
+		if (key === 'datetimeEnd') return t('settings', 'chipDatetimeEnd');
+		if (key === 'assignees') return t('settings', 'chipAssignees');
+		if (key === 'contexts') return t('settings', 'chipContexts');
+		if (key === 'links') return t('settings', 'chipLinks');
+		if (key === 'tags') return t('settings', 'chipTags');
+		if (key === 'estimate') return t('settings', 'chipEstimate');
+		if (key === 'duration') return t('settings', 'chipDuration');
+		if (key === 'dateCompleted') return t('settings', 'chipDateCompleted');
+		if (key === 'dateCancelled') return t('settings', 'chipDateCancelled');
+		if (key === 'totalDuration') return t('settings', 'chipTotalDuration');
+		if (key === 'totalEstimate') return t('settings', 'chipTotalEstimate');
 		const mapping = this.settings.keyMappings.find(candidate => candidate.canonicalKey === key);
 		return mapping?.visiblePropertyName?.trim() || key;
 	}
@@ -2649,7 +2681,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('settings', 'externalCalendarEditAria', { name: displayName }),
 			ariaLabel: t('settings', 'externalCalendarEditAria', { name: displayName }),
 			tooltip: t('settings', 'externalCalendarEditTooltip'),
-			text: 'Edit',
+			text: t('buttons', 'edit'),
 			wide: true,
 			onClick: () => {
 				this.openExternalCalendarSourceEditModal(source, false, refresh);
@@ -2852,7 +2884,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			containerEl: card.actionsEl,
 			label: t('tooltips', 'editKanbanPreset', { name: presetName }),
 			ariaLabel: t('tooltips', 'editKanbanPreset', { name: presetName }),
-			text: 'Edit',
+			text: t('buttons', 'edit'),
 			wide: true,
 			onClick: () => {
 				this.openKanbanPresetSettingsModal(preset.id, () => this.redisplayPreservingScroll());
@@ -3399,7 +3431,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			containerEl: card.actionsEl,
 			label: t('calendar', 'editPreset', { name: presetName }),
 			ariaLabel: t('calendar', 'editPreset', { name: presetName }),
-			text: 'Edit',
+			text: t('buttons', 'edit'),
 			wide: true,
 			onClick: () => {
 				this.openCalendarPresetSettingsModal(preset.id, () => this.redisplayPreservingScroll());
@@ -5563,7 +5595,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('filterSets', 'editFilterNamed', { name: filterSet.name }),
 			ariaLabel: t('filterSets', 'editFilterNamed', { name: filterName }),
 			tooltip: t('filterSets', 'editFilterNamed', { name: filterName }),
-			text: t('filterSets', 'edit'),
+			text: t('buttons', 'edit'),
 			wide: true,
 			onClick: () => {
 				const clone = cloneFilterSet(filterSet);
