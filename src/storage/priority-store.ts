@@ -44,6 +44,7 @@ export class PriorityStore {
 	private settings: PriorityStoreSettings;
 	private serializedSettings: string;
 	private recoveredFromMalformed = false;
+	private packagePersist: ((settings: PriorityStoreSettings) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue, defaults: PriorityStoreSettings) {
 		this.app = app;
@@ -54,6 +55,16 @@ export class PriorityStore {
 
 	getAll(): PriorityStoreSettings {
 		return cloneSettings(this.settings);
+	}
+
+	setPackagePersistence(persist: (settings: PriorityStoreSettings) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(settings: PriorityStoreSettings): void {
+		this.settings = cloneSettings(settings);
+		this.serializedSettings = JSON.stringify(this.settings);
+		this.recoveredFromMalformed = false;
 	}
 
 	async load(
@@ -102,6 +113,11 @@ export class PriorityStore {
 		}
 		this.settings = nextSettings;
 		this.serializedSettings = nextSerialized;
+		if (this.packagePersist) {
+			await this.packagePersist(this.getAll());
+			this.recoveredFromMalformed = false;
+			return;
+		}
 		await this.persist();
 	}
 

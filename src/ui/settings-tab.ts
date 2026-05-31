@@ -11,9 +11,9 @@
  * Also covers: Timing, Index, Display, Pipelines sections.
  */
 
-import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, setIcon } from 'obsidian';
-import type { DropdownComponent, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarFieldKey, TaskCreatorToolbarItem, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolKey, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerKey, TaskEditorWorkflowPickerItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource } from '../types/settings';
+import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
+import type { ButtonComponent, DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarFieldKey, TaskCreatorToolbarItem, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolKey, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerKey, TaskEditorWorkflowPickerItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource } from '../types/settings';
 import { clonePipeline, composeStatusValue, createPipelineId, createStatusId, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
@@ -38,8 +38,10 @@ import {
 	createKanbanPresetId,
 } from '../types/kanban';
 import { OperonStorage } from '../storage/operon-storage';
+import type { OperonLegacyStorageCleanupStatus } from '../storage/operon-storage';
 import { PinnedCache } from '../storage/pinned-cache';
 import { t } from '../core/i18n';
+import { asHTMLElement } from '../core/dom-compat';
 import { getAppLocale, isDailyNotesCoreAvailable } from '../core/obsidian-app';
 import { resolveEffectiveInlineTaskSaveMode } from '../core/inline-task-save-mode';
 import { FilterSetModal, FilterModalEvalDeps } from './filter-set-modal';
@@ -51,6 +53,7 @@ import { ConfirmActionModal } from './confirm-action-modal';
 import { FileTaskMigrationProgressModal } from './file-task-migration-progress-modal';
 import { CalendarFilterPickerModal } from './calendar/calendar-filter-picker-modal';
 import { showTimePicker } from './field-pickers/time-picker';
+import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { createInlineTaskCompactChipElement } from './compact-task-layout';
@@ -82,7 +85,6 @@ import {
 import {
 	getTopLevelMarkdownFilesInFolder,
 } from '../core/file-task-templates';
-import { showIconPicker } from './field-pickers/icon-picker';
 import { getKeyMappingDescription } from './key-mapping-descriptions';
 import { CANONICAL_KEY_ORDER } from '../types/keys';
 import {
@@ -99,6 +101,7 @@ import {
 	KANBAN_TASK_COLOR_SOURCES,
 	PINNED_DOCK_TASK_COLOR_SOURCES,
 	addTaskColorSourceOptions,
+	getTaskColorSourceLabel,
 	normalizeTaskColorSource,
 } from '../core/task-color-source';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
@@ -147,10 +150,18 @@ import {
 	createSettingsListCardActionButton,
 	createSettingsListCardChip,
 } from './settings/settings-list-ui';
-import { getSettingsIconPickerFloatingOptions, renderSettingsIconPickerRow } from './settings/settings-icon-picker-ui';
+import { openSettingsIconPickerModal } from './settings/settings-icon-picker-modal';
+import { renderSettingsIconPickerRow } from './settings/settings-icon-picker-ui';
+import {
+	OPERON_SETTINGS_SEARCH_REGISTRY,
+	type OperonSettingsSearchEntry,
+	type OperonSettingsSearchTextKey,
+} from './settings/settings-search-registry';
 import {
 	createSettingsCollapsibleSection,
+	createSettingsAddButton,
 	renderDropdownSetting,
+	renderNativeSettingsGroupedSection,
 	renderNumericTextSetting,
 	renderSettingsHeading,
 	renderSettingsInfoBox,
@@ -200,13 +211,6 @@ type OperonSettingsSecondaryTabId =
 	| 'mobileKanban';
 
 type OperonSettingsTabId = OperonSettingsPrimaryTabId | OperonSettingsSecondaryTabId;
-
-type TaskChipsSettingsSubtabId =
-	| 'taskCreator'
-	| 'inlineTasks'
-	| 'taskFinder'
-	| 'filterTasks'
-	| 'fileTaskOverlay';
 
 type BooleanSettingKey = {
 	[K in keyof OperonSettings]: OperonSettings[K] extends boolean ? K : never
@@ -369,6 +373,86 @@ class TextValueSuggest extends AbstractInputSuggest<string> {
 	}
 }
 
+type OperonSettingSearchKey = keyof OperonSettings;
+
+type SettingsSearchRefreshableTab = {
+	refreshDomState?: () => void;
+	update?: () => void;
+};
+
+const SETTINGS_SEARCH_NATIVE_TAB_IDS = new Set<OperonSettingsTabId>([
+	'coreGeneral',
+	'tasksRelationships',
+	'mobileGeneral',
+]);
+
+const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Record<OperonSettingsSecondaryTabId, OperonSettingsSearchTextKey> = {
+	coreGeneral: { namespace: 'settings', key: 'settingsPageCoreGeneralDesc' },
+	corePipelines: { namespace: 'settings', key: 'pipelinesDesc' },
+	corePriority: { namespace: 'settings', key: 'priorityDesc' },
+	coreKeymapping: { namespace: 'settings', key: 'keyMappingsDesc' },
+	tasksInlineTasks: { namespace: 'settings', key: 'settingsPageInlineTasksDesc' },
+	tasksFileTasks: { namespace: 'settings', key: 'settingsPageFileTasksDesc' },
+	tasksRelationships: { namespace: 'settings', key: 'settingsPageRelationshipsDesc' },
+	tasksRecurrence: { namespace: 'settings', key: 'settingsPageRecurrenceDesc' },
+	tasksTracker: { namespace: 'settings', key: 'settingsPageTrackerDesc' },
+	viewsCalendar: { namespace: 'calendar', key: 'calendarSettingsDesc' },
+	viewsKanban: { namespace: 'settings', key: 'kanbanSettingsDesc' },
+	viewsFilters: { namespace: 'filterSets', key: 'tabDesc' },
+	interfaceTaskChips: { namespace: 'settings', key: 'settingsPageTaskChipsDesc' },
+	interfacePinnedDock: { namespace: 'settings', key: 'settingsPagePinnedDockDesc' },
+	interfaceTaskFinder: { namespace: 'settings', key: 'settingsPageTaskFinderDesc' },
+	interfaceContextMenu: { namespace: 'settings', key: 'settingsPageContextMenuDesc' },
+	interfaceStateIcons: { namespace: 'settings', key: 'settingsPageStateIconsDesc' },
+	interfaceTaskEditor: { namespace: 'settings', key: 'settingsPageTaskEditorDesc' },
+	mobileGeneral: { namespace: 'settings', key: 'mobileInterfaceDesc' },
+	mobileTaskEditor: { namespace: 'settings', key: 'settingsPageMobileTaskEditorDesc' },
+	mobileCalendar: { namespace: 'settings', key: 'settingsPageMobileCalendarDesc' },
+	mobileKanban: { namespace: 'settings', key: 'settingsPageMobileKanbanDesc' },
+};
+
+const SETTINGS_SEARCH_DOCK_KEYS = new Set<OperonSettingSearchKey>([
+	'pinnedTasksDesktopSurface',
+	'pinnedDockColorSource',
+	'pinnedDockAutoPin',
+	'pinnedDockAutoUnpinFinished',
+	'pinnedDockAutoCloseEnabled',
+	'floatingAutoCloseSec',
+	'pinnedTaskItemWidth',
+	'pinnedDockDisableOnMobile',
+	'pinnedDockLayout',
+	'pinnedDockGridCols',
+	'pinnedTasksSidebarSide',
+]);
+
+const SETTINGS_SEARCH_DOM_REFRESH_KEYS = new Set<OperonSettingSearchKey>([
+	'language',
+	'timeFormat',
+	'flowTimeUseLastSelectedDuration',
+	'pinnedDockLayout',
+	'mobileGlobalTaskFabEnabled',
+	'calendarMobileEnabled',
+	'calendarMobileDefaultSourcePresetId',
+	'calendarMobileShowAllDayItems',
+]);
+
+const SETTINGS_SEARCH_FOLDER_KEYS = new Set<OperonSettingSearchKey>([
+	'fileTasksFolder',
+	'fileTaskTemplateFolder',
+	'fileTaskArchiveFolder',
+	'fileRepeatCustomFolder',
+]);
+
+const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
+	'duplicateAlertDelaySeconds',
+	'pinnedDockGridCols',
+	'flowTimePauseMinutes',
+	'flowTimeDefaultSessionMinutes',
+	'calendarMobileSlotMinutes',
+	'calendarMobileAgendaPastDays',
+	'calendarMobileAgendaFutureDays',
+]);
+
 export class OperonSettingsTab extends PluginSettingTab {
 	private settings: OperonSettings;
 	private storage: OperonStorage;
@@ -376,7 +460,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private onDockRefreshLayout: () => void;
 	private hasPendingSettingsChange = false;
 	private activeTab: OperonSettingsTabId = 'coreGeneral';
-	private activeTaskChipsTab: TaskChipsSettingsSubtabId = 'taskCreator';
 	private expandedPresetIds: Set<string> = new Set();
 	private expandedCalendarPresetIds: Set<string> = new Set();
 	private expandedSectionIds: Set<string> = new Set();
@@ -401,6 +484,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private copyKanbanManualOrder: (sourcePresetId: string, targetPresetId: string) => Promise<void>;
 	private removeKanbanManualOrder: (presetId: string) => Promise<void>;
 	private createBasicsWorkspace: () => Promise<void>;
+	private isDeclarativeSettingsRendererActive = false;
+	private activeNativeSettingsPage: { tabId: OperonSettingsTabId; containerEl: HTMLElement } | null = null;
 
 	constructor(
 		app: App,
@@ -432,6 +517,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		createBasicsWorkspace?: () => Promise<void>,
 	) {
 		super(app, plugin);
+		Reflect.set(this, 'icon', 'factory');
 		this.settings = settings;
 		this.storage = storage;
 		this.onSettingsChanged = onSettingsChanged;
@@ -502,8 +588,796 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 	}
 
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		if (!requireApiVersion('1.13.0')) {
+			this.isDeclarativeSettingsRendererActive = false;
+			return [];
+		}
+
+		this.isDeclarativeSettingsRendererActive = true;
+		const secondaryTabs = this.getSecondarySettingsTabs();
+		const entriesByTab = this.getSettingsSearchEntriesByTab();
+
+		return this.getPrimarySettingsTabs().map(primaryTab => {
+			const childTabs = secondaryTabs.filter(tab => tab.groupId === primaryTab.id);
+			return {
+				type: 'group',
+				heading: primaryTab.label,
+				items: childTabs.map(tab => this.buildSettingsSearchTabPage(tab, entriesByTab.get(tab.id) ?? [])),
+			};
+		});
+	}
+
+	getControlValue(key: string): unknown {
+		const entry = this.findSettingsSearchEntryByKey(key);
+		if (!entry?.key) return undefined;
+
+		const rawValue = this.getRawSettingsSearchValue(entry.key);
+		if (entry.control === 'dropdown') {
+			return this.getSettingsSearchDropdownValue(entry.key, rawValue);
+		}
+		return rawValue;
+	}
+
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		const entry = this.findSettingsSearchEntryByKey(key);
+		if (!entry?.key) return;
+
+		const normalized = this.normalizeSettingsSearchControlValue(entry, value);
+		this.writeSettingsSearchValue(entry.key, normalized);
+		this.applySettingsSearchBeforeSaveEffects(entry.key, normalized);
+		await this.saveSettings();
+		this.applySettingsSearchAfterSaveEffects(entry.key);
+	}
+
+	private getSettingsSearchEntriesByTab(): Map<OperonSettingsTabId, OperonSettingsSearchEntry[]> {
+		const entriesByTab = new Map<OperonSettingsTabId, OperonSettingsSearchEntry[]>();
+		for (const entry of OPERON_SETTINGS_SEARCH_REGISTRY) {
+			if (!this.isSettingsTabId(entry.tabId)) continue;
+			if (entry.id === 'settings.legacyStorageCleanup' && !this.shouldExposeLegacyStorageCleanupEntry()) continue;
+			const tabEntries = entriesByTab.get(entry.tabId) ?? [];
+			tabEntries.push(entry);
+			entriesByTab.set(entry.tabId, tabEntries);
+		}
+		return entriesByTab;
+	}
+
+	private shouldExposeLegacyStorageCleanupEntry(): boolean {
+		return this.storage.getCachedLegacyStorageCleanupStatus()?.legacyExists === true;
+	}
+
+	private buildSettingsSearchTabPage(
+		tab: SettingsTabDefinition<OperonSettingsTabId>,
+		entries: OperonSettingsSearchEntry[],
+	): SettingDefinitionPage {
+		const pageName = this.getSettingsSearchTabPageName(tab);
+		const desc = this.getSettingsSearchTabDescription(tab.id);
+		if (!SETTINGS_SEARCH_NATIVE_TAB_IDS.has(tab.id)) {
+			return {
+				type: 'page',
+				name: pageName,
+				desc,
+				items: this.buildSettingsSearchCustomPageItems(tab.id, entries),
+			};
+		}
+
+		return {
+			type: 'page',
+			name: pageName,
+			desc,
+			items: this.buildSettingsSearchTabItems(entries),
+		};
+	}
+
+	private buildSettingsSearchCustomPageItems(
+		tabId: OperonSettingsTabId,
+		entries: OperonSettingsSearchEntry[],
+	): SettingDefinition[] {
+		return [
+			{
+				name: '',
+				searchable: false,
+				render: (setting, group) => {
+					setting.settingEl.detach();
+					const pageRoot = asHTMLElement(Reflect.get(group, 'listEl'), setting.settingEl);
+					if (!pageRoot) return;
+					this.renderNativeSettingsPage(tabId, pageRoot);
+					return () => this.hideNativeSettingsPage(pageRoot);
+				},
+			},
+			...entries.map(entry => this.buildSettingsSearchTargetDefinition(entry)),
+		];
+	}
+
+	private buildSettingsSearchTargetDefinition(entry: OperonSettingsSearchEntry): SettingDefinition {
+		return {
+			name: this.getSettingsSearchText(entry.name),
+			desc: this.getSettingsSearchText(entry.desc),
+			aliases: this.getSettingsSearchAliases(entry),
+			render: (setting, group) => {
+				const pageRoot = asHTMLElement(Reflect.get(group, 'listEl'), setting.settingEl);
+				if (!pageRoot?.hasClass('operon-settings-native-page-root')) {
+					this.hideSettingsSearchMissingTarget(setting.settingEl);
+					return;
+				}
+				const targetEl = this.findSettingsSearchTarget(pageRoot, entry, setting.settingEl);
+				this.replaceSettingsSearchTarget(setting.settingEl, targetEl);
+			},
+		};
+	}
+
+	private findSettingsSearchTarget(pageRoot: HTMLElement, entry: OperonSettingsSearchEntry, searchEl: HTMLElement): HTMLElement | null {
+		if (entry.id) {
+			for (const candidate of Array.from(pageRoot.querySelectorAll<HTMLElement>('[data-operon-settings-search-id]'))) {
+				if (candidate === searchEl || candidate.contains(searchEl)) continue;
+				if (candidate.dataset.operonSettingsSearchId === entry.id) return candidate;
+			}
+		}
+
+		if (entry.key) {
+			for (const candidate of Array.from(pageRoot.querySelectorAll<HTMLElement>('[data-operon-settings-search-key]'))) {
+				if (candidate === searchEl || candidate.contains(searchEl)) continue;
+				if (candidate.dataset.operonSettingsSearchKey === entry.key) return candidate;
+			}
+		}
+
+		const name = this.normalizeSettingsSearchTargetText(this.getSettingsSearchText(entry.name));
+		if (!name) return null;
+		for (const item of Array.from(pageRoot.querySelectorAll<HTMLElement>('.setting-item'))) {
+			if (item === searchEl || item.contains(searchEl)) continue;
+			const itemName = item.querySelector<HTMLElement>('.setting-item-name');
+			if (itemName && this.normalizeSettingsSearchTargetText(itemName.textContent ?? '') === name) return item;
+		}
+		for (const section of Array.from(pageRoot.querySelectorAll<HTMLElement>('.operon-native-settings-section'))) {
+			if (section === searchEl || section.contains(searchEl)) continue;
+			const title = section.querySelector<HTMLElement>('.operon-native-settings-section-title');
+			if (title && this.normalizeSettingsSearchTargetText(title.textContent ?? '') === name) return section;
+		}
+		return null;
+	}
+
+	private replaceSettingsSearchTarget(searchEl: HTMLElement, targetEl: HTMLElement | null): void {
+		if (!targetEl || targetEl === searchEl) {
+			this.hideSettingsSearchMissingTarget(searchEl);
+			return;
+		}
+
+		searchEl.empty();
+		for (const attrName of Array.from(searchEl.getAttributeNames())) {
+			searchEl.removeAttribute(attrName);
+		}
+		for (const attr of Array.from(targetEl.attributes)) {
+			searchEl.setAttribute(attr.name, attr.value);
+		}
+		while (targetEl.firstChild) {
+			searchEl.appendChild(targetEl.firstChild);
+		}
+		targetEl.replaceWith(searchEl);
+	}
+
+	private hideSettingsSearchMissingTarget(searchEl: HTMLElement): void {
+		searchEl.empty();
+		searchEl.addClass('operon-settings-search-missing-target');
+	}
+
+	private normalizeSettingsSearchTargetText(text: string): string {
+		return text.replace(/\s+/g, ' ').trim().toLowerCase();
+	}
+
+	private markSettingsSearchTarget(setting: Setting, key: string): Setting {
+		setting.settingEl.dataset.operonSettingsSearchKey = key;
+		return setting;
+	}
+
+	private markSettingsSearchSectionTarget(sectionBodyEl: HTMLElement, id: string): HTMLElement {
+		const sectionEl = sectionBodyEl.closest<HTMLElement>('.operon-native-settings-section') ?? sectionBodyEl;
+		sectionEl.dataset.operonSettingsSearchId = id;
+		return sectionEl;
+	}
+
+	private buildSettingsSearchTabItems(
+		entries: OperonSettingsSearchEntry[],
+	): SettingDefinition[] {
+		const definitions: SettingDefinition[] = [];
+		for (const entry of entries) {
+			if (entry.control === 'render' || !entry.key) {
+				definitions.push(this.buildCustomSettingsSearchDefinition(entry));
+			} else {
+				definitions.push(this.buildNativeSettingsSearchDefinition(entry));
+			}
+		}
+
+		return definitions;
+	}
+
+	private renderNativeSettingsPage(tabId: OperonSettingsTabId, containerEl: HTMLElement): void {
+		if (this.activeNativeSettingsPage?.containerEl !== containerEl) {
+			this.clearActiveNativeSettingsPage(containerEl);
+		}
+
+		this.activeNativeSettingsPage = { tabId, containerEl };
+		containerEl.empty();
+		containerEl.addClass('operon-settings-tab-root');
+		containerEl.addClass('operon-settings-native-page-root');
+		this.renderSettingsTab(tabId, containerEl);
+	}
+
+	private hideNativeSettingsPage(containerEl: HTMLElement): void {
+		this.clearNativeSettingsPage(containerEl);
+	}
+
+	private clearActiveNativeSettingsPage(exceptContainerEl?: HTMLElement): void {
+		const activePage = this.activeNativeSettingsPage;
+		if (!activePage || activePage.containerEl === exceptContainerEl) return;
+		this.clearNativeSettingsPage(activePage.containerEl);
+	}
+
+	private clearNativeSettingsPage(containerEl: HTMLElement): void {
+		closeFloatingPanelsForRoot(containerEl);
+		containerEl.empty();
+		containerEl.removeClass('operon-settings-tab-root');
+		containerEl.removeClass('operon-settings-native-page-root');
+		if (this.activeNativeSettingsPage?.containerEl === containerEl) {
+			this.activeNativeSettingsPage = null;
+		}
+	}
+
+	private getSettingsSearchTabDescription(tabId: OperonSettingsTabId): string {
+		if (!this.isSecondarySettingsTabId(tabId)) return '';
+		return this.getSettingsSearchText(SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS[tabId]);
+	}
+
+	private getSettingsSearchTabPageName(tab: SettingsTabDefinition<OperonSettingsTabId>): string {
+		if (tab.groupId === 'mobile') {
+			return `${t('settings', 'tabMobile')} ${tab.label}`;
+		}
+		return tab.label;
+	}
+
+	private buildNativeSettingsSearchDefinition(entry: OperonSettingsSearchEntry): SettingDefinition {
+		if (!entry.key) return this.buildCustomSettingsSearchDefinition(entry);
+		return {
+			name: this.getSettingsSearchText(entry.name),
+			desc: this.getSettingsSearchText(entry.desc),
+			aliases: this.getSettingsSearchAliases(entry),
+			control: this.buildSettingsSearchControl(entry),
+		};
+	}
+
+	private buildCustomSettingsSearchDefinition(entry: OperonSettingsSearchEntry): SettingDefinition {
+		return {
+			name: this.getSettingsSearchText(entry.name),
+			desc: this.getSettingsSearchText(entry.desc),
+			aliases: this.getSettingsSearchAliases(entry),
+			render: setting => {
+				this.renderSettingsSearchCustomEntry(entry, setting);
+			},
+		};
+	}
+
+	private buildSettingsSearchControl(entry: OperonSettingsSearchEntry): SettingControl {
+		const key = entry.key;
+		if (!key) {
+			return {
+				type: 'text',
+				key: entry.id,
+				defaultValue: '',
+				disabled: true,
+			};
+		}
+
+		if (entry.control === 'toggle') {
+			return {
+				type: 'toggle',
+				key,
+				defaultValue: Boolean(this.getDefaultSettingsSearchValue(key)),
+			};
+		}
+		if (entry.control === 'dropdown') {
+			const options = this.getSettingsSearchDropdownOptions(key);
+			const fallbackValue = this.getSettingsSearchDropdownValue(key, this.getDefaultSettingsSearchValue(key));
+			return {
+				type: 'dropdown',
+				key,
+				defaultValue: Object.prototype.hasOwnProperty.call(options, fallbackValue)
+					? fallbackValue
+					: Object.keys(options)[0] ?? '',
+				options,
+			};
+		}
+		if (entry.control === 'folder') {
+			return {
+				type: 'folder',
+				key,
+				defaultValue: this.stringifySettingsSearchValue(this.getDefaultSettingsSearchValue(key)),
+				placeholder: this.getSettingsSearchFolderPlaceholder(key),
+				includeRoot: true,
+			};
+		}
+		if (entry.control === 'file') {
+			return {
+				type: 'file',
+				key,
+				defaultValue: this.stringifySettingsSearchValue(this.getDefaultSettingsSearchValue(key)),
+				placeholder: t('settings', 'inlineTaskTargetFilePlaceholder'),
+				filter: file => file.extension === 'md',
+			};
+		}
+		if (entry.control === 'number') {
+			const constraint = getNumericConstraint(key);
+			return {
+				type: 'number',
+				key,
+				defaultValue: this.normalizeSettingsSearchNumberValue(key, this.getDefaultSettingsSearchValue(key)),
+				min: constraint?.min,
+				max: constraint?.max,
+				step: 1,
+				disabled: key === 'flowTimeDefaultSessionMinutes'
+					? () => this.settings.flowTimeUseLastSelectedDuration
+					: undefined,
+			};
+		}
+		return {
+			type: 'text',
+			key,
+			defaultValue: this.stringifySettingsSearchValue(this.getDefaultSettingsSearchValue(key)),
+		};
+	}
+
+	private renderSettingsSearchCustomEntry(entry: OperonSettingsSearchEntry, setting: Setting): void {
+		if (entry.id === 'settings.legacyStorageCleanup') {
+			this.renderLegacyStorageCleanupSearchEntry(setting);
+			return;
+		}
+
+		setting.setName(this.getSettingsSearchText(entry.name));
+		setting.setDesc(this.getSettingsSearchText(entry.desc));
+
+		if (entry.id === 'settings.demoWorkspace') {
+			setting.addButton(button => {
+				button
+					.setButtonText(t('settings', 'demoWorkspaceCreate'))
+					.setCta()
+					.onClick(settingsAsyncHandler('settings create demo workspace failed', async () => {
+						await this.createBasicsWorkspace();
+					}));
+			});
+			return;
+		}
+
+		if (entry.id === 'ui.mobileGlobalTaskFabReset') {
+			setting.addButton(button => {
+				button
+					.setButtonText(t('settings', 'mobileGlobalTaskFabResetPositionButton'))
+					.onClick(settingsAsyncHandler('settings mobile quick-create position reset failed', async () => {
+						this.settings.mobileGlobalTaskFabPosition = null;
+						await this.saveSettings();
+						this.refreshNativeSettingsDom();
+					}));
+			});
+		}
+	}
+
+	private getSettingsSearchAliases(entry: OperonSettingsSearchEntry): string[] {
+		return this.getSettingsSearchAliasesForEntries([entry]);
+	}
+
+	private getSettingsSearchAliasesForEntries(entries: OperonSettingsSearchEntry[]): string[] {
+		const aliases = new Set<string>();
+		for (const entry of entries) {
+			for (const alias of entry.aliases ?? []) {
+				aliases.add(alias.trim());
+			}
+		}
+		return [...aliases].filter(alias => alias.trim().length > 0);
+	}
+
+	private getSettingsSearchText(ref: OperonSettingsSearchTextKey): string {
+		return t(ref.namespace as Parameters<typeof t>[0], ref.key);
+	}
+
+	private stringifySettingsSearchValue(value: unknown): string {
+		if (typeof value === 'string') return value;
+		if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+		return '';
+	}
+
+	private findSettingsSearchEntryByKey(key: string): OperonSettingsSearchEntry | null {
+		return OPERON_SETTINGS_SEARCH_REGISTRY.find(entry => entry.key === key) ?? null;
+	}
+
+	private isSettingsTabId(tabId: string): tabId is OperonSettingsTabId {
+		return this.getPrimarySettingsTabs().some(tab => tab.id === tabId)
+			|| this.getSecondarySettingsTabs().some(tab => tab.id === tabId);
+	}
+
+	private isSecondarySettingsTabId(tabId: string): tabId is OperonSettingsSecondaryTabId {
+		return this.getSecondarySettingsTabs().some(tab => tab.id === tabId);
+	}
+
+	private getRawSettingsSearchValue(key: OperonSettingSearchKey): unknown {
+		if (key === 'calendarMobileDefaultSourcePresetId') {
+			return this.settings.calendarMobileDefaultSourcePresetId
+				?? this.settings.calendarDefaultPresetId
+				?? this.settings.calendarPresets[0]?.id
+				?? '';
+		}
+		const settingsRecord = this.settings as unknown as Record<string, unknown>;
+		const value = settingsRecord[key];
+		return value ?? this.getDefaultSettingsSearchValue(key);
+	}
+
+	private getDefaultSettingsSearchValue(key: OperonSettingSearchKey): unknown {
+		return (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
+	}
+
+	private writeSettingsSearchValue(key: OperonSettingSearchKey, value: unknown): void {
+		if (isNumericSettingKey(key) && typeof value === 'number') {
+			setNumericSetting(this.settings, key, value);
+			return;
+		}
+		(this.settings as unknown as Record<string, unknown>)[key] = value;
+	}
+
+	private normalizeSettingsSearchControlValue(entry: OperonSettingsSearchEntry, value: unknown): unknown {
+		if (!entry.key) return value;
+		if (entry.control === 'toggle') {
+			return value === true || value === 'true';
+		}
+		if (entry.control === 'number') {
+			return this.normalizeSettingsSearchNumberValue(entry.key, value);
+		}
+		if (entry.control === 'dropdown') {
+			return this.normalizeSettingsSearchDropdownValue(entry.key, value);
+		}
+		return this.normalizeSettingsSearchTextValue(entry.key, value);
+	}
+
+	private normalizeSettingsSearchTextValue(key: OperonSettingSearchKey, value: unknown): string {
+		const text = this.stringifySettingsSearchValue(value);
+		if (SETTINGS_SEARCH_FOLDER_KEYS.has(key)) {
+			return normalizeSettingsFolderPath(text);
+		}
+		if (key === 'inlineTaskHeading') {
+			return normalizeInlineTaskHeadingKeyword(text);
+		}
+		if (key === 'inlineTaskParentFileHeadingKeyword') {
+			return normalizeInlineTaskParentFileHeadingKeyword(text);
+		}
+		return text;
+	}
+
+	private normalizeSettingsSearchNumberValue(key: OperonSettingSearchKey, value: unknown): number {
+		if (SETTINGS_SEARCH_OPTION_NUMBER_KEYS.has(key)) {
+			return this.normalizeSettingsSearchNumberOption(key, value);
+		}
+
+		const fallback = this.getDefaultSettingsSearchValue(key);
+		const fallbackNumber = typeof fallback === 'number' && Number.isFinite(fallback) ? fallback : 0;
+		const parsed = typeof value === 'number'
+			? value
+			: Number.parseFloat(this.stringifySettingsSearchValue(value));
+		const finite = Number.isFinite(parsed) ? parsed : fallbackNumber;
+		const constraint = getNumericConstraint(key);
+		if (!constraint) return Math.round(finite);
+		const max = typeof constraint.max === 'number' ? constraint.max : finite;
+		return Math.round(Math.min(Math.max(finite, constraint.min), max));
+	}
+
+	private normalizeSettingsSearchNumberOption(key: OperonSettingSearchKey, value: unknown): number {
+		const parsed = typeof value === 'number'
+			? value
+			: Number.parseInt(this.stringifySettingsSearchValue(value), 10);
+		const allowed = this.getSettingsSearchNumberOptions(key);
+		const fallback = this.getDefaultSettingsSearchValue(key);
+		return allowed.includes(parsed)
+			? parsed
+			: typeof fallback === 'number'
+				? fallback
+				: allowed[0] ?? 0;
+	}
+
+	private getSettingsSearchNumberOptions(key: OperonSettingSearchKey): number[] {
+		if (key === 'duplicateAlertDelaySeconds') return [...DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS];
+		if (key === 'pinnedDockGridCols') return [2, 3, 4, 5];
+		if (key === 'flowTimePauseMinutes') return [...FLOW_TIME_PAUSE_MINUTE_OPTIONS];
+		if (key === 'flowTimeDefaultSessionMinutes') return [...FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS];
+		if (key === 'calendarMobileSlotMinutes') return [...CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS];
+		if (key === 'calendarMobileAgendaPastDays') return [...CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS];
+		if (key === 'calendarMobileAgendaFutureDays') return [...CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS];
+		return [];
+	}
+
+	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
+		if (SETTINGS_SEARCH_OPTION_NUMBER_KEYS.has(key)) {
+			return this.normalizeSettingsSearchNumberOption(key, value);
+		}
+
+		const text = this.stringifySettingsSearchValue(value);
+		if (key === 'language') {
+			return ['auto', 'en', 'tr'].includes(text) ? text : DEFAULT_SETTINGS.language;
+		}
+		if (key === 'timeFormat') {
+			return text === '12h' ? '12h' : '24h';
+		}
+		if (key === 'inlineTaskSaveMode') {
+			return text === 'active-file' || text === 'specific-file' || text === 'ask-every-time' ? text : 'daily-notes';
+		}
+		if (key === 'inlineTaskParentInlineTargetMode') {
+			return text === 'default' ? 'default' : 'below-parent';
+		}
+		if (key === 'inlineTaskParentFileTargetMode') {
+			return text === 'default' ? 'default' : 'inside-parent-file';
+		}
+		if (key === 'fileTaskParentInlineTargetMode' || key === 'fileTaskParentFileTargetMode') {
+			return text === 'default' ? 'default' : 'same-folder';
+		}
+		if (key === 'newOccurrencePosition') {
+			return text === 'above' ? 'above' : 'below';
+		}
+		if (key === 'fileRepeatDestination') {
+			return text === 'custom-folder' ? 'custom-folder' : 'same-folder';
+		}
+			if (key === 'trackerTaskDescriptionClickAction') {
+				return text === 'jumpToSource' ? 'jumpToSource' : 'openTaskEditor';
+			}
+			if (key === 'pinnedTasksDesktopSurface') {
+				return text === 'sidebar' ? 'sidebar' : 'floating';
+			}
+			if (key === 'fallbackTaskIconSource') {
+				return normalizeFallbackTaskIconSource(text);
+			}
+			if (key === 'pinnedDockColorSource') {
+				return normalizeTaskColorSource(text, PINNED_DOCK_TASK_COLOR_SOURCES, DEFAULT_SETTINGS.pinnedDockColorSource);
+			}
+		if (key === 'pinnedDockLayout') {
+			return text === 'vertical' || text === 'grid' ? text : 'horizontal';
+		}
+		if (key === 'pinnedTasksSidebarSide') {
+			return text === 'right' ? 'right' : 'left';
+		}
+		if (key === 'calendarDefaultPresetId') {
+			return this.settings.calendarPresets.some(preset => preset.id === text)
+				? text
+				: this.settings.calendarPresets[0]?.id ?? null;
+		}
+		if (key === 'calendarMobileDefaultSourcePresetId') {
+			return this.settings.calendarPresets.some(preset => preset.id === text)
+				? text
+				: this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? null;
+		}
+		if (key === 'calendarWeekStart') {
+			return text === 'sunday' ? 'sunday' : 'monday';
+		}
+		if (key === 'calendarInitialScrollMode') {
+			return text === 'fixedHour' ? 'fixedHour' : 'autoNow';
+		}
+		if (key === 'calendarMobileDefaultView') {
+			return text === 'day' || text === 'threeDay' ? text : 'agenda';
+		}
+		if (key === 'calendarMobileColorSource') {
+			return normalizeTaskColorSource(text, CALENDAR_TASK_COLOR_SOURCES, DEFAULT_SETTINGS.calendarMobileColorSource);
+		}
+		if (key === 'calendarMobileAllDayVisibleTaskLimit') {
+			if (text === 'all') return 'all';
+			const parsed = Number.parseInt(text, 10);
+			return CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS.includes(parsed as CalendarMobileAllDayVisibleTaskLimit)
+				? parsed
+				: DEFAULT_SETTINGS.calendarMobileAllDayVisibleTaskLimit;
+		}
+		if (key === 'kanbanDefaultPresetId') {
+			return this.settings.kanbanPresets.some(preset => preset.id === text)
+				? text
+				: this.settings.kanbanPresets[0]?.id ?? null;
+		}
+		return text;
+	}
+
+	private getSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): string {
+		if (key === 'calendarMobileDefaultSourcePresetId') {
+			return this.stringifySettingsSearchValue(value ?? this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? '');
+		}
+		if (value == null) return '';
+		return this.stringifySettingsSearchValue(value);
+	}
+
+	private getSettingsSearchFolderPlaceholder(key: OperonSettingSearchKey): string {
+		if (key === 'fileTasksFolder') return t('settings', 'fileTasksFolderPlaceholder');
+		if (key === 'fileTaskTemplateFolder') return t('settings', 'fileTaskTemplateFolderPlaceholder');
+		if (key === 'fileTaskArchiveFolder') return t('settings', 'fileTaskArchiveFolderPlaceholder');
+		if (key === 'fileRepeatCustomFolder') return t('settings', 'fileRepeatCustomFolderPlaceholder');
+		return '';
+	}
+
+	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+		if (key === 'language') {
+			return {
+				auto: t('settings', 'languageAuto'),
+				en: t('settings', 'languageEnglish'),
+				tr: t('settings', 'languageTurkish'),
+			};
+		}
+		if (key === 'timeFormat') {
+			return {
+				'24h': t('settings', 'timeFormat24h'),
+				'12h': t('settings', 'timeFormat12h'),
+			};
+		}
+		if (key === 'inlineTaskSaveMode') {
+			return {
+				'daily-notes': t('settings', 'inlineTaskSavePathDailyNotes'),
+				'active-file': t('settings', 'inlineTaskSavePathActiveFile'),
+				'specific-file': t('settings', 'inlineTaskSavePathSpecificFile'),
+				'ask-every-time': t('settings', 'inlineTaskSavePathAskEveryTime'),
+			};
+		}
+		if (key === 'inlineTaskParentInlineTargetMode') {
+			return {
+				'below-parent': t('settings', 'inlineParentTaskTargetBelowParent'),
+				default: t('settings', 'inlineParentTaskTargetDefault'),
+			};
+		}
+		if (key === 'inlineTaskParentFileTargetMode') {
+			return {
+				'inside-parent-file': t('settings', 'fileParentTaskTargetInsideParentFile'),
+				default: t('settings', 'fileParentTaskTargetDefault'),
+			};
+		}
+		if (key === 'fileTaskParentInlineTargetMode' || key === 'fileTaskParentFileTargetMode') {
+			return {
+				'same-folder': key === 'fileTaskParentInlineTargetMode'
+					? t('settings', 'fileTaskInlineParentTargetSameFolder')
+					: t('settings', 'fileTaskFileParentTargetSameFolder'),
+				default: t('settings', 'fileTaskParentTargetDefault'),
+			};
+		}
+		if (key === 'newOccurrencePosition') {
+			return {
+				below: t('settings', 'repeatPlacementBelow'),
+				above: t('settings', 'repeatPlacementAbove'),
+			};
+		}
+		if (key === 'fileRepeatDestination') {
+			return {
+				'same-folder': t('settings', 'fileRepeatDestinationSameFolder'),
+				'custom-folder': t('settings', 'fileRepeatDestinationCustomFolder'),
+			};
+		}
+			if (key === 'trackerTaskDescriptionClickAction') {
+				return {
+					jumpToSource: t('settings', 'trackerClickJumpToSource'),
+					openTaskEditor: t('settings', 'trackerClickOpenTaskEditor'),
+				};
+			}
+			if (key === 'pinnedTasksDesktopSurface') {
+				return {
+					floating: t('settings', 'pinnedTasksDesktopSurfaceFloating'),
+					sidebar: t('settings', 'pinnedTasksDesktopSurfaceSidebar'),
+				};
+			}
+			if (key === 'fallbackTaskIconSource') {
+				return {
+					pipelineStatusIcon: t('settings', 'fallbackTaskIconSourcePipelineStatus'),
+					priorityIcon: t('settings', 'fallbackTaskIconSourcePriority'),
+					stateIcon: t('settings', 'fallbackTaskIconSourceState'),
+				};
+			}
+			if (key === 'pinnedDockColorSource') {
+				return Object.fromEntries(PINNED_DOCK_TASK_COLOR_SOURCES.map(source => [source, getTaskColorSourceLabel(source)]));
+			}
+		if (key === 'pinnedDockLayout') {
+			return {
+				horizontal: t('settings', 'pinnedDockLayoutHorizontal'),
+				vertical: t('settings', 'pinnedDockLayoutVertical'),
+				grid: t('settings', 'pinnedDockLayoutGrid'),
+			};
+		}
+		if (key === 'pinnedDockGridCols') {
+			return { '2': '2', '3': '3', '4': '4', '5': '5' };
+		}
+		if (key === 'pinnedTasksSidebarSide') {
+			return {
+				left: t('settings', 'pinnedTasksSidebarSideLeft'),
+				right: t('settings', 'pinnedTasksSidebarSideRight'),
+			};
+		}
+		if (key === 'calendarDefaultPresetId' || key === 'calendarMobileDefaultSourcePresetId') {
+			return this.settings.calendarPresets.length > 0
+				? Object.fromEntries(this.settings.calendarPresets.map(preset => [preset.id, preset.name]))
+				: { '': t('settings', 'default') };
+		}
+		if (key === 'calendarWeekStart') {
+			return {
+				monday: t('calendar', 'monday'),
+				sunday: t('calendar', 'sunday'),
+			};
+		}
+		if (key === 'calendarInitialScrollMode') {
+			return {
+				autoNow: t('calendar', 'initialScrollAutoNow'),
+				fixedHour: t('calendar', 'initialScrollFixedHour'),
+			};
+		}
+		if (key === 'calendarMobileDefaultView') {
+			return {
+				agenda: t('calendar', 'mobileViewAgenda'),
+				day: t('calendar', 'mobileViewDay'),
+				threeDay: t('calendar', 'mobileViewThreeDay'),
+			};
+		}
+		if (key === 'calendarMobileColorSource') {
+			return Object.fromEntries(CALENDAR_TASK_COLOR_SOURCES.map(source => [source, getTaskColorSourceLabel(source)]));
+		}
+		if (key === 'calendarMobileAllDayVisibleTaskLimit') {
+			return Object.fromEntries(CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS.map(limit => [
+				String(limit),
+				limit === 'all'
+					? t('settings', 'calendarMobileAllDayVisibleTaskLimitAll')
+					: t('settings', 'calendarMobileAllDayVisibleTaskLimitOption', { count: String(limit) }),
+			]));
+		}
+		if (key === 'duplicateAlertDelaySeconds') {
+			return Object.fromEntries(DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS.map(seconds => [
+				String(seconds),
+				t('settings', 'duplicateAlertDelayOption', { seconds: String(seconds) }),
+			]));
+		}
+		if (key === 'kanbanDefaultPresetId') {
+			return this.settings.kanbanPresets.length > 0
+				? Object.fromEntries(this.settings.kanbanPresets.map(preset => [preset.id, preset.name]))
+				: { '': t('settings', 'default') };
+		}
+		if (SETTINGS_SEARCH_OPTION_NUMBER_KEYS.has(key)) {
+			return Object.fromEntries(this.getSettingsSearchNumberOptions(key).map(option => [String(option), String(option)]));
+		}
+		return { '': t('settings', 'default') };
+	}
+
+	private applySettingsSearchBeforeSaveEffects(key: OperonSettingSearchKey, value: unknown): void {
+		if (key === 'inlineTaskSaveMode') {
+			this.settings.inlineTaskUseDailyNote = value === 'daily-notes';
+		}
+		if (key === 'pinnedDockAutoCloseEnabled' && value === false) {
+			this.settings.pinnedDockCollapsed = false;
+		}
+		if (key === 'flowTimeUseLastSelectedDuration' && value === false) {
+			this.settings.flowTimeSessionMinutes = this.settings.flowTimeDefaultSessionMinutes;
+		}
+		if (key === 'flowTimeDefaultSessionMinutes' && !this.settings.flowTimeUseLastSelectedDuration && typeof value === 'number') {
+			this.settings.flowTimeSessionMinutes = value;
+		}
+	}
+
+	private applySettingsSearchAfterSaveEffects(key: OperonSettingSearchKey): void {
+		if (SETTINGS_SEARCH_DOCK_KEYS.has(key)) {
+			this.onDockRefreshLayout();
+		}
+		if (SETTINGS_SEARCH_DOM_REFRESH_KEYS.has(key)) {
+			this.refreshNativeSettingsDom();
+		}
+		if (key === 'language' || key === 'timeFormat') {
+			this.updateNativeSettingsDefinitions();
+		}
+	}
+
+	private refreshNativeSettingsDom(): void {
+		const settingTab = this as SettingsSearchRefreshableTab;
+		settingTab.refreshDomState?.();
+	}
+
+	private updateNativeSettingsDefinitions(): void {
+		const settingTab = this as SettingsSearchRefreshableTab;
+		settingTab.update?.();
+	}
+
 	display(): void {
+		this.isDeclarativeSettingsRendererActive = false;
+		this.renderImperativeSettingsFallback();
+	}
+
+	private renderImperativeSettingsFallback(): void {
 		const { containerEl } = this;
+		this.clearActiveNativeSettingsPage();
 		containerEl.empty();
 
 		renderSettingsHeading(containerEl, t('settings', 'title'));
@@ -523,10 +1397,34 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private redisplayPreservingScroll(): void {
+		if (this.isDeclarativeSettingsRendererActive) {
+			const activePage = this.activeNativeSettingsPage;
+			if (!activePage?.containerEl.isConnected) {
+				this.updateNativeSettingsDefinitions();
+				return;
+			}
+
+			const scrollHost = this.resolveSettingsScrollHost();
+			const scrollTop = scrollHost?.scrollTop ?? 0;
+			const scrollLeft = scrollHost?.scrollLeft ?? 0;
+			this.renderNativeSettingsPage(activePage.tabId, activePage.containerEl);
+			if (!scrollHost) return;
+
+			const restore = (): void => {
+				const maxScrollTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
+				const maxScrollLeft = Math.max(0, scrollHost.scrollWidth - scrollHost.clientWidth);
+				scrollHost.scrollTop = Math.min(scrollTop, maxScrollTop);
+				scrollHost.scrollLeft = Math.min(scrollLeft, maxScrollLeft);
+			};
+			restore();
+			scrollHost.ownerDocument.defaultView?.requestAnimationFrame(restore);
+			return;
+		}
+
 		const scrollHost = this.resolveSettingsScrollHost();
 		const scrollTop = scrollHost?.scrollTop ?? 0;
 		const scrollLeft = scrollHost?.scrollLeft ?? 0;
-		this.display();
+		this.renderImperativeSettingsFallback();
 		if (!scrollHost) return;
 
 		const restore = (): void => {
@@ -641,6 +1539,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	hide(): void {
+		this.clearActiveNativeSettingsPage();
 		if (this.hasPendingSettingsChange) {
 			this.hasPendingSettingsChange = false;
 			this.onSettingsChanged();
@@ -651,6 +1550,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderCoreGeneralTab(containerEl: HTMLElement): void {
 		this.renderGeneralBasicsTab(containerEl);
 		this.renderGeneralSystemTab(containerEl);
+		this.renderStorageCleanupSection(containerEl);
 	}
 
 	private renderGeneralBasicsTab(containerEl: HTMLElement): void {
@@ -695,8 +1595,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderInterfaceTaskEditorTab(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'taskEditorWorkflowPickers'));
-		this.renderTaskEditorWorkflowPickerSettingsSection(containerEl);
+		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorWorkflowPickers'));
+		this.applyInterfaceIconListSectionStyle(sectionEl);
+		this.renderTaskEditorWorkflowPickerSettingsSection(sectionEl);
 	}
 
 	private renderMobileGeneralTab(containerEl: HTMLElement): void {
@@ -718,18 +1619,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderMobileTaskEditorTab(containerEl: HTMLElement): void {
-		this.renderTaskEditorMobileCoreToolSettingsSection(containerEl);
+		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorMobileCoreTools'));
+		this.applyInterfaceIconListSectionStyle(sectionEl);
+		this.renderTaskEditorMobileCoreToolSettingsSection(sectionEl);
 	}
 
 	private renderMobileCalendarTab(containerEl: HTMLElement): void {
-		this.renderBoundToggleSetting(containerEl, t('settings', 'calendarMobileEnabled'), t('settings', 'calendarMobileEnabledDesc'), 'calendarMobileEnabled');
-		this.renderBoundClampedNumericSetting(containerEl, t('settings', 'calendarMobileMaxWidth'), t('settings', 'calendarMobileMaxWidthDesc'), 'calendarMobileMaxWidthPx', {
+		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'mobileSubtabCalendar'), t('settings', 'settingsPageMobileCalendarDesc'));
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'calendarMobileEnabled'), t('settings', 'calendarMobileEnabledDesc'), 'calendarMobileEnabled');
+		this.renderBoundClampedNumericSetting(sectionEl, t('settings', 'calendarMobileMaxWidth'), t('settings', 'calendarMobileMaxWidthDesc'), 'calendarMobileMaxWidthPx', {
 			min: CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN,
 			max: CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX,
 			fallback: DEFAULT_SETTINGS.calendarMobileMaxWidthPx,
 			step: '1',
 		});
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarMobileDefaultView'), t('settings', 'calendarMobileDefaultViewDesc'), 'calendarMobileDefaultView', {
+		this.renderBoundDropdownSetting(sectionEl, t('settings', 'calendarMobileDefaultView'), t('settings', 'calendarMobileDefaultViewDesc'), 'calendarMobileDefaultView', {
 			value: this.settings.calendarMobileDefaultView,
 			dropdownOptions: [
 				{ value: 'agenda', label: t('calendar', 'mobileViewAgenda') },
@@ -738,7 +1642,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			],
 			normalize: value => value === 'day' || value === 'threeDay' ? value : 'agenda',
 		});
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarMobileDefaultSourcePreset'), t('settings', 'calendarMobileDefaultSourcePresetDesc'), 'calendarMobileDefaultSourcePresetId', {
+		this.renderBoundDropdownSetting(sectionEl, t('settings', 'calendarMobileDefaultSourcePreset'), t('settings', 'calendarMobileDefaultSourcePresetDesc'), 'calendarMobileDefaultSourcePresetId', {
 			value: this.settings.calendarMobileDefaultSourcePresetId ?? this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? '',
 			dropdownOptions: [],
 			configure: drop => {
@@ -750,7 +1654,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				? value
 				: this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? null,
 		});
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarMobileSlotMinutes'), t('settings', 'calendarMobileSlotMinutesDesc'), 'calendarMobileSlotMinutes', {
+		this.renderBoundDropdownSetting(sectionEl, t('settings', 'calendarMobileSlotMinutes'), t('settings', 'calendarMobileSlotMinutesDesc'), 'calendarMobileSlotMinutes', {
 			value: String(this.settings.calendarMobileSlotMinutes),
 			dropdownOptions: CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS.map(minutes => ({
 				value: String(minutes),
@@ -763,9 +1667,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 					: DEFAULT_SETTINGS.calendarMobileSlotMinutes;
 			},
 		});
-		this.renderBoundToggleSetting(containerEl, t('settings', 'calendarMobileShowProjectedOccurrences'), t('settings', 'calendarMobileShowProjectedOccurrencesDesc'), 'calendarMobileShowProjectedOccurrences');
-		this.renderBoundToggleSetting(containerEl, t('settings', 'calendarMobileShowExternalCalendars'), t('settings', 'calendarMobileShowExternalCalendarsDesc'), 'calendarMobileShowExternalCalendars');
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarMobileColorSource'), t('settings', 'calendarMobileColorSourceDesc'), 'calendarMobileColorSource', {
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'calendarMobileShowProjectedOccurrences'), t('settings', 'calendarMobileShowProjectedOccurrencesDesc'), 'calendarMobileShowProjectedOccurrences');
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'calendarMobileShowExternalCalendars'), t('settings', 'calendarMobileShowExternalCalendarsDesc'), 'calendarMobileShowExternalCalendars');
+		this.renderBoundDropdownSetting(sectionEl, t('settings', 'calendarMobileColorSource'), t('settings', 'calendarMobileColorSourceDesc'), 'calendarMobileColorSource', {
 			value: this.settings.calendarMobileColorSource,
 			dropdownOptions: [],
 			configure: dropdown => {
@@ -773,9 +1677,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 			normalize: value => normalizeTaskColorSource(value, CALENDAR_TASK_COLOR_SOURCES, DEFAULT_SETTINGS.calendarMobileColorSource),
 		});
-		this.renderBoundToggleSetting(containerEl, t('settings', 'calendarMobileShowDueMarkers'), t('settings', 'calendarMobileShowDueMarkersDesc'), 'calendarMobileShowDueMarkers');
-		this.renderBoundToggleSetting(containerEl, t('settings', 'calendarMobileShowAllDayItems'), t('settings', 'calendarMobileShowAllDayItemsDesc'), 'calendarMobileShowAllDayItems');
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarMobileAgendaPastDays'), t('settings', 'calendarMobileAgendaPastDaysDesc'), 'calendarMobileAgendaPastDays', {
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'calendarMobileShowDueMarkers'), t('settings', 'calendarMobileShowDueMarkersDesc'), 'calendarMobileShowDueMarkers');
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'calendarMobileShowAllDayItems'), t('settings', 'calendarMobileShowAllDayItemsDesc'), 'calendarMobileShowAllDayItems');
+		this.renderBoundDropdownSetting(sectionEl, t('settings', 'calendarMobileAgendaPastDays'), t('settings', 'calendarMobileAgendaPastDaysDesc'), 'calendarMobileAgendaPastDays', {
 			value: String(this.settings.calendarMobileAgendaPastDays),
 			dropdownOptions: CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS.map(days => ({
 				value: String(days),
@@ -788,7 +1692,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					: DEFAULT_SETTINGS.calendarMobileAgendaPastDays;
 			},
 		});
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarMobileAgendaFutureDays'), t('settings', 'calendarMobileAgendaFutureDaysDesc'), 'calendarMobileAgendaFutureDays', {
+		this.renderBoundDropdownSetting(sectionEl, t('settings', 'calendarMobileAgendaFutureDays'), t('settings', 'calendarMobileAgendaFutureDaysDesc'), 'calendarMobileAgendaFutureDays', {
 			value: String(this.settings.calendarMobileAgendaFutureDays),
 			dropdownOptions: CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS.map(days => ({
 				value: String(days),
@@ -801,8 +1705,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 					: DEFAULT_SETTINGS.calendarMobileAgendaFutureDays;
 			},
 		});
-		this.renderBoundToggleSetting(containerEl, t('settings', 'calendarMobileAgendaShowCompletedItems'), t('settings', 'calendarMobileAgendaShowCompletedItemsDesc'), 'calendarMobileAgendaShowCompletedItems');
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'calendarMobileAllDayVisibleTaskLimit'), t('settings', 'calendarMobileAllDayVisibleTaskLimitDesc'), 'calendarMobileAllDayVisibleTaskLimit', {
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'calendarMobileAgendaShowCompletedItems'), t('settings', 'calendarMobileAgendaShowCompletedItemsDesc'), 'calendarMobileAgendaShowCompletedItems');
+		this.renderBoundDropdownSetting(sectionEl, t('settings', 'calendarMobileAllDayVisibleTaskLimit'), t('settings', 'calendarMobileAllDayVisibleTaskLimitDesc'), 'calendarMobileAllDayVisibleTaskLimit', {
 			value: String(this.settings.calendarMobileAllDayVisibleTaskLimit),
 			dropdownOptions: CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS.map(limit => ({
 				value: String(limit),
@@ -818,25 +1722,26 @@ export class OperonSettingsTab extends PluginSettingTab {
 					: DEFAULT_SETTINGS.calendarMobileAllDayVisibleTaskLimit;
 			},
 		});
-		this.renderBoundToggleSetting(containerEl, t('settings', 'calendarMobileShowCompletedItems'), t('settings', 'calendarMobileShowCompletedItemsDesc'), 'calendarMobileShowCompletedItems');
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'calendarMobileShowCompletedItems'), t('settings', 'calendarMobileShowCompletedItemsDesc'), 'calendarMobileShowCompletedItems');
 	}
 
 	private renderMobileKanbanTab(containerEl: HTMLElement): void {
-		this.renderBoundToggleSetting(containerEl, t('settings', 'kanbanMobileLayoutChrome'), t('settings', 'kanbanMobileLayoutChromeDesc'), 'kanbanMobileLayoutChromeEnabled');
-		this.renderBoundClampedNumericSetting(containerEl, t('settings', 'kanbanMobileLayoutMaxWidth'), t('settings', 'kanbanMobileLayoutMaxWidthDesc'), 'kanbanMobileLayoutMaxWidthPx', {
+		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'mobileSubtabKanban'), t('settings', 'settingsPageMobileKanbanDesc'));
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'kanbanMobileLayoutChrome'), t('settings', 'kanbanMobileLayoutChromeDesc'), 'kanbanMobileLayoutChromeEnabled');
+		this.renderBoundClampedNumericSetting(sectionEl, t('settings', 'kanbanMobileLayoutMaxWidth'), t('settings', 'kanbanMobileLayoutMaxWidthDesc'), 'kanbanMobileLayoutMaxWidthPx', {
 			min: KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN,
 			max: KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX,
 			fallback: DEFAULT_SETTINGS.kanbanMobileLayoutMaxWidthPx,
 			step: '1',
 		});
-		this.renderBoundClampedNumericSetting(containerEl, t('settings', 'kanbanMobileSwimlaneHandleWidth'), t('settings', 'kanbanMobileSwimlaneHandleWidthDesc'), 'kanbanMobileCompactSwimlaneWidthPx', {
+		this.renderBoundClampedNumericSetting(sectionEl, t('settings', 'kanbanMobileSwimlaneHandleWidth'), t('settings', 'kanbanMobileSwimlaneHandleWidthDesc'), 'kanbanMobileCompactSwimlaneWidthPx', {
 			min: KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN,
 			max: KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX,
 			fallback: DEFAULT_SETTINGS.kanbanMobileCompactSwimlaneWidthPx,
 			step: '1',
 		});
-		this.renderBoundToggleSetting(containerEl, t('settings', 'kanbanMobileSwimlaneRailAlwaysVisible'), t('settings', 'kanbanMobileSwimlaneRailAlwaysVisibleDesc'), 'kanbanMobileSwimlaneRailAlwaysVisible');
-		this.renderBoundToggleSetting(containerEl, t('settings', 'kanbanMobileHorizontalStatusSnap'), t('settings', 'kanbanMobileHorizontalStatusSnapDesc'), 'kanbanMobileHorizontalStatusSnapEnabled');
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'kanbanMobileSwimlaneRailAlwaysVisible'), t('settings', 'kanbanMobileSwimlaneRailAlwaysVisibleDesc'), 'kanbanMobileSwimlaneRailAlwaysVisible');
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'kanbanMobileHorizontalStatusSnap'), t('settings', 'kanbanMobileHorizontalStatusSnapDesc'), 'kanbanMobileHorizontalStatusSnapEnabled');
 	}
 
 	private renderTasksRelationshipsTab(containerEl: HTMLElement): void {
@@ -861,8 +1766,135 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
+	private renderStorageCleanupSection(containerEl: HTMLElement): void {
+		const sectionEl = containerEl.createDiv('operon-legacy-storage-cleanup-section');
+		this.setLegacyStorageCleanupElementVisible(sectionEl, false);
+		runSettingsAsync('settings legacy storage cleanup status failed', async () => {
+			const status = await this.storage.getLegacyStorageCleanupStatus();
+			if (!status.legacyExists) {
+				this.setLegacyStorageCleanupElementVisible(sectionEl, false);
+				return;
+			}
+			sectionEl.empty();
+			renderSettingsHeading(sectionEl, t('settings', 'storageSection'));
+			const setting = new Setting(sectionEl);
+			this.renderLegacyStorageCleanupCard(sectionEl, setting, status);
+		});
+	}
+
+	private renderLegacyStorageCleanupSearchEntry(setting: Setting): void {
+		const settingEl = setting.settingEl;
+		this.setLegacyStorageCleanupElementVisible(settingEl, false);
+		setting.setName('');
+		setting.setDesc('');
+		setting.controlEl.empty();
+		runSettingsAsync('settings legacy storage cleanup search status failed', async () => {
+			const status = await this.storage.getLegacyStorageCleanupStatus();
+			if (!status.legacyExists) {
+				this.setLegacyStorageCleanupElementVisible(settingEl, false);
+				return;
+			}
+			this.renderLegacyStorageCleanupCard(settingEl, setting, status);
+		});
+	}
+
+	private renderLegacyStorageCleanupCard(
+		outerEl: HTMLElement,
+		setting: Setting,
+		status: OperonLegacyStorageCleanupStatus,
+	): void {
+		setting.settingEl.addClass('operon-legacy-storage-cleanup-card');
+		setting
+			.setName(t('settings', 'legacyStorageCleanupTitle'))
+			.setDesc(this.getLegacyStorageCleanupStatusText(status));
+		setting.controlEl.empty();
+		let cleanupButton: ButtonComponent | null = null;
+		setting.addButton(button => {
+			cleanupButton = button;
+			button
+				.setButtonText(t('settings', 'legacyStorageCleanupButton'))
+				.setCta()
+				.setDisabled(!status.canCleanup)
+				.onClick(() => {
+					this.confirmLegacyStorageCleanup();
+				});
+			this.setLegacyStorageCleanupElementVisible(button.buttonEl, status.canCleanup);
+		});
+		this.applyLegacyStorageCleanupStatus(outerEl, cleanupButton, status);
+	}
+
+	private applyLegacyStorageCleanupStatus(
+		outerEl: HTMLElement,
+		cleanupButton: ButtonComponent | null,
+		status: OperonLegacyStorageCleanupStatus,
+	): void {
+		if (!status.legacyExists) {
+			this.setLegacyStorageCleanupElementVisible(outerEl, false);
+			if (cleanupButton) this.setLegacyStorageCleanupElementVisible(cleanupButton.buttonEl, false);
+			cleanupButton?.setDisabled(true);
+			return;
+		}
+		this.setLegacyStorageCleanupElementVisible(outerEl, true);
+		cleanupButton?.setDisabled(!status.canCleanup);
+		if (cleanupButton) this.setLegacyStorageCleanupElementVisible(cleanupButton.buttonEl, status.canCleanup);
+	}
+
+	private setLegacyStorageCleanupElementVisible(element: HTMLElement, visible: boolean): void {
+		element.toggleAttribute('hidden', !visible);
+		element.setAttribute('aria-hidden', visible ? 'false' : 'true');
+		element.style.display = visible ? '' : 'none';
+	}
+
+	private getLegacyStorageCleanupStatusText(status: OperonLegacyStorageCleanupStatus): string {
+		if (status.state === 'retired' && status.legacyExists) return t('settings', 'legacyStorageCleanupRetiredPresent');
+		if (status.state === 'retired') return t('settings', 'legacyStorageCleanupRetired');
+		if (status.state === 'missing') return t('settings', 'legacyStorageCleanupMissing');
+		if (status.state === 'blocked') return t('settings', 'legacyStorageCleanupBlockedDesc');
+		return t('settings', 'legacyStorageCleanupReady', {
+			files: String(status.legacyFileCount),
+			folders: String(status.legacyFolderCount),
+		});
+	}
+
+	private confirmLegacyStorageCleanup(): void {
+		new ConfirmActionModal(this.app, {
+			title: t('settings', 'legacyStorageCleanupConfirmTitle'),
+			message: t('settings', 'legacyStorageCleanupConfirmMessage'),
+			confirmText: t('settings', 'legacyStorageCleanupConfirmButton'),
+			cancelText: t('settings', 'legacyStorageCleanupCancelButton'),
+		}, (confirmed) => {
+			if (!confirmed) return;
+			runSettingsAsync('settings legacy storage cleanup failed', async () => {
+				try {
+					const result = await this.storage.cleanupLegacyStorageFromSettings();
+					if (!result.cleanupPerformed) {
+						new Notice(t('notifications', 'legacyStorageCleanupBlocked'));
+						this.redisplayPreservingScroll();
+						return;
+					}
+					this.hideLegacyStorageCleanupCards();
+					new Notice(t('notifications', 'legacyStorageCleanupSucceeded'));
+					this.redisplayPreservingScroll();
+				} catch (error) {
+					console.warn('Operon: legacy storage cleanup failed', error);
+					new Notice(t('notifications', 'legacyStorageCleanupFailed'));
+					this.redisplayPreservingScroll();
+				}
+			});
+		}).open();
+	}
+
+	private hideLegacyStorageCleanupCards(): void {
+		const cleanupEls = this.containerEl.querySelectorAll<HTMLElement>(
+			'.operon-legacy-storage-cleanup-section, .operon-legacy-storage-cleanup-card',
+		);
+		for (const cleanupEl of Array.from(cleanupEls)) {
+			this.setLegacyStorageCleanupElementVisible(cleanupEl, false);
+		}
+	}
+
 	private renderTasksFileTasksTab(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'fileTasksSection'));
+		const defaultLocationSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'fileTasksSection'));
 
 		let removedExcludedFolderConflict = false;
 		const pruneExcludedFolderConflicts = (): void => {
@@ -880,7 +1912,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			new Notice(t('notifications', 'indexRebuilt', { count: String(this.indexer.taskCount) }));
 		};
 
-		this.renderBoundTextSetting(containerEl, t('settings', 'fileTasksFolder'), t('settings', 'fileTasksFolderDesc'), 'fileTasksFolder', {
+		this.renderBoundTextSetting(defaultLocationSection, t('settings', 'fileTasksFolder'), t('settings', 'fileTasksFolderDesc'), 'fileTasksFolder', {
 			placeholder: t('settings', 'fileTasksFolderPlaceholder'),
 			settingClass: 'operon-settings-long-text-setting',
 			controlClass: 'operon-settings-input-long',
@@ -899,9 +1931,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		renderSettingsHeading(containerEl, t('settings', 'parentAwareFileTaskPlacement'));
+		const placementSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'parentAwareFileTaskPlacement'));
 
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'fileTaskInlineParentTargetMode'), t('settings', 'fileTaskInlineParentTargetModeDesc'), 'fileTaskParentInlineTargetMode', {
+		this.renderBoundDropdownSetting(placementSection, t('settings', 'fileTaskInlineParentTargetMode'), t('settings', 'fileTaskInlineParentTargetModeDesc'), 'fileTaskParentInlineTargetMode', {
 			value: this.settings.fileTaskParentInlineTargetMode,
 			dropdownOptions: [
 				{ value: 'same-folder', label: t('settings', 'fileTaskInlineParentTargetSameFolder') },
@@ -909,7 +1941,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			],
 		});
 
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'fileTaskFileParentTargetMode'), t('settings', 'fileTaskFileParentTargetModeDesc'), 'fileTaskParentFileTargetMode', {
+		this.renderBoundDropdownSetting(placementSection, t('settings', 'fileTaskFileParentTargetMode'), t('settings', 'fileTaskFileParentTargetModeDesc'), 'fileTaskParentFileTargetMode', {
 			value: this.settings.fileTaskParentFileTargetMode,
 			dropdownOptions: [
 				{ value: 'same-folder', label: t('settings', 'fileTaskFileParentTargetSameFolder') },
@@ -917,16 +1949,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 			],
 		});
 
-		renderSettingsHeading(containerEl, t('settings', 'fileTaskTemplates'));
-		this.renderFileTaskTemplateSettings(containerEl);
+		const templateSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'fileTaskTemplates'));
+		this.renderFileTaskTemplateSettings(templateSection, containerEl);
 	}
 
 	private renderTasksInlineTasksTab(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'inlineTasksSection'));
+		const defaultLocationSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'inlineTasksSection'));
 		const dailyNotesAvailable = isDailyNotesCoreAvailable(this.app);
 		const effectiveInlineTaskSaveMode = resolveEffectiveInlineTaskSaveMode(this.settings, dailyNotesAvailable);
 
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'inlineTaskDefaultSavePath'), t('settings', 'inlineTaskDefaultSavePathDesc'), 'inlineTaskSaveMode', {
+		this.renderBoundDropdownSetting(defaultLocationSection, t('settings', 'inlineTaskDefaultSavePath'), t('settings', 'inlineTaskDefaultSavePathDesc'), 'inlineTaskSaveMode', {
 			value: effectiveInlineTaskSaveMode,
 			dropdownOptions: [
 				{ value: 'daily-notes', label: t('settings', 'inlineTaskSavePathDailyNotes') },
@@ -943,7 +1975,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		const targetFileSetting = this.renderBoundTextSetting(containerEl, t('settings', 'inlineTaskTargetFile'), t('settings', 'inlineTaskTargetFileDesc'), 'inlineTaskTargetFile', {
+		const targetFileSetting = this.renderBoundTextSetting(defaultLocationSection, t('settings', 'inlineTaskTargetFile'), t('settings', 'inlineTaskTargetFileDesc'), 'inlineTaskTargetFile', {
 			placeholder: DEFAULT_INLINE_TASK_TARGET_FILE,
 			settingClass: 'operon-settings-long-text-setting',
 			controlClass: 'operon-settings-input-long',
@@ -961,7 +1993,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			|| effectiveInlineTaskSaveMode === 'active-file'
 			|| effectiveInlineTaskSaveMode === 'ask-every-time';
 		const inlineHeadingSetting = renderTextSetting({
-			containerEl,
+			containerEl: defaultLocationSection,
 			name: t('settings', 'inlineTaskHeading'),
 			desc: t('settings', 'inlineTaskHeadingDesc'),
 			value: this.settings.inlineTaskHeading,
@@ -984,9 +2016,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 		this.decorateActivationSetting(inlineHeadingSetting, inlineHeadingActive);
 
-		renderSettingsHeading(containerEl, t('settings', 'parentAwareInlineSaveLocation'));
+		const placementSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'parentAwareInlineSaveLocation'));
 
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'inlineParentTaskTargetMode'), t('settings', 'inlineParentTaskTargetModeDesc'), 'inlineTaskParentInlineTargetMode', {
+		this.renderBoundDropdownSetting(placementSection, t('settings', 'inlineParentTaskTargetMode'), t('settings', 'inlineParentTaskTargetModeDesc'), 'inlineTaskParentInlineTargetMode', {
 			value: this.settings.inlineTaskParentInlineTargetMode,
 			dropdownOptions: [
 				{ value: 'below-parent', label: t('settings', 'inlineParentTaskTargetBelowParent') },
@@ -994,7 +2026,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			],
 		});
 
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'fileParentTaskTargetMode'), t('settings', 'fileParentTaskTargetModeDesc'), 'inlineTaskParentFileTargetMode', {
+		this.renderBoundDropdownSetting(placementSection, t('settings', 'fileParentTaskTargetMode'), t('settings', 'fileParentTaskTargetModeDesc'), 'inlineTaskParentFileTargetMode', {
 			value: this.settings.inlineTaskParentFileTargetMode,
 			dropdownOptions: [
 				{ value: 'inside-parent-file', label: t('settings', 'fileParentTaskTargetInsideParentFile') },
@@ -1007,7 +2039,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		const parentFileHeadingActive = this.settings.inlineTaskParentFileTargetMode === 'inside-parent-file';
 		const parentFileHeadingSetting = renderTextSetting({
-			containerEl,
+			containerEl: placementSection,
 			name: t('settings', 'parentFileHeadingKeyword'),
 			desc: t('settings', 'parentFileHeadingKeywordDesc'),
 			value: this.settings.inlineTaskParentFileHeadingKeyword,
@@ -1030,52 +2062,40 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 		this.decorateActivationSetting(parentFileHeadingSetting, parentFileHeadingActive);
 
-		renderSettingsHeading(containerEl, t('settings', 'checkboxConversion'));
-		this.renderBoundToggleSetting(containerEl, t('settings', 'showTasksEmojiConvertIcon'), t('settings', 'showTasksEmojiConvertIconDesc'), 'inlineTaskShowTasksEmojiConvertIcon');
-		this.renderBoundToggleSetting(containerEl, t('settings', 'showPlainCheckboxConvertIcon'), t('settings', 'showPlainCheckboxConvertIconDesc'), 'inlineTaskShowPlainCheckboxConvertIcon');
+		const conversionSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'checkboxConversion'));
+		this.renderBoundToggleSetting(conversionSection, t('settings', 'showTasksEmojiConvertIcon'), t('settings', 'showTasksEmojiConvertIconDesc'), 'inlineTaskShowTasksEmojiConvertIcon');
+		this.renderBoundToggleSetting(conversionSection, t('settings', 'showPlainCheckboxConvertIcon'), t('settings', 'showPlainCheckboxConvertIconDesc'), 'inlineTaskShowPlainCheckboxConvertIcon');
 	}
 
 	private renderInterfaceStateIconsTab(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'fallbackTaskStateIcons'));
-		this.renderFallbackTaskIconSourceSetting(containerEl);
-		this.renderStateIconSetting(containerEl, 'open', t('settings', 'fallbackOpenStateIcon'), t('settings', 'fallbackOpenStateIconDesc'));
-		this.renderStateIconSetting(containerEl, 'done', t('settings', 'fallbackFinishedStateIcon'), t('settings', 'fallbackFinishedStateIconDesc'));
-		this.renderStateIconSetting(containerEl, 'cancelled', t('settings', 'fallbackCancelledStateIcon'), t('settings', 'fallbackCancelledStateIconDesc'));
+		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'fallbackTaskStateIcons'));
+		this.renderFallbackTaskIconSourceSetting(sectionEl);
+		this.renderStateIconSetting(sectionEl, 'open', t('settings', 'fallbackOpenStateIcon'), t('settings', 'fallbackOpenStateIconDesc'));
+		this.renderStateIconSetting(sectionEl, 'done', t('settings', 'fallbackFinishedStateIcon'), t('settings', 'fallbackFinishedStateIconDesc'));
+		this.renderStateIconSetting(sectionEl, 'cancelled', t('settings', 'fallbackCancelledStateIcon'), t('settings', 'fallbackCancelledStateIconDesc'));
 	}
 
 	private renderFallbackTaskIconSourceSetting(containerEl: HTMLElement): void {
-		const setting = new Setting(containerEl)
-			.setName(t('settings', 'fallbackTaskIconSource'))
-			.setDesc(t('settings', 'fallbackTaskIconSourceDesc'));
-		setting.settingEl.addClass('operon-fallback-icon-source-setting');
-
-		const controls = setting.controlEl.createDiv('operon-fallback-icon-source-control');
-		this.renderFallbackTaskIconSourceButton(controls, 'pipelineStatusIcon', t('settings', 'fallbackTaskIconSourcePipelineStatus'));
-		this.renderFallbackTaskIconSourceButton(controls, 'priorityIcon', t('settings', 'fallbackTaskIconSourcePriority'));
-		this.renderFallbackTaskIconSourceButton(controls, 'stateIcon', t('settings', 'fallbackTaskIconSourceState'));
-	}
-
-	private renderFallbackTaskIconSourceButton(
-		containerEl: HTMLElement,
-		source: FallbackTaskIconSource,
-		label: string,
-	): void {
-		const active = this.settings.fallbackTaskIconSource === source;
-		const button = containerEl.createEl('button', {
-			text: label,
-			cls: 'operon-fallback-icon-source-button',
-			attr: {
-				type: 'button',
-				'aria-pressed': active ? 'true' : 'false',
-			},
+		const setting = renderDropdownSetting<FallbackTaskIconSource>({
+			containerEl,
+			name: t('settings', 'fallbackTaskIconSource'),
+			desc: t('settings', 'fallbackTaskIconSourceDesc'),
+			value: this.settings.fallbackTaskIconSource,
+			options: [
+				{ value: 'pipelineStatusIcon', label: t('settings', 'fallbackTaskIconSourcePipelineStatus') },
+				{ value: 'priorityIcon', label: t('settings', 'fallbackTaskIconSourcePriority') },
+				{ value: 'stateIcon', label: t('settings', 'fallbackTaskIconSourceState') },
+			],
+			controlClass: 'operon-fallback-icon-source-dropdown',
+			onChange: settingsAsyncHandler('settings fallback task icon source change failed', async (source) => {
+				if (this.settings.fallbackTaskIconSource === source) return;
+				this.settings.fallbackTaskIconSource = source;
+				await this.saveSettings();
+			}),
 		});
-		button.toggleClass('is-active', active);
-		button.addEventListener('click', settingsAsyncHandler('settings fallback task icon source change failed', async () => {
-			if (this.settings.fallbackTaskIconSource === source) return;
-			this.settings.fallbackTaskIconSource = source;
-			await this.saveSettings();
-			this.redisplayPreservingScroll();
-		}));
+		setting.settingEl.addClass('operon-fallback-icon-source-setting');
+		setting.settingEl.dataset.operonSettingsSearchId = 'ui.fallbackTaskIconSource';
+		this.markSettingsSearchTarget(setting, 'fallbackTaskIconSource');
 	}
 
 	private decorateActivationSetting(setting: Setting, active: boolean): void {
@@ -1084,10 +2104,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderInterfacePinnedDockTab(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'pinnedTasksSection'));
-		const dockBody = containerEl;
+		const mainSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'pinnedTasksSection'));
 
-		this.renderBoundDropdownSetting(dockBody, t('settings', 'pinnedTasksDesktopSurface'), t('settings', 'pinnedTasksDesktopSurfaceDesc'), 'pinnedTasksDesktopSurface', {
+		this.renderBoundDropdownSetting(mainSection, t('settings', 'pinnedTasksDesktopSurface'), t('settings', 'pinnedTasksDesktopSurfaceDesc'), 'pinnedTasksDesktopSurface', {
 			value: this.settings.pinnedTasksDesktopSurface,
 			dropdownOptions: [
 				{ value: 'floating', label: t('settings', 'pinnedTasksDesktopSurfaceFloating') },
@@ -1095,11 +2114,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 			],
 		});
 
-		renderSettingsInfoBox(dockBody, t('settings', 'pinnedTasksMobileSidebarNoteTitle'), t('settings', 'pinnedTasksMobileSidebarNoteDesc'));
+		if (!containerEl.closest('.operon-settings-native-page-root')) {
+			renderSettingsInfoBox(mainSection, t('settings', 'pinnedTasksMobileSidebarNoteTitle'), t('settings', 'pinnedTasksMobileSidebarNoteDesc'));
+		}
 
-		renderSettingsHeading(dockBody, t('settings', 'pinnedTasksSharedSettings'));
+		const sharedSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'pinnedTasksSharedSettings'));
 
-		this.renderBoundDropdownSetting(dockBody, t('settings', 'pinnedDockTaskColorSource'), t('settings', 'pinnedDockTaskColorSourceDesc'), 'pinnedDockColorSource', {
+		this.renderBoundDropdownSetting(sharedSection, t('settings', 'pinnedDockTaskColorSource'), t('settings', 'pinnedDockTaskColorSourceDesc'), 'pinnedDockColorSource', {
 			value: this.settings.pinnedDockColorSource,
 			dropdownOptions: [],
 			configure: drop => {
@@ -1111,12 +2132,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		this.renderBoundToggleSetting(dockBody, t('settings', 'pinnedDockAutoPinActiveTimerTask'), t('settings', 'pinnedDockAutoPinActiveTimerTaskDesc'), 'pinnedDockAutoPin');
-		this.renderBoundToggleSetting(dockBody, t('settings', 'pinnedDockAutoUnpinFinishedTasks'), t('settings', 'pinnedDockAutoUnpinFinishedTasksDesc'), 'pinnedDockAutoUnpinFinished');
+		this.renderBoundToggleSetting(sharedSection, t('settings', 'pinnedDockAutoPinActiveTimerTask'), t('settings', 'pinnedDockAutoPinActiveTimerTaskDesc'), 'pinnedDockAutoPin');
+		this.renderBoundToggleSetting(sharedSection, t('settings', 'pinnedDockAutoUnpinFinishedTasks'), t('settings', 'pinnedDockAutoUnpinFinishedTasksDesc'), 'pinnedDockAutoUnpinFinished');
 
-		renderSettingsHeading(dockBody, t('settings', 'pinnedDockSection'));
+		const sidebarSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'pinnedTasksSidebarSection'));
 
-		this.renderBoundToggleSetting(dockBody, t('settings', 'pinnedDockAutoClose'), t('settings', 'pinnedDockAutoCloseDesc'), 'pinnedDockAutoCloseEnabled', {
+		this.renderBoundDropdownSetting(sidebarSection, t('settings', 'pinnedTasksSidebarSide'), t('settings', 'pinnedTasksSidebarSideDesc'), 'pinnedTasksSidebarSide', {
+			value: this.settings.pinnedTasksSidebarSide,
+			dropdownOptions: [
+				{ value: 'left', label: t('settings', 'pinnedTasksSidebarSideLeft') },
+				{ value: 'right', label: t('settings', 'pinnedTasksSidebarSideRight') },
+			],
+		});
+
+		const dockSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'pinnedDockSection'));
+
+		this.renderBoundToggleSetting(dockSection, t('settings', 'pinnedDockAutoClose'), t('settings', 'pinnedDockAutoCloseDesc'), 'pinnedDockAutoCloseEnabled', {
 			onBeforeSave: value => {
 				if (!value) this.settings.pinnedDockCollapsed = false;
 			},
@@ -1125,13 +2156,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		this.renderBoundClampedNumericSetting(dockBody, t('settings', 'pinnedDockAutoCloseDelay'), t('settings', 'pinnedDockAutoCloseDelayDesc'), 'floatingAutoCloseSec', {
+		this.renderBoundClampedNumericSetting(dockSection, t('settings', 'pinnedDockAutoCloseDelay'), t('settings', 'pinnedDockAutoCloseDelayDesc'), 'floatingAutoCloseSec', {
 			min: 5,
 			max: 600,
 			fallback: this.settings.floatingAutoCloseSec,
 		});
 
-		this.renderBoundClampedNumericSetting(dockBody, t('settings', 'pinnedDockTaskCardWidth'), t('settings', 'pinnedDockTaskCardWidthDesc'), 'pinnedTaskItemWidth', {
+		this.renderBoundClampedNumericSetting(dockSection, t('settings', 'pinnedDockTaskCardWidth'), t('settings', 'pinnedDockTaskCardWidthDesc'), 'pinnedTaskItemWidth', {
 			min: 120,
 			max: 800,
 			fallback: this.settings.pinnedTaskItemWidth,
@@ -1140,13 +2171,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		this.renderBoundToggleSetting(dockBody, t('settings', 'pinnedDockDisableOnMobile'), t('settings', 'pinnedDockDisableOnMobileDesc'), 'pinnedDockDisableOnMobile', {
+		this.renderBoundToggleSetting(dockSection, t('settings', 'pinnedDockDisableOnMobile'), t('settings', 'pinnedDockDisableOnMobileDesc'), 'pinnedDockDisableOnMobile', {
 			onAfterChange: () => {
 				this.onDockRefreshLayout();
 			},
 		});
 
-		this.renderBoundDropdownSetting(dockBody, t('settings', 'pinnedDockLayout'), t('settings', 'pinnedDockLayoutDesc'), 'pinnedDockLayout', {
+		this.renderBoundDropdownSetting(dockSection, t('settings', 'pinnedDockLayout'), t('settings', 'pinnedDockLayoutDesc'), 'pinnedDockLayout', {
 			value: this.settings.pinnedDockLayout,
 			dropdownOptions: [
 				{ value: 'horizontal', label: t('settings', 'pinnedDockLayoutHorizontal') },
@@ -1158,7 +2189,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		this.renderBoundDropdownSetting(dockBody, t('settings', 'pinnedDockGridColumns'), t('settings', 'pinnedDockGridColumnsDesc'), 'pinnedDockGridCols', {
+		this.renderBoundDropdownSetting(dockSection, t('settings', 'pinnedDockGridColumns'), t('settings', 'pinnedDockGridColumnsDesc'), 'pinnedDockGridCols', {
 			value: String(this.settings.pinnedDockGridCols) as '2' | '3' | '4' | '5',
 			dropdownOptions: [
 				{ value: '2', label: '2' },
@@ -1171,21 +2202,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 				this.onDockRefreshLayout();
 			},
 		});
-
-		renderSettingsHeading(dockBody, t('settings', 'pinnedTasksSidebarSection'));
-
-		this.renderBoundDropdownSetting(dockBody, t('settings', 'pinnedTasksSidebarSide'), t('settings', 'pinnedTasksSidebarSideDesc'), 'pinnedTasksSidebarSide', {
-			value: this.settings.pinnedTasksSidebarSide,
-			dropdownOptions: [
-				{ value: 'left', label: t('settings', 'pinnedTasksSidebarSideLeft') },
-				{ value: 'right', label: t('settings', 'pinnedTasksSidebarSideRight') },
-			],
-		});
 	}
 
 	private renderTasksRecurrenceTab(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'repeatingTasks'));
-		const repeatingBody = containerEl;
+		const repeatingBody = renderNativeSettingsGroupedSection(containerEl, t('settings', 'repeatingTasks'));
 		this.renderBoundDropdownSetting(repeatingBody, t('settings', 'inlineRepeatPlacement'), t('settings', 'inlineRepeatPlacementDesc'), 'newOccurrencePosition', {
 			value: this.settings.newOccurrencePosition,
 			dropdownOptions: [
@@ -1218,112 +2238,34 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 		setSettingsControlHidden(customRepeatFolderSetting, this.settings.fileRepeatDestination !== 'custom-folder');
-		this.renderRepeatSeriesYamlPropertyRemovalSection(repeatingBody);
+		this.renderRepeatSeriesYamlPropertyRemovalSection(containerEl);
 	}
 
 	private renderInterfaceTaskFinderTab(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'taskFinderSection'));
-		this.renderTaskFinderBehaviorSettingsSection(containerEl);
+		const behaviorSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskFinderBehaviorSection'));
+		this.renderTaskFinderBehaviorSettingsSection(behaviorSection);
+		this.renderTaskFinderShortcutSettings(containerEl);
 	}
 
 	private renderInterfaceTaskChipsTab(containerEl: HTMLElement): void {
-		const tabs: Array<{ id: TaskChipsSettingsSubtabId; label: string }> = [
-			{ id: 'taskCreator', label: t('settings', 'taskChipsSubtabTaskCreator') },
-			{ id: 'inlineTasks', label: t('settings', 'taskChipsSubtabInlineTasks') },
-			{ id: 'taskFinder', label: t('settings', 'taskChipsSubtabTaskFinder') },
-			{ id: 'filterTasks', label: t('settings', 'taskChipsSubtabFilterTasks') },
-			{ id: 'fileTaskOverlay', label: t('settings', 'taskChipsSubtabFileTaskOverlay') },
-		];
-		const validTabIds = new Set<TaskChipsSettingsSubtabId>(tabs.map(tab => tab.id));
-		if (!validTabIds.has(this.activeTaskChipsTab)) {
-			this.activeTaskChipsTab = 'taskCreator';
-		}
+		this.renderTaskCreatorToolbarSettingsSection(this.renderTaskChipsGroupedSection(containerEl, t('settings', 'taskCreatorToolbarSection')));
+		this.renderInlineTaskCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, t('settings', 'inlineTaskIconsSection')));
+		this.renderTaskFinderCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, t('settings', 'taskFinderIconsSection')));
+		this.renderFilterTaskCardsSection(containerEl);
+		this.renderOverlayTaskCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, t('settings', 'overlayTaskIconsSection')));
+	}
 
-		const navEl = containerEl.createDiv('operon-task-chips-subtab-nav');
-		navEl.setAttribute('role', 'tablist');
-		const contentEl = containerEl.createDiv('operon-task-chips-subtab-content');
-		contentEl.setAttribute('role', 'tabpanel');
-		contentEl.setAttribute('tabindex', '0');
+	private renderTaskChipsGroupedSection(containerEl: HTMLElement, title: string): HTMLElement {
+		const sectionEl = renderNativeSettingsGroupedSection(containerEl, title);
+		this.applyInterfaceIconListSectionStyle(sectionEl);
+		sectionEl.addClass('operon-task-chips-settings-section');
+		return sectionEl;
+	}
 
-		const buttons = new Map<TaskChipsSettingsSubtabId, HTMLButtonElement>();
-		const renderContent = (): void => {
-			contentEl.empty();
-			switch (this.activeTaskChipsTab) {
-				case 'taskCreator':
-					renderSettingsHeading(contentEl, t('settings', 'taskCreatorToolbarSection'));
-					this.renderTaskCreatorToolbarSettingsSection(contentEl);
-					break;
-				case 'inlineTasks':
-					renderSettingsHeading(contentEl, t('settings', 'inlineTaskIconsSection'));
-					this.renderInlineTaskCompactChipSettingsSection(contentEl);
-					break;
-				case 'taskFinder':
-					renderSettingsHeading(contentEl, t('settings', 'taskFinderIconsSection'));
-					this.renderTaskFinderCompactChipSettingsSection(contentEl);
-					break;
-				case 'filterTasks':
-					this.renderFilterTaskCardsSection(contentEl);
-					break;
-				case 'fileTaskOverlay':
-					renderSettingsHeading(contentEl, t('settings', 'overlayTaskIconsSection'));
-					this.renderOverlayTaskCompactChipSettingsSection(contentEl);
-					break;
-			}
-		};
-		const syncNav = (): void => {
-			for (const tab of tabs) {
-				const button = buttons.get(tab.id);
-				if (!button) continue;
-				const isActive = tab.id === this.activeTaskChipsTab;
-				button.toggleClass('is-active', isActive);
-				button.setAttribute('aria-selected', String(isActive));
-				button.tabIndex = isActive ? 0 : -1;
-				if (isActive) {
-					contentEl.setAttribute('aria-labelledby', button.id);
-				}
-			}
-		};
-		const activateTab = (tabId: TaskChipsSettingsSubtabId, focus = false): void => {
-			this.activeTaskChipsTab = tabId;
-			renderContent();
-			syncNav();
-			if (focus) buttons.get(tabId)?.focus();
-		};
-
-		tabs.forEach((tab, index) => {
-			const button = navEl.createEl('button', {
-				text: tab.label,
-				cls: 'operon-task-chips-subtab-btn',
-				attr: {
-					type: 'button',
-					role: 'tab',
-					'aria-selected': 'false',
-				},
-			});
-			button.id = `operon-task-chips-subtab-${tab.id}`;
-			button.addEventListener('click', () => {
-				activateTab(tab.id);
-			});
-			button.addEventListener('keydown', event => {
-				if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-					event.preventDefault();
-					activateTab(tabs[(index + 1) % tabs.length].id, true);
-				} else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-					event.preventDefault();
-					activateTab(tabs[(index - 1 + tabs.length) % tabs.length].id, true);
-				} else if (event.key === 'Home') {
-					event.preventDefault();
-					activateTab(tabs[0].id, true);
-				} else if (event.key === 'End') {
-					event.preventDefault();
-					activateTab(tabs[tabs.length - 1].id, true);
-				}
-			});
-			buttons.set(tab.id, button);
-		});
-
-		renderContent();
-		syncNav();
+	private applyInterfaceIconListSectionStyle(sectionEl: HTMLElement): void {
+		sectionEl.addClass('operon-settings-add-list-section');
+		sectionEl.addClass('operon-settings-card-list-section');
+		sectionEl.addClass('operon-interface-icon-list-settings-section');
 	}
 
 	private renderTaskFinderBehaviorSettingsSection(containerEl: HTMLElement): void {
@@ -1361,18 +2303,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 				this.settings.taskFinderSelectedProjectId = '';
 			},
 		});
-		this.renderTaskFinderShortcutSettings(containerEl);
 	}
 
 	private renderTaskFinderShortcutSettings(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'taskFinderHotkeysSection'));
+		const shortcutSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskFinderHotkeysSection'));
+		shortcutSection.addClass('operon-settings-add-list-section');
+		shortcutSection.addClass('operon-settings-card-list-section');
 
-		const description = containerEl.createEl('p', {
+		const description = shortcutSection.createEl('p', {
 			text: t('settings', 'taskFinderShortcutsDesc'),
 		});
 		description.addClass('operon-settings-section-desc');
+		description.dataset.operonSettingsSearchId = 'ui.taskFinderHotkeys';
 
-		const shortcutsEl = containerEl.createDiv('operon-task-finder-shortcut-settings');
+		const shortcutsEl = shortcutSection.createDiv('operon-task-finder-shortcut-settings');
 		for (const key of TASK_FINDER_DEFAULT_SCOPE_ORDER) {
 			this.renderTaskFinderShortcutSetting(shortcutsEl, key);
 		}
@@ -1388,9 +2332,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return shortcut ? `.${shortcut}` : t('settings', 'taskFinderShortcutNone');
 		};
 		const updatePreview = (value: string): void => {
-			previewEl?.setText(t('settings', 'taskFinderShortcutPreview', {
-				command: formatPreview(value),
-			}));
+			if (!previewEl) return;
+			const command = formatPreview(value);
+			const preview = t('settings', 'taskFinderShortcutPreview', { command });
+			const commandStart = preview.indexOf(command);
+			previewEl.empty();
+			if (commandStart < 0) {
+				previewEl.setText(preview);
+				return;
+			}
+			previewEl.appendChild(previewEl.ownerDocument.createTextNode(preview.slice(0, commandStart)));
+			previewEl.createSpan({
+				text: command,
+				cls: 'operon-task-finder-shortcut-preview-command',
+			});
+			previewEl.appendChild(previewEl.ownerDocument.createTextNode(preview.slice(commandStart + command.length)));
 		};
 
 		const setting = new Setting(containerEl)
@@ -1450,16 +2406,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 				}));
 			});
 		setting.settingEl.addClass('operon-task-finder-shortcut-setting');
+		setting.settingEl.addClass('operon-settings-list-card');
 	}
 
 	private renderRepeatSeriesYamlPropertyRemovalSection(containerEl: HTMLElement): void {
 		const sectionEl = containerEl.createDiv('operon-repeat-property-cleanup-section');
-		renderSettingsHeading(sectionEl, t('settings', 'repeatYamlPropertyRemovalTitle'));
-		sectionEl.createEl('p', {
+		const sectionBody = renderNativeSettingsGroupedSection(sectionEl, t('settings', 'repeatYamlPropertyRemovalTitle'));
+		sectionBody.addClass('operon-settings-add-list-section');
+		sectionBody.addClass('operon-settings-card-list-section');
+		const repeatYamlCleanupDescEl = sectionBody.createEl('p', {
 			text: t('settings', 'repeatYamlPropertyRemovalDesc'),
 			cls: 'operon-settings-muted-block',
 		});
-		const listEl = sectionEl.createDiv('operon-repeat-property-cleanup-list');
+		repeatYamlCleanupDescEl.dataset.operonSettingsSearchId = 'automation.repeatYamlCleanup';
+		const listEl = sectionBody.createDiv('operon-repeat-property-cleanup-list');
 		const renderRows = (): void => {
 			listEl.empty();
 			const rowModels = this.getRepeatSeriesYamlRemovalRowModels();
@@ -1476,8 +2436,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			}
 		};
 
-		const addBtn = sectionEl.createEl('button', { cls: 'operon-settings-primary-button operon-settings-spaced-top' });
-		addBtn.setText(`+ ${t('settings', 'repeatYamlPropertyRemovalAdd')}`);
+		const addRowEl = sectionBody.createDiv('operon-settings-add-row');
+		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'repeatYamlPropertyRemovalAdd'));
 		addBtn.addEventListener('click', () => {
 			this.openRepeatSeriesYamlPropertyRemovalModal(null, renderRows);
 		});
@@ -1725,6 +2685,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			reorderTitle: t('settings', 'taskEditorWorkflowPickersReorder'),
 			moveUpLabel: t('settings', 'taskEditorWorkflowPickersMoveUp'),
 			moveDownLabel: t('settings', 'taskEditorWorkflowPickersMoveDown'),
+			descriptionSearchTargetId: 'ui.taskEditorWorkflowPickers',
 			getItems: () => this.settings.taskEditorWorkflowPickers,
 			setItems: items => {
 				this.settings.taskEditorWorkflowPickers = items;
@@ -1749,6 +2710,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			reorderTitle: t('settings', 'taskEditorMobileCoreToolsReorder'),
 			moveUpLabel: t('settings', 'taskEditorMobileCoreToolsMoveUp'),
 			moveDownLabel: t('settings', 'taskEditorMobileCoreToolsMoveDown'),
+			descriptionSearchTargetId: 'ui.taskEditorMobileCoreTools',
 			getItems: () => this.settings.taskEditorMobileCoreTools,
 			setItems: items => {
 				this.settings.taskEditorMobileCoreTools = normalizeTaskEditorMobileCoreTools(items);
@@ -1771,6 +2733,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			layout: 'row-list',
 			containerEl,
 			description: t('settings', 'taskCreatorToolbarSectionDesc'),
+			descriptionSearchTargetId: 'ui.taskCreatorToolbar',
 			toggleTitle: t('settings', 'taskCreatorToolbarToggleTitle'),
 			reorderTitle: t('settings', 'taskCreatorToolbarReorder'),
 			moveUpLabel: t('settings', 'taskCreatorToolbarMoveUp'),
@@ -1795,6 +2758,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			layout: 'row-list',
 			containerEl,
 			description: t('settings', 'inlineTaskIconsSectionDesc'),
+			descriptionSearchTargetId: 'ui.inlineTaskChips',
 			toggleTitle: t('settings', 'inlineTaskIconsToggleTitle'),
 			iconOnlyTitle: t('settings', 'inlineTaskIconsDisplayModeTitle'),
 			reorderTitle: t('settings', 'inlineTaskIconsReorder'),
@@ -1849,6 +2813,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			layout: 'row-list',
 			containerEl,
 			description: t('settings', 'taskFinderIconsSectionDesc'),
+			descriptionSearchTargetId: 'ui.taskFinderChips',
 			toggleTitle: t('settings', 'taskFinderIconsToggleTitle'),
 			reorderTitle: t('settings', 'taskFinderIconsReorder'),
 			moveUpLabel: t('settings', 'taskFinderIconsMoveUp'),
@@ -1870,6 +2835,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			layout: 'row-list',
 			containerEl,
 			description: t('settings', 'overlayTaskIconsSectionDesc'),
+			descriptionSearchTargetId: 'ui.fileTaskOverlayChips',
 			toggleTitle: t('settings', 'overlayTaskIconsToggleTitle'),
 			iconOnlyTitle: t('settings', 'overlayTaskIconsDisplayModeTitle'),
 			reorderTitle: t('settings', 'overlayTaskIconsReorder'),
@@ -1958,6 +2924,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'datetimeEnd') return t('taskEditor', 'datetimeEnd');
 		if (key === 'estimate') return t('taskEditor', 'estimateMinutesShort');
 		if (key === 'repeat') return t('taskEditor', 'repeat');
+		if (key === 'blocking') return t('taskEditor', 'blocking');
+		if (key === 'blockedBy') return t('taskEditor', 'blockedBy');
 		const mapping = this.settings.keyMappings.find(candidate => candidate.canonicalKey === key);
 		return mapping?.visiblePropertyName?.trim() || key;
 	}
@@ -2033,21 +3001,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderTrackerTab(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'trackerTitle'));
+		const generalSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'trackerMainSettingsSection'));
 
-		this.renderBoundToggleSetting(containerEl, t('settings', 'trackerSplitSessionsAtMidnight'), t('settings', 'trackerSplitSessionsAtMidnightDesc'), 'trackerSplitSessionsAtMidnight');
-		this.renderBoundToggleSetting(containerEl, t('settings', 'trackerShowStatusBarTimer'), t('settings', 'trackerShowStatusBarTimerDesc'), 'trackerShowStatusBarTimer');
+		this.renderBoundToggleSetting(generalSection, t('settings', 'trackerSplitSessionsAtMidnight'), t('settings', 'trackerSplitSessionsAtMidnightDesc'), 'trackerSplitSessionsAtMidnight');
+		this.renderBoundToggleSetting(generalSection, t('settings', 'trackerShowStatusBarTimer'), t('settings', 'trackerShowStatusBarTimerDesc'), 'trackerShowStatusBarTimer');
 
-		renderSettingsHeading(containerEl, t('settings', 'trackerSessionHistorySection'));
+		const historySection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'trackerSessionHistorySection'));
 
 		this.addNumericSetting(
-			containerEl,
+			historySection,
 			t('settings', 'trackerHistoryWindowDays'),
 			t('settings', 'trackerHistoryWindowDaysDesc'),
 			'trackerHistoryDays',
 		);
 
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'trackerTaskDescriptionClickAction'), t('settings', 'trackerTaskDescriptionClickActionDesc'), 'trackerTaskDescriptionClickAction', {
+		this.renderBoundDropdownSetting(historySection, t('settings', 'trackerTaskDescriptionClickAction'), t('settings', 'trackerTaskDescriptionClickActionDesc'), 'trackerTaskDescriptionClickAction', {
 			value: this.settings.trackerTaskDescriptionClickAction,
 			dropdownOptions: [],
 			configure: dropdown => {
@@ -2056,9 +3024,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			normalize: value => value === 'openTaskEditor' ? 'openTaskEditor' : 'jumpToSource',
 		});
 
-		renderSettingsHeading(containerEl, t('settings', 'trackerFlowTimeSection'));
+		const flowTimeSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'trackerFlowTimeSection'));
 
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'flowTimePauseDuration'), t('settings', 'flowTimePauseDurationDesc'), 'flowTimePauseMinutes', {
+		this.renderBoundDropdownSetting(flowTimeSection, t('settings', 'flowTimePauseDuration'), t('settings', 'flowTimePauseDurationDesc'), 'flowTimePauseMinutes', {
 			value: String(this.settings.flowTimePauseMinutes),
 			dropdownOptions: FLOW_TIME_PAUSE_MINUTE_OPTIONS.map(minutes => ({
 				value: String(minutes),
@@ -2072,7 +3040,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		this.renderBoundToggleSetting(containerEl, t('settings', 'flowTimeUseLastSelectedDuration'), t('settings', 'flowTimeUseLastSelectedDurationDesc'), 'flowTimeUseLastSelectedDuration', {
+		this.renderBoundToggleSetting(flowTimeSection, t('settings', 'flowTimeUseLastSelectedDuration'), t('settings', 'flowTimeUseLastSelectedDurationDesc'), 'flowTimeUseLastSelectedDuration', {
 			onBeforeSave: value => {
 				if (!value) {
 					this.settings.flowTimeSessionMinutes = this.settings.flowTimeDefaultSessionMinutes;
@@ -2083,7 +3051,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'flowTimeDefaultSessionMinutes'), t('settings', 'flowTimeDefaultSessionMinutesDesc'), 'flowTimeDefaultSessionMinutes', {
+		this.renderBoundDropdownSetting(flowTimeSection, t('settings', 'flowTimeDefaultSessionMinutes'), t('settings', 'flowTimeDefaultSessionMinutesDesc'), 'flowTimeDefaultSessionMinutes', {
 			value: String(this.settings.flowTimeDefaultSessionMinutes),
 			dropdownOptions: FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS.map(minutes => ({
 				value: String(minutes),
@@ -2103,8 +3071,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		this.renderBoundToggleSetting(containerEl, t('settings', 'flowTimeShowNumericTimer'), t('settings', 'flowTimeShowNumericTimerDesc'), 'flowTimeShowNumericTimer');
-		this.renderBoundToggleSetting(containerEl, t('settings', 'flowTimeNotifyOnTargetReached'), t('settings', 'flowTimeNotifyOnTargetReachedDesc'), 'flowTimeNotifyOnTargetReached');
+		this.renderBoundToggleSetting(flowTimeSection, t('settings', 'flowTimeShowNumericTimer'), t('settings', 'flowTimeShowNumericTimerDesc'), 'flowTimeShowNumericTimer');
+		this.renderBoundToggleSetting(flowTimeSection, t('settings', 'flowTimeNotifyOnTargetReached'), t('settings', 'flowTimeNotifyOnTargetReachedDesc'), 'flowTimeNotifyOnTargetReached');
 	}
 
 	private addTrackerTaskDescriptionClickActionOptions(
@@ -2120,83 +3088,103 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderContextualHoverMenuSettingsSection(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'contextualMenuActions'));
-		const hoverMenuBody = containerEl;
-		hoverMenuBody.createEl('p', {
-			text: t('settings', 'contextualMenuActionsDesc'),
-			cls: 'operon-settings-section-desc',
-		});
-		this.renderBoundClampedNumericSetting(hoverMenuBody, t('settings', 'contextualMenuOpenDelay'), t('settings', 'contextualMenuOpenDelayDesc'), 'contextualMenuOpenDelayMs', {
+		const delaySection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'contextMenuDelaySection'));
+		this.renderBoundClampedNumericSetting(delaySection, t('settings', 'contextualMenuOpenDelay'), t('settings', 'contextualMenuOpenDelayDesc'), 'contextualMenuOpenDelayMs', {
 			min: 0,
 			max: 2000,
 			fallback: DEFAULT_SETTINGS.contextualMenuOpenDelayMs,
 		});
-		const enabledActionIds = this.settings.contextualMenuActionAllowlist
-			.filter(id => CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.some(action => action.id === id));
-		const disabledActions = CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS
-			.filter(action => !enabledActionIds.includes(action.id));
-		const orderedActions = [
-			...enabledActionIds
-				.map(id => CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.find(action => action.id === id))
-				.filter((action): action is typeof CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS[number] => !!action),
-			...disabledActions,
-		];
-		for (const action of orderedActions) {
-			const enabled = this.settings.contextualMenuActionAllowlist.includes(action.id);
-			const enabledIndex = this.settings.contextualMenuActionAllowlist.indexOf(action.id);
-			const setting = new Setting(hoverMenuBody)
-				.setName(t('settings', action.labelKey))
-				.setDesc(t('settings', action.descriptionKey));
-			this.decorateContextualMenuActionSetting(setting, action.icon);
 
-			setting.addToggle(toggle => {
-				toggle.setValue(enabled);
-				toggle.onChange(async (nextEnabled) => {
-					const nextAllowlist = [...this.settings.contextualMenuActionAllowlist];
-					const currentIndex = nextAllowlist.indexOf(action.id);
-					if (nextEnabled && currentIndex === -1) {
-						nextAllowlist.push(action.id);
-					}
-					if (!nextEnabled && currentIndex !== -1) {
-						nextAllowlist.splice(currentIndex, 1);
-					}
-					this.settings.contextualMenuActionAllowlist = nextAllowlist;
-					await this.saveSettings();
-					this.redisplayPreservingScroll();
-				});
-			});
+		const actionsSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'contextualMenuActions'));
+		actionsSection.addClass('operon-settings-add-list-section');
+		actionsSection.addClass('operon-settings-card-list-section');
+		const actionsDescription = actionsSection.createEl('p', {
+			text: t('settings', 'contextualMenuActionsDesc'),
+			cls: 'operon-settings-section-desc',
+		});
+		actionsDescription.dataset.operonSettingsSearchId = 'ui.contextMenuActions';
+		const actionListEl = actionsSection.createDiv('operon-contextual-menu-action-list');
 
-			setting.addExtraButton(button => {
-				button.setIcon('arrow-up');
-				applyOperonTooltipToExtraButton(button, t('settings', 'moveUp'));
-				button.setDisabled(!enabled || enabledIndex <= 0);
-				button.onClick(async () => {
-					if (!enabled || enabledIndex <= 0) return;
-					const nextAllowlist = [...this.settings.contextualMenuActionAllowlist];
-					const [item] = nextAllowlist.splice(enabledIndex, 1);
-					nextAllowlist.splice(enabledIndex - 1, 0, item);
-					this.settings.contextualMenuActionAllowlist = nextAllowlist;
-					await this.saveSettings();
-					this.redisplayPreservingScroll();
-				});
-			});
+		const renderActionList = (): void => {
+			actionListEl.empty();
+			const enabledActionIds = this.settings.contextualMenuActionAllowlist
+				.filter(id => CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.some(action => action.id === id));
+			const disabledActions = CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS
+				.filter(action => !enabledActionIds.includes(action.id));
+			const orderedActions = [
+				...enabledActionIds
+					.map(id => CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.find(action => action.id === id))
+					.filter((action): action is typeof CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS[number] => !!action),
+				...disabledActions,
+			];
+			for (const action of orderedActions) {
+				const enabled = this.settings.contextualMenuActionAllowlist.includes(action.id);
+				const enabledIndex = this.settings.contextualMenuActionAllowlist.indexOf(action.id);
+				const setting = new Setting(actionListEl)
+					.setName(t('settings', action.labelKey))
+					.setDesc(t('settings', action.descriptionKey));
+				setting.settingEl.addClass('operon-settings-list-card');
+				setting.settingEl.addClass('operon-contextual-menu-action-row');
+				this.decorateContextualMenuActionSetting(setting, action.icon);
 
-			setting.addExtraButton(button => {
-				button.setIcon('arrow-down');
-				applyOperonTooltipToExtraButton(button, t('settings', 'moveDown'));
-				button.setDisabled(!enabled || enabledIndex === -1 || enabledIndex >= this.settings.contextualMenuActionAllowlist.length - 1);
-				button.onClick(async () => {
-					if (!enabled || enabledIndex === -1 || enabledIndex >= this.settings.contextualMenuActionAllowlist.length - 1) return;
-					const nextAllowlist = [...this.settings.contextualMenuActionAllowlist];
-					const [item] = nextAllowlist.splice(enabledIndex, 1);
-					nextAllowlist.splice(enabledIndex + 1, 0, item);
-					this.settings.contextualMenuActionAllowlist = nextAllowlist;
-					await this.saveSettings();
-					this.redisplayPreservingScroll();
+				setting.addToggle(toggle => {
+					toggle.setValue(enabled);
+					toggle.onChange(async (nextEnabled) => {
+						const nextAllowlist = [...this.settings.contextualMenuActionAllowlist];
+						const currentIndex = nextAllowlist.indexOf(action.id);
+						if (nextEnabled && currentIndex === -1) {
+							nextAllowlist.push(action.id);
+						}
+						if (!nextEnabled && currentIndex !== -1) {
+							nextAllowlist.splice(currentIndex, 1);
+						}
+						this.settings.contextualMenuActionAllowlist = nextAllowlist;
+						await this.saveSettings();
+						renderActionList();
+					});
 				});
-			});
-		}
-		const matrixHost = hoverMenuBody.createDiv();
+
+				setting.addExtraButton(button => {
+					button.setIcon('arrow-up');
+					applyOperonTooltipToExtraButton(button, t('settings', 'moveUp'));
+					button.setDisabled(!enabled || enabledIndex <= 0);
+					button.onClick(async () => {
+						if (!enabled || enabledIndex <= 0) return;
+						const nextAllowlist = [...this.settings.contextualMenuActionAllowlist];
+						const [item] = nextAllowlist.splice(enabledIndex, 1);
+						nextAllowlist.splice(enabledIndex - 1, 0, item);
+						this.settings.contextualMenuActionAllowlist = nextAllowlist;
+						await this.saveSettings();
+						renderActionList();
+					});
+				});
+
+				setting.addExtraButton(button => {
+					button.setIcon('arrow-down');
+					applyOperonTooltipToExtraButton(button, t('settings', 'moveDown'));
+					button.setDisabled(!enabled || enabledIndex === -1 || enabledIndex >= this.settings.contextualMenuActionAllowlist.length - 1);
+					button.onClick(async () => {
+						if (!enabled || enabledIndex === -1 || enabledIndex >= this.settings.contextualMenuActionAllowlist.length - 1) return;
+						const nextAllowlist = [...this.settings.contextualMenuActionAllowlist];
+						const [item] = nextAllowlist.splice(enabledIndex, 1);
+						nextAllowlist.splice(enabledIndex + 1, 0, item);
+						this.settings.contextualMenuActionAllowlist = nextAllowlist;
+						await this.saveSettings();
+						renderActionList();
+					});
+				});
+			}
+		};
+		renderActionList();
+
+		const matrixSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'contextualMenuMatrix'));
+		matrixSection.addClass('operon-settings-add-list-section');
+		const matrixDescription = matrixSection.createEl('p', {
+			text: t('settings', 'contextualMenuMatrixDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		matrixDescription.dataset.operonSettingsSearchId = 'ui.contextMenuMatrix';
+		const matrixHost = matrixSection.createDiv();
 		this.renderContextualMenuMatrix(matrixHost);
 	}
 
@@ -2226,14 +3214,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderContextualMenuMatrix(containerEl: HTMLElement): void {
 		containerEl.empty();
 		const matrix = containerEl.createDiv('operon-settings-contextual-menu-matrix');
-		matrix.createDiv({
-			cls: 'operon-settings-contextual-menu-matrix-title',
-			text: t('settings', 'contextualMenuMatrix'),
-		});
-		matrix.createEl('p', {
-			text: t('settings', 'contextualMenuMatrixDesc'),
-			cls: 'operon-settings-section-desc',
-		});
 		const actions = this.getOrderedContextualMenuActions();
 		const scroll = matrix.createDiv('operon-settings-contextual-menu-matrix-scroll');
 		const table = scroll.createDiv('operon-settings-contextual-menu-matrix-table');
@@ -2343,8 +3323,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private renderCalendarTab(containerEl: HTMLElement): void {
 		renderSettingsInfoBox(containerEl, t('calendar', 'title'), t('calendar', 'calendarSettingsDesc'));
+		const generalSection = renderNativeSettingsGroupedSection(containerEl, t('calendar', 'calendarGeneralSettings'));
 
-		this.renderBoundDropdownSetting(containerEl, t('calendar', 'defaultPreset'), t('calendar', 'defaultPresetDesc'), 'calendarDefaultPresetId', {
+		this.renderBoundDropdownSetting(generalSection, t('calendar', 'defaultPreset'), t('calendar', 'defaultPresetDesc'), 'calendarDefaultPresetId', {
 			value: this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? '',
 			dropdownOptions: [],
 			configure: drop => {
@@ -2355,7 +3336,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			normalize: value => value ? value : (this.settings.calendarPresets[0]?.id ?? null),
 		});
 
-		this.renderBoundDropdownSetting(containerEl, t('calendar', 'weekStart'), t('calendar', 'weekStartDesc'), 'calendarWeekStart', {
+		this.renderBoundDropdownSetting(generalSection, t('calendar', 'weekStart'), t('calendar', 'weekStartDesc'), 'calendarWeekStart', {
 			value: this.settings.calendarWeekStart,
 			dropdownOptions: [
 				{ value: 'monday', label: t('calendar', 'monday') },
@@ -2364,9 +3345,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			normalize: value => value === 'sunday' ? 'sunday' : 'monday',
 		});
 
-		this.renderBoundToggleSetting(containerEl, t('calendar', 'showWeekLabelOnFirstDay'), t('calendar', 'showWeekLabelOnFirstDayDesc'), 'calendarShowWeekLabelOnFirstDay');
+		this.renderBoundToggleSetting(generalSection, t('calendar', 'showWeekLabelOnFirstDay'), t('calendar', 'showWeekLabelOnFirstDayDesc'), 'calendarShowWeekLabelOnFirstDay');
 
-		this.renderBoundDropdownSetting(containerEl, t('calendar', 'initialScrollMode'), t('calendar', 'initialScrollModeDesc'), 'calendarInitialScrollMode', {
+		this.renderBoundDropdownSetting(generalSection, t('calendar', 'initialScrollMode'), t('calendar', 'initialScrollModeDesc'), 'calendarInitialScrollMode', {
 			value: this.settings.calendarInitialScrollMode,
 			dropdownOptions: [
 				{ value: 'autoNow', label: t('calendar', 'initialScrollAutoNow') },
@@ -2379,7 +3360,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 
 		if (this.settings.calendarInitialScrollMode === 'autoNow') {
-			this.renderBoundDropdownSetting(containerEl, t('calendar', 'currentTimePosition'), t('calendar', 'currentTimePositionDesc'), 'calendarAutoScrollPastRatio', {
+			this.renderBoundDropdownSetting(generalSection, t('calendar', 'currentTimePosition'), t('calendar', 'currentTimePositionDesc'), 'calendarAutoScrollPastRatio', {
 				value: String(this.settings.calendarAutoScrollPastRatio),
 				dropdownOptions: CALENDAR_AUTO_SCROLL_POSITION_OPTIONS.map(ratio => {
 					const past = Math.round(ratio * 100);
@@ -2394,14 +3375,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 				},
 			});
 		} else {
-			this.renderBoundClampedNumericSetting(containerEl, t('calendar', 'defaultScrollHour'), t('calendar', 'defaultScrollHourDesc'), 'calendarDefaultScrollHour', {
+			this.renderBoundClampedNumericSetting(generalSection, t('calendar', 'defaultScrollHour'), t('calendar', 'defaultScrollHourDesc'), 'calendarDefaultScrollHour', {
 				min: 0,
 				max: 23,
 				fallback: DEFAULT_SETTINGS.calendarDefaultScrollHour,
 			});
 		}
 
-		this.renderBoundDropdownSetting(containerEl, t('calendar', 'timeGridScale'), t('calendar', 'timeGridScaleDesc'), 'calendarTimeGridScale', {
+		this.renderBoundDropdownSetting(generalSection, t('calendar', 'timeGridScale'), t('calendar', 'timeGridScaleDesc'), 'calendarTimeGridScale', {
 			value: String(this.settings.calendarTimeGridScale),
 			dropdownOptions: CALENDAR_TIME_GRID_SCALE_OPTIONS.map(scale => ({
 				value: String(scale),
@@ -2415,28 +3396,31 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		renderSettingsHeading(containerEl, t('calendar', 'touchControls'));
-		this.renderBoundToggleSetting(containerEl, t('calendar', 'touchTimeGridTaskMove'), t('calendar', 'touchTimeGridTaskMoveDesc'), 'calendarTouchTimeGridTaskMoveEnabled');
-		this.renderBoundClampedNumericSetting(containerEl, t('calendar', 'touchDragLongPress'), t('calendar', 'touchDragLongPressDesc'), 'calendarTouchDragLongPressMs', {
+		const touchSection = renderNativeSettingsGroupedSection(containerEl, t('calendar', 'touchControls'));
+		this.renderBoundToggleSetting(touchSection, t('calendar', 'touchTimeGridTaskMove'), t('calendar', 'touchTimeGridTaskMoveDesc'), 'calendarTouchTimeGridTaskMoveEnabled');
+		this.renderBoundClampedNumericSetting(touchSection, t('calendar', 'touchDragLongPress'), t('calendar', 'touchDragLongPressDesc'), 'calendarTouchDragLongPressMs', {
 			min: 150,
 			max: 600,
 			fallback: DEFAULT_SETTINGS.calendarTouchDragLongPressMs,
 			step: '1',
 		});
-		this.renderBoundClampedNumericSetting(containerEl, t('calendar', 'touchDragCancelDistance'), t('calendar', 'touchDragCancelDistanceDesc'), 'calendarTouchDragCancelDistancePx', {
+		this.renderBoundClampedNumericSetting(touchSection, t('calendar', 'touchDragCancelDistance'), t('calendar', 'touchDragCancelDistanceDesc'), 'calendarTouchDragCancelDistancePx', {
 			min: 4,
 			max: 24,
 			fallback: DEFAULT_SETTINGS.calendarTouchDragCancelDistancePx,
 			step: '1',
 		});
 
-		renderSettingsHeading(containerEl, t('calendar', 'viewPresets'));
-		containerEl.createEl('p', {
+		const presetsSection = renderNativeSettingsGroupedSection(containerEl, t('calendar', 'viewPresets'));
+		presetsSection.addClass('operon-settings-add-list-section');
+		presetsSection.addClass('operon-settings-card-list-section');
+		const calendarPresetsDescEl = presetsSection.createEl('p', {
 			text: t('calendar', 'viewPresetsDesc'),
 			cls: 'operon-settings-muted-block',
 		});
+		calendarPresetsDescEl.dataset.operonSettingsSearchId = 'views.calendarPresets';
 
-		const listEl = containerEl.createDiv('operon-calendar-preset-list');
+		const listEl = presetsSection.createDiv('operon-calendar-preset-list');
 		const renderList = (): void => {
 			listEl.empty();
 			for (let index = 0; index < this.settings.calendarPresets.length; index++) {
@@ -2445,8 +3429,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 		renderList();
 
-		const addBtn = containerEl.createEl('button', { cls: 'operon-settings-primary-button operon-settings-spaced-top' });
-		addBtn.setText(t('calendar', 'addPresetButton'));
+		const addRowEl = presetsSection.createDiv('operon-settings-add-row');
+		const addBtn = createSettingsAddButton(addRowEl, t('calendar', 'addPresetButton'));
 		addBtn.addEventListener('click', settingsAsyncHandler('settings calendar preset add failed', async () => {
 			const preset: CalendarPreset = {
 				id: createCalendarPresetId(),
@@ -2471,17 +3455,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 				appearanceModeDark: 'theme',
 				externalCalendarVisibility: {},
 			};
-			this.settings.calendarPresets.push(preset);
-			if (!this.settings.calendarDefaultPresetId) {
-				this.settings.calendarDefaultPresetId = this.settings.calendarPresets[0]?.id ?? null;
-			}
-			await this.saveSettings();
-			this.redisplayPreservingScroll();
-			this.openCalendarPresetSettingsModal(preset.id, () => this.redisplayPreservingScroll());
+			this.openCalendarPresetSettingsModal(preset, async saved => {
+				this.applyCalendarPresetSaveEffects(saved);
+				this.settings.calendarPresets.push(saved);
+				if (!this.settings.calendarDefaultPresetId) {
+					this.settings.calendarDefaultPresetId = this.settings.calendarPresets[0]?.id ?? null;
+				}
+				await this.saveSettings();
+				renderList();
+			});
 		}));
 
-		renderSettingsHeading(containerEl, t('calendar', 'calendarSidebarSettings'));
-		const sidebarBody = containerEl;
+		const sidebarBody = renderNativeSettingsGroupedSection(containerEl, t('calendar', 'calendarSidebarSettings'));
 		this.renderBoundToggleSetting(sidebarBody, t('calendar', 'showWeekNumbers'), t('calendar', 'showWeekNumbersDesc'), 'calendarSidebarShowWeekNumbers');
 		this.renderBoundToggleSetting(sidebarBody, t('calendar', 'showAllDayLane'), t('calendar', 'showAllDayLaneDesc'), 'calendarShowAllDayLane');
 		this.renderBoundToggleSetting(sidebarBody, t('calendar', 'showDueLane'), t('calendar', 'showDueLaneDesc'), 'calendarShowDueMarkers');
@@ -2544,13 +3529,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderExternalCalendarsSection(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'externalCalendarsTitle'));
-		containerEl.createEl('p', {
+		const externalSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'externalCalendarsTitle'));
+		externalSection.addClass('operon-settings-add-list-section');
+		externalSection.addClass('operon-settings-card-list-section');
+		const description = externalSection.createEl('p', {
 			text: t('settings', 'externalCalendarsDesc'),
 			cls: 'operon-settings-muted-block',
 		});
+		description.dataset.operonSettingsSearchId = 'integrations.externalCalendars';
 
-		const listEl = containerEl.createDiv('operon-external-calendar-list');
+		const listEl = externalSection.createDiv('operon-external-calendar-list');
 		const renderList = (): void => {
 			listEl.empty();
 			if (this.settings.externalCalendars.length === 0) {
@@ -2566,8 +3554,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 		renderList();
 
-		const addBtn = containerEl.createEl('button', { cls: 'operon-settings-primary-button operon-settings-spaced-top' });
-		addBtn.setText(t('settings', 'externalCalendarsAddButton'));
+		const addRowEl = externalSection.createDiv('operon-settings-add-row');
+		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'externalCalendarsAddButton'));
 		addBtn.addEventListener('click', settingsAsyncHandler('settings external calendar add failed', async () => {
 			const newSource: ExternalCalendarSource = {
 				id: createExternalCalendarSourceId(),
@@ -2718,8 +3706,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderKanbanTab(containerEl: HTMLElement): void {
 		renderSettingsInfoBox(containerEl, t('settings', 'kanbanTitle'), t('settings', 'kanbanSettingsDesc'));
 
-		renderSettingsHeading(containerEl, t('settings', 'kanbanGeneralSettings'));
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'kanbanDefaultPreset'), t('settings', 'kanbanDefaultPresetDesc'), 'kanbanDefaultPresetId', {
+		const generalSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'kanbanGeneralSettings'));
+		this.renderBoundDropdownSetting(generalSection, t('settings', 'kanbanDefaultPreset'), t('settings', 'kanbanDefaultPresetDesc'), 'kanbanDefaultPresetId', {
 			value: this.settings.kanbanDefaultPresetId ?? this.settings.kanbanPresets[0]?.id ?? '',
 			dropdownOptions: [],
 			configure: drop => {
@@ -2730,22 +3718,29 @@ export class OperonSettingsTab extends PluginSettingTab {
 			normalize: value => value ? value : (this.settings.kanbanPresets[0]?.id ?? null),
 		});
 
-		this.renderBoundClampedNumericSetting(containerEl, t('settings', 'kanbanExpandedColumnWidth'), t('settings', 'kanbanExpandedColumnWidthDesc'), 'kanbanExpandedColumnWidthPx', {
+		this.renderBoundClampedNumericSetting(generalSection, t('settings', 'kanbanExpandedColumnWidth'), t('settings', 'kanbanExpandedColumnWidthDesc'), 'kanbanExpandedColumnWidthPx', {
 			min: KANBAN_EXPANDED_COLUMN_WIDTH_MIN,
 			max: KANBAN_EXPANDED_COLUMN_WIDTH_MAX,
 			fallback: DEFAULT_SETTINGS.kanbanExpandedColumnWidthPx,
 			step: '1',
 		});
 
-		this.renderBoundClampedNumericSetting(containerEl, t('settings', 'kanbanSwimlaneMaxHeight'), t('settings', 'kanbanSwimlaneMaxHeightDesc'), 'kanbanMaxVisibleTasksPerCell', {
+		this.renderBoundClampedNumericSetting(generalSection, t('settings', 'kanbanSwimlaneMaxHeight'), t('settings', 'kanbanSwimlaneMaxHeightDesc'), 'kanbanMaxVisibleTasksPerCell', {
 			min: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN,
 			max: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX,
 			fallback: DEFAULT_SETTINGS.kanbanMaxVisibleTasksPerCell,
 			step: '1',
 		});
 
-		renderSettingsHeading(containerEl, t('settings', 'kanbanPresets'));
-		const listEl = containerEl.createDiv('operon-kanban-preset-list');
+		const presetsSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'kanbanPresets'));
+		presetsSection.addClass('operon-settings-add-list-section');
+		presetsSection.addClass('operon-settings-card-list-section');
+		const kanbanPresetsDescEl = presetsSection.createEl('p', {
+			text: t('settings', 'kanbanPresetsDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		kanbanPresetsDescEl.dataset.operonSettingsSearchId = 'views.kanbanPresets';
+		const listEl = presetsSection.createDiv('operon-kanban-preset-list');
 		const renderList = (): void => {
 			listEl.empty();
 			for (let index = 0; index < this.settings.kanbanPresets.length; index++) {
@@ -2754,8 +3749,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 		renderList();
 
-		const addBtn = containerEl.createEl('button', { cls: 'operon-settings-primary-button operon-settings-spaced-top' });
-		addBtn.setText(t('settings', 'kanbanAddPresetButton'));
+		const addRowEl = presetsSection.createDiv('operon-settings-add-row');
+		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'kanbanAddPresetButton'));
 		addBtn.addEventListener('click', settingsAsyncHandler('settings kanban preset add failed', async () => {
 			const preset: KanbanPreset = {
 				id: createKanbanPresetId(),
@@ -2772,13 +3767,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 				sortMode: 'automatic',
 				sortRules: createDefaultKanbanSortRules(),
 			};
-			this.settings.kanbanPresets.push(preset);
-			if (!this.settings.kanbanDefaultPresetId) {
-				this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
-			}
-			await this.saveSettings();
-			this.redisplayPreservingScroll();
-			this.openKanbanPresetSettingsModal(preset.id, () => this.redisplayPreservingScroll());
+			this.openKanbanPresetSettingsModal(preset, async saved => {
+				this.settings.kanbanPresets.push(saved);
+				if (!this.settings.kanbanDefaultPresetId) {
+					this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
+				}
+				await this.saveSettings();
+				await this.handleKanbanSortModeChange(saved.id, saved.sortMode);
+				renderList();
+			});
 		}));
 	}
 
@@ -2855,7 +3852,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			text: 'Edit',
 			wide: true,
 			onClick: () => {
-				this.openKanbanPresetSettingsModal(preset.id, () => this.redisplayPreservingScroll());
+				this.openKanbanPresetSettingsModal(preset, async saved => {
+					this.replaceKanbanPreset(saved);
+					await this.saveSettings();
+					await this.handleKanbanSortModeChange(saved.id, saved.sortMode);
+					refresh();
+				});
 			},
 		});
 
@@ -2905,16 +3907,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private openKanbanPresetSettingsModal(presetId: string, refresh: () => void): void {
+	private openKanbanPresetSettingsModal(preset: KanbanPreset | null, onSave: (preset: KanbanPreset) => Promise<void>): void {
 		new KanbanPresetQuickSettingsModal(this.app, {
 			getSettings: () => this.settings,
-			presetId,
-			onSortModeChange: (nextPresetId, sortMode) => this.handleKanbanSortModeChange(nextPresetId, sortMode),
-			onSave: async () => {
-				await this.saveSettings();
-				refresh();
-			},
+			preset,
+			onSave,
 		}).open();
+	}
+
+	private replaceKanbanPreset(updated: KanbanPreset): void {
+		const index = this.settings.kanbanPresets.findIndex(entry => entry.id === updated.id);
+		if (index === -1) return;
+		this.settings.kanbanPresets[index] = updated;
+		if (!this.settings.kanbanPresets.some(entry => entry.id === this.settings.kanbanDefaultPresetId)) {
+			this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
+		}
 	}
 
 	private renderKanbanPresetCard(containerEl: HTMLElement, preset: KanbanPreset, index: number): void {
@@ -3402,7 +4409,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			text: 'Edit',
 			wide: true,
 			onClick: () => {
-				this.openCalendarPresetSettingsModal(preset.id, () => this.redisplayPreservingScroll());
+				this.openCalendarPresetSettingsModal(preset, async saved => {
+					this.applyCalendarPresetSaveEffects(saved);
+					this.replaceCalendarPreset(saved);
+					await this.saveSettings();
+					refresh();
+				});
 			},
 		});
 
@@ -3450,15 +4462,29 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private openCalendarPresetSettingsModal(presetId: string, refresh: () => void): void {
+	private openCalendarPresetSettingsModal(preset: CalendarPreset | null, onSave: (preset: CalendarPreset) => Promise<void>): void {
 		new CalendarPresetQuickSettingsModal(this.app, {
 			getSettings: () => this.settings,
-			presetId,
-			onSave: async () => {
-				await this.saveSettings();
-				refresh();
-			},
+			preset,
+			onSave,
 		}).open();
+	}
+
+	private replaceCalendarPreset(updated: CalendarPreset): void {
+		const index = this.settings.calendarPresets.findIndex(entry => entry.id === updated.id);
+		if (index === -1) return;
+		this.settings.calendarPresets[index] = updated;
+		if (!this.settings.calendarPresets.some(entry => entry.id === this.settings.calendarDefaultPresetId)) {
+			this.settings.calendarDefaultPresetId = this.settings.calendarPresets[0]?.id ?? null;
+		}
+	}
+
+	private applyCalendarPresetSaveEffects(preset: CalendarPreset): void {
+		for (const source of this.settings.externalCalendars) {
+			if (preset.externalCalendarVisibility[source.id] === true) {
+				source.enabled = true;
+			}
+		}
 	}
 
 	private renderCalendarPresetCard(containerEl: HTMLElement, preset: CalendarPreset, index: number): void {
@@ -3842,12 +4868,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 	): Promise<void> {
 		const preset = this.settings.calendarPresets.find(entry => entry.id === presetId);
 		if (!preset) return;
+		const optionSignature = this.getCalendarPresetDropdownOptionSignature();
 		update(preset);
 		preset.surfaceType = preset.surfaceType === 'multiWeek' ? 'multiWeek' : 'timeGrid';
 		preset.weekCount = this.normalizeCalendarPresetWeekCount(preset.weekCount);
 		preset.focusedWeekNumber = this.normalizeCalendarPresetFocusedWeekNumber(preset.focusedWeekNumber, preset.weekCount);
 		preset.todayPosition = Math.max(1, Math.min(preset.dayCount, preset.todayPosition));
 		await this.saveSettings();
+		if (optionSignature !== this.getCalendarPresetDropdownOptionSignature()) {
+			this.updateNativeSettingsDefinitions();
+		}
+	}
+
+	private getCalendarPresetDropdownOptionSignature(): string {
+		return this.settings.calendarPresets.map(preset => `${preset.id}:${preset.name}`).join('|');
 	}
 
 	private async updateKanbanPreset(
@@ -3950,6 +4984,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 
 		renderSettingsIconPickerRow({
+			app: this.app,
 			containerEl,
 			name,
 			desc,
@@ -3970,7 +5005,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderPipelinesTab(containerEl: HTMLElement): void {
 		const refresh = () => { containerEl.empty(); this.renderPipelinesTab(containerEl); };
 		// Explanation
-		renderSettingsInfoBox(containerEl, t('settings', 'pipelinesTitle'), t('settings', 'pipelinesDesc'));
+		renderSettingsInfoBox(containerEl, t('settings', 'pipelinesTitle'), t('settings', 'pipelinesDesc'), 'taxonomy.pipelines');
 
 		// Render each pipeline card
 		for (let i = 0; i < this.settings.pipelines.length; i++) {
@@ -4017,7 +5052,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const priorityCounts = this.buildPriorityCounts();
 
 		// Info box
-		renderSettingsInfoBox(containerEl, t('settings', 'priorityTitle'), t('settings', 'priorityDesc'));
+		renderSettingsInfoBox(containerEl, t('settings', 'priorityTitle'), t('settings', 'priorityDesc'), 'taxonomy.priorities');
 
 		// Priority rows
 		const listEl = containerEl.createDiv();
@@ -4244,6 +5279,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			iconEl.addClass('operon-priority-icon-preview');
 			iconButton.appendChild(iconEl);
 		};
+
 		const commitIconValue = async (nextValue: string): Promise<void> => {
 			const normalizedIcon = normalizeTaskIconValue(nextValue);
 			const currentPriority = getCurrentPriority();
@@ -4257,28 +5293,26 @@ export class OperonSettingsTab extends PluginSettingTab {
 			await this.saveSettings();
 		};
 
-		let closeIconPicker: (() => void) | null = null;
 		const openPicker = (): void => {
-			if (closeIconPicker) return;
-			closeIconPicker = showIconPicker(iconButton, {
+			openSettingsIconPickerModal(this.app, {
+				title: t('settings', 'priorityIconAria', { name: priority.label }),
 				value: getStoredIcon(),
 				query: '',
 				onSelect: iconId => {
-					closeIconPicker = null;
 					runSettingsAsync('settings priority icon change failed', () => commitIconValue(iconId));
 				},
 				onClear: () => {
-					closeIconPicker = null;
 					runSettingsAsync('settings priority icon clear failed', () => commitIconValue(''));
-				},
-				onClose: () => {
-					closeIconPicker = null;
 				},
 			});
 		};
 
 		refreshIconPreview();
-		iconButton.addEventListener('mousedown', event => event.preventDefault());
+		iconButton.addEventListener('pointerdown', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			openPicker();
+		});
 		iconButton.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -4822,29 +5856,26 @@ export class OperonSettingsTab extends PluginSettingTab {
 			await this.saveSettings();
 		};
 
-		let closeIconPicker: (() => void) | null = null;
 		const openPicker = (): void => {
-			if (closeIconPicker) return;
-			closeIconPicker = showIconPicker(iconButton, {
-				...getSettingsIconPickerFloatingOptions(iconButton),
+			openSettingsIconPickerModal(this.app, {
+				title: t('settings', 'statusIconAria', { pipeline: pipeline.name, status: status.label }),
 				value: getStoredIcon(),
 				query: '',
 				onSelect: iconId => {
-					closeIconPicker = null;
 					runSettingsAsync('settings pipeline status icon change failed', () => commitIconValue(iconId));
 				},
 				onClear: () => {
-					closeIconPicker = null;
 					runSettingsAsync('settings pipeline status icon clear failed', () => commitIconValue(''));
-				},
-				onClose: () => {
-					closeIconPicker = null;
 				},
 			});
 		};
 
 		refreshIconPreview();
-		iconButton.addEventListener('mousedown', event => event.preventDefault());
+		iconButton.addEventListener('pointerdown', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			openPicker();
+		});
 		iconButton.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -4963,13 +5994,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 	 */
 	private renderKeyMappingsSection(containerEl: HTMLElement): void {
 		const refresh = () => { containerEl.empty(); this.renderKeyMappingsSection(containerEl); };
-		renderSettingsHeading(containerEl, t('settings', 'keyMappings'));
+		const keyMappingSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'keyMappings'));
+		keyMappingSection.addClass('operon-key-mapping-section');
 
-		// Explanation block at the top
-		const explanationBox = containerEl.createDiv('operon-key-mapping-explanation-box');
-
-		const explanationTitle = explanationBox.createEl('strong', { text: t('settings', 'keyMappings') });
-		explanationTitle.addClass('operon-key-mapping-explanation-title');
+		const explanationBox = keyMappingSection.createDiv('operon-key-mapping-explanation-box');
+		explanationBox.dataset.operonSettingsSearchId = 'taxonomy.keyMappings';
 
 		explanationBox.createEl('p', {
 			text: t('settings', 'keyMappingsIntro'),
@@ -4980,13 +6009,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		const legendItems = [
 			{ label: t('settings', 'keyMappingsLegendPropertyLabel'), desc: t('settings', 'keyMappingsLegendPropertyDesc') },
+			{ label: t('settings', 'keyMappingsLegendValueSharingLabel'), desc: t('settings', 'keyMappingsLegendValueSharingDesc') },
 			{ label: t('settings', 'keyMappingsLegendHideLabel'), desc: t('settings', 'keyMappingsLegendHideDesc') },
 			{ label: t('settings', 'keyMappingsLegendTypeLabel'), desc: t('settings', 'keyMappingsLegendTypeDesc') },
 		];
 		for (const item of legendItems) {
 			const span = legendEl.createSpan('operon-key-mapping-legend-item');
 			span.createEl('strong', { text: item.label });
-			span.appendText(` — ${item.desc}`);
+			span.appendText(` – ${item.desc}`);
 		}
 
 		// System keys (canonical)
@@ -5001,30 +6031,31 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const customMappings = this.settings.keyMappings.filter(m => !m.isSystem);
 		const showCustomKeyControls = false;
 
-		// --- System Keys ---
-		renderSettingsHeading(containerEl, t('settings', 'keyMappingsSystemHeader', { count: String(systemMappings.length) }));
-
+		const systemSection = keyMappingSection.createDiv('operon-key-mapping-list');
 		for (const mapping of systemMappings) {
-			this.renderKeyMappingRow(containerEl, mapping, true);
+			this.renderKeyMappingRow(systemSection, mapping, true);
 		}
 
 		// --- Custom Keys ---
-		if (showCustomKeyControls && customMappings.length > 0) {
-			renderSettingsHeading(containerEl, t('settings', 'keyMappingsCustomHeader', { count: String(customMappings.length) }));
+		let customSection: HTMLElement | null = null;
+		if (showCustomKeyControls) {
+			customSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'keyMappingsCustomHeader', { count: String(customMappings.length) }));
+		}
+		if (customSection && customMappings.length > 0) {
 
 			for (const mapping of customMappings) {
-				this.renderKeyMappingRow(containerEl, mapping, false, refresh);
+				this.renderKeyMappingRow(customSection, mapping, false, refresh);
 			}
-		} else if (showCustomKeyControls) {
-			containerEl.createEl('p', {
+		} else if (customSection) {
+			customSection.createEl('p', {
 				text: t('settings', 'keyMappingsNoCustom'),
 				cls: 'setting-item-description operon-key-mapping-empty-note',
 			});
 		}
 
-		if (showCustomKeyControls) {
+		if (customSection) {
 			createWorkflowActionButton({
-				containerEl,
+				containerEl: customSection,
 				text: t('settings', 'keyMappingsAddKey'),
 				label: t('settings', 'keyMappingsAddKey'),
 				className: 'operon-settings-primary-button operon-settings-spaced-top',
@@ -5221,19 +6252,17 @@ export class OperonSettingsTab extends PluginSettingTab {
 			await this.saveSettings();
 		};
 
-		let closeIconPicker: (() => void) | null = null;
 		const openPicker = () => {
-			if (closeIconPicker) return;
-			closeIconPicker = showIconPicker(iconButton, {
+			openSettingsIconPickerModal(this.app, {
+				title: t('settings', 'keyMappingsIconAria'),
 				value: getStoredIcon(),
 				query: '',
-				onSelect: iconId => { closeIconPicker = null; void commitIconValue(iconId); },
-				onClear: () => { closeIconPicker = null; void commitIconValue(''); },
-				onClose: () => { closeIconPicker = null; },
+				onSelect: iconId => { void commitIconValue(iconId); },
+				onClear: () => { void commitIconValue(''); },
 			});
 		};
 		refreshIconPreview();
-		iconButton.addEventListener('mousedown', e => e.preventDefault());
+		iconButton.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); openPicker(); });
 		iconButton.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openPicker(); });
 
 		// Description
@@ -5372,20 +6401,27 @@ export class OperonSettingsTab extends PluginSettingTab {
 	 * Filters tab — list of user-defined filter sets.
 	 */
 	private renderFiltersTab(containerEl: HTMLElement): void {
-		// Info box
-		renderSettingsInfoBox(containerEl, t('filterSets', 'tabLabel'), t('filterSets', 'tabDesc'));
+		const behaviorSection = renderNativeSettingsGroupedSection(containerEl, t('filterSets', 'behaviorTitle'));
 
 		// Global presentation rules — apply to every filter surface
-		this.renderBoundToggleSetting(containerEl, t('settings', 'filterShowSubtasks'), t('settings', 'filterShowSubtasksDesc'), 'filterShowSubtasks', {
+		this.renderBoundToggleSetting(behaviorSection, t('settings', 'filterShowSubtasks'), t('settings', 'filterShowSubtasksDesc'), 'filterShowSubtasks', {
 			errorContext: 'settings filter show subtasks change failed',
 		});
 
-		this.renderBoundToggleSetting(containerEl, t('settings', 'filterShowOnlyOpenSubtasks'), t('settings', 'filterShowOnlyOpenSubtasksDesc'), 'filterShowOnlyOpenSubtasks', {
+		this.renderBoundToggleSetting(behaviorSection, t('settings', 'filterShowOnlyOpenSubtasks'), t('settings', 'filterShowOnlyOpenSubtasksDesc'), 'filterShowOnlyOpenSubtasks', {
 			errorContext: 'settings filter open subtasks change failed',
 		});
 
-		// Filter set list
-		const listEl = containerEl.createDiv('operon-filter-set-list');
+		const userFiltersSection = renderNativeSettingsGroupedSection(containerEl, t('filterSets', 'userFiltersTitle'));
+		userFiltersSection.addClass('operon-settings-add-list-section');
+		userFiltersSection.addClass('operon-settings-card-list-section');
+		const userFiltersDescEl = userFiltersSection.createEl('p', {
+			text: t('filterSets', 'userFiltersDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		userFiltersDescEl.dataset.operonSettingsSearchId = 'views.filters';
+
+		const listEl = userFiltersSection.createDiv('operon-filter-set-list');
 		const renderList = () => {
 			listEl.empty();
 			if (this.settings.filterSets.length === 0) {
@@ -5400,9 +6436,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 		renderList();
 
-		// + Add Filter button
-		const addBtn = containerEl.createEl('button', { cls: 'operon-settings-primary-button operon-settings-spaced-top' });
-		addBtn.setText(t('filterSets', 'addFilter'));
+		const addRowEl = userFiltersSection.createDiv('operon-settings-add-row');
+		const addBtn = createSettingsAddButton(addRowEl, t('filterSets', 'addFilter'));
 
 		addBtn.addEventListener('click', () => {
 			const newFs: FilterSet = {
@@ -5663,7 +6698,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			await this.saveSettings();
 			await options.onAfterChange?.(value);
 		};
-		return renderToggleSetting({
+		return this.markSettingsSearchTarget(renderToggleSetting({
 			containerEl,
 			name,
 			desc,
@@ -5671,7 +6706,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onChange: options.errorContext
 				? settingsAsyncHandler(options.errorContext, applyChange)
 				: applyChange,
-		});
+		}), key);
 	}
 
 	private renderBoundDropdownSetting<TKey extends keyof OperonSettings, TValue extends string>(
@@ -5699,7 +6734,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			await this.saveSettings();
 			await options.onAfterChange?.(nextValue);
 		};
-		return renderDropdownSetting({
+		return this.markSettingsSearchTarget(renderDropdownSetting({
 			containerEl,
 			name,
 			desc,
@@ -5710,7 +6745,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onChange: options.errorContext
 				? settingsAsyncHandler(options.errorContext, applyChange)
 				: applyChange,
-		});
+		}), String(key));
 	}
 
 	private renderBoundTextSetting(
@@ -5739,7 +6774,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			await this.saveSettings();
 			await options.onAfterChange?.(nextValue);
 		};
-		return renderTextSetting({
+		return this.markSettingsSearchTarget(renderTextSetting({
 			containerEl,
 			name,
 			desc,
@@ -5752,7 +6787,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onChange: options.errorContext
 				? settingsAsyncHandler(options.errorContext, applyChange)
 				: applyChange,
-		});
+		}), key);
 	}
 
 	private renderBoundClampedNumericSetting(
@@ -5768,7 +6803,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onAfterChange?: (value: number) => void | Promise<void>;
 		},
 	): Setting {
-		return new Setting(containerEl)
+		const setting = new Setting(containerEl)
 			.setName(name)
 			.setDesc(desc)
 			.addText(text => {
@@ -5804,6 +6839,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					});
 				});
 			});
+		return this.markSettingsSearchTarget(setting, key);
 	}
 
 	private addNumericSetting(
@@ -5822,7 +6858,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			: '';
 		const currentValue = this.settings[key];
 		const parsedValue = typeof currentValue === 'number' ? currentValue : parseInt(String(currentValue), 10);
-		renderNumericTextSetting({
+		this.markSettingsSearchTarget(renderNumericTextSetting({
 			containerEl: container,
 			name,
 			desc: desc + constraintLabel,
@@ -5833,15 +6869,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 				setNumericSetting(this.settings, key, num);
 				await this.saveSettings();
 			},
-		});
+		}), String(key));
 	}
 
 	private renderFilterTaskCardsSection(containerEl: HTMLElement): void {
-		renderSettingsHeading(containerEl, t('settings', 'filterTaskIconsSection'));
+		const sectionEl = this.renderTaskChipsGroupedSection(containerEl, t('settings', 'filterTaskIconsSection'));
 		renderCompactChipSettingsSection({
 			layout: 'row-list',
-			containerEl,
+			containerEl: sectionEl,
 			description: t('settings', 'filterTaskIconsSectionDesc'),
+			descriptionSearchTargetId: 'ui.filterTaskChips',
 			toggleTitle: t('settings', 'filterTaskIconsToggleTitle'),
 			iconOnlyTitle: t('settings', 'filterTaskIconsDisplayModeTitle'),
 			reorderTitle: t('settings', 'filterTaskIconsReorder'),
@@ -5891,7 +6928,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderFileTaskTemplateSettings(containerEl: HTMLElement): void {
+	private renderFileTaskTemplateSettings(containerEl: HTMLElement, sectionHostEl = containerEl): void {
 		let preview: HTMLElement | null = null;
 
 		const renderPreviewNote = (message: string): void => {
@@ -5964,33 +7001,33 @@ export class OperonSettingsTab extends PluginSettingTab {
 		preview.setAttribute('aria-live', 'polite');
 		preview.setAttribute('role', 'status');
 
-		this.renderExcludedFolderSettings(containerEl);
+		this.renderExcludedFolderSettings(sectionHostEl);
 
-		this.renderFileTaskDailyNotesSettings(containerEl);
-		this.renderFileTaskArchiveSettings(containerEl);
-		this.renderFileTaskMigrationSettings(containerEl);
+		this.renderFileTaskDailyNotesSettings(sectionHostEl);
+		this.renderFileTaskArchiveSettings(sectionHostEl);
+		this.renderFileTaskMigrationSettings(sectionHostEl);
 
 		renderPreview();
 	}
 
 	private renderFileTaskDailyNotesSettings(containerEl: HTMLElement): void {
 		const wrapper = containerEl.createDiv({ cls: 'operon-file-task-daily-notes-setting' });
-		renderSettingsHeading(wrapper, t('settings', 'fileTaskDailyNotes'));
-		this.renderBoundToggleSetting(wrapper, t('settings', 'createDailyNotesAsOperonTask'), t('settings', 'createDailyNotesAsOperonTaskDesc'), 'createDailyNotesAsOperonTask');
+		const sectionEl = renderNativeSettingsGroupedSection(wrapper, t('settings', 'fileTaskDailyNotes'));
+		this.renderBoundToggleSetting(sectionEl, t('settings', 'createDailyNotesAsOperonTask'), t('settings', 'createDailyNotesAsOperonTaskDesc'), 'createDailyNotesAsOperonTask');
 	}
 
 	private renderFileTaskArchiveSettings(containerEl: HTMLElement): void {
 		const wrapper = containerEl.createDiv({ cls: 'operon-file-task-archive-setting' });
-		renderSettingsHeading(wrapper, t('settings', 'fileTaskArchive'));
+		const sectionEl = renderNativeSettingsGroupedSection(wrapper, t('settings', 'fileTaskArchive'));
 
 		this.renderBoundToggleSetting(
-			wrapper,
+			sectionEl,
 			t('settings', 'fileTaskAutoArchiveEnabled'),
 			t('settings', 'fileTaskAutoArchiveEnabledDesc'),
 			'fileTaskAutoArchiveEnabled',
 		);
 
-		this.renderBoundTextSetting(wrapper, t('settings', 'fileTaskArchiveFolder'), t('settings', 'fileTaskArchiveFolderDesc'), 'fileTaskArchiveFolder', {
+		this.renderBoundTextSetting(sectionEl, t('settings', 'fileTaskArchiveFolder'), t('settings', 'fileTaskArchiveFolderDesc'), 'fileTaskArchiveFolder', {
 			placeholder: t('settings', 'fileTaskArchiveFolderPlaceholder'),
 			settingClass: 'operon-settings-long-text-setting',
 			controlClass: 'operon-settings-input-long',
@@ -6003,9 +7040,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		this.addNumericSetting(wrapper, t('settings', 'fileTaskArchiveDelaySeconds'), t('settings', 'fileTaskArchiveDelaySecondsDesc'), 'fileTaskArchiveDelaySeconds');
+		this.addNumericSetting(sectionEl, t('settings', 'fileTaskArchiveDelaySeconds'), t('settings', 'fileTaskArchiveDelaySecondsDesc'), 'fileTaskArchiveDelaySeconds');
 		this.renderBoundToggleSetting(
-			wrapper,
+			sectionEl,
 			t('settings', 'fileTaskArchiveOnlyFromFileTasksFolder'),
 			t('settings', 'fileTaskArchiveOnlyFromFileTasksFolderDesc'),
 			'fileTaskArchiveOnlyFromFileTasksFolder',
@@ -6015,17 +7052,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderExcludedFolderSettings(containerEl: HTMLElement): void {
 		const wrapper = containerEl.createDiv({ cls: 'operon-excluded-folders-setting' });
 
-		renderSettingsHeading(wrapper, t('settings', 'excludedFolders'));
+		const sectionEl = renderNativeSettingsGroupedSection(wrapper, t('settings', 'excludedFolders'));
+		sectionEl.addClass('operon-settings-add-list-section');
+		sectionEl.addClass('operon-settings-card-list-section');
 
-		wrapper.createDiv({
+		const excludedFoldersDescEl = sectionEl.createDiv({
 			text: t('settings', 'excludedFoldersDesc'),
 			cls: 'operon-excluded-folders-desc',
 		});
+		excludedFoldersDescEl.dataset.operonSettingsSearchId = 'automation.excludedFolders';
 
-		const listEl = wrapper.createDiv('operon-excluded-folders-list');
+		const listEl = sectionEl.createDiv('operon-excluded-folders-list');
 
-		const pickerEl = wrapper.createDiv('operon-excluded-folders-picker');
-		const addRowEl = wrapper.createDiv('operon-excluded-folders-add-row');
+		const pickerEl = sectionEl.createDiv('operon-excluded-folders-picker');
+		const addRowEl = sectionEl.createDiv('operon-excluded-folders-add-row');
+		addRowEl.addClass('operon-settings-add-row');
 
 		const renderFolderPath = (rowEl: HTMLElement, folderPath: string): void => {
 			const slashIndex = folderPath.lastIndexOf('/');
@@ -6062,11 +7103,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 		const renderAddControls = (): void => {
 			addRowEl.empty();
-			const button = addRowEl.createEl('button', {
-				cls: 'operon-settings-primary-button',
-				attr: { type: 'button' },
-			});
-			button.setText(t('settings', 'addExcludedFolder'));
+			const button = createSettingsAddButton(addRowEl, t('settings', 'addExcludedFolder'));
 			button.onclick = () => {
 				pickerEl.empty();
 				new Setting(pickerEl)
@@ -6143,11 +7180,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private renderFileTaskMigrationSettings(containerEl: HTMLElement): void {
 		const wrapper = containerEl.createDiv({ cls: 'operon-file-task-migration-setting' });
-		renderSettingsHeading(wrapper, t('settings', 'fileTaskMigration'));
-		wrapper.createDiv({
+		const sectionEl = renderNativeSettingsGroupedSection(wrapper, t('settings', 'fileTaskMigration'));
+		sectionEl.addClass('operon-file-task-migration-section');
+		const fileTaskMigrationDescEl = sectionEl.createDiv({
 			text: t('settings', 'fileTaskMigrationDesc'),
 			cls: 'operon-file-task-migration-desc',
 		});
+		fileTaskMigrationDescEl.dataset.operonSettingsSearchId = 'automation.fileTaskMigration';
 
 		let selectedType: FileTaskMigrationRuleType = 'folder';
 		let folderPath = '';
@@ -6160,14 +7199,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const rows = new Map<FileTaskMigrationRuleType, HTMLElement>();
 		const controls = new Map<FileTaskMigrationRuleType, HTMLInputElement[]>();
 
-		const ruleListEl = wrapper.createDiv('operon-file-task-migration-rule-list');
-		const actionRowEl = wrapper.createDiv('operon-file-task-migration-action-row');
+		const ruleListEl = sectionEl.createDiv('operon-file-task-migration-rule-list');
+		const actionRowEl = sectionEl.createDiv('operon-file-task-migration-action-row');
 		const scanButton = actionRowEl.createEl('button', {
 			text: t('settings', 'fileTaskMigrationScanVault'),
 			cls: 'operon-settings-primary-button',
 			attr: { type: 'button' },
 		});
-		const resultEl = wrapper.createDiv('operon-file-task-migration-result-wrap');
+		const resultEl = sectionEl.createDiv('operon-file-task-migration-result-wrap');
 		resultEl.setAttribute('aria-live', 'polite');
 		resultEl.setAttribute('role', 'status');
 

@@ -1,6 +1,6 @@
 /**
  * Operon storage manager.
- * Handles .operon/ data folder, JSON persistence, and settings.
+ * Handles Obsidian plugin-config storage, JSON persistence, and settings.
  * Based on Spec Section 9.6 Storage Location Contract.
  */
 
@@ -24,94 +24,63 @@ import { TaskUiPreferenceStore, TaskUiPreferenceStoreSettings } from './task-ui-
 import { TaskCreationProfileStore, TaskCreationProfileStoreSettings } from './task-creation-profile-store';
 import { TaskAutomationPolicyStore, TaskAutomationPolicyStoreSettings } from './task-automation-policy-store';
 import { ActiveTrackerStore } from './active-tracker-store';
-import { isRecord } from '../core/unknown-value';
 import { enginePerfNow, WriteJsonMetrics } from '../core/engine-perf';
 import { writeTextSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
+import {
+	buildOperonDataPackageFromSettings,
+	type OperonDataPackageV1,
+} from './operon-data-package';
+import {
+	OperonDataPackageStore,
+	type OperonDataPackageReloadDiagnostics,
+	type OperonPluginDataAccess,
+} from './operon-data-package-store';
+import {
+	buildOperonStoragePaths,
+	type OperonStoragePaths,
+} from './operon-storage-paths';
 
-const DATA_FOLDER = '.operon';
-const SETTINGS_FILE = `${DATA_FOLDER}/settings.json`;
-const INDEX_FILE = `${DATA_FOLDER}/index.json`;
-const CACHE_FOLDER = `${DATA_FOLDER}/cache`;
-const FILTERS_FOLDER = `${DATA_FOLDER}/filters`;
-const PRIORITY_SETTINGS_KEYS = [
-	'priorities',
-	'defaultPriority',
-] as const;
-const PIPELINE_SETTINGS_KEYS = [
-	'pipelines',
-	'defaultPipelineName',
-] as const;
-const CALENDAR_PRESET_SETTINGS_KEYS = [
-	'calendarPresets',
-	'calendarDefaultPresetId',
-] as const;
-const KANBAN_PRESET_SETTINGS_KEYS = [
-	'kanbanPresets',
-	'kanbanDefaultPresetId',
-] as const;
-const CONTEXTUAL_MENU_SETTINGS_KEYS = [
-	'contextualMenuActionAllowlist',
-	'calendarHoverActionAllowlist',
-	'contextualMenuSurfaceActionMatrix',
-	'contextualMenuOpenDelayMs',
-	'calendarHoverMenuOpenDelayMs',
-] as const;
-const TASK_UI_PREFERENCE_SETTINGS_KEYS = [
-	'taskCreatorToolbar',
-	'taskEditorWorkflowPickers',
-	'inlineExpandedTaskChips',
-	'inlineTaskCompactChips',
-	'filterTaskCompactChips',
-	'taskFinderCompactChips',
-	'taskFinderDefaultScope',
-	'taskFinderRememberLastScopes',
-	'taskFinderSelectedProjectId',
-	'taskFinderShortcuts',
-	'overlayTaskCompactChips',
-	'overlayTaskShowPlayAction',
-	'overlayTaskShowPinAction',
-	'overlayTaskShowNoteAction',
-	'overlayTaskShowSubtaskAction',
-	'inlineTaskShowPlayAction',
-	'inlineTaskShowPinAction',
-	'inlineTaskShowSubtaskAction',
-	'filterTaskShowPlayAction',
-	'filterTaskShowPinAction',
-	'filterTaskShowSubtaskAction',
-] as const;
-const TASK_CREATION_PROFILE_SETTINGS_KEYS = [
-	'taskDescriptionRequired',
-	'assigneesRequired',
-	'fileTasksFolder',
-	'inlineTaskSaveMode',
-	'inlineTaskUseDailyNote',
-	'inlineTaskTargetFile',
-	'inlineTaskHeading',
-	'calendarInlineTaskHeading',
-	'autoParentFileTask',
-	'autoParentLinkedFileSubtasks',
-	'fileTaskTemplateFolder',
-	'createDailyNotesAsOperonTask',
-	'defaultEstimateMinutes',
-] as const;
-const TASK_AUTOMATION_POLICY_SETTINGS_KEYS = [
-	'autoCompleteParentWhenAllChildrenTerminal',
-	'cascadeCancelToDescendants',
-	'newOccurrencePosition',
-	'fileTaskAutoArchiveEnabled',
-	'fileTaskArchiveFolder',
-	'fileTaskArchiveDelaySeconds',
-	'fileTaskArchiveOnlyFromFileTasksFolder',
-	'fileRepeatDestination',
-	'fileRepeatCustomFolder',
-	'estimateAutoReallocation',
-	'trackerSplitSessionsAtMidnight',
-] as const;
-const LEGACY_AGENT_EXPORT_SETTINGS_KEYS = [
-	'agentAllowlistFields',
-	'agentDenylistFields',
-	'agentExportFormat',
-] as const;
+export interface OperonStorageOptions extends Partial<OperonPluginDataAccess> {
+	pluginId?: string;
+}
+
+export interface OperonStorageReloadSettingsResult {
+	changed: boolean;
+	diagnostics: OperonDataPackageReloadDiagnostics;
+}
+
+export type OperonLegacyStorageCleanupMethod = 'trash-system' | 'trash-local';
+export type OperonLegacyStorageCleanupState = 'ready' | 'blocked' | 'missing' | 'retired';
+
+export interface OperonStorageMigrationMarker {
+	version: 1;
+	legacyStorageRetired: true;
+	retiredAt: string;
+	cleanupMethod: OperonLegacyStorageCleanupMethod;
+	legacyFileCount: number;
+	legacyFolderCount: number;
+}
+
+export interface OperonLegacyStorageCleanupStatus {
+	legacyPath: string;
+	markerPath: string;
+	legacyExists: boolean;
+	legacyStorageRetired: boolean;
+	canonicalSettingsReadable: boolean;
+	canCleanup: boolean;
+	state: OperonLegacyStorageCleanupState;
+	blockedReason: string | null;
+	legacyFileCount: number;
+	legacyFolderCount: number;
+	marker: OperonStorageMigrationMarker | null;
+}
+
+export interface OperonLegacyStorageCleanupResult {
+	cleanupPerformed: boolean;
+	cleanupMethod: OperonLegacyStorageCleanupMethod | null;
+	status: OperonLegacyStorageCleanupStatus;
+	marker: OperonStorageMigrationMarker | null;
+}
 
 function pickPipelineStoreSettings(settings: OperonSettings): PipelineStoreSettings {
 	return {
@@ -184,6 +153,11 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		inlineTaskUseDailyNote: settings.inlineTaskUseDailyNote,
 		inlineTaskTargetFile: settings.inlineTaskTargetFile,
 		inlineTaskHeading: settings.inlineTaskHeading,
+		fileTaskParentInlineTargetMode: settings.fileTaskParentInlineTargetMode,
+		fileTaskParentFileTargetMode: settings.fileTaskParentFileTargetMode,
+		inlineTaskParentInlineTargetMode: settings.inlineTaskParentInlineTargetMode,
+		inlineTaskParentFileTargetMode: settings.inlineTaskParentFileTargetMode,
+		inlineTaskParentFileHeadingKeyword: settings.inlineTaskParentFileHeadingKeyword,
 		calendarInlineTaskHeading: settings.calendarInlineTaskHeading,
 		autoParentFileTask: settings.autoParentFileTask,
 		autoParentLinkedFileSubtasks: settings.autoParentLinkedFileSubtasks,
@@ -209,21 +183,12 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 	};
 }
 
-function hasAnyPersistedKey(source: Record<string, unknown>, keys: readonly string[]): boolean {
-	return keys.some(key => key in source);
-}
-
-function hasLegacyTaskBarChipSettings(source: Record<string, unknown>): boolean {
-	return !!source.taskBarChips
-		&& typeof source.taskBarChips === 'object'
-		&& !Array.isArray(source.taskBarChips);
-}
-
 export class OperonStorage {
 	private app: App;
 	private writeQueue: WriteQueue;
 	private settings: OperonSettings;
-	private loadedSettingsSource: Record<string, unknown> = {};
+	private storagePaths: OperonStoragePaths;
+	private dataPackageStore: OperonDataPackageStore;
 	private pinnedCache: PinnedCache;
 	private repeatSeriesStore: RepeatSeriesStore;
 	private externalCalendarCache: ExternalCalendarCacheStore;
@@ -240,14 +205,40 @@ export class OperonStorage {
 	private taskCreationProfileStore: TaskCreationProfileStore;
 	private taskAutomationPolicyStore: TaskAutomationPolicyStore;
 	private activeTrackerStore: ActiveTrackerStore;
+	private legacyStorageRetired = false;
+	private latestLegacyStorageCleanupStatus: OperonLegacyStorageCleanupStatus | null = null;
 
-	constructor(app: App) {
+	constructor(app: App, options: OperonStorageOptions = {}) {
 		this.app = app;
 		this.writeQueue = new WriteQueue();
+		this.storagePaths = buildOperonStoragePaths(this.app.vault.configDir, options.pluginId ?? 'operon');
+		const pluginData = options.loadData && options.saveData
+			? { loadData: options.loadData, saveData: options.saveData }
+			: null;
+		this.dataPackageStore = new OperonDataPackageStore(
+			this.app.vault.adapter,
+			this.storagePaths,
+			pluginData,
+		);
 		this.settings = { ...DEFAULT_SETTINGS };
-		this.pinnedCache = new PinnedCache(app, this.writeQueue);
-		this.repeatSeriesStore = new RepeatSeriesStore(app, this.writeQueue);
-		this.externalCalendarCache = new ExternalCalendarCacheStore(app, this.writeQueue);
+		this.pinnedCache = new PinnedCache(
+			app,
+			this.writeQueue,
+			this.storagePaths.state.pinnedTasksPath,
+			this.storagePaths.legacy.pinnedCachePath,
+		);
+		this.repeatSeriesStore = new RepeatSeriesStore(
+			app,
+			this.writeQueue,
+			this.storagePaths.state.repeatSeriesPath,
+			this.storagePaths.legacy.repeatSeriesPath,
+		);
+		this.externalCalendarCache = new ExternalCalendarCacheStore(
+			app,
+			this.writeQueue,
+			this.storagePaths.cache.externalCalendarsPath,
+			this.storagePaths.legacy.externalCalendarsCachePath,
+		);
 		this.filterStore = new FilterStore(app, this.writeQueue);
 		this.pipelineStore = new PipelineStore(
 			app,
@@ -292,124 +283,98 @@ export class OperonStorage {
 			this.writeQueue,
 			pickTaskAutomationPolicyStoreSettings(DEFAULT_SETTINGS),
 		);
-		this.activeTrackerStore = new ActiveTrackerStore(app, this.writeQueue);
+		this.activeTrackerStore = new ActiveTrackerStore(
+			app,
+			this.writeQueue,
+			this.storagePaths.state.activeTrackersPath,
+			this.storagePaths.legacy.activeTrackersPath,
+		);
+		this.filterStore.setPackagePersistence(async () => {
+			this.settings.filterSets = this.filterStore.getAll();
+			await this.saveSettings();
+		});
+		this.keyMappingStore.setPackagePersistence(async (keyMappings) => {
+			this.settings.keyMappings = keyMappings;
+			await this.saveSettings();
+		});
+		this.pipelineStore.setPackagePersistence(async (settings) => {
+			Object.assign(this.settings, settings);
+			await this.saveSettings();
+		});
+		this.calendarPresetStore.setPackagePersistence(async (settings) => {
+			Object.assign(this.settings, settings);
+			await this.saveSettings();
+		});
+		this.kanbanPresetStore.setPackagePersistence(async (settings) => {
+			Object.assign(this.settings, settings);
+			await this.saveSettings();
+		});
+		this.kanbanOrderStore.setPackagePersistence(async () => {
+			await this.saveSettings();
+		});
+		this.priorityStore.setPackagePersistence(async (settings) => {
+			Object.assign(this.settings, settings);
+			await this.saveSettings();
+		});
+		this.externalCalendarSourceStore.setPackagePersistence(async (sources) => {
+			this.settings.externalCalendars = sources;
+			await this.saveSettings();
+		});
+		this.contextualMenuStore.setPackagePersistence(async (settings) => {
+			Object.assign(this.settings, settings);
+			await this.saveSettings();
+		});
+		this.taskUiPreferenceStore.setPackagePersistence(async (settings) => {
+			Object.assign(this.settings, settings);
+			await this.saveSettings();
+		});
+		this.taskCreationProfileStore.setPackagePersistence(async (settings) => {
+			Object.assign(this.settings, settings);
+			await this.saveSettings();
+		});
+		this.taskAutomationPolicyStore.setPackagePersistence(async (settings) => {
+			Object.assign(this.settings, settings);
+			await this.saveSettings();
+		});
 	}
 
 	/**
-	 * Initialize storage: create data folder structure if needed, load settings.
+	 * Initialize storage: create plugin-config folders, load settings package, then load state/cache.
 	 */
 	async initialize(): Promise<void> {
-		await this.ensureDataFolder();
-		const hadSettingsFile = await this.app.vault.adapter.exists(SETTINGS_FILE);
-		await this.loadSettings();
-		const hadPersistedKeyMappings = Array.isArray(this.loadedSettingsSource.keyMappings);
-		const hadPersistedFilters = Array.isArray(this.loadedSettingsSource.filterSets);
-		const hadPersistedPipelines = hasAnyPersistedKey(this.loadedSettingsSource, PIPELINE_SETTINGS_KEYS);
-		const hadPersistedCalendarPresets = hasAnyPersistedKey(this.loadedSettingsSource, CALENDAR_PRESET_SETTINGS_KEYS);
-		const hadPersistedKanbanPresets = hasAnyPersistedKey(this.loadedSettingsSource, KANBAN_PRESET_SETTINGS_KEYS);
-		const hadPersistedPriorities = hasAnyPersistedKey(this.loadedSettingsSource, PRIORITY_SETTINGS_KEYS);
-		const hadPersistedExternalCalendars = Array.isArray(this.loadedSettingsSource.externalCalendars);
-		const hadPersistedContextualMenu = hasAnyPersistedKey(this.loadedSettingsSource, CONTEXTUAL_MENU_SETTINGS_KEYS);
-		const hadPersistedTaskUiPreferenceKeys = hasAnyPersistedKey(this.loadedSettingsSource, TASK_UI_PREFERENCE_SETTINGS_KEYS);
-		const hadPersistedTaskCreationProfile = hasAnyPersistedKey(this.loadedSettingsSource, TASK_CREATION_PROFILE_SETTINGS_KEYS);
-		const hadPersistedTaskAutomationPolicy = hasAnyPersistedKey(this.loadedSettingsSource, TASK_AUTOMATION_POLICY_SETTINGS_KEYS);
-		const hadLegacyAgentExportSettings = hasAnyPersistedKey(this.loadedSettingsSource, LEGACY_AGENT_EXPORT_SETTINGS_KEYS);
-		const hadTaskUiPreferenceStore = await this.taskUiPreferenceStore.exists();
-		const shouldSeedTaskUiPreferencesFromSettings = hadPersistedTaskUiPreferenceKeys
-			|| (!hadTaskUiPreferenceStore && (hadSettingsFile || hasLegacyTaskBarChipSettings(this.loadedSettingsSource)));
-		await this.keyMappingStore.load(hadPersistedKeyMappings ? this.settings.keyMappings : null, DEFAULT_SETTINGS.keyMappings);
-		await this.filterStore.load(hadPersistedFilters ? this.settings.filterSets : []);
-		if (!hadSettingsFile && !hadPersistedFilters && this.filterStore.getAll().length === 0) {
-			await this.filterStore.replaceAll(DEFAULT_SETTINGS.filterSets);
-		}
-		await this.pipelineStore.load(
-			hadPersistedPipelines ? pickPipelineStoreSettings(this.settings) : null,
-			pickPipelineStoreSettings(DEFAULT_SETTINGS),
-		);
-		await this.calendarPresetStore.load(
-			hadPersistedCalendarPresets ? pickCalendarPresetStoreSettings(this.settings) : null,
-			pickCalendarPresetStoreSettings(DEFAULT_SETTINGS),
-		);
-		await this.kanbanPresetStore.load(
-			hadPersistedKanbanPresets ? pickKanbanPresetStoreSettings(this.settings) : null,
-			pickKanbanPresetStoreSettings(DEFAULT_SETTINGS),
-		);
-		await this.priorityStore.load(
-			hadPersistedPriorities ? pickPriorityStoreSettings(this.settings) : null,
-			pickPriorityStoreSettings(DEFAULT_SETTINGS),
-		);
-		await this.externalCalendarSourceStore.load(hadPersistedExternalCalendars ? this.settings.externalCalendars : null);
-		await this.contextualMenuStore.load(
-			hadPersistedContextualMenu ? pickContextualMenuStoreSettings(this.settings) : null,
-			pickContextualMenuStoreSettings(DEFAULT_SETTINGS),
-		);
-		await this.taskUiPreferenceStore.load(
-			shouldSeedTaskUiPreferencesFromSettings ? pickTaskUiPreferenceStoreSettings(this.settings) : null,
-			pickTaskUiPreferenceStoreSettings(DEFAULT_SETTINGS),
-		);
-		await this.taskCreationProfileStore.load(
-			hadPersistedTaskCreationProfile ? pickTaskCreationProfileStoreSettings(this.settings) : null,
-			pickTaskCreationProfileStoreSettings(DEFAULT_SETTINGS),
-		);
-		await this.taskAutomationPolicyStore.load(
-			hadPersistedTaskAutomationPolicy ? pickTaskAutomationPolicyStoreSettings(this.settings) : null,
-			pickTaskAutomationPolicyStoreSettings(DEFAULT_SETTINGS),
-		);
-		this.settings.keyMappings = this.keyMappingStore.getAll();
-		this.settings.filterSets = this.filterStore.getAll();
-		Object.assign(this.settings, this.pipelineStore.getAll());
-		Object.assign(this.settings, this.calendarPresetStore.getAll());
-		Object.assign(this.settings, this.kanbanPresetStore.getAll());
-		Object.assign(this.settings, this.priorityStore.getAll());
-		this.settings.externalCalendars = this.externalCalendarSourceStore.getAll();
-		Object.assign(this.settings, this.contextualMenuStore.getAll());
-		Object.assign(this.settings, this.taskUiPreferenceStore.getAll());
-		Object.assign(this.settings, this.taskCreationProfileStore.getAll());
-		Object.assign(this.settings, this.taskAutomationPolicyStore.getAll());
-		this.settings = migrateSettings(this.settings);
-		await this.keyMappingStore.replaceAll(this.settings.keyMappings);
-		await this.pipelineStore.replaceAll(pickPipelineStoreSettings(this.settings));
-		await this.calendarPresetStore.replaceAll(pickCalendarPresetStoreSettings(this.settings));
-		await this.kanbanPresetStore.replaceAll(pickKanbanPresetStoreSettings(this.settings));
-		await this.priorityStore.replaceAll(pickPriorityStoreSettings(this.settings));
-		await this.externalCalendarSourceStore.replaceAll(this.settings.externalCalendars);
-		await this.contextualMenuStore.replaceAll(pickContextualMenuStoreSettings(this.settings));
-		await this.taskUiPreferenceStore.replaceAll(pickTaskUiPreferenceStoreSettings(this.settings));
-		await this.taskCreationProfileStore.replaceAll(pickTaskCreationProfileStoreSettings(this.settings));
-		await this.taskAutomationPolicyStore.replaceAll(pickTaskAutomationPolicyStoreSettings(this.settings));
-		if (
-			hadPersistedKeyMappings
-			|| hadPersistedFilters
-			|| hadPersistedPipelines
-			|| hadPersistedCalendarPresets
-			|| hadPersistedKanbanPresets
-			|| hadPersistedPriorities
-			|| hadPersistedExternalCalendars
-			|| hadPersistedContextualMenu
-			|| hadPersistedTaskUiPreferenceKeys
-			|| shouldSeedTaskUiPreferencesFromSettings
-			|| hadPersistedTaskCreationProfile
-			|| hadPersistedTaskAutomationPolicy
-			|| hadLegacyAgentExportSettings
-		) {
-			await this.saveSettings({ forceRecoveredWrite: false });
-		}
+		await this.ensureCanonicalFolders();
+		this.legacyStorageRetired = (await this.readStorageMigrationMarker())?.legacyStorageRetired === true;
+		this.applyLegacyFallbackPolicy();
+		const { dataPackage } = await this.dataPackageStore.initialize(DEFAULT_SETTINGS, {
+			legacyFallbackEnabled: !this.legacyStorageRetired,
+		});
+		this.hydrateFromDataPackage(dataPackage);
+		await this.saveSettings({ forceRecoveredWrite: false });
 		await this.pinnedCache.load();
 		await this.activeTrackerStore.load();
 		await this.repeatSeriesStore.load();
 		await this.externalCalendarCache.load();
-		await this.kanbanOrderStore.load();
+		await this.getLegacyStorageCleanupStatus();
 	}
 
 	/**
-	 * Ensure the .operon/ directory structure exists.
+	 * Ensure the plugin config directory structure exists.
 	 */
-	private async ensureDataFolder(): Promise<void> {
-		const adapter = this.app.vault.adapter;
+	private async ensureCanonicalFolders(): Promise<void> {
+		await this.ensureFolder(this.storagePaths.pluginDir);
+		await this.ensureFolder(`${this.storagePaths.pluginDir}/state`);
+		await this.ensureFolder(`${this.storagePaths.pluginDir}/runtime`);
+		await this.ensureFolder(`${this.storagePaths.pluginDir}/cache`);
+	}
 
-		for (const folder of [DATA_FOLDER, CACHE_FOLDER, FILTERS_FOLDER]) {
-			if (!(await adapter.exists(folder))) {
-				await adapter.mkdir(folder);
+	private async ensureFolder(path: string): Promise<void> {
+		const adapter = this.app.vault.adapter;
+		const segments = path.split('/').filter(Boolean);
+		let current = '';
+		for (const segment of segments) {
+			current = current ? `${current}/${segment}` : segment;
+			if (!(await adapter.exists(current))) {
+				await adapter.mkdir(current);
 			}
 		}
 	}
@@ -417,117 +382,26 @@ export class OperonStorage {
 	// --- Settings ---
 
 	/**
-	 * Load settings from .operon/settings.json, migrating if needed.
+	 * Load settings from the canonical data package.
 	 */
 	async loadSettings(): Promise<OperonSettings> {
-		const adapter = this.app.vault.adapter;
-
-		if (await adapter.exists(SETTINGS_FILE)) {
-			try {
-				const raw = await adapter.read(SETTINGS_FILE);
-				const parsed: unknown = JSON.parse(raw);
-				this.loadedSettingsSource = isRecord(parsed) ? parsed : {};
-				this.settings = migrateSettings(parsed);
-			} catch {
-				console.warn('Operon: Failed to parse settings, using defaults');
-				this.loadedSettingsSource = {};
-				this.settings = { ...DEFAULT_SETTINGS };
-			}
-		} else {
-			this.loadedSettingsSource = {};
-			this.settings = { ...DEFAULT_SETTINGS };
-		}
-
 		return this.settings;
 	}
 
 	/**
-	 * Save current settings to .operon/settings.json.
+	 * Save current settings to the canonical data package.
 	 */
-	async saveSettings(options: RecoveredStoreWriteOptions = { forceRecoveredWrite: true }): Promise<void> {
+	async saveSettings(_options: RecoveredStoreWriteOptions = { forceRecoveredWrite: true }): Promise<void> {
+		this.settings.filterSets = this.filterStore.getAll();
 		const normalized = migrateSettings(this.settings);
 		this.applySettingsInPlace(normalized);
-		const recoveredWriteOptions = options;
-		await this.keyMappingStore.replaceAll(this.settings.keyMappings, recoveredWriteOptions);
-		await this.pipelineStore.replaceAll(pickPipelineStoreSettings(this.settings), recoveredWriteOptions);
-		await this.calendarPresetStore.replaceAll(pickCalendarPresetStoreSettings(this.settings), recoveredWriteOptions);
-		await this.kanbanPresetStore.replaceAll(pickKanbanPresetStoreSettings(this.settings), recoveredWriteOptions);
-		await this.priorityStore.replaceAll(pickPriorityStoreSettings(this.settings), recoveredWriteOptions);
-		await this.externalCalendarSourceStore.replaceAll(this.settings.externalCalendars, recoveredWriteOptions);
-		await this.contextualMenuStore.replaceAll(pickContextualMenuStoreSettings(this.settings), recoveredWriteOptions);
-		await this.taskUiPreferenceStore.replaceAll(pickTaskUiPreferenceStoreSettings(this.settings), recoveredWriteOptions);
-		await this.taskCreationProfileStore.replaceAll(pickTaskCreationProfileStoreSettings(this.settings), recoveredWriteOptions);
-		await this.taskAutomationPolicyStore.replaceAll(pickTaskAutomationPolicyStoreSettings(this.settings), recoveredWriteOptions);
-		const persistedSettings = { ...this.settings } as Partial<OperonSettings>;
-		delete persistedSettings.keyMappings;
-		delete persistedSettings.filterSets;
-		delete persistedSettings.pipelines;
-		delete persistedSettings.defaultPipelineName;
-		delete persistedSettings.calendarPresets;
-		delete persistedSettings.calendarDefaultPresetId;
-		delete persistedSettings.kanbanPresets;
-		delete persistedSettings.kanbanDefaultPresetId;
-		delete persistedSettings.priorities;
-		delete persistedSettings.defaultPriority;
-		delete persistedSettings.externalCalendars;
-		delete persistedSettings.contextualMenuActionAllowlist;
-		delete persistedSettings.contextualMenuSurfaceActionMatrix;
-		delete persistedSettings.contextualMenuOpenDelayMs;
-		delete persistedSettings.taskCreatorToolbar;
-		delete persistedSettings.taskEditorWorkflowPickers;
-		delete persistedSettings.inlineExpandedTaskChips;
-		delete persistedSettings.inlineTaskCompactChips;
-		delete persistedSettings.filterTaskCompactChips;
-		delete persistedSettings.taskFinderCompactChips;
-		delete persistedSettings.taskFinderDefaultScope;
-		delete persistedSettings.taskFinderRememberLastScopes;
-		delete persistedSettings.taskFinderSelectedProjectId;
-		delete persistedSettings.taskFinderShortcuts;
-		delete persistedSettings.overlayTaskCompactChips;
-		delete persistedSettings.overlayTaskShowPlayAction;
-		delete persistedSettings.overlayTaskShowPinAction;
-		delete persistedSettings.overlayTaskShowNoteAction;
-		delete persistedSettings.overlayTaskShowSubtaskAction;
-		delete persistedSettings.inlineTaskShowPlayAction;
-		delete persistedSettings.inlineTaskShowPinAction;
-		delete persistedSettings.inlineTaskShowSubtaskAction;
-		delete persistedSettings.filterTaskShowPlayAction;
-		delete persistedSettings.filterTaskShowPinAction;
-		delete persistedSettings.filterTaskShowSubtaskAction;
-		delete (persistedSettings as Record<string, unknown>).taskBarChips;
-		delete persistedSettings.taskDescriptionRequired;
-		delete persistedSettings.assigneesRequired;
-		delete persistedSettings.fileTasksFolder;
-		delete persistedSettings.inlineTaskSaveMode;
-		delete persistedSettings.inlineTaskUseDailyNote;
-		delete persistedSettings.inlineTaskTargetFile;
-		delete persistedSettings.inlineTaskHeading;
-		delete persistedSettings.calendarInlineTaskHeading;
-		delete persistedSettings.autoParentFileTask;
-		delete persistedSettings.autoParentLinkedFileSubtasks;
-		delete persistedSettings.fileTaskTemplateFolder;
-		delete persistedSettings.createDailyNotesAsOperonTask;
-		delete persistedSettings.defaultEstimateMinutes;
-		delete persistedSettings.autoCompleteParentWhenAllChildrenTerminal;
-		delete persistedSettings.cascadeCancelToDescendants;
-		delete persistedSettings.newOccurrencePosition;
-		delete persistedSettings.fileTaskAutoArchiveEnabled;
-		delete persistedSettings.fileTaskArchiveFolder;
-		delete persistedSettings.fileTaskArchiveDelaySeconds;
-		delete persistedSettings.fileTaskArchiveOnlyFromFileTasksFolder;
-		delete persistedSettings.fileRepeatDestination;
-		delete persistedSettings.fileRepeatCustomFolder;
-		delete persistedSettings.estimateAutoReallocation;
-		delete persistedSettings.trackerSplitSessionsAtMidnight;
-		delete (persistedSettings as Record<string, unknown>).draftDiscardIfEmpty;
-		delete (persistedSettings as Record<string, unknown>).inlineParentDefaultExpanded;
-		delete (persistedSettings as Record<string, unknown>).inlineQuickActionsEnabled;
-		delete (persistedSettings as Record<string, unknown>).inlineQuickActionAllowlist;
-		delete (persistedSettings as Record<string, unknown>).agentAllowlistFields;
-		delete (persistedSettings as Record<string, unknown>).agentDenylistFields;
-		delete (persistedSettings as Record<string, unknown>).agentExportFormat;
-		this.loadedSettingsSource = persistedSettings;
-		await this.writeJson(SETTINGS_FILE, persistedSettings);
+		this.hydratePackageBackedSettingStores();
+		if (!this.dataPackageStore.canPersist()) return;
+		const dataPackage = buildOperonDataPackageFromSettings(this.settings, {
+			filterSets: this.filterStore.getAll(),
+			kanbanOrderBoards: this.kanbanOrderStore.toPackage().boards,
+		});
+		await this.dataPackageStore.replaceDataPackage(dataPackage);
 	}
 
 	/**
@@ -545,6 +419,90 @@ export class OperonStorage {
 		await this.saveSettings();
 	}
 
+	async reloadCanonicalSettingsPackage(): Promise<OperonStorageReloadSettingsResult> {
+		const result = await this.dataPackageStore.reloadCanonicalDataPackage(DEFAULT_SETTINGS);
+		if (result.changed) {
+			this.hydrateFromDataPackage(result.dataPackage, { preserveSettingsIdentity: true });
+		}
+		return {
+			changed: result.changed,
+			diagnostics: result.diagnostics,
+		};
+	}
+
+	async getLegacyStorageCleanupStatus(): Promise<OperonLegacyStorageCleanupStatus> {
+		const marker = await this.readStorageMigrationMarker();
+		const legacyStorageRetired = marker?.legacyStorageRetired === true;
+		const legacyExists = await this.app.vault.adapter.exists(this.storagePaths.legacy.dataFolder);
+		const counts = legacyExists
+			? await this.countLegacyStorageEntries(this.storagePaths.legacy.dataFolder)
+			: { files: 0, folders: 0 };
+		const canonicalSettingsReadable = legacyExists
+			? await this.dataPackageStore.canReadCanonicalDataPackage()
+			: true;
+		const state: OperonLegacyStorageCleanupState = legacyStorageRetired
+			? 'retired'
+			: !legacyExists
+				? 'missing'
+				: canonicalSettingsReadable
+					? 'ready'
+					: 'blocked';
+		const blockedReason = legacyExists && !canonicalSettingsReadable
+			? 'canonical-settings-unreadable'
+			: null;
+		const status = {
+			legacyPath: this.storagePaths.legacy.dataFolder,
+			markerPath: this.storagePaths.state.storageMigrationPath,
+			legacyExists,
+			legacyStorageRetired,
+			canonicalSettingsReadable,
+			canCleanup: legacyExists && canonicalSettingsReadable,
+			state,
+			blockedReason,
+			legacyFileCount: counts.files,
+			legacyFolderCount: counts.folders,
+			marker,
+		};
+		this.latestLegacyStorageCleanupStatus = status;
+		return status;
+	}
+
+	getCachedLegacyStorageCleanupStatus(): OperonLegacyStorageCleanupStatus | null {
+		return this.latestLegacyStorageCleanupStatus;
+	}
+
+	async cleanupLegacyStorageFromSettings(): Promise<OperonLegacyStorageCleanupResult> {
+		await this.flushPendingWrites();
+		const status = await this.getLegacyStorageCleanupStatus();
+		if (!status.canCleanup) {
+			return {
+				cleanupPerformed: false,
+				cleanupMethod: null,
+				status,
+				marker: status.marker,
+			};
+		}
+
+		const cleanupMethod = await this.trashLegacyStorageFolder();
+		const marker: OperonStorageMigrationMarker = {
+			version: 1,
+			legacyStorageRetired: true,
+			retiredAt: new Date().toISOString(),
+			cleanupMethod,
+			legacyFileCount: status.legacyFileCount,
+			legacyFolderCount: status.legacyFolderCount,
+		};
+		await this.writeJson(this.storagePaths.state.storageMigrationPath, marker);
+		this.legacyStorageRetired = true;
+		this.applyLegacyFallbackPolicy();
+		return {
+			cleanupPerformed: true,
+			cleanupMethod,
+			status: await this.getLegacyStorageCleanupStatus(),
+			marker,
+		};
+	}
+
 	private applySettingsInPlace(normalized: OperonSettings): void {
 		const target = this.settings as unknown as Record<string, unknown>;
 		const source = normalized as unknown as Record<string, unknown>;
@@ -553,20 +511,62 @@ export class OperonStorage {
 		}
 	}
 
+	private hydrateFromDataPackage(
+		dataPackage: OperonDataPackageV1,
+		options: { preserveSettingsIdentity?: boolean } = {},
+	): void {
+		this.filterStore.loadFromPackage(dataPackage.views.filters);
+		this.kanbanOrderStore.loadFromPackage(dataPackage.views.kanbanOrder);
+		const nextSettings = this.dataPackageStore.getSettings(DEFAULT_SETTINGS);
+		if (options.preserveSettingsIdentity) {
+			this.applySettingsInPlace(nextSettings);
+		} else {
+			this.settings = nextSettings;
+		}
+		this.settings.filterSets = this.filterStore.getAll();
+		this.hydratePackageBackedSettingStores();
+	}
+
+	private hydratePackageBackedSettingStores(): void {
+		const dataPackage = buildOperonDataPackageFromSettings(this.settings, {
+			filterSets: this.filterStore.getAll(),
+			kanbanOrderBoards: this.kanbanOrderStore.toPackage().boards,
+		});
+		this.keyMappingStore.loadFromPackage(dataPackage.taxonomy.keyMappings);
+		this.pipelineStore.loadFromPackage(dataPackage.taxonomy.pipelines);
+		this.calendarPresetStore.loadFromPackage(dataPackage.views.calendarPresets);
+		this.kanbanPresetStore.loadFromPackage(dataPackage.views.kanbanPresets);
+		this.priorityStore.loadFromPackage(dataPackage.taxonomy.priorities);
+		this.externalCalendarSourceStore.loadFromPackage(dataPackage.integrations.externalCalendarSources.sources);
+		this.contextualMenuStore.loadFromPackage(dataPackage.ui.contextualMenu);
+		this.taskUiPreferenceStore.loadFromPackage(dataPackage.ui.taskUiPreferences);
+		this.taskCreationProfileStore.loadFromPackage(dataPackage.ui.taskCreationProfile);
+		this.taskAutomationPolicyStore.loadFromPackage(dataPackage.automation.taskAutomationPolicy);
+	}
+
 	// --- Index ---
 
 	/**
-	 * Load active task index from .operon/index.json.
+	 * Load active task index from plugin runtime storage, with read-only legacy fallback.
 	 */
 	async loadIndex(): Promise<IndexData | null> {
-		return this.readJson<IndexData>(INDEX_FILE);
+		const adapter = this.app.vault.adapter;
+		if (await adapter.exists(this.storagePaths.runtime.indexPath)) {
+			return this.readJson<IndexData>(this.storagePaths.runtime.indexPath);
+		}
+		if (this.legacyStorageRetired) return null;
+		const legacyIndex = await this.readJson<IndexData>(this.storagePaths.legacy.indexPath);
+		if (legacyIndex) {
+			await this.writeJson(this.storagePaths.runtime.indexPath, legacyIndex);
+		}
+		return legacyIndex;
 	}
 
 	/**
-	 * Save active task index to .operon/index.json (atomic write).
+	 * Save active task index to plugin runtime storage (atomic write).
 	 */
 	async saveIndex(data: IndexData): Promise<WriteJsonMetrics> {
-		return await this.writeJson(INDEX_FILE, data);
+		return await this.writeJson(this.storagePaths.runtime.indexPath, data);
 	}
 
 	// --- Generic JSON I/O ---
@@ -585,6 +585,58 @@ export class OperonStorage {
 			console.warn(`Operon: Failed to parse ${path}`);
 			return null;
 		}
+	}
+
+	private async readStorageMigrationMarker(): Promise<OperonStorageMigrationMarker | null> {
+		const marker = await this.readJson<Partial<OperonStorageMigrationMarker>>(this.storagePaths.state.storageMigrationPath);
+		if (!marker || marker.legacyStorageRetired !== true) return null;
+		if (marker.version !== 1) return null;
+		if (marker.cleanupMethod !== 'trash-system' && marker.cleanupMethod !== 'trash-local') return null;
+		return {
+			version: 1,
+			legacyStorageRetired: true,
+			retiredAt: typeof marker.retiredAt === 'string' ? marker.retiredAt : '',
+			cleanupMethod: marker.cleanupMethod,
+			legacyFileCount: Number.isFinite(marker.legacyFileCount) ? marker.legacyFileCount ?? 0 : 0,
+			legacyFolderCount: Number.isFinite(marker.legacyFolderCount) ? marker.legacyFolderCount ?? 0 : 0,
+		};
+	}
+
+	private applyLegacyFallbackPolicy(): void {
+		const enabled = !this.legacyStorageRetired;
+		this.pinnedCache.setLegacyFallbackEnabled(enabled);
+		this.activeTrackerStore.setLegacyFallbackEnabled(enabled);
+		this.repeatSeriesStore.setLegacyFallbackEnabled(enabled);
+		this.externalCalendarCache.setLegacyFallbackEnabled(enabled);
+	}
+
+	private async countLegacyStorageEntries(path: string): Promise<{ files: number; folders: number }> {
+		try {
+			const listed = await this.app.vault.adapter.list(path);
+			let files = listed.files.length;
+			let folders = listed.folders.length;
+			for (const folder of listed.folders) {
+				const nested = await this.countLegacyStorageEntries(folder);
+				files += nested.files;
+				folders += nested.folders;
+			}
+			return { files, folders };
+		} catch {
+			return { files: 0, folders: 0 };
+		}
+	}
+
+	private async trashLegacyStorageFolder(): Promise<OperonLegacyStorageCleanupMethod> {
+		const adapter = this.app.vault.adapter;
+		try {
+			if (await adapter.trashSystem(this.storagePaths.legacy.dataFolder)) {
+				return 'trash-system';
+			}
+		} catch {
+			// Fall back to Obsidian's local trash when system trash is unavailable.
+		}
+		await adapter.trashLocal(this.storagePaths.legacy.dataFolder);
+		return 'trash-local';
 	}
 
 	/**
@@ -627,9 +679,9 @@ export class OperonStorage {
 
 	// --- Paths ---
 
-	get dataFolder(): string { return DATA_FOLDER; }
-	get settingsPath(): string { return SETTINGS_FILE; }
-	get indexPath(): string { return INDEX_FILE; }
+	get dataFolder(): string { return this.storagePaths.pluginDir; }
+	get settingsPath(): string { return this.storagePaths.dataPackagePath; }
+	get indexPath(): string { return this.storagePaths.runtime.indexPath; }
 	get pinned(): PinnedCache { return this.pinnedCache; }
 	get activeTrackers(): ActiveTrackerStore { return this.activeTrackerStore; }
 	get repeatSeries(): RepeatSeriesStore { return this.repeatSeriesStore; }
@@ -645,6 +697,7 @@ export class OperonStorage {
 
 	async flushPendingWrites(): Promise<void> {
 		const storeDrainResults = await Promise.allSettled([
+			this.dataPackageStore.drain(),
 			this.pinnedCache.drain(),
 			this.activeTrackerStore.drain(),
 			this.repeatSeriesStore.drain(),

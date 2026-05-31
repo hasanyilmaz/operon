@@ -88,6 +88,7 @@ export class TaskAutomationPolicyStore {
 	private settings: TaskAutomationPolicyStoreSettings;
 	private serializedSettings: string;
 	private recoveredFromMalformed = false;
+	private packagePersist: ((settings: TaskAutomationPolicyStoreSettings) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue, defaults: TaskAutomationPolicyStoreSettings) {
 		this.app = app;
@@ -98,6 +99,16 @@ export class TaskAutomationPolicyStore {
 
 	getAll(): TaskAutomationPolicyStoreSettings {
 		return cloneSettings(this.settings);
+	}
+
+	setPackagePersistence(persist: (settings: TaskAutomationPolicyStoreSettings) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(settings: TaskAutomationPolicyStoreSettings): void {
+		this.settings = cloneSettings(settings);
+		this.serializedSettings = JSON.stringify(this.settings);
+		this.recoveredFromMalformed = false;
 	}
 
 	async exists(): Promise<boolean> {
@@ -150,6 +161,11 @@ export class TaskAutomationPolicyStore {
 		}
 		this.settings = nextSettings;
 		this.serializedSettings = nextSerialized;
+		if (this.packagePersist) {
+			await this.packagePersist(this.getAll());
+			this.recoveredFromMalformed = false;
+			return;
+		}
 		await this.persist();
 	}
 

@@ -415,6 +415,8 @@ function attachReadingChipAction(
 			case 'assignees':
 			case 'contexts':
 			case 'parentTask':
+			case 'blocking':
+			case 'blockedBy':
 				if (entry.linkTarget) {
 					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
 					onCommit?.();

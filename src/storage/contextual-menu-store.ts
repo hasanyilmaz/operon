@@ -70,6 +70,7 @@ export class ContextualMenuStore {
 	private settings: ContextualMenuStoreSettings;
 	private serializedSettings: string;
 	private recoveredFromMalformed = false;
+	private packagePersist: ((settings: ContextualMenuStoreSettings) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue, defaults: ContextualMenuStoreSettings) {
 		this.app = app;
@@ -80,6 +81,16 @@ export class ContextualMenuStore {
 
 	getAll(): ContextualMenuStoreSettings {
 		return cloneSettings(this.settings);
+	}
+
+	setPackagePersistence(persist: (settings: ContextualMenuStoreSettings) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(settings: ContextualMenuStoreSettings): void {
+		this.settings = cloneSettings(settings);
+		this.serializedSettings = JSON.stringify(this.settings);
+		this.recoveredFromMalformed = false;
 	}
 
 	async load(
@@ -128,6 +139,11 @@ export class ContextualMenuStore {
 		}
 		this.settings = nextSettings;
 		this.serializedSettings = nextSerialized;
+		if (this.packagePersist) {
+			await this.packagePersist(this.getAll());
+			this.recoveredFromMalformed = false;
+			return;
+		}
 		await this.persist();
 	}
 

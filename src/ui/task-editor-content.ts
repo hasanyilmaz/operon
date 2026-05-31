@@ -893,6 +893,12 @@ export class TaskEditorContent {
 			case 'status':
 				this.renderMobileStatusButton(container);
 				break;
+			case 'blocking':
+				this.renderMobileDependencyButton(container, 'blocking');
+				break;
+			case 'blockedBy':
+				this.renderMobileDependencyButton(container, 'blockedBy');
+				break;
 			case 'dateStarted':
 				this.renderMobileDateButton(container, 'dateStarted', t('taskEditor', 'started'), t('taskEditor', 'startDatePlaceholder'));
 				break;
@@ -1112,6 +1118,56 @@ export class TaskEditorContent {
 			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon('status'));
 			this.setMobileCoreButtonState(button, !!value, this.getStatusColor(value));
 			this.setMobileCoreButtonLabel(button, value ? `${t('taskEditor', 'status')}: ${value}` : t('taskEditor', 'status'));
+		};
+		this.mobileCoreButtonRefreshers.add(refresh);
+		refresh();
+	}
+
+	private renderMobileDependencyButton(container: HTMLElement, fieldKey: 'blocking' | 'blockedBy'): void {
+		const label = t('taskEditor', fieldKey);
+		const button = this.createMobileCoreButton(container, label, fieldKey, () => {
+			const currentTaskId = this.fieldValues['operonId'] ?? this.existingTask?.operonId ?? '';
+			const oppositeFieldKey = fieldKey === 'blocking' ? 'blockedBy' : 'blocking';
+			let selectedIds = normalizeListValues(
+				splitTaskListValue(this.fieldValues[fieldKey]).filter(id => id !== currentTaskId),
+			);
+			button.addClass('is-picker-open');
+			showDependencyTaskPicker(button, {
+				fieldKey,
+				value: selectedIds.join('; '),
+				oppositeValue: this.fieldValues[oppositeFieldKey] ?? '',
+				allTasks: this.indexer.getAllTasks(),
+				excludedIds: currentTaskId ? [currentTaskId] : [],
+				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
+				onSave: (payload) => {
+					const nextIds = normalizeListValues(splitTaskListValue(payload[fieldKey]).filter(id => id !== currentTaskId));
+					const nextValue = (payload[fieldKey] ?? '').trim();
+					const nextOppositeValue = (payload[oppositeFieldKey] ?? '').trim();
+					if (areStringArraysEqual(selectedIds, nextIds)
+						&& nextValue === (this.fieldValues[fieldKey] ?? '').trim()
+						&& nextOppositeValue === (this.fieldValues[oppositeFieldKey] ?? '').trim()) {
+						return;
+					}
+					selectedIds = nextIds;
+					this.setDelimitedFieldValue(fieldKey, nextIds);
+					if (nextOppositeValue) this.fieldValues[oppositeFieldKey] = nextOppositeValue;
+					else delete this.fieldValues[oppositeFieldKey];
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
+		});
+		const refresh = () => {
+			const currentTaskId = this.fieldValues['operonId'] ?? this.existingTask?.operonId ?? '';
+			const selectedIds = normalizeListValues(
+				splitTaskListValue(this.fieldValues[fieldKey]).filter(id => id !== currentTaskId),
+			);
+			this.setMobileCoreButtonIcon(button, this.resolveTaskSelectionIcon(fieldKey));
+			this.setMobileCoreButtonState(button, selectedIds.length > 0);
+			this.setMobileCoreButtonLabel(button, selectedIds.length > 0 ? `${label}: ${selectedIds.length}` : label);
 		};
 		this.mobileCoreButtonRefreshers.add(refresh);
 		refresh();
@@ -2070,13 +2126,11 @@ export class TaskEditorContent {
 		if (configured) return configured;
 		switch (fieldKey) {
 			case 'parentTask':
-				return this.resolveCompactChipIcon('parentTask');
+			case 'blocking':
+			case 'blockedBy':
+				return this.resolveCompactChipIcon(fieldKey);
 			case 'subtasks':
 				return 'list-tree';
-			case 'blocking':
-				return 'link-2';
-			case 'blockedBy':
-				return 'workflow';
 		}
 	}
 

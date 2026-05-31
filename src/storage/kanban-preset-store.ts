@@ -26,6 +26,7 @@ export class KanbanPresetStore {
 	private settings: KanbanPresetStoreSettings;
 	private serializedSettings: string;
 	private recoveredFromMalformed = false;
+	private packagePersist: ((settings: KanbanPresetStoreSettings) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue, defaults: KanbanPresetStoreSettings) {
 		this.app = app;
@@ -36,6 +37,16 @@ export class KanbanPresetStore {
 
 	getAll(): KanbanPresetStoreSettings {
 		return cloneSettings(this.settings);
+	}
+
+	setPackagePersistence(persist: (settings: KanbanPresetStoreSettings) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(settings: KanbanPresetStoreSettings): void {
+		this.settings = cloneSettings(settings);
+		this.serializedSettings = JSON.stringify(this.settings);
+		this.recoveredFromMalformed = false;
 	}
 
 	async load(
@@ -84,6 +95,11 @@ export class KanbanPresetStore {
 		}
 		this.settings = nextSettings;
 		this.serializedSettings = nextSerialized;
+		if (this.packagePersist) {
+			await this.packagePersist(this.getAll());
+			this.recoveredFromMalformed = false;
+			return;
+		}
 		await this.persist();
 	}
 

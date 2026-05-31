@@ -480,7 +480,11 @@ Operon bundles **CodeMirror** modules for editor integrations and **ical.js** fo
 
 ## Data and Network Behavior
 
-Operon stores settings and runtime data in the vault-level `.operon/` folder, including split settings stores, caches, pinned task state, recurrence data, and indexes. It does not store user data in `.obsidian/plugins/operon/data.json`.
+Operon stores its canonical plugin data in Obsidian's plugin configuration area under `.obsidian/plugins/operon/`. User-facing settings and configuration live in `data.json`, organized into stable domains for core settings, taxonomy, views, interface preferences, automation, and integrations. Non-settings data is kept separate: `state/` stores user state such as pinned tasks, active trackers, and repeat series; `runtime/` stores the task index; and `cache/` stores parsed external calendar cache data.
+
+Older Operon versions used a vault-root `.operon/` folder. Current versions may read `.operon/` as a legacy fallback for users who are migrating, but new canonical writes go to the plugin configuration area. Once canonical storage is healthy, Settings includes a manual action to move the legacy `.operon/` folder to Obsidian trash. After that retirement marker is recorded, Operon no longer uses `.operon/` as startup fallback.
+
+For Obsidian Sync users, Operon's canonical settings package follows Obsidian's plugin data location. If you sync plugin settings, Operon settings in `data.json` can sync with the rest of your Obsidian configuration. Runtime index and cache files remain local plugin data and can be rebuilt from vault content when needed.
 
 ### Vault and clipboard access
 
@@ -489,9 +493,9 @@ Operon is a local-first task manager for Markdown tasks. To build its task index
 - **Vault enumeration**: Operon lists Markdown files in the vault to find inline tasks, file tasks, task templates, daily-note targets, filters, and picker suggestions. This gives Operon access to vault file paths, but it is used for local indexing and navigation inside Obsidian.
 - **Vault read/write**: Operon reads task files to parse task metadata and writes only when you create, edit, move, convert, schedule, complete, or otherwise update tasks through Operon.
 - **Clipboard access**: Operon writes to the system clipboard only for user-initiated copy actions, such as copying an `operonId`, copying an external task link, or copying an embeddable filter block.
-- **External calendar sources**: If you configure external ICS calendar URLs, Operon fetches those read-only calendar sources and stores the parsed cache locally in the vault-level `.operon/` folder.
+- **External calendar sources**: If you configure external ICS calendar URLs, Operon fetches those read-only calendar sources and stores the parsed cache locally under the plugin cache folder.
 
-Operon does not read the system clipboard, monitor clipboard changes, include telemetry, analytics, tracking pixels, or background usage reporting. Task data and runtime data stay in your vault. Cached external ICS data is stored in the vault-level Operon cache. Operon does not include a workaround for the third-party Calendar plugin or Settings Search plugin.
+Operon does not read the system clipboard, monitor clipboard changes, include telemetry, analytics, tracking pixels, or background usage reporting. Task data stays in your vault, and Operon plugin data stays inside Obsidian's plugin configuration storage.
 
 ## License
 

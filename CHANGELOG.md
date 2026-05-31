@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.1.1] - 2026-05-31
+
+### New
+- Added a blocked-task dialog for dependency-blocked tasks, showing why a status change was prevented and offering quick actions for blocker tasks.
+- Added Obsidian 1.13 Settings Search support for Operon settings while preserving the existing settings UI on older Obsidian versions.
+
+### Improved
+- Improved dependency handling so `blocking` and `blockedBy` stay synchronized, reject invalid self-links or cycles, repair missing inverse links after indexing, and appear consistently in chips, filters, Task Finder, file task overlays, and the mobile Task Editor.
+- Improved Operon's settings experience with searchable native Settings pages, modal icon pickers, grouped sections, clearer wording, and consistent input styling across complex settings pages.
+- Improved plugin storage handling by moving canonical settings, state, runtime, and cache data into Obsidian's plugin configuration area, with safer `data.json` reloads, legacy fallback, and manual `.operon` cleanup.
+- Improved Calendar and Kanban preset editors with Save and Cancel actions, so draft changes can be reviewed or discarded consistently before updating views.
+- Improved mobile Calendar Day and 3 Days empty-slot taps so they open the slot action dialog instead of jumping straight into Task Creator, matching desktop behavior and allowing task assignment or tracked-session creation first.
+- Improved status and state icon controls with a more compact State Icons fallback dropdown and easier-to-scan status picker spacing.
+
+### Changed
+- Moved Operon's canonical plugin data from the legacy vault-root `.operon` folder into Obsidian's plugin configuration storage, leaving `.operon` as a read-only migration fallback.
+
+### Fixed
+- Fixed dependency blocking so active `blockedBy` predecessors prevent completion and workflow status changes from status cycling, checkbox completion, Task Editor saves, Live Preview updates, Kanban moves, and timer-start automation.
+- Fixed dependency validation so multi-field edits, passive repairs, and Task Creator drafts reject invalid dependency graphs before writing files or inverse links.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 754/754 Phase 5 regression checks.
+
 ## [1.1.0] - 2026-05-30
 
 ### New

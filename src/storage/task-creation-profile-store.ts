@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import type { OperonSettings } from '../types/settings';
+import { normalizeInlineTaskParentFileHeadingKeyword, type OperonSettings } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 
@@ -16,6 +16,11 @@ export type TaskCreationProfileStoreSettings = Pick<
 	| 'inlineTaskUseDailyNote'
 	| 'inlineTaskTargetFile'
 	| 'inlineTaskHeading'
+	| 'fileTaskParentInlineTargetMode'
+	| 'fileTaskParentFileTargetMode'
+	| 'inlineTaskParentInlineTargetMode'
+	| 'inlineTaskParentFileTargetMode'
+	| 'inlineTaskParentFileHeadingKeyword'
 	| 'calendarInlineTaskHeading'
 	| 'autoParentFileTask'
 	| 'autoParentLinkedFileSubtasks'
@@ -42,6 +47,27 @@ function readString(value: unknown, fallback: string): string {
 
 function readNumber(value: unknown, fallback: number): number {
 	return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function readFileTaskParentTargetMode(
+	value: unknown,
+	fallback: TaskCreationProfileStoreSettings['fileTaskParentInlineTargetMode'],
+): TaskCreationProfileStoreSettings['fileTaskParentInlineTargetMode'] {
+	return value === 'default' || value === 'same-folder' ? value : fallback;
+}
+
+function readInlineTaskParentInlineTargetMode(
+	value: unknown,
+	fallback: TaskCreationProfileStoreSettings['inlineTaskParentInlineTargetMode'],
+): TaskCreationProfileStoreSettings['inlineTaskParentInlineTargetMode'] {
+	return value === 'default' || value === 'below-parent' ? value : fallback;
+}
+
+function readInlineTaskParentFileTargetMode(
+	value: unknown,
+	fallback: TaskCreationProfileStoreSettings['inlineTaskParentFileTargetMode'],
+): TaskCreationProfileStoreSettings['inlineTaskParentFileTargetMode'] {
+	return value === 'default' || value === 'inside-parent-file' ? value : fallback;
 }
 
 function readInlineTaskSaveMode(
@@ -74,6 +100,25 @@ function readStoreData(
 		inlineTaskUseDailyNote: inlineTaskSaveMode === 'daily-notes',
 		inlineTaskTargetFile: readString(raw.inlineTaskTargetFile, fallback.inlineTaskTargetFile),
 		inlineTaskHeading: readString(raw.inlineTaskHeading, fallback.inlineTaskHeading),
+		fileTaskParentInlineTargetMode: readFileTaskParentTargetMode(
+			raw.fileTaskParentInlineTargetMode,
+			fallback.fileTaskParentInlineTargetMode,
+		),
+		fileTaskParentFileTargetMode: readFileTaskParentTargetMode(
+			raw.fileTaskParentFileTargetMode,
+			fallback.fileTaskParentFileTargetMode,
+		),
+		inlineTaskParentInlineTargetMode: readInlineTaskParentInlineTargetMode(
+			raw.inlineTaskParentInlineTargetMode,
+			fallback.inlineTaskParentInlineTargetMode,
+		),
+		inlineTaskParentFileTargetMode: readInlineTaskParentFileTargetMode(
+			raw.inlineTaskParentFileTargetMode,
+			fallback.inlineTaskParentFileTargetMode,
+		),
+		inlineTaskParentFileHeadingKeyword: normalizeInlineTaskParentFileHeadingKeyword(
+			readString(raw.inlineTaskParentFileHeadingKeyword, fallback.inlineTaskParentFileHeadingKeyword),
+		),
 		calendarInlineTaskHeading: readString(raw.calendarInlineTaskHeading, fallback.calendarInlineTaskHeading),
 		autoParentFileTask: readBoolean(raw.autoParentFileTask, fallback.autoParentFileTask),
 		autoParentLinkedFileSubtasks: readBoolean(raw.autoParentLinkedFileSubtasks, fallback.autoParentLinkedFileSubtasks),
@@ -89,6 +134,7 @@ export class TaskCreationProfileStore {
 	private settings: TaskCreationProfileStoreSettings;
 	private serializedSettings: string;
 	private recoveredFromMalformed = false;
+	private packagePersist: ((settings: TaskCreationProfileStoreSettings) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue, defaults: TaskCreationProfileStoreSettings) {
 		this.app = app;
@@ -99,6 +145,16 @@ export class TaskCreationProfileStore {
 
 	getAll(): TaskCreationProfileStoreSettings {
 		return cloneSettings(this.settings);
+	}
+
+	setPackagePersistence(persist: (settings: TaskCreationProfileStoreSettings) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(settings: TaskCreationProfileStoreSettings): void {
+		this.settings = cloneSettings(settings);
+		this.serializedSettings = JSON.stringify(this.settings);
+		this.recoveredFromMalformed = false;
 	}
 
 	async exists(): Promise<boolean> {
@@ -151,6 +207,11 @@ export class TaskCreationProfileStore {
 		}
 		this.settings = nextSettings;
 		this.serializedSettings = nextSerialized;
+		if (this.packagePersist) {
+			await this.packagePersist(this.getAll());
+			this.recoveredFromMalformed = false;
+			return;
+		}
 		await this.persist();
 	}
 

@@ -41,6 +41,7 @@ export function showIconPicker(anchor: HTMLElement | DOMRect, options: IconPicke
 	input.className = 'operon-floating-input';
 	input.placeholder = t('taskEditor', 'searchIcon');
 	input.value = options.query ?? '';
+	const ownerWindow = getOwnerWindow(panel);
 
 	const grid = panel.createDiv('operon-icon-picker-grid');
 
@@ -188,7 +189,7 @@ export function showIconPicker(anchor: HTMLElement | DOMRect, options: IconPicke
 		const previousScrollTop = grid.scrollTop;
 		event.preventDefault();
 		render(false);
-		window.requestAnimationFrame(() => {
+		ownerWindow.requestAnimationFrame(() => {
 			grid.scrollTop = previousScrollTop + event.deltaY;
 		});
 	});
@@ -224,8 +225,7 @@ export function showIconPicker(anchor: HTMLElement | DOMRect, options: IconPicke
 		focusFloatingInput(input);
 		input.setSelectionRange(input.value.length, input.value.length);
 	};
-	const ownerWindow = getOwnerWindow(panel);
-	window.requestAnimationFrame(focusInput);
+	ownerWindow.requestAnimationFrame(focusInput);
 	ownerWindow.setTimeout(focusInput, 0);
 	ownerWindow.setTimeout(focusInput, 50);
 	return close;

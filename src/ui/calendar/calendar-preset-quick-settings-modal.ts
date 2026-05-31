@@ -1,4 +1,4 @@
-import { App, Modal, Setting } from 'obsidian';
+import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../../core/i18n';
 import { CalendarAppearanceMode, CalendarPreset } from '../../types/calendar';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from '../appearance-schemes';
@@ -15,16 +15,18 @@ import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from
 
 interface CalendarPresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
-	presetId: string;
-	onSave: () => Promise<void>;
+	preset: CalendarPreset | null;
+	onSave: (preset: CalendarPreset) => Promise<void>;
 }
 
 export class CalendarPresetQuickSettingsModal extends Modal {
 	private readonly options: CalendarPresetQuickSettingsModalOptions;
+	private readonly draftPreset: CalendarPreset | null;
 
 	constructor(app: App, options: CalendarPresetQuickSettingsModalOptions) {
 		super(app);
 		this.options = options;
+		this.draftPreset = options.preset ? cloneCalendarPreset(options.preset) : null;
 	}
 
 	onOpen(): void {
@@ -37,7 +39,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 		const preset = this.getPreset();
 		contentEl.empty();
 		this.titleEl.setText(preset
-			? t('calendar', 'calendarPresetTitle', { name: preset.name })
+			? t('calendar', 'calendarPresetTitle', { name: this.getPresetDisplayName(preset) })
 			: t('calendar', 'calendarPresetSettingsTitle'));
 
 		if (!preset) {
@@ -56,36 +58,19 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 			.addText(text => {
 				text.setValue(preset.name);
 				text.inputEl.addClass('operon-preset-name-input');
-				let lastCommittedValue = preset.name;
-				const commit = async (): Promise<void> => {
-					const rawValue = text.inputEl.value;
-					const nextValue = rawValue.trim() || t('calendar', 'defaultPresetName');
-					if (nextValue === lastCommittedValue) return;
-					await this.updatePreset(current => {
-						current.name = nextValue;
-					});
-					lastCommittedValue = nextValue;
-					if (text.inputEl.value !== nextValue) {
-						text.setValue(nextValue);
-					}
-					this.titleEl.setText(t('calendar', 'calendarPresetTitle', { name: nextValue }));
-				};
 				text.inputEl.addEventListener('input', () => {
-					const rawValue = text.inputEl.value.trim();
+					const rawValue = text.inputEl.value;
+					void this.updatePreset(current => {
+						current.name = rawValue;
+					});
 					this.titleEl.setText(t('calendar', 'calendarPresetTitle', {
-						name: rawValue || lastCommittedValue || t('calendar', 'defaultPresetName'),
+						name: rawValue.trim() || t('calendar', 'defaultPresetName'),
 					}));
-				});
-				text.inputEl.addEventListener('blur', () => {
-					runSettingsAsync('calendar preset name commit failed', commit);
 				});
 				text.inputEl.addEventListener('keydown', (event) => {
 					if (event.key !== 'Enter') return;
 					event.preventDefault();
-					runSettingsAsync('calendar preset name commit failed', async () => {
-						await commit();
-						text.inputEl.blur();
-					});
+					text.inputEl.blur();
 				});
 			});
 		nameSetting.settingEl.addClass('operon-preset-name-setting');
@@ -356,10 +341,6 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 					.addToggle(toggle => {
 						toggle.setValue(isVisible);
 						toggle.onChange(async value => {
-							if (value) {
-								const matchingSource = this.options.getSettings().externalCalendars.find(entry => entry.id === source.id);
-								if (matchingSource) matchingSource.enabled = true;
-							}
 							await this.updatePreset(current => {
 								current.externalCalendarVisibility[source.id] = value;
 							});
@@ -367,6 +348,37 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 					});
 			}
 		}
+
+		this.renderButtons(contentEl);
+	}
+
+	private renderButtons(container: HTMLElement): void {
+		const row = container.createDiv('operon-preset-settings-footer');
+
+		const cancelBtn = row.createEl('button', {
+			cls: 'operon-preset-settings-footer-button',
+			text: t('buttons', 'cancel'),
+		});
+		cancelBtn.type = 'button';
+		cancelBtn.addEventListener('click', () => this.close());
+
+		const saveBtn = row.createEl('button', {
+			cls: 'operon-preset-settings-footer-button mod-cta',
+			text: t('buttons', 'save'),
+		});
+		saveBtn.type = 'button';
+		saveBtn.addEventListener('click', settingsAsyncHandler('calendar preset save failed', async () => {
+			const preset = this.getPreset();
+			if (!preset) return;
+			const name = preset.name.trim();
+			if (!name) {
+				new Notice(t('calendar', 'presetNameRequired'));
+				return;
+			}
+			preset.name = name;
+			await this.options.onSave(cloneCalendarPreset(preset));
+			this.close();
+		}));
 	}
 
 	private addNumberSetting(
@@ -412,7 +424,11 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 	}
 
 	private getPreset(): CalendarPreset | null {
-		return this.options.getSettings().calendarPresets.find(entry => entry.id === this.options.presetId) ?? null;
+		return this.draftPreset;
+	}
+
+	private getPresetDisplayName(preset: CalendarPreset): string {
+		return preset.name.trim() || t('calendar', 'defaultPresetName');
 	}
 
 	private normalizeWeekCount(value: number | undefined): 1 | 2 | 3 | 4 | 5 | 6 {
@@ -436,6 +452,12 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 		preset.weekCount = this.normalizeWeekCount(preset.weekCount);
 		preset.focusedWeekNumber = this.normalizeFocusedWeekNumber(preset.focusedWeekNumber, preset.weekCount);
 		preset.todayPosition = Math.max(1, Math.min(preset.dayCount, preset.todayPosition));
-		await this.options.onSave();
 	}
+}
+
+function cloneCalendarPreset(preset: CalendarPreset): CalendarPreset {
+	return {
+		...preset,
+		externalCalendarVisibility: { ...preset.externalCalendarVisibility },
+	};
 }

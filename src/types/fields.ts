@@ -129,7 +129,7 @@ export interface TaskLocation {
 	format: 'inline' | 'yaml';
 }
 
-/** Full index data structure persisted to .operon/index.json */
+/** Full task index data structure persisted to plugin runtime storage. */
 export interface IndexData {
 	version: number;
 	lastFullReindex: string; // ISO 8601

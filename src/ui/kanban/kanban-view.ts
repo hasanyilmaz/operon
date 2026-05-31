@@ -1490,6 +1490,11 @@ export class KanbanView extends ItemView {
 		}
 	}
 
+	clearOptimisticMove(taskId: string): void {
+		this.optimisticMoves.delete(taskId);
+		this.markDirty();
+	}
+
 	private applyOptimisticMoves(board: KanbanBoardData, settings: OperonSettings): void {
 		applyKanbanOptimisticMovesToBoard(board, settings.priorities, this.optimisticMoves.values());
 	}
@@ -1876,10 +1881,16 @@ export class KanbanView extends ItemView {
 			`fallbackReason=${fallbackReason}`,
 		);
 
-		void Promise.resolve(this.callbacks.onStatusIconClick(task.operonId))
-			.then(() => {
-				if (applied) this.markDirty();
-			})
+			void Promise.resolve(this.callbacks.onStatusIconClick(task.operonId))
+				.then(() => {
+					if (applied) {
+						const freshTask = this.indexer.getTask(task.operonId);
+						if (!freshTask || !pipeline || !isKanbanOptimisticMoveSatisfied(freshTask, pipeline, preset, plan.move)) {
+							this.optimisticMoves.delete(task.operonId);
+						}
+						this.markDirty();
+					}
+				})
 			.catch(error => {
 				console.error('Operon: Kanban status click failed', error);
 				new Notice(t('notifications', 'kanbanActionFailed'));

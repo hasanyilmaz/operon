@@ -57,6 +57,7 @@ export interface InterfaceIconToggleSectionOptions<
 	getActionToggles?: () => InterfaceIconActionToggle[];
 	actionTogglesTitle?: string;
 	iconOnlyButtonLabel?: string;
+	descriptionSearchTargetId?: string;
 	getCanonicalLabel?: (key: TKey) => string;
 	getVisibilityToggleLabel?: (label: string) => string;
 	getIconOnlyToggleLabel?: (label: string) => string;
@@ -331,6 +332,9 @@ function renderInterfaceIconRowListSection<
 		text: options.description,
 	});
 	description.addClass('operon-settings-section-desc');
+	if (options.descriptionSearchTargetId) {
+		description.dataset.operonSettingsSearchId = options.descriptionSearchTargetId;
+	}
 
 	const sectionEl = options.containerEl.createDiv('operon-compact-chip-row-editor');
 	const listEl = sectionEl.createDiv('operon-compact-chip-row-list');

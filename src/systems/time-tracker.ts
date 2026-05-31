@@ -53,6 +53,11 @@ interface ReopenTaskResult {
 }
 
 type ExternalTaskMutationPersist = (payload: Record<string, string>) => Promise<boolean>;
+export type TimeTrackerStatusChangeGuard = (
+	task: IndexedTask,
+	payload: Record<string, string>,
+	context: { action: 'timer-start-reopen' | 'timer-start-tracking-status' },
+) => Promise<boolean> | boolean;
 
 interface HistoryCacheEntry {
 	rangeDays: number;
@@ -70,6 +75,7 @@ export class TimeTracker {
 	private getSettings: () => OperonSettings;
 	private refreshDurationAggregates: (operonId: string) => Promise<void>;
 	private onDuplicateOperonId: ((operonId: string) => void) | null;
+	private statusChangeGuard: TimeTrackerStatusChangeGuard | null;
 	private listeners: Set<TimeTrackerListener> = new Set();
 	private activeTracker: InternalActiveTracker | null = null;
 	private tickerInterval: WindowIntervalHandle | null = null;
@@ -84,21 +90,23 @@ export class TimeTracker {
 		indexer: OperonIndexer,
 		writer: TaskWriter,
 		activeTrackerStore: ActiveTrackerStoreLike,
-		totalDurationCalculator: TotalDurationCalculator,
-		_totalEstimateCalculator: TotalEstimateCalculator,
-		getSettings: () => OperonSettings,
-		onDuplicateOperonId?: (operonId: string) => void,
-		refreshDurationAggregates?: (operonId: string) => Promise<void>,
-	) {
+			totalDurationCalculator: TotalDurationCalculator,
+			_totalEstimateCalculator: TotalEstimateCalculator,
+			getSettings: () => OperonSettings,
+			onDuplicateOperonId?: (operonId: string) => void,
+			refreshDurationAggregates?: (operonId: string) => Promise<void>,
+			statusChangeGuard?: TimeTrackerStatusChangeGuard,
+		) {
 		this.app = app;
 		this.indexer = indexer;
 		this.writer = writer;
-		this.activeTrackerStore = activeTrackerStore;
-		this.totalDurationCalculator = totalDurationCalculator;
-		this.getSettings = getSettings;
-		this.refreshDurationAggregates = refreshDurationAggregates ?? ((operonId) => this.refreshAggregateChainsLegacy(operonId));
-		this.onDuplicateOperonId = onDuplicateOperonId ?? null;
-	}
+			this.activeTrackerStore = activeTrackerStore;
+			this.totalDurationCalculator = totalDurationCalculator;
+			this.getSettings = getSettings;
+			this.refreshDurationAggregates = refreshDurationAggregates ?? ((operonId) => this.refreshAggregateChainsLegacy(operonId));
+			this.onDuplicateOperonId = onDuplicateOperonId ?? null;
+			this.statusChangeGuard = statusChangeGuard ?? null;
+		}
 
 	subscribe(listener: TimeTrackerListener): () => void {
 		this.listeners.add(listener);
@@ -243,19 +251,22 @@ export class TimeTracker {
 			this.onDuplicateOperonId?.(operonId);
 			return false;
 		}
-		if (this.activeTracker?.operonId === operonId) {
-			return true;
-		}
+			if (this.activeTracker?.operonId === operonId) {
+				return true;
+			}
 
-		if (this.activeTracker && this.activeTracker.operonId && this.activeTracker.operonId !== operonId) {
-			const stopped = await this.stopActive('switch');
-			if (!stopped) return false;
-		}
+			let task = this.indexer.getTask(operonId);
+			if (!task) return false;
+			if (!await this.guardTaskStartStatusChanges(task)) {
+				return false;
+			}
 
-		let task = this.indexer.getTask(operonId);
-		if (!task) return false;
+			if (this.activeTracker && this.activeTracker.operonId && this.activeTracker.operonId !== operonId) {
+				const stopped = await this.stopActive('switch');
+				if (!stopped) return false;
+			}
 
-		const previousActiveState = this.getActiveState();
+			const previousActiveState = this.getActiveState();
 		const previousActive = this.activeTrackerStore.getActiveForUser();
 		const start = this.activeTracker && !this.activeTracker.operonId
 			? this.activeTracker.start
@@ -323,6 +334,72 @@ export class TimeTracker {
 		this.startTicker();
 		this.emit('state');
 		return true;
+	}
+
+	private async guardTaskStartStatusChanges(task: IndexedTask): Promise<boolean> {
+		if (!this.statusChangeGuard) return true;
+		const reopenPayload = this.buildTerminalReopenPayload(task);
+		let taskForTracking = task;
+		if (reopenPayload) {
+			const allowed = await this.statusChangeGuard(task, reopenPayload, { action: 'timer-start-reopen' });
+			if (!allowed) return false;
+			taskForTracking = this.previewTaskWithPayload(task, reopenPayload);
+		}
+
+		const settings = this.getSettings();
+		const trackingWorkflow = resolveAutomationWorkflowStatus(
+			settings.pipelines,
+			taskForTracking.fieldValues['status'],
+			settings.defaultPipelineName,
+			'tracking',
+		);
+		if (trackingWorkflow && (taskForTracking.fieldValues['status'] ?? '') !== trackingWorkflow.value) {
+			return await this.statusChangeGuard(taskForTracking, {
+				status: trackingWorkflow.value,
+				datetimeModified: localNow(),
+			}, { action: 'timer-start-tracking-status' });
+		}
+		return true;
+	}
+
+	private buildTerminalReopenPayload(task: IndexedTask): Record<string, string> | null {
+		if (task.checkbox === 'open') return null;
+		const settings = this.getSettings();
+		const terminalKey = task.checkbox === 'done' ? 'dateCompleted' : 'dateCancelled';
+		const resolution = resolveReverseWorkflowFromTerminalDate(
+			settings.pipelines,
+			task.fieldValues['status'],
+			settings.defaultPipelineName,
+			terminalKey,
+			'',
+		);
+		if (!resolution.isValid || !resolution.workflow) return null;
+		return {
+			status: resolution.workflow.value,
+			_checkbox: resolution.checkbox,
+			dateCompleted: '',
+			dateCancelled: '',
+			datetimeModified: localNow(),
+		};
+	}
+
+	private previewTaskWithPayload(task: IndexedTask, payload: Record<string, string>): IndexedTask {
+		const fieldValues = { ...task.fieldValues };
+		for (const [key, value] of Object.entries(payload)) {
+			if (key.startsWith('_')) continue;
+			if (value) {
+				fieldValues[key] = value;
+			} else {
+				delete fieldValues[key];
+			}
+		}
+		return {
+			...task,
+			checkbox: payload['_checkbox'] === 'open' || payload['_checkbox'] === 'done' || payload['_checkbox'] === 'cancelled'
+				? payload['_checkbox']
+				: task.checkbox,
+			fieldValues,
+		};
 	}
 
 	async startUnassigned(source: TrackerSource = 'command'): Promise<boolean> {

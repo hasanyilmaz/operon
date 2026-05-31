@@ -18,16 +18,59 @@ export function renderSettingsHeading(containerEl: HTMLElement, title: string, c
 	return setting;
 }
 
-export function renderSettingsInfoBox(containerEl: HTMLElement, title: string, description: string): HTMLElement {
+export function createSettingsAddButton(containerEl: HTMLElement, label: string): HTMLButtonElement {
+	const button = containerEl.createEl('button', {
+		cls: 'operon-settings-primary-button operon-settings-add-button',
+		attr: { type: 'button' },
+	});
+	const iconEl = button.createSpan('operon-settings-add-button-icon');
+	setIcon(iconEl, 'plus');
+	button.createSpan({
+		text: label,
+		cls: 'operon-settings-add-button-label',
+	});
+	return button;
+}
+
+export function renderNativeSettingsSection(containerEl: HTMLElement, title: string, desc?: string): HTMLElement {
+	if (!containerEl.closest('.operon-settings-native-page-root')) {
+		renderSettingsHeading(containerEl, title);
+		return containerEl;
+	}
+
+	const sectionEl = containerEl.createDiv('operon-native-settings-section');
+	sectionEl.createEl('h2', {
+		text: title,
+		cls: 'operon-native-settings-section-title',
+	});
+	if (desc) {
+		sectionEl.createEl('p', {
+			text: desc,
+			cls: 'operon-native-settings-section-desc',
+		});
+	}
+	return sectionEl.createDiv('operon-native-settings-section-body');
+}
+
+export function renderNativeSettingsGroupedSection(containerEl: HTMLElement, title: string, desc?: string): HTMLElement {
+	const sectionBody = renderNativeSettingsSection(containerEl, title, desc);
+	if (sectionBody.closest('.operon-settings-native-page-root')) {
+		sectionBody.addClass('operon-native-settings-section-card');
+	}
+	return sectionBody;
+}
+
+export function renderSettingsInfoBox(containerEl: HTMLElement, title: string, description: string, searchTargetId?: string): HTMLElement {
 	const infoBox = containerEl.createDiv('operon-settings-info-box');
 	infoBox.createEl('strong', {
 		text: title,
 		cls: 'operon-settings-info-box-title',
 	});
-	infoBox.createEl('p', {
+	const bodyEl = infoBox.createEl('p', {
 		text: description,
 		cls: 'operon-settings-info-box-body',
 	});
+	if (searchTargetId) bodyEl.dataset.operonSettingsSearchId = searchTargetId;
 	return infoBox;
 }
 

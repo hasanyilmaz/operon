@@ -144,6 +144,7 @@ export class TaskUiPreferenceStore {
 	private settings: TaskUiPreferenceStoreSettings;
 	private serializedSettings: string;
 	private recoveredFromMalformed = false;
+	private packagePersist: ((settings: TaskUiPreferenceStoreSettings) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue, defaults: TaskUiPreferenceStoreSettings) {
 		this.app = app;
@@ -154,6 +155,16 @@ export class TaskUiPreferenceStore {
 
 	getAll(): TaskUiPreferenceStoreSettings {
 		return cloneSettings(this.settings);
+	}
+
+	setPackagePersistence(persist: (settings: TaskUiPreferenceStoreSettings) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(settings: TaskUiPreferenceStoreSettings): void {
+		this.settings = cloneSettings(settings);
+		this.serializedSettings = JSON.stringify(this.settings);
+		this.recoveredFromMalformed = false;
 	}
 
 	async exists(): Promise<boolean> {
@@ -206,6 +217,11 @@ export class TaskUiPreferenceStore {
 		}
 		this.settings = nextSettings;
 		this.serializedSettings = nextSerialized;
+		if (this.packagePersist) {
+			await this.packagePersist(this.getAll());
+			this.recoveredFromMalformed = false;
+			return;
+		}
 		await this.persist();
 	}
 

@@ -333,6 +333,8 @@ export const TASK_EDITOR_MOBILE_CORE_TOOL_ORDER = [
 	'taskColor',
 	'priority',
 	'status',
+	'blocking',
+	'blockedBy',
 	'dateStarted',
 	'dateScheduled',
 	'dateDue',
@@ -351,6 +353,8 @@ export const INLINE_TASK_COMPACT_CHIP_ORDER = [
 	'priority',
 	'status',
 	'parentTask',
+	'blocking',
+	'blockedBy',
 	'dateScheduled',
 	'dateDue',
 	'dateStarted',
@@ -374,6 +378,8 @@ export const INLINE_TASK_COMPACT_FALLBACK_ICONS: Record<InlineTaskCompactChipKey
 	priority: 'flag',
 	status: 'circle-dot',
 	parentTask: 'git-branch-plus',
+	blocking: 'circle-stop',
+	blockedBy: 'circle-pause',
 	dateScheduled: 'calendar-clock',
 	dateDue: 'calendar',
 	dateStarted: 'play',
@@ -407,8 +413,8 @@ export const TASK_CREATOR_FALLBACK_FIELD_ICONS: Record<TaskCreatorToolbarFieldKe
 	repeat: 'repeat-2',
 	note: 'notebook-pen',
 	subtasks: 'list-tree',
-	blocking: 'arrow-right',
-	blockedBy: 'arrow-left',
+	blocking: 'circle-stop',
+	blockedBy: 'circle-pause',
 	assignees: 'users',
 	tags: 'tags',
 	contexts: 'map-pinned',
@@ -423,6 +429,8 @@ export const TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS: Record<TaskEditorMobileCore
 	taskColor: 'palette',
 	priority: 'flag',
 	status: 'circle-dot',
+	blocking: 'circle-stop',
+	blockedBy: 'circle-pause',
 	dateStarted: 'plane-takeoff',
 	dateScheduled: 'calendar-cog',
 	dateDue: 'calendar-clock',
@@ -521,6 +529,8 @@ function buildDefaultInlineTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'priority', visible: true, iconOnly: false },
 		{ key: 'status', visible: true, iconOnly: true },
 		{ key: 'parentTask', visible: true, iconOnly: true },
+		{ key: 'blocking', visible: false, iconOnly: false },
+		{ key: 'blockedBy', visible: false, iconOnly: false },
 		{ key: 'dateStarted', visible: true, iconOnly: true },
 		{ key: 'dateScheduled', visible: true, iconOnly: true },
 		{ key: 'dateDue', visible: true, iconOnly: true },
@@ -579,7 +589,10 @@ function buildDefaultTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerIt
 }
 
 function buildDefaultTaskEditorMobileCoreToolItems(): TaskEditorMobileCoreToolItem[] {
-	return TASK_EDITOR_MOBILE_CORE_TOOL_ORDER.map(key => ({ key, visible: true }));
+	return TASK_EDITOR_MOBILE_CORE_TOOL_ORDER.map(key => ({
+		key,
+		visible: key !== 'blocking' && key !== 'blockedBy',
+	}));
 }
 
 export function buildCompatibilityTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerItem[] {
@@ -591,6 +604,8 @@ function buildDefaultFilterTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'priority', visible: true, iconOnly: false },
 		{ key: 'status', visible: true, iconOnly: true },
 		{ key: 'parentTask', visible: true, iconOnly: true },
+		{ key: 'blocking', visible: false, iconOnly: false },
+		{ key: 'blockedBy', visible: false, iconOnly: false },
 		{ key: 'dateScheduled', visible: true, iconOnly: true },
 		{ key: 'dateDue', visible: true, iconOnly: true },
 		{ key: 'dateStarted', visible: true, iconOnly: true },
@@ -614,6 +629,8 @@ function buildDefaultTaskFinderCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'priority', visible: true, iconOnly: false },
 		{ key: 'status', visible: false, iconOnly: false },
 		{ key: 'parentTask', visible: true, iconOnly: false },
+		{ key: 'blocking', visible: false, iconOnly: false },
+		{ key: 'blockedBy', visible: false, iconOnly: false },
 		{ key: 'dateScheduled', visible: false, iconOnly: false },
 		{ key: 'dateDue', visible: false, iconOnly: false },
 		{ key: 'dateStarted', visible: false, iconOnly: false },
@@ -637,6 +654,8 @@ function buildDefaultOverlayTaskCompactChipItems(): InlineTaskCompactChipItem[] 
 		{ key: 'priority', visible: false, iconOnly: false },
 		{ key: 'status', visible: false, iconOnly: false },
 		{ key: 'parentTask', visible: false, iconOnly: false },
+		{ key: 'blocking', visible: false, iconOnly: false },
+		{ key: 'blockedBy', visible: false, iconOnly: false },
 		{ key: 'dateScheduled', visible: false, iconOnly: false },
 		{ key: 'dateDue', visible: false, iconOnly: false },
 		{ key: 'dateStarted', visible: false, iconOnly: false },

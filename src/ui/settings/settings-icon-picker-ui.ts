@@ -1,13 +1,12 @@
-import { Setting, getIcon } from 'obsidian';
+import { App, Setting, getIcon } from 'obsidian';
 import { t } from '../../core/i18n';
-import { asHTMLElement } from '../../core/dom-compat';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
-import { showIconPicker } from '../field-pickers/icon-picker';
 import { runSettingsAsync } from './async-settings-action';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
-import type { FloatingHostOptions } from '../field-pickers/common';
+import { openSettingsIconPickerModal } from './settings-icon-picker-modal';
 
 export interface SettingsIconPickerRowOptions {
+	app: App;
 	containerEl: HTMLElement;
 	name: string;
 	desc: string;
@@ -25,21 +24,6 @@ export interface SettingsIconPickerRowHandle {
 	setting: Setting;
 	buttonEl: HTMLButtonElement;
 	setValue: (value: string) => void;
-}
-
-const SETTINGS_FLOATING_HOST_CLASS = 'operon-settings-floating-host';
-
-export function getSettingsIconPickerFloatingOptions(anchor: HTMLElement): FloatingHostOptions {
-	const settingsRoot = asHTMLElement(anchor.closest('.operon-settings-tab-root'), anchor);
-	if (!settingsRoot) return {};
-
-	const scrollHost = asHTMLElement(anchor.closest('.vertical-tab-content, .modal-content'), anchor) ?? settingsRoot;
-	scrollHost.addClass(SETTINGS_FLOATING_HOST_CLASS);
-	return {
-		floatingHost: scrollHost,
-		floatingScrollHost: scrollHost,
-		constrainToFloatingHost: true,
-	};
 }
 
 function formatIconPickerAriaLabel(name: string, value: string, placeholder: string): string {
@@ -94,32 +78,30 @@ export function renderSettingsIconPickerRow(options: SettingsIconPickerRowOption
 		refresh();
 	};
 
-	let closeIconPicker: (() => void) | null = null;
 	const commitValue = async (value: string): Promise<void> => {
 		const nextValue = value.trim();
 		await options.onChange(nextValue);
 		setValue(nextValue);
 	};
 	const openPicker = (): void => {
-		if (closeIconPicker) return;
-		closeIconPicker = showIconPicker(buttonEl, {
-			...getSettingsIconPickerFloatingOptions(buttonEl),
+		openSettingsIconPickerModal(options.app, {
+			title: options.name,
 			value: currentValue,
 			query: '',
 			onSelect: iconId => {
-				closeIconPicker = null;
 				runSettingsAsync(options.errorContext ?? 'settings icon picker change failed', () => commitValue(iconId));
 			},
 			onClear: () => {
-				closeIconPicker = null;
 				runSettingsAsync(options.errorContext ?? 'settings icon picker clear failed', () => commitValue(''));
-			},
-			onClose: () => {
-				closeIconPicker = null;
 			},
 		});
 	};
 
+	buttonEl.addEventListener('pointerdown', event => {
+		event.preventDefault();
+		event.stopPropagation();
+		openPicker();
+	});
 	buttonEl.addEventListener('click', event => {
 		event.preventDefault();
 		event.stopPropagation();

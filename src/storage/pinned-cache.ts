@@ -1,6 +1,6 @@
 /**
  * PinnedCache — external cache for pinned task state.
- * Stores pinned operonIds in .operon/cache/pinned-cache.json.
+ * Stores pinned operonIds outside task files.
  * Never writes to vault task files → no reindex loop.
  */
 
@@ -22,10 +22,15 @@ export class PinnedCache {
 	private listeners: Set<() => void> = new Set();
 	private mutationQueue: Promise<void> = Promise.resolve();
 	private writesSuspended = false;
+	private readonly filePath: string;
+	private readonly legacyFilePath: string | null;
+	private legacyFallbackEnabled = true;
 
-	constructor(app: App, writeQueue: WriteQueue) {
+	constructor(app: App, writeQueue: WriteQueue, filePath = PINNED_CACHE_FILE, legacyFilePath: string | null = null) {
 		this.app = app;
 		this.writeQueue = writeQueue;
+		this.filePath = filePath;
+		this.legacyFilePath = legacyFilePath;
 	}
 
 	/**
@@ -34,24 +39,32 @@ export class PinnedCache {
 	 */
 	async load(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		if (!(await adapter.exists(PINNED_CACHE_FILE))) {
+		const loadPath = await this.resolveLoadPath();
+		if (!loadPath) {
 			this.pinnedSet = new Set();
 			this.generation = 0;
 			return;
 		}
 		let raw = '';
 		try {
-			raw = await adapter.read(PINNED_CACHE_FILE);
+			raw = await adapter.read(loadPath);
 			const data = JSON.parse(raw) as PinnedCacheData;
 			this.pinnedSet = new Set(Array.isArray(data.pinned) ? data.pinned : []);
 			this.generation = 0;
 			this.writesSuspended = false;
+			if (loadPath !== this.filePath) {
+				await this.flush(this.pinnedSet);
+			}
 		} catch {
 			console.warn('Operon: Failed to parse pinned-cache.json, preserving invalid file as backup and starting empty');
 			this.pinnedSet = new Set();
 			this.generation = 0;
+			if (loadPath !== this.filePath) {
+				this.writesSuspended = false;
+				return;
+			}
 			try {
-				await preserveInvalidJsonFile(adapter, PINNED_CACHE_FILE, raw);
+				await preserveInvalidJsonFile(adapter, this.filePath, raw);
 				this.writesSuspended = false;
 			} catch {
 				console.warn('Operon: Failed to preserve invalid pinned-cache.json backup; pinned cache writes suspended');
@@ -108,6 +121,10 @@ export class PinnedCache {
 		return this.generation;
 	}
 
+	setLegacyFallbackEnabled(enabled: boolean): void {
+		this.legacyFallbackEnabled = enabled;
+	}
+
 	async drain(): Promise<void> {
 		await this.mutationQueue;
 	}
@@ -160,10 +177,17 @@ export class PinnedCache {
 			return false;
 		}
 		const data: PinnedCacheData = { pinned: [...pinnedSet] };
-		await this.writeQueue.enqueue(PINNED_CACHE_FILE, async () => {
-			await writeJsonSafely(this.app.vault.adapter, PINNED_CACHE_FILE, data);
+		await this.writeQueue.enqueue(this.filePath, async () => {
+			await writeJsonSafely(this.app.vault.adapter, this.filePath, data);
 		});
 		return true;
+	}
+
+	private async resolveLoadPath(): Promise<string | null> {
+		const adapter = this.app.vault.adapter;
+		if (await adapter.exists(this.filePath)) return this.filePath;
+		if (this.legacyFallbackEnabled && this.legacyFilePath && await adapter.exists(this.legacyFilePath)) return this.legacyFilePath;
+		return null;
 	}
 
 	private async commit(next: Set<string>): Promise<void> {

@@ -4,6 +4,7 @@ import { CANONICAL_KEYS } from '../types/keys';
 import { KeyMapping } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
+import type { OperonKeyMappingsPackageV1 } from './operon-data-package';
 
 const KEY_MAPPINGS_FILE = '.operon/key-mappings.json';
 const KEY_MAPPING_STORE_VERSION = 1;
@@ -94,6 +95,7 @@ export class KeyMappingStore {
 	private custom: KeyMapping[] = [];
 	private serializedStore = '{"system":[],"custom":[]}';
 	private recoveredFromMalformed = false;
+	private packagePersist: ((keyMappings: KeyMapping[]) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue) {
 		this.app = app;
@@ -105,6 +107,20 @@ export class KeyMappingStore {
 			...cloneKeyMappings(this.system),
 			...cloneKeyMappings(this.custom),
 		];
+	}
+
+	setPackagePersistence(persist: (keyMappings: KeyMapping[]) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(keyMappings: OperonKeyMappingsPackageV1): void {
+		this.system = readSection(keyMappings.system);
+		this.custom = readSection(keyMappings.custom);
+		this.serializedStore = JSON.stringify({
+			system: this.system,
+			custom: this.custom,
+		});
+		this.recoveredFromMalformed = false;
 	}
 
 	async load(legacyKeyMappings: KeyMapping[] | null = null, defaultSeed: KeyMapping[] = []): Promise<void> {
@@ -173,6 +189,11 @@ export class KeyMappingStore {
 		this.system = split.system;
 		this.custom = split.custom;
 		this.serializedStore = nextSerializedStore;
+		if (this.packagePersist) {
+			await this.packagePersist(this.getAll());
+			this.recoveredFromMalformed = false;
+			return;
+		}
 		await this.persist();
 	}
 

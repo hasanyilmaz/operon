@@ -113,21 +113,27 @@ export class ExternalCalendarCacheStore {
 	private readonly writeQueue: WriteQueue;
 	private cacheDocument: ExternalCalendarCacheDocument = emptyDocument();
 	private mutationQueue: Promise<void> = Promise.resolve();
+	private readonly filePath: string;
+	private readonly legacyFilePath: string | null;
+	private legacyFallbackEnabled = true;
 
-	constructor(app: App, writeQueue: WriteQueue) {
+	constructor(app: App, writeQueue: WriteQueue, filePath = EXTERNAL_CALENDAR_CACHE_FILE, legacyFilePath: string | null = null) {
 		this.app = app;
 		this.writeQueue = writeQueue;
+		this.filePath = filePath;
+		this.legacyFilePath = legacyFilePath;
 	}
 
 	async load(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		if (!(await adapter.exists(EXTERNAL_CALENDAR_CACHE_FILE))) {
+		const loadPath = await this.resolveLoadPath();
+		if (!loadPath) {
 			this.cacheDocument = emptyDocument();
 			return;
 		}
 		let raw = '';
 		try {
-			raw = await adapter.read(EXTERNAL_CALENDAR_CACHE_FILE);
+			raw = await adapter.read(loadPath);
 			const parsed = JSON.parse(raw) as Record<string, unknown>;
 			this.cacheDocument = {
 				version: EXTERNAL_CALENDAR_CACHE_VERSION,
@@ -137,9 +143,14 @@ export class ExternalCalendarCacheStore {
 						.filter((entry): entry is ExternalCalendarSourceCache => !!entry)
 					: [],
 			};
+			if (loadPath !== this.filePath) {
+				await this.flush(this.cacheDocument);
+			}
 		} catch {
 			console.warn('Operon: Failed to parse external-calendars.json, preserving invalid file as backup and starting empty');
-			await preserveInvalidJsonFile(adapter, EXTERNAL_CALENDAR_CACHE_FILE, raw);
+			if (loadPath === this.filePath) {
+				await preserveInvalidJsonFile(adapter, this.filePath, raw);
+			}
 			this.cacheDocument = emptyDocument();
 		}
 	}
@@ -181,6 +192,10 @@ export class ExternalCalendarCacheStore {
 		await this.mutationQueue;
 	}
 
+	setLegacyFallbackEnabled(enabled: boolean): void {
+		this.legacyFallbackEnabled = enabled;
+	}
+
 	private async mutateDocument(
 		transform: (current: ExternalCalendarCacheDocument) => ExternalCalendarCacheDocument,
 	): Promise<void> {
@@ -195,9 +210,16 @@ export class ExternalCalendarCacheStore {
 	}
 
 	private async flush(document: ExternalCalendarCacheDocument): Promise<void> {
-		await this.writeQueue.enqueue(EXTERNAL_CALENDAR_CACHE_FILE, async () => {
-			await writeJsonSafely(this.app.vault.adapter, EXTERNAL_CALENDAR_CACHE_FILE, document);
+		await this.writeQueue.enqueue(this.filePath, async () => {
+			await writeJsonSafely(this.app.vault.adapter, this.filePath, document);
 		});
+	}
+
+	private async resolveLoadPath(): Promise<string | null> {
+		const adapter = this.app.vault.adapter;
+		if (await adapter.exists(this.filePath)) return this.filePath;
+		if (this.legacyFallbackEnabled && this.legacyFilePath && await adapter.exists(this.legacyFilePath)) return this.legacyFilePath;
+		return null;
 	}
 }
 

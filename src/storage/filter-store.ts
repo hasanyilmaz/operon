@@ -3,6 +3,7 @@ import { FilterSet, normalizeFilterSet } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { isRecord } from '../core/unknown-value';
 import { writeJsonSafely } from './storage-file-ops';
+import type { OperonFiltersPackageV1 } from './operon-data-package';
 
 const FILTERS_FOLDER = '.operon/filters';
 const FILTER_INDEX_FILE = `${FILTERS_FOLDER}/index.json`;
@@ -42,6 +43,7 @@ export class FilterStore {
 	private writeQueue: WriteQueue;
 	private orderedIds: string[] = [];
 	private filters = new Map<string, FilterSet>();
+	private packagePersist: ((filters: OperonFiltersPackageV1) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue) {
 		this.app = app;
@@ -58,6 +60,47 @@ export class FilterStore {
 	getById(filterId: string): FilterSet | null {
 		const filterSet = this.filters.get(filterId);
 		return filterSet ? cloneFilterSet(filterSet) : null;
+	}
+
+	setPackagePersistence(persist: (filters: OperonFiltersPackageV1) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(filters: OperonFiltersPackageV1): void {
+		const packageItems = isRecord(filters.itemsById) ? filters.itemsById : {};
+		const loadedFilters = new Map<string, FilterSet>();
+		const orderedIds: string[] = [];
+		const packageIds = Array.isArray(filters.filterIds) ? filters.filterIds : [];
+		for (const value of packageIds) {
+			const filterId = typeof value === 'string' ? value.trim() : '';
+			if (!filterId || loadedFilters.has(filterId)) continue;
+			const normalized = normalizeFilterSet(packageItems[filterId]);
+			if (!normalized) continue;
+			loadedFilters.set(normalized.id, normalized);
+			orderedIds.push(normalized.id);
+		}
+		for (const rawFilterSet of Object.values(packageItems)) {
+			const normalized = normalizeFilterSet(rawFilterSet);
+			if (!normalized || loadedFilters.has(normalized.id)) continue;
+			loadedFilters.set(normalized.id, normalized);
+			orderedIds.push(normalized.id);
+		}
+		this.filters = loadedFilters;
+		this.orderedIds = orderedIds;
+	}
+
+	toPackage(): OperonFiltersPackageV1 {
+		const itemsById: Record<string, FilterSet> = {};
+		for (const filterId of this.orderedIds) {
+			const filterSet = this.filters.get(filterId);
+			if (!filterSet) continue;
+			itemsById[filterId] = cloneFilterSet(filterSet);
+		}
+		return {
+			version: FILTER_STORE_VERSION,
+			filterIds: [...this.orderedIds],
+			itemsById,
+		};
 	}
 
 	async load(legacyFilterSets: FilterSet[] = []): Promise<void> {
@@ -197,6 +240,10 @@ export class FilterStore {
 	}
 
 	private async persistStore(deletedIds: string[] = []): Promise<void> {
+		if (this.packagePersist) {
+			await this.packagePersist(this.toPackage());
+			return;
+		}
 		const adapter = this.app.vault.adapter;
 		const filterSets = this.getAll();
 		const deleted = [...new Set(deletedIds)].filter(Boolean);

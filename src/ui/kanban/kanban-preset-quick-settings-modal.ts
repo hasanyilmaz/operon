@@ -1,4 +1,4 @@
-import { App, DropdownComponent, Modal, Setting } from 'obsidian';
+import { App, DropdownComponent, Modal, Notice, Setting } from 'obsidian';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from '../appearance-schemes';
 import {
 	KANBAN_SORT_FIELD_OPTIONS,
@@ -24,17 +24,18 @@ import { parsePresetNumber } from '../settings/preset-control-helpers';
 
 interface KanbanPresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
-	presetId: string;
-	onSave: () => Promise<void>;
-	onSortModeChange?: (presetId: string, sortMode: KanbanSortMode) => Promise<void>;
+	preset: KanbanPreset | null;
+	onSave: (preset: KanbanPreset) => Promise<void>;
 }
 
 export class KanbanPresetQuickSettingsModal extends Modal {
 	private readonly options: KanbanPresetQuickSettingsModalOptions;
+	private readonly draftPreset: KanbanPreset | null;
 
 	constructor(app: App, options: KanbanPresetQuickSettingsModalOptions) {
 		super(app);
 		this.options = options;
+		this.draftPreset = options.preset ? cloneKanbanPreset(options.preset) : null;
 	}
 
 	onOpen(): void {
@@ -47,7 +48,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 		const preset = this.getPreset();
 		contentEl.empty();
 		this.titleEl.setText(preset
-			? t('settings', 'kanbanPresetSettingsTitleForName', { name: preset.name })
+			? t('settings', 'kanbanPresetSettingsTitleForName', { name: this.getPresetDisplayName(preset) })
 			: t('settings', 'kanbanPresetSettingsTitle'));
 
 		if (!preset) {
@@ -61,29 +62,19 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			.addText(text => {
 				text.setValue(preset.name);
 				text.inputEl.addClass('operon-preset-name-input');
-				let lastCommittedValue = preset.name;
-				const commit = async (): Promise<void> => {
-					const nextValue = text.inputEl.value.trim() || t('settings', 'kanbanFallbackPresetName', { number: '1' });
-					if (nextValue === lastCommittedValue) return;
-					await this.updatePreset(current => {
-						current.name = nextValue;
+				text.inputEl.addEventListener('input', () => {
+					const rawValue = text.inputEl.value;
+					void this.updatePreset(current => {
+						current.name = rawValue;
 					});
-					lastCommittedValue = nextValue;
-					if (text.inputEl.value !== nextValue) {
-						text.setValue(nextValue);
-					}
-					this.titleEl.setText(t('settings', 'kanbanPresetSettingsTitleForName', { name: nextValue }));
-				};
-				text.inputEl.addEventListener('blur', () => {
-					runSettingsAsync('kanban preset name commit failed', commit);
+					this.titleEl.setText(t('settings', 'kanbanPresetSettingsTitleForName', {
+						name: rawValue.trim() || t('settings', 'kanbanFallbackPresetName', { number: '1' }),
+					}));
 				});
 				text.inputEl.addEventListener('keydown', event => {
 					if (event.key !== 'Enter') return;
 					event.preventDefault();
-					runSettingsAsync('kanban preset name commit failed', async () => {
-						await commit();
-						text.inputEl.blur();
-					});
+					text.inputEl.blur();
 				});
 			});
 		nameSetting.settingEl.addClass('operon-preset-name-setting');
@@ -224,6 +215,36 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
+		this.renderButtons(contentEl);
+	}
+
+	private renderButtons(container: HTMLElement): void {
+		const row = container.createDiv('operon-preset-settings-footer');
+
+		const cancelBtn = row.createEl('button', {
+			cls: 'operon-preset-settings-footer-button',
+			text: t('buttons', 'cancel'),
+		});
+		cancelBtn.type = 'button';
+		cancelBtn.addEventListener('click', () => this.close());
+
+		const saveBtn = row.createEl('button', {
+			cls: 'operon-preset-settings-footer-button mod-cta',
+			text: t('buttons', 'save'),
+		});
+		saveBtn.type = 'button';
+		saveBtn.addEventListener('click', settingsAsyncHandler('kanban preset save failed', async () => {
+			const preset = this.getPreset();
+			if (!preset) return;
+			const name = preset.name.trim();
+			if (!name) {
+				new Notice(t('settings', 'kanbanPresetNameRequired'));
+				return;
+			}
+			preset.name = name;
+			await this.options.onSave(cloneKanbanPreset(preset));
+			this.close();
+		}));
 	}
 
 	private renderSortSection(container: HTMLElement, preset: KanbanPreset): void {
@@ -343,7 +364,6 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			await this.updatePreset(current => {
 				current.sortMode = sortMode;
 			});
-			await this.options.onSortModeChange?.(preset.id, sortMode);
 			this.render();
 		}));
 	}
@@ -436,13 +456,23 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 	}
 
 	private getPreset(): KanbanPreset | null {
-		return this.options.getSettings().kanbanPresets.find(entry => entry.id === this.options.presetId) ?? null;
+		return this.draftPreset;
+	}
+
+	private getPresetDisplayName(preset: KanbanPreset): string {
+		return preset.name.trim() || t('settings', 'kanbanFallbackPresetName', { number: '1' });
 	}
 
 	private async updatePreset(update: (preset: KanbanPreset) => void): Promise<void> {
 		const preset = this.getPreset();
 		if (!preset) return;
 		update(preset);
-		await this.options.onSave();
 	}
+}
+
+function cloneKanbanPreset(preset: KanbanPreset): KanbanPreset {
+	return {
+		...preset,
+		sortRules: preset.sortRules.map(rule => ({ ...rule })),
+	};
 }

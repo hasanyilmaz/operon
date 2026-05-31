@@ -843,6 +843,8 @@ function attachLivePreviewChipAction(
 			case 'assignees':
 			case 'contexts':
 			case 'parentTask':
+			case 'blocking':
+			case 'blockedBy':
 				if (entry.linkTarget) {
 					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), false);
 					onCommit?.();

@@ -26,6 +26,7 @@ export class ExternalCalendarSourceStore {
 	private sources: ExternalCalendarSource[] = [];
 	private serializedSources = '[]';
 	private recoveredFromMalformed = false;
+	private packagePersist: ((sources: ExternalCalendarSource[]) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue) {
 		this.app = app;
@@ -34,6 +35,16 @@ export class ExternalCalendarSourceStore {
 
 	getAll(): ExternalCalendarSource[] {
 		return cloneExternalCalendarSources(this.sources);
+	}
+
+	setPackagePersistence(persist: (sources: ExternalCalendarSource[]) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(sources: ExternalCalendarSource[]): void {
+		this.sources = cloneExternalCalendarSources(sources);
+		this.serializedSources = JSON.stringify(this.sources);
+		this.recoveredFromMalformed = false;
 	}
 
 	async load(legacySources: ExternalCalendarSource[] | null = null): Promise<void> {
@@ -79,6 +90,11 @@ export class ExternalCalendarSourceStore {
 		}
 		this.sources = nextSources;
 		this.serializedSources = nextSerialized;
+		if (this.packagePersist) {
+			await this.packagePersist(this.getAll());
+			this.recoveredFromMalformed = false;
+			return;
+		}
 		await this.persist();
 	}
 

@@ -20,6 +20,7 @@ export interface CompactChipSettingsRendererOptions {
 	getActionToggles?: () => CompactChipActionToggle[];
 	actionTogglesTitle?: string;
 	iconOnlyButtonLabel?: string;
+	descriptionSearchTargetId?: string;
 	getCanonicalLabel?: (key: InlineTaskCompactChipItem['key']) => string;
 	getVisibilityToggleLabel?: (label: string) => string;
 	getIconOnlyToggleLabel?: (label: string) => string;

@@ -84,6 +84,7 @@ export function buildInlineTaskCompactChipEntries(
 ): InlineTaskCompactChipEntry[] {
 	const entries: InlineTaskCompactChipEntry[] = [];
 	const itemMap = new Map(getCompactChipItems(settings, chipItems).map(item => [item.key, item]));
+	const taskById = new Map(allTasks.map(task => [task.operonId, task]));
 	for (const key of getInlineTaskCompactVisibleChipKeys(settings, chipItems)) {
 		const item = itemMap.get(key);
 		if (isSuppressedByTerminalDate(key, fieldValues)) continue;
@@ -100,10 +101,33 @@ export function buildInlineTaskCompactChipEntries(
 				entries.push(createEntry(settings, key, value, item?.iconOnly === true, 'status'));
 				break;
 			}
+			case 'blocking':
+			case 'blockedBy': {
+				for (const operonId of splitTaskListValue(fieldValues[key])) {
+					const dependencyTask = taskById.get(operonId);
+					if (!dependencyTask) {
+						const missingEntry = createEntry(settings, key, operonId, item?.iconOnly === true, 'default', false);
+						missingEntry.tooltipTitle = t('taskEditor', 'dependencyMissingTask');
+						missingEntry.tooltipContent = operonId;
+						entries.push(missingEntry);
+						continue;
+					}
+					const fullLabel = dependencyTask.description?.trim() || t('taskEditor', 'dependencyUntitledTask');
+					const label = truncateCompactLabel(fullLabel);
+					const linkTarget = dependencyTask.primary.format === 'yaml' ? dependencyTask.primary.filePath : null;
+					const entry = createEntry(settings, key, label, item?.iconOnly === true, 'default', !!linkTarget, linkTarget);
+					if (label !== fullLabel) {
+						entry.tooltipTitle = key === 'blocking' ? t('taskEditor', 'blocking') : t('taskEditor', 'blockedBy');
+						entry.tooltipContent = fullLabel;
+					}
+					entries.push(entry);
+				}
+				break;
+			}
 			case 'parentTask': {
 				const parentTaskId = fieldValues['parentTask']?.trim();
 				if (!parentTaskId) break;
-				const parentTask = allTasks.find(task => task.operonId === parentTaskId);
+				const parentTask = taskById.get(parentTaskId);
 				if (!parentTask) break;
 				const fullLabel = parentTask.description?.trim() || t('taskEditor', 'untitledTask');
 				const label = truncateCompactLabel(fullLabel);

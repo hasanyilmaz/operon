@@ -289,15 +289,21 @@ export class RepeatSeriesStore {
 		series: {},
 	};
 	private mutationQueue: Promise<void> = Promise.resolve();
+	private readonly filePath: string;
+	private readonly legacyFilePath: string | null;
+	private legacyFallbackEnabled = true;
 
-	constructor(app: App, writeQueue: WriteQueue) {
+	constructor(app: App, writeQueue: WriteQueue, filePath = REPEAT_SERIES_FILE, legacyFilePath: string | null = null) {
 		this.app = app;
 		this.writeQueue = writeQueue;
+		this.filePath = filePath;
+		this.legacyFilePath = legacyFilePath;
 	}
 
 	async load(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		if (!(await adapter.exists(REPEAT_SERIES_FILE))) {
+		const loadPath = await this.resolveLoadPath();
+		if (!loadPath) {
 			this.data = {
 				version: CURRENT_REPEAT_SERIES_VERSION,
 				series: {},
@@ -307,18 +313,23 @@ export class RepeatSeriesStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(REPEAT_SERIES_FILE);
+			raw = await adapter.read(loadPath);
 			const parsed = JSON.parse(raw) as Partial<RepeatSeriesData>;
 			this.data = {
 				version: CURRENT_REPEAT_SERIES_VERSION,
 				series: this.normalizeSeries(parsed.series),
 			};
+			if (loadPath !== this.filePath) {
+				await this.writeData();
+			}
 		} catch {
 			console.warn('Operon: Failed to parse repeat-series.json, preserving invalid file as backup and starting empty');
-			try {
-				await preserveInvalidJsonFile(adapter, REPEAT_SERIES_FILE, raw);
-			} catch {
-				console.warn('Operon: Failed to preserve invalid repeat-series.json backup');
+			if (loadPath === this.filePath) {
+				try {
+					await preserveInvalidJsonFile(adapter, this.filePath, raw);
+				} catch {
+					console.warn('Operon: Failed to preserve invalid repeat-series.json backup');
+				}
 			}
 			this.data = {
 				version: CURRENT_REPEAT_SERIES_VERSION,
@@ -579,6 +590,10 @@ export class RepeatSeriesStore {
 		await this.mutationQueue;
 	}
 
+	setLegacyFallbackEnabled(enabled: boolean): void {
+		this.legacyFallbackEnabled = enabled;
+	}
+
 	private normalizeSeries(raw: unknown): Record<string, RepeatSeriesEntry> {
 		if (!raw || typeof raw !== 'object') return {};
 		const out: Record<string, RepeatSeriesEntry> = {};
@@ -646,9 +661,16 @@ export class RepeatSeriesStore {
 			version: CURRENT_REPEAT_SERIES_VERSION,
 			series: this.data.series,
 		};
-		await this.writeQueue.enqueue(REPEAT_SERIES_FILE, async () => {
-			await writeJsonSafely(this.app.vault.adapter, REPEAT_SERIES_FILE, snapshot);
+		await this.writeQueue.enqueue(this.filePath, async () => {
+			await writeJsonSafely(this.app.vault.adapter, this.filePath, snapshot);
 		});
+	}
+
+	private async resolveLoadPath(): Promise<string | null> {
+		const adapter = this.app.vault.adapter;
+		if (await adapter.exists(this.filePath)) return this.filePath;
+		if (this.legacyFallbackEnabled && this.legacyFilePath && await adapter.exists(this.legacyFilePath)) return this.legacyFilePath;
+		return null;
 	}
 
 	private async mutate<T>(operation: () => Promise<T>): Promise<T> {

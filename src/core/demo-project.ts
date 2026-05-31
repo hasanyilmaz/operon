@@ -1,7 +1,6 @@
 import { App, TFile, normalizePath } from 'obsidian';
-import { FilterSet, KeyMapping, normalizeFilterSet, OperonSettings } from '../types/settings';
+import { FilterSet, KeyMapping, OperonSettings } from '../types/settings';
 import { localNow, localToday, toLocalDate } from './local-time';
-import { isRecord } from './unknown-value';
 
 const OPERON_DEMO_WORKSPACE_FOLDER = 'Operon/Demo Workspace';
 
@@ -62,19 +61,8 @@ export const OPERON_DEMO_AGGREGATE_PARENT_IDS = [
 	...OPERON_SETUP_DAY_PARENT_IDS,
 ] as const;
 
-const FILTER_INDEX_PATH = '.operon/filters/index.json';
 const OPERON_SETUP_FILTER_GROUP_ID = 'fg_3snb5eb9';
 const OPERON_SETUP_FILTER_CONDITION_ID = 'cond_hzxpr929';
-
-export class DemoWorkspaceFilterInvalidError extends Error {
-	readonly filterPath: string;
-
-	constructor(filterPath: string) {
-		super(`Existing Operon demo workspace filter file is invalid: ${filterPath}`);
-		this.name = 'DemoWorkspaceFilterInvalidError';
-		this.filterPath = filterPath;
-	}
-}
 
 interface BasicsWorkspaceFilterStore {
 	getById(filterId: string): FilterSet | null;
@@ -123,20 +111,11 @@ interface SetupDayDefinition extends DemoSectionDefinition {
 	note: string;
 }
 
-interface FilterFileReadResult {
-	exists: boolean;
-	filterSet: FilterSet | null;
-}
-
 function addDays(baseDate: string, days: number): string {
 	const [year, month, day] = baseDate.split('-').map(Number);
 	const date = new Date(year, month - 1, day);
 	date.setDate(date.getDate() + days);
 	return toLocalDate(date);
-}
-
-function getFilterFilePath(filterId: string): string {
-	return `.operon/filters/${filterId}.json`;
 }
 
 function getWriteKey(canonicalKey: string, keyMappings: KeyMapping[]): string {
@@ -860,51 +839,13 @@ async function createFileIfMissing(
 	};
 }
 
-async function filterIndexContains(app: App, filterId: string): Promise<boolean> {
-	const adapter = app.vault.adapter;
-	if (!(await adapter.exists(FILTER_INDEX_PATH))) return false;
-	try {
-		const parsed: unknown = JSON.parse(await adapter.read(FILTER_INDEX_PATH));
-		if (!isRecord(parsed) || !Array.isArray(parsed.filterIds)) return false;
-		return parsed.filterIds.includes(filterId);
-	} catch {
-		return false;
-	}
-}
-
-async function readFilterFile(app: App, filterId: string): Promise<FilterFileReadResult> {
-	const adapter = app.vault.adapter;
-	const filterPath = getFilterFilePath(filterId);
-	if (!(await adapter.exists(filterPath))) {
-		return { exists: false, filterSet: null };
-	}
-	try {
-		const parsed: unknown = JSON.parse(await adapter.read(filterPath));
-		return { exists: true, filterSet: normalizeFilterSet(parsed) };
-	} catch {
-		return { exists: true, filterSet: null };
-	}
-}
-
 async function ensureBundledFilter(
-	app: App,
 	store: BasicsWorkspaceStore,
 	filterId: string,
 	buildFilterSet: () => FilterSet,
 ): Promise<{ created: boolean; repaired: boolean }> {
 	const inStore = store.filters.getById(filterId);
-	const filterPath = getFilterFilePath(filterId);
-	const fileRead = await readFilterFile(app, filterId);
-	if (fileRead.exists && !fileRead.filterSet) {
-		throw new DemoWorkspaceFilterInvalidError(filterPath);
-	}
-	const existing = fileRead.filterSet ?? inStore;
-	const inIndex = await filterIndexContains(app, filterId);
-	if (existing) {
-		if (!inStore || !inIndex) {
-			await store.filters.upsert(existing);
-			return { created: false, repaired: true };
-		}
+	if (inStore) {
 		return { created: false, repaired: false };
 	}
 
@@ -912,18 +853,18 @@ async function ensureBundledFilter(
 	return { created: true, repaired: false };
 }
 
-async function ensureBasicsFilter(app: App, store: BasicsWorkspaceStore): Promise<{ created: boolean; repaired: boolean }> {
-	return ensureBundledFilter(app, store, OPERON_BASICS_FILTER_ID, buildBasicsFilterSet);
+async function ensureBasicsFilter(store: BasicsWorkspaceStore): Promise<{ created: boolean; repaired: boolean }> {
+	return ensureBundledFilter(store, OPERON_BASICS_FILTER_ID, buildBasicsFilterSet);
 }
 
-async function ensureSetupVaultFilter(app: App, store: BasicsWorkspaceStore): Promise<{ created: boolean; repaired: boolean }> {
-	return ensureBundledFilter(app, store, OPERON_SETUP_FILTER_ID, buildSetupVaultFilterSet);
+async function ensureSetupVaultFilter(store: BasicsWorkspaceStore): Promise<{ created: boolean; repaired: boolean }> {
+	return ensureBundledFilter(store, OPERON_SETUP_FILTER_ID, buildSetupVaultFilterSet);
 }
 
 export async function hasBasicsWorkspaceArtifact(app: App, store: BasicsWorkspaceStore): Promise<boolean> {
 	if (findExistingFileByPath(app, OPERON_DEMO_WORKSPACE_ARTIFACT_PATHS)) return true;
 	if (store.filters.getById(OPERON_BASICS_FILTER_ID)) return true;
-	return (await readFilterFile(app, OPERON_BASICS_FILTER_ID)).exists;
+	return false;
 }
 
 export async function createOrRepairBasicsWorkspace(
@@ -950,8 +891,8 @@ export async function createOrRepairBasicsWorkspace(
 		LEGACY_OPERON_SETUP_PROJECT_PATHS,
 	);
 
-	const filterResult = await ensureBasicsFilter(app, store);
-	const setupFilterResult = await ensureSetupVaultFilter(app, store);
+	const filterResult = await ensureBasicsFilter(store);
+	const setupFilterResult = await ensureSetupVaultFilter(store);
 	return {
 		file: basicsProject.file,
 		fileCreated: basicsProject.created,

@@ -33,15 +33,21 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 	private listeners: Set<() => void> = new Set();
 	private mutationQueue: Promise<void> = Promise.resolve();
 	private writesSuspended = false;
+	private readonly filePath: string;
+	private readonly legacyFilePath: string | null;
+	private legacyFallbackEnabled = true;
 
-	constructor(app: App, writeQueue: WriteQueue) {
+	constructor(app: App, writeQueue: WriteQueue, filePath = ACTIVE_TRACKERS_FILE, legacyFilePath: string | null = null) {
 		this.app = app;
 		this.writeQueue = writeQueue;
+		this.filePath = filePath;
+		this.legacyFilePath = legacyFilePath;
 	}
 
 	async load(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		if (!(await adapter.exists(ACTIVE_TRACKERS_FILE))) {
+		const loadPath = await this.resolveLoadPath();
+		if (!loadPath) {
 			this.active = [];
 			this.generation = 0;
 			return;
@@ -49,17 +55,24 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(ACTIVE_TRACKERS_FILE);
+			raw = await adapter.read(loadPath);
 			const data = JSON.parse(raw) as Partial<ActiveTrackersData>;
 			this.active = this.normalizeRecords(Array.isArray(data.active) ? data.active : []);
 			this.generation = 0;
 			this.writesSuspended = false;
+			if (loadPath !== this.filePath) {
+				await this.flush(this.active);
+			}
 		} catch {
 			console.warn('Operon: Failed to parse active-trackers.json, preserving invalid file as backup and starting empty');
 			this.active = [];
 			this.generation = 0;
+			if (loadPath !== this.filePath) {
+				this.writesSuspended = false;
+				return;
+			}
 			try {
-				await preserveInvalidJsonFile(adapter, ACTIVE_TRACKERS_FILE, raw);
+				await preserveInvalidJsonFile(adapter, this.filePath, raw);
 				this.writesSuspended = false;
 			} catch {
 				console.warn('Operon: Failed to preserve invalid active-trackers.json backup; active tracker writes suspended');
@@ -119,6 +132,10 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 		return this.generation;
 	}
 
+	setLegacyFallbackEnabled(enabled: boolean): void {
+		this.legacyFallbackEnabled = enabled;
+	}
+
 	async drain(): Promise<void> {
 		await this.mutationQueue;
 	}
@@ -154,9 +171,16 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 			version: ACTIVE_TRACKERS_VERSION,
 			active,
 		};
-		await this.writeQueue.enqueue(ACTIVE_TRACKERS_FILE, async () => {
-			await writeJsonSafely(this.app.vault.adapter, ACTIVE_TRACKERS_FILE, data);
+		await this.writeQueue.enqueue(this.filePath, async () => {
+			await writeJsonSafely(this.app.vault.adapter, this.filePath, data);
 		});
+	}
+
+	private async resolveLoadPath(): Promise<string | null> {
+		const adapter = this.app.vault.adapter;
+		if (await adapter.exists(this.filePath)) return this.filePath;
+		if (this.legacyFallbackEnabled && this.legacyFilePath && await adapter.exists(this.legacyFilePath)) return this.legacyFilePath;
+		return null;
 	}
 
 	private normalizeRecords(records: unknown[]): ActiveTrackerRecord[] {

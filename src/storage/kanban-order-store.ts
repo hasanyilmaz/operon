@@ -1,6 +1,7 @@
 import { App } from 'obsidian';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, writeJsonSafely } from './storage-file-ops';
+import type { OperonKanbanOrderPackageV1 } from './operon-data-package';
 
 const KANBAN_ORDER_FILE = '.operon/kanban-order.json';
 const KANBAN_ORDER_STORE_VERSION = 1;
@@ -17,10 +18,26 @@ export class KanbanOrderStore {
 	private app: App;
 	private writeQueue: WriteQueue;
 	private boards: Record<string, KanbanManualOrderBoard> = {};
+	private packagePersist: ((kanbanOrder: OperonKanbanOrderPackageV1) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue) {
 		this.app = app;
 		this.writeQueue = writeQueue;
+	}
+
+	setPackagePersistence(persist: (kanbanOrder: OperonKanbanOrderPackageV1) => Promise<void>): void {
+		this.packagePersist = persist;
+	}
+
+	loadFromPackage(kanbanOrder: OperonKanbanOrderPackageV1): void {
+		this.boards = normalizeBoards(kanbanOrder.boards);
+	}
+
+	toPackage(): OperonKanbanOrderPackageV1 {
+		return {
+			version: KANBAN_ORDER_STORE_VERSION,
+			boards: cloneBoards(this.boards),
+		};
 	}
 
 	async load(): Promise<void> {
@@ -85,6 +102,10 @@ export class KanbanOrderStore {
 	}
 
 	private async persist(): Promise<void> {
+		if (this.packagePersist) {
+			await this.packagePersist(this.toPackage());
+			return;
+		}
 		const adapter = this.app.vault.adapter;
 		const data: KanbanOrderStoreData = {
 			version: KANBAN_ORDER_STORE_VERSION,

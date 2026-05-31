@@ -1,6 +1,6 @@
 /**
  * Operon task indexer.
- * Builds and maintains the in-memory task index with persistence to .operon/index.json.
+ * Builds and maintains the in-memory task index with storage-managed persistence.
  *
  * Architecture (from Architecture doc Section 3):
  * - Unified index with three tiers: Hot (open/in-progress), Warm (completed < 90 days), Cold (completed > 90 days)
@@ -820,7 +820,7 @@ export class OperonIndexer {
 	// --- Persistence ---
 
 	/**
-	 * Persist current index to .operon/index.json.
+	 * Persist current index through the storage runtime index contract.
 	 * Uses atomic write via storage write queue.
 	 */
 	private async persistIndex(options: PersistIndexOptions = {}): Promise<void> {
