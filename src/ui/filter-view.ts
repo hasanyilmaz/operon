@@ -245,7 +245,7 @@ export class FilterView extends ItemView {
 
 	render(): void {
 		const startedAt = perfNow();
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = this.contentEl;
 		container.addClass('operon-filter-view');
 
 		// Empty state — no filter sets defined
@@ -487,8 +487,7 @@ export class FilterView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
-		const container = this.containerEl.children[1] as HTMLElement | undefined;
-		if (container) this.closeTransientSurfaceUi(container);
+		this.closeTransientSurfaceUi(this.contentEl);
 		this.lazyLoadObserver?.disconnect();
 		this.lazyLoadObserver = null;
 		this.clearOptimisticTaskPatches();
@@ -791,8 +790,8 @@ export class FilterView extends ItemView {
 	}
 
 	private renderPreservingScroll(): void {
-		const container = this.containerEl.children[1] as HTMLElement | undefined;
-		const containerScrollTop = Math.max(0, Math.round(container?.scrollTop ?? 0));
+		const container = this.contentEl;
+		const containerScrollTop = Math.max(0, Math.round(container.scrollTop));
 		const listScrollTop = Math.max(0, Math.round(this.listEl?.scrollTop ?? 0));
 		this.render();
 		this.restoreFilterScroll(container, containerScrollTop, listScrollTop);

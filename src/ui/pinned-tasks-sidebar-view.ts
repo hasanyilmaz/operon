@@ -57,7 +57,7 @@ export class PinnedTasksSidebarView extends ItemView {
 	}
 
 	render(): void {
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = this.contentEl;
 		const pinnedTasks = getPinnedTasksForDisplay(this.indexer, this.pinnedCache, this.settings.priorities);
 		const activeTrackerId = this.timeTracker.getActiveOperonId();
 		const colorSettingsSignature = [

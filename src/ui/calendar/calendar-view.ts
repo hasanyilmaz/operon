@@ -409,7 +409,7 @@ export class CalendarView extends ItemView {
 	private calendarNavigationDocument: Document | null = null;
 	private readonly hoverMenu = new ContextualHoverMenuController({
 		getDelayMs: () => this.getSettings().contextualMenuOpenDelayMs,
-		getHost: () => this.containerEl.children[1] as HTMLElement | null,
+		getHost: () => this.contentEl,
 		positionMenu: (anchorRect, menu) => this.positionCalendarHoverMenu(anchorRect, menu),
 	});
 	private restoreScrollOnNextRender = false;
@@ -523,11 +523,8 @@ export class CalendarView extends ItemView {
 		this.clearTimedHorizontalGestureTimers();
 		this.clearSidebarResizeDrag();
 		this.hideCalendarHoverMenu(true);
-		const container = this.containerEl.children[1] as HTMLElement | undefined;
-		if (container) {
-			closeFloatingPanelsForRoot(container);
-			closeIconOnlyChipPreviewsForRoot(container);
-		}
+		closeFloatingPanelsForRoot(this.contentEl);
+		closeIconOnlyChipPreviewsForRoot(this.contentEl);
 		this.expandedHiddenTimeKey = null;
 		this.lastRenderPresetKey = null;
 		this.taskPoolQuery = '';
@@ -791,8 +788,7 @@ export class CalendarView extends ItemView {
 		): CalendarStatusDomPatchResult {
 			const task = this.indexer.getTask(taskId);
 			if (!task) return { patchedCount: 0, fallbackReason: 'task-missing' };
-			const host = this.containerEl.children[1] as HTMLElement | undefined;
-			if (!host) return { patchedCount: 0, fallbackReason: 'host-missing' };
+			const host = this.contentEl;
 			const renderedTask = applyOptimisticRenderPatch(task, patch);
 			const settings = this.getSettings();
 			const iconName = this.resolveStatusButtonIcon(
@@ -1050,7 +1046,7 @@ export class CalendarView extends ItemView {
 		this.clearCalendarDragGhosts();
 		this.clearRenderTimers();
 		this.hideCalendarHoverMenu(true);
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = this.contentEl;
 		closeFloatingPanelsForRoot(container);
 		closeIconOnlyChipPreviewsForRoot(container);
 		this.surfaceScrollEl = null;
@@ -1420,8 +1416,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private captureRenderedMobileAgendaScrollTop(): number | null {
-		const host = this.containerEl.children[1] as HTMLElement | undefined;
-		const scrollEl = host?.querySelector<HTMLElement>(
+		const scrollEl = this.contentEl.querySelector<HTMLElement>(
 			'.operon-calendar-mobile-root.is-mobile-agenda .operon-calendar-mobile-content',
 		);
 		return scrollEl
@@ -1895,8 +1890,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private scrollRenderedMobileAgendaToDate(dateKey: string): boolean {
-		const host = this.containerEl.children[1] as HTMLElement | undefined;
-		const scrollEl = host?.querySelector<HTMLElement>(
+		const scrollEl = this.contentEl.querySelector<HTMLElement>(
 			'.operon-calendar-mobile-root.is-mobile-agenda .operon-calendar-mobile-content',
 		);
 		if (!scrollEl) return false;
@@ -6678,8 +6672,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private positionCalendarHoverMenu(anchorRect: DOMRect, menu: HTMLElement): boolean {
-		const host = this.containerEl.children[1] as HTMLElement | undefined;
-		if (!host) return false;
+		const host = this.contentEl;
 		const hostRect = host.getBoundingClientRect();
 		const position = resolveContextualHoverMenuPosition(
 			anchorRect,
@@ -6743,8 +6736,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private isMobileCalendarCurrentlyRendered(): boolean {
-		const host = this.containerEl.children[1] as HTMLElement | undefined;
-		return !!host?.querySelector('.operon-calendar-mobile-root');
+		return !!this.contentEl.querySelector('.operon-calendar-mobile-root');
 	}
 
 	private unbindCalendarNavigationKeys(): void {

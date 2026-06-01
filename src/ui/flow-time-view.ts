@@ -135,7 +135,7 @@ export class FlowTimeView extends ItemView {
 	}
 
 	render(): void {
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = this.contentEl;
 		const settings = this.callbacks.getSettings();
 		let renderedState = this.getRenderedState();
 		if (renderedState.active && this.breakState) {
@@ -465,8 +465,7 @@ export class FlowTimeView extends ItemView {
 	}
 
 	private updateLiveElements(redrawDial = true): void {
-		const container = this.containerEl.children[1] as HTMLElement | undefined;
-		if (!container) return;
+		const container = this.contentEl;
 		const settings = this.callbacks.getSettings();
 		const renderedState = this.getRenderedState();
 		const active = renderedState.active;

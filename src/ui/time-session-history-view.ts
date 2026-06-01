@@ -92,7 +92,7 @@ export class TimeSessionHistoryView extends ItemView {
 	}
 
 	render(): void {
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = this.contentEl;
 
 		// Build render signature to skip redundant full rebuilds
 		const settings = this.callbacks.getSettings();

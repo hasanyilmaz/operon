@@ -201,7 +201,7 @@ export class KanbanView extends ItemView {
 	private lastLaneColumnWidthPx: number | null = null;
 	private readonly hoverMenu = new ContextualHoverMenuController({
 		getDelayMs: () => this.getSettings().contextualMenuOpenDelayMs,
-		getHost: () => this.containerEl.children[1] as HTMLElement | null,
+		getHost: () => this.contentEl,
 		positionMenu: (anchorRect, menu) => this.positionHoverMenu(anchorRect, menu),
 	});
 	private draggedCardContext: DraggedKanbanCardContext | null = null;
@@ -315,7 +315,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private render(): void {
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = this.contentEl;
 		const state = this.ensureState();
 		const settings = this.getSettings();
 		const preset = settings.kanbanPresets.find(entry => entry.id === state.presetId) ?? settings.kanbanPresets[0] ?? null;
@@ -791,8 +791,7 @@ export class KanbanView extends ItemView {
 		}
 
 		private refreshKanbanSearchResults(searchWrap: HTMLElement): void {
-			const host = this.containerEl.children[1] as HTMLElement | undefined;
-			const root = host?.querySelector<HTMLElement>('.operon-kanban-root');
+			const root = this.contentEl.querySelector<HTMLElement>('.operon-kanban-root');
 			const content = root?.querySelector<HTMLElement>('.operon-kanban-content');
 			if (!root || !content) {
 				this.render();
@@ -1974,8 +1973,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private positionHoverMenu(anchorRect: DOMRect, menu: HTMLElement): boolean {
-		const host = this.containerEl.children[1] as HTMLElement | undefined;
-		if (!host) return false;
+		const host = this.contentEl;
 		const hostRect = host.getBoundingClientRect();
 		const position = resolveContextualHoverMenuPosition(
 			anchorRect,
@@ -3330,8 +3328,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private updateParentSearchHighlight(nextIndex: number): void {
-		const root = this.containerEl.children[1] as HTMLElement | undefined;
-		const rows = Array.from(root?.querySelectorAll<HTMLElement>('.operon-kanban-parent-search-item') ?? []);
+		const rows = Array.from(this.contentEl.querySelectorAll<HTMLElement>('.operon-kanban-parent-search-item'));
 		if (rows.length === 0) {
 			this.parentSearchHighlightedIndex = nextIndex;
 			return;
@@ -3385,8 +3382,7 @@ export class KanbanView extends ItemView {
 
 	private focusKanbanSearchInput(): void {
 		window.requestAnimationFrame(() => {
-			const root = this.containerEl.children[1] as HTMLElement | undefined;
-			const searchInput = root?.querySelector<HTMLInputElement>('.operon-kanban-toolbar-search');
+			const searchInput = this.contentEl.querySelector<HTMLInputElement>('.operon-kanban-toolbar-search');
 			searchInput?.focus({ preventScroll: true });
 		});
 	}

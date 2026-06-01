@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.1.3] - 2026-06-01
+
+### Fixed
+- Fixed remaining Self-hosted LiveSync status overlay interference in Operon custom views, including Kanban collapse controls and Calendar drag and drop.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 761/761 Phase 5 regression checks.
+
 ## [1.1.2] - 2026-06-01
 
 ### New
