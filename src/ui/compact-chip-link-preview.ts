@@ -3,6 +3,7 @@ import { asHTMLElement, getOwnerBody } from '../core/dom-compat';
 
 export const OPERON_COMPACT_CHIP_HOVER_SOURCE = 'operon-compact-chip';
 export const OPERON_TASK_TITLE_HOVER_SOURCE = 'operon-task-title';
+export const OPERON_TASK_DESCRIPTION_WIKILINK_HOVER_SOURCE = 'operon-task-description-wikilink';
 const OPERON_PREVIEW_BINDINGS = Symbol('operon-preview-bindings');
 
 function resolveHoverParent(element: HTMLElement): HTMLElement {
@@ -72,4 +73,13 @@ export function bindTaskTitleLinkPreview(
 		hoverSourcePath ?? filePath ?? '',
 		OPERON_TASK_TITLE_HOVER_SOURCE,
 	);
+}
+
+export function bindTaskDescriptionWikilinkPreview(
+	app: App,
+	element: HTMLElement,
+	linktext: string | null,
+	sourcePath: string,
+): void {
+	bindModifierHoverLinkPreview(app, element, linktext, sourcePath, OPERON_TASK_DESCRIPTION_WIKILINK_HOVER_SOURCE);
 }

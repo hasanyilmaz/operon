@@ -1164,6 +1164,8 @@
 		"nextSpan": "Next span",
 		"nextSpanTooltip": "Move forward by the current visible day span.",
 		"allDay": "All day",
+		"collapseMobileAllDayRow": "Collapse all-day row",
+		"expandMobileAllDayRow": "Expand all-day row",
 		"due": "Due",
 		"inDay": "In day",
 		"finished": "Finished",

@@ -431,6 +431,7 @@ export class CalendarView extends ItemView {
 	private restoreMobileTimeGridScrollOnNextRender = false;
 	private mobileTimeGridScrollRestoreBudget = 0;
 	private forceMobileTimeGridSmartScrollOnNextRender = false;
+	private isMobileAllDayRailCollapsed = false;
 	private lastMobileAgendaFocusKey: string | null = null;
 	private activeCalendarDragSession: CalendarActiveDragSession | null = null;
 	private pendingRenderAfterCalendarDrag = false;
@@ -1924,10 +1925,13 @@ export class CalendarView extends ItemView {
 		const bufferedDates = renderWindow.bufferedDates;
 		const timeGrid = container.createDiv('operon-calendar-mobile-timegrid');
 		timeGrid.classList.toggle('is-three-day', viewMode === 'threeDay');
+		timeGrid.classList.toggle('is-all-day-collapsed', this.isMobileAllDayRailCollapsed);
 		timeGrid.style.setProperty('--operon-calendar-mobile-timegrid-days', String(Math.max(1, visibleDates.length)));
 		timeGrid.style.setProperty('--operon-calendar-mobile-timegrid-buffered-days', String(Math.max(1, bufferedDates.length)));
 		this.renderMobileTimeGridHeader(timeGrid, renderWindow);
-		this.renderMobileTimeGridAllDayRail(timeGrid, renderWindow, buckets, preset, settings);
+		if (!this.isMobileAllDayRailCollapsed) {
+			this.renderMobileTimeGridAllDayRail(timeGrid, renderWindow, buckets, preset, settings);
+		}
 
 		const viewport = timeGrid.createDiv('operon-calendar-mobile-timegrid-viewport');
 		this.mobileTimeGridScrollEl = viewport;
@@ -2000,7 +2004,8 @@ export class CalendarView extends ItemView {
 
 	private renderMobileTimeGridHeader(container: HTMLElement, renderWindow: CalendarMobileTimeGridRenderWindow): void {
 		const header = container.createDiv('operon-calendar-mobile-timegrid-header');
-		header.createDiv('operon-calendar-mobile-timegrid-gutter-spacer');
+		const gutterSpacer = header.createDiv('operon-calendar-mobile-timegrid-gutter-spacer');
+		this.renderMobileAllDayRailToggleButton(gutterSpacer);
 		const clip = header.createDiv('operon-calendar-mobile-timegrid-header-clip');
 		const days = clip.createDiv('operon-calendar-mobile-timegrid-header-days operon-calendar-mobile-timegrid-buffer-track');
 		this.applyMobileTimeGridBufferedTrackStyle(days, renderWindow);
@@ -2022,6 +2027,28 @@ export class CalendarView extends ItemView {
 				void this.callbacks.onOpenDailyNote?.(dateKey);
 			});
 		}
+	}
+
+	private renderMobileAllDayRailToggleButton(container: HTMLElement): void {
+		const isCollapsed = this.isMobileAllDayRailCollapsed;
+		const label = isCollapsed
+			? t('calendar', 'expandMobileAllDayRow')
+			: t('calendar', 'collapseMobileAllDayRow');
+		const button = container.createEl('button', {
+			cls: 'operon-calendar-mobile-all-day-toggle-button',
+			attr: {
+				type: 'button',
+				'aria-pressed': String(!isCollapsed),
+			},
+		});
+		setIcon(button, isCollapsed ? 'panel-top-open' : 'panel-top-close');
+		setAccessibleLabelWithoutTooltip(button, label);
+		button.addEventListener('click', (event) => {
+			event.preventDefault();
+			this.captureMobileTimeGridScrollForRender();
+			this.isMobileAllDayRailCollapsed = !this.isMobileAllDayRailCollapsed;
+			this.render();
+		});
 	}
 
 	private renderMobileTimeGridAllDayRail(

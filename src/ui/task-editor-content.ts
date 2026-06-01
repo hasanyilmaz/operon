@@ -1093,6 +1093,9 @@ export class TaskEditorContent {
 
 	private renderMobileStatusButton(container: HTMLElement): void {
 		const button = this.createMobileCoreButton(container, t('taskEditor', 'status'), 'status', () => {
+			const resetPickerState = () => {
+				button.removeClass('is-picker-open');
+			};
 			button.addClass('is-picker-open');
 			showStatusPicker(button, {
 				pipelines: this.settings.pipelines,
@@ -1100,17 +1103,17 @@ export class TaskEditorContent {
 				onSelect: value => {
 					this.fieldValues['status'] = value;
 					this.syncCheckboxWithWorkflowStatus();
+					resetPickerState();
 					this.markEdited();
 					this.refreshMobileCoreButtons();
 				},
 				onClear: () => {
 					delete this.fieldValues['status'];
+					resetPickerState();
 					this.markEdited();
 					this.refreshMobileCoreButtons();
 				},
-				onClose: () => {
-					button.removeClass('is-picker-open');
-				},
+				onClose: resetPickerState,
 			});
 		});
 		const refresh = () => {
@@ -2734,6 +2737,10 @@ export class TaskEditorContent {
 
 		const openPicker = () => {
 			if (closePicker) return;
+			const resetPickerState = () => {
+				closePicker = null;
+				button.removeClass('is-picker-open');
+			};
 			closePicker = showStatusPicker(button, {
 				pipelines: this.settings.pipelines,
 				value: this.fieldValues['status'],
@@ -2741,17 +2748,16 @@ export class TaskEditorContent {
 					this.fieldValues['status'] = value;
 					this.syncCheckboxWithWorkflowStatus();
 					refresh();
+					resetPickerState();
 					this.markEdited();
 				},
 				onClear: () => {
 					delete this.fieldValues['status'];
 					refresh();
+					resetPickerState();
 					this.markEdited();
 				},
-				onClose: () => {
-					closePicker = null;
-					button.removeClass('is-picker-open');
-				},
+				onClose: resetPickerState,
 			});
 			button.addClass('is-picker-open');
 		};

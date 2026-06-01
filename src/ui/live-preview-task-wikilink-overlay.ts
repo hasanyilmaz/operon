@@ -24,7 +24,6 @@ import {
 	computeTaskFileLinkProgressIndicator,
 	FileTaskLookup,
 	resolveTaskFileLink,
-	splitRawWikiLinkBody,
 	TaskFileLinkProgressIndicator,
 	TaskFileLinkVisuals,
 } from './task-file-wikilink-shared';
@@ -32,13 +31,7 @@ import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskFileOverlayChipContainer, getTaskFileOverlayChipSignature } from './task-file-overlay-chips';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/subtask-action';
-
-interface TaskWikiLinkMatch {
-	from: number;
-	to: number;
-	linktext: string;
-	alias: string | null;
-}
+import { scanTaskWikiLinksInLine } from './task-wikilink-scanner';
 
 export interface LivePreviewTaskWikilinkCallbacks {
 	app: App;
@@ -327,7 +320,7 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 				if (inFence) continue;
 				if (!line.text.includes('[[')) continue;
 
-				const matches = scanTaskWikiLinksInLine(line.text);
+				const matches = scanTaskWikiLinksInLine(line.text, { includeEmbeds: true });
 				if (matches.length === 0) continue;
 
 				for (const match of matches) {
@@ -417,7 +410,7 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 			const signatures: string[] = [];
 			for (let lineNumber = fromLine.number; lineNumber <= toLine.number; lineNumber++) {
 				const line = view.state.doc.line(lineNumber);
-				for (const match of scanTaskWikiLinksInLine(line.text)) {
+				for (const match of scanTaskWikiLinksInLine(line.text, { includeEmbeds: true })) {
 					const from = line.from + match.from;
 					const to = line.from + match.to;
 					if (selection.from < to && selection.to > from) {
@@ -525,74 +518,6 @@ function createProgressElement(progress: TaskFileLinkProgressIndicator, owner?: 
 	setIcon(el, progress.icon);
 	setAccessibleLabelWithoutTooltip(el, t('tooltips', 'allDescendantsDone'));
 	return el;
-}
-
-function scanTaskWikiLinksInLine(text: string): TaskWikiLinkMatch[] {
-	const matches: TaskWikiLinkMatch[] = [];
-	let i = 0;
-	let codeDelimiter = 0;
-
-	while (i < text.length) {
-		const ch = text[i];
-
-		if (ch === '\\') {
-			i += 2;
-			continue;
-		}
-
-		if (ch === '`') {
-			const runLength = countRun(text, i, '`');
-			if (codeDelimiter === 0) {
-				codeDelimiter = runLength;
-			} else if (runLength === codeDelimiter) {
-				codeDelimiter = 0;
-			}
-			i += runLength;
-			continue;
-		}
-
-		if (codeDelimiter === 0 && ch === '[' && i + 1 < text.length && text[i + 1] === '[') {
-			const closeIndex = findWikiLinkClose(text, i + 2);
-			if (closeIndex === -1) break;
-
-			const body = text.slice(i + 2, closeIndex);
-			const { linktext, alias } = splitRawWikiLinkBody(body);
-			if (linktext) {
-				matches.push({
-					from: i,
-					to: closeIndex + 2,
-					linktext,
-					alias,
-				});
-			}
-
-			i = closeIndex + 2;
-			continue;
-		}
-
-		i++;
-	}
-
-	return matches;
-}
-
-function countRun(text: string, index: number, char: string): number {
-	let run = 0;
-	while (index + run < text.length && text[index + run] === char) run++;
-	return run;
-}
-
-function findWikiLinkClose(text: string, start: number): number {
-	for (let i = start; i < text.length - 1; i++) {
-		if (text[i] === '\\') {
-			i++;
-			continue;
-		}
-		if (text[i] === ']' && text[i + 1] === ']') {
-			return i;
-		}
-	}
-	return -1;
 }
 
 function stopEvent(event: Event): void {

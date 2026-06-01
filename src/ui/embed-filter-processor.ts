@@ -34,6 +34,7 @@ import { asyncHandler, runAsyncAction } from '../core/async-action';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { buildTaskWikilinkOverlaySettingsSignature } from './task-file-overlay-chips';
 
 export interface EmbedFilterDeps {
     app: App;
@@ -204,6 +205,7 @@ function renderEmbed(
         instance.searchQuery.trim().toLocaleLowerCase(),
         JSON.stringify(filterSet),
         JSON.stringify(deps.settings.filterTaskCompactChips),
+        buildTaskWikilinkOverlaySettingsSignature(deps.settings),
         JSON.stringify(deps.settings.keyMappings.map(mapping => [
             mapping.canonicalKey,
             mapping.visiblePropertyName,
@@ -227,6 +229,8 @@ function renderEmbed(
         getPipelines: deps.getPipelines,
         getPriorities: deps.getPriorities,
         getIndexedTask: (id) => deps.indexer.getTask(id),
+        getFileTaskByPath: (filePath) => deps.indexer.getFileTaskByPath(filePath),
+        getDescendantTaskSummary: (operonId) => deps.indexer.getDescendantTaskSummary(operonId),
         getChildIds: deps.getChildIds,
         openEditor: (operonId) => deps.openTaskEditor(operonId),
         cycleStatus: (operonId) => { deps.cycleStatus(operonId); },

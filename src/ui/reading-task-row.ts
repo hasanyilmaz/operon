@@ -20,7 +20,7 @@ import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { openObsidianTagSearch } from './tag-search';
-import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
+import { bindCompactChipLinkPreview, bindTaskDescriptionWikilinkPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import {
 	bindAdaptiveIconOnlyExpansion,
@@ -33,6 +33,9 @@ import { t } from '../core/i18n';
 import { createOwnerElement } from '../core/dom-compat';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/subtask-action';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
+import type { DescendantTaskSummary } from '../indexer/indexer';
+import { enhanceReadingTaskFileWikilinks } from './reading-task-wikilink-overlay';
+import { scanTaskWikiLinksInLine } from './task-wikilink-scanner';
 
 export interface ReadingTaskRowCallbacks {
 	app: App;
@@ -40,6 +43,8 @@ export interface ReadingTaskRowCallbacks {
 	getPriorities: () => PriorityDefinition[];
 	getSettings: () => OperonSettings;
 	getAllTasks: () => IndexedTask[];
+	getFileTaskByPath?: (filePath: string) => IndexedTask | undefined;
+	getDescendantTaskSummary?: (operonId: string) => DescendantTaskSummary;
 	openEditor: (operonId: string) => void;
 	cycleStatus: (operonId: string) => void | Promise<void>;
 	navigateToTask: (task: IndexedTask) => void;
@@ -119,7 +124,7 @@ export function buildReadingTaskRowElement(
 	if (renderedDescription) {
 		description.appendChild(renderedDescription);
 	} else {
-		description.textContent = task.description || t('taskEditor', 'untitledTask');
+		renderTaskDescription(description, task, callbacks);
 	}
 	if (options?.rowClassName !== 'operon-filter-task-row') {
 		bindOperonHoverTooltip(description, {
@@ -133,10 +138,12 @@ export function buildReadingTaskRowElement(
 		description.classList.add('operon-task-cancelled');
 	}
 	description.addEventListener('click', (event) => {
+		if (isNativeMarkdownLinkEventTarget(event.target, description)) return;
 		event.preventDefault();
 		callbacks.navigateToTask(task);
 	});
 	description.addEventListener('keydown', (event) => {
+		if (event.target !== description) return;
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
 		callbacks.navigateToTask(task);
@@ -335,6 +342,99 @@ export function buildReadingTaskRowElement(
 	}
 
 	return row;
+}
+
+function renderTaskDescription(
+	descriptionEl: HTMLElement,
+	task: IndexedTask,
+	callbacks: ReadingTaskRowCallbacks,
+): void {
+	const description = task.description || t('taskEditor', 'untitledTask');
+	const matches = scanTaskWikiLinksInLine(description, { includeEmbeds: false });
+	if (matches.length === 0) {
+		descriptionEl.textContent = description;
+		return;
+	}
+
+	renderTaskDescriptionWikilinks(descriptionEl, description, matches, task, callbacks);
+}
+
+function isNativeMarkdownLinkEventTarget(target: EventTarget | null, root: HTMLElement): boolean {
+	if (!target || typeof (target as HTMLElement).closest !== 'function') return false;
+	const link = (target as HTMLElement).closest('a.internal-link, a.external-link');
+	return !!link && root.contains(link);
+}
+
+function renderTaskDescriptionWikilinks(
+	descriptionEl: HTMLElement,
+	description: string,
+	matches: ReturnType<typeof scanTaskWikiLinksInLine>,
+	task: IndexedTask,
+	callbacks: ReadingTaskRowCallbacks,
+): void {
+	descriptionEl.addClass('operon-reading-task-description-markdown');
+	let cursor = 0;
+
+	for (const match of matches) {
+		appendTaskDescriptionText(descriptionEl, description.slice(cursor, match.from));
+		appendTaskDescriptionWikilink(descriptionEl, match.linktext, match.alias, task, callbacks);
+		cursor = match.to;
+	}
+
+	appendTaskDescriptionText(descriptionEl, description.slice(cursor));
+	enhanceTaskDescriptionWikilinkOverlays(descriptionEl, task, callbacks);
+}
+
+function appendTaskDescriptionText(descriptionEl: HTMLElement, text: string): void {
+	if (!text) return;
+	const textEl = createOwnerElement(descriptionEl, 'span');
+	textEl.textContent = text;
+	descriptionEl.appendChild(textEl);
+}
+
+function appendTaskDescriptionWikilink(
+	descriptionEl: HTMLElement,
+	linktext: string,
+	alias: string | null,
+	task: IndexedTask,
+	callbacks: ReadingTaskRowCallbacks,
+): void {
+	const label = alias ?? linktext;
+	const anchor = createOwnerElement(descriptionEl, 'a');
+	anchor.classList.add('internal-link', 'operon-reading-task-description-wikilink');
+	anchor.textContent = label;
+	anchor.setAttribute('data-href', linktext);
+	anchor.setAttribute('href', linktext);
+	anchor.addEventListener('click', (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		void callbacks.app.workspace.openLinkText(linktext, task.primary.filePath, false);
+	});
+	bindTaskDescriptionWikilinkPreview(callbacks.app, anchor, linktext, task.primary.filePath);
+	descriptionEl.appendChild(anchor);
+}
+
+function enhanceTaskDescriptionWikilinkOverlays(
+	descriptionEl: HTMLElement,
+	task: IndexedTask,
+	callbacks: ReadingTaskRowCallbacks,
+): void {
+	if (!callbacks.getFileTaskByPath || !callbacks.getDescendantTaskSummary) return;
+	enhanceReadingTaskFileWikilinks(descriptionEl, task.primary.filePath, {
+		app: callbacks.app,
+		getSettings: callbacks.getSettings,
+		getPipelines: callbacks.getPipelines,
+		getAllTasks: callbacks.getAllTasks,
+		getFileTaskByPath: callbacks.getFileTaskByPath,
+		getDescendantTaskSummary: callbacks.getDescendantTaskSummary,
+		openTaskEditor: callbacks.openEditor,
+		cycleStatus: (operonId) => { void callbacks.cycleStatus(operonId); },
+		onContextualAction: callbacks.onContextualAction,
+		isTaskPinned: callbacks.isTaskPinned,
+		isTaskTracking: callbacks.isTaskTracking,
+		toggleTimer: callbacks.toggleTimer,
+		requestSubtask: callbacks.requestSubtask,
+	});
 }
 
 function applyCompactChipVisualStyles(

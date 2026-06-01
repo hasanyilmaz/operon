@@ -1855,6 +1855,29 @@
 	opacity: 0.92;
 }
 
+.operon-reading-task-description-markdown,
+.operon-reading-task-description-markdown > p {
+	display: inline;
+	margin: 0;
+	padding: 0;
+}
+
+.operon-reading-task-description-markdown .internal-link,
+.operon-reading-task-description-markdown .external-link {
+	font: inherit;
+}
+
+.operon-reading-task-description-wikilink {
+	color: var(--link-color);
+	text-decoration: var(--link-decoration);
+	cursor: pointer;
+}
+
+.operon-reading-task-description-wikilink:hover {
+	color: var(--link-color-hover);
+	text-decoration: var(--link-decoration-hover);
+}
+
 .operon-reading-task-tail-wrap {
 	display: flex;
 	align-items: flex-start;
@@ -10041,6 +10064,16 @@ button.operon-pinned-sidebar-action svg {
 	white-space: normal;
 }
 
+.operon-task-wikilink-reading .operon-task-wikilink-action {
+	background: transparent;
+	background-color: transparent;
+	box-shadow: none;
+}
+
+.operon-task-wikilink-reading .operon-task-wikilink-left {
+	color: var(--operon-task-wikilink-status-color, var(--text-muted));
+}
+
 .operon-task-wikilink-reading:hover .internal-link,
 .operon-task-wikilink-reading .internal-link:hover {
 	color: var(--operon-task-wikilink-hover, var(--interactive-accent));
@@ -11161,19 +11194,20 @@ body.operon-calendar-sidebar-is-resizing {
 }
 
 .operon-calendar-mobile-content {
+	--operon-calendar-mobile-bottom-clearance: calc(74px + env(safe-area-inset-bottom, 0px));
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	-webkit-overflow-scrolling: touch;
-	padding: 1px 1px calc(74px + env(safe-area-inset-bottom, 0px));
+	padding: 1px 1px var(--operon-calendar-mobile-bottom-clearance);
 }
 
 .operon-calendar-mobile-content.is-timegrid {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	padding: 1px 1px calc(64px + env(safe-area-inset-bottom, 0px));
+	padding: 1px;
 }
 
 .operon-calendar-mobile-agenda,
@@ -11324,7 +11358,43 @@ body.operon-calendar-sidebar-is-resizing {
 }
 
 .operon-calendar-mobile-timegrid-gutter-spacer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	min-height: 44px;
 	border-right: 1px solid var(--background-modifier-border);
+}
+
+.operon-calendar-mobile-all-day-toggle-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	border-radius: 9px;
+	background: color-mix(in srgb, var(--background-secondary) 62%, var(--background-primary));
+	color: var(--text-muted);
+	cursor: pointer;
+	box-shadow: none;
+	appearance: none;
+	-webkit-appearance: none;
+	transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.operon-calendar-mobile-all-day-toggle-button:hover,
+.operon-calendar-mobile-all-day-toggle-button:focus-visible {
+	outline: none;
+	border-color: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 10%, var(--background-primary));
+	color: var(--text-normal);
+}
+
+.operon-calendar-mobile-all-day-toggle-button svg {
+	width: 16px;
+	height: 16px;
 }
 
 .operon-calendar-mobile-timegrid-header-days,
@@ -11510,6 +11580,7 @@ body.operon-calendar-sidebar-is-resizing {
 	overflow-x: hidden;
 	background: var(--background-primary);
 	overscroll-behavior: contain;
+	padding-bottom: var(--operon-calendar-mobile-bottom-clearance);
 	touch-action: pan-y;
 	-webkit-overflow-scrolling: touch;
 }
@@ -18240,6 +18311,10 @@ body.operon-kanban-touch-drag-active {
 	display: none;
 	pointer-events: none;
 	opacity: 0;
+}
+
+.workspace-leaf-content[data-type^="operon-"] .livesync-status {
+	display: none;
 }
 
 .operon-tracker-status-bar.is-hidden {

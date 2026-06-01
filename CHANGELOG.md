@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.1.2] - 2026-06-01
+
+### New
+- Added a mobile Calendar Day and 3 Days all-day collapse button, so phone users can temporarily give the time grid more room without changing Calendar settings.
+
+### Fixed
+- Fixed mobile Calendar Day and 3 Days views stopping short of the bottom of the panel by sharing the Agenda layout's bottom clearance behavior.
+- Fixed Operon custom views being disrupted by Self-hosted LiveSync's in-editor status overlay while keeping LiveSync sync behavior unchanged.
+- Fixed the Task Editor status picker becoming unavailable after changing the status once.
+- Fixed wiki-links in Filter view task titles rendering as plain text instead of Obsidian links with Page Preview support.
+- Fixed file-task wiki-link overlays in Filter views and task rows so overlay chips, quick actions, status-colored icons, and escaped/code/embed-style wiki-links behave consistently.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 759/759 Phase 5 regression checks.
+
 ## [1.1.1] - 2026-05-31
 
 ### New

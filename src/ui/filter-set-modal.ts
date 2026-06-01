@@ -16,6 +16,7 @@ import { showIconPicker } from './field-pickers/icon-picker';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { WindowTimeoutHandle, clearWindowTimeout, createOwnerElement, getActiveWindow, getOwnerBody, getOwnerWindow, setWindowTimeout } from '../core/dom-compat';
+import { buildTaskWikilinkOverlaySettingsSignature } from './task-file-overlay-chips';
 
 function generateConditionId(): string {
 	return 'cond_' + Math.random().toString(36).slice(2, 10);
@@ -1046,6 +1047,7 @@ class FilterPreviewModal extends Modal {
 			this.deps.getSettings().filterShowSubtasks ? '1' : '0',
 			this.deps.getSettings().filterShowOnlyOpenSubtasks ? '1' : '0',
 			JSON.stringify(this.deps.getSettings().filterTaskCompactChips),
+			buildTaskWikilinkOverlaySettingsSignature(this.deps.getSettings()),
 			JSON.stringify(this.deps.getSettings().keyMappings.map(mapping => [
 				mapping.canonicalKey,
 				mapping.visiblePropertyName,
@@ -1074,6 +1076,8 @@ class FilterPreviewModal extends Modal {
 			getPipelines: this.deps.getPipelines,
 			getPriorities: this.deps.getPriorities,
 			getIndexedTask: (id) => this.deps.indexer.getTask(id),
+			getFileTaskByPath: (filePath) => this.deps.indexer.getFileTaskByPath(filePath),
+			getDescendantTaskSummary: (operonId) => this.deps.indexer.getDescendantTaskSummary(operonId),
 			getChildIds: this.deps.getChildIds,
 			openEditor: this.deps.openEditor,
 			cycleStatus: this.deps.cycleStatus,

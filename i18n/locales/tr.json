@@ -1163,6 +1163,8 @@
 		"nextSpan": "Sonraki aralık",
 		"nextSpanTooltip": "Mevcut görünür gün aralığı kadar ileri git.",
 		"allDay": "Tüm gün",
+		"collapseMobileAllDayRow": "Tüm gün satırını daralt",
+		"expandMobileAllDayRow": "Tüm gün satırını genişlet",
 		"due": "Son tarih",
 		"inDay": "Gün içinde",
 		"finished": "Bitti",

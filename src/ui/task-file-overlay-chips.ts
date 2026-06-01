@@ -40,6 +40,16 @@ export function getTaskFileOverlayChipSignature(
 	).map(entry => `${entry.key}:${entry.label}:${entry.iconOnly ? 1 : 0}:${entry.linkTarget ?? ''}:${entry.externalUrl ?? ''}:${entry.externalRawValue ?? ''}:${entry.tooltipContent ?? ''}`).join('|');
 }
 
+export function buildTaskWikilinkOverlaySettingsSignature(settings: OperonSettings): string {
+	return JSON.stringify({
+		overlayTaskCompactChips: settings.overlayTaskCompactChips,
+		overlayTaskShowPlayAction: settings.overlayTaskShowPlayAction,
+		overlayTaskShowPinAction: settings.overlayTaskShowPinAction,
+		overlayTaskShowNoteAction: settings.overlayTaskShowNoteAction,
+		overlayTaskShowSubtaskAction: settings.overlayTaskShowSubtaskAction,
+	});
+}
+
 export function buildTaskFileOverlayChipContainer(
 	task: IndexedTask,
 	callbacks: OverlayChipRenderCallbacks,

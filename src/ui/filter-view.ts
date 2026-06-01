@@ -34,6 +34,7 @@ import { IndexedTask } from '../types/fields';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { buildTaskWikilinkOverlaySettingsSignature } from './task-file-overlay-chips';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
 import {
 	applyOptimisticRenderPatch,
@@ -284,6 +285,8 @@ export class FilterView extends ItemView {
 			getPipelines: this.getPipelines,
 			getPriorities: this.getPriorities,
 			getIndexedTask: (id) => this.indexer.getTask(id),
+			getFileTaskByPath: (filePath) => this.indexer.getFileTaskByPath(filePath),
+			getDescendantTaskSummary: (operonId) => this.indexer.getDescendantTaskSummary(operonId),
 			getChildIds: this.getChildIds,
 			getRenderedTask: (task) => this.getRenderedFilterTask(task),
 			openEditor: (operonId) => this.openTaskEditor(operonId),
@@ -765,6 +768,7 @@ export class FilterView extends ItemView {
 
 	private buildRenderSignature(filterSet: FilterSet): string {
 		const compactSettingsSignature = JSON.stringify(this.settings.filterTaskCompactChips);
+		const overlaySettingsSignature = buildTaskWikilinkOverlaySettingsSignature(this.settings);
 		const keyMappingSignature = JSON.stringify(
 			this.settings.keyMappings.map(mapping => [
 				mapping.canonicalKey,
@@ -780,6 +784,7 @@ export class FilterView extends ItemView {
 			this.searchQuery.trim().toLocaleLowerCase(),
 			JSON.stringify(filterSet),
 			compactSettingsSignature,
+			overlaySettingsSignature,
 			keyMappingSignature,
 			this.settings.filterSets.map(fs => `${fs.id}:${fs.name}:${fs.icon ?? ''}`).join('|'),
 		].join('|');
