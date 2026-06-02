@@ -347,7 +347,7 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 						descendantCache,
 						callbacks,
 					);
-					const progress = computeTaskFileLinkProgressIndicator(summary);
+					const progress = computeTaskFileLinkProgressIndicator(resolved.task, summary);
 					const markClasses = ['operon-task-wikilink-live-mark'];
 					if (visuals.labelState === 'done') {
 						markClasses.push('operon-task-done');

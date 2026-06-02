@@ -104,6 +104,7 @@ const DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'contextualMenuSurfaceActionMatrix',
 	'contextualMenuOpenDelayMs',
 	'taskCreatorToolbar',
+	'taskEditorShowLineNumbers',
 	'taskEditorWorkflowPickers',
 	'inlineExpandedTaskChips',
 	'inlineTaskCompactChips',
@@ -157,6 +158,7 @@ const DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 
 const TASK_UI_PREFERENCE_KEYS = [
 	'taskCreatorToolbar',
+	'taskEditorShowLineNumbers',
 	'taskEditorWorkflowPickers',
 	'inlineExpandedTaskChips',
 	'inlineTaskCompactChips',

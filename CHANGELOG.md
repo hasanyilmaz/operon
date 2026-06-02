@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.1.4] - 2026-06-02
+
+### New
+- Added Dynamic File Task Filter for YAML file tasks, showing an automatic filter surface with a customizable visible name, descendant-aware search, and subtask auto-expand limit at the top or bottom of the file body in Reading View and Live Preview without writing filter blocks into notes.
+- Added a Task Editor setting to hide source line numbers in the file body panel, so users can keep the editor cleaner when line references are not needed.
+
+### Improved
+- Improved the Dynamic File Task Filter settings section by removing redundant intro copy and making the first setting description carry the essential context.
+- Improved Calendar and Kanban task titles so normal wiki-links are clickable with Page Preview support while file-task links stay visually lightweight.
+- Improved the Dynamic File Task Filter default icon to better distinguish the automatic file-task filter from ordinary saved filters.
+- Improved the filter editor icon picker so saved filters and Dynamic File Task Filter use the same stable icon picker modal as pipeline and priority settings.
+- Improved filter editor button feedback with accent hover states for add actions and a red hover state for Cancel.
+- Improved the filter editor layout with aligned name, grouping, and sort controls, and gave Dynamic File Task Filter a sensible default sort preset users can change.
+- Improved filter search results so flat search mode respects each filter's configured sort order, including embedded and Dynamic File Task Filter surfaces.
+
+### Fixed
+- Fixed file task overlay progress counts lingering after the last subtask was deleted.
+- Fixed file task overlay double-check markers so they only appear when the linked task itself is complete and all descendants are complete.
+- Fixed Kanban preset deletion in Settings leaving an empty native settings page instead of returning to the populated Kanban settings.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 785/785 Phase 5 regression checks.
+
 ## [1.1.3] - 2026-06-01
 
 ### Fixed

@@ -723,6 +723,7 @@ export class TaskEditorContent {
 			file: sourceFile instanceof TFile ? sourceFile : null,
 			cursorOffset: this.fileBodyContext?.cursorOffset ?? 0,
 			lineNumberOffset: this.fileBodyContext?.lineNumberOffset ?? 0,
+			showLineNumbers: this.settings.taskEditorShowLineNumbers,
 			onChange: (value) => this.handleFileBodyChanged(value),
 			onEscape: () => {
 				if (!(this.fileBodyMediaQuery?.matches ?? this.isWideFileBodyViewport())) {

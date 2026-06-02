@@ -192,6 +192,17 @@ export function evaluateFilterSet(
 	return sortTasks(result, getSortSpecs(filterSet), context.priorityRankMap, context.pinnedCache);
 }
 
+/** Sort a task list using a FilterSet definition without re-applying conditions. */
+export function sortFilterTasks(
+	filterSet: FilterSet,
+	tasks: IndexedTask[],
+	priorities?: { label: string }[],
+	pinnedCache?: PinnedCache | null,
+): IndexedTask[] {
+	const context = createEvalContext(tasks, priorities, pinnedCache);
+	return sortTasks(tasks, getSortSpecs(filterSet), context.priorityRankMap, context.pinnedCache);
+}
+
 /** Filter tasks using filter-set matching only, preserving the original input order. */
 export function filterTasksOnly(
 	filterSet: FilterSet,

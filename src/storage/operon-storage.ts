@@ -121,6 +121,7 @@ function pickContextualMenuStoreSettings(settings: OperonSettings): ContextualMe
 function pickTaskUiPreferenceStoreSettings(settings: OperonSettings): TaskUiPreferenceStoreSettings {
 	return {
 		taskCreatorToolbar: settings.taskCreatorToolbar,
+		taskEditorShowLineNumbers: settings.taskEditorShowLineNumbers,
 		taskEditorWorkflowPickers: settings.taskEditorWorkflowPickers,
 		inlineExpandedTaskChips: settings.inlineExpandedTaskChips,
 		inlineTaskCompactChips: settings.inlineTaskCompactChips,
@@ -515,7 +516,9 @@ export class OperonStorage {
 		dataPackage: OperonDataPackageV1,
 		options: { preserveSettingsIdentity?: boolean } = {},
 	): void {
-		this.filterStore.loadFromPackage(dataPackage.views.filters);
+		this.filterStore.loadFromPackage(dataPackage.views.filters, {
+			seedDynamicDefaultSorts: dataPackage.settings.settingsVersion < 88,
+		});
 		this.kanbanOrderStore.loadFromPackage(dataPackage.views.kanbanOrder);
 		const nextSettings = this.dataPackageStore.getSettings(DEFAULT_SETTINGS);
 		if (options.preserveSettingsIdentity) {

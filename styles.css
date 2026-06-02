@@ -1855,6 +1855,7 @@
 	opacity: 0.92;
 }
 
+.operon-task-description-markdown > p,
 .operon-reading-task-description-markdown,
 .operon-reading-task-description-markdown > p {
 	display: inline;
@@ -1862,17 +1863,21 @@
 	padding: 0;
 }
 
+.operon-task-description-markdown .internal-link,
+.operon-task-description-markdown .external-link,
 .operon-reading-task-description-markdown .internal-link,
 .operon-reading-task-description-markdown .external-link {
 	font: inherit;
 }
 
+.operon-task-description-wikilink,
 .operon-reading-task-description-wikilink {
 	color: var(--link-color);
 	text-decoration: var(--link-decoration);
 	cursor: pointer;
 }
 
+.operon-task-description-wikilink:hover,
 .operon-reading-task-description-wikilink:hover {
 	color: var(--link-color-hover);
 	text-decoration: var(--link-decoration-hover);
@@ -4600,6 +4605,14 @@
 	pointer-events: none;
 }
 
+.operon-task-editor-file-line-number-spacer {
+	flex: 0 0 8px;
+	align-self: stretch;
+	min-height: 0;
+	pointer-events: none;
+	user-select: none;
+}
+
 .operon-task-editor-file-line-number-layer {
 	position: absolute;
 	inset: 0;
@@ -5357,6 +5370,21 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	border-top: none;
 	padding-top: 0;
 	margin-top: 0;
+}
+
+.operon-task-editor .operon-task-editor-primary-fields > .operon-description-setting,
+.operon-task-editor .operon-task-editor-primary-fields > .operon-note-setting {
+	border-left: none;
+	border-right: none;
+	border-bottom: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	outline: none;
+}
+
+.operon-task-editor .operon-task-editor-primary-fields > .operon-note-setting {
+	border-top: 1px solid var(--background-modifier-border);
 }
 
 .operon-description-setting .setting-item-info,
@@ -6487,6 +6515,23 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 .operon-editor-tags-setting .setting-item-control {
 	width: 100%;
 	max-width: 100%;
+}
+
+.operon-task-editor-main-panel > :is(
+	.operon-contexts-setting,
+	.operon-tags-setting,
+	.operon-assignees-setting,
+	.operon-links-setting,
+	.operon-dependency-setting,
+	.operon-editor-parent-setting
+) {
+	border-left: none;
+	border-right: none;
+	border-bottom: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	outline: none;
 }
 
 .operon-editor-contexts-stack,
@@ -7947,6 +7992,41 @@ button.operon-pinned-sidebar-action svg {
 	margin: 0;
 }
 
+.operon-dynamic-file-task-filter-host {
+	--operon-dynamic-file-task-filter-spacing: 1.5em;
+	display: block;
+	width: 100%;
+	max-width: var(--file-line-width);
+	margin: 8px 0 12px;
+	margin-inline: auto;
+	box-sizing: border-box;
+	clear: both;
+	white-space: normal;
+}
+
+.operon-dynamic-file-task-filter-host--body-top {
+	margin-bottom: var(--operon-dynamic-file-task-filter-spacing);
+}
+
+.operon-dynamic-file-task-filter-host--body-bottom {
+	margin-top: var(
+		--operon-dynamic-file-task-filter-margin-top,
+		var(--operon-dynamic-file-task-filter-spacing)
+	);
+}
+
+.operon-filter-surface--dynamic-file-task {
+	margin: 0;
+}
+
+.operon-dynamic-file-task-filter-settings-section .operon-filter-set-list {
+	margin-top: 8px;
+}
+
+.operon-dynamic-file-task-filter-card {
+	border-style: dashed;
+}
+
 .operon-filter-header {
 	display: flex;
 	align-items: center;
@@ -8536,36 +8616,75 @@ button.operon-pinned-sidebar-action svg {
 }
 
 .operon-filter-name-input {
-	flex: 0 1 780px;
-	width: 780px;
-	max-width: calc(100% - 56px);
+	width: 100%;
+	max-width: none;
 	min-width: 0;
 	box-sizing: border-box;
-}
-
-.operon-filter-name-setting {
-	gap: 16px;
-}
-
-.operon-filter-name-setting .setting-item-info {
-	flex: 0 0 220px;
-	min-width: 0;
-}
-
-.operon-filter-name-setting .setting-item-control {
-	display: flex;
-	flex: 1 1 auto;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 12px;
-	width: 100%;
-	min-width: 0;
 }
 
 .operon-filter-section {
 	margin-top: 8px;
 	padding-top: 8px;
 	border-top: 1px solid var(--background-modifier-border);
+}
+
+.operon-filter-form-section {
+	margin-top: 12px;
+	padding: 12px 16px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--background-secondary) 72%, var(--background-primary));
+	box-sizing: border-box;
+}
+
+.operon-filter-form-row {
+	display: grid;
+	grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) minmax(132px, auto);
+	align-items: center;
+	gap: 12px 16px;
+	min-width: 0;
+	min-height: 40px;
+}
+
+.operon-filter-form-row + .operon-filter-form-row {
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.operon-filter-form-label {
+	min-width: 0;
+	color: var(--text-muted);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.5px;
+	line-height: 1.3;
+	text-transform: uppercase;
+}
+
+.operon-filter-form-control,
+.operon-filter-form-action {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
+.operon-filter-form-control {
+	width: 100%;
+}
+
+.operon-filter-form-action {
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.operon-filter-name-row {
+	grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) var(--input-height);
+}
+
+.operon-filter-form-control .operon-filter-select-wrap,
+.operon-filter-form-action .operon-filter-select-wrap {
+	width: 100%;
 }
 
 .operon-filter-conditions-section {
@@ -8614,6 +8733,27 @@ button.operon-pinned-sidebar-action svg {
 .operon-filter-modal-button:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
+}
+
+.operon-filter-modal-add-button,
+.operon-filter-modal-cancel-button {
+	transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.operon-filter-modal-add-button:hover:not(:disabled),
+.operon-filter-modal-add-button:focus-visible {
+	background: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+}
+
+.operon-filter-modal-cancel-button:hover:not(:disabled),
+.operon-filter-modal-cancel-button:focus-visible {
+	background: var(--text-error);
+	border-color: var(--text-error);
+	color: var(--text-on-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 22%, transparent);
 }
 
 /* Icon-only buttons — match Obsidian's clickable-icon look */
@@ -8845,6 +8985,32 @@ button.operon-pinned-sidebar-action svg {
 	background: color-mix(in srgb, var(--background-primary) 76%, var(--background-secondary));
 }
 
+.operon-condition-row--locked {
+	opacity: 0.72;
+	cursor: not-allowed;
+}
+
+.operon-filter-locked-condition-token {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	padding: 3px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 5px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+.operon-filter-locked-condition-token.is-dynamic {
+	font-family: var(--font-monospace);
+}
+
+.operon-filter-locked-condition-note {
+	margin-top: 6px;
+}
+
 .operon-filter-select-wrap,
 .operon-condition-select-wrap {
 	min-width: 0;
@@ -8894,7 +9060,18 @@ button.operon-pinned-sidebar-action svg {
 }
 
 .operon-filter-sort-section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 	padding-top: 12px;
+}
+
+.operon-filter-sort-card {
+	margin-top: 0;
+}
+
+.operon-filter-sort-card .operon-filter-modal-section-title {
+	margin-bottom: 10px;
 }
 
 .operon-filter-sort-list {
@@ -8904,10 +9081,20 @@ button.operon-pinned-sidebar-action svg {
 }
 
 .operon-filter-sort-row {
-	display: flex;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(130px, 160px) var(--input-height) var(--input-height) var(--input-height);
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	padding: 4px 0;
+	min-width: 0;
+}
+
+.operon-filter-sort-row .operon-filter-select-wrap {
+	width: 100%;
+}
+
+.operon-filter-sort-card .operon-filter-modal-button:not(.is-icon) {
+	margin-top: 10px;
 }
 
 .operon-filter-subtasks-setting {
@@ -8940,6 +9127,42 @@ button.operon-pinned-sidebar-action svg {
 	min-height: 34px;
 	padding: 6px 16px;
 	font-size: 13px;
+}
+
+@media (max-width: 720px) {
+	.operon-filter-form-row {
+		grid-template-columns: 1fr;
+	}
+
+	.operon-filter-name-row {
+		grid-template-columns: 1fr var(--input-height);
+	}
+
+	.operon-filter-name-row .operon-filter-form-label {
+		grid-column: 1 / -1;
+	}
+
+	.operon-filter-form-action {
+		justify-content: flex-start;
+	}
+
+	.operon-filter-name-row .operon-filter-form-action {
+		justify-content: flex-end;
+	}
+
+	.operon-filter-sort-row {
+		grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr) var(--input-height) var(--input-height) var(--input-height);
+	}
+}
+
+@media (max-width: 520px) {
+	.operon-filter-sort-row {
+		grid-template-columns: minmax(0, 1fr) var(--input-height) var(--input-height) var(--input-height);
+	}
+
+	.operon-filter-sort-row .operon-filter-select-wrap.is-order {
+		grid-column: 1 / -1;
+	}
 }
 
 .operon-preset-settings-footer {

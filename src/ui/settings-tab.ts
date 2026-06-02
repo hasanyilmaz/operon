@@ -13,7 +13,7 @@
 
 import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
 import type { ButtonComponent, DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarFieldKey, TaskCreatorToolbarItem, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolKey, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerKey, TaskEditorWorkflowPickerItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource } from '../types/settings';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarFieldKey, TaskCreatorToolbarItem, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolKey, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerKey, TaskEditorWorkflowPickerItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource } from '../types/settings';
 import { clonePipeline, composeStatusValue, createPipelineId, createStatusId, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
@@ -105,6 +105,12 @@ import {
 	normalizeTaskColorSource,
 } from '../core/task-color-source';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
+import {
+	getNormalFilterSets,
+	isDynamicFileTaskFilterSet,
+	isDynamicFileTaskFilterSetId,
+	normalizeDynamicFileTaskFilterSet,
+} from '../core/dynamic-file-task-filter';
 import {
 	isExcludedFolderConflictWithFileTasksFolder,
 	normalizeSettingsFolderPath,
@@ -234,6 +240,12 @@ type NumberSettingKey = {
 
 function generateFilterSetId(): string {
 	return 'fs_' + Math.random().toString(36).slice(2, 9);
+}
+
+function getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit: number): string {
+	return limit === 0
+		? t('settings', 'dynamicFileTaskFilterSubtaskAutoExpandNever')
+		: t('settings', 'dynamicFileTaskFilterSubtaskAutoExpandOption', { count: String(limit) });
 }
 
 /**
@@ -451,6 +463,7 @@ const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
 	'calendarMobileSlotMinutes',
 	'calendarMobileAgendaPastDays',
 	'calendarMobileAgendaFutureDays',
+	'dynamicFileTaskFilterSubtaskAutoExpandLimit',
 ]);
 
 export class OperonSettingsTab extends PluginSettingTab {
@@ -1085,6 +1098,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'calendarMobileSlotMinutes') return [...CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS];
 		if (key === 'calendarMobileAgendaPastDays') return [...CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS];
 		if (key === 'calendarMobileAgendaFutureDays') return [...CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS];
+		if (key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit') return [...DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS];
 		return [];
 	}
 
@@ -1118,18 +1132,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'fileRepeatDestination') {
 			return text === 'custom-folder' ? 'custom-folder' : 'same-folder';
 		}
-			if (key === 'trackerTaskDescriptionClickAction') {
-				return text === 'jumpToSource' ? 'jumpToSource' : 'openTaskEditor';
-			}
-			if (key === 'pinnedTasksDesktopSurface') {
-				return text === 'sidebar' ? 'sidebar' : 'floating';
-			}
-			if (key === 'fallbackTaskIconSource') {
-				return normalizeFallbackTaskIconSource(text);
-			}
-			if (key === 'pinnedDockColorSource') {
-				return normalizeTaskColorSource(text, PINNED_DOCK_TASK_COLOR_SOURCES, DEFAULT_SETTINGS.pinnedDockColorSource);
-			}
+		if (key === 'dynamicFileTaskFilterPlacement') {
+			return text === 'body-bottom' ? text : 'body-top';
+		}
+		if (key === 'trackerTaskDescriptionClickAction') {
+			return text === 'jumpToSource' ? 'jumpToSource' : 'openTaskEditor';
+		}
+		if (key === 'pinnedTasksDesktopSurface') {
+			return text === 'sidebar' ? 'sidebar' : 'floating';
+		}
+		if (key === 'fallbackTaskIconSource') {
+			return normalizeFallbackTaskIconSource(text);
+		}
+		if (key === 'pinnedDockColorSource') {
+			return normalizeTaskColorSource(text, PINNED_DOCK_TASK_COLOR_SOURCES, DEFAULT_SETTINGS.pinnedDockColorSource);
+		}
 		if (key === 'pinnedDockLayout') {
 			return text === 'vertical' || text === 'grid' ? text : 'horizontal';
 		}
@@ -1243,28 +1260,34 @@ export class OperonSettingsTab extends PluginSettingTab {
 				'custom-folder': t('settings', 'fileRepeatDestinationCustomFolder'),
 			};
 		}
-			if (key === 'trackerTaskDescriptionClickAction') {
-				return {
-					jumpToSource: t('settings', 'trackerClickJumpToSource'),
-					openTaskEditor: t('settings', 'trackerClickOpenTaskEditor'),
-				};
-			}
-			if (key === 'pinnedTasksDesktopSurface') {
-				return {
-					floating: t('settings', 'pinnedTasksDesktopSurfaceFloating'),
-					sidebar: t('settings', 'pinnedTasksDesktopSurfaceSidebar'),
-				};
-			}
-			if (key === 'fallbackTaskIconSource') {
-				return {
-					pipelineStatusIcon: t('settings', 'fallbackTaskIconSourcePipelineStatus'),
-					priorityIcon: t('settings', 'fallbackTaskIconSourcePriority'),
-					stateIcon: t('settings', 'fallbackTaskIconSourceState'),
-				};
-			}
-			if (key === 'pinnedDockColorSource') {
-				return Object.fromEntries(PINNED_DOCK_TASK_COLOR_SOURCES.map(source => [source, getTaskColorSourceLabel(source)]));
-			}
+		if (key === 'dynamicFileTaskFilterPlacement') {
+			return {
+				'body-top': t('settings', 'dynamicFileTaskFilterPlacementBodyTop'),
+				'body-bottom': t('settings', 'dynamicFileTaskFilterPlacementBodyBottom'),
+			};
+		}
+		if (key === 'trackerTaskDescriptionClickAction') {
+			return {
+				jumpToSource: t('settings', 'trackerClickJumpToSource'),
+				openTaskEditor: t('settings', 'trackerClickOpenTaskEditor'),
+			};
+		}
+		if (key === 'pinnedTasksDesktopSurface') {
+			return {
+				floating: t('settings', 'pinnedTasksDesktopSurfaceFloating'),
+				sidebar: t('settings', 'pinnedTasksDesktopSurfaceSidebar'),
+			};
+		}
+		if (key === 'fallbackTaskIconSource') {
+			return {
+				pipelineStatusIcon: t('settings', 'fallbackTaskIconSourcePipelineStatus'),
+				priorityIcon: t('settings', 'fallbackTaskIconSourcePriority'),
+				stateIcon: t('settings', 'fallbackTaskIconSourceState'),
+			};
+		}
+		if (key === 'pinnedDockColorSource') {
+			return Object.fromEntries(PINNED_DOCK_TASK_COLOR_SOURCES.map(source => [source, getTaskColorSourceLabel(source)]));
+		}
 		if (key === 'pinnedDockLayout') {
 			return {
 				horizontal: t('settings', 'pinnedDockLayoutHorizontal'),
@@ -1320,6 +1343,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return Object.fromEntries(DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS.map(seconds => [
 				String(seconds),
 				t('settings', 'duplicateAlertDelayOption', { seconds: String(seconds) }),
+			]));
+		}
+		if (key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit') {
+			return Object.fromEntries(DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => [
+				String(limit),
+				getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
 			]));
 		}
 		if (key === 'kanbanDefaultPresetId') {
@@ -1595,6 +1624,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderInterfaceTaskEditorTab(containerEl: HTMLElement): void {
+		this.renderBoundToggleSetting(containerEl, t('settings', 'taskEditorShowLineNumbers'), t('settings', 'taskEditorShowLineNumbersDesc'), 'taskEditorShowLineNumbers');
 		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorWorkflowPickers'));
 		this.applyInterfaceIconListSectionStyle(sectionEl);
 		this.renderTaskEditorWorkflowPickerSettingsSection(sectionEl);
@@ -3704,6 +3734,24 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderKanbanTab(containerEl: HTMLElement): void {
+		const refreshKanbanTab = (): void => {
+			const scrollHost = this.resolveSettingsScrollHost();
+			const scrollTop = scrollHost?.scrollTop ?? 0;
+			const scrollLeft = scrollHost?.scrollLeft ?? 0;
+			containerEl.empty();
+			this.renderKanbanTab(containerEl);
+			if (!scrollHost) return;
+
+			const restore = (): void => {
+				const maxScrollTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
+				const maxScrollLeft = Math.max(0, scrollHost.scrollWidth - scrollHost.clientWidth);
+				scrollHost.scrollTop = Math.min(scrollTop, maxScrollTop);
+				scrollHost.scrollLeft = Math.min(scrollLeft, maxScrollLeft);
+			};
+			restore();
+			scrollHost.ownerDocument.defaultView?.requestAnimationFrame(restore);
+		};
+
 		renderSettingsInfoBox(containerEl, t('settings', 'kanbanTitle'), t('settings', 'kanbanSettingsDesc'));
 
 		const generalSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'kanbanGeneralSettings'));
@@ -3744,7 +3792,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const renderList = (): void => {
 			listEl.empty();
 			for (let index = 0; index < this.settings.kanbanPresets.length; index++) {
-				this.renderKanbanPresetRow(listEl, this.settings.kanbanPresets[index], index, renderList);
+				this.renderKanbanPresetRow(listEl, this.settings.kanbanPresets[index], index, renderList, refreshKanbanTab);
 			}
 		};
 		renderList();
@@ -3784,12 +3832,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		preset: KanbanPreset,
 		index: number,
 		refresh: () => void,
+		refreshTab: () => void,
 	): void {
 		const total = this.settings.kanbanPresets.length;
 		const isOnlyPreset = total === 1;
 		const presetName = preset.name.trim() || t('settings', 'kanbanFallbackPresetName', { number: String(index + 1) });
 		const pipelineName = this.settings.pipelines.find(p => p.id === preset.pipelineId)?.name ?? t('settings', 'kanbanNoPipeline');
-		const filterName = this.settings.filterSets.find(entry => entry.id === preset.filterSetId)?.name ?? t('calendar', 'noFilter');
+		const filterName = getNormalFilterSets(this.settings.filterSets).find(entry => entry.id === preset.filterSetId)?.name ?? t('calendar', 'noFilter');
 		const swimlaneLabel = this.getKanbanSwimlaneLabel(preset.swimlaneBy);
 		const card = createSettingsListCard({
 			containerEl: listEl,
@@ -3877,7 +3926,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				this.settings.kanbanPresets.splice(index + 1, 0, copy);
 				await this.saveSettings();
 				await maybeCopyKanbanManualOrderForPresetDuplicate(preset, copy.id, this.copyKanbanManualOrder);
-				this.redisplayPreservingScroll();
+				refreshTab();
 			},
 		});
 
@@ -3902,7 +3951,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				}
 				await this.saveSettings();
 				await removeKanbanManualOrderForPresetDelete(preset.id, this.removeKanbanManualOrder);
-				this.redisplayPreservingScroll();
+				refreshTab();
 			},
 		});
 	}
@@ -4019,7 +4068,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				});
 			});
 
-		const currentFilter = this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
+		const currentFilter = getNormalFilterSets(this.settings.filterSets).find(entry => entry.id === preset.filterSetId) ?? null;
 		new Setting(bodyInner)
 			.setName(t('settings', 'kanbanFilter'))
 			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
@@ -4027,7 +4076,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.onClick(() => {
 					new CalendarFilterPickerModal(this.app, {
-						filterSets: this.settings.filterSets,
+						filterSets: getNormalFilterSets(this.settings.filterSets),
 						onChooseFilter: settingsAsyncHandler('settings kanban preset filter selection failed', async (filterSetId) => {
 							await this.updateKanbanPreset(preset.id, current => {
 								current.filterSetId = filterSetId;
@@ -4352,7 +4401,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const total = this.settings.calendarPresets.length;
 		const isOnlyPreset = total === 1;
 		const presetName = preset.name.trim() || t('calendar', 'presetFallbackName', { number: String(index + 1) });
-		const filterName = this.settings.filterSets.find(entry => entry.id === preset.filterSetId)?.name ?? t('calendar', 'noFilter');
+		const filterName = getNormalFilterSets(this.settings.filterSets).find(entry => entry.id === preset.filterSetId)?.name ?? t('calendar', 'noFilter');
 		const card = createSettingsListCard({
 			containerEl: listEl,
 			icon: 'calendar',
@@ -4682,7 +4731,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				});
 		}
 
-		const currentFilter = this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
+		const currentFilter = getNormalFilterSets(this.settings.filterSets).find(entry => entry.id === preset.filterSetId) ?? null;
 		new Setting(bodyInner)
 			.setName(t('calendar', 'calendarFilter'))
 			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
@@ -4690,7 +4739,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.onClick(() => {
 					new CalendarFilterPickerModal(this.app, {
-						filterSets: this.settings.filterSets,
+						filterSets: getNormalFilterSets(this.settings.filterSets),
 						onChooseFilter: settingsAsyncHandler('settings calendar preset filter selection failed', async (filterSetId) => {
 							await this.updateCalendarPreset(preset.id, current => {
 								current.filterSetId = filterSetId;
@@ -6401,6 +6450,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 	 * Filters tab — list of user-defined filter sets.
 	 */
 	private renderFiltersTab(containerEl: HTMLElement): void {
+		const refreshTab = () => {
+			containerEl.empty();
+			this.renderFiltersTab(containerEl);
+		};
 		const behaviorSection = renderNativeSettingsGroupedSection(containerEl, t('filterSets', 'behaviorTitle'));
 
 		// Global presentation rules — apply to every filter surface
@@ -6411,6 +6464,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.renderBoundToggleSetting(behaviorSection, t('settings', 'filterShowOnlyOpenSubtasks'), t('settings', 'filterShowOnlyOpenSubtasksDesc'), 'filterShowOnlyOpenSubtasks', {
 			errorContext: 'settings filter open subtasks change failed',
 		});
+
+		this.renderDynamicFileTaskFilterSection(containerEl, refreshTab);
 
 		const userFiltersSection = renderNativeSettingsGroupedSection(containerEl, t('filterSets', 'userFiltersTitle'));
 		userFiltersSection.addClass('operon-settings-add-list-section');
@@ -6423,15 +6478,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		const listEl = userFiltersSection.createDiv('operon-filter-set-list');
 		const renderList = () => {
+			const visibleFilterSets = getNormalFilterSets(this.settings.filterSets);
 			listEl.empty();
-			if (this.settings.filterSets.length === 0) {
+			if (visibleFilterSets.length === 0) {
 				listEl.createEl('p', {
 					text: t('filterSets', 'empty'),
 					cls: 'setting-item-description operon-filter-empty-note',
 				});
 			}
-			for (let i = 0; i < this.settings.filterSets.length; i++) {
-				this.renderFilterSetCard(listEl, this.settings.filterSets[i], i, renderList);
+			for (let i = 0; i < visibleFilterSets.length; i++) {
+				this.renderFilterSetCard(listEl, visibleFilterSets[i], i, renderList);
 			}
 		};
 		renderList();
@@ -6463,6 +6519,83 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
+	private renderDynamicFileTaskFilterSection(containerEl: HTMLElement, refresh: () => void): void {
+		const section = renderNativeSettingsGroupedSection(containerEl, t('filterSets', 'dynamicFileTaskFilterTitle'));
+		this.markSettingsSearchSectionTarget(section, 'views.dynamicFileTaskFilter');
+		section.addClass('operon-settings-card-list-section');
+		section.addClass('operon-dynamic-file-task-filter-settings-section');
+
+		this.renderBoundToggleSetting(section, t('settings', 'dynamicFileTaskFilterEnabled'), t('settings', 'dynamicFileTaskFilterEnabledDesc'), 'dynamicFileTaskFilterEnabled', {
+			errorContext: 'settings dynamic file task filter enabled change failed',
+		});
+
+		this.renderBoundDropdownSetting(section, t('settings', 'dynamicFileTaskFilterPlacement'), t('settings', 'dynamicFileTaskFilterPlacementDesc'), 'dynamicFileTaskFilterPlacement', {
+			value: this.settings.dynamicFileTaskFilterPlacement,
+			dropdownOptions: [
+				{ value: 'body-top', label: t('settings', 'dynamicFileTaskFilterPlacementBodyTop') },
+				{ value: 'body-bottom', label: t('settings', 'dynamicFileTaskFilterPlacementBodyBottom') },
+			],
+			normalize: value => value,
+			errorContext: 'settings dynamic file task filter placement change failed',
+		});
+
+		this.renderBoundDropdownSetting(section, t('settings', 'dynamicFileTaskFilterSubtaskAutoExpandLimit'), t('settings', 'dynamicFileTaskFilterSubtaskAutoExpandLimitDesc'), 'dynamicFileTaskFilterSubtaskAutoExpandLimit', {
+			value: String(this.settings.dynamicFileTaskFilterSubtaskAutoExpandLimit),
+			dropdownOptions: DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => ({
+				value: String(limit),
+				label: getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
+			})),
+			normalize: value => {
+				const parsed = Number.parseInt(value, 10);
+				return DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.includes(parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number])
+					? parsed as typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number]
+					: DEFAULT_SETTINGS.dynamicFileTaskFilterSubtaskAutoExpandLimit;
+			},
+			errorContext: 'settings dynamic file task filter subtask auto-expand limit change failed',
+		});
+
+		this.renderBoundToggleSetting(section, t('settings', 'dynamicFileTaskFilterShowOnlyOpenSubtasks'), t('settings', 'dynamicFileTaskFilterShowOnlyOpenSubtasksDesc'), 'dynamicFileTaskFilterShowOnlyOpenSubtasks', {
+			errorContext: 'settings dynamic file task filter open subtasks change failed',
+		});
+
+		const filterSet = normalizeDynamicFileTaskFilterSet(
+			this.settings.filterSets.find(entry => isDynamicFileTaskFilterSet(entry)) ?? null,
+		);
+		const card = createSettingsListCard({
+			containerEl: section.createDiv('operon-filter-set-list'),
+			icon: filterSet.icon || 'filter',
+			title: filterSet.name,
+			className: 'operon-filter-set-card operon-dynamic-file-task-filter-card',
+		});
+		createSettingsListCardChip({
+			containerEl: card.metaEl,
+			icon: 'lock-keyhole',
+			label: t('filterSets', 'dynamicFileTaskFilterLockedConditionChip'),
+			className: 'operon-filter-card-used-chip',
+		});
+		createSettingsListCardActionButton({
+			containerEl: card.actionsEl,
+			label: t('filterSets', 'editFilterNamed', { name: filterSet.name }),
+			ariaLabel: t('filterSets', 'editFilterNamed', { name: filterSet.name }),
+			tooltip: t('filterSets', 'editFilterNamed', { name: filterSet.name }),
+			text: t('filterSets', 'edit'),
+			wide: true,
+			onClick: () => {
+				const clone = normalizeDynamicFileTaskFilterSet(filterSet);
+				new FilterSetModal(this.app, clone, this.settings.keyMappings, settingsAsyncHandler('settings dynamic file task filter edit failed', async (saved) => {
+					await this.upsertFilterSet(normalizeDynamicFileTaskFilterSet(saved));
+					await this.saveSettings();
+					refresh();
+				}), undefined, {
+					title: t('filterSets', 'dynamicFileTaskFilterTitle'),
+					lockConditions: 'dynamicFileTask',
+					hideUsageInfo: true,
+					showCountBadge: false,
+				}).open();
+			},
+		});
+	}
+
 	private countFilterConditions(filterSet: FilterSet): number {
 		const countNodes = (nodes: typeof filterSet.rootGroup.children): number => {
 			let count = 0;
@@ -6488,12 +6621,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private async deleteFilterSet(filterId: string): Promise<void> {
+		if (isDynamicFileTaskFilterSetId(filterId)) return;
 		await this.storage.filters.delete(filterId);
 		this.syncFilterSetsFromStore();
 	}
 
 	private async moveFilterSet(filterId: string, direction: 'up' | 'down'): Promise<void> {
-		const ids = this.settings.filterSets.map(f => f.id);
+		if (isDynamicFileTaskFilterSetId(filterId)) return;
+		const ids = getNormalFilterSets(this.settings.filterSets).map(f => f.id);
 		const idx = ids.indexOf(filterId);
 		if (idx === -1) return;
 		const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
@@ -6504,11 +6639,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private async copyFilterSet(filterSet: FilterSet): Promise<void> {
+		if (isDynamicFileTaskFilterSet(filterSet)) return;
 		const copy = cloneFilterSet(filterSet);
 		copy.id = generateFilterSetId();
 		copy.name = `${filterSet.name} Copy`;
 		// Insert copy directly after the original
-		const ids = this.settings.filterSets.map(f => f.id);
+		const ids = getNormalFilterSets(this.settings.filterSets).map(f => f.id);
 		const idx = ids.indexOf(filterSet.id);
 		await this.upsertFilterSet(copy);
 		const nextIds = this.settings.filterSets.map(f => f.id);
@@ -6563,7 +6699,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 
 		// Up / Down reorder buttons
-		const total = this.settings.filterSets.length;
+		const total = getNormalFilterSets(this.settings.filterSets).length;
 		createSettingsListCardActionButton({
 			containerEl: card.actionsEl,
 			label: t('settings', 'moveUp'),

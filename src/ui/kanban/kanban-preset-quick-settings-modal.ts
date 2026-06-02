@@ -18,6 +18,7 @@ import {
 	addTaskColorSourceOptions,
 	normalizeTaskColorSource,
 } from '../../core/task-color-source';
+import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { t } from '../../core/i18n';
 import { runSettingsAsync, settingsAsyncHandler } from '../settings/async-settings-action';
 import { parsePresetNumber } from '../settings/preset-control-helpers';
@@ -96,7 +97,8 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		const currentFilter = settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
+		const filterSets = getNormalFilterSets(settings.filterSets);
+		const currentFilter = filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
 		new Setting(contentEl)
 			.setName(t('settings', 'kanbanFilter'))
 			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
@@ -104,7 +106,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.onClick(() => {
 					new CalendarFilterPickerModal(this.app, {
-						filterSets: settings.filterSets,
+						filterSets,
 						onChooseFilter: settingsAsyncHandler('kanban preset filter selection failed', async (filterSetId) => {
 							await this.updatePreset(current => {
 								current.filterSetId = filterSetId;

@@ -9,6 +9,7 @@ import {
 	CALENDAR_TASK_COLOR_SOURCES,
 	normalizeTaskColorSource,
 } from '../../core/task-color-source';
+import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { runSettingsAsync, settingsAsyncHandler } from '../settings/async-settings-action';
 import { parsePresetNumber } from '../settings/preset-control-helpers';
 import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from '../task-color-source-select';
@@ -178,7 +179,8 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 		}
 
 		const settings = this.options.getSettings();
-		const currentFilter = settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
+		const filterSets = getNormalFilterSets(settings.filterSets);
+		const currentFilter = filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
 		new Setting(contentEl)
 			.setName(t('calendar', 'calendarFilter'))
 			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
@@ -186,7 +188,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				button.setButtonText(t('calendar', 'chooseFilter'));
 				button.onClick(() => {
 					new CalendarFilterPickerModal(this.app, {
-						filterSets: this.options.getSettings().filterSets,
+						filterSets,
 						onChooseFilter: settingsAsyncHandler('calendar preset filter selection failed', async (filterSetId) => {
 							await this.updatePreset(current => {
 								current.filterSetId = filterSetId;

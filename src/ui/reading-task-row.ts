@@ -20,7 +20,7 @@ import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { openObsidianTagSearch } from './tag-search';
-import { bindCompactChipLinkPreview, bindTaskDescriptionWikilinkPreview } from './compact-chip-link-preview';
+import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import {
 	bindAdaptiveIconOnlyExpansion,
@@ -35,7 +35,7 @@ import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import type { DescendantTaskSummary } from '../indexer/indexer';
 import { enhanceReadingTaskFileWikilinks } from './reading-task-wikilink-overlay';
-import { scanTaskWikiLinksInLine } from './task-wikilink-scanner';
+import { isTaskDescriptionWikilinkEventTarget, renderTaskDescriptionWikilinks } from './task-description-wikilinks';
 
 export interface ReadingTaskRowCallbacks {
 	app: App;
@@ -138,7 +138,7 @@ export function buildReadingTaskRowElement(
 		description.classList.add('operon-task-cancelled');
 	}
 	description.addEventListener('click', (event) => {
-		if (isNativeMarkdownLinkEventTarget(event.target, description)) return;
+		if (isTaskDescriptionWikilinkEventTarget(event.target, description)) return;
 		event.preventDefault();
 		callbacks.navigateToTask(task);
 	});
@@ -350,68 +350,18 @@ function renderTaskDescription(
 	callbacks: ReadingTaskRowCallbacks,
 ): void {
 	const description = task.description || t('taskEditor', 'untitledTask');
-	const matches = scanTaskWikiLinksInLine(description, { includeEmbeds: false });
-	if (matches.length === 0) {
+	const rendered = renderTaskDescriptionWikilinks(descriptionEl, {
+		app: callbacks.app,
+		description,
+		sourcePath: task.primary.filePath,
+		containerClassName: 'operon-reading-task-description-markdown',
+		linkClassName: 'operon-reading-task-description-wikilink',
+	});
+	if (!rendered) {
 		descriptionEl.textContent = description;
 		return;
 	}
-
-	renderTaskDescriptionWikilinks(descriptionEl, description, matches, task, callbacks);
-}
-
-function isNativeMarkdownLinkEventTarget(target: EventTarget | null, root: HTMLElement): boolean {
-	if (!target || typeof (target as HTMLElement).closest !== 'function') return false;
-	const link = (target as HTMLElement).closest('a.internal-link, a.external-link');
-	return !!link && root.contains(link);
-}
-
-function renderTaskDescriptionWikilinks(
-	descriptionEl: HTMLElement,
-	description: string,
-	matches: ReturnType<typeof scanTaskWikiLinksInLine>,
-	task: IndexedTask,
-	callbacks: ReadingTaskRowCallbacks,
-): void {
-	descriptionEl.addClass('operon-reading-task-description-markdown');
-	let cursor = 0;
-
-	for (const match of matches) {
-		appendTaskDescriptionText(descriptionEl, description.slice(cursor, match.from));
-		appendTaskDescriptionWikilink(descriptionEl, match.linktext, match.alias, task, callbacks);
-		cursor = match.to;
-	}
-
-	appendTaskDescriptionText(descriptionEl, description.slice(cursor));
 	enhanceTaskDescriptionWikilinkOverlays(descriptionEl, task, callbacks);
-}
-
-function appendTaskDescriptionText(descriptionEl: HTMLElement, text: string): void {
-	if (!text) return;
-	const textEl = createOwnerElement(descriptionEl, 'span');
-	textEl.textContent = text;
-	descriptionEl.appendChild(textEl);
-}
-
-function appendTaskDescriptionWikilink(
-	descriptionEl: HTMLElement,
-	linktext: string,
-	alias: string | null,
-	task: IndexedTask,
-	callbacks: ReadingTaskRowCallbacks,
-): void {
-	const label = alias ?? linktext;
-	const anchor = createOwnerElement(descriptionEl, 'a');
-	anchor.classList.add('internal-link', 'operon-reading-task-description-wikilink');
-	anchor.textContent = label;
-	anchor.setAttribute('data-href', linktext);
-	anchor.setAttribute('href', linktext);
-	anchor.addEventListener('click', (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(linktext, task.primary.filePath, false);
-	});
-	bindTaskDescriptionWikilinkPreview(callbacks.app, anchor, linktext, task.primary.filePath);
-	descriptionEl.appendChild(anchor);
 }
 
 function enhanceTaskDescriptionWikilinkOverlays(

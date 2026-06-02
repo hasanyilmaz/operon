@@ -141,8 +141,21 @@ import { PinnedTasksDock } from './src/ui/pinned-tasks-dock';
 import { PinnedTasksSidebarView, PINNED_TASKS_SIDEBAR_VIEW_TYPE } from './src/ui/pinned-tasks-sidebar-view';
 import { PinnedCache } from './src/storage/pinned-cache';
 import { FilterView, FILTER_VIEW_TYPE } from './src/ui/filter-view';
-import { registerEmbedFilterProcessor, refreshEmbedFilters, EmbedFilterDeps } from './src/ui/embed-filter-processor';
-import { refreshFilterPreviewModals, refreshFilterSetModals } from './src/ui/filter-set-modal';
+import {
+	createFilterSurfaceInstance,
+	destroyFilterSurfaceInstance,
+	registerEmbedFilterProcessor,
+	refreshEmbedFilters,
+	EmbedFilterDeps,
+	FilterSurfaceInstance,
+} from './src/ui/embed-filter-processor';
+import {
+	applyDynamicFileTaskFilterHostPlacement,
+	DYNAMIC_FILE_TASK_FILTER_HOST_CLASS,
+	operonDynamicFileTaskFilterLivePreviewExtension,
+	renderDynamicFileTaskFilterSurface,
+} from './src/ui/dynamic-file-task-filter';
+import { FilterSetModal, refreshFilterPreviewModals, refreshFilterSetModals } from './src/ui/filter-set-modal';
 import { OperonSettingsTab } from './src/ui/settings-tab';
 import { TimeSessionHistoryView, TIME_SESSION_HISTORY_VIEW_TYPE } from './src/ui/time-session-history-view';
 import { FlowTimeView, FLOW_TIME_VIEW_TYPE } from './src/ui/flow-time-view';
@@ -168,6 +181,7 @@ import {
 import { generateOperonId, generateRepeatSeriesId, setExistingIdsProvider } from './src/core/id-generator';
 import { resolveFileTaskDefaults } from './src/core/file-task-defaults';
 import { resolveOperonIdPlaceholders, resolveOperonIdPlaceholdersInTaskBlock } from './src/core/operon-id-placeholders';
+import { getNormalFilterSets, isDynamicFileTaskFilterSet, normalizeDynamicFileTaskFilterSet } from './src/core/dynamic-file-task-filter';
 import { isOperonExcludedPath } from './src/core/operon-path-exclusions';
 import { normalizeRepeatIdentityPayload } from './src/core/repeat-identity';
 import { shouldAutoUnpinTerminalTask } from './src/core/pinned-task-rules';
@@ -554,6 +568,9 @@ export default class OperonPlugin extends Plugin {
 	private canonicalSettingsReloadLastCheckAt = 0;
 	private yamlPropertyVisibilityRefreshTimer: WindowTimeoutHandle | null = null;
 	private embedFilterDeps: EmbedFilterDeps | null = null;
+	private dynamicFileTaskFilterReadingTimers = new Map<string, WindowTimeoutHandle>();
+	private dynamicFileTaskFilterReadingHosts = new Set<HTMLElement>();
+	private dynamicFileTaskFilterReadingInstances = new WeakMap<HTMLElement, FilterSurfaceInstance>();
 	private deferredRefreshTimer: WindowTimeoutHandle | null = null;
 	private refreshViewsFrame: number | null = null;
 	private refreshViewsFollowupRequested = false;
@@ -651,6 +668,20 @@ export default class OperonPlugin extends Plugin {
 		await this.storage.filters.upsert(filterSet);
 		this.syncFilterSetsFromStore();
 		this.refreshViews();
+	}
+
+	private openDynamicFileTaskFilterSettings(template?: FilterSet): void {
+		const filterSet = normalizeDynamicFileTaskFilterSet(
+			template ?? this.settings.filterSets.find(entry => isDynamicFileTaskFilterSet(entry)) ?? null,
+		);
+		new FilterSetModal(this.app, filterSet, this.settings.keyMappings, asyncHandler('dynamic file task filter settings save failed', async (saved) => {
+			await this.saveFilterSetAndRefresh(normalizeDynamicFileTaskFilterSet(saved));
+		}), undefined, {
+			title: t('filterSets', 'dynamicFileTaskFilterTitle'),
+			lockConditions: 'dynamicFileTask',
+			hideUsageInfo: true,
+			showCountBadge: false,
+		}).open();
 	}
 
 	private async createOrRepairBasicsWorkspaceFromUi(): Promise<void> {
@@ -792,18 +823,19 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private resolvePreferredFilterSetId(filterSetId: string | null | undefined): string | null {
-		if (filterSetId && this.settings.filterSets.some(filterSet => filterSet.id === filterSetId)) {
+		const filterSets = getNormalFilterSets(this.settings.filterSets);
+		if (filterSetId && filterSets.some(filterSet => filterSet.id === filterSetId)) {
 			return filterSetId;
 		}
 
 		if (
 			this.settings.leftRailDefaultFilterViewId
-			&& this.settings.filterSets.some(filterSet => filterSet.id === this.settings.leftRailDefaultFilterViewId)
+			&& filterSets.some(filterSet => filterSet.id === this.settings.leftRailDefaultFilterViewId)
 		) {
 			return this.settings.leftRailDefaultFilterViewId;
 		}
 
-		return this.settings.filterSets[0]?.id ?? null;
+		return filterSets[0]?.id ?? null;
 	}
 
 	private isFocusedMarkdownEditor(): boolean {
@@ -960,9 +992,10 @@ export default class OperonPlugin extends Plugin {
 		const presetId = this.getCalendarLeafPresetId(leaf);
 		if (!presetId) return null;
 		const filterSetId = this.settings.calendarPresets.find(preset => preset.id === presetId)?.filterSetId ?? null;
-		return filterSetId
+		const filterSet = filterSetId
 			? this.settings.filterSets.find(filterSet => filterSet.id === filterSetId) ?? null
 			: null;
+		return filterSet && !isDynamicFileTaskFilterSet(filterSet) ? filterSet : null;
 	}
 
 	private getKanbanLeafPresetId(leaf: import('obsidian').WorkspaceLeaf): string | null {
@@ -1430,6 +1463,8 @@ export default class OperonPlugin extends Plugin {
 			clearWindowTimeout(this.deferredRefreshTimer);
 			this.deferredRefreshTimer = null;
 		}
+		this.clearDynamicFileTaskFilterReadingTimers();
+		this.removeAllDynamicFileTaskFilterReadingHosts();
 			if (this.refreshViewsFrame !== null) {
 				window.cancelAnimationFrame(this.refreshViewsFrame);
 				this.refreshViewsFrame = null;
@@ -2713,6 +2748,7 @@ export default class OperonPlugin extends Plugin {
 		const filterSet = preset.filterSetId
 			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 			: null;
+		if (filterSet && isDynamicFileTaskFilterSet(filterSet)) return null;
 		return queryKanbanBoard({
 			preset,
 			pipeline,
@@ -3217,7 +3253,8 @@ export default class OperonPlugin extends Plugin {
 		const filterSet = preset?.filterSetId
 			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 			: null;
-		if (this.doesCalendarDraftMatchFilter(filterSet, draft)) return;
+		const effectiveFilterSet = filterSet && !isDynamicFileTaskFilterSet(filterSet) ? filterSet : null;
+		if (this.doesCalendarDraftMatchFilter(effectiveFilterSet, draft)) return;
 		new Notice(t('notifications', 'kanbanCreatedTaskFilterMismatch'));
 	}
 
@@ -3234,6 +3271,7 @@ export default class OperonPlugin extends Plugin {
 		const filterSet = preset.filterSetId
 			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 			: null;
+		const effectiveFilterSet = filterSet && !isDynamicFileTaskFilterSet(filterSet) ? filterSet : null;
 
 		while (true) {
 			const task = await this.promptKanbanTaskSelection();
@@ -3253,7 +3291,7 @@ export default class OperonPlugin extends Plugin {
 				changedKeys: plan.changedKeys,
 			});
 			this.refreshViews();
-			await this.maybeOpenKanbanEditorForFilterMismatch(filterSet, plan.nextDraft, () => {
+			await this.maybeOpenKanbanEditorForFilterMismatch(effectiveFilterSet, plan.nextDraft, () => {
 				this.openEditorForId(task.operonId);
 			});
 			new Notice(t('notifications', 'kanbanPlaced', {
@@ -4438,11 +4476,8 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
-	/**
-	 * Register the `operon` code block processor for embedded filter views.
-	 */
-	private registerEmbedFilterProcessor(): void {
-		const deps: EmbedFilterDeps = {
+	private buildFilterSurfaceDeps(): EmbedFilterDeps {
+		return {
 				app: this.app,
 				indexer: this.indexer,
 				settings: this.settings,
@@ -4508,6 +4543,13 @@ export default class OperonPlugin extends Plugin {
 				saveFilterSet: (filterSet: FilterSet) => this.saveFilterSetAndRefresh(filterSet),
 				openDailyNote: (dateKey: string) => this.openDailyNoteFromDateKey(dateKey),
 			};
+	}
+
+	/**
+	 * Register the `operon` code block processor for embedded filter views.
+	 */
+	private registerEmbedFilterProcessor(): void {
+		const deps = this.buildFilterSurfaceDeps();
 		this.embedFilterDeps = deps;
 		registerEmbedFilterProcessor(
 			(lang, handler) => this.registerMarkdownCodeBlockProcessor(lang, handler),
@@ -4755,6 +4797,14 @@ export default class OperonPlugin extends Plugin {
 					void this.requestSubtaskForParentId(operonId);
 				},
 			}));
+			this.registerEditorExtension(operonDynamicFileTaskFilterLivePreviewExtension({
+				getFilePath: (editorView: EditorView) => this.getFilePathForEditorView(editorView),
+				getFilterDeps: () => {
+					if (!this.embedFilterDeps) this.embedFilterDeps = this.buildFilterSurfaceDeps();
+					return this.embedFilterDeps;
+				},
+				openDynamicFilterSettings: (template) => this.openDynamicFileTaskFilterSettings(template),
+			}));
 			this.registerEditorSuggest(operonLivePreviewKeySuggestExtension(this.app, {
 				getSettings: () => this.settings,
 				beginSession: (input) => {
@@ -4958,7 +5008,119 @@ export default class OperonPlugin extends Plugin {
 
 			enhanceReadingTaskFileWikilinks(el, ctx.sourcePath, linkOverlayCallbacks);
 			applyFileTaskPropertyVisibility(el, this.indexer.getFileTaskByPath(ctx.sourcePath) ?? null, this.settings.keyMappings);
+			this.scheduleDynamicFileTaskFilterReadingMount(ctx.sourcePath);
 		});
+	}
+
+	private scheduleDynamicFileTaskFilterReadingMount(filePath: string): void {
+		if (!filePath) return;
+		const existing = this.dynamicFileTaskFilterReadingTimers.get(filePath);
+		if (existing) clearWindowTimeout(existing);
+		const timer = setWindowTimeout(() => {
+			this.dynamicFileTaskFilterReadingTimers.delete(filePath);
+			this.refreshDynamicFileTaskFilterReadingMount(filePath);
+		}, 0);
+		this.dynamicFileTaskFilterReadingTimers.set(filePath, timer);
+	}
+
+	private clearDynamicFileTaskFilterReadingTimers(): void {
+		for (const timer of this.dynamicFileTaskFilterReadingTimers.values()) {
+			clearWindowTimeout(timer);
+		}
+		this.dynamicFileTaskFilterReadingTimers.clear();
+	}
+
+	private removeAllDynamicFileTaskFilterReadingHosts(): void {
+		for (const host of Array.from(this.dynamicFileTaskFilterReadingHosts)) {
+			this.destroyDynamicFileTaskFilterReadingHost(host);
+		}
+	}
+
+	private pruneDisconnectedDynamicFileTaskFilterReadingHosts(): void {
+		for (const host of Array.from(this.dynamicFileTaskFilterReadingHosts)) {
+			if (!host.isConnected) {
+				this.destroyDynamicFileTaskFilterReadingHost(host);
+			}
+		}
+	}
+
+	private refreshDynamicFileTaskFilterReadingMount(filePath: string): void {
+		this.pruneDisconnectedDynamicFileTaskFilterReadingHosts();
+		const deps = this.embedFilterDeps ?? this.buildFilterSurfaceDeps();
+		if (!this.embedFilterDeps) this.embedFilterDeps = deps;
+		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+			const view = leaf.view;
+			if (!(view instanceof MarkdownView) || view.file?.path !== filePath || view.getMode() !== 'preview') continue;
+			const root = this.getReadingPreviewContentRoot(view);
+			if (!root) continue;
+			this.removeDynamicFileTaskFilterHosts(root);
+			const host = root.ownerDocument.createElement('div');
+			host.className = `${DYNAMIC_FILE_TASK_FILTER_HOST_CLASS} ${DYNAMIC_FILE_TASK_FILTER_HOST_CLASS}--reading`;
+			this.insertDynamicFileTaskFilterReadingHost(root, host);
+			const instance = createFilterSurfaceInstance(host);
+			this.dynamicFileTaskFilterReadingHosts.add(host);
+			this.dynamicFileTaskFilterReadingInstances.set(host, instance);
+			const rendered = renderDynamicFileTaskFilterSurface(
+				instance,
+				filePath,
+				deps,
+				(template) => this.openDynamicFileTaskFilterSettings(template),
+			);
+			if (!rendered) {
+				this.removeDynamicFileTaskFilterHosts(root);
+			}
+		}
+	}
+
+	private getReadingPreviewContentRoot(view: MarkdownView): HTMLElement | null {
+		const previewMode = view.previewMode as unknown as { containerEl?: HTMLElement } | undefined;
+		const container = previewMode?.containerEl ?? view.containerEl;
+		return container.querySelector<HTMLElement>('.markdown-preview-sizer')
+			?? container.querySelector<HTMLElement>('.markdown-preview-view')
+			?? container;
+	}
+
+	private removeDynamicFileTaskFilterHosts(root: HTMLElement): void {
+		for (const host of Array.from(root.querySelectorAll<HTMLElement>(`.${DYNAMIC_FILE_TASK_FILTER_HOST_CLASS}`))) {
+			this.destroyDynamicFileTaskFilterReadingHost(host);
+		}
+	}
+
+	private destroyDynamicFileTaskFilterReadingHost(host: HTMLElement): void {
+		const instance = this.dynamicFileTaskFilterReadingInstances.get(host);
+		if (instance) {
+			destroyFilterSurfaceInstance(instance);
+		} else {
+			closeFloatingPanelsForRoot(host);
+			closeIconOnlyChipPreviewsForRoot(host);
+		}
+		this.dynamicFileTaskFilterReadingInstances.delete(host);
+		this.dynamicFileTaskFilterReadingHosts.delete(host);
+		host.remove();
+	}
+
+	private insertDynamicFileTaskFilterReadingHost(root: HTMLElement, host: HTMLElement): void {
+		const placement = this.settings.dynamicFileTaskFilterPlacement;
+		applyDynamicFileTaskFilterHostPlacement(host, placement);
+		if (placement === 'body-bottom') {
+			root.insertBefore(host, root.querySelector<HTMLElement>('.markdown-preview-pusher'));
+			return;
+		}
+		const metadataContainer = root.querySelector<HTMLElement>('.metadata-container, .frontmatter-container');
+		if (metadataContainer?.parentElement) {
+			metadataContainer.parentElement.insertBefore(host, metadataContainer.nextSibling);
+			return;
+		}
+		const firstBodyChild = Array.from(root.children).find((child): child is HTMLElement => {
+			const element = asHTMLElement(child);
+			if (!element) return false;
+			if (element.hasClass(DYNAMIC_FILE_TASK_FILTER_HOST_CLASS)) return false;
+			if (element.hasClass('metadata-container') || element.hasClass('frontmatter-container')) return false;
+			if (element.querySelector('.metadata-container, .frontmatter-container')) return false;
+			if (element.hasClass('markdown-preview-pusher')) return false;
+			return true;
+		});
+		root.insertBefore(host, firstBodyChild ?? root.querySelector<HTMLElement>('.markdown-preview-pusher'));
 	}
 
 	private getTaskEditorSubtaskOptions(task: ParsedTask | null): Partial<TaskEditorContentOptions> {
@@ -5757,6 +5919,7 @@ export default class OperonPlugin extends Plugin {
 		const engineStartedAt = perfContext ? enginePerfNow() : 0;
 		const isPrimaryPass = scheduleFollowup;
 		const stageTimings: RefreshViewsStageTiming[] | null = perfContext ? [] : null;
+		this.pruneDisconnectedDynamicFileTaskFilterReadingHosts();
 
 		if (isPrimaryPass) {
 			const freezeCalendarRefresh = this.shouldFreezeCalendarRefresh();

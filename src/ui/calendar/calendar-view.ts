@@ -28,6 +28,7 @@ import { parseLocalDatetime } from '../../systems/tracker-utils';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import { t } from '../../core/i18n';
 import { getAppLocale } from '../../core/obsidian-app';
+import { getNormalFilterSets, isDynamicFileTaskFilterSet } from '../../core/dynamic-file-task-filter';
 import { findStatusDef } from '../../types/pipeline';
 import {
 	CalendarItem,
@@ -67,6 +68,7 @@ import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
 import { closeFloatingPanelsForRoot } from '../field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from '../icon-only-chip-preview';
+import { renderTaskDescriptionWikilinks } from '../task-description-wikilinks';
 import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../../core/dom-compat';
 import { enginePerfLog, enginePerfNow } from '../../core/engine-perf';
 import {
@@ -839,6 +841,7 @@ export class CalendarView extends ItemView {
 			if (!preset || !task) return [];
 			const activeFilter = (() => {
 				const raw = settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
+				if (raw && isDynamicFileTaskFilterSet(raw)) return null;
 				return raw ? stripFilterViewOnlyOptions(raw) : null;
 			})();
 			const scopedTasks = filterTasksForCalendar(
@@ -1077,6 +1080,7 @@ export class CalendarView extends ItemView {
 		}
 		const activeFilter = (() => {
 			const raw = settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
+			if (raw && isDynamicFileTaskFilterSet(raw)) return null;
 			return raw ? stripFilterViewOnlyOptions(raw) : null;
 		})();
 		const queryAnchorDate = useMobileCalendar
@@ -2518,7 +2522,7 @@ export class CalendarView extends ItemView {
 			itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
 				if (event.button !== 0) return;
 				const target = asHTMLElement(event.target, itemEl);
-				if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button')) return;
+				if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
 				if (isTouchPointer(event)) {
 					startPendingTouchDrag(event);
 					return;
@@ -4222,11 +4226,19 @@ export class CalendarView extends ItemView {
 		const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
 		this.renderSidebarTaskPoolStatusButton(hoverTrigger, task);
 
+		const titleText = task.description || task.operonId;
 		const title = head.createSpan({
-			text: task.description || task.operonId,
 			cls: 'operon-calendar-sidebar-task-pool-row-title',
 		});
-		if (task.primary.format === 'yaml') {
+		const renderedWikilinks = renderTaskDescriptionWikilinks(title, {
+			app: this.app,
+			description: titleText,
+			sourcePath: task.primary.filePath,
+		});
+		if (!renderedWikilinks) {
+			title.textContent = titleText;
+		}
+		if (!renderedWikilinks && task.primary.format === 'yaml') {
 			bindTaskTitleLinkPreview(this.app, title, task.primary.filePath, task.primary.filePath);
 		}
 
@@ -4581,7 +4593,7 @@ export class CalendarView extends ItemView {
 		row.addEventListener('pointerdown', event => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, row);
-			if (target?.closest('.operon-calendar-sidebar-task-pool-status')) return;
+			if (target?.closest('.operon-calendar-sidebar-task-pool-status, a.internal-link')) return;
 			this.hideCalendarHoverMenu(true);
 			dragState = {
 				pointerId: event.pointerId,
@@ -5813,7 +5825,7 @@ export class CalendarView extends ItemView {
 		block.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, block);
-			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button')) return;
+			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, a.internal-link')) return;
 			if (isTouchDragPointer(event)) {
 				if (isMobileTimeGridItem || settings.calendarTouchTimeGridTaskMoveEnabled !== false) {
 					startPendingTouchDrag(event);
@@ -6033,7 +6045,7 @@ export class CalendarView extends ItemView {
 		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, itemEl);
-			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, .operon-calendar-multi-week-time-chip')) return;
+			if (target?.closest('.operon-calendar-item-action-button, .operon-calendar-status-button, .operon-calendar-multi-week-time-chip, a.internal-link')) return;
 			dragState = {
 				pointerId: event.pointerId,
 				activated: false,
@@ -6328,6 +6340,7 @@ export class CalendarView extends ItemView {
 		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, itemEl);
+			if (target?.closest('a.internal-link')) return;
 			const mode = target?.closest('.operon-calendar-all-day-resize-handle')
 				? 'resize-right'
 				: 'move';
@@ -6771,11 +6784,21 @@ export class CalendarView extends ItemView {
 		}
 		const hoverTrigger = wrapper.createSpan('operon-calendar-hover-menu-trigger');
 		this.renderCalendarStatusButton(hoverTrigger, item, settings, compact);
+		const titleText = item.renderSnapshot.description || item.taskId;
 		const titleEl = wrapper.createSpan({
-			text: item.renderSnapshot.description || item.taskId,
 			cls: compact ? 'operon-calendar-all-day-text' : 'operon-calendar-timed-title',
 		});
-		if (item.sourceTask?.primary.format === 'yaml') {
+		const renderedWikilinks = item.origin === 'materialized' && item.sourceTask
+			? renderTaskDescriptionWikilinks(titleEl, {
+				app: this.app,
+				description: titleText,
+				sourcePath: item.sourceTask.primary.filePath,
+			})
+			: false;
+		if (!renderedWikilinks) {
+			titleEl.textContent = titleText;
+		}
+		if (!renderedWikilinks && item.sourceTask?.primary.format === 'yaml') {
 			bindTaskTitleLinkPreview(
 				this.app,
 				titleEl,
@@ -7588,6 +7611,7 @@ export class CalendarView extends ItemView {
 		container.addEventListener('click', (event) => {
 			const target = asHTMLElement(event.target, container);
 			if (target?.closest('.operon-calendar-hover-menu')) return;
+			if (target?.closest('a.internal-link')) return;
 			if (container.dataset.suppressCalendarClick === 'true') {
 				delete container.dataset.suppressCalendarClick;
 				event.preventDefault();
@@ -8113,7 +8137,7 @@ export class CalendarView extends ItemView {
 		const settings = this.getSettings();
 		return normalizeCalendarLeafState(state, {
 			availablePresetIds: settings.calendarPresets.map(entry => entry.id),
-			availableFilterSetIds: settings.filterSets.map(entry => entry.id),
+			availableFilterSetIds: getNormalFilterSets(settings.filterSets).map(entry => entry.id),
 			defaultPresetId: settings.calendarDefaultPresetId ?? settings.calendarPresets[0]?.id ?? null,
 			defaultScrollHour: settings.calendarDefaultScrollHour,
 			fallbackAnchorDate: localToday(),

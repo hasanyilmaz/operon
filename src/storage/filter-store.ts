@@ -1,5 +1,11 @@
 import { App } from 'obsidian';
 import { FilterSet, normalizeFilterSet } from '../types/settings';
+import {
+	DYNAMIC_FILE_TASK_FILTER_ID,
+	isDynamicFileTaskFilterSetId,
+	normalizeDynamicFileTaskFilterSet,
+	seedDynamicFileTaskFilterDefaultSorts,
+} from '../core/dynamic-file-task-filter';
 import { WriteQueue } from './write-queue';
 import { isRecord } from '../core/unknown-value';
 import { writeJsonSafely } from './storage-file-ops';
@@ -66,7 +72,7 @@ export class FilterStore {
 		this.packagePersist = persist;
 	}
 
-	loadFromPackage(filters: OperonFiltersPackageV1): void {
+	loadFromPackage(filters: OperonFiltersPackageV1, options: { seedDynamicDefaultSorts?: boolean } = {}): void {
 		const packageItems = isRecord(filters.itemsById) ? filters.itemsById : {};
 		const loadedFilters = new Map<string, FilterSet>();
 		const orderedIds: string[] = [];
@@ -87,6 +93,7 @@ export class FilterStore {
 		}
 		this.filters = loadedFilters;
 		this.orderedIds = orderedIds;
+		this.ensureDynamicFileTaskFilter(options);
 	}
 
 	toPackage(): OperonFiltersPackageV1 {
@@ -134,21 +141,32 @@ export class FilterStore {
 
 		this.filters = loadedFilters;
 		this.orderedIds = orderedIds;
+		this.ensureDynamicFileTaskFilter();
 	}
 
 	async upsert(filterSet: FilterSet): Promise<void> {
 		const normalized = normalizeFilterSet(filterSet);
 		if (!normalized) throw new Error(`Operon: invalid filter set ${filterSet.id ?? '<missing>'}`);
-		this.filters.set(normalized.id, normalized);
-		if (!this.orderedIds.includes(normalized.id)) {
-			this.orderedIds.push(normalized.id);
+		const persisted = isDynamicFileTaskFilterSetId(normalized.id)
+			? normalizeDynamicFileTaskFilterSet(normalized)
+			: normalized;
+		this.filters.set(persisted.id, persisted);
+		if (!this.orderedIds.includes(persisted.id)) {
+			this.orderedIds.push(persisted.id);
 		}
+		this.ensureDynamicFileTaskFilter();
 		await this.persistStore();
 	}
 
 	async delete(filterId: string): Promise<void> {
+		if (isDynamicFileTaskFilterSetId(filterId)) {
+			this.ensureDynamicFileTaskFilter();
+			await this.persistStore();
+			return;
+		}
 		this.filters.delete(filterId);
 		this.orderedIds = this.orderedIds.filter(id => id !== filterId);
+		this.ensureDynamicFileTaskFilter();
 		await this.persistStore([filterId]);
 	}
 
@@ -166,6 +184,7 @@ export class FilterStore {
 			nextOrder.push(filterId);
 		}
 		this.orderedIds = nextOrder;
+		this.ensureDynamicFileTaskFilter();
 		await this.persistStore();
 	}
 
@@ -180,7 +199,21 @@ export class FilterStore {
 		}
 		this.filters = nextFilters;
 		this.orderedIds = nextOrder;
+		this.ensureDynamicFileTaskFilter();
 		await this.persistStore();
+	}
+
+	private ensureDynamicFileTaskFilter(options: { seedDynamicDefaultSorts?: boolean } = {}): void {
+		const existing = this.filters.get(DYNAMIC_FILE_TASK_FILTER_ID) ?? null;
+		const normalized = normalizeDynamicFileTaskFilterSet(existing);
+		const repaired = options.seedDynamicDefaultSorts && normalized.sorts.length === 0
+			? normalizeDynamicFileTaskFilterSet(seedDynamicFileTaskFilterDefaultSorts(normalized))
+			: normalized;
+		this.filters.set(DYNAMIC_FILE_TASK_FILTER_ID, repaired);
+		this.orderedIds = this.orderedIds.filter((id, index, ids) =>
+			id !== DYNAMIC_FILE_TASK_FILTER_ID && ids.indexOf(id) === index
+		);
+		this.orderedIds.push(DYNAMIC_FILE_TASK_FILTER_ID);
 	}
 
 	private async ensureFolder(): Promise<void> {

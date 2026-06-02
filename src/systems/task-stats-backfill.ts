@@ -4,6 +4,7 @@ import {
 	CURRENT_TASK_STATS_BACKFILL_VERSION,
 	OperonSettings,
 } from '../types/settings';
+import { TASK_STATS_CANONICAL_KEYS } from '../types/keys';
 
 export interface TaskStatsBackfillResult extends AggregateRefreshResult {
 	parentTaskCount: number;
@@ -54,9 +55,16 @@ export class TaskStatsBackfillRunner {
 
 	private collectParentTaskIds(): string[] {
 		return this.indexer.getAllTasks()
-			.filter(task => this.indexer.secondary.getChildIds(task.operonId).size > 0)
+			.filter(task => (
+				this.indexer.secondary.getChildIds(task.operonId).size > 0
+				|| this.hasStoredTaskStats(task)
+			))
 			.map(task => task.operonId)
 			.sort((left, right) => left.localeCompare(right));
+	}
+
+	private hasStoredTaskStats(task: { fieldValues: Record<string, string | undefined> }): boolean {
+		return TASK_STATS_CANONICAL_KEYS.some(key => (task.fieldValues[key] ?? '').trim() !== '');
 	}
 
 	private emptyResult(completed: boolean, skipped: boolean): TaskStatsBackfillResult {

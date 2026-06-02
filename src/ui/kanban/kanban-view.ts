@@ -30,6 +30,7 @@ import {
 	TaskFinderDefaultScopeKey,
 } from '../../types/settings';
 import { t } from '../../core/i18n';
+import { isDynamicFileTaskFilterSet } from '../../core/dynamic-file-task-filter';
 import { resolveTaskColorSourceForTask } from '../../core/task-color-source';
 import { filterTasksForCalendar, stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
 import {
@@ -69,6 +70,7 @@ import { resolveKanbanDescendantSummaryFromStats } from '../../core/task-stats-r
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
+import { renderTaskDescriptionWikilinks } from '../task-description-wikilinks';
 import {
 	applyTaskSearchBoxShortcutCommand,
 	cloneTaskSearchBoxScopeState,
@@ -326,6 +328,7 @@ export class KanbanView extends ItemView {
 			const raw = preset?.filterSetId
 				? settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 				: null;
+			if (raw && isDynamicFileTaskFilterSet(raw)) return null;
 			return raw ? stripFilterViewOnlyOptions(raw) : null;
 		})();
 		const parentSearchUi = pipeline && preset
@@ -811,6 +814,7 @@ export class KanbanView extends ItemView {
 				const raw = preset.filterSetId
 					? settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 					: null;
+				if (raw && isDynamicFileTaskFilterSet(raw)) return null;
 				return raw ? stripFilterViewOnlyOptions(raw) : null;
 			})();
 			const parentSearchUi = pipeline
@@ -885,6 +889,7 @@ export class KanbanView extends ItemView {
 				const raw = preset.filterSetId
 					? settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 					: null;
+				if (raw && isDynamicFileTaskFilterSet(raw)) return null;
 				return raw ? stripFilterViewOnlyOptions(raw) : null;
 			})();
 			return this.buildParentSearchUiState(state.searchQuery, pipeline, filterSet, settings, this.searchScope);
@@ -1286,7 +1291,7 @@ export class KanbanView extends ItemView {
 				return;
 			}
 
-			if (target.closest('.operon-calendar-status-button, .operon-calendar-hover-menu')) return;
+			if (target.closest('.operon-calendar-status-button, .operon-calendar-hover-menu, a.internal-link')) return;
 			const card = target.closest<HTMLElement>('.operon-kanban-card');
 			const taskId = card?.dataset.operonTaskId;
 			if (!card || !taskId || !boardEl.contains(card)) return;
@@ -1371,11 +1376,19 @@ export class KanbanView extends ItemView {
 		const head = card.createDiv('operon-kanban-card-head');
 		const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
 		this.renderStatusButton(hoverTrigger, task, pipeline, preset, statusId, laneKey);
+		const titleText = task.description || task.operonId;
 		const titleEl = head.createSpan({
-			text: task.description || task.operonId,
 			cls: 'operon-kanban-card-title',
 		});
-		if (task.primary.format === 'yaml') {
+		const renderedWikilinks = renderTaskDescriptionWikilinks(titleEl, {
+			app: this.app,
+			description: titleText,
+			sourcePath: task.primary.filePath,
+		});
+		if (!renderedWikilinks) {
+			titleEl.textContent = titleText;
+		}
+		if (!renderedWikilinks && task.primary.format === 'yaml') {
 			bindTaskTitleLinkPreview(this.app, titleEl, task.primary.filePath, task.primary.filePath);
 		}
 

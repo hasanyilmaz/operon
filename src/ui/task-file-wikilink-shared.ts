@@ -85,13 +85,15 @@ export function computeTaskFileLinkVisuals(
 }
 
 export function computeTaskFileLinkProgressIndicator(
+	task: Pick<IndexedTask, 'checkbox'>,
 	summary: DescendantTaskSummary,
 ): TaskFileLinkProgressIndicator {
+	const taskDone = task.checkbox === 'done';
 	if (summary.total === 0) {
-		return { kind: 'none' };
+		return taskDone ? { kind: 'complete', icon: 'check-check' } : { kind: 'none' };
 	}
 
-	if (summary.allDone) {
+	if (taskDone && summary.allDone) {
 		return { kind: 'complete', icon: 'check-check' };
 	}
 

@@ -19,6 +19,7 @@ export interface EmbeddedMarkdownSourceEditorOptions {
 	cursorOffset?: number;
 	file?: TFile | null;
 	lineNumberOffset?: number;
+	showLineNumbers?: boolean;
 	onBlur?: () => void;
 	onChange?: (value: string) => void;
 	onEscape?: () => void;
@@ -254,6 +255,7 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 		private hotkeyScopeActive = false;
 		private filePanelLayoutObserver: MutationObserver | null = null;
 		private filePanelLineNumberRail: HTMLElement | null = null;
+		private filePanelLineNumberSpacer: HTMLElement | null = null;
 		private filePanelLineNumberLayer: HTMLElement | null = null;
 		private filePanelLineNumberScrollHandler: (() => void) | null = null;
 
@@ -288,7 +290,13 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			if (options.className) {
 				this.editorEl.addClass(options.className);
 			}
-			this.installFilePanelLineNumberRail();
+			if (this.isFilePanelSourceEditor()) {
+				if (this.shouldShowLineNumbers()) {
+					this.installFilePanelLineNumberRail();
+				} else {
+					this.installFilePanelLineNumberSpacer();
+				}
+			}
 
 			this.set(options.value ?? '');
 			this.applyInitialCursorSelection();
@@ -357,6 +365,10 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			return this.options.className?.split(/\s+/u).includes('operon-task-editor-file-source-editor') ?? false;
 		}
 
+		private shouldShowLineNumbers(): boolean {
+			return this.options.showLineNumbers !== false;
+		}
+
 		private installFilePanelLayoutGuard(): void {
 			if (!this.isFilePanelSourceEditor()) return;
 			const view = this.editor.cm;
@@ -411,6 +423,15 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			const scrollDOM = this.editor.cm.scrollDOM;
 			this.filePanelLineNumberScrollHandler = () => this.queueFilePanelLineNumberRefresh();
 			scrollDOM.addEventListener('scroll', this.filePanelLineNumberScrollHandler);
+		}
+
+		private installFilePanelLineNumberSpacer(): void {
+			if (!this.isFilePanelSourceEditor()) return;
+			const spacer = createOwnerElement(this.containerEl, 'div');
+			spacer.addClass('operon-task-editor-file-line-number-spacer');
+			spacer.setAttr('aria-hidden', 'true');
+			this.containerEl.insertBefore(spacer, this.editorEl);
+			this.filePanelLineNumberSpacer = spacer;
 		}
 
 		private applyInitialCursorSelection(): void {
@@ -489,7 +510,7 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 		override buildLocalExtensions(): unknown[] {
 			const extensions = super.buildLocalExtensions();
 			const isFilePanelSourceEditor = this.isFilePanelSourceEditor();
-			if (!isFilePanelSourceEditor) {
+			if (!isFilePanelSourceEditor && this.shouldShowLineNumbers()) {
 				extensions.push(lineNumbers({
 					formatNumber: (lineNo) => String(lineNo + (this.options.lineNumberOffset ?? 0)),
 				}));
@@ -499,7 +520,7 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 				extensions.push(filePanelLayoutTheme);
 			}
 			extensions.push(highlightActiveLine());
-			if (!isFilePanelSourceEditor) {
+			if (!isFilePanelSourceEditor && this.shouldShowLineNumbers()) {
 				extensions.push(highlightActiveLineGutter());
 			}
 			extensions.push(tooltips({ parent: getOwnerBody(this.editorEl) }));
@@ -538,6 +559,8 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			this.filePanelLayoutObserver = null;
 			this.filePanelLineNumberRail?.remove();
 			this.filePanelLineNumberRail = null;
+			this.filePanelLineNumberSpacer?.remove();
+			this.filePanelLineNumberSpacer = null;
 			this.filePanelLineNumberLayer = null;
 			activeEmbeddedMarkdownSourceEditors.delete(this.editor.cm);
 			embeddedMarkdownSourceEditorRecords.delete(this.editor.cm);

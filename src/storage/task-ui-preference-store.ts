@@ -15,6 +15,7 @@ const TASK_UI_PREFERENCE_STORE_QUEUE_KEY = `${TASK_UI_PREFERENCES_FILE}::__store
 export type TaskUiPreferenceStoreSettings = Pick<
 	OperonSettings,
 	| 'taskCreatorToolbar'
+	| 'taskEditorShowLineNumbers'
 	| 'taskEditorWorkflowPickers'
 	| 'inlineExpandedTaskChips'
 	| 'inlineTaskCompactChips'
@@ -44,6 +45,7 @@ interface TaskUiPreferenceStoreData extends TaskUiPreferenceStoreSettings {
 function cloneSettings(settings: TaskUiPreferenceStoreSettings): TaskUiPreferenceStoreSettings {
 	return {
 		taskCreatorToolbar: settings.taskCreatorToolbar.map(item => ({ ...item })),
+		taskEditorShowLineNumbers: settings.taskEditorShowLineNumbers,
 		taskEditorWorkflowPickers: settings.taskEditorWorkflowPickers.map(item => ({ ...item })),
 		inlineExpandedTaskChips: { ...settings.inlineExpandedTaskChips },
 		inlineTaskCompactChips: settings.inlineTaskCompactChips.map(item => ({ ...item })),
@@ -107,6 +109,7 @@ function readStoreData(
 ): TaskUiPreferenceStoreSettings {
 	return {
 		taskCreatorToolbar: readArray(raw.taskCreatorToolbar, fallback.taskCreatorToolbar),
+		taskEditorShowLineNumbers: readBoolean(raw.taskEditorShowLineNumbers, fallback.taskEditorShowLineNumbers),
 		taskEditorWorkflowPickers: normalizeTaskEditorWorkflowPickers(
 			raw.taskEditorWorkflowPickers,
 			raw.taskEditorWorkflowPickers === undefined

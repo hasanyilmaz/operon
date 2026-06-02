@@ -17,7 +17,7 @@ import { cloneFilterSet, FilterSet, OperonSettings } from '../types/settings';
 import { Pipeline } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { t } from '../core/i18n';
-import { evaluateFilterSet, evaluateFilterSetGrouped } from '../core/filter-evaluator';
+import { evaluateFilterSet, evaluateFilterSetGrouped, filterTasksOnly, sortFilterTasks } from '../core/filter-evaluator';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
 import { FilterSetModal } from './filter-set-modal';
@@ -35,6 +35,7 @@ import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-file-overlay-chips';
+import { isDynamicFileTaskFilterSet } from '../core/dynamic-file-task-filter';
 
 export interface EmbedFilterDeps {
     app: App;
@@ -64,10 +65,8 @@ export interface EmbedFilterDeps {
 }
 
 /** Tracks live embed instances for refresh */
-interface EmbedInstance {
+export interface FilterSurfaceInstance {
     el: HTMLElement;        // The code block's root element
-    filterId: string | null;
-    filterName: string | null;
     lastRenderSignature: string | null;
     expandedTaskIds: Set<string>;
     searchQuery: string;
@@ -77,8 +76,43 @@ interface EmbedInstance {
     lazyLoadObserver: IntersectionObserver | null;
 }
 
+interface EmbedInstance extends FilterSurfaceInstance {
+    filterId: string | null;
+    filterName: string | null;
+}
+
+export interface FilterSurfaceRenderOptions {
+    surfaceClassName?: string;
+    showSubtasks?: boolean;
+    showOnlyOpenSubtasks?: boolean;
+    includeSubtasksInSearch?: boolean;
+    preserveManualSubtaskExpansion?: boolean;
+    showSettingsButton?: boolean;
+    onEditFilter?: (filterSet: FilterSet) => void;
+}
+
 /** Active embed instances — pruned on refresh when DOM is detached */
 const activeEmbeds: Set<EmbedInstance> = new Set();
+
+export function createFilterSurfaceInstance(el: HTMLElement): FilterSurfaceInstance {
+    return {
+        el,
+        lastRenderSignature: null,
+        expandedTaskIds: new Set<string>(),
+        searchQuery: '',
+        treeScopeCache: null,
+        visibleTaskLimit: FILTER_RENDER_BATCH_SIZE,
+        lastPaginationSignature: null,
+        lazyLoadObserver: null,
+    };
+}
+
+export function destroyFilterSurfaceInstance(instance: FilterSurfaceInstance): void {
+    closeEmbedTransientUi(instance.el);
+    instance.lazyLoadObserver?.disconnect();
+    instance.lazyLoadObserver = null;
+    instance.lastRenderSignature = null;
+}
 
 /**
  * Parse the code block content to extract a filter reference.
@@ -109,12 +143,12 @@ function resolveFilterSet(
 ): FilterSet | null {
     if (ref.filterId) {
         const byId = settings.filterSets.find(fs => fs.id === ref.filterId);
-        if (byId) return byId;
+        if (byId && !isDynamicFileTaskFilterSet(byId)) return byId;
     }
 
     if (ref.filterName) {
         return settings.filterSets.find(
-            fs => fs.name.toLowerCase() === ref.filterName!.toLowerCase(),
+            fs => !isDynamicFileTaskFilterSet(fs) && fs.name.toLowerCase() === ref.filterName!.toLowerCase(),
         ) ?? null;
     }
 
@@ -139,16 +173,10 @@ export function registerEmbedFilterProcessor(
 
         // Track this instance for live refresh
         const instance: EmbedInstance = {
+            ...createFilterSurfaceInstance(el),
             el,
             filterId: filterRef.filterId,
             filterName: filterRef.filterName,
-            lastRenderSignature: null,
-            expandedTaskIds: new Set<string>(),
-            searchQuery: '',
-            treeScopeCache: null,
-            visibleTaskLimit: FILTER_RENDER_BATCH_SIZE,
-            lastPaginationSignature: null,
-            lazyLoadObserver: null,
         };
         activeEmbeds.add(instance);
 
@@ -183,10 +211,6 @@ function renderEmbed(
 ): void {
     const el = instance.el;
     const filterSet = resolveFilterSet(deps.settings, filterRef);
-    const activeInput = el.querySelector<HTMLInputElement>('.operon-filter-search-input');
-    const restoreSearchFocus = getOwnerDocument(el).activeElement === activeInput;
-    const searchSelectionStart = activeInput?.selectionStart ?? null;
-    const searchSelectionEnd = activeInput?.selectionEnd ?? null;
 
     if (!filterSet) {
         instance.lastRenderSignature = null;
@@ -197,6 +221,24 @@ function renderEmbed(
         return;
     }
 
+    renderFilterSurface(instance, filterSet, deps, {
+        surfaceClassName: 'operon-filter-surface--embed',
+        showSettingsButton: true,
+    });
+}
+
+export function renderFilterSurface(
+    instance: FilterSurfaceInstance,
+    filterSet: FilterSet,
+    deps: EmbedFilterDeps,
+    options: FilterSurfaceRenderOptions = {},
+): void {
+    const el = instance.el;
+    const activeInput = el.querySelector<HTMLInputElement>('.operon-filter-search-input');
+    const restoreSearchFocus = getOwnerDocument(el).activeElement === activeInput;
+    const searchSelectionStart = activeInput?.selectionStart ?? null;
+    const searchSelectionEnd = activeInput?.selectionEnd ?? null;
+
     const renderSignature = [
         deps.indexer.getGeneration(),
         deps.pinnedCache?.getGeneration() ?? 0,
@@ -204,6 +246,12 @@ function renderEmbed(
         filterSet.id,
         instance.searchQuery.trim().toLocaleLowerCase(),
         JSON.stringify(filterSet),
+        options.surfaceClassName ?? '',
+        options.showSubtasks === undefined ? 'settings-subtasks' : String(options.showSubtasks),
+        options.showOnlyOpenSubtasks === undefined ? 'settings-open-subtasks' : String(options.showOnlyOpenSubtasks),
+        options.includeSubtasksInSearch === true ? 'search-subtasks' : 'search-rendered-roots',
+        options.preserveManualSubtaskExpansion === true ? 'preserve-manual-expansion' : 'reset-manual-expansion',
+        options.showSettingsButton === false ? 'no-settings' : 'settings',
         JSON.stringify(deps.settings.filterTaskCompactChips),
         buildTaskWikilinkOverlaySettingsSignature(deps.settings),
         JSON.stringify(deps.settings.keyMappings.map(mapping => [
@@ -248,9 +296,10 @@ function renderEmbed(
         toggleTimer: deps.toggleTimer,
     };
     const embedSettings = deps.getSettings();
-    const embedShowSubtasks = embedSettings.filterShowSubtasks === true;
-    const embedShowOnlyOpenSubtasks = embedSettings.filterShowOnlyOpenSubtasks === true;
-    if (!embedShowSubtasks) {
+    const embedShowSubtasks = options.showSubtasks ?? embedSettings.filterShowSubtasks === true;
+    const embedShowOnlyOpenSubtasks = options.showOnlyOpenSubtasks ?? embedSettings.filterShowOnlyOpenSubtasks === true;
+    const includeSubtasksInSearch = options.includeSubtasksInSearch === true || embedShowSubtasks;
+    if (!embedShowSubtasks && options.preserveManualSubtaskExpansion !== true) {
         instance.expandedTaskIds.clear();
     }
     const taskRowOptions = {
@@ -260,21 +309,26 @@ function renderEmbed(
     };
 
     // Container
-    const container = el.createDiv('operon-embed operon-filter-surface operon-filter-surface--embed');
+    const container = el.createDiv(`operon-embed operon-filter-surface ${options.surfaceClassName ?? 'operon-filter-surface--embed'}`);
     const allTasks = deps.indexer.getAllTasks();
     const priorities = deps.getPriorities();
 
     // Render results
-    if (filterSet.groupBy) {
-        // Grouped
-        const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache);
-        const searchActive = isFilterSearchActive(instance.searchQuery);
-        const baseRootTasks = baseGrouped.groups.flatMap(group => group.tasks);
-        const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, embedShowSubtasks, embedShowOnlyOpenSubtasks);
-        const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, filterRef);
+	    if (filterSet.groupBy) {
+	        // Grouped
+	        const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache);
+	        const searchActive = isFilterSearchActive(instance.searchQuery);
+	        const baseRootTasks = filterTasksOnly(filterSet, allTasks, priorities, deps.pinnedCache);
+	        const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
+	        const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
 
         if (searchActive) {
-            const tasks = applyFilterSearch(treeScopeTasks, instance.searchQuery);
+            const tasks = sortFilterTasks(
+                filterSet,
+                applyFilterSearch(treeScopeTasks, instance.searchQuery),
+                priorities,
+                deps.pinnedCache,
+            );
             if (tasks.length === 0) {
                 container.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
                 restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
@@ -288,7 +342,7 @@ function renderEmbed(
                 }, list);
                 list.appendChild(bar);
             }
-            attachEmbedLazyLoadSentinel(instance, list, tasks.length, filterRef, deps);
+            attachEmbedLazyLoadSentinel(instance, list, tasks.length, filterSet, deps, options);
             restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
             return;
         }
@@ -356,16 +410,23 @@ function renderEmbed(
                 }
             }
         }
-        attachEmbedLazyLoadSentinel(instance, list, grouped.totalCount, filterRef, deps);
+        attachEmbedLazyLoadSentinel(instance, list, grouped.totalCount, filterSet, deps, options);
         restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
     } else {
         // Flat
         const baseTasks = evaluateFilterSet(filterSet, allTasks, priorities, deps.pinnedCache);
         const searchActive = isFilterSearchActive(instance.searchQuery);
-        const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseTasks, deps, embedShowSubtasks, embedShowOnlyOpenSubtasks);
-        const tasks = searchActive ? applyFilterSearch(treeScopeTasks, instance.searchQuery) : baseTasks;
+        const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
+        const tasks = searchActive
+            ? sortFilterTasks(
+                filterSet,
+                applyFilterSearch(treeScopeTasks, instance.searchQuery),
+                priorities,
+                deps.pinnedCache,
+            )
+            : baseTasks;
 
-        const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, filterRef);
+        const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
 
         if (tasks.length === 0) {
             container.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
@@ -382,17 +443,18 @@ function renderEmbed(
             }, list);
             list.appendChild(bar);
         }
-        attachEmbedLazyLoadSentinel(instance, list, tasks.length, filterRef, deps);
+        attachEmbedLazyLoadSentinel(instance, list, tasks.length, filterSet, deps, options);
         restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
     }
 }
 
 function attachEmbedLazyLoadSentinel(
-    instance: EmbedInstance,
+    instance: FilterSurfaceInstance,
     list: HTMLElement,
     totalCount: number,
-    filterRef: { filterId: string | null; filterName: string | null },
+    filterSet: FilterSet,
     deps: EmbedFilterDeps,
+    options: FilterSurfaceRenderOptions,
 ): void {
     if (instance.visibleTaskLimit >= totalCount) return;
     const sentinel = list.createDiv('operon-filter-lazy-sentinel');
@@ -402,7 +464,7 @@ function attachEmbedLazyLoadSentinel(
         instance.lazyLoadObserver = null;
         instance.visibleTaskLimit = Math.min(instance.visibleTaskLimit + FILTER_RENDER_BATCH_SIZE, totalCount);
         instance.lastRenderSignature = null;
-        renderEmbed(instance, filterRef, deps);
+        renderFilterSurface(instance, filterSet, deps, options);
     }, { root: null, rootMargin: '160px 0px' });
     instance.lazyLoadObserver.observe(sentinel);
 }
@@ -417,8 +479,8 @@ function renderHeader(
     filterSet: FilterSet,
     deps: EmbedFilterDeps,
     count: number,
-    instance: EmbedInstance,
-    filterRef: { filterId: string | null; filterName: string | null },
+    instance: FilterSurfaceInstance,
+    options: FilterSurfaceRenderOptions,
 ): HTMLInputElement {
     const header = container.createDiv('operon-embed-header');
     const title = header.createDiv('operon-embed-title');
@@ -442,44 +504,50 @@ function renderHeader(
     searchInput.addEventListener('input', () => {
         instance.searchQuery = searchInput.value;
         instance.lastRenderSignature = null;
-        renderEmbed(instance, filterRef, deps);
+        renderFilterSurface(instance, filterSet, deps, options);
     });
 
-    const cogBtn = header.createEl('button', { cls: 'operon-embed-settings-btn' });
-    setIcon(cogBtn, 'settings-2');
-    bindOperonHoverTooltip(cogBtn, {
-        content: t('filterSets', 'editFilterNamed', { name: filterSet.name }),
-        taskColor: null,
-    });
-    cogBtn.addEventListener('click', () => {
-        const clone = cloneFilterSet(filterSet);
-	        new FilterSetModal(deps.app, clone, deps.settings.keyMappings, asyncHandler('embedded filter settings save failed', async (saved) => {
-	            if (deps.saveFilterSet) {
-	                await deps.saveFilterSet(saved);
-	            } else {
-	                const idx = deps.settings.filterSets.findIndex(f => f.id === saved.id);
-	                if (idx !== -1) deps.settings.filterSets[idx] = saved;
-	                await deps.saveSettings();
-	            }
-	        }), {
-            indexer: deps.indexer,
-            getPipelines: deps.getPipelines,
-            getPriorities: deps.getPriorities,
-            openEditor: deps.openTaskEditor,
-            cycleStatus: deps.cycleStatus,
-            getChildIds: deps.getChildIds,
-            navigateToTask: deps.navigateToTask,
-            getSettings: deps.getSettings,
-            updateField: deps.updateField,
-            updateFields: deps.updateFields,
-            updateSubtasks: deps.updateSubtasks,
-            updateDependencyField: deps.updateDependencyField,
-            onContextualAction: deps.onContextualAction,
-            pinnedCache: deps.pinnedCache,
-            isTaskTracking: deps.isTaskTracking,
-            toggleTimer: deps.toggleTimer,
-        }).open();
-    });
+    if (options.showSettingsButton !== false) {
+        const cogBtn = header.createEl('button', { cls: 'operon-embed-settings-btn' });
+        setIcon(cogBtn, 'settings-2');
+        bindOperonHoverTooltip(cogBtn, {
+            content: t('filterSets', 'editFilterNamed', { name: filterSet.name }),
+            taskColor: null,
+        });
+        cogBtn.addEventListener('click', () => {
+            if (options.onEditFilter) {
+                options.onEditFilter(filterSet);
+                return;
+            }
+            const clone = cloneFilterSet(filterSet);
+	            new FilterSetModal(deps.app, clone, deps.settings.keyMappings, asyncHandler('embedded filter settings save failed', async (saved) => {
+	                if (deps.saveFilterSet) {
+	                    await deps.saveFilterSet(saved);
+	                } else {
+	                    const idx = deps.settings.filterSets.findIndex(f => f.id === saved.id);
+	                    if (idx !== -1) deps.settings.filterSets[idx] = saved;
+	                    await deps.saveSettings();
+	                }
+	            }), {
+                indexer: deps.indexer,
+                getPipelines: deps.getPipelines,
+                getPriorities: deps.getPriorities,
+                openEditor: deps.openTaskEditor,
+                cycleStatus: deps.cycleStatus,
+                getChildIds: deps.getChildIds,
+                navigateToTask: deps.navigateToTask,
+                getSettings: deps.getSettings,
+                updateField: deps.updateField,
+                updateFields: deps.updateFields,
+                updateSubtasks: deps.updateSubtasks,
+                updateDependencyField: deps.updateDependencyField,
+                onContextualAction: deps.onContextualAction,
+                pinnedCache: deps.pinnedCache,
+                isTaskTracking: deps.isTaskTracking,
+                toggleTimer: deps.toggleTimer,
+            }).open();
+        });
+    }
 
     return searchInput;
 }
@@ -489,7 +557,7 @@ function formatFilterTaskCount(count: number): string {
 }
 
 function getEmbedTreeScope(
-    instance: EmbedInstance,
+    instance: FilterSurfaceInstance,
     filterSet: FilterSet,
     rootTasks: import('../types/fields').IndexedTask[],
     deps: EmbedFilterDeps,

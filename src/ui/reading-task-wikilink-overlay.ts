@@ -69,7 +69,7 @@ export function enhanceReadingTaskFileWikilinks(
 			descendantCache,
 			callbacks,
 		);
-		const progress = computeTaskFileLinkProgressIndicator(summary);
+		const progress = computeTaskFileLinkProgressIndicator(resolved.task, summary);
 
 		const parent = anchor.parentNode;
 		if (!parent) continue;

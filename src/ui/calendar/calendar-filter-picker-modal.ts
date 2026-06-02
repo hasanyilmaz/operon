@@ -1,5 +1,6 @@
 import { App, FuzzyMatch, FuzzySuggestModal, prepareFuzzySearch } from 'obsidian';
 import { t } from '../../core/i18n';
+import { isDynamicFileTaskFilterSet } from '../../core/dynamic-file-task-filter';
 import { FilterSet } from '../../types/settings';
 
 interface CalendarFilterPickerItem {
@@ -39,6 +40,7 @@ export class CalendarFilterPickerModal extends FuzzySuggestModal<CalendarFilterP
 			{ id: null, name: t('calendar', 'noFilter'), description: t('calendar', 'filterPickerNoFilterDesc') },
 		];
 		for (const filterSet of this.options.filterSets) {
+			if (isDynamicFileTaskFilterSet(filterSet)) continue;
 			items.push({
 				id: filterSet.id,
 				name: filterSet.name,

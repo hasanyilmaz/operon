@@ -160,6 +160,11 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('views', 'viewsFilters', 'filters', 'filterSets', 'userFiltersTitle', 'userFiltersDesc', ['filters', 'user filters', 'saved filters', 'filter view', 'embedded filters', 'conditions', 'match logic', 'sorting']),
 	e('views', 'viewsFilters', 'filterShowSubtasks', 'settings', 'filterShowSubtasks', 'filterShowSubtasksDesc', 'toggle', ['filter', 'filter view', 'subtasks']),
 	e('views', 'viewsFilters', 'filterShowOnlyOpenSubtasks', 'settings', 'filterShowOnlyOpenSubtasks', 'filterShowOnlyOpenSubtasksDesc', 'toggle', ['filter', 'filter view', 'open subtasks']),
+	section('views', 'viewsFilters', 'dynamicFileTaskFilter', 'filterSets', 'dynamicFileTaskFilterTitle', 'dynamicFileTaskFilterDesc', ['dynamic file task filter', 'file task filter', 'automatic filter', 'yaml file task']),
+	e('views', 'viewsFilters', 'dynamicFileTaskFilterEnabled', 'settings', 'dynamicFileTaskFilterEnabled', 'dynamicFileTaskFilterEnabledDesc', 'toggle', ['dynamic file task filter', 'automatic file task filter', 'file task']),
+	e('views', 'viewsFilters', 'dynamicFileTaskFilterPlacement', 'settings', 'dynamicFileTaskFilterPlacement', 'dynamicFileTaskFilterPlacementDesc', 'dropdown', ['dynamic file task filter', 'placement', 'body top', 'body bottom']),
+	e('views', 'viewsFilters', 'dynamicFileTaskFilterSubtaskAutoExpandLimit', 'settings', 'dynamicFileTaskFilterSubtaskAutoExpandLimit', 'dynamicFileTaskFilterSubtaskAutoExpandLimitDesc', 'dropdown', ['dynamic file task filter', 'subtasks', 'expanded subtasks', 'auto expand subtasks']),
+	e('views', 'viewsFilters', 'dynamicFileTaskFilterShowOnlyOpenSubtasks', 'settings', 'dynamicFileTaskFilterShowOnlyOpenSubtasks', 'dynamicFileTaskFilterShowOnlyOpenSubtasksDesc', 'toggle', ['dynamic file task filter', 'open subtasks']),
 
 	section('ui', 'interfaceTaskChips', 'taskCreatorToolbar', 'settings', 'taskCreatorToolbarSection', 'taskCreatorToolbarSectionDesc', ['task chips', 'task creator toolbar', 'new operon creator toolbar', 'new operon task toolbar', 'toolbar icons']),
 	section('ui', 'interfaceTaskChips', 'inlineTaskChips', 'settings', 'inlineTaskIconsSection', 'inlineTaskIconsSectionDesc', ['task chips', 'inline task chips', 'inline task icons', 'compact chips']),
@@ -185,6 +190,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('ui', 'interfaceContextMenu', 'contextMenuActions', 'settings', 'contextualMenuActions', 'contextualMenuActionsDesc', ['contextual menu actions', 'context menu actions', 'task actions', 'mark done', 'start timer']),
 	section('ui', 'interfaceContextMenu', 'contextMenuMatrix', 'settings', 'contextualMenuMatrix', 'contextualMenuMatrixDesc', ['contextual menu matrix', 'context menu matrix', 'surface visibility', 'calendar surfaces', 'hover menu surfaces']),
 	e('ui', 'interfaceStateIcons', 'fallbackTaskIconSource', 'settings', 'fallbackTaskIconSource', 'fallbackTaskIconSourceDesc', 'dropdown', ['state icons', 'fallback icons', 'task icon']),
+	e('ui', 'interfaceTaskEditor', 'taskEditorShowLineNumbers', 'settings', 'taskEditorShowLineNumbers', 'taskEditorShowLineNumbersDesc', 'toggle', ['task editor', 'line numbers', 'source line numbers', 'file body line numbers']),
 	section('ui', 'interfaceTaskEditor', 'taskEditorWorkflowPickers', 'settings', 'taskEditorWorkflowPickers', 'taskEditorWorkflowPickersDesc', ['task editor', 'task editor pickers', 'workflow pickers']),
 
 	e('ui', 'mobileGeneral', 'mobileGlobalTaskFabEnabled', 'settings', 'mobileGlobalTaskFabEnabled', 'mobileGlobalTaskFabEnabledDesc', 'toggle', ['mobile', 'phone', 'touch', 'narrow pane', 'quick-create', 'fab', 'mobile quick create']),

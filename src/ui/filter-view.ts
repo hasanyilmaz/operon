@@ -16,7 +16,7 @@ import { cloneFilterSet, FilterSet, OperonSettings } from '../types/settings';
 import { Pipeline } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { t } from '../core/i18n';
-import { evaluateFilterSet, evaluateFilterSetGrouped } from '../core/filter-evaluator';
+import { evaluateFilterSet, evaluateFilterSetGrouped, filterTasksOnly, sortFilterTasks } from '../core/filter-evaluator';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
 import { FilterSetModal } from './filter-set-modal';
@@ -35,6 +35,7 @@ import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-file-overlay-chips';
+import { getNormalFilterSets } from '../core/dynamic-file-task-filter';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
 import {
 	applyOptimisticRenderPatch,
@@ -162,7 +163,7 @@ export class FilterView extends ItemView {
 		this.currentFilterSetId =
 			this.resolvePreferredFilterSetId(this.getLeafFilterSetId())
 			?? this.resolvePreferredFilterSetId(settings.leftRailDefaultFilterViewId)
-			?? settings.filterSets[0]?.id
+			?? this.getVisibleFilterSets()[0]?.id
 			?? null;
 	}
 
@@ -179,7 +180,7 @@ export class FilterView extends ItemView {
 	}
 
 	private getCurrentFilterSet(): FilterSet | null {
-		return this.settings.filterSets.find(f => f.id === this.currentFilterSetId) ?? null;
+		return this.getVisibleFilterSets().find(f => f.id === this.currentFilterSetId) ?? null;
 	}
 
 	private getCurrentFilterSetTitle(): string {
@@ -233,7 +234,7 @@ export class FilterView extends ItemView {
 		this.currentFilterSetId =
 			this.resolvePreferredFilterSetId(typeof state?.filterSetId === 'string' ? state.filterSetId : null)
 			?? this.resolvePreferredFilterSetId(this.settings.leftRailDefaultFilterViewId)
-			?? this.settings.filterSets[0]?.id
+			?? this.getVisibleFilterSets()[0]?.id
 			?? null;
 		if (this.currentFilterSetId !== previousFilterSetId) {
 			this.searchQuery = '';
@@ -249,7 +250,8 @@ export class FilterView extends ItemView {
 		container.addClass('operon-filter-view');
 
 		// Empty state — no filter sets defined
-		if (this.settings.filterSets.length === 0) {
+		const visibleFilterSets = this.getVisibleFilterSets();
+		if (visibleFilterSets.length === 0) {
 			this.closeTransientSurfaceUi(container);
 			this.lastRenderSignature = 'empty';
 			this.searchQuery = '';
@@ -264,12 +266,12 @@ export class FilterView extends ItemView {
 		}
 
 		// Validate currentFilterSetId
-		if (!this.settings.filterSets.find(f => f.id === this.currentFilterSetId)) {
+		if (!visibleFilterSets.find(f => f.id === this.currentFilterSetId)) {
 			this.restoreCurrentFilterSetId();
 		}
 
 		// Find current filter set and evaluate
-		const currentFs = this.settings.filterSets.find(f => f.id === this.currentFilterSetId);
+		const currentFs = this.getVisibleFilterSets().find(f => f.id === this.currentFilterSetId);
 		if (!currentFs) return;
 		this.pruneOptimisticTaskPatches();
 
@@ -368,16 +370,22 @@ export class FilterView extends ItemView {
 		const list = this.listEl;
 		if (!list) return;
 
-		if (currentFs.groupBy) {
-			// Grouped rendering
-			const baseGrouped = evaluateFilterSetGrouped(currentFs, this.indexer.getAllTasks(), this.getPriorities(), this.pinnedCache);
-			const searchActive = isFilterSearchActive(this.searchQuery);
-			const baseRootTasks = baseGrouped.groups.flatMap(group => group.tasks);
-			const treeScopeTasks = this.getCachedTreeScope(baseRootTasks);
-			this.syncSearchPlaceholder(treeScopeTasks.length);
+			if (currentFs.groupBy) {
+				// Grouped rendering
+				const allTasks = this.indexer.getAllTasks();
+				const baseGrouped = evaluateFilterSetGrouped(currentFs, allTasks, this.getPriorities(), this.pinnedCache);
+				const searchActive = isFilterSearchActive(this.searchQuery);
+				const baseRootTasks = filterTasksOnly(currentFs, allTasks, this.getPriorities(), this.pinnedCache);
+				const treeScopeTasks = this.getCachedTreeScope(baseRootTasks);
+				this.syncSearchPlaceholder(treeScopeTasks.length);
 
 			if (searchActive) {
-				const tasks = applyFilterSearch(treeScopeTasks, this.searchQuery);
+				const tasks = sortFilterTasks(
+					currentFs,
+					applyFilterSearch(treeScopeTasks, this.searchQuery),
+					this.getPriorities(),
+					this.pinnedCache,
+				);
 				if (tasks.length === 0) {
 					list.createDiv({ cls: 'operon-filter-empty', text: t('filters', 'noMatches') });
 					this.lastRenderSignature = renderSignature;
@@ -464,7 +472,14 @@ export class FilterView extends ItemView {
 			const baseTasks = evaluateFilterSet(currentFs, this.indexer.getAllTasks(), this.getPriorities(), this.pinnedCache);
 			const searchActive = isFilterSearchActive(this.searchQuery);
 			const treeScopeTasks = this.getCachedTreeScope(baseTasks);
-			const tasks = searchActive ? applyFilterSearch(treeScopeTasks, this.searchQuery) : baseTasks;
+			const tasks = searchActive
+				? sortFilterTasks(
+					currentFs,
+					applyFilterSearch(treeScopeTasks, this.searchQuery),
+					this.getPriorities(),
+					this.pinnedCache,
+				)
+				: baseTasks;
 			this.syncSearchPlaceholder(treeScopeTasks.length);
 
 			if (tasks.length === 0) {
@@ -505,7 +520,7 @@ export class FilterView extends ItemView {
 
 	private resolvePreferredFilterSetId(filterSetId: string | null | undefined): string | null {
 		if (!filterSetId) return null;
-		return this.settings.filterSets.some(filterSet => filterSet.id === filterSetId)
+		return this.getVisibleFilterSets().some(filterSet => filterSet.id === filterSetId)
 			? filterSetId
 			: null;
 	}
@@ -514,8 +529,12 @@ export class FilterView extends ItemView {
 		this.currentFilterSetId =
 			this.resolvePreferredFilterSetId(this.getLeafFilterSetId())
 			?? this.resolvePreferredFilterSetId(this.settings.leftRailDefaultFilterViewId)
-			?? this.settings.filterSets[0]?.id
+			?? this.getVisibleFilterSets()[0]?.id
 			?? null;
+	}
+
+	private getVisibleFilterSets(): FilterSet[] {
+		return getNormalFilterSets(this.settings.filterSets);
 	}
 
 	private ensureLayout(container: HTMLElement): void {
@@ -721,7 +740,7 @@ export class FilterView extends ItemView {
 		if (!this.filterPickerButtonEl || !this.filterPickerMenuEl) return;
 		const optionsSignature = [
 			this.currentFilterSetId ?? '',
-			this.settings.filterSets.map(fs => `${fs.id}:${fs.name}:${fs.icon ?? ''}`).join('|'),
+			this.getVisibleFilterSets().map(fs => `${fs.id}:${fs.name}:${fs.icon ?? ''}`).join('|'),
 		].join('::');
 		const selected = this.getCurrentFilterSet();
 		this.filterPickerButtonEl.empty();
@@ -736,7 +755,7 @@ export class FilterView extends ItemView {
 
 		if (optionsSignature === this.lastSelectOptionsSignature) return;
 		this.filterPickerMenuEl.empty();
-		for (const fs of this.settings.filterSets) {
+		for (const fs of this.getVisibleFilterSets()) {
 			const option = this.filterPickerMenuEl.createEl('button', {
 				cls: `operon-filter-picker-option${fs.id === this.currentFilterSetId ? ' is-selected' : ''}`,
 				attr: { type: 'button', role: 'option', 'aria-selected': fs.id === this.currentFilterSetId ? 'true' : 'false' },
@@ -785,7 +804,7 @@ export class FilterView extends ItemView {
 			compactSettingsSignature,
 			overlaySettingsSignature,
 			keyMappingSignature,
-			this.settings.filterSets.map(fs => `${fs.id}:${fs.name}:${fs.icon ?? ''}`).join('|'),
+			this.getVisibleFilterSets().map(fs => `${fs.id}:${fs.name}:${fs.icon ?? ''}`).join('|'),
 		].join('|');
 	}
 

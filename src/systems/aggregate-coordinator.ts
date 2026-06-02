@@ -360,6 +360,15 @@ export class AggregateCoordinator {
 					payload[key] = nextValue;
 				}
 			}
+		} else if (mode === 'full' && this.hasStoredTaskStats(parentTask)) {
+			if ((parentTask.fieldValues['progress'] ?? '') !== '') {
+				payload['progress'] = '';
+			}
+			for (const key of TASK_STATS_CANONICAL_KEYS) {
+				if ((parentTask.fieldValues[key] ?? '') !== '') {
+					payload[key] = '';
+				}
+			}
 		}
 
 		const currentDuration = parentTask.fieldValues['totalDuration'] ?? '';
@@ -375,6 +384,10 @@ export class AggregateCoordinator {
 		}
 
 		return { payload, summary };
+	}
+
+	private hasStoredTaskStats(task: IndexedTask): boolean {
+		return TASK_STATS_CANONICAL_KEYS.some(key => (task.fieldValues[key] ?? '').trim() !== '');
 	}
 
 	private calculateAggregateSummary(

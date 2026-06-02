@@ -49,12 +49,15 @@ import {
 	sanitizeExcludedFoldersForFileTasksFolder,
 } from '../core/settings-folder-rules';
 
-export const CURRENT_SETTINGS_VERSION = 84;
-export const CURRENT_TASK_STATS_BACKFILL_VERSION = 1;
+export const CURRENT_SETTINGS_VERSION = 88;
+export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 
 export type FallbackTaskIconSource = 'pipelineStatusIcon' | 'priorityIcon' | 'stateIcon';
 export type PinnedTasksDesktopSurface = 'floating' | 'sidebar';
 export type PinnedTasksSidebarSide = 'left' | 'right';
+export type DynamicFileTaskFilterPlacement = 'body-top' | 'body-bottom';
+export const DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS = [0, 5, 10, 15, 20, 25, 30, 40, 50] as const;
+export type DynamicFileTaskFilterSubtaskAutoExpandLimit = typeof DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS[number];
 export interface MobileGlobalTaskFabPosition {
 	xRatio: number;
 	yRatio: number;
@@ -189,6 +192,11 @@ export interface FilterSortSpec {
 	field: string;
 	order: 'asc' | 'desc';
 }
+
+export const DYNAMIC_FILE_TASK_FILTER_DEFAULT_SORTS: FilterSortSpec[] = [
+	{ field: 'checkbox', order: 'asc' },
+	{ field: 'priority', order: 'asc' },
+];
 
 /** A named, user-defined filter set */
 export interface FilterSet {
@@ -796,6 +804,14 @@ export interface OperonSettings {
 	filterShowSubtasks: boolean;
 	/** Global presentation: when showing subtasks, hide non-open ones under each parent. */
 	filterShowOnlyOpenSubtasks: boolean;
+	/** Automatically show the reserved dynamic filter inside YAML file task notes. */
+	dynamicFileTaskFilterEnabled: boolean;
+	/** Where the dynamic file task filter appears in the note body. */
+	dynamicFileTaskFilterPlacement: DynamicFileTaskFilterPlacement;
+	/** Dynamic filter presentation: auto-expand the visible subtask tree at or below this limit. */
+	dynamicFileTaskFilterSubtaskAutoExpandLimit: DynamicFileTaskFilterSubtaskAutoExpandLimit;
+	/** Dynamic filter presentation: hide non-open subtasks under each parent. */
+	dynamicFileTaskFilterShowOnlyOpenSubtasks: boolean;
 
 	/** UI language override. 'auto' = detect from Obsidian locale. */
 	language: 'auto' | 'en' | 'tr';
@@ -843,6 +859,8 @@ export interface OperonSettings {
 	estimateAutoReallocation: boolean;
 	/** Ordered, user-customizable visual controls for the New Operon Task toolbar. */
 	taskCreatorToolbar: TaskCreatorToolbarItem[];
+	/** If true, the Task Editor file body source panel shows source line numbers. */
+	taskEditorShowLineNumbers: boolean;
 	/** Ordered, user-customizable picker rows shown in the Task Editor workflow area. */
 	taskEditorWorkflowPickers: TaskEditorWorkflowPickerItem[];
 	/** Ordered, phone-only core action icons shown in the Task Editor compact toolbar. */
@@ -1080,7 +1098,6 @@ export function normalizeCalendarSidebarDefaultExpansionState(
 export const DEFAULT_INLINE_TASK_TARGET_FILE = 'Operon/Tasks/Operon Inbox.md';
 export const DEFAULT_INLINE_TASK_HEADING_KEYWORD = 'New Todo';
 export const DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD = 'Backlog';
-
 export function normalizeInlineTaskHeadingKeyword(raw: string): string {
 	return normalizeMarkdownHeadingKeyword(raw, DEFAULT_INLINE_TASK_HEADING_KEYWORD);
 }
@@ -1206,6 +1223,10 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 
 	filterShowSubtasks: true,
 	filterShowOnlyOpenSubtasks: false,
+	dynamicFileTaskFilterEnabled: true,
+	dynamicFileTaskFilterPlacement: 'body-top',
+	dynamicFileTaskFilterSubtaskAutoExpandLimit: 10,
+	dynamicFileTaskFilterShowOnlyOpenSubtasks: false,
 
 	language: 'auto',
 	timeFormat: '24h',
@@ -1232,6 +1253,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	autoParentLinkedFileSubtasks: true,
 	estimateAutoReallocation: false,
 	taskCreatorToolbar: buildDefaultTaskCreatorToolbarItems(),
+	taskEditorShowLineNumbers: true,
 	taskEditorWorkflowPickers: buildDefaultTaskEditorWorkflowPickerItems(),
 	taskEditorMobileCoreTools: buildDefaultTaskEditorMobileCoreToolItems(),
 	inlineTaskCompactChips: buildDefaultInlineTaskCompactChipItems(),
@@ -2359,6 +2381,10 @@ function normalizeFilterSorts(raw: unknown): FilterSortSpec[] | null {
 		.filter((sort): sort is FilterSortSpec => !!sort);
 }
 
+function cloneFilterSorts(sorts: readonly FilterSortSpec[]): FilterSortSpec[] {
+	return sorts.map(sort => ({ ...sort }));
+}
+
 /**
  * Clamp a number to its constraint range.
  */
@@ -2437,6 +2463,18 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (!['24h', '12h'].includes(out.timeFormat)) {
 		out.timeFormat = DEFAULT_SETTINGS.timeFormat;
 	}
+	if (!['body-top', 'body-bottom'].includes(out.dynamicFileTaskFilterPlacement)) {
+		out.dynamicFileTaskFilterPlacement = DEFAULT_SETTINGS.dynamicFileTaskFilterPlacement;
+	}
+	out.dynamicFileTaskFilterSubtaskAutoExpandLimit = typeof src.dynamicFileTaskFilterSubtaskAutoExpandLimit === 'number'
+		? normalizeAllowedNumber(
+			Math.round(src.dynamicFileTaskFilterSubtaskAutoExpandLimit),
+			DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS,
+			DEFAULT_SETTINGS.dynamicFileTaskFilterSubtaskAutoExpandLimit,
+		) as DynamicFileTaskFilterSubtaskAutoExpandLimit
+		: src.dynamicFileTaskFilterShowSubtasks === false
+			? 0
+			: DEFAULT_SETTINGS.dynamicFileTaskFilterSubtaskAutoExpandLimit;
 	if (!['tracktime', 'flowtime'].includes(out.flowTimeMode)) {
 		out.flowTimeMode = DEFAULT_SETTINGS.flowTimeMode;
 	}
@@ -2569,6 +2607,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? normalizeInlineTaskParentFileHeadingKeyword(src.inlineTaskParentFileHeadingKeyword)
 		: DEFAULT_SETTINGS.inlineTaskParentFileHeadingKeyword;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
+	out.taskEditorShowLineNumbers = typeof src.taskEditorShowLineNumbers === 'boolean'
+		? src.taskEditorShowLineNumbers
+		: DEFAULT_SETTINGS.taskEditorShowLineNumbers;
 	out.taskEditorWorkflowPickers = normalizeTaskEditorWorkflowPickers(
 		src.taskEditorWorkflowPickers,
 		'taskEditorWorkflowPickers' in src || Object.keys(src).length === 0
@@ -2744,13 +2785,27 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.filterSets = out.filterSets
 		.map(filterSet => normalizeFilterSet(filterSet))
 		.filter((filterSet): filterSet is FilterSet => !!filterSet);
-
+	if (sourceSettingsVersion < 88) {
+		out.filterSets = out.filterSets.map(filterSet => {
+			if (filterSet.id !== 'fs_dynamic_file_task' || filterSet.sorts.length > 0) return filterSet;
+			const sorts = cloneFilterSorts(DYNAMIC_FILE_TASK_FILTER_DEFAULT_SORTS);
+			return normalizeFilterSet({
+				...filterSet,
+				sorts,
+				sortBy: sorts[0]?.field,
+				sortOrder: sorts[0]?.order,
+			}) ?? filterSet;
+		});
+	}
 	if (
 		Array.isArray(src.filterSets)
 		&& out.leftRailDefaultFilterViewId
 		&& !out.filterSets.some(filterSet => filterSet.id === out.leftRailDefaultFilterViewId)
 	) {
 		out.leftRailDefaultFilterViewId = out.filterSets[0]?.id ?? null;
+	}
+	if (out.leftRailDefaultFilterViewId === 'fs_dynamic_file_task') {
+		out.leftRailDefaultFilterViewId = out.filterSets.find(filterSet => filterSet.id !== 'fs_dynamic_file_task')?.id ?? null;
 	}
 
 	if (!Array.isArray(src.pipelines) || src.pipelines.length === 0) {

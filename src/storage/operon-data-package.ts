@@ -53,6 +53,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'contextualMenuSurfaceActionMatrix',
 	'contextualMenuOpenDelayMs',
 	'taskCreatorToolbar',
+	'taskEditorShowLineNumbers',
 	'taskEditorWorkflowPickers',
 	'inlineExpandedTaskChips',
 	'inlineTaskCompactChips',
@@ -273,6 +274,7 @@ export function buildOperonDataPackageFromSettings(
 			taskUiPreferences: {
 				version: 1,
 				taskCreatorToolbar: cloneUnknown(normalized.taskCreatorToolbar),
+				taskEditorShowLineNumbers: normalized.taskEditorShowLineNumbers,
 				taskEditorWorkflowPickers: cloneUnknown(normalized.taskEditorWorkflowPickers),
 				inlineExpandedTaskChips: cloneUnknown(normalized.inlineExpandedTaskChips),
 				inlineTaskCompactChips: cloneUnknown(normalized.inlineTaskCompactChips),
