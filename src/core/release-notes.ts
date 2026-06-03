@@ -150,14 +150,9 @@ export function getReleaseNotesForUpdate(lastShownVersion: string, currentVersio
 	const normalizedLastShown = lastShownVersion.trim();
 	if (normalizedLastShown === currentVersion) return [];
 
-	const candidates = normalizedLastShown
-		? OPERON_RELEASE_NOTES.filter(note =>
-			compareVersions(note.version, normalizedLastShown) > 0
-			&& compareVersions(note.version, currentVersion) <= 0
-			&& note.showOnUpdate !== false)
-		: OPERON_RELEASE_NOTES.filter(note =>
-			compareVersions(note.version, currentVersion) <= 0
-			&& note.showOnUpdate !== false);
+	const candidates = OPERON_RELEASE_NOTES.filter(note =>
+		compareVersions(note.version, currentVersion) <= 0
+		&& note.showOnUpdate !== false);
 
 	return candidates.slice(0, RELEASE_NOTE_LIMIT);
 }

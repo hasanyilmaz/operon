@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed the update release notes popup showing only the newest unseen release; it now shows the latest five releases, matching the Settings release notes view.
+
 ### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 815/815 Phase 5 regression checks.
 
 ## [1.1.5] - 2026-06-03
 
