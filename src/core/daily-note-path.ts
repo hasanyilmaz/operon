@@ -45,6 +45,29 @@ export function resolveDailyNotePathFromDateKey(dateKey: string, config: DailyNo
 	return folder ? `${folder}/${fileName}` : fileName;
 }
 
+export function resolveDailyNoteDateKeyFromPath(filePath: string | null | undefined, config: DailyNotePathConfig): string | null {
+	const normalizedPath = normalizeDailyNoteFormattedPath(filePath ?? '');
+	if (!normalizedPath || !/\.md$/iu.test(normalizedPath)) return null;
+
+	const pathWithoutExtension = normalizedPath.slice(0, -3);
+	const folder = normalizeDailyNotesFolder(config.folder);
+	const formattedPath = folder
+		? pathWithoutExtension.startsWith(`${folder}/`)
+			? pathWithoutExtension.slice(folder.length + 1)
+			: null
+		: pathWithoutExtension;
+	if (!formattedPath) return null;
+
+	const format = normalizeDailyNoteFormat(config.format);
+	const parseMomentDate = moment as unknown as MomentParser;
+	const parsedDate = parseMomentDate(formattedPath, format, true);
+	if (!parsedDate.isValid()) return null;
+
+	const dateKey = parsedDate.format(DEFAULT_DAILY_NOTE_FORMAT);
+	const expectedPath = resolveDailyNotePathFromDateKey(dateKey, config);
+	return dailyNotePathsMatch(normalizedPath, expectedPath) ? dateKey : null;
+}
+
 export function dailyNotePathsMatch(left: string | null | undefined, right: string | null | undefined): boolean {
 	const normalizedLeft = normalizeDailyNoteFormattedPath(left ?? '');
 	const normalizedRight = normalizeDailyNoteFormattedPath(right ?? '');

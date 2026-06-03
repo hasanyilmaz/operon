@@ -41,6 +41,7 @@ import { OperonStorage } from '../storage/operon-storage';
 import type { OperonLegacyStorageCleanupStatus } from '../storage/operon-storage';
 import { PinnedCache } from '../storage/pinned-cache';
 import { t } from '../core/i18n';
+import { getReleaseNotesForManualView } from '../core/release-notes';
 import { asHTMLElement } from '../core/dom-compat';
 import { getAppLocale, isDailyNotesCoreAvailable } from '../core/obsidian-app';
 import { resolveEffectiveInlineTaskSaveMode } from '../core/inline-task-save-mode';
@@ -51,6 +52,7 @@ import { KanbanPresetQuickSettingsModal } from './kanban/kanban-preset-quick-set
 import { OperonIndexer } from '../indexer/indexer';
 import { ConfirmActionModal } from './confirm-action-modal';
 import { FileTaskMigrationProgressModal } from './file-task-migration-progress-modal';
+import { OperonReleaseNotesModal } from './release-notes-modal';
 import { CalendarFilterPickerModal } from './calendar/calendar-filter-picker-modal';
 import { showTimePicker } from './field-pickers/time-picker';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
@@ -469,6 +471,7 @@ const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
 export class OperonSettingsTab extends PluginSettingTab {
 	private settings: OperonSettings;
 	private storage: OperonStorage;
+	private pluginVersion: string;
 	private onSettingsChanged: () => void;
 	private onDockRefreshLayout: () => void;
 	private hasPendingSettingsChange = false;
@@ -533,6 +536,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		Reflect.set(this, 'icon', 'factory');
 		this.settings = settings;
 		this.storage = storage;
+		this.pluginVersion = plugin.manifest.version;
 		this.onSettingsChanged = onSettingsChanged;
 		this.onDockRefreshLayout = onDockRefreshLayout ?? (() => { });
 		this.indexer = indexer ?? null;
@@ -611,7 +615,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const secondaryTabs = this.getSecondarySettingsTabs();
 		const entriesByTab = this.getSettingsSearchEntriesByTab();
 
-		return this.getPrimarySettingsTabs().map(primaryTab => {
+		const groupedSettings: SettingDefinitionItem[] = this.getPrimarySettingsTabs().map(primaryTab => {
 			const childTabs = secondaryTabs.filter(tab => tab.groupId === primaryTab.id);
 			return {
 				type: 'group',
@@ -619,6 +623,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 				items: childTabs.map(tab => this.buildSettingsSearchTabPage(tab, entriesByTab.get(tab.id) ?? [])),
 			};
 		});
+
+		return [
+			this.buildReleaseNotesOverviewDefinition(),
+			...groupedSettings,
+		];
 	}
 
 	getControlValue(key: string): unknown {
@@ -679,6 +688,27 @@ export class OperonSettingsTab extends PluginSettingTab {
 			name: pageName,
 			desc,
 			items: this.buildSettingsSearchTabItems(entries),
+		};
+	}
+
+	private buildReleaseNotesOverviewDefinition(): SettingDefinition {
+		return {
+			name: t('settings', 'releaseNotesCardTitle', { version: this.pluginVersion }),
+			desc: t('settings', 'releaseNotesCardDesc'),
+			searchable: false,
+			render: setting => {
+				setting.settingEl.addClass('operon-release-notes-overview-setting');
+				setting
+					.setName(t('settings', 'releaseNotesCardTitle', { version: this.pluginVersion }))
+					.setDesc(t('settings', 'releaseNotesCardDesc'))
+					.addButton(button => {
+						button
+							.setButtonText(t('settings', 'releaseNotesViewRecent'))
+							.onClick(() => {
+								new OperonReleaseNotesModal(this.app, getReleaseNotesForManualView()).open();
+							});
+					});
+			},
 		};
 	}
 
@@ -1577,9 +1607,47 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderCoreGeneralTab(containerEl: HTMLElement): void {
+		if (this.isDeclarativeSettingsRendererActive) {
+			this.renderReleaseNotesUpdateToggle(containerEl);
+		} else {
+			this.renderReleaseNotesSettingsCard(containerEl, { includeToggle: true });
+		}
 		this.renderGeneralBasicsTab(containerEl);
 		this.renderGeneralSystemTab(containerEl);
 		this.renderStorageCleanupSection(containerEl);
+	}
+
+	private renderReleaseNotesSettingsCard(containerEl: HTMLElement, options: { includeToggle: boolean }): void {
+		const cardEl = containerEl.createDiv('operon-release-notes-settings-card');
+		const headerEl = cardEl.createDiv('operon-release-notes-settings-card-header');
+		const textEl = headerEl.createDiv('operon-release-notes-settings-card-text');
+		textEl.createDiv({
+			text: t('settings', 'releaseNotesCardTitle', { version: this.pluginVersion }),
+			cls: 'operon-release-notes-settings-card-title',
+		});
+		textEl.createDiv({
+			text: t('settings', 'releaseNotesCardDesc'),
+			cls: 'operon-release-notes-settings-card-desc',
+		});
+		headerEl.createEl('button', {
+			text: t('settings', 'releaseNotesViewRecent'),
+			cls: 'operon-release-notes-settings-card-button',
+			attr: { type: 'button' },
+		}).addEventListener('click', () => {
+			new OperonReleaseNotesModal(this.app, getReleaseNotesForManualView()).open();
+		});
+
+		if (!options.includeToggle) return;
+		this.renderReleaseNotesUpdateToggle(cardEl);
+	}
+
+	private renderReleaseNotesUpdateToggle(containerEl: HTMLElement): void {
+		this.renderBoundToggleSetting(
+			containerEl,
+			t('settings', 'releaseNotesShowOnUpdate'),
+			t('settings', 'releaseNotesShowOnUpdateDesc'),
+			'releaseNotesShowOnUpdate',
+		);
 	}
 
 	private renderGeneralBasicsTab(containerEl: HTMLElement): void {
@@ -2091,6 +2159,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 		this.decorateActivationSetting(parentFileHeadingSetting, parentFileHeadingActive);
+
+		const dailyNoteDefaultsSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'dailyNoteInlineTaskDefaults'));
+		this.renderBoundToggleSetting(dailyNoteDefaultsSection, t('settings', 'inlineTaskDailyNoteAddStartDate'), t('settings', 'inlineTaskDailyNoteAddStartDateDesc'), 'inlineTaskDailyNoteAddStartDate');
+		this.renderBoundToggleSetting(dailyNoteDefaultsSection, t('settings', 'inlineTaskDailyNoteAddScheduledDate'), t('settings', 'inlineTaskDailyNoteAddScheduledDateDesc'), 'inlineTaskDailyNoteAddScheduledDate');
 
 		const conversionSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'checkboxConversion'));
 		this.renderBoundToggleSetting(conversionSection, t('settings', 'showTasksEmojiConvertIcon'), t('settings', 'showTasksEmojiConvertIconDesc'), 'inlineTaskShowTasksEmojiConvertIcon');

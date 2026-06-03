@@ -49,7 +49,7 @@ import {
 	sanitizeExcludedFoldersForFileTasksFolder,
 } from '../core/settings-folder-rules';
 
-export const CURRENT_SETTINGS_VERSION = 88;
+export const CURRENT_SETTINGS_VERSION = 89;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 
 export type FallbackTaskIconSource = 'pipelineStatusIcon' | 'priorityIcon' | 'stateIcon';
@@ -817,6 +817,8 @@ export interface OperonSettings {
 	language: 'auto' | 'en' | 'tr';
 	timeFormat: '24h' | '12h';
 	demoWorkspacePromptDismissed: boolean;
+	releaseNotesShowOnUpdate: boolean;
+	releaseNotesLastShownVersion: string;
 
 	// Task creation
 	taskCreateDebounceMs: number;
@@ -851,6 +853,10 @@ export interface OperonSettings {
 	inlineTaskParentFileTargetMode: InlineTaskParentFileTargetMode;
 	/** Keyword used to find or create a heading inside a file parent for new inline tasks. */
 	inlineTaskParentFileHeadingKeyword: string;
+	/** If true, new inline Operon tasks in Daily Notes auto-get dateStarted from the note date when blank. */
+	inlineTaskDailyNoteAddStartDate: boolean;
+	/** If true, new inline Operon tasks in Daily Notes auto-get dateScheduled from the note date when blank. */
+	inlineTaskDailyNoteAddScheduledDate: boolean;
 	/** If true, inline tasks created inside a file task file auto-get parentTask set to that file task. */
 	autoParentFileTask: boolean;
 	/** If true, linked file tasks created inside a file task file auto-get parentTask set to that file task. */
@@ -1231,6 +1237,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	language: 'auto',
 	timeFormat: '24h',
 	demoWorkspacePromptDismissed: false,
+	releaseNotesShowOnUpdate: true,
+	releaseNotesLastShownVersion: '',
 
 	taskCreateDebounceMs: 750,
 	taskDescriptionRequired: true,
@@ -1249,6 +1257,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	inlineTaskParentInlineTargetMode: 'below-parent',
 	inlineTaskParentFileTargetMode: 'inside-parent-file',
 	inlineTaskParentFileHeadingKeyword: DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD,
+	inlineTaskDailyNoteAddStartDate: false,
+	inlineTaskDailyNoteAddScheduledDate: false,
 	autoParentFileTask: true,
 	autoParentLinkedFileSubtasks: true,
 	estimateAutoReallocation: false,
@@ -2463,6 +2473,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (!['24h', '12h'].includes(out.timeFormat)) {
 		out.timeFormat = DEFAULT_SETTINGS.timeFormat;
 	}
+	out.releaseNotesLastShownVersion = out.releaseNotesLastShownVersion.trim();
 	if (!['body-top', 'body-bottom'].includes(out.dynamicFileTaskFilterPlacement)) {
 		out.dynamicFileTaskFilterPlacement = DEFAULT_SETTINGS.dynamicFileTaskFilterPlacement;
 	}
@@ -2606,6 +2617,12 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.inlineTaskParentFileHeadingKeyword = typeof src.inlineTaskParentFileHeadingKeyword === 'string'
 		? normalizeInlineTaskParentFileHeadingKeyword(src.inlineTaskParentFileHeadingKeyword)
 		: DEFAULT_SETTINGS.inlineTaskParentFileHeadingKeyword;
+	out.inlineTaskDailyNoteAddStartDate = typeof src.inlineTaskDailyNoteAddStartDate === 'boolean'
+		? src.inlineTaskDailyNoteAddStartDate
+		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddStartDate;
+	out.inlineTaskDailyNoteAddScheduledDate = typeof src.inlineTaskDailyNoteAddScheduledDate === 'boolean'
+		? src.inlineTaskDailyNoteAddScheduledDate
+		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddScheduledDate;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
 	out.taskEditorShowLineNumbers = typeof src.taskEditorShowLineNumbers === 'boolean'
 		? src.taskEditorShowLineNumbers

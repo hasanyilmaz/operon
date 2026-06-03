@@ -101,7 +101,11 @@ import { operonLivePreviewTaskWikilinkOverlayExtension } from './src/ui/live-pre
 import { operonLivePreviewKeySuggestExtension } from './src/ui/live-preview-key-suggest';
 import { debugTaskFieldSuggestion } from './src/ui/task-field-suggest';
 import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
-import { resolveReadingInlineTaskFromText } from './src/ui/reading-task-operon-id';
+import {
+	resolveReadingInlineTaskFromText,
+	resolveReadingSectionInlineTasks,
+	type ReadingSectionInlineTaskResolution,
+} from './src/ui/reading-task-operon-id';
 import { enhanceReadingTaskFileWikilinks } from './src/ui/reading-task-wikilink-overlay';
 import { MobileGlobalTaskFab } from './src/ui/mobile-global-task-fab';
 import { OPERON_COMPACT_CHIP_HOVER_SOURCE } from './src/ui/compact-chip-link-preview';
@@ -156,6 +160,7 @@ import {
 	renderDynamicFileTaskFilterSurface,
 } from './src/ui/dynamic-file-task-filter';
 import { FilterSetModal, refreshFilterPreviewModals, refreshFilterSetModals } from './src/ui/filter-set-modal';
+import { OperonReleaseNotesModal } from './src/ui/release-notes-modal';
 import { OperonSettingsTab } from './src/ui/settings-tab';
 import { TimeSessionHistoryView, TIME_SESSION_HISTORY_VIEW_TYPE } from './src/ui/time-session-history-view';
 import { FlowTimeView, FLOW_TIME_VIEW_TYPE } from './src/ui/flow-time-view';
@@ -182,11 +187,13 @@ import { generateOperonId, generateRepeatSeriesId, setExistingIdsProvider } from
 import { resolveFileTaskDefaults } from './src/core/file-task-defaults';
 import { resolveOperonIdPlaceholders, resolveOperonIdPlaceholdersInTaskBlock } from './src/core/operon-id-placeholders';
 import { getNormalFilterSets, isDynamicFileTaskFilterSet, normalizeDynamicFileTaskFilterSet } from './src/core/dynamic-file-task-filter';
+import { getReleaseNotesForUpdate } from './src/core/release-notes';
 import { isOperonExcludedPath } from './src/core/operon-path-exclusions';
 import { normalizeRepeatIdentityPayload } from './src/core/repeat-identity';
 import { shouldAutoUnpinTerminalTask } from './src/core/pinned-task-rules';
 import { OPERON_DEMO_AGGREGATE_PARENT_IDS, createOrRepairBasicsWorkspace, hasBasicsWorkspaceArtifact } from './src/core/demo-project';
 import { DEFAULT_DAILY_NOTE_FORMAT, resolveDailyNotePathFromDateKey } from './src/core/daily-note-path';
+import { buildDailyNoteInlineTaskDefaultWritePlans } from './src/core/daily-note-inline-task-defaults';
 import { resolveDailyNoteParentRealignmentTargetDate } from './src/core/daily-note-parent-realignment';
 import {
 	calculateRepeatEndFromCount,
@@ -730,6 +737,21 @@ export default class OperonPlugin extends Plugin {
 					await this.markDemoWorkspacePromptDismissed();
 				}
 			});
+		}).open();
+	}
+
+	private maybeShowReleaseNotesOnUpdate(): void {
+		if (!this.settings.releaseNotesShowOnUpdate) return;
+		const currentVersion = this.manifest.version;
+		const releaseNotes = getReleaseNotesForUpdate(this.settings.releaseNotesLastShownVersion, currentVersion);
+		if (releaseNotes.length === 0) return;
+
+		new OperonReleaseNotesModal(this.app, releaseNotes, {
+			onClose: async () => {
+				if (this.settings.releaseNotesLastShownVersion === currentVersion) return;
+				this.settings.releaseNotesLastShownVersion = currentVersion;
+				await this.storage.saveSettings();
+			},
 		}).open();
 	}
 
@@ -1433,7 +1455,6 @@ export default class OperonPlugin extends Plugin {
 			}
 
 					await this.recurrenceService.reconcileStoredSeries();
-					await this.prunePinnedCacheToIndexedTasks();
 					await this.dependencyManager.reconcileAdditiveInverseLinks();
 
 					// Mark startup complete — one authoritative render + resumeFromIndex
@@ -1442,6 +1463,12 @@ export default class OperonPlugin extends Plugin {
 				this.refreshViews();
 				this.syncDuplicateConflictUi(true);
 				await this.maybeShowDemoWorkspacePrompt();
+				setWindowTimeout(() => {
+					runAsyncAction('release notes update popup failed', () => {
+						this.maybeShowReleaseNotesOnUpdate();
+						return Promise.resolve();
+					});
+				}, 750);
 			});
 			});
 		}
@@ -4855,44 +4882,60 @@ export default class OperonPlugin extends Plugin {
 					requestSubtask: (operonId: string) => {
 						void this.requestSubtaskForParentId(operonId);
 					},
-			};
-			const listItems = el.querySelectorAll<HTMLElement>('li.task-list-item');
-			const sectionTasks = new Map<string, Array<IndexedTask | null>>();
-			const sectionCursors = new Map<string, number>();
+				};
+				const listItems = el.querySelectorAll<HTMLElement>('li.task-list-item');
+				const sectionTaskResolutions = new Map<string, ReadingSectionInlineTaskResolution>();
+				const sectionCursors = new Map<string, number>();
 
-			for (const li of Array.from(listItems)) {
-				if (this.isRenderedCodeElement(li)) continue;
+				for (const li of Array.from(listItems)) {
+					if (this.isRenderedCodeElement(li)) continue;
 
-				const sectionInfo = ctx.getSectionInfo(li);
-				if (sectionInfo && this.isFencedMarkdownSection(sectionInfo)) continue;
+					const sectionInfo = ctx.getSectionInfo(li);
+					if (sectionInfo && this.isFencedMarkdownSection(sectionInfo)) continue;
 
-				const directIndexed = resolveReadingInlineTaskFromText(
-					li.textContent ?? '',
-					ctx.sourcePath,
-					operonId => this.indexer.getTask(operonId),
-					this.settings.keyMappings,
-				);
+					let indexed: IndexedTask | null = null;
+					let resolvedBy: 'source-line' | 'rendered-id' | 'section-cursor' | null = null;
+					let sectionIndexed: IndexedTask | null = null;
+					let sourceLineMatchedTask = false;
+					if (sectionInfo) {
+						const sectionKey = `${sectionInfo.lineStart}:${sectionInfo.lineEnd}`;
+						let sectionResolution = sectionTaskResolutions.get(sectionKey);
+						if (!sectionResolution) {
+							sectionResolution = this.resolveReadingViewSectionTasks(sectionInfo, ctx.sourcePath);
+							sectionTaskResolutions.set(sectionKey, sectionResolution);
+							sectionCursors.set(sectionKey, 0);
+						}
 
-				let sectionIndexed: IndexedTask | null = null;
-				if (sectionInfo) {
-					const sectionKey = `${sectionInfo.lineStart}:${sectionInfo.lineEnd}`;
-					let tasksInSection = sectionTasks.get(sectionKey);
-					if (!tasksInSection) {
-						tasksInSection = this.resolveReadingViewSectionTasks(sectionInfo, ctx.sourcePath);
-						sectionTasks.set(sectionKey, tasksInSection);
-						sectionCursors.set(sectionKey, 0);
+						const cursor = sectionCursors.get(sectionKey) ?? 0;
+						sectionIndexed = sectionResolution.orderedTasks[cursor] ?? null;
+						sectionCursors.set(sectionKey, cursor + 1);
+
+						const sourceLine = this.getReadingListItemSourceLine(li, sectionInfo);
+						if (sourceLine !== null && sectionResolution.lineTasks.has(sourceLine)) {
+							sourceLineMatchedTask = true;
+							indexed = sectionResolution.lineTasks.get(sourceLine) ?? null;
+							resolvedBy = indexed ? 'source-line' : null;
+						}
 					}
 
-					const cursor = sectionCursors.get(sectionKey) ?? 0;
-					sectionIndexed = tasksInSection[cursor] ?? null;
-					sectionCursors.set(sectionKey, cursor + 1);
-				}
+					if (!indexed && !sourceLineMatchedTask) {
+						indexed = resolveReadingInlineTaskFromText(
+							this.getReadingListItemOwnText(li),
+							ctx.sourcePath,
+							operonId => this.indexer.getTask(operonId),
+							this.settings.keyMappings,
+						);
+						if (indexed) resolvedBy = 'rendered-id';
+					}
 
-				const indexed = directIndexed ?? sectionIndexed;
-				if (!indexed) continue;
-				if (!directIndexed && !this.readingListItemMatchesTask(li, indexed)) continue;
+					if (!indexed && !sourceLineMatchedTask) {
+						indexed = sectionIndexed;
+						if (indexed) resolvedBy = 'section-cursor';
+					}
+					if (!indexed) continue;
+					if (resolvedBy === 'section-cursor' && !this.readingListItemMatchesTask(li, indexed)) continue;
 
-				const callbacks = {
+					const callbacks = {
 					app: this.app,
 					getPipelines: () => this.settings.pipelines,
 					getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
@@ -5700,7 +5743,6 @@ export default class OperonPlugin extends Plugin {
 				const sideEffects: Array<Promise<unknown>> = [
 					this.timeTracker.resumeFromIndex(),
 					this.recurrenceService.reconcileStoredSeries(),
-					this.prunePinnedCacheToIndexedTasks(),
 					this.dependencyManager.reconcileAdditiveInverseLinks(),
 				];
 			if (this.settings.pinnedDockAutoUnpinFinished) {
@@ -5727,6 +5769,7 @@ export default class OperonPlugin extends Plugin {
 
 	private async handleIndexedTasksChanged(changes: IndexedTaskDelta[]): Promise<void> {
 		this.showRawTaskCreationNotices(changes);
+		await this.applyDailyNoteInlineTaskDefaultsForNewTasks(changes);
 
 		const aggregateChanges = changes.filter(change => this.shouldRefreshAggregateForIndexedChange(change));
 		if (aggregateChanges.length > 0) {
@@ -5743,8 +5786,39 @@ export default class OperonPlugin extends Plugin {
 			this.scheduleIndexSideEffects();
 		}
 
+		const autoUnpinResults = await Promise.allSettled(
+			changes.map(change => this.tryAutoUnpinTerminalTaskIfNeeded(change.after)),
+		);
+		for (const result of autoUnpinResults) {
+			if (result.status === 'rejected') {
+				console.warn('Operon: failed to auto-unpin changed task', result.reason);
+			}
+		}
+
 		for (const change of changes) {
 			this.fileTaskArchiver?.scheduleForIndexedChange(change.before, change.after);
+		}
+	}
+
+	private async applyDailyNoteInlineTaskDefaultsForNewTasks(changes: IndexedTaskDelta[]): Promise<void> {
+		if (!this.settings.inlineTaskDailyNoteAddStartDate && !this.settings.inlineTaskDailyNoteAddScheduledDate) return;
+
+		const dailyNotesConfig = await this.loadDailyNotesPluginConfig();
+		const plans = buildDailyNoteInlineTaskDefaultWritePlans({
+			changes,
+			dailyNotesConfig,
+			settings: this.settings,
+			now: localNow(),
+		});
+		if (plans.length === 0) return;
+
+		const results = await Promise.allSettled(
+			plans.map(plan => this.writer.writeTaskFields(plan.operonId, plan.payload)),
+		);
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				console.warn('Operon: failed to apply Daily Note inline task defaults', result.reason);
+			}
 		}
 	}
 
@@ -5834,10 +5908,6 @@ export default class OperonPlugin extends Plugin {
 		const tasks: Array<Promise<unknown>> = [
 			this.refreshAggregateStateAfterTaskRemoval(removedTasks),
 		];
-		const removedIds = removedTasks.map(task => task.operonId);
-		if (this.pinnedCache && removedIds.length > 0) {
-			tasks.push(this.pinnedCache.removePinnedIds(removedIds));
-		}
 		const results = await Promise.allSettled(tasks);
 		for (const result of results) {
 			if (result.status === 'rejected') {
@@ -6241,14 +6311,6 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
-
-
-	/** Remove pinned ids that no longer exist in the index. */
-	private async prunePinnedCacheToIndexedTasks(): Promise<void> {
-		if (!this.pinnedCache) return;
-		await this.pinnedCache.retainPinnedIds(this.indexer.getAllOperonIds());
-	}
-
 	/**
 	 * Unpin tasks that have reached a terminal state.
 	 * Called after every index update when pinnedDockAutoUnpinFinished is enabled.
@@ -6266,6 +6328,18 @@ export default class OperonPlugin extends Plugin {
 			nextPinnedIds.delete(task.operonId);
 		}
 		await this.pinnedCache.replacePinnedIds(nextPinnedIds);
+	}
+
+	private async tryAutoUnpinTerminalTaskIfNeeded(task: IndexedTask | null | undefined): Promise<void> {
+		if (!task) return;
+		if (!this.settings.pinnedDockAutoUnpinFinished) return;
+		if (!this.pinnedCache?.isPinned(task.operonId)) return;
+		if (!shouldAutoUnpinTerminalTask(task, this.settings.pipelines)) return;
+		try {
+			await this.pinnedCache.unpin(task.operonId);
+		} catch (error) {
+			console.warn('Operon: failed to auto-unpin terminal task', error);
+		}
 	}
 
 	private createStatusCyclePerfTrace(task: IndexedTask, startedAt: number): StatusCyclePerfTrace | null {
@@ -10145,6 +10219,7 @@ export default class OperonPlugin extends Plugin {
 			await this.refreshAggregateTotalsAfterTaskMutation(
 				task,
 				this.resolveAfterTaskForRecurrenceMaterialization(afterTask ?? null, recurrenceResult),
+				{ autoUnpinCandidate: afterTask ?? null },
 			);
 			this.refreshViews();
 			return true;
@@ -10200,6 +10275,7 @@ export default class OperonPlugin extends Plugin {
 		await this.refreshAggregateTotalsAfterTaskMutation(
 			task,
 			this.resolveAfterTaskForRecurrenceMaterialization(afterTask ?? null, recurrenceResult),
+			{ autoUnpinCandidate: afterTask ?? null },
 		);
 		this.refreshViews();
 		return true;
@@ -10208,10 +10284,16 @@ export default class OperonPlugin extends Plugin {
 	private async refreshAggregateTotalsAfterTaskMutation(
 		beforeTask: IndexedTask | null,
 		afterTask: IndexedTask | null,
-		options: { modifiedTimestamp?: string; indexPerfContext?: IndexPerfContext; precommittedAggregateIds?: Set<string> } = {},
+		options: {
+			modifiedTimestamp?: string;
+			indexPerfContext?: IndexPerfContext;
+			precommittedAggregateIds?: Set<string>;
+			autoUnpinCandidate?: IndexedTask | null;
+		} = {},
 	): Promise<void> {
 		await this.aggregateCoordinator.refreshAfterTaskMutation(beforeTask, afterTask, options);
 		this.fileTaskArchiver?.scheduleForIndexedChange(beforeTask, afterTask);
+		await this.tryAutoUnpinTerminalTaskIfNeeded(options.autoUnpinCandidate ?? afterTask);
 	}
 
 	private async refreshAggregateStateAfterTaskRemoval(removedTasks: IndexedTask[]): Promise<void> {
@@ -10576,6 +10658,7 @@ export default class OperonPlugin extends Plugin {
 				statusCycleReason,
 			),
 			precommittedAggregateIds,
+			autoUnpinCandidate: freshTask,
 		});
 		this.logStatusCyclePerfStage(options.statusCycleTrace, 'aggregate', aggregateStartedAt);
 
@@ -11089,37 +11172,17 @@ export default class OperonPlugin extends Plugin {
 	private resolveReadingViewSectionTasks(
 		sectionInfo: MarkdownSectionInformation,
 		sourcePath: string,
-	): Array<IndexedTask | null> {
-		const tasks: Array<IndexedTask | null> = [];
-		let sawTaskLine = false;
-		let inFencedCodeBlock = false;
+	): ReadingSectionInlineTaskResolution {
+		const resolved = resolveReadingSectionInlineTasks(
+			sectionInfo.text,
+			sectionInfo.lineStart,
+			sourcePath,
+			operonId => this.indexer.getTask(operonId),
+			this.settings.keyMappings,
+		);
 
-		for (const [offset, lineText] of sectionInfo.text.split('\n').entries()) {
-			if (this.isMarkdownFenceLine(lineText)) {
-				inFencedCodeBlock = !inFencedCodeBlock;
-				continue;
-			}
-			if (inFencedCodeBlock) continue;
-
-			const parsed = this.parseInlineTaskLine(lineText, sectionInfo.lineStart + offset, sourcePath);
-			if (!parsed) continue;
-
-			sawTaskLine = true;
-			if (!parsed.operonId) {
-				tasks.push(null);
-				continue;
-			}
-
-			const indexed = this.indexer.getTask(parsed.operonId);
-			if (!indexed || indexed.primary.filePath !== sourcePath || indexed.primary.format !== 'inline') {
-				tasks.push(null);
-				continue;
-			}
-			tasks.push(indexed);
-		}
-
-		if (sawTaskLine) {
-			return tasks;
+		if (resolved.sawTaskLine) {
+			return resolved;
 		}
 
 		const candidates = this.indexer.getAllTasks().filter(task =>
@@ -11129,14 +11192,72 @@ export default class OperonPlugin extends Plugin {
 			&& task.primary.lineNumber <= sectionInfo.lineEnd
 		).sort((a, b) => a.primary.lineNumber - b.primary.lineNumber);
 
-		return candidates;
+		return {
+			lineTasks: new Map(candidates.map(task => [task.primary.lineNumber, task])),
+			orderedTasks: candidates,
+			sawTaskLine: false,
+		};
 	}
 
 	private readingListItemMatchesTask(li: HTMLElement, task: IndexedTask): boolean {
-		const visibleText = (li.textContent ?? '').replace(/\s+/g, ' ').trim();
+		const visibleText = this.getReadingListItemOwnText(li);
 		const description = task.description.replace(/\s+/g, ' ').trim();
 		if (!description) return false;
 		return visibleText.includes(description);
+	}
+
+	private getReadingListItemSourceLine(
+		li: HTMLElement,
+		sectionInfo: MarkdownSectionInformation,
+	): number | null {
+		for (const candidate of this.getReadingListItemLineCandidates(li)) {
+			const lineNumber = this.readReadingDataLine(candidate);
+			if (lineNumber === null) continue;
+			if (lineNumber < sectionInfo.lineStart || lineNumber > sectionInfo.lineEnd) continue;
+			return lineNumber;
+		}
+		return null;
+	}
+
+	private getReadingListItemLineCandidates(li: HTMLElement): HTMLElement[] {
+		const candidates: HTMLElement[] = [li];
+		for (const child of Array.from(li.children)) {
+			const element = asHTMLElement(child);
+			if (!element || element.tagName === 'UL' || element.tagName === 'OL') continue;
+			if (element.hasAttribute('data-line')) candidates.push(element);
+			for (const descendant of Array.from(element.querySelectorAll<HTMLElement>('[data-line]'))) {
+				if (descendant.closest('li.task-list-item') !== li) continue;
+				candidates.push(descendant);
+			}
+		}
+		return candidates;
+	}
+
+	private readReadingDataLine(element: HTMLElement): number | null {
+		const raw = element.getAttribute('data-line')?.trim();
+		if (!raw || !/^\d+$/u.test(raw)) return null;
+		const lineNumber = Number(raw);
+		return Number.isSafeInteger(lineNumber) ? lineNumber : null;
+	}
+
+	private getReadingListItemOwnText(li: HTMLElement): string {
+		const parts: string[] = [];
+		const collect = (node: Node): void => {
+			if (node.nodeType === 3) {
+				parts.push(node.textContent ?? '');
+				return;
+			}
+			const element = asHTMLElement(node);
+			if (element && (element.tagName === 'UL' || element.tagName === 'OL')) return;
+			for (const child of Array.from(node.childNodes)) {
+				collect(child);
+			}
+		};
+
+		for (const child of Array.from(li.childNodes)) {
+			collect(child);
+		}
+		return parts.join(' ').replace(/\s+/g, ' ').trim();
 	}
 
 	private isRenderedCodeElement(el: HTMLElement): boolean {

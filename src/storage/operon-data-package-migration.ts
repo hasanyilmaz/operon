@@ -1,5 +1,7 @@
 import {
 	OPERON_DATA_PACKAGE_SCHEMA_VERSION,
+	createEmptyPinnedTasksPackage,
+	mergePinnedTasksPackages,
 	type OperonDataPackageSettings,
 	type OperonDataPackageV1,
 	type OperonExternalCalendarSourcesPackageV1,
@@ -137,6 +139,8 @@ const DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'inlineTaskParentInlineTargetMode',
 	'inlineTaskParentFileTargetMode',
 	'inlineTaskParentFileHeadingKeyword',
+	'inlineTaskDailyNoteAddStartDate',
+	'inlineTaskDailyNoteAddScheduledDate',
 	'calendarInlineTaskHeading',
 	'autoParentFileTask',
 	'autoParentLinkedFileSubtasks',
@@ -194,6 +198,8 @@ const TASK_CREATION_PROFILE_KEYS = [
 	'inlineTaskParentInlineTargetMode',
 	'inlineTaskParentFileTargetMode',
 	'inlineTaskParentFileHeadingKeyword',
+	'inlineTaskDailyNoteAddStartDate',
+	'inlineTaskDailyNoteAddScheduledDate',
 	'calendarInlineTaskHeading',
 	'autoParentFileTask',
 	'autoParentLinkedFileSubtasks',
@@ -333,6 +339,9 @@ export function buildOperonDataPackageFromLegacySnapshot(
 				),
 			),
 		},
+		state: {
+			pinnedTasks: createEmptyPinnedTasksPackage(),
+		},
 	};
 
 	return { dataPackage, diagnostics };
@@ -350,6 +359,16 @@ export function mergeOperonDataPackage(
 		ui: cloneExistingDomain(existing?.ui, legacy.ui, isUiDomain),
 		automation: cloneExistingDomain(existing?.automation, legacy.automation, isAutomationDomain),
 		integrations: cloneExistingDomain(existing?.integrations, legacy.integrations, isIntegrationsDomain),
+		state: buildStatePackage(existing?.state, legacy.state),
+	};
+}
+
+function buildStatePackage(
+	existing: Partial<OperonDataPackageV1['state']> | null | undefined,
+	legacy: OperonDataPackageV1['state'],
+): OperonDataPackageV1['state'] {
+	return {
+		pinnedTasks: mergePinnedTasksPackages(existing?.pinnedTasks, legacy.pinnedTasks),
 	};
 }
 

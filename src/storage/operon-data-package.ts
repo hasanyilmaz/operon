@@ -17,7 +17,9 @@ import {
 } from '../types/settings';
 import { CANONICAL_KEYS } from '../types/keys';
 
-export const OPERON_DATA_PACKAGE_SCHEMA_VERSION = 1;
+export const OPERON_DATA_PACKAGE_SCHEMA_VERSION = 2;
+export const OPERON_PINNED_TASKS_PACKAGE_VERSION = 1;
+export const OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const CANONICAL_KEY_ORDER = new Map(CANONICAL_KEYS.map((key, index) => [key.name, index]));
 
 export type VersionedStoreSlice<T> = T & {
@@ -86,6 +88,8 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'inlineTaskParentInlineTargetMode',
 	'inlineTaskParentFileTargetMode',
 	'inlineTaskParentFileHeadingKeyword',
+	'inlineTaskDailyNoteAddStartDate',
+	'inlineTaskDailyNoteAddScheduledDate',
 	'calendarInlineTaskHeading',
 	'autoParentFileTask',
 	'autoParentLinkedFileSubtasks',
@@ -132,6 +136,16 @@ export interface OperonExternalCalendarSourcesPackageV1 {
 	sources: ExternalCalendarSource[];
 }
 
+export interface OperonPinnedTaskPackageEntry {
+	pinned: boolean;
+	updatedAt: string;
+}
+
+export interface OperonPinnedTasksPackageV1 {
+	version: number;
+	itemsById: Record<string, OperonPinnedTaskPackageEntry>;
+}
+
 export interface OperonTaxonomyPackageV1 {
 	keyMappings: OperonKeyMappingsPackageV1;
 	priorities: VersionedStoreSlice<PriorityStoreSettings>;
@@ -159,6 +173,10 @@ export interface OperonIntegrationsPackageV1 {
 	externalCalendarSources: OperonExternalCalendarSourcesPackageV1;
 }
 
+export interface OperonStatePackageV1 {
+	pinnedTasks: OperonPinnedTasksPackageV1;
+}
+
 export interface OperonDataPackageV1 {
 	schemaVersion: typeof OPERON_DATA_PACKAGE_SCHEMA_VERSION;
 	settings: OperonDataPackageSettings;
@@ -167,11 +185,13 @@ export interface OperonDataPackageV1 {
 	ui: OperonUiPackageV1;
 	automation: OperonAutomationPackageV1;
 	integrations: OperonIntegrationsPackageV1;
+	state: OperonStatePackageV1;
 }
 
 export interface BuildOperonDataPackageOptions {
 	filterSets?: FilterSet[];
 	kanbanOrderBoards?: Record<string, KanbanManualOrderBoard>;
+	pinnedTasks?: OperonPinnedTasksPackageV1;
 }
 
 export function composeOperonSettingsFromDataPackage(
@@ -310,6 +330,8 @@ export function buildOperonDataPackageFromSettings(
 				inlineTaskParentInlineTargetMode: normalized.inlineTaskParentInlineTargetMode,
 				inlineTaskParentFileTargetMode: normalized.inlineTaskParentFileTargetMode,
 				inlineTaskParentFileHeadingKeyword: normalized.inlineTaskParentFileHeadingKeyword,
+				inlineTaskDailyNoteAddStartDate: normalized.inlineTaskDailyNoteAddStartDate,
+				inlineTaskDailyNoteAddScheduledDate: normalized.inlineTaskDailyNoteAddScheduledDate,
 				calendarInlineTaskHeading: normalized.calendarInlineTaskHeading,
 				autoParentFileTask: normalized.autoParentFileTask,
 				autoParentLinkedFileSubtasks: normalized.autoParentLinkedFileSubtasks,
@@ -340,7 +362,130 @@ export function buildOperonDataPackageFromSettings(
 				sources: cloneUnknown(normalized.externalCalendars),
 			},
 		},
+		state: {
+			pinnedTasks: normalizePinnedTasksPackage(options.pinnedTasks),
+		},
 	};
+}
+
+export function createEmptyPinnedTasksPackage(): OperonPinnedTasksPackageV1 {
+	return {
+		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
+		itemsById: {},
+	};
+}
+
+export function createPinnedTasksPackageFromIds(
+	operonIds: Iterable<string>,
+	updatedAt: string,
+): OperonPinnedTasksPackageV1 {
+	const itemsById: Record<string, OperonPinnedTaskPackageEntry> = {};
+	for (const rawId of operonIds) {
+		const operonId = rawId.trim();
+		if (!operonId) continue;
+		itemsById[operonId] = { pinned: true, updatedAt };
+	}
+	return {
+		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
+		itemsById: sortPinnedTaskEntries(itemsById),
+	};
+}
+
+export function hasPinnedTasksPackage(value: unknown): boolean {
+	return isRecord(value)
+		&& isRecord(value.state)
+		&& isRecord(value.state.pinnedTasks);
+}
+
+export function normalizePinnedTasksPackage(value: unknown): OperonPinnedTasksPackageV1 {
+	if (!isRecord(value) || !isRecord(value.itemsById)) {
+		return createEmptyPinnedTasksPackage();
+	}
+	const itemsById: Record<string, OperonPinnedTaskPackageEntry> = {};
+	for (const [rawId, rawEntry] of Object.entries(value.itemsById)) {
+		const operonId = rawId.trim();
+		if (!operonId || !isRecord(rawEntry) || typeof rawEntry.pinned !== 'boolean') continue;
+		itemsById[operonId] = {
+			pinned: rawEntry.pinned,
+			updatedAt: typeof rawEntry.updatedAt === 'string' ? rawEntry.updatedAt : '',
+		};
+	}
+	return {
+		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
+		itemsById: sortPinnedTaskEntries(itemsById),
+	};
+}
+
+export function mergePinnedTasksPackages(
+	primary: unknown,
+	fallback: unknown,
+): OperonPinnedTasksPackageV1 {
+	const primaryPackage = normalizePinnedTasksPackage(primary);
+	const fallbackPackage = normalizePinnedTasksPackage(fallback);
+	const itemsById: Record<string, OperonPinnedTaskPackageEntry> = {
+		...fallbackPackage.itemsById,
+	};
+	for (const [operonId, primaryEntry] of Object.entries(primaryPackage.itemsById)) {
+		const fallbackEntry = itemsById[operonId];
+		itemsById[operonId] = pickNewerPinnedTaskEntry(primaryEntry, fallbackEntry);
+	}
+	return {
+		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
+		itemsById: sortPinnedTaskEntries(itemsById),
+	};
+}
+
+export function prunePinnedTaskTombstones(
+	value: unknown,
+	nowIso: string,
+	retentionMs: number,
+): OperonPinnedTasksPackageV1 {
+	const data = normalizePinnedTasksPackage(value);
+	const cutoffMs = Date.parse(nowIso) - retentionMs;
+	const itemsById: Record<string, OperonPinnedTaskPackageEntry> = {};
+	for (const [operonId, entry] of Object.entries(data.itemsById)) {
+		if (!entry.pinned) {
+			const entryMs = parsePinnedTaskTimestamp(entry.updatedAt);
+			if (entryMs <= cutoffMs) continue;
+		}
+		itemsById[operonId] = entry;
+	}
+	return {
+		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
+		itemsById: sortPinnedTaskEntries(itemsById),
+	};
+}
+
+function pickNewerPinnedTaskEntry(
+	primary: OperonPinnedTaskPackageEntry,
+	fallback: OperonPinnedTaskPackageEntry | undefined,
+): OperonPinnedTaskPackageEntry {
+	if (!fallback) return { ...primary };
+	const primaryMs = parsePinnedTaskTimestamp(primary.updatedAt);
+	const fallbackMs = parsePinnedTaskTimestamp(fallback.updatedAt);
+	if (primaryMs > fallbackMs) return { ...primary };
+	if (fallbackMs > primaryMs) return { ...fallback };
+	if (primary.pinned && !fallback.pinned) return { ...primary };
+	if (fallback.pinned && !primary.pinned) return { ...fallback };
+	return { ...primary };
+}
+
+function parsePinnedTaskTimestamp(value: string): number {
+	const parsed = Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+}
+
+function sortPinnedTaskEntries(
+	itemsById: Record<string, OperonPinnedTaskPackageEntry>,
+): Record<string, OperonPinnedTaskPackageEntry> {
+	const sorted: Record<string, OperonPinnedTaskPackageEntry> = {};
+	for (const operonId of Object.keys(itemsById).sort((left, right) => left.localeCompare(right))) {
+		sorted[operonId] = {
+			pinned: itemsById[operonId].pinned,
+			updatedAt: itemsById[operonId].updatedAt,
+		};
+	}
+	return sorted;
 }
 
 function buildSettingsPackage(settings: OperonSettings): OperonDataPackageSettings {

@@ -13,6 +13,322 @@
 }
 
 /* ========================================
+   Release Notes
+   ======================================== */
+
+.operon-release-notes-settings-card {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin: 0 0 18px;
+	padding: 18px 20px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+}
+
+.operon-release-notes-settings-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.operon-release-notes-settings-card-text {
+	min-width: 0;
+}
+
+.operon-release-notes-settings-card-title {
+	margin: 0 0 4px;
+	color: var(--text-normal);
+	font-size: var(--font-ui-large);
+	font-weight: 700;
+	line-height: 1.3;
+	overflow-wrap: anywhere;
+}
+
+.operon-release-notes-settings-card-desc {
+	color: var(--text-muted);
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.operon-release-notes-settings-card-button {
+	flex: 0 0 auto;
+	min-height: 36px;
+	padding: 6px 14px;
+	border-radius: 8px;
+	font-weight: 700;
+}
+
+.operon-release-notes-settings-card > .setting-item {
+	padding: 12px 0 0;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.operon-release-notes-modal {
+	width: min(648px, calc(100vw - 32px));
+	max-width: min(648px, calc(100vw - 32px));
+}
+
+.operon-release-notes-modal .modal-content {
+	display: flex;
+	flex-direction: column;
+	max-height: min(74vh, 828px);
+	overflow: hidden;
+}
+
+.operon-release-notes-modal .modal-title {
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.25;
+	color: var(--text-normal);
+}
+
+.operon-release-notes-scroll {
+	min-height: 0;
+	overflow: auto;
+	padding: 6px 6px 0 0;
+}
+
+.operon-release-note {
+	padding: 0 0 24px;
+}
+
+.operon-release-note + .operon-release-note {
+	margin-top: 4px;
+}
+
+.operon-release-note-header {
+	margin: 0 0 16px;
+	padding: 10px 13px 11px;
+	border: 1px solid var(--background-modifier-border);
+	border-left: 3px solid var(--interactive-accent);
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--background-secondary) 92%, var(--interactive-accent) 8%);
+}
+
+.operon-release-note-version {
+	margin: 4px 0 0;
+	padding: 0;
+	color: var(--text-muted);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.3;
+	text-transform: none;
+	font-variant: normal;
+}
+
+.operon-release-note-banner,
+.operon-release-note-youtube-link {
+	position: relative;
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	margin: 0 0 18px;
+	overflow: hidden;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+}
+
+.operon-release-note-banner-image,
+.operon-release-note-youtube-image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.operon-release-note-youtube-link {
+	text-decoration: none;
+	color: var(--text-normal);
+}
+
+.operon-release-note-youtube-link:hover .operon-release-note-youtube-play,
+.operon-release-note-youtube-link:focus-visible .operon-release-note-youtube-play {
+	background: #ff0000;
+	transform: translate(-50%, -50%) scale(1.04);
+}
+
+.operon-release-note-youtube-placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	color: var(--text-muted);
+	font-weight: 700;
+}
+
+.operon-release-note-youtube-play {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 76px;
+	height: 54px;
+	border-radius: 14px;
+	background: color-mix(in srgb, #ff0000 88%, black 12%);
+	box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+	transform: translate(-50%, -50%);
+	transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.operon-release-note-youtube-play::before {
+	content: "";
+	display: block;
+	width: 0;
+	height: 0;
+	margin-left: 4px;
+	border-top: 13px solid transparent;
+	border-bottom: 13px solid transparent;
+	border-left: 21px solid white;
+}
+
+.operon-release-note-title {
+	margin: 0;
+	color: var(--text-normal);
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.25;
+	text-transform: none;
+	font-variant: normal;
+}
+
+.operon-release-note-paragraph {
+	margin: 0 0 16px;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	font-weight: 400;
+	line-height: 1.55;
+}
+
+.operon-release-note-heading {
+	margin: 18px 0 8px;
+	color: var(--color-blue, var(--interactive-accent));
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.operon-release-note-heading-new {
+	color: var(--color-red, #dc2626);
+}
+
+.operon-release-note-heading-improved {
+	color: var(--color-orange, #d97706);
+}
+
+.operon-release-note-heading-changed {
+	color: var(--color-blue, var(--interactive-accent));
+}
+
+.operon-release-note-heading-fixed {
+	color: var(--color-purple, #7c3aed);
+}
+
+.operon-release-note-heading-removed {
+	color: var(--text-normal);
+}
+
+.operon-release-note-heading-security {
+	color: var(--color-cyan, #0891b2);
+}
+
+.operon-release-note-list {
+	margin: 0 0 14px 1.25em;
+	padding: 0;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	font-weight: 400;
+	line-height: 1.5;
+}
+
+.operon-release-note-list li {
+	margin: 0 0 8px;
+	padding-left: 2px;
+}
+
+.operon-release-note-list strong,
+.operon-release-note-paragraph strong {
+	font-weight: 800;
+}
+
+.operon-release-note-highlight {
+	padding: 0 3px;
+	border-radius: 4px;
+	background: color-mix(in srgb, var(--color-yellow, #f4d35e) 52%, transparent);
+	font-weight: 800;
+}
+
+.operon-release-note code {
+	padding: 1px 5px;
+	border-radius: 5px;
+	background: var(--background-modifier-hover);
+	font-size: 0.92em;
+}
+
+.operon-release-note a {
+	color: var(--text-accent);
+	text-decoration: none;
+}
+
+.operon-release-note a:hover,
+.operon-release-note a:focus-visible {
+	text-decoration: underline;
+}
+
+.operon-release-notes-divider {
+	flex: 0 0 auto;
+	height: 1px;
+	margin: 0 0 14px;
+	background: var(--background-modifier-border);
+}
+
+.operon-release-notes-footer {
+	display: flex;
+	flex: 0 0 auto;
+	justify-content: center;
+	gap: 10px;
+	padding: 0 0 2px;
+}
+
+.operon-release-notes-thanks {
+	min-width: 110px;
+	min-height: 38px;
+	border-radius: 8px;
+	font-weight: 800;
+}
+
+@media (max-width: 640px) {
+	.operon-release-notes-settings-card-header {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.operon-release-notes-settings-card-button {
+		width: 100%;
+	}
+
+	.operon-release-notes-modal {
+		width: calc(100vw - 20px);
+		max-width: calc(100vw - 20px);
+	}
+
+	.operon-release-notes-modal .modal-title {
+		font-size: 20px;
+	}
+
+	.operon-release-note-version {
+		font-size: 12px;
+	}
+}
+
+/* ========================================
    Key Mapping Settings
    ======================================== */
 

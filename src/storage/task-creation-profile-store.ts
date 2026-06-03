@@ -21,6 +21,8 @@ export type TaskCreationProfileStoreSettings = Pick<
 	| 'inlineTaskParentInlineTargetMode'
 	| 'inlineTaskParentFileTargetMode'
 	| 'inlineTaskParentFileHeadingKeyword'
+	| 'inlineTaskDailyNoteAddStartDate'
+	| 'inlineTaskDailyNoteAddScheduledDate'
 	| 'calendarInlineTaskHeading'
 	| 'autoParentFileTask'
 	| 'autoParentLinkedFileSubtasks'
@@ -118,6 +120,14 @@ function readStoreData(
 		),
 		inlineTaskParentFileHeadingKeyword: normalizeInlineTaskParentFileHeadingKeyword(
 			readString(raw.inlineTaskParentFileHeadingKeyword, fallback.inlineTaskParentFileHeadingKeyword),
+		),
+		inlineTaskDailyNoteAddStartDate: readBoolean(
+			raw.inlineTaskDailyNoteAddStartDate,
+			fallback.inlineTaskDailyNoteAddStartDate,
+		),
+		inlineTaskDailyNoteAddScheduledDate: readBoolean(
+			raw.inlineTaskDailyNoteAddScheduledDate,
+			fallback.inlineTaskDailyNoteAddScheduledDate,
 		),
 		calendarInlineTaskHeading: readString(raw.calendarInlineTaskHeading, fallback.calendarInlineTaskHeading),
 		autoParentFileTask: readBoolean(raw.autoParentFileTask, fallback.autoParentFileTask),

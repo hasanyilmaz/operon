@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.1.5] - 2026-06-03
+
+This release makes Daily Note task capture smoother, gives Operon a built-in place to revisit recent updates, and makes pinned task state more reliable across old and new storage paths.
+
+### New
+- Added a release notes entry at the top of Operon Settings with a “See what's new” button and a recent-updates window, so users can review the latest Operon improvements, fixes, banners, and videos at any time.
+- Added Daily Note defaults for new Operon inline tasks, letting users automatically fill Start Date and/or Scheduled Date from the note date while preserving explicit task dates.
+
+### Improved
+- Improved pinned task syncing by storing pin state in Operon's canonical plugin data package with legacy fallback, conflict-aware merges, and automatic tombstone cleanup.
+
+### Fixed
+- Fixed pinned tasks not auto-unpinning immediately after completion in some Task Editor and status update flows.
+- Fixed pinned task migration so a malformed old state file no longer blocks importing valid legacy pinned cache data.
+- Fixed Reading View inline task rendering so task metadata resolves from source lines more reliably, preventing raw `{{...}}` fields from leaking on desktop preview in edge cases.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 814/814 Phase 5 regression checks.
+
 ## [1.1.4] - 2026-06-02
 
 ### New

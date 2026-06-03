@@ -28,6 +28,9 @@ import { enginePerfNow, WriteJsonMetrics } from '../core/engine-perf';
 import { writeTextSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import {
 	buildOperonDataPackageFromSettings,
+	mergePinnedTasksPackages,
+	OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
+	prunePinnedTaskTombstones,
 	type OperonDataPackageV1,
 } from './operon-data-package';
 import {
@@ -159,6 +162,8 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		inlineTaskParentInlineTargetMode: settings.inlineTaskParentInlineTargetMode,
 		inlineTaskParentFileTargetMode: settings.inlineTaskParentFileTargetMode,
 		inlineTaskParentFileHeadingKeyword: settings.inlineTaskParentFileHeadingKeyword,
+		inlineTaskDailyNoteAddStartDate: settings.inlineTaskDailyNoteAddStartDate,
+		inlineTaskDailyNoteAddScheduledDate: settings.inlineTaskDailyNoteAddScheduledDate,
 		calendarInlineTaskHeading: settings.calendarInlineTaskHeading,
 		autoParentFileTask: settings.autoParentFileTask,
 		autoParentLinkedFileSubtasks: settings.autoParentLinkedFileSubtasks,
@@ -228,6 +233,24 @@ export class OperonStorage {
 			this.storagePaths.state.pinnedTasksPath,
 			this.storagePaths.legacy.pinnedCachePath,
 		);
+		this.pinnedCache.setPackagePersistence({
+			getPackage: () => this.dataPackageStore.getDataPackage().state.pinnedTasks,
+			updatePackage: async (mutator) => {
+				let nextPinnedTasksPackage = this.pinnedCache.toPackage();
+				await this.dataPackageStore.updateDataPackage(dataPackage => {
+					nextPinnedTasksPackage = mutator(dataPackage.state.pinnedTasks);
+					return {
+						...dataPackage,
+						state: {
+							...dataPackage.state,
+							pinnedTasks: nextPinnedTasksPackage,
+						},
+					};
+				});
+				return nextPinnedTasksPackage;
+			},
+			canPersist: () => this.dataPackageStore.canPersist(),
+		});
 		this.repeatSeriesStore = new RepeatSeriesStore(
 			app,
 			this.writeQueue,
@@ -346,12 +369,12 @@ export class OperonStorage {
 		await this.ensureCanonicalFolders();
 		this.legacyStorageRetired = (await this.readStorageMigrationMarker())?.legacyStorageRetired === true;
 		this.applyLegacyFallbackPolicy();
-		const { dataPackage } = await this.dataPackageStore.initialize(DEFAULT_SETTINGS, {
+		const { dataPackage, loadedExistingPinnedTasksPackage } = await this.dataPackageStore.initialize(DEFAULT_SETTINGS, {
 			legacyFallbackEnabled: !this.legacyStorageRetired,
 		});
 		this.hydrateFromDataPackage(dataPackage);
+		await this.pinnedCache.load({ preferPackage: loadedExistingPinnedTasksPackage });
 		await this.saveSettings({ forceRecoveredWrite: false });
-		await this.pinnedCache.load();
 		await this.activeTrackerStore.load();
 		await this.repeatSeriesStore.load();
 		await this.externalCalendarCache.load();
@@ -398,9 +421,19 @@ export class OperonStorage {
 		this.applySettingsInPlace(normalized);
 		this.hydratePackageBackedSettingStores();
 		if (!this.dataPackageStore.canPersist()) return;
+		const currentPackage = this.dataPackageStore.getDataPackage();
+		const pinnedTasks = prunePinnedTaskTombstones(
+			mergePinnedTasksPackages(
+				currentPackage.state.pinnedTasks,
+				this.pinnedCache.toPackage(),
+			),
+			new Date().toISOString(),
+			OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
+		);
 		const dataPackage = buildOperonDataPackageFromSettings(this.settings, {
 			filterSets: this.filterStore.getAll(),
 			kanbanOrderBoards: this.kanbanOrderStore.toPackage().boards,
+			pinnedTasks,
 		});
 		await this.dataPackageStore.replaceDataPackage(dataPackage);
 	}
@@ -520,6 +553,9 @@ export class OperonStorage {
 			seedDynamicDefaultSorts: dataPackage.settings.settingsVersion < 88,
 		});
 		this.kanbanOrderStore.loadFromPackage(dataPackage.views.kanbanOrder);
+		this.pinnedCache.loadFromPackage(dataPackage.state.pinnedTasks, {
+			resetGeneration: !options.preserveSettingsIdentity,
+		});
 		const nextSettings = this.dataPackageStore.getSettings(DEFAULT_SETTINGS);
 		if (options.preserveSettingsIdentity) {
 			this.applySettingsInPlace(nextSettings);

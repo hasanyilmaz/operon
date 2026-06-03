@@ -274,7 +274,9 @@ export class TaskEditorContent {
 	private onApplyEstimateReallocation: ((request: TaskEditorEstimateReallocationRequest) => Promise<boolean>) | null = null;
 	private pinnedCache: PinnedCache | null = null;
 	private taskOperonId: string | null = null;
+	private pinnedCacheUnsubscribe: (() => void) | null = null;
 	private trackerUnsubscribe: (() => void) | null = null;
+	private refreshCorePinControl: (() => void) | null = null;
 	private bodyDropdowns: HTMLElement[] = [];
 	private refreshCoreTrackerControl: (() => void) | null = null;
 	private refreshTrackingSessionsSection: (() => void) | null = null;
@@ -1529,6 +1531,7 @@ export class TaskEditorContent {
 		container.addEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
 		this.schedulingDraftRefreshers.clear();
 		this.mobileCoreButtonRefreshers.clear();
+		this.refreshCorePinControl = null;
 		this.clearMobileCoreToolbarState();
 		this.clearInitialDescriptionFocusTimers();
 		window.removeEventListener('resize', this.mobileResizeHandler);
@@ -1550,6 +1553,10 @@ export class TaskEditorContent {
 				this.refreshTrackingSessionsSection?.();
 			}
 		});
+		this.pinnedCacheUnsubscribe?.();
+		this.pinnedCacheUnsubscribe = this.pinnedCache?.subscribe(() => {
+			this.refreshCorePinControl?.();
+		}) ?? null;
 
 		this.shellEl = container.createDiv('operon-task-editor-shell');
 		if (!Platform.isPhone && this.hasFileBodyContext()) {
@@ -1589,6 +1596,7 @@ export class TaskEditorContent {
 		await this.refreshFileBodyDraftFromSource();
 		this.syncTrackingFieldsFromIndex();
 		this.schedulingDraftRefreshers.clear();
+		this.refreshCorePinControl = null;
 		this.refreshCoreTrackerControl = null;
 		this.refreshEstimateReallocationControl = null;
 		this.refreshParentContextSection = null;
@@ -1634,11 +1642,14 @@ export class TaskEditorContent {
 	 */
 	destroy(options: { skipCloseSave?: boolean } = {}): void {
 		window.removeEventListener('resize', this.mobileResizeHandler);
+		this.pinnedCacheUnsubscribe?.();
+		this.pinnedCacheUnsubscribe = null;
 		this.trackerUnsubscribe?.();
 		this.trackerUnsubscribe = null;
 		this.unregisterFileBodyViewportListener();
 		this.schedulingDraftRefreshers.clear();
 		this.mobileCoreButtonRefreshers.clear();
+		this.refreshCorePinControl = null;
 		this.refreshCoreTrackerControl = null;
 		this.refreshEstimateReallocationControl = null;
 		this.refreshParentContextSection = null;
@@ -2555,6 +2566,7 @@ export class TaskEditorContent {
 			if (!this.pinnedCache || !this.taskOperonId) return;
 			void this.pinnedCache.toggle(this.taskOperonId).then(() => renderPin());
 		});
+		this.refreshCorePinControl = renderPin;
 		renderPin();
 
 		const subtaskLabel = t('buttons', resolveSubtaskActionLabelKeyForKind(this.subtaskActionKind));

@@ -1,6 +1,7 @@
 import type { DataAdapter } from 'obsidian';
 import {
 	buildOperonDataPackageFromSettings,
+	hasPinnedTasksPackage,
 	OPERON_DATA_PACKAGE_SCHEMA_VERSION,
 	type OperonDataPackageV1,
 	composeOperonSettingsFromDataPackage,
@@ -25,6 +26,7 @@ export interface OperonDataPackageStoreInitResult {
 	diagnostics: OperonDataPackageMigrationDiagnostics;
 	loadedExistingPackage: boolean;
 	legacyFallbackUsed: boolean;
+	loadedExistingPinnedTasksPackage: boolean;
 }
 
 export interface OperonDataPackageStoreInitOptions {
@@ -54,6 +56,7 @@ const DATA_PACKAGE_DOMAINS: readonly OperonDataPackageDomain[] = [
 	'ui',
 	'automation',
 	'integrations',
+	'state',
 ];
 
 export class OperonDataPackageStore {
@@ -90,6 +93,7 @@ export class OperonDataPackageStore {
 			diagnostics: legacyResult.diagnostics,
 			loadedExistingPackage: !!existingPackage,
 			legacyFallbackUsed: legacyFallbackEnabled && this.hasAnyLegacyData(snapshotExistsSummary(legacyResult.diagnostics)),
+			loadedExistingPinnedTasksPackage: hasPinnedTasksPackage(existingPackage),
 		};
 	}
 
@@ -123,7 +127,11 @@ export class OperonDataPackageStore {
 		const fallback = this.dataPackage ?? buildFallbackDataPackage(defaults);
 		const dataPackage = mergeOperonDataPackage(externalPackage, fallback);
 		const nextSignature = buildStableJsonSignature(dataPackage);
+		const externalSignature = buildStableJsonSignature(externalPackage);
 		if (nextSignature === this.dataPackageSignature) {
+			if (externalSignature !== this.dataPackageSignature && this.dataPackage) {
+				await this.save();
+			}
 			return {
 				dataPackage: this.cloneDataPackage(dataPackage),
 				changed: false,
@@ -131,8 +139,12 @@ export class OperonDataPackageStore {
 			};
 		}
 
+		const shouldPersistMergedPackage = externalSignature !== nextSignature;
 		this.writesSuspended = false;
 		this.setDataPackage(dataPackage);
+		if (shouldPersistMergedPackage) {
+			await this.save();
+		}
 		return {
 			dataPackage: this.cloneDataPackage(dataPackage),
 			changed: true,
@@ -141,13 +153,16 @@ export class OperonDataPackageStore {
 	}
 
 	async replaceDataPackage(dataPackage: OperonDataPackageV1): Promise<void> {
+		if (buildStableJsonSignature(dataPackage) === this.dataPackageSignature) return;
 		this.setDataPackage(dataPackage);
 		await this.save();
 	}
 
 	async updateDataPackage(mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1): Promise<void> {
 		const current = this.getDataPackage();
-		this.setDataPackage(mutator(current));
+		const next = mutator(current);
+		if (buildStableJsonSignature(next) === this.dataPackageSignature) return;
+		this.setDataPackage(next);
 		await this.save();
 	}
 
@@ -306,7 +321,10 @@ function isValidDataPackageDomain(domain: OperonDataPackageDomain, value: unknow
 	if (domain === 'automation') {
 		return isRecord(value.taskAutomationPolicy);
 	}
-	return isRecord(value.externalCalendarSources);
+	if (domain === 'integrations') {
+		return isRecord(value.externalCalendarSources);
+	}
+	return isRecord(value.pinnedTasks);
 }
 
 function buildFallbackDataPackage(defaults: OperonSettings): OperonDataPackageV1 {
