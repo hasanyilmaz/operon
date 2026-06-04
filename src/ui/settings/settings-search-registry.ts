@@ -80,7 +80,7 @@ function section(
 }
 
 export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry[] = [
-	e('settings', 'coreGeneral', 'language', 'settings', 'language', 'languageDesc', 'dropdown', ['locale', 'translation', 'language setting']),
+	e('settings', 'coreGeneral', 'language', 'settings', 'language', 'languageDesc', 'render', ['locale', 'translation', 'language setting']),
 	e('settings', 'coreGeneral', 'timeFormat', 'settings', 'timeFormat', 'timeFormatDesc', 'dropdown', ['clock', '12 hour', '24 hour', 'time display']),
 	e('settings', 'coreGeneral', 'releaseNotesShowOnUpdate', 'settings', 'releaseNotesShowOnUpdate', 'releaseNotesShowOnUpdateDesc', 'toggle', ['release notes', 'what is new', 'updates', 'changelog', 'popup']),
 	section('settings', 'coreGeneral', 'demoWorkspace', 'settings', 'demoWorkspace', 'demoWorkspaceDesc', ['demo', 'sample workspace', 'basics workspace', 'example tasks']),

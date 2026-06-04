@@ -34,9 +34,16 @@ function formatDatePickerCandidateDisplay(
 function formatIsoWeekday(isoDate: string, language: DatePickerLang): string {
 	const date = parseIsoDateAtLocalNoon(isoDate);
 	if (!date) return '';
-	return new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-US', {
+	return new Intl.DateTimeFormat(datePickerLocale(language), {
 		weekday: 'long',
 	}).format(date);
+}
+
+function datePickerLocale(language: DatePickerLang): string {
+	if (language === 'tr') return 'tr-TR';
+	if (language === 'de') return 'de-DE';
+	if (language === 'fr') return 'fr-FR';
+	return 'en-US';
 }
 
 function parseIsoDateAtLocalNoon(isoDate: string): Date | null {

@@ -1,5 +1,6 @@
 import { parseTaskLine, hasOperonFields } from './parser';
 import { buildCanonicalLocalDatetime, deriveDatetimeEnd } from './scheduling-rules';
+import { parseTasksRecurrenceToOperon } from './tasks-recurrence-to-operon';
 import { CheckboxState } from '../types/keys';
 
 export type TasksEmojiToOperonResult =
@@ -31,6 +32,12 @@ interface LeadingTimeBlock {
 	endTime: string | null;
 }
 
+interface PendingTasksMetadataFragment {
+	range: TextRange;
+	value: string;
+	kind: 'leftover' | 'recurrence';
+}
+
 const SUPPORTED_DATE_EMOJIS: Array<{ emoji: string; key: string }> = [
 	{ emoji: '📅', key: 'dateDue' },
 	{ emoji: '⏳', key: 'dateScheduled' },
@@ -48,11 +55,13 @@ const TASKS_PRIORITY_EMOJIS: Array<{ emoji: string; rank: number }> = [
 	{ emoji: '⏬', rank: 5 },
 ];
 const PRIORITY_EMOJIS = TASKS_PRIORITY_EMOJIS.map(entry => entry.emoji);
-const UNSUPPORTED_LONG_EMOJIS = ['🆔', '⛔', '🔁'];
+const TASKS_RECURRENCE_EMOJI = '🔁';
+const UNSUPPORTED_LONG_EMOJIS = ['🆔', '⛔'];
 const UNSUPPORTED_SHORT_EMOJIS = ['⏰'];
 const ALL_TASKS_METADATA_EMOJIS = [
 	...SUPPORTED_DATE_EMOJIS.map(entry => entry.emoji),
 	...PRIORITY_EMOJIS,
+	TASKS_RECURRENCE_EMOJI,
 	...UNSUPPORTED_LONG_EMOJIS,
 	...UNSUPPORTED_SHORT_EMOJIS,
 ];
@@ -257,6 +266,7 @@ export function convertTasksEmojiLineToOperon(line: string, options: TasksEmojiT
 	const protectedRanges = findMarkdownLinkRanges(body);
 	const rangesToRemove: TextRange[] = [];
 	const leftovers: string[] = [];
+	const pendingMetadataFragments: PendingTasksMetadataFragment[] = [];
 	const mappedFields: Record<string, string> = {};
 	const priorityLabels = normalizePriorityLabels(options);
 	let mappedPriorityEmoji = false;
@@ -291,7 +301,11 @@ export function convertTasksEmojiLineToOperon(line: string, options: TasksEmojiT
 				? normalizeCreatedDate(dateMatch[1])
 				: dateMatch[1];
 			if (Object.prototype.hasOwnProperty.call(mappedFields, entry.key)) {
-				leftovers.push(fragment);
+				pendingMetadataFragments.push({
+					range: { from: i, to: valueStart + dateMatch[1].length },
+					value: fragment,
+					kind: 'leftover',
+				});
 			} else {
 				mappedFields[entry.key] = normalizedValue;
 			}
@@ -309,7 +323,11 @@ export function convertTasksEmojiLineToOperon(line: string, options: TasksEmojiT
 				mappedFields['priority'] = priority;
 				mappedPriorityEmoji = true;
 			} else {
-				leftovers.push(entry.emoji);
+				pendingMetadataFragments.push({
+					range: { from: i, to: i + entry.emoji.length },
+					value: entry.emoji,
+					kind: 'leftover',
+				});
 			}
 			foundTasksSyntax = true;
 			i += entry.emoji.length - 1;
@@ -324,11 +342,33 @@ export function convertTasksEmojiLineToOperon(line: string, options: TasksEmojiT
 			const timeMatch = /^(\d{1,2}:\d{2})(?=$|\s)/.exec(body.slice(end));
 			if (timeMatch) {
 				pushRange({ from: i, to: end + timeMatch[1].length });
-				leftovers.push(body.slice(i, end + timeMatch[1].length).trim());
+				pendingMetadataFragments.push({
+					range: { from: i, to: end + timeMatch[1].length },
+					value: body.slice(i, end + timeMatch[1].length).trim(),
+					kind: 'leftover',
+				});
 				foundTasksSyntax = true;
 				i = end + timeMatch[1].length - 1;
 				continue;
 			}
+		}
+
+		if (body.startsWith(TASKS_RECURRENCE_EMOJI, i)) {
+			let start = i + TASKS_RECURRENCE_EMOJI.length;
+			while (start < body.length && /\s/.test(body[start])) start++;
+			const end = findNextMetadataBoundary(body, start, protectedRanges);
+			const fragment = body.slice(i, end).trim();
+			pushRange({ from: i, to: end });
+			if (fragment) {
+				pendingMetadataFragments.push({
+					range: { from: i, to: end },
+					value: fragment,
+					kind: 'recurrence',
+				});
+			}
+			foundTasksSyntax = true;
+			i = Math.max(i, end - 1);
+			continue;
 		}
 
 		for (const emoji of UNSUPPORTED_LONG_EMOJIS) {
@@ -338,7 +378,13 @@ export function convertTasksEmojiLineToOperon(line: string, options: TasksEmojiT
 			const end = findNextMetadataBoundary(body, start, protectedRanges);
 			const fragment = body.slice(i, end).trim();
 			pushRange({ from: i, to: end });
-			if (fragment) leftovers.push(fragment);
+			if (fragment) {
+				pendingMetadataFragments.push({
+					range: { from: i, to: end },
+					value: fragment,
+					kind: 'leftover',
+				});
+			}
 			foundTasksSyntax = true;
 			i = Math.max(i, end - 1);
 			matched = true;
@@ -351,6 +397,31 @@ export function convertTasksEmojiLineToOperon(line: string, options: TasksEmojiT
 	if (hasOperon && foundTasksSyntax) return { kind: 'hybrid_unsupported' };
 	if (hasOperon) return { kind: 'already_operon' };
 	if (!foundTasksSyntax) return { kind: 'not_tasks_emoji' };
+
+	for (const fragment of pendingMetadataFragments.sort((left, right) => left.range.from - right.range.from)) {
+		if (fragment.kind === 'leftover') {
+			leftovers.push(fragment.value);
+			continue;
+		}
+
+		if (Object.prototype.hasOwnProperty.call(mappedFields, 'repeat')) {
+			leftovers.push(fragment.value);
+			continue;
+		}
+		const recurrence = parseTasksRecurrenceToOperon(fragment.value, {
+			dateDue: mappedFields['dateDue'],
+			dateScheduled: mappedFields['dateScheduled'],
+			dateStarted: mappedFields['dateStarted'],
+		});
+		if (recurrence.kind === 'converted') {
+			mappedFields['repeat'] = recurrence.repeat;
+			if (recurrence.repeatOccurrenceDate) {
+				mappedFields['repeatOccurrenceDate'] = recurrence.repeatOccurrenceDate;
+			}
+		} else {
+			leftovers.push(recurrence.leftover);
+		}
+	}
 
 	const scheduledDate = mappedFields['dateScheduled'];
 	if (scheduledDate && leadingTimeBlock) {

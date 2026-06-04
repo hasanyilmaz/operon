@@ -51,6 +51,12 @@ import {
 
 export const CURRENT_SETTINGS_VERSION = 89;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
+export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr'] as const;
+export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
+
+export function isSupportedLanguage(value: string): value is OperonLanguage {
+	return (SUPPORTED_LANGUAGE_OPTIONS as readonly string[]).includes(value);
+}
 
 export type FallbackTaskIconSource = 'pipelineStatusIcon' | 'priorityIcon' | 'stateIcon';
 export type PinnedTasksDesktopSurface = 'floating' | 'sidebar';
@@ -814,7 +820,7 @@ export interface OperonSettings {
 	dynamicFileTaskFilterShowOnlyOpenSubtasks: boolean;
 
 	/** UI language override. 'auto' = detect from Obsidian locale. */
-	language: 'auto' | 'en' | 'tr';
+	language: OperonLanguage;
 	timeFormat: '24h' | '12h';
 	demoWorkspacePromptDismissed: boolean;
 	releaseNotesShowOnUpdate: boolean;
@@ -2467,7 +2473,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	}
 
 	// Validate enum fields
-	if (!['auto', 'en', 'tr'].includes(out.language)) {
+	if (!isSupportedLanguage(out.language)) {
 		out.language = DEFAULT_SETTINGS.language;
 	}
 	if (!['24h', '12h'].includes(out.timeFormat)) {

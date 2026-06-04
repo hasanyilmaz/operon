@@ -80,6 +80,58 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		nextWeekdayLabel: name => `Gelecek ${name.toLowerCase()}`,
 		lastWeekdayLabel: name => `Gecen ${name.toLowerCase()}`,
 	},
+	de: {
+		searchPlaceholder: 'Ein Datum wie nächsten Dienstag eingeben',
+		clear: 'Löschen',
+		apply: 'Übernehmen',
+		manualDate: 'Datum wählen',
+		parsedFrom: input => `Aus "${input}" erkannt`,
+		quickSuggestions: 'Vorschläge',
+		today: 'Heute',
+		tomorrow: 'Morgen',
+		yesterday: 'Gestern',
+		thisWeek: 'Diese Woche',
+		nextWeek: 'Nächste Woche',
+		lastWeek: 'Letzte Woche',
+		thisWeekend: 'Dieses Wochenende',
+		nextWeekend: 'Nächstes Wochenende',
+		lastWeekend: 'Letztes Wochenende',
+		daysAgo: count => `vor ${count} Tagen`,
+		daysFromNow: count => `in ${count} Tagen`,
+		weeksAgo: count => `vor ${count} Wochen`,
+		weeksFromNow: count => `in ${count} Wochen`,
+		monthsAgo: count => `vor ${count} Monaten`,
+		monthsFromNow: count => `in ${count} Monaten`,
+		weekdayNames: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+		nextWeekdayLabel: name => `Nächster ${name}`,
+		lastWeekdayLabel: name => `Letzter ${name}`,
+	},
+	fr: {
+		searchPlaceholder: 'Saisir une date comme mardi prochain',
+		clear: 'Effacer',
+		apply: 'Appliquer',
+		manualDate: 'Choisir une date',
+		parsedFrom: input => `Reconnu à partir de « ${input} »`,
+		quickSuggestions: 'Suggestions',
+		today: "Aujourd'hui",
+		tomorrow: 'Demain',
+		yesterday: 'Hier',
+		thisWeek: 'Cette semaine',
+		nextWeek: 'La semaine prochaine',
+		lastWeek: 'La semaine dernière',
+		thisWeekend: 'Ce week-end',
+		nextWeekend: 'Le week-end prochain',
+		lastWeekend: 'Le week-end dernier',
+		daysAgo: count => `il y a ${count} jours`,
+		daysFromNow: count => `dans ${count} jours`,
+		weeksAgo: count => `il y a ${count} semaines`,
+		weeksFromNow: count => `dans ${count} semaines`,
+		monthsAgo: count => `il y a ${count} mois`,
+		monthsFromNow: count => `dans ${count} mois`,
+		weekdayNames: ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'],
+		nextWeekdayLabel: name => `${name} prochain`,
+		lastWeekdayLabel: name => `${name} dernier`,
+	},
 };
 
 const ENGLISH_PHRASES: Record<string, (reference: Date) => Date> = {
@@ -106,6 +158,19 @@ const TURKISH_PHRASES: Record<string, (reference: Date) => Date> = {
 	'gecen hafta sonu': reference => addDays(saturdayOfWeek(reference), -7),
 };
 
+// Keys are normalizeInput()-form (lowercased, umlauts stripped): nächste → nachste.
+const GERMAN_PHRASES: Record<string, (reference: Date) => Date> = {
+	'heute': reference => cloneDate(reference),
+	'morgen': reference => addDays(reference, 1),
+	'gestern': reference => addDays(reference, -1),
+	'diese woche': reference => startOfWeek(reference),
+	'nachste woche': reference => addDays(startOfWeek(reference), 7),
+	'letzte woche': reference => addDays(startOfWeek(reference), -7),
+	'dieses wochenende': reference => saturdayOfWeek(reference),
+	'nachstes wochenende': reference => addDays(saturdayOfWeek(reference), 7),
+	'letztes wochenende': reference => addDays(saturdayOfWeek(reference), -7),
+};
+
 const ENGLISH_WEEKDAYS = new Map<string, number>([
 	['sunday', 0],
 	['monday', 1],
@@ -127,6 +192,40 @@ const TURKISH_WEEKDAYS = new Map<string, number>([
 	['perşembe', 4],
 	['cuma', 5],
 	['cumartesi', 6],
+]);
+
+const GERMAN_WEEKDAYS = new Map<string, number>([
+	['sonntag', 0],
+	['montag', 1],
+	['dienstag', 2],
+	['mittwoch', 3],
+	['donnerstag', 4],
+	['freitag', 5],
+	['samstag', 6],
+	['sonnabend', 6],
+]);
+
+// Phrase keys are normalizeInput()-form: lowercase, accents stripped.
+const FRENCH_PHRASES: Record<string, (reference: Date) => Date> = {
+	"aujourd'hui": reference => cloneDate(reference),
+	'demain': reference => addDays(reference, 1),
+	'hier': reference => addDays(reference, -1),
+	'cette semaine': reference => startOfWeek(reference),
+	'la semaine prochaine': reference => addDays(startOfWeek(reference), 7),
+	'la semaine derniere': reference => addDays(startOfWeek(reference), -7),
+	'ce week-end': reference => saturdayOfWeek(reference),
+	'le week-end prochain': reference => addDays(saturdayOfWeek(reference), 7),
+	'le week-end dernier': reference => addDays(saturdayOfWeek(reference), -7),
+};
+
+const FRENCH_WEEKDAYS = new Map<string, number>([
+	['dimanche', 0],
+	['lundi', 1],
+	['mardi', 2],
+	['mercredi', 3],
+	['jeudi', 4],
+	['vendredi', 5],
+	['samedi', 6],
 ]);
 
 export function getDatePickerStrings(language: DatePickerLang): DatePickerStrings {
@@ -188,17 +287,47 @@ export function parseFallbackDateCandidates(input: string, context: DateParseCon
 }
 
 function parsePhraseDate(input: string, language: DatePickerLang, reference: Date): Date | null {
-	const phrases = language === 'tr' ? TURKISH_PHRASES : ENGLISH_PHRASES;
+	const phrases = language === 'tr'
+		? TURKISH_PHRASES
+		: language === 'de'
+		? GERMAN_PHRASES
+		: language === 'fr'
+		? FRENCH_PHRASES
+		: ENGLISH_PHRASES;
 	const direct = phrases[input];
 	if (direct) return direct(reference);
 
-	const weekdays = language === 'tr' ? TURKISH_WEEKDAYS : ENGLISH_WEEKDAYS;
-	const nextPrefix = language === 'tr' ? 'gelecek ' : 'next ';
-	const lastPrefix = language === 'tr' ? 'gecen ' : 'last ';
+	const weekdays = language === 'tr'
+		? TURKISH_WEEKDAYS
+		: language === 'de'
+		? GERMAN_WEEKDAYS
+		: language === 'fr'
+		? FRENCH_WEEKDAYS
+		: ENGLISH_WEEKDAYS;
 
 	if (weekdays.has(input)) {
 		return nextWeekday(reference, weekdays.get(input)!);
 	}
+
+	// French places the qualifier after the weekday ('mardi prochain'/'mardi dernier').
+	if (language === 'fr') {
+		const nextSuffix = ' prochain';
+		const lastSuffix = ' dernier';
+		if (input.endsWith(nextSuffix)) {
+			const weekday = input.slice(0, -nextSuffix.length).trim();
+			if (weekdays.has(weekday)) return nextWeekday(reference, weekdays.get(weekday)!);
+		}
+		if (input.endsWith(lastSuffix)) {
+			const weekday = input.slice(0, -lastSuffix.length).trim();
+			if (weekdays.has(weekday)) return previousWeekday(reference, weekdays.get(weekday)!);
+		}
+		return null;
+	}
+
+	// Prefixes are normalizeInput()-form: 'nächste ' → 'nachste '.
+	const nextPrefix = language === 'tr' ? 'gelecek ' : language === 'de' ? 'nachste ' : 'next ';
+	const lastPrefix = language === 'tr' ? 'gecen ' : language === 'de' ? 'letzte ' : 'last ';
+
 	if (input.startsWith(nextPrefix)) {
 		const weekday = input.slice(nextPrefix.length).trim();
 		if (weekdays.has(weekday)) return nextWeekday(reference, weekdays.get(weekday)!);
@@ -258,6 +387,18 @@ function matchesUnit(token: string, language: DatePickerLang, unit: 'days' | 'we
 			days: ['g', 'gu', 'gun'],
 			weeks: ['h', 'ha', 'haf', 'hafta'],
 			months: ['a', 'ay'],
+		}
+		: language === 'de'
+		? {
+			days: ['t', 'ta', 'tag', 'tage'],
+			weeks: ['w', 'wo', 'woc', 'woche', 'wochen'],
+			months: ['m', 'mo', 'mon', 'monat', 'monate'],
+		}
+		: language === 'fr'
+		? {
+			days: ['j', 'jo', 'jou', 'jour', 'jours'],
+			weeks: ['s', 'se', 'sem', 'semaine', 'semaines'],
+			months: ['m', 'mo', 'moi', 'mois'],
 		}
 		: {
 			days: ['d', 'da', 'day', 'days'],
@@ -362,7 +503,7 @@ function toIsoDate(date: Date): string {
 }
 
 function formatLongDate(date: Date, language: DatePickerLang): string {
-	return new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-US', {
+	return new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : 'en-US', {
 		weekday: 'long',
 		year: 'numeric',
 		month: 'long',

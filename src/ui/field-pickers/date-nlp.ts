@@ -4,7 +4,7 @@ import { getCommunityPlugin } from '../../core/obsidian-app';
 import { isRecord, isUnknownFunction } from '../../core/unknown-value';
 import { getDatePickerStrings, getQuickDateCandidates, parseFallbackDateCandidates } from './date-nlp-fallback';
 
-export type DatePickerLang = 'en' | 'tr';
+export type DatePickerLang = 'en' | 'tr' | 'de' | 'fr';
 
 export interface DateParseContext {
 	fieldKey: string;
@@ -35,8 +35,16 @@ interface MomentLike {
 
 export function resolveDatePickerLanguage(language?: string): DatePickerLang {
 	if (language === 'tr') return 'tr';
+	if (language === 'de') return 'de';
+	if (language === 'fr') return 'fr';
 	if (language === 'en') return 'en';
-	return getCurrentLang();
+	// Date-picker natural-language parsing supports en/tr/de/fr.
+	// Other UI locales fall back to English date phrases.
+	const current = getCurrentLang();
+	if (current === 'tr') return 'tr';
+	if (current === 'de') return 'de';
+	if (current === 'fr') return 'fr';
+	return 'en';
 }
 
 export function getDatePickerLocaleStrings(language?: string) {
@@ -133,10 +141,17 @@ function toIsoDate(date: Date): string {
 }
 
 function formatLongDate(date: Date, language: DatePickerLang): string {
-	return new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-US', {
+	return new Intl.DateTimeFormat(datePickerLocale(language), {
 		weekday: 'long',
 		year: 'numeric',
 		month: 'long',
 		day: 'numeric',
 	}).format(date);
+}
+
+function datePickerLocale(language: DatePickerLang): string {
+	if (language === 'tr') return 'tr-TR';
+	if (language === 'de') return 'de-DE';
+	if (language === 'fr') return 'fr-FR';
+	return 'en-US';
 }

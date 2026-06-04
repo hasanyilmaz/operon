@@ -9703,6 +9703,15 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
+	private createRepeatSeriesIdFactory(): () => string {
+		const usedIds = new Set(this.storage.repeatSeries.getAllSeriesIds());
+		return () => {
+			const id = generateRepeatSeriesId(usedIds);
+			usedIds.add(id);
+			return id;
+		};
+	}
+
 	private async handleConvertTasksEmojiLineToOperonInlineTaskCommand(
 		editor: Editor,
 		view: MarkdownView,
@@ -9758,6 +9767,7 @@ export default class OperonPlugin extends Plugin {
 			pipelines: this.settings.pipelines,
 			defaultPipelineName: this.settings.defaultPipelineName,
 			defaultPriority: this.settings.defaultPriority,
+			repeatSeriesIdFactory: this.createRepeatSeriesIdFactory(),
 		});
 		if (!applied.ok) {
 			new Notice(applied.errorMessage ?? t('notifications', 'terminalDateWorkflowResolveFailed'));
@@ -9794,6 +9804,7 @@ export default class OperonPlugin extends Plugin {
 
 		const now = localNow();
 		const baseInherited = this.resolveInlineTaskInheritedFields(view.file ?? null);
+		const repeatSeriesIdFactory = this.createRepeatSeriesIdFactory();
 		const changes: BulkSelectionLineChange[] = [];
 		const parentStack: BulkSelectionTaskNode[] = [];
 		let convertedCount = 0;
@@ -9817,6 +9828,7 @@ export default class OperonPlugin extends Plugin {
 						now,
 						baseInherited,
 						parentStack,
+						repeatSeriesIdFactory,
 					});
 
 					if (result.kind === 'converted') {
@@ -9906,6 +9918,7 @@ export default class OperonPlugin extends Plugin {
 		now: string;
 		baseInherited: SubtaskInitialFields;
 		parentStack: BulkSelectionTaskNode[];
+		repeatSeriesIdFactory: () => string;
 	}): { kind: 'converted'; taskLine: string; operonId: string; linkedToParent: boolean } | { kind: 'existing' } | { kind: 'skipped' } {
 		const existingParsed = this.parseInlineTaskLine(options.line, options.lineNumber, options.filePath);
 		const indent = measureMarkdownIndent(options.line);
@@ -9953,6 +9966,7 @@ export default class OperonPlugin extends Plugin {
 				pipelines: this.settings.pipelines,
 				defaultPipelineName: this.settings.defaultPipelineName,
 				defaultPriority: this.settings.defaultPriority,
+				repeatSeriesIdFactory: options.repeatSeriesIdFactory,
 			});
 			if (!applied.ok) return { kind: 'skipped' };
 			this.touchParsedTaskModifiedTimestamp(parsed, options.now);

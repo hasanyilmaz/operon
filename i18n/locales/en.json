@@ -315,6 +315,8 @@
 		"languageAuto": "Auto (Obsidian locale)",
 		"languageEnglish": "English",
 		"languageTurkish": "Turkish",
+		"languageGerman": "German",
+		"languageFrench": "French",
 		"releaseNotesCardTitle": "Operon {{version}} is here",
 		"releaseNotesCardDesc": "Catch up on recent improvements, fixes, and smoother workflows",
 		"releaseNotesViewRecent": "See what's new",
@@ -1144,6 +1146,7 @@
 	},
 	"tooltips": {
 		"cycleTaskStatus": "Cycle task status",
+		"openTaskEditor": "Open task editor",
 		"editTask": "Edit task",
 		"allDescendantsDone": "Task fully completed",
 		"toggleCheckbox": "Toggle completion",

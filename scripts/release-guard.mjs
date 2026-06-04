@@ -90,22 +90,30 @@ function assertCssRuleContains(relativePath, selector, requiredDeclarations, lab
 
 function compareLocaleFiles() {
 	const en = flattenStringLeaves(readJson('i18n/locales/en.json'));
-	const tr = flattenStringLeaves(readJson('i18n/locales/tr.json'));
 	const enKeys = [...en.keys()].sort();
-	const trKeys = [...tr.keys()].sort();
 
-	for (const key of enKeys) {
-		if (!tr.has(key)) fail(`Missing Turkish locale key: ${key}`);
-	}
-	for (const key of trKeys) {
-		if (!en.has(key)) fail(`Missing English locale key: ${key}`);
-	}
-	for (const key of enKeys) {
-		if (!tr.has(key)) continue;
-		const enPlaceholders = placeholders(en.get(key)).join(',');
-		const trPlaceholders = placeholders(tr.get(key)).join(',');
-		if (enPlaceholders !== trPlaceholders) {
-			fail(`Locale placeholder mismatch for ${key}: en=[${enPlaceholders}] tr=[${trPlaceholders}]`);
+	// Each translated locale must have full key parity and matching placeholders against English.
+	const translations = {
+		Turkish: flattenStringLeaves(readJson('i18n/locales/tr.json')),
+		German: flattenStringLeaves(readJson('i18n/locales/de.json')),
+		French: flattenStringLeaves(readJson('i18n/locales/fr.json')),
+	};
+
+	for (const [label, locale] of Object.entries(translations)) {
+		const localeKeys = [...locale.keys()].sort();
+		for (const key of enKeys) {
+			if (!locale.has(key)) fail(`Missing ${label} locale key: ${key}`);
+		}
+		for (const key of localeKeys) {
+			if (!en.has(key)) fail(`Missing English locale key (present in ${label}): ${key}`);
+		}
+		for (const key of enKeys) {
+			if (!locale.has(key)) continue;
+			const enPlaceholders = placeholders(en.get(key)).join(',');
+			const localePlaceholders = placeholders(locale.get(key)).join(',');
+			if (enPlaceholders !== localePlaceholders) {
+				fail(`Locale placeholder mismatch for ${key}: en=[${enPlaceholders}] ${label.toLowerCase()}=[${localePlaceholders}]`);
+			}
 		}
 	}
 }

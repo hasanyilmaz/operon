@@ -1,6 +1,6 @@
 /**
  * Internationalization (i18n) module for Operon.
- * Bilingual support: English (default) + Turkish.
+ * Multilingual support: English (default) + Turkish + German + French.
  *
  * Spec Section 25:
  * - JSON locale files at i18n/locales/
@@ -13,12 +13,14 @@
 
 import en from '../../i18n/locales/en.json';
 import tr from '../../i18n/locales/tr.json';
+import de from '../../i18n/locales/de.json';
+import fr from '../../i18n/locales/fr.json';
 
 /** All available locale data, keyed by language code */
-const LOCALES: Record<string, LocaleData> = { en, tr };
+const LOCALES: Record<string, LocaleData> = { en, tr, de, fr };
 
 /** Supported language codes */
-export type LangCode = 'en' | 'tr';
+export type LangCode = 'en' | 'tr' | 'de' | 'fr';
 
 /** Structure of a locale file — matches Spec Section 25.4 */
 export interface LocaleData {

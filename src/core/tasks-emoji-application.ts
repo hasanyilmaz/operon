@@ -6,6 +6,7 @@ import {
 	resolveReverseWorkflowFromTerminalDate,
 	shouldTriggerOneShotAutomation,
 } from '../types/pipeline';
+import { parseRepeatRule } from './repeat-rule';
 import { normalizeLegacyCreatedDatetime } from './yaml-fields';
 
 export interface ApplyTasksEmojiConversionOptions {
@@ -17,6 +18,7 @@ export interface ApplyTasksEmojiConversionOptions {
 	pipelines: Pipeline[];
 	defaultPipelineName: string;
 	defaultPriority: string;
+	repeatSeriesIdFactory?: () => string;
 }
 
 export interface ApplyTasksEmojiConversionResult {
@@ -126,6 +128,15 @@ function applyDefaultPriority(task: ParsedTask, mappedFields: Record<string, str
 	task.fields = task.fields.filter(field => field.key !== 'priority');
 }
 
+function ensureRepeatSeriesId(task: ParsedTask, factory: (() => string) | undefined): void {
+	if (!factory) return;
+	const repeat = task.fields.find(field => field.key === 'repeat')?.value.trim() ?? '';
+	if (!parseRepeatRule(repeat)) return;
+	const existingSeriesId = task.fields.find(field => field.key === 'repeatSeriesId')?.value.trim() ?? '';
+	if (existingSeriesId) return;
+	setParsedTaskField(task, 'repeatSeriesId', factory(), 'text');
+}
+
 export function applyTasksEmojiConversionToParsedTask(options: ApplyTasksEmojiConversionOptions): ApplyTasksEmojiConversionResult {
 	options.task.tags = [...new Set(options.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean))];
 
@@ -144,6 +155,7 @@ export function applyTasksEmojiConversionToParsedTask(options: ApplyTasksEmojiCo
 	}
 
 	applyDefaultPriority(options.task, options.mappedFields, options.defaultPriority);
+	ensureRepeatSeriesId(options.task, options.repeatSeriesIdFactory);
 
 	if (options.leftovers.length > 0) {
 		setParsedTaskField(options.task, 'note', `Tasks syntax leftovers: ${options.leftovers.join(' | ')}`, 'text');

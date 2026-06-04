@@ -53,7 +53,7 @@ export function buildRepeatRuleSummaryLabels(): RepeatRuleSummaryLabels {
 		monthOnPositionWeekday: t('taskEditor', 'repeatSummaryMonthOnPositionWeekday'),
 		yearOnMonthDays: t('taskEditor', 'repeatSummaryYearOnMonthDays'),
 		monthFallback: t('taskEditor', 'repeatSummaryMonthFallback'),
-		ordinalDay: getCurrentLang() === 'tr'
+		ordinalDay: getCurrentLang() === 'tr' || getCurrentLang() === 'fr' || getCurrentLang() === 'de'
 			? t('taskEditor', 'repeatSummaryOrdinalDay', { suffix: '' })
 			: t('taskEditor', 'repeatSummaryOrdinalDay'),
 		itemSeparator: t('taskEditor', 'repeatSummaryListItemSeparator'),

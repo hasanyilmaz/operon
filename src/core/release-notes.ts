@@ -13,6 +13,26 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.1.6',
+		date: '2026-06-04',
+		title: 'French and German localization',
+		showOnUpdate: true,
+		bannerUrl: 'operon-1-1-6-localization',
+		body: `
+This release brings Operon into German and French, while also tightening language switching and Tasks emoji recurrence conversion so multilingual task workflows feel more native.
+
+## New
+- Added **German localization**, including explicit Settings language selection, translated UI strings, German repeat summaries, pinned task surfaces, Task Finder scopes, time tracking session terminology, filter materialization messages, and the pinned sidebar task editor label.
+- Added **French localization**, including explicit Settings language selection, translated UI strings, French natural-language date parsing, Task Finder wording, time tracking session terminology, Kanban labels, and filter materialization messages.
+- Added **Tasks emoji conversion** support for \`🔁 every ...\` recurrence rules, so supported recurrence syntax becomes Operon repeat fields in both single-line and selection conversion while unsupported syntax is still preserved in the leftovers note.
+
+## Fixed
+- Fixed the **Settings language selector** so changing languages saves safely without rebuilding the current Settings page into a blank screen.
+- Fixed **Turkish Settings translations** so Core, Keymapping, Recurrence, Status Icons, and Task Chips use consistent Turkish wording.
+- Fixed the update **release notes popup** showing only the newest unseen release; it now shows the latest five releases, matching the Settings release notes view.
+`.trim(),
+	},
+	{
 		version: '1.1.5',
 		date: '2026-06-03',
 		title: 'Daily Note defaults and steadier pinned tasks',

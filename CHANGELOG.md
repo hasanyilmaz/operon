@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [1.1.6] - 2026-06-04
+
+This release brings Operon into German and French, while also tightening language switching and Tasks emoji recurrence conversion so multilingual task workflows feel more native.
+
+### New
+- Added **German localization**, including explicit Settings language selection, translated UI strings, German repeat summaries, pinned task surfaces, Task Finder scopes, time tracking session terminology, filter materialization messages, and the pinned sidebar task editor label.
+- Added **French localization**, including explicit Settings language selection, translated UI strings, French natural-language date parsing, Task Finder wording, time tracking session terminology, Kanban labels, and filter materialization messages.
+- Added **Tasks emoji conversion** support for `🔁 every ...` recurrence rules, so supported recurrence syntax becomes Operon repeat fields in both single-line and selection conversion while unsupported syntax is still preserved in the leftovers note.
+
 ### Fixed
-- Fixed the update release notes popup showing only the newest unseen release; it now shows the latest five releases, matching the Settings release notes view.
+- Fixed the **Settings language selector** so changing languages saves safely without rebuilding the current Settings page into a blank screen.
+- Fixed **Turkish Settings translations** so Core, Keymapping, Recurrence, Status Icons, and Task Chips use consistent Turkish wording.
+- Fixed the update **release notes popup** showing only the newest unseen release; it now shows the latest five releases, matching the Settings release notes view.
 
 ### Validation
-- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 815/815 Phase 5 regression checks.
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 821/821 Phase 5 regression checks.
 
 ## [1.1.5] - 2026-06-03
 

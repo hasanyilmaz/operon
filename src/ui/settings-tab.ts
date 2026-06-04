@@ -13,7 +13,7 @@
 
 import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
 import type { ButtonComponent, DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarFieldKey, TaskCreatorToolbarItem, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolKey, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerKey, TaskEditorWorkflowPickerItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource } from '../types/settings';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarFieldKey, TaskCreatorToolbarItem, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolKey, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerKey, TaskEditorWorkflowPickerItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, isSupportedLanguage, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource, type OperonLanguage } from '../types/settings';
 import { clonePipeline, composeStatusValue, createPipelineId, createStatusId, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
@@ -40,7 +40,7 @@ import {
 import { OperonStorage } from '../storage/operon-storage';
 import type { OperonLegacyStorageCleanupStatus } from '../storage/operon-storage';
 import { PinnedCache } from '../storage/pinned-cache';
-import { t } from '../core/i18n';
+import { getCurrentLang, t } from '../core/i18n';
 import { getReleaseNotesForManualView } from '../core/release-notes';
 import { asHTMLElement } from '../core/dom-compat';
 import { getAppLocale, isDailyNotesCoreAvailable } from '../core/obsidian-app';
@@ -440,7 +440,6 @@ const SETTINGS_SEARCH_DOCK_KEYS = new Set<OperonSettingSearchKey>([
 ]);
 
 const SETTINGS_SEARCH_DOM_REFRESH_KEYS = new Set<OperonSettingSearchKey>([
-	'language',
 	'timeFormat',
 	'flowTimeUseLastSelectedDuration',
 	'pinnedDockLayout',
@@ -976,6 +975,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		setting.setName(this.getSettingsSearchText(entry.name));
 		setting.setDesc(this.getSettingsSearchText(entry.desc));
 
+		if (entry.key === 'language') {
+			this.configureLanguageDropdownSetting(setting);
+			return;
+		}
+
 		if (entry.id === 'settings.demoWorkspace') {
 			setting.addButton(button => {
 				button
@@ -1139,7 +1143,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		const text = this.stringifySettingsSearchValue(value);
 		if (key === 'language') {
-			return ['auto', 'en', 'tr'].includes(text) ? text : DEFAULT_SETTINGS.language;
+			return isSupportedLanguage(text) ? text : DEFAULT_SETTINGS.language;
 		}
 		if (key === 'timeFormat') {
 			return text === '12h' ? '12h' : '24h';
@@ -1238,11 +1242,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
 		if (key === 'language') {
-			return {
-				auto: t('settings', 'languageAuto'),
-				en: t('settings', 'languageEnglish'),
-				tr: t('settings', 'languageTurkish'),
-			};
+			return Object.fromEntries(
+				this.getLanguageDropdownOptions().map(option => [option.value, option.label]),
+			);
 		}
 		if (key === 'timeFormat') {
 			return {
@@ -1392,6 +1394,23 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return { '': t('settings', 'default') };
 	}
 
+	private getLanguageDropdownOptions(): DropdownSettingOption<OperonLanguage>[] {
+		const languageOptions: DropdownSettingOption<OperonLanguage>[] = [
+			{ value: 'en', label: t('settings', 'languageEnglish') },
+			{ value: 'tr', label: t('settings', 'languageTurkish') },
+			{ value: 'de', label: t('settings', 'languageGerman') },
+			{ value: 'fr', label: t('settings', 'languageFrench') },
+		];
+		const collator = new Intl.Collator(getCurrentLang(), { sensitivity: 'base' });
+		languageOptions.sort((left, right) =>
+			collator.compare(left.label, right.label) || left.value.localeCompare(right.value, 'en')
+		);
+		return [
+			{ value: 'auto', label: t('settings', 'languageAuto') },
+			...languageOptions,
+		];
+	}
+
 	private applySettingsSearchBeforeSaveEffects(key: OperonSettingSearchKey, value: unknown): void {
 		if (key === 'inlineTaskSaveMode') {
 			this.settings.inlineTaskUseDailyNote = value === 'daily-notes';
@@ -1408,13 +1427,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private applySettingsSearchAfterSaveEffects(key: OperonSettingSearchKey): void {
+		if (key === 'language') {
+			return;
+		}
 		if (SETTINGS_SEARCH_DOCK_KEYS.has(key)) {
 			this.onDockRefreshLayout();
 		}
 		if (SETTINGS_SEARCH_DOM_REFRESH_KEYS.has(key)) {
 			this.refreshNativeSettingsDom();
 		}
-		if (key === 'language' || key === 'timeFormat') {
+		if (key === 'timeFormat') {
 			this.updateNativeSettingsDefinitions();
 		}
 	}
@@ -1651,17 +1673,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderGeneralBasicsTab(containerEl: HTMLElement): void {
-		this.renderBoundDropdownSetting(containerEl, t('settings', 'language'), t('settings', 'languageDesc'), 'language', {
-			value: this.settings.language,
-			dropdownOptions: [
-				{ value: 'auto', label: t('settings', 'languageAuto') },
-				{ value: 'en', label: t('settings', 'languageEnglish') },
-				{ value: 'tr', label: t('settings', 'languageTurkish') },
-			],
-			onAfterChange: () => {
-				this.redisplayPreservingScroll();
-			},
-		});
+		this.configureLanguageDropdownSetting(new Setting(containerEl)
+			.setName(t('settings', 'language'))
+			.setDesc(t('settings', 'languageDesc')));
 
 		this.renderBoundDropdownSetting(containerEl, t('settings', 'timeFormat'), t('settings', 'timeFormatDesc'), 'timeFormat', {
 			value: this.settings.timeFormat,
@@ -1685,6 +1699,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 						await this.createBasicsWorkspace();
 					}));
 			});
+	}
+
+	private configureLanguageDropdownSetting(setting: Setting): Setting {
+		setting.addDropdown(dropdown => {
+			for (const option of this.getLanguageDropdownOptions()) {
+				dropdown.addOption(option.value, option.label);
+			}
+			dropdown
+				.setValue(this.settings.language)
+				.onChange(settingsAsyncHandler('settings language save failed', async value => {
+					this.settings.language = isSupportedLanguage(value) ? value : DEFAULT_SETTINGS.language;
+					await this.persistSettingsOnly();
+					this.notifySettingsChanged();
+				}));
+		});
+		return this.markSettingsSearchTarget(setting, 'language');
 	}
 
 	private renderInterfaceContextMenuTab(containerEl: HTMLElement): void {
