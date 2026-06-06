@@ -21,15 +21,15 @@ import {
 } from '../types/pipeline';
 import { serializeTask } from '../core/serializer';
 import { applyFieldRules } from '../core/field-rules';
+import { deriveCountModeRepeatEndFromFieldValues } from '../core/task-field-patch';
 import { t } from '../core/i18n';
 import { formatTaskNotice } from '../core/task-notice';
 import { localNow, localToday } from '../core/local-time';
-import {
-	calculateRepeatEndFromCount,
-	parseRepeatRule,
-} from '../core/repeat-rule';
+import { parseRepeatRule } from '../core/repeat-rule';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
 import { formatUiTime } from '../core/ui-time-format';
+import { formatShortLocationCoordinate, parseLocationCoordinate } from '../core/location-coordinates';
+import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { TimeTracker } from '../systems/time-tracker';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -71,6 +71,7 @@ import { showParentTaskPicker } from './field-pickers/parent-task-picker';
 import { showSubtasksPicker } from './field-pickers/subtasks-picker';
 import { showDependencyTaskPicker } from './field-pickers/dependency-task-picker';
 import { showLinksPicker } from './field-pickers/links-picker';
+import { showLocationPicker } from './field-pickers/location-picker';
 import { formatExternalLinkDisplay } from './field-pickers/links-utils';
 import { splitTaskListValue } from '../core/task-field-patch';
 import { splitFrontmatterDocument } from '../core/file-task-template-merge';
@@ -1297,16 +1298,20 @@ export class TaskEditorContent {
 				repeatEnd: this.fieldValues['datetimeRepeatEnd'],
 				repeatSeriesId: this.fieldValues['repeatSeriesId'],
 				taskColor: this.fieldValues['taskColor'],
+				repeatOccurrenceDate: this.fieldValues['repeatOccurrenceDate'],
 				dateScheduled: this.fieldValues['dateScheduled'],
 				dateDue: this.fieldValues['dateDue'],
+				dateStarted: this.fieldValues['dateStarted'],
+				datetimeStart: this.fieldValues['datetimeStart'],
+				datetimeEnd: this.fieldValues['datetimeEnd'],
 				taskFormat: this.fileBodyContext?.format ?? 'inline',
 				inlineCompletionMode: this.inlineCompletionMode,
-				onSave: ({ repeat, datetimeRepeatEnd, dateScheduled, inlineCompletionMode }) => {
+				onSave: ({ repeat, datetimeRepeatEnd, repeatOccurrenceDate, inlineCompletionMode }) => {
 					this.fieldValues['repeat'] = repeat;
 					if (datetimeRepeatEnd) this.fieldValues['datetimeRepeatEnd'] = datetimeRepeatEnd;
 					else delete this.fieldValues['datetimeRepeatEnd'];
-					if (dateScheduled) {
-						this.fieldValues['dateScheduled'] = dateScheduled;
+					if (repeatOccurrenceDate) {
+						this.fieldValues['repeatOccurrenceDate'] = repeatOccurrenceDate;
 					}
 					if (parseRepeatRule(repeat) && !this.fieldValues['repeatSeriesId']) {
 						this.fieldValues['repeatSeriesId'] = generateRepeatSeriesId();
@@ -1321,6 +1326,7 @@ export class TaskEditorContent {
 					delete this.fieldValues['repeat'];
 					delete this.fieldValues['datetimeRepeatEnd'];
 					delete this.fieldValues['repeatSeriesId'];
+					delete this.fieldValues['repeatOccurrenceDate'];
 					this.inlineCompletionMode = DEFAULT_INLINE_REPEAT_COMPLETION_MODE;
 					this.markEdited();
 					this.refreshMobileCoreButtons();
@@ -1703,17 +1709,15 @@ export class TaskEditorContent {
 	private syncDerivedRepeatFieldsFromDraft(): void {
 		const rule = parseRepeatRule(this.fieldValues['repeat']);
 		if (!rule || rule.mode !== 'count') return;
-		const scheduled = (this.fieldValues['dateScheduled'] ?? '').trim();
-		if (!scheduled) {
+		const repeatEnd = deriveCountModeRepeatEndFromFieldValues(
+			this.fieldValues,
+			seriesId => this.getRepeatSkipDates?.(seriesId) ?? [],
+		);
+		if (!repeatEnd) {
 			delete this.fieldValues['datetimeRepeatEnd'];
 			return;
 		}
-		const endDate = calculateRepeatEndFromCount(rule, scheduled, rule.count ?? 1);
-		if (!endDate) {
-			delete this.fieldValues['datetimeRepeatEnd'];
-			return;
-		}
-		this.fieldValues['datetimeRepeatEnd'] = `${endDate}T23:59:59`;
+		this.fieldValues['datetimeRepeatEnd'] = repeatEnd;
 	}
 
 	private registerSchedulingDraftRefresher(refresh: () => void): void {
@@ -2617,6 +2621,9 @@ export class TaskEditorContent {
 			case 'assignees':
 				this.renderAssigneesPicker(container);
 				break;
+			case 'location':
+				this.renderLocationPicker(container);
+				break;
 			case 'links':
 				this.renderLinksPicker(container);
 				break;
@@ -3155,8 +3162,12 @@ export class TaskEditorContent {
 			const repeatContextDirty = (
 				raw !== persistedRepeat
 				|| repeatSeriesId !== persistedSeriesId
+				|| ((this.fieldValues['repeatOccurrenceDate'] ?? '').trim() !== (this.persistedFieldValues['repeatOccurrenceDate'] ?? '').trim())
 				|| ((this.fieldValues['dateScheduled'] ?? '').trim() !== (this.persistedFieldValues['dateScheduled'] ?? '').trim())
 				|| ((this.fieldValues['dateDue'] ?? '').trim() !== (this.persistedFieldValues['dateDue'] ?? '').trim())
+				|| ((this.fieldValues['dateStarted'] ?? '').trim() !== (this.persistedFieldValues['dateStarted'] ?? '').trim())
+				|| ((this.fieldValues['datetimeStart'] ?? '').trim() !== (this.persistedFieldValues['datetimeStart'] ?? '').trim())
+				|| ((this.fieldValues['datetimeEnd'] ?? '').trim() !== (this.persistedFieldValues['datetimeEnd'] ?? '').trim())
 				|| ((this.fieldValues['datetimeRepeatEnd'] ?? '').trim() !== (this.persistedFieldValues['datetimeRepeatEnd'] ?? '').trim())
 			);
 			skipButton.disabled = true;
@@ -3180,8 +3191,12 @@ export class TaskEditorContent {
 			}
 
 			const hasAnchor = !!(
-				extractDatePart(this.fieldValues['dateScheduled'])
+				extractDatePart(this.fieldValues['repeatOccurrenceDate'])
+				|| extractDatePart(this.fieldValues['dateScheduled'])
 				|| extractDatePart(this.fieldValues['dateDue'])
+				|| extractDatePart(this.fieldValues['dateStarted'])
+				|| extractDatePart(this.fieldValues['datetimeStart'])
+				|| extractDatePart(this.fieldValues['datetimeEnd'])
 			);
 			const canManageFutureSkips = !!(
 				this.taskOperonId
@@ -3211,16 +3226,20 @@ export class TaskEditorContent {
 				repeatEnd: this.fieldValues['datetimeRepeatEnd'],
 				repeatSeriesId: this.fieldValues['repeatSeriesId'],
 				taskColor: this.fieldValues['taskColor'],
+				repeatOccurrenceDate: this.fieldValues['repeatOccurrenceDate'],
 				dateScheduled: this.fieldValues['dateScheduled'],
 				dateDue: this.fieldValues['dateDue'],
+				dateStarted: this.fieldValues['dateStarted'],
+				datetimeStart: this.fieldValues['datetimeStart'],
+				datetimeEnd: this.fieldValues['datetimeEnd'],
 				taskFormat: this.fileBodyContext?.format ?? 'inline',
 				inlineCompletionMode: this.inlineCompletionMode,
-				onSave: ({ repeat, datetimeRepeatEnd, dateScheduled, inlineCompletionMode }) => {
+				onSave: ({ repeat, datetimeRepeatEnd, repeatOccurrenceDate, inlineCompletionMode }) => {
 					this.fieldValues['repeat'] = repeat;
 					if (datetimeRepeatEnd) this.fieldValues['datetimeRepeatEnd'] = datetimeRepeatEnd;
 					else delete this.fieldValues['datetimeRepeatEnd'];
-					if (dateScheduled) {
-						this.fieldValues['dateScheduled'] = dateScheduled;
+					if (repeatOccurrenceDate) {
+						this.fieldValues['repeatOccurrenceDate'] = repeatOccurrenceDate;
 					}
 					if (parseRepeatRule(repeat) && !this.fieldValues['repeatSeriesId']) {
 						this.fieldValues['repeatSeriesId'] = generateRepeatSeriesId();
@@ -3234,6 +3253,7 @@ export class TaskEditorContent {
 					delete this.fieldValues['repeat'];
 					delete this.fieldValues['datetimeRepeatEnd'];
 					delete this.fieldValues['repeatSeriesId'];
+					delete this.fieldValues['repeatOccurrenceDate'];
 					this.inlineCompletionMode = DEFAULT_INLINE_REPEAT_COMPLETION_MODE;
 					this.markEdited();
 					refresh();
@@ -3252,8 +3272,12 @@ export class TaskEditorContent {
 				taskId: this.taskOperonId,
 				repeat: rawRepeat,
 				repeatSeriesId,
+				repeatOccurrenceDate: this.fieldValues['repeatOccurrenceDate'],
 				dateScheduled: this.fieldValues['dateScheduled'],
 				dateDue: this.fieldValues['dateDue'],
+				dateStarted: this.fieldValues['dateStarted'],
+				datetimeStart: this.fieldValues['datetimeStart'],
+				datetimeEnd: this.fieldValues['datetimeEnd'],
 				datetimeRepeatEnd: this.fieldValues['datetimeRepeatEnd'],
 				taskColor: this.fieldValues['taskColor'],
 				existingSkipDates: this.getRepeatSkipDates(repeatSeriesId),
@@ -3689,6 +3713,112 @@ export class TaskEditorContent {
 		});
 
 		this.setDelimitedFieldValue('assignees', selectedValues);
+		render();
+	}
+
+	private renderLocationPicker(group: HTMLElement): void {
+		const setting = new Setting(group);
+		setting.settingEl.addClass('operon-location-setting', 'operon-editor-location-setting');
+		const stack = setting.controlEl.createDiv('operon-editor-picker-stack operon-editor-location-stack');
+		const anchor = this.createPickerAnchor(stack, t('location', 'location'), {
+			leadingIcon: this.resolveCompactChipIcon('location'),
+		});
+		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-location-selection-row');
+		const locationResolver = getLocationPlaceIndex(this.app, this.settings).resolve;
+		let selectedValue = parseLocationCoordinate(this.fieldValues['location'])?.canonical
+			?? (this.fieldValues['location'] ?? '').trim();
+		let closePicker: (() => void) | null = null;
+
+		const closeActivePicker = () => {
+			if (!closePicker) return;
+			const current = closePicker;
+			closePicker = null;
+			anchor.removeClass('is-picker-open');
+			current();
+		};
+
+		const commitValue = (value: string): void => {
+			const parsed = parseLocationCoordinate(value);
+			if (parsed) {
+				selectedValue = parsed.canonical;
+				this.fieldValues['location'] = parsed.canonical;
+			} else {
+				selectedValue = '';
+				delete this.fieldValues['location'];
+			}
+			render();
+			this.markEdited();
+		};
+
+		const render = () => {
+			selectedWrap.replaceChildren();
+			const parsed = parseLocationCoordinate(selectedValue);
+			selectedWrap.classList.toggle('is-empty', !selectedValue);
+			if (!selectedValue) return;
+			const match = parsed ? locationResolver(parsed.canonical) : null;
+			const label = match?.label ?? (parsed ? formatShortLocationCoordinate(parsed) : selectedValue);
+			const chip = createInlineTaskCompactChipElement({
+				key: 'location',
+				label,
+				icon: match?.taskIcon ?? this.resolveCompactChipIcon('location'),
+				iconOnly: false,
+				interactive: false,
+				colorRole: 'default',
+				linkTarget: null,
+				locationCoordinate: parsed?.canonical ?? null,
+				locationMarkerIcon: match?.taskIcon ?? null,
+				locationMarkerColor: match?.taskColor ?? null,
+			}, 'operon-editor-compact-selection-chip', { forceFull: true });
+			chip.style.setProperty('--operon-inline-chip-icon-color', match?.taskColor ?? this.getThemeColor());
+			const removeButton = chip.ownerDocument.createElement('button');
+			removeButton.type = 'button';
+			removeButton.className = 'operon-editor-compact-selection-chip-remove';
+			setIcon(removeButton, 'x');
+			setAccessibleLabelWithoutTooltip(removeButton, t('taskEditor', 'removeValue', { value: label }));
+			removeButton.addEventListener('click', () => {
+				closeActivePicker();
+				commitValue('');
+			});
+			chip.appendChild(removeButton);
+			selectedWrap.appendChild(chip);
+		};
+
+		const openPicker = () => {
+			if (closePicker) return;
+			closePicker = showLocationPicker(anchor, {
+				app: this.app,
+				settings: this.settings,
+				value: selectedValue,
+				onSelect: (value) => {
+					commitValue(value);
+					closeActivePicker();
+				},
+				onClear: () => {
+					commitValue('');
+					closeActivePicker();
+				},
+				onClose: () => {
+					closePicker = null;
+					anchor.removeClass('is-picker-open');
+				},
+			});
+			anchor.addClass('is-picker-open');
+		};
+
+		anchor.addEventListener('click', (event) => {
+			event.preventDefault();
+			openPicker();
+		});
+		anchor.addEventListener('keydown', (event) => {
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+			event.preventDefault();
+			openPicker();
+		});
+
+		const initialParsed = parseLocationCoordinate(selectedValue);
+		if (initialParsed) {
+			this.fieldValues['location'] = initialParsed.canonical;
+		}
 		render();
 	}
 
@@ -4594,7 +4724,7 @@ export class TaskEditorContent {
 				tagTokens: this.existingTask?.tagTokens ?? [],
 				metadataTailRange: this.existingTask?.metadataTailRange ?? null,
 				operonId: this.fieldValues['operonId'],
-				rawLine: '',
+				rawLine: this.existingTask?.rawLine ?? '',
 			};
 
 			const taskLine = serializeTask(task, this.settings.keyMappings);

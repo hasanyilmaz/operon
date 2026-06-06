@@ -11,7 +11,7 @@
  * rendering as the sidebar Filter View.
  */
 
-import { App, MarkdownPostProcessorContext, setIcon } from 'obsidian';
+import { App, MarkdownPostProcessorContext, Notice, setIcon } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { cloneFilterSet, FilterSet, OperonSettings } from '../types/settings';
 import { Pipeline } from '../types/pipeline';
@@ -20,7 +20,9 @@ import { t } from '../core/i18n';
 import { evaluateFilterSet, evaluateFilterSetGrouped, filterTasksOnly, sortFilterTasks } from '../core/filter-evaluator';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
-import { FilterSetModal } from './filter-set-modal';
+import { shouldResolveLocationCompactChips } from './compact-task-layout';
+import { FilterSetModal, type FilterSetModalQuickActions } from './filter-set-modal';
+import { ConfirmActionModal } from './confirm-action-modal';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { applyFilterSearch, buildFilterTreeScope, isFilterSearchActive } from '../systems/filter-search';
@@ -36,6 +38,11 @@ import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-file-overlay-chips';
 import { isDynamicFileTaskFilterSet } from '../core/dynamic-file-task-filter';
+import { getLocationPlaceIndex } from '../core/location-source-resolver';
+
+function generateFilterSetId(): string {
+    return 'fs_' + Math.random().toString(36).slice(2, 9);
+}
 
 export interface EmbedFilterDeps {
     app: App;
@@ -62,6 +69,8 @@ export interface EmbedFilterDeps {
     getTrackingSignature?: () => string;
     saveFilterSet?: (filterSet: FilterSet) => Promise<void>;
     openDailyNote?: (dateKey: string) => void | Promise<void>;
+    duplicateFilterSet?: (filterSet: FilterSet) => Promise<void>;
+    deleteFilterSet?: (filterSetId: string) => Promise<void>;
 }
 
 /** Tracks live embed instances for refresh */
@@ -239,6 +248,8 @@ export function renderFilterSurface(
     const searchSelectionStart = activeInput?.selectionStart ?? null;
     const searchSelectionEnd = activeInput?.selectionEnd ?? null;
 
+    const includeLocationIndexSignature = shouldResolveLocationCompactChips(deps.settings, deps.settings.filterTaskCompactChips)
+        || shouldResolveLocationCompactChips(deps.settings, deps.settings.overlayTaskCompactChips);
     const renderSignature = [
         deps.indexer.getGeneration(),
         deps.pinnedCache?.getGeneration() ?? 0,
@@ -254,6 +265,7 @@ export function renderFilterSurface(
         options.showSettingsButton === false ? 'no-settings' : 'settings',
         JSON.stringify(deps.settings.filterTaskCompactChips),
         buildTaskWikilinkOverlaySettingsSignature(deps.settings),
+        includeLocationIndexSignature ? getLocationPlaceIndex(deps.app, deps.settings).getSignature() : '',
         JSON.stringify(deps.settings.keyMappings.map(mapping => [
             mapping.canonicalKey,
             mapping.visiblePropertyName,
@@ -519,8 +531,9 @@ function renderHeader(
                 options.onEditFilter(filterSet);
                 return;
             }
+            let modal: FilterSetModal | null = null;
             const clone = cloneFilterSet(filterSet);
-	            new FilterSetModal(deps.app, clone, deps.settings.keyMappings, asyncHandler('embedded filter settings save failed', async (saved) => {
+	            modal = new FilterSetModal(deps.app, clone, deps.settings.keyMappings, asyncHandler('embedded filter settings save failed', async (saved) => {
 	                if (deps.saveFilterSet) {
 	                    await deps.saveFilterSet(saved);
 	                } else {
@@ -545,11 +558,82 @@ function renderHeader(
                 pinnedCache: deps.pinnedCache,
                 isTaskTracking: deps.isTaskTracking,
                 toggleTimer: deps.toggleTimer,
-            }).open();
+            }, {
+                quickActions: createEmbeddedFilterSetModalQuickActions(instance, filterSet, deps, () => modal?.close()),
+            });
+            modal.open();
         });
     }
 
     return searchInput;
+}
+
+async function copyFilterSetEmbedCode(filterSet: FilterSet): Promise<void> {
+    const code = '```operon\nfilterId: "' + filterSet.id + '"\n```';
+    await navigator.clipboard.writeText(code);
+    new Notice(t('filterSets', 'embedCodeCopied'));
+}
+
+async function duplicateEmbeddedFilterSet(filterSet: FilterSet, deps: EmbedFilterDeps, instance: FilterSurfaceInstance): Promise<void> {
+    if (deps.duplicateFilterSet) {
+        await deps.duplicateFilterSet(filterSet);
+    } else {
+        const copy = cloneFilterSet(filterSet);
+        copy.id = generateFilterSetId();
+        copy.name = `${filterSet.name} Copy`;
+        const idx = deps.settings.filterSets.findIndex(entry => entry.id === filterSet.id);
+        deps.settings.filterSets.splice(idx === -1 ? deps.settings.filterSets.length : idx + 1, 0, copy);
+        await deps.saveSettings();
+    }
+    instance.lastRenderSignature = null;
+}
+
+function confirmDeleteEmbeddedFilterSet(
+    filterSet: FilterSet,
+    deps: EmbedFilterDeps,
+    instance: FilterSurfaceInstance,
+    closeModal: () => void,
+): void {
+    new ConfirmActionModal(
+        deps.app,
+        {
+            title: t('filterSets', 'deleteFilterTitle'),
+            message: t('filterSets', 'deleteFilterMessage').replace('{{name}}', filterSet.name),
+            confirmText: t('filterSets', 'deleteFilterConfirm'),
+            cancelText: t('filterSets', 'deleteFilterCancel'),
+            danger: true,
+        },
+        asyncHandler('embedded filter delete failed', async (confirmed) => {
+            if (!confirmed) return;
+            if (deps.deleteFilterSet) {
+                await deps.deleteFilterSet(filterSet.id);
+            } else {
+                deps.settings.filterSets = deps.settings.filterSets.filter(entry => entry.id !== filterSet.id);
+                await deps.saveSettings();
+            }
+            instance.lastRenderSignature = null;
+            closeModal();
+        }),
+    ).open();
+}
+
+function createEmbeddedFilterSetModalQuickActions(
+    instance: FilterSurfaceInstance,
+    filterSet: FilterSet,
+    deps: EmbedFilterDeps,
+    closeModal: () => void,
+): FilterSetModalQuickActions {
+    return {
+        copyEmbedCode: async () => {
+            await copyFilterSetEmbedCode(filterSet);
+        },
+        duplicate: async () => {
+            await duplicateEmbeddedFilterSet(filterSet, deps, instance);
+        },
+        remove: () => {
+            confirmDeleteEmbeddedFilterSet(filterSet, deps, instance, closeModal);
+        },
+    };
 }
 
 function formatFilterTaskCount(count: number): string {

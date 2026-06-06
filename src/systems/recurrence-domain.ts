@@ -103,7 +103,14 @@ export function isLatestMaterializedRecurringTask(task: IndexedTask, tasks: Inde
 }
 
 export function deriveTemporalTemplateFromTask(task: Pick<IndexedTask, 'fieldValues'>): RepeatTemporalTemplate {
-	const occurrenceDate = resolveOccurrenceDate(task);
+	return deriveTemporalTemplateFromTaskAtOccurrence(task, resolveOccurrenceDate(task));
+}
+
+export function deriveTemporalTemplateFromTaskAtOccurrence(
+	task: Pick<IndexedTask, 'fieldValues'>,
+	occurrenceDate: string | null | undefined,
+): RepeatTemporalTemplate {
+	const normalizedOccurrenceDate = normalizeDate(occurrenceDate);
 	const scheduledDate = normalizeDate(task.fieldValues['dateScheduled']);
 	const datetimeStart = normalizeDatetime(task.fieldValues['datetimeStart']);
 	let datetimeEnd = normalizeDatetime(task.fieldValues['datetimeEnd']);
@@ -116,8 +123,8 @@ export function deriveTemporalTemplateFromTask(task: Pick<IndexedTask, 'fieldVal
 		}
 	}
 	const mode: RepeatTemporalTemplate['mode'] = startTime && (endTime || !!datetimeEnd) ? 'timed' : 'allDay';
-	const dateShiftDays = occurrenceDate && scheduledDate
-		? dateDiffDays(occurrenceDate, scheduledDate)
+	const dateShiftDays = normalizedOccurrenceDate && scheduledDate
+		? dateDiffDays(normalizedOccurrenceDate, scheduledDate)
 		: 0;
 	const startDate = mode === 'timed'
 		? normalizeDate(datetimeStart.slice(0, 10)) || scheduledDate
@@ -128,8 +135,8 @@ export function deriveTemporalTemplateFromTask(task: Pick<IndexedTask, 'fieldVal
 	return {
 		mode,
 		dateShiftDays,
-		startDateShiftDays: occurrenceDate && startDate ? dateDiffDays(occurrenceDate, startDate) : dateShiftDays,
-		endDateShiftDays: occurrenceDate && endDate ? dateDiffDays(occurrenceDate, endDate) : dateShiftDays,
+		startDateShiftDays: normalizedOccurrenceDate && startDate ? dateDiffDays(normalizedOccurrenceDate, startDate) : dateShiftDays,
+		endDateShiftDays: normalizedOccurrenceDate && endDate ? dateDiffDays(normalizedOccurrenceDate, endDate) : dateShiftDays,
 		startTime,
 		endTime: datetimeEnd ? datetimeEnd.slice(11) : endTime,
 		estimate: normalizeOptional(task.fieldValues['estimate']),

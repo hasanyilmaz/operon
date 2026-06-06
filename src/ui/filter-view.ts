@@ -10,7 +10,7 @@
  * - Checkbox click toggles, description click opens editor, live re-render on changes
  */
 
-import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
+import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { cloneFilterSet, FilterSet, OperonSettings } from '../types/settings';
 import { Pipeline } from '../types/pipeline';
@@ -19,7 +19,9 @@ import { t } from '../core/i18n';
 import { evaluateFilterSet, evaluateFilterSetGrouped, filterTasksOnly, sortFilterTasks } from '../core/filter-evaluator';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
-import { FilterSetModal } from './filter-set-modal';
+import { shouldResolveLocationCompactChips } from './compact-task-layout';
+import { FilterSetModal, type FilterSetModalQuickActions } from './filter-set-modal';
+import { ConfirmActionModal } from './confirm-action-modal';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { applyFilterSearch, buildFilterTreeScope, isFilterSearchActive } from '../systems/filter-search';
@@ -36,6 +38,7 @@ import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-file-overlay-chips';
 import { getNormalFilterSets } from '../core/dynamic-file-task-filter';
+import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
 import {
 	applyOptimisticRenderPatch,
@@ -52,6 +55,28 @@ const perfNow = () => (typeof performance !== 'undefined' ? performance.now() : 
 const perfLog = (...args: unknown[]) => {
 	if (FILTER_PERF_DEBUG) console.debug('[Operon filter perf]', ...args);
 };
+
+function generateFilterSetId(): string {
+	return 'fs_' + Math.random().toString(36).slice(2, 9);
+}
+
+function createEmptyFilterSet(): FilterSet {
+	return {
+		id: generateFilterSetId(),
+		name: '',
+		icon: 'filter',
+		rootGroup: {
+			id: 'fg_' + Math.random().toString(36).slice(2, 10),
+			logic: 'all',
+			children: [],
+		},
+		sorts: [],
+		subgroupBy: undefined,
+		subgroupOrder: undefined,
+		matchLogic: 'all',
+		conditions: [],
+	};
+}
 
 interface FilterViewState {
 	filterSetId?: string | null;
@@ -87,6 +112,8 @@ export class FilterView extends ItemView {
 	private getTrackingSignature?: () => string;
 	private saveFilterSet?: (filterSet: FilterSet) => Promise<void>;
 	private openDailyNote?: (dateKey: string) => void | Promise<void>;
+	private duplicateFilterSet?: (filterSet: FilterSet) => Promise<void>;
+	private deleteFilterSet?: (filterSetId: string) => Promise<void>;
 	private currentFilterSetId: string | null = null;
 	private lastRenderSignature: string | null = null;
 	private layoutRoot: HTMLElement | null = null;
@@ -94,6 +121,7 @@ export class FilterView extends ItemView {
 	private filterPickerEl: HTMLElement | null = null;
 	private filterPickerButtonEl: HTMLButtonElement | null = null;
 	private filterPickerMenuEl: HTMLElement | null = null;
+	private addFilterBtnEl: HTMLButtonElement | null = null;
 	private settingsBtnEl: HTMLButtonElement | null = null;
 	private searchInputEl: HTMLInputElement | null = null;
 	private listEl: HTMLElement | null = null;
@@ -134,6 +162,8 @@ export class FilterView extends ItemView {
 		getTrackingSignature?: () => string,
 		saveFilterSet?: (filterSet: FilterSet) => Promise<void>,
 		openDailyNote?: (dateKey: string) => void | Promise<void>,
+		duplicateFilterSet?: (filterSet: FilterSet) => Promise<void>,
+		deleteFilterSet?: (filterSetId: string) => Promise<void>,
 	) {
 		super(leaf);
 		this.indexer = indexer;
@@ -160,6 +190,8 @@ export class FilterView extends ItemView {
 		this.getTrackingSignature = getTrackingSignature;
 		this.saveFilterSet = saveFilterSet;
 		this.openDailyNote = openDailyNote;
+		this.duplicateFilterSet = duplicateFilterSet;
+		this.deleteFilterSet = deleteFilterSet;
 		this.currentFilterSetId =
 			this.resolvePreferredFilterSetId(this.getLeafFilterSetId())
 			?? this.resolvePreferredFilterSetId(settings.leftRailDefaultFilterViewId)
@@ -321,14 +353,26 @@ export class FilterView extends ItemView {
 			this.ensureLayout(container);
 			this.headerEl?.removeClass('is-hidden');
 			this.syncSelectOptions();
+		if (this.addFilterBtnEl) {
+			const addFilterLabel = t('filterSets', 'addFilter');
+			bindOperonHoverTooltip(this.addFilterBtnEl, {
+				content: addFilterLabel,
+				taskColor: null,
+			});
+			setAccessibleLabelWithoutTooltip(this.addFilterBtnEl, addFilterLabel);
+			this.addFilterBtnEl.onclick = () => {
+				this.openCreateFilterSetModal();
+			};
+		}
 		if (this.settingsBtnEl) {
 			bindOperonHoverTooltip(this.settingsBtnEl, {
 				content: t('filterSets', 'editFilterNamed', { name: currentFs.name }),
 				taskColor: null,
 			});
 			this.settingsBtnEl.onclick = () => {
+				let modal: FilterSetModal | null = null;
 				const clone = cloneFilterSet(currentFs);
-					new FilterSetModal(this.app, clone, this.settings.keyMappings, asyncHandler('filter view settings save failed', async (saved) => {
+					modal = new FilterSetModal(this.app, clone, this.settings.keyMappings, asyncHandler('filter view settings save failed', async (saved) => {
 						if (this.saveFilterSet) {
 							await this.saveFilterSet(saved);
 						} else {
@@ -360,7 +404,10 @@ export class FilterView extends ItemView {
 					pinnedCache: this.pinnedCache ?? undefined,
 					isTaskTracking: this.isTaskTracking,
 					toggleTimer: this.toggleTimer,
-				}).open();
+				}, {
+					quickActions: this.createFilterSetModalQuickActions(currentFs, () => modal?.close()),
+				});
+				modal.open();
 			};
 		}
 		this.lazyLoadObserver?.disconnect();
@@ -533,6 +580,108 @@ export class FilterView extends ItemView {
 			?? null;
 	}
 
+	private async copyFilterSetEmbedCode(filterSet: FilterSet): Promise<void> {
+		const code = '```operon\nfilterId: "' + filterSet.id + '"\n```';
+		await navigator.clipboard.writeText(code);
+		new Notice(t('filterSets', 'embedCodeCopied'));
+	}
+
+	private async saveNewFilterSet(filterSet: FilterSet): Promise<void> {
+		if (this.saveFilterSet) {
+			await this.saveFilterSet(filterSet);
+		} else {
+			this.settings.filterSets.push(filterSet);
+			await this.saveSettings();
+		}
+		this.currentFilterSetId = filterSet.id;
+		this.lastRenderSignature = null;
+		this.render();
+	}
+
+	private openCreateFilterSetModal(): void {
+		new FilterSetModal(this.app, createEmptyFilterSet(), this.settings.keyMappings, asyncHandler('filter view create filter failed', async (saved) => {
+			await this.saveNewFilterSet(saved);
+		}), {
+			indexer: this.indexer,
+			getPipelines: this.getPipelines,
+			getPriorities: this.getPriorities,
+			openEditor: (id) => this.openTaskEditor(id),
+			cycleStatus: (id) => {
+				runAsyncAction('filter view create preview status cycle failed', async () => {
+					await this.cycleStatusFn(id);
+				});
+			},
+			getChildIds: this.getChildIds,
+			navigateToTask: this.navigateToTask,
+			getSettings: this.getSettings,
+			updateField: (operonId, key, value) => { void this.updateField(operonId, key, value); },
+			updateFields: this.updateFields
+				? (operonId, payload) => { void this.updateFields?.(operonId, payload); }
+				: undefined,
+			updateSubtasks: this.updateSubtasks,
+			updateDependencyField: this.updateDependencyField,
+			onContextualAction: this.onContextualAction ?? undefined,
+			pinnedCache: this.pinnedCache ?? undefined,
+			isTaskTracking: this.isTaskTracking,
+			toggleTimer: this.toggleTimer,
+		}).open();
+	}
+
+	private async duplicateCurrentFilterSet(filterSet: FilterSet): Promise<void> {
+		if (this.duplicateFilterSet) {
+			await this.duplicateFilterSet(filterSet);
+		} else {
+			const copy = cloneFilterSet(filterSet);
+			copy.id = generateFilterSetId();
+			copy.name = `${filterSet.name} Copy`;
+			const idx = this.settings.filterSets.findIndex(entry => entry.id === filterSet.id);
+			this.settings.filterSets.splice(idx === -1 ? this.settings.filterSets.length : idx + 1, 0, copy);
+			await this.saveSettings();
+		}
+		this.lastRenderSignature = null;
+		this.render();
+	}
+
+	private confirmDeleteCurrentFilterSet(filterSet: FilterSet, closeModal: () => void): void {
+		new ConfirmActionModal(
+			this.app,
+			{
+				title: t('filterSets', 'deleteFilterTitle'),
+				message: t('filterSets', 'deleteFilterMessage').replace('{{name}}', filterSet.name),
+				confirmText: t('filterSets', 'deleteFilterConfirm'),
+				cancelText: t('filterSets', 'deleteFilterCancel'),
+				danger: true,
+			},
+			asyncHandler('filter view delete filter failed', async (confirmed) => {
+				if (!confirmed) return;
+				if (this.deleteFilterSet) {
+					await this.deleteFilterSet(filterSet.id);
+				} else {
+					this.settings.filterSets = this.settings.filterSets.filter(entry => entry.id !== filterSet.id);
+					await this.saveSettings();
+				}
+				closeModal();
+				this.restoreCurrentFilterSetId();
+				this.lastRenderSignature = null;
+				this.render();
+			}),
+		).open();
+	}
+
+	private createFilterSetModalQuickActions(filterSet: FilterSet, closeModal: () => void): FilterSetModalQuickActions {
+		return {
+			copyEmbedCode: async () => {
+				await this.copyFilterSetEmbedCode(filterSet);
+			},
+			duplicate: async () => {
+				await this.duplicateCurrentFilterSet(filterSet);
+			},
+			remove: () => {
+				this.confirmDeleteCurrentFilterSet(filterSet, closeModal);
+			},
+		};
+	}
+
 	private getVisibleFilterSets(): FilterSet[] {
 		return getNormalFilterSets(this.settings.filterSets);
 	}
@@ -563,6 +712,11 @@ export class FilterView extends ItemView {
 			}
 		});
 		this.createSearchInput(this.headerEl);
+		this.addFilterBtnEl = this.headerEl.createEl('button', {
+			cls: 'operon-filter-add-btn',
+			attr: { type: 'button' },
+		});
+		setIcon(this.addFilterBtnEl, 'plus');
 		this.settingsBtnEl = this.headerEl.createEl('button', { cls: 'operon-filter-settings-btn' });
 		setIcon(this.settingsBtnEl, 'settings-2');
 		this.listEl = this.layoutRoot.createDiv('operon-embed-list operon-filter-list');
@@ -787,6 +941,11 @@ export class FilterView extends ItemView {
 	private buildRenderSignature(filterSet: FilterSet): string {
 		const compactSettingsSignature = JSON.stringify(this.settings.filterTaskCompactChips);
 		const overlaySettingsSignature = buildTaskWikilinkOverlaySettingsSignature(this.settings);
+		const includeLocationIndexSignature = shouldResolveLocationCompactChips(this.settings, this.settings.filterTaskCompactChips)
+			|| shouldResolveLocationCompactChips(this.settings, this.settings.overlayTaskCompactChips);
+		const locationIndexSignature = includeLocationIndexSignature
+			? getLocationPlaceIndex(this.app, this.settings).getSignature()
+			: '';
 		const keyMappingSignature = JSON.stringify(
 			this.settings.keyMappings.map(mapping => [
 				mapping.canonicalKey,
@@ -803,6 +962,7 @@ export class FilterView extends ItemView {
 			JSON.stringify(filterSet),
 			compactSettingsSignature,
 			overlaySettingsSignature,
+			locationIndexSignature,
 			keyMappingSignature,
 			this.getVisibleFilterSets().map(fs => `${fs.id}:${fs.name}:${fs.icon ?? ''}`).join('|'),
 		].join('|');

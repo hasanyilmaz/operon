@@ -15,6 +15,8 @@ export interface FloatingPanel {
 	close: () => void;
 }
 
+export type FloatingPanelCloseReason = 'outside' | 'escape' | 'window-blur' | 'window-resize';
+
 interface FloatingPanelRecord {
 	panel: HTMLElement;
 	anchorEl: HTMLElement | null;
@@ -36,6 +38,11 @@ export interface FloatingPositionOptions extends FloatingHostOptions {
 export interface FloatingPanelOptions extends FloatingHostOptions {
 	retainInputFocus?: boolean;
 	focusInputSelector?: string;
+	closeOnWindowResize?: boolean;
+	repositionOnWindowResize?: boolean;
+	repositionOnPanelResize?: boolean;
+	repositionOnScroll?: boolean;
+	shouldClose?: (reason: FloatingPanelCloseReason) => boolean;
 }
 
 interface FloatingHostContext {
@@ -436,6 +443,8 @@ export function createFloatingPanel(
 		if (!target || !isEditablePanelFocus(target, panel)) return;
 		retainedFocusInput = target;
 	};
+	let onHostWindowResize: () => void = () => undefined;
+	let onHostWindowBlur: () => void = () => undefined;
 
 	const cleanup = () => {
 		if (closed) return;
@@ -455,24 +464,40 @@ export function createFloatingPanel(
 		hostDocument.removeEventListener('mousedown', onOutside, true);
 		hostDocument.removeEventListener('keydown', onKeyDown, true);
 		scrollHost.removeEventListener('scroll', schedulePosition, true);
-		hostWindow.removeEventListener('resize', mobileSurfaceContext ? schedulePosition : cleanup);
+		hostWindow.removeEventListener('resize', onHostWindowResize);
 		visualViewport?.removeEventListener('resize', schedulePosition);
 		visualViewport?.removeEventListener('scroll', schedulePosition);
-		hostWindow.removeEventListener('blur', cleanup);
+		hostWindow.removeEventListener('blur', onHostWindowBlur);
 		onClose?.();
 		dispatchMobilePickerEvent(mobileSurfaceContext, mobileSurfaceContext?.closeEvents ?? []);
 	};
 	record.close = cleanup;
 
+	const requestClose = (reason: FloatingPanelCloseReason): void => {
+		if (options.shouldClose?.(reason) === false) return;
+		cleanup();
+	};
+
 	const onOutside = (event: MouseEvent) => {
 		if (!panel.contains(event.target as Node)) {
-			cleanup();
+			requestClose('outside');
 		}
 	};
 
 	const onKeyDown = (event: KeyboardEvent) => {
-		if (event.key === 'Escape') cleanup();
+		if (event.key === 'Escape') requestClose('escape');
 	};
+
+	onHostWindowResize = () => {
+		if (mobileSurfaceContext || options.closeOnWindowResize === false) {
+			if (options.repositionOnWindowResize !== false) {
+				schedulePosition();
+			}
+			return;
+		}
+		requestClose('window-resize');
+	};
+	onHostWindowBlur = () => requestClose('window-blur');
 
 	dispatchMobilePickerEvent(mobileSurfaceContext, mobileSurfaceContext?.openEvents ?? []);
 	panelHost.appendChild(panel);
@@ -492,14 +517,22 @@ export function createFloatingPanel(
 		if (mobileSurfaceContext) {
 			panel.removeClass('is-opening');
 		}
-		sizeObserver.observe(panel);
+		if (options.repositionOnPanelResize !== false) {
+			sizeObserver.observe(panel);
+		}
 		hostDocument.addEventListener('mousedown', onOutside, true);
 		hostDocument.addEventListener('keydown', onKeyDown, true);
-		scrollHost.addEventListener('scroll', schedulePosition, true);
-		hostWindow.addEventListener('resize', mobileSurfaceContext ? schedulePosition : cleanup);
-		visualViewport?.addEventListener('resize', schedulePosition);
-		visualViewport?.addEventListener('scroll', schedulePosition);
-		hostWindow.addEventListener('blur', cleanup);
+		if (options.repositionOnScroll !== false) {
+			scrollHost.addEventListener('scroll', schedulePosition, true);
+		}
+		hostWindow.addEventListener('resize', onHostWindowResize);
+		if (options.repositionOnWindowResize !== false) {
+			visualViewport?.addEventListener('resize', schedulePosition);
+		}
+		if (options.repositionOnScroll !== false) {
+			visualViewport?.addEventListener('scroll', schedulePosition);
+		}
+		hostWindow.addEventListener('blur', onHostWindowBlur);
 	});
 	return { panel, close: cleanup };
 }

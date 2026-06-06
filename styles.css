@@ -2341,6 +2341,10 @@
 	color: var(--operon-live-hover-border, var(--interactive-accent));
 }
 
+.operon-inline-compact-chip.is-linked.is-location .operon-inline-compact-chip-icon {
+	color: var(--operon-inline-chip-icon-color, var(--operon-live-hover-border, var(--interactive-accent)));
+}
+
 .operon-inline-compact-chip-label {
 	display: inline-block;
 	min-width: 0;
@@ -3666,6 +3670,372 @@
 .operon-links-picker-panel {
 	width: min(360px, calc(100vw - 24px));
 	max-width: min(360px, calc(100vw - 24px));
+}
+
+.operon-location-picker-panel {
+	width: min(460px, calc(100vw - 24px));
+	max-width: min(460px, calc(100vw - 24px));
+}
+
+.operon-location-picker-tabs {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+	gap: 3px;
+	min-height: 40px;
+	padding: 3px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 9px;
+	background: color-mix(in srgb, var(--background-secondary) 82%, transparent);
+}
+
+.operon-location-picker-tab {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 1 1 0;
+	min-width: 0;
+	width: 100%;
+	min-height: 32px;
+	padding: 6px 8px;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-location-picker-tab.is-active {
+	background: color-mix(in srgb, var(--interactive-accent) 16%, var(--background-primary));
+	box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+	color: var(--text-normal);
+}
+
+.operon-location-picker-tab:hover {
+	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	color: var(--text-normal);
+}
+
+.operon-location-picker-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+}
+
+.operon-location-place-item {
+	align-items: stretch;
+	min-width: 0;
+	text-align: left;
+}
+
+.operon-location-place-label,
+.operon-location-place-detail-value {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-location-place-detail-row {
+	margin-top: 0;
+}
+
+.operon-location-picker-empty,
+.operon-location-picker-map-hint {
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.35;
+}
+
+.operon-location-picker-map {
+	--bases-embed-border-width: 0px;
+	--bases-view-padding: 0;
+	overflow: hidden;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+}
+
+.operon-location-picker-coordinate-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.operon-location-picker-input-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 32px auto;
+	gap: 6px;
+	align-items: center;
+}
+
+.operon-location-picker-icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 7px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+}
+
+.operon-location-picker-icon-button:hover {
+	color: var(--text-normal);
+	border-color: var(--background-modifier-border-hover);
+}
+
+.operon-location-map-preview-panel {
+	--operon-location-map-border: var(--interactive-accent);
+	--operon-location-preview-height: 280px;
+	padding: 0;
+	width: min(calc(100vw - 24px), var(--operon-location-preview-width, 420px));
+	min-width: min(240px, calc(100vw - 24px));
+	max-width: min(90vw, var(--operon-location-preview-width, 420px));
+	gap: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	overflow: hidden;
+}
+
+.operon-location-map-preview-body {
+	--bases-embed-border-width: 0px;
+	--bases-view-padding: 0;
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	padding: 1px;
+	border: 1px solid color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 68%, var(--background-primary));
+	border-radius: 4px;
+	background: color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 18%, var(--background-primary));
+	box-shadow:
+		0 8px 20px rgba(0, 0, 0, 0.14),
+		0 0 0 1px color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 36%, transparent);
+	overflow: hidden;
+}
+
+.operon-location-map-preview-render,
+.operon-location-picker-map .block-language-base,
+.operon-location-picker-map .markdown-preview-section,
+.operon-location-picker-map .markdown-preview-sizer,
+.operon-location-picker-map .markdown-rendered,
+.operon-location-picker-map .internal-embed,
+.operon-location-picker-map .markdown-embed,
+.operon-location-picker-map .markdown-embed-content,
+.operon-location-picker-map .markdown-embed-content > .markdown-preview-view,
+.operon-location-picker-map .bases-embed,
+.operon-location-picker-map .bases-view,
+.operon-location-picker-map .bases-content,
+.operon-location-picker-map .bases-view-content,
+.operon-location-picker-map .bases-view-container,
+.operon-location-picker-map .bases-scroll,
+.operon-location-picker-map .bases-scroll-container,
+.operon-location-picker-map .bases-results,
+.operon-location-picker-map .bases-map-container,
+.operon-location-picker-map .bases-map,
+.operon-location-picker-map .maplibregl-map,
+.operon-location-picker-map .maplibregl-canvas-container,
+.operon-location-map-preview-body .markdown-preview-section,
+.operon-location-map-preview-body .markdown-preview-sizer,
+.operon-location-map-preview-body .markdown-rendered,
+.operon-location-map-preview-body .internal-embed,
+.operon-location-map-preview-body .markdown-embed,
+.operon-location-map-preview-body .markdown-embed-content,
+.operon-location-map-preview-body .markdown-embed-content > .markdown-preview-view,
+.operon-location-map-preview-body .block-language-base,
+.operon-location-map-preview-body .bases-embed,
+.operon-location-map-preview-body .bases-view,
+.operon-location-map-preview-body .bases-content,
+.operon-location-map-preview-body .bases-view-content,
+.operon-location-map-preview-body .bases-view-container,
+.operon-location-map-preview-body .bases-scroll,
+.operon-location-map-preview-body .bases-scroll-container,
+.operon-location-map-preview-body .bases-results,
+.operon-location-map-preview-body .bases-map-container,
+.operon-location-map-preview-body .bases-map,
+.operon-location-map-preview-body .maplibregl-map,
+.operon-location-map-preview-body .maplibregl-canvas-container {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+	scrollbar-gutter: auto;
+	overflow: hidden;
+}
+
+.operon-location-map-preview-render,
+.operon-location-map-preview-panel .bases-embed,
+.operon-location-map-preview-panel .bases-view,
+.operon-location-map-preview-panel .bases-content,
+.operon-location-map-preview-panel .bases-view-content,
+.operon-location-map-preview-panel .bases-view-container,
+.operon-location-map-preview-panel .bases-scroll,
+.operon-location-map-preview-panel .bases-scroll-container,
+.operon-location-map-preview-panel .bases-results,
+.operon-location-map-preview-panel .bases-map-container,
+.operon-location-map-preview-panel .bases-map,
+.operon-location-map-preview-panel .maplibregl-map,
+.operon-location-map-preview-panel .maplibregl-canvas-container {
+	height: var(--operon-location-preview-height, 280px);
+}
+
+.operon-location-picker-map .maplibregl-canvas,
+.operon-location-map-preview-body .maplibregl-canvas {
+	display: block;
+}
+
+.operon-location-map-preview-body .maplibregl-map {
+	border: 1px solid color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 82%, var(--background-primary));
+	border-radius: 3px;
+}
+
+.operon-location-map-preview-close,
+.operon-location-map-preview-drag-handle,
+.operon-location-map-preview-pin-button,
+.operon-location-map-preview-size-button {
+	display: inline-flex;
+	position: relative;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	min-width: 30px;
+	min-height: 30px;
+	padding: 0;
+	border: 1px solid color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 38%, var(--background-modifier-border));
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+	box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+	color: color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 72%, var(--text-normal));
+	-webkit-backdrop-filter: blur(8px);
+	backdrop-filter: blur(8px);
+	touch-action: manipulation;
+	z-index: 8;
+}
+
+.operon-location-map-preview-close {
+	position: absolute;
+	top: 8px;
+	right: 12px;
+}
+
+.operon-location-map-preview-drag-handle {
+	cursor: grab;
+	touch-action: none;
+}
+
+.operon-location-map-preview-left-controls {
+	position: absolute;
+	top: 8px;
+	left: 12px;
+	z-index: 8;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: auto;
+	height: auto;
+	pointer-events: auto;
+}
+
+.operon-location-map-preview-drag-handle.is-dragging,
+.operon-location-map-preview-panel.is-dragging .operon-location-map-preview-drag-handle {
+	cursor: grabbing;
+}
+
+.operon-location-map-preview-pin-button.is-pinned,
+.operon-location-map-preview-panel.is-pinned .operon-location-map-preview-pin-button {
+	border-color: color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 76%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 28%, var(--background-primary));
+	color: color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 86%, var(--text-normal));
+	box-shadow:
+		0 2px 8px rgb(0 0 0 / 14%),
+		0 0 0 1px color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 42%, transparent);
+}
+
+.operon-location-map-preview-scale-button {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0;
+}
+
+.operon-location-map-preview-size-controls {
+	position: absolute;
+	right: 12px;
+	bottom: 8px;
+	z-index: 8;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: auto;
+	height: auto;
+	pointer-events: auto;
+}
+
+.operon-location-map-preview-close:hover,
+.operon-location-map-preview-drag-handle:hover,
+.operon-location-map-preview-drag-handle:focus-visible,
+.operon-location-map-preview-pin-button:hover,
+.operon-location-map-preview-pin-button:focus-visible,
+.operon-location-map-preview-size-button:hover {
+	border-color: color-mix(in srgb, var(--operon-location-map-border, var(--interactive-accent)) 62%, var(--background-modifier-border-hover));
+	background: color-mix(in srgb, var(--background-primary) 78%, var(--operon-location-map-border, var(--interactive-accent)) 22%);
+	color: var(--text-normal);
+}
+
+.operon-location-map-preview-size-button.is-disabled,
+.operon-location-map-preview-size-button:disabled {
+	cursor: default;
+	opacity: 0.42;
+}
+
+.operon-location-map-preview-body .maplibregl-ctrl-top-right {
+	top: 44px;
+}
+
+.operon-location-picker-map .markdown-preview-pusher,
+.operon-location-map-preview-body .markdown-preview-pusher {
+	display: none;
+}
+
+.operon-location-picker-map .bases-header,
+.operon-location-picker-map .bases-view-header,
+.operon-location-picker-map .bases-toolbar,
+.operon-location-picker-map .bases-status-bar,
+.operon-location-picker-map .bases-result-count,
+.operon-location-picker-map .bases-config,
+.operon-location-picker-map .bases-query-header,
+.operon-location-map-preview-panel .bases-header,
+.operon-location-map-preview-panel .markdown-embed-title,
+.operon-location-map-preview-panel .markdown-embed-link,
+.operon-location-map-preview-panel .bases-view-header,
+.operon-location-map-preview-panel .bases-toolbar,
+.operon-location-map-preview-panel .bases-status-bar,
+.operon-location-map-preview-panel .bases-result-count,
+.operon-location-map-preview-panel .bases-config,
+.operon-location-map-preview-panel .bases-query-header {
+	display: none;
+}
+
+.operon-location-map-preview-panel .block-language-base,
+.operon-location-map-preview-panel .bases-embed,
+.operon-location-map-preview-panel .bases-map-container,
+.operon-location-map-preview-panel .bases-map {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
 }
 
 .operon-links-picker-label,
@@ -6813,6 +7183,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 
 .operon-editor-assignees-setting .setting-item-info,
 .operon-editor-links-setting .setting-item-info,
+.operon-editor-location-setting .setting-item-info,
 .operon-editor-parent-setting .setting-item-info,
 .operon-editor-inline-picker-setting .setting-item-info,
 .operon-editor-tags-setting .setting-item-info {
@@ -6826,6 +7197,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 
 .operon-editor-assignees-setting .setting-item-control,
 .operon-editor-links-setting .setting-item-control,
+.operon-editor-location-setting .setting-item-control,
 .operon-editor-parent-setting .setting-item-control,
 .operon-editor-inline-picker-setting .setting-item-control,
 .operon-editor-tags-setting .setting-item-control {
@@ -6839,6 +7211,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	.operon-assignees-setting,
 	.operon-links-setting,
 	.operon-dependency-setting,
+	.operon-location-setting,
 	.operon-editor-parent-setting
 ) {
 	border-left: none;
@@ -6858,6 +7231,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 
 .operon-editor-assignee-selection-row,
 .operon-editor-link-selection-row,
+.operon-editor-location-selection-row,
 .operon-editor-task-selection-row,
 .operon-editor-context-selection-row,
 .operon-editor-tag-selection-row {
@@ -6906,7 +7280,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 .operon-editor-compact-selection-chip .operon-inline-compact-chip-icon {
 	width: 16px;
 	height: 16px;
-	color: currentColor;
+	color: var(--operon-inline-chip-icon-color, currentColor);
 }
 
 .operon-editor-compact-selection-chip .operon-inline-compact-chip-icon svg {
@@ -8488,6 +8862,7 @@ button.operon-pinned-sidebar-action svg {
 }
 
 /* Settings cog button — sidebar filter header */
+.operon-filter-add-btn,
 .operon-filter-settings-btn,
 .operon-embed-settings-btn {
 	display: inline-flex;
@@ -8506,6 +8881,7 @@ button.operon-pinned-sidebar-action svg {
 	transition: opacity 0.15s ease, color 0.15s ease;
 }
 
+.operon-filter-add-btn:hover,
 .operon-filter-settings-btn:hover,
 .operon-embed-settings-btn:hover {
 	opacity: 1;
@@ -8513,6 +8889,7 @@ button.operon-pinned-sidebar-action svg {
 	background: var(--background-modifier-hover);
 }
 
+.operon-filter-add-btn svg,
 .operon-filter-settings-btn svg,
 .operon-embed-settings-btn svg {
 	width: 13px;
@@ -9429,20 +9806,87 @@ button.operon-pinned-sidebar-action svg {
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
+	flex-wrap: wrap;
 	gap: 8px;
 	margin-top: 20px;
 	padding-top: 12px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.operon-filter-footer .operon-filter-count-badge {
+.operon-filter-footer-left {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
 	margin-right: auto;
+	min-width: 0;
+}
+
+.operon-filter-footer-quick-actions,
+.operon-filter-footer-primary-actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.operon-filter-footer-primary-actions {
+	justify-content: flex-end;
+	margin-left: auto;
 }
 
 .operon-filter-footer-button {
 	min-height: 34px;
 	padding: 6px 16px;
 	font-size: 13px;
+}
+
+.operon-filter-footer-action-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	min-width: 34px;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: 13px;
+	line-height: 1;
+	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+
+.operon-filter-footer-action-button svg {
+	width: 16px;
+	height: 16px;
+}
+
+.operon-filter-footer-action-button.is-monospace {
+	font-family: var(--font-monospace);
+	font-weight: 650;
+}
+
+.operon-filter-footer-action-button:hover:not(:disabled),
+.operon-filter-footer-action-button:focus-visible {
+	border-color: var(--interactive-accent);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+}
+
+.operon-filter-footer-action-button.is-danger {
+	border-color: color-mix(in srgb, var(--text-error) 36%, var(--background-modifier-border));
+	color: var(--text-error);
+}
+
+.operon-filter-footer-action-button.is-danger:hover:not(:disabled),
+.operon-filter-footer-action-button.is-danger:focus-visible {
+	border-color: var(--text-error);
+	background: var(--text-error);
+	color: var(--text-on-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 22%, transparent);
 }
 
 @media (max-width: 720px) {
@@ -10681,6 +11125,7 @@ button.operon-pinned-sidebar-action svg {
 	gap: 12px;
 	min-height: 0;
 	overflow-y: auto;
+	scrollbar-gutter: stable;
 	padding: 12px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
@@ -11059,6 +11504,10 @@ body.operon-calendar-sidebar-is-resizing {
 	flex-direction: column;
 	gap: 8px;
 	min-width: 0;
+}
+
+.operon-calendar-sidebar-section-scroll {
+	scrollbar-gutter: stable;
 }
 
 .operon-calendar-sidebar-preset-list {
@@ -13570,6 +14019,65 @@ body.operon-calendar-sidebar-is-resizing {
 
 .operon-calendar-timed-item.is-external .operon-calendar-timed-content {
 	padding-right: 0;
+}
+
+.operon-calendar-timed-item.is-availability-layer,
+.operon-calendar-mobile-timegrid-item.is-availability-layer {
+	overflow: hidden;
+	border-color: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 38%, transparent);
+	background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 18%, transparent);
+	box-shadow: 0 1px 3px color-mix(in srgb, black 5%, transparent);
+	opacity: 0.58;
+	width: var(--operon-calendar-availability-width);
+}
+
+.operon-calendar-timed-item.is-availability-layer {
+	padding: 0 8px;
+	border-radius: 8px;
+}
+
+.operon-calendar-mobile-timegrid-item.is-availability-layer {
+	padding-inline: 3px;
+	border-radius: 6px;
+}
+
+.operon-calendar-timed-item.is-availability-layer:hover,
+.operon-calendar-timed-item.is-availability-layer:focus-within,
+.operon-calendar-mobile-timegrid-item.is-availability-layer:hover,
+.operon-calendar-mobile-timegrid-item.is-availability-layer:focus-within {
+	z-index: 10000;
+	background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 20%, var(--background-primary));
+	box-shadow: 0 8px 18px color-mix(in srgb, black 14%, transparent);
+	opacity: 1;
+	width: var(--operon-calendar-day-width);
+}
+
+.operon-calendar-timed-item.is-availability-layer .operon-calendar-timed-content .operon-calendar-all-day-text {
+	display: block;
+	max-height: none;
+	padding-left: 0;
+	padding-right: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow-wrap: normal;
+	font-size: var(--font-ui-smaller);
+	font-weight: 400;
+	line-height: var(--operon-calendar-slot-height, 30px);
+}
+
+.operon-calendar-mobile-timegrid-item.is-availability-layer .operon-calendar-mobile-timegrid-item-content {
+	gap: 0;
+}
+
+.operon-calendar-mobile-timegrid-item.is-availability-layer .operon-calendar-mobile-timegrid-item-title .operon-calendar-all-day-text,
+.operon-calendar-mobile-timegrid-item.is-availability-layer .operon-calendar-mobile-timegrid-item-title .operon-calendar-timed-title {
+	font-size: 10px;
+	font-weight: 700;
+}
+
+.operon-calendar-mobile-timegrid-item.is-availability-layer .operon-calendar-mobile-timegrid-item-time {
+	display: none;
 }
 
 .operon-calendar-timed-item.is-draggable {

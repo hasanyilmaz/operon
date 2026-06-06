@@ -29,7 +29,7 @@ import {
 } from '../core/file-task-template-merge';
 import { composeStatusValue, parseStatusValue, Pipeline } from '../types/pipeline';
 import {
-	deriveTemporalTemplateFromTask,
+	deriveTemporalTemplateFromTaskAtOccurrence,
 	getTaskRepeatOccurrenceDate,
 	resolveOccurrencePlan,
 } from './recurrence-domain';
@@ -95,6 +95,17 @@ const FILE_REPEAT_PROTECTED_CLEAR_CANONICAL_FIELDS = new Set([
 	'dateDue',
 	'datetimeStart',
 	'datetimeEnd',
+]);
+
+const USER_DATE_FIELDS = new Set([
+	'dateScheduled',
+	'dateStarted',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
+	'datetimeStart',
+	'datetimeEnd',
+	'datetimeRepeatEnd',
 ]);
 
 export interface RecurrenceMaterializationResult {
@@ -258,23 +269,41 @@ function addDaysToDate(value: string, deltaDays: number): string {
 	return `${yyyy}-${mm}-${dd}`;
 }
 
-function shiftScheduledDateByRootDelta(
-	oldRootDate: string | null | undefined,
+function resolveRootOccurrenceAnchor(fieldValues: Record<string, string>): string {
+	return normalizeDateOnly(fieldValues['repeatOccurrenceDate'])
+		|| normalizeDateOnly(fieldValues['dateScheduled'])
+		|| normalizeDateOnly(fieldValues['dateDue'])
+		|| normalizeDateOnly(fieldValues['dateStarted'])
+		|| normalizeDateOnly(fieldValues['datetimeStart'])
+		|| normalizeDateOnly(fieldValues['datetimeEnd']);
+}
+
+function resolveMaterializationSourceAnchor(rule: RepeatRule, fieldValues: Record<string, string>): string {
+	if (rule.mode === 'done') {
+		return normalizeDateOnly(fieldValues['repeatOccurrenceDate'])
+			|| normalizeDateOnly(fieldValues['dateScheduled']);
+	}
+	return resolveRootOccurrenceAnchor(fieldValues);
+}
+
+function shiftDateByRootOccurrenceDelta(
+	oldRootFieldValues: Record<string, string>,
 	oldChildDate: string | null | undefined,
-	newRootDate: string | null | undefined,
+	newRootFieldValues: Record<string, string>,
 ): string {
-	const oldRoot = normalizeDateOnly(oldRootDate);
+	const oldRoot = resolveRootOccurrenceAnchor(oldRootFieldValues);
 	const oldChild = normalizeDateOnly(oldChildDate);
-	const nextRoot = normalizeDateOnly(newRootDate);
+	const nextRoot = resolveRootOccurrenceAnchor(newRootFieldValues);
 	if (!oldRoot || !oldChild || !nextRoot) return '';
 	const deltaDays = dateToUtcDay(oldChild) - dateToUtcDay(oldRoot);
 	return addDaysToDate(nextRoot, deltaDays);
 }
 
-function shiftOrClearDatetimeField(
+function shiftDatetimeByRootOccurrenceDelta(
 	fieldValues: Record<string, string>,
 	key: 'datetimeStart' | 'datetimeEnd',
-	nextDate: string,
+	oldRootFieldValues: Record<string, string>,
+	newRootFieldValues: Record<string, string>,
 ): void {
 	const value = fieldValues[key];
 	if (!value) return;
@@ -283,38 +312,17 @@ function shiftOrClearDatetimeField(
 		delete fieldValues[key];
 		return;
 	}
-	fieldValues[key] = `${nextDate}${value.slice(10)}`;
-}
-
-function shiftDateFieldByScheduledDelta(
-	fieldValues: Record<string, string>,
-	key: 'dateStarted' | 'dateDue',
-	oldScheduled: string | null | undefined,
-	newScheduled: string | null | undefined,
-): void {
-	const value = normalizeDateOnly(fieldValues[key]);
-	const oldRoot = normalizeDateOnly(oldScheduled);
-	const nextRoot = normalizeDateOnly(newScheduled);
-	if (!value || !oldRoot || !nextRoot) return;
-	const deltaDays = dateToUtcDay(nextRoot) - dateToUtcDay(oldRoot);
-	fieldValues[key] = addDaysToDate(value, deltaDays);
-}
-
-function shiftDatetimeFieldByScheduledDelta(
-	fieldValues: Record<string, string>,
-	key: 'datetimeStart' | 'datetimeEnd',
-	oldScheduled: string | null | undefined,
-	newScheduled: string | null | undefined,
-): void {
-	const value = fieldValues[key];
-	if (!value) return;
-	if (/^\d{2}:\d{2}(?::\d{2})?$/u.test(value.trim())) return;
-	if (!/^\d{4}-\d{2}-\d{2}T/u.test(value)) return;
-	const oldRoot = normalizeDateOnly(oldScheduled);
-	const nextRoot = normalizeDateOnly(newScheduled);
-	if (!oldRoot || !nextRoot) return;
+	const oldRoot = resolveRootOccurrenceAnchor(oldRootFieldValues);
+	const nextRoot = resolveRootOccurrenceAnchor(newRootFieldValues);
+	if (!oldRoot || !nextRoot) {
+		delete fieldValues[key];
+		return;
+	}
 	const currentDate = normalizeDateOnly(value);
-	if (!currentDate) return;
+	if (!currentDate) {
+		delete fieldValues[key];
+		return;
+	}
 	const deltaDays = dateToUtcDay(nextRoot) - dateToUtcDay(oldRoot);
 	fieldValues[key] = `${addDaysToDate(currentDate, deltaDays)}${value.slice(10)}`;
 }
@@ -428,11 +436,9 @@ function cloneRecurringInlineBodySubtask(
 	const sourceKeys = getTaskSourceKeyMap(task);
 	const originalFields = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
 	const nextFields: Record<string, string> = { ...originalFields };
-	const childScheduled = shiftScheduledDateByRootDelta(
-		options.oldRootFieldValues['dateScheduled'],
-		originalFields['dateScheduled'],
-		options.newRootFieldValues['dateScheduled'],
-	);
+	const childScheduled = shiftDateByRootOccurrenceDelta(options.oldRootFieldValues, originalFields['dateScheduled'], options.newRootFieldValues);
+	const childStarted = shiftDateByRootOccurrenceDelta(options.oldRootFieldValues, originalFields['dateStarted'], options.newRootFieldValues);
+	const childDue = shiftDateByRootOccurrenceDelta(options.oldRootFieldValues, originalFields['dateDue'], options.newRootFieldValues);
 
 	for (const key of BODY_CLONE_RESET_FIELDS) {
 		delete nextFields[key];
@@ -454,13 +460,15 @@ function cloneRecurringInlineBodySubtask(
 
 	if (childScheduled) {
 		nextFields['dateScheduled'] = childScheduled;
-		shiftOrClearDatetimeField(nextFields, 'datetimeStart', childScheduled);
-		shiftOrClearDatetimeField(nextFields, 'datetimeEnd', childScheduled);
 	} else {
 		delete nextFields['dateScheduled'];
-		delete nextFields['datetimeStart'];
-		delete nextFields['datetimeEnd'];
 	}
+	if (childStarted) nextFields['dateStarted'] = childStarted;
+	else delete nextFields['dateStarted'];
+	if (childDue) nextFields['dateDue'] = childDue;
+	else delete nextFields['dateDue'];
+	shiftDatetimeByRootOccurrenceDelta(nextFields, 'datetimeStart', options.oldRootFieldValues, options.newRootFieldValues);
+	shiftDatetimeByRootOccurrenceDelta(nextFields, 'datetimeEnd', options.oldRootFieldValues, options.newRootFieldValues);
 
 	const fields: OperonField[] = Object.entries(nextFields)
 		.filter(([, value]) => !!value)
@@ -586,6 +594,7 @@ export function buildRecurringFileFieldPresence(
 ): Set<string> {
 	const presence = new Set(Object.keys(plannedFieldValues));
 	for (const key of sourceDocument.managedFieldPresence) {
+		if (USER_DATE_FIELDS.has(key)) continue;
 		if ((sourceDocument.managedFieldValues[key] ?? '') === '') {
 			presence.add(key);
 		}
@@ -638,7 +647,7 @@ export class RecurrenceService {
 				: inlineDescription
 					? detectRepeatSeriesNamingConfig(inlineDescription)
 					: null,
-			baseTemporalTemplate: deriveTemporalTemplateFromTask(task),
+			baseTemporalTemplate: deriveTemporalTemplateFromTaskAtOccurrence(task, resolveMaterializationSourceAnchor(rule, task.fieldValues)),
 			now,
 		});
 	}
@@ -714,7 +723,7 @@ export class RecurrenceService {
 		completionTimestamp: string,
 	): string {
 		if (rule.mode === 'schedule' || rule.mode === 'count') {
-			return getTaskRepeatOccurrenceDate(completedTask);
+			return resolveMaterializationSourceAnchor(rule, completedTask.fieldValues);
 		}
 		if (completedTask.checkbox !== 'done') return completionTimestamp;
 		const occurrenceDate = getTaskRepeatOccurrenceDate(completedTask);
@@ -795,14 +804,19 @@ export class RecurrenceService {
 		temporalTemplate: RepeatTemporalTemplate,
 	): Record<string, string> {
 		const now = localNow();
+		const hasSourceScheduledDate = !!normalizeDateOnly(completedTask.fieldValues['dateScheduled']);
+		const sourceTemporalAnchor = resolveMaterializationSourceAnchor(rule, completedTask.fieldValues);
+		const hasSourceTemporalAnchor = !!sourceTemporalAnchor;
 		const fieldValues: Record<string, string> = {
 			operonId: generateOperonId(),
 			datetimeCreated: now,
-			dateScheduled: nextDate,
 			datetimeModified: now,
 			repeatSeriesId: series.seriesId,
 			repeatOccurrenceDate: nextOccurrenceDate,
 		};
+		if (hasSourceScheduledDate) {
+			fieldValues['dateScheduled'] = nextDate;
+		}
 
 		for (const [key, value] of Object.entries(completedTask.fieldValues)) {
 			if (!value) continue;
@@ -817,7 +831,7 @@ export class RecurrenceService {
 			this.getSettings().defaultPipelineName,
 			completedTask.fieldValues['status'],
 			beforeTask.fieldValues['status'],
-			!!fieldValues['dateScheduled'],
+			hasSourceScheduledDate,
 		);
 		if (nextStatus) {
 			fieldValues['status'] = nextStatus;
@@ -829,36 +843,8 @@ export class RecurrenceService {
 			delete fieldValues[key];
 		}
 
-		shiftDateFieldByScheduledDelta(
-			fieldValues,
-			'dateStarted',
-			completedTask.fieldValues['dateScheduled'],
-			nextDate,
-		);
-		shiftDateFieldByScheduledDelta(
-			fieldValues,
-			'dateDue',
-			completedTask.fieldValues['dateScheduled'],
-			nextDate,
-		);
-		shiftDatetimeFieldByScheduledDelta(
-			fieldValues,
-			'datetimeStart',
-			completedTask.fieldValues['dateScheduled'],
-			nextDate,
-		);
-		shiftDatetimeFieldByScheduledDelta(
-			fieldValues,
-			'datetimeEnd',
-			completedTask.fieldValues['dateScheduled'],
-			nextDate,
-		);
-		const hasScheduledAnchor = !!normalizeDateOnly(completedTask.fieldValues['dateScheduled']);
-		const hasExplicitTemporalShift = temporalTemplate.dateShiftDays !== 0
-			|| temporalTemplate.startDateShiftDays !== 0
-			|| temporalTemplate.endDateShiftDays !== 0;
-		if (hasScheduledAnchor || hasExplicitTemporalShift) {
-			this.applyTemporalTemplateToFieldValues(fieldValues, nextOccurrenceDate, nextDate, temporalTemplate);
+		if (hasSourceTemporalAnchor) {
+			this.applyTemporalTemplateToFieldValues(fieldValues, nextOccurrenceDate, nextDate, temporalTemplate, hasSourceScheduledDate);
 		}
 
 		if (rule.mode === 'count' && rule.count) {
@@ -886,12 +872,28 @@ export class RecurrenceService {
 		if (series.baseTemporalTemplate) {
 			return { ...series.baseTemporalTemplate };
 		}
+		const contextRule = parseRepeatRule(contextTask.fieldValues['repeat']);
 		const materializedTasks = this.indexer.getAllTasks()
 			.filter(task => (task.fieldValues['repeatSeriesId'] ?? '').trim() === series.seriesId)
-			.sort((left, right) => getTaskRepeatOccurrenceDate(left).localeCompare(getTaskRepeatOccurrenceDate(right)));
+			.sort((left, right) => {
+				const leftRule = parseRepeatRule(left.fieldValues['repeat']) ?? contextRule;
+				const rightRule = parseRepeatRule(right.fieldValues['repeat']) ?? contextRule;
+				const leftDate = leftRule
+					? resolveMaterializationSourceAnchor(leftRule, left.fieldValues)
+					: getTaskRepeatOccurrenceDate(left);
+				const rightDate = rightRule
+					? resolveMaterializationSourceAnchor(rightRule, right.fieldValues)
+					: getTaskRepeatOccurrenceDate(right);
+				if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
+				return left.operonId.localeCompare(right.operonId);
+			});
 		const seedTask = materializedTasks[0] ?? contextTask;
 		if (!seedTask) return null;
-		const template = deriveTemporalTemplateFromTask(seedTask);
+		const seedRule = parseRepeatRule(seedTask.fieldValues['repeat']) ?? parseRepeatRule(contextTask.fieldValues['repeat']);
+		const seedAnchor = seedRule
+			? resolveMaterializationSourceAnchor(seedRule, seedTask.fieldValues)
+			: getTaskRepeatOccurrenceDate(seedTask);
+		const template = deriveTemporalTemplateFromTaskAtOccurrence(seedTask, seedAnchor);
 		await this.storage.repeatSeries.updateBaseTemporalTemplate(series.seriesId, template, localNow());
 		return template;
 	}
@@ -901,8 +903,13 @@ export class RecurrenceService {
 		occurrenceDate: string,
 		scheduledDate: string,
 		template: RepeatTemporalTemplate,
+		includeScheduledDate: boolean,
 	): void {
-		fieldValues['dateScheduled'] = scheduledDate;
+		if (includeScheduledDate) {
+			fieldValues['dateScheduled'] = scheduledDate;
+		} else {
+			delete fieldValues['dateScheduled'];
+		}
 		const allDayStartDate = addDaysToDate(occurrenceDate, template.startDateShiftDays);
 		const allDayEndDate = addDaysToDate(occurrenceDate, template.endDateShiftDays);
 		if (template.mode === 'allDay') {
@@ -913,21 +920,55 @@ export class RecurrenceService {
 				fieldValues['dateDue'] = allDayEndDate;
 			}
 			if (Object.prototype.hasOwnProperty.call(fieldValues, 'datetimeStart')) {
-				fieldValues['datetimeStart'] = '';
+				if (template.startTime) {
+					fieldValues['datetimeStart'] = this.isTimeOnlyValue(fieldValues['datetimeStart'])
+						? template.startTime.slice(0, 5)
+						: `${allDayStartDate}T${template.startTime}`;
+				} else {
+					delete fieldValues['datetimeStart'];
+				}
 			}
 			if (Object.prototype.hasOwnProperty.call(fieldValues, 'datetimeEnd')) {
-				fieldValues['datetimeEnd'] = '';
+				if (template.endTime) {
+					fieldValues['datetimeEnd'] = this.isTimeOnlyValue(fieldValues['datetimeEnd'])
+						? template.endTime.slice(0, 5)
+						: `${allDayEndDate}T${template.endTime}`;
+				} else {
+					delete fieldValues['datetimeEnd'];
+				}
 			}
 			return;
 		}
-		const preserveTimeOnly = this.isTimeOnlyValue(fieldValues['datetimeStart']) && this.isTimeOnlyValue(fieldValues['datetimeEnd']);
+		if (Object.prototype.hasOwnProperty.call(fieldValues, 'dateStarted')) {
+			fieldValues['dateStarted'] = allDayStartDate;
+		}
+		if (Object.prototype.hasOwnProperty.call(fieldValues, 'dateDue')) {
+			fieldValues['dateDue'] = allDayEndDate;
+		}
+		const hasDatetimeStart = 'datetimeStart' in fieldValues;
+		const hasDatetimeEnd = 'datetimeEnd' in fieldValues;
+		const preserveTimeOnly = (hasDatetimeStart || hasDatetimeEnd)
+			&& (!hasDatetimeStart || this.isTimeOnlyValue(fieldValues['datetimeStart']))
+			&& (!hasDatetimeEnd || this.isTimeOnlyValue(fieldValues['datetimeEnd']));
 		if (preserveTimeOnly) {
-			fieldValues['datetimeStart'] = template.startTime ? template.startTime.slice(0, 5) : '';
-			fieldValues['datetimeEnd'] = template.endTime ? template.endTime.slice(0, 5) : '';
+			if (hasDatetimeStart) {
+				if (template.startTime) fieldValues['datetimeStart'] = template.startTime.slice(0, 5);
+				else delete fieldValues['datetimeStart'];
+			}
+			if (hasDatetimeEnd) {
+				if (template.endTime) fieldValues['datetimeEnd'] = template.endTime.slice(0, 5);
+				else delete fieldValues['datetimeEnd'];
+			}
 			return;
 		}
-		fieldValues['datetimeStart'] = template.startTime ? `${allDayStartDate}T${template.startTime}` : '';
-		fieldValues['datetimeEnd'] = template.endTime ? `${allDayEndDate}T${template.endTime}` : '';
+		if (hasDatetimeStart) {
+			if (template.startTime) fieldValues['datetimeStart'] = `${allDayStartDate}T${template.startTime}`;
+			else delete fieldValues['datetimeStart'];
+		}
+		if (hasDatetimeEnd) {
+			if (template.endTime) fieldValues['datetimeEnd'] = `${allDayEndDate}T${template.endTime}`;
+			else delete fieldValues['datetimeEnd'];
+		}
 	}
 
 	private isTimeOnlyValue(value: string | null | undefined): boolean {
@@ -1023,10 +1064,7 @@ export class RecurrenceService {
 		const folder = await this.ensureRepeatFolder(this.resolveRepeatFolder(sourceFile));
 		const naming = resolveLatestRepeatSeriesNamingConfig(this.getFileBaseName(sourceFile.path), plan.naming);
 		const currentDisplayDate = resolveRecurringFileDisplayDate(plan.sourceTask.fieldValues);
-		const nextDisplayDate = resolveRecurringFileDisplayDate({
-			dateScheduled: plan.nextDate,
-			repeatOccurrenceDate: plan.nextOccurrenceDate,
-		});
+		const nextDisplayDate = resolveRecurringFileDisplayDate(plan.fieldValues);
 		if (!currentDisplayDate || !nextDisplayDate) return null;
 		const nextTitle = naming
 			? renderRepeatSeriesTitle(naming, nextDisplayDate)

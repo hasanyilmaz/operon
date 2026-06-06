@@ -81,6 +81,7 @@ import {
 } from '../../systems/optimistic-status-patch';
 import {
 	buildTimedGridVisualLayout,
+	type TimedGridVisualLayer,
 	type TimedGridVisualLayout,
 	type TimedGridVisualLayoutPlacement,
 } from './timed-grid-visual-layout';
@@ -222,6 +223,7 @@ interface TimedSegmentPlacement {
 	laneCount: number;
 	startMinutes: number;
 	endMinutes: number;
+	visualLayer: TimedGridVisualLayer;
 }
 
 type TimedGridVisualPlacement = TimedGridVisualLayoutPlacement<TimedSegmentPlacement>;
@@ -428,6 +430,7 @@ export class CalendarView extends ItemView {
 	private timedHorizontalStripEl: HTMLElement | null = null;
 	private timedHorizontalClipEl: HTMLElement | null = null;
 	private timedHorizontalDayWidthPx = 0;
+	private lastTimedGridUserScrollInteractionAt = 0;
 	private mobileTimeGridScrollEl: HTMLElement | null = null;
 	private lastMobileTimeGridScrollTop = 0;
 	private restoreMobileTimeGridScrollOnNextRender = false;
@@ -542,11 +545,7 @@ export class CalendarView extends ItemView {
 				return;
 			}
 			if (this.renderFrame !== null) return;
-			if (this.mobileTimeGridScrollEl?.isConnected) {
-				this.captureMobileTimeGridScrollForRender();
-			} else {
-				this.captureActiveMultiWeekSurfaceScroll();
-			}
+			this.captureActiveCalendarScrollForRender();
 			this.preserveScrollOnNextRender = true;
 			this.renderFrame = window.requestAnimationFrame(() => {
 				this.renderFrame = null;
@@ -2007,11 +2006,14 @@ export class CalendarView extends ItemView {
 		const clip = header.createDiv('operon-calendar-mobile-timegrid-header-clip');
 		const days = clip.createDiv('operon-calendar-mobile-timegrid-header-days operon-calendar-mobile-timegrid-buffer-track');
 		this.applyMobileTimeGridBufferedTrackStyle(days, renderWindow);
+		const opensDailyNote = this.getSettings().calendarDayTitleAction === 'create-open-daily-note';
 		for (const dateKey of renderWindow.bufferedDates) {
-			const day = days.createEl('button', {
-				cls: 'operon-calendar-mobile-timegrid-day-header',
-				attr: { type: 'button' },
-			});
+			const day = opensDailyNote
+				? days.createEl('button', {
+					cls: 'operon-calendar-mobile-timegrid-day-header',
+					attr: { type: 'button' },
+				})
+				: days.createDiv('operon-calendar-mobile-timegrid-day-header');
 			day.classList.toggle('is-today', dateKey === localToday());
 			day.createSpan({
 				text: this.formatWeekdayLabel(dateKey),
@@ -2021,9 +2023,11 @@ export class CalendarView extends ItemView {
 				text: this.formatMobileDateNumber(dateKey),
 				cls: 'operon-calendar-mobile-timegrid-day-number',
 			});
-			day.addEventListener('click', () => {
-				void this.callbacks.onOpenDailyNote?.(dateKey);
-			});
+			if (opensDailyNote) {
+				day.addEventListener('click', () => {
+					void this.callbacks.onOpenDailyNote?.(dateKey);
+				});
+			}
 		}
 	}
 
@@ -3016,6 +3020,7 @@ export class CalendarView extends ItemView {
 		block.addClass(`is-${placement.item.renderSnapshot.checkbox}`);
 		this.applyCalendarProjectionClasses(block, placement.item);
 		if (placement.item.origin === 'external') block.addClass('is-external');
+		if (placement.visualAvailabilityLayer) block.addClass('is-availability-layer');
 		if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
 		if (placement.visualInsetLevel > 0) block.addClass('is-indented-overlap');
 		this.applyTimedPlacementStyle(
@@ -3030,6 +3035,9 @@ export class CalendarView extends ItemView {
 			placement,
 		);
 		this.applyCalendarItemColor(block, placement.item, preset, settings);
+		if (placement.visualAvailabilityLayer) {
+			this.bindAvailabilityLayerExternalTooltip(block, placement.item, settings);
+		}
 		const content = block.createDiv('operon-calendar-mobile-timegrid-item-content');
 		const title = content.createDiv('operon-calendar-mobile-timegrid-item-title');
 		const hoverTrigger = this.renderCalendarItemLabel(title, placement.item, settings, true);
@@ -3317,6 +3325,7 @@ export class CalendarView extends ItemView {
 
 		const daysGrid = headerRow.createDiv('operon-calendar-day-header-grid');
 		daysGrid.style.gridTemplateColumns = `repeat(${Math.max(1, visibleDates.length)}, minmax(0, 1fr))`;
+		const opensDailyNote = this.getSettings().calendarDayTitleAction === 'create-open-daily-note';
 		for (const dateKey of visibleDates) {
 			const cell = daysGrid.createDiv('operon-calendar-day-header-cell');
 			const dayDate = this.parseDateKey(dateKey);
@@ -3324,16 +3333,18 @@ export class CalendarView extends ItemView {
 			if (dateKey === localToday()) {
 				cell.addClass('is-today');
 			}
-			cell.addClass('is-clickable');
-			cell.tabIndex = 0;
-			cell.addEventListener('click', () => {
-				void this.callbacks.onOpenDailyNote?.(dateKey);
-			});
-			cell.addEventListener('keydown', (event) => {
-				if (event.key !== 'Enter' && event.key !== ' ') return;
-				event.preventDefault();
-				void this.callbacks.onOpenDailyNote?.(dateKey);
-			});
+			if (opensDailyNote) {
+				cell.addClass('is-clickable');
+				cell.tabIndex = 0;
+				cell.addEventListener('click', () => {
+					void this.callbacks.onOpenDailyNote?.(dateKey);
+				});
+				cell.addEventListener('keydown', (event) => {
+					if (event.key !== 'Enter' && event.key !== ' ') return;
+					event.preventDefault();
+					void this.callbacks.onOpenDailyNote?.(dateKey);
+				});
+			}
 			const topLine = cell.createDiv('operon-calendar-day-header-topline');
 			topLine.createDiv({
 				text: this.formatWeekdayLabel(dateKey),
@@ -3648,8 +3659,14 @@ export class CalendarView extends ItemView {
 	private bindSidebarSectionLayout(wrapper: HTMLElement): void {
 		this.sidebarSectionsLayoutCleanup?.();
 		const generation = this.renderGeneration;
+		let frameScheduled = false;
 		const schedule = (): void => {
-			this.requestRenderAnimationFrame(generation, () => this.adjustSidebarSectionHeights(wrapper));
+			if (frameScheduled) return;
+			frameScheduled = true;
+			this.requestRenderAnimationFrame(generation, () => {
+				frameScheduled = false;
+				this.adjustSidebarSectionHeights(wrapper);
+			});
 		};
 		schedule();
 		const observer = new ResizeObserver(() => schedule());
@@ -3661,11 +3678,10 @@ export class CalendarView extends ItemView {
 		const sections = Array.from(wrapper.querySelectorAll<HTMLElement>('.operon-calendar-sidebar-managed-section'));
 		if (sections.length === 0) return;
 
-		for (const section of sections) {
-			section.style.removeProperty('max-height');
-		}
-
 		if (getOwnerWindow(wrapper).matchMedia(CALENDAR_MOBILE_SIDEBAR_MEDIA_QUERY).matches) {
+			for (const section of sections) {
+				this.setSidebarSectionMaxHeight(section, null);
+			}
 			return;
 		}
 
@@ -3674,6 +3690,11 @@ export class CalendarView extends ItemView {
 
 		const gapValue = Number.parseFloat(getComputedStyle(wrapper).rowGap || getComputedStyle(wrapper).gap || '0') || 0;
 		const totalGap = Math.max(0, sections.length - 1) * gapValue;
+		for (const section of sections) {
+			if (!section.classList.contains('is-open')) {
+				this.setSidebarSectionMaxHeight(section, null);
+			}
+		}
 		const closedHeight = sections
 			.filter(section => !section.classList.contains('is-open'))
 			.reduce((sum, section) => sum + section.offsetHeight, 0);
@@ -3682,7 +3703,7 @@ export class CalendarView extends ItemView {
 
 		const availableForOpen = Math.max(0, wrapperHeight - totalGap - closedHeight);
 		if (openSections.length === 1) {
-			openSections[0].style.maxHeight = `${Math.floor(availableForOpen)}px`;
+			this.setSidebarSectionMaxHeight(openSections[0], availableForOpen);
 			return;
 		}
 
@@ -3710,8 +3731,20 @@ export class CalendarView extends ItemView {
 			}
 		}
 
-		first.style.maxHeight = `${Math.max(0, Math.floor(firstHeight))}px`;
-		second.style.maxHeight = `${Math.max(0, Math.floor(secondHeight))}px`;
+		this.setSidebarSectionMaxHeight(first, firstHeight);
+		this.setSidebarSectionMaxHeight(second, secondHeight);
+	}
+
+	private setSidebarSectionMaxHeight(section: HTMLElement, heightPx: number | null): void {
+		if (heightPx === null) {
+			if (section.style.maxHeight) {
+				section.style.removeProperty('max-height');
+			}
+			return;
+		}
+		const nextValue = `${Math.max(0, Math.floor(heightPx))}px`;
+		if (section.style.maxHeight === nextValue) return;
+		section.style.maxHeight = nextValue;
 	}
 
 	private renderMiniMonth(container: HTMLElement, state: CalendarLeafState, preset: CalendarPreset): void {
@@ -4879,6 +4912,7 @@ export class CalendarView extends ItemView {
 
 		const daysGrid = headerRow.createDiv('operon-calendar-day-header-grid');
 		daysGrid.style.gridTemplateColumns = `repeat(${Math.max(1, visibleDates.length)}, minmax(0, 1fr))`;
+		const opensDailyNote = this.getSettings().calendarDayTitleAction === 'create-open-daily-note';
 
 		for (const dateKey of visibleDates) {
 			const cell = daysGrid.createDiv('operon-calendar-day-header-cell');
@@ -4887,16 +4921,18 @@ export class CalendarView extends ItemView {
 			if (dateKey === localToday()) {
 				cell.addClass('is-today');
 			}
-			cell.addClass('is-clickable');
-			cell.tabIndex = 0;
-			cell.addEventListener('click', () => {
-				void this.callbacks.onOpenDailyNote?.(dateKey);
-			});
-			cell.addEventListener('keydown', (event) => {
-				if (event.key !== 'Enter' && event.key !== ' ') return;
-				event.preventDefault();
-				void this.callbacks.onOpenDailyNote?.(dateKey);
-			});
+			if (opensDailyNote) {
+				cell.addClass('is-clickable');
+				cell.tabIndex = 0;
+				cell.addEventListener('click', () => {
+					void this.callbacks.onOpenDailyNote?.(dateKey);
+				});
+				cell.addEventListener('keydown', (event) => {
+					if (event.key !== 'Enter' && event.key !== ' ') return;
+					event.preventDefault();
+					void this.callbacks.onOpenDailyNote?.(dateKey);
+				});
+			}
 			const topLine = cell.createDiv('operon-calendar-day-header-topline');
 			topLine.createDiv({
 				text: this.formatWeekdayLabel(dateKey),
@@ -5085,8 +5121,15 @@ export class CalendarView extends ItemView {
 			this.scheduleLeafStatePersistence();
 		});
 		viewport.addEventListener('wheel', (event: WheelEvent) => {
+			this.lastTimedGridUserScrollInteractionAt = Date.now();
 			this.handleTimedHorizontalWheel(event);
 		}, { passive: false });
+		viewport.addEventListener('pointerdown', () => {
+			this.lastTimedGridUserScrollInteractionAt = Date.now();
+		});
+		viewport.addEventListener('keydown', () => {
+			this.lastTimedGridUserScrollInteractionAt = Date.now();
+		});
 
 		const section = viewport.createDiv('operon-calendar-timed-section');
 		const gutter = section.createDiv('operon-calendar-time-gutter');
@@ -5173,6 +5216,7 @@ export class CalendarView extends ItemView {
 				block.addClass(`is-${segment.item.renderSnapshot.checkbox}`);
 			this.applyCalendarProjectionClasses(block, segment.item);
 			if (segment.item.origin === 'external') block.addClass('is-external');
+			if (segment.visualAvailabilityLayer) block.addClass('is-availability-layer');
 			if (segment.visualOverlapGroupSize > 1) block.addClass('has-overlap');
 			if (segment.visualStackIndex > 1) block.addClass('is-overlap-layer');
 			if (segment.visualInsetLevel > 0) block.addClass('is-indented-overlap');
@@ -5189,6 +5233,9 @@ export class CalendarView extends ItemView {
 				segment,
 			);
 			this.applyCalendarItemColor(block, segment.item, preset, settings);
+			if (segment.visualAvailabilityLayer) {
+				this.bindAvailabilityLayerExternalTooltip(block, segment.item, settings);
+			}
 
 			const content = block.createDiv('operon-calendar-timed-content');
 			const hoverTrigger = this.renderCalendarItemLabel(content, segment.item, settings, true);
@@ -6129,7 +6176,15 @@ export class CalendarView extends ItemView {
 		element.style.top = `${Math.max(0, top)}px`;
 		element.style.height = `${height}px`;
 		element.style.left = `${((dayIndex + leftRatio) / Math.max(1, totalDays)) * 100}%`;
-		element.style.width = `${(widthRatio / Math.max(1, totalDays)) * 100}%`;
+		const widthValue = `${(widthRatio / Math.max(1, totalDays)) * 100}%`;
+		if (visualLayout?.visualAvailabilityLayer) {
+			element.style.removeProperty('width');
+			element.style.setProperty('--operon-calendar-availability-width', widthValue);
+		} else {
+			element.style.width = widthValue;
+			element.style.removeProperty('--operon-calendar-availability-width');
+		}
+		element.style.setProperty('--operon-calendar-day-width', `${(1 / Math.max(1, totalDays)) * 100}%`);
 		if (visualLayout) {
 			element.style.setProperty('--operon-calendar-stack-index', String(Math.max(1, visualLayout.visualStackIndex)));
 		} else {
@@ -6491,6 +6546,7 @@ export class CalendarView extends ItemView {
 					laneCount: 1,
 					startMinutes,
 					endMinutes,
+					visualLayer: item.origin === 'external' ? 'availability' : 'primary',
 				});
 				perDay.set(dayIndex, list);
 			}
@@ -6807,6 +6863,22 @@ export class CalendarView extends ItemView {
 			);
 		}
 		return hoverTrigger;
+	}
+
+	private bindAvailabilityLayerExternalTooltip(block: HTMLElement, item: CalendarItem, settings: OperonSettings): void {
+		if (item.origin !== 'external' || !item.externalRef) return;
+		const sourceName = item.externalRef.sourceName || t('calendar', 'externalCalendarsSection');
+		const title = item.renderSnapshot.description || item.taskId;
+		const range = this.formatTimedRange(item, settings);
+		const content = range ? `${title} · ${range}` : title;
+		const accessibleLabel = [sourceName, title, range].filter(Boolean).join(', ');
+		setAccessibleLabelWithoutTooltip(block, accessibleLabel);
+		const accent = block.style.getPropertyValue('--operon-calendar-accent').trim();
+		bindOperonHoverTooltip(block, {
+			title: sourceName,
+			content,
+			taskColor: accent && accent !== 'transparent' ? accent : null,
+		});
 	}
 
 		private renderCalendarStatusButton(
@@ -7712,7 +7784,7 @@ export class CalendarView extends ItemView {
 		}
 
 		this.lastAppliedScrollSignature = null;
-		this.scheduleInitialScroll({ ...state, anchorDate: today }, preset, this.renderGeneration);
+		this.scheduleInitialScroll({ ...state, anchorDate: today }, preset, this.renderGeneration, true);
 	}
 
 	private buildTimedHorizontalRenderWindow(
@@ -7921,18 +7993,20 @@ export class CalendarView extends ItemView {
 		await this.shiftCalendarAnchorByDays(snappedDayDelta, true);
 	}
 
-	private scheduleInitialScroll(state: CalendarLeafState, preset: CalendarPreset, generation: number): void {
+	private scheduleInitialScroll(state: CalendarLeafState, preset: CalendarPreset, generation: number, force = false): void {
 		this.lastAppliedScrollSignature = null;
+		const scheduledAt = Date.now();
 		this.requestRenderAnimationFrame(generation, () => {
 			this.requestRenderAnimationFrame(generation, () => {
-				this.setRenderTimeout(generation, () => this.applyInitialScroll(state, preset, generation), 0);
+				this.setRenderTimeout(generation, () => this.applyInitialScroll(state, preset, generation, 0, scheduledAt, force), 0);
 			});
 		});
 	}
 
-	private applyInitialScroll(state: CalendarLeafState, preset: CalendarPreset, generation: number, attempt = 0): void {
+	private applyInitialScroll(state: CalendarLeafState, preset: CalendarPreset, generation: number, attempt = 0, scheduledAt = 0, force = false): void {
 		if (!this.isRenderGenerationActive(generation)) return;
 		if (!this.timedScrollEl) return;
+		if (!force && this.lastTimedGridUserScrollInteractionAt >= scheduledAt) return;
 		const settings = this.getSettings();
 		const viewportHeight = Math.max(0, Math.round(this.timedScrollEl.clientHeight));
 		const hiddenTimeKey = `${preset.id}|${state.anchorDate}`;
@@ -7965,7 +8039,7 @@ export class CalendarView extends ItemView {
 		const layoutNotReady = viewportHeight <= 0 || (maxScrollTop <= 0 && clampedScrollTop > 0);
 		if (layoutNotReady) {
 			if (attempt < 8) {
-				this.requestRenderAnimationFrame(generation, () => this.applyInitialScroll(state, preset, generation, attempt + 1));
+				this.requestRenderAnimationFrame(generation, () => this.applyInitialScroll(state, preset, generation, attempt + 1, scheduledAt, force));
 			}
 			return;
 		}

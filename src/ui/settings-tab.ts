@@ -13,7 +13,7 @@
 
 import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
 import type { ButtonComponent, DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarFieldKey, TaskCreatorToolbarItem, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolKey, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerKey, TaskEditorWorkflowPickerItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, isSupportedLanguage, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource, type OperonLanguage } from '../types/settings';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarFieldKey, TaskCreatorToolbarItem, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolKey, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerKey, TaskEditorWorkflowPickerItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource, type OperonLanguage } from '../types/settings';
 import { clonePipeline, composeStatusValue, createPipelineId, createStatusId, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
@@ -45,7 +45,7 @@ import { getReleaseNotesForManualView } from '../core/release-notes';
 import { asHTMLElement } from '../core/dom-compat';
 import { getAppLocale, isDailyNotesCoreAvailable } from '../core/obsidian-app';
 import { resolveEffectiveInlineTaskSaveMode } from '../core/inline-task-save-mode';
-import { FilterSetModal, FilterModalEvalDeps } from './filter-set-modal';
+import { FilterSetModal, type FilterModalEvalDeps } from './filter-set-modal';
 import { ExternalCalendarSourceEditModal } from './external-calendar-source-edit-modal';
 import { CalendarPresetQuickSettingsModal } from './calendar/calendar-preset-quick-settings-modal';
 import { KanbanPresetQuickSettingsModal } from './kanban/kanban-preset-quick-settings-modal';
@@ -213,6 +213,7 @@ type OperonSettingsSecondaryTabId =
 	| 'interfaceContextMenu'
 	| 'interfaceStateIcons'
 	| 'interfaceTaskEditor'
+	| 'interfaceLocationMap'
 	| 'mobileGeneral'
 	| 'mobileTaskEditor'
 	| 'mobileCalendar'
@@ -419,6 +420,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Record<OperonSettingsSecondaryTabId,
 	interfaceContextMenu: { namespace: 'settings', key: 'settingsPageContextMenuDesc' },
 	interfaceStateIcons: { namespace: 'settings', key: 'settingsPageStateIconsDesc' },
 	interfaceTaskEditor: { namespace: 'settings', key: 'settingsPageTaskEditorDesc' },
+	interfaceLocationMap: { namespace: 'settings', key: 'settingsPageLocationMapDesc' },
 	mobileGeneral: { namespace: 'settings', key: 'mobileInterfaceDesc' },
 	mobileTaskEditor: { namespace: 'settings', key: 'settingsPageMobileTaskEditorDesc' },
 	mobileCalendar: { namespace: 'settings', key: 'settingsPageMobileCalendarDesc' },
@@ -1203,6 +1205,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'calendarInitialScrollMode') {
 			return text === 'fixedHour' ? 'fixedHour' : 'autoNow';
 		}
+		if (key === 'calendarDayTitleAction') {
+			return text === 'nothing' ? 'nothing' : 'create-open-daily-note';
+		}
 		if (key === 'calendarMobileDefaultView') {
 			return text === 'day' || text === 'threeDay' ? text : 'agenda';
 		}
@@ -1351,6 +1356,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return {
 				autoNow: t('calendar', 'initialScrollAutoNow'),
 				fixedHour: t('calendar', 'initialScrollFixedHour'),
+			};
+		}
+		if (key === 'calendarDayTitleAction') {
+			return {
+				'create-open-daily-note': t('calendar', 'dayTitleActionCreateOpenDailyNote'),
+				nothing: t('calendar', 'dayTitleActionNothing'),
 			};
 		}
 		if (key === 'calendarMobileDefaultView') {
@@ -1564,6 +1575,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'interfaceContextMenu', groupId: 'interface', label: t('settings', 'subtabContextMenu') },
 			{ id: 'interfaceStateIcons', groupId: 'interface', label: t('settings', 'subtabStateIcons') },
 			{ id: 'interfaceTaskEditor', groupId: 'interface', label: t('settings', 'subtabTaskEditor') },
+			{ id: 'interfaceLocationMap', groupId: 'interface', label: t('settings', 'subtabLocationMap') },
 			{ id: 'mobileGeneral', groupId: 'mobile', label: t('settings', 'mobileSubtabGeneral') },
 			{ id: 'mobileTaskEditor', groupId: 'mobile', label: t('settings', 'mobileSubtabTaskEditor') },
 			{ id: 'mobileCalendar', groupId: 'mobile', label: t('settings', 'mobileSubtabCalendar') },
@@ -1608,6 +1620,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderInterfaceStateIconsTab(contentEl);
 		} else if (tabId === 'interfaceTaskEditor') {
 			this.renderInterfaceTaskEditorTab(contentEl);
+		} else if (tabId === 'interfaceLocationMap') {
+			this.renderInterfaceLocationMapTab(contentEl);
 		} else if (tabId === 'mobile' || tabId === 'mobileGeneral') {
 			this.renderMobileGeneralTab(contentEl);
 		} else if (tabId === 'mobileTaskEditor') {
@@ -1726,6 +1740,83 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorWorkflowPickers'));
 		this.applyInterfaceIconListSectionStyle(sectionEl);
 		this.renderTaskEditorWorkflowPickerSettingsSection(sectionEl);
+	}
+
+	private renderInterfaceLocationMapTab(containerEl: HTMLElement): void {
+		const visualSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'locationPlaceVisualPropertiesSection'));
+		this.renderBoundTextSetting(
+			visualSection,
+			t('settings', 'locationPlaceIconPropertyName'),
+			t('settings', 'locationPlaceIconPropertyNameDesc'),
+			'locationPlaceIconPropertyName',
+			{ placeholder: 'Icon' },
+		);
+		this.renderBoundTextSetting(
+			visualSection,
+			t('settings', 'locationPlaceColorPropertyName'),
+			t('settings', 'locationPlaceColorPropertyNameDesc'),
+			'locationPlaceColorPropertyName',
+			{ placeholder: 'Color' },
+		);
+
+		const pickerSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'locationPickerMapSection'));
+		this.renderBoundToggleSetting(
+			pickerSection,
+			t('settings', 'locationMapsAlwaysLightMode'),
+			t('settings', 'locationMapsAlwaysLightModeDesc'),
+			'locationMapsAlwaysLightMode',
+		);
+		this.renderBoundTextSetting(
+			pickerSection,
+			t('settings', 'locationPickerMapDefaultCenter'),
+			t('settings', 'locationPickerMapDefaultCenterDesc'),
+			'locationPickerMapDefaultCenter',
+			{ placeholder: t('location', 'coordinatePlaceholder') },
+		);
+		this.renderBoundClampedNumericSetting(
+			pickerSection,
+			t('settings', 'locationPickerMapDefaultZoom'),
+			t('settings', 'locationPickerMapDefaultZoomDesc'),
+			'locationPickerMapDefaultZoom',
+			{ min: 1, max: 18, fallback: DEFAULT_SETTINGS.locationPickerMapDefaultZoom },
+		);
+
+		const previewSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'locationPreviewSection'));
+		this.renderBoundClampedNumericSetting(
+			previewSection,
+			t('settings', 'locationPreviewWidth'),
+			t('settings', 'locationPreviewWidthDesc'),
+			'locationPreviewWidth',
+			{ min: 240, max: 900, fallback: DEFAULT_SETTINGS.locationPreviewWidth },
+		);
+		this.renderBoundClampedNumericSetting(
+			previewSection,
+			t('settings', 'locationPreviewHeight'),
+			t('settings', 'locationPreviewHeightDesc'),
+			'locationPreviewHeight',
+			{ min: 180, max: 700, fallback: DEFAULT_SETTINGS.locationPreviewHeight },
+		);
+		this.renderBoundClampedNumericSetting(
+			previewSection,
+			t('settings', 'locationPreviewDefaultZoom'),
+			t('settings', 'locationPreviewDefaultZoomDesc'),
+			'locationPreviewDefaultZoom',
+			{ min: 1, max: 22, fallback: DEFAULT_SETTINGS.locationPreviewDefaultZoom },
+		);
+		this.renderBoundClampedNumericSetting(
+			previewSection,
+			t('settings', 'locationPreviewMinZoom'),
+			t('settings', 'locationPreviewMinZoomDesc'),
+			'locationPreviewMinZoom',
+			{ min: 0, max: 24, fallback: DEFAULT_SETTINGS.locationPreviewMinZoom },
+		);
+		this.renderBoundClampedNumericSetting(
+			previewSection,
+			t('settings', 'locationPreviewMaxZoom'),
+			t('settings', 'locationPreviewMaxZoomDesc'),
+			'locationPreviewMaxZoom',
+			{ min: 1, max: 24, fallback: DEFAULT_SETTINGS.locationPreviewMaxZoom },
+		);
 	}
 
 	private renderMobileGeneralTab(containerEl: HTMLElement): void {
@@ -3030,6 +3121,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'tags') return t('taskEditor', 'tags');
 		if (key === 'contexts') return t('taskEditor', 'contexts');
 		if (key === 'assignees') return t('taskEditor', 'assignees');
+		if (key === 'location') return t('location', 'location');
 		if (key === 'links') return t('taskEditor', 'links');
 		if (key === 'parentTask') return t('taskEditor', 'parentTask');
 		if (key === 'subtasks') return t('taskEditor', 'subtasks');
@@ -3478,6 +3570,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 
 		this.renderBoundToggleSetting(generalSection, t('calendar', 'showWeekLabelOnFirstDay'), t('calendar', 'showWeekLabelOnFirstDayDesc'), 'calendarShowWeekLabelOnFirstDay');
+
+		this.renderBoundDropdownSetting(generalSection, t('calendar', 'dayTitleAction'), t('calendar', 'dayTitleActionDesc'), 'calendarDayTitleAction', {
+			value: this.settings.calendarDayTitleAction,
+			dropdownOptions: [
+				{ value: 'create-open-daily-note', label: t('calendar', 'dayTitleActionCreateOpenDailyNote') },
+				{ value: 'nothing', label: t('calendar', 'dayTitleActionNothing') },
+			],
+			normalize: (value): CalendarDayTitleAction => value === 'nothing' ? 'nothing' : 'create-open-daily-note',
+		});
 
 		this.renderBoundDropdownSetting(generalSection, t('calendar', 'initialScrollMode'), t('calendar', 'initialScrollModeDesc'), 'calendarInitialScrollMode', {
 			value: this.settings.calendarInitialScrollMode,
@@ -6598,27 +6699,34 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const addBtn = createSettingsAddButton(addRowEl, t('filterSets', 'addFilter'));
 
 		addBtn.addEventListener('click', () => {
-			const newFs: FilterSet = {
-				id: generateFilterSetId(),
-				name: '',
-				icon: 'filter',
-				rootGroup: {
-					id: 'fg_' + Math.random().toString(36).slice(2, 10),
-					logic: 'all',
-					children: [],
-				},
-				sorts: [],
-				subgroupBy: undefined,
-				subgroupOrder: undefined,
-				matchLogic: 'all',
-				conditions: [],
-			};
-			new FilterSetModal(this.app, newFs, this.settings.keyMappings, settingsAsyncHandler('settings filter create failed', async (saved) => {
-				await this.upsertFilterSet(saved);
-				await this.saveSettings();
-				renderList();
-			}), this.makeEvalDeps() ?? undefined).open();
+			this.openCreateFilterSetModal(renderList);
 		});
+	}
+
+	private createNewFilterSet(): FilterSet {
+		return {
+			id: generateFilterSetId(),
+			name: '',
+			icon: 'filter',
+			rootGroup: {
+				id: 'fg_' + Math.random().toString(36).slice(2, 10),
+				logic: 'all',
+				children: [],
+			},
+			sorts: [],
+			subgroupBy: undefined,
+			subgroupOrder: undefined,
+			matchLogic: 'all',
+			conditions: [],
+		};
+	}
+
+	private openCreateFilterSetModal(refresh: () => void): void {
+		new FilterSetModal(this.app, this.createNewFilterSet(), this.settings.keyMappings, settingsAsyncHandler('settings filter create failed', async (saved) => {
+			await this.upsertFilterSet(saved);
+			await this.saveSettings();
+			refresh();
+		}), this.makeEvalDeps() ?? undefined).open();
 	}
 
 	private renderDynamicFileTaskFilterSection(containerEl: HTMLElement, refresh: () => void): void {
@@ -6759,6 +6867,48 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 	}
 
+	private async duplicateFilterSet(filterSet: FilterSet, refresh: () => void): Promise<void> {
+		await this.copyFilterSet(filterSet);
+		await this.saveSettings();
+		refresh();
+	}
+
+	private async copyFilterSetEmbedCode(filterSet: FilterSet): Promise<void> {
+		const code = '```operon\nfilterId: "' + filterSet.id + '"\n```';
+		await navigator.clipboard.writeText(code);
+		new Notice(t('filterSets', 'embedCodeCopied'));
+	}
+
+	private confirmDeleteFilterSet(filterSet: FilterSet, refresh: () => void, onDeleted?: () => void): void {
+		const modal = new ConfirmActionModal(
+			this.app,
+			{
+				title: t('filterSets', 'deleteFilterTitle'),
+				message: t('filterSets', 'deleteFilterMessage').replace('{{name}}', filterSet.name),
+				confirmText: t('filterSets', 'deleteFilterConfirm'),
+				cancelText: t('filterSets', 'deleteFilterCancel'),
+				danger: true,
+			},
+			settingsAsyncHandler('settings filter delete failed', async (confirmed) => {
+				if (!confirmed) return;
+				await this.deleteFilterSet(filterSet.id);
+				await this.saveSettings();
+				refresh();
+				onDeleted?.();
+			}),
+		);
+		modal.open();
+	}
+
+	private openEditFilterSetModal(filterSet: FilterSet, refresh: () => void): void {
+		const clone = cloneFilterSet(filterSet);
+		new FilterSetModal(this.app, clone, this.settings.keyMappings, settingsAsyncHandler('settings filter edit failed', async (saved) => {
+			await this.upsertFilterSet(saved);
+			await this.saveSettings();
+			refresh();
+		}), this.makeEvalDeps() ?? undefined).open();
+	}
+
 	private getFilterLogicLabel(filterSet: FilterSet): string {
 		return (filterSet.rootGroup?.logic ?? filterSet.matchLogic ?? 'all').toUpperCase();
 	}
@@ -6839,12 +6989,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			text: t('filterSets', 'edit'),
 			wide: true,
 			onClick: () => {
-				const clone = cloneFilterSet(filterSet);
-				new FilterSetModal(this.app, clone, this.settings.keyMappings, settingsAsyncHandler('settings filter edit failed', async (saved) => {
-					await this.upsertFilterSet(saved);
-					await this.saveSettings();
-					refresh();
-				}), this.makeEvalDeps() ?? undefined).open();
+				this.openEditFilterSetModal(filterSet, refresh);
 			},
 		});
 
@@ -6856,9 +7001,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			icon: 'copy',
 			errorContext: 'settings filter copy failed',
 			onClick: async () => {
-				await this.copyFilterSet(filterSet);
-				await this.saveSettings();
-				refresh();
+				await this.duplicateFilterSet(filterSet, refresh);
 			},
 		});
 
@@ -6883,9 +7026,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			monospace: true,
 			errorContext: 'settings filter embed copy failed',
 			onClick: async () => {
-				const code = '```operon\nfilterId: "' + filterSet.id + '"\n```';
-				await navigator.clipboard.writeText(code);
-				new Notice(t('filterSets', 'embedCodeCopied'));
+				await this.copyFilterSetEmbedCode(filterSet);
 			},
 		});
 
@@ -6898,23 +7039,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			icon: 'trash-2',
 			danger: true,
 			onClick: () => {
-				const modal = new ConfirmActionModal(
-					this.app,
-					{
-						title: t('filterSets', 'deleteFilterTitle'),
-						message: t('filterSets', 'deleteFilterMessage').replace('{{name}}', filterSet.name),
-						confirmText: t('filterSets', 'deleteFilterConfirm'),
-						cancelText: t('filterSets', 'deleteFilterCancel'),
-						danger: true,
-					},
-					settingsAsyncHandler('settings filter delete failed', async (confirmed) => {
-						if (!confirmed) return;
-						await this.deleteFilterSet(filterSet.id);
-						await this.saveSettings();
-						refresh();
-					}),
-				);
-				modal.open();
+				this.confirmDeleteFilterSet(filterSet, refresh);
 			},
 		});
 	}

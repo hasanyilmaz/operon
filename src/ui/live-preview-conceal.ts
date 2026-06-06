@@ -25,15 +25,18 @@ import {
 	getInlineTaskCompactHiddenCount,
 	getInlineTaskCompactVisibleKeys,
 	InlineTaskCompactChipEntry,
+	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
 import { bindOperonHoverTooltip, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { openObsidianTagSearch } from './tag-search';
 import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
+import { showLocationMapPreview } from './location-map-preview';
 import {
 	bindAdaptiveIconOnlyExpansion,
 	bindIconOnlyChipPreview,
@@ -254,11 +257,17 @@ class MetadataTailWidget extends WidgetType {
 			tailWrap.classList.add('is-cancelled');
 		}
 
+		const settings = this.callbacks.getSettings();
+		const locationResolver = shouldResolveLocationCompactChips(settings)
+			? getLocationPlaceIndex(this.callbacks.app, settings).resolve
+			: undefined;
 		const entries = buildInlineTaskCompactChipEntries(
 			fieldValues,
 			this.indexedTask?.tags ?? this.task.tags,
-			this.callbacks.getSettings(),
+			settings,
 			tasks,
+			undefined,
+			locationResolver,
 		);
 		for (const entry of entries) {
 			const chip = createInlineTaskCompactChipElement(entry, '', { owner: row });
@@ -678,7 +687,11 @@ export function buildMetadataTailRenderSignature(
 	const tags = indexedTask?.tags ?? task.tags;
 	const settings = callbacks.getSettings();
 	const tasks = callbacks.getAllTasks();
-	const entries = buildInlineTaskCompactChipEntries(fieldValues, tags, settings, tasks)
+	const locationIndex = shouldResolveLocationCompactChips(settings)
+		? getLocationPlaceIndex(callbacks.app, settings)
+		: null;
+	const locationResolver = locationIndex?.resolve;
+	const entries = buildInlineTaskCompactChipEntries(fieldValues, tags, settings, tasks, undefined, locationResolver)
 		.map(entry => [
 			entry.key,
 			entry.label,
@@ -690,6 +703,10 @@ export function buildMetadataTailRenderSignature(
 			entry.linkTarget ?? '',
 			entry.externalUrl ?? '',
 			entry.externalRawValue ?? '',
+			entry.locationCoordinate ?? '',
+			entry.locationMarkerIcon ?? '',
+			entry.locationMarkerColor ?? '',
+			entry.taskColor ?? '',
 			entry.tooltipTitle ?? '',
 			entry.tooltipContent ?? '',
 		]);
@@ -699,6 +716,7 @@ export function buildMetadataTailRenderSignature(
 		tags,
 		entries,
 		hiddenCount: getInlineTaskCompactHiddenCount(fieldValues, tags, settings, tasks),
+		locationIndexSignature: locationIndex?.getSignature() ?? '',
 		pinnedSnapshot,
 		trackingSnapshot,
 		language: settings.language,
@@ -769,6 +787,10 @@ function applyLivePreviewChipVisualStyles(
 	if (entry.colorRole === 'status') {
 		cssProps['--operon-live-chip-color'] = lookupStatusColor(fieldValues['status'], callbacks.getPipelines());
 	}
+	if (entry.key === 'location') {
+		const locationIconColor = entry.locationMarkerColor ?? taskColor;
+		if (locationIconColor) cssProps['--operon-inline-chip-icon-color'] = locationIconColor;
+	}
 	if (entry.iconTone === 'today') {
 		cssProps['--operon-inline-chip-icon-color'] = '#2563eb';
 	} else if (entry.iconTone === 'overdue') {
@@ -805,6 +827,23 @@ function attachLivePreviewChipAction(
 			case 'status':
 				callbacks.cycleStatus(task, view);
 				onCommit?.();
+				break;
+			case 'location':
+				if (entry.locationCoordinate) {
+					showLocationMapPreview(
+						callbacks.app,
+						pickerAnchor,
+						callbacks.getSettings(),
+						entry.locationCoordinate,
+						callbacks.getFilePath(view),
+						entry.taskColor ?? null,
+						entry.locationMarkerIcon ?? null,
+						entry.locationMarkerColor ?? null,
+						entry.linkTarget ?? null,
+						task.description,
+					);
+					onCommit?.();
+				}
 				break;
 			case 'priority':
 				showPriorityPicker(pickerAnchor, {

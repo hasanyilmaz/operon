@@ -236,10 +236,11 @@ export class ExternalCalendarService {
 					lastError: null,
 				};
 				if (this.destroyed) return;
+				const renderedEventsChanged = !areExternalCalendarEventListsEqual(cache.events, nextCache.events);
 				this.caches.set(sourceId, nextCache);
 				await this.cacheStore.upsertSource(nextCache);
 				if (this.destroyed) return;
-				this.onChange();
+				if (renderedEventsChanged) this.onChange();
 				return;
 			}
 			const events = parseExternalCalendarIcsEvents({
@@ -261,10 +262,11 @@ export class ExternalCalendarService {
 				events,
 			};
 			if (this.destroyed) return;
+			const renderedEventsChanged = !areExternalCalendarEventListsEqual(cache.events, nextCache.events);
 			this.caches.set(sourceId, nextCache);
 			await this.cacheStore.upsertSource(nextCache);
 			if (this.destroyed) return;
-			this.onChange();
+			if (renderedEventsChanged) this.onChange();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			const nextCache: ExternalCalendarSourceCache = {
@@ -273,16 +275,44 @@ export class ExternalCalendarService {
 				lastError: message,
 			};
 			if (this.destroyed) return;
+			const renderedEventsChanged = !areExternalCalendarEventListsEqual(cache.events, nextCache.events);
 			this.caches.set(sourceId, nextCache);
 			await this.cacheStore.upsertSource(nextCache);
 			if (this.destroyed) return;
-			this.onChange();
+			if (renderedEventsChanged) this.onChange();
 		}
 	}
 
 	private isAutoSyncableSource(source: ExternalCalendarSource): boolean {
 		return source.enabled && source.url.trim().length > 0;
 	}
+}
+
+function areExternalCalendarEventListsEqual(
+	left: ExternalCalendarCachedEvent[],
+	right: ExternalCalendarCachedEvent[],
+): boolean {
+	if (left.length !== right.length) return false;
+	for (let index = 0; index < left.length; index++) {
+		if (!areExternalCalendarEventsEqual(left[index], right[index])) return false;
+	}
+	return true;
+}
+
+function areExternalCalendarEventsEqual(
+	left: ExternalCalendarCachedEvent,
+	right: ExternalCalendarCachedEvent,
+): boolean {
+	return left.id === right.id
+		&& left.sourceId === right.sourceId
+		&& left.uid === right.uid
+		&& left.recurrenceId === right.recurrenceId
+		&& left.title === right.title
+		&& left.isAllDay === right.isAllDay
+		&& left.startDate === right.startDate
+		&& left.endDate === right.endDate
+		&& left.startDateTime === right.startDateTime
+		&& left.endDateTime === right.endDateTime;
 }
 
 function shiftDateKey(dateKey: string, deltaDays: number): string {

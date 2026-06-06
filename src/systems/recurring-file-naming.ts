@@ -125,16 +125,22 @@ export function renderCompletedPlainArchiveTitle(
 }
 
 export function resolveRecurringFileDisplayDate(
-	fieldValues: Partial<Record<'dateScheduled' | 'repeatOccurrenceDate', string>>,
+	fieldValues: Partial<Record<'dateScheduled' | 'repeatOccurrenceDate' | 'dateDue' | 'dateStarted' | 'datetimeStart' | 'datetimeEnd', string>>,
 ): string {
 	const scheduled = normalizeDateKey(fieldValues['dateScheduled']);
 	if (scheduled) return scheduled;
-	return normalizeDateKey(fieldValues['repeatOccurrenceDate']);
+	return normalizeDateKey(fieldValues['repeatOccurrenceDate'])
+		|| normalizeDateKey(fieldValues['dateDue'])
+		|| normalizeDateKey(fieldValues['dateStarted'])
+		|| normalizeDateKey(fieldValues['datetimeStart'])
+		|| normalizeDateKey(fieldValues['datetimeEnd']);
 }
 
 function normalizeDateKey(value: string | null | undefined): string {
 	const trimmed = (value ?? '').trim();
-	return /^\d{4}-\d{2}-\d{2}$/u.test(trimmed) ? trimmed : '';
+	if (/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) return trimmed;
+	if (/^\d{4}-\d{2}-\d{2}T/u.test(trimmed)) return trimmed.slice(0, 10);
+	return '';
 }
 
 function parseDateKey(value: string): Date | null {

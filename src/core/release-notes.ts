@@ -13,6 +13,29 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.1.7',
+		date: '2026-06-06',
+		title: 'Location Map support',
+		showOnUpdate: true,
+		youtubeUrl: 'https://youtu.be/Gq1SEPHrBmQ',
+		body: `
+This release makes location a real task surface in Operon. The new Map picker tab and location chip previews are powered by the **Obsidian Maps** plugin, so Maps needs to be enabled for interactive maps; Places and Manual entry remain available for storing \`lat, lng\` coordinates.
+
+## New
+- Added **Location Map** support for the canonical \`location\` task field, with \`lat, lng\` coordinate storage, Places/Map/Manual picking in Task Creator and Task Editor, **Obsidian Maps**-powered chip previews, saved place markers, light-map settings, place-note visuals, and desktop preview controls for resizing, moving, and pinning maps.
+- Added a **Calendar day title action** setting, so clicking or tapping day headers can either create/open the daily note or do nothing.
+
+## Improved
+- Improved **Calendar Time Grid**, **Date Picker**, and **Filter editing** behavior around the Location Map release, keeping the surrounding planning views steadier while location-aware task workflows become available.
+
+## Changed
+- Changed the **Repeat picker** to use a Reference date for recurrence anchoring instead of treating that picker value as Scheduled Date.
+
+## Fixed
+- Fixed indented inline tasks losing their markdown indentation after updates from the **Task Editor**.
+`.trim(),
+	},
+	{
 		version: '1.1.6',
 		date: '2026-06-04',
 		title: 'French and German localization',

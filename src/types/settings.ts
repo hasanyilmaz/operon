@@ -49,7 +49,7 @@ import {
 	sanitizeExcludedFoldersForFileTasksFolder,
 } from '../core/settings-folder-rules';
 
-export const CURRENT_SETTINGS_VERSION = 89;
+export const CURRENT_SETTINGS_VERSION = 90;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
@@ -144,6 +144,7 @@ export const CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS = ['all', 4, 5, 
 export type CalendarMobileAgendaPastDays = typeof CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS[number];
 export type CalendarMobileAgendaFutureDays = typeof CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS[number];
 export type CalendarMobileAllDayVisibleTaskLimit = typeof CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS[number];
+export type CalendarDayTitleAction = 'create-open-daily-note' | 'nothing';
 const CONTEXTUAL_MENU_ACTION_ID_SET = new Set<ContextualMenuActionId>(
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.map(action => action.id),
 );
@@ -321,6 +322,7 @@ export const TASK_CREATOR_TOOLBAR_FIELD_ORDER = [
 	'assignees',
 	'tags',
 	'contexts',
+	'location',
 	'links',
 ] as const;
 
@@ -330,6 +332,7 @@ export const TASK_EDITOR_WORKFLOW_PICKER_ORDER = [
 	'contexts',
 	'tags',
 	'assignees',
+	'location',
 	'links',
 	'parentTask',
 	'subtasks',
@@ -378,6 +381,7 @@ export const INLINE_TASK_COMPACT_CHIP_ORDER = [
 	'datetimeEnd',
 	'assignees',
 	'contexts',
+	'location',
 	'links',
 	'duration',
 	'totalDuration',
@@ -403,6 +407,7 @@ export const INLINE_TASK_COMPACT_FALLBACK_ICONS: Record<InlineTaskCompactChipKey
 	datetimeEnd: 'between-horizontal-end',
 	assignees: 'users',
 	contexts: 'map-pinned',
+	location: 'map-pin',
 	links: 'link',
 	duration: 'timer',
 	totalDuration: 'timer-reset',
@@ -432,6 +437,7 @@ export const TASK_CREATOR_FALLBACK_FIELD_ICONS: Record<TaskCreatorToolbarFieldKe
 	assignees: 'users',
 	tags: 'tags',
 	contexts: 'map-pinned',
+	location: 'map-pin',
 	links: 'link',
 };
 
@@ -552,6 +558,7 @@ function buildDefaultInlineTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'assignees', visible: true, iconOnly: false },
 		{ key: 'contexts', visible: true, iconOnly: false },
+		{ key: 'location', visible: true, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
 		{ key: 'tags', visible: true, iconOnly: false },
 		{ key: 'estimate', visible: true, iconOnly: false },
@@ -571,6 +578,7 @@ function buildDefaultTaskCreatorToolbarItems(): TaskCreatorToolbarItem[] {
 		{ key: 'status', visible: true },
 		{ key: 'parentTask', visible: true },
 		{ key: 'contexts', visible: true },
+		{ key: 'location', visible: true },
 		{ key: 'links', visible: false },
 		{ key: 'dateStarted', visible: false },
 		{ key: 'dateScheduled', visible: true },
@@ -594,6 +602,7 @@ function buildDefaultTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerIt
 		{ key: 'contexts', visible: true },
 		{ key: 'tags', visible: true },
 		{ key: 'assignees', visible: true },
+		{ key: 'location', visible: true },
 		{ key: 'links', visible: true },
 		{ key: 'parentTask', visible: true },
 		{ key: 'subtasks', visible: true },
@@ -629,6 +638,7 @@ function buildDefaultFilterTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'assignees', visible: true, iconOnly: false },
 		{ key: 'contexts', visible: true, iconOnly: false },
+		{ key: 'location', visible: true, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
 		{ key: 'duration', visible: true, iconOnly: false },
 		{ key: 'estimate', visible: true, iconOnly: true },
@@ -654,6 +664,7 @@ function buildDefaultTaskFinderCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'assignees', visible: false, iconOnly: false },
 		{ key: 'contexts', visible: true, iconOnly: false },
+		{ key: 'location', visible: true, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
 		{ key: 'duration', visible: false, iconOnly: false },
 		{ key: 'totalDuration', visible: false, iconOnly: false },
@@ -679,6 +690,7 @@ function buildDefaultOverlayTaskCompactChipItems(): InlineTaskCompactChipItem[] 
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'assignees', visible: true, iconOnly: true },
 		{ key: 'contexts', visible: false, iconOnly: false },
+		{ key: 'location', visible: false, iconOnly: false },
 		{ key: 'links', visible: false, iconOnly: false },
 		{ key: 'duration', visible: true, iconOnly: true },
 		{ key: 'totalDuration', visible: true, iconOnly: false },
@@ -746,6 +758,7 @@ const DEFAULT_KEY_MAPPING_ICONS: Record<string, string> = {
 	taskIcon: 'shapes',
 	taskColor: 'palette',
 	note: 'notebook-pen',
+	location: 'map-pin',
 	links: 'link',
 	datetimeModified: 'file-cog',
 };
@@ -924,6 +937,18 @@ export interface OperonSettings {
 	/** Whether filter rows show the right-side add subtask action. */
 	filterTaskShowSubtaskAction: boolean;
 
+	// Location map
+	locationMapsAlwaysLightMode: boolean;
+	locationPlaceIconPropertyName: string;
+	locationPlaceColorPropertyName: string;
+	locationPickerMapDefaultCenter: string;
+	locationPickerMapDefaultZoom: number;
+	locationPreviewWidth: number;
+	locationPreviewHeight: number;
+	locationPreviewDefaultZoom: number;
+	locationPreviewMinZoom: number;
+	locationPreviewMaxZoom: number;
+
 	// Floating UI
 	dockHoverOpenDelayMs: number;
 	floatingAutoCloseSec: number;
@@ -976,6 +1001,7 @@ export interface OperonSettings {
 	calendarShowDueMarkers: boolean;
 	calendarDefaultScrollHour: number;
 	calendarInitialScrollMode: 'fixedHour' | 'autoNow';
+	calendarDayTitleAction: CalendarDayTitleAction;
 	calendarAutoScrollPastRatio: number;
 	calendarTimeGridScale: number;
 	calendarSidebarWidthPx: number;
@@ -1296,6 +1322,17 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	filterTaskShowPinAction: false,
 	filterTaskShowSubtaskAction: true,
 
+	locationMapsAlwaysLightMode: true,
+	locationPlaceIconPropertyName: '',
+	locationPlaceColorPropertyName: '',
+	locationPickerMapDefaultCenter: '',
+	locationPickerMapDefaultZoom: 7,
+	locationPreviewWidth: 600,
+	locationPreviewHeight: 400,
+	locationPreviewDefaultZoom: 15,
+	locationPreviewMinZoom: 12,
+	locationPreviewMaxZoom: 18,
+
 	dockHoverOpenDelayMs: 200,
 	floatingAutoCloseSec: 60,
 
@@ -1343,6 +1380,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	calendarShowDueMarkers: true,
 	calendarDefaultScrollHour: 8,
 	calendarInitialScrollMode: 'autoNow',
+	calendarDayTitleAction: 'create-open-daily-note',
 	calendarAutoScrollPastRatio: 0.2,
 	calendarTimeGridScale: 2,
 	calendarSidebarWidthPx: 320,
@@ -1432,6 +1470,12 @@ export const NUMERIC_CONSTRAINTS = {
 	taskCreateDebounceMs: { min: 150, max: 3000 },
 	dockHoverOpenDelayMs: { min: 0, max: 2000 },
 	floatingAutoCloseSec: { min: 5, max: 600 },
+	locationPickerMapDefaultZoom: { min: 1, max: 18 },
+	locationPreviewWidth: { min: 240, max: 900 },
+	locationPreviewHeight: { min: 180, max: 700 },
+	locationPreviewDefaultZoom: { min: 1, max: 22 },
+	locationPreviewMinZoom: { min: 0, max: 24 },
+	locationPreviewMaxZoom: { min: 1, max: 24 },
 	inlineRowWidth: { min: 320, max: 1400 },
 	inlineBackgroundIntensity: { min: 0.05, max: 0.60 },
 	pinnedTaskItemWidth: { min: 120, max: 800 },
@@ -1929,6 +1973,12 @@ function normalizeCalendarInitialScrollMode(raw: unknown): 'fixedHour' | 'autoNo
 		: DEFAULT_SETTINGS.calendarInitialScrollMode;
 }
 
+function normalizeCalendarDayTitleAction(raw: unknown): CalendarDayTitleAction {
+	return raw === 'nothing' || raw === 'create-open-daily-note'
+		? raw
+		: DEFAULT_SETTINGS.calendarDayTitleAction;
+}
+
 function normalizeCalendarAutoScrollPastRatio(raw: unknown): number {
 	if (typeof raw !== 'number' || !Number.isFinite(raw)) {
 		return DEFAULT_SETTINGS.calendarAutoScrollPastRatio;
@@ -2411,6 +2461,16 @@ function clamp(value: number, key: string): number {
 	return Math.max(c.min, maxClamped);
 }
 
+function normalizeClampedNumber(raw: unknown, fallback: number, key: string): number {
+	const parsed = typeof raw === 'number'
+		? raw
+		: typeof raw === 'string'
+			? Number.parseFloat(raw)
+			: NaN;
+	const finite = Number.isFinite(parsed) ? parsed : fallback;
+	return Math.round(clamp(finite, key));
+}
+
 function normalizeAllowedNumber(value: number, allowed: readonly number[], fallback: number): number {
 	return allowed.includes(value) ? value : fallback;
 }
@@ -2699,6 +2759,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? src.calendarShowDueMarkers
 		: DEFAULT_SETTINGS.calendarShowDueMarkers;
 	out.calendarInitialScrollMode = normalizeCalendarInitialScrollMode(src.calendarInitialScrollMode);
+	out.calendarDayTitleAction = normalizeCalendarDayTitleAction(src.calendarDayTitleAction);
 	out.calendarAutoScrollPastRatio = normalizeCalendarAutoScrollPastRatio(src.calendarAutoScrollPastRatio);
 	out.calendarTimeGridScale = normalizeCalendarTimeGridScale(src.calendarTimeGridScale);
 	out.calendarSidebarWidthPx = 'calendarSidebarWidthPx' in src
@@ -2953,6 +3014,58 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.excludedFolders = sanitizeExcludedFoldersForFileTasksFolder(
 		normalizeFolderPathList(src.excludedFolders),
 		out.fileTasksFolder,
+	);
+	out.locationPickerMapDefaultCenter = typeof src.locationPickerMapDefaultCenter === 'string'
+		? src.locationPickerMapDefaultCenter.trim()
+		: DEFAULT_SETTINGS.locationPickerMapDefaultCenter;
+	out.locationMapsAlwaysLightMode = typeof src.locationMapsAlwaysLightMode === 'boolean'
+		? src.locationMapsAlwaysLightMode
+		: DEFAULT_SETTINGS.locationMapsAlwaysLightMode;
+	out.locationPlaceIconPropertyName = typeof src.locationPlaceIconPropertyName === 'string'
+		? src.locationPlaceIconPropertyName.trim()
+		: DEFAULT_SETTINGS.locationPlaceIconPropertyName;
+	out.locationPlaceColorPropertyName = typeof src.locationPlaceColorPropertyName === 'string'
+		? src.locationPlaceColorPropertyName.trim()
+		: DEFAULT_SETTINGS.locationPlaceColorPropertyName;
+	out.locationPickerMapDefaultZoom = normalizeClampedNumber(
+		src.locationPickerMapDefaultZoom,
+		DEFAULT_SETTINGS.locationPickerMapDefaultZoom,
+		'locationPickerMapDefaultZoom',
+	);
+	out.locationPreviewWidth = normalizeClampedNumber(
+		src.locationPreviewWidth,
+		DEFAULT_SETTINGS.locationPreviewWidth,
+		'locationPreviewWidth',
+	);
+	out.locationPreviewHeight = normalizeClampedNumber(
+		src.locationPreviewHeight,
+		DEFAULT_SETTINGS.locationPreviewHeight,
+		'locationPreviewHeight',
+	);
+	out.locationPreviewMinZoom = normalizeClampedNumber(
+		src.locationPreviewMinZoom,
+		DEFAULT_SETTINGS.locationPreviewMinZoom,
+		'locationPreviewMinZoom',
+	);
+	out.locationPreviewMaxZoom = normalizeClampedNumber(
+		src.locationPreviewMaxZoom,
+		DEFAULT_SETTINGS.locationPreviewMaxZoom,
+		'locationPreviewMaxZoom',
+	);
+	if (out.locationPreviewMinZoom > out.locationPreviewMaxZoom) {
+		out.locationPreviewMinZoom = DEFAULT_SETTINGS.locationPreviewMinZoom;
+		out.locationPreviewMaxZoom = DEFAULT_SETTINGS.locationPreviewMaxZoom;
+	}
+	out.locationPreviewDefaultZoom = Math.min(
+		Math.max(
+			normalizeClampedNumber(
+				src.locationPreviewDefaultZoom,
+				DEFAULT_SETTINGS.locationPreviewDefaultZoom,
+				'locationPreviewDefaultZoom',
+			),
+			out.locationPreviewMinZoom,
+		),
+		out.locationPreviewMaxZoom,
 	);
 	out.createDailyNotesAsOperonTask = src.createDailyNotesAsOperonTask === true;
 	out.trackerTaskDescriptionClickAction = src.trackerTaskDescriptionClickAction === 'openTaskEditor'

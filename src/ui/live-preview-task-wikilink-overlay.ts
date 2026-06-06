@@ -120,6 +120,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 		this.trackingSnapshot = callbacks.isTaskTracking?.(task.operonId) === true;
 		this.chipSignature = getTaskFileOverlayChipSignature(
 			task,
+			callbacks.app,
 			callbacks.getSettings(),
 			callbacks.getAllTasks(),
 		);

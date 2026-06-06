@@ -492,10 +492,10 @@ Operon is a local-first task manager for Markdown tasks. To build its task index
 
 - **Vault enumeration**: Operon lists Markdown files in the vault to find inline tasks, file tasks, task templates, daily-note targets, filters, and picker suggestions. This gives Operon access to vault file paths, but it is used for local indexing and navigation inside Obsidian.
 - **Vault read/write**: Operon reads task files to parse task metadata and writes only when you create, edit, move, convert, schedule, complete, or otherwise update tasks through Operon.
-- **Clipboard access**: Operon writes to the system clipboard only for user-initiated copy actions, such as copying an `operonId`, copying an external task link, or copying an embeddable filter block.
+- **Clipboard access**: Operon writes to the system clipboard only for user-initiated copy actions, such as copying an `operonId`, copying an external task link, or copying an embeddable filter block. Operon may also read the system clipboard only after an explicit user action, such as using the Location picker clipboard button to import coordinates copied from the Maps plugin. Clipboard text is parsed locally and used only when it contains valid `lat, lng` coordinates.
 - **External calendar sources**: If you configure external ICS calendar URLs, Operon fetches those read-only calendar sources and stores the parsed cache locally under the plugin cache folder.
 
-Operon does not read the system clipboard, monitor clipboard changes, include telemetry, analytics, tracking pixels, or background usage reporting. Task data stays in your vault, and Operon plugin data stays inside Obsidian's plugin configuration storage.
+Operon does not monitor clipboard changes, include telemetry, analytics, tracking pixels, or background usage reporting. Task data stays in your vault, and Operon plugin data stays inside Obsidian's plugin configuration storage.
 
 ## License
 

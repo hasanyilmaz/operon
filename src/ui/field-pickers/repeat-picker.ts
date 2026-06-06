@@ -24,15 +24,19 @@ import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 interface RepeatPickerSavePayload {
 	repeat: string;
 	datetimeRepeatEnd: string;
-	dateScheduled?: string;
+	repeatOccurrenceDate?: string;
 	inlineCompletionMode: InlineRepeatCompletionMode;
 }
 
 interface RepeatPickerOptions {
 	value?: string;
 	repeatEnd?: string;
+	repeatOccurrenceDate?: string;
 	dateScheduled?: string;
 	dateDue?: string;
+	dateStarted?: string;
+	datetimeStart?: string;
+	datetimeEnd?: string;
 	repeatSeriesId?: string;
 	taskColor?: string;
 	taskFormat?: 'inline' | 'yaml';
@@ -57,7 +61,8 @@ interface RepeatDraft {
 	monthlyMode: MonthlyMode;
 	hasEndDate: boolean;
 	endDate: string;
-	scheduleSeedDate: string;
+	referenceDate: string;
+	referenceDateTouched: boolean;
 }
 
 const WEEKDAY_OPTIONS: Array<{ key: RepeatWeekday; labelKey: string }> = [
@@ -106,9 +111,17 @@ function parseSeedDate(value: string): Date {
 	return new Date(year, month - 1, day, 12, 0, 0, 0);
 }
 
-function getScheduleSeed(options: RepeatPickerOptions): string {
-	return extractDatePart(options.dateScheduled)
+function getReferenceDateSeed(options: RepeatPickerOptions, mode: RepeatMode): string {
+	const explicitAnchor = extractDatePart(options.repeatOccurrenceDate)
+		|| extractDatePart(options.dateScheduled);
+	if (mode === 'done') {
+		return explicitAnchor || localToday();
+	}
+	return explicitAnchor
 		|| extractDatePart(options.dateDue)
+		|| extractDatePart(options.dateStarted)
+		|| extractDatePart(options.datetimeStart)
+		|| extractDatePart(options.datetimeEnd)
 		|| localToday();
 }
 
@@ -135,6 +148,32 @@ function resolvePayloadInlineCompletionMode(
 	return normalizeInlineCompletionMode(mode);
 }
 
+function shouldPersistReferenceDate(draft: RepeatDraft, options: RepeatPickerOptions): boolean {
+	if (draft.mode !== 'done') return true;
+	return !!extractDatePart(options.repeatOccurrenceDate) || draft.referenceDateTouched;
+}
+
+function buildSavePayload(
+	draft: RepeatDraft,
+	options: RepeatPickerOptions,
+	taskFormat: 'inline' | 'yaml',
+	inlineCompletionMode: InlineRepeatCompletionMode,
+): RepeatPickerSavePayload {
+	const payload: RepeatPickerSavePayload = {
+		repeat: serializeRepeatRule(buildRuleFromDraft(draft)),
+		datetimeRepeatEnd: draft.mode === 'count'
+			? `${draft.endDate}T23:59:59`
+			: draft.hasEndDate && draft.endDate
+				? `${draft.endDate}T23:59:59`
+				: '',
+		inlineCompletionMode: resolvePayloadInlineCompletionMode(draft, taskFormat, inlineCompletionMode),
+	};
+	if (shouldPersistReferenceDate(draft, options)) {
+		payload.repeatOccurrenceDate = draft.referenceDate;
+	}
+	return payload;
+}
+
 function resolvePickerAccent(panel: HTMLElement, taskColor: string | null | undefined): string {
 	return normalizeColor(taskColor)
 		|| normalizeColor(getComputedStyle(panel).getPropertyValue('--interactive-accent'))
@@ -142,7 +181,7 @@ function resolvePickerAccent(panel: HTMLElement, taskColor: string | null | unde
 }
 
 function createDefaultDraft(options: RepeatPickerOptions): RepeatDraft {
-	const seedDate = getScheduleSeed(options);
+	const seedDate = getReferenceDateSeed(options, 'schedule');
 	const seed = parseSeedDate(seedDate);
 	return {
 		mode: 'schedule',
@@ -156,7 +195,8 @@ function createDefaultDraft(options: RepeatPickerOptions): RepeatDraft {
 		monthlyMode: 'monthdays',
 		hasEndDate: !!extractDatePart(options.repeatEnd),
 		endDate: extractDatePart(options.repeatEnd),
-		scheduleSeedDate: seedDate,
+		referenceDate: seedDate,
+		referenceDateTouched: false,
 	};
 }
 
@@ -165,6 +205,7 @@ function createDraftFromRule(rule: RepeatRule | null, options: RepeatPickerOptio
 	if (!rule) return normalizeDraft(draft);
 
 	draft.mode = rule.mode;
+	draft.referenceDate = getReferenceDateSeed(options, draft.mode);
 	draft.freq = rule.freq;
 	draft.interval = rule.interval;
 	draft.endDate = extractDatePart(options.repeatEnd);
@@ -215,13 +256,13 @@ function buildRuleFromDraft(draft: RepeatDraft): RepeatRule {
 			mode,
 			freq: 'week',
 			interval: Math.max(1, draft.interval),
-			days: [...(draft.days.size ? draft.days : [getWeekdayKey(draft.scheduleSeedDate)])],
+			days: [...(draft.days.size ? draft.days : [getWeekdayKey(draft.referenceDate)])],
 			...(draft.mode === 'count' ? { count: normalizeCount(draft.remainingCount) } : {}),
 		};
 	}
 
 	if (draft.freq === 'month' && draft.monthlyMode === 'weekday') {
-		const weekday = [...draft.days][0] ?? getWeekdayKey(draft.scheduleSeedDate);
+		const weekday = [...draft.days][0] ?? getWeekdayKey(draft.referenceDate);
 		return {
 			mode,
 			freq: 'month',
@@ -233,7 +274,7 @@ function buildRuleFromDraft(draft: RepeatDraft): RepeatRule {
 	}
 
 	if (draft.freq === 'month') {
-		const seedDay = parseSeedDate(draft.scheduleSeedDate).getDate();
+		const seedDay = parseSeedDate(draft.referenceDate).getDate();
 		const monthdays = [...(draft.monthdays.size ? draft.monthdays : [seedDay])].sort((a, b) => a - b);
 		return {
 			mode,
@@ -244,7 +285,7 @@ function buildRuleFromDraft(draft: RepeatDraft): RepeatRule {
 		};
 	}
 
-	const seedDay = parseSeedDate(draft.scheduleSeedDate).getDate();
+	const seedDay = parseSeedDate(draft.referenceDate).getDate();
 	const monthdays = [...(draft.monthdays.size ? draft.monthdays : [seedDay])].sort((a, b) => a - b);
 	return {
 		mode,
@@ -263,10 +304,10 @@ function normalizeDraft(draft: RepeatDraft): RepeatDraft {
 		draft.hasEndDate = true;
 		const derivedEnd = calculateRepeatEndFromCount(
 			buildRuleFromDraft(draft),
-			draft.scheduleSeedDate,
+			draft.referenceDate,
 			draft.remainingCount,
 		);
-		draft.endDate = derivedEnd ?? draft.scheduleSeedDate;
+		draft.endDate = derivedEnd ?? draft.referenceDate;
 		return draft;
 	}
 
@@ -275,9 +316,9 @@ function normalizeDraft(draft: RepeatDraft): RepeatDraft {
 		return draft;
 	}
 
-	const safeEnd = extractDatePart(draft.endDate) || draft.scheduleSeedDate;
+	const safeEnd = extractDatePart(draft.endDate) || draft.referenceDate;
 	if (draft.mode === 'schedule') {
-		draft.endDate = safeEnd < draft.scheduleSeedDate ? draft.scheduleSeedDate : safeEnd;
+		draft.endDate = safeEnd < draft.referenceDate ? draft.referenceDate : safeEnd;
 		return draft;
 	}
 
@@ -292,7 +333,7 @@ function getCountInfo(draft: RepeatDraft): string {
 		return String(draft.remainingCount);
 	}
 	if (!draft.hasEndDate || !draft.endDate) return '';
-	const count = calculateRepeatCountFromEnd(rule, draft.scheduleSeedDate, draft.endDate);
+	const count = calculateRepeatCountFromEnd(rule, draft.referenceDate, draft.endDate);
 	return count ? String(count) : '';
 }
 
@@ -310,6 +351,13 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 	let draft = createDraftFromRule(parsedRule, options);
 	let inlineCompletionMode = normalizeInlineCompletionMode(options.inlineCompletionMode);
 	const taskFormat = options.taskFormat ?? 'inline';
+	const setDraftMode = (mode: RepeatMode): void => {
+		if (draft.mode === mode) return;
+		draft.mode = mode;
+		if (!draft.referenceDateTouched) {
+			draft.referenceDate = getReferenceDateSeed(options, mode);
+		}
+	};
 
 	const { panel, close } = createFloatingPanel(anchor, 'operon-floating-panel operon-repeat-picker-panel', () => {
 		if (!completed) options.onCancel?.();
@@ -382,7 +430,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		const scheduleRow = cadenceSection.createDiv('operon-repeat-picker-row');
 		scheduleRow.classList.add('is-single');
 		const scheduleWrap = scheduleRow.createDiv('operon-repeat-picker-field');
-		scheduleWrap.createEl('label', { text: t('taskEditor', 'repeatScheduledDate'), cls: 'operon-floating-subtitle' });
+		scheduleWrap.createEl('label', { text: t('taskEditor', 'repeatReferenceDate'), cls: 'operon-floating-subtitle' });
 		const scheduleInput = scheduleWrap.createEl('input', {
 			cls: 'operon-floating-input',
 			attr: { type: 'date' },
@@ -445,7 +493,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			});
 			withEndBtn.addEventListener('click', () => {
 				draft.hasEndDate = true;
-				draft.endDate = draft.endDate || draft.scheduleSeedDate;
+				draft.endDate = draft.endDate || draft.referenceDate;
 				renderBuilder();
 			});
 			withEndBtn.classList.toggle('is-active', draft.hasEndDate);
@@ -453,7 +501,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 
 			endDateInput.addEventListener('change', () => {
 				draft.hasEndDate = true;
-				draft.endDate = endDateInput?.value || draft.scheduleSeedDate;
+				draft.endDate = endDateInput?.value || draft.referenceDate;
 				renderBuilder();
 			});
 			endDateInput.value = draft.endDate;
@@ -558,17 +606,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		const apply = createButton(t('buttons', 'save'), 'operon-floating-btn', actions);
 		apply.addEventListener('click', () => {
 			const nextDraft = normalizeDraft(draft);
-			const rule = buildRuleFromDraft(nextDraft);
-			commit({
-				repeat: serializeRepeatRule(rule),
-				datetimeRepeatEnd: nextDraft.mode === 'count'
-					? `${nextDraft.endDate}T23:59:59`
-					: nextDraft.hasEndDate && nextDraft.endDate
-						? `${nextDraft.endDate}T23:59:59`
-						: '',
-				dateScheduled: nextDraft.scheduleSeedDate,
-				inlineCompletionMode: resolvePayloadInlineCompletionMode(nextDraft, taskFormat, inlineCompletionMode),
-			});
+			commit(buildSavePayload(nextDraft, options, taskFormat, inlineCompletionMode));
 		});
 		actions.appendChild(apply);
 
@@ -622,7 +660,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			});
 			weekdayBtn.addEventListener('click', () => {
 				draft.monthlyMode = 'weekday';
-				if (draft.days.size === 0) draft.days.add(getWeekdayKey(draft.scheduleSeedDate));
+				if (draft.days.size === 0) draft.days.add(getWeekdayKey(draft.referenceDate));
 				renderBuilder();
 			});
 			modeButtons.appendChild(dayBtn);
@@ -669,7 +707,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 				cls: 'operon-floating-input',
 				attr: { type: 'number', min: '1', max: '31', step: '1' },
 			});
-			dayInput.value = String([...(draft.monthdays.size ? draft.monthdays : new Set([parseSeedDate(draft.scheduleSeedDate).getDate()]))][0]);
+			dayInput.value = String([...(draft.monthdays.size ? draft.monthdays : new Set([parseSeedDate(draft.referenceDate).getDate()]))][0]);
 			dayInput.addEventListener('change', () => {
 				const parsed = Number(dayInput.value);
 				if (!Number.isInteger(parsed) || parsed < 1 || parsed > 31) return;
@@ -699,26 +737,27 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		};
 
 		scheduleBtn.addEventListener('click', () => {
-			draft.mode = 'schedule';
+			setDraftMode('schedule');
 			renderBuilder();
 		});
 		doneBtn.addEventListener('click', () => {
-			draft.mode = 'done';
+			setDraftMode('done');
 			renderBuilder();
 		});
 		countBtn.addEventListener('click', () => {
-			draft.mode = 'count';
+			setDraftMode('count');
 			draft.remainingCount = normalizeCount(draft.remainingCount);
 			renderBuilder();
 		});
 		scheduleInput.addEventListener('change', () => {
-			draft.scheduleSeedDate = extractDatePart(scheduleInput.value) || getScheduleSeed(options);
+			draft.referenceDate = extractDatePart(scheduleInput.value) || getReferenceDateSeed(options, draft.mode);
+			draft.referenceDateTouched = true;
 			renderBuilder();
 		});
 		freqSelect.addEventListener('change', () => {
 			draft.freq = freqSelect.value as RepeatFrequency;
 			if (draft.freq === 'week' && draft.days.size === 0) {
-				draft.days.add(getWeekdayKey(draft.scheduleSeedDate));
+				draft.days.add(getWeekdayKey(draft.referenceDate));
 			}
 			renderBuilder();
 		});
@@ -735,7 +774,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		setButtonState(scheduleBtn, draft.mode === 'schedule');
 		setButtonState(doneBtn, draft.mode === 'done');
 		setButtonState(countBtn, draft.mode === 'count');
-		scheduleInput.value = draft.scheduleSeedDate;
+		scheduleInput.value = draft.referenceDate;
 		freqSelect.value = draft.freq;
 		intervalInput.value = String(draft.interval);
 		remainingCountInput.value = String(draft.remainingCount);

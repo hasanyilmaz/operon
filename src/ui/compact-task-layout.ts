@@ -10,8 +10,20 @@ import { formatContextDisplay } from './field-pickers/contexts-picker';
 import { parseExternalLinkValue } from './field-pickers/links-utils';
 import { normalizeTagValue } from './field-pickers/tag-picker';
 import { t } from '../core/i18n';
+import { formatShortLocationCoordinate, parseLocationCoordinate } from '../core/location-coordinates';
+import { normalizeTaskFieldColor } from '../core/task-color-source';
+import { normalizeTaskIconValue } from '../core/task-icon-value';
 
 export type CompactVisibleChipKey = InlineTaskCompactChipKey;
+
+export interface LocationChipMatch {
+	label: string;
+	path: string;
+	taskIcon?: string | null;
+	taskColor?: string | null;
+}
+
+export type LocationChipResolver = (coordinateText: string) => LocationChipMatch | null;
 
 export const COMPACT_VISIBLE_CHIP_KEYS = [
 	'priority',
@@ -25,6 +37,7 @@ export const COMPACT_VISIBLE_CHIP_KEYS = [
 	'totalDuration',
 	'totalEstimate',
 	'links',
+	'location',
 ] as const;
 
 const COMPACT_INTERNAL_VISIBLE_KEYS = ['operonId', 'datetimeModified', 'taskColor', 'taskIcon'] as const;
@@ -40,6 +53,10 @@ export interface InlineTaskCompactChipEntry {
 	linkTarget: string | null;
 	externalUrl?: string | null;
 	externalRawValue?: string | null;
+	locationCoordinate?: string | null;
+	locationMarkerIcon?: string | null;
+	locationMarkerColor?: string | null;
+	taskColor?: string | null;
 	tooltipTitle?: string;
 	tooltipContent?: string;
 }
@@ -58,6 +75,13 @@ export function getInlineTaskCompactVisibleChipKeys(
 	return getCompactChipItems(settings, chipItems)
 		.filter(item => item.visible)
 		.map(item => item.key);
+}
+
+export function shouldResolveLocationCompactChips(
+	settings: OperonSettings,
+	chipItems?: InlineTaskCompactChipItem[],
+): boolean {
+	return getInlineTaskCompactVisibleChipKeys(settings, chipItems).includes('location');
 }
 
 export function getInlineTaskCompactVisibleKeys(
@@ -81,8 +105,10 @@ export function buildInlineTaskCompactChipEntries(
 	settings: OperonSettings,
 	allTasks: IndexedTask[] = [],
 	chipItems?: InlineTaskCompactChipItem[],
+	locationResolver?: LocationChipResolver,
 ): InlineTaskCompactChipEntry[] {
 	const entries: InlineTaskCompactChipEntry[] = [];
+	const taskColor = normalizeTaskFieldColor(fieldValues['taskColor']);
 	const itemMap = new Map(getCompactChipItems(settings, chipItems).map(item => [item.key, item]));
 	const taskById = new Map(allTasks.map(task => [task.operonId, task]));
 	for (const key of getInlineTaskCompactVisibleChipKeys(settings, chipItems)) {
@@ -216,6 +242,31 @@ export function buildInlineTaskCompactChipEntries(
 				}
 				break;
 			}
+			case 'location': {
+				const coordinate = parseLocationCoordinate(fieldValues['location']);
+				if (!coordinate) break;
+				const match = locationResolver?.(coordinate.canonical);
+				const entry = createEntry(
+					settings,
+					key,
+					match?.label ?? formatShortLocationCoordinate(coordinate),
+					item?.iconOnly === true,
+					'default',
+					true,
+					match?.path ?? null,
+				);
+				if (match?.taskIcon) {
+					entry.icon = match.taskIcon;
+				}
+				entry.locationCoordinate = coordinate.canonical;
+				entry.locationMarkerIcon = match
+					? match.taskIcon ?? null
+					: normalizeTaskIconValue(fieldValues['taskIcon']) || null;
+				entry.locationMarkerColor = match?.taskColor ?? null;
+				entry.taskColor = match?.taskColor ?? taskColor;
+				entries.push(entry);
+				break;
+			}
 			case 'duration': {
 				const seconds = Number.parseInt(fieldValues['duration'] ?? '0', 10);
 				if (!Number.isFinite(seconds) || seconds <= 0) break;
@@ -334,6 +385,7 @@ export function createInlineTaskCompactChipElement(
 		'operon-live-preview-chip',
 		'operon-inline-compact-chip',
 		entry.linkTarget || entry.externalUrl ? 'is-linked' : '',
+		entry.locationCoordinate ? 'is-location' : '',
 		iconOnly ? 'is-icon-only' : '',
 		entry.key === 'priority' ? 'operon-chip-priority' : 'operon-chip-date',
 		entry.interactive ? 'operon-chip-clickable' : 'operon-chip-readonly',
@@ -389,6 +441,8 @@ function hasCompactValue(
 			return splitTaskListValue(fieldValues[key]).length > 0;
 		case 'links':
 			return splitTaskListValue(fieldValues['links']).some(value => !!parseExternalLinkValue(value));
+		case 'location':
+			return !!parseLocationCoordinate(fieldValues['location']);
 		case 'tags':
 			return tags.map(normalizeTagValue).filter(Boolean).length > 0;
 		case 'duration':

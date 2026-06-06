@@ -63,6 +63,13 @@ export interface FilterSetModalOptions {
 	lockConditions?: 'dynamicFileTask';
 	hideUsageInfo?: boolean;
 	showCountBadge?: boolean;
+	quickActions?: FilterSetModalQuickActions;
+}
+
+export interface FilterSetModalQuickActions {
+	copyEmbedCode?: () => void | Promise<void>;
+	duplicate?: () => void | Promise<void>;
+	remove?: () => void | Promise<void>;
 }
 
 const activeFilterPreviewModals = new Set<FilterPreviewModal>();
@@ -995,11 +1002,13 @@ export class FilterSetModal extends Modal {
 
 	private renderButtons(container: HTMLElement): void {
 		const row = container.createDiv('operon-filter-footer');
+		const left = row.createDiv('operon-filter-footer-left');
+		const right = row.createDiv('operon-filter-footer-primary-actions');
 
 		// Live task count badge — left side
 		if (this.evalDeps && this.options.showCountBadge !== false) {
 			const deps = this.evalDeps;
-			const badge = row.createEl('button', { cls: 'operon-filter-count-badge' });
+			const badge = left.createEl('button', { cls: 'operon-filter-count-badge' });
 			this.countBadge = badge;
 
 			let updating = false;
@@ -1041,13 +1050,15 @@ export class FilterSetModal extends Modal {
 			});
 		}
 
-		const cancelBtn = row.createEl('button');
+		this.renderQuickActions(left, right);
+
+		const cancelBtn = right.createEl('button');
 		cancelBtn.type = 'button';
 		this.addClasses(cancelBtn, 'operon-filter-modal-button', 'operon-filter-footer-button', 'operon-filter-modal-cancel-button');
 		cancelBtn.setText(t('buttons', 'cancel'));
 		cancelBtn.addEventListener('click', () => this.close());
 
-		const saveBtn = row.createEl('button');
+		const saveBtn = right.createEl('button');
 		saveBtn.type = 'button';
 		this.addClasses(saveBtn, 'operon-filter-modal-button', 'operon-filter-footer-button', 'is-primary', 'mod-cta');
 		saveBtn.setText(t('buttons', 'save'));
@@ -1062,6 +1073,79 @@ export class FilterSetModal extends Modal {
 			this.onSave(this.filterSet);
 			this.close();
 		});
+	}
+
+	private renderQuickActions(left: HTMLElement, right: HTMLElement): void {
+		const actions = this.options.quickActions;
+		if (!actions) return;
+
+		if (actions.copyEmbedCode || actions.duplicate) {
+			const quickGroup = left.createDiv('operon-filter-footer-quick-actions');
+			if (actions.copyEmbedCode) {
+				this.createFooterActionButton(quickGroup, {
+					label: t('filterSets', 'copyEmbedCode'),
+					text: '</>',
+					monospace: true,
+					onClick: actions.copyEmbedCode,
+					errorContext: 'filter modal embed copy failed',
+				});
+			}
+			if (actions.duplicate) {
+				this.createFooterActionButton(quickGroup, {
+					label: t('filterSets', 'duplicateFilter'),
+					icon: 'copy',
+					onClick: actions.duplicate,
+					errorContext: 'filter modal duplicate failed',
+				});
+			}
+		}
+
+		if (actions.remove) {
+			this.createFooterActionButton(right, {
+				label: t('filterSets', 'deleteFilterConfirm'),
+				icon: 'trash-2',
+				danger: true,
+				onClick: actions.remove,
+				errorContext: 'filter modal delete failed',
+			});
+		}
+	}
+
+	private createFooterActionButton(
+		container: HTMLElement,
+		options: {
+			label: string;
+			icon?: string;
+			text?: string;
+			monospace?: boolean;
+			danger?: boolean;
+			onClick: () => void | Promise<void>;
+			errorContext: string;
+		},
+	): HTMLButtonElement {
+		const button = container.createEl('button');
+		button.type = 'button';
+		this.addClasses(button, 'operon-filter-modal-button', 'operon-filter-footer-action-button');
+		if (options.monospace) button.addClass('is-monospace');
+		if (options.danger) button.addClass('is-danger');
+		button.setAttribute('aria-label', options.label);
+		bindOperonHoverTooltip(button, { content: options.label, taskColor: null });
+		if (options.icon) {
+			setIcon(button, options.icon);
+		} else {
+			button.setText(options.text ?? options.label);
+		}
+		button.addEventListener('click', () => {
+			try {
+				const result = options.onClick();
+				void Promise.resolve(result).catch(error => {
+					console.error(`Operon: ${options.errorContext}`, error);
+				});
+			} catch (error) {
+				console.error(`Operon: ${options.errorContext}`, error);
+			}
+		});
+		return button;
 	}
 
 	refreshPinnedState(): void {

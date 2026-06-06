@@ -29,6 +29,10 @@ interface NldatesPlugin {
 	parseDate: (text: string) => unknown;
 }
 
+interface DatePickerCandidateOptions {
+	quickQuery?: string;
+}
+
 interface MomentLike {
 	toDate: () => unknown;
 }
@@ -55,8 +59,10 @@ export function buildDatePickerCandidates(
 	app: App | undefined,
 	input: string,
 	context: DateParseContext,
+	options: DatePickerCandidateOptions = {},
 ): { parsed: DateParseCandidate[]; quick: DateParseCandidate[] } {
 	const trimmed = input.trim();
+	const quickQuery = options.quickQuery?.trim() ?? trimmed;
 	const parsed: DateParseCandidate[] = [];
 	const deterministic = trimmed ? parseFallbackDateCandidates(trimmed, context) : [];
 
@@ -71,7 +77,7 @@ export function buildDatePickerCandidates(
 
 	return {
 		parsed: dedupeCandidates(parsed),
-		quick: dedupeCandidates(getQuickDateCandidates(context, trimmed)),
+		quick: dedupeCandidates(getQuickDateCandidates(context, quickQuery)),
 	};
 }
 

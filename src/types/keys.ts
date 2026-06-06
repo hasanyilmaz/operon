@@ -85,6 +85,7 @@ export const CANONICAL_KEYS: CanonicalKeyDef[] = [
 	{ name: 'taskIcon', type: 'text', sync: 'yes', group: 'workflow', position: 31, description: 'Icon name' },
 	{ name: 'taskColor', type: 'text', sync: 'yes', group: 'workflow', position: 32, description: 'Hex color code' },
 	{ name: 'note', type: 'text', sync: 'yes', group: 'workflow', position: 32.5, description: 'Short annotation or comment' },
+	{ name: 'location', type: 'text', sync: 'yes', group: 'workflow', position: 32.6, description: 'Location coordinates in latitude, longitude format' },
 	{ name: 'links', type: 'list', sync: 'yes', group: 'workflow', position: 32.75, description: 'External web links' },
 	// Scheduling — Auto
 	{ name: 'datetimeModified', type: 'datetime', sync: 'auto', group: 'scheduling', position: 34, description: 'Task modification timestamp (auto-updated)' },

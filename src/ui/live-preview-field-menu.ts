@@ -205,22 +205,22 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 			const saveRepeat = async (payload: {
 				repeat: string;
 				datetimeRepeatEnd: string;
-				dateScheduled?: string;
+				repeatOccurrenceDate?: string;
 				inlineCompletionMode: InlineRepeatCompletionMode;
 			}) => {
 				if (options.updateFields) {
 					await options.updateFields({
 						repeat: payload.repeat,
 						datetimeRepeatEnd: payload.datetimeRepeatEnd,
-						...(payload.dateScheduled ? { dateScheduled: payload.dateScheduled } : {}),
+						...(payload.repeatOccurrenceDate ? { repeatOccurrenceDate: payload.repeatOccurrenceDate } : {}),
 					}, restoreCursor);
 					await options.onRepeatInlineCompletionModeChange?.(payload.inlineCompletionMode);
 					return;
 				}
 				await options.updateField('repeat', payload.repeat, restoreCursor);
 				await options.updateField('datetimeRepeatEnd', payload.datetimeRepeatEnd, restoreCursor);
-				if (payload.dateScheduled) {
-					await options.updateField('dateScheduled', payload.dateScheduled, restoreCursor);
+				if (payload.repeatOccurrenceDate) {
+					await options.updateField('repeatOccurrenceDate', payload.repeatOccurrenceDate, restoreCursor);
 				}
 				await options.onRepeatInlineCompletionModeChange?.(payload.inlineCompletionMode);
 			};
@@ -230,6 +230,7 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 						repeat: '',
 						datetimeRepeatEnd: '',
 						repeatSeriesId: '',
+						repeatOccurrenceDate: '',
 					}, restoreCursor);
 					await options.onRepeatInlineCompletionModeChange?.('keep-completed');
 					return;
@@ -237,6 +238,7 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 				await options.updateField('repeat', '', restoreCursor);
 				await options.updateField('datetimeRepeatEnd', '', restoreCursor);
 				await options.updateField('repeatSeriesId', '', restoreCursor);
+				await options.updateField('repeatOccurrenceDate', '', restoreCursor);
 				await options.onRepeatInlineCompletionModeChange?.('keep-completed');
 			};
 			showRepeatPicker(anchor, {
@@ -244,8 +246,12 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 				repeatEnd: fieldValues['datetimeRepeatEnd'],
 				repeatSeriesId: fieldValues['repeatSeriesId'],
 				taskColor: fieldValues['taskColor'],
+				repeatOccurrenceDate: fieldValues['repeatOccurrenceDate'],
 				dateScheduled: fieldValues['dateScheduled'],
 				dateDue: fieldValues['dateDue'],
+				dateStarted: fieldValues['dateStarted'],
+				datetimeStart: fieldValues['datetimeStart'],
+				datetimeEnd: fieldValues['datetimeEnd'],
 				taskFormat: options.task?.primary.format ?? 'inline',
 				inlineCompletionMode: options.repeatInlineCompletionMode,
 				onSave: payload => {

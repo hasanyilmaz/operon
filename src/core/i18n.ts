@@ -36,6 +36,7 @@ export interface LocaleData {
 	calendar: Record<string, string>;
 	filters: Record<string, string>;
 	filterSets: Record<string, string>;
+	location: Record<string, string>;
 	taskEditor: Record<string, string>;
 	indexStats: Record<string, string>;
 	pinnedTasks: Record<string, string>;

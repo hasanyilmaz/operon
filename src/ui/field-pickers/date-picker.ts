@@ -77,6 +77,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	let quickCandidates: DateParseCandidate[] = [];
 	let visibleCandidates: DateParseCandidate[] = [];
 	let activeIndex = 0;
+	let useInitialQuickSuggestions = !!options.value?.trim();
 
 	const commit = (value: string) => {
 		if (!value) return;
@@ -125,10 +126,13 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	};
 
 	const refreshCandidates = () => {
-		const built = buildDatePickerCandidates(app, input.value, context);
+		const built = buildDatePickerCandidates(app, input.value, context, {
+			quickQuery: useInitialQuickSuggestions ? '' : input.value,
+		});
 		parsedCandidates = built.parsed;
 		quickCandidates = built.quick;
 		activeIndex = 0;
+		useInitialQuickSuggestions = false;
 		render();
 	};
 

@@ -138,6 +138,7 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 	let timeInputFocused = false;
 	let timeDropdownVisible = false;
 	let preserveOffGridCommit = !!initial.timePart;
+	let useInitialDateQuickSuggestions = !!initial.datePart;
 
 	const commit = (value: string) => {
 		if (!value) return;
@@ -277,10 +278,13 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 	};
 
 	const refreshDateCandidates = () => {
-		const built = buildDatePickerCandidates(app, input.value, context);
+		const built = buildDatePickerCandidates(app, input.value, context, {
+			quickQuery: useInitialDateQuickSuggestions ? '' : input.value,
+		});
 		parsedCandidates = built.parsed;
 		quickCandidates = built.quick;
 		activeDateIndex = 0;
+		useInitialDateQuickSuggestions = false;
 		renderDateResults();
 	};
 

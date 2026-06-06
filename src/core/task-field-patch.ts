@@ -127,7 +127,7 @@ export function deriveCountModeRepeatEndFromFieldValues(
 ): string {
 	const rule = parseRepeatRule(fieldValues['repeat']);
 	if (!rule || rule.mode !== 'count' || !rule.count) return '';
-	const anchorDate = (fieldValues['dateScheduled'] ?? '').trim();
+	const anchorDate = resolveCountRepeatAnchorDate(fieldValues);
 	if (!anchorDate) return '';
 	const repeatSeriesId = (fieldValues['repeatSeriesId'] ?? '').trim();
 	const endDate = calculateRepeatEndFromCount(
@@ -137,4 +137,20 @@ export function deriveCountModeRepeatEndFromFieldValues(
 		getRepeatSkipDates?.(repeatSeriesId) ?? [],
 	);
 	return endDate ? `${endDate}T23:59:59` : '';
+}
+
+function resolveCountRepeatAnchorDate(fieldValues: Record<string, string>): string {
+	return normalizeDateOnly(fieldValues['repeatOccurrenceDate'])
+		|| normalizeDateOnly(fieldValues['dateScheduled'])
+		|| normalizeDateOnly(fieldValues['dateDue'])
+		|| normalizeDateOnly(fieldValues['dateStarted'])
+		|| normalizeDateOnly(fieldValues['datetimeStart'])
+		|| normalizeDateOnly(fieldValues['datetimeEnd']);
+}
+
+function normalizeDateOnly(value: string | null | undefined): string {
+	const trimmed = (value ?? '').trim();
+	if (/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) return trimmed;
+	if (/^\d{4}-\d{2}-\d{2}T/u.test(trimmed)) return trimmed.slice(0, 10);
+	return '';
 }

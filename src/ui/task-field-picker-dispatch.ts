@@ -18,11 +18,22 @@ import { showIconPicker } from './field-pickers/icon-picker';
 import { showRepeatPicker } from './field-pickers/repeat-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
 import { showParentTaskPicker } from './field-pickers/parent-task-picker';
+import { showLocationPicker } from './field-pickers/location-picker';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 
 export interface TaskFieldPickerDispatchOptions {
 	app: App;
-	settings: Pick<OperonSettings, 'pipelines' | 'priorities' | 'timeFormat' | 'keyMappings'>;
+	settings: Pick<OperonSettings,
+		| 'pipelines'
+		| 'priorities'
+		| 'timeFormat'
+		| 'keyMappings'
+		| 'locationMapsAlwaysLightMode'
+		| 'locationPlaceIconPropertyName'
+		| 'locationPlaceColorPropertyName'
+		| 'locationPickerMapDefaultCenter'
+		| 'locationPickerMapDefaultZoom'
+	>;
 	allTasks: IndexedTask[];
 	canonicalKey: string;
 	anchor: HTMLElement | DOMRect;
@@ -113,8 +124,12 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				repeatEnd: currentFieldValues['datetimeRepeatEnd'],
 				repeatSeriesId: currentFieldValues['repeatSeriesId'],
 				taskColor: currentFieldValues['taskColor'],
+				repeatOccurrenceDate: currentFieldValues['repeatOccurrenceDate'],
 				dateScheduled: currentFieldValues['dateScheduled'],
 				dateDue: currentFieldValues['dateDue'],
+				dateStarted: currentFieldValues['dateStarted'],
+				datetimeStart: currentFieldValues['datetimeStart'],
+				datetimeEnd: currentFieldValues['datetimeEnd'],
 				taskFormat: options.taskFormat,
 				inlineCompletionMode: options.repeatInlineCompletionMode,
 				onSave: payload => {
@@ -122,7 +137,7 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 					options.onCommit({
 						repeat: payload.repeat,
 						datetimeRepeatEnd: payload.datetimeRepeatEnd,
-						...(payload.dateScheduled ? { dateScheduled: payload.dateScheduled } : {}),
+						...(payload.repeatOccurrenceDate ? { repeatOccurrenceDate: payload.repeatOccurrenceDate } : {}),
 					});
 				},
 				onClear: () => {
@@ -159,6 +174,15 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				retainInputFocus: options.retainInputFocus,
 				onSelect: operonId => options.onCommit({ parentTask: operonId }),
 				onClear: () => options.onCommit({ parentTask: '' }),
+				onClose: options.onClose,
+			});
+		case 'location':
+			return showLocationPicker(options.anchor, {
+				app: options.app,
+				settings: options.settings,
+				value: currentFieldValues['location'],
+				onSelect: value => options.onCommit({ location: value }),
+				onClear: () => options.onCommit({ location: '' }),
 				onClose: options.onClose,
 			});
 		case 'tags':

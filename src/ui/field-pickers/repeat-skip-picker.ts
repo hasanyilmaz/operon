@@ -12,8 +12,12 @@ interface RepeatSkipPickerOptions {
 	taskId: string;
 	repeat: string;
 	repeatSeriesId: string;
+	repeatOccurrenceDate?: string;
 	dateScheduled?: string;
 	dateDue?: string;
+	dateStarted?: string;
+	datetimeStart?: string;
+	datetimeEnd?: string;
 	datetimeRepeatEnd?: string;
 	taskColor?: string;
 	existingSkipDates: string[];
@@ -61,7 +65,12 @@ function formatChipDate(value: string): string {
 }
 
 function getAnchorDate(options: RepeatSkipPickerOptions): string {
-	return extractDatePart(options.dateScheduled) || extractDatePart(options.dateDue);
+	return extractDatePart(options.repeatOccurrenceDate)
+		|| extractDatePart(options.dateScheduled)
+		|| extractDatePart(options.dateDue)
+		|| extractDatePart(options.dateStarted)
+		|| extractDatePart(options.datetimeStart)
+		|| extractDatePart(options.datetimeEnd);
 }
 
 export function showRepeatSkipPicker(anchor: HTMLElement | DOMRect, options: RepeatSkipPickerOptions): () => void {

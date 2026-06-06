@@ -13,6 +13,7 @@ import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
 import { TaskWriter } from './src/core/task-writer';
 import { registerObsidianIconFallbacks } from './src/core/obsidian-icon-fallbacks';
+import { invalidateLocationPlaceIndex } from './src/core/location-source-resolver';
 import { DependencyManager } from './src/systems/dependency-manager';
 import {
 	ActiveDependencyBlocker,
@@ -241,7 +242,7 @@ import {
 	resolveTaskCreatorFileTargetFolderOverride as resolveTaskCreatorFileTargetFolderOverrideDecision,
 	resolveTaskCreatorInlinePlacement,
 } from './src/core/task-creator-target-resolver';
-import { DEFAULT_INLINE_TASK_TARGET_FILE, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, FilterSet, normalizeInlineTaskHeadingKeyword, OperonSettings } from './src/types/settings';
+import { cloneFilterSet, DEFAULT_INLINE_TASK_TARGET_FILE, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, FilterSet, normalizeInlineTaskHeadingKeyword, OperonSettings } from './src/types/settings';
 import {
 	type InlineRepeatCompletionMode,
 	normalizeInlineCompletionMode,
@@ -673,6 +674,38 @@ export default class OperonPlugin extends Plugin {
 
 	private async saveFilterSetAndRefresh(filterSet: FilterSet): Promise<void> {
 		await this.storage.filters.upsert(filterSet);
+		this.syncFilterSetsFromStore();
+		this.refreshViews();
+	}
+
+	private generateFilterSetId(): string {
+		return 'fs_' + Math.random().toString(36).slice(2, 9);
+	}
+
+	private async duplicateFilterSetAndRefresh(filterSet: FilterSet): Promise<void> {
+		if (isDynamicFileTaskFilterSet(filterSet)) return;
+		const copy = cloneFilterSet(filterSet);
+		copy.id = this.generateFilterSetId();
+		copy.name = `${filterSet.name} Copy`;
+
+		const ids = getNormalFilterSets(this.settings.filterSets).map(entry => entry.id);
+		const idx = ids.indexOf(filterSet.id);
+		await this.storage.filters.upsert(copy);
+		this.syncFilterSetsFromStore();
+
+		const nextIds = this.settings.filterSets.map(entry => entry.id);
+		const copyIdx = nextIds.indexOf(copy.id);
+		if (idx !== -1 && copyIdx !== -1 && copyIdx !== idx + 1) {
+			nextIds.splice(copyIdx, 1);
+			nextIds.splice(idx + 1, 0, copy.id);
+			await this.storage.filters.replaceOrder(nextIds);
+			this.syncFilterSetsFromStore();
+		}
+		this.refreshViews();
+	}
+
+	private async deleteFilterSetAndRefresh(filterSetId: string): Promise<void> {
+		await this.storage.filters.delete(filterSetId);
 		this.syncFilterSetsFromStore();
 		this.refreshViews();
 	}
@@ -1646,6 +1679,8 @@ export default class OperonPlugin extends Plugin {
 				() => this.timeTracker.getActiveOperonId() ?? '',
 				(filterSet) => this.saveFilterSetAndRefresh(filterSet),
 				(dateKey) => this.openDailyNoteFromDateKey(dateKey),
+				(filterSet) => this.duplicateFilterSetAndRefresh(filterSet),
+				(filterSetId) => this.deleteFilterSetAndRefresh(filterSetId),
 			)
 		);
 
@@ -4569,6 +4604,8 @@ export default class OperonPlugin extends Plugin {
 				getTrackingSignature: () => this.timeTracker.getActiveOperonId() ?? '',
 				saveFilterSet: (filterSet: FilterSet) => this.saveFilterSetAndRefresh(filterSet),
 				openDailyNote: (dateKey: string) => this.openDailyNoteFromDateKey(dateKey),
+				duplicateFilterSet: (filterSet: FilterSet) => this.duplicateFilterSetAndRefresh(filterSet),
+				deleteFilterSet: (filterSetId: string) => this.deleteFilterSetAndRefresh(filterSetId),
 			};
 	}
 
@@ -5244,6 +5281,7 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 			this.app.metadataCache.on('changed', file => {
 				if (file.extension !== 'md') return;
+				invalidateLocationPlaceIndex(this.app);
 				this.scheduleYamlPropertyVisibilityRefresh(120);
 			}),
 		);
@@ -6233,6 +6271,7 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 			this.app.vault.on('create', (file: TAbstractFile) => {
 				if (file instanceof TFile && file.extension === 'md') {
+					invalidateLocationPlaceIndex(this.app);
 					this.indexer.scheduleReindex(file.path);
 				}
 			})
@@ -6242,6 +6281,7 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 				this.app.vault.on('delete', (file: TAbstractFile) => {
 					if (file instanceof TFile && file.extension === 'md') {
+						invalidateLocationPlaceIndex(this.app);
 						void this.indexer.handleFileDelete(file.path);
 					}
 				})
@@ -6252,6 +6292,7 @@ export default class OperonPlugin extends Plugin {
 			this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
 
+				invalidateLocationPlaceIndex(this.app);
 				this.indexer.handleFileRename(oldPath, file.path);
 
 				// Reindex must wait for Obsidian's metadataCache to update — it's async.

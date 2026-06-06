@@ -13,15 +13,18 @@ import {
 	getInlineTaskCompactHiddenCount,
 	getInlineTaskCompactVisibleKeys,
 	InlineTaskCompactChipEntry,
+	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
 import { bindOperonHoverTooltip, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { openObsidianTagSearch } from './tag-search';
 import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
+import { showLocationMapPreview } from './location-map-preview';
 import {
 	bindAdaptiveIconOnlyExpansion,
 	bindIconOnlyChipPreview,
@@ -150,12 +153,17 @@ export function buildReadingTaskRowElement(
 	});
 	head.appendChild(description);
 
+	const settings = callbacks.getSettings();
+	const locationResolver = shouldResolveLocationCompactChips(settings, options?.chipItems)
+		? getLocationPlaceIndex(callbacks.app, settings).resolve
+		: undefined;
 	const entries = buildInlineTaskCompactChipEntries(
 		task.fieldValues,
 		task.tags,
-		callbacks.getSettings(),
+		settings,
 		callbacks.getAllTasks(),
 		options?.chipItems,
+		locationResolver,
 	);
 	for (const entry of entries) {
 		const chip = createInlineTaskCompactChipElement(entry, 'operon-reading-task-chip');
@@ -403,6 +411,10 @@ function applyCompactChipVisualStyles(
 	if (entry.colorRole === 'status') {
 		chip.style.setProperty('--operon-live-chip-color', statusColor);
 	}
+	if (entry.key === 'location') {
+		const locationIconColor = entry.locationMarkerColor ?? taskColor;
+		if (locationIconColor) chip.style.setProperty('--operon-inline-chip-icon-color', locationIconColor);
+	}
 	if (entry.iconTone === 'today') {
 		chip.setCssProps({ '--operon-inline-chip-icon-color': '#2563eb' });
 	} else if (entry.iconTone === 'overdue') {
@@ -426,6 +438,23 @@ function attachReadingChipAction(
 			return;
 		}
 		switch (entry.key) {
+			case 'location':
+				if (entry.locationCoordinate) {
+					showLocationMapPreview(
+						callbacks.app,
+						chip,
+						callbacks.getSettings(),
+						entry.locationCoordinate,
+						task.primary.filePath,
+						entry.taskColor ?? null,
+						entry.locationMarkerIcon ?? null,
+						entry.locationMarkerColor ?? null,
+						entry.linkTarget ?? null,
+						task.description,
+					);
+					onCommit?.();
+				}
+				break;
 			case 'status':
 				runReadingRowStatusCycle(callbacks, task.operonId);
 				onCommit?.();

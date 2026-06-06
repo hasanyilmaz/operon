@@ -12,11 +12,13 @@ import { IndexedTask } from '../types/fields';
 import { resolveWorkflowStatus } from '../types/pipeline';
 import { localToday } from '../core/local-time';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, OperonSettings, resolveTaskDisplayIcon, TaskFinderDefaultScopeItem } from '../types/settings';
 import {
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
 	InlineTaskCompactChipEntry,
+	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -991,12 +993,16 @@ export class TaskFinderModal extends Modal {
 
 	private renderTaskChips(container: HTMLElement, task: IndexedTask): void {
 		const settings = this.getSettings();
+		const locationResolver = shouldResolveLocationCompactChips(settings, settings.taskFinderCompactChips)
+			? getLocationPlaceIndex(this.app, settings).resolve
+			: undefined;
 		let entries = buildInlineTaskCompactChipEntries(
 			task.fieldValues,
 			task.tags,
 			settings,
 			this.indexer.getAllTasks(),
 			settings.taskFinderCompactChips,
+			locationResolver,
 		);
 		if (this.showOverdueTasks) {
 			entries = this.prioritizeOverdueDateEntries(entries, task, settings);
@@ -1011,6 +1017,7 @@ export class TaskFinderModal extends Modal {
 				linkTarget: null,
 				externalUrl: null,
 				externalRawValue: null,
+				locationCoordinate: null,
 			};
 			const chip = createInlineTaskCompactChipElement(visualEntry, 'operon-task-finder-chip', { forceFull: true });
 			this.applyChipVisualStyles(chip, visualEntry, task);
@@ -1034,6 +1041,10 @@ export class TaskFinderModal extends Modal {
 		if (entry.colorRole === 'status') {
 			const statusColor = this.getTaskStatusColor(task);
 			if (statusColor) chip.style.setProperty('--operon-live-chip-color', statusColor);
+		}
+		if (entry.key === 'location') {
+			const locationIconColor = entry.locationMarkerColor ?? normalizeTaskFinderTaskColor(task.fieldValues['taskColor']);
+			if (locationIconColor) chip.style.setProperty('--operon-inline-chip-icon-color', locationIconColor);
 		}
 		if (entry.iconTone === 'today') {
 			chip.setCssProps({ '--operon-inline-chip-icon-color': '#2563eb' });
@@ -1284,6 +1295,12 @@ export class TaskFinderModal extends Modal {
 	private focusInput(): void {
 		window.requestAnimationFrame(() => this.inputEl.focus());
 	}
+}
+
+function normalizeTaskFinderTaskColor(taskColor: string | undefined): string | null {
+	if (!taskColor) return null;
+	const trimmed = taskColor.trim().replace(/^#/, '');
+	return /^[0-9a-fA-F]{6}$/.test(trimmed) ? `#${trimmed}` : null;
 }
 
 function normalizeColor(value: string | null | undefined): string | null {

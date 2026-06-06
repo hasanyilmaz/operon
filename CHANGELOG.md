@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.1.7] - 2026-06-06
+
+This release introduces **Location Map** support as a first-class part of Operon tasks, with map picking and chip previews powered by the **Obsidian Maps** plugin when it is enabled. Tasks can store `lat, lng` coordinates, use Places/Map/Manual picking, show map-backed previews, and connect more naturally to real-world places; smaller Calendar, Date Picker, Filter editing, and Repeat picker updates smooth the surrounding planning workflow.
+
+### New
+- Added **Location Map** support for the canonical `location` task field, with `lat, lng` coordinate storage, Places/Map/Manual picking in Task Creator and Task Editor, **Obsidian Maps**-powered chip previews, saved place markers, light-map settings, place-note visuals, and desktop preview controls for resizing, moving, and pinning maps.
+- Added a **Calendar day title action** setting, so clicking or tapping day headers can either create/open the daily note or do nothing.
+
+### Improved
+- Improved **Calendar Time Grid** overlap and refresh handling so Operon tasks stay readable while external calendar events sit behind them as availability context, with stable scrolling, sidebar layout, and separated external-event stripes.
+- Improved **Date Picker** suggestions so populated date and datetime fields keep the current value at the top while still showing quick choices like tomorrow, next week, and next weekend.
+- Improved **Filter editing** with sidebar header access for adding filters and edit modal quick actions for copying embed code, duplicating filters, and removing the current filter without returning to the Settings list.
+
+### Changed
+- Changed the **Repeat picker** to use a Reference date for recurrence anchoring instead of treating that picker value as Scheduled Date, keeping user-facing Start Date, Scheduled Date, and Due Date fields separate from the recurrence engine.
+
+### Fixed
+- Fixed indented inline tasks losing their markdown indentation after updates from the **Task Editor**.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 845/845 Phase 5 regression checks.
+
 ## [1.1.6] - 2026-06-04
 
 This release brings Operon into German and French, while also tightening language switching and Tasks emoji recurrence conversion so multilingual task workflows feel more native.

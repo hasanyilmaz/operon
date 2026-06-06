@@ -1,14 +1,21 @@
 import { App } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { IndexedTask } from '../types/fields';
-import { InlineTaskCompactChipEntry, buildInlineTaskCompactChipEntries, createInlineTaskCompactChipElement } from './compact-task-layout';
+import {
+	InlineTaskCompactChipEntry,
+	buildInlineTaskCompactChipEntries,
+	createInlineTaskCompactChipElement,
+	shouldResolveLocationCompactChips,
+} from './compact-task-layout';
 import { OperonSettings } from '../types/settings';
+import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { Pipeline, parseStatusValue } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { openObsidianTagSearch } from './tag-search';
 import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
+import { showLocationMapPreview } from './location-map-preview';
 import {
 	bindAdaptiveIconOnlyExpansion,
 	bindIconOnlyChipPreview,
@@ -28,16 +35,38 @@ interface OverlayChipRenderCallbacks {
 
 export function getTaskFileOverlayChipSignature(
 	task: IndexedTask,
+	app: App,
 	settings: OperonSettings,
 	allTasks: IndexedTask[],
 ): string {
-	return buildInlineTaskCompactChipEntries(
+	const locationIndex = shouldResolveLocationCompactChips(settings, settings.overlayTaskCompactChips)
+		? getLocationPlaceIndex(app, settings)
+		: null;
+	const entrySignature = buildInlineTaskCompactChipEntries(
 		task.fieldValues,
 		task.tags,
 		settings,
 		allTasks,
 		settings.overlayTaskCompactChips,
-	).map(entry => `${entry.key}:${entry.label}:${entry.iconOnly ? 1 : 0}:${entry.linkTarget ?? ''}:${entry.externalUrl ?? ''}:${entry.externalRawValue ?? ''}:${entry.tooltipContent ?? ''}`).join('|');
+		locationIndex?.resolve,
+	).map(entry => [
+		entry.key,
+		entry.label,
+		entry.icon,
+		entry.iconOnly ? 1 : 0,
+		entry.linkTarget ?? '',
+		entry.externalUrl ?? '',
+		entry.externalRawValue ?? '',
+		entry.locationCoordinate ?? '',
+		entry.locationMarkerIcon ?? '',
+		entry.locationMarkerColor ?? '',
+		entry.taskColor ?? '',
+		entry.tooltipContent ?? '',
+	].join(':')).join('|');
+	return [
+		locationIndex?.getSignature() ?? '',
+		entrySignature,
+	].join('|');
 }
 
 export function buildTaskWikilinkOverlaySettingsSignature(settings: OperonSettings): string {
@@ -55,12 +84,16 @@ export function buildTaskFileOverlayChipContainer(
 	callbacks: OverlayChipRenderCallbacks,
 ): HTMLElement | null {
 	const settings = callbacks.getSettings();
+	const locationResolver = shouldResolveLocationCompactChips(settings, settings.overlayTaskCompactChips)
+		? getLocationPlaceIndex(callbacks.app, settings).resolve
+		: undefined;
 	const entries = buildInlineTaskCompactChipEntries(
 		task.fieldValues,
 		task.tags,
 		settings,
 		callbacks.getAllTasks(),
 		settings.overlayTaskCompactChips,
+		locationResolver,
 	);
 	if (entries.length === 0) return null;
 
@@ -124,7 +157,7 @@ export function buildTaskFileOverlayChipContainer(
 }
 
 function isOverlayChipInteractive(entry: InlineTaskCompactChipEntry): boolean {
-	return entry.key === 'tags' || !!entry.linkTarget || !!entry.externalUrl;
+	return entry.key === 'tags' || !!entry.locationCoordinate || !!entry.linkTarget || !!entry.externalUrl;
 }
 
 function attachOverlayChipAction(
@@ -143,6 +176,22 @@ function attachOverlayChipAction(
 		}
 		if (entry.key === 'tags') {
 			void openObsidianTagSearch(callbacks.app, entry.label);
+			onCommit?.();
+			return;
+		}
+		if (entry.key === 'location' && entry.locationCoordinate) {
+			showLocationMapPreview(
+				callbacks.app,
+				chip,
+				callbacks.getSettings(),
+				entry.locationCoordinate,
+				task.primary.filePath,
+				entry.taskColor ?? null,
+				entry.locationMarkerIcon ?? null,
+				entry.locationMarkerColor ?? null,
+				entry.linkTarget ?? null,
+				task.description,
+			);
 			onCommit?.();
 			return;
 		}
@@ -174,6 +223,10 @@ function applyOverlayChipVisualStyles(
 	}
 	if (entry.colorRole === 'status') {
 		cssProps['--operon-live-chip-color'] = statusColor;
+	}
+	if (entry.key === 'location') {
+		const locationIconColor = entry.locationMarkerColor ?? taskColor;
+		if (locationIconColor) cssProps['--operon-inline-chip-icon-color'] = locationIconColor;
 	}
 	if (entry.iconTone === 'today') {
 		cssProps['--operon-inline-chip-icon-color'] = '#2563eb';
