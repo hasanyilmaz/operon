@@ -14,6 +14,7 @@ import {
 import {
 	buildRepeatSeriesContexts,
 	deriveTemporalTemplateFromTask,
+	isRepeatSeriesProjectionActive,
 	resolveOccurrencePlan,
 	resolveProjectionRangePadding,
 	shiftDateKey,
@@ -46,6 +47,8 @@ export function buildProjectedRecurringCalendarItems(
 	const projected: CalendarItem[] = [];
 
 	for (const group of buildRepeatSeriesContexts(input.tasks)) {
+		if (!isRepeatSeriesProjectionActive(group)) continue;
+
 		const latestRule = parseRepeatRule(group.latestTask.fieldValues['repeat']);
 		if (!latestRule) continue;
 

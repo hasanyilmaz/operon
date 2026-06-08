@@ -176,6 +176,14 @@ type RelationContextChipKey = Extract<InlineTaskCompactChipKey, 'priority' | 'st
 type MediaQueryChangeListener = (event: MediaQueryListEvent) => void;
 type LegacyMediaQueryMethod = (this: MediaQueryList, listener: MediaQueryChangeListener) => void;
 
+const TASK_EDITOR_DAY_PICKER_DATE_KEYS = new Set<string>([
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
+]);
+
 function getLegacyMediaQueryMethod(mediaQuery: MediaQueryList, methodName: 'addListener' | 'removeListener'): LegacyMediaQueryMethod | null {
 	const method = (mediaQuery as unknown as Record<string, unknown>)[methodName];
 	return typeof method === 'function' ? method as LegacyMediaQueryMethod : null;
@@ -1187,6 +1195,7 @@ export class TaskEditorContent {
 				app: this.app,
 				fieldKey: key,
 				value: this.fieldValues[key],
+				manualDatePicker: this.getManualDatePickerOptions(key),
 				canRemove: !!this.fieldValues[key],
 				onSelect: value => {
 					this.applyDraftFieldRules({ [key]: value }, [key]);
@@ -1223,7 +1232,11 @@ export class TaskEditorContent {
 			button.addClass('is-picker-open');
 			showDatetimePicker(button, {
 				app: this.app,
-				settings: { timeFormat: this.settings.timeFormat },
+				settings: {
+					timeFormat: this.settings.timeFormat,
+					calendarWeekStart: this.settings.calendarWeekStart,
+					calendarSidebarShowWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
+				},
 				fieldKey: key,
 				value: this.fieldValues[key],
 				canRemove: !!this.fieldValues[key],
@@ -1306,6 +1319,7 @@ export class TaskEditorContent {
 				datetimeEnd: this.fieldValues['datetimeEnd'],
 				taskFormat: this.fileBodyContext?.format ?? 'inline',
 				inlineCompletionMode: this.inlineCompletionMode,
+				dayPickerPopover: this.getRepeatDayPickerPopoverOptions(),
 				onSave: ({ repeat, datetimeRepeatEnd, repeatOccurrenceDate, inlineCompletionMode }) => {
 					this.fieldValues['repeat'] = repeat;
 					if (datetimeRepeatEnd) this.fieldValues['datetimeRepeatEnd'] = datetimeRepeatEnd;
@@ -2820,6 +2834,7 @@ export class TaskEditorContent {
 				app: this.app,
 				fieldKey: key,
 				value: this.fieldValues[key],
+				manualDatePicker: this.getManualDatePickerOptions(key),
 				canRemove: !!this.fieldValues[key],
 				onSelect: value => {
 					this.applyDraftFieldRules({ [key]: value }, [key]);
@@ -2834,6 +2849,21 @@ export class TaskEditorContent {
 				},
 			});
 		});
+	}
+
+	private getManualDatePickerOptions(key: string): { weekStart: 'monday' | 'sunday'; showWeekNumbers: boolean } | undefined {
+		if (!TASK_EDITOR_DAY_PICKER_DATE_KEYS.has(key)) return undefined;
+		return {
+			weekStart: this.settings.calendarWeekStart,
+			showWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
+		};
+	}
+
+	private getRepeatDayPickerPopoverOptions(): { weekStart: 'monday' | 'sunday'; showWeekNumbers: boolean } {
+		return {
+			weekStart: this.settings.calendarWeekStart,
+			showWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
+		};
 	}
 
 	private renderDatetimeControl(container: HTMLElement, key: 'datetimeStart' | 'datetimeEnd', label: string): void {
@@ -2873,7 +2903,11 @@ export class TaskEditorContent {
 			button.classList.add('is-picker-open');
 			showDatetimePicker(button, {
 				app: this.app,
-				settings: { timeFormat: this.settings.timeFormat },
+				settings: {
+					timeFormat: this.settings.timeFormat,
+					calendarWeekStart: this.settings.calendarWeekStart,
+					calendarSidebarShowWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
+				},
 				fieldKey: key,
 				value: this.fieldValues[key],
 				canRemove: !!this.fieldValues[key],
@@ -3234,6 +3268,7 @@ export class TaskEditorContent {
 				datetimeEnd: this.fieldValues['datetimeEnd'],
 				taskFormat: this.fileBodyContext?.format ?? 'inline',
 				inlineCompletionMode: this.inlineCompletionMode,
+				dayPickerPopover: this.getRepeatDayPickerPopoverOptions(),
 				onSave: ({ repeat, datetimeRepeatEnd, repeatOccurrenceDate, inlineCompletionMode }) => {
 					this.fieldValues['repeat'] = repeat;
 					if (datetimeRepeatEnd) this.fieldValues['datetimeRepeatEnd'] = datetimeRepeatEnd;

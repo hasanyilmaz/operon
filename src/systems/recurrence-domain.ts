@@ -102,6 +102,18 @@ export function isLatestMaterializedRecurringTask(task: IndexedTask, tasks: Inde
 	return getLatestSeriesOccurrenceDate(seriesId, tasks) === occurrenceDate;
 }
 
+export function isRecurringProjectionSourceTask(task: IndexedTask): boolean {
+	const seriesId = normalizeOptional(task.fieldValues['repeatSeriesId']);
+	if (!seriesId) return false;
+	if (task.checkbox !== 'open') return false;
+	if (!parseRepeatRule(task.fieldValues['repeat'])) return false;
+	return !!resolveOccurrenceDate(task);
+}
+
+export function isRepeatSeriesProjectionActive(context: RepeatSeriesContext): boolean {
+	return isRecurringProjectionSourceTask(context.latestTask);
+}
+
 export function deriveTemporalTemplateFromTask(task: Pick<IndexedTask, 'fieldValues'>): RepeatTemporalTemplate {
 	return deriveTemporalTemplateFromTaskAtOccurrence(task, resolveOccurrenceDate(task));
 }

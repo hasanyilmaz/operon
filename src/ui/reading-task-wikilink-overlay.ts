@@ -9,11 +9,15 @@ import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import {
+	computeTaskFileLinkPlainCheckboxIndicator,
 	computeTaskFileLinkVisuals,
 	computeTaskFileLinkProgressIndicator,
+	createTaskFileLinkPlainCheckboxProgressElement,
 	FileTaskLookup,
 	resolveTaskFileLink,
 	TaskFileLinkProgressIndicator,
+	buildTaskFileLinkProgressTooltip,
+	appendTaskFileLinkProgressCountContent,
 } from './task-file-wikilink-shared';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -125,6 +129,23 @@ export function enhanceReadingTaskFileWikilinks(
 		if (progressEl) {
 			wrapper.appendChild(progressEl);
 		}
+		const settings = callbacks.getSettings();
+		if (settings.overlayTaskShowPlainCheckboxAction) {
+			const plainCheckboxProgressEl = createTaskFileLinkPlainCheckboxProgressElement(
+				computeTaskFileLinkPlainCheckboxIndicator(resolved.task),
+				wrapper,
+				{
+					app: callbacks.app,
+					task: resolved.task,
+					keyMappings: settings.keyMappings,
+					taskColor: visuals.hoverColor,
+					showEmptyAction: true,
+				},
+			);
+			if (plainCheckboxProgressEl) {
+				wrapper.appendChild(plainCheckboxProgressEl);
+			}
+		}
 		const chipRow = buildTaskFileOverlayChipContainer(resolved.task, {
 			app: callbacks.app,
 			getSettings: callbacks.getSettings,
@@ -135,7 +156,6 @@ export function enhanceReadingTaskFileWikilinks(
 		if (chipRow) {
 			wrapper.appendChild(chipRow);
 		}
-		const settings = callbacks.getSettings();
 		const isTerminal = visuals.labelState !== 'default';
 		if (!isTerminal && settings.overlayTaskShowPlayAction && callbacks.toggleTimer && resolved.task.checkbox === 'open') {
 			const isTracking = callbacks.isTaskTracking?.(resolved.task.operonId) === true;
@@ -272,21 +292,25 @@ function createProgressElement(progress: TaskFileLinkProgressIndicator, owner?: 
 
 	if (progress.kind === 'count') {
 		el.classList.add('operon-task-wikilink-progress-count');
-		el.textContent = progress.text;
-		setAccessibleLabelWithoutTooltip(el, progress.text);
+		appendTaskFileLinkProgressCountContent(el, 'list-tree', progress.text);
+		const tooltip = buildTaskFileLinkProgressTooltip(progress);
+		setAccessibleLabelWithoutTooltip(el, tooltip?.accessibleLabel ?? progress.text);
 		bindOperonHoverTooltip(el, {
-			content: progress.text,
+			title: tooltip?.title,
+			content: tooltip?.content ?? progress.text,
 			taskColor: null,
 		});
 		return el;
 	}
 
+	const tooltip = buildTaskFileLinkProgressTooltip(progress);
 	el.classList.add('operon-task-wikilink-progress-complete');
 	bindOperonHoverTooltip(el, {
-		content: t('tooltips', 'allDescendantsDone'),
+		title: tooltip?.title,
+		content: tooltip?.content ?? t('tooltips', 'allDescendantsDone'),
 		taskColor: null,
 	});
 	setIcon(el, progress.icon);
-	setAccessibleLabelWithoutTooltip(el, t('tooltips', 'allDescendantsDone'));
+	setAccessibleLabelWithoutTooltip(el, tooltip?.accessibleLabel ?? t('tooltips', 'allDescendantsDone'));
 	return el;
 }

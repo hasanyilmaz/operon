@@ -15,6 +15,7 @@ import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { t } from '../core/i18n';
 import { operonIndexRefreshEffect } from './live-preview-conceal';
+import { isPlainCheckboxPopoverEditorElement } from './plain-checkbox-popover-scope';
 
 interface ClassicTaskConvertCallbacks {
 	getFilePath: (view: EditorView) => string;
@@ -97,6 +98,10 @@ export function operonLivePreviewClassicTaskConvertExtension(callbacks: ClassicT
 			const decorations = new RangeSetBuilder<Decoration>();
 
 			if (!this.isLivePreview(view)) {
+				this.decorations = Decoration.none;
+				return;
+			}
+			if (isPlainCheckboxPopoverEditorElement(view.dom)) {
 				this.decorations = Decoration.none;
 				return;
 			}

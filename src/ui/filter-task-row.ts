@@ -4,9 +4,11 @@ import { resolveDirectSubtaskProgressFromStats } from '../core/task-stats-read-m
 import { IndexedTask } from '../types/fields';
 import { resolveWorkflowStatus } from '../types/pipeline';
 import { buildReadingTaskRowElement, ReadingTaskRowCallbacks } from './reading-task-row';
-import { wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { createOwnerElement } from '../core/dom-compat';
+import { computePlainCheckboxProgressIndicator } from './plain-checkbox-progress';
+import { bindPlainCheckboxPopoverTrigger } from './plain-checkbox-popover';
 
 export interface FilterTaskRowCallbacks extends ReadingTaskRowCallbacks {
 	getIndexedTask: (id: string) => IndexedTask | undefined;
@@ -64,6 +66,7 @@ export function buildFilterTaskRowElement(
 	}
 
 	const renderedTask = callbacks.getRenderedTask?.(task) ?? task;
+	const plainCheckboxProgress = computePlainCheckboxProgressIndicator(task.plainCheckboxProgress);
 	const row = buildReadingTaskRowElement(renderedTask, callbacks, undefined, {
 		owner: wrapper,
 		chipItems: callbacks.getSettings().filterTaskCompactChips,
@@ -71,12 +74,12 @@ export function buildFilterTaskRowElement(
 		showPinAction: callbacks.getSettings().filterTaskShowPinAction,
 		showSubtaskAction: options?.showSubtaskAction ?? callbacks.getSettings().filterTaskShowSubtaskAction,
 		rowClassName: 'operon-filter-task-row',
-		beforeEditAction: hasChildren
-			? (actions, context) => {
-					const expandButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-filter-expand-action', actions);
-					expandButton.type = 'button';
-					const iconEl = el('span', 'operon-filter-expand-icon', expandButton);
-					const summary = el('span', 'operon-filter-expand-summary', expandButton);
+		beforeTailContent: hasChildren
+			? (tail, context) => {
+				const expandButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-filter-expand-action', tail);
+				expandButton.type = 'button';
+				const iconEl = el('span', 'operon-filter-expand-icon', expandButton);
+				const summary = el('span', 'operon-filter-expand-summary', expandButton);
 				expandButton.appendChild(iconEl);
 				expandButton.appendChild(summary);
 				if (context.taskColor) {
@@ -125,14 +128,56 @@ export function buildFilterTaskRowElement(
 					syncButton();
 					window.requestAnimationFrame(() => expandButton.blur());
 				});
-				const expandControl = wrapWithOperonHoverTooltip(expandButton, {
-					title: t('tooltips', 'subtasks'),
+				expandButton.classList.add('operon-filter-expand-control');
+				bindOperonHoverTooltip(expandButton, {
+					title: t('tooltips', 'directSubtasks'),
 					content: buildSubtaskTooltipContent(childProgress),
 					taskColor: context.taskColor ?? branchColor,
 					preferredHorizontal: 'right',
 				});
-				expandControl.classList.add('operon-filter-expand-control');
-				actions.appendChild(expandControl);
+				tail.appendChild(expandButton);
+			}
+			: undefined,
+		beforeEditAction: callbacks.getSettings().filterTaskShowPlainCheckboxAction
+			? (actions, context) => {
+				const progress = plainCheckboxProgress;
+				const control = el('span', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-filter-checkbox-progress-control', actions);
+				appendFilterCheckboxProgressContent(control, progress.kind === 'count' ? progress.text : null);
+				if (progress.kind === 'none') {
+					control.classList.add('is-empty');
+				} else if (progress.allCompleted) {
+					control.classList.add('is-complete');
+				}
+				const taskColor = context.taskColor ?? branchColor;
+				if (taskColor) {
+					control.style.setProperty('--operon-live-hover-border', taskColor);
+				}
+				if (progress.kind === 'count') {
+					const tooltipContent = progress.tooltipContent;
+					setAccessibleLabelWithoutTooltip(control, `${t('tooltips', 'plainCheckboxes')}: ${tooltipContent}`);
+					bindOperonHoverTooltip(control, {
+						title: t('tooltips', 'plainCheckboxes'),
+						content: tooltipContent,
+						taskColor,
+						preferredHorizontal: 'right',
+					});
+				} else {
+					const tooltipTitle = t('tooltips', 'plainCheckboxEditorAdd');
+					setAccessibleLabelWithoutTooltip(control, tooltipTitle);
+					bindOperonHoverTooltip(control, {
+						title: tooltipTitle,
+						taskColor,
+						preferredHorizontal: 'right',
+					});
+				}
+				bindPlainCheckboxPopoverTrigger(control, {
+					app: callbacks.app,
+					task,
+					keyMappings: callbacks.getSettings().keyMappings,
+					taskColor,
+					seedEmptyDraft: progress.kind === 'none',
+				});
+				actions.appendChild(control);
 			}
 			: undefined,
 	});
@@ -282,11 +327,23 @@ function buildSubtaskTooltipContent(
 ): string {
 	if (!progress || progress.total === 0) return t('tooltips', 'noDirectSubtasks');
 	const percent = Math.round((progress.completed / progress.total) * 100);
-	return t('tooltips', 'directSubtasksProgress', {
-		completed: String(progress.completed),
-		total: String(progress.total),
-		percent: String(percent),
-	});
+	if (percent === 0) return t('tooltips', 'subtasksNotStarted');
+	if (progress.allCompleted) return t('tooltips', 'subtasksComplete');
+	return t('tooltips', 'subtasksPercentComplete', { percent: String(percent) });
+}
+
+function appendFilterCheckboxProgressContent(control: HTMLElement, text: string | null): void {
+	const iconEl = createOwnerElement(control, 'span');
+	iconEl.className = 'operon-filter-checkbox-progress-icon';
+	iconEl.dataset.operonProgressIcon = 'layout-list';
+	setIcon(iconEl, 'layout-list');
+	control.appendChild(iconEl);
+
+	if (text === null) return;
+	const labelEl = createOwnerElement(control, 'span');
+	labelEl.className = 'operon-filter-checkbox-progress-label';
+	labelEl.textContent = text;
+	control.appendChild(labelEl);
 }
 
 function normalizeColor(value: string | null | undefined): string | null {

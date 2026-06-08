@@ -7,22 +7,29 @@
  */
 
 import { App, parseYaml, TFile } from 'obsidian';
-import { parseTaskLine, isTaskLineCandidate } from '../core/parser';
 import { isValidOperonId } from '../core/id-generator';
-import { ParsedTask, TaskLocation } from '../types/fields';
+import { ParsedTask, PlainCheckboxProgress, TaskLocation } from '../types/fields';
 import { KeyMapping } from '../types/settings';
 import { buildReverseMapping, readYamlFields } from '../core/yaml-fields';
 import { isRecord } from '../core/unknown-value';
+import { parseOperonTaskLineCandidate, parsePlainMarkdownCheckboxLine } from '../core/plain-checkbox-lines';
 
 /** Result of scanning a single file */
 export interface FileScanResult {
 	filePath: string;
 	/** Inline tasks found in file body */
 	inlineTasks: ParsedTask[];
+	/** Non-Operon markdown checkbox progress found in file body */
+	plainCheckboxProgress: PlainCheckboxScanResult;
 	/** YAML task found in frontmatter (if operonId present) */
 	yamlTask: YamlTaskData | null;
 	/** File modification time for incremental detection */
 	mtime: number;
+}
+
+export interface PlainCheckboxScanResult {
+	file: PlainCheckboxProgress;
+	byInlineTaskId: Record<string, PlainCheckboxProgress>;
 }
 
 /** YAML-only task data extracted from frontmatter */
@@ -57,15 +64,16 @@ export async function scanFileWithMappings(
 	const filePath = file.path;
 	const content = await app.vault.read(file);
 
-	// Scan inline tasks from file body
-	const inlineTasks = scanInlineTasks(content, filePath, keyMappings);
+	// Scan file body once for Operon inline tasks and non-Operon markdown checkboxes.
+	const bodyScan = scanFileBody(content, filePath, keyMappings);
 
 	// Scan YAML frontmatter for operonId
 	const yamlTask = scanYamlTask(file, content, filePath, keyMappings);
 
 	return {
 		filePath,
-		inlineTasks,
+		inlineTasks: bodyScan.inlineTasks,
+		plainCheckboxProgress: bodyScan.plainCheckboxProgress,
 		yamlTask,
 		mtime: file.stat.mtime,
 	};
@@ -77,10 +85,17 @@ export async function scanFileWithMappings(
  *
  * Performance target: 1000-line file in < 1ms.
  */
-function scanInlineTasks(content: string, filePath: string, keyMappings: KeyMapping[]): ParsedTask[] {
+function scanFileBody(
+	content: string,
+	filePath: string,
+	keyMappings: KeyMapping[],
+): { inlineTasks: ParsedTask[]; plainCheckboxProgress: PlainCheckboxScanResult } {
 	const tasks: ParsedTask[] = [];
+	const fileProgress = createPlainCheckboxProgress();
+	const byInlineTaskId: Record<string, PlainCheckboxProgress> = {};
 	const lines = content.split('\n');
 	let inFencedCodeBlock = false;
+	let activeInlineTaskId: string | null = null;
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i];
@@ -93,21 +108,52 @@ function scanInlineTasks(content: string, filePath: string, keyMappings: KeyMapp
 		}
 		if (inFencedCodeBlock) continue;
 
-		// Character-level fast reject (Architecture doc Section 4.4)
-		// Check for "- [" pattern — rejects ~95% of lines in nanoseconds
-		if (!isTaskLineCandidate(line)) continue;
-
-		// Only parse lines that also contain {{ (Operon fields)
-		// This second fast check avoids regex on plain checkboxes
-		if (line.indexOf('{{') === -1) continue;
-
-		const task = parseTaskLine(line, i, filePath, keyMappings);
-		if (task && (task.operonId || task.fields.length > 0)) {
+		const task = parseOperonTaskLineCandidate(line, i, filePath, keyMappings);
+		if (task) {
 			tasks.push(task);
+			if (task.operonId) activeInlineTaskId = task.operonId;
+			continue;
+		}
+
+		const checkbox = parsePlainMarkdownCheckboxLine(line);
+		if (!checkbox) continue;
+
+		incrementPlainCheckboxProgress(fileProgress, checkbox.completed);
+		if (activeInlineTaskId) {
+			incrementPlainCheckboxProgress(
+				getOrCreatePlainCheckboxProgress(byInlineTaskId, activeInlineTaskId),
+				checkbox.completed,
+			);
 		}
 	}
 
-	return tasks;
+	return {
+		inlineTasks: tasks,
+		plainCheckboxProgress: {
+			file: fileProgress,
+			byInlineTaskId,
+		},
+	};
+}
+
+function createPlainCheckboxProgress(): PlainCheckboxProgress {
+	return { total: 0, completed: 0 };
+}
+
+function getOrCreatePlainCheckboxProgress(
+	byInlineTaskId: Record<string, PlainCheckboxProgress>,
+	operonId: string,
+): PlainCheckboxProgress {
+	const existing = byInlineTaskId[operonId];
+	if (existing) return existing;
+	const created = createPlainCheckboxProgress();
+	byInlineTaskId[operonId] = created;
+	return created;
+}
+
+function incrementPlainCheckboxProgress(progress: PlainCheckboxProgress, completed: boolean): void {
+	progress.total += 1;
+	if (completed) progress.completed += 1;
 }
 
 /**

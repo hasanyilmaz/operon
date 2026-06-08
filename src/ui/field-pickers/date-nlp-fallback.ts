@@ -27,6 +27,11 @@ interface DatePickerStrings {
 	lastWeekdayLabel: (name: string) => string;
 }
 
+interface MonthAlias {
+	month: number;
+	aliases: string[];
+}
+
 const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 	en: {
 		searchPlaceholder: 'Type a date like next tuesday',
@@ -228,6 +233,65 @@ const FRENCH_WEEKDAYS = new Map<string, number>([
 	['samedi', 6],
 ]);
 
+const MONTH_ALIASES: Record<DatePickerLang, MonthAlias[]> = {
+	en: [
+		{ month: 1, aliases: ['january', 'jan'] },
+		{ month: 2, aliases: ['february', 'feb'] },
+		{ month: 3, aliases: ['march', 'mar'] },
+		{ month: 4, aliases: ['april', 'apr'] },
+		{ month: 5, aliases: ['may'] },
+		{ month: 6, aliases: ['june', 'jun'] },
+		{ month: 7, aliases: ['july', 'jul'] },
+		{ month: 8, aliases: ['august', 'aug'] },
+		{ month: 9, aliases: ['september', 'sept', 'sep'] },
+		{ month: 10, aliases: ['october', 'oct'] },
+		{ month: 11, aliases: ['november', 'nov'] },
+		{ month: 12, aliases: ['december', 'dec'] },
+	],
+	tr: [
+		{ month: 1, aliases: ['ocak', 'oca'] },
+		{ month: 2, aliases: ['subat', 'şubat', 'sub'] },
+		{ month: 3, aliases: ['mart', 'mar'] },
+		{ month: 4, aliases: ['nisan', 'nis'] },
+		{ month: 5, aliases: ['mayis', 'mayıs', 'may'] },
+		{ month: 6, aliases: ['haziran', 'haz'] },
+		{ month: 7, aliases: ['temmuz', 'tem'] },
+		{ month: 8, aliases: ['agustos', 'ağustos', 'agu', 'ağu'] },
+		{ month: 9, aliases: ['eylul', 'eylül', 'eyl'] },
+		{ month: 10, aliases: ['ekim', 'eki'] },
+		{ month: 11, aliases: ['kasim', 'kasım', 'kas'] },
+		{ month: 12, aliases: ['aralik', 'aralık', 'ara'] },
+	],
+	de: [
+		{ month: 1, aliases: ['januar', 'jan'] },
+		{ month: 2, aliases: ['februar', 'feb'] },
+		{ month: 3, aliases: ['marz', 'märz', 'mar', 'mär'] },
+		{ month: 4, aliases: ['april', 'apr'] },
+		{ month: 5, aliases: ['mai'] },
+		{ month: 6, aliases: ['juni', 'jun'] },
+		{ month: 7, aliases: ['juli', 'jul'] },
+		{ month: 8, aliases: ['august', 'aug'] },
+		{ month: 9, aliases: ['september', 'sept', 'sep'] },
+		{ month: 10, aliases: ['oktober', 'okt'] },
+		{ month: 11, aliases: ['november', 'nov'] },
+		{ month: 12, aliases: ['dezember', 'dez'] },
+	],
+	fr: [
+		{ month: 1, aliases: ['janvier', 'janv', 'jan'] },
+		{ month: 2, aliases: ['fevrier', 'février', 'fev', 'fév'] },
+		{ month: 3, aliases: ['mars', 'mar'] },
+		{ month: 4, aliases: ['avril', 'avr'] },
+		{ month: 5, aliases: ['mai'] },
+		{ month: 6, aliases: ['juin', 'ju'] },
+		{ month: 7, aliases: ['juillet', 'juil', 'jul'] },
+		{ month: 8, aliases: ['aout', 'août'] },
+		{ month: 9, aliases: ['septembre', 'sept', 'sep'] },
+		{ month: 10, aliases: ['octobre', 'oct'] },
+		{ month: 11, aliases: ['novembre', 'nov'] },
+		{ month: 12, aliases: ['decembre', 'décembre', 'dec', 'déc'] },
+	],
+};
+
 export function getDatePickerStrings(language: DatePickerLang): DatePickerStrings {
 	return STRINGS[language];
 }
@@ -236,16 +300,34 @@ export function getQuickDateCandidates(context: DateParseContext, query = ''): D
 	const strings = STRINGS[context.language];
 	const reference = context.referenceDate ?? normalizedToday();
 	const lowered = normalizeInput(query);
+	const referenceIso = toIsoDate(reference);
+	const today = buildQuickCandidate(strings.today, cloneDate(reference), context);
+	const tomorrow = buildQuickCandidate(strings.tomorrow, addDays(reference, 1), context);
+	const yesterday = buildQuickCandidate(strings.yesterday, addDays(reference, -1), context);
+	const thisWeek = buildQuickCandidate(strings.thisWeek, startOfWeek(reference), context);
+	const nextWeek = buildQuickCandidate(strings.nextWeek, addDays(startOfWeek(reference), 7), context);
+	const lastWeek = buildQuickCandidate(strings.lastWeek, addDays(startOfWeek(reference), -7), context);
+	const thisWeekend = buildQuickCandidate(strings.thisWeekend, saturdayOfWeek(reference), context);
+	const nextWeekend = buildQuickCandidate(strings.nextWeekend, addDays(saturdayOfWeek(reference), 7), context);
+	const lastWeekend = buildQuickCandidate(strings.lastWeekend, addDays(saturdayOfWeek(reference), -7), context);
+	const defaultBase: DateParseCandidate[] = [
+		today,
+		tomorrow,
+		thisWeek,
+		nextWeek,
+		thisWeekend,
+		nextWeekend,
+	];
 	const base: DateParseCandidate[] = [
-		buildQuickCandidate(strings.today, cloneDate(reference), context),
-		buildQuickCandidate(strings.tomorrow, addDays(reference, 1), context),
-		buildQuickCandidate(strings.yesterday, addDays(reference, -1), context),
-		buildQuickCandidate(strings.thisWeek, startOfWeek(reference), context),
-		buildQuickCandidate(strings.nextWeek, addDays(startOfWeek(reference), 7), context),
-		buildQuickCandidate(strings.lastWeek, addDays(startOfWeek(reference), -7), context),
-		buildQuickCandidate(strings.thisWeekend, saturdayOfWeek(reference), context),
-		buildQuickCandidate(strings.nextWeekend, addDays(saturdayOfWeek(reference), 7), context),
-		buildQuickCandidate(strings.lastWeekend, addDays(saturdayOfWeek(reference), -7), context),
+		today,
+		tomorrow,
+		yesterday,
+		thisWeek,
+		nextWeek,
+		lastWeek,
+		thisWeekend,
+		nextWeekend,
+		lastWeekend,
 	];
 
 	const weekdayNames = strings.weekdayNames;
@@ -254,8 +336,8 @@ export function getQuickDateCandidates(context: DateParseContext, query = ''): D
 		base.push(buildQuickCandidate(strings.lastWeekdayLabel(weekdayNames[day]), previousWeekday(reference, day), context));
 	}
 
-	if (!lowered) return base.slice(0, 8);
-	return base.filter(candidate => normalizeInput(candidate.primaryLabel).includes(lowered)).slice(0, 12);
+	if (!lowered) return sortCandidatesByReference(defaultBase.filter(candidate => candidate.isoDate >= referenceIso), reference);
+	return sortCandidatesByReference(base.filter(candidate => normalizeInput(candidate.primaryLabel).includes(lowered)), reference).slice(0, 12);
 }
 
 export function parseFallbackDateCandidates(input: string, context: DateParseContext): DateParseCandidate[] {
@@ -266,7 +348,10 @@ export function parseFallbackDateCandidates(input: string, context: DateParseCon
 	const reference = context.referenceDate ?? normalizedToday();
 
 	const numeric = parseNumericRelativeCandidates(normalized, strings, context, reference);
-	if (numeric.length > 0) return numeric;
+	const dayMonth = parseDayMonthCandidates(normalized, strings, context, reference);
+	if (numeric.length > 0 || dayMonth.length > 0) {
+		return sortCandidatesByReference(dedupeDateCandidates([...numeric, ...dayMonth]), reference);
+	}
 
 	const absolute = parseAbsoluteDate(normalized, context);
 	if (absolute) return [absolute];
@@ -340,6 +425,64 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 	return null;
 }
 
+function parseDayMonthCandidates(
+	input: string,
+	strings: DatePickerStrings,
+	context: DateParseContext,
+	reference: Date,
+): DateParseCandidate[] {
+	const match = /^(\d{1,2})\s+([a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]+)$/.exec(input);
+	if (!match) return [];
+
+	const day = Number(match[1]);
+	if (!Number.isFinite(day) || day <= 0 || day > 31) return [];
+	const monthToken = normalizeInput(match[2] ?? '');
+	if (!monthToken) return [];
+
+	const referenceDate = cloneDate(reference);
+	const latestDate = addDays(referenceDate, 365);
+	const monthNumbers = resolveMonthNumbers(monthToken, context.language);
+	const byIso = new Map<string, DateParseCandidate>();
+
+	for (const month of monthNumbers) {
+		for (const year of [referenceDate.getFullYear(), referenceDate.getFullYear() + 1]) {
+			const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+			if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) continue;
+			if (date.getTime() < referenceDate.getTime() || date.getTime() > latestDate.getTime()) continue;
+			const isoDate = toIsoDate(date);
+			byIso.set(isoDate, {
+				isoDate,
+				primaryLabel: formatLongDate(date, context.language),
+				secondaryLabel: strings.parsedFrom(input),
+				source: 'fallback',
+				confidence: 0.97,
+				kind: 'nlp',
+			});
+		}
+	}
+
+	return [...byIso.values()].sort((a, b) => a.isoDate.localeCompare(b.isoDate));
+}
+
+function resolveMonthNumbers(monthToken: string, language: DatePickerLang): number[] {
+	const languageAliases = language === 'en'
+		? MONTH_ALIASES.en
+		: [...MONTH_ALIASES[language], ...MONTH_ALIASES.en];
+	const months = new Set<number>();
+
+	for (const entry of languageAliases) {
+		for (const alias of entry.aliases) {
+			const normalizedAlias = normalizeInput(alias);
+			if (normalizedAlias.startsWith(monthToken) || monthToken.startsWith(normalizedAlias)) {
+				months.add(entry.month);
+				break;
+			}
+		}
+	}
+
+	return [...months].sort((a, b) => a - b);
+}
+
 function parseNumericRelativeCandidates(
 	input: string,
 	strings: DatePickerStrings,
@@ -379,33 +522,51 @@ function parseNumericRelativeCandidates(
 	return candidates;
 }
 
+function dedupeDateCandidates(candidates: DateParseCandidate[]): DateParseCandidate[] {
+	const byIsoDate = new Map<string, DateParseCandidate>();
+	for (const candidate of candidates) {
+		if (!byIsoDate.has(candidate.isoDate)) byIsoDate.set(candidate.isoDate, candidate);
+	}
+	return [...byIsoDate.values()];
+}
+
+function sortCandidatesByReference(candidates: DateParseCandidate[], reference: Date): DateParseCandidate[] {
+	const referenceIso = toIsoDate(reference);
+	return [...candidates].sort((a, b) => {
+		const aFuture = a.isoDate >= referenceIso;
+		const bFuture = b.isoDate >= referenceIso;
+		if (aFuture !== bFuture) return aFuture ? -1 : 1;
+		return aFuture ? a.isoDate.localeCompare(b.isoDate) : b.isoDate.localeCompare(a.isoDate);
+	});
+}
+
 function matchesUnit(token: string, language: DatePickerLang, unit: 'days' | 'weeks' | 'months'): boolean {
 	if (!token) return true;
 	const lowered = normalizeInput(token);
 	const prefixes: Record<typeof unit, string[]> = language === 'tr'
 		? {
 			days: ['g', 'gu', 'gun'],
-			weeks: ['h', 'ha', 'haf', 'hafta'],
+			weeks: ['h', 'ha', 'haf', 'haft', 'hafta'],
 			months: ['a', 'ay'],
 		}
 		: language === 'de'
 		? {
 			days: ['t', 'ta', 'tag', 'tage'],
-			weeks: ['w', 'wo', 'woc', 'woche', 'wochen'],
-			months: ['m', 'mo', 'mon', 'monat', 'monate'],
+			weeks: ['w', 'wo', 'woc', 'woch', 'woche', 'wochen'],
+			months: ['m', 'mo', 'mon', 'mona', 'monat', 'monate'],
 		}
 		: language === 'fr'
 		? {
 			days: ['j', 'jo', 'jou', 'jour', 'jours'],
-			weeks: ['s', 'se', 'sem', 'semaine', 'semaines'],
+			weeks: ['s', 'se', 'sem', 'sema', 'semai', 'semain', 'semaine', 'semaines'],
 			months: ['m', 'mo', 'moi', 'mois'],
 		}
 		: {
 			days: ['d', 'da', 'day', 'days'],
 			weeks: ['w', 'we', 'wee', 'week', 'weeks'],
-			months: ['m', 'mo', 'mon', 'month', 'months'],
+			months: ['m', 'mo', 'mon', 'mont', 'month', 'months'],
 		};
-	return prefixes[unit].some(prefix => prefix.startsWith(lowered) || lowered.startsWith(prefix));
+	return prefixes[unit].includes(lowered);
 }
 
 function parseAbsoluteDate(input: string, context: DateParseContext): DateParseCandidate | null {

@@ -940,6 +940,12 @@ export class FilterView extends ItemView {
 
 	private buildRenderSignature(filterSet: FilterSet): string {
 		const compactSettingsSignature = JSON.stringify(this.settings.filterTaskCompactChips);
+		const filterActionSettingsSignature = JSON.stringify([
+			this.settings.filterTaskShowPlayAction,
+			this.settings.filterTaskShowPinAction,
+			this.settings.filterTaskShowSubtaskAction,
+			this.settings.filterTaskShowPlainCheckboxAction,
+		]);
 		const overlaySettingsSignature = buildTaskWikilinkOverlaySettingsSignature(this.settings);
 		const includeLocationIndexSignature = shouldResolveLocationCompactChips(this.settings, this.settings.filterTaskCompactChips)
 			|| shouldResolveLocationCompactChips(this.settings, this.settings.overlayTaskCompactChips);
@@ -961,6 +967,7 @@ export class FilterView extends ItemView {
 			this.searchQuery.trim().toLocaleLowerCase(),
 			JSON.stringify(filterSet),
 			compactSettingsSignature,
+			filterActionSettingsSignature,
 			overlaySettingsSignature,
 			locationIndexSignature,
 			keyMappingSignature,

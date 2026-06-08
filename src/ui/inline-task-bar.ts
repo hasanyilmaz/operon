@@ -363,10 +363,17 @@ function renderNavigationIcon(container: HTMLElement, task: IndexedTask, cbs: Ta
 // Inline chip editing — date picker and priority dropdown
 // ============================================================
 
-function showInlineDatePicker(anchor: HTMLElement, operonId: string, fieldKey: string, currentValue: string, cbs: TaskBarCallbacks): void {
+type InlineTaskBarDateKey = 'dateDue' | 'dateScheduled' | 'dateStarted';
+
+function showInlineDatePicker(anchor: HTMLElement, operonId: string, fieldKey: InlineTaskBarDateKey, currentValue: string, cbs: TaskBarCallbacks): void {
+	const settings = cbs.getSettings();
 	showSharedDatePicker(anchor, {
 		fieldKey,
 		value: currentValue,
+		manualDatePicker: {
+			weekStart: settings.calendarWeekStart,
+			showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+		},
 		onSelect: value => cbs.updateField(operonId, fieldKey, value),
 		canRemove: !!currentValue,
 		onRemove: () => cbs.updateField(operonId, fieldKey, ''),

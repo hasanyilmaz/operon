@@ -310,6 +310,8 @@ export const TASK_CREATOR_TOOLBAR_FIELD_ORDER = [
 	'dateStarted',
 	'dateScheduled',
 	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
 	'pinned',
 	'datetimeStart',
 	'datetimeEnd',
@@ -425,6 +427,8 @@ export const TASK_CREATOR_FALLBACK_FIELD_ICONS: Record<TaskCreatorToolbarFieldKe
 	dateStarted: 'play',
 	dateScheduled: 'calendar-clock',
 	dateDue: 'calendar',
+	dateCompleted: 'calendar-check',
+	dateCancelled: 'calendar-x',
 	pinned: 'pin',
 	datetimeStart: 'clock-3',
 	datetimeEnd: 'clock-9',
@@ -583,6 +587,8 @@ function buildDefaultTaskCreatorToolbarItems(): TaskCreatorToolbarItem[] {
 		{ key: 'dateStarted', visible: false },
 		{ key: 'dateScheduled', visible: true },
 		{ key: 'dateDue', visible: true },
+		{ key: 'dateCompleted', visible: false },
+		{ key: 'dateCancelled', visible: false },
 		{ key: 'pinned', visible: true },
 		{ key: 'datetimeStart', visible: false },
 		{ key: 'datetimeEnd', visible: false },
@@ -920,6 +926,8 @@ export interface OperonSettings {
 	overlayTaskShowNoteAction: boolean;
 	/** Whether file task overlay rows show the right-side add subtask action. */
 	overlayTaskShowSubtaskAction: boolean;
+	/** Whether file task overlay rows show the plain checkbox editor action. */
+	overlayTaskShowPlainCheckboxAction: boolean;
 	/** Whether the compact inline row shows the right-side timer action when the task is actionable. */
 	inlineTaskShowPlayAction: boolean;
 	/** Whether the compact inline row shows the right-side pin action when the task is actionable. */
@@ -936,6 +944,8 @@ export interface OperonSettings {
 	filterTaskShowPinAction: boolean;
 	/** Whether filter rows show the right-side add subtask action. */
 	filterTaskShowSubtaskAction: boolean;
+	/** Whether filter rows show the right-side plain checkbox progress action. */
+	filterTaskShowPlainCheckboxAction: boolean;
 
 	// Location map
 	locationMapsAlwaysLightMode: boolean;
@@ -1313,6 +1323,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	overlayTaskShowPinAction: false,
 	overlayTaskShowNoteAction: true,
 	overlayTaskShowSubtaskAction: false,
+	overlayTaskShowPlainCheckboxAction: true,
 	inlineTaskShowPlayAction: true,
 	inlineTaskShowPinAction: false,
 	inlineTaskShowSubtaskAction: true,
@@ -1321,6 +1332,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	filterTaskShowPlayAction: true,
 	filterTaskShowPinAction: false,
 	filterTaskShowSubtaskAction: true,
+	filterTaskShowPlainCheckboxAction: true,
 
 	locationMapsAlwaysLightMode: true,
 	locationPlaceIconPropertyName: '',
@@ -2728,6 +2740,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.overlayTaskShowSubtaskAction = typeof src.overlayTaskShowSubtaskAction === 'boolean'
 		? src.overlayTaskShowSubtaskAction
 		: DEFAULT_SETTINGS.overlayTaskShowSubtaskAction;
+	out.overlayTaskShowPlainCheckboxAction = typeof src.overlayTaskShowPlainCheckboxAction === 'boolean'
+		? src.overlayTaskShowPlainCheckboxAction
+		: DEFAULT_SETTINGS.overlayTaskShowPlainCheckboxAction;
 	out.inlineTaskShowPlayAction = typeof src.inlineTaskShowPlayAction === 'boolean'
 		? src.inlineTaskShowPlayAction
 		: DEFAULT_SETTINGS.inlineTaskShowPlayAction;
@@ -2752,6 +2767,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.filterTaskShowSubtaskAction = typeof src.filterTaskShowSubtaskAction === 'boolean'
 		? src.filterTaskShowSubtaskAction
 		: DEFAULT_SETTINGS.filterTaskShowSubtaskAction;
+	out.filterTaskShowPlainCheckboxAction = typeof src.filterTaskShowPlainCheckboxAction === 'boolean'
+		? src.filterTaskShowPlainCheckboxAction
+		: DEFAULT_SETTINGS.filterTaskShowPlainCheckboxAction;
 	out.calendarShowAllDayLane = typeof src.calendarShowAllDayLane === 'boolean'
 		? src.calendarShowAllDayLane
 		: DEFAULT_SETTINGS.calendarShowAllDayLane;

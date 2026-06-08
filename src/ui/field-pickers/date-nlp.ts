@@ -81,6 +81,28 @@ export function buildDatePickerCandidates(
 	};
 }
 
+export function mergeDatePickerVisibleCandidates(
+	parsedCandidates: DateParseCandidate[],
+	quickCandidates: DateParseCandidate[],
+	hiddenIsoDate = '',
+): DateParseCandidate[] {
+	const visibleCandidates: DateParseCandidate[] = [];
+	const pushCandidate = (candidate: DateParseCandidate) => {
+		if (hiddenIsoDate && candidate.isoDate === hiddenIsoDate) return;
+		if (visibleCandidates.some(existing => existing.isoDate === candidate.isoDate)) return;
+		visibleCandidates.push(candidate);
+	};
+
+	for (const candidate of parsedCandidates) {
+		pushCandidate(candidate);
+	}
+	for (const candidate of quickCandidates) {
+		pushCandidate(candidate);
+	}
+
+	return visibleCandidates;
+}
+
 function parseWithNldates(
 	app: App | undefined,
 	input: string,

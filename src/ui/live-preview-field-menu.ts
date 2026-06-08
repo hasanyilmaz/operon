@@ -7,7 +7,7 @@ import { buildForwardMapping } from '../core/yaml-fields';
 import { t } from '../core/i18n';
 import { showStatusPicker } from './field-pickers/status-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
-import { showDatePicker } from './field-pickers/date-picker';
+import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { showTagPicker } from './field-pickers/tag-picker';
 import { showContextsPicker } from './field-pickers/contexts-picker';
@@ -62,6 +62,14 @@ const VISIBLE_KEYS = new Set([
 	'datetimeModified',
 	'taskIcon',
 	'taskColor',
+]);
+
+const FIELD_MENU_DATE_ONLY_KEYS = new Set([
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
 ]);
 
 export function showLivePreviewFieldMenu(anchor: HTMLElement | DOMRect, options: LivePreviewFieldMenuOptions): void {
@@ -139,6 +147,21 @@ function getDisplayName(key: string, forwardMap: Map<string, string>): string {
 	return forwardMap.get(key) ?? key;
 }
 
+function getManualDatePickerOptions(key: string, settings: OperonSettings): ManualDatePickerOptions | undefined {
+	if (!FIELD_MENU_DATE_ONLY_KEYS.has(key)) return undefined;
+	return {
+		weekStart: settings.calendarWeekStart,
+		showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+	};
+}
+
+function getRepeatDayPickerPopoverOptions(settings: OperonSettings): { weekStart: 'monday' | 'sunday'; showWeekNumbers: boolean } {
+	return {
+		weekStart: settings.calendarWeekStart,
+		showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+	};
+}
+
 function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePreviewFieldMenuOptions): void {
 	const fieldValues = options.task?.fieldValues ?? Object.fromEntries(options.parsedTask.fields.map(field => [field.key, field.value]));
 	const restoreCursor: LivePreviewCursorRestoreRequest = {
@@ -177,6 +200,7 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 				app: options.app,
 				fieldKey: key,
 				value: fieldValues[key],
+				manualDatePicker: getManualDatePickerOptions(key, options.settings),
 				retainInputFocus: true,
 				onSelect: value => { void options.updateField(key, value, restoreCursor); },
 				canRemove: !!fieldValues[key],
@@ -192,7 +216,11 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 			}
 			showDatetimePicker(anchor, {
 				app: options.app,
-				settings: { timeFormat: options.settings.timeFormat },
+				settings: {
+					timeFormat: options.settings.timeFormat,
+					calendarWeekStart: options.settings.calendarWeekStart,
+					calendarSidebarShowWeekNumbers: options.settings.calendarSidebarShowWeekNumbers,
+				},
 				fieldKey: key,
 				value: fieldValues[key],
 				retainInputFocus: true,
@@ -254,6 +282,7 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 				datetimeEnd: fieldValues['datetimeEnd'],
 				taskFormat: options.task?.primary.format ?? 'inline',
 				inlineCompletionMode: options.repeatInlineCompletionMode,
+				dayPickerPopover: getRepeatDayPickerPopoverOptions(options.settings),
 				onSave: payload => {
 					void saveRepeat(payload);
 				},

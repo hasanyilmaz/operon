@@ -13,6 +13,31 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.2.0',
+		date: '2026-06-08',
+		title: 'Normal checkbox workflows and Day Picker',
+		showOnUpdate: true,
+		youtubeUrl: 'https://youtu.be/AOE4Z_qBspw',
+		body: `
+This release gives **normal markdown checkboxes** a clearer role inside Operon workflows. Lightweight checklists now show progress beside file tasks and inline tasks. The **mini editor** keeps small checklist work close without converting checkboxes into Operon tasks.
+
+It also brings the **Operon Day Picker** into more date surfaces. Date picking should feel familiar wherever you are working in Operon.
+
+## New
+- Added the **Operon Day Picker** across date and datetime fields, so choosing dates feels the same whether you are editing a task, creating one, filtering, setting recurrence, or working directly in Live Preview, Reading View, and the Inline Task Bar.
+- Added a lightweight **normal checkbox workflow** for file tasks and inline Operon tasks. Plain markdown checklists now show progress in task rows and overlays, and a small editor lets you add, review, complete, extend, pin, and save checkbox items while keeping them as ordinary markdown.
+
+## Improved
+- Improved **Date Picker** suggestions so upcoming dates are easier to reach first, typed dates do not repeat above the calendar, short entries like \`22 d\` and \`22 m\` still find useful matches, and past dates stay available when you ask for them.
+- Improved **Filter rows** and **file task overlays** so Operon subtasks and plain checklist progress are easier to tell apart, with clearer chips, shorter tooltips, and per-surface **Open checkboxes** controls.
+
+## Fixed
+- Fixed **Task Finder** rows looking squeezed under themes with broad modal button styling, including Velocity.
+- Fixed **Task Editor** file body chips looking uneven under themes with broad modal button styling, including Velocity.
+- Fixed completed recurring task history continuing to show future projected entries in **Calendar** when there is no open task left in the series.
+`.trim(),
+	},
+	{
 		version: '1.1.7',
 		date: '2026-06-06',
 		title: 'Location Map support',

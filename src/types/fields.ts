@@ -84,6 +84,13 @@ export interface ParsedTask {
 	rawLine: string;
 }
 
+export interface PlainCheckboxProgress {
+	/** Non-Operon markdown checkboxes found in the task scope */
+	total: number;
+	/** Checkboxes whose marker is not blank */
+	completed: number;
+}
+
 /** Index entry for a task stored in the index */
 export interface IndexedTask {
 	operonId: string;
@@ -101,6 +108,8 @@ export interface IndexedTask {
 	datetimeModified: string;
 	/** Index tier: hot (open/in-progress), warm (completed < 90 days), cold (completed > 90 days) */
 	tier: 'hot' | 'warm' | 'cold';
+	/** Non-Operon markdown checkbox progress read during file scanning */
+	plainCheckboxProgress?: PlainCheckboxProgress;
 }
 
 export interface IndexedTaskInstance extends IndexedTask {

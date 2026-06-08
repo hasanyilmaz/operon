@@ -1,6 +1,6 @@
 import { App, setIcon } from 'obsidian';
 import { IndexedTask, ParsedTask } from '../types/fields';
-import { showDatePicker } from './field-pickers/date-picker';
+import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
 import { showLivePreviewFieldMenu } from './live-preview-field-menu';
@@ -64,6 +64,22 @@ export interface ReadingTaskRowCallbacks {
 	updateRepeatSeriesInlineCompletionMode?: (operonId: string, mode: InlineRepeatCompletionMode) => void | Promise<void>;
 }
 
+const READING_DIRECT_CHIP_DAY_PICKER_DATE_KEYS = new Set<string>([
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
+]);
+
+function getReadingDirectChipManualDatePickerOptions(key: string, settings: OperonSettings): ManualDatePickerOptions | undefined {
+	if (!READING_DIRECT_CHIP_DAY_PICKER_DATE_KEYS.has(key)) return undefined;
+	return {
+		weekStart: settings.calendarWeekStart,
+		showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+	};
+}
+
 export interface ReadingTaskRowOptions {
 	owner?: Node | null;
 	chipItems?: InlineTaskCompactChipItem[];
@@ -72,6 +88,11 @@ export interface ReadingTaskRowOptions {
 	showSubtaskAction?: boolean;
 	showEditAction?: boolean;
 	rowClassName?: string;
+	beforeTailContent?: (tail: HTMLElement, context: {
+		task: IndexedTask;
+		taskColor: string | null;
+		isTerminal: boolean;
+	}) => void;
 	beforeEditAction?: (actions: HTMLElement, context: {
 		task: IndexedTask;
 		taskColor: string | null;
@@ -94,6 +115,7 @@ export function buildReadingTaskRowElement(
 	const taskColor = normalizeTaskColor(task.fieldValues['taskColor']);
 	const statusColor = lookupStatusColor(task.fieldValues['status'], callbacks.getPipelines());
 	const terminalVisualState = resolveTerminalVisualState(task, callbacks.getPipelines());
+	const isTerminal = terminalVisualState !== null;
 	if (terminalVisualState === 'done') {
 		row.classList.add('operon-filter-row-done');
 	} else if (terminalVisualState === 'cancelled') {
@@ -152,6 +174,12 @@ export function buildReadingTaskRowElement(
 		callbacks.navigateToTask(task);
 	});
 	head.appendChild(description);
+
+	options?.beforeTailContent?.(tail, {
+		task,
+		taskColor,
+		isTerminal,
+	});
 
 	const settings = callbacks.getSettings();
 	const locationResolver = shouldResolveLocationCompactChips(settings, options?.chipItems)
@@ -252,7 +280,6 @@ export function buildReadingTaskRowElement(
 
 	const actions = el('div', 'operon-reading-task-actions', row);
 
-	const isTerminal = terminalVisualState !== null;
 	const showPlayAction = options?.showPlayAction ?? callbacks.getSettings().inlineTaskShowPlayAction;
 	const showPinAction = options?.showPinAction ?? callbacks.getSettings().inlineTaskShowPinAction;
 	const showSubtaskAction = options?.showSubtaskAction ?? callbacks.getSettings().inlineTaskShowSubtaskAction;
@@ -476,10 +503,13 @@ function attachReadingChipAction(
 			case 'dateStarted':
 			case 'dateDue':
 			case 'dateScheduled':
+			case 'dateCompleted':
+			case 'dateCancelled':
 				showDatePicker(chip, {
 					app: callbacks.app,
 						fieldKey: entry.key,
 						value: task.fieldValues[entry.key],
+						manualDatePicker: getReadingDirectChipManualDatePickerOptions(entry.key, callbacks.getSettings()),
 						onSelect: (next) => {
 							void callbacks.updateField(task.operonId, entry.key, next);
 							onCommit?.();

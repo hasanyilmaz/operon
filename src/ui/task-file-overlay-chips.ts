@@ -76,6 +76,7 @@ export function buildTaskWikilinkOverlaySettingsSignature(settings: OperonSettin
 		overlayTaskShowPinAction: settings.overlayTaskShowPinAction,
 		overlayTaskShowNoteAction: settings.overlayTaskShowNoteAction,
 		overlayTaskShowSubtaskAction: settings.overlayTaskShowSubtaskAction,
+		overlayTaskShowPlainCheckboxAction: settings.overlayTaskShowPlainCheckboxAction,
 	});
 }
 

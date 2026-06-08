@@ -14,7 +14,7 @@ import { IndexedTask, ParsedTask } from '../types/fields';
 import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { Pipeline, parseStatusValue, resolveWorkflowStatus } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
-import { showDatePicker } from './field-pickers/date-picker';
+import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
@@ -81,6 +81,22 @@ export interface LivePreviewCursorRestoreRequest {
 	ch: number;
 	editorView?: EditorView;
 	trackDescriptionEnd?: boolean;
+}
+
+const LIVE_PREVIEW_DIRECT_CHIP_DAY_PICKER_DATE_KEYS = new Set<string>([
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
+]);
+
+function getLivePreviewDirectChipManualDatePickerOptions(key: string, settings: OperonSettings): ManualDatePickerOptions | undefined {
+	if (!LIVE_PREVIEW_DIRECT_CHIP_DAY_PICKER_DATE_KEYS.has(key)) return undefined;
+	return {
+		weekStart: settings.calendarWeekStart,
+		showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+	};
 }
 
 function getLivePreviewDescriptionEndCursor(
@@ -863,10 +879,13 @@ function attachLivePreviewChipAction(
 			case 'dateStarted':
 			case 'dateDue':
 			case 'dateScheduled':
+			case 'dateCompleted':
+			case 'dateCancelled':
 				showDatePicker(pickerAnchor, {
 					app: callbacks.app,
 						fieldKey: entry.key,
 						value: fieldValues[entry.key],
+						manualDatePicker: getLivePreviewDirectChipManualDatePickerOptions(entry.key, callbacks.getSettings()),
 						onSelect: next => {
 							void callbacks.updateField(operonId, entry.key, next, restoreCursor());
 							onCommit?.();

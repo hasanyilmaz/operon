@@ -1,20 +1,29 @@
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
+import { getAppLocale } from '../../core/obsidian-app';
 import { createButton, createFloatingPanel, focusFloatingInput, resolvePickerApp } from './common';
+import { DayPickerWeekStart, normalizeOperonDateKey, OperonDayPickerController, renderOperonDayPicker } from './day-picker';
 import { appendDatePickerCandidateRow } from './date-picker-row';
 import {
 	buildDatePickerCandidates,
 	DateParseCandidate,
 	DatePickerLang,
 	getDatePickerLocaleStrings,
+	mergeDatePickerVisibleCandidates,
 	resolveDatePickerLanguage,
 } from './date-nlp';
+
+export interface ManualDatePickerOptions {
+	weekStart: DayPickerWeekStart;
+	showWeekNumbers: boolean;
+}
 
 interface DatePickerOptions {
 	app?: App;
 	fieldKey?: string;
 	language?: DatePickerLang;
 	value?: string;
+	manualDatePicker?: ManualDatePickerOptions;
 	retainInputFocus?: boolean;
 	onSelect: (value: string) => void;
 	onRemove?: () => void;
@@ -38,6 +47,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 		options.onClose?.();
 	}, {
 		retainInputFocus: options.retainInputFocus,
+		repositionOnPanelResize: options.manualDatePicker ? false : undefined,
 	});
 
 	panel.classList.add('operon-date-picker-panel');
@@ -52,27 +62,9 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	const manualLabel = panel.createDiv('operon-floating-subtitle');
 	manualLabel.textContent = strings.manualDate;
 
-	const nativeInput = panel.createEl('input');
-	nativeInput.type = 'date';
-	nativeInput.className = 'operon-floating-input operon-date-picker-native';
-	nativeInput.value = options.value ?? '';
-
-	const actions = panel.createDiv('operon-floating-actions');
-
-	if (options.onRemove && options.canRemove) {
-		const removeButton = createButton(t('buttons', 'remove'), 'operon-floating-btn is-secondary', actions);
-		removeButton.addEventListener('click', () => {
-			completed = true;
-			options.onRemove?.();
-			close();
-		});
-		actions.appendChild(removeButton);
-	}
-
-	const applyButton = createButton(strings.apply, 'operon-floating-btn', actions);
-	actions.appendChild(applyButton);
-	panel.appendChild(actions);
-
+	let nativeInput: HTMLInputElement | null = null;
+	let dayPicker: OperonDayPickerController | null = null;
+	let manualDateValue = normalizeManualDateValue(options.value);
 	let parsedCandidates: DateParseCandidate[] = [];
 	let quickCandidates: DateParseCandidate[] = [];
 	let visibleCandidates: DateParseCandidate[] = [];
@@ -88,16 +80,84 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 
 	const getActiveCandidate = (): DateParseCandidate | null => visibleCandidates[activeIndex] ?? null;
 
-	const render = () => {
-		results.replaceChildren();
-		visibleCandidates = [...parsedCandidates];
-		for (const candidate of quickCandidates) {
-			if (!visibleCandidates.some(existing => existing.isoDate === candidate.isoDate)) {
-				visibleCandidates.push(candidate);
-			}
+	const applyCurrentSelection = () => {
+		if (options.manualDatePicker && manualDateValue) {
+			commit(manualDateValue);
+			return;
+		}
+		const active = getActiveCandidate();
+		if (active) {
+			commit(active.isoDate);
+			return;
+		}
+		if (manualDateValue) {
+			commit(manualDateValue);
+			return;
+		}
+		if (options.onRemove && options.canRemove) {
+			completed = true;
+			options.onRemove();
+			close();
+		}
+	};
+
+	if (options.manualDatePicker) {
+		panel.classList.add('has-day-picker');
+		const dayPickerHost = panel.createDiv('operon-date-picker-day-picker-host');
+		dayPicker = renderOperonDayPicker(dayPickerHost, {
+			value: options.value,
+			weekStart: options.manualDatePicker.weekStart,
+			showWeekNumbers: options.manualDatePicker.showWeekNumbers,
+			locale: getAppLocale(app),
+			clearLabel: strings.clear,
+			todayLabel: strings.today,
+			previousYearLabel: t('calendar', 'previousYear'),
+			nextYearLabel: t('calendar', 'nextYear'),
+			previousMonthLabel: t('calendar', 'previousMonth'),
+			nextMonthLabel: t('calendar', 'nextMonth'),
+			canClear: options.canRemove,
+			onSelect: value => commit(value),
+			onClear: options.onRemove
+				? () => {
+					completed = true;
+					options.onRemove?.();
+					close();
+				}
+				: undefined,
+		});
+	} else {
+		nativeInput = panel.createEl('input');
+		nativeInput.type = 'date';
+		nativeInput.className = 'operon-floating-input operon-date-picker-native';
+		nativeInput.value = options.value ?? '';
+	}
+
+	if (!options.manualDatePicker) {
+		const actions = panel.createDiv('operon-floating-actions');
+
+		if (options.onRemove && options.canRemove) {
+			const removeButton = createButton(t('buttons', 'remove'), 'operon-floating-btn is-secondary', actions);
+			removeButton.addEventListener('click', () => {
+				completed = true;
+				options.onRemove?.();
+				close();
+			});
+			actions.appendChild(removeButton);
 		}
 
+		const applyButton = createButton(strings.apply, 'operon-floating-btn', actions);
+		applyButton.addEventListener('click', applyCurrentSelection);
+		actions.appendChild(applyButton);
+		panel.appendChild(actions);
+	}
+
+	const render = () => {
+		results.replaceChildren();
+		const hiddenCalendarDate = options.manualDatePicker ? manualDateValue : '';
+		visibleCandidates = mergeDatePickerVisibleCandidates(parsedCandidates, quickCandidates, hiddenCalendarDate);
+
 		if (visibleCandidates.length === 0) {
+			if (hiddenCalendarDate) return;
 			const empty = results.createDiv('operon-date-picker-empty');
 			empty.textContent = strings.quickSuggestions;
 			return;
@@ -137,8 +197,10 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	};
 
 	input.addEventListener('input', () => {
-		if (/^\d{4}-\d{2}-\d{2}$/.test(input.value.trim())) {
-			nativeInput.value = input.value.trim();
+		manualDateValue = normalizeManualDateValue(input.value);
+		if (manualDateValue) {
+			if (nativeInput) nativeInput.value = manualDateValue;
+			dayPicker?.setFocusedDate(manualDateValue);
 		}
 		refreshCandidates();
 	});
@@ -159,38 +221,28 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 			return;
 		}
 		if (event.key === 'Enter') {
+			if (options.manualDatePicker && manualDateValue) {
+				event.preventDefault();
+				commit(manualDateValue);
+				return;
+			}
 			const active = getActiveCandidate();
-			if (!active && !nativeInput.value) return;
+			if (!active && !manualDateValue) return;
 			event.preventDefault();
-			commit(active?.isoDate ?? nativeInput.value);
+			commit(active?.isoDate ?? manualDateValue);
 		}
 	});
 
-	nativeInput.addEventListener('change', () => {
-		if (!nativeInput.value) return;
+	nativeInput?.addEventListener('change', () => {
+		if (!nativeInput?.value) return;
+		manualDateValue = normalizeManualDateValue(nativeInput.value);
 		input.value = nativeInput.value;
 		refreshCandidates();
 	});
 
-	applyButton.addEventListener('click', () => {
-		const active = getActiveCandidate();
-		if (active) {
-			commit(active.isoDate);
-			return;
-		}
-		if (nativeInput.value) {
-			commit(nativeInput.value);
-			return;
-		}
-		if (options.onRemove && options.canRemove) {
-			completed = true;
-			options.onRemove();
-			close();
-		}
-	});
-
 	if (options.value) {
 		input.value = options.value;
+		manualDateValue = normalizeManualDateValue(options.value);
 	}
 	refreshCandidates();
 
@@ -200,4 +252,8 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	});
 
 	return close;
+}
+
+function normalizeManualDateValue(value: string | null | undefined): string {
+	return normalizeOperonDateKey(value) ?? '';
 }

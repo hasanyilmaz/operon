@@ -21,6 +21,7 @@ import {
 	IndexedTask,
 	IndexedTaskInstance,
 	IndexData,
+	PlainCheckboxProgress,
 	TaskLocation,
 } from '../types/fields';
 import { CheckboxState, TASK_STATS_CANONICAL_KEYS } from '../types/keys';
@@ -41,7 +42,7 @@ import { parseTaskStatsReadModel } from '../core/task-stats-read-model';
 
 const WARM_THRESHOLD_DAYS = 90;
 // Bump when index semantics change (e.g., scanner exclusions) so stale cache is discarded.
-const INDEX_VERSION = 4;
+const INDEX_VERSION = 5;
 const AGGREGATE_FIELD_PATCH_KEYS = new Set([
 	'progress',
 	...TASK_STATS_CANONICAL_KEYS,
@@ -75,6 +76,20 @@ export interface AggregateFieldPatch {
 
 export interface AggregateFieldPatchOptions {
 	perfContext?: IndexPerfContext;
+}
+
+function normalizePlainCheckboxProgress(
+	progress: PlainCheckboxProgress | null | undefined,
+): PlainCheckboxProgress | undefined {
+	if (!progress) return undefined;
+	const total = Number(progress.total);
+	const completed = Number(progress.completed);
+	if (!Number.isInteger(total) || total <= 0) return undefined;
+	if (!Number.isInteger(completed) || completed < 0) return undefined;
+	return {
+		total,
+		completed: Math.min(completed, total),
+	};
 }
 
 interface PersistIndexOptions {
@@ -626,6 +641,7 @@ export class OperonIndexer {
 					tags: Array.from(inlineTags),
 					location,
 					datetimeModified: fieldValues['datetimeModified'] ?? '',
+					plainCheckboxProgress: normalizePlainCheckboxProgress(result.plainCheckboxProgress.byInlineTaskId[parsed.operonId]),
 				}, state);
 		}
 
@@ -665,6 +681,7 @@ export class OperonIndexer {
 					tags: result.yamlTask.tags,
 					location,
 					datetimeModified: effectiveTimestamps.datetimeModified,
+					plainCheckboxProgress: normalizePlainCheckboxProgress(result.plainCheckboxProgress.file),
 				}, state);
 			}
 			return scannedIds;
@@ -681,6 +698,7 @@ export class OperonIndexer {
 		tags: string[];
 		location: TaskLocation;
 		datetimeModified: string;
+		plainCheckboxProgress?: PlainCheckboxProgress;
 	}, state: IndexState = this.getLiveIndexState()): void {
 		const instanceKey = this.buildInstanceKey(data.location);
 		const sanitizedFieldValues = { ...data.fieldValues };
@@ -695,6 +713,7 @@ export class OperonIndexer {
 			primary: data.location,
 			datetimeModified: data.datetimeModified,
 			tier: this.computeTier(data.checkbox, sanitizedFieldValues),
+			plainCheckboxProgress: data.plainCheckboxProgress,
 		});
 		const instanceKeys = state.operonIdInstances.get(operonId) ?? new Set<string>();
 		instanceKeys.add(instanceKey);
@@ -810,6 +829,7 @@ export class OperonIndexer {
 			fieldValues: { ...task.fieldValues },
 			tags: [...task.tags],
 			primary: { ...task.primary },
+			plainCheckboxProgress: normalizePlainCheckboxProgress(task.plainCheckboxProgress),
 		});
 		const instanceKeys = state.operonIdInstances.get(task.operonId) ?? new Set<string>();
 		instanceKeys.add(task.instanceKey);

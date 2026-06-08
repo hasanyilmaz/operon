@@ -139,12 +139,14 @@ function pickTaskUiPreferenceStoreSettings(settings: OperonSettings): TaskUiPref
 		overlayTaskShowPinAction: settings.overlayTaskShowPinAction,
 		overlayTaskShowNoteAction: settings.overlayTaskShowNoteAction,
 		overlayTaskShowSubtaskAction: settings.overlayTaskShowSubtaskAction,
+		overlayTaskShowPlainCheckboxAction: settings.overlayTaskShowPlainCheckboxAction,
 		inlineTaskShowPlayAction: settings.inlineTaskShowPlayAction,
 		inlineTaskShowPinAction: settings.inlineTaskShowPinAction,
 		inlineTaskShowSubtaskAction: settings.inlineTaskShowSubtaskAction,
 		filterTaskShowPlayAction: settings.filterTaskShowPlayAction,
 		filterTaskShowPinAction: settings.filterTaskShowPinAction,
 		filterTaskShowSubtaskAction: settings.filterTaskShowSubtaskAction,
+		filterTaskShowPlainCheckboxAction: settings.filterTaskShowPlainCheckboxAction,
 	};
 }
 

@@ -141,6 +141,7 @@ import {
 	shouldAbandonLivePreviewSessionForWorkspaceFile,
 } from './src/ui/live-preview-ephemeral-session';
 import { openTaskFieldPicker } from './src/ui/task-field-picker-dispatch';
+import type { ManualDatePickerOptions } from './src/ui/field-pickers/date-picker';
 import { applyFileTaskPropertyVisibility } from './src/ui/file-task-property-visibility';
 import { PinnedTasksDock } from './src/ui/pinned-tasks-dock';
 import { PinnedTasksSidebarView, PINNED_TASKS_SIDEBAR_VIEW_TYPE } from './src/ui/pinned-tasks-sidebar-view';
@@ -338,6 +339,14 @@ const perfNow = () => (typeof performance !== 'undefined' ? performance.now() : 
 const perfLog = (...args: unknown[]) => {
 	if (FILTER_PERF_DEBUG) console.debug('[Operon filter perf]', ...args);
 };
+
+const LIVE_PREVIEW_INSERT_DAY_PICKER_DATE_KEYS = new Set<string>([
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
+]);
 
 interface CreateFileTaskSourceSeed {
 	description: string;
@@ -721,6 +730,7 @@ export default class OperonPlugin extends Plugin {
 			lockConditions: 'dynamicFileTask',
 			hideUsageInfo: true,
 			showCountBadge: false,
+			getSettings: () => this.settings,
 		}).open();
 	}
 
@@ -11140,6 +11150,14 @@ export default class OperonPlugin extends Plugin {
 		return true;
 	}
 
+	private getLivePreviewInsertedFieldManualDatePickerOptions(canonicalKey: string): ManualDatePickerOptions | undefined {
+		if (!LIVE_PREVIEW_INSERT_DAY_PICKER_DATE_KEYS.has(canonicalKey)) return undefined;
+		return {
+			weekStart: this.settings.calendarWeekStart,
+			showWeekNumbers: this.settings.calendarSidebarShowWeekNumbers,
+		};
+	}
+
 	private openLivePreviewInsertedFieldPicker(canonicalKey: string, sessionId?: string, retryAttempt = 0): void {
 		const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 		const view = markdownView ? getEditorViewFromEditor(markdownView.editor) : null;
@@ -11208,6 +11226,7 @@ export default class OperonPlugin extends Plugin {
 			currentTags,
 			closeListPickerOnSelect: true,
 			retainInputFocus: true,
+			manualDatePicker: this.getLivePreviewInsertedFieldManualDatePickerOptions(canonicalKey),
 			taskFormat: 'inline',
 			repeatInlineCompletionMode: this.getRepeatSeriesInlineCompletionMode(currentFieldValues['repeatSeriesId']),
 			onCommit: payload => { this.commitLivePreviewSessionFields(payload, sessionId, pendingInlineCompletionMode); },

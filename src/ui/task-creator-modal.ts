@@ -3,6 +3,7 @@ import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { resolveSubtaskInitialFieldsFromParentValues } from '../core/subtask-inheritance';
 import { applyTaskFieldPatchToState, splitTaskListValue } from '../core/task-field-patch';
 import { t } from '../core/i18n';
+import { resolveReverseWorkflowFromTerminalDate } from '../types/pipeline';
 import { FileTaskTemplateOption } from '../core/file-task-templates';
 import { IndexedTask } from '../types/fields';
 import { OperonSettings, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TaskCreatorToolbarFieldKey } from '../types/settings';
@@ -10,6 +11,7 @@ import { ConfirmActionModal } from './confirm-action-modal';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { showDependencyTaskPicker } from './field-pickers/dependency-task-picker';
 import { showFileTaskTemplatePicker } from './field-pickers/file-task-template-picker';
+import type { ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showSubtasksPicker } from './field-pickers/subtasks-picker';
 import { MOBILE_PICKER_CLOSE_EVENT, MOBILE_PICKER_OPEN_EVENT } from './field-pickers/common';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
@@ -37,6 +39,13 @@ import {
 
 const TASK_CREATOR_INHERITED_FIELD_KEYS = ['status', 'priority', 'taskIcon', 'taskColor'] as const;
 const TASK_CREATOR_NON_FIELD_SUBMIT_KEYS = new Set(['note', 'pinned', 'subtasks', 'tags']);
+const TASK_CREATOR_DAY_PICKER_DATE_KEYS = new Set<string>([
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'dateCompleted',
+	'dateCancelled',
+]);
 
 type TaskCreatorFieldKey = TaskCreatorToolbarFieldKey;
 
@@ -1080,6 +1089,7 @@ export class TaskCreatorModal extends Modal {
 			currentFieldValues: { ...this.draft.fieldValues },
 			currentTags: [...this.draft.tags],
 			closeListPickerOnSelect: canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts',
+			manualDatePicker: this.getManualDatePickerOptions(canonicalKey),
 			taskFormat: this.activeCreateType === 'file' ? 'yaml' : 'inline',
 			repeatInlineCompletionMode: this.draft.inlineCompletionMode,
 			onCommit: payload => {
@@ -1121,6 +1131,14 @@ export class TaskCreatorModal extends Modal {
 		}
 		this.templateButtonEl?.removeClass('is-picker-open');
 		if (current) current();
+	}
+
+	private getManualDatePickerOptions(key: string): ManualDatePickerOptions | undefined {
+		if (!TASK_CREATOR_DAY_PICKER_DATE_KEYS.has(key)) return undefined;
+		return {
+			weekStart: this.options.settings.calendarWeekStart,
+			showWeekNumbers: this.options.settings.calendarSidebarShowWeekNumbers,
+		};
 	}
 
 	private openSubtasksPicker(): void {
@@ -1232,23 +1250,70 @@ export class TaskCreatorModal extends Modal {
 		this.noteWrapEl.hide();
 	}
 
+	private normalizeTerminalDatePayload(payload: Record<string, string | string[]>): Record<string, string | string[]> | null {
+		const hasCompleted = 'dateCompleted' in payload;
+		const hasCancelled = 'dateCancelled' in payload;
+		if (!hasCompleted && !hasCancelled) return payload;
+
+		const getPayloadString = (key: string): string => {
+			const value = payload[key];
+			return Array.isArray(value) ? value.join('; ').trim() : (value ?? '').trim();
+		};
+		const completedValue = getPayloadString('dateCompleted');
+		const cancelledValue = getPayloadString('dateCancelled');
+		if (completedValue && cancelledValue) {
+			new Notice(t('taskEditor', 'terminalDateConflict'));
+			return null;
+		}
+
+		const terminalDateKey: 'dateCompleted' | 'dateCancelled' = completedValue
+			? 'dateCompleted'
+			: cancelledValue
+				? 'dateCancelled'
+				: hasCompleted
+					? 'dateCompleted'
+					: 'dateCancelled';
+		const terminalDateValue = terminalDateKey === 'dateCompleted' ? completedValue : cancelledValue;
+		const statusValue = getPayloadString('status') || this.draft.fieldValues['status'];
+		const resolution = resolveReverseWorkflowFromTerminalDate(
+			this.options.settings.pipelines,
+			statusValue,
+			this.options.settings.defaultPipelineName,
+			terminalDateKey,
+			terminalDateValue,
+		);
+		if (!resolution.isValid || !resolution.workflow) {
+			new Notice(resolution.errorMessage ?? t('notifications', 'terminalDateWorkflowResolveFailed'));
+			return null;
+		}
+
+		return {
+			...payload,
+			status: resolution.workflow.value,
+			dateCompleted: terminalDateKey === 'dateCompleted' && terminalDateValue ? terminalDateValue : '',
+			dateCancelled: terminalDateKey === 'dateCancelled' && terminalDateValue ? terminalDateValue : '',
+		};
+	}
+
 	private applyPayloadToDraft(
 		payload: Record<string, string | string[]>,
 		source: 'user' | 'inheritance' = 'user',
 	): void {
+		const normalizedPayload = this.normalizeTerminalDatePayload(payload);
+		if (!normalizedPayload) return;
 		const next = applyTaskFieldPatchToState({
 			currentFields: this.draft.fieldValues,
 			currentTags: this.draft.tags,
-			payload,
+			payload: normalizedPayload,
 			getAllRepeatSeriesIds: this.options.getAllRepeatSeriesIds,
 		});
 		this.draft.fieldValues = next.fieldValues;
 		this.draft.tags = next.tags;
 		if (source === 'user') {
-			this.recordExplicitFieldSelection(payload);
+			this.recordExplicitFieldSelection(normalizedPayload);
 		}
 		this.reconcileParentInheritance();
-		if (Object.prototype.hasOwnProperty.call(payload, 'parentTask')) {
+		if (Object.prototype.hasOwnProperty.call(normalizedPayload, 'parentTask')) {
 			this.pruneDraftSubtasksForParent();
 		}
 		this.draft.taskIcon = this.draft.fieldValues['taskIcon'] ?? '';

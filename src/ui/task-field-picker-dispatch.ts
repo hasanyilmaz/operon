@@ -6,7 +6,7 @@ import { t } from '../core/i18n';
 import { splitTaskListValue } from '../core/task-field-patch';
 import { showStatusPicker } from './field-pickers/status-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
-import { showDatePicker } from './field-pickers/date-picker';
+import { type ManualDatePickerOptions, showDatePicker } from './field-pickers/date-picker';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { showTagPicker } from './field-pickers/tag-picker';
 import { showContextsPicker } from './field-pickers/contexts-picker';
@@ -28,6 +28,8 @@ export interface TaskFieldPickerDispatchOptions {
 		| 'priorities'
 		| 'timeFormat'
 		| 'keyMappings'
+		| 'calendarWeekStart'
+		| 'calendarSidebarShowWeekNumbers'
 		| 'locationMapsAlwaysLightMode'
 		| 'locationPlaceIconPropertyName'
 		| 'locationPlaceColorPropertyName'
@@ -41,6 +43,7 @@ export interface TaskFieldPickerDispatchOptions {
 	currentTags: string[];
 	closeListPickerOnSelect?: boolean;
 	retainInputFocus?: boolean;
+	manualDatePicker?: ManualDatePickerOptions;
 	taskFormat?: 'inline' | 'yaml';
 	repeatInlineCompletionMode?: InlineRepeatCompletionMode;
 	onCommit: (payload: Record<string, string | string[]>) => void;
@@ -90,6 +93,7 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				app: options.app,
 				fieldKey: canonicalKey,
 				value: currentFieldValues[canonicalKey],
+				manualDatePicker: options.manualDatePicker,
 				retainInputFocus: options.retainInputFocus,
 				onSelect: value => options.onCommit({ [canonicalKey]: value }),
 				canRemove: !!currentFieldValues[canonicalKey],
@@ -108,7 +112,11 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 			}
 			return showDatetimePicker(options.anchor, {
 				app: options.app,
-				settings: { timeFormat: options.settings.timeFormat },
+				settings: {
+					timeFormat: options.settings.timeFormat,
+					calendarWeekStart: options.settings.calendarWeekStart,
+					calendarSidebarShowWeekNumbers: options.settings.calendarSidebarShowWeekNumbers,
+				},
 				fieldKey: canonicalKey,
 				value: currentFieldValues[canonicalKey],
 				retainInputFocus: options.retainInputFocus,
@@ -132,6 +140,10 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				datetimeEnd: currentFieldValues['datetimeEnd'],
 				taskFormat: options.taskFormat,
 				inlineCompletionMode: options.repeatInlineCompletionMode,
+				dayPickerPopover: {
+					weekStart: options.settings.calendarWeekStart,
+					showWeekNumbers: options.settings.calendarSidebarShowWeekNumbers,
+				},
 				onSave: payload => {
 					void options.onRepeatInlineCompletionModeChange?.(payload.inlineCompletionMode);
 					options.onCommit({

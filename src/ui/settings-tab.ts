@@ -3113,6 +3113,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 						await this.saveSettings();
 					},
 				},
+				{
+					visible: this.settings.overlayTaskShowPlainCheckboxAction,
+					icon: 'layout-list',
+					label: t('settings', 'overlayTaskOpenCheckboxAction'),
+					onToggle: async () => {
+						this.settings.overlayTaskShowPlainCheckboxAction = !this.settings.overlayTaskShowPlainCheckboxAction;
+						await this.saveSettings();
+					},
+				},
 			],
 		});
 	}
@@ -6801,6 +6810,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					lockConditions: 'dynamicFileTask',
 					hideUsageInfo: true,
 					showCountBadge: false,
+					getSettings: () => this.settings,
 				}).open();
 			},
 		});
@@ -7284,6 +7294,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 					label: t('settings', 'inlineTaskSubtaskAction'),
 					onToggle: async () => {
 						this.settings.filterTaskShowSubtaskAction = !this.settings.filterTaskShowSubtaskAction;
+						await this.saveSettings();
+					},
+				},
+				{
+					visible: this.settings.filterTaskShowPlainCheckboxAction,
+					icon: 'layout-list',
+					label: t('settings', 'filterTaskOpenCheckboxAction'),
+					onToggle: async () => {
+						this.settings.filterTaskShowPlainCheckboxAction = !this.settings.filterTaskShowPlainCheckboxAction;
 						await this.saveSettings();
 					},
 				},

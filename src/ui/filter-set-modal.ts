@@ -4,7 +4,7 @@
  */
 
 import { App, Modal, Notice, TFolder, setIcon } from 'obsidian';
-import { FilterSet, FilterSetCondition, FilterFieldType, FilterGroup, FilterGroupLogic, FilterNode, FilterSortSpec, KeyMapping } from '../types/settings';
+import { DEFAULT_SETTINGS, FilterSet, FilterSetCondition, FilterFieldType, FilterGroup, FilterGroupLogic, FilterNode, FilterSortSpec, KeyMapping, OperonSettings } from '../types/settings';
 import { getOperatorsForType, NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS, evaluateFilterSet, evaluateFilterSetGrouped } from '../core/filter-evaluator';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
@@ -19,6 +19,8 @@ import { buildTaskWikilinkOverlaySettingsSignature } from './task-file-overlay-c
 import { openSettingsIconPickerModal } from './settings/settings-icon-picker-modal';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
 import { DYNAMIC_FILE_TASK_FILTER_DEFAULT_ICON, isDynamicFileTaskFilterSet } from '../core/dynamic-file-task-filter';
+import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
+import { showDatetimePicker } from './field-pickers/datetime-picker';
 
 function generateConditionId(): string {
 	return 'cond_' + Math.random().toString(36).slice(2, 10);
@@ -30,6 +32,26 @@ function generateGroupId(): string {
 
 function isFilterGroupNode(node: FilterNode): node is FilterGroup {
 	return 'children' in node;
+}
+
+const CANONICAL_FILTER_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/u;
+
+function normalizeFilterDateInput(value: string | null | undefined): string | null {
+	const trimmed = value?.trim() ?? '';
+	const match = CANONICAL_FILTER_DATE_PATTERN.exec(trimmed);
+	if (!match) return null;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const date = new Date(year, month - 1, day);
+	if (
+		date.getFullYear() !== year
+		|| date.getMonth() !== month - 1
+		|| date.getDate() !== day
+	) {
+		return null;
+	}
+	return trimmed;
 }
 
 interface SelectOption {
@@ -64,6 +86,7 @@ export interface FilterSetModalOptions {
 	hideUsageInfo?: boolean;
 	showCountBadge?: boolean;
 	quickActions?: FilterSetModalQuickActions;
+	getSettings?: () => OperonSettings;
 }
 
 export interface FilterSetModalQuickActions {
@@ -398,6 +421,64 @@ export class FilterSetModal extends Modal {
 		});
 	}
 
+	private getPickerSettings(): OperonSettings {
+		return this.evalDeps?.getSettings() ?? this.options.getSettings?.() ?? DEFAULT_SETTINGS;
+	}
+
+	private openDateConditionPopover(inputEl: HTMLInputElement, cond: FilterSetCondition): void {
+		if (inputEl.dataset.operonDayPickerState === 'open') return;
+
+		const settings = this.getPickerSettings();
+		inputEl.dataset.operonDayPickerState = 'open';
+		showOperonDayPickerPopover(inputEl, {
+			app: this.app,
+			value: normalizeFilterDateInput(cond.value ?? inputEl.value) ?? undefined,
+			weekStart: settings.calendarWeekStart,
+			showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+			canClear: !!cond.value,
+			onSelect: value => {
+				cond.value = value;
+				inputEl.value = value;
+			},
+			onClear: () => {
+				cond.value = undefined;
+				inputEl.value = '';
+			},
+			onClose: () => {
+				delete inputEl.dataset.operonDayPickerState;
+			},
+		});
+	}
+
+	private openDatetimeConditionPopover(inputEl: HTMLInputElement, cond: FilterSetCondition): void {
+		if (inputEl.dataset.operonDatetimePickerState === 'open') return;
+
+		const settings = this.getPickerSettings();
+		inputEl.dataset.operonDatetimePickerState = 'open';
+		showDatetimePicker(inputEl, {
+			app: this.app,
+			settings: {
+				timeFormat: settings.timeFormat,
+				calendarWeekStart: settings.calendarWeekStart,
+				calendarSidebarShowWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+			},
+			fieldKey: cond.field,
+			value: cond.value ?? inputEl.value,
+			canRemove: !!cond.value,
+			onSelect: value => {
+				cond.value = value;
+				inputEl.value = value;
+			},
+			onRemove: () => {
+				cond.value = undefined;
+				inputEl.value = '';
+			},
+			onClose: () => {
+				delete inputEl.dataset.operonDatetimePickerState;
+			},
+		});
+	}
+
 	private buildLogicSelector(
 		container: HTMLElement,
 		value: FilterGroupLogic,
@@ -716,15 +797,24 @@ export class FilterSetModal extends Modal {
 
 			// Determine input type: numeric date operators override date→number
 			const isNumericDateOp = NUMERIC_INPUT_DATE_OPERATORS.has(cond.operator);
+			const useDatePopover = cond.fieldType === 'date' && !isNumericDateOp;
+			const useDatetimePopover = cond.fieldType === 'datetime' && !isNumericDateOp;
 			const inputType =
 				isNumericDateOp ? 'number' :
-					cond.fieldType === 'date' ? 'date' :
-						cond.fieldType === 'datetime' ? 'datetime-local' :
-							cond.fieldType === 'number' ? 'number' : 'text';
+					useDatePopover || useDatetimePopover ? 'text' :
+						cond.fieldType === 'number' ? 'number' : 'text';
 
 			const inp = valueWrapper.createEl('input');
 			inp.type = inputType;
 			inp.value = cond.value ?? '';
+			if (useDatePopover) {
+				inp.placeholder = t('filterSets', 'datePlaceholder');
+				inp.inputMode = 'numeric';
+				inp.addClass('operon-filter-date-popover-input');
+			}
+			if (useDatetimePopover) {
+				inp.addClass('operon-filter-datetime-popover-input');
+			}
 			if (cond.fieldType === 'projectTree') {
 				inp.placeholder = t('filterSets', 'projectTreePlaceholder');
 			} else if (cond.fieldType === 'folders') {
@@ -746,10 +836,22 @@ export class FilterSetModal extends Modal {
 					inp.placeholder = t('filterSets', 'daysPlaceholder');
 					inp.min = '0';
 				}
-				}
+			}
 
-				inp.addClass('operon-filter-control');
+			inp.addClass('operon-filter-control');
+			if (useDatePopover) {
+				inp.addEventListener('focus', () => this.openDateConditionPopover(inp, cond));
+				inp.addEventListener('click', () => this.openDateConditionPopover(inp, cond));
+				inp.addEventListener('input', () => {
+					cond.value = normalizeFilterDateInput(inp.value) ?? undefined;
+				});
+			} else if (useDatetimePopover) {
+				inp.addEventListener('focus', () => this.openDatetimeConditionPopover(inp, cond));
+				inp.addEventListener('click', () => this.openDatetimeConditionPopover(inp, cond));
 				inp.addEventListener('input', () => { cond.value = inp.value || undefined; });
+			} else {
+				inp.addEventListener('input', () => { cond.value = inp.value || undefined; });
+			}
 		};
 
 		const syncCompactSelectWidths = () => {
@@ -1187,6 +1289,12 @@ class FilterPreviewModal extends Modal {
 			this.deps.getSettings().filterShowSubtasks ? '1' : '0',
 			this.deps.getSettings().filterShowOnlyOpenSubtasks ? '1' : '0',
 			JSON.stringify(this.deps.getSettings().filterTaskCompactChips),
+			JSON.stringify([
+				this.deps.getSettings().filterTaskShowPlayAction,
+				this.deps.getSettings().filterTaskShowPinAction,
+				this.deps.getSettings().filterTaskShowSubtaskAction,
+				this.deps.getSettings().filterTaskShowPlainCheckboxAction,
+			]),
 			buildTaskWikilinkOverlaySettingsSignature(this.deps.getSettings()),
 			JSON.stringify(this.deps.getSettings().keyMappings.map(mapping => [
 				mapping.canonicalKey,

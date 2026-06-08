@@ -1,8 +1,14 @@
-import { App, TFile, parseLinktext } from 'obsidian';
+import { App, TFile, parseLinktext, setIcon } from 'obsidian';
+import { createOwnerElement } from '../core/dom-compat';
+import { t } from '../core/i18n';
 import { DescendantTaskSummary } from '../indexer/indexer';
 import { IndexedTask } from '../types/fields';
-import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
+import { KeyMapping, OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { Pipeline, parseStatusValue } from '../types/pipeline';
+import { bindOperonHoverTooltip } from './operon-hover-tooltip';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { computePlainCheckboxProgressIndicator, PlainCheckboxProgressIndicator } from './plain-checkbox-progress';
+import { bindPlainCheckboxPopoverTrigger } from './plain-checkbox-popover';
 
 export interface ResolvedTaskFileLink {
 	task: IndexedTask;
@@ -27,7 +33,23 @@ export type TaskFileLinkLabelState = 'default' | 'done' | 'cancelled';
 export type TaskFileLinkProgressIndicator =
 	| { kind: 'none' }
 	| { kind: 'count'; done: number; total: number; text: string }
-	| { kind: 'complete'; icon: 'check-check' };
+	| { kind: 'complete'; icon: 'check-check'; scope: 'task' | 'subtasks' };
+
+export type TaskFileLinkPlainCheckboxIndicator = PlainCheckboxProgressIndicator;
+
+export interface TaskFileLinkPlainCheckboxProgressElementOptions {
+	app: App;
+	task: IndexedTask;
+	keyMappings: KeyMapping[];
+	taskColor?: string | null;
+	showEmptyAction?: boolean;
+}
+
+export interface TaskFileLinkProgressTooltip {
+	title?: string;
+	content: string;
+	accessibleLabel: string;
+}
 
 export function splitRawWikiLinkBody(body: string): { linktext: string; alias: string | null } {
 	const pipeIndex = body.indexOf('|');
@@ -90,11 +112,11 @@ export function computeTaskFileLinkProgressIndicator(
 ): TaskFileLinkProgressIndicator {
 	const taskDone = task.checkbox === 'done';
 	if (summary.total === 0) {
-		return taskDone ? { kind: 'complete', icon: 'check-check' } : { kind: 'none' };
+		return taskDone ? { kind: 'complete', icon: 'check-check', scope: 'task' } : { kind: 'none' };
 	}
 
 	if (taskDone && summary.allDone) {
-		return { kind: 'complete', icon: 'check-check' };
+		return { kind: 'complete', icon: 'check-check', scope: 'subtasks' };
 	}
 
 	return {
@@ -103,6 +125,114 @@ export function computeTaskFileLinkProgressIndicator(
 		total: summary.total,
 		text: `${summary.done}/${summary.total}`,
 	};
+}
+
+export function computeTaskFileLinkPlainCheckboxIndicator(
+	task: Pick<IndexedTask, 'plainCheckboxProgress'>,
+): TaskFileLinkPlainCheckboxIndicator {
+	return computePlainCheckboxProgressIndicator(task.plainCheckboxProgress);
+}
+
+export function buildTaskFileLinkProgressTooltip(
+	indicator: TaskFileLinkProgressIndicator,
+): TaskFileLinkProgressTooltip | null {
+	if (indicator.kind === 'none') return null;
+
+	if (indicator.kind === 'count') {
+		const title = t('tooltips', 'subtasks');
+		const content = buildSubtaskProgressTooltipContent(indicator.done, indicator.total);
+		return {
+			title,
+			content,
+			accessibleLabel: `${title}: ${content}`,
+		};
+	}
+
+	if (indicator.scope === 'subtasks') {
+		const title = t('tooltips', 'subtasks');
+		const content = t('tooltips', 'subtasksComplete');
+		return {
+			title,
+			content,
+			accessibleLabel: `${title}: ${content}`,
+		};
+	}
+
+	const content = t('tooltips', 'allDescendantsDone');
+	return {
+		content,
+		accessibleLabel: content,
+	};
+}
+
+export function createTaskFileLinkPlainCheckboxProgressElement(
+	indicator: TaskFileLinkPlainCheckboxIndicator,
+	owner?: Node | null,
+	options?: TaskFileLinkPlainCheckboxProgressElementOptions,
+): HTMLElement | null {
+	if (indicator.kind === 'none' && options?.showEmptyAction !== true) return null;
+
+	const el = createOwnerElement(owner, 'span');
+	el.className = 'operon-task-wikilink-progress operon-task-wikilink-progress-count operon-task-wikilink-plain-checkbox-progress';
+	if (indicator.kind === 'none') {
+		el.classList.add('is-empty');
+	} else if (indicator.allCompleted) {
+		el.classList.add('is-complete');
+	}
+	appendTaskFileLinkProgressCountContent(el, 'layout-list', indicator.kind === 'count' ? indicator.text : null);
+	if (indicator.kind === 'count') {
+		setAccessibleLabelWithoutTooltip(el, `${t('tooltips', 'plainCheckboxes')}: ${indicator.tooltipContent}`);
+		bindOperonHoverTooltip(el, {
+			title: t('tooltips', 'plainCheckboxes'),
+			content: indicator.tooltipContent,
+			taskColor: options?.taskColor ?? null,
+		});
+	} else {
+		const tooltipTitle = t('tooltips', 'plainCheckboxEditorAdd');
+		setAccessibleLabelWithoutTooltip(el, tooltipTitle);
+		bindOperonHoverTooltip(el, {
+			title: tooltipTitle,
+			taskColor: options?.taskColor ?? null,
+		});
+	}
+	if (options) {
+		bindPlainCheckboxPopoverTrigger(el, {
+			app: options.app,
+			task: options.task,
+			keyMappings: options.keyMappings,
+			taskColor: options.taskColor ?? null,
+			seedEmptyDraft: indicator.kind === 'none',
+		});
+	}
+	return el;
+}
+
+export function appendTaskFileLinkProgressCountContent(
+	el: HTMLElement,
+	iconName: string,
+	text: string | null,
+): void {
+	const iconEl = createOwnerElement(el, 'span');
+	iconEl.className = 'operon-task-wikilink-progress-icon';
+	iconEl.dataset.operonProgressIcon = iconName;
+	setIcon(iconEl, iconName);
+	el.appendChild(iconEl);
+
+	if (text === null) return;
+	const labelEl = createOwnerElement(el, 'span');
+	labelEl.className = 'operon-task-wikilink-progress-label';
+	labelEl.textContent = text;
+	el.appendChild(labelEl);
+}
+
+function buildSubtaskProgressTooltipContent(doneValue: number, totalValue: number): string {
+	const total = Math.max(totalValue, 0);
+	if (total <= 0) return t('tooltips', 'subtasksComplete');
+	const done = Math.min(Math.max(doneValue, 0), total);
+	const percent = Math.round((done / total) * 100);
+	if (percent === 0) return t('tooltips', 'subtasksNotStarted');
+	if (done === total) return t('tooltips', 'subtasksComplete');
+	return t('tooltips', 'subtasksPercentComplete', { percent: String(percent) });
 }
 
 function getTaskFileLinkLabelState(task: IndexedTask): TaskFileLinkLabelState {

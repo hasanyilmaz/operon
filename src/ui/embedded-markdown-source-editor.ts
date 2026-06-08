@@ -24,7 +24,7 @@ export interface EmbeddedMarkdownSourceEditorOptions {
 	onChange?: (value: string) => void;
 	onEscape?: () => void;
 	onSubmit?: () => void;
-	onTab?: () => boolean;
+	onTab?: (outdent: boolean) => boolean;
 }
 
 type EmbeddedMarkdownEditViewCtor = new (app: App, containerEl: HTMLElement, owner: EmbeddedMarkdownOwner) => EmbeddedMarkdownEditView;
@@ -544,7 +544,11 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 				},
 				{
 					key: 'Tab',
-					run: () => this.options.onTab?.() ?? false,
+					run: () => this.options.onTab?.(false) ?? false,
+				},
+				{
+					key: 'Shift-Tab',
+					run: () => this.options.onTab?.(true) ?? false,
 				},
 			])));
 			return extensions;
@@ -605,8 +609,43 @@ export class EmbeddedMarkdownSourceEditor {
 		this.view?.editor.cm.contentDOM.focus();
 	}
 
+	focusEnd(): void {
+		const view = this.view?.editor.cm;
+		if (!view) return;
+		const end = view.state.doc.length;
+		view.dispatch({
+			selection: EditorSelection.range(end, end),
+			effects: EditorView.scrollIntoView(end, { y: 'nearest', x: 'start' }),
+		});
+		view.contentDOM.focus();
+	}
+
 	setValue(value: string): void {
 		this.view?.set(value);
+	}
+
+	indentCurrentLine(outdent: boolean): void {
+		const view = this.view?.editor.cm;
+		if (!view) return;
+		const line = view.state.doc.lineAt(view.state.selection.main.from);
+		if (outdent) {
+			const leadingIndent = /^(\t| {1,4})/u.exec(line.text)?.[0] ?? '';
+			if (!leadingIndent) return;
+			view.dispatch({
+				changes: {
+					from: line.from,
+					to: line.from + leadingIndent.length,
+					insert: '',
+				},
+			});
+			return;
+		}
+		view.dispatch({
+			changes: {
+				from: line.from,
+				insert: '\t',
+			},
+		});
 	}
 
 	destroy(): void {

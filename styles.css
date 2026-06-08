@@ -1030,6 +1030,261 @@
 	transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
+.operon-plain-checkbox-popover-panel {
+	--operon-plain-checkbox-popover-accent: var(--interactive-accent);
+	width: min(520px, 92vw);
+	max-width: min(520px, 92vw);
+	max-height: min(430px, 82vh);
+	padding: 0;
+	overflow: hidden;
+	border-color: color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 42%, var(--background-modifier-border));
+	border-radius: 12px;
+	box-shadow:
+		0 14px 40px rgb(0 0 0 / 22%),
+		0 0 0 1px color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 18%, transparent);
+}
+
+.operon-plain-checkbox-popover-body {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-height: inherit;
+	padding: 12px 12px 10px;
+	background: var(--background-primary);
+}
+
+.operon-plain-checkbox-popover-title {
+	min-height: 28px;
+	margin: 0 40px 4px;
+	overflow: hidden;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	font-weight: 750;
+	line-height: 28px;
+	text-align: center;
+	text-overflow: ellipsis;
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+	white-space: nowrap;
+}
+
+.operon-plain-checkbox-popover-editor-host {
+	display: block;
+	min-width: 0;
+}
+
+.operon-plain-checkbox-popover-editor {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	min-height: 220px;
+	max-height: min(310px, 58vh);
+	padding: 8px 10px;
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--background-primary) 92%, var(--background-secondary));
+	color: var(--text-normal);
+	font-family: var(--font-text);
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	line-height: 1.7;
+	resize: vertical;
+	overflow: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	tab-size: 4;
+	scrollbar-gutter: stable;
+}
+
+.operon-plain-checkbox-popover-editor:hover,
+.operon-plain-checkbox-popover-editor:focus {
+	border-color: color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 42%, var(--background-modifier-border-hover));
+	background: var(--background-primary);
+	box-shadow: none;
+	outline: none;
+}
+
+.operon-plain-checkbox-popover-cm-host {
+	display: block;
+	min-width: 0;
+	min-height: 220px;
+	max-height: min(310px, 58vh);
+	overflow: hidden;
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--background-primary) 92%, var(--background-secondary));
+}
+
+.operon-plain-checkbox-popover-cm-host:hover,
+.operon-plain-checkbox-popover-cm-host:focus-within {
+	border-color: color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 42%, var(--background-modifier-border-hover));
+	background: var(--background-primary);
+}
+
+.operon-plain-checkbox-popover-cm-editor,
+.operon-plain-checkbox-popover-cm-editor .cm-editor {
+	height: 100%;
+	min-height: 220px;
+	max-height: min(310px, 58vh);
+	background: transparent;
+	color: var(--text-normal);
+}
+
+.operon-plain-checkbox-popover-cm-editor .cm-scroller {
+	max-height: min(310px, 58vh);
+	overflow: auto;
+	font-family: var(--font-text);
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	line-height: 1.7;
+	scrollbar-gutter: stable;
+}
+
+.operon-plain-checkbox-popover-cm-editor .cm-gutters {
+	display: none;
+}
+
+.operon-plain-checkbox-popover-cm-editor .cm-content {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 220px;
+	padding: 8px 10px;
+	tab-size: 4;
+}
+
+.operon-plain-checkbox-popover-cm-editor .cm-line {
+	padding: 0;
+	overflow-wrap: anywhere;
+}
+
+.operon-plain-checkbox-popover-close,
+.operon-plain-checkbox-popover-drag-handle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	min-width: 28px;
+	min-height: 28px;
+	padding: 0;
+	border: 1px solid color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 38%, var(--background-modifier-border));
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+	color: color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 68%, var(--text-normal));
+	box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+	-webkit-backdrop-filter: blur(8px);
+	backdrop-filter: blur(8px);
+}
+
+.operon-plain-checkbox-popover-close svg,
+.operon-plain-checkbox-popover-drag-handle svg {
+	width: 15px;
+	height: 15px;
+}
+
+.operon-plain-checkbox-popover-close {
+	position: absolute;
+	top: 10px;
+	right: 12px;
+	z-index: 2;
+}
+
+.operon-plain-checkbox-popover-left-controls {
+	position: absolute;
+	top: 10px;
+	left: 12px;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.operon-plain-checkbox-popover-drag-handle {
+	cursor: grab;
+	touch-action: none;
+}
+
+.operon-plain-checkbox-popover-drag-handle.is-dragging,
+.operon-plain-checkbox-popover-title.is-dragging,
+.operon-plain-checkbox-popover-panel.is-dragging .operon-plain-checkbox-popover-title,
+.operon-plain-checkbox-popover-panel.is-dragging .operon-plain-checkbox-popover-drag-handle {
+	cursor: grabbing;
+}
+
+.operon-plain-checkbox-popover-panel.is-pinned {
+	border-color: color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 68%, var(--background-modifier-border));
+}
+
+.operon-plain-checkbox-popover-footer {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	gap: 8px;
+	align-items: center;
+	padding-top: 4px;
+}
+
+.operon-plain-checkbox-popover-add,
+.operon-plain-checkbox-popover-cancel,
+.operon-plain-checkbox-popover-save {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 30px;
+	padding: 4px 9px;
+	border: 1px dashed color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 42%, var(--background-modifier-border));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--background-primary) 80%, transparent);
+	color: var(--text-muted);
+	font-size: 12px;
+	font-weight: 650;
+}
+
+.operon-plain-checkbox-popover-add {
+	width: 100%;
+}
+
+.operon-plain-checkbox-popover-cancel {
+	min-width: 76px;
+	border-style: solid;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+}
+
+.operon-plain-checkbox-popover-save {
+	min-width: 86px;
+	border-style: solid;
+	background: color-mix(in srgb, var(--interactive-accent) 18%, var(--background-primary));
+	color: var(--text-normal);
+}
+
+.operon-plain-checkbox-popover-save:disabled {
+	opacity: 0.48;
+}
+
+.operon-plain-checkbox-popover-add:hover,
+.operon-plain-checkbox-popover-add:focus-visible {
+	color: color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 76%, var(--text-normal));
+	background: color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 12%, var(--background-primary));
+}
+
+.operon-plain-checkbox-popover-cancel:hover,
+.operon-plain-checkbox-popover-cancel:focus-visible {
+	border-color: color-mix(in srgb, var(--color-red) 68%, var(--background-modifier-border));
+	color: var(--color-red);
+	background: color-mix(in srgb, var(--color-red) 14%, var(--background-primary));
+}
+
+.operon-plain-checkbox-popover-save:not(:disabled):hover,
+.operon-plain-checkbox-popover-save:not(:disabled):focus-visible {
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	background: var(--interactive-accent);
+}
+
 .operon-date-picker-panel .operon-floating-input:focus,
 .operon-date-picker-panel .operon-floating-input:focus-visible,
 .operon-datetime-picker-panel .operon-floating-input:focus,
@@ -1260,8 +1515,8 @@
 }
 
 .operon-datetime-picker-panel {
-	min-width: 340px;
-	max-width: 440px;
+	width: min(440px, 100%);
+	max-width: 100%;
 }
 
 .operon-time-picker-panel {
@@ -1324,8 +1579,8 @@
 
 .operon-date-picker-item {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 10ch 9.5ch;
-	gap: 12px;
+	grid-template-columns: minmax(0, 1fr) 10ch 4ch;
+	gap: 8px;
 	align-items: center;
 	box-sizing: border-box;
 	height: var(--operon-date-picker-row-height);
@@ -1347,6 +1602,7 @@
 	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
 	color: var(--text-normal);
+	text-align: right;
 }
 
 .operon-date-picker-item-weekday {
@@ -1355,6 +1611,7 @@
 	white-space: nowrap;
 	font-size: 11px;
 	color: var(--text-muted);
+	text-align: right;
 }
 
 .operon-date-picker-empty {
@@ -1363,10 +1620,240 @@
 	padding: 4px 8px;
 }
 
+.operon-date-picker-panel.has-day-picker {
+	width: min(340px, 100%);
+	max-width: 100%;
+}
+
+.operon-day-picker-popover-panel {
+	width: min(300px, 100%);
+	max-width: min(360px, 100%);
+}
+
+.operon-day-picker-popover-host {
+	min-width: 0;
+}
+
+.operon-date-picker-day-picker-host {
+	min-width: 0;
+}
+
+.operon-day-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+}
+
+.operon-day-picker-nav-row {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+	align-items: center;
+	min-height: 30px;
+}
+
+.operon-day-picker-nav-group {
+	display: grid;
+	grid-template-columns: 28px minmax(0, 1fr) 28px;
+	gap: 6px;
+	align-items: center;
+	min-width: 0;
+}
+
+.operon-day-picker-nav-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 30px;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.operon-day-picker-nav-button:hover,
+.operon-day-picker-nav-button:focus-visible {
+	border-color: var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+	color: var(--text-normal);
+	outline: none;
+}
+
+.operon-day-picker-nav-button svg {
+	width: 16px;
+	height: 16px;
+}
+
+.operon-day-picker-nav-label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	height: 30px;
+	padding: 0 10px;
+	border-radius: 8px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.operon-day-picker-weekdays,
+.operon-day-picker-grid {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 6px;
+}
+
+.operon-day-picker-weekdays.has-week-numbers,
+.operon-day-picker-grid.has-week-numbers {
+	grid-template-columns: 22px repeat(7, minmax(0, 1fr));
+}
+
+.operon-day-picker-weeknum-header,
+.operon-day-picker-weeknum {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	height: 28px;
+	font-size: 10px;
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
+}
+
+.operon-day-picker-weeknum-header {
+	font-weight: 600;
+}
+
+.operon-day-picker-weekday {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	height: 24px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.operon-day-picker-weekday.is-weekend {
+	color: color-mix(in srgb, var(--text-muted) 72%, var(--interactive-accent));
+}
+
+.operon-day-picker-day {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 100%;
+	height: 30px;
+	min-width: 0;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+}
+
+.operon-day-picker-day.is-weekend {
+	background: color-mix(in srgb, var(--interactive-accent) 6%, var(--background-secondary));
+	color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
+}
+
+.operon-day-picker-day.is-outside-month {
+	color: var(--text-faint);
+	background: color-mix(in srgb, var(--background-secondary) 74%, transparent);
+}
+
+.operon-day-picker-day:hover,
+.operon-day-picker-day:focus-visible {
+	border-color: var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+	outline: none;
+}
+
+.operon-day-picker-day.is-today {
+	color: var(--text-accent);
+	border-color: color-mix(in srgb, var(--interactive-accent) 40%, var(--background-modifier-border));
+}
+
+.operon-day-picker-day.is-selected {
+	background: color-mix(in srgb, var(--interactive-accent) 18%, var(--background-primary));
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+	font-weight: 800;
+}
+
+.operon-day-picker-footer {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+	min-height: 30px;
+}
+
+.operon-day-picker-footer.has-single-action {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.operon-day-picker-footer-button {
+	width: 100%;
+	min-width: 0;
+	height: 30px;
+	padding: 0 12px;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--text-accent);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.operon-day-picker-footer-button:hover,
+.operon-day-picker-footer-button:focus-visible {
+	border-color: color-mix(in srgb, var(--interactive-accent) 34%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+	outline: none;
+}
+
+.operon-day-picker-footer-button:disabled {
+	color: var(--text-faint);
+	cursor: default;
+}
+
+.operon-day-picker-footer-button:disabled:hover,
+.operon-day-picker-footer-button:disabled:focus-visible {
+	border-color: transparent;
+	background: transparent;
+}
+
 .operon-datetime-picker-time-input {
 	flex: 1 1 auto;
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0.08em;
+}
+
+.operon-datetime-picker-day-picker-host {
+	min-width: 0;
 }
 
 .operon-datetime-picker-meridiem {
@@ -1485,6 +1972,14 @@
 
 .operon-repeat-picker-field.is-disabled {
 	opacity: 0.62;
+}
+
+.operon-repeat-picker-date-input {
+	font-variant-numeric: tabular-nums;
+}
+
+.operon-repeat-picker-date-input.is-readonly-end-date {
+	cursor: default;
 }
 
 .operon-repeat-picker-segment {
@@ -2252,11 +2747,27 @@
 	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-live-hover-border, transparent) 28%, transparent);
 }
 
-.operon-inline-compact-chip {
-	height: 18px;
+.operon-inline-compact-chip,
+.operon-task-wikilink-progress-count,
+.operon-filter-checkbox-progress-control {
+	--operon-compact-chip-height: 18px;
+	--operon-compact-chip-gap: 6px;
+	--operon-compact-chip-padding: 1px 6px;
+	--operon-compact-chip-radius: 10px;
+	--operon-compact-chip-icon-size: 12px;
+	--operon-compact-chip-font-size: 11px;
+	--operon-compact-chip-line-height: 1.25;
 	min-height: 18px;
 	line-height: 1;
-	gap: 6px;
+}
+
+.operon-inline-compact-chip {
+	height: var(--operon-compact-chip-height);
+	min-height: 18px;
+	min-height: var(--operon-compact-chip-height);
+	line-height: 1;
+	line-height: var(--operon-compact-chip-line-height);
+	gap: var(--operon-compact-chip-gap);
 }
 
 .operon-inline-compact-chip.is-icon-only {
@@ -2325,16 +2836,16 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 12px;
-	height: 12px;
+	width: var(--operon-compact-chip-icon-size);
+	height: var(--operon-compact-chip-icon-size);
 	flex-shrink: 0;
 	margin-right: 1px;
 	color: var(--operon-inline-chip-icon-color, currentColor);
 }
 
 .operon-inline-compact-chip-icon svg {
-	width: 12px;
-	height: 12px;
+	width: var(--operon-compact-chip-icon-size);
+	height: var(--operon-compact-chip-icon-size);
 }
 
 .operon-inline-compact-chip.is-linked .operon-inline-compact-chip-icon {
@@ -3107,6 +3618,16 @@
 	white-space: normal;
 	cursor: pointer;
 	overflow: hidden;
+}
+
+.modal.operon-task-finder-modal button.operon-task-finder-result {
+	contain: none;
+	display: grid;
+	box-sizing: border-box;
+	height: auto;
+	min-height: 66px;
+	padding: 9px 12px;
+	line-height: normal;
 }
 
 .operon-task-finder-result:hover,
@@ -5336,6 +5857,22 @@
 	font-family: var(--font-text);
 	font-size: 14px;
 	line-height: 1.7;
+}
+
+.modal.operon-task-editor-modal .operon-task-editor-file-source-editor button.operon-live-preview-chip,
+.modal.operon-task-editor-modal .operon-task-editor-file-source-editor button.operon-live-preview-edit {
+	contain: none;
+	box-sizing: border-box;
+	min-height: 0;
+}
+
+.modal.operon-task-editor-modal .operon-task-editor-file-source-editor button.operon-live-preview-chip {
+	height: 18px;
+	min-height: 18px;
+}
+
+.modal.operon-task-editor-modal .operon-task-editor-file-source-editor button.operon-live-preview-edit {
+	height: auto;
 }
 
 body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markdown-source-view.mod-cm6 .cm-gutters,
@@ -9133,6 +9670,41 @@ button.operon-pinned-sidebar-action svg {
 	color: #16a34a;
 }
 
+.operon-filter-checkbox-progress-control {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--operon-compact-chip-gap, 6px);
+	min-width: 34px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.operon-filter-checkbox-progress-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	color: var(--text-faint);
+}
+
+.operon-filter-checkbox-progress-icon svg {
+	width: var(--operon-compact-chip-icon-size, 12px);
+	height: var(--operon-compact-chip-icon-size, 12px);
+	stroke-width: 2.1;
+}
+
+.operon-filter-checkbox-progress-label {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.operon-filter-checkbox-progress-control.is-complete {
+	color: #16a34a;
+}
+
 .operon-filter-task-children.is-collapsed {
 	display: none;
 }
@@ -9662,8 +10234,7 @@ button.operon-pinned-sidebar-action svg {
 }
 
 /* Hide native calendar/clock icon on date inputs — field type is clear without it */
-.operon-condition-row input[type="date"]::-webkit-calendar-picker-indicator,
-.operon-condition-row input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+.operon-condition-row input[type="date"]::-webkit-calendar-picker-indicator {
 	display: none;
 	-webkit-appearance: none;
 }
@@ -9730,6 +10301,14 @@ button.operon-pinned-sidebar-action svg {
 .operon-filter-control {
 	width: 100%;
 	box-sizing: border-box;
+}
+
+.operon-filter-date-popover-input {
+	font-variant-numeric: tabular-nums;
+}
+
+.operon-filter-datetime-popover-input {
+	font-variant-numeric: tabular-nums;
 }
 
 /* Hide legacy custom chevron overlay — Obsidian's .dropdown has its own */
@@ -11001,12 +11580,13 @@ button.operon-pinned-sidebar-action svg {
 	align-items: center;
 	justify-content: center;
 	align-self: center;
-	margin-left: 0.18em;
+	margin-left: 0.34em;
 	margin-right: 0.08em;
-	font-size: 0.82em;
+	font-size: var(--operon-compact-chip-font-size, 11px);
+	font-weight: 500;
 	font-variant-numeric: tabular-nums;
 	color: var(--text-muted);
-	line-height: 1;
+	line-height: var(--operon-compact-chip-line-height, 1.25);
 	vertical-align: text-bottom;
 	user-select: none;
 }
@@ -11015,6 +11595,42 @@ button.operon-pinned-sidebar-action svg {
 	letter-spacing: 0.01em;
 	position: relative;
 	top: 0;
+	box-sizing: border-box;
+	gap: var(--operon-compact-chip-gap, 6px);
+	min-height: var(--operon-compact-chip-height, 18px);
+	padding: var(--operon-compact-chip-padding, 1px 6px);
+	border: 1px solid transparent;
+	border-radius: var(--operon-compact-chip-radius, 10px);
+	background: var(--background-modifier-hover);
+	box-shadow: none;
+}
+
+.operon-task-wikilink-plain-checkbox-progress {
+	cursor: pointer;
+}
+
+.operon-task-wikilink-progress-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	color: var(--text-faint);
+}
+
+.operon-task-wikilink-progress-icon svg {
+	width: var(--operon-compact-chip-icon-size, 12px);
+	height: var(--operon-compact-chip-icon-size, 12px);
+	stroke-width: 2.1;
+}
+
+.operon-task-wikilink-progress-label {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.operon-task-wikilink-plain-checkbox-progress.is-complete {
+	color: #16a34a;
 }
 
 .operon-task-wikilink-right {

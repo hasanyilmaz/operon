@@ -1,6 +1,6 @@
 # Operon
 
-Operon is an **Obsidian-native task management system** for humans and agents. It keeps tasks in **Markdown** while giving them structured metadata, durable identity, reusable views, planning surfaces, recurrence, and time tracking.
+Operon is an **Obsidian-native community task management plugin** for humans and agents. It keeps tasks in **Markdown** while giving them structured metadata, durable identity, reusable views, planning surfaces, recurrence, and time tracking.
 
 ## What problem does Operon solve?
 

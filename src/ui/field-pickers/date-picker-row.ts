@@ -25,17 +25,29 @@ function formatDatePickerCandidateDisplay(
 	language: DatePickerLang,
 ): DatePickerCandidateDisplay {
 	return {
-		label: candidate.primaryLabel,
+		label: candidate.kind === 'nlp'
+			? formatIsoDateLabel(candidate.isoDate, language) || candidate.primaryLabel
+			: candidate.primaryLabel,
 		isoDate: candidate.isoDate,
 		weekday: formatIsoWeekday(candidate.isoDate, language),
 	};
+}
+
+function formatIsoDateLabel(isoDate: string, language: DatePickerLang): string {
+	const date = parseIsoDateAtLocalNoon(isoDate);
+	if (!date) return '';
+	return new Intl.DateTimeFormat(datePickerLocale(language), {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric',
+	}).format(date);
 }
 
 function formatIsoWeekday(isoDate: string, language: DatePickerLang): string {
 	const date = parseIsoDateAtLocalNoon(isoDate);
 	if (!date) return '';
 	return new Intl.DateTimeFormat(datePickerLocale(language), {
-		weekday: 'long',
+		weekday: 'short',
 	}).format(date);
 }
 

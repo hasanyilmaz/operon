@@ -20,12 +20,16 @@ import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionId } from '../core/contextual-menu-engine';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import {
+	computeTaskFileLinkPlainCheckboxIndicator,
 	computeTaskFileLinkVisuals,
 	computeTaskFileLinkProgressIndicator,
+	createTaskFileLinkPlainCheckboxProgressElement,
 	FileTaskLookup,
 	resolveTaskFileLink,
 	TaskFileLinkProgressIndicator,
 	TaskFileLinkVisuals,
+	buildTaskFileLinkProgressTooltip,
+	appendTaskFileLinkProgressCountContent,
 } from './task-file-wikilink-shared';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -145,6 +149,24 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 			wrap.appendChild(progressEl);
 		}
 
+		const settings = this.callbacks.getSettings();
+		if (settings.overlayTaskShowPlainCheckboxAction) {
+			const plainCheckboxProgressEl = createTaskFileLinkPlainCheckboxProgressElement(
+				computeTaskFileLinkPlainCheckboxIndicator(this.task),
+				wrap,
+				{
+					app: this.callbacks.app,
+					task: this.task,
+					keyMappings: settings.keyMappings,
+					taskColor: this.visuals.hoverColor,
+					showEmptyAction: true,
+				},
+			);
+			if (plainCheckboxProgressEl) {
+				wrap.appendChild(plainCheckboxProgressEl);
+			}
+		}
+
 		const chipRow = buildTaskFileOverlayChipContainer(this.task, {
 			app: this.callbacks.app,
 			getSettings: this.callbacks.getSettings,
@@ -156,7 +178,6 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 			wrap.appendChild(chipRow);
 		}
 
-		const settings = this.callbacks.getSettings();
 		const isTerminal = this.visuals.labelState !== 'default';
 		if (!isTerminal && settings.overlayTaskShowPlayAction && this.callbacks.toggleTimer && this.task.checkbox === 'open') {
 			const playButton = createOwnerElement(wrap, 'button');
@@ -464,10 +485,12 @@ export function buildTaskWikilinkTrailingRenderSignature(
 		overlayTaskShowPinAction: settings.overlayTaskShowPinAction,
 		overlayTaskShowNoteAction: settings.overlayTaskShowNoteAction,
 		overlayTaskShowSubtaskAction: settings.overlayTaskShowSubtaskAction,
+		overlayTaskShowPlainCheckboxAction: settings.overlayTaskShowPlainCheckboxAction,
 		keyMappings: settings.keyMappings,
 		overlayTaskCompactChips: settings.overlayTaskCompactChips,
 		visuals,
 		progress,
+		plainCheckboxProgress: computeTaskFileLinkPlainCheckboxIndicator(task),
 		chipSignature,
 		pinnedSnapshot,
 		trackingSnapshot,
@@ -502,22 +525,26 @@ function createProgressElement(progress: TaskFileLinkProgressIndicator, owner?: 
 
 	if (progress.kind === 'count') {
 		el.classList.add('operon-task-wikilink-progress-count');
-		el.textContent = progress.text;
-		setAccessibleLabelWithoutTooltip(el, progress.text);
+		appendTaskFileLinkProgressCountContent(el, 'list-tree', progress.text);
+		const tooltip = buildTaskFileLinkProgressTooltip(progress);
+		setAccessibleLabelWithoutTooltip(el, tooltip?.accessibleLabel ?? progress.text);
 		bindOperonHoverTooltip(el, {
-			content: progress.text,
+			title: tooltip?.title,
+			content: tooltip?.content ?? progress.text,
 			taskColor: null,
 		});
 		return el;
 	}
 
+	const tooltip = buildTaskFileLinkProgressTooltip(progress);
 	el.classList.add('operon-task-wikilink-progress-complete');
 	bindOperonHoverTooltip(el, {
-		content: t('tooltips', 'allDescendantsDone'),
+		title: tooltip?.title,
+		content: tooltip?.content ?? t('tooltips', 'allDescendantsDone'),
 		taskColor: null,
 	});
 	setIcon(el, progress.icon);
-	setAccessibleLabelWithoutTooltip(el, t('tooltips', 'allDescendantsDone'));
+	setAccessibleLabelWithoutTooltip(el, tooltip?.accessibleLabel ?? t('tooltips', 'allDescendantsDone'));
 	return el;
 }
 

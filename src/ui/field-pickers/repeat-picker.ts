@@ -1,4 +1,6 @@
 import { createButton, createFloatingPanel } from './common';
+import { normalizeOperonDateKey, type DayPickerWeekStart } from './day-picker';
+import { showOperonDayPickerPopover } from './day-picker-popover';
 import {
 	calculateRepeatCountFromEnd,
 	calculateRepeatEndFromCount,
@@ -28,6 +30,11 @@ interface RepeatPickerSavePayload {
 	inlineCompletionMode: InlineRepeatCompletionMode;
 }
 
+export interface RepeatDayPickerPopoverOptions {
+	weekStart: DayPickerWeekStart;
+	showWeekNumbers: boolean;
+}
+
 interface RepeatPickerOptions {
 	value?: string;
 	repeatEnd?: string;
@@ -41,6 +48,7 @@ interface RepeatPickerOptions {
 	taskColor?: string;
 	taskFormat?: 'inline' | 'yaml';
 	inlineCompletionMode?: InlineRepeatCompletionMode;
+	dayPickerPopover?: RepeatDayPickerPopoverOptions;
 	onSave: (payload: RepeatPickerSavePayload) => void | Promise<void>;
 	onClear?: () => void;
 	onCancel?: () => void;
@@ -98,11 +106,18 @@ const MONTH_OPTIONS = [
 	'repeatMonthDecember',
 ];
 
+const DEFAULT_REPEAT_DAY_PICKER_POPOVER: RepeatDayPickerPopoverOptions = {
+	weekStart: 'monday',
+	showWeekNumbers: true,
+};
+
 function extractDatePart(value: string | null | undefined): string {
 	if (!value) return '';
 	const trimmed = value.trim();
-	if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-	if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) return trimmed.slice(0, 10);
+	const directDate = normalizeOperonDateKey(trimmed);
+	if (directDate) return directDate;
+	const datetimeDate = normalizeOperonDateKey(trimmed.slice(0, 10));
+	if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed) && datetimeDate) return datetimeDate;
 	return '';
 }
 
@@ -345,12 +360,21 @@ function getReadonlyEndDate(draft: RepeatDraft): string {
 
 export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatPickerOptions): () => void {
 	let completed = false;
+	let activeDatePopoverClose: (() => void) | null = null;
+	let activeDatePopoverAnchor: HTMLInputElement | null = null;
 	const rawValue = options.value?.trim() ?? '';
 	const parsedRule = parseRepeatRule(rawValue);
 	const showInvalidState = !!rawValue && !parsedRule;
 	let draft = createDraftFromRule(parsedRule, options);
 	let inlineCompletionMode = normalizeInlineCompletionMode(options.inlineCompletionMode);
 	const taskFormat = options.taskFormat ?? 'inline';
+	const dayPickerPopover = options.dayPickerPopover ?? DEFAULT_REPEAT_DAY_PICKER_POPOVER;
+	const closeActiveDatePopover = (): void => {
+		const closePopover = activeDatePopoverClose;
+		activeDatePopoverClose = null;
+		activeDatePopoverAnchor = null;
+		closePopover?.();
+	};
 	const setDraftMode = (mode: RepeatMode): void => {
 		if (draft.mode === mode) return;
 		draft.mode = mode;
@@ -360,9 +384,35 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 	};
 
 	const { panel, close } = createFloatingPanel(anchor, 'operon-floating-panel operon-repeat-picker-panel', () => {
+		closeActiveDatePopover();
 		if (!completed) options.onCancel?.();
 		options.onClose?.();
 	});
+
+	const openDatePopover = (
+		input: HTMLInputElement,
+		value: string,
+		canClear: boolean,
+		onSelect: (value: string) => void,
+		onClear?: () => void,
+	): void => {
+		if (activeDatePopoverClose && activeDatePopoverAnchor === input) return;
+		closeActiveDatePopover();
+		activeDatePopoverAnchor = input;
+		activeDatePopoverClose = showOperonDayPickerPopover(input, {
+			value,
+			weekStart: dayPickerPopover.weekStart,
+			showWeekNumbers: dayPickerPopover.showWeekNumbers,
+			canClear,
+			floatingHost: panel,
+			onSelect,
+			onClear,
+			onClose: () => {
+				activeDatePopoverClose = null;
+				activeDatePopoverAnchor = null;
+			},
+		});
+	};
 
 	const commit = (payload: RepeatPickerSavePayload) => {
 		completed = true;
@@ -404,6 +454,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 
 	function renderBuilder(): void {
 		draft = normalizeDraft(draft);
+		closeActiveDatePopover();
 		panel.empty();
 		panel.classList.add('operon-repeat-picker-panel');
 		panel.createDiv({ cls: 'operon-floating-title', text: t('taskEditor', 'repeat') });
@@ -432,9 +483,11 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		const scheduleWrap = scheduleRow.createDiv('operon-repeat-picker-field');
 		scheduleWrap.createEl('label', { text: t('taskEditor', 'repeatReferenceDate'), cls: 'operon-floating-subtitle' });
 		const scheduleInput = scheduleWrap.createEl('input', {
-			cls: 'operon-floating-input',
-			attr: { type: 'date' },
+			cls: 'operon-floating-input operon-repeat-picker-date-input is-reference-date',
+			attr: { type: 'text' },
 		});
+		scheduleInput.placeholder = t('filterSets', 'datePlaceholder');
+		scheduleInput.inputMode = 'numeric';
 
 		const countConfigRow = cadenceSection.createDiv('operon-repeat-picker-row');
 		countConfigRow.classList.add('is-single');
@@ -482,9 +535,11 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			endDateWrap = endFields.createDiv('operon-repeat-picker-field');
 			endDateWrap.createEl('label', { text: t('taskEditor', 'repeatEndOnDate'), cls: 'operon-floating-subtitle' });
 			endDateInput = endDateWrap.createEl('input', {
-				cls: 'operon-floating-input',
-				attr: { type: 'date' },
+				cls: 'operon-floating-input operon-repeat-picker-date-input is-end-date',
+				attr: { type: 'text' },
 			});
+			endDateInput.placeholder = t('filterSets', 'datePlaceholder');
+			endDateInput.inputMode = 'numeric';
 
 			noEndBtn.addEventListener('click', () => {
 				draft.hasEndDate = false;
@@ -501,9 +556,23 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 
 			endDateInput.addEventListener('change', () => {
 				draft.hasEndDate = true;
-				draft.endDate = endDateInput?.value || draft.referenceDate;
+				draft.endDate = extractDatePart(endDateInput?.value) || draft.referenceDate;
 				renderBuilder();
 			});
+			const openEndDatePopover = () => {
+				if (!endDateInput) return;
+				openDatePopover(endDateInput, draft.endDate || draft.referenceDate, !!draft.endDate, value => {
+					draft.hasEndDate = true;
+					draft.endDate = value;
+					renderBuilder();
+				}, () => {
+					draft.hasEndDate = false;
+					draft.endDate = '';
+					renderBuilder();
+				});
+			};
+			endDateInput.addEventListener('focus', openEndDatePopover);
+			endDateInput.addEventListener('click', openEndDatePopover);
 			endDateInput.value = draft.endDate;
 			endDateInput.disabled = !draft.hasEndDate;
 			endDateWrap.classList.toggle('is-disabled', !draft.hasEndDate);
@@ -527,8 +596,8 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			infoEndWrap.createEl('label', { text: t('taskEditor', 'repeatEndOnDate'), cls: 'operon-floating-subtitle' });
 			infoEndWrap.classList.add('is-disabled');
 			infoEndInput = infoEndWrap.createEl('input', {
-				cls: 'operon-floating-input',
-				attr: { type: 'date', disabled: 'true' },
+				cls: 'operon-floating-input operon-repeat-picker-date-input is-readonly-end-date',
+				attr: { type: 'text', readonly: 'true' },
 			});
 		}
 
@@ -754,6 +823,15 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			draft.referenceDateTouched = true;
 			renderBuilder();
 		});
+		const openReferenceDatePopover = (): void => {
+			openDatePopover(scheduleInput, draft.referenceDate, false, value => {
+				draft.referenceDate = value;
+				draft.referenceDateTouched = true;
+				renderBuilder();
+			});
+		};
+		scheduleInput.addEventListener('focus', openReferenceDatePopover);
+		scheduleInput.addEventListener('click', openReferenceDatePopover);
 		freqSelect.addEventListener('change', () => {
 			draft.freq = freqSelect.value as RepeatFrequency;
 			if (draft.freq === 'week' && draft.days.size === 0) {

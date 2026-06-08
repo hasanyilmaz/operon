@@ -250,6 +250,12 @@ export function renderFilterSurface(
 
     const includeLocationIndexSignature = shouldResolveLocationCompactChips(deps.settings, deps.settings.filterTaskCompactChips)
         || shouldResolveLocationCompactChips(deps.settings, deps.settings.overlayTaskCompactChips);
+    const filterActionSettingsSignature = JSON.stringify([
+        deps.settings.filterTaskShowPlayAction,
+        deps.settings.filterTaskShowPinAction,
+        deps.settings.filterTaskShowSubtaskAction,
+        deps.settings.filterTaskShowPlainCheckboxAction,
+    ]);
     const renderSignature = [
         deps.indexer.getGeneration(),
         deps.pinnedCache?.getGeneration() ?? 0,
@@ -264,6 +270,7 @@ export function renderFilterSurface(
         options.preserveManualSubtaskExpansion === true ? 'preserve-manual-expansion' : 'reset-manual-expansion',
         options.showSettingsButton === false ? 'no-settings' : 'settings',
         JSON.stringify(deps.settings.filterTaskCompactChips),
+        filterActionSettingsSignature,
         buildTaskWikilinkOverlaySettingsSignature(deps.settings),
         includeLocationIndexSignature ? getLocationPlaceIndex(deps.app, deps.settings).getSignature() : '',
         JSON.stringify(deps.settings.keyMappings.map(mapping => [
