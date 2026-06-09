@@ -79,7 +79,7 @@ export function enhanceReadingTaskFileWikilinks(
 		if (!parent) continue;
 
 		const wrapper = createOwnerElement(anchor, 'span');
-		wrapper.className = 'operon-task-wikilink-reading';
+		wrapper.className = 'operon-task-wikilink-reading operon-task-chip-surface';
 		wrapper.setCssProps({ '--operon-task-wikilink-hover': visuals.hoverColor });
 		wrapper.setAttribute('data-operon-task-wikilink-wrapper', 'true');
 
@@ -160,7 +160,7 @@ export function enhanceReadingTaskFileWikilinks(
 		if (!isTerminal && settings.overlayTaskShowPlayAction && callbacks.toggleTimer && resolved.task.checkbox === 'open') {
 			const isTracking = callbacks.isTaskTracking?.(resolved.task.operonId) === true;
 			const playButton = createActionButton(
-				'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action',
+				'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action operon-task-chip-action',
 				visuals.hoverColor,
 				t('tooltips', isTracking ? 'stopTimer' : 'startTimer'),
 				(button) => {
@@ -176,7 +176,7 @@ export function enhanceReadingTaskFileWikilinks(
 		if (!isTerminal && settings.overlayTaskShowPinAction && callbacks.onContextualAction) {
 			const isPinned = callbacks.isTaskPinned?.(resolved.task.operonId) === true;
 			const pinButton = createActionButton(
-				'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action',
+				'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action operon-task-chip-action',
 				visuals.hoverColor,
 				t('contextMenu', isPinned ? 'unpinTask' : 'pinTask'),
 				(button) => {
@@ -192,7 +192,7 @@ export function enhanceReadingTaskFileWikilinks(
 		const noteValue = resolved.task.fieldValues['note']?.trim();
 		if (settings.overlayTaskShowNoteAction && noteValue) {
 			const noteIndicator = createOwnerElement(wrapper, 'span');
-			noteIndicator.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action is-active';
+			noteIndicator.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action operon-task-chip-action is-active';
 			noteIndicator.setAttribute('role', 'img');
 			noteIndicator.setCssProps({ '--operon-live-hover-border': visuals.hoverColor });
 			setIcon(noteIndicator, getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen');
@@ -208,7 +208,7 @@ export function enhanceReadingTaskFileWikilinks(
 		if (!isTerminal && settings.overlayTaskShowSubtaskAction && callbacks.requestSubtask) {
 			const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(resolved.task));
 			const subtaskButton = createActionButton(
-				'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action',
+				'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action operon-task-chip-action',
 				visuals.hoverColor,
 				subtaskLabel,
 				(button) => {
@@ -288,7 +288,7 @@ function createProgressElement(progress: TaskFileLinkProgressIndicator, owner?: 
 	if (progress.kind === 'none') return null;
 
 	const el = createOwnerElement(owner, 'span');
-	el.className = 'operon-task-wikilink-progress';
+	el.className = 'operon-task-wikilink-progress operon-task-chip operon-task-chip-progress';
 
 	if (progress.kind === 'count') {
 		el.classList.add('operon-task-wikilink-progress-count');

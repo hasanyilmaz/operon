@@ -33,7 +33,7 @@ import {
 	shouldOpenIconOnlyChipPreview,
 } from './icon-only-chip-preview';
 import { t } from '../core/i18n';
-import { createOwnerElement } from '../core/dom-compat';
+import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/subtask-action';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import type { DescendantTaskSummary } from '../indexer/indexer';
@@ -80,6 +80,18 @@ function getReadingDirectChipManualDatePickerOptions(key: string, settings: Oper
 	};
 }
 
+function getMobileStableLocationPreviewAnchor(anchor: HTMLElement): HTMLElement | DOMRect {
+	const ownerWindow = getOwnerWindow(anchor);
+	const isMobileLike = typeof ownerWindow.matchMedia === 'function'
+		? ownerWindow.matchMedia('(max-width: 720px), (hover: none), (pointer: coarse)').matches
+		: ownerWindow.innerWidth <= 720;
+	if (!isMobileLike) return anchor;
+
+	const rect = anchor.getBoundingClientRect();
+	const DOMRectCtor = (ownerWindow as Window & { DOMRect?: typeof DOMRect }).DOMRect ?? DOMRect;
+	return new DOMRectCtor(rect.left, rect.top, Math.max(rect.width, 1), Math.max(rect.height, 1));
+}
+
 export interface ReadingTaskRowOptions {
 	owner?: Node | null;
 	chipItems?: InlineTaskCompactChipItem[];
@@ -107,7 +119,7 @@ export function buildReadingTaskRowElement(
 	options?: ReadingTaskRowOptions,
 ): HTMLElement {
 	const owner = renderedDescription ?? options?.owner ?? null;
-	const row = el('div', 'operon-reading-task-row', owner);
+	const row = el('div', 'operon-reading-task-row operon-task-chip-surface', owner);
 	if (options?.rowClassName) row.classList.add(options.rowClassName);
 	const head = el('div', 'operon-reading-task-head', row);
 	const tail = el('div', 'operon-reading-task-tail', row);
@@ -194,7 +206,7 @@ export function buildReadingTaskRowElement(
 		locationResolver,
 	);
 	for (const entry of entries) {
-		const chip = createInlineTaskCompactChipElement(entry, 'operon-reading-task-chip');
+		const chip = createInlineTaskCompactChipElement(entry, 'operon-reading-task-chip operon-task-chip');
 		applyCompactChipVisualStyles(chip, entry, task, callbacks, statusColor, taskColor);
 		if (entry.iconOnly) {
 			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
@@ -246,7 +258,7 @@ export function buildReadingTaskRowElement(
 		options?.chipItems,
 	);
 	if (hiddenCount > 0) {
-		const overflow = el('button', 'operon-live-preview-chip operon-reading-task-overflow', row);
+		const overflow = el('button', 'operon-live-preview-chip operon-reading-task-overflow operon-task-chip operon-task-chip-overflow', row);
 		overflow.type = 'button';
 		overflow.textContent = `+${hiddenCount}`;
 		if (taskColor) overflow.style.setProperty('--operon-live-hover-border', taskColor);
@@ -287,7 +299,7 @@ export function buildReadingTaskRowElement(
 
 	if (!isTerminal && callbacks.toggleTimer && showPlayAction && task.checkbox === 'open') {
 		const isTracking = callbacks.isTaskTracking?.(task.operonId) === true;
-		const playButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action', row);
+		const playButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-task-chip-action', row);
 		playButton.type = 'button';
 		if (isTracking) playButton.classList.add('is-active');
 		setIcon(playButton, isTracking ? 'square' : 'play');
@@ -303,7 +315,7 @@ export function buildReadingTaskRowElement(
 
 	if (!isTerminal && callbacks.onContextualAction && showPinAction) {
 		const isPinned = callbacks.isTaskPinned?.(task.operonId) === true;
-		const pinButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action', row);
+		const pinButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-task-chip-action', row);
 		pinButton.type = 'button';
 		if (isPinned) pinButton.classList.add('is-active');
 		bindOperonHoverTooltip(pinButton, {
@@ -330,6 +342,7 @@ export function buildReadingTaskRowElement(
 			taskColor,
 			preferredHorizontal: 'right',
 		});
+		noteIndicator.querySelector('.operon-hover-trigger')?.classList.add('operon-task-chip-action');
 		actions.appendChild(noteIndicator);
 	}
 
@@ -341,7 +354,7 @@ export function buildReadingTaskRowElement(
 
 	if (!isTerminal && callbacks.requestSubtask && showSubtaskAction) {
 		const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(task));
-		const subtaskButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action', row);
+		const subtaskButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-task-chip-action', row);
 		subtaskButton.type = 'button';
 		setIcon(subtaskButton, resolveSubtaskActionIcon(task));
 		setAccessibleLabelWithoutTooltip(subtaskButton, subtaskLabel);
@@ -355,7 +368,7 @@ export function buildReadingTaskRowElement(
 	}
 
 	if (showEditAction) {
-		const editButton = el('button', 'operon-live-preview-edit operon-reading-task-edit', row);
+		const editButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-task-chip-action', row);
 		editButton.type = 'button';
 		setIcon(editButton, 'settings-2');
 		setAccessibleLabelWithoutTooltip(editButton, t('tooltips', 'editTask'));
@@ -430,13 +443,17 @@ function applyCompactChipVisualStyles(
 	statusColor: string,
 	taskColor: string | null,
 ): void {
-	if (taskColor) chip.style.setProperty('--operon-live-hover-border', taskColor);
+	const hoverColor = taskColor ?? entry.taskColor;
+	if (hoverColor) {
+		chip.style.setProperty('--operon-live-hover-border', hoverColor);
+		chip.style.setProperty('--operon-task-chip-hover-accent', hoverColor);
+	}
 	if (entry.colorRole === 'priority') {
 		const def = callbacks.getPriorities().find((priority) => priority.label === task.fieldValues['priority']);
-		if (def) chip.style.setProperty('--operon-live-chip-color', def.color);
+		if (def) chip.style.setProperty('--operon-inline-chip-icon-color', def.color);
 	}
 	if (entry.colorRole === 'status') {
-		chip.style.setProperty('--operon-live-chip-color', statusColor);
+		chip.style.setProperty('--operon-inline-chip-icon-color', statusColor);
 	}
 	if (entry.key === 'location') {
 		const locationIconColor = entry.locationMarkerColor ?? taskColor;
@@ -469,7 +486,7 @@ function attachReadingChipAction(
 				if (entry.locationCoordinate) {
 					showLocationMapPreview(
 						callbacks.app,
-						chip,
+						getMobileStableLocationPreviewAnchor(chip),
 						callbacks.getSettings(),
 						entry.locationCoordinate,
 						task.primary.filePath,

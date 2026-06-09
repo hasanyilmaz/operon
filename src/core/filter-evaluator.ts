@@ -39,6 +39,11 @@ interface EvalContext {
 	folderTreeMatchCache: Map<string, Set<string>>;
 }
 
+export interface TaskSortContext {
+	priorities?: { label: string }[];
+	isTaskPinned?: (taskId: string) => boolean;
+}
+
 // ============================================================
 // Operator definitions by field type
 // ============================================================
@@ -225,25 +230,49 @@ export function evaluateFilterSetGrouped(
 	pinnedCache?: PinnedCache | null,
 ): GroupedFilterResults {
 	const context = createEvalContext(tasks, priorities, pinnedCache);
-	const groupBy = filterSet.groupBy!;
-	const subgroupBy = filterSet.subgroupBy;
 	const sortedTasks = sortTasks(
 		tasks.filter(task => matchesFilterSet(filterSet, task, context)),
 		getSortSpecs(filterSet),
 		context.priorityRankMap,
 		context.pinnedCache,
 	);
+	return groupSortedFilterTasks(filterSet, sortedTasks, context);
+}
+
+export function groupFilterTasks(
+	filterSet: FilterSet,
+	tasks: IndexedTask[],
+	priorities?: { label: string }[],
+	pinnedCache?: PinnedCache | null,
+): GroupedFilterResults {
+	const context = createEvalContext(tasks, priorities, pinnedCache);
+	const sortedTasks = sortTasks(
+		tasks,
+		getSortSpecs(filterSet),
+		context.priorityRankMap,
+		context.pinnedCache,
+	);
+	return groupSortedFilterTasks(filterSet, sortedTasks, context);
+}
+
+function groupSortedFilterTasks(
+	filterSet: FilterSet,
+	sortedTasks: IndexedTask[],
+	context: EvalContext,
+): GroupedFilterResults {
+	const groupBy = filterSet.groupBy!;
+	const subgroupBy = filterSet.subgroupBy;
 	const groupMap = new Map<string, IndexedTask[]>();
 	const subgroupMaps = new Map<string, Map<string, IndexedTask[]>>();
 
 	for (const task of sortedTasks) {
-		const groupKey = getGroupKey(task, groupBy, context.pinnedCache);
+		const groupKey = getTaskGroupKey(task, groupBy, context.pinnedCache);
 		if (!groupMap.has(groupKey)) groupMap.set(groupKey, []);
 		groupMap.get(groupKey)!.push(task);
 
 		if (subgroupBy) {
 			if (!subgroupMaps.has(groupKey)) subgroupMaps.set(groupKey, new Map());
-			const subgroupKey = getGroupKey(task, subgroupBy, context.pinnedCache);
+			const subgroupKey = getTaskGroupKey(task, subgroupBy, context.pinnedCache);
 			const subgroupMap = subgroupMaps.get(groupKey)!;
 			if (!subgroupMap.has(subgroupKey)) subgroupMap.set(subgroupKey, []);
 			subgroupMap.get(subgroupKey)!.push(task);
@@ -279,7 +308,7 @@ export function evaluateFilterSetGrouped(
 	};
 }
 
-function getGroupKey(task: IndexedTask, groupBy: string, pinnedCache?: PinnedCache | null): string {
+export function getTaskGroupKey(task: IndexedTask, groupBy: string, pinnedCache?: PinnedCache | null): string {
 	if (groupBy === 'checkbox') return task.checkbox;
 	if (groupBy === 'description') return task.description;
 	if (groupBy === 'pinned') return pinnedCache?.isPinned(task.operonId) ? 'true' : '';
@@ -817,11 +846,23 @@ function sortTasks(
 	priorityRankMap?: Record<string, number> | null,
 	pinnedCache?: PinnedCache | null,
 ): IndexedTask[] {
+	return sortTasksBySpecs(tasks, sorts, {
+		priorityRankMap,
+		isTaskPinned: pinnedCache ? taskId => pinnedCache.isPinned(taskId) : undefined,
+	});
+}
+
+export function sortTasksBySpecs(
+	tasks: IndexedTask[],
+	sorts: FilterSortSpec[],
+	context: TaskSortContext & { priorityRankMap?: Record<string, number> | null } = {},
+): IndexedTask[] {
 	if (sorts.length === 0) return tasks;
+	const priorityRankMap = context.priorityRankMap ?? buildPriorityRankMap(context.priorities);
 
 	return [...tasks].sort((a, b) => {
 		for (const sort of sorts) {
-			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, pinnedCache);
+			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, context.isTaskPinned);
 			if (cmp !== 0) return cmp;
 		}
 		return 0;
@@ -833,7 +874,7 @@ function compareTaskBySortSpec(
 	b: IndexedTask,
 	sort: FilterSortSpec,
 	priorityRankMap?: Record<string, number> | null,
-	pinnedCache?: PinnedCache | null,
+	isTaskPinned?: (taskId: string) => boolean,
 ): number {
 	const asc = sort.order !== 'desc';
 	let cmp = 0;
@@ -844,9 +885,11 @@ function compareTaskBySortSpec(
 	} else if (sort.field === 'description') {
 		cmp = a.description.localeCompare(b.description, undefined, { sensitivity: 'base' });
 	} else if (sort.field === 'pinned') {
-		const aPinned = pinnedCache?.isPinned(a.operonId) ? 0 : 1;
-		const bPinned = pinnedCache?.isPinned(b.operonId) ? 0 : 1;
+		const aPinned = isTaskPinned?.(a.operonId) ? 0 : 1;
+		const bPinned = isTaskPinned?.(b.operonId) ? 0 : 1;
 		cmp = aPinned - bPinned;
+	} else if (sort.field === 'happensOn') {
+		cmp = getPrimaryHappensOnDateValue(a).localeCompare(getPrimaryHappensOnDateValue(b));
 	} else if (sort.field === 'priority' && priorityRankMap) {
 		const aRank = priorityRankMap[a.fieldValues['priority'] ?? ''] ?? 999;
 		const bRank = priorityRankMap[b.fieldValues['priority'] ?? ''] ?? 999;

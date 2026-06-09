@@ -118,6 +118,9 @@ function pickContextualMenuStoreSettings(settings: OperonSettings): ContextualMe
 		contextualMenuActionAllowlist: settings.contextualMenuActionAllowlist,
 		contextualMenuSurfaceActionMatrix: settings.contextualMenuSurfaceActionMatrix,
 		contextualMenuOpenDelayMs: settings.contextualMenuOpenDelayMs,
+		contextualMenuMobileEnabled: settings.contextualMenuMobileEnabled,
+		contextualMenuMobileLongPressMs: settings.contextualMenuMobileLongPressMs,
+		contextualMenuMobileTransitionGraceMs: settings.contextualMenuMobileTransitionGraceMs,
 	};
 }
 

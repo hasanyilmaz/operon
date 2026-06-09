@@ -292,7 +292,14 @@ export function buildOperonDataPackageFromLegacySnapshot(
 					rawSettings,
 					migratedSettings,
 					defaults,
-					['contextualMenuActionAllowlist', 'contextualMenuSurfaceActionMatrix', 'contextualMenuOpenDelayMs'],
+					[
+						'contextualMenuActionAllowlist',
+						'contextualMenuSurfaceActionMatrix',
+						'contextualMenuOpenDelayMs',
+						'contextualMenuMobileEnabled',
+						'contextualMenuMobileLongPressMs',
+						'contextualMenuMobileTransitionGraceMs',
+					],
 				),
 			),
 			taskUiPreferences: buildPickedSettingsPackage(
@@ -589,6 +596,9 @@ function buildContextualMenuPackage(
 			? cloneJson<ContextualMenuStoreSettings['contextualMenuSurfaceActionMatrix']>(parsed.surfaceActionMatrix)
 			: cloneJson(settings.contextualMenuSurfaceActionMatrix),
 		contextualMenuOpenDelayMs: readNumber(parsed.openDelayMs, settings.contextualMenuOpenDelayMs),
+		contextualMenuMobileEnabled: readBoolean(parsed.mobileEnabled, settings.contextualMenuMobileEnabled),
+		contextualMenuMobileLongPressMs: readNumber(parsed.mobileLongPressMs, settings.contextualMenuMobileLongPressMs),
+		contextualMenuMobileTransitionGraceMs: readNumber(parsed.mobileTransitionGraceMs, settings.contextualMenuMobileTransitionGraceMs),
 	};
 }
 
@@ -677,6 +687,10 @@ function readArray<T>(value: unknown, fallback: T[]): T[] {
 
 function readString(value: unknown, fallback: string): string {
 	return typeof value === 'string' ? value : fallback;
+}
+
+function readBoolean(value: unknown, fallback: boolean): boolean {
+	return typeof value === 'boolean' ? value : fallback;
 }
 
 function readNumber(value: unknown, fallback: number): number {

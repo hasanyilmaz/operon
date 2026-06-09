@@ -67,8 +67,20 @@ function assertIncludes(relativePath, needle, label) {
 	}
 }
 
+function preserveLineCount(text) {
+	return text.replace(/[^\n]/g, '');
+}
+
+function stripCssComments(text) {
+	return text.replace(/\/\*[\s\S]*?\*\//g, preserveLineCount);
+}
+
+function lineNumberAt(text, index) {
+	return text.slice(0, index).split('\n').length;
+}
+
 function cssRules(relativePath) {
-	const text = readText(relativePath);
+	const text = stripCssComments(readText(relativePath));
 	return [...text.matchAll(/([^{}]+)\{([^{}]+)\}/g)].map(([, selectorText, body]) => ({
 		selectors: selectorText.split(',').map(selector => selector.trim()),
 		body,
@@ -76,14 +88,44 @@ function cssRules(relativePath) {
 }
 
 function assertCssRuleContains(relativePath, selector, requiredDeclarations, label) {
-	const rule = cssRules(relativePath).find(candidate => candidate.selectors.includes(selector));
-	if (!rule) {
+	const matchingRules = cssRules(relativePath).filter(candidate => candidate.selectors.includes(selector));
+	if (matchingRules.length === 0) {
 		fail(`${relativePath}: ${label}: missing rule for ${selector}`);
 		return;
 	}
+
+	if (matchingRules.some(rule => requiredDeclarations.every(declaration => rule.body.includes(declaration)))) {
+		return;
+	}
+
 	for (const declaration of requiredDeclarations) {
-		if (!rule.body.includes(declaration)) {
+		if (!matchingRules.some(rule => rule.body.includes(declaration))) {
 			fail(`${relativePath}: ${label}: ${selector} must include ${declaration}`);
+		}
+	}
+}
+
+function assertNoDuplicateCssDeclarations(relativePath) {
+	const text = stripCssComments(readText(relativePath));
+	for (const rule of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+		const selectorText = rule[1].trim().replace(/\s+/g, ' ');
+		const body = rule[2];
+		const ruleBodyStart = (rule.index ?? 0) + rule[0].indexOf('{') + 1;
+		const declarations = new Map();
+
+		for (const declaration of body.matchAll(/(^|;)\s*([-\w]+)\s*:/g)) {
+			const property = declaration[2].toLowerCase();
+			if (property.startsWith('--')) continue;
+
+			const declarationIndex = ruleBodyStart + declaration.index + declaration[0].indexOf(property);
+			const lineNumber = lineNumberAt(text, declarationIndex);
+			const firstLineNumber = declarations.get(property);
+			if (firstLineNumber !== undefined) {
+				fail(`${relativePath}:${lineNumber}: duplicate CSS declaration "${property}" in ${selectorText}; first declared on line ${firstLineNumber}`);
+				continue;
+			}
+
+			declarations.set(property, lineNumber);
 		}
 	}
 }
@@ -161,6 +203,8 @@ function checkCssScorecard() {
 		assertNoMatch('styles.css', pattern, label);
 	}
 
+	assertNoDuplicateCssDeclarations('styles.css');
+
 	for (const selector of ['.operon-chip', '.operon-live-preview-chip', '.operon-live-preview-edit', '.operon-task-wikilink-action']) {
 		assertCssRuleContains(
 			'styles.css',
@@ -173,7 +217,11 @@ function checkCssScorecard() {
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-inline-compact-chip',
-		['height: 18px;', 'min-height: 18px;', 'line-height: 1;'],
+		[
+			'height: var(--operon-compact-chip-height, 18px);',
+			'min-height: var(--operon-compact-chip-height, 18px);',
+			'line-height: var(--operon-compact-chip-line-height, 1.25);',
+		],
 		'inline compact chips must keep a stable visual height',
 	);
 }

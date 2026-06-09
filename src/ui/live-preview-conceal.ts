@@ -90,6 +90,7 @@ const LIVE_PREVIEW_DIRECT_CHIP_DAY_PICKER_DATE_KEYS = new Set<string>([
 	'dateCompleted',
 	'dateCancelled',
 ]);
+const LIVE_PREVIEW_CHIP_HOVER_CLASS = 'is-operon-chip-hovered';
 
 function getLivePreviewDirectChipManualDatePickerOptions(key: string, settings: OperonSettings): ManualDatePickerOptions | undefined {
 	if (!LIVE_PREVIEW_DIRECT_CHIP_DAY_PICKER_DATE_KEYS.has(key)) return undefined;
@@ -117,6 +118,17 @@ function snapshotLivePreviewAnchor(anchor: HTMLElement): DOMRect {
 	const rect = anchor.getBoundingClientRect();
 	const DOMRectCtor = (getOwnerWindow(anchor) as Window & { DOMRect?: typeof DOMRect }).DOMRect ?? DOMRect;
 	return new DOMRectCtor(rect.left, rect.top, Math.max(rect.width, 1), Math.max(rect.height, 1));
+}
+
+function bindLivePreviewChipHoverState(element: HTMLElement): void {
+	const addHover = () => element.classList.add(LIVE_PREVIEW_CHIP_HOVER_CLASS);
+	const removeHover = () => element.classList.remove(LIVE_PREVIEW_CHIP_HOVER_CLASS);
+	element.addEventListener('pointerenter', addHover);
+	element.addEventListener('pointerleave', removeHover);
+	element.addEventListener('mouseenter', addHover);
+	element.addEventListener('mouseleave', removeHover);
+	element.addEventListener('focusin', addHover);
+	element.addEventListener('focusout', removeHover);
 }
 
 class HiddenCheckboxWidget extends WidgetType {
@@ -233,7 +245,7 @@ class MetadataTailWidget extends WidgetType {
 		const breakEl = createOwnerElement(wrapper, 'br');
 		wrapper.appendChild(breakEl);
 		const tailWrap = createOwnerElement(wrapper, 'span');
-		tailWrap.className = 'operon-live-preview-tail-wrap';
+		tailWrap.className = 'operon-live-preview-tail-wrap operon-task-chip-surface';
 		const row = createOwnerElement(tailWrap, 'span');
 		row.className = 'operon-live-preview-tail-row';
 		const actions = createOwnerElement(tailWrap, 'span');
@@ -286,8 +298,9 @@ class MetadataTailWidget extends WidgetType {
 			locationResolver,
 		);
 		for (const entry of entries) {
-			const chip = createInlineTaskCompactChipElement(entry, '', { owner: row });
+			const chip = createInlineTaskCompactChipElement(entry, 'operon-task-chip', { owner: row });
 			applyLivePreviewChipVisualStyles(chip, entry, fieldValues, taskColor, this.callbacks);
+			bindLivePreviewChipHoverState(chip);
 			if (entry.iconOnly) {
 				bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
 				if (entry.externalUrl) {
@@ -359,9 +372,13 @@ class MetadataTailWidget extends WidgetType {
 		if (hiddenCount > 0 && operonId) {
 			const moreButton = createOwnerElement(row, 'button');
 			moreButton.type = 'button';
-			moreButton.className = 'operon-chip operon-live-preview-chip operon-live-preview-chip-overflow';
+			moreButton.className = 'operon-chip operon-live-preview-chip operon-live-preview-chip-overflow operon-task-chip operon-task-chip-overflow';
 			moreButton.textContent = `+${hiddenCount}`;
-			if (taskColor) moreButton.setCssProps({ '--operon-live-hover-border': taskColor });
+			if (taskColor) moreButton.setCssProps({
+				'--operon-live-hover-border': taskColor,
+				'--operon-task-chip-hover-accent': taskColor,
+			});
+			bindLivePreviewChipHoverState(moreButton);
 			moreButton.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -397,11 +414,15 @@ class MetadataTailWidget extends WidgetType {
 			const isTracking = this.trackingSnapshot;
 			const playButton = createOwnerElement(actions, 'button');
 			playButton.type = 'button';
-			playButton.className = 'operon-live-preview-edit operon-live-preview-action';
+			playButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-chip-action';
 			if (isTracking) playButton.classList.add('is-active');
 			setIcon(playButton, isTracking ? 'square' : 'play');
 			setAccessibleLabelWithoutTooltip(playButton, t('tooltips', isTracking ? 'stopTimer' : 'startTimer'));
-			if (taskColor) playButton.setCssProps({ '--operon-live-hover-border': taskColor });
+			if (taskColor) playButton.setCssProps({
+				'--operon-live-hover-border': taskColor,
+				'--operon-task-chip-hover-accent': taskColor,
+			});
+			bindLivePreviewChipHoverState(playButton);
 			playButton.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -414,7 +435,7 @@ class MetadataTailWidget extends WidgetType {
 			const isPinned = this.pinnedSnapshot;
 			const pinButton = createOwnerElement(actions, 'button');
 			pinButton.type = 'button';
-			pinButton.className = 'operon-live-preview-edit operon-live-preview-action';
+			pinButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-chip-action';
 			if (isPinned) pinButton.classList.add('is-active');
 			const pinLabel = t('contextMenu', isPinned ? 'unpinTask' : 'pinTask');
 			bindOperonHoverTooltip(pinButton, {
@@ -423,7 +444,11 @@ class MetadataTailWidget extends WidgetType {
 			});
 			setIcon(pinButton, isPinned ? 'pin-off' : 'pin');
 			setAccessibleLabelWithoutTooltip(pinButton, pinLabel);
-			if (taskColor) pinButton.setCssProps({ '--operon-live-hover-border': taskColor });
+			if (taskColor) pinButton.setCssProps({
+				'--operon-live-hover-border': taskColor,
+				'--operon-task-chip-hover-accent': taskColor,
+			});
+			bindLivePreviewChipHoverState(pinButton);
 			pinButton.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -442,6 +467,7 @@ class MetadataTailWidget extends WidgetType {
 				preferredHorizontal: 'right',
 				owner: actions,
 			});
+			noteIndicator.querySelector('.operon-hover-trigger')?.classList.add('operon-task-chip-action');
 			actions.appendChild(noteIndicator);
 		}
 
@@ -449,10 +475,14 @@ class MetadataTailWidget extends WidgetType {
 			const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(this.indexedTask));
 			const subtaskButton = createOwnerElement(actions, 'button');
 			subtaskButton.type = 'button';
-			subtaskButton.className = 'operon-live-preview-edit operon-live-preview-action';
+			subtaskButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-chip-action';
 			setIcon(subtaskButton, resolveSubtaskActionIcon(this.indexedTask));
 			setAccessibleLabelWithoutTooltip(subtaskButton, subtaskLabel);
-			if (taskColor) subtaskButton.setCssProps({ '--operon-live-hover-border': taskColor });
+			if (taskColor) subtaskButton.setCssProps({
+				'--operon-live-hover-border': taskColor,
+				'--operon-task-chip-hover-accent': taskColor,
+			});
+			bindLivePreviewChipHoverState(subtaskButton);
 			subtaskButton.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -463,10 +493,14 @@ class MetadataTailWidget extends WidgetType {
 
 		const editButton = createOwnerElement(actions, 'button');
 		editButton.type = 'button';
-		editButton.className = 'operon-live-preview-edit';
+		editButton.className = 'operon-live-preview-edit operon-task-chip-action';
 		setIcon(editButton, 'settings-2');
 		setAccessibleLabelWithoutTooltip(editButton, t('tooltips', 'editTask'));
-		if (taskColor) editButton.setCssProps({ '--operon-live-hover-border': taskColor });
+		if (taskColor) editButton.setCssProps({
+			'--operon-live-hover-border': taskColor,
+			'--operon-task-chip-hover-accent': taskColor,
+		});
+		bindLivePreviewChipHoverState(editButton);
 		editButton.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -795,13 +829,17 @@ function applyLivePreviewChipVisualStyles(
 	callbacks: LivePreviewCallbacks,
 ): void {
 	const cssProps: Record<string, string> = {};
-	if (taskColor) cssProps['--operon-live-hover-border'] = taskColor;
+	const hoverColor = taskColor ?? entry.taskColor;
+	if (hoverColor) {
+		cssProps['--operon-live-hover-border'] = hoverColor;
+		cssProps['--operon-task-chip-hover-accent'] = hoverColor;
+	}
 	if (entry.colorRole === 'priority') {
 		const def = callbacks.getPriorities().find(priority => priority.label === fieldValues['priority']);
-		if (def) cssProps['--operon-live-chip-color'] = def.color;
+		if (def) cssProps['--operon-inline-chip-icon-color'] = def.color;
 	}
 	if (entry.colorRole === 'status') {
-		cssProps['--operon-live-chip-color'] = lookupStatusColor(fieldValues['status'], callbacks.getPipelines());
+		cssProps['--operon-inline-chip-icon-color'] = lookupStatusColor(fieldValues['status'], callbacks.getPipelines());
 	}
 	if (entry.key === 'location') {
 		const locationIconColor = entry.locationMarkerColor ?? taskColor;

@@ -19,7 +19,7 @@ import {
 	type ContextualMenuContext,
 	type ResolvedContextualMenuAction,
 } from '../../core/contextual-menu-engine';
-import { ContextualHoverMenuController } from '../contextual-hover-menu';
+import { bindContextualHoverMenuTrigger, ContextualHoverMenuController } from '../contextual-hover-menu';
 import { resolveContextualHoverMenuPosition } from '../contextual-hover-menu-position';
 import { findStatusDef, Pipeline } from '../../types/pipeline';
 import {
@@ -1926,26 +1926,17 @@ export class KanbanView extends ItemView {
 
 	private bindHoverMenuTarget(triggerEl: HTMLElement, task: IndexedTask): void {
 		if (!this.callbacks.onItemAction) return;
-		triggerEl.addEventListener('pointerenter', () => {
-			if (this.hoverMenu.isActive(task.operonId)) {
-				this.hoverMenu.clearHideTimer();
-				return;
-			}
-			const context = this.resolveHoverContext(task);
-			const actions = this.resolveHoverActions(context);
-			if (actions.length === 0) return;
-			this.scheduleHoverMenuShow(() => {
-				this.showHoverMenu(triggerEl, task.operonId, actions, context);
-			});
-		});
-		triggerEl.addEventListener('pointerleave', event => {
-			this.clearHoverMenuShowTimer();
-			const related = event.relatedTarget;
-			if (this.hoverMenu.contains(related)) {
-				this.clearHoverMenuHideTimer();
-				return;
-			}
-			this.scheduleHoverMenuHide();
+		bindContextualHoverMenuTrigger({
+			controller: this.hoverMenu,
+			triggerEl,
+			menuKey: task.operonId,
+			getSettings: () => this.getSettings(),
+			openMenu: ({ mobile }) => {
+				const context = this.resolveHoverContext(task);
+				const actions = this.resolveHoverActions(context);
+				if (actions.length === 0) return false;
+				return this.showHoverMenu(triggerEl, task.operonId, actions, context, mobile);
+			},
 		});
 	}
 
@@ -1973,15 +1964,22 @@ export class KanbanView extends ItemView {
 		taskId: string,
 		actions: ResolvedContextualMenuAction[],
 		context: ContextualMenuContext,
-	): void {
-		if (actions.length === 0 || !this.callbacks.onItemAction) return;
-		this.hoverMenu.show({
+		mobileInteraction = false,
+	): boolean {
+		if (actions.length === 0 || !this.callbacks.onItemAction) return false;
+		return this.hoverMenu.show({
 			key: taskId,
 			taskId,
 			actions,
 			anchorRect: anchorEl.getBoundingClientRect(),
 			context,
 			onAction: this.callbacks.onItemAction,
+			mobileInteraction: mobileInteraction
+				? {
+					transitionGraceMs: this.getSettings().contextualMenuMobileTransitionGraceMs,
+					guardTargets: [anchorEl],
+				}
+				: undefined,
 		});
 	}
 
@@ -1999,22 +1997,6 @@ export class KanbanView extends ItemView {
 		menu.style.width = `${position.width}px`;
 		menu.style.maxHeight = `${Math.floor(position.maxHeight)}px`;
 		return true;
-	}
-
-	private scheduleHoverMenuHide(): void {
-		this.hoverMenu.scheduleHide();
-	}
-
-	private scheduleHoverMenuShow(callback: () => void): void {
-		this.hoverMenu.scheduleShow(callback);
-	}
-
-	private clearHoverMenuShowTimer(): void {
-		this.hoverMenu.clearShowTimer();
-	}
-
-	private clearHoverMenuHideTimer(): void {
-		this.hoverMenu.clearHideTimer();
 	}
 
 	private hideHoverMenu(immediate = true): void {

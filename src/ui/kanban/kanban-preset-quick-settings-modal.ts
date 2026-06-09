@@ -57,12 +57,13 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			return;
 		}
 
-		const nameSetting = new Setting(contentEl)
+		const presetCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionPreset'));
+		const nameSetting = new Setting(presetCard)
 			.setName(t('settings', 'kanbanPresetName'))
 			.setDesc(t('settings', 'kanbanQuickPresetNameDesc'))
 			.addText(text => {
 				text.setValue(preset.name);
-				text.inputEl.addClass('operon-preset-name-input');
+				text.inputEl.addClass('operon-kanban-preset-name-input');
 				text.inputEl.addEventListener('input', () => {
 					const rawValue = text.inputEl.value;
 					void this.updatePreset(current => {
@@ -78,10 +79,10 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 					text.inputEl.blur();
 				});
 			});
-		nameSetting.settingEl.addClass('operon-preset-name-setting');
+		nameSetting.settingEl.addClass('operon-kanban-preset-name-setting');
 
 		const settings = this.options.getSettings();
-		new Setting(contentEl)
+		new Setting(presetCard)
 			.setName(t('settings', 'kanbanPipeline'))
 			.setDesc(t('settings', 'kanbanPipelineDesc'))
 			.addDropdown(dropdown => {
@@ -99,7 +100,8 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 
 		const filterSets = getNormalFilterSets(settings.filterSets);
 		const currentFilter = filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
-		new Setting(contentEl)
+		const filteringCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionFilteringLanes'));
+		new Setting(filteringCard)
 			.setName(t('settings', 'kanbanFilter'))
 			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
 			.addButton(button => {
@@ -127,7 +129,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				}));
 			});
 
-		new Setting(contentEl)
+		new Setting(filteringCard)
 			.setName(t('settings', 'kanbanSwimlaneField'))
 			.setDesc(t('settings', 'kanbanSwimlaneFieldDesc'))
 			.addDropdown(dropdown => {
@@ -140,7 +142,11 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		const sortingCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionSorting'));
+		this.renderSortSection(sortingCard, preset);
+
+		const appearanceCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionAppearance'));
+		new Setting(appearanceCard)
 			.setName(t('settings', 'kanbanTaskColorSource'))
 			.setDesc(t('settings', 'kanbanTaskColorSourceDesc'))
 			.addDropdown(dropdown => {
@@ -153,9 +159,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		this.renderSortSection(contentEl, preset);
-
-		new Setting(contentEl)
+		new Setting(appearanceCard)
 			.setName(t('calendar', 'appearanceLight'))
 			.setDesc(t('calendar', 'appearanceLightDesc'))
 			.addDropdown(dropdown => {
@@ -168,7 +172,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		new Setting(appearanceCard)
 			.setName(t('calendar', 'appearanceDark'))
 			.setDesc(t('calendar', 'appearanceDarkDesc'))
 			.addDropdown(dropdown => {
@@ -181,7 +185,8 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		const visibilityCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionVisibility'));
+		new Setting(visibilityCard)
 			.setName(t('settings', 'kanbanCollapseEmptyColumns'))
 			.setDesc(t('settings', 'kanbanCollapseEmptyColumnsDesc'))
 			.addToggle(toggle => {
@@ -193,7 +198,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		new Setting(visibilityCard)
 			.setName(t('settings', 'kanbanCollapseEmptySwimlanes'))
 			.setDesc(t('settings', 'kanbanCollapseEmptySwimlanesDesc'))
 			.addToggle(toggle => {
@@ -205,7 +210,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		new Setting(visibilityCard)
 			.setName(t('settings', 'kanbanAutoCollapseFinishedColumns'))
 			.setDesc(t('settings', 'kanbanAutoCollapseFinishedColumnsDesc'))
 			.addToggle(toggle => {
@@ -220,18 +225,27 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 		this.renderButtons(contentEl);
 	}
 
+	private createPresetSection(container: HTMLElement, title: string): HTMLElement {
+		const section = container.createDiv('operon-kanban-preset-settings-section');
+		section.createEl('h4', {
+			cls: 'operon-kanban-preset-settings-section-title',
+			text: title,
+		});
+		return section.createDiv('operon-kanban-preset-settings-card');
+	}
+
 	private renderButtons(container: HTMLElement): void {
-		const row = container.createDiv('operon-preset-settings-footer');
+		const row = container.createDiv('operon-kanban-preset-settings-footer');
 
 		const cancelBtn = row.createEl('button', {
-			cls: 'operon-preset-settings-footer-button',
+			cls: 'operon-kanban-preset-settings-footer-button',
 			text: t('buttons', 'cancel'),
 		});
 		cancelBtn.type = 'button';
 		cancelBtn.addEventListener('click', () => this.close());
 
 		const saveBtn = row.createEl('button', {
-			cls: 'operon-preset-settings-footer-button mod-cta',
+			cls: 'operon-kanban-preset-settings-footer-button mod-cta',
 			text: t('buttons', 'save'),
 		});
 		saveBtn.type = 'button';
@@ -250,10 +264,9 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 	}
 
 	private renderSortSection(container: HTMLElement, preset: KanbanPreset): void {
-		container.createEl('h4', { text: t('settings', 'kanbanSorting') });
 		container.createDiv({
 			text: t('settings', 'kanbanSortingDesc'),
-			cls: 'setting-item-description',
+			cls: 'operon-kanban-preset-section-desc',
 		});
 		this.renderSortModeControl(container, preset);
 		if (preset.sortMode === 'manual') {
@@ -261,14 +274,14 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			return;
 		}
 
-			const section = container.createDiv('operon-kanban-sort-rules');
+		const section = container.createDiv('operon-kanban-sort-rules');
 
-			preset.sortRules.forEach((rule, index) => {
-				const row = section.createDiv('operon-kanban-sort-row');
+		preset.sortRules.forEach((rule, index) => {
+			const row = section.createDiv('operon-kanban-sort-row');
 
-				row.createSpan({ cls: 'operon-kanban-sort-label', text: t('settings', 'kanbanSortBy') });
+			row.createSpan({ cls: 'operon-kanban-sort-label', text: t('settings', 'kanbanSortBy') });
 
-				const fieldSelect = row.createEl('select', { cls: 'operon-kanban-sort-select' });
+			const fieldSelect = row.createEl('select', { cls: 'operon-kanban-sort-select' });
 			for (const option of KANBAN_SORT_FIELD_OPTIONS) {
 				fieldSelect.add(new Option(this.getKanbanSortFieldLabel(option), option.value));
 			}
@@ -279,7 +292,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			}));
 
-				const directionButton = row.createEl('button', { cls: 'operon-kanban-sort-toggle', text: this.formatSortDirection(rule.direction) });
+			const directionButton = row.createEl('button', { cls: 'operon-kanban-sort-toggle', text: this.formatSortDirection(rule.direction) });
 			directionButton.addEventListener('click', settingsAsyncHandler('kanban preset sort direction change failed', async () => {
 				await this.updatePreset(current => {
 					current.sortRules[index].direction = current.sortRules[index].direction === 'asc' ? 'desc' : 'asc';
@@ -287,7 +300,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				this.render();
 			}));
 
-				const emptyButton = row.createEl('button', { cls: 'operon-kanban-sort-toggle', text: this.formatSortEmpty(rule.empty) });
+			const emptyButton = row.createEl('button', { cls: 'operon-kanban-sort-toggle', text: this.formatSortEmpty(rule.empty) });
 			bindOperonHoverTooltip(emptyButton, { content: t('settings', 'kanbanSortEmptyTooltip'), taskColor: null });
 			emptyButton.addEventListener('click', settingsAsyncHandler('kanban preset sort empty placement change failed', async () => {
 				await this.updatePreset(current => {
@@ -296,7 +309,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				this.render();
 			}));
 
-				const upButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '↑' });
+			const upButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '↑' });
 			upButton.disabled = index === 0;
 			upButton.addEventListener('click', settingsAsyncHandler('kanban preset sort move up failed', async () => {
 				if (index === 0) return;
@@ -307,7 +320,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				this.render();
 			}));
 
-				const downButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '↓' });
+			const downButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '↓' });
 			downButton.disabled = index >= preset.sortRules.length - 1;
 			downButton.addEventListener('click', settingsAsyncHandler('kanban preset sort move down failed', async () => {
 				if (index >= preset.sortRules.length - 1) return;
@@ -318,7 +331,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				this.render();
 			}));
 
-				const removeButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '✕' });
+			const removeButton = row.createEl('button', { cls: 'operon-kanban-sort-icon-button', text: '✕' });
 			removeButton.disabled = preset.sortRules.length <= 1;
 			removeButton.addEventListener('click', settingsAsyncHandler('kanban preset sort remove failed', async () => {
 				if (preset.sortRules.length <= 1) return;
@@ -329,7 +342,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			}));
 		});
 
-			const addRow = section.createDiv('operon-kanban-sort-add-row');
+		const addRow = section.createDiv('operon-kanban-sort-add-row');
 		const addButton = addRow.createEl('button', { text: t('settings', 'kanbanAddSortField') });
 		addButton.addEventListener('click', settingsAsyncHandler('kanban preset sort add failed', async () => {
 			await this.updatePreset(current => {

@@ -13,6 +13,26 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.2.1',
+		date: '2026-06-09',
+		title: 'A calmer visual direction for Operon',
+		showOnUpdate: true,
+		bannerUrl: 'operon-1-2-1-ui-polish-chips',
+		body: `
+I used this release to start tightening Operon's visual language. **Linear** has been one of the references in my head: calm, compact, structured, and very much a tool rather than a decorative app.
+
+The first visible result is the new **task chip** direction, plus smaller polish passes across **Kanban**, **Calendar**, **filters**, **pickers**, and **menus**. Obsidian themes can make this tricky, so I am taking it gradually: a few elements per bump, tested against real workflows instead of chasing a huge redesign.
+
+## Improved
+- Refined Operon's **interface polish** across Task Chips settings, chips, pickers, Kanban, Calendar, Filter views, Task Creator, Task Finder, FlowTime, Time Session History, tooltips, and action menus with calmer colors, more structured corners, cleaner guide lines, better-aligned controls, consistent chip hover behavior, and focused subpages for dense chip settings.
+- Improved **task contextual menus** on mobile with steadier long-press timing and shared behavior across task surfaces, so touch actions like **Unschedule** stay easier to reach.
+- Improved **Dynamic File Task Filter** grouping and sorting so the current file task stays visible at the top, direct subtasks can be grouped below it, descendants stay nested under their parent, **Happens on** works as a sortable date field, and custom sort rules apply inside expanded subtask trees.
+
+## Fixed
+- Fixed remaining **Dynamic File Task Filter** and compact chip polish issues, including Live Preview width alignment after pane geometry changes, mobile Location Map chip previews, and duplicate compact chip CSS declarations.
+`.trim(),
+	},
+	{
 		version: '1.2.0',
 		date: '2026-06-08',
 		title: 'Normal checkbox workflows and Day Picker',

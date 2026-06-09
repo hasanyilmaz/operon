@@ -141,7 +141,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 
 	toDOM(view: EditorView): HTMLElement {
 		const wrap = createOwnerElement(view.dom, 'span');
-		wrap.className = 'operon-task-wikilink-trailing';
+		wrap.className = 'operon-task-wikilink-trailing operon-task-chip-surface';
 		wrap.setCssProps({ '--operon-task-wikilink-hover': this.visuals.hoverColor });
 
 		const progressEl = createProgressElement(this.progress, wrap);
@@ -182,7 +182,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 		if (!isTerminal && settings.overlayTaskShowPlayAction && this.callbacks.toggleTimer && this.task.checkbox === 'open') {
 			const playButton = createOwnerElement(wrap, 'button');
 			playButton.type = 'button';
-			playButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action';
+			playButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action operon-task-chip-action';
 			if (this.trackingSnapshot) playButton.classList.add('is-active');
 			playButton.setCssProps({ '--operon-live-hover-border': this.visuals.hoverColor });
 			setIcon(playButton, this.trackingSnapshot ? 'square' : 'play');
@@ -197,7 +197,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 		if (!isTerminal && settings.overlayTaskShowPinAction && this.callbacks.onContextualAction) {
 			const pinButton = createOwnerElement(wrap, 'button');
 			pinButton.type = 'button';
-			pinButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action';
+			pinButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action operon-task-chip-action';
 			if (this.pinnedSnapshot) pinButton.classList.add('is-active');
 			pinButton.setCssProps({ '--operon-live-hover-border': this.visuals.hoverColor });
 			setIcon(pinButton, this.pinnedSnapshot ? 'pin-off' : 'pin');
@@ -212,7 +212,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 		const noteValue = this.task.fieldValues['note']?.trim();
 		if (settings.overlayTaskShowNoteAction && noteValue) {
 			const noteIndicator = createOwnerElement(wrap, 'span');
-			noteIndicator.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action is-active';
+			noteIndicator.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action operon-task-chip-action is-active';
 			noteIndicator.setAttribute('role', 'img');
 			noteIndicator.setCssProps({ '--operon-live-hover-border': this.visuals.hoverColor });
 			setIcon(noteIndicator, getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen');
@@ -230,7 +230,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 			const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(this.task));
 			const subtaskButton = createOwnerElement(wrap, 'button');
 			subtaskButton.type = 'button';
-			subtaskButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action';
+			subtaskButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-wikilink-overlay-action operon-task-chip-action';
 			subtaskButton.setCssProps({ '--operon-live-hover-border': this.visuals.hoverColor });
 			setIcon(subtaskButton, resolveSubtaskActionIcon(this.task));
 			setAccessibleLabelWithoutTooltip(subtaskButton, subtaskLabel);
@@ -244,7 +244,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 
 		const button = createOwnerElement(wrap, 'button');
 		button.type = 'button';
-		button.className = 'operon-task-wikilink-action operon-task-wikilink-right';
+		button.className = 'operon-task-wikilink-action operon-task-wikilink-right operon-task-chip-action';
 		button.setCssProps({ '--operon-task-wikilink-hover': this.visuals.hoverColor });
 		setIcon(button, 'settings-2');
 		setAccessibleLabelWithoutTooltip(button, t('tooltips', 'editTask'));
@@ -521,7 +521,7 @@ function createProgressElement(progress: TaskFileLinkProgressIndicator, owner?: 
 	if (progress.kind === 'none') return null;
 
 	const el = createOwnerElement(owner, 'span');
-	el.className = 'operon-task-wikilink-progress';
+	el.className = 'operon-task-wikilink-progress operon-task-chip operon-task-chip-progress';
 
 	if (progress.kind === 'count') {
 		el.classList.add('operon-task-wikilink-progress-count');

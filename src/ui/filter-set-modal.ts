@@ -913,7 +913,7 @@ export class FilterSetModal extends Modal {
 		const sep = container.createDiv('operon-filter-section operon-filter-sort-section');
 
 		const groupFieldOptions = this.getFieldOptions(false, true);
-		const sortFieldOptions = this.getFieldOptions();
+		const sortFieldOptions = this.getFieldOptions(false, true);
 		const groupOptions = [
 			{ value: '', label: `(${t('filterSets', 'groupNone')})` },
 			...groupFieldOptions.map(optionDef => ({ value: optionDef.field, label: optionDef.label })),
@@ -1345,7 +1345,7 @@ class FilterPreviewModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('operon-filter-preview-modal');
-		const surface = contentEl.createDiv('operon-embed operon-filter-surface operon-filter-surface--preview');
+		const surface = contentEl.createDiv('operon-embed operon-filter-surface operon-task-chip-surface operon-filter-surface--preview');
 
 		// Header
 		const header = surface.createDiv('operon-embed-header operon-filter-preview-header');

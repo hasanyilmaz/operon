@@ -24,6 +24,7 @@ export class TrackerSessionEditModal extends Modal {
 
 	constructor(app: App, options: TrackerSessionEditModalOptions) {
 		super(app);
+		this.modalEl.addClass('operon-tracker-session-edit-modal');
 		this.options = options;
 	}
 

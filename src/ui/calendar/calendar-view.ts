@@ -58,7 +58,7 @@ import {
 	normalizeTaskColorSource,
 	resolveTaskColorSource,
 } from '../../core/task-color-source';
-import { ContextualHoverMenuController } from '../contextual-hover-menu';
+import { bindContextualHoverMenuTrigger, ContextualHoverMenuController } from '../contextual-hover-menu';
 import {
 	resolveContextualHoverMenuPosition,
 	resolveVisibleContextualHoverAnchorRect,
@@ -3946,10 +3946,9 @@ export class CalendarView extends ItemView {
 				setIcon(button, 'list');
 			}
 			setAccessibleLabelWithoutTooltip(button, t('calendar', 'addTaskToDate', { date: dateKey }));
-		button.addEventListener('pointerdown', event => {
-			event.preventDefault();
-			event.stopPropagation();
-		});
+			button.addEventListener('pointerdown', event => {
+				event.preventDefault();
+			});
 		button.addEventListener('click', event => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -4387,36 +4386,27 @@ export class CalendarView extends ItemView {
 
 	private bindSidebarTaskPoolHoverMenuTarget(triggerEl: HTMLElement, task: IndexedTask): void {
 		if (!this.callbacks.onItemAction) return;
-		triggerEl.addEventListener('pointerenter', () => {
-			if (this.hoverMenu.isActive(task.operonId)) {
-				this.hoverMenu.clearHideTimer();
-				return;
-			}
-			const context: ContextualMenuContext = {
-				surface: 'calendarSidebarTaskPoolTask',
-				taskId: task.operonId,
-				task,
-				now: localNow(),
-				isPinned: this.getPinnedCache()?.isPinned(task.operonId) ?? false,
-			};
-			const settings = this.getSettings();
-			const actions = resolveContextualMenu(
-				context,
-				settings.contextualMenuActionAllowlist,
-				settings.contextualMenuSurfaceActionMatrix,
-			);
-			this.scheduleCalendarHoverMenuShow(() => {
-				this.showHoverMenuForActions(triggerEl, task.operonId, actions, undefined, context);
-			});
-		});
-		triggerEl.addEventListener('pointerleave', (event: PointerEvent) => {
-			this.clearHoverMenuShowTimer();
-			const related = event.relatedTarget;
-			if (this.hoverMenu.contains(related)) {
-				this.clearHoverMenuHideTimer();
-				return;
-			}
-			this.scheduleCalendarHoverMenuHide();
+		bindContextualHoverMenuTrigger({
+			controller: this.hoverMenu,
+			triggerEl,
+			menuKey: task.operonId,
+			getSettings: () => this.getSettings(),
+			openMenu: ({ mobile }) => {
+				const context: ContextualMenuContext = {
+					surface: 'calendarSidebarTaskPoolTask',
+					taskId: task.operonId,
+					task,
+					now: localNow(),
+					isPinned: this.getPinnedCache()?.isPinned(task.operonId) ?? false,
+				};
+				const settings = this.getSettings();
+				const actions = resolveContextualMenu(
+					context,
+					settings.contextualMenuActionAllowlist,
+					settings.contextualMenuSurfaceActionMatrix,
+				);
+				return this.showHoverMenuForActions(triggerEl, task.operonId, actions, undefined, context, mobile);
+			},
 		});
 	}
 
@@ -4439,10 +4429,9 @@ export class CalendarView extends ItemView {
 			if (statusColor) {
 				button.style.color = statusColor;
 			}
-		button.addEventListener('pointerdown', event => {
-			event.preventDefault();
-			event.stopPropagation();
-		});
+			button.addEventListener('pointerdown', event => {
+				event.preventDefault();
+			});
 			button.addEventListener('click', event => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -5571,7 +5560,7 @@ export class CalendarView extends ItemView {
 
 			hoverGuideOverlay.empty();
 			const createGuide = (minuteOfDay: number, labelSide: 'start' | 'end'): void => {
-				const guide = hoverGuideOverlay.createDiv('operon-calendar-hover-guide');
+				const guide = hoverGuideOverlay.createDiv('operon-calendar-hover-guide is-edit-guide');
 				const top = (gridRect.top - sectionRect.top) + this.minuteToGridOffset(minuteOfDay, metrics);
 				const currentBlockRect = block.getBoundingClientRect();
 				const labelCenter = Math.max(0, (currentBlockRect.left - sectionRect.left) + (currentBlockRect.width / 2) - left);
@@ -6637,32 +6626,22 @@ export class CalendarView extends ItemView {
 
 	private bindHoverMenuTarget(triggerEl: HTMLElement, item: CalendarItem): void {
 		if (!this.callbacks.onItemAction) return;
-		triggerEl.addEventListener('pointerenter', () => {
-			if (this.hoverMenu.isActive(item.taskId)) {
-				this.hoverMenu.clearHideTimer();
-				return;
-			}
-			this.scheduleCalendarHoverMenuShow(() => {
-				void this.showCalendarHoverMenu(triggerEl, item);
-			});
-		});
-		triggerEl.addEventListener('pointerleave', (event: PointerEvent) => {
-			this.clearHoverMenuShowTimer();
-			const related = event.relatedTarget;
-			if (this.hoverMenu.contains(related)) {
-				this.clearHoverMenuHideTimer();
-				return;
-			}
-			this.scheduleCalendarHoverMenuHide();
+		bindContextualHoverMenuTrigger({
+			controller: this.hoverMenu,
+			triggerEl,
+			menuKey: item.taskId,
+			getSettings: () => this.getSettings(),
+			openMenu: ({ mobile }) => this.showCalendarHoverMenu(triggerEl, item, mobile),
 		});
 	}
 
-	private async showCalendarHoverMenu(
+	private showCalendarHoverMenu(
 		anchorEl: HTMLElement,
 		item: CalendarItem,
-	): Promise<void> {
+		mobileInteraction = false,
+	): boolean {
 		if (this.timedHorizontalGesture.axisLock === 'horizontal' || Math.abs(this.timedHorizontalGesture.offsetPx) > 0.5) {
-			return;
+			return false;
 		}
 		const context: ContextualMenuContext = {
 			surface: getContextualMenuSurfaceForCalendarItem(item),
@@ -6688,14 +6667,15 @@ export class CalendarView extends ItemView {
 			if (this.hoverMenu.isActive(item.taskId)) {
 				this.hideCalendarHoverMenu(true);
 			}
-			return;
+			return false;
 		}
-		this.showHoverMenuForActions(
+		return this.showHoverMenuForActions(
 			anchorEl,
 			item.taskId,
 			actions,
 			this.resolveCalendarHoverMenuAnchorRect(anchorEl, item),
 			context,
+			mobileInteraction,
 		);
 	}
 
@@ -6705,20 +6685,27 @@ export class CalendarView extends ItemView {
 		actions: ResolvedContextualMenuAction[],
 		anchorRect = anchorEl.getBoundingClientRect(),
 		context?: ContextualMenuContext,
-	): void {
+		mobileInteraction = false,
+	): boolean {
 		if (actions.length === 0 || !this.callbacks.onItemAction) {
 			if (this.hoverMenu.isActive(taskId)) {
 				this.hideCalendarHoverMenu(true);
 			}
-			return;
+			return false;
 		}
-		this.hoverMenu.show({
+		return this.hoverMenu.show({
 			key: taskId,
 			taskId,
 			actions,
 			anchorRect,
 			context,
 			onAction: this.callbacks.onItemAction,
+			mobileInteraction: mobileInteraction
+				? {
+					transitionGraceMs: this.getSettings().contextualMenuMobileTransitionGraceMs,
+					guardTargets: [anchorEl],
+				}
+				: undefined,
 		});
 	}
 
@@ -6754,22 +6741,6 @@ export class CalendarView extends ItemView {
 		menu.style.width = `${position.width}px`;
 		menu.style.maxHeight = `${Math.floor(position.maxHeight)}px`;
 		return true;
-	}
-
-	private scheduleCalendarHoverMenuHide(): void {
-		this.hoverMenu.scheduleHide();
-	}
-
-	private scheduleCalendarHoverMenuShow(callback: () => void): void {
-		this.hoverMenu.scheduleShow(callback);
-	}
-
-	private clearHoverMenuShowTimer(): void {
-		this.hoverMenu.clearShowTimer();
-	}
-
-	private clearHoverMenuHideTimer(): void {
-		this.hoverMenu.clearHideTimer();
 	}
 
 	private hideCalendarHoverMenu(immediate = true): void {
@@ -6913,10 +6884,9 @@ export class CalendarView extends ItemView {
 			return;
 		}
 
-		button.addEventListener('pointerdown', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-		});
+			button.addEventListener('pointerdown', (event) => {
+				event.preventDefault();
+			});
 			button.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -7061,7 +7031,7 @@ export class CalendarView extends ItemView {
 			const right = Math.max(left, blockRect.left - sectionRect.left);
 			const width = Math.max(0, right - left);
 			const labelCenter = Math.max(0, (blockRect.left - sectionRect.left) + (blockRect.width / 2) - left);
-			const guide = overlay.createDiv('operon-calendar-hover-guide');
+			const guide = overlay.createDiv('operon-calendar-hover-guide is-hover-guide');
 			guide.style.top = `${top}px`;
 			guide.style.left = `${left}px`;
 			guide.style.width = `${width}px`;
@@ -7563,7 +7533,7 @@ export class CalendarView extends ItemView {
 		overlay.empty();
 
 		const createGuide = (minuteOfDay: number, labelSide: 'start' | 'end'): void => {
-			const guide = overlay.createDiv('operon-calendar-hover-guide');
+			const guide = overlay.createDiv('operon-calendar-hover-guide is-edit-guide');
 			const top = (gridRect.top - sectionRect.top) + this.minuteToGridOffset(minuteOfDay, metrics);
 			const labelCenter = Math.max(0, blockLeft + (dayWidth / 2) - left);
 			guide.style.top = `${Math.max(0, top)}px`;

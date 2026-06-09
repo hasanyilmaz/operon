@@ -301,6 +301,11 @@ export function buildInlineTaskCompactChipEntries(
 			}
 		}
 	}
+	if (taskColor) {
+		for (const entry of entries) {
+			entry.taskColor ??= taskColor;
+		}
+	}
 	return entries;
 }
 

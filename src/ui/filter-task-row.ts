@@ -1,8 +1,10 @@
 import { setIcon } from 'obsidian';
+import { sortTasksBySpecs } from '../core/filter-evaluator';
 import { t } from '../core/i18n';
 import { resolveDirectSubtaskProgressFromStats } from '../core/task-stats-read-model';
 import { IndexedTask } from '../types/fields';
 import { resolveWorkflowStatus } from '../types/pipeline';
+import { FilterSortSpec } from '../types/settings';
 import { buildReadingTaskRowElement, ReadingTaskRowCallbacks } from './reading-task-row';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -22,6 +24,7 @@ interface FilterTaskRowOptions {
 	defaultExpandAll?: boolean;
 	showOnlyOpenSubtasks?: boolean;
 	showSubtaskAction?: boolean;
+	subtaskSorts?: FilterSortSpec[];
 	visibleTaskIds?: Set<string>;
 }
 
@@ -44,6 +47,7 @@ export function buildFilterTaskRowElement(
 			),
 			callbacks,
 			options?.showOnlyOpenSubtasks === true,
+			options?.subtaskSorts,
 		)
 		: [];
 	const hasChildren = childIds.length > 0;
@@ -76,7 +80,7 @@ export function buildFilterTaskRowElement(
 		rowClassName: 'operon-filter-task-row',
 		beforeTailContent: hasChildren
 			? (tail, context) => {
-				const expandButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-filter-expand-action', tail);
+				const expandButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-filter-expand-action operon-task-chip-action operon-task-chip-progress', tail);
 				expandButton.type = 'button';
 				const iconEl = el('span', 'operon-filter-expand-icon', expandButton);
 				const summary = el('span', 'operon-filter-expand-summary', expandButton);
@@ -84,16 +88,12 @@ export function buildFilterTaskRowElement(
 				expandButton.appendChild(summary);
 				if (context.taskColor) {
 					expandButton.style.setProperty('--operon-live-hover-border', context.taskColor);
-				} else if (branchColor) {
-					expandButton.style.setProperty('--operon-live-hover-border', branchColor);
 				}
 				if (childProgress?.allCompleted) {
 					summary.classList.add('is-complete');
 				}
 				if (context.taskColor) {
 					summary.style.setProperty('--operon-live-hover-border', context.taskColor);
-				} else if (branchColor) {
-					summary.style.setProperty('--operon-live-hover-border', branchColor);
 				}
 				const syncButton = () => {
 					const expanded = expandedTaskIds.has(task.operonId);
@@ -120,6 +120,7 @@ export function buildFilterTaskRowElement(
 								new Set([...ancestorIds, task.operonId]),
 								options?.defaultExpandAll === true,
 								options?.showOnlyOpenSubtasks === true,
+								options?.subtaskSorts,
 								options?.visibleTaskIds,
 							);
 						}
@@ -132,7 +133,7 @@ export function buildFilterTaskRowElement(
 				bindOperonHoverTooltip(expandButton, {
 					title: t('tooltips', 'directSubtasks'),
 					content: buildSubtaskTooltipContent(childProgress),
-					taskColor: context.taskColor ?? branchColor,
+					taskColor: context.taskColor,
 					preferredHorizontal: 'right',
 				});
 				tail.appendChild(expandButton);
@@ -141,14 +142,14 @@ export function buildFilterTaskRowElement(
 		beforeEditAction: callbacks.getSettings().filterTaskShowPlainCheckboxAction
 			? (actions, context) => {
 				const progress = plainCheckboxProgress;
-				const control = el('span', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-filter-checkbox-progress-control', actions);
+				const control = el('span', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-filter-checkbox-progress-control operon-task-chip-action operon-task-chip-progress', actions);
 				appendFilterCheckboxProgressContent(control, progress.kind === 'count' ? progress.text : null);
 				if (progress.kind === 'none') {
 					control.classList.add('is-empty');
 				} else if (progress.allCompleted) {
 					control.classList.add('is-complete');
 				}
-				const taskColor = context.taskColor ?? branchColor;
+				const taskColor = context.taskColor;
 				if (taskColor) {
 					control.style.setProperty('--operon-live-hover-border', taskColor);
 				}
@@ -196,6 +197,7 @@ export function buildFilterTaskRowElement(
 				new Set([...ancestorIds, task.operonId]),
 				options?.defaultExpandAll === true,
 				options?.showOnlyOpenSubtasks === true,
+				options?.subtaskSorts,
 				options?.visibleTaskIds,
 			);
 		}
@@ -213,6 +215,7 @@ function renderDirectChildren(
 	ancestorIds: Set<string>,
 	defaultExpandAll: boolean,
 	showOnlyOpenSubtasks: boolean,
+	subtaskSorts?: FilterSortSpec[],
 	visibleTaskIds?: Set<string>,
 ): void {
 	container.empty();
@@ -224,6 +227,7 @@ function renderDirectChildren(
 				ancestorIds,
 				defaultExpandAll,
 				showOnlyOpenSubtasks,
+				subtaskSorts,
 				visibleTaskIds,
 			}, container));
 	}
@@ -233,7 +237,11 @@ function sortSubtaskIds(
 	childIds: string[],
 	callbacks: FilterTaskRowCallbacks,
 	showOnlyOpenSubtasks: boolean,
+	subtaskSorts?: FilterSortSpec[],
 ): string[] {
+	if (subtaskSorts !== undefined) {
+		return sortSubtaskIdsBySpecs(childIds, callbacks, showOnlyOpenSubtasks, subtaskSorts);
+	}
 	const priorityRankMap = new Map(
 		callbacks.getPriorities().map((priority, index) => [priority.label, index] as const),
 	);
@@ -258,6 +266,36 @@ function sortSubtaskIds(
 		const childTask = callbacks.getIndexedTask(childId);
 		return childTask ? isOpenSubtask(childTask, callbacks) : false;
 	});
+}
+
+function sortSubtaskIdsBySpecs(
+	childIds: string[],
+	callbacks: FilterTaskRowCallbacks,
+	showOnlyOpenSubtasks: boolean,
+	subtaskSorts: FilterSortSpec[],
+): string[] {
+	if (subtaskSorts.length === 0) {
+		return childIds.filter(childId => {
+			if (!showOnlyOpenSubtasks) return true;
+			const childTask = callbacks.getIndexedTask(childId);
+			return childTask ? isOpenSubtask(childTask, callbacks) : false;
+		});
+	}
+
+	const childTasks = childIds
+		.map(childId => callbacks.getIndexedTask(childId))
+		.filter((task): task is IndexedTask =>
+			!!task && (!showOnlyOpenSubtasks || isOpenSubtask(task, callbacks))
+		);
+	const sortedTasks = sortTasksBySpecs(childTasks, subtaskSorts, {
+		priorities: callbacks.getPriorities(),
+		isTaskPinned: callbacks.isTaskPinned,
+	});
+	const sortedIds = sortedTasks.map(task => task.operonId);
+	const missingIds = showOnlyOpenSubtasks
+		? []
+		: childIds.filter(childId => !callbacks.getIndexedTask(childId));
+	return [...sortedIds, ...missingIds];
 }
 
 function getSubtaskStateBucket(

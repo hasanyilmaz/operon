@@ -14,7 +14,12 @@ const CONTEXTUAL_MENU_STORE_QUEUE_KEY = `${CONTEXTUAL_MENU_FILE}::__store__`;
 
 export type ContextualMenuStoreSettings = Pick<
 	OperonSettings,
-	'contextualMenuActionAllowlist' | 'contextualMenuSurfaceActionMatrix' | 'contextualMenuOpenDelayMs'
+	| 'contextualMenuActionAllowlist'
+	| 'contextualMenuSurfaceActionMatrix'
+	| 'contextualMenuOpenDelayMs'
+	| 'contextualMenuMobileEnabled'
+	| 'contextualMenuMobileLongPressMs'
+	| 'contextualMenuMobileTransitionGraceMs'
 >;
 
 interface ContextualMenuStoreData {
@@ -22,6 +27,9 @@ interface ContextualMenuStoreData {
 	actionAllowlist: ContextualMenuActionId[];
 	surfaceActionMatrix: ContextualMenuSurfaceActionMatrix;
 	openDelayMs: number;
+	mobileEnabled: boolean;
+	mobileLongPressMs: number;
+	mobileTransitionGraceMs: number;
 }
 
 function cloneActionAllowlist(actionAllowlist: ContextualMenuActionId[]): ContextualMenuActionId[] {
@@ -41,6 +49,9 @@ function cloneSettings(settings: ContextualMenuStoreSettings): ContextualMenuSto
 		contextualMenuActionAllowlist: cloneActionAllowlist(settings.contextualMenuActionAllowlist),
 		contextualMenuSurfaceActionMatrix: cloneSurfaceActionMatrix(settings.contextualMenuSurfaceActionMatrix),
 		contextualMenuOpenDelayMs: settings.contextualMenuOpenDelayMs,
+		contextualMenuMobileEnabled: settings.contextualMenuMobileEnabled,
+		contextualMenuMobileLongPressMs: settings.contextualMenuMobileLongPressMs,
+		contextualMenuMobileTransitionGraceMs: settings.contextualMenuMobileTransitionGraceMs,
 	};
 }
 
@@ -61,6 +72,17 @@ function readStoreData(
 			&& Number.isFinite(raw.openDelayMs)
 			? raw.openDelayMs
 			: fallback.contextualMenuOpenDelayMs,
+		contextualMenuMobileEnabled: typeof raw.mobileEnabled === 'boolean'
+			? raw.mobileEnabled
+			: fallback.contextualMenuMobileEnabled,
+		contextualMenuMobileLongPressMs: typeof raw.mobileLongPressMs === 'number'
+			&& Number.isFinite(raw.mobileLongPressMs)
+			? raw.mobileLongPressMs
+			: fallback.contextualMenuMobileLongPressMs,
+		contextualMenuMobileTransitionGraceMs: typeof raw.mobileTransitionGraceMs === 'number'
+			&& Number.isFinite(raw.mobileTransitionGraceMs)
+			? raw.mobileTransitionGraceMs
+			: fallback.contextualMenuMobileTransitionGraceMs,
 	};
 }
 
@@ -154,6 +176,9 @@ export class ContextualMenuStore {
 			actionAllowlist: cloneActionAllowlist(this.settings.contextualMenuActionAllowlist),
 			surfaceActionMatrix: cloneSurfaceActionMatrix(this.settings.contextualMenuSurfaceActionMatrix),
 			openDelayMs: this.settings.contextualMenuOpenDelayMs,
+			mobileEnabled: this.settings.contextualMenuMobileEnabled,
+			mobileLongPressMs: this.settings.contextualMenuMobileLongPressMs,
+			mobileTransitionGraceMs: this.settings.contextualMenuMobileTransitionGraceMs,
 		};
 		await this.writeQueue.enqueue(CONTEXTUAL_MENU_STORE_QUEUE_KEY, async () => {
 			await writeJsonSafely(adapter, CONTEXTUAL_MENU_FILE, data);

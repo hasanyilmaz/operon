@@ -56,7 +56,8 @@ export class ExternalCalendarSourceEditModal extends Modal {
 
 		this.source.enabled = true;
 
-		const nameSetting = new Setting(c)
+		const sourceCard = this.createExternalCalendarSection(c, t('settings', 'externalCalendarSectionSource'));
+		const nameSetting = new Setting(sourceCard)
 			.setName(t('settings', 'externalCalendarName'))
 			.setDesc(t('settings', 'externalCalendarNameDesc'))
 			.addText(text => {
@@ -66,7 +67,7 @@ export class ExternalCalendarSourceEditModal extends Modal {
 			});
 		nameSetting.settingEl.addClass('operon-external-calendar-name-setting');
 
-		const urlSetting = new Setting(c)
+		const urlSetting = new Setting(sourceCard)
 			.setName(t('settings', 'externalCalendarUrl'))
 			.setDesc(t('settings', 'externalCalendarUrlDesc'))
 			.addText(text => {
@@ -77,15 +78,17 @@ export class ExternalCalendarSourceEditModal extends Modal {
 			});
 		urlSetting.settingEl.addClass('operon-external-calendar-url-setting');
 
-		new Setting(c)
+		const displayCard = this.createExternalCalendarSection(c, t('settings', 'externalCalendarSectionDisplayBehavior'));
+		const hideCreatedSetting = new Setting(displayCard)
 			.setName(t('settings', 'externalCalendarHideCreatedEvents'))
 			.setDesc(t('settings', 'externalCalendarHideCreatedEventsDesc'))
 			.addToggle(toggle => {
 				toggle.setValue(this.source.hideCreatedEvents);
 				toggle.onChange(value => { this.source.hideCreatedEvents = value; });
 			});
+		hideCreatedSetting.settingEl.addClass('operon-external-calendar-hide-created-setting');
 
-		new Setting(c)
+		const colorSetting = new Setting(displayCard)
 			.setName(t('settings', 'externalCalendarColor'))
 			.setDesc(t('settings', 'externalCalendarColorDesc'))
 			.addText(text => {
@@ -95,8 +98,10 @@ export class ExternalCalendarSourceEditModal extends Modal {
 					if (HEX_COLOR_REGEX.test(value)) this.source.color = value;
 				});
 			});
+		colorSetting.settingEl.addClass('operon-external-calendar-color-setting');
 
-		new Setting(c)
+		const syncCard = this.createExternalCalendarSection(c, t('settings', 'externalCalendarSectionSync'));
+		const refreshSetting = new Setting(syncCard)
 			.setName(t('settings', 'externalCalendarRefreshHours'))
 			.setDesc(t('settings', 'externalCalendarRefreshHoursDesc'))
 			.addText(text => {
@@ -129,8 +134,18 @@ export class ExternalCalendarSourceEditModal extends Modal {
 					await this.opts.onSyncNow();
 				});
 			});
+		refreshSetting.settingEl.addClass('operon-external-calendar-refresh-setting');
 
 		this.renderFooter(c);
+	}
+
+	private createExternalCalendarSection(container: HTMLElement, title: string): HTMLElement {
+		const section = container.createDiv('operon-external-calendar-section');
+		section.createEl('h4', {
+			cls: 'operon-external-calendar-section-title',
+			text: title,
+		});
+		return section.createDiv('operon-external-calendar-settings-card');
 	}
 
 	private renderFooter(container: HTMLElement): void {

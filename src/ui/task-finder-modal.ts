@@ -22,6 +22,7 @@ import {
 } from './compact-task-layout';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { suppressNativeModalCloseButton } from './modal-close-button';
 import {
 	applyTaskSearchBoxShortcutCommand,
 	createTaskSearchBoxScopeState,
@@ -68,6 +69,7 @@ export class TaskFinderModal extends Modal {
 	private includeFinishedButton!: HTMLButtonElement;
 	private toolbarEl: HTMLElement | null = null;
 	private toolsEl: HTMLElement | null = null;
+	private nativeCloseButtonCleanup: (() => void) | null = null;
 	private selectedProjectEl!: HTMLElement;
 	private resultsEl!: HTMLElement;
 	private emptyEl!: HTMLElement;
@@ -115,6 +117,8 @@ export class TaskFinderModal extends Modal {
 	onOpen(): void {
 		this.containerEl.addClass('operon-task-finder-modal-container');
 		this.modalEl.addClass('operon-task-finder-modal');
+		this.nativeCloseButtonCleanup?.();
+		this.nativeCloseButtonCleanup = suppressNativeModalCloseButton(this.containerEl, this.modalEl);
 		if (Platform.isPhone) {
 			this.containerEl.addClass('operon-task-finder-modal-container-mobile');
 			this.modalEl.addClass('operon-task-finder-modal-mobile');
@@ -255,6 +259,8 @@ export class TaskFinderModal extends Modal {
 	}
 
 	onClose(): void {
+		this.nativeCloseButtonCleanup?.();
+		this.nativeCloseButtonCleanup = null;
 		this.containerEl.removeEventListener('pointerdown', this.outsidePointerHandler);
 		window.removeEventListener('resize', this.resizeHandler);
 		this.unregisterMobileViewportListeners();
@@ -1036,11 +1042,11 @@ export class TaskFinderModal extends Modal {
 		const settings = this.getSettings();
 		if (entry.colorRole === 'priority') {
 			const def = settings.priorities.find(priority => priority.label === task.fieldValues['priority']);
-			if (def?.color) chip.style.setProperty('--operon-live-chip-color', def.color);
+			if (def?.color) chip.style.setProperty('--operon-inline-chip-icon-color', def.color);
 		}
 		if (entry.colorRole === 'status') {
 			const statusColor = this.getTaskStatusColor(task);
-			if (statusColor) chip.style.setProperty('--operon-live-chip-color', statusColor);
+			if (statusColor) chip.style.setProperty('--operon-inline-chip-icon-color', statusColor);
 		}
 		if (entry.key === 'location') {
 			const locationIconColor = entry.locationMarkerColor ?? normalizeTaskFinderTaskColor(task.fieldValues['taskColor']);

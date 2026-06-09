@@ -53,12 +53,14 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 			cls: 'operon-calendar-preset-quick-settings-help',
 		});
 
-		const nameSetting = new Setting(contentEl)
+		const presetCard = this.createPresetSection(contentEl, t('calendar', 'calendarPresetSectionPreset'));
+
+		const nameSetting = new Setting(presetCard)
 			.setName(t('calendar', 'presetName'))
 			.setDesc(t('calendar', 'presetNameDesc'))
 			.addText(text => {
 				text.setValue(preset.name);
-				text.inputEl.addClass('operon-preset-name-input');
+				text.inputEl.addClass('operon-calendar-preset-name-input');
 				text.inputEl.addEventListener('input', () => {
 					const rawValue = text.inputEl.value;
 					void this.updatePreset(current => {
@@ -73,10 +75,10 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 					event.preventDefault();
 					text.inputEl.blur();
 				});
-			});
-		nameSetting.settingEl.addClass('operon-preset-name-setting');
+		});
+		nameSetting.settingEl.addClass('operon-calendar-preset-name-setting');
 
-		new Setting(contentEl)
+		new Setting(presetCard)
 			.setName(t('calendar', 'calendarPresetType'))
 			.setDesc(t('calendar', 'calendarPresetTypeDesc'))
 			.addDropdown(dropdown => {
@@ -93,8 +95,10 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				});
 			});
 
+		const rangeCard = this.createPresetSection(contentEl, t('calendar', 'calendarPresetSectionRangeLayout'));
+
 		if (preset.surfaceType === 'multiWeek') {
-			new Setting(contentEl)
+			new Setting(rangeCard)
 				.setName(t('calendar', 'weekCount'))
 				.setDesc(t('calendar', 'weekCountDesc'))
 				.addDropdown(dropdown => {
@@ -113,7 +117,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 						this.render();
 					});
 				});
-			new Setting(contentEl)
+			new Setting(rangeCard)
 				.setName(t('calendar', 'focusedWeekNumber'))
 				.setDesc(t('calendar', 'focusedWeekNumberDesc'))
 				.addDropdown(dropdown => {
@@ -134,14 +138,14 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 					});
 				});
 		} else {
-			this.addNumberSetting(contentEl, t('calendar', 'visibleDayCount'), t('calendar', 'visibleDayCountDesc'), preset.dayCount, 1, 31, 1, async value => {
+			this.addNumberSetting(rangeCard, t('calendar', 'visibleDayCount'), t('calendar', 'visibleDayCountDesc'), preset.dayCount, 1, 31, 1, async value => {
 				await this.updatePreset(current => {
 					current.dayCount = value;
 				});
 				this.render();
 			});
 
-			new Setting(contentEl)
+			new Setting(rangeCard)
 				.setName(t('calendar', 'todayPosition'))
 				.setDesc(t('calendar', 'todayPositionDesc'))
 				.addDropdown(dropdown => {
@@ -158,7 +162,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 					});
 				});
 
-			new Setting(contentEl)
+			new Setting(rangeCard)
 				.setName(t('calendar', 'slotMinutes'))
 				.setDesc(t('calendar', 'slotMinutesDesc'))
 				.addDropdown(dropdown => {
@@ -181,7 +185,8 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 		const settings = this.options.getSettings();
 		const filterSets = getNormalFilterSets(settings.filterSets);
 		const currentFilter = filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
-		new Setting(contentEl)
+		const filterCard = this.createPresetSection(contentEl, t('calendar', 'calendarPresetSectionFiltering'));
+		new Setting(filterCard)
 			.setName(t('calendar', 'calendarFilter'))
 			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
 			.addButton(button => {
@@ -207,10 +212,10 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 					});
 					this.render();
 				}));
-			});
+		});
 
 		if (preset.surfaceType === 'timeGrid') {
-			new Setting(contentEl)
+			new Setting(rangeCard)
 				.setName(t('calendar', 'hiddenTime'))
 				.setDesc(t('calendar', 'hiddenTimeDesc'))
 				.addButton(button => {
@@ -247,7 +252,8 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				});
 		}
 
-		new Setting(contentEl)
+		const appearanceCard = this.createPresetSection(contentEl, t('calendar', 'calendarPresetSectionAppearance'));
+		new Setting(appearanceCard)
 			.setName(t('calendar', 'taskColorSource'))
 			.setDesc(t('calendar', 'taskColorSourceDesc'))
 			.addButton(button => {
@@ -268,7 +274,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		new Setting(appearanceCard)
 			.setName(t('calendar', 'appearanceLight'))
 			.setDesc(t('calendar', 'appearanceLightDesc'))
 			.addDropdown(dropdown => {
@@ -281,7 +287,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		new Setting(appearanceCard)
 			.setName(t('calendar', 'appearanceDark'))
 			.setDesc(t('calendar', 'appearanceDarkDesc'))
 			.addDropdown(dropdown => {
@@ -294,7 +300,8 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		const visibilityCard = this.createPresetSection(contentEl, t('calendar', 'calendarPresetSectionVisibility'));
+		new Setting(visibilityCard)
 			.setName(t('calendar', 'showWeekends'))
 			.setDesc(t('calendar', 'showWeekendsDesc'))
 			.addToggle(toggle => {
@@ -306,7 +313,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		new Setting(visibilityCard)
 			.setName(t('calendar', 'showFutureOccurrences'))
 			.setDesc(t('calendar', 'showFutureOccurrencesDesc'))
 			.addToggle(toggle => {
@@ -318,7 +325,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 				});
 			});
 
-		new Setting(contentEl)
+		new Setting(visibilityCard)
 			.setName(t('calendar', 'showExternalCalendars'))
 			.setDesc(t('calendar', 'showExternalCalendarsDesc'))
 			.addToggle(toggle => {
@@ -332,13 +339,14 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 
 		const externalCalendars = this.options.getSettings().externalCalendars;
 		if (externalCalendars.length > 0) {
-			contentEl.createEl('h3', {
-				text: t('calendar', 'externalCalendarsSection'),
-				cls: 'operon-preset-settings-section-heading',
-			});
+			const externalCard = this.createPresetSection(
+				contentEl,
+				t('calendar', 'externalCalendarsSection'),
+				'operon-calendar-preset-external-card',
+			);
 			for (const source of externalCalendars) {
 				const isVisible = preset.externalCalendarVisibility[source.id] === true;
-				new Setting(contentEl)
+				new Setting(externalCard)
 					.setName(source.name || source.url)
 					.addToggle(toggle => {
 						toggle.setValue(isVisible);
@@ -354,18 +362,31 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 		this.renderButtons(contentEl);
 	}
 
+	private createPresetSection(
+		container: HTMLElement,
+		title: string,
+		cardClass = 'operon-calendar-preset-settings-card',
+	): HTMLElement {
+		const section = container.createDiv('operon-calendar-preset-settings-section');
+		section.createEl('h4', {
+			cls: 'operon-calendar-preset-settings-section-title',
+			text: title,
+		});
+		return section.createDiv(cardClass);
+	}
+
 	private renderButtons(container: HTMLElement): void {
-		const row = container.createDiv('operon-preset-settings-footer');
+		const row = container.createDiv('operon-calendar-preset-settings-footer');
 
 		const cancelBtn = row.createEl('button', {
-			cls: 'operon-preset-settings-footer-button',
+			cls: 'operon-calendar-preset-settings-footer-button',
 			text: t('buttons', 'cancel'),
 		});
 		cancelBtn.type = 'button';
 		cancelBtn.addEventListener('click', () => this.close());
 
 		const saveBtn = row.createEl('button', {
-			cls: 'operon-preset-settings-footer-button mod-cta',
+			cls: 'operon-calendar-preset-settings-footer-button mod-cta',
 			text: t('buttons', 'save'),
 		});
 		saveBtn.type = 'button';

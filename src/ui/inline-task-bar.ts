@@ -254,7 +254,7 @@ function renderChipsFiltered(container: HTMLElement, task: IndexedTask, cbs: Tas
 		const chip = el('span', 'operon-chip operon-chip-priority operon-chip-clickable');
 		chip.textContent = priority;
 		const priorityDef = cbs.getPriorities().find(p => p.label === priority);
-		if (priorityDef) chip.style.backgroundColor = priorityDef.color;
+		setChipAccent(chip, priorityDef?.color);
 		chip.addEventListener('click', (e) => {
 			e.stopPropagation();
 			showPriorityDropdown(chip, task.operonId, cbs);
@@ -267,7 +267,7 @@ function renderChipsFiltered(container: HTMLElement, task: IndexedTask, cbs: Tas
 	if (chips.status && status) {
 		const statusColor = lookupStatusColorFromIndex(status, cbs.getPipelines());
 		const chip = el('span', 'operon-chip operon-chip-date operon-chip-clickable');
-		chip.style.backgroundColor = statusColor;
+		setChipAccent(chip, statusColor);
 		chip.textContent = status;
 		chip.addEventListener('click', (e) => {
 			e.stopPropagation();
@@ -464,6 +464,11 @@ function lookupStatusColorFromIndex(statusValue: string | undefined, pipelines: 
 	if (!pipeline) return '#6b7280';
 	const statusDef = pipeline.statuses.find(s => s.label === parsed.status);
 	return statusDef?.color ?? '#6b7280';
+}
+
+function setChipAccent(chip: HTMLElement, color: string | undefined): void {
+	if (!color) return;
+	chip.style.setProperty('--operon-chip-accent', color);
 }
 
 function formatDuration(seconds: number): string {
@@ -704,7 +709,7 @@ class TaskBarWidget extends WidgetType {
 			const chip = el('span', 'operon-chip operon-chip-priority');
 			chip.textContent = priority;
 			const priorityDef = this.getPriorities().find(p => p.label === priority);
-			if (priorityDef) chip.style.backgroundColor = priorityDef.color;
+			setChipAccent(chip, priorityDef?.color);
 			container.appendChild(chip);
 		}
 

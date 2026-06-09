@@ -1006,6 +1006,9 @@ export interface OperonSettings {
 	contextualMenuActionAllowlist: ContextualMenuActionId[];
 	contextualMenuSurfaceActionMatrix: ContextualMenuSurfaceActionMatrix;
 	contextualMenuOpenDelayMs: number;
+	contextualMenuMobileEnabled: boolean;
+	contextualMenuMobileLongPressMs: number;
+	contextualMenuMobileTransitionGraceMs: number;
 	calendarInlineTaskHeading: string;
 	calendarShowAllDayLane: boolean;
 	calendarShowDueMarkers: boolean;
@@ -1387,6 +1390,9 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	contextualMenuActionAllowlist: [...DEFAULT_CONTEXTUAL_MENU_ACTION_ALLOWLIST],
 	contextualMenuSurfaceActionMatrix: buildDefaultContextualMenuSurfaceActionMatrix(),
 	contextualMenuOpenDelayMs: 100,
+	contextualMenuMobileEnabled: true,
+	contextualMenuMobileLongPressMs: 320,
+	contextualMenuMobileTransitionGraceMs: 450,
 	calendarInlineTaskHeading: '',
 	calendarShowAllDayLane: true,
 	calendarShowDueMarkers: true,
@@ -1496,6 +1502,8 @@ export const NUMERIC_CONSTRAINTS = {
 	calendarDefaultScrollHour: { min: 0, max: 23 },
 	calendarTouchDragLongPressMs: { min: 150, max: 600 },
 	calendarTouchDragCancelDistancePx: { min: 4, max: 24 },
+	contextualMenuMobileLongPressMs: { min: 200, max: 600 },
+	contextualMenuMobileTransitionGraceMs: { min: 150, max: 1200 },
 	calendarMobileMaxWidthPx: { min: CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, max: CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX },
 	kanbanExpandedColumnWidthPx: { min: KANBAN_EXPANDED_COLUMN_WIDTH_MIN, max: KANBAN_EXPANDED_COLUMN_WIDTH_MAX },
 	kanbanMaxVisibleTasksPerCell: { min: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, max: KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX },
@@ -1924,6 +1932,27 @@ function normalizeContextualMenuOpenDelayMs(raw: unknown): number {
 		return DEFAULT_SETTINGS.contextualMenuOpenDelayMs;
 	}
 	return Math.max(0, Math.min(2000, Math.round(raw)));
+}
+
+function normalizeContextualMenuMobileEnabled(raw: unknown): boolean {
+	if (typeof raw !== 'boolean') {
+		return DEFAULT_SETTINGS.contextualMenuMobileEnabled;
+	}
+	return raw;
+}
+
+function normalizeContextualMenuMobileLongPressMs(raw: unknown): number {
+	if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+		return DEFAULT_SETTINGS.contextualMenuMobileLongPressMs;
+	}
+	return Math.max(200, Math.min(600, Math.round(raw)));
+}
+
+function normalizeContextualMenuMobileTransitionGraceMs(raw: unknown): number {
+	if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+		return DEFAULT_SETTINGS.contextualMenuMobileTransitionGraceMs;
+	}
+	return Math.max(150, Math.min(1200, Math.round(raw)));
 }
 
 function normalizeKanbanExpandedColumnWidthPx(raw: unknown): number {
@@ -2652,6 +2681,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.contextualMenuOpenDelayMs = normalizeContextualMenuOpenDelayMs(
 		src.contextualMenuOpenDelayMs ?? src.calendarHoverMenuOpenDelayMs,
 	);
+	out.contextualMenuMobileEnabled = normalizeContextualMenuMobileEnabled(src.contextualMenuMobileEnabled);
+	out.contextualMenuMobileLongPressMs = normalizeContextualMenuMobileLongPressMs(src.contextualMenuMobileLongPressMs);
+	out.contextualMenuMobileTransitionGraceMs = normalizeContextualMenuMobileTransitionGraceMs(src.contextualMenuMobileTransitionGraceMs);
 	out.externalCalendars = normalizeExternalCalendars(src.externalCalendars);
 	out.calendarPresets = preserveDisabledExternalCalendarVisibility(out.calendarPresets, out.externalCalendars);
 	const legacyCalendarInlineTaskHeading = typeof src.calendarInlineTaskHeading === 'string'

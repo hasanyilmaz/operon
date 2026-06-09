@@ -1880,11 +1880,11 @@ export class TaskEditorContent {
 	): void {
 		if (entry.colorRole === 'priority') {
 			const def = this.settings.priorities.find(priority => priority.label === task.fieldValues['priority']);
-			if (def) chip.style.setProperty('--operon-live-chip-color', def.color);
+			if (def) chip.style.setProperty('--operon-inline-chip-icon-color', def.color);
 		}
 		if (entry.colorRole === 'status') {
 			const status = resolveWorkflowStatus(this.settings.pipelines, task.fieldValues['status']);
-			chip.style.setProperty('--operon-live-chip-color', status?.definition.color ?? '#6b7280');
+			chip.style.setProperty('--operon-inline-chip-icon-color', status?.definition.color ?? '#6b7280');
 		}
 		if (entry.iconTone === 'today') {
 			chip.setCssProps({ '--operon-inline-chip-icon-color': '#2563eb' });

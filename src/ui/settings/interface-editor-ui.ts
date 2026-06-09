@@ -32,6 +32,7 @@ export interface InterfaceIconActionToggle {
 	visible: boolean;
 	icon: string;
 	label: string;
+	searchTargetId?: string;
 	onToggle: () => Promise<void>;
 }
 
@@ -453,6 +454,9 @@ function renderInterfaceIconRowListSection<
 				className: 'operon-compact-chip-action-row',
 				actionsClassName: 'operon-compact-chip-row-actions',
 			});
+			if (action.searchTargetId) {
+				row.cardEl.dataset.operonSettingsSearchId = action.searchTargetId;
+			}
 			createSettingsListCardActionButton({
 				containerEl: row.actionsEl,
 				label: options.getVisibilityToggleLabel?.(action.label) ?? action.label,

@@ -54,6 +54,9 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'contextualMenuActionAllowlist',
 	'contextualMenuSurfaceActionMatrix',
 	'contextualMenuOpenDelayMs',
+	'contextualMenuMobileEnabled',
+	'contextualMenuMobileLongPressMs',
+	'contextualMenuMobileTransitionGraceMs',
 	'taskCreatorToolbar',
 	'taskEditorShowLineNumbers',
 	'taskEditorWorkflowPickers',
@@ -238,6 +241,18 @@ export function composeOperonSettingsFromDataPackage(
 			dataPackage.ui.contextualMenu.contextualMenuOpenDelayMs,
 			defaults.contextualMenuOpenDelayMs,
 		),
+		contextualMenuMobileEnabled: readBoolean(
+			dataPackage.ui.contextualMenu.contextualMenuMobileEnabled,
+			defaults.contextualMenuMobileEnabled,
+		),
+		contextualMenuMobileLongPressMs: readNumber(
+			dataPackage.ui.contextualMenu.contextualMenuMobileLongPressMs,
+			defaults.contextualMenuMobileLongPressMs,
+		),
+		contextualMenuMobileTransitionGraceMs: readNumber(
+			dataPackage.ui.contextualMenu.contextualMenuMobileTransitionGraceMs,
+			defaults.contextualMenuMobileTransitionGraceMs,
+		),
 			...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskUiPreferences),
 			...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskCreationProfile),
 			...cloneUnknown<Partial<OperonSettings>>(dataPackage.automation.taskAutomationPolicy),
@@ -292,6 +307,9 @@ export function buildOperonDataPackageFromSettings(
 				contextualMenuActionAllowlist: cloneUnknown(normalized.contextualMenuActionAllowlist),
 				contextualMenuSurfaceActionMatrix: cloneUnknown(normalized.contextualMenuSurfaceActionMatrix),
 				contextualMenuOpenDelayMs: normalized.contextualMenuOpenDelayMs,
+				contextualMenuMobileEnabled: normalized.contextualMenuMobileEnabled,
+				contextualMenuMobileLongPressMs: normalized.contextualMenuMobileLongPressMs,
+				contextualMenuMobileTransitionGraceMs: normalized.contextualMenuMobileTransitionGraceMs,
 			},
 			taskUiPreferences: {
 				version: 1,
@@ -553,6 +571,10 @@ function readString(value: unknown, fallback: string): string {
 
 function readNullableString(value: unknown, fallback: string | null): string | null {
 	return typeof value === 'string' || value === null ? value : fallback;
+}
+
+function readBoolean(value: unknown, fallback: boolean): boolean {
+	return typeof value === 'boolean' ? value : fallback;
 }
 
 function readNumber(value: unknown, fallback: number): number {

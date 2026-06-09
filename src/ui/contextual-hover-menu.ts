@@ -1,4 +1,4 @@
-import { setIcon } from 'obsidian';
+import { Platform, setIcon } from 'obsidian';
 import { localNow } from '../core/local-time';
 import {
 	resolveContextualMenu,
@@ -20,11 +20,24 @@ import {
 import { resolveContextualHoverMenuPosition } from './contextual-hover-menu-position';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
+const CONTEXTUAL_MENU_MOBILE_MOVE_TOLERANCE_PX = 12;
+const CONTEXTUAL_MENU_MOBILE_SELECTION_GUARD_CLASS = 'operon-contextual-menu-mobile-active';
+
+type ContextualHoverMenuSettings = Pick<
+	OperonSettings,
+	| 'contextualMenuActionAllowlist'
+	| 'contextualMenuSurfaceActionMatrix'
+	| 'contextualMenuOpenDelayMs'
+	| 'contextualMenuMobileEnabled'
+	| 'contextualMenuMobileLongPressMs'
+	| 'contextualMenuMobileTransitionGraceMs'
+>;
+
 interface ContextualHoverMenuBindOptions {
 	surface: ContextualMenuSurface;
 	taskId: string;
 	getTask: () => ContextualTaskActionSource | null;
-	getSettings: () => Pick<OperonSettings, 'contextualMenuActionAllowlist' | 'contextualMenuSurfaceActionMatrix' | 'contextualMenuOpenDelayMs'>;
+	getSettings: () => ContextualHoverMenuSettings;
 	onAction: ContextualMenuActionHandler;
 	isPinned?: () => boolean;
 	resolveAnchorRect?: () => DOMRect;
@@ -33,6 +46,7 @@ interface ContextualHoverMenuBindOptions {
 interface ContextualHoverMenuControllerOptions {
 	getDelayMs: () => number;
 	getHost?: () => HTMLElement | null;
+	getNow?: () => number;
 	positionMenu: (anchorRect: DOMRect, menu: HTMLElement) => boolean;
 	menuClassName?: string;
 	menuPosition?: 'fixed';
@@ -46,6 +60,10 @@ interface ContextualHoverMenuShowOptions {
 	host?: HTMLElement | null;
 	context?: ContextualMenuContext;
 	onAction: ContextualMenuActionHandler;
+	mobileInteraction?: {
+		transitionGraceMs: number;
+		guardTargets?: HTMLElement[];
+	};
 }
 
 export class ContextualHoverMenuController {
@@ -59,9 +77,20 @@ export class ContextualHoverMenuController {
 	private activeMenuKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
 	private activeMenuScrollHandler: ((event: Event) => void) | null = null;
 	private activeMenuResizeHandler: (() => void) | null = null;
+	private activeMenuOutsidePointerHandler: ((event: Event) => void) | null = null;
+	private activeMenuOutsideTouchHandler: ((event: Event) => void) | null = null;
+	private activeMenuOutsideEventRoot: HTMLElement | null = null;
+	private activeMenuGuardTargets: HTMLElement[] = [];
+	private activeMenuTransitionGraceUntil = 0;
+	private activeMenuUsesPointerLeaveHide = true;
+	private activeMenuSelectionGuardElements: HTMLElement[] = [];
 
 	constructor(options: ContextualHoverMenuControllerOptions) {
 		this.options = options;
+	}
+
+	private getNow(): number {
+		return this.options.getNow?.() ?? Date.now();
 	}
 
 	isActive(key: string): boolean {
@@ -130,37 +159,61 @@ export class ContextualHoverMenuController {
 			this.activeMenuWindow?.removeEventListener('resize', this.activeMenuResizeHandler, true);
 			this.activeMenuResizeHandler = null;
 		}
+		if (this.activeMenuOutsidePointerHandler) {
+			this.activeMenuOutsideEventRoot?.removeEventListener('pointerdown', this.activeMenuOutsidePointerHandler, true);
+			this.activeMenuOutsidePointerHandler = null;
+		}
+		if (this.activeMenuOutsideTouchHandler) {
+			this.activeMenuOutsideEventRoot?.removeEventListener('touchstart', this.activeMenuOutsideTouchHandler, true);
+			this.activeMenuOutsideTouchHandler = null;
+		}
+		this.activeMenuOutsideEventRoot = null;
+		for (const element of this.activeMenuSelectionGuardElements) {
+			element.classList.remove(CONTEXTUAL_MENU_MOBILE_SELECTION_GUARD_CLASS);
+		}
+		this.activeMenuSelectionGuardElements = [];
+		this.activeMenuGuardTargets = [];
+		this.activeMenuTransitionGraceUntil = 0;
+		this.activeMenuUsesPointerLeaveHide = true;
 		this.activeMenuDocument = null;
 		this.activeMenuWindow = null;
 	}
 
-	show(options: ContextualHoverMenuShowOptions): void {
+	show(options: ContextualHoverMenuShowOptions): boolean {
 		if (options.actions.length === 0) {
 			if (this.activeKey === options.key) this.hide(true);
-			return;
+			return false;
 		}
 
 		this.clearHideTimer();
 		if (this.isActive(options.key) && this.activeMenuEl) {
 			if (!this.options.positionMenu(options.anchorRect, this.activeMenuEl)) {
 				this.hide(true);
+				return false;
 			}
-			return;
+			return true;
 		}
 
 		this.hide(true);
 		const host = options.host ?? this.options.getHost?.() ?? null;
-		if (!host) return;
+		if (!host) return false;
 		const hostDocument = getOwnerDocument(host);
 
 		const menu = hostDocument.createElement('div');
 		menu.className = this.options.menuClassName ?? 'operon-calendar-hover-menu';
 		menu.tabIndex = -1;
+		const usesPointerLeaveHide = !options.mobileInteraction;
 		if (this.options.menuPosition) {
 			menu.style.position = this.options.menuPosition;
 		}
-		menu.addEventListener('pointerenter', () => this.clearHideTimer());
-		menu.addEventListener('pointerleave', () => this.scheduleHide());
+		menu.addEventListener('pointerenter', () => {
+			if (!usesPointerLeaveHide) return;
+			this.clearHideTimer();
+		});
+		menu.addEventListener('pointerleave', () => {
+			if (!usesPointerLeaveHide) return;
+			this.scheduleHide();
+		});
 		menu.addEventListener('pointerdown', event => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -209,13 +262,233 @@ export class ContextualHoverMenuController {
 		this.activeMenuResizeHandler = () => {
 			this.hide(true);
 		};
+		this.activeMenuUsesPointerLeaveHide = usesPointerLeaveHide;
+		this.activeMenuGuardTargets = options.mobileInteraction?.guardTargets ?? [];
+		this.activeMenuTransitionGraceUntil = options.mobileInteraction
+			? this.getNow() + Math.max(0, options.mobileInteraction.transitionGraceMs)
+			: 0;
+		if (options.mobileInteraction) {
+			this.activeMenuSelectionGuardElements = [menu, ...this.activeMenuGuardTargets];
+			for (const element of this.activeMenuSelectionGuardElements) {
+				element.classList.add(CONTEXTUAL_MENU_MOBILE_SELECTION_GUARD_CLASS);
+			}
+			this.activeMenuOutsideEventRoot = getOwnerBody(menu);
+			const closeOnOutside = (event: Event): void => {
+				const eventTarget = event.target;
+				if (this.contains(eventTarget)) return;
+				const withinGuardTarget = this.activeMenuGuardTargets.some(target => {
+					const ownerWindow = getOwnerWindow(target) as Window & { Node?: typeof Node };
+					const NodeCtor = ownerWindow.Node;
+					return !!NodeCtor
+						&& typeof eventTarget === 'object'
+						&& eventTarget !== null
+						&& Object.prototype.isPrototypeOf.call(NodeCtor.prototype, eventTarget)
+						&& target.contains(eventTarget as Node);
+				});
+				if (withinGuardTarget) {
+					if (this.getNow() < this.activeMenuTransitionGraceUntil) {
+						event.preventDefault?.();
+						event.stopPropagation?.();
+						return;
+					}
+					this.hide(true);
+					return;
+				}
+				if (this.getNow() < this.activeMenuTransitionGraceUntil) {
+					event.preventDefault?.();
+					event.stopPropagation?.();
+					return;
+				}
+				this.hide(true);
+			};
+			this.activeMenuOutsidePointerHandler = closeOnOutside;
+			this.activeMenuOutsideTouchHandler = closeOnOutside;
+			this.activeMenuOutsideEventRoot.addEventListener('pointerdown', this.activeMenuOutsidePointerHandler, true);
+			this.activeMenuOutsideEventRoot.addEventListener('touchstart', this.activeMenuOutsideTouchHandler, true);
+		}
 		hostDocument.addEventListener('keydown', this.activeMenuKeydownHandler, true);
 		hostDocument.addEventListener('scroll', this.activeMenuScrollHandler, true);
 		this.activeMenuWindow.addEventListener('resize', this.activeMenuResizeHandler, true);
 		if (!this.options.positionMenu(options.anchorRect, menu)) {
 			this.hide(true);
+			return false;
 		}
+		return true;
 	}
+}
+
+function isContextualMenuMobilePlatform(): boolean {
+	return Platform.isMobile || Platform.isMobileApp || Platform.isPhone;
+}
+
+function isTouchLikePointer(event: PointerEvent, mobilePlatform: boolean): boolean {
+	if (event.pointerType === 'touch' || event.pointerType === 'pen') return true;
+	return mobilePlatform && !event.pointerType;
+}
+
+interface BindContextualHoverMenuTriggerOptions {
+	controller: ContextualHoverMenuController;
+	triggerEl: HTMLElement;
+	menuKey: string;
+	getSettings: () => ContextualHoverMenuSettings;
+	openMenu: (interaction: { mobile: boolean }) => boolean;
+	getNow?: () => number;
+	isMobilePlatform?: () => boolean;
+}
+
+export function bindContextualHoverMenuTrigger(
+	options: BindContextualHoverMenuTriggerOptions,
+): () => void {
+	let showTimer: WindowTimeoutHandle | null = null;
+	let pendingLongPress:
+		| {
+			pointerId: number;
+			initialClientX: number;
+			initialClientY: number;
+			timer: WindowTimeoutHandle;
+			interactionRoot: HTMLElement;
+			onPointerMove: (event: PointerEvent) => void;
+			onPointerUp: (event: PointerEvent) => void;
+			onPointerCancel: (event: PointerEvent) => void;
+			onWindowBlur: () => void;
+		}
+		| null = null;
+	let suppressNextClickUntil = 0;
+
+	const now = (): number => options.getNow?.() ?? Date.now();
+	const isMobileInteractionEnabled = (): boolean => {
+		const settings = options.getSettings();
+		return settings.contextualMenuMobileEnabled !== false
+			&& (options.isMobilePlatform?.() ?? isContextualMenuMobilePlatform());
+	};
+	const clearShowTimer = (): void => {
+		if (showTimer === null) return;
+		clearWindowTimeout(showTimer);
+		showTimer = null;
+	};
+	const clearPendingLongPress = (): void => {
+		if (!pendingLongPress) return;
+		clearWindowTimeout(pendingLongPress.timer);
+		pendingLongPress.interactionRoot.removeEventListener('pointermove', pendingLongPress.onPointerMove, true);
+		pendingLongPress.interactionRoot.removeEventListener('pointerup', pendingLongPress.onPointerUp, true);
+		pendingLongPress.interactionRoot.removeEventListener('pointercancel', pendingLongPress.onPointerCancel, true);
+		getOwnerWindow(options.triggerEl).removeEventListener('blur', pendingLongPress.onWindowBlur, true);
+		pendingLongPress = null;
+	};
+
+	const handlePointerEnter = (): void => {
+		if (isMobileInteractionEnabled()) return;
+		if (options.controller.isActive(options.menuKey)) {
+			options.controller.clearHideTimer();
+			return;
+		}
+		clearShowTimer();
+		const delay = Math.max(0, options.getSettings().contextualMenuOpenDelayMs);
+		showTimer = setWindowTimeout(() => {
+			showTimer = null;
+			options.openMenu({ mobile: false });
+		}, delay);
+	};
+
+	const handlePointerLeave = (event: PointerEvent): void => {
+		if (isMobileInteractionEnabled()) return;
+		clearShowTimer();
+		const related = event.relatedTarget;
+		if (options.controller.contains(related)) {
+			options.controller.clearHideTimer();
+			return;
+		}
+		options.controller.scheduleHide();
+	};
+
+	const handlePointerDown = (event: PointerEvent): void => {
+		if (!isMobileInteractionEnabled()) return;
+		if (event.button !== 0) return;
+		const mobilePlatform = options.isMobilePlatform?.() ?? isContextualMenuMobilePlatform();
+		if (!isTouchLikePointer(event, mobilePlatform)) return;
+		clearShowTimer();
+		clearPendingLongPress();
+		const settings = options.getSettings();
+		const interactionRoot = getOwnerBody(options.triggerEl);
+		const ownerWindow = getOwnerWindow(options.triggerEl);
+		const pointerId = event.pointerId;
+		const initialClientX = event.clientX;
+		const initialClientY = event.clientY;
+		const onPointerMove = (moveEvent: PointerEvent): void => {
+			if (moveEvent.pointerId !== pointerId) return;
+			const deltaX = moveEvent.clientX - initialClientX;
+			const deltaY = moveEvent.clientY - initialClientY;
+			if (Math.hypot(deltaX, deltaY) <= CONTEXTUAL_MENU_MOBILE_MOVE_TOLERANCE_PX) return;
+			clearPendingLongPress();
+		};
+		const onPointerUp = (upEvent: PointerEvent): void => {
+			if (upEvent.pointerId !== pointerId) return;
+			if (now() < suppressNextClickUntil) {
+				upEvent.preventDefault();
+				upEvent.stopPropagation();
+			}
+			clearPendingLongPress();
+		};
+		const onPointerCancel = (cancelEvent: PointerEvent): void => {
+			if (cancelEvent.pointerId !== pointerId) return;
+			clearPendingLongPress();
+		};
+		const onWindowBlur = (): void => clearPendingLongPress();
+		const timer = setWindowTimeout(() => {
+			if (!pendingLongPress || pendingLongPress.pointerId !== pointerId) return;
+			const opened = options.openMenu({ mobile: true });
+			if (opened) {
+				const graceMs = Math.max(0, settings.contextualMenuMobileTransitionGraceMs);
+				suppressNextClickUntil = now() + Math.max(graceMs, 350);
+			}
+		}, Math.max(0, settings.contextualMenuMobileLongPressMs));
+		pendingLongPress = {
+			pointerId,
+			initialClientX,
+			initialClientY,
+			timer,
+			interactionRoot,
+			onPointerMove,
+			onPointerUp,
+			onPointerCancel,
+			onWindowBlur,
+		};
+		interactionRoot.addEventListener('pointermove', onPointerMove, true);
+		interactionRoot.addEventListener('pointerup', onPointerUp, true);
+		interactionRoot.addEventListener('pointercancel', onPointerCancel, true);
+		ownerWindow.addEventListener('blur', onWindowBlur, true);
+	};
+
+	const handleClick = (event: MouseEvent): void => {
+		if (now() >= suppressNextClickUntil) return;
+		event.preventDefault();
+		event.stopPropagation();
+		suppressNextClickUntil = 0;
+	};
+
+	const handleContextMenu = (event: Event): void => {
+		if (!isMobileInteractionEnabled()) return;
+		event.preventDefault?.();
+	};
+
+	options.triggerEl.addEventListener('pointerenter', handlePointerEnter);
+	options.triggerEl.addEventListener('pointerleave', handlePointerLeave);
+	options.triggerEl.addEventListener('pointerdown', handlePointerDown);
+	options.triggerEl.addEventListener('click', handleClick, true);
+	options.triggerEl.addEventListener('contextmenu', handleContextMenu);
+
+	return () => {
+		clearShowTimer();
+		clearPendingLongPress();
+		options.triggerEl.removeEventListener('pointerenter', handlePointerEnter);
+		options.triggerEl.removeEventListener('pointerleave', handlePointerLeave);
+		options.triggerEl.removeEventListener('pointerdown', handlePointerDown);
+		options.triggerEl.removeEventListener('click', handleClick, true);
+		options.triggerEl.removeEventListener('contextmenu', handleContextMenu);
+		if (options.controller.isActive(options.menuKey)) {
+			options.controller.hide(true);
+		}
+	};
 }
 
 let sharedHoverMenuDelayMs = 0;
@@ -256,18 +529,15 @@ export function bindTaskContextualHoverMenu(
 	triggerEl: HTMLElement,
 	options: ContextualHoverMenuBindOptions,
 ): () => void {
-	let showTimer: WindowTimeoutHandle | null = null;
 	const menuKey = `${options.surface}:${options.taskId}`;
-
-	const clearShowTimer = (): void => {
-		if (showTimer === null) return;
-		clearWindowTimeout(showTimer);
-		showTimer = null;
-	};
-
-	const openMenu = (): void => {
+	return bindContextualHoverMenuTrigger({
+		controller: sharedTaskHoverMenu,
+		triggerEl,
+		menuKey,
+		getSettings: options.getSettings,
+		openMenu: ({ mobile }) => {
 		const task = options.getTask();
-		if (!task) return;
+		if (!task) return false;
 		sharedHoverMenuDelayMs = Math.max(0, options.getSettings().contextualMenuOpenDelayMs);
 		const context: ContextualMenuContext = {
 			surface: options.surface,
@@ -282,7 +552,7 @@ export function bindTaskContextualHoverMenu(
 			settings.contextualMenuActionAllowlist,
 			settings.contextualMenuSurfaceActionMatrix,
 		);
-		sharedTaskHoverMenu.show({
+		return sharedTaskHoverMenu.show({
 			key: menuKey,
 			taskId: options.taskId,
 			actions,
@@ -290,42 +560,13 @@ export function bindTaskContextualHoverMenu(
 			host: getOwnerBody(triggerEl),
 			context,
 			onAction: options.onAction,
+			mobileInteraction: mobile
+				? {
+					transitionGraceMs: settings.contextualMenuMobileTransitionGraceMs,
+					guardTargets: [triggerEl],
+				}
+				: undefined,
 		});
-	};
-
-	const handlePointerEnter = (): void => {
-		if (sharedTaskHoverMenu.isActive(menuKey)) {
-			sharedTaskHoverMenu.clearHideTimer();
-			return;
-		}
-		clearShowTimer();
-		const delay = Math.max(0, options.getSettings().contextualMenuOpenDelayMs);
-		showTimer = setWindowTimeout(() => {
-			showTimer = null;
-			openMenu();
-		}, delay);
-	};
-
-	const handlePointerLeave = (event: PointerEvent): void => {
-		clearShowTimer();
-		const related = event.relatedTarget;
-		if (sharedTaskHoverMenu.contains(related)) {
-			sharedTaskHoverMenu.clearHideTimer();
-			return;
-		}
-		sharedHoverMenuDelayMs = Math.max(0, options.getSettings().contextualMenuOpenDelayMs);
-		sharedTaskHoverMenu.scheduleHide();
-	};
-
-	triggerEl.addEventListener('pointerenter', handlePointerEnter);
-	triggerEl.addEventListener('pointerleave', handlePointerLeave);
-
-	return () => {
-		clearShowTimer();
-		triggerEl.removeEventListener('pointerenter', handlePointerEnter);
-		triggerEl.removeEventListener('pointerleave', handlePointerLeave);
-		if (sharedTaskHoverMenu.isActive(menuKey)) {
-			sharedTaskHoverMenu.hide(true);
-		}
-	};
+		},
+	});
 }

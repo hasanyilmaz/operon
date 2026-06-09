@@ -101,14 +101,14 @@ export function buildTaskFileOverlayChipContainer(
 	const taskColor = normalizeTaskColor(task.fieldValues['taskColor']);
 	const statusColor = lookupStatusColor(task.fieldValues['status'], settings.pipelines);
 	const row = createOwnerElement(callbacks.owner, 'span');
-	row.className = 'operon-task-wikilink-chip-row';
+	row.className = 'operon-task-wikilink-chip-row operon-task-chip-surface';
 
 	for (const rawEntry of entries) {
 		const entry = {
 			...rawEntry,
 			interactive: isOverlayChipInteractive(rawEntry),
 		};
-		const chip = createInlineTaskCompactChipElement(entry, 'operon-task-wikilink-chip', { owner: row });
+		const chip = createInlineTaskCompactChipElement(entry, 'operon-task-wikilink-chip operon-task-chip', { owner: row });
 		applyOverlayChipVisualStyles(chip, entry, task, settings.priorities, statusColor, taskColor);
 
 		if (entry.iconOnly) {
@@ -217,13 +217,17 @@ function applyOverlayChipVisualStyles(
 	taskColor: string | null,
 ): void {
 	const cssProps: Record<string, string> = {};
-	if (taskColor) cssProps['--operon-live-hover-border'] = taskColor;
+	const hoverColor = taskColor ?? entry.taskColor;
+	if (hoverColor) {
+		cssProps['--operon-live-hover-border'] = hoverColor;
+		cssProps['--operon-task-chip-hover-accent'] = hoverColor;
+	}
 	if (entry.colorRole === 'priority') {
 		const def = priorities.find((priority) => priority.label === task.fieldValues['priority']);
-		if (def) cssProps['--operon-live-chip-color'] = def.color;
+		if (def) cssProps['--operon-inline-chip-icon-color'] = def.color;
 	}
 	if (entry.colorRole === 'status') {
-		cssProps['--operon-live-chip-color'] = statusColor;
+		cssProps['--operon-inline-chip-icon-color'] = statusColor;
 	}
 	if (entry.key === 'location') {
 		const locationIconColor = entry.locationMarkerColor ?? taskColor;

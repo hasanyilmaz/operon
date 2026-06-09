@@ -173,7 +173,7 @@ export function createTaskFileLinkPlainCheckboxProgressElement(
 	if (indicator.kind === 'none' && options?.showEmptyAction !== true) return null;
 
 	const el = createOwnerElement(owner, 'span');
-	el.className = 'operon-task-wikilink-progress operon-task-wikilink-progress-count operon-task-wikilink-plain-checkbox-progress';
+	el.className = 'operon-task-wikilink-progress operon-task-wikilink-progress-count operon-task-wikilink-plain-checkbox-progress operon-task-chip operon-task-chip-progress';
 	if (indicator.kind === 'none') {
 		el.classList.add('is-empty');
 	} else if (indicator.allCompleted) {

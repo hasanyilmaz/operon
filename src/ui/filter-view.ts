@@ -690,7 +690,7 @@ export class FilterView extends ItemView {
 		if (this.layoutRoot?.isConnected) return;
 
 		container.empty();
-		this.layoutRoot = container.createDiv('operon-embed operon-filter-surface operon-filter-surface--sidebar');
+		this.layoutRoot = container.createDiv('operon-embed operon-filter-surface operon-task-chip-surface operon-filter-surface--sidebar');
 		this.headerEl = this.layoutRoot.createDiv('operon-embed-header operon-filter-header');
 		this.filterPickerEl = this.headerEl.createDiv('operon-filter-picker');
 		this.filterPickerButtonEl = this.filterPickerEl.createEl('button', {
@@ -713,11 +713,11 @@ export class FilterView extends ItemView {
 		});
 		this.createSearchInput(this.headerEl);
 		this.addFilterBtnEl = this.headerEl.createEl('button', {
-			cls: 'operon-filter-add-btn',
+			cls: 'operon-filter-add-btn operon-task-chip-action',
 			attr: { type: 'button' },
 		});
 		setIcon(this.addFilterBtnEl, 'plus');
-		this.settingsBtnEl = this.headerEl.createEl('button', { cls: 'operon-filter-settings-btn' });
+		this.settingsBtnEl = this.headerEl.createEl('button', { cls: 'operon-filter-settings-btn operon-task-chip-action' });
 		setIcon(this.settingsBtnEl, 'settings-2');
 		this.listEl = this.layoutRoot.createDiv('operon-embed-list operon-filter-list');
 		this.lastSelectOptionsSignature = null;

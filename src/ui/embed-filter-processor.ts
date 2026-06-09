@@ -13,11 +13,19 @@
 
 import { App, MarkdownPostProcessorContext, Notice, setIcon } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
-import { cloneFilterSet, FilterSet, OperonSettings } from '../types/settings';
-import { Pipeline } from '../types/pipeline';
+import type { IndexedTask } from '../types/fields';
+import { cloneFilterSet, FilterSet, FilterSortSpec, OperonSettings } from '../types/settings';
+import { Pipeline, resolveWorkflowStatus } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { t } from '../core/i18n';
-import { evaluateFilterSet, evaluateFilterSetGrouped, filterTasksOnly, sortFilterTasks } from '../core/filter-evaluator';
+import {
+	evaluateFilterSet,
+	evaluateFilterSetGrouped,
+	filterTasksOnly,
+	groupFilterTasks,
+	type GroupedFilterResults,
+	sortFilterTasks,
+} from '../core/filter-evaluator';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
 import { shouldResolveLocationCompactChips } from './compact-task-layout';
@@ -97,6 +105,8 @@ export interface FilterSurfaceRenderOptions {
     includeSubtasksInSearch?: boolean;
     preserveManualSubtaskExpansion?: boolean;
     showSettingsButton?: boolean;
+    subtaskSorts?: FilterSortSpec[];
+    dynamicRootTaskId?: string;
     onEditFilter?: (filterSet: FilterSet) => void;
 }
 
@@ -256,6 +266,7 @@ export function renderFilterSurface(
         deps.settings.filterTaskShowSubtaskAction,
         deps.settings.filterTaskShowPlainCheckboxAction,
     ]);
+    const dynamicRootTaskId = options.dynamicRootTaskId?.trim() ?? '';
     const renderSignature = [
         deps.indexer.getGeneration(),
         deps.pinnedCache?.getGeneration() ?? 0,
@@ -269,6 +280,8 @@ export function renderFilterSurface(
         options.includeSubtasksInSearch === true ? 'search-subtasks' : 'search-rendered-roots',
         options.preserveManualSubtaskExpansion === true ? 'preserve-manual-expansion' : 'reset-manual-expansion',
         options.showSettingsButton === false ? 'no-settings' : 'settings',
+        options.subtaskSorts === undefined ? 'subtask-sort-default' : JSON.stringify(options.subtaskSorts),
+        dynamicRootTaskId,
         JSON.stringify(deps.settings.filterTaskCompactChips),
         filterActionSettingsSignature,
         buildTaskWikilinkOverlaySettingsSignature(deps.settings),
@@ -325,21 +338,82 @@ export function renderFilterSurface(
         defaultExpandAll: embedShowSubtasks,
         showOnlyOpenSubtasks: embedShowOnlyOpenSubtasks,
         showSubtaskAction: embedSettings.filterTaskShowSubtaskAction,
+        subtaskSorts: options.subtaskSorts,
     };
 
     // Container
-    const container = el.createDiv(`operon-embed operon-filter-surface ${options.surfaceClassName ?? 'operon-filter-surface--embed'}`);
+    const container = el.createDiv(`operon-embed operon-filter-surface operon-task-chip-surface ${options.surfaceClassName ?? 'operon-filter-surface--embed'}`);
     const allTasks = deps.indexer.getAllTasks();
     const priorities = deps.getPriorities();
 
     // Render results
-	    if (filterSet.groupBy) {
-	        // Grouped
-	        const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache);
-	        const searchActive = isFilterSearchActive(instance.searchQuery);
-	        const baseRootTasks = filterTasksOnly(filterSet, allTasks, priorities, deps.pinnedCache);
-	        const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
-	        const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
+    if (filterSet.groupBy) {
+        const searchActive = isFilterSearchActive(instance.searchQuery);
+        if (dynamicRootTaskId) {
+            const dynamicRootTask = deps.indexer.getTask(dynamicRootTaskId);
+            const dynamicRootCount = dynamicRootTask ? 1 : 0;
+            const dynamicRootTasks = getDynamicDirectSubtasks(dynamicRootTaskId, deps, embedShowOnlyOpenSubtasks);
+            const treeScopeTasks = getEmbedTreeScope(instance, filterSet, dynamicRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
+            const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length + dynamicRootCount, instance, options);
+
+            if (searchActive) {
+                const tasks = sortFilterTasks(
+                    filterSet,
+                    applyFilterSearch(treeScopeTasks, instance.searchQuery),
+                    priorities,
+                    deps.pinnedCache,
+                );
+                const list = container.createDiv('operon-embed-list');
+                if (dynamicRootTask) {
+                    renderDynamicRootTaskRow(list, dynamicRootTask, callbacks, instance, taskRowOptions);
+                }
+                if (tasks.length === 0) {
+                    list.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
+                    restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+                    return;
+                }
+                const visibleTaskLimit = Math.max(instance.visibleTaskLimit - dynamicRootCount, 0);
+                for (const task of getVisibleFilterTasks(tasks, visibleTaskLimit)) {
+                    const bar = buildFilterTaskRowElement(task, callbacks, instance.expandedTaskIds, {
+                        ...taskRowOptions,
+                        allowExpand: false,
+                    }, list);
+                    list.appendChild(bar);
+                }
+                attachEmbedLazyLoadSentinel(instance, list, tasks.length + dynamicRootCount, filterSet, deps, options);
+                restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+                return;
+            }
+
+            const grouped = groupFilterTasks(filterSet, dynamicRootTasks, priorities, deps.pinnedCache);
+            const list = container.createDiv('operon-embed-list');
+            if (dynamicRootTask) {
+                renderDynamicRootTaskRow(list, dynamicRootTask, callbacks, instance, taskRowOptions);
+            }
+            if (grouped.totalCount === 0) {
+                list.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
+                restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+                return;
+            }
+
+            const visibleTaskLimit = Math.max(instance.visibleTaskLimit - dynamicRootCount, 0);
+            renderGroupedFilterTaskRows(
+                list,
+                getVisibleGroupedFilterResults(grouped, visibleTaskLimit),
+                callbacks,
+                instance,
+                taskRowOptions,
+                deps,
+            );
+            attachEmbedLazyLoadSentinel(instance, list, grouped.totalCount + dynamicRootCount, filterSet, deps, options);
+            restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
+            return;
+        }
+
+        const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache);
+        const baseRootTasks = filterTasksOnly(filterSet, allTasks, priorities, deps.pinnedCache);
+        const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
+        const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
 
         if (searchActive) {
             const tasks = sortFilterTasks(
@@ -375,60 +449,14 @@ export function renderFilterSurface(
 
         const list = container.createDiv('operon-embed-list');
 
-        const visibleGrouped = getVisibleGroupedFilterResults(grouped, instance.visibleTaskLimit);
-        for (const group of visibleGrouped.groups) {
-            const label = group.key || t('filterSets', 'groupEmpty');
-            const header = list.createDiv('operon-group-header');
-            // Make date-format labels (YYYY-MM-DD) clickable → opens daily note
-            if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
-                const noteExists = deps.app.vault.getFiles().some(f => f.basename === label);
-                const linkCls = noteExists
-                    ? 'operon-group-header-label operon-group-date-link operon-group-date-exists'
-                    : 'operon-group-header-label operon-group-date-link operon-group-date-missing';
-                const linkText = noteExists ? `📅 ${label}` : `${label} (+)`;
-                const link = header.createEl('a', { cls: linkCls, text: linkText });
-                bindOperonHoverTooltip(link, {
-                    content: noteExists
-                        ? t('filterSets', 'openDailyNote', { name: label })
-                        : t('filterSets', 'createDailyNote', { name: label }),
-                    taskColor: null,
-                });
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-	                    if (deps.openDailyNote) {
-	                        runAsyncAction('embedded filter daily note open failed', async () => {
-	                            await deps.openDailyNote!(label);
-	                        });
-	                    } else {
-	                        runAsyncAction('embedded filter daily note link open failed', () => deps.app.workspace.openLinkText(label, '', 'tab'));
-	                    }
-                });
-            } else {
-                header.createSpan({ cls: 'operon-group-header-label', text: label });
-            }
-            header.createSpan({ cls: 'operon-group-header-count', text: String(group.count) });
-
-            if (group.subgroups?.length) {
-                for (const subgroup of group.subgroups) {
-                    const subgroupHeader = list.createDiv('operon-group-header operon-subgroup-header');
-                    subgroupHeader.createSpan({
-                        cls: 'operon-group-header-label',
-                        text: subgroup.key || t('filterSets', 'groupEmpty'),
-                    });
-                    subgroupHeader.createSpan({ cls: 'operon-group-header-count', text: String(subgroup.count) });
-
-                    for (const task of subgroup.tasks) {
-                        const bar = buildFilterTaskRowElement(task, callbacks, instance.expandedTaskIds, taskRowOptions, list);
-                        list.appendChild(bar);
-                    }
-                }
-            } else {
-                for (const task of group.tasks) {
-                    const bar = buildFilterTaskRowElement(task, callbacks, instance.expandedTaskIds, taskRowOptions, list);
-                    list.appendChild(bar);
-                }
-            }
-        }
+        renderGroupedFilterTaskRows(
+            list,
+            getVisibleGroupedFilterResults(grouped, instance.visibleTaskLimit),
+            callbacks,
+            instance,
+            taskRowOptions,
+            deps,
+        );
         attachEmbedLazyLoadSentinel(instance, list, grouped.totalCount, filterSet, deps, options);
         restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
     } else {
@@ -488,6 +516,119 @@ function attachEmbedLazyLoadSentinel(
     instance.lazyLoadObserver.observe(sentinel);
 }
 
+function renderGroupedFilterTaskRows(
+    list: HTMLElement,
+    grouped: GroupedFilterResults,
+    callbacks: FilterTaskRowCallbacks,
+    instance: FilterSurfaceInstance,
+    taskRowOptions: Parameters<typeof buildFilterTaskRowElement>[3],
+    deps: EmbedFilterDeps,
+): void {
+    for (const group of grouped.groups) {
+        const label = group.key || t('filterSets', 'groupEmpty');
+        renderGroupHeader(list, label, group.count, deps, false);
+
+        if (group.subgroups?.length) {
+            for (const subgroup of group.subgroups) {
+                renderGroupHeader(
+                    list,
+                    subgroup.key || t('filterSets', 'groupEmpty'),
+                    subgroup.count,
+                    deps,
+                    true,
+                );
+
+                for (const task of subgroup.tasks) {
+                    const bar = buildFilterTaskRowElement(task, callbacks, instance.expandedTaskIds, taskRowOptions, list);
+                    list.appendChild(bar);
+                }
+            }
+        } else {
+            for (const task of group.tasks) {
+                const bar = buildFilterTaskRowElement(task, callbacks, instance.expandedTaskIds, taskRowOptions, list);
+                list.appendChild(bar);
+            }
+        }
+    }
+}
+
+function renderDynamicRootTaskRow(
+    list: HTMLElement,
+    task: IndexedTask,
+    callbacks: FilterTaskRowCallbacks,
+    instance: FilterSurfaceInstance,
+    taskRowOptions: Parameters<typeof buildFilterTaskRowElement>[3],
+): void {
+    const row = buildFilterTaskRowElement(task, callbacks, instance.expandedTaskIds, {
+        ...taskRowOptions,
+        allowExpand: false,
+    }, list);
+    row.classList.add('operon-filter-dynamic-root-task');
+    list.appendChild(row);
+}
+
+function renderGroupHeader(
+    list: HTMLElement,
+    label: string,
+    count: number,
+    deps: EmbedFilterDeps,
+    subgroup: boolean,
+): void {
+    const header = list.createDiv(subgroup ? 'operon-group-header operon-subgroup-header' : 'operon-group-header');
+    if (!subgroup && /^\d{4}-\d{2}-\d{2}$/.test(label)) {
+        const noteExists = deps.app.vault.getFiles().some(f => f.basename === label);
+        const linkCls = noteExists
+            ? 'operon-group-header-label operon-group-date-link operon-group-date-exists'
+            : 'operon-group-header-label operon-group-date-link operon-group-date-missing';
+        const linkText = noteExists ? `📅 ${label}` : `${label} (+)`;
+        const link = header.createEl('a', { cls: linkCls, text: linkText });
+        bindOperonHoverTooltip(link, {
+            content: noteExists
+                ? t('filterSets', 'openDailyNote', { name: label })
+                : t('filterSets', 'createDailyNote', { name: label }),
+            taskColor: null,
+        });
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            if (deps.openDailyNote) {
+                runAsyncAction('embedded filter daily note open failed', async () => {
+                    await deps.openDailyNote!(label);
+                });
+            } else {
+                runAsyncAction('embedded filter daily note link open failed', () => deps.app.workspace.openLinkText(label, '', 'tab'));
+            }
+        });
+    } else {
+        header.createSpan({ cls: 'operon-group-header-label', text: label });
+    }
+    header.createSpan({ cls: 'operon-group-header-count', text: String(count) });
+}
+
+function getDynamicDirectSubtasks(
+    rootTaskId: string,
+    deps: EmbedFilterDeps,
+    showOnlyOpenSubtasks: boolean,
+): IndexedTask[] {
+    const tasks: IndexedTask[] = [];
+    const seen = new Set<string>([rootTaskId]);
+    for (const childId of deps.getChildIds(rootTaskId)) {
+        if (seen.has(childId)) continue;
+        seen.add(childId);
+        const childTask = deps.indexer.getTask(childId);
+        if (!childTask) continue;
+        if (showOnlyOpenSubtasks && !isOpenFilterSubtask(childTask, deps.getPipelines())) continue;
+        tasks.push(childTask);
+    }
+    return tasks;
+}
+
+function isOpenFilterSubtask(task: IndexedTask, pipelines: Pipeline[]): boolean {
+    if (task.checkbox === 'cancelled' || !!task.fieldValues['dateCancelled']?.trim()) return false;
+    if (task.checkbox === 'done' || !!task.fieldValues['dateCompleted']?.trim()) return false;
+    const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status']);
+    return workflow?.definition.isCancelled !== true && workflow?.definition.isFinished !== true;
+}
+
 function closeEmbedTransientUi(root: HTMLElement): void {
     closeFloatingPanelsForRoot(root);
     closeIconOnlyChipPreviewsForRoot(root);
@@ -527,7 +668,7 @@ function renderHeader(
     });
 
     if (options.showSettingsButton !== false) {
-        const cogBtn = header.createEl('button', { cls: 'operon-embed-settings-btn' });
+        const cogBtn = header.createEl('button', { cls: 'operon-embed-settings-btn operon-task-chip-action' });
         setIcon(cogBtn, 'settings-2');
         bindOperonHoverTooltip(cogBtn, {
             content: t('filterSets', 'editFilterNamed', { name: filterSet.name }),

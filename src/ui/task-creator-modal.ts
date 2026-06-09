@@ -9,6 +9,7 @@ import { IndexedTask } from '../types/fields';
 import { OperonSettings, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TaskCreatorToolbarFieldKey } from '../types/settings';
 import { ConfirmActionModal } from './confirm-action-modal';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { suppressNativeModalCloseButton } from './modal-close-button';
 import { showDependencyTaskPicker } from './field-pickers/dependency-task-picker';
 import { showFileTaskTemplatePicker } from './field-pickers/file-task-template-picker';
 import type { ManualDatePickerOptions } from './field-pickers/date-picker';
@@ -395,6 +396,7 @@ export class TaskCreatorModal extends Modal {
 	private templateButtonEl!: HTMLButtonElement;
 	private colorInputEl: HTMLInputElement | null = null;
 	private fieldButtonMap = new Map<TaskCreatorFieldKey, HTMLButtonElement>();
+	private nativeCloseButtonCleanup: (() => void) | null = null;
 	private suggestionState: SuggestionState | null = null;
 	private activePickerClose: (() => void) | null = null;
 	private escapeScopeHandler: KeymapEventHandler | null = null;
@@ -440,6 +442,8 @@ export class TaskCreatorModal extends Modal {
 	onOpen(): void {
 		this.containerEl.addClass('operon-task-creator-modal-container');
 		this.modalEl.addClass('operon-task-creator-modal');
+		this.nativeCloseButtonCleanup?.();
+		this.nativeCloseButtonCleanup = suppressNativeModalCloseButton(this.containerEl, this.modalEl);
 		if (Platform.isPhone) {
 			this.containerEl.addClass('operon-task-creator-modal-container-mobile');
 			this.modalEl.addClass('operon-task-creator-modal-mobile');
@@ -470,6 +474,8 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	onClose(): void {
+		this.nativeCloseButtonCleanup?.();
+		this.nativeCloseButtonCleanup = null;
 		if (this.escapeScopeHandler) {
 			this.scope.unregister(this.escapeScopeHandler);
 			this.escapeScopeHandler = null;
