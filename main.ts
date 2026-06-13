@@ -255,6 +255,7 @@ import {
 	CalendarPreset,
 	CalendarSlotSelection,
 	ExternalCalendarTaskSeed,
+	normalizeCalendarSidebarTaskPoolMode,
 } from './src/types/calendar';
 import {
 	KanbanDropContext,
@@ -565,6 +566,16 @@ const RAW_TASK_CREATION_BULK_NOTICE_THRESHOLD = 4;
 const RAW_TASK_CREATION_NOTICE_SUPPRESSION_TTL_MS = 30_000;
 const DUPLICATE_ALERT_RESOLVED_HIDE_DELAY_MS = 10_000;
 const CANONICAL_SETTINGS_RELOAD_THROTTLE_MS = 5_000;
+const WORKSPACE_TWEAK_HIDE_SCROLLBARS_CLASS = 'operon-tweak-hide-scrollbars';
+const WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_CLASS = 'operon-tweak-properties-collapser';
+const WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_TARGET_CLASS = 'operon-tweak-properties-collapser-target';
+const WORKSPACE_TWEAK_COMPACT_SIDEBAR_TAB_ICONS_CLASS = 'operon-tweak-compact-sidebar-tab-icons';
+const WORKSPACE_TWEAK_PROPERTIES_COLLAPSE_RETRY_DELAYS_MS = [0, 75, 200, 500, 1000] as const;
+
+interface WorkspaceTweakPropertiesCollapseCycle {
+	id: number;
+	attempted: boolean;
+}
 
 export default class OperonPlugin extends Plugin {
 	storage!: OperonStorage;
@@ -586,6 +597,11 @@ export default class OperonPlugin extends Plugin {
 	private canonicalSettingsReloadRunning = false;
 	private canonicalSettingsReloadLastCheckAt = 0;
 	private yamlPropertyVisibilityRefreshTimer: WindowTimeoutHandle | null = null;
+	private workspaceTweakPropertiesCollapseCycleId = 0;
+	private workspaceTweakPropertiesCollapseCycles = new WeakMap<MarkdownView, WorkspaceTweakPropertiesCollapseCycle>();
+	private workspaceTweakPropertiesCollapseTimers: WindowTimeoutHandle[] = [];
+	private workspaceTweakPropertiesTargetEls = new Set<HTMLElement>();
+	private workspaceTweakBodyDocuments = new Set<Document>();
 	private embedFilterDeps: EmbedFilterDeps | null = null;
 	private dynamicFileTaskFilterReadingTimers = new Map<string, WindowTimeoutHandle>();
 	private dynamicFileTaskFilterReadingHosts = new Set<HTMLElement>();
@@ -809,6 +825,8 @@ export default class OperonPlugin extends Plugin {
 		}
 		void this.externalCalendarService?.applySettings(this.settings.externalCalendars);
 		initI18n(getAppLocale(this.app), this.settings.language);
+		this.applyWorkspaceTweaks();
+		this.scheduleWorkspacePropertiesCollapseForAllViews();
 		this.trackerStatusBar?.render();
 		this.refreshDuplicateAlertStatusBar();
 		this.mobileGlobalTaskFab?.refresh();
@@ -1159,6 +1177,7 @@ export default class OperonPlugin extends Plugin {
 		if (!leaf) return;
 
 		const defaultPresetId = this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? null;
+		const shouldOpenFinishedTaskPoolMode = state?.finishedTasksOpen === true;
 		const nextState: CalendarLeafState = {
 			presetId: typeof state?.presetId === 'string' && state.presetId.trim()
 				? state.presetId
@@ -1176,12 +1195,15 @@ export default class OperonPlugin extends Plugin {
 			calendarsOpen: typeof state?.calendarsOpen === 'boolean'
 				? state.calendarsOpen
 				: this.settings.calendarSidebarCalendarsDefaultExpanded,
-			taskPoolOpen: typeof state?.taskPoolOpen === 'boolean'
-				? state.taskPoolOpen
-				: this.settings.calendarSidebarTaskPoolDefaultExpanded,
-			finishedTasksOpen: typeof state?.finishedTasksOpen === 'boolean'
-				? state.finishedTasksOpen
-				: this.settings.calendarSidebarFinishedTasksDefaultExpanded,
+			taskPoolOpen: shouldOpenFinishedTaskPoolMode
+				? true
+				: (typeof state?.taskPoolOpen === 'boolean'
+					? state.taskPoolOpen
+					: this.settings.calendarSidebarTaskPoolDefaultExpanded),
+			taskPoolMode: shouldOpenFinishedTaskPoolMode
+				? 'finished'
+				: normalizeCalendarSidebarTaskPoolMode(state?.taskPoolMode),
+			finishedTasksOpen: false,
 			showAllDayLane: typeof state?.showAllDayLane === 'boolean'
 				? state.showAllDayLane
 				: this.settings.calendarShowAllDayLane,
@@ -1295,6 +1317,7 @@ export default class OperonPlugin extends Plugin {
 
 		// Initialize i18n — use language override from settings, or detect Obsidian's locale
 		initI18n(getAppLocale(this.app), this.settings.language);
+		this.applyWorkspaceTweaks();
 		this.registerHoverLinkSource(OPERON_COMPACT_CHIP_HOVER_SOURCE, {
 			display: 'Operon',
 			defaultMod: true,
@@ -1398,6 +1421,7 @@ export default class OperonPlugin extends Plugin {
 		// Register Reading mode post-processor
 		this.registerReadingModeProcessor();
 		this.registerYamlPropertyVisibilityWatchers();
+		this.registerWorkspaceTweakWatchers();
 
 		// Register views (Filter View, etc.) and floating dock
 		this.registerViews();
@@ -1506,6 +1530,7 @@ export default class OperonPlugin extends Plugin {
 				this.startupReady = true;
 				await this.timeTracker.resumeFromIndex({ migrateLegacy: true });
 				this.refreshViews();
+				this.scheduleWorkspacePropertiesCollapseForAllViews();
 				this.syncDuplicateConflictUi(true);
 				await this.maybeShowDemoWorkspacePrompt();
 				setWindowTimeout(() => {
@@ -1531,6 +1556,9 @@ export default class OperonPlugin extends Plugin {
 			clearWindowTimeout(this.canonicalSettingsReloadTimer);
 			this.canonicalSettingsReloadTimer = null;
 		}
+		this.clearWorkspaceTweakPropertiesCollapseTimers();
+		this.clearWorkspaceTweakPropertiesCollapserTargetClasses();
+		this.removeWorkspaceTweakBodyClasses();
 		if (this.deferredRefreshTimer) {
 			clearWindowTimeout(this.deferredRefreshTimer);
 			this.deferredRefreshTimer = null;
@@ -5287,6 +5315,190 @@ export default class OperonPlugin extends Plugin {
 				this.openInlineSubtaskCreatorFromParent(request, parentTask);
 			},
 		});
+	}
+
+	private registerWorkspaceTweakWatchers(): void {
+		this.registerEvent(
+			this.app.workspace.on('file-open', () => {
+				this.scheduleWorkspacePropertiesCollapseForActiveView();
+			}),
+		);
+
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', leaf => {
+				if (!(leaf?.view instanceof MarkdownView)) return;
+				this.scheduleWorkspacePropertiesCollapseForView(leaf.view);
+			}),
+		);
+
+		this.app.workspace.onLayoutReady(() => {
+			this.applyWorkspaceTweaks();
+			this.scheduleWorkspacePropertiesCollapseForAllViews();
+		});
+	}
+
+	private applyWorkspaceTweaks(): void {
+		for (const doc of this.getWorkspaceTweakDocuments()) {
+			this.workspaceTweakBodyDocuments.add(doc);
+			doc.body.classList.toggle(WORKSPACE_TWEAK_HIDE_SCROLLBARS_CLASS, this.settings.workspaceTweaksHideScrollbars);
+			doc.body.classList.toggle(WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_CLASS, this.settings.workspaceTweaksCollapseProperties);
+			doc.body.classList.toggle(
+				WORKSPACE_TWEAK_COMPACT_SIDEBAR_TAB_ICONS_CLASS,
+				this.settings.workspaceTweaksCompactSidebarTabIcons,
+			);
+		}
+		if (!this.settings.workspaceTweaksCollapseProperties) {
+			this.clearWorkspaceTweakPropertiesCollapseTimers();
+			this.clearWorkspaceTweakPropertiesCollapserTargetClasses();
+		}
+	}
+
+	private removeWorkspaceTweakBodyClasses(): void {
+		for (const doc of this.getWorkspaceTweakDocuments()) {
+			this.workspaceTweakBodyDocuments.add(doc);
+		}
+		for (const doc of this.workspaceTweakBodyDocuments) {
+			doc.body?.classList.remove(
+				WORKSPACE_TWEAK_HIDE_SCROLLBARS_CLASS,
+				WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_CLASS,
+				WORKSPACE_TWEAK_COMPACT_SIDEBAR_TAB_ICONS_CLASS,
+			);
+		}
+		this.workspaceTweakBodyDocuments.clear();
+	}
+
+	private getWorkspaceTweakDocuments(): Document[] {
+		const docs = new Set<Document>();
+		docs.add(getActiveDocument());
+		const workspaceContainer = (this.app.workspace as { containerEl?: HTMLElement }).containerEl;
+		if (workspaceContainer?.ownerDocument) {
+			docs.add(workspaceContainer.ownerDocument);
+		}
+		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+			if (leaf.view instanceof MarkdownView) {
+				docs.add(leaf.view.containerEl.ownerDocument);
+			}
+		}
+		return Array.from(docs).filter(doc => !!doc.body);
+	}
+
+	private clearWorkspaceTweakPropertiesCollapserTargetClasses(): void {
+		for (const el of this.workspaceTweakPropertiesTargetEls) {
+			el.classList.remove(WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_TARGET_CLASS);
+		}
+		this.workspaceTweakPropertiesTargetEls.clear();
+		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+			if (leaf.view instanceof MarkdownView) {
+				leaf.view.containerEl.classList.remove(WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_TARGET_CLASS);
+			}
+		}
+	}
+
+	private clearWorkspaceTweakPropertiesCollapseTimers(): void {
+		for (const timer of this.workspaceTweakPropertiesCollapseTimers) {
+			clearWindowTimeout(timer);
+		}
+		this.workspaceTweakPropertiesCollapseTimers = [];
+	}
+
+	private scheduleWorkspacePropertiesCollapseForActiveView(): void {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (view) this.scheduleWorkspacePropertiesCollapseForView(view);
+	}
+
+	private scheduleWorkspacePropertiesCollapseForAllViews(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+			if (leaf.view instanceof MarkdownView) {
+				this.scheduleWorkspacePropertiesCollapseForView(leaf.view);
+			}
+		}
+	}
+
+	private scheduleWorkspacePropertiesCollapseForView(view: MarkdownView): void {
+		if (!this.syncWorkspacePropertiesCollapserTargetClassForView(view)) return;
+		const cycle: WorkspaceTweakPropertiesCollapseCycle = {
+			id: ++this.workspaceTweakPropertiesCollapseCycleId,
+			attempted: false,
+		};
+		this.workspaceTweakPropertiesCollapseCycles.set(view, cycle);
+		const win = view.containerEl.ownerDocument.defaultView ?? getActiveWindow();
+		for (const delayMs of WORKSPACE_TWEAK_PROPERTIES_COLLAPSE_RETRY_DELAYS_MS) {
+			const timer: WindowTimeoutHandle = {
+				win,
+				id: win.setTimeout(() => {
+					this.workspaceTweakPropertiesCollapseTimers = this.workspaceTweakPropertiesCollapseTimers
+						.filter(candidate => candidate !== timer);
+					this.collapseWorkspacePropertiesForCycle(view, cycle);
+				}, delayMs),
+			};
+			this.workspaceTweakPropertiesCollapseTimers.push(timer);
+		}
+	}
+
+	private collapseWorkspacePropertiesForCycle(
+		view: MarkdownView,
+		cycle: WorkspaceTweakPropertiesCollapseCycle,
+	): void {
+		if (!this.settings.workspaceTweaksCollapseProperties) return;
+		if (cycle.attempted || this.workspaceTweakPropertiesCollapseCycles.get(view) !== cycle) return;
+		if (!this.syncWorkspacePropertiesCollapserTargetClassForView(view)) return;
+		const metadataContainer = this.findWorkspacePropertiesMetadataContainer(view);
+		if (!metadataContainer) return;
+		const heading = metadataContainer.querySelector<HTMLElement>('.metadata-properties-heading');
+		if (!heading) return;
+		cycle.attempted = true;
+		if (this.isWorkspacePropertiesCollapsed(metadataContainer, heading)) return;
+		const target = heading.querySelector<HTMLElement>('.collapse-indicator')
+			?? heading.querySelector<HTMLElement>('.metadata-properties-title')
+			?? heading;
+		target.click();
+	}
+
+	private syncWorkspacePropertiesCollapserTargetClassForView(view: MarkdownView): boolean {
+		const shouldMark = this.settings.workspaceTweaksCollapseProperties
+			&& this.shouldCollapseWorkspacePropertiesForView(view);
+		view.containerEl.classList.toggle(WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_TARGET_CLASS, shouldMark);
+		if (shouldMark) {
+			this.workspaceTweakPropertiesTargetEls.add(view.containerEl);
+		} else {
+			this.workspaceTweakPropertiesTargetEls.delete(view.containerEl);
+		}
+		return shouldMark;
+	}
+
+	private shouldCollapseWorkspacePropertiesForView(view: MarkdownView): boolean {
+		const file = view.file;
+		if (!(file instanceof TFile) || file.extension !== 'md') return false;
+		if (this.isWorkspaceTweaksPropertiesExcluded(file.path)) return false;
+		if (this.settings.workspaceTweaksPropertiesScope === 'all-notes') return true;
+		return !!this.indexer.getFileTaskByPath(file.path);
+	}
+
+	private isWorkspaceTweaksPropertiesExcluded(filePath: string): boolean {
+		const normalizedFilePath = this.normalizeWorkspaceTweakPath(filePath);
+		if (!normalizedFilePath) return false;
+		for (const folder of this.settings.workspaceTweaksPropertiesExcludedFolders) {
+			const normalizedFolder = this.normalizeWorkspaceTweakPath(folder);
+			if (!normalizedFolder) continue;
+			if (normalizedFilePath === normalizedFolder || normalizedFilePath.startsWith(`${normalizedFolder}/`)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private findWorkspacePropertiesMetadataContainer(view: MarkdownView): HTMLElement | null {
+		return view.containerEl.querySelector<HTMLElement>(
+			'.markdown-source-view .metadata-container, .markdown-preview-view .metadata-container, .metadata-container',
+		);
+	}
+
+	private isWorkspacePropertiesCollapsed(metadataContainer: HTMLElement, heading: HTMLElement): boolean {
+		return metadataContainer.classList.contains('is-collapsed') || heading.classList.contains('is-collapsed');
+	}
+
+	private normalizeWorkspaceTweakPath(path: string): string {
+		return path.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
 	}
 
 	private registerYamlPropertyVisibilityWatchers(): void {

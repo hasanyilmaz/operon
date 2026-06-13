@@ -62,6 +62,7 @@ interface EmbeddedMarkdownEditView {
 	set(value: string, clear?: boolean): void;
 	onUpdate(update: unknown, changed: boolean): void;
 	buildLocalExtensions(): unknown[];
+	refreshLayout(): void;
 	destroy(): void;
 	unload(): void;
 }
@@ -418,6 +419,15 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			this.queueFilePanelLineNumberRefresh();
 		}
 
+		refreshLayout(): void {
+			if (!this.isFilePanelSourceEditor()) return;
+			const view = this.editor.cm;
+			view.requestMeasure();
+			this.resetHorizontalScroll();
+			this.applyFilePanelLayoutGuard();
+			this.queueFilePanelLineNumberRefresh();
+		}
+
 		private installFilePanelLineNumberRail(): void {
 			if (!this.isFilePanelSourceEditor()) return;
 			const rail = createOwnerElement(this.containerEl, 'div');
@@ -632,6 +642,10 @@ export class EmbeddedMarkdownSourceEditor {
 
 	setValue(value: string): void {
 		this.view?.set(value);
+	}
+
+	refreshLayout(): void {
+		this.view?.refreshLayout();
 	}
 
 	indentCurrentLine(outdent: boolean): void {

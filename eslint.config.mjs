@@ -8,15 +8,25 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 import { PlainTextParser } from "./node_modules/eslint-plugin-obsidianmd/dist/lib/plainTextParser.js";
 
 const tsconfigRootDir = dirname(fileURLToPath(import.meta.url));
+function useRootDependPlugin(config) {
+	if (!config.plugins?.depend) return config;
+	const { depend: _depend, ...plugins } = config.plugins;
+	return {
+		...config,
+		plugins,
+	};
+}
+
 const obsidianRecommended = obsidianmd.configs.recommended.map((config) => {
-	if (config.rules?.["obsidianmd/validate-manifest"] && !config.files) {
+	const recommendedConfig = useRootDependPlugin(config);
+	if (recommendedConfig.rules?.["obsidianmd/validate-manifest"] && !recommendedConfig.files) {
 		return {
-			...config,
+			...recommendedConfig,
 			files: ["**/*.ts", "**/*.tsx"],
 		};
 	}
 
-	return config;
+	return recommendedConfig;
 });
 
 export default defineConfig([

@@ -1,10 +1,9 @@
 import { localToday } from '../core/local-time';
 import { IndexedTask } from '../types/fields';
+import type { CalendarSidebarTaskPoolMode } from '../types/calendar';
 
 export const CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT = 25;
 export const CALENDAR_SIDEBAR_TASK_POOL_SEARCH_LIMIT = 50;
-export const CALENDAR_SIDEBAR_FINISHED_TASKS_RENDER_LIMIT = 100;
-export type CalendarSidebarTaskPoolMode = 'overdue' | 'unscheduled' | 'all';
 
 export function buildCalendarSidebarTaskPoolSearchText(task: IndexedTask): string {
 	return [
@@ -41,7 +40,14 @@ export function collectFinishedTasksForDate(
 export function collectCalendarSidebarTaskPoolCandidates(
 	tasks: IndexedTask[],
 	mode: CalendarSidebarTaskPoolMode,
+	options: {
+		finishedDate?: string;
+	} = {},
 ): IndexedTask[] {
+	if (mode === 'finished') {
+		return collectFinishedTasksForDate(tasks, options.finishedDate ?? localToday());
+	}
+
 	const today = localToday();
 	const isValidDateKey = (value: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(value);
 	const isOverdue = (task: IndexedTask): boolean => {

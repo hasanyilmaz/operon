@@ -1,6 +1,6 @@
 # Operon
 
-Operon is an **Obsidian-native community task management plugin** for humans and agents. It keeps tasks in **Markdown** while giving them structured metadata, durable identity, reusable views, planning surfaces, recurrence, and time tracking.
+Operon is a **task management plugin for humans and agents in Obsidian**. It keeps tasks in **Markdown** while giving them structured metadata, durable identity, reusable views, planning surfaces, recurrence, and time tracking.
 
 ## What problem does Operon solve?
 
@@ -254,7 +254,7 @@ The right side of the editor gives form-like control over task data. The file bo
 
 File tasks open with the file body visible by default. Inline tasks can also reveal their source file body when needed, making it possible to inspect the surrounding note, edit Markdown, and use familiar Obsidian editing behavior from inside the Task Editor.
 
-Body changes are **automatically saved when the Task Editor closes**. You can also save explicitly with the save button, and longer editing sessions are protected by a 60-second autosave debounce.
+Body changes are **automatically saved when the Task Editor closes**. You can also save explicitly with the save button, and longer editing sessions are protected by a configurable autosave debounce of up to 60 seconds.
 
 ![Task Editor split view with Markdown file body on the left and canonical task fields on the right](assets/readme/IMG15-task-editor-split-view-file-body-fields.png)
 

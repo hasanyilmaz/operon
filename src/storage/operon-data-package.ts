@@ -27,6 +27,15 @@ export type VersionedStoreSlice<T> = T & {
 	version: number;
 };
 
+export type WorkspaceTweaksPackageSettings = Pick<
+	OperonSettings,
+	| 'workspaceTweaksHideScrollbars'
+	| 'workspaceTweaksCollapseProperties'
+	| 'workspaceTweaksPropertiesScope'
+	| 'workspaceTweaksPropertiesExcludedFolders'
+	| 'workspaceTweaksCompactSidebarTabIcons'
+>;
+
 export type OperonDataPackageOwnedSettingsKey =
 	| 'keyMappings'
 	| 'filterSets'
@@ -38,6 +47,7 @@ export type OperonDataPackageOwnedSettingsKey =
 	| keyof ContextualMenuStoreSettings
 	| keyof TaskUiPreferenceStoreSettings
 	| keyof TaskCreationProfileStoreSettings
+	| keyof WorkspaceTweaksPackageSettings
 	| keyof TaskAutomationPolicyStoreSettings;
 
 export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
@@ -84,6 +94,11 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'filterTaskShowPinAction',
 	'filterTaskShowSubtaskAction',
 	'filterTaskShowPlainCheckboxAction',
+	'workspaceTweaksHideScrollbars',
+	'workspaceTweaksCollapseProperties',
+	'workspaceTweaksPropertiesScope',
+	'workspaceTweaksPropertiesExcludedFolders',
+	'workspaceTweaksCompactSidebarTabIcons',
 	'taskDescriptionRequired',
 	'assigneesRequired',
 	'fileTasksFolder',
@@ -171,6 +186,7 @@ export interface OperonUiPackageV1 {
 	contextualMenu: VersionedStoreSlice<ContextualMenuStoreSettings>;
 	taskUiPreferences: VersionedStoreSlice<TaskUiPreferenceStoreSettings>;
 	taskCreationProfile: VersionedStoreSlice<TaskCreationProfileStoreSettings>;
+	workspaceTweaks: VersionedStoreSlice<WorkspaceTweaksPackageSettings>;
 }
 
 export interface OperonAutomationPackageV1 {
@@ -262,6 +278,7 @@ export function composeOperonSettingsFromDataPackage(
 		),
 			...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskUiPreferences),
 			...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskCreationProfile),
+			...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.workspaceTweaks),
 			...cloneUnknown<Partial<OperonSettings>>(dataPackage.automation.taskAutomationPolicy),
 		externalCalendars: readArray(dataPackage.integrations.externalCalendarSources.sources, defaults.externalCalendars),
 	});
@@ -369,6 +386,14 @@ export function buildOperonDataPackageFromSettings(
 				fileTaskTemplateFolder: normalized.fileTaskTemplateFolder,
 				createDailyNotesAsOperonTask: normalized.createDailyNotesAsOperonTask,
 				defaultEstimateMinutes: normalized.defaultEstimateMinutes,
+			},
+			workspaceTweaks: {
+				version: 1,
+				workspaceTweaksHideScrollbars: normalized.workspaceTweaksHideScrollbars,
+				workspaceTweaksCollapseProperties: normalized.workspaceTweaksCollapseProperties,
+				workspaceTweaksPropertiesScope: normalized.workspaceTweaksPropertiesScope,
+				workspaceTweaksPropertiesExcludedFolders: cloneUnknown(normalized.workspaceTweaksPropertiesExcludedFolders),
+				workspaceTweaksCompactSidebarTabIcons: normalized.workspaceTweaksCompactSidebarTabIcons,
 			},
 		},
 		automation: {

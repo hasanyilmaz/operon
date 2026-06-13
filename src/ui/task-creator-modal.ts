@@ -15,6 +15,7 @@ import { showDependencyTaskPicker } from './field-pickers/dependency-task-picker
 import { showFileTaskTemplatePicker } from './field-pickers/file-task-template-picker';
 import type { ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showSubtasksPicker } from './field-pickers/subtasks-picker';
+import { showColorPicker } from './field-pickers/color-picker';
 import { MOBILE_PICKER_CLOSE_EVENT, MOBILE_PICKER_OPEN_EVENT } from './field-pickers/common';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
@@ -397,7 +398,6 @@ export class TaskCreatorModal extends Modal {
 	private inlineButtonEl!: HTMLButtonElement;
 	private fileButtonEl!: HTMLButtonElement;
 	private templateButtonEl!: HTMLButtonElement;
-	private colorInputEl: HTMLInputElement | null = null;
 	private fieldButtonMap = new Map<TaskCreatorFieldKey, HTMLButtonElement>();
 	private nativeCloseButtonCleanup: (() => void) | null = null;
 	private suggestionState: SuggestionState | null = null;
@@ -499,8 +499,6 @@ export class TaskCreatorModal extends Modal {
 		}
 		this.containerEl.style.removeProperty('--operon-task-creator-mobile-viewport-height');
 		this.clearInitialDescriptionFocusGuard();
-		this.colorInputEl?.remove();
-		this.colorInputEl = null;
 		this.closeActivePicker();
 		this.closeSuggestions();
 		this.contentEl.empty();
@@ -1082,7 +1080,7 @@ export class TaskCreatorModal extends Modal {
 			return;
 		}
 		if (canonicalKey === 'taskColor') {
-			this.openNativeColorPicker();
+			this.openColorPicker();
 			return;
 		}
 
@@ -1367,43 +1365,31 @@ export class TaskCreatorModal extends Modal {
 		this.containerEl.style.setProperty('--operon-task-creator-accent', color);
 	}
 
-	private openNativeColorPicker(): void {
-		let input = this.colorInputEl;
+	private openColorPicker(): void {
 		const anchorButton = this.fieldButtonMap.get('taskColor');
-		if (!input) {
-			const inputDocument = anchorButton?.ownerDocument ?? getActiveDocument();
-			input = inputDocument.createElement('input');
-			input.type = 'color';
-			input.className = 'operon-task-creator-native-color-input';
-			input.tabIndex = -1;
-			input.addEventListener('input', () => {
-				const value = input?.value.replace(/^#/, '') ?? '';
-				if (!value) return;
-					this.applyPayloadToDraft({ taskColor: value });
-				});
-				inputDocument.body.appendChild(input);
-				this.colorInputEl = input;
-			}
-
-		const current = (this.draft.fieldValues['taskColor'] ?? this.draft.taskColor ?? '').trim();
-		input.value = /^#?[0-9a-fA-F]{6}$/.test(current)
-			? (current.startsWith('#') ? current : `#${current}`)
-			: '#000000';
-		if (anchorButton) {
-			const rect = anchorButton.getBoundingClientRect();
-			input.style.left = `${Math.round(rect.left)}px`;
-			input.style.top = `${Math.round(rect.bottom + 6)}px`;
-		}
-		const maybeShowPicker = input as HTMLInputElement & { showPicker?: () => void };
-		if (typeof maybeShowPicker.showPicker === 'function') {
-			try {
-				maybeShowPicker.showPicker();
-				return;
-			} catch {
-				// Fall back to click when showPicker is unsupported by the host runtime.
-			}
-		}
-		input.click();
+		const anchor = anchorButton ?? this.descriptionEl;
+		this.closeSuggestions();
+		this.closeActivePicker();
+		const close = showColorPicker(anchor, {
+			value: this.draft.fieldValues['taskColor'] ?? this.draft.taskColor,
+			palette: this.options.settings.colorPalette,
+			onSelect: value => {
+				this.applyPayloadToDraft({ taskColor: value });
+				this.closeActivePicker();
+				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+			},
+			onClear: () => {
+				this.applyPayloadToDraft({ taskColor: '' });
+				this.closeActivePicker();
+				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+			},
+			onClose: () => {
+				this.closeActivePicker();
+				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+			},
+		});
+		this.activePickerClose = close;
+		anchorButton?.addClass('is-picker-open');
 	}
 
 	private renderFieldButtons(): void {

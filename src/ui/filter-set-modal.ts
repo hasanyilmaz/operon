@@ -21,6 +21,8 @@ import { normalizeTaskIconValue } from '../core/task-icon-value';
 import { DYNAMIC_FILE_TASK_FILTER_DEFAULT_ICON, isDynamicFileTaskFilterSet } from '../core/dynamic-file-task-filter';
 import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
+import { closeFloatingPanelsForRoot } from './field-pickers/common';
+import { showFilterConditionPicker } from './field-pickers/filter-condition-picker';
 import { getManagedCustomFieldOptions } from '../core/managed-task-fields';
 
 function generateConditionId(): string {
@@ -155,6 +157,7 @@ export class FilterSetModal extends Modal {
 		activeFilterSetModals.delete(this);
 		this.condObserver?.disconnect();
 		this.refreshCountBadge = null;
+		closeFloatingPanelsForRoot(this.modalEl);
 		this.cleanupBodyDropdowns();
 		this.contentEl.empty();
 	}
@@ -163,6 +166,7 @@ export class FilterSetModal extends Modal {
 		const { contentEl } = this;
 		this.condObserver?.disconnect();
 		this.refreshCountBadge = null;
+		closeFloatingPanelsForRoot(contentEl);
 		this.cleanupBodyDropdowns();
 		this.modalEl.addClass('operon-filter-set-modal-shell');
 		contentEl.empty();
@@ -311,8 +315,12 @@ export class FilterSetModal extends Modal {
 
 	private measureSelectContentWidth(select: HTMLSelectElement): number {
 		const selectedText = select.selectedOptions[0]?.text ?? select.value ?? '';
-		const style = getOwnerWindow(select).getComputedStyle(select);
-		const canvas = createOwnerElement(select, 'canvas');
+		return this.measureControlContentWidth(select, selectedText);
+	}
+
+	private measureControlContentWidth(control: HTMLElement, text: string): number {
+		const style = getOwnerWindow(control).getComputedStyle(control);
+		const canvas = createOwnerElement(control, 'canvas');
 		const context = canvas.getContext('2d');
 		if (!context) return 220;
 		context.font = [
@@ -322,7 +330,7 @@ export class FilterSetModal extends Modal {
 			style.fontSize,
 			style.fontFamily,
 		].filter(Boolean).join(' ');
-		const textWidth = context.measureText(selectedText).width;
+		const textWidth = context.measureText(text).width;
 		return Math.ceil(textWidth + 44);
 	}
 
@@ -768,22 +776,51 @@ export class FilterSetModal extends Modal {
 		this.renderNodeMoveButtons(row, group, index);
 		const fieldOptions = this.getFieldOptions(true);
 
-		// --- Field dropdown ---
-		const fieldSel = this.createModalSelect(
-			row,
-			fieldOptions.map(optionDef => ({ value: optionDef.field, label: optionDef.label })),
-			cond.field,
-			(value) => {
-				cond.field = value;
-				const fieldOption = fieldOptions.find(optionDef => optionDef.field === cond.field);
-				cond.fieldType = fieldOption?.type ?? 'text';
-				cond.operator = '';
-				cond.value = undefined;
-				rebuildOpSel();
-				this.syncMirroredFilterFields();
-			},
-			'content',
-		);
+		// --- Field picker ---
+		const fieldWrap = row.createDiv('operon-filter-select-wrap is-content operon-condition-field-picker-wrap');
+		const fieldButton = fieldWrap.createEl('button', {
+			cls: 'operon-filter-select operon-condition-field-picker-trigger',
+		});
+		fieldButton.type = 'button';
+		fieldButton.setAttribute('aria-haspopup', 'listbox');
+		fieldButton.setAttribute('aria-expanded', 'false');
+		const fieldButtonLabel = fieldButton.createSpan('operon-condition-field-picker-trigger-label');
+		const fieldButtonIcon = fieldButton.createSpan('operon-condition-field-picker-trigger-icon');
+		setIcon(fieldButtonIcon, 'chevron-down');
+
+		const getSelectedFieldOption = () => fieldOptions.find(optionDef => optionDef.field === cond.field);
+		const getSelectedFieldLabel = () => getSelectedFieldOption()?.label ?? cond.field;
+		const updateFieldButton = () => {
+			const selectedFieldOption = getSelectedFieldOption();
+			const label = selectedFieldOption?.label ?? cond.field;
+			fieldButtonLabel.textContent = label;
+			fieldButton.dataset.value = selectedFieldOption?.field ?? cond.field;
+			fieldButton.title = selectedFieldOption && selectedFieldOption.label !== selectedFieldOption.field
+				? `${selectedFieldOption.label} (${selectedFieldOption.field})`
+				: label;
+			fieldButton.setAttribute('aria-label', `${t('filterSets', 'conditionFieldPickerLabel')}: ${label}`);
+		};
+		updateFieldButton();
+
+		fieldButton.addEventListener('click', () => {
+			fieldButton.setAttribute('aria-expanded', 'true');
+			showFilterConditionPicker(fieldButton, {
+				value: cond.field,
+				fields: fieldOptions,
+				onSelect: (option) => {
+					cond.field = option.field;
+					cond.fieldType = option.type;
+					cond.operator = '';
+					cond.value = undefined;
+					updateFieldButton();
+					rebuildOpSel();
+					this.syncMirroredFilterFields();
+				},
+				onClose: () => {
+					fieldButton.setAttribute('aria-expanded', 'false');
+				},
+			});
+		});
 
 		// --- Operator dropdown ---
 		const opSel = this.createModalSelect(row, [], cond.operator, (value) => {
@@ -862,12 +899,11 @@ export class FilterSetModal extends Modal {
 		};
 
 		const syncCompactSelectWidths = () => {
-			const fieldWrap = fieldSel.parentElement;
 			const opWrap = opSel.parentElement;
-			if (!fieldWrap || !opWrap) return;
+			if (!opWrap) return;
 			const targetWidth = Math.max(
 				160,
-				Math.min(320, this.measureSelectContentWidth(fieldSel)),
+				Math.min(320, this.measureControlContentWidth(fieldButton, getSelectedFieldLabel())),
 				Math.min(320, this.measureSelectContentWidth(opSel)),
 			);
 			fieldWrap.style.flexBasis = `${targetWidth}px`;

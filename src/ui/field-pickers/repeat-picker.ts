@@ -460,11 +460,9 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		panel.createDiv({ cls: 'operon-floating-title', text: t('taskEditor', 'repeat') });
 
 		const pickerAccent = resolvePickerAccent(panel, options.taskColor);
+		panel.style.setProperty('--operon-repeat-picker-accent', pickerAccent);
 		panel.style.setProperty('--operon-live-hover-border', pickerAccent);
 		const hero = panel.createDiv('operon-repeat-picker-hero');
-		hero.style.setProperty('--operon-repeat-picker-hero-border', pickerAccent);
-		hero.style.borderColor = pickerAccent;
-		hero.style.boxShadow = `0 0 0 1px ${pickerAccent}, 0 2px 8px rgba(0, 0, 0, 0.08)`;
 		hero.createDiv({ cls: 'operon-repeat-picker-hero-label', text: t('taskEditor', 'repeatSummary') });
 		const heroValue = hero.createDiv('operon-repeat-picker-hero-value');
 
@@ -668,7 +666,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			actions.appendChild(clear);
 		}
 
-		const cancel = createButton(t('buttons', 'cancel'), 'operon-floating-btn is-secondary', actions);
+		const cancel = createButton(t('buttons', 'cancel'), 'operon-floating-btn is-secondary operon-repeat-picker-cancel', actions);
 		cancel.addEventListener('click', () => close());
 		actions.appendChild(cancel);
 

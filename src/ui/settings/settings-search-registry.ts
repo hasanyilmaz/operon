@@ -155,7 +155,6 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsCalendar', 'calendarSidebarWidthPx', 'calendar', 'sidebarWidth', 'sidebarWidthDesc', 'number', ['calendar', 'sidebar', 'calendar sidebar width']),
 	e('views', 'viewsCalendar', 'calendarSidebarCalendarsDefaultExpanded', 'settings', 'calendarSidebarCalendarsDefaultState', 'calendarSidebarCalendarsDefaultStateDesc', 'toggle', ['calendar', 'sidebar', 'calendars section']),
 	e('views', 'viewsCalendar', 'calendarSidebarTaskPoolDefaultExpanded', 'settings', 'calendarSidebarTaskPoolDefaultState', 'calendarSidebarTaskPoolDefaultStateDesc', 'toggle', ['calendar', 'sidebar', 'task pool section']),
-	e('views', 'viewsCalendar', 'calendarSidebarFinishedTasksDefaultExpanded', 'settings', 'calendarSidebarFinishedTasksDefaultState', 'calendarSidebarFinishedTasksDefaultStateDesc', 'toggle', ['calendar', 'sidebar', 'finished tasks section']),
 	section('integrations', 'viewsCalendar', 'externalCalendars', 'settings', 'externalCalendarsTitle', 'externalCalendarsDesc', ['calendar', 'ics', 'external calendar', 'external calendars', 'refresh', 'sync']),
 
 	e('views', 'viewsKanban', 'kanbanDefaultPresetId', 'settings', 'kanbanDefaultPreset', 'kanbanDefaultPresetDesc', 'dropdown', ['kanban', 'kanban default preset', 'kanban preset', 'board preset']),
@@ -201,6 +200,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('ui', 'interfaceContextMenu', 'contextMenuMatrix', 'settings', 'contextualMenuMatrix', 'contextualMenuMatrixDesc', ['contextual menu matrix', 'context menu matrix', 'surface visibility', 'calendar surfaces', 'hover menu surfaces']),
 	e('ui', 'interfaceStateIcons', 'fallbackTaskIconSource', 'settings', 'fallbackTaskIconSource', 'fallbackTaskIconSourceDesc', 'dropdown', ['state icons', 'fallback icons', 'task icon']),
 	e('ui', 'interfaceTaskEditor', 'taskEditorShowLineNumbers', 'settings', 'taskEditorShowLineNumbers', 'taskEditorShowLineNumbersDesc', 'toggle', ['task editor', 'line numbers', 'source line numbers', 'file body line numbers']),
+	e('ui', 'interfaceTaskEditor', 'taskEditorAutosaveDelaySeconds', 'settings', 'taskEditorAutosaveDelay', 'taskEditorAutosaveDelayDesc', 'dropdown', ['task editor', 'autosave', 'auto save', 'save delay', 'file body autosave']),
 	section('ui', 'interfaceTaskEditor', 'taskEditorWorkflowPickers', 'settings', 'taskEditorWorkflowPickers', 'taskEditorWorkflowPickersDesc', ['task editor', 'task editor pickers', 'workflow pickers']),
 	section('ui', 'interfaceLocationMap', 'locationPlaceVisualProperties', 'settings', 'locationPlaceVisualPropertiesSection', 'locationPlaceVisualPropertiesSectionDesc', ['location', 'map', 'place note visuals', 'marker icon', 'marker color']),
 	e('ui', 'interfaceLocationMap', 'locationPlaceIconPropertyName', 'settings', 'locationPlaceIconPropertyName', 'locationPlaceIconPropertyNameDesc', 'text', ['location', 'map', 'place note icon', 'marker icon', 'icon property']),
@@ -213,6 +213,12 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('ui', 'interfaceLocationMap', 'locationPreviewDefaultZoom', 'settings', 'locationPreviewDefaultZoom', 'locationPreviewDefaultZoomDesc', 'number', ['location', 'map preview', 'preview zoom']),
 	e('ui', 'interfaceLocationMap', 'locationPreviewMinZoom', 'settings', 'locationPreviewMinZoom', 'locationPreviewMinZoomDesc', 'number', ['location', 'map preview', 'minimum zoom']),
 	e('ui', 'interfaceLocationMap', 'locationPreviewMaxZoom', 'settings', 'locationPreviewMaxZoom', 'locationPreviewMaxZoomDesc', 'number', ['location', 'map preview', 'maximum zoom']),
+	e('ui', 'interfaceTweaks', 'workspaceTweaksHideScrollbars', 'settings', 'workspaceTweaksHideScrollbars', 'workspaceTweaksHideScrollbarsDesc', 'toggle', ['tweaks', 'workspace tweaks', 'hide scrollbars', 'scrollbars', 'hider']),
+	e('ui', 'interfaceTweaks', 'workspaceTweaksCompactSidebarTabIcons', 'settings', 'workspaceTweaksCompactSidebarTabIcons', 'workspaceTweaksCompactSidebarTabIconsDesc', 'toggle', ['tweaks', 'workspace tweaks', 'compact sidebar', 'sidebar tab icons', 'side dock']),
+	e('ui', 'interfaceTweaks', 'workspaceTweaksCollapseProperties', 'settings', 'workspaceTweaksCollapseProperties', 'workspaceTweaksCollapsePropertiesDesc', 'toggle', ['tweaks', 'workspace tweaks', 'properties', 'collapse properties', 'properties collapser']),
+	e('ui', 'interfaceTweaks', 'workspaceTweaksPropertiesScope', 'settings', 'workspaceTweaksPropertiesScope', 'workspaceTweaksPropertiesScopeDesc', 'dropdown', ['tweaks', 'workspace tweaks', 'properties scope', 'file task properties', 'all notes']),
+	section('ui', 'interfaceTweaks', 'workspaceTweaksPropertiesExcludedFolders', 'settings', 'workspaceTweaksPropertiesExcludedFolders', 'workspaceTweaksPropertiesExcludedFoldersDesc', ['tweaks', 'workspace tweaks', 'excluded folders', 'properties excluded folders', 'keep properties open']),
+	section('ui', 'interfaceColorPalette', 'colorPalette', 'settings', 'colorPaletteSection', 'colorPaletteSectionDesc', ['color palette', 'named colors', 'task color picker', 'color picker', 'hex colors', 'palette colors']),
 
 	e('ui', 'mobileGeneral', 'mobileGlobalTaskFabEnabled', 'settings', 'mobileGlobalTaskFabEnabled', 'mobileGlobalTaskFabEnabledDesc', 'toggle', ['mobile', 'phone', 'touch', 'narrow pane', 'quick-create', 'fab', 'mobile quick create']),
 	e('ui', 'mobileGeneral', 'mobileGlobalTaskFabHideInCalendar', 'settings', 'mobileGlobalTaskFabHideInCalendar', 'mobileGlobalTaskFabHideInCalendarDesc', 'toggle', ['mobile', 'phone', 'touch', 'quick-create', 'fab', 'calendar']),

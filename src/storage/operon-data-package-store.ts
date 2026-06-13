@@ -316,7 +316,11 @@ function isValidDataPackageDomain(domain: OperonDataPackageDomain, value: unknow
 	if (domain === 'ui') {
 		return isRecord(value.contextualMenu)
 			&& isRecord(value.taskUiPreferences)
-			&& isRecord(value.taskCreationProfile);
+			&& isRecord(value.taskCreationProfile)
+			&& (
+				!Object.prototype.hasOwnProperty.call(value, 'workspaceTweaks')
+				|| isRecord(value.workspaceTweaks)
+			);
 	}
 	if (domain === 'automation') {
 		return isRecord(value.taskAutomationPolicy);

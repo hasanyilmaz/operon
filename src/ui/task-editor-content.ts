@@ -56,6 +56,7 @@ import { showRepeatPicker } from './field-pickers/repeat-picker';
 import { showRepeatSkipPicker } from './field-pickers/repeat-skip-picker';
 import { showStatusPicker } from './field-pickers/status-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
+import { showColorPicker } from './field-pickers/color-picker';
 import {
 	ConfirmActionComparisonRow,
 	ConfirmActionComparisonTable,
@@ -83,6 +84,7 @@ import { resolveSubtaskActionIconForKind, resolveSubtaskActionLabelKeyForKind } 
 import { createInlineTaskCompactChipElement, InlineTaskCompactChipEntry } from './compact-task-layout';
 import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, KeyMapping, TASK_CREATOR_FALLBACK_FIELD_ICONS, TaskEditorWorkflowPickerItem } from '../types/settings';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
+import { showPlainCheckboxPopover } from './plain-checkbox-popover';
 import {
 	getCustomFieldIcon,
 	getCustomFieldLabel,
@@ -203,6 +205,10 @@ type EditorProgressSectionState = {
 	done: number;
 	total: number;
 	progressPct: number;
+	hasPlainCheckboxes: boolean;
+	checkboxDone: number;
+	checkboxTotal: number;
+	checkboxProgressPct: number;
 	ownDuration: number;
 	subtaskDuration: number;
 	totalDuration: number;
@@ -328,6 +334,7 @@ export class TaskEditorContent {
 	private fileBodyPanelEl: HTMLElement | null = null;
 	private fileBodyBackdropEl: HTMLButtonElement | null = null;
 	private fileBodyToggleButtonEl: HTMLButtonElement | null = null;
+	private fileBodySaveButtonEl: HTMLButtonElement | null = null;
 	private fileBodyContext: TaskEditorFileBodyContext | null = null;
 	private fileBodyDraft = '';
 	private persistedFileBodyDraft = '';
@@ -467,6 +474,9 @@ export class TaskEditorContent {
 			}
 			return;
 		}
+		if (!visible) {
+			this.clearFileBodyPanelRender();
+		}
 		this.isFileBodyVisible = visible;
 		this.updateFileBodyLayout();
 		if (mainPanelScrollTop != null) {
@@ -477,12 +487,51 @@ export class TaskEditorContent {
 		}
 	}
 
+	private syncFileBodyDraftFromEditor(): void {
+		const value = this.embeddedBodyEditor?.value;
+		if (value == null || value === this.fileBodyDraft) return;
+		this.handleFileBodyChanged(value);
+	}
+
+	private clearFileBodyPanelRender(): void {
+		this.syncFileBodyDraftFromEditor();
+		this.embedPreviewComponent?.unload();
+		this.embedPreviewComponent = null;
+		this.embeddedBodyEditor?.destroy();
+		this.embeddedBodyEditor = null;
+		this.fileBodySaveButtonEl = null;
+		this.fileBodyPanelEl?.empty();
+	}
+
+	private ensureFileBodyPanelRendered(): void {
+		if (!this.fileBodyPanelEl || this.embeddedBodyEditor) return;
+		this.renderFileBodyPanel(this.fileBodyPanelEl);
+	}
+
 	private restoreMainPanelScroll(scrollTop: number): void {
 		const mainPanel = this.mainPanelEl;
 		if (!mainPanel) return;
 		getActiveWindow().requestAnimationFrame(() => {
 			mainPanel.scrollTop = scrollTop;
 		});
+	}
+
+	private scheduleFileBodyEditorLayoutRefresh(): void {
+		if (!this.hasFileBodyContext() || !this.isFileBodyVisible || !this.embeddedBodyEditor) return;
+		const ownerWindow = getActiveWindow();
+		const refresh = () => {
+			if (!this.hasFileBodyContext() || !this.isFileBodyVisible) return;
+			this.embeddedBodyEditor?.refreshLayout();
+		};
+
+		refresh();
+		ownerWindow.requestAnimationFrame(() => {
+			refresh();
+			ownerWindow.requestAnimationFrame(refresh);
+		});
+		for (const delayMs of [80, 180, 360]) {
+			setWindowTimeout(refresh, delayMs);
+		}
 	}
 
 	private updateFileBodyLayout(): void {
@@ -506,6 +555,10 @@ export class TaskEditorContent {
 			this.fileBodyToggleButtonEl.setAttr('aria-pressed', String(isVisible));
 			setAccessibleLabelWithoutTooltip(this.fileBodyToggleButtonEl, tooltip);
 			this.bindTaskEditorTooltip(this.fileBodyToggleButtonEl, tooltip);
+		}
+		if (isVisible) {
+			this.ensureFileBodyPanelRendered();
+			this.scheduleFileBodyEditorLayoutRefresh();
 		}
 	}
 
@@ -720,12 +773,14 @@ export class TaskEditorContent {
 				type: 'button',
 			},
 		});
+		this.fileBodySaveButtonEl = saveButton;
 		setIcon(saveButton, 'save');
 		setAccessibleLabelWithoutTooltip(saveButton, t('buttons', 'save'));
 		this.bindTaskEditorTooltip(saveButton, t('buttons', 'save'));
 		saveButton.addEventListener('click', () => {
 			void this.persistEditorState('explicit-save');
 		});
+		this.refreshFileBodySaveButtonState();
 
 		const closeButton = headerActions.createEl('button', {
 			cls: 'operon-task-editor-file-panel-overlay-close',
@@ -747,7 +802,9 @@ export class TaskEditorContent {
 			placeholder: t('taskEditor', 'fileBodyPlaceholder'),
 			className: 'operon-task-editor-file-source-editor',
 			file: sourceFile instanceof TFile ? sourceFile : null,
-			cursorOffset: this.fileBodyContext?.cursorOffset ?? 0,
+			cursorOffset: this.fileBodyContext?.format === 'inline'
+				? 0
+				: this.fileBodyContext?.cursorOffset ?? 0,
 			lineNumberOffset: this.fileBodyContext?.lineNumberOffset ?? 0,
 			showLineNumbers: this.settings.taskEditorShowLineNumbers,
 			onChange: (value) => this.handleFileBodyChanged(value),
@@ -795,21 +852,15 @@ export class TaskEditorContent {
 		const titleRight = titleRow.createDiv('operon-task-editor-title-side is-right');
 		this.renderCopyOperonIdButton(titleRight);
 
-		// Parent task context
-		this.renderParentContext(container);
-
-		// Subtask context cards
-		this.renderSubtaskCards(container);
+		this.renderTopContextSection(container);
 
 		const primaryFields = container.createDiv('operon-task-editor-primary-fields');
 
 		// Primary edit fields should remain in normal document flow when the file body panel toggles.
-		this.renderProgressSection(primaryFields);
-		this.renderDescription(primaryFields);
-		this.renderNote(primaryFields);
+		this.renderDescriptionNoteSection(primaryFields);
 		this.renderTimeSummarySection(primaryFields);
 
-		// High-frequency fields directly under description
+		// High-frequency fields directly under the primary text and time summaries.
 		this.renderCoreSection(container);
 		this.renderWorkflowSurface(container);
 		this.renderDetailsSection(container);
@@ -891,15 +942,29 @@ export class TaskEditorContent {
 		this.mobileCoreToolsEl = tools;
 		tools.addEventListener('scroll', this.mobileCoreScrollHandler, { passive: true });
 
+		let checkboxButtonRendered = false;
+		const renderCheckboxButton = () => {
+			if (checkboxButtonRendered) return;
+			checkboxButtonRendered = true;
+			this.renderMobileCheckboxPopoverButton(tools);
+		};
+
 		for (const item of this.settings.taskEditorMobileCoreTools) {
-			if (!item.visible) continue;
+			const renderAfterItem = item.key === 'play';
+			if (!item.visible) {
+				if (renderAfterItem) renderCheckboxButton();
+				continue;
+			}
 			const customMapping = getCustomFieldMapping(this.settings.keyMappings, item.key);
 			if (customMapping && isProjectedCustomFieldType(customMapping)) {
 				this.renderMobileCustomFieldButton(tools, customMapping);
+				if (renderAfterItem) renderCheckboxButton();
 				continue;
 			}
 			this.renderMobileCoreTool(tools, item.key);
+			if (renderAfterItem) renderCheckboxButton();
 		}
+		renderCheckboxButton();
 	}
 
 	private renderMobileCoreTool(container: HTMLElement, key: string): void {
@@ -1052,14 +1117,29 @@ export class TaskEditorContent {
 
 	private renderMobileColorButton(container: HTMLElement): void {
 		const button = this.createMobileCoreButton(container, t('taskEditor', 'taskColor'), 'taskColor', () => {
-			colorInput.click();
+			button.addClass('is-picker-open');
+			showColorPicker(button, {
+				value: this.fieldValues['taskColor'],
+				palette: this.settings.colorPalette,
+				onSelect: value => {
+					button.removeClass('is-picker-open');
+					this.fieldValues['taskColor'] = value;
+					this.applyThemeColor();
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClear: () => {
+					button.removeClass('is-picker-open');
+					delete this.fieldValues['taskColor'];
+					this.applyThemeColor();
+					this.markEdited();
+					this.refreshMobileCoreButtons();
+				},
+				onClose: () => {
+					button.removeClass('is-picker-open');
+				},
+			});
 		});
-		const colorInput = container.createEl('input', {
-			cls: 'operon-task-editor-mobile-color-input',
-			attr: { type: 'color' },
-		});
-		const currentColor = this.getTaskColorHex();
-		if (currentColor) colorInput.value = currentColor;
 
 		const refresh = () => {
 			const hex = this.getTaskColorHex();
@@ -1072,17 +1152,9 @@ export class TaskEditorContent {
 			}
 			this.setMobileCoreButtonState(button, !!hex, hex || null);
 		};
-		colorInput.addEventListener('input', () => {
-			const hex = colorInput.value;
-			this.fieldValues['taskColor'] = hex.replace(/^#/, '');
-			this.applyThemeColor();
-			this.markEdited();
-			this.refreshMobileCoreButtons();
-		});
 		button.addEventListener('contextmenu', event => {
 			event.preventDefault();
 			delete this.fieldValues['taskColor'];
-			colorInput.value = '#000000';
 			this.applyThemeColor();
 			this.markEdited();
 			this.refreshMobileCoreButtons();
@@ -1434,6 +1506,17 @@ export class TaskEditorContent {
 		refresh();
 	}
 
+	private renderMobileCheckboxPopoverButton(container: HTMLElement): void {
+		const label = t('taskEditor', 'showCheckboxes');
+		const button = this.createMobileCoreButton(container, label, 'plainCheckboxes', event => {
+			const anchor = event.currentTarget as HTMLElement;
+			runAsyncAction('task editor checkbox popover open failed', async () => {
+				await this.openTaskEditorCheckboxPopover(anchor);
+			});
+		});
+		this.setMobileCoreButtonIcon(button, 'layout-list');
+	}
+
 	private createMobileCoreButton(
 		container: HTMLElement,
 		label: string,
@@ -1653,7 +1736,6 @@ export class TaskEditorContent {
 			setAccessibleLabelWithoutTooltip(this.fileBodyBackdropEl, t('taskEditor', 'hideFileBodyPanel'));
 			this.fileBodyBackdropEl.addEventListener('click', () => this.setFileBodyVisible(false));
 			this.fileBodyPanelEl = this.shellEl.createDiv('operon-task-editor-file-panel');
-			this.renderFileBodyPanel(this.fileBodyPanelEl);
 		}
 
 		this.mainPanelEl = this.shellEl.createDiv('operon-task-editor-main-panel');
@@ -1676,6 +1758,7 @@ export class TaskEditorContent {
 		const saved = await this.flushPendingEdits();
 		if (!saved) return;
 
+		this.clearFileBodyPanelRender();
 		await this.refreshFileBodyDraftFromSource();
 		this.syncTrackingFieldsFromIndex();
 		this.schedulingDraftRefreshers.clear();
@@ -1699,9 +1782,6 @@ export class TaskEditorContent {
 		this.clearMobileCoreToolbarState();
 		this.clearInitialDescriptionFocusTimers();
 
-		if (!Platform.isPhone && this.fileBodyPanelEl) {
-			this.renderFileBodyPanel(this.fileBodyPanelEl);
-		}
 		this.mainPanelEl.empty();
 		if (Platform.isPhone) {
 			this.renderMobileTaskEditorBody(this.mainPanelEl);
@@ -1758,6 +1838,7 @@ export class TaskEditorContent {
 		this.fileBodyPanelEl = null;
 		this.fileBodyBackdropEl = null;
 		this.fileBodyToggleButtonEl = null;
+		this.fileBodySaveButtonEl = null;
 		this.mobileNoteWrapEl = null;
 		this.mobilePickerOpenDepth = 0;
 		this.clearMobilePickerCloseFrame();
@@ -1891,15 +1972,39 @@ export class TaskEditorContent {
 
 	// --- Renderers ---
 
-	private renderParentContext(container: HTMLElement): void {
-		const host = container.createDiv();
+	private renderTopContextSection(container: HTMLElement): void {
+		const section = container.createDiv('operon-editor-top-context-section');
+		const relations = section.createDiv('operon-editor-top-context-relations');
+		const updateVisibility = () => {
+			const hasRelations = relations.querySelector(
+				'.operon-editor-parent-card, .operon-editor-subtask-card, .operon-subtask-show-more',
+			) != null;
+			const hasProgress = section.querySelector('.operon-editor-progress') != null;
+			relations.hidden = !hasRelations;
+			section.hidden = !hasRelations && !hasProgress;
+		};
+
+		this.renderParentContext(relations, updateVisibility);
+		this.renderSubtaskCards(relations);
+		this.renderProgressSection(section);
+		updateVisibility();
+	}
+
+	private renderParentContext(container: HTMLElement, onRender?: () => void): void {
+		const host = container.createDiv('operon-editor-parent-context-host');
 		const render = (): void => {
 			host.empty();
 			const parentId = this.fieldValues['parentTask'];
-			if (!parentId) return;
+			if (!parentId) {
+				onRender?.();
+				return;
+			}
 
 			const parent = this.indexer.getTask(parentId);
-			if (!parent) return;
+			if (!parent) {
+				onRender?.();
+				return;
+			}
 
 			const parentEl = host.createDiv('operon-editor-parent-card');
 			parentEl.style.setProperty('--operon-relation-context-color', this.resolveRelationContextColor(parent, 'parent'));
@@ -1935,6 +2040,7 @@ export class TaskEditorContent {
 				const line2 = parentEl.createDiv('operon-parent-line-2');
 				this.renderRelationContextChips(line2, parent, parentChips, 'operon-parent-chip');
 			}
+			onRender?.();
 		};
 
 		this.refreshParentContextSection = render;
@@ -2143,20 +2249,40 @@ export class TaskEditorContent {
 		}
 	}
 
-	private renderDescription(container: HTMLElement): void {
-		const setting = new Setting(container)
-			.setName(t('taskEditor', 'description'))
+	private renderDescriptionNoteSection(container: HTMLElement): void {
+		const section = container.createDiv('operon-editor-text-fields');
+
+		const descriptionGroup = section.createDiv('operon-editor-text-field-group is-description');
+		descriptionGroup.createEl('h6', {
+			cls: 'operon-editor-core-title-badge operon-editor-text-field-title',
+			text: t('taskEditor', 'description'),
+		});
+		this.renderDescription(descriptionGroup, false);
+
+		const notesGroup = section.createDiv('operon-editor-text-field-group is-notes');
+		notesGroup.createEl('h6', {
+			cls: 'operon-editor-core-title-badge operon-editor-text-field-title',
+			text: t('taskEditor', 'notes'),
+		});
+		this.renderNote(notesGroup, false);
+	}
+
+	private renderDescription(container: HTMLElement, showLabel = true): void {
+		const setting = new Setting(container);
+		if (showLabel) setting.setName(t('taskEditor', 'description'));
+		setting
 			.addTextArea(text => {
 				text.setValue(this.description);
 				text.setPlaceholder(t('taskEditor', 'descriptionPlaceholder'));
-					this.descriptionInputEl = text.inputEl;
-					text.inputEl.addClass('operon-editor-description-textarea');
-					text.inputEl.rows = 2;
+				setAccessibleLabelWithoutTooltip(text.inputEl, t('taskEditor', 'description'));
+				this.descriptionInputEl = text.inputEl;
+				text.inputEl.addClass('operon-editor-description-textarea');
+				text.inputEl.rows = 2;
 
-					const autoResize = () => {
-						text.inputEl.setCssProps({ height: 'auto' });
-						text.inputEl.style.height = `${Math.max(text.inputEl.scrollHeight, 64)}px`;
-					};
+				const autoResize = () => {
+					text.inputEl.setCssProps({ height: 'auto' });
+					text.inputEl.style.height = `${Math.max(text.inputEl.scrollHeight, 64)}px`;
+				};
 				autoResize();
 
 				text.onChange(val => {
@@ -2169,6 +2295,7 @@ export class TaskEditorContent {
 				text.inputEl.addEventListener('input', autoResize);
 			});
 		setting.settingEl.addClass('operon-description-setting');
+		if (!showLabel) setting.settingEl.addClass('operon-editor-text-field-setting');
 	}
 
 	private normalizeInlineTextFieldValue(value: string): string {
@@ -2354,19 +2481,21 @@ export class TaskEditorContent {
 		return ancestorIds;
 	}
 
-	private renderNote(container: HTMLElement): void {
-		const setting = new Setting(container)
-			.setName(t('taskEditor', 'notes'))
+	private renderNote(container: HTMLElement, showLabel = true): void {
+		const setting = new Setting(container);
+		if (showLabel) setting.setName(t('taskEditor', 'notes'));
+		setting
 			.addTextArea(text => {
 				text.setValue(this.fieldValues['note'] ?? '');
-					text.setPlaceholder(t('taskEditor', 'notesPlaceholder'));
-					text.inputEl.addClass('operon-editor-note-textarea');
-					text.inputEl.rows = 2;
+				text.setPlaceholder(t('taskEditor', 'notesPlaceholder'));
+				setAccessibleLabelWithoutTooltip(text.inputEl, t('taskEditor', 'notes'));
+				text.inputEl.addClass('operon-editor-note-textarea');
+				text.inputEl.rows = 2;
 
-					const autoResize = () => {
-						text.inputEl.setCssProps({ height: 'auto' });
-						text.inputEl.style.height = `${Math.max(text.inputEl.scrollHeight, 52)}px`;
-					};
+				const autoResize = () => {
+					text.inputEl.setCssProps({ height: 'auto' });
+					text.inputEl.style.height = `${Math.max(text.inputEl.scrollHeight, 52)}px`;
+				};
 				autoResize();
 
 				text.onChange(val => {
@@ -2385,6 +2514,7 @@ export class TaskEditorContent {
 				text.inputEl.addEventListener('input', autoResize);
 			});
 		setting.settingEl.addClass('operon-note-setting');
+		if (!showLabel) setting.settingEl.addClass('operon-editor-text-field-setting');
 	}
 
 	private renderTags(container: HTMLElement): void {
@@ -2472,6 +2602,10 @@ export class TaskEditorContent {
 		const total = statsProgress?.total ?? allDesc.length;
 		const done = statsProgress?.done ?? allDesc.filter(c => c.checkbox === 'done').length;
 		const progressPct = statsProgress?.progressPct ?? (total > 0 ? Math.round((done / total) * 100) : 0);
+		const checkboxTotal = Math.max(0, indexedTask?.plainCheckboxProgress?.total ?? 0);
+		const checkboxDone = Math.min(Math.max(0, indexedTask?.plainCheckboxProgress?.completed ?? 0), checkboxTotal);
+		const checkboxProgressPct = checkboxTotal > 0 ? Math.round((checkboxDone / checkboxTotal) * 100) : 0;
+		const hasPlainCheckboxes = checkboxTotal > 0;
 
 		const ownDuration = Math.max(0, parseInt(indexedTask?.fieldValues['duration'] ?? this.fieldValues['duration'] ?? '0', 10) || 0);
 		const indexedTotalDuration = Math.max(0, parseInt(indexedTask?.fieldValues['totalDuration'] ?? '0', 10) || 0);
@@ -2490,13 +2624,17 @@ export class TaskEditorContent {
 			totalEstimate,
 		].some(value => value > 0);
 
-		if (!hasSubtasks && !hasAnyTimeData) return null;
+		if (!hasSubtasks && !hasAnyTimeData && !hasPlainCheckboxes) return null;
 
 		return {
 			hasSubtasks,
 			done,
 			total,
 			progressPct,
+			hasPlainCheckboxes,
+			checkboxDone,
+			checkboxTotal,
+			checkboxProgressPct,
 			ownDuration,
 			subtaskDuration,
 			totalDuration,
@@ -2516,14 +2654,14 @@ export class TaskEditorContent {
 
 		const summary = container.createDiv('operon-editor-time-summary');
 		const table = summary.createDiv('operon-editor-time-summary-table');
-		const header = table.createDiv('operon-editor-time-summary-row is-header');
-		header.createDiv('operon-editor-time-summary-row-label operon-editor-time-summary-row-corner');
+		const tableHeader = table.createDiv('operon-editor-time-summary-row is-header');
+		tableHeader.createDiv('operon-editor-time-summary-row-label operon-editor-time-summary-row-corner');
 		for (const columnLabel of [
 			t('taskEditor', 'timeOwn'),
 			t('taskEditor', 'subtasks'),
 			t('taskEditor', 'timeTotal'),
 		]) {
-			header.createDiv({
+			tableHeader.createDiv({
 				text: columnLabel,
 				cls: 'operon-editor-time-summary-col-label',
 			});
@@ -2592,19 +2730,33 @@ export class TaskEditorContent {
 
 	private renderProgressSection(container: HTMLElement): void {
 		const state = this.getProgressSectionState();
-		if (!state) return;
+		if (!state?.hasSubtasks && !state?.hasPlainCheckboxes) return;
 
 		const section = container.createDiv('operon-editor-progress');
-		if (state.hasSubtasks) {
-			const barTrack = section.createDiv('operon-editor-progress-bar-track');
+		const renderProgressRow = (done: number, total: number, label: string, percent: number, cls: string) => {
+			const row = section.createDiv(`operon-editor-progress-row ${cls}`);
+			const barTrack = row.createDiv('operon-editor-progress-bar-track');
 			const barFill = barTrack.createDiv('operon-editor-progress-bar-fill');
-			barFill.style.width = `${state.progressPct}%`;
+			barFill.style.width = `${percent}%`;
 
-			const statsRow = section.createDiv('operon-editor-progress-stats');
+			const statsRow = row.createDiv('operon-editor-progress-stats');
 			const statsLeft = statsRow.createDiv('operon-editor-progress-stats-left');
-			statsLeft.createSpan({ text: `${state.done} done`, cls: 'operon-editor-progress-counts' });
-			statsLeft.createSpan({ text: ` / ${state.total} subtasks`, cls: 'operon-editor-progress-total' });
-			statsRow.createSpan({ text: `${state.progressPct}%`, cls: 'operon-editor-progress-pct' });
+			statsLeft.createSpan({
+				text: t('taskEditor', 'progressDoneCount', { count: String(done) }),
+				cls: 'operon-editor-progress-counts',
+			});
+			statsLeft.createSpan({
+				text: ` / ${t('taskEditor', label, { count: String(total) })}`,
+				cls: 'operon-editor-progress-total',
+			});
+			statsRow.createSpan({ text: `${percent}%`, cls: 'operon-editor-progress-pct' });
+		};
+
+		if (state.hasSubtasks) {
+			renderProgressRow(state.done, state.total, 'progressSubtasksCount', state.progressPct, 'is-subtasks');
+		}
+		if (state.hasPlainCheckboxes) {
+			renderProgressRow(state.checkboxDone, state.checkboxTotal, 'progressCheckboxesCount', state.checkboxProgressPct, 'is-checkboxes');
 		}
 	}
 
@@ -2720,6 +2872,20 @@ export class TaskEditorContent {
 		this.refreshCorePinControl = renderPin;
 		renderPin();
 
+		const checkboxLabel = t('taskEditor', 'showCheckboxes');
+		const checkboxBtn = container.createEl('button', {
+			cls: 'operon-editor-core-action-btn operon-editor-core-checkbox-popover-action',
+			attr: { type: 'button' },
+		});
+		setIcon(checkboxBtn, 'layout-list');
+		setAccessibleLabelWithoutTooltip(checkboxBtn, checkboxLabel);
+		this.bindTaskEditorTooltip(checkboxBtn, checkboxLabel);
+		checkboxBtn.addEventListener('click', () => {
+			runAsyncAction('task editor checkbox popover open failed', async () => {
+				await this.openTaskEditorCheckboxPopover(checkboxBtn);
+			});
+		});
+
 		const subtaskLabel = t('buttons', resolveSubtaskActionLabelKeyForKind(this.subtaskActionKind));
 		const subtaskBtn = container.createEl('button', {
 			cls: 'operon-editor-core-action-btn',
@@ -2733,6 +2899,35 @@ export class TaskEditorContent {
 		subtaskBtn.createSpan({ text: subtaskLabel });
 		subtaskBtn.addEventListener('click', () => {
 			void this.requestSubtask();
+		});
+	}
+
+	private async openTaskEditorCheckboxPopover(anchor: HTMLElement): Promise<void> {
+		if (!this.description.trim()) {
+			new Notice(t('notifications', 'taskSaveFailed'));
+			return;
+		}
+		if (!this.fieldValues['operonId']) {
+			this.fieldValues['operonId'] = generateOperonId();
+		}
+		const operonId = this.fieldValues['operonId'];
+		if (!operonId) return;
+
+		const saved = await this.flushPendingEdits();
+		if (!saved) return;
+
+		const indexed = await this.waitForIndexedTask(operonId);
+		if (!indexed) {
+			new Notice(t('notifications', 'taskNotInIndex'));
+			return;
+		}
+
+		await showPlainCheckboxPopover(anchor, {
+			app: this.app,
+			task: indexed,
+			keyMappings: this.settings.keyMappings,
+			taskColor: this.getThemeColor(),
+			seedEmptyDraft: (indexed.plainCheckboxProgress?.total ?? 0) <= 0,
 		});
 	}
 
@@ -3926,14 +4121,15 @@ export class TaskEditorContent {
 	private renderTrackingSessionsSection(container: HTMLElement): void {
 		const section = container.createDiv('operon-editor-tracking-sessions');
 		const header = section.createDiv('operon-editor-tracking-sessions-header');
-		const title = header.createEl('h6', { cls: 'operon-editor-tracking-sessions-title' });
+		const title = header.createEl('h6', { cls: 'operon-editor-core-title-badge operon-editor-tracking-sessions-title' });
 		this.appendCanonicalIcon(title, 'trackers', 'operon-editor-tracking-sessions-title-icon');
 		title.createSpan({ text: t('taskEditor', 'trackingSessions') });
 		const addButton = header.createEl('button', {
 			cls: 'operon-editor-core-action-btn operon-editor-tracking-sessions-add',
-			text: t('taskEditor', 'addSession'),
 			attr: { type: 'button' },
 		});
+		setIcon(addButton, 'plus');
+		addButton.createSpan({ text: t('taskEditor', 'addSession') });
 
 		const list = section.createDiv('operon-editor-tracking-sessions-list');
 
@@ -4029,6 +4225,7 @@ export class TaskEditorContent {
 		});
 
 		const del = this.createSessionActionButton(actions, 'trash-2', t('taskEditor', 'removeSession'));
+		del.addClass('is-danger');
 		del.addEventListener('click', () => {
 			new ConfirmActionModal(this.app, {
 				title: t('taskEditor', 'deleteSessionTitle'),
@@ -4171,14 +4368,9 @@ export class TaskEditorContent {
 			attr: { type: 'button' },
 		});
 		setAccessibleLabelWithoutTooltip(swatch, t('taskEditor', 'taskColor'));
-		const colorInput = swatchWrap.createEl('input', {
-			cls: 'operon-color-input-hidden',
-			attr: { type: 'color' },
-		});
 
 		const currentColor = this.fieldValues['taskColor'] ?? '';
 		const currentColorHex = currentColor ? (currentColor.startsWith('#') ? currentColor : `#${currentColor}`) : '';
-		if (currentColorHex) colorInput.value = currentColorHex;
 
 		const refreshSwatch = (hex: string) => {
 			swatch.empty();
@@ -4192,18 +4384,34 @@ export class TaskEditorContent {
 		};
 		refreshSwatch(currentColorHex);
 
-		swatch.addEventListener('click', () => colorInput.click());
-		colorInput.addEventListener('input', () => {
-			const hex = colorInput.value;
-			this.fieldValues['taskColor'] = hex.replace(/^#/, '');
-			refreshSwatch(hex);
-			this.applyThemeColor();
-			this.markEdited();
+		swatch.addEventListener('click', () => {
+			swatch.addClass('is-picker-open');
+			showColorPicker(swatch, {
+				value: this.fieldValues['taskColor'],
+				palette: this.settings.colorPalette,
+				onSelect: value => {
+					swatch.removeClass('is-picker-open');
+					const hex = value ? `#${value.replace(/^#/, '')}` : '';
+					this.fieldValues['taskColor'] = value.replace(/^#/, '');
+					refreshSwatch(hex);
+					this.applyThemeColor();
+					this.markEdited();
+				},
+				onClear: () => {
+					swatch.removeClass('is-picker-open');
+					delete this.fieldValues['taskColor'];
+					refreshSwatch('');
+					this.applyThemeColor();
+					this.markEdited();
+				},
+				onClose: () => {
+					swatch.removeClass('is-picker-open');
+				},
+			});
 		});
 		swatch.addEventListener('contextmenu', (e) => {
 			e.preventDefault();
 			delete this.fieldValues['taskColor'];
-			colorInput.value = '#000000';
 			refreshSwatch('');
 			this.applyThemeColor();
 			this.markEdited();
@@ -5116,6 +5324,7 @@ export class TaskEditorContent {
 	markEdited(): void {
 		this.hasBeenEdited = true;
 		this.editVersion += 1;
+		this.refreshFileBodySaveButtonState();
 		this.scheduleSave();
 	}
 
@@ -5127,7 +5336,8 @@ export class TaskEditorContent {
 	private scheduleSave(): void {
 		if (this.saveTimer) clearWindowTimeout(this.saveTimer);
 		if (this.autoSaveSuspended) return;
-		this.saveTimer = setWindowTimeout(() => { void this.persistEditorState('autosave'); }, 60000);
+		const delayMs = this.settings.taskEditorAutosaveDelaySeconds * 1000;
+		this.saveTimer = setWindowTimeout(() => { void this.persistEditorState('autosave'); }, delayMs);
 	}
 
 	private suspendAutoSave(): void {
@@ -5209,6 +5419,11 @@ export class TaskEditorContent {
 		this.persistedInlineCompletionMode = this.inlineCompletionMode;
 		this.isFileBodyDirty = false;
 		this.hasBeenEdited = false;
+		this.refreshFileBodySaveButtonState();
+	}
+
+	private refreshFileBodySaveButtonState(): void {
+		this.fileBodySaveButtonEl?.classList.toggle('is-dirty', this.hasBeenEdited);
 	}
 
 	private commitEstimateReallocationBaseline(seconds: number): void {
@@ -5458,6 +5673,7 @@ export class TaskEditorContent {
 				this.hasBeenEdited = true;
 				this.scheduleSave();
 			}
+			this.refreshFileBodySaveButtonState();
 			return true;
 		})();
 

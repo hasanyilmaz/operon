@@ -13,7 +13,7 @@
 import * as Obsidian from 'obsidian';
 import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
 import type { ButtonComponent, DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, hasDuplicateKeyMappingVisiblePropertyName, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource, type OperonLanguage } from '../types/settings';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, hasDuplicateKeyMappingVisiblePropertyName, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type FallbackTaskIconSource, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
 import { clonePipeline, composeStatusValue, createPipelineId, createStatusId, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
@@ -47,6 +47,14 @@ import { getReleaseNotesForManualView } from '../core/release-notes';
 import { asHTMLElement } from '../core/dom-compat';
 import { getAppLocale, isDailyNotesCoreAvailable } from '../core/obsidian-app';
 import { resolveEffectiveInlineTaskSaveMode } from '../core/inline-task-save-mode';
+import {
+	cloneDefaultColorPalette,
+	localizeColorPaletteNames,
+	normalizeColorPalette,
+	normalizeColorPaletteHex,
+	normalizeColorPaletteName,
+	type ColorPaletteEntry,
+} from '../core/color-palette';
 import { FilterSetModal, type FilterModalEvalDeps } from './filter-set-modal';
 import { ExternalCalendarSourceEditModal } from './external-calendar-source-edit-modal';
 import { CalendarPresetQuickSettingsModal } from './calendar/calendar-preset-quick-settings-modal';
@@ -171,6 +179,7 @@ import {
 	createSettingsListCardChip,
 } from './settings/settings-list-ui';
 import { openSettingsIconPickerModal } from './settings/settings-icon-picker-modal';
+import { openSettingsColorPickerModal } from './settings/settings-color-picker-modal';
 import { renderSettingsIconPickerRow } from './settings/settings-icon-picker-ui';
 import {
 	OPERON_SETTINGS_SEARCH_REGISTRY,
@@ -228,6 +237,8 @@ type OperonSettingsSecondaryTabId =
 	| 'interfaceStateIcons'
 	| 'interfaceTaskEditor'
 	| 'interfaceLocationMap'
+	| 'interfaceTweaks'
+	| 'interfaceColorPalette'
 	| 'mobileGeneral'
 	| 'mobileTaskEditor'
 	| 'mobileCalendar'
@@ -532,6 +543,8 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'interfaceContextMenu',
 	'interfaceStateIcons',
 	'interfaceTaskEditor',
+	'interfaceTweaks',
+	'interfaceColorPalette',
 	'mobileTaskEditor',
 ]);
 
@@ -556,6 +569,8 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Record<OperonSettingsSecondaryTabId,
 	interfaceStateIcons: { namespace: 'settings', key: 'settingsPageStateIconsDesc' },
 	interfaceTaskEditor: { namespace: 'settings', key: 'settingsPageTaskEditorDesc' },
 	interfaceLocationMap: { namespace: 'settings', key: 'settingsPageLocationMapDesc' },
+	interfaceTweaks: { namespace: 'settings', key: 'settingsPageTweaksDesc' },
+	interfaceColorPalette: { namespace: 'settings', key: 'settingsPageColorPaletteDesc' },
 	mobileGeneral: { namespace: 'settings', key: 'mobileInterfaceDesc' },
 	mobileTaskEditor: { namespace: 'settings', key: 'settingsPageMobileTaskEditorDesc' },
 	mobileCalendar: { namespace: 'settings', key: 'settingsPageMobileCalendarDesc' },
@@ -587,6 +602,13 @@ const SETTINGS_SEARCH_DOM_REFRESH_KEYS = new Set<OperonSettingSearchKey>([
 	'calendarMobileShowAllDayItems',
 ]);
 
+const SETTINGS_SEARCH_WORKSPACE_TWEAK_KEYS = new Set<OperonSettingSearchKey>([
+	'workspaceTweaksHideScrollbars',
+	'workspaceTweaksCollapseProperties',
+	'workspaceTweaksPropertiesScope',
+	'workspaceTweaksCompactSidebarTabIcons',
+]);
+
 const SETTINGS_SEARCH_FOLDER_KEYS = new Set<OperonSettingSearchKey>([
 	'fileTasksFolder',
 	'fileTaskTemplateFolder',
@@ -596,6 +618,7 @@ const SETTINGS_SEARCH_FOLDER_KEYS = new Set<OperonSettingSearchKey>([
 
 const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
 	'duplicateAlertDelaySeconds',
+	'taskEditorAutosaveDelaySeconds',
 	'taskFinderRecentModifiedDays',
 	'taskFinderVisibleResultCount',
 	'pinnedDockGridCols',
@@ -977,11 +1000,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return this.compactSettingsSearchItems([
 			{
 				type: 'group',
-				heading: t('settings', 'subtabTaskEditor'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'taskEditorShowLineNumbers'),
-				]),
-			},
+					heading: t('settings', 'subtabTaskEditor'),
+					items: this.compactSettingsSearchDefinitions([
+						this.buildSettingsSearchSettingDefinition(entries, 'taskEditorShowLineNumbers'),
+						this.buildSettingsSearchSettingDefinition(entries, 'taskEditorAutosaveDelaySeconds'),
+					]),
+				},
 			this.buildSettingsSearchRenderDefinition(workflowPickerEntry, containerEl => {
 				const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorWorkflowPickers'));
 				this.applyInterfaceIconListSectionStyle(sectionEl);
@@ -1774,6 +1798,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private getSettingsSearchNumberOptions(key: OperonSettingSearchKey): number[] {
 		if (key === 'duplicateAlertDelaySeconds') return [...DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS];
+		if (key === 'taskEditorAutosaveDelaySeconds') return [...TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS];
 		if (key === 'taskFinderRecentModifiedDays') return [1, 2, 3, 4, 5, 6, 7];
 		if (key === 'taskFinderVisibleResultCount') return [3, 4, 5, 6, 7, 8, 9];
 		if (key === 'pinnedDockGridCols') return [2, 3, 4, 5];
@@ -1827,6 +1852,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (key === 'fallbackTaskIconSource') {
 			return normalizeFallbackTaskIconSource(text);
+		}
+		if (key === 'workspaceTweaksPropertiesScope') {
+			return text === 'all-notes' ? 'all-notes' : 'operon-file-tasks';
 		}
 		if (key === 'pinnedDockColorSource') {
 			return normalizeTaskColorSource(text, PINNED_DOCK_TASK_COLOR_SOURCES, DEFAULT_SETTINGS.pinnedDockColorSource);
@@ -1970,6 +1998,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 				stateIcon: t('settings', 'fallbackTaskIconSourceState'),
 			};
 		}
+		if (key === 'workspaceTweaksPropertiesScope') {
+			return {
+				'operon-file-tasks': t('settings', 'workspaceTweaksPropertiesScopeOperonFileTasks'),
+				'all-notes': t('settings', 'workspaceTweaksPropertiesScopeAllNotes'),
+			};
+		}
 		if (key === 'pinnedDockColorSource') {
 			return Object.fromEntries(PINNED_DOCK_TASK_COLOR_SOURCES.map(source => [source, getTaskColorSourceLabel(source)]));
 		}
@@ -2070,6 +2104,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 				t('settings', 'duplicateAlertDelayOption', { seconds: String(seconds) }),
 			]));
 		}
+		if (key === 'taskEditorAutosaveDelaySeconds') {
+			return Object.fromEntries(TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS.map(seconds => [
+				String(seconds),
+				t('settings', 'taskEditorAutosaveDelayOption', { seconds: String(seconds) }),
+			]));
+		}
 		if (key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit') {
 			return Object.fromEntries(DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS.map(limit => [
 				String(limit),
@@ -2135,6 +2175,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (SETTINGS_SEARCH_DOM_REFRESH_KEYS.has(key)) {
 			this.refreshNativeSettingsDom();
+		}
+		if (SETTINGS_SEARCH_WORKSPACE_TWEAK_KEYS.has(key)) {
+			this.applyPendingSettingsChange();
 		}
 		if (key === 'timeFormat') {
 			this.updateNativeSettingsDefinitions();
@@ -2270,6 +2313,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'interfaceStateIcons', groupId: 'interface', label: t('settings', 'subtabStateIcons') },
 			{ id: 'interfaceTaskEditor', groupId: 'interface', label: t('settings', 'subtabTaskEditor') },
 			{ id: 'interfaceLocationMap', groupId: 'interface', label: t('settings', 'subtabLocationMap') },
+			{ id: 'interfaceTweaks', groupId: 'interface', label: t('settings', 'subtabTweaks') },
+			{ id: 'interfaceColorPalette', groupId: 'interface', label: t('settings', 'subtabColorPalette') },
 			{ id: 'mobileGeneral', groupId: 'mobile', label: t('settings', 'mobileSubtabGeneral') },
 			{ id: 'mobileTaskEditor', groupId: 'mobile', label: t('settings', 'mobileSubtabTaskEditor') },
 			{ id: 'mobileCalendar', groupId: 'mobile', label: t('settings', 'mobileSubtabCalendar') },
@@ -2318,6 +2363,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderInterfaceTaskEditorTab(contentEl);
 		} else if (tabId === 'interfaceLocationMap') {
 			this.renderInterfaceLocationMapTab(contentEl);
+		} else if (tabId === 'interfaceTweaks') {
+			this.renderInterfaceTweaksTab(contentEl);
+		} else if (tabId === 'interfaceColorPalette') {
+			this.renderInterfaceColorPaletteTab(contentEl);
 		} else if (tabId === 'mobile' || tabId === 'mobileGeneral') {
 			this.renderMobileGeneralTab(contentEl);
 		} else if (tabId === 'mobileTaskEditor') {
@@ -2332,8 +2381,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	hide(): void {
 		this.clearActiveNativeSettingsPage();
 		if (this.hasPendingSettingsChange) {
-			this.hasPendingSettingsChange = false;
-			this.onSettingsChanged();
+			this.applyPendingSettingsChange();
 		}
 		super.hide();
 	}
@@ -2433,6 +2481,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private renderInterfaceTaskEditorTab(containerEl: HTMLElement): void {
 		this.renderBoundToggleSetting(containerEl, t('settings', 'taskEditorShowLineNumbers'), t('settings', 'taskEditorShowLineNumbersDesc'), 'taskEditorShowLineNumbers');
+		this.renderBoundDropdownSetting(containerEl, t('settings', 'taskEditorAutosaveDelay'), t('settings', 'taskEditorAutosaveDelayDesc'), 'taskEditorAutosaveDelaySeconds', {
+			value: String(this.settings.taskEditorAutosaveDelaySeconds),
+			dropdownOptions: TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS.map(seconds => ({
+				value: String(seconds),
+				label: t('settings', 'taskEditorAutosaveDelayOption', { seconds: String(seconds) }),
+			})),
+			normalize: value => Number(value),
+		});
 		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorWorkflowPickers'));
 		this.applyInterfaceIconListSectionStyle(sectionEl);
 		this.renderTaskEditorWorkflowPickerSettingsSection(sectionEl);
@@ -2514,6 +2570,295 @@ export class OperonSettingsTab extends PluginSettingTab {
 			'locationPreviewMaxZoom',
 			{ min: 1, max: 24, fallback: DEFAULT_SETTINGS.locationPreviewMaxZoom },
 		);
+	}
+
+	private renderInterfaceTweaksTab(containerEl: HTMLElement): void {
+		const workspaceSection = renderNativeSettingsGroupedSection(
+			containerEl,
+			t('settings', 'workspaceTweaksWorkspaceSection'),
+		);
+		this.renderBoundToggleSetting(
+			workspaceSection,
+			t('settings', 'workspaceTweaksHideScrollbars'),
+			t('settings', 'workspaceTweaksHideScrollbarsDesc'),
+			'workspaceTweaksHideScrollbars',
+			{
+				onAfterChange: () => {
+					this.applyPendingSettingsChange();
+				},
+			},
+		);
+		this.renderBoundToggleSetting(
+			workspaceSection,
+			t('settings', 'workspaceTweaksCompactSidebarTabIcons'),
+			t('settings', 'workspaceTweaksCompactSidebarTabIconsDesc'),
+			'workspaceTweaksCompactSidebarTabIcons',
+			{
+				onAfterChange: () => {
+					this.applyPendingSettingsChange();
+				},
+			},
+		);
+
+		const propertiesSection = renderNativeSettingsGroupedSection(
+			containerEl,
+			t('settings', 'workspaceTweaksPropertiesSection'),
+		);
+		this.renderBoundToggleSetting(
+			propertiesSection,
+			t('settings', 'workspaceTweaksCollapseProperties'),
+			t('settings', 'workspaceTweaksCollapsePropertiesDesc'),
+			'workspaceTweaksCollapseProperties',
+			{
+				onAfterChange: () => {
+					this.applyPendingSettingsChange();
+				},
+			},
+		);
+		this.renderBoundDropdownSetting<'workspaceTweaksPropertiesScope', WorkspaceTweaksPropertiesScope>(
+			propertiesSection,
+			t('settings', 'workspaceTweaksPropertiesScope'),
+			t('settings', 'workspaceTweaksPropertiesScopeDesc'),
+			'workspaceTweaksPropertiesScope',
+			{
+				value: this.settings.workspaceTweaksPropertiesScope,
+				dropdownOptions: [
+					{
+						value: 'operon-file-tasks',
+						label: t('settings', 'workspaceTweaksPropertiesScopeOperonFileTasks'),
+					},
+					{
+						value: 'all-notes',
+						label: t('settings', 'workspaceTweaksPropertiesScopeAllNotes'),
+					},
+				],
+				normalize: value => value === 'all-notes' ? 'all-notes' : 'operon-file-tasks',
+				onAfterChange: () => {
+					this.applyPendingSettingsChange();
+				},
+			},
+		);
+		this.renderWorkspaceTweaksExcludedFolderSettings(containerEl);
+	}
+
+	private renderInterfaceColorPaletteTab(containerEl: HTMLElement): void {
+		const sectionEl = containerEl.createDiv('operon-native-settings-section-card');
+		this.applyInterfaceIconListSectionStyle(sectionEl);
+		sectionEl.addClass('operon-color-palette-settings-section');
+		this.markSettingsSearchSectionTarget(sectionEl, 'ui.colorPalette');
+
+		sectionEl.createDiv({
+			cls: 'operon-settings-muted-block',
+			text: t('settings', 'colorPaletteSectionDesc'),
+		});
+		const listEl = sectionEl.createDiv('operon-color-palette-settings-list');
+		this.settings.colorPalette = normalizeColorPalette(this.settings.colorPalette);
+		const displayPalette = localizeColorPaletteNames(this.settings.colorPalette);
+
+		for (const entry of displayPalette) {
+			this.renderColorPaletteRow(listEl, entry);
+		}
+
+		const resetRow = sectionEl.createDiv('operon-settings-add-row operon-color-palette-reset-row');
+		const resetButton = createSettingsListCardActionButton({
+			containerEl: resetRow,
+			label: t('settings', 'colorPaletteResetAll'),
+			icon: 'rotate-ccw',
+			danger: true,
+			wide: true,
+			errorContext: 'settings color palette reset failed',
+			onClick: () => this.confirmColorPaletteReset(),
+		});
+		resetButton.addClass('operon-color-palette-reset-button');
+	}
+
+	private renderColorPaletteRow(containerEl: HTMLElement, entry: ColorPaletteEntry): void {
+		const rowEl = containerEl.createDiv('operon-settings-list-card operon-color-palette-row');
+		rowEl.dataset.paletteColorId = entry.id;
+
+		const swatchButton = rowEl.createEl('button', {
+			cls: 'operon-color-palette-swatch',
+			attr: { type: 'button' },
+		});
+		this.applyColorPaletteSwatch(swatchButton, entry.hex);
+		setAccessibleLabelWithoutTooltip(
+			swatchButton,
+			t('settings', 'colorPaletteSwatchLabel', { name: entry.name }),
+		);
+		const openPicker = (): void => {
+			const currentEntry = this.getColorPaletteEntry(entry.id) ?? entry;
+			openSettingsColorPickerModal(this.app, {
+				title: currentEntry.name,
+				value: currentEntry.hex,
+				palette: this.settings.colorPalette,
+				onSelect: value => {
+					const normalized = normalizeColorPaletteHex(value);
+					if (!normalized) return;
+					this.updateColorPaletteEntry(entry.id, { hex: normalized });
+					hexInput.value = normalized;
+					this.applyColorPaletteSwatch(swatchButton, normalized);
+					setInvalid(false, 'hex');
+					scheduleSave();
+				},
+			});
+		};
+		swatchButton.addEventListener('pointerdown', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			openPicker();
+		});
+		swatchButton.addEventListener('click', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			if (event.detail !== 0) return;
+			openPicker();
+		});
+
+		const controlsEl = rowEl.createDiv('operon-color-palette-row-controls');
+		const hexFieldEl = controlsEl.createDiv('operon-color-palette-field operon-color-palette-hex-field');
+		const hexInput = hexFieldEl.createEl('input', {
+			cls: 'operon-color-palette-input operon-color-palette-hex-input',
+			attr: {
+				type: 'text',
+				spellcheck: 'false',
+				value: entry.hex,
+			},
+		});
+		setAccessibleLabelWithoutTooltip(hexInput, t('settings', 'colorPaletteHexLabel'));
+		const hexHintEl = hexFieldEl.createDiv({
+			cls: 'operon-color-palette-field-hint',
+			text: t('settings', 'colorPaletteInvalidHex'),
+		});
+
+		const nameFieldEl = controlsEl.createDiv('operon-color-palette-field operon-color-palette-name-field');
+		const nameInput = nameFieldEl.createEl('input', {
+			cls: 'operon-color-palette-input operon-color-palette-name-input',
+			attr: {
+				type: 'text',
+				spellcheck: 'false',
+				value: entry.name,
+			},
+		});
+		setAccessibleLabelWithoutTooltip(nameInput, t('settings', 'colorPaletteNameLabel'));
+		const nameHintEl = nameFieldEl.createDiv({
+			cls: 'operon-color-palette-field-hint',
+			text: t('settings', 'colorPaletteInvalidName'),
+		});
+
+		const ownerWindow = containerEl.ownerDocument.defaultView ?? window;
+		let saveTimer: number | null = null;
+		const scheduleSave = (): void => {
+			if (saveTimer !== null) {
+				ownerWindow.clearTimeout(saveTimer);
+			}
+			saveTimer = ownerWindow.setTimeout(() => {
+				saveTimer = null;
+				runSettingsAsync('settings color palette save failed', async () => {
+					await this.saveSettings();
+				});
+			}, 300);
+		};
+
+		const setInvalid = (invalid: boolean, target: 'hex' | 'name'): void => {
+			const fieldEl = target === 'hex' ? hexFieldEl : nameFieldEl;
+			const inputEl = target === 'hex' ? hexInput : nameInput;
+			const hintEl = target === 'hex' ? hexHintEl : nameHintEl;
+			fieldEl.classList.toggle('is-invalid', invalid);
+			inputEl.classList.toggle('is-invalid', invalid);
+			hintEl.classList.toggle('is-visible', invalid);
+			const hasInvalid = hexFieldEl.classList.contains('is-invalid') || nameFieldEl.classList.contains('is-invalid');
+			rowEl.classList.toggle('is-invalid', hasInvalid);
+		};
+
+		hexInput.addEventListener('input', () => {
+			const normalized = normalizeColorPaletteHex(hexInput.value);
+			if (!normalized) {
+				setInvalid(true, 'hex');
+				return;
+			}
+			setInvalid(false, 'hex');
+			this.updateColorPaletteEntry(entry.id, { hex: normalized });
+			this.applyColorPaletteSwatch(swatchButton, normalized);
+			scheduleSave();
+		});
+		hexInput.addEventListener('blur', () => {
+			const normalized = normalizeColorPaletteHex(hexInput.value);
+			if (normalized) {
+				hexInput.value = normalized;
+			}
+		});
+		hexInput.addEventListener('keydown', event => {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				hexInput.blur();
+			}
+		});
+
+		nameInput.addEventListener('input', () => {
+			const normalized = normalizeColorPaletteName(nameInput.value);
+			if (!normalized) {
+				setInvalid(true, 'name');
+				return;
+			}
+			setInvalid(false, 'name');
+			this.updateColorPaletteEntry(entry.id, { name: normalized });
+			setAccessibleLabelWithoutTooltip(
+				swatchButton,
+				t('settings', 'colorPaletteSwatchLabel', { name: normalized }),
+			);
+			scheduleSave();
+		});
+		nameInput.addEventListener('blur', () => {
+			const normalized = normalizeColorPaletteName(nameInput.value);
+			if (normalized) {
+				nameInput.value = normalized;
+			}
+		});
+		nameInput.addEventListener('keydown', event => {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				nameInput.blur();
+			}
+		});
+	}
+
+	private getColorPaletteEntry(id: string): ColorPaletteEntry | null {
+		const palette = localizeColorPaletteNames(this.settings.colorPalette);
+		return palette.find(entry => entry.id === id) ?? null;
+	}
+
+	private applyColorPaletteSwatch(element: HTMLElement, hex: string): void {
+		element.style.setProperty('--operon-color-palette-swatch', hex);
+		element.style.backgroundColor = hex;
+	}
+
+	private updateColorPaletteEntry(id: string, patch: Partial<Pick<ColorPaletteEntry, 'name' | 'hex'>>): void {
+		const palette = normalizeColorPalette(this.settings.colorPalette);
+		const index = palette.findIndex(entry => entry.id === id);
+		if (index < 0) return;
+		palette[index] = {
+			...palette[index],
+			...patch,
+		};
+		this.settings.colorPalette = palette;
+	}
+
+	private confirmColorPaletteReset(): void {
+		new ConfirmActionModal(this.app, {
+			title: t('settings', 'colorPaletteResetTitle'),
+			message: t('settings', 'colorPaletteResetMessage'),
+			confirmText: t('settings', 'colorPaletteResetConfirm'),
+			cancelText: t('buttons', 'cancel'),
+			danger: true,
+		}, confirmed => {
+			if (!confirmed) return;
+			runSettingsAsync('settings color palette reset failed', async () => {
+				this.settings.colorPalette = cloneDefaultColorPalette();
+				await this.saveSettings();
+				new Notice(t('settings', 'colorPaletteResetNotice'));
+				this.redisplayPreservingScroll();
+			});
+		}).open();
 	}
 
 	private renderMobileGeneralTab(containerEl: HTMLElement): void {
@@ -4700,16 +5045,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarTaskPoolDefaultExpanded'),
 			onAfterChange: () => this.redisplayPreservingScroll(),
 		});
-		this.renderBoundDropdownSetting(sidebarBody, t('settings', 'calendarSidebarFinishedTasksDefaultState'), t('settings', 'calendarSidebarFinishedTasksDefaultStateDesc'), 'calendarSidebarFinishedTasksDefaultExpanded', {
-			value: this.settings.calendarSidebarFinishedTasksDefaultExpanded ? 'expanded' : 'collapsed',
-			dropdownOptions: [
-				{ value: 'expanded', label: t('settings', 'expanded') },
-				{ value: 'collapsed', label: t('settings', 'collapsed') },
-			],
-			normalize: value => value !== 'collapsed',
-			onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarFinishedTasksDefaultExpanded'),
-			onAfterChange: () => this.redisplayPreservingScroll(),
-		});
 		sidebarBody.createEl('p', {
 			text: t('settings', 'calendarSidebarTaskPoolLimitDesc', {
 				initialLimit: String(CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT),
@@ -4725,11 +5060,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const normalized = normalizeCalendarSidebarDefaultExpansionState({
 			calendarSidebarCalendarsDefaultExpanded: this.settings.calendarSidebarCalendarsDefaultExpanded,
 			calendarSidebarTaskPoolDefaultExpanded: this.settings.calendarSidebarTaskPoolDefaultExpanded,
-			calendarSidebarFinishedTasksDefaultExpanded: this.settings.calendarSidebarFinishedTasksDefaultExpanded,
 		}, changedKey);
 		this.settings.calendarSidebarCalendarsDefaultExpanded = normalized.calendarSidebarCalendarsDefaultExpanded;
 		this.settings.calendarSidebarTaskPoolDefaultExpanded = normalized.calendarSidebarTaskPoolDefaultExpanded;
-		this.settings.calendarSidebarFinishedTasksDefaultExpanded = normalized.calendarSidebarFinishedTasksDefaultExpanded;
+		this.settings.calendarSidebarFinishedTasksDefaultExpanded = false;
 	}
 
 	private renderExternalCalendarsSection(containerEl: HTMLElement): void {
@@ -8599,6 +8933,142 @@ export class OperonSettingsTab extends PluginSettingTab {
 		);
 	}
 
+	private renderWorkspaceTweaksExcludedFolderSettings(containerEl: HTMLElement): void {
+		const wrapper = containerEl.createDiv({ cls: 'operon-workspace-tweaks-excluded-folders-setting' });
+		const sectionEl = renderNativeSettingsGroupedSection(wrapper, t('settings', 'workspaceTweaksPropertiesExcludedFolders'));
+		sectionEl.addClass('operon-settings-add-list-section');
+		sectionEl.addClass('operon-settings-card-list-section');
+		this.markSettingsSearchSectionTarget(sectionEl, 'ui.workspaceTweaksPropertiesExcludedFolders');
+
+		sectionEl.createDiv({
+			text: t('settings', 'workspaceTweaksPropertiesExcludedFoldersDesc'),
+			cls: 'operon-excluded-folders-desc',
+		});
+
+		const listEl = sectionEl.createDiv('operon-excluded-folders-list');
+		const pickerEl = sectionEl.createDiv('operon-excluded-folders-picker');
+		const addRowEl = sectionEl.createDiv('operon-excluded-folders-add-row');
+		addRowEl.addClass('operon-settings-add-row');
+
+		const normalizeFolderList = (folders: readonly string[]): string[] => {
+			const seen = new Set<string>();
+			const normalizedFolders: string[] = [];
+			for (const folder of folders) {
+				const normalized = normalizeSettingsFolderPath(folder);
+				const lower = normalized.toLowerCase();
+				if (!normalized || seen.has(lower)) continue;
+				seen.add(lower);
+				normalizedFolders.push(normalized);
+			}
+			return normalizedFolders;
+		};
+		const renderFolderPath = (rowEl: HTMLElement, folderPath: string): void => {
+			const slashIndex = folderPath.lastIndexOf('/');
+			if (slashIndex >= 0) {
+				rowEl.createSpan({ text: `${folderPath.slice(0, slashIndex + 1)}` });
+				rowEl.createEl('strong', { text: folderPath.slice(slashIndex + 1) });
+			} else {
+				rowEl.createEl('strong', { text: folderPath });
+			}
+		};
+		const hasExcludedFolder = (folderPath: string): boolean => {
+			const normalized = normalizeSettingsFolderPath(folderPath).toLowerCase();
+			return this.settings.workspaceTweaksPropertiesExcludedFolders
+				.some(folder => normalizeSettingsFolderPath(folder).toLowerCase() === normalized);
+		};
+		const saveAndApply = async (): Promise<void> => {
+			await this.saveSettings();
+			this.applyPendingSettingsChange();
+		};
+		const addExcludedFolder = async (path: string): Promise<void> => {
+			const normalized = normalizeSettingsFolderPath(path);
+			if (!normalized) return;
+			if (hasExcludedFolder(normalized)) {
+				new Notice(t('settings', 'workspaceTweaksPropertiesExcludedFolderAlreadyAdded'));
+				return;
+			}
+			this.settings.workspaceTweaksPropertiesExcludedFolders = normalizeFolderList([
+				...this.settings.workspaceTweaksPropertiesExcludedFolders,
+				normalized,
+			]);
+			pickerEl.empty();
+			render();
+			await saveAndApply();
+		};
+		const renderAddControls = (): void => {
+			addRowEl.empty();
+			const button = createSettingsAddButton(addRowEl, t('settings', 'workspaceTweaksAddPropertiesExcludedFolder'));
+			button.onclick = () => {
+				pickerEl.empty();
+				new Setting(pickerEl)
+					.setName(t('settings', 'workspaceTweaksPropertiesExcludedFolderSearch'))
+					.addText(text => {
+						text.setPlaceholder(t('settings', 'workspaceTweaksPropertiesExcludedFolderSearchPlaceholder'));
+						text.inputEl.addClass('operon-settings-input-long');
+						new FolderSuggest(this.app, text.inputEl, folder => {
+							void addExcludedFolder(folder.path);
+						}, {
+							filter: folder => !hasExcludedFolder(folder.path),
+						});
+						text.inputEl.focus();
+					})
+					.addExtraButton(extra => {
+						extra.setIcon('x');
+						applyOperonTooltipToExtraButton(extra, t('buttons', 'cancel'));
+						extra.onClick(() => {
+							pickerEl.empty();
+						});
+					});
+			};
+		};
+		const render = (): void => {
+			this.settings.workspaceTweaksPropertiesExcludedFolders = normalizeFolderList(
+				this.settings.workspaceTweaksPropertiesExcludedFolders,
+			);
+			listEl.empty();
+			for (const folderPath of this.settings.workspaceTweaksPropertiesExcludedFolders) {
+				const row = createSettingsListCard({
+					containerEl: listEl,
+					icon: 'panel-top-close',
+					title: folderPath,
+					className: 'operon-excluded-folder-row',
+					titleClassName: 'operon-excluded-folder-path',
+					metaClassName: 'operon-excluded-folder-meta',
+					actionsClassName: 'operon-excluded-folder-actions',
+					renderTitle: titleEl => {
+						renderFolderPath(titleEl, folderPath);
+					},
+				});
+
+				createSettingsListCardActionButton({
+					containerEl: row.actionsEl,
+					label: t('settings', 'workspaceTweaksRemovePropertiesExcludedFolder'),
+					ariaLabel: `${t('settings', 'workspaceTweaksRemovePropertiesExcludedFolder')}: ${folderPath}`,
+					tooltip: `${t('settings', 'workspaceTweaksRemovePropertiesExcludedFolder')}: ${folderPath}`,
+					icon: 'trash-2',
+					danger: true,
+					className: 'operon-excluded-folder-remove',
+					errorContext: 'settings workspace tweak excluded folder remove failed',
+					onClick: async () => {
+						this.settings.workspaceTweaksPropertiesExcludedFolders = this.settings.workspaceTweaksPropertiesExcludedFolders
+							.filter(folder => normalizeSettingsFolderPath(folder).toLowerCase() !== folderPath.toLowerCase());
+						render();
+						await saveAndApply();
+					},
+				});
+			}
+			if (this.settings.workspaceTweaksPropertiesExcludedFolders.length === 0) {
+				listEl.createDiv({
+					text: t('settings', 'workspaceTweaksPropertiesExcludedFoldersEmpty'),
+					cls: 'operon-excluded-folders-empty',
+				});
+			}
+			renderAddControls();
+		};
+
+		render();
+	}
+
 	private renderExcludedFolderSettings(containerEl: HTMLElement): void {
 		const wrapper = containerEl.createDiv({ cls: 'operon-excluded-folders-setting' });
 
@@ -9043,6 +9513,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private notifySettingsChanged(): void {
 		this.hasPendingSettingsChange = true;
+	}
+
+	private applyPendingSettingsChange(): void {
+		this.hasPendingSettingsChange = false;
+		this.onSettingsChanged();
 	}
 
 	/**

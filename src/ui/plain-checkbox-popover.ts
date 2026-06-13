@@ -22,7 +22,7 @@ import {
 	PLAIN_CHECKBOX_POPOVER_PANEL_CLASS,
 } from './plain-checkbox-popover-scope';
 
-interface PlainCheckboxPopoverOptions {
+export interface PlainCheckboxPopoverOptions {
 	app: App;
 	task: IndexedTask;
 	keyMappings: KeyMapping[];
@@ -99,7 +99,7 @@ export function bindPlainCheckboxPopoverTrigger(
 	});
 }
 
-async function showPlainCheckboxPopover(
+export async function showPlainCheckboxPopover(
 	anchor: HTMLElement,
 	options: PlainCheckboxPopoverOptions,
 ): Promise<void> {

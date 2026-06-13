@@ -9,6 +9,7 @@ import {
 	type OperonKanbanOrderPackageV1,
 	type OperonKeyMappingsPackageV1,
 	type VersionedStoreSlice,
+	type WorkspaceTweaksPackageSettings,
 } from './operon-data-package';
 import type { OperonLegacyStoragePaths } from './operon-storage-paths';
 import type { KanbanManualOrderBoard } from './kanban-order-store';
@@ -131,6 +132,11 @@ const DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'filterTaskShowPinAction',
 	'filterTaskShowSubtaskAction',
 	'filterTaskShowPlainCheckboxAction',
+	'workspaceTweaksHideScrollbars',
+	'workspaceTweaksCollapseProperties',
+	'workspaceTweaksPropertiesScope',
+	'workspaceTweaksPropertiesExcludedFolders',
+	'workspaceTweaksCompactSidebarTabIcons',
 	'taskDescriptionRequired',
 	'assigneesRequired',
 	'fileTasksFolder',
@@ -214,6 +220,14 @@ const TASK_CREATION_PROFILE_KEYS = [
 	'createDailyNotesAsOperonTask',
 	'defaultEstimateMinutes',
 ] as const satisfies readonly (keyof TaskCreationProfileStoreSettings)[];
+
+const WORKSPACE_TWEAK_KEYS = [
+	'workspaceTweaksHideScrollbars',
+	'workspaceTweaksCollapseProperties',
+	'workspaceTweaksPropertiesScope',
+	'workspaceTweaksPropertiesExcludedFolders',
+	'workspaceTweaksCompactSidebarTabIcons',
+] as const satisfies readonly (keyof WorkspaceTweaksPackageSettings)[];
 
 const TASK_AUTOMATION_POLICY_KEYS = [
 	'autoCompleteParentWhenAllChildrenTerminal',
@@ -328,6 +342,7 @@ export function buildOperonDataPackageFromLegacySnapshot(
 				),
 				TASK_CREATION_PROFILE_KEYS,
 			),
+			workspaceTweaks: buildWorkspaceTweaksPackage(migratedSettings),
 		},
 		automation: {
 			taskAutomationPolicy: buildPickedSettingsPackage(
@@ -371,7 +386,7 @@ export function mergeOperonDataPackage(
 		settings: cloneExistingDomain(existing?.settings, legacy.settings),
 		taxonomy: cloneExistingDomain(existing?.taxonomy, legacy.taxonomy, isTaxonomyDomain),
 		views: cloneExistingDomain(existing?.views, legacy.views, isViewsDomain),
-		ui: cloneExistingDomain(existing?.ui, legacy.ui, isUiDomain),
+		ui: mergeUiPackage(existing?.ui, legacy.ui),
 		automation: cloneExistingDomain(existing?.automation, legacy.automation, isAutomationDomain),
 		integrations: cloneExistingDomain(existing?.integrations, legacy.integrations, isIntegrationsDomain),
 		state: buildStatePackage(existing?.state, legacy.state),
@@ -639,6 +654,16 @@ function buildPickedSettingsPackage<T extends object, K extends keyof T>(
 	return result as VersionedStoreSlice<Pick<T, K>>;
 }
 
+function buildWorkspaceTweaksPackage(
+	settings: OperonSettings,
+): VersionedStoreSlice<WorkspaceTweaksPackageSettings> {
+	const result: Record<string, unknown> = { version: 1 };
+	for (const key of WORKSPACE_TWEAK_KEYS) {
+		result[key] = cloneJson(settings[key]);
+	}
+	return result as VersionedStoreSlice<WorkspaceTweaksPackageSettings>;
+}
+
 function buildExternalCalendarSourcesPackage(
 	entry: LegacyJsonFileSnapshot,
 	settings: OperonSettings,
@@ -759,6 +784,28 @@ function isUiDomain(value: unknown): boolean {
 		&& isRecord(value.contextualMenu)
 		&& isRecord(value.taskUiPreferences)
 		&& isRecord(value.taskCreationProfile);
+}
+
+function mergeUiPackage(
+	existing: Partial<OperonDataPackageV1['ui']> | null | undefined,
+	fallback: OperonDataPackageV1['ui'],
+): OperonDataPackageV1['ui'] {
+	const fallbackPackage = cloneUnknown<OperonDataPackageV1['ui']>(fallback);
+	if (!existing || !isUiDomain(existing)) return fallbackPackage;
+	return {
+		contextualMenu: isRecord(existing.contextualMenu)
+			? cloneUnknown(existing.contextualMenu)
+			: fallbackPackage.contextualMenu,
+		taskUiPreferences: isRecord(existing.taskUiPreferences)
+			? cloneUnknown(existing.taskUiPreferences)
+			: fallbackPackage.taskUiPreferences,
+		taskCreationProfile: isRecord(existing.taskCreationProfile)
+			? cloneUnknown(existing.taskCreationProfile)
+			: fallbackPackage.taskCreationProfile,
+		workspaceTweaks: isRecord(existing.workspaceTweaks)
+			? cloneUnknown(existing.workspaceTweaks)
+			: fallbackPackage.workspaceTweaks,
+	};
 }
 
 function isAutomationDomain(value: unknown): boolean {

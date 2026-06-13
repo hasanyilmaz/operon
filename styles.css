@@ -13,6 +13,146 @@
 }
 
 /* ========================================
+   Workspace Tweaks
+   ======================================== */
+
+body.operon-tweak-hide-scrollbars,
+body.operon-tweak-hide-scrollbars * {
+	-ms-overflow-style: none;
+	scrollbar-color: transparent transparent;
+	scrollbar-width: none;
+}
+
+body.operon-tweak-hide-scrollbars::-webkit-scrollbar,
+body.operon-tweak-hide-scrollbars *::-webkit-scrollbar {
+	display: none;
+	width: 0;
+	height: 0;
+	background: transparent;
+}
+
+body.operon-tweak-hide-scrollbars::-webkit-scrollbar-thumb,
+body.operon-tweak-hide-scrollbars *::-webkit-scrollbar-thumb,
+body.operon-tweak-hide-scrollbars::-webkit-scrollbar-track,
+body.operon-tweak-hide-scrollbars *::-webkit-scrollbar-track {
+	border: none;
+	background: transparent;
+}
+
+body.operon-tweak-properties-collapser .operon-tweak-properties-collapser-target .metadata-container {
+	--operon-properties-collapser-heading-gap: var(--size-4-2, 8px);
+}
+
+body.operon-tweak-properties-collapser .operon-tweak-properties-collapser-target .metadata-properties-heading {
+	display: flex;
+	align-items: center;
+	gap: var(--operon-properties-collapser-heading-gap);
+	width: 100%;
+	min-height: 24px;
+	margin-bottom: var(--size-4-2, 8px);
+	opacity: 1;
+	visibility: visible;
+	cursor: pointer;
+}
+
+body.operon-tweak-properties-collapser .operon-tweak-properties-collapser-target .metadata-properties-heading .collapse-indicator {
+	position: static;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	order: 0;
+	width: var(--icon-size, 16px);
+	height: var(--icon-size, 16px);
+	margin: 0;
+	opacity: 1;
+	visibility: visible;
+	color: var(--text-muted);
+	flex: 0 0 auto;
+}
+
+body.operon-tweak-properties-collapser .operon-tweak-properties-collapser-target .metadata-properties-heading .collapse-indicator .collapse-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+body.operon-tweak-properties-collapser .operon-tweak-properties-collapser-target .metadata-properties-heading .collapse-indicator svg.svg-icon {
+	width: var(--icon-size, 16px);
+	height: var(--icon-size, 16px);
+}
+
+body.operon-tweak-properties-collapser .operon-tweak-properties-collapser-target .metadata-properties-title {
+	display: flex;
+	align-items: center;
+	width: auto;
+	min-width: 0;
+	margin: 0;
+	opacity: 1;
+	visibility: visible;
+	color: var(--text-normal);
+	font-weight: var(--font-semibold, 600);
+}
+
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-container,
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-container-inner,
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header,
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-inner,
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-inner-icon,
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-inner-title {
+	transition:
+		height 110ms ease-out,
+		min-height 110ms ease-out,
+		max-height 110ms ease-out,
+		padding 110ms ease-out,
+		margin 110ms ease-out,
+		opacity 90ms ease-out,
+		background-color 110ms ease-out;
+}
+
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-container:not(:hover) {
+	box-sizing: border-box;
+	height: 16px;
+	min-height: 16px;
+	max-height: 16px;
+	overflow: hidden;
+	padding-block: 6px;
+}
+
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-container:not(:hover) .workspace-tab-header-container-inner {
+	box-sizing: border-box;
+	height: 4px;
+	min-height: 4px;
+	max-height: 4px;
+	overflow: hidden;
+	align-items: center;
+	padding-block: 0;
+	margin-block: 0;
+}
+
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-container:not(:hover) .workspace-tab-header {
+	height: 4px;
+	min-height: 4px;
+	max-height: 4px;
+	overflow: hidden;
+	border-radius: 999px;
+	background-color: var(--background-modifier-hover);
+}
+
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-container:not(:hover) .workspace-tab-header-inner {
+	height: 4px;
+	min-height: 4px;
+	max-height: 4px;
+	overflow: hidden;
+	padding-block: 0;
+	margin-block: 0;
+}
+
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-container:not(:hover) .workspace-tab-header-inner-icon,
+body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .workspace-tabs:not(.mod-top) .workspace-tab-header-container:not(:hover) .workspace-tab-header-inner-title {
+	opacity: 0;
+}
+
+/* ========================================
    Release Notes
    ======================================== */
 
@@ -1614,6 +1754,44 @@
 	max-width: min(400px, calc(100vw - 24px));
 }
 
+.operon-icon-picker-panel,
+.operon-settings-icon-picker-modal {
+	--operon-icon-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-icon-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-icon-picker-hover-border: color-mix(in srgb, var(--operon-icon-picker-accent) 38%, var(--background-modifier-border));
+	--operon-icon-picker-focus-ring: color-mix(in srgb, var(--operon-icon-picker-accent) 12%, transparent);
+	--operon-icon-picker-selected-border: color-mix(in srgb, var(--operon-icon-picker-accent) 46%, var(--background-modifier-border));
+}
+
+.operon-icon-picker-panel .operon-floating-input,
+.operon-settings-icon-picker-modal .operon-floating-input {
+	border: 1px solid var(--operon-icon-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--input-shadow: none;
+	--input-shadow-hover: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-icon-picker-panel .operon-floating-input:hover,
+.operon-icon-picker-panel .operon-floating-input:focus,
+.operon-icon-picker-panel .operon-floating-input:focus-visible,
+.operon-settings-icon-picker-modal .operon-floating-input:hover,
+.operon-settings-icon-picker-modal .operon-floating-input:focus,
+.operon-settings-icon-picker-modal .operon-floating-input:focus-visible {
+	border-color: var(--operon-icon-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-icon-picker-focus-ring);
+}
+
 .operon-icon-picker-actions {
 	justify-content: space-between;
 }
@@ -1641,24 +1819,39 @@
 }
 
 .operon-icon-picker-cell {
+	appearance: none;
+	-webkit-appearance: none;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	min-height: 42px;
 	padding: 6px 4px;
-	border: 1px solid var(--background-modifier-border);
+	border: 1px solid var(--operon-icon-picker-border, var(--background-modifier-border));
 	border-radius: 8px;
 	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
+	box-shadow: none;
 	cursor: pointer;
+	filter: none;
 	text-align: center;
-	transition: background 0.08s ease, border-color 0.08s ease, transform 0.08s ease;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
 .operon-icon-picker-cell:hover,
+.operon-icon-picker-cell:focus-visible,
 .operon-icon-picker-cell.is-active {
-	background: var(--background-modifier-hover);
-	border-color: var(--interactive-accent);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	border-color: var(--operon-icon-picker-hover-border, var(--interactive-accent));
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-icon-picker-focus-ring, color-mix(in srgb, var(--interactive-accent) 12%, transparent));
 }
 
 .operon-icon-picker-icon {
@@ -1682,11 +1875,61 @@
 	min-width: min(420px, calc(100vw - 40px));
 }
 
+.operon-settings-color-picker-modal {
+	width: min(640px, calc(100vw - 40px));
+	max-width: min(640px, calc(100vw - 40px));
+}
+
+.operon-settings-color-picker-modal .modal-content {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	overflow: visible;
+}
+
+.operon-settings-color-picker-host {
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+	overflow: visible;
+}
+
+.operon-settings-color-picker-anchor {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 1px;
+	height: 1px;
+	pointer-events: none;
+}
+
+.operon-settings-color-picker-host > .operon-color-picker-panel {
+	position: static;
+	top: auto;
+	left: auto;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	max-height: none;
+	overflow: visible;
+}
+
 .operon-settings-icon-picker-current {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	min-width: 0;
+	padding: 8px 10px;
+	border: 1px solid var(--operon-icon-picker-selected-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
@@ -1723,6 +1966,494 @@
 	gap: 6px;
 }
 
+.operon-icon-picker-panel .operon-floating-btn,
+.operon-settings-icon-picker-modal .operon-floating-btn {
+	border: 1px solid var(--operon-icon-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-icon-picker-panel button.operon-floating-btn,
+.operon-settings-icon-picker-modal button.operon-floating-btn {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-icon-picker-panel .operon-floating-btn:hover,
+.operon-icon-picker-panel .operon-floating-btn:focus-visible,
+.operon-settings-icon-picker-modal .operon-floating-btn:hover,
+.operon-settings-icon-picker-modal .operon-floating-btn:focus-visible {
+	border-color: var(--operon-icon-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-icon-picker-focus-ring);
+}
+
+.operon-color-picker-panel {
+	--operon-color-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-color-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-color-picker-hover-border: color-mix(in srgb, var(--operon-color-picker-accent) 42%, var(--background-modifier-border));
+	--operon-color-picker-focus-ring: color-mix(in srgb, var(--operon-color-picker-accent) 12%, transparent);
+	--operon-color-picker-danger: color-mix(in srgb, var(--color-red) 88%, var(--text-normal));
+	z-index: 10060;
+	width: min(560px, calc(100vw - 24px));
+	min-width: min(420px, calc(100vw - 24px));
+	max-width: min(560px, calc(100vw - 24px));
+	gap: 8px;
+	padding: 10px;
+	border-color: var(--operon-color-picker-border);
+	background: color-mix(in srgb, var(--background-primary) 96%, transparent);
+}
+
+.operon-color-picker-panel .operon-floating-input {
+	border: 1px solid var(--operon-color-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--input-shadow: none;
+	--input-shadow-hover: none;
+	transition: border-color 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-color-picker-panel .operon-floating-input:hover,
+.operon-color-picker-panel .operon-floating-input:focus,
+.operon-color-picker-panel .operon-floating-input:focus-visible {
+	border-color: var(--operon-color-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-color-picker-focus-ring);
+}
+
+.operon-color-picker-body {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(152px, 0.5fr);
+	gap: 10px;
+	align-items: stretch;
+	min-width: 0;
+}
+
+.operon-color-picker-palette-column,
+.operon-color-picker-custom-column {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+
+.operon-color-picker-section-label {
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: 650;
+	line-height: 1.2;
+}
+
+.operon-color-picker-tone-strip {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 4px;
+}
+
+.operon-color-picker-tone-cell,
+.operon-color-picker-grid-cell,
+.operon-color-picker-free-plane,
+.operon-color-picker-hue-control,
+.operon-color-picker-copy,
+.operon-color-picker-panel .operon-floating-btn {
+	appearance: none;
+	-webkit-appearance: none;
+	border: 1px solid var(--operon-color-picker-border);
+	border-radius: 8px;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, box-shadow 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.operon-color-picker-tone-cell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	height: 32px;
+	padding: 0;
+	background-color: var(--operon-color-picker-swatch, transparent);
+	background-image: none;
+	cursor: pointer;
+	overflow: hidden;
+}
+
+.operon-color-picker-tone-cell:disabled {
+	cursor: default;
+	opacity: 0.42;
+	background-color: transparent;
+	background-image: none;
+}
+
+.operon-color-picker-tone-cell.is-center {
+	border-color: color-mix(in srgb, var(--text-muted) 42%, var(--background-modifier-border));
+}
+
+.operon-color-picker-tone-cell:hover:not(:disabled),
+.operon-color-picker-tone-cell:focus-visible:not(:disabled),
+.operon-color-picker-tone-cell.is-active:not(:disabled) {
+	border-color: var(--operon-color-picker-hover-border);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-color-picker-focus-ring);
+}
+
+.operon-color-picker-tone-hex {
+	min-width: 0;
+	max-width: 100%;
+	overflow: hidden;
+	padding: 0 5px;
+	color: white;
+	font-family: var(--font-monospace);
+	font-size: 12px;
+	font-weight: 800;
+	line-height: 1;
+	text-align: center;
+	text-overflow: ellipsis;
+	text-shadow: 0 1px 2px rgb(0 0 0 / 55%);
+	white-space: nowrap;
+}
+
+.operon-color-picker-grid {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	grid-template-rows: repeat(4, minmax(44px, 1fr));
+	grid-auto-flow: column;
+	gap: 4px 6px;
+}
+
+.operon-color-picker-grid-cell {
+	position: relative;
+	display: block;
+	min-width: 0;
+	min-height: 44px;
+	padding: 0;
+	background: transparent;
+	background-color: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	text-align: center;
+}
+
+body .operon-color-picker-panel .operon-color-picker-grid-cell > .operon-color-picker-grid-swatch {
+	position: absolute;
+	inset: 5px;
+	display: block;
+	width: auto;
+	min-width: 0;
+	max-width: none;
+	height: auto;
+	min-height: 0;
+	box-sizing: border-box;
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+	border-radius: 6px;
+	background: var(--operon-color-picker-swatch, transparent);
+	background-color: var(--operon-color-picker-swatch, transparent);
+	background-image: none;
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
+}
+
+.operon-color-picker-grid-cell:hover,
+.operon-color-picker-grid-cell:focus-visible,
+.operon-color-picker-grid-cell.is-active,
+.operon-color-picker-grid-cell.is-selected {
+	border-color: color-mix(
+		in srgb,
+		var(--operon-color-picker-cell-accent, var(--operon-color-picker-accent)) 54%,
+		var(--background-modifier-border)
+	);
+	background: transparent;
+	background-color: transparent;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px color-mix(
+		in srgb,
+		var(--operon-color-picker-cell-accent, var(--operon-color-picker-accent)) 16%,
+		transparent
+	);
+}
+
+body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus-visible, .is-active, .is-selected) > .operon-color-picker-grid-swatch {
+	inset: 3px;
+	border-color: color-mix(
+		in srgb,
+		var(--operon-color-picker-cell-accent, var(--operon-color-picker-accent)) 58%,
+		var(--background-modifier-border)
+	);
+	border-radius: 7px;
+	box-shadow:
+		inset 0 0 0 1px color-mix(in srgb, white 18%, transparent),
+		0 0 0 1px color-mix(
+			in srgb,
+			var(--operon-color-picker-cell-accent, var(--operon-color-picker-accent)) 20%,
+			transparent
+		);
+}
+
+.operon-color-picker-grid-cell.is-match:not(.is-active, .is-selected) {
+	border-color: color-mix(
+		in srgb,
+		var(--operon-color-picker-cell-accent, var(--operon-color-picker-accent)) 36%,
+		var(--background-modifier-border)
+	);
+	color: var(--text-normal);
+	box-shadow: 0 0 0 1px color-mix(
+		in srgb,
+		var(--operon-color-picker-cell-accent, var(--operon-color-picker-accent)) 12%,
+		transparent
+	);
+}
+
+.operon-color-picker-free-plane {
+	position: relative;
+	min-height: 128px;
+	overflow: hidden;
+	background:
+		linear-gradient(to top, #000 0%, transparent 100%),
+		linear-gradient(to right, #fff 0%, hsl(var(--operon-color-picker-free-hue, 0deg) 100% 50%) 100%);
+	cursor: crosshair;
+}
+
+.operon-color-picker-free-plane:hover:not(.is-disabled),
+.operon-color-picker-free-plane:focus-visible:not(.is-disabled) {
+	border-color: var(--operon-color-picker-hover-border);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-color-picker-focus-ring);
+}
+
+.operon-color-picker-free-plane.is-disabled {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	cursor: default;
+}
+
+.operon-color-picker-free-handle {
+	position: absolute;
+	left: var(--operon-color-picker-free-x, 0%);
+	top: var(--operon-color-picker-free-y, 0%);
+	width: 14px;
+	height: 14px;
+	border: 2px solid white;
+	border-radius: 999px;
+	box-shadow:
+		0 0 0 1px rgb(0 0 0 / 45%),
+		0 1px 6px rgb(0 0 0 / 32%);
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+}
+
+.operon-color-picker-free-handle.is-hidden,
+.operon-color-picker-free-empty.is-hidden {
+	display: none;
+}
+
+.operon-color-picker-free-empty {
+	padding: 0 10px;
+	color: var(--text-faint);
+	font-size: 11px;
+	font-weight: 650;
+	line-height: 1.3;
+	text-align: center;
+}
+
+.operon-color-picker-hue-control {
+	position: relative;
+	width: 100%;
+	height: 18px;
+	overflow: hidden;
+	background:
+		linear-gradient(
+			90deg,
+			#f00 0%,
+			#ff0 16.66%,
+			#0f0 33.33%,
+			#0ff 50%,
+			#00f 66.66%,
+			#f0f 83.33%,
+			#f00 100%
+		);
+}
+
+.operon-color-picker-hue-control.is-disabled {
+	cursor: default;
+	opacity: 0.42;
+	background: transparent;
+	background-color: transparent;
+}
+
+.operon-color-picker-hue-control:hover:not(.is-disabled),
+.operon-color-picker-hue-control:focus-within:not(.is-disabled) {
+	border-color: var(--operon-color-picker-hover-border);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-color-picker-focus-ring);
+}
+
+.operon-color-picker-hue-handle {
+	position: absolute;
+	top: 2px;
+	bottom: 2px;
+	left: var(--operon-color-picker-hue-x, 0%);
+	width: 14px;
+	border: 2px solid white;
+	border-radius: 8px;
+	background: color-mix(in srgb, white 92%, transparent);
+	box-shadow:
+		0 0 0 1px rgb(0 0 0 / 45%),
+		0 1px 6px rgb(0 0 0 / 32%);
+	transform: translateX(-50%);
+	pointer-events: none;
+}
+
+.operon-color-picker-hue-slider {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	opacity: 0;
+	cursor: pointer;
+	pointer-events: none;
+}
+
+.operon-color-picker-footer {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.operon-color-picker-copy {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 34px;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	background: transparent;
+	background-color: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.operon-color-picker-copy svg {
+	width: 15px;
+	height: 15px;
+}
+
+.operon-color-picker-actions {
+	display: flex;
+	gap: 6px;
+	align-items: stretch;
+	justify-content: stretch;
+	width: 100%;
+}
+
+.operon-color-picker-copy:hover:not(:disabled),
+.operon-color-picker-copy:focus-visible:not(:disabled),
+.operon-color-picker-panel .operon-floating-btn:hover:not(:disabled),
+.operon-color-picker-panel .operon-floating-btn:focus-visible:not(:disabled) {
+	border-color: var(--operon-color-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-color-picker-focus-ring);
+}
+
+.operon-color-picker-panel .operon-floating-btn {
+	flex: 1 1 0;
+	min-width: 0;
+	min-height: 34px;
+	padding: 5px 11px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	font-size: 12px;
+	font-weight: 650;
+}
+
+.operon-color-picker-panel .operon-floating-btn:not(.is-secondary) {
+	border-color: var(--operon-color-picker-hover-border);
+	color: color-mix(in srgb, var(--operon-color-picker-accent) 76%, var(--text-normal));
+}
+
+.operon-color-picker-panel .operon-floating-btn:disabled,
+.operon-color-picker-copy:disabled {
+	cursor: default;
+	opacity: 0.45;
+}
+
+.operon-color-picker-panel .operon-floating-btn.is-secondary:hover:not(:disabled),
+.operon-color-picker-panel .operon-floating-btn.is-secondary:focus-visible:not(:disabled) {
+	border-color: var(--operon-color-picker-danger);
+	color: var(--operon-color-picker-danger);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-red) 7%, transparent);
+}
+
+.operon-color-swatch.is-picker-open {
+	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
+	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 8%, var(--background-primary));
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, transparent);
+}
+
+.operon-mobile-picker-surface.operon-color-picker-panel {
+	width: min(100%, calc(100vw - 18px));
+	min-width: min(100%, calc(100vw - 18px));
+	max-width: min(100%, calc(100vw - 18px));
+}
+
+.operon-mobile-picker-surface.operon-color-picker-panel .operon-color-picker-body {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.operon-mobile-picker-surface.operon-color-picker-panel .operon-color-picker-free-plane {
+	min-height: 138px;
+}
+
+.operon-mobile-picker-surface.operon-color-picker-panel .operon-color-picker-actions {
+	justify-content: stretch;
+}
+
+.operon-mobile-picker-surface.operon-color-picker-panel .operon-color-picker-actions .operon-floating-btn {
+	flex: 1 1 0;
+}
+
 .operon-floating-btn {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
@@ -1743,6 +2474,7 @@
 .operon-custom-field-picker-option,
 .operon-custom-text-picker-option,
 .operon-custom-list-picker-option,
+.operon-filter-condition-picker-item,
 .operon-status-dropdown-item {
 	width: 100%;
 	border: none;
@@ -1759,10 +2491,30 @@
 .operon-custom-field-picker-option.is-active,
 .operon-custom-text-picker-option.is-active,
 .operon-custom-list-picker-option.is-active,
+.operon-filter-condition-picker-item.is-active,
 .operon-status-dropdown-item.is-active {
 	background: color-mix(in srgb, var(--operon-task-creator-accent, var(--interactive-accent)) 12%, var(--background-secondary));
 	outline: 1px solid color-mix(in srgb, var(--operon-task-creator-accent, var(--interactive-accent)) 32%, var(--background-modifier-border));
 	color: var(--text-normal);
+}
+
+.operon-date-picker-panel,
+.operon-custom-field-picker--date,
+.operon-datetime-picker-panel,
+.operon-custom-field-picker--datetime,
+.operon-day-picker-popover-panel {
+	--operon-date-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-date-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-date-picker-hover-border: color-mix(in srgb, var(--operon-date-picker-accent) 34%, var(--background-modifier-border));
+	--operon-date-picker-focus-ring: color-mix(in srgb, var(--operon-date-picker-accent) 12%, transparent);
+	--operon-date-picker-surface: transparent;
+	--operon-date-picker-control-bg: transparent;
+	--operon-day-picker-accent: var(--operon-date-picker-accent);
+	--operon-day-picker-border: var(--operon-date-picker-border);
+	--operon-day-picker-hover-border: var(--operon-date-picker-hover-border);
+	--operon-day-picker-focus-ring: var(--operon-date-picker-focus-ring);
+	--operon-day-picker-surface: var(--operon-date-picker-surface);
+	--operon-day-picker-control-bg: var(--operon-date-picker-control-bg);
 }
 
 .operon-date-picker-panel {
@@ -1773,6 +2525,10 @@
 .operon-status-picker-panel {
 	min-width: 240px;
 	max-width: 360px;
+	--operon-status-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-status-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-status-picker-hover-border: color-mix(in srgb, var(--operon-status-picker-accent) 34%, var(--background-modifier-border));
+	--operon-status-picker-focus-ring: color-mix(in srgb, var(--operon-status-picker-accent) 12%, transparent);
 }
 
 .operon-status-picker-list,
@@ -1788,9 +2544,129 @@
 	gap: 4px;
 }
 
+.operon-status-picker-panel .operon-status-dropdown-item {
+	appearance: none;
+	-webkit-appearance: none;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 8px;
+	box-sizing: border-box;
+	min-height: 33px;
+	padding: 0 14px;
+	border: 1px solid var(--operon-status-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	text-align: left;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-status-picker-panel button.operon-status-dropdown-item {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-status-picker-panel .operon-status-dropdown-item:hover,
+.operon-status-picker-panel .operon-status-dropdown-item:focus-visible,
+.operon-status-picker-panel .operon-status-dropdown-item.is-active {
+	border-color: var(--operon-status-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-status-picker-focus-ring);
+}
+
+.operon-filter-condition-picker-panel {
+	min-width: 240px;
+	max-width: 360px;
+}
+
+.operon-filter-condition-picker-search {
+	flex: 0 0 auto;
+}
+
+.operon-filter-condition-picker-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-height: calc((33px * 10) + (4px * 9) + 8px);
+	overflow-y: auto;
+	scroll-padding-block: 4px;
+}
+
+.operon-filter-condition-picker-item {
+	min-height: 33px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-filter-condition-picker-item.is-selected:not(.is-active) {
+	background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-secondary));
+	color: var(--text-normal);
+}
+
+.operon-filter-condition-picker-empty {
+	padding: 8px;
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.4;
+}
+
 .operon-custom-field-picker {
 	min-width: 240px;
 	max-width: 360px;
+	--operon-custom-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-custom-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-custom-picker-hover-border: color-mix(in srgb, var(--operon-custom-picker-accent) 38%, var(--background-modifier-border));
+	--operon-custom-picker-focus-ring: color-mix(in srgb, var(--operon-custom-picker-accent) 12%, transparent);
+	--operon-custom-picker-selected-border: color-mix(in srgb, var(--operon-custom-picker-accent) 46%, var(--background-modifier-border));
+	--operon-custom-picker-danger-border: color-mix(in srgb, var(--color-red) 62%, var(--background-modifier-border));
+	--operon-custom-picker-danger-ring: color-mix(in srgb, var(--color-red) 8%, transparent);
+}
+
+.operon-custom-field-picker .operon-floating-title,
+.operon-custom-field-picker .operon-floating-subtitle {
+	padding: 0 2px;
+}
+
+.operon-custom-field-picker .operon-floating-input {
+	border: 1px solid var(--operon-custom-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--input-shadow: none;
+	--input-shadow-hover: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-custom-field-picker .operon-floating-input:hover,
+.operon-custom-field-picker .operon-floating-input:focus,
+.operon-custom-field-picker .operon-floating-input:focus-visible {
+	border-color: var(--operon-custom-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-custom-picker-focus-ring);
 }
 
 .operon-custom-field-picker--text {
@@ -1799,17 +2675,51 @@
 	max-width: min(360px, calc(100vw - 24px));
 }
 
+.operon-custom-field-picker .operon-custom-field-picker-option,
 .operon-custom-text-picker-option {
+	appearance: none;
+	-webkit-appearance: none;
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
 	flex: 0 0 auto;
 	box-sizing: border-box;
 	min-height: 33px;
+	border: 1px solid var(--operon-custom-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
 	text-align: left;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-custom-field-picker .operon-custom-field-picker-option:hover,
+.operon-custom-field-picker .operon-custom-field-picker-option:focus-visible,
+.operon-custom-field-picker .operon-custom-field-picker-option.is-active {
+	border-color: var(--operon-custom-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-custom-picker-focus-ring);
+}
+
+.operon-custom-field-picker .operon-custom-list-picker-option {
+	flex-direction: column;
+	align-items: flex-start;
+	text-align: left;
 }
 
 .operon-custom-text-picker-suggestions {
@@ -1849,6 +2759,53 @@
 	justify-content: flex-end;
 }
 
+.operon-custom-field-picker .operon-floating-btn {
+	border: 1px solid var(--operon-custom-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-custom-field-picker .operon-floating-btn:not(.is-secondary) {
+	border-color: var(--operon-custom-picker-hover-border);
+	color: color-mix(in srgb, var(--operon-custom-picker-accent) 72%, var(--text-normal));
+}
+
+.operon-custom-field-picker button.operon-floating-btn {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-custom-field-picker .operon-floating-btn:hover,
+.operon-custom-field-picker .operon-floating-btn:focus-visible {
+	border-color: var(--operon-custom-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-custom-picker-focus-ring);
+}
+
+.operon-custom-field-picker .operon-floating-btn.is-secondary:hover,
+.operon-custom-field-picker .operon-floating-btn.is-secondary:focus-visible {
+	border-color: var(--operon-custom-picker-danger-border);
+	color: var(--text-error);
+	box-shadow: 0 0 0 2px var(--operon-custom-picker-danger-ring);
+}
+
 .operon-custom-field-picker--date {
 	min-width: 320px;
 	max-width: 420px;
@@ -1886,6 +2843,93 @@
 .operon-estimate-picker-panel {
 	min-width: 220px;
 	max-width: 260px;
+	--operon-estimate-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-estimate-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-estimate-picker-hover-border: color-mix(in srgb, var(--operon-estimate-picker-accent) 38%, var(--background-modifier-border));
+	--operon-estimate-picker-focus-ring: color-mix(in srgb, var(--operon-estimate-picker-accent) 12%, transparent);
+	--operon-estimate-picker-danger-border: color-mix(in srgb, var(--color-red) 62%, var(--background-modifier-border));
+	--operon-estimate-picker-danger-ring: color-mix(in srgb, var(--color-red) 8%, transparent);
+}
+
+.operon-estimate-picker-panel .operon-floating-subtitle {
+	padding: 0 2px;
+	color: var(--text-muted);
+}
+
+.operon-estimate-picker-panel .operon-floating-input {
+	border: 1px solid var(--operon-estimate-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--input-shadow: none;
+	--input-shadow-hover: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-estimate-picker-panel .operon-floating-input:hover,
+.operon-estimate-picker-panel .operon-floating-input:focus,
+.operon-estimate-picker-panel .operon-floating-input:focus-visible {
+	border-color: var(--operon-estimate-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-estimate-picker-focus-ring);
+}
+
+.operon-estimate-picker-panel .operon-floating-actions {
+	justify-content: space-between;
+}
+
+.operon-estimate-picker-panel .operon-floating-btn {
+	border: 1px solid var(--operon-estimate-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-estimate-picker-panel .operon-floating-btn:not(.is-secondary) {
+	border-color: var(--operon-estimate-picker-hover-border);
+	color: color-mix(in srgb, var(--operon-estimate-picker-accent) 72%, var(--text-normal));
+}
+
+.operon-estimate-picker-panel button.operon-floating-btn {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-estimate-picker-panel .operon-floating-btn:hover,
+.operon-estimate-picker-panel .operon-floating-btn:focus-visible {
+	border-color: var(--operon-estimate-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-estimate-picker-focus-ring);
+}
+
+.operon-estimate-picker-panel .operon-floating-btn.is-secondary:hover,
+.operon-estimate-picker-panel .operon-floating-btn.is-secondary:focus-visible {
+	border-color: var(--operon-estimate-picker-danger-border);
+	color: var(--text-error);
+	box-shadow: 0 0 0 2px var(--operon-estimate-picker-danger-ring);
 }
 
 .operon-priority-picker-panel {
@@ -1894,6 +2938,10 @@
 	max-width: min(320px, calc(100vw - 32px));
 	align-items: center;
 	--operon-priority-picker-width: 112px;
+	--operon-priority-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-priority-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-priority-picker-hover-border: color-mix(in srgb, var(--operon-priority-picker-accent) 34%, var(--background-modifier-border));
+	--operon-priority-picker-focus-ring: color-mix(in srgb, var(--operon-priority-picker-accent) 12%, transparent);
 }
 
 .operon-priority-picker-panel .operon-floating-input {
@@ -1914,6 +2962,83 @@
 	align-items: center;
 	gap: 8px;
 	width: min(var(--operon-priority-picker-width), 100%);
+}
+
+.operon-priority-picker-panel .operon-priority-option {
+	appearance: none;
+	-webkit-appearance: none;
+	border: 1px solid var(--operon-priority-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-priority-picker-panel button.operon-priority-option {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-priority-picker-panel .operon-priority-option:hover,
+.operon-priority-picker-panel .operon-priority-option:focus-visible,
+.operon-priority-picker-panel .operon-priority-option.is-active {
+	border-color: var(--operon-priority-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-priority-picker-focus-ring);
+}
+
+.operon-status-picker-panel .operon-floating-btn.is-secondary,
+.operon-priority-picker-panel .operon-floating-btn.is-secondary {
+	border: 1px solid var(--operon-status-picker-border, var(--operon-priority-picker-border));
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-status-picker-panel button.operon-floating-btn.is-secondary,
+.operon-priority-picker-panel button.operon-floating-btn.is-secondary {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-status-picker-panel .operon-floating-btn.is-secondary:hover,
+.operon-status-picker-panel .operon-floating-btn.is-secondary:focus-visible,
+.operon-priority-picker-panel .operon-floating-btn.is-secondary:hover,
+.operon-priority-picker-panel .operon-floating-btn.is-secondary:focus-visible {
+	border-color: var(--operon-status-picker-hover-border, var(--operon-priority-picker-hover-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-status-picker-focus-ring, var(--operon-priority-picker-focus-ring));
 }
 
 .operon-estimate-picker-input {
@@ -1983,11 +3108,17 @@
 .operon-date-picker-results,
 .operon-custom-date-picker-results,
 .operon-custom-datetime-picker-date-results {
-	--operon-date-picker-gap: 4px;
-	--operon-date-picker-row-height: 36px;
+	--operon-date-picker-gap: 6px;
+	--operon-date-picker-row-height: 34px;
 	display: flex;
 	flex-direction: column;
 	gap: var(--operon-date-picker-gap);
+	padding: 0;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	max-height: calc((var(--operon-date-picker-row-height) * 8) + (var(--operon-date-picker-gap) * 7));
 	overflow-y: auto;
 	scroll-padding-block: var(--operon-date-picker-gap);
@@ -1996,6 +3127,8 @@
 .operon-date-picker-item,
 .operon-custom-date-picker-item,
 .operon-custom-datetime-picker-date-item {
+	appearance: none;
+	-webkit-appearance: none;
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 10ch 4ch;
 	gap: 8px;
@@ -2003,8 +3136,47 @@
 	box-sizing: border-box;
 	height: var(--operon-date-picker-row-height);
 	min-height: var(--operon-date-picker-row-height);
-	padding: 0 12px 0 24px;
+	padding: 0 10px 0 12px;
+	border: 1px solid var(--operon-date-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	filter: none;
 	line-height: 1.2;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-date-picker-panel button.operon-date-picker-item,
+.operon-custom-field-picker--date button.operon-custom-date-picker-item,
+.operon-datetime-picker-panel button.operon-date-picker-item,
+.operon-custom-field-picker--datetime button.operon-custom-datetime-picker-date-item {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-date-picker-item:hover,
+.operon-custom-date-picker-item:hover,
+.operon-custom-datetime-picker-date-item:hover,
+.operon-date-picker-item.is-active,
+.operon-custom-date-picker-item.is-active,
+.operon-custom-datetime-picker-date-item.is-active {
+	border-color: var(--operon-date-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-date-picker-focus-ring);
 }
 
 .operon-date-picker-item-label,
@@ -2013,7 +3185,8 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-weight: 600;
+	font-weight: 650;
+	color: var(--text-normal);
 }
 
 .operon-date-picker-item-date,
@@ -2023,7 +3196,7 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
-	color: var(--text-normal);
+	color: var(--text-muted);
 	text-align: right;
 }
 
@@ -2043,12 +3216,13 @@
 .operon-custom-datetime-picker-empty {
 	font-size: 11px;
 	color: var(--text-faint);
-	padding: 4px 8px;
+	padding: 6px 8px;
+	background: transparent;
 }
 
 .operon-date-picker-panel.has-day-picker,
 .operon-custom-field-picker--date.has-day-picker {
-	width: min(340px, 100%);
+	width: min(344px, 100%);
 	max-width: 100%;
 }
 
@@ -2071,6 +3245,13 @@
 	flex-direction: column;
 	gap: 8px;
 	min-width: 0;
+	--operon-day-picker-accent: var(--operon-date-picker-accent, var(--interactive-accent));
+	--operon-day-picker-border: var(--operon-date-picker-border, color-mix(in srgb, var(--background-modifier-border) 72%, transparent));
+	--operon-day-picker-hover-border: var(--operon-date-picker-hover-border, color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border)));
+	--operon-day-picker-focus-ring: var(--operon-date-picker-focus-ring, color-mix(in srgb, var(--interactive-accent) 12%, transparent));
+	--operon-day-picker-surface: transparent;
+	--operon-day-picker-control-bg: transparent;
+	--operon-day-picker-cell-bg: transparent;
 }
 
 .operon-day-picker-nav-row {
@@ -2083,32 +3264,64 @@
 
 .operon-day-picker-nav-group {
 	display: grid;
-	grid-template-columns: 28px minmax(0, 1fr) 28px;
+	grid-template-columns: 30px minmax(0, 1fr) 30px;
 	gap: 6px;
 	align-items: center;
 	min-width: 0;
+	overflow: visible;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 }
 
 .operon-day-picker-nav-button {
+	appearance: none;
+	-webkit-appearance: none;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
+	width: 30px;
 	height: 30px;
 	padding: 0;
-	border: 1px solid var(--background-modifier-border);
+	border: 1px solid var(--operon-day-picker-border);
 	border-radius: 8px;
-	background: var(--background-secondary);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-muted);
 	cursor: pointer;
+	box-shadow: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.operon-day-picker button.operon-day-picker-nav-button,
+.operon-day-picker button.operon-day-picker-day,
+.operon-day-picker button.operon-day-picker-footer-button,
+.operon-datetime-picker-panel button.operon-day-picker-footer-button,
+.operon-custom-field-picker--datetime button.operon-custom-datetime-picker-clear,
+.operon-custom-field-picker--datetime button.operon-custom-datetime-picker-today {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	filter: none;
 }
 
 .operon-day-picker-nav-button:hover,
 .operon-day-picker-nav-button:focus-visible {
-	border-color: var(--interactive-accent);
-	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+	border-color: var(--operon-day-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
 	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-day-picker-focus-ring);
 }
 
 .operon-day-picker-nav-button svg {
@@ -2123,27 +3336,46 @@
 	min-width: 0;
 	height: 30px;
 	padding: 0 10px;
+	border: 1px solid var(--operon-day-picker-border);
 	border-radius: 8px;
-	background: var(--background-secondary);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
-	font-weight: 700;
+	font-weight: 650;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
-.operon-day-picker-weekdays,
+.operon-day-picker-weekdays {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 6px;
+	padding: 0;
+}
+
 .operon-day-picker-grid {
 	display: grid;
 	grid-template-columns: repeat(7, minmax(0, 1fr));
 	gap: 6px;
+	padding: 0;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	overflow: visible;
 }
 
-.operon-day-picker-weekdays.has-week-numbers,
+.operon-day-picker-weekdays.has-week-numbers {
+	grid-template-columns: 24px repeat(7, minmax(0, 1fr));
+}
+
 .operon-day-picker-grid.has-week-numbers {
-	grid-template-columns: 22px repeat(7, minmax(0, 1fr));
+	grid-template-columns: 24px repeat(7, minmax(0, 1fr));
 }
 
 .operon-day-picker-weeknum-header,
@@ -2152,7 +3384,7 @@
 	align-items: center;
 	justify-content: center;
 	min-width: 0;
-	height: 28px;
+	height: 30px;
 	font-size: 10px;
 	color: var(--text-faint);
 	font-variant-numeric: tabular-nums;
@@ -2170,6 +3402,7 @@
 	height: 24px;
 	font-size: 11px;
 	font-weight: 600;
+	letter-spacing: 0;
 	color: var(--text-muted);
 	white-space: nowrap;
 	overflow: hidden;
@@ -2177,10 +3410,12 @@
 }
 
 .operon-day-picker-weekday.is-weekend {
-	color: color-mix(in srgb, var(--text-muted) 72%, var(--interactive-accent));
+	color: color-mix(in srgb, var(--text-muted) 82%, var(--operon-day-picker-accent));
 }
 
 .operon-day-picker-day {
+	appearance: none;
+	-webkit-appearance: none;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -2189,43 +3424,71 @@
 	height: 30px;
 	min-width: 0;
 	padding: 0;
-	border: 1px solid transparent;
+	border: 1px solid var(--operon-day-picker-border);
 	border-radius: 8px;
-	background: var(--background-secondary);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
 	font-weight: 600;
 	font-variant-numeric: tabular-nums;
 	cursor: pointer;
+	box-shadow: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
 .operon-day-picker-day.is-weekend {
-	background: color-mix(in srgb, var(--interactive-accent) 6%, var(--background-secondary));
-	color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: color-mix(in srgb, var(--text-normal) 90%, var(--operon-day-picker-accent));
 }
 
 .operon-day-picker-day.is-outside-month {
-	color: var(--text-faint);
-	background: color-mix(in srgb, var(--background-secondary) 74%, transparent);
+	color: color-mix(in srgb, var(--text-faint) 86%, transparent);
+	border-color: color-mix(in srgb, var(--operon-day-picker-border) 46%, transparent);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 }
 
 .operon-day-picker-day:hover,
 .operon-day-picker-day:focus-visible {
-	border-color: var(--interactive-accent);
-	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+	border-color: var(--operon-day-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px var(--operon-day-picker-focus-ring);
 	outline: none;
 }
 
 .operon-day-picker-day.is-today {
 	color: var(--text-accent);
-	border-color: color-mix(in srgb, var(--interactive-accent) 40%, var(--background-modifier-border));
+	border-color: color-mix(in srgb, var(--operon-day-picker-accent) 48%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 }
 
 .operon-day-picker-day.is-selected {
-	background: color-mix(in srgb, var(--interactive-accent) 18%, var(--background-primary));
-	border-color: var(--interactive-accent);
+	border-color: var(--operon-day-picker-accent);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
 	font-weight: 800;
+	box-shadow: 0 0 0 2px var(--operon-day-picker-focus-ring);
+}
+
+.operon-day-picker-day.is-selected.is-today {
+	color: var(--text-accent);
 }
 
 .operon-day-picker-footer,
@@ -2243,20 +3506,31 @@
 .operon-day-picker-footer-button,
 .operon-custom-datetime-picker-clear,
 .operon-custom-datetime-picker-today {
+	appearance: none;
+	-webkit-appearance: none;
 	width: 100%;
 	min-width: 0;
 	height: 30px;
 	padding: 0 12px;
-	border: 1px solid transparent;
+	border: 1px solid var(--operon-day-picker-border);
 	border-radius: 8px;
 	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-accent);
 	font-size: var(--font-ui-small);
 	font-weight: 600;
 	cursor: pointer;
+	box-shadow: none;
+	filter: none;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
 .operon-day-picker-footer-button:hover,
@@ -2265,8 +3539,11 @@
 .operon-custom-datetime-picker-clear:focus-visible,
 .operon-custom-datetime-picker-today:hover,
 .operon-custom-datetime-picker-today:focus-visible {
-	border-color: color-mix(in srgb, var(--interactive-accent) 34%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+	border-color: var(--operon-day-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px var(--operon-day-picker-focus-ring);
 	outline: none;
 }
 
@@ -2283,8 +3560,11 @@
 .operon-custom-datetime-picker-clear:disabled:focus-visible,
 .operon-custom-datetime-picker-today:disabled:hover,
 .operon-custom-datetime-picker-today:disabled:focus-visible {
-	border-color: transparent;
+	border-color: var(--operon-day-picker-border);
 	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 }
 
 .operon-datetime-picker-time-input,
@@ -2308,27 +3588,54 @@
 
 .operon-datetime-picker-meridiem-btn,
 .operon-custom-datetime-picker-meridiem-btn {
+	appearance: none;
+	-webkit-appearance: none;
 	min-width: 44px;
 	padding: 6px 8px;
-	border: 1px solid var(--background-modifier-border);
+	border: 1px solid var(--operon-date-picker-border);
 	border-radius: 8px;
-	background: var(--background-primary);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-muted);
 	cursor: pointer;
+	box-shadow: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-datetime-picker-meridiem-btn:hover,
+.operon-datetime-picker-meridiem-btn:focus-visible,
+.operon-custom-datetime-picker-meridiem-btn:hover,
+.operon-custom-datetime-picker-meridiem-btn:focus-visible {
+	border-color: var(--operon-date-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	box-shadow: 0 0 0 2px var(--operon-date-picker-focus-ring);
+	outline: none;
 }
 
 .operon-datetime-picker-meridiem-btn.is-active,
 .operon-custom-datetime-picker-meridiem-btn.is-active {
-	border-color: var(--interactive-accent);
-	background: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-primary));
+	border-color: var(--operon-date-picker-accent);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
+	box-shadow: 0 0 0 2px var(--operon-date-picker-focus-ring);
 }
 
 .operon-datetime-picker-time-results,
 .operon-custom-datetime-picker-time-results {
 	display: none;
 	flex-direction: column;
-	gap: 4px;
+	gap: 6px;
 	position: absolute;
 	top: calc(100% + 6px);
 	left: 0;
@@ -2352,14 +3659,48 @@
 
 .operon-datetime-picker-time-item,
 .operon-custom-datetime-picker-time-item {
+	appearance: none;
+	-webkit-appearance: none;
+	min-height: 34px;
+	border: 1px solid var(--operon-date-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;
+	font-weight: 600;
 	text-align: center;
+	box-shadow: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-datetime-picker-time-item:hover,
+.operon-datetime-picker-time-item:focus-visible,
+.operon-custom-datetime-picker-time-item:hover,
+.operon-custom-datetime-picker-time-item:focus-visible {
+	border-color: var(--operon-date-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	box-shadow: 0 0 0 2px var(--operon-date-picker-focus-ring);
+	outline: none;
 }
 
 .operon-datetime-picker-time-item.is-active,
 .operon-custom-datetime-picker-time-item.is-active {
-	background: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-secondary));
-	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 34%, var(--background-modifier-border));
+	border-color: var(--operon-date-picker-accent);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	box-shadow: 0 0 0 2px var(--operon-date-picker-focus-ring);
 }
 
 .operon-datetime-picker-time-notice,
@@ -2400,6 +3741,12 @@
 .operon-repeat-picker-panel {
 	min-width: 360px;
 	max-width: 460px;
+	--operon-repeat-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-repeat-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-repeat-picker-hover-border: color-mix(in srgb, var(--operon-repeat-picker-accent) 34%, var(--background-modifier-border));
+	--operon-repeat-picker-focus-ring: color-mix(in srgb, var(--operon-repeat-picker-accent) 12%, transparent);
+	--operon-repeat-picker-danger-border: color-mix(in srgb, var(--text-error) 58%, var(--background-modifier-border));
+	--operon-repeat-picker-danger-ring: color-mix(in srgb, var(--text-error) 12%, transparent);
 }
 
 .operon-repeat-picker-section {
@@ -2432,6 +3779,41 @@
 	font-variant-numeric: tabular-nums;
 }
 
+.operon-repeat-picker-panel .operon-floating-input {
+	border: 1px solid var(--operon-repeat-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--input-shadow: none;
+	--input-shadow-hover: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-repeat-picker-panel .operon-floating-input:hover,
+.operon-repeat-picker-panel .operon-floating-input:focus,
+.operon-repeat-picker-panel .operon-floating-input:focus-visible {
+	border-color: var(--operon-repeat-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-repeat-picker-focus-ring);
+}
+
+.operon-repeat-picker-panel .operon-floating-input:disabled,
+.operon-repeat-picker-panel .operon-floating-input[readonly] {
+	border-color: var(--operon-repeat-picker-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+}
+
 .operon-repeat-picker-date-input.is-readonly-end-date {
 	cursor: default;
 }
@@ -2439,6 +3821,7 @@
 .operon-repeat-picker-segment {
 	display: flex;
 	gap: 6px;
+	min-width: 0;
 }
 
 .operon-repeat-picker-completed-copy {
@@ -2467,22 +3850,78 @@
 .operon-editor-repeat-skip,
 .operon-repeat-skip-picker-day,
 .operon-repeat-skip-picker-nav {
-	border: 1px solid var(--background-modifier-border);
+	appearance: none;
+	-webkit-appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	border: 1px solid var(--operon-repeat-picker-border, var(--background-modifier-border));
 	border-radius: 8px;
-	background: var(--background-secondary);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 	color: var(--text-normal);
+	filter: none;
 	padding: 6px 8px;
 	cursor: pointer;
 	font-size: 12px;
+	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
-.operon-repeat-picker-segment-btn.is-active,
-.operon-repeat-picker-chip.is-active,
-.operon-editor-repeat-trigger:hover,
-.operon-editor-repeat-skip:hover,
-.operon-repeat-skip-picker-nav:hover {
-	background: var(--background-modifier-hover);
-	border-color: var(--interactive-accent);
+.operon-repeat-picker-panel button.operon-repeat-picker-segment-btn,
+.operon-repeat-picker-panel button.operon-repeat-picker-chip,
+.operon-editor-repeat-row button.operon-editor-repeat-trigger,
+.operon-editor-repeat-row button.operon-editor-repeat-skip,
+.operon-task-editor button.operon-editor-repeat-trigger,
+.operon-task-editor button.operon-editor-repeat-skip,
+.operon-repeat-skip-picker-panel button.operon-repeat-skip-picker-day,
+.operon-repeat-skip-picker-panel button.operon-repeat-skip-picker-nav {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-repeat-picker-segment > .operon-repeat-picker-segment-btn {
+	flex: 1 1 0;
+}
+
+.operon-repeat-picker-panel .operon-repeat-picker-segment-btn:hover,
+.operon-repeat-picker-panel .operon-repeat-picker-segment-btn:focus-visible,
+.operon-repeat-picker-panel .operon-repeat-picker-segment-btn.is-active,
+.operon-repeat-picker-panel .operon-repeat-picker-chip:hover,
+.operon-repeat-picker-panel .operon-repeat-picker-chip:focus-visible,
+.operon-repeat-picker-panel .operon-repeat-picker-chip.is-active,
+.operon-editor-repeat-row .operon-editor-repeat-trigger:hover,
+.operon-editor-repeat-row .operon-editor-repeat-trigger:focus-visible,
+.operon-editor-repeat-row .operon-editor-repeat-skip:hover:not(:disabled),
+.operon-editor-repeat-row .operon-editor-repeat-skip:focus-visible:not(:disabled),
+.operon-task-editor .operon-editor-repeat-trigger:hover,
+.operon-task-editor .operon-editor-repeat-trigger:focus-visible,
+.operon-task-editor .operon-editor-repeat-skip:hover:not(:disabled),
+.operon-task-editor .operon-editor-repeat-skip:focus-visible:not(:disabled),
+.operon-repeat-skip-picker-panel .operon-repeat-skip-picker-nav:hover,
+.operon-repeat-skip-picker-panel .operon-repeat-skip-picker-nav:focus-visible,
+.operon-repeat-skip-picker-panel .operon-repeat-skip-picker-day:hover:not(:disabled),
+.operon-repeat-skip-picker-panel .operon-repeat-skip-picker-day:focus-visible:not(:disabled) {
+	border-color: var(--operon-repeat-picker-hover-border, var(--interactive-accent));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-repeat-picker-focus-ring, color-mix(in srgb, var(--interactive-accent) 12%, transparent));
 }
 
 .operon-repeat-picker-segment-btn.is-disabled {
@@ -2491,8 +3930,86 @@
 }
 
 .operon-repeat-picker-segment-btn.is-disabled:hover {
-	background: var(--background-secondary);
-	border-color: var(--background-modifier-border);
+	border-color: var(--operon-repeat-picker-border, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+}
+
+.operon-repeat-picker-panel .operon-floating-btn.is-secondary,
+.operon-repeat-skip-picker-panel .operon-floating-btn.is-secondary {
+	border: 1px solid var(--operon-repeat-picker-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-repeat-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-repeat-skip-picker-panel .operon-floating-btn:not(.is-secondary) {
+	border: 1px solid var(--operon-repeat-picker-hover-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-repeat-picker-panel button.operon-floating-btn.is-secondary,
+.operon-repeat-skip-picker-panel button.operon-floating-btn.is-secondary,
+.operon-repeat-picker-panel button.operon-floating-btn:not(.is-secondary),
+.operon-repeat-skip-picker-panel button.operon-floating-btn:not(.is-secondary) {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-repeat-picker-panel .operon-floating-btn.is-secondary:hover,
+.operon-repeat-picker-panel .operon-floating-btn.is-secondary:focus-visible,
+.operon-repeat-skip-picker-panel .operon-floating-btn.is-secondary:hover,
+.operon-repeat-skip-picker-panel .operon-floating-btn.is-secondary:focus-visible,
+.operon-repeat-picker-panel .operon-floating-btn:not(.is-secondary):hover,
+.operon-repeat-picker-panel .operon-floating-btn:not(.is-secondary):focus-visible,
+.operon-repeat-skip-picker-panel .operon-floating-btn:not(.is-secondary):hover,
+.operon-repeat-skip-picker-panel .operon-floating-btn:not(.is-secondary):focus-visible {
+	border-color: var(--operon-repeat-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-repeat-picker-focus-ring);
+}
+
+.operon-repeat-picker-panel .operon-repeat-picker-cancel:hover,
+.operon-repeat-picker-panel .operon-repeat-picker-cancel:focus-visible,
+.operon-repeat-skip-picker-panel .operon-repeat-skip-picker-cancel:hover,
+.operon-repeat-skip-picker-panel .operon-repeat-skip-picker-cancel:focus-visible {
+	border-color: var(--operon-repeat-picker-danger-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-error);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-repeat-picker-danger-ring);
 }
 
 .operon-repeat-picker-dynamic {
@@ -2514,6 +4031,8 @@
 }
 
 .operon-repeat-picker-chip.is-number {
+	width: 100%;
+	min-height: 32px;
 	padding: 5px 0;
 	text-align: center;
 }
@@ -2527,11 +4046,11 @@
 	padding: 10px 12px;
 	margin-bottom: 2px;
 	border-radius: 8px;
-	border: 2px solid var(--operon-repeat-picker-hero-border, var(--interactive-accent));
-	background: var(--background-secondary);
-	box-shadow:
-		0 0 0 1px color-mix(in srgb, var(--operon-repeat-picker-hero-border, var(--interactive-accent)) 24%, transparent),
-		0 2px 8px rgba(0, 0, 0, 0.08);
+	border: 1px solid var(--operon-repeat-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 	cursor: default;
 	user-select: none;
 }
@@ -2577,7 +4096,10 @@
 .operon-repeat-picker-raw {
 	padding: 6px 8px;
 	border-radius: 8px;
-	background: var(--background-secondary);
+	border: 1px solid var(--operon-repeat-picker-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
 	word-break: break-word;
 }
@@ -2587,6 +4109,10 @@
 	flex-wrap: wrap;
 	gap: 8px;
 	margin-top: 8px;
+	--operon-repeat-picker-accent: var(--operon-task-editor-accent, var(--interactive-accent));
+	--operon-repeat-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-repeat-picker-hover-border: color-mix(in srgb, var(--operon-repeat-picker-accent) 34%, var(--background-modifier-border));
+	--operon-repeat-picker-focus-ring: color-mix(in srgb, var(--operon-repeat-picker-accent) 12%, transparent);
 }
 
 .operon-editor-repeat-meta-pill {
@@ -2595,25 +4121,27 @@
 	min-height: 24px;
 	padding: 4px 10px;
 	border-radius: 8px;
-	background: color-mix(in srgb, var(--background-secondary) 86%, transparent);
-	border: 1px solid var(--background-modifier-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	border: 1px solid var(--operon-repeat-picker-border);
 	color: var(--text-muted);
 }
 
 .operon-editor-repeat-meta-pill.is-count {
 	color: var(--text-normal);
-	border-color: color-mix(in srgb, var(--interactive-accent) 34%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary));
-}
-
-.operon-task-editor .operon-editor-repeat-trigger:hover,
-.operon-task-editor .operon-editor-repeat-skip:hover {
-	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
+	border-color: var(--operon-repeat-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px var(--operon-repeat-picker-focus-ring);
 }
 
 .operon-task-editor .operon-editor-repeat-meta-pill.is-count {
-	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 34%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 10%, var(--background-secondary));
+	border-color: var(--operon-repeat-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 }
 
 .operon-editor-repeat-trigger {
@@ -2623,7 +4151,12 @@
 	z-index: 2;
 	display: inline-flex;
 	align-items: center;
+	justify-content: flex-start;
 	gap: 8px;
+	--operon-repeat-picker-accent: var(--operon-task-editor-accent, var(--interactive-accent));
+	--operon-repeat-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-repeat-picker-hover-border: color-mix(in srgb, var(--operon-repeat-picker-accent) 34%, var(--background-modifier-border));
+	--operon-repeat-picker-focus-ring: color-mix(in srgb, var(--operon-repeat-picker-accent) 12%, transparent);
 }
 
 .operon-editor-repeat-actions {
@@ -2641,11 +4174,19 @@
 	min-width: 96px;
 	justify-content: center;
 	align-self: start;
+	--operon-repeat-picker-accent: var(--operon-task-editor-accent, var(--interactive-accent));
+	--operon-repeat-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-repeat-picker-hover-border: color-mix(in srgb, var(--operon-repeat-picker-accent) 34%, var(--background-modifier-border));
+	--operon-repeat-picker-focus-ring: color-mix(in srgb, var(--operon-repeat-picker-accent) 12%, transparent);
 }
 
 .operon-editor-repeat-skip:disabled {
 	cursor: not-allowed;
 	opacity: 0.6;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 }
 
 .operon-editor-repeat-row {
@@ -2671,6 +4212,12 @@
 	gap: 10px;
 	min-width: 320px;
 	max-width: 360px;
+	--operon-repeat-picker-accent: var(--operon-repeat-skip-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-repeat-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-repeat-picker-hover-border: color-mix(in srgb, var(--operon-repeat-picker-accent) 34%, var(--background-modifier-border));
+	--operon-repeat-picker-focus-ring: color-mix(in srgb, var(--operon-repeat-picker-accent) 12%, transparent);
+	--operon-repeat-picker-danger-border: color-mix(in srgb, var(--text-error) 58%, var(--background-modifier-border));
+	--operon-repeat-picker-danger-ring: color-mix(in srgb, var(--text-error) 12%, transparent);
 }
 
 .operon-repeat-skip-picker-header {
@@ -2714,15 +4261,20 @@
 }
 
 .operon-repeat-skip-picker-day.is-projected {
-	border-color: var(--operon-repeat-skip-accent, var(--interactive-accent));
-	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-repeat-skip-accent, var(--interactive-accent)) 24%, transparent);
+	border-color: var(--operon-repeat-picker-accent);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px var(--operon-repeat-picker-focus-ring);
 }
 
 .operon-repeat-skip-picker-day.is-skipped {
-	border-color: var(--text-error);
-	background: color-mix(in srgb, var(--text-error) 10%, var(--background-secondary));
+	border-color: var(--operon-repeat-picker-danger-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
-	box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error) 28%, transparent);
+	box-shadow: 0 0 0 2px var(--operon-repeat-picker-danger-ring);
 }
 
 .operon-repeat-skip-picker-selected {
@@ -2743,8 +4295,10 @@
 	min-height: 24px;
 	padding: 4px 10px;
 	border-radius: 8px;
-	border: 1px solid color-mix(in srgb, var(--operon-repeat-skip-accent, var(--interactive-accent)) 32%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--operon-repeat-skip-accent, var(--interactive-accent)) 10%, var(--background-secondary));
+	border: 1px solid var(--operon-repeat-picker-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
 }
 
@@ -4706,16 +6260,6 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	color: var(--operon-task-creator-accent);
 }
 
-.operon-task-creator-native-color-input {
-	position: fixed;
-	left: -9999px;
-	top: -9999px;
-	width: 1px;
-	height: 1px;
-	opacity: 0;
-	pointer-events: none;
-}
-
 .operon-task-creator-note-wrap {
 	padding-top: 2px;
 }
@@ -5407,6 +6951,391 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	text-overflow: ellipsis;
 }
 
+.operon-tag-picker-panel,
+.operon-contexts-picker-panel,
+.operon-assignees-picker-panel,
+.operon-links-picker-panel,
+.operon-parent-task-picker-panel,
+.operon-subtasks-picker-panel,
+.operon-list-picker-panel,
+.operon-file-template-picker-panel,
+.operon-location-picker-panel {
+	--operon-list-relation-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-list-relation-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-list-relation-hover-border: color-mix(in srgb, var(--operon-list-relation-accent) 38%, var(--background-modifier-border));
+	--operon-list-relation-focus-ring: color-mix(in srgb, var(--operon-list-relation-accent) 12%, transparent);
+	--operon-list-relation-selected-border: color-mix(in srgb, var(--operon-list-relation-accent) 46%, var(--background-modifier-border));
+}
+
+.operon-tag-picker-panel .operon-floating-input,
+.operon-contexts-picker-panel .operon-floating-input,
+.operon-assignees-picker-panel .operon-floating-input,
+.operon-links-picker-panel .operon-floating-input,
+.operon-parent-task-picker-panel .operon-floating-input,
+.operon-subtasks-picker-panel .operon-floating-input,
+.operon-list-picker-panel .operon-floating-input,
+.operon-file-template-picker-panel .operon-floating-input,
+.operon-location-picker-panel .operon-floating-input {
+	border: 1px solid var(--operon-list-relation-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--input-shadow: none;
+	--input-shadow-hover: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-tag-picker-panel .operon-floating-input:hover,
+.operon-tag-picker-panel .operon-floating-input:focus,
+.operon-tag-picker-panel .operon-floating-input:focus-visible,
+.operon-contexts-picker-panel .operon-floating-input:hover,
+.operon-contexts-picker-panel .operon-floating-input:focus,
+.operon-contexts-picker-panel .operon-floating-input:focus-visible,
+.operon-assignees-picker-panel .operon-floating-input:hover,
+.operon-assignees-picker-panel .operon-floating-input:focus,
+.operon-assignees-picker-panel .operon-floating-input:focus-visible,
+.operon-links-picker-panel .operon-floating-input:hover,
+.operon-links-picker-panel .operon-floating-input:focus,
+.operon-links-picker-panel .operon-floating-input:focus-visible,
+.operon-parent-task-picker-panel .operon-floating-input:hover,
+.operon-parent-task-picker-panel .operon-floating-input:focus,
+.operon-parent-task-picker-panel .operon-floating-input:focus-visible,
+.operon-subtasks-picker-panel .operon-floating-input:hover,
+.operon-subtasks-picker-panel .operon-floating-input:focus,
+.operon-subtasks-picker-panel .operon-floating-input:focus-visible,
+.operon-list-picker-panel .operon-floating-input:hover,
+.operon-list-picker-panel .operon-floating-input:focus,
+.operon-list-picker-panel .operon-floating-input:focus-visible,
+.operon-file-template-picker-panel .operon-floating-input:hover,
+.operon-file-template-picker-panel .operon-floating-input:focus,
+.operon-file-template-picker-panel .operon-floating-input:focus-visible,
+.operon-location-picker-panel .operon-floating-input:hover,
+.operon-location-picker-panel .operon-floating-input:focus,
+.operon-location-picker-panel .operon-floating-input:focus-visible {
+	border-color: var(--operon-list-relation-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-list-relation-focus-ring);
+}
+
+:is(
+	.operon-tag-picker-panel,
+	.operon-contexts-picker-panel,
+	.operon-assignees-picker-panel,
+	.operon-links-picker-panel,
+	.operon-parent-task-picker-panel,
+	.operon-subtasks-picker-panel,
+	.operon-list-picker-panel,
+	.operon-file-template-picker-panel,
+	.operon-location-picker-panel
+) .operon-floating-input:is(:disabled, [readonly]) {
+	border-color: var(--operon-list-relation-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+}
+
+.operon-tag-picker-panel .operon-list-picker-item,
+.operon-contexts-picker-panel .operon-list-picker-item,
+.operon-assignees-picker-panel .operon-list-picker-item,
+.operon-links-picker-panel .operon-list-picker-item,
+.operon-parent-task-picker-panel .operon-list-picker-item,
+.operon-subtasks-picker-panel .operon-list-picker-item,
+.operon-list-picker-panel .operon-list-picker-item,
+.operon-file-template-picker-panel .operon-list-picker-item,
+.operon-location-picker-panel .operon-list-picker-item {
+	appearance: none;
+	-webkit-appearance: none;
+	border: 1px solid var(--operon-list-relation-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	padding: 7px 9px;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-tag-picker-panel .operon-list-picker-item:hover,
+.operon-tag-picker-panel .operon-list-picker-item:focus-visible,
+.operon-tag-picker-panel .operon-list-picker-item.is-active,
+.operon-contexts-picker-panel .operon-list-picker-item:hover,
+.operon-contexts-picker-panel .operon-list-picker-item:focus-visible,
+.operon-contexts-picker-panel .operon-list-picker-item.is-active,
+.operon-assignees-picker-panel .operon-list-picker-item:hover,
+.operon-assignees-picker-panel .operon-list-picker-item:focus-visible,
+.operon-assignees-picker-panel .operon-list-picker-item.is-active,
+.operon-links-picker-panel .operon-list-picker-item:hover,
+.operon-links-picker-panel .operon-list-picker-item:focus-visible,
+.operon-links-picker-panel .operon-list-picker-item.is-active,
+.operon-parent-task-picker-panel .operon-list-picker-item:hover,
+.operon-parent-task-picker-panel .operon-list-picker-item:focus-visible,
+.operon-parent-task-picker-panel .operon-list-picker-item.is-active,
+.operon-subtasks-picker-panel .operon-list-picker-item:hover,
+.operon-subtasks-picker-panel .operon-list-picker-item:focus-visible,
+.operon-subtasks-picker-panel .operon-list-picker-item.is-active,
+.operon-list-picker-panel .operon-list-picker-item:hover,
+.operon-list-picker-panel .operon-list-picker-item:focus-visible,
+.operon-list-picker-panel .operon-list-picker-item.is-active,
+.operon-file-template-picker-panel .operon-list-picker-item:hover,
+.operon-file-template-picker-panel .operon-list-picker-item:focus-visible,
+.operon-file-template-picker-panel .operon-list-picker-item.is-active,
+.operon-location-picker-panel .operon-list-picker-item:hover,
+.operon-location-picker-panel .operon-list-picker-item:focus-visible,
+.operon-location-picker-panel .operon-list-picker-item.is-active {
+	border-color: var(--operon-list-relation-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-list-relation-focus-ring);
+}
+
+.operon-file-template-picker-panel .operon-file-template-picker-item.is-selected:not(.is-active) {
+	border-color: var(--operon-list-relation-selected-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 1px var(--operon-list-relation-focus-ring);
+}
+
+.operon-tag-picker-panel .operon-parent-selected-chip,
+.operon-contexts-picker-panel .operon-parent-selected-chip,
+.operon-assignees-picker-panel .operon-parent-selected-chip,
+.operon-links-picker-panel .operon-parent-selected-chip,
+.operon-parent-task-picker-panel .operon-parent-selected-chip,
+.operon-subtasks-picker-panel .operon-parent-selected-chip,
+.operon-list-picker-panel .operon-list-picker-chip {
+	border: 1px solid var(--operon-list-relation-selected-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+}
+
+.operon-tag-picker-panel .operon-parent-task-picker-path-row,
+.operon-contexts-picker-panel .operon-parent-task-picker-path-row,
+.operon-assignees-picker-panel .operon-parent-task-picker-path-row,
+.operon-links-picker-panel .operon-parent-task-picker-path-row,
+.operon-parent-task-picker-panel .operon-parent-task-picker-path-row,
+.operon-subtasks-picker-panel .operon-parent-task-picker-path-row,
+.operon-location-picker-panel .operon-parent-task-picker-path-row,
+.operon-file-template-picker-panel .operon-file-template-picker-info-row {
+	border: 1px solid var(--operon-list-relation-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+}
+
+.operon-tag-picker-panel .operon-floating-btn,
+.operon-contexts-picker-panel .operon-floating-btn,
+.operon-assignees-picker-panel .operon-floating-btn,
+.operon-links-picker-panel .operon-floating-btn,
+.operon-parent-task-picker-panel .operon-floating-btn,
+.operon-subtasks-picker-panel .operon-floating-btn,
+.operon-list-picker-panel .operon-floating-btn,
+.operon-file-template-picker-panel .operon-floating-btn,
+.operon-location-picker-panel .operon-floating-btn {
+	border: 1px solid var(--operon-list-relation-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-tag-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-contexts-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-assignees-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-links-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-parent-task-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-subtasks-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-list-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-file-template-picker-panel .operon-floating-btn:not(.is-secondary),
+.operon-location-picker-panel .operon-floating-btn:not(.is-secondary) {
+	border-color: var(--operon-list-relation-hover-border);
+	color: color-mix(in srgb, var(--operon-list-relation-accent) 72%, var(--text-normal));
+}
+
+.operon-tag-picker-panel button.operon-floating-btn,
+.operon-contexts-picker-panel button.operon-floating-btn,
+.operon-assignees-picker-panel button.operon-floating-btn,
+.operon-links-picker-panel button.operon-floating-btn,
+.operon-parent-task-picker-panel button.operon-floating-btn,
+.operon-subtasks-picker-panel button.operon-floating-btn,
+.operon-list-picker-panel button.operon-floating-btn,
+.operon-file-template-picker-panel button.operon-floating-btn,
+.operon-location-picker-panel button.operon-floating-btn {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+.operon-tag-picker-panel .operon-floating-btn:hover,
+.operon-tag-picker-panel .operon-floating-btn:focus-visible,
+.operon-contexts-picker-panel .operon-floating-btn:hover,
+.operon-contexts-picker-panel .operon-floating-btn:focus-visible,
+.operon-assignees-picker-panel .operon-floating-btn:hover,
+.operon-assignees-picker-panel .operon-floating-btn:focus-visible,
+.operon-links-picker-panel .operon-floating-btn:hover,
+.operon-links-picker-panel .operon-floating-btn:focus-visible,
+.operon-parent-task-picker-panel .operon-floating-btn:hover,
+.operon-parent-task-picker-panel .operon-floating-btn:focus-visible,
+.operon-subtasks-picker-panel .operon-floating-btn:hover,
+.operon-subtasks-picker-panel .operon-floating-btn:focus-visible,
+.operon-list-picker-panel .operon-floating-btn:hover,
+.operon-list-picker-panel .operon-floating-btn:focus-visible,
+.operon-file-template-picker-panel .operon-floating-btn:hover,
+.operon-file-template-picker-panel .operon-floating-btn:focus-visible,
+.operon-location-picker-panel .operon-floating-btn:hover,
+.operon-location-picker-panel .operon-floating-btn:focus-visible {
+	border-color: var(--operon-list-relation-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-list-relation-focus-ring);
+}
+
+:is(
+	.operon-tag-picker-panel,
+	.operon-contexts-picker-panel,
+	.operon-assignees-picker-panel,
+	.operon-links-picker-panel,
+	.operon-parent-task-picker-panel,
+	.operon-subtasks-picker-panel,
+	.operon-list-picker-panel,
+	.operon-file-template-picker-panel,
+	.operon-location-picker-panel
+) .operon-floating-btn:is(:disabled, .is-disabled),
+:is(
+	.operon-tag-picker-panel,
+	.operon-contexts-picker-panel,
+	.operon-assignees-picker-panel,
+	.operon-links-picker-panel,
+	.operon-parent-task-picker-panel,
+	.operon-subtasks-picker-panel,
+	.operon-list-picker-panel,
+	.operon-file-template-picker-panel,
+	.operon-location-picker-panel
+) .operon-floating-btn:is(:disabled, .is-disabled):is(:hover, :focus-visible) {
+	border-color: var(--operon-list-relation-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	opacity: 0.5;
+	cursor: default;
+}
+
+.operon-location-picker-tabs {
+	border-color: var(--operon-list-relation-border);
+	border-radius: 10px;
+	background: transparent;
+}
+
+.operon-location-picker-tab {
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+}
+
+.operon-location-picker-tab.is-active,
+.operon-location-picker-tab:hover,
+.operon-location-picker-tab:focus-visible {
+	border-color: var(--operon-list-relation-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-list-relation-focus-ring);
+}
+
+.operon-location-picker-map {
+	border-color: var(--operon-list-relation-border);
+	background: transparent;
+}
+
+.operon-location-picker-icon-button {
+	border: 1px solid var(--operon-list-relation-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+}
+
+.operon-location-picker-icon-button:hover,
+.operon-location-picker-icon-button:focus-visible {
+	border-color: var(--operon-list-relation-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-list-relation-focus-ring);
+}
+
+.operon-tag-picker-panel .operon-parent-selected-chip-remove:hover,
+.operon-tag-picker-panel .operon-parent-selected-chip-remove:focus-visible,
+.operon-contexts-picker-panel .operon-parent-selected-chip-remove:hover,
+.operon-contexts-picker-panel .operon-parent-selected-chip-remove:focus-visible,
+.operon-assignees-picker-panel .operon-parent-selected-chip-remove:hover,
+.operon-assignees-picker-panel .operon-parent-selected-chip-remove:focus-visible,
+.operon-links-picker-panel .operon-parent-selected-chip-remove:hover,
+.operon-links-picker-panel .operon-parent-selected-chip-remove:focus-visible,
+.operon-parent-task-picker-panel .operon-parent-selected-chip-remove:hover,
+.operon-parent-task-picker-panel .operon-parent-selected-chip-remove:focus-visible,
+.operon-subtasks-picker-panel .operon-parent-selected-chip-remove:hover,
+.operon-subtasks-picker-panel .operon-parent-selected-chip-remove:focus-visible,
+.operon-list-picker-panel .operon-list-picker-chip-remove:hover,
+.operon-list-picker-panel .operon-list-picker-chip-remove:focus-visible {
+	background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+	color: var(--text-normal);
+	outline: none;
+}
+
 .operon-custom-list-picker-selected-wrap {
 	display: none;
 	width: 100%;
@@ -5425,9 +7354,12 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	gap: 10px;
 	width: 100%;
 	padding: 8px 10px 8px 12px;
-	border: 1px solid color-mix(in srgb, var(--interactive-accent) 24%, var(--background-modifier-border));
-	border-radius: var(--radius-m);
-	background: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-primary));
+	border: 1px solid var(--operon-custom-picker-selected-border, color-mix(in srgb, var(--interactive-accent) 28%, var(--background-modifier-border)));
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 	box-sizing: border-box;
 	color: var(--text-normal);
 }
@@ -5459,9 +7391,11 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	line-height: 1;
 }
 
-.operon-custom-list-picker-chip-remove:hover {
-	background: color-mix(in srgb, var(--text-muted) 20%, transparent);
+.operon-custom-list-picker-chip-remove:hover,
+.operon-custom-list-picker-chip-remove:focus-visible {
+	background: color-mix(in srgb, var(--text-muted) 12%, transparent);
 	color: var(--text-normal);
+	outline: none;
 }
 
 .operon-custom-list-picker-suggestions {
@@ -5798,6 +7732,7 @@ body .modal.operon-task-finder-modal .modal-close-button {
 }
 
 .operon-task-editor-mobile-core-button {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -5849,18 +7784,19 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	flex: 0 0 16px;
 }
 
-.operon-task-editor-mobile-color-input {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	opacity: 0;
-	pointer-events: none;
-}
-
 .operon-task-editor-mobile-color-dot {
+	display: block;
+	flex: 0 0 18px;
 	width: 18px;
+	min-width: 18px;
+	max-width: 18px;
 	height: 18px;
-	border-radius: 999px;
+	min-height: 18px;
+	max-height: 18px;
+	aspect-ratio: 1;
+	border-radius: 6px;
+	background-image: none;
+	box-sizing: border-box;
 	box-shadow:
 		inset 0 0 0 1px color-mix(in srgb, white 22%, transparent),
 		0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
@@ -5889,6 +7825,31 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	display: block;
 	padding: 0;
 	border: none;
+}
+
+.operon-task-editor-mobile .operon-task-editor-workflow-values {
+	gap: 6px;
+}
+
+.operon-task-editor-mobile .operon-task-editor-workflow-values :is(.setting-item, .operon-editor-group) {
+	border: 0;
+	box-shadow: none;
+}
+
+.operon-task-editor-mobile .operon-task-editor-workflow-values > :is(.setting-item, .operon-editor-group) {
+	margin: 0;
+	padding: 0;
+	min-height: 0;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	outline: none;
+}
+
+.operon-task-editor-mobile .operon-task-editor-workflow-values :is(.setting-item, .operon-editor-group)::before,
+.operon-task-editor-mobile .operon-task-editor-workflow-values :is(.setting-item, .operon-editor-group)::after {
+	content: none;
+	display: none;
 }
 
 .operon-task-editor-mobile-workflow > .setting-item .setting-item-control {
@@ -5999,15 +7960,24 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	align-items: center;
 	grid-template-columns: 32px minmax(0, 1fr) 32px;
 	gap: 12px;
+	padding-inline: 8px;
 	margin-bottom: 12px;
+	box-sizing: border-box;
 }
 
 .operon-task-editor-title-side {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
 	width: 32px;
 	height: 32px;
+}
+
+.operon-task-editor-title-side.is-left {
+	justify-content: flex-start;
+}
+
+.operon-task-editor-title-side.is-right {
+	justify-content: flex-end;
 }
 
 .operon-task-editor-title {
@@ -6020,36 +7990,31 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	justify-self: center;
 }
 
-.operon-task-editor-title-copy-id {
+.operon-task-editor-title-copy-id,
+button.operon-task-editor-title-file-toggle {
+	appearance: none;
+	-webkit-appearance: none;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	width: 32px;
 	height: 32px;
 	padding: 0;
-	border: 1px solid transparent;
-	border-radius: 10px;
+	border: 1px solid color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
+	border-radius: 8px;
 	background: transparent;
-	color: var(--operon-task-editor-accent, var(--interactive-accent));
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 70%, var(--text-normal));
 	cursor: pointer;
-	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+	filter: none;
 	flex-shrink: 0;
-}
-
-.operon-task-editor-title-file-toggle {
-	width: 32px;
-	height: 32px;
-	padding: 0;
-	border: 1px solid transparent;
-	border-radius: 10px;
-	background: transparent;
-	color: var(--operon-task-editor-accent, var(--interactive-accent));
-}
-
-.operon-task-editor-title-file-toggle:hover {
-	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
-	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 8%, transparent);
-	transform: translateY(-1px);
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
 .operon-task-editor-title-file-toggle svg {
@@ -6057,10 +8022,21 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	height: 16px;
 }
 
-.operon-task-editor-title-copy-id:hover {
-	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
-	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 8%, transparent);
-	transform: translateY(-1px);
+.operon-task-editor-title-copy-id:is(:hover, :focus-visible),
+button.operon-task-editor-title-file-toggle:is(:hover, :focus-visible, .is-active) {
+	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 10%, transparent);
+	color: var(--operon-task-editor-accent, var(--interactive-accent));
+	outline: none;
+	transform: none;
+}
+
+button.operon-task-editor-title-file-toggle.is-active {
+	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 52%, var(--background-modifier-border));
+	color: var(--operon-task-editor-accent, var(--interactive-accent));
 }
 
 .operon-task-editor-title-copy-id svg {
@@ -6082,6 +8058,12 @@ body .modal.operon-task-finder-modal .modal-close-button {
 }
 
 .operon-editor-core {
+	--operon-task-editor-core-button-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-task-editor-core-button-hover-border: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 34%, var(--background-modifier-border));
+	--operon-task-editor-core-button-active-border: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
+	--operon-task-editor-core-button-focus-ring: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, transparent);
+	--operon-task-editor-core-danger: color-mix(in srgb, var(--color-red) 86%, var(--text-normal));
+	--operon-task-editor-core-danger-border: color-mix(in srgb, var(--color-red) 42%, var(--background-modifier-border));
 	margin-top: 6px;
 	padding: 10px 18px 14px;
 	border-top: none;
@@ -6259,6 +8241,11 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, transform 0.12s ease;
 }
 
+.operon-editor-core-checkbox-popover-action {
+	width: 34px;
+	padding: 0;
+}
+
 .operon-editor-core-action-btn:hover {
 	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
 	color: var(--text-normal);
@@ -6317,15 +8304,21 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	overflow: visible;
 }
 
-.operon-task-editor-primary-fields > .operon-description-setting,
-.operon-task-editor-primary-fields > .operon-note-setting,
+.operon-task-editor-primary-fields > .operon-editor-text-fields,
 .operon-task-editor-primary-fields > .operon-editor-time-summary {
-	display: block;
 	visibility: visible;
 	opacity: 1;
 	max-height: none;
 	height: auto;
 	overflow: visible;
+}
+
+.operon-task-editor-primary-fields > .operon-editor-text-fields {
+	display: flex;
+}
+
+.operon-task-editor-primary-fields > .operon-editor-time-summary {
+	display: block;
 }
 
 @media (max-width: 979px) {
@@ -6478,33 +8471,48 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	justify-content: space-between;
 	gap: 12px;
 	min-width: 0;
-	padding: 12px 16px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
+	padding: 10px 12px;
+	border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+	background: transparent;
 }
 
 .operon-task-editor-file-panel-overlay-link {
+	appearance: none;
+	-webkit-appearance: none;
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	flex: 1 1 auto;
 	min-width: 0;
-	padding: 0 0 0 2px;
-	border: 1px solid transparent;
+	min-height: 34px;
+	padding: 0 10px;
+	border: 1px solid color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
 	border-radius: 8px;
 	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 	color: var(--text-normal);
 	cursor: pointer;
+	filter: none;
 	text-align: left;
-	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.operon-task-editor-file-panel-overlay-link:hover {
-	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
-	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 8%, transparent);
+.operon-task-editor-file-panel-overlay-link:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 36%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 10%, transparent);
+	outline: none;
 }
 
-.operon-task-editor-file-panel-overlay-link:hover .operon-task-editor-file-panel-overlay-link-path {
+.operon-task-editor-file-panel-overlay-link:is(:hover, :focus-visible) .operon-task-editor-file-panel-overlay-link-path {
 	color: var(--text-normal);
 }
 
@@ -6554,29 +8562,60 @@ body .modal.operon-task-finder-modal .modal-close-button {
 
 .operon-task-editor-file-panel-overlay-action,
 .operon-task-editor-file-panel-overlay-close {
+	appearance: none;
+	-webkit-appearance: none;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
+	width: 34px;
+	height: 34px;
 	padding: 0;
-	border: 1px solid var(--background-modifier-border);
+	border: 1px solid color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
 	border-radius: 8px;
-	background: var(--background-primary);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 	color: var(--text-muted);
 	cursor: pointer;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.operon-task-editor-file-panel-overlay-action:hover,
-.operon-task-editor-file-panel-overlay-close:hover {
+.operon-task-editor-file-panel-overlay-action:is(:hover, :focus-visible),
+.operon-task-editor-file-panel-overlay-close:is(:hover, :focus-visible) {
 	color: var(--text-normal);
-	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
+	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 36%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 10%, transparent);
+	outline: none;
 }
 
 .operon-task-editor-file-panel-overlay-action.is-active {
 	color: var(--operon-task-editor-accent, var(--interactive-accent));
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 10%, var(--background-primary));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, transparent);
+}
+
+.operon-task-editor-file-panel-overlay-action.is-dirty {
+	color: var(--text-error, var(--color-red));
+	border-color: color-mix(in srgb, var(--text-error, var(--color-red)) 48%, var(--background-modifier-border));
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error, var(--color-red)) 12%, transparent);
+}
+
+.operon-task-editor-file-panel-overlay-action.is-dirty:is(:hover, :focus-visible) {
+	color: var(--text-error, var(--color-red));
+	border-color: color-mix(in srgb, var(--text-error, var(--color-red)) 62%, var(--background-modifier-border));
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error, var(--color-red)) 14%, transparent);
 }
 
 .operon-task-editor-file-panel-overlay-action svg,
@@ -6855,6 +8894,10 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	align-items: start;
 }
 
+.operon-editor-core-row.is-dates.operon-editor-core-grid-3 {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .operon-editor-core .operon-editor-inline-label,
 .operon-editor-core .operon-appearance-label {
 	display: none;
@@ -6870,6 +8913,103 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 .operon-editor-core .operon-status-input,
 .operon-editor-core .operon-editor-estimate-field input {
 	font-size: 13px;
+}
+
+.operon-editor-core button:is(
+	.operon-editor-picker-button,
+	.operon-editor-core-action-btn,
+	.operon-editor-core-panel-toggle,
+	.operon-editor-estimate-reallocate,
+	.operon-icon-trigger,
+	.operon-color-swatch
+) {
+	appearance: none;
+	-webkit-appearance: none;
+	border-color: var(--operon-task-editor-core-button-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-editor-core button:is(
+	.operon-editor-picker-button,
+	.operon-editor-core-action-btn,
+	.operon-editor-core-panel-toggle,
+	.operon-editor-estimate-reallocate,
+	.operon-icon-trigger,
+	.operon-color-swatch
+):is(:hover, :focus-visible, .is-picker-open):not(:disabled) {
+	border-color: var(--operon-task-editor-core-button-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-task-editor-core-button-focus-ring);
+	transform: none;
+}
+
+.operon-editor-core button:is(
+	.operon-editor-picker-button,
+	.operon-editor-core-action-btn,
+	.operon-editor-core-panel-toggle
+).is-active,
+.operon-editor-core button.operon-color-swatch.has-color {
+	border-color: var(--operon-task-editor-core-button-active-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--operon-task-editor-accent, var(--interactive-accent));
+	box-shadow: 0 0 0 1px var(--operon-task-editor-core-button-focus-ring);
+}
+
+.operon-editor-core button:is(
+	.operon-editor-picker-button,
+	.operon-editor-core-action-btn,
+	.operon-editor-estimate-reallocate
+):disabled,
+.operon-editor-core button:is(
+	.operon-editor-picker-button,
+	.operon-editor-core-action-btn,
+	.operon-editor-estimate-reallocate
+):disabled:is(:hover, :focus-visible) {
+	border-color: var(--operon-task-editor-core-button-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-faint);
+	cursor: not-allowed;
+	opacity: 0.65;
+}
+
+.operon-editor-core button.operon-editor-core-action-btn.operon-editor-core-danger-btn:hover,
+.operon-editor-core button.operon-editor-core-action-btn.operon-editor-core-danger-btn:focus-visible {
+	border-color: var(--operon-task-editor-core-danger-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--operon-task-editor-core-danger);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-red) 10%, transparent);
+}
+
+.operon-editor-core button.operon-editor-core-action-btn.operon-editor-core-tracker-action.is-running,
+.operon-editor-core button.operon-editor-core-action-btn.operon-editor-core-tracker-action.is-running:hover:not(:disabled),
+.operon-editor-core button.operon-editor-core-action-btn.operon-editor-core-tracker-action.is-running:focus-visible:not(:disabled) {
+	border-color: var(--operon-task-editor-core-danger-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--operon-task-editor-core-danger);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-red) 10%, transparent);
 }
 
 .operon-editor-collapsible {
@@ -7043,11 +9183,22 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-editor-tracking-sessions {
-	margin-top: 18px;
-	padding: 14px 16px;
-	border: 1px solid var(--background-modifier-border);
+	--operon-task-editor-tracking-border: color-mix(in srgb, var(--text-muted) 26%, var(--background-modifier-border));
+	--operon-task-editor-tracking-hover-border: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 36%, var(--background-modifier-border));
+	--operon-task-editor-tracking-focus-ring: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, transparent);
+	--operon-task-editor-tracking-danger: color-mix(in srgb, var(--color-red) 86%, var(--text-normal));
+	--operon-task-editor-tracking-danger-border: color-mix(in srgb, var(--color-red) 42%, var(--background-modifier-border));
+	--operon-task-editor-tracking-danger-ring: color-mix(in srgb, var(--color-red) 12%, transparent);
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 10px;
+	margin: 14px 0 0;
+	padding: 10px 18px 14px;
+	border: 0;
+	border-top: none;
 	border-radius: 12px;
-	background: color-mix(in srgb, var(--background-secondary) 35%, transparent);
+	background: color-mix(in srgb, var(--background-secondary) 55%, transparent);
 }
 
 .operon-confirm-action-table {
@@ -7172,7 +9323,8 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
-	margin-bottom: 12px;
+	min-width: 0;
+	margin-bottom: 2px;
 }
 
 .operon-editor-tracking-sessions-title {
@@ -7203,17 +9355,52 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-editor-tracking-sessions-add {
+	min-height: 30px;
+	padding: 0 10px;
+	border: 1px solid var(--operon-task-editor-tracking-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
 	font-size: 12px;
 	font-weight: 600;
+	color: var(--text-muted);
+	appearance: none;
+	-webkit-appearance: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
-.operon-editor-tracking-sessions-add:hover:not(:disabled) {
+.operon-editor-tracking-sessions-add:is(:hover, :focus-visible):not(:disabled) {
+	border-color: var(--operon-task-editor-tracking-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
+	box-shadow: 0 0 0 2px var(--operon-task-editor-tracking-focus-ring);
+	outline: none;
+	transform: none;
 }
 
 .operon-editor-tracking-sessions-add:disabled {
-	opacity: 0.45;
+	border-color: var(--operon-task-editor-tracking-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-faint);
 	cursor: not-allowed;
+	opacity: 0.65;
+}
+
+.operon-editor-tracking-sessions-add svg {
+	width: 14px;
+	height: 14px;
 }
 
 .operon-editor-tracking-sessions-list {
@@ -7223,7 +9410,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-editor-tracking-sessions-empty {
-	padding: 8px 2px 2px;
+	padding: 8px 2px 0;
 	font-size: 13px;
 	color: var(--text-muted);
 }
@@ -7233,9 +9420,16 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	align-items: center;
 	gap: 12px;
 	padding: 10px 12px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 10px;
-	background: var(--background-primary);
+	border: 1px solid var(--operon-task-editor-tracking-border);
+	border-radius: 8px;
+	background: transparent;
+	transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.operon-editor-tracking-session-row:hover,
+.operon-editor-tracking-session-row:focus-within {
+	border-color: var(--operon-task-editor-tracking-hover-border);
+	box-shadow: 0 0 0 2px var(--operon-task-editor-tracking-focus-ring);
 }
 
 .operon-editor-tracking-session-body {
@@ -7268,14 +9462,49 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 34px;
-	min-width: 34px;
-	height: 30px;
+	width: 28px;
+	min-width: 28px;
+	height: 28px;
+	min-height: 28px;
 	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-muted);
+	box-shadow: none;
+	filter: none;
+	opacity: 0.78;
+	appearance: none;
+	-webkit-appearance: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease, opacity 0.12s ease;
 }
 
-.operon-editor-tracking-session-action:hover {
-	color: var(--text-normal);
+.operon-editor-tracking-session-row:hover .operon-editor-tracking-session-action,
+.operon-editor-tracking-session-row:focus-within .operon-editor-tracking-session-action {
+	opacity: 1;
+}
+
+.operon-editor-tracking-session-action:is(:hover, :focus-visible) {
+	border-color: var(--operon-task-editor-tracking-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--operon-task-editor-accent, var(--interactive-accent));
+	box-shadow: 0 0 0 2px var(--operon-task-editor-tracking-focus-ring);
+	outline: none;
+	transform: none;
+}
+
+.operon-editor-tracking-session-action.is-danger:is(:hover, :focus-visible) {
+	border-color: var(--operon-task-editor-tracking-danger-border);
+	color: var(--operon-task-editor-tracking-danger);
+	box-shadow: 0 0 0 2px var(--operon-task-editor-tracking-danger-ring);
 }
 
 .operon-editor-tracking-session-action svg {
@@ -7426,6 +9655,71 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	line-height: 1.2;
 }
 
+.operon-editor-text-fields {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 10px;
+	margin: 6px 0 16px;
+	padding: 10px 18px 14px;
+	border: 0;
+	border-top: none;
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--background-secondary) 55%, transparent);
+}
+
+.operon-editor-text-field-group {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 6px;
+}
+
+.operon-editor-text-field-group + .operon-editor-text-field-group {
+	padding-top: 0;
+	border-top: 0;
+}
+
+.operon-editor-text-field-title {
+	width: fit-content;
+	margin: 0;
+}
+
+.operon-editor-text-fields .operon-editor-text-field-setting {
+	display: block;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.operon-task-editor .operon-editor-text-fields .operon-editor-text-field-setting.setting-item {
+	border: 0;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+}
+
+.operon-task-editor .operon-editor-text-fields .operon-editor-text-field-setting.setting-item::before,
+.operon-task-editor .operon-editor-text-fields .operon-editor-text-field-setting.setting-item::after {
+	content: none;
+	display: none;
+}
+
+.operon-editor-text-fields .operon-editor-text-field-setting .setting-item-info {
+	display: none;
+}
+
+.operon-editor-text-fields .operon-editor-text-field-setting .setting-item-control {
+	width: 100%;
+	max-width: 100%;
+	display: block;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+}
+
 .operon-description-setting,
 .operon-note-setting {
 	display: block;
@@ -7564,13 +9858,19 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	overflow-y: hidden;
 	padding: 8px 10px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
+	border-radius: 8px;
 	background: var(--background-primary);
 	color: var(--text-normal);
 	font-size: 16px;
 	font-weight: 500;
 	line-height: 1.35;
 	box-sizing: border-box;
+}
+
+.operon-editor-text-fields .operon-editor-description-textarea,
+.operon-editor-text-fields .operon-editor-note-textarea {
+	border-color: color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
+	background: transparent;
 }
 
 .operon-editor-note-textarea {
@@ -7585,6 +9885,34 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	outline: none;
 }
 
+.operon-editor-top-context-section {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 12px;
+	margin: 6px 0 16px;
+	padding: 10px 18px 14px;
+	border: 0;
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--background-secondary) 55%, transparent);
+}
+
+.operon-editor-top-context-section[hidden] {
+	display: none;
+}
+
+.operon-editor-top-context-relations {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 10px;
+}
+
+.operon-editor-parent-context-host:empty,
+.operon-editor-top-context-relations:empty {
+	display: none;
+}
+
 .operon-editor-parent-card {
 	margin: 0 0 12px 0;
 	padding: 8px 10px;
@@ -7592,6 +9920,18 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	border-left: 4px solid var(--operon-relation-context-color, var(--color-red));
 	border-radius: 8px;
 	background: color-mix(in srgb, var(--operon-relation-context-color, var(--color-red)) 6%, var(--background-secondary));
+}
+
+.operon-editor-top-context-section .operon-editor-parent-card,
+.operon-editor-top-context-section .operon-editor-subtask-card {
+	margin: 0;
+	border-left-width: 1px;
+	background: color-mix(in srgb, var(--operon-relation-context-color, var(--operon-task-editor-accent, var(--interactive-accent))) 4%, transparent);
+}
+
+.operon-editor-top-context-section .operon-editor-parent-card {
+	border-color: color-mix(in srgb, var(--operon-relation-context-color, var(--color-red)) 36%, var(--background-modifier-border));
+	border-left-color: var(--operon-relation-context-color, var(--color-red));
 }
 
 .operon-parent-line-1 {
@@ -7681,6 +10021,10 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	white-space: nowrap;
 }
 
+.operon-editor-top-context-section .operon-relation-context-chip {
+	background: transparent;
+}
+
 /* Subtask context cards (below parent card) */
 
 .operon-editor-subtask-card {
@@ -7754,9 +10098,22 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	transition: color 0.12s, background-color 0.12s;
 }
 
+.operon-editor-top-context-section .operon-subtask-show-more {
+	min-height: 34px;
+	margin: 0;
+	border: 1px solid color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
+	border-radius: 8px;
+	background: transparent;
+}
+
 .operon-subtask-show-more:hover {
 	color: var(--text-normal);
 	background: var(--background-modifier-hover);
+}
+
+.operon-editor-top-context-section .operon-subtask-show-more:hover {
+	background: transparent;
+	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 34%, var(--background-modifier-border));
 }
 
 .operon-subtask-show-more-chevron {
@@ -7808,7 +10165,18 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	padding: 10px 0 4px;
 	display: flex;
 	flex-direction: column;
+	gap: 10px;
+}
+
+.operon-editor-progress-row {
+	display: flex;
+	flex-direction: column;
 	gap: 8px;
+}
+
+.operon-editor-top-context-section .operon-editor-progress {
+	margin: 0;
+	padding: 0;
 }
 
 .operon-editor-progress-bar-track {
@@ -7864,18 +10232,30 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	background: var(--background-modifier-border);
 }
 
+.operon-task-editor-primary-fields > .operon-editor-time-summary,
 .operon-editor-time-summary {
-	margin: 10px 0 12px;
+	--operon-editor-time-summary-cell-border: color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
+	--operon-editor-time-summary-muted-border: color-mix(in srgb, var(--background-modifier-border) 52%, transparent);
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 0;
+	margin: 12px 0 16px;
+	padding: 12px 18px 14px;
+	border: 0;
+	border-top: none;
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--background-secondary) 55%, transparent);
 }
 
 .operon-editor-time-summary-table {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
-	padding: 10px;
-	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 72%, transparent);
-	border-radius: 12px;
-	background: color-mix(in srgb, var(--background-primary) 38%, transparent);
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
 }
 
 .operon-editor-time-summary-row {
@@ -7917,9 +10297,9 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	align-items: center;
 	min-height: 38px;
 	padding: 8px 10px;
-	border-radius: 10px;
-	background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
-	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 58%, transparent);
+	border-radius: 8px;
+	background: transparent;
+	border: 1px solid var(--operon-editor-time-summary-cell-border);
 }
 
 .operon-editor-time-summary-cell::before {
@@ -7942,8 +10322,8 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-editor-time-summary-cell.is-empty {
-	background: color-mix(in srgb, var(--background-secondary) 35%, transparent);
-	border-color: transparent;
+	background: transparent;
+	border-color: var(--operon-editor-time-summary-muted-border);
 }
 
 .operon-editor-time-summary-cell.is-empty .operon-editor-time-summary-cell-value {
@@ -8276,6 +10656,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-color-swatch {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -8287,6 +10668,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	cursor: pointer;
 	transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
 	background: var(--background-primary);
+	overflow: hidden;
 }
 
 .operon-color-swatch:hover {
@@ -8313,23 +10695,19 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	height: 18px;
 }
 
-.operon-color-swatch-dot {
-	display: inline-flex;
-	width: 22px;
-	height: 22px;
-	border-radius: 999px;
-	background: var(--background-modifier-border);
-	box-shadow: inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
-}
-
-.operon-color-input-hidden {
+body .operon-editor-core button.operon-color-swatch.has-color > .operon-color-swatch-dot {
 	position: absolute;
-	width: 1px;
-	height: 1px;
-	opacity: 0;
-	pointer-events: none;
-	top: 0;
-	left: 0;
+	inset: 9px;
+	display: block;
+	width: auto;
+	min-width: 0;
+	max-width: none;
+	height: auto;
+	min-height: 0;
+	box-sizing: border-box;
+	border-radius: 6px;
+	background-color: var(--background-modifier-border);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
 }
 
 /* Tags multi-select */
@@ -8366,6 +10744,9 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-task-editor-workflow-surface {
+	--operon-task-editor-workflow-value-border: color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
+	--operon-task-editor-workflow-value-hover-border: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 34%, var(--background-modifier-border));
+	--operon-task-editor-workflow-value-focus-ring: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 10%, transparent);
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
@@ -8408,12 +10789,19 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	padding: 0;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
-	background: var(--background-primary);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-muted);
 	cursor: pointer;
 	box-shadow: none;
+	filter: none;
 	appearance: none;
 	-webkit-appearance: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
 	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
 }
 
@@ -8421,20 +10809,37 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 .operon-task-editor-workflow-action-button:focus-visible,
 .operon-task-editor-workflow-action-button.is-picker-open {
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 36%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 8%, var(--background-primary));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 10%, transparent);
 	transform: none;
 }
 
 .operon-task-editor-workflow-action-button.is-active {
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, var(--background-primary));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--operon-task-editor-accent, var(--interactive-accent));
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, transparent);
 }
 
 .operon-task-editor-workflow-action-button.is-locked {
 	opacity: 0.55;
 	cursor: default;
+}
+
+.operon-task-editor-workflow-action-button.is-locked:hover,
+.operon-task-editor-workflow-action-button.is-locked:focus-visible {
+	border-color: var(--background-modifier-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
 }
 
 .operon-task-editor-workflow-action-icon,
@@ -8450,6 +10855,10 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	flex-direction: column;
 	gap: 8px;
 	min-width: 0;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values {
+	gap: 6px;
 }
 
 .operon-task-editor-workflow-values.is-empty {
@@ -8474,25 +10883,37 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	padding: 4px 8px 4px 10px;
 	border-radius: 8px;
 	border: 1px solid var(--background-modifier-border);
-	background: var(--background-secondary);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
 	font-size: 12px;
 	font-weight: 600;
+	box-shadow: none;
 }
 
 .operon-editor-picker-chip.is-tags {
-	background: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, var(--background-primary));
-	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 30%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 34%, var(--background-modifier-border));
+	color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 68%, var(--text-normal));
 }
 
 .operon-editor-picker-chip.is-contexts {
-	background: color-mix(in srgb, var(--color-green) 12%, var(--background-primary));
-	border-color: color-mix(in srgb, var(--color-green) 24%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	border-color: color-mix(in srgb, var(--color-green) 32%, var(--background-modifier-border));
+	color: color-mix(in srgb, var(--color-green) 64%, var(--text-normal));
 }
 
 .operon-editor-picker-chip.is-assignees {
-	background: color-mix(in srgb, var(--color-purple) 12%, var(--background-primary));
-	border-color: color-mix(in srgb, var(--color-purple) 24%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	border-color: color-mix(in srgb, var(--color-purple) 32%, var(--background-modifier-border));
+	color: color-mix(in srgb, var(--color-purple) 64%, var(--text-normal));
 }
 
 .operon-editor-picker-chip-label {
@@ -8703,7 +11124,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	outline: none;
 }
 
-.operon-task-editor-workflow-values > :is(
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values > :is(
 	.operon-contexts-setting,
 	.operon-tags-setting,
 	.operon-assignees-setting,
@@ -8714,19 +11135,170 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	.operon-editor-custom-field-setting,
 	.operon-related-setting
 ) {
-	border-left: none;
-	border-right: none;
-	border-bottom: none;
+	padding: 0;
+	border: none;
+	border-top: 0;
 	border-radius: 0;
 	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	box-shadow: none;
 	outline: none;
+	box-sizing: border-box;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values > .setting-item::before,
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values > .setting-item::after {
+	content: none;
+	display: none;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values :is(.setting-item, .operon-editor-group) {
+	border-top: 0;
+	border-bottom: 0;
+	box-shadow: none;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values > :is(.setting-item, .operon-editor-group) {
+	border: 0;
+	outline: none;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values :is(.setting-item, .operon-editor-group)::before,
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values :is(.setting-item, .operon-editor-group)::after {
+	content: none;
+	display: none;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-picker-anchor {
+	appearance: none;
+	-webkit-appearance: none;
+	min-height: 36px;
+	border-color: var(--operon-task-editor-workflow-value-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-picker-anchor:hover,
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-picker-anchor:focus-visible,
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-picker-anchor.is-picker-open {
+	border-color: var(--operon-task-editor-workflow-value-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--text-normal);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-task-editor-workflow-value-focus-ring);
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-picker-anchor.is-locked,
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-picker-anchor.is-locked:hover,
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-picker-anchor.is-locked.is-picker-open {
+	border-color: var(--operon-task-editor-workflow-value-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-faint);
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-compact-selection-chip {
+	min-height: 28px;
+	padding: 0 9px;
+	border-color: var(--operon-task-editor-workflow-value-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	font-size: 12px;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-compact-selection-chip:hover {
+	border-color: var(--operon-task-editor-workflow-value-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 1px var(--operon-task-editor-workflow-value-focus-ring);
+	transform: none;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-compact-selection-chip-remove {
+	width: 16px;
+	height: 16px;
+	margin-left: 1px;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	filter: none;
+	opacity: 0.78;
+	transform: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: color 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-compact-selection-chip-remove:hover,
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-compact-selection-chip-remove:focus-visible {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	color: var(--operon-task-editor-accent, var(--interactive-accent));
+	filter: drop-shadow(0 0 4px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 34%, transparent));
+	opacity: 1;
+	outline: none;
+	box-shadow: none;
+	transform: none;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-compact-selection-chip-remove:focus-visible {
+	outline: 1px solid var(--operon-task-editor-workflow-value-hover-border);
+	outline-offset: 2px;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-compact-selection-chip-remove svg {
+	width: 13px;
+	height: 13px;
 }
 
 .operon-editor-contexts-stack,
 .operon-editor-tags-stack,
 .operon-editor-picker-stack {
 	gap: 10px;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values > .setting-item {
+	margin: 0;
+	padding: 0;
+	min-height: 0;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values > .setting-item .setting-item-control {
+	margin: 0;
+	padding: 0;
+	min-height: 0;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-task-editor-workflow-values .operon-editor-picker-stack {
+	gap: 6px;
 }
 
 .operon-editor-assignee-selection-row,
@@ -8943,6 +11515,10 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 		grid-template-columns: 1fr;
 	}
 
+	.operon-editor-core-row.is-dates.operon-editor-core-grid-3 {
+		grid-template-columns: 1fr;
+	}
+
 	.operon-editor-grid-3 {
 		grid-template-columns: 1fr;
 	}
@@ -8952,6 +11528,10 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	}
 
 	.operon-editor-details-top-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.operon-editor-core-row.is-dates.operon-editor-core-grid-3 {
 		grid-template-columns: 1fr;
 	}
 
@@ -9532,10 +12112,13 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	gap: 10px;
 	width: 100%;
 	padding: 8px 10px 8px 12px;
-	border-radius: var(--radius-m);
-	background: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-primary));
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
-	border: 1px solid color-mix(in srgb, var(--interactive-accent) 24%, var(--background-modifier-border));
+	border: 1px solid color-mix(in srgb, var(--interactive-accent) 28%, var(--background-modifier-border));
+	box-shadow: none;
 	box-sizing: border-box;
 }
 
@@ -11457,6 +14040,37 @@ button.operon-pinned-sidebar-action svg {
 .operon-condition-select {
 	width: 100%;
 	border-radius: 8px;
+}
+
+.operon-condition-field-picker-trigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	min-height: var(--input-height);
+	padding-inline: 10px 8px;
+	color: var(--text-normal);
+	text-align: left;
+}
+
+.operon-condition-field-picker-trigger-label {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-condition-field-picker-trigger-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	color: var(--text-muted);
+}
+
+.operon-condition-field-picker-trigger-icon svg {
+	width: 14px;
+	height: 14px;
 }
 
 .operon-filter-control {
@@ -14148,12 +16762,11 @@ body.operon-calendar-sidebar-is-resizing {
 }
 
 .operon-calendar-sidebar-preset-list {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
 	flex: 1 1 auto;
 	min-height: 0;
-	max-height: 184px;
 	overflow-y: auto;
 }
 
@@ -14180,11 +16793,14 @@ body.operon-calendar-sidebar-is-resizing {
 	text-align: left;
 	font-size: var(--font-ui-small);
 	cursor: pointer;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .operon-calendar-sidebar-task-pool-modes {
-	display: flex;
-	align-items: stretch;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 8px;
 	flex: 0 0 auto;
 }
@@ -14200,6 +16816,9 @@ body.operon-calendar-sidebar-is-resizing {
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	font-weight: 400;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	cursor: pointer;
 }
 
@@ -14222,14 +16841,86 @@ body.operon-calendar-sidebar-is-resizing {
 	flex: 0 0 auto;
 }
 
+.operon-calendar-sidebar-task-pool-search-wrap {
+	position: relative;
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
 .operon-calendar-sidebar-task-pool-search {
 	width: 100%;
 	height: 32px;
-	padding: 0 10px;
+	padding: 0 34px 0 10px;
+	appearance: none;
+	-webkit-appearance: none;
 	border-radius: 8px;
 	border: 1px solid var(--background-modifier-border);
 	background: var(--background-primary);
 	color: var(--text-normal);
+	outline: none;
+	transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.operon-calendar-sidebar-task-pool-search::-webkit-search-cancel-button,
+.operon-calendar-sidebar-task-pool-search::-webkit-search-decoration,
+.operon-calendar-sidebar-task-pool-search::-webkit-search-results-button,
+.operon-calendar-sidebar-task-pool-search::-webkit-search-results-decoration {
+	display: none;
+	-webkit-appearance: none;
+}
+
+.operon-calendar-sidebar-task-pool-search:hover {
+	background: var(--background-primary-alt);
+}
+
+.operon-calendar-sidebar-task-pool-search-wrap:focus-within .operon-calendar-sidebar-task-pool-search,
+.operon-calendar-sidebar-task-pool-search:focus,
+.operon-calendar-sidebar-task-pool-search:focus-visible {
+	border-color: color-mix(in srgb, var(--interactive-accent) 82%, var(--background-modifier-border));
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 42%, transparent),
+		0 0 0 3px color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+}
+
+.operon-calendar-sidebar-task-pool-search-wrap.has-search-query .operon-calendar-sidebar-task-pool-search {
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 36%, transparent),
+		0 0 0 3px color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+
+.operon-calendar-sidebar-task-pool-search-clear {
+	position: absolute;
+	right: 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--background-primary) 92%, transparent);
+	color: var(--text-muted);
+	font-size: 16px;
+	line-height: 1;
+	cursor: pointer;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
+}
+
+.operon-calendar-sidebar-task-pool-search-wrap.has-value .operon-calendar-sidebar-task-pool-search-clear {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.operon-calendar-sidebar-task-pool-search-clear:hover,
+.operon-calendar-sidebar-task-pool-search-clear:focus-visible {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	outline: none;
 }
 
 .operon-calendar-sidebar-task-pool-list {
@@ -19748,6 +22439,10 @@ body.operon-kanban-touch-drag-active {
 	background-color: var(--setting-items-background);
 }
 
+.operon-settings-native-page-root > .operon-color-palette-settings-section {
+	margin: 18px 0 38px;
+}
+
 .operon-settings-native-page-root .operon-settings-add-list-section {
 	padding: 0;
 }
@@ -21092,6 +23787,134 @@ body.operon-kanban-touch-drag-active {
 		max-width: calc(100% - 30px);
 		justify-content: flex-start;
 		margin-left: 30px;
+	}
+}
+
+.operon-color-palette-settings-list {
+	container-type: inline-size;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0;
+	padding: 0 24px 14px;
+}
+
+.operon-color-palette-row {
+	display: grid;
+	grid-template-columns: 42px minmax(0, 1fr);
+	align-items: center;
+	gap: 12px;
+	padding: 10px 12px;
+}
+
+.operon-color-palette-row.is-invalid {
+	border-color: color-mix(in srgb, var(--text-error) 36%, var(--background-modifier-border));
+}
+
+.operon-color-palette-swatch {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 42px;
+	height: 42px;
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 76%, transparent);
+	border-radius: 8px;
+	background: var(--operon-color-palette-swatch, transparent);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
+	cursor: pointer;
+	transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.operon-color-palette-swatch:hover,
+.operon-color-palette-swatch:focus-visible {
+	border-color: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
+	outline: none;
+	box-shadow:
+		inset 0 0 0 1px color-mix(in srgb, white 18%, transparent),
+		0 0 0 2px color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+
+.operon-color-palette-row-controls {
+	display: grid;
+	grid-template-columns: minmax(112px, 0.36fr) minmax(0, 1fr);
+	gap: 10px;
+	min-width: 0;
+}
+
+.operon-color-palette-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+
+.operon-color-palette-input {
+	width: 100%;
+	height: 34px;
+	min-width: 0;
+	padding: 5px 9px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--text-normal);
+	box-shadow: none;
+	font-size: var(--font-ui-small);
+	transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.operon-color-palette-hex-input {
+	font-family: var(--font-monospace);
+	text-transform: uppercase;
+}
+
+.operon-color-palette-input:hover,
+.operon-color-palette-input:focus {
+	border-color: color-mix(in srgb, var(--interactive-accent) 38%, var(--background-modifier-border));
+	background: transparent;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	outline: none;
+}
+
+.operon-color-palette-input.is-invalid,
+.operon-color-palette-field.is-invalid .operon-color-palette-input {
+	border-color: color-mix(in srgb, var(--text-error) 58%, var(--background-modifier-border));
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 10%, transparent);
+}
+
+.operon-color-palette-field-hint {
+	display: none;
+	color: var(--text-error);
+	font-size: 10px;
+	font-weight: 650;
+	line-height: 1.25;
+}
+
+.operon-color-palette-field-hint.is-visible {
+	display: block;
+}
+
+.operon-color-palette-reset-row {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.operon-color-palette-reset-button {
+	min-height: 32px;
+	border-radius: 8px;
+}
+
+@container (max-width: 520px) {
+	.operon-color-palette-row {
+		grid-template-columns: 38px minmax(0, 1fr);
+		gap: 10px;
+	}
+
+	.operon-color-palette-swatch {
+		width: 38px;
+		height: 38px;
+	}
+
+	.operon-color-palette-row-controls {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 

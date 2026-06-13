@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.4.0] - 2026-06-13
+
+This update centers on the new **Color Picker** and **Color Palette** settings. Colors are now easier to find, compare, and adjust: searchable named colors, tone and hue controls, custom previews, copyable hex values, localized names, and a curated default palette make Operon's colors work for both quick search and manual tuning.
+
+It also tightens the everyday interface surfaces where repeated task work happens: Calendar sidebars, Filter Builder, shared pickers, and the Task Editor.
+
+### New
+- Added a new **Color Picker** and **Color Palette** settings experience, with searchable named colors, tone and hue controls, custom color preview, copyable hex values, localized color names, and a curated default palette for Operon's 28 named colors.
+- Added **Workspace Tweaks** settings for optional scrollbar hiding, Properties collapsing, and compact sidebar tab icons, so small Obsidian workspace refinements can be managed from Operon.
+- Added a **Task Editor autosave delay** setting, so users can choose how quickly typing edits autosave after they pause while closing the editor still saves immediately.
+
+### Improved
+- Improved Calendar **Calendars** and **Task Pool** controls with a denser preset layout, a new **Finished Tasks** mode, clearer search feedback, remembered pool mode, and better keyboard behavior.
+- Improved **Filter Builder** condition field selection with a searchable picker, making long canonical and custom key lists easier to scan.
+- Improved Operon's **pickers** with bordered controls, clearer selected and hover states, and more consistent action styling across date, status, priority, repeat, list, relationship, estimate, icon, and custom field pickers.
+- Improved the **Task Editor** with updated header controls, workflow fields, tracking sessions, duration summaries, description and notes sections, parent/subtask context, checkbox progress, localized progress labels, and a clearer dirty-state save indicator.
+
+### Fixed
+- Fixed **Task Editor file body** layout issues so file-body panels no longer start clipped or shifted when opened from file tasks or inline tasks.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 926/926 Phase 5 regression checks.
+
 ## [1.3.0] - 2026-06-11
 
 This release makes **Custom Keys** a much more powerful part of Operon. You can now define your own task keys in Settings and use them across the places where real task work happens: Task Editor, Task Creator, compact chips, filters, search, embedded filters, Kanban sorting, and Kanban swimlanes.

@@ -109,6 +109,14 @@ export function t(
 	return str;
 }
 
+/** Get all available translations for a key across bundled locale files. */
+export function getTranslations(category: keyof LocaleData, key: string): string[] {
+	const values = Object.values(LOCALES)
+		.map(locale => locale[category]?.[key])
+		.filter((value): value is string => typeof value === 'string' && value.length > 0);
+	return [...new Set(values)];
+}
+
 /** Get the current language code */
 export function getCurrentLang(): LangCode {
 	return currentLang;

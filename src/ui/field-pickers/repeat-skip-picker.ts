@@ -124,7 +124,7 @@ export function showRepeatSkipPicker(anchor: HTMLElement | DOMRect, options: Rep
 				text: t('taskEditor', 'repeatSkipUnavailable'),
 			});
 			const actions = panel.createDiv('operon-floating-actions');
-			const cancel = createButton(t('taskEditor', 'repeatSkipCancel'), 'operon-floating-btn is-secondary', actions);
+			const cancel = createButton(t('taskEditor', 'repeatSkipCancel'), 'operon-floating-btn is-secondary operon-repeat-skip-picker-cancel', actions);
 			cancel.addEventListener('click', () => close());
 			actions.appendChild(cancel);
 			return;
@@ -227,7 +227,7 @@ export function showRepeatSkipPicker(anchor: HTMLElement | DOMRect, options: Rep
 		});
 		actions.appendChild(reset);
 
-		const cancel = createButton(t('taskEditor', 'repeatSkipCancel'), 'operon-floating-btn is-secondary', actions);
+		const cancel = createButton(t('taskEditor', 'repeatSkipCancel'), 'operon-floating-btn is-secondary operon-repeat-skip-picker-cancel', actions);
 		cancel.addEventListener('click', () => close());
 		actions.appendChild(cancel);
 

@@ -14,6 +14,8 @@ export type CalendarNavigationMode = 'toolbar' | 'sidebar';
 export type CalendarSurfaceType = 'timeGrid' | 'multiWeek';
 export const CALENDAR_MOBILE_VIEW_MODES = ['agenda', 'day', 'threeDay'] as const;
 export type CalendarMobileViewMode = typeof CALENDAR_MOBILE_VIEW_MODES[number];
+export const CALENDAR_SIDEBAR_TASK_POOL_MODES = ['overdue', 'unscheduled', 'all', 'finished'] as const;
+export type CalendarSidebarTaskPoolMode = typeof CALENDAR_SIDEBAR_TASK_POOL_MODES[number];
 
 export interface CalendarPreset {
 	id: string;
@@ -47,6 +49,7 @@ export interface CalendarLeafState {
 	navigationMode: CalendarNavigationMode;
 	calendarsOpen: boolean;
 	taskPoolOpen: boolean;
+	taskPoolMode: CalendarSidebarTaskPoolMode;
 	finishedTasksOpen: boolean;
 	showAllDayLane: boolean;
 	showDueMarkers: boolean;
@@ -72,6 +75,12 @@ export interface CalendarLeafStateNormalizationOptions {
 	defaultShowFinishedLane: boolean;
 	defaultMobileViewMode: CalendarMobileViewMode;
 	defaultMobileSourcePresetId: string | null;
+}
+
+export function normalizeCalendarSidebarTaskPoolMode(value: unknown): CalendarSidebarTaskPoolMode {
+	return typeof value === 'string' && CALENDAR_SIDEBAR_TASK_POOL_MODES.includes(value as CalendarSidebarTaskPoolMode)
+		? value as CalendarSidebarTaskPoolMode
+		: 'overdue';
 }
 
 export type CalendarItemKind = 'timed' | 'allDayScheduled' | 'dueMarker' | 'finishedMarker';
@@ -388,12 +397,16 @@ export function normalizeCalendarLeafState(
 	const calendarsOpen = typeof state?.calendarsOpen === 'boolean'
 		? state.calendarsOpen
 		: options.defaultCalendarsOpen;
-	const taskPoolOpen = typeof state?.taskPoolOpen === 'boolean'
-		? state.taskPoolOpen
-		: options.defaultTaskPoolOpen;
-	const finishedTasksOpen = typeof state?.finishedTasksOpen === 'boolean'
-		? state.finishedTasksOpen
-		: (options.defaultFinishedTasksOpen ?? true);
+	const legacyFinishedTasksOpen = state?.finishedTasksOpen === true;
+	const taskPoolOpen = legacyFinishedTasksOpen
+		? true
+		: (typeof state?.taskPoolOpen === 'boolean'
+			? state.taskPoolOpen
+			: options.defaultTaskPoolOpen);
+	const taskPoolMode = legacyFinishedTasksOpen
+		? 'finished'
+		: normalizeCalendarSidebarTaskPoolMode(state?.taskPoolMode);
+	const finishedTasksOpen = false;
 	const showAllDayLane = typeof state?.showAllDayLane === 'boolean'
 		? state.showAllDayLane
 		: options.defaultShowAllDayLane;
@@ -428,6 +441,7 @@ export function normalizeCalendarLeafState(
 		navigationMode,
 		calendarsOpen,
 		taskPoolOpen,
+		taskPoolMode,
 		finishedTasksOpen,
 		showAllDayLane,
 		showDueMarkers,

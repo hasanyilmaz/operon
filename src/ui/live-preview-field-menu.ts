@@ -410,6 +410,7 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 			case 'taskColor':
 				showColorPicker(anchor, {
 					value: fieldValues['taskColor'],
+					palette: options.settings.colorPalette,
 					onSelect: value => { void options.updateField('taskColor', value, restoreCursor); },
 					onClear: () => { void options.updateField('taskColor', '', restoreCursor); },
 				});

@@ -51,8 +51,13 @@ import {
 	normalizeSettingsFolderPath,
 	sanitizeExcludedFoldersForFileTasksFolder,
 } from '../core/settings-folder-rules';
+import {
+	type ColorPaletteEntry,
+	cloneDefaultColorPalette,
+	normalizeColorPalette,
+} from '../core/color-palette';
 
-export const CURRENT_SETTINGS_VERSION = 91;
+export const CURRENT_SETTINGS_VERSION = 92;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
@@ -161,6 +166,7 @@ export const KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX = 1200;
 export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN = 6;
 export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX = 48;
 export const DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS = [10, 30, 60, 120] as const;
+export const TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS = [10, 15, 30, 45, 60] as const;
 export type TrackerTaskDescriptionClickAction = 'jumpToSource' | 'openTaskEditor';
 export type FlowTimeMode = 'tracktime' | 'flowtime';
 export type InlineTaskSaveMode = 'daily-notes' | 'specific-file' | 'active-file' | 'ask-every-time';
@@ -168,6 +174,7 @@ export type InlineTaskParentInlineTargetMode = 'default' | 'below-parent';
 export type InlineTaskParentFileTargetMode = 'default' | 'inside-parent-file';
 export type FileTaskParentInlineTargetMode = 'default' | 'same-folder';
 export type FileTaskParentFileTargetMode = 'default' | 'same-folder';
+export type WorkspaceTweaksPropertiesScope = 'operon-file-tasks' | 'all-notes';
 export const FLOW_TIME_PAUSE_MINUTE_OPTIONS = [5, 10, 15] as const;
 export const FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS = [15, 20, 25, 30, 45, 60, 75, 90] as const;
 
@@ -996,6 +1003,8 @@ export interface OperonSettings {
 	demoWorkspacePromptDismissed: boolean;
 	releaseNotesShowOnUpdate: boolean;
 	releaseNotesLastShownVersion: string;
+	/** User-customizable named colors used by Operon color pickers. */
+	colorPalette: ColorPaletteEntry[];
 
 	// Task creation
 	taskCreateDebounceMs: number;
@@ -1044,6 +1053,8 @@ export interface OperonSettings {
 	taskCreatorToolbar: TaskCreatorToolbarItem[];
 	/** If true, the Task Editor file body source panel shows source line numbers. */
 	taskEditorShowLineNumbers: boolean;
+	/** Seconds to wait after the last Task Editor edit before autosaving. */
+	taskEditorAutosaveDelaySeconds: number;
 	/** Ordered, user-customizable picker rows shown in the Task Editor workflow area. */
 	taskEditorWorkflowPickers: TaskEditorWorkflowPickerItem[];
 	/** Ordered, phone-only core action icons shown in the Task Editor compact toolbar. */
@@ -1098,6 +1109,18 @@ export interface OperonSettings {
 	filterTaskShowSubtaskAction: boolean;
 	/** Whether filter rows show the right-side plain checkbox progress action. */
 	filterTaskShowPlainCheckboxAction: boolean;
+
+	// Workspace tweaks
+	/** If true, hide Obsidian workspace scrollbars while preserving scrolling. */
+	workspaceTweaksHideScrollbars: boolean;
+	/** If true, collapse Obsidian Properties when opening matching notes. */
+	workspaceTweaksCollapseProperties: boolean;
+	/** Which notes receive the Properties collapser tweak. */
+	workspaceTweaksPropertiesScope: WorkspaceTweaksPropertiesScope;
+	/** Vault folders whose notes always keep Properties open. */
+	workspaceTweaksPropertiesExcludedFolders: string[];
+	/** If true, compact side dock tab icon/header strips until hovered. */
+	workspaceTweaksCompactSidebarTabIcons: boolean;
 
 	// Location map
 	locationMapsAlwaysLightMode: boolean;
@@ -1261,8 +1284,7 @@ export interface OperonSettings {
 
 export type CalendarSidebarDefaultStateKey =
 	| 'calendarSidebarCalendarsDefaultExpanded'
-	| 'calendarSidebarTaskPoolDefaultExpanded'
-	| 'calendarSidebarFinishedTasksDefaultExpanded';
+	| 'calendarSidebarTaskPoolDefaultExpanded';
 
 export type CalendarSidebarDefaultExpansionState = Pick<
 	OperonSettings,
@@ -1272,7 +1294,6 @@ export type CalendarSidebarDefaultExpansionState = Pick<
 const CALENDAR_SIDEBAR_DEFAULT_STATE_KEYS: CalendarSidebarDefaultStateKey[] = [
 	'calendarSidebarCalendarsDefaultExpanded',
 	'calendarSidebarTaskPoolDefaultExpanded',
-	'calendarSidebarFinishedTasksDefaultExpanded',
 ];
 
 export function normalizeCalendarSidebarDefaultExpansionState(
@@ -1437,6 +1458,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	demoWorkspacePromptDismissed: false,
 	releaseNotesShowOnUpdate: true,
 	releaseNotesLastShownVersion: '',
+	colorPalette: cloneDefaultColorPalette(),
 
 	taskCreateDebounceMs: 750,
 	taskDescriptionRequired: true,
@@ -1462,6 +1484,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	estimateAutoReallocation: false,
 	taskCreatorToolbar: buildDefaultTaskCreatorToolbarItems(),
 	taskEditorShowLineNumbers: false,
+	taskEditorAutosaveDelaySeconds: 60,
 	taskEditorWorkflowPickers: buildDefaultTaskEditorWorkflowPickerItems(),
 	taskEditorMobileCoreTools: buildDefaultTaskEditorMobileCoreToolItems(),
 	inlineTaskCompactChips: buildDefaultInlineTaskCompactChipItems(),
@@ -1489,6 +1512,12 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	filterTaskShowPinAction: false,
 	filterTaskShowSubtaskAction: true,
 	filterTaskShowPlainCheckboxAction: true,
+
+	workspaceTweaksHideScrollbars: false,
+	workspaceTweaksCollapseProperties: false,
+	workspaceTweaksPropertiesScope: 'operon-file-tasks',
+	workspaceTweaksPropertiesExcludedFolders: [],
+	workspaceTweaksCompactSidebarTabIcons: false,
 
 	locationMapsAlwaysLightMode: true,
 	locationPlaceIconPropertyName: '',
@@ -1642,6 +1671,7 @@ export const NUMERIC_CONSTRAINTS = {
 	taskCreateDebounceMs: { min: 150, max: 3000 },
 	dockHoverOpenDelayMs: { min: 0, max: 2000 },
 	floatingAutoCloseSec: { min: 5, max: 600 },
+	taskEditorAutosaveDelaySeconds: { min: 10, max: 60 },
 	locationPickerMapDefaultZoom: { min: 1, max: 18 },
 	locationPreviewWidth: { min: 240, max: 900 },
 	locationPreviewHeight: { min: 180, max: 700 },
@@ -2727,6 +2757,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.timeFormat = DEFAULT_SETTINGS.timeFormat;
 	}
 	out.releaseNotesLastShownVersion = out.releaseNotesLastShownVersion.trim();
+	out.colorPalette = normalizeColorPalette(src.colorPalette);
 	if (!['body-top', 'body-bottom'].includes(out.dynamicFileTaskFilterPlacement)) {
 		out.dynamicFileTaskFilterPlacement = DEFAULT_SETTINGS.dynamicFileTaskFilterPlacement;
 	}
@@ -2886,6 +2917,13 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: Object.keys(src).length === 0
 			? DEFAULT_SETTINGS.taskEditorShowLineNumbers
 			: true;
+	out.taskEditorAutosaveDelaySeconds = normalizeAllowedNumber(
+		typeof src.taskEditorAutosaveDelaySeconds === 'number'
+			? Math.round(src.taskEditorAutosaveDelaySeconds)
+			: DEFAULT_SETTINGS.taskEditorAutosaveDelaySeconds,
+		TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS,
+		DEFAULT_SETTINGS.taskEditorAutosaveDelaySeconds,
+	);
 	out.taskEditorWorkflowPickers = normalizeTaskEditorWorkflowPickers(
 		src.taskEditorWorkflowPickers,
 		'taskEditorWorkflowPickers' in src || Object.keys(src).length === 0
@@ -2951,6 +2989,19 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.filterTaskShowPlainCheckboxAction = typeof src.filterTaskShowPlainCheckboxAction === 'boolean'
 		? src.filterTaskShowPlainCheckboxAction
 		: DEFAULT_SETTINGS.filterTaskShowPlainCheckboxAction;
+	out.workspaceTweaksHideScrollbars = typeof src.workspaceTweaksHideScrollbars === 'boolean'
+		? src.workspaceTweaksHideScrollbars
+		: DEFAULT_SETTINGS.workspaceTweaksHideScrollbars;
+	out.workspaceTweaksCollapseProperties = typeof src.workspaceTweaksCollapseProperties === 'boolean'
+		? src.workspaceTweaksCollapseProperties
+		: DEFAULT_SETTINGS.workspaceTweaksCollapseProperties;
+	out.workspaceTweaksPropertiesScope = src.workspaceTweaksPropertiesScope === 'all-notes'
+		? 'all-notes'
+		: DEFAULT_SETTINGS.workspaceTweaksPropertiesScope;
+	out.workspaceTweaksPropertiesExcludedFolders = normalizeFolderPathList(src.workspaceTweaksPropertiesExcludedFolders);
+	out.workspaceTweaksCompactSidebarTabIcons = typeof src.workspaceTweaksCompactSidebarTabIcons === 'boolean'
+		? src.workspaceTweaksCompactSidebarTabIcons
+		: DEFAULT_SETTINGS.workspaceTweaksCompactSidebarTabIcons;
 	out.calendarShowAllDayLane = typeof src.calendarShowAllDayLane === 'boolean'
 		? src.calendarShowAllDayLane
 		: DEFAULT_SETTINGS.calendarShowAllDayLane;
@@ -2976,9 +3027,10 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.calendarSidebarTaskPoolDefaultExpanded = typeof src.calendarSidebarTaskPoolDefaultExpanded === 'boolean'
 		? src.calendarSidebarTaskPoolDefaultExpanded
 		: DEFAULT_SETTINGS.calendarSidebarTaskPoolDefaultExpanded;
-	out.calendarSidebarFinishedTasksDefaultExpanded = typeof src.calendarSidebarFinishedTasksDefaultExpanded === 'boolean'
-		? src.calendarSidebarFinishedTasksDefaultExpanded
-		: DEFAULT_SETTINGS.calendarSidebarFinishedTasksDefaultExpanded;
+	if (src.calendarSidebarFinishedTasksDefaultExpanded === true && !out.calendarSidebarTaskPoolDefaultExpanded) {
+		out.calendarSidebarTaskPoolDefaultExpanded = true;
+	}
+	out.calendarSidebarFinishedTasksDefaultExpanded = false;
 	out.calendarTouchTimeGridTaskMoveEnabled = typeof src.calendarTouchTimeGridTaskMoveEnabled === 'boolean'
 		? src.calendarTouchTimeGridTaskMoveEnabled
 		: DEFAULT_SETTINGS.calendarTouchTimeGridTaskMoveEnabled;
@@ -2987,11 +3039,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	const normalizedCalendarSidebarDefaults = normalizeCalendarSidebarDefaultExpansionState({
 		calendarSidebarCalendarsDefaultExpanded: out.calendarSidebarCalendarsDefaultExpanded,
 		calendarSidebarTaskPoolDefaultExpanded: out.calendarSidebarTaskPoolDefaultExpanded,
-		calendarSidebarFinishedTasksDefaultExpanded: out.calendarSidebarFinishedTasksDefaultExpanded,
 	});
 	out.calendarSidebarCalendarsDefaultExpanded = normalizedCalendarSidebarDefaults.calendarSidebarCalendarsDefaultExpanded;
 	out.calendarSidebarTaskPoolDefaultExpanded = normalizedCalendarSidebarDefaults.calendarSidebarTaskPoolDefaultExpanded;
-	out.calendarSidebarFinishedTasksDefaultExpanded = normalizedCalendarSidebarDefaults.calendarSidebarFinishedTasksDefaultExpanded;
 	if (Array.isArray(src.calendarPresets)) {
 		if (
 			typeof src.calendarDefaultPresetId === 'string'

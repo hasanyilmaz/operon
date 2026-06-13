@@ -38,6 +38,7 @@ export interface TaskFieldPickerDispatchOptions {
 		| 'keyMappings'
 		| 'calendarWeekStart'
 		| 'calendarSidebarShowWeekNumbers'
+		| 'colorPalette'
 		| 'locationMapsAlwaysLightMode'
 		| 'locationPlaceIconPropertyName'
 		| 'locationPlaceColorPropertyName'
@@ -184,6 +185,7 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 		case 'taskColor':
 			return showColorPicker(options.anchor, {
 				value: currentFieldValues['taskColor'],
+				palette: options.settings.colorPalette,
 				onSelect: value => options.onCommit({ taskColor: value }),
 				onClear: () => options.onCommit({ taskColor: '' }),
 				onClose: options.onClose,
