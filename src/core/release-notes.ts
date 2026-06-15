@@ -13,6 +13,23 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.4.1',
+		date: '2026-06-15',
+		title: 'Calendar, Presets, and Visual Polish',
+		showOnUpdate: true,
+		bannerUrl: 'operon-1-4-1-calendar-multiweek',
+		body: `
+This release is a compact visual consistency pass for Operon's busiest surfaces. It reduces theme-related button noise across editors, pickers, calendars, sidebars, and tracking controls while adding a couple of practical improvements to file-task creation and saved preset filters.
+
+### Improved
+- Improved **Create file task** so running it without selected text, a source line, or an inline task opens Task Creator in File mode instead of immediately creating a placeholder file task.
+- Improved **Calendar** and **Kanban** preset filter controls with compact Create, Edit, Choose, and Clear actions, making saved filters easier to build and adjust from preset settings while keeping the preset panel easier to scan.
+
+### Fixed
+- Fixed Obsidian theme button backgrounds showing gray fills over Operon's newer transparent bordered styling across Task Editor, Calendar toolbar, sidebars, lane controls, pickers, tracking session controls, and the tracked session editor modal.
+`.trim(),
+	},
+	{
 		version: '1.4.0',
 		date: '2026-06-13',
 		title: 'Color Picker, Workspace Tweaks, and Editor Polish',

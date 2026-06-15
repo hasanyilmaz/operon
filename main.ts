@@ -162,7 +162,7 @@ import {
 	operonDynamicFileTaskFilterLivePreviewExtension,
 	renderDynamicFileTaskFilterSurface,
 } from './src/ui/dynamic-file-task-filter';
-import { FilterSetModal, refreshFilterPreviewModals, refreshFilterSetModals } from './src/ui/filter-set-modal';
+import { FilterSetModal, refreshFilterPreviewModals, refreshFilterSetModals, type FilterModalEvalDeps } from './src/ui/filter-set-modal';
 import { OperonReleaseNotesModal } from './src/ui/release-notes-modal';
 import { OperonSettingsTab } from './src/ui/settings-tab';
 import { TimeSessionHistoryView, TIME_SESSION_HISTORY_VIEW_TYPE } from './src/ui/time-session-history-view';
@@ -1850,6 +1850,8 @@ export default class OperonPlugin extends Plugin {
 								await this.storage.saveSettings();
 								this.refreshViews();
 							},
+							onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
+							getFilterModalEvalDeps: () => this.buildFilterModalEvalDeps(),
 						}).open();
 					},
 				},
@@ -1879,6 +1881,8 @@ export default class OperonPlugin extends Plugin {
 								await this.handleKanbanSortModeChange(updated.id, updated.sortMode);
 								this.refreshViews();
 							},
+							onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
+							getFilterModalEvalDeps: () => this.buildFilterModalEvalDeps(),
 						}).open();
 					},
 				},
@@ -4588,6 +4592,53 @@ export default class OperonPlugin extends Plugin {
 			metadataTailRange: null,
 			operonId: task.operonId,
 			rawLine: '',
+		};
+	}
+
+	private buildFilterModalEvalDeps(): FilterModalEvalDeps {
+		return {
+			indexer: this.indexer,
+			getPipelines: () => this.settings.pipelines,
+			getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
+			openEditor: (operonId: string) => {
+				void (async () => {
+					const task = this.indexer.getTask(operonId);
+					if (!task) return;
+					const parsed = await this.loadEditableParsedTask(task);
+					await this.openTaskEditorFor(parsed, async (request) => {
+						const saved = await this.applyEditedTaskFromView(task, request);
+						if (saved === false) {
+							new Notice(t('notifications', 'taskSaveFailed'));
+						}
+						return saved;
+					});
+				})();
+			},
+			cycleStatus: (operonId: string) => {
+				void this.cycleTaskStatusById(operonId);
+			},
+			getChildIds: (parentId: string) => [...this.indexer.secondary.getChildIds(parentId)],
+			navigateToTask: (task: IndexedTask) => this.navigateToTask(task),
+			getSettings: () => this.settings,
+			updateField: (operonId: string, key: string, value: string) => {
+				void this.updateTaskFieldAndRefresh(operonId, key, value);
+			},
+			updateFields: (operonId: string, payload: Record<string, string>) => {
+				void this.updateTaskFieldsAndRefresh(operonId, payload);
+			},
+			updateSubtasks: (operonId: string, subtaskIds: string[]) => {
+				void this.syncExistingSubtasksForParent(operonId, subtaskIds);
+			},
+			updateDependencyField: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => {
+				void this.updateTaskDependencyFieldAndRefresh(operonId, field, value);
+			},
+			onContextualAction: (taskId: string, actionId: ContextualMenuActionId) => this.handleContextualMenuAction(taskId, actionId),
+			pinnedCache: this.storage.pinned,
+			isTaskTracking: (taskId: string) => this.timeTracker.isTimerRunning(taskId),
+			toggleTimer: async (taskId: string) => {
+				await this.toggleTimerForTask(taskId, 'command');
+			},
+			getTrackingSignature: () => this.timeTracker.getActiveOperonId() ?? '',
 		};
 	}
 
@@ -9631,11 +9682,15 @@ export default class OperonPlugin extends Plugin {
 
 		const sourceSeed = this.resolveCreateFileTaskSourceSeed(view ?? null, editor);
 		if (editor?.somethingSelected() && !sourceSeed) return;
+		if (!sourceSeed) {
+			this.openTaskCreator(null, { submitMode: 'file-only' });
+			return;
+		}
 
 		this.openFileTaskTemplatePicker((selectedTemplate) => {
 			void this.createFileTaskFromTemplateSelection(selectedTemplate, {
 				fallbackFile: fallbackFile ?? file,
-				initialDescription: sourceSeed?.description ?? t('taskEditor', 'newOperonTaskFile'),
+				initialDescription: sourceSeed.description,
 				sourceReplacement: sourceSeed,
 				sourceContextFilePath: sourceSeed?.sourceFilePath ?? file?.path ?? null,
 				openEditorOnCreate: false,

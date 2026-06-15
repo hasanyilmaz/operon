@@ -1761,6 +1761,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	--operon-icon-picker-hover-border: color-mix(in srgb, var(--operon-icon-picker-accent) 38%, var(--background-modifier-border));
 	--operon-icon-picker-focus-ring: color-mix(in srgb, var(--operon-icon-picker-accent) 12%, transparent);
 	--operon-icon-picker-selected-border: color-mix(in srgb, var(--operon-icon-picker-accent) 46%, var(--background-modifier-border));
+	--operon-icon-picker-active-color: color-mix(in srgb, var(--operon-icon-picker-accent) 82%, var(--text-normal));
 }
 
 .operon-icon-picker-panel .operon-floating-input,
@@ -1818,7 +1819,8 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	display: none;
 }
 
-.operon-icon-picker-cell {
+body .operon-icon-picker-panel button.operon-icon-picker-cell,
+body .modal.operon-settings-icon-picker-modal button.operon-icon-picker-cell {
 	appearance: none;
 	-webkit-appearance: none;
 	display: flex;
@@ -1843,13 +1845,17 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
-.operon-icon-picker-cell:hover,
-.operon-icon-picker-cell:focus-visible,
-.operon-icon-picker-cell.is-active {
+body .operon-icon-picker-panel button.operon-icon-picker-cell:hover,
+body .operon-icon-picker-panel button.operon-icon-picker-cell:focus-visible,
+body .operon-icon-picker-panel button.operon-icon-picker-cell.is-active,
+body .modal.operon-settings-icon-picker-modal button.operon-icon-picker-cell:hover,
+body .modal.operon-settings-icon-picker-modal button.operon-icon-picker-cell:focus-visible,
+body .modal.operon-settings-icon-picker-modal button.operon-icon-picker-cell.is-active {
 	background: transparent;
 	background-color: transparent;
 	background-image: none;
 	border-color: var(--operon-icon-picker-hover-border, var(--interactive-accent));
+	color: var(--operon-icon-picker-active-color, var(--interactive-accent));
 	outline: none;
 	box-shadow: 0 0 0 2px var(--operon-icon-picker-focus-ring, color-mix(in srgb, var(--interactive-accent) 12%, transparent));
 }
@@ -1860,7 +1866,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	justify-content: center;
 	width: 28px;
 	height: 28px;
-	color: var(--text-normal);
+	color: currentColor;
 }
 
 .operon-icon-picker-icon svg {
@@ -1894,6 +1900,8 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	box-sizing: border-box;
 	width: 100%;
 	max-width: 100%;
+	height: 300px;
+	min-height: 0;
 	overflow: visible;
 }
 
@@ -1966,8 +1974,8 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	gap: 6px;
 }
 
-.operon-icon-picker-panel .operon-floating-btn,
-.operon-settings-icon-picker-modal .operon-floating-btn {
+body .operon-icon-picker-panel button.operon-floating-btn,
+body .modal.operon-settings-icon-picker-modal button.operon-floating-btn {
 	border: 1px solid var(--operon-icon-picker-border);
 	border-radius: 8px;
 	background: transparent;
@@ -1983,24 +1991,15 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
-.operon-icon-picker-panel button.operon-floating-btn,
-.operon-settings-icon-picker-modal button.operon-floating-btn {
-	background: transparent;
-	background-color: transparent;
-	background-image: none;
-	box-shadow: none;
-	filter: none;
-}
-
-.operon-icon-picker-panel .operon-floating-btn:hover,
-.operon-icon-picker-panel .operon-floating-btn:focus-visible,
-.operon-settings-icon-picker-modal .operon-floating-btn:hover,
-.operon-settings-icon-picker-modal .operon-floating-btn:focus-visible {
+body .operon-icon-picker-panel button.operon-floating-btn:hover,
+body .operon-icon-picker-panel button.operon-floating-btn:focus-visible,
+body .modal.operon-settings-icon-picker-modal button.operon-floating-btn:hover,
+body .modal.operon-settings-icon-picker-modal button.operon-floating-btn:focus-visible {
 	border-color: var(--operon-icon-picker-hover-border);
 	background: transparent;
 	background-color: transparent;
 	background-image: none;
-	color: var(--text-normal);
+	color: var(--operon-icon-picker-active-color, var(--text-normal));
 	outline: none;
 	box-shadow: 0 0 0 2px var(--operon-icon-picker-focus-ring);
 }
@@ -2079,12 +2078,13 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 .operon-color-picker-grid-cell,
 .operon-color-picker-free-plane,
 .operon-color-picker-hue-control,
-.operon-color-picker-copy,
+body .operon-color-picker-panel button.operon-color-picker-copy,
 .operon-color-picker-panel .operon-floating-btn {
 	appearance: none;
 	-webkit-appearance: none;
 	border: 1px solid var(--operon-color-picker-border);
 	border-radius: 8px;
+	background: transparent;
 	background-color: transparent;
 	background-image: none;
 	box-shadow: none;
@@ -2152,7 +2152,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	gap: 4px 6px;
 }
 
-.operon-color-picker-grid-cell {
+body .operon-color-picker-panel button.operon-color-picker-grid-cell {
 	position: relative;
 	display: block;
 	min-width: 0;
@@ -2160,12 +2160,13 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 	padding: 0;
 	background: transparent;
 	background-color: transparent;
+	background-image: none;
 	color: var(--text-muted);
 	cursor: pointer;
 	text-align: center;
 }
 
-body .operon-color-picker-panel .operon-color-picker-grid-cell > .operon-color-picker-grid-swatch {
+body .operon-color-picker-panel button.operon-color-picker-grid-cell > .operon-color-picker-grid-swatch {
 	position: absolute;
 	inset: 5px;
 	display: block;
@@ -2183,10 +2184,10 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell > .operon-color-p
 	box-shadow: inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
 }
 
-.operon-color-picker-grid-cell:hover,
-.operon-color-picker-grid-cell:focus-visible,
-.operon-color-picker-grid-cell.is-active,
-.operon-color-picker-grid-cell.is-selected {
+body .operon-color-picker-panel button.operon-color-picker-grid-cell:hover,
+body .operon-color-picker-panel button.operon-color-picker-grid-cell:focus-visible,
+body .operon-color-picker-panel button.operon-color-picker-grid-cell.is-active,
+body .operon-color-picker-panel button.operon-color-picker-grid-cell.is-selected {
 	border-color: color-mix(
 		in srgb,
 		var(--operon-color-picker-cell-accent, var(--operon-color-picker-accent)) 54%,
@@ -2194,6 +2195,7 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell > .operon-color-p
 	);
 	background: transparent;
 	background-color: transparent;
+	background-image: none;
 	color: var(--text-normal);
 	outline: none;
 	box-shadow: 0 0 0 2px color-mix(
@@ -2203,7 +2205,7 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell > .operon-color-p
 	);
 }
 
-body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus-visible, .is-active, .is-selected) > .operon-color-picker-grid-swatch {
+body .operon-color-picker-panel button.operon-color-picker-grid-cell:is(:hover, :focus-visible, .is-active, .is-selected) > .operon-color-picker-grid-swatch {
 	inset: 3px;
 	border-color: color-mix(
 		in srgb,
@@ -2355,7 +2357,7 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 	min-width: 0;
 }
 
-.operon-color-picker-copy {
+body .operon-color-picker-panel button.operon-color-picker-copy {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -2365,8 +2367,11 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 	padding: 0;
 	background: transparent;
 	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 	color: var(--text-muted);
 	cursor: pointer;
+	filter: none;
 }
 
 .operon-color-picker-copy svg {
@@ -2382,8 +2387,8 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 	width: 100%;
 }
 
-.operon-color-picker-copy:hover:not(:disabled),
-.operon-color-picker-copy:focus-visible:not(:disabled),
+body .operon-color-picker-panel button.operon-color-picker-copy:hover:not(:disabled),
+body .operon-color-picker-panel button.operon-color-picker-copy:focus-visible:not(:disabled),
 .operon-color-picker-panel .operon-floating-btn:hover:not(:disabled),
 .operon-color-picker-panel .operon-floating-btn:focus-visible:not(:disabled) {
 	border-color: var(--operon-color-picker-hover-border);
@@ -2414,7 +2419,7 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 }
 
 .operon-color-picker-panel .operon-floating-btn:disabled,
-.operon-color-picker-copy:disabled {
+body .operon-color-picker-panel button.operon-color-picker-copy:disabled {
 	cursor: default;
 	opacity: 0.45;
 }
@@ -2960,7 +2965,7 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 8px;
+	gap: 4px;
 	width: min(var(--operon-priority-picker-width), 100%);
 }
 
@@ -3410,7 +3415,7 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 }
 
 .operon-day-picker-weekday.is-weekend {
-	color: color-mix(in srgb, var(--text-muted) 82%, var(--operon-day-picker-accent));
+	color: color-mix(in srgb, var(--text-muted) 48%, var(--operon-day-picker-accent));
 }
 
 .operon-day-picker-day {
@@ -3444,10 +3449,11 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 }
 
 .operon-day-picker-day.is-weekend {
-	background: transparent;
-	background-color: transparent;
+	border-color: color-mix(in srgb, var(--operon-day-picker-accent) 28%, var(--operon-day-picker-border));
+	background: color-mix(in srgb, var(--operon-day-picker-accent) 12%, transparent);
+	background-color: color-mix(in srgb, var(--operon-day-picker-accent) 12%, transparent);
 	background-image: none;
-	color: color-mix(in srgb, var(--text-normal) 90%, var(--operon-day-picker-accent));
+	color: color-mix(in srgb, var(--text-normal) 66%, var(--operon-day-picker-accent));
 }
 
 .operon-day-picker-day.is-outside-month {
@@ -3458,11 +3464,18 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 	background-image: none;
 }
 
+.operon-day-picker-day.is-outside-month.is-weekend {
+	border-color: color-mix(in srgb, var(--operon-day-picker-accent) 16%, var(--operon-day-picker-border));
+	background: color-mix(in srgb, var(--operon-day-picker-accent) 7%, transparent);
+	background-color: color-mix(in srgb, var(--operon-day-picker-accent) 7%, transparent);
+	color: color-mix(in srgb, var(--text-faint) 64%, var(--operon-day-picker-accent));
+}
+
 .operon-day-picker-day:hover,
 .operon-day-picker-day:focus-visible {
 	border-color: var(--operon-day-picker-hover-border);
-	background: transparent;
-	background-color: transparent;
+	background: color-mix(in srgb, var(--operon-day-picker-accent) 14%, transparent);
+	background-color: color-mix(in srgb, var(--operon-day-picker-accent) 14%, transparent);
 	background-image: none;
 	box-shadow: 0 0 0 2px var(--operon-day-picker-focus-ring);
 	outline: none;
@@ -3485,6 +3498,12 @@ body .operon-color-picker-panel .operon-color-picker-grid-cell:is(:hover, :focus
 	color: var(--text-normal);
 	font-weight: 800;
 	box-shadow: 0 0 0 2px var(--operon-day-picker-focus-ring);
+}
+
+.operon-day-picker-day.is-selected.is-weekend {
+	background: color-mix(in srgb, var(--operon-day-picker-accent) 10%, transparent);
+	background-color: color-mix(in srgb, var(--operon-day-picker-accent) 10%, transparent);
+	color: color-mix(in srgb, var(--text-normal) 56%, var(--operon-day-picker-accent));
 }
 
 .operon-day-picker-day.is-selected.is-today {
@@ -7990,8 +8009,8 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	justify-self: center;
 }
 
-.operon-task-editor-title-copy-id,
-button.operon-task-editor-title-file-toggle {
+body .operon-task-editor button.operon-task-editor-title-copy-id,
+body .operon-task-editor button.operon-task-editor-title-file-toggle {
 	appearance: none;
 	-webkit-appearance: none;
 	display: inline-flex;
@@ -8022,8 +8041,8 @@ button.operon-task-editor-title-file-toggle {
 	height: 16px;
 }
 
-.operon-task-editor-title-copy-id:is(:hover, :focus-visible),
-button.operon-task-editor-title-file-toggle:is(:hover, :focus-visible, .is-active) {
+body .operon-task-editor button.operon-task-editor-title-copy-id:is(:hover, :focus-visible),
+body .operon-task-editor button.operon-task-editor-title-file-toggle:is(:hover, :focus-visible, .is-active) {
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
 	background: transparent;
 	background-color: transparent;
@@ -8034,7 +8053,7 @@ button.operon-task-editor-title-file-toggle:is(:hover, :focus-visible, .is-activ
 	transform: none;
 }
 
-button.operon-task-editor-title-file-toggle.is-active {
+body .operon-task-editor button.operon-task-editor-title-file-toggle.is-active {
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 52%, var(--background-modifier-border));
 	color: var(--operon-task-editor-accent, var(--interactive-accent));
 }
@@ -8476,7 +8495,7 @@ button.operon-task-editor-title-file-toggle.is-active {
 	background: transparent;
 }
 
-.operon-task-editor-file-panel-overlay-link {
+body .operon-task-editor button.operon-task-editor-file-panel-overlay-link {
 	appearance: none;
 	-webkit-appearance: none;
 	display: inline-flex;
@@ -8503,7 +8522,7 @@ button.operon-task-editor-title-file-toggle.is-active {
 	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.operon-task-editor-file-panel-overlay-link:is(:hover, :focus-visible) {
+body .operon-task-editor button.operon-task-editor-file-panel-overlay-link:is(:hover, :focus-visible) {
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 36%, var(--background-modifier-border));
 	background: transparent;
 	background-color: transparent;
@@ -8560,8 +8579,7 @@ button.operon-task-editor-title-file-toggle.is-active {
 	flex: 0 0 auto;
 }
 
-.operon-task-editor-file-panel-overlay-action,
-.operon-task-editor-file-panel-overlay-close {
+body .operon-task-editor button.operon-task-editor-file-panel-overlay-action {
 	appearance: none;
 	-webkit-appearance: none;
 	display: inline-flex;
@@ -8586,8 +8604,7 @@ button.operon-task-editor-title-file-toggle.is-active {
 	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.operon-task-editor-file-panel-overlay-action:is(:hover, :focus-visible),
-.operon-task-editor-file-panel-overlay-close:is(:hover, :focus-visible) {
+body .operon-task-editor button.operon-task-editor-file-panel-overlay-action:is(:hover, :focus-visible) {
 	color: var(--text-normal);
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 36%, var(--background-modifier-border));
 	background: transparent;
@@ -8597,7 +8614,7 @@ button.operon-task-editor-title-file-toggle.is-active {
 	outline: none;
 }
 
-.operon-task-editor-file-panel-overlay-action.is-active {
+body .operon-task-editor button.operon-task-editor-file-panel-overlay-action.is-active {
 	color: var(--operon-task-editor-accent, var(--interactive-accent));
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
 	background: transparent;
@@ -8606,20 +8623,19 @@ button.operon-task-editor-title-file-toggle.is-active {
 	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, transparent);
 }
 
-.operon-task-editor-file-panel-overlay-action.is-dirty {
+body .operon-task-editor button.operon-task-editor-file-panel-overlay-action.is-dirty {
 	color: var(--text-error, var(--color-red));
 	border-color: color-mix(in srgb, var(--text-error, var(--color-red)) 48%, var(--background-modifier-border));
 	box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error, var(--color-red)) 12%, transparent);
 }
 
-.operon-task-editor-file-panel-overlay-action.is-dirty:is(:hover, :focus-visible) {
+body .operon-task-editor button.operon-task-editor-file-panel-overlay-action.is-dirty:is(:hover, :focus-visible) {
 	color: var(--text-error, var(--color-red));
 	border-color: color-mix(in srgb, var(--text-error, var(--color-red)) 62%, var(--background-modifier-border));
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error, var(--color-red)) 14%, transparent);
 }
 
-.operon-task-editor-file-panel-overlay-action svg,
-.operon-task-editor-file-panel-overlay-close svg {
+.operon-task-editor-file-panel-overlay-action svg {
 	width: 15px;
 	height: 15px;
 }
@@ -8630,9 +8646,6 @@ button.operon-task-editor-title-file-toggle.is-active {
 		background: color-mix(in srgb, var(--background-secondary) 74%, var(--background-primary));
 	}
 
-	.operon-task-editor-file-panel-overlay-close {
-		display: none;
-	}
 }
 
 .operon-task-editor-file-panel-editor {
@@ -9354,7 +9367,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	height: 14px;
 }
 
-.operon-editor-tracking-sessions-add {
+body .operon-task-editor button.operon-editor-tracking-sessions-add {
 	min-height: 30px;
 	padding: 0 10px;
 	border: 1px solid var(--operon-task-editor-tracking-border);
@@ -9376,7 +9389,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
 }
 
-.operon-editor-tracking-sessions-add:is(:hover, :focus-visible):not(:disabled) {
+body .operon-task-editor button.operon-editor-tracking-sessions-add:is(:hover, :focus-visible):not(:disabled) {
 	border-color: var(--operon-task-editor-tracking-hover-border);
 	background: transparent;
 	background-color: transparent;
@@ -9387,7 +9400,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	transform: none;
 }
 
-.operon-editor-tracking-sessions-add:disabled {
+body .operon-task-editor button.operon-editor-tracking-sessions-add:disabled {
 	border-color: var(--operon-task-editor-tracking-border);
 	background: transparent;
 	background-color: transparent;
@@ -9458,7 +9471,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	flex-shrink: 0;
 }
 
-.operon-editor-tracking-session-action {
+body .operon-task-editor button.operon-editor-tracking-session-action {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -9490,7 +9503,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	opacity: 1;
 }
 
-.operon-editor-tracking-session-action:is(:hover, :focus-visible) {
+body .operon-task-editor button.operon-editor-tracking-session-action:is(:hover, :focus-visible) {
 	border-color: var(--operon-task-editor-tracking-hover-border);
 	background: transparent;
 	background-color: transparent;
@@ -9501,7 +9514,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	transform: none;
 }
 
-.operon-editor-tracking-session-action.is-danger:is(:hover, :focus-visible) {
+body .operon-task-editor button.operon-editor-tracking-session-action.is-danger:is(:hover, :focus-visible) {
 	border-color: var(--operon-task-editor-tracking-danger-border);
 	color: var(--operon-task-editor-tracking-danger);
 	box-shadow: 0 0 0 2px var(--operon-task-editor-tracking-danger-ring);
@@ -10475,10 +10488,16 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-tracker-session-modal {
+	--operon-tracker-session-modal-border: color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
+	--operon-tracker-session-modal-hover-border: color-mix(in srgb, var(--interactive-accent) 36%, var(--background-modifier-border));
+	--operon-tracker-session-modal-focus-ring: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	--operon-tracker-session-modal-danger: var(--text-error, var(--color-red));
+	--operon-tracker-session-modal-danger-border: color-mix(in srgb, var(--text-error, var(--color-red)) 48%, var(--background-modifier-border));
+	--operon-tracker-session-modal-danger-ring: color-mix(in srgb, var(--text-error, var(--color-red)) 12%, transparent);
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	padding-top: 6px;
+	gap: 14px;
+	padding-top: 8px;
 }
 
 .modal.operon-tracker-session-edit-modal {
@@ -10489,7 +10508,7 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 .operon-tracker-session-modal-field {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 }
 
 .operon-tracker-session-modal-input-row {
@@ -10509,10 +10528,35 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	flex: 0 0 auto;
 }
 
-.operon-tracker-session-modal-adjust-button {
+body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-modal-adjust-button {
+	appearance: none;
+	-webkit-appearance: none;
 	min-width: 68px;
 	height: 40px;
+	border: 1px solid var(--operon-tracker-session-modal-border);
 	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	filter: none;
+	font-weight: 600;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+
+body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-modal-adjust-button:is(:hover, :focus-visible):not(:disabled) {
+	border-color: var(--operon-tracker-session-modal-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px var(--operon-tracker-session-modal-focus-ring);
+	color: var(--text-normal);
+	outline: none;
 }
 
 .operon-tracker-session-modal-field label {
@@ -10521,11 +10565,30 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	color: var(--text-muted);
 }
 
-.operon-tracker-session-modal-field input {
+body .modal.operon-tracker-session-edit-modal .operon-tracker-session-modal-field input {
+	appearance: none;
+	-webkit-appearance: none;
 	width: 100%;
 	min-height: 40px;
+	border: 1px solid var(--operon-tracker-session-modal-border);
 	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
 	box-sizing: border-box;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+body .modal.operon-tracker-session-edit-modal .operon-tracker-session-modal-field input:is(:hover, :focus) {
+	border-color: var(--operon-tracker-session-modal-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px var(--operon-tracker-session-modal-focus-ring);
+	outline: none;
 }
 
 @media (max-width: 720px) {
@@ -10564,20 +10627,81 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 	gap: 8px;
 }
 
-.operon-tracker-session-modal-actions-primary button,
-.operon-tracker-session-modal-delete {
+body .modal.operon-tracker-session-edit-modal button:is(
+	.operon-tracker-session-modal-cancel,
+	.operon-tracker-session-modal-save,
+	.operon-tracker-session-modal-delete
+) {
+	appearance: none;
+	-webkit-appearance: none;
+	min-height: 34px;
+	padding: 0 12px;
+	border: 1px solid var(--operon-tracker-session-modal-border);
 	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	filter: none;
+	font-weight: 600;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
 }
 
-.operon-tracker-session-modal-delete {
-	background: var(--background-modifier-error);
-	color: var(--text-on-accent, white);
-	border: 1px solid color-mix(in srgb, var(--text-error) 72%, transparent);
+body .modal.operon-tracker-session-edit-modal button:is(
+	.operon-tracker-session-modal-cancel,
+	.operon-tracker-session-modal-save,
+	.operon-tracker-session-modal-delete
+):is(:hover, :focus-visible):not(:disabled) {
+	border-color: var(--operon-tracker-session-modal-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px var(--operon-tracker-session-modal-focus-ring);
+	color: var(--text-normal);
+	outline: none;
 }
 
-.operon-tracker-session-modal-delete:hover {
-	background: var(--text-error);
-	color: var(--text-on-accent, white);
+body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-modal-save {
+	border-color: color-mix(in srgb, var(--interactive-accent) 48%, var(--background-modifier-border));
+	color: var(--interactive-accent);
+}
+
+body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-modal-save:is(:hover, :focus-visible):not(:disabled) {
+	border-color: color-mix(in srgb, var(--interactive-accent) 64%, var(--background-modifier-border));
+	color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--operon-tracker-session-modal-focus-ring);
+}
+
+body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-modal-delete {
+	border-color: var(--operon-tracker-session-modal-danger-border);
+	color: var(--operon-tracker-session-modal-danger);
+}
+
+body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-modal-delete:is(:hover, :focus-visible):not(:disabled) {
+	border-color: color-mix(in srgb, var(--text-error, var(--color-red)) 62%, var(--background-modifier-border));
+	color: var(--operon-tracker-session-modal-danger);
+	box-shadow: 0 0 0 2px var(--operon-tracker-session-modal-danger-ring);
+}
+
+body .modal.operon-tracker-session-edit-modal button:is(
+	.operon-tracker-session-modal-cancel,
+	.operon-tracker-session-modal-save,
+	.operon-tracker-session-modal-delete,
+	.operon-tracker-session-modal-adjust-button
+):disabled {
+	border-color: var(--operon-tracker-session-modal-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-faint);
+	cursor: not-allowed;
+	opacity: 0.65;
 }
 
 /* Appearance section */
@@ -10779,7 +10903,7 @@ body .operon-editor-core button.operon-color-swatch.has-color > .operon-color-sw
 	padding: 2px 0 4px;
 }
 
-.operon-task-editor-workflow-action-button {
+body .operon-task-editor button.operon-task-editor-workflow-action-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -10805,9 +10929,9 @@ body .operon-editor-core button.operon-color-swatch.has-color > .operon-color-sw
 	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
 }
 
-.operon-task-editor-workflow-action-button:hover,
-.operon-task-editor-workflow-action-button:focus-visible,
-.operon-task-editor-workflow-action-button.is-picker-open {
+body .operon-task-editor button.operon-task-editor-workflow-action-button:hover,
+body .operon-task-editor button.operon-task-editor-workflow-action-button:focus-visible,
+body .operon-task-editor button.operon-task-editor-workflow-action-button.is-picker-open {
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 36%, var(--background-modifier-border));
 	background: transparent;
 	background-color: transparent;
@@ -10818,7 +10942,7 @@ body .operon-editor-core button.operon-color-swatch.has-color > .operon-color-sw
 	transform: none;
 }
 
-.operon-task-editor-workflow-action-button.is-active {
+body .operon-task-editor button.operon-task-editor-workflow-action-button.is-active {
 	border-color: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
 	background: transparent;
 	background-color: transparent;
@@ -10827,13 +10951,13 @@ body .operon-editor-core button.operon-color-swatch.has-color > .operon-color-sw
 	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 12%, transparent);
 }
 
-.operon-task-editor-workflow-action-button.is-locked {
+body .operon-task-editor button.operon-task-editor-workflow-action-button.is-locked {
 	opacity: 0.55;
 	cursor: default;
 }
 
-.operon-task-editor-workflow-action-button.is-locked:hover,
-.operon-task-editor-workflow-action-button.is-locked:focus-visible {
+body .operon-task-editor button.operon-task-editor-workflow-action-button.is-locked:hover,
+body .operon-task-editor button.operon-task-editor-workflow-action-button.is-locked:focus-visible {
 	border-color: var(--background-modifier-border);
 	background: transparent;
 	background-color: transparent;
@@ -16469,6 +16593,21 @@ body.operon-calendar-sidebar-is-resizing {
 	width: 100%;
 }
 
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-toolbar-button {
+	border-color: color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+	background: transparent;
+	color: var(--text-normal);
+	box-shadow: none;
+}
+
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-toolbar-button:hover,
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-toolbar-button:focus-visible {
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	color: var(--text-normal);
+	outline: none;
+}
+
 .operon-calendar-sidebar-month-title,
 .operon-calendar-sidebar-section-title {
 	font-size: var(--font-ui-small);
@@ -16512,7 +16651,7 @@ body.operon-calendar-sidebar-is-resizing {
 	color: color-mix(in srgb, var(--text-muted) 72%, var(--interactive-accent));
 }
 
-.operon-calendar-sidebar-month-day {
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day {
 	height: 28px;
 	border-radius: 8px;
 	border: 1px solid transparent;
@@ -16522,28 +16661,28 @@ body.operon-calendar-sidebar-is-resizing {
 	cursor: pointer;
 }
 
-.operon-calendar-sidebar-month-day.is-weekend {
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-weekend {
 	background: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
 	color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
 }
 
-.operon-calendar-sidebar-month-day:hover,
-.operon-calendar-sidebar-month-day:focus-visible {
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day:hover,
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day:focus-visible {
 	border-color: var(--interactive-accent);
 	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
 	outline: none;
 }
 
-.operon-calendar-sidebar-month-day.is-outside-month {
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-outside-month {
 	color: var(--text-faint);
 }
 
-.operon-calendar-sidebar-month-day.is-today {
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-today {
 	color: var(--text-accent);
 	border-color: color-mix(in srgb, var(--interactive-accent) 40%, var(--background-modifier-border));
 }
 
-.operon-calendar-sidebar-month-day.is-anchor {
+.operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-anchor {
 	background: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	border-color: var(--interactive-accent);
 	font-weight: 700;
@@ -16557,8 +16696,8 @@ body.operon-calendar-sidebar-is-resizing {
 	min-height: 32px;
 	padding: 0 12px;
 	border-radius: 8px;
-	border: 1px solid var(--background-modifier-border);
-	background: var(--background-primary);
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
 	color: var(--text-normal);
 	cursor: pointer;
 	font-size: var(--font-ui-small);
@@ -16569,8 +16708,8 @@ body.operon-calendar-sidebar-is-resizing {
 .operon-calendar-sidebar-task-pool-toggle:focus-visible,
 .operon-calendar-sidebar-preset-button:hover,
 .operon-calendar-sidebar-preset-button:focus-visible {
-	border-color: var(--interactive-accent);
-	background: var(--background-modifier-hover);
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
 	outline: none;
 }
 
@@ -16608,13 +16747,15 @@ body.operon-calendar-sidebar-is-resizing {
 	height: 30px;
 	padding: 0;
 	border-radius: 8px;
-	border: 1px solid var(--background-modifier-border);
-	background: var(--background-secondary);
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
 	color: var(--text-muted);
 	cursor: pointer;
 }
 
 .operon-calendar-quick-action-button.is-on {
+	border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
 	color: var(--text-normal);
 }
 
@@ -16626,21 +16767,114 @@ body.operon-calendar-sidebar-is-resizing {
 .operon-calendar-quick-action-button:hover,
 .operon-calendar-quick-action-button:focus-visible {
 	outline: none;
-	border-color: var(--interactive-accent);
-	background: var(--background-modifier-hover);
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
 	color: var(--text-normal);
 }
 
 .operon-calendar-quick-action-button.is-disabled:hover,
 .operon-calendar-quick-action-button.is-disabled:focus-visible {
-	border-color: var(--background-modifier-border);
-	background: var(--background-secondary);
+	border-color: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
 	color: var(--text-muted);
 }
 
 .operon-calendar-quick-action-button svg {
 	width: 14px;
 	height: 14px;
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar button:is(
+	.operon-calendar-sidebar-toggle-button,
+	.operon-calendar-sidebar-month-nav-button,
+	.operon-calendar-sidebar-month-nav-today,
+	.operon-calendar-quick-action-button,
+	.operon-calendar-sidebar-task-pool-toggle,
+	.operon-calendar-sidebar-preset-button,
+	.operon-calendar-sidebar-task-pool-mode-button,
+	.operon-calendar-sidebar-task-pool-search-clear
+) {
+	appearance: none;
+	-webkit-appearance: none;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar button:is(
+	.operon-calendar-sidebar-toggle-button,
+	.operon-calendar-sidebar-month-nav-button,
+	.operon-calendar-sidebar-month-nav-today,
+	.operon-calendar-quick-action-button,
+	.operon-calendar-sidebar-task-pool-toggle,
+	.operon-calendar-sidebar-preset-button,
+	.operon-calendar-sidebar-task-pool-mode-button,
+	.operon-calendar-sidebar-task-pool-search-clear
+):is(:hover, :focus-visible, .is-on, .is-active) {
+	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	background-color: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	background-image: none;
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	filter: none;
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar button:is(
+	.operon-calendar-sidebar-preset-button,
+	.operon-calendar-sidebar-task-pool-mode-button
+).is-active {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar button.operon-calendar-sidebar-task-pool-search-clear {
+	box-shadow: none;
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar button.operon-calendar-quick-action-button.is-disabled,
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar button.operon-calendar-quick-action-button.is-disabled:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar input.operon-calendar-sidebar-task-pool-search {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar input.operon-calendar-sidebar-task-pool-search:hover {
+	background: color-mix(in srgb, var(--interactive-accent) 5%, transparent);
+	background-color: color-mix(in srgb, var(--interactive-accent) 5%, transparent);
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-task-pool-search-wrap:focus-within input.operon-calendar-sidebar-task-pool-search,
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar input.operon-calendar-sidebar-task-pool-search:focus,
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar input.operon-calendar-sidebar-task-pool-search:focus-visible {
+	border-color: color-mix(in srgb, var(--interactive-accent) 82%, var(--background-modifier-border));
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 42%, transparent),
+		0 0 0 3px color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+}
+
+body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-task-pool-search-wrap.has-search-query input.operon-calendar-sidebar-task-pool-search {
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 36%, transparent),
+		0 0 0 3px color-mix(in srgb, var(--interactive-accent) 12%, transparent);
 }
 
 .operon-task-color-source-select-button {
@@ -16777,8 +17011,9 @@ body.operon-calendar-sidebar-is-resizing {
 }
 
 .operon-calendar-sidebar-preset-row.is-active .operon-calendar-sidebar-preset-button {
-	border-color: var(--interactive-accent);
-	background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-primary));
+	border-color: color-mix(in srgb, var(--interactive-accent) 82%, var(--background-modifier-border));
+	background: transparent;
+	color: var(--text-normal);
 }
 
 .operon-calendar-sidebar-preset-button {
@@ -16787,8 +17022,8 @@ body.operon-calendar-sidebar-is-resizing {
 	height: 32px;
 	padding: 0 12px;
 	border-radius: 8px;
-	border: 1px solid var(--background-modifier-border);
-	background: var(--background-primary);
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
 	color: var(--text-normal);
 	text-align: left;
 	font-size: var(--font-ui-small);
@@ -16811,8 +17046,8 @@ body.operon-calendar-sidebar-is-resizing {
 	flex: 1 1 auto;
 	min-width: 0;
 	border-radius: 8px;
-	border: 1px solid var(--background-modifier-border);
-	background: var(--background-primary);
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	font-weight: 400;
@@ -16824,14 +17059,14 @@ body.operon-calendar-sidebar-is-resizing {
 
 .operon-calendar-sidebar-task-pool-mode-button:hover,
 .operon-calendar-sidebar-task-pool-mode-button:focus-visible {
-	border-color: var(--interactive-accent);
-	background: var(--background-modifier-hover);
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
 	outline: none;
 }
 
 .operon-calendar-sidebar-task-pool-mode-button.is-active {
-	border-color: var(--interactive-accent);
-	background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-primary));
+	border-color: color-mix(in srgb, var(--interactive-accent) 82%, var(--background-modifier-border));
+	background: transparent;
 	color: var(--text-normal);
 }
 
@@ -16855,8 +17090,8 @@ body.operon-calendar-sidebar-is-resizing {
 	appearance: none;
 	-webkit-appearance: none;
 	border-radius: 8px;
-	border: 1px solid var(--background-modifier-border);
-	background: var(--background-primary);
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
 	color: var(--text-normal);
 	outline: none;
 	transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
@@ -16871,7 +17106,7 @@ body.operon-calendar-sidebar-is-resizing {
 }
 
 .operon-calendar-sidebar-task-pool-search:hover {
-	background: var(--background-primary-alt);
+	background: color-mix(in srgb, var(--interactive-accent) 5%, transparent);
 }
 
 .operon-calendar-sidebar-task-pool-search-wrap:focus-within .operon-calendar-sidebar-task-pool-search,
@@ -16901,7 +17136,7 @@ body.operon-calendar-sidebar-is-resizing {
 	padding: 0;
 	border: 0;
 	border-radius: 999px;
-	background: color-mix(in srgb, var(--background-primary) 92%, transparent);
+	background: transparent;
 	color: var(--text-muted);
 	font-size: 16px;
 	line-height: 1;
@@ -16918,8 +17153,8 @@ body.operon-calendar-sidebar-is-resizing {
 
 .operon-calendar-sidebar-task-pool-search-clear:hover,
 .operon-calendar-sidebar-task-pool-search-clear:focus-visible {
-	background: var(--background-modifier-hover);
-	color: var(--text-normal);
+	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	color: var(--interactive-accent);
 	outline: none;
 }
 
@@ -17011,7 +17246,7 @@ body.operon-calendar-sidebar-is-resizing {
 	width: 18px;
 	height: 18px;
 	border-radius: 999px;
-	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	background: transparent;
 	color: var(--text-muted);
 }
 
@@ -17024,7 +17259,7 @@ body.operon-calendar-sidebar-is-resizing {
 	flex: 0 0 auto;
 	padding: 1px 6px;
 	border-radius: 6px;
-	background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+	background: transparent;
 	color: var(--text-muted);
 	font-size: 10px;
 	font-weight: 700;
@@ -17110,8 +17345,11 @@ body.operon-calendar-sidebar-is-resizing {
 .operon-calendar-preset-select {
 	height: 30px;
 	border-radius: 8px;
-	border: 1px solid var(--background-modifier-border);
-	background: var(--background-secondary);
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
+	--operon-calendar-preset-select-chevron:
+		linear-gradient(45deg, transparent 50%, currentColor 50%),
+		linear-gradient(135deg, currentColor 50%, transparent 50%);
 	color: var(--text-normal);
 	padding: 0 10px;
 	font-size: var(--font-ui-small);
@@ -17123,8 +17361,68 @@ body.operon-calendar-sidebar-is-resizing {
 
 .operon-calendar-toolbar-button:hover,
 .operon-calendar-preset-select:hover {
-	background: var(--background-modifier-hover);
-	border-color: var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+}
+
+body .operon-calendar-root .operon-calendar-toolbar button:is(
+	.operon-calendar-toolbar-button,
+	.operon-calendar-quick-action-button
+),
+body .operon-calendar-root .operon-calendar-toolbar select.operon-calendar-preset-select {
+	appearance: none;
+	-webkit-appearance: none;
+	background: transparent;
+	background-color: transparent;
+	background-image: var(--operon-calendar-preset-select-chevron);
+	background-position:
+		calc(100% - 15px) 50%,
+		calc(100% - 10px) 50%;
+	background-repeat: no-repeat;
+	background-size: 5px 5px, 5px 5px;
+	box-shadow: none;
+	filter: none;
+	padding-inline-end: 28px;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+}
+
+body .operon-calendar-root .operon-calendar-toolbar button:is(
+	.operon-calendar-toolbar-button,
+	.operon-calendar-quick-action-button
+):is(:hover, :focus-visible, .is-on, .is-active),
+body .operon-calendar-root .operon-calendar-toolbar select.operon-calendar-preset-select:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	background-color: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	background-image: var(--operon-calendar-preset-select-chevron);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	filter: none;
+	outline: none;
+}
+
+body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actions.is-toolbar button.operon-calendar-quick-action-button {
+	border-color: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
+	color: var(--text-muted);
+}
+
+body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actions.is-toolbar button.operon-calendar-quick-action-button.is-on {
+	border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+	color: var(--text-normal);
+}
+
+body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actions.is-toolbar button.operon-calendar-quick-action-button.is-disabled,
+body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actions.is-toolbar button.operon-calendar-quick-action-button.is-disabled:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
 }
 
 .operon-calendar-toolbar-button.is-icon-only {
@@ -17307,6 +17605,39 @@ body.operon-calendar-sidebar-is-resizing {
 .operon-kanban-preset-quick-settings-modal .setting-item-control button {
 	min-height: 34px;
 	padding: 6px 12px;
+}
+
+.operon-calendar-preset-quick-settings-modal .operon-preset-filter-setting .setting-item-control,
+.operon-kanban-preset-quick-settings-modal .operon-preset-filter-setting .setting-item-control {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px 12px;
+	width: min(100%, 560px);
+	margin-inline-start: auto;
+}
+
+.operon-calendar-preset-quick-settings-modal .operon-preset-filter-action-button,
+.operon-kanban-preset-quick-settings-modal .operon-preset-filter-action-button {
+	box-sizing: border-box;
+	min-width: 0;
+	width: 100%;
+	max-width: none;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-calendar-preset-quick-settings-modal .operon-preset-filter-action-button:disabled,
+.operon-kanban-preset-quick-settings-modal .operon-preset-filter-action-button:disabled {
+	cursor: default;
+	opacity: 0.48;
+	pointer-events: none;
+}
+
+.operon-calendar-preset-quick-settings-modal .operon-preset-filter-setting.has-selected-filter .setting-item-description,
+.operon-kanban-preset-quick-settings-modal .operon-preset-filter-setting.has-selected-filter .setting-item-description {
+	color: var(--interactive-accent);
+	font-weight: 650;
 }
 
 .operon-calendar-preset-quick-settings-modal .operon-calendar-preset-name-input,
@@ -18619,26 +18950,28 @@ body.operon-calendar-sidebar-is-resizing {
 	min-height: 32px;
 	padding: 5px 12px;
 	border-radius: 6px;
-	border: 1px solid var(--background-modifier-border);
-	background: color-mix(in srgb, var(--background-secondary) 84%, var(--background-primary));
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
 	color: var(--text-normal);
 	font-size: var(--font-ui-smaller);
 	font-weight: 600;
 	line-height: 1;
 	cursor: pointer;
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+	box-shadow: none;
 	transition: border-color 0.14s ease, color 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease;
 }
 
 .operon-calendar-lane-toggle-button.is-on {
 	min-width: 68px;
+	border-color: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
+	background: transparent;
 	color: var(--text-normal);
 }
 
 .operon-calendar-lane-toggle-button.is-off {
 	min-width: 74px;
 	color: var(--text-muted);
-	background: color-mix(in srgb, var(--background-secondary) 90%, var(--background-primary));
+	background: transparent;
 }
 
 .operon-calendar-lane-toggle-button.is-compact {
@@ -18647,16 +18980,51 @@ body.operon-calendar-sidebar-is-resizing {
 	padding: 3px 10px;
 	font-size: 11px;
 	font-weight: 700;
-	background: color-mix(in srgb, var(--background-secondary) 92%, var(--background-primary));
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	background: transparent;
+	box-shadow: none;
 }
 
 .operon-calendar-lane-toggle-button:hover,
 .operon-calendar-lane-toggle-button:focus-visible {
 	outline: none;
 	border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--background-modifier-border));
+	background: transparent;
 	color: var(--text-normal);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+}
+
+body .operon-calendar-root button.operon-calendar-lane-toggle-button {
+	appearance: none;
+	-webkit-appearance: none;
+	background-color: transparent;
+	background-image: none;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+}
+
+body .operon-calendar-root button.operon-calendar-lane-toggle-button.is-on {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+}
+
+body .operon-calendar-root button.operon-calendar-lane-toggle-button.is-off {
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+}
+
+body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+	color: var(--text-normal);
+	outline: none;
 }
 
 .operon-calendar-row-label {
@@ -19435,6 +19803,19 @@ body.operon-calendar-sidebar-is-resizing {
 	bottom: auto;
 	right: 8px;
 	transform: translateY(calc(-50% - 2px));
+}
+
+.operon-calendar-sidebar-task-pool-row .operon-calendar-item-action-button {
+	border-color: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	background: transparent;
+	color: var(--text-muted);
+}
+
+.operon-calendar-sidebar-task-pool-row .operon-calendar-item-action-button:hover,
+.operon-calendar-sidebar-task-pool-row .operon-calendar-item-action-button:focus-visible {
+	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	color: var(--interactive-accent);
 }
 
 .operon-calendar-all-day-resize-handle {
@@ -20422,8 +20803,17 @@ body.operon-calendar-touch-drag-active {
 	width: 22px;
 	height: 22px;
 	min-width: 22px;
+	border-color: color-mix(in srgb, currentColor 42%, var(--background-modifier-border));
 	border-radius: 7px;
+	background: transparent;
 	font-size: 15px;
+}
+
+.operon-calendar-sidebar-task-pool-status.operon-calendar-status-button.is-compact:hover,
+.operon-calendar-sidebar-task-pool-status.operon-calendar-status-button.is-compact:focus-visible {
+	background: color-mix(in srgb, currentColor 10%, transparent);
+	border-color: currentColor;
+	outline: none;
 }
 
 .operon-calendar-task-picker-item {

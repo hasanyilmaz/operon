@@ -2,8 +2,7 @@ import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../../core/i18n';
 import { CalendarAppearanceMode, CalendarPreset } from '../../types/calendar';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from '../appearance-schemes';
-import { OperonSettings } from '../../types/settings';
-import { CalendarFilterPickerModal } from './calendar-filter-picker-modal';
+import type { FilterSet, OperonSettings } from '../../types/settings';
 import { showTimePicker } from '../field-pickers/time-picker';
 import {
 	CALENDAR_TASK_COLOR_SOURCES,
@@ -13,11 +12,15 @@ import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { runSettingsAsync, settingsAsyncHandler } from '../settings/async-settings-action';
 import { parsePresetNumber } from '../settings/preset-control-helpers';
 import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from '../task-color-source-select';
+import { renderPresetFilterActions } from '../preset-filter-actions';
+import type { FilterModalEvalDeps } from '../filter-set-modal';
 
 interface CalendarPresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
 	preset: CalendarPreset | null;
 	onSave: (preset: CalendarPreset) => Promise<void>;
+	onSaveFilterSet: (filterSet: FilterSet) => Promise<void>;
+	getFilterModalEvalDeps?: () => FilterModalEvalDeps | null;
 }
 
 export class CalendarPresetQuickSettingsModal extends Modal {
@@ -186,32 +189,23 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 		const filterSets = getNormalFilterSets(settings.filterSets);
 		const currentFilter = filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
 		const filterCard = this.createPresetSection(contentEl, t('calendar', 'calendarPresetSectionFiltering'));
-		new Setting(filterCard)
-			.setName(t('calendar', 'calendarFilter'))
-			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
-			.addButton(button => {
-				button.setButtonText(t('calendar', 'chooseFilter'));
-				button.onClick(() => {
-					new CalendarFilterPickerModal(this.app, {
-						filterSets,
-						onChooseFilter: settingsAsyncHandler('calendar preset filter selection failed', async (filterSetId) => {
-							await this.updatePreset(current => {
-								current.filterSetId = filterSetId;
-							});
-							this.render();
-						}),
-					}).open();
+		renderPresetFilterActions({
+			app: this.app,
+			setting: new Setting(filterCard)
+				.setName(t('calendar', 'calendarFilter')),
+			getSettings: this.options.getSettings,
+			filterSets,
+			currentFilter,
+			selectedFilterSetId: preset.filterSetId,
+			onSelectFilter: async (filterSetId) => {
+				await this.updatePreset(current => {
+					current.filterSetId = filterSetId;
 				});
-			})
-			.addButton(button => {
-				button.setButtonText(t('calendar', 'clearFilter'));
-				button.setDisabled(!preset.filterSetId);
-				button.onClick(settingsAsyncHandler('calendar preset filter clear failed', async () => {
-					await this.updatePreset(current => {
-						current.filterSetId = null;
-					});
-					this.render();
-				}));
+			},
+			onSaveFilterSet: this.options.onSaveFilterSet,
+			getFilterModalEvalDeps: this.options.getFilterModalEvalDeps,
+			onRefresh: () => this.render(),
+			errorContextPrefix: 'calendar preset',
 		});
 
 		if (preset.surfaceType === 'timeGrid') {

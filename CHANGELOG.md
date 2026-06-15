@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.4.1] - 2026-06-15
+
+This release is a compact visual consistency pass for Operon's busiest surfaces. It reduces theme-related button noise across editors, pickers, calendars, sidebars, and tracking controls while adding a couple of practical improvements to file-task creation and saved preset filters.
+
+### Improved
+- Improved **Create file task** so running it without selected text, a source line, or an inline task opens Task Creator in File mode instead of immediately creating a placeholder file task.
+- Improved **Calendar** and **Kanban** preset filter controls with compact Create, Edit, Choose, and Clear actions, making saved filters easier to build and adjust from preset settings while keeping the preset panel easier to scan.
+
+### Fixed
+- Fixed Obsidian theme button backgrounds showing gray fills over Operon's newer transparent bordered styling across Task Editor, Calendar toolbar, sidebars, lane controls, pickers, tracking session controls, and the tracked session editor modal.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 927/927 Phase 5 regression checks.
+
 ## [1.4.0] - 2026-06-13
 
 This update centers on the new **Color Picker** and **Color Palette** settings. Colors are now easier to find, compare, and adjust: searchable named colors, tone and hue controls, custom previews, copyable hex values, localized names, and a curated default palette make Operon's colors work for both quick search and manual tuning.

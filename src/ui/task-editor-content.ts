@@ -782,16 +782,6 @@ export class TaskEditorContent {
 		});
 		this.refreshFileBodySaveButtonState();
 
-		const closeButton = headerActions.createEl('button', {
-			cls: 'operon-task-editor-file-panel-overlay-close',
-			attr: {
-				type: 'button',
-			},
-		});
-		setIcon(closeButton, 'x');
-		setAccessibleLabelWithoutTooltip(closeButton, t('buttons', 'close'));
-		closeButton.addEventListener('click', () => this.setFileBodyVisible(false));
-
 		const editorHost = container.createDiv('operon-task-editor-file-panel-editor');
 		this.embeddedBodyEditor?.destroy();
 		const sourceFile = filePath

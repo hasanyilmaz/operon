@@ -5469,6 +5469,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			getSettings: () => this.settings,
 			preset,
 			onSave,
+			onSaveFilterSet: async (filterSet) => {
+				await this.upsertFilterSet(filterSet);
+				await this.saveSettings();
+			},
+			getFilterModalEvalDeps: () => this.makeEvalDeps(),
 		}).open();
 	}
 
@@ -6024,6 +6029,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			getSettings: () => this.settings,
 			preset,
 			onSave,
+			onSaveFilterSet: async (filterSet) => {
+				await this.upsertFilterSet(filterSet);
+				await this.saveSettings();
+			},
+			getFilterModalEvalDeps: () => this.makeEvalDeps(),
 		}).open();
 	}
 

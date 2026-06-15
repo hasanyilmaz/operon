@@ -1,5 +1,6 @@
 import { setIcon } from 'obsidian';
 import { localToday } from '../../core/local-time';
+import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { createButton } from './common';
 
 export type DayPickerWeekStart = 'monday' | 'sunday';
@@ -151,7 +152,7 @@ function renderGrid(
 			const button = createButton(String(current.getDate()), 'operon-day-picker-day', grid);
 			grid.appendChild(button);
 			button.setAttribute('aria-pressed', String(dateKey === selectedDate));
-			button.setAttribute('aria-label', formatFullDateLabel(current, options.locale));
+			setAccessibleLabelWithoutTooltip(button, formatFullDateLabel(current, options.locale));
 			button.classList.toggle('is-weekend', current.getDay() === 0 || current.getDay() === 6);
 			button.classList.toggle('is-outside-month', current.getMonth() !== focusedMonth);
 			button.classList.toggle('is-selected', dateKey === selectedDate);
@@ -196,8 +197,7 @@ function renderFooter(
 function createIconButton(owner: HTMLElement, icon: string, label: string): HTMLButtonElement {
 	const button = createButton('', 'operon-day-picker-nav-button', owner);
 	owner.appendChild(button);
-	button.setAttribute('aria-label', label);
-	button.setAttribute('title', label);
+	setAccessibleLabelWithoutTooltip(button, label);
 	setIcon(button, icon);
 	return button;
 }

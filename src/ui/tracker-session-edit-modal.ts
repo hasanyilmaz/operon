@@ -66,13 +66,19 @@ export class TrackerSessionEditModal extends Modal {
 			? actions.createEl('button', {
 				text: t('taskEditor', 'deleteSessionConfirm'),
 				cls: 'operon-tracker-session-modal-delete',
+				attr: { type: 'button' },
 			})
 			: null;
 		const primaryActions = actions.createDiv('operon-tracker-session-modal-actions-primary');
-		const cancelButton = primaryActions.createEl('button', { text: t('buttons', 'cancel') });
+		const cancelButton = primaryActions.createEl('button', {
+			text: t('buttons', 'cancel'),
+			cls: 'operon-tracker-session-modal-cancel',
+			attr: { type: 'button' },
+		});
 		const saveButton = primaryActions.createEl('button', {
 			text: t('taskEditor', 'saveSession'),
-			cls: 'mod-cta',
+			cls: 'operon-tracker-session-modal-save',
+			attr: { type: 'button' },
 		});
 
 		const getNormalizedValues = (): { start: string; end: string } => ({
@@ -195,22 +201,22 @@ export class TrackerSessionEditModal extends Modal {
 		endInput.addEventListener('input', refresh);
 		startInput.addEventListener('keydown', (event) => {
 			if (event.key === 'Enter') {
-					event.preventDefault();
-					runAsyncAction('tracker session submit failed', submit);
-				}
-			});
+				event.preventDefault();
+				runAsyncAction('tracker session submit failed', submit);
+			}
+		});
 		endInput.addEventListener('keydown', (event) => {
 			if (event.key === 'Enter') {
-					event.preventDefault();
-					runAsyncAction('tracker session submit failed', submit);
-				}
-			});
+				event.preventDefault();
+				runAsyncAction('tracker session submit failed', submit);
+			}
+		});
 
 		cancelButton.addEventListener('click', () => this.close());
 		deleteButton?.addEventListener('click', remove);
-			saveButton.addEventListener('click', () => {
-				runAsyncAction('tracker session submit failed', submit);
-			});
+		saveButton.addEventListener('click', () => {
+			runAsyncAction('tracker session submit failed', submit);
+		});
 
 		refresh();
 		window.setTimeout(() => startInput.focus(), 0);

@@ -12,8 +12,7 @@ import {
 	isBuiltInKanbanSwimlaneBy,
 	normalizeKanbanCustomFieldReference,
 } from '../../types/kanban';
-import { OperonSettings } from '../../types/settings';
-import { CalendarFilterPickerModal } from '../calendar/calendar-filter-picker-modal';
+import type { FilterSet, OperonSettings } from '../../types/settings';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import {
 	KANBAN_TASK_COLOR_SOURCES,
@@ -25,11 +24,15 @@ import { t } from '../../core/i18n';
 import { runSettingsAsync, settingsAsyncHandler } from '../settings/async-settings-action';
 import { parsePresetNumber } from '../settings/preset-control-helpers';
 import { getKanbanSwimlaneCustomFieldOptions, getManagedCustomFieldOptionMapping, getManagedCustomFieldOptions } from '../../core/managed-task-fields';
+import { renderPresetFilterActions } from '../preset-filter-actions';
+import type { FilterModalEvalDeps } from '../filter-set-modal';
 
 interface KanbanPresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
 	preset: KanbanPreset | null;
 	onSave: (preset: KanbanPreset) => Promise<void>;
+	onSaveFilterSet: (filterSet: FilterSet) => Promise<void>;
+	getFilterModalEvalDeps?: () => FilterModalEvalDeps | null;
 }
 
 export class KanbanPresetQuickSettingsModal extends Modal {
@@ -104,33 +107,24 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 		const filterSets = getNormalFilterSets(settings.filterSets);
 		const currentFilter = filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
 		const filteringCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionFilteringLanes'));
-		new Setting(filteringCard)
-			.setName(t('settings', 'kanbanFilter'))
-			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
-			.addButton(button => {
-				button.setButtonText(t('calendar', 'chooseFilter'));
-				button.onClick(() => {
-					new CalendarFilterPickerModal(this.app, {
-						filterSets,
-						onChooseFilter: settingsAsyncHandler('kanban preset filter selection failed', async (filterSetId) => {
-							await this.updatePreset(current => {
-								current.filterSetId = filterSetId;
-							});
-							this.render();
-						}),
-					}).open();
+		renderPresetFilterActions({
+			app: this.app,
+			setting: new Setting(filteringCard)
+				.setName(t('settings', 'kanbanFilter')),
+			getSettings: this.options.getSettings,
+			filterSets,
+			currentFilter,
+			selectedFilterSetId: preset.filterSetId,
+			onSelectFilter: async (filterSetId) => {
+				await this.updatePreset(current => {
+					current.filterSetId = filterSetId;
 				});
-			})
-			.addButton(button => {
-				button.setButtonText(t('calendar', 'clearFilter'));
-				button.setDisabled(!preset.filterSetId);
-				button.onClick(settingsAsyncHandler('kanban preset filter clear failed', async () => {
-					await this.updatePreset(current => {
-						current.filterSetId = null;
-					});
-					this.render();
-				}));
-			});
+			},
+			onSaveFilterSet: this.options.onSaveFilterSet,
+			getFilterModalEvalDeps: this.options.getFilterModalEvalDeps,
+			onRefresh: () => this.render(),
+			errorContextPrefix: 'kanban preset',
+		});
 
 		new Setting(filteringCard)
 			.setName(t('settings', 'kanbanSwimlaneField'))
