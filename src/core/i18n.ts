@@ -1,6 +1,7 @@
 /**
  * Internationalization (i18n) module for Operon.
- * Multilingual support: English (default) + Turkish + German + French + Spanish.
+ * Multilingual support: English (default), Turkish, German, French, Spanish,
+ * Simplified Chinese, and Traditional Chinese.
  *
  * Spec Section 25:
  * - JSON locale files at i18n/locales/
@@ -16,12 +17,36 @@ import tr from '../../i18n/locales/tr.json';
 import de from '../../i18n/locales/de.json';
 import fr from '../../i18n/locales/fr.json';
 import es from '../../i18n/locales/es.json';
+import zhCN from '../../i18n/locales/zh-CN.json';
+import zhTW from '../../i18n/locales/zh-TW.json';
 
 /** All available locale data, keyed by language code */
-const LOCALES: Record<string, LocaleData> = { en, tr, de, fr, es };
+const LOCALES: Record<string, LocaleData> = { en, tr, de, fr, es, 'zh-CN': zhCN, 'zh-TW': zhTW };
 
 /** Supported language codes */
-export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es';
+export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW';
+
+/**
+ * Maps an Obsidian/browser locale string to a supported LangCode.
+ * Chinese needs full-string handling because Simplified ('zh', 'zh-CN', 'zh-Hans')
+ * and Traditional ('zh-TW', 'zh-Hant', 'zh-HK') must not both collapse to a bare 'zh'.
+ * Returns null when no supported locale matches.
+ */
+function normalizeLocale(rawLocale: string): LangCode | null {
+	const lower = rawLocale.trim().toLowerCase();
+	if (!lower) return null;
+
+	// Chinese script/region disambiguation (checked before the 2-letter fallback).
+	if (lower === 'zh' || lower.startsWith('zh-cn') || lower.startsWith('zh-hans') || lower.startsWith('zh-sg')) {
+		return 'zh-CN' in LOCALES ? 'zh-CN' : null;
+	}
+	if (lower.startsWith('zh-tw') || lower.startsWith('zh-hant') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')) {
+		return 'zh-TW' in LOCALES ? 'zh-TW' : null;
+	}
+
+	const short = lower.substring(0, 2);
+	return short in LOCALES ? (short as LangCode) : null;
+}
 
 /** Structure of a locale file — matches Spec Section 25.4 */
 export interface LocaleData {
@@ -56,16 +81,16 @@ let currentLocale: LocaleData = en;
  * Spec Section 25.7: Detection flow.
  */
 export function initI18n(obsidianLocale?: string, languageOverride?: string): void {
-	let lang: string;
+	let lang: LangCode | null = null;
 
 	if (languageOverride && languageOverride !== 'auto' && languageOverride in LOCALES) {
-		lang = languageOverride;
-	} else {
-		lang = obsidianLocale?.substring(0, 2)?.toLowerCase() ?? 'en';
+		lang = languageOverride as LangCode;
+	} else if (obsidianLocale) {
+		lang = normalizeLocale(obsidianLocale);
 	}
 
-	if (lang in LOCALES) {
-		currentLang = lang as LangCode;
+	if (lang && lang in LOCALES) {
+		currentLang = lang;
 		currentLocale = LOCALES[lang];
 	} else {
 		currentLang = 'en';

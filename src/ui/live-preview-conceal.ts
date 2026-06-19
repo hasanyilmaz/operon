@@ -78,7 +78,7 @@ export interface LivePreviewCallbacks {
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	getRepeatSeriesInlineCompletionMode?: (repeatSeriesId: string) => InlineRepeatCompletionMode;
 	updateRepeatSeriesInlineCompletionMode?: (operonId: string, mode: InlineRepeatCompletionMode) => void | Promise<void>;
-	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 }
 
 export interface LivePreviewCursorRestoreRequest {

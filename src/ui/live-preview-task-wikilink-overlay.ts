@@ -54,7 +54,7 @@ export interface LivePreviewTaskWikilinkCallbacks {
 	isTaskTracking?: (taskId: string) => boolean;
 	toggleTimer?: (taskId: string) => void | Promise<void>;
 	requestSubtask?: (operonId: string) => void | Promise<void>;
-	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 }
 
 class TaskWikilinkLeftWidget extends WidgetType {

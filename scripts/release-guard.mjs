@@ -140,6 +140,8 @@ function compareLocaleFiles() {
 		German: flattenStringLeaves(readJson('i18n/locales/de.json')),
 		French: flattenStringLeaves(readJson('i18n/locales/fr.json')),
 		Spanish: flattenStringLeaves(readJson('i18n/locales/es.json')),
+		'Chinese Simplified': flattenStringLeaves(readJson('i18n/locales/zh-CN.json')),
+		'Chinese Traditional': flattenStringLeaves(readJson('i18n/locales/zh-TW.json')),
 	};
 
 	for (const [label, locale] of Object.entries(translations)) {
@@ -197,7 +199,7 @@ function checkCssScorecard() {
 		[/\bdisplay\s*:\s*contents\b/, 'avoid display: contents because Obsidian compatibility checks flag it'],
 		[/\bcolumn-gap\s*:/, 'use gap shorthand instead of column-gap for Obsidian CSS compatibility'],
 		[/\brow-gap\s*:/, 'use gap shorthand instead of row-gap for Obsidian CSS compatibility'],
-		[/\btext-decoration-(line|color)\s*:/, 'avoid text-decoration subproperties flagged by Obsidian CSS lint'],
+		[/\btext-decoration-[a-z-]+\s*:/, 'avoid text-decoration subproperties flagged by Obsidian CSS lint'],
 	];
 
 	for (const [pattern, label] of bannedCssPatterns) {

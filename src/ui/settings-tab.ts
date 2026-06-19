@@ -13,7 +13,7 @@
 import * as Obsidian from 'obsidian';
 import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
 import type { ButtonComponent, DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, hasDuplicateKeyMappingVisiblePropertyName, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, hasDuplicateKeyMappingVisiblePropertyName, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
 import type { ProjectSerialScope } from '../types/settings';
 import {
 	createProjectSerialScopeId,
@@ -2178,6 +2178,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ value: 'de', label: t('settings', 'languageGerman') },
 			{ value: 'fr', label: t('settings', 'languageFrench') },
 			{ value: 'es', label: t('settings', 'languageSpanish') },
+			{ value: 'zh-CN', label: t('settings', 'languageChineseSimplified') },
+			{ value: 'zh-TW', label: t('settings', 'languageChineseTraditional') },
 		];
 		const collator = new Intl.Collator(getCurrentLang(), { sensitivity: 'base' });
 		languageOptions.sort((left, right) =>
@@ -3735,7 +3737,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 				searchText: `${label} ${canonical.name} ${canonical.type} ${canonical.description}`.toLocaleLowerCase(),
 			});
 		}
+		options.push({
+			key: CHILD_TASK_INHERITANCE_TAGS_KEY,
+			label: t('taskEditor', 'tags'),
+			icon: (TASK_CREATOR_FALLBACK_FIELD_ICONS as Record<string, string>)[CHILD_TASK_INHERITANCE_TAGS_KEY] || 'tags',
+			type: 'list',
+			searchText: `${t('taskEditor', 'tags')} ${CHILD_TASK_INHERITANCE_TAGS_KEY} list`.toLocaleLowerCase(),
+		});
 		for (const mapping of getManagedCustomFieldMappings(this.settings.keyMappings, { includeCheckbox: true })) {
+			if (mapping.canonicalKey === CHILD_TASK_INHERITANCE_TAGS_KEY) continue;
 			if (!isChildTaskInheritanceEligibleFieldKey(mapping.canonicalKey, this.settings.keyMappings)) continue;
 			const label = getCustomFieldLabel(mapping);
 			options.push({
@@ -6662,7 +6672,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		createSettingsListCardChip({
 			containerEl: card.metaEl,
-			icon: preset.surfaceType === 'multiWeek' ? 'calendar-range' : 'calendar-days',
+			icon: this.getCalendarPresetSurfaceIcon(preset),
 			label: this.describeCalendarPreset(preset),
 		});
 		createSettingsListCardChip({
@@ -6869,10 +6879,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			.setDesc(t('calendar', 'calendarPresetTypeDesc'))
 			.addDropdown(dropdown => {
 				dropdown.addOption('timeGrid', t('calendar', 'timeGrid'));
+				dropdown.addOption('timeTrackerGrid', t('calendar', 'timeTrackerGrid'));
 				dropdown.addOption('multiWeek', t('calendar', 'multiWeek'));
 				dropdown.setValue(preset.surfaceType);
 				dropdown.onChange(async value => {
-					if (value !== 'timeGrid' && value !== 'multiWeek') return;
+					if (value !== 'timeGrid' && value !== 'timeTrackerGrid' && value !== 'multiWeek') return;
 					await this.updateCalendarPreset(preset.id, current => {
 						current.surfaceType = value;
 						current.weekCount = this.normalizeCalendarPresetWeekCount(current.weekCount);
@@ -7009,7 +7020,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				}));
 			});
 
-		if (preset.surfaceType === 'timeGrid') {
+		if (preset.surfaceType === 'timeGrid' || preset.surfaceType === 'timeTrackerGrid') {
 			this.renderHiddenTimeSetting(bodyInner, preset);
 		}
 
@@ -7154,10 +7165,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 				count: String(this.normalizeCalendarPresetWeekCount(preset.weekCount)),
 			});
 		}
+		if (preset.surfaceType === 'timeTrackerGrid') {
+			return t('calendar', 'presetSummaryTimeTrackerGrid', {
+				count: String(preset.dayCount),
+				minutes: String(preset.slotMinutes),
+			});
+		}
 		return t('calendar', 'presetSummaryTimeGrid', {
 			count: String(preset.dayCount),
 			minutes: String(preset.slotMinutes),
 		});
+	}
+
+	private getCalendarPresetSurfaceIcon(preset: CalendarPreset): string {
+		if (preset.surfaceType === 'multiWeek') return 'calendar-range';
+		if (preset.surfaceType === 'timeTrackerGrid') return 'columns-3';
+		return 'calendar-days';
 	}
 
 	private async updateCalendarPreset(
@@ -7168,7 +7191,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (!preset) return;
 		const optionSignature = this.getCalendarPresetDropdownOptionSignature();
 		update(preset);
-		preset.surfaceType = preset.surfaceType === 'multiWeek' ? 'multiWeek' : 'timeGrid';
+		preset.surfaceType = preset.surfaceType === 'multiWeek' || preset.surfaceType === 'timeTrackerGrid'
+			? preset.surfaceType
+			: 'timeGrid';
 		preset.weekCount = this.normalizeCalendarPresetWeekCount(preset.weekCount);
 		preset.focusedWeekNumber = this.normalizeCalendarPresetFocusedWeekNumber(preset.focusedWeekNumber, preset.weekCount);
 		preset.todayPosition = Math.max(1, Math.min(preset.dayCount, preset.todayPosition));

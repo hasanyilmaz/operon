@@ -13,6 +13,41 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.6.0',
+		date: '2026-06-19',
+		title: 'Planning Time Meets Tracked Time',
+		showOnUpdate: true,
+		youtubeUrl: 'https://www.youtube.com/watch?v=hDduQEnnnHU',
+		body: `
+Planning time and tracking time now sit closer together.
+
+This release introduces **Time Tracker Grid**, a Calendar preset built for comparing planned work, external calendar blocks, and completed tracked time in the same day view. It also expands Operon's multilingual surface with Chinese localization and tightens several task creation, reading, and calendar interactions around the new planning workflow.
+
+### New
+- Added **Chinese localization** for Simplified and Traditional Chinese, including Settings language selection, translated UI strings, Chinese date parsing, repeat summaries, calendar wording, task editing labels, and filter surfaces.
+- Added **Time Tracker Grid** as a Calendar preset for desktop and mobile Day/3 Days views, showing planned tasks, external calendar events, and tracked sessions in separate per-day lanes.
+- Added **Time Tracker Grid** daily totals for planned, external, and completed tracked time, making it easier to compare what was planned with what was actually tracked.
+- Added tracked-session editing directly from **Time Tracker Grid**, including session selection, move/resize editing, edit and delete modal access, stale-session feedback, and read-only handling for active or unassigned timers.
+- Added **Log as tracked** actions for past planned blocks, so planned Calendar time can be recorded as tracked time without rewriting existing tracker history.
+- Added mobile and future-day behavior for **Time Tracker Grid**, including contained narrow columns, lane headers, read-only external events, active timer visibility, and automatic hiding of tracked-time lanes on future dates.
+
+### Improved
+- Improved **Parent-Child task inheritance** so native task tags can be added as an optional inherited field, while seed tags from Calendar, Kanban, and Task Creator remain preserved.
+- Improved **Calendar** and **Kanban** preset controls so Task color source selectors, buttons, and dropdowns use a more consistent compact style.
+- Improved **Date Picker** result rows so ISO dates have a little more room and no longer truncate before the weekday column.
+- Improved **Calendar** day highlighting with calmer today and weekend treatment while keeping today's day text and lane labels easy to spot.
+- Improved **Task Creator** and **Task Editor** focus styling so description, note, and editor fields follow the task color when available.
+- Improved the **Task Editor** Core controls so date/time, Estimate, and Subtract Delta controls follow the more compact Add Recurrence Rule height.
+- Improved tracker session editing reliability across Calendar, Time Session History, and Task Editor with safer edits, clearer context, and cleaner recovery when persistence fails.
+
+### Fixed
+- Fixed **Reading View inline tasks** so Project Serial chips stay with metadata chips, stale indexes no longer expose raw \`{{...}}\` task fields, wikilink overlays stay stable, and rendered task rows keep normal Obsidian list spacing.
+- Fixed first generated **when-done recurring inline tasks** keeping the previous start date when the source task only had a start date.
+- Fixed **Calendar inline task creation** so choosing a parent task in Task Creator places the new task through the parent-aware flow before using the Calendar save target.
+- Fixed **Calendar task status icons** so normal scheduled, timed, due, finished, and mobile task items can be clicked again while projected future occurrences and active tracker blocks remain read-only.
+`.trim(),
+	},
+	{
 		version: '1.5.0',
 		date: '2026-06-17',
 		title: 'When Tasks Become Projects',

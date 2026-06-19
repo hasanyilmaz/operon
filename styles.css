@@ -3135,7 +3135,7 @@ body .operon-color-picker-panel button.operon-color-picker-copy:disabled {
 	appearance: none;
 	-webkit-appearance: none;
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 10ch 4ch;
+	grid-template-columns: minmax(0, 1fr) calc(10ch + 2px) 4ch;
 	gap: 8px;
 	align-items: center;
 	box-sizing: border-box;
@@ -5316,6 +5316,8 @@ body .operon-color-picker-panel button.operon-color-picker-copy:disabled {
 	--operon-task-creator-control-hover-border: color-mix(in srgb, var(--operon-task-creator-accent) 34%, var(--background-modifier-border));
 	--operon-task-creator-control-hover-bg: transparent;
 	--operon-task-creator-control-focus-ring: color-mix(in srgb, var(--operon-task-creator-accent) 12%, transparent);
+	--operon-task-creator-focus-ring: color-mix(in srgb, var(--operon-task-creator-accent, var(--interactive-accent)) 14%, transparent);
+	--shadow-input-active: 0 0 0 3px var(--operon-task-creator-focus-ring);
 	width: min(92vw, 680px);
 	margin: 0;
 	max-height: calc(100dvh - 20vh - 24px);
@@ -5563,8 +5565,8 @@ body .modal.operon-subtasks-filter-modal .modal-close-button:focus-visible {
 .operon-task-creator-description:focus,
 .operon-task-creator-note:focus {
 	outline: none;
-	border-color: var(--operon-task-creator-accent);
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--operon-task-creator-accent) 14%, transparent);
+	border-color: var(--operon-task-creator-accent, var(--interactive-accent));
+	box-shadow: 0 0 0 3px var(--operon-task-creator-focus-ring);
 	background: var(--background-primary);
 }
 
@@ -7638,6 +7640,8 @@ body .modal.operon-task-finder-modal .modal-close-button {
 }
 
 .operon-task-editor {
+	--operon-task-editor-focus-ring: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 22%, transparent);
+	--shadow-input-active: 0 0 0 3px var(--operon-task-editor-focus-ring);
 	padding: 16px 20px;
 	height: 100%;
 	box-sizing: border-box;
@@ -8235,6 +8239,7 @@ body .operon-task-editor button.operon-task-editor-title-file-toggle.is-active {
 }
 
 .operon-editor-core {
+	--operon-task-editor-core-control-height: 34px;
 	--operon-task-editor-core-button-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
 	--operon-task-editor-core-button-hover-border: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 34%, var(--background-modifier-border));
 	--operon-task-editor-core-button-active-border: color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
@@ -9307,12 +9312,51 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 }
 
 .operon-editor-core-grid-3 .operon-editor-estimate-field .operon-editor-inline-input {
-	align-items: stretch;
+	align-items: center;
+	width: 100%;
 }
 
 .operon-editor-estimate-field input[type="number"] {
 	min-width: 0;
 	flex: 1 1 auto;
+}
+
+.operon-editor-core .operon-editor-estimate-field input[type="number"] {
+	height: var(--operon-task-editor-core-control-height, 42px);
+	min-height: var(--operon-task-editor-core-control-height, 42px);
+	margin: 0;
+	padding: 0 12px;
+	border: 1px solid var(--operon-task-editor-core-button-border);
+	border-radius: 8px;
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-normal);
+	filter: none;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	box-sizing: border-box;
+	--input-shadow: none;
+	--input-shadow-hover: none;
+}
+
+.operon-editor-core .operon-editor-estimate-field input[type="number"]:hover {
+	border-color: var(--operon-task-editor-core-button-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+}
+
+.operon-editor-core .operon-editor-estimate-field input[type="number"]:focus,
+.operon-editor-core .operon-editor-estimate-field input[type="number"]:focus-visible {
+	border-color: var(--operon-task-editor-core-button-hover-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: 0 0 0 2px var(--operon-task-editor-core-button-focus-ring);
+	outline: none;
 }
 
 .operon-editor-estimate-actions {
@@ -9322,11 +9366,18 @@ body .operon-task-editor-file-panel .operon-task-editor-file-source-editor.markd
 .operon-editor-core-grid-3 .operon-editor-estimate-actions {
 	display: flex;
 	align-items: stretch;
+	height: var(--operon-task-editor-core-control-height, 42px);
+	min-height: var(--operon-task-editor-core-control-height, 42px);
+	min-width: 0;
 }
 
 .operon-editor-core-grid-3 .operon-editor-estimate-reallocate {
-	height: 42px;
-	padding: 0 12px;
+	height: var(--operon-task-editor-core-control-height, 42px);
+	min-height: var(--operon-task-editor-core-control-height, 42px);
+	min-width: 0;
+	padding: 0 10px;
+	font-size: 13px;
+	line-height: 1;
 }
 
 .operon-editor-estimate-auto-hint {
@@ -9742,15 +9793,16 @@ body .operon-task-editor button.operon-editor-tracking-session-action.is-danger:
 .operon-editor-manual-field input,
 .operon-editor-manual-field select {
 	width: 100%;
-	min-height: 42px;
-	height: 42px;
+	min-height: var(--operon-task-editor-core-control-height, 42px);
+	height: var(--operon-task-editor-core-control-height, 42px);
 	box-sizing: border-box;
 	margin: 0;
 }
 
 .operon-editor-picker-button {
 	width: 100%;
-	min-height: 42px;
+	min-height: var(--operon-task-editor-core-control-height, 42px);
+	height: var(--operon-task-editor-core-control-height, 42px);
 	padding: 0 12px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 6px;
@@ -9979,8 +10031,8 @@ body .operon-task-editor button.operon-editor-tracking-session-action.is-danger:
 .operon-editor-core .operon-status-input,
 .operon-editor-core .operon-status-input-wrap,
 .operon-editor-core-more-btn {
-	min-height: 42px;
-	height: 42px;
+	min-height: var(--operon-task-editor-core-control-height, 42px);
+	height: var(--operon-task-editor-core-control-height, 42px);
 }
 
 .operon-editor-core .setting-item-control input,
@@ -10052,7 +10104,7 @@ body .operon-task-editor button.operon-editor-tracking-session-action.is-danger:
 .operon-task-editor textarea:focus,
 .operon-task-editor select:focus {
 	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--operon-task-editor-accent, var(--interactive-accent)) 22%, transparent);
+	box-shadow: 0 0 0 3px var(--operon-task-editor-focus-ring);
 	outline: none;
 }
 
@@ -10715,6 +10767,34 @@ body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-moda
 	box-shadow: 0 0 0 2px var(--operon-tracker-session-modal-focus-ring);
 	color: var(--text-normal);
 	outline: none;
+}
+
+.operon-tracker-session-modal-context {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding: 10px 12px;
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 72%, transparent);
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--background-secondary) 42%, transparent);
+}
+
+.operon-tracker-session-modal-context-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 700;
+}
+
+.operon-tracker-session-modal-context-meta {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
 }
 
 .operon-tracker-session-modal-field label {
@@ -16629,6 +16709,9 @@ button.operon-pinned-sidebar-action svg {
 	--operon-calendar-surface-main: var(--background-primary);
 	--operon-calendar-surface-soft: var(--background-secondary);
 	--operon-calendar-surface-gutter: var(--background-secondary);
+	--operon-calendar-weekend-background: transparent;
+	--operon-calendar-today-header-background: transparent;
+	--operon-calendar-today-surface-background: transparent;
 }
 
 .operon-calendar-root.is-appearance-light {
@@ -17078,7 +17161,9 @@ body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-cale
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
+	width: var(--operon-task-color-source-menu-min-width, 220px);
 	min-width: var(--operon-task-color-source-menu-min-width, 220px);
+	max-width: calc(100vw - 16px);
 	padding: 6px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
@@ -17091,6 +17176,8 @@ body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-cale
 }
 
 .operon-task-color-source-menu-item {
+	appearance: none;
+	-webkit-appearance: none;
 	display: flex;
 	align-items: center;
 	gap: 10px;
@@ -17103,18 +17190,28 @@ body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-cale
 	color: var(--text-normal);
 	font: inherit;
 	text-align: left;
+	box-shadow: none;
 	cursor: pointer;
+	filter: none;
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
 }
 
 .operon-task-color-source-menu-item:hover,
 .operon-task-color-source-menu-item:focus-visible {
-	background: var(--background-modifier-hover);
+	background: transparent;
+	background-color: transparent;
+	box-shadow: none;
+	color: var(--interactive-accent);
 	outline: none;
 }
 
 .operon-task-color-source-menu-item.is-selected {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
+	background: transparent;
+	background-color: transparent;
+	color: var(--text-normal);
 }
 
 .operon-task-color-source-menu-item-icon,
@@ -17136,6 +17233,9 @@ body .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-cale
 .operon-task-color-source-menu-item-label {
 	flex: 1 1 auto;
 	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .operon-task-color-source-menu-item-selected-icon {
@@ -17661,6 +17761,13 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 }
 
 .operon-calendar-preset-quick-settings-modal {
+	--operon-preset-control-border: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	--operon-preset-control-hover-border: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	--operon-preset-control-hover-bg: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	--operon-preset-control-focus-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	--operon-preset-control-chevron:
+		linear-gradient(45deg, transparent 50%, currentColor 50%),
+		linear-gradient(135deg, currentColor 50%, transparent 50%);
 	width: min(92vw, 720px);
 	max-height: calc(100dvh - 48px);
 	border-radius: 12px;
@@ -17795,6 +17902,109 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 	padding: 6px 12px;
 }
 
+body .modal.operon-calendar-preset-quick-settings-modal .setting-item-control .operon-task-color-source-select-button,
+body .modal.operon-kanban-preset-quick-settings-modal .setting-item-control .operon-task-color-source-select-button {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	height: 34px;
+}
+
+body .modal.operon-calendar-preset-quick-settings-modal .setting-item-control :is(select, .dropdown, button),
+body .modal.operon-calendar-preset-quick-settings-modal .operon-calendar-preset-settings-footer-button,
+body .modal.operon-kanban-preset-quick-settings-modal .setting-item-control :is(select, .dropdown, button),
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-preset-settings-footer-button,
+body .modal.operon-kanban-preset-quick-settings-modal :is(
+	.operon-kanban-sort-select,
+	.operon-kanban-sort-mode-button,
+	.operon-kanban-sort-toggle,
+	.operon-kanban-sort-icon-button,
+	.operon-kanban-sort-add-row button
+) {
+	appearance: none;
+	-webkit-appearance: none;
+	border: 1px solid var(--operon-preset-control-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+	color: var(--text-normal);
+	--button-bg: transparent;
+	--button-hover-bg: transparent;
+	--button-active-bg: transparent;
+	--button-shadow: none;
+}
+
+body .modal.operon-calendar-preset-quick-settings-modal .setting-item-control :is(select, .dropdown),
+body .modal.operon-kanban-preset-quick-settings-modal .setting-item-control :is(select, .dropdown),
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-select {
+	background-image: var(--operon-preset-control-chevron);
+	background-position:
+		calc(100% - 15px) 50%,
+		calc(100% - 10px) 50%;
+	background-repeat: no-repeat;
+	background-size: 5px 5px, 5px 5px;
+	padding-inline-end: 28px;
+}
+
+body .modal.operon-calendar-preset-quick-settings-modal .setting-item-control :is(select, .dropdown, button):is(:hover, :focus, :focus-visible),
+body .modal.operon-calendar-preset-quick-settings-modal .operon-calendar-preset-settings-footer-button:is(:hover, :focus, :focus-visible),
+body .modal.operon-kanban-preset-quick-settings-modal .setting-item-control :is(select, .dropdown, button):is(:hover, :focus, :focus-visible),
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-preset-settings-footer-button:is(:hover, :focus, :focus-visible),
+body .modal.operon-kanban-preset-quick-settings-modal :is(
+	.operon-kanban-sort-select,
+	.operon-kanban-sort-mode-button,
+	.operon-kanban-sort-toggle,
+	.operon-kanban-sort-icon-button,
+	.operon-kanban-sort-add-row button
+):is(:hover, :focus, :focus-visible) {
+	border-color: var(--operon-preset-control-hover-border);
+	background-color: var(--operon-preset-control-hover-bg);
+	box-shadow: var(--operon-preset-control-focus-shadow);
+	filter: none;
+	outline: none;
+}
+
+body .modal.operon-calendar-preset-quick-settings-modal .operon-calendar-preset-settings-footer-button.mod-cta,
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-preset-settings-footer-button.mod-cta,
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-button:is(.is-active, [aria-pressed="true"]) {
+	border-color: color-mix(in srgb, var(--interactive-accent) 76%, var(--background-modifier-border));
+	background: transparent;
+	background-color: transparent;
+	box-shadow: none;
+	color: var(--interactive-accent);
+}
+
+body .modal.operon-calendar-preset-quick-settings-modal .operon-calendar-preset-settings-footer-button.mod-cta:is(:hover, :focus, :focus-visible),
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-preset-settings-footer-button.mod-cta:is(:hover, :focus, :focus-visible),
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-button:is(.is-active, [aria-pressed="true"]):is(:hover, :focus, :focus-visible) {
+	background-color: var(--operon-preset-control-hover-bg);
+	box-shadow: var(--operon-preset-control-focus-shadow);
+	outline: none;
+}
+
+body .modal.operon-calendar-preset-quick-settings-modal .setting-item-control button:disabled,
+body .modal.operon-calendar-preset-quick-settings-modal .operon-calendar-preset-settings-footer-button:disabled,
+body .modal.operon-kanban-preset-quick-settings-modal .setting-item-control button:disabled,
+body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-preset-settings-footer-button:disabled,
+body .modal.operon-kanban-preset-quick-settings-modal :is(
+	.operon-kanban-sort-mode-button,
+	.operon-kanban-sort-toggle,
+	.operon-kanban-sort-icon-button,
+	.operon-kanban-sort-add-row button
+):disabled {
+	border-color: var(--operon-preset-control-border);
+	background: transparent;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	cursor: default;
+	opacity: 0.48;
+}
+
 .operon-calendar-preset-quick-settings-modal .operon-preset-filter-setting .setting-item-control,
 .operon-kanban-preset-quick-settings-modal .operon-preset-filter-setting .setting-item-control {
 	display: grid;
@@ -17852,6 +18062,13 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 }
 
 .operon-kanban-preset-quick-settings-modal {
+	--operon-preset-control-border: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+	--operon-preset-control-hover-border: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
+	--operon-preset-control-hover-bg: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	--operon-preset-control-focus-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	--operon-preset-control-chevron:
+		linear-gradient(45deg, transparent 50%, currentColor 50%),
+		linear-gradient(135deg, currentColor 50%, transparent 50%);
 	width: min(92vw, 760px);
 	max-height: calc(100dvh - 48px);
 	border-radius: 12px;
@@ -17879,6 +18096,7 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 
 .operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-control {
 	justify-self: start;
+	background: transparent;
 }
 
 .operon-kanban-preset-quick-settings-modal .operon-kanban-sort-rules {
@@ -18431,6 +18649,8 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 }
 
 .operon-calendar-mobile-timegrid-gutter-spacer {
+	grid-column: 1;
+	grid-row: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -18484,6 +18704,11 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 	overflow: hidden;
 }
 
+.operon-calendar-mobile-timegrid-header-clip {
+	grid-column: 2;
+	grid-row: 1;
+}
+
 .operon-calendar-mobile-timegrid-days-clip {
 	position: relative;
 }
@@ -18525,6 +18750,7 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 }
 
 .operon-calendar-mobile-timegrid-day-header.is-today {
+	background: var(--operon-calendar-today-header-background);
 	color: var(--operon-calendar-accent, var(--interactive-accent));
 }
 
@@ -18542,6 +18768,91 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 	font-size: 17px;
 	font-weight: 850;
 	line-height: 1.05;
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-timegrid-day-lanes,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-timegrid-day-lanes {
+	display: grid;
+	width: 100%;
+	min-width: 0;
+	height: 100%;
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-timegrid-lane-gutter,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-timegrid-lane-gutter {
+	grid-column: 1;
+	grid-row: 2;
+	min-width: 0;
+	min-height: 30px;
+	border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 58%, transparent);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-timegrid-lane-header-clip,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-timegrid-lane-header-clip {
+	grid-column: 2;
+	grid-row: 2;
+	min-width: 0;
+	min-height: 30px;
+	overflow: hidden;
+	border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 58%, transparent);
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-timegrid-lane-header-track,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-timegrid-lane-header-track {
+	display: grid;
+	height: 100%;
+	min-width: 0;
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 1px;
+	min-width: 0;
+	min-height: 24px;
+	padding: 2px;
+	border-right: 1px dashed color-mix(in srgb, var(--background-modifier-border) 78%, transparent);
+	color: var(--text-muted);
+	font-size: 8px;
+	font-weight: 800;
+	letter-spacing: 0;
+	line-height: 1.1;
+	text-transform: uppercase;
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label.is-semantic-lane-end,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label.is-semantic-lane-end {
+	border-right-style: solid;
+	border-right-color: color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label:last-child,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label:last-child {
+	border-right: none;
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label span:not(.operon-sr-only),
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label span:not(.operon-sr-only) {
+	overflow: hidden;
+	max-width: 100%;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label.is-today .operon-calendar-time-tracker-grid-lane-title,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label.is-today .operon-calendar-time-tracker-grid-lane-title {
+	color: var(--operon-calendar-accent, var(--interactive-accent));
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-time-tracker-grid-lane-summary,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-summary {
+	font-size: 8px;
+	font-weight: 700;
+	text-transform: none;
 }
 
 .operon-calendar-mobile-timegrid-all-day {
@@ -18710,6 +19021,33 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 	touch-action: pan-y;
 }
 
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-time-tracker-grid-column,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-time-tracker-grid-column {
+	border-right-style: dashed;
+	border-right-color: color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-time-tracker-grid-column.is-semantic-lane-end,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-time-tracker-grid-column.is-semantic-lane-end {
+	border-right-style: solid;
+	border-right-color: var(--background-modifier-border);
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-timegrid-item.operon-calendar-mobile-item,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-timegrid-item.operon-calendar-mobile-item {
+	padding-inline: 3px;
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-timegrid-item-title .operon-calendar-item-label,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-timegrid-item-title .operon-calendar-item-label {
+	gap: 3px;
+}
+
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-mobile-timegrid-item-time,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-mobile-timegrid-item-time {
+	padding-left: 0;
+}
+
 .operon-calendar-mobile-timegrid-day-column.is-selecting {
 	cursor: crosshair;
 }
@@ -18719,11 +19057,7 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 }
 
 .operon-calendar-mobile-timegrid-day-column.is-today {
-	background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 4%, var(--background-primary));
-}
-
-.operon-calendar-mobile-timegrid-day-column.is-weekend {
-	background: color-mix(in srgb, var(--background-secondary) 20%, var(--background-primary));
+	background: var(--operon-calendar-today-surface-background);
 }
 
 .operon-calendar-mobile-timegrid-line {
@@ -18902,6 +19236,11 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 
 .operon-calendar-mobile-item.is-clickable {
 	cursor: pointer;
+}
+
+.operon-calendar-mobile-item:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
 }
 
 .operon-calendar-mobile-item.is-done,
@@ -19237,17 +19576,17 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 .operon-calendar-root.is-background-themed {
 	--operon-calendar-surface-main: color-mix(
 		in srgb,
-		var(--operon-calendar-background-color) var(--operon-calendar-background-strong, 12%),
+		var(--operon-calendar-background-color) var(--operon-calendar-background-strong, 8%),
 		var(--background-primary)
 	);
 	--operon-calendar-surface-soft: color-mix(
 		in srgb,
-		var(--operon-calendar-background-color) var(--operon-calendar-background-soft, 7%),
+		var(--operon-calendar-background-color) var(--operon-calendar-background-soft, 4%),
 		var(--background-secondary)
 	);
 	--operon-calendar-surface-gutter: color-mix(
 		in srgb,
-		var(--operon-calendar-background-color) var(--operon-calendar-background-gutter, 9%),
+		var(--operon-calendar-background-color) var(--operon-calendar-background-gutter, 5%),
 		var(--background-secondary)
 	);
 }
@@ -19268,18 +19607,17 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 55%, transparent);
 }
 
-.operon-calendar-day-header-cell.is-weekend {
-	background: color-mix(in srgb, var(--interactive-accent) 5%, transparent);
-}
-
 .operon-calendar-day-header-cell:last-child {
 	border-right: none;
 }
 
-.operon-calendar-day-header-cell.is-today,
+.operon-calendar-day-header-cell.is-today {
+	background: var(--operon-calendar-today-header-background);
+}
+
 .operon-calendar-all-day-cell.is-today,
 .operon-calendar-timed-day.is-today {
-	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	background: var(--operon-calendar-today-surface-background);
 }
 
 .operon-calendar-day-header-cell.is-today .operon-calendar-day-header-weekday,
@@ -19299,12 +19637,6 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	font-size: var(--font-ui-small);
 	font-weight: 600;
 	color: var(--text-normal);
-}
-
-.operon-calendar-day-header-cell.is-weekend .operon-calendar-day-header-weekday,
-.operon-calendar-day-header-cell.is-weekend .operon-calendar-day-header-week-label,
-.operon-calendar-day-header-cell.is-weekend .operon-calendar-day-header-date {
-	color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
 }
 
 .operon-calendar-day-header-date {
@@ -19348,7 +19680,7 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 
 .operon-calendar-all-day-cell.is-weekend,
 .operon-calendar-timed-day.is-weekend {
-	background: color-mix(in srgb, var(--interactive-accent) 4%, transparent);
+	background: var(--operon-calendar-weekend-background);
 }
 
 .operon-calendar-all-day-cell:last-child {
@@ -19707,11 +20039,11 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 }
 
 .operon-calendar-multi-week-inday-cell.is-weekend {
-	background: color-mix(in srgb, var(--interactive-accent) 4%, transparent);
+	background: var(--operon-calendar-weekend-background);
 }
 
 .operon-calendar-multi-week-inday-cell.is-today {
-	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	background: var(--operon-calendar-today-surface-background);
 }
 
 .operon-calendar-multi-week-inday-list {
@@ -20134,6 +20466,165 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	border-right: none;
 }
 
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-column,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-column {
+	border-right-style: dashed;
+	border-right-color: color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-column.is-semantic-lane-end,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-column.is-semantic-lane-end {
+	border-right-style: solid;
+	border-right-color: var(--background-modifier-border);
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-column:last-child,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-column:last-child {
+	border-right: none;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-section,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-section {
+	grid-template-rows: 34px auto;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-label-gutter,
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-label-clip,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-label-gutter,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-label-clip {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	min-height: 34px;
+	border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 72%, transparent);
+	background: color-mix(in srgb, var(--operon-calendar-surface-gutter) 88%, var(--background-primary));
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-label-gutter,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-label-gutter {
+	grid-column: 1;
+	grid-row: 1;
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-label-clip,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-label-clip {
+	grid-column: 2;
+	grid-row: 1;
+	min-width: 0;
+	overflow: hidden;
+	background: color-mix(in srgb, var(--background-secondary) 36%, var(--background-primary));
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-section > .operon-calendar-time-gutter,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-section > .operon-calendar-time-gutter {
+	grid-column: 1;
+	grid-row: 2;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-section > .operon-calendar-timed-clip,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-section > .operon-calendar-timed-clip {
+	grid-column: 2;
+	grid-row: 2;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-label-strip,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-label-strip {
+	display: grid;
+	height: 100%;
+	min-width: 0;
+	will-change: transform;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-label-strip.is-horizontal-snapping,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-label-strip.is-horizontal-snapping {
+	transition: transform 140ms ease-out;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	min-width: 0;
+	padding: 0 6px;
+	border-right: 1px dashed color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+	color: var(--text-muted);
+	font-size: 9px;
+	font-weight: 800;
+	letter-spacing: 0;
+	line-height: 1;
+	text-transform: uppercase;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label.is-semantic-lane-end,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label.is-semantic-lane-end {
+	border-right-style: solid;
+	border-right-color: var(--background-modifier-border);
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label:last-child,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label:last-child {
+	border-right: none;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label span:not(.operon-sr-only),
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label span:not(.operon-sr-only) {
+	overflow: hidden;
+	max-width: 100%;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-lane-label.is-today .operon-calendar-time-tracker-grid-lane-title,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-label.is-today .operon-calendar-time-tracker-grid-lane-title {
+	color: var(--operon-calendar-accent, var(--interactive-accent));
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-lane-summary,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-lane-summary {
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1.05;
+	text-transform: none;
+	color: var(--text-normal);
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-lane-summary.is-over-planned {
+	color: var(--text-error, var(--color-red));
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-lane-summary.is-within-planned {
+	color: var(--text-success);
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-time-tracker-grid-lane-summary {
+	font-size: 8px;
+	line-height: 1;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-item,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-item {
+	min-width: 0;
+	padding-inline: 6px;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-item .operon-calendar-timed-content .operon-calendar-all-day-text,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-item .operon-calendar-timed-content .operon-calendar-all-day-text {
+	overflow-wrap: normal;
+	word-break: normal;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-time-tracker-grid-item.is-external-lane .operon-calendar-timed-content .operon-calendar-all-day-text,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-time-tracker-grid-item.is-external-lane .operon-calendar-timed-content .operon-calendar-all-day-text {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .operon-calendar-timed-day.is-selecting {
 	cursor: crosshair;
 }
@@ -20360,6 +20851,29 @@ body.operon-calendar-touch-drag-active {
 
 .operon-calendar-timed-item.is-read-only {
 	cursor: default;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-tracked-session-item.is-active-tracker {
+	--operon-calendar-timed-edge-top: linear-gradient(transparent, transparent) top / 100% 0 no-repeat;
+	--operon-calendar-timed-edge-bottom: linear-gradient(transparent, transparent) bottom / 100% 0 no-repeat;
+	border: 1px dashed color-mix(in srgb, var(--operon-calendar-accent, var(--text-muted)) 58%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--operon-calendar-accent, var(--text-muted)) 9%, transparent);
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-tracked-session-item.is-active-tracker:hover,
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-tracked-session-item.is-active-tracker:focus-within {
+	background: color-mix(in srgb, var(--operon-calendar-accent, var(--text-muted)) 12%, transparent);
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-tracked-session-item.is-unassigned-tracker .operon-calendar-timed-content .operon-calendar-all-day-text {
+	padding-left: 0;
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-tracked-session-item.is-unassigned-tracker .operon-calendar-mobile-timegrid-item-title .operon-calendar-all-day-text {
+	color: var(--text-muted);
+	font-weight: 500;
 }
 
 .operon-settings-external-calendar-card {
@@ -20740,6 +21254,14 @@ body.operon-calendar-touch-drag-active {
 	background: #e14b4b;
 }
 
+.operon-calendar-now-line.is-label-suppressed::before {
+	display: none;
+}
+
+.operon-calendar-now-line.is-shared-day-label {
+	z-index: 4;
+}
+
 .operon-calendar-now-label {
 	position: absolute;
 	top: 0;
@@ -20753,6 +21275,15 @@ body.operon-calendar-touch-drag-active {
 	font-weight: 600;
 	line-height: 1.2;
 	white-space: nowrap;
+}
+
+.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-now-line.is-shared-day-label .operon-calendar-now-label,
+.operon-calendar-root.is-time-grid-semantic-lanes .operon-calendar-now-line.is-shared-day-label .operon-calendar-now-label,
+.operon-calendar-mobile-timegrid.is-time-tracker-grid .operon-calendar-now-line.is-shared-day-label .operon-calendar-now-label,
+.operon-calendar-mobile-timegrid.is-time-grid-semantic-lanes .operon-calendar-now-line.is-shared-day-label .operon-calendar-now-label {
+	left: calc(50% * var(--operon-calendar-now-label-span, 1));
+	right: auto;
+	transform: translate(-50%, -50%);
 }
 
 .operon-calendar-timed-resize-handle {
@@ -26154,8 +26685,33 @@ body.operon-kanban-touch-drag-active {
 
 /* Static-style cleanup helpers */
 .operon-rendered-inline-task-list-item {
+	box-sizing: border-box;
+	display: block;
+	margin: 0;
 	padding: 1px 0;
 	list-style: none;
+	text-indent: 0;
+	overflow: visible;
+	text-decoration: none;
+}
+
+.markdown-preview-view ul > li.task-list-item.operon-rendered-inline-task-list-item,
+.markdown-reading-view ul > li.task-list-item.operon-rendered-inline-task-list-item {
+	margin-inline-start: 0;
+	padding-inline-start: 0;
+	text-indent: 0;
+}
+
+.operon-rendered-inline-task-list-item::marker {
+	content: "";
+}
+
+.operon-rendered-inline-task-list-item > input.task-list-item-checkbox,
+.operon-rendered-inline-task-list-item > .task-list-item-checkbox {
+	display: none;
+}
+
+.operon-rendered-inline-task-list-item > .operon-reading-task-row {
 	text-decoration: none;
 }
 

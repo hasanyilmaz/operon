@@ -1,6 +1,6 @@
 import { Notice } from 'obsidian';
 import { t } from '../core/i18n';
-import { createEmptyTaskCreatorDraft, TaskCreatorDraft } from './task-creator-modal';
+import { applyTaskCreatorInheritedTagsToDraft, createEmptyTaskCreatorDraft, TaskCreatorDraft } from './task-creator-modal';
 import type { CalendarSlotSelection } from '../types/calendar';
 import type { OperonSettings } from '../types/settings';
 import { buildCalendarWritebackPlan } from '../systems/calendar-writeback';
@@ -40,6 +40,7 @@ export interface KanbanTaskCreatorSeed {
 export interface TaskCreatorParentSeed {
 	parentTaskId: string;
 	parentFieldValues: Record<string, string> | null;
+	parentTags?: string[] | null;
 	wasCreated?: boolean;
 	sourceTitle?: string;
 	sourceFilePath?: string;
@@ -93,6 +94,7 @@ export function applyTaskCreatorParentSeedToDraft(
 		parentTaskId,
 		seed?.parentFieldValues,
 		settings,
+		seed?.parentTags,
 	);
 
 	draft.fieldValues['parentTask'] = parentTaskId;
@@ -102,7 +104,8 @@ export function applyTaskCreatorParentSeedToDraft(
 	]);
 	for (const key of candidateKeys) {
 		if (explicitFieldKeys.has(key)) continue;
-		const value = (inherited[key] ?? '').trim();
+		const rawValue = inherited[key];
+		const value = typeof rawValue === 'string' ? rawValue.trim() : '';
 		if (value) {
 			draft.fieldValues[key] = value;
 			inheritedFieldKeys.add(key);
@@ -114,6 +117,9 @@ export function applyTaskCreatorParentSeedToDraft(
 	}
 
 	draft.inheritedFieldKeys = Array.from(inheritedFieldKeys);
+	if (!explicitFieldKeys.has('tags')) {
+		applyTaskCreatorInheritedTagsToDraft(draft, inherited.tags);
+	}
 	draft.taskIcon = draft.fieldValues['taskIcon'] ?? '';
 	draft.taskColor = draft.fieldValues['taskColor'] ?? '';
 	return draft;

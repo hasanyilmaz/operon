@@ -4,6 +4,7 @@ import {
 	getProjectSerialSignature,
 	normalizeProjectSerialState,
 	reconcileProjectSerialAssignments,
+	resolveStoredProjectSerialDisplay,
 	type ProjectSerialDisplay,
 	type ProjectSerialReconcileResult,
 	type ProjectSerialScopeSummary,
@@ -95,6 +96,20 @@ export class ProjectSerialStore {
 		const normalizedId = operonId?.trim() ?? '';
 		if (!normalizedId) return null;
 		return this.displaysByTaskId.get(normalizedId) ?? null;
+	}
+
+	getDisplayForTaskWithFallback(
+		operonId: string | null | undefined,
+		scopes: readonly ProjectSerialScope[],
+		getTaskById: (operonId: string) => IndexedTask | null | undefined,
+	): ProjectSerialDisplay | null {
+		return this.getDisplayForTask(operonId)
+			?? resolveStoredProjectSerialDisplay({
+				scopes,
+				state: this.data,
+				operonId,
+				getTaskById,
+			});
 	}
 
 	getSummary(scopeId: string | null | undefined): ProjectSerialScopeSummary | null {

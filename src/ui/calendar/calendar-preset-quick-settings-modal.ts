@@ -86,10 +86,11 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 			.setDesc(t('calendar', 'calendarPresetTypeDesc'))
 			.addDropdown(dropdown => {
 				dropdown.addOption('timeGrid', t('calendar', 'timeGrid'));
+				dropdown.addOption('timeTrackerGrid', t('calendar', 'timeTrackerGrid'));
 				dropdown.addOption('multiWeek', t('calendar', 'multiWeek'));
 				dropdown.setValue(preset.surfaceType);
 				dropdown.onChange(async value => {
-					if (value !== 'timeGrid' && value !== 'multiWeek') return;
+					if (value !== 'timeGrid' && value !== 'timeTrackerGrid' && value !== 'multiWeek') return;
 					await this.updatePreset(current => {
 						current.surfaceType = value;
 						current.weekCount = this.normalizeWeekCount(current.weekCount);
@@ -208,7 +209,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 			errorContextPrefix: 'calendar preset',
 		});
 
-		if (preset.surfaceType === 'timeGrid') {
+		if (preset.surfaceType === 'timeGrid' || preset.surfaceType === 'timeTrackerGrid') {
 			new Setting(rangeCard)
 				.setName(t('calendar', 'hiddenTime'))
 				.setDesc(t('calendar', 'hiddenTimeDesc'))
@@ -465,7 +466,9 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 		const preset = this.getPreset();
 		if (!preset) return;
 		update(preset);
-		preset.surfaceType = preset.surfaceType === 'multiWeek' ? 'multiWeek' : 'timeGrid';
+		preset.surfaceType = preset.surfaceType === 'multiWeek' || preset.surfaceType === 'timeTrackerGrid'
+			? preset.surfaceType
+			: 'timeGrid';
 		preset.weekCount = this.normalizeWeekCount(preset.weekCount);
 		preset.focusedWeekNumber = this.normalizeFocusedWeekNumber(preset.focusedWeekNumber, preset.weekCount);
 		preset.todayPosition = Math.max(1, Math.min(preset.dayCount, preset.todayPosition));

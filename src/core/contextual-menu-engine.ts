@@ -366,7 +366,7 @@ function resolveActionsForIds(
 		.map(action => ({
 			...action,
 			label: resolveContextualMenuActionLabel(action, context),
-			description: getContextualMenuActionDescription(action),
+			description: resolveContextualMenuActionDescription(action, context),
 		}));
 }
 
@@ -463,7 +463,20 @@ function resolveContextualMenuActionLabel(
 	if (action.id === 'pinToggle') {
 		return context.isPinned ? t('buttons', 'unpin') : t('buttons', 'pin');
 	}
+	if (action.id === 'setAsTracked' && context.surface === 'calendarTimedItem') {
+		return t('settings', 'contextualMenuActionSetAsTrackedCalendarTimed');
+	}
 	return getContextualMenuActionLabel(action);
+}
+
+function resolveContextualMenuActionDescription(
+	action: ContextualMenuActionDefinition,
+	context: ContextualMenuContext,
+): string {
+	if (action.id === 'setAsTracked' && context.surface === 'calendarTimedItem') {
+		return t('settings', 'contextualMenuActionSetAsTrackedCalendarTimedDesc');
+	}
+	return getContextualMenuActionDescription(action);
 }
 
 function getSurfaceActionIds(
@@ -596,6 +609,7 @@ function getEndDateTime(context: ContextualMenuContext): string {
 function hasTrackedCoverageForScheduledRange(trackers: string, start: string, end: string): boolean {
 	if (!trackers || !start || !end) return false;
 	const existingRanges = new Set(parseTrackerList(trackers).map(session => session.raw));
+	if (existingRanges.has(`${start}/${end}`)) return true;
 	const neededRanges = splitTrackerRangeByMidnight(start, end)
 		.map(fragment => `${fragment.start}/${fragment.end}`);
 	return neededRanges.length > 0 && neededRanges.every(range => existingRanges.has(range));

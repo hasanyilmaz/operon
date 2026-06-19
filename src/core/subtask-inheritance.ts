@@ -1,5 +1,6 @@
 import { OperonIndexer } from '../indexer/indexer';
 import {
+	CHILD_TASK_INHERITANCE_TAGS_KEY,
 	DEFAULT_CHILD_TASK_INHERITANCE_FIELDS,
 	isChildTaskInheritanceEligibleFieldKey,
 	normalizeChildTaskInheritanceFields,
@@ -15,7 +16,8 @@ export interface SubtaskInitialFields {
 	priority?: string;
 	taskIcon?: string;
 	taskColor?: string;
-	[key: string]: string | undefined;
+	tags?: string[];
+	[key: string]: string | string[] | undefined;
 }
 
 function resolveInitialStatus(parentStatus: string | undefined, settings: OperonSettings): string | undefined {
@@ -38,12 +40,30 @@ function resolveInheritanceFieldKeys(parentTaskId: string | null, settings: Oper
 	return normalizeChildTaskInheritanceFields(settings.childTaskInheritanceFields, settings.keyMappings);
 }
 
+function normalizeInheritedTags(tags: readonly string[] | null | undefined): string[] {
+	const normalized: string[] = [];
+	const seen = new Set<string>();
+	for (const rawTag of tags ?? []) {
+		const tag = rawTag.trim().replace(/^#/, '').trim();
+		if (!tag || seen.has(tag)) continue;
+		seen.add(tag);
+		normalized.push(tag);
+	}
+	return normalized;
+}
+
 function applyInheritedField(
 	inherited: SubtaskInitialFields,
 	key: string,
 	parentFields: Record<string, string>,
+	parentTags: readonly string[] | null | undefined,
 	settings: OperonSettings,
 ): void {
+	if (key === CHILD_TASK_INHERITANCE_TAGS_KEY) {
+		const normalizedTags = normalizeInheritedTags(parentTags);
+		if (normalizedTags.length > 0) inherited.tags = normalizedTags;
+		return;
+	}
 	if (key === 'status') {
 		const inheritedStatus = resolveInitialStatus(parentFields.status, settings);
 		if (inheritedStatus) inherited.status = inheritedStatus;
@@ -77,20 +97,24 @@ export function resolveSubtaskInitialFieldsFromParentValues(
 	parentTaskId: string | null,
 	parentFieldValues: Record<string, string> | null | undefined,
 	settings: OperonSettings,
+	parentTags?: readonly string[] | null,
 ): SubtaskInitialFields {
 	const inherited: SubtaskInitialFields = {};
 	const parentFields = parentFieldValues ?? {};
 	if (parentTaskId) inherited.parentTask = parentTaskId;
 
 	for (const key of resolveInheritanceFieldKeys(parentTaskId, settings)) {
-		applyInheritedField(inherited, key, parentFields, settings);
+		applyInheritedField(inherited, key, parentFields, parentTags, settings);
 	}
 
 	return inherited;
 }
 
 export function getSubtaskInitialFieldKeys(inherited: SubtaskInitialFields): string[] {
-	return Object.keys(inherited).filter(key => !!inherited[key]?.trim());
+	return Object.keys(inherited).filter(key => {
+		const value = inherited[key];
+		return typeof value === 'string' && !!value.trim();
+	});
 }
 
 export function getSubtaskInheritedFieldKeys(inherited: SubtaskInitialFields): string[] {
@@ -103,5 +127,5 @@ export function resolveSubtaskInitialFields(
 	settings: OperonSettings,
 ): SubtaskInitialFields {
 	const parent = parentTaskId ? indexer.getTask(parentTaskId) : null;
-	return resolveSubtaskInitialFieldsFromParentValues(parentTaskId, parent?.fieldValues, settings);
+	return resolveSubtaskInitialFieldsFromParentValues(parentTaskId, parent?.fieldValues, settings, parent?.tags);
 }

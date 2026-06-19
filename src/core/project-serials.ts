@@ -320,6 +320,38 @@ export function getProjectSerialSignature(displays: Iterable<ProjectSerialDispla
 		.join('|');
 }
 
+export function resolveStoredProjectSerialDisplay(options: {
+	scopes: readonly ProjectSerialScope[];
+	state: ProjectSerialState;
+	operonId: string | null | undefined;
+	getTaskById: (operonId: string) => IndexedTask | null | undefined;
+}): ProjectSerialDisplay | null {
+	const operonId = options.operonId?.trim() ?? '';
+	if (!operonId) return null;
+	const task = options.getTaskById(operonId);
+	if (!task) return null;
+
+	const normalizedScopes = normalizeProjectSerialScopes(options.scopes);
+	const scopeByParentId = new Map(normalizedScopes.map(scope => [scope.parentOperonId, scope]));
+	const scope = resolveNearestProjectSerialScopeFromLookup(task, scopeByParentId, options.getTaskById);
+	if (!scope) return null;
+
+	const assignment = options.state.assignmentsByScopeId[scope.id];
+	if (!assignment) return null;
+	const number = normalizeProjectSerialNumber(assignment.taskNumbers[operonId]);
+	if (number === null) return null;
+
+	const maxAssignedNumber = Math.max(number, getMaxAssignedNumber(assignment.taskNumbers));
+	return {
+		scopeId: scope.id,
+		scopePrefix: scope.prefix,
+		parentOperonId: scope.parentOperonId,
+		number,
+		label: formatProjectSerialLabel(scope.prefix, number, maxAssignedNumber),
+		operonId,
+	};
+}
+
 function collectProjectSerialTaskMembership(
 	scopes: readonly ProjectSerialScope[],
 	tasks: readonly IndexedTask[],
@@ -350,6 +382,23 @@ function resolveNearestProjectSerialScope(
 		const scope = scopeByParentId.get(currentId);
 		if (scope) return scope;
 		const currentTask = taskById.get(currentId);
+		currentId = currentTask?.fieldValues['parentTask']?.trim() ?? '';
+	}
+	return null;
+}
+
+function resolveNearestProjectSerialScopeFromLookup(
+	task: IndexedTask,
+	scopeByParentId: Map<string, ProjectSerialScope>,
+	getTaskById: (operonId: string) => IndexedTask | null | undefined,
+): ProjectSerialScope | null {
+	let currentId = task.operonId;
+	const seen = new Set<string>();
+	while (currentId && !seen.has(currentId)) {
+		seen.add(currentId);
+		const scope = scopeByParentId.get(currentId);
+		if (scope) return scope;
+		const currentTask = currentId === task.operonId ? task : getTaskById(currentId);
 		currentId = currentTask?.fieldValues['parentTask']?.trim() ?? '';
 	}
 	return null;

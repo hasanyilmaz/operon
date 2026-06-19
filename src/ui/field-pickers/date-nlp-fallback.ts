@@ -163,6 +163,58 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		nextWeekdayLabel: name => `Próximo ${name}`,
 		lastWeekdayLabel: name => `${name} pasado`,
 	},
+	'zh-CN': {
+		searchPlaceholder: '输入日期，如 下周二',
+		clear: '清除',
+		apply: '应用',
+		manualDate: '选择日期',
+		parsedFrom: input => `从“${input}”解析`,
+		quickSuggestions: '建议',
+		today: '今天',
+		tomorrow: '明天',
+		yesterday: '昨天',
+		thisWeek: '本周',
+		nextWeek: '下周',
+		lastWeek: '上周',
+		thisWeekend: '本周末',
+		nextWeekend: '下周末',
+		lastWeekend: '上周末',
+		daysAgo: count => `${count}天前`,
+		daysFromNow: count => `${count}天后`,
+		weeksAgo: count => `${count}周前`,
+		weeksFromNow: count => `${count}周后`,
+		monthsAgo: count => `${count}个月前`,
+		monthsFromNow: count => `${count}个月后`,
+		weekdayNames: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+		nextWeekdayLabel: name => `下${name}`,
+		lastWeekdayLabel: name => `上${name}`,
+	},
+	'zh-TW': {
+		searchPlaceholder: '輸入日期，例如 下週二',
+		clear: '清除',
+		apply: '套用',
+		manualDate: '選擇日期',
+		parsedFrom: input => `從「${input}」解析`,
+		quickSuggestions: '建議',
+		today: '今天',
+		tomorrow: '明天',
+		yesterday: '昨天',
+		thisWeek: '本週',
+		nextWeek: '下週',
+		lastWeek: '上週',
+		thisWeekend: '本週末',
+		nextWeekend: '下週末',
+		lastWeekend: '上週末',
+		daysAgo: count => `${count}天前`,
+		daysFromNow: count => `${count}天後`,
+		weeksAgo: count => `${count}週前`,
+		weeksFromNow: count => `${count}週後`,
+		monthsAgo: count => `${count}個月前`,
+		monthsFromNow: count => `${count}個月後`,
+		weekdayNames: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'],
+		nextWeekdayLabel: name => `下${name}`,
+		lastWeekdayLabel: name => `上${name}`,
+	},
 };
 
 const ENGLISH_PHRASES: Record<string, (reference: Date) => Date> = {
@@ -290,6 +342,46 @@ const SPANISH_WEEKDAYS = new Map<string, number>([
 	['sábado', 6],
 ]);
 
+// Chinese relative-date phrases. Keys cover both Simplified and Traditional
+// variants so one map serves zh-CN and zh-TW. Chinese has no inter-word spaces,
+// so matching is whole-string equality rather than prefix + space + token.
+const CHINESE_PHRASES: Record<string, (reference: Date) => Date> = {
+	'今天': reference => cloneDate(reference),
+	'今日': reference => cloneDate(reference),
+	'明天': reference => addDays(reference, 1),
+	'明日': reference => addDays(reference, 1),
+	'后天': reference => addDays(reference, 2),
+	'後天': reference => addDays(reference, 2),
+	'昨天': reference => addDays(reference, -1),
+	'昨日': reference => addDays(reference, -1),
+	'前天': reference => addDays(reference, -2),
+	'这周': reference => startOfWeek(reference),
+	'這週': reference => startOfWeek(reference),
+	'本周': reference => startOfWeek(reference),
+	'本週': reference => startOfWeek(reference),
+	'这星期': reference => startOfWeek(reference),
+	'這星期': reference => startOfWeek(reference),
+	'下周': reference => addDays(startOfWeek(reference), 7),
+	'下週': reference => addDays(startOfWeek(reference), 7),
+	'下星期': reference => addDays(startOfWeek(reference), 7),
+	'上周': reference => addDays(startOfWeek(reference), -7),
+	'上週': reference => addDays(startOfWeek(reference), -7),
+	'上星期': reference => addDays(startOfWeek(reference), -7),
+	'这周末': reference => saturdayOfWeek(reference),
+	'這週末': reference => saturdayOfWeek(reference),
+	'本周末': reference => saturdayOfWeek(reference),
+	'本週末': reference => saturdayOfWeek(reference),
+	'下周末': reference => addDays(saturdayOfWeek(reference), 7),
+	'下週末': reference => addDays(saturdayOfWeek(reference), 7),
+	'上周末': reference => addDays(saturdayOfWeek(reference), -7),
+	'上週末': reference => addDays(saturdayOfWeek(reference), -7),
+};
+
+// Weekday day-characters → JS getDay() index (0 = Sunday). 日/天 both mean Sunday.
+const CHINESE_WEEKDAY_CHARS: Record<string, number> = {
+	'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 0, '天': 0,
+};
+
 const MONTH_ALIASES: Record<DatePickerLang, MonthAlias[]> = {
 	en: [
 		{ month: 1, aliases: ['january', 'jan'] },
@@ -361,6 +453,36 @@ const MONTH_ALIASES: Record<DatePickerLang, MonthAlias[]> = {
 		{ month: 11, aliases: ['noviembre', 'nov'] },
 		{ month: 12, aliases: ['diciembre', 'dic'] },
 	],
+	// Chinese month-day input is parsed by the dedicated Chinese path (digits + 月/日),
+	// so these aliases exist mainly to satisfy the Record type.
+	'zh-CN': [
+		{ month: 1, aliases: ['一月'] },
+		{ month: 2, aliases: ['二月'] },
+		{ month: 3, aliases: ['三月'] },
+		{ month: 4, aliases: ['四月'] },
+		{ month: 5, aliases: ['五月'] },
+		{ month: 6, aliases: ['六月'] },
+		{ month: 7, aliases: ['七月'] },
+		{ month: 8, aliases: ['八月'] },
+		{ month: 9, aliases: ['九月'] },
+		{ month: 10, aliases: ['十月'] },
+		{ month: 11, aliases: ['十一月'] },
+		{ month: 12, aliases: ['十二月'] },
+	],
+	'zh-TW': [
+		{ month: 1, aliases: ['一月'] },
+		{ month: 2, aliases: ['二月'] },
+		{ month: 3, aliases: ['三月'] },
+		{ month: 4, aliases: ['四月'] },
+		{ month: 5, aliases: ['五月'] },
+		{ month: 6, aliases: ['六月'] },
+		{ month: 7, aliases: ['七月'] },
+		{ month: 8, aliases: ['八月'] },
+		{ month: 9, aliases: ['九月'] },
+		{ month: 10, aliases: ['十月'] },
+		{ month: 11, aliases: ['十一月'] },
+		{ month: 12, aliases: ['十二月'] },
+	],
 };
 
 export function getDatePickerStrings(language: DatePickerLang): DatePickerStrings {
@@ -418,6 +540,18 @@ export function parseFallbackDateCandidates(input: string, context: DateParseCon
 	const strings = STRINGS[context.language];
 	const reference = context.referenceDate ?? normalizedToday();
 
+	// Chinese grammar is spaceless and orders dates month→day, so it uses a
+	// dedicated parser instead of the Latin-script numeric/day-month regexes.
+	if (context.language === 'zh-CN' || context.language === 'zh-TW') {
+		const chinese = parseChineseCandidates(normalized, strings, context, reference);
+		if (chinese.length > 0) {
+			return sortCandidatesByReference(dedupeDateCandidates(chinese), reference);
+		}
+		const absolute = parseAbsoluteDate(normalized, context);
+		if (absolute) return [absolute];
+		return [];
+	}
+
 	const numeric = parseNumericRelativeCandidates(normalized, strings, context, reference);
 	const dayMonth = parseDayMonthCandidates(normalized, strings, context, reference);
 	if (numeric.length > 0 || dayMonth.length > 0) {
@@ -440,6 +574,139 @@ export function parseFallbackDateCandidates(input: string, context: DateParseCon
 	}
 
 	return [];
+}
+
+function parseChineseCandidates(
+	input: string,
+	strings: DatePickerStrings,
+	context: DateParseContext,
+	reference: Date,
+): DateParseCandidate[] {
+	const candidates: DateParseCandidate[] = [];
+	const pushNlpDate = (date: Date, confidence = 0.96): void => {
+		candidates.push({
+			isoDate: toIsoDate(date),
+			primaryLabel: formatLongDate(date, context.language),
+			secondaryLabel: strings.parsedFrom(input),
+			source: 'fallback',
+			confidence,
+			kind: 'nlp',
+		});
+	};
+
+	// Whole-string relative phrase: 今天 / 明天 / 下周 / 本周末 …
+	const phrase = CHINESE_PHRASES[input];
+	if (phrase) {
+		pushNlpDate(phrase(reference));
+		return candidates;
+	}
+
+	// Weekday: optional 下/上/这/本 prefix + 周/週/星期/礼拜 + day char (下周二, 周五, 本週日).
+	const weekdayMatch = /^(下个|下個|下一|下|上个|上個|上一|上|这个|這個|这|這|本)?(?:周|週|星期|礼拜|禮拜)([一二三四五六日天])$/.exec(input);
+	if (weekdayMatch) {
+		const weekday = CHINESE_WEEKDAY_CHARS[weekdayMatch[2]];
+		if (weekday !== undefined) {
+			const prefix = weekdayMatch[1] ?? '';
+			if (prefix === '') {
+				pushNlpDate(nextWeekday(reference, weekday));
+			} else if (prefix.startsWith('下')) {
+				pushNlpDate(addDays(weekdayInCurrentWeek(reference, weekday), 7));
+			} else if (prefix.startsWith('上')) {
+				pushNlpDate(addDays(weekdayInCurrentWeek(reference, weekday), -7));
+			} else {
+				pushNlpDate(weekdayInCurrentWeek(reference, weekday));
+			}
+			return candidates;
+		}
+	}
+
+	// Numeric relative: number + unit + optional direction (3天后, 2周前, 1个月后, 5天).
+	// 后/後 → future, 前 → past, no direction → both, mirroring the Latin path.
+	// Days use 天 only; 日 is reserved as the day-of-month marker (15日 = the 15th).
+	const relativeMatch = /^(\d{1,3})(个月|個月|周|週|星期|礼拜|禮拜|天)(后|後|前)?$/.exec(input);
+	if (relativeMatch) {
+		const amount = Number(relativeMatch[1]);
+		const unit = relativeMatch[2];
+		const direction = relativeMatch[3] ?? '';
+		if (Number.isFinite(amount) && amount > 0) {
+			const isMonth = unit === '个月' || unit === '個月';
+			const isDay = unit === '天';
+			const wantFuture = direction === '' || direction === '后' || direction === '後';
+			const wantPast = direction === '' || direction === '前';
+			const shift = (sign: number): Date =>
+				isMonth ? addMonths(reference, sign * amount)
+				: isDay ? addDays(reference, sign * amount)
+				: addDays(reference, sign * amount * 7);
+			const futureLabel = isMonth ? strings.monthsFromNow(amount) : isDay ? strings.daysFromNow(amount) : strings.weeksFromNow(amount);
+			const pastLabel = isMonth ? strings.monthsAgo(amount) : isDay ? strings.daysAgo(amount) : strings.weeksAgo(amount);
+			if (wantFuture) candidates.push(buildRelativeCandidate(futureLabel, shift(1), context));
+			if (wantPast) candidates.push(buildRelativeCandidate(pastLabel, shift(-1), context));
+			return candidates;
+		}
+	}
+
+	// Month + day: 3月15日 / 3月15 → this year or next year within the open window.
+	const monthDayMatch = /^(\d{1,2})月(\d{1,2})[日号號]?$/.exec(input);
+	if (monthDayMatch) {
+		return chineseDateInWindow(Number(monthDayMatch[1]), Number(monthDayMatch[2]), input, strings, context, reference);
+	}
+
+	// Day only: 15日 / 15号 → this month or next month within the open window.
+	const dayMatch = /^(\d{1,2})[日号號]$/.exec(input);
+	if (dayMatch) {
+		const day = Number(dayMatch[1]);
+		const refMonth = reference.getMonth() + 1;
+		const refYear = reference.getFullYear();
+		const thisMonth = chineseDateInWindow(refMonth, day, input, strings, context, reference);
+		const nextMonth = refMonth === 12
+			? chineseDateInWindow(1, day, input, strings, context, reference, refYear + 1)
+			: chineseDateInWindow(refMonth + 1, day, input, strings, context, reference);
+		return dedupeDateCandidates([...thisMonth, ...nextMonth]);
+	}
+
+	return candidates;
+}
+
+// Build month-day candidates that fall inside the open [reference, reference+365] window,
+// trying the reference year and the following year (or an explicit year when provided).
+function chineseDateInWindow(
+	month: number,
+	day: number,
+	input: string,
+	strings: DatePickerStrings,
+	context: DateParseContext,
+	reference: Date,
+	explicitYear?: number,
+): DateParseCandidate[] {
+	if (month < 1 || month > 12 || day < 1 || day > 31) return [];
+	const referenceDate = cloneDate(reference);
+	const latestDate = addDays(referenceDate, 365);
+	const years = explicitYear !== undefined
+		? [explicitYear]
+		: [referenceDate.getFullYear(), referenceDate.getFullYear() + 1];
+	const byIso = new Map<string, DateParseCandidate>();
+	for (const year of years) {
+		const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+		if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) continue;
+		if (date.getTime() < referenceDate.getTime() || date.getTime() > latestDate.getTime()) continue;
+		const isoDate = toIsoDate(date);
+		byIso.set(isoDate, {
+			isoDate,
+			primaryLabel: formatLongDate(date, context.language),
+			secondaryLabel: strings.parsedFrom(input),
+			source: 'fallback',
+			confidence: 0.97,
+			kind: 'nlp',
+		});
+	}
+	return [...byIso.values()].sort((a, b) => a.isoDate.localeCompare(b.isoDate));
+}
+
+// Locate a weekday (0 = Sunday) within the Monday-started week of the reference date.
+function weekdayInCurrentWeek(date: Date, weekday: number): Date {
+	const monday = startOfWeek(date);
+	const offsetFromMonday = weekday === 0 ? 6 : weekday - 1;
+	return addDays(monday, offsetFromMonday);
 }
 
 function parsePhraseDate(input: string, language: DatePickerLang, reference: Date): Date | null {
@@ -771,12 +1038,22 @@ function toIsoDate(date: Date): string {
 }
 
 function formatLongDate(date: Date, language: DatePickerLang): string {
-	return new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
+	return new Intl.DateTimeFormat(datePickerLocaleTag(language), {
 		weekday: 'long',
 		year: 'numeric',
 		month: 'long',
 		day: 'numeric',
 	}).format(date);
+}
+
+function datePickerLocaleTag(language: DatePickerLang): string {
+	if (language === 'tr') return 'tr-TR';
+	if (language === 'de') return 'de-DE';
+	if (language === 'fr') return 'fr-FR';
+	if (language === 'es') return 'es-ES';
+	if (language === 'zh-CN') return 'zh-CN';
+	if (language === 'zh-TW') return 'zh-TW';
+	return 'en-US';
 }
 
 function normalizeInput(input: string): string {

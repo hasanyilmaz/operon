@@ -64,9 +64,10 @@ import {
 
 export const CURRENT_SETTINGS_VERSION = 96;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
-export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es'] as const;
+export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
 export const DEFAULT_CHILD_TASK_INHERITANCE_FIELDS = ['status', 'priority', 'taskIcon', 'taskColor'] as const;
+export const CHILD_TASK_INHERITANCE_TAGS_KEY = 'tags';
 export type ChildTaskInheritanceStatusPipelineSource = 'parent' | 'default';
 
 export function isSupportedLanguage(value: string): value is OperonLanguage {
@@ -998,6 +999,9 @@ export function isChildTaskInheritanceEligibleFieldKey(
 	const normalizedKey = canonicalKey.trim();
 	if (!normalizedKey || CHILD_TASK_INHERITANCE_BLOCKED_FIELD_KEYS.has(normalizedKey) || isRetiredKeyMapping(normalizedKey)) {
 		return false;
+	}
+	if (normalizedKey === CHILD_TASK_INHERITANCE_TAGS_KEY) {
+		return true;
 	}
 	const canonical = CANONICAL_KEYS.find(key => key.name === normalizedKey);
 	if (canonical) {
@@ -2021,7 +2025,8 @@ function normalizeCalendarPresetDefinition(raw: unknown): CalendarPreset | null 
 }
 
 function normalizeCalendarSurfaceType(value: unknown): CalendarSurfaceType {
-	return value === 'multiWeek' ? 'multiWeek' : 'timeGrid';
+	if (value === 'multiWeek' || value === 'timeTrackerGrid') return value;
+	return 'timeGrid';
 }
 
 function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {

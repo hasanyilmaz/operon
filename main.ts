@@ -30,7 +30,7 @@ import { TotalEstimateCalculator } from './src/systems/total-estimate';
 import { AggregateCoordinator } from './src/systems/aggregate-coordinator';
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
 import { TimeTracker } from './src/systems/time-tracker';
-import type { TrackerSource, TrackerStopReason } from './src/types/tracker';
+import type { TrackerSession, TrackerSource, TrackerStopReason } from './src/types/tracker';
 import { RecurrenceMaterializationResult, RecurrenceService } from './src/systems/recurrence-service';
 import {
 	canMoveOccurrenceDate,
@@ -105,8 +105,10 @@ import { operonLivePreviewKeySuggestExtension } from './src/ui/live-preview-key-
 import { debugTaskFieldSuggestion } from './src/ui/task-field-suggest';
 import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
 import {
+	createIndexedReadingResolvedTask,
 	resolveReadingInlineTaskFromText,
 	resolveReadingSectionInlineTasks,
+	type ReadingResolvedTask,
 	type ReadingSectionInlineTaskResolution,
 } from './src/ui/reading-task-operon-id';
 import { enhanceReadingTaskFileWikilinks } from './src/ui/reading-task-wikilink-overlay';
@@ -316,7 +318,7 @@ import {
 	PriorityRenameExecutionResult,
 	PriorityRenamePreview,
 } from './src/core/priority-rename-migration';
-import { CalendarView, CALENDAR_VIEW_TYPE } from './src/ui/calendar/calendar-view';
+import { CalendarView, CALENDAR_VIEW_TYPE, type CalendarTrackedSessionRef } from './src/ui/calendar/calendar-view';
 import {
 	filterTasksForCalendar,
 } from './src/systems/calendar-filter-materialization';
@@ -333,6 +335,7 @@ import {
 	resolveCalendarInlineHeading,
 } from './src/systems/calendar-writeback';
 import { CalendarSlotActionId, SlotActionModal } from './src/ui/calendar/slot-action-modal';
+import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './src/ui/tracker-session-edit-modal';
 import { CalendarPresetQuickSettingsModal } from './src/ui/calendar/calendar-preset-quick-settings-modal';
 import { buildRepeatScopeModalLabels, promptRepeatOccurrenceScope } from './src/ui/calendar/repeat-occurrence-scope-modal';
 import { KanbanView, KANBAN_VIEW_TYPE } from './src/ui/kanban/kanban-view';
@@ -381,6 +384,7 @@ interface BulkSelectionTaskNode {
 	indent: number;
 	operonId: string;
 	fieldValues: Record<string, string>;
+	tags: string[];
 }
 
 interface BulkSelectionLineChange {
@@ -422,6 +426,7 @@ interface TaskCreatorInlineTargetFile {
 	file: TFile;
 	fallbackParentTaskId: string | null;
 	fallbackParentFieldValues: Record<string, string> | null;
+	fallbackParentTags: string[] | null;
 	dailyDateHeading?: string | null;
 }
 
@@ -654,6 +659,7 @@ export default class OperonPlugin extends Plugin {
 		private duplicateAlertPendingFocusOperonId: string | null = null;
 		private duplicateAlertLastNoticeSignature: string | null = null;
 		private unsubscribePinnedCache: (() => void) | null = null;
+		private unsubscribeProjectSerials: (() => void) | null = null;
 		private startupReady = false;
 	private refreshViewsCallCount = 0;
 	private statusCyclePerfTraceCounter = 0;
@@ -854,7 +860,15 @@ export default class OperonPlugin extends Plugin {
 		}
 		void this.externalCalendarService?.applySettings(this.settings.externalCalendars);
 		initI18n(getAppLocale(this.app), this.settings.language);
-		void this.reconcileProjectSerials({ notifyCapacity: true });
+		void this.reconcileProjectSerials({ notifyCapacity: true })
+			.then(() => {
+				if (this.startupReady) {
+					this.refreshViews({ reason: 'project-serials' });
+				}
+			})
+			.catch(error => {
+				console.warn('Operon: failed to reconcile project serials after settings change', error);
+			});
 		this.applyWorkspaceTweaks();
 		this.scheduleWorkspacePropertiesCollapseForAllViews();
 		this.trackerStatusBar?.render();
@@ -865,6 +879,17 @@ export default class OperonPlugin extends Plugin {
 
 	private getProjectSerialDisplayForTask(operonId: string): ProjectSerialDisplay | null {
 		return this.storage.projectSerials.getDisplayForTask(operonId);
+	}
+
+	private getReadingProjectSerialDisplayForTask(operonId: string, task?: IndexedTask): ProjectSerialDisplay | null {
+		return this.storage.projectSerials.getDisplayForTaskWithFallback(
+			operonId,
+			this.settings.projectSerialScopes,
+			(candidateId) => {
+				if (task?.operonId === candidateId) return task;
+				return this.indexer.getTask(candidateId) ?? null;
+			},
+		);
 	}
 
 	private getProjectSerialSignature(): string {
@@ -1359,6 +1384,10 @@ export default class OperonPlugin extends Plugin {
 			if (!this.startupReady) return;
 			this.refreshViews();
 		});
+		this.unsubscribeProjectSerials = this.storage.projectSerials.subscribe(() => {
+			if (!this.startupReady) return;
+			this.refreshViews({ reason: 'project-serials' });
+		});
 		this.externalCalendarService = new ExternalCalendarService(
 			this.storage.externalCalendars,
 			() => {
@@ -1370,6 +1399,8 @@ export default class OperonPlugin extends Plugin {
 		this.register(() => {
 			this.unsubscribePinnedCache?.();
 			this.unsubscribePinnedCache = null;
+			this.unsubscribeProjectSerials?.();
+			this.unsubscribeProjectSerials = null;
 		});
 		this.keyMappingSignature = this.buildKeyMappingSignature();
 
@@ -1645,6 +1676,8 @@ export default class OperonPlugin extends Plugin {
 		this.trackerStatusBar = null;
 		this.unsubscribePinnedCache?.();
 		this.unsubscribePinnedCache = null;
+		this.unsubscribeProjectSerials?.();
+		this.unsubscribeProjectSerials = null;
 		await this.externalCalendarService?.destroy();
 		this.externalCalendarService = null;
 		this.duplicateOperonIdModal?.close();
@@ -1853,11 +1886,17 @@ export default class OperonPlugin extends Plugin {
 				() => this.storage.repeatSeries.getAllEntries(),
 				(rangeStart, rangeEnd, presetId, showExternalCalendarsOverride) => this.getExternalCalendarItemsForRange(rangeStart, rangeEnd, presetId, showExternalCalendarsOverride),
 				{
+					getTrackedSessions: (rangeStart, rangeEnd) => this.timeTracker.getSessionsForRange(rangeStart, rangeEnd),
+					getActiveTrackerState: () => this.timeTracker.getActiveState(),
 					onTimedSlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
+					onTrackedSlotSelection: (selection) => this.createTrackedSessionFromCalendarSelection(selection),
 					onMobileTimedSlotCreate: (selection) => this.handleMobileCalendarSlotCreate(leaf, selection),
 					onTimedItemMove: (taskId, selection) => this.handleCalendarTimedMove(taskId, selection),
 					onTimedItemResizeStart: (taskId, selection) => this.handleCalendarTimedResize(taskId, selection),
 					onTimedItemResizeEnd: (taskId, selection) => this.handleCalendarTimedResize(taskId, selection),
+					onTrackedSessionMove: (session, selection) => this.handleCalendarTrackedSessionUpdate(session, selection),
+					onTrackedSessionResize: (session, selection) => this.handleCalendarTrackedSessionUpdate(session, selection),
+					onTrackedSessionOpen: (session) => this.openCalendarTrackedSessionEditor(session),
 					onTimedItemDropToAllDay: (taskId, selection) => this.handleCalendarTimedDropToAllDay(taskId, selection),
 					onAllDaySlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
 					onAllDayScheduledMove: (taskId, selection) => this.handleCalendarScheduledMove(taskId, selection),
@@ -2617,8 +2656,16 @@ export default class OperonPlugin extends Plugin {
 				}
 				this.refreshTimeSessionHistoryLeaves(true);
 				this.refreshViews();
-				new Notice(t('notifications', 'trackedTimeRange', {
-					range: `${formatUiTime(this.app, this.settings, start)}-${formatUiTime(this.app, this.settings, end)}`,
+				const task = this.indexer.getTask(id);
+				const startDate = parseLocalDatetime(start);
+				const endDate = parseLocalDatetime(end);
+				const durationSeconds = startDate && endDate
+					? Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 1000))
+					: 0;
+				new Notice(t('notifications', 'calendarPlannedTimeLoggedAsTracked', {
+					task: task?.description || id,
+					duration: formatDurationHuman(durationSeconds),
+					range: this.formatCalendarTrackedSessionRange(start, end),
 				}));
 			},
 			clearDueDate: async (id) => {
@@ -2841,6 +2888,126 @@ export default class OperonPlugin extends Plugin {
 			changedKeys,
 		});
 		this.refreshViews();
+	}
+
+	private resolveTrackedSessionByRange(session: CalendarTrackedSessionRef): TrackerSession | null {
+		if (!session.operonId) return null;
+		const sessions = this.timeTracker.getTaskSessions(session.operonId);
+		if (typeof session.sessionIndex === 'number') {
+			const candidate = sessions.find(entry => entry.sessionIndex === session.sessionIndex);
+			if (candidate?.start === session.start && candidate.end === session.end) {
+				return candidate;
+			}
+		}
+		const matches = sessions.filter(candidate => candidate.start === session.start && candidate.end === session.end);
+		return matches.length === 1 ? matches[0] : null;
+	}
+
+	private formatCalendarTrackedSessionRange(start: string, end: string): string {
+		const startDate = start.substring(0, 10);
+		const endDate = end.substring(0, 10);
+		const startTime = formatUiTime(this.app, this.settings, start);
+		const endTime = formatUiTime(this.app, this.settings, end);
+		if (startDate && startDate === endDate) {
+			return `${startDate} ${startTime}-${endTime}`;
+		}
+		return `${startDate || start} ${startTime} - ${endDate || end} ${endTime}`;
+	}
+
+	private handleCalendarTrackedSessionStale(): void {
+		new Notice(t('notifications', 'calendarTrackedSessionStale'));
+		this.refreshTimeSessionHistoryLeaves(true);
+		this.refreshViews();
+	}
+
+	private async handleCalendarTrackedSessionUpdate(
+		session: CalendarTrackedSessionRef,
+		selection: CalendarSlotSelection,
+	): Promise<void> {
+		if (selection.mode !== 'timed' || !session.operonId) return;
+		const currentSession = this.resolveTrackedSessionByRange(session);
+		if (!currentSession) {
+			this.handleCalendarTrackedSessionStale();
+			return;
+		}
+		const task = currentSession?.task ?? this.indexer.getTask(session.operonId) ?? null;
+		const updated = await this.timeTracker.updateSessionByRange(
+			session.operonId,
+			session.start,
+			session.end,
+			selection.start,
+			selection.end,
+			session.sessionIndex,
+		);
+		if (!updated) {
+			this.handleCalendarTrackedSessionStale();
+			return;
+		}
+		this.refreshTimeSessionHistoryLeaves(true);
+		this.refreshViews();
+		new Notice(formatTaskNotice('time-session-edited', {
+			description: task?.description ?? session.operonId,
+			operonId: session.operonId,
+		}));
+	}
+
+	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef): void {
+		if (!session.operonId) return;
+		const currentSession = this.resolveTrackedSessionByRange(session);
+		const task = currentSession?.task ?? this.indexer.getTask(session.operonId) ?? null;
+		if (!currentSession || !task) {
+			this.handleCalendarTrackedSessionStale();
+			return;
+		}
+		const taskLabel = task.description || task.operonId;
+
+		new TrackerSessionEditModal(this.app, {
+			title: t('taskEditor', 'editSession'),
+			...buildTrackerSessionEditContext({
+				taskLabel,
+				start: currentSession.start,
+				end: currentSession.end,
+			}),
+			initialStart: currentSession.start,
+			initialEnd: currentSession.end,
+			onSave: async (start, end) => {
+				const updated = await this.timeTracker.updateSessionByRange(
+					session.operonId,
+					session.start,
+					session.end,
+					start,
+					end,
+					session.sessionIndex,
+				);
+				if (!updated) {
+					this.handleCalendarTrackedSessionStale();
+					return false;
+				}
+				this.refreshTimeSessionHistoryLeaves(true);
+				this.refreshViews();
+				new Notice(formatTaskNotice('time-session-edited', {
+					description: taskLabel,
+					operonId: session.operonId,
+				}));
+				return true;
+			},
+			onDelete: async () => {
+				const deleted = await this.timeTracker.deleteSessionByRange(
+					session.operonId,
+					session.start,
+					session.end,
+					session.sessionIndex,
+				);
+				if (!deleted) {
+					this.handleCalendarTrackedSessionStale();
+					return false;
+				}
+				this.refreshTimeSessionHistoryLeaves(true);
+				this.refreshViews();
+				new Notice(t('notifications', 'calendarTrackedSessionDeleted', { task: taskLabel }));
+				return true;
+			},
+		}).open();
 	}
 
 	private async handleCalendarTimedDropToAllDay(taskId: string, selection: CalendarSlotSelection): Promise<void> {
@@ -3352,9 +3519,10 @@ export default class OperonPlugin extends Plugin {
 
 		const added = await this.timeTracker.addSession(task.operonId, start, end);
 		if (!added) {
-			new Notice(t('notifications', 'taskSaveFailed'));
+			new Notice(t('notifications', 'calendarTrackedSessionSaveFailed'));
 			return;
 		}
+		this.refreshTimeSessionHistoryLeaves(true);
 		this.refreshViews();
 		new Notice(t('notifications', 'calendarTrackedSessionAdded', {
 			task: task.description || task.operonId,
@@ -3815,7 +3983,7 @@ export default class OperonPlugin extends Plugin {
 					if (!modal || this.taskCreatorModal !== modal) return;
 					this.maybeNoticeCalendarDailyNoteCreated(parentSeed);
 					if (parentSeed) {
-						modal.applyBackgroundParentSeed(parentSeed.parentTaskId, parentSeed.parentFieldValues);
+						modal.applyBackgroundParentSeed(parentSeed.parentTaskId, parentSeed.parentFieldValues, parentSeed.parentTags);
 					}
 				});
 		}, 0);
@@ -3860,6 +4028,9 @@ export default class OperonPlugin extends Plugin {
 			let parentFieldValues = dailyNote.operonParentFieldValues
 				? { ...dailyNote.operonParentFieldValues }
 				: null;
+			let parentTags: string[] | null = dailyNote.operonParentTags
+				? [...dailyNote.operonParentTags]
+				: null;
 
 			if (!parentTaskId) {
 				parentTaskId = resolveFileTaskAutoParentOperonId({
@@ -3878,6 +4049,7 @@ export default class OperonPlugin extends Plugin {
 			const indexedParent = parentTaskId ? this.indexer.getTask(parentTaskId) ?? null : null;
 			if (indexedParent) {
 				parentFieldValues = { ...indexedParent.fieldValues };
+				parentTags = [...indexedParent.tags];
 			}
 
 			if (!parentTaskId || !parentFieldValues) {
@@ -3886,6 +4058,7 @@ export default class OperonPlugin extends Plugin {
 					parentTaskId = document.managedFieldValues['operonId']?.trim() || null;
 				}
 				parentFieldValues = parentFieldValues ?? { ...document.managedFieldValues };
+				parentTags = parentTags ?? [...document.tags];
 			}
 
 			if (!parentTaskId) return null;
@@ -3897,6 +4070,7 @@ export default class OperonPlugin extends Plugin {
 			return {
 				parentTaskId,
 				parentFieldValues,
+				parentTags,
 				wasCreated: dailyNote.wasCreated,
 				sourceTitle: dailyNote.file.basename,
 				sourceFilePath: dailyNote.file.path,
@@ -3942,11 +4116,17 @@ export default class OperonPlugin extends Plugin {
 		selection: CalendarSlotSelection,
 		draft: TaskCreatorDraft,
 	): Promise<boolean> {
-		if (this.resolveEffectiveInlineTaskSaveMode() !== 'daily-notes') {
-			const created = await this.createInlineTaskFromCreatorDraftResult(draft, {
+		const explicitParentTaskId = (draft.fieldValues['parentTask'] ?? '').trim();
+		const hasExplicitParentTask = !!explicitParentTaskId && draft.explicitFieldKeys.includes('parentTask');
+		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
+		if (hasExplicitParentTask || saveMode !== 'daily-notes') {
+			const inlineCreationOptions: TaskCreatorInlineCreationOptions = {
 				targetDateKey: selection.startDate,
-				parentAwarePlacement: false,
-			});
+			};
+			if (!hasExplicitParentTask) {
+				inlineCreationOptions.parentAwarePlacement = false;
+			}
+			const created = await this.createInlineTaskFromCreatorDraftResult(draft, inlineCreationOptions);
 			if (!created) return false;
 			this.maybeNoticeCalendarCreatorFilterMismatch(
 				leaf,
@@ -3972,6 +4152,9 @@ export default class OperonPlugin extends Plugin {
 			fallbackParentFieldValues: parentTaskExplicitlyCleared
 				? null
 				: parentSeed?.parentFieldValues ?? (dailyNote.wasCreated ? dailyNote.operonParentFieldValues : null),
+			fallbackParentTags: parentTaskExplicitlyCleared
+				? null
+				: parentSeed?.parentTags ?? (dailyNote.wasCreated ? dailyNote.operonParentTags : null),
 			autoParentEnabled: !parentTaskExplicitlyCleared,
 		});
 		if (!created) {
@@ -4012,6 +4195,7 @@ export default class OperonPlugin extends Plugin {
 		wasCreated: boolean;
 		operonParentTaskId: string | null;
 		operonParentFieldValues: Record<string, string> | null;
+		operonParentTags: string[] | null;
 	}> {
 		const config = await this.loadDailyNotesPluginConfig();
 		const filePath = resolveDailyNotePathFromDateKey(dateKey, config);
@@ -4021,6 +4205,7 @@ export default class OperonPlugin extends Plugin {
 				wasCreated: false,
 				operonParentTaskId: null,
 				operonParentFieldValues: null,
+				operonParentTags: null,
 			};
 		}
 		const existing = this.app.vault.getAbstractFileByPath(filePath);
@@ -4030,6 +4215,7 @@ export default class OperonPlugin extends Plugin {
 				wasCreated: false,
 				operonParentTaskId: null,
 				operonParentFieldValues: null,
+				operonParentTags: null,
 			};
 		}
 		if (existing) {
@@ -4038,6 +4224,7 @@ export default class OperonPlugin extends Plugin {
 				wasCreated: false,
 				operonParentTaskId: null,
 				operonParentFieldValues: null,
+				operonParentTags: null,
 			};
 		}
 
@@ -4052,6 +4239,7 @@ export default class OperonPlugin extends Plugin {
 				wasCreated: false,
 				operonParentTaskId: null,
 				operonParentFieldValues: null,
+				operonParentTags: null,
 			};
 		}
 
@@ -4068,6 +4256,7 @@ export default class OperonPlugin extends Plugin {
 			operonParentFieldValues: initializedDocument?.managedFieldValues
 				? { ...initializedDocument.managedFieldValues }
 				: null,
+			operonParentTags: initializedDocument ? [...initializedDocument.tags] : null,
 		};
 	}
 
@@ -4252,6 +4441,7 @@ export default class OperonPlugin extends Plugin {
 			tags?: string[];
 			fallbackParentTaskId?: string | null;
 			fallbackParentFieldValues?: Record<string, string> | null;
+			fallbackParentTags?: string[] | null;
 		} = {},
 	): Promise<{ operonId: string; lineNumber: number } | null> {
 		const content = await this.app.vault.cachedRead(file);
@@ -4271,6 +4461,7 @@ export default class OperonPlugin extends Plugin {
 				options.fallbackParentTaskId ?? null,
 				options.fallbackParentFieldValues,
 				this.settings,
+				options.fallbackParentTags,
 			);
 		const provisionalTaskLine = this.buildNewInlineTaskWithInheritedFields(
 			options.description ?? '',
@@ -4293,7 +4484,10 @@ export default class OperonPlugin extends Plugin {
 			this.setParsedTaskField(parsed, key, value);
 		}
 		if (options.tags?.length) {
-			parsed.tags = [...new Set(options.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean))];
+			parsed.tags = [...new Set([
+				...parsed.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+				...options.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+			])];
 		}
 		this.touchParsedTaskModifiedTimestamp(parsed, now);
 
@@ -4314,6 +4508,7 @@ export default class OperonPlugin extends Plugin {
 			checkbox: ParsedTask['checkbox'];
 			fallbackParentTaskId?: string | null;
 			fallbackParentFieldValues?: Record<string, string> | null;
+			fallbackParentTags?: string[] | null;
 		},
 	): Promise<{ operonId: string; lineNumber: number } | null> {
 		const content = await this.app.vault.cachedRead(file);
@@ -4333,6 +4528,7 @@ export default class OperonPlugin extends Plugin {
 				seed.fallbackParentTaskId ?? null,
 				seed.fallbackParentFieldValues,
 				this.settings,
+				seed.fallbackParentTags,
 			);
 		const provisionalTaskLine = this.buildNewInlineTaskWithInheritedFields(
 			'',
@@ -4350,7 +4546,10 @@ export default class OperonPlugin extends Plugin {
 			this.setParsedTaskField(parsed, key, value);
 		}
 		if (seed.tags.length) {
-			parsed.tags = [...new Set(seed.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean))];
+			parsed.tags = [...new Set([
+				...parsed.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+				...seed.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+			])];
 		}
 		this.touchParsedTaskModifiedTimestamp(parsed, now);
 
@@ -4526,8 +4725,15 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private applyInheritedSubtaskFields(task: ParsedTask, inherited: SubtaskInitialFields): void {
+		if (inherited.tags?.length) {
+			task.tags = Array.from(new Set([
+				...task.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+				...inherited.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+			]));
+		}
 		for (const key of getSubtaskInitialFieldKeys(inherited)) {
-			const value = inherited[key]?.trim();
+			const rawValue = inherited[key];
+			const value = typeof rawValue === 'string' ? rawValue.trim() : '';
 			if (!value) continue;
 			this.setParsedTaskField(task, key, value, getManagedTaskFieldType(key, this.settings.keyMappings) ?? 'text');
 		}
@@ -4548,9 +4754,17 @@ export default class OperonPlugin extends Plugin {
 			const datetimeCreatedKey = this.getInlineWriteKeyName('datetimeCreated');
 			const datetimeModifiedKey = this.getInlineWriteKeyName('datetimeModified');
 			const inheritedFragments = getSubtaskInitialFieldKeys(inherited)
-				.map(key => `{{${this.getInlineWriteKeyName(key)}:: ${inherited[key]?.trim() ?? ''}}}`);
+				.map(key => {
+					const value = inherited[key];
+					return `{{${this.getInlineWriteKeyName(key)}:: ${typeof value === 'string' ? value.trim() : ''}}}`;
+				});
+			const inheritedTagFragments = (inherited.tags ?? [])
+				.map(tag => tag.replace(/^#/, '').trim())
+				.filter(Boolean)
+				.map(tag => `#${tag}`);
 			return [
 				`- [${checkboxToken}] ${description}`,
+				...inheritedTagFragments,
 				`{{${operonIdKey}:: ${generateOperonId()}}}`,
 				`{{${datetimeCreatedKey}:: ${now}}}`,
 				...inheritedFragments,
@@ -5204,7 +5418,7 @@ export default class OperonPlugin extends Plugin {
 				getAllTasks: () => this.indexer.getAllTasks(),
 				getFileTaskByPath: (filePath: string) => this.indexer.getFileTaskByPath(filePath),
 				getDescendantTaskSummary: (operonId: string) => this.indexer.getDescendantTaskSummary(operonId),
-				getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
+				getProjectSerialDisplay: (operonId: string, task?: IndexedTask) => this.getReadingProjectSerialDisplayForTask(operonId, task),
 				openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
 				cycleStatus: (operonId: string) => { void this.cycleTaskStatusById(operonId); },
 					onContextualAction: (
@@ -5233,9 +5447,9 @@ export default class OperonPlugin extends Plugin {
 					const sectionInfo = ctx.getSectionInfo(li);
 					if (sectionInfo && this.isFencedMarkdownSection(sectionInfo)) continue;
 
-					let indexed: IndexedTask | null = null;
+					let resolvedTask: ReadingResolvedTask | null = null;
 					let resolvedBy: 'source-line' | 'rendered-id' | 'section-cursor' | null = null;
-					let sectionIndexed: IndexedTask | null = null;
+					let sectionResolved: ReadingResolvedTask | null = null;
 					let sourceLineMatchedTask = false;
 					if (sectionInfo) {
 						const sectionKey = `${sectionInfo.lineStart}:${sectionInfo.lineEnd}`;
@@ -5244,35 +5458,44 @@ export default class OperonPlugin extends Plugin {
 							sectionResolution = this.resolveReadingViewSectionTasks(sectionInfo, ctx.sourcePath);
 							sectionTaskResolutions.set(sectionKey, sectionResolution);
 							sectionCursors.set(sectionKey, 0);
+							if (sectionResolution.needsReindex) {
+								this.indexer.scheduleReindex(ctx.sourcePath);
+							}
 						}
 
 						const cursor = sectionCursors.get(sectionKey) ?? 0;
-						sectionIndexed = sectionResolution.orderedTasks[cursor] ?? null;
+						sectionResolved = sectionResolution.orderedTasks[cursor] ?? null;
 						sectionCursors.set(sectionKey, cursor + 1);
 
 						const sourceLine = this.getReadingListItemSourceLine(li, sectionInfo);
 						if (sourceLine !== null && sectionResolution.lineTasks.has(sourceLine)) {
 							sourceLineMatchedTask = true;
-							indexed = sectionResolution.lineTasks.get(sourceLine) ?? null;
-							resolvedBy = indexed ? 'source-line' : null;
+							resolvedTask = sectionResolution.lineTasks.get(sourceLine) ?? null;
+							resolvedBy = resolvedTask ? 'source-line' : null;
 						}
 					}
 
-					if (!indexed && !sourceLineMatchedTask) {
-						indexed = resolveReadingInlineTaskFromText(
+					if (!resolvedTask && !sourceLineMatchedTask) {
+						const renderedIndexed = resolveReadingInlineTaskFromText(
 							this.getReadingListItemOwnText(li),
 							ctx.sourcePath,
 							operonId => this.indexer.getTask(operonId),
 							this.settings.keyMappings,
 						);
-						if (indexed) resolvedBy = 'rendered-id';
+						if (renderedIndexed) {
+							if (!this.indexer.hasDuplicateOperonIdConflict(renderedIndexed.operonId)) {
+								resolvedTask = createIndexedReadingResolvedTask(renderedIndexed);
+								resolvedBy = 'rendered-id';
+							}
+						}
 					}
 
-					if (!indexed && !sourceLineMatchedTask) {
-						indexed = sectionIndexed;
-						if (indexed) resolvedBy = 'section-cursor';
+					if (!resolvedTask && !sourceLineMatchedTask) {
+						resolvedTask = sectionResolved;
+						if (resolvedTask) resolvedBy = 'section-cursor';
 					}
-					if (!indexed) continue;
+					if (!resolvedTask) continue;
+					const indexed = resolvedTask.task;
 					if (resolvedBy === 'section-cursor' && !this.readingListItemMatchesTask(li, indexed)) continue;
 
 					const callbacks = {
@@ -5281,7 +5504,7 @@ export default class OperonPlugin extends Plugin {
 					getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
 					getSettings: () => this.settings,
 					getAllTasks: () => this.indexer.getAllTasks(),
-					getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
+					getProjectSerialDisplay: (operonId: string, task?: IndexedTask) => this.getReadingProjectSerialDisplayForTask(operonId, task),
 					openEditor: (operonId: string) => {
 						void (async () => {
 							const task = this.indexer.getTask(operonId);
@@ -5389,7 +5612,10 @@ export default class OperonPlugin extends Plugin {
 							// Replace the task item content while preserving any nested lists.
 							li.empty();
 							li.addClass('operon-rendered-inline-task-list-item');
-							li.appendChild(buildReadingTaskRowElement(indexed, callbacks, renderedDescription));
+							li.appendChild(buildReadingTaskRowElement(indexed, callbacks, renderedDescription, {
+								readOnly: resolvedTask.readOnly,
+								projectSerialPlacement: 'tail',
+							}));
 						for (const nested of nestedLists) {
 							li.appendChild(nested);
 						}
@@ -5550,7 +5776,7 @@ export default class OperonPlugin extends Plugin {
 					...indexed.fieldValues,
 					...parsedFieldValues,
 				},
-				parentTags: [...(parentTask.tags.length > 0 ? parentTask.tags : indexed.tags)],
+				parentTags: [...parentTask.tags],
 			}, parentTask);
 		} catch (error) {
 			console.error('Operon: failed to request subtask from quick action', error);
@@ -5819,6 +6045,7 @@ export default class OperonPlugin extends Plugin {
 		const draft = buildSubtaskTaskCreatorDraft(
 			request.parentOperonId,
 			request.parentFieldValues,
+			request.parentTags,
 			this.settings,
 		);
 		this.openInlineSubtaskCreator(draft, parentTask, request.onBeforeCreate, request.onCreated);
@@ -5871,6 +6098,7 @@ export default class OperonPlugin extends Plugin {
 		const draft = buildSubtaskTaskCreatorDraft(
 			request.parentOperonId,
 			request.parentFieldValues,
+			request.parentTags,
 			this.settings,
 		);
 		this.openFileSubtaskCreator(draft, fallbackFile, request.onBeforeCreate, request.onCreated);
@@ -5921,7 +6149,7 @@ export default class OperonPlugin extends Plugin {
 				seedFieldPresence: submitSeed.fieldPresence,
 				explicitEmptyFieldKeys: submitSeed.explicitEmptyFieldKeys,
 				seedTags: [...preservedDraft.tags],
-				seedTagsPresent: preservedDraft.tags.length > 0,
+				seedTagsPresent: preservedDraft.tags.length > 0 || preservedDraft.explicitFieldKeys.includes('tags'),
 				openEditorOnCreate: false,
 			});
 			if (!created) {
@@ -6633,6 +6861,9 @@ export default class OperonPlugin extends Plugin {
 			}
 		}
 		for (const leaf of this.app.workspace.getLeavesOfType(FLOW_TIME_VIEW_TYPE)) {
+			callUnknownMethod(leaf.view, 'render');
+		}
+		for (const leaf of this.app.workspace.getLeavesOfType(CALENDAR_VIEW_TYPE)) {
 			callUnknownMethod(leaf.view, 'render');
 		}
 		this.trackerStatusBar?.render();
@@ -8821,6 +9052,7 @@ export default class OperonPlugin extends Plugin {
 				parentTaskId,
 				indexedParent.fieldValues,
 				this.settings,
+				indexedParent.tags,
 			);
 		}
 
@@ -8838,6 +9070,7 @@ export default class OperonPlugin extends Plugin {
 			parentTaskId,
 			sourceDocument.managedFieldValues,
 			this.settings,
+			sourceDocument.tags,
 		);
 	}
 
@@ -8846,7 +9079,7 @@ export default class OperonPlugin extends Plugin {
 		seedFieldValues: Record<string, string>,
 		seedFieldPresence: Set<string>,
 		existingParentTask?: string | null,
-	): Promise<{ fieldValues: Record<string, string>; fieldPresence: Set<string> }> {
+	): Promise<{ fieldValues: Record<string, string>; fieldPresence: Set<string>; tags: string[] }> {
 		const linkedSeed = applyLinkedFileTaskAutoParentSeed({
 			enabled: this.settings.autoParentLinkedFileSubtasks,
 			sourceFilePath,
@@ -8859,7 +9092,7 @@ export default class OperonPlugin extends Plugin {
 		});
 
 		const parentTaskId = (linkedSeed.fieldValues['parentTask'] ?? '').trim();
-		if (!parentTaskId) return linkedSeed;
+		if (!parentTaskId) return { ...linkedSeed, tags: [] };
 
 		const inherited = await this.resolveLinkedFileSubtaskInheritance(parentTaskId, sourceFilePath);
 		const nextFieldValues = { ...linkedSeed.fieldValues };
@@ -8867,7 +9100,7 @@ export default class OperonPlugin extends Plugin {
 
 		for (const key of getSubtaskInitialFieldKeys(inherited)) {
 			const value = inherited[key];
-			const normalizedValue = value?.trim();
+			const normalizedValue = typeof value === 'string' ? value.trim() : '';
 			if (!normalizedValue) continue;
 			if ((nextFieldValues[key] ?? '').trim()) continue;
 			nextFieldValues[key] = normalizedValue;
@@ -8877,6 +9110,7 @@ export default class OperonPlugin extends Plugin {
 		return {
 			fieldValues: nextFieldValues,
 			fieldPresence: nextFieldPresence,
+			tags: [...(inherited.tags ?? [])],
 		};
 	}
 
@@ -8904,14 +9138,18 @@ export default class OperonPlugin extends Plugin {
 				seedFieldValues,
 				seedFieldPresence,
 			)
-			: { fieldValues: seedFieldValues, fieldPresence: seedFieldPresence };
+			: { fieldValues: seedFieldValues, fieldPresence: seedFieldPresence, tags: [] };
+		const seedTags = Array.from(new Set([
+			...(options.seedTags ?? []).map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+			...linkedSeed.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+		]));
 		const draft = this.buildFileTaskDraft({
 			description: title,
 			fieldValues: linkedSeed.fieldValues,
 			fieldPresence: linkedSeed.fieldPresence,
 			explicitEmptyFieldKeys: options.explicitEmptyFieldKeys,
-			tags: [...(options.seedTags ?? [])],
-			tagsPresent: options.seedTagsPresent ?? (options.seedTags?.length ?? 0) > 0,
+			tags: seedTags,
+			tagsPresent: options.seedTagsPresent === true || seedTags.length > 0,
 		}, template, localNow(), 'use-template');
 		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return null;
 
@@ -9414,7 +9652,9 @@ export default class OperonPlugin extends Plugin {
 				seedFieldPresence: submitSeed.fieldPresence,
 				explicitEmptyFieldKeys: submitSeed.explicitEmptyFieldKeys,
 				seedTags: [...preservedDraft.tags],
-				seedTagsPresent: options.seedTagsPresent === true || preservedDraft.tags.length > 0,
+				seedTagsPresent: options.seedTagsPresent === true ||
+					preservedDraft.tags.length > 0 ||
+					preservedDraft.explicitFieldKeys.includes('tags'),
 				targetFolderOverride: this.resolveTaskCreatorFileTargetFolderOverride(preservedDraft),
 				openEditorOnCreate: false,
 			});
@@ -9477,6 +9717,7 @@ export default class OperonPlugin extends Plugin {
 				file: dailyNote.file,
 				fallbackParentTaskId: dailyNote.wasCreated ? dailyNote.operonParentTaskId : null,
 				fallbackParentFieldValues: dailyNote.wasCreated ? dailyNote.operonParentFieldValues : null,
+				fallbackParentTags: dailyNote.wasCreated ? dailyNote.operonParentTags : null,
 				dailyDateHeading: null,
 			};
 		}
@@ -9489,6 +9730,7 @@ export default class OperonPlugin extends Plugin {
 					file: activeFile,
 					fallbackParentTaskId: null,
 					fallbackParentFieldValues: null,
+					fallbackParentTags: null,
 					dailyDateHeading: null,
 				};
 			}
@@ -9503,6 +9745,7 @@ export default class OperonPlugin extends Plugin {
 				file: selectedFile,
 				fallbackParentTaskId: null,
 				fallbackParentFieldValues: null,
+				fallbackParentTags: null,
 				dailyDateHeading: null,
 			};
 		}
@@ -9518,6 +9761,7 @@ export default class OperonPlugin extends Plugin {
 			file: targetFile,
 			fallbackParentTaskId: null,
 			fallbackParentFieldValues: null,
+			fallbackParentTags: null,
 			dailyDateHeading: targetDateKey,
 		};
 	}
@@ -9566,11 +9810,19 @@ export default class OperonPlugin extends Plugin {
 		if (!parsed?.operonId) return null;
 
 		const currentFieldValues = Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
+		const tagsExplicit = draft.explicitFieldKeys.includes('tags');
+		const inheritedTags = tagsExplicit
+			? []
+			: inherited.tags ?? [];
+		const submitTags = Array.from(new Set([
+			...draft.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+			...inheritedTags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
+		]));
 		const normalizedPayload = normalizeTaskFieldPatch(
 			currentFieldValues,
 			{
 				...this.buildTaskCreatorSeedFieldValues(draft),
-				...(draft.tags.length > 0 ? { tags: draft.tags } : {}),
+				...(submitTags.length > 0 || tagsExplicit ? { tags: submitTags } : {}),
 			},
 			{
 				getAllRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
@@ -9595,6 +9847,7 @@ export default class OperonPlugin extends Plugin {
 		options: {
 			fallbackParentTaskId?: string | null;
 			fallbackParentFieldValues?: Record<string, string> | null;
+			fallbackParentTags?: string[] | null;
 			inlineHeading?: string;
 			dailyDateHeading?: string | null;
 			autoParentEnabled?: boolean;
@@ -9636,6 +9889,7 @@ export default class OperonPlugin extends Plugin {
 				options.fallbackParentTaskId ?? null,
 				options.fallbackParentFieldValues ?? null,
 				this.settings,
+				options.fallbackParentTags ?? null,
 			);
 		const createdLine = this.buildTaskCreatorInlineTaskLine(
 			draft,
@@ -9670,6 +9924,7 @@ export default class OperonPlugin extends Plugin {
 			{
 				fallbackParentTaskId: target.fallbackParentTaskId,
 				fallbackParentFieldValues: target.fallbackParentFieldValues,
+				fallbackParentTags: target.fallbackParentTags,
 				dailyDateHeading: target.dailyDateHeading,
 			},
 		);
@@ -10436,13 +10691,14 @@ export default class OperonPlugin extends Plugin {
 				indent,
 				operonId: existingParsed.operonId,
 				fieldValues: this.getParsedTaskFieldValues(existingParsed),
+				tags: [...existingParsed.tags],
 			});
 			return { kind: 'existing' };
 		}
 
 		const lineIndent = options.line.match(/^\s*/)?.[0] ?? '';
 		const inherited = parentNode
-			? resolveSubtaskInitialFieldsFromParentValues(parentNode.operonId, parentNode.fieldValues, this.settings)
+			? resolveSubtaskInitialFieldsFromParentValues(parentNode.operonId, parentNode.fieldValues, this.settings, parentNode.tags)
 			: options.baseInherited;
 		const normalizedCheckboxLine = normalizeMarkdownCheckboxMarker(options.line);
 		const conversionSourceLine = normalizedCheckboxLine ?? options.line;
@@ -10526,6 +10782,7 @@ export default class OperonPlugin extends Plugin {
 			indent,
 			operonId: parsed.operonId,
 			fieldValues: this.getParsedTaskFieldValues(parsed),
+			tags: [...parsed.tags],
 		});
 		return {
 			kind: 'converted',
@@ -11711,6 +11968,7 @@ export default class OperonPlugin extends Plugin {
 			sourcePath,
 			operonId => this.indexer.getTask(operonId),
 			this.settings.keyMappings,
+			this.settings.pipelines,
 		);
 
 		if (resolved.sawTaskLine) {
@@ -11723,11 +11981,13 @@ export default class OperonPlugin extends Plugin {
 			&& task.primary.lineNumber >= sectionInfo.lineStart
 			&& task.primary.lineNumber <= sectionInfo.lineEnd
 		).sort((a, b) => a.primary.lineNumber - b.primary.lineNumber);
+		const resolvedCandidates = candidates.map(task => createIndexedReadingResolvedTask(task));
 
 		return {
-			lineTasks: new Map(candidates.map(task => [task.primary.lineNumber, task])),
-			orderedTasks: candidates,
+			lineTasks: new Map(resolvedCandidates.map(resolvedTask => [resolvedTask.task.primary.lineNumber, resolvedTask])),
+			orderedTasks: resolvedCandidates,
 			sawTaskLine: false,
+			needsReindex: false,
 		};
 	}
 

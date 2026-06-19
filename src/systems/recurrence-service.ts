@@ -286,6 +286,18 @@ function resolveMaterializationSourceAnchor(rule: RepeatRule, fieldValues: Recor
 	return resolveRootOccurrenceAnchor(fieldValues);
 }
 
+function resolveMaterializationTemporalAnchor(rule: RepeatRule, fieldValues: Record<string, string>): string {
+	if (rule.mode === 'done') {
+		return normalizeDateOnly(fieldValues['repeatOccurrenceDate'])
+			|| normalizeDateOnly(fieldValues['dateScheduled'])
+			|| normalizeDateOnly(fieldValues['dateStarted'])
+			|| normalizeDateOnly(fieldValues['dateDue'])
+			|| normalizeDateOnly(fieldValues['datetimeStart'])
+			|| normalizeDateOnly(fieldValues['datetimeEnd']);
+	}
+	return resolveMaterializationSourceAnchor(rule, fieldValues);
+}
+
 function shiftDateByRootOccurrenceDelta(
 	oldRootFieldValues: Record<string, string>,
 	oldChildDate: string | null | undefined,
@@ -647,7 +659,7 @@ export class RecurrenceService {
 				: inlineDescription
 					? detectRepeatSeriesNamingConfig(inlineDescription)
 					: null,
-			baseTemporalTemplate: deriveTemporalTemplateFromTaskAtOccurrence(task, resolveMaterializationSourceAnchor(rule, task.fieldValues)),
+			baseTemporalTemplate: deriveTemporalTemplateFromTaskAtOccurrence(task, resolveMaterializationTemporalAnchor(rule, task.fieldValues)),
 			now,
 		});
 	}
@@ -805,7 +817,7 @@ export class RecurrenceService {
 	): Record<string, string> {
 		const now = localNow();
 		const hasSourceScheduledDate = !!normalizeDateOnly(completedTask.fieldValues['dateScheduled']);
-		const sourceTemporalAnchor = resolveMaterializationSourceAnchor(rule, completedTask.fieldValues);
+		const sourceTemporalAnchor = resolveMaterializationTemporalAnchor(rule, completedTask.fieldValues);
 		const hasSourceTemporalAnchor = !!sourceTemporalAnchor;
 		const fieldValues: Record<string, string> = {
 			operonId: generateOperonId(),
@@ -879,10 +891,10 @@ export class RecurrenceService {
 				const leftRule = parseRepeatRule(left.fieldValues['repeat']) ?? contextRule;
 				const rightRule = parseRepeatRule(right.fieldValues['repeat']) ?? contextRule;
 				const leftDate = leftRule
-					? resolveMaterializationSourceAnchor(leftRule, left.fieldValues)
+					? resolveMaterializationTemporalAnchor(leftRule, left.fieldValues)
 					: getTaskRepeatOccurrenceDate(left);
 				const rightDate = rightRule
-					? resolveMaterializationSourceAnchor(rightRule, right.fieldValues)
+					? resolveMaterializationTemporalAnchor(rightRule, right.fieldValues)
 					: getTaskRepeatOccurrenceDate(right);
 				if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
 				return left.operonId.localeCompare(right.operonId);
@@ -891,7 +903,7 @@ export class RecurrenceService {
 		if (!seedTask) return null;
 		const seedRule = parseRepeatRule(seedTask.fieldValues['repeat']) ?? parseRepeatRule(contextTask.fieldValues['repeat']);
 		const seedAnchor = seedRule
-			? resolveMaterializationSourceAnchor(seedRule, seedTask.fieldValues)
+			? resolveMaterializationTemporalAnchor(seedRule, seedTask.fieldValues)
 			: getTaskRepeatOccurrenceDate(seedTask);
 		const template = deriveTemporalTemplateFromTaskAtOccurrence(seedTask, seedAnchor);
 		await this.storage.repeatSeries.updateBaseTemporalTemplate(series.seriesId, template, localNow());

@@ -66,7 +66,7 @@ export interface ReadingTaskRowCallbacks {
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	getRepeatSeriesInlineCompletionMode?: (repeatSeriesId: string) => InlineRepeatCompletionMode;
 	updateRepeatSeriesInlineCompletionMode?: (operonId: string, mode: InlineRepeatCompletionMode) => void | Promise<void>;
-	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 }
 
 const READING_DIRECT_CHIP_DAY_PICKER_DATE_KEYS = new Set<string>([
@@ -101,6 +101,7 @@ export interface ReadingTaskRowOptions {
 	owner?: Node | null;
 	chipItems?: InlineTaskCompactChipItem[];
 	projectSerialPlacement?: 'head' | 'tail';
+	readOnly?: boolean;
 	showPlayAction?: boolean;
 	showPinAction?: boolean;
 	showSubtaskAction?: boolean;
@@ -127,6 +128,8 @@ export function buildReadingTaskRowElement(
 	const owner = renderedDescription ?? options?.owner ?? null;
 	const row = el('div', 'operon-reading-task-row operon-task-chip-surface', owner);
 	if (options?.rowClassName) row.classList.add(options.rowClassName);
+	const readOnly = options?.readOnly === true;
+	if (readOnly) row.classList.add('is-read-only');
 	const head = el('div', 'operon-reading-task-head', row);
 	const tail = el('div', 'operon-reading-task-tail', row);
 
@@ -142,16 +145,21 @@ export function buildReadingTaskRowElement(
 		row.classList.add('operon-filter-row-cancelled');
 	}
 
-	const iconButton = el('button', 'operon-live-preview-status-icon operon-reading-task-icon', row);
-	iconButton.type = 'button';
+	const iconButton = readOnly
+		? el('span', 'operon-live-preview-status-icon operon-reading-task-icon', row)
+		: el('button', 'operon-live-preview-status-icon operon-reading-task-icon', row);
+	if (!readOnly) (iconButton as HTMLButtonElement).type = 'button';
+	else iconButton.setAttribute('aria-hidden', 'true');
 	iconButton.style.setProperty('--operon-live-icon-color', statusColor);
 	renderTaskIcon(iconButton, task, callbacks);
-	iconButton.addEventListener('click', (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		runReadingRowStatusCycle(callbacks, task.operonId);
-	});
-	if (callbacks.onContextualAction) {
+	if (!readOnly) {
+		iconButton.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			runReadingRowStatusCycle(callbacks, task.operonId);
+		});
+	}
+	if (!readOnly && callbacks.onContextualAction) {
 		bindTaskContextualHoverMenu(iconButton, {
 			surface: 'readingRow',
 			taskId: task.operonId,
@@ -165,8 +173,8 @@ export function buildReadingTaskRowElement(
 		});
 	}
 	head.appendChild(iconButton);
-	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId) ?? null;
-	const projectSerialPlacement = options?.projectSerialPlacement ?? 'head';
+	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId, task) ?? null;
+	const projectSerialPlacement = options?.projectSerialPlacement ?? 'tail';
 	if (projectSerialDisplay && projectSerialPlacement === 'head') {
 		head.appendChild(createProjectSerialChipElement(projectSerialDisplay, 'operon-reading-task-chip operon-task-chip', {
 			keyMappings: callbacks.getSettings().keyMappings,
@@ -230,46 +238,47 @@ export function buildReadingTaskRowElement(
 		locationResolver,
 	);
 	for (const entry of entries) {
-		const chip = createInlineTaskCompactChipElement(entry, 'operon-reading-task-chip operon-task-chip');
-		applyCompactChipVisualStyles(chip, entry, task, callbacks, statusColor, taskColor);
-		if (entry.iconOnly) {
-			bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
-			if (entry.externalUrl) {
-				bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
+		const renderEntry = readOnly && entry.interactive ? { ...entry, interactive: false } : entry;
+		const chip = createInlineTaskCompactChipElement(renderEntry, 'operon-reading-task-chip operon-task-chip');
+		applyCompactChipVisualStyles(chip, renderEntry, task, callbacks, statusColor, taskColor);
+		if (renderEntry.iconOnly) {
+			bindAdaptiveIconOnlyExpansion(chip, renderEntry.label, taskColor ?? null);
+			if (renderEntry.externalUrl) {
+				bindExternalLinkContextMenu(chip, renderEntry.externalUrl, renderEntry.externalRawValue);
 			}
-			if (entry.tooltipContent) {
+			if (renderEntry.tooltipContent) {
 				bindOperonHoverTooltip(chip, {
-					title: entry.tooltipTitle ?? t('taskEditor', 'details'),
-					content: entry.tooltipContent,
+					title: renderEntry.tooltipTitle ?? t('taskEditor', 'details'),
+					content: renderEntry.tooltipContent,
 					taskColor,
 				});
 			}
-			if (entry.interactive) {
-				attachReadingChipAction(chip, entry, task, callbacks, () => closeIconOnlyChipPreview(chip), taskColor);
+			if (renderEntry.interactive) {
+				attachReadingChipAction(chip, renderEntry, task, callbacks, () => closeIconOnlyChipPreview(chip), taskColor);
 			} else {
 				bindIconOnlyChipPreview(chip);
 			}
-			const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
+			const previewLinkTarget = renderEntry.previewLinkTarget ?? renderEntry.linkTarget;
 			if (previewLinkTarget) {
 				bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 			}
 			tail.appendChild(chip);
 			continue;
 		}
-		if (entry.interactive) {
-			attachReadingChipAction(chip, entry, task, callbacks, undefined, taskColor);
+		if (renderEntry.interactive) {
+			attachReadingChipAction(chip, renderEntry, task, callbacks, undefined, taskColor);
 		}
-		const chipNode = entry.tooltipContent
+		const chipNode = renderEntry.tooltipContent
 			? wrapWithOperonHoverTooltip(chip, {
-				title: entry.tooltipTitle ?? t('taskEditor', 'details'),
-				content: entry.tooltipContent,
+				title: renderEntry.tooltipTitle ?? t('taskEditor', 'details'),
+				content: renderEntry.tooltipContent,
 				taskColor,
 			})
 			: chip;
-		if (entry.externalUrl) {
-			bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
+		if (renderEntry.externalUrl) {
+			bindExternalLinkContextMenu(chip, renderEntry.externalUrl, renderEntry.externalRawValue);
 		}
-		const previewLinkTarget = entry.previewLinkTarget ?? entry.linkTarget;
+		const previewLinkTarget = renderEntry.previewLinkTarget ?? renderEntry.linkTarget;
 		if (previewLinkTarget) {
 			bindCompactChipLinkPreview(callbacks.app, chip, previewLinkTarget, task.primary.filePath);
 		}
@@ -283,7 +292,7 @@ export function buildReadingTaskRowElement(
 		callbacks.getAllTasks(),
 		options?.chipItems,
 	);
-	if (hiddenCount > 0) {
+	if (!readOnly && hiddenCount > 0) {
 		const overflow = el('button', 'operon-live-preview-chip operon-reading-task-overflow operon-task-chip operon-task-chip-overflow', row);
 		overflow.type = 'button';
 		overflow.textContent = `+${hiddenCount}`;
@@ -318,10 +327,10 @@ export function buildReadingTaskRowElement(
 
 	const actions = el('div', 'operon-reading-task-actions', row);
 
-	const showPlayAction = options?.showPlayAction ?? callbacks.getSettings().inlineTaskShowPlayAction;
-	const showPinAction = options?.showPinAction ?? callbacks.getSettings().inlineTaskShowPinAction;
-	const showSubtaskAction = options?.showSubtaskAction ?? callbacks.getSettings().inlineTaskShowSubtaskAction;
-	const showEditAction = options?.showEditAction ?? true;
+	const showPlayAction = !readOnly && (options?.showPlayAction ?? callbacks.getSettings().inlineTaskShowPlayAction);
+	const showPinAction = !readOnly && (options?.showPinAction ?? callbacks.getSettings().inlineTaskShowPinAction);
+	const showSubtaskAction = !readOnly && (options?.showSubtaskAction ?? callbacks.getSettings().inlineTaskShowSubtaskAction);
+	const showEditAction = !readOnly && (options?.showEditAction ?? true);
 
 	if (!isTerminal && callbacks.toggleTimer && showPlayAction && task.checkbox === 'open') {
 		const isTracking = callbacks.isTaskTracking?.(task.operonId) === true;
@@ -372,11 +381,13 @@ export function buildReadingTaskRowElement(
 		actions.appendChild(noteIndicator);
 	}
 
-	options?.beforeEditAction?.(actions, {
-		task,
-		taskColor,
-		isTerminal,
-	});
+	if (!readOnly) {
+		options?.beforeEditAction?.(actions, {
+			task,
+			taskColor,
+			isTerminal,
+		});
+	}
 
 	if (!isTerminal && callbacks.requestSubtask && showSubtaskAction) {
 		const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(task));
@@ -458,6 +469,7 @@ function enhanceTaskDescriptionWikilinkOverlays(
 		isTaskTracking: callbacks.isTaskTracking,
 		toggleTimer: callbacks.toggleTimer,
 		requestSubtask: callbacks.requestSubtask,
+		getProjectSerialDisplay: callbacks.getProjectSerialDisplay,
 	});
 }
 

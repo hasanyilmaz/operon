@@ -5,7 +5,7 @@ import { TrackerHistoryDayGroup, TrackerSession, TrackerSource } from '../types/
 import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { formatDurationHuman, parseTrackerList } from '../systems/tracker-utils';
 import { parseStatusValue, resolveWorkflowStatus } from '../types/pipeline';
-import { TrackerSessionEditModal } from './tracker-session-edit-modal';
+import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
 import { t } from '../core/i18n';
 import { formatTaskNotice } from '../core/task-notice';
 import { formatTrackerDayHeader, formatTrackerSessionRange } from './tracker-time-labels';
@@ -197,10 +197,22 @@ export class TimeSessionHistoryView extends ItemView {
 			event.stopPropagation();
 			new TrackerSessionEditModal(this.app, {
 				title: t('taskEditor', 'editSession'),
+				...buildTrackerSessionEditContext({
+					taskLabel: formatTimeSessionHistoryTaskDescription(session.task),
+					start: session.start,
+					end: session.end,
+				}),
 				initialStart: session.start,
 				initialEnd: session.end,
 				onSave: async (start, end) => {
-					const updated = await this.timeTracker.updateSession(session.operonId, session.sessionIndex, start, end);
+					const updated = await this.timeTracker.updateSessionByRange(
+						session.operonId,
+						session.start,
+						session.end,
+						start,
+						end,
+						session.sessionIndex,
+					);
 					if (!updated) {
 						new Notice(t('notifications', 'taskSaveFailed'));
 					}
@@ -214,7 +226,12 @@ export class TimeSessionHistoryView extends ItemView {
 					return updated;
 				},
 				onDelete: async () => {
-					const deleted = await this.timeTracker.deleteSession(session.operonId, session.sessionIndex);
+					const deleted = await this.timeTracker.deleteSessionByRange(
+						session.operonId,
+						session.start,
+						session.end,
+						session.sessionIndex,
+					);
 					if (!deleted) {
 						new Notice(t('notifications', 'taskSaveFailed'));
 						return false;

@@ -33,7 +33,7 @@ interface OverlayChipRenderCallbacks {
 	getAllTasks: () => IndexedTask[];
 	sourcePath: string;
 	owner?: Node | null;
-	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 }
 
 export function getTaskFileOverlayChipSignature(
@@ -41,7 +41,7 @@ export function getTaskFileOverlayChipSignature(
 	app: App,
 	settings: OperonSettings,
 	allTasks: IndexedTask[],
-	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null,
+	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null,
 ): string {
 	const locationIndex = shouldResolveLocationCompactChips(settings, settings.overlayTaskCompactChips)
 		? getLocationPlaceIndex(app, settings)
@@ -70,7 +70,7 @@ export function getTaskFileOverlayChipSignature(
 	].join(':')).join('|');
 	return [
 		locationIndex?.getSignature() ?? '',
-		getProjectSerialDisplay?.(task.operonId)?.label ?? '',
+		getProjectSerialDisplay?.(task.operonId, task)?.label ?? '',
 		entrySignature,
 	].join('|');
 }
@@ -102,7 +102,7 @@ export function buildTaskFileOverlayChipContainer(
 		settings.overlayTaskCompactChips,
 		locationResolver,
 	);
-	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId) ?? null;
+	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId, task) ?? null;
 	if (entries.length === 0 && !projectSerialDisplay) return null;
 
 	const taskColor = normalizeTaskColor(task.fieldValues['taskColor']);

@@ -28,6 +28,13 @@ const MONTH_KEYS = [
 	'December',
 ] as const;
 
+// Languages whose dates are cardinal (no "1st/2nd" ordinal suffix): the day
+// number stands alone and any unit marker (e.g. Chinese 日) lives in the
+// surrounding template. English keeps the {{suffix}} placeholder for ordinals.
+function isCardinalDayLanguage(lang: string): boolean {
+	return lang === 'tr' || lang === 'fr' || lang === 'de' || lang === 'zh-CN' || lang === 'zh-TW';
+}
+
 export function buildRepeatRuleSummaryLabels(): RepeatRuleSummaryLabels {
 	const weekdayLabels = Object.fromEntries(
 		WEEKDAY_KEYS.map(day => [day, t('taskEditor', `repeatWeekdayLong${WEEKDAY_LOCALE_SUFFIX[day]}`)]),
@@ -53,7 +60,7 @@ export function buildRepeatRuleSummaryLabels(): RepeatRuleSummaryLabels {
 		monthOnPositionWeekday: t('taskEditor', 'repeatSummaryMonthOnPositionWeekday'),
 		yearOnMonthDays: t('taskEditor', 'repeatSummaryYearOnMonthDays'),
 		monthFallback: t('taskEditor', 'repeatSummaryMonthFallback'),
-		ordinalDay: getCurrentLang() === 'tr' || getCurrentLang() === 'fr' || getCurrentLang() === 'de'
+		ordinalDay: isCardinalDayLanguage(getCurrentLang())
 			? t('taskEditor', 'repeatSummaryOrdinalDay', { suffix: '' })
 			: t('taskEditor', 'repeatSummaryOrdinalDay'),
 		itemSeparator: t('taskEditor', 'repeatSummaryListItemSeparator'),

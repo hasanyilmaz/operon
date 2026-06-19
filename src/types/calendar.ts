@@ -11,7 +11,7 @@ export {
 export type CalendarColorSource = CalendarTaskColorSource;
 export type CalendarAppearanceMode = 'theme' | 'anupuccin-light' | 'anupuccin-dark' | 'catppuccin-dark' | 'atom-light' | 'atom-dark' | 'flexoki-light' | 'flexoki-dark';
 export type CalendarNavigationMode = 'toolbar' | 'sidebar';
-export type CalendarSurfaceType = 'timeGrid' | 'multiWeek';
+export type CalendarSurfaceType = 'timeGrid' | 'multiWeek' | 'timeTrackerGrid';
 export const CALENDAR_MOBILE_VIEW_MODES = ['agenda', 'day', 'threeDay'] as const;
 export type CalendarMobileViewMode = typeof CALENDAR_MOBILE_VIEW_MODES[number];
 export const CALENDAR_SIDEBAR_TASK_POOL_MODES = ['overdue', 'unscheduled', 'all', 'finished'] as const;
@@ -123,6 +123,7 @@ export interface CalendarItem {
 	endDateTime: string | null;
 	isDashed: boolean;
 	isReadOnly: boolean;
+	isStatusReadOnly?: boolean;
 	origin: CalendarItemOrigin;
 	repeatRef: CalendarRepeatOccurrenceRef | null;
 	externalRef: CalendarExternalEventRef | null;

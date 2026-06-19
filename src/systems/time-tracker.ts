@@ -635,56 +635,189 @@ export class TimeTracker {
 			.sort((a, b) => b.start.localeCompare(a.start));
 	}
 
-	async addSession(operonId: string, start: string, end: string): Promise<boolean> {
-		const task = this.indexer.getTask(operonId);
-		if (!task) return false;
+	getSessionsForRange(rangeStartDate: string, rangeEndDate: string): TrackerSession[] {
+		const rangeStart = parseLocalDatetime(`${rangeStartDate}T00:00:00`);
+		const rangeEnd = parseLocalDatetime(`${rangeEndDate}T23:59:59`);
+		if (!rangeStart || !rangeEnd || rangeEnd.getTime() < rangeStart.getTime()) return [];
 
-		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
-		const nextTrackers = serializeTrackerList([
-			...existingSessions.map(session => session.raw),
-			...this.buildStoredSessionRanges(start, end),
-		]);
-		await this.persistTaskSessions(task, nextTrackers, localNow());
-		this.emit('history');
-		this.emit('state');
-		return true;
+		const sessions: TrackerSession[] = [];
+		for (const task of this.indexer.getAllTasks()) {
+			const parsedSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+			for (let index = 0; index < parsedSessions.length; index++) {
+				const session = parsedSessions[index];
+				const start = parseLocalDatetime(session.start);
+				const end = parseLocalDatetime(session.end);
+				if (!start || !end || end.getTime() <= start.getTime()) continue;
+				if (end.getTime() < rangeStart.getTime() || start.getTime() > rangeEnd.getTime()) continue;
+				sessions.push({
+					operonId: task.operonId,
+					sessionIndex: index,
+					start: session.start,
+					end: session.end,
+					durationSeconds: session.durationSeconds,
+					task,
+				});
+			}
+		}
+
+		return sessions.sort((left, right) => {
+			const startRank = left.start.localeCompare(right.start);
+			if (startRank !== 0) return startRank;
+			const endRank = left.end.localeCompare(right.end);
+			if (endRank !== 0) return endRank;
+			return left.operonId.localeCompare(right.operonId);
+		});
+	}
+
+	async addSession(operonId: string, start: string, end: string): Promise<boolean> {
+		return await this.runSessionWrite('add tracker session', async () => {
+			const task = this.indexer.getTask(operonId);
+			if (!task) return false;
+
+			const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+			const nextTrackers = serializeTrackerList([
+				...existingSessions.map(session => session.raw),
+				...this.buildStoredSessionRanges(start, end),
+			]);
+			await this.persistTaskSessions(task, nextTrackers, localNow());
+			this.emit('history');
+			this.emit('state');
+			return true;
+		});
 	}
 
 	async updateSession(operonId: string, sessionIndex: number, start: string, end: string): Promise<boolean> {
-		const task = this.indexer.getTask(operonId);
-		if (!task) return false;
+		return await this.runSessionWrite('update tracker session', async () => {
+			const task = this.indexer.getTask(operonId);
+			if (!task) return false;
 
-		const sessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
-		if (sessionIndex < 0 || sessionIndex >= sessions.length) return false;
+			const sessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+			if (sessionIndex < 0 || sessionIndex >= sessions.length) return false;
 
-		const nextSessionRanges = sessions.map(session => session.raw);
-		nextSessionRanges.splice(sessionIndex, 1, ...this.buildStoredSessionRanges(start, end));
-		await this.persistTaskSessions(
-			task,
-			serializeTrackerList(nextSessionRanges),
-			localNow(),
-		);
-		this.emit('history');
-		this.emit('state');
-		return true;
+			const nextSessionRanges = sessions.map(session => session.raw);
+			nextSessionRanges.splice(sessionIndex, 1, ...this.buildStoredSessionRanges(start, end));
+			await this.persistTaskSessions(
+				task,
+				serializeTrackerList(nextSessionRanges),
+				localNow(),
+			);
+			this.emit('history');
+			this.emit('state');
+			return true;
+		});
+	}
+
+	async updateSessionByRange(
+		operonId: string,
+		originalStart: string,
+		originalEnd: string,
+		nextStart: string,
+		nextEnd: string,
+		originalSessionIndex?: number,
+	): Promise<boolean> {
+		return await this.runSessionWrite('update tracker session by range', async () => {
+			const task = this.indexer.getTask(operonId);
+			if (!task) return false;
+
+			const sessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+			const sessionIndex = this.resolveSessionIndexByRange(
+				sessions,
+				originalStart,
+				originalEnd,
+				originalSessionIndex,
+			);
+			if (sessionIndex < 0) return false;
+
+			const nextSessionRanges = sessions.map(session => session.raw);
+			nextSessionRanges.splice(sessionIndex, 1, ...this.buildStoredSessionRanges(nextStart, nextEnd));
+			await this.persistTaskSessions(
+				task,
+				serializeTrackerList(nextSessionRanges),
+				localNow(),
+			);
+			this.emit('history');
+			this.emit('state');
+			return true;
+		});
 	}
 
 	async deleteSession(operonId: string, sessionIndex: number): Promise<boolean> {
-		const task = this.indexer.getTask(operonId);
-		if (!task) return false;
+		return await this.runSessionWrite('delete tracker session', async () => {
+			const task = this.indexer.getTask(operonId);
+			if (!task) return false;
 
-		const sessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
-		if (sessionIndex < 0 || sessionIndex >= sessions.length) return false;
+			const sessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+			if (sessionIndex < 0 || sessionIndex >= sessions.length) return false;
 
-		sessions.splice(sessionIndex, 1);
-		await this.persistTaskSessions(
-			task,
-			serializeTrackerList(sessions.map(session => session.raw)),
-			localNow(),
-		);
-		this.emit('history');
-		this.emit('state');
-		return true;
+			sessions.splice(sessionIndex, 1);
+			await this.persistTaskSessions(
+				task,
+				serializeTrackerList(sessions.map(session => session.raw)),
+				localNow(),
+			);
+			this.emit('history');
+			this.emit('state');
+			return true;
+		});
+	}
+
+	async deleteSessionByRange(
+		operonId: string,
+		originalStart: string,
+		originalEnd: string,
+		originalSessionIndex?: number,
+	): Promise<boolean> {
+		return await this.runSessionWrite('delete tracker session by range', async () => {
+			const task = this.indexer.getTask(operonId);
+			if (!task) return false;
+
+			const sessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+			const sessionIndex = this.resolveSessionIndexByRange(
+				sessions,
+				originalStart,
+				originalEnd,
+				originalSessionIndex,
+			);
+			if (sessionIndex < 0) return false;
+
+			sessions.splice(sessionIndex, 1);
+			await this.persistTaskSessions(
+				task,
+				serializeTrackerList(sessions.map(session => session.raw)),
+				localNow(),
+			);
+			this.emit('history');
+			this.emit('state');
+			return true;
+		});
+	}
+
+	private async runSessionWrite(context: string, operation: () => Promise<boolean>): Promise<boolean> {
+		try {
+			return await this.enqueueTransition(operation);
+		} catch (error) {
+			console.error(`Operon: Failed to ${context}`, error);
+			return false;
+		}
+	}
+
+	private resolveSessionIndexByRange(
+		sessions: ReturnType<typeof parseTrackerList>,
+		originalStart: string,
+		originalEnd: string,
+		originalSessionIndex?: number,
+	): number {
+		if (typeof originalSessionIndex === 'number') {
+			const session = sessions[originalSessionIndex];
+			if (session?.start === originalStart && session.end === originalEnd) {
+				return originalSessionIndex;
+			}
+		}
+
+		const matchingIndexes = sessions
+			.map((session, index) => session.start === originalStart && session.end === originalEnd ? index : -1)
+			.filter(index => index >= 0);
+		return matchingIndexes.length === 1 ? matchingIndexes[0] : -1;
 	}
 
 	getActiveState(): ActiveTrackerState | null {
@@ -854,10 +987,9 @@ export class TimeTracker {
 			duration,
 			datetimeModified: now,
 			...extraFields,
-		}, {
-			reindex: 'none',
-			touchAncestors: false,
-		});
+			}, {
+				reindex: 'none',
+			});
 		if (wrote === false) {
 			throw new Error('Failed to persist tracker sessions');
 		}

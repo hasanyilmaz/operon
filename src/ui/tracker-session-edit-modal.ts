@@ -13,10 +13,66 @@ import { getActiveWindow } from '../core/dom-compat';
 
 export interface TrackerSessionEditModalOptions {
 	title: string;
+	contextTitle?: string;
+	contextMeta?: string[];
 	initialStart?: string;
 	initialEnd?: string;
 	onSave: (start: string, end: string) => Promise<boolean | void> | boolean | void;
 	onDelete?: () => Promise<boolean | void> | boolean | void;
+}
+
+export function buildTrackerSessionEditContext(options: {
+	taskLabel: string;
+	start: string;
+	end: string;
+}): Pick<TrackerSessionEditModalOptions, 'contextTitle' | 'contextMeta'> {
+	return {
+		contextTitle: options.taskLabel,
+		contextMeta: [
+			t('taskEditor', 'sessionOriginalRange', {
+				range: formatTrackerSessionExactRange(options.start, options.end),
+			}),
+			t('taskEditor', 'sessionOriginalDuration', {
+				duration: formatDurationHuman(getTrackerSessionDurationSeconds(options.start, options.end)),
+			}),
+		],
+	};
+}
+
+function formatTrackerSessionExactRange(start: string, end: string): string {
+	const startDate = start.substring(0, 10);
+	const endDate = end.substring(0, 10);
+	const startTime = formatTrackerSessionExactTime(start);
+	const endTime = formatTrackerSessionExactTime(end);
+	if (startDate && startDate === endDate) {
+		return `${startDate} ${startTime}-${endTime}`;
+	}
+	return `${formatTrackerSessionExactDateTime(start)} - ${formatTrackerSessionExactDateTime(end)}`;
+}
+
+function formatTrackerSessionExactDateTime(value: string): string {
+	const date = value.substring(0, 10);
+	return `${date || value} ${formatTrackerSessionExactTime(value)}`;
+}
+
+function formatTrackerSessionExactTime(value: string): string {
+	const parsed = parseLocalDatetime(value);
+	if (parsed) {
+		const hours = String(parsed.getHours()).padStart(2, '0');
+		const minutes = String(parsed.getMinutes()).padStart(2, '0');
+		const seconds = String(parsed.getSeconds()).padStart(2, '0');
+		return `${hours}:${minutes}:${seconds}`;
+	}
+	const time = value.includes('T') ? value.substring(value.indexOf('T') + 1) : value;
+	const [hours = '00', minutes = '00', seconds = '00'] = time.split(':');
+	return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.substring(0, 2).padStart(2, '0')}`;
+}
+
+function getTrackerSessionDurationSeconds(start: string, end: string): number {
+	const startDate = parseLocalDatetime(start);
+	const endDate = parseLocalDatetime(end);
+	if (!startDate || !endDate || endDate.getTime() <= startDate.getTime()) return 0;
+	return Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 1000));
 }
 
 export class TrackerSessionEditModal extends Modal {
@@ -33,12 +89,33 @@ export class TrackerSessionEditModal extends Modal {
 		contentEl.empty();
 		contentEl.addClass('operon-tracker-session-modal');
 		this.titleEl.setText(this.options.title);
+		const modalId = `operon-tracker-session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+		if (this.options.contextTitle || this.options.contextMeta?.length) {
+			const contextEl = contentEl.createDiv('operon-tracker-session-modal-context');
+			if (this.options.contextTitle) {
+				contextEl.createDiv({
+					text: this.options.contextTitle,
+					cls: 'operon-tracker-session-modal-context-title',
+				});
+			}
+			for (const meta of this.options.contextMeta ?? []) {
+				contextEl.createDiv({
+					text: meta,
+					cls: 'operon-tracker-session-modal-context-meta',
+				});
+			}
+		}
 
 		const startWrap = contentEl.createDiv('operon-tracker-session-modal-field');
-		startWrap.createEl('label', { text: t('taskEditor', 'sessionStart') });
+		startWrap.createEl('label', {
+			text: t('taskEditor', 'sessionStart'),
+			attr: { for: `${modalId}-start` },
+		});
 		const startRow = startWrap.createDiv('operon-tracker-session-modal-input-row');
 		const startInput = startRow.createEl('input', {
 			attr: {
+				id: `${modalId}-start`,
 				type: 'datetime-local',
 				step: '1',
 			},
@@ -47,10 +124,14 @@ export class TrackerSessionEditModal extends Modal {
 		const startAdjustments = startRow.createDiv('operon-tracker-session-modal-adjustments');
 
 		const endWrap = contentEl.createDiv('operon-tracker-session-modal-field');
-		endWrap.createEl('label', { text: t('taskEditor', 'sessionEnd') });
+		endWrap.createEl('label', {
+			text: t('taskEditor', 'sessionEnd'),
+			attr: { for: `${modalId}-end` },
+		});
 		const endRow = endWrap.createDiv('operon-tracker-session-modal-input-row');
 		const endInput = endRow.createEl('input', {
 			attr: {
+				id: `${modalId}-end`,
 				type: 'datetime-local',
 				step: '1',
 			},
@@ -60,6 +141,10 @@ export class TrackerSessionEditModal extends Modal {
 
 		const durationPreview = contentEl.createDiv('operon-tracker-session-modal-preview');
 		const errorEl = contentEl.createDiv('operon-tracker-session-modal-error');
+		errorEl.id = `${modalId}-error`;
+		errorEl.setAttr('aria-live', 'polite');
+		startInput.setAttr('aria-describedby', errorEl.id);
+		endInput.setAttr('aria-describedby', errorEl.id);
 
 		const actions = contentEl.createDiv('operon-tracker-session-modal-actions');
 		const deleteButton = this.options.onDelete
@@ -176,11 +261,10 @@ export class TrackerSessionEditModal extends Modal {
 
 		const remove = () => {
 			if (!this.options.onDelete) return;
-			const { start, end } = getNormalizedValues();
 			new ConfirmActionModal(this.app, {
 				title: t('taskEditor', 'deleteSessionTitle'),
 				message: t('taskEditor', 'deleteSessionMessage', {
-					range: `${start || this.options.initialStart || ''} - ${end || this.options.initialEnd || ''}`,
+					range: `${this.options.initialStart ?? ''} - ${this.options.initialEnd ?? ''}`,
 				}),
 				confirmText: t('taskEditor', 'deleteSessionConfirm'),
 				cancelText: t('buttons', 'cancel'),

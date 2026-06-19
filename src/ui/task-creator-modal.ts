@@ -61,6 +61,7 @@ export interface TaskCreatorDraft {
 	description: string;
 	note: string;
 	tags: string[];
+	inheritedTags: string[];
 	subtaskIds: string[];
 	fieldValues: Record<string, string>;
 	explicitFieldKeys: string[];
@@ -105,6 +106,7 @@ export function createEmptyTaskCreatorDraft(): TaskCreatorDraft {
 		description: '',
 		note: '',
 		tags: [],
+		inheritedTags: [],
 		subtaskIds: [],
 		fieldValues: {},
 		explicitFieldKeys: [],
@@ -123,6 +125,7 @@ export function cloneTaskCreatorDraft(draft: TaskCreatorDraft | null | undefined
 		description: base.description ?? '',
 		note: base.note ?? '',
 		tags: [...(base.tags ?? [])],
+		inheritedTags: [...(base.inheritedTags ?? [])],
 		subtaskIds: [...(base.subtaskIds ?? [])],
 		fieldValues: { ...(base.fieldValues ?? {}) },
 		explicitFieldKeys: [...(base.explicitFieldKeys ?? [])],
@@ -197,6 +200,44 @@ export function isTaskCreatorFieldExplicitlyCleared(draft: TaskCreatorDraft, key
 	return draft.explicitFieldKeys.includes(key) && !(draft.fieldValues[key] ?? '').trim();
 }
 
+function normalizeTaskCreatorTags(tags: readonly string[] | null | undefined): string[] {
+	const normalized: string[] = [];
+	const seen = new Set<string>();
+	for (const rawTag of tags ?? []) {
+		const tag = rawTag.trim().replace(/^#/, '').trim();
+		if (!tag || seen.has(tag)) continue;
+		seen.add(tag);
+		normalized.push(tag);
+	}
+	return normalized;
+}
+
+function removeTags(tags: readonly string[], tagsToRemove: readonly string[]): string[] {
+	if (tagsToRemove.length === 0) return normalizeTaskCreatorTags(tags);
+	const removalSet = new Set(normalizeTaskCreatorTags(tagsToRemove));
+	return normalizeTaskCreatorTags(tags).filter(tag => !removalSet.has(tag));
+}
+
+export function applyTaskCreatorInheritedTagsToDraft(
+	draft: TaskCreatorDraft,
+	inheritedTags: readonly string[] | null | undefined,
+): void {
+	const baseTags = removeTags(draft.tags, draft.inheritedTags ?? []);
+	const baseSet = new Set(baseTags);
+	const nextTags = [...baseTags];
+	const nextInheritedTags: string[] = [];
+
+	for (const tag of normalizeTaskCreatorTags(inheritedTags)) {
+		if (baseSet.has(tag)) continue;
+		baseSet.add(tag);
+		nextTags.push(tag);
+		nextInheritedTags.push(tag);
+	}
+
+	draft.tags = nextTags;
+	draft.inheritedTags = nextInheritedTags;
+}
+
 export function buildTaskCreatorSubmitFieldSeed(draft: TaskCreatorDraft): TaskCreatorSubmitFieldSeed {
 	const fieldValues = { ...draft.fieldValues };
 	delete fieldValues['pinned'];
@@ -236,9 +277,23 @@ export function resolveTaskCreatorParentFieldValues(
 	return cachedParentFieldValuesById.get(normalizedParentTaskId) ?? null;
 }
 
+export function resolveTaskCreatorParentTags(
+	parentTaskId: string,
+	allTasks: IndexedTask[],
+	cachedParentTagsById: Map<string, string[] | null>,
+): string[] | null {
+	const normalizedParentTaskId = parentTaskId.trim();
+	if (!normalizedParentTaskId) return null;
+	const parentTask = allTasks.find(task => task.operonId === normalizedParentTaskId) ?? null;
+	if (parentTask) return [...parentTask.tags];
+	const cachedTags = cachedParentTagsById.get(normalizedParentTaskId);
+	return cachedTags ? [...cachedTags] : null;
+}
+
 export function reconcileTaskCreatorParentInheritanceForDraft(
 	draft: TaskCreatorDraft,
 	parentFieldValues: Record<string, string> | null,
+	parentTags: readonly string[] | null | undefined,
 	settings: OperonSettings,
 ): void {
 	const parentTaskId = (draft.fieldValues['parentTask'] ?? '').trim();
@@ -255,6 +310,9 @@ export function reconcileTaskCreatorParentInheritanceForDraft(
 		}
 		draft.fieldValues = nextFieldValues;
 		draft.inheritedFieldKeys = [];
+		if (!explicit.has('tags')) {
+			applyTaskCreatorInheritedTagsToDraft(draft, []);
+		}
 		draft.taskIcon = nextFieldValues['taskIcon'] ?? '';
 		draft.taskColor = nextFieldValues['taskColor'] ?? '';
 		return;
@@ -264,6 +322,7 @@ export function reconcileTaskCreatorParentInheritanceForDraft(
 		parentTaskId,
 		parentFieldValues,
 		settings,
+		parentTags,
 	);
 
 	const candidateKeys = new Set([
@@ -272,7 +331,8 @@ export function reconcileTaskCreatorParentInheritanceForDraft(
 	]);
 	for (const key of candidateKeys) {
 		if (explicit.has(key)) continue;
-		const inheritedValue = (inherited[key] ?? '').trim();
+		const rawInheritedValue = inherited[key];
+		const inheritedValue = typeof rawInheritedValue === 'string' ? rawInheritedValue.trim() : '';
 		if (inheritedValue) {
 			nextFieldValues[key] = inheritedValue;
 			nextInherited.add(key);
@@ -285,6 +345,9 @@ export function reconcileTaskCreatorParentInheritanceForDraft(
 
 	draft.fieldValues = nextFieldValues;
 	draft.inheritedFieldKeys = Array.from(nextInherited);
+	if (!explicit.has('tags')) {
+		applyTaskCreatorInheritedTagsToDraft(draft, inherited.tags);
+	}
 	draft.taskIcon = nextFieldValues['taskIcon'] ?? '';
 	draft.taskColor = nextFieldValues['taskColor'] ?? '';
 }
@@ -293,6 +356,7 @@ export function applyTaskCreatorBackgroundParentSeedToDraft(
 	draft: TaskCreatorDraft,
 	parentTaskId: string,
 	parentFieldValues: Record<string, string> | null,
+	parentTags: readonly string[] | null | undefined,
 	settings: OperonSettings,
 ): boolean {
 	const normalizedParentTaskId = parentTaskId.trim();
@@ -300,7 +364,7 @@ export function applyTaskCreatorBackgroundParentSeedToDraft(
 	if ((draft.fieldValues['parentTask'] ?? '').trim()) return false;
 	if (isTaskCreatorFieldExplicitlyCleared(draft, 'parentTask')) return false;
 	draft.fieldValues = { ...draft.fieldValues, parentTask: normalizedParentTaskId };
-	reconcileTaskCreatorParentInheritanceForDraft(draft, parentFieldValues, settings);
+	reconcileTaskCreatorParentInheritanceForDraft(draft, parentFieldValues, parentTags, settings);
 	return true;
 }
 
@@ -311,6 +375,7 @@ export function buildTaskCreatorSnapshot(draft: TaskCreatorDraft): TaskCreatorDr
 		description,
 		note,
 		tags: [...draft.tags],
+		inheritedTags: [...draft.inheritedTags],
 		subtaskIds: [...draft.subtaskIds],
 		fieldValues: { ...draft.fieldValues },
 		explicitFieldKeys: [...draft.explicitFieldKeys],
@@ -326,23 +391,26 @@ export function buildTaskCreatorSnapshot(draft: TaskCreatorDraft): TaskCreatorDr
 export function buildSubtaskTaskCreatorDraft(
 	parentOperonId: string,
 	parentFieldValues: Record<string, string> | null | undefined,
+	parentTags: readonly string[] | null | undefined,
 	settings: OperonSettings,
 ): TaskCreatorDraft {
 	const draft = createEmptyTaskCreatorDraft();
-	const inherited = resolveSubtaskInitialFieldsFromParentValues(parentOperonId, parentFieldValues, settings);
+	const inherited = resolveSubtaskInitialFieldsFromParentValues(parentOperonId, parentFieldValues, settings, parentTags);
 	const inheritedFieldKeys: string[] = [];
 
 	if (inherited.parentTask) {
 		draft.fieldValues['parentTask'] = inherited.parentTask;
 	}
 	for (const key of getSubtaskInheritedFieldKeys(inherited)) {
-		const value = (inherited[key] ?? '').trim();
+		const rawValue = inherited[key];
+		const value = typeof rawValue === 'string' ? rawValue.trim() : '';
 		if (!value) continue;
 		draft.fieldValues[key] = value;
 		inheritedFieldKeys.push(key);
 	}
 
 	draft.inheritedFieldKeys = inheritedFieldKeys;
+	applyTaskCreatorInheritedTagsToDraft(draft, inherited.tags);
 	draft.taskIcon = draft.fieldValues['taskIcon'] ?? '';
 	draft.taskColor = draft.fieldValues['taskColor'] ?? '';
 	return draft;
@@ -425,6 +493,7 @@ export class TaskCreatorModal extends Modal {
 	private activePickerClose: (() => void) | null = null;
 	private escapeScopeHandler: KeymapEventHandler | null = null;
 	private seededParentFieldValuesById = new Map<string, Record<string, string> | null>();
+	private seededParentTagsById = new Map<string, string[] | null>();
 	private allowDirectClose = false;
 	private isSubmitting = false;
 	private resolved = false;
@@ -787,12 +856,16 @@ export class TaskCreatorModal extends Modal {
 		this.scheduleDescriptionFocusReclaims([0, 80, 200, 500, 1000, 1800]);
 	}
 
-	applyBackgroundParentSeed(parentTaskId: string, parentFieldValues: Record<string, string> | null): void {
+	applyBackgroundParentSeed(parentTaskId: string, parentFieldValues: Record<string, string> | null, parentTags?: readonly string[] | null): void {
 		const normalizedParentTaskId = parentTaskId.trim();
 		if (!normalizedParentTaskId) return;
 		this.seededParentFieldValuesById.set(
 			normalizedParentTaskId,
 			parentFieldValues ? { ...parentFieldValues } : null,
+		);
+		this.seededParentTagsById.set(
+			normalizedParentTaskId,
+			parentTags ? normalizeTaskCreatorTags(parentTags) : null,
 		);
 		if ((this.draft.fieldValues['parentTask'] ?? '').trim() || isTaskCreatorFieldExplicitlyCleared(this.draft, 'parentTask')) {
 			this.reclaimDescriptionFocusAfterBackgroundMutation();
@@ -802,6 +875,7 @@ export class TaskCreatorModal extends Modal {
 			this.draft,
 			normalizedParentTaskId,
 			parentFieldValues,
+			parentTags,
 			this.options.settings,
 		);
 		this.pruneDraftSubtasksForParent();
@@ -1357,9 +1431,11 @@ export class TaskCreatorModal extends Modal {
 		const explicit = new Set(this.draft.explicitFieldKeys);
 		const inherited = new Set(this.draft.inheritedFieldKeys);
 		for (const key of Object.keys(payload)) {
-			if (key === 'tags') continue;
 			explicit.add(key);
 			inherited.delete(key);
+			if (key === 'tags') {
+				this.draft.inheritedTags = [];
+			}
 		}
 		this.draft.explicitFieldKeys = Array.from(explicit);
 		this.draft.inheritedFieldKeys = Array.from(inherited);
@@ -1372,7 +1448,12 @@ export class TaskCreatorModal extends Modal {
 			this.options.allTasks,
 			this.seededParentFieldValuesById,
 		);
-		reconcileTaskCreatorParentInheritanceForDraft(this.draft, parentFieldValues, this.options.settings);
+		const parentTags = resolveTaskCreatorParentTags(
+			parentTaskId,
+			this.options.allTasks,
+			this.seededParentTagsById,
+		);
+		reconcileTaskCreatorParentInheritanceForDraft(this.draft, parentFieldValues, parentTags, this.options.settings);
 	}
 
 	private getThemeColor(): string {

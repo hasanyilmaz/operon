@@ -63,7 +63,7 @@ import {
 	ConfirmActionComparisonTable,
 	ConfirmActionModal,
 } from './confirm-action-modal';
-import { TrackerSessionEditModal } from './tracker-session-edit-modal';
+import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
 import { formatTrackerDayHeader } from './tracker-time-labels';
 import { EmbeddedMarkdownSourceEditor } from './embedded-markdown-source-editor';
 import { showTagPicker } from './field-pickers/tag-picker';
@@ -4202,10 +4202,22 @@ export class TaskEditorContent {
 		edit.addEventListener('click', () => {
 			new TrackerSessionEditModal(this.app, {
 				title: t('taskEditor', 'editSession'),
+				...buildTrackerSessionEditContext({
+					taskLabel: session.task.description || this.description || session.operonId,
+					start: session.start,
+					end: session.end,
+				}),
 				initialStart: session.start,
 				initialEnd: session.end,
 				onSave: async (start, end) => {
-					const updated = await this.timeTracker.updateSession(session.operonId, session.sessionIndex, start, end);
+					const updated = await this.timeTracker.updateSessionByRange(
+						session.operonId,
+						session.start,
+						session.end,
+						start,
+						end,
+						session.sessionIndex,
+					);
 					if (!updated) {
 						new Notice(t('notifications', 'taskSaveFailed'));
 						return false;
@@ -4220,7 +4232,12 @@ export class TaskEditorContent {
 					}));
 				},
 				onDelete: async () => {
-					const deleted = await this.timeTracker.deleteSession(session.operonId, session.sessionIndex);
+					const deleted = await this.timeTracker.deleteSessionByRange(
+						session.operonId,
+						session.start,
+						session.end,
+						session.sessionIndex,
+					);
 					if (!deleted) {
 						new Notice(t('notifications', 'taskSaveFailed'));
 						return false;
@@ -4242,18 +4259,23 @@ export class TaskEditorContent {
 				}),
 				confirmText: t('taskEditor', 'deleteSessionConfirm'),
 				cancelText: t('buttons', 'cancel'),
-				}, asyncHandler('task editor tracker session delete failed', async confirmed => {
-					if (!confirmed) return;
-					const deleted = await this.timeTracker.deleteSession(session.operonId, session.sessionIndex);
-					if (!deleted) {
+			}, asyncHandler('task editor tracker session delete failed', async confirmed => {
+				if (!confirmed) return;
+				const deleted = await this.timeTracker.deleteSessionByRange(
+					session.operonId,
+					session.start,
+					session.end,
+					session.sessionIndex,
+				);
+				if (!deleted) {
 					new Notice(t('notifications', 'taskSaveFailed'));
 					return;
 				}
-					this.syncTrackingFieldsFromIndex();
-					this.refreshCoreTrackerControl?.();
-					this.refreshTrackingSessionsSection?.();
-				})).open();
-			});
+				this.syncTrackingFieldsFromIndex();
+				this.refreshCoreTrackerControl?.();
+				this.refreshTrackingSessionsSection?.();
+			})).open();
+		});
 	}
 
 	private renderRemoveControl(container: HTMLElement): void {
