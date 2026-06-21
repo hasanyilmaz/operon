@@ -21852,10 +21852,11 @@ body.operon-calendar-touch-drag-active {
    Kanban View
    ======================================== */
 
-.operon-kanban-view {
+.workspace-tabs .workspace-leaf .view-content.operon-kanban-view {
 	height: 100%;
 	position: relative;
 	overflow: hidden;
+	padding: 0;
 }
 
 /* Hide the native Obsidian view header (title bar) for the Kanban leaf on
