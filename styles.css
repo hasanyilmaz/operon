@@ -21858,6 +21858,13 @@ body.operon-calendar-touch-drag-active {
 	overflow: hidden;
 }
 
+/* Hide the native Obsidian view header (title bar) for the Kanban leaf on
+   desktop so the board's own toolbar is the only chrome above the columns.
+   The header is kept on mobile, where it also hosts the sidebar-drawer toggles. */
+body:not(.is-mobile) .workspace-leaf-content[data-type="operon-kanban-view"] .view-header {
+	display: none;
+}
+
 .operon-kanban-root {
 	--operon-kanban-surface-main: var(--background-primary);
 	--operon-kanban-surface-soft: var(--background-secondary);
