@@ -7,6 +7,7 @@ import { clonePipeline, createPipelineId, createStatusId, findStatusDef, Pipelin
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from './priority';
 import { CANONICAL_KEYS } from './keys';
 import {
+	CALENDAR_MOBILE_VIEW_MODES,
 	CalendarAppearanceMode,
 	CalendarColorSource,
 	CalendarMobileViewMode,
@@ -62,7 +63,7 @@ import {
 	normalizeProjectSerialScopes,
 } from '../core/project-serials';
 
-export const CURRENT_SETTINGS_VERSION = 96;
+export const CURRENT_SETTINGS_VERSION = 99;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
@@ -128,6 +129,8 @@ const DEFAULT_CONTEXTUAL_MENU_ACTION_ALLOWLIST: ContextualMenuActionId[] = [
 	'unschedule',
 	'clearDueDate',
 	'openEditor',
+	'convertInlineToFileTask',
+	'convertFileToInlineTask',
 	'subtasks',
 	'createSubtask',
 	'checkboxes',
@@ -139,6 +142,8 @@ const DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS: ContextualMenuActionId[] =
 	'taskStatus',
 	'pinToggle',
 	'openEditor',
+	'convertInlineToFileTask',
+	'convertFileToInlineTask',
 	'subtasks',
 	'createSubtask',
 	'checkboxes',
@@ -153,6 +158,8 @@ const DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS: ContextualMenuActionId[] = [
 	'taskStatus',
 	'pinToggle',
 	'openEditor',
+	'convertInlineToFileTask',
+	'convertFileToInlineTask',
 	'subtasks',
 	'createSubtask',
 	'checkboxes',
@@ -166,6 +173,8 @@ const DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS: ContextualMenuActionId[] = [
 ];
 const DEFAULT_CONTEXTUAL_MENU_TRACKER_ACTIONS: ContextualMenuActionId[] = [
 	'markDone',
+	'convertInlineToFileTask',
+	'convertFileToInlineTask',
 	'subtasks',
 	'createSubtask',
 	'checkboxes',
@@ -177,6 +186,8 @@ const DEFAULT_CONTEXTUAL_MENU_KANBAN_ACTIONS: ContextualMenuActionId[] = [
 	'pinToggle',
 	'startTimer',
 	'markDone',
+	'convertInlineToFileTask',
+	'convertFileToInlineTask',
 	'subtasks',
 	'createSubtask',
 	'checkboxes',
@@ -208,6 +219,35 @@ export const CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS = ['all', 4, 5, 
 export type CalendarMobileAgendaPastDays = typeof CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS[number];
 export type CalendarMobileAgendaFutureDays = typeof CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS[number];
 export type CalendarMobileAllDayVisibleTaskLimit = typeof CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS[number];
+export type CalendarMobileSourcePresetSettingKey =
+	| 'calendarMobileAgendaSourcePresetId'
+	| 'calendarMobileDaySourcePresetId'
+	| 'calendarMobileTwoDaySourcePresetId'
+	| 'calendarMobileThreeDaySourcePresetId';
+export const CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE: Record<CalendarMobileViewMode, CalendarMobileSourcePresetSettingKey> = {
+	agenda: 'calendarMobileAgendaSourcePresetId',
+	day: 'calendarMobileDaySourcePresetId',
+	twoDay: 'calendarMobileTwoDaySourcePresetId',
+	threeDay: 'calendarMobileThreeDaySourcePresetId',
+};
+
+export type CalendarMobileViewModeEnabledSettingKey =
+	| 'calendarMobileAgendaEnabled'
+	| 'calendarMobileDayEnabled'
+	| 'calendarMobileTwoDayEnabled'
+	| 'calendarMobileThreeDayEnabled';
+
+export const CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE: Record<CalendarMobileViewMode, CalendarMobileViewModeEnabledSettingKey> = {
+	agenda: 'calendarMobileAgendaEnabled',
+	day: 'calendarMobileDayEnabled',
+	twoDay: 'calendarMobileTwoDayEnabled',
+	threeDay: 'calendarMobileThreeDayEnabled',
+};
+
+export function resolveEnabledCalendarMobileViewModes(settings: Pick<OperonSettings, CalendarMobileViewModeEnabledSettingKey>): CalendarMobileViewMode[] {
+	const enabledModes = CALENDAR_MOBILE_VIEW_MODES.filter(mode => settings[CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE[mode]] !== false);
+	return enabledModes.length > 0 ? enabledModes : ['agenda'];
+}
 export type CalendarDayTitleAction = 'create-open-daily-note' | 'nothing';
 const CONTEXTUAL_MENU_ACTION_ID_SET = new Set<ContextualMenuActionId>(
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.map(action => action.id),
@@ -1319,6 +1359,14 @@ export interface OperonSettings {
 	calendarMobileMaxWidthPx: number;
 	calendarMobileDefaultView: CalendarMobileViewMode;
 	calendarMobileDefaultSourcePresetId: string | null;
+	calendarMobileAgendaEnabled: boolean;
+	calendarMobileDayEnabled: boolean;
+	calendarMobileTwoDayEnabled: boolean;
+	calendarMobileThreeDayEnabled: boolean;
+	calendarMobileAgendaSourcePresetId: string | null;
+	calendarMobileDaySourcePresetId: string | null;
+	calendarMobileTwoDaySourcePresetId: string | null;
+	calendarMobileThreeDaySourcePresetId: string | null;
 	calendarMobileSlotMinutes: number;
 	calendarMobileShowProjectedOccurrences: boolean;
 	calendarMobileShowExternalCalendars: boolean;
@@ -1715,6 +1763,14 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	calendarMobileMaxWidthPx: 720,
 	calendarMobileDefaultView: 'agenda',
 	calendarMobileDefaultSourcePresetId: DEFAULT_CALENDAR_DEFAULT_PRESET_ID,
+	calendarMobileAgendaEnabled: true,
+	calendarMobileDayEnabled: true,
+	calendarMobileTwoDayEnabled: true,
+	calendarMobileThreeDayEnabled: true,
+	calendarMobileAgendaSourcePresetId: DEFAULT_CALENDAR_DEFAULT_PRESET_ID,
+	calendarMobileDaySourcePresetId: DEFAULT_CALENDAR_DEFAULT_PRESET_ID,
+	calendarMobileTwoDaySourcePresetId: DEFAULT_CALENDAR_DEFAULT_PRESET_ID,
+	calendarMobileThreeDaySourcePresetId: DEFAULT_CALENDAR_DEFAULT_PRESET_ID,
 	calendarMobileSlotMinutes: 30,
 	calendarMobileShowProjectedOccurrences: true,
 	calendarMobileShowExternalCalendars: true,
@@ -2426,6 +2482,23 @@ function insertContextualMenuActionAfter(
 	];
 }
 
+function insertContextualMenuActionAfterAny(
+	actionIds: ContextualMenuActionId[],
+	actionId: ContextualMenuActionId,
+	afterActionIds: ContextualMenuActionId[],
+): ContextualMenuActionId[] {
+	if (actionIds.includes(actionId)) return actionIds;
+	const afterIndex = afterActionIds
+		.map(candidate => actionIds.indexOf(candidate))
+		.find(index => index >= 0);
+	if (afterIndex === undefined) return actionIds;
+	return [
+		...actionIds.slice(0, afterIndex + 1),
+		actionId,
+		...actionIds.slice(afterIndex + 1),
+	];
+}
+
 function insertContextualMenuActionAfterOrBefore(
 	actionIds: ContextualMenuActionId[],
 	actionId: ContextualMenuActionId,
@@ -2463,6 +2536,21 @@ function backfillContextualMenuSurfaceAction(
 		const actionIds = next[surface];
 		if (!Array.isArray(actionIds) || !actionIds.includes(afterActionId)) continue;
 		next[surface] = insertContextualMenuActionAfter(actionIds, actionId, afterActionId);
+	}
+	return next;
+}
+
+function backfillContextualMenuSurfaceActionAfterAny(
+	matrix: ContextualMenuSurfaceActionMatrix,
+	actionId: ContextualMenuActionId,
+	afterActionIds: ContextualMenuActionId[],
+): ContextualMenuSurfaceActionMatrix {
+	const next: ContextualMenuSurfaceActionMatrix = { ...matrix };
+	for (const surface of CONTEXTUAL_MENU_SURFACES) {
+		if (surface === 'calendarProjectedOccurrence' || surface === 'calendarExternalItem') continue;
+		const actionIds = next[surface];
+		if (!Array.isArray(actionIds) || !afterActionIds.some(anchor => actionIds.includes(anchor))) continue;
+		next[surface] = insertContextualMenuActionAfterAny(actionIds, actionId, afterActionIds);
 	}
 	return next;
 }
@@ -2533,6 +2621,7 @@ function normalizePriorityDefinition(raw: unknown, index: number): PriorityDefin
 	const src = raw as Record<string, unknown>;
 	const label = normalizeOptionalString(src.label);
 	const color = normalizeOptionalString(src.color);
+	const description = normalizeOptionalString(src.description);
 	if (!label || !color) return null;
 	const priorityIcon = normalizeTaskIconValue(
 		typeof src.priorityIcon === 'string' ? src.priorityIcon : '',
@@ -2545,6 +2634,9 @@ function normalizePriorityDefinition(raw: unknown, index: number): PriorityDefin
 	};
 	if (priorityIcon) {
 		priority.priorityIcon = priorityIcon;
+	}
+	if (description) {
+		priority.description = description;
 	}
 	return priority;
 }
@@ -2642,6 +2734,7 @@ function normalizePipelineDefinition(raw: unknown): Pipeline | null {
 	const src = raw as Record<string, unknown>;
 	const id = normalizeOptionalString(src.id) ?? createPipelineId();
 	const name = normalizeOptionalString(src.name);
+	const description = normalizeOptionalString(src.description);
 	if (!name) return null;
 
 	const statuses = Array.isArray(src.statuses)
@@ -2651,7 +2744,11 @@ function normalizePipelineDefinition(raw: unknown): Pipeline | null {
 		: [];
 	if (statuses.length === 0) return null;
 
-	return { id, name, statuses: normalizePipelineStatuses(statuses) };
+	const pipeline: Pipeline = { id, name, statuses: normalizePipelineStatuses(statuses) };
+	if (description) {
+		pipeline.description = description;
+	}
+	return pipeline;
 }
 
 function normalizePipelineIds(pipelines: Pipeline[]): Pipeline[] {
@@ -3094,6 +3191,40 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			'createSubtask',
 		);
 	}
+	if (sourceSettingsVersion < 97) {
+		out.contextualMenuActionAllowlist = insertContextualMenuActionAfter(
+			out.contextualMenuActionAllowlist,
+			'convertFileToInlineTask',
+			'openEditor',
+		);
+		out.contextualMenuActionAllowlist = insertContextualMenuActionAfter(
+			out.contextualMenuActionAllowlist,
+			'convertInlineToFileTask',
+			'openEditor',
+		);
+		out.contextualMenuSurfaceActionMatrix = backfillContextualMenuSurfaceAction(
+			out.contextualMenuSurfaceActionMatrix,
+			'convertFileToInlineTask',
+			'openEditor',
+		);
+		out.contextualMenuSurfaceActionMatrix = backfillContextualMenuSurfaceAction(
+			out.contextualMenuSurfaceActionMatrix,
+			'convertInlineToFileTask',
+			'openEditor',
+		);
+	}
+	if (sourceSettingsVersion < 98) {
+		out.contextualMenuSurfaceActionMatrix = backfillContextualMenuSurfaceActionAfterAny(
+			out.contextualMenuSurfaceActionMatrix,
+			'convertFileToInlineTask',
+			['openEditor', 'markDone'],
+		);
+		out.contextualMenuSurfaceActionMatrix = backfillContextualMenuSurfaceActionAfterAny(
+			out.contextualMenuSurfaceActionMatrix,
+			'convertInlineToFileTask',
+			['openEditor', 'markDone'],
+		);
+	}
 	out.contextualMenuOpenDelayMs = normalizeContextualMenuOpenDelayMs(
 		src.contextualMenuOpenDelayMs ?? src.calendarHoverMenuOpenDelayMs,
 	);
@@ -3301,17 +3432,36 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		src.calendarMobileDefaultView,
 		DEFAULT_SETTINGS.calendarMobileDefaultView,
 	);
-	out.calendarMobileDefaultSourcePresetId = (() => {
-		const fallbackPresetId = out.calendarDefaultPresetId && out.calendarPresets.some(preset => preset.id === out.calendarDefaultPresetId)
-			? out.calendarDefaultPresetId
-			: out.calendarPresets[0]?.id ?? null;
-		const rawPresetId = typeof src.calendarMobileDefaultSourcePresetId === 'string'
-			? src.calendarMobileDefaultSourcePresetId
+	out.calendarMobileAgendaEnabled = src.calendarMobileAgendaEnabled !== false;
+	out.calendarMobileDayEnabled = src.calendarMobileDayEnabled !== false;
+	out.calendarMobileTwoDayEnabled = src.calendarMobileTwoDayEnabled !== false;
+	out.calendarMobileThreeDayEnabled = src.calendarMobileThreeDayEnabled !== false;
+	if (CALENDAR_MOBILE_VIEW_MODES.every(mode => out[CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE[mode]] === false)) {
+		const fallbackMode = CALENDAR_MOBILE_VIEW_MODES.includes(out.calendarMobileDefaultView)
+			? out.calendarMobileDefaultView
+			: 'agenda';
+		out[CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE[fallbackMode]] = true;
+	}
+	const fallbackMobileSourcePresetId = out.calendarDefaultPresetId && out.calendarPresets.some(preset => preset.id === out.calendarDefaultPresetId)
+		? out.calendarDefaultPresetId
+		: out.calendarPresets[0]?.id ?? null;
+	const normalizeMobileSourcePresetId = (raw: unknown, fallback: string | null): string | null => {
+		const presetId = typeof raw === 'string' && raw.trim()
+			? raw
 			: null;
-		return rawPresetId && out.calendarPresets.some(preset => preset.id === rawPresetId)
-			? rawPresetId
-			: fallbackPresetId;
-	})();
+		return presetId && out.calendarPresets.some(preset => preset.id === presetId)
+			? presetId
+			: fallback;
+	};
+	const legacyMobileSourcePresetId = normalizeMobileSourcePresetId(
+		src.calendarMobileDefaultSourcePresetId,
+		fallbackMobileSourcePresetId,
+	);
+	out.calendarMobileDefaultSourcePresetId = legacyMobileSourcePresetId;
+	out.calendarMobileAgendaSourcePresetId = normalizeMobileSourcePresetId(src.calendarMobileAgendaSourcePresetId, legacyMobileSourcePresetId);
+	out.calendarMobileDaySourcePresetId = normalizeMobileSourcePresetId(src.calendarMobileDaySourcePresetId, legacyMobileSourcePresetId);
+	out.calendarMobileTwoDaySourcePresetId = normalizeMobileSourcePresetId(src.calendarMobileTwoDaySourcePresetId, legacyMobileSourcePresetId);
+	out.calendarMobileThreeDaySourcePresetId = normalizeMobileSourcePresetId(src.calendarMobileThreeDaySourcePresetId, legacyMobileSourcePresetId);
 	out.calendarMobileSlotMinutes = normalizeCalendarMobileSlotMinutes(src.calendarMobileSlotMinutes);
 	out.calendarMobileShowProjectedOccurrences = src.calendarMobileShowProjectedOccurrences !== false;
 	out.calendarMobileShowExternalCalendars = src.calendarMobileShowExternalCalendars !== false;

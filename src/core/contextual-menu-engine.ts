@@ -1,10 +1,12 @@
 import { t } from './i18n';
-import { parseTrackerList, splitTrackerRangeByMidnight } from '../systems/tracker-utils';
+import { parseLocalDatetime, parseTrackerList, splitTrackerRangeByMidnight } from '../systems/tracker-utils';
 
 export type ContextualMenuActionId =
 	| 'taskStatus'
 	| 'pinToggle'
 	| 'openEditor'
+	| 'convertInlineToFileTask'
+	| 'convertFileToInlineTask'
 	| 'subtasks'
 	| 'createSubtask'
 	| 'checkboxes'
@@ -141,6 +143,10 @@ export interface ResolvedContextualMenuAction extends ContextualMenuActionDefini
 export interface ContextualTaskActionSource {
 	checkbox: 'open' | 'done' | 'cancelled';
 	fieldValues: Record<string, string>;
+	sourceFormat?: 'inline' | 'yaml';
+	primary?: {
+		format?: 'inline' | 'yaml';
+	};
 }
 
 export interface ContextualMenuRepeatRef {
@@ -214,6 +220,8 @@ export interface ContextualMenuExecutionDeps {
 	clearDueDate: (taskId: string) => void | Promise<void>;
 	openProjectedOccurrenceLatestTaskEditor: (projected: ContextualMenuProjectedRef) => void | Promise<void>;
 	skipProjectedOccurrence: (projected: ContextualMenuProjectedRef) => void | Promise<void>;
+	convertInlineToFileTask: (taskId: string) => void | Promise<void>;
+	convertFileToInlineTask: (taskId: string) => void | Promise<void>;
 }
 
 export const CONTEXTUAL_MENU_ACTIONS: ContextualMenuActionDefinition[] = [
@@ -237,6 +245,20 @@ export const CONTEXTUAL_MENU_ACTIONS: ContextualMenuActionDefinition[] = [
 		compactLabel: 'Ed',
 		descriptionKey: 'contextualMenuActionOpenEditorDesc',
 		icon: 'square-pen',
+	},
+	{
+		id: 'convertInlineToFileTask',
+		labelKey: 'contextualMenuActionConvertInlineToFileTask',
+		compactLabel: 'File',
+		descriptionKey: 'contextualMenuActionConvertInlineToFileTaskDesc',
+		icon: 'list-chevrons-up-down',
+	},
+	{
+		id: 'convertFileToInlineTask',
+		labelKey: 'contextualMenuActionConvertFileToInlineTask',
+		compactLabel: 'Inl',
+		descriptionKey: 'contextualMenuActionConvertFileToInlineTaskDesc',
+		icon: 'list-chevrons-down-up',
 	},
 	{
 		id: 'subtasks',
@@ -324,6 +346,8 @@ const DUE_MARKER_ALLOWED_ACTIONS = new Set<ContextualMenuActionId>([
 	'taskStatus',
 	'pinToggle',
 	'openEditor',
+	'convertInlineToFileTask',
+	'convertFileToInlineTask',
 	'subtasks',
 	'createSubtask',
 	'checkboxes',
@@ -408,6 +432,14 @@ export async function executeContextualMenuAction(
 			return;
 		case 'openEditor':
 			await deps.openEditor(context.taskId);
+			return;
+		case 'convertInlineToFileTask':
+			if (getTaskSourceFormat(context) !== 'inline') return;
+			await deps.convertInlineToFileTask(context.taskId);
+			return;
+		case 'convertFileToInlineTask':
+			if (getTaskSourceFormat(context) !== 'yaml') return;
+			await deps.convertFileToInlineTask(context.taskId);
 			return;
 		case 'subtasks':
 			if (context.task?.checkbox !== 'open' || context.hasSubtasks !== true) return;
@@ -551,6 +583,12 @@ function isContextualMenuActionAvailable(
 		if (!range || range.end > context.now) return false;
 		return !hasTrackedCoverageForScheduledRange(getTrackerValue(context), range.start, range.end);
 	}
+	if (actionId === 'convertInlineToFileTask') {
+		return getTaskSourceFormat(context) === 'inline';
+	}
+	if (actionId === 'convertFileToInlineTask') {
+		return getTaskSourceFormat(context) === 'yaml';
+	}
 	if (actionId === 'skipThisOccurrence') {
 		return context.surface === 'calendarProjectedOccurrence'
 			&& !!context.projectedRef
@@ -560,6 +598,14 @@ function isContextualMenuActionAvailable(
 		return getDueValue(context).length > 0;
 	}
 	return true;
+}
+
+function getTaskSourceFormat(context: ContextualMenuContext): 'inline' | 'yaml' | null {
+	return context.task?.sourceFormat
+		?? context.task?.primary?.format
+		?? context.calendarItem?.sourceTask?.sourceFormat
+		?? context.calendarItem?.sourceTask?.primary?.format
+		?? null;
 }
 
 function isDoneRollingProjectedContext(context: ContextualMenuContext): boolean {
@@ -576,8 +622,18 @@ function hasSchedule(context: ContextualMenuContext): boolean {
 }
 
 function getTrackedRange(context: ContextualMenuContext): { start: string; end: string } | null {
+	const fieldRange = getTaskFieldDateTimeRange(context);
+	if (fieldRange) return fieldRange;
 	const start = getStartDateTime(context);
 	const end = getEndDateTime(context);
+	if (!start || !end) return null;
+	return { start, end };
+}
+
+function getTaskFieldDateTimeRange(context: ContextualMenuContext): { start: string; end: string } | null {
+	const fieldValues = getFieldValues(context);
+	const start = (fieldValues['datetimeStart'] ?? '').trim();
+	const end = (fieldValues['datetimeEnd'] ?? '').trim();
 	if (!start || !end) return null;
 	return { start, end };
 }
@@ -608,9 +664,24 @@ function getEndDateTime(context: ContextualMenuContext): string {
 
 function hasTrackedCoverageForScheduledRange(trackers: string, start: string, end: string): boolean {
 	if (!trackers || !start || !end) return false;
-	const existingRanges = new Set(parseTrackerList(trackers).map(session => session.raw));
-	if (existingRanges.has(`${start}/${end}`)) return true;
+	const existingSessions = parseTrackerList(trackers);
 	const neededRanges = splitTrackerRangeByMidnight(start, end)
-		.map(fragment => `${fragment.start}/${fragment.end}`);
-	return neededRanges.length > 0 && neededRanges.every(range => existingRanges.has(range));
+		.map(fragment => ({ start: fragment.start, end: fragment.end }));
+	return neededRanges.length > 0
+		&& neededRanges.every(range => existingSessions.some(session => trackerSessionContainsRange(
+			session.start,
+			session.end,
+			range.start,
+			range.end,
+		)));
+}
+
+function trackerSessionContainsRange(sessionStart: string, sessionEnd: string, rangeStart: string, rangeEnd: string): boolean {
+	const parsedSessionStart = parseLocalDatetime(sessionStart);
+	const parsedSessionEnd = parseLocalDatetime(sessionEnd);
+	const parsedRangeStart = parseLocalDatetime(rangeStart);
+	const parsedRangeEnd = parseLocalDatetime(rangeEnd);
+	if (!parsedSessionStart || !parsedSessionEnd || !parsedRangeStart || !parsedRangeEnd) return false;
+	return parsedSessionStart.getTime() <= parsedRangeStart.getTime()
+		&& parsedSessionEnd.getTime() >= parsedRangeEnd.getTime();
 }

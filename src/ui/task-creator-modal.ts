@@ -93,6 +93,7 @@ export interface TaskCreatorModalOptions {
 	onSubmitFailure?: (draft: TaskCreatorDraft, createType: TaskCreatorCreateType) => void | Promise<void>;
 	onCancel?: () => void;
 	initialOutsidePointerGraceMs?: number;
+	preventFocusScroll?: boolean;
 }
 
 interface SuggestionState {
@@ -837,7 +838,7 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	private focusDescription(caret: number): void {
-		this.descriptionEl.focus();
+		this.descriptionEl.focus({ preventScroll: this.options.preventFocusScroll === true });
 		this.descriptionEl.setSelectionRange(caret, caret);
 		this.syncSuggestions();
 	}
@@ -966,7 +967,7 @@ export class TaskCreatorModal extends Modal {
 
 	private focusNote(): void {
 		if (!this.noteEl) return;
-		this.noteEl.focus();
+		this.noteEl.focus({ preventScroll: this.options.preventFocusScroll === true });
 		const caret = this.noteEl.value.length;
 		this.noteEl.setSelectionRange(caret, caret);
 	}

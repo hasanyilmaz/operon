@@ -105,6 +105,38 @@ function assertCssRuleContains(relativePath, selector, requiredDeclarations, lab
 	}
 }
 
+function escapeRegExp(text) {
+	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function selectorMatchesTarget(selectorText, targetSelector) {
+	if (!targetSelector.startsWith('.')) {
+		return selectorText === targetSelector;
+	}
+	const className = escapeRegExp(targetSelector.slice(1));
+	return new RegExp(`(^|[^-_a-zA-Z0-9])\\.${className}($|[^-_a-zA-Z0-9])`).test(selectorText);
+}
+
+function assertCssRuleExcludes(relativePath, selector, forbiddenPatterns, label) {
+	const matchingRules = cssRules(relativePath).filter(candidate =>
+		candidate.selectors.some(selectorText => selectorMatchesTarget(selectorText, selector)));
+	if (matchingRules.length === 0) {
+		fail(`${relativePath}: ${label}: missing rule for ${selector}`);
+		return;
+	}
+
+	for (const pattern of forbiddenPatterns) {
+		const hasForbiddenPattern = matchingRules.some(rule => (
+			typeof pattern === 'string'
+				? rule.body.includes(pattern)
+				: pattern.test(rule.body)
+		));
+		if (hasForbiddenPattern) {
+			fail(`${relativePath}: ${label}: ${selector} must not include ${pattern}`);
+		}
+	}
+}
+
 function assertNoDuplicateCssDeclarations(relativePath) {
 	const text = stripCssComments(readText(relativePath));
 	for (const rule of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
@@ -199,6 +231,7 @@ function checkCssScorecard() {
 		[/\bdisplay\s*:\s*contents\b/, 'avoid display: contents because Obsidian compatibility checks flag it'],
 		[/\bcolumn-gap\s*:/, 'use gap shorthand instead of column-gap for Obsidian CSS compatibility'],
 		[/\brow-gap\s*:/, 'use gap shorthand instead of row-gap for Obsidian CSS compatibility'],
+		[/\btext-indent\s*:/, 'avoid text-indent because Obsidian compatibility checks flag css-text-indent'],
 		[/\btext-decoration-[a-z-]+\s*:/, 'avoid text-decoration subproperties flagged by Obsidian CSS lint'],
 	];
 
@@ -229,6 +262,96 @@ function checkCssScorecard() {
 	);
 }
 
+function checkSettingsDescriptionTextareaGuards() {
+	const settingsSource = readText('src/ui/settings-tab.ts');
+	const enLocale = readJson('i18n/locales/en.json');
+	const textareaDeclarations = [
+		'width: 100%;',
+		'min-height: 72px;',
+		'box-sizing: border-box;',
+		'resize: vertical;',
+	];
+
+	for (const selector of ['.operon-priority-description-textarea', '.operon-pipeline-description-textarea']) {
+		assertCssRuleContains(
+			'styles.css',
+			selector,
+			textareaDeclarations,
+			'pipeline and priority description textareas must stay vertically resizable and uncapped',
+		);
+		assertCssRuleExcludes(
+			'styles.css',
+			selector,
+			[/\bmax-height\s*:/],
+			'pipeline and priority description textareas must be expandable without a max-height cap',
+		);
+	}
+
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-priority-description-row',
+		['grid-column: 3 / -1;', 'min-width: 0;'],
+		'priority description textarea must stay aligned under the priority label column',
+	);
+	for (const selector of ['.operon-priority-column-header', '.operon-priority-row']) {
+		assertCssRuleContains(
+			'styles.css',
+			selector,
+			['display: grid;', 'grid-template-columns: 56px 40px minmax(140px, 1fr) 52px 132px;', 'gap: 8px;'],
+			'priority header and rows must share the same settings grid columns',
+		);
+	}
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-pipeline-card',
+		['max-width: 100%;', 'box-sizing: border-box;', 'overflow-x: clip;'],
+		'pipeline cards must stay full-width and clipped inside settings panes',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-pipeline-description-row',
+		['margin-bottom: 12px;'],
+		'pipeline description textarea must stay separated from the status grid',
+	);
+
+	assertEqual(
+		'settings.pipelineDescriptionPlaceholder',
+		enLocale.settings.pipelineDescriptionPlaceholder,
+		'Describe when humans and agents should use this pipeline...',
+	);
+	assertEqual(
+		'settings.priorityDescriptionPlaceholder',
+		enLocale.settings.priorityDescriptionPlaceholder,
+		'Describe when humans and agents should use this priority...',
+	);
+	assertEqual(
+		'settings.pipelineDescriptionAria',
+		enLocale.settings.pipelineDescriptionAria,
+		'Pipeline description: {{name}}',
+	);
+	assertEqual(
+		'settings.priorityDescriptionAria',
+		enLocale.settings.priorityDescriptionAria,
+		'Priority description: {{name}}',
+	);
+
+	if (!settingsSource.includes("const descriptionRow = row.createDiv('operon-priority-description-row');")) {
+		fail('src/ui/settings-tab.ts: priority description textarea must remain inside the priority row');
+	}
+	if (!settingsSource.includes("const descriptionRow = card.createDiv('operon-pipeline-description-row');")) {
+		fail('src/ui/settings-tab.ts: pipeline description textarea must remain directly inside the pipeline card');
+	}
+	if (!settingsSource.includes("placeholder: t('settings', 'priorityDescriptionPlaceholder')")) {
+		fail('src/ui/settings-tab.ts: priority description textarea must use the localized placeholder');
+	}
+	if (!settingsSource.includes("placeholder: t('settings', 'pipelineDescriptionPlaceholder')")) {
+		fail('src/ui/settings-tab.ts: pipeline description textarea must use the localized placeholder');
+	}
+	if (settingsSource.includes('operon-priority-description-label') || settingsSource.includes('operon-pipeline-description-label')) {
+		fail('src/ui/settings-tab.ts: description textareas should not reintroduce visible Description labels');
+	}
+}
+
 function checkDocs() {
 	for (const doc of ['PHASE5-ACCEPTANCE.md', 'PHASE7-ACCEPTANCE.md']) {
 		if (!readText(doc).includes('npm run check:local')) {
@@ -255,6 +378,7 @@ compareLocaleFiles();
 checkVersionAndAssets();
 checkReleaseWorkflow();
 checkCssScorecard();
+checkSettingsDescriptionTextareaGuards();
 checkDocs();
 checkAuditedRawStrings();
 

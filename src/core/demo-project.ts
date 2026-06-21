@@ -276,9 +276,9 @@ function buildSections(today: string): DemoSectionDefinition[] {
 			color: '0891B2',
 			note: 'Turns repeated work into a maintained rhythm instead of a task you recreate by hand.',
 			children: [
-				{ id: 'dj1nluj', description: 'Complete this weekly review task', tags: ['recurring'], fields: { dateScheduled: nextWeek, repeat: 'weekly', note: 'Shows how a repeated commitment can keep returning without being manually rebuilt.' } },
+				{ id: 'dj1nluj', description: 'Complete this weekly review task', tags: ['recurring'], fields: { dateScheduled: nextWeek, repeat: 'mode=schedule|freq=week|interval=1', note: 'Shows how a repeated commitment can keep returning without being manually rebuilt.' } },
 				{ id: 'g74e80o', description: 'Review the next generated occurrence', tags: ['recurring'], fields: { dateScheduled: addDays(today, 8), note: 'Builds trust that recurring work creates the next visible step instead of disappearing after completion.' } },
-				{ id: 'lp4hnck', description: 'Change the recurrence rule on this task', tags: ['recurring'], fields: { repeat: 'daily', note: 'Shows how rhythm can be adjusted when a task needs a different cadence.' } },
+				{ id: 'lp4hnck', description: 'Change the recurrence rule on this task', tags: ['recurring'], fields: { repeat: 'mode=schedule|freq=day|interval=1', note: 'Shows how rhythm can be adjusted when a task needs a different cadence.' } },
 			],
 		},
 		{
@@ -320,7 +320,7 @@ function buildSections(today: string): DemoSectionDefinition[] {
 	];
 }
 
-function buildBasicsProjectContent(settings: Pick<OperonSettings, 'keyMappings'>): string {
+export function buildBasicsProjectContent(settings: Pick<OperonSettings, 'keyMappings'>): string {
 	const now = localNow();
 	const today = localToday();
 	const keyMappings = settings.keyMappings;
@@ -471,8 +471,8 @@ function buildSetupDays(today: string): SetupDayDefinition[] {
 			priority: 'B',
 			note: 'Converts one-time setup work into repeatable maintenance habits that keep the system useful.',
 			children: [
-				{ id: '7gcfkdi', description: 'Create a recurring weekly review task', priority: 'A', tags: ['recurring'], fields: { dateScheduled: day6, estimate: '1800', repeat: 'weekly', note: 'Makes system maintenance repeatable so the vault does not depend on memory or motivation.' } },
-				{ id: 'uzjjm1e', description: 'Create a recurring inbox cleanup task', priority: 'B', tags: ['recurring'], fields: { dateScheduled: day6, estimate: '1200', repeat: 'weekly', note: 'Keeps capture surfaces from becoming a second forgotten backlog.' } },
+				{ id: '7gcfkdi', description: 'Create a recurring weekly review task', priority: 'A', tags: ['recurring'], fields: { dateScheduled: day6, estimate: '1800', repeat: 'mode=schedule|freq=week|interval=1', note: 'Makes system maintenance repeatable so the vault does not depend on memory or motivation.' } },
+				{ id: 'uzjjm1e', description: 'Create a recurring inbox cleanup task', priority: 'B', tags: ['recurring'], fields: { dateScheduled: day6, estimate: '1200', repeat: 'mode=schedule|freq=week|interval=1', note: 'Keeps capture surfaces from becoming a second forgotten backlog.' } },
 				{ id: 'ljoz60i', description: 'Review tasks missing priority, date, or parent', priority: 'B', tags: ['review'], fields: { dateScheduled: day6, estimate: '1800', note: 'Improves task quality so filters, Calendar, and project views stay useful over time.' } },
 				{ id: 'ltqfqus', description: 'Capture follow-up work from this setup project', priority: 'B', tags: ['review'], fields: { dateScheduled: day6, estimate: '1800', note: 'Prevents setup insights from disappearing after the first pass and turns them into next actions.' } },
 			],
@@ -496,7 +496,7 @@ function buildSetupDays(today: string): SetupDayDefinition[] {
 	];
 }
 
-function buildSetupVaultProjectContent(settings: Pick<OperonSettings, 'keyMappings'>): string {
+export function buildSetupVaultProjectContent(settings: Pick<OperonSettings, 'keyMappings'>): string {
 	const now = localNow();
 	const today = localToday();
 	const startDate = addDays(today, 1);

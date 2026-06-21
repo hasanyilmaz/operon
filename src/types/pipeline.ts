@@ -33,6 +33,8 @@ export interface Pipeline {
 	id: string;
 	/** Pipeline name (e.g. "Project", "Prompting") */
 	name: string;
+	/** Optional human/agent guidance for when this pipeline should be used */
+	description?: string;
 	/** Ordered status definitions within this pipeline */
 	statuses: StatusDefinition[];
 }
@@ -89,6 +91,7 @@ export const DEFAULT_PIPELINES: Pipeline[] = [
 	{
 		id: 'pl_project',
 		name: 'Project',
+		description: 'Use this pipeline for outcome-based work with a clear deliverable. Brainstorming is for shaping rough ideas, Planned is for committed work, InProgress is for active execution, Paused is for blocked or intentionally deferred work, Finished is for completed deliverables, and Dropped is for work that was intentionally abandoned.',
 		statuses: [
 			{ id: 'st_project_brainstorming', label: 'Brainstorming', color: '#239eaf', isFinished: false, isCancelled: false, isScheduledTarget: false, isTrackingTarget: false, propertyMapping: null },
 			{ id: 'st_project_planned', label: 'Planned', color: '#ff7b0f', isFinished: false, isCancelled: false, isScheduledTarget: true, isTrackingTarget: false, propertyMapping: null },

@@ -415,6 +415,11 @@ interface OpenTaskCreatorOptions {
 	onSubmitInline?: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
 	onSubmitFile?: (draft: TaskCreatorDraft) => Promise<boolean> | boolean;
 	initialOutsidePointerGraceMs?: number;
+	preventFocusScroll?: boolean;
+}
+
+interface CalendarTaskCreatorOpenOptions extends Pick<OpenTaskCreatorOptions, 'initialOutsidePointerGraceMs' | 'preventFocusScroll'> {
+	preserveMobileTimeGridScrollOnSubmit?: boolean;
 }
 
 interface TaskCreatorInlineCreationOptions {
@@ -623,6 +628,7 @@ export default class OperonPlugin extends Plugin {
 	private dynamicFileTaskFilterReadingHosts = new Set<HTMLElement>();
 	private dynamicFileTaskFilterReadingInstances = new WeakMap<HTMLElement, FilterSurfaceInstance>();
 	private deferredRefreshTimer: WindowTimeoutHandle | null = null;
+	private editableFocusRefreshTimer: WindowTimeoutHandle | null = null;
 	private refreshViewsFrame: number | null = null;
 	private refreshViewsFollowupRequested = false;
 	private refreshViewsPendingRequestCount = 0;
@@ -930,6 +936,25 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	private registerEditableFocusRefreshWatchers(): void {
+		const scheduleFlush = (): void => this.scheduleEditableFocusRefreshFlush();
+		this.registerDomEvent(getActiveDocument(), 'focusout', scheduleFlush, true);
+	}
+
+	private scheduleEditableFocusRefreshFlush(delayMs = 120): void {
+		if (!this.pendingCalendarRefresh) return;
+		if (this.editableFocusRefreshTimer) return;
+		this.editableFocusRefreshTimer = setWindowTimeout(() => {
+			this.editableFocusRefreshTimer = null;
+			if (!this.pendingCalendarRefresh) return;
+			if (this.shouldFreezeCalendarRefresh()) {
+				this.scheduleEditableFocusRefreshFlush(240);
+				return;
+			}
+			this.flushPendingCalendarRefresh();
+		}, delayMs);
+	}
+
 	private scheduleCanonicalSettingsReloadCheck(): void {
 		if (!this.startupReady) return;
 		if (this.canonicalSettingsReloadTimer) return;
@@ -1005,6 +1030,19 @@ export default class OperonPlugin extends Plugin {
 		return filterSets[0]?.id ?? null;
 	}
 
+	private hasActiveEditableFocus(): boolean {
+		const activeElement = asHTMLElement(getActiveDocument().activeElement);
+		return this.isEditableFocusElement(activeElement);
+	}
+
+	private isEditableFocusElement(element: HTMLElement | null): boolean {
+		if (!element || element === getActiveDocument().body) return false;
+		const tagName = element.tagName.toLowerCase();
+		if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') return true;
+		if (element.isContentEditable) return true;
+		return element.closest('.cm-editor, .cm-content, [contenteditable="true"], [contenteditable="plaintext-only"]') !== null;
+	}
+
 	private isFocusedMarkdownEditor(): boolean {
 		if (!this.app.workspace.getActiveViewOfType(MarkdownView)) return false;
 		const activeElement = asHTMLElement(getActiveDocument().activeElement);
@@ -1016,7 +1054,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private shouldFreezeCalendarRefresh(): boolean {
-		return this.isFocusedMarkdownEditor()
+		return this.hasActiveEditableFocus()
 			|| this.isTaskEditorModalOpen()
 			|| this.hasActiveCalendarDragInteraction();
 	}
@@ -1500,6 +1538,7 @@ export default class OperonPlugin extends Plugin {
 		this.registerLivePreviewSessionWatchers();
 		this.registerFilterPerformanceWatchers();
 		this.registerCanonicalSettingsReloadWatchers();
+		this.registerEditableFocusRefreshWatchers();
 
 		// Register commands
 		this.registerCommands();
@@ -1652,6 +1691,10 @@ export default class OperonPlugin extends Plugin {
 		if (this.deferredRefreshTimer) {
 			clearWindowTimeout(this.deferredRefreshTimer);
 			this.deferredRefreshTimer = null;
+		}
+		if (this.editableFocusRefreshTimer) {
+			clearWindowTimeout(this.editableFocusRefreshTimer);
+			this.editableFocusRefreshTimer = null;
 		}
 		this.clearDynamicFileTaskFilterReadingTimers();
 		this.removeAllDynamicFileTaskFilterReadingHosts();
@@ -1891,9 +1934,9 @@ export default class OperonPlugin extends Plugin {
 					onTimedSlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
 					onTrackedSlotSelection: (selection) => this.createTrackedSessionFromCalendarSelection(selection),
 					onMobileTimedSlotCreate: (selection) => this.handleMobileCalendarSlotCreate(leaf, selection),
-					onTimedItemMove: (taskId, selection) => this.handleCalendarTimedMove(taskId, selection),
-					onTimedItemResizeStart: (taskId, selection) => this.handleCalendarTimedResize(taskId, selection),
-					onTimedItemResizeEnd: (taskId, selection) => this.handleCalendarTimedResize(taskId, selection),
+					onTimedItemMove: (taskId, selection, sourcePayload) => this.handleCalendarTimedMove(taskId, selection, sourcePayload),
+					onTimedItemResizeStart: (taskId, selection, sourcePayload) => this.handleCalendarTimedResize(taskId, selection, sourcePayload),
+					onTimedItemResizeEnd: (taskId, selection, sourcePayload) => this.handleCalendarTimedResize(taskId, selection, sourcePayload),
 					onTrackedSessionMove: (session, selection) => this.handleCalendarTrackedSessionUpdate(session, selection),
 					onTrackedSessionResize: (session, selection) => this.handleCalendarTrackedSessionUpdate(session, selection),
 					onTrackedSessionOpen: (session) => this.openCalendarTrackedSessionEditor(session),
@@ -1901,7 +1944,7 @@ export default class OperonPlugin extends Plugin {
 					onAllDaySlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
 					onAllDayScheduledMove: (taskId, selection) => this.handleCalendarScheduledMove(taskId, selection),
 					onAllDayScheduledResizeRight: (taskId, selection) => this.handleCalendarScheduledResizeRight(taskId, selection),
-					onAllDayItemDropToTimed: (taskId, selection) => this.handleCalendarAllDayDropToTimed(taskId, selection),
+					onAllDayItemDropToTimed: (taskId, selection, sourcePayload) => this.handleCalendarAllDayDropToTimed(taskId, selection, sourcePayload),
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
 					onSidebarTaskDropToTimed: (taskId, selection) => this.handleCalendarSidebarTaskDrop(leaf, taskId, selection),
@@ -1955,6 +1998,7 @@ export default class OperonPlugin extends Plugin {
 					},
 					onExternalItemCreateTask: (seed) => this.handleExternalCalendarItemCreate(leaf, seed),
 					onCalendarDragInteractionEnd: () => this.flushPendingCalendarRefresh(),
+					hasEditableFocus: () => this.hasActiveEditableFocus(),
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.calendarPresets.find(entry => entry.id === presetId) ?? null;
 						new CalendarPresetQuickSettingsModal(this.app, {
@@ -2293,29 +2337,49 @@ export default class OperonPlugin extends Plugin {
 	private async handleCalendarSlotSelection(
 		leaf: import('obsidian').WorkspaceLeaf,
 		selection: CalendarSlotSelection,
+		options: { preserveMobileTimeGridScrollOnTaskCreate?: boolean } = {},
 	): Promise<void> {
+		const preserveMobileTimeGridScrollOnTaskCreate = options.preserveMobileTimeGridScrollOnTaskCreate === true;
 		while (true) {
-			const actionId = await this.promptCalendarSlotAction(selection);
+			const actionId = await this.promptCalendarSlotAction(selection, {
+				preventInitialFocusScroll: preserveMobileTimeGridScrollOnTaskCreate,
+			});
 			if (!actionId) return;
 
 			try {
 				if (actionId === 'pickTask') {
-					await this.assignTaskToCalendarSelection(leaf, selection);
+					if (preserveMobileTimeGridScrollOnTaskCreate) {
+						this.preserveMobileCalendarTimeGridScrollForLeaf(leaf);
+					}
+					await this.assignTaskToCalendarSelection(leaf, selection, {
+						preventTaskFinderFocusScroll: preserveMobileTimeGridScrollOnTaskCreate,
+					});
 					return;
 				}
 
 				if (actionId === 'createTrackedSession') {
-					await this.createTrackedSessionFromCalendarSelection(selection);
+					if (preserveMobileTimeGridScrollOnTaskCreate) {
+						this.preserveMobileCalendarTimeGridScrollForLeaf(leaf);
+					}
+					await this.createTrackedSessionFromCalendarSelection(selection, {
+						preventTaskFinderFocusScroll: preserveMobileTimeGridScrollOnTaskCreate,
+					});
 					return;
 				}
 
 				if (actionId === 'createFileTask') {
-					this.openCalendarTaskCreator(leaf, selection, 'file-only');
+					this.openCalendarTaskCreator(leaf, selection, 'file-only', null, '', {
+						preserveMobileTimeGridScrollOnSubmit: preserveMobileTimeGridScrollOnTaskCreate,
+						preventFocusScroll: preserveMobileTimeGridScrollOnTaskCreate,
+					});
 					return;
 				}
 
 				if (actionId === 'createInlineTask') {
-					this.openCalendarTaskCreator(leaf, selection, 'inline-only');
+					this.openCalendarTaskCreator(leaf, selection, 'inline-only', null, '', {
+						preserveMobileTimeGridScrollOnSubmit: preserveMobileTimeGridScrollOnTaskCreate,
+						preventFocusScroll: preserveMobileTimeGridScrollOnTaskCreate,
+					});
 					return;
 				}
 			} catch (error) {
@@ -2331,8 +2395,16 @@ export default class OperonPlugin extends Plugin {
 		selection: CalendarSlotSelection,
 	): void {
 		setWindowTimeout(() => {
-			void this.handleCalendarSlotSelection(leaf, selection);
+			void this.handleCalendarSlotSelection(leaf, selection, {
+				preserveMobileTimeGridScrollOnTaskCreate: true,
+			});
 		}, 0);
+	}
+
+	private preserveMobileCalendarTimeGridScrollForLeaf(leaf: import('obsidian').WorkspaceLeaf): void {
+		if (leaf.view instanceof CalendarView) {
+			leaf.view.preserveMobileTimeGridScrollForTaskCreate();
+		}
 	}
 
 	private async handleExternalCalendarItemCreate(
@@ -2676,6 +2748,12 @@ export default class OperonPlugin extends Plugin {
 				});
 				this.refreshViews();
 			},
+			convertInlineToFileTask: async (id) => {
+				await this.convertInlineTaskToFileTaskById(id);
+			},
+			convertFileToInlineTask: async (id) => {
+				await this.convertFileTaskToInlineTaskById(id);
+			},
 			openProjectedOccurrenceLatestTaskEditor: async (projectedRef) => {
 				await this.openProjectedOccurrenceLatestTaskEditor(projectedRef);
 			},
@@ -2834,60 +2912,78 @@ export default class OperonPlugin extends Plugin {
 		this.refreshViews();
 	}
 
-	private async handleCalendarTimedMove(taskId: string, selection: CalendarSlotSelection): Promise<void> {
+	private async handleCalendarTimedMove(
+		taskId: string,
+		selection: CalendarSlotSelection,
+		sourcePayload?: Record<string, string | undefined>,
+	): Promise<boolean> {
 		const projected = this.parseProjectedCalendarOccurrenceRef(taskId);
 		if (projected) {
 			await this.applyProjectedCalendarTemporalEdit(projected, selection, {
 				preserveExistingDuration: true,
 			});
-			return;
+			return true;
 		}
 		const task = this.indexer.getTask(taskId);
-		if (!task) return;
+		if (!task) return false;
 
-		const writebackPlan = buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
-			preserveExistingDuration: true,
-		});
-		writebackPlan.payload.dateStarted = '';
-		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-		if (Object.keys(payload).length === 0) return;
+		const payload = sourcePayload
+			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
+			: (() => {
+				const writebackPlan = buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
+					preserveExistingDuration: true,
+				});
+				writebackPlan.payload.dateStarted = '';
+				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
+			})();
+		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
 		if (this.isLatestMaterializedRecurringTask(task)) {
 			const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, payload, changedKeys);
-			if (handled) return;
+			if (handled) return true;
 		}
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
+		return updated;
 	}
 
-	private async handleCalendarTimedResize(taskId: string, selection: CalendarSlotSelection): Promise<void> {
+	private async handleCalendarTimedResize(
+		taskId: string,
+		selection: CalendarSlotSelection,
+		sourcePayload?: Record<string, string | undefined>,
+	): Promise<boolean> {
 		const projected = this.parseProjectedCalendarOccurrenceRef(taskId);
 		if (projected) {
 			await this.applyProjectedCalendarTemporalEdit(projected, selection);
-			return;
+			return true;
 		}
 		const task = this.indexer.getTask(taskId);
-		if (!task) return;
+		if (!task) return false;
 
-		const writebackPlan = buildTimedCalendarWritebackPlan(selection);
-		writebackPlan.payload.dateStarted = '';
-		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-		if (Object.keys(payload).length === 0) return;
+		const payload = sourcePayload
+			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
+			: (() => {
+				const writebackPlan = buildTimedCalendarWritebackPlan(selection);
+				writebackPlan.payload.dateStarted = '';
+				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
+			})();
+		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
 		if (this.isLatestMaterializedRecurringTask(task)) {
 			const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, payload, changedKeys);
-			if (handled) return;
+			if (handled) return true;
 		}
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
+		return updated;
 	}
 
 	private resolveTrackedSessionByRange(session: CalendarTrackedSessionRef): TrackerSession | null {
@@ -3035,37 +3131,46 @@ export default class OperonPlugin extends Plugin {
 		this.refreshViews();
 	}
 
-	private async handleCalendarAllDayDropToTimed(taskId: string, selection: CalendarSlotSelection): Promise<void> {
+	private async handleCalendarAllDayDropToTimed(
+		taskId: string,
+		selection: CalendarSlotSelection,
+		sourcePayload?: Record<string, string | undefined>,
+	): Promise<boolean> {
 		const projected = this.parseProjectedCalendarOccurrenceRef(taskId);
 		if (projected) {
 			await this.applyProjectedCalendarTemporalEdit(projected, selection, {
 				preserveExistingDuration: true,
 			});
-			return;
+			return true;
 		}
 		const task = this.indexer.getTask(taskId);
-		if (!task) return;
+		if (!task) return false;
 
-		const writebackPlan = buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
-			preserveExistingDuration: true,
-		});
-		writebackPlan.payload.dateStarted = '';
-		if (isExpandedAllDayRange(task.fieldValues)) {
-			writebackPlan.payload.dateDue = '';
-		}
-		const payload = this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
-		if (Object.keys(payload).length === 0) return;
+		const payload = sourcePayload
+			? this.normalizeCalendarPayloadForPersistedUpdate({ payload: sourcePayload })
+			: (() => {
+				const writebackPlan = buildTimedCalendarWritebackPlanForExistingTask(selection, task.fieldValues, {
+					preserveExistingDuration: true,
+				});
+				writebackPlan.payload.dateStarted = '';
+				if (isExpandedAllDayRange(task.fieldValues)) {
+					writebackPlan.payload.dateDue = '';
+				}
+				return this.normalizeCalendarPayloadForPersistedUpdate(writebackPlan);
+			})();
+		if (Object.keys(payload).length === 0) return false;
 
 		const changedKeys = Object.keys(payload);
 		if (this.isLatestMaterializedRecurringTask(task)) {
 			const handled = await this.applyLatestMaterializedCalendarTemporalEdit(task, payload, changedKeys);
-			if (handled) return;
+			if (handled) return true;
 		}
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
 			changedKeys,
 		});
 		this.refreshViews();
+		return updated;
 	}
 
 	private async handleCalendarScheduledResizeRight(taskId: string, selection: CalendarSlotSelection): Promise<void> {
@@ -3461,6 +3566,7 @@ export default class OperonPlugin extends Plugin {
 		options: {
 			title?: string;
 			actions?: CalendarSlotActionId[];
+			preventInitialFocusScroll?: boolean;
 		} = {},
 	): Promise<CalendarSlotActionId | null> {
 		const availability = this.getCalendarInlineTaskAvailability();
@@ -3473,13 +3579,14 @@ export default class OperonPlugin extends Plugin {
 				selectionLabel: formatCalendarSlotSelectionLabel(selection),
 				inlineTaskEnabled: availability.enabled,
 				inlineTaskDisabledReason: availability.reason,
+				preventInitialFocusScroll: options.preventInitialFocusScroll === true,
 				onChooseAction: resolve,
 				onCancel: () => resolve(null),
 			}).open();
 		});
 	}
 
-	private async promptCalendarTaskSelection(): Promise<IndexedTask | null> {
+	private async promptCalendarTaskSelection(options: { preventFocusScroll?: boolean } = {}): Promise<IndexedTask | null> {
 		return await promptTaskFinderSelection(
 			this.app,
 			this.indexer,
@@ -3487,11 +3594,12 @@ export default class OperonPlugin extends Plugin {
 			TASK_FINDER_SCOPE_CALENDAR_SCHEDULE,
 			{
 				getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
+				preventFocusScroll: options.preventFocusScroll === true,
 			},
 		);
 	}
 
-	private async promptCalendarTrackedSessionTaskSelection(): Promise<IndexedTask | null> {
+	private async promptCalendarTrackedSessionTaskSelection(options: { preventFocusScroll?: boolean } = {}): Promise<IndexedTask | null> {
 		return await promptTaskFinderSelection(
 			this.app,
 			this.indexer,
@@ -3499,11 +3607,15 @@ export default class OperonPlugin extends Plugin {
 			TASK_FINDER_SCOPE_CALENDAR_TRACKED_SESSION,
 			{
 				getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
+				preventFocusScroll: options.preventFocusScroll === true,
 			},
 		);
 	}
 
-	private async createTrackedSessionFromCalendarSelection(selection: CalendarSlotSelection): Promise<void> {
+	private async createTrackedSessionFromCalendarSelection(
+		selection: CalendarSlotSelection,
+		options: { preventTaskFinderFocusScroll?: boolean } = {},
+	): Promise<void> {
 		if (selection.mode !== 'timed') return;
 		const start = selection.start;
 		const end = selection.end;
@@ -3514,7 +3626,9 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 
-		const task = await this.promptCalendarTrackedSessionTaskSelection();
+		const task = await this.promptCalendarTrackedSessionTaskSelection({
+			preventFocusScroll: options.preventTaskFinderFocusScroll === true,
+		});
 		if (!task) return;
 
 		const added = await this.timeTracker.addSession(task.operonId, start, end);
@@ -3904,10 +4018,13 @@ export default class OperonPlugin extends Plugin {
 	private async assignTaskToCalendarSelection(
 		leaf: import('obsidian').WorkspaceLeaf,
 		selection: CalendarSlotSelection,
+		options: { preventTaskFinderFocusScroll?: boolean } = {},
 	): Promise<void> {
 		const filterSet = this.getCalendarFilterSetForLeaf(leaf);
 		while (true) {
-			const task = await this.promptCalendarTaskSelection();
+			const task = await this.promptCalendarTaskSelection({
+				preventFocusScroll: options.preventTaskFinderFocusScroll === true,
+			});
 			if (!task) return;
 
 			const writebackPlan = selection.mode === 'timed'
@@ -3945,14 +4062,29 @@ export default class OperonPlugin extends Plugin {
 		submitMode: TaskCreatorSubmitMode,
 		initialDraft: TaskCreatorDraft | null = null,
 		initialDescription = '',
-		openOptions: Pick<OpenTaskCreatorOptions, 'initialOutsidePointerGraceMs'> = {},
+		openOptions: CalendarTaskCreatorOpenOptions = {},
 	): void {
+		const {
+			preserveMobileTimeGridScrollOnSubmit: shouldPreserveMobileTimeGridScrollOnSubmit,
+			...taskCreatorOpenOptions
+		} = openOptions;
 		const draft = initialDraft ?? buildCalendarTaskCreatorDraft(selection, initialDescription);
+		const preserveMobileTimeGridScrollOnSubmit = (): void => {
+			if (shouldPreserveMobileTimeGridScrollOnSubmit === true) {
+				this.preserveMobileCalendarTimeGridScrollForLeaf(leaf);
+			}
+		};
 		this.openTaskCreator(draft, {
 			submitMode,
-			...openOptions,
-			onSubmitFile: (nextDraft) => this.createCalendarFileTaskFromCreatorDraft(leaf, selection, nextDraft),
-			onSubmitInline: (nextDraft) => this.createCalendarInlineTaskFromCreatorDraft(leaf, selection, nextDraft),
+			...taskCreatorOpenOptions,
+			onSubmitFile: (nextDraft) => {
+				preserveMobileTimeGridScrollOnSubmit();
+				return this.createCalendarFileTaskFromCreatorDraft(leaf, selection, nextDraft, openOptions);
+			},
+			onSubmitInline: (nextDraft) => {
+				preserveMobileTimeGridScrollOnSubmit();
+				return this.createCalendarInlineTaskFromCreatorDraft(leaf, selection, nextDraft);
+			},
 		});
 		if (!initialDraft) {
 			this.queueCalendarDailyNoteParentSeedBackgroundEnsure(selection.startDate, submitMode);
@@ -4085,6 +4217,7 @@ export default class OperonPlugin extends Plugin {
 		leaf: import('obsidian').WorkspaceLeaf,
 		selection: CalendarSlotSelection,
 		draft: TaskCreatorDraft,
+		openOptions: CalendarTaskCreatorOpenOptions = {},
 	): Promise<boolean> {
 		const selectedTemplate = findFileTaskTemplateOptionById(
 			this.getFileTaskTemplateOptions(),
@@ -4094,7 +4227,7 @@ export default class OperonPlugin extends Plugin {
 			? await this.applyCalendarDailyNoteParentSeedForCreatorSubmit(selection, draft)
 			: draft;
 		return await this.createFileTaskFromCreatorDraft(submitDraft, {
-			reopenCreator: preservedDraft => this.openCalendarTaskCreator(leaf, selection, 'file-only', preservedDraft),
+			reopenCreator: preservedDraft => this.openCalendarTaskCreator(leaf, selection, 'file-only', preservedDraft, '', openOptions),
 			onCreated: created => {
 				const createdTask = this.getCreatedFileTaskForFilterDraft(created);
 				this.maybeNoticeCalendarCreatorFilterMismatch(leaf, {
@@ -6751,6 +6884,7 @@ export default class OperonPlugin extends Plugin {
 			const calendarStartedAt = perfContext ? enginePerfNow() : 0;
 				if (freezeCalendarRefresh) {
 					this.pendingCalendarRefresh = true;
+					this.scheduleEditableFocusRefreshFlush();
 				} else {
 					this.pendingCalendarRefresh = false;
 					this.refreshCalendarLeaves(perfContext?.trace ?? null);
@@ -6864,7 +6998,7 @@ export default class OperonPlugin extends Plugin {
 			callUnknownMethod(leaf.view, 'render');
 		}
 		for (const leaf of this.app.workspace.getLeavesOfType(CALENDAR_VIEW_TYPE)) {
-			callUnknownMethod(leaf.view, 'render');
+			callUnknownMethod(leaf.view, 'markDirty');
 		}
 		this.trackerStatusBar?.render();
 		this.refreshMarkdownTaskSurfaces();
@@ -9237,6 +9371,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			getAllRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
 			initialOutsidePointerGraceMs: options.initialOutsidePointerGraceMs,
+			preventFocusScroll: options.preventFocusScroll === true,
 			onSubmitInline: options.onSubmitInline ?? ((draft) => this.createInlineTaskFromCreatorDraft(draft)),
 			onSubmitFile: options.onSubmitFile ?? ((draft) => this.startFileTaskCreationFromCreatorDraft(draft)),
 			onSubmitFailure: (draft, createType) => {
@@ -10086,6 +10221,31 @@ export default class OperonPlugin extends Plugin {
 		return await this.createInlineTaskFromCreatorDraftResult(draft) !== null;
 	}
 
+	private async convertInlineTaskToFileTaskById(operonId: string): Promise<void> {
+		if (this.redirectDuplicateOperonIdAction(operonId)) return;
+		const task = this.indexer.getTask(operonId);
+		if (!task || task.primary.format !== 'inline') return;
+
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile)) {
+			new Notice(t('notifications', 'inlineToFileTaskFailed'));
+			return;
+		}
+
+		const parsed = await this.loadEditableParsedTask(task);
+		if (parsed.operonId !== operonId) {
+			new Notice(t('notifications', 'inlineToFileTaskFailed'));
+			return;
+		}
+
+		this.openFileTaskTemplatePicker((selectedTemplate) => {
+			void this.finishInlineTaskToFileTaskConversion(file, parsed, selectedTemplate).catch((error) => {
+				console.error('Operon: failed to create a file task from contextual menu', error);
+				new Notice(t('notifications', 'inlineToFileTaskFailed'));
+			});
+		});
+	}
+
 	private async handleCreateFileTaskCommand(fallbackFile: TFile | null = null): Promise<void> {
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		const file = view?.file ?? null;
@@ -10362,6 +10522,20 @@ export default class OperonPlugin extends Plugin {
 			},
 		);
 		if (!selectedTask) return;
+		await this.convertFileTaskToInlineTask(selectedTask, cursorTarget);
+	}
+
+	private async convertFileTaskToInlineTaskById(operonId: string): Promise<void> {
+		if (this.redirectDuplicateOperonIdAction(operonId)) return;
+		const selectedTask = this.indexer.getTask(operonId);
+		if (!selectedTask || selectedTask.primary.format !== 'yaml') return;
+		await this.convertFileTaskToInlineTask(selectedTask, this.resolveFileTaskToInlineCursorTarget());
+	}
+
+	private async convertFileTaskToInlineTask(
+		selectedTask: IndexedTask,
+		cursorTarget: FileTaskToInlineCursorTarget | null,
+	): Promise<void> {
 		if (selectedTask.primary.format !== 'yaml') {
 			new Notice(t('notifications', 'convertFileTaskSelectionRequiresFileTask'));
 			return;

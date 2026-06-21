@@ -190,11 +190,13 @@ class TaskIconWidget extends WidgetType {
 			? {
 				checkbox: this.indexedTask.checkbox,
 				fieldValues: getFieldValues(this.task, this.indexedTask),
+				sourceFormat: this.indexedTask.primary.format,
 			}
 			: this.task.operonId
 				? {
 					checkbox: this.task.checkbox,
 					fieldValues: getFieldValues(this.task, this.indexedTask),
+					sourceFormat: 'inline' as const,
 				}
 				: null;
 		if (this.task.operonId && taskSource && this.callbacks.onContextualAction) {

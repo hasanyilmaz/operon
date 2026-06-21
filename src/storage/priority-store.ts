@@ -17,7 +17,18 @@ interface PriorityStoreData {
 }
 
 function clonePriorities(priorities: PriorityDefinition[]): PriorityDefinition[] {
-	return priorities.map(priority => clonePriorityDefinition(priority));
+	return priorities.map(priority => {
+		const clone = clonePriorityDefinition(priority);
+		const description = typeof clone.description === 'string'
+			? clone.description.trim()
+			: '';
+		if (description) {
+			clone.description = description;
+		} else {
+			delete clone.description;
+		}
+		return clone;
+	});
 }
 
 function cloneSettings(settings: PriorityStoreSettings): PriorityStoreSettings {

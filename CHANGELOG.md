@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.6.1] - 2026-06-21
+
+Phone calendars have less room for theory.
+
+The previous release brought external calendar and tracked-time columns into Time Tracker Grid. That made the **Day** view much more useful, especially when you want to compare planned work with what actually happened. But on a phone, the same extra context can become too tight too quickly.
+
+This update adds a **2 Days** mobile Calendar mode and per-mode Calendar presets, so each view can have a different job. Day can stay focused on planned, external, and tracked time, while 2 Days or 3 Days can use a cleaner planning preset when you need more range and less detail.
+
+### New
+- Added a **2 Days** option to the mobile Calendar view cycle, giving Time Tracker Grid and dense mobile calendars a middle ground between Day and 3 Days.
+- Added per-mode mobile Calendar preset settings, so Agenda, Day, 2 Days, and 3 Days can each open with their own chosen Calendar preset.
+- Added mobile Calendar cycle toggles, so Agenda, Day, 2 Days, and 3 Days can be included or skipped while keeping at least one mobile mode available.
+- Added **Convert to file** and **Convert to inline** contextual menu actions, making inline/file task conversion available directly from task surfaces, including existing Kanban and Time Session History menus after migration.
+- Added **Pipeline descriptions** in settings, so each workflow can carry human-readable and agent-friendly guidance for task creation.
+- Added **Priority descriptions** in settings, so each priority level can explain when humans and agents should use it during task creation and planning.
+
+### Fixed
+- Fixed **Calendar** background refreshes so Time Tracker Grid and sidebar state updates no longer steal focus while typing in notes, Task Creator, Task Finder, or Calendar search fields.
+- Fixed **Log as tracked** so Calendar timed blocks keep their exact planned start and end times instead of snapping tracked sessions to the visible grid interval.
+- Fixed **Mobile Calendar** timed task moves so dropped tasks persist, and kept the time grid from jumping after timed moves or slot-created tasks refresh.
+- Fixed **Reading View inline task** styling so rendered task rows keep Live Preview-aligned spacing without using CSS flagged by Obsidian's compatibility checks.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 1003/1003 Phase 5 regression checks.
+
 ## [1.6.0] - 2026-06-19
 
 Planning time and tracking time now sit closer together.

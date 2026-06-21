@@ -40,7 +40,15 @@ import {
 } from '../../types/calendar';
 import { IndexedTask } from '../../types/fields';
 import type { ActiveTrackerState, TrackerSession } from '../../types/tracker';
-import { FilterSet, INLINE_TASK_COMPACT_FALLBACK_ICONS, OperonSettings, resolveTaskDisplayIcon } from '../../types/settings';
+import {
+	CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE,
+	FilterSet,
+	INLINE_TASK_COMPACT_FALLBACK_ICONS,
+	OperonSettings,
+	resolveEnabledCalendarMobileViewModes,
+	resolveTaskDisplayIcon,
+	type CalendarMobileSourcePresetSettingKey,
+} from '../../types/settings';
 import type { PinnedCache } from '../../storage/pinned-cache';
 import type { RepeatSeriesEntry } from '../../storage/repeat-series-store';
 import {
@@ -110,6 +118,8 @@ const CALENDAR_MOBILE_EMPTY_SWIPE_DISTANCE_PX = 36;
 const CALENDAR_MOBILE_EMPTY_SWIPE_DOMINANCE_RATIO = 1.35;
 const CALENDAR_MOBILE_EMPTY_SWIPE_ANIMATION_MS = 120;
 const CALENDAR_MOBILE_EMPTY_SELECTION_LONG_PRESS_MS = 260;
+const CALENDAR_MOBILE_SLOT_CREATE_SCROLL_RESTORE_WINDOW_MS = 4000;
+const CALENDAR_MOBILE_SCROLL_RESTORE_STABILIZATION_DELAYS_MS = [60, 180, 360, 720] as const;
 const CALENDAR_MOBILE_TASK_PRESS_DRAG_MS = 120;
 const CALENDAR_MOBILE_TASK_LONG_PRESS_MS = 260;
 const CALENDAR_TOUCH_TAP_EDITOR_DELAY_MS = 80;
@@ -396,6 +406,8 @@ export const TIME_TRACKER_GRID_TRACKED_CONTEXT_MENU_ACTION_IDS: readonly Context
 	'taskStatus',
 	'pinToggle',
 	'openEditor',
+	'convertInlineToFileTask',
+	'convertFileToInlineTask',
 	'subtasks',
 	'createSubtask',
 	'checkboxes',
@@ -556,8 +568,18 @@ interface CalendarStatusCycleTrace {
 
 type CalendarMobileQuickSettingsPatch = Partial<Pick<
 	OperonSettings,
-	'calendarMobileShowProjectedOccurrences' | 'calendarMobileShowExternalCalendars' | 'calendarMobileColorSource'
+	| 'calendarMobileShowProjectedOccurrences'
+	| 'calendarMobileShowExternalCalendars'
+	| 'calendarMobileColorSource'
+	| CalendarMobileSourcePresetSettingKey
 >>;
+type CalendarDropSourcePayload = Record<string, string | undefined>;
+type CalendarDropCallbackResult = void | boolean;
+
+interface MobileTimeGridScrollPreserveOptions {
+	minRenderBudget?: number;
+	restoreWindowMs?: number;
+}
 
 export interface CalendarViewCallbacks {
 	getExternalCalendarItems?: (rangeStart: string, rangeEnd: string, presetId?: string, showExternalCalendarsOverride?: boolean) => CalendarItem[];
@@ -566,9 +588,9 @@ export interface CalendarViewCallbacks {
 	onTimedSlotSelection?: (selection: CalendarSlotSelection) => void | Promise<void>;
 	onTrackedSlotSelection?: (selection: CalendarSlotSelection) => void | Promise<void>;
 	onMobileTimedSlotCreate?: (selection: CalendarSlotSelection) => void | Promise<void>;
-	onTimedItemMove?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
-	onTimedItemResizeStart?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
-	onTimedItemResizeEnd?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
+	onTimedItemMove?: (taskId: string, selection: CalendarSlotSelection, sourcePayload?: CalendarDropSourcePayload) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
+	onTimedItemResizeStart?: (taskId: string, selection: CalendarSlotSelection, sourcePayload?: CalendarDropSourcePayload) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
+	onTimedItemResizeEnd?: (taskId: string, selection: CalendarSlotSelection, sourcePayload?: CalendarDropSourcePayload) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
 	onTrackedSessionMove?: (session: CalendarTrackedSessionRef, selection: CalendarSlotSelection) => void | Promise<void>;
 	onTrackedSessionResize?: (session: CalendarTrackedSessionRef, selection: CalendarSlotSelection) => void | Promise<void>;
 	onTrackedSessionOpen?: (session: CalendarTrackedSessionRef) => void | Promise<void>;
@@ -576,7 +598,7 @@ export interface CalendarViewCallbacks {
 	onAllDayScheduledMove?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayScheduledResizeRight?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onTimedItemDropToAllDay?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
-	onAllDayItemDropToTimed?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
+	onAllDayItemDropToTimed?: (taskId: string, selection: CalendarSlotSelection, sourcePayload?: CalendarDropSourcePayload) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
 	onItemAction?: ContextualMenuActionHandler;
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
 	onOpenPresetSettings?: (presetId: string) => void | Promise<void>;
@@ -593,6 +615,7 @@ export interface CalendarViewCallbacks {
 	onSyncExternalCalendars?: () => void | Promise<void>;
 	onExternalItemCreateTask?: (seed: ExternalCalendarTaskSeed) => void | Promise<void>;
 	onCalendarDragInteractionEnd?: () => void | Promise<void>;
+	hasEditableFocus?: () => boolean;
 }
 
 export class CalendarView extends ItemView {
@@ -654,13 +677,18 @@ export class CalendarView extends ItemView {
 	private lastTimedGridUserScrollInteractionAt = 0;
 	private mobileTimeGridScrollEl: HTMLElement | null = null;
 	private lastMobileTimeGridScrollTop = 0;
+	private mobileTimeGridScrollRestoreTargetTop: number | null = null;
+	private readonly mobileTimeGridOuterScrollRestoreTargets = new Map<HTMLElement, number>();
 	private restoreMobileTimeGridScrollOnNextRender = false;
 	private mobileTimeGridScrollRestoreBudget = 0;
+	private mobileTimeGridScrollRestoreUntil = 0;
 	private forceMobileTimeGridSmartScrollOnNextRender = false;
 	private isMobileAllDayRailCollapsed = false;
 	private lastMobileAgendaFocusKey: string | null = null;
 	private activeCalendarDragSession: CalendarActiveDragSession | null = null;
 	private pendingRenderAfterCalendarDrag = false;
+	private pendingRenderAfterEditableFocus = false;
+	private editableFocusRenderRetryTimer: number | null = null;
 	private readonly calendarDragGhosts = new Set<HTMLElement>();
 	private readonly optimisticTaskPatches = new Map<string, CalendarOptimisticTaskPatch>();
 	private optimisticPatchCleanupTimer: number | null = null;
@@ -668,6 +696,8 @@ export class CalendarView extends ItemView {
 	private renderGeneration = 0;
 	private readonly renderAnimationFrames = new Set<number>();
 	private readonly renderTimeouts = new Set<number>();
+	private suppressTimedScrollPersistenceUntil = 0;
+	private suppressTimedScrollPersistenceStartedAt = 0;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -746,6 +776,8 @@ export class CalendarView extends ItemView {
 		await this.flushPendingLeafStatePersistence();
 		this.invalidateRenderGeneration();
 		this.pendingRenderAfterCalendarDrag = false;
+		this.pendingRenderAfterEditableFocus = false;
+		this.clearEditableFocusRenderRetryTimer();
 		this.clearCalendarDragGhosts();
 		this.clearOptimisticTaskPatches();
 		this.clearRenderTimers();
@@ -763,19 +795,38 @@ export class CalendarView extends ItemView {
 		this.unbindCalendarNavigationKeys();
 	}
 
-		markDirty(): void {
-			if (this.hasActiveCalendarDragInteraction()) {
-				this.pendingRenderAfterCalendarDrag = true;
-				return;
-			}
-			if (this.renderFrame !== null) return;
-			this.captureActiveCalendarScrollForRender();
-			this.preserveScrollOnNextRender = true;
-			this.renderFrame = window.requestAnimationFrame(() => {
-				this.renderFrame = null;
-				this.render();
-			});
+	preserveMobileTimeGridScrollForNextRender(options: MobileTimeGridScrollPreserveOptions = {}): void {
+		if (this.hasPendingMobileTimeGridScrollRestore()) {
+			this.extendMobileTimeGridScrollRestore(options);
+			return;
 		}
+		this.captureMobileTimeGridScrollForRender(options);
+	}
+
+	preserveMobileTimeGridScrollForTaskCreate(): void {
+		this.preserveMobileTimeGridScrollForNextRender({
+			minRenderBudget: 6,
+			restoreWindowMs: CALENDAR_MOBILE_SLOT_CREATE_SCROLL_RESTORE_WINDOW_MS,
+		});
+	}
+
+	markDirty(): void {
+		if (this.hasActiveCalendarDragInteraction()) {
+			this.pendingRenderAfterCalendarDrag = true;
+			return;
+		}
+		if (this.hasActiveEditableFocus()) {
+			this.deferPassiveRenderUntilEditableFocusClears();
+			return;
+		}
+		if (this.renderFrame !== null) return;
+		this.captureActiveCalendarScrollForRender();
+		this.preserveScrollOnNextRender = true;
+		this.renderFrame = window.requestAnimationFrame(() => {
+			this.renderFrame = null;
+			this.render();
+		});
+	}
 
 		markDirtyForStatusCycle(trace: CalendarStatusCycleTrace): boolean {
 			const startedAt = enginePerfNow();
@@ -882,25 +933,58 @@ export class CalendarView extends ItemView {
 			this.activeCalendarDragSession?.finish(reason, event, flushPendingRender);
 		}
 
-		private flushPendingCalendarDragRender(): void {
-			if (this.hasActiveCalendarDragInteraction()) return;
-			const shouldRender = this.pendingRenderAfterCalendarDrag;
-			this.pendingRenderAfterCalendarDrag = false;
-			if (shouldRender) {
-				this.markDirty();
-			}
-			void this.callbacks.onCalendarDragInteractionEnd?.();
+	private flushPendingCalendarDragRender(): void {
+		if (this.hasActiveCalendarDragInteraction()) return;
+		const shouldRender = this.pendingRenderAfterCalendarDrag;
+		this.pendingRenderAfterCalendarDrag = false;
+		if (shouldRender) {
+			this.markDirty();
 		}
+		void this.callbacks.onCalendarDragInteractionEnd?.();
+	}
 
-		private releaseCalendarPointerCapture(targetEl: HTMLElement, pointerId: number): void {
-			try {
-				if (targetEl.hasPointerCapture?.(pointerId)) {
-					targetEl.releasePointerCapture(pointerId);
-				}
-			} catch {
-				// Pointer capture can already be gone after window-level abort paths.
-			}
+	private hasActiveEditableFocus(): boolean {
+		return this.callbacks.hasEditableFocus?.() === true;
+	}
+
+	private deferPassiveRenderUntilEditableFocusClears(): void {
+		this.pendingRenderAfterEditableFocus = true;
+		this.updateNowIndicators();
+		this.scheduleEditableFocusRenderRetry();
+	}
+
+	private scheduleEditableFocusRenderRetry(delayMs = 240): void {
+		if (this.editableFocusRenderRetryTimer !== null) return;
+		this.editableFocusRenderRetryTimer = window.setTimeout(() => {
+			this.editableFocusRenderRetryTimer = null;
+			this.flushPendingEditableFocusRender();
+		}, delayMs);
+	}
+
+	private flushPendingEditableFocusRender(): void {
+		if (!this.pendingRenderAfterEditableFocus) return;
+		if (this.hasActiveEditableFocus()) {
+			this.updateNowIndicators();
+			this.scheduleEditableFocusRenderRetry();
+			return;
 		}
+		this.pendingRenderAfterEditableFocus = false;
+		if (this.hasActiveCalendarDragInteraction()) {
+			this.pendingRenderAfterCalendarDrag = true;
+			return;
+		}
+		this.markDirty();
+	}
+
+	private releaseCalendarPointerCapture(targetEl: HTMLElement, pointerId: number): void {
+		try {
+			if (targetEl.hasPointerCapture?.(pointerId)) {
+				targetEl.releasePointerCapture(pointerId);
+			}
+		} catch {
+			// Pointer capture can already be gone after window-level abort paths.
+		}
+	}
 
 		private getOptimisticCalendarTasksForRender(): IndexedTask[] {
 			this.pruneOptimisticTaskPatches();
@@ -1171,16 +1255,39 @@ export class CalendarView extends ItemView {
 
 		private invokeCalendarDropCallback(
 			taskId: string,
-			fieldValues: Record<string, string | undefined>,
-			callback: (() => void | Promise<void>) | undefined,
+			fieldValues: CalendarDropSourcePayload,
+			callback: (() => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>) | undefined,
+			options: { verifyOptimisticPatchAfterWrite?: boolean } = {},
 		): void {
 			this.applyOptimisticTaskPatch(taskId, { fieldValues });
 			if (!callback) return;
-			void Promise.resolve(callback()).catch(error => {
-				console.error('Operon: calendar drop writeback failed', error);
+			void Promise.resolve(callback())
+				.then(result => {
+					if (!options.verifyOptimisticPatchAfterWrite) return;
+					this.verifyOptimisticDropPatchAfterWrite(taskId, fieldValues, result);
+				})
+				.catch(error => {
+					console.error('Operon: calendar drop writeback failed', error);
+					this.optimisticTaskPatches.delete(taskId);
+					this.markDirty();
+				});
+		}
+
+		private verifyOptimisticDropPatchAfterWrite(
+			taskId: string,
+			fieldValues: CalendarDropSourcePayload,
+			result: CalendarDropCallbackResult,
+		): void {
+			if (!this.optimisticTaskPatches.has(taskId)) return;
+			const task = this.indexer.getTask(taskId);
+			const persisted = !!task && isOptimisticTaskPatchPersisted(task, { fieldValues });
+			if (result === false || !persisted) {
 				this.optimisticTaskPatches.delete(taskId);
 				this.markDirty();
-			});
+				return;
+			}
+			this.optimisticTaskPatches.delete(taskId);
+			this.scheduleOptimisticTaskPatchCleanup();
 		}
 
 		private invokeCalendarStatusClickCallback(
@@ -1266,6 +1373,8 @@ export class CalendarView extends ItemView {
 		this.invalidateRenderGeneration();
 		const renderGeneration = this.renderGeneration;
 		this.pendingRenderAfterCalendarDrag = false;
+		this.pendingRenderAfterEditableFocus = false;
+		this.clearEditableFocusRenderRetryTimer();
 		this.clearCalendarDragGhosts();
 		this.clearRenderTimers();
 		this.hideCalendarHoverMenu(true);
@@ -1284,7 +1393,7 @@ export class CalendarView extends ItemView {
 		const mobileViewMode = this.resolveMobileCalendarViewMode(state, settings);
 		const mobileAnchorDate = this.resolveMobileCalendarAnchorDate(state);
 		const sourcePreset = useMobileCalendar
-			? this.resolveMobileCalendarSourcePreset(settings, state)
+			? this.resolveMobileCalendarSourcePreset(settings, mobileViewMode, state)
 			: settings.calendarPresets.find(entry => entry.id === state.presetId) ?? settings.calendarPresets[0];
 		const preset = sourcePreset && useMobileCalendar
 			? this.buildMobileCalendarRenderPreset(sourcePreset, settings)
@@ -1441,6 +1550,7 @@ export class CalendarView extends ItemView {
 			root.addClass('operon-calendar-mobile-root');
 			root.classList.toggle('is-mobile-agenda', mobileViewMode === 'agenda');
 			root.classList.toggle('is-mobile-day', mobileViewMode === 'day');
+			root.classList.toggle('is-mobile-two-day', mobileViewMode === 'twoDay');
 			root.classList.toggle('is-mobile-three-day', mobileViewMode === 'threeDay');
 			if (mobileAgendaFocusKey !== null) {
 				this.lastMobileAgendaFocusKey = mobileAgendaFocusKey;
@@ -1559,7 +1669,11 @@ export class CalendarView extends ItemView {
 		state: CalendarLeafState,
 		settings: OperonSettings,
 	): CalendarMobileViewMode {
-		return state.mobileViewMode ?? settings.calendarMobileDefaultView;
+		const enabledModes = resolveEnabledCalendarMobileViewModes(settings);
+		const requestedMode = state.mobileViewMode ?? settings.calendarMobileDefaultView;
+		if (enabledModes.includes(requestedMode)) return requestedMode;
+		if (enabledModes.includes(settings.calendarMobileDefaultView)) return settings.calendarMobileDefaultView;
+		return enabledModes[0] ?? 'agenda';
 	}
 
 	private resolveMobileCalendarAnchorDate(state: CalendarLeafState): string {
@@ -1568,17 +1682,23 @@ export class CalendarView extends ItemView {
 
 	private resolveMobileCalendarSourcePreset(
 		settings: OperonSettings,
-		state: CalendarLeafState,
+		viewMode: CalendarMobileViewMode,
+		state?: CalendarLeafState,
 	): CalendarPreset | null {
-		const presetId = state.mobileSourcePresetId
-			?? settings.calendarMobileDefaultSourcePresetId
-			?? settings.calendarDefaultPresetId
-			?? null;
-		return settings.calendarPresets.find(entry => entry.id === presetId)
-			?? settings.calendarPresets.find(entry => entry.id === settings.calendarMobileDefaultSourcePresetId)
-			?? settings.calendarPresets.find(entry => entry.id === settings.calendarDefaultPresetId)
-			?? settings.calendarPresets[0]
-			?? null;
+		const sourcePresetSettingKey = CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE[viewMode];
+		const candidatePresetIds = [
+			settings[sourcePresetSettingKey],
+			state?.mobileSourcePresetId,
+			settings.calendarMobileDefaultSourcePresetId,
+			settings.calendarDefaultPresetId,
+		];
+		for (const presetId of candidatePresetIds) {
+			const preset = presetId
+				? settings.calendarPresets.find(entry => entry.id === presetId)
+				: null;
+			if (preset) return preset;
+		}
+		return settings.calendarPresets[0] ?? null;
 	}
 
 	private buildMobileCalendarRenderPreset(preset: CalendarPreset, settings: OperonSettings): CalendarPreset {
@@ -1597,9 +1717,11 @@ export class CalendarView extends ItemView {
 	): Pick<CalendarPreset, 'dayCount' | 'showWeekends' | 'todayPosition' | 'showProjectedOccurrences'> {
 		const dayCount = viewMode === 'threeDay'
 			? 3
-			: viewMode === 'day'
-				? 1
-				: settings.calendarMobileAgendaPastDays + settings.calendarMobileAgendaFutureDays + 1;
+			: viewMode === 'twoDay'
+				? 2
+				: viewMode === 'day'
+					? 1
+					: settings.calendarMobileAgendaPastDays + settings.calendarMobileAgendaFutureDays + 1;
 		return {
 			dayCount,
 			showWeekends: true,
@@ -1666,6 +1788,7 @@ export class CalendarView extends ItemView {
 
 	private getMobileCalendarViewLabel(viewMode: CalendarMobileViewMode): string {
 		if (viewMode === 'threeDay') return t('calendar', 'mobileViewThreeDay');
+		if (viewMode === 'twoDay') return t('calendar', 'mobileViewTwoDay');
 		if (viewMode === 'day') return t('calendar', 'mobileViewDay');
 		return t('calendar', 'mobileViewAgenda');
 	}
@@ -1838,8 +1961,8 @@ export class CalendarView extends ItemView {
 			},
 		});
 
-		this.renderMobileCalendarViewCycleButton(actions, state, viewMode);
-		this.renderMobileCalendarSourcePresetButton(actions, preset, settings);
+		this.renderMobileCalendarViewCycleButton(actions, state, viewMode, settings);
+		this.renderMobileCalendarSourcePresetButton(actions, preset, settings, viewMode);
 		this.renderMobileCalendarActionButton(actions, {
 			icon: 'calendar-arrow-down',
 			label: t('calendar', 'mobileGoToToday'),
@@ -1863,24 +1986,38 @@ export class CalendarView extends ItemView {
 		});
 	}
 
-	private getNextMobileCalendarViewMode(viewMode: CalendarMobileViewMode): CalendarMobileViewMode {
-		if (viewMode === 'agenda') return 'day';
-		if (viewMode === 'day') return 'threeDay';
-		return 'agenda';
+	private getNextMobileCalendarViewMode(
+		viewMode: CalendarMobileViewMode,
+		settings: OperonSettings,
+	): CalendarMobileViewMode {
+		const enabledModes = resolveEnabledCalendarMobileViewModes(settings);
+		if (enabledModes.length <= 1) return viewMode;
+		const currentIndex = enabledModes.indexOf(viewMode);
+		const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+		return enabledModes[nextIndex % enabledModes.length] ?? enabledModes[0] ?? 'agenda';
 	}
 
 	private renderMobileCalendarViewCycleButton(
 		container: HTMLElement,
 		state: CalendarLeafState,
 		viewMode: CalendarMobileViewMode,
+		settings: OperonSettings,
 	): void {
-		const nextViewMode = this.getNextMobileCalendarViewMode(viewMode);
+		const enabledModes = resolveEnabledCalendarMobileViewModes(settings);
+		const hasMultipleModes = enabledModes.length > 1;
+		const nextViewMode = hasMultipleModes
+			? this.getNextMobileCalendarViewMode(viewMode, settings)
+			: viewMode;
 		const currentLabel = this.getMobileCalendarViewLabel(viewMode);
 		const nextLabel = this.getMobileCalendarViewLabel(nextViewMode);
-		const label = t('calendar', 'mobileCycleView', {
-			current: currentLabel,
-			next: nextLabel,
-		});
+		const label = hasMultipleModes
+			? t('calendar', 'mobileCycleView', {
+				current: currentLabel,
+				next: nextLabel,
+			})
+			: t('calendar', 'mobileCycleViewSingle', {
+				current: currentLabel,
+			});
 		const button = container.createEl('button', {
 			text: currentLabel,
 			cls: 'operon-calendar-mobile-icon-button operon-calendar-mobile-action-button operon-calendar-mobile-view-cycle-button is-on',
@@ -1888,10 +2025,13 @@ export class CalendarView extends ItemView {
 				type: 'button',
 			},
 		});
+		button.disabled = !hasMultipleModes;
+		button.classList.toggle('is-disabled', !hasMultipleModes);
 		setAccessibleLabelWithoutTooltip(button, label);
 		bindOperonHoverTooltip(button, { content: label, taskColor: null });
 		button.addEventListener('click', (event) => {
 			event.preventDefault();
+			if (!hasMultipleModes) return;
 			void this.updateLeafState({
 				...state,
 				mobileViewMode: nextViewMode,
@@ -1934,6 +2074,7 @@ export class CalendarView extends ItemView {
 		container: HTMLElement,
 		preset: CalendarPreset,
 		settings: OperonSettings,
+		viewMode: CalendarMobileViewMode,
 	): void {
 		const wrapper = container.createDiv('operon-calendar-mobile-source-select-wrap');
 		const trigger = wrapper.createDiv('operon-calendar-mobile-icon-button operon-calendar-mobile-source-select-trigger');
@@ -1948,9 +2089,9 @@ export class CalendarView extends ItemView {
 		}
 		setAccessibleLabelWithoutTooltip(presetSelect, t('calendar', 'mobileSourcePreset'));
 		presetSelect.addEventListener('change', () => {
-			void this.updateLeafState({
-				...this.ensureState(),
-				mobileSourcePresetId: presetSelect.value,
+			const sourcePresetSettingKey = CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE[viewMode];
+			void this.callbacks.onMobileCalendarSettingsChange?.({
+				[sourcePresetSettingKey]: presetSelect.value,
 			});
 		});
 	}
@@ -2174,6 +2315,13 @@ export class CalendarView extends ItemView {
 			this.hideCalendarHoverMenu(true);
 			this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
 		}, { passive: true });
+		const cancelRestoreForUserScroll = (): void => {
+			if (!this.hasPendingMobileTimeGridScrollRestore()) return;
+			this.clearMobileTimeGridScrollRestoreIntent();
+			this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(viewport.scrollTop));
+		};
+		viewport.addEventListener('pointerdown', cancelRestoreForUserScroll, { capture: true, passive: true });
+		viewport.addEventListener('wheel', cancelRestoreForUserScroll, { capture: true, passive: true });
 		const section = viewport.createDiv('operon-calendar-mobile-timegrid-section');
 		const gutter = section.createDiv('operon-calendar-mobile-timegrid-gutter');
 		gutter.style.height = `${metrics.gridHeight}px`;
@@ -2678,7 +2826,8 @@ export class CalendarView extends ItemView {
 				this.invokeCalendarDropCallback(
 					item.taskId,
 					writebackPlan.payload,
-					() => this.callbacks.onAllDayItemDropToTimed?.(item.taskId, selection),
+					() => this.callbacks.onAllDayItemDropToTimed?.(item.taskId, selection, writebackPlan.payload),
+					{ verifyOptimisticPatchAfterWrite: true },
 				);
 			};
 
@@ -3054,7 +3203,7 @@ export class CalendarView extends ItemView {
 				? undefined
 				: onSelect ?? this.callbacks.onMobileTimedSlotCreate ?? this.callbacks.onTimedSlotSelection;
 			if (!callback) return;
-			this.captureMobileTimeGridScrollForRender();
+			this.preserveMobileTimeGridScrollForTaskCreate();
 			void callback(selection);
 		};
 
@@ -3814,10 +3963,19 @@ export class CalendarView extends ItemView {
 			if (this.forceMobileTimeGridSmartScrollOnNextRender) {
 				this.forceMobileTimeGridSmartScrollOnNextRender = false;
 				this.clearMobileTimeGridScrollRestoreIntent();
-			} else if (this.restoreMobileTimeGridScrollOnNextRender || this.mobileTimeGridScrollRestoreBudget > 0) {
-				viewport.scrollTop = this.lastMobileTimeGridScrollTop;
+			} else if (
+				this.restoreMobileTimeGridScrollOnNextRender
+				|| this.mobileTimeGridScrollRestoreBudget > 0
+				|| Date.now() <= this.mobileTimeGridScrollRestoreUntil
+			) {
+				const restoreTop = this.getMobileTimeGridScrollRestoreTargetTop();
+				this.applyMobileTimeGridScrollTop(viewport, restoreTop);
+				this.applyMobileTimeGridOuterScrollTargets();
+				this.scheduleMobileTimeGridScrollRestoreStabilization(viewport, generation, restoreTop);
 				this.restoreMobileTimeGridScrollOnNextRender = false;
-				this.mobileTimeGridScrollRestoreBudget = Math.max(0, this.mobileTimeGridScrollRestoreBudget - 1);
+				if (Date.now() > this.mobileTimeGridScrollRestoreUntil) {
+					this.mobileTimeGridScrollRestoreBudget = Math.max(0, this.mobileTimeGridScrollRestoreBudget - 1);
+				}
 				return;
 			}
 			const minute = this.resolveMobileTimeGridInitialScrollMinute(visibleDates, timedItems);
@@ -3991,6 +4149,7 @@ export class CalendarView extends ItemView {
 		const metrics = this.buildTimedMetrics(preset, this.expandedHiddenTimeKey === hiddenTimeKey);
 		viewport.addEventListener('scroll', () => {
 			this.hideCalendarHoverMenu(true);
+			if (this.shouldSuppressTimedScrollPersistence()) return;
 			if (!this.state) return;
 			this.state = {
 				...this.ensureState(),
@@ -4229,6 +4388,7 @@ export class CalendarView extends ItemView {
 		const metrics = this.buildTimedMetrics(preset, this.expandedHiddenTimeKey === hiddenTimeKey);
 		viewport.addEventListener('scroll', () => {
 			this.hideCalendarHoverMenu(true);
+			if (this.shouldSuppressTimedScrollPersistence()) return;
 			if (!this.state) return;
 			this.state = {
 				...this.ensureState(),
@@ -4450,6 +4610,10 @@ export class CalendarView extends ItemView {
 	private refreshActiveTimeTrackerGridRender(): void {
 		if (this.hasActiveCalendarDragInteraction()) {
 			this.pendingRenderAfterCalendarDrag = true;
+			return;
+		}
+		if (this.hasActiveEditableFocus()) {
+			this.deferPassiveRenderUntilEditableFocusClears();
 			return;
 		}
 		this.captureActiveCalendarScrollForRender();
@@ -7544,6 +7708,7 @@ export class CalendarView extends ItemView {
 		const metrics = this.buildTimedMetrics(preset, this.expandedHiddenTimeKey === hiddenTimeKey);
 		viewport.addEventListener('scroll', () => {
 			this.hideCalendarHoverMenu(true);
+			if (this.shouldSuppressTimedScrollPersistence()) return;
 			if (!this.state) return;
 			this.state = {
 				...this.ensureState(),
@@ -8392,11 +8557,19 @@ export class CalendarView extends ItemView {
 				)
 				: buildTimedCalendarWritebackPlan(selection);
 			if (mode !== 'move') writebackPlan.payload.dateStarted = '';
+			if (isMobileTimeGridItem) {
+				this.captureMobileTimeGridScrollForRender();
+			}
 			if (mode === 'move') {
 				this.invokeCalendarDropCallback(
 					segment.item.taskId,
 					writebackPlan.payload,
-					() => this.callbacks.onTimedItemMove?.(segment.item.taskId, selection),
+					() => this.callbacks.onTimedItemMove?.(
+						segment.item.taskId,
+						selection,
+						isMobileTimeGridItem ? writebackPlan.payload : undefined,
+					),
+					{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 				);
 				return;
 			}
@@ -8404,14 +8577,24 @@ export class CalendarView extends ItemView {
 				this.invokeCalendarDropCallback(
 					segment.item.taskId,
 					writebackPlan.payload,
-					() => this.callbacks.onTimedItemResizeStart?.(segment.item.taskId, selection),
+					() => this.callbacks.onTimedItemResizeStart?.(
+						segment.item.taskId,
+						selection,
+						isMobileTimeGridItem ? writebackPlan.payload : undefined,
+					),
+					{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 				);
 				return;
 			}
 			this.invokeCalendarDropCallback(
 				segment.item.taskId,
 				writebackPlan.payload,
-				() => this.callbacks.onTimedItemResizeEnd?.(segment.item.taskId, selection),
+				() => this.callbacks.onTimedItemResizeEnd?.(
+					segment.item.taskId,
+					selection,
+					isMobileTimeGridItem ? writebackPlan.payload : undefined,
+				),
+				{ verifyOptimisticPatchAfterWrite: isMobileTimeGridItem },
 			);
 		};
 
@@ -9459,7 +9642,8 @@ export class CalendarView extends ItemView {
 		const state = this.ensureState();
 		const host = this.containerEl?.children?.[1] as HTMLElement | undefined;
 		if (host?.querySelector('.operon-calendar-mobile-root')) {
-			const sourcePreset = this.resolveMobileCalendarSourcePreset(settings, state);
+			const viewMode = this.resolveMobileCalendarViewMode(state, settings);
+			const sourcePreset = this.resolveMobileCalendarSourcePreset(settings, viewMode, state);
 			return sourcePreset
 				? this.buildMobileCalendarRenderPreset(sourcePreset, settings)
 				: null;
@@ -10527,6 +10711,7 @@ export class CalendarView extends ItemView {
 		}
 		const currentScrollTop = Math.max(0, Math.round(this.timedScrollEl.scrollTop));
 		if (this.lastAppliedScrollSignature === signature && Math.abs(currentScrollTop - clampedScrollTop) <= 2) return;
+		this.suppressTimedScrollPersistenceForProgrammaticScroll();
 		this.timedScrollEl.scrollTop = clampedScrollTop;
 		this.lastAppliedScrollSignature = signature;
 	}
@@ -10540,7 +10725,19 @@ export class CalendarView extends ItemView {
 			metrics,
 		);
 		const maxScrollTop = Math.max(0, this.timedScrollEl.scrollHeight - this.timedScrollEl.clientHeight);
+		this.suppressTimedScrollPersistenceForProgrammaticScroll();
 		this.timedScrollEl.scrollTop = Math.max(0, Math.min(maxScrollTop, nextScrollTop));
+	}
+
+	private suppressTimedScrollPersistenceForProgrammaticScroll(): void {
+		const now = Date.now();
+		this.suppressTimedScrollPersistenceStartedAt = now;
+		this.suppressTimedScrollPersistenceUntil = now + 120;
+	}
+
+	private shouldSuppressTimedScrollPersistence(): boolean {
+		return Date.now() <= this.suppressTimedScrollPersistenceUntil
+			&& this.lastTimedGridUserScrollInteractionAt < this.suppressTimedScrollPersistenceStartedAt;
 	}
 
 	private captureMultiWeekSurfaceScroll(): void {
@@ -10549,16 +10746,105 @@ export class CalendarView extends ItemView {
 		this.restoreSurfaceScrollOnNextRender = true;
 	}
 
-	private captureMobileTimeGridScrollForRender(): void {
+	private captureMobileTimeGridScrollForRender(options: MobileTimeGridScrollPreserveOptions = {}): void {
 		if (!this.mobileTimeGridScrollEl || !this.mobileTimeGridScrollEl.isConnected) return;
 		this.lastMobileTimeGridScrollTop = Math.max(0, Math.round(this.mobileTimeGridScrollEl.scrollTop));
+		this.mobileTimeGridScrollRestoreTargetTop = this.lastMobileTimeGridScrollTop;
+		this.captureMobileTimeGridOuterScrollTargets();
+		this.extendMobileTimeGridScrollRestore(options);
+	}
+
+	private getMobileTimeGridScrollRestoreTargetTop(): number {
+		return Math.max(0, this.mobileTimeGridScrollRestoreTargetTop ?? this.lastMobileTimeGridScrollTop);
+	}
+
+	private applyMobileTimeGridScrollTop(viewport: HTMLElement, scrollTop: number): void {
+		const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+		viewport.scrollTop = Math.max(0, Math.min(maxScrollTop, Math.round(scrollTop)));
+	}
+
+	private getMobileTimeGridOuterScrollElements(): HTMLElement[] {
+		const elements: HTMLElement[] = [];
+		const addElement = (element: HTMLElement | null | undefined): void => {
+			if (!element || elements.includes(element)) return;
+			elements.push(element);
+		};
+		addElement(this.contentEl);
+		let ancestor = this.contentEl.parentElement;
+		while (ancestor) {
+			if (ancestor.scrollTop > 0 || ancestor.scrollHeight > ancestor.clientHeight + 1) {
+				addElement(ancestor);
+			}
+			ancestor = ancestor.parentElement;
+		}
+		const scrollingElement = asHTMLElement(getOwnerDocument(this.contentEl).scrollingElement);
+		if (scrollingElement) addElement(scrollingElement);
+		return elements;
+	}
+
+	private captureMobileTimeGridOuterScrollTargets(): void {
+		this.mobileTimeGridOuterScrollRestoreTargets.clear();
+		for (const element of this.getMobileTimeGridOuterScrollElements()) {
+			this.mobileTimeGridOuterScrollRestoreTargets.set(element, Math.max(0, Math.round(element.scrollTop)));
+		}
+	}
+
+	private applyMobileTimeGridOuterScrollTargets(): void {
+		for (const [element, scrollTop] of this.mobileTimeGridOuterScrollRestoreTargets.entries()) {
+			if (!element.isConnected) {
+				this.mobileTimeGridOuterScrollRestoreTargets.delete(element);
+				continue;
+			}
+			const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+			element.scrollTop = Math.max(0, Math.min(maxScrollTop, scrollTop));
+		}
+	}
+
+	private scheduleMobileTimeGridScrollRestoreStabilization(
+		viewport: HTMLElement,
+		generation: number,
+		scrollTop: number,
+	): void {
+		const applyScroll = (): void => {
+			if (!this.isRenderGenerationActive(generation)) return;
+			if (!viewport.isConnected) return;
+			if (!this.hasPendingMobileTimeGridScrollRestore()) return;
+			this.applyMobileTimeGridScrollTop(viewport, scrollTop);
+			this.applyMobileTimeGridOuterScrollTargets();
+		};
+		this.requestRenderAnimationFrame(generation, () => {
+			applyScroll();
+			this.requestRenderAnimationFrame(generation, applyScroll);
+		});
+		for (const delay of CALENDAR_MOBILE_SCROLL_RESTORE_STABILIZATION_DELAYS_MS) {
+			this.setRenderTimeout(generation, applyScroll, delay);
+		}
+	}
+
+	private hasPendingMobileTimeGridScrollRestore(): boolean {
+		return this.restoreMobileTimeGridScrollOnNextRender
+			|| this.mobileTimeGridScrollRestoreBudget > 0
+			|| Date.now() <= this.mobileTimeGridScrollRestoreUntil;
+	}
+
+	private extendMobileTimeGridScrollRestore(options: MobileTimeGridScrollPreserveOptions = {}): void {
 		this.restoreMobileTimeGridScrollOnNextRender = true;
-		this.mobileTimeGridScrollRestoreBudget = Math.max(this.mobileTimeGridScrollRestoreBudget, 2);
+		const minRenderBudget = Math.max(2, Math.round(options.minRenderBudget ?? 2));
+		this.mobileTimeGridScrollRestoreBudget = Math.max(this.mobileTimeGridScrollRestoreBudget, minRenderBudget);
+		if (options.restoreWindowMs && options.restoreWindowMs > 0) {
+			this.mobileTimeGridScrollRestoreUntil = Math.max(
+				this.mobileTimeGridScrollRestoreUntil,
+				Date.now() + Math.round(options.restoreWindowMs),
+			);
+		}
 	}
 
 	private clearMobileTimeGridScrollRestoreIntent(): void {
 		this.restoreMobileTimeGridScrollOnNextRender = false;
 		this.mobileTimeGridScrollRestoreBudget = 0;
+		this.mobileTimeGridScrollRestoreUntil = 0;
+		this.mobileTimeGridScrollRestoreTargetTop = null;
+		this.mobileTimeGridOuterScrollRestoreTargets.clear();
 	}
 
 	private clearMobileTimeGridScrollRenderIntents(): void {
@@ -10581,7 +10867,7 @@ export class CalendarView extends ItemView {
 
 	private captureActiveCalendarScrollForRender(): void {
 		if (this.mobileTimeGridScrollEl?.isConnected) {
-			this.captureMobileTimeGridScrollForRender();
+			this.preserveMobileTimeGridScrollForNextRender();
 			return;
 		}
 		const state = this.state;
@@ -10677,7 +10963,6 @@ export class CalendarView extends ItemView {
 		this.syncLeafTitle();
 		await this.leaf.setViewState({
 			type: CALENDAR_VIEW_TYPE,
-			active: true,
 			state: nextState as unknown as Record<string, unknown>,
 		});
 	}
@@ -10848,6 +11133,7 @@ export class CalendarView extends ItemView {
 
 	private clearRenderTimers(): void {
 		this.hideCalendarHoverMenu(true);
+		this.clearEditableFocusRenderRetryTimer();
 		this.sidebarSectionsLayoutCleanup?.();
 		this.sidebarSectionsLayoutCleanup = null;
 		this.toolbarLayoutCleanup?.();
@@ -10880,5 +11166,11 @@ export class CalendarView extends ItemView {
 			window.cancelAnimationFrame(this.renderFrame);
 			this.renderFrame = null;
 		}
+	}
+
+	private clearEditableFocusRenderRetryTimer(): void {
+		if (this.editableFocusRenderRetryTimer === null) return;
+		window.clearTimeout(this.editableFocusRenderRetryTimer);
+		this.editableFocusRenderRetryTimer = null;
 	}
 }

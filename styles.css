@@ -24396,6 +24396,32 @@ body.operon-kanban-touch-drag-active {
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
+.operon-priority-description-row {
+	grid-column: 3 / -1;
+	min-width: 0;
+}
+
+.operon-priority-description-textarea {
+	width: 100%;
+	min-height: 72px;
+	box-sizing: border-box;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+	line-height: 1.4;
+	resize: vertical;
+}
+
+.operon-priority-description-textarea:focus {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	outline: none;
+}
+
 .operon-priority-default-section {
 	margin-top: 20px;
 	border-top: 1px solid var(--background-modifier-border);
@@ -24436,6 +24462,31 @@ body.operon-kanban-touch-drag-active {
 	align-items: center;
 	gap: 8px;
 	margin-bottom: 12px;
+}
+
+.operon-pipeline-description-row {
+	margin-bottom: 12px;
+}
+
+.operon-pipeline-description-textarea {
+	width: 100%;
+	min-height: 72px;
+	box-sizing: border-box;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+	line-height: 1.4;
+	resize: vertical;
+}
+
+.operon-pipeline-description-textarea:focus {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	outline: none;
 }
 
 .operon-pipeline-name-input {
@@ -26690,7 +26741,7 @@ body.operon-kanban-touch-drag-active {
 	margin: 0;
 	padding: 1px 0;
 	list-style: none;
-	text-indent: 0;
+	list-style-type: none;
 	overflow: visible;
 	text-decoration: none;
 }
@@ -26699,7 +26750,6 @@ body.operon-kanban-touch-drag-active {
 .markdown-reading-view ul > li.task-list-item.operon-rendered-inline-task-list-item {
 	margin-inline-start: 0;
 	padding-inline-start: 0;
-	text-indent: 0;
 }
 
 .operon-rendered-inline-task-list-item::marker {

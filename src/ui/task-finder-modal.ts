@@ -55,6 +55,7 @@ export interface TaskFinderModalOptions {
 	onCancel?: () => void;
 	onPersistDefaultScope?: (scope: TaskFinderDefaultScopeItem[], selectedProjectId: string) => void | Promise<void>;
 	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
+	preventFocusScroll?: boolean;
 }
 
 const TASK_FINDER_MIN_QUERY_LENGTH = 2;
@@ -1322,7 +1323,7 @@ export class TaskFinderModal extends Modal {
 	}
 
 	private focusInput(): void {
-		window.requestAnimationFrame(() => this.inputEl.focus());
+		window.requestAnimationFrame(() => this.inputEl.focus({ preventScroll: this.options.preventFocusScroll === true }));
 	}
 }
 

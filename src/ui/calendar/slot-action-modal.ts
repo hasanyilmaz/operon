@@ -20,6 +20,7 @@ export interface SlotActionModalOptions {
 	inlineTaskDisabledReason?: string;
 	onChooseAction: (actionId: CalendarSlotActionId) => void;
 	onCancel?: () => void;
+	preventInitialFocusScroll?: boolean;
 }
 
 export function buildCalendarSlotActionOptions(
@@ -113,7 +114,9 @@ export class SlotActionModal extends Modal {
 		contentEl.addEventListener('keydown', this.handleKeydown);
 
 			const initialButton = this.buttons.find(button => !button.disabled) ?? this.buttons[0];
-			getOwnerWindow(contentEl).setTimeout(() => initialButton?.focus(), 0);
+			getOwnerWindow(contentEl).setTimeout(() => {
+				initialButton?.focus({ preventScroll: this.options.preventInitialFocusScroll === true });
+			}, 0);
 	}
 
 	onClose(): void {
