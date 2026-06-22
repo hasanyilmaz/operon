@@ -2030,6 +2030,11 @@ export default class OperonPlugin extends Plugin {
 					onCellAction: (context) => this.handleKanbanCellAction(leaf, context),
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
+					onOpenTaskInNewTab: (taskId) => {
+						const indexedTask = this.indexer.getTask(taskId);
+						if (!indexedTask) return;
+						this.navigateToTaskInNewTab(indexedTask);
+					},
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
 						new KanbanPresetQuickSettingsModal(this.app, {
@@ -2068,6 +2073,25 @@ export default class OperonPlugin extends Plugin {
 				}
 			});
 		}
+
+	private navigateToTaskInNewTab(task: IndexedTask): void {
+		if (task.primary.format === 'yaml') {
+			runAsyncAction('task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', 'tab'));
+			return;
+		}
+
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile)) return;
+		const leaf = this.app.workspace.getLeaf('tab');
+		runAsyncAction('inline task navigation failed', async () => {
+			await leaf.openFile(file);
+			const editor = getCursorEditorFromView(leaf.view);
+			if (editor) {
+				editor.setCursor({ line: task.primary.lineNumber, ch: 0 });
+				editor.scrollIntoView?.({ from: { line: task.primary.lineNumber, ch: 0 }, to: { line: task.primary.lineNumber, ch: 0 } }, true);
+			}
+		});
+	}
 
 	private openTaskFile(task: IndexedTask | IndexedTaskInstance): void {
 		runAsyncAction('task file open failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', false));

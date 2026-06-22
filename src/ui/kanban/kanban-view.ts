@@ -1296,8 +1296,28 @@ export class KanbanView extends ItemView {
 			const card = target.closest<HTMLElement>('.operon-kanban-card');
 			const taskId = card?.dataset.operonTaskId;
 			if (!card || !taskId || !boardEl.contains(card)) return;
+			if ((event.metaKey || event.ctrlKey) && this.callbacks.onOpenTaskInNewTab) {
+				event.preventDefault();
+				event.stopPropagation();
+				void this.callbacks.onOpenTaskInNewTab(taskId);
+				return;
+			}
 			event.stopPropagation();
 			void this.callbacks.onItemAction?.(taskId, 'openEditor');
+		});
+
+		boardEl.addEventListener('auxclick', event => {
+			if (event.button !== 1) return;
+			const target = asHTMLElement(event.target, boardEl);
+			if (!target) return;
+			if (target.closest('.operon-calendar-status-button, .operon-calendar-hover-menu, a.internal-link, .operon-kanban-descendant-toggle, button, input, textarea, select, [contenteditable="true"]')) return;
+			const card = target.closest<HTMLElement>('.operon-kanban-card');
+			const taskId = card?.dataset.operonTaskId;
+			if (!card || !taskId || !boardEl.contains(card)) return;
+			if (!this.callbacks.onOpenTaskInNewTab) return;
+			event.preventDefault();
+			event.stopPropagation();
+			void this.callbacks.onOpenTaskInNewTab(taskId);
 		});
 
 		boardEl.addEventListener('dragstart', event => {

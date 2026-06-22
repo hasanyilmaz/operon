@@ -107,6 +107,7 @@ export interface KanbanViewCallbacks {
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
 	onOpenPresetSettings?: (presetId: string) => void | Promise<void>;
 	onCellAction?: (context: KanbanCellActionContext) => void | Promise<void>;
+	onOpenTaskInNewTab?: (taskId: string) => void | Promise<void>;
 }
 
 export const DEFAULT_KANBAN_PRESETS: KanbanPreset[] = [
