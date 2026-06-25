@@ -526,7 +526,7 @@ function getTaskFilePathLinktext(filePath: string): string {
 }
 
 function taskFilePathMatchesLink(filePath: string, targetKey: string): boolean {
-	const fullPath = normalizeTaskFileLinkPath(filePath);
+	const fullPath = normalizeTaskFilePathForComparison(filePath);
 	if (!fullPath) return false;
 	if (fullPath === targetKey) return true;
 
@@ -542,6 +542,15 @@ function normalizeTaskFileLinkPath(path: string): string {
 		// Keep the original text if it is not URI-encoded.
 	}
 	return normalized
+		.replace(/\\/gu, '/')
+		.replace(/^\/+/u, '')
+		.replace(/\.md$/iu, '')
+		.trim();
+}
+
+function normalizeTaskFilePathForComparison(path: string): string {
+	return path
+		.trim()
 		.replace(/\\/gu, '/')
 		.replace(/^\/+/u, '')
 		.replace(/\.md$/iu, '')

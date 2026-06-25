@@ -162,7 +162,7 @@ export function getEmbeddedMarkdownSourceEditorFilePath(view: EditorView): strin
 }
 
 export function refreshEmbeddedMarkdownSourceEditors(
-	effect: StateEffect<unknown>,
+	effect: StateEffect<unknown> | StateEffect<unknown>[],
 	scope?: EmbeddedMarkdownSourceEditorRefreshScope,
 ): EmbeddedMarkdownSourceEditorRefreshResult {
 	const scopedFilePaths = scope?.mode === 'scoped'

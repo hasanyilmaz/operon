@@ -6,8 +6,9 @@
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, editorLivePreviewField, setIcon } from 'obsidian';
+import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, editorLivePreviewField, requestUrl, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
+import type { StateEffect } from '@codemirror/state';
 import { OperonStorage } from './src/storage/operon-storage';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
 import type { ProjectSerialDisplay } from './src/core/project-serials';
@@ -100,7 +101,7 @@ import {
 	type LivePreviewCursorRestoreRequest,
 } from './src/ui/live-preview-conceal';
 import { operonLivePreviewClassicTaskConvertExtension } from './src/ui/live-preview-classic-task-convert';
-import { operonLivePreviewTaskWikilinkOverlayExtension } from './src/ui/live-preview-task-wikilink-overlay';
+import { operonLivePreviewTaskWikilinkOverlayExtension, operonTaskWikilinkForceRevealEffect } from './src/ui/live-preview-task-wikilink-overlay';
 import { operonLivePreviewKeySuggestExtension } from './src/ui/live-preview-key-suggest';
 import { debugTaskFieldSuggestion } from './src/ui/task-field-suggest';
 import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
@@ -147,6 +148,7 @@ import {
 } from './src/ui/live-preview-ephemeral-session';
 import { invalidateCustomFieldValueCandidateCache } from './src/ui/custom-field-surfaces';
 import { openTaskFieldPicker } from './src/ui/task-field-picker-dispatch';
+import { syncOperonDocs, type OperonDocsSyncResult } from './src/systems/operon-docs-sync';
 import { showPlainCheckboxPopover } from './src/ui/plain-checkbox-popover';
 import {
 	collectScopedPlainCheckboxMoveLines,
@@ -200,7 +202,12 @@ import {
 } from './src/core/markdown-list-items';
 import { generateOperonId, generateRepeatSeriesId, setExistingIdsProvider } from './src/core/id-generator';
 import { resolveFileTaskDefaults } from './src/core/file-task-defaults';
-import { resolveOperonIdPlaceholders, resolveOperonIdPlaceholdersInTaskBlock } from './src/core/operon-id-placeholders';
+import {
+	resolveOperonIdPlaceholders,
+	resolveOperonIdPlaceholdersInTaskBlock,
+	resolveOperonTemplatePlaceholders,
+	type OperonTemplatePlaceholderContext,
+} from './src/core/operon-id-placeholders';
 import {
 	getNormalFilterSets,
 	isDynamicFileTaskFilterSet,
@@ -516,6 +523,7 @@ function getWorkspaceEventFilePath(info: unknown): string {
 interface LoadedFileTaskTemplateResult {
 	'document': ParsedFrontmatterDocument | null;
 	resolvedOperonIdSeed: string | null;
+	resolvedContent: string | null;
 }
 
 interface DailyNotesPluginConfig {
@@ -584,6 +592,12 @@ interface MarkdownTaskSurfaceRefreshResult {
 	skippedLeaves: number;
 	refreshedEmbeddedEditors: number;
 	skippedEmbeddedEditors: number;
+}
+
+interface MarkdownTaskSurfaceRefreshOptions {
+	resetLivePreviewReveal?: boolean;
+	scope?: MarkdownRefreshScope;
+	forceTaskWikilinkOverlayFilePath?: string;
 }
 
 type DuplicateAlertStatusBarState = 'hidden' | 'conflict' | 'resolved';
@@ -661,6 +675,7 @@ export default class OperonPlugin extends Plugin {
 	private subtasksFilterModal: SubtasksFilterModal | null = null;
 	private pinnedCache: PinnedCache | null = null;
 	private externalCalendarService: ExternalCalendarService | null = null;
+	private operonDocsSyncInFlight: Promise<OperonDocsSyncResult> | null = null;
 	private duplicateOperonIdModal: DuplicateOperonIdModal | null = null;
 	private duplicateConflictCounts: Map<string, number> = new Map();
 	private duplicateConflictAutoOpenSuppressionDepth = 0;
@@ -1166,6 +1181,68 @@ export default class OperonPlugin extends Plugin {
 		this.refreshViews();
 	}
 
+	private async syncOperonDocsNow(source: 'manual' | 'auto' = 'manual'): Promise<OperonDocsSyncResult | null> {
+		if (this.operonDocsSyncInFlight) {
+			if (source === 'manual') {
+				new Notice(t('notifications', 'operonDocsSyncAlreadyRunning'));
+			}
+			return this.operonDocsSyncInFlight.catch(() => null);
+		}
+		if (source === 'manual') {
+			new Notice(t('notifications', 'operonDocsSyncStarted'));
+		}
+		const syncPromise = syncOperonDocs({
+			app: this.app,
+			pluginId: this.manifest.id,
+			keyMappings: this.settings.keyMappings,
+			requestText: url => this.requestOperonDocsText(url),
+		});
+		this.operonDocsSyncInFlight = syncPromise;
+		try {
+			const result = await syncPromise;
+			this.showOperonDocsSyncResult(result, source);
+			return result;
+		} catch (error) {
+			console.error('Operon docs sync failed', error);
+			new Notice(t('notifications', 'operonDocsSyncFailed'));
+			return null;
+		} finally {
+			if (this.operonDocsSyncInFlight === syncPromise) {
+				this.operonDocsSyncInFlight = null;
+			}
+		}
+	}
+
+	private async requestOperonDocsText(url: string): Promise<string> {
+		const response = await requestUrl({
+			url,
+			throw: false,
+		});
+		if (response.status < 200 || response.status >= 300) {
+			throw new Error(`HTTP ${response.status}`);
+		}
+		return response.text;
+	}
+
+	private showOperonDocsSyncResult(result: OperonDocsSyncResult, source: 'manual' | 'auto'): void {
+		if (result.written.length === 0 && result.staleManagedFiles.length === 0 && result.warnings.length === 0) {
+			if (source === 'auto') return;
+			new Notice(t('notifications', 'operonDocsSyncUpToDate'));
+			return;
+		}
+		new Notice(t('notifications', 'operonDocsSyncComplete', {
+			written: String(result.written.length),
+			skipped: String(result.skipped.length),
+			stale: String(result.staleManagedFiles.length),
+			warnings: String(result.warnings.length),
+		}));
+	}
+
+	private maybeSyncOperonDocsOnStartup(): void {
+		if (!this.settings.operonDocsAutoUpdateEnabled) return;
+		void this.syncOperonDocsNow('auto');
+	}
+
 	private flushPendingCalendarRefresh(): void {
 		if (!this.pendingCalendarRefresh) return;
 		if (this.shouldFreezeCalendarRefresh()) return;
@@ -1601,6 +1678,7 @@ export default class OperonPlugin extends Plugin {
 				(sourcePresetId, targetPresetId) => this.copyKanbanManualOrder(sourcePresetId, targetPresetId),
 				(presetId) => this.removeKanbanManualOrder(presetId),
 				() => this.createOrRepairBasicsWorkspaceFromUi(),
+				() => this.syncOperonDocsNow('manual').then(() => undefined),
 			));
 
 		const statusBarItem = this.addStatusBarItem();
@@ -1675,6 +1753,7 @@ export default class OperonPlugin extends Plugin {
 				this.scheduleWorkspacePropertiesCollapseForAllViews();
 				this.syncDuplicateConflictUi(true);
 				await this.maybeShowDemoWorkspacePrompt();
+				this.maybeSyncOperonDocsOnStartup();
 				setWindowTimeout(() => {
 					runAsyncAction('release notes update popup failed', () => {
 						this.maybeShowReleaseNotesOnUpdate();
@@ -5067,7 +5146,16 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private buildFileTaskWikilink(file: TFile): string {
-		return `[[${file.basename}]]`;
+		return `[[${this.escapeFileTaskWikilinkTarget(file.basename)}]]`;
+	}
+
+	private escapeFileTaskWikilinkTarget(target: string): string {
+		return target
+			.replace(/%/gu, '%25')
+			.replace(/\[/gu, '%5B')
+			.replace(/\]/gu, '%5D')
+			.replace(/#/gu, '%23')
+			.replace(/\^/gu, '%5E');
 	}
 
 	private async loadEditableParsedTask(task: IndexedTask): Promise<ParsedTask> {
@@ -7046,20 +7134,42 @@ export default class OperonPlugin extends Plugin {
 		win.setTimeout(() => this.refreshMarkdownTaskSurfaces({ resetLivePreviewReveal: true }), 220);
 	}
 
-	private scheduleInlineToFileTaskMarkdownRefresh(scope: MarkdownRefreshScope): void {
+	private scheduleInlineToFileTaskMarkdownRefresh(scope: MarkdownRefreshScope, createdFilePath: string): void {
 		for (const delayMs of [80, 220]) {
 			setWindowTimeout(() => {
-				this.refreshMarkdownTaskSurfaces({ scope });
+				this.refreshMarkdownTaskSurfaces({
+					scope,
+					forceTaskWikilinkOverlayFilePath: createdFilePath,
+				});
 			}, delayMs);
 		}
 	}
 
-	private refreshMarkdownTaskSurfaces(
-		options: {
-			resetLivePreviewReveal?: boolean;
-			scope?: MarkdownRefreshScope;
-		} = {},
-	): MarkdownTaskSurfaceRefreshResult {
+	private scheduleInlineToFileTaskMetadataRefresh(scope: MarkdownRefreshScope, createdFilePath: string): void {
+		if (!createdFilePath.trim()) return;
+
+		let completed = false;
+		let timeout: WindowTimeoutHandle | null = null;
+		let onCacheChanged: ReturnType<typeof this.app.metadataCache.on> | null = null;
+		const finish = () => {
+			if (completed) return;
+			completed = true;
+			if (onCacheChanged) this.app.metadataCache.offref(onCacheChanged);
+			if (timeout) clearWindowTimeout(timeout);
+			this.refreshMarkdownTaskSurfaces({
+				scope,
+				forceTaskWikilinkOverlayFilePath: createdFilePath,
+			});
+		};
+
+		onCacheChanged = this.app.metadataCache.on('changed', (changedFile: TFile) => {
+			if (changedFile.path !== createdFilePath) return;
+			finish();
+		});
+		timeout = setWindowTimeout(finish, 600);
+	}
+
+	private refreshMarkdownTaskSurfaces(options: MarkdownTaskSurfaceRefreshOptions = {}): MarkdownTaskSurfaceRefreshResult {
 		// Force-refresh CM6 task bar widgets in all open markdown editors
 		// so they rebuild with fresh index data (same pattern as FilterView.render()).
 		const scope = options.scope ?? createGlobalMarkdownRefreshScope('markdown-refresh', 'unscoped-request');
@@ -7069,6 +7179,13 @@ export default class OperonPlugin extends Plugin {
 		const refreshEffect = options.resetLivePreviewReveal
 			? operonEditorCloseRefreshEffect.of()
 			: operonIndexRefreshEffect.of();
+		const forceTaskWikilinkOverlayFilePath = options.forceTaskWikilinkOverlayFilePath?.trim() ?? '';
+		const refreshEffects: StateEffect<unknown>[] = forceTaskWikilinkOverlayFilePath
+			? [
+				refreshEffect,
+				operonTaskWikilinkForceRevealEffect.of({ filePaths: [forceTaskWikilinkOverlayFilePath] }),
+			]
+			: [refreshEffect];
 		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
 			const view = leaf.view;
 			if (!(view instanceof MarkdownView)) continue;
@@ -7086,11 +7203,11 @@ export default class OperonPlugin extends Plugin {
 			const cm = getEditorViewFromEditor(view.editor);
 			if (cm instanceof EditorView) {
 				try {
-					cm.dispatch({ effects: refreshEffect });
+					cm.dispatch({ effects: refreshEffects });
 				} catch { /* view may be detached */ }
 			}
 		}
-		const embeddedResult = refreshEmbeddedMarkdownSourceEditors(refreshEffect, scope);
+		const embeddedResult = refreshEmbeddedMarkdownSourceEditors(refreshEffects, scope);
 		return {
 			scope,
 			refreshedLeaves,
@@ -7870,7 +7987,9 @@ export default class OperonPlugin extends Plugin {
 		this.workflowNormalizationInProgress.add(filePath);
 		try {
 			const rawContent = await this.app.vault.cachedRead(file);
-			const resolvedContent = this.resolveOperonIdPlaceholdersInContent(rawContent);
+			const resolvedContent = this.resolveOperonIdPlaceholdersInContent(rawContent, {
+				resolveRawDateTime: true,
+			});
 			if (resolvedContent !== rawContent) {
 				await this.app.vault.modify(file, resolvedContent);
 			}
@@ -8498,6 +8617,13 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	private getAvailableTaskCreatorDefaultFileTemplateId(): string {
+		return findFileTaskTemplateOptionById(
+			this.getFileTaskTemplateOptions(),
+			this.settings.taskCreatorDefaultFileTemplateId,
+		)?.id ?? '';
+	}
+
 	private getTargetFileTaskFolder(
 		fallbackFile: TFile | null | undefined,
 		targetFolderOverride?: string | null,
@@ -8522,6 +8648,7 @@ export default class OperonPlugin extends Plugin {
 			return {
 				document: null,
 				resolvedOperonIdSeed: null,
+				resolvedContent: null,
 			};
 		}
 
@@ -8530,6 +8657,7 @@ export default class OperonPlugin extends Plugin {
 			return {
 				document: null,
 				resolvedOperonIdSeed: null,
+				resolvedContent: null,
 			};
 		}
 
@@ -8545,7 +8673,37 @@ export default class OperonPlugin extends Plugin {
 			resolvedOperonIdSeed: OPERON_ID_PLACEHOLDER_VALUE_PATTERN.test(originalOperonId)
 				? (resolvedOperonId || null)
 				: null,
+			resolvedContent,
 		};
+	}
+
+	private buildOperonTemplatePlaceholderContext(
+		description: string,
+		fieldValues: Record<string, string>,
+		now: string,
+	): OperonTemplatePlaceholderContext {
+		return {
+			date: now.slice(0, 10),
+			datetime: now,
+			taskDescription: this.normalizeTaskCreatorText(description),
+			note: this.normalizeTaskCreatorText(fieldValues['note'] ?? ''),
+			dateStarted: (fieldValues['dateStarted'] ?? '').trim(),
+			dateScheduled: (fieldValues['dateScheduled'] ?? '').trim(),
+			dateDue: (fieldValues['dateDue'] ?? '').trim(),
+		};
+	}
+
+	private resolveLoadedFileTaskTemplateDocument(
+		templateResult: LoadedFileTaskTemplateResult,
+		context: OperonTemplatePlaceholderContext,
+	): ParsedFrontmatterDocument | null {
+		if (!templateResult.resolvedContent) return null;
+		return parseFrontmatterDocument(
+			this.resolveOperonTemplatePlaceholdersInContent(templateResult.resolvedContent, context, {
+				resolveBodyText: false,
+			}),
+			this.settings.keyMappings,
+		);
 	}
 
 	private resolveCreateFileTaskSourceSeed(
@@ -8764,15 +8922,35 @@ export default class OperonPlugin extends Plugin {
 		return templateDocumentContainsTemplaterSyntax(template) || content.includes('<%');
 	}
 
-	private resolveOperonIdPlaceholdersInContent(content: string): string {
+	private resolveOperonIdPlaceholdersInContent(
+		content: string,
+		options: { resolveRawDateTime?: boolean } = {},
+	): string {
 		return resolveOperonIdPlaceholders(content, {
 			generateOperonId: () => generateOperonId(),
+			now: options.resolveRawDateTime ? localNow() : undefined,
 		});
 	}
 
-	private resolveOperonIdPlaceholdersInTaskBlock(content: string): string {
+	private resolveOperonTemplatePlaceholdersInContent(
+		content: string,
+		context: OperonTemplatePlaceholderContext,
+		options: { resolveBodyText?: boolean } = {},
+	): string {
+		return resolveOperonTemplatePlaceholders(content, {
+			generateOperonId: () => generateOperonId(),
+			context,
+			resolveBodyText: options.resolveBodyText,
+		});
+	}
+
+	private resolveOperonIdPlaceholdersInTaskBlock(
+		content: string,
+		options: { resolveRawDateTime?: boolean } = { resolveRawDateTime: true },
+	): string {
 		return resolveOperonIdPlaceholdersInTaskBlock(content, {
 			generateOperonId: () => generateOperonId(),
+			now: options.resolveRawDateTime ? localNow() : undefined,
 		});
 	}
 
@@ -9291,11 +9469,11 @@ export default class OperonPlugin extends Plugin {
 	): Promise<CreatedCalendarFileTask | null> {
 		const title = options.initialDescription ?? t('taskEditor', 'newOperonTaskFile');
 		const fallbackFile = options.fallbackFile ?? null;
+		const now = localNow();
 
 		const folder = this.getTargetFileTaskFolder(fallbackFile, options.targetFolderOverride);
 
 		const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
-		const template = templateResult.document;
 		const sourceContextFilePath = options.sourceContextFilePath ?? options.sourceReplacement?.sourceFilePath ?? null;
 		const seedFieldValues = { ...(options.seedFieldValues ?? {}) };
 		if (!(seedFieldValues['operonId'] ?? '').trim() && templateResult.resolvedOperonIdSeed) {
@@ -9310,6 +9488,10 @@ export default class OperonPlugin extends Plugin {
 				seedFieldPresence,
 			)
 			: { fieldValues: seedFieldValues, fieldPresence: seedFieldPresence, tags: [] };
+		const template = this.resolveLoadedFileTaskTemplateDocument(
+			templateResult,
+			this.buildOperonTemplatePlaceholderContext(title, linkedSeed.fieldValues, now),
+		);
 		const seedTags = Array.from(new Set([
 			...(options.seedTags ?? []).map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
 			...linkedSeed.tags.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean),
@@ -9321,7 +9503,8 @@ export default class OperonPlugin extends Plugin {
 			explicitEmptyFieldKeys: options.explicitEmptyFieldKeys,
 			tags: seedTags,
 			tagsPresent: options.seedTagsPresent === true || seedTags.length > 0,
-		}, template, localNow(), 'use-template');
+		}, template, now, 'use-template');
+		const templateContext = this.buildOperonTemplatePlaceholderContext(title, draft.fieldValues, now);
 		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return null;
 
 		await this.ensureFileTaskFolder(folder);
@@ -9341,7 +9524,7 @@ export default class OperonPlugin extends Plugin {
 			selectedTemplate,
 			{ runMode: needsTemplaterProcessing ? 0 : 2 },
 		);
-		const resolvedContent = this.resolveOperonIdPlaceholdersInContent(renderedContent);
+		const resolvedContent = this.resolveOperonTemplatePlaceholdersInContent(renderedContent, templateContext);
 		if (resolvedContent !== await this.app.vault.cachedRead(created)) {
 			await this.app.vault.modify(created, resolvedContent);
 		}
@@ -9395,12 +9578,23 @@ export default class OperonPlugin extends Plugin {
 		options: OpenTaskCreatorOptions = {},
 	): void {
 		this.taskCreatorModal?.close();
+		const shouldApplyGenericDefaults = !initialDraft
+			&& options.submitMode === undefined
+			&& options.initialCreateType === undefined
+			&& !options.onSubmitInline
+			&& !options.onSubmitFile;
+		const defaultFileTemplateId = shouldApplyGenericDefaults
+			? this.getAvailableTaskCreatorDefaultFileTemplateId()
+			: '';
 		const modal = new TaskCreatorModal(this.app, {
 			settings: this.settings,
 			allTasks: this.indexer.getAllTasks(),
 			initialDraft,
 			submitMode: options.submitMode,
-			initialCreateType: options.initialCreateType,
+			initialCreateType: shouldApplyGenericDefaults && this.settings.taskCreatorDefaultToFileTask
+				? 'file'
+				: options.initialCreateType,
+			defaultFileTemplateId,
 			fileTaskTemplateOptions: this.getFileTaskTemplateOptionsForPicker(),
 			onFileTemplateSelected: async (template) => {
 				this.settings.lastUsedFileTaskTemplateId = template.id;
@@ -10354,8 +10548,8 @@ export default class OperonPlugin extends Plugin {
 		document: ParsedFrontmatterDocument,
 		selectedTemplate: FileTaskTemplateOption,
 	): Promise<void> {
+		const now = localNow();
 		const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
-		const template = templateResult.document;
 		const seedFieldValues = { ...document.managedFieldValues };
 		if (!(seedFieldValues['operonId'] ?? '').trim() && templateResult.resolvedOperonIdSeed) {
 			seedFieldValues['operonId'] = templateResult.resolvedOperonIdSeed;
@@ -10364,6 +10558,10 @@ export default class OperonPlugin extends Plugin {
 		if ((seedFieldValues['operonId'] ?? '').trim()) {
 			seedFieldPresence.add('operonId');
 		}
+		const template = this.resolveLoadedFileTaskTemplateDocument(
+			templateResult,
+			this.buildOperonTemplatePlaceholderContext(file.basename, seedFieldValues, now),
+		);
 		const draft = this.buildFileTaskDraft({
 			description: file.basename,
 			fieldValues: seedFieldValues,
@@ -10371,7 +10569,8 @@ export default class OperonPlugin extends Plugin {
 			tags: [...document.tags],
 			tagsPresent: document.tagsPresent,
 			frontmatterDocument: document,
-		}, template, localNow(), 'preserve-source');
+		}, template, now, 'preserve-source');
+		const templateContext = this.buildOperonTemplatePlaceholderContext(file.basename, draft.fieldValues, now);
 		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return;
 
 		const renderedContent = await this.maybeProcessFileTaskTemplaterContent(
@@ -10380,7 +10579,9 @@ export default class OperonPlugin extends Plugin {
 			template,
 			selectedTemplate,
 		);
-		const resolvedContent = this.resolveOperonIdPlaceholdersInContent(renderedContent);
+		const resolvedContent = this.resolveOperonTemplatePlaceholdersInContent(renderedContent, templateContext, {
+			resolveBodyText: false,
+		});
 		await this.app.vault.modify(file, resolvedContent);
 		const finalDocument = await this.loadParsedFrontmatterDocument(file);
 		await this.indexer.reindexFilePath(file.path, { notify: false });
@@ -10400,8 +10601,8 @@ export default class OperonPlugin extends Plugin {
 		const folder = this.getTargetFileTaskFolder(file);
 
 		const initialDescription = parsed.description || t('taskEditor', 'newOperonTaskFile');
+		const now = localNow();
 		const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
-		const template = templateResult.document;
 		const baseFieldValues = this.buildParsedTaskFieldValues(parsed);
 		if (!(baseFieldValues['operonId'] ?? '').trim() && templateResult.resolvedOperonIdSeed) {
 			baseFieldValues['operonId'] = templateResult.resolvedOperonIdSeed;
@@ -10413,13 +10614,18 @@ export default class OperonPlugin extends Plugin {
 			baseFieldPresence,
 			baseFieldValues['parentTask'],
 		);
+		const template = this.resolveLoadedFileTaskTemplateDocument(
+			templateResult,
+			this.buildOperonTemplatePlaceholderContext(initialDescription, linkedSeed.fieldValues, now),
+		);
 		const draft = this.buildFileTaskDraft({
 			description: initialDescription,
 			fieldValues: linkedSeed.fieldValues,
 			fieldPresence: linkedSeed.fieldPresence,
 			tags: [...parsed.tags],
 			tagsPresent: parsed.tags.length > 0,
-		}, template, localNow(), 'use-template');
+		}, template, now, 'use-template');
+		const templateContext = this.buildOperonTemplatePlaceholderContext(initialDescription, draft.fieldValues, now);
 		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return;
 
 		await this.ensureFileTaskFolder(folder);
@@ -10450,7 +10656,7 @@ export default class OperonPlugin extends Plugin {
 					{ runMode: needsTemplaterProcessing ? 0 : 2 },
 				);
 				const resolvedContent = this.prependMovedPlainCheckboxLinesToFileTaskContent(
-					this.resolveOperonIdPlaceholdersInContent(renderedContent),
+					this.resolveOperonTemplatePlaceholdersInContent(renderedContent, templateContext),
 					movedPlainCheckboxLines,
 				);
 				if (!this.isInlineToFileTaskTransitionContentValid(resolvedContent, draft.operonId)) {
@@ -10487,7 +10693,12 @@ export default class OperonPlugin extends Plugin {
 					reason: 'inline-to-file-conversion',
 					markdownScope,
 				});
-				this.scheduleInlineToFileTaskMarkdownRefresh(markdownScope);
+				this.refreshMarkdownTaskSurfaces({
+					scope: markdownScope,
+					forceTaskWikilinkOverlayFilePath: created.path,
+				});
+				this.scheduleInlineToFileTaskMarkdownRefresh(markdownScope, created.path);
+				this.scheduleInlineToFileTaskMetadataRefresh(markdownScope, created.path);
 				this.showTaskNotice('inline-to-file', {
 					description: initialDescription,
 					fileBasename: created.basename,
@@ -11064,6 +11275,17 @@ export default class OperonPlugin extends Plugin {
 		lineHint: number,
 		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[] } = {},
 	): Promise<boolean> {
+		const openView = this.getMarkdownViewForPath(filePath);
+		if (openView) {
+			return this.replaceInlineTaskByIdInEditor(
+				openView,
+				operonId,
+				taskLine,
+				lineHint,
+				options,
+			);
+		}
+
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!(file instanceof TFile)) return false;
 
@@ -11088,6 +11310,125 @@ export default class OperonPlugin extends Plugin {
 		this.markInternalTaskWrite(file.path);
 		await this.app.vault.modify(file, lines.join('\n'));
 		return true;
+	}
+
+	private async replaceInlineTaskByIdInEditor(
+		view: MarkdownView,
+		operonId: string,
+		taskLine: string,
+		lineHint: number,
+		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[] } = {},
+	): Promise<boolean> {
+		const filePath = view.file?.path ?? '';
+		if (!filePath) return false;
+
+		const editor = view.editor;
+		const content = editor.getValue();
+		const lines = content.split('\n');
+		const targetLine = this.findInlineTaskLineIndex(lines, filePath, operonId, lineHint);
+		if (targetLine === -1) return false;
+
+		const removePlainCheckboxLines = options.removePlainCheckboxLines ?? [];
+		const changes = this.buildInlineToFileEditorChanges(
+			lines,
+			targetLine,
+			taskLine,
+			removePlainCheckboxLines,
+		);
+		if (!changes) return false;
+
+		try {
+			this.markInternalTaskWrite(filePath);
+			editor.transaction({
+				changes,
+				selection: {
+					from: { line: targetLine, ch: taskLine.length },
+					to: { line: targetLine, ch: taskLine.length },
+				},
+			}, 'operon-inline-to-file');
+		} catch (error) {
+			console.warn('Operon: inline-to-file editor transaction failed.', error);
+			return false;
+		}
+
+		await this.persistMarkdownViewBuffer(view);
+		return true;
+	}
+
+	private buildInlineToFileEditorChanges(
+		lines: string[],
+		targetLine: number,
+		taskLine: string,
+		removePlainCheckboxLines: PlainCheckboxMoveLine[],
+	): BulkSelectionLineChange[] | null {
+		const content = lines.join('\n');
+		const contentWithoutPlainCheckboxLines = removePlainCheckboxLines.length > 0
+			? removePlainCheckboxMoveLinesFromContent(content, targetLine, removePlainCheckboxLines)
+			: content;
+		if (contentWithoutPlainCheckboxLines === null) return null;
+
+		const changes: BulkSelectionLineChange[] = [{
+			from: { line: targetLine, ch: 0 },
+			to: { line: targetLine, ch: lines[targetLine]?.length ?? 0 },
+			text: taskLine,
+		}];
+		const deletionRanges = this.getLineDeletionRanges(lines, removePlainCheckboxLines.map(line => line.lineNumber));
+		if (!deletionRanges) return null;
+
+		changes.push(...deletionRanges.map(range => ({
+			...range,
+			text: '',
+		})));
+		return changes.sort((left, right) => {
+			if (left.from.line !== right.from.line) return left.from.line - right.from.line;
+			return left.from.ch - right.from.ch;
+		});
+	}
+
+	private getLineDeletionRanges(
+		lines: string[],
+		lineNumbers: number[],
+	): Array<{ from: EditorPosition; to: EditorPosition }> | null {
+		const sorted = [...lineNumbers].sort((left, right) => left - right);
+		const ranges: Array<{ from: EditorPosition; to: EditorPosition }> = [];
+		let index = 0;
+
+		while (index < sorted.length) {
+			const start = sorted[index];
+			if (start === undefined || start < 0 || start >= lines.length) return null;
+
+			let end = start;
+			index += 1;
+			while (index < sorted.length && sorted[index] === end + 1) {
+				end = sorted[index];
+				index += 1;
+			}
+
+			if (index < sorted.length && sorted[index] === end) return null;
+			const lastLine = lines.length - 1;
+			if (end < lastLine) {
+				ranges.push({
+					from: { line: start, ch: 0 },
+					to: { line: end + 1, ch: 0 },
+				});
+				continue;
+			}
+
+			if (start === 0) {
+				ranges.push({
+					from: { line: 0, ch: 0 },
+					to: { line: lastLine, ch: lines[lastLine]?.length ?? 0 },
+				});
+				continue;
+			}
+
+			ranges.push({
+				from: { line: start - 1, ch: lines[start - 1]?.length ?? 0 },
+				to: { line: end, ch: lines[end]?.length ?? 0 },
+			});
+		}
+
+		return ranges;
 	}
 
 	private findInlineTaskLineIndex(

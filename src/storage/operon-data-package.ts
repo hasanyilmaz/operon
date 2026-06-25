@@ -119,6 +119,8 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'autoParentLinkedFileSubtasks',
 	'childTaskInheritanceFields',
 	'childTaskInheritanceStatusPipelineSource',
+	'taskCreatorDefaultToFileTask',
+	'taskCreatorDefaultFileTemplateId',
 	'fileTaskTemplateFolder',
 	'createDailyNotesAsOperonTask',
 	'defaultEstimateMinutes',
@@ -225,6 +227,10 @@ export function composeOperonSettingsFromDataPackage(
 	dataPackage: OperonDataPackageV1,
 	defaults: OperonSettings,
 ): OperonSettings {
+	const packageSettings = cloneUnknown<Partial<OperonSettings>>(dataPackage.settings);
+	if (!Object.prototype.hasOwnProperty.call(packageSettings, 'calendarSidebarTaskPoolFollowPresetFilter')) {
+		packageSettings.calendarSidebarTaskPoolFollowPresetFilter = false;
+	}
 	const keyMappings = [
 		...readArray(dataPackage.taxonomy.keyMappings.system, []),
 		...readArray(dataPackage.taxonomy.keyMappings.custom, []),
@@ -235,7 +241,7 @@ export function composeOperonSettingsFromDataPackage(
 		.filter((filterSet): filterSet is FilterSet => !!filterSet);
 	return migrateSettings({
 		...defaults,
-			...cloneUnknown<Partial<OperonSettings>>(dataPackage.settings),
+		...packageSettings,
 		keyMappings: keyMappings.length > 0 ? keyMappings : defaults.keyMappings,
 		filterSets,
 		priorities: readArray(dataPackage.taxonomy.priorities.priorities, defaults.priorities),
@@ -279,10 +285,10 @@ export function composeOperonSettingsFromDataPackage(
 			dataPackage.ui.contextualMenu.contextualMenuMobileAutoHideMs,
 			defaults.contextualMenuMobileAutoHideMs,
 		),
-			...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskUiPreferences),
-			...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskCreationProfile),
-			...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.workspaceTweaks),
-			...cloneUnknown<Partial<OperonSettings>>(dataPackage.automation.taskAutomationPolicy),
+		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskUiPreferences),
+		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskCreationProfile),
+		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.workspaceTweaks),
+		...cloneUnknown<Partial<OperonSettings>>(dataPackage.automation.taskAutomationPolicy),
 		externalCalendars: readArray(dataPackage.integrations.externalCalendarSources.sources, defaults.externalCalendars),
 	});
 }
@@ -389,6 +395,8 @@ export function buildOperonDataPackageFromSettings(
 				autoParentLinkedFileSubtasks: normalized.autoParentLinkedFileSubtasks,
 				childTaskInheritanceFields: [...normalized.childTaskInheritanceFields],
 				childTaskInheritanceStatusPipelineSource: normalized.childTaskInheritanceStatusPipelineSource,
+				taskCreatorDefaultToFileTask: normalized.taskCreatorDefaultToFileTask,
+				taskCreatorDefaultFileTemplateId: normalized.taskCreatorDefaultFileTemplateId,
 				fileTaskTemplateFolder: normalized.fileTaskTemplateFolder,
 				createDailyNotesAsOperonTask: normalized.createDailyNotesAsOperonTask,
 				defaultEstimateMinutes: normalized.defaultEstimateMinutes,

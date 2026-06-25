@@ -13,6 +13,30 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.7.0',
+		date: '2026-06-25',
+		title: 'Official Operon Wiki in Your Vault',
+		showOnUpdate: true,
+		bannerUrl: 'operon-1-7-0-official-operon-wiki.png',
+		body: `
+This update focuses on making Operon easier to understand and reuse inside a real vault. The official docs wiki can now be downloaded into \`Operon/Docs\` and kept aligned with your local settings, giving both humans and agents a clearer reference point for working with tasks, templates, and configured properties.
+
+### New
+- Added **Operon Docs download settings** in Core > General, so the official docs wiki can be downloaded or kept updated inside \`Operon/Docs\` with local property-name mapping.
+- Added a **Calendar Task Pool filter toggle** so the sidebar Task Pool can follow the active Calendar preset filter; new installs enable it by default while existing users keep their current global-pool behavior unless they turn it on.
+- Added **New File Task Creation Defaults** so Task Creator can optionally open in File Task mode and preselect a chosen file-task template without changing the inline-first default.
+- Added **Template Placeholders** for Operon file task templates: \`{{date}}\`, \`{{datetime}}\`, \`{{taskDescription}}\`, \`{{note}}\`, \`{{dateStarted}}\`, \`{{dateScheduled}}\`, and \`{{dateDue}}\`, plus direct \`{{date}}\` and \`{{datetime}}\` resolution in pasted inline task snippets.
+
+### Improved
+- Improved **Priority** and **Pipeline** color controls in Settings so status and priority colors use Operon's searchable color picker instead of the native browser picker.
+
+### Fixed
+- Fixed **Convert to file** in Live Preview for inline tasks with carried-over checkboxes, so the source line updates atomically and no longer leaves a blank file-task label until the next click or refresh.
+- Fixed Obsidian 1.6.5 CSS compatibility warning for file task overlay nested wikilinks while keeping their subtle dotted link affordance.
+- Fixed **Convert to file** in Live Preview for task titles containing wikilinks, so the new file-task overlay label appears immediately without requiring a page refresh.
+`.trim(),
+	},
+	{
 		version: '1.6.2',
 		date: '2026-06-23',
 		title: 'Recurring Tasks at a Glance',

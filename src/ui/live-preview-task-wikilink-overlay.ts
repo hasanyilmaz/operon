@@ -6,7 +6,7 @@ import {
 	ViewUpdate,
 	WidgetType,
 } from '@codemirror/view';
-import { Extension, RangeSetBuilder } from '@codemirror/state';
+import { Extension, RangeSetBuilder, StateEffect } from '@codemirror/state';
 import { App, editorLivePreviewField, setIcon } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { t } from '../core/i18n';
@@ -60,6 +60,8 @@ export interface LivePreviewTaskWikilinkCallbacks {
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 }
+
+export const operonTaskWikilinkForceRevealEffect = StateEffect.define<{ filePaths: string[] }>();
 
 class TaskWikilinkLeftWidget extends WidgetType {
 	private readonly renderSignature: string;
@@ -374,6 +376,7 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 		decorations: DecorationSet = Decoration.none;
 		private lastLivePreview = false;
 		private lastSelectionOverlaySignature = '';
+		private forceRevealFilePaths = new Set<string>();
 
 		constructor(view: EditorView) {
 			this.lastLivePreview = this.isLivePreview(view);
@@ -385,6 +388,14 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 			const hasRefresh = update.transactions.some((transaction) =>
 				transaction.effects.some((effect) => effect.is(operonIndexRefreshEffect))
 			);
+			const forceRevealFilePaths = collectTaskWikilinkForceRevealFilePaths(update);
+			const hasForceReveal = forceRevealFilePaths.length > 0;
+			if (update.selectionSet && !hasForceReveal) {
+				this.forceRevealFilePaths.clear();
+			}
+			for (const filePath of forceRevealFilePaths) {
+				this.forceRevealFilePaths.add(filePath);
+			}
 			const nowLive = this.isLivePreview(update.view);
 			const modeChanged = nowLive !== this.lastLivePreview;
 			this.lastLivePreview = nowLive;
@@ -393,7 +404,7 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 				? this.updateSelectionOverlaySignature(update.view)
 				: false;
 
-			if (modeChanged || hasRefresh || update.docChanged || selectionOverlayChanged) {
+			if (modeChanged || hasRefresh || hasForceReveal || update.docChanged || selectionOverlayChanged) {
 				this.rebuild(update.view);
 			}
 		}
@@ -445,8 +456,6 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 				for (const match of matches) {
 					const from = line.from + match.from;
 					const to = line.from + match.to;
-					if (selection.from < to && selection.to > from) continue;
-
 					const resolved = resolveTaskFileLink(
 						callbacks.app,
 						sourcePath,
@@ -455,6 +464,14 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 						match.alias,
 					);
 					if (!resolved) continue;
+					if (shouldRevealRawTaskWikilinkForSelection(
+						selection.from,
+						selection.to,
+						from,
+						to,
+						resolved.resolvedFile.path,
+						this.forceRevealFilePaths,
+					)) continue;
 
 					const visuals = computeTaskFileLinkVisuals(
 						resolved.task,
@@ -537,6 +554,38 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 	});
 
 	return plugin;
+}
+
+function collectTaskWikilinkForceRevealFilePaths(update: ViewUpdate): string[] {
+	const filePaths: string[] = [];
+	for (const transaction of update.transactions) {
+		for (const effect of transaction.effects) {
+			if (!effect.is(operonTaskWikilinkForceRevealEffect)) continue;
+			for (const filePath of effect.value.filePaths) {
+				const normalized = normalizeTaskWikilinkForceRevealPath(filePath);
+				if (normalized) filePaths.push(normalized);
+			}
+		}
+	}
+	return filePaths;
+}
+
+export function shouldRevealRawTaskWikilinkForSelection(
+	selectionFrom: number,
+	selectionTo: number,
+	linkFrom: number,
+	linkTo: number,
+	resolvedFilePath = '',
+	forceRevealFilePaths?: ReadonlySet<string>,
+): boolean {
+	const overlaps = selectionFrom < linkTo && selectionTo > linkFrom;
+	if (!overlaps) return false;
+	const normalizedPath = normalizeTaskWikilinkForceRevealPath(resolvedFilePath);
+	return !normalizedPath || forceRevealFilePaths?.has(normalizedPath) !== true;
+}
+
+function normalizeTaskWikilinkForceRevealPath(filePath: string): string {
+	return filePath.trim();
 }
 
 export function buildTaskWikilinkLeftRenderSignature(

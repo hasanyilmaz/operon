@@ -233,6 +233,7 @@ function checkCssScorecard() {
 		[/\brow-gap\s*:/, 'use gap shorthand instead of row-gap for Obsidian CSS compatibility'],
 		[/\btext-indent\s*:/, 'avoid text-indent because Obsidian compatibility checks flag css-text-indent'],
 		[/\btext-decoration-[a-z-]+\s*:/, 'avoid text-decoration subproperties flagged by Obsidian CSS lint'],
+		[/\btext-decoration\s*:\s*(?=[^;]*\b(?:underline|overline)\b)(?=[^;]*[^;\s]+\s+[^;\s]+)[^;]+;/, 'avoid compound text-decoration shorthand flagged by Obsidian CSS lint'],
 	];
 
 	for (const [pattern, label] of bannedCssPatterns) {

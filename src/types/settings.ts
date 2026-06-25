@@ -1156,6 +1156,7 @@ export interface OperonSettings {
 	demoWorkspacePromptDismissed: boolean;
 	releaseNotesShowOnUpdate: boolean;
 	releaseNotesLastShownVersion: string;
+	operonDocsAutoUpdateEnabled: boolean;
 	/** User-customizable named colors used by Operon color pickers. */
 	colorPalette: ColorPaletteEntry[];
 
@@ -1359,6 +1360,7 @@ export interface OperonSettings {
 	calendarSidebarShowWeekNumbers: boolean;
 	calendarShowWeekLabelOnFirstDay: boolean;
 	calendarSidebarTaskPoolDefaultExpanded: boolean;
+	calendarSidebarTaskPoolFollowPresetFilter: boolean;
 	calendarSidebarFinishedTasksDefaultExpanded: boolean;
 	calendarTouchTimeGridTaskMoveEnabled: boolean;
 	calendarTouchDragLongPressMs: number;
@@ -1405,7 +1407,11 @@ export interface OperonSettings {
 	duplicateAlertDelaySeconds: number;
 	taskStatsBackfillVersion: number;
 
-	// File task templates
+	// File task creation defaults and templates
+	/** If true, generic Task Creator opens with File Task selected. */
+	taskCreatorDefaultToFileTask: boolean;
+	/** Optional default template applied when Task Creator enters File Task mode. */
+	taskCreatorDefaultFileTemplateId: string | null;
 	/** Folder whose top-level markdown files are offered in the file-task template picker. */
 	fileTaskTemplateFolder: string;
 	/** Additional vault folders excluded from Operon's global task index. */
@@ -1629,6 +1635,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	demoWorkspacePromptDismissed: false,
 	releaseNotesShowOnUpdate: true,
 	releaseNotesLastShownVersion: '',
+	operonDocsAutoUpdateEnabled: false,
 	colorPalette: cloneDefaultColorPalette(),
 
 	taskCreateDebounceMs: 750,
@@ -1764,6 +1771,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	calendarSidebarShowWeekNumbers: true,
 	calendarShowWeekLabelOnFirstDay: true,
 	calendarSidebarTaskPoolDefaultExpanded: true,
+	calendarSidebarTaskPoolFollowPresetFilter: true,
 	calendarSidebarFinishedTasksDefaultExpanded: false,
 	calendarTouchTimeGridTaskMoveEnabled: true,
 	calendarTouchDragLongPressMs: 260,
@@ -1808,6 +1816,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	duplicateAlertDelaySeconds: 10,
 	taskStatsBackfillVersion: 0,
 
+	taskCreatorDefaultToFileTask: false,
+	taskCreatorDefaultFileTemplateId: null,
 	fileTaskTemplateFolder: '',
 	excludedFolders: [],
 	createDailyNotesAsOperonTask: false,
@@ -3406,6 +3416,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.calendarSidebarTaskPoolDefaultExpanded = typeof src.calendarSidebarTaskPoolDefaultExpanded === 'boolean'
 		? src.calendarSidebarTaskPoolDefaultExpanded
 		: DEFAULT_SETTINGS.calendarSidebarTaskPoolDefaultExpanded;
+	out.calendarSidebarTaskPoolFollowPresetFilter = typeof src.calendarSidebarTaskPoolFollowPresetFilter === 'boolean'
+		? src.calendarSidebarTaskPoolFollowPresetFilter
+		: false;
 	if (src.calendarSidebarFinishedTasksDefaultExpanded === true && !out.calendarSidebarTaskPoolDefaultExpanded) {
 		out.calendarSidebarTaskPoolDefaultExpanded = true;
 	}
@@ -3663,6 +3676,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.fileTaskArchiveFolder = DEFAULT_SETTINGS.fileTaskArchiveFolder;
 	}
 	out.fileTaskArchiveDelaySeconds = Math.round(clamp(out.fileTaskArchiveDelaySeconds, 'fileTaskArchiveDelaySeconds'));
+	out.taskCreatorDefaultFileTemplateId = normalizeOptionalString(src.taskCreatorDefaultFileTemplateId) || null;
 	out.fileTaskTemplateFolder = resolveFileTaskTemplateFolder(src);
 	out.excludedFolders = sanitizeExcludedFoldersForFileTasksFolder(
 		normalizeFolderPathList(src.excludedFolders),

@@ -33,6 +33,8 @@ export type TaskCreationProfileStoreSettings = Pick<
 	| 'autoParentLinkedFileSubtasks'
 	| 'childTaskInheritanceFields'
 	| 'childTaskInheritanceStatusPipelineSource'
+	| 'taskCreatorDefaultToFileTask'
+	| 'taskCreatorDefaultFileTemplateId'
 	| 'fileTaskTemplateFolder'
 	| 'createDailyNotesAsOperonTask'
 	| 'defaultEstimateMinutes'
@@ -55,6 +57,12 @@ function readBoolean(value: unknown, fallback: boolean): boolean {
 
 function readString(value: unknown, fallback: string): string {
 	return typeof value === 'string' ? value : fallback;
+}
+
+function readNullableString(value: unknown, fallback: string | null): string | null {
+	if (value === null || value === undefined) return fallback;
+	if (typeof value !== 'string') return fallback;
+	return value.trim() || null;
 }
 
 function readStringArray(value: unknown, fallback: string[]): string[] {
@@ -167,6 +175,14 @@ function readStoreData(
 		childTaskInheritanceStatusPipelineSource: normalizeChildTaskInheritanceStatusPipelineSource(
 			raw.childTaskInheritanceStatusPipelineSource,
 			fallback.childTaskInheritanceStatusPipelineSource,
+		),
+		taskCreatorDefaultToFileTask: readBoolean(
+			raw.taskCreatorDefaultToFileTask,
+			fallback.taskCreatorDefaultToFileTask,
+		),
+		taskCreatorDefaultFileTemplateId: readNullableString(
+			raw.taskCreatorDefaultFileTemplateId,
+			fallback.taskCreatorDefaultFileTemplateId,
 		),
 		fileTaskTemplateFolder: readString(raw.fileTaskTemplateFolder, fallback.fileTaskTemplateFolder),
 		createDailyNotesAsOperonTask: readBoolean(raw.createDailyNotesAsOperonTask, fallback.createDailyNotesAsOperonTask),

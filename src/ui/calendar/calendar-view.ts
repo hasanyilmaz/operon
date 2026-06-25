@@ -1155,11 +1155,7 @@ export class CalendarView extends ItemView {
 			const preset = this.resolveCurrentCalendarPreset(settings);
 			const task = this.indexer.getTask(taskId);
 			if (!preset || !task) return [];
-			const activeFilter = (() => {
-				const raw = settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
-				if (raw && isSpecialDynamicFilterSet(raw)) return null;
-				return raw ? stripFilterViewOnlyOptions(raw) : null;
-			})();
+			const activeFilter = this.resolveCalendarPresetFilter(preset, settings);
 			const scopedTasks = filterTasksForCalendar(
 				activeFilter,
 				[task],
@@ -1211,7 +1207,7 @@ export class CalendarView extends ItemView {
 				}
 			}
 			if (state.navigationMode === 'sidebar') {
-				const tasks = this.indexer.getAllTasks();
+				const tasks = this.getCalendarSidebarTaskPoolSourceTasks(this.getOptimisticCalendarTasksForRender(), preset, settings);
 				signature.push(...this.buildSidebarTaskSignature(taskId, tasks, state));
 			}
 			return signature.sort();
@@ -1418,11 +1414,7 @@ export class CalendarView extends ItemView {
 			container.createDiv({ text: t('calendar', 'presetsNotConfigured') });
 			return;
 		}
-		const activeFilter = (() => {
-			const raw = settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
-			if (raw && isSpecialDynamicFilterSet(raw)) return null;
-			return raw ? stripFilterViewOnlyOptions(raw) : null;
-		})();
+		const activeFilter = this.resolveCalendarPresetFilter(preset, settings);
 		const queryAnchorDate = useMobileCalendar
 			? mobileAnchorDate
 			: preset.surfaceType === 'multiWeek'
@@ -1681,6 +1673,31 @@ export class CalendarView extends ItemView {
 			Math.round(container.clientWidth || container.getBoundingClientRect().width || ownerWindow.innerWidth),
 		);
 		return width <= settings.calendarMobileMaxWidthPx;
+	}
+
+	private resolveCalendarPresetFilter(
+		preset: CalendarPreset | null | undefined,
+		settings: OperonSettings,
+	): FilterSet | null {
+		const raw = preset?.filterSetId
+			? settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
+			: null;
+		if (raw && isSpecialDynamicFilterSet(raw)) return null;
+		return raw ? stripFilterViewOnlyOptions(raw) : null;
+	}
+
+	private getCalendarSidebarTaskPoolSourceTasks(
+		tasks: IndexedTask[],
+		preset: CalendarPreset | null | undefined,
+		settings: OperonSettings,
+	): IndexedTask[] {
+		if (!settings.calendarSidebarTaskPoolFollowPresetFilter) return tasks;
+		return filterTasksForCalendar(
+			this.resolveCalendarPresetFilter(preset, settings),
+			tasks,
+			settings.priorities,
+			this.getPinnedCache(),
+		);
 	}
 
 	private shouldUseSidebarNativeScrollFallback(): boolean {
@@ -6748,7 +6765,12 @@ export class CalendarView extends ItemView {
 				list.empty();
 				const state = this.ensureState();
 				const currentTaskPoolMode = state.taskPoolMode;
-				const candidates = collectCalendarSidebarTaskPoolCandidates(this.getOptimisticCalendarTasksForRender(), currentTaskPoolMode, {
+				const sourceTasks = this.getCalendarSidebarTaskPoolSourceTasks(
+					this.getOptimisticCalendarTasksForRender(),
+					preset,
+					this.getSettings(),
+				);
+				const candidates = collectCalendarSidebarTaskPoolCandidates(sourceTasks, currentTaskPoolMode, {
 					finishedDate: state.anchorDate,
 				});
 				const query = this.taskPoolQuery.trim();

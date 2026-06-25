@@ -178,6 +178,8 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		autoParentLinkedFileSubtasks: settings.autoParentLinkedFileSubtasks,
 		childTaskInheritanceFields: settings.childTaskInheritanceFields,
 		childTaskInheritanceStatusPipelineSource: settings.childTaskInheritanceStatusPipelineSource,
+		taskCreatorDefaultToFileTask: settings.taskCreatorDefaultToFileTask,
+		taskCreatorDefaultFileTemplateId: settings.taskCreatorDefaultFileTemplateId,
 		fileTaskTemplateFolder: settings.fileTaskTemplateFolder,
 		createDailyNotesAsOperonTask: settings.createDailyNotesAsOperonTask,
 		defaultEstimateMinutes: settings.defaultEstimateMinutes,

@@ -2,11 +2,13 @@ import { setIcon } from 'obsidian';
 import { createOwnerElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
+type OperonHoverTooltipColor = string | null | (() => string | null);
+
 interface OperonHoverTooltipOptions {
 	title?: string;
 	content?: string;
 	contentEl?: HTMLElement;
-	taskColor: string | null;
+	taskColor: OperonHoverTooltipColor;
 	openOnClick?: boolean;
 	tooltipClassName?: string;
 	preferredHorizontal?: 'auto' | 'left' | 'center' | 'right';
@@ -22,6 +24,11 @@ type BoundTooltipTarget = HTMLElement & {
 	_operonHoverCleanup?: () => void;
 	_operonFloatingTooltip?: HTMLElement | null;
 };
+
+function resolveOperonHoverTooltipColor(taskColor: OperonHoverTooltipColor): string | null {
+	const resolved = typeof taskColor === 'function' ? taskColor() : taskColor;
+	return resolved?.trim() || null;
+}
 
 /**
  * Operon tooltip integration contract:
@@ -93,8 +100,9 @@ export function bindOperonHoverTooltip(
 		}
 		const tooltip = createTooltip(options.title, options.content, options.contentEl, options.tooltipClassName, target);
 		tooltip.classList.add('operon-hover-tooltip--floating');
-		if (options.taskColor) {
-			tooltip.setCssProps({ '--operon-live-hover-border': options.taskColor });
+		const taskColor = resolveOperonHoverTooltipColor(options.taskColor);
+		if (taskColor) {
+			tooltip.setCssProps({ '--operon-live-hover-border': taskColor });
 		}
 		getOwnerBody(target).appendChild(tooltip);
 		positionFloatingTooltip(target, tooltip, options.preferredVertical ?? 'auto');
@@ -137,7 +145,8 @@ export function bindOperonHoverTooltip(
 export function createOperonHoverTooltipShell(options: OperonHoverTooltipOptions, owner?: Node | null): HTMLElement {
 	const wrapper = createOwnerElement(owner, 'span');
 	wrapper.className = 'operon-hover-tooltip-shell';
-	if (options.taskColor) wrapper.setCssProps({ '--operon-live-hover-border': options.taskColor });
+	const taskColor = resolveOperonHoverTooltipColor(options.taskColor);
+	if (taskColor) wrapper.setCssProps({ '--operon-live-hover-border': taskColor });
 	wrapper.dataset.tooltipHorizontal = options.preferredHorizontal ?? 'auto';
 	wrapper.dataset.tooltipVertical = options.preferredVertical ?? 'auto';
 	wrapper.addEventListener('mouseenter', () => updateTooltipPlacement(wrapper));

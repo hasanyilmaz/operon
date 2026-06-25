@@ -104,6 +104,7 @@ import {
 	resolveDefaultPriorityAfterDelete,
 } from '../core/settings-taxonomy-rules';
 import {
+	buildFileTaskTemplateOptions,
 	getTopLevelMarkdownFilesInFolder,
 } from '../core/file-task-templates';
 import { getKeyMappingDescription } from './key-mapping-descriptions';
@@ -708,6 +709,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private copyKanbanManualOrder: (sourcePresetId: string, targetPresetId: string) => Promise<void>;
 	private removeKanbanManualOrder: (presetId: string) => Promise<void>;
 	private createBasicsWorkspace: () => Promise<void>;
+	private syncOperonDocsNow: () => Promise<void>;
 	private isDeclarativeSettingsRendererActive = false;
 	private activeNativeSettingsPage: {
 		tabId: OperonSettingsTabId;
@@ -743,6 +745,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		copyKanbanManualOrder?: (sourcePresetId: string, targetPresetId: string) => Promise<void>,
 		removeKanbanManualOrder?: (presetId: string) => Promise<void>,
 		createBasicsWorkspace?: () => Promise<void>,
+		syncOperonDocsNow?: () => Promise<void>,
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
@@ -790,6 +793,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.copyKanbanManualOrder = copyKanbanManualOrder ?? (async () => { });
 		this.removeKanbanManualOrder = removeKanbanManualOrder ?? (async () => { });
 		this.createBasicsWorkspace = createBasicsWorkspace ?? (async () => { });
+		this.syncOperonDocsNow = syncOperonDocsNow ?? (async () => { });
 	}
 
 	private makeEvalDeps(): FilterModalEvalDeps | null {
@@ -1742,6 +1746,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return;
 		}
 
+		if (entry.id === 'settings.operonDocs') {
+			this.renderOperonDocsDownloadSetting(setting);
+			return;
+		}
+
 		if (entry.id === 'ui.mobileGlobalTaskFabReset') {
 			setting.addButton(button => {
 				button
@@ -1892,12 +1901,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return [];
 	}
 
+	private isCalendarSidebarDefaultStateSettingKey(key: OperonSettingSearchKey): key is CalendarSidebarDefaultStateKey {
+		return key === 'calendarSidebarCalendarsDefaultExpanded'
+			|| key === 'calendarSidebarTaskPoolDefaultExpanded';
+	}
+
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
 		if (SETTINGS_SEARCH_OPTION_NUMBER_KEYS.has(key)) {
 			return this.normalizeSettingsSearchNumberOption(key, value);
 		}
 
 		const text = this.stringifySettingsSearchValue(value);
+		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
+			return text !== 'collapsed';
+		}
 		if (key === 'language') {
 			return isSupportedLanguage(text) ? text : DEFAULT_SETTINGS.language;
 		}
@@ -1924,6 +1941,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (key === 'fileRepeatDestination') {
 			return text === 'custom-folder' ? 'custom-folder' : 'same-folder';
+		}
+		if (key === 'taskCreatorDefaultFileTemplateId') {
+			return text || null;
 		}
 		if (key === 'dynamicFileTaskFilterPlacement') {
 			return text === 'body-bottom' ? text : 'body-top';
@@ -1990,6 +2010,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): string {
+		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
+			return value === false ? 'collapsed' : 'expanded';
+		}
 		if (isCalendarMobileSourcePresetSettingKey(key) || key === 'calendarMobileDefaultSourcePresetId') {
 			return this.stringifySettingsSearchValue(value ?? this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? '');
 		}
@@ -2006,6 +2029,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
+			return {
+				expanded: t('settings', 'expanded'),
+				collapsed: t('settings', 'collapsed'),
+			};
+		}
 		if (key === 'language') {
 			return Object.fromEntries(
 				this.getLanguageDropdownOptions().map(option => [option.value, option.label]),
@@ -2131,6 +2160,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 				? Object.fromEntries(this.settings.calendarPresets.map(preset => [preset.id, preset.name]))
 				: { '': t('settings', 'default') };
 		}
+		if (key === 'taskCreatorDefaultFileTemplateId') {
+			return Object.fromEntries(this.getDefaultFileTaskTemplateDropdownOptions().map(option => [option.value, option.label]));
+		}
 		if (key === 'calendarWeekStart') {
 			return {
 				monday: t('calendar', 'monday'),
@@ -2236,6 +2268,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private applySettingsSearchBeforeSaveEffects(key: OperonSettingSearchKey, value: unknown): void {
+		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
+			this.normalizeCalendarSidebarDefaultState(key);
+		}
 		if (isCalendarMobileViewModeEnabledSettingKey(key) && value === false) {
 			const hasAnyEnabledMode = Object.values(CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE)
 				.some(enabledKey => this.settings[enabledKey] === true);
@@ -2279,6 +2314,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (key === 'timeFormat') {
 			this.updateNativeSettingsDefinitions();
+		}
+		if (key === 'operonDocsAutoUpdateEnabled' && this.settings.operonDocsAutoUpdateEnabled) {
+			runSettingsAsync('settings operon docs sync failed', async () => {
+				await this.syncOperonDocsNow();
+			});
 		}
 	}
 
@@ -2491,6 +2531,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderReleaseNotesSettingsCard(containerEl, { includeToggle: true });
 		}
 		this.renderGeneralBasicsTab(containerEl);
+		this.renderOperonDocsSettings(containerEl);
 		this.renderGeneralSystemTab(containerEl);
 		this.renderStorageCleanupSection(containerEl);
 	}
@@ -2555,6 +2596,45 @@ export class OperonSettingsTab extends PluginSettingTab {
 						await this.createBasicsWorkspace();
 					}));
 			});
+	}
+
+	private renderOperonDocsSettings(containerEl: HTMLElement): void {
+		const sectionEl = renderNativeSettingsGroupedSection(
+			containerEl,
+			t('settings', 'operonDocsSection'),
+			t('settings', 'operonDocsSectionDesc'),
+		);
+		this.markSettingsSearchSectionTarget(sectionEl, 'settings.operonDocs');
+		this.renderOperonDocsDownloadSetting(new Setting(sectionEl));
+		this.renderBoundToggleSetting(
+			sectionEl,
+			t('settings', 'operonDocsAutoUpdateEnabled'),
+			t('settings', 'operonDocsAutoUpdateEnabledDesc'),
+			'operonDocsAutoUpdateEnabled',
+			{
+				errorContext: 'settings operon docs auto update failed',
+				onAfterChange: async (value) => {
+					if (!value) return;
+					await this.syncOperonDocsNow();
+				},
+			},
+		);
+	}
+
+	private renderOperonDocsDownloadSetting(setting: Setting): Setting {
+		setting
+			.setName(t('settings', 'operonDocsDownloadNow'))
+			.setDesc(t('settings', 'operonDocsDownloadNowDesc'))
+			.addButton(button => {
+				button
+					.setButtonText(t('settings', 'operonDocsDownloadButton'))
+					.setCta()
+					.onClick(settingsAsyncHandler('settings operon docs sync failed', async () => {
+						await this.syncOperonDocsNow();
+					}));
+			});
+		setting.settingEl.dataset.operonSettingsSearchId = 'settings.operonDocs';
+		return setting;
 	}
 
 	private configureLanguageDropdownSetting(setting: Setting): Setting {
@@ -4055,6 +4135,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			t('settings', 'inlineToFileTaskMovePlainCheckboxesDesc'),
 			'inlineToFileTaskMovePlainCheckboxes',
 		);
+
+		const creationDefaultsSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'newFileTaskCreationDefaults'));
+		this.renderNewFileTaskCreationDefaultSettings(creationDefaultsSection);
 
 		const templateSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'fileTaskTemplates'));
 		this.renderFileTaskTemplateSettings(templateSection, containerEl);
@@ -5884,12 +5967,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarTaskPoolDefaultExpanded'),
 			onAfterChange: () => this.redisplayPreservingScroll(),
 		});
+		this.renderBoundToggleSetting(sidebarBody, t('settings', 'calendarSidebarTaskPoolFollowPresetFilter'), t('settings', 'calendarSidebarTaskPoolFollowPresetFilterDesc'), 'calendarSidebarTaskPoolFollowPresetFilter', {
+			onAfterChange: () => this.redisplayPreservingScroll(),
+		});
 		sidebarBody.createEl('p', {
 			text: t('settings', 'calendarSidebarTaskPoolLimitDesc', {
 				initialLimit: String(CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT),
 				searchLimit: String(CALENDAR_SIDEBAR_TASK_POOL_SEARCH_LIMIT),
 			}),
-			cls: 'operon-settings-section-desc',
+			cls: 'operon-settings-section-desc operon-calendar-sidebar-task-pool-note',
 		});
 
 		this.renderExternalCalendarsSection(containerEl);
@@ -7567,8 +7653,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const row = listEl.createDiv('operon-priority-row');
 
 		createWorkflowColorSwatch({
+			app: this.app,
 			containerEl: row,
 			value: priority.color,
+			palette: this.settings.colorPalette,
 			label: t('settings', 'priorityColorAria', { name: priority.label }),
 			errorContext: 'settings priority color change failed',
 			onChange: async (value) => {
@@ -7715,6 +7803,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		priority: PriorityDefinition,
 	): void {
 		const priorityId = priority.id;
+		const getCurrentPriority = (): PriorityDefinition | null => this.findSettingsPriority(priorityId, priority.label);
 		const iconButton = containerEl.createEl('button', {
 			cls: 'operon-priority-icon-trigger',
 			attr: {
@@ -7723,10 +7812,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 		bindOperonHoverTooltip(iconButton, {
 			content: t('settings', 'priorityIconTooltip'),
-			taskColor: priority.color || null,
+			taskColor: () => getCurrentPriority()?.color || null,
 		});
 
-		const getCurrentPriority = (): PriorityDefinition | null => this.findSettingsPriority(priorityId, priority.label);
 		const getStoredIcon = (): string => normalizeTaskIconValue(getCurrentPriority()?.priorityIcon);
 		const refreshIconPreview = (iconName = getStoredIcon()): void => {
 			const normalizedIcon = normalizeTaskIconValue(iconName);
@@ -8053,8 +8141,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const row = containerEl.createDiv('operon-status-row');
 
 		createWorkflowColorSwatch({
+			app: this.app,
 			containerEl: row,
 			value: status.color,
+			palette: this.settings.colorPalette,
 			label: t('settings', 'statusColorAria', { pipeline: pipeline.name, status: status.label }),
 			errorContext: 'settings pipeline status color change failed',
 			onChange: async (value) => {
@@ -8303,6 +8393,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	): void {
 		const pipelineId = pipeline.id;
 		const statusId = status.id;
+		const getCurrentStatus = (): StatusDefinition | null => this.findSettingsPipelineStatus(
+			pipelineId,
+			pipeline.name,
+			statusId,
+			status.label,
+		)?.status ?? null;
 		const iconButton = containerEl.createEl('button', {
 			cls: 'operon-status-icon-trigger',
 			attr: {
@@ -8311,15 +8407,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 		bindOperonHoverTooltip(iconButton, {
 			content: t('settings', 'statusIconTooltip'),
-			taskColor: status.color || null,
+			taskColor: () => getCurrentStatus()?.color || null,
 		});
 
-		const getCurrentStatus = (): StatusDefinition | null => this.findSettingsPipelineStatus(
-			pipelineId,
-			pipeline.name,
-			statusId,
-			status.label,
-		)?.status ?? null;
 		const getStoredIcon = (): string => normalizeTaskIconValue(getCurrentStatus()?.pipelineStatusIcon);
 		const refreshIconPreview = (iconName = getStoredIcon()): void => {
 			const normalizedIcon = normalizeTaskIconValue(iconName);
@@ -9882,6 +9972,47 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.renderFileTaskMigrationSettings(sectionHostEl);
 
 		renderPreview();
+	}
+
+	private getDefaultFileTaskTemplateDropdownOptions(): DropdownSettingOption<string>[] {
+		const currentValue = this.settings.taskCreatorDefaultFileTemplateId?.trim() ?? '';
+		const options: DropdownSettingOption<string>[] = [
+			{ value: '', label: t('settings', 'defaultFileTaskTemplateNone') },
+			...buildFileTaskTemplateOptions(
+				this.settings.fileTaskTemplateFolder,
+				this.app.vault.getMarkdownFiles(),
+			).map(template => ({
+				value: template.id,
+				label: template.name,
+			})),
+		];
+		if (currentValue && !options.some(option => option.value === currentValue)) {
+			options.push({
+				value: currentValue,
+				label: `${t('settings', 'defaultFileTaskTemplateUnavailable')} (${currentValue})`,
+			});
+		}
+		return options;
+	}
+
+	private renderNewFileTaskCreationDefaultSettings(containerEl: HTMLElement): void {
+		this.renderBoundToggleSetting(
+			containerEl,
+			t('settings', 'taskCreatorDefaultToFileTask'),
+			t('settings', 'taskCreatorDefaultToFileTaskDesc'),
+			'taskCreatorDefaultToFileTask',
+		);
+		this.renderBoundDropdownSetting<'taskCreatorDefaultFileTemplateId', string>(
+			containerEl,
+			t('settings', 'taskCreatorDefaultFileTemplate'),
+			t('settings', 'taskCreatorDefaultFileTemplateDesc'),
+			'taskCreatorDefaultFileTemplateId',
+			{
+				value: this.settings.taskCreatorDefaultFileTemplateId ?? '',
+				dropdownOptions: this.getDefaultFileTaskTemplateDropdownOptions(),
+				normalize: value => value.trim() || null,
+			},
+		);
 	}
 
 	private renderFileTaskDailyNotesSettings(containerEl: HTMLElement): void {

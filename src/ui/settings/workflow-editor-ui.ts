@@ -1,7 +1,9 @@
-import { setIcon } from 'obsidian';
+import { setIcon, type App } from 'obsidian';
+import { normalizeColorPaletteHex, type ColorPaletteEntry } from '../../core/color-palette';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { runSettingsAsync, settingsAsyncHandler } from './async-settings-action';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
+import { openSettingsColorPickerModal } from './settings-color-picker-modal';
 
 type WorkflowActionKind = 'icon' | 'text';
 
@@ -19,8 +21,10 @@ export interface WorkflowEditorActionButtonOptions {
 }
 
 export interface WorkflowColorSwatchOptions {
+	app: App;
 	containerEl: HTMLElement;
 	value: string;
+	palette?: ColorPaletteEntry[];
 	label?: string;
 	errorContext: string;
 	onChange: (value: string) => void | Promise<void>;
@@ -29,7 +33,6 @@ export interface WorkflowColorSwatchOptions {
 export interface WorkflowColorSwatchHandle {
 	wrapperEl: HTMLElement;
 	swatchEl: HTMLButtonElement;
-	inputEl: HTMLInputElement;
 	setValue: (value: string) => void;
 }
 
@@ -79,6 +82,10 @@ function resolveActionKind(options: WorkflowEditorActionButtonOptions): Workflow
 
 function formatColorSwatchLabel(label: string | undefined, value: string): string {
 	return label ? `${label}: ${value}` : value;
+}
+
+function normalizeWorkflowColorHex(value: string): string {
+	return normalizeColorPaletteHex(value) ?? '#808080';
 }
 
 export function createWorkflowInput(options: WorkflowInputOptions): HTMLInputElement {
@@ -135,6 +142,7 @@ export function createWorkflowActionButton(options: WorkflowEditorActionButtonOp
 
 export function createWorkflowColorSwatch(options: WorkflowColorSwatchOptions): WorkflowColorSwatchHandle {
 	const wrapperEl = options.containerEl.createDiv('operon-settings-color-wrapper');
+	let currentValue = normalizeWorkflowColorHex(options.value);
 
 	const swatchEl = wrapperEl.createEl('button', {
 		cls: 'operon-settings-color-swatch operon-workflow-color-swatch-button',
@@ -143,33 +151,44 @@ export function createWorkflowColorSwatch(options: WorkflowColorSwatchOptions): 
 		},
 	});
 
-	const inputEl = wrapperEl.createEl('input', {
-		cls: 'operon-settings-hidden-color-input',
-		attr: {
-			type: 'color',
-		},
-	});
-	inputEl.tabIndex = -1;
-	inputEl.setAttribute('aria-hidden', 'true');
-
 	const setValue = (value: string): void => {
-		const nextLabel = formatColorSwatchLabel(options.label, value);
-		inputEl.value = value;
-		swatchEl.style.backgroundColor = value;
+		const normalized = normalizeWorkflowColorHex(value);
+		currentValue = normalized;
+		const nextLabel = formatColorSwatchLabel(options.label, normalized);
+		swatchEl.style.backgroundColor = normalized;
 		setAccessibleLabelWithoutTooltip(swatchEl, nextLabel);
-		setAccessibleLabelWithoutTooltip(inputEl, nextLabel);
 		bindWorkflowTooltip(swatchEl, nextLabel);
-		bindWorkflowTooltip(inputEl, nextLabel);
 	};
 
-	setValue(options.value);
-	swatchEl.addEventListener('click', () => inputEl.click());
-	inputEl.addEventListener('input', settingsAsyncHandler(options.errorContext, async () => {
-		setValue(inputEl.value);
-		await options.onChange(inputEl.value);
-	}));
+	const openPicker = (): void => {
+		openSettingsColorPickerModal(options.app, {
+			title: options.label,
+			value: currentValue,
+			palette: options.palette,
+			onSelect: value => {
+				const normalized = normalizeWorkflowColorHex(value);
+				setValue(normalized);
+				runSettingsAsync(options.errorContext, async () => {
+					await options.onChange(normalized);
+				});
+			},
+		});
+	};
 
-	return { wrapperEl, swatchEl, inputEl, setValue };
+	setValue(currentValue);
+	swatchEl.addEventListener('pointerdown', event => {
+		event.preventDefault();
+		event.stopPropagation();
+		openPicker();
+	});
+	swatchEl.addEventListener('click', event => {
+		event.preventDefault();
+		event.stopPropagation();
+		if (event.detail !== 0) return;
+		openPicker();
+	});
+
+	return { wrapperEl, swatchEl, setValue };
 }
 
 export function createWorkflowGridHeader(options: WorkflowGridHeaderOptions): HTMLElement {

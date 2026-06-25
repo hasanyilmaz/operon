@@ -77,20 +77,136 @@ export function resolveTaskFileLink(
 	if (!path || subpath) return null;
 
 	const resolvedFile = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
-	if (!(resolvedFile instanceof TFile)) return null;
+	const resolvedTarget = resolveTaskFileLinkTarget(resolvedFile, getFileTaskByPath);
+	if (resolvedTarget) {
+		return buildResolvedTaskFileLink(resolvedTarget, sourcePath, trimmed, alias, path, subpath);
+	}
+	if (resolvedFile instanceof TFile) return null;
 
-	const task = getFileTaskByPath(resolvedFile.path);
-	if (!task) return null;
+	const fallbackTarget = resolveTaskFileLinkTargetFromVault(app, path, getFileTaskByPath);
+	if (!fallbackTarget) return null;
 
+	return buildResolvedTaskFileLink(fallbackTarget, sourcePath, trimmed, alias, path, subpath);
+}
+
+function buildResolvedTaskFileLink(
+	target: { resolvedFile: TFile; task: IndexedTask },
+	sourcePath: string,
+	rawLinktext: string,
+	alias: string | null,
+	path: string,
+	subpath: string,
+): ResolvedTaskFileLink {
 	return {
-		task,
-		resolvedFile,
+		task: target.task,
+		resolvedFile: target.resolvedFile,
 		sourcePath,
-		rawLinktext: trimmed,
+		rawLinktext,
 		alias,
 		path,
 		subpath,
 	};
+}
+
+function resolveTaskFileLinkTarget(
+	file: unknown,
+	getFileTaskByPath: FileTaskLookup,
+): { resolvedFile: TFile; task: IndexedTask } | null {
+	if (!(file instanceof TFile)) return null;
+	const task = getFileTaskByPath(file.path);
+	return task ? { resolvedFile: file, task } : null;
+}
+
+function resolveTaskFileLinkTargetFromVault(
+	app: App,
+	linkPath: string,
+	getFileTaskByPath: FileTaskLookup,
+): { resolvedFile: TFile; task: IndexedTask } | null {
+	const resolvedFile = resolveTaskFileLinkFileFromVault(app, linkPath);
+	return resolveTaskFileLinkTarget(resolvedFile, getFileTaskByPath);
+}
+
+function resolveTaskFileLinkFileFromVault(app: App, linkPath: string): TFile | null {
+	const targetKey = normalizeTaskFileLinkPath(linkPath);
+	if (!targetKey) return null;
+
+	if (targetKey.includes('/')) {
+		const directMatches = getUniqueTaskFileLinkFiles(
+			getDirectTaskFileLinkPathCandidates(linkPath)
+				.map(candidatePath => getVaultAbstractFileByPath(app, candidatePath)),
+		);
+		if (directMatches.length > 0) return directMatches.length === 1 ? directMatches[0] : null;
+	}
+
+	const markdownMatches = getUniqueTaskFileLinkFiles(
+		getVaultMarkdownFiles(app).filter(file => taskFilePathMatchesLink(file.path, targetKey)),
+	);
+	if (markdownMatches.length > 0) return markdownMatches.length === 1 ? markdownMatches[0] : null;
+
+	const directMatches = getUniqueTaskFileLinkFiles(
+		getDirectTaskFileLinkPathCandidates(linkPath)
+			.map(candidatePath => getVaultAbstractFileByPath(app, candidatePath)),
+	);
+	return directMatches.length === 1 ? directMatches[0] : null;
+}
+
+function getUniqueTaskFileLinkFiles(files: unknown[]): TFile[] {
+	const unique = new Map<string, TFile>();
+	for (const file of files) {
+		if (!(file instanceof TFile)) continue;
+		unique.set(file.path, file);
+	}
+	return [...unique.values()];
+}
+
+function getVaultAbstractFileByPath(app: App, path: string): unknown {
+	const vault = app.vault as { getAbstractFileByPath?: (path: string) => unknown };
+	return vault.getAbstractFileByPath?.(path) ?? null;
+}
+
+function getVaultMarkdownFiles(app: App): TFile[] {
+	const vault = app.vault as { getMarkdownFiles?: () => TFile[] };
+	return vault.getMarkdownFiles?.() ?? [];
+}
+
+function getDirectTaskFileLinkPathCandidates(linkPath: string): string[] {
+	const normalizedPath = normalizeTaskFileLinkPath(linkPath);
+	if (!normalizedPath) return [];
+	const candidates = new Set<string>();
+	candidates.add(normalizedPath);
+	candidates.add(`${normalizedPath}.md`);
+	return [...candidates];
+}
+
+function taskFilePathMatchesLink(filePath: string, targetKey: string): boolean {
+	const fullPath = normalizeTaskFilePathForComparison(filePath);
+	if (!fullPath) return false;
+	if (fullPath === targetKey) return true;
+	const basename = fullPath.split('/').pop()?.trim() ?? fullPath;
+	return basename === targetKey;
+}
+
+function normalizeTaskFileLinkPath(path: string): string {
+	let normalized = path.trim();
+	try {
+		normalized = decodeURIComponent(normalized);
+	} catch {
+		// Keep the original text if it is not URI-encoded.
+	}
+	return normalized
+		.replace(/\\/gu, '/')
+		.replace(/^\/+/u, '')
+		.replace(/\.md$/iu, '')
+		.trim();
+}
+
+function normalizeTaskFilePathForComparison(path: string): string {
+	return path
+		.trim()
+		.replace(/\\/gu, '/')
+		.replace(/^\/+/u, '')
+		.replace(/\.md$/iu, '')
+		.trim();
 }
 
 export function computeTaskFileLinkVisuals(

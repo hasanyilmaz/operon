@@ -85,6 +85,7 @@ export interface TaskCreatorModalOptions {
 	initialDraft?: TaskCreatorDraft | null;
 	submitMode?: TaskCreatorSubmitMode;
 	initialCreateType?: TaskCreatorCreateType;
+	defaultFileTemplateId?: string | null;
 	fileTaskTemplateOptions?: FileTaskTemplateOption[];
 	onFileTemplateSelected?: (template: FileTaskTemplateOption) => void | Promise<void>;
 	getAllRepeatSeriesIds?: () => Set<string>;
@@ -179,6 +180,17 @@ export function resolveTaskCreatorEnterAction(
 		return hasSelectedFileTemplate ? 'submit-file' : 'open-template-picker';
 	}
 	return 'submit-inline';
+}
+
+export function resolveTaskCreatorFileTemplateIdForMode(
+	activeCreateType: TaskCreatorCreateType,
+	currentFileTemplateId: string | null | undefined,
+	defaultFileTemplateId: string | null | undefined,
+): string {
+	const current = (currentFileTemplateId ?? '').trim();
+	if (current) return current;
+	if (activeCreateType !== 'file') return '';
+	return (defaultFileTemplateId ?? '').trim();
 }
 
 export function canSubmitTaskCreatorFileTask(
@@ -389,6 +401,17 @@ export function buildTaskCreatorSnapshot(draft: TaskCreatorDraft): TaskCreatorDr
 	};
 }
 
+export function buildTaskCreatorSnapshotForCreateType(
+	draft: TaskCreatorDraft,
+	createType: TaskCreatorCreateType,
+): TaskCreatorDraft {
+	const snapshot = buildTaskCreatorSnapshot(draft);
+	if (createType === 'inline') {
+		snapshot.fileTemplateId = '';
+	}
+	return snapshot;
+}
+
 export function buildSubtaskTaskCreatorDraft(
 	parentOperonId: string,
 	parentFieldValues: Record<string, string> | null | undefined,
@@ -533,6 +556,7 @@ export class TaskCreatorModal extends Modal {
 			options.initialCreateType,
 			!!this.draft.fileTemplateId,
 		);
+		this.applyDefaultFileTemplateForActiveMode();
 	}
 
 	onOpen(): void {
@@ -929,9 +953,23 @@ export class TaskCreatorModal extends Modal {
 		return !!this.getSelectedFileTemplate();
 	}
 
+	private applyDefaultFileTemplateForActiveMode(): void {
+		const nextTemplateId = resolveTaskCreatorFileTemplateIdForMode(
+			this.activeCreateType,
+			this.draft.fileTemplateId,
+			this.options.defaultFileTemplateId,
+		);
+		if (!nextTemplateId || nextTemplateId === this.draft.fileTemplateId) return;
+		if (!this.getFileTemplateOptions().some(template => template.id === nextTemplateId)) return;
+		this.draft.fileTemplateId = nextTemplateId;
+	}
+
 	private setActiveCreateType(nextType: TaskCreatorCreateType): void {
 		if (this.activeCreateType === nextType) return;
 		this.activeCreateType = nextType;
+		if (nextType === 'file') {
+			this.applyDefaultFileTemplateForActiveMode();
+		}
 		if (nextType === 'inline') {
 			this.closeActivePicker();
 		}
@@ -1523,7 +1561,7 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	private renderSubmitControls(): void {
-		const selectedTemplate = this.getSelectedFileTemplate();
+		const selectedTemplate = this.activeCreateType === 'file' ? this.getSelectedFileTemplate() : null;
 		const templateLabel = selectedTemplate?.name || (Platform.isPhone ? t('taskEditor', 'pickFileTaskTemplateShort') : t('taskEditor', 'pickFileTaskTemplate'));
 		const templateAccessibleLabel = selectedTemplate?.name || t('taskEditor', 'pickFileTaskTemplate');
 		const templateControlEnabled = isTaskCreatorTemplateControlEnabled(this.submitMode, this.activeCreateType);
@@ -1621,6 +1659,10 @@ export class TaskCreatorModal extends Modal {
 		return buildTaskCreatorSnapshot(this.draft);
 	}
 
+	private getSnapshotForCreateType(createType: TaskCreatorCreateType): TaskCreatorDraft {
+		return buildTaskCreatorSnapshotForCreateType(this.draft, createType);
+	}
+
 	private ensureDescription(): boolean {
 		if (this.getSnapshot().description) return true;
 		new Notice(t('notifications', 'taskDescriptionRequired'));
@@ -1664,7 +1706,7 @@ export class TaskCreatorModal extends Modal {
 		if (this.submitMode === 'file-only') return;
 		if (!this.ensureDescription()) return;
 		this.isSubmitting = true;
-		const snapshot = this.getSnapshot();
+		const snapshot = this.getSnapshotForCreateType('inline');
 		this.runSubmitAfterImmediateClose(
 			snapshot,
 			'inline',
@@ -1721,7 +1763,7 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	private hasUnsavedDraft(): boolean {
-		const snapshot = this.getSnapshot();
+		const snapshot = this.getSnapshotForCreateType(this.activeCreateType);
 		return (
 			!!snapshot.description
 			|| !!snapshot.note

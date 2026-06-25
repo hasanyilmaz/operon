@@ -16658,8 +16658,8 @@ button.operon-pinned-sidebar-action svg {
 }
 
 .operon-task-wikilink-label .operon-task-wikilink-label-description-link {
-	text-decoration: underline dotted color-mix(in srgb, var(--link-color) 38%, transparent) 1px;
-	text-underline-offset: 0.14em;
+	text-decoration: none;
+	border-bottom: 1px dotted color-mix(in srgb, currentColor 38%, transparent);
 }
 
 .operon-task-wikilink-reading .operon-task-wikilink-action {
@@ -23762,6 +23762,12 @@ body.operon-kanban-touch-drag-active {
 	margin: 14px 0;
 }
 
+.operon-settings-native-page-root .operon-native-settings-section-body > .operon-calendar-sidebar-task-pool-note {
+	margin: 8px 0 18px;
+	padding: 0 24px 0 34px;
+	line-height: 1.45;
+}
+
 .operon-settings-native-page-root .operon-native-settings-section-body > .operon-settings-primary-button,
 .operon-settings-native-page-root .operon-native-settings-section-body > button {
 	margin-left: 0;
@@ -24038,18 +24044,6 @@ body.operon-kanban-touch-drag-active {
 	cursor: pointer;
 }
 
-.operon-settings-hidden-color-input {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 22px;
-	height: 22px;
-	opacity: 0;
-	cursor: pointer;
-	padding: 0;
-	border: none;
-}
-
 .operon-settings-text-input {
 	width: 100%;
 	padding: 4px 8px;
@@ -24281,10 +24275,6 @@ body.operon-kanban-touch-drag-active {
 	display: block;
 	padding: 0;
 	background: transparent;
-}
-
-.operon-workflow-color-swatch-button + .operon-settings-hidden-color-input {
-	pointer-events: none;
 }
 
 .operon-interface-icon-toggle-button {

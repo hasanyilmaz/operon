@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.7.0] - 2026-06-25
+
+This update focuses on making Operon easier to understand and reuse inside a real vault. The official docs wiki can now be downloaded into `Operon/Docs` and kept aligned with your local settings, giving both humans and agents a clearer reference point for working with tasks, templates, and configured properties.
+
+### New
+- Added **Operon Docs download settings** in Core > General, so the official docs wiki can be downloaded or kept updated inside `Operon/Docs` with local property-name mapping.
+- Added a **Calendar Task Pool filter toggle** so the sidebar Task Pool can follow the active Calendar preset filter; new installs enable it by default while existing users keep their current global-pool behavior unless they turn it on.
+- Added **New File Task Creation Defaults** so Task Creator can optionally open in File Task mode and preselect a chosen file-task template without changing the inline-first default.
+- Added **Template Placeholders** for Operon file task templates: `{{date}}`, `{{datetime}}`, `{{taskDescription}}`, `{{note}}`, `{{dateStarted}}`, `{{dateScheduled}}`, and `{{dateDue}}`, plus direct `{{date}}` and `{{datetime}}` resolution in pasted inline task snippets.
+
+### Improved
+- Improved **Priority** and **Pipeline** color controls in Settings so status and priority colors use Operon's searchable color picker instead of the native browser picker.
+
+### Fixed
+- Fixed **Convert to file** in Live Preview for inline tasks with carried-over checkboxes, so the source line updates atomically and no longer leaves a blank file-task label until the next click or refresh.
+- Fixed Obsidian 1.6.5 CSS compatibility warning for file task overlay nested wikilinks while keeping their subtle dotted link affordance.
+- Fixed **Convert to file** in Live Preview for task titles containing wikilinks, so the new file-task overlay label appears immediately without requiring a page refresh.
+
+### Validation
+- Local validation passed `npm run docs:sync-runtime:test`, `npm run check:local`, `npm run release:guard`, and `git diff --check`, including docs sync runtime tests, strict linting, production build, release guard, and 1042/1042 Phase 5 regression checks.
+
 ## [1.6.2] - 2026-06-23
 
 This is a small workflow polish release for recurring tasks and file-task conversion. Recurring work is easier to scan directly from task rows, inline-to-file conversion preserves more checklist context, and file-task wikilinks render more cleanly across Live Preview and Reading View.
