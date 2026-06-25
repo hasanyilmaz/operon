@@ -5,6 +5,7 @@
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
+		"docs:sync": "node scripts/sync-operon-docs.mjs",
 		"lint": "eslint . --quiet",
 		"lint:report": "eslint .",
 		"lint:strict": "eslint . --max-warnings 0",

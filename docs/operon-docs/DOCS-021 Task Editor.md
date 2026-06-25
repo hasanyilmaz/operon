@@ -1,0 +1,73 @@
+---
+Up:
+  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
+  - "[[DOCS-034 Time tracking|Time tracking]]"
+  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
+Notes: The dialog for editing every task field
+Icon: square-pen
+Color: "#ea580c"
+tags:
+  - operon
+  - taskeditor
+  - edit
+  - pickers
+Updated: 2026-06-25T16:47:21
+---
+
+# Task Editor
+
+The Task Editor is where you view and change a task's structured fields without editing Markdown by hand. It works the same for inline and file tasks, because both are the same kind of task record underneath.
+
+> **MEDIA-DOCS-021-1:** The Task Editor open on a task, showing its fields and, for a file task, the Markdown body.
+
+![MEDIA-DOCS-021-1 - Task Editor fields and Markdown body](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-1.png)
+
+## How to open it
+
+- On an existing inline task, run **Create or edit inline task**.
+- On a file task or a note with task fields, run **Edit or convert to file task**.
+- From any Operon surface, open a task's contextual menu and choose **Open editor**. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
+
+The same command that creates an inline task also edits one, so the editor is never more than a keystroke away from the task.
+
+> **MEDIA-DOCS-021-2:** Opening the Task Editor from a task's contextual menu with Open editor.
+
+![MEDIA-DOCS-021-2 - Open Task Editor from contextual menu](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-2.png)
+
+## What you can change
+
+The Task Editor exposes the canonical fields as proper controls:
+
+- Status and priority.
+- Dates: due, scheduled, started, and timed start/end blocks.
+- Parent task and dependencies.
+- Recurrence. See [[DOCS-033 Recurring tasks|Recurring tasks]].
+- Pinning. See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
+- Time tracking, including session history. See [[DOCS-034 Time tracking|Time tracking]].
+- Icon, color, and a short note.
+
+For a file task, the editor can also show the Markdown body alongside the fields, so you edit the work and its metadata together. For an inline task, it can reveal the source note when you need the surrounding context. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
+
+> **MEDIA-DOCS-021-3:** The Task Editor on a file task, the fields beside the Markdown body.
+
+![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
+
+## Why edit here instead of in Markdown
+
+You can always edit the raw `{{key:: value}}` text, and Operon will read it. But the Task Editor is safer: it writes fields in the right format, keeps `operonId` intact, and updates rollups and links for you. Hand-editing is best for quick text tweaks; the editor is best for anything structural. See [[DOCS-015 Task identity and operonId|Task identity and operonId]].
+
+## FAQ
+
+**Is the editor different for inline and file tasks?** The fields are the same. File tasks additionally show the note body; inline tasks can jump to their source line.
+
+**Will editing here change my Markdown?** Yes. The Task Editor writes back to the task's Markdown, inline line or file frontmatter, so your notes stay the source of truth.
+
+## Settings
+
+Operon settings for this live in **Settings → Operon → Interface → Task Editor**, which configures the Task Editor layout and which fields it shows.
+
+## Related
+
+- [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
+- [[DOCS-020 Task Creator|Task Creator]]
+- [[DOCS-012 Inline task syntax|Inline task syntax]]

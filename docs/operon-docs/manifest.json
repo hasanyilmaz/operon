@@ -1,0 +1,522 @@
+{
+  "schemaVersion": 1,
+  "packageId": "operon-docs",
+  "generatedAt": "2026-06-25T15:09:09.730Z",
+  "source": {
+    "branch": "main",
+    "docsBasePath": "docs/operon-docs",
+    "mediaBasePath": "docs/media"
+  },
+  "files": [
+    {
+      "path": "DOCS-001 Operon Docs MOC.md",
+      "sha256": "216a96e2a99447f517ee93577433222ef3a13c9aeb42b7fc95945a0bd8e5ff5a",
+      "bytes": 8027
+    },
+    {
+      "path": "DOCS-002 How to use these docs.md",
+      "sha256": "289c0c62953f6c670f933965f0e6e0516c054094367172f1abd3970714110b6d",
+      "bytes": 2574
+    },
+    {
+      "path": "DOCS-003 Getting started with Operon.md",
+      "sha256": "df808b283bb5f369aa3959f4820fd8eadc15e244b45a971fa9f429e923cd89bc",
+      "bytes": 2765
+    },
+    {
+      "path": "DOCS-004 Operon system map.md",
+      "sha256": "9549c3b23a606346a0559257e74e621347610efaf8dbd617afd6b4ee505b76d5",
+      "bytes": 4115
+    },
+    {
+      "path": "DOCS-005 Operon core concepts.md",
+      "sha256": "7675f51aac3413630d537dbb7e0aebd01dbbe569ed7f595dd0aa2cb15a7e19d6",
+      "bytes": 5217
+    },
+    {
+      "path": "DOCS-006 Glossary of Operon terms.md",
+      "sha256": "b78c9c0249df557fc009b900c4f7e81862041a58db1f755c188d120928179128",
+      "bytes": 4142
+    },
+    {
+      "path": "DOCS-007 Install and enable Operon.md",
+      "sha256": "f7f22aa066d4e32427879a8c85cc1f26ade6385733b2b600e6ff8deaaa53ff75",
+      "bytes": 3556
+    },
+    {
+      "path": "DOCS-008 Essential settings to configure first.md",
+      "sha256": "207916fe648dfc41fbe84c4b34d32bc74a6dad25b0d95aa02cf8883230d86486",
+      "bytes": 3655
+    },
+    {
+      "path": "DOCS-009 Create your first task.md",
+      "sha256": "bd83a8ab297c7d2693a109805e3702fadf6d46d066d717d6bb68773c689b124c",
+      "bytes": 3913
+    },
+    {
+      "path": "DOCS-010 Build your first filtered view.md",
+      "sha256": "10189b5f30e6b04a75b4ec780f4c35d69971fbad4878550dc2fc7cadd038f3ef",
+      "bytes": 3353
+    },
+    {
+      "path": "DOCS-011 Inline tasks.md",
+      "sha256": "9d0c31767860e9d7e5b473c518e26f6319f98c0391e5182e4a753e3af6237934",
+      "bytes": 4196
+    },
+    {
+      "path": "DOCS-012 Inline task syntax.md",
+      "sha256": "78d869a8e43e01ac1d634d95117d187a0c16bf08c77b2177aa1b88ccf75586e4",
+      "bytes": 12773
+    },
+    {
+      "path": "DOCS-013 File tasks.md",
+      "sha256": "3b2afec4e537f967c55814672fd6509967eeb36c261259372028c341d033a6e6",
+      "bytes": 5900
+    },
+    {
+      "path": "DOCS-014 Inline vs file tasks.md",
+      "sha256": "36431cda1fc76e834cdde2437b3bec6a9613383c89abb0f1608b2a5a9379c49e",
+      "bytes": 3503
+    },
+    {
+      "path": "DOCS-015 Task identity and operonId.md",
+      "sha256": "cbdadaac1779f9b1decee8b17ee82df4244ade2e5d7a03558f592607d649b76b",
+      "bytes": 4571
+    },
+    {
+      "path": "DOCS-016 Parent and sub-tasks.md",
+      "sha256": "e8630719872a5d7c138a69100c761c91b6df81b934fb9170a538c72e8b3884a1",
+      "bytes": 6341
+    },
+    {
+      "path": "DOCS-017 Plain checkbox lists.md",
+      "sha256": "9e217bebf4b66440975d3b796fab693cd99630ccab06f4ecb99bc1c8b45ee832",
+      "bytes": 6915
+    },
+    {
+      "path": "DOCS-018 Task properties.md",
+      "sha256": "ce39fc6040857ae47a4df8f0346683f0af19eef18d4fdb62f2a54a05fffa5ceb",
+      "bytes": 4367
+    },
+    {
+      "path": "DOCS-019 Converting inline and file tasks.md",
+      "sha256": "9eb96bf4d346b914f4cd09954ec1bf5c252d21d30f0e10bca0325f9983cc9741",
+      "bytes": 3396
+    },
+    {
+      "path": "DOCS-020 Task Creator.md",
+      "sha256": "39e9bbf78d6869543074b18e2e607864dedd9fd84e6160a8b2963d61d383a94a",
+      "bytes": 4399
+    },
+    {
+      "path": "DOCS-021 Task Editor.md",
+      "sha256": "5141301f08f399e1e984884de18f41d94cd1d43040b8e863c6e143d455d1d8e4",
+      "bytes": 3648
+    },
+    {
+      "path": "DOCS-022 Command palette reference.md",
+      "sha256": "5ac7337ce14593280ebb4bf1c5c3da06d67f47bddfe256485595afe9b1fc78bb",
+      "bytes": 4785
+    },
+    {
+      "path": "DOCS-023 Create tasks from selected text.md",
+      "sha256": "1c6922b4f87fa33ae70683e86aa50c3634fca298bca02262b6006b059e2447c9",
+      "bytes": 3150
+    },
+    {
+      "path": "DOCS-024 Task templates.md",
+      "sha256": "710368897faf176ac67c6a4fcf20b4bbf5cdd02f7bdb8e7803c2854618fb3f52",
+      "bytes": 4413
+    },
+    {
+      "path": "DOCS-025 Filter View.md",
+      "sha256": "4ead397799db44a9592ea7e93e1419146c659578d04709f2e9b503fcb63b57c5",
+      "bytes": 3687
+    },
+    {
+      "path": "DOCS-026 Dynamic file task filter.md",
+      "sha256": "ea3a3ba7528f3557de902921b56392611c87f84431f675925fc30d5332df8d14",
+      "bytes": 3932
+    },
+    {
+      "path": "DOCS-027 Task Finder.md",
+      "sha256": "8646a009678d1c3350c292380b8bae459268e18b7bdfa2ae51caa471d02a561d",
+      "bytes": 8195
+    },
+    {
+      "path": "DOCS-028 Calendar overview.md",
+      "sha256": "f2dc60c2af4f3d79cbf045cf775f740a01170475d58f5268440b33a670103a4e",
+      "bytes": 4208
+    },
+    {
+      "path": "DOCS-029 Calendar presets and time grid.md",
+      "sha256": "16a554aa0bbe5a4247400ec04e93e7978ffa2ab57173625fe3dacb7760365e9d",
+      "bytes": 7105
+    },
+    {
+      "path": "DOCS-030 Kanban overview.md",
+      "sha256": "6434051dbb94cc14b621cf66dbba10609c63593ce0537b015f12699e67fcd670",
+      "bytes": 6316
+    },
+    {
+      "path": "DOCS-031 Kanban manual order.md",
+      "sha256": "78bc3eae6ecd52c9e5a4ad551aeca4d2dd4c22fe0590a7448d8396b76cd25243",
+      "bytes": 2665
+    },
+    {
+      "path": "DOCS-032 Pinned Task Dock.md",
+      "sha256": "c9fd11c63b9f016354805a12d2460e5e233de065af2b55f9c1e4f36e10254192",
+      "bytes": 2815
+    },
+    {
+      "path": "DOCS-033 Recurring tasks.md",
+      "sha256": "9d89a6eaed634544db8b63be293bac94c50843be47608452c23b55a2c327653d",
+      "bytes": 5452
+    },
+    {
+      "path": "DOCS-034 Time tracking.md",
+      "sha256": "aa01e3708412286fd31b37a1abdcb6f234a91eb903e5c82c874ad8aa408fd649",
+      "bytes": 4378
+    },
+    {
+      "path": "DOCS-035 FlowTime focus sessions.md",
+      "sha256": "32f51526d57eeeeec1bc26a4d999278a9dec7b3af6b184630e66af547169de3c",
+      "bytes": 4904
+    },
+    {
+      "path": "DOCS-036 Agent-friendly workflows.md",
+      "sha256": "4bb8cca76d1b35f117deba9377128afe91cce4f521d541b9e43e2354cfdfea3c",
+      "bytes": 4875
+    },
+    {
+      "path": "DOCS-037 Pipelines and statuses.md",
+      "sha256": "fff632060af5eacdeb15fbb0791946bde2c3eeb247d6dc99331dc47a5cd1c86a",
+      "bytes": 6691
+    },
+    {
+      "path": "DOCS-038 Task priorities.md",
+      "sha256": "e8cb87ffd57c6f70cb05e3662f8b92f28073af18a4edf27e563945517869a1c8",
+      "bytes": 4577
+    },
+    {
+      "path": "DOCS-039 Key mappings.md",
+      "sha256": "bdf8f6c67c50d0ff2371a127793700d3f845b0afe489585f371191457fdf716a",
+      "bytes": 6679
+    },
+    {
+      "path": "DOCS-040 Custom keys.md",
+      "sha256": "58f68cd9ef68ecf30343a104cbe22f83ce52a514e001e77a88a4c32399d6cba3",
+      "bytes": 5863
+    },
+    {
+      "path": "DOCS-041 Task chips display and behavior.md",
+      "sha256": "a3766a7a2a6c6eaf686ceebeb0bb45d4cf41389dd4dbcdea509b3bcb99ba24b1",
+      "bytes": 8451
+    },
+    {
+      "path": "DOCS-042 Contextual menu actions.md",
+      "sha256": "bce1951016b4efc2243a02809f17b6c727c2a5c99950575966b20e99f803e59b",
+      "bytes": 3516
+    },
+    {
+      "path": "DOCS-043 Settings search.md",
+      "sha256": "432318d9698fc0dd0ea4af378e0b36b455033916cf80b9ce0a557d3c5a5e3410",
+      "bytes": 2809
+    },
+    {
+      "path": "DOCS-044 Where Operon stores data.md",
+      "sha256": "1d1c8196ff229d9ee8a0f444bfc6724cbb0271d80d6b8969a69ecb01fd9ec94c",
+      "bytes": 2373
+    },
+    {
+      "path": "DOCS-045 Markdown task storage.md",
+      "sha256": "52aa907f9838639c6bee7fbe2546b8638b62f37c9f54a4f8b4c9c2a069610655",
+      "bytes": 2816
+    },
+    {
+      "path": "DOCS-046 Plugin data and state files.md",
+      "sha256": "e44ea1f93df5dc1ebfafe9baafb7a1f565645e53fc475b46597dbb47f6a299dc",
+      "bytes": 2377
+    },
+    {
+      "path": "DOCS-047 Sync conflict safety.md",
+      "sha256": "88cf3c4d5e272c2e7cc0fc94bafbbd5e085cd28deff03cb54b6d9eb64d4609a3",
+      "bytes": 3308
+    },
+    {
+      "path": "DOCS-048 External calendars.md",
+      "sha256": "dbbc10d10b9f5e2fec78772c198bab7be88ce9e4eda7067a41a2c27627879c14",
+      "bytes": 3297
+    },
+    {
+      "path": "DOCS-049 Obsidian Tasks migration.md",
+      "sha256": "46cd2ecca396c1a113083950d02b66c4ef51d02bacb1ce99694008479f18a847",
+      "bytes": 4326
+    },
+    {
+      "path": "DOCS-050 Daily Notes workflows.md",
+      "sha256": "278250bca94dee588c2531f9145db54135819288acaf45fd56fcc6b90ac95ed1",
+      "bytes": 2769
+    },
+    {
+      "path": "DOCS-051 Templater and QuickAdd workflows.md",
+      "sha256": "1fa7925b326f4e1cdb4970938b2da181a4cd3de04ce7f17da4e1f28e27932629",
+      "bytes": 3146
+    },
+    {
+      "path": "DOCS-052 Completed task review.md",
+      "sha256": "8e796f41850cc6a310175c49f9838e93f698aa0084e96be613283318db9f4ab8",
+      "bytes": 3285
+    },
+    {
+      "path": "DOCS-053 Time session history.md",
+      "sha256": "196f8299b5fac9eef9f59bde5b8b0af17795edfd6d05d8f108b8720fe2b64574",
+      "bytes": 3219
+    },
+    {
+      "path": "DOCS-054 Missing tasks.md",
+      "sha256": "63f86193fc48eb03fbb75396c01d6329975f57e4846743a3d697dd78c9990917",
+      "bytes": 3052
+    },
+    {
+      "path": "DOCS-055 Duplicate IDs.md",
+      "sha256": "ad9ca6661d08fb0879c5ca3b69eb4b59ae88a822e5171c3bb446551f812db554",
+      "bytes": 5534
+    },
+    {
+      "path": "DOCS-056 Calendar or Kanban rendering issues.md",
+      "sha256": "5a48cd0a2953afdb5a0ac08b8ac52aab6088648db61429e87510a5e40fc6d689",
+      "bytes": 3132
+    },
+    {
+      "path": "DOCS-057 Operon FAQ.md",
+      "sha256": "ea3a493c2e67ade4002102341d67ab02cd6a4ef1a87707845a7d0f52266ebece",
+      "bytes": 4813
+    },
+    {
+      "path": "DOCS-058 Operon inheritance rules.md",
+      "sha256": "1457232e8028f16773ca530f3049462214e8fa923998bee2f312c7f5ae0663ff",
+      "bytes": 6167
+    },
+    {
+      "path": "DOCS-059 Dynamic Subtasks Filter.md",
+      "sha256": "dd0919ff99298708ed27d9b6b9a152b5887e958bd4534f50b5bfe9406b4e3d52",
+      "bytes": 3510
+    },
+    {
+      "path": "DOCS-060 Calendar layout toolbar and sidebar.md",
+      "sha256": "c0d8ed8f70fb74cfa868ed2484affd72ce062096644619b17f1e968ec35f8c24",
+      "bytes": 3978
+    },
+    {
+      "path": "DOCS-061 operonId template variables.md",
+      "sha256": "4476d2accb1fb49095a8b4f20d14f0a7226775f439908444c9f50dac6759f0cc",
+      "bytes": 6831
+    },
+    {
+      "path": "DOCS-062 Field pickers overview.md",
+      "sha256": "033c50ab5681f14d68a486f559047ae4a7044900bee6fec0fec12e9194f95a86",
+      "bytes": 4215
+    },
+    {
+      "path": "DOCS-063 Date and time picker.md",
+      "sha256": "909e33cfddf9cd65b55ce3eab6b4ea3e8d524f2840b10a875fda88d58483c9ea",
+      "bytes": 5384
+    },
+    {
+      "path": "DOCS-064 Recurrence picker.md",
+      "sha256": "31a9ab2028fbf77673601763050b7a4e9ebf36534c9f7d839b83dfb47c46be1b",
+      "bytes": 3866
+    },
+    {
+      "path": "DOCS-065 Status and priority picker.md",
+      "sha256": "9a0898ca201e05e5bcc14de3e80f58d8cffe4dd6c621861678c3d55d588337b1",
+      "bytes": 3396
+    },
+    {
+      "path": "DOCS-066 Icon picker.md",
+      "sha256": "d0fbc927e1212a2cbb58037a69b2455acdbb1a911f0ad5f711607167fa415f02",
+      "bytes": 2454
+    },
+    {
+      "path": "DOCS-067 Color picker.md",
+      "sha256": "059aa1fb89cfa24542794f3dac65398f692e13f10b49a00aeab09077c514e6d6",
+      "bytes": 4028
+    },
+    {
+      "path": "DOCS-068 Location picker.md",
+      "sha256": "a08ffb49f6f0cbc2ce531787c70f2a57acd4fae03c6d4f857df3444b3fb35e4d",
+      "bytes": 3667
+    },
+    {
+      "path": "DOCS-069 Task link and list pickers.md",
+      "sha256": "043f099bad31d653c005d916d83b829e4c1f8764e892908ae0b650b5534ffa95",
+      "bytes": 3934
+    },
+    {
+      "path": "DOCS-070 Custom field pickers.md",
+      "sha256": "4628bad9b679a5559d8cb9db1d7d4afa1501798ae472234467c5327bc62d89bd",
+      "bytes": 3647
+    },
+    {
+      "path": "DOCS-071 Recurrence rules and modes.md",
+      "sha256": "0f9cefa0165654e791a8b1ad995690641cb629621280c7d024b25e6f7337d07f",
+      "bytes": 5817
+    },
+    {
+      "path": "DOCS-072 One workflow, two task shapes.md",
+      "sha256": "b850d0621531b85357478a4744f1382200bedc66021c20fd6ce446c23739b2e9",
+      "bytes": 4211
+    },
+    {
+      "path": "DOCS-073 Filter conditions and operators.md",
+      "sha256": "cb66eca096d7f11dca5d091a875d5367f87783e8af22d482b83795c25fa19dd1",
+      "bytes": 5510
+    },
+    {
+      "path": "DOCS-074 Kanban swimlanes.md",
+      "sha256": "c60fe389faa489730b021f2e23e25032fe341f338bab2df9c881ffe8c343e0a2",
+      "bytes": 4000
+    },
+    {
+      "path": "DOCS-075 Welcome - choose your starting point.md",
+      "sha256": "2334b7ae6e790ba5da32731ded73be6b2c3d67205958039a85b907454191a1cd",
+      "bytes": 3484
+    },
+    {
+      "path": "DOCS-076 Welcome - new to tasks or plain checkboxes.md",
+      "sha256": "474496684d4009c58aa31dea1e27bcd09b6fde2eac007d62e641f21a3535ba08",
+      "bytes": 4531
+    },
+    {
+      "path": "DOCS-077 Welcome - coming from Obsidian Tasks.md",
+      "sha256": "d720d48a5dc763a87ea75d8f9f98c3386201599620755586ca34640d24e9dfeb",
+      "bytes": 5098
+    },
+    {
+      "path": "DOCS-078 Welcome - coming from TaskNotes.md",
+      "sha256": "ebe609551f6a03f9f98b7950c1fb727fdccbb6ba8ba91645cd6e0de7b9ef1d0e",
+      "bytes": 4389
+    },
+    {
+      "path": "DOCS-079 FAQ for Obsidian Tasks users.md",
+      "sha256": "5f0e29b1a8777e4ec151ed8cf61deab14bef0253206aeacb69235dd0c3bc94ff",
+      "bytes": 4021
+    },
+    {
+      "path": "DOCS-080 FAQ for TaskNotes users.md",
+      "sha256": "78b37a2bb4e719137fe81faafde1ac3b2970cd56e6e30dcd3a3df26bc6a7c85f",
+      "bytes": 4534
+    },
+    {
+      "path": "DOCS-081 Your first 7 days with Operon.md",
+      "sha256": "31c86d430fccd6453215ba04539bd70762b66d4f4333295e3de84922487b7162",
+      "bytes": 5382
+    },
+    {
+      "path": "DOCS-082 Bulk convert a folder into file tasks.md",
+      "sha256": "1ffa19c99b4d03710eebf970b04aa184cd11c72c2e54ea7d117e6da2018807ee",
+      "bytes": 3299
+    },
+    {
+      "path": "DOCS-083 Embed a filter in a note.md",
+      "sha256": "2fb7bf2f1ccc50543609802b3e210e4a61ed79aa0469220bdad7cd8f06071228",
+      "bytes": 2662
+    },
+    {
+      "path": "DOCS-084 Create New Operon Task.md",
+      "sha256": "43113dd9ad050ba83832294ffb644792517ea9e1f966ecdc441d5379833276c0",
+      "bytes": 1403
+    },
+    {
+      "path": "DOCS-085 Create or edit inline task.md",
+      "sha256": "3fa79b16197330b4d240578fe934fc79c373f215c0c9653a96c7c97a83ca137f",
+      "bytes": 1747
+    },
+    {
+      "path": "DOCS-086 Create file task.md",
+      "sha256": "e7615282fa7e1fe0cfa80a1b1b2a1614abff107a9ff9c6bf1be8c15c93186394",
+      "bytes": 1576
+    },
+    {
+      "path": "DOCS-087 Edit or convert to file task.md",
+      "sha256": "532a0e354c1466a6596316379449e4eda560be71742966304c63638f1fbe3003",
+      "bytes": 1444
+    },
+    {
+      "path": "DOCS-088 Convert file task to inline task.md",
+      "sha256": "44e7436606c5a89ed8668a7be4e7317860f41f8a409c0e0391f69d383a8250bb",
+      "bytes": 2686
+    },
+    {
+      "path": "DOCS-089 Move an inline task here.md",
+      "sha256": "1c535d50ee34ae9d8d9d4dc5f5ee24834eea3908b0b02a3c7dfdfaec132d0785",
+      "bytes": 1873
+    },
+    {
+      "path": "DOCS-090 Toggle task completion.md",
+      "sha256": "10521875eb17822e378d8ce144ff59fe53def9ef417ee34afc53aa9ad8b7c721",
+      "bytes": 2115
+    },
+    {
+      "path": "DOCS-091 Rebuild full index.md",
+      "sha256": "ac85a84cda5ec6f93ac0498ea5ca9b84b3dccafe9fee2b92ff0d4bad3c68ec4c",
+      "bytes": 1577
+    },
+    {
+      "path": "DOCS-092 Show index stats.md",
+      "sha256": "7036cbacfb26469bcfec89a9a1b5a1b4e3fa2e1ae53c2c7ccfbce1086f6c8403",
+      "bytes": 1574
+    },
+    {
+      "path": "DOCS-093 How to migrate from TaskNotes.md",
+      "sha256": "df12d38bd165f51cfe9bcd423316f4676d0a454bfa7e495ceeecbe5062d0170d",
+      "bytes": 8030
+    },
+    {
+      "path": "DOCS-094 How to create a task with Task Creator.md",
+      "sha256": "68a55ec4892ca8d0230f0ad960c8e1b75d4da99a91c82d07cd04503ae9b2dfdb",
+      "bytes": 9224
+    },
+    {
+      "path": "DOCS-095 Calendar Task Pool.md",
+      "sha256": "0ebf18312656bfc796a567b7d12933c045fb97f150d99fa9299bc275bdbf0bde",
+      "bytes": 8446
+    },
+    {
+      "path": "DOCS-096 Mobile Calendar.md",
+      "sha256": "436c5cb68ad57232d65c8a52b0aebca0709d5dff8f883c9db10dc1fc2e412444",
+      "bytes": 5251
+    },
+    {
+      "path": "DOCS-097 Project serials.md",
+      "sha256": "f3293e5c661da42252935398274af1f78d988ff4f5163a565c3eaba1e32b948d",
+      "bytes": 8692
+    },
+    {
+      "path": "DOCS-098 Workspace Tweaks.md",
+      "sha256": "7bc0a50efee705a4e22ed7a1e18f963427e2054865e8aaefa763a3cafe2f838d",
+      "bytes": 5406
+    },
+    {
+      "path": "DOCS-099 State Icons.md",
+      "sha256": "47de24d622b85840c179fa4e84a01cb00191c445d184859a5285430c99a80a1b",
+      "bytes": 6410
+    },
+    {
+      "path": "DOCS-100 Mobile Kanban.md",
+      "sha256": "ac73d149d22bf64f47f7329d969a6eb79837380207f571b9f80019517ec4bc19",
+      "bytes": 4483
+    },
+    {
+      "path": "DOCS-101 Mobile General.md",
+      "sha256": "140297fdd16a86774e13194c9600da570f3fa46b1b2400246f06070fc8801dfc",
+      "bytes": 5571
+    },
+    {
+      "path": "DOCS-102 Do you need to use all of Operon.md",
+      "sha256": "93a59a9909fc53ed534b370df58675afde8f8ead428e27fcdfc1a7358368190a",
+      "bytes": 6228
+    }
+  ]
+}
