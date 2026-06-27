@@ -6,10 +6,10 @@ import {
 } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
-import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const TASK_CREATION_PROFILE_FILE_NAME = 'task-creation-profile.json';
+const TASK_CREATION_PROFILE_FILE = '.operon/task-creation-profile.json';
 const TASK_CREATION_PROFILE_STORE_VERSION = 1;
+const TASK_CREATION_PROFILE_STORE_QUEUE_KEY = `${TASK_CREATION_PROFILE_FILE}::__store__`;
 
 export type TaskCreationProfileStoreSettings = Pick<
 	OperonSettings,
@@ -205,10 +205,6 @@ export class TaskCreationProfileStore {
 		this.serializedSettings = JSON.stringify(this.settings);
 	}
 
-	private getFilePath(): string {
-		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', TASK_CREATION_PROFILE_FILE_NAME);
-	}
-
 	getAll(): TaskCreationProfileStoreSettings {
 		return cloneSettings(this.settings);
 	}
@@ -224,7 +220,7 @@ export class TaskCreationProfileStore {
 	}
 
 	async exists(): Promise<boolean> {
-		return this.app.vault.adapter.exists(this.getFilePath());
+		return this.app.vault.adapter.exists(TASK_CREATION_PROFILE_FILE);
 	}
 
 	async load(
@@ -232,8 +228,7 @@ export class TaskCreationProfileStore {
 		defaults: TaskCreationProfileStoreSettings,
 	): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
-		if (!(await adapter.exists(filePath))) {
+		if (!(await adapter.exists(TASK_CREATION_PROFILE_FILE))) {
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
@@ -245,14 +240,14 @@ export class TaskCreationProfileStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(filePath);
+			raw = await adapter.read(TASK_CREATION_PROFILE_FILE);
 			const parsed = JSON.parse(raw) as Partial<TaskCreationProfileStoreData>;
 			this.settings = readStoreData(parsed, defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
 		} catch {
 			console.warn('Operon: Failed to parse task creation profile store, preserving invalid file as backup and recovering from fallback settings');
-			await preserveInvalidJsonFile(adapter, filePath, raw);
+			await preserveInvalidJsonFile(adapter, TASK_CREATION_PROFILE_FILE, raw);
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = true;
@@ -265,7 +260,7 @@ export class TaskCreationProfileStore {
 		const adapter = this.app.vault.adapter;
 		if (shouldSkipStoreWrite(
 			nextSerialized === this.serializedSettings,
-			await adapter.exists(this.getFilePath()),
+			await adapter.exists(TASK_CREATION_PROFILE_FILE),
 			this.recoveredFromMalformed,
 			options,
 		)) {
@@ -284,13 +279,12 @@ export class TaskCreationProfileStore {
 
 	private async persist(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
 		const data: TaskCreationProfileStoreData = {
 			version: TASK_CREATION_PROFILE_STORE_VERSION,
 			...cloneSettings(this.settings),
 		};
-		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
-			await writeJsonSafely(adapter, filePath, data);
+		await this.writeQueue.enqueue(TASK_CREATION_PROFILE_STORE_QUEUE_KEY, async () => {
+			await writeJsonSafely(adapter, TASK_CREATION_PROFILE_FILE, data);
 		});
 		this.recoveredFromMalformed = false;
 	}

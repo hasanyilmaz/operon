@@ -8,10 +8,10 @@ import {
 } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
-import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const TASK_UI_PREFERENCES_FILE_NAME = 'task-ui-preferences.json';
+const TASK_UI_PREFERENCES_FILE = '.operon/task-ui-preferences.json';
 const TASK_UI_PREFERENCE_STORE_VERSION = 2;
+const TASK_UI_PREFERENCE_STORE_QUEUE_KEY = `${TASK_UI_PREFERENCES_FILE}::__store__`;
 
 export type TaskUiPreferenceStoreSettings = Pick<
 	OperonSettings,
@@ -169,10 +169,6 @@ export class TaskUiPreferenceStore {
 		this.serializedSettings = JSON.stringify(this.settings);
 	}
 
-	private getFilePath(): string {
-		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', TASK_UI_PREFERENCES_FILE_NAME);
-	}
-
 	getAll(): TaskUiPreferenceStoreSettings {
 		return cloneSettings(this.settings);
 	}
@@ -188,7 +184,7 @@ export class TaskUiPreferenceStore {
 	}
 
 	async exists(): Promise<boolean> {
-		return this.app.vault.adapter.exists(this.getFilePath());
+		return this.app.vault.adapter.exists(TASK_UI_PREFERENCES_FILE);
 	}
 
 	async load(
@@ -196,8 +192,7 @@ export class TaskUiPreferenceStore {
 		defaults: TaskUiPreferenceStoreSettings,
 	): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
-		if (!(await adapter.exists(filePath))) {
+		if (!(await adapter.exists(TASK_UI_PREFERENCES_FILE))) {
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
@@ -209,14 +204,14 @@ export class TaskUiPreferenceStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(filePath);
+			raw = await adapter.read(TASK_UI_PREFERENCES_FILE);
 			const parsed = JSON.parse(raw) as Partial<TaskUiPreferenceStoreData>;
 			this.settings = readStoreData(parsed, defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
 		} catch {
 			console.warn('Operon: Failed to parse task UI preferences store, preserving invalid file as backup and recovering from fallback settings');
-			await preserveInvalidJsonFile(adapter, filePath, raw);
+			await preserveInvalidJsonFile(adapter, TASK_UI_PREFERENCES_FILE, raw);
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = true;
@@ -229,7 +224,7 @@ export class TaskUiPreferenceStore {
 		const adapter = this.app.vault.adapter;
 		if (shouldSkipStoreWrite(
 			nextSerialized === this.serializedSettings,
-			await adapter.exists(this.getFilePath()),
+			await adapter.exists(TASK_UI_PREFERENCES_FILE),
 			this.recoveredFromMalformed,
 			options,
 		)) {
@@ -248,13 +243,12 @@ export class TaskUiPreferenceStore {
 
 	private async persist(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
 		const data: TaskUiPreferenceStoreData = {
 			version: TASK_UI_PREFERENCE_STORE_VERSION,
 			...cloneSettings(this.settings),
 		};
-		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
-			await writeJsonSafely(adapter, filePath, data);
+		await this.writeQueue.enqueue(TASK_UI_PREFERENCE_STORE_QUEUE_KEY, async () => {
+			await writeJsonSafely(adapter, TASK_UI_PREFERENCES_FILE, data);
 		});
 		this.recoveredFromMalformed = false;
 	}

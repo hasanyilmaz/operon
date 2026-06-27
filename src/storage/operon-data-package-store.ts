@@ -2,11 +2,16 @@ import type { DataAdapter } from 'obsidian';
 import {
 	buildOperonDataPackageFromSettings,
 	hasPinnedTasksPackage,
-	mergeOperonDataPackage,
 	OPERON_DATA_PACKAGE_SCHEMA_VERSION,
 	type OperonDataPackageV1,
 	composeOperonSettingsFromDataPackage,
 } from './operon-data-package';
+import {
+	buildOperonDataPackageFromLegacySnapshot,
+	mergeOperonDataPackage,
+	readLegacyOperonStorageSnapshot,
+	type OperonDataPackageMigrationDiagnostics,
+} from './operon-data-package-migration';
 import type { OperonStoragePaths } from './operon-storage-paths';
 import { writeTextSafely } from './storage-file-ops';
 import type { OperonSettings } from '../types/settings';
@@ -18,7 +23,14 @@ export interface OperonPluginDataAccess {
 
 export interface OperonDataPackageStoreInitResult {
 	dataPackage: OperonDataPackageV1;
+	diagnostics: OperonDataPackageMigrationDiagnostics;
+	loadedExistingPackage: boolean;
+	legacyFallbackUsed: boolean;
 	loadedExistingPinnedTasksPackage: boolean;
+}
+
+export interface OperonDataPackageStoreInitOptions {
+	legacyFallbackEnabled?: boolean;
 }
 
 export interface OperonDataPackageReloadDiagnostics {
@@ -54,19 +66,33 @@ export class OperonDataPackageStore {
 	private writesSuspended = false;
 
 	constructor(
-		private readonly adapter: Pick<DataAdapter, 'exists' | 'read' | 'write' | 'remove'> & Partial<Pick<DataAdapter, 'process' | 'rename'>>,
+		private readonly adapter: Pick<DataAdapter, 'exists' | 'read' | 'write' | 'list' | 'remove'> & Partial<Pick<DataAdapter, 'process' | 'rename'>>,
 		private readonly paths: OperonStoragePaths,
 		private readonly pluginData: PluginDataAccess,
 	) {}
 
 	async initialize(
 		defaults: OperonSettings,
+		options: OperonDataPackageStoreInitOptions = {},
 	): Promise<OperonDataPackageStoreInitResult> {
 		const existingPackage = await this.loadExistingPackage();
-		const dataPackage = mergeOperonDataPackage(existingPackage, buildFallbackDataPackage(defaults));
+		const legacyFallbackEnabled = options.legacyFallbackEnabled !== false;
+		const legacyResult = legacyFallbackEnabled
+			? buildOperonDataPackageFromLegacySnapshot(
+				await readLegacyOperonStorageSnapshot(this.adapter, this.paths.legacy),
+				defaults,
+			)
+			: {
+				dataPackage: buildFallbackDataPackage(defaults),
+				diagnostics: createEmptyMigrationDiagnostics(),
+			};
+		const dataPackage = mergeOperonDataPackage(existingPackage, legacyResult.dataPackage);
 		this.setDataPackage(dataPackage);
 		return {
 			dataPackage: this.cloneDataPackage(dataPackage),
+			diagnostics: legacyResult.diagnostics,
+			loadedExistingPackage: !!existingPackage,
+			legacyFallbackUsed: legacyFallbackEnabled && this.hasAnyLegacyData(snapshotExistsSummary(legacyResult.diagnostics)),
 			loadedExistingPinnedTasksPackage: hasPinnedTasksPackage(existingPackage),
 		};
 	}
@@ -163,7 +189,7 @@ export class OperonDataPackageStore {
 				: await this.loadPackageFromAdapter();
 				return isRecord(raw) ? raw : null;
 		} catch {
-			console.warn('Operon: Failed to load data.json, using default settings without overwriting existing package');
+			console.warn('Operon: Failed to load data.json, using legacy/default settings without overwriting existing package');
 			this.writesSuspended = true;
 			return null;
 		}
@@ -212,6 +238,10 @@ export class OperonDataPackageStore {
 		await run;
 	}
 
+	private hasAnyLegacyData(summary: { missingCount: number }): boolean {
+		return summary.missingCount < 15;
+	}
+
 	private setDataPackage(dataPackage: OperonDataPackageV1): void {
 		this.dataPackage = this.cloneDataPackage(dataPackage);
 		this.dataPackageSignature = buildStableJsonSignature(this.dataPackage);
@@ -221,6 +251,18 @@ export class OperonDataPackageStore {
 		const parsed: unknown = JSON.parse(JSON.stringify(dataPackage));
 		return parsed as OperonDataPackageV1;
 	}
+}
+
+function snapshotExistsSummary(diagnostics: OperonDataPackageMigrationDiagnostics): { missingCount: number } {
+	return { missingCount: diagnostics.missingLegacyPaths.length };
+}
+
+function createEmptyMigrationDiagnostics(): OperonDataPackageMigrationDiagnostics {
+	return {
+		missingLegacyPaths: [],
+		malformedLegacyPaths: [],
+		warnings: [],
+	};
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -12,7 +12,7 @@
 
 import * as Obsidian from 'obsidian';
 import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
-import type { DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
+import type { ButtonComponent, DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
 import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, hasDuplicateKeyMappingVisiblePropertyName, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, resolveEnabledCalendarMobileViewModes, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
 import type { ProjectSerialScope } from '../types/settings';
 import {
@@ -49,6 +49,7 @@ import {
 	normalizeKanbanCustomFieldReference,
 } from '../types/kanban';
 import { OperonStorage } from '../storage/operon-storage';
+import type { OperonLegacyStorageCleanupStatus } from '../storage/operon-storage';
 import { PinnedCache } from '../storage/pinned-cache';
 import { getCurrentLang, t } from '../core/i18n';
 import { getReleaseNotesForManualView } from '../core/release-notes';
@@ -873,11 +874,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const entriesByTab = new Map<OperonSettingsTabId, OperonSettingsSearchEntry[]>();
 		for (const entry of OPERON_SETTINGS_SEARCH_REGISTRY) {
 			if (!this.isSettingsTabId(entry.tabId)) continue;
+			if (entry.id === 'settings.legacyStorageCleanup' && !this.shouldExposeLegacyStorageCleanupEntry()) continue;
 			const tabEntries = entriesByTab.get(entry.tabId) ?? [];
 			tabEntries.push(entry);
 			entriesByTab.set(entry.tabId, tabEntries);
 		}
 		return entriesByTab;
+	}
+
+	private shouldExposeLegacyStorageCleanupEntry(): boolean {
+		return this.storage.getCachedLegacyStorageCleanupStatus()?.legacyExists === true;
 	}
 
 	private buildSettingsSearchTabPage(
@@ -1715,6 +1721,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderSettingsSearchCustomEntry(entry: OperonSettingsSearchEntry, setting: Setting): void {
+		if (entry.id === 'settings.legacyStorageCleanup') {
+			this.renderLegacyStorageCleanupSearchEntry(setting);
+			return;
+		}
+
 		setting.setName(this.getSettingsSearchText(entry.name));
 		setting.setDesc(this.getSettingsSearchText(entry.desc));
 
@@ -2522,6 +2533,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.renderGeneralBasicsTab(containerEl);
 		this.renderOperonDocsSettings(containerEl);
 		this.renderGeneralSystemTab(containerEl);
+		this.renderStorageCleanupSection(containerEl);
 	}
 
 	private renderReleaseNotesSettingsCard(containerEl: HTMLElement, options: { includeToggle: boolean }): void {
@@ -3931,6 +3943,133 @@ export class OperonSettingsTab extends PluginSettingTab {
 			})),
 			normalize: value => Number(value),
 		});
+	}
+
+	private renderStorageCleanupSection(containerEl: HTMLElement): void {
+		const sectionEl = containerEl.createDiv('operon-legacy-storage-cleanup-section');
+		this.setLegacyStorageCleanupElementVisible(sectionEl, false);
+		runSettingsAsync('settings legacy storage cleanup status failed', async () => {
+			const status = await this.storage.getLegacyStorageCleanupStatus();
+			if (!status.legacyExists) {
+				this.setLegacyStorageCleanupElementVisible(sectionEl, false);
+				return;
+			}
+			sectionEl.empty();
+			renderSettingsHeading(sectionEl, t('settings', 'storageSection'));
+			const setting = new Setting(sectionEl);
+			this.renderLegacyStorageCleanupCard(sectionEl, setting, status);
+		});
+	}
+
+	private renderLegacyStorageCleanupSearchEntry(setting: Setting): void {
+		const settingEl = setting.settingEl;
+		this.setLegacyStorageCleanupElementVisible(settingEl, false);
+		setting.setName('');
+		setting.setDesc('');
+		setting.controlEl.empty();
+		runSettingsAsync('settings legacy storage cleanup search status failed', async () => {
+			const status = await this.storage.getLegacyStorageCleanupStatus();
+			if (!status.legacyExists) {
+				this.setLegacyStorageCleanupElementVisible(settingEl, false);
+				return;
+			}
+			this.renderLegacyStorageCleanupCard(settingEl, setting, status);
+		});
+	}
+
+	private renderLegacyStorageCleanupCard(
+		outerEl: HTMLElement,
+		setting: Setting,
+		status: OperonLegacyStorageCleanupStatus,
+	): void {
+		setting.settingEl.addClass('operon-legacy-storage-cleanup-card');
+		setting
+			.setName(t('settings', 'legacyStorageCleanupTitle'))
+			.setDesc(this.getLegacyStorageCleanupStatusText(status));
+		setting.controlEl.empty();
+		let cleanupButton: ButtonComponent | null = null;
+		setting.addButton(button => {
+			cleanupButton = button;
+			button
+				.setButtonText(t('settings', 'legacyStorageCleanupButton'))
+				.setCta()
+				.setDisabled(!status.canCleanup)
+				.onClick(() => {
+					this.confirmLegacyStorageCleanup();
+				});
+			this.setLegacyStorageCleanupElementVisible(button.buttonEl, status.canCleanup);
+		});
+		this.applyLegacyStorageCleanupStatus(outerEl, cleanupButton, status);
+	}
+
+	private applyLegacyStorageCleanupStatus(
+		outerEl: HTMLElement,
+		cleanupButton: ButtonComponent | null,
+		status: OperonLegacyStorageCleanupStatus,
+	): void {
+		if (!status.legacyExists) {
+			this.setLegacyStorageCleanupElementVisible(outerEl, false);
+			if (cleanupButton) this.setLegacyStorageCleanupElementVisible(cleanupButton.buttonEl, false);
+			cleanupButton?.setDisabled(true);
+			return;
+		}
+		this.setLegacyStorageCleanupElementVisible(outerEl, true);
+		cleanupButton?.setDisabled(!status.canCleanup);
+		if (cleanupButton) this.setLegacyStorageCleanupElementVisible(cleanupButton.buttonEl, status.canCleanup);
+	}
+
+	private setLegacyStorageCleanupElementVisible(element: HTMLElement, visible: boolean): void {
+		element.toggleAttribute('hidden', !visible);
+		element.setAttribute('aria-hidden', visible ? 'false' : 'true');
+		element.style.display = visible ? '' : 'none';
+	}
+
+	private getLegacyStorageCleanupStatusText(status: OperonLegacyStorageCleanupStatus): string {
+		if (status.state === 'retired' && status.legacyExists) return t('settings', 'legacyStorageCleanupRetiredPresent');
+		if (status.state === 'retired') return t('settings', 'legacyStorageCleanupRetired');
+		if (status.state === 'missing') return t('settings', 'legacyStorageCleanupMissing');
+		if (status.state === 'blocked') return t('settings', 'legacyStorageCleanupBlockedDesc');
+		return t('settings', 'legacyStorageCleanupReady', {
+			files: String(status.legacyFileCount),
+			folders: String(status.legacyFolderCount),
+		});
+	}
+
+	private confirmLegacyStorageCleanup(): void {
+		new ConfirmActionModal(this.app, {
+			title: t('settings', 'legacyStorageCleanupConfirmTitle'),
+			message: t('settings', 'legacyStorageCleanupConfirmMessage'),
+			confirmText: t('settings', 'legacyStorageCleanupConfirmButton'),
+			cancelText: t('settings', 'legacyStorageCleanupCancelButton'),
+		}, (confirmed) => {
+			if (!confirmed) return;
+			runSettingsAsync('settings legacy storage cleanup failed', async () => {
+				try {
+					const result = await this.storage.cleanupLegacyStorageFromSettings();
+					if (!result.cleanupPerformed) {
+						new Notice(t('notifications', 'legacyStorageCleanupBlocked'));
+						this.redisplayPreservingScroll();
+						return;
+					}
+					this.hideLegacyStorageCleanupCards();
+					new Notice(t('notifications', 'legacyStorageCleanupSucceeded'));
+					this.redisplayPreservingScroll();
+				} catch (error) {
+					console.warn('Operon: legacy storage cleanup failed', error);
+					new Notice(t('notifications', 'legacyStorageCleanupFailed'));
+					this.redisplayPreservingScroll();
+				}
+			});
+		}).open();
+	}
+
+	private hideLegacyStorageCleanupCards(): void {
+		const cleanupEls = this.containerEl.querySelectorAll<HTMLElement>(
+			'.operon-legacy-storage-cleanup-section, .operon-legacy-storage-cleanup-card',
+		);
+		for (const cleanupEl of Array.from(cleanupEls)) {
+			this.setLegacyStorageCleanupElementVisible(cleanupEl, false);
+		}
 	}
 
 	private renderTasksFileTasksTab(containerEl: HTMLElement): void {

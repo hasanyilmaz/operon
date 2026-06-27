@@ -1,17 +1,25 @@
 /**
  * PinnedCache — in-memory facade for pinned task state.
  * Canonical persistence lives in the Operon data package so Obsidian Sync can
- * carry pin state with plugin data.
+ * carry pin state with plugin data. Legacy pinned files are read-only fallback.
  */
 
+import type { App } from 'obsidian';
 import {
 	createEmptyPinnedTasksPackage,
+	createPinnedTasksPackageFromIds,
 	mergePinnedTasksPackages,
 	normalizePinnedTasksPackage,
 	OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
 	prunePinnedTaskTombstones,
 	type OperonPinnedTasksPackageV1,
 } from './operon-data-package';
+
+const PINNED_CACHE_FILE = '.operon/cache/pinned-cache.json';
+
+interface PinnedCacheData {
+	pinned: string[];
+}
 
 export interface PinnedCachePackagePersistence {
 	getPackage(): OperonPinnedTasksPackageV1;
@@ -20,14 +28,22 @@ export interface PinnedCachePackagePersistence {
 }
 
 export class PinnedCache {
+	private app: App;
 	private pinnedPackage: OperonPinnedTasksPackageV1 = createEmptyPinnedTasksPackage();
 	private pinnedSet: Set<string> = new Set();
 	private generation = 0;
 	private listeners: Set<() => void> = new Set();
 	private mutationQueue: Promise<void> = Promise.resolve();
+	private readonly filePath: string;
+	private readonly legacyFilePath: string | null;
+	private legacyFallbackEnabled = true;
 	private packagePersistence: PinnedCachePackagePersistence | null = null;
 
-	constructor(_app: unknown, _writeQueue: unknown) {}
+	constructor(app: App, _writeQueue: unknown, filePath = PINNED_CACHE_FILE, legacyFilePath: string | null = null) {
+		this.app = app;
+		this.filePath = filePath;
+		this.legacyFilePath = legacyFilePath;
+	}
 
 	setPackagePersistence(packagePersistence: PinnedCachePackagePersistence): void {
 		this.packagePersistence = packagePersistence;
@@ -36,12 +52,20 @@ export class PinnedCache {
 	/**
 	 * Load pinned ids during plugin init.
 	 * When the canonical package already had pinned state, use it even if empty.
-	 * Otherwise, start from the empty canonical package.
+	 * Otherwise, import old pinned files once and persist the imported package.
 	 */
 	async load(options: { preferPackage?: boolean } = {}): Promise<void> {
 		const packageData = this.packagePersistence?.getPackage() ?? createEmptyPinnedTasksPackage();
 		if (options.preferPackage || this.hasPackageEntries(packageData)) {
 			this.loadFromPackage(packageData, { resetGeneration: true });
+			return;
+		}
+
+		const fallbackPinnedIds = await this.readFallbackPinnedIds();
+		if (fallbackPinnedIds) {
+			const imported = createPinnedTasksPackageFromIds(fallbackPinnedIds, this.nowIso());
+			this.applyPackage(imported, { resetGeneration: true });
+			await this.persistCurrentPackage();
 			return;
 		}
 
@@ -104,6 +128,10 @@ export class PinnedCache {
 
 	getGeneration(): number {
 		return this.generation;
+	}
+
+	setLegacyFallbackEnabled(enabled: boolean): void {
+		this.legacyFallbackEnabled = enabled;
 	}
 
 	async drain(): Promise<void> {
@@ -188,6 +216,14 @@ export class PinnedCache {
 		await run;
 	}
 
+	private async persistCurrentPackage(): Promise<void> {
+		if (!this.packagePersistence?.canPersist()) return;
+		const persisted = await this.packagePersistence.updatePackage(currentPackage =>
+			mergePinnedTasksPackages(this.pinnedPackage, currentPackage),
+		);
+		this.applyPackage(persisted, { resetGeneration: true });
+	}
+
 	private withEntry(
 		current: OperonPinnedTasksPackageV1,
 		operonId: string,
@@ -220,6 +256,28 @@ export class PinnedCache {
 		}
 		if (changed) this.bumpGeneration();
 		return changed;
+	}
+
+	private async readFallbackPinnedIds(): Promise<string[] | null> {
+		const canonicalIds = await this.readPinnedIdsFile(this.filePath);
+		if (canonicalIds) return canonicalIds;
+		if (!this.legacyFallbackEnabled || !this.legacyFilePath) return null;
+		return await this.readPinnedIdsFile(this.legacyFilePath);
+	}
+
+	private async readPinnedIdsFile(path: string): Promise<string[] | null> {
+		const adapter = this.app.vault.adapter;
+		if (!(await adapter.exists(path))) return null;
+		try {
+			const raw = await adapter.read(path);
+			const data = JSON.parse(raw) as PinnedCacheData;
+			return Array.isArray(data.pinned)
+				? data.pinned.map(id => typeof id === 'string' ? id.trim() : '').filter(Boolean)
+				: [];
+		} catch {
+			console.warn(`Operon: Failed to parse ${path}; skipping pinned state fallback`);
+			return null;
+		}
 	}
 
 	private hasPackageEntries(packageData: OperonPinnedTasksPackageV1): boolean {

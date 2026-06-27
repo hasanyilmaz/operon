@@ -3,10 +3,10 @@ import { CalendarPreset, normalizeBuiltInCalendarPreset } from '../types/calenda
 import type { OperonSettings } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
-import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const CALENDAR_PRESETS_FILE_NAME = 'calendar-presets.json';
+const CALENDAR_PRESETS_FILE = '.operon/calendar-presets.json';
 const CALENDAR_PRESET_STORE_VERSION = 1;
+const CALENDAR_PRESET_STORE_QUEUE_KEY = `${CALENDAR_PRESETS_FILE}::__store__`;
 
 export type CalendarPresetStoreSettings = Pick<OperonSettings, 'calendarPresets' | 'calendarDefaultPresetId'>;
 
@@ -35,10 +35,6 @@ export class CalendarPresetStore {
 		this.serializedSettings = JSON.stringify(this.settings);
 	}
 
-	private getFilePath(): string {
-		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', CALENDAR_PRESETS_FILE_NAME);
-	}
-
 	getAll(): CalendarPresetStoreSettings {
 		return cloneSettings(this.settings);
 	}
@@ -58,8 +54,7 @@ export class CalendarPresetStore {
 		defaults: CalendarPresetStoreSettings,
 	): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
-		if (!(await adapter.exists(filePath))) {
+		if (!(await adapter.exists(CALENDAR_PRESETS_FILE))) {
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
@@ -71,14 +66,14 @@ export class CalendarPresetStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(filePath);
+			raw = await adapter.read(CALENDAR_PRESETS_FILE);
 			const parsed = JSON.parse(raw) as Partial<CalendarPresetStoreData>;
 			this.settings = readStoreData(parsed, legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(readSerializedStoreSnapshot(parsed, this.settings));
 			this.recoveredFromMalformed = !Array.isArray(parsed.presets) || parsed.presets.length === 0;
 		} catch {
 			console.warn('Operon: Failed to parse calendar presets store, preserving invalid file as backup and recovering from fallback settings');
-			await preserveInvalidJsonFile(adapter, filePath, raw);
+			await preserveInvalidJsonFile(adapter, CALENDAR_PRESETS_FILE, raw);
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = true;
@@ -91,7 +86,7 @@ export class CalendarPresetStore {
 		const adapter = this.app.vault.adapter;
 		if (shouldSkipStoreWrite(
 			nextSerialized === this.serializedSettings,
-			await adapter.exists(this.getFilePath()),
+			await adapter.exists(CALENDAR_PRESETS_FILE),
 			this.recoveredFromMalformed,
 			options,
 		)) {
@@ -110,14 +105,13 @@ export class CalendarPresetStore {
 
 	private async persist(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
 		const data: CalendarPresetStoreData = {
 			version: CALENDAR_PRESET_STORE_VERSION,
 			presets: cloneCalendarPresets(this.settings.calendarPresets),
 			defaultPresetId: this.settings.calendarDefaultPresetId,
 		};
-		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
-			await writeJsonSafely(adapter, filePath, data);
+		await this.writeQueue.enqueue(CALENDAR_PRESET_STORE_QUEUE_KEY, async () => {
+			await writeJsonSafely(adapter, CALENDAR_PRESETS_FILE, data);
 		});
 		this.recoveredFromMalformed = false;
 	}

@@ -482,7 +482,7 @@ Operon bundles **CodeMirror** modules for editor integrations and **ical.js** fo
 
 Operon stores its canonical plugin data in Obsidian's plugin configuration area under `.obsidian/plugins/operon/`. User-facing settings and configuration live in `data.json`, organized into stable domains for core settings, taxonomy, views, interface preferences, automation, and integrations. Non-settings data is kept separate: `state/` stores user state such as pinned tasks, active trackers, and repeat series; `runtime/` stores the task index; and `cache/` stores parsed external calendar cache data.
 
-Older Operon versions used a vault-root `.operon/` folder. Current versions no longer read from, write to, or clean up that legacy folder. If a stale `.operon/` folder remains in a vault or reappears from sync, Operon ignores it and continues using the canonical plugin configuration area.
+Older Operon versions used a vault-root `.operon/` folder. Current versions may read `.operon/` as a legacy fallback for users who are migrating, but new canonical writes go to the plugin configuration area. Once canonical storage is healthy, Settings includes a manual action to move the legacy `.operon/` folder to Obsidian trash. After that retirement marker is recorded, Operon no longer uses `.operon/` as startup fallback.
 
 For Obsidian Sync users, Operon's canonical settings package follows Obsidian's plugin data location. If you sync plugin settings, Operon settings in `data.json` can sync with the rest of your Obsidian configuration. Runtime index and cache files remain local plugin data and can be rebuilt from vault content when needed.
 

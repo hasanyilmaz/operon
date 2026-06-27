@@ -60,13 +60,6 @@ function assertNoMatch(relativePath, pattern, label) {
 	}
 }
 
-function listFiles(relativeDir, predicate) {
-	const absoluteDir = path.join(rootDir, relativeDir);
-	return fs.readdirSync(absoluteDir)
-		.filter(predicate)
-		.map(file => `${relativeDir}/${file}`);
-}
-
 function assertIncludes(relativePath, needle, label) {
 	const text = readText(relativePath);
 	if (!text.includes(needle)) {
@@ -382,48 +375,6 @@ function checkAuditedRawStrings() {
 	assertNoMatch('src/ui/time-session-history-view.ts', /['"]Open task editor['"]/, 'time history editor action label bypasses i18n');
 }
 
-function checkCanonicalOnlyStorageContract() {
-	const productionFiles = [
-		'main.ts',
-		...listFiles('src/storage', file => file.endsWith('.ts')),
-		'src/ui/settings-tab.ts',
-		'src/ui/settings/settings-search-registry.ts',
-		...listFiles('i18n/locales', file => file.endsWith('.json')),
-	];
-	const forbiddenTokens = [
-		'legacyStorageCleanup',
-		'storageMigrationPath',
-		'legacyStorageRetired',
-		'legacyFallbackEnabled',
-		'legacyFilePath',
-		'setLegacyFallbackEnabled',
-		'readLegacyOperonStorageSnapshot',
-		'buildOperonDataPackageFromLegacySnapshot',
-		'operon-data-package-migration',
-		'storagePaths.legacy',
-		'cleanupLegacyStorageFromSettings',
-		'getLegacyStorageCleanupStatus',
-		'getCachedLegacyStorageCleanupStatus',
-	];
-	const legacyOperonPathLiteral = /(['"`])\.operon(?:\/|(?=\1))/u;
-
-	if (fs.existsSync(path.join(rootDir, 'src/storage/operon-data-package-migration.ts'))) {
-		fail('src/storage/operon-data-package-migration.ts: legacy data package migration reader must not exist');
-	}
-
-	for (const file of productionFiles) {
-		const source = readText(file);
-		for (const token of forbiddenTokens) {
-			if (source.includes(token)) {
-				fail(`${file}: canonical-only storage contract must not reference ${token}`);
-			}
-		}
-		if (legacyOperonPathLiteral.test(source)) {
-			fail(`${file}: canonical-only storage contract must not reference vault-root .operon path literals`);
-		}
-	}
-}
-
 compareLocaleFiles();
 checkVersionAndAssets();
 checkReleaseWorkflow();
@@ -431,7 +382,6 @@ checkCssScorecard();
 checkSettingsDescriptionTextareaGuards();
 checkDocs();
 checkAuditedRawStrings();
-checkCanonicalOnlyStorageContract();
 
 if (failures.length > 0) {
 	console.error('Operon release guard failed:');

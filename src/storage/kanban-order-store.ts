@@ -2,10 +2,10 @@ import { App } from 'obsidian';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, writeJsonSafely } from './storage-file-ops';
 import type { OperonKanbanOrderPackageV1 } from './operon-data-package';
-import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const KANBAN_ORDER_FILE_NAME = 'kanban-order.json';
+const KANBAN_ORDER_FILE = '.operon/kanban-order.json';
 const KANBAN_ORDER_STORE_VERSION = 1;
+const KANBAN_ORDER_STORE_QUEUE_KEY = `${KANBAN_ORDER_FILE}::__store__`;
 
 export type KanbanManualOrderBoard = Record<string, string[]>;
 
@@ -25,10 +25,6 @@ export class KanbanOrderStore {
 		this.writeQueue = writeQueue;
 	}
 
-	private getFilePath(): string {
-		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', KANBAN_ORDER_FILE_NAME);
-	}
-
 	setPackagePersistence(persist: (kanbanOrder: OperonKanbanOrderPackageV1) => Promise<void>): void {
 		this.packagePersist = persist;
 	}
@@ -46,20 +42,19 @@ export class KanbanOrderStore {
 
 	async load(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
-		if (!(await adapter.exists(filePath))) {
+		if (!(await adapter.exists(KANBAN_ORDER_FILE))) {
 			this.boards = {};
 			return;
 		}
 
 		let raw = '';
 		try {
-			raw = await adapter.read(filePath);
+			raw = await adapter.read(KANBAN_ORDER_FILE);
 			const parsed = JSON.parse(raw) as Partial<KanbanOrderStoreData>;
 			this.boards = normalizeBoards(parsed.boards);
 		} catch {
 			console.warn('Operon: Failed to parse kanban order store, preserving invalid file and starting with empty manual order');
-			await preserveInvalidJsonFile(adapter, filePath, raw);
+			await preserveInvalidJsonFile(adapter, KANBAN_ORDER_FILE, raw);
 			this.boards = {};
 		}
 	}
@@ -116,9 +111,8 @@ export class KanbanOrderStore {
 			version: KANBAN_ORDER_STORE_VERSION,
 			boards: cloneBoards(this.boards),
 		};
-		const filePath = this.getFilePath();
-		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
-			await writeJsonSafely(adapter, filePath, data);
+		await this.writeQueue.enqueue(KANBAN_ORDER_STORE_QUEUE_KEY, async () => {
+			await writeJsonSafely(adapter, KANBAN_ORDER_FILE, data);
 		});
 	}
 }

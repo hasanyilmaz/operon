@@ -3,10 +3,10 @@ import { KanbanPreset, normalizeBuiltInKanbanPreset } from '../types/kanban';
 import type { OperonSettings } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
-import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const KANBAN_PRESETS_FILE_NAME = 'kanban-presets.json';
+const KANBAN_PRESETS_FILE = '.operon/kanban-presets.json';
 const KANBAN_PRESET_STORE_VERSION = 1;
+const KANBAN_PRESET_STORE_QUEUE_KEY = `${KANBAN_PRESETS_FILE}::__store__`;
 
 export type KanbanPresetStoreSettings = Pick<OperonSettings, 'kanbanPresets' | 'kanbanDefaultPresetId'>;
 
@@ -35,10 +35,6 @@ export class KanbanPresetStore {
 		this.serializedSettings = JSON.stringify(this.settings);
 	}
 
-	private getFilePath(): string {
-		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', KANBAN_PRESETS_FILE_NAME);
-	}
-
 	getAll(): KanbanPresetStoreSettings {
 		return cloneSettings(this.settings);
 	}
@@ -58,8 +54,7 @@ export class KanbanPresetStore {
 		defaults: KanbanPresetStoreSettings,
 	): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
-		if (!(await adapter.exists(filePath))) {
+		if (!(await adapter.exists(KANBAN_PRESETS_FILE))) {
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
@@ -71,14 +66,14 @@ export class KanbanPresetStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(filePath);
+			raw = await adapter.read(KANBAN_PRESETS_FILE);
 			const parsed = JSON.parse(raw) as Partial<KanbanPresetStoreData>;
 			this.settings = readStoreData(parsed, legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
 		} catch {
 			console.warn('Operon: Failed to parse kanban presets store, preserving invalid file as backup and recovering from fallback settings');
-			await preserveInvalidJsonFile(adapter, filePath, raw);
+			await preserveInvalidJsonFile(adapter, KANBAN_PRESETS_FILE, raw);
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = true;
@@ -91,7 +86,7 @@ export class KanbanPresetStore {
 		const adapter = this.app.vault.adapter;
 		if (shouldSkipStoreWrite(
 			nextSerialized === this.serializedSettings,
-			await adapter.exists(this.getFilePath()),
+			await adapter.exists(KANBAN_PRESETS_FILE),
 			this.recoveredFromMalformed,
 			options,
 		)) {
@@ -110,14 +105,13 @@ export class KanbanPresetStore {
 
 	private async persist(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
 		const data: KanbanPresetStoreData = {
 			version: KANBAN_PRESET_STORE_VERSION,
 			presets: cloneKanbanPresets(this.settings.kanbanPresets),
 			defaultPresetId: this.settings.kanbanDefaultPresetId,
 		};
-		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
-			await writeJsonSafely(adapter, filePath, data);
+		await this.writeQueue.enqueue(KANBAN_PRESET_STORE_QUEUE_KEY, async () => {
+			await writeJsonSafely(adapter, KANBAN_PRESETS_FILE, data);
 		});
 		this.recoveredFromMalformed = false;
 	}

@@ -3,10 +3,10 @@ import { OperonSettings } from '../types/settings';
 import { clonePriorityDefinition, PriorityDefinition } from '../types/priority';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
-import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const PRIORITIES_FILE_NAME = 'priorities.json';
+const PRIORITIES_FILE = '.operon/priorities.json';
 const PRIORITY_STORE_VERSION = 1;
+const PRIORITY_STORE_QUEUE_KEY = `${PRIORITIES_FILE}::__store__`;
 
 export type PriorityStoreSettings = Pick<OperonSettings, 'priorities' | 'defaultPriority'>;
 
@@ -64,10 +64,6 @@ export class PriorityStore {
 		this.serializedSettings = JSON.stringify(this.settings);
 	}
 
-	private getFilePath(): string {
-		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', PRIORITIES_FILE_NAME);
-	}
-
 	getAll(): PriorityStoreSettings {
 		return cloneSettings(this.settings);
 	}
@@ -87,8 +83,7 @@ export class PriorityStore {
 		defaults: PriorityStoreSettings,
 	): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
-		if (!(await adapter.exists(filePath))) {
+		if (!(await adapter.exists(PRIORITIES_FILE))) {
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
@@ -100,14 +95,14 @@ export class PriorityStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(filePath);
+			raw = await adapter.read(PRIORITIES_FILE);
 			const parsed = JSON.parse(raw) as Partial<PriorityStoreData>;
 			this.settings = readStoreData(parsed, defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
 		} catch {
 			console.warn('Operon: Failed to parse priorities store, preserving invalid file as backup and recovering from fallback settings');
-			await preserveInvalidJsonFile(adapter, filePath, raw);
+			await preserveInvalidJsonFile(adapter, PRIORITIES_FILE, raw);
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = true;
@@ -120,7 +115,7 @@ export class PriorityStore {
 		const adapter = this.app.vault.adapter;
 		if (shouldSkipStoreWrite(
 			nextSerialized === this.serializedSettings,
-			await adapter.exists(this.getFilePath()),
+			await adapter.exists(PRIORITIES_FILE),
 			this.recoveredFromMalformed,
 			options,
 		)) {
@@ -139,14 +134,13 @@ export class PriorityStore {
 
 	private async persist(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilePath();
 		const data: PriorityStoreData = {
 			version: PRIORITY_STORE_VERSION,
 			priorities: clonePriorities(this.settings.priorities),
 			defaultPriority: this.settings.defaultPriority,
 		};
-		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
-			await writeJsonSafely(adapter, filePath, data);
+		await this.writeQueue.enqueue(PRIORITY_STORE_QUEUE_KEY, async () => {
+			await writeJsonSafely(adapter, PRIORITIES_FILE, data);
 		});
 		this.recoveredFromMalformed = false;
 	}

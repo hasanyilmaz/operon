@@ -53,6 +53,39 @@ export interface OperonStorageReloadSettingsResult {
 	diagnostics: OperonDataPackageReloadDiagnostics;
 }
 
+export type OperonLegacyStorageCleanupMethod = 'trash-system' | 'trash-local';
+export type OperonLegacyStorageCleanupState = 'ready' | 'blocked' | 'missing' | 'retired';
+
+export interface OperonStorageMigrationMarker {
+	version: 1;
+	legacyStorageRetired: true;
+	retiredAt: string;
+	cleanupMethod: OperonLegacyStorageCleanupMethod;
+	legacyFileCount: number;
+	legacyFolderCount: number;
+}
+
+export interface OperonLegacyStorageCleanupStatus {
+	legacyPath: string;
+	markerPath: string;
+	legacyExists: boolean;
+	legacyStorageRetired: boolean;
+	canonicalSettingsReadable: boolean;
+	canCleanup: boolean;
+	state: OperonLegacyStorageCleanupState;
+	blockedReason: string | null;
+	legacyFileCount: number;
+	legacyFolderCount: number;
+	marker: OperonStorageMigrationMarker | null;
+}
+
+export interface OperonLegacyStorageCleanupResult {
+	cleanupPerformed: boolean;
+	cleanupMethod: OperonLegacyStorageCleanupMethod | null;
+	status: OperonLegacyStorageCleanupStatus;
+	marker: OperonStorageMigrationMarker | null;
+}
+
 function pickPipelineStoreSettings(settings: OperonSettings): PipelineStoreSettings {
 	return {
 		pipelines: settings.pipelines,
@@ -192,6 +225,8 @@ export class OperonStorage {
 	private taskAutomationPolicyStore: TaskAutomationPolicyStore;
 	private activeTrackerStore: ActiveTrackerStore;
 	private projectSerialStore: ProjectSerialStore;
+	private legacyStorageRetired = false;
+	private latestLegacyStorageCleanupStatus: OperonLegacyStorageCleanupStatus | null = null;
 
 	constructor(app: App, options: OperonStorageOptions = {}) {
 		this.app = app;
@@ -209,6 +244,8 @@ export class OperonStorage {
 		this.pinnedCache = new PinnedCache(
 			app,
 			this.writeQueue,
+			this.storagePaths.state.pinnedTasksPath,
+			this.storagePaths.legacy.pinnedCachePath,
 		);
 		this.pinnedCache.setPackagePersistence({
 			getPackage: () => this.dataPackageStore.getDataPackage().state.pinnedTasks,
@@ -232,11 +269,13 @@ export class OperonStorage {
 			app,
 			this.writeQueue,
 			this.storagePaths.state.repeatSeriesPath,
+			this.storagePaths.legacy.repeatSeriesPath,
 		);
 		this.externalCalendarCache = new ExternalCalendarCacheStore(
 			app,
 			this.writeQueue,
 			this.storagePaths.cache.externalCalendarsPath,
+			this.storagePaths.legacy.externalCalendarsCachePath,
 		);
 		this.filterStore = new FilterStore(app, this.writeQueue);
 		this.pipelineStore = new PipelineStore(
@@ -286,6 +325,7 @@ export class OperonStorage {
 			app,
 			this.writeQueue,
 			this.storagePaths.state.activeTrackersPath,
+			this.storagePaths.legacy.activeTrackersPath,
 		);
 		this.projectSerialStore = new ProjectSerialStore(
 			app,
@@ -346,7 +386,11 @@ export class OperonStorage {
 	 */
 	async initialize(): Promise<void> {
 		await this.ensureCanonicalFolders();
-		const { dataPackage, loadedExistingPinnedTasksPackage } = await this.dataPackageStore.initialize(DEFAULT_SETTINGS);
+		this.legacyStorageRetired = (await this.readStorageMigrationMarker())?.legacyStorageRetired === true;
+		this.applyLegacyFallbackPolicy();
+		const { dataPackage, loadedExistingPinnedTasksPackage } = await this.dataPackageStore.initialize(DEFAULT_SETTINGS, {
+			legacyFallbackEnabled: !this.legacyStorageRetired,
+		});
 		this.hydrateFromDataPackage(dataPackage);
 		await this.pinnedCache.load({ preferPackage: loadedExistingPinnedTasksPackage });
 		await this.saveSettings({ forceRecoveredWrite: false });
@@ -354,6 +398,7 @@ export class OperonStorage {
 		await this.repeatSeriesStore.load();
 		await this.projectSerialStore.load();
 		await this.externalCalendarCache.load();
+		await this.getLegacyStorageCleanupStatus();
 	}
 
 	/**
@@ -439,6 +484,79 @@ export class OperonStorage {
 		};
 	}
 
+	async getLegacyStorageCleanupStatus(): Promise<OperonLegacyStorageCleanupStatus> {
+		const marker = await this.readStorageMigrationMarker();
+		const legacyStorageRetired = marker?.legacyStorageRetired === true;
+		const legacyExists = await this.app.vault.adapter.exists(this.storagePaths.legacy.dataFolder);
+		const counts = legacyExists
+			? await this.countLegacyStorageEntries(this.storagePaths.legacy.dataFolder)
+			: { files: 0, folders: 0 };
+		const canonicalSettingsReadable = legacyExists
+			? await this.dataPackageStore.canReadCanonicalDataPackage()
+			: true;
+		const state: OperonLegacyStorageCleanupState = legacyStorageRetired
+			? 'retired'
+			: !legacyExists
+				? 'missing'
+				: canonicalSettingsReadable
+					? 'ready'
+					: 'blocked';
+		const blockedReason = legacyExists && !canonicalSettingsReadable
+			? 'canonical-settings-unreadable'
+			: null;
+		const status = {
+			legacyPath: this.storagePaths.legacy.dataFolder,
+			markerPath: this.storagePaths.state.storageMigrationPath,
+			legacyExists,
+			legacyStorageRetired,
+			canonicalSettingsReadable,
+			canCleanup: legacyExists && canonicalSettingsReadable,
+			state,
+			blockedReason,
+			legacyFileCount: counts.files,
+			legacyFolderCount: counts.folders,
+			marker,
+		};
+		this.latestLegacyStorageCleanupStatus = status;
+		return status;
+	}
+
+	getCachedLegacyStorageCleanupStatus(): OperonLegacyStorageCleanupStatus | null {
+		return this.latestLegacyStorageCleanupStatus;
+	}
+
+	async cleanupLegacyStorageFromSettings(): Promise<OperonLegacyStorageCleanupResult> {
+		await this.flushPendingWrites();
+		const status = await this.getLegacyStorageCleanupStatus();
+		if (!status.canCleanup) {
+			return {
+				cleanupPerformed: false,
+				cleanupMethod: null,
+				status,
+				marker: status.marker,
+			};
+		}
+
+		const cleanupMethod = await this.trashLegacyStorageFolder();
+		const marker: OperonStorageMigrationMarker = {
+			version: 1,
+			legacyStorageRetired: true,
+			retiredAt: new Date().toISOString(),
+			cleanupMethod,
+			legacyFileCount: status.legacyFileCount,
+			legacyFolderCount: status.legacyFolderCount,
+		};
+		await this.writeJson(this.storagePaths.state.storageMigrationPath, marker);
+		this.legacyStorageRetired = true;
+		this.applyLegacyFallbackPolicy();
+		return {
+			cleanupPerformed: true,
+			cleanupMethod,
+			status: await this.getLegacyStorageCleanupStatus(),
+			marker,
+		};
+	}
+
 	private applySettingsInPlace(normalized: OperonSettings): void {
 		const target = this.settings as unknown as Record<string, unknown>;
 		const source = normalized as unknown as Record<string, unknown>;
@@ -488,10 +606,19 @@ export class OperonStorage {
 	// --- Index ---
 
 	/**
-	 * Load active task index from plugin runtime storage.
+	 * Load active task index from plugin runtime storage, with read-only legacy fallback.
 	 */
 	async loadIndex(): Promise<IndexData | null> {
-		return this.readJson<IndexData>(this.storagePaths.runtime.indexPath);
+		const adapter = this.app.vault.adapter;
+		if (await adapter.exists(this.storagePaths.runtime.indexPath)) {
+			return this.readJson<IndexData>(this.storagePaths.runtime.indexPath);
+		}
+		if (this.legacyStorageRetired) return null;
+		const legacyIndex = await this.readJson<IndexData>(this.storagePaths.legacy.indexPath);
+		if (legacyIndex) {
+			await this.writeJson(this.storagePaths.runtime.indexPath, legacyIndex);
+		}
+		return legacyIndex;
 	}
 
 	/**
@@ -517,6 +644,58 @@ export class OperonStorage {
 			console.warn(`Operon: Failed to parse ${path}`);
 			return null;
 		}
+	}
+
+	private async readStorageMigrationMarker(): Promise<OperonStorageMigrationMarker | null> {
+		const marker = await this.readJson<Partial<OperonStorageMigrationMarker>>(this.storagePaths.state.storageMigrationPath);
+		if (!marker || marker.legacyStorageRetired !== true) return null;
+		if (marker.version !== 1) return null;
+		if (marker.cleanupMethod !== 'trash-system' && marker.cleanupMethod !== 'trash-local') return null;
+		return {
+			version: 1,
+			legacyStorageRetired: true,
+			retiredAt: typeof marker.retiredAt === 'string' ? marker.retiredAt : '',
+			cleanupMethod: marker.cleanupMethod,
+			legacyFileCount: Number.isFinite(marker.legacyFileCount) ? marker.legacyFileCount ?? 0 : 0,
+			legacyFolderCount: Number.isFinite(marker.legacyFolderCount) ? marker.legacyFolderCount ?? 0 : 0,
+		};
+	}
+
+	private applyLegacyFallbackPolicy(): void {
+		const enabled = !this.legacyStorageRetired;
+		this.pinnedCache.setLegacyFallbackEnabled(enabled);
+		this.activeTrackerStore.setLegacyFallbackEnabled(enabled);
+		this.repeatSeriesStore.setLegacyFallbackEnabled(enabled);
+		this.externalCalendarCache.setLegacyFallbackEnabled(enabled);
+	}
+
+	private async countLegacyStorageEntries(path: string): Promise<{ files: number; folders: number }> {
+		try {
+			const listed = await this.app.vault.adapter.list(path);
+			let files = listed.files.length;
+			let folders = listed.folders.length;
+			for (const folder of listed.folders) {
+				const nested = await this.countLegacyStorageEntries(folder);
+				files += nested.files;
+				folders += nested.folders;
+			}
+			return { files, folders };
+		} catch {
+			return { files: 0, folders: 0 };
+		}
+	}
+
+	private async trashLegacyStorageFolder(): Promise<OperonLegacyStorageCleanupMethod> {
+		const adapter = this.app.vault.adapter;
+		try {
+			if (await adapter.trashSystem(this.storagePaths.legacy.dataFolder)) {
+				return 'trash-system';
+			}
+		} catch {
+			// Fall back to Obsidian's local trash when system trash is unavailable.
+		}
+		await adapter.trashLocal(this.storagePaths.legacy.dataFolder);
+		return 'trash-local';
 	}
 
 	/**

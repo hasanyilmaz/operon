@@ -14,9 +14,11 @@ import { WriteQueue } from './write-queue';
 import { isRecord } from '../core/unknown-value';
 import { writeJsonSafely } from './storage-file-ops';
 import type { OperonFiltersPackageV1 } from './operon-data-package';
-import { buildOperonPluginStoragePath, joinVaultPath } from './operon-storage-paths';
 
+const FILTERS_FOLDER = '.operon/filters';
+const FILTER_INDEX_FILE = `${FILTERS_FOLDER}/index.json`;
 const FILTER_STORE_VERSION = 1;
+const FILTER_STORE_QUEUE_KEY = `${FILTERS_FOLDER}/__store__`;
 
 interface FilterStoreIndexData {
 	version: number;
@@ -42,6 +44,10 @@ function normalizeIndex(raw: unknown): string[] {
 	return ids;
 }
 
+function getFilterFilePath(filterId: string): string {
+	return `${FILTERS_FOLDER}/${filterId}.json`;
+}
+
 export class FilterStore {
 	private app: App;
 	private writeQueue: WriteQueue;
@@ -52,18 +58,6 @@ export class FilterStore {
 	constructor(app: App, writeQueue: WriteQueue) {
 		this.app = app;
 		this.writeQueue = writeQueue;
-	}
-
-	private getFiltersFolder(): string {
-		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', 'filters');
-	}
-
-	private getFilterIndexPath(): string {
-		return joinVaultPath(this.getFiltersFolder(), 'index.json');
-	}
-
-	private getFilterFilePath(filterId: string): string {
-		return joinVaultPath(this.getFiltersFolder(), `${filterId}.json`);
 	}
 
 	getAll(): FilterSet[] {
@@ -123,7 +117,7 @@ export class FilterStore {
 	async load(legacyFilterSets: FilterSet[] = []): Promise<void> {
 		await this.ensureFolder();
 		const adapter = this.app.vault.adapter;
-		const hasIndex = await adapter.exists(this.getFilterIndexPath());
+		const hasIndex = await adapter.exists(FILTER_INDEX_FILE);
 
 		if (!hasIndex && legacyFilterSets.length > 0) {
 			await this.replaceAll(legacyFilterSets);
@@ -239,18 +233,16 @@ export class FilterStore {
 
 	private async ensureFolder(): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		const filtersFolder = this.getFiltersFolder();
-		if (!(await adapter.exists(filtersFolder))) {
-			await adapter.mkdir(filtersFolder);
+		if (!(await adapter.exists(FILTERS_FOLDER))) {
+			await adapter.mkdir(FILTERS_FOLDER);
 		}
 	}
 
 	private async readIndexedIds(): Promise<string[]> {
 		const adapter = this.app.vault.adapter;
-		const indexPath = this.getFilterIndexPath();
-		if (!(await adapter.exists(indexPath))) return [];
+		if (!(await adapter.exists(FILTER_INDEX_FILE))) return [];
 		try {
-			const raw = await adapter.read(indexPath);
+			const raw = await adapter.read(FILTER_INDEX_FILE);
 			return normalizeIndex(JSON.parse(raw));
 		} catch {
 			console.warn('Operon: Failed to parse filter index, rebuilding from files when possible');
@@ -260,7 +252,7 @@ export class FilterStore {
 
 	private async readFilterFile(filterId: string): Promise<FilterSet | null> {
 		const adapter = this.app.vault.adapter;
-		const filePath = this.getFilterFilePath(filterId);
+		const filePath = getFilterFilePath(filterId);
 		if (!(await adapter.exists(filePath))) return null;
 		try {
 			const raw = await adapter.read(filePath);
@@ -279,7 +271,7 @@ export class FilterStore {
 
 	private async readOrphanFilterFiles(indexedIds: Set<string>): Promise<FilterSet[]> {
 		const adapter = this.app.vault.adapter;
-		const list = await adapter.list(this.getFiltersFolder());
+		const list = await adapter.list(FILTERS_FOLDER);
 		const filterIds = list.files
 			.map(path => path.split('/').pop() ?? '')
 			.filter(name => name.endsWith('.json') && name !== 'index.json')
@@ -303,18 +295,17 @@ export class FilterStore {
 		const adapter = this.app.vault.adapter;
 		const filterSets = this.getAll();
 		const deleted = [...new Set(deletedIds)].filter(Boolean);
-		const filtersFolder = this.getFiltersFolder();
 
-		await this.writeQueue.enqueue(`${filtersFolder}/__store__`, async () => {
+		await this.writeQueue.enqueue(FILTER_STORE_QUEUE_KEY, async () => {
 			await this.ensureFolder();
 
 			for (const filterSet of filterSets) {
-				const filePath = this.getFilterFilePath(filterSet.id);
+				const filePath = getFilterFilePath(filterSet.id);
 				await writeJsonSafely(adapter, filePath, filterSet);
 			}
 
 			for (const filterId of deleted) {
-				const filePath = this.getFilterFilePath(filterId);
+				const filePath = getFilterFilePath(filterId);
 				if (await adapter.exists(filePath)) {
 					await adapter.remove(filePath);
 				}
@@ -324,7 +315,7 @@ export class FilterStore {
 				version: FILTER_STORE_VERSION,
 				filterIds: [...this.orderedIds],
 			};
-			await writeJsonSafely(adapter, this.getFilterIndexPath(), indexData);
+			await writeJsonSafely(adapter, FILTER_INDEX_FILE, indexData);
 		});
 	}
 }

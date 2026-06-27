@@ -5683,8 +5683,6 @@ body .modal.operon-subtasks-filter-modal .modal-close-button:focus-visible {
 	--operon-task-finder-control-hover-border: color-mix(in srgb, var(--operon-task-finder-accent) 34%, var(--background-modifier-border));
 	--operon-task-finder-control-hover-bg: transparent;
 	--operon-task-finder-control-focus-ring: color-mix(in srgb, var(--operon-task-finder-accent) 12%, transparent);
-	--operon-task-finder-focus-ring: color-mix(in srgb, var(--operon-task-finder-accent, var(--interactive-accent)) 14%, transparent);
-	--shadow-input-active: 0 0 0 3px var(--operon-task-finder-focus-ring);
 	--operon-task-finder-row-border: color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
 	--operon-task-finder-row-hover-border: color-mix(in srgb, var(--operon-task-finder-accent) 34%, var(--background-modifier-border));
 	--operon-task-finder-row-focus-ring: color-mix(in srgb, var(--operon-task-finder-accent) 10%, transparent);
@@ -5748,13 +5746,9 @@ body .modal.operon-task-finder-modal .modal-close-button {
 }
 
 .operon-task-finder-search-wrap {
-	--operon-task-finder-focus-clearance: 3px;
-	box-sizing: border-box;
 	position: relative;
 	width: 100%;
-	padding: var(--operon-task-finder-focus-clearance);
-	overflow: visible;
-	border-radius: calc(10px + var(--operon-task-finder-focus-clearance));
+	padding-top: 0;
 }
 
 .operon-task-finder-search-icon {
@@ -5779,7 +5773,6 @@ body .modal.operon-task-finder-modal .modal-close-button {
 
 .operon-task-finder-search {
 	box-sizing: border-box;
-	display: block;
 	width: 100%;
 	height: 72px;
 	min-height: 72px;
@@ -5787,33 +5780,26 @@ body .modal.operon-task-finder-modal .modal-close-button {
 	padding-top: 23px;
 	padding-bottom: 23px;
 	padding-left: 66px;
-	border: 1px solid color-mix(in srgb, var(--operon-task-finder-accent) 28%, var(--background-modifier-border));
+	border: 1px solid var(--operon-task-finder-control-border);
 	border-radius: 10px;
-	background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
-	background-color: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+	background: transparent;
+	background-color: transparent;
 	color: var(--text-normal);
 	font-family: inherit;
 	font-size: 16px;
 	line-height: 1.55;
 	resize: none;
 	overflow: hidden;
-	box-shadow: inset 0 1px 0 color-mix(in srgb, var(--background-primary) 70%, transparent);
-	--input-shadow: inset 0 1px 0 color-mix(in srgb, var(--background-primary) 70%, transparent);
-	--input-shadow-hover: inset 0 1px 0 color-mix(in srgb, var(--background-primary) 70%, transparent);
+	box-shadow: none;
 	transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
 }
 
-body .modal.mod-operon-task-finder textarea.operon-task-finder-search:focus,
-body .modal.mod-operon-task-finder textarea.operon-task-finder-search:focus-visible,
-body .modal.operon-task-finder-modal textarea.operon-task-finder-search:focus,
-body .modal.operon-task-finder-modal textarea.operon-task-finder-search:focus-visible,
-.operon-task-finder-search:focus,
-.operon-task-finder-search:focus-visible {
+.operon-task-finder-search:focus {
 	outline: none;
 	border-color: var(--operon-task-finder-accent);
-	box-shadow: var(--shadow-input-active);
-	background: var(--background-primary);
-	background-color: var(--background-primary);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--operon-task-finder-accent) 14%, transparent);
+	background: transparent;
+	background-color: transparent;
 }
 
 .operon-task-finder-toolbar {
@@ -12924,7 +12910,7 @@ button.operon-pinned-status svg {
 
 .operon-pinned-card:hover .operon-pinned-desc,
 .operon-pinned-desc:hover {
-	color: color-mix(in srgb, var(--operon-pinned-card-hover-border, var(--operon-pinned-dock-control-hover-border)) 78%, var(--text-normal));
+	color: var(--operon-pinned-card-hover-border, var(--operon-pinned-dock-control-hover-border));
 	text-decoration: none;
 }
 
@@ -13019,7 +13005,7 @@ button.operon-pinned-unpin svg {
 	gap: 8px;
 	min-height: 0;
 	overflow-y: auto;
-	padding: 4px 2px 2px 2px;
+	padding-right: 2px;
 }
 
 .operon-pinned-sidebar-row {
@@ -13091,7 +13077,7 @@ button.operon-pinned-sidebar-status svg {
 .operon-pinned-sidebar-row:hover .operon-pinned-sidebar-desc,
 .operon-pinned-sidebar-row:focus-within .operon-pinned-sidebar-desc,
 .operon-pinned-sidebar-desc:hover {
-	color: color-mix(in srgb, var(--operon-pinned-sidebar-row-hover-border, var(--operon-pinned-sidebar-control-hover-border)) 78%, var(--text-normal));
+	color: var(--operon-pinned-sidebar-row-hover-border, var(--operon-pinned-sidebar-control-hover-border));
 	text-decoration: none;
 }
 
@@ -13200,11 +13186,6 @@ button.operon-pinned-sidebar-action svg {
 
 .operon-filter-view {
 	padding: 8px;
-}
-
-/* Hide the native Obsidian view header in the main desktop workspace because Filter View renders its own controls. */
-body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-view"] > .view-header {
-	display: none;
 }
 
 .operon-filter-surface {
@@ -16723,15 +16704,6 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 .operon-calendar-view {
 	height: 100%;
 	position: relative;
-}
-
-body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view {
-	padding: 0;
-}
-
-/* Hide the native Obsidian view header in the main desktop workspace because Calendar renders its own controls. */
-body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-calendar-view"] > .view-header {
-	display: none;
 }
 
 .operon-calendar-root {
@@ -21916,15 +21888,6 @@ body.operon-calendar-touch-drag-active {
 	height: 100%;
 	position: relative;
 	overflow: hidden;
-}
-
-body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-kanban-view"] > .view-content.operon-kanban-view {
-	padding: 0;
-}
-
-/* Hide the native Obsidian view header in the main desktop workspace because Kanban renders its own toolbar. */
-body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-kanban-view"] > .view-header {
-	display: none;
 }
 
 .operon-kanban-root {
