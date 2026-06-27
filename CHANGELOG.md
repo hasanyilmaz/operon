@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.7.1] - 2026-06-28
+
+This release smooths a few busy edges after 1.7.0. Template variables are more useful for repeatable task creation, planning views have more room on desktop, docs auto-update timing is clearer, and inline task rows recover more cleanly after edits.
+
+### New
+- Added **Template Variables** for `{{status}}` and `{{priority}}`, so file task templates and pasted inline snippets can fill the current default workflow status and priority automatically.
+
+### Improved
+- Improved **Kanban, Calendar, and Filter View** on desktop by hiding Obsidian's duplicate native view header in the main workspace, giving planning and filtering surfaces more room while keeping Operon's own controls in place.
+- Improved **Operon Docs auto-update** so it refreshes docs after Operon version updates instead of checking on every startup, matching the setting description more closely.
+- Improved **Pinned Tasks** polish with clearer description hover color in dark themes and sidebar spacing that keeps the first pinned task from sitting tight against the top and left edges.
+- Improved **Task Finder** search field styling so its border, background, and focus shadow match the calmer Task Creator description field.
+
+### Changed
+- Changed **Operon storage** to use canonical plugin storage only, removing the old vault-root `.operon` fallback and Settings cleanup prompt after multiple releases on the new storage layout.
+
+### Fixed
+- Fixed **inline task rendering** briefly showing raw `{{...}}` metadata after Task Editor saves, checkbox conversion, Tasks emoji conversion, or inline task creation, so updated task rows settle back into the rendered Operon view without requiring an extra click.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 993/993 Phase 5 regression checks.
+
 ## [1.7.0] - 2026-06-25
 
 This update focuses on making Operon easier to understand and reuse inside a real vault. The official docs wiki can now be downloaded into `Operon/Docs` and kept aligned with your local settings, giving both humans and agents a clearer reference point for working with tasks, templates, and configured properties.

@@ -63,7 +63,7 @@ import {
 	normalizeProjectSerialScopes,
 } from '../core/project-serials';
 
-export const CURRENT_SETTINGS_VERSION = 99;
+export const CURRENT_SETTINGS_VERSION = 100;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
@@ -1157,6 +1157,7 @@ export interface OperonSettings {
 	releaseNotesShowOnUpdate: boolean;
 	releaseNotesLastShownVersion: string;
 	operonDocsAutoUpdateEnabled: boolean;
+	operonDocsLastAutoUpdateVersion: string;
 	/** User-customizable named colors used by Operon color pickers. */
 	colorPalette: ColorPaletteEntry[];
 
@@ -1636,6 +1637,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	releaseNotesShowOnUpdate: true,
 	releaseNotesLastShownVersion: '',
 	operonDocsAutoUpdateEnabled: false,
+	operonDocsLastAutoUpdateVersion: '',
 	colorPalette: cloneDefaultColorPalette(),
 
 	taskCreateDebounceMs: 750,
@@ -3064,6 +3066,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.timeFormat = DEFAULT_SETTINGS.timeFormat;
 	}
 	out.releaseNotesLastShownVersion = out.releaseNotesLastShownVersion.trim();
+	out.operonDocsLastAutoUpdateVersion = out.operonDocsLastAutoUpdateVersion.trim();
 	out.colorPalette = normalizeColorPalette(src.colorPalette);
 	if (!['body-top', 'body-bottom'].includes(out.dynamicFileTaskFilterPlacement)) {
 		out.dynamicFileTaskFilterPlacement = DEFAULT_SETTINGS.dynamicFileTaskFilterPlacement;

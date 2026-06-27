@@ -4,6 +4,12 @@ import { splitFrontmatterDocument } from './file-task-template-merge';
 export interface ResolveOperonIdPlaceholdersOptions {
 	generateOperonId: () => string;
 	now?: string;
+	rawContext?: RawOperonTaskLinePlaceholderContext;
+}
+
+export interface RawOperonTaskLinePlaceholderContext {
+	status: string;
+	priority: string;
 }
 
 export interface OperonTemplatePlaceholderContext {
@@ -14,6 +20,8 @@ export interface OperonTemplatePlaceholderContext {
 	dateStarted: string;
 	dateScheduled: string;
 	dateDue: string;
+	status: string;
+	priority: string;
 }
 
 export interface ResolveOperonTemplatePlaceholdersOptions extends ResolveOperonIdPlaceholdersOptions {
@@ -22,20 +30,22 @@ export interface ResolveOperonTemplatePlaceholdersOptions extends ResolveOperonI
 }
 
 const PLACEHOLDER_PATTERN = /\{\{operonId([0-9A-Za-z]?)\}\}/g;
-const RAW_DATE_TIME_PLACEHOLDER_PATTERN = /\{\{(date|datetime)\}\}/g;
-const TEMPLATE_PLACEHOLDER_PATTERN = /\{\{(date|datetime|taskDescription|note|dateStarted|dateScheduled|dateDue)\}\}/g;
+const RAW_TASK_LINE_PLACEHOLDER_PATTERN = /\{\{(date|datetime|status|priority)\}\}/g;
+const TEMPLATE_PLACEHOLDER_PATTERN = /\{\{(date|datetime|taskDescription|note|dateStarted|dateScheduled|dateDue|status|priority)\}\}/g;
 
-function replaceRawDateTimePlaceholders(text: string, now: string | undefined): string {
-	if (!now) return text;
-	return text.replace(RAW_DATE_TIME_PLACEHOLDER_PATTERN, (_match, key: string) => {
-		return key === 'date' ? now.slice(0, 10) : now;
+function replaceRawTaskLinePlaceholders(text: string, options: ResolveOperonIdPlaceholdersOptions): string {
+	if (!options.now && !options.rawContext) return text;
+	return text.replace(RAW_TASK_LINE_PLACEHOLDER_PATTERN, (match, key: string) => {
+		if (key === 'date') return options.now ? options.now.slice(0, 10) : match;
+		if (key === 'datetime') return options.now ?? match;
+		return options.rawContext?.[key as keyof RawOperonTaskLinePlaceholderContext] ?? '';
 	});
 }
 
-function hasRawDateTimePlaceholder(text: string): boolean {
-	RAW_DATE_TIME_PLACEHOLDER_PATTERN.lastIndex = 0;
-	const found = RAW_DATE_TIME_PLACEHOLDER_PATTERN.test(text);
-	RAW_DATE_TIME_PLACEHOLDER_PATTERN.lastIndex = 0;
+function hasRawTaskLinePlaceholder(text: string): boolean {
+	RAW_TASK_LINE_PLACEHOLDER_PATTERN.lastIndex = 0;
+	const found = RAW_TASK_LINE_PLACEHOLDER_PATTERN.test(text);
+	RAW_TASK_LINE_PLACEHOLDER_PATTERN.lastIndex = 0;
 	return found;
 }
 
@@ -128,7 +138,7 @@ function replaceCheckboxLinePlaceholders(
 		if (context && resolveBodyText && nextLine.includes('{{')) {
 			nextLine = replaceTemplatePlaceholders(nextLine, context);
 		} else if (!context && isTaskLineCandidate(nextLine) && nextLine.includes('{{')) {
-			nextLine = replaceRawDateTimePlaceholders(nextLine, options.now);
+			nextLine = replaceRawTaskLinePlaceholders(nextLine, options);
 		}
 
 		lines[index] = nextLine;
@@ -141,7 +151,7 @@ export function resolveOperonIdPlaceholdersInTaskBlock(
 	content: string,
 	options: ResolveOperonIdPlaceholdersOptions,
 ): string {
-	if (!content.includes('{{operonId') && !hasRawDateTimePlaceholder(content)) return content;
+	if (!content.includes('{{operonId') && !hasRawTaskLinePlaceholder(content)) return content;
 	return replaceCheckboxLinePlaceholders(content, options, new Set<string>(), new Map<string, string>());
 }
 
@@ -149,7 +159,7 @@ export function resolveOperonIdPlaceholders(
 	content: string,
 	options: ResolveOperonIdPlaceholdersOptions,
 ): string {
-	if (!content.includes('{{operonId') && !hasRawDateTimePlaceholder(content)) return content;
+	if (!content.includes('{{operonId') && !hasRawTaskLinePlaceholder(content)) return content;
 
 	const { frontmatter, body } = splitFrontmatterDocument(content);
 	const usedIds = new Set<string>();

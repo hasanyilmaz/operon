@@ -556,6 +556,7 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 			private explicitRevealTaskId: string | null = null;
 			private lastLivePreview = false;
 			private lastSelectionRevealSignature = '';
+			private suppressSelectionRevealOnce = false;
 
 			constructor(view: EditorView) {
 				this.lastLivePreview = this.isLivePreview(view);
@@ -571,6 +572,9 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 					transaction.effects.some(effect => effect.is(operonEditorCloseRefreshEffect))
 				);
 				const hasRefresh = hasIndexRefresh || hasEditorCloseRefresh;
+				if (hasEditorCloseRefresh) {
+					this.suppressSelectionRevealOnce = true;
+				}
 				const nowLive = this.isLivePreview(update.view);
 				const modeChanged = nowLive !== this.lastLivePreview;
 				this.lastLivePreview = nowLive;
@@ -600,6 +604,8 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 			private rebuild(view: EditorView): void {
 				const decorations = new RangeSetBuilder<Decoration>();
 				const atomic = new RangeSetBuilder<Decoration>();
+				const suppressSelectionReveal = this.suppressSelectionRevealOnce;
+				this.suppressSelectionRevealOnce = false;
 
 				if (!this.isLivePreview(view)) {
 					this.decorations = Decoration.none;
@@ -632,7 +638,7 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 					const isEditingTail = !!parsed.metadataTailRange
 						&& selectionHead >= parsed.metadataTailRange.from
 						&& selectionHead <= parsed.metadataTailRange.to;
-					const revealTail = !!parsed.metadataTailRange && (isExplicitReveal || isEditingTail);
+					const revealTail = !!parsed.metadataTailRange && (isExplicitReveal || (isEditingTail && !suppressSelectionReveal));
 
 					if (terminalVisualState) {
 						decorations.add(

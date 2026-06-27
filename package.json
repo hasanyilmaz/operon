@@ -1,6 +1,6 @@
 {
 	"name": "operon",
-	"version": "1.7.0",
+	"version": "1.7.1",
 	"description": "Task management system for humans and agents with inline tasks, file tasks, filters, pipelines, pinned tasks, calendar views, Kanban views, recurrence, and time tracking.",
 	"main": "main.js",
 	"scripts": {

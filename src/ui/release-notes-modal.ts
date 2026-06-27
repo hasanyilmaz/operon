@@ -1,4 +1,4 @@
-import { Modal } from 'obsidian';
+import { Modal, normalizePath, TFile } from 'obsidian';
 import type { App } from 'obsidian';
 import { runAsyncAction } from '../core/async-action';
 import { t } from '../core/i18n';
@@ -8,9 +8,14 @@ import {
 	getYoutubeVideoId,
 } from '../core/release-notes';
 import type { OperonReleaseNote } from '../core/release-notes';
+import { OPERON_DOCS_TARGET_ROOT } from '../systems/operon-docs-sync';
 
 interface OperonReleaseNotesModalOptions {
 	onClose?: () => void | Promise<void>;
+}
+
+interface RenderMarkdownOptions {
+	app: App;
 }
 
 export class OperonReleaseNotesModal extends Modal {
@@ -76,7 +81,7 @@ export class OperonReleaseNotesModal extends Modal {
 			if (bannerUrl) this.renderReleaseBanner(noteEl, bannerUrl);
 		}
 
-		renderControlledMarkdown(noteEl, removeValidationSection(note.body));
+		renderControlledMarkdown(noteEl, removeValidationSection(note.body), { app: this.app });
 	}
 
 	private renderReleaseBanner(containerEl: HTMLElement, imageUrl: string): void {
@@ -141,7 +146,7 @@ function formatReleaseDate(date: string): string {
 	return `${year}-${month}-${day}`;
 }
 
-function renderControlledMarkdown(containerEl: HTMLElement, markdown: string): void {
+function renderControlledMarkdown(containerEl: HTMLElement, markdown: string, options: RenderMarkdownOptions): void {
 	const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
 	let paragraphLines: string[] = [];
 	let activeList: HTMLElement | null = null;
@@ -149,7 +154,7 @@ function renderControlledMarkdown(containerEl: HTMLElement, markdown: string): v
 	const flushParagraph = (): void => {
 		if (paragraphLines.length === 0) return;
 		const paragraphEl = containerEl.createEl('p', { cls: 'operon-release-note-paragraph' });
-		renderInlineMarkdown(paragraphEl, paragraphLines.join(' '));
+		renderInlineMarkdown(paragraphEl, paragraphLines.join(' '), options);
 		paragraphLines = [];
 	};
 
@@ -173,7 +178,7 @@ function renderControlledMarkdown(containerEl: HTMLElement, markdown: string): v
 			const headingEl = headingMatch[1] === '##'
 				? containerEl.createEl('h4', { cls: headingClassName })
 				: containerEl.createEl('h5', { cls: headingClassName });
-			renderInlineMarkdown(headingEl, headingMatch[2]);
+			renderInlineMarkdown(headingEl, headingMatch[2], options);
 			continue;
 		}
 
@@ -183,7 +188,7 @@ function renderControlledMarkdown(containerEl: HTMLElement, markdown: string): v
 				activeList = containerEl.createEl('ul', { cls: 'operon-release-note-list' });
 			}
 			const itemEl = activeList.createEl('li');
-			renderInlineMarkdown(itemEl, line.slice(2).trim());
+			renderInlineMarkdown(itemEl, line.slice(2).trim(), options);
 			continue;
 		}
 
@@ -221,8 +226,8 @@ function removeValidationSection(markdown: string): string {
 	return keptLines.join('\n').replace(/\n{3,}/gu, '\n\n').trim();
 }
 
-function renderInlineMarkdown(containerEl: HTMLElement, text: string): void {
-	const pattern = /==([\s\S]*?)==|\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/gu;
+function renderInlineMarkdown(containerEl: HTMLElement, text: string, options: RenderMarkdownOptions): void {
+	const pattern = /==([\s\S]*?)==|\*\*([^*]+)\*\*|`([^`]+)`|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/gu;
 	let lastIndex = 0;
 	let match: RegExpExecArray | null;
 
@@ -235,15 +240,17 @@ function renderInlineMarkdown(containerEl: HTMLElement, text: string): void {
 
 		if (match[1]) {
 			const highlightEl = containerEl.createSpan({ cls: 'operon-release-note-highlight' });
-			renderInlineMarkdown(highlightEl, match[1]);
+			renderInlineMarkdown(highlightEl, match[1], options);
 		} else if (match[2]) {
 			containerEl.createEl('strong', { text: match[2] });
 		} else if (match[3]) {
 			containerEl.createEl('code', { text: match[3] });
-		} else if (match[4] && match[5]) {
-			createExternalLink(containerEl, match[4], match[5]);
-		} else if (match[6]) {
-			const { url, trailing } = splitTrailingUrlPunctuation(match[6]);
+		} else if (match[4]) {
+			createWikiLink(containerEl, match[5] || match[4], match[4], options.app);
+		} else if (match[6] && match[7]) {
+			createExternalLink(containerEl, match[6], match[7]);
+		} else if (match[8]) {
+			const { url, trailing } = splitTrailingUrlPunctuation(match[8]);
 			createExternalLink(containerEl, url, url);
 			appendText(trailing);
 		}
@@ -252,6 +259,63 @@ function renderInlineMarkdown(containerEl: HTMLElement, text: string): void {
 	}
 
 	appendText(text.slice(lastIndex));
+}
+
+function createWikiLink(containerEl: HTMLElement, label: string, target: string, app: App): void {
+	const normalizedTarget = target.replace(/\\/gu, '').trim();
+	const labelText = label.trim() || normalizedTarget;
+	const linkEl = containerEl.createEl('a', {
+		text: labelText,
+		cls: 'internal-link operon-release-note-doc-link',
+		attr: {
+			href: '#',
+			'data-href': normalizedTarget,
+		},
+	});
+	linkEl.addEventListener('click', (event) => {
+		event.preventDefault();
+		runAsyncAction('release notes docs link open failed', () => openReleaseNoteWikiLink(app, normalizedTarget));
+	});
+}
+
+async function openReleaseNoteWikiLink(app: App, target: string): Promise<void> {
+	if (isOperonDocsTarget(target)) {
+		const localFile = getLocalOperonDocsFile(app, target);
+		if (localFile) {
+			await app.workspace.getLeaf(false).openFile(localFile);
+			return;
+		}
+		openExternalUrl(buildOperonDocsFallbackUrl(target));
+		return;
+	}
+
+	await app.workspace.openLinkText(target, '', false);
+}
+
+function isOperonDocsTarget(target: string): boolean {
+	return /^DOCS-\d{3}\s+/u.test(target.replace(/\.md$/iu, '').trim());
+}
+
+function getLocalOperonDocsFile(app: App, target: string): TFile | null {
+	const fileName = target.endsWith('.md') ? target : `${target}.md`;
+	const filePath = normalizePath(`${OPERON_DOCS_TARGET_ROOT}/${fileName}`);
+	const file = app.vault.getAbstractFileByPath(filePath);
+	return file instanceof TFile ? file : null;
+}
+
+function buildOperonDocsFallbackUrl(target: string): string {
+	const slug = target
+		.replace(/\.md$/iu, '')
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/gu, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/gu, '-')
+		.replace(/^-+|-+$/gu, '');
+	return `https://operon.cc/docs/${slug}/`;
+}
+
+function openExternalUrl(url: string): void {
+	window.open(url, '_blank', 'noopener');
 }
 
 function createExternalLink(containerEl: HTMLElement, label: string, url: string): void {

@@ -3,8 +3,9 @@ import { generateRepeatSeriesId } from '../core/id-generator';
 import { RepeatSeriesNamingConfig } from '../systems/recurring-file-naming';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, writeJsonSafely } from './storage-file-ops';
+import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const REPEAT_SERIES_FILE = '.operon/repeat-series.json';
+const REPEAT_SERIES_FILE_NAME = 'repeat-series.json';
 const CURRENT_REPEAT_SERIES_VERSION = 5;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/u;
 const TIME_RE = /^\d{2}:\d{2}(?::\d{2})?$/u;
@@ -290,14 +291,11 @@ export class RepeatSeriesStore {
 	};
 	private mutationQueue: Promise<void> = Promise.resolve();
 	private readonly filePath: string;
-	private readonly legacyFilePath: string | null;
-	private legacyFallbackEnabled = true;
 
-	constructor(app: App, writeQueue: WriteQueue, filePath = REPEAT_SERIES_FILE, legacyFilePath: string | null = null) {
+	constructor(app: App, writeQueue: WriteQueue, filePath?: string) {
 		this.app = app;
 		this.writeQueue = writeQueue;
-		this.filePath = filePath;
-		this.legacyFilePath = legacyFilePath;
+		this.filePath = filePath ?? buildOperonPluginStoragePath(app.vault.configDir, 'state', REPEAT_SERIES_FILE_NAME);
 	}
 
 	async load(): Promise<void> {
@@ -590,10 +588,6 @@ export class RepeatSeriesStore {
 		await this.mutationQueue;
 	}
 
-	setLegacyFallbackEnabled(enabled: boolean): void {
-		this.legacyFallbackEnabled = enabled;
-	}
-
 	private normalizeSeries(raw: unknown): Record<string, RepeatSeriesEntry> {
 		if (!raw || typeof raw !== 'object') return {};
 		const out: Record<string, RepeatSeriesEntry> = {};
@@ -669,7 +663,6 @@ export class RepeatSeriesStore {
 	private async resolveLoadPath(): Promise<string | null> {
 		const adapter = this.app.vault.adapter;
 		if (await adapter.exists(this.filePath)) return this.filePath;
-		if (this.legacyFallbackEnabled && this.legacyFilePath && await adapter.exists(this.legacyFilePath)) return this.legacyFilePath;
 		return null;
 	}
 

@@ -3,10 +3,10 @@ import { clonePipeline, Pipeline } from '../types/pipeline';
 import type { OperonSettings } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
+import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const PIPELINES_FILE = '.operon/pipelines.json';
+const PIPELINES_FILE_NAME = 'pipelines.json';
 const PIPELINE_STORE_VERSION = 1;
-const PIPELINE_STORE_QUEUE_KEY = `${PIPELINES_FILE}::__store__`;
 
 export type PipelineStoreSettings = Pick<OperonSettings, 'pipelines' | 'defaultPipelineName'>;
 
@@ -35,6 +35,10 @@ export class PipelineStore {
 		this.serializedSettings = JSON.stringify(this.settings);
 	}
 
+	private getFilePath(): string {
+		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', PIPELINES_FILE_NAME);
+	}
+
 	getAll(): PipelineStoreSettings {
 		return cloneSettings(this.settings);
 	}
@@ -54,7 +58,8 @@ export class PipelineStore {
 		defaults: PipelineStoreSettings,
 	): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		if (!(await adapter.exists(PIPELINES_FILE))) {
+		const filePath = this.getFilePath();
+		if (!(await adapter.exists(filePath))) {
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
@@ -66,14 +71,14 @@ export class PipelineStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(PIPELINES_FILE);
+			raw = await adapter.read(filePath);
 			const parsed = JSON.parse(raw) as Partial<PipelineStoreData>;
 			this.settings = readStoreData(parsed, legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
 		} catch {
 			console.warn('Operon: Failed to parse pipelines store, preserving invalid file as backup and recovering from fallback settings');
-			await preserveInvalidJsonFile(adapter, PIPELINES_FILE, raw);
+			await preserveInvalidJsonFile(adapter, filePath, raw);
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = true;
@@ -86,7 +91,7 @@ export class PipelineStore {
 		const adapter = this.app.vault.adapter;
 		if (shouldSkipStoreWrite(
 			nextSerialized === this.serializedSettings,
-			await adapter.exists(PIPELINES_FILE),
+			await adapter.exists(this.getFilePath()),
 			this.recoveredFromMalformed,
 			options,
 		)) {
@@ -105,13 +110,14 @@ export class PipelineStore {
 
 	private async persist(): Promise<void> {
 		const adapter = this.app.vault.adapter;
+		const filePath = this.getFilePath();
 		const data: PipelineStoreData = {
 			version: PIPELINE_STORE_VERSION,
 			pipelines: clonePipelines(this.settings.pipelines),
 			defaultPipelineName: this.settings.defaultPipelineName,
 		};
-		await this.writeQueue.enqueue(PIPELINE_STORE_QUEUE_KEY, async () => {
-			await writeJsonSafely(adapter, PIPELINES_FILE, data);
+		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
+			await writeJsonSafely(adapter, filePath, data);
 		});
 		this.recoveredFromMalformed = false;
 	}

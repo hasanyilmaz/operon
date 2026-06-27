@@ -5,10 +5,10 @@ import { KeyMapping, normalizeKeyMappingCollection } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import type { OperonKeyMappingsPackageV1 } from './operon-data-package';
+import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const KEY_MAPPINGS_FILE = '.operon/key-mappings.json';
+const KEY_MAPPINGS_FILE_NAME = 'key-mappings.json';
 const KEY_MAPPING_STORE_VERSION = 1;
-const KEY_MAPPING_STORE_QUEUE_KEY = `${KEY_MAPPINGS_FILE}::__store__`;
 const CANONICAL_KEY_ORDER = new Map(CANONICAL_KEYS.map((key, index) => [key.name, index]));
 
 interface KeyMappingStoreData {
@@ -130,6 +130,10 @@ export class KeyMappingStore {
 		this.writeQueue = writeQueue;
 	}
 
+	private getFilePath(): string {
+		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', KEY_MAPPINGS_FILE_NAME);
+	}
+
 	getAll(): KeyMapping[] {
 		return [
 			...cloneKeyMappings(this.system),
@@ -157,7 +161,8 @@ export class KeyMappingStore {
 
 	async load(legacyKeyMappings: KeyMapping[] | null = null, defaultSeed: KeyMapping[] = []): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		if (!(await adapter.exists(KEY_MAPPINGS_FILE))) {
+		const filePath = this.getFilePath();
+		if (!(await adapter.exists(filePath))) {
 			const seed = legacyKeyMappings && legacyKeyMappings.length > 0
 				? cloneKeyMappings(legacyKeyMappings)
 				: cloneKeyMappings(defaultSeed);
@@ -175,7 +180,7 @@ export class KeyMappingStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(KEY_MAPPINGS_FILE);
+			raw = await adapter.read(filePath);
 			const parsed = JSON.parse(raw) as Partial<KeyMappingStoreData>;
 			const split = splitKeyMappings([
 				...readSection(parsed.system, true),
@@ -190,7 +195,7 @@ export class KeyMappingStore {
 			this.recoveredFromMalformed = false;
 		} catch {
 			console.warn('Operon: Failed to parse key mappings store, preserving invalid file as backup and recovering from runtime defaults');
-			await preserveInvalidJsonFile(adapter, KEY_MAPPINGS_FILE, raw);
+			await preserveInvalidJsonFile(adapter, filePath, raw);
 			const seed = legacyKeyMappings && legacyKeyMappings.length > 0
 				? cloneKeyMappings(legacyKeyMappings)
 				: cloneKeyMappings(defaultSeed);
@@ -214,7 +219,7 @@ export class KeyMappingStore {
 		const adapter = this.app.vault.adapter;
 		if (shouldSkipStoreWrite(
 			nextSerializedStore === this.serializedStore,
-			await adapter.exists(KEY_MAPPINGS_FILE),
+			await adapter.exists(this.getFilePath()),
 			this.recoveredFromMalformed,
 			options,
 		)) {
@@ -235,13 +240,14 @@ export class KeyMappingStore {
 
 	private async persist(): Promise<void> {
 		const adapter = this.app.vault.adapter;
+		const filePath = this.getFilePath();
 		const data: KeyMappingStoreData = {
 			version: KEY_MAPPING_STORE_VERSION,
 			system: cloneKeyMappings(this.system),
 			custom: cloneKeyMappings(this.custom),
 		};
-		await this.writeQueue.enqueue(KEY_MAPPING_STORE_QUEUE_KEY, async () => {
-			await writeJsonSafely(adapter, KEY_MAPPINGS_FILE, data);
+		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
+			await writeJsonSafely(adapter, filePath, data);
 		});
 		this.recoveredFromMalformed = false;
 	}

@@ -2,8 +2,9 @@ import type { App } from 'obsidian';
 import { ActiveTrackerRecord, ActiveTrackersData, TrackerSource } from '../types/tracker';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, writeJsonSafely } from './storage-file-ops';
+import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const ACTIVE_TRACKERS_FILE = '.operon/active-trackers.json';
+const ACTIVE_TRACKERS_FILE_NAME = 'active-trackers.json';
 const ACTIVE_TRACKERS_VERSION = 1;
 const CURRENT_USER_ID = '';
 const CURRENT_USER_NAME = '';
@@ -34,14 +35,11 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 	private mutationQueue: Promise<void> = Promise.resolve();
 	private writesSuspended = false;
 	private readonly filePath: string;
-	private readonly legacyFilePath: string | null;
-	private legacyFallbackEnabled = true;
 
-	constructor(app: App, writeQueue: WriteQueue, filePath = ACTIVE_TRACKERS_FILE, legacyFilePath: string | null = null) {
+	constructor(app: App, writeQueue: WriteQueue, filePath?: string) {
 		this.app = app;
 		this.writeQueue = writeQueue;
-		this.filePath = filePath;
-		this.legacyFilePath = legacyFilePath;
+		this.filePath = filePath ?? buildOperonPluginStoragePath(app.vault.configDir, 'state', ACTIVE_TRACKERS_FILE_NAME);
 	}
 
 	async load(): Promise<void> {
@@ -132,10 +130,6 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 		return this.generation;
 	}
 
-	setLegacyFallbackEnabled(enabled: boolean): void {
-		this.legacyFallbackEnabled = enabled;
-	}
-
 	async drain(): Promise<void> {
 		await this.mutationQueue;
 	}
@@ -179,7 +173,6 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 	private async resolveLoadPath(): Promise<string | null> {
 		const adapter = this.app.vault.adapter;
 		if (await adapter.exists(this.filePath)) return this.filePath;
-		if (this.legacyFallbackEnabled && this.legacyFilePath && await adapter.exists(this.legacyFilePath)) return this.legacyFilePath;
 		return null;
 	}
 

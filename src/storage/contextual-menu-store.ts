@@ -7,10 +7,10 @@ import {
 import { OperonSettings } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
+import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const CONTEXTUAL_MENU_FILE = '.operon/contextual-menu.json';
+const CONTEXTUAL_MENU_FILE_NAME = 'contextual-menu.json';
 const CONTEXTUAL_MENU_STORE_VERSION = 1;
-const CONTEXTUAL_MENU_STORE_QUEUE_KEY = `${CONTEXTUAL_MENU_FILE}::__store__`;
 
 export type ContextualMenuStoreSettings = Pick<
 	OperonSettings,
@@ -108,6 +108,10 @@ export class ContextualMenuStore {
 		this.serializedSettings = JSON.stringify(this.settings);
 	}
 
+	private getFilePath(): string {
+		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', CONTEXTUAL_MENU_FILE_NAME);
+	}
+
 	getAll(): ContextualMenuStoreSettings {
 		return cloneSettings(this.settings);
 	}
@@ -127,7 +131,8 @@ export class ContextualMenuStore {
 		defaults: ContextualMenuStoreSettings,
 	): Promise<void> {
 		const adapter = this.app.vault.adapter;
-		if (!(await adapter.exists(CONTEXTUAL_MENU_FILE))) {
+		const filePath = this.getFilePath();
+		if (!(await adapter.exists(filePath))) {
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
@@ -139,14 +144,14 @@ export class ContextualMenuStore {
 
 		let raw = '';
 		try {
-			raw = await adapter.read(CONTEXTUAL_MENU_FILE);
+			raw = await adapter.read(filePath);
 			const parsed = JSON.parse(raw) as Partial<ContextualMenuStoreData>;
 			this.settings = readStoreData(parsed, defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
 		} catch {
 			console.warn('Operon: Failed to parse contextual menu store, preserving invalid file as backup and recovering from fallback settings');
-			await preserveInvalidJsonFile(adapter, CONTEXTUAL_MENU_FILE, raw);
+			await preserveInvalidJsonFile(adapter, filePath, raw);
 			this.settings = cloneSettings(legacySettings ?? defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = true;
@@ -159,7 +164,7 @@ export class ContextualMenuStore {
 		const adapter = this.app.vault.adapter;
 		if (shouldSkipStoreWrite(
 			nextSerialized === this.serializedSettings,
-			await adapter.exists(CONTEXTUAL_MENU_FILE),
+			await adapter.exists(this.getFilePath()),
 			this.recoveredFromMalformed,
 			options,
 		)) {
@@ -178,6 +183,7 @@ export class ContextualMenuStore {
 
 	private async persist(): Promise<void> {
 		const adapter = this.app.vault.adapter;
+		const filePath = this.getFilePath();
 		const data: ContextualMenuStoreData = {
 			version: CONTEXTUAL_MENU_STORE_VERSION,
 			actionAllowlist: cloneActionAllowlist(this.settings.contextualMenuActionAllowlist),
@@ -188,8 +194,8 @@ export class ContextualMenuStore {
 			mobileTransitionGraceMs: this.settings.contextualMenuMobileTransitionGraceMs,
 			mobileAutoHideMs: this.settings.contextualMenuMobileAutoHideMs,
 		};
-		await this.writeQueue.enqueue(CONTEXTUAL_MENU_STORE_QUEUE_KEY, async () => {
-			await writeJsonSafely(adapter, CONTEXTUAL_MENU_FILE, data);
+		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
+			await writeJsonSafely(adapter, filePath, data);
 		});
 		this.recoveredFromMalformed = false;
 	}

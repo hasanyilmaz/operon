@@ -34,7 +34,7 @@ function normalizeRequiredValue(value: string | null | undefined): string | unde
 	return trimmed ? trimmed : undefined;
 }
 
-function resolveDefaultStatus(pipelines: Pipeline[], defaultPipelineName: string): string | undefined {
+export function resolveDefaultFileTaskStatus(pipelines: Pipeline[], defaultPipelineName: string): string | undefined {
 	const preferred = pipelines.find(pipeline => pipeline.name === defaultPipelineName) ?? pipelines[0];
 	const firstStatus = preferred?.statuses[0];
 	if (!preferred || !firstStatus) return undefined;
@@ -81,7 +81,7 @@ export function resolveFileTaskDefaults(options: ResolveFileTaskDefaultsOptions)
 			options.pipelines,
 			options.defaultPipelineName,
 		)
-		?? resolveDefaultStatus(options.pipelines, options.defaultPipelineName);
+		?? resolveDefaultFileTaskStatus(options.pipelines, options.defaultPipelineName);
 
 	const priority = normalizeRequiredValue(sourceFieldValues['priority'])
 		?? normalizeRequiredValue(templateFieldValues['priority'])

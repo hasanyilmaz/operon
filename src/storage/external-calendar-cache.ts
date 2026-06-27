@@ -1,8 +1,9 @@
 import { App } from 'obsidian';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, writeJsonSafely } from './storage-file-ops';
+import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
-const EXTERNAL_CALENDAR_CACHE_FILE = '.operon/cache/external-calendars.json';
+const EXTERNAL_CALENDAR_CACHE_FILE_NAME = 'external-calendars.json';
 const EXTERNAL_CALENDAR_CACHE_VERSION = 1;
 
 export interface ExternalCalendarCachedEvent {
@@ -114,14 +115,11 @@ export class ExternalCalendarCacheStore {
 	private cacheDocument: ExternalCalendarCacheDocument = emptyDocument();
 	private mutationQueue: Promise<void> = Promise.resolve();
 	private readonly filePath: string;
-	private readonly legacyFilePath: string | null;
-	private legacyFallbackEnabled = true;
 
-	constructor(app: App, writeQueue: WriteQueue, filePath = EXTERNAL_CALENDAR_CACHE_FILE, legacyFilePath: string | null = null) {
+	constructor(app: App, writeQueue: WriteQueue, filePath?: string) {
 		this.app = app;
 		this.writeQueue = writeQueue;
-		this.filePath = filePath;
-		this.legacyFilePath = legacyFilePath;
+		this.filePath = filePath ?? buildOperonPluginStoragePath(app.vault.configDir, 'cache', EXTERNAL_CALENDAR_CACHE_FILE_NAME);
 	}
 
 	async load(): Promise<void> {
@@ -192,10 +190,6 @@ export class ExternalCalendarCacheStore {
 		await this.mutationQueue;
 	}
 
-	setLegacyFallbackEnabled(enabled: boolean): void {
-		this.legacyFallbackEnabled = enabled;
-	}
-
 	private async mutateDocument(
 		transform: (current: ExternalCalendarCacheDocument) => ExternalCalendarCacheDocument,
 	): Promise<void> {
@@ -218,7 +212,6 @@ export class ExternalCalendarCacheStore {
 	private async resolveLoadPath(): Promise<string | null> {
 		const adapter = this.app.vault.adapter;
 		if (await adapter.exists(this.filePath)) return this.filePath;
-		if (this.legacyFallbackEnabled && this.legacyFilePath && await adapter.exists(this.legacyFilePath)) return this.legacyFilePath;
 		return null;
 	}
 }

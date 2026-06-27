@@ -13,6 +13,38 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.7.1',
+		date: '2026-06-28',
+		title: 'Smoother Repeatable Workflows',
+		showOnUpdate: true,
+		body: `
+This release smooths a few busy edges after 1.7.0. Template variables are more useful for repeatable task creation, planning views have more room on desktop, docs auto-update timing is clearer, and inline task rows recover more cleanly after edits.
+
+### New
+- Added **Template Variables** for \`{{status}}\` and \`{{priority}}\`, so file task templates and pasted inline snippets can fill the current default workflow status and priority automatically.
+
+### Improved
+- Improved **Kanban, Calendar, and Filter View** on desktop by hiding Obsidian's duplicate native view header in the main workspace, giving planning and filtering surfaces more room while keeping Operon's own controls in place.
+- Improved **Operon Docs auto-update** so it refreshes docs after Operon version updates instead of checking on every startup, matching the setting description more closely.
+- Improved **Pinned Tasks** polish with clearer description hover color in dark themes and sidebar spacing that keeps the first pinned task from sitting tight against the top and left edges.
+- Improved **Task Finder** search field styling so its border, background, and focus shadow match the calmer Task Creator description field.
+
+### Changed
+- Changed **Operon storage** to use canonical plugin storage only, removing the old vault-root \`.operon\` fallback and Settings cleanup prompt after multiple releases on the new storage layout.
+
+### Fixed
+- Fixed **inline task rendering** briefly showing raw \`{{...}}\` metadata after Task Editor saves, checkbox conversion, Tasks emoji conversion, or inline task creation, so updated task rows settle back into the rendered Operon view without requiring an extra click.
+
+### Updated Docs
+- [[DOCS-061 operonId template variables|operonId template variables]]
+- [[DOCS-012 Inline task syntax|Inline task syntax]]
+- [[DOCS-024 Task templates|Task templates]]
+- [[DOCS-028 Calendar overview|Calendar overview]]
+- [[DOCS-030 Kanban overview|Kanban overview]]
+- And 3 more updated docs.
+`.trim(),
+	},
+	{
 		version: '1.7.0',
 		date: '2026-06-25',
 		title: 'Official Operon Wiki in Your Vault',

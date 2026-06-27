@@ -438,6 +438,22 @@ export function buildOperonDataPackageFromSettings(
 	};
 }
 
+export function mergeOperonDataPackage(
+	existing: Partial<OperonDataPackageV1> | null | undefined,
+	fallback: OperonDataPackageV1,
+): OperonDataPackageV1 {
+	return {
+		schemaVersion: OPERON_DATA_PACKAGE_SCHEMA_VERSION,
+		settings: cloneExistingDomain(existing?.settings, fallback.settings),
+		taxonomy: cloneExistingDomain(existing?.taxonomy, fallback.taxonomy, isTaxonomyDomain),
+		views: cloneExistingDomain(existing?.views, fallback.views, isViewsDomain),
+		ui: mergeUiPackage(existing?.ui, fallback.ui),
+		automation: cloneExistingDomain(existing?.automation, fallback.automation, isAutomationDomain),
+		integrations: cloneExistingDomain(existing?.integrations, fallback.integrations, isIntegrationsDomain),
+		state: buildStatePackage(existing?.state, fallback.state),
+	};
+}
+
 export function createEmptyPinnedTasksPackage(): OperonPinnedTasksPackageV1 {
 	return {
 		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
@@ -637,6 +653,75 @@ function isKeyMapping(value: unknown): value is KeyMapping {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function cloneExistingDomain<T>(
+	existing: unknown,
+	fallback: T,
+	isValid: (value: unknown) => boolean = isRecord,
+): T {
+	return cloneUnknown(isValid(existing) ? existing : fallback);
+}
+
+function buildStatePackage(
+	existing: Partial<OperonDataPackageV1['state']> | null | undefined,
+	fallback: OperonDataPackageV1['state'],
+): OperonDataPackageV1['state'] {
+	return {
+		pinnedTasks: mergePinnedTasksPackages(existing?.pinnedTasks, fallback.pinnedTasks),
+	};
+}
+
+function isTaxonomyDomain(value: unknown): boolean {
+	return isRecord(value)
+		&& isRecord(value.keyMappings)
+		&& isRecord(value.priorities)
+		&& isRecord(value.pipelines);
+}
+
+function isViewsDomain(value: unknown): boolean {
+	return isRecord(value)
+		&& isRecord(value.filters)
+		&& isRecord(value.calendarPresets)
+		&& isRecord(value.kanbanPresets)
+		&& isRecord(value.kanbanOrder);
+}
+
+function isUiDomain(value: unknown): boolean {
+	return isRecord(value)
+		&& isRecord(value.contextualMenu)
+		&& isRecord(value.taskUiPreferences)
+		&& isRecord(value.taskCreationProfile);
+}
+
+function mergeUiPackage(
+	existing: Partial<OperonDataPackageV1['ui']> | null | undefined,
+	fallback: OperonDataPackageV1['ui'],
+): OperonDataPackageV1['ui'] {
+	const fallbackPackage = cloneUnknown<OperonDataPackageV1['ui']>(fallback);
+	if (!existing || !isUiDomain(existing)) return fallbackPackage;
+	return {
+		contextualMenu: isRecord(existing.contextualMenu)
+			? cloneUnknown(existing.contextualMenu)
+			: fallbackPackage.contextualMenu,
+		taskUiPreferences: isRecord(existing.taskUiPreferences)
+			? cloneUnknown(existing.taskUiPreferences)
+			: fallbackPackage.taskUiPreferences,
+		taskCreationProfile: isRecord(existing.taskCreationProfile)
+			? cloneUnknown(existing.taskCreationProfile)
+			: fallbackPackage.taskCreationProfile,
+		workspaceTweaks: isRecord(existing.workspaceTweaks)
+			? cloneUnknown(existing.workspaceTweaks)
+			: fallbackPackage.workspaceTweaks,
+	};
+}
+
+function isAutomationDomain(value: unknown): boolean {
+	return isRecord(value) && isRecord(value.taskAutomationPolicy);
+}
+
+function isIntegrationsDomain(value: unknown): boolean {
+	return isRecord(value) && isRecord(value.externalCalendarSources);
 }
 
 function cloneUnknown<T>(value: unknown): T {
