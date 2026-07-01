@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [1.9.1] - 2026-07-01
+
+### Improved
+- Improved **Obsidian Community scorecard validation** by aligning Operon's TypeScript standard library configuration with the APIs it already uses, clearing the local scorecard warning scan without changing plugin behavior.
+- Added a dedicated **scorecard lint check** so future Obsidian scorecard warnings can be reproduced locally before release.
+
+### Validation
+- Local validation passed `npm run lint:scorecard:strict` and `npm run check:local`, including scorecard strict scanning, strict linting, production build, release guard, and 1032/1032 Phase 5 regression checks.
+
 ## [1.9.0] - 2026-07-01
 
 This release turns Kanban into a more capable planning surface, not just a place to move cards between columns. Task Chips now bring key task context directly onto Kanban cards, while the board, headers, actions, and Calendar task visuals have been refined into a cleaner, more focused interface.

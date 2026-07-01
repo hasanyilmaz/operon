@@ -124,8 +124,9 @@ function readInlineExpandedTaskChips(
 
 	const raw = value as Record<string, unknown>;
 	for (const chip of Object.keys(merged) as (keyof InlineExpandedTaskChips)[]) {
-		if (typeof raw[chip] === 'boolean') {
-			merged[chip] = raw[chip] as boolean;
+		const savedChip = raw[chip];
+		if (typeof savedChip === 'boolean') {
+			merged[chip] = savedChip;
 		}
 	}
 	return merged;

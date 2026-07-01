@@ -110,14 +110,16 @@ export function normalizeProjectSerialState(raw: unknown): ProjectSerialState {
 	if (!raw || typeof raw !== 'object') return data;
 	const assignments = (raw as Record<string, unknown>).assignmentsByScopeId;
 	if (!assignments || typeof assignments !== 'object' || Array.isArray(assignments)) return data;
-	for (const [scopeId, rawAssignment] of Object.entries(assignments as Record<string, unknown>)) {
+	const assignmentEntries = assignments as Record<string, unknown>;
+	for (const [scopeId, rawAssignment] of Object.entries(assignmentEntries)) {
 		const normalizedScopeId = scopeId.trim();
 		if (!normalizedScopeId || !rawAssignment || typeof rawAssignment !== 'object') continue;
 		const assignmentRecord = rawAssignment as Record<string, unknown>;
 		const taskNumbers: Record<string, number> = {};
 		const rawTaskNumbers = assignmentRecord.taskNumbers;
 		if (rawTaskNumbers && typeof rawTaskNumbers === 'object' && !Array.isArray(rawTaskNumbers)) {
-			for (const [operonId, rawNumber] of Object.entries(rawTaskNumbers as Record<string, unknown>)) {
+			const rawTaskNumberEntries = rawTaskNumbers as Record<string, unknown>;
+			for (const [operonId, rawNumber] of Object.entries(rawTaskNumberEntries)) {
 				const normalizedOperonId = operonId.trim();
 				const number = normalizeProjectSerialNumber(rawNumber);
 				if (!normalizedOperonId || number === null) continue;

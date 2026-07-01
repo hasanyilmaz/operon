@@ -33,6 +33,7 @@ export default defineConfig([
 	{
 		ignores: [
 			"eslint.config.mjs",
+			"eslint.scorecard.config.mjs",
 			"esbuild.config.mjs",
 			"main.js",
 			"node_modules/**",

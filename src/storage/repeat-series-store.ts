@@ -236,7 +236,8 @@ function normalizeOverrides(raw: unknown): RepeatSeriesOverrides {
 	if (raw && typeof raw === 'object') {
 		const src = raw as Record<string, unknown>;
 		if (src.single && typeof src.single === 'object') {
-			for (const [occurrenceDate, value] of Object.entries(src.single as Record<string, unknown>)) {
+			const singleEntries = src.single as Record<string, unknown>;
+			for (const [occurrenceDate, value] of Object.entries(singleEntries)) {
 				const normalized = normalizeSingleOverride(value);
 				if (!normalized) continue;
 				single[normalizeDateKey(occurrenceDate) || normalized.occurrenceDate] = normalized;
@@ -591,7 +592,8 @@ export class RepeatSeriesStore {
 	private normalizeSeries(raw: unknown): Record<string, RepeatSeriesEntry> {
 		if (!raw || typeof raw !== 'object') return {};
 		const out: Record<string, RepeatSeriesEntry> = {};
-		for (const [seriesId, entry] of Object.entries(raw as Record<string, unknown>)) {
+		const rawSeries = raw as Record<string, unknown>;
+		for (const [seriesId, entry] of Object.entries(rawSeries)) {
 			if (!entry || typeof entry !== 'object') continue;
 			const src = entry as Record<string, unknown>;
 			const sourceTaskId = typeof src.sourceTaskId === 'string' ? src.sourceTaskId.trim() : '';

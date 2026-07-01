@@ -2138,11 +2138,8 @@ function normalizeCalendarPresetDefinition(raw: unknown): CalendarPreset | null 
 		appearanceModeLight,
 		appearanceModeDark,
 		externalCalendarVisibility: (src.externalCalendarVisibility && typeof src.externalCalendarVisibility === 'object' && !Array.isArray(src.externalCalendarVisibility))
-			? Object.fromEntries(
-				Object.entries(src.externalCalendarVisibility as Record<string, unknown>)
-					.filter(([, v]) => typeof v === 'boolean')
-					.map(([k, v]) => [k, v as boolean])
-			)
+			? Object.fromEntries(Object.entries(src.externalCalendarVisibility as Record<string, unknown>)
+				.filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean'))
 			: {},
 	};
 }
@@ -3201,8 +3198,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		const saved = src.fallbackStateIcons as Record<string, unknown>;
 		const merged = { ...DEFAULT_SETTINGS.fallbackStateIcons };
 		for (const key of Object.keys(merged) as (keyof typeof merged)[]) {
-			if (typeof saved[key] === 'string' && (saved[key] as string).trim()) {
-				merged[key] = normalizeTaskIconValue(saved[key] as string);
+			const savedIcon = saved[key];
+			if (typeof savedIcon === 'string' && savedIcon.trim()) {
+				merged[key] = normalizeTaskIconValue(savedIcon);
 			}
 		}
 		if (sourceSettingsVersion < 70) {
@@ -4032,8 +4030,9 @@ function normalizeInlineExpandedTaskChips(raw: unknown): InlineExpandedTaskChips
 
 	const saved = raw as Record<string, unknown>;
 	for (const chip of Object.keys(merged) as (keyof InlineExpandedTaskChips)[]) {
-		if (typeof saved[chip] === 'boolean') {
-			merged[chip] = saved[chip] as boolean;
+		const savedChip = saved[chip];
+		if (typeof savedChip === 'boolean') {
+			merged[chip] = savedChip;
 		}
 	}
 	return merged;

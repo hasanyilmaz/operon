@@ -377,7 +377,8 @@ function normalizePresetCollapseMap(
 	if (!raw || typeof raw !== 'object') return {};
 	const allowedPresetIds = new Set(availablePresetIds);
 	const normalized: Record<string, string[]> = {};
-	for (const [presetId, value] of Object.entries(raw as Record<string, unknown>)) {
+	const rawPresetMap = raw as Record<string, unknown>;
+	for (const [presetId, value] of Object.entries(rawPresetMap)) {
 		if (!allowedPresetIds.has(presetId) || !Array.isArray(value)) continue;
 		normalized[presetId] = Array.from(new Set(
 			value.filter((entry): entry is string => typeof entry === 'string' && !!entry.trim()),
@@ -389,7 +390,8 @@ function normalizePresetCollapseMap(
 function normalizeCollapseScopeMap(raw: unknown): Record<string, string[]> {
 	if (!raw || typeof raw !== 'object') return {};
 	const normalized: Record<string, string[]> = {};
-	for (const [scopeKey, value] of Object.entries(raw as Record<string, unknown>)) {
+	const rawScopeMap = raw as Record<string, unknown>;
+	for (const [scopeKey, value] of Object.entries(rawScopeMap)) {
 		if (!scopeKey.trim() || !Array.isArray(value)) continue;
 		normalized[scopeKey] = Array.from(new Set(
 			value.filter((entry): entry is string => typeof entry === 'string' && !!entry.trim()),

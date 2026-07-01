@@ -13,6 +13,19 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '1.9.1',
+		date: '2026-07-01',
+		title: 'Scorecard Warning Cleanup',
+		showOnUpdate: true,
+		body: `
+This small maintenance release clears Operon's Obsidian Community scorecard warning scan and makes that same scan reproducible locally, without changing task behavior.
+
+### Improved
+- Improved **Obsidian Community scorecard validation** by aligning TypeScript standard library checks with the APIs Operon already uses.
+- Added a dedicated **scorecard lint check** so scorecard warnings can be caught locally before release.
+`.trim(),
+	},
+	{
 		version: '1.9.0',
 		date: '2026-07-01',
 		title: 'Kanban as a Planning Surface',
