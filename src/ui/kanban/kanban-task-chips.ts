@@ -7,6 +7,7 @@ import { normalizeTaskFieldColor } from '../../core/task-color-source';
 import { t } from '../../core/i18n';
 import { localNow } from '../../core/local-time';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../../core/subtask-action';
+import { resolveTaskDateToneColor } from '../../core/task-date-tone';
 import { IndexedTask } from '../../types/fields';
 import { Pipeline, parseStatusValue } from '../../types/pipeline';
 import type { PriorityDefinition } from '../../types/priority';
@@ -324,7 +325,7 @@ function createKanbanTaskActionChipElement(
 		taskColor,
 	});
 	bindKanbanAxisActivationBridge(chip);
-	if (chip instanceof HTMLButtonElement) {
+	if (isKanbanActionButtonElement(chip)) {
 		chip.type = 'button';
 		chip.addEventListener('click', (event) => {
 			if (readOnly || isKanbanChipActionReadOnly(chip)) return;
@@ -346,6 +347,16 @@ function createKanbanTaskActionChipElement(
 		});
 	}
 	return chip;
+}
+
+function isKanbanActionButtonElement(chip: HTMLElement): chip is HTMLButtonElement {
+	const chipWithInstanceOf = chip as HTMLElement & {
+		instanceOf?: (constructor: typeof HTMLButtonElement) => boolean;
+	};
+	if (typeof chipWithInstanceOf.instanceOf === 'function') {
+		return chipWithInstanceOf.instanceOf(HTMLButtonElement);
+	}
+	return chip.tagName === 'BUTTON';
 }
 
 function buildKanbanTaskActionContext(
@@ -563,11 +574,8 @@ function applyKanbanChipVisualStyles(
 		const locationIconColor = entry.locationMarkerColor ?? taskColor;
 		if (locationIconColor) chip.style.setProperty('--operon-inline-chip-icon-color', locationIconColor);
 	}
-	if (entry.iconTone === 'today') {
-		chip.setCssProps({ '--operon-inline-chip-icon-color': '#2563eb' });
-	} else if (entry.iconTone === 'overdue') {
-		chip.setCssProps({ '--operon-inline-chip-icon-color': '#dc2626' });
-	}
+	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
+	if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
 }
 
 function lookupStatusColor(statusValue: string | undefined, pipelines: Pipeline[]): string {

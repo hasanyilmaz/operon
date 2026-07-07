@@ -26,6 +26,7 @@ import { deriveCountModeRepeatEndFromFieldValues } from '../core/task-field-patc
 import { t } from '../core/i18n';
 import { formatTaskNotice } from '../core/task-notice';
 import { localNow, localToday } from '../core/local-time';
+import { resolveTaskDateTone, resolveTaskDateToneColor } from '../core/task-date-tone';
 import { parseRepeatRule } from '../core/repeat-rule';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
 import { formatUiTime } from '../core/ui-time-format';
@@ -123,6 +124,8 @@ export interface TaskEditorSaveRequest {
 }
 
 export type OnSaveCallback = (request: TaskEditorSaveRequest) => boolean | null | void | Promise<boolean | null | void>;
+
+export const TASK_EDITOR_ESCAPE_INTENT_EVENT = 'operon-editor-escape-intent';
 
 export interface TaskEditorSubtaskRequest {
 	parentOperonId: string;
@@ -806,7 +809,11 @@ export class TaskEditorContent {
 			onEscape: () => {
 				if (!(this.fileBodyMediaQuery?.matches ?? this.isWideFileBodyViewport())) {
 					this.setFileBodyVisible(false);
+					return true;
 				}
+				this.syncFileBodyDraftFromEditor();
+				this.rootEl?.dispatchEvent(new CustomEvent(TASK_EDITOR_ESCAPE_INTENT_EVENT, { bubbles: true }));
+				return true;
 			},
 			onSubmit: () => {
 				void this.persistEditorState('explicit-save');
@@ -1804,14 +1811,39 @@ export class TaskEditorContent {
 	}
 
 	beginCloseSave(): Promise<boolean> {
-		if (this.persistInFlight) return this.persistInFlight;
+		this.syncFileBodyDraftFromEditor();
 		if (this.saveTimer) {
 			clearWindowTimeout(this.saveTimer);
 			this.saveTimer = null;
 		}
 		if (!this.description.trim()) return Promise.resolve(false);
+		if (this.persistInFlight) return this.continueCloseSaveAfterInFlight(this.persistInFlight);
 		if (!this.hasBeenEdited) return Promise.resolve(true);
 		return this.persistEditorState('close-save');
+	}
+
+	private async continueCloseSaveAfterInFlight(inFlight: Promise<boolean>): Promise<boolean> {
+		const saved = await inFlight;
+		if (this.persistInFlight === inFlight) {
+			this.persistInFlight = null;
+		}
+		if (!saved) return false;
+		this.syncFileBodyDraftFromEditor();
+		if (this.saveTimer) {
+			clearWindowTimeout(this.saveTimer);
+			this.saveTimer = null;
+		}
+		if (!this.description.trim()) return false;
+		if (!this.hasBeenEdited) return true;
+		return this.persistEditorState('close-save');
+	}
+
+	prepareCloseSave(): Promise<boolean> {
+		this.syncFileBodyDraftFromEditor();
+		if (this.isNewTask && !this.hasBeenEdited && !this.description.trim()) {
+			return Promise.resolve(true);
+		}
+		return this.beginCloseSave();
 	}
 
 	/**
@@ -2095,7 +2127,7 @@ export class TaskEditorContent {
 			linkTarget: null,
 		};
 		if (key === 'dateScheduled' || key === 'dateDue') {
-			entry.iconTone = this.getRelationDateIconTone(rawValue);
+			entry.iconTone = resolveTaskDateTone(key, rawValue, task.fieldValues);
 		}
 		return entry;
 	}
@@ -2126,19 +2158,8 @@ export class TaskEditorContent {
 			const status = resolveWorkflowStatus(this.settings.pipelines, task.fieldValues['status']);
 			chip.style.setProperty('--operon-inline-chip-icon-color', status?.definition.color ?? '#6b7280');
 		}
-		if (entry.iconTone === 'today') {
-			chip.setCssProps({ '--operon-inline-chip-icon-color': '#2563eb' });
-		} else if (entry.iconTone === 'overdue') {
-			chip.setCssProps({ '--operon-inline-chip-icon-color': '#dc2626' });
-		}
-	}
-
-	private getRelationDateIconTone(value: string): InlineTaskCompactChipEntry['iconTone'] {
-		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'default';
-		const today = localToday();
-		if (value < today) return 'overdue';
-		if (value === today) return 'today';
-		return 'default';
+		const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
+		if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
 	}
 
 	private resolveRelationContextColor(task: IndexedTask, role: 'parent' | 'child'): string {
@@ -3706,14 +3727,6 @@ export class TaskEditorContent {
 		if (!this.onApplyEstimateReallocation) return;
 
 		const actions = control.createDiv('operon-editor-estimate-actions');
-		if (this.isEstimateAutoReallocationEnabled()) {
-			actions.createDiv({
-				cls: 'operon-editor-estimate-auto-hint',
-				text: t('taskEditor', 'estimateReallocationAutoHint'),
-			});
-			return;
-		}
-
 		const button = actions.createEl('button', {
 			cls: 'operon-editor-estimate-reallocate',
 			text: t('taskEditor', 'estimateReallocationButton'),
@@ -3735,10 +3748,6 @@ export class TaskEditorContent {
 
 	private getDraftEstimateSeconds(): number {
 		return Math.max(0, parseInt(this.fieldValues['estimate'] ?? '0', 10) || 0);
-	}
-
-	private isEstimateAutoReallocationEnabled(): boolean {
-		return this.settings.estimateAutoReallocation === true;
 	}
 
 	private getPersistedEstimateSeconds(): number {
@@ -3785,19 +3794,6 @@ export class TaskEditorContent {
 	private async promptConfirmAction(options: ConstructorParameters<typeof ConfirmActionModal>[1]): Promise<boolean> {
 		return await new Promise<boolean>(resolve => {
 			new ConfirmActionModal(this.app, options, resolve).open();
-		});
-	}
-
-	private async showEstimateReallocationInfoModal(proposal: ManualEstimateReallocationProposal): Promise<void> {
-		const isPartial = proposal.coverage === 'partial';
-		await this.promptConfirmAction({
-			title: t('modals', 'reallocateEstimate'),
-			message: isPartial
-				? t('taskEditor', 'estimateReallocationAutoPartialMessage')
-				: t('taskEditor', 'estimateReallocationAutoAppliedMessage'),
-			dismissText: t('buttons', 'close'),
-			readOnly: true,
-			comparisonTable: this.buildEstimateReallocationComparisonTable(proposal),
 		});
 	}
 
@@ -5460,62 +5456,6 @@ export class TaskEditorContent {
 		this.estimateReallocationBaseSeconds = Math.max(0, seconds);
 	}
 
-	private shouldRunAutomaticEstimateReallocation(reason: PersistReason): boolean {
-		return this.isEstimateAutoReallocationEnabled()
-			&& this.onApplyEstimateReallocation != null
-			&& (reason === 'explicit-save' || reason === 'close-save');
-	}
-
-	private async maybeApplyAutomaticEstimateReallocation(
-		reason: PersistReason,
-	): Promise<{ attempted: boolean; applied: boolean }> {
-		if (!this.shouldRunAutomaticEstimateReallocation(reason)) {
-			return { attempted: false, applied: false };
-		}
-
-		const proposal = this.getEstimateReallocationProposal();
-		if (!proposal || !this.onApplyEstimateReallocation) {
-			this.commitEstimateReallocationBaseline(this.getDraftEstimateSeconds());
-			this.refreshEstimateReallocationControl?.();
-			return { attempted: false, applied: false };
-		}
-
-		const childOperonId = this.fieldValues['operonId'];
-		if (!childOperonId) {
-			return { attempted: false, applied: false };
-		}
-
-		const applied = await this.onApplyEstimateReallocation({
-			childOperonId,
-			deltaSeconds: proposal.deltaSeconds,
-			childEstimateBeforeSeconds: proposal.childEstimateBeforeSeconds,
-			childEstimateAfterSeconds: proposal.childEstimateAfterSeconds,
-			appliedSeconds: proposal.appliedSeconds,
-			uncoveredSeconds: proposal.uncoveredSeconds,
-			steps: proposal.steps.map(step => ({
-				operonId: step.operonId,
-				subtractSeconds: step.subtractSeconds,
-				estimateBeforeSeconds: step.estimateBeforeSeconds,
-				estimateAfterSeconds: step.estimateAfterSeconds,
-			})),
-		});
-		if (!applied) {
-			new Notice(t('taskEditor', 'estimateReallocationUnavailable'));
-			this.refreshEstimateReallocationControl?.();
-			return { attempted: true, applied: false };
-		}
-
-		this.commitEstimateReallocationBaseline(proposal.childEstimateAfterSeconds);
-		this.syncTrackingFieldsFromIndex();
-		this.refreshParentContextSection?.();
-		this.refreshEstimateReallocationControl?.();
-		if (reason === 'explicit-save') {
-			await this.showEstimateReallocationInfoModal(proposal);
-		}
-
-		return { attempted: true, applied: true };
-	}
-
 	private syncCheckboxWithWorkflowStatus(): boolean {
 		const currentCompleted = (this.fieldValues['dateCompleted'] ?? '').trim();
 		const currentCancelled = (this.fieldValues['dateCancelled'] ?? '').trim();
@@ -5666,32 +5606,36 @@ export class TaskEditorContent {
 			};
 
 			const taskLine = serializeTask(task, this.settings.keyMappings);
+			const savedDescription = this.description;
+			const savedCheckbox = this.checkbox;
+			const savedTags = [...this.tags];
+			const savedFieldValues = { ...this.fieldValues };
+			const savedFileBodyDraft = this.fileBodyDraft;
+			const savedFileBodyDirty = this.isFileBodyDirty;
+			const savedInlineCompletionMode = this.inlineCompletionMode;
 			const saveResult = await this.onSave({
 				taskLine,
 				isNew: this.isNewTask,
-				inlineCompletionMode: this.inlineCompletionMode,
+				inlineCompletionMode: savedInlineCompletionMode,
 				fileBody: this.fileBodyContext
 					? {
 						filePath: this.fileBodyContext.filePath,
-						content: this.fileBodyDraft,
-						dirty: this.isFileBodyDirty,
+						content: savedFileBodyDraft,
+						dirty: savedFileBodyDirty,
 						format: this.fileBodyContext.format,
 						targetLine: this.fileBodyContext.targetLine,
 					}
 					: null,
 			});
 			if (saveResult === false || saveResult === null) return false;
-			this.persistedDescription = this.description;
-			this.persistedCheckbox = this.checkbox;
-			this.persistedTags = [...this.tags];
-			this.persistedFieldValues = { ...this.fieldValues };
-			this.persistedFileBodyDraft = this.fileBodyDraft;
-			this.persistedInlineCompletionMode = this.inlineCompletionMode;
-			this.isFileBodyDirty = false;
-			const autoReallocationResult = await this.maybeApplyAutomaticEstimateReallocation(reason);
-			if (!autoReallocationResult.attempted && reason === 'explicit-save') {
-				this.commitEstimateReallocationBaseline(this.getDraftEstimateSeconds());
-			} else if (!autoReallocationResult.attempted && reason === 'close-save') {
+			this.persistedDescription = savedDescription;
+			this.persistedCheckbox = savedCheckbox;
+			this.persistedTags = savedTags;
+			this.persistedFieldValues = savedFieldValues;
+			this.persistedFileBodyDraft = savedFileBodyDraft;
+			this.persistedInlineCompletionMode = savedInlineCompletionMode;
+			this.isFileBodyDirty = this.fileBodyDraft !== this.persistedFileBodyDraft;
+			if (reason === 'explicit-save' || reason === 'close-save') {
 				this.commitEstimateReallocationBaseline(this.getDraftEstimateSeconds());
 			}
 			this.refreshEstimateReallocationControl?.();

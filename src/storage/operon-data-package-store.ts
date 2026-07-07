@@ -269,6 +269,7 @@ function isValidDataPackageDomain(domain: OperonDataPackageDomain, value: unknow
 		return isRecord(value.filters)
 			&& isRecord(value.calendarPresets)
 			&& isRecord(value.kanbanPresets)
+			&& (!Object.prototype.hasOwnProperty.call(value, 'tablePresets') || isRecord(value.tablePresets))
 			&& isRecord(value.kanbanOrder);
 	}
 	if (domain === 'ui') {

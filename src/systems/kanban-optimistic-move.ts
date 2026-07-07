@@ -15,6 +15,8 @@ import {
 } from './kanban-query';
 import { buildOptimisticStatusPatch } from './optimistic-status-patch';
 
+export const KANBAN_OPTIMISTIC_MOVE_TTL_MS = 15_000;
+
 export type KanbanOptimisticMoveKind = 'drop' | 'status';
 
 export interface KanbanOptimisticMove extends KanbanDropContext {
@@ -96,7 +98,7 @@ export function buildKanbanOptimisticStatusMovePlan(options: {
 			swimlaneBy: preset.swimlaneBy,
 			statusValue: optimistic.nextStatus,
 			checkbox: optimistic.nextCheckbox,
-			expiresAt: Number.POSITIVE_INFINITY,
+			expiresAt: Date.now() + KANBAN_OPTIMISTIC_MOVE_TTL_MS,
 		},
 		nextStatus: optimistic.nextStatus,
 		nextCheckbox: optimistic.nextCheckbox,
@@ -125,7 +127,7 @@ export function createKanbanDropOptimisticMove(
 		kind: 'drop',
 		sourceLaneKeys: sourceLaneKeys.length > 0 ? sourceLaneKeys : [context.sourceLaneKey],
 		targetLaneKeys: targetLaneKeys.length > 0 ? targetLaneKeys : [context.targetLaneKey],
-		expiresAt: Number.POSITIVE_INFINITY,
+		expiresAt: Date.now() + KANBAN_OPTIMISTIC_MOVE_TTL_MS,
 	};
 }
 

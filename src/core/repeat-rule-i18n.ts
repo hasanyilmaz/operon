@@ -32,7 +32,7 @@ const MONTH_KEYS = [
 // number stands alone and any unit marker (e.g. Chinese 日) lives in the
 // surrounding template. English keeps the {{suffix}} placeholder for ordinals.
 function isCardinalDayLanguage(lang: string): boolean {
-	return lang === 'tr' || lang === 'fr' || lang === 'de' || lang === 'zh-CN' || lang === 'zh-TW' || lang === 'ja';
+	return lang === 'tr' || lang === 'fr' || lang === 'de' || lang === 'zh-CN' || lang === 'zh-TW' || lang === 'ja' || lang === 'ru';
 }
 
 export function buildRepeatRuleSummaryLabels(): RepeatRuleSummaryLabels {

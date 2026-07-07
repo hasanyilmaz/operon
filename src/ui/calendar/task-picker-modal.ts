@@ -1,8 +1,9 @@
 import { App, FuzzyMatch, FuzzySuggestModal, prepareFuzzySearch, setIcon } from 'obsidian';
 import { t } from '../../core/i18n';
 import { IndexedTask } from '../../types/fields';
-import { Pipeline, parseStatusValue } from '../../types/pipeline';
+import { Pipeline } from '../../types/pipeline';
 import { OperonSettings, resolveTaskDisplayIcon } from '../../types/settings';
+import { resolveTaskStatusIconColorForTask } from '../../core/task-color-source';
 import {
 	buildTaskPickerSearchText,
 	getCalendarTaskPickerSortRank,
@@ -130,15 +131,8 @@ export class TaskPickerModal extends FuzzySuggestModal<IndexedTask> {
 
 	private renderTaskIcon(container: HTMLElement, task: IndexedTask): void {
 		container.style.removeProperty('color');
-		const statusValue = task.fieldValues['status'];
-		if (statusValue) {
-			const parsed = parseStatusValue(statusValue);
-			const pipeline = parsed ? this.options.getPipelines().find(candidate => candidate.name === parsed.pipeline) : null;
-			const status = pipeline?.statuses.find(candidate => candidate.label === parsed?.status);
-			if (status?.color) {
-				container.style.color = status.color;
-			}
-		}
+		const iconColor = resolveTaskStatusIconColorForTask(task, this.options.getSettings());
+		if (iconColor) container.style.color = iconColor;
 
 		setIcon(container, resolveTaskDisplayIcon(this.options.getSettings(), task.fieldValues, task.checkbox));
 	}

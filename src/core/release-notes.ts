@@ -13,6 +13,61 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '2.0.0',
+		date: '2026-07-07',
+		title: 'Operon Table: A Unified View for Inline and File Tasks',
+		showOnUpdate: true,
+		bannerUrl: 'operon-2-0-0-tables.png',
+		body: `
+Operon 2 introduces **Operon Table**, a unified view for managing inline tasks and file tasks side by side. It gives you one configurable place to scan your tasks, adjust fields, build saved views, and embed the result in notes.
+
+### New
+- Added **Operon Table**, a new workspace view and embeddable note block for inline and file tasks, with saved presets, filter/search scopes, configurable columns, grouping and subgrouping, multi-sort, summaries, picker-backed cell editing, admin columns, exports, and compact chips/date accents.
+- Added **Task Icon Color Source** in the renamed **Task Icon Fallbacks and Colors** settings section, so the main status-cycle task icon can use Status, Task, Priority, or No color instead of relying on a fixed fallback.
+- Added **Kanban card progress tracks** for subtasks and plain checkboxes, with shared segmented bars, preset-aware colors, a subtask track between the task title and chips, default-on General Kanban Settings toggles, and tooltip details on each slim card bar.
+- Added **Kanban note previews** with an off-by-default setting that shows compact two-line task notes on main cards.
+- Added **Text Field Popovers** for quick Notes and Description editing from Kanban note previews and Operon Table text cells, including icon-only text cells.
+- Added **Russian localization**, including Settings language selection, translated UI strings, Russian date parsing, repeat summaries, calendar wording, task editing labels, and filter surfaces.
+
+### Improved
+- Improved the **Filter editor** so nested condition groups show automatic serial numbers and a temporary expand/collapse control, making long grouped filters easier to scan without adding saved filter metadata.
+- Improved **Filter field selection** with searchable grouped field pickers, so long field lists are easier to browse without changing existing filter rules.
+- Improved **Calendar Task Pool** task row coloring so sidebar tasks follow the active Calendar preset's task color source, matching the grid for Task, Status, Priority, or No color modes.
+- Improved the **Color Picker** so pasting or typing a HEX color into the existing search field previews that exact color and lets it be chosen without adding a separate input.
+- Improved **Task Editor** geometry with tighter, more consistent corners across the modal, editor cards, controls, workflow fields, and the file-body panel.
+- Improved **Calendar and Kanban** headings so planning view titles use the same calmer treatment, with a matching Kanban title icon for easier surface recognition.
+- Improved **related view navigation** with desktop-only \`external-link\` menus placed beside the Operon Table, Calendar, and Kanban titles, so matching Filter, Calendar, Kanban, and Table presets can be opened or created from the same filter context, with Add New wording that calls out when the current filter will be inherited.
+- Improved **Kanban performance and refresh stability** across large boards, pop-out windows, drag/drop updates, collapse state persistence, optimistic card moves, progress-track refreshes, status cycling, and tab title synchronization.
+- Improved **Kanban search controls** with broader default task scopes, Task Finder-style help, a Recently Modified scope, and cleaner scope cleanup when boards close or move between windows.
+- Improved **Keymapping** property editing so multiple property names can be changed from the same open settings page without only the first change persisting.
+- Improved the **plain checkbox popover** so its outer frame stays neutral while inner focus and save actions use the task color when available, falling back to the standard accent color.
+
+### Changed
+- Retired automatic **Estimate Reallocation** from Relationships settings; estimate changes now stay manual through the Task Editor's Subtract Delta action.
+
+### Fixed
+- Fixed **file task conversion** so an existing \`title\` frontmatter property is preserved as user metadata instead of being dropped when a normal note is converted to a file task.
+- Fixed **Task Editor** Escape handling so pressing Esc saves pending edits and closes the editor consistently across task surfaces, while keeping the editor open if the save is rejected.
+- Fixed **Task Wikilink Overlay** cleanup so Reading View and Live Preview remove hover tooltip and contextual menu listeners when overlay controls are torn down, reducing memory growth during repeated rerenders.
+
+### New Docs
+- [[DOCS-105 Table overview|Table overview]]
+- [[DOCS-106 Table columns|Table columns]]
+- [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]
+- [[DOCS-108 Table summaries|Table summaries]]
+- [[DOCS-109 Table presets|Table presets]]
+- And 4 more new docs.
+
+### Updated Docs
+- [[DOCS-001 Operon Docs MOC|Operon Docs]]
+- [[DOCS-004 Operon system map|Operon system map]]
+- [[DOCS-005 Operon core concepts|Operon core concepts]]
+- [[DOCS-025 Filter View|Filter View]]
+- [[DOCS-099 State Icons|State Icons]]
+- And 8 more updated docs.
+`.trim(),
+	},
+	{
 		version: '1.9.1',
 		date: '2026-07-01',
 		title: 'Scorecard Warning Cleanup',

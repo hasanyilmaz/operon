@@ -15,6 +15,7 @@ import { t } from '../core/i18n';
 import { formatShortLocationCoordinate, parseLocationCoordinate } from '../core/location-coordinates';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
+import { resolveTaskDateTone } from '../core/task-date-tone';
 import {
 	getCustomFieldIcon,
 	getCustomFieldLabel,
@@ -214,7 +215,7 @@ export function buildInlineTaskCompactChipEntries(
 				const value = fieldValues[key]?.trim();
 				if (!value) break;
 				const entry = createEntry(settings, key, value, item?.iconOnly === true);
-				entry.iconTone = getDateIconTone(key, value, fieldValues);
+				entry.iconTone = resolveTaskDateTone(key, value, fieldValues);
 				entries.push(entry);
 				break;
 			}
@@ -738,31 +739,4 @@ function formatCompactWikiLinkTargetLabel(linkTarget: string): string {
 function truncateCompactLabel(value: string, maxLength = 37): string {
 	if (value.length <= maxLength) return value;
 	return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
-}
-
-function getDateIconTone(
-	key: InlineTaskCompactChipKey,
-	value: string,
-	fieldValues: Record<string, string>,
-): InlineTaskCompactChipEntry['iconTone'] {
-	if (key !== 'dateScheduled' && key !== 'dateDue') return 'default';
-	if (hasTerminalDate(fieldValues)) return 'default';
-	if (!isValidDateKey(value)) return 'default';
-
-	const today = localToday();
-	if (value < today) return 'overdue';
-	if (value === today) return 'today';
-	return 'default';
-}
-
-function isValidDateKey(value: string): boolean {
-	return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-function localToday(): string {
-	const now = new Date();
-	const year = now.getFullYear();
-	const month = `${now.getMonth() + 1}`.padStart(2, '0');
-	const day = `${now.getDate()}`.padStart(2, '0');
-	return `${year}-${month}-${day}`;
 }

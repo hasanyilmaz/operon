@@ -62,35 +62,27 @@ export function queryKanbanBoard(options: {
 	const keyMappings = options.keyMappings ?? [];
 	const normalizedSearchQuery = (options.searchQuery ?? '').trim().toLocaleLowerCase();
 	const allowedTaskIds = options.taskIdFilter ? new Set(options.taskIdFilter) : null;
-	const searchMatcher = buildTaskSearchMatcher(options.tasks, keyMappings);
+	const searchMatcher = normalizedSearchQuery ? buildTaskSearchMatcher(options.tasks, keyMappings) : null;
 	const scopedTasks = filterTasksForCalendar(filterSet, options.tasks, priorities, pinnedCache ?? null);
 	const relevantTasks = pipeline
 		? scopedTasks
 			.filter(task => isTaskInPipeline(task, pipeline))
 			.filter(task => !allowedTaskIds || allowedTaskIds.has(task.operonId))
-			.filter(task => !normalizedSearchQuery || searchMatcher(task, normalizedSearchQuery))
-		: [];
-	const columns = pipeline
-		? pipeline.statuses
-			.map(status => ({
-				statusId: status.id,
-				statusLabel: status.label,
-				statusValue: composeStatusValue(pipeline.name, status.label),
-				isFinished: status.isFinished,
-				color: status.color?.trim() || null,
-				count: relevantTasks.filter(task => task.fieldValues['status'] === composeStatusValue(pipeline.name, status.label)).length,
-			}))
+			.filter(task => !searchMatcher || searchMatcher(task, normalizedSearchQuery))
 		: [];
 	const lanes = buildKanbanLanes(relevantTasks, preset.swimlaneBy, priorities, keyMappings);
 	const skippedStatusIds = new Set(options.skippedStatusIds ?? []);
 	const skippedLaneKeys = new Set(options.skippedLaneKeys ?? []);
+	const statusTaskCounts = new Map<string, number>();
 	const cellCountMap = new Map<string, number>();
 	const cellMap = new Map<string, IndexedTask[]>();
 	const taskComparator = buildKanbanTaskComparator({ preset, priorities, keyMappings });
 
 	for (const task of relevantTasks) {
-		const statusId = pipeline?.statuses.find(status => composeStatusValue(pipeline.name, status.label) === task.fieldValues['status'])?.id;
-		if (!statusId) continue;
+		const status = pipeline ? resolveTaskStatusDefinition(task, pipeline) : null;
+		if (!status) continue;
+		const statusId = status.id;
+		statusTaskCounts.set(statusId, (statusTaskCounts.get(statusId) ?? 0) + 1);
 		for (const laneKey of extractLaneKeys(task, preset.swimlaneBy, keyMappings)) {
 			const cellKey = buildKanbanCellKey(statusId, laneKey);
 			cellCountMap.set(cellKey, (cellCountMap.get(cellKey) ?? 0) + 1);
@@ -100,6 +92,18 @@ export function queryKanbanBoard(options: {
 			cellMap.get(cellKey)!.push(task);
 		}
 	}
+
+	const columns = pipeline
+		? pipeline.statuses
+			.map(status => ({
+				statusId: status.id,
+				statusLabel: status.label,
+				statusValue: composeStatusValue(pipeline.name, status.label),
+				isFinished: status.isFinished,
+				color: status.color?.trim() || null,
+				count: statusTaskCounts.get(status.id) ?? 0,
+			}))
+		: [];
 
 	for (const [cellKey, tasks] of cellMap.entries()) {
 		if (preset.sortMode === 'manual') {

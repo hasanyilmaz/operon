@@ -144,6 +144,25 @@ function assertCssRuleExcludes(relativePath, selector, forbiddenPatterns, label)
 	}
 }
 
+function assertCssScopedRuleExcludes(relativePath, scopeSelector, targetSelector, forbiddenPatterns, label, ignoreSelector) {
+	const matchingRules = cssRules(relativePath).filter(candidate =>
+		candidate.selectors.some(selectorText =>
+			selectorMatchesTarget(selectorText, scopeSelector)
+			&& selectorMatchesTarget(selectorText, targetSelector)
+			&& (!ignoreSelector || !ignoreSelector(selectorText))));
+
+	for (const pattern of forbiddenPatterns) {
+		const hasForbiddenPattern = matchingRules.some(rule => (
+			typeof pattern === 'string'
+				? rule.body.includes(pattern)
+				: pattern.test(rule.body)
+		));
+		if (hasForbiddenPattern) {
+			fail(`${relativePath}: ${label}: ${targetSelector} must not include ${pattern}`);
+		}
+	}
+}
+
 function assertNoDuplicateCssDeclarations(relativePath) {
 	const text = stripCssComments(readText(relativePath));
 	for (const rule of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
@@ -182,6 +201,7 @@ function compareLocaleFiles() {
 		'Chinese Simplified': flattenStringLeaves(readJson('i18n/locales/zh-CN.json')),
 		'Chinese Traditional': flattenStringLeaves(readJson('i18n/locales/zh-TW.json')),
 		Japanese: flattenStringLeaves(readJson('i18n/locales/ja.json')),
+		Russian: flattenStringLeaves(readJson('i18n/locales/ru.json')),
 	};
 
 	for (const [label, locale] of Object.entries(translations)) {
@@ -250,6 +270,58 @@ function checkCssScorecard() {
 
 	assertNoDuplicateCssDeclarations('styles.css');
 
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-header-cell',
+		['cursor: pointer;', 'user-select: none;'],
+		'Table header cells must keep the interactive cursor contract',
+	);
+
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-header-resize-handle',
+		['width: 7px;', 'cursor: col-resize;'],
+		'Table column resize handles must remain reachable',
+	);
+
+	assertCssScopedRuleExcludes(
+		'styles.css',
+		'.operon-table-embed',
+		'.operon-table-header-cell',
+		[/\bcursor\s*:\s*default\b/, /\bpointer-events\s*:\s*none\b/],
+		'embedded Table headers must not be made visually or functionally passive',
+		selector => selectorMatchesTarget(selector, '.operon-table-header-cell-readonly'),
+	);
+
+	assertCssScopedRuleExcludes(
+		'styles.css',
+		'.operon-table-embed',
+		'.operon-table-header-resize-handle',
+		[
+			/\bdisplay\s*:\s*none\b/,
+			/\bvisibility\s*:\s*hidden\b/,
+			/\bpointer-events\s*:\s*none\b/,
+			/\b(?:width|inline-size)\s*:\s*0(?:px|rem|em|%)?\b/,
+		],
+		'embedded Table resize handles must remain reachable',
+	);
+
+	for (const selector of ['.operon-table-header-cell-sorted', '.operon-table-header-cell-active']) {
+		assertCssScopedRuleExcludes(
+			'styles.css',
+			'.operon-table-embed',
+			selector,
+			[/\bbackground(?:-color)?\s*:\s*transparent\b/, /\bborder-color\s*:\s*transparent\b/, /\bbox-shadow\s*:\s*none\b/],
+			'embedded Table header state affordances must remain visible',
+		);
+	}
+
+	assertNoMatch(
+		'styles.css',
+		/\.operon-table-embed[^{]*\.operon-table-header-cell:hover[^{]*\{[^}]*\b(?:background(?:-color)?\s*:\s*transparent|border-color\s*:\s*transparent|box-shadow\s*:\s*none)\b/s,
+		'embedded Table header hover affordance must remain visible',
+	);
+
 	for (const selector of ['.operon-chip', '.operon-live-preview-chip', '.operon-live-preview-edit', '.operon-task-wikilink-action']) {
 		assertCssRuleContains(
 			'styles.css',
@@ -269,6 +341,33 @@ function checkCssScorecard() {
 		],
 		'inline compact chips must keep a stable visual height',
 	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-embed',
+		[
+			'--operon-task-chip-border: var(--background-modifier-border-hover);',
+			'--operon-task-chip-bg: transparent;',
+		],
+		'embedded Table chips must keep a visible neutral border token',
+	);
+
+	for (const selector of [
+		'.operon-table-root.operon-table-embed .operon-table-cell-chip',
+		'.markdown-reading-view .operon-table-root .operon-table-cell-chip',
+		'.markdown-preview-view .operon-table-root .operon-table-cell-chip',
+	]) {
+		const matchingRules = cssRules('styles.css').filter(candidate => candidate.selectors.includes(selector));
+		if (matchingRules.length === 0) {
+			fail(`styles.css: embedded Table chip markdown override must exist for ${selector}`);
+			continue;
+		}
+		if (matchingRules.some(rule => /\bborder\s*:/.test(rule.body))) {
+			fail(`styles.css: embedded Table chips must not use border shorthand for ${selector}`);
+		}
+		if (matchingRules.every(rule => !rule.body.includes('border-color: var(--operon-task-chip-border, var(--background-modifier-border));'))) {
+			fail(`styles.css: embedded Table chips must resolve border color through the normal Table chip variable for ${selector}`);
+		}
+	}
 }
 
 function checkSettingsDescriptionTextareaGuards() {

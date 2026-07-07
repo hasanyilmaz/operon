@@ -2,13 +2,12 @@ import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
 import { getPinnedTasksForDisplay } from '../core/pinned-task-query';
 import { asyncHandler } from '../core/async-action';
 import { t } from '../core/i18n';
-import { resolveTaskColorSourceForTask } from '../core/task-color-source';
+import { resolveTaskColorSourceForTask, resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { OperonIndexer } from '../indexer/indexer';
 import { TimeTracker } from '../systems/time-tracker';
 import { PinnedCache } from '../storage/pinned-cache';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import { IndexedTask } from '../types/fields';
-import { findStatusDef } from '../types/pipeline';
 import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
@@ -75,6 +74,7 @@ export class PinnedTasksSidebarView extends ItemView {
 			String(this.pinnedCache.getGeneration()),
 			colorSettingsSignature,
 			this.settings.fallbackTaskIconSource,
+			this.settings.taskStatusIconColorSource,
 			`${this.settings.fallbackStateIcons.open}:${this.settings.fallbackStateIcons.done}:${this.settings.fallbackStateIcons.cancelled}`,
 			activeTrackerId ?? '',
 			pinnedTasks.map(task =>
@@ -122,7 +122,9 @@ export class PinnedTasksSidebarView extends ItemView {
 			cls: `operon-pinned-status operon-pinned-sidebar-status operon-checkbox-${task.checkbox}`,
 			attr: { type: 'button' },
 		});
-		statusBtn.style.color = this.lookupStatusColor(task.fieldValues['status']);
+		const iconColor = resolveTaskStatusIconColorForTask(task, this.settings);
+		if (iconColor) statusBtn.style.color = iconColor;
+		else statusBtn.style.removeProperty('color');
 		setIcon(statusBtn, resolveTaskDisplayIcon(this.settings, task.fieldValues, task.checkbox));
 		setAccessibleLabelWithoutTooltip(statusBtn, t('tooltips', 'cycleTaskStatus'));
 		statusBtn.addEventListener('click', asyncHandler('pinned sidebar status cycle failed', async (event) => {
@@ -194,9 +196,4 @@ export class PinnedTasksSidebarView extends ItemView {
 		}
 	}
 
-	private lookupStatusColor(statusValue: string | undefined): string {
-		if (!statusValue) return '#6b7280';
-		const statusDef = findStatusDef(this.settings.pipelines, statusValue);
-		return statusDef?.color ?? '#6b7280';
-	}
 }

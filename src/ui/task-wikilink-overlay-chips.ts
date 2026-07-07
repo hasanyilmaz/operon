@@ -10,6 +10,7 @@ import {
 } from './compact-task-layout';
 import { OperonSettings } from '../types/settings';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
+import { resolveTaskDateToneColor } from '../core/task-date-tone';
 import { Pipeline, parseStatusValue } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
@@ -254,11 +255,8 @@ function applyOverlayChipVisualStyles(
 		const locationIconColor = entry.locationMarkerColor ?? taskColor;
 		if (locationIconColor) cssProps['--operon-inline-chip-icon-color'] = locationIconColor;
 	}
-	if (entry.iconTone === 'today') {
-		cssProps['--operon-inline-chip-icon-color'] = '#2563eb';
-	} else if (entry.iconTone === 'overdue') {
-		cssProps['--operon-inline-chip-icon-color'] = '#dc2626';
-	}
+	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
+	if (dateToneColor) cssProps['--operon-inline-chip-icon-color'] = dateToneColor;
 	if (Object.keys(cssProps).length > 0) {
 		chip.setCssProps(cssProps);
 	}

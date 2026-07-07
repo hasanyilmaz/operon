@@ -1,7 +1,7 @@
 {
 	"id": "operon",
 	"name": "Operon",
-	"version": "1.9.1",
+	"version": "2.0.0",
 	"minAppVersion": "1.7.2",
 	"description": "Task management system for humans and agents with inline tasks, file tasks, filters, pipelines, pinned tasks, calendar views, Kanban views, recurrence, and time tracking.",
 	"author": "Hasan Yılmaz",

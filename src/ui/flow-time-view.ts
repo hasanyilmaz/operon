@@ -16,7 +16,8 @@ import {
 } from '../systems/optimistic-status-patch';
 import { IndexedTask } from '../types/fields';
 import { OperonSettings, FlowTimeMode, resolveTaskDisplayIcon } from '../types/settings';
-import { parseStatusValue, Pipeline } from '../types/pipeline';
+import { Pipeline } from '../types/pipeline';
+import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { ActiveTrackerState, TrackerSource, TrackerStopReason } from '../types/tracker';
 import { promptTaskFinderSelection, TASK_FINDER_SCOPE_TIME_TRACKER } from './task-finder-integrations';
 import { renderQuickInlineTaskCreatorInput } from './task-creator-integrations';
@@ -149,7 +150,7 @@ export class FlowTimeView extends ItemView {
 		const pendingDraftKey = renderedState.pendingDraft
 			? `${renderedState.pendingDraft.description}:${renderedState.pendingDraft.startedAtMs}`
 			: 'none';
-		const taskKey = task ? `${task.operonId}:${task.description}:${task.fieldValues['status'] ?? ''}:${task.fieldValues['taskIcon'] ?? ''}:${task.fieldValues['taskColor'] ?? ''}:${task.checkbox}` : 'none';
+		const taskKey = task ? `${task.operonId}:${task.description}:${task.fieldValues['status'] ?? ''}:${task.fieldValues['priority'] ?? ''}:${task.fieldValues['taskIcon'] ?? ''}:${task.fieldValues['taskColor'] ?? ''}:${task.checkbox}` : 'none';
 		const signature = buildFlowTimeRenderSignature({
 			indexGeneration: this.indexer.getGeneration(),
 			settingsValues: [
@@ -161,11 +162,12 @@ export class FlowTimeView extends ItemView {
 				String(settings.flowTimeShowNumericTimer),
 				String(settings.flowTimeNotifyOnTargetReached),
 				settings.fallbackTaskIconSource,
+				settings.taskStatusIconColorSource,
 				`${settings.fallbackStateIcons.open}:${settings.fallbackStateIcons.done}:${settings.fallbackStateIcons.cancelled}`,
 				settings.pipelines.map(pipeline =>
-					`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.pipelineStatusIcon ?? ''}`).join(',')}`
+					`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.color}:${status.pipelineStatusIcon ?? ''}`).join(',')}`
 				).join('|'),
-				settings.priorities.map(priority => `${priority.label}:${priority.priorityIcon ?? ''}`).join(','),
+				settings.priorities.map(priority => `${priority.label}:${priority.color}:${priority.priorityIcon ?? ''}`).join(','),
 			],
 			activeKey,
 			breakKey,
@@ -1122,13 +1124,7 @@ export class FlowTimeView extends ItemView {
 	}
 
 	private resolveStatusColor(task: IndexedTask): string | null {
-		const statusValue = task.fieldValues['status'];
-		if (!statusValue) return null;
-		const parsed = parseStatusValue(statusValue);
-		if (!parsed) return null;
-		const pipeline = this.callbacks.getPipelines().find(candidate => candidate.name === parsed.pipeline);
-		const status = pipeline?.statuses.find(candidate => candidate.label === parsed.status);
-		return status?.color ?? null;
+		return resolveTaskStatusIconColorForTask(task, this.callbacks.getSettings());
 	}
 
 	private normalizeTaskColor(taskColor: string | undefined): string | null {

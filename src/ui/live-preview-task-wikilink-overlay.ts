@@ -40,6 +40,7 @@ import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/
 import { scanTaskWikiLinksInLine, type TaskWikiLinkMatch } from './task-wikilink-scanner';
 import { bindTaskTitleLinkPreview } from './compact-chip-link-preview';
 import { isTaskDescriptionWikilinkEventTarget, renderTaskDescriptionWikilinks } from './task-description-wikilinks';
+import { cleanupOperonRenderRoot } from './render-root-cleanup';
 
 export interface LivePreviewTaskWikilinkCallbacks {
 	app: App;
@@ -83,8 +84,12 @@ class TaskWikilinkLeftWidget extends WidgetType {
 		button.className = 'operon-task-wikilink-action operon-task-wikilink-left';
 		button.setCssProps({
 			'--operon-task-wikilink-hover': this.visuals.hoverColor,
-			'--operon-task-wikilink-status-color': this.visuals.statusColor,
 		});
+		if (this.visuals.statusColor) {
+			button.style.setProperty('--operon-task-wikilink-status-color', this.visuals.statusColor);
+		} else {
+			button.style.removeProperty('--operon-task-wikilink-status-color');
+		}
 		setIcon(button, this.visuals.iconName);
 		setAccessibleLabelWithoutTooltip(button, t('tooltips', 'cycleTaskStatus'));
 
@@ -111,6 +116,10 @@ class TaskWikilinkLeftWidget extends WidgetType {
 		}
 
 		return button;
+	}
+
+	destroy(dom: HTMLElement): void {
+		cleanupOperonRenderRoot(dom);
 	}
 
 	eq(other: TaskWikilinkLeftWidget): boolean {
@@ -302,6 +311,10 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 		return wrap;
 	}
 
+	destroy(dom: HTMLElement): void {
+		cleanupOperonRenderRoot(dom);
+	}
+
 	eq(other: TaskWikilinkTrailingWidget): boolean {
 		return this.task.operonId === other.task.operonId
 			&& this.remountKey === other.remountKey
@@ -367,6 +380,10 @@ class TaskWikilinkLabelWidget extends WidgetType {
 		});
 
 		return label;
+	}
+
+	destroy(dom: HTMLElement): void {
+		cleanupOperonRenderRoot(dom);
 	}
 
 	eq(other: TaskWikilinkLabelWidget): boolean {
@@ -491,7 +508,6 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 					const visuals = computeTaskFileLinkVisuals(
 						resolved.task,
 						callbacks.getSettings(),
-						callbacks.getPipelines(),
 					);
 					const summary = getCachedDescendantSummary(
 						resolved.task.operonId,
@@ -630,7 +646,7 @@ export function buildTaskWikilinkLeftRenderSignature(
 		taskColor: normalizeTaskColorValue(task.fieldValues['taskColor']),
 		iconName: visuals.iconName,
 		hoverColor: visuals.hoverColor,
-		statusColor: visuals.statusColor,
+		statusColor: visuals.statusColor ?? '',
 		labelState: visuals.labelState,
 	});
 }

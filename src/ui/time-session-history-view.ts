@@ -4,7 +4,8 @@ import { TimeTracker } from '../systems/time-tracker';
 import { TrackerHistoryDayGroup, TrackerSession, TrackerSource } from '../types/tracker';
 import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { formatDurationHuman, parseTrackerList } from '../systems/tracker-utils';
-import { parseStatusValue, resolveWorkflowStatus } from '../types/pipeline';
+import { resolveWorkflowStatus } from '../types/pipeline';
+import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
 import { t } from '../core/i18n';
 import { formatTaskNotice } from '../core/task-notice';
@@ -107,11 +108,12 @@ export class TimeSessionHistoryView extends ItemView {
 			settings.trackerTaskDescriptionClickAction,
 			settings.timeFormat,
 			settings.fallbackTaskIconSource,
+			settings.taskStatusIconColorSource,
 			`${settings.fallbackStateIcons.open}:${settings.fallbackStateIcons.done}:${settings.fallbackStateIcons.cancelled}`,
 			settings.pipelines.map(pipeline =>
 				`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.color}:${status.pipelineStatusIcon ?? ''}`).join(',')}`
 			).join('|'),
-			settings.priorities.map(priority => `${priority.label}:${priority.priorityIcon ?? ''}`).join(','),
+			settings.priorities.map(priority => `${priority.label}:${priority.color}:${priority.priorityIcon ?? ''}`).join(','),
 		].join(':');
 		const signature = [String(this.indexer.getGeneration()), historyKey, settingsKey].join('§');
 
@@ -350,15 +352,8 @@ export class TimeSessionHistoryView extends ItemView {
 	private renderTaskIcon(container: HTMLElement, task: import('../types/fields').IndexedTask): void {
 		container.empty();
 		container.style.removeProperty('color');
-		const statusValue = task.fieldValues['status'];
-		if (statusValue) {
-			const parsed = parseStatusValue(statusValue);
-			const pipeline = parsed ? this.callbacks.getPipelines().find(candidate => candidate.name === parsed.pipeline) : null;
-			const status = pipeline?.statuses.find(candidate => candidate.label === parsed?.status);
-			if (status?.color) {
-				container.style.color = status.color;
-			}
-		}
+		const iconColor = this.resolveStatusColor(task);
+		if (iconColor) container.style.color = iconColor;
 
 		setIcon(container, resolveTaskDisplayIcon(this.callbacks.getSettings(), task.fieldValues, task.checkbox));
 	}
@@ -374,13 +369,7 @@ export class TimeSessionHistoryView extends ItemView {
 	}
 
 	private resolveStatusColor(task: import('../types/fields').IndexedTask): string | null {
-		const statusValue = task.fieldValues['status'];
-		if (!statusValue) return null;
-		const parsed = parseStatusValue(statusValue);
-		if (!parsed) return null;
-		const pipeline = this.callbacks.getPipelines().find(c => c.name === parsed.pipeline);
-		const status = pipeline?.statuses.find(c => c.label === parsed.status);
-		return status?.color ?? null;
+		return resolveTaskStatusIconColorForTask(task, this.callbacks.getSettings());
 	}
 
 	private normalizeTaskColor(taskColor: string | undefined): string | null {

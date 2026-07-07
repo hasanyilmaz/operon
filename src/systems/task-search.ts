@@ -197,20 +197,24 @@ export function buildProjectSearchCandidates(
 		}
 		const directChildIds = Array.from(resolvers.getChildIds(task.operonId))
 			.filter(childId => scopedTaskIds.has(childId));
-		if (directChildIds.length === 0) continue;
+		const descendantIds = Array.from(resolvers.getAllDescendantIds(task.operonId))
+			.filter(descendantId => scopedTaskIds.has(descendantId));
+		const descendantCount = descendantIds.length;
+		const directVisibleCount = (visibleTaskIds.has(task.operonId) ? 1 : 0)
+			+ directChildIds.filter(childId => visibleTaskIds.has(childId)).length;
+		const visibleDescendantCount = descendantIds.filter(descendantId => visibleTaskIds.has(descendantId)).length;
+		const treeVisibleCount = (visibleTaskIds.has(task.operonId) ? 1 : 0)
+			+ visibleDescendantCount;
+		const hasVisibleTreeDescendant = !!options.visibleTaskIds
+			&& options.visibilityMode === 'pt'
+			&& visibleDescendantCount > 0;
+		if (directChildIds.length === 0 && !hasVisibleTreeDescendant) continue;
 		if (normalizedQuery && matcher && !matcher(task, normalizedQuery)) {
 			continue;
 		}
 		if (normalizedQuery && !matcher && !matchesTaskSearchQueryText(task.description.toLocaleLowerCase(), normalizedQuery)) {
 			continue;
 		}
-		const descendantIds = Array.from(resolvers.getAllDescendantIds(task.operonId))
-			.filter(descendantId => scopedTaskIds.has(descendantId));
-		const descendantCount = descendantIds.length;
-		const directVisibleCount = (visibleTaskIds.has(task.operonId) ? 1 : 0)
-			+ directChildIds.filter(childId => visibleTaskIds.has(childId)).length;
-		const treeVisibleCount = (visibleTaskIds.has(task.operonId) ? 1 : 0)
-			+ descendantIds.filter(descendantId => visibleTaskIds.has(descendantId)).length;
 		if (options.visibleTaskIds) {
 			const visibleCount = options.visibilityMode === 'pt' ? treeVisibleCount : directVisibleCount;
 			if (visibleCount === 0) continue;

@@ -14,6 +14,8 @@ import { resolveWorkflowStatus } from '../types/pipeline';
 import { localToday } from '../core/local-time';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
+import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
+import { resolveTaskDateToneColor } from '../core/task-date-tone';
 import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, OperonSettings, resolveTaskDisplayIcon, TaskFinderDefaultScopeItem } from '../types/settings';
 import {
 	buildInlineTaskCompactChipEntries,
@@ -32,6 +34,8 @@ import {
 	getTaskHappensTodayPriority,
 	getTaskModifiedTime,
 	getTaskOverdueDate,
+	getTaskSearchBoxRecentModifiedCutoff,
+	getTaskSearchBoxRecentModifiedDays,
 	TaskSearchBoxScopeState,
 	toggleTaskSearchBoxScope,
 } from './task-search-box-integration';
@@ -892,7 +896,7 @@ export class TaskFinderModal extends Modal {
 	}
 
 	private computeRecentModifiedResults(scopedTasks: IndexedTask[]): TaskFinderResult[] {
-		const cutoff = Date.now() - this.getRecentModifiedDays() * 24 * 60 * 60 * 1000;
+		const cutoff = this.getRecentModifiedCutoff();
 		return scopedTasks
 			.map(task => ({ task, modifiedTime: getTaskModifiedTime(task) }))
 			.filter(entry => entry.modifiedTime >= cutoff)
@@ -1075,11 +1079,8 @@ export class TaskFinderModal extends Modal {
 			const locationIconColor = entry.locationMarkerColor ?? normalizeTaskFinderTaskColor(task.fieldValues['taskColor']);
 			if (locationIconColor) chip.style.setProperty('--operon-inline-chip-icon-color', locationIconColor);
 		}
-		if (entry.iconTone === 'today') {
-			chip.setCssProps({ '--operon-inline-chip-icon-color': '#2563eb' });
-		} else if (entry.iconTone === 'overdue') {
-			chip.setCssProps({ '--operon-inline-chip-icon-color': '#dc2626' });
-		}
+		const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
+		if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
 	}
 
 	private prioritizeOverdueDateEntries(
@@ -1292,8 +1293,9 @@ export class TaskFinderModal extends Modal {
 	}
 
 	private applyTaskIconColor(container: HTMLElement, task: IndexedTask): void {
-		const statusColor = this.getTaskStatusColor(task);
-		if (statusColor) container.style.color = statusColor;
+		const iconColor = resolveTaskStatusIconColorForTask(task, this.getSettings());
+		if (iconColor) container.style.color = iconColor;
+		else container.style.removeProperty('color');
 	}
 
 	private getTaskStatusColor(task: IndexedTask): string | null {
@@ -1302,12 +1304,11 @@ export class TaskFinderModal extends Modal {
 	}
 
 	private getRecentModifiedDays(): number {
-		const days = this.getSettings().taskFinderRecentModifiedDays;
-		return Math.max(1, Math.min(7, Math.round(days || 3)));
+		return getTaskSearchBoxRecentModifiedDays(this.getSettings());
 	}
 
 	private getRecentModifiedCutoff(): number {
-		return Date.now() - this.getRecentModifiedDays() * 24 * 60 * 60 * 1000;
+		return getTaskSearchBoxRecentModifiedCutoff(this.getSettings());
 	}
 
 	private isTaskRecentlyModified(task: IndexedTask): boolean {

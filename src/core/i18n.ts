@@ -1,7 +1,7 @@
 /**
  * Internationalization (i18n) module for Operon.
  * Multilingual support: English (default), Turkish, German, French, Spanish,
- * Simplified Chinese, Traditional Chinese, and Japanese.
+ * Simplified Chinese, Traditional Chinese, Japanese, and Russian.
  *
  * Spec Section 25:
  * - JSON locale files at i18n/locales/
@@ -20,12 +20,13 @@ import es from '../../i18n/locales/es.json';
 import zhCN from '../../i18n/locales/zh-CN.json';
 import zhTW from '../../i18n/locales/zh-TW.json';
 import ja from '../../i18n/locales/ja.json';
+import ru from '../../i18n/locales/ru.json';
 
 /** All available locale data, keyed by language code */
-const LOCALES: Record<string, LocaleData> = { en, tr, de, fr, es, 'zh-CN': zhCN, 'zh-TW': zhTW, ja };
+const LOCALES: Record<string, LocaleData> = { en, tr, de, fr, es, 'zh-CN': zhCN, 'zh-TW': zhTW, ja, ru };
 
 /** Supported language codes */
-export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja';
+export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru';
 
 /**
  * Maps an Obsidian/browser locale string to a supported LangCode.
@@ -67,6 +68,7 @@ export interface LocaleData {
 	taskEditor: Record<string, string>;
 	indexStats: Record<string, string>;
 	pinnedTasks: Record<string, string>;
+	table: Record<string, string>;
 }
 
 /** Active language state */

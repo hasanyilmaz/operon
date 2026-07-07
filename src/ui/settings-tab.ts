@@ -13,7 +13,7 @@
 import * as Obsidian from 'obsidian';
 import { AbstractInputSuggest, App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
 import type { DropdownComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, hasDuplicateKeyMappingVisiblePropertyName, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, resolveEnabledCalendarMobileViewModes, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeTaskStatusIconColorSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, resolveEnabledCalendarMobileViewModes, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
 import type { ProjectSerialScope } from '../types/settings';
 import {
 	createProjectSerialScopeId,
@@ -25,6 +25,14 @@ import {
 import { clonePipeline, composeStatusValue, createPipelineId, createStatusId, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
+import {
+	TABLE_EMBED_VISIBLE_ROW_OPTIONS,
+	cloneTablePreset,
+	normalizeTableEmbedVisibleRows,
+	type TableEmbedVisibleRows,
+	type TablePreset,
+	type TablePresetPatch,
+} from '../types/table';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from './appearance-schemes';
 import {
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS,
@@ -66,6 +74,7 @@ import {
 import { FilterSetModal, type FilterModalEvalDeps } from './filter-set-modal';
 import { ExternalCalendarSourceEditModal } from './external-calendar-source-edit-modal';
 import { CalendarPresetQuickSettingsModal } from './calendar/calendar-preset-quick-settings-modal';
+import { TablePresetQuickSettingsModal } from './table/table-preset-quick-settings-modal';
 import { KanbanPresetQuickSettingsModal } from './kanban/kanban-preset-quick-settings-modal';
 import { OperonIndexer } from '../indexer/indexer';
 import { ConfirmActionModal } from './confirm-action-modal';
@@ -132,6 +141,7 @@ import {
 	CALENDAR_TASK_COLOR_SOURCES,
 	KANBAN_TASK_COLOR_SOURCES,
 	PINNED_DOCK_TASK_COLOR_SOURCES,
+	TASK_STATUS_ICON_COLOR_SOURCES,
 	addTaskColorSourceOptions,
 	getTaskColorSourceLabel,
 	normalizeTaskColorSource,
@@ -165,6 +175,7 @@ import {
 } from '../core/file-task-migration';
 import { renderCompactChipSettingsSection } from './settings/compact-chip-settings-renderer';
 import { runSettingsAsync, settingsAsyncHandler } from './settings/async-settings-action';
+import { bindKeyMappingPropertyInput } from './settings/key-mapping-property-input';
 import { parsePresetNumber } from './settings/preset-control-helpers';
 import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from './task-color-source-select';
 import { shouldRenderRepeatSeriesYamlRemovalRow } from './settings/repeat-yaml-removal-visibility';
@@ -200,6 +211,8 @@ import {
 	type OperonSettingsSearchTextKey,
 } from './settings/settings-search-registry';
 import { getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping } from './custom-field-surfaces';
+import { buildTableTaskFieldCatalog } from './table/table-field-catalog';
+import { applyTablePresetPatch, createTablePresetFromSource } from './table/table-preset-model';
 import {
 	createSettingsCollapsibleSection,
 	createSettingsAddButton,
@@ -251,6 +264,7 @@ type OperonSettingsSecondaryTabId =
 	| 'viewsCalendar'
 	| 'viewsKanban'
 	| 'viewsFilters'
+	| 'viewsTables'
 	| 'interfaceTaskChips'
 	| 'interfacePinnedDock'
 	| 'interfaceTaskFinder'
@@ -357,6 +371,8 @@ type NumberSettingKey = {
 			: never
 		: never
 }[keyof OperonSettings];
+
+type TablePresetSettingsMutationQueue = <T>(operation: () => Promise<T>) => Promise<T>;
 
 function generateFilterSetId(): string {
 	return 'fs_' + Math.random().toString(36).slice(2, 9);
@@ -582,6 +598,7 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'viewsCalendar',
 	'viewsKanban',
 	'viewsFilters',
+	'viewsTables',
 	'interfaceTaskFinder',
 	'interfaceContextMenu',
 	'interfaceStateIcons',
@@ -605,6 +622,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Record<OperonSettingsSecondaryTabId,
 	viewsCalendar: { namespace: 'calendar', key: 'calendarSettingsDesc' },
 	viewsKanban: { namespace: 'settings', key: 'kanbanSettingsDesc' },
 	viewsFilters: { namespace: 'filterSets', key: 'tabDesc' },
+	viewsTables: { namespace: 'settings', key: 'tableSettingsDesc' },
 	interfaceTaskChips: { namespace: 'settings', key: 'settingsPageTaskChipsDesc' },
 	interfacePinnedDock: { namespace: 'settings', key: 'settingsPagePinnedDockDesc' },
 	interfaceTaskFinder: { namespace: 'settings', key: 'settingsPageTaskFinderDesc' },
@@ -730,6 +748,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private removeKanbanManualOrder: (presetId: string) => Promise<void>;
 	private createBasicsWorkspace: () => Promise<void>;
 	private syncOperonDocsNow: () => Promise<void>;
+	private enqueueTablePresetMutation: TablePresetSettingsMutationQueue;
 	private isDeclarativeSettingsRendererActive = false;
 	private activeNativeSettingsPage: {
 		tabId: OperonSettingsTabId;
@@ -766,6 +785,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		removeKanbanManualOrder?: (presetId: string) => Promise<void>,
 		createBasicsWorkspace?: () => Promise<void>,
 		syncOperonDocsNow?: () => Promise<void>,
+		enqueueTablePresetMutation?: TablePresetSettingsMutationQueue,
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
@@ -814,6 +834,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.removeKanbanManualOrder = removeKanbanManualOrder ?? (async () => { });
 		this.createBasicsWorkspace = createBasicsWorkspace ?? (async () => { });
 		this.syncOperonDocsNow = syncOperonDocsNow ?? (async () => { });
+		this.enqueueTablePresetMutation = enqueueTablePresetMutation ?? (operation => operation());
 	}
 
 	private makeEvalDeps(): FilterModalEvalDeps | null {
@@ -1036,12 +1057,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private buildStateIconsSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
 		const sourceEntry = this.buildSettingsSearchSettingDefinition(entries, 'fallbackTaskIconSource');
+		const colorSourceEntry = this.buildSettingsSearchSettingDefinition(entries, 'taskStatusIconColorSource');
 		return [
 			{
 				type: 'group',
 				heading: t('settings', 'fallbackTaskStateIcons'),
 				items: this.compactSettingsSearchDefinitions([
 					sourceEntry,
+					colorSourceEntry,
 					this.buildStateIconRowsSettingsDefinition(),
 				]),
 			},
@@ -1161,7 +1184,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 				type: 'group',
 				heading: t('settings', 'subtabRelationships'),
 				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'estimateAutoReallocation'),
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentFileTask'),
 					this.buildSettingsSearchSettingDefinition(entries, 'autoParentLinkedFileSubtasks'),
 					this.buildSettingsSearchSettingDefinition(entries, 'childTaskInheritanceStatusPipelineSource'),
@@ -1366,7 +1388,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			desc: this.getSettingsSearchTabDescription('interfaceStateIcons'),
 			aliases: [
 				'state icons',
+				'state icons and colors',
 				'fallback icons',
+				'task icon color',
 				'open state icon',
 				'finished state icon',
 				'cancelled state icon',
@@ -1909,6 +1933,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'calendarMobileSlotMinutes') return [...CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS];
 		if (key === 'calendarMobileAgendaPastDays') return [...CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS];
 		if (key === 'calendarMobileAgendaFutureDays') return [...CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS];
+		if (key === 'tableEmbedVisibleRows') return [...TABLE_EMBED_VISIBLE_ROW_OPTIONS];
 		if (key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit' || key === 'dynamicSubtasksFilterSubtaskAutoExpandLimit') {
 			return [...DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS];
 		}
@@ -1971,6 +1996,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'fallbackTaskIconSource') {
 			return normalizeFallbackTaskIconSource(text);
 		}
+		if (key === 'taskStatusIconColorSource') {
+			return normalizeTaskStatusIconColorSource(text);
+		}
 		if (key === 'workspaceTweaksPropertiesScope') {
 			return text === 'all-notes' ? 'all-notes' : 'operon-file-tasks';
 		}
@@ -2019,6 +2047,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return this.settings.kanbanPresets.some(preset => preset.id === text)
 				? text
 				: this.settings.kanbanPresets[0]?.id ?? null;
+		}
+		if (key === 'tableDefaultPresetId') {
+			return this.settings.tablePresets.some(preset => preset.id === text)
+				? text
+				: this.settings.tablePresets[0]?.id ?? null;
+		}
+		if (key === 'tableEmbedVisibleRows') {
+			return normalizeTableEmbedVisibleRows(text, DEFAULT_SETTINGS.tableEmbedVisibleRows);
 		}
 		return text;
 	}
@@ -2127,6 +2163,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 				priorityIcon: t('settings', 'fallbackTaskIconSourcePriority'),
 				stateIcon: t('settings', 'fallbackTaskIconSourceState'),
 			};
+		}
+		if (key === 'taskStatusIconColorSource') {
+			return Object.fromEntries(TASK_STATUS_ICON_COLOR_SOURCES.map(source => [source, getTaskColorSourceLabel(source)]));
 		}
 		if (key === 'workspaceTweaksPropertiesScope') {
 			return {
@@ -2250,9 +2289,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 				getDynamicFileTaskFilterSubtaskAutoExpandLabel(limit),
 			]));
 		}
+		if (key === 'tableEmbedVisibleRows') {
+			return Object.fromEntries(TABLE_EMBED_VISIBLE_ROW_OPTIONS.map(rows => [
+				String(rows),
+				t('settings', 'tableEmbedVisibleRowsOption', { rows: String(rows) }),
+			]));
+		}
 		if (key === 'kanbanDefaultPresetId') {
 			return this.settings.kanbanPresets.length > 0
 				? Object.fromEntries(this.settings.kanbanPresets.map(preset => [preset.id, preset.name]))
+				: { '': t('settings', 'default') };
+		}
+		if (key === 'tableDefaultPresetId') {
+			return this.settings.tablePresets.length > 0
+				? Object.fromEntries(this.settings.tablePresets.map(preset => [preset.id, preset.name]))
 				: { '': t('settings', 'default') };
 		}
 		if (SETTINGS_SEARCH_OPTION_NUMBER_KEYS.has(key)) {
@@ -2271,6 +2321,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ value: 'zh-CN', label: t('settings', 'languageChineseSimplified') },
 			{ value: 'zh-TW', label: t('settings', 'languageChineseTraditional') },
 			{ value: 'ja', label: t('settings', 'languageJapanese') },
+			{ value: 'ru', label: t('settings', 'languageRussian') },
 		];
 		const collator = new Intl.Collator(getCurrentLang(), { sensitivity: 'base' });
 		languageOptions.sort((left, right) =>
@@ -2325,6 +2376,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.refreshNativeSettingsDom();
 		}
 		if (SETTINGS_SEARCH_WORKSPACE_TWEAK_KEYS.has(key)) {
+			this.applyPendingSettingsChange();
+		}
+		if (key === 'kanbanTaskShowNotesPreview') {
+			this.applyPendingSettingsChange();
+		}
+		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskTypeIcon') {
 			this.applyPendingSettingsChange();
 		}
 		if (key === 'timeFormat') {
@@ -2459,6 +2516,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'viewsCalendar', groupId: 'views', label: t('settings', 'tabCalendar') },
 			{ id: 'viewsKanban', groupId: 'views', label: t('settings', 'tabKanban') },
 			{ id: 'viewsFilters', groupId: 'views', label: t('filterSets', 'tabLabel') },
+			{ id: 'viewsTables', groupId: 'views', label: t('settings', 'tabTables') },
 			{ id: 'interfaceTaskChips', groupId: 'interface', label: t('settings', 'subtabTaskChips') },
 			{ id: 'interfacePinnedDock', groupId: 'interface', label: t('settings', 'subtabPinnedDock') },
 			{ id: 'interfaceTaskFinder', groupId: 'interface', label: t('settings', 'subtabTaskFinder') },
@@ -2502,6 +2560,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderKanbanTab(contentEl);
 		} else if (tabId === 'viewsFilters') {
 			this.renderFiltersTab(contentEl);
+		} else if (tabId === 'viewsTables') {
+			this.renderTablesTab(contentEl);
 		} else if (tabId === 'interface' || tabId === 'interfaceTaskChips') {
 			this.renderInterfaceTaskChipsTab(contentEl);
 		} else if (tabId === 'interfacePinnedDock') {
@@ -3245,7 +3305,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private renderTasksRelationshipsTab(containerEl: HTMLElement): void {
 		const relationshipsBody = containerEl.createDiv('operon-native-settings-section-card operon-relationships-settings-card');
-		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'estimateAutoReallocation'), t('settings', 'estimateAutoReallocationDesc'), 'estimateAutoReallocation');
 		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'autoParentInlineSubtasks'), t('settings', 'autoParentInlineSubtasksDesc'), 'autoParentFileTask');
 		this.renderBoundToggleSetting(relationshipsBody, t('settings', 'autoParentLinkedFileSubtasks'), t('settings', 'autoParentLinkedFileSubtasksDesc'), 'autoParentLinkedFileSubtasks');
 		this.renderBoundDropdownSetting(relationshipsBody, t('settings', 'childTaskInheritanceStatusPipelineSource'), t('settings', 'childTaskInheritanceStatusPipelineSourceDesc'), 'childTaskInheritanceStatusPipelineSource', {
@@ -4151,6 +4210,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderInterfaceStateIconsTab(containerEl: HTMLElement): void {
 		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'fallbackTaskStateIcons'));
 		this.renderFallbackTaskIconSourceSetting(sectionEl);
+		this.renderTaskStatusIconColorSourceSetting(sectionEl);
 		this.renderStateIconSetting(sectionEl, 'open', t('settings', 'fallbackOpenStateIcon'), t('settings', 'fallbackOpenStateIconDesc'));
 		this.renderStateIconSetting(sectionEl, 'done', t('settings', 'fallbackFinishedStateIcon'), t('settings', 'fallbackFinishedStateIconDesc'));
 		this.renderStateIconSetting(sectionEl, 'cancelled', t('settings', 'fallbackCancelledStateIcon'), t('settings', 'fallbackCancelledStateIconDesc'));
@@ -4177,6 +4237,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 		setting.settingEl.addClass('operon-fallback-icon-source-setting');
 		setting.settingEl.dataset.operonSettingsSearchId = 'ui.fallbackTaskIconSource';
 		this.markSettingsSearchTarget(setting, 'fallbackTaskIconSource');
+	}
+
+	private renderTaskStatusIconColorSourceSetting(containerEl: HTMLElement): void {
+		this.renderBoundDropdownSetting(containerEl, t('settings', 'taskStatusIconColorSource'), t('settings', 'taskStatusIconColorSourceDesc'), 'taskStatusIconColorSource', {
+			value: this.settings.taskStatusIconColorSource,
+			dropdownOptions: [],
+			configure: dropdown => {
+				addTaskColorSourceOptions(dropdown, TASK_STATUS_ICON_COLOR_SOURCES);
+			},
+			normalize: value => normalizeTaskStatusIconColorSource(value),
+			errorContext: 'settings task status icon color source change failed',
+		});
 	}
 
 	private decorateActivationSetting(setting: Setting, active: boolean): void {
@@ -6108,6 +6180,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			fallback: DEFAULT_SETTINGS.kanbanMaxVisibleTasksPerCell,
 			step: '1',
 		});
+		this.renderBoundToggleSetting(generalSection, t('settings', 'kanbanTaskShowNotesPreview'), t('settings', 'kanbanTaskShowNotesPreviewDesc'), 'kanbanTaskShowNotesPreview');
+		this.renderBoundToggleSetting(generalSection, t('settings', 'kanbanTaskShowSubtaskProgress'), t('settings', 'kanbanTaskShowSubtaskProgressDesc'), 'kanbanTaskShowSubtaskProgress');
+		this.renderBoundToggleSetting(generalSection, t('settings', 'kanbanTaskShowPlainCheckboxProgress'), t('settings', 'kanbanTaskShowPlainCheckboxProgressDesc'), 'kanbanTaskShowPlainCheckboxProgress');
 
 		const presetsSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'kanbanPresets'));
 		presetsSection.addClass('operon-settings-add-list-section');
@@ -6283,6 +6358,414 @@ export class OperonSettingsTab extends PluginSettingTab {
 				refreshTab();
 			},
 		});
+	}
+
+	private renderTablesTab(containerEl: HTMLElement): void {
+		const refreshTablesTab = (): void => {
+			const scrollHost = this.resolveSettingsScrollHost();
+			const scrollTop = scrollHost?.scrollTop ?? 0;
+			const scrollLeft = scrollHost?.scrollLeft ?? 0;
+			containerEl.empty();
+			this.renderTablesTab(containerEl);
+			if (!scrollHost) return;
+
+			const restore = (): void => {
+				const maxScrollTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
+				const maxScrollLeft = Math.max(0, scrollHost.scrollWidth - scrollHost.clientWidth);
+				scrollHost.scrollTop = Math.min(scrollTop, maxScrollTop);
+				scrollHost.scrollLeft = Math.min(scrollLeft, maxScrollLeft);
+			};
+			restore();
+			scrollHost.ownerDocument.defaultView?.requestAnimationFrame(restore);
+		};
+
+		renderSettingsInfoBox(containerEl, t('table', 'title'), t('settings', 'tableSettingsDesc'));
+
+		const generalSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'tableGeneralSettings'));
+		this.markSettingsSearchTarget(renderDropdownSetting({
+			containerEl: generalSection,
+			name: t('settings', 'tableDefaultPreset'),
+			desc: t('settings', 'tableDefaultPresetDesc'),
+			value: this.settings.tableDefaultPresetId ?? this.settings.tablePresets[0]?.id ?? '',
+			options: [],
+			configure: drop => {
+				for (const preset of this.settings.tablePresets) {
+					drop.addOption(preset.id, preset.name);
+				}
+			},
+			onChange: settingsAsyncHandler('settings table default preset save failed', async value => {
+				await this.saveTableSettingsAndRefresh(() => {
+					this.settings.tableDefaultPresetId = value ? value : (this.settings.tablePresets[0]?.id ?? null);
+				});
+			}),
+		}), 'tableDefaultPresetId');
+		this.renderBoundDropdownSetting(generalSection, t('settings', 'tableEmbedVisibleRows'), t('settings', 'tableEmbedVisibleRowsDesc'), 'tableEmbedVisibleRows', {
+			value: String(this.settings.tableEmbedVisibleRows) as `${TableEmbedVisibleRows}`,
+			dropdownOptions: TABLE_EMBED_VISIBLE_ROW_OPTIONS.map(rows => ({
+				value: String(rows) as `${TableEmbedVisibleRows}`,
+				label: t('settings', 'tableEmbedVisibleRowsOption', { rows: String(rows) }),
+			})),
+			normalize: value => normalizeTableEmbedVisibleRows(value, DEFAULT_SETTINGS.tableEmbedVisibleRows),
+			onAfterChange: () => this.applyPendingSettingsChange(),
+		});
+		this.renderBoundToggleSetting(
+			generalSection,
+			t('settings', 'tableShowLineNumbers'),
+			t('settings', 'tableShowLineNumbersDesc'),
+			'tableShowLineNumbers',
+			{ onAfterChange: () => this.applyPendingSettingsChange() },
+		);
+		this.renderBoundToggleSetting(
+			generalSection,
+			t('settings', 'tableShowTaskIcon'),
+			t('settings', 'tableShowTaskIconDesc'),
+			'tableShowTaskIcon',
+			{ onAfterChange: () => this.applyPendingSettingsChange() },
+		);
+		this.renderBoundToggleSetting(
+			generalSection,
+			t('settings', 'tableShowTaskTypeIcon'),
+			t('settings', 'tableShowTaskTypeIconDesc'),
+			'tableShowTaskTypeIcon',
+			{ onAfterChange: () => this.applyPendingSettingsChange() },
+		);
+
+		const presetsSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'tablePresets'));
+		presetsSection.addClass('operon-settings-add-list-section');
+		presetsSection.addClass('operon-settings-card-list-section');
+		const tablePresetsDescEl = presetsSection.createEl('p', {
+			text: t('settings', 'tablePresetsDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		tablePresetsDescEl.dataset.operonSettingsSearchId = 'views.tablePresets';
+		const listEl = presetsSection.createDiv('operon-table-preset-list');
+		const renderList = (): void => {
+			listEl.empty();
+			for (let index = 0; index < this.settings.tablePresets.length; index++) {
+				this.renderTablePresetRow(listEl, this.settings.tablePresets[index], index, renderList, refreshTablesTab);
+			}
+		};
+		renderList();
+
+		const addRowEl = presetsSection.createDiv('operon-settings-add-row');
+		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'tableAddPresetButton'));
+		addBtn.addEventListener('click', settingsAsyncHandler('settings table preset add failed', async () => {
+			const preset = createTablePresetFromSource(null, t('settings', 'tableFallbackPresetName', {
+				number: String(this.settings.tablePresets.length + 1),
+				}));
+				this.openTablePresetSettingsModal(preset, async (_patch, savedPreset) => {
+					await this.saveTableSettingsAndRefresh(() => {
+						this.settings.tablePresets.push(savedPreset);
+						if (!this.settings.tableDefaultPresetId) {
+							this.settings.tableDefaultPresetId = this.settings.tablePresets[0]?.id ?? null;
+						}
+					});
+					refreshTablesTab();
+				}, { saveWhenClean: true });
+			}));
+	}
+
+	private renderTablePresetRow(
+		listEl: HTMLElement,
+		preset: TablePreset,
+		index: number,
+		refresh: () => void,
+		refreshTab: () => void,
+	): void {
+		const total = this.settings.tablePresets.length;
+		const isOnlyPreset = total === 1;
+		const presetName = preset.name.trim() || t('settings', 'tableFallbackPresetName', { number: String(index + 1) });
+		const scopeName = this.getTablePresetScopeLabel(preset);
+		const visibleColumnCount = preset.columns.filter(column => !column.hidden).length;
+		const groupLabel = preset.groupBy ? this.getTableFieldLabel(preset.groupBy) : t('table', 'noGrouping');
+		const card = createSettingsListCard({
+			containerEl: listEl,
+			icon: 'table-2',
+			title: presetName,
+			className: 'operon-table-preset-card',
+		});
+
+		if (preset.id === this.settings.tableDefaultPresetId) {
+			createSettingsListCardChip({
+				containerEl: card.metaEl,
+				icon: 'star',
+				label: t('settings', 'default'),
+			});
+		}
+		createSettingsListCardChip({
+			containerEl: card.metaEl,
+			icon: 'filter',
+			label: scopeName,
+		});
+		createSettingsListCardChip({
+			containerEl: card.metaEl,
+			icon: 'columns-3',
+			label: `${t('table', 'presetSectionColumns')}: ${String(visibleColumnCount)}`,
+		});
+		createSettingsListCardChip({
+			containerEl: card.metaEl,
+			icon: 'rows-3',
+			label: `${t('table', 'groupBy')}: ${groupLabel}`,
+		});
+		if (preset.sortRules.length > 0) {
+			createSettingsListCardChip({
+				containerEl: card.metaEl,
+				icon: 'arrow-up-down',
+				label: `${t('table', 'presetSectionSort')}: ${String(preset.sortRules.length)}`,
+			});
+		}
+		if (preset.summaries.length > 0) {
+			createSettingsListCardChip({
+				containerEl: card.metaEl,
+				icon: 'sigma',
+				label: `${t('table', 'presetSectionSummaries')}: ${String(preset.summaries.length)}`,
+			});
+		}
+
+		createSettingsListCardActionButton({
+			containerEl: card.actionsEl,
+			label: t('settings', 'moveUp'),
+			ariaLabel: `${t('settings', 'moveUp')}: ${presetName}`,
+			icon: 'arrow-up',
+			disabled: index === 0,
+			errorContext: 'settings table preset move up failed',
+			onClick: async () => {
+				if (await this.moveTablePreset(index, -1)) refresh();
+			},
+		});
+
+		createSettingsListCardActionButton({
+			containerEl: card.actionsEl,
+			label: t('settings', 'moveDown'),
+			ariaLabel: `${t('settings', 'moveDown')}: ${presetName}`,
+			icon: 'arrow-down',
+			disabled: index === total - 1,
+			errorContext: 'settings table preset move down failed',
+			onClick: async () => {
+				if (await this.moveTablePreset(index, 1)) refresh();
+			},
+		});
+
+		createSettingsListCardActionButton({
+			containerEl: card.actionsEl,
+			label: t('table', 'editPreset'),
+			ariaLabel: `${t('table', 'editPreset')}: ${presetName}`,
+			text: t('table', 'editPreset'),
+			wide: true,
+			onClick: () => {
+				this.openTablePresetSettingsModal(preset, async patch => {
+					await this.saveTableSettingsAndRefresh(() => {
+						this.patchTablePreset(patch);
+					});
+					refresh();
+				});
+			},
+		});
+
+		createSettingsListCardActionButton({
+			containerEl: card.actionsEl,
+			label: t('table', 'duplicatePreset'),
+			ariaLabel: `${t('table', 'duplicatePreset')}: ${presetName}`,
+			icon: 'copy',
+			errorContext: 'settings table preset duplicate failed',
+			onClick: async () => {
+				const copy = createTablePresetFromSource(preset, t('table', 'duplicatePresetName', { name: presetName }));
+				await this.saveTableSettingsAndRefresh(() => {
+					this.settings.tablePresets.splice(index + 1, 0, copy);
+				});
+				refreshTab();
+			},
+		});
+
+		createSettingsListCardActionButton({
+			containerEl: card.actionsEl,
+			label: t('table', 'copyEmbedCode'),
+			ariaLabel: `${t('table', 'copyEmbedCode')}: ${presetName}`,
+			text: '</>',
+			monospace: true,
+			errorContext: 'settings table preset embed copy failed',
+			onClick: async () => {
+				await this.copyTablePresetEmbedCode(preset);
+			},
+		});
+
+		createSettingsListCardActionButton({
+			containerEl: card.actionsEl,
+			label: preset.id === this.settings.tableDefaultPresetId ? t('table', 'defaultPreset') : t('table', 'setDefaultPreset'),
+			ariaLabel: `${t('table', 'setDefaultPreset')}: ${presetName}`,
+			icon: 'star',
+			disabled: preset.id === this.settings.tableDefaultPresetId,
+			errorContext: 'settings table preset default failed',
+			onClick: async () => {
+				await this.saveTableSettingsAndRefresh(() => {
+					if (!this.settings.tablePresets.some(entry => entry.id === preset.id)) return;
+					this.settings.tableDefaultPresetId = preset.id;
+				});
+				refresh();
+			},
+		});
+
+		createSettingsListCardActionButton({
+			containerEl: card.actionsEl,
+			label: t('table', 'deletePreset'),
+			ariaLabel: `${t('table', 'deletePreset')}: ${presetName}`,
+			icon: 'trash-2',
+			disabled: isOnlyPreset,
+			danger: true,
+			errorContext: 'settings table preset remove failed',
+			onClick: async () => {
+				await this.deleteTablePresetFromSettings(preset.id, presetName);
+				refreshTab();
+			},
+		});
+	}
+
+	private getTablePresetScopeLabel(preset: TablePreset): string {
+		if (!preset.filterSetId) return t('table', 'allTasksScope');
+		return getNormalFilterSets(this.settings.filterSets).find(entry => entry.id === preset.filterSetId)?.name
+			?? t('calendar', 'noFilter');
+	}
+
+	private async copyTablePresetEmbedCode(preset: TablePreset): Promise<void> {
+		const code = '```operon-table\npresetId: "' + preset.id + '"\n```';
+		await navigator.clipboard.writeText(code);
+		new Notice(t('table', 'embedCodeCopied'));
+	}
+
+	private getTableFieldLabel(key: string): string {
+		return buildTableTaskFieldCatalog(this.settings).find(field => field.key === key)?.label ?? key;
+	}
+
+	private patchTablePreset(patch: TablePresetPatch): void {
+		const index = this.settings.tablePresets.findIndex(entry => entry.id === patch.id);
+		if (index === -1) return;
+		this.settings.tablePresets[index] = applyTablePresetPatch(this.settings.tablePresets[index], patch);
+		if (!this.settings.tablePresets.some(entry => entry.id === this.settings.tableDefaultPresetId)) {
+			this.settings.tableDefaultPresetId = this.settings.tablePresets[0]?.id ?? null;
+		}
+	}
+
+	private snapshotTablePresetSettings(): { tablePresets: TablePreset[]; tableDefaultPresetId: string | null } {
+		return {
+			tablePresets: this.settings.tablePresets.map(cloneTablePreset),
+			tableDefaultPresetId: this.settings.tableDefaultPresetId,
+		};
+	}
+
+	private restoreTablePresetSettings(snapshot: { tablePresets: TablePreset[]; tableDefaultPresetId: string | null }): void {
+		this.settings.tablePresets = snapshot.tablePresets.map(cloneTablePreset);
+		this.settings.tableDefaultPresetId = snapshot.tableDefaultPresetId;
+	}
+
+	private async saveTableSettingsAndRefresh(mutator?: () => void): Promise<void> {
+		await this.enqueueTablePresetMutation(async () => {
+			const snapshot = this.snapshotTablePresetSettings();
+			try {
+				mutator?.();
+				await this.persistSettingsOnly();
+			} catch (error) {
+				this.restoreTablePresetSettings(snapshot);
+				this.hasPendingSettingsChange = false;
+				this.onSettingsChanged();
+				throw error;
+			}
+			this.hasPendingSettingsChange = false;
+			this.onSettingsChanged();
+		});
+	}
+
+	private async moveTablePreset(index: number, direction: -1 | 1): Promise<boolean> {
+		const targetIndex = index + direction;
+		if (targetIndex < 0 || targetIndex >= this.settings.tablePresets.length) return false;
+		let movedPreset = false;
+		await this.saveTableSettingsAndRefresh(() => {
+			const currentTargetIndex = index + direction;
+			if (currentTargetIndex < 0 || currentTargetIndex >= this.settings.tablePresets.length) return;
+			const presets = [...this.settings.tablePresets];
+			const [moved] = presets.splice(index, 1);
+			if (!moved) return;
+			presets.splice(currentTargetIndex, 0, moved);
+			this.settings.tablePresets = presets;
+			movedPreset = true;
+		});
+		if (!movedPreset) return false;
+		return true;
+	}
+
+	private openTablePresetSettingsModal(
+		preset: TablePreset | null,
+		onSave?: (patch: TablePresetPatch, preset: TablePreset) => Promise<void>,
+		options: { saveWhenClean?: boolean } = {},
+	): void {
+		new TablePresetQuickSettingsModal(this.app, {
+			getSettings: () => this.settings,
+			preset,
+			onSave: async (patch, savedPreset) => {
+				if (onSave) {
+					await onSave(patch, savedPreset);
+				} else {
+					await this.saveTableSettingsAndRefresh(() => {
+						this.patchTablePreset(patch);
+					});
+					this.redisplayPreservingScroll();
+				}
+			},
+			onCreate: async created => {
+				await this.saveTableSettingsAndRefresh(() => {
+					this.settings.tablePresets.push(created);
+					if (!this.settings.tableDefaultPresetId) {
+						this.settings.tableDefaultPresetId = created.id;
+					}
+				});
+				this.redisplayPreservingScroll();
+			},
+			onDuplicate: async created => {
+				await this.saveTableSettingsAndRefresh(() => {
+					this.settings.tablePresets.push(created);
+				});
+				this.redisplayPreservingScroll();
+			},
+			onDelete: async presetId => {
+				const presetName = this.settings.tablePresets.find(entry => entry.id === presetId)?.name
+					?? t('settings', 'tableFallbackPresetName', { number: '1' });
+				await this.deleteTablePresetFromSettings(presetId, presetName);
+				this.redisplayPreservingScroll();
+			},
+			onSetDefault: async presetId => {
+				await this.saveTableSettingsAndRefresh(() => {
+					if (!this.settings.tablePresets.some(entry => entry.id === presetId)) return;
+					this.settings.tableDefaultPresetId = presetId;
+				});
+				this.redisplayPreservingScroll();
+			},
+			onSaveFilterSet: async filterSet => {
+				await this.upsertFilterSet(filterSet);
+				await this.saveSettings();
+			},
+			getFilterModalEvalDeps: () => this.makeEvalDeps(),
+			saveWhenClean: options.saveWhenClean,
+		}).open();
+	}
+
+	private async deleteTablePresetFromSettings(presetId: string, presetName: string): Promise<void> {
+		if (this.settings.tablePresets.length <= 1) {
+			new Notice(t('settings', 'tableAtLeastOnePresetRequired'));
+			return;
+		}
+		const confirmed = await this.confirmDeleteTablePreset(presetName);
+		if (!confirmed) return;
+		let deleted = false;
+		await this.saveTableSettingsAndRefresh(() => {
+			if (this.settings.tablePresets.length <= 1) return;
+			const nextPresets = this.settings.tablePresets.filter(entry => entry.id !== presetId);
+			if (nextPresets.length === this.settings.tablePresets.length) return;
+			this.settings.tablePresets = nextPresets;
+			deleted = true;
+			if (!this.settings.tablePresets.some(entry => entry.id === this.settings.tableDefaultPresetId)) {
+				this.settings.tableDefaultPresetId = this.settings.tablePresets[0]?.id ?? null;
+			}
+		});
+		if (!deleted) return;
 	}
 
 	private openKanbanPresetSettingsModal(preset: KanbanPreset | null, onSave: (preset: KanbanPreset) => Promise<void>): void {
@@ -8734,6 +9217,17 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
+	private async confirmDeleteTablePreset(presetName: string): Promise<boolean> {
+		return await new Promise(resolve => {
+			new ConfirmActionModal(this.app, {
+				title: t('settings', 'deleteTablePresetTitle', { name: presetName }),
+				message: t('settings', 'deleteTablePresetMessage'),
+				confirmText: t('table', 'deletePreset'),
+				cancelText: t('buttons', 'cancel'),
+			}, resolve).open();
+		});
+	}
+
 	private async confirmDeleteExternalCalendarSource(sourceName: string): Promise<boolean> {
 		return await new Promise(resolve => {
 			new ConfirmActionModal(this.app, {
@@ -8807,6 +9301,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			customCount?: number;
 		} = {},
 	): void {
+		const canonicalKey = mapping.canonicalKey;
 		const card = containerEl.createDiv('operon-key-mapping-card');
 
 		// ── Row 1: title (left) + Property input (right) ────────────────
@@ -8814,7 +9309,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		const typeLabel = t('settings', `keyMappingsType_${mapping.type}`);
 		row1.createDiv({
-			text: `${mapping.canonicalKey} [${typeLabel === `keyMappingsType_${mapping.type}` ? mapping.type : typeLabel}]`,
+			text: `${canonicalKey} [${typeLabel === `keyMappingsType_${mapping.type}` ? mapping.type : typeLabel}]`,
 			cls: 'operon-key-mapping-title',
 		});
 
@@ -8828,37 +9323,19 @@ export class OperonSettingsTab extends PluginSettingTab {
 			attr: { type: 'text' },
 		});
 		setAccessibleLabelWithoutTooltip(propertyInput, t('settings', 'keyMappingsPropertyAria'));
-		propertyInput.placeholder = mapping.canonicalKey;
+		propertyInput.placeholder = canonicalKey;
 		propertyInput.value = mapping.visiblePropertyName;
-
-		const validatePropertyInput = (): boolean => {
-			const trimmed = propertyInput.value.trim();
-			if (!trimmed) {
-				propertyInput.toggleClass('is-error', true);
-				return false;
-			}
-			const duplicate = hasDuplicateKeyMappingVisiblePropertyName(trimmed, this.settings.keyMappings, mapping);
-			propertyInput.toggleClass('is-error', duplicate);
-			return !duplicate;
-		};
-		const savePropertyInput = settingsAsyncHandler('settings key mapping property change failed', async () => {
-			if (!validatePropertyInput()) return;
-			const trimmed = propertyInput.value.trim();
-			if (trimmed === mapping.visiblePropertyName) return;
-			mapping.visiblePropertyName = trimmed;
-			await this.saveSettings();
+		bindKeyMappingPropertyInput({
+			inputEl: propertyInput,
+			canonicalKey,
+			getKeyMappings: () => this.settings.keyMappings,
+			setKeyMappings: keyMappings => {
+				this.settings.keyMappings = keyMappings;
+			},
+			saveSettings: () => this.saveSettings(),
 		});
 
-		propertyInput.addEventListener('input', validatePropertyInput);
-		propertyInput.addEventListener('change', savePropertyInput);
-		propertyInput.addEventListener('blur', savePropertyInput);
-		propertyInput.addEventListener('keydown', event => {
-			if (event.key !== 'Enter') return;
-			event.preventDefault();
-			propertyInput.blur();
-		});
-
-		if (mapping.canonicalKey === 'operonId') {
+		if (canonicalKey === 'operonId') {
 			propertyInput.disabled = true;
 			propertyInput.classList.add('is-disabled');
 		}

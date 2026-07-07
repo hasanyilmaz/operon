@@ -664,7 +664,7 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 		sections.push(raw);
 	};
 
-	const emitDocumentSections = (document: ParsedFrontmatterDocument | null): void => {
+	const emitDocumentSections = (document: ParsedFrontmatterDocument | null, preserveTitle: boolean): void => {
 		if (!document) return;
 		for (const section of document.sections) {
 			if (section.kind === 'unknown') {
@@ -674,6 +674,9 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 				continue;
 			}
 			if (section.kind === 'title') {
+				if (preserveTitle && !managedYamlKeys.has(section.yamlKey)) {
+					emit(section.yamlKey, section.raw);
+				}
 				continue;
 			}
 			if (section.kind === 'tags') {
@@ -695,8 +698,8 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 		}
 	};
 
-	emitDocumentSections(sourceDocument);
-	emitDocumentSections(template);
+	emitDocumentSections(sourceDocument, true);
+	emitDocumentSections(template, false);
 
 	const operonIdChoice = chosenKeyMap.get('operonId');
 	if (operonIdChoice) {

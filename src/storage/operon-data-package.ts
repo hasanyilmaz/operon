@@ -2,11 +2,13 @@ import type { KanbanManualOrderBoard } from './kanban-order-store';
 import type { CalendarPresetStoreSettings } from './calendar-preset-store';
 import type { ContextualMenuStoreSettings } from './contextual-menu-store';
 import type { KanbanPresetStoreSettings } from './kanban-preset-store';
+import type { TablePresetPackageSettings, TablePresetStoreSettings } from '../types/table';
 import type { PipelineStoreSettings } from './pipeline-store';
 import type { PriorityStoreSettings } from './priority-store';
 import type { TaskAutomationPolicyStoreSettings } from './task-automation-policy-store';
 import type { TaskCreationProfileStoreSettings } from './task-creation-profile-store';
 import type { TaskUiPreferenceStoreSettings } from './task-ui-preference-store';
+import { buildTablePresetPackageManifest } from './table-preset-store';
 import {
 	type ExternalCalendarSource,
 	type FilterSet,
@@ -44,6 +46,7 @@ export type OperonDataPackageOwnedSettingsKey =
 	| keyof PriorityStoreSettings
 	| keyof CalendarPresetStoreSettings
 	| keyof KanbanPresetStoreSettings
+	| keyof TablePresetStoreSettings
 	| keyof ContextualMenuStoreSettings
 	| keyof TaskUiPreferenceStoreSettings
 	| keyof TaskCreationProfileStoreSettings
@@ -62,6 +65,12 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'calendarDefaultPresetId',
 	'kanbanPresets',
 	'kanbanDefaultPresetId',
+	'tablePresets',
+	'tableDefaultPresetId',
+	'tableEmbedVisibleRows',
+	'tableShowLineNumbers',
+	'tableShowTaskIcon',
+	'tableShowTaskTypeIcon',
 	'contextualMenuActionAllowlist',
 	'contextualMenuSurfaceActionMatrix',
 	'contextualMenuOpenDelayMs',
@@ -224,6 +233,7 @@ export interface OperonViewsPackageV1 {
 	filters: OperonFiltersPackageV1;
 	calendarPresets: VersionedStoreSlice<CalendarPresetStoreSettings>;
 	kanbanPresets: VersionedStoreSlice<KanbanPresetStoreSettings>;
+	tablePresets: VersionedStoreSlice<TablePresetPackageSettings>;
 	kanbanOrder: OperonKanbanOrderPackageV1;
 }
 
@@ -298,6 +308,30 @@ export function composeOperonSettingsFromDataPackage(
 			dataPackage.views.kanbanPresets.kanbanDefaultPresetId,
 			defaults.kanbanDefaultPresetId,
 		),
+		tablePresets: readArray(
+			dataPackage.views.tablePresets?.tablePresets,
+			readArray(packageSettings.tablePresets, defaults.tablePresets),
+		),
+		tableDefaultPresetId: readNullableString(
+			dataPackage.views.tablePresets?.tableDefaultPresetId,
+			readNullableString(packageSettings.tableDefaultPresetId, defaults.tableDefaultPresetId),
+		),
+		tableEmbedVisibleRows: readNumber(
+			dataPackage.views.tablePresets?.tableEmbedVisibleRows,
+			readNumber(packageSettings.tableEmbedVisibleRows, defaults.tableEmbedVisibleRows),
+		),
+		tableShowLineNumbers: readBoolean(
+			dataPackage.views.tablePresets?.tableShowLineNumbers,
+			readBoolean(packageSettings.tableShowLineNumbers, defaults.tableShowLineNumbers),
+		),
+		tableShowTaskIcon: readBoolean(
+			dataPackage.views.tablePresets?.tableShowTaskIcon,
+			readBoolean(packageSettings.tableShowTaskIcon, defaults.tableShowTaskIcon),
+		),
+		tableShowTaskTypeIcon: readBoolean(
+			dataPackage.views.tablePresets?.tableShowTaskTypeIcon,
+			readBoolean(packageSettings.tableShowTaskTypeIcon, defaults.tableShowTaskTypeIcon),
+		),
 		contextualMenuActionAllowlist: readArray(
 			dataPackage.ui.contextualMenu.contextualMenuActionAllowlist,
 			defaults.contextualMenuActionAllowlist,
@@ -368,6 +402,9 @@ export function buildOperonDataPackageFromSettings(
 				version: 1,
 				kanbanPresets: cloneUnknown(normalized.kanbanPresets),
 				kanbanDefaultPresetId: normalized.kanbanDefaultPresetId,
+			},
+			tablePresets: {
+				...buildTablePresetPackageManifest(normalized),
 			},
 			kanbanOrder: {
 				version: 1,
@@ -468,7 +505,7 @@ export function buildOperonDataPackageFromSettings(
 				fileTaskArchiveOnlyFromFileTasksFolder: normalized.fileTaskArchiveOnlyFromFileTasksFolder,
 				fileRepeatDestination: normalized.fileRepeatDestination,
 				fileRepeatCustomFolder: normalized.fileRepeatCustomFolder,
-				estimateAutoReallocation: normalized.estimateAutoReallocation,
+				estimateAutoReallocation: false,
 				trackerSplitSessionsAtMidnight: normalized.trackerSplitSessionsAtMidnight,
 			},
 		},
@@ -730,6 +767,7 @@ function isViewsDomain(value: unknown): boolean {
 		&& isRecord(value.filters)
 		&& isRecord(value.calendarPresets)
 		&& isRecord(value.kanbanPresets)
+		&& (!Object.prototype.hasOwnProperty.call(value, 'tablePresets') || isRecord(value.tablePresets))
 		&& isRecord(value.kanbanOrder);
 }
 

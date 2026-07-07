@@ -17,7 +17,6 @@ import { PriorityDefinition } from '../types/priority';
 import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
-import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { showLivePreviewFieldMenu } from './live-preview-field-menu';
 import {
 	buildInlineTaskCompactChipEntries,
@@ -33,17 +32,18 @@ import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { resolveTaskDateToneColor } from '../core/task-date-tone';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { openObsidianTagSearch } from './tag-search';
 import { bindCompactChipLinkPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import { showLocationMapPreview } from './location-map-preview';
+import { resolveTaskStatusIconColor } from '../core/task-color-source';
 import { createProjectSerialChipElement } from './project-serial-chip';
 import {
 	bindAdaptiveIconOnlyExpansion,
 	bindIconOnlyChipPreview,
 	closeIconOnlyChipPreview,
-	closeIconOnlyChipPreviewsForRoot,
 	isIconOnlyChipExpansionSuppressed,
 	openIconOnlyChipPreview,
 	shouldOpenIconOnlyChipPreview,
@@ -53,6 +53,7 @@ import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
+import { cleanupOperonRenderRoot } from './render-root-cleanup';
 
 export const operonIndexRefreshEffect = StateEffect.define<void>();
 export const operonEditorCloseRefreshEffect = StateEffect.define<void>();
@@ -171,8 +172,12 @@ class TaskIconWidget extends WidgetType {
 		button.setAttribute('tabindex', '0');
 
 		const fieldValues = getFieldValues(this.task, this.indexedTask);
-		const statusValue = fieldValues['status'];
-		button.setCssProps({ '--operon-live-icon-color': lookupStatusColor(statusValue, this.callbacks.getPipelines()) });
+		const iconColor = resolveTaskStatusIconColor(fieldValues, this.callbacks.getSettings());
+		if (iconColor) {
+			button.style.setProperty('--operon-live-icon-color', iconColor);
+		} else {
+			button.style.removeProperty('--operon-live-icon-color');
+		}
 
 		const checkbox = this.indexedTask?.checkbox ?? this.task.checkbox;
 		setIcon(button, resolveTaskDisplayIcon(this.callbacks.getSettings(), fieldValues, checkbox));
@@ -214,6 +219,10 @@ class TaskIconWidget extends WidgetType {
 		}
 
 		return button;
+	}
+
+	destroy(dom: HTMLElement): void {
+		cleanupOperonRenderRoot(dom);
 	}
 
 	eq(other: TaskIconWidget): boolean {
@@ -540,8 +549,7 @@ class MetadataTailWidget extends WidgetType {
 	}
 
 	destroy(dom: HTMLElement): void {
-		closeFloatingPanelsForRoot(dom);
-		closeIconOnlyChipPreviewsForRoot(dom);
+		cleanupOperonRenderRoot(dom);
 	}
 
 	eq(other: MetadataTailWidget): boolean {
@@ -756,7 +764,7 @@ export function buildTaskIconRenderSignature(
 		checkbox,
 		iconName: resolveTaskDisplayIcon(callbacks.getSettings(), fieldValues, checkbox),
 		status: fieldValues['status'] ?? '',
-		statusColor: lookupStatusColor(fieldValues['status'], callbacks.getPipelines()),
+		iconColor: resolveTaskStatusIconColor(fieldValues, callbacks.getSettings()),
 	});
 }
 
@@ -888,11 +896,8 @@ function applyLivePreviewChipVisualStyles(
 		const locationIconColor = entry.locationMarkerColor ?? taskColor;
 		if (locationIconColor) cssProps['--operon-inline-chip-icon-color'] = locationIconColor;
 	}
-	if (entry.iconTone === 'today') {
-		cssProps['--operon-inline-chip-icon-color'] = '#2563eb';
-	} else if (entry.iconTone === 'overdue') {
-		cssProps['--operon-inline-chip-icon-color'] = '#dc2626';
-	}
+	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
+	if (dateToneColor) cssProps['--operon-inline-chip-icon-color'] = dateToneColor;
 	if (Object.keys(cssProps).length > 0) {
 		chip.setCssProps(cssProps);
 	}

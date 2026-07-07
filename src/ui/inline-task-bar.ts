@@ -37,6 +37,7 @@ import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { createOwnerElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
+import { resolveTaskStatusIconColor } from '../core/task-color-source';
 
 // ============================================================
 // Shared full task-card builder — used by filter surfaces only
@@ -196,14 +197,13 @@ function renderSubtaskList(container: HTMLElement, childIds: string[], cbs: Task
 }
 
 function renderIconButtonFromIndex(container: HTMLElement, task: IndexedTask, cbs: TaskBarCallbacks): void {
-	const statusValue = task.fieldValues['status'];
 	const iconName = resolveInheritedFieldFromIndex(task, 'taskIcon', cbs.getIndexedTask);
 	const fieldValues = iconName ? { ...task.fieldValues, taskIcon: iconName } : task.fieldValues;
 
-	const statusColor = lookupStatusColorFromIndex(statusValue, cbs.getPipelines());
-
 	const cb = el('button', `operon-checkbox operon-checkbox-${task.checkbox}`);
-	cb.style.color = statusColor;
+	const iconColor = resolveTaskStatusIconColor(fieldValues, cbs.getSettings());
+	if (iconColor) cb.style.color = iconColor;
+	else cb.style.removeProperty('color');
 	setIcon(cb, resolveTaskDisplayIcon(cbs.getSettings(), fieldValues, task.checkbox));
 
 	cb.addEventListener('click', (e) => {
@@ -693,6 +693,9 @@ class TaskBarWidget extends WidgetType {
 		const cb = el('button', `operon-checkbox operon-checkbox-${this.task.checkbox}`);
 		const settings = this.getSettings();
 		const fieldValues = Object.fromEntries(this.task.fields.map(field => [field.key, field.value]));
+		const iconColor = resolveTaskStatusIconColor(fieldValues, settings);
+		if (iconColor) cb.style.color = iconColor;
+		else cb.style.removeProperty('color');
 		setIcon(cb, resolveTaskDisplayIcon(settings, fieldValues, this.task.checkbox));
 
 		cb.addEventListener('click', (e) => {
@@ -758,11 +761,12 @@ class TaskBarWidget extends WidgetType {
 		const settings = this.getSettings();
 		return [
 			settings.fallbackTaskIconSource,
+			settings.taskStatusIconColorSource,
 			`${settings.fallbackStateIcons.open}:${settings.fallbackStateIcons.done}:${settings.fallbackStateIcons.cancelled}`,
 			settings.pipelines.map(pipeline =>
-				`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.pipelineStatusIcon ?? ''}`).join(',')}`
+				`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.color}:${status.pipelineStatusIcon ?? ''}`).join(',')}`
 			).join('|'),
-			settings.priorities.map(priority => `${priority.label}:${priority.priorityIcon ?? ''}`).join(','),
+			settings.priorities.map(priority => `${priority.label}:${priority.color}:${priority.priorityIcon ?? ''}`).join(','),
 		].join('§');
 	}
 

@@ -8,13 +8,12 @@ import { Component, Platform, getIcon, setIcon } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { IndexedTask } from '../types/fields';
-import { findStatusDef } from '../types/pipeline';
 import { TimeTracker } from '../systems/time-tracker';
 import { t } from '../core/i18n';
 import { PinnedCache } from '../storage/pinned-cache';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
-import { resolveTaskColorSourceForTask } from '../core/task-color-source';
+import { resolveTaskColorSourceForTask, resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { WindowTimeoutHandle, clearWindowTimeout, createOwnerElement, getOwnerBody, getOwnerDocument, getOwnerWindow, setWindowTimeout } from '../core/dom-compat';
 import { asyncHandler } from '../core/async-action';
 import { getPinnedTasksForDisplay } from '../core/pinned-task-query';
@@ -166,6 +165,7 @@ export class PinnedTasksDock extends Component {
 			String(this.pinnedCache.getGeneration()),
 			colorSettingsSignature,
 			this.settings.fallbackTaskIconSource,
+			this.settings.taskStatusIconColorSource,
 			`${this.settings.fallbackStateIcons.open}:${this.settings.fallbackStateIcons.done}:${this.settings.fallbackStateIcons.cancelled}`,
 			activeTrackerId ?? '',
 			pinnedTasks.map(task =>
@@ -224,8 +224,9 @@ export class PinnedTasksDock extends Component {
 				cls: `operon-pinned-status operon-checkbox-${task.checkbox}`,
 				attr: { type: 'button' },
 			});
-			const statusColor = this.lookupStatusColor(task.fieldValues['status']);
-			statusBtn.style.color = statusColor;
+			const iconColor = resolveTaskStatusIconColorForTask(task, this.settings);
+			if (iconColor) statusBtn.style.color = iconColor;
+			else statusBtn.style.removeProperty('color');
 			this.renderStatusIcon(statusBtn, task);
 
 				statusBtn.addEventListener('click', (e) => {
@@ -321,12 +322,6 @@ export class PinnedTasksDock extends Component {
 
 	private renderStatusIcon(btn: HTMLElement, task: IndexedTask): void {
 		setIcon(btn, resolveTaskDisplayIcon(this.settings, task.fieldValues, task.checkbox));
-	}
-
-	private lookupStatusColor(statusValue: string | undefined): string {
-		if (!statusValue) return '#6b7280';
-		const statusDef = findStatusDef(this.settings.pipelines, statusValue);
-		return statusDef?.color ?? '#6b7280';
 	}
 
 	// ---- Position ----

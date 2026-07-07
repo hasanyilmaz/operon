@@ -6,6 +6,7 @@
 import { App, Modal, Notice, TFolder, setIcon } from 'obsidian';
 import { DEFAULT_SETTINGS, FilterSet, FilterSetCondition, FilterFieldType, FilterGroup, FilterGroupLogic, FilterNode, FilterSortSpec, KeyMapping, OperonSettings } from '../types/settings';
 import { getOperatorsForType, NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS, evaluateFilterSet, evaluateFilterSetGrouped } from '../core/filter-evaluator';
+import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
 import { t } from '../core/i18n';
@@ -27,9 +28,11 @@ import {
 } from '../core/dynamic-file-task-filter';
 import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
-import { closeFloatingPanelsForRoot } from './field-pickers/common';
+import { closeFloatingPanelsForRoot, isFloatingPanelTargetForRoot } from './field-pickers/common';
 import { showFilterConditionPicker } from './field-pickers/filter-condition-picker';
+import { showSearchableFieldPicker, type SearchableFieldPickerOption } from './field-pickers/searchable-field-picker';
 import { getManagedCustomFieldOptions } from '../core/managed-task-fields';
+import { CANONICAL_KEY_MAP } from '../types/keys';
 
 function generateConditionId(): string {
 	return 'cond_' + Math.random().toString(36).slice(2, 10);
@@ -66,6 +69,117 @@ function normalizeFilterDateInput(value: string | null | undefined): string | nu
 interface SelectOption {
 	value: string;
 	label: string;
+}
+
+type FilterFieldPickerGroup =
+	| 'task'
+	| 'workflow'
+	| 'scheduling'
+	| 'dependencies'
+	| 'custom'
+	| 'source'
+	| 'special';
+
+interface FilterFieldPickerOption extends SearchableFieldPickerOption {
+	field: string;
+	label: string;
+	type: FilterFieldType;
+	icon?: string | null;
+	group: FilterFieldPickerGroup | null;
+	groupLabel: string | null;
+	groupOrder: number;
+}
+
+const FILTER_FIELD_GROUP_ORDER: FilterFieldPickerGroup[] = [
+	'task',
+	'workflow',
+	'scheduling',
+	'dependencies',
+	'custom',
+	'source',
+	'special',
+];
+
+const FILTER_FIELD_GROUP_ORDER_INDEX = new Map<FilterFieldPickerGroup, number>(
+	FILTER_FIELD_GROUP_ORDER.map((group, index) => [group, index]),
+);
+
+function buildFilterFieldPickerOption(
+	field: string,
+	label: string,
+	type: FilterFieldType,
+	group: FilterFieldPickerGroup,
+	icon?: string | null,
+): FilterFieldPickerOption {
+	return {
+		field,
+		label,
+		type,
+		icon,
+		group,
+		groupLabel: getFilterFieldGroupLabel(group),
+		groupOrder: getFilterFieldGroupOrder(group),
+	};
+}
+
+function compareFilterFieldPickerOptions(left: FilterFieldPickerOption, right: FilterFieldPickerOption): number {
+	if (left.groupOrder !== right.groupOrder) return left.groupOrder - right.groupOrder;
+	const labelCompare = left.label.localeCompare(right.label, undefined, { sensitivity: 'base' });
+	if (labelCompare !== 0) return labelCompare;
+	return left.field.localeCompare(right.field, undefined, { sensitivity: 'base' });
+}
+
+function resolveFilterFieldGroupForMapping(mapping: KeyMapping): FilterFieldPickerGroup {
+	const canonical = CANONICAL_KEY_MAP.get(mapping.canonicalKey);
+	if (!canonical) return 'custom';
+	switch (canonical.group) {
+		case 'workflow':
+			return 'workflow';
+		case 'scheduling':
+			return 'scheduling';
+		case 'dependencies':
+			return 'dependencies';
+		case 'core':
+		default:
+			return 'task';
+	}
+}
+
+function getFilterFieldGroupOrder(group: FilterFieldPickerGroup): number {
+	return FILTER_FIELD_GROUP_ORDER_INDEX.get(group) ?? Number.MAX_SAFE_INTEGER;
+}
+
+function getFilterFieldGroupLabel(group: FilterFieldPickerGroup): string {
+	return t('filterSets', `fieldGroup${capitalizeFilterFieldGroup(group)}`);
+}
+
+function capitalizeFilterFieldGroup(group: FilterFieldPickerGroup): string {
+	return group.charAt(0).toUpperCase() + group.slice(1);
+}
+
+function getFilterFieldTypeIcon(type: FilterFieldType): string {
+	switch (type) {
+		case 'number':
+			return 'hash';
+		case 'date':
+		case 'datetime':
+			return 'calendar';
+		case 'checkbox':
+			return 'square-check-big';
+		case 'tags':
+			return 'hash';
+		case 'pinned':
+			return 'pin';
+		case 'projectTree':
+			return 'git-branch';
+		case 'folders':
+			return 'folder';
+		case 'list':
+			return 'list';
+		case 'text':
+		default:
+			return 'text';
+	}
 }
 
 export interface FilterModalEvalDeps {
@@ -106,6 +220,16 @@ export interface FilterSetModalQuickActions {
 	remove?: () => void | Promise<void>;
 }
 
+export interface FilterSetInlineEditorOptions {
+	onCancel: () => void;
+	onSave: (updated: FilterSet) => void;
+	countTasks?: (filterSet: FilterSet) => number;
+	saveTooltip?: {
+		title: string;
+		content: string;
+	};
+}
+
 const activeFilterPreviewModals = new Set<FilterPreviewModal>();
 const activeFilterSetModals = new Set<FilterSetModal>();
 
@@ -133,12 +257,14 @@ export class FilterSetModal extends Modal {
 	private filterSet: FilterSet;
 	private keyMappings: KeyMapping[];
 	private onSave: (updated: FilterSet) => void;
-	private evalDeps: FilterModalEvalDeps | null;
-	private options: FilterSetModalOptions;
-	private countBadge: HTMLElement | null = null;
-	private condObserver: MutationObserver | null = null;
-	private refreshCountBadge: (() => void) | null = null;
-	private bodyDropdowns: HTMLElement[] = [];
+		private evalDeps: FilterModalEvalDeps | null;
+		private options: FilterSetModalOptions;
+		private countBadge: HTMLElement | null = null;
+		private condObserver: MutationObserver | null = null;
+		private refreshCountBadge: (() => void) | null = null;
+		private bodyDropdowns: HTMLElement[] = [];
+		private inlineEditor: { container: HTMLElement; options: FilterSetInlineEditorOptions } | null = null;
+		private collapsedFilterGroupIds = new Set<string>();
 
 	constructor(
 		app: App,
@@ -157,6 +283,7 @@ export class FilterSetModal extends Modal {
 	}
 
 	onOpen(): void {
+		this.inlineEditor = null;
 		activeFilterSetModals.add(this);
 		this.renderModal();
 	}
@@ -168,6 +295,39 @@ export class FilterSetModal extends Modal {
 		closeFloatingPanelsForRoot(this.modalEl);
 		this.cleanupBodyDropdowns();
 		this.contentEl.empty();
+	}
+
+	renderInlineConditionEditor(container: HTMLElement, options: FilterSetInlineEditorOptions): void {
+		this.inlineEditor = { container, options };
+		this.renderInlineConditionEditorSurface();
+	}
+
+	destroyInlineConditionEditor(): void {
+		if (!this.inlineEditor) return;
+		this.condObserver?.disconnect();
+		this.refreshCountBadge = null;
+		closeFloatingPanelsForRoot(this.inlineEditor.container);
+		this.cleanupBodyDropdowns();
+		this.inlineEditor = null;
+	}
+
+	isInlineEditorTarget(target: EventTarget | null): boolean {
+		const inlineEditor = this.inlineEditor;
+		if (!inlineEditor) return false;
+		if (!target || typeof (target as Node).nodeType !== 'number') return false;
+		const targetNode = target as Node;
+		return inlineEditor.container.contains(targetNode)
+			|| isFloatingPanelTargetForRoot(inlineEditor.container, targetNode)
+			|| this.bodyDropdowns.some(dropdown => dropdown.contains(targetNode));
+	}
+
+	isInlineEditorFloatingTarget(target: EventTarget | null): boolean {
+		const inlineEditor = this.inlineEditor;
+		if (!inlineEditor) return false;
+		if (!target || typeof (target as Node).nodeType !== 'number') return false;
+		const targetNode = target as Node;
+		return isFloatingPanelTargetForRoot(inlineEditor.container, targetNode)
+			|| this.bodyDropdowns.some(dropdown => dropdown.contains(targetNode));
 	}
 
 	private renderModal(): void {
@@ -188,6 +348,32 @@ export class FilterSetModal extends Modal {
 		this.renderSort(contentEl);
 		this.renderUsageInfo(contentEl);
 		this.renderButtons(contentEl);
+	}
+
+	private renderInlineConditionEditorSurface(): void {
+		const inlineEditor = this.inlineEditor;
+		if (!inlineEditor) return;
+		const { container } = inlineEditor;
+		this.condObserver?.disconnect();
+		this.refreshCountBadge = null;
+		closeFloatingPanelsForRoot(container);
+		this.cleanupBodyDropdowns();
+		container.empty();
+		container.addClass('operon-filter-set-modal');
+		container.addClass('operon-filter-inline-editor');
+
+		this.ensureModernSchema();
+		this.renderNameField(container);
+		this.renderConditions(container);
+		this.renderButtons(container);
+	}
+
+	private renderCurrentSurface(): void {
+		if (this.inlineEditor) {
+			this.renderInlineConditionEditorSurface();
+			return;
+		}
+		this.renderModal();
 	}
 
 	private ensureModernSchema(): void {
@@ -217,6 +403,7 @@ export class FilterSetModal extends Modal {
 		const primarySort = this.filterSet.sorts[0];
 		this.filterSet.sortBy = primarySort?.field;
 		this.filterSet.sortOrder = primarySort?.order;
+		this.refreshCountBadge?.();
 	}
 
 	private flattenConditions(group: FilterGroup): FilterSetCondition[] {
@@ -243,6 +430,20 @@ export class FilterSetModal extends Modal {
 		return group.children.filter(isFilterGroupNode).length;
 	}
 
+	private buildFilterGroupNumberMap(rootGroup: FilterGroup): WeakMap<FilterGroup, number> {
+		const groupNumbers = new WeakMap<FilterGroup, number>();
+		let next = 1;
+		const visit = (group: FilterGroup): void => {
+			for (const child of group.children) {
+				if (!isFilterGroupNode(child)) continue;
+				groupNumbers.set(child, next++);
+				visit(child);
+			}
+		};
+		visit(rootGroup);
+		return groupNumbers;
+	}
+
 	private addClasses(el: HTMLElement, ...classNames: string[]): void {
 		for (const className of classNames) el.addClass(className);
 	}
@@ -267,6 +468,74 @@ export class FilterSetModal extends Modal {
 		return select;
 	}
 
+	private createModalFieldPicker(
+		container: HTMLElement,
+		fields: readonly FilterFieldPickerOption[],
+		value: string,
+		onChange: (value: string) => void,
+		options: {
+			label: string;
+			placeholder?: string;
+			variant?: 'fluid' | 'content';
+		},
+	): HTMLButtonElement {
+		const wrap = container.createDiv('operon-filter-select-wrap operon-filter-field-picker-wrap');
+		wrap.addClass(options.variant === 'content' ? 'is-content' : 'is-fluid');
+		const button = wrap.createEl('button', {
+			cls: 'operon-filter-select operon-field-picker-trigger operon-filter-field-picker-trigger',
+			attr: {
+				type: 'button',
+				'aria-haspopup': 'listbox',
+				'aria-expanded': 'false',
+				'aria-label': options.label,
+			},
+		});
+		const labelEl = button.createSpan('operon-field-picker-trigger-label');
+		const iconEl = button.createSpan('operon-field-picker-trigger-icon');
+		setIcon(iconEl, 'chevron-down');
+		let currentValue = value;
+
+		const updateButton = (nextValue: string): void => {
+			currentValue = nextValue;
+			const selected = fields.find(field => field.field === nextValue);
+			const label = selected?.label ?? options.placeholder ?? nextValue;
+			labelEl.textContent = label;
+			button.dataset.value = nextValue;
+			button.title = selected && selected.label !== selected.field
+				? `${selected.label} (${selected.field})`
+				: label;
+			button.setAttribute('aria-label', `${options.label}: ${label}`);
+		};
+		updateButton(value);
+
+		button.addEventListener('click', event => {
+			event.preventDefault();
+			if (button.disabled) return;
+			button.setAttribute('aria-expanded', 'true');
+			showSearchableFieldPicker(button, {
+				value: currentValue,
+				getValue: () => currentValue,
+				fields,
+				placeholder: t('filterSets', 'conditionFieldSearchPlaceholder'),
+				ariaLabel: options.label,
+				noMatchesText: t('filterSets', 'conditionFieldNoMatches'),
+				onSelect: option => {
+					onChange(option.field);
+					updateButton(option.field);
+				},
+				onClose: () => {
+					if (button.isConnected) button.setAttribute('aria-expanded', 'false');
+				},
+				variantClassName: 'operon-filter-field-picker',
+				matchWidth: Math.max(button.getBoundingClientRect().width, 280),
+				repositionOnScroll: true,
+				repositionOnWindowResize: true,
+			});
+		});
+
+		return button;
+	}
+
 	private createModalFormRow(
 		container: HTMLElement,
 		label: string,
@@ -288,37 +557,39 @@ export class FilterSetModal extends Modal {
 	private getFieldOptions(
 		includeConditionOnly = false,
 		includeHappensOn = false,
-	): Array<{ field: string; label: string; type: FilterFieldType }> {
-		const pseudoFields: Array<{ field: string; label: string; type: FilterFieldType }> = [
-			{ field: 'checkbox', label: t('filterSets', 'fieldCheckbox'), type: 'checkbox' },
-			{ field: 'tags', label: t('filterSets', 'fieldTags'), type: 'tags' },
-			{ field: 'description', label: t('filterSets', 'fieldDescription'), type: 'text' },
-			{ field: 'pinned', label: t('filterSets', 'fieldPinned'), type: 'pinned' },
+	): FilterFieldPickerOption[] {
+		const pseudoFields: FilterFieldPickerOption[] = [
+			buildFilterFieldPickerOption('checkbox', t('filterSets', 'fieldCheckbox'), 'checkbox', 'workflow', 'square-check-big'),
+			buildFilterFieldPickerOption('tags', t('filterSets', 'fieldTags'), 'tags', 'workflow', 'hash'),
+			buildFilterFieldPickerOption('description', t('filterSets', 'fieldDescription'), 'text', 'task', 'list-todo'),
+			buildFilterFieldPickerOption('pinned', t('filterSets', 'fieldPinned'), 'pinned', 'workflow', 'pin'),
 		];
 		if (includeConditionOnly || includeHappensOn) {
-			pseudoFields.push({ field: 'happensOn', label: t('filterSets', 'fieldHappensOn'), type: 'date' });
+			pseudoFields.push(buildFilterFieldPickerOption('happensOn', t('filterSets', 'fieldHappensOn'), 'date', 'scheduling', 'calendar'));
 		}
 		if (includeConditionOnly) {
-			pseudoFields.push({ field: 'projectTree', label: t('filterSets', 'fieldProjectTree'), type: 'projectTree' });
-			pseudoFields.push({ field: 'folders', label: t('filterSets', 'fieldFolders'), type: 'folders' });
+			pseudoFields.push(buildFilterFieldPickerOption('projectTree', t('filterSets', 'fieldProjectTree'), 'projectTree', 'dependencies', 'git-branch'));
+			pseudoFields.push(buildFilterFieldPickerOption('folders', t('filterSets', 'fieldFolders'), 'folders', 'source', 'folder'));
 		}
 
 		const builtInMappings = this.keyMappings
 			.filter(mapping => mapping.isSystem !== false && !mapping.isInternal)
-			.map(mapping => ({
-				field: mapping.canonicalKey,
-				label: mapping.visiblePropertyName,
-				type: mapping.type,
-			}));
-		const customMappings = getManagedCustomFieldOptions(this.keyMappings).map(option => ({
-			field: option.field,
-			label: option.label,
-			type: option.type,
-		}));
+			.map(mapping => buildFilterFieldPickerOption(
+				mapping.canonicalKey,
+				mapping.visiblePropertyName,
+				mapping.type,
+				resolveFilterFieldGroupForMapping(mapping),
+				getConfiguredKeyMappingIcon(mapping.canonicalKey, this.keyMappings) || getFilterFieldTypeIcon(mapping.type),
+			));
+		const customMappings = getManagedCustomFieldOptions(this.keyMappings).map(option => buildFilterFieldPickerOption(
+			option.field,
+			option.label,
+			option.type,
+			'custom',
+			getConfiguredKeyMappingIcon(option.field, this.keyMappings) || getFilterFieldTypeIcon(option.type),
+		));
 
-		const builtInOptions = [...pseudoFields, ...builtInMappings]
-			.sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }));
-		return [...builtInOptions, ...customMappings];
+		return [...pseudoFields, ...builtInMappings, ...customMappings].sort(compareFilterFieldPickerOptions);
 	}
 
 	private measureSelectContentWidth(select: HTMLSelectElement): number {
@@ -617,7 +888,14 @@ export class FilterSetModal extends Modal {
 		section.addClass('operon-filter-section');
 		section.addClass('operon-filter-conditions-section');
 		const listEl = section.createDiv('operon-conditions-list');
-		this.renderGroupEditor(listEl, this.filterSet.rootGroup, null, -1, true);
+		this.renderGroupEditor(
+			listEl,
+			this.filterSet.rootGroup,
+			null,
+			-1,
+			true,
+			this.buildFilterGroupNumberMap(this.filterSet.rootGroup),
+		);
 	}
 
 	private renderDynamicLockedConditions(container: HTMLElement, mode: 'dynamicFileTask' | 'dynamicSubtasks'): void {
@@ -659,17 +937,45 @@ export class FilterSetModal extends Modal {
 		parentGroup: FilterGroup | null,
 		groupIndex: number,
 		isRoot = false,
+		groupNumbers: WeakMap<FilterGroup, number> = new WeakMap(),
 	): void {
 		const card = container.createDiv('operon-filter-group-card');
 		card.addClass(isRoot ? 'is-root' : 'is-nested');
+		const collapsed = !isRoot && this.collapsedFilterGroupIds.has(group.id);
+		card.toggleClass('is-collapsed', collapsed);
 
 		const header = card.createDiv('operon-filter-group-header');
 
 		const left = header.createDiv('operon-filter-group-heading');
+		const groupNumber = groupNumbers.get(group);
+		const groupTitle = isRoot
+			? t('filterSets', 'logic')
+			: groupNumber
+				? `${t('filterSets', 'group')} ${groupNumber}`
+				: t('filterSets', 'group');
 		left.createEl('strong', {
 			cls: 'operon-filter-group-title',
-			text: isRoot ? t('filterSets', 'logic') : t('filterSets', 'group'),
+			text: groupTitle,
 		});
+		if (!isRoot) {
+			const collapseBtn = left.createEl('button');
+			collapseBtn.type = 'button';
+			collapseBtn.setAttribute('aria-expanded', String(!collapsed));
+			this.addClasses(collapseBtn, 'operon-filter-modal-button', 'is-icon', 'operon-filter-group-collapse-button');
+			setIcon(collapseBtn, collapsed ? 'chevron-right' : 'chevron-down');
+			bindOperonHoverTooltip(collapseBtn, {
+				content: collapsed ? t('filterSets', 'expandGroup') : t('filterSets', 'collapseGroup'),
+				taskColor: null,
+			});
+			collapseBtn.addEventListener('click', () => {
+				if (this.collapsedFilterGroupIds.has(group.id)) {
+					this.collapsedFilterGroupIds.delete(group.id);
+				} else {
+					this.collapsedFilterGroupIds.add(group.id);
+				}
+				this.renderCurrentSurface();
+			});
+		}
 
 		const logicWrap = left.createDiv();
 		logicWrap.addClass('operon-filter-logic-selector');
@@ -706,9 +1012,10 @@ export class FilterSetModal extends Modal {
 			deleteBtn.addEventListener('click', () => {
 				parentGroup.children.splice(groupIndex, 1);
 				this.syncMirroredFilterFields();
-				this.renderModal();
+				this.renderCurrentSurface();
 			});
 		}
+		if (collapsed) return;
 
 		const body = card.createDiv();
 		body.addClass('operon-filter-group-body');
@@ -716,7 +1023,7 @@ export class FilterSetModal extends Modal {
 		for (let index = 0; index < group.children.length; index++) {
 			const child = group.children[index];
 			if (isFilterGroupNode(child)) {
-				this.renderGroupEditor(body, child, group, index);
+				this.renderGroupEditor(body, child, group, index, false, groupNumbers);
 			} else {
 				this.renderConditionRow(body, group, child, index);
 			}
@@ -738,7 +1045,7 @@ export class FilterSetModal extends Modal {
 				value: undefined,
 			});
 			this.syncMirroredFilterFields();
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 
 		const addGroupBtn = footer.createEl('button');
@@ -752,7 +1059,7 @@ export class FilterSetModal extends Modal {
 				children: [],
 			});
 			this.syncMirroredFilterFields();
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 	}
 
@@ -770,7 +1077,7 @@ export class FilterSetModal extends Modal {
 		moveUpBtn.addEventListener('click', () => {
 			if (index === 0) return;
 			[parentGroup.children[index - 1], parentGroup.children[index]] = [parentGroup.children[index], parentGroup.children[index - 1]];
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 
 		const moveDownBtn = container.createEl('button');
@@ -782,7 +1089,7 @@ export class FilterSetModal extends Modal {
 		moveDownBtn.addEventListener('click', () => {
 			if (index >= parentGroup.children.length - 1) return;
 			[parentGroup.children[index + 1], parentGroup.children[index]] = [parentGroup.children[index], parentGroup.children[index + 1]];
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 	}
 
@@ -800,13 +1107,13 @@ export class FilterSetModal extends Modal {
 		// --- Field picker ---
 		const fieldWrap = row.createDiv('operon-filter-select-wrap is-content operon-condition-field-picker-wrap');
 		const fieldButton = fieldWrap.createEl('button', {
-			cls: 'operon-filter-select operon-condition-field-picker-trigger',
+			cls: 'operon-filter-select operon-field-picker-trigger operon-condition-field-picker-trigger',
 		});
 		fieldButton.type = 'button';
 		fieldButton.setAttribute('aria-haspopup', 'listbox');
 		fieldButton.setAttribute('aria-expanded', 'false');
-		const fieldButtonLabel = fieldButton.createSpan('operon-condition-field-picker-trigger-label');
-		const fieldButtonIcon = fieldButton.createSpan('operon-condition-field-picker-trigger-icon');
+		const fieldButtonLabel = fieldButton.createSpan('operon-field-picker-trigger-label operon-condition-field-picker-trigger-label');
+		const fieldButtonIcon = fieldButton.createSpan('operon-field-picker-trigger-icon operon-condition-field-picker-trigger-icon');
 		setIcon(fieldButtonIcon, 'chevron-down');
 
 		const getSelectedFieldOption = () => fieldOptions.find(optionDef => optionDef.field === cond.field);
@@ -909,13 +1216,20 @@ export class FilterSetModal extends Modal {
 				inp.addEventListener('click', () => this.openDateConditionPopover(inp, cond));
 				inp.addEventListener('input', () => {
 					cond.value = normalizeFilterDateInput(inp.value) ?? undefined;
+					this.syncMirroredFilterFields();
 				});
 			} else if (useDatetimePopover) {
 				inp.addEventListener('focus', () => this.openDatetimeConditionPopover(inp, cond));
 				inp.addEventListener('click', () => this.openDatetimeConditionPopover(inp, cond));
-				inp.addEventListener('input', () => { cond.value = inp.value || undefined; });
+				inp.addEventListener('input', () => {
+					cond.value = inp.value || undefined;
+					this.syncMirroredFilterFields();
+				});
 			} else {
-				inp.addEventListener('input', () => { cond.value = inp.value || undefined; });
+				inp.addEventListener('input', () => {
+					cond.value = inp.value || undefined;
+					this.syncMirroredFilterFields();
+				});
 			}
 		};
 
@@ -965,7 +1279,7 @@ export class FilterSetModal extends Modal {
 		delBtn.addEventListener('click', () => {
 			group.children.splice(index, 1);
 			this.syncMirroredFilterFields();
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 	}
 
@@ -978,9 +1292,17 @@ export class FilterSetModal extends Modal {
 
 		const groupFieldOptions = this.getFieldOptions(false, true);
 		const sortFieldOptions = this.getFieldOptions(false, true);
-		const groupOptions = [
-			{ value: '', label: `(${t('filterSets', 'groupNone')})` },
-			...groupFieldOptions.map(optionDef => ({ value: optionDef.field, label: optionDef.label })),
+		const groupOptions: FilterFieldPickerOption[] = [
+			{
+				field: '',
+				label: `(${t('filterSets', 'groupNone')})`,
+				type: 'text',
+				icon: 'minus',
+				group: null,
+				groupLabel: null,
+				groupOrder: -1,
+			},
+			...groupFieldOptions,
 		];
 		const orderOptions = [
 			{ value: 'asc', label: t('filterSets', 'sortAsc') },
@@ -989,13 +1311,16 @@ export class FilterSetModal extends Modal {
 
 		const groupingSection = sep.createDiv('operon-filter-form-section operon-filter-grouping-section');
 		const groupRow = this.createModalFormRow(groupingSection, t('filterSets', 'groupBy'), 'operon-filter-groupby-row');
-		this.createModalSelect(groupRow.controlEl, groupOptions, this.filterSet.groupBy ?? '', (value) => {
+		this.createModalFieldPicker(groupRow.controlEl, groupOptions, this.filterSet.groupBy ?? '', (value) => {
 			this.filterSet.groupBy = value || undefined;
 			if (this.filterSet.subgroupBy === this.filterSet.groupBy) {
 				this.filterSet.subgroupBy = undefined;
 			}
 			this.syncMirroredFilterFields();
-			this.renderModal();
+			this.renderCurrentSurface();
+		}, {
+			label: t('filterSets', 'groupBy'),
+			placeholder: `(${t('filterSets', 'groupNone')})`,
 		});
 		this.createModalSelect(groupRow.actionEl, orderOptions, this.filterSet.groupOrder ?? 'asc', (value) => {
 			this.filterSet.groupOrder = value as 'asc' | 'desc';
@@ -1003,11 +1328,14 @@ export class FilterSetModal extends Modal {
 		}, 'order');
 
 		const subgroupRow = this.createModalFormRow(groupingSection, t('filterSets', 'subgroupBy'), 'operon-filter-subgroup-row');
-		this.createModalSelect(subgroupRow.controlEl, groupOptions, this.filterSet.subgroupBy ?? '', (value) => {
+		this.createModalFieldPicker(subgroupRow.controlEl, groupOptions, this.filterSet.subgroupBy ?? '', (value) => {
 			const nextValue = value || undefined;
 			this.filterSet.subgroupBy = nextValue === this.filterSet.groupBy ? undefined : nextValue;
 			this.syncMirroredFilterFields();
-			this.renderModal();
+			this.renderCurrentSurface();
+		}, {
+			label: t('filterSets', 'subgroupBy'),
+			placeholder: `(${t('filterSets', 'groupNone')})`,
 		});
 		this.createModalSelect(subgroupRow.actionEl, orderOptions, this.filterSet.subgroupOrder ?? 'asc', (value) => {
 			this.filterSet.subgroupOrder = value as 'asc' | 'desc';
@@ -1035,7 +1363,7 @@ export class FilterSetModal extends Modal {
 				order: 'asc',
 			});
 			this.syncMirroredFilterFields();
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 
 	}
@@ -1056,27 +1384,31 @@ export class FilterSetModal extends Modal {
 		const calendarPresets = settings.calendarPresets
 			.filter(preset => preset.filterSetId === this.filterSet.id)
 			.map(preset => preset.name.trim() || preset.id);
-		const kanbanPresets = settings.kanbanPresets
-			.filter(preset => preset.filterSetId === this.filterSet.id)
-			.map(preset => preset.name.trim() || preset.id);
+			const kanbanPresets = settings.kanbanPresets
+				.filter(preset => preset.filterSetId === this.filterSet.id)
+				.map(preset => preset.name.trim() || preset.id);
+			const tablePresets = settings.tablePresets
+				.filter(preset => preset.filterSetId === this.filterSet.id)
+				.map(preset => preset.name.trim() || preset.id);
 
-		const section = container.createDiv('operon-filter-usage-section');
-		section.createEl('h4', {
-			cls: 'operon-filter-modal-section-title',
-			text: t('filterSets', 'usedByTitle'),
-		});
-
-		if (calendarPresets.length === 0 && kanbanPresets.length === 0) {
-			section.createDiv({
-				cls: 'operon-filter-usage-empty',
-				text: t('filterSets', 'usedByNone'),
+			const section = container.createDiv('operon-filter-usage-section');
+			section.createEl('h4', {
+				cls: 'operon-filter-modal-section-title',
+				text: t('filterSets', 'usedByTitle'),
 			});
-			return;
+
+			if (calendarPresets.length === 0 && kanbanPresets.length === 0 && tablePresets.length === 0) {
+				section.createDiv({
+					cls: 'operon-filter-usage-empty',
+					text: t('filterSets', 'usedByNone'),
+				});
+				return;
 		}
 
-		this.renderUsageRow(section, t('filterSets', 'usedByCalendar'), calendarPresets);
-		this.renderUsageRow(section, t('filterSets', 'usedByKanban'), kanbanPresets);
-	}
+			this.renderUsageRow(section, t('filterSets', 'usedByCalendar'), calendarPresets);
+			this.renderUsageRow(section, t('filterSets', 'usedByKanban'), kanbanPresets);
+			this.renderUsageRow(section, t('filterSets', 'usedByTable'), tablePresets);
+		}
 
 	private renderUsageRow(container: HTMLElement, label: string, presetNames: string[]): void {
 		const row = container.createDiv('operon-filter-usage-row');
@@ -1094,17 +1426,21 @@ export class FilterSetModal extends Modal {
 		container: HTMLElement,
 		sort: FilterSortSpec,
 		index: number,
-		fieldOptions: Array<{ field: string; label: string; type: FilterFieldType }>,
+		fieldOptions: readonly FilterFieldPickerOption[],
 	): void {
 		const row = container.createDiv('operon-filter-sort-row');
 
-		this.createModalSelect(
+		this.createModalFieldPicker(
 			row,
-			fieldOptions.map(optionDef => ({ value: optionDef.field, label: optionDef.label })),
+			fieldOptions,
 			sort.field,
 			(value) => {
 				sort.field = value;
 				this.syncMirroredFilterFields();
+			},
+			{
+				label: t('filterSets', 'sortBy'),
+				placeholder: t('filterSets', 'sortNone'),
 			},
 		);
 
@@ -1132,7 +1468,7 @@ export class FilterSetModal extends Modal {
 		deleteBtn.addEventListener('click', () => {
 			this.filterSet.sorts.splice(index, 1);
 			this.syncMirroredFilterFields();
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 	}
 
@@ -1146,7 +1482,7 @@ export class FilterSetModal extends Modal {
 		moveUpBtn.addEventListener('click', () => {
 			if (index === 0) return;
 			[this.filterSet.sorts[index - 1], this.filterSet.sorts[index]] = [this.filterSet.sorts[index], this.filterSet.sorts[index - 1]];
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 
 		const moveDownBtn = container.createEl('button');
@@ -1158,7 +1494,7 @@ export class FilterSetModal extends Modal {
 		moveDownBtn.addEventListener('click', () => {
 			if (index >= this.filterSet.sorts.length - 1) return;
 			[this.filterSet.sorts[index + 1], this.filterSet.sorts[index]] = [this.filterSet.sorts[index], this.filterSet.sorts[index + 1]];
-			this.renderModal();
+			this.renderCurrentSurface();
 		});
 	}
 
@@ -1170,9 +1506,10 @@ export class FilterSetModal extends Modal {
 		const row = container.createDiv('operon-filter-footer');
 		const left = row.createDiv('operon-filter-footer-left');
 		const right = row.createDiv('operon-filter-footer-primary-actions');
+		const inlineOptions = this.inlineEditor?.options ?? null;
 
 		// Live task count badge — left side
-		if (this.evalDeps && this.options.showCountBadge !== false) {
+		if ((this.evalDeps || inlineOptions?.countTasks) && this.options.showCountBadge !== false) {
 			const deps = this.evalDeps;
 			const badge = left.createEl('button', { cls: 'operon-filter-count-badge' });
 			this.countBadge = badge;
@@ -1183,8 +1520,11 @@ export class FilterSetModal extends Modal {
 			const updateCount = () => {
 				if (updating) return;
 				updating = true;
-				const tasks = evaluateFilterSet(this.filterSet, deps.indexer.getAllTasks(), deps.getPriorities(), deps.pinnedCache);
-				const n = tasks.length;
+				const n = inlineOptions?.countTasks
+					? inlineOptions.countTasks(this.filterSet)
+					: deps
+						? evaluateFilterSet(this.filterSet, deps.indexer.getAllTasks(), deps.getPriorities(), deps.pinnedCache).length
+						: 0;
 				badge.empty();
 				const icon = badge.createSpan({ cls: 'operon-count-badge-icon' });
 				setIcon(icon, 'list');
@@ -1199,21 +1539,24 @@ export class FilterSetModal extends Modal {
 			updateCount();
 
 			// Re-run count when conditions change — debounce + guard prevents re-entrant loop
-			const observer = new MutationObserver(() => {
-				if (updating) return;
-				if (debounceTimer) clearWindowTimeout(debounceTimer);
-				debounceTimer = setWindowTimeout(() => updateCount(), 150);
-			});
+				const observer = new MutationObserver((mutations) => {
+					if (updating) return;
+					if (mutations.every(mutation => badge.contains(mutation.target))) return;
+					if (debounceTimer) clearWindowTimeout(debounceTimer);
+					debounceTimer = setWindowTimeout(() => updateCount(), 150);
+				});
 			observer.observe(container.closest('.modal-content') ?? container, { childList: true, subtree: true });
 			this.condObserver = observer;
 
-			badge.addEventListener('click', () => {
-				new FilterPreviewModal(
-					this.app,
-					this.filterSet,
-					deps,
-				).open();
-			});
+			if (deps) {
+				badge.addEventListener('click', () => {
+					new FilterPreviewModal(
+						this.app,
+						this.filterSet,
+						deps,
+					).open();
+				});
+			}
 		}
 
 		this.renderQuickActions(left, right);
@@ -1222,12 +1565,26 @@ export class FilterSetModal extends Modal {
 		cancelBtn.type = 'button';
 		this.addClasses(cancelBtn, 'operon-filter-modal-button', 'operon-filter-footer-button', 'operon-filter-modal-cancel-button');
 		cancelBtn.setText(t('buttons', 'cancel'));
-		cancelBtn.addEventListener('click', () => this.close());
+		cancelBtn.addEventListener('click', () => {
+			if (inlineOptions) {
+				inlineOptions.onCancel();
+				return;
+			}
+			this.close();
+		});
 
 		const saveBtn = right.createEl('button');
 		saveBtn.type = 'button';
 		this.addClasses(saveBtn, 'operon-filter-modal-button', 'operon-filter-footer-button', 'is-primary', 'mod-cta');
 		saveBtn.setText(t('buttons', 'save'));
+		if (inlineOptions?.saveTooltip) {
+			bindOperonHoverTooltip(saveBtn, {
+				title: inlineOptions.saveTooltip.title,
+				content: inlineOptions.saveTooltip.content,
+				taskColor: null,
+				preferredVertical: 'above',
+			});
+		}
 		saveBtn.addEventListener('click', () => {
 			const name = this.filterSet.name.trim();
 			if (!name) {
@@ -1236,6 +1593,10 @@ export class FilterSetModal extends Modal {
 			}
 			this.syncMirroredFilterFields();
 			this.filterSet.name = name;
+			if (inlineOptions) {
+				inlineOptions.onSave(this.filterSet);
+				return;
+			}
 			this.onSave(this.filterSet);
 			this.close();
 		});

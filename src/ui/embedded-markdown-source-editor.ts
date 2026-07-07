@@ -22,7 +22,7 @@ export interface EmbeddedMarkdownSourceEditorOptions {
 	showLineNumbers?: boolean;
 	onBlur?: () => void;
 	onChange?: (value: string) => void;
-	onEscape?: () => void;
+	onEscape?: () => boolean | void;
 	onSubmit?: () => void;
 	onTab?: (outdent: boolean) => boolean;
 }
@@ -558,8 +558,8 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 				{
 					key: 'Escape',
 					run: () => {
-						this.options.onEscape?.();
-						return this.options.onEscape != null;
+						const handled = this.options.onEscape?.();
+						return handled ?? this.options.onEscape != null;
 					},
 				},
 				{

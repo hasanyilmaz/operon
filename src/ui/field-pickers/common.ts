@@ -21,6 +21,7 @@ interface FloatingPanelRecord {
 	panel: HTMLElement;
 	anchorEl: HTMLElement | null;
 	close: () => void;
+	requestClose: (reason: FloatingPanelCloseReason) => boolean;
 }
 
 export interface FloatingHostOptions {
@@ -39,6 +40,7 @@ export interface FloatingPanelOptions extends FloatingHostOptions {
 	retainInputFocus?: boolean;
 	focusInputSelector?: string;
 	closeOnWindowResize?: boolean;
+	matchWidth?: number;
 	repositionOnWindowResize?: boolean;
 	repositionOnPanelResize?: boolean;
 	repositionOnScroll?: boolean;
@@ -389,6 +391,7 @@ export function createFloatingPanel(
 		floatingHost: options.floatingHost,
 		floatingScrollHost: options.floatingScrollHost,
 		constrainToFloatingHost: options.constrainToFloatingHost,
+		matchWidth: options.matchWidth,
 	};
 	const hostDocument = getOwnerDocument(host);
 	const hostWindow = getOwnerWindow(host);
@@ -406,6 +409,7 @@ export function createFloatingPanel(
 		panel,
 		anchorEl,
 		close: () => undefined,
+		requestClose: () => false,
 	};
 	const isAnchorConnected = (): boolean => !anchorEl || anchorEl.isConnected;
 	const schedulePosition = () => {
@@ -473,10 +477,12 @@ export function createFloatingPanel(
 	};
 	record.close = cleanup;
 
-	const requestClose = (reason: FloatingPanelCloseReason): void => {
-		if (options.shouldClose?.(reason) === false) return;
+	const requestClose = (reason: FloatingPanelCloseReason): boolean => {
+		if (options.shouldClose?.(reason) === false) return false;
 		cleanup();
+		return true;
 	};
+	record.requestClose = requestClose;
 
 	const onOutside = (event: MouseEvent) => {
 		if (!panel.contains(event.target as Node)) {
@@ -485,7 +491,7 @@ export function createFloatingPanel(
 	};
 
 	const onKeyDown = (event: KeyboardEvent) => {
-		if (event.key === 'Escape') requestClose('escape');
+		if (event.key === 'Escape' && isTopMostFloatingPanel(record)) requestClose('escape');
 	};
 
 	onHostWindowResize = () => {
@@ -564,17 +570,62 @@ export function scrollChildIntoView(container: HTMLElement, child: HTMLElement |
 	}
 }
 
-export function closeFloatingPanelsForRoot(root: ParentNode): void {
+function containsNode(root: Node, target: Node | null | undefined): boolean {
+	if (!target) return false;
+	const rootWithContains = root as Node & { contains?: (other: Node | null) => boolean };
+	if (typeof rootWithContains.contains !== 'function') return false;
+	return rootWithContains.contains(target);
+}
+
+function floatingPanelBelongsToRoot(root: Node, record: FloatingPanelRecord): boolean {
+	return containsNode(root, record.panel) || containsNode(root, record.anchorEl);
+}
+
+function hasDisconnectedAnchor(record: FloatingPanelRecord): boolean {
+	return record.anchorEl != null && !record.anchorEl.isConnected;
+}
+
+function isTopMostFloatingPanel(record: FloatingPanelRecord): boolean {
+	const records = Array.from(activeFloatingPanels);
+	return records[records.length - 1] === record;
+}
+
+export function closeFloatingPanelsForRoot(root: ParentNode): boolean {
 	const rootNode = root as Node;
+	let closed = false;
 	for (const record of Array.from(activeFloatingPanels)) {
-		if (
-			rootNode.contains(record.panel)
-			|| (record.anchorEl && rootNode.contains(record.anchorEl))
-			|| (record.anchorEl && !record.anchorEl.isConnected)
-		) {
+		if (floatingPanelBelongsToRoot(rootNode, record) || hasDisconnectedAnchor(record)) {
+			record.close();
+			closed = true;
+		}
+	}
+	return closed;
+}
+
+export function requestFloatingPanelCloseForRoot(root: ParentNode, reason: FloatingPanelCloseReason): boolean {
+	const rootNode = root as Node;
+	let handled = false;
+	for (const record of Array.from(activeFloatingPanels)) {
+		if (floatingPanelBelongsToRoot(rootNode, record)) {
+			handled = true;
+			record.requestClose(reason);
+		} else if (hasDisconnectedAnchor(record)) {
 			record.close();
 		}
 	}
+	return handled;
+}
+
+export function isFloatingPanelTargetForRoot(root: ParentNode, target: EventTarget | null): boolean {
+	if (!target || typeof (target as Node).nodeType !== 'number') return false;
+	const targetNode = target as Node;
+	const rootNode = root as Node;
+	for (const record of activeFloatingPanels) {
+		if (containsNode(rootNode, record.anchorEl) && containsNode(record.panel, targetNode)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 export function createButton(label: string, className: string, owner?: Node | null): HTMLButtonElement {

@@ -6,7 +6,7 @@
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, editorLivePreviewField, requestUrl, setIcon } from 'obsidian';
+import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, WorkspaceLeaf, editorLivePreviewField, requestUrl, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
 import { OperonStorage } from './src/storage/operon-storage';
@@ -126,8 +126,8 @@ import {
 import { enhanceReadingTaskFileWikilinks } from './src/ui/reading-task-wikilink-overlay';
 import { MobileGlobalTaskFab } from './src/ui/mobile-global-task-fab';
 import { OPERON_COMPACT_CHIP_HOVER_SOURCE } from './src/ui/compact-chip-link-preview';
-import { closeFloatingPanelsForRoot } from './src/ui/field-pickers/common';
-import { closeIconOnlyChipPreviewsForRoot } from './src/ui/icon-only-chip-preview';
+import { cleanupOperonRenderRoot } from './src/ui/render-root-cleanup';
+import { hideTaskContextualHoverMenu } from './src/ui/contextual-hover-menu';
 import {
 	WindowTimeoutHandle,
 	asHTMLElement,
@@ -180,6 +180,11 @@ import {
 	EmbedFilterDeps,
 	FilterSurfaceInstance,
 } from './src/ui/embed-filter-processor';
+import {
+	registerEmbedTableProcessor,
+	refreshEmbedTables,
+	type EmbedTableDeps,
+} from './src/ui/embed-table-processor';
 import {
 	applyDynamicFileTaskFilterHostPlacement,
 	DYNAMIC_FILE_TASK_FILTER_HOST_CLASS,
@@ -300,6 +305,8 @@ import {
 	CalendarPreset,
 	CalendarSlotSelection,
 	ExternalCalendarTaskSeed,
+	cloneDefaultCalendarPresets,
+	createCalendarPresetId,
 	normalizeCalendarSidebarTaskPoolMode,
 } from './src/types/calendar';
 import {
@@ -310,6 +317,8 @@ import {
 	KanbanPreset,
 	buildKanbanLaneCollapseScopeKey,
 	buildKanbanStatusCollapseScopeKey,
+	cloneDefaultKanbanPresets,
+	createKanbanPresetId,
 	normalizeKanbanLeafState,
 } from './src/types/kanban';
 import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask } from './src/types/fields';
@@ -364,6 +373,23 @@ import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './src/u
 import { CalendarPresetQuickSettingsModal } from './src/ui/calendar/calendar-preset-quick-settings-modal';
 import { buildRepeatScopeModalLabels, promptRepeatOccurrenceScope } from './src/ui/calendar/repeat-occurrence-scope-modal';
 import { KanbanView, KANBAN_VIEW_TYPE } from './src/ui/kanban/kanban-view';
+import { OperonTableView } from './src/ui/table/operon-table-view';
+import {
+	OPERON_TABLE_VIEW_TYPE,
+	cloneTablePreset,
+	createDefaultTablePreset,
+	createTablePresetId,
+	type TableLeafState,
+	type TablePreset,
+	type TablePresetPatch,
+} from './src/types/table';
+import { buildUniqueRelatedPresetName } from './src/ui/related-views';
+import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from './src/types/related-views';
+import { isEditableTableTaskFieldKey, normalizeTableTaskFieldKey } from './src/ui/table/table-field-catalog';
+import { buildTableEmbedCode } from './src/ui/table/table-export';
+import { applyTablePresetPatch } from './src/ui/table/table-preset-model';
+import { TablePresetMutationQueue } from './src/ui/table/table-preset-mutation-queue';
+import { TablePresetQuickSettingsModal } from './src/ui/table/table-preset-quick-settings-modal';
 import { KanbanPresetQuickSettingsModal } from './src/ui/kanban/kanban-preset-quick-settings-modal';
 import { KanbanCellActionModal } from './src/ui/kanban/kanban-cell-action-modal';
 import { buildKanbanWritebackPlan } from './src/systems/kanban-writeback';
@@ -384,6 +410,7 @@ import {
 } from './src/core/engine-perf';
 
 const FILTER_PERF_DEBUG = false;
+const TABLE_REPEAT_AUXILIARY_WRITEBACK_KEYS = new Set(['repeatSeriesId', 'repeatOccurrenceDate']);
 const perfNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const perfLog = (...args: unknown[]) => {
 	if (FILTER_PERF_DEBUG) console.debug('[Operon filter perf]', ...args);
@@ -651,12 +678,15 @@ export default class OperonPlugin extends Plugin {
 	private canonicalSettingsReloadRunning = false;
 	private canonicalSettingsReloadLastCheckAt = 0;
 	private yamlPropertyVisibilityRefreshTimer: WindowTimeoutHandle | null = null;
+	private locationPlaceTableRefreshTimer: WindowTimeoutHandle | null = null;
 	private workspaceTweakPropertiesCollapseCycleId = 0;
 	private workspaceTweakPropertiesCollapseCycles = new WeakMap<MarkdownView, WorkspaceTweakPropertiesCollapseCycle>();
 	private workspaceTweakPropertiesCollapseTimers: WindowTimeoutHandle[] = [];
 	private workspaceTweakPropertiesTargetEls = new Set<HTMLElement>();
 	private workspaceTweakBodyDocuments = new Set<Document>();
 	private embedFilterDeps: EmbedFilterDeps | null = null;
+	private embedTableDeps: EmbedTableDeps | null = null;
+	private readonly tablePresetMutationQueue = new TablePresetMutationQueue();
 	private dynamicFileTaskFilterReadingTimers = new Map<string, WindowTimeoutHandle>();
 	private dynamicFileTaskFilterReadingHosts = new Set<HTMLElement>();
 	private dynamicFileTaskFilterReadingInstances = new WeakMap<HTMLElement, FilterSurfaceInstance>();
@@ -1122,6 +1152,16 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
+	private refreshTableLeaves(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(OPERON_TABLE_VIEW_TYPE)) {
+			if (hasUnknownMethod(leaf.view, 'renderIfVisibleOrInvalidate')) {
+				callUnknownMethod(leaf.view, 'renderIfVisibleOrInvalidate');
+			} else {
+				callUnknownMethod(leaf.view, 'render');
+			}
+		}
+	}
+
 	private refreshTimeSessionHistoryLeaves(force = false): void {
 		for (const leaf of this.app.workspace.getLeavesOfType(TIME_SESSION_HISTORY_VIEW_TYPE)) {
 			if (force) callUnknownMethod(leaf.view, 'markDirty');
@@ -1497,6 +1537,89 @@ export default class OperonPlugin extends Plugin {
 		await this.app.workspace.revealLeaf(leaf);
 	}
 
+	async openOperonTable(state?: Partial<TableLeafState>): Promise<void> {
+		const leaf = this.app.workspace.getLeaf('tab');
+		if (!leaf) return;
+
+		const availablePresetIds = this.settings.tablePresets.map(preset => preset.id);
+		const fallbackPresetId = this.settings.tableDefaultPresetId && availablePresetIds.includes(this.settings.tableDefaultPresetId)
+			? this.settings.tableDefaultPresetId
+			: availablePresetIds[0] ?? null;
+		const requestedPresetId = typeof state?.presetId === 'string' && availablePresetIds.includes(state.presetId)
+			? state.presetId
+			: fallbackPresetId;
+		const nextState: TableLeafState = {
+			presetId: requestedPresetId,
+			searchQuery: typeof state?.searchQuery === 'string' ? state.searchQuery : '',
+			scrollTop: typeof state?.scrollTop === 'number' && Number.isFinite(state.scrollTop)
+				? Math.max(0, state.scrollTop)
+				: 0,
+			scrollLeft: typeof state?.scrollLeft === 'number' && Number.isFinite(state.scrollLeft)
+				? Math.max(0, state.scrollLeft)
+				: 0,
+			collapsedGroupKeys: Array.isArray(state?.collapsedGroupKeys)
+				? state.collapsedGroupKeys.filter((key): key is string => typeof key === 'string')
+				: [],
+		};
+
+		await leaf.setViewState({
+			type: OPERON_TABLE_VIEW_TYPE,
+			active: true,
+			state: nextState as unknown as Record<string, unknown>,
+		});
+		await this.app.workspace.revealLeaf(leaf);
+	}
+
+	private resolveDefaultTableEmbedPreset(): TablePreset | null {
+		const availablePresets = this.settings.tablePresets;
+		const defaultPresetId = this.settings.tableDefaultPresetId;
+		return defaultPresetId
+			? availablePresets.find(preset => preset.id === defaultPresetId) ?? availablePresets[0] ?? null
+			: availablePresets[0] ?? null;
+	}
+
+	private insertOperonTableEmbedAtCursor(editor: Editor, view: MarkdownView): void {
+		if (!view.file) {
+			new Notice(t('notifications', 'noActiveFile'));
+			return;
+		}
+
+		const preset = this.resolveDefaultTableEmbedPreset();
+		if (!preset) {
+			new Notice(t('notifications', 'tablePresetsMissing'));
+			return;
+		}
+
+		const selections = editor.listSelections();
+		if (selections.length !== 1) {
+			new Notice(t('notifications', 'singleCursorOrSelectionRequired'));
+			return;
+		}
+
+		const embedCode = buildTableEmbedCode(preset.id);
+		const selection = selections[0];
+		const cursor = editor.getCursor();
+		const range = editor.somethingSelected()
+			? this.normalizeEditorSelection(selection)
+			: { from: cursor, to: cursor };
+		editor.replaceRange(embedCode, range.from, range.to);
+		editor.setCursor(this.resolveInsertedTextEndPosition(range.from, embedCode));
+		editor.focus();
+		this.refreshMarkdownAfterInlineAuthoring(view.file.path);
+	}
+
+	private resolveInsertedTextEndPosition(start: EditorPosition, text: string): EditorPosition {
+		const lines = text.split('\n');
+		if (lines.length === 1) {
+			return { line: start.line, ch: start.ch + lines[0].length };
+		}
+		const lastLine = lines[lines.length - 1] ?? '';
+		return {
+			line: start.line + lines.length - 1,
+			ch: lastLine.length,
+		};
+	}
+
 	private openTaskFinderModal(): void {
 		openTaskFinder(
 			this.app,
@@ -1701,6 +1824,7 @@ export default class OperonPlugin extends Plugin {
 
 		// Register embedded filter code block processor
 		this.registerEmbedFilterProcessor();
+		this.registerEmbedTableProcessor();
 
 		// Register settings tab
 		this.addSettingTab(new OperonSettingsTab(
@@ -1731,10 +1855,11 @@ export default class OperonPlugin extends Plugin {
 				(sourceId) => this.syncExternalCalendarSourceNow(sourceId),
 				(presetId, sortMode) => this.handleKanbanSortModeChange(presetId, sortMode),
 				(sourcePresetId, targetPresetId) => this.copyKanbanManualOrder(sourcePresetId, targetPresetId),
-				(presetId) => this.removeKanbanManualOrder(presetId),
-				() => this.createOrRepairBasicsWorkspaceFromUi(),
-				() => this.syncOperonDocsFromSettings(),
-			));
+					(presetId) => this.removeKanbanManualOrder(presetId),
+					() => this.createOrRepairBasicsWorkspaceFromUi(),
+					() => this.syncOperonDocsFromSettings(),
+					(operation) => this.enqueueTablePresetMutation(operation),
+				));
 
 		const statusBarItem = this.addStatusBarItem();
 		this.trackerStatusBar = new TimeTrackerStatusBar(
@@ -1832,6 +1957,14 @@ export default class OperonPlugin extends Plugin {
 			clearWindowTimeout(this.canonicalSettingsReloadTimer);
 			this.canonicalSettingsReloadTimer = null;
 		}
+		if (this.yamlPropertyVisibilityRefreshTimer) {
+			clearWindowTimeout(this.yamlPropertyVisibilityRefreshTimer);
+			this.yamlPropertyVisibilityRefreshTimer = null;
+		}
+		if (this.locationPlaceTableRefreshTimer) {
+			clearWindowTimeout(this.locationPlaceTableRefreshTimer);
+			this.locationPlaceTableRefreshTimer = null;
+		}
 		this.clearWorkspaceTweakPropertiesCollapseTimers();
 		this.clearWorkspaceTweakPropertiesCollapserTargetClasses();
 		this.removeWorkspaceTweakBodyClasses();
@@ -1883,6 +2016,7 @@ export default class OperonPlugin extends Plugin {
 		this.timeTracker.destroy();
 		this.closeActiveLivePreviewPicker();
 		this.livePreviewEphemeralSession.cancel('plugin_unload');
+		hideTaskContextualHoverMenu(true);
 
 		await this.indexer.flushPendingPersist();
 		await this.storage.flushPendingWrites();
@@ -2167,6 +2301,8 @@ export default class OperonPlugin extends Plugin {
 							getFilterModalEvalDeps: () => this.buildFilterModalEvalDeps(),
 						}).open();
 					},
+					onOpenRelatedView: (target) => this.openRelatedViewTarget(target),
+					onCreateRelatedView: (target) => this.createRelatedViewPresetAndOpen(target),
 				},
 			)
 		);
@@ -2224,6 +2360,34 @@ export default class OperonPlugin extends Plugin {
 							getFilterModalEvalDeps: () => this.buildFilterModalEvalDeps(),
 						}).open();
 					},
+					onOpenRelatedView: (target) => this.openRelatedViewTarget(target),
+					onCreateRelatedView: (target) => this.createRelatedViewPresetAndOpen(target),
+				},
+			)
+		);
+		this.registerView(OPERON_TABLE_VIEW_TYPE, (leaf) =>
+			new OperonTableView(
+				leaf,
+				this.indexer,
+				() => this.settings,
+				() => this.pinnedCache,
+				{
+					onOpenTaskEditor: (operonId) => this.openEditorForId(operonId),
+					onOpenTaskSource: openTaskSourceInNewTab,
+					onOpenPresetSettings: (presetId) => this.openTablePresetSettingsModal(presetId, leaf),
+					onOpenRelatedView: (target) => this.openRelatedViewTarget(target),
+					onCreateRelatedView: (target) => this.createRelatedViewPresetAndOpen(target),
+					onSavePresetPatch: (patch) => this.saveTablePresetPatchAndRefresh(patch),
+					onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
+					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
+					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
+					onEditTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
+					onDeleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
+					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
+					onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
+					isTaskPinned: (taskId) => this.pinnedCache?.isPinned(taskId) === true,
+					hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
 				},
 			)
 		);
@@ -3437,6 +3601,113 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
+	private openRelatedViewTarget(target: RelatedViewOpenTarget): Promise<void> | void {
+		if (target.type === 'filter') return this.openFilterViewById(target.presetId);
+		if (target.type === 'calendar') return this.openCalendarView({ presetId: target.presetId });
+		if (target.type === 'kanban') return this.openKanbanView({ presetId: target.presetId });
+		return this.openOperonTable({ presetId: target.presetId });
+	}
+
+	private async createRelatedViewPresetAndOpen(target: RelatedViewCreateTarget): Promise<void> {
+		if (target.type === 'calendar') {
+			const preset = this.createRelatedCalendarPreset(target.variant, target.filterSetId);
+			this.settings.calendarPresets.push(preset);
+			if (!this.settings.calendarDefaultPresetId) {
+				this.settings.calendarDefaultPresetId = this.settings.calendarPresets[0]?.id ?? null;
+			}
+			this.applyCalendarPresetSaveEffects(preset);
+			await this.storage.saveSettings();
+			this.refreshViews();
+			await this.openCalendarView({ presetId: preset.id });
+			return;
+		}
+		if (target.type === 'kanban') {
+			const preset = this.createRelatedKanbanPreset(target.filterSetId);
+			this.settings.kanbanPresets.push(preset);
+			if (!this.settings.kanbanDefaultPresetId) {
+				this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
+			}
+			await this.storage.saveSettings();
+			await this.handleKanbanSortModeChange(preset.id, preset.sortMode);
+			this.refreshViews();
+			await this.openKanbanView({ presetId: preset.id });
+			return;
+		}
+		const preset = this.createRelatedTablePreset(target.filterSetId);
+		await this.enqueueTablePresetMutation(async () => {
+			const snapshot = this.snapshotTablePresetSettings();
+			this.settings.tablePresets.push(preset);
+			if (!this.settings.tableDefaultPresetId) {
+				this.settings.tableDefaultPresetId = this.settings.tablePresets[0]?.id ?? null;
+			}
+			try {
+				await this.storage.saveSettings();
+			} catch (error) {
+				this.restoreTablePresetSettings(snapshot);
+				this.refreshViews();
+				throw error;
+			}
+			this.refreshViews();
+		});
+		await this.openOperonTable({ presetId: preset.id });
+	}
+
+	private createRelatedCalendarPreset(
+		variant: Extract<RelatedViewCreateTarget, { type: 'calendar' }>['variant'],
+		filterSetId: string | null,
+	): CalendarPreset {
+		const defaults = cloneDefaultCalendarPresets();
+		const template = variant === 'multiWeek'
+			? defaults.find(preset => preset.surfaceType === 'multiWeek') ?? defaults[0]
+			: defaults.find(preset => preset.surfaceType === 'timeGrid') ?? defaults[0];
+		return {
+			...template,
+			id: createCalendarPresetId(),
+			name: buildUniqueRelatedPresetName(this.getRelatedCalendarPresetName(variant), this.settings.calendarPresets),
+			surfaceType: variant,
+			filterSetId,
+			externalCalendarVisibility: { ...template.externalCalendarVisibility },
+		};
+	}
+
+	private getRelatedCalendarPresetName(variant: Extract<RelatedViewCreateTarget, { type: 'calendar' }>['variant']): string {
+		if (variant === 'timeTrackerGrid') return t('table', 'relatedViewsCalendarTimeTrackerGridPresetName');
+		if (variant === 'multiWeek') return t('table', 'relatedViewsCalendarMultiWeekPresetName');
+		return t('table', 'relatedViewsCalendarTimeGridPresetName');
+	}
+
+	private createRelatedKanbanPreset(filterSetId: string | null): KanbanPreset {
+		const template = cloneDefaultKanbanPresets()[0];
+		return {
+			...template,
+			id: createKanbanPresetId(),
+			name: buildUniqueRelatedPresetName(t('table', 'relatedViewsKanbanDefaultPipelinePresetName'), this.settings.kanbanPresets),
+			pipelineId: this.resolveDefaultKanbanPipelineId(),
+			filterSetId,
+			sortRules: template.sortRules.map(rule => ({ ...rule })),
+		};
+	}
+
+	private resolveDefaultKanbanPipelineId(): string | null {
+		return this.settings.pipelines.find(pipeline => pipeline.name === this.settings.defaultPipelineName)?.id
+			?? this.settings.pipelines[0]?.id
+			?? null;
+	}
+
+	private createRelatedTablePreset(filterSetId: string | null): TablePreset {
+		const preset = createDefaultTablePreset();
+		return {
+			...preset,
+			id: createTablePresetId(),
+			name: buildUniqueRelatedPresetName(t('table', 'relatedViewsTableDefaultPresetName'), this.settings.tablePresets),
+			filterSetId,
+			columns: preset.columns.map(column => ({ ...column })),
+			sortRules: preset.sortRules.map(rule => ({ ...rule })),
+			summaries: preset.summaries.map(summary => ({ ...summary })),
+			display: { ...preset.display },
+		};
+	}
+
 	private replaceCalendarPreset(updated: CalendarPreset): void {
 		const index = this.settings.calendarPresets.findIndex(entry => entry.id === updated.id);
 		if (index === -1) return;
@@ -3461,6 +3732,144 @@ export default class OperonPlugin extends Plugin {
 		if (!this.settings.kanbanPresets.some(entry => entry.id === this.settings.kanbanDefaultPresetId)) {
 			this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
 		}
+	}
+
+	private patchTablePreset(patch: TablePresetPatch): void {
+		const index = this.settings.tablePresets.findIndex(entry => entry.id === patch.id);
+		if (index === -1) return;
+		this.settings.tablePresets[index] = applyTablePresetPatch(this.settings.tablePresets[index], patch);
+		if (!this.settings.tablePresets.some(entry => entry.id === this.settings.tableDefaultPresetId)) {
+			this.settings.tableDefaultPresetId = this.settings.tablePresets[0]?.id ?? null;
+		}
+	}
+
+	private enqueueTablePresetMutation<T>(operation: () => Promise<T>): Promise<T> {
+		return this.tablePresetMutationQueue.enqueue(operation);
+	}
+
+	private snapshotTablePresetSettings(): { tablePresets: TablePreset[]; tableDefaultPresetId: string | null } {
+		return {
+			tablePresets: this.settings.tablePresets.map(cloneTablePreset),
+			tableDefaultPresetId: this.settings.tableDefaultPresetId,
+		};
+	}
+
+	private restoreTablePresetSettings(snapshot: { tablePresets: TablePreset[]; tableDefaultPresetId: string | null }): void {
+		this.settings.tablePresets = snapshot.tablePresets.map(cloneTablePreset);
+		this.settings.tableDefaultPresetId = snapshot.tableDefaultPresetId;
+	}
+
+	private async saveTablePresetPatchAndRefresh(patch: TablePresetPatch): Promise<void> {
+		await this.enqueueTablePresetMutation(async () => {
+			const snapshot = this.snapshotTablePresetSettings();
+			this.patchTablePreset(patch);
+			try {
+				await this.storage.saveSettings();
+			} catch (error) {
+				this.restoreTablePresetSettings(snapshot);
+				this.refreshViews();
+				throw error;
+			}
+			this.refreshViews();
+		});
+	}
+
+	private async addTablePresetAndRefresh(preset: TablePreset, leaf: WorkspaceLeaf): Promise<void> {
+		await this.enqueueTablePresetMutation(async () => {
+			const snapshot = this.snapshotTablePresetSettings();
+			this.settings.tablePresets.push(preset);
+			if (!this.settings.tableDefaultPresetId) {
+				this.settings.tableDefaultPresetId = preset.id;
+			}
+			try {
+				await this.storage.saveSettings();
+			} catch (error) {
+				this.restoreTablePresetSettings(snapshot);
+				this.refreshViews();
+				throw error;
+			}
+		});
+		await this.activateTablePresetInLeaf(leaf, preset.id);
+		this.refreshViews();
+	}
+
+	private async deleteTablePresetAndRefresh(presetId: string, leaf: WorkspaceLeaf): Promise<void> {
+		let fallbackPresetId: string | null = null;
+		let deleted = false;
+		await this.enqueueTablePresetMutation(async () => {
+			if (this.settings.tablePresets.length <= 1) return;
+			const snapshot = this.snapshotTablePresetSettings();
+			const deletedIndex = this.settings.tablePresets.findIndex(entry => entry.id === presetId);
+			if (deletedIndex === -1) return;
+			this.settings.tablePresets.splice(deletedIndex, 1);
+			deleted = true;
+			fallbackPresetId = this.settings.tablePresets[Math.max(0, deletedIndex - 1)]?.id
+				?? this.settings.tablePresets[0]?.id
+				?? null;
+			if (!this.settings.tablePresets.some(entry => entry.id === this.settings.tableDefaultPresetId)) {
+				this.settings.tableDefaultPresetId = fallbackPresetId;
+			}
+			try {
+				await this.storage.saveSettings();
+			} catch (error) {
+				this.restoreTablePresetSettings(snapshot);
+				this.refreshViews();
+				throw error;
+			}
+		});
+		if (!deleted) return;
+		if (fallbackPresetId) {
+			await this.activateTablePresetInLeaf(leaf, fallbackPresetId);
+		}
+		this.refreshViews();
+	}
+
+	private async setDefaultTablePresetAndRefresh(presetId: string): Promise<void> {
+		await this.enqueueTablePresetMutation(async () => {
+			if (!this.settings.tablePresets.some(entry => entry.id === presetId)) return;
+			const snapshot = this.snapshotTablePresetSettings();
+			this.settings.tableDefaultPresetId = presetId;
+			try {
+				await this.storage.saveSettings();
+			} catch (error) {
+				this.restoreTablePresetSettings(snapshot);
+				this.refreshViews();
+				throw error;
+			}
+			this.refreshViews();
+		});
+	}
+
+	private async activateTablePresetInLeaf(leaf: WorkspaceLeaf, presetId: string): Promise<void> {
+		const currentState = leaf.view instanceof OperonTableView
+			? leaf.view.getState() as Partial<TableLeafState>
+			: {};
+		const nextState: Record<string, unknown> = {
+			...currentState,
+			presetId,
+			scrollTop: 0,
+		};
+		await leaf.setViewState({
+			type: OPERON_TABLE_VIEW_TYPE,
+			active: true,
+			state: nextState,
+		});
+	}
+
+	private openTablePresetSettingsModal(presetId: string, leafOrResolver: WorkspaceLeaf | (() => WorkspaceLeaf)): void {
+		const resolveLeaf = () => typeof leafOrResolver === 'function' ? leafOrResolver() : leafOrResolver;
+		const preset = this.settings.tablePresets.find(entry => entry.id === presetId) ?? null;
+		new TablePresetQuickSettingsModal(this.app, {
+			getSettings: () => this.settings,
+			preset,
+			onSave: (patch) => this.saveTablePresetPatchAndRefresh(patch),
+			onCreate: (created) => this.addTablePresetAndRefresh(created, resolveLeaf()),
+			onDuplicate: (created) => this.addTablePresetAndRefresh(created, resolveLeaf()),
+			onDelete: (deletedPresetId) => this.deleteTablePresetAndRefresh(deletedPresetId, resolveLeaf()),
+			onSetDefault: (defaultPresetId) => this.setDefaultTablePresetAndRefresh(defaultPresetId),
+			onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
+			getFilterModalEvalDeps: () => this.buildFilterModalEvalDeps(),
+		}).open();
 	}
 
 	private async handleKanbanSortModeChange(
@@ -5485,6 +5894,50 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	/**
+	 * Register the `operon-table` code block processor for embedded table views.
+	 */
+	private registerEmbedTableProcessor(): void {
+		const deps = this.buildTableSurfaceDeps();
+		this.embedTableDeps = deps;
+		registerEmbedTableProcessor(
+			(lang, handler) => this.registerMarkdownCodeBlockProcessor(lang, handler),
+			deps,
+		);
+	}
+
+	private buildTableSurfaceDeps(): EmbedTableDeps {
+		return {
+			app: this.app,
+			indexer: this.indexer,
+			getSettings: () => this.settings,
+			getPinnedCache: () => this.pinnedCache,
+			openTaskEditor: (operonId: string) => this.openEditorForId(operonId),
+			openTaskSource: (operonId: string) => this.openMaterializedTaskSourceInNewTab(operonId),
+			allowWrites: true,
+			updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+			getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
+			addTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
+			editTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
+			deleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
+			onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
+			onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
+			onOpenPresetSettings: (presetId) => this.openTablePresetSettingsModal(presetId, () => this.resolveTablePresetSettingsLeafForEmbed()),
+			onSavePresetPatch: (patch) => this.saveTablePresetPatchAndRefresh(patch),
+			onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
+			isTaskPinned: (taskId) => this.pinnedCache?.isPinned(taskId) === true,
+			hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
+		};
+	}
+
+	private resolveTablePresetSettingsLeafForEmbed(): WorkspaceLeaf {
+		const activeTableView = this.app.workspace.getActiveViewOfType(OperonTableView);
+		const activeTableLeaf = activeTableView
+			? this.app.workspace.getLeavesOfType(OPERON_TABLE_VIEW_TYPE).find(leaf => leaf.view === activeTableView)
+			: null;
+		return activeTableLeaf ?? this.app.workspace.getLeaf(true);
+	}
+
 	private getMarkdownViewForEditorView(editorView: EditorView): MarkdownView | null {
 		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
 				const view = leaf.view;
@@ -5762,17 +6215,16 @@ export default class OperonPlugin extends Plugin {
 	 * Reading View uses the same native/concealed product language as Live Preview,
 	 * but renders from markdown preview DOM instead of CM6 decorations.
 	 */
-	private registerReadingModeProcessor(): void {
-		this.registerMarkdownPostProcessor((el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-			if (this.isRenderedCodeElement(el)) return;
-			const rootSectionInfo = ctx.getSectionInfo(el);
-			if (rootSectionInfo && this.isFencedMarkdownSection(rootSectionInfo)) return;
-			ctx.addChild(new class extends MarkdownRenderChild {
-				onunload(): void {
-					closeFloatingPanelsForRoot(el);
-					closeIconOnlyChipPreviewsForRoot(el);
-				}
-			}(el));
+		private registerReadingModeProcessor(): void {
+			this.registerMarkdownPostProcessor((el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+				if (this.isRenderedCodeElement(el)) return;
+				const rootSectionInfo = ctx.getSectionInfo(el);
+				if (rootSectionInfo && this.isFencedMarkdownSection(rootSectionInfo)) return;
+				ctx.addChild(new class extends MarkdownRenderChild {
+					onunload(): void {
+						cleanupOperonRenderRoot(el);
+					}
+				}(el));
 
 			const linkOverlayCallbacks = {
 				app: this.app,
@@ -5959,22 +6411,37 @@ export default class OperonPlugin extends Plugin {
 					const nestedLists = Array.from(li.children).filter((child): child is HTMLElement =>
 						asHTMLElement(child) !== null && (child.tagName === 'UL' || child.tagName === 'OL')
 					);
-					for (const nested of nestedLists) {
-						nested.remove();
-					}
-						const renderedDescription = createDiv({ cls: 'operon-reading-task-description-content' });
-						const renderChild = new MarkdownRenderChild(renderedDescription);
-						ctx.addChild(renderChild);
-						void MarkdownRenderer.render(
+						for (const nested of nestedLists) {
+							nested.remove();
+						}
+							const renderedDescription = createDiv({ cls: 'operon-reading-task-description-content' });
+							const renderChild = new class extends MarkdownRenderChild {
+								private unloaded = false;
+
+								onunload(): void {
+									this.unloaded = true;
+									cleanupOperonRenderRoot(renderedDescription);
+								}
+
+								isUnloaded(): boolean {
+									return this.unloaded;
+								}
+							}(renderedDescription);
+							ctx.addChild(renderChild);
+							void MarkdownRenderer.render(
 							this.app,
 							indexed.description || '(untitled)',
 							renderedDescription,
-							ctx.sourcePath,
-							renderChild,
-						).then(() => {
-							enhanceReadingTaskFileWikilinks(renderedDescription, ctx.sourcePath, linkOverlayCallbacks, {
-								sourceText: indexed.description || '(untitled)',
-							});
+								ctx.sourcePath,
+								renderChild,
+							).then(() => {
+								if (renderChild.isUnloaded() || !renderedDescription.isConnected) {
+									cleanupOperonRenderRoot(renderedDescription);
+									return;
+								}
+								enhanceReadingTaskFileWikilinks(renderedDescription, ctx.sourcePath, linkOverlayCallbacks, {
+									sourceText: indexed.description || '(untitled)',
+								});
 						});
 
 							// Replace the task item content while preserving any nested lists.
@@ -6071,17 +6538,16 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private destroyDynamicFileTaskFilterReadingHost(host: HTMLElement): void {
-		const instance = this.dynamicFileTaskFilterReadingInstances.get(host);
-		if (instance) {
-			destroyFilterSurfaceInstance(instance);
-		} else {
-			closeFloatingPanelsForRoot(host);
-			closeIconOnlyChipPreviewsForRoot(host);
-		}
-		this.dynamicFileTaskFilterReadingInstances.delete(host);
-		this.dynamicFileTaskFilterReadingHosts.delete(host);
-		host.remove();
+		private destroyDynamicFileTaskFilterReadingHost(host: HTMLElement): void {
+			const instance = this.dynamicFileTaskFilterReadingInstances.get(host);
+			if (instance) {
+				destroyFilterSurfaceInstance(instance);
+			} else {
+				cleanupOperonRenderRoot(host);
+			}
+			this.dynamicFileTaskFilterReadingInstances.delete(host);
+			this.dynamicFileTaskFilterReadingHosts.delete(host);
+			host.remove();
 	}
 
 	private insertDynamicFileTaskFilterReadingHost(root: HTMLElement, host: HTMLElement): void {
@@ -6372,6 +6838,7 @@ export default class OperonPlugin extends Plugin {
 				if (file.extension !== 'md') return;
 				invalidateCustomFieldValueCandidateCache(this.app);
 				invalidateLocationPlaceIndex(this.app);
+				this.scheduleLocationPlaceTableRefresh(120);
 				this.scheduleYamlPropertyVisibilityRefresh(120);
 			}),
 		);
@@ -6385,6 +6852,23 @@ export default class OperonPlugin extends Plugin {
 			this.yamlPropertyVisibilityRefreshTimer = null;
 			this.refreshOpenYamlPropertyViews();
 		}, delayMs);
+	}
+
+	private scheduleLocationPlaceTableRefresh(delayMs = 0): void {
+		if (this.locationPlaceTableRefreshTimer) {
+			clearWindowTimeout(this.locationPlaceTableRefreshTimer);
+		}
+		this.locationPlaceTableRefreshTimer = setWindowTimeout(() => {
+			this.locationPlaceTableRefreshTimer = null;
+			this.refreshLocationPlaceTableSurfaces();
+		}, delayMs);
+	}
+
+	private refreshLocationPlaceTableSurfaces(): void {
+		this.refreshTableLeaves();
+		if (this.embedTableDeps) {
+			refreshEmbedTables(this.embedTableDeps);
+		}
 	}
 
 	private refreshOpenYamlPropertyViews(): void {
@@ -7311,6 +7795,9 @@ export default class OperonPlugin extends Plugin {
 				}
 			}
 			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'filters', filtersStartedAt);
+			const tableStartedAt = perfContext ? enginePerfNow() : 0;
+			this.refreshTableLeaves();
+			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'table', tableStartedAt);
 			const timeHistoryStartedAt = perfContext ? enginePerfNow() : 0;
 			this.refreshTimeSessionHistoryLeaves();
 			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'time-history', timeHistoryStartedAt);
@@ -7361,6 +7848,13 @@ export default class OperonPlugin extends Plugin {
 			markdownStartedAt,
 			...this.getMarkdownRefreshScopePerfMetadata(markdownResult),
 		);
+		const tableEmbedsStartedAt = perfContext ? enginePerfNow() : 0;
+		if (isPrimaryPass && this.embedTableDeps) {
+			refreshEmbedTables(this.embedTableDeps);
+		}
+		if (isPrimaryPass) {
+			this.recordRefreshViewsPerfStage(stageTimings, perfContext, 'table-embeds', tableEmbedsStartedAt);
+		}
 		// Refresh embedded filter code blocks (they don't auto-update)
 		const embedsStartedAt = perfContext ? enginePerfNow() : 0;
 		if (isPrimaryPass && this.embedFilterDeps) {
@@ -7388,6 +7882,7 @@ export default class OperonPlugin extends Plugin {
 			`primary=${isPrimaryPass}`,
 			`filters=${this.app.workspace.getLeavesOfType(FILTER_VIEW_TYPE).length}`,
 			`embeds=${this.embedFilterDeps ? 'active' : 'none'}`,
+			`tableEmbeds=${this.embedTableDeps ? 'active' : 'none'}`,
 		);
 		if (perfContext) {
 			const rafWaitMs = Math.round(engineStartedAt - perfContext.requestedAt);
@@ -7455,8 +7950,12 @@ export default class OperonPlugin extends Plugin {
 		for (const leaf of this.app.workspace.getLeavesOfType(KANBAN_VIEW_TYPE)) {
 			callUnknownMethod(leaf.view, 'markDirty');
 		}
+		this.refreshTableLeaves();
 		this.trackerStatusBar?.render();
 		this.refreshMarkdownTaskSurfaces();
+		if (this.embedTableDeps) {
+			refreshEmbedTables(this.embedTableDeps);
+		}
 		if (this.embedFilterDeps) {
 			refreshEmbedFilters(this.embedFilterDeps);
 		}
@@ -7592,8 +8091,13 @@ export default class OperonPlugin extends Plugin {
 				this.flushPendingCalendarRefresh();
 				this.flushPendingKanbanRefresh();
 				if (!this.startupReady) return;
-				if (!(leaf?.view instanceof FilterView)) return;
-				leaf.view.render();
+				if (leaf?.view instanceof FilterView) {
+					leaf.view.render();
+					return;
+				}
+				if (leaf?.view instanceof OperonTableView) {
+					leaf.view.render();
+				}
 			})
 		);
 	}
@@ -12505,6 +13009,143 @@ export default class OperonPlugin extends Plugin {
 		return this.updateTaskFieldsAndRefresh(operonId, payload, { changedKeys: [key] });
 	}
 
+	private async updateTableTaskFieldsAndRefresh(operonId: string, payload: Record<string, string>): Promise<boolean> {
+		const guardedUpdate = this.normalizeTableTaskFieldsWritebackPayload(payload);
+		if (!guardedUpdate) return false;
+		const { payload: guardedPayload, changedKeys } = guardedUpdate;
+		const task = this.indexer.getTask(operonId);
+		if (!task) return false;
+
+		if (changedKeys.length === 1) {
+			const key = changedKeys[0];
+			if (key === '_description') {
+				return this.updateTableTaskDescriptionAndRefresh(task, guardedPayload['_description'] ?? '');
+			}
+			if (key === 'dateCompleted' || key === 'dateCancelled') {
+				const value = guardedPayload[key] ?? '';
+				const normalizedPayload = value.trim()
+					? this.buildNormalizedTaskFieldUpdate(task, key, value)
+					: this.buildTerminalDateRemovalNormalization(task, key);
+				if (!normalizedPayload) return false;
+				return this.updateTaskFieldsAndRefresh(operonId, normalizedPayload, { changedKeys: [key] });
+			}
+		}
+
+		return this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
+	}
+
+	private async updateTableTaskDescriptionAndRefresh(task: IndexedTask, description: string): Promise<boolean> {
+		const nextDescription = description.trim();
+		if (nextDescription === task.description.trim()) return true;
+		if (task.primary.format !== 'yaml') {
+			return this.updateTaskFieldsAndRefresh(task.operonId, { _description: nextDescription }, { changedKeys: ['_description'] });
+		}
+
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile)) return false;
+		const sanitized = this.sanitizeTaskFileName(nextDescription);
+		if (!sanitized || sanitized !== nextDescription) return false;
+		const folder = file.parent?.path ?? '';
+		const newPath = folder ? `${folder}/${sanitized}.md` : `${sanitized}.md`;
+		if (sanitized !== file.basename && this.app.vault.getAbstractFileByPath(newPath)) return false;
+
+		const datetimeModified = localNow();
+		const fieldValues = {
+			...task.fieldValues,
+			datetimeModified,
+		};
+		const nextPath = await this.writeYamlTaskInstance(task as IndexedTaskInstance, nextDescription, fieldValues, task.tags, null);
+		if (!nextPath) return false;
+		await delayWithActiveWindow(500);
+		await this.indexer.reindexFilePath(nextPath, { notify: false });
+		const afterTask = this.indexer.getTask(task.operonId);
+		if (!afterTask || afterTask.description.trim() !== nextDescription) return false;
+		await this.refreshAggregateTotalsAfterTaskMutation(task, afterTask ?? null, {
+			modifiedTimestamp: datetimeModified,
+			autoUnpinCandidate: afterTask ?? null,
+		});
+		await this.reconcileProjectSerialsForIndexMutation();
+		this.refreshViews();
+		return true;
+	}
+
+	private async addTableTaskSessionAndRefresh(operonId: string, start: string, end: string): Promise<boolean> {
+		const added = await this.timeTracker.addSession(operonId, start, end);
+		if (!added) return false;
+		this.refreshTimeSessionHistoryLeaves(true);
+		this.refreshViews();
+		return true;
+	}
+
+	private async editTableTaskSessionAndRefresh(session: TrackerSession, start: string, end: string): Promise<boolean> {
+		const updated = await this.timeTracker.updateSessionByRange(
+			session.operonId,
+			session.start,
+			session.end,
+			start,
+			end,
+			session.sessionIndex,
+		);
+		if (!updated) return false;
+		this.refreshTimeSessionHistoryLeaves(true);
+		this.refreshViews();
+		return true;
+	}
+
+	private async deleteTableTaskSessionAndRefresh(session: TrackerSession): Promise<boolean> {
+		const deleted = await this.timeTracker.deleteSessionByRange(
+			session.operonId,
+			session.start,
+			session.end,
+			session.sessionIndex,
+		);
+		if (!deleted) return false;
+		this.refreshTimeSessionHistoryLeaves(true);
+		this.refreshViews();
+		return true;
+	}
+
+	private normalizeTableTaskFieldsWritebackPayload(payload: Record<string, string>): { payload: Record<string, string>; changedKeys: string[] } | null {
+		const guardedPayload: Record<string, string> = {};
+		const changedKeys: string[] = [];
+		const rejectedKeys: string[] = [];
+		const hasRepeatWrite = 'repeat' in payload;
+
+		for (const [key, value] of Object.entries(payload)) {
+			if (key === '_description' || key === 'description') {
+				if (!isEditableTableTaskFieldKey('description', this.settings)) {
+					rejectedKeys.push(key);
+					continue;
+				}
+				guardedPayload['_description'] = value;
+				changedKeys.push('_description');
+				continue;
+			}
+			if (TABLE_REPEAT_AUXILIARY_WRITEBACK_KEYS.has(key) && hasRepeatWrite) {
+				guardedPayload[key] = value;
+				changedKeys.push(key);
+				continue;
+			}
+			const guardKey = key === '_tags' ? 'tags' : normalizeTableTaskFieldKey(key, this.settings);
+			if (!guardKey) {
+				rejectedKeys.push(key);
+				continue;
+			}
+			const payloadKey = guardKey === 'tags' ? '_tags' : guardKey;
+			if (!isEditableTableTaskFieldKey(guardKey, this.settings)) {
+				rejectedKeys.push(key);
+				continue;
+			}
+			guardedPayload[payloadKey] = value;
+			changedKeys.push(payloadKey);
+		}
+
+		if (rejectedKeys.length > 0) {
+			console.warn('Operon: ignored unsupported Table task writeback fields', rejectedKeys);
+		}
+		return changedKeys.length > 0 ? { payload: guardedPayload, changedKeys } : null;
+	}
+
 	private async updateLivePreviewInlineFieldsFallback(
 		operonId: string,
 		payload: Record<string, string>,
@@ -13522,6 +14163,22 @@ export default class OperonPlugin extends Plugin {
 				name: t('commands', 'openKanban'),
 				callback: () => {
 					runAsyncAction('open kanban command failed', () => this.openKanbanView());
+				},
+			});
+
+			this.addCommand({
+				id: 'open-table-view',
+				name: t('commands', 'openOperonTable'),
+				callback: () => {
+					runAsyncAction('open operon table command failed', () => this.openOperonTable());
+				},
+			});
+
+			this.addCommand({
+				id: 'insert-table-embed',
+				name: t('commands', 'insertOperonTableEmbed'),
+				editorCallback: (editor: Editor, view: MarkdownView) => {
+					this.insertOperonTableEmbedAtCursor(editor, view);
 				},
 			});
 

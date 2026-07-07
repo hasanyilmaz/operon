@@ -38,6 +38,8 @@ import {
 import { t } from '../core/i18n';
 import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/subtask-action';
+import { resolveTaskDateToneColor } from '../core/task-date-tone';
+import { resolveTaskStatusIconColor } from '../core/task-color-source';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import type { DescendantTaskSummary } from '../indexer/indexer';
 import { enhanceReadingTaskFileWikilinks } from './reading-task-wikilink-overlay';
@@ -152,7 +154,9 @@ export function buildReadingTaskRowElement(
 		: el('button', 'operon-live-preview-status-icon operon-reading-task-icon', row);
 	if (!readOnly) (iconButton as HTMLButtonElement).type = 'button';
 	else iconButton.setAttribute('aria-hidden', 'true');
-	iconButton.style.setProperty('--operon-live-icon-color', statusColor);
+	const iconColor = resolveTaskStatusIconColor(task.fieldValues, callbacks.getSettings());
+	if (iconColor) iconButton.style.setProperty('--operon-live-icon-color', iconColor);
+	else iconButton.style.removeProperty('--operon-live-icon-color');
 	renderTaskIcon(iconButton, task, callbacks);
 	if (!readOnly) {
 		iconButton.addEventListener('click', (event) => {
@@ -504,11 +508,8 @@ function applyCompactChipVisualStyles(
 		const locationIconColor = entry.locationMarkerColor ?? taskColor;
 		if (locationIconColor) chip.style.setProperty('--operon-inline-chip-icon-color', locationIconColor);
 	}
-	if (entry.iconTone === 'today') {
-		chip.setCssProps({ '--operon-inline-chip-icon-color': '#2563eb' });
-	} else if (entry.iconTone === 'overdue') {
-		chip.setCssProps({ '--operon-inline-chip-icon-color': '#dc2626' });
-	}
+	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
+	if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
 }
 
 function attachReadingChipAction(

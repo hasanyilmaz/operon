@@ -15,6 +15,7 @@ import { FilterStore } from './filter-store';
 import { PipelineStore, PipelineStoreSettings } from './pipeline-store';
 import { CalendarPresetStore, CalendarPresetStoreSettings } from './calendar-preset-store';
 import { KanbanPresetStore, KanbanPresetStoreSettings } from './kanban-preset-store';
+import { pickTablePresetStoreSettings, TablePresetStore } from './table-preset-store';
 import { KanbanOrderStore } from './kanban-order-store';
 import { KeyMappingStore } from './key-mapping-store';
 import { PriorityStore, PriorityStoreSettings } from './priority-store';
@@ -41,6 +42,7 @@ import {
 } from './operon-data-package-store';
 import {
 	buildOperonStoragePaths,
+	joinVaultPath,
 	type OperonStoragePaths,
 } from './operon-storage-paths';
 
@@ -170,7 +172,7 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 		fileTaskArchiveOnlyFromFileTasksFolder: settings.fileTaskArchiveOnlyFromFileTasksFolder,
 		fileRepeatDestination: settings.fileRepeatDestination,
 		fileRepeatCustomFolder: settings.fileRepeatCustomFolder,
-		estimateAutoReallocation: settings.estimateAutoReallocation,
+		estimateAutoReallocation: false,
 		trackerSplitSessionsAtMidnight: settings.trackerSplitSessionsAtMidnight,
 	};
 }
@@ -178,6 +180,7 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 export class OperonStorage {
 	private app: App;
 	private writeQueue: WriteQueue;
+	private settingsSaveQueue: Promise<void> = Promise.resolve();
 	private settings: OperonSettings;
 	private storagePaths: OperonStoragePaths;
 	private dataPackageStore: OperonDataPackageStore;
@@ -188,6 +191,7 @@ export class OperonStorage {
 	private pipelineStore: PipelineStore;
 	private calendarPresetStore: CalendarPresetStore;
 	private kanbanPresetStore: KanbanPresetStore;
+	private tablePresetStore: TablePresetStore;
 	private kanbanOrderStore: KanbanOrderStore;
 	private keyMappingStore: KeyMappingStore;
 	private priorityStore: PriorityStore;
@@ -259,6 +263,12 @@ export class OperonStorage {
 			app,
 			this.writeQueue,
 			pickKanbanPresetStoreSettings(DEFAULT_SETTINGS),
+		);
+		this.tablePresetStore = new TablePresetStore(
+			app,
+			this.writeQueue,
+			pickTablePresetStoreSettings(DEFAULT_SETTINGS),
+			joinVaultPath(this.storagePaths.pluginDir, 'data', 'table-presets'),
 		);
 		this.kanbanOrderStore = new KanbanOrderStore(app, this.writeQueue);
 		this.keyMappingStore = new KeyMappingStore(app, this.writeQueue);
@@ -353,7 +363,7 @@ export class OperonStorage {
 	async initialize(): Promise<void> {
 		await this.ensureCanonicalFolders();
 		const { dataPackage, loadedExistingPinnedTasksPackage } = await this.dataPackageStore.initialize(DEFAULT_SETTINGS);
-		this.hydrateFromDataPackage(dataPackage);
+		await this.hydrateFromDataPackage(dataPackage);
 		await this.pinnedCache.load({ preferPackage: loadedExistingPinnedTasksPackage });
 		await this.saveSettings({ forceRecoveredWrite: false });
 		await this.activeTrackerStore.load();
@@ -397,11 +407,18 @@ export class OperonStorage {
 	 * Save current settings to the canonical data package.
 	 */
 	async saveSettings(_options: RecoveredStoreWriteOptions = { forceRecoveredWrite: true }): Promise<void> {
+		const run = this.settingsSaveQueue.then(() => this.persistSettings(_options));
+		this.settingsSaveQueue = run.catch(() => {});
+		await run;
+	}
+
+	private async persistSettings(_options: RecoveredStoreWriteOptions): Promise<void> {
 		this.settings.filterSets = this.filterStore.getAll();
 		const normalized = migrateSettings(this.settings);
 		this.applySettingsInPlace(normalized);
-		this.hydratePackageBackedSettingStores();
 		if (!this.dataPackageStore.canPersist()) return;
+		await this.tablePresetStore.replaceAll(pickTablePresetStoreSettings(this.settings));
+		this.hydratePackageBackedSettingStores();
 		const currentPackage = this.dataPackageStore.getDataPackage();
 		const pinnedTasks = prunePinnedTaskTombstones(
 			mergePinnedTasksPackages(
@@ -435,12 +452,11 @@ export class OperonStorage {
 	}
 
 	async reloadCanonicalSettingsPackage(): Promise<OperonStorageReloadSettingsResult> {
+		await this.settingsSaveQueue;
 		const result = await this.dataPackageStore.reloadCanonicalDataPackage(DEFAULT_SETTINGS);
-		if (result.changed) {
-			this.hydrateFromDataPackage(result.dataPackage, { preserveSettingsIdentity: true });
-		}
+		const tablePresetsChanged = await this.hydrateFromDataPackage(result.dataPackage, { preserveSettingsIdentity: true });
 		return {
-			changed: result.changed,
+			changed: result.changed || tablePresetsChanged,
 			diagnostics: result.diagnostics,
 		};
 	}
@@ -453,10 +469,10 @@ export class OperonStorage {
 		}
 	}
 
-	private hydrateFromDataPackage(
+	private async hydrateFromDataPackage(
 		dataPackage: OperonDataPackageV1,
 		options: { preserveSettingsIdentity?: boolean } = {},
-	): void {
+	): Promise<boolean> {
 		this.filterStore.loadFromPackage(dataPackage.views.filters, {
 			seedDynamicDefaultSorts: dataPackage.settings.settingsVersion < 88,
 		});
@@ -465,6 +481,14 @@ export class OperonStorage {
 			resetGeneration: !options.preserveSettingsIdentity,
 		});
 		const nextSettings = this.dataPackageStore.getSettings(DEFAULT_SETTINGS);
+		const tableLoad = await this.tablePresetStore.load(
+			pickTablePresetStoreSettings(nextSettings),
+			{
+				availableFilterSetIds: this.filterStore.getAll().map(filterSet => filterSet.id),
+				canSeedFromFallback: this.dataPackageStore.canPersist(),
+			},
+		);
+		Object.assign(nextSettings, tableLoad.settings);
 		if (options.preserveSettingsIdentity) {
 			this.applySettingsInPlace(nextSettings);
 		} else {
@@ -472,6 +496,7 @@ export class OperonStorage {
 		}
 		this.settings.filterSets = this.filterStore.getAll();
 		this.hydratePackageBackedSettingStores();
+		return tableLoad.changed;
 	}
 
 	private hydratePackageBackedSettingStores(): void {
@@ -578,15 +603,17 @@ export class OperonStorage {
 	get pipelines(): PipelineStore { return this.pipelineStore; }
 	get calendarPresets(): CalendarPresetStore { return this.calendarPresetStore; }
 	get kanbanPresets(): KanbanPresetStore { return this.kanbanPresetStore; }
+	get tablePresets(): TablePresetStore { return this.tablePresetStore; }
 	get kanbanOrder(): KanbanOrderStore { return this.kanbanOrderStore; }
 	get keyMappings(): KeyMappingStore { return this.keyMappingStore; }
 	get priorities(): PriorityStore { return this.priorityStore; }
 
-	async flushPendingWrites(): Promise<void> {
-		const storeDrainResults = await Promise.allSettled([
-			this.dataPackageStore.drain(),
-			this.pinnedCache.drain(),
-			this.activeTrackerStore.drain(),
+		async flushPendingWrites(): Promise<void> {
+			const storeDrainResults = await Promise.allSettled([
+				this.settingsSaveQueue,
+				this.dataPackageStore.drain(),
+				this.pinnedCache.drain(),
+				this.activeTrackerStore.drain(),
 			this.repeatSeriesStore.drain(),
 			this.projectSerialStore.drain(),
 			this.externalCalendarCache.drain(),

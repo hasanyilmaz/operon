@@ -17,6 +17,7 @@ import { getManagedCustomKeyOrder, getManagedTaskFieldType, isManagedTaskFieldCa
 
 /**
  * Escape special characters in a field value for safe inline storage.
+ * Line breaks are encoded so inline fields never split the physical task line.
  */
 function escapeValue(value: string): string {
 	let result = '';
@@ -24,6 +25,13 @@ function escapeValue(value: string): string {
 		const ch = value[i];
 		if (ch === '\\') {
 			result += '\\\\';
+		} else if (ch === '\r') {
+			if (i + 1 < value.length && value[i + 1] === '\n') {
+				i++;
+			}
+			result += '\\u000A';
+		} else if (ch === '\n') {
+			result += '\\u000A';
 		} else if (ch === '}' && i + 1 < value.length && value[i + 1] === '}') {
 			result += '\\}';
 		} else if (ch === '{' && i + 1 < value.length && value[i + 1] === '{') {

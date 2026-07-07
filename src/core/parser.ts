@@ -114,13 +114,18 @@ function parseTimePrefix(text: string): { timePrefix: TimePrefix; rest: string; 
 
 /**
  * Process escape sequences in a field value.
- * Handles: \} → }, \{ → {, \; → ;, \\ → \
+ * Handles: \} → }, \{ → {, \; → ;, \u000A → line break, \\ → \
  */
 function unescapeValue(value: string): string {
 	let result = '';
 	for (let i = 0; i < value.length; i++) {
 		if (value[i] === '\\' && i + 1 < value.length) {
 			const next = value[i + 1];
+			if (value.slice(i + 1, i + 6).toLowerCase() === 'u000a') {
+				result += '\n';
+				i += 5;
+				continue;
+			}
 			if (next === '}' || next === '{' || next === ';' || next === '\\') {
 				result += next;
 				i++; // skip next char

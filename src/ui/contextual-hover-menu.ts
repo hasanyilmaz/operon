@@ -70,6 +70,10 @@ interface ContextualHoverMenuShowOptions {
 	};
 }
 
+type ContextualHoverMenuTrigger = HTMLElement & {
+	_operonContextualHoverCleanup?: () => void;
+};
+
 export class ContextualHoverMenuController {
 	private readonly options: ContextualHoverMenuControllerOptions;
 	private activeMenuEl: HTMLElement | null = null;
@@ -569,50 +573,67 @@ export function hideTaskContextualHoverMenu(immediate = true): void {
 	sharedTaskHoverMenu.hide(immediate);
 }
 
+export function cleanupTaskContextualHoverMenus(root: HTMLElement): void {
+	const targets = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))] as ContextualHoverMenuTrigger[];
+	for (const target of targets) {
+		target._operonContextualHoverCleanup?.();
+	}
+}
+
 export function bindTaskContextualHoverMenu(
 	triggerEl: HTMLElement,
 	options: ContextualHoverMenuBindOptions,
 ): () => void {
+	const typedTrigger = triggerEl as ContextualHoverMenuTrigger;
+	typedTrigger._operonContextualHoverCleanup?.();
 	const menuKey = `${options.surface}:${options.taskId}`;
-	return bindContextualHoverMenuTrigger({
+	const cleanup = bindContextualHoverMenuTrigger({
 		controller: sharedTaskHoverMenu,
 		triggerEl,
 		menuKey,
 		getSettings: options.getSettings,
 		openMenu: ({ mobile }) => {
-		const task = options.getTask();
-		if (!task) return false;
-		sharedHoverMenuDelayMs = Math.max(0, options.getSettings().contextualMenuOpenDelayMs);
-		const context: ContextualMenuContext = {
-			surface: options.surface,
-			taskId: options.taskId,
-			task,
-			now: localNow(),
-			isPinned: options.isPinned?.(),
-			hasSubtasks: options.hasSubtasks?.() === true,
-		};
-		const settings = options.getSettings();
-		const actions = resolveContextualMenu(
-			context,
-			settings.contextualMenuActionAllowlist,
-			settings.contextualMenuSurfaceActionMatrix,
-		);
-		return sharedTaskHoverMenu.show({
-			key: menuKey,
-			taskId: options.taskId,
-			actions,
-			anchorRect: options.resolveAnchorRect?.() ?? triggerEl.getBoundingClientRect(),
-			host: getOwnerBody(triggerEl),
-			context,
-			onAction: options.onAction,
-			mobileInteraction: mobile
-				? {
-					transitionGraceMs: settings.contextualMenuMobileTransitionGraceMs,
-					autoHideMs: settings.contextualMenuMobileAutoHideMs,
-					guardTargets: [triggerEl],
-				}
-				: undefined,
-		});
+			const task = options.getTask();
+			if (!task) return false;
+			sharedHoverMenuDelayMs = Math.max(0, options.getSettings().contextualMenuOpenDelayMs);
+			const context: ContextualMenuContext = {
+				surface: options.surface,
+				taskId: options.taskId,
+				task,
+				now: localNow(),
+				isPinned: options.isPinned?.(),
+				hasSubtasks: options.hasSubtasks?.() === true,
+			};
+			const settings = options.getSettings();
+			const actions = resolveContextualMenu(
+				context,
+				settings.contextualMenuActionAllowlist,
+				settings.contextualMenuSurfaceActionMatrix,
+			);
+			return sharedTaskHoverMenu.show({
+				key: menuKey,
+				taskId: options.taskId,
+				actions,
+				anchorRect: options.resolveAnchorRect?.() ?? triggerEl.getBoundingClientRect(),
+				host: getOwnerBody(triggerEl),
+				context,
+				onAction: options.onAction,
+				mobileInteraction: mobile
+					? {
+						transitionGraceMs: settings.contextualMenuMobileTransitionGraceMs,
+						autoHideMs: settings.contextualMenuMobileAutoHideMs,
+						guardTargets: [triggerEl],
+					}
+					: undefined,
+			});
 		},
 	});
+	const storedCleanup = (): void => {
+		cleanup();
+		if (typedTrigger._operonContextualHoverCleanup === storedCleanup) {
+			delete typedTrigger._operonContextualHoverCleanup;
+		}
+	};
+	typedTrigger._operonContextualHoverCleanup = storedCleanup;
+	return storedCleanup;
 }

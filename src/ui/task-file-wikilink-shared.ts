@@ -4,7 +4,7 @@ import { t } from '../core/i18n';
 import { DescendantTaskSummary } from '../indexer/indexer';
 import { IndexedTask } from '../types/fields';
 import { KeyMapping, OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
-import { Pipeline, parseStatusValue } from '../types/pipeline';
+import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { computePlainCheckboxProgressIndicator, PlainCheckboxProgressIndicator } from './plain-checkbox-progress';
@@ -27,7 +27,7 @@ export type ResolvedTaskFileLink = ResolvedTaskWikilinkOverlayLink;
 
 export interface TaskFileLinkVisuals {
 	hoverColor: string;
-	statusColor: string;
+	statusColor: string | null;
 	iconName: string;
 	labelState: TaskFileLinkLabelState;
 }
@@ -315,11 +315,10 @@ function normalizeTaskFilePathForComparison(path: string): string {
 export function computeTaskFileLinkVisuals(
 	task: IndexedTask,
 	settings: OperonSettings,
-	pipelines: Pipeline[],
 ): TaskFileLinkVisuals {
 	return {
 		hoverColor: normalizeTaskColor(task.fieldValues['taskColor']) ?? 'var(--interactive-accent)',
-		statusColor: lookupStatusColor(task.fieldValues['status'], pipelines),
+		statusColor: resolveTaskStatusIconColorForTask(task, settings),
 		iconName: resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox),
 		labelState: getTaskFileLinkLabelState(task),
 	};
@@ -465,14 +464,4 @@ function normalizeTaskColor(taskColor: string | undefined): string | null {
 	const trimmed = taskColor.trim();
 	if (!trimmed) return null;
 	return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
-}
-
-function lookupStatusColor(statusValue: string | undefined, pipelines: Pipeline[]): string {
-	if (!statusValue) return '#6b7280';
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return '#6b7280';
-	const pipeline = pipelines.find((candidate) => candidate.name === parsed.pipeline);
-	if (!pipeline) return '#6b7280';
-	const status = pipeline.statuses.find((candidate) => candidate.label === parsed.status);
-	return status?.color ?? '#6b7280';
 }

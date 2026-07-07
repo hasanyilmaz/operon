@@ -38,6 +38,7 @@ import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-wikilink-overlay-chips';
+import { buildTaskStatusIconRenderSettingsSignature } from './task-status-icon-signature';
 import { getNormalFilterSets } from '../core/dynamic-file-task-filter';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
@@ -962,6 +963,7 @@ export class FilterView extends ItemView {
 			this.settings.filterTaskShowPlainCheckboxAction,
 		]);
 		const overlaySettingsSignature = buildTaskWikilinkOverlaySettingsSignature(this.settings);
+		const taskStatusIconSettingsSignature = buildTaskStatusIconRenderSettingsSignature(this.settings);
 		const includeLocationIndexSignature = shouldResolveLocationCompactChips(this.settings, this.settings.filterTaskCompactChips)
 			|| shouldResolveLocationCompactChips(this.settings, this.settings.taskWikilinkOverlayCompactChips);
 		const locationIndexSignature = includeLocationIndexSignature
@@ -986,6 +988,7 @@ export class FilterView extends ItemView {
 			compactSettingsSignature,
 			filterActionSettingsSignature,
 			overlaySettingsSignature,
+			taskStatusIconSettingsSignature,
 			locationIndexSignature,
 			keyMappingSignature,
 			this.getVisibleFilterSets().map(fs => `${fs.id}:${fs.name}:${fs.icon ?? ''}`).join('|'),

@@ -8,6 +8,7 @@ coverage/
 .env.*
 
 # Local/runtime artifacts
+data/
 data.json
 state/
 runtime/

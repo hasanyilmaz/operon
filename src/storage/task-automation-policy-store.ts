@@ -41,7 +41,10 @@ const TASK_AUTOMATION_POLICY_STORE_SETTING_KEYS = [
 ] as const satisfies readonly (keyof TaskAutomationPolicyStoreSettings)[];
 
 function cloneSettings(settings: TaskAutomationPolicyStoreSettings): TaskAutomationPolicyStoreSettings {
-	return { ...settings };
+	return {
+		...settings,
+		estimateAutoReallocation: false,
+	};
 }
 
 function readBoolean(value: unknown, fallback: boolean): boolean {
@@ -73,7 +76,7 @@ function readStoreData(
 		fileTaskArchiveOnlyFromFileTasksFolder: readBoolean(raw.fileTaskArchiveOnlyFromFileTasksFolder, fallback.fileTaskArchiveOnlyFromFileTasksFolder),
 		fileRepeatDestination: readString(raw.fileRepeatDestination, fallback.fileRepeatDestination) as TaskAutomationPolicyStoreSettings['fileRepeatDestination'],
 		fileRepeatCustomFolder: readString(raw.fileRepeatCustomFolder, fallback.fileRepeatCustomFolder),
-		estimateAutoReallocation: readBoolean(raw.estimateAutoReallocation, fallback.estimateAutoReallocation),
+		estimateAutoReallocation: false,
 		trackerSplitSessionsAtMidnight: readBoolean(raw.trackerSplitSessionsAtMidnight, fallback.trackerSplitSessionsAtMidnight),
 	};
 }

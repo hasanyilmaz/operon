@@ -3,6 +3,7 @@ import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import type { IndexedTask } from './fields';
+import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from './related-views';
 
 export type BuiltInKanbanSwimlaneBy =
 	| 'priority'
@@ -81,6 +82,8 @@ export interface KanbanLeafStateNormalizationOptions {
 	defaultPresetId: string | null;
 	statusCollapseScopeKey?: string | null;
 	laneCollapseScopeKey?: string | null;
+	availableStatusCollapseScopeKeys?: string[];
+	availableLaneCollapseScopeKeys?: string[];
 }
 
 export interface KanbanDropContext {
@@ -111,6 +114,8 @@ export interface KanbanViewCallbacks {
 	onOpenTaskSource?: (taskId: string) => void | Promise<void>;
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
 	onOpenPresetSettings?: (presetId: string) => void | Promise<void>;
+	onOpenRelatedView?: (target: RelatedViewOpenTarget) => void | Promise<void>;
+	onCreateRelatedView?: (target: RelatedViewCreateTarget) => void | Promise<void>;
 	onCellAction?: (context: KanbanCellActionContext) => void | Promise<void>;
 	updateField?: (operonId: string, key: string, value: string) => void | Promise<void>;
 	updateFields?: (operonId: string, payload: Record<string, string>) => void | Promise<void>;
@@ -288,6 +293,10 @@ export function normalizeKanbanLeafState(
 	options: KanbanLeafStateNormalizationOptions,
 ): KanbanLeafState {
 	const rawState = state ?? {};
+	const availableStatusScopeKeys = normalizeAvailableCollapseScopeKeys(options.availableStatusCollapseScopeKeys);
+	const availableLaneScopeKeys = normalizeAvailableCollapseScopeKeys(options.availableLaneCollapseScopeKeys);
+	const statusCollapseScopeKey = getAvailableCollapseScopeKey(options.statusCollapseScopeKey, availableStatusScopeKeys);
+	const laneCollapseScopeKey = getAvailableCollapseScopeKey(options.laneCollapseScopeKey, availableLaneScopeKeys);
 	const fallbackPresetId = options.defaultPresetId && options.availablePresetIds.includes(options.defaultPresetId)
 		? options.defaultPresetId
 		: options.availablePresetIds[0] ?? null;
@@ -303,8 +312,8 @@ export function normalizeKanbanLeafState(
 	const expandedSource = Array.isArray(rawState.expandedPreviewParentIds) ? rawState.expandedPreviewParentIds : [];
 	const collapsedStatusIdsByPreset = normalizePresetCollapseMap(rawState.collapsedStatusIdsByPreset, options.availablePresetIds);
 	const collapsedLaneKeysByPreset = normalizePresetCollapseMap(rawState.collapsedLaneKeysByPreset, options.availablePresetIds);
-	const collapsedStatusIdsByScope = normalizeCollapseScopeMap(rawState.collapsedStatusIdsByScope);
-	const collapsedLaneKeysByScope = normalizeCollapseScopeMap(rawState.collapsedLaneKeysByScope);
+	const collapsedStatusIdsByScope = normalizeCollapseScopeMap(rawState.collapsedStatusIdsByScope, availableStatusScopeKeys);
+	const collapsedLaneKeysByScope = normalizeCollapseScopeMap(rawState.collapsedLaneKeysByScope, availableLaneScopeKeys);
 	const collapsedStatusIds = Array.isArray(rawState.collapsedStatusIds)
 		? collapsedSource
 			.filter((value): value is string => typeof value === 'string')
@@ -322,27 +331,27 @@ export function normalizeKanbanLeafState(
 	const presetCollapsedLaneKeys = presetId
 		? collapsedLaneKeysByPreset[presetId] ?? []
 		: [];
-	const hasScopedStatusEntry = hasCollapseMapEntry(collapsedStatusIdsByScope, options.statusCollapseScopeKey);
-	const hasScopedLaneEntry = hasCollapseMapEntry(collapsedLaneKeysByScope, options.laneCollapseScopeKey);
+	const hasScopedStatusEntry = hasCollapseMapEntry(collapsedStatusIdsByScope, statusCollapseScopeKey);
+	const hasScopedLaneEntry = hasCollapseMapEntry(collapsedLaneKeysByScope, laneCollapseScopeKey);
 	const hasPresetStatusEntry = hasCollapseMapEntry(collapsedStatusIdsByPreset, presetId);
 	const hasPresetLaneEntry = hasCollapseMapEntry(collapsedLaneKeysByPreset, presetId);
-	const activeCollapsedStatusIds = hasScopedStatusEntry && options.statusCollapseScopeKey
-		? collapsedStatusIdsByScope[options.statusCollapseScopeKey].filter(value => options.availableStatusIds.includes(value))
+	const activeCollapsedStatusIds = hasScopedStatusEntry && statusCollapseScopeKey
+		? collapsedStatusIdsByScope[statusCollapseScopeKey].filter(value => options.availableStatusIds.includes(value))
 		: hasPresetStatusEntry
 			? presetCollapsedStatusIds
 			: collapsedStatusIds;
-	const activeCollapsedLaneKeys = hasScopedLaneEntry && options.laneCollapseScopeKey
-		? collapsedLaneKeysByScope[options.laneCollapseScopeKey]
+	const activeCollapsedLaneKeys = hasScopedLaneEntry && laneCollapseScopeKey
+		? collapsedLaneKeysByScope[laneCollapseScopeKey]
 		: hasPresetLaneEntry
 			? presetCollapsedLaneKeys
 			: collapsedLaneKeys;
-	if (!hasScopedStatusEntry && options.statusCollapseScopeKey && activeCollapsedStatusIds.length > 0) {
-		collapsedStatusIdsByScope[options.statusCollapseScopeKey] = Array.from(new Set(
+	if (!hasScopedStatusEntry && statusCollapseScopeKey && activeCollapsedStatusIds.length > 0) {
+		collapsedStatusIdsByScope[statusCollapseScopeKey] = Array.from(new Set(
 			activeCollapsedStatusIds.filter(value => options.availableStatusIds.includes(value)),
 		));
 	}
-	if (!hasScopedLaneEntry && options.laneCollapseScopeKey && activeCollapsedLaneKeys.length > 0) {
-		collapsedLaneKeysByScope[options.laneCollapseScopeKey] = Array.from(new Set(activeCollapsedLaneKeys));
+	if (!hasScopedLaneEntry && laneCollapseScopeKey && activeCollapsedLaneKeys.length > 0) {
+		collapsedLaneKeysByScope[laneCollapseScopeKey] = Array.from(new Set(activeCollapsedLaneKeys));
 	}
 
 	return {
@@ -359,6 +368,19 @@ export function normalizeKanbanLeafState(
 		collapsedLaneKeysByScope,
 		expandedPreviewParentIds: Array.from(new Set(expandedPreviewParentIds)),
 	};
+}
+
+export function areKanbanLeafStatesEqual(left: KanbanLeafState | null, right: KanbanLeafState | null): boolean {
+	if (!left || !right) return left === right;
+	return left.presetId === right.presetId
+		&& left.searchQuery === right.searchQuery
+		&& areOrderedStringArraysEqual(left.collapsedStatusIds, right.collapsedStatusIds)
+		&& areOrderedStringArraysEqual(left.collapsedLaneKeys, right.collapsedLaneKeys)
+		&& areStringArrayRecordsEqual(left.collapsedStatusIdsByPreset, right.collapsedStatusIdsByPreset)
+		&& areStringArrayRecordsEqual(left.collapsedLaneKeysByPreset, right.collapsedLaneKeysByPreset)
+		&& areStringArrayRecordsEqual(left.collapsedStatusIdsByScope, right.collapsedStatusIdsByScope)
+		&& areStringArrayRecordsEqual(left.collapsedLaneKeysByScope, right.collapsedLaneKeysByScope)
+		&& areOrderedStringArraysEqual(left.expandedPreviewParentIds, right.expandedPreviewParentIds);
 }
 
 function normalizeCollapseScopePart(value: string | null | undefined): string | null {
@@ -387,15 +409,45 @@ function normalizePresetCollapseMap(
 	return normalized;
 }
 
-function normalizeCollapseScopeMap(raw: unknown): Record<string, string[]> {
+function normalizeCollapseScopeMap(raw: unknown, availableScopeKeys: Set<string> | null): Record<string, string[]> {
 	if (!raw || typeof raw !== 'object') return {};
 	const normalized: Record<string, string[]> = {};
 	const rawScopeMap = raw as Record<string, unknown>;
 	for (const [scopeKey, value] of Object.entries(rawScopeMap)) {
 		if (!scopeKey.trim() || !Array.isArray(value)) continue;
+		if (availableScopeKeys && !availableScopeKeys.has(scopeKey)) continue;
 		normalized[scopeKey] = Array.from(new Set(
 			value.filter((entry): entry is string => typeof entry === 'string' && !!entry.trim()),
 		));
 	}
 	return normalized;
+}
+
+function normalizeAvailableCollapseScopeKeys(values: string[] | undefined): Set<string> | null {
+	if (!values) return null;
+	return new Set(values.filter(value => typeof value === 'string' && !!value.trim()));
+}
+
+function getAvailableCollapseScopeKey(key: string | null | undefined, availableScopeKeys: Set<string> | null): string | null {
+	if (typeof key !== 'string' || !key.trim()) return null;
+	if (availableScopeKeys && !availableScopeKeys.has(key)) return null;
+	return key;
+}
+
+function areOrderedStringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
+	if (left.length !== right.length) return false;
+	for (let index = 0; index < left.length; index++) {
+		if (left[index] !== right[index]) return false;
+	}
+	return true;
+}
+
+function areStringArrayRecordsEqual(left: Record<string, string[]>, right: Record<string, string[]>): boolean {
+	const leftKeys = Object.keys(left).sort();
+	const rightKeys = Object.keys(right).sort();
+	if (!areOrderedStringArraysEqual(leftKeys, rightKeys)) return false;
+	for (const key of leftKeys) {
+		if (!areOrderedStringArraysEqual(left[key] ?? [], right[key] ?? [])) return false;
+	}
+	return true;
 }

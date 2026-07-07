@@ -19,6 +19,7 @@ import { showRepeatPicker } from './field-pickers/repeat-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
 import { showParentTaskPicker } from './field-pickers/parent-task-picker';
 import { showLocationPicker } from './field-pickers/location-picker';
+import { showDependencyTaskPicker } from './field-pickers/dependency-task-picker';
 import { showCustomDateFieldPicker, showCustomDatetimeFieldPicker, showCustomListFieldPicker, showCustomNumberFieldPicker, showCustomTextFieldPicker } from './field-pickers/custom';
 import {
 	collectCustomFieldValueCandidates,
@@ -50,6 +51,8 @@ export interface TaskFieldPickerDispatchOptions {
 	anchor: HTMLElement | DOMRect;
 	currentFieldValues: Record<string, string>;
 	currentTags: string[];
+	currentTaskId?: string;
+	excludedTaskIds?: string[];
 	sourcePath?: string;
 	closeListPickerOnSelect?: boolean;
 	retainInputFocus?: boolean;
@@ -190,13 +193,28 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				onClear: () => options.onCommit({ taskColor: '' }),
 				onClose: options.onClose,
 			});
-		case 'parentTask':
+		case 'parentTask': {
+			const excludedParentIds = new Set(options.excludedTaskIds ?? []);
 			return showParentTaskPicker(options.anchor, {
 				value: currentFieldValues['parentTask'],
-				allTasks: options.allTasks,
+				allTasks: excludedParentIds.size > 0
+					? options.allTasks.filter(task => !excludedParentIds.has(task.operonId))
+					: options.allTasks,
 				retainInputFocus: options.retainInputFocus,
 				onSelect: operonId => options.onCommit({ parentTask: operonId }),
 				onClear: () => options.onCommit({ parentTask: '' }),
+				onClose: options.onClose,
+			});
+		}
+		case 'blocking':
+		case 'blockedBy':
+			return showDependencyTaskPicker(options.anchor, {
+				fieldKey: canonicalKey,
+				value: currentFieldValues[canonicalKey],
+				oppositeValue: currentFieldValues[canonicalKey === 'blocking' ? 'blockedBy' : 'blocking'] ?? '',
+				allTasks: options.allTasks,
+				excludedIds: options.currentTaskId ? [options.currentTaskId] : undefined,
+				onSave: payload => options.onCommit(payload),
 				onClose: options.onClose,
 			});
 		case 'location':

@@ -1,4 +1,5 @@
 import { localToday } from '../core/local-time';
+import { t } from '../core/i18n';
 import { ProjectSearchMode } from '../systems/task-search';
 import { IndexedTask } from '../types/fields';
 import { OperonSettings, TaskFinderDefaultScopeKey, TaskFinderShortcutItem } from '../types/settings';
@@ -29,7 +30,7 @@ export interface TaskSearchBoxShortcutApplication {
 	disabled: boolean;
 }
 
-export const KANBAN_SEARCH_BOX_DEFAULT_SCOPE: TaskSearchBoxScopeState = {
+export const TASK_SEARCH_BOX_DEFAULT_SCOPE: TaskSearchBoxScopeState = {
 	projectMode: null,
 	showOverdue: false,
 	showHappensToday: false,
@@ -38,6 +39,10 @@ export const KANBAN_SEARCH_BOX_DEFAULT_SCOPE: TaskSearchBoxScopeState = {
 	includeFile: true,
 	includeCancelled: true,
 	includeFinished: true,
+};
+
+export const KANBAN_SEARCH_BOX_DEFAULT_SCOPE: TaskSearchBoxScopeState = {
+	...TASK_SEARCH_BOX_DEFAULT_SCOPE,
 };
 
 export function cloneTaskSearchBoxScopeState(scope: TaskSearchBoxScopeState): TaskSearchBoxScopeState {
@@ -54,8 +59,8 @@ export function createTaskSearchBoxScopeState(
 		showRecentModified: overrides.showRecentModified ?? false,
 		includeInline: overrides.includeInline ?? true,
 		includeFile: overrides.includeFile ?? true,
-		includeCancelled: overrides.includeCancelled ?? false,
-		includeFinished: overrides.includeFinished ?? false,
+		includeCancelled: overrides.includeCancelled ?? true,
+		includeFinished: overrides.includeFinished ?? true,
 	};
 }
 
@@ -218,6 +223,52 @@ export function getTaskSearchBoxShortcutLabel(
 ): string {
 	const shortcut = settings.taskFinderShortcuts.find(item => item.key === key)?.shortcut ?? '';
 	return shortcut ? `.${shortcut}` : '';
+}
+
+export function getTaskSearchBoxScopeButtonTooltipContent(
+	key: TaskFinderDefaultScopeKey,
+	scope: TaskSearchBoxScopeState,
+	settings: Pick<OperonSettings, 'taskFinderRecentModifiedDays'>,
+): string {
+	switch (key) {
+		case 'projectTasks':
+			return t('modals', 'taskFinderProjectTasksTooltip');
+		case 'projectTree':
+			return t('modals', 'taskFinderProjectTreeTooltip');
+		case 'overdue':
+			return t('modals', 'taskFinderOverdueTooltip');
+		case 'happensToday':
+			return t('modals', 'taskFinderHappensTodayTooltip');
+		case 'recentModified':
+			return t('modals', 'taskFinderRecentModifiedTooltip', {
+				period: getTaskSearchBoxRecentModifiedPeriodText(settings),
+			});
+		case 'includeInline':
+			return t('modals', scope.includeInline ? 'taskFinderIncludeInlineTooltipActive' : 'taskFinderIncludeInlineTooltipInactive');
+		case 'includeFile':
+			return t('modals', scope.includeFile ? 'taskFinderIncludeFileTooltipActive' : 'taskFinderIncludeFileTooltipInactive');
+		case 'includeCancelled':
+			return t('modals', 'taskFinderIncludeCancelledTooltip');
+		case 'includeFinished':
+			return t('modals', 'taskFinderIncludeFinishedTooltip');
+	}
+}
+
+export function getTaskSearchBoxRecentModifiedDays(settings: Pick<OperonSettings, 'taskFinderRecentModifiedDays'>): number {
+	return Math.max(1, Math.min(7, Math.round(settings.taskFinderRecentModifiedDays || 3)));
+}
+
+export function getTaskSearchBoxRecentModifiedCutoff(
+	settings: Pick<OperonSettings, 'taskFinderRecentModifiedDays'>,
+	now = Date.now(),
+): number {
+	return now - getTaskSearchBoxRecentModifiedDays(settings) * 24 * 60 * 60 * 1000;
+}
+
+function getTaskSearchBoxRecentModifiedPeriodText(settings: Pick<OperonSettings, 'taskFinderRecentModifiedDays'>): string {
+	const days = getTaskSearchBoxRecentModifiedDays(settings);
+	if (days === 1) return t('modals', 'taskFinderRecentModifiedPeriodOne');
+	return t('modals', 'taskFinderRecentModifiedPeriodMany', { days: String(days) });
 }
 
 export function isDefaultKanbanSearchBoxScope(scope: TaskSearchBoxScopeState): boolean {

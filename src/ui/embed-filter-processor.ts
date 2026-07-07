@@ -46,6 +46,7 @@ import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-wikilink-overlay-chips';
+import { buildTaskStatusIconRenderSettingsSignature } from './task-status-icon-signature';
 import { isSpecialDynamicFilterSet } from '../core/dynamic-file-task-filter';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
@@ -295,6 +296,7 @@ export function renderFilterSurface(
         JSON.stringify(deps.settings.filterTaskCompactChips),
         filterActionSettingsSignature,
         buildTaskWikilinkOverlaySettingsSignature(deps.settings),
+        buildTaskStatusIconRenderSettingsSignature(deps.settings),
         includeLocationIndexSignature ? getLocationPlaceIndex(deps.app, deps.settings).getSignature() : '',
         JSON.stringify(deps.settings.keyMappings.map(mapping => [
             mapping.canonicalKey,

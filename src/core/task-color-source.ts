@@ -8,11 +8,13 @@ export type CalendarTaskColorSource = 'noColor' | 'accentColor' | 'taskColor' | 
 export type CalendarPresetTaskColorSource = 'noColor' | 'taskColor' | 'statusColor' | 'priorityColor';
 export type KanbanTaskColorSource = 'noColor' | 'taskColor' | 'statusColor' | 'priorityColor';
 export type PinnedDockTaskColorSource = CalendarTaskColorSource;
+export type TaskStatusIconColorSource = 'statusColor' | 'taskColor' | 'priorityColor' | 'noColor';
 
 export const CALENDAR_TASK_COLOR_SOURCES = ['noColor', 'accentColor', 'taskColor', 'statusColor', 'priorityColor'] as const;
 export const CALENDAR_PRESET_TASK_COLOR_SOURCES = ['noColor', 'taskColor', 'statusColor', 'priorityColor'] as const;
 export const KANBAN_TASK_COLOR_SOURCES = ['noColor', 'taskColor', 'statusColor', 'priorityColor'] as const;
 export const PINNED_DOCK_TASK_COLOR_SOURCES = CALENDAR_TASK_COLOR_SOURCES;
+export const TASK_STATUS_ICON_COLOR_SOURCES = ['statusColor', 'taskColor', 'priorityColor', 'noColor'] as const;
 
 const TASK_COLOR_SOURCE_LABELS: Record<TaskColorSource, string> = {
 	noColor: 'No color',
@@ -94,6 +96,20 @@ export function resolveTaskColorSourceForTask(
 	settings: TaskColorSourceSettings,
 ): string | null {
 	return resolveTaskColorSource(task.fieldValues, colorSource, settings);
+}
+
+export function resolveTaskStatusIconColorForTask(
+	task: IndexedTask,
+	settings: TaskColorSourceSettings & { taskStatusIconColorSource: TaskStatusIconColorSource },
+): string | null {
+	return resolveTaskStatusIconColor(task.fieldValues, settings);
+}
+
+export function resolveTaskStatusIconColor(
+	fieldValues: Record<string, string | undefined>,
+	settings: TaskColorSourceSettings & { taskStatusIconColorSource: TaskStatusIconColorSource },
+): string | null {
+	return resolveTaskColorSource(fieldValues, settings.taskStatusIconColorSource, settings);
 }
 
 export function resolveTaskColorSource(

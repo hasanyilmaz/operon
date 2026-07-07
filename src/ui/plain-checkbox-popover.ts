@@ -2,6 +2,7 @@ import { App, Notice, Platform, setIcon, setTooltip, TFile } from 'obsidian';
 import { asyncHandler, runAsyncAction } from '../core/async-action';
 import { asHTMLElement, getActiveDocument, getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
+import { normalizeTaskFieldColor } from '../core/task-color-source';
 import {
 	applyPlainCheckboxDraftContent,
 	collectPlainCheckboxLines,
@@ -171,8 +172,9 @@ export async function showPlainCheckboxPopover(
 			shouldClose: shouldCloseFromFloatingPanel,
 		},
 	);
-	if (options.taskColor) {
-		panel.style.setProperty('--operon-plain-checkbox-popover-accent', options.taskColor);
+	const taskAccent = normalizeTaskFieldColor(options.task.fieldValues['taskColor']);
+	if (taskAccent) {
+		panel.style.setProperty('--operon-plain-checkbox-popover-accent', taskAccent);
 	}
 	bringPlainCheckboxPopoverToFront(panel);
 	panel.addEventListener('pointerdown', () => bringPlainCheckboxPopoverToFront(panel));

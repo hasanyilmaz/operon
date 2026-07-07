@@ -115,7 +115,6 @@ export function enhanceReadingTaskFileWikilinks(
 		const visuals = computeTaskFileLinkVisuals(
 			resolved.task,
 			callbacks.getSettings(),
-			callbacks.getPipelines(),
 		);
 		const summary = getCachedDescendantSummary(
 			resolved.task.operonId,
@@ -141,7 +140,11 @@ export function enhanceReadingTaskFileWikilinks(
 			visuals.hoverColor,
 			t('tooltips', 'cycleTaskStatus'),
 			(button) => {
-				button.setCssProps({ '--operon-task-wikilink-status-color': visuals.statusColor });
+				if (visuals.statusColor) {
+					button.setCssProps({ '--operon-task-wikilink-status-color': visuals.statusColor });
+				} else {
+					button.style.removeProperty('--operon-task-wikilink-status-color');
+				}
 				setIcon(button, visuals.iconName);
 			},
 			() => callbacks.cycleStatus(resolved.task.operonId),

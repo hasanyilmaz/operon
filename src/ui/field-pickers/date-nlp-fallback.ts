@@ -241,6 +241,32 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		nextWeekdayLabel: name => `来週${name}`,
 		lastWeekdayLabel: name => `先週${name}`,
 	},
+	ru: {
+		searchPlaceholder: 'Введите дату, например следующий вторник',
+		clear: 'Очистить',
+		apply: 'Применить',
+		manualDate: 'Выбрать дату',
+		parsedFrom: input => `Распознано из «${input}»`,
+		quickSuggestions: 'Предложения',
+		today: 'Сегодня',
+		tomorrow: 'Завтра',
+		yesterday: 'Вчера',
+		thisWeek: 'Эта неделя',
+		nextWeek: 'Следующая неделя',
+		lastWeek: 'Прошлая неделя',
+		thisWeekend: 'Эти выходные',
+		nextWeekend: 'Следующие выходные',
+		lastWeekend: 'Прошлые выходные',
+		daysAgo: count => `${count} дн. назад`,
+		daysFromNow: count => `через ${count} дн.`,
+		weeksAgo: count => `${count} нед. назад`,
+		weeksFromNow: count => `через ${count} нед.`,
+		monthsAgo: count => `${count} мес. назад`,
+		monthsFromNow: count => `через ${count} мес.`,
+		weekdayNames: ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'],
+		nextWeekdayLabel: name => `Следующий ${name}`,
+		lastWeekdayLabel: name => `Прошлый ${name}`,
+	},
 };
 
 const ENGLISH_PHRASES: Record<string, (reference: Date) => Date> = {
@@ -366,6 +392,40 @@ const SPANISH_WEEKDAYS = new Map<string, number>([
 	['viernes', 5],
 	['sabado', 6],
 	['sábado', 6],
+]);
+
+// Phrase keys are normalizeInput()-form: lowercase, and 'й' normalized away to
+// 'и' (NFKD decomposes й into и + combining breve U+0306, which normalizeInput's
+// diacritic strip removes) — этой → этои, следующей → следующеи, прошлой → прошлои.
+const RUSSIAN_PHRASES: Record<string, (reference: Date) => Date> = {
+	'сегодня': reference => cloneDate(reference),
+	'завтра': reference => addDays(reference, 1),
+	'вчера': reference => addDays(reference, -1),
+	'эта неделя': reference => startOfWeek(reference),
+	'на этои неделе': reference => startOfWeek(reference),
+	'следующая неделя': reference => addDays(startOfWeek(reference), 7),
+	'на следующеи неделе': reference => addDays(startOfWeek(reference), 7),
+	'прошлая неделя': reference => addDays(startOfWeek(reference), -7),
+	'на прошлои неделе': reference => addDays(startOfWeek(reference), -7),
+	'эти выходные': reference => saturdayOfWeek(reference),
+	'следующие выходные': reference => addDays(saturdayOfWeek(reference), 7),
+	'прошлые выходные': reference => addDays(saturdayOfWeek(reference), -7),
+};
+
+// Feminine weekdays (среда/пятница/суббота) also get their accusative form mapped
+// to the same day, since 'в прошлую <weekday>'/'в следующую <weekday>' (preposition
+// 'в' + accusative) is the natural phrasing, distinct from the bare nominative form.
+const RUSSIAN_WEEKDAYS = new Map<string, number>([
+	['воскресенье', 0],
+	['понедельник', 1],
+	['вторник', 2],
+	['среда', 3],
+	['среду', 3],
+	['четверг', 4],
+	['пятница', 5],
+	['пятницу', 5],
+	['суббота', 6],
+	['субботу', 6],
 ]);
 
 // Chinese relative-date phrases. Keys cover both Simplified and Traditional
@@ -552,6 +612,20 @@ const MONTH_ALIASES: Record<DatePickerLang, MonthAlias[]> = {
 		{ month: 10, aliases: ['10月'] },
 		{ month: 11, aliases: ['11月'] },
 		{ month: 12, aliases: ['12月'] },
+	],
+	ru: [
+		{ month: 1, aliases: ['январь', 'января', 'янв'] },
+		{ month: 2, aliases: ['февраль', 'февраля', 'фев'] },
+		{ month: 3, aliases: ['март', 'марта', 'мар'] },
+		{ month: 4, aliases: ['апрель', 'апреля', 'апр'] },
+		{ month: 5, aliases: ['май', 'мая'] },
+		{ month: 6, aliases: ['июнь', 'июня', 'июн'] },
+		{ month: 7, aliases: ['июль', 'июля', 'июл'] },
+		{ month: 8, aliases: ['август', 'августа', 'авг'] },
+		{ month: 9, aliases: ['сентябрь', 'сентября', 'сен', 'сент'] },
+		{ month: 10, aliases: ['октябрь', 'октября', 'окт'] },
+		{ month: 11, aliases: ['ноябрь', 'ноября', 'ноя', 'нояб'] },
+		{ month: 12, aliases: ['декабрь', 'декабря', 'дек'] },
 	],
 };
 
@@ -893,6 +967,8 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		? FRENCH_PHRASES
 		: language === 'es'
 		? SPANISH_PHRASES
+		: language === 'ru'
+		? RUSSIAN_PHRASES
 		: ENGLISH_PHRASES;
 	const direct = phrases[input];
 	if (direct) return direct(reference);
@@ -905,6 +981,8 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		? FRENCH_WEEKDAYS
 		: language === 'es'
 		? SPANISH_WEEKDAYS
+		: language === 'ru'
+		? RUSSIAN_WEEKDAYS
 		: ENGLISH_WEEKDAYS;
 
 	if (weekdays.has(input)) {
@@ -952,6 +1030,28 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		return null;
 	}
 
+	// Russian weekdays are gendered (masculine: понедельник/вторник/четверг/воскресенье,
+	// feminine: среда/пятница/суббота), so 'следующий/следующая' and 'прошлый/прошлая'
+	// both need checking, with or without the leading 'в' preposition. Prefixes are
+	// normalizeInput()-form: masculine 'следующий'/'прошлый' end in 'й', which NFKD
+	// normalization turns into 'и' (see RUSSIAN_PHRASES comment above) — следующий →
+	// следующии, прошлый → прошлыи. Feminine forms end in 'ая'/'ую' and are unaffected.
+	if (language === 'ru') {
+		const nextPrefixes = ['в следующии ', 'в следующую ', 'следующии ', 'следующая '];
+		const lastPrefixes = ['в прошлыи ', 'в прошлую ', 'прошлыи ', 'прошлая '];
+		for (const prefix of nextPrefixes) {
+			if (!input.startsWith(prefix)) continue;
+			const weekday = input.slice(prefix.length).trim();
+			if (weekdays.has(weekday)) return nextWeekday(reference, weekdays.get(weekday)!);
+		}
+		for (const prefix of lastPrefixes) {
+			if (!input.startsWith(prefix)) continue;
+			const weekday = input.slice(prefix.length).trim();
+			if (weekdays.has(weekday)) return previousWeekday(reference, weekdays.get(weekday)!);
+		}
+		return null;
+	}
+
 	// Prefixes are normalizeInput()-form: 'nächste ' → 'nachste '.
 	const nextPrefix = language === 'tr' ? 'gelecek ' : language === 'de' ? 'nachste ' : 'next ';
 	const lastPrefix = language === 'tr' ? 'gecen ' : language === 'de' ? 'letzte ' : 'last ';
@@ -974,7 +1074,7 @@ function parseDayMonthCandidates(
 	context: DateParseContext,
 	reference: Date,
 ): DateParseCandidate[] {
-	const match = /^(\d{1,2})\s+([a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]+)$/.exec(input);
+	const match = /^(\d{1,2})\s+([a-zA-Z\u00C0-\u024F\u1E00-\u1EFF\u0400-\u04FF]+)$/.exec(input);
 	if (!match) return [];
 
 	const day = Number(match[1]);
@@ -1032,7 +1132,7 @@ function parseNumericRelativeCandidates(
 	context: DateParseContext,
 	reference: Date,
 ): DateParseCandidate[] {
-	const match = /^(\d{1,3})(?:\s+([a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]+))?$/.exec(input);
+	const match = /^(\d{1,3})(?:\s+([a-zA-Z\u00C0-\u024F\u1E00-\u1EFF\u0400-\u04FF]+))?$/.exec(input);
 	if (!match) return [];
 
 	const amount = Number(match[1]);
@@ -1109,6 +1209,14 @@ function matchesUnit(token: string, language: DatePickerLang, unit: 'days' | 'we
 			days: ['d', 'di', 'dia', 'dias'],
 			weeks: ['s', 'se', 'sem', 'sema', 'seman', 'semana', 'semanas'],
 			months: ['m', 'me', 'mes', 'mese', 'meses'],
+		}
+		: language === 'ru'
+		// 'дней' ends in 'й', which normalizeInput() turns into 'и' (see RUSSIAN_PHRASES
+		// comment) — the token being matched here is normalized, so the list entry must be too.
+		? {
+			days: ['д', 'дн', 'день', 'дня', 'днеи'],
+			weeks: ['н', 'не', 'нед', 'неделя', 'недели', 'недель'],
+			months: ['м', 'ме', 'мес', 'месяц', 'месяца', 'месяцев'],
 		}
 		: {
 			days: ['d', 'da', 'day', 'days'],
@@ -1229,6 +1337,7 @@ function datePickerLocaleTag(language: DatePickerLang): string {
 	if (language === 'zh-CN') return 'zh-CN';
 	if (language === 'zh-TW') return 'zh-TW';
 	if (language === 'ja') return 'ja-JP';
+	if (language === 'ru') return 'ru-RU';
 	return 'en-US';
 }
 

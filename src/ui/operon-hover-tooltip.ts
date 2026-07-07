@@ -147,6 +147,16 @@ export function bindOperonHoverTooltip(
 	typedTarget._operonHoverCleanup = cleanup;
 }
 
+export function cleanupOperonHoverTooltips(root: HTMLElement): void {
+	const targets = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))] as BoundTooltipTarget[];
+	for (const target of targets) {
+		const cleanup = target._operonHoverCleanup;
+		if (!cleanup) continue;
+		cleanup();
+		delete target._operonHoverCleanup;
+	}
+}
+
 export function createOperonHoverTooltipShell(options: OperonHoverTooltipOptions, owner?: Node | null): HTMLElement {
 	const wrapper = createOwnerElement(owner, 'span');
 	wrapper.className = 'operon-hover-tooltip-shell';

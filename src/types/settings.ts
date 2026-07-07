@@ -40,12 +40,23 @@ import {
 	normalizeBuiltInKanbanPreset,
 } from './kanban';
 import {
+	DEFAULT_TABLE_EMBED_VISIBLE_ROWS,
+	DEFAULT_TABLE_PRESET_ID,
+	type TableEmbedVisibleRows,
+	TablePreset,
+	cloneDefaultTablePresets,
+	normalizeTableEmbedVisibleRows,
+	normalizeTablePresets,
+} from './table';
+import {
 	CALENDAR_PRESET_TASK_COLOR_SOURCES,
 	CALENDAR_TASK_COLOR_SOURCES,
 	KANBAN_TASK_COLOR_SOURCES,
 	PINNED_DOCK_TASK_COLOR_SOURCES,
+	TASK_STATUS_ICON_COLOR_SOURCES,
 	normalizeTaskColorSource,
 	type PinnedDockTaskColorSource,
+	type TaskStatusIconColorSource,
 } from '../core/task-color-source';
 import { normalizeMarkdownHeadingKeyword } from '../core/markdown-heading-insertion';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
@@ -64,9 +75,9 @@ import {
 	normalizeProjectSerialScopes,
 } from '../core/project-serials';
 
-export const CURRENT_SETTINGS_VERSION = 100;
+export const CURRENT_SETTINGS_VERSION = 102;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
-export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja'] as const;
+export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
 export const DEFAULT_CHILD_TASK_INHERITANCE_FIELDS = ['status', 'priority', 'taskIcon', 'taskColor'] as const;
 export const CHILD_TASK_INHERITANCE_TAGS_KEY = 'tags';
@@ -184,6 +195,20 @@ const DEFAULT_CONTEXTUAL_MENU_TRACKER_ACTIONS: ContextualMenuActionId[] = [
 	'clearDueDate',
 ];
 const DEFAULT_CONTEXTUAL_MENU_KANBAN_ACTIONS: ContextualMenuActionId[] = [
+	'pinToggle',
+	'startTimer',
+	'markDone',
+	'convertInlineToFileTask',
+	'convertFileToInlineTask',
+	'subtasks',
+	'createSubtask',
+	'checkboxes',
+	'unschedule',
+	'jumpToSource',
+	'clearDueDate',
+];
+// Settings version 100 used the Kanban action set for Table tasks.
+const LEGACY_CONTEXTUAL_MENU_TABLE_TASK_ACTIONS: ContextualMenuActionId[] = [
 	'pinToggle',
 	'startTimer',
 	'markDone',
@@ -434,6 +459,53 @@ export function hasDuplicateKeyMappingVisiblePropertyName(
 		&& !isRetiredKeyMapping(mapping.canonicalKey)
 		&& normalizeKeyMappingComparableName(mapping.visiblePropertyName) === normalized
 	);
+}
+
+export function replaceKeyMappingVisiblePropertyName(
+	mappings: readonly KeyMapping[],
+	canonicalKey: string,
+	visiblePropertyName: string,
+): KeyMapping[] {
+	return mappings.map(mapping => mapping.canonicalKey === canonicalKey
+		? { ...mapping, visiblePropertyName }
+		: mapping);
+}
+
+export type KeyMappingVisiblePropertyNameUpdateResult =
+	| {
+		status: 'empty' | 'missing' | 'duplicate' | 'unchanged';
+		visiblePropertyName: string;
+	}
+	| {
+		status: 'updated';
+		visiblePropertyName: string;
+		keyMappings: KeyMapping[];
+	};
+
+export function buildKeyMappingVisiblePropertyNameUpdate(
+	mappings: readonly KeyMapping[],
+	canonicalKey: string,
+	visiblePropertyName: string,
+): KeyMappingVisiblePropertyNameUpdateResult {
+	const trimmed = visiblePropertyName.trim();
+	if (!trimmed) {
+		return { status: 'empty', visiblePropertyName: trimmed };
+	}
+	const currentMapping = mappings.find(mapping => mapping.canonicalKey === canonicalKey);
+	if (!currentMapping) {
+		return { status: 'missing', visiblePropertyName: trimmed };
+	}
+	if (hasDuplicateKeyMappingVisiblePropertyName(trimmed, mappings, currentMapping)) {
+		return { status: 'duplicate', visiblePropertyName: trimmed };
+	}
+	if (trimmed === currentMapping.visiblePropertyName) {
+		return { status: 'unchanged', visiblePropertyName: trimmed };
+	}
+	return {
+		status: 'updated',
+		visiblePropertyName: trimmed,
+		keyMappings: replaceKeyMappingVisiblePropertyName(mappings, canonicalKey, trimmed),
+	};
 }
 
 function normalizeCustomKeyMappingOrderValue(value: unknown): number | null {
@@ -1435,11 +1507,22 @@ export interface OperonSettings {
 	kanbanDefaultPresetId: string | null;
 	kanbanExpandedColumnWidthPx: number;
 	kanbanMaxVisibleTasksPerCell: number;
+	kanbanTaskShowNotesPreview: boolean;
+	kanbanTaskShowSubtaskProgress: boolean;
+	kanbanTaskShowPlainCheckboxProgress: boolean;
 	kanbanMobileLayoutChromeEnabled: boolean;
 	kanbanMobileLayoutMaxWidthPx: number;
 	kanbanMobileCompactSwimlaneWidthPx: number;
 	kanbanMobileSwimlaneRailAlwaysVisible: boolean;
 	kanbanMobileHorizontalStatusSnapEnabled: boolean;
+
+	// Table
+	tablePresets: TablePreset[];
+	tableDefaultPresetId: string | null;
+	tableEmbedVisibleRows: TableEmbedVisibleRows;
+	tableShowLineNumbers: boolean;
+	tableShowTaskIcon: boolean;
+	tableShowTaskTypeIcon: boolean;
 
 	// Indexer
 	indexEventDebounceMs: number;
@@ -1490,6 +1573,7 @@ export interface OperonSettings {
 	/** Whether subtask lists are expanded by default */
 	taskBarSubtasksDefaultExpanded: boolean;
 	fallbackTaskIconSource: FallbackTaskIconSource;
+	taskStatusIconColorSource: TaskStatusIconColorSource;
 	fallbackStateIcons: {
 		open: string;
 		done: string;
@@ -1852,11 +1936,21 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	kanbanDefaultPresetId: DEFAULT_KANBAN_DEFAULT_PRESET_ID,
 	kanbanExpandedColumnWidthPx: 320,
 	kanbanMaxVisibleTasksPerCell: 7,
+	kanbanTaskShowNotesPreview: false,
+	kanbanTaskShowSubtaskProgress: true,
+	kanbanTaskShowPlainCheckboxProgress: true,
 	kanbanMobileLayoutChromeEnabled: true,
 	kanbanMobileLayoutMaxWidthPx: 900,
 	kanbanMobileCompactSwimlaneWidthPx: 6,
 	kanbanMobileSwimlaneRailAlwaysVisible: true,
 	kanbanMobileHorizontalStatusSnapEnabled: true,
+
+	tablePresets: cloneDefaultTablePresets(),
+	tableDefaultPresetId: DEFAULT_TABLE_PRESET_ID,
+	tableEmbedVisibleRows: DEFAULT_TABLE_EMBED_VISIBLE_ROWS,
+	tableShowLineNumbers: true,
+	tableShowTaskIcon: false,
+	tableShowTaskTypeIcon: false,
 
 	indexEventDebounceMs: 250,
 	fullReindexOnStartup: false,
@@ -1894,6 +1988,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	inlineExpandedTaskChips: { ...DEFAULT_INLINE_EXPANDED_TASK_CHIPS },
 	taskBarSubtasksDefaultExpanded: true,
 	fallbackTaskIconSource: 'pipelineStatusIcon',
+	taskStatusIconColorSource: 'statusColor',
 	fallbackStateIcons: {
 		open: 'obsidian',
 		done: 'circle-check-big',
@@ -2635,6 +2730,25 @@ function backfillContextualMenuSurfaceActionAfterOrBefore(
 	return next;
 }
 
+function areContextualMenuActionListsEqual(
+	actionIds: ContextualMenuActionId[] | undefined,
+	expectedActionIds: readonly ContextualMenuActionId[],
+): boolean {
+	return Array.isArray(actionIds)
+		&& actionIds.length === expectedActionIds.length
+		&& actionIds.every((actionId, index) => actionId === expectedActionIds[index]);
+}
+
+function backfillTableTaskContextualMenuFullDefault(
+	matrix: ContextualMenuSurfaceActionMatrix,
+): ContextualMenuSurfaceActionMatrix {
+	if (!areContextualMenuActionListsEqual(matrix.tableTask, LEGACY_CONTEXTUAL_MENU_TABLE_TASK_ACTIONS)) return matrix;
+	return {
+		...matrix,
+		tableTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
+	};
+}
+
 export function buildDefaultContextualMenuSurfaceActionMatrix(): ContextualMenuSurfaceActionMatrix {
 	return {
 		readingRow: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
@@ -2644,6 +2758,7 @@ export function buildDefaultContextualMenuSurfaceActionMatrix(): ContextualMenuS
 		trackerTask: [...DEFAULT_CONTEXTUAL_MENU_TRACKER_ACTIONS],
 		flowTimeTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		filterTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
+		tableTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		kanbanCard: [...DEFAULT_CONTEXTUAL_MENU_KANBAN_ACTIONS],
 		calendarTimedItem: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		calendarAllDayScheduledItem: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
@@ -3070,6 +3185,10 @@ export function normalizeFallbackTaskIconSource(value: unknown): FallbackTaskIco
 	return value === 'stateIcon' || value === 'priorityIcon' ? value : 'pipelineStatusIcon';
 }
 
+export function normalizeTaskStatusIconColorSource(value: unknown): TaskStatusIconColorSource {
+	return normalizeTaskColorSource(value, TASK_STATUS_ICON_COLOR_SOURCES, DEFAULT_SETTINGS.taskStatusIconColorSource);
+}
+
 /**
  * Migrate and normalize raw settings data to current schema version.
  * Handles missing keys, invalid types, and out-of-range values.
@@ -3102,6 +3221,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		}
 		// Invalid type → keep default (already set)
 	}
+
+	out.estimateAutoReallocation = false;
 
 	if (!Array.isArray(src.filterSets) && 'leftRailDefaultFilterViewId' in src) {
 		out.filterSets = [];
@@ -3193,6 +3314,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		src.inlineExpandedTaskChips ?? src.taskBarChips,
 	);
 	out.fallbackTaskIconSource = normalizeFallbackTaskIconSource(src.fallbackTaskIconSource);
+	out.taskStatusIconColorSource = normalizeTaskStatusIconColorSource(src.taskStatusIconColorSource);
 
 	if (src.fallbackStateIcons && typeof src.fallbackStateIcons === 'object' && !Array.isArray(src.fallbackStateIcons)) {
 		const saved = src.fallbackStateIcons as Record<string, unknown>;
@@ -3295,6 +3417,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			out.contextualMenuSurfaceActionMatrix,
 			'convertInlineToFileTask',
 			['openEditor', 'markDone'],
+		);
+	}
+	if (sourceSettingsVersion < 101) {
+		out.contextualMenuSurfaceActionMatrix = backfillTableTaskContextualMenuFullDefault(
+			out.contextualMenuSurfaceActionMatrix,
 		);
 	}
 	out.contextualMenuOpenDelayMs = normalizeContextualMenuOpenDelayMs(
@@ -3588,6 +3715,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.kanbanPresets = normalizeKanbanPresets(src.kanbanPresets);
 	out.kanbanExpandedColumnWidthPx = normalizeKanbanExpandedColumnWidthPx(src.kanbanExpandedColumnWidthPx);
 	out.kanbanMaxVisibleTasksPerCell = normalizeKanbanMaxVisibleTasksPerCell(src.kanbanMaxVisibleTasksPerCell);
+	out.kanbanTaskShowNotesPreview = src.kanbanTaskShowNotesPreview === true;
+	out.kanbanTaskShowSubtaskProgress = src.kanbanTaskShowSubtaskProgress !== false;
+	out.kanbanTaskShowPlainCheckboxProgress = src.kanbanTaskShowPlainCheckboxProgress !== false;
 	out.kanbanMobileLayoutChromeEnabled = src.kanbanMobileLayoutChromeEnabled !== false;
 	out.kanbanMobileLayoutMaxWidthPx = normalizeKanbanMobileLayoutMaxWidthPx(src.kanbanMobileLayoutMaxWidthPx);
 	out.kanbanMobileCompactSwimlaneWidthPx = normalizeKanbanMobileCompactSwimlaneWidthPx(src.kanbanMobileCompactSwimlaneWidthPx);
@@ -3633,6 +3763,27 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (SPECIAL_DYNAMIC_FILTER_SET_IDS.has(out.leftRailDefaultFilterViewId ?? '')) {
 		out.leftRailDefaultFilterViewId = out.filterSets.find(filterSet => !SPECIAL_DYNAMIC_FILTER_SET_IDS.has(filterSet.id))?.id ?? null;
 	}
+	out.tablePresets = normalizeTablePresets(src.tablePresets, {
+		availableFilterSetIds: out.filterSets.map(filterSet => filterSet.id),
+	});
+	const requestedTableDefaultPresetId = typeof src.tableDefaultPresetId === 'string' && src.tableDefaultPresetId.trim()
+		? src.tableDefaultPresetId
+		: null;
+	out.tableDefaultPresetId = requestedTableDefaultPresetId && out.tablePresets.some(preset => preset.id === requestedTableDefaultPresetId)
+		? requestedTableDefaultPresetId
+		: out.tablePresets.find(preset => preset.id === DEFAULT_TABLE_PRESET_ID)?.id
+			?? out.tablePresets[0]?.id
+			?? null;
+	out.tableShowLineNumbers = typeof src.tableShowLineNumbers === 'boolean'
+		? src.tableShowLineNumbers
+		: DEFAULT_SETTINGS.tableShowLineNumbers;
+	out.tableShowTaskIcon = typeof src.tableShowTaskIcon === 'boolean'
+		? src.tableShowTaskIcon
+		: DEFAULT_SETTINGS.tableShowTaskIcon;
+	out.tableShowTaskTypeIcon = typeof src.tableShowTaskTypeIcon === 'boolean'
+		? src.tableShowTaskTypeIcon
+		: DEFAULT_SETTINGS.tableShowTaskTypeIcon;
+	out.tableEmbedVisibleRows = normalizeTableEmbedVisibleRows(src.tableEmbedVisibleRows, DEFAULT_SETTINGS.tableEmbedVisibleRows);
 
 	if (!Array.isArray(src.pipelines) || src.pipelines.length === 0) {
 		out.pipelines = cloneDefaultPipelines();

@@ -31,6 +31,7 @@ const COLOR_GRID_ROWS = 4;
 const TONE_STRIP_SIZE = 7;
 const TONE_STRIP_CENTER_INDEX = 3;
 const EMPTY_GRID_INDEX = 0;
+const CUSTOM_GRID_INDEX = -1;
 const TONE_MIXES = [
 	{ target: 'white', amount: 0.36 },
 	{ target: 'white', amount: 0.24 },
@@ -156,6 +157,11 @@ function hsvToHex(color: HsvColor): string {
 function getQueryMatchIndexes(query: string, palette: ColorPaletteEntry[]): number[] {
 	const normalized = query.trim().toLowerCase();
 	if (!normalized) return [];
+	const normalizedHex = normalizeHex(query);
+	if (normalizedHex) {
+		const hexMatchIndex = palette.findIndex(preset => normalizeHex(preset.hex) === normalizedHex);
+		if (hexMatchIndex >= 0) return [hexMatchIndex];
+	}
 	const startsWithMatches: number[] = [];
 	const includesMatches: number[] = [];
 	palette.forEach((preset, index) => {
@@ -267,9 +273,9 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 	});
 	actions.appendChild(chooseButton);
 
-	let activeGridIndex = EMPTY_GRID_INDEX;
-	let selectedPresetIndex = -1;
 	let baseHex = normalizeHex(options.value);
+	let selectedPresetIndex = baseHex ? findPresetIndexByHex(baseHex) : CUSTOM_GRID_INDEX;
+	let activeGridIndex = selectedPresetIndex >= 0 ? selectedPresetIndex : (baseHex ? CUSTOM_GRID_INDEX : EMPTY_GRID_INDEX);
 	let activeHex = baseHex;
 	let activeStripIndex = baseHex ? TONE_STRIP_CENTER_INDEX : -1;
 	let isDraggingFreePlane = false;
@@ -298,12 +304,37 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 		updateBaseColor(colorPresets[presetIndex].hex, presetIndex);
 	}
 
+	function findPresetIndexByHex(hex: string): number {
+		const normalized = normalizeHex(hex);
+		if (!normalized) return CUSTOM_GRID_INDEX;
+		return colorPresets.findIndex(preset => normalizeHex(preset.hex) === normalized);
+	}
+
+	function previewTypedHexInput(): boolean {
+		const normalized = normalizeHex(input.value);
+		if (!normalized) return false;
+		const presetIndex = findPresetIndexByHex(normalized);
+		baseHex = normalized;
+		activeHex = normalized;
+		activeStripIndex = TONE_STRIP_CENTER_INDEX;
+		selectedPresetIndex = presetIndex;
+		activeGridIndex = presetIndex >= 0 ? presetIndex : CUSTOM_GRID_INDEX;
+		freeHue = rgbToHsv(hexToRgb(normalized)).h;
+		return true;
+	}
+
 	function commitActiveHex(): void {
+		if (input.value.trim() && !previewSearchInput()) return;
 		const normalized = normalizeHex(activeHex);
 		if (!normalized) return;
 		completed = true;
 		options.onSelect(normalized.replace(/^#/, ''));
 		close();
+	}
+
+	function commitManualActiveHex(): void {
+		clearSearchForManualColor(false);
+		commitActiveHex();
 	}
 
 	function focusSearchInput(): void {
@@ -324,6 +355,7 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 
 	function moveStrip(delta: number, focusStrip = true): void {
 		if (!baseHex) return;
+		clearSearchForManualColor(false);
 		const tones = getToneValues();
 		activeStripIndex = clamp(
 			activeStripIndex >= 0 ? activeStripIndex + delta : TONE_STRIP_CENTER_INDEX + delta,
@@ -346,15 +378,23 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 		if (activeButton) focusFloatingInput(activeButton);
 	}
 
+	function focusGridCellWithoutPreview(index: number): void {
+		activeGridIndex = clamp(index, 0, colorPresets.length - 1);
+		render();
+		const activeButton = gridButtons[activeGridIndex];
+		if (activeButton) focusFloatingInput(activeButton);
+	}
+
 	function centerPresetInStrip(index: number): void {
+		clearSearchForManualColor(false);
 		previewPresetInStrip(index);
 		focusActiveStripCell();
 	}
 
-	function clearSearchForManualColor(): void {
+	function clearSearchForManualColor(resetGridIndex = true): void {
 		if (!input.value) return;
 		input.value = '';
-		activeGridIndex = EMPTY_GRID_INDEX;
+		if (resetGridIndex) activeGridIndex = EMPTY_GRID_INDEX;
 	}
 
 	function copyActiveHex(): void {
@@ -427,7 +467,7 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 				if (!toneHex) return;
 				activeStripIndex = index;
 				activeHex = toneHex;
-				commitActiveHex();
+				commitManualActiveHex();
 			});
 			button.addEventListener('keydown', event => {
 				handleStripKeydown(event);
@@ -495,8 +535,9 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 
 	function renderFooter(): void {
 		const normalized = normalizeHex(activeHex);
-		copyButton.disabled = !normalized;
-		chooseButton.disabled = !normalized;
+		const canUseActiveHex = !!normalized && isSearchInputCommitCandidate();
+		copyButton.disabled = !canUseActiveHex;
+		chooseButton.disabled = !canUseActiveHex;
 		hueSlider.disabled = false;
 		hueSlider.value = String(Math.round(freeHue));
 		hueSliderWrap.classList.remove('is-disabled');
@@ -519,10 +560,17 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 		return clamp(activeGridIndex, 0, colorPresets.length - 1);
 	}
 
+	function isSearchInputCommitCandidate(): boolean {
+		const query = input.value.trim();
+		if (!query) return true;
+		if (normalizeHex(query)) return true;
+		return getQueryMatchIndexes(query, colorPresets).length > 0;
+	}
+
 	function handleSearchKeydown(event: KeyboardEvent): void {
 		if (event.key === 'ArrowDown') {
 			event.preventDefault();
-			if (input.value.trim() && previewBestSearchMatch() && baseHex) {
+			if (input.value.trim() && previewSearchInput() && baseHex) {
 				focusActiveStripCell();
 				return;
 			}
@@ -536,7 +584,7 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 		}
 
 		if (event.key === 'Enter') {
-			if (input.value.trim() && !previewBestSearchMatch()) return;
+			if (input.value.trim() && !previewSearchInput()) return;
 			if (!normalizeHex(activeHex)) return;
 			event.preventDefault();
 			commitActiveHex();
@@ -555,8 +603,10 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 			event.preventDefault();
 			if (selectedPresetIndex >= 0) {
 				activeGridIndex = selectedPresetIndex;
+				focusActiveGridCell();
+			} else {
+				focusGridCellWithoutPreview(EMPTY_GRID_INDEX);
 			}
-			focusActiveGridCell();
 			return;
 		}
 
@@ -568,7 +618,7 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			commitActiveHex();
+			commitManualActiveHex();
 		}
 	}
 
@@ -627,8 +677,13 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 	}
 
 	function updateGridMatchFromSearch(): void {
-		previewBestSearchMatch();
+		previewSearchInput();
 		render();
+	}
+
+	function previewSearchInput(): boolean {
+		if (previewTypedHexInput()) return true;
+		return previewBestSearchMatch();
 	}
 
 	function previewBestSearchMatch(): boolean {
@@ -747,7 +802,7 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 		}
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			commitActiveHex();
+			commitManualActiveHex();
 		}
 	});
 
@@ -783,7 +838,7 @@ export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPic
 		}
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			commitActiveHex();
+			commitManualActiveHex();
 		}
 	});
 

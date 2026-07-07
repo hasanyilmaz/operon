@@ -26,7 +26,6 @@ import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import { t } from '../../core/i18n';
 import { getAppLocale } from '../../core/obsidian-app';
 import { getNormalFilterSets, isSpecialDynamicFilterSet } from '../../core/dynamic-file-task-filter';
-import { findStatusDef } from '../../types/pipeline';
 import {
 	CalendarItem,
 	ExternalCalendarTaskSeed,
@@ -66,9 +65,9 @@ import {
 	getNextTaskColorSource,
 	getTaskColorSourceIcon,
 	getTaskColorSourceLabel,
-	normalizeTaskFieldColor,
 	normalizeTaskColorSource,
 	resolveTaskColorSource,
+	resolveTaskStatusIconColor,
 } from '../../core/task-color-source';
 import { bindContextualHoverMenuTrigger, ContextualHoverMenuController } from '../contextual-hover-menu';
 import {
@@ -76,6 +75,7 @@ import {
 	resolveVisibleContextualHoverAnchorRect,
 } from '../contextual-hover-menu-position';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
+import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
 import { closeFloatingPanelsForRoot } from '../field-pickers/common';
@@ -102,6 +102,7 @@ import {
 	resolveTimedHorizontalOffsetBounds,
 	resolveTimedHorizontalVisibleStartIndex,
 } from './timed-horizontal-window';
+import type { RelatedFilterablePreset, RelatedViewCreateTarget, RelatedViewOpenTarget } from '../../types/related-views';
 
 export const CALENDAR_VIEW_TYPE = 'operon-calendar-view';
 const CALENDAR_SIDEBAR_SECTION_ORDER = ['calendars', 'taskPool'] as const;
@@ -614,6 +615,8 @@ export interface CalendarViewCallbacks {
 	onOpenTaskSource?: (taskId: string) => void | Promise<void>;
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
 	onOpenPresetSettings?: (presetId: string) => void | Promise<void>;
+	onOpenRelatedView?: (target: RelatedViewOpenTarget) => void | Promise<void>;
+	onCreateRelatedView?: (target: RelatedViewCreateTarget) => void | Promise<void>;
 	onSidebarTaskDropToTimed?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onSidebarTaskDropToAllDay?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onSidebarWidthChange?: (widthPx: number) => void | Promise<void>;
@@ -1143,21 +1146,26 @@ export class CalendarView extends ItemView {
 					'.operon-calendar-timed-item, .operon-calendar-all-day-item, .operon-calendar-mobile-item, .operon-calendar-sidebar-task-pool-row',
 				);
 				if (root) patchedRoots.add(root);
-			}
-			const preset = this.resolveCurrentCalendarPreset(settings);
-			for (const root of patchedRoots) {
-				this.applyCalendarCheckboxClass(root, renderedTask.checkbox);
-				if (
-					preset
-					&& (
-						root.hasClass('operon-calendar-timed-item')
-						|| root.hasClass('operon-calendar-all-day-item')
-						|| root.hasClass('operon-calendar-mobile-item')
-					)
-				) {
-					this.applyCalendarTaskFieldColor(root, renderedTask.fieldValues, preset, settings);
 				}
-			}
+				const preset = this.resolveCurrentCalendarPreset(settings);
+				for (const root of patchedRoots) {
+					this.applyCalendarCheckboxClass(root, renderedTask.checkbox);
+					if (
+						preset
+						&& (
+							root.hasClass('operon-calendar-timed-item')
+							|| root.hasClass('operon-calendar-all-day-item')
+							|| root.hasClass('operon-calendar-mobile-item')
+							|| root.hasClass('operon-calendar-sidebar-task-pool-row')
+						)
+					) {
+						if (root.hasClass('operon-calendar-sidebar-task-pool-row')) {
+							this.applySidebarTaskPoolRowColor(root, renderedTask.fieldValues, preset, settings);
+						} else {
+							this.applyCalendarTaskFieldColor(root, renderedTask.fieldValues, preset, settings);
+						}
+					}
+				}
 			return { patchedCount: buttons.length, fallbackReason: 'none' };
 		}
 
@@ -6261,14 +6269,15 @@ export class CalendarView extends ItemView {
 					navigationMode: 'toolbar',
 				});
 			},
-				t('calendar', 'toggleToToolbar'),
-				t('calendar', 'toggleToToolbar'),
-				'operon-calendar-sidebar-toggle-button',
-			);
-			header.createDiv({
-				text: t('calendar', 'title'),
-				cls: 'operon-calendar-sidebar-header-title',
-			});
+			t('calendar', 'toggleToToolbar'),
+			t('calendar', 'toggleToToolbar'),
+			'operon-calendar-sidebar-toggle-button',
+		);
+		header.createDiv({
+			text: t('calendar', 'title'),
+			cls: 'operon-calendar-sidebar-header-title',
+		});
+		this.renderCalendarRelatedViewsButton(header, preset);
 
 		this.renderMiniMonth(container, state, preset);
 		this.renderCalendarQuickActions(container, preset, 'sidebar');
@@ -6313,14 +6322,14 @@ export class CalendarView extends ItemView {
 						presetId: entry.id,
 					});
 				});
+				}
 			}
-		}
 
-			this.renderSidebarTaskPool(sectionsWrapper, preset, visibleDates);
-			this.bindSidebarSectionLayout(sectionsWrapper);
-		}
+		this.renderSidebarTaskPool(sectionsWrapper, preset, visibleDates);
+		this.bindSidebarSectionLayout(sectionsWrapper);
+	}
 
-		private bindSidebarSectionLayout(wrapper: HTMLElement): void {
+	private bindSidebarSectionLayout(wrapper: HTMLElement): void {
 			this.sidebarSectionsLayoutCleanup?.();
 			if (this.isSidebarNativeScrollFallbackEnabled(wrapper)) {
 				this.resetSidebarSectionMaxHeights(wrapper);
@@ -6912,55 +6921,63 @@ export class CalendarView extends ItemView {
 		return containsFields.some(value => value.includes(query)) ? 2 : null;
 	}
 
-		private renderSidebarTaskPoolRow(
-			container: HTMLElement,
-			task: IndexedTask,
-			preset: CalendarRenderPreset,
-			visibleDates: string[],
-			mode: 'pool' | 'finished' = 'pool',
-		): void {
-			container.dataset.operonId = task.operonId;
-			this.applyCalendarCheckboxClass(container, task.checkbox);
-			const taskColor = this.resolveSidebarTaskPoolTaskColor(task);
-			if (taskColor) {
-				container.style.setProperty('--operon-calendar-accent', taskColor);
-			} else {
-				container.style.removeProperty('--operon-calendar-accent');
-			}
-			container.tabIndex = 0;
-			const head = container.createDiv('operon-calendar-sidebar-task-pool-row-head');
-			const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
-			this.renderSidebarTaskPoolStatusButton(hoverTrigger, task);
+	private renderSidebarTaskPoolRow(
+		container: HTMLElement,
+		task: IndexedTask,
+		preset: CalendarRenderPreset,
+		visibleDates: string[],
+		mode: 'pool' | 'finished' = 'pool',
+	): void {
+		container.dataset.operonId = task.operonId;
+		this.applyCalendarCheckboxClass(container, task.checkbox);
+		this.applySidebarTaskPoolRowColor(container, task.fieldValues, preset, this.getSettings());
+		container.tabIndex = 0;
+		const head = container.createDiv('operon-calendar-sidebar-task-pool-row-head');
+		const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
+		this.renderSidebarTaskPoolStatusButton(hoverTrigger, task);
 
-			const titleText = task.description || task.operonId;
-			const title = head.createSpan({
-				cls: 'operon-calendar-sidebar-task-pool-row-title',
-			});
-			const renderedWikilinks = renderTaskDescriptionWikilinks(title, {
-				app: this.app,
-				description: titleText,
-				sourcePath: task.primary.filePath,
-			});
-			if (!renderedWikilinks) {
-				title.textContent = titleText;
-			}
-			if (!renderedWikilinks && task.primary.format === 'yaml') {
-				bindTaskTitleLinkPreview(this.app, title, task.primary.filePath, task.primary.filePath);
-			}
+		const titleText = task.description || task.operonId;
+		const title = head.createSpan({
+			cls: 'operon-calendar-sidebar-task-pool-row-title',
+		});
+		const renderedWikilinks = renderTaskDescriptionWikilinks(title, {
+			app: this.app,
+			description: titleText,
+			sourcePath: task.primary.filePath,
+		});
+		if (!renderedWikilinks) {
+			title.textContent = titleText;
+		}
+		if (!renderedWikilinks && task.primary.format === 'yaml') {
+			bindTaskTitleLinkPreview(this.app, title, task.primary.filePath, task.primary.filePath);
+		}
 
-			this.renderSidebarTaskPoolDateIndicators(head, task, mode);
+		this.renderSidebarTaskPoolDateIndicators(head, task, mode);
 
-			this.bindSidebarTaskPoolHoverMenuTarget(hoverTrigger, task);
-			this.bindSidebarTaskPoolRowDrag(container, task, preset, visibleDates);
-			container.addEventListener('keydown', (event) => {
-				if (event.key !== 'Enter' && event.key !== ' ') return;
-				event.preventDefault();
-				void this.callbacks.onItemAction?.(task.operonId, 'openEditor');
-			});
+		this.bindSidebarTaskPoolHoverMenuTarget(hoverTrigger, task);
+		this.bindSidebarTaskPoolRowDrag(container, task, preset, visibleDates);
+		container.addEventListener('keydown', (event) => {
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+			event.preventDefault();
+			void this.callbacks.onItemAction?.(task.operonId, 'openEditor');
+		});
 	}
 
-	private resolveSidebarTaskPoolTaskColor(task: IndexedTask): string | null {
-		return normalizeTaskFieldColor(task.fieldValues['taskColor']);
+	private applySidebarTaskPoolRowColor(
+		element: HTMLElement,
+		fieldValues: Record<string, string>,
+		preset: CalendarRenderPreset,
+		settings: OperonSettings,
+	): void {
+		this.applyCalendarTaskFieldColor(element, fieldValues, preset, settings);
+		const accent = element.style.getPropertyValue('--operon-calendar-accent').trim();
+		if (accent && accent !== 'transparent') {
+			element.style.removeProperty('--operon-calendar-sidebar-task-pool-row-accent');
+			return;
+		}
+		element.setCssProps({
+			'--operon-calendar-sidebar-task-pool-row-accent': 'var(--background-modifier-border-hover, var(--background-modifier-border))',
+		});
 	}
 
 	private renderSidebarTaskPoolDateIndicators(
@@ -7101,6 +7118,8 @@ export class CalendarView extends ItemView {
 			const statusColor = this.resolveCalendarStatusColorFromFieldValues(task.fieldValues, settings);
 			if (statusColor) {
 				button.style.color = statusColor;
+			} else {
+				button.style.removeProperty('color');
 			}
 			button.addEventListener('pointerdown', event => {
 				event.preventDefault();
@@ -7434,36 +7453,37 @@ export class CalendarView extends ItemView {
 					navigationMode: 'sidebar',
 				});
 			},
-				t('calendar', 'toggleToSidebar'),
-				t('calendar', 'toggleToSidebar'),
-				'operon-calendar-toolbar-toggle-button',
-			);
+			t('calendar', 'toggleToSidebar'),
+			t('calendar', 'toggleToSidebar'),
+			'operon-calendar-toolbar-toggle-button',
+		);
 
 		const titleBlock = titleGroup.createDiv('operon-calendar-toolbar-title');
 		bindOperonHoverTooltip(titleBlock, { content: this.formatRangeLabel(visibleDates), taskColor: null });
-			titleBlock.createDiv({
-				text: t('calendar', 'title'),
-				cls: 'operon-calendar-toolbar-title-main',
-			});
+		titleBlock.createDiv({
+			text: t('calendar', 'title'),
+			cls: 'operon-calendar-toolbar-title-main',
+		});
+		this.renderCalendarRelatedViewsButton(titleGroup, preset);
 
 		const presetSpanDays = preset.surfaceType === 'multiWeek'
 			? Math.max(7, Math.max(1, preset.weekCount || 2) * 7)
 			: Math.max(1, preset.dayCount);
-			this.createToolbarIconButton(navGroup, ['step-back', 'step-back'], () => {
-				void this.shiftCalendarAnchorByDays(-presetSpanDays);
-			}, t('calendar', 'previousSpan'), t('calendar', 'previousSpanTooltip'));
-			this.createToolbarIconButton(navGroup, ['step-back'], () => {
-				void this.shiftCalendarAnchorByDays(-1);
-			}, t('calendar', 'previousDay'), t('calendar', 'previousDayTooltip'));
+		this.createToolbarIconButton(navGroup, ['step-back', 'step-back'], () => {
+			void this.shiftCalendarAnchorByDays(-presetSpanDays);
+		}, t('calendar', 'previousSpan'), t('calendar', 'previousSpanTooltip'));
+		this.createToolbarIconButton(navGroup, ['step-back'], () => {
+			void this.shiftCalendarAnchorByDays(-1);
+		}, t('calendar', 'previousDay'), t('calendar', 'previousDayTooltip'));
 		this.createToolbarButton(navGroup, this.formatFocusedDateButtonLabel(state.anchorDate), () => {
 			void this.handleTodayButtonClick(state, preset);
 		});
-			this.createToolbarIconButton(navGroup, ['step-forward'], () => {
-				void this.shiftCalendarAnchorByDays(1);
-			}, t('calendar', 'nextDay'), t('calendar', 'nextDayTooltip'));
-			this.createToolbarIconButton(navGroup, ['step-forward', 'step-forward'], () => {
-				void this.shiftCalendarAnchorByDays(presetSpanDays);
-			}, t('calendar', 'nextSpan'), t('calendar', 'nextSpanTooltip'));
+		this.createToolbarIconButton(navGroup, ['step-forward'], () => {
+			void this.shiftCalendarAnchorByDays(1);
+		}, t('calendar', 'nextDay'), t('calendar', 'nextDayTooltip'));
+		this.createToolbarIconButton(navGroup, ['step-forward', 'step-forward'], () => {
+			void this.shiftCalendarAnchorByDays(presetSpanDays);
+		}, t('calendar', 'nextSpan'), t('calendar', 'nextSpanTooltip'));
 
 		const presetSelect = controlsGroup.createEl('select', { cls: 'operon-calendar-preset-select' });
 		for (const entry of this.getSettings().calendarPresets) {
@@ -7480,6 +7500,18 @@ export class CalendarView extends ItemView {
 		this.renderCalendarQuickActions(controlsGroup, preset, 'toolbar');
 
 		this.applyToolbarLayoutMode(toolbar, titleGroup, navGroup, controlsGroup);
+	}
+
+	private renderCalendarRelatedViewsButton(container: HTMLElement, preset: RelatedFilterablePreset): HTMLButtonElement | null {
+		return renderRelatedViewsLauncher({
+			container,
+			settings: this.getSettings(),
+			source: { type: 'calendar', preset },
+			buttonClass: 'operon-calendar-related-views-button',
+			closeBeforeOpen: () => closeFloatingPanelsForRoot(this.contentEl),
+			onOpenRelatedView: target => this.callbacks.onOpenRelatedView?.(target),
+			onCreateRelatedView: target => this.callbacks.onCreateRelatedView?.(target),
+		});
 	}
 
 	private applyToolbarLayoutMode(
@@ -9626,6 +9658,7 @@ export class CalendarView extends ItemView {
 
 		const statusColor = this.resolveCalendarStatusColor(item, settings);
 		if (statusColor) button.style.color = statusColor;
+		else button.style.removeProperty('color');
 		if (item.origin === 'projected' || item.isStatusReadOnly || !this.callbacks.onStatusIconClick) {
 			button.disabled = true;
 			return;
@@ -9707,8 +9740,7 @@ export class CalendarView extends ItemView {
 		fieldValues: Record<string, string>,
 		settings: OperonSettings,
 	): string | null {
-		const statusDef = findStatusDef(settings.pipelines, fieldValues['status'] ?? '');
-		return statusDef?.color?.trim() || null;
+		return resolveTaskStatusIconColor(fieldValues, settings);
 	}
 
 	private resolveStatusButtonIcon(

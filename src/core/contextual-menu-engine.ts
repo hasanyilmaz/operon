@@ -27,6 +27,7 @@ export type ContextualMenuSurface =
 	| 'trackerTask'
 	| 'flowTimeTask'
 	| 'filterTask'
+	| 'tableTask'
 	| 'kanbanCard'
 	| 'calendarTimedItem'
 	| 'calendarAllDayScheduledItem'
@@ -46,6 +47,7 @@ export const CONTEXTUAL_MENU_SURFACES: ContextualMenuSurface[] = [
 	'trackerTask',
 	'flowTimeTask',
 	'filterTask',
+	'tableTask',
 	'kanbanCard',
 	'calendarTimedItem',
 	'calendarAllDayScheduledItem',
@@ -76,7 +78,7 @@ export const CONTEXTUAL_MENU_SURFACE_GROUPS: ContextualMenuSurfaceGroup[] = [
 	{
 		id: 'planningBoards',
 		labelKey: 'contextualMenuSurfaceGroupPlanningBoards',
-		surfaces: ['kanbanCard', 'pinnedTask'],
+		surfaces: ['kanbanCard', 'tableTask', 'pinnedTask'],
 	},
 	{
 		id: 'timeTracking',
@@ -117,6 +119,7 @@ export const CONTEXTUAL_MENU_SURFACE_LABEL_KEYS: Record<ContextualMenuSurface, s
 	trackerTask: 'contextualMenuSurfaceTrackerTask',
 	flowTimeTask: 'contextualMenuSurfaceFlowTimeTask',
 	filterTask: 'contextualMenuSurfaceFilterTask',
+	tableTask: 'contextualMenuSurfaceTableTask',
 	kanbanCard: 'contextualMenuSurfaceKanbanCard',
 	calendarTimedItem: 'contextualMenuSurfaceCalendarTimedItem',
 	calendarAllDayScheduledItem: 'contextualMenuSurfaceCalendarAllDayScheduledItem',
