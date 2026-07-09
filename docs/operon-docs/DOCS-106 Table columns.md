@@ -11,7 +11,7 @@ tags:
   - table
   - columns
   - configure
-Updated: 2026-07-07T21:03:09
+Updated: 2026-07-08T23:32:00
 ---
 
 # Table columns
@@ -29,7 +29,7 @@ Almost any field a task carries can become a column:
 - **Task fields**: the description (shown as **Task**), status, priority, the dates (due, scheduled, start, and the completion and cancellation dates), estimate, duration and its rolled-up totals, assignees, contexts, parent, blocking and blocked-by links, location, recurrence, tags, and note.
 - **Your custom keys**: any [[DOCS-040 Custom keys|custom key]] appears as a field you can add as a column, so a table can carry exactly the properties your workflow uses.
 - **Source and file fields**: read-only columns that describe where the task lives, such as **Source**, source path, source line, and the file name, basename, path, and folder.
-- **Identity**: the task's [[DOCS-015 Task identity and operonId|operonId]], as a read-only column.
+- **Identity**: the task's [[DOCS-015 Task identity and operonId|operonId]], as a read-only column, and its [[DOCS-097 Project serials|Project Serial]] where a scope is set up, also read-only.
 
 You add a column from a header's menu with **Add column to left...** or **Add column to right...**, or from the preset's **Columns** section. See [[DOCS-109 Table presets|Table presets]].
 
@@ -99,7 +99,7 @@ Most columns are editable: click a cell to change that field on the spot, as cov
 
 - **Editable task fields** include status, priority, description, note, due, scheduled, start, completion and cancellation dates, repeat end, estimate, recurrence, parent and dependency links, tags, contexts, assignees, location, the task icon field, task color, and supported custom date, datetime, number, text, and list fields.
 - **Source and file columns**, which describe where the task is stored rather than a property you set.
-- **Identity, checkbox, progress, and helper columns**, such as operonId, checkbox, subtask progress, line number, task icon helper, and task type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.
+- **Identity, checkbox, progress, and helper columns**, such as operonId, Project Serial, checkbox, subtask progress, line number, task icon helper, and task type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.
 
 The source column is still active: clicking it opens the task's source in a new tab.
 
@@ -148,3 +148,4 @@ The three helper columns are toggled in **Settings → Operon → Views → Tabl
 - [[DOCS-108 Table summaries|Table summaries]]
 - [[DOCS-109 Table presets|Table presets]]
 - [[DOCS-040 Custom keys|Custom keys]]
+- [[DOCS-097 Project serials|Project serials]]

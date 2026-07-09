@@ -10,7 +10,7 @@ tags:
   - operon
   - kanban
   - plan
-Updated: 2026-07-05T19:28:23
+Updated: 2026-07-08T23:32:00
 ---
 
 # Kanban overview
@@ -119,7 +119,7 @@ For exactly which fields are matched and how Task Finder ranks its own results, 
 
 ## Settings
 
-Operon settings for the board live in **Settings → Operon → Views → Kanban**, which configures how the Kanban board displays cards. Card chip visibility and order live in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**.
+Operon settings for the board live in **Settings → Operon → Views → Kanban**, which configures how the Kanban board displays cards, including the hover add button that appears over an empty cell as a quick way to start a card there. Card chip visibility and order live in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**.
 
 ## Related
 

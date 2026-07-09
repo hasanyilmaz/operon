@@ -11,7 +11,7 @@ tags:
   - table
   - cells
   - configure
-Updated: 2026-07-07T21:03:09
+Updated: 2026-07-08T23:32:00
 ---
 
 # Table cells: display and behavior
@@ -57,9 +57,10 @@ In detailed cell mode, each field type renders its own way:
 | Parent task progress | A progress indicator over the task's subtasks or checkboxes |
 | Description | The task's text, with any wikilinks live |
 | Source | A button that opens the task's source |
+| Project Serial | A chip with the task's serial, where a scope covers it |
 | Line number, task icon helper, task type helper | The row number, a status icon, or an inline-or-file icon |
 
-In detailed cells, an empty field usually shows a plain `--`, so a blank detailed cell is never ambiguous. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
+In detailed cells, an empty field usually shows a plain `--`, so a blank detailed cell is never ambiguous. **Project Serial is the exception**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
 
 ## What a cell does on click
 
@@ -137,3 +138,4 @@ Because a cell both shows and acts, the display mode you pick per column has con
 - [[DOCS-113 Text field editor popover|Text field editor popover]]
 - [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]]
 - [[DOCS-068 Location picker|Location picker]]
+- [[DOCS-097 Project serials|Project serials]]

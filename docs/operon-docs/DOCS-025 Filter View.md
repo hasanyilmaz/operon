@@ -11,7 +11,7 @@ tags:
   - filterview
   - plan
   - search
-Updated: 2026-07-05T19:25:53
+Updated: 2026-07-08T23:32:00
 ---
 
 # Filter View
@@ -48,7 +48,7 @@ Each is a different slice of the same records. Keep a handful of well-named filt
 
 ## One filter, many views
 
-A saved filter is not tied to the Filter View. The same filter can scope a [[DOCS-028 Calendar overview|Calendar]], a [[DOCS-030 Kanban overview|Kanban]], or a [[DOCS-105 Table overview|Table]], so one slice of tasks can be read as a list, placed on dates, arranged as cards, or laid out as rows and columns. Each view's preset picks a filter, and the related views control lets you jump between the views that share one. See [[DOCS-105 Table overview|Table overview]].
+A saved filter is not tied to the Filter View. The same filter can scope a [[DOCS-028 Calendar overview|Calendar]], a [[DOCS-030 Kanban overview|Kanban]], or a [[DOCS-105 Table overview|Table]], so one slice of tasks can be read as a list, placed on dates, arranged as cards, or laid out as rows and columns. Each view's preset picks a filter, and the related views control lets you jump between the views that share one, or spin up a new Calendar, Kanban, or Table preset that inherits both the filter and its name. See [[DOCS-105 Table overview|Table overview]].
 
 ## Acting from the view
 

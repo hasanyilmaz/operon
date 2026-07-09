@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-07-07T19:08:14.388Z",
+  "generatedAt": "2026-07-09T08:57:03.203Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -130,8 +130,8 @@
     },
     {
       "path": "DOCS-025 Filter View.md",
-      "sha256": "163d2150fccbfc59e0adc23af33dc42724ced7e5a6acb40c05bcd303c1c23e1b",
-      "bytes": 4230
+      "sha256": "4434f380c28cf7e137a75757bcfd390ac305561d27500b7b7bf36b7fd2704dee",
+      "bytes": 4325
     },
     {
       "path": "DOCS-026 Dynamic file task filter.md",
@@ -145,8 +145,8 @@
     },
     {
       "path": "DOCS-028 Calendar overview.md",
-      "sha256": "539a7748a2f92cf261f1bafd69ef0e6a98c36fe15b570f6609a4b8548fae4105",
-      "bytes": 5265
+      "sha256": "d66c8dd21dea894d55b31f23779ad67a246e6b70d19148a4c469dd148bef5032",
+      "bytes": 5421
     },
     {
       "path": "DOCS-029 Calendar presets and time grid.md",
@@ -155,8 +155,8 @@
     },
     {
       "path": "DOCS-030 Kanban overview.md",
-      "sha256": "1bea5a6c57e9144d403b410b334e97a15e8e81d7f1da5bee8601d1a821f18379",
-      "bytes": 9613
+      "sha256": "d467fa6b60c2b58d8f557c71d525b9e3d0072ce0d86eb75b92d98cf06e018588",
+      "bytes": 9714
     },
     {
       "path": "DOCS-031 Kanban manual order.md",
@@ -490,8 +490,8 @@
     },
     {
       "path": "DOCS-097 Project serials.md",
-      "sha256": "8946d1841621e261c67db061e024fa8a64ada763054343f2619cb84d8f4d6f45",
-      "bytes": 8733
+      "sha256": "27b08f812da860e08faad9304f645c5e31f7ca10290be3719667866cc3c95add",
+      "bytes": 8974
     },
     {
       "path": "DOCS-098 Workspace Tweaks.md",
@@ -530,13 +530,13 @@
     },
     {
       "path": "DOCS-105 Table overview.md",
-      "sha256": "9f4ee31bd25f83ed0e88e04cc3f4be34096d5551b39c04dd93c849dd4c6638de",
-      "bytes": 9640
+      "sha256": "e1326396b2556a027cc6182054838677e9d118e4136860827b744587328010c8",
+      "bytes": 9685
     },
     {
       "path": "DOCS-106 Table columns.md",
-      "sha256": "a84ad9b1f025a7119052726fb87fdd3ced6b9d8eac9fec86df7e5852b59c5920",
-      "bytes": 10428
+      "sha256": "08c8371eada60bea49d2c34176360614a5bdaf3604bd52319a8747a5cfa0e849",
+      "bytes": 10584
     },
     {
       "path": "DOCS-107 Table grouping and sorting.md",
@@ -565,8 +565,8 @@
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "a1cc5b2cf1e4b3ee7e5b91358440c76110e935bf54b051b12008feef8a34774d",
-      "bytes": 10470
+      "sha256": "0231262f61828afec7dd9285e8c05c4c3b8c8594b0352665ccea44ac139fff50",
+      "bytes": 10743
     },
     {
       "path": "DOCS-113 Text field editor popover.md",

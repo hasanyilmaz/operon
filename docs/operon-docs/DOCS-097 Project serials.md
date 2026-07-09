@@ -12,7 +12,7 @@ tags:
   - serial
   - projects
   - identity
-Updated: 2026-07-01T15:33:43
+Updated: 2026-07-08T23:32:00
 ---
 
 # Project serials
@@ -91,6 +91,8 @@ When you add or rename a scope that **overlaps** another tree or **reuses a pref
 
 A serial appears as a display-only **chip** on supported task surfaces: in [[DOCS-041 Task chips display and behavior|reading view and Live Preview]], on rows in the [[DOCS-025 Filter View|Filter View]], on main cards in the [[DOCS-030 Kanban overview|Kanban]], in the [[DOCS-021 Task Editor|Task Editor]], and in the calendar task picker. There is nothing to click to edit, and nothing is written into the task text.
 
+It can also be its own read-only column on the [[DOCS-105 Table overview|Table]], where it searches, groups, sorts, and exports like any other column. See [[DOCS-106 Table columns|Table columns]].
+
 ## Stored apart from your notes
 
 The numbers live in Operon's own state, not in the task's Markdown. See [[DOCS-046 Plugin data and state files|Plugin data and state files]]. This is what keeps serials safe to turn on: enabling, renaming, or removing a scope never touches the operonId in your line or the body of your note. The serials are a layer Operon paints on top, and that layer persists across sessions so the numbers stay stable.
@@ -129,3 +131,4 @@ Operon settings for this live in **Settings → Operon → Tasks → Relationshi
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-058 Operon inheritance rules|Operon inheritance rules]]
+- [[DOCS-106 Table columns|Table columns]]

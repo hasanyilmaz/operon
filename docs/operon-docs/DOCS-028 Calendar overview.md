@@ -10,7 +10,7 @@ tags:
   - operon
   - calendar
   - plan
-Updated: 2026-07-05T19:28:23
+Updated: 2026-07-08T23:32:00
 ---
 
 # Calendar overview
@@ -82,7 +82,7 @@ Operon can also show events from external calendar sources alongside your tasks,
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Views → Calendar**, which configures how the Calendar displays tasks and time blocks.
+Operon settings for this live in **Settings → Operon → Views → Calendar**, which configures how the Calendar displays tasks and time blocks. This is also where you can turn off the hover add button that appears over an empty all-day date cell, a quick way to start a task on that date without it.
 
 ## Related
 

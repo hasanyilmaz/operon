@@ -10,7 +10,7 @@ tags:
   - operon
   - table
   - plan
-Updated: 2026-07-07T21:03:09
+Updated: 2026-07-08T23:32:00
 ---
 
 # Table overview
@@ -59,7 +59,7 @@ However you filter, the Table stays a table: matching rows keep their columns, g
 
 ## Open related views
 
-The same tasks can be planned in more than one view. From the toolbar you can jump to a [[DOCS-028 Calendar overview|Calendar]] or [[DOCS-030 Kanban overview|Kanban]] that shares this table's filter, or create a new one seeded with the same filter, so a set of tasks you assembled here can be seen by date or by stage without rebuilding the filter. See [[DOCS-025 Filter View|Filter View]].
+The same tasks can be planned in more than one view. From the toolbar you can jump to a [[DOCS-028 Calendar overview|Calendar]] or [[DOCS-030 Kanban overview|Kanban]] that shares this table's filter, or create a new one seeded with the same filter and carrying its name, so a set of tasks you assembled here can be seen by date or by stage without rebuilding the filter or renaming the result. See [[DOCS-025 Filter View|Filter View]].
 
 ## Embed and export
 
