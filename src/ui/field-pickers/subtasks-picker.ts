@@ -1,6 +1,6 @@
 import { IndexedTask } from '../../types/fields';
 import { t } from '../../core/i18n';
-import { createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
+import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 
 const PAGE_SIZE = 20;
@@ -20,7 +20,6 @@ interface SubtaskCandidate {
 	label: string;
 	filePath: string;
 	checkboxRank: number;
-	searchText: string;
 }
 
 export function showSubtasksPicker(anchor: HTMLElement | DOMRect, options: SubtasksPickerOptions): () => void {
@@ -151,28 +150,21 @@ export function showSubtasksPicker(anchor: HTMLElement | DOMRect, options: Subta
 			const label = item.createDiv('operon-parent-task-picker-label');
 			label.textContent = candidate.label;
 
-			item.addEventListener('mousemove', () => {
-				if (activeIndex !== index) {
-					activeIndex = index;
-					render();
-				}
-			});
-			item.addEventListener('pointerdown', event => {
-				event.preventDefault();
-				selectId(candidate.operonId);
-			});
-			item.addEventListener('mousedown', event => {
-				event.preventDefault();
-				selectId(candidate.operonId);
-			});
-			item.addEventListener('click', event => {
-				event.preventDefault();
-				selectId(candidate.operonId);
-			});
+			item.addEventListener('mousemove', () => setActiveIndex(index));
+			bindPickerListItemActivation(item, () => selectId(candidate.operonId));
 
 			list.appendChild(item);
 		}
 		syncListViewport(keepActiveVisible);
+	};
+
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
+		pathValue.textContent = matches[activeIndex]?.filePath ?? '';
 	};
 
 	const updateMatches = (query: string) => {
@@ -252,7 +244,7 @@ function buildCandidates(tasks: IndexedTask[]): SubtaskCandidate[] {
 		cancelled: 2,
 	};
 
-	return [...tasks]
+	return tasks
 		.map(task => {
 			const description = task.description.trim() || 'Untitled task';
 			return {
@@ -260,7 +252,6 @@ function buildCandidates(tasks: IndexedTask[]): SubtaskCandidate[] {
 				label: description,
 				filePath: task.primary.filePath ?? '',
 				checkboxRank: checkboxRank[task.checkbox] ?? 99,
-				searchText: `${description} ${task.operonId} ${task.primary.filePath}`.toLowerCase(),
 			};
 		})
 		.sort((left, right) => {

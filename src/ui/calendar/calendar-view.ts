@@ -3,13 +3,15 @@ import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { formatUiMinuteOfDay, formatUiTime } from '../../core/ui-time-format';
 import { localNow, localToday, toLocalDatetime } from '../../core/local-time';
 import { OperonIndexer } from '../../indexer/indexer';
-import { buildVisibleCalendarDates, queryCalendarItems, queryCalendarItemsForVisibleDates, shiftCalendarDateKey } from '../../systems/calendar-query';
+import { buildVisibleCalendarDates, deriveVisibleCalendarQueryResult, queryCalendarItems, queryCalendarItemsForVisibleDates, shiftCalendarDateKey } from '../../systems/calendar-query';
 import { filterTasksForCalendar, stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
 import {
 	buildCalendarSidebarTaskPoolSearchText,
 	CALENDAR_SIDEBAR_TASK_POOL_INITIAL_LIMIT,
+	CALENDAR_SIDEBAR_TASK_POOL_SEARCH_DEBOUNCE_MS,
 	CALENDAR_SIDEBAR_TASK_POOL_SEARCH_LIMIT,
 	collectCalendarSidebarTaskPoolCandidates,
+	isCalendarSidebarTaskPoolMember,
 } from '../../systems/calendar-sidebar-task-pool';
 import {
 	buildAllDayCalendarWritebackPlan,
@@ -89,6 +91,7 @@ import {
 	buildOptimisticStatusPatch,
 	isOptimisticTaskPatchPersisted,
 	normalizeOptimisticFieldValues,
+	shouldExpireOptimisticTaskPatch,
 	type OptimisticStatusPatchResult,
 	type OptimisticTaskPatchInput,
 } from '../../systems/optimistic-status-patch';
@@ -132,6 +135,7 @@ const CALENDAR_TOUCH_CLICK_SUPPRESSION_MS = 800;
 const CALENDAR_TRACKED_SESSION_DESKTOP_DRAG_INTENT_DISTANCE_PX = 4;
 const CALENDAR_DESKTOP_ALL_DAY_TRACK_LANE_HEIGHT_PX = 38;
 const CALENDAR_DESKTOP_ALL_DAY_TRACK_LANE_INSET_PX = 4;
+const CALENDAR_OPTIMISTIC_PATCH_TTL_MS = 10000;
 
 export type CalendarMobileTimedTaskGestureIntent = 'pending' | 'scroll' | 'drag';
 export type CalendarMobileEmptyAreaSwipeIntent = 'pending' | 'previous' | 'next';
@@ -182,6 +186,67 @@ export function resolveCalendarTrackedSessionPointerDragIntent(input: {
 	const distance = Math.hypot(input.deltaX, input.deltaY);
 	const intentDistance = Math.max(1, input.intentDistancePx);
 	return distance >= intentDistance ? 'drag' : 'pending';
+}
+
+export type CalendarDesktopTouchSelectionIntent = 'pending' | 'cancel' | 'select';
+
+export function resolveCalendarDesktopTouchSelectionIntent(input: {
+	deltaX: number;
+	deltaY: number;
+	elapsedMs: number;
+	cancelDistancePx: number;
+	longPressMs: number;
+}): CalendarDesktopTouchSelectionIntent {
+	const distance = Math.hypot(input.deltaX, input.deltaY);
+	if (distance > Math.max(1, input.cancelDistancePx)) return 'cancel';
+	if (input.elapsedMs >= Math.max(0, input.longPressMs)) return 'select';
+	return 'pending';
+}
+
+/**
+ * Grid lines are painted as CSS background layers instead of one DOM node per
+ * line, which previously cost hundreds to thousands of divs per render (25
+ * hour lines per lane column on desktop, up to 97 slot lines per column on
+ * mobile). Offsets may be fractional (they follow the grid scale exactly, like
+ * item placement) and are emitted as hard gradient stops of 1px each.
+ */
+export function buildCalendarGridLineBackgroundImage(lineOffsets: number[], lineColor: string): string {
+	if (lineOffsets.length === 0) return 'none';
+	const stops: string[] = ['transparent 0px'];
+	for (const offset of lineOffsets) {
+		const safeOffset = Math.max(0, offset);
+		stops.push(`transparent ${safeOffset}px, ${lineColor} ${safeOffset}px, ${lineColor} ${safeOffset + 1}px, transparent ${safeOffset + 1}px`);
+	}
+	return `linear-gradient(to bottom, ${stops.join(', ')})`;
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+	return b === 0 ? a : greatestCommonDivisor(b, a % b);
+}
+
+export function buildCalendarRepeatingSlotLineBackgroundImage(options: {
+	scale: number;
+	slotMinutes: number;
+	gridHeightPx: number;
+}): string {
+	const safeSlotMinutes = Math.max(1, Math.round(options.slotMinutes));
+	const safeScale = Math.max(0.05, options.scale);
+	// Emphasized lines follow the old per-div behavior: a stronger line where
+	// a slot boundary is also an hour boundary (lcm covers slot sizes that do
+	// not divide 60 evenly).
+	const emphasizedStrideMinutes = 60 % safeSlotMinutes === 0
+		? 60
+		: (60 * safeSlotMinutes) / greatestCommonDivisor(60, safeSlotMinutes);
+	const slotStridePx = safeSlotMinutes * safeScale;
+	const emphasizedStridePx = emphasizedStrideMinutes * safeScale;
+	const hourColor = 'var(--background-modifier-border)';
+	const slotColor = 'color-mix(in srgb, var(--background-modifier-border) 44%, transparent)';
+	const bottomLineOffsetPx = Math.max(0, options.gridHeightPx - 1);
+	return [
+		`linear-gradient(to bottom, transparent ${bottomLineOffsetPx}px, ${hourColor} ${bottomLineOffsetPx}px)`,
+		`repeating-linear-gradient(to bottom, ${hourColor} 0px, ${hourColor} 1px, transparent 1px, transparent ${emphasizedStridePx}px)`,
+		`repeating-linear-gradient(to bottom, ${slotColor} 0px, ${slotColor} 1px, transparent 1px, transparent ${slotStridePx}px)`,
+	].join(', ');
 }
 
 export function shouldOwnCalendarMobileEmptyAreaHorizontalSwipe(input: {
@@ -292,13 +357,19 @@ export interface TimeTrackerGridSummaryRange {
 	isActive?: boolean;
 }
 
+/**
+ * Daily lane totals for the time tracker grid. A running session is
+ * deliberately excluded from `trackedCompletedSeconds` and `deltaSeconds`
+ * until it completes, so the summary and the planned-versus-tracked delta
+ * stay stable while a timer runs; the in-progress share is reported
+ * separately via `trackedActiveSeconds` and `hasActiveTrackedTime`.
+ */
 export interface TimeTrackerGridDailySummary {
 	dateKey: string;
 	plannedSeconds: number;
 	externalSeconds: number;
 	trackedCompletedSeconds: number;
 	trackedActiveSeconds: number;
-	trackedTotalSeconds: number;
 	deltaSeconds: number;
 	hasActiveTrackedTime: boolean;
 }
@@ -360,7 +431,6 @@ export function buildTimeTrackerGridDailySummaries(options: {
 		externalSeconds: 0,
 		trackedCompletedSeconds: 0,
 		trackedActiveSeconds: 0,
-		trackedTotalSeconds: 0,
 		deltaSeconds: 0,
 		hasActiveTrackedTime: false,
 	}));
@@ -394,8 +464,7 @@ export function buildTimeTrackerGridDailySummaries(options: {
 	});
 
 	for (const summary of summaries) {
-		summary.trackedTotalSeconds = summary.trackedCompletedSeconds;
-		summary.deltaSeconds = summary.trackedTotalSeconds - summary.plannedSeconds;
+		summary.deltaSeconds = summary.trackedCompletedSeconds - summary.plannedSeconds;
 	}
 
 	return summaries;
@@ -460,6 +529,22 @@ interface TrackedSessionSegmentPlacement {
 
 type TrackedSessionVisualPlacement = TimedGridVisualLayoutPlacement<TrackedSessionSegmentPlacement>;
 
+interface ActiveTrackerBlockPatchEntry {
+	blockEl: HTMLElement;
+	timeLabelEl: HTMLElement | null;
+	sessionStart: string;
+	dayKey: string;
+	dayIndex: number;
+	semanticIndex: number;
+	semanticLaneCount: number;
+	leftRatio: number;
+	widthRatio: number;
+	startMinutes: number;
+	totalDays: number;
+	metrics: CalendarTimedMetrics;
+	visualLayout: TrackedSessionVisualPlacement;
+}
+
 interface CalendarResolvedColor {
 	r: number;
 	g: number;
@@ -470,6 +555,28 @@ interface CalendarResolvedColor {
 type CalendarRenderPreset = Omit<CalendarPreset, 'colorSource'> & {
 	colorSource: CalendarColorSource;
 };
+
+export interface CalendarColorAccents {
+	calendarAccent: string | null;
+	interactionAccent: string | null;
+}
+
+export function resolveCalendarColorAccents(
+	fieldValues: Record<string, string>,
+	colorSource: CalendarColorSource,
+	settings: OperonSettings,
+	externalColor: string | null | undefined = null,
+): CalendarColorAccents {
+	const calendarAccent = colorSource === 'noColor'
+		? null
+		: resolveTaskColorSource(fieldValues, colorSource, settings, { externalColor });
+	return {
+		calendarAccent,
+		interactionAccent: colorSource === 'noColor'
+			? resolveTaskColorSource(fieldValues, 'priorityColor', settings)
+			: calendarAccent,
+	};
+}
 
 interface CalendarAllDayDropContext {
 	body: HTMLElement;
@@ -564,6 +671,7 @@ interface CalendarOptimisticTaskPatch {
 	fieldValues: Record<string, string>;
 	checkbox?: IndexedTask['checkbox'];
 	expiresAt: number;
+	writebackPending?: boolean;
 	renderSignature?: string[];
 	source?: 'drop' | 'status-sidebar' | 'status-surface';
 }
@@ -631,6 +739,83 @@ export interface CalendarViewCallbacks {
 	onExternalItemCreateTask?: (seed: ExternalCalendarTaskSeed) => void | Promise<void>;
 	onCalendarDragInteractionEnd?: () => void | Promise<void>;
 	hasEditableFocus?: () => boolean;
+	getRepeatSeriesRevision?: () => number;
+}
+
+export interface CalendarRenderContentSnapshot {
+	renderPresetKey: string;
+	todayKey: string;
+	surfaceType: string;
+	repeatSeriesRevision: number;
+	scopedTasks: readonly IndexedTask[];
+	optimisticPatchCount: number;
+}
+
+/**
+ * Decides whether a passive index refresh (a reindex that reached the
+ * calendar through the generic refresh funnel) may skip the full DOM
+ * teardown and rebuild. The indexer only replaces task objects for files it
+ * actually reindexed, so element-wise object identity over the scoped task
+ * list proves the calendar's task-derived content is byte-identical.
+ * Everything else that feeds the render (settings, pinned store, external
+ * calendar events, view state changes) arrives through non-index refresh
+ * channels which never request a skip, so it needs no signature here.
+ * Conservative by construction: any doubt falls through to a full render.
+ */
+export function shouldSkipCalendarPassiveRender(
+	previous: CalendarRenderContentSnapshot | null,
+	next: CalendarRenderContentSnapshot | null,
+): boolean {
+	if (!previous || !next) return false;
+	// Tracker lanes render sessions that live outside the task index, so a
+	// task-identity snapshot cannot prove their content is unchanged.
+	if (previous.surfaceType === 'timeTrackerGrid' || next.surfaceType === 'timeTrackerGrid') return false;
+	// Optimistic patches clone tasks per render; wait until they settle.
+	if (previous.optimisticPatchCount > 0 || next.optimisticPatchCount > 0) return false;
+	if (previous.renderPresetKey !== next.renderPresetKey) return false;
+	if (previous.todayKey !== next.todayKey) return false;
+	// NaN (revision source unavailable) never equals itself, disabling skips.
+	if (previous.repeatSeriesRevision !== next.repeatSeriesRevision) return false;
+	if (previous.scopedTasks.length !== next.scopedTasks.length) return false;
+	for (let index = 0; index < next.scopedTasks.length; index++) {
+		if (previous.scopedTasks[index] !== next.scopedTasks[index]) return false;
+	}
+	return true;
+}
+
+export interface ActiveTrackerBlockPatchInput {
+	hasRegisteredBlock: boolean;
+	blockConnected: boolean;
+	registeredSessionStart: string;
+	activeSessionStart: string | null;
+	registeredDayKey: string;
+	registeredStartMinutes: number;
+	nowValue: string;
+}
+
+/**
+ * Decides whether the 30-second active-tracker tick may extend the rendered
+ * session block in place instead of tearing down and rebuilding the whole
+ * calendar. Only the growing end edge of the end-day segment changes over
+ * time, so a patch is valid while the same session is still running and
+ * "now" is still on the registered day; everything else (session stopped or
+ * swapped, midnight crossed and a new day segment is needed, block detached
+ * by another render) falls back to the full render.
+ */
+export function resolveActiveTrackerBlockPatch(
+	input: ActiveTrackerBlockPatchInput,
+): { action: 'patch'; endMinutes: number } | { action: 'full-render' } {
+	if (!input.hasRegisteredBlock || !input.blockConnected) return { action: 'full-render' };
+	if (!input.activeSessionStart || input.activeSessionStart !== input.registeredSessionStart) {
+		return { action: 'full-render' };
+	}
+	if (input.nowValue.substring(0, 10) !== input.registeredDayKey) return { action: 'full-render' };
+	const hour = Number.parseInt(input.nowValue.slice(11, 13), 10);
+	const minute = Number.parseInt(input.nowValue.slice(14, 16), 10);
+	if (!Number.isFinite(hour) || !Number.isFinite(minute)) return { action: 'full-render' };
+	const endMinutes = Math.max(0, Math.min(24 * 60, (hour * 60) + minute));
+	if (endMinutes <= input.registeredStartMinutes) return { action: 'full-render' };
+	return { action: 'patch', endMinutes };
 }
 
 export class CalendarView extends ItemView {
@@ -652,6 +837,8 @@ export class CalendarView extends ItemView {
 		labelEl: HTMLElement | null;
 		metrics: CalendarTimedMetrics;
 	}> = [];
+	private activeTrackerBlockEntry: ActiveTrackerBlockPatchEntry | null = null;
+	private taskPoolSearchDebounceTimer: number | null = null;
 	private persistStateTimer: number | null = null;
 	private renderFrame: number | null = null;
 	private preserveScrollOnNextRender = false;
@@ -661,6 +848,7 @@ export class CalendarView extends ItemView {
 	private multiWeekInDayDropContexts: CalendarMultiWeekInDayDropContext[] = [];
 	private expandedHiddenTimeKey: string | null = null;
 	private lastRenderPresetKey: string | null = null;
+	private lastRenderContentSnapshot: CalendarRenderContentSnapshot | null = null;
 	private taskPoolQuery = '';
 	private sidebarOpenSectionOrder: CalendarSidebarSectionId[] = [];
 	private sidebarWidthOverridePx: number | null = null;
@@ -810,6 +998,7 @@ export class CalendarView extends ItemView {
 		closeIconOnlyChipPreviewsForRoot(this.contentEl);
 		this.expandedHiddenTimeKey = null;
 		this.lastRenderPresetKey = null;
+		this.lastRenderContentSnapshot = null;
 		this.taskPoolQuery = '';
 		this.sidebarWidthOverridePx = null;
 		this.unbindCalendarNavigationKeys();
@@ -830,7 +1019,7 @@ export class CalendarView extends ItemView {
 		});
 	}
 
-	markDirty(): void {
+	markDirty(options: { allowContentSkip?: boolean } = {}): void {
 		if (this.hasActiveCalendarDragInteraction()) {
 			this.pendingRenderAfterCalendarDrag = true;
 			return;
@@ -840,6 +1029,9 @@ export class CalendarView extends ItemView {
 			return;
 		}
 		if (this.renderFrame !== null) return;
+		// Passive index refreshes may skip the rebuild when the rendered
+		// content is provably unchanged; every other caller forces a render.
+		if (options.allowContentSkip === true && this.canSkipPassiveContentRender()) return;
 		this.captureActiveCalendarScrollForRender();
 		this.captureActiveCalendarSidebarScrollForRender();
 		this.preserveScrollOnNextRender = true;
@@ -847,6 +1039,49 @@ export class CalendarView extends ItemView {
 			this.renderFrame = null;
 			this.render();
 		});
+	}
+
+	private canSkipPassiveContentRender(): boolean {
+		const previous = this.lastRenderContentSnapshot;
+		if (!previous) return false;
+		const startedAt = enginePerfNow();
+		const next = this.buildCalendarRenderContentSnapshot();
+		if (!shouldSkipCalendarPassiveRender(previous, next)) return false;
+		this.lastRenderContentSnapshot = next;
+		enginePerfLog(
+			'calendar.passiveRenderSkip',
+			`tasks=${next?.scopedTasks.length ?? 0}`,
+			`evalMs=${Math.round(enginePerfNow() - startedAt)}`,
+		);
+		return true;
+	}
+
+	private buildCalendarRenderContentSnapshot(): CalendarRenderContentSnapshot | null {
+		const context = this.resolveCalendarRenderContext(this.contentEl);
+		if (!context.preset) return null;
+		const activeFilter = this.resolveCalendarPresetFilter(context.preset, context.settings);
+		const scopedTasks = filterTasksForCalendar(
+			activeFilter,
+			this.getOptimisticCalendarTasksForRender(),
+			context.settings.priorities,
+			this.getPinnedCache(),
+		);
+		return this.composeCalendarRenderContentSnapshot(context.renderPresetKey, context.preset.surfaceType, scopedTasks);
+	}
+
+	private composeCalendarRenderContentSnapshot(
+		renderPresetKey: string,
+		surfaceType: string,
+		scopedTasks: readonly IndexedTask[],
+	): CalendarRenderContentSnapshot {
+		return {
+			renderPresetKey,
+			todayKey: localToday(),
+			surfaceType,
+			repeatSeriesRevision: this.callbacks.getRepeatSeriesRevision?.() ?? Number.NaN,
+			scopedTasks,
+			optimisticPatchCount: this.optimisticTaskPatches.size,
+		};
 	}
 
 		markDirtyForStatusCycle(trace: CalendarStatusCycleTrace): boolean {
@@ -1027,7 +1262,7 @@ export class CalendarView extends ItemView {
 			this.optimisticTaskPatches.set(taskId, {
 				fieldValues: normalized,
 				checkbox: patchInput.checkbox,
-				expiresAt: Date.now() + 10000,
+				expiresAt: Date.now() + CALENDAR_OPTIMISTIC_PATCH_TTL_MS,
 				source: 'drop',
 			});
 			this.scheduleOptimisticTaskPatchCleanup();
@@ -1059,7 +1294,7 @@ export class CalendarView extends ItemView {
 		const patch: CalendarOptimisticTaskPatch = {
 			fieldValues: normalized,
 			checkbox: patchInput.checkbox,
-			expiresAt: Date.now() + 10000,
+			expiresAt: Date.now() + CALENDAR_OPTIMISTIC_PATCH_TTL_MS,
 			renderSignature: this.buildRenderedCalendarTaskSignature(taskId),
 			source,
 		};
@@ -1193,28 +1428,31 @@ export class CalendarView extends ItemView {
 					showProjectedOccurrences: preset.showProjectedOccurrences,
 				}
 				: preset;
-			const query = queryCalendarItems(
-				scopedTasks,
-				queryAnchorDate,
-				queryPreset,
-				this.getRepeatSeriesEntries(),
-			);
+			// Time-grid surfaces query once over the buffered window and derive
+			// the visible-window result from it (see render()).
 			const timedRenderWindow = this.isTimeGridCompatibleSurface(preset)
-				? this.buildTimedHorizontalRenderWindow(state.anchorDate, preset, query.visibleDates)
+				? this.buildTimedHorizontalRenderWindow(
+					state.anchorDate,
+					preset,
+					buildVisibleCalendarDates(queryAnchorDate, queryPreset.dayCount, queryPreset.showWeekends, queryPreset.todayPosition),
+				)
 				: null;
 			const timedQuery = timedRenderWindow
-				? queryCalendarItems(
+				? queryCalendarItemsForVisibleDates(
 					scopedTasks,
-					state.anchorDate,
-					{
-						dayCount: timedRenderWindow.bufferedDates.length,
-						showWeekends: preset.showWeekends,
-						todayPosition: timedRenderWindow.bufferDaysBefore + 1,
-						showProjectedOccurrences: preset.showProjectedOccurrences,
-					},
+					timedRenderWindow.bufferedDates,
+					queryPreset,
 					this.getRepeatSeriesEntries(),
 				)
-				: query;
+				: queryCalendarItems(
+					scopedTasks,
+					queryAnchorDate,
+					queryPreset,
+					this.getRepeatSeriesEntries(),
+				);
+			const query = timedRenderWindow
+				? deriveVisibleCalendarQueryResult(timedQuery, timedRenderWindow.visibleDates)
+				: timedQuery;
 			const signature: string[] = [];
 			for (const item of query.items) {
 				if (item.taskId === taskId && item.kind !== 'timed') {
@@ -1227,8 +1465,7 @@ export class CalendarView extends ItemView {
 				}
 			}
 			if (state.navigationMode === 'sidebar') {
-				const tasks = this.getCalendarSidebarTaskPoolSourceTasks(this.getOptimisticCalendarTasksForRender(), preset, settings);
-				signature.push(...this.buildSidebarTaskSignature(taskId, tasks, state));
+				signature.push(...this.buildSidebarTaskSignature(taskId, state, preset, settings));
 			}
 			return signature.sort();
 		}
@@ -1247,25 +1484,51 @@ export class CalendarView extends ItemView {
 
 		private buildSidebarTaskSignature(
 			taskId: string,
-			tasks: IndexedTask[],
 			state: CalendarLeafState,
+			preset: CalendarRenderPreset,
+			settings: OperonSettings,
 		): string[] {
-			const signature: string[] = [];
-			if (state.taskPoolOpen) {
-				const taskPoolMode = state.taskPoolMode;
-				const candidates = collectCalendarSidebarTaskPoolCandidates(tasks, taskPoolMode, {
-					finishedDate: state.anchorDate,
-				});
-				const query = this.taskPoolQuery.trim();
-					const allMatches = !query
-						? candidates
-						: this.rankSidebarTaskPoolMatches(candidates, query);
-							const visibleMatches = allMatches.slice(0, this.getSidebarTaskPoolVisibleLimit(query));
-						const index = visibleMatches.findIndex(task => task.operonId === taskId);
-						if (index >= 0) signature.push(`sidebar|pool|${taskPoolMode}|${index}`);
-					}
-					return signature;
-				}
+			if (!state.taskPoolOpen) return [];
+			const taskPoolMode = state.taskPoolMode;
+			const baseTask = this.indexer.getTask(taskId);
+			if (!baseTask) return [];
+			const patch = this.optimisticTaskPatches.get(taskId);
+			const optimisticTask = patch ? applyOptimisticRenderPatch(baseTask, patch) : baseTask;
+			// Fast path: when the clicked task cannot appear in the pool (mode
+			// predicate, preset scope, or active query rules it out, as
+			// completing an open task usually does), its signature has no
+			// sidebar component; skip collecting, sorting, and fuzzy-ranking
+			// every task just to learn that.
+			if (!isCalendarSidebarTaskPoolMember(optimisticTask, taskPoolMode, { finishedDate: state.anchorDate })) {
+				return [];
+			}
+			if (settings.calendarSidebarTaskPoolFollowPresetFilter) {
+				const scoped = filterTasksForCalendar(
+					this.resolveCalendarPresetFilter(preset, settings),
+					[optimisticTask],
+					settings.priorities,
+					this.getPinnedCache(),
+				);
+				if (scoped.length === 0) return [];
+			}
+			const query = this.taskPoolQuery.trim();
+			if (query && !this.evaluateSidebarTaskPoolMatch(optimisticTask, query.toLowerCase(), prepareFuzzySearch(query))) {
+				return [];
+			}
+			// The task can appear in the pool: compute its visible index the
+			// same way the pool renders it, so neighbor movements still
+			// invalidate the signature.
+			const tasks = this.getCalendarSidebarTaskPoolSourceTasks(this.getOptimisticCalendarTasksForRender(), preset, settings);
+			const candidates = collectCalendarSidebarTaskPoolCandidates(tasks, taskPoolMode, {
+				finishedDate: state.anchorDate,
+			});
+			const allMatches = !query
+				? candidates
+				: this.rankSidebarTaskPoolMatches(candidates, query);
+			const visibleMatches = allMatches.slice(0, this.getSidebarTaskPoolVisibleLimit(query));
+			const index = visibleMatches.findIndex(task => task.operonId === taskId);
+			return index >= 0 ? [`sidebar|pool|${taskPoolMode}|${index}`] : [];
+		}
 
 				private getSidebarTaskPoolVisibleLimit(query: string): number {
 					return query
@@ -1286,6 +1549,7 @@ export class CalendarView extends ItemView {
 		): void {
 			this.applyOptimisticTaskPatch(taskId, { fieldValues });
 			if (!callback) return;
+			this.markOptimisticTaskPatchWritebackPending(taskId);
 			void Promise.resolve(callback())
 				.then(result => {
 					if (!options.verifyOptimisticPatchAfterWrite) return;
@@ -1295,7 +1559,26 @@ export class CalendarView extends ItemView {
 					console.error('Operon: calendar drop writeback failed', error);
 					this.optimisticTaskPatches.delete(taskId);
 					this.markDirty();
+				})
+				.finally(() => {
+					this.settleOptimisticTaskPatchWriteback(taskId);
 				});
+		}
+
+		private markOptimisticTaskPatchWritebackPending(taskId: string): void {
+			const patch = this.optimisticTaskPatches.get(taskId);
+			if (!patch) return;
+			patch.writebackPending = true;
+		}
+
+		private settleOptimisticTaskPatchWriteback(taskId: string): void {
+			const patch = this.optimisticTaskPatches.get(taskId);
+			if (!patch?.writebackPending) return;
+			patch.writebackPending = false;
+			// Restart the TTL once the write has landed so the reindex gets a
+			// full grace window instead of the leftover of the original one.
+			patch.expiresAt = Date.now() + CALENDAR_OPTIMISTIC_PATCH_TTL_MS;
+			this.scheduleOptimisticTaskPatchCleanup();
 		}
 
 		private verifyOptimisticDropPatchAfterWrite(
@@ -1346,18 +1629,27 @@ export class CalendarView extends ItemView {
 				`fallbackReason=${fallbackReason}`,
 			);
 			if (!this.callbacks.onStatusIconClick) return;
-			void Promise.resolve(this.callbacks.onStatusIconClick(taskId)).catch(error => {
-				console.error('Operon: calendar status click failed', error);
-				this.optimisticTaskPatches.delete(taskId);
-				this.markDirty();
-			});
+			this.markOptimisticTaskPatchWritebackPending(taskId);
+			void Promise.resolve(this.callbacks.onStatusIconClick(taskId))
+				.catch(error => {
+					console.error('Operon: calendar status click failed', error);
+					this.optimisticTaskPatches.delete(taskId);
+					this.markDirty();
+				})
+				.finally(() => {
+					this.settleOptimisticTaskPatchWriteback(taskId);
+				});
 		}
 
-		private pruneOptimisticTaskPatches(now = Date.now()): void {
+		private pruneOptimisticTaskPatches(now = Date.now()): boolean {
 			let changed = false;
 			for (const [taskId, patch] of this.optimisticTaskPatches.entries()) {
 				const task = this.indexer.getTask(taskId);
-				const isExpired = now >= patch.expiresAt;
+				const isExpired = shouldExpireOptimisticTaskPatch({
+					nowMs: now,
+					expiresAt: patch.expiresAt,
+					writebackPending: patch.writebackPending,
+				});
 				const isPersisted = !!task && isOptimisticTaskPatchPersisted(task, patch);
 				if (!task || isExpired || isPersisted) {
 					this.optimisticTaskPatches.delete(taskId);
@@ -1367,6 +1659,7 @@ export class CalendarView extends ItemView {
 			if (changed) {
 				this.scheduleOptimisticTaskPatchCleanup();
 			}
+			return changed;
 		}
 
 		private scheduleOptimisticTaskPatchCleanup(): void {
@@ -1374,14 +1667,19 @@ export class CalendarView extends ItemView {
 				window.clearTimeout(this.optimisticPatchCleanupTimer);
 				this.optimisticPatchCleanupTimer = null;
 			}
-			if (this.optimisticTaskPatches.size === 0) return;
+			// Patches with an in-flight writeback never expire on their own;
+			// settleOptimisticTaskPatchWriteback reschedules once they land.
+			const expirableExpiries = Array.from(this.optimisticTaskPatches.values())
+				.filter(patch => patch.writebackPending !== true)
+				.map(patch => patch.expiresAt);
+			if (expirableExpiries.length === 0) return;
 
-			const nextExpiry = Math.min(...Array.from(this.optimisticTaskPatches.values()).map(patch => patch.expiresAt));
-			const delay = Math.max(0, nextExpiry - Date.now());
+			const delay = Math.max(0, Math.min(...expirableExpiries) - Date.now());
 			this.optimisticPatchCleanupTimer = window.setTimeout(() => {
 				this.optimisticPatchCleanupTimer = null;
-				this.pruneOptimisticTaskPatches();
-				this.markDirty();
+				if (this.pruneOptimisticTaskPatches()) {
+					this.markDirty();
+				}
 			}, delay);
 		}
 
@@ -1392,6 +1690,43 @@ export class CalendarView extends ItemView {
 				this.optimisticPatchCleanupTimer = null;
 			}
 		}
+
+	/**
+	 * Resolves the settings/state/preset context a render depends on. Shared
+	 * by render() and the passive-skip snapshot so the two can never diverge
+	 * on which preset, anchor, or layout mode they are describing.
+	 */
+	private resolveCalendarRenderContext(container: HTMLElement) {
+		const settings = this.getSettings();
+		const state = this.ensureState();
+		const useMobileCalendar = this.isMobileCalendarLayoutEligible(container, settings);
+		const mobileViewMode = this.resolveMobileCalendarViewMode(state, settings);
+		const mobileAnchorDate = this.resolveMobileCalendarAnchorDate(state);
+		const sourcePreset = useMobileCalendar
+			? this.resolveMobileCalendarSourcePreset(settings, mobileViewMode, state)
+			: settings.calendarPresets.find(entry => entry.id === state.presetId) ?? settings.calendarPresets[0];
+		const preset = sourcePreset && useMobileCalendar
+			? this.buildMobileCalendarRenderPreset(sourcePreset, settings)
+			: sourcePreset;
+		const queryAnchorDate = useMobileCalendar
+			? mobileAnchorDate
+			: preset?.surfaceType === 'multiWeek'
+			? this.resolveMultiWeekRangeStart(state.anchorDate, preset, settings.calendarWeekStart)
+			: state.anchorDate;
+		const renderPresetKey = useMobileCalendar
+			? `mobile|${preset?.id}|${mobileViewMode}|${queryAnchorDate}`
+			: `${preset?.id}|${queryAnchorDate}`;
+		return {
+			settings,
+			state,
+			useMobileCalendar,
+			mobileViewMode,
+			mobileAnchorDate,
+			preset,
+			queryAnchorDate,
+			renderPresetKey,
+		};
+	}
 
 	render(): void {
 		this.finishActiveCalendarDragSession('abort', null, false);
@@ -1414,35 +1749,27 @@ export class CalendarView extends ItemView {
 		this.timedDropContext = null;
 		this.multiWeekAllDayDropContexts = [];
 		this.multiWeekInDayDropContexts = [];
-		const settings = this.getSettings();
-		const state = this.ensureState();
-		const useMobileCalendar = this.isMobileCalendarLayoutEligible(container, settings);
-		const mobileViewMode = this.resolveMobileCalendarViewMode(state, settings);
-		const mobileAnchorDate = this.resolveMobileCalendarAnchorDate(state);
-		const sourcePreset = useMobileCalendar
-			? this.resolveMobileCalendarSourcePreset(settings, mobileViewMode, state)
-			: settings.calendarPresets.find(entry => entry.id === state.presetId) ?? settings.calendarPresets[0];
-		const preset = sourcePreset && useMobileCalendar
-			? this.buildMobileCalendarRenderPreset(sourcePreset, settings)
-			: sourcePreset;
+		const {
+			settings,
+			state,
+			useMobileCalendar,
+			mobileViewMode,
+			mobileAnchorDate,
+			preset,
+			queryAnchorDate,
+			renderPresetKey,
+		} = this.resolveCalendarRenderContext(container);
 		this.syncLeafTitle(useMobileCalendar && preset
 			? `${this.getMobileCalendarViewLabel(mobileViewMode)} · ${preset.name}`
 			: preset?.name);
 		if (!preset) {
+			this.lastRenderContentSnapshot = null;
 			container.empty();
 			container.addClass('operon-calendar-view');
 			container.createDiv({ text: t('calendar', 'presetsNotConfigured') });
 			return;
 		}
 		const activeFilter = this.resolveCalendarPresetFilter(preset, settings);
-		const queryAnchorDate = useMobileCalendar
-			? mobileAnchorDate
-			: preset.surfaceType === 'multiWeek'
-			? this.resolveMultiWeekRangeStart(state.anchorDate, preset, settings.calendarWeekStart)
-			: state.anchorDate;
-		const renderPresetKey = useMobileCalendar
-			? `mobile|${preset.id}|${mobileViewMode}|${queryAnchorDate}`
-			: `${preset.id}|${queryAnchorDate}`;
 		const preserveScroll = this.restoreScrollOnNextRender
 			|| (!useMobileCalendar && this.preserveScrollOnNextRender && this.lastRenderPresetKey === renderPresetKey);
 		const restoreSidebarScroll = !useMobileCalendar
@@ -1461,6 +1788,11 @@ export class CalendarView extends ItemView {
 			renderTasks,
 			settings.priorities,
 			this.getPinnedCache(),
+		);
+		this.lastRenderContentSnapshot = this.composeCalendarRenderContentSnapshot(
+			renderPresetKey,
+			preset.surfaceType,
+			scopedTasks,
 		);
 		const queryPreset = useMobileCalendar
 			? this.buildMobileCalendarQueryPreset(preset, mobileViewMode, settings)
@@ -1481,7 +1813,17 @@ export class CalendarView extends ItemView {
 					buildVisibleCalendarDates(queryAnchorDate, queryPreset.dayCount, true, 1),
 				)
 				: null;
-			const query = mobileAgendaDates
+		// Desktop time grids run one query over the buffered window and derive
+		// the visible-window result from it, instead of iterating all scoped
+		// tasks a second time for the smaller window.
+		const timedRenderWindow = !useMobileCalendar && this.isTimeGridCompatibleSurface(preset)
+			? this.buildTimedHorizontalRenderWindow(
+				state.anchorDate,
+				preset,
+				buildVisibleCalendarDates(queryAnchorDate, queryPreset.dayCount, queryPreset.showWeekends, queryPreset.todayPosition),
+			)
+			: null;
+			const timedQuery = mobileAgendaDates
 				? queryCalendarItemsForVisibleDates(
 					scopedTasks,
 					mobileAgendaDates,
@@ -1495,28 +1837,22 @@ export class CalendarView extends ItemView {
 					queryPreset,
 					this.getRepeatSeriesEntries(),
 				)
+				: timedRenderWindow
+				? queryCalendarItemsForVisibleDates(
+					scopedTasks,
+					timedRenderWindow.bufferedDates,
+					queryPreset,
+					this.getRepeatSeriesEntries(),
+				)
 				: queryCalendarItems(
 					scopedTasks,
 					queryAnchorDate,
 					queryPreset,
 					this.getRepeatSeriesEntries(),
 			);
-		const timedRenderWindow = !useMobileCalendar && this.isTimeGridCompatibleSurface(preset)
-			? this.buildTimedHorizontalRenderWindow(state.anchorDate, preset, query.visibleDates)
-			: null;
-		const timedQuery = timedRenderWindow
-			? queryCalendarItems(
-				scopedTasks,
-				state.anchorDate,
-				{
-					dayCount: timedRenderWindow.bufferedDates.length,
-					showWeekends: preset.showWeekends,
-					todayPosition: timedRenderWindow.bufferDaysBefore + 1,
-					showProjectedOccurrences: preset.showProjectedOccurrences,
-				},
-				this.getRepeatSeriesEntries(),
-			)
-			: query;
+		const query = timedRenderWindow
+			? deriveVisibleCalendarQueryResult(timedQuery, timedRenderWindow.visibleDates)
+			: timedQuery;
 		let externalItems = this.getExternalCalendarItems(
 			query.rangeStart <= timedQuery.rangeStart ? query.rangeStart : timedQuery.rangeStart,
 			query.rangeEnd >= timedQuery.rangeEnd ? query.rangeEnd : timedQuery.rangeEnd,
@@ -3063,6 +3399,11 @@ export class CalendarView extends ItemView {
 		preset: CalendarRenderPreset,
 	): void {
 		const slotMinutes = Math.max(15, this.getSettings().calendarMobileSlotMinutes || 30);
+		const slotLineBackgroundImage = buildCalendarRepeatingSlotLineBackgroundImage({
+			scale: metrics.scale,
+			slotMinutes,
+			gridHeightPx: metrics.gridHeight,
+		});
 		const dayModels = preset.surfaceType === 'timeTrackerGrid'
 			? this.resolveTimeTrackerGridDayLaneModels(preset, visibleDates)
 			: preset.surfaceType === 'timeGrid'
@@ -3092,13 +3433,7 @@ export class CalendarView extends ItemView {
 				column.classList.toggle('is-today', dateKey === localToday());
 				const dayDate = this.parseDateKey(dateKey);
 				column.classList.toggle('is-weekend', dayDate?.getDay() === 0 || dayDate?.getDay() === 6);
-				for (let minute = 0; minute <= CALENDAR_MOBILE_TIME_GRID_MINUTES_PER_DAY; minute += slotMinutes) {
-					const line = column.createDiv('operon-calendar-mobile-timegrid-line');
-					line.classList.toggle('is-hour', minute % 60 === 0);
-					line.style.top = `${minute === CALENDAR_MOBILE_TIME_GRID_MINUTES_PER_DAY
-						? Math.max(0, metrics.gridHeight - 1)
-						: this.minuteToGridOffset(minute, metrics)}px`;
-				}
+				column.style.backgroundImage = slotLineBackgroundImage;
 				if (dateKey === localToday()) {
 					this.attachNowIndicator(column, metrics, dayModel
 						? {
@@ -3818,7 +4153,10 @@ export class CalendarView extends ItemView {
 				this.applyCalendarTaskFieldColor(block, placement.session.task.fieldValues, preset, settings);
 			} else {
 				block.addClass('is-open');
-				block.setCssProps({ '--operon-calendar-accent': 'var(--text-muted)' });
+				block.setCssProps({
+					'--operon-calendar-accent': 'var(--text-muted)',
+					'--operon-calendar-interaction-accent': 'var(--text-muted)',
+				});
 			}
 			if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
 			if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
@@ -3857,10 +4195,19 @@ export class CalendarView extends ItemView {
 					text: t('taskEditor', 'unassignedTracker'),
 				});
 			}
-			content.createDiv({
+			const timeLabelEl = content.createDiv({
 				text: `${formatUiTime(this.app, settings, placement.session.start)} - ${formatUiTime(this.app, settings, placement.session.end)}`,
 				cls: 'operon-calendar-mobile-timegrid-item-time',
 			});
+			this.registerActiveTrackerBlockPatchEntry(
+				block,
+				timeLabelEl,
+				placement,
+				lane.semanticIndex,
+				dayModel.semanticLaneCount,
+				visibleDates,
+				metrics,
+			);
 			block.createDiv('operon-calendar-timed-drag-label');
 			this.bindTimedHoverGuides(
 				block,
@@ -3970,6 +4317,17 @@ export class CalendarView extends ItemView {
 			cls: 'operon-calendar-mobile-timegrid-item-time',
 		});
 		block.createDiv('operon-calendar-timed-drag-label');
+		this.bindTimedHoverGuides(
+			block,
+			hoverGuideOverlay,
+			section,
+			gutter,
+			visibleDates[placement.dayIndex] ?? '',
+			placement.startMinutes,
+			placement.endMinutes,
+			metrics,
+			settings,
+		);
 		this.bindPrimaryItemClick(block, placement.item);
 		if (hoverTrigger) {
 			this.bindHoverMenuTarget(hoverTrigger, placement.item);
@@ -4289,6 +4647,10 @@ export class CalendarView extends ItemView {
 			});
 		}
 
+		const hourLineBackgroundImage = buildCalendarGridLineBackgroundImage(
+			this.buildTimedGridHourLineOffsets(metrics),
+			'var(--background-modifier-border)',
+		);
 		const laneColumns: TimeTrackerGridLaneColumns = {
 			planned: [],
 			external: [],
@@ -4310,14 +4672,7 @@ export class CalendarView extends ItemView {
 						labelSpan: dayModel.semanticLaneCount,
 					});
 				}
-				for (let hour = 0; hour <= 24; hour++) {
-					if (hour < 24 && this.isHiddenMinute(hour * 60, metrics.hiddenRange) && !metrics.isHiddenExpanded) {
-						continue;
-					}
-					const line = column.createDiv('operon-calendar-hour-line');
-					const offset = this.minuteToGridOffset(hour * 60, metrics);
-					line.style.top = `${hour === 24 ? Math.max(0, metrics.gridHeight - 1) : offset}px`;
-				}
+				column.style.backgroundImage = hourLineBackgroundImage;
 				laneColumns[lane.id].push({
 					element: column,
 					dateKey: dayModel.dateKey,
@@ -4529,6 +4884,10 @@ export class CalendarView extends ItemView {
 			});
 		}
 
+		const hourLineBackgroundImage = buildCalendarGridLineBackgroundImage(
+			this.buildTimedGridHourLineOffsets(metrics),
+			'var(--background-modifier-border)',
+		);
 		const laneColumns: TimeTrackerGridLaneColumns = {
 			planned: [],
 			external: [],
@@ -4550,14 +4909,7 @@ export class CalendarView extends ItemView {
 						labelSpan: dayModel.semanticLaneCount,
 					});
 				}
-				for (let hour = 0; hour <= 24; hour++) {
-					if (hour < 24 && this.isHiddenMinute(hour * 60, metrics.hiddenRange) && !metrics.isHiddenExpanded) {
-						continue;
-					}
-					const line = column.createDiv('operon-calendar-hour-line');
-					const offset = this.minuteToGridOffset(hour * 60, metrics);
-					line.style.top = `${hour === 24 ? Math.max(0, metrics.gridHeight - 1) : offset}px`;
-				}
+				column.style.backgroundImage = hourLineBackgroundImage;
 				laneColumns[lane.id].push({
 					element: column,
 					dateKey: dayModel.dateKey,
@@ -4680,10 +5032,82 @@ export class CalendarView extends ItemView {
 			this.deferPassiveRenderUntilEditableFocusClears();
 			return;
 		}
+		// Extend the active session block in place when possible; only fall
+		// back to the full teardown render when the patch cannot represent
+		// the change (session swap, midnight crossing, detached block).
+		if (this.applyActiveTrackerBlockPatch()) return;
 		this.captureActiveCalendarScrollForRender();
 		this.captureActiveCalendarSidebarScrollForRender();
 		this.preserveScrollOnNextRender = true;
 		this.render();
+	}
+
+	private applyActiveTrackerBlockPatch(): boolean {
+		const entry = this.activeTrackerBlockEntry;
+		const active = this.callbacks.getActiveTrackerState?.() ?? null;
+		const decision = resolveActiveTrackerBlockPatch({
+			hasRegisteredBlock: entry !== null,
+			blockConnected: entry?.blockEl.isConnected === true,
+			registeredSessionStart: entry?.sessionStart ?? '',
+			activeSessionStart: active?.start ?? null,
+			registeredDayKey: entry?.dayKey ?? '',
+			registeredStartMinutes: entry?.startMinutes ?? 0,
+			nowValue: localNow(),
+		});
+		if (decision.action !== 'patch' || !entry) return false;
+		this.applyTimeTrackerGridTimedPlacementStyle(
+			entry.blockEl,
+			entry.dayIndex,
+			entry.semanticIndex,
+			entry.semanticLaneCount,
+			entry.leftRatio,
+			entry.widthRatio,
+			entry.startMinutes,
+			decision.endMinutes,
+			entry.totalDays,
+			entry.metrics,
+			entry.visualLayout,
+		);
+		if (entry.timeLabelEl) {
+			const settings = this.getSettings();
+			entry.timeLabelEl.setText(
+				`${formatUiTime(this.app, settings, entry.sessionStart)} - ${formatUiTime(this.app, settings, this.buildDateMinuteValue(entry.dayKey, decision.endMinutes))}`,
+			);
+		}
+		this.updateNowIndicators();
+		enginePerfLog('calendar.activeTrackerPatch', `endMinutes=${decision.endMinutes}`);
+		return true;
+	}
+
+	private registerActiveTrackerBlockPatchEntry(
+		blockEl: HTMLElement,
+		timeLabelEl: HTMLElement | null,
+		placement: TrackedSessionVisualPlacement,
+		semanticIndex: number,
+		semanticLaneCount: number,
+		visibleDates: string[],
+		metrics: CalendarTimedMetrics,
+	): void {
+		if (!placement.session.isActive) return;
+		// Only the end-day segment grows over time; earlier segments of a
+		// midnight-crossing session are static.
+		const dayKey = visibleDates[placement.dayIndex] ?? '';
+		if (!dayKey || dayKey !== placement.session.end.substring(0, 10)) return;
+		this.activeTrackerBlockEntry = {
+			blockEl,
+			timeLabelEl,
+			sessionStart: placement.session.start,
+			dayKey,
+			dayIndex: placement.dayIndex,
+			semanticIndex,
+			semanticLaneCount,
+			leftRatio: placement.visualLeftRatio,
+			widthRatio: placement.visualWidthRatio,
+			startMinutes: placement.startMinutes,
+			totalDays: visibleDates.length,
+			metrics,
+			visualLayout: placement,
+		};
 	}
 
 	private resolveTimeGridLanes(preset: CalendarRenderPreset): TimeTrackerGridLane[] {
@@ -4701,8 +5125,12 @@ export class CalendarView extends ItemView {
 		preset: CalendarRenderPreset,
 		visibleDates: string[],
 	): TimeTrackerGridDayLaneModel[] {
+		// timeGrid lanes are identical for every date (unlike the tracker
+		// grid, which varies by future dates); build the model once and share
+		// it read-only across all day models.
+		const laneModel = this.buildTimeTrackerGridLaneModel(this.resolveTimeGridLanes(preset));
 		return visibleDates.map((dateKey, dayIndex) => ({
-			...this.buildTimeTrackerGridLaneModel(this.resolveTimeGridLanes(preset)),
+			...laneModel,
 			dateKey,
 			dayIndex,
 			isFuture: false,
@@ -5012,7 +5440,10 @@ export class CalendarView extends ItemView {
 					this.applyCalendarTaskFieldColor(block, placement.session.task.fieldValues, preset, settings);
 				} else {
 					block.addClass('is-open');
-					block.setCssProps({ '--operon-calendar-accent': 'var(--text-muted)' });
+					block.setCssProps({
+						'--operon-calendar-accent': 'var(--text-muted)',
+						'--operon-calendar-interaction-accent': 'var(--text-muted)',
+					});
 				}
 			if (placement.visualOverlapGroupSize > 1) block.addClass('has-overlap');
 			if (placement.visualStackIndex > 1) block.addClass('is-overlap-layer');
@@ -5037,6 +5468,15 @@ export class CalendarView extends ItemView {
 				visibleDates.length,
 				metrics,
 				placement,
+			);
+			this.registerActiveTrackerBlockPatchEntry(
+				block,
+				null,
+				placement,
+				lane.semanticIndex,
+				dayModel.semanticLaneCount,
+				visibleDates,
+				metrics,
 			);
 			const content = block.createDiv('operon-calendar-timed-content');
 			const fakeItem = this.buildCalendarItemForTrackedSession(placement.session);
@@ -5432,13 +5872,13 @@ export class CalendarView extends ItemView {
 				}
 				touchDragActiveBody = body;
 				touchDragActiveBody.classList.add('operon-calendar-touch-drag-active');
-				block.addClass('is-touch-dragging');
+				block.addClass('is-touch-dragging', 'is-touch-guide-active');
 			};
 
 			const clearTrackedTouchDragActiveClass = (): void => {
 				touchDragActiveBody?.classList.remove('operon-calendar-touch-drag-active');
 				touchDragActiveBody = null;
-				block.removeClass('is-touch-dragging');
+				block.removeClass('is-touch-dragging', 'is-touch-guide-active');
 			};
 
 			const clearActiveTouchWindowMove = (): void => {
@@ -5523,19 +5963,15 @@ export class CalendarView extends ItemView {
 				dragLabel.setText(this.formatTimedDragLabel(dateKey, nextStart, nextEnd, settings));
 			}
 			if (dragState) {
-				this.renderTimedSelectionGuides(
-					section,
-					gutter,
+				this.renderTimedInteractionGuides(
 					block,
 					hoverGuideOverlay,
+					section,
+					gutter,
 					visibleDates[nextDayIndex] ?? '',
 					nextStart,
 					nextEnd,
-					metrics,
-					this.resolveCalendarHoverGuideAccent(block),
 					settings,
-					0,
-					1,
 				);
 			}
 		};
@@ -6841,16 +7277,32 @@ export class CalendarView extends ItemView {
 				this.scheduleSidebarSectionLayoutRefresh(container);
 			};
 
+			const cancelDebouncedUpdateList = (): void => {
+				if (this.taskPoolSearchDebounceTimer === null) return;
+				window.clearTimeout(this.taskPoolSearchDebounceTimer);
+				this.taskPoolSearchDebounceTimer = null;
+			};
+			// Ranking every task per keystroke is the hot path of pool search;
+			// the debounce coalesces bursts while the cheap input affordances
+			// (clear button, classes) still update immediately.
+			const scheduleDebouncedUpdateList = (): void => {
+				cancelDebouncedUpdateList();
+				this.taskPoolSearchDebounceTimer = window.setTimeout(() => {
+					this.taskPoolSearchDebounceTimer = null;
+					updateList();
+				}, CALENDAR_SIDEBAR_TASK_POOL_SEARCH_DEBOUNCE_MS);
+			};
 			searchInput.addEventListener('input', () => {
 				this.taskPoolQuery = searchInput.value;
 				updateSearchState();
-				updateList();
+				scheduleDebouncedUpdateList();
 			});
 			clearSearchButton.addEventListener('pointerdown', event => {
 				event.preventDefault();
 			});
 			clearSearchButton.addEventListener('click', () => {
 				if (!this.taskPoolQuery) return;
+				cancelDebouncedUpdateList();
 				this.taskPoolQuery = '';
 				searchInput.value = '';
 				updateSearchState();
@@ -6868,17 +7320,9 @@ export class CalendarView extends ItemView {
 		const fuzzySearch = prepareFuzzySearch(query.trim());
 		return tasks
 			.map((task, index) => {
-				const containsRank = this.getSidebarTaskPoolContainsRank(task, normalizedQuery);
-				const descriptionFuzzyMatch = fuzzySearch(task.description || '');
-				const globalFuzzyMatch = fuzzySearch(buildCalendarSidebarTaskPoolSearchText(task));
-				if (containsRank === null && !descriptionFuzzyMatch && !globalFuzzyMatch) return null;
-				return {
-					task,
-					containsRank,
-					descriptionFuzzyScore: descriptionFuzzyMatch?.score ?? Number.POSITIVE_INFINITY,
-					globalFuzzyScore: globalFuzzyMatch?.score ?? Number.POSITIVE_INFINITY,
-					sortRank: index,
-				};
+				const match = this.evaluateSidebarTaskPoolMatch(task, normalizedQuery, fuzzySearch);
+				if (!match) return null;
+				return { task, sortRank: index, ...match };
 			})
 			.filter((entry): entry is {
 				task: IndexedTask;
@@ -6900,6 +7344,31 @@ export class CalendarView extends ItemView {
 				return left.sortRank - right.sortRank;
 			})
 			.map(entry => entry.task);
+	}
+
+	/**
+	 * Single source of truth for whether (and how) a task matches the pool
+	 * search query; shared by the ranking pass and by the status-click
+	 * signature single-task fast path so their inclusion rules cannot
+	 * diverge. The global fuzzy pass over the concatenated search text only
+	 * runs when the description pass did not already match.
+	 */
+	private evaluateSidebarTaskPoolMatch(
+		task: IndexedTask,
+		normalizedQuery: string,
+		fuzzySearch: ReturnType<typeof prepareFuzzySearch>,
+	): { containsRank: number | null; descriptionFuzzyScore: number; globalFuzzyScore: number } | null {
+		const containsRank = this.getSidebarTaskPoolContainsRank(task, normalizedQuery);
+		const descriptionFuzzyMatch = fuzzySearch(task.description || '');
+		const globalFuzzyMatch = descriptionFuzzyMatch
+			? null
+			: fuzzySearch(buildCalendarSidebarTaskPoolSearchText(task));
+		if (containsRank === null && !descriptionFuzzyMatch && !globalFuzzyMatch) return null;
+		return {
+			containsRank,
+			descriptionFuzzyScore: descriptionFuzzyMatch?.score ?? Number.POSITIVE_INFINITY,
+			globalFuzzyScore: globalFuzzyMatch?.score ?? Number.POSITIVE_INFINITY,
+		};
 	}
 
 	private getCalendarTaskWord(count: number): string {
@@ -7534,11 +8003,13 @@ export class CalendarView extends ItemView {
 		this.toolbarLayoutCleanup?.();
 		this.toolbarLayoutCleanup = null;
 
+		// One immediate pass (pre-paint), one post-layout pass, one late pass
+		// for async content (icons, fonts); the ResizeObserver below covers
+		// everything after that. The former double-rAF and 0ms timeout only
+		// repeated the same forced-layout measurement in the same frame.
 		updateLayout();
 		const generation = this.renderGeneration;
 		this.requestRenderAnimationFrame(generation, updateLayout);
-		this.requestRenderAnimationFrame(generation, () => this.requestRenderAnimationFrame(generation, updateLayout));
-		this.setRenderTimeout(generation, updateLayout, 0);
 		this.setRenderTimeout(generation, updateLayout, 120);
 
 		const observer = new ResizeObserver(() => updateLayout());
@@ -7804,180 +8275,6 @@ export class CalendarView extends ItemView {
 			}
 	}
 
-	private renderTimedSection(
-		container: HTMLElement,
-		renderWindow: TimedHorizontalRenderWindow,
-		items: CalendarItem[],
-		preset: CalendarRenderPreset,
-		settings: OperonSettings,
-	): void {
-		const visibleDates = renderWindow.bufferedDates;
-		const viewport = container.createDiv('operon-calendar-timed-viewport');
-		this.timedScrollEl = viewport;
-		const hiddenTimeKey = `${preset.id}|${this.ensureState().anchorDate}`;
-		const metrics = this.buildTimedMetrics(preset, this.expandedHiddenTimeKey === hiddenTimeKey);
-		viewport.addEventListener('scroll', () => {
-			this.hideCalendarHoverMenu(true);
-			if (this.shouldSuppressTimedScrollPersistence()) return;
-			if (!this.state) return;
-			this.state = {
-				...this.ensureState(),
-				scrollMinutes: this.gridOffsetToMinute(Math.max(0, Math.round(viewport.scrollTop)), metrics),
-			};
-			this.scheduleLeafStatePersistence();
-		});
-		viewport.addEventListener('wheel', (event: WheelEvent) => {
-			this.lastTimedGridUserScrollInteractionAt = Date.now();
-			this.handleTimedHorizontalWheel(event);
-		}, { passive: false });
-		viewport.addEventListener('pointerdown', () => {
-			this.lastTimedGridUserScrollInteractionAt = Date.now();
-		});
-		viewport.addEventListener('keydown', () => {
-			this.lastTimedGridUserScrollInteractionAt = Date.now();
-		});
-
-		const section = viewport.createDiv('operon-calendar-timed-section');
-		const gutter = section.createDiv('operon-calendar-time-gutter');
-		gutter.style.height = `${metrics.gridHeight}px`;
-		const clip = section.createDiv('operon-calendar-timed-clip');
-		const strip = clip.createDiv('operon-calendar-timed-strip');
-		strip.style.width = `${(visibleDates.length / Math.max(1, renderWindow.visibleDates.length)) * 100}%`;
-		const daysGrid = strip.createDiv('operon-calendar-timed-grid');
-		daysGrid.style.gridTemplateColumns = `repeat(${Math.max(1, visibleDates.length)}, minmax(0, 1fr))`;
-		daysGrid.style.height = `${metrics.gridHeight}px`;
-		const hoverGuideOverlay = section.createDiv('operon-calendar-hover-guide-overlay');
-		const itemOverlay = daysGrid.createDiv('operon-calendar-timed-overlay');
-		itemOverlay.style.height = `${metrics.gridHeight}px`;
-		this.timedHorizontalClipEl = clip;
-		this.timedHorizontalStripEl = strip;
-		this.timedDropContext = {
-			section,
-			gutter,
-			daysGrid,
-			hoverGuideOverlay,
-			visibleDates: [...visibleDates],
-			metrics,
-			preset,
-			settings,
-		};
-
-		for (let hour = 0; hour <= 24; hour++) {
-			if (hour < 24 && this.isHiddenMinute(hour * 60, metrics.hiddenRange) && !metrics.isHiddenExpanded) {
-				continue;
-			}
-			const label = gutter.createDiv('operon-calendar-time-label');
-			if (hour === 0) label.addClass('is-first');
-			if (hour === 24) label.addClass('is-last');
-			const offset = this.minuteToGridOffset(hour * 60, metrics);
-			label.style.top = `${hour === 24 ? Math.max(0, metrics.gridHeight - 1) : offset}px`;
-			label.createSpan({
-				text: formatUiMinuteOfDay(this.app, settings, visibleDates[0] ?? localToday(), hour * 60),
-			});
-		}
-
-		if (metrics.hiddenRange.enabled && !metrics.isHiddenExpanded) {
-			const bandTop = this.minuteToGridOffset(metrics.hiddenRange.startMinutes, metrics);
-			const band = strip.createDiv('operon-calendar-hidden-time-band');
-			band.style.top = `${bandTop}px`;
-			band.style.height = `${metrics.collapsedBandHeight}px`;
-			const button = band.createEl('button', {
-				text: t('calendar', 'showHiddenTime'),
-				cls: 'operon-calendar-hidden-time-button',
-				attr: { type: 'button' },
-			});
-			button.addEventListener('click', () => {
-				this.expandedHiddenTimeKey = hiddenTimeKey;
-				this.render();
-			});
-		}
-		this.syncTimedHorizontalPanMetrics();
-		this.applyTimedHorizontalPanTransform(false);
-
-		const placements = this.buildTimedGridVisualPlacements(items, visibleDates);
-		for (let dayIndex = 0; dayIndex < visibleDates.length; dayIndex++) {
-			const column = daysGrid.createDiv('operon-calendar-timed-day');
-			const dayDate = this.parseDateKey(visibleDates[dayIndex]);
-			column.classList.toggle('is-weekend', dayDate?.getDay() === 0 || dayDate?.getDay() === 6);
-			if (visibleDates[dayIndex] === localToday()) {
-				column.addClass('is-today');
-				this.attachNowIndicator(column, metrics);
-			}
-
-			for (let hour = 0; hour <= 24; hour++) {
-				if (hour < 24 && this.isHiddenMinute(hour * 60, metrics.hiddenRange) && !metrics.isHiddenExpanded) {
-					continue;
-				}
-				const line = column.createDiv('operon-calendar-hour-line');
-				const offset = this.minuteToGridOffset(hour * 60, metrics);
-				line.style.top = `${hour === 24 ? Math.max(0, metrics.gridHeight - 1) : offset}px`;
-			}
-
-			this.bindTimedSelection(column, visibleDates[dayIndex], preset, metrics, section, gutter, hoverGuideOverlay, settings);
-		}
-
-			for (const segment of placements) {
-				const block = itemOverlay.createDiv('operon-calendar-timed-item');
-				block.dataset.operonId = segment.item.taskId;
-				block.addClass(`is-${segment.item.renderSnapshot.checkbox}`);
-			this.applyCalendarProjectionClasses(block, segment.item);
-			if (segment.item.origin === 'external') block.addClass('is-external');
-			if (segment.visualAvailabilityLayer) block.addClass('is-availability-layer');
-			if (segment.visualOverlapGroupSize > 1) block.addClass('has-overlap');
-			if (segment.visualStackIndex > 1) block.addClass('is-overlap-layer');
-			if (segment.visualInsetLevel > 0) block.addClass('is-indented-overlap');
-			if (segment.visualHoverRaiseEligible) block.addClass('can-hover-raise');
-			this.applyTimedPlacementStyle(
-				block,
-				segment.dayIndex,
-				segment.lane,
-				segment.laneCount,
-				segment.startMinutes,
-				segment.endMinutes,
-				visibleDates.length,
-				metrics,
-				segment,
-			);
-			this.applyCalendarItemColor(block, segment.item, preset, settings);
-			if (segment.visualAvailabilityLayer) {
-				this.bindAvailabilityLayerExternalTooltip(block, segment.item, settings);
-			}
-
-			const content = block.createDiv('operon-calendar-timed-content');
-			const hoverTrigger = this.renderCalendarItemLabel(content, segment.item, settings, true);
-			block.createDiv('operon-calendar-timed-drag-label');
-			this.bindTimedHoverGuides(
-				block,
-				hoverGuideOverlay,
-				section,
-				gutter,
-				visibleDates[segment.dayIndex] ?? '',
-				segment.startMinutes,
-				segment.endMinutes,
-				metrics,
-				settings,
-			);
-			this.bindPrimaryItemClick(block, segment.item);
-			if (hoverTrigger) {
-				this.bindHoverMenuTarget(hoverTrigger, segment.item);
-			}
-			if (this.canEditCalendarItemPlacement(segment.item)) {
-				block.addClass('is-draggable');
-				this.createTimedResizeRailHandles(block);
-				this.bindTimedItemInteraction(block, daysGrid, segment, visibleDates, metrics, settings, section, gutter, hoverGuideOverlay);
-			} else {
-				block.addClass('is-read-only');
-				if (this.isDoneRollingProjection(segment.item)) {
-					this.createTimedResizeRailHandles(block, true);
-				}
-			}
-		}
-		this.updateNowIndicators();
-		if (this.nowIndicatorEntries.length > 0) {
-			this.nowIndicatorTimer = window.setInterval(() => this.updateNowIndicators(), 30000);
-		}
-	}
-
 	private bindTimedSelection(
 		column: HTMLElement,
 		dateKey: string,
@@ -7994,10 +8291,42 @@ export class CalendarView extends ItemView {
 			anchorMinute: number;
 			currentMinute: number;
 			selectionEl: HTMLElement;
+			activeCleanup: (() => void) | null;
 		} | null = null;
+		let pendingTouchSelection: {
+			pointerId: number;
+			initialClientX: number;
+			initialClientY: number;
+			latestClientY: number;
+			startedAtMs: number;
+			timerId: ReturnType<Window['setTimeout']>;
+			ownerWindow: Window;
+			cleanup: () => void;
+		} | null = null;
+
+		const isTouchPointer = (event: PointerEvent): boolean => event.pointerType === 'touch' || event.pointerType === 'pen';
+		const resolveTouchLongPressMs = (): number => {
+			const raw = settings.calendarTouchDragLongPressMs;
+			if (typeof raw !== 'number' || !Number.isFinite(raw)) return 260;
+			return Math.max(150, Math.min(600, Math.round(raw)));
+		};
+		const resolveTouchCancelDistancePx = (): number => {
+			const raw = settings.calendarTouchDragCancelDistancePx;
+			if (typeof raw !== 'number' || !Number.isFinite(raw)) return 10;
+			return Math.max(4, Math.min(24, Math.round(raw)));
+		};
+
+		const clearPendingTouchSelection = (): void => {
+			if (!pendingTouchSelection) return;
+			const pending = pendingTouchSelection;
+			pending.ownerWindow.clearTimeout(pending.timerId);
+			pending.cleanup();
+			pendingTouchSelection = null;
+		};
 
 		const clearDragState = (): void => {
 			if (!dragState) return;
+			dragState.activeCleanup?.();
 			dragState.selectionEl.remove();
 			hoverGuideOverlay.empty();
 			dragState = null;
@@ -8043,24 +8372,123 @@ export class CalendarView extends ItemView {
 			return renderSelection();
 		};
 
+		const startSelection = (pointerId: number, clientY: number): void => {
+			clearPendingTouchSelection();
+			column.addClass('is-selecting');
+			const anchorMinute = this.resolveTimedMinuteOffset(column, clientY, metrics);
+			const selectionEl = column.createDiv('operon-calendar-timed-selection');
+			dragState = {
+				pointerId,
+				anchorMinute,
+				currentMinute: anchorMinute,
+				selectionEl,
+				activeCleanup: null,
+			};
+			this.beginCalendarDragSession(column, pointerId, finishDrag);
+			try {
+				column.setPointerCapture?.(pointerId);
+			} catch {
+				// Pointer capture is best-effort on touch surfaces.
+			}
+			renderSelection();
+		};
+
+		const bindActiveTouchSelectionMove = (pointerId: number, ownerWindow: Window): void => {
+			if (!dragState) return;
+			const onPointerMove = (event: PointerEvent): void => {
+				if (event.pointerId !== pointerId) return;
+				event.preventDefault();
+				updateCurrentMinute(event.clientY);
+			};
+			ownerWindow.addEventListener('pointermove', onPointerMove, { capture: true, passive: false });
+			dragState.activeCleanup = () => ownerWindow.removeEventListener('pointermove', onPointerMove, true);
+		};
+
+		const createSingleTouchSlotSelection = (clientY: number): CalendarSlotSelection => {
+			const startMinute = this.resolveTimedMinuteOffset(column, clientY, metrics);
+			return buildTimedSlotSelection(dateKey, startMinute, startMinute, preset.slotMinutes);
+		};
+
+		const startPendingTouchSelection = (event: PointerEvent): void => {
+			clearPendingTouchSelection();
+			const ownerWindow = getOwnerWindow(column);
+			const pointerId = event.pointerId;
+			const onPointerMove = (moveEvent: PointerEvent): void => {
+				const pending = pendingTouchSelection;
+				if (!pending || moveEvent.pointerId !== pointerId) return;
+				pending.latestClientY = moveEvent.clientY;
+				const intent = resolveCalendarDesktopTouchSelectionIntent({
+					deltaX: moveEvent.clientX - pending.initialClientX,
+					deltaY: moveEvent.clientY - pending.initialClientY,
+					elapsedMs: ownerWindow.performance.now() - pending.startedAtMs,
+					cancelDistancePx: resolveTouchCancelDistancePx(),
+					longPressMs: resolveTouchLongPressMs(),
+				});
+				if (intent === 'cancel') {
+					clearPendingTouchSelection();
+				}
+			};
+			const onPointerUp = (upEvent: PointerEvent): void => {
+				const pending = pendingTouchSelection;
+				if (!pending || upEvent.pointerId !== pointerId) return;
+				const withinTapDistance = Math.hypot(
+					upEvent.clientX - pending.initialClientX,
+					upEvent.clientY - pending.initialClientY,
+				) <= resolveTouchCancelDistancePx();
+				clearPendingTouchSelection();
+				if (!withinTapDistance || !onSelect) return;
+				void onSelect(createSingleTouchSlotSelection(upEvent.clientY));
+			};
+			const onPointerCancel = (cancelEvent: PointerEvent): void => {
+				if (!pendingTouchSelection || cancelEvent.pointerId !== pointerId) return;
+				clearPendingTouchSelection();
+			};
+			const onWindowBlur = (): void => clearPendingTouchSelection();
+			const timerId = ownerWindow.setTimeout(() => {
+				const pending = pendingTouchSelection;
+				if (!pending || pending.pointerId !== pointerId) return;
+				const latestClientY = pending.latestClientY;
+				clearPendingTouchSelection();
+				startSelection(pointerId, latestClientY);
+				bindActiveTouchSelectionMove(pointerId, ownerWindow);
+			}, resolveTouchLongPressMs());
+			ownerWindow.addEventListener('pointermove', onPointerMove, true);
+			ownerWindow.addEventListener('pointerup', onPointerUp, true);
+			ownerWindow.addEventListener('pointercancel', onPointerCancel, true);
+			ownerWindow.addEventListener('blur', onWindowBlur, true);
+			pendingTouchSelection = {
+				pointerId,
+				initialClientX: event.clientX,
+				initialClientY: event.clientY,
+				latestClientY: event.clientY,
+				startedAtMs: ownerWindow.performance.now(),
+				timerId,
+				ownerWindow,
+				cleanup: () => {
+					ownerWindow.removeEventListener('pointermove', onPointerMove, true);
+					ownerWindow.removeEventListener('pointerup', onPointerUp, true);
+					ownerWindow.removeEventListener('pointercancel', onPointerCancel, true);
+					ownerWindow.removeEventListener('blur', onWindowBlur, true);
+				},
+			};
+		};
+
 		column.addEventListener('pointerdown', (event: PointerEvent) => {
 			if (event.button !== 0) return;
 			const target = asHTMLElement(event.target, column);
 			if (target?.closest('.operon-calendar-timed-item')) return;
 
+			if (isTouchPointer(event)) {
+				// Touch must keep native scrolling on tablets and touchscreen
+				// desktops: a slot selection only starts after a stationary
+				// long-press, while a short tap creates a single slot (matching
+				// the mobile surface). No preventDefault here, so the browser
+				// can take over scrolling and fire pointercancel.
+				startPendingTouchSelection(event);
+				return;
+			}
 			event.preventDefault();
-			column.addClass('is-selecting');
-			const anchorMinute = this.resolveTimedMinuteOffset(column, event.clientY, metrics);
-			const selectionEl = column.createDiv('operon-calendar-timed-selection');
-			dragState = {
-				pointerId: event.pointerId,
-				anchorMinute,
-				currentMinute: anchorMinute,
-				selectionEl,
-			};
-			this.beginCalendarDragSession(column, event.pointerId, finishDrag);
-			column.setPointerCapture?.(event.pointerId);
-			renderSelection();
+			startSelection(event.pointerId, event.clientY);
 		});
 
 		column.addEventListener('pointermove', (event: PointerEvent) => {
@@ -8198,13 +8626,13 @@ export class CalendarView extends ItemView {
 			}
 			touchDragActiveBody = body;
 			touchDragActiveBody.classList.add('operon-calendar-touch-drag-active');
-			block.addClass('is-touch-dragging');
+			block.addClass('is-touch-dragging', 'is-touch-guide-active');
 		};
 
 		const clearTouchDragActiveClass = (): void => {
 			touchDragActiveBody?.classList.remove('operon-calendar-touch-drag-active');
 			touchDragActiveBody = null;
-			block.removeClass('is-touch-dragging');
+			block.removeClass('is-touch-dragging', 'is-touch-guide-active');
 		};
 
 		const clearActiveTouchWindowMove = (): void => {
@@ -8271,36 +8699,16 @@ export class CalendarView extends ItemView {
 
 		const renderEditGuides = (dayIndex: number, startMinutes: number, endMinutes: number): void => {
 			const dateKey = visibleDates[dayIndex] ?? visibleDates[segment.dayIndex] ?? '';
-			const sectionRect = section.getBoundingClientRect();
-			const gutterRect = gutter.getBoundingClientRect();
-			const guideGrid = options.guideTargetGrid ?? daysGrid;
-			const gridRect = guideGrid.getBoundingClientRect();
-			const left = Math.max(0, gutterRect.right - sectionRect.left);
-			const dayWidth = gridRect.width / Math.max(1, visibleDates.length);
-			const blockLeft = (gridRect.left - sectionRect.left) + (dayIndex * dayWidth);
-			const right = Math.max(left, blockLeft);
-			const width = Math.max(0, right - left);
-			const accent = this.resolveCalendarHoverGuideAccent(block);
-
-			hoverGuideOverlay.empty();
-			const createGuide = (minuteOfDay: number, labelSide: 'start' | 'end'): void => {
-				const guide = hoverGuideOverlay.createDiv('operon-calendar-hover-guide is-edit-guide');
-				const top = (gridRect.top - sectionRect.top) + this.minuteToGridOffset(minuteOfDay, metrics);
-				const currentBlockRect = block.getBoundingClientRect();
-				const labelCenter = Math.max(0, (currentBlockRect.left - sectionRect.left) + (currentBlockRect.width / 2) - left);
-				guide.style.top = `${Math.max(0, top)}px`;
-				guide.style.left = `${left}px`;
-				guide.style.width = `${width}px`;
-				guide.style.setProperty('--operon-calendar-guide-color', accent);
-				const labelEl = guide.createSpan({
-					text: this.formatTimedGuideLabel(dateKey, minuteOfDay, settings),
-					cls: `operon-calendar-hover-guide-label is-${labelSide}`,
-				});
-				labelEl.style.left = `${labelCenter}px`;
-			};
-
-			createGuide(startMinutes, 'start');
-			createGuide(endMinutes, 'end');
+			this.renderTimedInteractionGuides(
+				block,
+				hoverGuideOverlay,
+				section,
+				gutter,
+				dateKey,
+				startMinutes,
+				endMinutes,
+				settings,
+			);
 		};
 
 		const renderPlacement = (): void => {
@@ -8939,6 +9347,8 @@ export class CalendarView extends ItemView {
 		element.style.setProperty('--operon-calendar-visible-lines', String(visibleLineCount));
 		element.classList.toggle('is-compact-height', height < 42);
 		element.classList.toggle('is-micro-height', height < 30);
+		element.classList.toggle('is-clipped-top', startMinutes <= 0);
+		element.classList.toggle('is-clipped-bottom', endMinutes >= 24 * 60);
 	}
 
 	private bindScheduledAllDayItemInteraction(
@@ -9531,6 +9941,7 @@ export class CalendarView extends ItemView {
 		if (this.calendarNavigationKeydownHandler) return;
 		this.calendarNavigationKeydownHandler = (event: KeyboardEvent) => {
 			if (this.app.workspace.getMostRecentLeaf()?.view !== this) return;
+			if (!this.isCalendarArrowNavigationTargetAllowed(event.target)) return;
 			if (this.shouldIgnoreCalendarArrowNavigation(event.target)) return;
 			const delta = event.key === 'ArrowLeft'
 				? -1
@@ -9572,6 +9983,18 @@ export class CalendarView extends ItemView {
 		if (targetEl.closest('input, textarea, select')) return true;
 		if (targetEl.isContentEditable) return true;
 		return !!targetEl.closest('[contenteditable="true"]');
+	}
+
+	private isCalendarArrowNavigationTargetAllowed(target: EventTarget | null): boolean {
+		const targetEl = asHTMLElement(target, this.containerEl);
+		if (!targetEl) return true;
+		const ownerDocument = getOwnerDocument(this.containerEl);
+		// Keydown targets the focused element, or the body when nothing holds
+		// focus. Body-level arrows keep navigating the most recent calendar
+		// leaf, but focus inside another pane (file explorer, search, modals)
+		// must not be hijacked by the document-level capture listener.
+		if (targetEl === ownerDocument.body || targetEl === ownerDocument.documentElement) return true;
+		return this.containerEl.contains(targetEl);
 	}
 
 	private renderCalendarItemLabel(
@@ -9680,22 +10103,14 @@ export class CalendarView extends ItemView {
 		item: CalendarItem,
 		preset: CalendarRenderPreset,
 		settings: OperonSettings,
-		): void {
-			if (preset.colorSource === 'noColor') {
-				element.setCssProps({ '--operon-calendar-accent': 'transparent' });
-				return;
-			}
-		const resolvedColor = resolveTaskColorSource(
+	): void {
+		this.applyCalendarColorAccents(
+			element,
 			item.renderSnapshot.fieldValues,
-			preset.colorSource,
+			preset,
 			settings,
-			{ externalColor: item.origin === 'external' ? item.externalRef?.sourceColor : null },
-			);
-			if (!resolvedColor) {
-				element.setCssProps({ '--operon-calendar-accent': 'transparent' });
-				return;
-			}
-			element.setCssProps({ '--operon-calendar-accent': resolvedColor });
+			item.origin === 'external' ? item.externalRef?.sourceColor : null,
+		);
 	}
 
 	private applyCalendarProjectionClasses(element: HTMLElement, item: CalendarItem): void {
@@ -9727,10 +10142,10 @@ export class CalendarView extends ItemView {
 	}
 
 	private resolveCalendarHoverGuideAccent(element: HTMLElement): string {
-		const accent = element.style.getPropertyValue('--operon-calendar-accent').trim();
+		const accent = element.style.getPropertyValue('--operon-calendar-interaction-accent').trim();
 		return accent && accent !== 'transparent'
 			? accent
-			: 'var(--interactive-accent)';
+			: 'var(--text-muted)';
 	}
 
 	private resolveCalendarStatusColor(item: CalendarItem, settings: OperonSettings): string | null {
@@ -9782,20 +10197,94 @@ export class CalendarView extends ItemView {
 		preset: CalendarRenderPreset,
 		settings: OperonSettings,
 	): void {
-		if (preset.colorSource === 'noColor') {
-			element.setCssProps({ '--operon-calendar-accent': 'transparent' });
-			return;
-		}
-		const resolvedColor = resolveTaskColorSource(
-			fieldValues,
-			preset.colorSource,
-			settings,
-			{ externalColor: null },
-		);
-		element.setCssProps({ '--operon-calendar-accent': resolvedColor || 'transparent' });
+		this.applyCalendarColorAccents(element, fieldValues, preset, settings, null);
 	}
 
-		private bindTimedHoverGuides(
+	private applyCalendarColorAccents(
+		element: HTMLElement,
+		fieldValues: Record<string, string>,
+		preset: CalendarRenderPreset,
+		settings: OperonSettings,
+		externalColor: string | null | undefined,
+	): void {
+		const accents = resolveCalendarColorAccents(fieldValues, preset.colorSource, settings, externalColor);
+		element.setCssProps({
+			'--operon-calendar-accent': accents.calendarAccent || 'transparent',
+			'--operon-calendar-interaction-accent': accents.interactionAccent || 'transparent',
+		});
+	}
+
+	private renderTimedInteractionGuides(
+		block: HTMLElement,
+		overlay: HTMLElement,
+		section: HTMLElement,
+		gutter: HTMLElement,
+		dateKey: string,
+		startMinutes: number,
+		endMinutes: number,
+		settings: OperonSettings,
+	): void {
+		const accent = this.resolveCalendarHoverGuideAccent(block);
+		const sectionRect = section.getBoundingClientRect();
+		const gutterRect = gutter.getBoundingClientRect();
+		const blockRect = block.getBoundingClientRect();
+		const left = Math.max(0, gutterRect.right - sectionRect.left);
+		const right = Math.max(left, blockRect.left - sectionRect.left);
+		const width = Math.max(0, right - left);
+		const labelCenter = Math.max(0, (blockRect.left - sectionRect.left) + (blockRect.width / 2) - left);
+		const top = Math.max(0, blockRect.top - sectionRect.top);
+		const bottom = Math.max(0, blockRect.bottom - sectionRect.top);
+		const compactLabelRange = Math.abs(bottom - top) < 28;
+		const viewport = section.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport, .operon-calendar-timed-viewport');
+		const viewportRect = viewport?.getBoundingClientRect() ?? sectionRect;
+		const stickyLaneHeader = section.querySelector<HTMLElement>(
+			'.operon-calendar-time-tracker-grid-label-gutter, .operon-calendar-time-tracker-grid-label-clip',
+		);
+		const stickyLaneHeaderBottom = stickyLaneHeader
+			? stickyLaneHeader.getBoundingClientRect().bottom - sectionRect.top
+			: 0;
+		const visibleTop = Math.max(0, viewportRect.top - sectionRect.top, stickyLaneHeaderBottom);
+		const visibleBottom = Math.min(sectionRect.height, viewportRect.bottom - sectionRect.top);
+		const labelEdgeClearance = 16;
+
+		overlay.empty();
+		const createGuide = (guideTop: number, label: string, labelSide: 'start' | 'end', durationLabel = ''): void => {
+			const guide = overlay.createDiv('operon-calendar-hover-guide is-hover-guide');
+			const isCompactRange = compactLabelRange;
+			if (isCompactRange) guide.addClass('is-compact-range');
+			if (guideTop <= visibleTop + labelEdgeClearance) guide.addClass('is-label-below');
+			if (guideTop >= visibleBottom - labelEdgeClearance) guide.addClass('is-label-above');
+			guide.style.top = `${guideTop}px`;
+			guide.style.left = `${left}px`;
+			guide.style.width = `${width}px`;
+			guide.style.setProperty('--operon-calendar-guide-color', accent);
+			guide.createSpan({
+				text: label,
+				cls: `operon-calendar-hover-guide-label is-${labelSide}`,
+			});
+			if (durationLabel) {
+				const durationEl = guide.createSpan({
+					text: durationLabel,
+					cls: 'operon-calendar-hover-guide-label is-duration',
+				});
+				durationEl.style.left = `${labelCenter}px`;
+			}
+		};
+
+		createGuide(
+			top,
+			this.formatTimedGuideLabel(dateKey, startMinutes, settings),
+			'start',
+			this.formatTimedGuideDurationLabel(startMinutes, endMinutes),
+		);
+		createGuide(
+			bottom,
+			this.formatTimedGuideLabel(dateKey, endMinutes, settings),
+			'end',
+		);
+	}
+
+	private bindTimedHoverGuides(
 		block: HTMLElement,
 		overlay: HTMLElement,
 		section: HTMLElement,
@@ -9814,45 +10303,8 @@ export class CalendarView extends ItemView {
 			visible = false;
 		};
 
-		const createGuide = (top: number, label: string, accent: string, labelSide: 'start' | 'end'): void => {
-			const sectionRect = section.getBoundingClientRect();
-			const gutterRect = gutter.getBoundingClientRect();
-			const blockRect = block.getBoundingClientRect();
-			const left = Math.max(0, gutterRect.right - sectionRect.left);
-			const right = Math.max(left, blockRect.left - sectionRect.left);
-			const width = Math.max(0, right - left);
-			const labelCenter = Math.max(0, (blockRect.left - sectionRect.left) + (blockRect.width / 2) - left);
-			const guide = overlay.createDiv('operon-calendar-hover-guide is-hover-guide');
-			guide.style.top = `${top}px`;
-			guide.style.left = `${left}px`;
-			guide.style.width = `${width}px`;
-			guide.style.setProperty('--operon-calendar-guide-color', accent);
-			const labelEl = guide.createSpan({
-				text: label,
-				cls: `operon-calendar-hover-guide-label is-${labelSide}`,
-			});
-			labelEl.style.left = `${labelCenter}px`;
-		};
-
 		const showGuides = (): void => {
-			const accent = this.resolveCalendarHoverGuideAccent(block);
-			const sectionRect = section.getBoundingClientRect();
-			const blockRect = block.getBoundingClientRect();
-			const top = Math.max(0, blockRect.top - sectionRect.top);
-			const bottom = Math.max(0, blockRect.bottom - sectionRect.top);
-			overlay.empty();
-			createGuide(
-				top,
-				this.formatTimedGuideLabel(dateKey, startMinutes, settings),
-				accent,
-				'start',
-			);
-			createGuide(
-				bottom,
-				this.formatTimedGuideLabel(dateKey, endMinutes, settings),
-				accent,
-				'end',
-			);
+			this.renderTimedInteractionGuides(block, overlay, section, gutter, dateKey, startMinutes, endMinutes, settings);
 			visible = true;
 		};
 
@@ -9988,6 +10440,10 @@ export class CalendarView extends ItemView {
 
 	private formatTimedGuideLabel(dateKey: string, minuteOfDay: number, settings: OperonSettings): string {
 		return formatUiTime(this.app, settings, this.buildDateMinuteValue(dateKey, minuteOfDay));
+	}
+
+	private formatTimedGuideDurationLabel(startMinutes: number, endMinutes: number): string {
+		return formatTimeTrackerGridCompactDurationSeconds(Math.max(0, endMinutes - startMinutes) * 60);
 	}
 
 	private formatTimedDragLabel(
@@ -10222,6 +10678,19 @@ export class CalendarView extends ItemView {
 
 	private isHiddenMinute(minuteOfDay: number, range: CalendarHiddenTimeRange): boolean {
 		return range.enabled && minuteOfDay > range.startMinutes && minuteOfDay < range.endMinutes;
+	}
+
+	private buildTimedGridHourLineOffsets(metrics: CalendarTimedMetrics): number[] {
+		const offsets: number[] = [];
+		for (let hour = 0; hour <= 24; hour++) {
+			if (hour < 24 && this.isHiddenMinute(hour * 60, metrics.hiddenRange) && !metrics.isHiddenExpanded) {
+				continue;
+			}
+			offsets.push(hour === 24
+				? Math.max(0, metrics.gridHeight - 1)
+				: this.minuteToGridOffset(hour * 60, metrics));
+		}
+		return offsets;
 	}
 
 	private minuteToGridOffset(minuteOfDay: number, metrics: CalendarTimedMetrics): number {
@@ -10723,10 +11192,12 @@ export class CalendarView extends ItemView {
 
 		this.layoutRefreshCleanup?.();
 		this.layoutRefreshCleanup = null;
+		// One frame now, one follow-up frame after first paint, one late pass;
+		// scheduleRefresh coalesces via layoutRefreshFrame and the
+		// ResizeObserver covers all later size changes. The former nested rAF
+		// and 0ms timeout collapsed into frames that were already scheduled.
 		scheduleRefresh();
 		this.requestRenderAnimationFrame(generation, scheduleRefresh);
-		this.requestRenderAnimationFrame(generation, () => this.requestRenderAnimationFrame(generation, scheduleRefresh));
-		this.setRenderTimeout(generation, scheduleRefresh, 0);
 		this.setRenderTimeout(generation, scheduleRefresh, 120);
 
 		const observer = new ResizeObserver(() => scheduleRefresh());
@@ -11327,6 +11798,11 @@ export class CalendarView extends ItemView {
 			this.nowIndicatorTimer = null;
 		}
 		this.nowIndicatorEntries = [];
+		this.activeTrackerBlockEntry = null;
+		if (this.taskPoolSearchDebounceTimer !== null) {
+			window.clearTimeout(this.taskPoolSearchDebounceTimer);
+			this.taskPoolSearchDebounceTimer = null;
+		}
 	}
 
 	private clearScheduledRender(): void {

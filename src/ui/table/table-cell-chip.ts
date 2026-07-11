@@ -10,6 +10,7 @@ import { resolveTableColumnCellAccent } from './table-column-color';
 import { PROJECT_SERIAL_TABLE_FIELD_KEY, getTableTaskField } from './table-field-catalog';
 import { resolveTableValueCellIcon } from './table-icon-only-cell';
 import { resolveTableLocationCellVisual, type TableLocationCellResolver, type TableLocationCellVisual } from './table-location-cell';
+import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 
 type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities'>;
 
@@ -17,6 +18,7 @@ export interface TableCellChipRenderOptions {
 	column?: Pick<TableColumn, 'key' | 'colorMode'>;
 	task?: IndexedTask;
 	settings?: TableCellChipSettings;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	accentValue?: string;
 	locationResolver?: TableLocationCellResolver | null;
 	onLocationPreview?: (trigger: HTMLElement, visual: TableLocationCellVisual) => void;
@@ -78,6 +80,7 @@ export function renderTableCellChipContent(
 				value,
 				options.settings,
 				field?.icon ?? 'text',
+				options.workflowStatusIdentityIndex,
 			),
 			preserveDateIconSlot ? 'calendar' : 'text',
 			preserveDateIconSlot,

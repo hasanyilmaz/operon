@@ -36,16 +36,20 @@ export function getCalendarTaskPickerSortRank(task: IndexedTask): number {
 }
 
 export function sortCalendarTasksForPicker(tasks: IndexedTask[]): IndexedTask[] {
-	return [...tasks].sort((left, right) => {
-		const rankDiff = getCalendarTaskPickerSortRank(left) - getCalendarTaskPickerSortRank(right);
-		if (rankDiff !== 0) return rankDiff;
-
-		const leftModified = Date.parse(left.datetimeModified || left.fieldValues['datetimeModified'] || '') || 0;
-		const rightModified = Date.parse(right.datetimeModified || right.fieldValues['datetimeModified'] || '') || 0;
-		if (leftModified !== rightModified) return rightModified - leftModified;
-
-		return left.description.localeCompare(right.description);
-	});
+	// Rank and timestamp are precomputed once per task; the picker re-sorts on
+	// every keystroke, so comparator-side Date.parse calls multiply fast.
+	return tasks
+		.map(task => ({
+			task,
+			rank: getCalendarTaskPickerSortRank(task),
+			modifiedTs: Date.parse(task.datetimeModified || task.fieldValues['datetimeModified'] || '') || 0,
+		}))
+		.sort((left, right) => {
+			if (left.rank !== right.rank) return left.rank - right.rank;
+			if (left.modifiedTs !== right.modifiedTs) return right.modifiedTs - left.modifiedTs;
+			return left.task.description.localeCompare(right.task.description);
+		})
+		.map(entry => entry.task);
 }
 
 export function summarizeTaskCalendarAssignment(task: IndexedTask): string[] {

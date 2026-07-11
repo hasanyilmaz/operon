@@ -528,7 +528,7 @@ export function mergeOperonDataPackage(
 	return {
 		schemaVersion: OPERON_DATA_PACKAGE_SCHEMA_VERSION,
 		settings: cloneExistingDomain(existing?.settings, fallback.settings),
-		taxonomy: cloneExistingDomain(existing?.taxonomy, fallback.taxonomy, isTaxonomyDomain),
+		taxonomy: mergeTaxonomyPackage(existing?.taxonomy, fallback.taxonomy),
 		views: cloneExistingDomain(existing?.views, fallback.views, isViewsDomain),
 		ui: mergeUiPackage(existing?.ui, fallback.ui, existing?.settings),
 		automation: cloneExistingDomain(existing?.automation, fallback.automation, isAutomationDomain),
@@ -755,11 +755,16 @@ function buildStatePackage(
 	};
 }
 
-function isTaxonomyDomain(value: unknown): boolean {
-	return isRecord(value)
-		&& isRecord(value.keyMappings)
-		&& isRecord(value.priorities)
-		&& isRecord(value.pipelines);
+function mergeTaxonomyPackage(
+	existing: Partial<OperonTaxonomyPackageV1> | null | undefined,
+	fallback: OperonTaxonomyPackageV1,
+): OperonTaxonomyPackageV1 {
+	const source = isRecord(existing) ? existing : {};
+	return {
+		keyMappings: cloneExistingDomain(source.keyMappings, fallback.keyMappings),
+		priorities: cloneExistingDomain(source.priorities, fallback.priorities),
+		pipelines: cloneExistingDomain(source.pipelines, fallback.pipelines),
+	};
 }
 
 function isViewsDomain(value: unknown): boolean {

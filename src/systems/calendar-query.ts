@@ -103,6 +103,39 @@ export function queryCalendarItemsForVisibleDates(
 	};
 }
 
+/**
+ * Derives the visible-window query result from a query that already ran
+ * over a buffered superset window, avoiding a second pass over all tasks.
+ * This is exact, not approximate: item content is window-independent (the
+ * range only drives the inclusion filter), every kind is included by
+ * start/end range intersection (markers have start === end), projected
+ * occurrence sequences iterate from fixed anchors so shared sub-windows
+ * yield identical occurrences, and the sort comparator reads only item
+ * fields, so filtering preserves the visible-window order.
+ */
+export function deriveVisibleCalendarQueryResult(
+	bufferedResult: CalendarQueryResult,
+	visibleDatesInput: string[],
+): CalendarQueryResult {
+	const visibleDates = normalizeVisibleDates(visibleDatesInput);
+	if (visibleDates.length === 0) {
+		return {
+			visibleDates: [],
+			rangeStart: '',
+			rangeEnd: '',
+			items: [],
+		};
+	}
+	const rangeStart = visibleDates[0];
+	const rangeEnd = visibleDates[visibleDates.length - 1] ?? rangeStart;
+	return {
+		visibleDates,
+		rangeStart,
+		rangeEnd,
+		items: bufferedResult.items.filter(item => intersectsDateRange(item.startDate, item.endDate, rangeStart, rangeEnd)),
+	};
+}
+
 function normalizeVisibleDates(visibleDates: string[]): string[] {
 	const normalized = Array.from(new Set(
 		visibleDates

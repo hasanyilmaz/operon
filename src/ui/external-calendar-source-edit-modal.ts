@@ -17,15 +17,32 @@ const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
 const MIN_REFRESH_HOURS = 1;
 const MAX_REFRESH_HOURS = 720;
 
+/**
+ * "Sync now" runs against the source as it is saved in settings, not against
+ * the modal draft, so it must stay disabled while the draft URL differs from
+ * the saved URL (otherwise it would silently fetch the old address).
+ */
+export function canSyncExternalCalendarSourceNow(input: {
+	draftUrl: string;
+	savedUrl: string;
+	hasSyncHandler: boolean;
+}): boolean {
+	const draftUrl = input.draftUrl.trim();
+	if (!input.hasSyncHandler || draftUrl.length === 0) return false;
+	return draftUrl === input.savedUrl.trim();
+}
+
 export class ExternalCalendarSourceEditModal extends Modal {
 	private readonly source: ExternalCalendarSource;
 	private readonly opts: ExternalCalendarSourceEditModalOptions;
+	private readonly savedUrl: string;
 	private didSave = false;
 
 	constructor(opts: ExternalCalendarSourceEditModalOptions) {
 		super(opts.app);
 		this.opts = opts;
 		this.source = opts.source;
+		this.savedUrl = opts.isNew ? '' : opts.source.url;
 	}
 
 	onOpen(): void {
@@ -43,6 +60,7 @@ export class ExternalCalendarSourceEditModal extends Modal {
 
 	private renderModal(): void {
 		const c = this.contentEl;
+		let refreshSyncNowButtonState: () => void = () => {};
 		c.empty();
 		c.createEl('h3', {
 			cls: 'operon-external-calendar-edit-modal-title',
@@ -74,7 +92,10 @@ export class ExternalCalendarSourceEditModal extends Modal {
 				text.inputEl.addClass('operon-external-calendar-url-input');
 				text.setValue(this.source.url);
 				text.setPlaceholder(t('settings', 'externalCalendarUrlPlaceholder'));
-				text.onChange(value => { this.source.url = value; });
+				text.onChange(value => {
+					this.source.url = value;
+					refreshSyncNowButtonState();
+				});
 			});
 		urlSetting.settingEl.addClass('operon-external-calendar-url-setting');
 
@@ -126,11 +147,17 @@ export class ExternalCalendarSourceEditModal extends Modal {
 						taskColor: null,
 					});
 				}
-				const canSync = this.source.url.trim().length > 0 && !!this.opts.onSyncNow;
-				button.setDisabled(!canSync);
+				const canSyncNow = (): boolean => canSyncExternalCalendarSourceNow({
+					draftUrl: this.source.url,
+					savedUrl: this.savedUrl,
+					hasSyncHandler: !!this.opts.onSyncNow,
+				});
+				refreshSyncNowButtonState = () => {
+					button.setDisabled(!canSyncNow());
+				};
+				refreshSyncNowButtonState();
 				button.onClick(async () => {
-					if (!this.opts.onSyncNow) return;
-					if (this.source.url.trim().length === 0) return;
+					if (!canSyncNow() || !this.opts.onSyncNow) return;
 					await this.opts.onSyncNow();
 				});
 			});

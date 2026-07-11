@@ -1,12 +1,16 @@
 import { clonePipeline, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
+import { normalizePriorityValue } from './priority-rank';
 
 export function hasDuplicatePriorityLabel(
 	priorities: PriorityDefinition[],
 	priorityId: string,
 	nextLabel: string,
 ): boolean {
-	return priorities.some(candidate => candidate.id !== priorityId && candidate.label === nextLabel);
+	// Priority matching is case/whitespace-insensitive, so guard duplicates the same way
+	// (e.g. "High" and "high" would otherwise collide into one rank).
+	const normalizedNext = normalizePriorityValue(nextLabel);
+	return priorities.some(candidate => candidate.id !== priorityId && normalizePriorityValue(candidate.label) === normalizedNext);
 }
 
 export function hasDuplicateStatusLabel(
@@ -22,7 +26,7 @@ export function resolveDefaultPriorityAfterDelete(
 	deletedPriorityLabel: string,
 	remainingPriorities: PriorityDefinition[],
 ): string {
-	if (!defaultPriority) return remainingPriorities[0]?.label ?? '';
+	if (!defaultPriority) return '';
 	if (defaultPriority === deletedPriorityLabel) {
 		return remainingPriorities[0]?.label ?? '';
 	}

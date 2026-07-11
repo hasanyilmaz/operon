@@ -23,7 +23,9 @@ import {
 	evaluateFilterSet,
 	evaluateFilterSetGrouped,
 	filterTasksOnly,
+	getFilterSortSpecs,
 	groupFilterTasks,
+	prepareTaskSortContext,
 	type GroupedFilterResults,
 	sortFilterTasks,
 } from '../core/filter-evaluator';
@@ -47,6 +49,12 @@ import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-wikilink-overlay-chips';
 import { buildTaskStatusIconRenderSettingsSignature } from './task-status-icon-signature';
+import { buildWorkflowStatusSemanticsSignature } from '../core/workflow-status-semantics';
+import { buildWorkflowStatusOrderSignature } from '../core/workflow-status-order';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 import { isSpecialDynamicFilterSet } from '../core/dynamic-file-task-filter';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
@@ -276,6 +284,8 @@ export function renderFilterSurface(
         deps.settings.filterTaskShowPlainCheckboxAction,
     ]);
     const dynamicRootTaskId = options.dynamicRootTaskId?.trim() ?? '';
+    const requestedSubtaskSorts = options.subtaskSorts ?? getFilterSortSpecs(filterSet);
+    const subtaskSorts = requestedSubtaskSorts.length > 0 ? requestedSubtaskSorts : undefined;
     const renderSignature = [
         deps.indexer.getGeneration(),
         deps.pinnedCache?.getGeneration() ?? 0,
@@ -291,12 +301,14 @@ export function renderFilterSurface(
         options.includeSubtasksInSearch === true ? 'search-subtasks' : 'search-rendered-roots',
         options.preserveManualSubtaskExpansion === true ? 'preserve-manual-expansion' : 'reset-manual-expansion',
         options.showSettingsButton === false ? 'no-settings' : 'settings',
-        options.subtaskSorts === undefined ? 'subtask-sort-default' : JSON.stringify(options.subtaskSorts),
+        subtaskSorts === undefined ? 'subtask-sort-default' : JSON.stringify(subtaskSorts),
         dynamicRootTaskId,
         JSON.stringify(deps.settings.filterTaskCompactChips),
         filterActionSettingsSignature,
         buildTaskWikilinkOverlaySettingsSignature(deps.settings),
         buildTaskStatusIconRenderSettingsSignature(deps.settings),
+        buildWorkflowStatusOrderSignature(deps.getPipelines()),
+        buildWorkflowStatusSemanticsSignature(deps.getPipelines()),
         includeLocationIndexSignature ? getLocationPlaceIndex(deps.app, deps.settings).getSignature() : '',
         JSON.stringify(deps.settings.keyMappings.map(mapping => [
             mapping.canonicalKey,
@@ -350,17 +362,28 @@ export function renderFilterSurface(
     if (!embedShowSubtasks && options.preserveManualSubtaskExpansion !== true) {
         instance.expandedTaskIds.clear();
     }
+    const allTasks = deps.indexer.getAllTasks();
+    const priorities = deps.getPriorities();
+    const pipelines = deps.getPipelines();
+    const subtaskSortContext = prepareTaskSortContext(
+        subtaskSorts ?? [{ field: 'priority', order: 'asc' }],
+        {
+            priorities,
+            pipelines,
+            isTaskPinned: callbacks.isTaskPinned,
+        },
+    );
     const taskRowOptions = {
         defaultExpandAll: embedShowSubtasks,
         showOnlyOpenSubtasks: embedShowOnlyOpenSubtasks,
         showSubtaskAction: embedSettings.filterTaskShowSubtaskAction,
-        subtaskSorts: options.subtaskSorts,
+        subtaskSorts,
+        subtaskSortContext,
+        workflowStatusIdentityIndex: buildWorkflowStatusIdentityIndex(pipelines),
     };
 
     // Container
     const container = el.createDiv(`operon-embed operon-filter-surface operon-task-chip-surface ${options.surfaceClassName ?? 'operon-filter-surface--embed'}`);
-    const allTasks = deps.indexer.getAllTasks();
-    const priorities = deps.getPriorities();
 
     // Render results
     if (filterSet.groupBy) {
@@ -378,6 +401,7 @@ export function renderFilterSurface(
                     applyFilterSearch(treeScopeTasks, instance.searchQuery, deps.getSettings().keyMappings),
                     priorities,
                     deps.pinnedCache,
+                    pipelines,
                 );
                 const list = container.createDiv('operon-embed-list');
                 if (dynamicRootTask) {
@@ -401,7 +425,7 @@ export function renderFilterSurface(
                 return;
             }
 
-            const grouped = groupFilterTasks(filterSet, dynamicRootTasks, priorities, deps.pinnedCache);
+            const grouped = groupFilterTasks(filterSet, dynamicRootTasks, priorities, deps.pinnedCache, pipelines);
             const list = container.createDiv('operon-embed-list');
             if (dynamicRootTask) {
                 renderDynamicRootTaskRow(list, dynamicRootTask, callbacks, instance, taskRowOptions);
@@ -426,7 +450,7 @@ export function renderFilterSurface(
             return;
         }
 
-        const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache);
+        const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache, pipelines);
         const baseRootTasks = filterTasksOnly(filterSet, allTasks, priorities, deps.pinnedCache);
         const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
         const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
@@ -437,6 +461,7 @@ export function renderFilterSurface(
                 applyFilterSearch(treeScopeTasks, instance.searchQuery, deps.getSettings().keyMappings),
                 priorities,
                 deps.pinnedCache,
+                pipelines,
             );
             if (tasks.length === 0) {
                 container.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
@@ -477,7 +502,7 @@ export function renderFilterSurface(
         restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
     } else {
         // Flat
-        const baseTasks = evaluateFilterSet(filterSet, allTasks, priorities, deps.pinnedCache);
+        const baseTasks = evaluateFilterSet(filterSet, allTasks, priorities, deps.pinnedCache, pipelines);
         const searchActive = isFilterSearchActive(instance.searchQuery);
         const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
         const tasks = searchActive
@@ -486,6 +511,7 @@ export function renderFilterSurface(
                 applyFilterSearch(treeScopeTasks, instance.searchQuery, deps.getSettings().keyMappings),
                 priorities,
                 deps.pinnedCache,
+                pipelines,
             )
             : baseTasks;
 
@@ -627,22 +653,29 @@ function getDynamicDirectSubtasks(
 ): IndexedTask[] {
     const tasks: IndexedTask[] = [];
     const seen = new Set<string>([rootTaskId]);
+    const pipelines = deps.getPipelines();
+    const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
     for (const childId of deps.getChildIds(rootTaskId)) {
         if (seen.has(childId)) continue;
         seen.add(childId);
         const childTask = deps.indexer.getTask(childId);
         if (!childTask) continue;
-        if (showOnlyOpenSubtasks && !isOpenFilterSubtask(childTask, deps.getPipelines())) continue;
+        if (showOnlyOpenSubtasks && !isOpenFilterSubtask(childTask, pipelines, workflowStatusIdentityIndex)) continue;
         tasks.push(childTask);
     }
     return tasks;
 }
 
-function isOpenFilterSubtask(task: IndexedTask, pipelines: Pipeline[]): boolean {
+function isOpenFilterSubtask(
+    task: IndexedTask,
+    pipelines: Pipeline[],
+    workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
+): boolean {
+    const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status'], workflowStatusIdentityIndex);
+    if (workflow) return workflow.checkbox === 'open';
     if (task.checkbox === 'cancelled' || !!task.fieldValues['dateCancelled']?.trim()) return false;
     if (task.checkbox === 'done' || !!task.fieldValues['dateCompleted']?.trim()) return false;
-    const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status']);
-    return workflow?.definition.isCancelled !== true && workflow?.definition.isFinished !== true;
+    return true;
 }
 
 function closeEmbedTransientUi(root: HTMLElement): void {
@@ -818,6 +851,8 @@ function getEmbedTreeScope(
         deps.indexer.getGeneration(),
         filterSet.id,
         showOnlyOpenSubtasks ? 'open-only' : 'all-subtasks',
+        buildWorkflowStatusOrderSignature(deps.getPipelines()),
+        buildWorkflowStatusSemanticsSignature(deps.getPipelines()),
         rootTasks.map(task => task.operonId).join(','),
     ].join('|');
     if (instance.treeScopeCache?.signature === signature) {

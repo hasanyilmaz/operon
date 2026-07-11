@@ -29,6 +29,11 @@ import {
 } from '../core/file-task-template-merge';
 import { composeStatusValue, parseStatusValue, Pipeline } from '../types/pipeline';
 import {
+	buildWorkflowStatusIdentityIndex,
+	resolveConfiguredPipelineNameIdentity,
+	resolveWorkflowPipelineIdentity,
+} from '../core/workflow-status-identity';
+import {
 	deriveTemporalTemplateFromTaskAtOccurrence,
 	getTaskRepeatOccurrenceDate,
 	resolveOccurrencePlan,
@@ -339,24 +344,43 @@ function shiftDatetimeByRootOccurrenceDelta(
 	fieldValues[key] = `${addDaysToDate(currentDate, deltaDays)}${value.slice(10)}`;
 }
 
+type RecurringPipelineResolution =
+	| { kind: 'pipeline'; pipeline: Pipeline }
+	| { kind: 'ambiguous'; value: string }
+	| { kind: 'missing' };
+
 function resolveRecurringPipeline(
 	pipelines: Pipeline[],
 	defaultPipelineName: string,
 	currentStatus: string | undefined,
 	previousStatus?: string,
-): Pipeline | null {
+): RecurringPipelineResolution {
+	const identityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 	const candidates = [currentStatus, previousStatus]
 		.map(value => value?.trim() ?? '')
 		.filter(Boolean);
 	for (const candidate of candidates) {
-		const parsed = parseStatusValue(candidate);
+		const identity = resolveWorkflowPipelineIdentity(candidate, identityIndex);
+		if (identity.kind === 'ambiguous') return { kind: 'ambiguous', value: identity.value };
+		if (identity.kind === 'configured' && identity.pipeline.statuses.length > 0) {
+			return { kind: 'pipeline', pipeline: identity.pipeline };
+		}
+		const parsed = identity.kind === 'unknown' ? parseStatusValue(identity.value) : null;
 		if (!parsed) continue;
-		const pipeline = pipelines.find(entry => entry.name === parsed.pipeline);
-		if (pipeline?.statuses.length) return pipeline;
+		const pipelineIdentity = resolveConfiguredPipelineNameIdentity(parsed.pipeline, identityIndex);
+		if (pipelineIdentity.kind === 'ambiguous') return { kind: 'ambiguous', value: identity.value };
+		if (pipelineIdentity.kind === 'configured' && pipelineIdentity.pipeline.statuses.length > 0) {
+			return { kind: 'pipeline', pipeline: pipelineIdentity.pipeline };
+		}
 	}
-	return pipelines.find(entry => entry.name === defaultPipelineName && entry.statuses.length > 0)
-		?? pipelines.find(entry => entry.statuses.length > 0)
-		?? null;
+	const explicitDefault = resolveConfiguredPipelineNameIdentity(defaultPipelineName, identityIndex);
+	if (explicitDefault.kind === 'ambiguous') {
+		return { kind: 'ambiguous', value: candidates[0] ?? '' };
+	}
+	const fallback = explicitDefault.kind === 'configured' && explicitDefault.pipeline.statuses.length > 0
+		? explicitDefault.pipeline
+		: pipelines.find(entry => entry.statuses.length > 0) ?? null;
+	return fallback ? { kind: 'pipeline', pipeline: fallback } : { kind: 'missing' };
 }
 
 export function resolveRecurringStatusValue(
@@ -366,8 +390,10 @@ export function resolveRecurringStatusValue(
 	previousStatus?: string,
 	preferScheduledTarget = true,
 ): string {
-	const pipeline = resolveRecurringPipeline(pipelines, defaultPipelineName, currentStatus, previousStatus);
-	if (!pipeline) return '';
+	const resolution = resolveRecurringPipeline(pipelines, defaultPipelineName, currentStatus, previousStatus);
+	if (resolution.kind === 'ambiguous') return resolution.value;
+	if (resolution.kind === 'missing') return '';
+	const { pipeline } = resolution;
 	const scheduledTarget = preferScheduledTarget
 		? pipeline.statuses.find(status => !status.isFinished && !status.isCancelled && status.isScheduledTarget)
 		: null;

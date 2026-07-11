@@ -13,6 +13,42 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '2.1.0',
+		date: '2026-07-11',
+		title: 'Smoother Systems, Safer Workflows',
+		showOnUpdate: true,
+		bannerUrl: 'operon-2-1-0-doc-path.png',
+		body: `
+This is one of those releases where many small changes started adding up to something much bigger.
+
+The visible additions are easy to describe. Underneath them, though, a lot of work went into making everyday workflows faster, safer, and more consistent. Especially around Calendar, pipelines, priorities, and task editing.
+
+### New
+- Added an **Operon Docs folder** setting, so you can choose where the official Operon documentation lives inside your vault.
+- Added Core Templates-compatible \`{{title}}\`, \`{{date}}\`, and \`{{time}}\` variables for Daily Notes and task templates.
+- Added **Pipeline** grouping, subgrouping, and sorting to Operon Table without requiring another task property.
+
+### Improved
+- **Calendar:** Faster rendering, smoother task-pool search, clearer task-color indicators, better touch interaction, and more efficient external calendar syncing.
+- **Pipelines and priorities:** More predictable workflow ordering, safer pipeline lifecycle handling, consistent priority matching, and automatic recovery for malformed priority data.
+- **Table and Filter:** Clearer Group & Sort controls, Pipeline-aware organization, faster nested sorting, calmer searchable pickers, and better mobile keyboard behavior.
+- **Task editing and pickers:** More responsive controls, shared keyboard-friendly priority selection, reduced background work, and more reliable focus and interaction behavior.
+
+### Fixed
+This release also includes a large set of fixes across Task Editor, recurring tasks, pipeline migrations, external calendars, mobile pickers, Calendar navigation, optimistic updates, default priorities, and demo workspace setup.
+
+A lot of edge cases. A lot of cleanup. Operon should simply feel more dependable now.
+
+### Updated Docs
+- [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
+- [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]
+- [[DOCS-106 Table columns|Table columns]]
+- [[DOCS-024 Task templates|Task templates]]
+- [[DOCS-050 Daily Notes workflows|Daily Notes workflows]]
+- And 4 more updated docs.
+`.trim(),
+	},
+	{
 		version: '2.0.1',
 		date: '2026-07-09',
 		title: 'Operon 2.0.1 - Table and Tooltip Fixes',

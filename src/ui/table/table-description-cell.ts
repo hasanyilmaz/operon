@@ -7,6 +7,10 @@ import {
 } from '../task-description-wikilinks';
 import { renderTableIconOnlyCell } from './table-icon-only-cell';
 
+export interface TableInlineEditSession {
+	finish(commit: boolean): void;
+}
+
 export interface TableDescriptionCellOptions {
 	value: string;
 	editable: boolean;
@@ -28,6 +32,8 @@ export interface TableDescriptionCellOptions {
 	};
 	onCommit?: (value: string) => Promise<boolean> | boolean | void;
 	onIconOnlyOpen?: () => void;
+	onInlineEditStart?: (session: TableInlineEditSession) => void;
+	onInlineEditFinish?: (session: TableInlineEditSession) => void;
 }
 
 function isInlineTextCellOverflowing(text: HTMLElement): boolean {
@@ -146,15 +152,18 @@ export function renderTableDescriptionCellContent(
 			const nextValue = input.value.trim();
 			if (!commit || nextValue === previousValue.trim()) {
 				renderDisplay(previousValue);
+				options.onInlineEditFinish?.(session);
 				return;
 			}
 			renderDisplay(nextValue);
+			options.onInlineEditFinish?.(session);
 			void Promise.resolve(options.onCommit?.(nextValue)).then(result => {
 				if (result === false) {
 					renderDisplay(previousValue);
 				}
 			});
 		};
+		const session: TableInlineEditSession = { finish };
 
 		input.addEventListener('click', event => event.stopPropagation());
 		input.addEventListener('dblclick', event => event.stopPropagation());
@@ -170,7 +179,9 @@ export function renderTableDescriptionCellContent(
 			finish(true);
 		});
 		input.addEventListener('blur', () => finish(true));
+		options.onInlineEditStart?.(session);
 		window.requestAnimationFrame(() => {
+			if (finished || !input.isConnected) return;
 			input.focus();
 			const end = input.value.length;
 			input.setSelectionRange(end, end);

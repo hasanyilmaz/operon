@@ -674,7 +674,8 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 				continue;
 			}
 			if (section.kind === 'title') {
-				if (preserveTitle && !managedYamlKeys.has(section.yamlKey)) {
+				const isDynamicTemplateTitle = !preserveTitle && /\{\{title\}\}/.test(section.raw);
+				if ((preserveTitle || isDynamicTemplateTitle) && !managedYamlKeys.has(section.yamlKey)) {
 					emit(section.yamlKey, section.raw);
 				}
 				continue;

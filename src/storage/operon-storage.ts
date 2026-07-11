@@ -26,10 +26,12 @@ import { TaskCreationProfileStore, TaskCreationProfileStoreSettings } from './ta
 import { TaskAutomationPolicyStore, TaskAutomationPolicyStoreSettings } from './task-automation-policy-store';
 import { ActiveTrackerStore } from './active-tracker-store';
 import { ProjectSerialStore } from './project-serial-store';
+import { FieldRenameJournalStore } from './field-rename-journal-store';
 import { enginePerfNow, WriteJsonMetrics } from '../core/engine-perf';
 import { writeTextSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import {
 	buildOperonDataPackageFromSettings,
+	composeOperonSettingsFromDataPackage,
 	mergePinnedTasksPackages,
 	OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
 	prunePinnedTaskTombstones,
@@ -37,7 +39,9 @@ import {
 } from './operon-data-package';
 import {
 	OperonDataPackageStore,
+	type OperonDataPackageReloadStage,
 	type OperonDataPackageReloadDiagnostics,
+	type OperonPipelineTaxonomyDiagnostics,
 	type OperonPluginDataAccess,
 } from './operon-data-package-store';
 import {
@@ -53,6 +57,14 @@ export interface OperonStorageOptions extends Partial<OperonPluginDataAccess> {
 export interface OperonStorageReloadSettingsResult {
 	changed: boolean;
 	diagnostics: OperonDataPackageReloadDiagnostics;
+}
+
+function cloneOperonSettings(settings: OperonSettings): OperonSettings {
+	return migrateSettings(JSON.parse(JSON.stringify(settings)) as unknown);
+}
+
+function cloneOperonSettingsPartial(partial: Partial<OperonSettings>): Partial<OperonSettings> {
+	return JSON.parse(JSON.stringify(partial)) as Partial<OperonSettings>;
 }
 
 function pickPipelineStoreSettings(settings: OperonSettings): PipelineStoreSettings {
@@ -202,6 +214,7 @@ export class OperonStorage {
 	private taskAutomationPolicyStore: TaskAutomationPolicyStore;
 	private activeTrackerStore: ActiveTrackerStore;
 	private projectSerialStore: ProjectSerialStore;
+	private fieldRenameJournalStore: FieldRenameJournalStore;
 
 	constructor(app: App, options: OperonStorageOptions = {}) {
 		this.app = app;
@@ -308,6 +321,11 @@ export class OperonStorage {
 			this.writeQueue,
 			this.storagePaths.state.projectSerialsPath,
 		);
+		this.fieldRenameJournalStore = new FieldRenameJournalStore(
+			app,
+			this.writeQueue,
+			this.storagePaths.state.fieldRenameJournalPath,
+		);
 		this.filterStore.setPackagePersistence(async () => {
 			this.settings.filterSets = this.filterStore.getAll();
 			await this.saveSettings();
@@ -317,8 +335,7 @@ export class OperonStorage {
 			await this.saveSettings();
 		});
 		this.pipelineStore.setPackagePersistence(async (settings) => {
-			Object.assign(this.settings, settings);
-			await this.saveSettings();
+			await this.updateSettings(settings);
 		});
 		this.calendarPresetStore.setPackagePersistence(async (settings) => {
 			Object.assign(this.settings, settings);
@@ -369,6 +386,7 @@ export class OperonStorage {
 		await this.activeTrackerStore.load();
 		await this.repeatSeriesStore.load();
 		await this.projectSerialStore.load();
+		await this.fieldRenameJournalStore.load();
 		await this.externalCalendarCache.load();
 	}
 
@@ -413,27 +431,40 @@ export class OperonStorage {
 	}
 
 	private async persistSettings(_options: RecoveredStoreWriteOptions): Promise<void> {
+		if (!this.dataPackageStore.canPersist()) {
+			if (_options.forceRecoveredWrite === false) return;
+			throw new Error(`Operon settings writes are suspended: ${this.dataPackageStore.getWriteSuspensionReason() ?? 'data.json could not be preserved safely'}`);
+		}
+		if (this.settings.pipelines.length === 0) {
+			throw new Error('Operon requires at least one configured pipeline');
+		}
 		this.settings.filterSets = this.filterStore.getAll();
 		const normalized = migrateSettings(this.settings);
 		this.applySettingsInPlace(normalized);
-		if (!this.dataPackageStore.canPersist()) return;
 		await this.tablePresetStore.replaceAll(pickTablePresetStoreSettings(this.settings));
-		this.hydratePackageBackedSettingStores();
-		const currentPackage = this.dataPackageStore.getDataPackage();
-		const pinnedTasks = prunePinnedTaskTombstones(
-			mergePinnedTasksPackages(
-				currentPackage.state.pinnedTasks,
-				this.pinnedCache.toPackage(),
-			),
-			new Date().toISOString(),
-			OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
-		);
 		const dataPackage = buildOperonDataPackageFromSettings(this.settings, {
 			filterSets: this.filterStore.getAll(),
 			kanbanOrderBoards: this.kanbanOrderStore.toPackage().boards,
-			pinnedTasks,
+			pinnedTasks: this.pinnedCache.toPackage(),
 		});
-		await this.dataPackageStore.replaceDataPackage(dataPackage);
+		await this.dataPackageStore.updateDataPackage(currentPackage => {
+			const pinnedTasks = prunePinnedTaskTombstones(
+				mergePinnedTasksPackages(
+					currentPackage.state.pinnedTasks,
+					dataPackage.state.pinnedTasks,
+				),
+				new Date().toISOString(),
+				OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
+			);
+			return {
+				...dataPackage,
+				state: {
+					...dataPackage.state,
+					pinnedTasks,
+				},
+			};
+		});
+		this.hydratePackageBackedSettingStores();
 	}
 
 	/**
@@ -447,18 +478,59 @@ export class OperonStorage {
 	 * Update settings and persist.
 	 */
 	async updateSettings(partial: Partial<OperonSettings>): Promise<void> {
-		Object.assign(this.settings, partial);
-		await this.saveSettings();
+		const pendingUpdate = cloneOperonSettingsPartial(partial);
+		if (pendingUpdate.pipelines?.length === 0) {
+			throw new Error('Operon requires at least one configured pipeline');
+		}
+		// Apply the patch only after earlier saves or reloads commit, so it rebases on their latest state.
+		const run = this.settingsSaveQueue.then(async () => {
+			const previousSettings = this.getCommittedSettingsSnapshot();
+			Object.assign(this.settings, pendingUpdate);
+			try {
+				await this.persistSettings({ forceRecoveredWrite: true });
+			} catch (error) {
+				this.applySettingsInPlace(previousSettings);
+				this.hydratePackageBackedSettingStores();
+				throw error;
+			}
+		});
+		this.settingsSaveQueue = run.then(() => undefined, () => undefined);
+		await run;
 	}
 
 	async reloadCanonicalSettingsPackage(): Promise<OperonStorageReloadSettingsResult> {
-		await this.settingsSaveQueue;
-		const result = await this.dataPackageStore.reloadCanonicalDataPackage(DEFAULT_SETTINGS);
-		const tablePresetsChanged = await this.hydrateFromDataPackage(result.dataPackage, { preserveSettingsIdentity: true });
-		return {
-			changed: result.changed || tablePresetsChanged,
-			diagnostics: result.diagnostics,
-		};
+		// Reload occupies the settings mutex so a later save cannot build from a half-staged package.
+		const run = this.settingsSaveQueue.then(async () => {
+			const result = await this.dataPackageStore.reloadCanonicalDataPackage(DEFAULT_SETTINGS, {
+				stage: dataPackage => this.stageCanonicalDataPackageReload(dataPackage),
+			});
+			return {
+				changed: result.changed,
+				diagnostics: result.diagnostics,
+			};
+		});
+		this.settingsSaveQueue = run.then(() => undefined, () => undefined);
+		return run;
+	}
+
+	async backupCanonicalSettingsPackage(raw?: unknown): Promise<string> {
+		return this.dataPackageStore.backupCanonicalDataPackage(raw);
+	}
+
+	suspendCanonicalSettingsWrites(reason: string): void {
+		this.dataPackageStore.suspendWrites(reason);
+	}
+
+	resumeCanonicalSettingsWrites(): void {
+		this.dataPackageStore.resumeWrites();
+	}
+
+	getCanonicalSettingsWriteSuspensionReason(): string | null {
+		return this.dataPackageStore.getWriteSuspensionReason();
+	}
+
+	getStartupPipelineTaxonomyDiagnostics(): OperonPipelineTaxonomyDiagnostics {
+		return this.dataPackageStore.getStartupPipelineTaxonomyDiagnostics();
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
@@ -467,6 +539,75 @@ export class OperonStorage {
 		for (const key of Object.keys(normalized)) {
 			target[key] = source[key];
 		}
+	}
+
+	private getCommittedSettingsSnapshot(): OperonSettings {
+		const committed = this.dataPackageStore.getSettings(DEFAULT_SETTINGS);
+		Object.assign(committed, this.tablePresetStore.getAll());
+		return committed;
+	}
+
+	private async stageCanonicalDataPackageReload(
+		dataPackage: OperonDataPackageV1,
+	): Promise<OperonDataPackageReloadStage> {
+		const nextSettings = composeOperonSettingsFromDataPackage(dataPackage, DEFAULT_SETTINGS);
+		const stagedFilterStore = new FilterStore(this.app, this.writeQueue);
+		stagedFilterStore.loadFromPackage(dataPackage.views.filters, {
+			seedDynamicDefaultSorts: dataPackage.settings.settingsVersion < 88,
+		});
+		nextSettings.filterSets = stagedFilterStore.getAll();
+		const stagedTablePresetStore = new TablePresetStore(
+			this.app,
+			this.writeQueue,
+			pickTablePresetStoreSettings(nextSettings),
+		);
+		const tableLoad = await stagedTablePresetStore.load(
+			pickTablePresetStoreSettings(nextSettings),
+			{
+				availableFilterSetIds: nextSettings.filterSets.map(filterSet => filterSet.id),
+				canSeedFromFallback: false,
+			},
+		);
+		Object.assign(nextSettings, tableLoad.settings);
+
+		const previousSettings = cloneOperonSettings(this.settings);
+		const previousDataPackage = this.dataPackageStore.getDataPackage();
+		const previousTableSnapshot = this.tablePresetStore.captureRuntimeSnapshot();
+		Object.assign(previousSettings, previousTableSnapshot.settings);
+		const nextTableSnapshot = stagedTablePresetStore.captureRuntimeSnapshot();
+		const tablePresetsChanged = JSON.stringify(previousTableSnapshot.settings)
+			!== JSON.stringify(pickTablePresetStoreSettings(nextSettings));
+		let commitStarted = false;
+
+		const applyRuntimePackage = (
+			packageToApply: OperonDataPackageV1,
+			settingsToApply: OperonSettings,
+		): void => {
+			this.filterStore.loadFromPackage(packageToApply.views.filters, {
+				seedDynamicDefaultSorts: packageToApply.settings.settingsVersion < 88,
+			});
+			this.kanbanOrderStore.loadFromPackage(packageToApply.views.kanbanOrder);
+			this.pinnedCache.loadFromPackage(packageToApply.state.pinnedTasks, {
+				resetGeneration: false,
+			});
+			this.applySettingsInPlace(settingsToApply);
+			this.settings.filterSets = this.filterStore.getAll();
+			this.hydratePackageBackedSettingStores();
+		};
+
+		return {
+			changed: tablePresetsChanged,
+			commit: () => {
+				commitStarted = true;
+				this.tablePresetStore.restoreRuntimeSnapshot(nextTableSnapshot);
+				applyRuntimePackage(dataPackage, nextSettings);
+			},
+			rollback: () => {
+				if (!commitStarted) return;
+				this.tablePresetStore.restoreRuntimeSnapshot(previousTableSnapshot);
+				applyRuntimePackage(previousDataPackage, previousSettings);
+			},
+		};
 	}
 
 	private async hydrateFromDataPackage(
@@ -480,7 +621,7 @@ export class OperonStorage {
 		this.pinnedCache.loadFromPackage(dataPackage.state.pinnedTasks, {
 			resetGeneration: !options.preserveSettingsIdentity,
 		});
-		const nextSettings = this.dataPackageStore.getSettings(DEFAULT_SETTINGS);
+		const nextSettings = composeOperonSettingsFromDataPackage(dataPackage, DEFAULT_SETTINGS);
 		const tableLoad = await this.tablePresetStore.load(
 			pickTablePresetStoreSettings(nextSettings),
 			{
@@ -597,6 +738,7 @@ export class OperonStorage {
 	get activeTrackers(): ActiveTrackerStore { return this.activeTrackerStore; }
 	get repeatSeries(): RepeatSeriesStore { return this.repeatSeriesStore; }
 	get projectSerials(): ProjectSerialStore { return this.projectSerialStore; }
+	get fieldRenameJournal(): FieldRenameJournalStore { return this.fieldRenameJournalStore; }
 	get externalCalendars(): ExternalCalendarCacheStore { return this.externalCalendarCache; }
 	get externalCalendarSources(): ExternalCalendarSourceStore { return this.externalCalendarSourceStore; }
 	get filters(): FilterStore { return this.filterStore; }
@@ -616,6 +758,7 @@ export class OperonStorage {
 				this.activeTrackerStore.drain(),
 			this.repeatSeriesStore.drain(),
 			this.projectSerialStore.drain(),
+			this.fieldRenameJournalStore.drain(),
 			this.externalCalendarCache.drain(),
 		]);
 		await this.writeQueue.drain();

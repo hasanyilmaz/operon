@@ -2,12 +2,18 @@ import { parseListValue } from '../core/parser';
 import { filterTasksForCalendar } from './calendar-filter-materialization';
 import { buildTaskSearchMatcher, matchesTaskSearchQueryText } from './task-search';
 import { IndexedTask } from '../types/fields';
-import { composeStatusValue, parseStatusValue, Pipeline, StatusDefinition } from '../types/pipeline';
+import { composeStatusValue, Pipeline, StatusDefinition } from '../types/pipeline';
 import { PinnedCache } from '../storage/pinned-cache';
 import { KanbanPreset, KanbanSortField, KanbanSortRule, KanbanSwimlaneBy } from '../types/kanban';
 import { FilterSet, KeyMapping } from '../types/settings';
 import { t } from '../core/i18n';
+import { buildPriorityRankMap, normalizePriorityValue } from '../core/priority-rank';
 import { getManagedCustomFieldOptionMapping, normalizeManagedFieldValue } from '../core/managed-task-fields';
+import {
+	buildWorkflowStatusIdentityIndex,
+	resolveConfiguredStatusIdentity,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 
 export const KANBAN_NO_VALUE_KEY = '__kanban_no_value__';
 export function getKanbanNoValueLabel(): string {
@@ -47,6 +53,7 @@ export interface KanbanBoardData {
 export function queryKanbanBoard(options: {
 	preset: KanbanPreset;
 	pipeline: Pipeline | null;
+	pipelines?: readonly Pipeline[];
 	filterSet: FilterSet | null;
 	tasks: IndexedTask[];
 	priorities: { label: string; color?: string }[];
@@ -64,9 +71,12 @@ export function queryKanbanBoard(options: {
 	const allowedTaskIds = options.taskIdFilter ? new Set(options.taskIdFilter) : null;
 	const searchMatcher = normalizedSearchQuery ? buildTaskSearchMatcher(options.tasks, keyMappings) : null;
 	const scopedTasks = filterTasksForCalendar(filterSet, options.tasks, priorities, pinnedCache ?? null);
+	const identityIndex = buildWorkflowStatusIdentityIndex(
+		options.pipelines ?? (pipeline ? [pipeline] : []),
+	);
 	const relevantTasks = pipeline
 		? scopedTasks
-			.filter(task => isTaskInPipeline(task, pipeline))
+			.filter(task => isTaskInPipelineWithIndex(task, pipeline, identityIndex))
 			.filter(task => !allowedTaskIds || allowedTaskIds.has(task.operonId))
 			.filter(task => !searchMatcher || searchMatcher(task, normalizedSearchQuery))
 		: [];
@@ -79,11 +89,11 @@ export function queryKanbanBoard(options: {
 	const taskComparator = buildKanbanTaskComparator({ preset, priorities, keyMappings });
 
 	for (const task of relevantTasks) {
-		const status = pipeline ? resolveTaskStatusDefinition(task, pipeline) : null;
+		const status = pipeline ? resolveTaskStatusDefinitionWithIndex(task, pipeline, identityIndex) : null;
 		if (!status) continue;
 		const statusId = status.id;
 		statusTaskCounts.set(statusId, (statusTaskCounts.get(statusId) ?? 0) + 1);
-		for (const laneKey of extractLaneKeys(task, preset.swimlaneBy, keyMappings)) {
+		for (const laneKey of extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities)) {
 			const cellKey = buildKanbanCellKey(statusId, laneKey);
 			cellCountMap.set(cellKey, (cellCountMap.get(cellKey) ?? 0) + 1);
 			if (skippedStatusIds.has(statusId)) continue;
@@ -153,7 +163,7 @@ export function buildKanbanTaskComparator(options: {
 	priorities: { label: string; color?: string }[];
 	keyMappings?: readonly KeyMapping[];
 }): (left: IndexedTask, right: IndexedTask) => number {
-	const priorityRank = new Map(options.priorities.map((priority, index) => [priority.label.trim().toLocaleLowerCase(), index] as const));
+	const priorityRank = buildPriorityRankMap(options.priorities);
 	const keyMappings = options.keyMappings ?? [];
 	const rules = options.preset.sortRules.length > 0
 		? options.preset.sortRules
@@ -210,7 +220,7 @@ function resolveKanbanSortValue(
 		return value || null;
 	}
 	if (field === 'priority') {
-		const value = (task.fieldValues['priority'] ?? '').trim().toLocaleLowerCase();
+		const value = normalizePriorityValue(task.fieldValues['priority'] ?? '');
 		return value ? (priorityRank.get(value) ?? Number.MAX_SAFE_INTEGER) : null;
 	}
 	if (field === 'estimate' || field === 'progress') {
@@ -288,23 +298,57 @@ export function buildKanbanCellKey(statusId: string, laneKey: string): string {
 	return `${statusId}::${laneKey}`;
 }
 
-export function isTaskInPipeline(task: IndexedTask, pipeline: Pipeline): boolean {
-	const parsed = parseStatusValue((task.fieldValues['status'] ?? '').trim());
-	if (!parsed) return false;
-	if (parsed.pipeline !== pipeline.name) return false;
-	return pipeline.statuses.some(status => status.label === parsed.status);
+export function isTaskInPipeline(
+	task: IndexedTask,
+	pipeline: Pipeline,
+	pipelines: readonly Pipeline[] = [pipeline],
+): boolean {
+	return isTaskInPipelineWithIndex(
+		task,
+		pipeline,
+		buildWorkflowStatusIdentityIndex(pipelines),
+	);
 }
 
-export function resolveTaskStatusDefinition(task: IndexedTask, pipeline: Pipeline): StatusDefinition | null {
-	const parsed = parseStatusValue((task.fieldValues['status'] ?? '').trim());
-	if (!parsed || parsed.pipeline !== pipeline.name) return null;
-	return pipeline.statuses.find(status => status.label === parsed.status) ?? null;
+export function resolveTaskStatusDefinition(
+	task: IndexedTask,
+	pipeline: Pipeline,
+	pipelines: readonly Pipeline[] = [pipeline],
+): StatusDefinition | null {
+	return resolveTaskStatusDefinitionWithIndex(
+		task,
+		pipeline,
+		buildWorkflowStatusIdentityIndex(pipelines),
+	);
+}
+
+export function isTaskInPipelineWithIndex(
+	task: IndexedTask,
+	pipeline: Pipeline,
+	identityIndex: WorkflowStatusIdentityIndex,
+): boolean {
+	return resolveTaskStatusDefinitionWithIndex(task, pipeline, identityIndex) !== null;
+}
+
+function resolveTaskStatusDefinitionWithIndex(
+	task: IndexedTask,
+	pipeline: Pipeline,
+	identityIndex: WorkflowStatusIdentityIndex,
+): StatusDefinition | null {
+	const identity = resolveConfiguredStatusIdentity(task.fieldValues['status'], identityIndex);
+	if (identity.kind !== 'configured') return null;
+	const uniqueStableIdMatch = !!pipeline.id
+		&& identity.pipeline.id === pipeline.id
+		&& identityIndex.pipelineCountById.get(pipeline.id) === 1;
+	if (identity.pipeline !== pipeline && !uniqueStableIdMatch) return null;
+	return identity.status;
 }
 
 export function extractLaneKeys(
 	task: IndexedTask,
 	swimlaneBy: KanbanSwimlaneBy | null,
 	keyMappings: readonly KeyMapping[] = [],
+	priorities: readonly { label: string }[] = [],
 ): string[] {
 	if (!swimlaneBy) return [KANBAN_NO_VALUE_KEY];
 
@@ -332,8 +376,24 @@ export function extractLaneKeys(
 
 	if (!isBuiltInKanbanScalarSwimlane(swimlaneBy)) return [KANBAN_NO_VALUE_KEY];
 
-	const value = (task.fieldValues[swimlaneBy] ?? '').trim();
-	return value ? [value] : [KANBAN_NO_VALUE_KEY];
+	const rawValue = (task.fieldValues[swimlaneBy] ?? '').trim();
+	if (!rawValue) return [KANBAN_NO_VALUE_KEY];
+	// Priority matches leniently but keys on the CANONICAL label, so a task written
+	// `priority:: s` buckets into the configured `S` lane while lane keys and drop
+	// writeback stay the exact label (see priority-rank / Policy A). Dates stay verbatim.
+	if (swimlaneBy === 'priority') {
+		return [resolveCanonicalPriorityLaneKey(rawValue, priorities)];
+	}
+	return [rawValue];
+}
+
+function resolveCanonicalPriorityLaneKey(
+	rawValue: string,
+	priorities: readonly { label: string }[],
+): string {
+	const normalized = normalizePriorityValue(rawValue);
+	const match = priorities.find(priority => normalizePriorityValue(priority.label) === normalized);
+	return match ? match.label : rawValue;
 }
 
 function isBuiltInKanbanScalarSwimlane(swimlaneBy: KanbanSwimlaneBy): boolean {
@@ -359,7 +419,7 @@ function buildKanbanLanes(
 
 	const laneCounts = new Map<string, number>();
 	for (const task of tasks) {
-		for (const key of extractLaneKeys(task, swimlaneBy, keyMappings)) {
+		for (const key of extractLaneKeys(task, swimlaneBy, keyMappings, priorities)) {
 			laneCounts.set(key, (laneCounts.get(key) ?? 0) + 1);
 		}
 	}

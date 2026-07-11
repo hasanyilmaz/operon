@@ -28,7 +28,7 @@ import { CheckboxState, TASK_STATS_CANONICAL_KEYS } from '../types/keys';
 import { OperonStorage } from '../storage/operon-storage';
 import { scanFileWithMappings, inlineLocation, yamlLocation } from './file-scanner';
 import { SecondaryIndexes } from './secondary-indexes';
-import { resolveWorkflowStatus } from '../types/pipeline';
+import { clonePipeline, Pipeline, resolveWorkflowStatus } from '../types/pipeline';
 import { resolveYamlTaskEffectiveTimestamps } from '../core/yaml-task-file-stat-sync';
 import { isOperonExcludedPath } from '../core/operon-path-exclusions';
 import {
@@ -40,10 +40,15 @@ import {
 import { WindowTimeoutHandle, clearWindowTimeout, setWindowTimeout } from '../core/dom-compat';
 import { parseTaskStatsReadModel } from '../core/task-stats-read-model';
 import { isManagedTaskFieldCanonicalKey } from '../core/managed-task-fields';
+import { buildWorkflowStatusSemanticsSignature } from '../core/workflow-status-semantics';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 
 const WARM_THRESHOLD_DAYS = 90;
 // Bump when index semantics change (e.g., scanner exclusions) so stale cache is discarded.
-const INDEX_VERSION = 6;
+const INDEX_VERSION = 7;
 const AGGREGATE_FIELD_PATCH_KEYS = new Set([
 	'progress',
 	...TASK_STATS_CANONICAL_KEYS,
@@ -69,6 +74,22 @@ export interface ReindexOptions {
 	notify?: boolean;
 	perfContext?: IndexPerfContext;
 }
+
+export type CachedIndexLoadResult =
+	| { status: 'loaded' }
+	| { status: 'missing' }
+	| {
+		status: 'incompatible';
+		reason: 'version';
+		expectedVersion: number;
+		cachedVersion: number | null;
+	}
+	| {
+		status: 'incompatible';
+		reason: 'workflow-semantics';
+		expectedSignature: string;
+		cachedSignature: string | null;
+	};
 
 export interface AggregateFieldPatch {
 	operonId: string;
@@ -154,6 +175,7 @@ export class OperonIndexer {
 	private persistTimer: WindowTimeoutHandle | null = null;
 	private readonly persistDebounceMs = 350;
 	private indexOperationTail: Promise<void> = Promise.resolve();
+	private coherentWorkflowStatusSemanticsSignature: string | null = null;
 
 	constructor(app: App, storage: OperonStorage) {
 		this.app = app;
@@ -175,18 +197,22 @@ export class OperonIndexer {
 	private async doFullReindex(): Promise<void> {
 		const startTime = performance.now();
 		const staged = this.createEmptyIndexState();
+		const pipelineSnapshot = this.storage.getSettings().pipelines.map(pipeline => clonePipeline(pipeline));
+		const workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(pipelineSnapshot);
+		const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelineSnapshot);
 
 		const files = this.app.vault.getMarkdownFiles()
 			.filter(file => !isOperonExcludedPath(file.path, this.storage.getSettings()));
 
 		for (const file of files) {
-			await this.indexFile(file, staged);
+			await this.indexFile(file, staged, pipelineSnapshot, workflowStatusIdentityIndex);
 		}
 
 		const secondaryStart = enginePerfNow();
 		staged.secondary.rebuild(staged.tasks);
 		enginePerfLog('secondary.rebuild.full', `${Math.round(enginePerfNow() - secondaryStart)}ms`, `tasks=${staged.tasks.size}`);
 		this.commitIndexState(staged);
+		this.coherentWorkflowStatusSemanticsSignature = workflowStatusSemanticsSignature;
 		this.generation += 1;
 
 		const elapsed = performance.now() - startTime;
@@ -200,9 +226,31 @@ export class OperonIndexer {
 	 * Load cached index from disk, then verify in background.
 	 * Architecture doc Section 4.5: Load cached first (< 100ms), background verify.
 	 */
-	async loadCachedIndex(): Promise<boolean> {
+	async loadCachedIndex(): Promise<CachedIndexLoadResult> {
 		const data = await this.storage.loadIndex();
-		if (!data || data.version !== INDEX_VERSION) return false;
+		if (!data) return { status: 'missing' };
+		if (data.version !== INDEX_VERSION) {
+			return {
+				status: 'incompatible',
+				reason: 'version',
+				expectedVersion: INDEX_VERSION,
+				cachedVersion: typeof data.version === 'number' ? data.version : null,
+			};
+		}
+
+		const expectedSignature = buildWorkflowStatusSemanticsSignature(
+			this.storage.getSettings().pipelines,
+		);
+		if (data.workflowStatusSemanticsSignature !== expectedSignature) {
+			return {
+				status: 'incompatible',
+				reason: 'workflow-semantics',
+				expectedSignature,
+				cachedSignature: typeof data.workflowStatusSemanticsSignature === 'string'
+					? data.workflowStatusSemanticsSignature
+					: null,
+			};
+		}
 
 		this.tasks.clear();
 		this.taskInstances.clear();
@@ -250,9 +298,10 @@ export class OperonIndexer {
 		this.secondary.rebuild(this.tasks);
 		enginePerfLog('secondary.rebuild.cached', `${Math.round(enginePerfNow() - secondaryStart)}ms`, `tasks=${this.tasks.size}`);
 		this.lastSavedAt = data.lastFullReindex ? new Date(data.lastFullReindex).getTime() : 0;
+		this.coherentWorkflowStatusSemanticsSignature = data.workflowStatusSemanticsSignature;
 		this.generation += 1;
 		console.debug(`Operon: Loaded cached index — ${this.tasks.size} tasks`);
-		return true;
+		return { status: 'loaded' };
 	}
 
 	/**
@@ -448,6 +497,8 @@ export class OperonIndexer {
 
 	private async doReindexFilesBatch(filePaths: string[], options: ReindexOptions = {}): Promise<void> {
 		const startedAt = enginePerfNow();
+		const pipelines = this.storage.getSettings().pipelines;
+		const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 		const removedTasks: IndexedTask[] = [];
 		const beforeById = new Map<string, IndexedTask | undefined>();
 		const scannedIds = new Set<string>();
@@ -467,7 +518,7 @@ export class OperonIndexer {
 			const staged = this.createEmptyIndexState();
 			let fileScannedIds: Set<string>;
 			try {
-				fileScannedIds = await this.indexFile(file, staged);
+				fileScannedIds = await this.indexFile(file, staged, pipelines, workflowStatusIdentityIndex);
 			} catch (error) {
 				console.warn(`Operon: failed to reindex ${fp}; keeping previous index state`, error);
 				continue;
@@ -587,7 +638,12 @@ export class OperonIndexer {
 	/**
 	 * Index a single file: scan for tasks and merge into primary index.
 	 */
-	private async indexFile(file: TFile, state: IndexState = this.getLiveIndexState()): Promise<Set<string>> {
+	private async indexFile(
+		file: TFile,
+		state: IndexState = this.getLiveIndexState(),
+		pipelines: Pipeline[] = this.storage.getSettings().pipelines,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines),
+	): Promise<Set<string>> {
 		const scannedIds = new Set<string>();
 		if (isOperonExcludedPath(file.path, this.storage.getSettings())) {
 			state.fileMtimes.delete(file.path);
@@ -620,27 +676,25 @@ export class OperonIndexer {
 				if (!isManagedTaskFieldCanonicalKey(canonicalKey, keyMappings)) continue;
 				fieldValues[canonicalKey] = f.value;
 			}
-			const workflowState = resolveWorkflowStatus(this.storage.getSettings().pipelines, fieldValues['status']);
+			const workflowState = resolveWorkflowStatus(pipelines, fieldValues['status'], workflowStatusIdentityIndex);
 			let checkbox = parsed.checkbox;
-			if (workflowState?.checkbox === 'done' || workflowState?.checkbox === 'cancelled') {
+			if (workflowState) {
 				checkbox = workflowState.checkbox;
 			} else if (fieldValues['dateCancelled']) {
 				checkbox = 'cancelled';
 			} else if (fieldValues['dateCompleted']) {
 				checkbox = 'done';
-			} else if (workflowState) {
-				checkbox = 'open';
 			}
 
-				this.mergeTaskInstance(parsed.operonId, {
-					description: parsed.description,
-					checkbox,
-					fieldValues,
-					tags: Array.from(inlineTags),
-					location,
-					datetimeModified: fieldValues['datetimeModified'] ?? '',
-					plainCheckboxProgress: normalizePlainCheckboxProgress(result.plainCheckboxProgress.byInlineTaskId[parsed.operonId]),
-				}, state);
+			this.mergeTaskInstance(parsed.operonId, {
+				description: parsed.description,
+				checkbox,
+				fieldValues,
+				tags: Array.from(inlineTags),
+				location,
+				datetimeModified: fieldValues['datetimeModified'] ?? '',
+				plainCheckboxProgress: normalizePlainCheckboxProgress(result.plainCheckboxProgress.byInlineTaskId[parsed.operonId]),
+			}, state);
 		}
 
 		// Process YAML task
@@ -662,9 +716,9 @@ export class OperonIndexer {
 			}
 
 			// If workflow status resolves, it is the semantic source of truth.
-			const workflowState = resolveWorkflowStatus(this.storage.getSettings().pipelines, fv['status']);
+			const workflowState = resolveWorkflowStatus(pipelines, fv['status'], workflowStatusIdentityIndex);
 			let checkbox: CheckboxState = 'open';
-			if (workflowState?.checkbox === 'done' || workflowState?.checkbox === 'cancelled') {
+			if (workflowState) {
 				checkbox = workflowState.checkbox;
 			} else if (fv['dateCancelled']) {
 				checkbox = 'cancelled';
@@ -672,15 +726,15 @@ export class OperonIndexer {
 				checkbox = 'done';
 			}
 
-				this.mergeTaskInstance(result.yamlTask.operonId, {
-					description: result.yamlTask.description,
-					checkbox,
-					fieldValues: fv,
-					tags: result.yamlTask.tags,
-					location,
-					datetimeModified: effectiveTimestamps.datetimeModified,
-					plainCheckboxProgress: normalizePlainCheckboxProgress(result.plainCheckboxProgress.file),
-				}, state);
+			this.mergeTaskInstance(result.yamlTask.operonId, {
+				description: result.yamlTask.description,
+				checkbox,
+				fieldValues: fv,
+				tags: result.yamlTask.tags,
+				location,
+				datetimeModified: effectiveTimestamps.datetimeModified,
+				plainCheckboxProgress: normalizePlainCheckboxProgress(result.plainCheckboxProgress.file),
+			}, state);
 			}
 			return scannedIds;
 		}
@@ -842,14 +896,20 @@ export class OperonIndexer {
 	 * Uses atomic write via storage write queue.
 	 */
 	private async persistIndex(options: PersistIndexOptions = {}): Promise<void> {
+		if (this.coherentWorkflowStatusSemanticsSignature === null) {
+			console.warn('Operon: skipped index persistence before a coherent cache or full scan was available');
+			return;
+		}
 		const data: IndexData = {
 			version: INDEX_VERSION,
+			workflowStatusSemanticsSignature: this.coherentWorkflowStatusSemanticsSignature,
 			lastFullReindex: new Date().toISOString(),
 			tasks: Object.fromEntries(this.tasks),
 			taskInstances: Object.fromEntries(this.taskInstances),
 		};
 		const perfContext = this.resolveIndexPerfContext(options.perfContext, 'index-update');
 		if (options.immediate) {
+			this.discardPendingPersist();
 			await this.flushPersistData(data, perfContext, 1);
 			return;
 		}
@@ -861,6 +921,16 @@ export class OperonIndexer {
 			this.persistTimer = null;
 			void this.flushPendingPersist();
 		}, this.persistDebounceMs);
+	}
+
+	private discardPendingPersist(): void {
+		if (this.persistTimer) {
+			clearWindowTimeout(this.persistTimer);
+			this.persistTimer = null;
+		}
+		this.pendingPersistData = null;
+		this.pendingPersistRequestCount = 0;
+		this.pendingPersistContext = null;
 	}
 
 	async flushPendingPersist(): Promise<void> {

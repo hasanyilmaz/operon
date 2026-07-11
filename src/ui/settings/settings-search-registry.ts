@@ -85,6 +85,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('settings', 'coreGeneral', 'releaseNotesShowOnUpdate', 'settings', 'releaseNotesShowOnUpdate', 'releaseNotesShowOnUpdateDesc', 'toggle', ['release notes', 'what is new', 'updates', 'changelog', 'popup']),
 	section('settings', 'coreGeneral', 'demoWorkspace', 'settings', 'demoWorkspace', 'demoWorkspaceDesc', ['demo', 'sample workspace', 'basics workspace', 'example tasks']),
 	section('settings', 'coreGeneral', 'operonDocs', 'settings', 'operonDocsSection', 'operonDocsSectionDesc', ['docs', 'documentation', 'wiki', 'official docs', 'download docs']),
+	e('settings', 'coreGeneral', 'operonDocsFolder', 'settings', 'operonDocsFolder', 'operonDocsFolderDesc', 'folder', ['docs folder', 'documentation folder', 'wiki folder', 'docs location']),
 	e('settings', 'coreGeneral', 'operonDocsAutoUpdateEnabled', 'settings', 'operonDocsAutoUpdateEnabled', 'operonDocsAutoUpdateEnabledDesc', 'toggle', ['docs', 'documentation', 'wiki', 'auto update docs', 'official docs', 'plugin update docs']),
 	e('settings', 'coreGeneral', 'indexEventDebounceMs', 'settings', 'indexDebounce', 'indexDebounceDesc', 'number', ['index', 'reindex', 'index debounce', 'vault scan', 'file changes']),
 	e('settings', 'coreGeneral', 'fullReindexOnStartup', 'settings', 'fullReindexOnStartup', 'fullReindexOnStartupDesc', 'toggle', ['index', 'reindex', 'startup index', 'vault scan']),
@@ -97,7 +98,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('taxonomy', 'coreCustomKeys', 'customKeys', 'settings', 'tabCustomKeys', 'customKeysDesc', ['custom keys', 'custom fields', 'custom field', 'custom key', 'canonical custom key', 'add field', 'add custom field', 'show in editor', 'show in creator', 'show in chips', 'surface visibility', 'used in', 'usage', 'reorder custom field']),
 
 	e('automation', 'tasksInlineTasks', 'inlineTaskSaveMode', 'settings', 'inlineTaskDefaultSavePath', 'inlineTaskDefaultSavePathDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'inline save path', 'active file']),
-	e('automation', 'tasksInlineTasks', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),
+	e('automation', 'tasksInlineTasks', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileSearchDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),
 	e('automation', 'tasksInlineTasks', 'inlineTaskHeading', 'settings', 'inlineTaskHeading', 'inlineTaskHeadingDesc', 'text', ['new task', 'task creator', 'inline task', 'heading', 'section']),
 	e('automation', 'tasksInlineTasks', 'inlineTaskParentInlineTargetMode', 'settings', 'inlineParentTaskTargetMode', 'inlineParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'parent', 'parent placement', 'inline parent']),
 	e('automation', 'tasksInlineTasks', 'inlineTaskParentFileTargetMode', 'settings', 'fileParentTaskTargetMode', 'fileParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'file task', 'parent', 'parent placement']),

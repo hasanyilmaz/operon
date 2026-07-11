@@ -14,6 +14,7 @@ export interface RawOperonTaskLinePlaceholderContext {
 
 export interface OperonTemplatePlaceholderContext {
 	date: string;
+	time: string;
 	datetime: string;
 	taskDescription: string;
 	note: string;
@@ -30,13 +31,14 @@ export interface ResolveOperonTemplatePlaceholdersOptions extends ResolveOperonI
 }
 
 const PLACEHOLDER_PATTERN = /\{\{operonId([0-9A-Za-z]?)\}\}/g;
-const RAW_TASK_LINE_PLACEHOLDER_PATTERN = /\{\{(date|datetime|status|priority)\}\}/g;
-const TEMPLATE_PLACEHOLDER_PATTERN = /\{\{(date|datetime|taskDescription|note|dateStarted|dateScheduled|dateDue|status|priority)\}\}/g;
+const RAW_TASK_LINE_PLACEHOLDER_PATTERN = /\{\{(date|time|datetime|status|priority)\}\}/g;
+const TEMPLATE_PLACEHOLDER_PATTERN = /\{\{(date|time|datetime|taskDescription|note|dateStarted|dateScheduled|dateDue|status|priority)\}\}/g;
 
 function replaceRawTaskLinePlaceholders(text: string, options: ResolveOperonIdPlaceholdersOptions): string {
 	if (!options.now && !options.rawContext) return text;
 	return text.replace(RAW_TASK_LINE_PLACEHOLDER_PATTERN, (match, key: string) => {
 		if (key === 'date') return options.now ? options.now.slice(0, 10) : match;
+		if (key === 'time') return options.now ? options.now.slice(11, 16) : match;
 		if (key === 'datetime') return options.now ?? match;
 		return options.rawContext?.[key as keyof RawOperonTaskLinePlaceholderContext] ?? '';
 	});

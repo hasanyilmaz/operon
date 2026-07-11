@@ -1,4 +1,5 @@
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
+import { t } from '../../core/i18n';
 import { getManagedCustomFieldMappings } from '../../core/managed-task-fields';
 import { CANONICAL_KEYS, type ValueType } from '../../types/keys';
 import { CHECKBOX_PROGRESS_COLUMN_KEY } from '../task-progress-tracks';
@@ -28,6 +29,7 @@ export interface TableTaskField {
 }
 
 export const PROJECT_SERIAL_TABLE_FIELD_KEY = 'projectSerial';
+export const TABLE_WORKFLOW_PIPELINE_FIELD_KEY = 'workflow.pipeline';
 
 type TableTaskFieldCatalogSettings = Pick<OperonSettings, 'keyMappings'>;
 
@@ -113,6 +115,25 @@ function resolveTableTaskFieldCatalog(settings: TableTaskFieldCatalogSettings): 
 
 export function buildTableTaskFieldCatalog(settings: TableTaskFieldCatalogSettings): TableTaskField[] {
 	return resolveTableTaskFieldCatalog(settings).catalog;
+}
+
+export function buildTableGroupSortFieldCatalog(settings: TableTaskFieldCatalogSettings): TableTaskField[] {
+	const pipelineField: TableTaskField = {
+		key: TABLE_WORKFLOW_PIPELINE_FIELD_KEY,
+		label: t('table', 'fieldPipeline'),
+		type: 'text',
+		group: 'workflow',
+		icon: 'workflow',
+		readonly: true,
+		aliases: buildAliases(TABLE_WORKFLOW_PIPELINE_FIELD_KEY, t('table', 'fieldPipeline'), [
+			'workflow pipeline',
+			'status pipeline',
+		]),
+	};
+	return [
+		pipelineField,
+		...buildTableTaskFieldCatalog(settings).filter(field => field.key !== TABLE_WORKFLOW_PIPELINE_FIELD_KEY),
+	];
 }
 
 function buildTableTaskFieldCatalogUncached(settings: TableTaskFieldCatalogSettings): TableTaskField[] {

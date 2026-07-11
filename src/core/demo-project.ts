@@ -155,17 +155,30 @@ function yamlField(canonicalKey: string, value: string, keyMappings: KeyMapping[
 	return `${keyName}: ${renderedValue}`;
 }
 
+// Demo priority values are authored as canonical S–F ranks; map each to the label
+// occupying that rank in the user's configured priorities so a customized or renamed
+// priority list still produces valid, colored demo tasks (see priority code review 1.5).
+const DEMO_PRIORITY_RANK_LETTERS = ['S', 'A', 'B', 'C', 'D', 'E', 'F'] as const;
+
+export function resolveDemoPriorityLabel(letter: string, priorities: readonly { label: string }[]): string {
+	if (priorities.length === 0) return letter;
+	const rank = DEMO_PRIORITY_RANK_LETTERS.indexOf(letter as typeof DEMO_PRIORITY_RANK_LETTERS[number]);
+	if (rank < 0) return priorities[0].label;
+	return priorities[Math.min(rank, priorities.length - 1)].label;
+}
+
 function renderTaskLine(
 	task: DemoTaskDefinition,
 	parentTaskId: string,
 	section: Pick<DemoSectionDefinition, 'icon' | 'color'>,
 	now: string,
 	keyMappings: KeyMapping[],
+	priorities: readonly { label: string }[],
 	indent = '',
 ): string {
 	const checkbox = task.completed ? 'x' : ' ';
 	const status = task.status ?? (task.completed ? 'Project.Finished' : 'Project.Planned');
-	const priority = task.priority ?? 'C';
+	const priority = resolveDemoPriorityLabel(task.priority ?? 'C', priorities);
 	const tags = ['operon-demo', ...(task.tags ?? [])].map(tag => `#${tag}`).join(' ');
 	const fields: string[] = [
 		inlineField('operonId', task.id, keyMappings),
@@ -320,16 +333,17 @@ function buildSections(today: string): DemoSectionDefinition[] {
 	];
 }
 
-export function buildBasicsProjectContent(settings: Pick<OperonSettings, 'keyMappings'>): string {
+export function buildBasicsProjectContent(settings: Pick<OperonSettings, 'keyMappings' | 'priorities'>): string {
 	const now = localNow();
 	const today = localToday();
 	const keyMappings = settings.keyMappings;
+	const priorities = settings.priorities;
 	const sections = buildSections(today);
 	const lines: string[] = [
 		'---',
 		yamlField('operonId', OPERON_BASICS_ROOT_ID, keyMappings),
 		yamlField('status', 'Project.Planned', keyMappings),
-		yamlField('priority', 'B', keyMappings),
+		yamlField('priority', resolveDemoPriorityLabel('B', priorities), keyMappings),
 		yamlField('dateScheduled', today, keyMappings),
 		yamlField('dateDue', addDays(today, 7), keyMappings),
 		yamlField('taskIcon', 'sparkles', keyMappings),
@@ -352,9 +366,9 @@ export function buildBasicsProjectContent(settings: Pick<OperonSettings, 'keyMap
 			priority: 'B',
 			tags: ['operon-demo-section'],
 			fields: section.note ? { note: section.note } : undefined,
-		}, OPERON_BASICS_ROOT_ID, section, now, keyMappings));
+		}, OPERON_BASICS_ROOT_ID, section, now, keyMappings, priorities));
 		for (const child of section.children) {
-			lines.push(renderTaskLine(child, section.id, section, now, keyMappings, '  '));
+			lines.push(renderTaskLine(child, section.id, section, now, keyMappings, priorities, '  '));
 		}
 		lines.push('');
 	}
@@ -496,18 +510,19 @@ function buildSetupDays(today: string): SetupDayDefinition[] {
 	];
 }
 
-export function buildSetupVaultProjectContent(settings: Pick<OperonSettings, 'keyMappings'>): string {
+export function buildSetupVaultProjectContent(settings: Pick<OperonSettings, 'keyMappings' | 'priorities'>): string {
 	const now = localNow();
 	const today = localToday();
 	const startDate = addDays(today, 1);
 	const endDate = addDays(today, 7);
 	const keyMappings = settings.keyMappings;
+	const priorities = settings.priorities;
 	const days = buildSetupDays(today);
 	const lines: string[] = [
 		'---',
 		yamlField('operonId', OPERON_SETUP_ROOT_ID, keyMappings),
 		yamlField('status', 'Project.Planned', keyMappings),
-		yamlField('priority', 'A', keyMappings),
+		yamlField('priority', resolveDemoPriorityLabel('A', priorities), keyMappings),
 		yamlField('dateScheduled', startDate, keyMappings),
 		yamlField('dateDue', endDate, keyMappings),
 		yamlField('taskIcon', 'vault', keyMappings),
@@ -534,9 +549,9 @@ export function buildSetupVaultProjectContent(settings: Pick<OperonSettings, 'ke
 				dateScheduled: day.dateScheduled,
 				note: day.note,
 			},
-		}, OPERON_SETUP_ROOT_ID, day, now, keyMappings));
+		}, OPERON_SETUP_ROOT_ID, day, now, keyMappings, priorities));
 		for (const child of day.children) {
-			lines.push(renderTaskLine(child, day.id, day, now, keyMappings));
+			lines.push(renderTaskLine(child, day.id, day, now, keyMappings, priorities));
 		}
 		lines.push('');
 	}
@@ -870,7 +885,7 @@ export async function hasBasicsWorkspaceArtifact(app: App, store: BasicsWorkspac
 export async function createOrRepairBasicsWorkspace(
 	app: App,
 	store: BasicsWorkspaceStore,
-	settings: Pick<OperonSettings, 'keyMappings'>,
+	settings: Pick<OperonSettings, 'keyMappings' | 'priorities'>,
 ): Promise<BasicsWorkspaceResult> {
 	const basicsProject = await createFileIfMissing(
 		app,

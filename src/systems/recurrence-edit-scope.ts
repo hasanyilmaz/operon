@@ -266,10 +266,13 @@ function shiftDateKey(dateKey: string, deltaDays: number): string {
 function resolveAllDayEndDate(fieldValues: Record<string, string>, scheduledDate: string): string {
 	const dateStarted = normalizeDate(fieldValues['dateStarted']);
 	const dateDue = normalizeDate(fieldValues['dateDue']);
-	if (dateStarted && dateDue && dateDue >= dateStarted) {
-		return dateDue;
-	}
-	return scheduledDate;
+	if (!dateDue) return scheduledDate;
+	// Anchor the due-date offset to dateStarted when present, otherwise to
+	// dateScheduled. Without this fallback a task that only has scheduled + due
+	// (no started) loses its due offset on recurrence and dateDue collapses onto
+	// dateScheduled.
+	const anchor = dateStarted ?? scheduledDate;
+	return dateDue >= anchor ? dateDue : scheduledDate;
 }
 
 function parseBoundary(value: string): Date | null {

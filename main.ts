@@ -6,7 +6,7 @@
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, WorkspaceLeaf, editorLivePreviewField, requestUrl, setIcon } from 'obsidian';
+import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, editorLivePreviewField, requestUrl, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
 import { OperonStorage } from './src/storage/operon-storage';
@@ -159,7 +159,13 @@ import {
 } from './src/ui/live-preview-ephemeral-session';
 import { invalidateCustomFieldValueCandidateCache } from './src/ui/custom-field-surfaces';
 import { openTaskFieldPicker } from './src/ui/task-field-picker-dispatch';
-import { syncOperonDocs, type OperonDocsSyncResult } from './src/systems/operon-docs-sync';
+import {
+	moveOperonDocsFolder,
+	previewOperonDocsFolderMove,
+	syncOperonDocs,
+	type OperonDocsFolderMovePreview,
+	type OperonDocsSyncResult,
+} from './src/systems/operon-docs-sync';
 import { showPlainCheckboxPopover } from './src/ui/plain-checkbox-popover';
 import {
 	collectScopedPlainCheckboxMoveLines,
@@ -203,7 +209,7 @@ import { FileTaskArchiver } from './src/systems/file-task-archiver';
 import { ExternalCalendarService } from './src/systems/external-calendar-service';
 import { buildExternalCalendarItems } from './src/systems/external-calendar-query';
 import { formatDurationHuman, parseLocalDatetime } from './src/systems/tracker-utils';
-import { hasOperonFields, parseListValue, parseTaskLine, resolveInlineTaskDescriptionCursorCh } from './src/core/parser';
+import { hasOperonFields, isTaskLineCandidate, parseListValue, parseTaskLine, resolveInlineTaskDescriptionCursorCh } from './src/core/parser';
 import { buildSubtaskExcludedIds } from './src/core/task-hierarchy';
 import { serializeTask } from './src/core/serializer';
 import { applyFieldRules } from './src/core/field-rules';
@@ -238,9 +244,15 @@ import { isOperonExcludedPath } from './src/core/operon-path-exclusions';
 import { normalizeRepeatIdentityPayload } from './src/core/repeat-identity';
 import { shouldAutoUnpinTerminalTask } from './src/core/pinned-task-rules';
 import { OPERON_DEMO_AGGREGATE_PARENT_IDS, createOrRepairBasicsWorkspace, hasBasicsWorkspaceArtifact } from './src/core/demo-project';
-import { DEFAULT_DAILY_NOTE_FORMAT, resolveDailyNotePathFromDateKey } from './src/core/daily-note-path';
+import {
+	formatDailyNoteTitleFromDateKey,
+	resolveDailyNotePathFromDateKey,
+} from './src/core/daily-note-path';
+import { loadDailyNotesCoreConfig } from './src/core/daily-notes-core-config';
 import { buildDailyNoteInlineTaskDefaultWritePlans } from './src/core/daily-note-inline-task-defaults';
 import { resolveDailyNoteParentRealignmentTargetDate } from './src/core/daily-note-parent-realignment';
+import { resolveCoreTemplateVariables } from './src/core/core-template-variables';
+import { loadTemplatesCoreConfig } from './src/core/templates-core-config';
 import {
 	calculateRepeatEndFromCount,
 	parseRepeatRule,
@@ -294,7 +306,15 @@ import {
 	resolveTaskCreatorFileTargetFolderOverride as resolveTaskCreatorFileTargetFolderOverrideDecision,
 	resolveTaskCreatorInlinePlacement,
 } from './src/core/task-creator-target-resolver';
-import { cloneFilterSet, DEFAULT_INLINE_TASK_TARGET_FILE, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, FilterSet, normalizeInlineTaskHeadingKeyword, OperonSettings } from './src/types/settings';
+import {
+	cloneFilterSet,
+	CURRENT_TASK_STATS_BACKFILL_VERSION,
+	DEFAULT_INLINE_TASK_TARGET_FILE,
+	DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS,
+	FilterSet,
+	normalizeInlineTaskHeadingKeyword,
+	OperonSettings,
+} from './src/types/settings';
 import {
 	type InlineRepeatCompletionMode,
 	normalizeInlineCompletionMode,
@@ -324,6 +344,7 @@ import {
 import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask } from './src/types/fields';
 import { CANONICAL_KEY_MAP } from './src/types/keys';
 import {
+	clonePipeline,
 	composeStatusValue,
 	getCheckboxToggleWorkflowStatus,
 	getNextWorkflowStatus,
@@ -335,6 +356,12 @@ import {
 } from './src/types/pipeline';
 import { DEFAULT_PRIORITIES } from './src/types/priority';
 import { initI18n, t } from './src/core/i18n';
+import { buildWorkflowStatusSemanticsSignature } from './src/core/workflow-status-semantics';
+import {
+	buildWorkflowStatusIdentityIndex,
+	resolveConfiguredPipelineNameIdentity,
+	resolveConfiguredStatusIdentity,
+} from './src/core/workflow-status-identity';
 import { ConfirmActionModal } from './src/ui/confirm-action-modal';
 import { FileTaskTemplatePickerModal } from './src/ui/file-task-template-picker-modal';
 import { InlineTaskTargetFilePickerModal } from './src/ui/inline-task-target-file-picker-modal';
@@ -342,11 +369,18 @@ import { FieldRenameProgressModal } from './src/ui/field-rename-progress-modal';
 import { DuplicateOperonIdModal } from './src/ui/duplicate-operonid-modal';
 import { BlockedTaskModal } from './src/ui/blocked-task-modal';
 import {
-	executePipelineRenamePreview,
 	PipelineRenameProgressSnapshot,
-	PipelineRenameExecutionResult,
 	PipelineRenamePreview,
 } from './src/core/pipeline-rename-migration';
+import type {
+	PrepareWorkflowFieldRenameInput,
+	WorkflowFieldRenameRunResult,
+} from './src/systems/workflow-field-rename-coordinator';
+import {
+	WorkflowFieldRenameCoordinator,
+	workflowTaxonomySnapshotsEqual,
+} from './src/systems/workflow-field-rename-coordinator';
+import type { WorkflowFieldRenameTaxonomySnapshot } from './src/storage/field-rename-journal-store';
 import {
 	executePriorityRenamePreview,
 	PriorityRenameExecutionResult,
@@ -565,12 +599,6 @@ interface LoadedFileTaskTemplateResult {
 	resolvedContent: string | null;
 }
 
-interface DailyNotesPluginConfig {
-	folder: string;
-	template: string;
-	format: string;
-}
-
 interface FileTaskToInlineCursorTarget {
 	file: TFile;
 	view: MarkdownView;
@@ -609,6 +637,14 @@ interface RefreshViewsOptions {
 	statusCycleTrace?: StatusCyclePerfTrace | null;
 	reason?: string;
 	markdownScope?: MarkdownRefreshScope;
+	/**
+	 * True only for the refresh that follows an index update. Such passes may
+	 * let calendar views skip their full rebuild when the rendered content is
+	 * provably unchanged. Every other channel (settings saves, pinned or
+	 * project-serial subscriptions, external calendar changes, UI handlers)
+	 * must leave this unset so the calendar always force-renders for them.
+	 */
+	fromIndexUpdate?: boolean;
 }
 
 interface RefreshViewsPerfContext {
@@ -658,6 +694,8 @@ interface WorkspaceTweakPropertiesCollapseCycle {
 	attempted: boolean;
 }
 
+type SettingsReindexReason = 'key-mappings' | 'workflow-semantics';
+
 export default class OperonPlugin extends Plugin {
 	storage!: OperonStorage;
 	indexer!: OperonIndexer;
@@ -668,12 +706,16 @@ export default class OperonPlugin extends Plugin {
 	totalEstimateCalculator!: TotalEstimateCalculator;
 	aggregateCoordinator!: AggregateCoordinator;
 	taskStatsBackfillRunner!: TaskStatsBackfillRunner;
+	workflowFieldRenameCoordinator!: WorkflowFieldRenameCoordinator;
 	timeTracker!: TimeTracker;
 	recurrenceService!: RecurrenceService;
 	formatConverter!: FormatConverter;
 	settings!: OperonSettings;
 	private keyMappingSignature = '';
+	private workflowStatusSemanticsSignature = '';
 	private settingsReindexTimer: WindowTimeoutHandle | null = null;
+	private pendingSettingsReindexReasons = new Set<SettingsReindexReason>();
+	private settingsReindexRetryAttempted = false;
 	private canonicalSettingsReloadTimer: WindowTimeoutHandle | null = null;
 	private canonicalSettingsReloadRunning = false;
 	private canonicalSettingsReloadLastCheckAt = 0;
@@ -694,6 +736,7 @@ export default class OperonPlugin extends Plugin {
 	private editableFocusRefreshTimer: WindowTimeoutHandle | null = null;
 	private refreshViewsFrame: number | null = null;
 	private refreshViewsFollowupRequested = false;
+	private refreshViewsPendingNonIndexRequest = false;
 	private refreshViewsPendingRequestCount = 0;
 	private refreshViewsPendingPerfContext: RefreshViewsPerfContext | null = null;
 	private refreshViewsPendingMarkdownScope: MarkdownRefreshScope | null = null;
@@ -719,6 +762,7 @@ export default class OperonPlugin extends Plugin {
 	private pinnedCache: PinnedCache | null = null;
 	private externalCalendarService: ExternalCalendarService | null = null;
 	private operonDocsSyncInFlight: Promise<OperonDocsSyncResult> | null = null;
+	private operonDocsOperationQueue: Promise<void> = Promise.resolve();
 	private duplicateOperonIdModal: DuplicateOperonIdModal | null = null;
 	private duplicateConflictCounts: Map<string, number> = new Map();
 	private duplicateConflictAutoOpenSuppressionDepth = 0;
@@ -913,6 +957,7 @@ export default class OperonPlugin extends Plugin {
 		if (releaseNotes.length === 0) return;
 
 		new OperonReleaseNotesModal(this.app, releaseNotes, {
+			docsFolder: this.settings.operonDocsFolder,
 			onClose: async () => {
 				if (this.settings.releaseNotesLastShownVersion === currentVersion) return;
 				this.settings.releaseNotesLastShownVersion = currentVersion;
@@ -926,7 +971,16 @@ export default class OperonPlugin extends Plugin {
 		const previousKeyMappingSignature = this.keyMappingSignature;
 		this.keyMappingSignature = this.buildKeyMappingSignature();
 		if (previousKeyMappingSignature !== this.keyMappingSignature) {
-			this.scheduleSettingsReindex();
+			this.scheduleSettingsReindex('key-mappings');
+		}
+		const previousWorkflowStatusSemanticsSignature = this.workflowStatusSemanticsSignature;
+		this.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(this.settings.pipelines);
+		if (previousWorkflowStatusSemanticsSignature !== this.workflowStatusSemanticsSignature) {
+			runAsyncAction(
+				'workflow semantics reconciliation marker persistence failed',
+				() => this.markTaskStatsBackfillPending(),
+			);
+			this.scheduleSettingsReindex('workflow-semantics');
 		}
 		void this.externalCalendarService?.applySettings(this.settings.externalCalendars);
 		initI18n(getAppLocale(this.app), this.settings.language);
@@ -992,6 +1046,22 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
+	private reportStartupPipelineTaxonomyDiagnostics(): void {
+		const diagnostics = this.storage.getStartupPipelineTaxonomyDiagnostics();
+		if (diagnostics.backupFailed) {
+			new Notice(t('notifications', 'pipelineTaxonomyRecoveryFailed', {
+				count: String(diagnostics.issues.length),
+			}));
+			return;
+		}
+		if (diagnostics.backupPath) {
+			new Notice(t('notifications', 'pipelineTaxonomyRecovered', {
+				count: String(diagnostics.issues.length),
+				path: diagnostics.backupPath,
+			}));
+		}
+	}
+
 	private registerCanonicalSettingsReloadWatchers(): void {
 		this.registerDomEvent(getActiveWindow(), 'focus', () => {
 			this.scheduleCanonicalSettingsReloadCheck();
@@ -1047,13 +1117,22 @@ export default class OperonPlugin extends Plugin {
 		this.canonicalSettingsReloadLastCheckAt = Date.now();
 		try {
 			const result = await this.storage.reloadCanonicalSettingsPackage();
-			const failed = result.diagnostics.malformedPackage;
+			const taxonomyDiagnostics = result.diagnostics.pipelineTaxonomy;
+			const failed = result.diagnostics.malformedPackage || taxonomyDiagnostics.backupFailed;
 			if (failed) {
 				console.warn('Operon: canonical settings reload warning', result.diagnostics);
-				if (mode === 'manual') {
-					new Notice(t('notifications', 'settingsReloadFailed'));
-				}
+				new Notice(t('notifications', taxonomyDiagnostics.backupFailed
+					? 'pipelineTaxonomyRecoveryFailed'
+					: 'settingsReloadFailed', {
+					count: String(taxonomyDiagnostics.issues.length),
+				}));
 				return;
+			}
+			if (taxonomyDiagnostics.backupPath) {
+				new Notice(t('notifications', 'pipelineTaxonomyRecovered', {
+					count: String(taxonomyDiagnostics.issues.length),
+					path: taxonomyDiagnostics.backupPath,
+				}));
 			}
 			if (result.changed) {
 				this.handleSettingsChanged();
@@ -1134,7 +1213,10 @@ export default class OperonPlugin extends Plugin {
 		return false;
 	}
 
-	private refreshCalendarLeaves(statusCycleTrace: StatusCyclePerfTrace | null = null): void {
+	private refreshCalendarLeaves(
+		statusCycleTrace: StatusCyclePerfTrace | null = null,
+		allowContentSkip = false,
+	): void {
 		for (const leaf of this.app.workspace.getLeavesOfType(CALENDAR_VIEW_TYPE)) {
 			if (
 				statusCycleTrace
@@ -1142,7 +1224,7 @@ export default class OperonPlugin extends Plugin {
 			) {
 				continue;
 			}
-			callUnknownMethod(leaf.view, 'markDirty');
+			callUnknownMethod(leaf.view, 'markDirty', { allowContentSkip });
 		}
 	}
 
@@ -1225,7 +1307,23 @@ export default class OperonPlugin extends Plugin {
 		this.refreshViews();
 	}
 
+	private async runOperonDocsOperation<T>(operation: () => Promise<T>): Promise<T> {
+		const run = this.operonDocsOperationQueue.then(operation);
+		this.operonDocsOperationQueue = run.then(() => undefined, () => undefined);
+		return run;
+	}
+
 	private async syncOperonDocsNow(source: 'manual' | 'auto' = 'manual'): Promise<OperonDocsSyncResult | null> {
+		if (this.operonDocsSyncInFlight) {
+			if (source === 'manual') {
+				new Notice(t('notifications', 'operonDocsSyncAlreadyRunning'));
+			}
+			return this.operonDocsSyncInFlight.catch(() => null);
+		}
+		return this.runOperonDocsOperation(() => this.syncOperonDocsNowUnlocked(source));
+	}
+
+	private async syncOperonDocsNowUnlocked(source: 'manual' | 'auto' = 'manual'): Promise<OperonDocsSyncResult | null> {
 		if (this.operonDocsSyncInFlight) {
 			if (source === 'manual') {
 				new Notice(t('notifications', 'operonDocsSyncAlreadyRunning'));
@@ -1239,6 +1337,7 @@ export default class OperonPlugin extends Plugin {
 			app: this.app,
 			pluginId: this.manifest.id,
 			keyMappings: this.settings.keyMappings,
+			targetRoot: this.settings.operonDocsFolder,
 			requestText: url => this.requestOperonDocsText(url),
 		});
 		this.operonDocsSyncInFlight = syncPromise;
@@ -1297,6 +1396,88 @@ export default class OperonPlugin extends Plugin {
 		const result = await this.syncOperonDocsNow('manual');
 		if (!result || !this.settings.operonDocsAutoUpdateEnabled) return;
 		await this.markOperonDocsAutoUpdateVersion(this.manifest.version.trim());
+	}
+
+	private async changeOperonDocsFolder(requestedFolder: string): Promise<boolean> {
+		return this.runOperonDocsOperation(() => this.changeOperonDocsFolderUnlocked(requestedFolder));
+	}
+
+	private async changeOperonDocsFolderUnlocked(requestedFolder: string): Promise<boolean> {
+		const nextFolder = requestedFolder.trim().replace(/^\/+|\/+$/gu, '');
+		const currentFolder = this.settings.operonDocsFolder;
+		if (!nextFolder || nextFolder === currentFolder) return nextFolder === currentFolder;
+
+		const folder = this.app.vault.getAbstractFileByPath(nextFolder);
+		if (!(folder instanceof TFolder) || !folder.path || folder.path === '/') {
+			new Notice(t('notifications', 'operonDocsFolderInvalid'));
+			return false;
+		}
+
+		let preview: OperonDocsFolderMovePreview;
+		try {
+			preview = await previewOperonDocsFolderMove({
+				app: this.app,
+				pluginId: this.manifest.id,
+				oldRoot: currentFolder,
+				newRoot: folder.path,
+			});
+		} catch (error) {
+			console.error('Operon docs folder preview failed', error);
+			new Notice(t('notifications', 'operonDocsFolderMoveFailed'));
+			return false;
+		}
+
+		if (preview.files.length === 0) {
+			try {
+				await this.storage.updateSettings({ operonDocsFolder: folder.path });
+				this.handleSettingsChanged();
+				return true;
+			} catch (error) {
+				console.error('Operon docs folder save failed', error);
+				new Notice(t('notifications', 'operonDocsFolderMoveFailed'));
+				return false;
+			}
+		}
+
+		const confirmed = await this.confirmOperonDocsFolderMove(preview);
+		if (!confirmed) return false;
+
+		try {
+			const transaction = await moveOperonDocsFolder({ app: this.app }, preview);
+			try {
+				await this.storage.updateSettings({ operonDocsFolder: folder.path });
+				this.handleSettingsChanged();
+				new Notice(t('notifications', 'operonDocsFolderMoveComplete', { count: String(transaction.movedFiles.length) }));
+				return true;
+			} catch (error) {
+				try {
+					await transaction.rollback();
+				} catch (rollbackError) {
+					console.error('Operon docs folder setting rollback failed', rollbackError);
+				}
+				throw error;
+			}
+		} catch (error) {
+			console.error('Operon docs folder move failed', error);
+			new Notice(t('notifications', 'operonDocsFolderMoveFailed'));
+			return false;
+		}
+	}
+
+	private confirmOperonDocsFolderMove(preview: OperonDocsFolderMovePreview): Promise<boolean> {
+		return new Promise(resolve => {
+			new ConfirmActionModal(this.app, {
+				title: t('settings', 'operonDocsFolderMoveTitle'),
+				message: t('settings', 'operonDocsFolderMoveMessage', { count: String(preview.files.length) }),
+				confirmText: t('settings', 'operonDocsFolderMoveConfirm'),
+				cancelText: t('buttons', 'cancel'),
+				detailsTable: [{
+					label: t('settings', 'operonDocsFolder'),
+					before: preview.oldRoot,
+					after: preview.newRoot,
+				}],
+			}, resolve).open();
+		});
 	}
 
 	private async markOperonDocsAutoUpdateVersion(version: string): Promise<void> {
@@ -1702,9 +1883,11 @@ export default class OperonPlugin extends Plugin {
 			this.unsubscribeProjectSerials = null;
 		});
 		this.keyMappingSignature = this.buildKeyMappingSignature();
+		this.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(this.settings.pipelines);
 
 		// Initialize i18n — use language override from settings, or detect Obsidian's locale
 		initI18n(getAppLocale(this.app), this.settings.language);
+		this.reportStartupPipelineTaxonomyDiagnostics();
 		this.applyWorkspaceTweaks();
 		this.registerHoverLinkSource(OPERON_COMPACT_CHIP_HOVER_SOURCE, {
 			display: 'Operon',
@@ -1718,6 +1901,30 @@ export default class OperonPlugin extends Plugin {
 			onBeforeWriteFile: filePath => this.markInternalTaskWrite(filePath),
 			onDuplicateConflict: operonId => {
 				this.scheduleDuplicateConflictAlert(operonId);
+			},
+		});
+		this.workflowFieldRenameCoordinator = new WorkflowFieldRenameCoordinator({
+			journal: this.storage.fieldRenameJournal,
+			getCurrentTaxonomySnapshot: () => this.getWorkflowTaxonomySnapshot(),
+			commitTaxonomySnapshot: snapshot => this.commitWorkflowTaxonomySnapshot(snapshot),
+			writeTaskStatusIfCurrent: mapping => this.writer.writeTaskFieldIfCurrent(
+				mapping.operonId,
+				'status',
+					mapping.oldValue,
+					mapping.newValue,
+					{
+						reindex: 'none',
+						allowMissingAfterReindex: mapping.attemptCount > 1,
+						fallbackLocation: {
+							filePath: mapping.filePath,
+							format: mapping.format,
+						},
+					},
+				),
+			rebuildIndex: () => this.indexer.fullReindex(),
+			reconcileAggregates: async () => {
+				const completed = await this.runTaskStatsBackfill({ force: true, source: 'workflow-semantics' });
+				if (!completed) throw new Error('workflow aggregate reconciliation remains incomplete');
 			},
 		});
 		this.dependencyManager = new DependencyManager(this.indexer, this.writer);
@@ -1764,7 +1971,8 @@ export default class OperonPlugin extends Plugin {
 		await this.formatConverter.ensureFileTasksFolder();
 
 		// Load cached index first for fast startup (Architecture doc Section 4.5)
-		const hasCached = await this.indexer.loadCachedIndex();
+		const cacheLoad = await this.indexer.loadCachedIndex();
+		const hasCached = cacheLoad.status === 'loaded';
 
 		// Refresh sidebar views whenever the index is updated
 		// Suppressed during startup — onLayoutReady handles the authoritative render
@@ -1858,8 +2066,12 @@ export default class OperonPlugin extends Plugin {
 					(presetId) => this.removeKanbanManualOrder(presetId),
 					() => this.createOrRepairBasicsWorkspaceFromUi(),
 					() => this.syncOperonDocsFromSettings(),
+					(folder) => this.changeOperonDocsFolder(folder),
 					(operation) => this.enqueueTablePresetMutation(operation),
-				));
+					(input) => this.applyWorkflowFieldRenameTransaction(input),
+					() => this.retryPendingWorkflowRename(),
+					() => this.resolvePendingWorkflowRenameConflict(),
+					));
 
 		const statusBarItem = this.addStatusBarItem();
 		this.trackerStatusBar = new TimeTrackerStatusBar(
@@ -1907,7 +2119,11 @@ export default class OperonPlugin extends Plugin {
 			//   then optionally follow with a full reindex after 15s for completeness
 			if (!hasCached) {
 				await this.indexer.fullReindex();
-				await this.runStartupTaskStatsBackfill();
+				if (cacheLoad.status === 'incompatible') {
+					await this.runTaskStatsBackfill({ force: true, source: 'workflow-semantics' });
+				} else {
+					await this.runStartupTaskStatsBackfill();
+				}
 			} else {
 				await this.indexer.diffReindex();
 				if (this.settings.fullReindexOnStartup) {
@@ -1921,6 +2137,16 @@ export default class OperonPlugin extends Plugin {
 					await this.runStartupTaskStatsBackfill();
 				}
 			}
+
+				try {
+					const renameRecovery = await this.workflowFieldRenameCoordinator.resume();
+					this.finishWorkflowFieldRenameRun(renameRecovery);
+					} catch (error) {
+						console.warn('Operon: pending workflow rename recovery could not continue', error);
+						if (this.storage.fieldRenameJournal.get() || this.storage.fieldRenameJournal.getRecoveryRequired()) {
+							new Notice(t('notifications', 'workflowRenameRecoveryFailed'));
+						}
+				}
 
 					await this.recurrenceService.reconcileStoredSeries();
 					await this.dependencyManager.reconcileAdditiveInverseLinks();
@@ -2288,6 +2514,7 @@ export default class OperonPlugin extends Plugin {
 					onExternalItemCreateTask: (seed) => this.handleExternalCalendarItemCreate(leaf, seed),
 					onCalendarDragInteractionEnd: () => this.flushPendingCalendarRefresh(),
 					hasEditableFocus: () => this.hasActiveEditableFocus(),
+					getRepeatSeriesRevision: () => this.storage.repeatSeries.getRevision(),
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.calendarPresets.find(entry => entry.id === presetId) ?? null;
 						new CalendarPresetQuickSettingsModal(this.app, {
@@ -3696,9 +3923,12 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private resolveDefaultKanbanPipelineId(): string | null {
-		return this.settings.pipelines.find(pipeline => pipeline.name === this.settings.defaultPipelineName)?.id
-			?? this.settings.pipelines[0]?.id
-			?? null;
+		const explicitDefault = resolveConfiguredPipelineNameIdentity(
+			this.settings.defaultPipelineName,
+			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+		);
+		if (explicitDefault.kind === 'ambiguous') return null;
+		return (explicitDefault.kind === 'configured' ? explicitDefault.pipeline : this.settings.pipelines[0])?.id ?? null;
 	}
 
 	private createRelatedTablePreset(filterSetId: string | null, presetName?: string): TablePreset {
@@ -3920,6 +4150,7 @@ export default class OperonPlugin extends Plugin {
 		return queryKanbanBoard({
 			preset,
 			pipeline,
+			pipelines: this.settings.pipelines,
 			filterSet,
 			tasks: this.indexer.getAllTasks(),
 			priorities: this.settings.priorities,
@@ -4064,9 +4295,9 @@ export default class OperonPlugin extends Plugin {
 		presetSwimlaneBy: KanbanDropContext['swimlaneBy'],
 		context: KanbanDropContext,
 	): boolean {
-		const status = resolveTaskStatusDefinition(task, pipeline);
+		const status = resolveTaskStatusDefinition(task, pipeline, this.settings.pipelines);
 		if (status?.id !== context.targetStatusId) return false;
-		const laneKeys = extractLaneKeys(task, context.swimlaneBy ?? presetSwimlaneBy, this.settings.keyMappings);
+		const laneKeys = extractLaneKeys(task, context.swimlaneBy ?? presetSwimlaneBy, this.settings.keyMappings, this.settings.priorities);
 		return laneKeys.includes(context.targetLaneKey);
 	}
 
@@ -4133,6 +4364,11 @@ export default class OperonPlugin extends Plugin {
 		const now = localNow();
 		const today = now.substring(0, 10);
 		const statusVal = task.fieldValues['status'] ?? '';
+		const statusIdentity = resolveConfiguredStatusIdentity(
+			statusVal,
+			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+		);
+		if (statusIdentity.kind === 'ambiguous') return;
 		const reverseResolution = resolveReverseWorkflowFromTerminalDate(
 			this.settings.pipelines,
 			statusVal,
@@ -4611,7 +4847,11 @@ export default class OperonPlugin extends Plugin {
 		targetLaneKey: string,
 	): string | null {
 		if (!swimlaneBy) return KANBAN_NO_VALUE_KEY;
-		if (swimlaneBy === 'priority' || swimlaneBy === 'dateDue' || swimlaneBy === 'dateScheduled') {
+		if (swimlaneBy === 'priority') {
+			// Resolve to the canonical lane key so lenient-cased priorities match their lane.
+			return extractLaneKeys(task, 'priority', this.settings.keyMappings, this.settings.priorities)[0] ?? KANBAN_NO_VALUE_KEY;
+		}
+		if (swimlaneBy === 'dateDue' || swimlaneBy === 'dateScheduled') {
 			return (task.fieldValues[swimlaneBy] ?? '').trim() || KANBAN_NO_VALUE_KEY;
 		}
 		if (swimlaneBy === 'tags') {
@@ -4945,7 +5185,7 @@ export default class OperonPlugin extends Plugin {
 		operonParentFieldValues: Record<string, string> | null;
 		operonParentTags: string[] | null;
 	}> {
-		const config = await this.loadDailyNotesPluginConfig();
+		const config = await loadDailyNotesCoreConfig(this.app);
 		const filePath = resolveDailyNotePathFromDateKey(dateKey, config);
 		if (!filePath) {
 			return {
@@ -4992,8 +5232,17 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		const renderedContent = await this.maybeProcessDailyNoteTemplateContent(created, template.file, template.content);
-		if (renderedContent !== template.content) {
-			await this.app.vault.modify(created, renderedContent);
+		const now = localNow();
+		const templatesConfig = await loadTemplatesCoreConfig(this.app);
+		const resolvedContent = resolveCoreTemplateVariables(renderedContent, {
+			title: created.basename,
+			date: now.slice(0, 10),
+			now,
+			dateFormat: templatesConfig.dateFormat,
+			timeFormat: templatesConfig.timeFormat,
+		});
+		if (resolvedContent !== await this.app.vault.cachedRead(created)) {
+			await this.app.vault.modify(created, resolvedContent);
 		}
 
 		const initializedDocument = await this.maybeInitializeDailyNoteAsOperonTask(created);
@@ -5066,7 +5315,7 @@ export default class OperonPlugin extends Plugin {
 		const parentTaskId = (task.fieldValues['parentTask'] ?? '').trim();
 		if (!parentTaskId) return null;
 
-		const config = await this.loadDailyNotesPluginConfig();
+		const config = await loadDailyNotesCoreConfig(this.app);
 		const targetDateKey = resolveDailyNoteParentRealignmentTargetDate({
 			enabled: this.settings.createDailyNotesAsOperonTask,
 			currentFieldValues: task.fieldValues,
@@ -5083,26 +5332,6 @@ export default class OperonPlugin extends Plugin {
 
 		payload['parentTask'] = nextParentTaskId;
 		return nextParentTaskId;
-	}
-
-	private async loadDailyNotesPluginConfig(): Promise<DailyNotesPluginConfig> {
-		try {
-			const raw = await this.app.vault.adapter.read(`${this.app.vault.configDir}/daily-notes.json`);
-			const parsed = JSON.parse(raw) as { folder?: unknown; template?: unknown; format?: unknown };
-			return {
-				folder: typeof parsed.folder === 'string' ? parsed.folder.trim() : '',
-				template: typeof parsed.template === 'string' ? parsed.template.trim() : '',
-				format: typeof parsed.format === 'string' && parsed.format.trim()
-					? parsed.format.trim()
-					: DEFAULT_DAILY_NOTE_FORMAT,
-			};
-		} catch {
-			return {
-				folder: '',
-				template: '',
-				format: DEFAULT_DAILY_NOTE_FORMAT,
-			};
-		}
 	}
 
 	private async ensureParentFolderPathExists(filePath: string): Promise<void> {
@@ -6267,6 +6496,7 @@ export default class OperonPlugin extends Plugin {
 				},
 				getRepeatSkipDates: (repeatSeriesId: string) => this.storage.repeatSeries.getSkipDates(repeatSeriesId),
 			};
+			const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(this.settings.pipelines);
 			const listItems = el.querySelectorAll<HTMLElement>('li.task-list-item');
 			const sectionTaskResolutions = new Map<string, ReadingSectionInlineTaskResolution>();
 			const sectionCursors = new Map<string, number>();
@@ -6463,6 +6693,7 @@ export default class OperonPlugin extends Plugin {
 							li.appendChild(buildReadingTaskRowElement(indexed, callbacks, renderedDescription, {
 								readOnly: resolvedTask.readOnly,
 								projectSerialPlacement: 'tail',
+								workflowStatusIdentityIndex,
 							}));
 						for (const nested of nestedLists) {
 							li.appendChild(nested);
@@ -7339,7 +7570,7 @@ export default class OperonPlugin extends Plugin {
 					console.warn('Operon: index side effect failed', result.reason);
 				}
 			}
-			this.refreshViews();
+			this.refreshViews({ fromIndexUpdate: true });
 			this.syncDuplicateConflictUi(true);
 		} finally {
 			this.indexSideEffectRunning = false;
@@ -7602,7 +7833,7 @@ export default class OperonPlugin extends Plugin {
 	private async applyDailyNoteInlineTaskDefaultsForNewTasks(changes: IndexedTaskDelta[]): Promise<void> {
 		if (!this.settings.inlineTaskDailyNoteAddStartDate && !this.settings.inlineTaskDailyNoteAddScheduledDate) return;
 
-		const dailyNotesConfig = await this.loadDailyNotesPluginConfig();
+		const dailyNotesConfig = await loadDailyNotesCoreConfig(this.app);
 		const plans = buildDailyNoteInlineTaskDefaultWritePlans({
 			changes,
 			dailyNotesConfig,
@@ -7728,6 +7959,9 @@ export default class OperonPlugin extends Plugin {
 		if (scheduleFollowup) {
 			this.refreshViewsFollowupRequested = true;
 		}
+		if (resolvedOptions.fromIndexUpdate !== true) {
+			this.refreshViewsPendingNonIndexRequest = true;
+		}
 		this.refreshViewsPendingRequestCount++;
 		this.refreshViewsPendingMarkdownScope = mergeMarkdownRefreshScopes(
 			this.refreshViewsPendingMarkdownScope,
@@ -7770,11 +8004,15 @@ export default class OperonPlugin extends Plugin {
 			const perfContext = this.refreshViewsPendingPerfContext;
 			const markdownScope = this.refreshViewsPendingMarkdownScope
 				?? createGlobalMarkdownRefreshScope('refresh', 'missing-pending-scope');
+			// A coalesced pass may only offer the calendar content-skip when
+			// every merged request came from an index update.
+			const allowCalendarContentSkip = !this.refreshViewsPendingNonIndexRequest;
 			this.refreshViewsFollowupRequested = false;
+			this.refreshViewsPendingNonIndexRequest = false;
 			this.refreshViewsPendingRequestCount = 0;
 			this.refreshViewsPendingPerfContext = null;
 			this.refreshViewsPendingMarkdownScope = null;
-			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope);
+			this.renderViews(shouldScheduleFollowup, perfContext, markdownScope, allowCalendarContentSkip);
 		});
 	}
 
@@ -7782,6 +8020,7 @@ export default class OperonPlugin extends Plugin {
 		scheduleFollowup = true,
 		perfContext: RefreshViewsPerfContext | null = null,
 		markdownScope: MarkdownRefreshScope = createGlobalMarkdownRefreshScope('refresh', 'render-default'),
+		allowCalendarContentSkip = false,
 	): void {
 		this.refreshViewsCallCount++;
 		const startedAt = perfNow();
@@ -7839,7 +8078,7 @@ export default class OperonPlugin extends Plugin {
 					this.scheduleEditableFocusRefreshFlush();
 				} else {
 					this.pendingCalendarRefresh = false;
-					this.refreshCalendarLeaves(perfContext?.trace ?? null);
+					this.refreshCalendarLeaves(perfContext?.trace ?? null, allowCalendarContentSkip);
 				}
 			this.recordRefreshViewsPerfStage(
 				stageTimings,
@@ -8221,9 +8460,10 @@ export default class OperonPlugin extends Plugin {
 	 */
 	private async autoUnpinFinishedTasks(): Promise<void> {
 		if (!this.pinnedCache) return;
+		const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(this.settings.pipelines);
 		const candidates = this.indexer.getAllTasks().filter(task => {
 			if (!this.pinnedCache!.isPinned(task.operonId)) return false;
-			return shouldAutoUnpinTerminalTask(task, this.settings.pipelines);
+			return shouldAutoUnpinTerminalTask(task, this.settings.pipelines, workflowStatusIdentityIndex);
 		});
 		if (candidates.length === 0) return;
 		const nextPinnedIds = new Set(this.pinnedCache.getPinnedIds());
@@ -9343,57 +9583,116 @@ export default class OperonPlugin extends Plugin {
 		return true;
 	}
 
-	private async applyPipelineRenameMigration(preview: PipelineRenamePreview): Promise<PipelineRenameExecutionResult> {
-		const progressModal = preview.totalTaskCount > 0
-			? new FieldRenameProgressModal(this.app, this.createFieldRenameProgressSnapshot(preview))
-			: null;
-		progressModal?.open();
-
-		let result: PipelineRenameExecutionResult;
-		try {
-			result = await executePipelineRenamePreview(preview, {
-				writer: this.writer,
-				indexer: this.indexer,
-				onProgress: snapshot => {
-					progressModal?.update(snapshot);
-				},
-			});
-		} catch (error) {
-			progressModal?.markFatalError('Rename migration stopped with an unexpected error. You can close this window.');
-			throw error;
-		}
-
-		if (preview.totalTaskCount === 0) {
-			return result;
-		}
-
-		const updatedTotal = result.updatedFileTaskCount + result.updatedInlineTaskCount;
-		const failedTotal = result.failedFileTaskCount + result.failedInlineTaskCount;
-		if (failedTotal > 0) {
-			new Notice(t('notifications', 'pipelineRenameMigrationNoticeFailed', {
-				fileTasks: String(result.updatedFileTaskCount),
-				inlineTasks: String(result.updatedInlineTaskCount),
-				failedFileTasks: String(result.failedFileTaskCount),
-				failedInlineTasks: String(result.failedInlineTaskCount),
-			}));
-		} else {
-			new Notice(t('notifications', 'pipelineRenameMigrationNoticeSuccess', {
-				fileTasks: String(result.updatedFileTaskCount),
-				inlineTasks: String(result.updatedInlineTaskCount),
-			}));
-		}
-		console.debug(
-			'Operon: pipeline rename migration finished',
-			{
-				totalPreviewTasks: preview.totalTaskCount,
-				updatedTotal,
-				failedTotal,
-				failedTaskIds: result.failedTaskIds,
-				failedFiles: result.failedFiles,
-			},
+	private async applyPipelineRenameMigration(preview: PipelineRenamePreview): Promise<void> {
+		const oldSnapshot = this.getWorkflowTaxonomySnapshot();
+		const renamedPipelineIndex = oldSnapshot.pipelines.findIndex(
+			pipeline => pipeline.id === preview.plan.pipelineId,
 		);
+		if (renamedPipelineIndex < 0) {
+			throw new Error('The pipeline changed after the rename preview was created.');
+		}
 
-		return result;
+		const newSnapshot: WorkflowFieldRenameTaxonomySnapshot = {
+			pipelines: oldSnapshot.pipelines.map(pipeline => clonePipeline(pipeline)),
+			defaultPipelineName: oldSnapshot.defaultPipelineName,
+		};
+		newSnapshot.pipelines[renamedPipelineIndex] = clonePipeline(preview.plan.newPipeline);
+
+		const explicitDefaultMatches = oldSnapshot.pipelines.filter(
+			pipeline => pipeline.name === oldSnapshot.defaultPipelineName,
+		);
+		if (explicitDefaultMatches.length > 1) {
+			throw new Error(t('settings', 'pipelineRepairAmbiguousDefaultRequired'));
+		}
+		if (explicitDefaultMatches[0]?.id === preview.plan.pipelineId) {
+			newSnapshot.defaultPipelineName = preview.plan.newPipeline.name;
+		}
+
+		await this.applyWorkflowFieldRenameTransaction({
+			id: `workflow-${Date.now().toString(36)}-${preview.plan.pipelineId}`,
+			oldSnapshot,
+			newSnapshot,
+			taskMappings: preview.affectedTasks.map(task => ({
+				operonId: task.operonId,
+				filePath: task.filePath,
+				format: task.format,
+				oldValue: task.oldStatusValue,
+				newValue: task.newStatusValue,
+			})),
+		});
+	}
+
+	private async applyWorkflowFieldRenameTransaction(
+		input: PrepareWorkflowFieldRenameInput,
+	): Promise<void> {
+		const result = await this.workflowFieldRenameCoordinator.prepareAndRun(input);
+		this.finishWorkflowFieldRenameRun(result);
+	}
+
+	private getWorkflowTaxonomySnapshot(): WorkflowFieldRenameTaxonomySnapshot {
+		return {
+			pipelines: this.settings.pipelines.map(pipeline => clonePipeline(pipeline)),
+			defaultPipelineName: this.settings.defaultPipelineName,
+		};
+	}
+
+	private async commitWorkflowTaxonomySnapshot(
+		snapshot: WorkflowFieldRenameTaxonomySnapshot,
+	): Promise<void> {
+		await this.storage.updateSettings({
+			pipelines: snapshot.pipelines.map(pipeline => clonePipeline(pipeline)),
+			defaultPipelineName: snapshot.defaultPipelineName,
+		});
+	}
+
+	private finishWorkflowFieldRenameRun(result: WorkflowFieldRenameRunResult): void {
+		if (result.status === 'idle') return;
+		if (result.status === 'taxonomy-conflict') {
+			new Notice(t('notifications', 'workflowRenameTaxonomyConflict'));
+			this.refreshViews();
+			return;
+		}
+
+		this.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(this.settings.pipelines);
+		this.handleSettingsChanged();
+		if (result.status === 'needs-retry') {
+			new Notice(t('notifications', 'workflowRenameNeedsRetry', {
+				failed: String(result.outcomes.failed),
+			}));
+			return;
+		}
+
+		new Notice(t('notifications', 'workflowRenameComplete', {
+			updated: String(result.outcomes.updated + result.outcomes['already-updated']),
+			conflicts: String(result.outcomes.conflict),
+		}));
+	}
+
+	private async retryPendingWorkflowRename(): Promise<void> {
+		const result = await this.workflowFieldRenameCoordinator.retry();
+		if (result.status === 'idle') {
+			new Notice(t('notifications', 'workflowRenameNoPending'));
+			return;
+		}
+		this.finishWorkflowFieldRenameRun(result);
+	}
+
+	private async resolvePendingWorkflowRenameConflict(): Promise<void> {
+		const operation = this.storage.fieldRenameJournal.get();
+		if (!operation) {
+			new Notice(t('notifications', 'workflowRenameNoPending'));
+			return;
+		}
+		const current = this.getWorkflowTaxonomySnapshot();
+		if (
+			workflowTaxonomySnapshotsEqual(current, operation.oldSnapshot)
+			|| workflowTaxonomySnapshotsEqual(current, operation.newSnapshot)
+		) {
+			await this.retryPendingWorkflowRename();
+			return;
+		}
+		await this.commitWorkflowTaxonomySnapshot(operation.newSnapshot);
+		await this.retryPendingWorkflowRename();
 	}
 
 	private async applyPriorityRenameMigration(preview: PriorityRenamePreview): Promise<PriorityRenameExecutionResult> {
@@ -9571,6 +9870,7 @@ export default class OperonPlugin extends Plugin {
 	): OperonTemplatePlaceholderContext {
 		return {
 			date: now.slice(0, 10),
+			time: now.slice(11, 16),
 			datetime: now,
 			taskDescription: this.normalizeTaskCreatorText(description),
 			note: this.normalizeTaskCreatorText(fieldValues['note'] ?? ''),
@@ -9840,6 +10140,43 @@ export default class OperonPlugin extends Plugin {
 			context,
 			resolveBodyText: options.resolveBodyText,
 		});
+	}
+
+	private resolveFileTaskTemplatePlaceholdersInContent(
+		content: string,
+		context: OperonTemplatePlaceholderContext,
+		title: string,
+		options: { resolveBodyText?: boolean } = {},
+	): string {
+		const operonResolved = this.resolveOperonTemplatePlaceholdersInContent(content, context, options);
+		const coreContext = {
+			title,
+			date: context.date,
+			now: context.datetime,
+		};
+		const coreOptions = {
+			resolveFencedCodeBlocks: false,
+		};
+		if (options.resolveBodyText !== false) {
+			return resolveCoreTemplateVariables(operonResolved, coreContext, coreOptions);
+		}
+
+		const { frontmatter, body } = splitFrontmatterDocument(operonResolved);
+		const resolvedFrontmatter = frontmatter === null
+			? null
+			: resolveCoreTemplateVariables(frontmatter, coreContext, coreOptions);
+		let inFencedCodeBlock = false;
+		const resolvedBody = body.split('\n').map(line => {
+			if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) {
+				inFencedCodeBlock = !inFencedCodeBlock;
+				return line;
+			}
+			if (inFencedCodeBlock || !isTaskLineCandidate(line)) return line;
+			return resolveCoreTemplateVariables(line, coreContext, coreOptions);
+		}).join('\n');
+		return resolvedFrontmatter === null
+			? resolvedBody
+			: `---\n${resolvedFrontmatter}\n---\n${resolvedBody}`;
 	}
 
 	private resolveOperonIdPlaceholdersInTaskBlock(
@@ -10424,7 +10761,11 @@ export default class OperonPlugin extends Plugin {
 			selectedTemplate,
 			{ runMode: needsTemplaterProcessing ? 0 : 2 },
 		);
-		const resolvedContent = this.resolveOperonTemplatePlaceholdersInContent(renderedContent, templateContext);
+		const resolvedContent = this.resolveFileTaskTemplatePlaceholdersInContent(
+			renderedContent,
+			templateContext,
+			created.basename,
+		);
 		if (resolvedContent !== await this.app.vault.cachedRead(created)) {
 			await this.app.vault.modify(created, resolvedContent);
 		}
@@ -11028,7 +11369,7 @@ export default class OperonPlugin extends Plugin {
 			fallbackParentTaskId: null,
 			fallbackParentFieldValues: null,
 			fallbackParentTags: null,
-			dailyDateHeading: targetDateKey,
+			dailyDateHeading: await this.resolveInlineTaskSpecificFileHeading(targetDateKey),
 		};
 	}
 
@@ -11050,7 +11391,12 @@ export default class OperonPlugin extends Plugin {
 		return created instanceof TFile && created.extension === 'md' ? created : null;
 	}
 
-	private formatInlineTaskDailyDateHeading(dateKey: string): string {
+	private async resolveInlineTaskSpecificFileHeading(dateKey: string): Promise<string> {
+		if (isDailyNotesCoreAvailable(this.app)) {
+			const config = await loadDailyNotesCoreConfig(this.app);
+			const formattedTitle = formatDailyNoteTitleFromDateKey(dateKey, config.format);
+			if (formattedTitle) return `## [[${formattedTitle}]]`;
+		}
 		return `## [[${dateKey}]]`;
 	}
 
@@ -11127,7 +11473,7 @@ export default class OperonPlugin extends Plugin {
 			if (dailyDateHeading) {
 				return insertInlineTaskUnderHeading(
 					sourceContent,
-					this.formatInlineTaskDailyDateHeading(dailyDateHeading),
+					dailyDateHeading,
 					taskLine,
 				);
 			}
@@ -11480,7 +11826,7 @@ export default class OperonPlugin extends Plugin {
 			template,
 			selectedTemplate,
 		);
-		const resolvedContent = this.resolveOperonTemplatePlaceholdersInContent(renderedContent, templateContext, {
+		const resolvedContent = this.resolveFileTaskTemplatePlaceholdersInContent(renderedContent, templateContext, file.basename, {
 			resolveBodyText: false,
 		});
 		await this.app.vault.modify(file, resolvedContent);
@@ -11557,7 +11903,7 @@ export default class OperonPlugin extends Plugin {
 					{ runMode: needsTemplaterProcessing ? 0 : 2 },
 				);
 				const resolvedContent = this.prependMovedPlainCheckboxLinesToFileTaskContent(
-					this.resolveOperonTemplatePlaceholdersInContent(renderedContent, templateContext),
+					this.resolveFileTaskTemplatePlaceholdersInContent(renderedContent, templateContext, created.basename),
 					movedPlainCheckboxLines,
 				);
 				if (!this.isInlineToFileTaskTransitionContentValid(resolvedContent, draft.operonId)) {
@@ -11619,7 +11965,7 @@ export default class OperonPlugin extends Plugin {
 		const dailyDateHeading = options.dailyDateHeading?.trim();
 		const normalizedTaskBlock = this.resolveOperonIdPlaceholdersInTaskBlock(taskLine);
 		const insertion = dailyDateHeading
-			? insertInlineTaskUnderHeading(content, this.formatInlineTaskDailyDateHeading(dailyDateHeading), normalizedTaskBlock)
+			? insertInlineTaskUnderHeading(content, dailyDateHeading, normalizedTaskBlock)
 			: insertInlineTaskUnderFirstHeadingKeyword(
 				content,
 				normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading),
@@ -13761,17 +14107,46 @@ export default class OperonPlugin extends Plugin {
 			.join('||');
 	}
 
-	private scheduleSettingsReindex(): void {
+	private scheduleSettingsReindex(reason: SettingsReindexReason): void {
+		this.pendingSettingsReindexReasons.add(reason);
+		this.settingsReindexRetryAttempted = false;
+		this.armSettingsReindexTimer();
+	}
+
+	private armSettingsReindexTimer(): void {
 		if (this.settingsReindexTimer) {
 			clearWindowTimeout(this.settingsReindexTimer);
 		}
 		this.settingsReindexTimer = setWindowTimeout(() => {
 			this.settingsReindexTimer = null;
+			const reasons = new Set(this.pendingSettingsReindexReasons);
+			this.pendingSettingsReindexReasons.clear();
 			runAsyncAction('settings reindex failed', async () => {
-				await this.indexer.fullReindex();
-				new Notice(t('notifications', 'indexRebuilt', { count: String(this.indexer.taskCount) }));
+				try {
+					await this.indexer.fullReindex();
+					if (reasons.has('workflow-semantics')) {
+						const completed = await this.runTaskStatsBackfill({ force: true, source: 'workflow-semantics' });
+						if (!completed) throw new Error('workflow aggregate reconciliation remains incomplete');
+					}
+					this.settingsReindexRetryAttempted = false;
+					new Notice(t('notifications', 'indexRebuilt', { count: String(this.indexer.taskCount) }));
+				} catch (error) {
+					for (const reason of reasons) this.pendingSettingsReindexReasons.add(reason);
+					if (!this.settingsReindexRetryAttempted) {
+						this.settingsReindexRetryAttempted = true;
+						this.armSettingsReindexTimer();
+					}
+					throw error;
+				}
 			});
 		}, 600);
+	}
+
+	private async markTaskStatsBackfillPending(): Promise<void> {
+		const pendingVersion = Math.max(0, CURRENT_TASK_STATS_BACKFILL_VERSION - 1);
+		if (this.settings.taskStatsBackfillVersion <= pendingVersion) return;
+		this.settings.taskStatsBackfillVersion = pendingVersion;
+		await this.storage.saveSettings();
 	}
 
 	private async markTaskStatsBackfillComplete(version: number): Promise<void> {
@@ -13794,9 +14169,12 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private async runTaskStatsBackfill(options: { force: boolean; source: 'startup' | 'command' }): Promise<void> {
+	private async runTaskStatsBackfill(options: { force: boolean; source: 'startup' | 'command' | 'workflow-semantics' }): Promise<boolean> {
+		if (options.source === 'workflow-semantics') {
+			await this.markTaskStatsBackfillPending();
+		}
 		const result = await this.taskStatsBackfillRunner.run({ force: options.force });
-		if (result.skipped) return;
+		if (result.skipped) return true;
 		if (options.source === 'command') {
 			if (result.completed) {
 				new Notice(t('notifications', 'taskStatsBackfillComplete', {
@@ -13812,6 +14190,7 @@ export default class OperonPlugin extends Plugin {
 		if (result.completed && result.writeCount > 0) {
 			this.refreshViews();
 		}
+		return result.completed;
 	}
 
 	private registerCommands(): void {
@@ -14083,6 +14462,14 @@ export default class OperonPlugin extends Plugin {
 			name: t('commands', 'reloadSettingsFromStorage'),
 			callback: () => {
 				runAsyncAction('reload settings from storage command failed', () => this.reloadCanonicalSettingsFromStorage('manual'));
+			},
+		});
+
+		this.addCommand({
+			id: 'retry-pending-workflow-rename',
+			name: t('commands', 'retryPendingWorkflowRename'),
+			callback: () => {
+				runAsyncAction('retry pending workflow rename command failed', () => this.retryPendingWorkflowRename());
 			},
 		});
 

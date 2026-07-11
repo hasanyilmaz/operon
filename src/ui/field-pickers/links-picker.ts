@@ -4,7 +4,7 @@ import { splitTaskListValue } from '../../core/task-field-patch';
 import { IndexedTask } from '../../types/fields';
 import { KeyMapping } from '../../types/settings';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
-import { createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
+import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
 import { ExternalLinkValue, parseExternalLinkValue } from './links-utils';
 
 const PAGE_SIZE = 20;
@@ -136,6 +136,15 @@ export function showLinksPicker(anchor: HTMLElement | DOMRect, options: LinksPic
 		linkValue.textContent = matches[activeIndex]?.url ?? '';
 	};
 
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
+		linkValue.textContent = matches[activeIndex]?.url ?? '';
+	};
+
 	const render = (keepActiveVisible = true) => {
 		ensureLoadedForIndex(activeIndex);
 		list.replaceChildren();
@@ -153,27 +162,9 @@ export function showLinksPicker(anchor: HTMLElement | DOMRect, options: LinksPic
 			});
 
 			item.addEventListener('mousemove', () => {
-				if (activeIndex !== index) {
-					activeIndex = index;
-					render();
-				}
+				setActiveIndex(index);
 			});
-			item.addEventListener('pointerdown', event => {
-				event.preventDefault();
-				selectValue(candidate.rawValue);
-			});
-			item.addEventListener('touchend', event => {
-				event.preventDefault();
-				selectValue(candidate.rawValue);
-			}, { passive: false });
-			item.addEventListener('mousedown', event => {
-				event.preventDefault();
-				selectValue(candidate.rawValue);
-			});
-			item.addEventListener('click', event => {
-				event.preventDefault();
-				selectValue(candidate.rawValue);
-			});
+			bindPickerListItemActivation(item, () => selectValue(candidate.rawValue));
 
 			list.appendChild(item);
 		}

@@ -23,6 +23,7 @@ export interface ExternalCalendarParseOptions {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/u;
 const MAX_OCCURRENCES_PER_EVENT = 5000;
+const MAX_OCCURRENCE_SCANS_PER_EVENT = 100000;
 type IcalComponentInput = ConstructorParameters<typeof ICAL.Component>[0];
 type IcalEvent = InstanceType<typeof ICAL.Event>;
 type IcalTime = InstanceType<typeof ICAL.Time>;
@@ -95,19 +96,35 @@ export function parseExternalCalendarIcsEvents(
 		const event = new ICAL.Event(component);
 		if (event.isRecurring()) {
 			const iterator = event.iterator();
-			let occurrenceCount = 0;
-			while (occurrenceCount < MAX_OCCURRENCES_PER_EVENT) {
+			const hasExceptions = Object.keys(event.exceptions ?? {}).length > 0;
+			const masterDurationMs = resolveMasterEventDurationMs(event);
+			let scannedCount = 0;
+			let inRangeCount = 0;
+			// The in-range cap must not be consumed by occurrences before the
+			// window, otherwise long-lived frequent series (for example a daily
+			// event started years ago) exhaust it before reaching the window and
+			// visible occurrences silently disappear. Iteration still starts at
+			// the series DTSTART because fast-forwarding the iterator breaks
+			// COUNT rules and interval alignment; pre-window occurrences are
+			// skipped cheaply instead.
+			while (scannedCount < MAX_OCCURRENCE_SCANS_PER_EVENT && inRangeCount < MAX_OCCURRENCES_PER_EVENT) {
 				const next = iterator.next();
 				if (!next) break;
+				scannedCount += 1;
+				const nextJs = next.toJSDate();
+				if (nextJs.getTime() >= rangeEndExclusive.getTime()) {
+					break;
+				}
+				// Exceptions can move an occurrence into the window, so the
+				// cheap pre-window skip is only safe when the series has none.
+				if (!hasExceptions && nextJs.getTime() + masterDurationMs <= rangeStart.getTime()) {
+					continue;
+				}
 				const details = event.getOccurrenceDetails(next);
-				occurrenceCount += 1;
 				if (!details?.startDate || !details?.endDate) continue;
 				const startJs = details.startDate.toJSDate();
 				const endJs = details.endDate.toJSDate();
-				if (startJs.getTime() >= rangeEndExclusive.getTime()) {
-					break;
-				}
-				if (!intersectsRange(startJs, endJs, rangeStart, rangeEndExclusive, details.startDate.isDate)) {
+				if (!intersectsRange(startJs, endJs, rangeStart, rangeEndExclusive)) {
 					continue;
 				}
 				const normalized = normalizeOccurrence({
@@ -117,7 +134,10 @@ export function parseExternalCalendarIcsEvents(
 					startDate: details.startDate,
 					endDate: details.endDate,
 				});
-				if (normalized) items.push(normalized);
+				if (normalized) {
+					items.push(normalized);
+					inRangeCount += 1;
+				}
 			}
 			continue;
 		}
@@ -136,7 +156,7 @@ export function parseExternalCalendarIcsEvents(
 		const eventEnd = normalized.isAllDay
 			? addDays(parseDateKey(normalized.endDate), 1)
 			: parseLocalDateTime(normalized.endDateTime);
-		if (!eventStart || !eventEnd || !intersectsRange(eventStart, eventEnd, rangeStart, rangeEndExclusive, normalized.isAllDay)) {
+		if (!eventStart || !eventEnd || !intersectsRange(eventStart, eventEnd, rangeStart, rangeEndExclusive)) {
 			continue;
 		}
 		items.push(normalized);
@@ -210,6 +230,17 @@ function normalizeOccurrence(options: {
 	};
 }
 
+function resolveMasterEventDurationMs(event: IcalEvent): number {
+	try {
+		const start = event.startDate?.toJSDate();
+		const end = event.endDate?.toJSDate();
+		if (!start || !end) return 0;
+		return Math.max(0, end.getTime() - start.getTime());
+	} catch {
+		return 0;
+	}
+}
+
 function normalizeRecurrenceId(value: IcalTime | null | undefined): string | null {
 	if (!value) return null;
 	const jsDate = value.toJSDate();
@@ -225,11 +256,7 @@ function intersectsRange(
 	end: Date,
 	rangeStart: Date,
 	rangeEndExclusive: Date,
-	isAllDay: boolean,
 ): boolean {
-	if (isAllDay) {
-		return start.getTime() < rangeEndExclusive.getTime() && end.getTime() > rangeStart.getTime();
-	}
 	return start.getTime() < rangeEndExclusive.getTime() && end.getTime() > rangeStart.getTime();
 }
 

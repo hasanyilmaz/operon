@@ -1,6 +1,6 @@
 import { IndexedTask } from '../../types/fields';
 import { t } from '../../core/i18n';
-import { createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
+import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
 import {
 	DependencyFieldKey,
 	normalizeDependencyPair,
@@ -153,28 +153,21 @@ export function showDependencyTaskPicker(anchor: HTMLElement | DOMRect, options:
 			const label = item.createDiv('operon-parent-task-picker-label');
 			label.textContent = candidate.label;
 
-			item.addEventListener('mousemove', () => {
-				if (activeIndex !== index) {
-					activeIndex = index;
-					render();
-				}
-			});
-			item.addEventListener('pointerdown', event => {
-				event.preventDefault();
-				selectId(candidate.operonId);
-			});
-			item.addEventListener('mousedown', event => {
-				event.preventDefault();
-				selectId(candidate.operonId);
-			});
-			item.addEventListener('click', event => {
-				event.preventDefault();
-				selectId(candidate.operonId);
-			});
+			item.addEventListener('mousemove', () => setActiveIndex(index));
+			bindPickerListItemActivation(item, () => selectId(candidate.operonId));
 
 			list.appendChild(item);
 		}
 		syncListViewport(keepActiveVisible);
+	};
+
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
+		pathValue.textContent = matches[activeIndex]?.filePath ?? '';
 	};
 
 	const updateMatches = (query: string) => {
@@ -254,7 +247,7 @@ function buildCandidates(tasks: IndexedTask[]): DependencyCandidate[] {
 		cancelled: 2,
 	};
 
-	return [...tasks]
+	return tasks
 		.map(task => ({
 			operonId: task.operonId,
 			label: task.description.trim() || 'Untitled task',

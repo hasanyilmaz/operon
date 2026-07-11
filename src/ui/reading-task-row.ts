@@ -5,7 +5,11 @@ import { showPriorityPicker } from './field-pickers/priority-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
 import { showLivePreviewFieldMenu } from './live-preview-field-menu';
 import { InlineTaskCompactChipItem, OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
-import { Pipeline, parseStatusValue, resolveWorkflowStatus } from '../types/pipeline';
+import { findStatusDef, Pipeline, resolveWorkflowStatus } from '../types/pipeline';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 import { PriorityDefinition } from '../types/priority';
 import {
 	buildInlineTaskCompactChipEntries,
@@ -103,6 +107,7 @@ function getMobileStableLocationPreviewAnchor(anchor: HTMLElement): HTMLElement 
 
 export interface ReadingTaskRowOptions {
 	owner?: Node | null;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	chipItems?: InlineTaskCompactChipItem[];
 	projectSerialPlacement?: 'head' | 'tail';
 	readOnly?: boolean;
@@ -140,8 +145,11 @@ export function buildReadingTaskRowElement(
 	const taskColor = normalizeTaskColor(task.fieldValues['taskColor']);
 	if (taskColor) row.style.setProperty('--operon-live-hover-border', taskColor);
 	if (taskColor) row.style.setProperty('--operon-task-chip-hover-accent', taskColor);
-	const statusColor = lookupStatusColor(task.fieldValues['status'], callbacks.getPipelines());
-	const terminalVisualState = resolveTerminalVisualState(task, callbacks.getPipelines());
+	const pipelines = callbacks.getPipelines();
+	const workflowStatusIdentityIndex = options?.workflowStatusIdentityIndex
+		?? buildWorkflowStatusIdentityIndex(pipelines);
+	const statusColor = lookupStatusColor(task.fieldValues['status'], pipelines, workflowStatusIdentityIndex);
+	const terminalVisualState = resolveTerminalVisualState(task, pipelines, workflowStatusIdentityIndex);
 	const isTerminal = terminalVisualState !== null;
 	if (terminalVisualState === 'done') {
 		row.classList.add('operon-filter-row-done');
@@ -154,10 +162,14 @@ export function buildReadingTaskRowElement(
 		: el('button', 'operon-live-preview-status-icon operon-reading-task-icon', row);
 	if (!readOnly) (iconButton as HTMLButtonElement).type = 'button';
 	else iconButton.setAttribute('aria-hidden', 'true');
-	const iconColor = resolveTaskStatusIconColor(task.fieldValues, callbacks.getSettings());
+	const iconColor = resolveTaskStatusIconColor(
+		task.fieldValues,
+		callbacks.getSettings(),
+		workflowStatusIdentityIndex,
+	);
 	if (iconColor) iconButton.style.setProperty('--operon-live-icon-color', iconColor);
 	else iconButton.style.removeProperty('--operon-live-icon-color');
-	renderTaskIcon(iconButton, task, callbacks);
+	renderTaskIcon(iconButton, task, callbacks, workflowStatusIdentityIndex);
 	if (!readOnly) {
 		iconButton.addEventListener('click', (event) => {
 			event.preventDefault();
@@ -242,7 +254,10 @@ export function buildReadingTaskRowElement(
 		callbacks.getAllTasks(),
 		options?.chipItems,
 		locationResolver,
-		{ repeatSkipDateResolver: callbacks.getRepeatSkipDates },
+		{
+			repeatSkipDateResolver: callbacks.getRepeatSkipDates,
+			workflowStatusIdentityIndex,
+		},
 	);
 	for (const entry of entries) {
 		const renderEntry = readOnly && entry.interactive ? { ...entry, interactive: false } : entry;
@@ -299,6 +314,7 @@ export function buildReadingTaskRowElement(
 		callbacks.getSettings(),
 		callbacks.getAllTasks(),
 		options?.chipItems,
+		{ workflowStatusIdentityIndex },
 	);
 	if (!readOnly && hiddenCount > 0) {
 		const overflow = el('button', 'operon-live-preview-chip operon-reading-task-overflow operon-task-chip operon-task-chip-overflow', row);
@@ -700,8 +716,14 @@ function renderTaskIcon(
 	container: HTMLElement,
 	task: IndexedTask,
 	callbacks: ReadingTaskRowCallbacks,
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 ): void {
-	setIcon(container, resolveTaskDisplayIcon(callbacks.getSettings(), task.fieldValues, task.checkbox));
+	setIcon(container, resolveTaskDisplayIcon(
+		callbacks.getSettings(),
+		task.fieldValues,
+		task.checkbox,
+		workflowStatusIdentityIndex,
+	));
 }
 
 function runReadingRowStatusCycle(callbacks: ReadingTaskRowCallbacks, operonId: string): void {
@@ -710,14 +732,13 @@ function runReadingRowStatusCycle(callbacks: ReadingTaskRowCallbacks, operonId: 
 	});
 }
 
-function lookupStatusColor(statusValue: string | undefined, pipelines: Pipeline[]): string {
+function lookupStatusColor(
+	statusValue: string | undefined,
+	pipelines: Pipeline[],
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
+): string {
 	if (!statusValue) return '#6b7280';
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return '#6b7280';
-	const pipeline = pipelines.find((candidate) => candidate.name === parsed.pipeline);
-	if (!pipeline) return '#6b7280';
-	const status = pipeline.statuses.find((candidate) => candidate.label === parsed.status);
-	return status?.color ?? '#6b7280';
+	return findStatusDef(pipelines, statusValue, workflowStatusIdentityIndex)?.color ?? '#6b7280';
 }
 
 function normalizeTaskColor(taskColor: string | undefined): string | null {
@@ -730,16 +751,20 @@ function normalizeTaskColor(taskColor: string | undefined): string | null {
 function resolveTerminalVisualState(
 	task: IndexedTask,
 	pipelines: Pipeline[],
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 ): 'done' | 'cancelled' | null {
+	const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status'], workflowStatusIdentityIndex);
+	if (workflow) {
+		if (workflow.checkbox === 'done') return 'done';
+		if (workflow.checkbox === 'cancelled') return 'cancelled';
+		return null;
+	}
 	if (task.checkbox === 'cancelled' || !!task.fieldValues['dateCancelled']?.trim()) {
 		return 'cancelled';
 	}
 	if (task.checkbox === 'done' || !!task.fieldValues['dateCompleted']?.trim()) {
 		return 'done';
 	}
-	const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status']);
-	if (workflow?.definition.isFinished === true) return 'done';
-	if (workflow?.definition.isCancelled === true) return 'cancelled';
 	return null;
 }
 

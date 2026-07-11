@@ -1,7 +1,13 @@
 import type { OperonIndexer } from '../../indexer/indexer';
 import type { IndexedTask } from '../../types/fields';
-import { resolveWorkflowStatus } from '../../types/pipeline';
+import { parseStatusValue, resolveWorkflowStatus, type Pipeline } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
+import {
+	buildWorkflowStatusIdentityIndex,
+	resolveWorkflowPipelineIdentity,
+	type WorkflowStatusIdentityIndex,
+} from '../../core/workflow-status-identity';
+import { TABLE_WORKFLOW_PIPELINE_FIELD_KEY } from './table-field-catalog';
 
 type TableValueSettings = Pick<OperonSettings, 'pipelines'>;
 
@@ -22,7 +28,18 @@ export function createIndexerTableTaskLookup(indexer: Pick<OperonIndexer, 'getTa
 	};
 }
 
-export function getTableTaskRawValue(task: IndexedTask, key: string): string {
+export function getTableTaskRawValue(
+	task: IndexedTask,
+	key: string,
+	pipelines: readonly Pipeline[] = [],
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
+): string {
+	if (key === TABLE_WORKFLOW_PIPELINE_FIELD_KEY) {
+		return resolveTableWorkflowPipelineValue(
+			task.fieldValues['status'],
+			workflowStatusIdentityIndex ?? buildWorkflowStatusIdentityIndex(pipelines),
+		);
+	}
 	if (key === 'taskType') return getTableTaskTypeValue(task);
 	if (key === 'description') return task.description;
 	if (key === 'checkbox') return task.checkbox;
@@ -37,6 +54,33 @@ export function getTableTaskRawValue(task: IndexedTask, key: string): string {
 	if (key === 'file.folder') return getFolderPath(task.primary.filePath);
 	if (key === 'operonId') return task.operonId;
 	return task.fieldValues[key] ?? '';
+}
+
+function resolveTableWorkflowPipelineValue(
+	statusRaw: string | null | undefined,
+	identityIndex: WorkflowStatusIdentityIndex,
+): string {
+	const statusValue = statusRaw?.trim() ?? '';
+	if (!statusValue) return '';
+	const identity = resolveWorkflowPipelineIdentity(statusValue, identityIndex);
+	if (identity.kind === 'configured') return identity.pipeline.name.trim();
+	if (identity.kind === 'ambiguous') return '';
+
+	let configuredMatch = '';
+	let configuredMatchCount = 0;
+	for (const { pipeline } of identityIndex.pipelineCandidates) {
+		const pipelineName = pipeline.name.trim();
+		if (!pipelineName || !statusValue.startsWith(`${pipelineName}.`)) continue;
+		if (pipelineName.length > configuredMatch.length) {
+			configuredMatch = pipelineName;
+			configuredMatchCount = 1;
+		} else if (pipelineName === configuredMatch) {
+			configuredMatchCount += 1;
+		}
+	}
+	if (configuredMatch && configuredMatchCount === 1) return configuredMatch;
+	if (configuredMatchCount > 1) return '';
+	return parseStatusValue(statusValue)?.pipeline.trim() ?? '';
 }
 
 export function isTableTerminalTask(task: IndexedTask, settings: TableValueSettings): boolean {

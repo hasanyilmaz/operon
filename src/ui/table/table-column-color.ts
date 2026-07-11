@@ -13,6 +13,7 @@ import {
 	type TableColumn,
 	type TableColumnColorMode,
 } from '../../types/table';
+import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 
 export const TABLE_COLUMN_COLOR_MENU_MODES: readonly TableColumnColorMode[] = [
 	'noColor',
@@ -40,6 +41,7 @@ export function resolveTableColumnCellAccent(
 	options: {
 		task?: IndexedTask;
 		settings?: TableColumnColorSettings;
+		workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	} = {},
 ): string | null {
 	const settings = options.settings;
@@ -50,9 +52,20 @@ export function resolveTableColumnCellAccent(
 		return resolveTableRandomColumnColor(column.key, value, settings);
 	}
 	if (options.task) {
-		return resolveTaskColorSourceForTask(options.task, colorMode, settings);
+		return resolveTaskColorSourceForTask(
+			options.task,
+			colorMode,
+			settings,
+			options.workflowStatusIdentityIndex,
+		);
 	}
-	return resolveTableColorModeFromValue(column.key, value, colorMode, settings);
+	return resolveTableColorModeFromValue(
+		column.key,
+		value,
+		colorMode,
+		settings,
+		options.workflowStatusIdentityIndex,
+	);
 }
 
 export function resolveTableIconOnlyCellAccent(
@@ -61,6 +74,7 @@ export function resolveTableIconOnlyCellAccent(
 	options: {
 		task?: IndexedTask;
 		settings?: TableColumnColorSettings;
+		workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	} = {},
 ): string | null {
 	const dateStateAccent = resolveTaskDateToneColor(resolveTaskDateTone(column.key, value, options.task?.fieldValues ?? {}));
@@ -90,12 +104,13 @@ function resolveTableColorModeFromValue(
 	value: string,
 	colorMode: Exclude<TableColumnColorMode, 'noColor' | 'randomColors'>,
 	settings: TableColumnColorSettings,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string | null {
 	if (colorMode === 'taskColor') {
 		return columnKey === 'taskColor' ? normalizeTaskFieldColor(value) : null;
 	}
 	if (colorMode === 'statusColor') {
-		return normalizeColor(findStatusDef(settings.pipelines, value)?.color);
+		return normalizeColor(findStatusDef(settings.pipelines, value, workflowStatusIdentityIndex)?.color);
 	}
 	const priorityDef = settings.priorities.find(priority => priority.label === value);
 	return normalizeColor(priorityDef?.color);

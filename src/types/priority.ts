@@ -3,6 +3,8 @@
  * Priorities are ordered: index 0 = highest importance.
  */
 
+import { normalizeTaskIconValue } from '../core/task-icon-value';
+
 export interface PriorityDefinition {
 	/** Internal stable priority id used for settings-side rename matching */
 	id: string;
@@ -22,6 +24,53 @@ export function createPriorityId(): string {
 
 export function clonePriorityDefinition(priority: PriorityDefinition): PriorityDefinition {
 	return { ...priority };
+}
+
+const DEFAULT_PRIORITY_COLOR = '#6b7280';
+
+/** Repair hand-edited or sync-conflicted priority arrays before settings hydration. */
+export function sanitizePriorityDefinitions(rawPriorities: unknown): PriorityDefinition[] {
+	if (!Array.isArray(rawPriorities)) return [];
+	const result: PriorityDefinition[] = [];
+	const usedIds = new Set<string>();
+	const usedLabelKeys = new Set<string>();
+	for (const [index, entry] of rawPriorities.entries()) {
+		if (!entry || typeof entry !== 'object') continue;
+		const candidate = entry as Partial<PriorityDefinition>;
+		const label = typeof candidate.label === 'string' ? candidate.label.trim() : '';
+		if (!label) continue;
+
+		const normalizedLabel = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+		let id = typeof candidate.id === 'string' && candidate.id.trim()
+			? candidate.id.trim()
+			: normalizedLabel ? `pr_${normalizedLabel}` : `pr_legacy_${index}`;
+		while (usedIds.has(id)) id = createPriorityId();
+
+		let uniqueLabel = label;
+		let suffix = 2;
+		while (usedLabelKeys.has(uniqueLabel.trim().toLowerCase())) {
+			uniqueLabel = `${label} ${suffix}`;
+			suffix += 1;
+		}
+
+		const color = typeof candidate.color === 'string' && candidate.color.trim()
+			? candidate.color.trim()
+			: DEFAULT_PRIORITY_COLOR;
+		const priority: PriorityDefinition = { id, label: uniqueLabel, color };
+		if (typeof candidate.description === 'string' && candidate.description.trim()) {
+			priority.description = candidate.description.trim();
+		}
+		const priorityIcon = normalizeTaskIconValue(
+			typeof candidate.priorityIcon === 'string' ? candidate.priorityIcon : '',
+		);
+		if (priorityIcon) {
+			priority.priorityIcon = priorityIcon;
+		}
+		usedIds.add(id);
+		usedLabelKeys.add(uniqueLabel.trim().toLowerCase());
+		result.push(priority);
+	}
+	return result;
 }
 
 /** Default priority configuration (highest importance first) */

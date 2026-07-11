@@ -32,8 +32,8 @@ import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
 import { formatUiTime } from '../core/ui-time-format';
 import { formatShortLocationCoordinate, parseLocationCoordinate } from '../core/location-coordinates';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
-import { TimeTracker } from '../systems/time-tracker';
-import { bindOperonHoverTooltip } from './operon-hover-tooltip';
+import { TimeTracker, type TimeTrackerEvent } from '../systems/time-tracker';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import {
 	formatDurationHuman,
@@ -126,6 +126,30 @@ export interface TaskEditorSaveRequest {
 export type OnSaveCallback = (request: TaskEditorSaveRequest) => boolean | null | void | Promise<boolean | null | void>;
 
 export const TASK_EDITOR_ESCAPE_INTENT_EVENT = 'operon-editor-escape-intent';
+export const TASK_EDITOR_CLOSE_REQUEST_EVENT = 'operon-editor-close';
+
+export type TaskEditorSaveFailureReason =
+	| 'description-required'
+	| 'terminal-conflict'
+	| 'workflow-resolution-failed'
+	| 'write-rejected'
+	| 'write-threw'
+	| 'edit-raced';
+
+export type TaskEditorSaveOutcome =
+	| {
+		ok: true;
+		status: 'saved' | 'no-change';
+		clean: boolean;
+	}
+	| {
+		ok: false;
+		reason: TaskEditorSaveFailureReason;
+	};
+
+export interface TaskEditorCloseRequestDetail {
+	mode?: 'save' | 'force-after-delete';
+}
 
 export interface TaskEditorSubtaskRequest {
 	parentOperonId: string;
@@ -189,6 +213,9 @@ export interface TaskEditorRepeatSkipUpdateResult {
 }
 
 type PersistReason = 'autosave' | 'explicit-save' | 'estimate-reallocation' | 'close-save';
+type TaskEditorWorkflowSyncResult =
+	| { ok: true }
+	| { ok: false; reason: 'terminal-conflict' | 'workflow-resolution-failed' };
 type RelationContextChipKey = Extract<InlineTaskCompactChipKey, 'priority' | 'status' | 'dateScheduled' | 'dateDue' | 'dateCompleted' | 'dateCancelled' | 'duration' | 'totalDuration'>;
 type MediaQueryChangeListener = (event: MediaQueryListEvent) => void;
 type LegacyMediaQueryMethod = (this: MediaQueryList, listener: MediaQueryChangeListener) => void;
@@ -240,12 +267,6 @@ function formatDuration(seconds: number): string {
 	return `${m}m`;
 }
 
-function formatTaskEditorDate(value: string): string {
-	const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-	if (!match) return value;
-	return value.trim();
-}
-
 function formatTaskEditorDatetime(app: App, settings: OperonSettings, value: string): string {
 	return formatUiTime(app, settings, value);
 }
@@ -292,6 +313,9 @@ export class TaskEditorContent {
 	/** Auto-save debounce */
 	private saveTimer: WindowTimeoutHandle | null = null;
 	private autoSaveSuspended = false;
+	private disposed = false;
+	private destroyCloseSaveInFlight = false;
+	private deleteInProgress = false;
 	private hasBeenEdited = false;
 	private focusDescriptionOnMount = true;
 	private subtaskActionKind: 'inline' | 'file' = 'inline';
@@ -321,7 +345,7 @@ export class TaskEditorContent {
 	private workflowActionPickerClose: (() => void) | null = null;
 	private workflowDraftSubtaskParentId: string | null = null;
 	private workflowDraftSubtaskIds: string[] | null = null;
-	private persistInFlight: Promise<boolean> | null = null;
+	private persistInFlight: Promise<TaskEditorSaveOutcome> | null = null;
 	private editVersion = 0;
 	private selectDescriptionOnMount = false;
 	private descriptionInputEl: HTMLTextAreaElement | null = null;
@@ -351,6 +375,10 @@ export class TaskEditorContent {
 	private embedPreviewComponent: Component | null = null;
 	private fileBodyMediaQuery: MediaQueryList | null = null;
 	private fileBodyMediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null;
+	private fileBodyLayoutRefreshGeneration = 0;
+	private fileBodyLayoutRefreshEditor: EmbeddedMarkdownSourceEditor | null = null;
+	private fileBodyLayoutRefreshFrame: number | null = null;
+	private fileBodyLayoutRefreshTimer: WindowTimeoutHandle | null = null;
 	private readonly mobileCoreScrollHandler = () => this.scheduleMobileCoreToolbarOverflowState();
 	private readonly mobileResizeHandler = () => {
 		if (this.mobilePickerOpenDepth > 0) return;
@@ -502,7 +530,9 @@ export class TaskEditorContent {
 	}
 
 	private clearFileBodyPanelRender(): void {
+		this.cancelFileBodyEditorLayoutRefresh();
 		this.syncFileBodyDraftFromEditor();
+		if (this.fileBodyPanelEl) cleanupOperonHoverTooltips(this.fileBodyPanelEl);
 		this.embedPreviewComponent?.unload();
 		this.embedPreviewComponent = null;
 		this.embeddedBodyEditor?.destroy();
@@ -526,20 +556,44 @@ export class TaskEditorContent {
 
 	private scheduleFileBodyEditorLayoutRefresh(): void {
 		if (!this.hasFileBodyContext() || !this.isFileBodyVisible || !this.embeddedBodyEditor) return;
+		const editor = this.embeddedBodyEditor;
+		if (this.fileBodyLayoutRefreshEditor === editor
+			&& (this.fileBodyLayoutRefreshFrame != null || this.fileBodyLayoutRefreshTimer != null)) {
+			return;
+		}
+
+		this.cancelFileBodyEditorLayoutRefresh();
 		const ownerWindow = getActiveWindow();
+		const generation = this.fileBodyLayoutRefreshGeneration;
+		this.fileBodyLayoutRefreshEditor = editor;
 		const refresh = () => {
-			if (!this.hasFileBodyContext() || !this.isFileBodyVisible) return;
-			this.embeddedBodyEditor?.refreshLayout();
+			if (generation !== this.fileBodyLayoutRefreshGeneration) return;
+			if (!this.hasFileBodyContext() || !this.isFileBodyVisible || this.embeddedBodyEditor !== editor) return;
+			editor.refreshLayout();
 		};
 
 		refresh();
-		ownerWindow.requestAnimationFrame(() => {
+		this.fileBodyLayoutRefreshFrame = ownerWindow.requestAnimationFrame(() => {
+			this.fileBodyLayoutRefreshFrame = null;
 			refresh();
-			ownerWindow.requestAnimationFrame(refresh);
 		});
-		for (const delayMs of [80, 180, 360]) {
-			setWindowTimeout(refresh, delayMs);
+		this.fileBodyLayoutRefreshTimer = setWindowTimeout(() => {
+			this.fileBodyLayoutRefreshTimer = null;
+			refresh();
+		}, 150);
+	}
+
+	private cancelFileBodyEditorLayoutRefresh(): void {
+		this.fileBodyLayoutRefreshGeneration += 1;
+		if (this.fileBodyLayoutRefreshFrame != null) {
+			getActiveWindow().cancelAnimationFrame(this.fileBodyLayoutRefreshFrame);
+			this.fileBodyLayoutRefreshFrame = null;
 		}
+		if (this.fileBodyLayoutRefreshTimer != null) {
+			clearWindowTimeout(this.fileBodyLayoutRefreshTimer);
+			this.fileBodyLayoutRefreshTimer = null;
+		}
+		this.fileBodyLayoutRefreshEditor = null;
 	}
 
 	private updateFileBodyLayout(): void {
@@ -677,21 +731,23 @@ export class TaskEditorContent {
 		button.createSpan({ text: options.text, cls: 'operon-editor-picker-button-text' });
 	}
 
-	private focusDescriptionField(): void {
+	private focusDescriptionField(): boolean {
 		const input = this.descriptionInputEl;
 		const root = this.rootEl;
-		if (!input || !root) return;
-		if (!input.isConnected || !root.isConnected) return;
-		if (Platform.isPhone && root.ownerDocument.querySelector('.operon-task-editor-mobile-picker-surface')) return;
+		if (!input || !root) return false;
+		if (!input.isConnected || !root.isConnected) return false;
+		if (Platform.isPhone && root.ownerDocument.querySelector('.operon-task-editor-mobile-picker-surface')) return false;
 
 		input.focus();
+		if (input.ownerDocument.activeElement !== input) return false;
 		if (this.selectDescriptionOnMount) {
 			input.select();
-			return;
+			return true;
 		}
 
 		const end = input.value.length;
 		input.setSelectionRange(end, end);
+		return true;
 	}
 
 	private scheduleMobileDescriptionRefocus(): void {
@@ -710,10 +766,16 @@ export class TaskEditorContent {
 		this.clearInitialDescriptionFocusTimers();
 		for (const delay of [0, 80, 180, 320, 520, 820]) {
 			const timer = setWindowTimeout(() => {
-				this.focusDescriptionField();
+				const timerIndex = this.initialDescriptionFocusTimers.indexOf(timer);
+				if (timerIndex !== -1) this.initialDescriptionFocusTimers.splice(timerIndex, 1);
+				if (this.focusDescriptionField()) this.clearInitialDescriptionFocusTimers();
 			}, delay);
 			this.initialDescriptionFocusTimers.push(timer);
 		}
+	}
+
+	public focusDescription(): void {
+		this.focusDescriptionField();
 	}
 
 	private openFileBodySource(): void {
@@ -722,11 +784,18 @@ export class TaskEditorContent {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (file instanceof TFile) {
 			void this.app.workspace.getLeaf(false).openFile(file);
-			this.rootEl?.dispatchEvent(new CustomEvent('operon-editor-close', { bubbles: true }));
+			this.requestEditorClose('save');
 			return;
 		}
 		runAsyncAction('task editor source open failed', () => this.app.workspace.openLinkText(filePath, '', false));
-		this.rootEl?.dispatchEvent(new CustomEvent('operon-editor-close', { bubbles: true }));
+		this.requestEditorClose('save');
+	}
+
+	private requestEditorClose(mode: TaskEditorCloseRequestDetail['mode'] = 'save'): void {
+		this.rootEl?.dispatchEvent(new CustomEvent<TaskEditorCloseRequestDetail>(TASK_EDITOR_CLOSE_REQUEST_EVENT, {
+			bubbles: true,
+			detail: { mode },
+		}));
 	}
 
 	private async copyCurrentOperonId(): Promise<void> {
@@ -843,6 +912,7 @@ export class TaskEditorContent {
 	}
 
 	private renderTaskEditorBody(container: HTMLElement): void {
+		const progressState = this.getProgressSectionState();
 		// Title
 		const titleRow = container.createDiv('operon-task-editor-title-row');
 		const titleLeft = titleRow.createDiv('operon-task-editor-title-side is-left');
@@ -855,13 +925,13 @@ export class TaskEditorContent {
 		this.renderProjectSerialTitleChip(titleRight);
 		this.renderCopyOperonIdButton(titleRight);
 
-		this.renderTopContextSection(container);
+		this.renderTopContextSection(container, progressState);
 
 		const primaryFields = container.createDiv('operon-task-editor-primary-fields');
 
 		// Primary edit fields should remain in normal document flow when the file body panel toggles.
 		this.renderDescriptionNoteSection(primaryFields);
-		this.renderTimeSummarySection(primaryFields);
+		this.renderTimeSummarySection(primaryFields, progressState);
 
 		// High-frequency fields directly under the primary text and time summaries.
 		this.renderCoreSection(container);
@@ -1220,11 +1290,9 @@ export class TaskEditorContent {
 				pipelines: this.settings.pipelines,
 				value: this.fieldValues['status'],
 				onSelect: value => {
-					this.fieldValues['status'] = value;
-					this.syncCheckboxWithWorkflowStatus();
+					if (!this.applyStatusDraftChange(value)) return;
 					resetPickerState();
 					this.markEdited();
-					this.refreshMobileCoreButtons();
 				},
 				onClear: () => {
 					delete this.fieldValues['status'];
@@ -1305,14 +1373,12 @@ export class TaskEditorContent {
 				manualDatePicker: this.getManualDatePickerOptions(key),
 				canRemove: !!this.fieldValues[key],
 				onSelect: value => {
-					this.applyDraftFieldRules({ [key]: value }, [key]);
+					if (!this.applyDateDraftChange(key, value)) return;
 					this.markEdited();
-					this.refreshMobileCoreButtons();
 				},
 				onRemove: () => {
-					this.applyDraftFieldRules({ [key]: '' }, [key]);
+					if (!this.applyDateDraftChange(key, '')) return;
 					this.markEdited();
-					this.refreshMobileCoreButtons();
 				},
 				onClose: () => {
 					button.removeClass('is-picker-open');
@@ -1323,7 +1389,7 @@ export class TaskEditorContent {
 			const value = (this.fieldValues[key] ?? '').trim();
 			this.setMobileCoreButtonIcon(button, this.getCoreFieldIcon(key));
 			this.setMobileCoreButtonState(button, !!value || (key === 'dateCompleted' && this.checkbox === 'done') || (key === 'dateCancelled' && this.checkbox === 'cancelled'), this.getMobileDateTone(key, value));
-			this.setMobileCoreButtonLabel(button, value ? `${label}: ${formatTaskEditorDate(value)}` : placeholderText);
+			this.setMobileCoreButtonLabel(button, value ? `${label}: ${value}` : placeholderText);
 		};
 		this.registerSchedulingDraftRefresher(refresh);
 		this.mobileCoreButtonRefreshers.add(refresh);
@@ -1382,12 +1448,12 @@ export class TaskEditorContent {
 				value: this.fieldValues['estimate'],
 				canRemove: !!(this.fieldValues['estimate'] ?? '').trim(),
 				onSelect: value => {
-					this.applyDraftFieldRules({ estimate: value }, ['estimate']);
+					this.applyDraftFieldRules({ estimate: value }, ['estimate'], { refreshEstimateReallocation: true });
 					this.markEdited();
 					this.refreshMobileCoreButtons();
 				},
 				onRemove: () => {
-					this.applyDraftFieldRules({ estimate: '' }, ['estimate']);
+					this.applyDraftFieldRules({ estimate: '' }, ['estimate'], { refreshEstimateReallocation: true });
 					this.markEdited();
 					this.refreshMobileCoreButtons();
 				},
@@ -1697,11 +1763,26 @@ export class TaskEditorContent {
 		this.mobilePickerCloseFrame = null;
 	}
 
+	private handleTimeTrackerEvent(event: TimeTrackerEvent): void {
+		if (event === 'tick') return;
+
+		const indexed = this.getCurrentIndexedTask();
+		if (indexed && this.timeTracker.isTimerRunning(indexed.operonId) && indexed.checkbox !== this.checkbox) {
+			this.syncWorkflowFieldsFromIndex();
+		}
+		this.syncTrackingFieldsFromIndex();
+		this.refreshCoreTrackerControl?.();
+		this.refreshMobileCoreButtons();
+		this.refreshTrackingSessionsSection?.();
+	}
+
 	/**
 	 * Mount the editor UI into the given container element.
 	 * Clears the container first, then renders all sections.
 	 */
 	mountInto(container: HTMLElement): void {
+		if (this.rootEl && this.rootEl !== container) cleanupOperonHoverTooltips(this.rootEl);
+		cleanupOperonHoverTooltips(container);
 		container.empty();
 		container.addClass('operon-task-editor');
 		container.toggleClass('operon-task-editor-mobile', Platform.isPhone);
@@ -1720,20 +1801,7 @@ export class TaskEditorContent {
 			window.addEventListener('resize', this.mobileResizeHandler);
 		}
 		this.trackerUnsubscribe?.();
-		this.trackerUnsubscribe = this.timeTracker.subscribe((event) => {
-			if (event !== 'tick') {
-				const indexed = this.getCurrentIndexedTask();
-				if (indexed && this.timeTracker.isTimerRunning(indexed.operonId) && indexed.checkbox !== this.checkbox) {
-					this.syncWorkflowFieldsFromIndex();
-				}
-				this.syncTrackingFieldsFromIndex();
-			}
-			this.refreshCoreTrackerControl?.();
-			this.refreshMobileCoreButtons();
-			if (event !== 'tick') {
-				this.refreshTrackingSessionsSection?.();
-			}
-		});
+		this.trackerUnsubscribe = this.timeTracker.subscribe(event => this.handleTimeTrackerEvent(event));
 		this.pinnedCacheUnsubscribe?.();
 		this.pinnedCacheUnsubscribe = this.pinnedCache?.subscribe(() => {
 			this.refreshCorePinControl?.();
@@ -1797,6 +1865,7 @@ export class TaskEditorContent {
 		this.clearMobileCoreToolbarState();
 		this.clearInitialDescriptionFocusTimers();
 
+		cleanupOperonHoverTooltips(this.mainPanelEl);
 		this.mainPanelEl.empty();
 		if (Platform.isPhone) {
 			this.renderMobileTaskEditorBody(this.mainPanelEl);
@@ -1810,52 +1879,54 @@ export class TaskEditorContent {
 		this.scheduleMobileCoreToolbarOverflowState();
 	}
 
-	beginCloseSave(): Promise<boolean> {
+	beginCloseSave(): Promise<TaskEditorSaveOutcome> {
 		this.syncFileBodyDraftFromEditor();
 		if (this.saveTimer) {
 			clearWindowTimeout(this.saveTimer);
 			this.saveTimer = null;
 		}
-		if (!this.description.trim()) return Promise.resolve(false);
-		if (this.persistInFlight) return this.continueCloseSaveAfterInFlight(this.persistInFlight);
-		if (!this.hasBeenEdited) return Promise.resolve(true);
-		return this.persistEditorState('close-save');
+		if (!this.description.trim()) {
+			return Promise.resolve({ ok: false, reason: 'description-required' });
+		}
+		if (!this.hasBeenEdited && !this.persistInFlight) {
+			return Promise.resolve({ ok: true, status: 'no-change', clean: true });
+		}
+		return this.flushPendingEditsOutcome('close-save');
 	}
 
-	private async continueCloseSaveAfterInFlight(inFlight: Promise<boolean>): Promise<boolean> {
-		const saved = await inFlight;
-		if (this.persistInFlight === inFlight) {
-			this.persistInFlight = null;
-		}
-		if (!saved) return false;
-		this.syncFileBodyDraftFromEditor();
-		if (this.saveTimer) {
-			clearWindowTimeout(this.saveTimer);
-			this.saveTimer = null;
-		}
-		if (!this.description.trim()) return false;
-		if (!this.hasBeenEdited) return true;
-		return this.persistEditorState('close-save');
-	}
-
-	prepareCloseSave(): Promise<boolean> {
+	async prepareCloseSave(): Promise<TaskEditorSaveOutcome> {
 		this.syncFileBodyDraftFromEditor();
 		if (this.isNewTask && !this.hasBeenEdited && !this.description.trim()) {
-			return Promise.resolve(true);
+			return { ok: true, status: 'no-change', clean: true };
 		}
-		return this.beginCloseSave();
+		const outcome = await this.beginCloseSave();
+		if (!outcome.ok && outcome.reason === 'description-required') {
+			new Notice(t('notifications', 'taskDescriptionRequired'));
+			this.focusDescriptionField();
+		}
+		return outcome;
 	}
 
 	/**
 	 * Cleanup: clear timers. Call when the container is being torn down.
 	 */
 	destroy(options: { skipCloseSave?: boolean } = {}): void {
+		let closeSave: Promise<TaskEditorSaveOutcome> | null = null;
+		if (!options.skipCloseSave && this.hasBeenEdited && this.description.trim()) {
+			this.destroyCloseSaveInFlight = true;
+			closeSave = this.beginCloseSave().finally(() => {
+				this.destroyCloseSaveInFlight = false;
+			});
+		}
+		if (this.rootEl) cleanupOperonHoverTooltips(this.rootEl);
+		this.disposed = true;
 		window.removeEventListener('resize', this.mobileResizeHandler);
 		this.pinnedCacheUnsubscribe?.();
 		this.pinnedCacheUnsubscribe = null;
 		this.trackerUnsubscribe?.();
 		this.trackerUnsubscribe = null;
 		this.unregisterFileBodyViewportListener();
+		this.cancelFileBodyEditorLayoutRefresh();
 		this.schedulingDraftRefreshers.clear();
 		this.mobileCoreButtonRefreshers.clear();
 		this.refreshCorePinControl = null;
@@ -1892,9 +1963,7 @@ export class TaskEditorContent {
 		this.noteInputEl = null;
 		this.clearInitialDescriptionFocusTimers();
 
-		if (!options.skipCloseSave && this.hasBeenEdited && this.description.trim()) {
-			void this.beginCloseSave();
-		}
+		if (closeSave) void closeSave;
 
 		if (this.saveTimer) {
 			clearWindowTimeout(this.saveTimer);
@@ -1940,7 +2009,11 @@ export class TaskEditorContent {
 		}
 	}
 
-	private applyDraftFieldRules(patch: Record<string, string>, changedKeys: string[]): void {
+	private applyDraftFieldRules(
+		patch: Record<string, string>,
+		changedKeys: string[],
+		options: { refreshEstimateReallocation?: boolean } = {},
+	): void {
 		const normalizedPatch = applyFieldRules({
 			current: this.fieldValues,
 			patch,
@@ -1955,8 +2028,81 @@ export class TaskEditorContent {
 		}
 		this.syncDerivedRepeatFieldsFromDraft();
 		this.refreshSchedulingDraftControls();
+		if (options.refreshEstimateReallocation === true) {
+			this.refreshEstimateReallocationControl?.();
+		}
+		this.refreshMobileCoreButtons();
+	}
+
+	private applyTerminalDateDraftChange(
+		key: 'dateCompleted' | 'dateCancelled',
+		value: string,
+	): boolean {
+		const normalizedValue = value.trim();
+		const resolution = resolveReverseWorkflowFromTerminalDate(
+			this.settings.pipelines,
+			this.fieldValues['status'],
+			this.settings.defaultPipelineName,
+			key,
+			normalizedValue,
+		);
+		if (!resolution.isValid || !resolution.workflow) {
+			new Notice(resolution.errorMessage ?? t('taskEditor', 'terminalDateWorkflowResolveFailed'));
+			return false;
+		}
+
+		this.fieldValues['status'] = resolution.workflow.value;
+		this.checkbox = resolution.checkbox;
+		if (normalizedValue) {
+			this.fieldValues[key] = normalizedValue;
+			delete this.fieldValues[key === 'dateCompleted' ? 'dateCancelled' : 'dateCompleted'];
+		} else {
+			delete this.fieldValues['dateCompleted'];
+			delete this.fieldValues['dateCancelled'];
+		}
+		this.refreshSchedulingDraftControls();
 		this.refreshEstimateReallocationControl?.();
 		this.refreshMobileCoreButtons();
+		return true;
+	}
+
+	private applyDateDraftChange(key: string, value: string): boolean {
+		if (key === 'dateCompleted' || key === 'dateCancelled') {
+			return this.applyTerminalDateDraftChange(key, value);
+		}
+		this.applyDraftFieldRules({ [key]: value }, [key]);
+		return true;
+	}
+
+	private applyStatusDraftChange(value: string): boolean {
+		const previousFieldValues = { ...this.fieldValues };
+		const previousCheckbox = this.checkbox;
+		this.fieldValues['status'] = value;
+		const resolved = resolveWorkflowStatus(this.settings.pipelines, value);
+		if (!resolved) {
+			new Notice(t('taskEditor', 'terminalDateWorkflowResolveFailed'));
+			this.fieldValues = previousFieldValues;
+			this.checkbox = previousCheckbox;
+			this.refreshSchedulingDraftControls();
+			this.refreshMobileCoreButtons();
+			return false;
+		}
+
+		this.checkbox = resolved.checkbox;
+		const today = localToday();
+		if (resolved.terminalDateKey === 'dateCompleted') {
+			this.fieldValues['dateCompleted'] = this.fieldValues['dateCompleted'] || today;
+			delete this.fieldValues['dateCancelled'];
+		} else if (resolved.terminalDateKey === 'dateCancelled') {
+			this.fieldValues['dateCancelled'] = this.fieldValues['dateCancelled'] || today;
+			delete this.fieldValues['dateCompleted'];
+		} else {
+			delete this.fieldValues['dateCompleted'];
+			delete this.fieldValues['dateCancelled'];
+		}
+		this.refreshSchedulingDraftControls();
+		this.refreshMobileCoreButtons();
+		return true;
 	}
 
 	private applyTaskFieldPickerPayload(payload: Record<string, string | string[]>): void {
@@ -1964,7 +2110,10 @@ export class TaskEditorContent {
 		for (const [key, value] of Object.entries(payload)) {
 			patch[key] = Array.isArray(value) ? value.join('; ') : value;
 		}
-		this.applyDraftFieldRules(patch, Object.keys(patch));
+		const changedKeys = Object.keys(patch);
+		this.applyDraftFieldRules(patch, changedKeys, {
+			refreshEstimateReallocation: changedKeys.includes('parentTask'),
+		});
 	}
 
 	private renderCustomFieldSelection(
@@ -2006,13 +2155,13 @@ export class TaskEditorContent {
 	private formatCustomFieldDisplayValue(mapping: KeyMapping, value: string): string {
 		const trimmed = value.trim();
 		if (mapping.type === 'datetime') return formatTaskEditorDatetime(this.app, this.settings, trimmed);
-		if (mapping.type === 'date') return formatTaskEditorDate(trimmed);
+		if (mapping.type === 'date') return trimmed;
 		return trimmed;
 	}
 
 	// --- Renderers ---
 
-	private renderTopContextSection(container: HTMLElement): void {
+	private renderTopContextSection(container: HTMLElement, progressState: EditorProgressSectionState | null): void {
 		const section = container.createDiv('operon-editor-top-context-section');
 		const relations = section.createDiv('operon-editor-top-context-relations');
 		const updateVisibility = () => {
@@ -2026,13 +2175,14 @@ export class TaskEditorContent {
 
 		this.renderParentContext(relations, updateVisibility);
 		this.renderSubtaskCards(relations);
-		this.renderProgressSection(section);
+		this.renderProgressSection(section, progressState);
 		updateVisibility();
 	}
 
 	private renderParentContext(container: HTMLElement, onRender?: () => void): void {
 		const host = container.createDiv('operon-editor-parent-context-host');
 		const render = (): void => {
+			cleanupOperonHoverTooltips(host);
 			host.empty();
 			const parentId = this.fieldValues['parentTask'];
 			if (!parentId) {
@@ -2170,18 +2320,14 @@ export class TaskEditorContent {
 			: 'var(--operon-task-editor-accent, var(--interactive-accent))';
 	}
 
-	/** Recursively collect all descendant IndexedTasks for a given operonId. */
-	private collectAllDescendants(operonId: string): IndexedTask[] {
-		const result: IndexedTask[] = [];
-		const childIds = this.indexer.secondary.getChildIds(operonId);
-		for (const id of childIds) {
-			const task = this.indexer.getTask(id);
-			if (task) {
-				result.push(task);
-				result.push(...this.collectAllDescendants(id));
-			}
+	private getProgressDescendantTasks(operonId: string): IndexedTask[] {
+		const descendants: IndexedTask[] = [];
+		for (const descendantId of this.indexer.secondary.getAllDescendantIds(operonId)) {
+			if (descendantId === operonId) continue;
+			const task = this.indexer.getTask(descendantId);
+			if (task) descendants.push(task);
 		}
-		return result;
+		return descendants;
 	}
 
 	private renderSubtaskCards(container: HTMLElement): void {
@@ -2624,10 +2770,9 @@ export class TaskEditorContent {
 
 		const indexedTask = this.indexer.getTask(operonId);
 		const statsProgress = indexedTask ? resolveTaskEditorProgressFromStats(indexedTask.fieldValues) : null;
-		const childIds = statsProgress ? null : this.indexer.secondary.getChildIds(operonId);
-		const hasSubtasks = statsProgress?.hasSubtasks ?? (!!childIds && childIds.size > 0);
-
-		const allDesc = statsProgress || !hasSubtasks ? [] : this.collectAllDescendants(operonId);
+		const hasDirectChildren = !statsProgress && this.indexer.secondary.getChildIds(operonId).size > 0;
+		const allDesc = statsProgress || !hasDirectChildren ? [] : this.getProgressDescendantTasks(operonId);
+		const hasSubtasks = statsProgress?.hasSubtasks ?? allDesc.length > 0;
 		const total = statsProgress?.total ?? allDesc.length;
 		const done = statsProgress?.done ?? allDesc.filter(c => c.checkbox === 'done').length;
 		const progressPct = statsProgress?.progressPct ?? (total > 0 ? Math.round((done / total) * 100) : 0);
@@ -2674,8 +2819,7 @@ export class TaskEditorContent {
 		};
 	}
 
-	private renderTimeSummarySection(container: HTMLElement): void {
-		const state = this.getProgressSectionState();
+	private renderTimeSummarySection(container: HTMLElement, state: EditorProgressSectionState | null): void {
 		if (!state?.hasAnyTimeData) return;
 		const hasAnyDuration = state.ownDuration > 0 || (state.hasSubtasks && state.subtaskDuration > 0) || state.totalDuration > 0;
 		const hasAnyEstimate = state.ownEstimate > 0 || (state.hasSubtasks && state.subtaskEstimate > 0) || state.totalEstimate > 0;
@@ -2757,8 +2901,7 @@ export class TaskEditorContent {
 		}
 	}
 
-	private renderProgressSection(container: HTMLElement): void {
-		const state = this.getProgressSectionState();
+	private renderProgressSection(container: HTMLElement, state: EditorProgressSectionState | null): void {
 		if (!state?.hasSubtasks && !state?.hasPlainCheckboxes) return;
 
 		const section = container.createDiv('operon-editor-progress');
@@ -3009,6 +3152,7 @@ export class TaskEditorContent {
 	}
 
 	private renderWorkflowPickerActions(container: HTMLElement, items = this.getRenderableWorkflowPickerItems()): void {
+		cleanupOperonHoverTooltips(container);
 		container.empty();
 		this.workflowActionButtons.clear();
 		for (const item of items) {
@@ -3034,6 +3178,7 @@ export class TaskEditorContent {
 	}
 
 	private renderFilledWorkflowPickers(container: HTMLElement, items = this.getRenderableWorkflowPickerItems()): void {
+		cleanupOperonHoverTooltips(container);
 		container.empty();
 		let renderedCount = 0;
 		for (const item of items) {
@@ -3530,8 +3675,7 @@ export class TaskEditorContent {
 				pipelines: this.settings.pipelines,
 				value: this.fieldValues['status'],
 				onSelect: value => {
-					this.fieldValues['status'] = value;
-					this.syncCheckboxWithWorkflowStatus();
+					if (!this.applyStatusDraftChange(value)) return;
 					refresh();
 					resetPickerState();
 					this.markEdited();
@@ -3573,7 +3717,7 @@ export class TaskEditorContent {
 				canonicalKey: key,
 				isEmpty: !value,
 				showIcon: true,
-				text: value ? formatTaskEditorDate(value) : placeholderText,
+				text: value || placeholderText,
 			});
 		};
 		this.registerSchedulingDraftRefresher(refresh);
@@ -3588,11 +3732,11 @@ export class TaskEditorContent {
 				manualDatePicker: this.getManualDatePickerOptions(key),
 				canRemove: !!this.fieldValues[key],
 				onSelect: value => {
-					this.applyDraftFieldRules({ [key]: value }, [key]);
+					if (!this.applyDateDraftChange(key, value)) return;
 					this.markEdited();
 				},
 				onRemove: () => {
-					this.applyDraftFieldRules({ [key]: '' }, [key]);
+					if (!this.applyDateDraftChange(key, '')) return;
 					this.markEdited();
 				},
 				onClose: () => {
@@ -3699,26 +3843,24 @@ export class TaskEditorContent {
 			const seconds = parseInt(this.fieldValues['estimate'] ?? '0', 10);
 			input.value = seconds > 0 ? String(Math.round(seconds / 60)) : '';
 			shell.classList.toggle('has-value', input.value.length > 0);
-			refreshButtonState();
 		};
 		this.registerSchedulingDraftRefresher(refresh);
-		const applyInputValue = (): void => {
+		const applyInputValue = (refreshEstimateReallocation = false): void => {
 			const minutes = parseInt(input.value, 10);
 			this.applyDraftFieldRules(
 				{ estimate: minutes > 0 ? String(minutes * 60) : '' },
 				['estimate'],
+				{ refreshEstimateReallocation },
 			);
 		};
 		const commitInputValue = (): void => {
-			applyInputValue();
+			applyInputValue(true);
 			this.markEdited();
-			refreshButtonState();
 		};
 		input.addEventListener('input', () => {
 			applyInputValue();
 			shell.classList.toggle('has-value', input.value.length > 0);
 			this.markEdited();
-			refreshButtonState();
 		});
 		input.addEventListener('change', commitInputValue);
 		shell.addEventListener('click', () => input.focus());
@@ -3825,7 +3967,7 @@ export class TaskEditorContent {
 			if (!childOperonId) return;
 
 			const saved = await this.persistEditorState('estimate-reallocation');
-			if (!saved) return;
+			if (!saved.ok || !saved.clean) return;
 
 			const applied = await this.onApplyEstimateReallocation({
 				childOperonId,
@@ -4161,6 +4303,7 @@ export class TaskEditorContent {
 
 		const refresh = () => {
 			addButton.disabled = !this.description.trim();
+			cleanupOperonHoverTooltips(list);
 			list.empty();
 
 			const sessions = this.getCurrentTaskSessions();
@@ -4296,8 +4439,10 @@ export class TaskEditorContent {
 	}
 
 	private async handleRemoveTaskClick(): Promise<void> {
-		if (!this.existingTask || !this.onRequestDelete) return;
+		if (!this.existingTask || !this.onRequestDelete || this.deleteInProgress) return;
+		this.deleteInProgress = true;
 		this.suspendAutoSave();
+		let deleted = false;
 		try {
 			const isYamlTask = this.fileBodyContext?.format === 'yaml';
 			const confirmed = await this.promptConfirmAction({
@@ -4309,11 +4454,31 @@ export class TaskEditorContent {
 				cancelText: t('buttons', 'cancel'),
 			});
 			if (!confirmed) return;
-			const result = await this.onRequestDelete(this.existingTask);
+			const inFlight = this.persistInFlight;
+			if (inFlight) {
+				try {
+					await inFlight;
+				} catch (error) {
+					console.error('Operon: task editor save failed before delete', error);
+				}
+			}
+			let result: boolean | void;
+			try {
+				result = await this.onRequestDelete(this.existingTask);
+			} catch (error) {
+				console.error('Operon: task editor delete failed', error);
+				new Notice(t('notifications', 'taskSaveFailed'));
+				return;
+			}
 			if (result === false) return;
-			this.rootEl?.dispatchEvent(new CustomEvent('operon-editor-close', { bubbles: true }));
+			deleted = true;
+			this.disposed = true;
+			this.requestEditorClose('force-after-delete');
 		} finally {
-			this.resumeAutoSave();
+			if (!deleted) {
+				this.deleteInProgress = false;
+				this.resumeAutoSave();
+			}
 		}
 	}
 
@@ -5112,6 +5277,7 @@ export class TaskEditorContent {
 					delete this.fieldValues['parentTask'];
 					render();
 					this.markEdited();
+					this.refreshEstimateReallocationControl?.();
 					this.refreshWorkflowPickerSurfaceValues();
 					window.requestAnimationFrame(() => parentAnchor.focus());
 				},
@@ -5132,6 +5298,7 @@ export class TaskEditorContent {
 					else delete this.fieldValues['parentTask'];
 					render();
 					this.markEdited();
+					this.refreshEstimateReallocationControl?.();
 					this.refreshWorkflowActionButtonStates();
 				},
 				onClose: () => {
@@ -5223,10 +5390,16 @@ export class TaskEditorContent {
 		if (!indexed) return;
 
 		this.checkbox = indexed.checkbox;
+		this.persistedCheckbox = indexed.checkbox;
 		for (const key of ['status', 'dateCompleted', 'dateCancelled']) {
 			const value = indexed.fieldValues[key] ?? '';
-			if (value) this.fieldValues[key] = value;
-			else delete this.fieldValues[key];
+			if (value) {
+				this.fieldValues[key] = value;
+				this.persistedFieldValues[key] = value;
+			} else {
+				delete this.fieldValues[key];
+				delete this.persistedFieldValues[key];
+			}
 			this.syncExistingTaskFieldSnapshot(key, value);
 		}
 		if (this.existingTask) {
@@ -5274,7 +5447,7 @@ export class TaskEditorContent {
 		const operonId = this.fieldValues['operonId'];
 		if (!operonId) return null;
 
-		if (!this.getCurrentIndexedTask()) {
+		if (this.hasBeenEdited || this.persistInFlight || !this.getCurrentIndexedTask()) {
 			const saved = await this.flushPendingEdits();
 			if (!saved) return null;
 		}
@@ -5297,11 +5470,22 @@ export class TaskEditorContent {
 	}
 
 	private async flushPendingEdits(): Promise<boolean> {
-		let saved = await this.persistEditorState('explicit-save');
-		while (this.hasBeenEdited && this.description.trim()) {
-			saved = await this.persistEditorState('explicit-save') || saved;
+		const outcome = await this.flushPendingEditsOutcome('explicit-save');
+		return outcome.ok && outcome.clean;
+	}
+
+	private async flushPendingEditsOutcome(reason: PersistReason): Promise<TaskEditorSaveOutcome> {
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const outcome = await this.persistEditorState(reason);
+			if (!outcome.ok) return outcome;
+			if (!this.hasBeenEdited) {
+				return { ...outcome, clean: true };
+			}
+			if (!this.description.trim()) {
+				return { ok: false, reason: 'description-required' };
+			}
 		}
-		return saved;
+		return { ok: false, reason: 'edit-raced' };
 	}
 
 	private createSessionActionButton(container: HTMLElement, iconName: string, label: string): HTMLButtonElement {
@@ -5348,6 +5532,7 @@ export class TaskEditorContent {
 	// --- Save Logic ---
 
 	markEdited(): void {
+		if (this.disposed) return;
 		this.hasBeenEdited = true;
 		this.editVersion += 1;
 		this.refreshFileBodySaveButtonState();
@@ -5360,6 +5545,7 @@ export class TaskEditorContent {
 	}
 
 	private scheduleSave(): void {
+		if (this.disposed) return;
 		if (this.saveTimer) clearWindowTimeout(this.saveTimer);
 		if (this.autoSaveSuspended) return;
 		const delayMs = this.settings.taskEditorAutosaveDelaySeconds * 1000;
@@ -5375,6 +5561,7 @@ export class TaskEditorContent {
 	}
 
 	private resumeAutoSave(): void {
+		if (this.disposed) return;
 		this.autoSaveSuspended = false;
 		if (this.hasBeenEdited) {
 			this.scheduleSave();
@@ -5456,27 +5643,31 @@ export class TaskEditorContent {
 		this.estimateReallocationBaseSeconds = Math.max(0, seconds);
 	}
 
-	private syncCheckboxWithWorkflowStatus(): boolean {
+	private syncCheckboxWithWorkflowStatus(): TaskEditorWorkflowSyncResult {
 		const currentCompleted = (this.fieldValues['dateCompleted'] ?? '').trim();
 		const currentCancelled = (this.fieldValues['dateCancelled'] ?? '').trim();
-		const previousCompleted = (this.existingTask?.fields.find(field => field.key === 'dateCompleted')?.value ?? '').trim();
-		const previousCancelled = (this.existingTask?.fields.find(field => field.key === 'dateCancelled')?.value ?? '').trim();
+		const previousCompleted = (this.persistedFieldValues['dateCompleted'] ?? '').trim();
+		const previousCancelled = (this.persistedFieldValues['dateCancelled'] ?? '').trim();
 		const completedChanged = currentCompleted !== previousCompleted;
 		const cancelledChanged = currentCancelled !== previousCancelled;
 
 		if (currentCompleted && currentCancelled) {
 			new Notice(t('taskEditor', 'terminalDateConflict'));
-			return false;
+			return { ok: false, reason: 'terminal-conflict' };
 		}
 
 		let reverseKey: 'dateCompleted' | 'dateCancelled' | null = null;
 		let reverseValue = '';
-		if (cancelledChanged) {
-			reverseKey = 'dateCancelled';
-			reverseValue = currentCancelled;
-		} else if (completedChanged) {
+		if (completedChanged && currentCompleted) {
 			reverseKey = 'dateCompleted';
 			reverseValue = currentCompleted;
+		} else if (cancelledChanged && currentCancelled) {
+			reverseKey = 'dateCancelled';
+			reverseValue = currentCancelled;
+		} else if (cancelledChanged) {
+			reverseKey = 'dateCancelled';
+		} else if (completedChanged) {
+			reverseKey = 'dateCompleted';
 		}
 
 		if (reverseKey) {
@@ -5489,7 +5680,7 @@ export class TaskEditorContent {
 			);
 			if (!resolution.isValid || !resolution.workflow) {
 				new Notice(resolution.errorMessage ?? t('taskEditor', 'terminalDateWorkflowResolveFailed'));
-				return false;
+				return { ok: false, reason: 'workflow-resolution-failed' };
 			}
 
 			this.fieldValues['status'] = resolution.workflow.value;
@@ -5504,11 +5695,11 @@ export class TaskEditorContent {
 				delete this.fieldValues['dateCompleted'];
 				delete this.fieldValues['dateCancelled'];
 			}
-			return true;
+			return { ok: true };
 		}
 
 		const resolved = resolveWorkflowStatus(this.settings.pipelines, this.fieldValues['status']);
-		if (!resolved) return true;
+		if (!resolved) return { ok: true };
 
 		const today = localNow().substring(0, 10);
 		this.checkbox = resolved.checkbox;
@@ -5527,19 +5718,23 @@ export class TaskEditorContent {
 			delete this.fieldValues['dateCompleted'];
 			delete this.fieldValues['dateCancelled'];
 		}
-		return true;
+		return { ok: true };
 	}
 
-	private async persistEditorState(reason: PersistReason = 'autosave'): Promise<boolean> {
+	private async persistEditorState(reason: PersistReason = 'autosave'): Promise<TaskEditorSaveOutcome> {
+		const allowedDestroyCloseSave = reason === 'close-save' && this.destroyCloseSaveInFlight;
+		if ((this.disposed && !allowedDestroyCloseSave) || this.deleteInProgress) {
+			return { ok: false, reason: 'write-rejected' };
+		}
 		if (this.persistInFlight) return this.persistInFlight;
 
-		const run = (async () => {
+		const run: Promise<TaskEditorSaveOutcome> = (async (): Promise<TaskEditorSaveOutcome> => {
 			const versionAtStart = this.editVersion;
 			if (this.saveTimer) {
 				clearWindowTimeout(this.saveTimer);
 				this.saveTimer = null;
 			}
-			if (!this.description.trim()) return false;
+			if (!this.description.trim()) return { ok: false, reason: 'description-required' };
 
 			if (!this.fieldValues['operonId']) {
 				this.fieldValues['operonId'] = generateOperonId();
@@ -5551,14 +5746,15 @@ export class TaskEditorContent {
 
 			this.maybeApplyScheduledAutomationToEditorState();
 
-			if (!this.syncCheckboxWithWorkflowStatus()) {
-				return false;
+			const workflowSync = this.syncCheckboxWithWorkflowStatus();
+			if (!workflowSync.ok) {
+				return workflowSync;
 			}
 
 			if (!this.hasSemanticDraftChanges()) {
 				this.commitNoOpSaveBaseline();
 				this.refreshEstimateReallocationControl?.();
-				return true;
+				return { ok: true, status: 'no-change', clean: true };
 			}
 
 			const operonId = this.fieldValues['operonId'];
@@ -5613,21 +5809,30 @@ export class TaskEditorContent {
 			const savedFileBodyDraft = this.fileBodyDraft;
 			const savedFileBodyDirty = this.isFileBodyDirty;
 			const savedInlineCompletionMode = this.inlineCompletionMode;
-			const saveResult = await this.onSave({
-				taskLine,
-				isNew: this.isNewTask,
-				inlineCompletionMode: savedInlineCompletionMode,
-				fileBody: this.fileBodyContext
-					? {
-						filePath: this.fileBodyContext.filePath,
-						content: savedFileBodyDraft,
-						dirty: savedFileBodyDirty,
-						format: this.fileBodyContext.format,
-						targetLine: this.fileBodyContext.targetLine,
-					}
-					: null,
-			});
-			if (saveResult === false || saveResult === null) return false;
+			let saveResult: boolean | null | void;
+			try {
+				saveResult = await this.onSave({
+					taskLine,
+					isNew: this.isNewTask,
+					inlineCompletionMode: savedInlineCompletionMode,
+					fileBody: this.fileBodyContext
+						? {
+							filePath: this.fileBodyContext.filePath,
+							content: savedFileBodyDraft,
+							dirty: savedFileBodyDirty,
+							format: this.fileBodyContext.format,
+							targetLine: this.fileBodyContext.targetLine,
+						}
+						: null,
+				});
+			} catch (error) {
+				console.error('Operon: task editor save failed', error);
+				new Notice(t('notifications', 'taskSaveFailed'));
+				return { ok: false, reason: 'write-threw' };
+			}
+			if (saveResult === false || saveResult === null) {
+				return { ok: false, reason: 'write-rejected' };
+			}
 			this.persistedDescription = savedDescription;
 			this.persistedCheckbox = savedCheckbox;
 			this.persistedTags = savedTags;
@@ -5648,7 +5853,7 @@ export class TaskEditorContent {
 				this.scheduleSave();
 			}
 			this.refreshFileBodySaveButtonState();
-			return true;
+			return { ok: true, status: 'saved', clean: !this.hasBeenEdited };
 		})();
 
 		this.persistInFlight = run;

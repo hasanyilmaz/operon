@@ -5,7 +5,8 @@ import { type TablePreset, type TableSortDirection, type TableSortRule } from '.
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { createFloatingPanel, requestFloatingInputFocus } from '../field-pickers/common';
 import { showSearchableFieldPicker } from '../field-pickers/searchable-field-picker';
-import { buildTableTaskFieldCatalog } from './table-field-catalog';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
+import { buildTableGroupSortFieldCatalog } from './table-field-catalog';
 import { buildTableFieldPickerOptions, getTableFieldPickerLabel } from './table-field-picker-options';
 import {
 	type TableGroupSortPresetPatchScope,
@@ -28,13 +29,16 @@ interface TableGroupSortPopoverOptions {
 }
 
 export function showTableGroupSortPopover(options: TableGroupSortPopoverOptions): () => void {
-	const catalog = buildTableTaskFieldCatalog(options.settings);
+	const catalog = buildTableGroupSortFieldCatalog(options.settings);
 	const supportedKeys = new Set(catalog.map(field => field.key));
 	let draft = normalizeTablePresetForEditing(options.preset);
-	const { panel, close } = createFloatingPanel(
+	const { panel, close: closePanel } = createFloatingPanel(
 		options.anchor,
 		'operon-floating-panel operon-table-group-sort-popover',
-		options.onClose,
+		() => {
+			cleanupOperonHoverTooltips(panel);
+			options.onClose?.();
+		},
 		{
 			focusInputSelector: '.operon-table-group-sort-field-select',
 			floatingHost: options.floatingHost,
@@ -60,6 +64,7 @@ export function showTableGroupSortPopover(options: TableGroupSortPopoverOptions)
 	};
 
 	render = (focusKey?: string): void => {
+		cleanupOperonHoverTooltips(panel);
 		panel.empty();
 		renderGroupingSection(panel, draft, catalog, supportedKeys, commit);
 		renderSortSection(panel, draft, catalog, supportedKeys, commit);
@@ -72,13 +77,16 @@ export function showTableGroupSortPopover(options: TableGroupSortPopoverOptions)
 	};
 
 	render();
-	return close;
+	return () => {
+		cleanupOperonHoverTooltips(panel);
+		closePanel();
+	};
 }
 
 function renderGroupingSection(
 	panel: HTMLElement,
 	preset: TablePreset,
-	catalog: ReturnType<typeof buildTableTaskFieldCatalog>,
+	catalog: ReturnType<typeof buildTableGroupSortFieldCatalog>,
 	supportedKeys: ReadonlySet<string>,
 	commit: (preset: TablePreset, scope: TableGroupSortPresetPatchScope, focusKey?: string) => void,
 ): void {
@@ -125,7 +133,7 @@ function renderGroupingRow(
 		fieldValue: string;
 		orderValue: TableSortDirection;
 		fieldPlaceholder: string;
-		catalog: ReturnType<typeof buildTableTaskFieldCatalog>;
+		catalog: ReturnType<typeof buildTableGroupSortFieldCatalog>;
 		floatingHost: HTMLElement;
 		excludedFieldKey?: string | null;
 		disabled?: boolean;
@@ -154,10 +162,13 @@ function renderGroupingRow(
 		onFieldChange: options.onFieldChange,
 	});
 
-	const orderSelect = renderDirectionSelect(controls, options.orderValue, t('table', 'groupOrder'));
-	orderSelect.dataset.operonTableGroupSortFocus = options.focusOrderKey;
-	orderSelect.disabled = options.disabled === true || !options.fieldValue;
-	orderSelect.addEventListener('change', () => options.onOrderChange(readSortDirection(orderSelect.value)));
+	renderDirectionToggle(controls, {
+		direction: options.orderValue,
+		label: t('table', 'groupOrder'),
+		disabled: options.disabled === true || !options.fieldValue,
+		focusKey: options.focusOrderKey,
+		onToggle: () => options.onOrderChange(toggleSortDirection(options.orderValue)),
+	});
 
 	renderIconButton(
 		controls,
@@ -172,7 +183,7 @@ function renderGroupingRow(
 function renderSortSection(
 	panel: HTMLElement,
 	preset: TablePreset,
-	catalog: ReturnType<typeof buildTableTaskFieldCatalog>,
+	catalog: ReturnType<typeof buildTableGroupSortFieldCatalog>,
 	supportedKeys: ReadonlySet<string>,
 	commit: (preset: TablePreset, scope: TableGroupSortPresetPatchScope, focusKey?: string) => void,
 ): void {
@@ -217,7 +228,7 @@ function renderSortRow(
 		preset: TablePreset;
 		rule: TableSortRule;
 		index: number;
-		catalog: ReturnType<typeof buildTableTaskFieldCatalog>;
+		catalog: ReturnType<typeof buildTableGroupSortFieldCatalog>;
 		floatingHost: HTMLElement;
 		supportedKeys: ReadonlySet<string>;
 			commit: (preset: TablePreset, scope: TableGroupSortPresetPatchScope, focusKey?: string) => void;
@@ -246,14 +257,17 @@ function renderSortRow(
 			},
 	});
 
-	const directionSelect = renderDirectionSelect(row, rule.direction, t('table', 'sortBy'));
-	directionSelect.dataset.operonTableGroupSortFocus = `sort-direction-${index}`;
-	directionSelect.addEventListener('change', () => {
-		const nextRules = preset.sortRules.map((sortRule, ruleIndex) => ruleIndex === index
-			? { ...sortRule, direction: readSortDirection(directionSelect.value) }
-			: sortRule);
+	renderDirectionToggle(row, {
+		direction: rule.direction,
+		label: t('table', 'sortBy'),
+		focusKey: `sort-direction-${index}`,
+		onToggle: () => {
+			const nextRules = preset.sortRules.map((sortRule, ruleIndex) => ruleIndex === index
+				? { ...sortRule, direction: toggleSortDirection(rule.direction) }
+				: sortRule);
 			commit(replaceTablePresetSortRules(preset, nextRules, supportedKeys), 'sortRules', `sort-direction-${index}`);
-		});
+		},
+	});
 
 	renderIconButton(row, 'arrow-up', t('table', 'moveSortUp'), index === 0, () => {
 		const nextRules = [...preset.sortRules];
@@ -280,7 +294,7 @@ function renderTableFieldPickerButton(
 		value: string;
 		label: string;
 		placeholder: string;
-		catalog: ReturnType<typeof buildTableTaskFieldCatalog>;
+		catalog: ReturnType<typeof buildTableGroupSortFieldCatalog>;
 		floatingHost: HTMLElement;
 		excludedFieldKeys?: ReadonlySet<string>;
 		disabled?: boolean;
@@ -329,19 +343,31 @@ function renderTableFieldPickerButton(
 	});
 }
 
-function renderDirectionSelect(
+function renderDirectionToggle(
 	container: HTMLElement,
-	value: TableSortDirection,
-	ariaLabel: string,
-): HTMLSelectElement {
-	const select = container.createEl('select', {
-		cls: 'operon-table-group-sort-direction-select',
+options: {
+		direction: TableSortDirection;
+		label: string;
+		disabled?: boolean;
+		focusKey: string;
+		onToggle: () => void;
+	},
+): void {
+	const directionLabel = getTableSortDirectionLabel(options.direction);
+	const button = container.createEl('button', {
+		cls: 'operon-table-group-sort-icon-button operon-table-group-sort-direction-toggle',
+		attr: { type: 'button' },
 	});
-	setAccessibleLabelWithoutTooltip(select, ariaLabel);
-	select.createEl('option', { value: 'asc', text: getTableSortDirectionLabel('asc') });
-	select.createEl('option', { value: 'desc', text: getTableSortDirectionLabel('desc') });
-	select.value = value;
-	return select;
+	button.dataset.operonTableGroupSortFocus = options.focusKey;
+	button.disabled = options.disabled === true;
+	setAccessibleLabelWithoutTooltip(button, `${options.label}: ${directionLabel}`);
+	setIcon(button, options.direction === 'asc' ? 'arrow-down-a-z' : 'arrow-down-z-a');
+	bindOperonHoverTooltip(button, { content: directionLabel, taskColor: null });
+	button.addEventListener('click', event => {
+		event.preventDefault();
+		if (button.disabled) return;
+		options.onToggle();
+	});
 }
 
 function renderIconButton(
@@ -369,8 +395,8 @@ function renderIconButton(
 	});
 }
 
-function readSortDirection(value: string): TableSortDirection {
-	return value === 'desc' ? 'desc' : 'asc';
+function toggleSortDirection(direction: TableSortDirection): TableSortDirection {
+	return direction === 'asc' ? 'desc' : 'asc';
 }
 
 function getTableSortDirectionLabel(direction: TableSortDirection): string {

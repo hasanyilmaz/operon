@@ -9,10 +9,11 @@ import { localNow } from '../../core/local-time';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../../core/subtask-action';
 import { resolveTaskDateToneColor } from '../../core/task-date-tone';
 import { IndexedTask } from '../../types/fields';
-import { Pipeline, parseStatusValue } from '../../types/pipeline';
+import { findStatusDef, Pipeline } from '../../types/pipeline';
 import type { PriorityDefinition } from '../../types/priority';
 import { OperonSettings } from '../../types/settings';
 import type { ProjectSerialDisplay } from '../../core/project-serials';
+import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import type { InlineRepeatCompletionMode } from '../../storage/repeat-series-store';
 import {
 	buildInlineTaskCompactChipEntries,
@@ -61,6 +62,7 @@ export interface KanbanTaskChipRowCallbacks {
 export interface KanbanTaskChipRowOptions {
 	allTasks: IndexedTask[];
 	taskLookup?: CompactTaskLookupContext;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	owner?: Node | null;
 	readOnly?: boolean;
 }
@@ -113,7 +115,11 @@ export function buildKanbanTaskChipRow(
 		options.allTasks,
 		settings.kanbanTaskCompactChips,
 		locationResolver,
-		{ repeatSkipDateResolver: callbacks.getRepeatSkipDates, taskLookup },
+		{
+			repeatSkipDateResolver: callbacks.getRepeatSkipDates,
+			taskLookup,
+			workflowStatusIdentityIndex: options.workflowStatusIdentityIndex,
+		},
 	);
 	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId, task) ?? null;
 	if (entries.length === 0 && !projectSerialDisplay && actionChips.length === 0) return null;
@@ -139,7 +145,13 @@ export function buildKanbanTaskChipRow(
 		chipStrip.appendChild(serialChip);
 	}
 
-	const statusColor = lookupStatusColor(task.fieldValues['status'], settings.pipelines);
+	const statusColor = entries.some(entry => entry.colorRole === 'status')
+		? lookupStatusColor(
+			task.fieldValues['status'],
+			settings.pipelines,
+			options.workflowStatusIdentityIndex,
+		)
+		: null;
 	for (const rawEntry of entries) {
 		const entry = readOnly ? { ...rawEntry, interactive: false } : rawEntry;
 		const chip = createInlineTaskCompactChipElement(entry, 'operon-kanban-card-chip operon-task-chip', { owner: chipStrip });
@@ -560,14 +572,14 @@ function applyKanbanChipVisualStyles(
 	entry: InlineTaskCompactChipEntry,
 	task: IndexedTask,
 	priorities: PriorityDefinition[],
-	statusColor: string,
+	statusColor: string | null,
 	taskColor: string | null,
 ): void {
 	if (entry.colorRole === 'priority') {
 		const def = priorities.find((priority) => priority.label === task.fieldValues['priority']);
 		if (def) chip.style.setProperty('--operon-inline-chip-icon-color', def.color);
 	}
-	if (entry.colorRole === 'status') {
+	if (entry.colorRole === 'status' && statusColor) {
 		chip.style.setProperty('--operon-inline-chip-icon-color', statusColor);
 	}
 	if (entry.key === 'location') {
@@ -578,14 +590,13 @@ function applyKanbanChipVisualStyles(
 	if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
 }
 
-function lookupStatusColor(statusValue: string | undefined, pipelines: Pipeline[]): string {
+function lookupStatusColor(
+	statusValue: string | undefined,
+	pipelines: Pipeline[],
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
+): string {
 	if (!statusValue) return '#6b7280';
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return '#6b7280';
-	const pipeline = pipelines.find((candidate) => candidate.name === parsed.pipeline);
-	if (!pipeline) return '#6b7280';
-	const status = pipeline.statuses.find((candidate) => candidate.label === parsed.status);
-	return status?.color ?? '#6b7280';
+	return findStatusDef(pipelines, statusValue, workflowStatusIdentityIndex)?.color ?? '#6b7280';
 }
 
 function normalizeTaskColor(taskColor: string | undefined): string | null {

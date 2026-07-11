@@ -4,7 +4,12 @@ import type { IndexedTask } from '../types/fields';
 import type { TablePreset, TableSortDirection, TableSortRule, TableSummaryRule } from '../types/table';
 import type { FilterSet, OperonSettings } from '../types/settings';
 import { parseListValue } from '../core/parser';
-import { getTableTaskField, normalizeTableTaskFieldKey } from '../ui/table/table-field-catalog';
+import { buildPriorityRankMap } from '../core/priority-rank';
+import {
+	getTableTaskField,
+	normalizeTableTaskFieldKey,
+	TABLE_WORKFLOW_PIPELINE_FIELD_KEY,
+} from '../ui/table/table-field-catalog';
 import { evaluateTableSummaries, filterCompatibleTableSummaryRules, type TableSummaryCell } from '../ui/table/table-summary';
 import { compareTableSourceOrder } from '../ui/table/table-value-adapter';
 import { CHECKBOX_PROGRESS_COLUMN_KEY } from '../ui/task-progress-tracks';
@@ -128,10 +133,16 @@ export function queryTableRows(options: {
 		: scopeFilteredTasks;
 	const searchedAt = enginePerfNow();
 	const valueResolver = createTableValueResolver(tasks, options.settings, options.valueResolverOptions);
-	const priorityRank = buildTablePriorityRank(priorities);
+	const priorityRank = buildPriorityRankMap(priorities);
 	const rows = options.precomputedRows
 		? [...options.precomputedRows]
-		: sortTableRows(searchedTasks, preset.sortRules, valueResolver, priorityRank, options.settings);
+		: sortTableRows(
+			searchedTasks,
+			preset.sortRules,
+			valueResolver,
+			priorityRank,
+			options.settings,
+		);
 	const sortedAt = enginePerfNow();
 	const groupBy = resolveTableGroupBy(preset.groupBy, options.settings);
 	const subgroupBy = groupBy ? resolveTableGroupBy(preset.subgroupBy, options.settings) : null;
@@ -243,6 +254,7 @@ function resolveTableGroupBy(
 ): string | null {
 	const trimmed = groupBy?.trim();
 	if (!trimmed) return null;
+	if (trimmed === TABLE_WORKFLOW_PIPELINE_FIELD_KEY) return trimmed;
 	return settings ? normalizeTableTaskFieldKey(trimmed, settings) : trimmed;
 }
 
@@ -315,12 +327,16 @@ function buildTableGroups(
 			}
 		}
 	}
-	const groups = Array.from(groupsByValue.values()).sort((left, right) => compareTableGroups(left, right, groupOrder));
+	const groups = Array.from(groupsByValue.values()).sort((left, right) =>
+		compareTableGroups(left, right, groupOrder)
+	);
 	if (subgroupBy) {
 		for (const group of groups) {
 			const subgroups = subgroupsByGroupValue.get(group.key);
 			if (!subgroups) continue;
-			group.subgroups = Array.from(subgroups.values()).sort((left, right) => compareTableGroups(left, right, subgroupOrder));
+			group.subgroups = Array.from(subgroups.values()).sort((left, right) =>
+				compareTableGroups(left, right, subgroupOrder)
+			);
 		}
 	}
 	return groups;
@@ -393,7 +409,11 @@ export function createTableGroupPathKey(groupKey: string, subgroupKey: string): 
 	return `${groupKey}\u0001${subgroupKey}`;
 }
 
-function compareTableGroups(left: TableQueryBucket, right: TableQueryBucket, direction: TableSortDirection): number {
+function compareTableGroups(
+	left: TableQueryBucket,
+	right: TableQueryBucket,
+	direction: TableSortDirection,
+): number {
 	if (left.isNoValue || right.isNoValue) {
 		if (left.isNoValue && right.isNoValue) return 0;
 		return left.isNoValue ? 1 : -1;
@@ -421,17 +441,18 @@ function sortTableRows(
 	if (sortRules.length === 0) return rows.sort(compareTableSourceOrder);
 	return rows.sort((left, right) => {
 		for (const rule of sortRules) {
-			const comparison = compareTableSortRule(left, right, rule, priorityRank, valueResolver, settings);
+			const comparison = compareTableSortRule(
+				left,
+				right,
+				rule,
+				priorityRank,
+				valueResolver,
+				settings,
+			);
 			if (comparison !== 0) return comparison;
 		}
 		return compareTableSourceOrder(left, right);
 	});
-}
-
-function buildTablePriorityRank(
-	priorities: readonly { label: string; color?: string }[],
-): Map<string, number> {
-	return new Map(priorities.map((priority, index) => [priority.label.trim().toLocaleLowerCase(), index] as const));
 }
 
 function compareTableSortRule(

@@ -6,6 +6,10 @@ import {
 import { parseListValue } from '../core/parser';
 import { getManagedCustomFieldMappings, normalizeManagedFieldValue } from '../core/managed-task-fields';
 import { resolveWorkflowStatus, Pipeline } from '../types/pipeline';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 import { matchesTaskSearchQueryText } from './task-search';
 import { IndexedTask } from '../types/fields';
 import { KeyMapping } from '../types/settings';
@@ -28,6 +32,7 @@ export function buildFilterTreeScope(
 	const tasks: IndexedTask[] = [];
 	const seen = new Set<string>();
 	const stack = [...rootTasks].reverse();
+	const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(options.pipelines);
 
 	while (stack.length > 0) {
 		const task = stack.pop()!;
@@ -41,7 +46,7 @@ export function buildFilterTreeScope(
 			if (childId === task.operonId || seen.has(childId)) continue;
 			const childTask = options.getIndexedTask(childId);
 			if (!childTask) continue;
-			if (options.showOnlyOpenSubtasks && !isOpenSubtask(childTask, options.pipelines)) continue;
+			if (options.showOnlyOpenSubtasks && !isOpenSubtask(childTask, options.pipelines, workflowStatusIdentityIndex)) continue;
 			stack.push(childTask);
 		}
 	}
@@ -143,9 +148,13 @@ function buildDirectTaskSearchText(task: IndexedTask, keyMappings: readonly KeyM
 	return Array.from(values).join('\n');
 }
 
-function isOpenSubtask(task: IndexedTask, pipelines: Pipeline[]): boolean {
+function isOpenSubtask(
+	task: IndexedTask,
+	pipelines: Pipeline[],
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
+): boolean {
+	const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status'], workflowStatusIdentityIndex);
+	if (workflow) return workflow.checkbox === 'open';
 	if (task.checkbox === 'cancelled' || !!task.fieldValues['dateCancelled']?.trim()) return false;
-	if (task.checkbox === 'done' || !!task.fieldValues['dateCompleted']?.trim()) return false;
-	const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status']);
-	return workflow?.definition.isCancelled !== true && workflow?.definition.isFinished !== true;
+	return task.checkbox !== 'done' && !task.fieldValues['dateCompleted']?.trim();
 }

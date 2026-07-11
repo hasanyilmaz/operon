@@ -392,6 +392,315 @@ function checkCssScorecard() {
 	}
 }
 
+function checkCalendarHoverGuideContract() {
+	const calendarSource = readText('src/ui/calendar/calendar-view.ts');
+	const settingsSource = readText('src/ui/settings-tab.ts');
+	const calendarPresetAddStart = settingsSource.indexOf("settingsAsyncHandler('settings calendar preset add failed'");
+	const calendarPresetAddEnd = settingsSource.indexOf('\n\t\tconst ', calendarPresetAddStart + 1);
+	const calendarPresetAddSource = calendarPresetAddStart >= 0
+		? settingsSource.slice(calendarPresetAddStart, calendarPresetAddEnd > calendarPresetAddStart ? calendarPresetAddEnd : undefined)
+		: '';
+	if (!calendarPresetAddSource.includes("colorSource: 'noColor'")) {
+		fail('src/ui/settings-tab.ts: newly added Calendar presets must default Task color to No Color');
+	}
+	for (const token of [
+		'export function resolveCalendarColorAccents(',
+		'this.applyCalendarColorAccents(',
+		'this.applyCalendarColorAccents(element, fieldValues, preset, settings, null);',
+		"const calendarAccent = colorSource === 'noColor'",
+		"interactionAccent: colorSource === 'noColor'",
+		"resolveTaskColorSource(fieldValues, 'priorityColor', settings)",
+		': calendarAccent,',
+		'resolveCalendarColorAccents(fieldValues, preset.colorSource, settings, externalColor)',
+		"'--operon-calendar-accent': accents.calendarAccent || 'transparent'",
+		"'--operon-calendar-interaction-accent': accents.interactionAccent || 'transparent'",
+		"'--operon-calendar-interaction-accent': 'var(--text-muted)'",
+	]) {
+		if (!calendarSource.includes(token)) {
+			fail(`src/ui/calendar/calendar-view.ts: timed Calendar indicators must follow the preset color source with a No Color priority fallback: missing ${token}`);
+		}
+	}
+	const activeTrackerRules = cssRules('styles.css').filter(candidate => candidate.selectors.includes(
+		'.operon-calendar-root.is-surface-time-tracker-grid .operon-calendar-tracked-session-item.is-active-tracker',
+	));
+	if (activeTrackerRules.length === 0 || activeTrackerRules.some(rule => rule.body.includes('--operon-calendar-timed-hover-edge-'))) {
+		fail('styles.css: active tracked tasks must not suppress the shared hover-only timed edge variables');
+	}
+	if (activeTrackerRules.every(rule => !rule.body.includes('border: 0;'))) {
+		fail('styles.css: active tracked tasks must not restore a persistent perimeter border');
+	}
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-timed-item',
+		[
+			'--operon-calendar-timed-hover-edge-top: repeating-linear-gradient(to right,',
+			'--operon-calendar-timed-hover-edge-bottom: repeating-linear-gradient(to right,',
+			'--operon-calendar-timed-edge-left:',
+			'var(--operon-calendar-interaction-accent, transparent)',
+			'left / 1px 100% no-repeat;',
+		],
+		'Calendar timed tasks must keep a one-pixel left edge driven by the resolved interaction color',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-timed-item:not(.is-availability-layer)::before',
+		['background: var(--operon-calendar-timed-edge-left);', 'opacity: 0.9;'],
+		'Calendar timed tasks must render only the persistent left interaction edge outside hover',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-mobile-timegrid-item:not(.is-availability-layer)::before',
+		['background: var(--operon-calendar-timed-edge-left);', 'opacity: 0.9;', 'pointer-events: none;'],
+		'Mobile Calendar timed tasks must render only the persistent left interaction edge outside touch interaction',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-mobile-timegrid-item.operon-calendar-mobile-item',
+		['border: 0;', 'border-radius: 6px;'],
+		'Mobile Calendar timed tasks must not restore the generic mobile perimeter border',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-mobile-timegrid-item:not(.is-availability-layer).is-touch-guide-active::before',
+		[
+			'var(--operon-calendar-timed-hover-edge-top),',
+			'var(--operon-calendar-timed-hover-edge-bottom),',
+			'var(--operon-calendar-timed-edge-left);',
+			'box-shadow: inset 3px 0 5px -3px',
+		],
+		'Mobile Calendar long-press and drag must show the shared dashed edges and subtle left glow',
+	);
+	const resizeRailVisualRules = cssRules('styles.css').filter(candidate => candidate.selectors.some(selector => (
+		selector.includes('.operon-calendar-timed-resize-handle')
+		&& (selector.includes('::before') || selector.includes('::after'))
+	)));
+	if (resizeRailVisualRules.length > 0) {
+		fail('styles.css: timed resize handles must remain invisible hit areas without fixed top or bottom rail pseudo-elements');
+	}
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-timed-resize-handle',
+		['height: 6px;', 'background: transparent;'],
+		'Calendar timed resize handles must retain their transparent six-pixel hit area',
+	);
+	const bindCallCount = calendarSource.match(/this\.bindTimedHoverGuides\(/g)?.length ?? 0;
+	if (bindCallCount < 4) {
+		fail('src/ui/calendar/calendar-view.ts: timed Calendar hover guides must stay bound for mobile timed items, desktop task lanes, and tracked lanes');
+	}
+	for (const token of [
+		'private renderTimedInteractionGuides(',
+		"block.addClass('is-touch-dragging', 'is-touch-guide-active')",
+		"block.removeClass('is-touch-dragging', 'is-touch-guide-active')",
+		'private bindTrackedSessionInteraction(',
+	]) {
+		if (!calendarSource.includes(token)) {
+			fail(`src/ui/calendar/calendar-view.ts: mobile timed interactions must share the guide renderer and clear touch-active state: missing ${token}`);
+		}
+	}
+	const hoverGuideStart = calendarSource.indexOf('\tprivate bindTimedHoverGuides(');
+	const hoverGuideEnd = hoverGuideStart >= 0
+		? calendarSource.indexOf('\n\tprivate applyCalendarPresetTheme(', hoverGuideStart)
+		: -1;
+	const hoverGuideSource = hoverGuideStart >= 0 && hoverGuideEnd > hoverGuideStart
+		? calendarSource.slice(hoverGuideStart, hoverGuideEnd)
+		: '';
+	if (!hoverGuideSource) {
+		fail('src/ui/calendar/calendar-view.ts: Calendar timed hover guide binding must exist');
+	}
+	if (hoverGuideSource.includes('labelEl.style.left')) {
+		fail('src/ui/calendar/calendar-view.ts: Calendar hover guide endpoint labels must be positioned by scoped CSS, not inline static left styles');
+	}
+	for (const token of [
+		"element.style.getPropertyValue('--operon-calendar-interaction-accent').trim()",
+		": 'var(--text-muted)';",
+	]) {
+		if (!calendarSource.includes(token)) {
+			fail(`src/ui/calendar/calendar-view.ts: Calendar hover guides must resolve from the preset-aware interaction accent: missing ${token}`);
+		}
+	}
+	for (const token of [
+		"cls: 'operon-calendar-hover-guide-label is-duration'",
+		"if (isCompactRange) guide.addClass('is-compact-range');",
+		'const compactLabelRange = Math.abs(bottom - top) < 28;',
+		'this.formatTimedGuideDurationLabel(startMinutes, endMinutes)',
+		'durationEl.style.left = `${labelCenter}px`;',
+		'private formatTimedGuideDurationLabel(startMinutes: number, endMinutes: number): string {',
+		'formatTimeTrackerGridCompactDurationSeconds(Math.max(0, endMinutes - startMinutes) * 60)',
+		"section.closest<HTMLElement>('.operon-calendar-mobile-timegrid-viewport, .operon-calendar-timed-viewport')",
+		"'.operon-calendar-time-tracker-grid-label-gutter, .operon-calendar-time-tracker-grid-label-clip'",
+		'const visibleTop = Math.max(0, viewportRect.top - sectionRect.top, stickyLaneHeaderBottom);',
+		"guide.addClass('is-label-below')",
+		"guide.addClass('is-label-above')",
+	]) {
+		if (!calendarSource.includes(token)) {
+			fail(`src/ui/calendar/calendar-view.ts: Calendar hover guides must keep duration label contract: missing ${token}`);
+		}
+	}
+
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-hover-guide.is-hover-guide',
+		[
+			'height: 1px;',
+			'border-top: 0;',
+			'background: repeating-linear-gradient(to right,',
+			'0 8px, transparent 8px 16px);',
+		],
+		'Calendar hover guide lines must keep the lower-frequency eight-pixel dashed pattern without changing edit guides',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-timed-item:not(.is-availability-layer):hover::before',
+		[
+			'var(--operon-calendar-timed-hover-edge-top),',
+			'var(--operon-calendar-timed-hover-edge-bottom),',
+			'var(--operon-calendar-timed-edge-left);',
+		],
+		'Calendar timed task top and bottom edges must enter the paint stack only during mouse hover',
+	);
+	const timedFocusRules = cssRules('styles.css').filter(candidate => candidate.selectors.includes(
+		'.operon-calendar-timed-item:not(.is-availability-layer):focus-within:not(:hover)::before',
+	));
+	if (timedFocusRules.length === 0 || timedFocusRules.some(rule => rule.body.includes('timed-hover-edge'))) {
+		fail('styles.css: timed task top and bottom edges must not persist through focus-within after hover ends');
+	}
+	for (const [selector, edge] of [
+		['.operon-calendar-timed-item:not(.is-availability-layer).is-clipped-top:hover', 'top'],
+		['.operon-calendar-timed-item:not(.is-availability-layer).is-clipped-top:focus-within', 'top'],
+		['.operon-calendar-timed-item:not(.is-availability-layer).is-clipped-bottom:hover', 'bottom'],
+		['.operon-calendar-timed-item:not(.is-availability-layer).is-clipped-bottom:focus-within', 'bottom'],
+	]) {
+		assertCssRuleContains(
+			'styles.css',
+			selector,
+			[`--operon-calendar-timed-hover-edge-${edge}: linear-gradient(transparent, transparent) ${edge} / 100% 0 no-repeat;`],
+			'Clipped Calendar timed task boundaries must stay hidden during hover and keyboard focus',
+		);
+	}
+	const timedPlacementStart = calendarSource.indexOf('\tprivate applyTimedPlacementStyle(');
+	const timedPlacementEnd = calendarSource.indexOf('\n\tprivate bindScheduledAllDayItemInteraction(', timedPlacementStart);
+	const timedPlacementSource = timedPlacementStart >= 0 && timedPlacementEnd > timedPlacementStart
+		? calendarSource.slice(timedPlacementStart, timedPlacementEnd)
+		: '';
+	for (const token of [
+		"element.classList.toggle('is-clipped-top', startMinutes <= 0);",
+		"element.classList.toggle('is-clipped-bottom', endMinutes >= 24 * 60);",
+	]) {
+		if (!timedPlacementSource.includes(token)) {
+			fail(`src/ui/calendar/calendar-view.ts: standard timed placements must retain clipping classes: missing ${token}`);
+		}
+	}
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-hover-guide.is-hover-guide .operon-calendar-hover-guide-label',
+		[
+			'border: 1px solid var(--operon-calendar-guide-color, var(--text-muted));',
+			'border-radius: 6px;',
+			'background: var(--background-primary);',
+			'color: var(--operon-calendar-guide-color, var(--text-muted));',
+			'padding: 2px 8px;',
+			'font-size: var(--font-ui-smaller);',
+			'line-height: 1.25;',
+		],
+		'Calendar hover guide labels must stay readable, neutral, rectangular, and interaction-colored',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-mobile-timegrid-item.is-live-editing .operon-calendar-timed-drag-label',
+		['display: none;'],
+		'Mobile Calendar timed dragging must not show a redundant range tooltip above the duration label',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-mobile-timegrid-item-time',
+		['display: none;'],
+		'Mobile Calendar timed cards must not repeat their time range below the task description',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-mobile-hover-guide-overlay .operon-calendar-hover-guide.is-hover-guide .operon-calendar-hover-guide-label',
+		['padding: 1px 4px;', 'font-size: 9px;', 'line-height: 1.2;'],
+		'Mobile Calendar guide labels must match the compact fixed time-label scale',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-mobile-hover-guide-overlay .operon-calendar-hover-guide.is-hover-guide .operon-calendar-hover-guide-label.is-start',
+		['transform: translate(calc(-100% - 2px), -50%);'],
+		'Mobile Calendar start labels must retain their full border inside the time gutter',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-now-label',
+		[
+			'border: 1px solid #e14b4b;',
+			'border-radius: 6px;',
+			'background: var(--background-primary);',
+			'color: #e14b4b;',
+		],
+		'Calendar current-time labels must keep a neutral rectangular surface with the existing red indicator color',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-timed-item:not(.is-availability-layer):hover',
+		['left / 2px 100% no-repeat;'],
+		'Calendar timed task interaction edge must strengthen to two pixels on hover and focus',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-timed-item:not(.is-availability-layer):hover::before',
+		['box-shadow: inset 3px 0 5px -3px', 'var(--operon-calendar-interaction-accent, transparent) 65%'],
+		'Calendar timed task interaction edge must keep a subtle inward hover glow',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-timed-item:not(.is-availability-layer):focus-within',
+		['left / 2px 100% no-repeat;'],
+		'Keyboard-focused Calendar timed tasks must retain the two-pixel interaction edge',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-timed-item:not(.is-availability-layer):focus-within:not(:hover)::before',
+		['box-shadow: inset 3px 0 5px -3px', 'var(--operon-calendar-interaction-accent, transparent) 65%'],
+		'Keyboard-focused Calendar timed tasks must retain the subtle interaction glow',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-hover-guide.is-hover-guide .operon-calendar-hover-guide-label.is-start',
+		['left: 0;', 'transform: translate(calc(-100% - 4px), -50%);'],
+		'Calendar hover start time label must stay anchored to the left guide endpoint',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-hover-guide.is-hover-guide .operon-calendar-hover-guide-label.is-end',
+		['left: 0;', 'transform: translate(calc(-100% - 4px), -50%);'],
+		'Calendar hover end time label must stay anchored to the left guide endpoint',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-hover-guide.is-hover-guide.is-compact-range .operon-calendar-hover-guide-label.is-start',
+		['transform: translate(calc(-100% - 4px), -100%);'],
+		'Calendar hover start time label must move above compact ranges to avoid label overlap',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-hover-guide.is-hover-guide.is-compact-range .operon-calendar-hover-guide-label.is-end',
+		['transform: translate(calc(-100% - 4px), 0);'],
+		'Calendar hover end time label must move below compact ranges to avoid label overlap',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-hover-guide.is-hover-guide.is-label-below .operon-calendar-hover-guide-label.is-duration',
+		['transform: translate(-50%, 0);'],
+		'Calendar duration labels must move inside the viewport at the top edge',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-calendar-hover-guide.is-hover-guide.is-label-above .operon-calendar-hover-guide-label.is-end',
+		['transform: translate(calc(-100% - 4px), -100%);'],
+		'Calendar end labels must move inside the viewport at the bottom edge',
+	);
+}
+
 function checkSettingsDescriptionTextareaGuards() {
 	const settingsSource = readText('src/ui/settings-tab.ts');
 	const enLocale = readJson('i18n/locales/en.json');
@@ -550,6 +859,7 @@ compareLocaleFiles();
 checkVersionAndAssets();
 checkReleaseWorkflow();
 checkCssScorecard();
+checkCalendarHoverGuideContract();
 checkSettingsDescriptionTextareaGuards();
 checkDocs();
 checkAuditedRawStrings();

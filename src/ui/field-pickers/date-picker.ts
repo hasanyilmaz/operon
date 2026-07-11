@@ -196,8 +196,10 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 
 			button.addEventListener('mousemove', () => {
 				if (activeIndex === index) return;
+				const previousButton = results.children[activeIndex] as HTMLElement | undefined;
 				activeIndex = index;
-				render();
+				previousButton?.classList.remove('is-active');
+				button.classList.add('is-active');
 			});
 			button.addEventListener('mousedown', event => {
 				event.preventDefault();

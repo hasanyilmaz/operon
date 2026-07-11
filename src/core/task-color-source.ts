@@ -1,6 +1,8 @@
 import type { IndexedTask } from '../types/fields';
 import { findStatusDef, type Pipeline } from '../types/pipeline';
 import type { PriorityDefinition } from '../types/priority';
+import type { WorkflowStatusIdentityIndex } from './workflow-status-identity';
+import { normalizePriorityValue } from './priority-rank';
 import { t } from './i18n';
 
 export type TaskColorSource = 'taskColor' | 'statusColor' | 'priorityColor' | 'accentColor' | 'noColor';
@@ -94,29 +96,39 @@ export function resolveTaskColorSourceForTask(
 	task: IndexedTask,
 	colorSource: TaskColorSource,
 	settings: TaskColorSourceSettings,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string | null {
-	return resolveTaskColorSource(task.fieldValues, colorSource, settings);
+	return resolveTaskColorSource(task.fieldValues, colorSource, settings, {
+		workflowStatusIdentityIndex,
+	});
 }
 
 export function resolveTaskStatusIconColorForTask(
 	task: IndexedTask,
 	settings: TaskColorSourceSettings & { taskStatusIconColorSource: TaskStatusIconColorSource },
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string | null {
-	return resolveTaskStatusIconColor(task.fieldValues, settings);
+	return resolveTaskStatusIconColor(task.fieldValues, settings, workflowStatusIdentityIndex);
 }
 
 export function resolveTaskStatusIconColor(
 	fieldValues: Record<string, string | undefined>,
 	settings: TaskColorSourceSettings & { taskStatusIconColorSource: TaskStatusIconColorSource },
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string | null {
-	return resolveTaskColorSource(fieldValues, settings.taskStatusIconColorSource, settings);
+	return resolveTaskColorSource(fieldValues, settings.taskStatusIconColorSource, settings, {
+		workflowStatusIdentityIndex,
+	});
 }
 
 export function resolveTaskColorSource(
 	fieldValues: Record<string, string | undefined>,
 	colorSource: TaskColorSource,
 	settings: TaskColorSourceSettings,
-	options: { externalColor?: string | null } = {},
+	options: {
+		externalColor?: string | null;
+		workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
+	} = {},
 ): string | null {
 	if (colorSource === 'noColor') {
 		return null;
@@ -134,13 +146,17 @@ export function resolveTaskColorSource(
 		return normalizeTaskFieldColor(fieldValues['taskColor']);
 	}
 	if (colorSource === 'statusColor') {
-		const statusDef = findStatusDef(settings.pipelines, fieldValues['status'] ?? '');
+		const statusDef = findStatusDef(
+			settings.pipelines,
+			fieldValues['status'] ?? '',
+			options.workflowStatusIdentityIndex,
+		);
 		return normalizeColor(statusDef?.color);
 	}
 
-	const priorityLabel = (fieldValues['priority'] ?? '').trim();
-	if (!priorityLabel) return null;
-	const priorityDef = settings.priorities.find(priority => priority.label === priorityLabel);
+	const priorityValue = normalizePriorityValue(fieldValues['priority'] ?? '');
+	if (!priorityValue) return null;
+	const priorityDef = settings.priorities.find(priority => normalizePriorityValue(priority.label) === priorityValue);
 	return normalizeColor(priorityDef?.color);
 }
 

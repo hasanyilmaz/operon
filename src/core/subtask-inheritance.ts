@@ -9,6 +9,11 @@ import {
 import { composeStatusValue, parseStatusValue } from '../types/pipeline';
 import { normalizeTaskIconValue } from './task-icon-value';
 import { normalizeTaskColorValue } from './task-color-value';
+import {
+	buildWorkflowStatusIdentityIndex,
+	resolveConfiguredPipelineNameIdentity,
+	resolveWorkflowPipelineIdentity,
+} from './workflow-status-identity';
 
 export interface SubtaskInitialFields {
 	parentTask?: string;
@@ -22,13 +27,32 @@ export interface SubtaskInitialFields {
 
 function resolveInitialStatus(parentStatus: string | undefined, settings: OperonSettings): string | undefined {
 	const pipelines = settings.pipelines ?? [];
-	const parsed = parentStatus ? parseStatusValue(parentStatus) : null;
-	const defaultPipeline = pipelines.find(candidate => candidate.name === settings.defaultPipelineName) ?? pipelines[0];
-	const targetPipeline = settings.childTaskInheritanceStatusPipelineSource === 'default'
-		? defaultPipeline
-		: parsed
-			? pipelines.find(candidate => candidate.name === parsed.pipeline)
-			: defaultPipeline;
+	const identityIndex = buildWorkflowStatusIdentityIndex(pipelines);
+	const explicitDefault = resolveConfiguredPipelineNameIdentity(settings.defaultPipelineName, identityIndex);
+	if (explicitDefault.kind === 'ambiguous') return undefined;
+	const defaultPipeline = explicitDefault.kind === 'configured' ? explicitDefault.pipeline : pipelines[0];
+	let targetPipeline = defaultPipeline;
+	if (settings.childTaskInheritanceStatusPipelineSource !== 'default' && parentStatus) {
+		const identity = resolveWorkflowPipelineIdentity(
+			parentStatus,
+				identityIndex,
+		);
+		if (identity.kind === 'ambiguous') return undefined;
+		if (identity.kind === 'configured') {
+			targetPipeline = identity.pipeline;
+		} else {
+			const parsed = parseStatusValue(identity.value);
+				if (!parsed) {
+					targetPipeline = defaultPipeline;
+				} else {
+					const parsedPipeline = resolveConfiguredPipelineNameIdentity(parsed.pipeline, identityIndex);
+					if (parsedPipeline.kind === 'ambiguous') return undefined;
+					targetPipeline = parsedPipeline.kind === 'configured'
+						? parsedPipeline.pipeline
+						: defaultPipeline;
+				}
+		}
+	}
 
 	const firstStatus = targetPipeline?.statuses[0];
 	if (!targetPipeline || !firstStatus) return undefined;

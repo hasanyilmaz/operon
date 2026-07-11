@@ -116,13 +116,9 @@ export function applyPriorityRenamePlanToDefaultPriority(
 	defaultPriority: string,
 	plan: PriorityRenamePlan,
 ): string {
-	let nextDefaultPriority = defaultPriority;
-	for (const operation of plan.operations) {
-		if (nextDefaultPriority === operation.oldValue) {
-			nextDefaultPriority = operation.newValue;
-		}
-	}
-	return nextDefaultPriority;
+	if (!defaultPriority) return defaultPriority;
+	const operation = plan.operations.find(candidate => candidate.oldValue === defaultPriority);
+	return operation ? operation.newValue : defaultPriority;
 }
 
 export async function executePriorityRenamePreview(

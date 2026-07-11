@@ -23,6 +23,11 @@ import {
 	previewProjectSerialScopeDelete,
 } from '../core/project-serials';
 import { clonePipeline, composeStatusValue, createPipelineId, createStatusId, Pipeline, StatusDefinition } from '../types/pipeline';
+import {
+	buildWorkflowStatusIdentityIndex,
+	resolveConfiguredStatusIdentity,
+} from '../core/workflow-status-identity';
+import { validatePipelineTaxonomy } from '../core/pipeline-taxonomy-validation';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
 import {
@@ -63,6 +68,8 @@ import { getReleaseNotesForManualView } from '../core/release-notes';
 import { asHTMLElement } from '../core/dom-compat';
 import { getAppLocale, isDailyNotesCoreAvailable } from '../core/obsidian-app';
 import { resolveEffectiveInlineTaskSaveMode } from '../core/inline-task-save-mode';
+import { DEFAULT_DAILY_NOTE_FORMAT } from '../core/daily-note-path';
+import { loadDailyNotesCoreConfig } from '../core/daily-notes-core-config';
 import {
 	cloneDefaultColorPalette,
 	localizeColorPaletteNames,
@@ -78,6 +85,7 @@ import { TablePresetQuickSettingsModal } from './table/table-preset-quick-settin
 import { KanbanPresetQuickSettingsModal } from './kanban/kanban-preset-quick-settings-modal';
 import { OperonIndexer } from '../indexer/indexer';
 import { ConfirmActionModal } from './confirm-action-modal';
+import { WorkflowPipelineRepairModal } from './workflow-pipeline-repair-modal';
 import { FileTaskMigrationProgressModal } from './file-task-migration-progress-modal';
 import { OperonReleaseNotesModal } from './release-notes-modal';
 import { CalendarFilterPickerModal } from './calendar/calendar-filter-picker-modal';
@@ -94,9 +102,12 @@ import {
 import {
 	buildPipelineRenamePlan,
 	collectPipelineRenamePreview,
-	PipelineRenameExecutionResult,
 	PipelineRenamePreview,
 } from '../core/pipeline-rename-migration';
+import {
+	workflowTaxonomySnapshotsEqual,
+	type PrepareWorkflowFieldRenameInput,
+} from '../systems/workflow-field-rename-coordinator';
 import {
 	applyPriorityRenamePlanToDefaultPriority,
 	buildPriorityRenamePlan,
@@ -212,7 +223,7 @@ import {
 	type OperonSettingsSearchTextKey,
 } from './settings/settings-search-registry';
 import { getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping } from './custom-field-surfaces';
-import { buildTableTaskFieldCatalog } from './table/table-field-catalog';
+import { buildTableGroupSortFieldCatalog } from './table/table-field-catalog';
 import { applyTablePresetPatch, createTablePresetFromSource } from './table/table-preset-model';
 import {
 	createSettingsCollapsibleSection,
@@ -695,6 +706,7 @@ const SETTINGS_SEARCH_WORKSPACE_TWEAK_KEYS = new Set<OperonSettingSearchKey>([
 ]);
 
 const SETTINGS_SEARCH_FOLDER_KEYS = new Set<OperonSettingSearchKey>([
+	'operonDocsFolder',
 	'fileTasksFolder',
 	'fileTaskTemplateFolder',
 	'fileTaskArchiveFolder',
@@ -741,7 +753,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private filterPreviewUpdateFields?: (operonId: string, payload: Record<string, string>) => void;
 	private filterPreviewUpdateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
 	private filterPreviewUpdateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
-	private applyPipelineRenameMigration: (preview: PipelineRenamePreview) => Promise<PipelineRenameExecutionResult>;
+	private applyPipelineRenameMigration: (preview: PipelineRenamePreview) => Promise<void>;
+	private applyWorkflowRenameTransaction: (input: PrepareWorkflowFieldRenameInput) => Promise<void>;
+	private retryPendingWorkflowRename: () => Promise<void>;
+	private resolveWorkflowRenameConflict: () => Promise<void>;
 	private applyPriorityRenameMigration: (preview: PriorityRenamePreview) => Promise<PriorityRenameExecutionResult>;
 	private syncExternalCalendarSourceNow: (sourceId: string) => Promise<void>;
 	private handleKanbanSortModeChange: (presetId: string, sortMode: KanbanSortMode) => Promise<void>;
@@ -749,7 +764,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private removeKanbanManualOrder: (presetId: string) => Promise<void>;
 	private createBasicsWorkspace: () => Promise<void>;
 	private syncOperonDocsNow: () => Promise<void>;
+	private changeOperonDocsFolder: (folder: string) => Promise<boolean>;
 	private enqueueTablePresetMutation: TablePresetSettingsMutationQueue;
+	private committedWorkflowSettingsSnapshot!: {
+		pipelines: Pipeline[];
+		defaultPipelineName: string;
+		kanbanPipelineIds: Map<string, string | null>;
+	};
 	private isDeclarativeSettingsRendererActive = false;
 	private activeNativeSettingsPage: {
 		tabId: OperonSettingsTabId;
@@ -778,7 +799,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		filterPreviewUpdateFields?: (operonId: string, payload: Record<string, string>) => void,
 		filterPreviewUpdateSubtasks?: (operonId: string, subtaskIds: string[]) => void,
 		filterPreviewUpdateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void,
-		applyPipelineRenameMigration?: (preview: PipelineRenamePreview) => Promise<PipelineRenameExecutionResult>,
+		applyPipelineRenameMigration?: (preview: PipelineRenamePreview) => Promise<void>,
 		applyPriorityRenameMigration?: (preview: PriorityRenamePreview) => Promise<PriorityRenameExecutionResult>,
 		syncExternalCalendarSourceNow?: (sourceId: string) => Promise<void>,
 		handleKanbanSortModeChange?: (presetId: string, sortMode: KanbanSortMode) => Promise<void>,
@@ -786,11 +807,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 		removeKanbanManualOrder?: (presetId: string) => Promise<void>,
 		createBasicsWorkspace?: () => Promise<void>,
 		syncOperonDocsNow?: () => Promise<void>,
+		changeOperonDocsFolder?: (folder: string) => Promise<boolean>,
 		enqueueTablePresetMutation?: TablePresetSettingsMutationQueue,
+		applyWorkflowRenameTransaction?: (input: PrepareWorkflowFieldRenameInput) => Promise<void>,
+		retryPendingWorkflowRename?: () => Promise<void>,
+		resolveWorkflowRenameConflict?: () => Promise<void>,
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
 		this.settings = settings;
+		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		this.storage = storage;
 		this.pluginVersion = plugin.manifest.version;
 		this.onSettingsChanged = onSettingsChanged;
@@ -810,15 +836,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.filterPreviewUpdateSubtasks = filterPreviewUpdateSubtasks;
 		this.filterPreviewUpdateDependencyField = filterPreviewUpdateDependencyField;
 		this.applyPipelineRenameMigration = applyPipelineRenameMigration
-			?? (async () => ({
-				updatedFileTaskCount: 0,
-				updatedInlineTaskCount: 0,
-				failedFileTaskCount: 0,
-				failedInlineTaskCount: 0,
-				failedTaskIds: [],
-				failedFiles: [],
-				touchedFileCount: 0,
-			}));
+			?? (async () => { });
 		this.applyPriorityRenameMigration = applyPriorityRenameMigration
 			?? (async () => ({
 				updatedFileTaskCount: 0,
@@ -835,7 +853,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.removeKanbanManualOrder = removeKanbanManualOrder ?? (async () => { });
 		this.createBasicsWorkspace = createBasicsWorkspace ?? (async () => { });
 		this.syncOperonDocsNow = syncOperonDocsNow ?? (async () => { });
+		this.changeOperonDocsFolder = changeOperonDocsFolder ?? (async () => false);
 		this.enqueueTablePresetMutation = enqueueTablePresetMutation ?? (operation => operation());
+		this.applyWorkflowRenameTransaction = applyWorkflowRenameTransaction ?? (async () => { });
+		this.retryPendingWorkflowRename = retryPendingWorkflowRename ?? (async () => { });
+		this.resolveWorkflowRenameConflict = resolveWorkflowRenameConflict ?? (async () => { });
 	}
 
 	private makeEvalDeps(): FilterModalEvalDeps | null {
@@ -905,6 +927,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 	async setControlValue(key: string, value: unknown): Promise<void> {
 		const entry = this.findSettingsSearchEntryByKey(key);
 		if (!entry?.key) return;
+		if (entry.key === 'operonDocsFolder') {
+			await this.changeOperonDocsFolder(this.normalizeSettingsSearchTextValue(entry.key, value));
+			this.updateNativeSettingsDefinitions();
+			return;
+		}
 
 		const normalized = this.normalizeSettingsSearchControlValue(entry, value);
 		this.writeSettingsSearchValue(entry.key, normalized);
@@ -1501,7 +1528,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 						button
 							.setButtonText(t('settings', 'releaseNotesViewRecent'))
 							.onClick(() => {
-								new OperonReleaseNotesModal(this.app, getReleaseNotesForManualView()).open();
+							new OperonReleaseNotesModal(this.app, getReleaseNotesForManualView(), {
+								docsFolder: this.settings.operonDocsFolder,
+							}).open();
 							});
 						this.decorateSettingsActionButtonIcon(button.buttonEl, 'sparkles');
 					});
@@ -1745,7 +1774,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				key,
 				defaultValue: this.stringifySettingsSearchValue(this.getDefaultSettingsSearchValue(key)),
 				placeholder: this.getSettingsSearchFolderPlaceholder(key),
-				includeRoot: true,
+				includeRoot: key !== 'operonDocsFolder',
 			};
 		}
 		if (entry.control === 'file') {
@@ -2086,6 +2115,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchFolderPlaceholder(key: OperonSettingSearchKey): string {
+		if (key === 'operonDocsFolder') return t('settings', 'operonDocsFolderPlaceholder');
 		if (key === 'fileTasksFolder') return t('settings', 'fileTasksFolderPlaceholder');
 		if (key === 'fileTaskTemplateFolder') return t('settings', 'fileTaskTemplateFolderPlaceholder');
 		if (key === 'fileTaskArchiveFolder') return t('settings', 'fileTaskArchiveFolderPlaceholder');
@@ -2648,7 +2678,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 		this.decorateSettingsActionButtonIcon(buttonEl, 'sparkles');
 		buttonEl.addEventListener('click', () => {
-			new OperonReleaseNotesModal(this.app, getReleaseNotesForManualView()).open();
+			new OperonReleaseNotesModal(this.app, getReleaseNotesForManualView(), {
+				docsFolder: this.settings.operonDocsFolder,
+			}).open();
 		});
 
 		if (!options.includeToggle) return;
@@ -2736,6 +2768,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		);
 		this.markSettingsSearchSectionTarget(sectionEl, 'settings.operonDocs');
 		this.renderOperonDocsDownloadSetting(new Setting(sectionEl));
+		this.renderOperonDocsFolderSetting(sectionEl);
 		this.renderBoundToggleSetting(
 			sectionEl,
 			t('settings', 'operonDocsAutoUpdateEnabled'),
@@ -2749,6 +2782,25 @@ export class OperonSettingsTab extends PluginSettingTab {
 				},
 			},
 		);
+	}
+
+	private renderOperonDocsFolderSetting(containerEl: HTMLElement): Setting {
+		const setting = new Setting(containerEl)
+			.setName(t('settings', 'operonDocsFolder'))
+			.setDesc(t('settings', 'operonDocsFolderDesc'))
+			.addText(text => {
+				text
+					.setValue(this.settings.operonDocsFolder)
+					.setPlaceholder(t('settings', 'operonDocsFolderPlaceholder'));
+				new FolderSuggest(this.app, text.inputEl, settingsAsyncHandler('settings operon docs folder selection failed', async folder => {
+					await this.changeOperonDocsFolder(folder.path);
+					this.redisplayPreservingScroll();
+				}));
+				text.inputEl.addEventListener('blur', () => {
+					text.setValue(this.settings.operonDocsFolder);
+				});
+			});
+		return this.markSettingsSearchTarget(setting, 'operonDocsFolder');
 	}
 
 	private renderOperonDocsDownloadSetting(setting: Setting): Setting {
@@ -3160,9 +3212,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			danger: true,
 		}, confirmed => {
 			if (!confirmed) return;
-			runSettingsAsync('settings color palette reset failed', async () => {
-				this.settings.colorPalette = cloneDefaultColorPalette();
-				await this.saveSettings();
+				runSettingsAsync('settings color palette reset failed', async () => {
+					this.settings.colorPalette = cloneDefaultColorPalette();
+					await this.saveSettings();
 				new Notice(t('settings', 'colorPaletteResetNotice'));
 				this.redisplayPreservingScroll();
 			});
@@ -4167,7 +4219,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
-		const targetFileSetting = this.renderBoundTextSetting(defaultLocationSection, t('settings', 'inlineTaskTargetFile'), t('settings', 'inlineTaskTargetFileDesc'), 'inlineTaskTargetFile', {
+		const targetFileSetting = this.renderBoundTextSetting(defaultLocationSection, t('settings', 'inlineTaskTargetFile'), this.getInlineTaskTargetFileDescription(DEFAULT_DAILY_NOTE_FORMAT), 'inlineTaskTargetFile', {
 			placeholder: DEFAULT_INLINE_TASK_TARGET_FILE,
 			settingClass: 'operon-settings-long-text-setting',
 			controlClass: 'operon-settings-input-long',
@@ -4180,6 +4232,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 		this.decorateActivationSetting(targetFileSetting, effectiveInlineTaskSaveMode === 'specific-file');
+		this.refreshInlineTaskTargetFileDescription(targetFileSetting);
 
 		const inlineHeadingActive = effectiveInlineTaskSaveMode === 'daily-notes'
 			|| effectiveInlineTaskSaveMode === 'active-file'
@@ -4261,6 +4314,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const conversionSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'checkboxConversion'));
 		this.renderBoundToggleSetting(conversionSection, t('settings', 'showTasksEmojiConvertIcon'), t('settings', 'showTasksEmojiConvertIconDesc'), 'inlineTaskShowTasksEmojiConvertIcon');
 		this.renderBoundToggleSetting(conversionSection, t('settings', 'showPlainCheckboxConvertIcon'), t('settings', 'showPlainCheckboxConvertIconDesc'), 'inlineTaskShowPlainCheckboxConvertIcon');
+	}
+
+	private getInlineTaskTargetFileDescription(dateFormat: string): string {
+		return t('settings', 'inlineTaskTargetFileDesc', {
+			heading: `## [[${dateFormat || DEFAULT_DAILY_NOTE_FORMAT}]]`,
+		});
+	}
+
+	private refreshInlineTaskTargetFileDescription(setting: Setting): void {
+		if (!isDailyNotesCoreAvailable(this.app)) return;
+		void loadDailyNotesCoreConfig(this.app).then(config => {
+			if (!setting.settingEl.isConnected) return;
+			setting.setDesc(this.getInlineTaskTargetFileDescription(config.format));
+		});
 	}
 
 	private renderInterfaceStateIconsTab(containerEl: HTMLElement): void {
@@ -5946,7 +6013,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				showExternalCalendars: true,
 				hiddenTimeStart: '00:00',
 				hiddenTimeEnd: '06:00',
-				colorSource: 'taskColor',
+				colorSource: 'noColor',
 				appearanceModeLight: 'theme',
 				appearanceModeDark: 'theme',
 				externalCalendarVisibility: {},
@@ -6691,7 +6758,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getTableFieldLabel(key: string): string {
-		return buildTableTaskFieldCatalog(this.settings).find(field => field.key === key)?.label ?? key;
+		return buildTableGroupSortFieldCatalog(this.settings).find(field => field.key === key)?.label ?? key;
 	}
 
 	private patchTablePreset(patch: TablePresetPatch): void {
@@ -7961,9 +8028,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 	 * Pipelines tab — pipeline groups with status definitions (Spec 5.3.2-5.3.4).
 	 */
 	private renderPipelinesTab(containerEl: HTMLElement): void {
+		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		const refresh = () => { containerEl.empty(); this.renderPipelinesTab(containerEl); };
 		// Explanation
 		renderSettingsInfoBox(containerEl, t('settings', 'pipelinesTitle'), t('settings', 'pipelinesDesc'), 'taxonomy.pipelines');
+		this.renderPipelineRepairWarnings(containerEl, refresh);
 
 		// Render each pipeline card
 		for (let i = 0; i < this.settings.pipelines.length; i++) {
@@ -7980,6 +8049,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onSubmit: async (value) => {
 				const trimmed = value.trim();
 				if (!trimmed) return;
+				if (trimmed.includes('.')) {
+					new Notice(t('settings', 'pipelineNameReservedDelimiter'));
+					return;
+				}
 				if (this.settings.pipelines.some(p => p.name === trimmed)) {
 					new Notice(t('settings', 'pipelineAlreadyExists', { name: trimmed }));
 					return;
@@ -7995,10 +8068,208 @@ export class OperonSettingsTab extends PluginSettingTab {
 				if (!this.settings.defaultPipelineName) {
 					this.settings.defaultPipelineName = trimmed;
 				}
-				await this.saveSettings();
+				await this.saveWorkflowSettings();
 				refresh();
 			},
 		});
+	}
+
+	private renderPipelineRepairWarnings(containerEl: HTMLElement, refresh: () => void): void {
+		const validation = validatePipelineTaxonomy(this.settings.pipelines);
+		const startupDiagnostics = this.storage.getStartupPipelineTaxonomyDiagnostics();
+		const activeRename = this.storage.fieldRenameJournal.get();
+		const currentTaxonomySnapshot = {
+			pipelines: this.settings.pipelines,
+			defaultPipelineName: this.settings.defaultPipelineName,
+		};
+		const activeRenameHasTaxonomyConflict = !!activeRename
+			&& !workflowTaxonomySnapshotsEqual(currentTaxonomySnapshot, activeRename.oldSnapshot)
+			&& !workflowTaxonomySnapshotsEqual(currentTaxonomySnapshot, activeRename.newSnapshot);
+		const journalRecovery = this.storage.fieldRenameJournal.getRecoveryRequired();
+		const writeSuspensionReason = this.storage.getCanonicalSettingsWriteSuspensionReason();
+		if (
+			validation.issues.length === 0
+			&& !startupDiagnostics.backupPath
+			&& !startupDiagnostics.backupFailed
+			&& !activeRename
+			&& !journalRecovery
+			&& !writeSuspensionReason
+		) return;
+
+		const liveIssueCount = new Set(
+			validation.issues.map(issue => `${issue.code}|${issue.path}|${issue.value ?? ''}`),
+		).size;
+		const warning = containerEl.createDiv('operon-pipeline-repair-warning');
+		warning.createDiv({
+			cls: 'operon-pipeline-repair-warning-title',
+			text: t('settings', liveIssueCount > 0 ? 'pipelineRepairWarningTitle' : 'pipelineWorkflowAttentionTitle'),
+		});
+		if (liveIssueCount > 0) {
+			warning.createDiv({
+				cls: 'operon-pipeline-repair-warning-message',
+				text: t('settings', 'pipelineRepairWarningMessage', { count: String(liveIssueCount) }),
+			});
+		}
+
+		if (startupDiagnostics.backupPath) {
+			const recoveredIssueCount = startupDiagnostics.issues.filter(issue => issue.destructive).length;
+			warning.createDiv({
+				cls: 'operon-pipeline-repair-warning-detail',
+				text: t('notifications', 'pipelineTaxonomyRecovered', {
+					count: String(recoveredIssueCount),
+					path: startupDiagnostics.backupPath,
+				}),
+			});
+		}
+		if (startupDiagnostics.backupFailed) {
+			warning.createDiv({
+				cls: 'operon-pipeline-repair-warning-detail',
+				text: t('notifications', 'pipelineTaxonomyRecoveryFailed', {
+					count: String(startupDiagnostics.issues.length),
+				}),
+			});
+		}
+		if (writeSuspensionReason) {
+			warning.createDiv({
+				cls: 'operon-pipeline-repair-warning-detail',
+				text: t('settings', 'pipelineRecoveryWritesSuspended', { reason: writeSuspensionReason }),
+			});
+		}
+		if (activeRename) {
+			warning.createDiv({
+				cls: 'operon-pipeline-repair-warning-detail',
+				text: t('settings', 'pipelineRenamePendingDetail', {
+					phase: this.localizeWorkflowRenamePhase(activeRename.phase),
+					failed: String(activeRename.taskMappings.filter(mapping => mapping.outcome === 'failed').length),
+				}),
+			});
+		}
+		if (journalRecovery) {
+			warning.createDiv({
+				cls: 'operon-pipeline-repair-warning-detail',
+				text: t('settings', 'pipelineRenameJournalRecoveryDetail', {
+					path: journalRecovery.backupPath,
+				}),
+			});
+		}
+
+		const actions = warning.createDiv('operon-pipeline-repair-warning-actions');
+		if (validation.hasIdentityIssues) {
+			createWorkflowActionButton({
+				containerEl: actions,
+				text: t('settings', 'pipelineRepairAction'),
+				label: t('settings', 'pipelineRepairAction'),
+				className: 'operon-settings-primary-button',
+				disabled: !!activeRename || !!journalRecovery,
+				errorContext: 'settings workflow pipeline repair open failed',
+				onClick: async () => {
+					if (!this.indexer) {
+						new Notice(t('settings', 'pipelineRepairIndexUnavailable'));
+						return;
+					}
+					new WorkflowPipelineRepairModal(this.app, {
+						pipelines: this.settings.pipelines,
+						defaultPipelineName: this.settings.defaultPipelineName,
+						tasks: this.indexer.getAllTasks(),
+						onSubmit: async input => {
+							await this.applyWorkflowRenameTransaction(input);
+							this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
+							refresh();
+						},
+					}).open();
+				},
+			});
+		}
+		if (activeRename && !activeRenameHasTaxonomyConflict) {
+			createWorkflowActionButton({
+				containerEl: actions,
+				text: t('settings', 'pipelineRenameRetryAction'),
+				label: t('settings', 'pipelineRenameRetryAction'),
+				className: 'operon-settings-secondary-button',
+				errorContext: 'settings pending workflow rename retry failed',
+				onClick: async () => {
+					await this.retryPendingWorkflowRename();
+					this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
+					refresh();
+				},
+			});
+		}
+		if (activeRenameHasTaxonomyConflict && activeRename) {
+			createWorkflowActionButton({
+				containerEl: actions,
+				text: t('settings', 'pipelineRenameConflictAction'),
+				label: t('settings', 'pipelineRenameConflictAction'),
+				className: 'operon-settings-secondary-button',
+				errorContext: 'settings workflow rename taxonomy conflict resolution failed',
+				onClick: async () => {
+					const confirmed = await this.confirmWorkflowRenameConflictResolution(activeRename);
+					if (!confirmed) return;
+					await this.resolveWorkflowRenameConflict();
+					this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
+					refresh();
+				},
+			});
+		}
+		if (journalRecovery) {
+			createWorkflowActionButton({
+				containerEl: actions,
+				text: t('settings', 'pipelineRenameJournalReviewAction'),
+				label: t('settings', 'pipelineRenameJournalReviewAction'),
+				className: 'operon-settings-secondary-button',
+				errorContext: 'settings workflow rename journal review failed',
+				onClick: async () => {
+					const confirmed = await this.confirmDiscardInvalidWorkflowRenameJournal(journalRecovery.backupPath);
+					if (!confirmed) return;
+					await this.storage.fieldRenameJournal.clear();
+					refresh();
+				},
+			});
+		}
+	}
+
+	private async confirmDiscardInvalidWorkflowRenameJournal(backupPath: string): Promise<boolean> {
+		return await new Promise(resolve => {
+			new ConfirmActionModal(this.app, {
+				title: t('settings', 'pipelineRenameJournalReviewTitle'),
+				message: t('settings', 'pipelineRenameJournalReviewMessage', { path: backupPath }),
+				confirmText: t('settings', 'pipelineRenameJournalAcknowledge'),
+				cancelText: t('buttons', 'cancel'),
+				danger: true,
+			}, resolve).open();
+		});
+	}
+
+	private async confirmWorkflowRenameConflictResolution(
+		operation: import('../storage/field-rename-journal-store').WorkflowFieldRenameJournalOperation,
+	): Promise<boolean> {
+		return await new Promise(resolve => {
+			new ConfirmActionModal(this.app, {
+				title: t('settings', 'pipelineRenameConflictTitle'),
+				message: t('settings', 'pipelineRenameConflictMessage'),
+				detailsTable: buildWorkflowTaxonomyConflictDetails(
+					{
+						pipelines: this.settings.pipelines,
+						defaultPipelineName: this.settings.defaultPipelineName,
+					},
+					operation.newSnapshot,
+				),
+				confirmText: t('settings', 'pipelineRenameConflictConfirm'),
+				cancelText: t('buttons', 'cancel'),
+				danger: true,
+			}, resolve).open();
+		});
+	}
+
+	private localizeWorkflowRenamePhase(phase: import('../storage/field-rename-journal-store').WorkflowFieldRenameJournalPhase): string {
+		const keys: Record<import('../storage/field-rename-journal-store').WorkflowFieldRenameJournalPhase, string> = {
+			prepared: 'pipelineRenamePhasePrepared',
+			taxonomyCommitted: 'pipelineRenamePhaseTaxonomyCommitted',
+			migrating: 'pipelineRenamePhaseMigrating',
+			reindexPending: 'pipelineRenamePhaseReindexPending',
+			needsRetry: 'pipelineRenamePhaseNeedsRetry',
+			complete: 'pipelineRenamePhaseComplete',
+		};
+		return t('settings', keys[phase]);
 	}
 
 	/**
@@ -8415,13 +8686,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 				nameInput.value = committedPipeline.name;
 				return;
 			}
+			if (trimmed.includes('.')) {
+				new Notice(t('settings', 'pipelineNameReservedDelimiter'));
+				nameInput.value = committedPipeline.name;
+				return;
+			}
 			if (this.settings.pipelines.some((p, i) => i !== pipelineIndex && p.name === trimmed)) {
 				new Notice(t('settings', 'pipelineAlreadyExists', { name: trimmed }));
 				nameInput.value = committedPipeline.name;
 				return;
 			}
 			const nextPipelineDraft = buildPipelineNameDraft(this.settings.pipelines[pipelineIndex] ?? pipeline, trimmed);
-			await this.commitPipelineDraft(pipelineIndex, committedPipeline, nextPipelineDraft, refresh, () => {
+			await this.commitPipelineDraft(committedPipeline, nextPipelineDraft, refresh, () => {
 				nameInput.value = committedPipeline.name;
 			});
 		}));
@@ -8438,10 +8714,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 		defaultRadio.checked = this.settings.defaultPipelineName === pipeline.name;
 		defaultRadio.addEventListener('change', settingsAsyncHandler('settings default pipeline change failed', async () => {
 			if (!defaultRadio.checked) return;
+			if (this.settings.pipelines.filter(candidate => candidate.name === pipeline.name).length > 1) {
+				new Notice(t('settings', 'pipelineRepairAmbiguousDefaultRequired'));
+				refresh();
+				return;
+			}
 			const currentPipeline = getCurrentPipeline();
 			if (!currentPipeline) return;
 			this.settings.defaultPipelineName = currentPipeline.name;
-			await this.saveSettings();
+			await this.saveWorkflowSettings();
 			refresh();
 		}));
 
@@ -8449,29 +8730,72 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		// Spacer
 		headerRow.createDiv('operon-pipeline-header-spacer');
+		const headerActions = headerRow.createDiv('operon-pipeline-header-actions');
 
 		createWorkflowActionButton({
-			containerEl: headerRow,
+			containerEl: headerActions,
+			icon: 'arrow-up',
+			label: `${t('settings', 'moveUp')}: ${pipeline.name}`,
+			className: 'operon-settings-icon-action-button',
+			placeholder: pipelineIndex <= 0,
+			errorContext: 'settings pipeline move up failed',
+			onClick: async () => {
+				const currentPipelineIndex = this.settings.pipelines.findIndex(candidate => candidate.id === pipelineId);
+				if (currentPipelineIndex <= 0) return;
+				await this.commitPipelineReorder(currentPipelineIndex, currentPipelineIndex - 1, refresh);
+			},
+		});
+
+		createWorkflowActionButton({
+			containerEl: headerActions,
+			icon: 'arrow-down',
+			label: `${t('settings', 'moveDown')}: ${pipeline.name}`,
+			className: 'operon-settings-icon-action-button',
+			placeholder: pipelineIndex >= this.settings.pipelines.length - 1,
+			errorContext: 'settings pipeline move down failed',
+			onClick: async () => {
+				const currentPipelineIndex = this.settings.pipelines.findIndex(candidate => candidate.id === pipelineId);
+				if (currentPipelineIndex < 0 || currentPipelineIndex >= this.settings.pipelines.length - 1) return;
+				await this.commitPipelineReorder(currentPipelineIndex, currentPipelineIndex + 1, refresh);
+			},
+		});
+
+		createWorkflowActionButton({
+			containerEl: headerActions,
 			text: t('settings', 'deletePipeline'),
-			label: t('settings', 'deletePipeline'),
+			label: this.settings.pipelines.length <= 1
+				? t('settings', 'pipelineAtLeastOnePipeline')
+				: t('settings', 'deletePipeline'),
 			className: 'operon-settings-danger-outline-button',
 			danger: true,
+			disabled: this.settings.pipelines.length <= 1,
 			errorContext: 'settings pipeline delete failed',
 			onClick: async () => {
 				const currentPipeline = getCurrentPipeline();
 				if (!currentPipeline) return;
+				if (this.settings.pipelines.length <= 1) {
+					new Notice(t('settings', 'pipelineAtLeastOnePipeline'));
+					return;
+				}
+				if (this.settings.pipelines.filter(candidate => candidate.name === this.settings.defaultPipelineName).length > 1) {
+					new Notice(t('settings', 'pipelineRepairAmbiguousDefaultRequired'));
+					return;
+				}
 				const currentPipelineIndex = this.settings.pipelines.findIndex(candidate => candidate.id === currentPipeline.id);
 				if (currentPipelineIndex < 0) return;
 				const confirmed = await this.confirmDeletePipeline(currentPipeline.name);
 				if (!confirmed) return;
 				const deletedWasDefault = this.settings.defaultPipelineName === currentPipeline.name;
 				this.settings.pipelines.splice(currentPipelineIndex, 1);
+				for (const preset of this.settings.kanbanPresets) {
+					if (preset.pipelineId === currentPipeline.id) preset.pipelineId = null;
+				}
 				if (deletedWasDefault) {
 					this.settings.defaultPipelineName = this.settings.pipelines[0]?.name ?? '';
 				} else if (!this.settings.pipelines.some(candidate => candidate.name === this.settings.defaultPipelineName)) {
 					this.settings.defaultPipelineName = this.settings.pipelines[0]?.name ?? '';
 				}
-				await this.saveSettings();
+				await this.saveWorkflowSettings();
 				refresh();
 			},
 		});
@@ -8500,7 +8824,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			} else {
 				delete currentPipeline.description;
 			}
-			await this.saveSettings();
+			await this.saveWorkflowSettings();
 		});
 		descriptionTextarea.addEventListener('blur', savePipelineDescription);
 		descriptionTextarea.addEventListener('change', savePipelineDescription);
@@ -8551,7 +8875,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					isTrackingTarget: false,
 					propertyMapping: null,
 				});
-				await this.saveSettings();
+				await this.saveWorkflowSettings();
 				refresh();
 			},
 		});
@@ -8588,7 +8912,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				const current = getCurrentStatus();
 				if (!current) return;
 				current.status.color = value;
-				await this.saveSettings();
+				await this.saveWorkflowSettings();
 			},
 		});
 
@@ -8624,7 +8948,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				labelInput.value = committedStatus.label;
 				return;
 			}
-			await this.commitPipelineDraft(pipelineIndex, committedPipeline, nextPipelineDraft, refresh, () => {
+			await this.commitPipelineDraft(committedPipeline, nextPipelineDraft, refresh, () => {
 				labelInput.value = committedStatus.label;
 			});
 		}));
@@ -8666,7 +8990,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				candidate.isScheduledTarget = false;
 			}
 			current.status.isScheduledTarget = nextValue;
-			await this.saveSettings();
+			await this.saveWorkflowSettings();
 			refresh();
 		}));
 
@@ -8692,7 +9016,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				candidate.isTrackingTarget = false;
 			}
 			current.status.isTrackingTarget = nextValue;
-			await this.saveSettings();
+			await this.saveWorkflowSettings();
 			refresh();
 		}));
 
@@ -8724,7 +9048,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				cancelledToggle.checked = false;
 				clearAutomationTargets(current.status);
 			}
-			await this.saveSettings();
+			await this.saveWorkflowSettings();
 			refresh();
 		}));
 
@@ -8756,7 +9080,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				finishedToggle.checked = false;
 				clearAutomationTargets(current.status);
 			}
-			await this.saveSettings();
+			await this.saveWorkflowSettings();
 			refresh();
 		}));
 
@@ -8772,12 +9096,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onClick: async () => {
 				const current = getCurrentStatus();
 				if (!current || current.statusIndex <= 0) return;
-				const statuses = current.pipeline.statuses;
-				const tmp = statuses[current.statusIndex - 1];
-				statuses[current.statusIndex - 1] = statuses[current.statusIndex];
-				statuses[current.statusIndex] = tmp;
-				await this.saveSettings();
-				refresh();
+				await this.commitStatusReorder(current.pipeline.id, current.statusIndex, current.statusIndex - 1, refresh);
 			},
 		});
 
@@ -8791,12 +9110,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onClick: async () => {
 				const current = getCurrentStatus();
 				if (!current || current.statusIndex >= current.pipeline.statuses.length - 1) return;
-				const statuses = current.pipeline.statuses;
-				const tmp = statuses[current.statusIndex + 1];
-				statuses[current.statusIndex + 1] = statuses[current.statusIndex];
-				statuses[current.statusIndex] = tmp;
-				await this.saveSettings();
-				refresh();
+				await this.commitStatusReorder(current.pipeline.id, current.statusIndex, current.statusIndex + 1, refresh);
 			},
 		});
 
@@ -8817,7 +9131,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				const confirmed = await this.confirmDeleteStatus(current.status.label, current.pipeline.name);
 				if (!confirmed) return;
 				current.pipeline.statuses.splice(current.statusIndex, 1);
-				await this.saveSettings();
+				await this.saveWorkflowSettings();
 				refresh();
 			},
 		});
@@ -8874,7 +9188,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				delete currentStatus.pipelineStatusIcon;
 			}
 			refreshIconPreview(normalizedIcon);
-			await this.saveSettings();
+			await this.saveWorkflowSettings();
 		};
 
 		const openPicker = (): void => {
@@ -8938,10 +9252,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private buildPipelineStatusCounts(pipeline: Pipeline): Map<string, number> {
 		const counts = new Map<string, number>();
 		if (!this.indexer) return counts;
+		const identityIndex = buildWorkflowStatusIdentityIndex(this.settings.pipelines);
 
 		for (const task of this.indexer.getAllTasks()) {
 			const statusValue = task.fieldValues.status?.trim();
-			if (!statusValue || !statusValue.startsWith(`${pipeline.name}.`)) continue;
+			if (!statusValue) continue;
+			const identity = resolveConfiguredStatusIdentity(statusValue, identityIndex);
+			if (identity.kind !== 'configured' || identity.pipeline.id !== pipeline.id) continue;
 			counts.set(statusValue, (counts.get(statusValue) ?? 0) + 1);
 		}
 
@@ -8949,12 +9266,23 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private async commitPipelineDraft(
-		pipelineIndex: number,
 		committedPipeline: Pipeline,
 		nextPipelineDraft: Pipeline,
 		refresh: () => void,
 		onCancel: () => void,
 	): Promise<void> {
+		const matchingPipelineNames = this.settings.pipelines.filter(
+			pipeline => pipeline.name === committedPipeline.name,
+		);
+		const ambiguousDefault = this.settings.pipelines.filter(
+			pipeline => pipeline.name === this.settings.defaultPipelineName,
+		).length > 1;
+		if (committedPipeline.name.includes('.') || matchingPipelineNames.length > 1 || ambiguousDefault) {
+			new Notice(t('settings', 'pipelineRepairRequired'));
+			onCancel();
+			return;
+		}
+
 		const plan = buildPipelineRenamePlan(committedPipeline, nextPipelineDraft);
 		const preview = this.indexer
 			? collectPipelineRenamePreview(this.indexer, plan)
@@ -8966,31 +9294,46 @@ export class OperonSettingsTab extends PluginSettingTab {
 				touchedFileCount: 0,
 				totalTaskCount: 0,
 			};
-
-		if (preview.totalTaskCount > 0) {
-			const confirmed = await this.confirmPipelineRenameMigration(preview);
-			if (!confirmed) {
-				onCancel();
-				return;
-			}
+		const identityIndex = buildWorkflowStatusIdentityIndex(this.settings.pipelines);
+		if (preview.affectedTasks.some(task => (
+			resolveConfiguredStatusIdentity(task.oldStatusValue, identityIndex).kind === 'ambiguous'
+		))) {
+			new Notice(t('settings', 'pipelineRepairRequired'));
+			onCancel();
+			return;
 		}
 
-		this.settings.pipelines[pipelineIndex] = nextPipelineDraft;
-		if (this.settings.defaultPipelineName === committedPipeline.name) {
-			this.settings.defaultPipelineName = nextPipelineDraft.name;
+		const proposedPipelines = this.settings.pipelines.map(pipeline => clonePipeline(pipeline));
+		const proposedIndex = proposedPipelines.findIndex(pipeline => pipeline.id === nextPipelineDraft.id);
+		if (proposedIndex < 0) {
+			onCancel();
+			return;
+		}
+		proposedPipelines[proposedIndex] = clonePipeline(nextPipelineDraft);
+		if (createsNewPipelineIdentityIssue(this.settings.pipelines, proposedPipelines)) {
+			new Notice(t('settings', 'pipelineCanonicalCollision'));
+			onCancel();
+			return;
 		}
 
-		await this.persistSettingsOnly();
+		const confirmed = await this.confirmPipelineRenameMigration(preview);
+		if (!confirmed) {
+			onCancel();
+			return;
+		}
+
 		try {
-			if (preview.totalTaskCount > 0) {
-				await this.applyPipelineRenameMigration(preview);
-			}
+			await this.applyPipelineRenameMigration(preview);
+			this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		} catch (error) {
 			console.error('Operon: pipeline rename migration failed unexpectedly', error);
-			new Notice(t('settings', 'pipelineRenameMigrationUnexpectedError'));
+			onCancel();
+			new Notice(error instanceof Error && error.message
+				? error.message
+				: t('settings', 'pipelineRenameMigrationUnexpectedError'));
+			return;
 		}
 
-		this.notifySettingsChanged();
 		refresh();
 	}
 
@@ -9003,6 +9346,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 					inlineTaskCount: String(preview.inlineTaskCount),
 					touchedFileCount: String(preview.touchedFileCount),
 				}),
+				detailsTable: preview.plan.operations.map(operation => ({
+					label: operation.oldStatusLabel,
+					before: operation.oldValue,
+					after: operation.newValue,
+				})),
 				confirmText: t('buttons', 'confirm'),
 				cancelText: t('buttons', 'cancel'),
 			}, resolve).open();
@@ -11146,6 +11494,41 @@ export class OperonSettingsTab extends PluginSettingTab {
 		await this.storage.saveSettings();
 	}
 
+	private async commitPipelineReorder(fromIndex: number, toIndex: number, refresh: () => void): Promise<void> {
+		const nextPipelines = this.settings.pipelines.map(pipeline => clonePipeline(pipeline));
+		[nextPipelines[fromIndex], nextPipelines[toIndex]] = [nextPipelines[toIndex], nextPipelines[fromIndex]];
+		this.settings.pipelines = nextPipelines;
+		try {
+			await this.saveWorkflowSettings();
+			refresh();
+		} catch (error) {
+			refresh();
+			new Notice(t('settings', 'pipelineReorderSaveFailed'));
+			throw error;
+		}
+	}
+
+	private async commitStatusReorder(
+		pipelineId: string,
+		fromIndex: number,
+		toIndex: number,
+		refresh: () => void,
+	): Promise<void> {
+		const nextPipelines = this.settings.pipelines.map(pipeline => clonePipeline(pipeline));
+		const pipeline = nextPipelines.find(candidate => candidate.id === pipelineId);
+		if (!pipeline) return;
+		[pipeline.statuses[fromIndex], pipeline.statuses[toIndex]] = [pipeline.statuses[toIndex], pipeline.statuses[fromIndex]];
+		this.settings.pipelines = nextPipelines;
+		try {
+			await this.saveWorkflowSettings();
+			refresh();
+		} catch (error) {
+			refresh();
+			new Notice(t('settings', 'pipelineReorderSaveFailed'));
+			throw error;
+		}
+	}
+
 	private notifySettingsChanged(): void {
 		this.hasPendingSettingsChange = true;
 	}
@@ -11185,4 +11568,119 @@ export class OperonSettingsTab extends PluginSettingTab {
 		await this.persistSettingsOnly();
 		this.notifySettingsChanged();
 	}
+
+	private async saveWorkflowSettings(): Promise<void> {
+		const pendingSettings = {
+			pipelines: this.settings.pipelines.map(pipeline => clonePipeline(pipeline)),
+			defaultPipelineName: this.settings.defaultPipelineName,
+			kanbanPresets: cloneWorkflowKanbanPresets(this.settings.kanbanPresets),
+		};
+		try {
+			await this.storage.updateSettings(pendingSettings);
+		} catch (error) {
+			this.redisplayPreservingScroll();
+			throw error;
+		}
+		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
+		this.notifySettingsChanged();
+		this.applyPendingSettingsChange();
+	}
+
+	private captureWorkflowSettingsSnapshot(): {
+		pipelines: Pipeline[];
+		defaultPipelineName: string;
+		kanbanPipelineIds: Map<string, string | null>;
+	} {
+		return {
+			pipelines: this.settings.pipelines.map(pipeline => clonePipeline(pipeline)),
+			defaultPipelineName: this.settings.defaultPipelineName,
+			kanbanPipelineIds: new Map(
+				this.settings.kanbanPresets.map(preset => [preset.id, preset.pipelineId] as const),
+			),
+		};
+	}
+
+	private restoreWorkflowSettingsSnapshot(snapshot: {
+		pipelines: Pipeline[];
+		defaultPipelineName: string;
+		kanbanPipelineIds: Map<string, string | null>;
+	}): void {
+		this.settings.pipelines = snapshot.pipelines.map(pipeline => clonePipeline(pipeline));
+		this.settings.defaultPipelineName = snapshot.defaultPipelineName;
+		for (const preset of this.settings.kanbanPresets) {
+			if (snapshot.kanbanPipelineIds.has(preset.id)) {
+				preset.pipelineId = snapshot.kanbanPipelineIds.get(preset.id) ?? null;
+			}
+		}
+	}
+}
+
+function cloneWorkflowKanbanPresets(presets: readonly KanbanPreset[]): KanbanPreset[] {
+	return presets.map(preset => {
+		const cloned: unknown = JSON.parse(JSON.stringify(preset));
+		return cloned as KanbanPreset;
+	});
+}
+
+interface WorkflowTaxonomyConflictSnapshot {
+	pipelines: Pipeline[];
+	defaultPipelineName: string;
+}
+
+export function buildWorkflowTaxonomyConflictDetails(
+	current: WorkflowTaxonomyConflictSnapshot,
+	approved: WorkflowTaxonomyConflictSnapshot,
+): Array<{ label: string; before: string; after: string }> {
+	const details: Array<{ label: string; before: string; after: string }> = [];
+	if (current.defaultPipelineName !== approved.defaultPipelineName) {
+		details.push({
+			label: t('settings', 'default'),
+			before: current.defaultPipelineName || '—',
+			after: approved.defaultPipelineName || '—',
+		});
+	}
+
+	const currentById = new Map(current.pipelines.map((pipeline, index) => [pipeline.id, { pipeline, index }]));
+	const approvedById = new Map(approved.pipelines.map((pipeline, index) => [pipeline.id, { pipeline, index }]));
+	const pipelineIds = [
+		...current.pipelines.map(pipeline => pipeline.id),
+		...approved.pipelines
+			.map(pipeline => pipeline.id)
+			.filter(pipelineId => !currentById.has(pipelineId)),
+	];
+	for (const pipelineId of pipelineIds) {
+		const currentEntry = currentById.get(pipelineId);
+		const approvedEntry = approvedById.get(pipelineId);
+		const before = formatWorkflowTaxonomyConflictPipeline(currentEntry);
+		const after = formatWorkflowTaxonomyConflictPipeline(approvedEntry);
+		if (before === after) continue;
+		details.push({
+			label: `${t('settings', 'pipelineRepairPipeline')} ${pipelineId}`,
+			before,
+			after,
+		});
+	}
+
+	return details;
+}
+
+function formatWorkflowTaxonomyConflictPipeline(
+	entry: { pipeline: Pipeline; index: number } | undefined,
+): string {
+	if (!entry) return '—';
+	return `#${entry.index + 1} ${JSON.stringify(entry.pipeline)}`;
+}
+
+export function createsNewPipelineIdentityIssue(
+	currentPipelines: Pipeline[],
+	proposedPipelines: Pipeline[],
+): boolean {
+	const currentIssueKeys = new Set(
+		validatePipelineTaxonomy(currentPipelines).issues
+			.filter(issue => !issue.destructive)
+			.map(issue => `${issue.code}|${issue.path}|${issue.value ?? ''}`),
+	);
+	return validatePipelineTaxonomy(proposedPipelines).issues
+		.filter(issue => !issue.destructive)
+		.some(issue => !currentIssueKeys.has(`${issue.code}|${issue.path}|${issue.value ?? ''}`));
 }

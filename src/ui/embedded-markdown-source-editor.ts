@@ -151,10 +151,30 @@ const filePanelLayoutTheme = EditorView.theme({
 	},
 });
 
-interface FilePanelLineNumberBlock {
+export interface FilePanelLineNumberBlock {
 	lineNumber: number;
 	top: number;
 	height: number;
+}
+
+interface FilePanelViewportLineBlock {
+	from: number;
+	top: number;
+	height: number;
+}
+
+export function buildFilePanelLineNumberBlocks(
+	lineBlocks: readonly FilePanelViewportLineBlock[],
+	resolveLineNumber: (position: number) => number,
+	documentTop: number,
+	railTop: number,
+	lineNumberOffset = 0,
+): FilePanelLineNumberBlock[] {
+	return lineBlocks.map(lineBlock => ({
+		lineNumber: resolveLineNumber(lineBlock.from) + lineNumberOffset,
+		top: documentTop + lineBlock.top - railTop,
+		height: lineBlock.height,
+	}));
 }
 
 export function getEmbeddedMarkdownSourceEditorFilePath(view: EditorView): string {
@@ -269,6 +289,14 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 		private filePanelLineNumberSpacer: HTMLElement | null = null;
 		private filePanelLineNumberLayer: HTMLElement | null = null;
 		private filePanelLineNumberScrollHandler: (() => void) | null = null;
+		private filePanelLineNumberRefreshFrame: number | null = null;
+		private filePanelLineNumberElements: HTMLElement[] = [];
+		private filePanelLayoutGeneration = 0;
+		private filePanelLayoutFrame: number | null = null;
+		private filePanelLayoutTimer: number | null = null;
+		private filePanelHorizontalScrollFrame: number | null = null;
+		private filePanelHorizontalScrollTimer: number | null = null;
+		private filePanelLastContentInset: number | null = null;
 
 		constructor(sourceApp: App, containerEl: HTMLElement, options: EmbeddedMarkdownSourceEditorOptions = {}) {
 			const owner: EmbeddedMarkdownOwner = {
@@ -348,8 +376,25 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			const scrollDOM = this.editor.cm.scrollDOM;
 			const ownerWindow = getOwnerWindow(scrollDOM);
 			const reset = () => {
-				scrollDOM.scrollLeft = 0;
+				if (scrollDOM.scrollLeft !== 0) scrollDOM.scrollLeft = 0;
 			};
+			if (this.isFilePanelSourceEditor()) {
+				reset();
+				if (this.filePanelHorizontalScrollFrame != null || this.filePanelHorizontalScrollTimer != null) return;
+				const generation = this.filePanelLayoutGeneration;
+				this.filePanelHorizontalScrollFrame = ownerWindow.requestAnimationFrame(() => {
+					this.filePanelHorizontalScrollFrame = null;
+					if (generation !== this.filePanelLayoutGeneration) return;
+					reset();
+				});
+				this.filePanelHorizontalScrollTimer = ownerWindow.setTimeout(() => {
+					this.filePanelHorizontalScrollTimer = null;
+					if (generation !== this.filePanelLayoutGeneration) return;
+					reset();
+				}, 150);
+				return;
+			}
+
 			reset();
 			ownerWindow.requestAnimationFrame(() => {
 				reset();
@@ -384,21 +429,34 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			if (!this.isFilePanelSourceEditor()) return;
 			const view = this.editor.cm;
 			const ownerWindow = getOwnerWindow(view.dom);
-			const apply = () => this.applyFilePanelLayoutGuard();
 			const MutationObserverCtor = (ownerWindow as Window & { MutationObserver: typeof MutationObserver }).MutationObserver;
 
 			this.filePanelLayoutObserver?.disconnect();
-			const observer = new MutationObserverCtor(apply);
+			const observer = new MutationObserverCtor(() => this.queueFilePanelLayoutGuard());
 			observer.observe(view.dom, { childList: true, subtree: true });
 			this.filePanelLayoutObserver = observer;
 
-			apply();
-			ownerWindow.requestAnimationFrame(() => {
-				apply();
-				ownerWindow.requestAnimationFrame(apply);
-			});
-			for (const delayMs of [0, 50, 150, 400, 1000, 2000]) {
-				ownerWindow.setTimeout(apply, delayMs);
+			this.applyFilePanelLayoutGuard();
+			this.queueFilePanelLayoutGuard(true);
+		}
+
+		private queueFilePanelLayoutGuard(includeLatePass = false): void {
+			if (!this.isFilePanelSourceEditor()) return;
+			const ownerWindow = getOwnerWindow(this.editor.cm.dom);
+			const generation = this.filePanelLayoutGeneration;
+			if (this.filePanelLayoutFrame == null) {
+				this.filePanelLayoutFrame = ownerWindow.requestAnimationFrame(() => {
+					this.filePanelLayoutFrame = null;
+					if (generation !== this.filePanelLayoutGeneration) return;
+					this.applyFilePanelLayoutGuard();
+				});
+			}
+			if (includeLatePass && this.filePanelLayoutTimer == null) {
+				this.filePanelLayoutTimer = ownerWindow.setTimeout(() => {
+					this.filePanelLayoutTimer = null;
+					if (generation !== this.filePanelLayoutGeneration) return;
+					this.applyFilePanelLayoutGuard();
+				}, 150);
 			}
 		}
 
@@ -408,13 +466,16 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			const gutters = scrollDOM.querySelector<HTMLElement>('.cm-gutters');
 			const content = view.contentDOM;
 
-			scrollDOM.scrollLeft = 0;
+			if (scrollDOM.scrollLeft !== 0) scrollDOM.scrollLeft = 0;
 
 			const overlapInset = gutters
 				? Math.ceil(gutters.getBoundingClientRect().right - content.getBoundingClientRect().left + 8)
 				: 0;
+			const boundedInset = Math.max(0, Math.min(96, overlapInset));
+			if (this.filePanelLastContentInset === boundedInset) return;
+			this.filePanelLastContentInset = boundedInset;
 			this.editorEl.setCssProps({
-				'--operon-file-content-inset': `${Math.max(0, Math.min(96, overlapInset))}px`,
+				'--operon-file-content-inset': `${boundedInset}px`,
 			});
 			this.queueFilePanelLineNumberRefresh();
 		}
@@ -424,7 +485,7 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			const view = this.editor.cm;
 			view.requestMeasure();
 			this.resetHorizontalScroll();
-			this.applyFilePanelLayoutGuard();
+			this.queueFilePanelLayoutGuard();
 			this.queueFilePanelLineNumberRefresh();
 		}
 
@@ -466,7 +527,9 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 
 		private queueFilePanelLineNumberRefresh(): void {
 			if (!this.filePanelLineNumberRail || !this.filePanelLineNumberLayer) return;
-			getOwnerWindow(this.editor.cm.dom).requestAnimationFrame(() => {
+			if (this.filePanelLineNumberRefreshFrame != null) return;
+			this.filePanelLineNumberRefreshFrame = getOwnerWindow(this.editor.cm.dom).requestAnimationFrame(() => {
+				this.filePanelLineNumberRefreshFrame = null;
 				this.refreshFilePanelLineNumbers();
 			});
 		}
@@ -476,38 +539,44 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			const rail = this.filePanelLineNumberRail;
 			if (!rail) return [];
 			const railRect = rail.getBoundingClientRect();
-			const lineElements = Array.from(view.contentDOM.querySelectorAll<HTMLElement>('.cm-line'));
 			const lineBlocks = view.viewportLineBlocks;
 			const lineNumberOffset = this.options.lineNumberOffset ?? 0;
-			const count = Math.min(lineBlocks.length, lineElements.length);
-			const blocks: FilePanelLineNumberBlock[] = [];
-			for (let index = 0; index < count; index += 1) {
-				const lineEl = lineElements[index];
-				const lineBlock = lineBlocks[index];
-				if (!lineEl || !lineBlock) continue;
-				const rect = lineEl.getBoundingClientRect();
-				blocks.push({
-					lineNumber: view.state.doc.lineAt(lineBlock.from).number + lineNumberOffset,
-					top: rect.top - railRect.top,
-					height: rect.height,
-				});
-			}
-			return blocks;
+			return buildFilePanelLineNumberBlocks(
+				lineBlocks,
+				position => view.state.doc.lineAt(position).number,
+				view.documentTop,
+				railRect.top,
+				lineNumberOffset,
+			);
 		}
 
 		private refreshFilePanelLineNumbers(): void {
 			const layer = this.filePanelLineNumberLayer;
 			if (!layer) return;
-			layer.empty();
-			for (const block of this.collectFilePanelLineNumberBlocks()) {
-				const lineNumberEl = createOwnerElement(layer, 'div');
-				lineNumberEl.addClass('operon-task-editor-file-line-number');
-				lineNumberEl.textContent = String(block.lineNumber);
-				lineNumberEl.setCssProps({
-					'--operon-file-line-number-top': `${block.top}px`,
-					'--operon-file-line-number-height': `${block.height}px`,
-				});
-				layer.appendChild(lineNumberEl);
+			const blocks = this.collectFilePanelLineNumberBlocks();
+			for (let index = 0; index < blocks.length; index += 1) {
+				const block = blocks[index];
+				if (!block) continue;
+				let lineNumberEl = this.filePanelLineNumberElements[index];
+				if (!lineNumberEl) {
+					lineNumberEl = createOwnerElement(layer, 'div');
+					lineNumberEl.addClass('operon-task-editor-file-line-number');
+					layer.appendChild(lineNumberEl);
+					this.filePanelLineNumberElements.push(lineNumberEl);
+				}
+				const lineNumber = String(block.lineNumber);
+				if (lineNumberEl.textContent !== lineNumber) lineNumberEl.textContent = lineNumber;
+				const top = `${block.top}px`;
+				const height = `${block.height}px`;
+				if (lineNumberEl.style.getPropertyValue('--operon-file-line-number-top') !== top) {
+					lineNumberEl.style.setProperty('--operon-file-line-number-top', top);
+				}
+				if (lineNumberEl.style.getPropertyValue('--operon-file-line-number-height') !== height) {
+					lineNumberEl.style.setProperty('--operon-file-line-number-height', height);
+				}
+			}
+			for (const lineNumberEl of this.filePanelLineNumberElements.splice(blocks.length)) {
+				lineNumberEl.remove();
 			}
 		}
 
@@ -575,6 +644,7 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 		}
 
 		override destroy(): void {
+			this.cancelFilePanelScheduledWork();
 			if (this.filePanelLineNumberScrollHandler) {
 				this.editor.cm.scrollDOM.removeEventListener('scroll', this.filePanelLineNumberScrollHandler);
 				this.filePanelLineNumberScrollHandler = null;
@@ -583,6 +653,7 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			this.filePanelLayoutObserver = null;
 			this.filePanelLineNumberRail?.remove();
 			this.filePanelLineNumberRail = null;
+			this.filePanelLineNumberElements = [];
 			this.filePanelLineNumberSpacer?.remove();
 			this.filePanelLineNumberSpacer = null;
 			this.filePanelLineNumberLayer = null;
@@ -595,6 +666,21 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			clearWorkspaceActiveEditor(this.app, this.owner);
 			this.containerEl.empty();
 			super.destroy();
+		}
+
+		private cancelFilePanelScheduledWork(): void {
+			this.filePanelLayoutGeneration += 1;
+			const ownerWindow = getOwnerWindow(this.editor.cm.dom);
+			if (this.filePanelLayoutFrame != null) ownerWindow.cancelAnimationFrame(this.filePanelLayoutFrame);
+			if (this.filePanelLayoutTimer != null) ownerWindow.clearTimeout(this.filePanelLayoutTimer);
+			if (this.filePanelHorizontalScrollFrame != null) ownerWindow.cancelAnimationFrame(this.filePanelHorizontalScrollFrame);
+			if (this.filePanelHorizontalScrollTimer != null) ownerWindow.clearTimeout(this.filePanelHorizontalScrollTimer);
+			if (this.filePanelLineNumberRefreshFrame != null) ownerWindow.cancelAnimationFrame(this.filePanelLineNumberRefreshFrame);
+			this.filePanelLayoutFrame = null;
+			this.filePanelLayoutTimer = null;
+			this.filePanelHorizontalScrollFrame = null;
+			this.filePanelHorizontalScrollTimer = null;
+			this.filePanelLineNumberRefreshFrame = null;
 		}
 
 		onunload(): void {

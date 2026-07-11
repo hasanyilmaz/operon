@@ -11,7 +11,7 @@ import {
 import { OperonSettings } from '../types/settings';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { resolveTaskDateToneColor } from '../core/task-date-tone';
-import { Pipeline, parseStatusValue } from '../types/pipeline';
+import { findStatusDef, Pipeline } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { openObsidianTagSearch } from './tag-search';
@@ -264,12 +264,7 @@ function applyOverlayChipVisualStyles(
 
 function lookupStatusColor(statusValue: string | undefined, pipelines: Pipeline[]): string {
 	if (!statusValue) return '#6b7280';
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return '#6b7280';
-	const pipeline = pipelines.find((candidate) => candidate.name === parsed.pipeline);
-	if (!pipeline) return '#6b7280';
-	const status = pipeline.statuses.find((candidate) => candidate.label === parsed.status);
-	return status?.color ?? '#6b7280';
+	return findStatusDef(pipelines, statusValue)?.color ?? '#6b7280';
 }
 
 function normalizeTaskColor(taskColor: string | undefined): string | null {

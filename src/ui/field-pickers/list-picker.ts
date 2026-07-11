@@ -1,5 +1,5 @@
 import { t } from '../../core/i18n';
-import { createButton, createChip, createFloatingPanel, requestFloatingInputFocus } from './common';
+import { bindPickerListItemActivation, createButton, createChip, createFloatingPanel, requestFloatingInputFocus } from './common';
 
 export interface ListPickerOptions {
 	title: string;
@@ -93,18 +93,18 @@ export function showListPicker(anchor: HTMLElement | DOMRect, options: ListPicke
 		matches.slice(0, 12).forEach((match, index) => {
 			const item = createButton(formatValue(match, options.formatValue), 'operon-list-picker-item', list);
 			if (index === activeIndex) item.classList.add('is-active');
-			item.addEventListener('mousemove', () => {
-				if (activeIndex !== index) {
-					activeIndex = index;
-					renderSuggestions(input.value);
-				}
-			});
-			item.addEventListener('mousedown', event => {
-				event.preventDefault();
-				addValue(match);
-			});
+			item.addEventListener('mousemove', () => setActiveIndex(index));
+			bindPickerListItemActivation(item, () => addValue(match));
 			list.appendChild(item);
 		});
+	};
+
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
 	};
 
 	input.addEventListener('input', () => renderSuggestions(input.value));

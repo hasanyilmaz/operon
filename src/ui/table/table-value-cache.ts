@@ -1,4 +1,5 @@
 import { parseLocalTimestamp } from '../../core/local-time';
+import { normalizePriorityValue } from '../../core/priority-rank';
 import type { ProjectSerialDisplay } from '../../core/project-serials';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
@@ -10,11 +11,15 @@ import {
 	type TableTaskLookup,
 } from './table-value-adapter';
 import { createTaskProgressLookup, type TaskProgressTrack, type TaskProgressTrackKind } from '../task-progress-tracks';
-import { PROJECT_SERIAL_TABLE_FIELD_KEY } from './table-field-catalog';
+import { PROJECT_SERIAL_TABLE_FIELD_KEY, TABLE_WORKFLOW_PIPELINE_FIELD_KEY } from './table-field-catalog';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../../core/workflow-status-identity';
 
 export const TABLE_NO_GROUP_VALUE_KEY = '__table_no_value__';
 
-type TableValueCacheSettings = Pick<OperonSettings, 'keyMappings'>;
+type TableValueCacheSettings = Pick<OperonSettings, 'keyMappings'> & Partial<Pick<OperonSettings, 'pipelines'>>;
 export type TableSortValueKind = 'priority' | 'numeric' | 'date' | 'text';
 export type TableCachedSortValue = string | number | null;
 
@@ -43,6 +48,7 @@ export interface TableValueResolverOptions {
 
 export interface TableValueResolver {
 	readonly taskLookup: TableTaskLookup;
+	readonly workflowStatusIdentityIndex: WorkflowStatusIdentityIndex;
 	getRawValue(task: IndexedTask, key: string): string;
 	getDisplayValue(task: IndexedTask, key: string): string;
 	getProgressTrack(task: IndexedTask, kind: TaskProgressTrackKind): TaskProgressTrack | null;
@@ -63,6 +69,8 @@ export function createTableValueResolver(
 ): TableValueResolver {
 	const taskLookup = createTableTaskLookup(tasks);
 	const progressLookup = createTaskProgressLookup(tasks);
+	const pipelines = settings?.pipelines ?? [];
+	const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 	const rawValues = new Map<string, string>();
 	const displayValues = new Map<string, string>();
 	const sortValues = new Map<string, TableCachedSortValue>();
@@ -79,6 +87,7 @@ export function createTableValueResolver(
 	};
 	const resolver: TableValueResolver = {
 		taskLookup,
+		workflowStatusIdentityIndex,
 		getRawValue(task, key) {
 			const cacheKey = buildTaskFieldCacheKey(task, key);
 			const cached = rawValues.get(cacheKey);
@@ -89,7 +98,12 @@ export function createTableValueResolver(
 			stats.rawMisses++;
 			const value = key === PROJECT_SERIAL_TABLE_FIELD_KEY
 				? options.getProjectSerialDisplay?.(task.operonId, task)?.label ?? ''
-				: progressLookup.resolveRawValue(task, key) ?? getTableTaskRawValue(task, key);
+				: progressLookup.resolveRawValue(task, key) ?? getTableTaskRawValue(
+					task,
+					key,
+					pipelines,
+					workflowStatusIdentityIndex,
+				);
 			rawValues.set(cacheKey, value);
 			return value;
 		},
@@ -135,7 +149,11 @@ export function createTableValueResolver(
 			stats.groupMisses++;
 			const rawValue = resolver.getRawValue(task, groupBy).trim();
 			const isNoValue = rawValue.length === 0;
-			const valueKey = isNoValue ? TABLE_NO_GROUP_VALUE_KEY : rawValue.toLocaleLowerCase();
+			const valueKey = isNoValue
+				? TABLE_NO_GROUP_VALUE_KEY
+				: groupBy === TABLE_WORKFLOW_PIPELINE_FIELD_KEY || groupBy === 'status'
+					? rawValue
+					: rawValue.toLocaleLowerCase();
 			const groupValue: TableCachedGroupValue = {
 				rawValue,
 				isNoValue,
@@ -174,7 +192,7 @@ function resolveCachedSortValue(
 	const trimmed = rawValue.trim();
 	if (!trimmed) return null;
 	if (kind === 'priority') {
-		const value = trimmed.toLocaleLowerCase();
+		const value = normalizePriorityValue(trimmed);
 		return priorityRank.get(value) ?? Number.MAX_SAFE_INTEGER;
 	}
 	if (kind === 'numeric') {

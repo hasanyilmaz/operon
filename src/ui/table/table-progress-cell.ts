@@ -40,7 +40,7 @@ export function renderTableProgressCell(
 		task: IndexedTask;
 		column: TableColumn;
 		settings: TableProgressCellSettings;
-		valueResolver: Pick<TableValueResolver, 'getProgressTrack'>;
+		valueResolver: Pick<TableValueResolver, 'getProgressTrack' | 'workflowStatusIdentityIndex'>;
 		iconOnly: boolean;
 		onActivate?: TableProgressCellActionHandler;
 	},
@@ -60,7 +60,13 @@ export function renderTableProgressCell(
 		return;
 	}
 
-	const color = resolveTableProgressCellColor(options.column, track, options.task, options.settings);
+	const color = resolveTableProgressCellColor(
+		options.column,
+		track,
+		options.task,
+		options.settings,
+		options.valueResolver.workflowStatusIdentityIndex,
+	);
 	const ariaLabel = `${fieldLabel}: ${track.tooltip}`;
 	const actionHandler = options.task.checkbox === 'open' ? options.onActivate : undefined;
 	setAccessibleLabelWithoutTooltip(cell, ariaLabel);
@@ -163,8 +169,13 @@ function resolveTableProgressCellColor(
 	track: TaskProgressTrack,
 	task: IndexedTask,
 	settings: TableProgressCellSettings,
+	workflowStatusIdentityIndex: TableValueResolver['workflowStatusIdentityIndex'],
 ): string | null {
-	return resolveTableColumnCellAccent(column, String(track.percent), { task, settings });
+	return resolveTableColumnCellAccent(column, String(track.percent), {
+		task,
+		settings,
+		workflowStatusIdentityIndex,
+	});
 }
 
 function applyTableProgressColor(element: HTMLElement, color: string | null): void {

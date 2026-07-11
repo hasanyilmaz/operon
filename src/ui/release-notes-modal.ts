@@ -12,21 +12,25 @@ import { OPERON_DOCS_TARGET_ROOT } from '../systems/operon-docs-sync';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
 interface OperonReleaseNotesModalOptions {
+	docsFolder?: string;
 	onClose?: () => void | Promise<void>;
 }
 
 interface RenderMarkdownOptions {
 	app: App;
+	docsFolder: string;
 }
 
 export class OperonReleaseNotesModal extends Modal {
 	private releaseNotes: OperonReleaseNote[];
+	private docsFolder: string;
 	private onCloseCallback?: () => void | Promise<void>;
 	private hasRunCloseCallback = false;
 
 	constructor(app: App, releaseNotes: OperonReleaseNote[], options: OperonReleaseNotesModalOptions = {}) {
 		super(app);
 		this.releaseNotes = releaseNotes;
+		this.docsFolder = options.docsFolder ?? OPERON_DOCS_TARGET_ROOT;
 		this.onCloseCallback = options.onClose;
 	}
 
@@ -95,7 +99,10 @@ export class OperonReleaseNotesModal extends Modal {
 			if (bannerUrl) this.renderReleaseBanner(noteEl, bannerUrl);
 		}
 
-		renderControlledMarkdown(noteEl, removeValidationSection(note.body), { app: this.app });
+		renderControlledMarkdown(noteEl, removeValidationSection(note.body), {
+			app: this.app,
+			docsFolder: this.docsFolder,
+		});
 	}
 
 	private renderReleaseBanner(containerEl: HTMLElement, imageUrl: string): void {
@@ -260,7 +267,7 @@ function renderInlineMarkdown(containerEl: HTMLElement, text: string, options: R
 		} else if (match[3]) {
 			containerEl.createEl('code', { text: match[3] });
 		} else if (match[4]) {
-			createWikiLink(containerEl, match[5] || match[4], match[4], options.app);
+			createWikiLink(containerEl, match[5] || match[4], match[4], options);
 		} else if (match[6] && match[7]) {
 			createExternalLink(containerEl, match[6], match[7]);
 		} else if (match[8]) {
@@ -275,7 +282,7 @@ function renderInlineMarkdown(containerEl: HTMLElement, text: string, options: R
 	appendText(text.slice(lastIndex));
 }
 
-function createWikiLink(containerEl: HTMLElement, label: string, target: string, app: App): void {
+function createWikiLink(containerEl: HTMLElement, label: string, target: string, options: RenderMarkdownOptions): void {
 	const normalizedTarget = target.replace(/\\/gu, '').trim();
 	const labelText = label.trim() || normalizedTarget;
 	const linkEl = containerEl.createEl('a', {
@@ -288,13 +295,13 @@ function createWikiLink(containerEl: HTMLElement, label: string, target: string,
 	});
 	linkEl.addEventListener('click', (event) => {
 		event.preventDefault();
-		runAsyncAction('release notes docs link open failed', () => openReleaseNoteWikiLink(app, normalizedTarget));
+		runAsyncAction('release notes docs link open failed', () => openReleaseNoteWikiLink(options.app, normalizedTarget, options.docsFolder));
 	});
 }
 
-async function openReleaseNoteWikiLink(app: App, target: string): Promise<void> {
+async function openReleaseNoteWikiLink(app: App, target: string, docsFolder: string): Promise<void> {
 	if (isOperonDocsTarget(target)) {
-		const localFile = getLocalOperonDocsFile(app, target);
+		const localFile = getLocalOperonDocsFile(app, target, docsFolder);
 		if (localFile) {
 			await app.workspace.getLeaf(false).openFile(localFile);
 			return;
@@ -310,9 +317,9 @@ function isOperonDocsTarget(target: string): boolean {
 	return /^DOCS-\d{3}\s+/u.test(target.replace(/\.md$/iu, '').trim());
 }
 
-function getLocalOperonDocsFile(app: App, target: string): TFile | null {
+function getLocalOperonDocsFile(app: App, target: string, docsFolder: string): TFile | null {
 	const fileName = target.endsWith('.md') ? target : `${target}.md`;
-	const filePath = normalizePath(`${OPERON_DOCS_TARGET_ROOT}/${fileName}`);
+	const filePath = normalizePath(`${docsFolder}/${fileName}`);
 	const file = app.vault.getAbstractFileByPath(filePath);
 	return file instanceof TFile ? file : null;
 }

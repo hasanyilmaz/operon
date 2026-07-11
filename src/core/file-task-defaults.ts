@@ -4,6 +4,10 @@ import {
 	Pipeline,
 	resolveAutomationWorkflowStatus,
 } from '../types/pipeline';
+import {
+	buildWorkflowStatusIdentityIndex,
+	resolveConfiguredPipelineNameIdentity,
+} from './workflow-status-identity';
 import { normalizeLegacyCreatedDatetime } from './yaml-fields';
 import { normalizeTaskIconValue } from './task-icon-value';
 
@@ -35,7 +39,12 @@ function normalizeRequiredValue(value: string | null | undefined): string | unde
 }
 
 export function resolveDefaultFileTaskStatus(pipelines: Pipeline[], defaultPipelineName: string): string | undefined {
-	const preferred = pipelines.find(pipeline => pipeline.name === defaultPipelineName) ?? pipelines[0];
+	const explicitDefault = resolveConfiguredPipelineNameIdentity(
+		defaultPipelineName,
+		buildWorkflowStatusIdentityIndex(pipelines),
+	);
+	if (explicitDefault.kind === 'ambiguous') return undefined;
+	const preferred = explicitDefault.kind === 'configured' ? explicitDefault.pipeline : pipelines[0];
 	const firstStatus = preferred?.statuses[0];
 	if (!preferred || !firstStatus) return undefined;
 	return composeStatusValue(preferred.name, firstStatus.label);

@@ -115,7 +115,6 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 			const itemIndex = Number(item.dataset.optionIndex ?? '-1');
 			const isActive = itemIndex === activeIndex;
 			item.classList.toggle('is-active', isActive);
-			item.setAttribute('aria-selected', isActive ? 'true' : 'false');
 			if (isActive) activeItem = item;
 		}
 		if (activeItem) {
@@ -146,8 +145,11 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		].filter(Boolean).join(' ');
 		item.id = `${optionIdPrefix}-${index}`;
 		item.setAttribute('role', 'option');
+		item.tabIndex = -1;
 		item.dataset.optionIndex = String(index);
-		item.toggleClass('is-selected', match.value === getCurrentValue());
+		const isSelected = match.value === getCurrentValue();
+		item.toggleClass('is-selected', isSelected);
+		item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
 		if (match.title) item.title = match.title;
 
 		if (match.icon) {
@@ -165,6 +167,9 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 			updateActiveItem();
 		});
 		item.addEventListener('mousedown', event => {
+			event.preventDefault();
+		});
+		item.addEventListener('click', event => {
 			event.preventDefault();
 			selectOption(match);
 		});

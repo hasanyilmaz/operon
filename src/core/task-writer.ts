@@ -57,6 +57,21 @@ export interface SameFileInlineYamlAggregateWriteResult {
     fallbackReason: string;
 }
 
+export type ConditionalTaskFieldWriteOutcome =
+    | 'updated'
+    | 'already-updated'
+    | 'conflict'
+    | 'missing';
+
+export interface ConditionalTaskFieldWriteOptions {
+    reindex?: 'scheduled' | 'none';
+    allowMissingAfterReindex?: boolean;
+    fallbackLocation?: {
+        filePath: string;
+        format: 'inline' | 'yaml';
+    };
+}
+
 function findTaskLineIndex(
     lines: string[],
     filePath: string,
@@ -276,6 +291,65 @@ export class TaskWriter {
             `fallbackReason=${writeResult.fallbackReason}`,
         );
         return true;
+    }
+
+    /**
+     * Change one managed task field only when the fresh source still contains
+     * the expected value. The comparison and mutation share the same per-file
+     * write queue, making interrupted rename retries safe and idempotent.
+     */
+    async writeTaskFieldIfCurrent(
+        operonId: string,
+        canonicalKey: string,
+        expectedValue: string,
+        nextValue: string,
+        options: ConditionalTaskFieldWriteOptions = {},
+    ): Promise<ConditionalTaskFieldWriteOutcome> {
+        const task = this.indexer.getTask(operonId);
+        if (task && this.blockDuplicateConflict(operonId)) {
+            throw new Error(`Duplicate operonId conflict blocks conditional write for ${operonId}`);
+        }
+        if (!getManagedTaskFieldType(canonicalKey, this.keyMappings)) {
+            throw new Error(`Conditional write does not support unmanaged field ${canonicalKey}`);
+        }
+
+        const location = task?.primary ?? (options.fallbackLocation
+            ? {
+                ...options.fallbackLocation,
+                lineNumber: -1,
+            }
+            : null);
+        if (!location) return 'missing';
+        const file = this.app.vault.getAbstractFileByPath(location.filePath);
+        if (!(file instanceof TFile)) {
+            if (options.allowMissingAfterReindex) return 'missing';
+            throw new Error(`Conditional write source is not indexed or available for ${operonId}`);
+        }
+        this.hooks.onBeforeWriteFile?.(location.filePath);
+
+        const outcome = location.format === 'yaml'
+            ? await this.writeYamlTaskFieldIfCurrent(
+                file,
+                operonId,
+                canonicalKey,
+                expectedValue,
+                nextValue,
+            )
+            : await this.writeInlineTaskFieldIfCurrent(
+                file,
+                operonId,
+                canonicalKey,
+                expectedValue,
+                nextValue,
+                location.lineNumber,
+            );
+        if (outcome === 'missing' && !options.allowMissingAfterReindex) {
+            throw new Error(`Conditional write could not confirm the current source for ${operonId}`);
+        }
+        if (outcome === 'updated' && (options.reindex ?? 'scheduled') === 'scheduled') {
+            this.indexer.scheduleReindex(location.filePath);
+        }
+        return outcome;
     }
 
     async writeInlineTaskAndAggregateYamlParent(
@@ -554,6 +628,133 @@ export class TaskWriter {
         });
     }
 
+    private async writeYamlTaskFieldIfCurrent(
+        file: TFile,
+        operonId: string,
+        canonicalKey: string,
+        expectedValue: string,
+        nextValue: string,
+    ): Promise<ConditionalTaskFieldWriteOutcome> {
+        return this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+            let outcome: ConditionalTaskFieldWriteOutcome = 'missing';
+            let didUpdate = false;
+            let formattingPlan: YamlFrontmatterFormattingPlan = {
+                blankYamlKeys: new Set<string>(),
+                removedYamlKeys: new Set<string>(),
+            };
+            await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+                if (!this.frontmatterMatchesOperonId(frontmatter, operonId)) return;
+                const currentResolution = this.readYamlFieldForConditionalWrite(frontmatter, canonicalKey);
+                if (currentResolution.kind === 'ambiguous') {
+                    outcome = 'conflict';
+                    return;
+                }
+                const currentValue = currentResolution.value;
+                if (currentValue === nextValue) {
+                    outcome = 'already-updated';
+                    return;
+                }
+                if (currentValue !== expectedValue) {
+                    outcome = 'conflict';
+                    return;
+                }
+                formattingPlan = applyYamlTaskFieldValues(
+                    frontmatter,
+                    { [canonicalKey]: nextValue },
+                    'merge',
+                    this.keyMappings,
+                );
+                outcome = 'updated';
+                didUpdate = true;
+            });
+
+            if (
+                didUpdate
+                && (formattingPlan.blankYamlKeys.size > 0 || formattingPlan.removedYamlKeys.size > 0)
+            ) {
+                const content = await this.app.vault.read(file);
+                const normalized = normalizeYamlFrontmatterFormatting(content, formattingPlan);
+                if (normalized !== content) await this.app.vault.modify(file, normalized);
+            }
+            return outcome;
+        });
+    }
+
+    private async writeInlineTaskFieldIfCurrent(
+        file: TFile,
+        operonId: string,
+        canonicalKey: string,
+        expectedValue: string,
+        nextValue: string,
+        lineHint: number,
+    ): Promise<ConditionalTaskFieldWriteOutcome> {
+        return this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+            let outcome: ConditionalTaskFieldWriteOutcome = 'missing';
+            await this.app.vault.process(file, content => {
+                const lines = content.split('\n');
+                const taskLineIndex = findTaskLineIndex(
+                    lines,
+                    file.path,
+                    operonId,
+                    lineHint,
+                    this.keyMappings,
+                );
+                if (taskLineIndex === -1) return content;
+				let matchingTaskCount = 0;
+				for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+					if (parseTaskLine(lines[lineIndex], lineIndex, file.path, this.keyMappings)?.operonId === operonId) {
+						matchingTaskCount += 1;
+					}
+				}
+				if (matchingTaskCount > 1) {
+					outcome = 'conflict';
+					return content;
+				}
+                const parsed = parseTaskLine(
+                    lines[taskLineIndex],
+                    taskLineIndex,
+                    file.path,
+                    this.keyMappings,
+                );
+                if (!parsed) throw new Error(`Unable to parse inline task ${operonId} during conditional write`);
+
+                const currentValues = new Set<string>();
+                for (const field of parsed.fields) {
+                    if (field.key === canonicalKey) currentValues.add(field.value);
+                }
+                if (currentValues.size > 1) {
+                    outcome = 'conflict';
+                    return content;
+                }
+                const currentValue = Array.from(currentValues)[0] ?? '';
+                if (currentValue === nextValue) {
+                    outcome = 'already-updated';
+                    return content;
+                }
+                if (currentValue !== expectedValue) {
+                    outcome = 'conflict';
+                    return content;
+                }
+
+                const patch = tryPatchInlineTaskLineContent(
+                    content,
+                    file.path,
+                    operonId,
+                    { [canonicalKey]: nextValue },
+                    taskLineIndex,
+                    'merge',
+                    this.keyMappings,
+                );
+                if (!patch.ok) {
+                    throw new Error(`Unable to patch inline task ${operonId}: ${patch.fallbackReason}`);
+                }
+                outcome = 'updated';
+                return patch.content;
+            });
+            return outcome;
+        });
+    }
+
     private getFileWriteQueueKey(filePath: string): string {
         return `task-file:${filePath}`;
     }
@@ -581,6 +782,26 @@ export class TaskWriter {
             if (rawText.trim() === operonId) return true;
         }
         return false;
+    }
+
+    private readYamlFieldForConditionalWrite(
+        frontmatter: Record<string, unknown>,
+        canonicalKey: string,
+    ): { kind: 'value'; value: string } | { kind: 'ambiguous' } {
+        const values = new Set<string>();
+        for (const yamlKey of getManagedYamlAliases(canonicalKey, this.keyMappings)) {
+            if (!Object.prototype.hasOwnProperty.call(frontmatter, yamlKey)) continue;
+            const rawValue = frontmatter[yamlKey];
+            if (rawValue === null || rawValue === undefined) {
+                values.add('');
+                continue;
+            }
+            const scalar = this.stringifyFrontmatterScalar(rawValue);
+            if (scalar === null) return { kind: 'ambiguous' };
+            values.add(scalar);
+        }
+        if (values.size > 1) return { kind: 'ambiguous' };
+        return { kind: 'value', value: Array.from(values)[0] ?? '' };
     }
 
     private buildReverseKeyMap(): Map<string, string> {

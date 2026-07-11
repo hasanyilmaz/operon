@@ -254,6 +254,7 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 	};
 
 	const renderTimeResults = () => {
+		refreshMeridiemUi();
 		timeResults.classList.toggle('is-open', timeDropdownVisible);
 		timeNotice.classList.toggle('is-open', timeDropdownVisible && !!timeNotice.textContent);
 		timeResults.replaceChildren();
@@ -278,13 +279,21 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 			button.textContent = formatTimeLabel(slot);
 			button.addEventListener('mousemove', () => {
 				if (activeTimeIndex === index) return;
+				const previousVisualIndex = activeTimeIndex === null ? -1 : visibleTimeIndices.indexOf(activeTimeIndex);
+				const previousButton = previousVisualIndex >= 0
+					? results.children[previousVisualIndex] as HTMLElement | undefined
+					: undefined;
 				activeTimeIndex = index;
-				renderTimeResults();
+				currentMeridiem = resolveMeridiem(slot.hour24);
+				previousButton?.classList.remove('is-active');
+				button.classList.add('is-active');
+				refreshMeridiemUi();
 			});
-			button.addEventListener('mousedown', event => {
-				event.preventDefault();
-				activeTimeIndex = index;
-				hasTouchedTime = true;
+		button.addEventListener('mousedown', event => {
+			event.preventDefault();
+			activeTimeIndex = index;
+			currentMeridiem = resolveMeridiem(slot.hour24);
+			hasTouchedTime = true;
 				preserveOffGridCommit = false;
 				timeBuffer = getTimeDigitsFromCanonicalTime(slot.canonical, timeFormat, currentMeridiem).padEnd(4, '_').slice(0, 4);
 				syncTimeInputValue();
@@ -339,8 +348,10 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 
 			button.addEventListener('mousemove', () => {
 				if (activeDateIndex === index) return;
+				const previousButton = results.children[activeDateIndex] as HTMLElement | undefined;
 				activeDateIndex = index;
-				renderDateResults();
+				previousButton?.classList.remove('is-active');
+				button.classList.add('is-active');
 			});
 			button.addEventListener('mousedown', event => {
 				event.preventDefault();
@@ -403,6 +414,7 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 
 	const moveActiveTime = (delta: number) => {
 		activeTimeIndex = getWrappedSlotIndex((activeTimeIndex ?? getNextQuarterHourSlotIndex()) + delta);
+		currentMeridiem = resolveMeridiem(slots[activeTimeIndex].hour24);
 		hasTouchedTime = true;
 		preserveOffGridCommit = false;
 		timeBuffer = getTimeDigitsFromCanonicalTime(slots[activeTimeIndex].canonical, timeFormat, currentMeridiem).padEnd(4, '_').slice(0, 4);
@@ -581,7 +593,6 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 			const exactIndex = tryResolveSlotIndexFromDigits(getMatchingDigits(), timeFormat, currentMeridiem);
 			if (exactIndex !== null) activeTimeIndex = exactIndex;
 		}
-		refreshMeridiemUi();
 		refreshTimeMatches();
 	};
 
@@ -592,12 +603,6 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 		if (!meridiemButtons) return;
 		meridiemButtons.am.classList.toggle('is-active', currentMeridiem === 'am');
 		meridiemButtons.pm.classList.toggle('is-active', currentMeridiem === 'pm');
-	};
-
-	const oldRefreshTimeMatches = refreshTimeMatches;
-	const wrappedRefreshTimeMatches = () => {
-		refreshMeridiemUi();
-		oldRefreshTimeMatches();
 	};
 
 	if (initial.datePart) {
@@ -615,7 +620,7 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 	renderManualDayPicker();
 	refreshDateCandidates();
 	syncTimeInputValue();
-	wrappedRefreshTimeMatches();
+	refreshTimeMatches();
 
 	window.requestAnimationFrame(() => {
 		focusFloatingInput(input);

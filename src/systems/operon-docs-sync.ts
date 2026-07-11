@@ -128,6 +128,23 @@ export interface OperonDocsSyncResult {
 	warnings: OperonDocsSyncWarning[];
 }
 
+export interface OperonDocsFolderMovePreview {
+	oldRoot: string;
+	newRoot: string;
+	statePath: string;
+	files: Array<{
+		path: string;
+		sourcePath: string;
+		targetPath: string;
+	}>;
+	stateFilePaths: string[];
+}
+
+export interface OperonDocsFolderMoveTransaction {
+	movedFiles: readonly OperonDocsFolderMovePreview['files'][number][];
+	rollback: () => Promise<void>;
+}
+
 export interface SyncOperonDocsOptions {
 	app: OperonDocsAppLike;
 	requestText: OperonDocsRequestText;
@@ -280,6 +297,124 @@ export async function syncOperonDocs(options: SyncOperonDocsOptions): Promise<Op
 		staleManagedFiles,
 		warnings,
 	};
+}
+
+/**
+ * Finds only docs that this plugin previously recorded as managed at the
+ * configured root. Personal files and untracked DOCS-looking files are never
+ * candidates for a destination change.
+ */
+export async function previewOperonDocsFolderMove(options: {
+	app: OperonDocsAppLike;
+	oldRoot: string;
+	newRoot: string;
+	pluginId?: string;
+	statePath?: string;
+}): Promise<OperonDocsFolderMovePreview> {
+	const oldRoot = normalizeVaultPath(options.oldRoot);
+	const newRoot = normalizeVaultPath(options.newRoot);
+	if (!oldRoot || !newRoot) {
+		throw new Error('Operon docs folder must not be empty');
+	}
+	const adapter = options.app.vault.adapter;
+	const statePath = normalizeVaultPath(options.statePath ?? buildOperonDocsSyncStatePath(options.app.vault.configDir, options.pluginId));
+	const state = await readOperonDocsSyncState(adapter, statePath);
+	const files: OperonDocsFolderMovePreview['files'] = [];
+	const stateFilePaths: string[] = [];
+
+	for (const [path, entry] of Object.entries(state.files)) {
+		const sourcePath = buildTargetPath(oldRoot, path);
+		if (entry.targetPath !== sourcePath) continue;
+		stateFilePaths.push(path);
+		if (!(await adapter.exists(sourcePath))) continue;
+		files.push({
+			path,
+			sourcePath,
+			targetPath: buildTargetPath(newRoot, path),
+		});
+	}
+
+	files.sort((left, right) => left.path.localeCompare(right.path, 'en'));
+	stateFilePaths.sort((left, right) => left.localeCompare(right, 'en'));
+	return { oldRoot, newRoot, statePath, files, stateFilePaths };
+}
+
+/**
+ * Moves a preflighted set of managed docs and rewrites their recorded paths.
+ * The returned rollback function is used if the settings write that follows
+ * this relocation cannot be committed.
+ */
+export async function moveOperonDocsFolder(
+	options: { app: OperonDocsAppLike },
+	preview: OperonDocsFolderMovePreview,
+): Promise<OperonDocsFolderMoveTransaction> {
+	const adapter = options.app.vault.adapter;
+	if (typeof adapter.rename !== 'function') {
+		throw new Error('Operon docs folder move is unavailable in this vault');
+	}
+
+	for (const file of preview.files) {
+		if (await adapter.exists(file.targetPath)) {
+			throw new Error(`Operon docs destination conflict: ${file.targetPath}`);
+		}
+	}
+
+	const stateRaw = await adapter.exists(preview.statePath)
+		? await adapter.read(preview.statePath)
+		: null;
+	const state = await readOperonDocsSyncState(adapter, preview.statePath);
+	const nextState: OperonDocsSyncState = {
+		...state,
+		files: { ...state.files },
+	};
+	for (const path of preview.stateFilePaths) {
+		const entry = nextState.files[path];
+		if (!entry) continue;
+		nextState.files[path] = {
+			...entry,
+			targetPath: buildTargetPath(preview.newRoot, path),
+		};
+	}
+	nextState.files = sortStateFiles(nextState.files);
+
+	const movedFiles: OperonDocsFolderMovePreview['files'] = [];
+	const rollback = async (): Promise<void> => {
+		let rollbackError: Error | null = null;
+		for (const file of [...movedFiles].reverse()) {
+			try {
+				if (await adapter.exists(file.targetPath) && !(await adapter.exists(file.sourcePath))) {
+					await adapter.rename!(file.targetPath, file.sourcePath);
+				}
+			} catch (error) {
+				rollbackError ??= error instanceof Error ? error : new Error(String(error));
+			}
+		}
+		try {
+			if (stateRaw !== null) {
+				await writeTextSafely(adapter, preview.statePath, stateRaw);
+			}
+		} catch (error) {
+			rollbackError ??= error instanceof Error ? error : new Error(String(error));
+		}
+		if (rollbackError) throw rollbackError;
+	};
+
+	try {
+		for (const file of preview.files) {
+			await adapter.rename(file.sourcePath, file.targetPath);
+			movedFiles.push(file);
+		}
+		await writeTextSafely(adapter, preview.statePath, JSON.stringify(nextState, null, '\t'));
+	} catch (error) {
+		try {
+			await rollback();
+		} catch (rollbackError) {
+			console.error('Operon docs folder move rollback failed', rollbackError);
+		}
+		throw error;
+	}
+
+	return { movedFiles, rollback };
 }
 
 export function buildOperonDocsRawFileUrl(path: string, rawBaseUrl = OPERON_DOCS_RAW_BASE_URL): string {

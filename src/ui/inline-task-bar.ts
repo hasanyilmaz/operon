@@ -27,16 +27,18 @@ import { RangeSetBuilder, Extension, StateEffect } from '@codemirror/state';
 import { editorLivePreviewField, setIcon } from 'obsidian';
 import { parseTaskLine } from '../core/parser';
 import { ParsedTask, IndexedTask } from '../types/fields';
-import { Pipeline, parseStatusValue } from '../types/pipeline';
+import { findStatusDef, Pipeline } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { t } from '../core/i18n';
 import { localToday } from '../core/local-time';
+import { normalizePriorityValue } from '../core/priority-rank';
 import { showDatePicker as showSharedDatePicker } from './field-pickers/date-picker';
+import { showPriorityPicker } from './field-pickers/priority-picker';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
-import { createOwnerElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
+import { createOwnerElement } from '../core/dom-compat';
 import { resolveTaskStatusIconColor } from '../core/task-color-source';
 
 // ============================================================
@@ -254,11 +256,12 @@ function renderChipsFiltered(container: HTMLElement, task: IndexedTask, cbs: Tas
 	if (chips.priority && priority) {
 		const chip = el('span', 'operon-chip operon-chip-priority operon-chip-clickable');
 		chip.textContent = priority;
-		const priorityDef = cbs.getPriorities().find(p => p.label === priority);
+		const normalizedPriority = normalizePriorityValue(priority);
+		const priorityDef = cbs.getPriorities().find(p => normalizePriorityValue(p.label) === normalizedPriority);
 		setChipAccent(chip, priorityDef?.color);
 		chip.addEventListener('click', (e) => {
 			e.stopPropagation();
-			showPriorityDropdown(chip, task.operonId, cbs);
+			showPriorityDropdown(chip, task.operonId, priority, cbs);
 		});
 		container.appendChild(chip);
 	}
@@ -381,56 +384,14 @@ function showInlineDatePicker(anchor: HTMLElement, operonId: string, fieldKey: I
 	});
 }
 
-function showPriorityDropdown(anchor: HTMLElement, operonId: string, cbs: TaskBarCallbacks): void {
-	const ownerDocument = getOwnerDocument(anchor);
-	const ownerWindow = getOwnerWindow(anchor);
-	const dropdown = el('div', 'operon-inline-priority-dropdown', anchor);
-
-	const rect = anchor.getBoundingClientRect();
-	dropdown.style.left = `${rect.left}px`;
-	dropdown.style.top = `${rect.bottom + 2}px`;
-
-	const cleanup = () => {
-		dropdown.remove();
-		ownerDocument.removeEventListener('click', outsideClick);
-	};
-
-	const outsideClick = (e: MouseEvent) => {
-		if (!dropdown.contains(e.target as Node)) {
-			cleanup();
-		}
-	};
-
-	// Add "(none)" option
-	const noneOption = el('div', 'operon-priority-option', dropdown);
-	noneOption.textContent = t('taskEditor', 'priorityNone');
-	noneOption.addEventListener('click', (e) => {
-		e.stopPropagation();
-		cbs.updateField(operonId, 'priority', '');
-		cleanup();
-	});
-	dropdown.appendChild(noneOption);
-
-	// Add priority options
-	for (const p of cbs.getPriorities()) {
-		const option = el('div', 'operon-priority-option', dropdown);
-		const dot = el('span', 'operon-priority-dot', option);
-		dot.style.backgroundColor = p.color;
-		option.appendChild(dot);
-		const label = el('span', '', option);
-		label.textContent = p.label;
-		option.appendChild(label);
-		option.addEventListener('click', (e) => {
-			e.stopPropagation();
-			cbs.updateField(operonId, 'priority', p.label);
-			cleanup();
-		});
-		dropdown.appendChild(option);
-	}
-
-	getOwnerBody(anchor).appendChild(dropdown);
-	ownerWindow.requestAnimationFrame(() => {
-		ownerDocument.addEventListener('click', outsideClick);
+function showPriorityDropdown(anchor: HTMLElement, operonId: string, currentValue: string, cbs: TaskBarCallbacks): void {
+	// Reuse the shared priority picker (keyboard navigation, type-to-filter, Escape, clear)
+	// instead of a second hand-rolled dropdown; it is owner-document aware for popout windows.
+	showPriorityPicker(anchor, {
+		priorities: cbs.getPriorities(),
+		value: currentValue,
+		onSelect: (label) => cbs.updateField(operonId, 'priority', label),
+		onClear: () => cbs.updateField(operonId, 'priority', ''),
 	});
 }
 
@@ -459,12 +420,7 @@ function resolveInheritedFieldFromIndex(
 
 function lookupStatusColorFromIndex(statusValue: string | undefined, pipelines: Pipeline[]): string {
 	if (!statusValue) return '#6b7280';
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return '#6b7280';
-	const pipeline = pipelines.find(p => p.name === parsed.pipeline);
-	if (!pipeline) return '#6b7280';
-	const statusDef = pipeline.statuses.find(s => s.label === parsed.status);
-	return statusDef?.color ?? '#6b7280';
+	return findStatusDef(pipelines, statusValue)?.color ?? '#6b7280';
 }
 
 function setChipAccent(chip: HTMLElement, color: string | undefined): void {

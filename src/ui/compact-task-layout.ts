@@ -17,6 +17,10 @@ import { normalizeTaskFieldColor } from '../core/task-color-source';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
 import { resolveTaskDateTone } from '../core/task-date-tone';
 import {
+	resolveConfiguredStatusIdentity,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
+import {
 	getCustomFieldIcon,
 	getCustomFieldLabel,
 	getCustomFieldMapping,
@@ -44,6 +48,7 @@ export interface CompactTaskLookupContext {
 export interface CompactChipEntryBuildOptions {
 	repeatSkipDateResolver?: RepeatSkipDateResolver;
 	taskLookup?: CompactTaskLookupContext;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 }
 
 export const COMPACT_VISIBLE_CHIP_KEYS = [
@@ -156,7 +161,7 @@ export function buildInlineTaskCompactChipEntries(
 			continue;
 		}
 		if (!isBuiltInCompactChipKey(key)) continue;
-		if (isSuppressedByTerminalDate(key, fieldValues)) continue;
+		if (isSuppressedByTerminalDate(key, fieldValues, options?.workflowStatusIdentityIndex)) continue;
 		switch (key) {
 			case 'priority': {
 				const value = fieldValues['priority']?.trim();
@@ -492,7 +497,14 @@ export function getInlineTaskCompactHiddenKeys(
 	chipItems?: InlineTaskCompactChipItem[],
 	options?: CompactChipEntryBuildOptions,
 ): string[] {
-	return collectHiddenKeys(fieldValues, tags, getInlineTaskCompactVisibleKeys(settings, chipItems), allTasks, options?.taskLookup);
+	return collectHiddenKeys(
+		fieldValues,
+		tags,
+		getInlineTaskCompactVisibleKeys(settings, chipItems),
+		allTasks,
+		options?.taskLookup,
+		options?.workflowStatusIdentityIndex,
+	);
 }
 
 export function collectHiddenKeys(
@@ -501,12 +513,13 @@ export function collectHiddenKeys(
 	visibleKeys: Iterable<string>,
 	allTasks: IndexedTask[] = [],
 	taskLookup?: CompactTaskLookupContext,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string[] {
 	const visible = new Set(visibleKeys);
 	const hidden = new Set<string>();
 
 	for (const key of INLINE_TASK_COMPACT_CHIP_ORDER) {
-		if (isSuppressedByTerminalDate(key, fieldValues)) continue;
+		if (isSuppressedByTerminalDate(key, fieldValues, workflowStatusIdentityIndex)) continue;
 		if (visible.has(key)) continue;
 		if (hasCompactValue(key, fieldValues, tags, allTasks, taskLookup)) {
 			hidden.add(key);
@@ -517,6 +530,10 @@ export function collectHiddenKeys(
 		if (!rawValue?.trim()) continue;
 		if (visible.has(key)) continue;
 		if (isInternalCanonicalKey(key)) continue;
+		if (
+			isBuiltInCompactChipKey(key)
+			&& isSuppressedByTerminalDate(key, fieldValues, workflowStatusIdentityIndex)
+		) continue;
 		hidden.add(key);
 	}
 
@@ -530,8 +547,22 @@ function hasTerminalDate(fieldValues: Record<string, string>): boolean {
 function isSuppressedByTerminalDate(
 	key: InlineTaskCompactChipKey,
 	fieldValues: Record<string, string>,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): boolean {
 	if (!hasTerminalDate(fieldValues)) return false;
+	if (workflowStatusIdentityIndex) {
+		const statusIdentity = resolveConfiguredStatusIdentity(
+			fieldValues['status'],
+			workflowStatusIdentityIndex,
+		);
+		if (
+			statusIdentity.kind === 'configured'
+			&& !statusIdentity.status.isFinished
+			&& !statusIdentity.status.isCancelled
+		) {
+			return false;
+		}
+	}
 	return key === 'status'
 		|| key === 'dateScheduled'
 		|| key === 'dateDue'

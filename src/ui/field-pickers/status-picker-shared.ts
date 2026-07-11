@@ -1,9 +1,13 @@
-import { Pipeline, parseStatusValue } from '../../types/pipeline';
+import { composeStatusValue, Pipeline } from '../../types/pipeline';
 import { scrollChildIntoView } from './common';
 
 export interface StatusPickerOption {
 	value: string;
 	color: string;
+	pipelineId: string;
+	pipelineName: string;
+	statusId: string;
+	statusLabel: string;
 }
 
 export function buildStatusPickerOptions(pipelines: Pipeline[]): StatusPickerOption[] {
@@ -11,8 +15,12 @@ export function buildStatusPickerOptions(pipelines: Pipeline[]): StatusPickerOpt
 	for (const pipeline of pipelines) {
 		for (const status of pipeline.statuses) {
 			allStatuses.push({
-				value: `${pipeline.name}.${status.label}`,
+				value: composeStatusValue(pipeline.name, status.label),
 				color: status.color,
+				pipelineId: pipeline.id,
+				pipelineName: pipeline.name,
+				statusId: status.id,
+				statusLabel: status.label,
 			});
 		}
 	}
@@ -24,14 +32,18 @@ export function filterStatusPickerOptions(
 	query: string,
 ): StatusPickerOption[] {
 	const trimmed = query.trim();
-	const parsed = trimmed ? parseStatusValue(trimmed) : null;
-	const selectedPipeline = parsed
-		&& allStatuses.some(status => status.value === trimmed)
-		? parsed.pipeline
+	const exactMatches = trimmed
+		? allStatuses.filter(status => status.value === trimmed)
+		: [];
+	const selectedPipeline = exactMatches.length === 1
+		? exactMatches[0]
 		: null;
 
 	if (selectedPipeline) {
-		return allStatuses.filter(status => parseStatusValue(status.value)?.pipeline === selectedPipeline);
+		return allStatuses.filter(status =>
+			status.pipelineId === selectedPipeline.pipelineId
+			&& status.pipelineName === selectedPipeline.pipelineName,
+		);
 	}
 
 	return trimmed.length === 0

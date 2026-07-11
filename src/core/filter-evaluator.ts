@@ -6,8 +6,15 @@
 
 import { FilterFieldType, FilterGroup, FilterNode, FilterSet, FilterSetCondition, FilterSortSpec } from '../types/settings';
 import { IndexedTask } from '../types/fields';
+import type { Pipeline } from '../types/pipeline';
 import { localToday } from './local-time';
 import { PinnedCache } from '../storage/pinned-cache';
+import {
+	buildWorkflowStatusOrderIndex,
+	compareWorkflowStatusValues,
+	type WorkflowStatusOrderIndex,
+} from './workflow-status-order';
+import { normalizePriorityValue } from './priority-rank';
 
 export interface GroupedFilterSubgroup {
 	key: string;
@@ -32,6 +39,7 @@ export interface GroupedFilterResults {
 interface EvalContext {
 	today: string;
 	priorityRankMap: Record<string, number> | null;
+	workflowStatusOrder: WorkflowStatusOrderIndex;
 	pinnedCache: PinnedCache | null;
 	taskById: Map<string, IndexedTask>;
 	childIdsByParentId: Map<string, string[]>;
@@ -41,8 +49,16 @@ interface EvalContext {
 
 export interface TaskSortContext {
 	priorities?: { label: string }[];
+	pipelines?: readonly Pipeline[];
 	isTaskPinned?: (taskId: string) => boolean;
 }
+
+export interface PreparedTaskSortContext extends TaskSortContext {
+	priorityRankMap: Record<string, number> | null;
+	workflowStatusOrder: WorkflowStatusOrderIndex;
+}
+
+const EMPTY_WORKFLOW_STATUS_ORDER = buildWorkflowStatusOrderIndex([]);
 
 // ============================================================
 // Operator definitions by field type
@@ -191,10 +207,12 @@ export function evaluateFilterSet(
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
 	pinnedCache?: PinnedCache | null,
+	pipelines?: readonly Pipeline[],
 ): IndexedTask[] {
-	const context = createEvalContext(tasks, priorities, pinnedCache);
+	const sorts = getFilterSortSpecs(filterSet);
+	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, { sorts });
 	const result = tasks.filter(task => matchesFilterSet(filterSet, task, context));
-	return sortTasks(result, getSortSpecs(filterSet), context.priorityRankMap, context.pinnedCache);
+	return sortTasks(result, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache);
 }
 
 /** Sort a task list using a FilterSet definition without re-applying conditions. */
@@ -203,9 +221,11 @@ export function sortFilterTasks(
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
 	pinnedCache?: PinnedCache | null,
+	pipelines?: readonly Pipeline[],
 ): IndexedTask[] {
-	const context = createEvalContext(tasks, priorities, pinnedCache);
-	return sortTasks(tasks, getSortSpecs(filterSet), context.priorityRankMap, context.pinnedCache);
+	const sorts = getFilterSortSpecs(filterSet);
+	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, { sorts });
+	return sortTasks(tasks, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache);
 }
 
 /** Filter tasks using filter-set matching only, preserving the original input order. */
@@ -228,12 +248,19 @@ export function evaluateFilterSetGrouped(
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
 	pinnedCache?: PinnedCache | null,
+	pipelines?: readonly Pipeline[],
 ): GroupedFilterResults {
-	const context = createEvalContext(tasks, priorities, pinnedCache);
+	const sorts = getFilterSortSpecs(filterSet);
+	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, {
+		sorts,
+		groupBy: filterSet.groupBy,
+		subgroupBy: filterSet.subgroupBy,
+	});
 	const sortedTasks = sortTasks(
 		tasks.filter(task => matchesFilterSet(filterSet, task, context)),
-		getSortSpecs(filterSet),
+		sorts,
 		context.priorityRankMap,
+		context.workflowStatusOrder,
 		context.pinnedCache,
 	);
 	return groupSortedFilterTasks(filterSet, sortedTasks, context);
@@ -244,12 +271,19 @@ export function groupFilterTasks(
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
 	pinnedCache?: PinnedCache | null,
+	pipelines?: readonly Pipeline[],
 ): GroupedFilterResults {
-	const context = createEvalContext(tasks, priorities, pinnedCache);
+	const sorts = getFilterSortSpecs(filterSet);
+	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, {
+		sorts,
+		groupBy: filterSet.groupBy,
+		subgroupBy: filterSet.subgroupBy,
+	});
 	const sortedTasks = sortTasks(
 		tasks,
-		getSortSpecs(filterSet),
+		sorts,
 		context.priorityRankMap,
+		context.workflowStatusOrder,
 		context.pinnedCache,
 	);
 	return groupSortedFilterTasks(filterSet, sortedTasks, context);
@@ -280,11 +314,11 @@ function groupSortedFilterTasks(
 	}
 
 	const groups = [...groupMap.entries()]
-		.sort(([a], [b]) => compareGroupKeys(a, b, groupBy, filterSet.groupOrder, context.priorityRankMap))
+		.sort(([a], [b]) => compareGroupKeys(a, b, groupBy, filterSet.groupOrder, context.priorityRankMap, context.workflowStatusOrder))
 		.map(([key, groupTasks]) => {
 			const subgroups = subgroupBy
 				? [...(subgroupMaps.get(key)?.entries() ?? [])]
-					.sort(([a], [b]) => compareGroupKeys(a, b, subgroupBy, filterSet.subgroupOrder, context.priorityRankMap))
+					.sort(([a], [b]) => compareGroupKeys(a, b, subgroupBy, filterSet.subgroupOrder, context.priorityRankMap, context.workflowStatusOrder))
 					.map(([subgroupKey, subgroupTasks]) => ({
 						key: subgroupKey,
 						label: subgroupKey || '(no value)',
@@ -313,7 +347,8 @@ export function getTaskGroupKey(task: IndexedTask, groupBy: string, pinnedCache?
 	if (groupBy === 'description') return task.description;
 	if (groupBy === 'pinned') return pinnedCache?.isPinned(task.operonId) ? 'true' : '';
 	if (groupBy === 'happensOn') return getPrimaryHappensOnDateValue(task);
-	return task.fieldValues[groupBy] ?? '';
+	const value = task.fieldValues[groupBy] ?? '';
+	return groupBy === 'status' ? value.trim() : value;
 }
 
 function matchesFilterSet(filterSet: FilterSet, task: IndexedTask, context: EvalContext): boolean {
@@ -380,7 +415,7 @@ function getFilterNodeCost(node: FilterNode): number {
 	return 5;
 }
 
-function getSortSpecs(filterSet: FilterSet): FilterSortSpec[] {
+export function getFilterSortSpecs(filterSet: FilterSet): FilterSortSpec[] {
 	if (filterSet.sorts.length > 0) return filterSet.sorts;
 	if (filterSet.sortBy) {
 		return [{
@@ -843,11 +878,13 @@ function evaluateListCondition(op: string, items: string[], target: string): boo
 function sortTasks(
 	tasks: IndexedTask[],
 	sorts: FilterSortSpec[],
-	priorityRankMap?: Record<string, number> | null,
+	priorityRankMap: Record<string, number> | null | undefined,
+	workflowStatusOrder: WorkflowStatusOrderIndex,
 	pinnedCache?: PinnedCache | null,
 ): IndexedTask[] {
 	return sortTasksBySpecs(tasks, sorts, {
 		priorityRankMap,
+		workflowStatusOrder,
 		isTaskPinned: pinnedCache ? taskId => pinnedCache.isPinned(taskId) : undefined,
 	});
 }
@@ -855,28 +892,65 @@ function sortTasks(
 export function sortTasksBySpecs(
 	tasks: IndexedTask[],
 	sorts: FilterSortSpec[],
-	context: TaskSortContext & { priorityRankMap?: Record<string, number> | null } = {},
+	context: TaskSortContext & {
+		priorityRankMap?: Record<string, number> | null;
+		workflowStatusOrder?: WorkflowStatusOrderIndex;
+	} = {},
 ): IndexedTask[] {
 	if (sorts.length === 0) return tasks;
-	const priorityRankMap = context.priorityRankMap ?? buildPriorityRankMap(context.priorities);
+	const prepared = prepareTaskSortContext(sorts, context);
+	const priorityRankMap = prepared.priorityRankMap;
+	const workflowStatusOrder = prepared.workflowStatusOrder;
 
 	return [...tasks].sort((a, b) => {
 		for (const sort of sorts) {
-			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, context.isTaskPinned);
+			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, workflowStatusOrder, context.isTaskPinned);
 			if (cmp !== 0) return cmp;
 		}
 		return 0;
 	});
 }
 
+export function prepareTaskSortContext(
+	sorts: readonly FilterSortSpec[],
+	context: TaskSortContext & {
+		priorityRankMap?: Record<string, number> | null;
+		workflowStatusOrder?: WorkflowStatusOrderIndex;
+	} = {},
+): PreparedTaskSortContext {
+	const needsPriorityOrder = sorts.some(sort => sort.field === 'priority');
+	const needsWorkflowOrder = sorts.some(sort => sort.field === 'status');
+	return {
+		...context,
+		priorityRankMap: context.priorityRankMap
+			?? (needsPriorityOrder ? buildPriorityRankMap(context.priorities) : null),
+		workflowStatusOrder: context.workflowStatusOrder
+			?? (needsWorkflowOrder
+				? buildWorkflowStatusOrderIndex(context.pipelines ?? [])
+				: EMPTY_WORKFLOW_STATUS_ORDER),
+	};
+}
+
 function compareTaskBySortSpec(
 	a: IndexedTask,
 	b: IndexedTask,
 	sort: FilterSortSpec,
-	priorityRankMap?: Record<string, number> | null,
+	priorityRankMap: Record<string, number> | null | undefined,
+	workflowStatusOrder: WorkflowStatusOrderIndex,
 	isTaskPinned?: (taskId: string) => boolean,
 ): number {
 	const asc = sort.order !== 'desc';
+	if (sort.field === 'status') {
+		return compareWorkflowStatusValues(
+			a.fieldValues['status'],
+			b.fieldValues['status'],
+			workflowStatusOrder,
+			{
+				direction: asc ? 'asc' : 'desc',
+				empty: 'last',
+			},
+		);
+	}
 	let cmp = 0;
 
 	if (sort.field === 'checkbox') {
@@ -891,8 +965,8 @@ function compareTaskBySortSpec(
 	} else if (sort.field === 'happensOn') {
 		cmp = getPrimaryHappensOnDateValue(a).localeCompare(getPrimaryHappensOnDateValue(b));
 	} else if (sort.field === 'priority' && priorityRankMap) {
-		const aRank = priorityRankMap[a.fieldValues['priority'] ?? ''] ?? 999;
-		const bRank = priorityRankMap[b.fieldValues['priority'] ?? ''] ?? 999;
+		const aRank = priorityRankMap[normalizePriorityValue(a.fieldValues['priority'] ?? '')] ?? 999;
+		const bRank = priorityRankMap[normalizePriorityValue(b.fieldValues['priority'] ?? '')] ?? 999;
 		cmp = aRank - bRank;
 	} else {
 		const aVal = a.fieldValues[sort.field] ?? '';
@@ -908,13 +982,20 @@ function compareGroupKeys(
 	b: string,
 	field: string,
 	order: 'asc' | 'desc' | undefined,
-	priorityRankMap?: Record<string, number> | null,
+	priorityRankMap: Record<string, number> | null | undefined,
+	workflowStatusOrder: WorkflowStatusOrderIndex,
 ): number {
+	if (field === 'status') {
+		return compareWorkflowStatusValues(a, b, workflowStatusOrder, {
+			direction: order === 'desc' ? 'desc' : 'asc',
+			empty: 'last',
+		});
+	}
 	if (a === '') return 1;
 	if (b === '') return -1;
 	let cmp: number;
 	if (field === 'priority' && priorityRankMap) {
-		cmp = (priorityRankMap[a] ?? 999) - (priorityRankMap[b] ?? 999);
+		cmp = (priorityRankMap[normalizePriorityValue(a)] ?? 999) - (priorityRankMap[normalizePriorityValue(b)] ?? 999);
 	} else if (field === 'pinned') {
 		const aPinned = a === 'true' ? 0 : 1;
 		const bPinned = b === 'true' ? 0 : 1;
@@ -967,6 +1048,12 @@ function createEvalContext(
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
 	pinnedCache?: PinnedCache | null,
+	pipelines?: readonly Pipeline[],
+	orderRequirements: {
+		sorts?: readonly FilterSortSpec[];
+		groupBy?: string;
+		subgroupBy?: string;
+	} = {},
 ): EvalContext {
 	const taskById = new Map<string, IndexedTask>();
 	const childIdsByParentId = new Map<string, string[]>();
@@ -982,9 +1069,17 @@ function createEvalContext(
 		}
 	}
 
+	const orderFields = new Set([
+		...(orderRequirements.sorts ?? []).map(sort => sort.field),
+		orderRequirements.groupBy ?? '',
+		orderRequirements.subgroupBy ?? '',
+	]);
 	return {
 		today: localToday(),
-		priorityRankMap: buildPriorityRankMap(priorities),
+		priorityRankMap: orderFields.has('priority') ? buildPriorityRankMap(priorities) : null,
+		workflowStatusOrder: orderFields.has('status')
+			? buildWorkflowStatusOrderIndex(pipelines ?? [])
+			: EMPTY_WORKFLOW_STATUS_ORDER,
 		pinnedCache: pinnedCache ?? null,
 		taskById,
 		childIdsByParentId,
@@ -997,7 +1092,7 @@ function buildPriorityRankMap(priorities?: { label: string }[]): Record<string, 
 	if (!priorities || priorities.length === 0) return null;
 	const priorityRankMap: Record<string, number> = {};
 	priorities.forEach((priority, index) => {
-		priorityRankMap[priority.label] = index;
+		priorityRankMap[normalizePriorityValue(priority.label)] = index;
 	});
 	return priorityRankMap;
 }

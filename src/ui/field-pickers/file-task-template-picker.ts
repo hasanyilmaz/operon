@@ -3,7 +3,7 @@ import {
 	getBuiltinEmptyFileTaskTemplateDescription,
 } from '../../core/file-task-templates';
 import { t } from '../../core/i18n';
-import { createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
+import { bindPickerListItemActivation, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
 
 interface FileTaskTemplatePickerOptions {
 	value?: string;
@@ -80,21 +80,7 @@ export function showFileTaskTemplatePicker(
 					render();
 				}
 			});
-			button.addEventListener('pointerdown', event => {
-				event.preventDefault();
-				event.stopPropagation();
-				selectTemplate(candidate.option);
-			});
-			button.addEventListener('mousedown', event => {
-				event.preventDefault();
-				event.stopPropagation();
-				selectTemplate(candidate.option);
-			});
-			button.addEventListener('click', event => {
-				event.preventDefault();
-				event.stopPropagation();
-				selectTemplate(candidate.option);
-			});
+			bindPickerListItemActivation(button, () => selectTemplate(candidate.option), { stopPropagation: true });
 
 			list.appendChild(button);
 			}

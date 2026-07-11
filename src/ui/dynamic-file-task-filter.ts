@@ -14,6 +14,11 @@ import { resolveFileTaskAutoParentOperonId } from '../core/file-task-auto-parent
 import type { IndexedTask } from '../types/fields';
 import type { FilterSet, OperonSettings } from '../types/settings';
 import { resolveWorkflowStatus } from '../types/pipeline';
+import { getFilterSortSpecs } from '../core/filter-evaluator';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 import {
 	createFilterSurfaceInstance,
 	destroyFilterSurfaceInstance,
@@ -173,7 +178,7 @@ function renderDynamicTaskFilterSurface(
 		includeSubtasksInSearch: true,
 		preserveManualSubtaskExpansion: true,
 		showSettingsButton: true,
-		subtaskSorts: filterSet.sorts,
+		subtaskSorts: getFilterSortSpecs(filterSet),
 		dynamicRootTaskId: rootTaskId,
 		onEditFilter: () => options.onEditFilter?.(template),
 	});
@@ -233,13 +238,19 @@ export function countVisibleDynamicFileTaskDescendants(
 	limit = Number.MAX_SAFE_INTEGER,
 ): number {
 	let count = 0;
+	const pipelines = deps.getPipelines();
+	const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 	const visit = (parentId: string, ancestors: Set<string>): void => {
 		if (count > limit) return;
 		for (const childId of deps.getChildIds(parentId)) {
 			if (childId === parentId || ancestors.has(childId)) continue;
 			const childTask = deps.getTask(childId);
 			if (!childTask) continue;
-			if (showOnlyOpenSubtasks && !isOpenDynamicFileTaskSubtask(childTask, deps)) continue;
+			if (showOnlyOpenSubtasks && !isOpenDynamicFileTaskSubtask(
+				childTask,
+				pipelines,
+				workflowStatusIdentityIndex,
+			)) continue;
 			count += 1;
 			if (count > limit) return;
 			visit(childId, new Set([...ancestors, childId]));
@@ -252,13 +263,13 @@ export function countVisibleDynamicFileTaskDescendants(
 
 function isOpenDynamicFileTaskSubtask(
 	task: IndexedTask,
-	deps: Pick<DynamicFileTaskSubtaskCountDeps, 'getPipelines'>,
+	pipelines: ReturnType<DynamicFileTaskSubtaskCountDeps['getPipelines']>,
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 ): boolean {
+	const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status'], workflowStatusIdentityIndex);
+	if (workflow) return workflow.checkbox === 'open';
 	if (task.checkbox === 'cancelled' || !!task.fieldValues['dateCancelled']?.trim()) return false;
 	if (task.checkbox === 'done' || !!task.fieldValues['dateCompleted']?.trim()) return false;
-	const workflow = resolveWorkflowStatus(deps.getPipelines(), task.fieldValues['status']);
-	if (workflow?.definition.isCancelled === true) return false;
-	if (workflow?.definition.isFinished === true) return false;
 	return true;
 }
 

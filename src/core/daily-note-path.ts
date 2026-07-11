@@ -25,19 +25,31 @@ export function normalizeDailyNoteFormat(format: string | null | undefined): str
 	return normalized || DEFAULT_DAILY_NOTE_FORMAT;
 }
 
-export function normalizeDailyNotesFolder(folder: string): string {
-	return folder.trim().replace(/^\/+|\/+$/gu, '');
-}
-
-export function resolveDailyNotePathFromDateKey(dateKey: string, config: DailyNotePathConfig): string | null {
-	const normalizedDate = dateKey.trim();
+/**
+ * Format an ISO date key using the Core Daily Notes date format.
+ * Returns null when the source date key is not a valid YYYY-MM-DD value.
+ */
+export function formatDailyNoteTitleFromDateKey(
+	dateKey: string | null | undefined,
+	format: string | null | undefined,
+): string | null {
+	const normalizedDate = (dateKey ?? '').trim();
 	if (!isDailyNoteDateKey(normalizedDate)) return null;
 
 	const parseMomentDate = moment as unknown as MomentParser;
 	const parsedDate = parseMomentDate(normalizedDate, DEFAULT_DAILY_NOTE_FORMAT, true);
 	if (!parsedDate.isValid()) return null;
 
-	const formattedPath = normalizeDailyNoteFormattedPath(parsedDate.format(normalizeDailyNoteFormat(config.format)));
+	return parsedDate.format(normalizeDailyNoteFormat(format));
+}
+
+export function normalizeDailyNotesFolder(folder: string): string {
+	return folder.trim().replace(/^\/+|\/+$/gu, '');
+}
+
+export function resolveDailyNotePathFromDateKey(dateKey: string, config: DailyNotePathConfig): string | null {
+	const formattedTitle = formatDailyNoteTitleFromDateKey(dateKey, config.format);
+	const formattedPath = normalizeDailyNoteFormattedPath(formattedTitle ?? '');
 	if (!formattedPath) return null;
 
 	const folder = normalizeDailyNotesFolder(config.folder);

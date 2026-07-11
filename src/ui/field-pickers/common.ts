@@ -47,6 +47,10 @@ export interface FloatingPanelOptions extends FloatingHostOptions {
 	shouldClose?: (reason: FloatingPanelCloseReason) => boolean;
 }
 
+export interface PickerListItemActivationOptions {
+	stopPropagation?: boolean;
+}
+
 interface FloatingHostContext {
 	host: HTMLElement;
 	constrainToHost: boolean;
@@ -80,6 +84,50 @@ interface MobilePickerSurfaceContext {
 type OwnedFloatingRect = DOMRect & {
 	[FLOATING_RECT_ANCHOR_OWNER]?: HTMLElement;
 };
+
+/**
+ * Keeps scroll gestures on mobile list pickers from being treated as item selections.
+ * Mouse selection remains eager so desktop pickers retain their current focus behavior.
+ */
+export function bindPickerListItemActivation(
+	item: HTMLElement,
+	onActivate: () => void,
+	options: PickerListItemActivationOptions = {},
+): void {
+	let nonMousePointerStarted = false;
+	let mouseActivationHandled = false;
+	const consume = (event: Event): void => {
+		event.preventDefault();
+		if (options.stopPropagation) event.stopPropagation();
+	};
+
+	item.addEventListener('pointerdown', event => {
+		if (event.pointerType !== 'mouse') {
+			nonMousePointerStarted = true;
+			return;
+		}
+		mouseActivationHandled = true;
+		consume(event);
+		onActivate();
+	});
+
+	item.addEventListener('mousedown', event => {
+		if (nonMousePointerStarted) return;
+		consume(event);
+		if (mouseActivationHandled) return;
+		mouseActivationHandled = true;
+		onActivate();
+	});
+
+	item.addEventListener('click', event => {
+		if (mouseActivationHandled && event.detail > 0) {
+			consume(event);
+			return;
+		}
+		consume(event);
+		onActivate();
+	});
+}
 
 function isEditablePanelFocus(element: Element | null, panel: HTMLElement): boolean {
 	const htmlElement = asHTMLElement(element, panel);
@@ -429,7 +477,7 @@ export function createFloatingPanel(
 		positionFloatingElement(panel, anchor, positionOptions);
 	}
 	let rafId = 0;
-	let focusRetentionTimer = 0;
+	let focusRetentionRafId = 0;
 	let retainedFocusInput: HTMLElement | null = null;
 	let closed = false;
 	const record: FloatingPanelRecord = {
@@ -458,7 +506,8 @@ export function createFloatingPanel(
 		}
 		return panel.querySelector<HTMLElement>(options.focusInputSelector ?? '.operon-floating-input');
 	};
-	const retainInputFocus = () => {
+	const reclaimRetainedInputFocus = () => {
+		focusRetentionRafId = 0;
 		if (closed || !panel.isConnected) return;
 		const input = getRetainedFocusInput();
 		if (input?.isConnected) {
@@ -467,12 +516,20 @@ export function createFloatingPanel(
 				input.focus({ preventScroll: true });
 			}
 		}
-		focusRetentionTimer = hostWindow.setTimeout(retainInputFocus, 120);
+	};
+	const scheduleRetainedInputFocus = () => {
+		if (closed || !panel.isConnected || focusRetentionRafId) return;
+		focusRetentionRafId = hostWindow.requestAnimationFrame(reclaimRetainedInputFocus);
 	};
 	const onPanelFocusIn = (event: FocusEvent) => {
 		const target = asHTMLElement(event.target, panel);
 		if (!target || !isEditablePanelFocus(target, panel)) return;
 		retainedFocusInput = target;
+	};
+	const onPanelFocusOut = (event: FocusEvent) => {
+		const target = asHTMLElement(event.target, panel);
+		if (!target || !isEditablePanelFocus(target, panel)) return;
+		scheduleRetainedInputFocus();
 	};
 	let onHostWindowResize: () => void = () => undefined;
 	let onHostWindowBlur: () => void = () => undefined;
@@ -484,14 +541,15 @@ export function createFloatingPanel(
 			hostWindow.cancelAnimationFrame(rafId);
 			rafId = 0;
 		}
-		if (focusRetentionTimer) {
-			hostWindow.clearTimeout(focusRetentionTimer);
-			focusRetentionTimer = 0;
+		if (focusRetentionRafId) {
+			hostWindow.cancelAnimationFrame(focusRetentionRafId);
+			focusRetentionRafId = 0;
 		}
 		sizeObserver.disconnect();
 		panel.remove();
 		activeFloatingPanels.delete(record);
 		panel.removeEventListener('focusin', onPanelFocusIn);
+		panel.removeEventListener('focusout', onPanelFocusOut);
 		hostDocument.removeEventListener('mousedown', onOutside, true);
 		hostDocument.removeEventListener('keydown', onKeyDown, true);
 		scrollHost.removeEventListener('scroll', schedulePosition, true);
@@ -537,7 +595,8 @@ export function createFloatingPanel(
 	activeFloatingPanels.add(record);
 	if (options.retainInputFocus) {
 		panel.addEventListener('focusin', onPanelFocusIn);
-		focusRetentionTimer = hostWindow.setTimeout(retainInputFocus, 0);
+		panel.addEventListener('focusout', onPanelFocusOut);
+		scheduleRetainedInputFocus();
 	}
 
 	hostWindow.requestAnimationFrame(() => {

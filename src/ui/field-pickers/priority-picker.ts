@@ -15,10 +15,17 @@ function measurePriorityPickerWidth(panel: HTMLElement, labels: string[]): numbe
 	const probe = panel.createSpan('operon-priority-picker-measure-probe');
 	probe.style.font = getComputedStyle(panel).font;
 
+	// Lay out every label at once as inline-block spans, then read all widths in a single
+	// pass so the browser performs one layout instead of one forced reflow per label.
+	const spans = labels.map(label => {
+		const span = probe.createSpan('operon-priority-picker-measure-label');
+		span.textContent = label;
+		return span;
+	});
+
 	let maxWidth = 0;
-	for (const label of labels) {
-		probe.textContent = label;
-		maxWidth = Math.max(maxWidth, Math.ceil(probe.getBoundingClientRect().width));
+	for (const span of spans) {
+		maxWidth = Math.max(maxWidth, Math.ceil(span.getBoundingClientRect().width));
 	}
 
 	probe.remove();
@@ -93,8 +100,10 @@ export function showPriorityPicker(anchor: HTMLElement | DOMRect, options: Prior
 
 			option.addEventListener('mousemove', () => {
 				if (activeIndex !== absoluteIndex) {
+					const previousOption = list.children[activeIndex - windowStart] as HTMLElement | undefined;
 					activeIndex = absoluteIndex;
-					render();
+					previousOption?.classList.remove('is-active');
+					option.classList.add('is-active');
 				}
 			});
 			option.addEventListener('mousedown', event => {

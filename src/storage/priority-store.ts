@@ -1,12 +1,13 @@
 import { App } from 'obsidian';
 import { OperonSettings } from '../types/settings';
-import { clonePriorityDefinition, PriorityDefinition } from '../types/priority';
+import { clonePriorityDefinition, PriorityDefinition, sanitizePriorityDefinitions } from '../types/priority';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import { buildOperonPluginStoragePath } from './operon-storage-paths';
 
 const PRIORITIES_FILE_NAME = 'priorities.json';
 const PRIORITY_STORE_VERSION = 1;
+export { sanitizePriorityDefinitions } from '../types/priority';
 
 export type PriorityStoreSettings = Pick<OperonSettings, 'priorities' | 'defaultPriority'>;
 
@@ -38,11 +39,17 @@ function cloneSettings(settings: PriorityStoreSettings): PriorityStoreSettings {
 	};
 }
 
-function readStoreData(raw: Partial<PriorityStoreData>, fallback: PriorityStoreSettings): PriorityStoreSettings {
+/**
+ * Sanitize a raw (possibly hand-edited or sync-conflicted) priorities array into
+ * well-formed definitions: entries without a usable string label are dropped, missing
+ * ids are backfilled, ids are de-duplicated, colors default when missing, and labels
+ * are made case-insensitively unique (matching the runtime matching policy). Returns
+ * an empty array when nothing usable remains, so callers can fall back to defaults.
+ */
+export function readPriorityStoreData(raw: Partial<PriorityStoreData>, fallback: PriorityStoreSettings): PriorityStoreSettings {
+	const sanitized = sanitizePriorityDefinitions(raw.priorities);
 	return {
-		priorities: Array.isArray(raw.priorities)
-			? clonePriorities(raw.priorities)
-			: clonePriorities(fallback.priorities),
+		priorities: sanitized.length > 0 ? sanitized : clonePriorities(fallback.priorities),
 		defaultPriority: typeof raw.defaultPriority === 'string'
 			? raw.defaultPriority
 			: fallback.defaultPriority,
@@ -102,7 +109,7 @@ export class PriorityStore {
 		try {
 			raw = await adapter.read(filePath);
 			const parsed = JSON.parse(raw) as Partial<PriorityStoreData>;
-			this.settings = readStoreData(parsed, defaults);
+			this.settings = readPriorityStoreData(parsed, defaults);
 			this.serializedSettings = JSON.stringify(this.settings);
 			this.recoveredFromMalformed = false;
 		} catch {

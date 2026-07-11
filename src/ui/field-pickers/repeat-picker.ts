@@ -1,4 +1,4 @@
-import { createButton, createFloatingPanel } from './common';
+import { createButton, createFloatingPanel, focusFloatingInput } from './common';
 import { normalizeOperonDateKey, type DayPickerWeekStart } from './day-picker';
 import { showOperonDayPickerPopover } from './day-picker-popover';
 import {
@@ -56,6 +56,7 @@ interface RepeatPickerOptions {
 }
 
 type MonthlyMode = 'monthdays' | 'weekday';
+type RepeatBuilderFocusTarget = 'monthly-position' | 'yearly-month' | 'yearly-day';
 
 interface RepeatDraft {
 	mode: RepeatMode;
@@ -452,7 +453,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 	renderBuilder();
 	return close;
 
-	function renderBuilder(): void {
+	function renderBuilder(focusTarget: RepeatBuilderFocusTarget | null = null): void {
 		draft = normalizeDraft(draft);
 		closeActiveDatePopover();
 		panel.empty();
@@ -741,13 +742,15 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			const row = container.createDiv('operon-repeat-picker-row');
 			const posWrap = row.createDiv('operon-repeat-picker-field');
 			posWrap.createEl('label', { text: t('taskEditor', 'repeatPosition'), cls: 'operon-floating-subtitle' });
-			const posSelect = posWrap.createEl('select', { cls: 'operon-floating-input' });
+			const posSelect = posWrap.createEl('select', { cls: 'operon-floating-input operon-repeat-picker-position-select' });
 			for (const option of POSITION_OPTIONS) {
 				posSelect.createEl('option', { value: String(option.value), text: t('taskEditor', option.labelKey) });
 			}
 			posSelect.value = String(draft.setpos);
 			posSelect.addEventListener('change', () => {
+				const restoreFocus = posSelect.ownerDocument.activeElement === posSelect;
 				draft.setpos = Number(posSelect.value);
+				renderBuilder(restoreFocus ? 'monthly-position' : null);
 			});
 
 			const weekdayWrap = row.createDiv('operon-repeat-picker-field');
@@ -759,26 +762,31 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			const row = container.createDiv('operon-repeat-picker-row');
 			const monthWrap = row.createDiv('operon-repeat-picker-field');
 			monthWrap.createEl('label', { text: t('taskEditor', 'repeatMonth'), cls: 'operon-floating-subtitle' });
-			const monthSelect = monthWrap.createEl('select', { cls: 'operon-floating-input' });
+			const monthSelect = monthWrap.createEl('select', { cls: 'operon-floating-input operon-repeat-picker-month-select' });
 			MONTH_OPTIONS.forEach((labelKey, index) => {
 				monthSelect.createEl('option', { value: String(index + 1), text: t('taskEditor', labelKey) });
 			});
 			monthSelect.value = String(draft.month);
 			monthSelect.addEventListener('change', () => {
+				const restoreFocus = monthSelect.ownerDocument.activeElement === monthSelect;
 				draft.month = Number(monthSelect.value);
+				renderBuilder(restoreFocus ? 'yearly-month' : null);
 			});
 
 			const dayWrap = row.createDiv('operon-repeat-picker-field');
 			dayWrap.createEl('label', { text: t('taskEditor', 'repeatDayOfMonth'), cls: 'operon-floating-subtitle' });
 			const dayInput = dayWrap.createEl('input', {
-				cls: 'operon-floating-input',
+				cls: 'operon-floating-input operon-repeat-picker-yearly-day-input',
 				attr: { type: 'number', min: '1', max: '31', step: '1' },
 			});
 			dayInput.value = String([...(draft.monthdays.size ? draft.monthdays : new Set([parseSeedDate(draft.referenceDate).getDate()]))][0]);
 			dayInput.addEventListener('change', () => {
+				const restoreFocus = dayInput.ownerDocument.activeElement === dayInput;
 				const parsed = Number(dayInput.value);
-				if (!Number.isInteger(parsed) || parsed < 1 || parsed > 31) return;
-				draft.monthdays = new Set<number>([parsed]);
+				if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 31) {
+					draft.monthdays = new Set<number>([parsed]);
+				}
+				renderBuilder(restoreFocus ? 'yearly-day' : null);
 			});
 		};
 
@@ -869,5 +877,14 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		}
 
 		renderDynamic();
+		if (focusTarget) {
+			const selector = focusTarget === 'monthly-position'
+				? '.operon-repeat-picker-position-select'
+				: focusTarget === 'yearly-month'
+					? '.operon-repeat-picker-month-select'
+					: '.operon-repeat-picker-yearly-day-input';
+			const control = panel.querySelector<HTMLElement>(selector);
+			if (control) focusFloatingInput(control);
+		}
 	}
 }

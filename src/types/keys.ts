@@ -117,9 +117,5 @@ export function isInternalCanonicalKey(name: string): boolean {
 	return INTERNAL_CANONICAL_KEY_SET.has(name);
 }
 
-/** Priority enum values */
-export const PRIORITY_VALUES = ['S', 'A', 'B', 'C', 'D', 'E', 'F'] as const;
-export type PriorityValue = typeof PRIORITY_VALUES[number];
-
 /** Checkbox states */
 export type CheckboxState = 'open' | 'done' | 'cancelled';

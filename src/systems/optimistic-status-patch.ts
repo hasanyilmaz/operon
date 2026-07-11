@@ -52,6 +52,22 @@ export function applyOptimisticRenderPatch(
 	};
 }
 
+/**
+ * An optimistic patch may outlive its TTL while the underlying writeback is
+ * still in flight (large vaults, sync contention, mobile I/O). Expiring it in
+ * that state would visually snap the item back to its pre-edit position until
+ * the reindex lands, so pending patches are held until the writeback settles
+ * and the TTL is refreshed.
+ */
+export function shouldExpireOptimisticTaskPatch(input: {
+	nowMs: number;
+	expiresAt: number;
+	writebackPending?: boolean;
+}): boolean {
+	if (input.writebackPending === true) return false;
+	return input.nowMs >= input.expiresAt;
+}
+
 export function isOptimisticTaskPatchPersisted(
 	task: IndexedTask,
 	patch: OptimisticTaskPatchInput,

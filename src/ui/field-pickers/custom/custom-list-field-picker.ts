@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import { t } from '../../../core/i18n';
-import { createButton, requestFloatingInputFocus, scrollChildIntoView } from '../common';
+import { bindPickerListItemActivation, createButton, requestFloatingInputFocus, scrollChildIntoView } from '../common';
 import { createCustomFieldPanel, type CustomFieldPickerBaseOptions } from './common';
 import { setAccessibleLabelWithoutTooltip } from '../../accessibility-label';
 
@@ -110,23 +110,20 @@ export function showCustomListFieldPicker(
 			label.textContent = formatCustomListDisplayValue(match);
 			bindCustomListWikilinkPreview(options, item, match);
 
-			item.addEventListener('mousemove', () => {
-				if (activeIndex === index) return;
-				activeIndex = index;
-				renderSuggestions();
-			});
-			const selectFromPointer = (event: Event) => {
-				event.preventDefault();
-				addValue(match);
-			};
-			item.addEventListener('pointerdown', selectFromPointer);
-			item.addEventListener('touchend', selectFromPointer, { passive: false });
-			item.addEventListener('mousedown', selectFromPointer);
-			item.addEventListener('click', selectFromPointer);
+			item.addEventListener('mousemove', () => setActiveIndex(index));
+			bindPickerListItemActivation(item, () => addValue(match));
 			list.appendChild(item);
 		}
 
 		syncListViewport(keepActiveVisible);
+	};
+
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
 	};
 
 	const updateMatches = (query: string): void => {

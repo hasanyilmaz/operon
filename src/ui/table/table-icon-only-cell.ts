@@ -5,6 +5,7 @@ import { findStatusDef } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
+import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 
 type TableValueIconSettings = Pick<OperonSettings, 'pipelines' | 'priorities'>;
 
@@ -29,9 +30,10 @@ export function resolveTableValueCellIcon(
 	value: string,
 	settings: TableValueIconSettings | null | undefined,
 	fallbackIcon: string,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string {
 	const normalizedFallback = normalizeTaskIconValue(fallbackIcon) || 'text';
-	const candidate = resolveTableValueCellCustomIcon(key, value, settings);
+	const candidate = resolveTableValueCellCustomIcon(key, value, settings, workflowStatusIdentityIndex);
 	if (!candidate) return normalizedFallback;
 	return isValidTableValueIcon(candidate) ? candidate : normalizedFallback;
 }
@@ -54,10 +56,13 @@ function resolveTableValueCellCustomIcon(
 	key: string,
 	value: string,
 	settings: TableValueIconSettings | null | undefined,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string {
 	if (!settings) return '';
 	if (key === 'status') {
-		return normalizeTaskIconValue(findStatusDef(settings.pipelines, value)?.pipelineStatusIcon);
+		return normalizeTaskIconValue(
+			findStatusDef(settings.pipelines, value, workflowStatusIdentityIndex)?.pipelineStatusIcon,
+		);
 	}
 	if (key === 'priority') {
 		return normalizeTaskIconValue(

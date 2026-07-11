@@ -9,6 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [2.1.0] - 2026-07-11
+
+### New
+- Added an **Operon Docs folder** setting in Core > General, so downloaded documentation can live in a chosen vault folder and safely move there when you confirm.
+- Added Core Templates-compatible `{{title}}`, `{{date}}`, and `{{time}}` variables to Calendar-created Daily Notes, including configured date/time formats and Moment format overrides; file-task templates and pasted inline task lines now also support `{{time}}`.
+- Added **Pipeline** to Operon Table Group & Sort as a derived grouping, subgrouping, and multi-sort option, so tables can organize tasks by pipeline without adding a duplicate task property or column.
+
+### Improved
+- Improved **Table Group & Sort** direction controls with compact A–Z/Z–A icon buttons that cycle on click and explain the active order with an Operon hover tooltip.
+- Improved **Specific File** inline-task grouping to follow the enabled Core Daily Notes date format, while retaining `YYYY-MM-DD` when Daily Notes is unavailable.
+- Improved **searchable field pickers** with calmer outlined option rows and clearer selected and keyboard-focus states, making Table and Filter choices easier to scan without changing how they work.
+- Improved **workflow ordering** across Pipeline settings and Operon views: pipelines can be reordered independently from the selected default, while status pickers, Kanban, and Filter rows and groups follow the configured pipeline and status order, with unknown statuses placed after configured workflows.
+- Improved **Pipeline lifecycle and data safety** by protecting the last pipeline, clearing deleted pipeline references from Kanban presets, restoring the previous order after failed saves, and backing up malformed taxonomy before recovery.
+- Improved **Filter nested sorting performance** by building priority and workflow-order indexes only when needed and sharing them across expanded subtask trees.
+- Improved **Calendar performance** across the task pool, picker, and time grids: sort keys are precomputed, lane models and buffered-window queries run once per render, grid lines use CSS layers, unchanged passive updates and running time-tracker ticks update in place, and layout scheduling avoids repeated measurements.
+- Improved **Calendar** timed-task indicators on desktop and mobile so the persistent left edge, interaction glow, dashed guides, times, and duration follow the preset task color source; **No Color** keeps the task body neutral while using its priority color for these indicators. Mobile long-press and drag now use the same visual language, while hover-capable tablets retain pointer hover feedback. Removed the colored resize-rail lines and mobile perimeter border while preserving existing drag and resize behavior; dashed edges appear only during interaction, and the current-time marker uses a neutral bordered label with 6px corners.
+- Improved **External calendars** sync efficiency: the requested sync window is now capped at 400 days within a session (trimming history first) instead of growing without bound after far navigations, coverage checks run on range changes or at most every 30 seconds instead of on every render, cached events are shared read-only instead of being cloned per render, and bookkeeping-only sync results no longer rewrite the whole cache file on disk.
+- Improved **Calendar sidebar task pool search** performance: keystrokes now update the list through a 120 ms debounce, the per-task search text is cached and reused until the task actually changes, and the broad fuzzy pass over the full search text only runs when the task description did not already match; status clicks also skip collecting and ranking every task when the clicked task can no longer appear in the pool.
+- Improved **pinned task ordering** performance by building the priority rank map once per sort instead of scanning the priority list inside the comparator.
+- Improved **priority data safety** so a malformed or sync-conflicted priorities file is repaired on load: entries without a usable label are dropped, missing ids are backfilled, duplicate ids and case-only duplicate labels are made unique, and invalid colors fall back to a default, reverting to the built-in priorities only when nothing usable remains.
+- Improved the **inline task priority chip** so it opens the shared priority picker (keyboard navigation, type-to-filter, Escape, and clear) instead of a separate basic dropdown, and made the picker measure its width in a single layout pass when it opens.
+- Improved **priority matching consistency** so a task's priority value now matches its configured priority leniently (ignoring case and surrounding whitespace) across every surface — Filter, Kanban, and Table sorting, Kanban swimlanes, priority color, settings usage counts, rename migration, and pinned-task ordering — meaning a value like `s` now behaves the same as `S` everywhere instead of only in some views. Matching is locale-independent, Kanban lane keys and drop writeback keep the exact configured label, and the settings duplicate-label guard now treats case-only variants (for example `High` and `high`) as duplicates.
+
+### Changed
+- Changed newly created **Calendar presets** to default **Task color** to **No Color**, keeping new calendar layouts visually neutral until another color source is selected.
+
+### Fixed
+- Fixed **Task Editor** save and close safety so failed saves no longer retry indefinitely, Finished and Cancelled dates stay mutually exclusive, and unsaved drafts require confirmation before Escape, the close button, or the backdrop can discard them.
+- Fixed **Task Editor** stability and responsiveness: malformed parent loops no longer block opening, while progress summaries, File Body layouts, estimate edits, and initial focus avoid unnecessary repeated work.
+- Fixed **Task Editor** and **Task Creator** lifecycle efficiency so repeated openings, local refreshes, timer ticks, and note typing no longer leave stale tooltip listeners or rebuild unchanged controls.
+- Fixed **repeat** and **datetime pickers** so recurrence summaries, count end dates, and 12-hour time selections stay current and accurate during keyboard and pointer navigation.
+- Fixed **field picker** responsiveness: hovering updates only the active row, and floating pickers retain input focus without background polling.
+- Fixed **Operon Table** task, note, and search inputs on phones so keyboard-driven viewport changes keep the focused input and nearby rows visible; standalone and embedded Tables now defer transient virtual redraws and preserve usable row space while the keyboard is open.
+- Fixed mobile **list pickers** so swiping Parent, Tags, Contexts, custom list fields, and related task lists scrolls the options instead of immediately selecting a row; desktop mouse selection remains unchanged.
+- Fixed **workflow terminal-role changes** so task state and parent aggregate statistics are fully reconciled when a status gains or loses Finished or Cancelled behavior.
+- Fixed **pipeline and status identity resolution** for legacy dotted pipeline names and dotted status labels, preventing ambiguous values from being assigned to the wrong workflow during task actions, recurrence, Kanban, and status rendering.
+- Fixed **interrupted pipeline rename migrations** with a durable recovery journal that resumes safe task updates after restart while preserving tasks changed elsewhere as conflicts instead of overwriting them.
+- Fixed **recurring tasks** so the gap between scheduled and due dates is preserved on each new occurrence when a task has a due date but no start date, instead of the due date collapsing onto the scheduled date.
+- Fixed **External calendars** sync reliability: failing sources now back off for 10 minutes, and navigating beyond the previously synced range refetches event data instead of accepting incomplete cached coverage.
+- Fixed **External calendars** so recurring events from long-lived frequent series (for example a daily event started years ago) keep their occurrences visible in the calendar window, instead of the per-event occurrence cap being exhausted by pre-window occurrences.
+- Fixed **Calendar** time grids on tablets and touchscreen desktops so swiping empty grid areas scrolls natively; slot selection now starts with a stationary long-press and a short tap creates a single slot, matching the mobile surface.
+- Fixed **Calendar** arrow-key navigation so it no longer captures arrow keys while focus is in another pane such as the file explorer, search results, or a modal; body-level arrows still navigate the most recent calendar leaf.
+- Fixed the **External calendars** edit modal so "Sync now" is disabled while the URL draft differs from the saved URL, instead of silently fetching the old address.
+- Fixed **Calendar** optimistic drag-drop and status updates so items no longer snap back to their previous position when the underlying file write takes longer than the optimistic grace window; the patch is now held while the write is in flight and gets a fresh grace window afterwards.
+- Fixed the **default priority** for new tasks so an intentionally empty default stays empty when you delete an unrelated priority, instead of silently adopting the first remaining priority and stamping it onto every new task, subtask, and file task.
+- Fixed **priority rename** default-priority mapping so multi-operation renames (swaps and chained renames) resolve the configured default from its original value instead of chaining through intermediate results.
+- Fixed the **demo / basics workspace** so its seeded tasks use your configured priorities by rank instead of hardcoded S–F labels, so a customized or renamed priority list still produces valid, colored demo tasks.
+
+### Validation
+- Local validation passed `npm run check:local`, including strict linting, production build, release guard, and 1270/1270 Phase 5 regression checks.
+
 ## [2.0.1] - 2026-07-09
 
 ### New

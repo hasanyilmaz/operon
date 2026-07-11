@@ -4,7 +4,11 @@ import { TimeTracker } from '../systems/time-tracker';
 import { TrackerHistoryDayGroup, TrackerSession, TrackerSource } from '../types/tracker';
 import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { formatDurationHuman, parseTrackerList } from '../systems/tracker-utils';
-import { resolveWorkflowStatus } from '../types/pipeline';
+import { Pipeline, resolveWorkflowStatus } from '../types/pipeline';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
 import { t } from '../core/i18n';
@@ -28,6 +32,12 @@ interface TimeSessionHistoryViewCallbacks {
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
+}
+
+interface TimeSessionHistoryRenderContext {
+	settings: OperonSettings;
+	pipelines: Pipeline[];
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex;
 }
 
 export type TimeSessionHistoryTaskDescriptionClickAction = OperonSettings['trackerTaskDescriptionClickAction'];
@@ -131,13 +141,22 @@ export class TimeSessionHistoryView extends ItemView {
 			historyWrap.createDiv({ cls: 'operon-time-session-history-empty', text: t('taskEditor', 'trackerNoRecentSessions') });
 			return;
 		}
+		const renderContext: TimeSessionHistoryRenderContext = {
+			settings,
+			pipelines: settings.pipelines,
+			workflowStatusIdentityIndex: buildWorkflowStatusIdentityIndex(settings.pipelines),
+		};
 
 		for (const group of groups) {
-			this.renderHistoryGroup(historyWrap, group);
+			this.renderHistoryGroup(historyWrap, group, renderContext);
 		}
 	}
 
-	private renderHistoryGroup(container: HTMLElement, group: TrackerHistoryDayGroup): void {
+	private renderHistoryGroup(
+		container: HTMLElement,
+		group: TrackerHistoryDayGroup,
+		context: TimeSessionHistoryRenderContext,
+	): void {
 		const section = container.createDiv('operon-time-session-history-day-group');
 		const header = section.createDiv('operon-time-session-history-day-header');
 		const dayLabel = header.createSpan({ cls: 'operon-time-session-history-day-label', text: formatTrackerDayHeader(this.app, group.date) });
@@ -147,23 +166,27 @@ export class TimeSessionHistoryView extends ItemView {
 		header.createSpan({ cls: 'operon-time-session-history-day-total', text: formatDurationHuman(group.totalSeconds) });
 
 		for (const session of group.sessions) {
-			this.renderSessionCard(section, session);
+			this.renderSessionCard(section, session, context);
 		}
 	}
 
-	private renderSessionCard(container: HTMLElement, session: TrackerSession): void {
+	private renderSessionCard(
+		container: HTMLElement,
+		session: TrackerSession,
+		context: TimeSessionHistoryRenderContext,
+	): void {
 		const card = container.createDiv('operon-time-session-history-session-card');
-		const isTerminalTask = this.isTerminalTask(session.task);
+		const isTerminalTask = this.isTerminalTask(session.task, context);
 		if (isTerminalTask) {
 			card.addClass('is-terminal-task');
 		}
 		this.applyTaskColorBorder(card, session.task);
-		this.renderTaskIdentity(card, session.task);
+		this.renderTaskIdentity(card, session.task, context);
 
 		const body = card.createDiv('operon-time-session-history-session-body');
 		const sessionMeta = formatTrackerSessionRange(
 			this.app,
-			this.callbacks.getSettings(),
+			context.settings,
 			session.start,
 			session.end,
 		);
@@ -267,25 +290,34 @@ export class TimeSessionHistoryView extends ItemView {
 		return `${sessionPosition}/${Math.max(sessionPosition, sessionTotal, 1)}`;
 	}
 
-	private isTerminalTask(task: import('../types/fields').IndexedTask): boolean {
+	private isTerminalTask(
+		task: import('../types/fields').IndexedTask,
+		context: TimeSessionHistoryRenderContext,
+	): boolean {
+		const workflow = resolveWorkflowStatus(
+			context.pipelines,
+			task.fieldValues['status'],
+			context.workflowStatusIdentityIndex,
+		);
+		if (workflow) return workflow.checkbox !== 'open';
 		if (task.checkbox === 'done' || task.checkbox === 'cancelled') return true;
 		if (task.fieldValues['dateCompleted']?.trim() || task.fieldValues['dateCancelled']?.trim()) return true;
-		const workflow = resolveWorkflowStatus(this.callbacks.getPipelines(), task.fieldValues['status']);
-		return workflow?.definition.isFinished === true || workflow?.definition.isCancelled === true;
+		return false;
 	}
 
 	private renderTaskIdentity(
 		container: HTMLElement,
 		task: import('../types/fields').IndexedTask,
+		context: TimeSessionHistoryRenderContext,
 	): void {
 		const row = container.createDiv('operon-time-session-history-task-row');
 		const iconBtn = row.createEl('button', {
 			cls: 'operon-live-preview-status-icon operon-time-session-history-task-icon',
 			attr: { type: 'button' },
 		});
-		this.renderTaskIcon(iconBtn, task);
+		this.renderTaskIcon(iconBtn, task, context);
 		setAccessibleLabelWithoutTooltip(iconBtn, t('tooltips', 'cycleTaskStatus'));
-		const statusColor = this.resolveStatusColor(task);
+		const statusColor = this.resolveStatusColor(task, context);
 		if (statusColor) {
 			iconBtn.style.setProperty('--operon-tracker-icon-hover-border', statusColor);
 		}
@@ -349,13 +381,22 @@ export class TimeSessionHistoryView extends ItemView {
 		});
 	}
 
-	private renderTaskIcon(container: HTMLElement, task: import('../types/fields').IndexedTask): void {
+	private renderTaskIcon(
+		container: HTMLElement,
+		task: import('../types/fields').IndexedTask,
+		context: TimeSessionHistoryRenderContext,
+	): void {
 		container.empty();
 		container.style.removeProperty('color');
-		const iconColor = this.resolveStatusColor(task);
+		const iconColor = this.resolveStatusColor(task, context);
 		if (iconColor) container.style.color = iconColor;
 
-		setIcon(container, resolveTaskDisplayIcon(this.callbacks.getSettings(), task.fieldValues, task.checkbox));
+		setIcon(container, resolveTaskDisplayIcon(
+			context.settings,
+			task.fieldValues,
+			task.checkbox,
+			context.workflowStatusIdentityIndex,
+		));
 	}
 
 	private applyTaskColorBorder(container: HTMLElement, task: import('../types/fields').IndexedTask): void {
@@ -368,8 +409,15 @@ export class TimeSessionHistoryView extends ItemView {
 		}
 	}
 
-	private resolveStatusColor(task: import('../types/fields').IndexedTask): string | null {
-		return resolveTaskStatusIconColorForTask(task, this.callbacks.getSettings());
+	private resolveStatusColor(
+		task: import('../types/fields').IndexedTask,
+		context: TimeSessionHistoryRenderContext,
+	): string | null {
+		return resolveTaskStatusIconColorForTask(
+			task,
+			context.settings,
+			context.workflowStatusIdentityIndex,
+		);
 	}
 
 	private normalizeTaskColor(taskColor: string | undefined): string | null {

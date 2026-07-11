@@ -5,7 +5,15 @@
 
 import { App, Modal, Notice, TFolder, setIcon } from 'obsidian';
 import { DEFAULT_SETTINGS, FilterSet, FilterSetCondition, FilterFieldType, FilterGroup, FilterGroupLogic, FilterNode, FilterSortSpec, KeyMapping, OperonSettings } from '../types/settings';
-import { getOperatorsForType, NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS, evaluateFilterSet, evaluateFilterSetGrouped } from '../core/filter-evaluator';
+import {
+	evaluateFilterSet,
+	evaluateFilterSetGrouped,
+	getFilterSortSpecs,
+	getOperatorsForType,
+	NO_VALUE_OPERATORS,
+	NUMERIC_INPUT_DATE_OPERATORS,
+	prepareTaskSortContext,
+} from '../core/filter-evaluator';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
@@ -19,6 +27,10 @@ import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { WindowTimeoutHandle, clearWindowTimeout, createOwnerElement, getActiveWindow, getOwnerBody, getOwnerWindow, setWindowTimeout } from '../core/dom-compat';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-wikilink-overlay-chips';
+import { buildTaskStatusIconRenderSettingsSignature } from './task-status-icon-signature';
+import { buildWorkflowStatusSemanticsSignature } from '../core/workflow-status-semantics';
+import { buildWorkflowStatusOrderSignature } from '../core/workflow-status-order';
+import { buildWorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
 import { openSettingsIconPickerModal } from './settings/settings-icon-picker-modal';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
 import {
@@ -1525,7 +1537,13 @@ export class FilterSetModal extends Modal {
 				const n = inlineOptions?.countTasks
 					? inlineOptions.countTasks(this.filterSet)
 					: deps
-						? evaluateFilterSet(this.filterSet, deps.indexer.getAllTasks(), deps.getPriorities(), deps.pinnedCache).length
+						? evaluateFilterSet(
+							this.filterSet,
+							deps.indexer.getAllTasks(),
+							deps.getPriorities(),
+							deps.pinnedCache,
+							deps.getPipelines(),
+						).length
 						: 0;
 				badge.empty();
 				const icon = badge.createSpan({ cls: 'operon-count-badge-icon' });
@@ -1724,6 +1742,9 @@ class FilterPreviewModal extends Modal {
 				this.deps.getSettings().filterTaskShowPlainCheckboxAction,
 			]),
 			buildTaskWikilinkOverlaySettingsSignature(this.deps.getSettings()),
+			buildTaskStatusIconRenderSettingsSignature(this.deps.getSettings()),
+			buildWorkflowStatusOrderSignature(this.deps.getPipelines()),
+			buildWorkflowStatusSemanticsSignature(this.deps.getPipelines()),
 			JSON.stringify(this.deps.getSettings().keyMappings.map(mapping => [
 				mapping.canonicalKey,
 				mapping.visiblePropertyName,
@@ -1735,6 +1756,7 @@ class FilterPreviewModal extends Modal {
 
 		const allTasks = this.deps.indexer.getAllTasks();
 		const priorities = this.deps.getPriorities();
+		const pipelines = this.deps.getPipelines();
 		const settings = this.deps.getSettings();
 		const showSubtasks = settings.filterShowSubtasks === true;
 		const showOnlyOpenSubtasks = settings.filterShowOnlyOpenSubtasks === true;
@@ -1742,11 +1764,11 @@ class FilterPreviewModal extends Modal {
 			this.expandedTaskIds.clear();
 		}
 		const grouped = this.filterSet.groupBy
-			? evaluateFilterSetGrouped(this.filterSet, allTasks, priorities, this.deps.pinnedCache)
+			? evaluateFilterSetGrouped(this.filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines)
 			: null;
 		const tasks = grouped
 			? null
-			: evaluateFilterSet(this.filterSet, allTasks, priorities, this.deps.pinnedCache);
+			: evaluateFilterSet(this.filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines);
 		const callbacks: FilterTaskRowCallbacks = {
 			app: this.app,
 			getPipelines: this.deps.getPipelines,
@@ -1786,9 +1808,21 @@ class FilterPreviewModal extends Modal {
 			cls: 'operon-embed-count',
 			text: t('filterSets', count === 1 ? 'taskCountOne' : 'taskCountMany', { count: String(count) }),
 		});
+		const configuredSubtaskSorts = getFilterSortSpecs(this.filterSet);
+		const subtaskSorts = configuredSubtaskSorts.length > 0 ? configuredSubtaskSorts : undefined;
 		const taskRowOptions = {
 			defaultExpandAll: showSubtasks,
 			showOnlyOpenSubtasks,
+			subtaskSorts,
+			subtaskSortContext: prepareTaskSortContext(
+				subtaskSorts ?? [{ field: 'priority', order: 'asc' }],
+				{
+					priorities,
+					pipelines,
+					isTaskPinned: callbacks.isTaskPinned,
+				},
+			),
+			workflowStatusIdentityIndex: buildWorkflowStatusIdentityIndex(pipelines),
 		};
 
 		const list = surface.createDiv('operon-embed-list operon-filter-list');

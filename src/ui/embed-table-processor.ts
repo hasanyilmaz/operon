@@ -1,4 +1,4 @@
-import { MarkdownRenderChild, Notice, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
+import { MarkdownRenderChild, Notice, Platform, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
 import type { OperonIndexer } from '../indexer/indexer';
 import type { PinnedCache } from '../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../core/project-serials';
@@ -31,7 +31,8 @@ import {
 } from './table/table-value-adapter';
 import { renderTableCellChips } from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
-import { renderTableDescriptionCellContent } from './table/table-description-cell';
+import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table/table-description-cell';
+import { bindMobileTableViewport, isMobileTableTextInputFocused } from './table/mobile-table-viewport';
 import {
 	formatTableIconOnlyTooltipContent,
 	renderTableIconOnlyCell,
@@ -194,6 +195,10 @@ interface EmbedTableInstance {
 	parentSearchHighlightedIndex: number;
 	parentSearchDismissed: boolean;
 	pendingSearchFocus: { start: number; end: number } | null;
+	activeMobileInlineEdit: TableInlineEditSession | null;
+	pendingMobileTextInputRender: boolean;
+	mobileViewportCleanup: (() => void) | null;
+	mobileScrollGestureUntil: number;
 	appliedPresetSearchSignature: string | null;
 	pendingPresetSearchSignature: string | null;
 	searchDebounceTimer: number | null;
@@ -490,6 +495,7 @@ export function refreshEmbedTables(deps: EmbedTableDeps): void {
 			closeEmbedTableTransientUi(instance.el);
 			closeEmbedTableActivePicker(instance);
 			cleanupTableHeaderActiveResize(instance.headerInteractionState);
+			cleanupEmbedMobileViewport(instance);
 			instance.lastQuerySignature = null;
 			instance.lastRenderSignature = null;
 			continue;
@@ -520,6 +526,10 @@ function createEmbedTableInstance(
 		parentSearchHighlightedIndex: 0,
 		parentSearchDismissed: false,
 		pendingSearchFocus: null,
+		activeMobileInlineEdit: null,
+		pendingMobileTextInputRender: false,
+		mobileViewportCleanup: null,
+		mobileScrollGestureUntil: 0,
 		appliedPresetSearchSignature: null,
 		pendingPresetSearchSignature: null,
 		searchDebounceTimer: null,
@@ -555,6 +565,10 @@ function createEmbedTableInstance(
 }
 
 function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
+	instance.pendingMobileTextInputRender = false;
+	instance.mobileScrollGestureUntil = 0;
+	finishEmbedTableMobileInlineEdit(instance, false);
+	instance.activeMobileInlineEdit = null;
 	closeEmbedTableTransientUi(instance.el);
 	closeEmbedTableActivePicker(instance);
 	cancelEmbedTableSearchDebounce(instance);
@@ -566,6 +580,7 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	instance.sortedRowsCache = null;
 	instance.noSearchResultCache = null;
 	cleanupEmbedTableResizeObserver(instance);
+	cleanupEmbedMobileViewport(instance);
 	cleanupOperonHoverTooltips(instance.el);
 	if (instance.visibleRowsFrame !== null) {
 		window.cancelAnimationFrame(instance.visibleRowsFrame);
@@ -601,6 +616,7 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 }
 
 function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+	finishEmbedTableMobileInlineEdit(instance, true);
 	const renderStartedAt = enginePerfNow();
 	const settings = deps.getSettings();
 	const preset = settings.tablePresets.find(entry => entry.id === instance.presetId) ?? null;
@@ -608,6 +624,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		closeEmbedTableTransientUi(instance.el);
 		closeEmbedTableActivePicker(instance);
 		cleanupEmbedTableResizeObserver(instance);
+		cleanupEmbedMobileViewport(instance);
 		cleanupOperonHoverTooltips(instance.el);
 		instance.el.empty();
 		resetEmbedTableRenderState(instance);
@@ -778,9 +795,11 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		closeEmbedTableActivePicker(instance);
 	}
 	cleanupEmbedTableResizeObserver(instance);
+	cleanupEmbedMobileViewport(instance);
 	cleanupOperonHoverTooltips(instance.el);
 	instance.el.empty();
 	const root = instance.el.createDiv('operon-table-embed operon-table-root operon-task-chip-surface');
+	bindEmbedMobileViewport(instance, deps, root);
 	root.addClass(`operon-table-density-${result.preset.display.density}`);
 	root.style.setProperty('--operon-table-row-height', `${rowHeight}px`);
 	root.style.setProperty('--operon-table-embed-shell-height', `${resolveTableEmbedShellHeightPx(
@@ -800,7 +819,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	}
 	if (instance.bodyScrollerEl) {
 		instance.bodyScrollerEl.scrollTop = instance.scrollTop;
-		renderEmbedTableVisibleRows(instance, deps);
+		renderEmbedTableVisibleRows(instance, deps, true);
 	}
 	restoreEmbedTablePendingCellFocus(instance);
 	restoreEmbedTableSearchFocus(
@@ -1402,6 +1421,10 @@ function renderEmbedTableShell(
 	instance.bodyScrollerEl = bodyScroller;
 	instance.bodyCanvasEl = canvas;
 	observeEmbedTableBodyResize(instance, deps, root, shell, bodyScroller, toolbar);
+	bodyScroller.addEventListener('pointermove', event => {
+		if (!Platform.isPhone || event.pointerType === 'mouse') return;
+		instance.mobileScrollGestureUntil = Date.now() + 900;
+	}, { passive: true });
 	bodyScroller.addEventListener('scroll', () => {
 		activeCellHighlight?.clear();
 		closeEmbedTableTransientUi(instance.el);
@@ -1413,6 +1436,9 @@ function renderEmbedTableShell(
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
 		instance.scrollTop = bodyScroller.scrollTop;
 		instance.scrollLeft = bodyScroller.scrollLeft;
+		if (!Platform.isPhone || Date.now() < instance.mobileScrollGestureUntil) {
+			finishEmbedTableMobileInlineEdit(instance, true);
+		}
 		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});
 }
@@ -1683,8 +1709,11 @@ function applyEmbedTableColumnTemplate(instance: EmbedTableInstance, columns: re
 	instance.lastRenderedRangeKey = null;
 }
 
-function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
 	const startedAt = enginePerfNow();
+	if (force && hasActiveEmbedTableMobileInlineEdit(instance)) {
+		finishEmbedTableMobileInlineEdit(instance, true);
+	}
 	const renderState = instance.currentRenderState;
 	const scroller = instance.bodyScrollerEl;
 	const canvas = instance.bodyCanvasEl;
@@ -1709,6 +1738,10 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 		Array.from(instance.collapsedGroupKeys).join('\u0000'),
 	].join(':');
 	if (rangeKey === instance.lastRenderedRangeKey) return;
+	if (!force && shouldDeferEmbedMobileVisibleRows(instance)) {
+		instance.pendingMobileTextInputRender = true;
+		return;
+	}
 	instance.lastRenderedRangeKey = rangeKey;
 	cleanupOperonHoverTooltips(canvas);
 	canvas.empty();
@@ -2389,7 +2422,7 @@ function scheduleEmbedTableDeferredSummaryRefresh(instance: EmbedTableInstance, 
 			summariesCalculating: false,
 		};
 		instance.lastRenderedRangeKey = null;
-		renderEmbedTableVisibleRows(instance, deps);
+		renderEmbedTableVisibleRows(instance, deps, true);
 		enginePerfLog(
 			'table.embed.summaries.deferred',
 			`${Math.round(enginePerfNow() - startedAt)}ms`,
@@ -2572,6 +2605,7 @@ function renderEmbedTableCell(
 		column,
 		task,
 		settings: renderState.settings,
+		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 		locationResolver: renderState.locationResolver,
 		onLocationPreview: (trigger, visual) => openEmbedTableLocationMapPreview(deps, trigger, task, visual, renderState),
 	});
@@ -2605,12 +2639,22 @@ function renderEmbedTableIconOnlyCell(
 		icon: locationVisual?.icon ?? resolveTableIconOnlyCellIcon(
 			column.key,
 			value,
-			resolveTableValueCellIcon(column.key, value, renderState.settings, fallbackIcon),
+			resolveTableValueCellIcon(
+				column.key,
+				value,
+				renderState.settings,
+				fallbackIcon,
+				renderState.valueResolver.workflowStatusIdentityIndex,
+			),
 		),
 		title: fieldLabel,
 		content,
 		ariaLabel: `${fieldLabel}: ${content}`,
-		color: resolveTableIconOnlyCellAccent(column, value, { task, settings: renderState.settings }),
+		color: resolveTableIconOnlyCellAccent(column, value, {
+			task,
+			settings: renderState.settings,
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+		}),
 		focusable: options.focusable,
 		showTooltip: !isTaskIconColumn && !isTaskTypeColumn,
 	});
@@ -2702,6 +2746,7 @@ function renderEmbedTableAdminCell(
 		renderTableTaskIconButton(cell, {
 			task,
 			settings: renderState.settings,
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			readOnly: !canWrite,
 			onStatusIconClick: canWrite ? deps.onStatusIconClick : undefined,
 			onContextualAction: canWrite ? deps.onContextualAction : undefined,
@@ -3127,7 +3172,11 @@ function renderEmbedTableInlineTextCell(
 	}
 	const fieldLabel = getTableTaskFieldLabel(key, renderState.settings);
 	const iconColor = showIconOnly
-		? resolveTableColumnCellAccent(column, value, { task, settings: renderState.settings })
+		? resolveTableColumnCellAccent(column, value, {
+			task,
+			settings: renderState.settings,
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+		})
 		: null;
 	const iconContent = formatTableIconOnlyTooltipContent(value);
 	renderTableDescriptionCellContent(cell, {
@@ -3157,6 +3206,12 @@ function renderEmbedTableInlineTextCell(
 		onCommit: editable && !showIconOnly && instance
 			? nextValue => commitEmbedTableCellUpdate(instance, deps, cell, task, key, cellKey, { [payloadKey]: nextValue })
 			: undefined,
+		...(Platform.isPhone && instance
+			? {
+				onInlineEditStart: (session: TableInlineEditSession) => beginEmbedTableMobileInlineEdit(instance, session),
+				onInlineEditFinish: (session: TableInlineEditSession) => endEmbedTableMobileInlineEdit(instance, session, deps),
+			}
+			: {}),
 	});
 }
 
@@ -3267,6 +3322,68 @@ function scheduleEmbedTableVisibleRowsRender(instance: EmbedTableInstance, deps:
 	});
 }
 
+function hasActiveEmbedTableMobileInlineEdit(instance: EmbedTableInstance): boolean {
+	return Platform.isPhone && instance.activeMobileInlineEdit !== null;
+}
+
+function shouldDeferEmbedMobileVisibleRows(instance: EmbedTableInstance): boolean {
+	return hasActiveEmbedTableMobileInlineEdit(instance)
+		|| isMobileTableTextInputFocused(instance.el);
+}
+
+function beginEmbedTableMobileInlineEdit(instance: EmbedTableInstance, session: TableInlineEditSession): void {
+	if (!Platform.isPhone) return;
+	finishEmbedTableMobileInlineEdit(instance, true);
+	instance.activeMobileInlineEdit = session;
+	instance.pendingSearchFocus = null;
+}
+
+function endEmbedTableMobileInlineEdit(
+	instance: EmbedTableInstance,
+	session: TableInlineEditSession,
+	deps: EmbedTableDeps,
+): void {
+	if (instance.activeMobileInlineEdit !== session) return;
+	instance.activeMobileInlineEdit = null;
+	flushEmbedMobileDeferredVisibleRows(instance, deps);
+}
+
+function finishEmbedTableMobileInlineEdit(instance: EmbedTableInstance, commit: boolean): void {
+	const session = instance.activeMobileInlineEdit;
+	if (!session) return;
+	session.finish(commit);
+}
+
+function bindEmbedMobileViewport(instance: EmbedTableInstance, deps: EmbedTableDeps, root: HTMLElement): void {
+	cleanupEmbedMobileViewport(instance);
+	instance.mobileViewportCleanup = bindMobileTableViewport(root, () => {
+		if (!instance.el.isConnected || instance.el.offsetParent === null) return;
+		instance.lastRenderedRangeKey = null;
+		if (shouldDeferEmbedMobileVisibleRows(instance)) {
+			instance.pendingMobileTextInputRender = true;
+			return;
+		}
+		flushEmbedMobileDeferredVisibleRows(instance, deps);
+		scheduleEmbedTableVisibleRowsRender(instance, deps);
+	});
+}
+
+function cleanupEmbedMobileViewport(instance: EmbedTableInstance): void {
+	instance.mobileViewportCleanup?.();
+	instance.mobileViewportCleanup = null;
+}
+
+function flushEmbedMobileDeferredVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+	if (shouldDeferEmbedMobileVisibleRows(instance)) return;
+	const shouldRender = instance.pendingMobileTextInputRender
+		&& !!instance.bodyCanvasEl?.isConnected
+		&& instance.el.isConnected;
+	instance.pendingMobileTextInputRender = false;
+	if (!shouldRender) return;
+	instance.lastRenderedRangeKey = null;
+	scheduleEmbedTableVisibleRowsRender(instance, deps);
+}
+
 function updateEmbedTableToolbarHeight(root: HTMLElement, toolbar: HTMLElement): void {
 	const toolbarRectHeight = toolbar.getBoundingClientRect().height;
 	const toolbarHeight = Math.ceil(toolbarRectHeight || toolbar.offsetHeight || 44);
@@ -3310,6 +3427,10 @@ function restoreEmbedTableSearchFocus(
 	selectionStart: number | null,
 	selectionEnd: number | null,
 ): void {
+	if (hasActiveEmbedTableMobileInlineEdit(instance)) {
+		instance.pendingSearchFocus = null;
+		return;
+	}
 	const pending = instance.pendingSearchFocus;
 	if (!shouldRestore && !pending) return;
 	const searchInput = input?.isConnected

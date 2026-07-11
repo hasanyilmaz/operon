@@ -9,7 +9,7 @@ import {
 import { t } from '../../core/i18n';
 import { OperonSettings } from '../../types/settings';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
-import { createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
+import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
 
 type LocationPickerTab = 'places' | 'map' | 'manual';
 
@@ -151,23 +151,20 @@ function renderPlacesTab(
 			item.title = `${source.path} - ${source.coordinate.canonical}`;
 			if (index === activeIndex) item.classList.add('is-active');
 			item.createDiv({ cls: 'operon-parent-task-picker-label operon-location-place-label', text: source.basename });
-			item.addEventListener('mousemove', () => {
-				if (activeIndex !== index) {
-					activeIndex = index;
-					renderList();
-				}
-			});
-			item.addEventListener('click', event => {
-				event.preventDefault();
-				selectCoordinate(source.coordinate.canonical);
-			});
-			item.addEventListener('mousedown', event => {
-				event.preventDefault();
-				selectCoordinate(source.coordinate.canonical);
-			});
+			item.addEventListener('mousemove', () => setActiveIndex(index));
+			bindPickerListItemActivation(item, () => selectCoordinate(source.coordinate.canonical));
 			list.appendChild(item);
 		}
 		scrollChildIntoView(list, list.children[activeIndex] as HTMLElement | undefined);
+	};
+
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
+		detailValue.textContent = formatPlaceDetail(matches[activeIndex]);
 	};
 
 	const updateMatches = (): void => {

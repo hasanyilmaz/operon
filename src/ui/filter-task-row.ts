@@ -1,5 +1,5 @@
 import { setIcon } from 'obsidian';
-import { sortTasksBySpecs } from '../core/filter-evaluator';
+import { prepareTaskSortContext, sortTasksBySpecs, type PreparedTaskSortContext } from '../core/filter-evaluator';
 import { t } from '../core/i18n';
 import { resolveDirectSubtaskProgressFromStats } from '../core/task-stats-read-model';
 import { IndexedTask } from '../types/fields';
@@ -11,6 +11,10 @@ import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { createOwnerElement } from '../core/dom-compat';
 import { computePlainCheckboxProgressIndicator } from './plain-checkbox-progress';
 import { bindPlainCheckboxPopoverTrigger } from './plain-checkbox-popover';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 
 export interface FilterTaskRowCallbacks extends ReadingTaskRowCallbacks {
 	getIndexedTask: (id: string) => IndexedTask | undefined;
@@ -25,6 +29,8 @@ interface FilterTaskRowOptions {
 	showOnlyOpenSubtasks?: boolean;
 	showSubtaskAction?: boolean;
 	subtaskSorts?: FilterSortSpec[];
+	subtaskSortContext?: PreparedTaskSortContext;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	visibleTaskIds?: Set<string>;
 }
 
@@ -37,6 +43,8 @@ export function buildFilterTaskRowElement(
 ): HTMLElement {
 	const allowExpand = options?.allowExpand !== false;
 	const ancestorIds = options?.ancestorIds ?? new Set<string>();
+	const workflowStatusIdentityIndex = options?.workflowStatusIdentityIndex
+		?? buildWorkflowStatusIdentityIndex(callbacks.getPipelines());
 	const wrapper = el('div', 'operon-filter-task-entry', owner);
 	const childIds = allowExpand
 		? sortSubtaskIds(
@@ -48,6 +56,8 @@ export function buildFilterTaskRowElement(
 			callbacks,
 			options?.showOnlyOpenSubtasks === true,
 			options?.subtaskSorts,
+			options?.subtaskSortContext,
+			workflowStatusIdentityIndex,
 		)
 		: [];
 	const hasChildren = childIds.length > 0;
@@ -56,7 +66,9 @@ export function buildFilterTaskRowElement(
 	const canUseDirectStats = allowExpand
 		&& !options?.visibleTaskIds
 		&& options?.showOnlyOpenSubtasks !== true;
-	const childProgress = hasChildren ? buildChildProgress(task, childIds, callbacks, canUseDirectStats) : null;
+	const childProgress = hasChildren
+		? buildChildProgress(task, childIds, callbacks, canUseDirectStats, workflowStatusIdentityIndex)
+		: null;
 	if (hasChildren && options?.defaultExpandAll === true) {
 		const marker = `__filter_init_${task.operonId}`;
 		if (!expandedTaskIds.has(marker)) {
@@ -73,6 +85,7 @@ export function buildFilterTaskRowElement(
 	const plainCheckboxProgress = computePlainCheckboxProgressIndicator(task.plainCheckboxProgress);
 	const row = buildReadingTaskRowElement(renderedTask, callbacks, undefined, {
 		owner: wrapper,
+		workflowStatusIdentityIndex,
 		chipItems: callbacks.getSettings().filterTaskCompactChips,
 		showPlayAction: callbacks.getSettings().filterTaskShowPlayAction,
 		showPinAction: callbacks.getSettings().filterTaskShowPinAction,
@@ -122,6 +135,8 @@ export function buildFilterTaskRowElement(
 								options?.defaultExpandAll === true,
 								options?.showOnlyOpenSubtasks === true,
 								options?.subtaskSorts,
+								options?.subtaskSortContext,
+								workflowStatusIdentityIndex,
 								options?.visibleTaskIds,
 							);
 						}
@@ -199,6 +214,8 @@ export function buildFilterTaskRowElement(
 				options?.defaultExpandAll === true,
 				options?.showOnlyOpenSubtasks === true,
 				options?.subtaskSorts,
+				options?.subtaskSortContext,
+				workflowStatusIdentityIndex,
 				options?.visibleTaskIds,
 			);
 		}
@@ -217,6 +234,8 @@ function renderDirectChildren(
 	defaultExpandAll: boolean,
 	showOnlyOpenSubtasks: boolean,
 	subtaskSorts?: FilterSortSpec[],
+	subtaskSortContext?: PreparedTaskSortContext,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 	visibleTaskIds?: Set<string>,
 ): void {
 	container.empty();
@@ -229,6 +248,8 @@ function renderDirectChildren(
 				defaultExpandAll,
 				showOnlyOpenSubtasks,
 				subtaskSorts,
+				subtaskSortContext,
+				workflowStatusIdentityIndex,
 				visibleTaskIds,
 			}, container));
 	}
@@ -239,13 +260,21 @@ function sortSubtaskIds(
 	callbacks: FilterTaskRowCallbacks,
 	showOnlyOpenSubtasks: boolean,
 	subtaskSorts?: FilterSortSpec[],
+	subtaskSortContext?: PreparedTaskSortContext,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string[] {
 	if (subtaskSorts !== undefined) {
-		return sortSubtaskIdsBySpecs(childIds, callbacks, showOnlyOpenSubtasks, subtaskSorts);
+		return sortSubtaskIdsBySpecs(
+			childIds,
+			callbacks,
+			showOnlyOpenSubtasks,
+			subtaskSorts,
+			subtaskSortContext,
+			workflowStatusIdentityIndex,
+		);
 	}
-	const priorityRankMap = new Map(
-		callbacks.getPriorities().map((priority, index) => [priority.label, index] as const),
-	);
+	const priorityRankMap = subtaskSortContext?.priorityRankMap
+		?? Object.fromEntries(callbacks.getPriorities().map((priority, index) => [priority.label, index] as const));
 
 	return [...childIds].sort((leftId, rightId) => {
 		const left = callbacks.getIndexedTask(leftId);
@@ -254,18 +283,19 @@ function sortSubtaskIds(
 		if (!left) return 1;
 		if (!right) return -1;
 
-		const bucketCompare = getSubtaskStateBucket(left, callbacks) - getSubtaskStateBucket(right, callbacks);
+		const bucketCompare = getSubtaskStateBucket(left, callbacks, workflowStatusIdentityIndex)
+			- getSubtaskStateBucket(right, callbacks, workflowStatusIdentityIndex);
 		if (bucketCompare !== 0) return bucketCompare;
 
-		const leftPriority = priorityRankMap.get(left.fieldValues['priority'] ?? '') ?? Number.MAX_SAFE_INTEGER;
-		const rightPriority = priorityRankMap.get(right.fieldValues['priority'] ?? '') ?? Number.MAX_SAFE_INTEGER;
+		const leftPriority = priorityRankMap[left.fieldValues['priority'] ?? ''] ?? Number.MAX_SAFE_INTEGER;
+		const rightPriority = priorityRankMap[right.fieldValues['priority'] ?? ''] ?? Number.MAX_SAFE_INTEGER;
 		if (leftPriority !== rightPriority) return leftPriority - rightPriority;
 
 		return left.description.localeCompare(right.description, undefined, { sensitivity: 'base' });
 	}).filter(childId => {
 		if (!showOnlyOpenSubtasks) return true;
 		const childTask = callbacks.getIndexedTask(childId);
-		return childTask ? isOpenSubtask(childTask, callbacks) : false;
+		return childTask ? isOpenSubtask(childTask, callbacks, workflowStatusIdentityIndex) : false;
 	});
 }
 
@@ -274,24 +304,28 @@ function sortSubtaskIdsBySpecs(
 	callbacks: FilterTaskRowCallbacks,
 	showOnlyOpenSubtasks: boolean,
 	subtaskSorts: FilterSortSpec[],
+	subtaskSortContext?: PreparedTaskSortContext,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string[] {
 	if (subtaskSorts.length === 0) {
 		return childIds.filter(childId => {
 			if (!showOnlyOpenSubtasks) return true;
 			const childTask = callbacks.getIndexedTask(childId);
-			return childTask ? isOpenSubtask(childTask, callbacks) : false;
+			return childTask ? isOpenSubtask(childTask, callbacks, workflowStatusIdentityIndex) : false;
 		});
 	}
 
 	const childTasks = childIds
 		.map(childId => callbacks.getIndexedTask(childId))
 		.filter((task): task is IndexedTask =>
-			!!task && (!showOnlyOpenSubtasks || isOpenSubtask(task, callbacks))
+			!!task && (!showOnlyOpenSubtasks || isOpenSubtask(task, callbacks, workflowStatusIdentityIndex))
 		);
-	const sortedTasks = sortTasksBySpecs(childTasks, subtaskSorts, {
+	const sortContext = subtaskSortContext ?? prepareTaskSortContext(subtaskSorts, {
 		priorities: callbacks.getPriorities(),
+		pipelines: callbacks.getPipelines(),
 		isTaskPinned: callbacks.isTaskPinned,
 	});
+	const sortedTasks = sortTasksBySpecs(childTasks, subtaskSorts, sortContext);
 	const sortedIds = sortedTasks.map(task => task.operonId);
 	const missingIds = showOnlyOpenSubtasks
 		? []
@@ -302,20 +336,29 @@ function sortSubtaskIdsBySpecs(
 function getSubtaskStateBucket(
 	task: IndexedTask,
 	callbacks: FilterTaskRowCallbacks,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): number {
+	const workflow = resolveWorkflowStatus(
+		callbacks.getPipelines(),
+		task.fieldValues['status'],
+		workflowStatusIdentityIndex,
+	);
+	if (workflow) {
+		if (workflow.checkbox === 'cancelled') return 2;
+		if (workflow.checkbox === 'done') return 1;
+		return 0;
+	}
 	if (task.checkbox === 'cancelled' || !!task.fieldValues['dateCancelled']?.trim()) return 2;
 	if (task.checkbox === 'done' || !!task.fieldValues['dateCompleted']?.trim()) return 1;
-	const workflow = resolveWorkflowStatus(callbacks.getPipelines(), task.fieldValues['status']);
-	if (workflow?.definition.isCancelled === true) return 2;
-	if (workflow?.definition.isFinished === true) return 1;
 	return 0;
 }
 
 function isOpenSubtask(
 	task: IndexedTask,
 	callbacks: FilterTaskRowCallbacks,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): boolean {
-	return getSubtaskStateBucket(task, callbacks) === 0;
+	return getSubtaskStateBucket(task, callbacks, workflowStatusIdentityIndex) === 0;
 }
 
 function resolveBranchColor(task: IndexedTask, callbacks: FilterTaskRowCallbacks): string | null {
@@ -333,6 +376,7 @@ export function buildChildProgress(
 	childIds: string[],
 	callbacks: FilterTaskRowCallbacks,
 	canUseStats: boolean,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): { completed: number; total: number; allCompleted: boolean } {
 	if (canUseStats) {
 		const statsProgress = resolveDirectSubtaskProgressFromStats(parentTask.fieldValues, childIds.length);
@@ -340,6 +384,8 @@ export function buildChildProgress(
 			return statsProgress;
 		}
 	}
+	const identityIndex = workflowStatusIdentityIndex
+		?? buildWorkflowStatusIdentityIndex(callbacks.getPipelines());
 
 	let total = 0;
 	let completed = 0;
@@ -348,8 +394,12 @@ export function buildChildProgress(
 		const childTask = callbacks.getIndexedTask(childId);
 		if (!childTask) continue;
 		total += 1;
-		const workflow = resolveWorkflowStatus(callbacks.getPipelines(), childTask.fieldValues['status']);
-		if (childTask.checkbox === 'done' || workflow?.definition.isFinished === true) {
+		const workflow = resolveWorkflowStatus(
+			callbacks.getPipelines(),
+			childTask.fieldValues['status'],
+			identityIndex,
+		);
+		if (workflow ? workflow.checkbox === 'done' : childTask.checkbox === 'done') {
 			completed += 1;
 		}
 	}

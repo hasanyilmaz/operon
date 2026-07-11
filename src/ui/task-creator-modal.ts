@@ -17,7 +17,7 @@ import type { ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showSubtasksPicker } from './field-pickers/subtasks-picker';
 import { showColorPicker } from './field-pickers/color-picker';
 import { MOBILE_PICKER_CLOSE_EVENT, MOBILE_PICKER_OPEN_EVENT } from './field-pickers/common';
-import { bindOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
 import {
@@ -27,13 +27,10 @@ import {
 } from './task-field-suggest';
 import { buildSubtaskExcludedIds } from '../core/task-hierarchy';
 import {
-	WindowIntervalHandle,
 	WindowTimeoutHandle,
-	clearWindowInterval,
 	clearWindowTimeout,
 	getActiveDocument,
 	getActiveWindow,
-	setWindowInterval,
 	setWindowTimeout,
 } from '../core/dom-compat';
 import {
@@ -458,43 +455,6 @@ export function purgeTaskCreatorModalArtifacts(root: ParentNode = getActiveDocum
 	}
 }
 
-let activeTaskCreatorArtifactObserver: MutationObserver | null = null;
-let activeTaskCreatorArtifactInterval: WindowIntervalHandle | null = null;
-
-export function watchForTaskCreatorModalArtifacts(durationMs = 2000): void {
-	const artifactDocument = getActiveDocument();
-	purgeTaskCreatorModalArtifacts(artifactDocument);
-	activeTaskCreatorArtifactObserver?.disconnect();
-	if (activeTaskCreatorArtifactInterval !== null) {
-		clearWindowInterval(activeTaskCreatorArtifactInterval);
-		activeTaskCreatorArtifactInterval = null;
-	}
-
-	const observer = new MutationObserver(() => {
-		purgeTaskCreatorModalArtifacts(artifactDocument);
-	});
-	activeTaskCreatorArtifactObserver = observer;
-	observer.observe(artifactDocument.body, {
-		childList: true,
-		subtree: true,
-	});
-
-	activeTaskCreatorArtifactInterval = setWindowInterval(() => {
-		purgeTaskCreatorModalArtifacts(artifactDocument);
-	}, 120);
-
-	getActiveWindow().setTimeout(() => {
-		if (activeTaskCreatorArtifactObserver === observer) {
-			activeTaskCreatorArtifactObserver.disconnect();
-			activeTaskCreatorArtifactObserver = null;
-		}
-		if (activeTaskCreatorArtifactInterval !== null) {
-			clearWindowInterval(activeTaskCreatorArtifactInterval);
-			activeTaskCreatorArtifactInterval = null;
-		}
-	}, durationMs);
-}
-
 export class TaskCreatorModal extends Modal {
 	private readonly options: TaskCreatorModalOptions;
 	private readonly submitMode: TaskCreatorSubmitMode;
@@ -570,6 +530,7 @@ export class TaskCreatorModal extends Modal {
 		}
 		this.titleEl.addClass('operon-task-creator-title');
 		this.titleEl.setText(t('modals', 'taskCreatorTitle'));
+		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
 		window.addEventListener('resize', this.resizeHandler);
 		this.registerMobileViewportListeners();
@@ -618,6 +579,7 @@ export class TaskCreatorModal extends Modal {
 		this.clearInitialDescriptionFocusGuard();
 		this.closeActivePicker();
 		this.closeSuggestions();
+		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
 		if (!this.resolved) {
 			this.options.onCancel?.();
@@ -778,7 +740,7 @@ export class TaskCreatorModal extends Modal {
 		this.draft.note = this.noteEl.value;
 		this.draft.noteOpen = this.draft.noteOpen || !!this.draft.note.trim();
 		this.autoSizeTextarea(this.noteEl);
-		this.renderFieldButtons();
+		this.syncFieldButtonActiveState('note');
 	};
 
 	private readonly handleNoteKeydown = (event: KeyboardEvent): void => {
@@ -1144,11 +1106,7 @@ export class TaskCreatorModal extends Modal {
 			if (index === this.suggestionState.activeIndex) {
 				button.addClass('is-active');
 			}
-			button.addEventListener('mouseenter', () => {
-				if (!this.suggestionState) return;
-				this.suggestionState.activeIndex = index;
-				this.renderSuggestions();
-			});
+			button.addEventListener('mouseenter', () => this.setActiveSuggestionIndex(index));
 			button.addEventListener('pointerdown', event => {
 				event.preventDefault();
 				this.chooseSuggestion(item);
@@ -1166,6 +1124,15 @@ export class TaskCreatorModal extends Modal {
 				this.chooseSuggestion(item);
 			});
 		}
+	}
+
+	private setActiveSuggestionIndex(nextIndex: number): void {
+		const state = this.suggestionState;
+		if (!state || state.activeIndex === nextIndex) return;
+		const previousButton = this.suggestionsEl?.children[state.activeIndex] as HTMLElement | undefined;
+		state.activeIndex = nextIndex;
+		previousButton?.classList.remove('is-active');
+		(this.suggestionsEl?.children[state.activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
 	}
 
 	private closeSuggestions(): void {
@@ -1540,10 +1507,7 @@ export class TaskCreatorModal extends Modal {
 			const button = this.fieldButtonMap.get(key);
 			if (!button) continue;
 			button.empty();
-			button.removeClass('is-active');
-			if (this.hasValueForField(key)) {
-				button.addClass('is-active');
-			}
+			this.syncFieldButtonActiveState(key);
 
 			const iconWrap = button.createSpan('operon-task-creator-tool-icon');
 			if (key === 'taskIcon' && this.draft.taskIcon.trim()) {
@@ -1605,6 +1569,15 @@ export class TaskCreatorModal extends Modal {
 		if (key === 'blocking' || key === 'blockedBy') return splitTaskListValue(this.draft.fieldValues[key]).length > 0;
 		if (key === 'note') return this.draft.noteOpen || !!this.draft.note.trim();
 		return !!(this.draft.fieldValues[key] ?? '').trim();
+	}
+
+	private syncFieldButtonActiveState(key: TaskCreatorFieldKey): void {
+		const button = this.fieldButtonMap.get(key);
+		if (!button) return;
+		button.removeClass('is-active');
+		if (this.hasValueForField(key)) {
+			button.addClass('is-active');
+		}
 	}
 
 	private resolveFieldIcon(key: TaskCreatorFieldKey): string {

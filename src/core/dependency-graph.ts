@@ -2,6 +2,10 @@ import { IndexedTask } from '../types/fields';
 import { Pipeline, resolveWorkflowStatus } from '../types/pipeline';
 import { CheckboxState } from '../types/keys';
 import type { DependencyFieldKey } from './task-field-patch';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from './workflow-status-identity';
 
 export type DependencyRelationType = 'FS';
 
@@ -276,11 +280,15 @@ export function validateDependencyMutations(
 	return { ok: true };
 }
 
-export function isDependencyBlockerResolved(task: IndexedTask | null | undefined, pipelines: Pipeline[]): boolean {
+export function isDependencyBlockerResolved(
+	task: IndexedTask | null | undefined,
+	pipelines: Pipeline[],
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
+): boolean {
 	if (!task) return false;
+	const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status'], workflowStatusIdentityIndex);
+	if (workflow) return workflow.checkbox !== 'open';
 	if (task.checkbox === 'done' || task.checkbox === 'cancelled') return true;
-	const workflow = resolveWorkflowStatus(pipelines, task.fieldValues['status']);
-	if (workflow?.definition.isFinished || workflow?.definition.isCancelled) return true;
 	if ((task.fieldValues['dateCompleted'] ?? '').trim()) return true;
 	if ((task.fieldValues['dateCancelled'] ?? '').trim()) return true;
 	return false;
@@ -304,6 +312,7 @@ export function resolveActiveBlockers(
 	getAllTasks?: () => Iterable<IndexedTask>,
 ): ActiveDependencyBlocker[] {
 	const blockers: ActiveDependencyBlocker[] = [];
+	const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 	const blockerIds = parseDependencyIdList(task.fieldValues['blockedBy']);
 	if (getAllTasks) {
 		const seen = new Set(blockerIds);
@@ -316,7 +325,7 @@ export function resolveActiveBlockers(
 	}
 	for (const blockerId of blockerIds) {
 		const blockerTask = getTask(blockerId) ?? null;
-		if (isDependencyBlockerResolved(blockerTask, pipelines)) continue;
+		if (isDependencyBlockerResolved(blockerTask, pipelines, workflowStatusIdentityIndex)) continue;
 		blockers.push({
 			operonId: blockerId,
 			task: blockerTask,

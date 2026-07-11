@@ -53,17 +53,21 @@ export function showCustomTextFieldPicker(
 		for (const [index, match] of matches.entries()) {
 			const item = createButton(formatCustomTextDisplayValue(match), 'operon-custom-field-picker-option operon-custom-text-picker-option', list);
 			if (index === activeIndex) item.classList.add('is-active');
-			item.addEventListener('mousemove', () => {
-				if (activeIndex === index) return;
-				activeIndex = index;
-				renderSuggestions();
-			});
+			item.addEventListener('mousemove', () => setActiveIndex(index));
 			item.addEventListener('mousedown', event => {
 				event.preventDefault();
 				commit(match);
 			});
 			list.appendChild(item);
 		}
+	};
+
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
 	};
 
 	input.addEventListener('input', () => renderSuggestions());

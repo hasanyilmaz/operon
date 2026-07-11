@@ -6,6 +6,7 @@ export interface OperonStoragePaths {
 		activeTrackersPath: string;
 		pinnedTasksPath: string;
 		projectSerialsPath: string;
+		fieldRenameJournalPath: string;
 	};
 	runtime: {
 		indexPath: string;
@@ -29,6 +30,7 @@ export function buildOperonStoragePaths(
 			activeTrackersPath: joinVaultPath(pluginDir, 'state', 'active-trackers.json'),
 			pinnedTasksPath: joinVaultPath(pluginDir, 'state', 'pinned-tasks.json'),
 			projectSerialsPath: joinVaultPath(pluginDir, 'state', 'project-serials.json'),
+			fieldRenameJournalPath: joinVaultPath(pluginDir, 'state', 'field-rename-journal.json'),
 		},
 		runtime: {
 			indexPath: joinVaultPath(pluginDir, 'runtime', 'index.json'),

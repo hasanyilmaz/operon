@@ -42,13 +42,17 @@ import { filterTasksForCalendar, stripFilterViewOnlyOptions } from '../../system
 import {
 	buildKanbanTaskComparator,
 	buildKanbanCellKey,
-	isTaskInPipeline,
+	isTaskInPipelineWithIndex,
 	KanbanBoardData,
 	KanbanColumn,
 	KanbanLane,
 	KANBAN_NO_VALUE_KEY,
 	queryKanbanBoard,
 } from '../../systems/kanban-query';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../../core/workflow-status-identity';
 import {
 	resolveAutoCollapsedKanbanLaneKeys,
 	resolveAutoCollapsedKanbanStatusIds,
@@ -714,6 +718,7 @@ export class KanbanView extends ItemView {
 		const board = queryKanbanBoard({
 			preset,
 			pipeline,
+			pipelines: settings.pipelines,
 			filterSet,
 			tasks: this.indexer.getAllTasks(),
 			priorities: settings.priorities,
@@ -1220,6 +1225,7 @@ export class KanbanView extends ItemView {
 		const state = this.ensureState();
 		const allTasks = this.indexer.getAllTasks();
 		const taskLookup = createCompactTaskLookup(allTasks);
+		const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(this.getSettings().pipelines);
 		const collapsedStatusIds = this.resolveCollapsedStatusIds(board, state, searchActive);
 		const collapsedLaneKeys = this.resolveCollapsedLaneKeys(board, state, searchActive);
 		const columnTemplate = this.buildColumnTemplate(columns, Array.from(collapsedStatusIds));
@@ -1426,7 +1432,7 @@ export class KanbanView extends ItemView {
 					materialize: () => {
 						cell.style.removeProperty('min-height');
 						this.bindCellQuickAdd(cell, column, lane, board.preset);
-						return this.renderInitialCellTasks(cell, tasks, taskCount, board.pipeline, board.preset, column.statusId, lane.key, allTasks, taskLookup, renderAsMobileLayout);
+						return this.renderInitialCellTasks(cell, tasks, taskCount, board.pipeline, board.preset, column.statusId, lane.key, allTasks, taskLookup, workflowStatusIdentityIndex, renderAsMobileLayout);
 					},
 				});
 			}
@@ -1458,11 +1464,12 @@ export class KanbanView extends ItemView {
 		laneKey: string,
 		allTasks: IndexedTask[],
 		taskLookup: CompactTaskLookupContext,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		readOnlyChips: boolean,
 	): KanbanCellRenderFinalizer {
 		const maxVisibleTasks = this.getSettings().kanbanMaxVisibleTasksPerCell;
 		const initialLimit = Math.min(tasks.length, Math.max(KANBAN_CARD_RENDER_BATCH_SIZE, maxVisibleTasks));
-		this.renderTaskCardBatch(cell, tasks, 0, initialLimit, pipeline, preset, statusId, laneKey, allTasks, taskLookup, readOnlyChips, null);
+		this.renderTaskCardBatch(cell, tasks, 0, initialLimit, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, null);
 		cell.dataset.kanbanVisibleCount = String(initialLimit);
 		// Height limiting is split into measure/commit so batch materialization
 		// can run all reads in one pass (single forced layout) before writing.
@@ -1474,7 +1481,7 @@ export class KanbanView extends ItemView {
 			commit: () => {
 				this.commitCellHeightLimit(cell, measuredHeightLimitPx);
 				if (tasks.length <= initialLimit) return;
-				this.attachCellLazySentinel(cell, tasks, pipeline, preset, statusId, laneKey, maxVisibleTasks, allTasks, taskLookup, readOnlyChips);
+				this.attachCellLazySentinel(cell, tasks, pipeline, preset, statusId, laneKey, maxVisibleTasks, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips);
 			},
 		};
 	}
@@ -1490,13 +1497,14 @@ export class KanbanView extends ItemView {
 		laneKey: string,
 		allTasks: IndexedTask[],
 		taskLookup: CompactTaskLookupContext,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		readOnlyChips: boolean,
 		beforeEl: HTMLElement | null,
 	): void {
 		for (let index = startIndex; index < endIndex; index++) {
 			const task = tasks[index];
 			if (!task) continue;
-			const card = this.renderTaskCard(cell, task, pipeline, preset, statusId, laneKey, allTasks, taskLookup, readOnlyChips, false, 0);
+			const card = this.renderTaskCard(cell, task, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, false, 0);
 			if (beforeEl) {
 				cell.insertBefore(card, beforeEl);
 			}
@@ -1513,6 +1521,7 @@ export class KanbanView extends ItemView {
 		maxVisibleTasks: number,
 		allTasks: IndexedTask[],
 		taskLookup: CompactTaskLookupContext,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		readOnlyChips: boolean,
 	): void {
 		const sentinel = cell.createDiv('operon-kanban-lazy-sentinel');
@@ -1536,7 +1545,7 @@ export class KanbanView extends ItemView {
 				return;
 			}
 			const nextVisible = Math.min(tasks.length, currentVisible + KANBAN_CARD_RENDER_BATCH_SIZE);
-			this.renderTaskCardBatch(cell, tasks, currentVisible, nextVisible, pipeline, preset, statusId, laneKey, allTasks, taskLookup, readOnlyChips, sentinel);
+			this.renderTaskCardBatch(cell, tasks, currentVisible, nextVisible, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, sentinel);
 			cell.dataset.kanbanVisibleCount = String(nextVisible);
 			setSentinelNextTaskId(nextVisible);
 			this.applyCellHeightLimit(cell, maxVisibleTasks, tasks.length);
@@ -1840,6 +1849,7 @@ export class KanbanView extends ItemView {
 		laneKey: string,
 		allTasks: IndexedTask[],
 		taskLookup: CompactTaskLookupContext | undefined,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex | undefined,
 		readOnlyChips: boolean,
 		isPreview: boolean,
 		depth: number,
@@ -1855,7 +1865,7 @@ export class KanbanView extends ItemView {
 		card.classList.toggle('is-done', task.checkbox === 'done');
 		card.classList.toggle('is-cancelled', task.checkbox === 'cancelled');
 		card.style.setProperty('--operon-kanban-preview-depth', String(depth));
-		this.applyTaskColor(card, task, preset);
+		this.applyTaskColor(card, task, preset, workflowStatusIdentityIndex);
 
 		if (isPreview && depth > 0) {
 			card.addClass('is-nested-preview');
@@ -1863,7 +1873,15 @@ export class KanbanView extends ItemView {
 
 		const head = card.createDiv('operon-kanban-card-head');
 		const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
-		this.renderStatusButton(hoverTrigger, task, pipeline, preset, statusId, laneKey);
+		this.renderStatusButton(
+			hoverTrigger,
+			task,
+			pipeline,
+			preset,
+			statusId,
+			laneKey,
+			workflowStatusIdentityIndex,
+		);
 		const titleText = task.description || task.operonId;
 		const titleEl = head.createSpan({
 			cls: 'operon-kanban-card-title',
@@ -1898,7 +1916,17 @@ export class KanbanView extends ItemView {
 		if (!isPreview) {
 			this.renderCardNotePreview(card, task);
 			const progressTracks = this.buildCardProgressTracks(task);
-			this.renderCardProgressTracks(card, task, preset, pipeline, statusId, progressTracks, 'subtasks', 'is-body');
+			this.renderCardProgressTracks(
+				card,
+				task,
+				preset,
+				pipeline,
+				statusId,
+				workflowStatusIdentityIndex,
+				progressTracks,
+				'subtasks',
+				'is-body',
+			);
 			const chipRow = buildKanbanTaskChipRow(task, {
 				app: this.app,
 				getSettings: this.getSettings,
@@ -1918,11 +1946,22 @@ export class KanbanView extends ItemView {
 			}, {
 				allTasks,
 				taskLookup,
+				workflowStatusIdentityIndex,
 				owner: card,
 				readOnly: readOnlyChips,
 			});
 			if (chipRow) card.appendChild(chipRow);
-			this.renderCardProgressTracks(card, task, preset, pipeline, statusId, progressTracks, 'checkboxes', 'is-footer');
+			this.renderCardProgressTracks(
+				card,
+				task,
+				preset,
+				pipeline,
+				statusId,
+				workflowStatusIdentityIndex,
+				progressTracks,
+				'checkboxes',
+				'is-footer',
+			);
 		}
 
 		if (!isPreview) {
@@ -1934,7 +1973,14 @@ export class KanbanView extends ItemView {
 		if (!isPreview && this.ensureState().expandedPreviewParentIds.includes(task.operonId)) {
 			const preview = card.createDiv('operon-kanban-preview-tree');
 			for (const child of this.getPreviewChildren(task.operonId)) {
-				this.renderPreviewNode(preview, child, preset, pipeline, depth + 1);
+				this.renderPreviewNode(
+					preview,
+					child,
+					preset,
+					pipeline,
+					workflowStatusIdentityIndex,
+					depth + 1,
+				);
 			}
 		}
 		return card;
@@ -2010,14 +2056,35 @@ export class KanbanView extends ItemView {
 		task: IndexedTask,
 		preset: KanbanPreset,
 		pipeline: Pipeline | null,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex | undefined,
 		depth: number,
 	): void {
-		this.renderTaskCard(container, task, pipeline, preset, null, KANBAN_NO_VALUE_KEY, [], undefined, true, true, depth);
+		this.renderTaskCard(
+			container,
+			task,
+			pipeline,
+			preset,
+			null,
+			KANBAN_NO_VALUE_KEY,
+			[],
+			undefined,
+			workflowStatusIdentityIndex,
+			true,
+			true,
+			depth,
+		);
 		const children = this.getPreviewChildren(task.operonId);
 		if (children.length === 0) return;
 		const childrenWrap = container.createDiv('operon-kanban-preview-children');
 		for (const child of children) {
-			this.renderPreviewNode(childrenWrap, child, preset, pipeline, depth + 1);
+			this.renderPreviewNode(
+				childrenWrap,
+				child,
+				preset,
+				pipeline,
+				workflowStatusIdentityIndex,
+				depth + 1,
+			);
 		}
 	}
 
@@ -2071,6 +2138,7 @@ export class KanbanView extends ItemView {
 		preset: KanbanPreset,
 		pipeline: Pipeline | null,
 		statusId: string | null,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex | undefined,
 		tracks: TaskProgressTrack[],
 		kind: TaskProgressTrack['kind'],
 		placementClass: string,
@@ -2080,7 +2148,13 @@ export class KanbanView extends ItemView {
 
 		const wrap = card.createDiv('operon-kanban-card-progress');
 		wrap.addClass(placementClass);
-		const color = this.resolveCardProgressColor(task, preset, pipeline, statusId);
+		const color = this.resolveCardProgressColor(
+			task,
+			preset,
+			pipeline,
+			statusId,
+			workflowStatusIdentityIndex,
+		);
 		if (color) {
 			wrap.style.setProperty('--operon-kanban-card-progress-color', color);
 		}
@@ -2156,19 +2230,39 @@ export class KanbanView extends ItemView {
 		preset: KanbanPreset,
 		pipeline: Pipeline | null,
 		statusId: string | null,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex | undefined,
 	): string | null {
 		if (preset.colorSource === 'noColor') {
-			return this.resolveCardProgressStatusColor(task, pipeline, statusId);
+			return this.resolveCardProgressStatusColor(
+				task,
+				pipeline,
+				statusId,
+				workflowStatusIdentityIndex,
+			);
 		}
-		return resolveTaskColorSourceForTask(task, preset.colorSource, this.getSettings());
+		return resolveTaskColorSourceForTask(
+			task,
+			preset.colorSource,
+			this.getSettings(),
+			workflowStatusIdentityIndex,
+		);
 	}
 
-	private resolveCardProgressStatusColor(task: IndexedTask, pipeline: Pipeline | null, statusId: string | null): string | null {
+	private resolveCardProgressStatusColor(
+		task: IndexedTask,
+		pipeline: Pipeline | null,
+		statusId: string | null,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex | undefined,
+	): string | null {
 		if (pipeline && statusId) {
 			const status = pipeline.statuses.find(candidate => candidate.id === statusId);
 			if (status?.color) return status.color;
 		}
-		return findStatusDef(this.getSettings().pipelines, task.fieldValues['status'] ?? '')?.color ?? null;
+		return findStatusDef(
+			this.getSettings().pipelines,
+			task.fieldValues['status'] ?? '',
+			workflowStatusIdentityIndex,
+		)?.color ?? null;
 	}
 
 	private reconcileOptimisticMoves(_board: KanbanBoardData, pipeline: Pipeline | null, preset: KanbanPreset): void {
@@ -2187,7 +2281,15 @@ export class KanbanView extends ItemView {
 				this.optimisticMoves.delete(taskId);
 				continue;
 			}
-			if (isKanbanOptimisticMoveSatisfied(task, pipeline, preset, move, this.getSettings().keyMappings)) {
+			if (isKanbanOptimisticMoveSatisfied(
+				task,
+				pipeline,
+				preset,
+				move,
+				this.getSettings().keyMappings,
+				this.getSettings().pipelines,
+				this.getSettings().priorities,
+			)) {
 				this.optimisticMoves.delete(taskId);
 			}
 		}
@@ -2458,6 +2560,7 @@ export class KanbanView extends ItemView {
 		this.optimisticMoves.set(context.taskId, createKanbanDropOptimisticMove(context, {
 			task: this.indexer.getTask(context.taskId),
 			keyMappings: this.getSettings().keyMappings,
+			priorities: this.getSettings().priorities,
 		}));
 		this.scheduleOptimisticMoveExpiryRender();
 	}
@@ -2623,6 +2726,7 @@ export class KanbanView extends ItemView {
 		preset: KanbanPreset,
 		statusId: string | null,
 		laneKey: string,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex | undefined,
 	): void {
 		if (!this.callbacks.onStatusIconClick) return;
 		const button = container.createEl('button', {
@@ -2631,12 +2735,21 @@ export class KanbanView extends ItemView {
 				type: 'button',
 			},
 		});
-		const iconName = resolveTaskDisplayIcon(this.getSettings(), task.fieldValues, task.checkbox);
+		const iconName = resolveTaskDisplayIcon(
+			this.getSettings(),
+			task.fieldValues,
+			task.checkbox,
+			workflowStatusIdentityIndex,
+		);
 		if (iconName) {
 			setIcon(button, iconName);
 		}
 		setAccessibleLabelWithoutTooltip(button, t('tooltips', 'cycleTaskStatus'));
-		const iconColor = resolveTaskStatusIconColorForTask(task, this.getSettings());
+		const iconColor = resolveTaskStatusIconColorForTask(
+			task,
+			this.getSettings(),
+			workflowStatusIdentityIndex,
+		);
 		if (iconColor) button.style.color = iconColor;
 		else button.style.removeProperty('color');
 		button.addEventListener('pointerdown', event => {
@@ -2668,6 +2781,7 @@ export class KanbanView extends ItemView {
 			preset,
 			pipelines: this.getSettings().pipelines,
 			keyMappings: this.getSettings().keyMappings,
+			priorities: this.getSettings().priorities,
 			sourceStatusId: statusId,
 			sourceLaneKey: laneKey,
 		});
@@ -2695,7 +2809,15 @@ export class KanbanView extends ItemView {
 			.then(() => {
 				if (applied) {
 					const freshTask = this.indexer.getTask(task.operonId);
-					if (!freshTask || !pipeline || !isKanbanOptimisticMoveSatisfied(freshTask, pipeline, preset, plan.move, this.getSettings().keyMappings)) {
+					if (!freshTask || !pipeline || !isKanbanOptimisticMoveSatisfied(
+						freshTask,
+						pipeline,
+						preset,
+						plan.move,
+						this.getSettings().keyMappings,
+						this.getSettings().pipelines,
+						this.getSettings().priorities,
+					)) {
 						this.optimisticMoves.delete(task.operonId);
 					}
 					this.markDirty();
@@ -2709,7 +2831,12 @@ export class KanbanView extends ItemView {
 			});
 	}
 
-	private applyTaskColor(element: HTMLElement, task: IndexedTask, preset: KanbanPreset): void {
+	private applyTaskColor(
+		element: HTMLElement,
+		task: IndexedTask,
+		preset: KanbanPreset,
+		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex | undefined,
+	): void {
 		if (preset.colorSource === 'noColor') {
 			element.setCssProps({
 				'--operon-calendar-accent': 'var(--background-modifier-border-hover, var(--background-modifier-border))',
@@ -2717,7 +2844,12 @@ export class KanbanView extends ItemView {
 			element.style.removeProperty('--operon-kanban-card-chip-hover-accent');
 			return;
 		}
-		const resolvedColor = resolveTaskColorSourceForTask(task, preset.colorSource, this.getSettings());
+		const resolvedColor = resolveTaskColorSourceForTask(
+			task,
+			preset.colorSource,
+			this.getSettings(),
+			workflowStatusIdentityIndex,
+		);
 		if (!resolvedColor) {
 			element.style.removeProperty('--operon-calendar-accent');
 			element.style.removeProperty('--operon-kanban-card-chip-hover-accent');
@@ -4143,12 +4275,13 @@ export class KanbanView extends ItemView {
 		pipeline: Pipeline,
 		settings: OperonSettings,
 	): IndexedTask[] {
+		const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(settings.pipelines);
 		return filterTasksForCalendar(
 			filterSet,
 			this.indexer.getAllTasks(),
 			settings.priorities,
 			this.getPinnedCache(),
-			).filter(task => isTaskInPipeline(task, pipeline));
+				).filter(task => isTaskInPipelineWithIndex(task, pipeline, workflowStatusIdentityIndex));
 	}
 
 	private getCurrentSearchScopeTasks(

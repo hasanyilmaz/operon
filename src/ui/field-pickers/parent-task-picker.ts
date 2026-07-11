@@ -1,6 +1,6 @@
 import { IndexedTask } from '../../types/fields';
 import { t } from '../../core/i18n';
-import { createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
+import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 
 const PAGE_SIZE = 20;
@@ -21,7 +21,6 @@ interface ParentTaskCandidate {
 	filePath: string;
 	checkbox: IndexedTask['checkbox'];
 	checkboxRank: number;
-	searchText: string;
 }
 
 export function showParentTaskPicker(anchor: HTMLElement | DOMRect, options: ParentTaskPickerOptions): () => void {
@@ -152,24 +151,8 @@ export function showParentTaskPicker(anchor: HTMLElement | DOMRect, options: Par
 			const label = item.createDiv('operon-parent-task-picker-label');
 			label.textContent = candidate.label;
 
-			item.addEventListener('mousemove', () => {
-				if (activeIndex !== index) {
-					activeIndex = index;
-					render();
-				}
-			});
-			item.addEventListener('pointerdown', event => {
-				event.preventDefault();
-				selectParent(candidate.operonId);
-			});
-			item.addEventListener('mousedown', event => {
-				event.preventDefault();
-				selectParent(candidate.operonId);
-			});
-			item.addEventListener('click', event => {
-				event.preventDefault();
-				selectParent(candidate.operonId);
-			});
+			item.addEventListener('mousemove', () => setActiveIndex(index));
+			bindPickerListItemActivation(item, () => selectParent(candidate.operonId));
 
 			list.appendChild(item);
 		});
@@ -194,12 +177,20 @@ export function showParentTaskPicker(anchor: HTMLElement | DOMRect, options: Par
 			pathValue.textContent = matches[activeIndex]?.filePath ?? '';
 		};
 
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
+		pathValue.textContent = matches[activeIndex]?.filePath ?? '';
+	};
+
 	const updateMatches = (query: string) => {
 		if (selectedOperonId) return;
 		matches = rankCandidates(allCandidates, query);
 		loadedCount = Math.min(PAGE_SIZE, matches.length);
-		const selectedIndex = matches.findIndex(candidate => candidate.operonId === selectedOperonId);
-		activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
+		activeIndex = 0;
 		render();
 	};
 
@@ -250,7 +241,7 @@ function buildCandidates(tasks: IndexedTask[]): ParentTaskCandidate[] {
 		cancelled: 2,
 	};
 
-	return [...tasks]
+	return tasks
 		.map(task => {
 			const description = task.description.trim() || 'Untitled task';
 			return {
@@ -259,7 +250,6 @@ function buildCandidates(tasks: IndexedTask[]): ParentTaskCandidate[] {
 				filePath: task.primary.filePath ?? '',
 				checkbox: task.checkbox,
 				checkboxRank: checkboxRank[task.checkbox] ?? 99,
-				searchText: `${description} ${task.operonId} ${task.primary.filePath}`.toLowerCase(),
 			};
 		})
 		.sort((left, right) => {

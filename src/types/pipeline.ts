@@ -1,4 +1,13 @@
 import { CheckboxState } from './keys';
+import {
+	buildWorkflowStatusIdentityIndex,
+	resolveConfiguredPipelineNameIdentity,
+	resolveConfiguredStatusIdentity,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
+import { composeStatusValue } from '../core/workflow-status-value';
+
+export { composeStatusValue } from '../core/workflow-status-value';
 
 /**
  * Pipeline and status model for Operon.
@@ -104,16 +113,11 @@ export const DEFAULT_PIPELINES: Pipeline[] = [
 ];
 
 /**
- * Compose a canonical status value from pipeline and status label.
- * Format: "Pipeline.Status" (e.g. "Project.InProgress")
- */
-export function composeStatusValue(pipelineName: string, statusLabel: string): string {
-	return `${pipelineName}.${statusLabel}`;
-}
-
-/**
- * Parse a canonical status value into pipeline name and status label.
- * Returns null if the value doesn't contain a dot separator.
+ * Parse a status value syntactically at its first dot separator.
+ *
+ * This is a legacy/unknown-value fallback only. Configured workflow values
+ * must use the identity index so dotted pipeline names and collisions are not
+ * misclassified.
  */
 export function parseStatusValue(value: string): { pipeline: string; status: string } | null {
 	const dotIndex = value.indexOf('.');
@@ -127,12 +131,16 @@ export function parseStatusValue(value: string): { pipeline: string; status: str
 /**
  * Find a StatusDefinition by its canonical status value in a list of pipelines.
  */
-export function findStatusDef(pipelines: Pipeline[], statusValue: string): StatusDefinition | null {
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return null;
-	const pipeline = pipelines.find(p => p.name === parsed.pipeline);
-	if (!pipeline) return null;
-	return pipeline.statuses.find(s => s.label === parsed.status) ?? null;
+export function findStatusDef(
+	pipelines: Pipeline[],
+	statusValue: string,
+	identityIndex?: WorkflowStatusIdentityIndex,
+): StatusDefinition | null {
+	const resolution = resolveConfiguredStatusIdentity(
+		statusValue,
+		identityIndex ?? buildWorkflowStatusIdentityIndex(pipelines),
+	);
+	return resolution.kind === 'configured' ? resolution.status : null;
 }
 
 export function canStatusBeAutomationTarget(
@@ -182,14 +190,19 @@ export function shouldTriggerOneShotAutomation(
 export function resolveWorkflowStatus(
 	pipelines: Pipeline[],
 	statusValue: string | undefined,
+	identityIndex?: WorkflowStatusIdentityIndex,
 ): WorkflowStatusResolution | null {
 	if (!statusValue) return null;
-	const def = findStatusDef(pipelines, statusValue);
-	if (!def) return null;
+	const resolution = resolveConfiguredStatusIdentity(
+		statusValue,
+		identityIndex ?? buildWorkflowStatusIdentityIndex(pipelines),
+	);
+	if (resolution.kind !== 'configured') return null;
+	const def = resolution.status;
 
 	if (def.isFinished) {
 		return {
-			value: statusValue,
+			value: resolution.value,
 			definition: def,
 			checkbox: 'done',
 			terminalDateKey: 'dateCompleted',
@@ -198,7 +211,7 @@ export function resolveWorkflowStatus(
 
 	if (def.isCancelled) {
 		return {
-			value: statusValue,
+			value: resolution.value,
 			definition: def,
 			checkbox: 'cancelled',
 			terminalDateKey: 'dateCancelled',
@@ -206,7 +219,7 @@ export function resolveWorkflowStatus(
 	}
 
 	return {
-		value: statusValue,
+		value: resolution.value,
 		definition: def,
 		checkbox: 'open',
 		terminalDateKey: null,
@@ -218,13 +231,25 @@ export function getNextWorkflowStatus(
 	statusValue: string | undefined,
 ): WorkflowStatusResolution | null {
 	if (!statusValue) return null;
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return null;
-
-	const pipeline = pipelines.find(p => p.name === parsed.pipeline);
+	const identityIndex = buildWorkflowStatusIdentityIndex(pipelines);
+	const identity = resolveConfiguredStatusIdentity(
+		statusValue,
+		identityIndex,
+	);
+	if (identity.kind === 'ambiguous') return null;
+	const legacy = identity.kind === 'unknown' ? parseStatusValue(identity.value) : null;
+	const legacyPipeline = legacy
+		? resolveConfiguredPipelineNameIdentity(legacy.pipeline, identityIndex)
+		: null;
+	if (legacyPipeline?.kind === 'ambiguous') return null;
+	const pipeline = identity.kind === 'configured'
+		? identity.pipeline
+		: legacyPipeline?.kind === 'configured' ? legacyPipeline.pipeline : null;
 	if (!pipeline || pipeline.statuses.length === 0) return null;
 
-	const currentIdx = pipeline.statuses.findIndex(s => s.label === parsed.status);
+	const currentIdx = identity.kind === 'configured'
+		? identity.statusIndex
+		: pipeline.statuses.findIndex(status => status.label === legacy?.status);
 	const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % pipeline.statuses.length;
 	const nextStatus = pipeline.statuses[nextIdx];
 	const nextValue = composeStatusValue(pipeline.name, nextStatus.label);
@@ -237,16 +262,28 @@ export function getNextCheckboxWorkflowStatus(
 	statusValue: string | undefined,
 ): WorkflowStatusResolution | null {
 	if (!statusValue) return null;
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return null;
-
-	const pipeline = pipelines.find(p => p.name === parsed.pipeline);
+	const identityIndex = buildWorkflowStatusIdentityIndex(pipelines);
+	const identity = resolveConfiguredStatusIdentity(
+		statusValue,
+		identityIndex,
+	);
+	if (identity.kind === 'ambiguous') return null;
+	const legacy = identity.kind === 'unknown' ? parseStatusValue(identity.value) : null;
+	const legacyPipeline = legacy
+		? resolveConfiguredPipelineNameIdentity(legacy.pipeline, identityIndex)
+		: null;
+	if (legacyPipeline?.kind === 'ambiguous') return null;
+	const pipeline = identity.kind === 'configured'
+		? identity.pipeline
+		: legacyPipeline?.kind === 'configured' ? legacyPipeline.pipeline : null;
 	if (!pipeline || pipeline.statuses.length === 0) return null;
 
 	const eligibleStatuses = pipeline.statuses.filter(status => !status.isCancelled);
 	if (eligibleStatuses.length === 0) return null;
 
-	const current = pipeline.statuses.find(status => status.label === parsed.status);
+	const current = identity.kind === 'configured'
+		? identity.status
+		: pipeline.statuses.find(status => status.label === legacy?.status);
 	if (!current) {
 		return resolveWorkflowStatus(pipelines, composeStatusValue(pipeline.name, eligibleStatuses[0].label));
 	}
@@ -276,12 +313,28 @@ export function getCheckboxToggleWorkflowStatus(
 		return { checkbox: getNextCheckboxState(currentCheckbox), workflow: null };
 	}
 
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) {
+	const identityIndex = buildWorkflowStatusIdentityIndex(pipelines);
+	const identity = resolveConfiguredStatusIdentity(
+		statusValue,
+		identityIndex,
+	);
+	if (identity.kind === 'ambiguous') {
+		return { checkbox: currentCheckbox, workflow: null };
+	}
+	const legacy = identity.kind === 'unknown' ? parseStatusValue(identity.value) : null;
+	if (identity.kind === 'unknown' && !legacy) {
 		return { checkbox: getNextCheckboxState(currentCheckbox), workflow: null };
 	}
 
-	const pipeline = pipelines.find(candidate => candidate.name === parsed.pipeline);
+	const legacyPipeline = legacy
+		? resolveConfiguredPipelineNameIdentity(legacy.pipeline, identityIndex)
+		: null;
+	if (legacyPipeline?.kind === 'ambiguous') {
+		return { checkbox: currentCheckbox, workflow: null };
+	}
+	const pipeline = identity.kind === 'configured'
+		? identity.pipeline
+		: legacyPipeline?.kind === 'configured' ? legacyPipeline.pipeline : undefined;
 	if (!pipeline || pipeline.statuses.length === 0) {
 		return { checkbox: getNextCheckboxState(currentCheckbox), workflow: null };
 	}
@@ -397,15 +450,26 @@ function getCurrentOrDefaultPipeline(
 	statusValue: string | undefined,
 	defaultPipelineName: string,
 ): Pipeline | null {
-	const parsed = statusValue ? parseStatusValue(statusValue) : null;
-	if (parsed) {
-		const currentPipeline = pipelines.find(candidate => candidate.name === parsed.pipeline);
-		if (currentPipeline) return currentPipeline;
+	const identityIndex = buildWorkflowStatusIdentityIndex(pipelines);
+	if (statusValue) {
+		const identity = resolveConfiguredStatusIdentity(
+			statusValue,
+			identityIndex,
+		);
+		if (identity.kind === 'configured') return identity.pipeline;
+		if (identity.kind === 'ambiguous') return null;
+		const parsed = parseStatusValue(identity.value);
+		if (parsed) {
+			const currentPipeline = resolveConfiguredPipelineNameIdentity(parsed.pipeline, identityIndex);
+			if (currentPipeline.kind === 'configured') return currentPipeline.pipeline;
+			if (currentPipeline.kind === 'ambiguous') return null;
+		}
 	}
 
-	return pipelines.find(candidate => candidate.name === defaultPipelineName)
-		?? pipelines[0]
-		?? null;
+	const explicitDefault = resolveConfiguredPipelineNameIdentity(defaultPipelineName, identityIndex);
+	if (explicitDefault.kind === 'configured') return explicitDefault.pipeline;
+	if (explicitDefault.kind === 'ambiguous') return null;
+	return pipelines[0] ?? null;
 }
 
 function getNextCheckboxState(currentCheckbox: CheckboxState): CheckboxState {

@@ -16,7 +16,14 @@ import { cloneFilterSet, FilterSet, OperonSettings } from '../types/settings';
 import { Pipeline } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
 import { t } from '../core/i18n';
-import { evaluateFilterSet, evaluateFilterSetGrouped, filterTasksOnly, sortFilterTasks } from '../core/filter-evaluator';
+import {
+	evaluateFilterSet,
+	evaluateFilterSetGrouped,
+	filterTasksOnly,
+	getFilterSortSpecs,
+	prepareTaskSortContext,
+	sortFilterTasks,
+} from '../core/filter-evaluator';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks } from './filter-task-row';
 import { shouldResolveLocationCompactChips } from './compact-task-layout';
@@ -39,6 +46,9 @@ import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlaySettingsSignature } from './task-wikilink-overlay-chips';
 import { buildTaskStatusIconRenderSettingsSignature } from './task-status-icon-signature';
+import { buildWorkflowStatusSemanticsSignature } from '../core/workflow-status-semantics';
+import { buildWorkflowStatusOrderSignature } from '../core/workflow-status-order';
+import { buildWorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
 import { getNormalFilterSets } from '../core/dynamic-file-task-filter';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
@@ -370,10 +380,23 @@ export class FilterView extends ItemView {
 		if (!globalShowSubtasks) {
 			this.expandedTaskIds.clear();
 		}
+		const subtaskSorts = getFilterSortSpecs(currentFs);
+		const effectiveSubtaskSorts = subtaskSorts.length > 0 ? subtaskSorts : undefined;
+		const subtaskSortContext = prepareTaskSortContext(
+			effectiveSubtaskSorts ?? [{ field: 'priority', order: 'asc' }],
+			{
+				priorities: this.getPriorities(),
+				pipelines: this.getPipelines(),
+				isTaskPinned: callbacks.isTaskPinned,
+			},
+		);
 		const taskRowOptions = {
 			defaultExpandAll: globalShowSubtasks,
 			showOnlyOpenSubtasks: globalShowOnlyOpenSubtasks,
 			showSubtaskAction: this.settings.filterTaskShowSubtaskAction,
+			subtaskSorts: effectiveSubtaskSorts,
+			subtaskSortContext,
+			workflowStatusIdentityIndex: buildWorkflowStatusIdentityIndex(this.getPipelines()),
 		};
 		this.ensureLayout(container);
 		this.headerEl?.removeClass('is-hidden');
@@ -446,7 +469,13 @@ export class FilterView extends ItemView {
 			if (currentFs.groupBy) {
 				// Grouped rendering
 				const allTasks = this.indexer.getAllTasks();
-				const baseGrouped = evaluateFilterSetGrouped(currentFs, allTasks, this.getPriorities(), this.pinnedCache);
+				const baseGrouped = evaluateFilterSetGrouped(
+					currentFs,
+					allTasks,
+					this.getPriorities(),
+					this.pinnedCache,
+					this.getPipelines(),
+				);
 				const searchActive = isFilterSearchActive(this.searchQuery);
 				const baseRootTasks = filterTasksOnly(currentFs, allTasks, this.getPriorities(), this.pinnedCache);
 				const treeScopeTasks = this.getCachedTreeScope(baseRootTasks);
@@ -458,6 +487,7 @@ export class FilterView extends ItemView {
 					applyFilterSearch(treeScopeTasks, this.searchQuery, this.getSettings().keyMappings),
 					this.getPriorities(),
 					this.pinnedCache,
+					this.getPipelines(),
 				);
 				if (tasks.length === 0) {
 					list.createDiv({ cls: 'operon-filter-empty', text: t('filters', 'noMatches') });
@@ -542,7 +572,13 @@ export class FilterView extends ItemView {
 			this.attachLazyLoadSentinel(list, grouped.totalCount);
 		} else {
 			// Flat rendering
-			const baseTasks = evaluateFilterSet(currentFs, this.indexer.getAllTasks(), this.getPriorities(), this.pinnedCache);
+			const baseTasks = evaluateFilterSet(
+				currentFs,
+				this.indexer.getAllTasks(),
+				this.getPriorities(),
+				this.pinnedCache,
+				this.getPipelines(),
+			);
 			const searchActive = isFilterSearchActive(this.searchQuery);
 			const treeScopeTasks = this.getCachedTreeScope(baseTasks);
 			const tasks = searchActive
@@ -551,6 +587,7 @@ export class FilterView extends ItemView {
 					applyFilterSearch(treeScopeTasks, this.searchQuery, this.getSettings().keyMappings),
 					this.getPriorities(),
 					this.pinnedCache,
+					this.getPipelines(),
 				)
 				: baseTasks;
 			this.syncSearchPlaceholder(treeScopeTasks.length);
@@ -826,6 +863,8 @@ export class FilterView extends ItemView {
 			this.indexer.getGeneration(),
 			this.currentFilterSetId ?? '',
 			showOnlyOpenSubtasks ? 'open-only' : 'all-subtasks',
+			buildWorkflowStatusOrderSignature(this.getPipelines()),
+			buildWorkflowStatusSemanticsSignature(this.getPipelines()),
 			rootTasks.map(task => task.operonId).join(','),
 		].join('|');
 		if (this.treeScopeCache?.signature === signature) {
@@ -1018,9 +1057,11 @@ export class FilterView extends ItemView {
 			JSON.stringify(filterSet),
 			compactSettingsSignature,
 			filterActionSettingsSignature,
-			overlaySettingsSignature,
-			taskStatusIconSettingsSignature,
-			locationIndexSignature,
+				overlaySettingsSignature,
+				taskStatusIconSettingsSignature,
+				buildWorkflowStatusOrderSignature(this.settings.pipelines),
+				buildWorkflowStatusSemanticsSignature(this.settings.pipelines),
+				locationIndexSignature,
 			keyMappingSignature,
 			this.getVisibleFilterSets().map(fs => `${fs.id}:${fs.name}:${fs.icon ?? ''}`).join('|'),
 		].join('|');

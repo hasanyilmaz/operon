@@ -1,4 +1,4 @@
-import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
+import { ItemView, Notice, Platform, WorkspaceLeaf, setIcon } from 'obsidian';
 import type { OperonIndexer } from '../../indexer/indexer';
 import type { PinnedCache } from '../../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../../core/project-serials';
@@ -34,7 +34,8 @@ import {
 } from './table-value-adapter';
 import { renderTableCellChips } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
-import { renderTableDescriptionCellContent } from './table-description-cell';
+import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table-description-cell';
+import { bindMobileTableViewport, isMobileTableTextInputFocused } from './mobile-table-viewport';
 import { formatTableValueCacheStats, type TableValueResolver } from './table-value-cache';
 import {
 	TABLE_DEFAULT_BODY_HEIGHT,
@@ -299,6 +300,10 @@ export class OperonTableView extends ItemView {
 	private pendingCellKey: string | null = null;
 	private pendingFocusKey: string | null = null;
 	private pendingSearchFocus: { start: number; end: number } | null = null;
+	private activeMobileInlineEdit: TableInlineEditSession | null = null;
+	private pendingMobileTextInputRender = false;
+	private mobileViewportCleanup: (() => void) | null = null;
+	private mobileScrollGestureUntil = 0;
 	private lastGroupStateKey: string | null = null;
 	private isSearchComposing = false;
 	private searchScope: TaskSearchBoxScopeState = cloneTableSearchBoxScopeState(TABLE_SEARCH_BOX_DEFAULT_SCOPE);
@@ -379,6 +384,10 @@ export class OperonTableView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.closeActivePicker();
+		this.pendingMobileTextInputRender = false;
+		this.mobileScrollGestureUntil = 0;
+		this.finishMobileInlineEdit(false);
+		this.activeMobileInlineEdit = null;
 		if (this.renderFrame !== null) {
 			window.cancelAnimationFrame(this.renderFrame);
 			this.renderFrame = null;
@@ -402,6 +411,7 @@ export class OperonTableView extends ItemView {
 		this.cancelSearchPrewarm();
 		this.cleanupActiveResize();
 		this.cleanupTableResizeObserver();
+		this.cleanupMobileViewport();
 		this.searchMatcherCache.clear();
 		this.incrementalSearchCache = null;
 		this.noSearchResultCache = null;
@@ -430,6 +440,7 @@ export class OperonTableView extends ItemView {
 	}
 
 	render(): void {
+		this.finishMobileInlineEdit(true);
 		if (!this.keepActivePickerOnRender) {
 			this.closeActivePicker();
 		}
@@ -611,7 +622,7 @@ export class OperonTableView extends ItemView {
 			}
 			if (this.bodyScrollerEl) {
 				this.bodyScrollerEl.scrollTop = this.state.scrollTop;
-				this.renderVisibleRows();
+				this.renderVisibleRows(true);
 			}
 			this.restoreSearchFocus();
 			this.lastRenderedSearchActive = true;
@@ -627,10 +638,12 @@ export class OperonTableView extends ItemView {
 		}
 
 		this.cleanupTableResizeObserver();
+		this.cleanupMobileViewport();
 		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
 		this.contentEl.addClass('operon-table-view');
 		const root = this.contentEl.createDiv('operon-table-root operon-task-chip-surface');
+		this.bindMobileViewport(root);
 		root.addClass(`operon-table-density-${result.preset.display.density}`);
 		root.style.setProperty('--operon-table-row-height', `${rowHeight}px`);
 		this.renderToolbar(root, result.preset, result.counts.final, this.state.searchQuery, searchContext.parentSearchUi);
@@ -644,7 +657,7 @@ export class OperonTableView extends ItemView {
 		}
 		if (this.bodyScrollerEl) {
 			this.bodyScrollerEl.scrollTop = this.state.scrollTop;
-			this.renderVisibleRows();
+			this.renderVisibleRows(true);
 		}
 		this.restorePendingCellFocus();
 		this.restoreSearchFocus();
@@ -1248,6 +1261,10 @@ export class OperonTableView extends ItemView {
 		this.bodyScrollerEl = bodyScroller;
 		this.bodyCanvasEl = canvas;
 		this.observeTableBodyResize(shell, bodyScroller);
+		bodyScroller.addEventListener('pointermove', event => {
+			if (!Platform.isPhone || event.pointerType === 'mouse') return;
+			this.mobileScrollGestureUntil = Date.now() + 900;
+		}, { passive: true });
 		bodyScroller.addEventListener('scroll', () => {
 			activeCellHighlight?.clear();
 			this.closeSearchTransientUi();
@@ -1262,6 +1279,9 @@ export class OperonTableView extends ItemView {
 				scrollTop: bodyScroller.scrollTop,
 				scrollLeft: bodyScroller.scrollLeft,
 			};
+			if (!Platform.isPhone || Date.now() < this.mobileScrollGestureUntil) {
+				this.finishMobileInlineEdit(true);
+			}
 			this.scheduleVisibleRowsRender();
 			this.scheduleLeafStatePersistence();
 		});
@@ -1290,8 +1310,11 @@ export class OperonTableView extends ItemView {
 		return shouldUseTableIconOnlyColumn(column, settings);
 	}
 
-	private renderVisibleRows(): void {
+	private renderVisibleRows(force = false): void {
 		const startedAt = enginePerfNow();
+		if (force && this.hasActiveMobileInlineEdit()) {
+			this.finishMobileInlineEdit(true);
+		}
 		const renderState = this.currentRenderState;
 		const scroller = this.bodyScrollerEl;
 		const canvas = this.bodyCanvasEl;
@@ -1316,6 +1339,10 @@ export class OperonTableView extends ItemView {
 			this.state.collapsedGroupKeys.join('\u0000'),
 		].join(':');
 		if (rangeKey === this.lastRenderedRangeKey) return;
+		if (!force && this.shouldDeferMobileVisibleRowsRender()) {
+			this.pendingMobileTextInputRender = true;
+			return;
+		}
 		this.lastRenderedRangeKey = rangeKey;
 		cleanupOperonHoverTooltips(canvas);
 		canvas.empty();
@@ -1664,6 +1691,7 @@ export class OperonTableView extends ItemView {
 			renderTableTaskIconButton(cell, {
 				task,
 				settings: renderState.settings,
+				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 				onStatusIconClick: this.callbacks.onStatusIconClick,
 				onContextualAction: this.callbacks.onContextualAction,
 				isPinned: this.callbacks.isTaskPinned,
@@ -1706,7 +1734,11 @@ export class OperonTableView extends ItemView {
 		}
 		const fieldLabel = getTableTaskFieldLabel(key, renderState.settings);
 		const iconColor = showIconOnly
-			? resolveTableColumnCellAccent(column, value, { task, settings: renderState.settings })
+			? resolveTableColumnCellAccent(column, value, {
+				task,
+				settings: renderState.settings,
+				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			})
 			: null;
 		const iconContent = formatTableIconOnlyTooltipContent(value);
 		renderTableDescriptionCellContent(cell, {
@@ -1736,6 +1768,12 @@ export class OperonTableView extends ItemView {
 			onCommit: editable && !showIconOnly
 				? nextValue => this.commitTaskCellUpdate(cell, task, key, cellKey, { [payloadKey]: nextValue })
 				: undefined,
+			...(Platform.isPhone
+				? {
+					onInlineEditStart: (session: TableInlineEditSession) => this.beginMobileInlineEdit(session),
+					onInlineEditFinish: (session: TableInlineEditSession) => this.endMobileInlineEdit(session),
+				}
+				: {}),
 		});
 	}
 
@@ -1762,12 +1800,22 @@ export class OperonTableView extends ItemView {
 			icon: locationVisual?.icon ?? resolveTableIconOnlyCellIcon(
 				column.key,
 				value,
-				resolveTableValueCellIcon(column.key, value, renderState.settings, fallbackIcon),
+				resolveTableValueCellIcon(
+					column.key,
+					value,
+					renderState.settings,
+					fallbackIcon,
+					renderState.valueResolver.workflowStatusIdentityIndex,
+				),
 			),
 			title: fieldLabel,
 			content,
 			ariaLabel: `${fieldLabel}: ${content}`,
-			color: resolveTableIconOnlyCellAccent(column, value, { task, settings: renderState.settings }),
+			color: resolveTableIconOnlyCellAccent(column, value, {
+				task,
+				settings: renderState.settings,
+				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			}),
 			focusable: options.focusable,
 			showTooltip: !isTaskIconColumn && !isTaskTypeColumn,
 		});
@@ -1937,6 +1985,7 @@ export class OperonTableView extends ItemView {
 			column,
 			task,
 			settings: renderState.settings,
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			locationResolver: renderState.locationResolver,
 			onLocationPreview: (trigger, visual) => this.openLocationMapPreview(trigger, task, visual, renderState),
 		});
@@ -2356,6 +2405,61 @@ export class OperonTableView extends ItemView {
 		});
 	}
 
+	private hasActiveMobileInlineEdit(): boolean {
+		return Platform.isPhone && this.activeMobileInlineEdit !== null;
+	}
+
+	private shouldDeferMobileVisibleRowsRender(): boolean {
+		return this.hasActiveMobileInlineEdit()
+			|| isMobileTableTextInputFocused(this.contentEl);
+	}
+
+	private beginMobileInlineEdit(session: TableInlineEditSession): void {
+		if (!Platform.isPhone) return;
+		this.finishMobileInlineEdit(true);
+		this.activeMobileInlineEdit = session;
+		this.pendingSearchFocus = null;
+	}
+
+	private endMobileInlineEdit(session: TableInlineEditSession): void {
+		if (this.activeMobileInlineEdit !== session) return;
+		this.activeMobileInlineEdit = null;
+		this.flushMobileDeferredVisibleRows();
+	}
+
+	private finishMobileInlineEdit(commit: boolean): void {
+		const session = this.activeMobileInlineEdit;
+		if (!session) return;
+		session.finish(commit);
+	}
+
+	private bindMobileViewport(root: HTMLElement): void {
+		this.cleanupMobileViewport();
+		this.mobileViewportCleanup = bindMobileTableViewport(root, () => {
+			this.lastRenderedRangeKey = null;
+			if (this.shouldDeferMobileVisibleRowsRender()) {
+				this.pendingMobileTextInputRender = true;
+				return;
+			}
+			this.flushMobileDeferredVisibleRows();
+			this.scheduleVisibleRowsRender();
+		});
+	}
+
+	private cleanupMobileViewport(): void {
+		this.mobileViewportCleanup?.();
+		this.mobileViewportCleanup = null;
+	}
+
+	private flushMobileDeferredVisibleRows(): void {
+		if (this.shouldDeferMobileVisibleRowsRender()) return;
+		const shouldRender = this.pendingMobileTextInputRender && !!this.bodyCanvasEl?.isConnected;
+		this.pendingMobileTextInputRender = false;
+		if (!shouldRender) return;
+		this.lastRenderedRangeKey = null;
+		this.scheduleVisibleRowsRender();
+	}
+
 	private observeTableBodyResize(shell: HTMLElement, bodyScroller: HTMLElement): void {
 		this.cleanupTableResizeObserver();
 		const ownerWindow = getOwnerWindow(bodyScroller) as unknown as { ResizeObserver?: TableResizeObserverConstructor };
@@ -2418,7 +2522,7 @@ export class OperonTableView extends ItemView {
 				summariesCalculating: false,
 			};
 			this.lastRenderedRangeKey = null;
-			this.renderVisibleRows();
+			this.renderVisibleRows(true);
 			enginePerfLog(
 				'table.summaries.deferred',
 				`${Math.round(enginePerfNow() - startedAt)}ms`,
@@ -3010,6 +3114,7 @@ export class OperonTableView extends ItemView {
 
 	private toggleGroupCollapsed(groupKey: string): void {
 		this.closeActivePicker();
+		this.finishMobileInlineEdit(true);
 		const current = this.ensureState();
 		const collapsed = new Set(current.collapsedGroupKeys);
 		if (collapsed.has(groupKey)) {
@@ -3044,7 +3149,7 @@ export class OperonTableView extends ItemView {
 			String((this.currentRenderState?.items.length ?? 0) + 1),
 		);
 		this.lastRenderedRangeKey = null;
-		this.renderVisibleRows();
+		this.renderVisibleRows(true);
 		this.scheduleLeafStatePersistence();
 	}
 
@@ -3053,6 +3158,10 @@ export class OperonTableView extends ItemView {
 	}
 
 	private restoreSearchFocus(): void {
+		if (this.hasActiveMobileInlineEdit()) {
+			this.pendingSearchFocus = null;
+			return;
+		}
 		const pending = this.pendingSearchFocus;
 		if (!pending) return;
 		const input = this.contentEl.querySelector<HTMLInputElement>('.operon-table-search-input');

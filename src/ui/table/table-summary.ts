@@ -1,5 +1,9 @@
 import { parseLocalTimestamp } from '../../core/local-time';
 import { parseListValue } from '../../core/parser';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../../core/workflow-status-identity';
 import type { IndexedTask } from '../../types/fields';
 import { resolveWorkflowStatus } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
@@ -28,11 +32,13 @@ export interface TableSummaryEvaluationInput {
 	allTasks: readonly IndexedTask[];
 	settings: TableSummarySettings;
 	valueResolver?: TableSummaryValueResolver;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 }
 
 export type TableSummarySettings = Pick<OperonSettings, 'keyMappings' | 'pipelines'>;
 
 export interface TableSummaryValueResolver {
+	readonly workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	getRawValue(task: IndexedTask, key: string): string;
 }
 
@@ -43,6 +49,15 @@ const TASK_STATE_SUMMARIES: TableSummaryFunction[] = ['OpenCount', 'FinishedCoun
 const TOP_VALUE_SUMMARIES: TableSummaryFunction[] = ['TopValues'];
 const LIST_SUMMARIES: TableSummaryFunction[] = ['ListItemCount'];
 
+function resolveTableSummaryIdentityIndex(
+	functions: readonly TableSummaryFunction[],
+	settings: TableSummarySettings,
+	existing: WorkflowStatusIdentityIndex | undefined,
+): WorkflowStatusIdentityIndex | undefined {
+	if (!functions.some(summaryFunction => TASK_STATE_SUMMARIES.includes(summaryFunction))) return undefined;
+	return existing ?? buildWorkflowStatusIdentityIndex(settings.pipelines);
+}
+
 export const TABLE_SUMMARY_DEFERRED_REFRESH_DELAY_MS = 100;
 
 export function getTableSummaryIdleDelayMs(_rowCount: number): number {
@@ -52,6 +67,11 @@ export function getTableSummaryIdleDelayMs(_rowCount: number): number {
 export function evaluateTableSummaries(input: TableSummaryEvaluationInput): Map<string, TableSummaryCell> {
 	const result = new Map<string, TableSummaryCell>();
 	const rules = filterCompatibleTableSummaryRules(input.rules, input.settings);
+	const workflowStatusIdentityIndex = resolveTableSummaryIdentityIndex(
+		rules.map(rule => rule.function),
+		input.settings,
+		input.workflowStatusIdentityIndex ?? input.valueResolver?.workflowStatusIdentityIndex,
+	);
 	for (const rule of rules) {
 		const cell = evaluateTableSummaryCell({
 			rows: input.rows,
@@ -59,6 +79,7 @@ export function evaluateTableSummaries(input: TableSummaryEvaluationInput): Map<
 			allTasks: input.allTasks,
 			settings: input.settings,
 			valueResolver: input.valueResolver,
+			workflowStatusIdentityIndex,
 		});
 		if (cell) result.set(getTableSummaryCellKey(rule.key), cell);
 	}
@@ -71,15 +92,22 @@ export function evaluateTableSummaryCell(input: {
 	allTasks: readonly IndexedTask[];
 	settings: TableSummarySettings;
 	valueResolver?: TableSummaryValueResolver;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 }): TableSummaryCell | null {
 	const key = normalizeTableTaskFieldKey(input.rule.key, input.settings);
 	if (!key || !getTableSummaryFunctionsForField(key, input.settings).includes(input.rule.function)) return null;
+	const workflowStatusIdentityIndex = resolveTableSummaryIdentityIndex(
+		[input.rule.function],
+		input.settings,
+		input.workflowStatusIdentityIndex ?? input.valueResolver?.workflowStatusIdentityIndex,
+	);
 	const values = input.rows.map(row => (input.valueResolver?.getRawValue(row, key) ?? getTableTaskRawValue(row, key)).trim());
 	const context: SummaryCalculationContext = {
 		rows: input.rows,
 		allTasks: input.allTasks,
 		key,
 		settings: input.settings,
+		workflowStatusIdentityIndex,
 	};
 	const value = calculateSummaryValue(values, input.rule.function, context);
 	const titleValue = calculateSummaryTitleValue(values, input.rule.function, context) || value || '--';
@@ -114,6 +142,11 @@ export function createTableSummaryPickerValueCache(input: {
 }): TableSummaryPickerValueCache {
 	const cells = new Map<TableSummaryFunction, TableSummaryCell | null>();
 	const pending = [...input.functions];
+	const workflowStatusIdentityIndex = resolveTableSummaryIdentityIndex(
+		input.functions,
+		input.settings,
+		input.valueResolver?.workflowStatusIdentityIndex,
+	);
 	return {
 		get: summaryFunction => (cells.has(summaryFunction) ? cells.get(summaryFunction) : undefined),
 		hasPending: () => pending.length > 0,
@@ -128,6 +161,7 @@ export function createTableSummaryPickerValueCache(input: {
 					rule: { key: input.fieldKey, function: summaryFunction },
 					allTasks: input.allTasks,
 					settings: input.settings,
+					workflowStatusIdentityIndex,
 					...(input.valueResolver ? { valueResolver: input.valueResolver } : {}),
 				}));
 				completed.push(summaryFunction);
@@ -226,6 +260,7 @@ interface SummaryCalculationContext {
 	allTasks: readonly IndexedTask[];
 	key: string;
 	settings: TableSummarySettings;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 }
 
 function calculateSummaryValue(
@@ -286,17 +321,17 @@ function calculateSummaryValue(
 			return dates.length > 0 ? formatDateSummary(Math.max(...dates.map(date => date.time)), dates) : '';
 		}
 		case 'OpenCount':
-			return formatInteger(getTaskStateCounts(context.rows, context.settings).open);
+			return formatInteger(getTaskStateCounts(context.rows, context.settings, context.workflowStatusIdentityIndex).open);
 		case 'FinishedCount':
-			return formatInteger(getTaskStateCounts(context.rows, context.settings).finished);
+			return formatInteger(getTaskStateCounts(context.rows, context.settings, context.workflowStatusIdentityIndex).finished);
 		case 'CancelledCount':
-			return formatInteger(getTaskStateCounts(context.rows, context.settings).cancelled);
+			return formatInteger(getTaskStateCounts(context.rows, context.settings, context.workflowStatusIdentityIndex).cancelled);
 		case 'TerminalCount': {
-			const counts = getTaskStateCounts(context.rows, context.settings);
+			const counts = getTaskStateCounts(context.rows, context.settings, context.workflowStatusIdentityIndex);
 			return formatInteger(counts.finished + counts.cancelled);
 		}
 		case 'CompletionRate':
-			return formatCompletionRate(getTaskStateCounts(context.rows, context.settings));
+			return formatCompletionRate(getTaskStateCounts(context.rows, context.settings, context.workflowStatusIdentityIndex));
 		case 'TopValues':
 			return formatTopValues(values, context);
 		case 'ListItemCount':
@@ -374,21 +409,29 @@ interface TaskStateCounts {
 	cancelled: number;
 }
 
-function getTaskStateCounts(rows: readonly IndexedTask[], settings: TableSummarySettings): TaskStateCounts {
+function getTaskStateCounts(
+	rows: readonly IndexedTask[],
+	settings: TableSummarySettings,
+	workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(settings.pipelines),
+): TaskStateCounts {
 	const counts: TaskStateCounts = {
 		open: 0,
 		finished: 0,
 		cancelled: 0,
 	};
 	for (const row of rows) {
-		const state = resolveTaskSummaryState(row, settings);
+		const state = resolveTaskSummaryState(row, settings, workflowStatusIdentityIndex);
 		counts[state] += 1;
 	}
 	return counts;
 }
 
-function resolveTaskSummaryState(row: IndexedTask, settings: TableSummarySettings): keyof TaskStateCounts {
-	const workflow = resolveWorkflowStatus(settings.pipelines, row.fieldValues['status']);
+function resolveTaskSummaryState(
+	row: IndexedTask,
+	settings: TableSummarySettings,
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
+): keyof TaskStateCounts {
+	const workflow = resolveWorkflowStatus(settings.pipelines, row.fieldValues['status'], workflowStatusIdentityIndex);
 	if (workflow?.definition.isFinished === true) return 'finished';
 	if (workflow?.definition.isCancelled === true) return 'cancelled';
 	if (workflow) return 'open';

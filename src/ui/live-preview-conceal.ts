@@ -12,7 +12,11 @@ import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import { parseTaskLine } from '../core/parser';
 import { IndexedTask, ParsedTask } from '../types/fields';
 import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
-import { Pipeline, parseStatusValue, resolveWorkflowStatus } from '../types/pipeline';
+import { findStatusDef, Pipeline, resolveWorkflowStatus } from '../types/pipeline';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from '../core/workflow-status-identity';
 import { PriorityDefinition } from '../types/priority';
 import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
@@ -160,9 +164,15 @@ class TaskIconWidget extends WidgetType {
 		private readonly task: ParsedTask,
 		private readonly indexedTask: IndexedTask | undefined,
 		private readonly callbacks: LivePreviewCallbacks,
+		private readonly workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 	) {
 		super();
-		this.renderSignature = buildTaskIconRenderSignature(task, indexedTask, callbacks);
+		this.renderSignature = buildTaskIconRenderSignature(
+			task,
+			indexedTask,
+			callbacks,
+			workflowStatusIdentityIndex,
+		);
 	}
 
 	toDOM(view: EditorView): HTMLElement {
@@ -172,7 +182,11 @@ class TaskIconWidget extends WidgetType {
 		button.setAttribute('tabindex', '0');
 
 		const fieldValues = getFieldValues(this.task, this.indexedTask);
-		const iconColor = resolveTaskStatusIconColor(fieldValues, this.callbacks.getSettings());
+		const iconColor = resolveTaskStatusIconColor(
+			fieldValues,
+			this.callbacks.getSettings(),
+			this.workflowStatusIdentityIndex,
+		);
 		if (iconColor) {
 			button.style.setProperty('--operon-live-icon-color', iconColor);
 		} else {
@@ -180,7 +194,12 @@ class TaskIconWidget extends WidgetType {
 		}
 
 		const checkbox = this.indexedTask?.checkbox ?? this.task.checkbox;
-		setIcon(button, resolveTaskDisplayIcon(this.callbacks.getSettings(), fieldValues, checkbox));
+		setIcon(button, resolveTaskDisplayIcon(
+			this.callbacks.getSettings(),
+			fieldValues,
+			checkbox,
+			this.workflowStatusIdentityIndex,
+		));
 
 		button.addEventListener('click', (event) => {
 			event.preventDefault();
@@ -240,6 +259,8 @@ class MetadataTailWidget extends WidgetType {
 		private readonly task: ParsedTask,
 		private readonly indexedTask: IndexedTask | undefined,
 		private readonly callbacks: LivePreviewCallbacks,
+		private readonly pipelines: Pipeline[],
+		private readonly workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		private readonly revealSource: () => void,
 	) {
 		super();
@@ -252,6 +273,7 @@ class MetadataTailWidget extends WidgetType {
 			callbacks,
 			this.pinnedSnapshot,
 			this.trackingSnapshot,
+			workflowStatusIdentityIndex,
 		);
 	}
 
@@ -302,7 +324,12 @@ class MetadataTailWidget extends WidgetType {
 			'--operon-live-hover-border': taskColor,
 			'--operon-task-chip-hover-accent': taskColor,
 		});
-		const terminalVisualState = resolveTerminalVisualState(this.task, fieldValues, this.callbacks.getPipelines());
+		const terminalVisualState = resolveTerminalVisualState(
+			this.task,
+			fieldValues,
+			this.pipelines,
+			this.workflowStatusIdentityIndex,
+		);
 		if (terminalVisualState === 'done') {
 			tailWrap.classList.add('is-done');
 		} else if (terminalVisualState === 'cancelled') {
@@ -327,11 +354,22 @@ class MetadataTailWidget extends WidgetType {
 			tasks,
 			undefined,
 			locationResolver,
-			{ repeatSkipDateResolver: this.callbacks.getRepeatSkipDates },
+			{
+				repeatSkipDateResolver: this.callbacks.getRepeatSkipDates,
+				workflowStatusIdentityIndex: this.workflowStatusIdentityIndex,
+			},
 		);
 		for (const entry of entries) {
 			const chip = createInlineTaskCompactChipElement(entry, 'operon-task-chip', { owner: row });
-			applyLivePreviewChipVisualStyles(chip, entry, fieldValues, taskColor, this.callbacks);
+			applyLivePreviewChipVisualStyles(
+				chip,
+				entry,
+				fieldValues,
+				taskColor,
+				this.callbacks,
+				this.pipelines,
+				this.workflowStatusIdentityIndex,
+			);
 			bindLivePreviewChipHoverState(chip);
 			if (entry.iconOnly) {
 				bindAdaptiveIconOnlyExpansion(chip, entry.label, taskColor ?? null);
@@ -403,6 +441,8 @@ class MetadataTailWidget extends WidgetType {
 			this.indexedTask?.tags ?? this.task.tags,
 			this.callbacks.getSettings(),
 			tasks,
+			undefined,
+			{ workflowStatusIdentityIndex: this.workflowStatusIdentityIndex },
 		);
 		if (hiddenCount > 0 && operonId) {
 			const moreButton = createOwnerElement(row, 'button');
@@ -622,6 +662,8 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 					this.atomicRanges = Decoration.none;
 					return;
 				}
+				const pipelines = callbacks.getPipelines();
+				const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 
 				let inFencedCodeBlock = false;
 				for (let lineNumber = 1; lineNumber <= view.state.doc.lines; lineNumber++) {
@@ -641,7 +683,8 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 					const terminalVisualState = resolveTerminalVisualState(
 						parsed,
 						fieldValues,
-						callbacks.getPipelines(),
+						pipelines,
+						workflowStatusIdentityIndex,
 					);
 					const isExplicitReveal = !!parsed.operonId && this.explicitRevealTaskId === parsed.operonId;
 					const selectionHead = view.state.selection.main.head - line.from;
@@ -674,7 +717,12 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 							line.from + parsed.descriptionRange.from,
 							line.from + parsed.descriptionRange.from,
 							Decoration.widget({
-								widget: new TaskIconWidget(parsed, indexed, callbacks),
+								widget: new TaskIconWidget(
+									parsed,
+									indexed,
+									callbacks,
+									workflowStatusIdentityIndex,
+								),
 								side: -1,
 							}),
 						);
@@ -685,6 +733,8 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 							parsed,
 							indexed,
 							callbacks,
+							pipelines,
+							workflowStatusIdentityIndex,
 							() => {
 								this.explicitRevealTaskId = parsed.operonId ?? null;
 								view.dispatch({ effects: operonIndexRefreshEffect.of() });
@@ -757,14 +807,24 @@ export function buildTaskIconRenderSignature(
 	task: ParsedTask,
 	indexedTask: IndexedTask | undefined,
 	callbacks: LivePreviewCallbacks,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string {
 	const fieldValues = getFieldValues(task, indexedTask);
 	const checkbox = indexedTask?.checkbox ?? task.checkbox;
 	return stableStringify({
 		checkbox,
-		iconName: resolveTaskDisplayIcon(callbacks.getSettings(), fieldValues, checkbox),
+		iconName: resolveTaskDisplayIcon(
+			callbacks.getSettings(),
+			fieldValues,
+			checkbox,
+			workflowStatusIdentityIndex,
+		),
 		status: fieldValues['status'] ?? '',
-		iconColor: resolveTaskStatusIconColor(fieldValues, callbacks.getSettings()),
+		iconColor: resolveTaskStatusIconColor(
+			fieldValues,
+			callbacks.getSettings(),
+			workflowStatusIdentityIndex,
+		),
 	});
 }
 
@@ -774,6 +834,7 @@ export function buildMetadataTailRenderSignature(
 	callbacks: LivePreviewCallbacks,
 	pinnedSnapshot: boolean,
 	trackingSnapshot: boolean,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string {
 	const fieldValues = getFieldValues(task, indexedTask);
 	const tags = indexedTask?.tags ?? task.tags;
@@ -786,6 +847,7 @@ export function buildMetadataTailRenderSignature(
 	const locationResolver = locationIndex?.resolve;
 	const entries = buildInlineTaskCompactChipEntries(fieldValues, tags, settings, tasks, undefined, locationResolver, {
 		repeatSkipDateResolver: callbacks.getRepeatSkipDates,
+		workflowStatusIdentityIndex,
 	})
 		.map(entry => [
 			entry.key,
@@ -816,7 +878,14 @@ export function buildMetadataTailRenderSignature(
 			label: projectSerialDisplay.label,
 			number: projectSerialDisplay.number,
 		} : null,
-		hiddenCount: getInlineTaskCompactHiddenCount(fieldValues, tags, settings, tasks),
+		hiddenCount: getInlineTaskCompactHiddenCount(
+			fieldValues,
+			tags,
+			settings,
+			tasks,
+			undefined,
+			{ workflowStatusIdentityIndex },
+		),
 		locationIndexSignature: locationIndex?.getSignature() ?? '',
 		pinnedSnapshot,
 		trackingSnapshot,
@@ -838,14 +907,13 @@ function stableStringify(value: unknown): string {
 	return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(',')}}`;
 }
 
-function lookupStatusColor(statusValue: string | undefined, pipelines: Pipeline[]): string {
+function lookupStatusColor(
+	statusValue: string | undefined,
+	pipelines: Pipeline[],
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
+): string {
 	if (!statusValue) return '#6b7280';
-	const parsed = parseStatusValue(statusValue);
-	if (!parsed) return '#6b7280';
-	const pipeline = pipelines.find(candidate => candidate.name === parsed.pipeline);
-	if (!pipeline) return '#6b7280';
-	const status = pipeline.statuses.find(candidate => candidate.label === parsed.status);
-	return status?.color ?? '#6b7280';
+	return findStatusDef(pipelines, statusValue, workflowStatusIdentityIndex)?.color ?? '#6b7280';
 }
 
 function normalizeTaskColor(taskColor: string | undefined): string | null {
@@ -859,16 +927,20 @@ function resolveTerminalVisualState(
 	task: ParsedTask,
 	fieldValues: Record<string, string>,
 	pipelines: Pipeline[],
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 ): 'done' | 'cancelled' | null {
+	const workflow = resolveWorkflowStatus(pipelines, fieldValues['status'], workflowStatusIdentityIndex);
+	if (workflow) {
+		if (workflow.checkbox === 'done') return 'done';
+		if (workflow.checkbox === 'cancelled') return 'cancelled';
+		return null;
+	}
 	if (task.checkbox === 'cancelled' || !!fieldValues['dateCancelled']?.trim()) {
 		return 'cancelled';
 	}
 	if (task.checkbox === 'done' || !!fieldValues['dateCompleted']?.trim()) {
 		return 'done';
 	}
-	const workflow = resolveWorkflowStatus(pipelines, fieldValues['status']);
-	if (workflow?.definition.isFinished === true) return 'done';
-	if (workflow?.definition.isCancelled === true) return 'cancelled';
 	return null;
 }
 
@@ -878,6 +950,8 @@ function applyLivePreviewChipVisualStyles(
 	fieldValues: Record<string, string>,
 	taskColor: string | null,
 	callbacks: LivePreviewCallbacks,
+	pipelines: Pipeline[],
+	workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 ): void {
 	const cssProps: Record<string, string> = {};
 	const hoverColor = taskColor ?? entry.taskColor;
@@ -890,7 +964,11 @@ function applyLivePreviewChipVisualStyles(
 		if (def) cssProps['--operon-inline-chip-icon-color'] = def.color;
 	}
 	if (entry.colorRole === 'status') {
-		cssProps['--operon-inline-chip-icon-color'] = lookupStatusColor(fieldValues['status'], callbacks.getPipelines());
+		cssProps['--operon-inline-chip-icon-color'] = lookupStatusColor(
+			fieldValues['status'],
+			pipelines,
+			workflowStatusIdentityIndex,
+		);
 	}
 	if (entry.key === 'location') {
 		const locationIconColor = entry.locationMarkerColor ?? taskColor;

@@ -8,12 +8,17 @@ import { OperonIndexer } from '../indexer/indexer';
 import { ParsedTask } from '../types/fields';
 import { OperonSettings } from '../types/settings';
 import {
+	TASK_EDITOR_CLOSE_REQUEST_EVENT,
 	TASK_EDITOR_ESCAPE_INTENT_EVENT,
+	TaskEditorCloseRequestDetail,
 	TaskEditorContent,
 	OnSaveCallback,
 	TaskEditorContentOptions,
+	TaskEditorSaveFailureReason,
 } from './task-editor-content';
 import { TimeTracker } from '../systems/time-tracker';
+import { t } from '../core/i18n';
+import { ConfirmActionModal } from './confirm-action-modal';
 import {
 	TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT,
 	TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT,
@@ -27,7 +32,10 @@ export class TaskEditorModal extends Modal {
 	private mobilePickerOpenDepth = 0;
 	private escapeScopeHandler: KeymapEventHandler | null = null;
 	private closeSaveBeforeCloseInFlight: Promise<boolean> | null = null;
-	private skipCloseSaveOnClose = false;
+	private allowDirectClose = false;
+	private discardConfirmOpen = false;
+	private closed = false;
+	private closeGeneration = 0;
 	private readonly resizeHandler = () => this.updateMobileViewportHeight();
 	private readonly visualViewportHandler = () => this.updateMobileViewportHeight();
 	private readonly mobilePickerOpenHandler = () => {
@@ -37,7 +45,14 @@ export class TaskEditorModal extends Modal {
 		this.mobilePickerOpenDepth = Math.max(0, this.mobilePickerOpenDepth - 1);
 		window.setTimeout(() => this.updateMobileViewportHeight(), 80);
 	};
-	private readonly handleEditorCloseRequest = () => this.close();
+	private readonly handleEditorCloseRequest = (event: Event) => {
+		const detail = (event as CustomEvent<TaskEditorCloseRequestDetail>).detail;
+		if (detail?.mode === 'force-after-delete') {
+			this.forceClose();
+			return;
+		}
+		void this.requestClose();
+	};
 	private readonly handleEditorEscapeIntent = (event: Event) => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -88,10 +103,13 @@ export class TaskEditorModal extends Modal {
 		window.addEventListener('keydown', this.handleWindowKeydownCapture, true);
 		this.contentEl.addEventListener(TASK_EDITOR_ESCAPE_INTENT_EVENT, this.handleEditorEscapeIntent);
 		// Close modal when inner content requests it.
-		this.contentEl.addEventListener('operon-editor-close', this.handleEditorCloseRequest, { once: true });
+		this.contentEl.addEventListener(TASK_EDITOR_CLOSE_REQUEST_EVENT, this.handleEditorCloseRequest);
 	}
 
 	onClose(): void {
+		if (this.closed) return;
+		this.closed = true;
+		this.closeGeneration += 1;
 		if (this.escapeScopeHandler) {
 			this.scope.unregister(this.escapeScopeHandler);
 			this.escapeScopeHandler = null;
@@ -99,29 +117,19 @@ export class TaskEditorModal extends Modal {
 		window.removeEventListener('resize', this.resizeHandler);
 		window.removeEventListener('keydown', this.handleWindowKeydownCapture, true);
 		this.contentEl.removeEventListener(TASK_EDITOR_ESCAPE_INTENT_EVENT, this.handleEditorEscapeIntent);
-		this.contentEl.removeEventListener('operon-editor-close', this.handleEditorCloseRequest);
+		this.contentEl.removeEventListener(TASK_EDITOR_CLOSE_REQUEST_EVENT, this.handleEditorCloseRequest);
 		this.unregisterMobileViewportListeners();
 		this.unregisterMobilePickerListeners();
 		this.mobilePickerOpenDepth = 0;
 		this.containerEl.style.removeProperty('--operon-task-editor-mobile-viewport-height');
-		const closeSave = this.skipCloseSaveOnClose
-			? Promise.resolve(true)
-			: this.content.beginCloseSave();
-		this.skipCloseSaveOnClose = false;
 		this.content.destroy({ skipCloseSave: true });
-		void closeSave
-			.catch(error => {
-				console.error('Operon: task editor close-save failed', error);
-			})
-			.finally(() => {
-				try {
-					void Promise.resolve(this.onCloseSaveSettled?.()).catch(error => {
-						console.warn('Operon: task editor close refresh failed', error);
-					});
-				} catch (error) {
-					console.warn('Operon: task editor close refresh failed', error);
-				}
+		try {
+			void Promise.resolve(this.onCloseSaveSettled?.()).catch(error => {
+				console.warn('Operon: task editor close refresh failed', error);
 			});
+		} catch (error) {
+			console.warn('Operon: task editor close refresh failed', error);
+		}
 	}
 
 	private isEmbeddedFileBodyEditorTarget(target: Node | null): boolean {
@@ -140,22 +148,44 @@ export class TaskEditorModal extends Modal {
 	}
 
 	private handleEscapeIntent(options: { fromEmbeddedFileBody?: boolean } = {}): Promise<boolean> {
-		if (this.closeSaveBeforeCloseInFlight) return this.closeSaveBeforeCloseInFlight;
 		if (!options.fromEmbeddedFileBody && this.shouldDeferToEmbeddedFileBodyEditor()) {
 			return Promise.resolve(false);
 		}
 		if (requestFloatingPanelCloseForRoot(this.containerEl, 'escape')) return Promise.resolve(false);
+		if (this.closeSaveBeforeCloseInFlight) return this.closeSaveBeforeCloseInFlight;
 
+		return this.requestClose();
+	}
+
+	close(): void {
+		if (this.closed) return;
+		if (this.allowDirectClose) {
+			super.close();
+			return;
+		}
+		void this.requestClose();
+	}
+
+	private requestClose(): Promise<boolean> {
+		if (this.closed) return Promise.resolve(false);
+		if (this.closeSaveBeforeCloseInFlight) return this.closeSaveBeforeCloseInFlight;
+		if (this.discardConfirmOpen) return Promise.resolve(false);
+
+		const generation = this.closeGeneration;
+		const previousFocus = this.containerEl.ownerDocument.activeElement;
 		const closeSave = this.content.prepareCloseSave()
-			.then(saved => {
-				if (!saved) return false;
-				if (this.content.isEdited) return false;
-				this.skipCloseSaveOnClose = true;
-				super.close();
-				return true;
+			.then(async outcome => {
+				if (this.closed || generation !== this.closeGeneration) return false;
+				if (outcome.ok && outcome.clean && !this.content.isEdited) {
+					this.forceClose();
+					return true;
+				}
+				if (!outcome.ok && outcome.reason === 'edit-raced') return false;
+				const reason = outcome.ok ? 'edit-raced' : outcome.reason;
+				return await this.promptDiscardDraft(reason, previousFocus);
 			})
 			.catch(error => {
-				console.error('Operon: task editor Escape close-save failed', error);
+				console.error('Operon: task editor close-save failed', error);
 				return false;
 			})
 			.finally(() => {
@@ -165,6 +195,50 @@ export class TaskEditorModal extends Modal {
 			});
 		this.closeSaveBeforeCloseInFlight = closeSave;
 		return closeSave;
+	}
+
+	private async promptDiscardDraft(
+		reason: TaskEditorSaveFailureReason,
+		previousFocus: Element | null,
+	): Promise<boolean> {
+		if (this.discardConfirmOpen) return false;
+		this.discardConfirmOpen = true;
+		const confirmed = await new Promise<boolean>(resolve => {
+			this.openDiscardConfirmation(resolve);
+		});
+		this.discardConfirmOpen = false;
+		if (this.closed) return false;
+		if (confirmed) {
+			this.forceClose();
+			return true;
+		}
+		if (reason === 'description-required') {
+			this.content.focusDescription();
+		} else {
+			const ownerWindow = previousFocus?.ownerDocument.defaultView;
+			if (previousFocus?.isConnected && ownerWindow
+				&& previousFocus.instanceOf(ownerWindow.HTMLElement)) {
+				previousFocus.focus();
+			}
+		}
+		return false;
+	}
+
+	private openDiscardConfirmation(onResult: (confirmed: boolean) => void): void {
+		new ConfirmActionModal(this.app, {
+			title: t('modals', 'taskCreatorDiscardTitle'),
+			message: t('modals', 'taskCreatorDiscardMessage'),
+			confirmText: t('buttons', 'discard'),
+			cancelText: t('buttons', 'cancel'),
+			danger: true,
+		}, onResult).open();
+	}
+
+	private forceClose(): void {
+		if (this.closed) return;
+		this.allowDirectClose = true;
+		this.closeGeneration += 1;
+		super.close();
 	}
 
 	private registerMobileViewportListeners(): void {

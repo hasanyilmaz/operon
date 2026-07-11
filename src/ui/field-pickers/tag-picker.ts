@@ -1,6 +1,6 @@
 import { App } from 'obsidian';
 import { t } from '../../core/i18n';
-import { createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
+import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 
 const PAGE_SIZE = 20;
@@ -124,6 +124,14 @@ export function showTagPicker(anchor: HTMLElement | DOMRect, options: TagPickerO
 		if (keepActiveVisible) scrollChildIntoView(list, activeItem);
 	};
 
+	const setActiveIndex = (nextIndex: number): void => {
+		if (activeIndex === nextIndex) return;
+		const previousItem = list.children[activeIndex] as HTMLElement | undefined;
+		activeIndex = nextIndex;
+		previousItem?.classList.remove('is-active');
+		(list.children[activeIndex] as HTMLElement | undefined)?.classList.add('is-active');
+	};
+
 	const render = (keepActiveVisible = true) => {
 		ensureLoadedForIndex(activeIndex);
 		list.replaceChildren();
@@ -139,27 +147,9 @@ export function showTagPicker(anchor: HTMLElement | DOMRect, options: TagPickerO
 			label.textContent = candidate.displayValue;
 
 			item.addEventListener('mousemove', () => {
-				if (activeIndex !== index) {
-					activeIndex = index;
-					render();
-				}
+				setActiveIndex(index);
 			});
-			item.addEventListener('pointerdown', event => {
-				event.preventDefault();
-				selectValue(candidate.rawValue);
-			});
-			item.addEventListener('touchend', event => {
-				event.preventDefault();
-				selectValue(candidate.rawValue);
-			}, { passive: false });
-			item.addEventListener('mousedown', event => {
-				event.preventDefault();
-				selectValue(candidate.rawValue);
-			});
-			item.addEventListener('click', event => {
-				event.preventDefault();
-				selectValue(candidate.rawValue);
-			});
+			bindPickerListItemActivation(item, () => selectValue(candidate.rawValue));
 
 			list.appendChild(item);
 		}

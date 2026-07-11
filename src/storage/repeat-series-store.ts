@@ -292,6 +292,7 @@ export class RepeatSeriesStore {
 	};
 	private mutationQueue: Promise<void> = Promise.resolve();
 	private readonly filePath: string;
+	private revision = 0;
 
 	constructor(app: App, writeQueue: WriteQueue, filePath?: string) {
 		this.app = app;
@@ -300,6 +301,7 @@ export class RepeatSeriesStore {
 	}
 
 	async load(): Promise<void> {
+		this.revision += 1;
 		const adapter = this.app.vault.adapter;
 		const loadPath = await this.resolveLoadPath();
 		if (!loadPath) {
@@ -345,6 +347,15 @@ export class RepeatSeriesStore {
 
 	getAllEntries(): RepeatSeriesEntry[] {
 		return Object.values(this.data.series).map(entry => this.cloneEntry(entry));
+	}
+
+	/**
+	 * Monotonic content revision: bumped on load and on every persisted
+	 * mutation (all writes funnel through writeData). Lets render caches
+	 * detect series changes cheaply without deep-comparing cloned entries.
+	 */
+	getRevision(): number {
+		return this.revision;
 	}
 
 	getSkipDates(seriesId: string | null | undefined): string[] {
@@ -653,6 +664,7 @@ export class RepeatSeriesStore {
 	}
 
 	private async writeData(): Promise<void> {
+		this.revision += 1;
 		const snapshot = {
 			version: CURRENT_REPEAT_SERIES_VERSION,
 			series: this.data.series,

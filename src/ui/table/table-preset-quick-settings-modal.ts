@@ -8,7 +8,12 @@ import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { showSearchableFieldPicker } from '../field-pickers/searchable-field-picker';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { renderPresetFilterActions } from '../preset-filter-actions';
-import { buildTableTaskFieldCatalog, getTableTaskFieldLabel } from './table-field-catalog';
+import {
+	buildTableGroupSortFieldCatalog,
+	buildTableTaskFieldCatalog,
+	getTableTaskFieldLabel,
+	TABLE_WORKFLOW_PIPELINE_FIELD_KEY,
+} from './table-field-catalog';
 import { buildTableFieldPickerOptions, getTableFieldPickerLabel } from './table-field-picker-options';
 import {
 	filterCompatibleTableSummaryRules,
@@ -162,7 +167,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private renderGroupingSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionGrouping'));
-		const catalog = buildTableTaskFieldCatalog(settings);
+		const catalog = buildTableGroupSortFieldCatalog(settings);
 		const supportedKeys = new Set(catalog.map(field => field.key));
 		const normalizedPreset = filterTablePresetGroupByBySupportedKeys(preset, supportedKeys);
 		const rows = card.createDiv('operon-table-preset-grouping-list');
@@ -239,8 +244,8 @@ export class TablePresetQuickSettingsModal extends Modal {
 			},
 		});
 		setAccessibleLabelWithoutTooltip(orderSelect, t('table', 'groupOrder'));
-		orderSelect.createEl('option', { value: 'asc', text: getTableSortDirectionLabel('asc') });
-		orderSelect.createEl('option', { value: 'desc', text: getTableSortDirectionLabel('desc') });
+		orderSelect.createEl('option', { value: 'asc', text: getTableSortDirectionLabel('asc', options.fieldValue) });
+		orderSelect.createEl('option', { value: 'desc', text: getTableSortDirectionLabel('desc', options.fieldValue) });
 		orderSelect.value = options.orderValue;
 		orderSelect.disabled = options.disabled || !options.fieldValue;
 		orderSelect.addEventListener('change', () => {
@@ -297,7 +302,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private renderSortSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionSort'));
-		const catalog = buildTableTaskFieldCatalog(settings);
+		const catalog = buildTableGroupSortFieldCatalog(settings);
 		const supportedKeys = new Set(catalog.map(field => field.key));
 		const normalizedPreset = filterTablePresetSortRulesBySupportedKeys(preset, supportedKeys);
 		const sortRules = normalizedPreset.sortRules;
@@ -329,15 +334,20 @@ export class TablePresetQuickSettingsModal extends Modal {
 				},
 			});
 
+			const directionLabel = getTableSortDirectionLabel(rule.direction, rule.key);
 			const directionButton = row.createEl('button', {
 				cls: 'operon-table-preset-sort-toggle',
-				text: getTableSortDirectionLabel(rule.direction),
+				text: directionLabel,
 				attr: {
 					type: 'button',
 					'data-operon-table-preset-sort-focus': `sort-direction-${index}`,
 				},
 			});
-			setAccessibleLabelWithoutTooltip(directionButton, t('table', 'sortBy'));
+			const fieldLabel = getTableFieldPickerLabel(catalog, rule.key, rule.key);
+			setAccessibleLabelWithoutTooltip(
+				directionButton,
+				`${t('table', 'sortBy')}: ${fieldLabel}, ${directionLabel}`,
+			);
 			directionButton.addEventListener('click', event => {
 				event.preventDefault();
 				this.updateSortRules(preset, sortRules.map((entry, entryIndex) => entryIndex === index
@@ -717,7 +727,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private updateSortRules(preset: TablePreset, sortRules: readonly TableSortRule[], focusKey?: string): void {
 		if (!this.draftPreset) return;
-		const supportedKeys = new Set(buildTableTaskFieldCatalog(this.options.getSettings()).map(field => field.key));
+		const supportedKeys = new Set(buildTableGroupSortFieldCatalog(this.options.getSettings()).map(field => field.key));
 		this.draftPreset.sortRules = replaceTablePresetSortRules(preset, sortRules, supportedKeys).sortRules;
 		this.markDirty('sortRules');
 		this.renderPreservingScroll();
@@ -823,13 +833,14 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private sanitizePresetForSave(preset: TablePreset): TablePreset {
 		const settings = this.options.getSettings();
-		const supportedKeys = new Set(buildTableTaskFieldCatalog(settings).map(field => field.key));
+		const columnSupportedKeys = new Set(buildTableTaskFieldCatalog(settings).map(field => field.key));
+		const groupSortSupportedKeys = new Set(buildTableGroupSortFieldCatalog(settings).map(field => field.key));
 		const sanitized = filterTablePresetSortRulesBySupportedKeys(
 			filterTablePresetGroupByBySupportedKeys(
-				filterTablePresetColumnsBySupportedKeys(normalizeTablePresetForColumnUi(cloneTablePreset(preset)), supportedKeys),
-				supportedKeys,
+				filterTablePresetColumnsBySupportedKeys(normalizeTablePresetForColumnUi(cloneTablePreset(preset)), columnSupportedKeys),
+				groupSortSupportedKeys,
 			),
-			supportedKeys,
+			groupSortSupportedKeys,
 		);
 		sanitized.summaries = filterCompatibleTableSummaryRules(sanitized.summaries, settings);
 		return sanitized;
@@ -849,6 +860,11 @@ function getTableSummaryFunctionLabel(summaryFunction: TableSummaryFunction): st
 	return t('table', `summary${summaryFunction}`);
 }
 
-function getTableSortDirectionLabel(direction: TableSortDirection): string {
+function getTableSortDirectionLabel(direction: TableSortDirection, fieldKey: string | null): string {
+	if (fieldKey === 'status' || fieldKey === TABLE_WORKFLOW_PIPELINE_FIELD_KEY) {
+		return direction === 'desc'
+			? t('table', 'sortDirectionWorkflowReverse')
+			: t('table', 'sortDirectionWorkflow');
+	}
 	return direction === 'desc' ? t('table', 'sortDirectionZA') : t('table', 'sortDirectionAZ');
 }

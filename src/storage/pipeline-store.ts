@@ -86,6 +86,9 @@ export class PipelineStore {
 	}
 
 	async replaceAll(settings: PipelineStoreSettings, options: RecoveredStoreWriteOptions = {}): Promise<void> {
+		if (settings.pipelines.length === 0) {
+			throw new Error('Operon requires at least one configured pipeline');
+		}
 		const nextSettings = cloneSettings(settings);
 		const nextSerialized = JSON.stringify(nextSettings);
 		const adapter = this.app.vault.adapter;
@@ -98,28 +101,32 @@ export class PipelineStore {
 			this.settings = nextSettings;
 			return;
 		}
+		if (this.packagePersist) {
+			await this.packagePersist(cloneSettings(nextSettings));
+		} else {
+			await this.persistSettings(nextSettings);
+		}
 		this.settings = nextSettings;
 		this.serializedSettings = nextSerialized;
-		if (this.packagePersist) {
-			await this.packagePersist(this.getAll());
-			this.recoveredFromMalformed = false;
-			return;
-		}
-		await this.persist();
+		this.recoveredFromMalformed = false;
 	}
 
 	private async persist(): Promise<void> {
+		await this.persistSettings(this.settings);
+		this.recoveredFromMalformed = false;
+	}
+
+	private async persistSettings(settings: PipelineStoreSettings): Promise<void> {
 		const adapter = this.app.vault.adapter;
 		const filePath = this.getFilePath();
 		const data: PipelineStoreData = {
 			version: PIPELINE_STORE_VERSION,
-			pipelines: clonePipelines(this.settings.pipelines),
-			defaultPipelineName: this.settings.defaultPipelineName,
+			pipelines: clonePipelines(settings.pipelines),
+			defaultPipelineName: settings.defaultPipelineName,
 		};
 		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
 			await writeJsonSafely(adapter, filePath, data);
 		});
-		this.recoveredFromMalformed = false;
 	}
 }
 

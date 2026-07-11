@@ -9,6 +9,13 @@ import {
 	fetchExternalCalendarIcs,
 	parseExternalCalendarIcsEvents,
 } from './external-calendar-ics';
+import {
+	isExternalCalendarCoverageExpanding,
+	resolveExternalCalendarRequestedRange,
+	shouldPersistExternalCalendarCacheUpdate,
+	shouldRunExternalCalendarCoverageCheck,
+	shouldSyncExternalCalendarSource,
+} from './external-calendar-sync-policy';
 
 const SYNC_RANGE_PAST_DAYS = 30;
 const SYNC_RANGE_FUTURE_DAYS = 180;
@@ -22,6 +29,8 @@ export class ExternalCalendarService {
 	private timers = new Map<string, number>();
 	private requestedRangeStart = shiftDateKey(localToday(), -SYNC_RANGE_PAST_DAYS);
 	private requestedRangeEnd = shiftDateKey(localToday(), SYNC_RANGE_FUTURE_DAYS);
+	private lastCoverageCheckKey: string | null = null;
+	private lastCoverageCheckAt = 0;
 	private destroyed = false;
 
 	constructor(
@@ -62,6 +71,12 @@ export class ExternalCalendarService {
 		}
 	}
 
+	/**
+	 * Returns the shared cached event objects without cloning; callers treat
+	 * them as read-only (they are wrapped into fresh CalendarItems downstream
+	 * and replaced wholesale on the next sync). This runs on every calendar
+	 * render, so per-event clones were pure allocation churn.
+	 */
 	getCachedEvents(rangeStart: string, rangeEnd: string): ExternalCalendarCachedEvent[] {
 		if (this.destroyed) return [];
 		this.ensureCoverage(rangeStart, rangeEnd);
@@ -72,7 +87,7 @@ export class ExternalCalendarService {
 			if (!cache) continue;
 			for (const event of cache.events) {
 				if (event.startDate <= rangeEnd && event.endDate >= rangeStart) {
-					events.push({ ...event });
+					events.push(event);
 				}
 			}
 		}
@@ -126,14 +141,25 @@ export class ExternalCalendarService {
 
 	private ensureCoverage(rangeStart: string, rangeEnd: string): void {
 		if (this.destroyed) return;
-		const requestedStart = shiftDateKey(rangeStart, -SYNC_RANGE_PAST_DAYS);
-		const requestedEnd = shiftDateKey(rangeEnd, SYNC_RANGE_FUTURE_DAYS);
-		if (requestedStart < this.requestedRangeStart) {
-			this.requestedRangeStart = requestedStart;
+		const requestedKey = `${rangeStart}|${rangeEnd}`;
+		if (!shouldRunExternalCalendarCoverageCheck({
+			requestedKey,
+			lastCheckedKey: this.lastCoverageCheckKey,
+			lastCheckedAtMs: this.lastCoverageCheckAt,
+			nowMs: Date.now(),
+		})) {
+			return;
 		}
-		if (requestedEnd > this.requestedRangeEnd) {
-			this.requestedRangeEnd = requestedEnd;
-		}
+		this.lastCoverageCheckKey = requestedKey;
+		this.lastCoverageCheckAt = Date.now();
+		const nextRange = resolveExternalCalendarRequestedRange({
+			currentStart: this.requestedRangeStart,
+			currentEnd: this.requestedRangeEnd,
+			neededStart: shiftDateKey(rangeStart, -SYNC_RANGE_PAST_DAYS),
+			neededEnd: shiftDateKey(rangeEnd, SYNC_RANGE_FUTURE_DAYS),
+		});
+		this.requestedRangeStart = nextRange.start;
+		this.requestedRangeEnd = nextRange.end;
 		for (const source of this.sources.values()) {
 			if (!this.isAutoSyncableSource(source)) continue;
 			if (!this.shouldSyncSource(source.id, this.requestedRangeStart, this.requestedRangeEnd)) continue;
@@ -146,14 +172,13 @@ export class ExternalCalendarService {
 		if (this.syncPromises.has(sourceId)) return false;
 		const source = this.sources.get(sourceId);
 		if (!source || !this.isAutoSyncableSource(source)) return false;
-		const cache = this.caches.get(sourceId);
-		if (!cache) return true;
-		if (!cache.coveredRangeStart || !cache.coveredRangeEnd) return true;
-		if (cache.coveredRangeStart > rangeStart || cache.coveredRangeEnd < rangeEnd) return true;
-		if (!cache.syncedAt) return true;
-		const syncedAt = Date.parse(cache.syncedAt);
-		if (!Number.isFinite(syncedAt)) return true;
-		return Date.now() - syncedAt >= source.refreshIntervalHours * 3600000;
+		return shouldSyncExternalCalendarSource({
+			cache: this.caches.get(sourceId) ?? null,
+			refreshIntervalHours: source.refreshIntervalHours,
+			rangeStart,
+			rangeEnd,
+			nowMs: Date.now(),
+		});
 	}
 
 	private scheduleTimer(sourceId: string): void {
@@ -223,24 +248,29 @@ export class ExternalCalendarService {
 		};
 		const attemptAt = localNow();
 		try {
-			const response = await fetchExternalCalendarIcs(source.url, cache);
+			// A 304 keeps the previously parsed events, which only cover the old
+			// range; validators are safe only while the requested range stays
+			// inside the covered range.
+			const canUseCacheValidators = !isExternalCalendarCoverageExpanding(cache, rangeStart, rangeEnd);
+			const response = await fetchExternalCalendarIcs(source.url, canUseCacheValidators ? cache : null);
 			if (response.status === 'notModified') {
+				// The feed body is unchanged, so previously covered coverage is
+				// still valid; keep the union with the requested range.
 				const nextCache: ExternalCalendarSourceCache = {
 					...cache,
 					lastAttemptAt: attemptAt,
 					syncedAt: attemptAt,
 					etag: response.etag ?? cache.etag,
 					lastModified: response.lastModified ?? cache.lastModified,
-					coveredRangeStart: rangeStart,
-					coveredRangeEnd: rangeEnd,
+					coveredRangeStart: cache.coveredRangeStart && cache.coveredRangeStart < rangeStart
+						? cache.coveredRangeStart
+						: rangeStart,
+					coveredRangeEnd: cache.coveredRangeEnd && cache.coveredRangeEnd > rangeEnd
+						? cache.coveredRangeEnd
+						: rangeEnd,
 					lastError: null,
 				};
-				if (this.destroyed) return;
-				const renderedEventsChanged = !areExternalCalendarEventListsEqual(cache.events, nextCache.events);
-				this.caches.set(sourceId, nextCache);
-				await this.cacheStore.upsertSource(nextCache);
-				if (this.destroyed) return;
-				if (renderedEventsChanged) this.onChange();
+				await this.commitSourceCache(sourceId, cache, nextCache);
 				return;
 			}
 			const events = parseExternalCalendarIcsEvents({
@@ -261,12 +291,7 @@ export class ExternalCalendarService {
 				lastError: null,
 				events,
 			};
-			if (this.destroyed) return;
-			const renderedEventsChanged = !areExternalCalendarEventListsEqual(cache.events, nextCache.events);
-			this.caches.set(sourceId, nextCache);
-			await this.cacheStore.upsertSource(nextCache);
-			if (this.destroyed) return;
-			if (renderedEventsChanged) this.onChange();
+			await this.commitSourceCache(sourceId, cache, nextCache);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			const nextCache: ExternalCalendarSourceCache = {
@@ -274,13 +299,26 @@ export class ExternalCalendarService {
 				lastAttemptAt: attemptAt,
 				lastError: message,
 			};
-			if (this.destroyed) return;
-			const renderedEventsChanged = !areExternalCalendarEventListsEqual(cache.events, nextCache.events);
-			this.caches.set(sourceId, nextCache);
+			await this.commitSourceCache(sourceId, cache, nextCache);
+		}
+	}
+
+	private async commitSourceCache(
+		sourceId: string,
+		previousCache: ExternalCalendarSourceCache,
+		nextCache: ExternalCalendarSourceCache,
+	): Promise<void> {
+		if (this.destroyed) return;
+		const renderedEventsChanged = !areExternalCalendarEventListsEqual(previousCache.events, nextCache.events);
+		this.caches.set(sourceId, nextCache);
+		// Bookkeeping-only updates (syncedAt / lastAttemptAt) live in memory;
+		// rewriting the whole multi-source cache file for them cost a disk
+		// write per refresh interval and per failed attempt.
+		if (shouldPersistExternalCalendarCacheUpdate(previousCache, nextCache, renderedEventsChanged)) {
 			await this.cacheStore.upsertSource(nextCache);
 			if (this.destroyed) return;
-			if (renderedEventsChanged) this.onChange();
 		}
+		if (renderedEventsChanged) this.onChange();
 	}
 
 	private isAutoSyncableSource(source: ExternalCalendarSource): boolean {

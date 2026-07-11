@@ -39,6 +39,7 @@ export interface KanbanOptimisticStatusMovePlan {
 interface KanbanDropOptimisticMoveOptions {
 	task?: IndexedTask | null;
 	keyMappings?: readonly KeyMapping[];
+	priorities?: readonly { label: string }[];
 }
 
 export type KanbanOptimisticStatusFallbackReason =
@@ -57,22 +58,24 @@ export function buildKanbanOptimisticStatusMovePlan(options: {
 	preset: KanbanPreset | null | undefined;
 	pipelines: Pipeline[];
 	keyMappings?: readonly KeyMapping[];
+	priorities?: readonly { label: string }[];
 	sourceStatusId: string | null | undefined;
 	sourceLaneKey: string | null | undefined;
 }): KanbanOptimisticStatusMovePlan | { move: null; fallbackReason: KanbanOptimisticStatusFallbackReason } {
 	const { task, pipeline, preset, pipelines, sourceStatusId, sourceLaneKey } = options;
 	const keyMappings = options.keyMappings ?? [];
+	const priorities = options.priorities ?? [];
 	if (!task) return { move: null, fallbackReason: 'task-missing' };
 	if (!preset) return { move: null, fallbackReason: 'preset-missing' };
 	if (!pipeline) return { move: null, fallbackReason: 'pipeline-missing' };
 	if (!sourceStatusId) return { move: null, fallbackReason: 'context-status-mismatch' };
 
-	const currentStatus = resolveTaskStatusDefinition(task, pipeline);
+	const currentStatus = resolveTaskStatusDefinition(task, pipeline, pipelines);
 	if (currentStatus?.id !== sourceStatusId) {
 		return { move: null, fallbackReason: 'context-status-mismatch' };
 	}
 
-	const sourceLaneKeys = uniqueStrings(extractLaneKeys(task, preset.swimlaneBy, keyMappings));
+	const sourceLaneKeys = uniqueStrings(extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities));
 	if (sourceLaneKeys.length === 0) return { move: null, fallbackReason: 'source-lane-missing' };
 	if (sourceLaneKey && !sourceLaneKeys.includes(sourceLaneKey)) {
 		return { move: null, fallbackReason: 'context-lane-mismatch' };
@@ -112,14 +115,16 @@ export function createKanbanDropOptimisticMove(
 	options: KanbanDropOptimisticMoveOptions = {},
 ): KanbanOptimisticMove {
 	const keyMappings = options.keyMappings ?? [];
+	const priorities = options.priorities ?? [];
 	const sourceLaneKeys = options.task
-		? uniqueStrings(extractLaneKeys(options.task, context.swimlaneBy, keyMappings))
+		? uniqueStrings(extractLaneKeys(options.task, context.swimlaneBy, keyMappings, priorities))
 		: [context.sourceLaneKey];
 	const targetLaneKeys = options.task
 		? uniqueStrings(extractLaneKeys(
 			buildOptimisticDroppedTask(options.task, context, context.targetLaneKey, keyMappings),
 			context.swimlaneBy,
 			keyMappings,
+			priorities,
 		))
 		: [context.targetLaneKey];
 	return {
@@ -141,11 +146,13 @@ export function isKanbanOptimisticMoveSatisfied(
 	preset: KanbanPreset,
 	move: KanbanOptimisticMove,
 	keyMappings: readonly KeyMapping[] = [],
+	pipelines: readonly Pipeline[] = pipeline ? [pipeline] : [],
+	priorities: readonly { label: string }[] = [],
 ): boolean {
 	if (!pipeline) return false;
-	const status = resolveTaskStatusDefinition(task, pipeline);
+	const status = resolveTaskStatusDefinition(task, pipeline, pipelines);
 	if (status?.id !== move.targetStatusId) return false;
-	const laneKeys = extractLaneKeys(task, preset.swimlaneBy, keyMappings);
+	const laneKeys = extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities);
 	return move.targetLaneKeys.every(laneKey => laneKeys.includes(laneKey));
 }
 

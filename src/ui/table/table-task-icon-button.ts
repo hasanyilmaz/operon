@@ -8,6 +8,7 @@ import type { IndexedTask } from '../../types/fields';
 import { t } from '../../core/i18n';
 import { bindTaskContextualHoverMenu } from '../contextual-hover-menu';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
+import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 
 interface TableTaskIconButtonOptions {
 	task: IndexedTask;
@@ -17,6 +18,7 @@ interface TableTaskIconButtonOptions {
 	onContextualAction?: ContextualMenuActionHandler;
 	isPinned?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 }
 
 interface TableTaskContextualHoverMenuOptions {
@@ -56,12 +58,21 @@ export function renderTableTaskIconButton(container: HTMLElement, options: Table
 		button.setAttribute('aria-disabled', 'true');
 		button.addClass('is-readonly');
 	}
-	const iconName = resolveTaskDisplayIcon(options.settings, options.task.fieldValues, options.task.checkbox);
+	const iconName = resolveTaskDisplayIcon(
+		options.settings,
+		options.task.fieldValues,
+		options.task.checkbox,
+		options.workflowStatusIdentityIndex,
+	);
 	if (iconName) {
 		setIcon(button, iconName);
 	}
 	setAccessibleLabelWithoutTooltip(button, t('tooltips', 'cycleTaskStatus'));
-	const iconColor = resolveTaskStatusIconColorForTask(options.task, options.settings);
+	const iconColor = resolveTaskStatusIconColorForTask(
+		options.task,
+		options.settings,
+		options.workflowStatusIdentityIndex,
+	);
 	if (iconColor) button.style.color = iconColor;
 	else button.style.removeProperty('color');
 	button.addEventListener('pointerdown', event => {

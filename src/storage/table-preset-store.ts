@@ -20,7 +20,7 @@ const TABLE_PRESET_MANIFEST_VERSION = 2;
 type TablePresetAdapter = Pick<DataAdapter, 'exists' | 'read' | 'write' | 'mkdir' | 'remove' | 'list'>
 	& Partial<Pick<DataAdapter, 'process' | 'rename'>>;
 
-interface TablePresetIndexData {
+export interface TablePresetIndexData {
 	version: number;
 	presetIds: string[];
 	tableDefaultPresetId: string | null;
@@ -28,6 +28,14 @@ interface TablePresetIndexData {
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskTypeIcon: boolean;
+}
+
+export interface TablePresetStoreRuntimeSnapshot {
+	settings: TablePresetStoreSettings;
+	serializedIndex: string;
+	serializedPresetsById: Map<string, string>;
+	pendingMissingIndexedPresetIds: Set<string>;
+	pendingIndexData: TablePresetIndexData | null;
 }
 
 type TablePresetFileData = TablePreset & {
@@ -98,6 +106,24 @@ export class TablePresetStore {
 
 	getAll(): TablePresetStoreSettings {
 		return pickTablePresetStoreSettings(this.settings);
+	}
+
+	captureRuntimeSnapshot(): TablePresetStoreRuntimeSnapshot {
+		return {
+			settings: this.getAll(),
+			serializedIndex: this.serializedIndex,
+			serializedPresetsById: new Map(this.serializedPresetsById),
+			pendingMissingIndexedPresetIds: new Set(this.pendingMissingIndexedPresetIds),
+			pendingIndexData: this.pendingIndexData ? cloneIndexData(this.pendingIndexData) : null,
+		};
+	}
+
+	restoreRuntimeSnapshot(snapshot: TablePresetStoreRuntimeSnapshot): void {
+		this.settings = pickTablePresetStoreSettings(snapshot.settings);
+		this.serializedIndex = snapshot.serializedIndex;
+		this.serializedPresetsById = new Map(snapshot.serializedPresetsById);
+		this.pendingMissingIndexedPresetIds = new Set(snapshot.pendingMissingIndexedPresetIds);
+		this.pendingIndexData = snapshot.pendingIndexData ? cloneIndexData(snapshot.pendingIndexData) : null;
 	}
 
 	loadFromSettings(
@@ -491,6 +517,13 @@ function buildIndexData(settings: TablePresetStoreSettings): TablePresetIndexDat
 		tableShowLineNumbers: settings.tableShowLineNumbers,
 		tableShowTaskIcon: settings.tableShowTaskIcon,
 		tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,
+	};
+}
+
+function cloneIndexData(index: TablePresetIndexData): TablePresetIndexData {
+	return {
+		...index,
+		presetIds: [...index.presetIds],
 	};
 }
 

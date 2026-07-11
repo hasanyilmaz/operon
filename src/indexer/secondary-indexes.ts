@@ -16,6 +16,7 @@
 
 import { IndexedTask } from '../types/fields';
 import { localToday, toLocalDate } from '../core/local-time';
+import { normalizePriorityValue } from '../core/priority-rank';
 
 /** A due-date entry for sorted date range queries */
 interface DueEntry {
@@ -81,10 +82,10 @@ export class SecondaryIndexes {
 				this.addToSetMap(this.byWorkflowStatus, status, id);
 			}
 
-			// By priority
+			// By priority (lenient key: trim + lowercase, see priority-rank)
 			const priority = task.fieldValues['priority'];
 			if (priority) {
-				this.addToSetMap(this.byPriority, priority, id);
+				this.addToSetMap(this.byPriority, normalizePriorityValue(priority), id);
 			}
 		}
 
@@ -215,7 +216,7 @@ export class SecondaryIndexes {
 	 * Get all task IDs for a priority value.
 	 */
 	getTaskIdsByPriority(priorityValue: string): Set<string> {
-		return this.byPriority.get(priorityValue) ?? new Set();
+		return this.byPriority.get(normalizePriorityValue(priorityValue)) ?? new Set();
 	}
 
 	/**
@@ -270,7 +271,7 @@ export class SecondaryIndexes {
 		const status = task.fieldValues['status'];
 		if (status) this.addToSetMap(this.byWorkflowStatus, status, id);
 		const priority = task.fieldValues['priority'];
-		if (priority) this.addToSetMap(this.byPriority, priority, id);
+		if (priority) this.addToSetMap(this.byPriority, normalizePriorityValue(priority), id);
 	}
 
 	private removeTask(task: IndexedTask): void {
@@ -283,7 +284,7 @@ export class SecondaryIndexes {
 		const status = task.fieldValues['status'];
 		if (status) this.removeFromSetMap(this.byWorkflowStatus, status, id);
 		const priority = task.fieldValues['priority'];
-		if (priority) this.removeFromSetMap(this.byPriority, priority, id);
+		if (priority) this.removeFromSetMap(this.byPriority, normalizePriorityValue(priority), id);
 	}
 
 	private removeFromSetMap(map: Map<string, Set<string>>, key: string, value: string): void {

@@ -48,6 +48,8 @@ function createMemoryAdapter() {
 	const files = new Map();
 	const folders = new Set();
 	const writes = [];
+	let renameCount = 0;
+	let failRenameAt = null;
 	const normalize = (value) => value.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\/+|\/+$/g, '');
 	const adapter = {
 		async exists(targetPath) {
@@ -70,8 +72,30 @@ function createMemoryAdapter() {
 		async mkdir(targetPath) {
 			folders.add(normalize(targetPath));
 		},
+		async rename(oldPath, newPath) {
+			renameCount += 1;
+			if (failRenameAt === renameCount) {
+				throw new Error(`Forced rename failure: ${oldPath}`);
+			}
+			const oldNormalized = normalize(oldPath);
+			const newNormalized = normalize(newPath);
+			if (!files.has(oldNormalized)) throw new Error(`Missing file: ${oldNormalized}`);
+			if (files.has(newNormalized)) throw new Error(`Destination exists: ${newNormalized}`);
+			files.set(newNormalized, files.get(oldNormalized));
+			files.delete(oldNormalized);
+			const pendingWriteIndex = writes.lastIndexOf(oldNormalized);
+			if (pendingWriteIndex >= 0) writes[pendingWriteIndex] = newNormalized;
+		},
 	};
-	return { adapter, files, folders, writes };
+	return {
+		adapter,
+		files,
+		folders,
+		writes,
+		failRenameAt: (count) => {
+			failRenameAt = renameCount + count;
+		},
+	};
 }
 
 function createRequestText(docs, manifestOverride = null) {
@@ -88,7 +112,7 @@ function createRequestText(docs, manifestOverride = null) {
 	};
 }
 
-async function runSync(memory, docs, manifestOverride = null, keyMappings = []) {
+async function runSync(memory, docs, manifestOverride = null, keyMappings = [], targetRoot = undefined) {
 	return docsSync.syncOperonDocs({
 		app: {
 			vault: {
@@ -98,6 +122,7 @@ async function runSync(memory, docs, manifestOverride = null, keyMappings = []) 
 		},
 		requestText: createRequestText(docs, manifestOverride),
 		keyMappings,
+		targetRoot,
 		hashText: async (text) => hashText(text),
 		now: () => new Date('2026-06-25T12:30:00.000Z'),
 	});
@@ -222,7 +247,71 @@ await test('second sync skips matching docs', async () => {
 	const result = await runSync(memory, baseDocs);
 	assert.equal(result.written.length, 0);
 	assert.equal(result.skipped.length, 2);
-	assert.deepEqual(memory.writes, ['.obsidian/plugins/operon/state/docs-sync.json']);
+	assert.equal(memory.writes.length, 1);
+	assert.ok(memory.writes[0].startsWith('.obsidian/plugins/operon/state/docs-sync.json'));
+});
+
+await test('custom target root is used for docs and state', async () => {
+	const memory = createMemoryAdapter();
+	const result = await runSync(memory, baseDocs, null, [], 'Guides/Operon');
+	assert.equal(result.targetRoot, 'Guides/Operon');
+	assert.ok(memory.files.has('Guides/Operon/DOCS-001 Operon Docs MOC.md'));
+	assert.equal(readState(memory).files['DOCS-001 Operon Docs MOC.md'].targetPath, 'Guides/Operon/DOCS-001 Operon Docs MOC.md');
+});
+
+await test('managed docs move without touching personal files and can roll back', async () => {
+	const memory = createMemoryAdapter();
+	await runSync(memory, baseDocs);
+	memory.files.set('Operon/Docs/Personal note.md', 'keep me');
+	const preview = await docsSync.previewOperonDocsFolderMove({
+		app: { vault: { configDir: '.obsidian', adapter: memory.adapter } },
+		oldRoot: 'Operon/Docs',
+		newRoot: 'Guides/Operon',
+	});
+	assert.equal(preview.files.length, 2);
+	const transaction = await docsSync.moveOperonDocsFolder({
+		app: { vault: { configDir: '.obsidian', adapter: memory.adapter } },
+	}, preview);
+	assert.ok(memory.files.has('Guides/Operon/DOCS-001 Operon Docs MOC.md'));
+	assert.ok(memory.files.has('Operon/Docs/Personal note.md'));
+	assert.equal(readState(memory).files['DOCS-001 Operon Docs MOC.md'].targetPath, 'Guides/Operon/DOCS-001 Operon Docs MOC.md');
+	await transaction.rollback();
+	assert.ok(memory.files.has('Operon/Docs/DOCS-001 Operon Docs MOC.md'));
+	assert.equal(readState(memory).files['DOCS-001 Operon Docs MOC.md'].targetPath, 'Operon/Docs/DOCS-001 Operon Docs MOC.md');
+});
+
+await test('folder move aborts before rename when a destination file exists', async () => {
+	const memory = createMemoryAdapter();
+	await runSync(memory, baseDocs);
+	memory.files.set('Guides/Operon/DOCS-001 Operon Docs MOC.md', 'existing');
+	const preview = await docsSync.previewOperonDocsFolderMove({
+		app: { vault: { configDir: '.obsidian', adapter: memory.adapter } },
+		oldRoot: 'Operon/Docs',
+		newRoot: 'Guides/Operon',
+	});
+	await assert.rejects(
+		() => docsSync.moveOperonDocsFolder({ app: { vault: { configDir: '.obsidian', adapter: memory.adapter } } }, preview),
+		/destination conflict/u,
+	);
+	assert.ok(memory.files.has('Operon/Docs/DOCS-001 Operon Docs MOC.md'));
+	assert.ok(memory.files.has('Operon/Docs/DOCS-002 How to use these docs.md'));
+});
+
+await test('folder move rolls back files after a later rename fails', async () => {
+	const memory = createMemoryAdapter();
+	await runSync(memory, baseDocs);
+	memory.failRenameAt(2);
+	const preview = await docsSync.previewOperonDocsFolderMove({
+		app: { vault: { configDir: '.obsidian', adapter: memory.adapter } },
+		oldRoot: 'Operon/Docs',
+		newRoot: 'Guides/Operon',
+	});
+	await assert.rejects(
+		() => docsSync.moveOperonDocsFolder({ app: { vault: { configDir: '.obsidian', adapter: memory.adapter } } }, preview),
+		/Forced rename failure/u,
+	);
+	assert.ok(memory.files.has('Operon/Docs/DOCS-001 Operon Docs MOC.md'));
+	assert.ok(memory.files.has('Operon/Docs/DOCS-002 How to use these docs.md'));
 });
 
 await test('local managed edit is overwritten', async () => {

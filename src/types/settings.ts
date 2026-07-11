@@ -4,8 +4,9 @@
  */
 
 import { clonePipeline, createPipelineId, createStatusId, findStatusDef, Pipeline, DEFAULT_PIPELINES, StatusDefinition } from './pipeline';
-import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from './priority';
+import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId, sanitizePriorityDefinitions } from './priority';
 import { CANONICAL_KEYS } from './keys';
+import type { WorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
 import {
 	CALENDAR_MOBILE_VIEW_MODES,
 	CalendarAppearanceMode,
@@ -75,7 +76,7 @@ import {
 	normalizeProjectSerialScopes,
 } from '../core/project-serials';
 
-export const CURRENT_SETTINGS_VERSION = 102;
+export const CURRENT_SETTINGS_VERSION = 103;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
@@ -1256,6 +1257,7 @@ export interface OperonSettings {
 	demoWorkspacePromptDismissed: boolean;
 	releaseNotesShowOnUpdate: boolean;
 	releaseNotesLastShownVersion: string;
+	operonDocsFolder: string;
 	operonDocsAutoUpdateEnabled: boolean;
 	operonDocsLastAutoUpdateVersion: string;
 	/** User-customizable named colors used by Operon color pickers. */
@@ -1762,6 +1764,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	demoWorkspacePromptDismissed: false,
 	releaseNotesShowOnUpdate: true,
 	releaseNotesLastShownVersion: '',
+	operonDocsFolder: 'Operon/Docs',
 	operonDocsAutoUpdateEnabled: false,
 	operonDocsLastAutoUpdateVersion: '',
 	colorPalette: cloneDefaultColorPalette(),
@@ -2799,31 +2802,6 @@ function createLegacyPriorityId(label: string, index: number): string {
 	return normalized ? `pr_${normalized}` : `pr_legacy_${index}`;
 }
 
-function normalizePriorityDefinition(raw: unknown, index: number): PriorityDefinition | null {
-	if (!raw || typeof raw !== 'object') return null;
-	const src = raw as Record<string, unknown>;
-	const label = normalizeOptionalString(src.label);
-	const color = normalizeOptionalString(src.color);
-	const description = normalizeOptionalString(src.description);
-	if (!label || !color) return null;
-	const priorityIcon = normalizeTaskIconValue(
-		typeof src.priorityIcon === 'string' ? src.priorityIcon : '',
-	);
-
-	const priority: PriorityDefinition = {
-		id: normalizeOptionalString(src.id) ?? createLegacyPriorityId(label, index),
-		label,
-		color,
-	};
-	if (priorityIcon) {
-		priority.priorityIcon = priorityIcon;
-	}
-	if (description) {
-		priority.description = description;
-	}
-	return priority;
-}
-
 function normalizePriorityIds(priorities: PriorityDefinition[]): PriorityDefinition[] {
 	const seenIds = new Set<string>();
 
@@ -3240,6 +3218,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.timeFormat = DEFAULT_SETTINGS.timeFormat;
 	}
 	out.releaseNotesLastShownVersion = out.releaseNotesLastShownVersion.trim();
+	out.operonDocsFolder = normalizeSettingsFolderPath(out.operonDocsFolder) || DEFAULT_SETTINGS.operonDocsFolder;
 	out.operonDocsLastAutoUpdateVersion = out.operonDocsLastAutoUpdateVersion.trim();
 	out.colorPalette = normalizeColorPalette(src.colorPalette);
 	if (!['body-top', 'body-bottom'].includes(out.dynamicFileTaskFilterPlacement)) {
@@ -3806,9 +3785,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (!Array.isArray(src.priorities) || src.priorities.length === 0) {
 		out.priorities = cloneDefaultPriorities();
 	} else {
-		out.priorities = src.priorities
-			.map((priority, index) => normalizePriorityDefinition(priority, index))
-			.filter((priority): priority is PriorityDefinition => !!priority);
+		out.priorities = sanitizePriorityDefinitions(src.priorities);
 		if (out.priorities.length === 0) {
 			out.priorities = cloneDefaultPriorities();
 		}
@@ -4360,13 +4337,18 @@ export function resolveTaskDisplayIcon(
 	settings: Pick<OperonSettings, 'fallbackStateIcons' | 'fallbackTaskIconSource' | 'pipelines' | 'priorities'>,
 	fieldValues: Record<string, string | undefined>,
 	checkbox: string,
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string {
 	const taskIcon = normalizeTaskIconValue(fieldValues['taskIcon']);
 	if (taskIcon) return taskIcon;
 
 	if (settings.fallbackTaskIconSource === 'pipelineStatusIcon') {
 		const pipelineStatusIcon = normalizeTaskIconValue(
-			findStatusDef(settings.pipelines, fieldValues['status'] ?? '')?.pipelineStatusIcon,
+			findStatusDef(
+				settings.pipelines,
+				fieldValues['status'] ?? '',
+				workflowStatusIdentityIndex,
+			)?.pipelineStatusIcon,
 		);
 		if (pipelineStatusIcon) return pipelineStatusIcon;
 	}

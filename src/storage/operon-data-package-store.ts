@@ -1,15 +1,19 @@
 import type { DataAdapter } from 'obsidian';
 import {
 	buildOperonDataPackageFromSettings,
+	composeOperonSettingsFromDataPackage,
 	hasPinnedTasksPackage,
 	mergeOperonDataPackage,
 	OPERON_DATA_PACKAGE_SCHEMA_VERSION,
 	type OperonDataPackageV1,
-	composeOperonSettingsFromDataPackage,
 } from './operon-data-package';
 import type { OperonStoragePaths } from './operon-storage-paths';
-import { writeTextSafely } from './storage-file-ops';
+import { preserveInvalidJsonFile, writeTextSafely } from './storage-file-ops';
 import type { OperonSettings } from '../types/settings';
+import {
+	validatePipelineTaxonomy,
+	type PipelineTaxonomyIssue,
+} from '../core/pipeline-taxonomy-validation';
 
 export interface OperonPluginDataAccess {
 	loadData(): Promise<unknown>;
@@ -19,6 +23,16 @@ export interface OperonPluginDataAccess {
 export interface OperonDataPackageStoreInitResult {
 	dataPackage: OperonDataPackageV1;
 	loadedExistingPinnedTasksPackage: boolean;
+	pipelineTaxonomyDiagnostics: OperonPipelineTaxonomyDiagnostics;
+}
+
+export interface OperonPipelineTaxonomyDiagnostics {
+	issues: PipelineTaxonomyIssue[];
+	hasDestructiveIssues: boolean;
+	hasIdentityIssues: boolean;
+	backupPath: string | null;
+	backupFailed: boolean;
+	warnings: string[];
 }
 
 export interface OperonDataPackageReloadDiagnostics {
@@ -26,12 +40,23 @@ export interface OperonDataPackageReloadDiagnostics {
 	missingDomains: string[];
 	invalidDomains: string[];
 	warnings: string[];
+	pipelineTaxonomy: OperonPipelineTaxonomyDiagnostics;
 }
 
 export interface OperonDataPackageReloadResult {
 	dataPackage: OperonDataPackageV1;
 	changed: boolean;
 	diagnostics: OperonDataPackageReloadDiagnostics;
+}
+
+export interface OperonDataPackageReloadStage {
+	changed?: boolean;
+	commit(): void;
+	rollback(): void;
+}
+
+export interface OperonDataPackageReloadOptions {
+	stage?: (dataPackage: OperonDataPackageV1) => Promise<OperonDataPackageReloadStage>;
 }
 
 type PluginDataAccess = OperonPluginDataAccess | null | undefined;
@@ -52,6 +77,9 @@ export class OperonDataPackageStore {
 	private dataPackageSignature = '';
 	private saveQueue: Promise<void> = Promise.resolve();
 	private writesSuspended = false;
+	private writeSuspensionReason: string | null = null;
+	private writeSuspensionRequiresExplicitRecovery = false;
+	private startupPipelineTaxonomyDiagnostics = createPipelineTaxonomyDiagnostics();
 
 	constructor(
 		private readonly adapter: Pick<DataAdapter, 'exists' | 'read' | 'write' | 'remove'> & Partial<Pick<DataAdapter, 'process' | 'rename'>>,
@@ -63,11 +91,21 @@ export class OperonDataPackageStore {
 		defaults: OperonSettings,
 	): Promise<OperonDataPackageStoreInitResult> {
 		const existingPackage = await this.loadExistingPackage();
-		const dataPackage = mergeOperonDataPackage(existingPackage, buildFallbackDataPackage(defaults));
+		this.startupPipelineTaxonomyDiagnostics = existingPackage
+			? await this.inspectPipelineTaxonomy(existingPackage)
+			: createPipelineTaxonomyDiagnostics();
+		const mergedPackage = mergeOperonDataPackage(existingPackage, buildFallbackDataPackage(defaults));
+		const dataPackage = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
+			? normalizePipelineTaxonomySlice(mergedPackage, defaults)
+			: mergedPackage;
+		if (existingPackage && shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)) {
+			await this.persistCandidate(dataPackage);
+		}
 		this.setDataPackage(dataPackage);
 		return {
 			dataPackage: this.cloneDataPackage(dataPackage),
 			loadedExistingPinnedTasksPackage: hasPinnedTasksPackage(existingPackage),
+			pipelineTaxonomyDiagnostics: clonePipelineTaxonomyDiagnostics(this.startupPipelineTaxonomyDiagnostics),
 		};
 	}
 
@@ -80,64 +118,130 @@ export class OperonDataPackageStore {
 		return composeOperonSettingsFromDataPackage(this.getDataPackage(), defaults);
 	}
 
+	getStartupPipelineTaxonomyDiagnostics(): OperonPipelineTaxonomyDiagnostics {
+		return clonePipelineTaxonomyDiagnostics(this.startupPipelineTaxonomyDiagnostics);
+	}
+
 	canPersist(): boolean {
 		return !this.writesSuspended;
 	}
 
-	async reloadCanonicalDataPackage(defaults: OperonSettings): Promise<OperonDataPackageReloadResult> {
-		if (!this.dataPackage) throw new Error('Operon data package store has not been initialized');
-		await this.saveQueue;
-		const diagnostics = createReloadDiagnostics();
-		const current = this.getDataPackage();
-		const externalPackage = await this.loadCanonicalPackageForReload(diagnostics);
-		if (!externalPackage) {
-			return {
-				dataPackage: current,
-				changed: false,
-				diagnostics,
-			};
-		}
+	getWriteSuspensionReason(): string | null {
+		return this.writeSuspensionReason;
+	}
 
-		const fallback = this.dataPackage ?? buildFallbackDataPackage(defaults);
-		const dataPackage = mergeOperonDataPackage(externalPackage, fallback);
-		const nextSignature = buildStableJsonSignature(dataPackage);
-		const externalSignature = buildStableJsonSignature(externalPackage);
-		if (nextSignature === this.dataPackageSignature) {
-			if (externalSignature !== this.dataPackageSignature && this.dataPackage) {
-				await this.save();
+	suspendWrites(reason: string): void {
+		this.writesSuspended = true;
+		this.writeSuspensionReason = reason.trim() || 'Canonical data package writes were suspended';
+		this.writeSuspensionRequiresExplicitRecovery = true;
+	}
+
+	resumeWrites(): void {
+		this.writesSuspended = false;
+		this.writeSuspensionReason = null;
+		this.writeSuspensionRequiresExplicitRecovery = false;
+	}
+
+	async backupCanonicalDataPackage(raw?: unknown): Promise<string> {
+		return this.enqueueMutation(async () => {
+			try {
+				let fallback = raw;
+				if (fallback === undefined && !(await this.adapter.exists(this.paths.dataPackagePath))) {
+					fallback = this.pluginData
+						? await this.pluginData.loadData()
+						: this.getDataPackage();
+				}
+				const serialized = await this.readCanonicalBackupSource(fallback);
+				const backupPath = await preserveInvalidJsonFile(this.adapter, this.paths.dataPackagePath, serialized);
+				this.resumeWrites();
+				return backupPath;
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				this.suspendWrites(`data.json backup failed: ${message}`);
+				throw error;
+			}
+		});
+	}
+
+	async reloadCanonicalDataPackage(
+		defaults: OperonSettings,
+		options: OperonDataPackageReloadOptions = {},
+	): Promise<OperonDataPackageReloadResult> {
+		if (!this.dataPackage) throw new Error('Operon data package store has not been initialized');
+		return this.enqueueMutation(async () => {
+			const diagnostics = createReloadDiagnostics();
+			const current = this.getDataPackage();
+			const externalPackage = await this.loadCanonicalPackageForReload(diagnostics);
+			if (!externalPackage) {
+				return {
+					dataPackage: current,
+					changed: false,
+					diagnostics,
+				};
+			}
+			const pipelineTaxonomy = await this.inspectPipelineTaxonomy(externalPackage);
+			diagnostics.pipelineTaxonomy = pipelineTaxonomy;
+			if (pipelineTaxonomy.backupFailed) {
+				return {
+					dataPackage: current,
+					changed: false,
+					diagnostics,
+				};
+			}
+
+			const fallback = this.dataPackage ?? buildFallbackDataPackage(defaults);
+			const mergedPackage = mergeOperonDataPackage(externalPackage, fallback);
+			const dataPackage = shouldNormalizePipelineTaxonomy(pipelineTaxonomy)
+				? normalizePipelineTaxonomySlice(mergedPackage, defaults)
+				: mergedPackage;
+			const nextSignature = buildStableJsonSignature(dataPackage);
+			const externalSignature = buildStableJsonSignature(externalPackage);
+			if (!this.writeSuspensionRequiresExplicitRecovery) {
+				this.resumeWrites();
+			}
+			const packageChanged = nextSignature !== this.dataPackageSignature;
+			const shouldPersistCandidate = externalSignature !== nextSignature;
+			let staged: OperonDataPackageReloadStage | null = null;
+			try {
+				staged = options.stage
+					? await options.stage(this.cloneDataPackage(dataPackage))
+					: null;
+				if (shouldPersistCandidate) {
+					if (!pipelineTaxonomy.backupPath) {
+						await this.backupCanonicalDataPackageNow(externalPackage);
+					}
+					await this.persistCandidate(dataPackage);
+				}
+				staged?.commit();
+				if (packageChanged) this.setDataPackage(dataPackage);
+			} catch (error) {
+				staged?.rollback();
+				throw error;
 			}
 			return {
 				dataPackage: this.cloneDataPackage(dataPackage),
-				changed: false,
+				changed: packageChanged || staged?.changed === true,
 				diagnostics,
 			};
-		}
-
-		const shouldPersistMergedPackage = externalSignature !== nextSignature;
-		this.writesSuspended = false;
-		this.setDataPackage(dataPackage);
-		if (shouldPersistMergedPackage) {
-			await this.save();
-		}
-		return {
-			dataPackage: this.cloneDataPackage(dataPackage),
-			changed: true,
-			diagnostics,
-		};
+		});
 	}
 
 	async replaceDataPackage(dataPackage: OperonDataPackageV1): Promise<void> {
-		if (buildStableJsonSignature(dataPackage) === this.dataPackageSignature) return;
-		this.setDataPackage(dataPackage);
-		await this.save();
+		const candidate = this.cloneDataPackage(dataPackage);
+		await this.enqueueMutation(async () => {
+			if (buildStableJsonSignature(candidate) === this.dataPackageSignature) return;
+			await this.persistCandidate(candidate);
+			this.setDataPackage(candidate);
+		});
 	}
 
 	async updateDataPackage(mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1): Promise<void> {
-		const current = this.getDataPackage();
-		const next = mutator(current);
-		if (buildStableJsonSignature(next) === this.dataPackageSignature) return;
-		this.setDataPackage(next);
-		await this.save();
+		await this.enqueueMutation(async () => {
+			const next = this.cloneDataPackage(mutator(this.getDataPackage()));
+			if (buildStableJsonSignature(next) === this.dataPackageSignature) return;
+			await this.persistCandidate(next);
+			this.setDataPackage(next);
+		});
 	}
 
 	async drain(): Promise<void> {
@@ -161,10 +265,10 @@ export class OperonDataPackageStore {
 			const raw = this.pluginData
 				? await this.pluginData.loadData()
 				: await this.loadPackageFromAdapter();
-				return isRecord(raw) ? raw : null;
+			return isRecord(raw) ? raw : null;
 		} catch {
 			console.warn('Operon: Failed to load data.json, using default settings without overwriting existing package');
-			this.writesSuspended = true;
+			this.suspendWritesForReadFailure('data.json could not be read safely');
 			return null;
 		}
 	}
@@ -184,32 +288,89 @@ export class OperonDataPackageStore {
 				: await this.loadPackageFromAdapter();
 			if (!isRecord(raw)) {
 				diagnostics.warnings.push('Canonical data package is missing or is not an object');
+				this.suspendWritesForReadFailure('Canonical data package is missing or is not an object');
 				return null;
 			}
 			recordDomainDiagnostics(raw, diagnostics);
 			return raw;
 		} catch (error) {
 			diagnostics.malformedPackage = true;
-			diagnostics.warnings.push(error instanceof Error ? error.message : String(error));
+			const message = error instanceof Error ? error.message : String(error);
+			diagnostics.warnings.push(message);
+			this.suspendWritesForReadFailure(`Canonical data package could not be read safely: ${message}`);
 			return null;
 		}
 	}
 
-	private async save(): Promise<void> {
-		if (!this.dataPackage) throw new Error('Operon data package store has not been initialized');
-		if (this.writesSuspended) {
-			throw new Error('Operon data package writes are suspended because data.json could not be read safely');
+	private async backupCanonicalDataPackageNow(raw: unknown): Promise<string> {
+		try {
+			const serialized = await this.readCanonicalBackupSource(raw);
+			const backupPath = await preserveInvalidJsonFile(this.adapter, this.paths.dataPackagePath, serialized);
+			this.resumeWrites();
+			return backupPath;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.suspendWrites(`data.json backup failed: ${message}`);
+			throw error;
 		}
-		const dataPackage = this.cloneDataPackage(this.dataPackage);
-		const run = this.saveQueue.then(async () => {
-			if (this.pluginData) {
-				await this.pluginData.saveData(dataPackage);
-			} else {
-				await writeTextSafely(this.adapter, this.paths.dataPackagePath, JSON.stringify(dataPackage, null, '\t'));
-			}
-		});
-		this.saveQueue = run.catch(() => {});
-		await run;
+	}
+
+	private async inspectPipelineTaxonomy(rawPackage: Partial<OperonDataPackageV1>): Promise<OperonPipelineTaxonomyDiagnostics> {
+		const rawPipelines = isRecord(rawPackage.taxonomy)
+			&& isRecord(rawPackage.taxonomy.pipelines)
+			? rawPackage.taxonomy.pipelines.pipelines
+			: undefined;
+		const validation = validatePipelineTaxonomy(rawPipelines);
+		const diagnostics: OperonPipelineTaxonomyDiagnostics = {
+			...validation,
+			issues: validation.issues.map(issue => ({ ...issue })),
+			backupPath: null,
+			backupFailed: false,
+			warnings: [],
+		};
+		if (!validation.hasDestructiveIssues) return diagnostics;
+		try {
+			diagnostics.backupPath = await this.backupCanonicalDataPackageNow(rawPackage);
+		} catch (error) {
+			diagnostics.backupFailed = true;
+			diagnostics.warnings.push(error instanceof Error ? error.message : String(error));
+		}
+		return diagnostics;
+	}
+
+	private async readCanonicalBackupSource(fallback: unknown): Promise<string> {
+		if (await this.adapter.exists(this.paths.dataPackagePath)) {
+			return this.adapter.read(this.paths.dataPackagePath);
+		}
+		if (typeof fallback === 'string') return fallback;
+		const serialized = JSON.stringify(fallback, null, '\t');
+		if (typeof serialized !== 'string') {
+			throw new Error('Canonical data package backup source could not be serialized');
+		}
+		return serialized;
+	}
+
+	private async persistCandidate(dataPackage: OperonDataPackageV1): Promise<void> {
+		if (this.writesSuspended) {
+			throw new Error(`Operon data package writes are suspended: ${this.writeSuspensionReason ?? 'data.json could not be read safely'}`);
+		}
+		if (this.pluginData) {
+			await this.pluginData.saveData(this.cloneDataPackage(dataPackage));
+		} else {
+			await writeTextSafely(this.adapter, this.paths.dataPackagePath, JSON.stringify(dataPackage, null, '\t'));
+		}
+	}
+
+	private async enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+		const run = this.saveQueue.then(operation);
+		this.saveQueue = run.then(() => undefined, () => undefined);
+		return run;
+	}
+
+	private suspendWritesForReadFailure(reason: string): void {
+		this.writesSuspended = true;
+		this.writeSuspensionReason = reason;
+		this.writeSuspensionRequiresExplicitRecovery = false;
 	}
 
 	private setDataPackage(dataPackage: OperonDataPackageV1): void {
@@ -239,6 +400,28 @@ function createReloadDiagnostics(): OperonDataPackageReloadDiagnostics {
 		missingDomains: [],
 		invalidDomains: [],
 		warnings: [],
+		pipelineTaxonomy: createPipelineTaxonomyDiagnostics(),
+	};
+}
+
+function createPipelineTaxonomyDiagnostics(): OperonPipelineTaxonomyDiagnostics {
+	return {
+		issues: [],
+		hasDestructiveIssues: false,
+		hasIdentityIssues: false,
+		backupPath: null,
+		backupFailed: false,
+		warnings: [],
+	};
+}
+
+function clonePipelineTaxonomyDiagnostics(
+	diagnostics: OperonPipelineTaxonomyDiagnostics,
+): OperonPipelineTaxonomyDiagnostics {
+	return {
+		...diagnostics,
+		issues: diagnostics.issues.map(issue => ({ ...issue })),
+		warnings: [...diagnostics.warnings],
 	};
 }
 
@@ -292,6 +475,27 @@ function isValidDataPackageDomain(domain: OperonDataPackageDomain, value: unknow
 
 function buildFallbackDataPackage(defaults: OperonSettings): OperonDataPackageV1 {
 	return buildOperonDataPackageFromSettings(defaults);
+}
+
+function shouldNormalizePipelineTaxonomy(
+	diagnostics: OperonPipelineTaxonomyDiagnostics,
+): boolean {
+	return diagnostics.hasDestructiveIssues && !diagnostics.backupFailed;
+}
+
+function normalizePipelineTaxonomySlice(
+	dataPackage: OperonDataPackageV1,
+	defaults: OperonSettings,
+): OperonDataPackageV1 {
+	const normalizedSettings = composeOperonSettingsFromDataPackage(dataPackage, defaults);
+	const normalizedPipelines = buildOperonDataPackageFromSettings(normalizedSettings).taxonomy.pipelines;
+	return {
+		...dataPackage,
+		taxonomy: {
+			...dataPackage.taxonomy,
+			pipelines: normalizedPipelines,
+		},
+	};
 }
 
 function buildStableJsonSignature(value: unknown): string {

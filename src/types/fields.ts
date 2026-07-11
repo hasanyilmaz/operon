@@ -141,6 +141,7 @@ export interface TaskLocation {
 /** Full task index data structure persisted to plugin runtime storage. */
 export interface IndexData {
 	version: number;
+	workflowStatusSemanticsSignature: string;
 	lastFullReindex: string; // ISO 8601
 	tasks: Record<string, IndexedTask>; // keyed by operonId
 	taskInstances?: Record<string, IndexedTaskInstance>; // keyed by instanceKey
