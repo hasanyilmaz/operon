@@ -11,7 +11,7 @@ tags:
   - table
   - columns
   - configure
-Updated: 2026-07-08T23:32:00
+Updated: 2026-07-11T14:16:12
 ---
 
 # Table columns
@@ -32,6 +32,8 @@ Almost any field a task carries can become a column:
 - **Identity**: the task's [[DOCS-015 Task identity and operonId|operonId]], as a read-only column, and its [[DOCS-097 Project serials|Project Serial]] where a scope is set up, also read-only.
 
 You add a column from a header's menu with **Add column to left...** or **Add column to right...**, or from the preset's **Columns** section. See [[DOCS-109 Table presets|Table presets]].
+
+**Pipeline is the one exception.** It never appears in the column picker, because it is not a column at all, only a field you can group, subgroup, or sort by. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
 
 ## Shape a column from its header
 

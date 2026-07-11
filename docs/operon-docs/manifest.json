@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-07-09T08:57:03.203Z",
+  "generatedAt": "2026-07-11T13:08:00.874Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -10,13 +10,13 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "61fd1237c6ebdd1e31ac665437a51272f8b1224eaf2dda92aa2435f656dab403",
-      "bytes": 8657
+      "sha256": "3a858b64cc708580dc4dba194739888937b1b0e91da1b2cfd3ea79234bf77ae2",
+      "bytes": 8648
     },
     {
       "path": "DOCS-002 How to use these docs.md",
-      "sha256": "06af83e1ffbec52a468cada6bdffcf6ce42879ea7eec2c788eae118b6ae66ec9",
-      "bytes": 3197
+      "sha256": "7398ed71398037c124c3e3363ccff8be4245cf7f259107c6068ddf3c716ee567",
+      "bytes": 3745
     },
     {
       "path": "DOCS-003 Getting started with Operon.md",
@@ -125,8 +125,8 @@
     },
     {
       "path": "DOCS-024 Task templates.md",
-      "sha256": "b7755660922d0033ed75abea8734fb58f3f65680bb5f696dff09d4dcc8674dd8",
-      "bytes": 5078
+      "sha256": "abf1707923880851fcc7c1fc7200b29189c2854b1d619879c2c1b42aefa4075b",
+      "bytes": 5973
     },
     {
       "path": "DOCS-025 Filter View.md",
@@ -190,8 +190,8 @@
     },
     {
       "path": "DOCS-037 Pipelines and statuses.md",
-      "sha256": "fff632060af5eacdeb15fbb0791946bde2c3eeb247d6dc99331dc47a5cd1c86a",
-      "bytes": 6691
+      "sha256": "a3fe419b3cd71fb2418c622134bad0c6b6c9eb8b325c0ab412ce438a3f2f6d68",
+      "bytes": 6996
     },
     {
       "path": "DOCS-038 Task priorities.md",
@@ -255,13 +255,13 @@
     },
     {
       "path": "DOCS-050 Daily Notes workflows.md",
-      "sha256": "278250bca94dee588c2531f9145db54135819288acaf45fd56fcc6b90ac95ed1",
-      "bytes": 2769
+      "sha256": "27514f76d20069ff0a324f551aff23d048af491ed0d59f4ab340be46652177fc",
+      "bytes": 5262
     },
     {
       "path": "DOCS-051 Templater and QuickAdd workflows.md",
-      "sha256": "3fe7e81a9e0737db1d2e9fb29e442ae702adad73b9868e177e4c5358d4182e07",
-      "bytes": 3970
+      "sha256": "2178e22628ac6310c2f4fed7996b4593f71e6b9bf9fd9e5c11288b54608c56e7",
+      "bytes": 4367
     },
     {
       "path": "DOCS-052 Completed task review.md",
@@ -310,8 +310,8 @@
     },
     {
       "path": "DOCS-061 operonId template variables.md",
-      "sha256": "ab912960274c20e698c04aaa6cd08299e1c076827a1271840ab5cb4162f4dd78",
-      "bytes": 10950
+      "sha256": "e80057f6f2ac35ecdeb61b7c3312987139b5b5aa4571cd96d3726a48f1a010c0",
+      "bytes": 11089
     },
     {
       "path": "DOCS-062 Field pickers overview.md",
@@ -535,13 +535,13 @@
     },
     {
       "path": "DOCS-106 Table columns.md",
-      "sha256": "08c8371eada60bea49d2c34176360614a5bdaf3604bd52319a8747a5cfa0e849",
-      "bytes": 10584
+      "sha256": "492aa2075834df755852d73ad6da4e6fa97c8fc27188c9f32adcbbf19323ddf2",
+      "bytes": 10816
     },
     {
       "path": "DOCS-107 Table grouping and sorting.md",
-      "sha256": "80e6a85ed87a56d6f577cc6e27b5025989681ccb5395c826d168bded466d0996",
-      "bytes": 5881
+      "sha256": "7ce86a9ff67fcceb8faccfe3111e8040c12fcfb38473434028c1350f5c0cff6e",
+      "bytes": 6870
     },
     {
       "path": "DOCS-108 Table summaries.md",

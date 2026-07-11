@@ -12,7 +12,7 @@ tags:
   - quickadd
   - capture
   - howto
-Updated: 2026-06-27T14:05:00
+Updated: 2026-07-10T20:31:43
 ---
 
 # Templater and QuickAdd workflows
@@ -41,6 +41,8 @@ A common setup:
 ## What is Operon's part and what is not
 
 To set expectations: Operon does not configure Templater or QuickAdd for you, and it has no settings for them. They are configured in their own plugins. What Operon contributes is processing Templater syntax in its file task templates and resolving Operon template variables.
+
+Obsidian's **Templates** core plugin is a separate system from Templater. Operon does not run its **Insert template** command, but its own File Task and Calendar Daily Note creation flows recognize compatible `{{title}}`, `{{date}}`, and `{{time}}` syntax. Templater still owns `<% ... %>` commands. See [[DOCS-061 operonId template variables|Template variables]] for the scope and format rules.
 
 That means one template can use both systems:
 

@@ -11,7 +11,7 @@ tags:
   - start
   - navigation
   - agent
-Updated: 2026-06-27T20:54:04
+Updated: 2026-07-11T13:50:20
 ---
 
 # How to use these docs
@@ -20,15 +20,17 @@ This folder is the complete user documentation for Operon. It is written to be r
 
 ## Get these docs inside your vault
 
-Operon can download the official docs directly into your vault. Open **Settings → Operon → Core → General**, find **Operon Docs**, and choose **Download / update docs**. Operon writes the docs into `Operon/Docs` as normal Markdown files, so you can browse them with Obsidian links, search, graph view, or an AI assistant.
+Operon can download the official docs directly into your vault. Open **Settings → Operon → Core → General**, find **Operon Docs**, use the searchable **Operon Docs folder** picker to choose an existing vault folder, then select **Download / update docs**. The default folder is `Operon/Docs`. Operon writes the managed docs there as normal Markdown files, so you can browse them with Obsidian links, search, graph view, or an AI assistant.
 
-If you want Operon to refresh the docs after plugin updates, enable **Automatically update Operon Docs** in the same section. Only managed `DOCS-*.md` files are overwritten. If you want to edit a docs page for your own notes, copy it somewhere else first.
+If the docs are already downloaded and you choose a different folder, Operon asks whether you want to move its managed `DOCS-*.md` files. Confirming moves those files to the new folder; cancelling keeps both the files and the setting in the current folder. Personal files are never moved, and a filename conflict in the new folder stops the change rather than overwriting anything.
+
+If you want Operon to refresh the docs after plugin updates, enable **Automatically update Operon Docs** in the same section. It refreshes the selected folder, and only managed `DOCS-*.md` files are overwritten. If you want to edit a docs page for your own notes, copy it somewhere else first.
 
 ## Read it inside Obsidian
 
 Open [[DOCS-001 Operon Docs MOC|Operon Docs MOC]] and follow the **Start here** path. The pages link to each other with normal Obsidian links, so you can click through related topics and use graph view to see how features connect. This is the best way to learn Operon step by step.
 
-> **MEDIA-DOCS-002-1:** The Operon Docs folder open in Obsidian.
+> **MEDIA-DOCS-002-1:** The selected Operon Docs folder open in Obsidian.
 
 ![MEDIA-DOCS-002-1 - Operon Docs folder in Obsidian](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-002-1.png)
 

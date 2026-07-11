@@ -10,7 +10,7 @@ tags:
   - operon
   - table
   - configure
-Updated: 2026-07-07T21:03:09
+Updated: 2026-07-11T14:23:09
 ---
 
 # Table grouping and sorting
@@ -34,6 +34,10 @@ Pick one field under **Group by** and the table splits into sections, one per di
 
 Grouping is a lens, not a filter: every matching task is still represented, just gathered under headings.
 
+## Pipeline: a derived field, not a column
+
+**Pipeline** is a field you can pick for **Group by**, **Subgroup by**, or **Sort by**, but it is not a column you can add to the table. Its value is derived from each task's `status`: Operon works out which of your configured [[DOCS-037 Pipelines and statuses|pipelines]] that status belongs to and groups or sorts by the pipeline's name, so a table can organize by pipeline without carrying a duplicate property or a redundant column. A task whose status does not clearly belong to one configured pipeline falls into **No value**, the same as any other ungrouped field.
+
 ## Subgroups: a second level
 
 Once a group is set, you can add a **Subgroup by** a second field to nest sections within sections, for example group by assignee and subgroup by status to see each person's work split into stages. The subgroup has its own order, and it must be a different field from the group. Without a group set, the subgroup option stays disabled.
@@ -42,7 +46,7 @@ Once a group is set, you can add a **Subgroup by** a second field to nest sectio
 
 Add one or more **Sort by** rules to order the rows:
 
-- Each rule has a field and a direction, **A -> Z** or **Z -> A**.
+- Each rule has a field and a direction, **A -> Z** or **Z -> A**, the same for every field including Status and Pipeline.
 - Add more than one rule and they act as tie-breakers in order: the first rule decides the order, the second breaks ties within it, and so on. Reorder the rules with the up and down controls, or remove one.
 - With no sort rules, rows follow **Source order**, the order the tasks are found in.
 
@@ -73,6 +77,8 @@ Grouping pairs naturally with summaries. When a table is grouped, a summary can 
 
 **How do I sort by more than one field?** Add several sort rules; they break ties in order. Reorder them to change which field wins.
 
+**Can I group or sort by pipeline without adding a column for it?** Yes. Pick **Pipeline** in Group by, Subgroup by, or Sort by. It reads each task's status and resolves it to the pipeline that status belongs to, with no extra column or property needed.
+
 **Where do tasks with a blank field sort to?** To the end by default. Open **Edit preset** and set a rule to **Empty first** to bring them to the top instead.
 
 ## Settings
@@ -86,3 +92,4 @@ Grouping and sorting are set from the toolbar's **Group & Sort** control and sav
 - [[DOCS-108 Table summaries|Table summaries]]
 - [[DOCS-109 Table presets|Table presets]]
 - [[DOCS-106 Table columns|Table columns]]
+- [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]

@@ -12,7 +12,7 @@ tags:
   - filetask
   - templates
   - capture
-Updated: 2026-06-27T14:05:00
+Updated: 2026-07-10T20:31:43
 ---
 
 # Task templates
@@ -47,7 +47,17 @@ This is separate from the alphabetic fallback above. The fallback is for convers
 
 Templates can contain Templater syntax. If the [Templater](https://github.com/SilentVoid13/Templater) plugin is installed, Operon processes that syntax when it builds the task, so a template can insert dates, prompts, and other dynamic content. If Templater is not available but a template uses its syntax, Operon tells you rather than writing raw syntax into your note. For the wider pattern of dynamic templates, see [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]].
 
-A template can also use Operon template variables. These are written as `{{...}}` tokens and can mint ids, reuse one parent id across subtasks, and fill values such as the final status, priority, scheduled date, due date, note, and creation time.
+## Three variable systems
+
+A File Task template can use three different kinds of dynamic syntax:
+
+- **Templater** uses `<% ... %>` for prompts, code, and its own dynamic content.
+- **Operon variables** use `{{...}}` for task identity and task data, such as `{{operonId}}`, `{{status}}`, and `{{datetime}}`.
+- **Obsidian Templates-compatible variables** use familiar `{{title}}`, `{{date}}`, and `{{time}}` syntax, plus explicit `{{date:FORMAT}}` and `{{time:FORMAT}}` forms.
+
+Operon does not call the Core Templates **Insert template** command. When it creates a File Task, it resolves the compatible tokens itself after Templater has run. The **File Task Templates** folder in Operon chooses these templates; it is separate from the Core Templates plugin's own template folder. See [[DOCS-061 operonId template variables|Template variables]] for the full scope matrix and syntax rules.
+
+A template can combine Operon variables with compatible creation variables. For example, use `title: "{{title}}"` when frontmatter should reflect the final file basename, and use plain `{{date}}` in canonical Operon date fields.
 
 For example, this template frontmatter:
 
@@ -73,7 +83,7 @@ datetimeCreated: 2026-06-27T13:46:10
 ---
 ```
 
-Your actual status, priority, and dates come from the task being created and your Operon defaults. See [[DOCS-061 operonId template variables|operonId template variables]] for the full list and parent-child examples.
+Your actual status, priority, and dates come from the task being created and your Operon defaults. See [[DOCS-061 operonId template variables|Template variables]] for the full list, compatible Core-style variables, and parent-child examples.
 
 ## FAQ
 

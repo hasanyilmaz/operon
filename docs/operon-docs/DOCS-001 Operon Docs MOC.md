@@ -6,7 +6,7 @@ tags:
   - operon
   - start
   - navigation
-Updated: 2026-07-06T19:27:56
+Updated: 2026-07-10T20:31:43
 ---
 
 # Operon Docs
@@ -77,6 +77,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-021 Task Editor|Task Editor]]
 - [[DOCS-023 Create tasks from selected text|Create tasks from selected text]]
 - [[DOCS-024 Task templates|Task templates]]
+- [[DOCS-061 operonId template variables|Template variables]]
 
 ### Command palette
 - [[DOCS-022 Command palette reference|Command palette reference]]
@@ -161,7 +162,6 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]]
 - [[DOCS-050 Daily Notes workflows|Daily Notes workflows]]
 - [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]]
-- [[DOCS-061 operonId template variables|operonId template variables]]
 
 ### Review
 - [[DOCS-052 Completed task review|Completed task review]]

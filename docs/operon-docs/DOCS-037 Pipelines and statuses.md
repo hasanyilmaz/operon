@@ -12,7 +12,7 @@ tags:
   - pipelines
   - status
   - configure
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-11T14:16:12
 ---
 
 # Pipelines and statuses
@@ -78,6 +78,8 @@ The **Scheduled** and **Tracking** columns are single-choice down the grid, sinc
 
 The Kanban builds its columns straight from a pipeline's statuses, in order. Moving a card to another column rewrites the task's `status`. So the pipeline you design here is the board you work on later. See [[DOCS-030 Kanban overview|Kanban overview]].
 
+A task's pipeline can also group, subgroup, or sort rows on the [[DOCS-105 Table overview|Table]], as a derived **Pipeline** field, without adding it as a column. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
+
 ## Automatic status moves
 
 Two statuses can be automation targets, so Operon advances a task at the natural moment instead of making you do it:
@@ -108,3 +110,4 @@ Operon settings for this live in **Settings → Operon → Core → Pipelines**,
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-008 Essential settings to configure first|Essential settings to configure first]]
 - [[DOCS-034 Time tracking|Time tracking]]
+- [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]

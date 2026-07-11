@@ -12,7 +12,7 @@ tags:
   - capture
   - inlinetask
   - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-10T20:31:43
 ---
 
 # Daily Notes workflows
@@ -32,6 +32,20 @@ A daily note already stands for a date, and Operon can use it. For inline tasks 
 
 Each is optional. With them on, a task captured in a given day's note is dated to that day without you typing the date, which is handy for "do this today" capture that should land on the Calendar.
 
+## Which date formats work
+
+Operon does not define its own daily-note naming scheme. It reads the file-name date format straight from the core Daily Notes plugin's own **Date format** setting, so whatever you pick there is what Operon recognizes. That means every option the core plugin offers works, including its ready-made choices such as `YYYY-MM-DD`, `YYYY.MM.DD`, and `YYYY/MM/DD`, as well as **Custom**, where you write your own moment.js pattern. If no format is set, Operon falls back to `YYYY-MM-DD`, the same default the core plugin uses.
+
+One thing stays fixed no matter which naming format you choose: the dates Operon writes into a task, such as `dateScheduled`, are always stored as `YYYY-MM-DD`. The file-name format only controls how the note is named and found; it does not change how dates are stored on the task itself. See [[DOCS-012 Inline task syntax|Inline task syntax]] for the stored field formats.
+
+## Calendar-created Daily Note templates
+
+When Operon Calendar creates a missing Daily Note, it can resolve the familiar `{{title}}`, `{{date}}`, and `{{time}}` template variables in that new note. `{{title}}` becomes the created note's filename, while `{{date}}` and `{{time}}` use the local creation moment and follow the Core Templates plugin's **Date format** and **Time format** settings. Explicit forms such as `{{date:YYYY-MM-DD}}` and `{{time:HH:mm}}` use the format written in the template.
+
+These are different settings from **Daily Notes → Date format**, which only determines the Daily Note filename. A Calendar-created note for a future or past day still gives `{{date}}` the creation date, not the selected Calendar day. Existing Daily Notes are opened as they are; their template is never run again.
+
+This is template creation behavior, not the Daily Note Defaults that fill task start or scheduled dates. For the complete variable reference and File Task differences, see [[DOCS-061 operonId template variables|Template variables]].
+
 ## A simple daily flow
 
 - Open today's daily note.
@@ -46,6 +60,10 @@ Each is optional. With them on, a task captured in a given day's note is dated t
 **Does every new task go to the daily note?** Only inline tasks, and only when you turn on daily-note saving. Otherwise inline tasks go to your fixed target file.
 
 **Will it set the date for me?** If you enable the Daily Note Defaults, new inline tasks in a daily note take their start or scheduled date from the note's date.
+
+**Which file-name date formats are supported?** Whatever the core Daily Notes plugin is set to, since Operon reads that same **Date format** setting. The built-in choices and a Custom moment.js pattern all work; the default is `YYYY-MM-DD`.
+
+**Why does `{{date}}` differ from the note filename date?** The filename follows the Daily Notes setting and the selected Calendar day. The compatible template variable records when Operon created the note. See [[DOCS-061 operonId template variables|Template variables]].
 
 ## Settings
 
