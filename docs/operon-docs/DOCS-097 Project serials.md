@@ -12,7 +12,7 @@ tags:
   - serial
   - projects
   - identity
-Updated: 2026-07-08T23:32:00
+Updated: 2026-07-16T19:53:04
 ---
 
 # Project serials
@@ -93,6 +93,12 @@ A serial appears as a display-only **chip** on supported task surfaces: in [[DOC
 
 It can also be its own read-only column on the [[DOCS-105 Table overview|Table]], where it searches, groups, sorts, and exports like any other column. See [[DOCS-106 Table columns|Table columns]].
 
+## Grouping and filtering by serial group
+
+Because every serial carries a prefix, that prefix is itself a group you can organize by. A [[DOCS-105 Table overview|Table]] grouped by the **Project Serial** column gathers tasks under their shared prefix, all `DOCS-` together and all `GIT-` together, and keeps them in numeric order within each group, rather than treating every serial as its own section. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
+
+A filter can scope to the same groups with the **Project Serial Group** condition: show only tasks that carry a serial, only those in specific groups you pick, or every group whose prefix starts with the letters you type. See [[DOCS-073 Filter conditions and operators|Filter conditions and operators]].
+
 ## Stored apart from your notes
 
 The numbers live in Operon's own state, not in the task's Markdown. See [[DOCS-046 Plugin data and state files|Plugin data and state files]]. This is what keeps serials safe to turn on: enabling, renaming, or removing a scope never touches the operonId in your line or the body of your note. The serials are a layer Operon paints on top, and that layer persists across sessions so the numbers stay stable.
@@ -132,3 +138,5 @@ Operon settings for this live in **Settings → Operon → Tasks → Relationshi
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-058 Operon inheritance rules|Operon inheritance rules]]
 - [[DOCS-106 Table columns|Table columns]]
+- [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]
+- [[DOCS-073 Filter conditions and operators|Filter conditions and operators]]

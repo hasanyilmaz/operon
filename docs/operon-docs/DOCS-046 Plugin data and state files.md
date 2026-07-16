@@ -12,7 +12,7 @@ tags:
   - storage
   - index
   - settings
-Updated: 2026-07-13T23:55:05
+Updated: 2026-07-16T20:09:45
 ---
 
 # Plugin data and state files
@@ -32,6 +32,8 @@ Alongside it, Operon keeps working state and caches in subfolders:
 - **Cache**: derived data such as fetched external-calendar events.
 
 The split is deliberate: settings are your choices, state is what Operon is currently tracking, and the runtime index is rebuildable from your notes at any time.
+
+Operon saves this index as a set of verified, sharded snapshots rather than one large file, so it loads quickly on startup and writes back only the parts that changed, which keeps routine Sync traffic small. Because the snapshot is never more than a cache, Operon can rebuild it from your Markdown at any time, and it does so automatically if the snapshot is missing or fails one of its own checks.
 
 ## Tasks are not here
 

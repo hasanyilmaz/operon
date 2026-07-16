@@ -11,7 +11,7 @@ tags:
   - filterview
   - search
   - conditions
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-16T19:53:04
 ---
 
 # Filter conditions and operators
@@ -87,8 +87,9 @@ A few conditions test a task's place in the system rather than a single field va
 - **Pinned**: `is pinned`, true for tasks on the [[DOCS-032 Pinned Task Dock|dock]].
 - **Task tree**: `matches task tree`, for filtering by a task's parent or subtask relationship. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
 - **Folder**: `is in folder tree`, true when the task's file sits inside a chosen folder.
+- **Project Serial Group**: filters by a task's [[DOCS-097 Project serials|project serial group]], the prefix its serial carries. Use `has any project serial group` or `has no project serial group` to separate tasks that hold a serial from those that do not; `is any of` or `is none of` to pick specific groups from a searchable list, which also offers to select every group starting with a prefix; or `starts with` and `does not start with` to match groups by a prefix you type.
 
-These let a filter say "anything under this project" or "only pinned work," not just field comparisons.
+These let a filter say "anything under this project," "only pinned work," or "only tasks in the DOCS serial group," not just field comparisons.
 
 ## FAQ
 
@@ -103,3 +104,4 @@ These let a filter say "anything under this project" or "only pinned work," not 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-026 Dynamic file task filter|Dynamic file task filter]]
 - [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]]
+- [[DOCS-097 Project serials|Project serials]]

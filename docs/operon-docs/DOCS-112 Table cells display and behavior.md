@@ -11,7 +11,7 @@ tags:
   - table
   - cells
   - configure
-Updated: 2026-07-13T23:38:26
+Updated: 2026-07-16T20:08:49
 ---
 
 # Table cells: display and behavior
@@ -51,6 +51,7 @@ In detailed cell mode, each field type renders its own way:
 | Other dates | The date, in neutral text |
 | List, tags | One chip per item in the field |
 | Task links (parent, blocking, blocked by) | A wikilink chip per linked task |
+| Links (web links) | A chip per link: a named Markdown link shows its label, a bare URL a tidied address |
 | Assignees, contexts | A chip per linked person, place, or context value |
 | Location | A small map chip |
 | Duration | Tracked sessions as chips, or a rolled-up total, depending on the column's mode |
@@ -64,6 +65,8 @@ In detailed cells, an empty field usually shows a plain `--`, so a blank detaile
 
 **Date Time Start and Date Time End format their own way.** In detailed cell mode, the date and time show together with a space between them (`2026-07-13 14:30`) rather than a raw `T` separator. In compact cell mode, the cell shows just the time (`14:30`), with no icon, at the same text size as the detailed value rather than the smaller scale other compact cells use.
 
+**The Links column turns web links into readable chips.** The **Links** field holds external web links, and in detailed cell mode each entry becomes a chip. A named Markdown link, `[Design doc](https://example.com/design)`, shows its **label** (`Design doc`) rather than the raw address, and a bare URL shows a tidied version of the address. Hover a link chip to see its **full URL** along with a reminder that a modifier click opens it. Hold **Cmd** or **Ctrl** and click to open the link in a new **Obsidian Web Viewer** tab, which needs Obsidian's core Web Viewer plugin enabled on desktop; without it, Operon shows a short notice telling you to turn it on. A plain click or double-click leaves the cell alone, so normal editing is untouched.
+
 ## What a cell does on click
 
 Cells fall into a few roles. Some edit a value in place, some take you somewhere, and some open a control:
@@ -73,6 +76,7 @@ Cells fall into a few roles. Some edit a value in place, some take you somewhere
 | Edit in place | status, priority, dates, estimate, recurrence, list, tags, parent/dependency links, and other editable picker fields | Opens that field's picker |
 | Edit text | description and note cells | Opens the text editor path; wikilinks inside a description remain live |
 | Navigate from text | wikilinks inside description text | Opens the linked note, creating it if it does not exist yet |
+| Open a web link | a chip in the Links column | Cmd/Ctrl-click opens the link in a new Obsidian Web Viewer tab |
 | Open a place | location cell or chip | Opens the map popover, which pins open when you drag it. See [[DOCS-068 Location picker\|Location picker]] |
 | Act on structure | parent task progress | Opens the task's subtasks or checkboxes |
 | Go to source | source column | Opens the task's source in a new Obsidian tab: the note for a file task, the exact line for an inline task |
@@ -106,6 +110,7 @@ Hovering a cell can reveal more without a click:
 
 - **Compact cells** show a tooltip with the field's name and its full value, so a collapsed column stays readable.
 - **Wikilinks** inside text cells and wikilink-style task link chips support **Page Preview**: hold **Cmd** or **Ctrl** and hover to get Obsidian's hover preview of the linked note. This needs Obsidian's core **Page Preview** plugin enabled, and the modifier key; a plain hover does not trigger it.
+- **Web link chips** in the Links column show their **full URL** on hover, along with a hint that a Cmd or Ctrl-click opens the link in a new Web Viewer tab.
 
 ## How this guides configuration
 
@@ -131,6 +136,8 @@ Because a cell both shows and acts, the display mode you pick per column has con
 **Why does clicking a cell not do the same thing everywhere?** Cells have roles. An editable field opens a picker, description wikilinks open notes, the source column opens the source, location opens the map popover, and read-only cells only display.
 
 **How do I get a hover preview of a linked task?** Hold Cmd or Ctrl and hover the wikilink chip, with Obsidian's core Page Preview plugin enabled.
+
+**Why won't a web link in my Links column open?** Web link chips open in Obsidian's Web Viewer, so its core plugin has to be enabled, and you open the link with a Cmd or Ctrl-click rather than a plain click. This works on the desktop app.
 
 ## Related
 

@@ -10,7 +10,7 @@ tags:
   - operon
   - table
   - configure
-Updated: 2026-07-11T14:23:09
+Updated: 2026-07-16T20:08:49
 ---
 
 # Table grouping and sorting
@@ -27,9 +27,9 @@ Open the **Group & Sort** control from the table toolbar to set both.
 
 Pick one field under **Group by** and the table splits into sections, one per distinct value of that field, each with a heading and a task count. Tasks that have no value for the field collect under a **No value** section, so nothing is lost.
 
-- **Group order** sets whether the value sections run in ascending or descending order.
+- **Group order** sets whether the value sections run in ascending or descending order. When you group by **status**, ascending follows your configured [[DOCS-037 Pipelines and statuses|workflow order]] rather than A to Z, and descending reverses that workflow order, so the sections read in the order your work actually flows through.
 - The **No value** section stays at the end of its level, even when the group order is descending.
-- Each section has a chevron you can click to **collapse** or **expand** it. Collapsed sections stay collapsed as you work, which is how you fold away the groups you are not looking at and focus on one.
+- Each section has a chevron you can click to **collapse** or **expand** it. Collapsed sections stay collapsed as you work. That collapsed state is saved in the [[DOCS-109 Table presets|preset]], so it travels with the preset across every Table tab, embed, and synced [[DOCS-114 Table files|`.table` file]], and flipping a sort between A to Z and Z to A leaves your collapsed sections untouched. Changing the grouping field itself starts fresh.
 - List and tag fields group by each item in the field. A task with two contexts, for example, can appear under both context sections, because it belongs to both groups.
 
 Grouping is a lens, not a filter: every matching task is still represented, just gathered under headings.
@@ -37,6 +37,10 @@ Grouping is a lens, not a filter: every matching task is still represented, just
 ## Pipeline: a derived field, not a column
 
 **Pipeline** is a field you can pick for **Group by**, **Subgroup by**, or **Sort by**, but it is not a column you can add to the table. Its value is derived from each task's `status`: Operon works out which of your configured [[DOCS-037 Pipelines and statuses|pipelines]] that status belongs to and groups or sorts by the pipeline's name, so a table can organize by pipeline without carrying a duplicate property or a redundant column. A task whose status does not clearly belong to one configured pipeline falls into **No value**, the same as any other ungrouped field.
+
+## Project Serial: grouped by prefix, sorted by number
+
+When you group by the **Project Serial** column, Operon does not give each individual serial its own section. It buckets tasks by their [[DOCS-097 Project serials|serial group]], the shared prefix, so every `DOCS-` task sits under one **DOCS** heading and every `GIT-` task under a **GIT** heading, while tasks with no serial collect under **No value**. Sorting by Project Serial, whether as the group order or a **Sort by** rule, follows the numeric serial within each group, so `DOCS-7` comes before `DOCS-10` rather than the plain text order that would put `10` before `7`. Group by Project Serial and add it as a sort rule and each project's tasks gather under their prefix, listed in true serial order. This works the same when Project Serial is a subgroup.
 
 ## Subgroups: a second level
 
@@ -79,6 +83,8 @@ Grouping pairs naturally with summaries. When a table is grouped, a summary can 
 
 **Can I group or sort by pipeline without adding a column for it?** Yes. Pick **Pipeline** in Group by, Subgroup by, or Sort by. It reads each task's status and resolves it to the pipeline that status belongs to, with no extra column or property needed.
 
+**Why does grouping by Project Serial make prefix headings instead of one per number?** Grouping by Project Serial buckets tasks by their serial group, the shared prefix, so all `DOCS-` tasks land together and stay in numeric order within that group. See [[DOCS-097 Project serials|Project serials]].
+
 **Where do tasks with a blank field sort to?** To the end by default. Open **Edit preset** and set a rule to **Empty first** to bring them to the top instead.
 
 ## Settings
@@ -93,3 +99,5 @@ Grouping and sorting are set from the toolbar's **Group & Sort** control and sav
 - [[DOCS-109 Table presets|Table presets]]
 - [[DOCS-106 Table columns|Table columns]]
 - [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
+- [[DOCS-097 Project serials|Project serials]]
+- [[DOCS-114 Table files|Table files]]
