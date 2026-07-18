@@ -6,7 +6,7 @@
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, editorLivePreviewField, requestUrl, setIcon } from 'obsidian';
+import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
 import { OperonStorage } from './src/storage/operon-storage';
@@ -45,6 +45,7 @@ import {
 import type { ProjectSerialDisplay } from './src/core/project-serials';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
 import { TaskWriter } from './src/core/task-writer';
+import type { RawYamlPropertyExpectation, RawYamlPropertyMutation, RawYamlPropertyWriteOutcome } from './src/core/raw-yaml-property';
 import { registerObsidianIconFallbacks } from './src/core/obsidian-icon-fallbacks';
 import { invalidateLocationPlaceIndex } from './src/core/location-source-resolver';
 import { DependencyManager } from './src/systems/dependency-manager';
@@ -56,12 +57,10 @@ import {
 	resolveActiveBlockers,
 	resolveDependencyStatusChangeAttempt,
 } from './src/core/dependency-graph';
-import { ProgressCalculator } from './src/systems/progress-calculator';
-import { TotalDurationCalculator } from './src/systems/total-duration';
-import { TotalEstimateCalculator } from './src/systems/total-estimate';
-import { AggregateCoordinator } from './src/systems/aggregate-coordinator';
+import { AggregateCoordinator, type AggregateRefreshResult } from './src/systems/aggregate-coordinator';
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
 import { TimeTracker } from './src/systems/time-tracker';
+import { applyManualEstimateReallocationWrites } from './src/systems/estimate-reallocation';
 import type { TrackerSession, TrackerSource, TrackerStopReason } from './src/types/tracker';
 import { RecurrenceMaterializationResult, RecurrenceService } from './src/systems/recurrence-service';
 import {
@@ -105,6 +104,7 @@ import {
 import {
 	OnSaveCallback,
 	TaskEditorContentOptions,
+	TaskEditorEstimateReallocationApplyResult,
 	TaskEditorEstimateReallocationRequest,
 	TaskEditorFileBodyContext,
 	TaskEditorRepeatSkipUpdateRequest,
@@ -173,6 +173,7 @@ import {
 	getOwnerWindow,
 	setWindowTimeout,
 } from './src/core/dom-compat';
+import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
 import { resolveTaskColorSourceForTask } from './src/core/task-color-source';
 import { asyncHandler, runAsyncAction } from './src/core/async-action';
 import { getAppLocale, getCommunityPlugin, isDailyNotesCoreAvailable } from './src/core/obsidian-app';
@@ -227,6 +228,17 @@ import {
 	type EmbedTableDeps,
 } from './src/ui/embed-table-processor';
 import {
+	clearTableFilePropertyIndex,
+	createCachedTableFilePropertyTypeResolver,
+	getTableFilePropertyIndex,
+	loadTableFilePropertyTypesFromConfig,
+	type TableFilePropertyIndex,
+} from './src/ui/table/table-file-property';
+import {
+	resolveTableParentSearchVisibleTaskIds,
+	resolveTableSearchScopedTasks,
+} from './src/ui/table/table-search-scope';
+import {
 	applyDynamicFileTaskFilterHostPlacement,
 	DYNAMIC_FILE_TASK_FILTER_HOST_CLASS,
 	operonDynamicFileTaskFilterLivePreviewExtension,
@@ -275,7 +287,13 @@ import {
 	normalizeDynamicSubtasksFilterSet,
 } from './src/core/dynamic-file-task-filter';
 import { getReleaseNotesForUpdate } from './src/core/release-notes';
+import {
+	getAvailableOperonReleaseVersion,
+	OPERON_COMMUNITY_PLUGIN_URL,
+	shouldNotifyForOperonRelease,
+} from './src/systems/release-check';
 import { isOperonExcludedPath } from './src/core/operon-path-exclusions';
+import { hasNonEmptyManagedYamlValue } from './src/core/yaml-fields';
 import { normalizeRepeatIdentityPayload } from './src/core/repeat-identity';
 import { shouldAutoUnpinTerminalTask } from './src/core/pinned-task-rules';
 import { OPERON_DEMO_AGGREGATE_PARENT_IDS, createOrRepairBasicsWorkspace, hasBasicsWorkspaceArtifact } from './src/core/demo-project';
@@ -303,9 +321,11 @@ import {
 } from './src/core/file-task-template-merge';
 import {
 	buildFileTaskTemplateOptions,
+	buildPipelineMinimalFileTaskTemplateOptions,
 	FileTaskTemplateOption,
 	findFileTaskTemplateOptionById,
 	orderFileTaskTemplateOptionsByLastUsed,
+	resolvePipelineMinimalFileTaskTemplateStatus,
 	templateDocumentContainsTemplaterSyntax,
 } from './src/core/file-task-templates';
 import { localNow, localToday } from './src/core/local-time';
@@ -348,6 +368,7 @@ import {
 	DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS,
 	FilterSet,
 	normalizeInlineTaskHeadingKeyword,
+	normalizeStoredFileTaskTemplateId,
 	OperonSettings,
 } from './src/types/settings';
 import {
@@ -727,8 +748,10 @@ const DEFERRED_FILE_TASK_TEMPLATE_PLACEHOLDER_PATTERN = /\{\{(note|dateStarted|d
 const TEMPLATED_FILE_TASK_CREATION_WINDOW_MS = 30_000;
 const RAW_TASK_CREATION_BULK_NOTICE_THRESHOLD = 4;
 const RAW_TASK_CREATION_NOTICE_SUPPRESSION_TTL_MS = 30_000;
+const INTERNAL_TASK_WRITE_SUPPRESSION_MS = 750;
 const DUPLICATE_ALERT_RESOLVED_HIDE_DELAY_MS = 10_000;
 const CANONICAL_SETTINGS_RELOAD_THROTTLE_MS = 5_000;
+const TABLE_FILE_PROPERTY_TYPE_CHECK_THROTTLE_MS = 5_000;
 const WORKSPACE_TWEAK_HIDE_SCROLLBARS_CLASS = 'operon-tweak-hide-scrollbars';
 const WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_CLASS = 'operon-tweak-properties-collapser';
 const WORKSPACE_TWEAK_PROPERTIES_COLLAPSER_TARGET_CLASS = 'operon-tweak-properties-collapser-target';
@@ -738,6 +761,12 @@ const WORKSPACE_TWEAK_PROPERTIES_COLLAPSE_RETRY_DELAYS_MS = [0, 75, 200, 500, 10
 interface WorkspaceTweakPropertiesCollapseCycle {
 	id: number;
 	attempted: boolean;
+}
+
+interface NativeFileTaskConversionMenuState {
+	priority: number;
+	targetFile: TFile | null;
+	item: MenuItem | null;
 }
 
 type SettingsReindexReason = 'key-mappings' | 'workflow-semantics';
@@ -755,9 +784,6 @@ export default class OperonPlugin extends Plugin {
 	indexer!: OperonIndexer;
 	writer!: TaskWriter;
 	dependencyManager!: DependencyManager;
-	progressCalculator!: ProgressCalculator;
-	totalDurationCalculator!: TotalDurationCalculator;
-	totalEstimateCalculator!: TotalEstimateCalculator;
 	aggregateCoordinator!: AggregateCoordinator;
 	taskStatsBackfillRunner!: TaskStatsBackfillRunner;
 	workflowFieldRenameCoordinator!: WorkflowFieldRenameCoordinator;
@@ -770,6 +796,8 @@ export default class OperonPlugin extends Plugin {
 	private indexV8ManifestFingerprint: string | null = null;
 	private indexV8ManifestCheckActive = false;
 	private settingsReindexTimer: WindowTimeoutHandle | null = null;
+	private startupReleaseCheckTimer: WindowTimeoutHandle | null = null;
+	private releaseCheckGeneration = 0;
 	private pendingSettingsReindexReasons = new Set<SettingsReindexReason>();
 	private settingsReindexRetryAttempted = false;
 	private canonicalSettingsReloadTimer: WindowTimeoutHandle | null = null;
@@ -777,6 +805,13 @@ export default class OperonPlugin extends Plugin {
 	private canonicalSettingsReloadLastCheckAt = 0;
 	private yamlPropertyVisibilityRefreshTimer: WindowTimeoutHandle | null = null;
 	private locationPlaceTableRefreshTimer: WindowTimeoutHandle | null = null;
+	private tableFilePropertyRefreshTimer: WindowTimeoutHandle | null = null;
+	private tableFilePropertyTypeFingerprint: string | null = null;
+	private tableFilePropertyTypeCheckActive = false;
+	private tableFilePropertyTypeLastCheckAt = 0;
+	private readonly tableFilePropertyTypeResolver = createCachedTableFilePropertyTypeResolver();
+	private tableFilePropertyIndex: TableFilePropertyIndex | null = null;
+	private readonly nativeFileTaskConversionMenus = new WeakMap<Menu, NativeFileTaskConversionMenuState>();
 	private workspaceTweakPropertiesCollapseCycleId = 0;
 	private workspaceTweakPropertiesCollapseCycles = new WeakMap<MarkdownView, WorkspaceTweakPropertiesCollapseCycle>();
 	private workspaceTweakPropertiesCollapseTimers: WindowTimeoutHandle[] = [];
@@ -813,8 +848,8 @@ export default class OperonPlugin extends Plugin {
 	private indexV8CleanupMaintenance: IndexV8MaintenanceHandle | null = null;
 	private indexSideEffectRunning = false;
 	private indexSideEffectFollowupRequested = false;
-	private projectSerialIndexReconcileRunning = false;
-	private projectSerialIndexReconcileFollowupRequested = false;
+	private projectSerialIndexReconcileScheduler: CoalescedAsyncScheduler | null = null;
+	private projectSerialIndexReconcilePendingBeforeStartup = false;
 	private fileTaskArchiver: FileTaskArchiver | null = null;
 	private livePreviewEphemeralSession = new LivePreviewEphemeralSessionController();
 	private activeLivePreviewPickerClose: (() => void) | null = null;
@@ -960,6 +995,8 @@ export default class OperonPlugin extends Plugin {
 			hideUsageInfo: true,
 			showCountBadge: false,
 			getSettings: () => this.settings,
+			getFilePropertyDiscoveryTasks: () => this.indexer.getAllTasks(),
+			getFilePropertySnapshot: tasks => this.getTableFilePropertySnapshot(tasks),
 		}).open();
 	}
 
@@ -975,6 +1012,8 @@ export default class OperonPlugin extends Plugin {
 			hideUsageInfo: true,
 			showCountBadge: false,
 			getSettings: () => this.settings,
+			getFilePropertyDiscoveryTasks: () => this.indexer.getAllTasks(),
+			getFilePropertySnapshot: tasks => this.getTableFilePropertySnapshot(tasks),
 		}).open();
 	}
 
@@ -1043,7 +1082,58 @@ export default class OperonPlugin extends Plugin {
 		}).open();
 	}
 
+	private async checkForNewReleaseOnStartup(generation: number): Promise<void> {
+		if (!this.settings.checkForUpdatesOnStartup) return;
+		try {
+			const availableVersion = await getAvailableOperonReleaseVersion({
+				requestJson: async url => {
+					const response = await requestUrl({ url, method: 'GET' });
+					return response.json as unknown;
+				},
+				canRunMinAppVersion: minAppVersion => requireApiVersion(minAppVersion),
+			});
+			if (generation !== this.releaseCheckGeneration
+				|| !this.settings.checkForUpdatesOnStartup) return;
+			if (!shouldNotifyForOperonRelease(
+				this.manifest.version,
+				availableVersion,
+				this.settings.lastNotifiedReleaseVersion,
+			)) return;
+
+			this.settings.lastNotifiedReleaseVersion = availableVersion;
+			if (generation !== this.releaseCheckGeneration) return;
+			await this.storage.saveSettings();
+			if (generation !== this.releaseCheckGeneration
+				|| !this.settings.checkForUpdatesOnStartup) return;
+			new Notice(this.createReleaseAvailableNotice(availableVersion), 15_000);
+		} catch (error) {
+			console.debug('Operon: release check failed', error);
+		}
+	}
+
+	private createReleaseAvailableNotice(version: string): DocumentFragment {
+		const fragment = createFragment();
+		fragment.appendText(t('notifications', 'releaseAvailable', { version }));
+		fragment.appendText(' ');
+		const action = fragment.createEl('a');
+		action.textContent = t('notifications', 'releaseAvailableAction');
+		action.href = OPERON_COMMUNITY_PLUGIN_URL;
+		action.addEventListener('click', event => {
+			event.preventDefault();
+			getActiveWindow().open(OPERON_COMMUNITY_PLUGIN_URL, '_blank');
+		});
+		return fragment;
+	}
+
+	private cancelStartupReleaseCheck(): void {
+		this.releaseCheckGeneration += 1;
+		if (!this.startupReleaseCheckTimer) return;
+		clearWindowTimeout(this.startupReleaseCheckTimer);
+		this.startupReleaseCheckTimer = null;
+	}
+
 	private handleSettingsChanged(): void {
+		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
 		this.writer.updateKeyMappings(this.settings.keyMappings);
 		const previousKeyMappingSignature = this.keyMappingSignature;
 		this.keyMappingSignature = this.buildKeyMappingSignature();
@@ -1116,11 +1206,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async reconcileProjectSerialsForIndexMutation(): Promise<void> {
-		try {
-			await this.reconcileProjectSerials();
-		} catch (error) {
-			console.warn('Operon: failed to reconcile project serials after index mutation', error);
-		}
+		await this.reconcileProjectSerials();
 	}
 
 	private reportStartupPipelineTaxonomyDiagnostics(): void {
@@ -1719,20 +1805,23 @@ export default class OperonPlugin extends Plugin {
 
 	private async startTimerForTask(taskId: string, source: TrackerSource = 'command', startOverride?: string | null): Promise<boolean> {
 		if (this.redirectDuplicateOperonIdAction(taskId)) return false;
+		const alreadyRunning = this.timeTracker.isTimerRunning(taskId);
 		const started = await this.timeTracker.start(taskId, source, startOverride);
-		if (started) this.refreshTimerStateSurfaces();
+		// A new start emits `state`, whose subscription refreshes these surfaces.
+		// Preserve the explicit refresh only for the idempotent already-running path,
+		// which returns without emitting another event.
+		if (started && alreadyRunning) this.refreshTimerStateSurfaces();
 		return started;
 	}
 
 	private async stopActiveTimer(reason: TrackerStopReason = 'manual'): Promise<boolean> {
-		const stopped = await this.timeTracker.stop(reason);
-		if (stopped) this.refreshTimerStateSurfaces();
-		return stopped;
+		return await this.timeTracker.stop(reason);
 	}
 
 	private async startUnassignedTimer(source: TrackerSource = 'command'): Promise<boolean> {
+		const alreadyUnassigned = this.timeTracker.getActiveState()?.isUnassigned === true;
 		const started = await this.timeTracker.startUnassigned(source);
-		if (started) this.refreshTimerStateSurfaces();
+		if (started && alreadyUnassigned) this.refreshTimerStateSurfaces();
 		return started;
 	}
 
@@ -2462,8 +2551,18 @@ export default class OperonPlugin extends Plugin {
 			saveData: (data: unknown) => this.saveData(data),
 		});
 		await this.storage.initialize();
+		this.projectSerialIndexReconcileScheduler = new CoalescedAsyncScheduler({
+			delayMs: 80,
+			maxRetries: 1,
+			run: () => this.reconcileProjectSerialsForIndexMutation(),
+			onError: error => console.warn('Operon: failed to reconcile project serials after index mutation', error),
+		});
 		this.settings = this.storage.getSettings();
 		initI18n(getAppLocale(this.app), this.settings.language);
+		this.tableFilePropertyIndex = getTableFilePropertyIndex(this.app, {
+			typeResolver: this.tableFilePropertyTypeResolver,
+		});
+		await this.refreshTableFilePropertyTypes(true, false);
 		await this.initializeTablePresetRegistry();
 		this.pinnedCache = this.storage.pinned;
 		this.unsubscribePinnedCache = this.pinnedCache.subscribe(() => {
@@ -2540,9 +2639,6 @@ export default class OperonPlugin extends Plugin {
 			},
 		});
 		this.dependencyManager = new DependencyManager(this.indexer, this.writer);
-		this.progressCalculator = new ProgressCalculator(this.indexer, this.writer);
-		this.totalDurationCalculator = new TotalDurationCalculator(this.indexer, this.writer);
-		this.totalEstimateCalculator = new TotalEstimateCalculator(this.indexer, this.writer);
 		this.aggregateCoordinator = new AggregateCoordinator(this.indexer, this.writer);
 		this.taskStatsBackfillRunner = new TaskStatsBackfillRunner(
 			this.indexer,
@@ -2555,17 +2651,26 @@ export default class OperonPlugin extends Plugin {
 			this.indexer,
 			this.writer,
 			this.storage.activeTrackers,
-			this.totalDurationCalculator,
-			this.totalEstimateCalculator,
 			() => this.settings,
 			(operonId) => {
 				this.scheduleDuplicateConflictAlert(operonId);
 			},
-				async (operonId) => {
-					await this.aggregateCoordinator.refreshDurationAfterTaskIds([operonId]);
-				},
-				(task, payload) => this.guardTaskStatusChangeOrShow(task, payload),
-			);
+			async (operonId, modifiedTimestamp) => {
+				return await this.aggregateCoordinator.refreshDurationAfterTaskIds([operonId], { modifiedTimestamp });
+			},
+			(task, payload) => this.guardTaskStatusChangeOrShow(task, payload),
+			async (beforeTask, afterTask, modifiedTimestamp) => this.refreshAggregateTotalsAfterTaskMutation(
+				beforeTask,
+				afterTask,
+				{ modifiedTimestamp, autoUnpinCandidate: afterTask },
+			),
+			// TimeTracker runs this exactly once after the aggregate attempt and its
+			// bounded retry, so a transient failure cannot expose a stale interim view.
+			() => this.refreshViews({ reason: 'tracker-start-aggregates' }),
+			// Session writes use the same post-commit retry boundary and request one
+			// full refresh only after all duration aggregate attempts finish.
+			() => this.refreshViews({ reason: 'tracker-duration-aggregates' }),
+		);
 		this.recurrenceService = new RecurrenceService(
 			this.app,
 			this.indexer,
@@ -2589,6 +2694,7 @@ export default class OperonPlugin extends Plugin {
 		const loadedFromV8 = cacheLoad.status === 'loaded' && cacheLoad.source === 'v8';
 		const requiresFullReindex = cacheLoad.status === 'loaded' && cacheLoad.requiresFullReindex;
 		this.initializeIndexV8ManifestMonitor();
+		this.initializeTableFilePropertyTypeMonitor();
 
 		// Refresh sidebar views whenever the index is updated
 		// Suppressed during startup — onLayoutReady handles the authoritative render
@@ -2598,6 +2704,11 @@ export default class OperonPlugin extends Plugin {
 		};
 		this.indexer.onTasksRemoved = (removedTasks) => {
 			if (!this.startupReady || removedTasks.length === 0) return;
+			for (const task of removedTasks) {
+				if (task.primary.format !== 'yaml') continue;
+				if (this.indexer.getFileTaskByPath(task.primary.filePath)) continue;
+				this.tableFilePropertyIndex?.removeFile(task.primary.filePath);
+			}
 			void this.handleTasksRemovedFromIndex(removedTasks);
 		};
 		this.indexer.onTasksChanged = (changes) => {
@@ -2627,6 +2738,7 @@ export default class OperonPlugin extends Plugin {
 
 		// Register file watchers for incremental updates (Architecture doc Section 4.2)
 		this.registerFileWatchers();
+		this.registerNativeFileTaskConversionMenus();
 		this.registerLivePreviewSessionWatchers();
 		this.registerFilterPerformanceWatchers();
 		this.registerCanonicalSettingsReloadWatchers();
@@ -2703,6 +2815,12 @@ export default class OperonPlugin extends Plugin {
 
 		// Run startup maintenance after layout is ready
 		this.app.workspace.onLayoutReady(() => {
+			const releaseCheckGeneration = ++this.releaseCheckGeneration;
+			this.startupReleaseCheckTimer = setWindowTimeout(() => {
+				this.startupReleaseCheckTimer = null;
+				runAsyncAction('startup release check failed', () =>
+					this.checkForNewReleaseOnStartup(releaseCheckGeneration));
+			}, 10);
 			runAsyncAction('startup layout maintenance failed', async () => {
 			// Add ribbon icons after all plugins have loaded so they appear at the end
 			this.addRibbonIcon('list-plus', t('commands', 'openTaskCreator'), () => {
@@ -2784,6 +2902,9 @@ export default class OperonPlugin extends Plugin {
 
 					// Mark startup complete — one authoritative render + resumeFromIndex
 				this.startupReady = true;
+				if (this.projectSerialIndexReconcilePendingBeforeStartup) {
+					this.scheduleProjectSerialIndexReconcile();
+				}
 				await this.timeTracker.resumeFromIndex({ migrateLegacy: true });
 				this.indexV8CleanupMaintenance?.cancel();
 				this.indexV8CleanupMaintenance = startIndexV8CleanupMaintenance({
@@ -2821,6 +2942,18 @@ export default class OperonPlugin extends Plugin {
 		checkVisible();
 	}
 
+	private initializeTableFilePropertyTypeMonitor(): void {
+		const win = getActiveWindow();
+		const doc = getActiveDocument();
+		const checkVisible = (): void => {
+			if (doc.hidden) return;
+			void this.refreshTableFilePropertyTypes();
+		};
+		this.registerInterval(win.setInterval(checkVisible, 30_000));
+		this.registerDomEvent(win, 'focus', checkVisible);
+		this.registerDomEvent(doc, 'visibilitychange', checkVisible);
+	}
+
 	private async primeIndexV8ManifestFingerprint(): Promise<void> {
 		try {
 			const stat = await this.app.vault.adapter.stat(this.storage.indexV8Paths.manifestPath);
@@ -2852,10 +2985,15 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	onunload(): void {
+		this.cancelStartupReleaseCheck();
 		runAsyncAction('plugin unload failed', () => this.unloadPlugin());
 	}
 
 	private async unloadPlugin(): Promise<void> {
+		this.startupReady = false;
+		this.projectSerialIndexReconcilePendingBeforeStartup = false;
+		this.projectSerialIndexReconcileScheduler?.cancel();
+		this.projectSerialIndexReconcileScheduler = null;
 		if (this.settingsReindexTimer) {
 			clearWindowTimeout(this.settingsReindexTimer);
 			this.settingsReindexTimer = null;
@@ -2872,6 +3010,12 @@ export default class OperonPlugin extends Plugin {
 			clearWindowTimeout(this.locationPlaceTableRefreshTimer);
 			this.locationPlaceTableRefreshTimer = null;
 		}
+		if (this.tableFilePropertyRefreshTimer) {
+			clearWindowTimeout(this.tableFilePropertyRefreshTimer);
+			this.tableFilePropertyRefreshTimer = null;
+		}
+		clearTableFilePropertyIndex(this.app);
+		this.tableFilePropertyIndex = null;
 		this.clearWorkspaceTweakPropertiesCollapseTimers();
 		this.clearWorkspaceTweakPropertiesCollapserTargetClasses();
 		this.removeWorkspaceTweakBodyClasses();
@@ -3315,11 +3459,13 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 					onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
 					onEditTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 					onDeleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
+					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
 					onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					getProjectSerialDisplay: (operonId, task) => task
 						? this.getReadingProjectSerialDisplayForTask(operonId, task)
@@ -3350,11 +3496,13 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 						onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					onUpdateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 					getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 					onAddTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
 					onEditTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 					onDeleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
+					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
 					onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					getProjectSerialDisplay: (operonId, task) => task
 						? this.getReadingProjectSerialDisplayForTask(operonId, task)
@@ -4114,8 +4262,6 @@ export default class OperonPlugin extends Plugin {
 			new Notice(t('notifications', 'taskNotInIndex'));
 			return;
 		}
-		if (indexedTask.checkbox !== 'open') return;
-
 		const { anchor, cleanup } = this.resolveContextualActionAnchor(actionAnchor, actionAnchorRect);
 		await showPlainCheckboxPopover(anchor, {
 			app: this.app,
@@ -4164,7 +4310,7 @@ export default class OperonPlugin extends Plugin {
 			return { anchor: actionAnchor, cleanup: () => undefined };
 		}
 		const document = actionAnchor?.ownerDocument ?? getActiveDocument();
-		const anchor = document.createElement('span');
+		const anchor = document.win.createSpan();
 		const left = actionAnchorRect?.left ?? 0;
 		const top = actionAnchorRect?.top ?? 0;
 		const width = Math.max(1, actionAnchorRect?.width ?? 1);
@@ -5264,6 +5410,32 @@ export default class OperonPlugin extends Plugin {
 			onToggleFilterFavorite: (filterSetId) => this.togglePresetFavoriteAndRefresh('filter', filterSetId),
 			onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 			getFilterModalEvalDeps: () => this.buildFilterModalEvalDeps(),
+			getAdditionalColumnFields: scopedPreset => {
+				const filterSet = scopedPreset.filterSetId
+					? this.settings.filterSets.find(entry => entry.id === scopedPreset.filterSetId) ?? null
+					: null;
+				const allTasks = this.indexer.getAllTasks();
+				let tasks = resolveTableSearchScopedTasks({
+					filterSet,
+					tasks: allTasks,
+					priorities: this.settings.priorities,
+					pinnedCache: this.pinnedCache,
+					scope: scopedPreset.search.scope,
+					settings: this.settings,
+					filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
+				});
+				const parent = scopedPreset.search.parent;
+				if (parent && parent.mode === scopedPreset.search.scope.projectMode) {
+					const visibleIds = resolveTableParentSearchVisibleTaskIds(parent.parentId, parent.mode, tasks, {
+						getChildIds: parentId => this.indexer.secondary.getChildIds(parentId),
+						getAllDescendantIds: parentId => this.indexer.secondary.getAllDescendantIds(parentId),
+					});
+					tasks = tasks.filter(task => visibleIds.has(task.operonId));
+				}
+				return this.tableFilePropertyIndex?.getSnapshot(tasks, this.indexer.getGeneration(), {
+					keyMappings: this.settings.keyMappings,
+				}).fields ?? [];
+			},
 			managementMode: options.managementMode ?? 'full',
 		}).open();
 	}
@@ -5316,6 +5488,9 @@ export default class OperonPlugin extends Plugin {
 			pinnedCache: this.pinnedCache,
 			manualOrder,
 			keyMappings: this.settings.keyMappings,
+			filterEvaluationOptions: {
+				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
+			},
 		});
 	}
 
@@ -5780,6 +5955,9 @@ export default class OperonPlugin extends Plugin {
 			[syntheticTask],
 			this.settings.priorities,
 			this.pinnedCache,
+			{
+				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
+			},
 		).length > 0;
 	}
 
@@ -7154,6 +7332,7 @@ export default class OperonPlugin extends Plugin {
 	private buildFilterModalEvalDeps(): FilterModalEvalDeps {
 		return {
 			indexer: this.indexer,
+			getFilePropertySnapshot: tasks => this.getTableFilePropertySnapshot(tasks),
 			getPipelines: () => this.settings.pipelines,
 			getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
 			openEditor: (operonId: string) => {
@@ -7198,6 +7377,14 @@ export default class OperonPlugin extends Plugin {
 			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 			getProjectSerialSignature: () => this.getProjectSerialSignature(),
 		};
+	}
+
+	private getTableFilePropertySnapshot(tasks: readonly IndexedTask[] = this.indexer.getAllTasks()) {
+		return this.tableFilePropertyIndex?.getSnapshot(
+			tasks,
+			this.indexer.getGeneration(),
+			{ keyMappings: this.settings.keyMappings },
+		) ?? null;
 	}
 
 	private buildFilterSurfaceDeps(): EmbedFilterDeps {
@@ -7321,11 +7508,13 @@ export default class OperonPlugin extends Plugin {
 			openTaskSource: (operonId: string) => this.openMaterializedTaskSourceInNewTab(operonId),
 			allowWrites: true,
 			updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+			updateFileProperty: (operonId, request) => this.updateTableFilePropertyAndRefresh(operonId, request),
 			getTaskSessions: (operonId) => this.timeTracker.getTaskSessions(operonId),
 			addTaskSession: (operonId, start, end) => this.addTableTaskSessionAndRefresh(operonId, start, end),
 			editTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 			deleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 			onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
+			onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
 			onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 			onOpenPresetSettings: (presetId) => this.openTablePresetSettingsModal(presetId, () => this.resolveTablePresetSettingsLeafForEmbed()),
 			onSavePresetPatch: (patch) => this.queueTablePresetPatchAndRefresh(
@@ -7923,7 +8112,7 @@ export default class OperonPlugin extends Plugin {
 			const root = this.getReadingPreviewContentRoot(view);
 			if (!root) continue;
 			this.removeDynamicFileTaskFilterHosts(root);
-			const host = root.ownerDocument.createElement('div');
+			const host = root.ownerDocument.win.createDiv();
 			host.className = `${DYNAMIC_FILE_TASK_FILTER_HOST_CLASS} ${DYNAMIC_FILE_TASK_FILTER_HOST_CLASS}--reading`;
 			this.insertDynamicFileTaskFilterReadingHost(root, host);
 			const instance = createFilterSurfaceInstance(host);
@@ -8245,6 +8434,7 @@ export default class OperonPlugin extends Plugin {
 
 		this.registerEvent(
 			this.app.workspace.on('active-leaf-change', leaf => {
+				void this.refreshTableFilePropertyTypes();
 				if (!(leaf?.view instanceof MarkdownView)) return;
 				this.scheduleYamlPropertyVisibilityRefresh(120);
 			}),
@@ -8255,6 +8445,9 @@ export default class OperonPlugin extends Plugin {
 				if (file.extension !== 'md') return;
 				invalidateCustomFieldValueCandidateCache(this.app);
 				invalidateLocationPlaceIndex(this.app);
+				this.tableFilePropertyIndex?.invalidateFile(file.path);
+				this.scheduleTableFilePropertyRefresh(120);
+				void this.refreshTableFilePropertyTypes();
 				this.scheduleLocationPlaceTableRefresh(120);
 				this.scheduleYamlPropertyVisibilityRefresh(120);
 			}),
@@ -8285,6 +8478,43 @@ export default class OperonPlugin extends Plugin {
 		this.refreshTableLeaves();
 		if (this.embedTableDeps) {
 			refreshEmbedTables(this.embedTableDeps);
+		}
+	}
+
+	private scheduleTableFilePropertyRefresh(delayMs = 0): void {
+		if (this.tableFilePropertyRefreshTimer) {
+			clearWindowTimeout(this.tableFilePropertyRefreshTimer);
+		}
+		this.tableFilePropertyRefreshTimer = setWindowTimeout(() => {
+			this.tableFilePropertyRefreshTimer = null;
+			this.refreshViews({ reason: 'file-properties' });
+		}, delayMs);
+	}
+
+	private async refreshTableFilePropertyTypes(force = false, refreshSurfaces = true): Promise<void> {
+		const now = Date.now();
+		if (this.tableFilePropertyTypeCheckActive) return;
+		if (!force && now - this.tableFilePropertyTypeLastCheckAt < TABLE_FILE_PROPERTY_TYPE_CHECK_THROTTLE_MS) return;
+		this.tableFilePropertyTypeCheckActive = true;
+		this.tableFilePropertyTypeLastCheckAt = now;
+		try {
+			const path = `${this.app.vault.configDir}/types.json`;
+			const stat = await this.app.vault.adapter.stat(path);
+			const fingerprint = stat && stat.type === 'file' ? `${stat.mtime}:${stat.size}` : 'missing';
+			if (!force && fingerprint === this.tableFilePropertyTypeFingerprint) return;
+			const previousRevision = this.tableFilePropertyTypeResolver.getRevision?.() ?? 0;
+			const types = fingerprint === 'missing'
+				? {}
+				: await loadTableFilePropertyTypesFromConfig(this.app);
+			this.tableFilePropertyTypeFingerprint = fingerprint;
+			this.tableFilePropertyTypeResolver.replaceTypes(types);
+			if ((this.tableFilePropertyTypeResolver.getRevision?.() ?? 0) === previousRevision) return;
+			this.tableFilePropertyIndex?.invalidateTypes();
+			if (refreshSurfaces) this.scheduleTableFilePropertyRefresh(0);
+		} catch {
+			// Keep inferred scalar types when Obsidian's registry is temporarily unavailable.
+		} finally {
+			this.tableFilePropertyTypeCheckActive = false;
 		}
 	}
 
@@ -8575,7 +8805,9 @@ export default class OperonPlugin extends Plugin {
 			onUpdateRepeatSkips: async (request: TaskEditorRepeatSkipUpdateRequest): Promise<TaskEditorRepeatSkipUpdateResult> => {
 				return await this.updateTaskRepeatSkips(request.operonId, request.repeatSeriesId, request.skipDates);
 			},
-			onApplyEstimateReallocation: async (request: TaskEditorEstimateReallocationRequest): Promise<boolean> => {
+			onApplyEstimateReallocation: async (
+				request: TaskEditorEstimateReallocationRequest,
+			): Promise<TaskEditorEstimateReallocationApplyResult> => {
 				return await this.applyEstimateReallocationFromEditor(request);
 			},
 			pinnedCache: this.storage.pinned,
@@ -8621,12 +8853,12 @@ export default class OperonPlugin extends Plugin {
 		const parsed = this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath);
 		if (!parsed?.operonId) return false;
 
-			this.maybeApplyScheduledAutomationToParsedTask(parsed, task.fieldValues);
-			const payload = this.buildFieldPayload(parsed);
-			if (!this.validateDependencyPayloadChanges(task, payload, 'replace')) return null;
-			if (!await this.guardTaskStatusChangeOrShow(task, payload, { mode: 'replace' })) return null;
-			const normalizedTaskLine = serializeTask(parsed, this.settings.keyMappings);
-			let indexedPath = task.primary.filePath;
+		this.maybeApplyScheduledAutomationToParsedTask(parsed, task.fieldValues);
+		const payload = this.buildFieldPayload(parsed);
+		if (!this.validateDependencyPayloadChanges(task, payload, 'replace')) return null;
+		if (!await this.guardTaskStatusChangeOrShow(task, payload, { mode: 'replace' })) return null;
+		const normalizedTaskLine = serializeTask(parsed, this.settings.keyMappings);
+		let indexedPath = task.primary.filePath;
 
 		if (task.primary.format === 'inline') {
 			if (request.fileBody?.dirty && request.fileBody.format === 'inline') {
@@ -8658,25 +8890,24 @@ export default class OperonPlugin extends Plugin {
 				if (!updated) return false;
 			}
 		} else {
-			const nextPath = await this.writeYamlTaskInstanceFromParsedTask(task, parsed, request.fileBody);
-			if (!nextPath) return false;
-			indexedPath = nextPath;
-			if (request.fileBody) {
-				request.fileBody.filePath = indexedPath;
-			}
-			await delayWithActiveWindow(500);
+				const nextPath = await this.writeYamlTaskInstanceFromParsedTask(task, parsed, request.fileBody);
+				if (!nextPath) return false;
+				indexedPath = nextPath;
+				if (request.fileBody) {
+					request.fileBody.filePath = indexedPath;
+				}
 		}
 
 		await this.indexer.reindexFilePath(indexedPath, { notify: false });
-			const afterTask = this.indexer.hasDuplicateOperonIdConflict(parsed.operonId)
-				? null
-				: this.indexer.getTask(parsed.operonId) ?? null;
-			await this.syncDependencyPayloadChanges(task, payload, 'replace');
-			if (afterTask) {
-				await this.syncRepeatSeriesEntryIfNeeded(afterTask);
-			}
+		const afterTask = this.indexer.hasDuplicateOperonIdConflict(parsed.operonId)
+			? null
+			: this.indexer.getTask(parsed.operonId) ?? null;
+		await this.syncDependencyPayloadChanges(task, payload, 'replace');
+		if (afterTask) {
+			await this.syncRepeatSeriesEntryIfNeeded(afterTask);
+		}
 		await this.refreshAggregateTotalsAfterTaskMutation(task, afterTask);
-		await this.reconcileProjectSerialsForIndexMutation();
+		this.scheduleProjectSerialIndexReconcile();
 		this.refreshViews();
 		return true;
 	}
@@ -8696,29 +8927,10 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private scheduleProjectSerialIndexReconcile(): void {
-		if (!this.startupReady) return;
-		this.projectSerialIndexReconcileFollowupRequested = true;
-		if (this.projectSerialIndexReconcileRunning) return;
-		void this.runProjectSerialIndexReconcile();
-	}
-
-	private async runProjectSerialIndexReconcile(): Promise<void> {
-		if (this.projectSerialIndexReconcileRunning) return;
-		this.projectSerialIndexReconcileRunning = true;
-		const startedAt = enginePerfNow();
-		try {
-			do {
-				this.projectSerialIndexReconcileFollowupRequested = false;
-				await this.reconcileProjectSerialsForIndexMutation();
-			} while (this.projectSerialIndexReconcileFollowupRequested);
-			this.refreshViews();
-		} finally {
-			this.projectSerialIndexReconcileRunning = false;
-			enginePerfLog('projectSerials.reconcileFromIndex', `${Math.round(enginePerfNow() - startedAt)}ms`);
-			if (this.projectSerialIndexReconcileFollowupRequested) {
-				void this.runProjectSerialIndexReconcile();
-			}
-		}
+		this.projectSerialIndexReconcilePendingBeforeStartup = true;
+		if (!this.startupReady || !this.projectSerialIndexReconcileScheduler) return;
+		this.projectSerialIndexReconcilePendingBeforeStartup = false;
+		this.projectSerialIndexReconcileScheduler.schedule();
 	}
 
 	private async runScheduledIndexSideEffects(): Promise<void> {
@@ -8772,15 +8984,14 @@ export default class OperonPlugin extends Plugin {
 
 		const aggregateChanges = changes.filter(change => this.shouldRefreshAggregateForIndexedChange(change));
 		if (aggregateChanges.length > 0) {
-			const results = await Promise.allSettled(
-				aggregateChanges.map(change =>
-					this.refreshAggregateTotalsAfterTaskMutation(change.before, change.after),
-				),
-			);
-			for (const result of results) {
-				if (result.status === 'rejected') {
-					console.warn('Operon: failed to refresh aggregates after indexed task change', result.reason);
-				}
+			// One batched refresh: concurrent per-delta refreshes on a shared
+			// ancestor chain would compute and write the same parents repeatedly.
+			// Archiver scheduling and auto-unpin for these deltas are covered by
+			// the all-changes loops below.
+			try {
+				await this.aggregateCoordinator.refreshAfterTaskMutations(aggregateChanges);
+			} catch (error) {
+				console.warn('Operon: failed to refresh aggregates after indexed task changes', error);
 			}
 			this.scheduleIndexSideEffects();
 		}
@@ -8947,6 +9158,9 @@ export default class OperonPlugin extends Plugin {
 
 		const changes = this.buildTaskWikilinkOverlayRepairEditorChanges(content, rewrite.replacements);
 		try {
+			if (editor.getValue() !== content) {
+				return null;
+			}
 			this.markInternalTaskWrite(filePath);
 			editor.transaction({ changes }, 'operon-task-wikilink-overlay-repair');
 		} catch (error) {
@@ -9527,6 +9741,87 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	private registerNativeFileTaskConversionMenus(): void {
+		this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
+			this.updateNativeFileTaskConversionMenu(menu, file, 2);
+		}));
+		this.registerEvent(this.app.workspace.on('editor-menu', (menu, _editor, info) => {
+			this.updateNativeFileTaskConversionMenu(menu, info.file, 1);
+		}));
+	}
+
+	private updateNativeFileTaskConversionMenu(
+		menu: Menu,
+		file: TAbstractFile | null,
+		priority: number,
+	): void {
+		const existing = this.nativeFileTaskConversionMenus.get(menu);
+		if (existing && existing.priority >= priority) return;
+
+		const targetFile = file instanceof TFile && this.isNativeFileTaskConversionMenuEligible(file)
+			? file
+			: null;
+		if (existing) {
+			existing.priority = priority;
+			existing.targetFile = targetFile;
+			if (existing.item) {
+				existing.item.setDisabled(!targetFile);
+			} else if (targetFile) {
+				this.addNativeFileTaskConversionMenuItem(menu, existing);
+			}
+			return;
+		}
+
+		const state: NativeFileTaskConversionMenuState = {
+			priority,
+			targetFile,
+			item: null,
+		};
+		this.nativeFileTaskConversionMenus.set(menu, state);
+		if (!targetFile) return;
+		this.addNativeFileTaskConversionMenuItem(menu, state);
+	}
+
+	private addNativeFileTaskConversionMenuItem(
+		menu: Menu,
+		state: NativeFileTaskConversionMenuState,
+	): void {
+		menu.addItem(item => {
+			state.item = item;
+			item
+				.setTitle(t('contextMenu', 'convertToOperonFileTask'))
+				.setIcon('list-chevrons-up-down')
+				.setSection('operon')
+				.onClick(() => {
+					const selectedFile = state.targetFile;
+					if (!selectedFile) return;
+					void this.openNativeFileTaskConversionPicker(selectedFile).catch(error => {
+						console.error('Operon: native file task conversion failed', error);
+						new Notice(t('notifications', 'nativeFileTaskConversionUnavailable'));
+					});
+				});
+		});
+	}
+
+	private isNativeFileTaskConversionMenuEligible(file: TFile): boolean {
+		if (file.extension !== 'md') return false;
+		if (isOperonExcludedPath(file.path, this.settings)) return false;
+		if (this.indexer.getFileTaskByPath(file.path)) return false;
+		if (!this.hasAvailableFileTaskTemplateOption()) return false;
+		const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+		return !hasNonEmptyManagedYamlValue(frontmatter, 'operonId', this.settings.keyMappings);
+	}
+
+	private hasAvailableFileTaskTemplateOption(): boolean {
+		if (buildPipelineMinimalFileTaskTemplateOptions(this.settings.pipelines).length > 0) return true;
+		const folderPath = this.settings.fileTaskTemplateFolder.trim();
+		if (!folderPath) return false;
+		const folder = this.app.vault.getAbstractFileByPath(folderPath);
+		return folder instanceof TFolder && folder.children.some(child =>
+			child instanceof TFile && child.extension === 'md'
+		);
+	}
+
 	private registerFileWatchers(): void {
 		// File content changed → incremental reindex
 		this.registerEvent(
@@ -9543,6 +9838,8 @@ export default class OperonPlugin extends Plugin {
 				if (file instanceof TFile && file.extension === 'md') {
 					invalidateCustomFieldValueCandidateCache(this.app);
 					invalidateLocationPlaceIndex(this.app);
+					this.tableFilePropertyIndex?.invalidateFile(file.path);
+					this.scheduleTableFilePropertyRefresh(120);
 					this.markTemplatedFileTaskCreationCandidate(file.path);
 					this.indexer.scheduleReindex(file.path);
 					getActiveWindow().setTimeout(() => {
@@ -9558,6 +9855,8 @@ export default class OperonPlugin extends Plugin {
 					if (file instanceof TFile && file.extension === 'md') {
 						invalidateCustomFieldValueCandidateCache(this.app);
 						invalidateLocationPlaceIndex(this.app);
+						this.tableFilePropertyIndex?.removeFile(file.path);
+						this.scheduleTableFilePropertyRefresh(120);
 						this.templatedFileTaskCreationCandidates.delete(file.path);
 						this.workflowNormalizationPending.delete(file.path);
 						void this.indexer.handleFileDelete(file.path);
@@ -9572,6 +9871,8 @@ export default class OperonPlugin extends Plugin {
 
 				invalidateCustomFieldValueCandidateCache(this.app);
 				invalidateLocationPlaceIndex(this.app);
+				this.tableFilePropertyIndex?.renameFile(oldPath, file.path);
+				this.scheduleTableFilePropertyRefresh(120);
 				const movedTemplatedCandidate = this.moveTemplatedFileTaskCreationCandidate(oldPath, file.path);
 				if (movedTemplatedCandidate) {
 					if (this.workflowNormalizationPending.delete(oldPath)) {
@@ -9585,18 +9886,6 @@ export default class OperonPlugin extends Plugin {
 					}
 				}
 				this.indexer.handleFileRename(oldPath, file.path);
-
-				// Reindex must wait for Obsidian's metadataCache to update — it's async.
-				const onCacheChanged = this.app.metadataCache.on('changed', async (changedFile: TFile) => {
-					if (changedFile.path !== file.path) return;
-					this.app.metadataCache.offref(onCacheChanged);
-					await this.indexer.reindexFilePath(file.path);
-				});
-
-				// Safety timeout: if cache event never fires, clean up
-				setWindowTimeout(() => {
-					this.app.metadataCache.offref(onCacheChanged);
-				}, 5000);
 			})
 		);
 	}
@@ -10222,7 +10511,7 @@ export default class OperonPlugin extends Plugin {
 
 	private markInternalTaskWrite(filePath: string): void {
 		if (!filePath) return;
-		this.internalTaskWriteSuppressUntilByPath.set(filePath, Date.now() + 1000);
+		this.internalTaskWriteSuppressUntilByPath.set(filePath, Date.now() + INTERNAL_TASK_WRITE_SUPPRESSION_MS);
 	}
 
 	private shouldSuppressInternalTaskWrite(filePath: string): boolean {
@@ -10713,50 +11002,124 @@ export default class OperonPlugin extends Plugin {
 
 	private async applyEstimateReallocationFromEditor(
 		request: TaskEditorEstimateReallocationRequest,
-	): Promise<boolean> {
+	): Promise<TaskEditorEstimateReallocationApplyResult> {
 		const childTask = this.indexer.getTask(request.childOperonId);
-		if (!childTask) return false;
+		if (!childTask) return { complete: false, committedSubtractSeconds: 0 };
 
-		const plannedWrites: Array<{
-			beforeTask: IndexedTask;
-			nextEstimate: string;
-		}> = [];
-		const touchedPaths = new Set<string>();
+		const writeResult = await applyManualEstimateReallocationWrites({
+			childTask,
+			...request,
+		}, {
+			getTaskById: operonId => this.indexer.getTask(operonId) ?? null,
+			validateTaskSource: async (currentTask, expectedEstimate) => await this.writer.taskFieldsMatchCurrentSource(
+				currentTask.operonId,
+				{
+					estimate: expectedEstimate,
+					parentTask: currentTask.fieldValues['parentTask'] ?? '',
+				},
+			),
+			writeEstimate: async (operonId, expectedEstimate, nextEstimate, expectedParentTask) => await this.writer.writeTaskFieldIfCurrent(
+				operonId,
+				'estimate',
+				expectedEstimate,
+				nextEstimate,
+				{
+					reindex: 'none',
+					additionalExpectedValues: { parentTask: expectedParentTask },
+				},
+			),
+			resolveWriteError: async write => await this.writer.taskFieldsMatchCurrentSource(
+				write.beforeTask.operonId,
+				{
+					estimate: write.nextEstimate,
+					parentTask: write.beforeTask.fieldValues['parentTask'] ?? '',
+				},
+			),
+		});
+		if (writeResult.error) {
+			console.warn('Operon: estimate reallocation write failed after a partial commit', writeResult.error);
+		}
+		const plannedWrites = writeResult.committedWrites;
+		let reconciliationComplete = plannedWrites.length === 0;
 
-		for (const step of request.steps) {
-			const ancestorTask = this.indexer.getTask(step.operonId);
-			if (!ancestorTask) return false;
-
-			if (step.subtractSeconds <= 0) continue;
-
-			const currentOwnEstimate = Math.max(0, parseInt(ancestorTask.fieldValues['estimate'] ?? '0', 10) || 0);
-			if (currentOwnEstimate < step.subtractSeconds) return false;
-
-			plannedWrites.push({
-				beforeTask: ancestorTask,
-				nextEstimate: currentOwnEstimate > step.subtractSeconds
-					? String(currentOwnEstimate - step.subtractSeconds)
-					: '',
-			});
-			touchedPaths.add(ancestorTask.primary.filePath);
+		if (plannedWrites.length > 0) {
+			const touchedPaths = new Set(plannedWrites.map(write => write.beforeTask.primary.filePath));
+			try {
+				await this.indexer.reindexFilesBatch(Array.from(touchedPaths), { notify: false });
+				const retryPaths = new Set(plannedWrites
+					.filter(write => !this.estimateReallocationWriteMatchesIndex(
+						write,
+						this.indexer.getTask(write.beforeTask.operonId),
+					))
+					.map(write => write.beforeTask.primary.filePath));
+				if (retryPaths.size > 0) {
+					await this.indexer.reindexFilesBatch(Array.from(retryPaths), { notify: false });
+				}
+				const unreconciledWrites = plannedWrites.filter(write => !this.estimateReallocationWriteMatchesIndex(
+					write,
+					this.indexer.getTask(write.beforeTask.operonId),
+				));
+				if (unreconciledWrites.length > 0) {
+					throw new Error(`Estimate reallocation could not reindex ${unreconciledWrites.length} committed writes`);
+				}
+				const mutations = plannedWrites.map(write => ({
+					before: write.beforeTask,
+					after: this.indexer.getTask(write.beforeTask.operonId) ?? null,
+				}));
+				// One batched refresh over all steps; per-step refreshes would
+				// recompute and rewrite the same ancestor chain once per step.
+				const refreshAggregates = async (): Promise<void> => {
+					const result = await this.aggregateCoordinator.refreshAfterTaskMutations(mutations);
+					if (result.failedWriteCount > 0) {
+						throw new Error(`Estimate reallocation aggregate refresh reported ${result.failedWriteCount} failed writes`);
+					}
+				};
+				let aggregateRefreshComplete = false;
+				try {
+					await refreshAggregates();
+					aggregateRefreshComplete = true;
+				} catch (error) {
+					console.warn('Operon: estimate reallocation aggregate refresh failed; retrying once', error);
+					try {
+						await refreshAggregates();
+						aggregateRefreshComplete = true;
+					} catch (retryError) {
+						console.warn('Operon: estimate reallocation aggregate refresh retry failed', retryError);
+					}
+				}
+				// The old per-step helper also ran these mutation side effects. Restore
+				// them without repeating the aggregate calculation or reindex pass.
+				for (const mutation of mutations) {
+					this.fileTaskArchiver?.scheduleForIndexedChange(mutation.before, mutation.after);
+					try {
+						await this.tryAutoUnpinTerminalTaskIfNeeded(mutation.after);
+					} catch (error) {
+						console.warn('Operon: estimate reallocation auto-unpin failed', error);
+					}
+				}
+				reconciliationComplete = aggregateRefreshComplete;
+			} catch (error) {
+				console.warn('Operon: estimate reallocation post-commit reconciliation failed', error);
+			} finally {
+				// The reindex ran with notify off, so this is the chain's only view refresh.
+				this.refreshViews({ reason: 'estimate-reallocation' });
+			}
 		}
 
-		for (const write of plannedWrites) {
-			await this.writer.writeTaskFields(write.beforeTask.operonId, {
-				estimate: write.nextEstimate,
-			}, { reindex: 'none' });
-		}
+		return {
+			complete: writeResult.complete && reconciliationComplete,
+			committedSubtractSeconds: writeResult.committedSubtractSeconds,
+		};
+	}
 
-		for (const filePath of touchedPaths) {
-			await this.indexer.reindexFilePath(filePath);
-		}
-
-		for (const write of plannedWrites) {
-			const afterTask = this.indexer.getTask(write.beforeTask.operonId) ?? null;
-			await this.refreshAggregateTotalsAfterTaskMutation(write.beforeTask, afterTask);
-		}
-
-		return true;
+	private estimateReallocationWriteMatchesIndex(
+		write: { beforeTask: IndexedTask; nextEstimate: string },
+		indexed: IndexedTask | null | undefined,
+	): boolean {
+		if (!indexed) return false;
+		const parseEstimate = (value: string): number => Math.max(0, parseInt(value || '0', 10) || 0);
+		return parseEstimate(indexed.fieldValues['estimate'] ?? '') === parseEstimate(write.nextEstimate)
+			&& (indexed.fieldValues['parentTask'] ?? '') === (write.beforeTask.fieldValues['parentTask'] ?? '');
 	}
 
 	private applyFieldPayloadToParsedTask(
@@ -11012,21 +11375,47 @@ export default class OperonPlugin extends Plugin {
 		return buildFileTaskTemplateOptions(
 			this.settings.fileTaskTemplateFolder,
 			this.app.vault.getMarkdownFiles(),
+			this.settings.pipelines,
 		);
 	}
 
 	private getFileTaskTemplateOptionsForPicker(): FileTaskTemplateOption[] {
 		return orderFileTaskTemplateOptionsByLastUsed(
 			this.getFileTaskTemplateOptions(),
-			this.settings.lastUsedFileTaskTemplateId,
+			normalizeStoredFileTaskTemplateId(
+				this.settings.lastUsedFileTaskTemplateId,
+				this.settings.pipelines,
+				this.settings.defaultPipelineName,
+			),
 		);
 	}
 
 	private getAvailableTaskCreatorDefaultFileTemplateId(): string {
+		const templateId = normalizeStoredFileTaskTemplateId(
+			this.settings.taskCreatorDefaultFileTemplateId,
+			this.settings.pipelines,
+			this.settings.defaultPipelineName,
+		);
 		return findFileTaskTemplateOptionById(
 			this.getFileTaskTemplateOptions(),
-			this.settings.taskCreatorDefaultFileTemplateId,
+			templateId,
 		)?.id ?? '';
+	}
+
+	private applyPipelineMinimalFileTaskTemplateStatus(
+		option: FileTaskTemplateOption,
+		fieldValues: Record<string, string>,
+		fieldPresence: Set<string>,
+	): boolean {
+		if (option.kind !== 'builtin-pipeline-minimal') return true;
+		const status = resolvePipelineMinimalFileTaskTemplateStatus(option, this.settings.pipelines);
+		if (!status) {
+			new Notice(t('notifications', 'pipelineMinimalFileTaskTemplateUnavailable'));
+			return false;
+		}
+		fieldValues['status'] = status;
+		fieldPresence.add('status');
+		return true;
 	}
 
 	private getTargetFileTaskFolder(
@@ -11049,7 +11438,7 @@ export default class OperonPlugin extends Plugin {
 	private async loadFileTaskTemplateDocumentFromOption(
 		option: FileTaskTemplateOption | null,
 	): Promise<LoadedFileTaskTemplateResult> {
-		if (!option || option.kind === 'builtin-empty' || !option.path) {
+		if (!option || option.kind !== 'folder') {
 			return {
 				document: null,
 				resolvedOperonIdSeed: null,
@@ -11763,7 +12152,6 @@ export default class OperonPlugin extends Plugin {
 		};
 		const nextPath = await this.writeYamlTaskInstance(task, task.description, fieldValues, task.tags, null);
 		if (!nextPath) return false;
-		await delayWithActiveWindow(500);
 		await this.indexer.reindexFilePath(nextPath);
 		return true;
 	}
@@ -12041,6 +12429,11 @@ export default class OperonPlugin extends Plugin {
 				seedFieldPresence,
 			)
 			: { fieldValues: seedFieldValues, fieldPresence: seedFieldPresence, tags: [] };
+		if (!this.applyPipelineMinimalFileTaskTemplateStatus(
+			selectedTemplate,
+			linkedSeed.fieldValues,
+			linkedSeed.fieldPresence,
+		)) return null;
 		const template = this.resolveLoadedFileTaskTemplateDocument(
 			templateResult,
 			this.buildOperonTemplatePlaceholderContext(title, linkedSeed.fieldValues, now),
@@ -12206,12 +12599,19 @@ export default class OperonPlugin extends Plugin {
 		}, { reindex: 'none' });
 		if (!wrote) return;
 
-		await this.indexer.reindexFilePath(child.primary.filePath);
-		await this.refreshAggregateTotalsAfterTaskMutation(
-			beforeTask,
-			this.indexer.getTask(childId) ?? null,
-			{ modifiedTimestamp: timestamp },
-		);
+		await this.indexer.reindexFilePath(child.primary.filePath, { notify: false });
+		try {
+			await this.refreshAggregateTotalsAfterTaskMutation(
+				beforeTask,
+				this.indexer.getTask(childId) ?? null,
+				{ modifiedTimestamp: timestamp },
+			);
+		} finally {
+			// The explicit aggregate pass above owns this mutation. Preserve the
+			// generic index side effects after it settles without also starting the
+			// fire-and-forget onTasksChanged aggregate path.
+			this.scheduleIndexSideEffects();
+		}
 	}
 
 	private async syncExistingSubtasksForParent(parentId: string, nextSubtaskIds: string[]): Promise<void> {
@@ -13089,7 +13489,62 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
-	private async convertNoteToFileTask(file: TFile, document: ParsedFrontmatterDocument): Promise<void> {
+	private async resolveFreshNoteToFileTaskConversion(
+		file: TFile,
+		persistOpenEditorBuffer: boolean,
+	): Promise<{ file: TFile; document: ParsedFrontmatterDocument } | null> {
+		const currentFile = this.app.vault.getAbstractFileByPath(file.path);
+		if (!(currentFile instanceof TFile) || currentFile !== file || currentFile.extension !== 'md') return null;
+		const openView = this.getMarkdownViewForPath(currentFile.path);
+		if (openView && persistOpenEditorBuffer) {
+			await this.persistMarkdownViewBuffer(openView);
+		}
+		const refreshedFile = this.app.vault.getAbstractFileByPath(file.path);
+		if (refreshedFile !== file) return null;
+		if (isOperonExcludedPath(currentFile.path, this.settings)) return null;
+		if (!this.hasAvailableFileTaskTemplateOption()) return null;
+		if (this.indexer.getFileTaskByPath(currentFile.path)) return null;
+
+		const document = openView && !persistOpenEditorBuffer
+			? parseFrontmatterDocument(openView.editor.getValue(), this.settings.keyMappings)
+			: await this.loadParsedFrontmatterDocument(currentFile);
+		const existingOperonId = document.managedFieldValues['operonId']?.trim();
+		if (document.managedFieldPresence.has('operonId') && existingOperonId) return null;
+		return { file: currentFile, document };
+	}
+
+	private async openNativeFileTaskConversionPicker(file: TFile): Promise<void> {
+		const initialTarget = await this.resolveFreshNoteToFileTaskConversion(file, false);
+		if (!initialTarget) {
+			new Notice(t('notifications', 'nativeFileTaskConversionUnavailable'));
+			return;
+		}
+
+		this.openFileTaskTemplatePicker(selectedTemplate => {
+			void this.finishNativeFileTaskConversion(file, selectedTemplate).catch(error => {
+				console.error('Operon: failed to convert a note from the native context menu', error);
+				new Notice(t('notifications', 'noteToFileTaskFailed'));
+			});
+		});
+	}
+
+	private async finishNativeFileTaskConversion(
+		file: TFile,
+		selectedTemplate: FileTaskTemplateOption,
+	): Promise<void> {
+		const target = await this.resolveFreshNoteToFileTaskConversion(file, true);
+		const currentTemplate = findFileTaskTemplateOptionById(
+			this.getFileTaskTemplateOptions(),
+			selectedTemplate.id,
+		);
+		if (!target || !currentTemplate) {
+			new Notice(t('notifications', 'nativeFileTaskConversionUnavailable'));
+			return;
+		}
+		await this.finishNoteToFileTaskConversion(target.file, target.document, currentTemplate);
+	}
+
+	private async convertNoteToFileTask(file: TFile): Promise<void> {
 		const confirmed = await this.promptConfirmAction(
 			t('modals', 'convertCurrentNoteTitle'),
 			t('modals', 'convertCurrentNoteMessage'),
@@ -13098,12 +13553,7 @@ export default class OperonPlugin extends Plugin {
 		);
 		if (!confirmed) return;
 
-		this.openFileTaskTemplatePicker((selectedTemplate) => {
-			void this.finishNoteToFileTaskConversion(file, document, selectedTemplate).catch((error) => {
-				console.error('Operon: failed to convert current note to a file task', error);
-				new Notice(t('notifications', 'noteToFileTaskFailed'));
-			});
-		});
+		await this.openNativeFileTaskConversionPicker(file);
 	}
 
 	private async finishNoteToFileTaskConversion(
@@ -13121,6 +13571,11 @@ export default class OperonPlugin extends Plugin {
 		if ((seedFieldValues['operonId'] ?? '').trim()) {
 			seedFieldPresence.add('operonId');
 		}
+		if (!this.applyPipelineMinimalFileTaskTemplateStatus(
+			selectedTemplate,
+			seedFieldValues,
+			seedFieldPresence,
+		)) return;
 		const template = this.resolveLoadedFileTaskTemplateDocument(
 			templateResult,
 			this.buildOperonTemplatePlaceholderContext(file.basename, seedFieldValues, now),
@@ -13177,6 +13632,11 @@ export default class OperonPlugin extends Plugin {
 			baseFieldPresence,
 			baseFieldValues['parentTask'],
 		);
+		if (!this.applyPipelineMinimalFileTaskTemplateStatus(
+			selectedTemplate,
+			linkedSeed.fieldValues,
+			linkedSeed.fieldPresence,
+		)) return;
 		const template = this.resolveLoadedFileTaskTemplateDocument(
 			templateResult,
 			this.buildOperonTemplatePlaceholderContext(initialDescription, linkedSeed.fieldValues, now),
@@ -13831,7 +14291,7 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 
-		await this.convertNoteToFileTask(file, document);
+		await this.convertNoteToFileTask(file);
 	}
 
 	private async replaceInlineTaskById(
@@ -13920,7 +14380,6 @@ export default class OperonPlugin extends Plugin {
 			console.warn('Operon: inline-to-file editor transaction failed.', error);
 			return false;
 		}
-
 		await this.persistMarkdownViewBuffer(view);
 		return true;
 	}
@@ -14192,10 +14651,7 @@ export default class OperonPlugin extends Plugin {
 				await this.indexer.reindexFilePath(freshTask.primary.filePath, { notify: false });
 				const afterTask = this.indexer.getTask(freshTask.operonId);
 				await this.syncDependencyPayloadChanges(freshTask, payload, 'replace');
-				const modifiedTimestamp = (payload['datetimeModified'] ?? afterTask?.fieldValues['datetimeModified'] ?? '').trim();
-			if (modifiedTimestamp) {
-				await this.writer.touchTaskAncestorsModified(freshTask, afterTask ?? null, modifiedTimestamp);
-			}
+			const modifiedTimestamp = (payload['datetimeModified'] ?? afterTask?.fieldValues['datetimeModified'] ?? '').trim();
 			let recurrenceResult: RecurrenceMaterializationResult | null = null;
 			if (afterTask) {
 				await this.syncRepeatSeriesEntryIfNeeded(afterTask);
@@ -14206,11 +14662,11 @@ export default class OperonPlugin extends Plugin {
 				recurrenceResult = await this.maybeCreateRecurringOccurrence(task, afterTask, localNow());
 			}
 			await this.refreshAggregateTotalsAfterTaskMutation(
-				task,
+				freshTask,
 				this.resolveAfterTaskForRecurrenceMaterialization(afterTask ?? null, recurrenceResult),
-				{ autoUnpinCandidate: afterTask ?? null },
+				{ modifiedTimestamp, autoUnpinCandidate: afterTask ?? null },
 			);
-			await this.reconcileProjectSerialsForIndexMutation();
+			this.scheduleProjectSerialIndexReconcile();
 			this.refreshViews();
 			return true;
 		}
@@ -14220,7 +14676,12 @@ export default class OperonPlugin extends Plugin {
 
 		// YAML saves are full-state replacements for Operon-managed fields:
 		// omitted keys should be removed, while unknown user frontmatter is preserved.
-		await this.writer.writeTaskFields(freshTask.operonId, payload, { mode: 'replace', reindex: 'none' });
+		const wroteYamlTask = await this.writer.writeTaskFields(
+			freshTask.operonId,
+			payload,
+			{ mode: 'replace', reindex: 'none', touchAncestors: false },
+		);
+		if (!wroteYamlTask) return false;
 
 		let indexedPath = file.path;
 		const sanitized = this.sanitizeTaskFileName(parsed.description);
@@ -14242,18 +14703,16 @@ export default class OperonPlugin extends Plugin {
 				await this.writeFileTaskBodyIfNeeded(indexedFile, request.fileBody);
 			} catch (error) {
 				console.error('Operon: failed to write file task body from task editor', error);
-				await delayWithActiveWindow(500);
 				await this.indexer.reindexFilePath(indexedPath);
 				return false;
 			}
 		}
 
-		// Delay reindex to let Obsidian's metadata cache update after processFrontMatter.
-		await delayWithActiveWindow(500);
-			await this.indexer.reindexFilePath(indexedPath, { notify: false });
-			const afterTask = this.indexer.getTask(freshTask.operonId);
-			await this.syncDependencyPayloadChanges(freshTask, payload, 'replace');
-			let recurrenceResult: RecurrenceMaterializationResult | null = null;
+		await this.indexer.reindexFilePath(indexedPath, { notify: false });
+		const afterTask = this.indexer.getTask(freshTask.operonId);
+		const modifiedTimestamp = (payload['datetimeModified'] ?? afterTask?.fieldValues['datetimeModified'] ?? '').trim();
+		await this.syncDependencyPayloadChanges(freshTask, payload, 'replace');
+		let recurrenceResult: RecurrenceMaterializationResult | null = null;
 		if (afterTask) {
 			await this.syncRepeatSeriesEntryIfNeeded(afterTask);
 			await this.applyInlineRepeatCompletionModeIfRequested(afterTask, request.inlineCompletionMode);
@@ -14263,11 +14722,11 @@ export default class OperonPlugin extends Plugin {
 			recurrenceResult = await this.maybeCreateRecurringOccurrence(task, afterTask, localNow());
 		}
 		await this.refreshAggregateTotalsAfterTaskMutation(
-			task,
+			freshTask,
 			this.resolveAfterTaskForRecurrenceMaterialization(afterTask ?? null, recurrenceResult),
-			{ autoUnpinCandidate: afterTask ?? null },
+			{ modifiedTimestamp, autoUnpinCandidate: afterTask ?? null },
 		);
-		await this.reconcileProjectSerialsForIndexMutation();
+		this.scheduleProjectSerialIndexReconcile();
 		this.refreshViews();
 		return true;
 	}
@@ -14281,10 +14740,11 @@ export default class OperonPlugin extends Plugin {
 			precommittedAggregateIds?: Set<string>;
 			autoUnpinCandidate?: IndexedTask | null;
 		} = {},
-	): Promise<void> {
-		await this.aggregateCoordinator.refreshAfterTaskMutation(beforeTask, afterTask, options);
+	): Promise<AggregateRefreshResult> {
+		const result = await this.aggregateCoordinator.refreshAfterTaskMutation(beforeTask, afterTask, options);
 		this.fileTaskArchiver?.scheduleForIndexedChange(beforeTask, afterTask);
 		await this.tryAutoUnpinTerminalTaskIfNeeded(options.autoUnpinCandidate ?? afterTask);
+		return result;
 	}
 
 	private async refreshAggregateStateAfterTaskRemoval(removedTasks: IndexedTask[]): Promise<void> {
@@ -14662,7 +15122,7 @@ export default class OperonPlugin extends Plugin {
 				getTask: taskId => this.indexer.getTask(taskId),
 			})
 			: undefined;
-		await this.reconcileProjectSerialsForIndexMutation();
+		this.scheduleProjectSerialIndexReconcile();
 		this.refreshViews(isStatusCycleRefresh || options.statusCycleTrace
 			? {
 				statusCycleTrace: options.statusCycleTrace,
@@ -14709,6 +15169,38 @@ export default class OperonPlugin extends Plugin {
 		return this.updateTaskFieldsAndRefresh(operonId, guardedPayload, { changedKeys });
 	}
 
+	private async updateTableFilePropertyAndRefresh(
+		operonId: string,
+		request: {
+			propertyName: string;
+			expected: RawYamlPropertyExpectation;
+			mutation: RawYamlPropertyMutation;
+		},
+	): Promise<RawYamlPropertyWriteOutcome> {
+		const task = this.indexer.getTask(operonId);
+		if (!task || task.primary.format !== 'yaml') return 'unsupported';
+		const result = await this.writer.writeYamlFilePropertyIfCurrent(
+			operonId,
+			request.propertyName,
+			request.expected,
+			request.mutation,
+			{ reindex: 'none', modifiedTimestamp: localNow() },
+		);
+		const filePath = result.filePath ?? task.primary.filePath;
+		if (result.outcome === 'updated') {
+			this.tableFilePropertyIndex?.applyMutation(filePath, request.propertyName, request.mutation);
+			await this.indexer.reindexFilePath(filePath, { notify: false });
+			this.refreshViews();
+		} else if (result.outcome === 'conflict' || result.outcome === 'already-updated') {
+			const currentMutation: RawYamlPropertyMutation = result.current.present
+				? { kind: 'set', value: result.current.value ?? null }
+				: { kind: 'delete' };
+			this.tableFilePropertyIndex?.applyMutation(filePath, request.propertyName, currentMutation);
+			this.refreshViews();
+		}
+		return result.outcome;
+	}
+
 	private async updateTableTaskDescriptionAndRefresh(task: IndexedTask, description: string): Promise<boolean> {
 		const nextDescription = description.trim();
 		if (nextDescription === task.description.trim()) return true;
@@ -14731,7 +15223,6 @@ export default class OperonPlugin extends Plugin {
 		};
 		const nextPath = await this.writeYamlTaskInstance(task as IndexedTaskInstance, nextDescription, fieldValues, task.tags, null);
 		if (!nextPath) return false;
-		await delayWithActiveWindow(500);
 		await this.indexer.reindexFilePath(nextPath, { notify: false });
 		const afterTask = this.indexer.getTask(task.operonId);
 		if (!afterTask || afterTask.description.trim() !== nextDescription) return false;
@@ -14739,7 +15230,7 @@ export default class OperonPlugin extends Plugin {
 			modifiedTimestamp: datetimeModified,
 			autoUnpinCandidate: afterTask ?? null,
 		});
-		await this.reconcileProjectSerialsForIndexMutation();
+		this.scheduleProjectSerialIndexReconcile();
 		this.refreshViews();
 		return true;
 	}

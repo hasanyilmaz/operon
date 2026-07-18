@@ -26,7 +26,24 @@ import { filterTasksForCalendar } from '../systems/calendar-filter-materializati
 import { t } from '../core/i18n';
 import { localNow } from '../core/local-time';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
-import { PROJECT_SERIAL_TABLE_FIELD_KEY, getTableTaskField, getTableTaskFieldLabel, isEditableTableTaskFieldKey } from './table/table-field-catalog';
+import {
+	PROJECT_SERIAL_TABLE_FIELD_KEY,
+	getTableTaskField,
+	getTableTaskFieldLabel,
+	getTableColumnLabel,
+	isEditableTableTaskFieldKey,
+	type TableTaskField,
+} from './table/table-field-catalog';
+import { getTableFilePropertyIndex, isTableFilePropertyColumnKey, type TableFilePropertyCellValue, type TableFilePropertyField, type TableFilePropertySnapshot } from './table/table-file-property';
+import {
+	bindTableFilePropertyRemovalMenu,
+	canEditTableFilePropertyCell,
+	openTableFilePropertyPicker,
+	renderTableFilePropertyCheckbox,
+	toRawYamlPropertyExpectation,
+	type TableFilePropertyUpdateRequest,
+	type TableFilePropertyUpdateResult,
+} from './table/table-file-property-editor';
 import {
 	formatTableTaskSource,
 } from './table/table-value-adapter';
@@ -87,7 +104,7 @@ import {
 	type TableParentSearchSelection,
 	type TableParentSearchUiState,
 } from './table/table-search-scope';
-import { getTableSummaryIdleDelayMs, type TableSummaryCell } from './table/table-summary';
+import { getTableSummaryFunctionsForField, getTableSummaryIdleDelayMs, type TableSummaryCell } from './table/table-summary';
 import {
 	TABLE_DEFAULT_BODY_HEIGHT,
 	TABLE_OVERSCAN_ROWS,
@@ -177,11 +194,17 @@ export interface EmbedTableDeps {
 	openTaskSource: (operonId: string) => void;
 	allowWrites?: boolean;
 	updateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	updateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	addTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
 	editTaskSession?: (session: TrackerSession, start: string, end: string) => void | Promise<boolean>;
 	deleteTaskSession?: (session: TrackerSession) => void | Promise<boolean>;
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
+	onOpenCheckboxes?: (
+		taskId: string,
+		actionAnchor?: HTMLElement | null,
+		actionAnchorRect?: DOMRect | null,
+	) => void | Promise<void>;
 	onContextualAction?: ContextualMenuActionHandler;
 	onOpenPresetSettings?: (presetId: string) => void;
 	onSavePresetPatch?: (patch: TablePresetPatch) => Promise<void>;
@@ -260,6 +283,10 @@ interface EmbeddedTableRenderState {
 	summariesCalculating: boolean;
 	settings: OperonSettings;
 	allTasks: IndexedTask[];
+	additionalFields: readonly TableTaskField[];
+	filePropertySignature: string;
+	getFilePropertyCell: (task: IndexedTask, columnKey: string) => TableFilePropertyCellValue;
+	getFilePropertyCandidates: (columnKey: string) => readonly string[];
 	valueResolver: TableValueResolver;
 	locationResolver: TableLocationCellResolver | null;
 	locationIndexSignature: string;
@@ -670,18 +697,44 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	const locationResolver = getTableLocationCellResolver(deps.app, settings, columns);
 	const locationIndexSignature = buildTableLocationCellIndexSignature(deps.app, settings, columns);
 	const allTasks = deps.indexer.getAllTasks();
-	const querySignature = buildEmbedTableQuerySignature(instance, deps, preset, settings, allTasks, locationIndexSignature);
+	const filterSet = resolveTablePresetFilterSet(preset, settings.filterSets);
+	const filterFilePropertyContext = getTableFilePropertyIndex(deps.app).getSnapshot(
+		allTasks,
+		deps.indexer.getGeneration(),
+		{ keyMappings: settings.keyMappings },
+	);
+	const searchContext = resolveEmbedTableSearchContext(instance, deps, filterSet, allTasks, settings, filterFilePropertyContext);
+	const searchContextResolvedAt = enginePerfNow();
+	const filePropertySnapshot = getTableFilePropertyIndex(deps.app).getSnapshot(
+		searchContext.scopeFilteredTasks,
+		deps.indexer.getGeneration(),
+		{ keyMappings: settings.keyMappings },
+	);
+	const querySignature = buildEmbedTableQuerySignature(
+		instance,
+		deps,
+		preset,
+		settings,
+		allTasks,
+		locationIndexSignature,
+		filePropertySnapshot.signature,
+		filterFilePropertyContext.signature,
+	);
 	if (querySignature === instance.lastQuerySignature && instance.currentRenderState) {
 		restoreEmbedTableSearchFocus(instance, activeInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
 		return;
 	}
-
-	const filterSet = resolveTablePresetFilterSet(preset, settings.filterSets);
-	const searchContext = resolveEmbedTableSearchContext(instance, deps, filterSet, allTasks, settings);
-	const searchContextResolvedAt = enginePerfNow();
 	const normalizedSearchQuery = searchContext.activeSearchQuery.trim().toLocaleLowerCase();
-	const searchCacheScopeKey = buildTableSearchCacheScopeKey(searchContext.scopeKey, taskColumns, preset.sortRules);
-	const noSearchResultCacheKey = buildTableNoSearchResultCacheKey(searchContext.scopeKey, taskColumns, preset);
+	const searchCacheScopeKey = buildTableSearchCacheScopeKey(
+		`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}`,
+		taskColumns,
+		preset.sortRules,
+	);
+	const noSearchResultCacheKey = buildTableNoSearchResultCacheKey(
+		`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}`,
+		taskColumns,
+		preset,
+	);
 	const cachedNoSearchResult = !normalizedSearchQuery
 		&& instance.noSearchResultCache?.key === noSearchResultCacheKey
 		&& instance.noSearchResultCache.summariesEvaluated
@@ -694,7 +747,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 			generation: deps.indexer.getGeneration(),
 			columns: taskColumns,
 			valueResolverOptions: { getProjectSerialDisplay: deps.getProjectSerialDisplay },
-			valueResolverSignature: deps.getProjectSerialSignature?.() ?? '',
+			valueResolverSignature: `${deps.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}`,
+			filePropertyContext: filePropertySnapshot,
 		})
 		: undefined;
 	const matcherResolvedAt = enginePerfNow();
@@ -707,6 +761,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 			searchContext,
 			columns: taskColumns,
 			cacheKey: searchCacheScopeKey,
+			filePropertySnapshot,
+			filterFilePropertyContext,
 		})
 		: null;
 	const precomputedSearchedTasks = normalizedSearchQuery && searchMatcher
@@ -725,7 +781,12 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	if (!normalizedSearchQuery) {
 		instance.incrementalSearchCache = null;
 	}
-	const hasSummaryRow = hasVisibleTableSummaryRule(preset.summaries, taskColumns);
+	const activeSummaryRules = preset.summaries.filter(rule => getTableSummaryFunctionsForField(
+		rule.key,
+		settings,
+		filePropertySnapshot.fields,
+	).includes(rule.function));
+	const hasSummaryRow = hasVisibleTableSummaryRule(activeSummaryRules, taskColumns);
 	const shouldDeferSummaries = !cachedNoSearchResult && instance.deferSummariesForSearch && hasSummaryRow;
 	if (cachedNoSearchResult) {
 		instance.deferSummariesForSearch = false;
@@ -737,6 +798,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		priorities: settings.priorities,
 		pinnedCache: deps.getPinnedCache(),
 		projectSerialScopes: settings.projectSerialScopes,
+		filePropertyContext: filterFilePropertyContext,
 		settings,
 		searchQuery: searchContext.activeSearchQuery,
 		searchMatcher,
@@ -746,7 +808,13 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		precomputedRows: precomputedRowsForQuery,
 		taskIdFilter: searchContext.taskIdFilter,
 		summaryMode: shouldDeferSummaries ? 'skip' : 'evaluate',
-		valueResolverOptions: { getProjectSerialDisplay: deps.getProjectSerialDisplay },
+		valueResolverOptions: {
+			getProjectSerialDisplay: deps.getProjectSerialDisplay,
+			filePropertyContext: filePropertySnapshot,
+			getFilePropertyValue: (task, key) => isTableFilePropertyColumnKey(key)
+				? filePropertySnapshot.getCell(task, key).normalizedValue
+				: null,
+		},
 	});
 	const queryResolvedAt = enginePerfNow();
 	if (!normalizedSearchQuery && !cachedNoSearchResult) {
@@ -780,6 +848,8 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		result.groups,
 		items,
 		locationIndexSignature,
+		filePropertySnapshot.signature,
+		filterFilePropertyContext.signature,
 	);
 	instance.lastQuerySignature = querySignature;
 	if (renderSignature === instance.lastRenderSignature) {
@@ -801,6 +871,10 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		summariesCalculating: shouldDeferSummaries,
 		settings,
 		allTasks,
+		additionalFields: filePropertySnapshot.fields,
+		filePropertySignature: filePropertySnapshot.signature,
+		getFilePropertyCell: (task, columnKey) => filePropertySnapshot.getCell(task, columnKey),
+		getFilePropertyCandidates: columnKey => filePropertySnapshot.getCandidates(columnKey),
 		valueResolver: result.valueResolver,
 		locationResolver,
 		locationIndexSignature,
@@ -813,7 +887,16 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	if (shouldDeferSummaries) {
 		scheduleEmbedTableDeferredSummaryRefresh(instance, deps);
 	}
-	scheduleEmbedTableSearchPrewarm(instance, deps, allTasks, searchContext.scopeFilteredTasks, settings, taskColumns, normalizedSearchQuery);
+	scheduleEmbedTableSearchPrewarm(
+		instance,
+		deps,
+		allTasks,
+		searchContext.scopeFilteredTasks,
+		settings,
+		taskColumns,
+		normalizedSearchQuery,
+		filePropertySnapshot,
+	);
 
 	closeEmbedTableTransientUi(instance.el);
 	// The group & sort popover saves on every change, which re-renders this embed;
@@ -877,6 +960,8 @@ function buildEmbedTableRenderSignature(
 	groups: readonly TableQueryGroup[],
 	items: readonly TableRenderItem[],
 	locationIndexSignature: string,
+	filePropertySignature: string,
+	filterFilePropertySignature: string,
 ): string {
 	return [
 		deps.indexer.getGeneration(),
@@ -898,6 +983,8 @@ function buildEmbedTableRenderSignature(
 				? `${item.kind}:${item.groupKey}:${item.depth}`
 				: 'summary').join(','),
 		locationIndexSignature,
+		filePropertySignature,
+		filterFilePropertySignature,
 		deps.getProjectSerialSignature?.() ?? '',
 		buildTableRelevantSettingsSignature(deps.getSettings()),
 		buildEmbedTableToolbarSignature(deps),
@@ -912,6 +999,8 @@ function buildEmbedTableQuerySignature(
 	settings: OperonSettings,
 	tasks: readonly IndexedTask[],
 	locationIndexSignature: string,
+	filePropertySignature: string,
+	filterFilePropertySignature: string,
 ): string {
 	return [
 		deps.indexer.getGeneration(),
@@ -924,6 +1013,8 @@ function buildEmbedTableQuerySignature(
 		preset.collapsedGroupKeys.join('\u0000'),
 		JSON.stringify(preset),
 		locationIndexSignature,
+		filePropertySignature,
+		filterFilePropertySignature,
 		deps.getProjectSerialSignature?.() ?? '',
 		buildTableRelevantSettingsSignature(settings),
 		buildEmbedTableToolbarSignature(deps),
@@ -940,6 +1031,10 @@ function buildEmbedTableToolbarSignature(deps: EmbedTableDeps): string {
 
 function canWriteEmbedTable(deps: EmbedTableDeps): boolean {
 	return deps.allowWrites !== false && !!deps.updateTaskFields;
+}
+
+function canWriteEmbedFileProperty(deps: EmbedTableDeps): boolean {
+	return deps.allowWrites !== false && !!deps.updateFileProperty;
 }
 
 function resolveEmbedTableVisibleRows(instance: EmbedTableInstance, settings: OperonSettings): number {
@@ -1293,6 +1388,7 @@ function openEmbedTableGroupSortPopover(
 		...floatingOptions,
 		preset: editingPreset.id === preset.id ? editingPreset : preset,
 		settings: deps.getSettings(),
+		additionalFields: instance.currentRenderState?.additionalFields ?? [],
 		onChange: (updatedPreset, scope) => saveEmbedTableGroupSortPresetPatch(instance, deps, updatedPreset, scope),
 		onClose: () => {
 			button.setAttribute('aria-expanded', 'false');
@@ -1390,6 +1486,12 @@ function openEmbedTableFilterPopover(
 		{
 			getSettings: deps.getSettings,
 			getProjectSerialScopeTasks: () => deps.indexer.getAllTasks(),
+			getFilePropertyDiscoveryTasks: () => deps.indexer.getAllTasks(),
+			getFilePropertySnapshot: tasks => getTableFilePropertyIndex(deps.app).getSnapshot(
+				tasks,
+				deps.indexer.getGeneration(),
+				{ keyMappings: deps.getSettings().keyMappings },
+			),
 		},
 	);
 	editor.renderInlineConditionEditor(popover, {
@@ -1405,6 +1507,11 @@ function openEmbedTableFilterPopover(
 			{
 				projectSerialScopes: deps.getSettings().projectSerialScopes,
 				projectSerialScopeTasks: deps.indexer.getAllTasks(),
+				filePropertyContext: getTableFilePropertyIndex(deps.app).getSnapshot(
+					deps.indexer.getAllTasks(),
+					deps.indexer.getGeneration(),
+					{ keyMappings: deps.getSettings().keyMappings },
+				),
 			},
 		).length,
 		saveTooltip: sourceFilterSetId
@@ -2002,7 +2109,12 @@ function renderEmbedTableGroupRow(
 			collapsedGroupKeys: nextCollapsedGroupKeys,
 		};
 		if (instance.currentRenderState?.preset.id === nextPreset.id) {
-			const hasSummaryRow = hasVisibleTableSummaryRule(nextPreset.summaries, instance.currentRenderState.taskColumns);
+			const activeSummaryRules = nextPreset.summaries.filter(rule => getTableSummaryFunctionsForField(
+				rule.key,
+				instance.currentRenderState!.settings,
+				instance.currentRenderState!.additionalFields,
+			).includes(rule.function));
+			const hasSummaryRow = hasVisibleTableSummaryRule(activeSummaryRules, instance.currentRenderState.taskColumns);
 			const items = buildTableRenderItems(
 				instance.currentRenderState.rows,
 				instance.currentRenderState.groups,
@@ -2085,6 +2197,7 @@ function resolveEmbedTableSearchContext(
 	filterSet: ReturnType<typeof resolveTablePresetFilterSet>,
 	tasks: IndexedTask[],
 	settings: OperonSettings,
+	filePropertyContext: TableFilePropertySnapshot,
 ): EmbeddedTableSearchContext {
 	const filterScopedTasks = resolveTableSearchBaseScopeTasks({
 		filterSet,
@@ -2092,6 +2205,7 @@ function resolveEmbedTableSearchContext(
 		priorities: settings.priorities,
 		pinnedCache: deps.getPinnedCache(),
 		projectSerialScopes: settings.projectSerialScopes,
+		filePropertyContext,
 	});
 	const recentModifiedCutoff = getTaskSearchBoxRecentModifiedCutoff(settings);
 	const scopedTasks = filterScopedTasks.filter(task => matchesTaskSearchBoxScope(task, instance.searchScope, { recentModifiedCutoff }));
@@ -2114,7 +2228,7 @@ function resolveEmbedTableSearchContext(
 		scopedTasks,
 		scopeFilteredTasks,
 		taskIdFilter,
-		scopeKey: buildEmbedTableSearchScopeKey(instance, deps, JSON.stringify(filterSet ?? null), scopedTasks, scopeFilteredTasks, settings, recentModifiedCutoff),
+		scopeKey: buildEmbedTableSearchScopeKey(instance, deps, JSON.stringify(filterSet ?? null), scopedTasks, scopeFilteredTasks, settings, recentModifiedCutoff, filePropertyContext.signature),
 	};
 }
 
@@ -2126,6 +2240,7 @@ function buildEmbedTableSearchScopeKey(
 	scopeFilteredTasks: readonly IndexedTask[],
 	settings: OperonSettings,
 	recentModifiedCutoff: number,
+	filePropertySignature: string,
 ): string {
 	return [
 		deps.indexer.getGeneration(),
@@ -2134,6 +2249,7 @@ function buildEmbedTableSearchScopeKey(
 		filterSetSignature,
 		buildTableRelevantSettingsSignature(settings),
 		deps.getProjectSerialSignature?.() ?? '',
+		filePropertySignature,
 		JSON.stringify(instance.searchScope),
 		instance.searchScope.showRecentModified ? `recentModifiedCutoff=${recentModifiedCutoff}` : '',
 		instance.parentSearchSelection ? `${instance.parentSearchSelection.mode}:${instance.parentSearchSelection.parentId}` : '',
@@ -2153,6 +2269,8 @@ function resolveEmbedTableSortedSearchBaseRows(
 		searchContext: EmbeddedTableSearchContext;
 		columns: readonly TableColumn[];
 		cacheKey: string;
+		filePropertySnapshot: TableFilePropertySnapshot;
+		filterFilePropertyContext: TableFilePropertySnapshot;
 	},
 ): IndexedTask[] {
 	if (instance.sortedRowsCache?.key === input.cacheKey) return instance.sortedRowsCache.rows;
@@ -2168,11 +2286,18 @@ function resolveEmbedTableSortedSearchBaseRows(
 		priorities: input.settings.priorities,
 		pinnedCache: deps.getPinnedCache(),
 		projectSerialScopes: input.settings.projectSerialScopes,
+		filePropertyContext: input.filterFilePropertyContext,
 		settings: input.settings,
 		precomputedScopedTasks: input.searchContext.scopedTasks,
 		precomputedScopeFilteredTasks: input.searchContext.scopeFilteredTasks,
 		summaryMode: 'skip',
-		valueResolverOptions: { getProjectSerialDisplay: deps.getProjectSerialDisplay },
+		valueResolverOptions: {
+			getProjectSerialDisplay: deps.getProjectSerialDisplay,
+			filePropertyContext: input.filePropertySnapshot,
+			getFilePropertyValue: (task, key) => isTableFilePropertyColumnKey(key)
+				? input.filePropertySnapshot.getCell(task, key).normalizedValue
+				: null,
+		},
 	});
 	instance.sortedRowsCache = {
 		key: input.cacheKey,
@@ -2313,6 +2438,8 @@ function queueEmbedTableSearch(
 		applyEmbedTableSearchQuery(instance, nextQuery, deps, forceRender);
 		return;
 	}
+	instance.summaryRefreshToken++;
+	cancelEmbedTableSummaryIdle(instance);
 	instance.pendingSearchQuery = nextQuery;
 	instance.searchDebounceTimer = window.setTimeout(() => {
 		instance.searchDebounceTimer = null;
@@ -2512,6 +2639,7 @@ function scheduleEmbedTableSearchPrewarm(
 	settings: OperonSettings,
 	columns: readonly TableColumn[],
 	normalizedSearchQuery: string,
+	filePropertySnapshot: TableFilePropertySnapshot,
 ): void {
 	if (normalizedSearchQuery.length > 0 || tasks.length === 0 || tasksToPrewarm.length === 0 || columns.length === 0) {
 		cancelEmbedTableSearchPrewarm(instance);
@@ -2523,14 +2651,15 @@ function scheduleEmbedTableSearchPrewarm(
 	}
 	const generation = deps.indexer.getGeneration();
 	const projectSerialSignature = deps.getProjectSerialSignature?.() ?? '';
-	const prewarmKey = buildTableTaskSearchMatcherSignature(tasks, settings, generation, columns, projectSerialSignature);
+	const valueResolverSignature = `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}`;
+	const prewarmKey = buildTableTaskSearchMatcherSignature(tasks, settings, generation, columns, valueResolverSignature);
 	if (instance.completedSearchPrewarmKey === prewarmKey || instance.searchPrewarmKey === prewarmKey) return;
 	cancelEmbedTableSearchPrewarm(instance);
 	instance.searchPrewarmKey = prewarmKey;
 	instance.searchPrewarmIndex = 0;
 	instance.searchPrewarmTimer = window.setTimeout(() => {
 		instance.searchPrewarmTimer = null;
-		runEmbedTableSearchPrewarmChunk(instance, deps, prewarmKey, tasks, tasksToPrewarm, settings, generation, columns);
+		runEmbedTableSearchPrewarmChunk(instance, deps, prewarmKey, tasks, tasksToPrewarm, settings, generation, columns, filePropertySnapshot);
 	}, TABLE_SEARCH_PREWARM_DELAY_MS);
 }
 
@@ -2543,6 +2672,7 @@ function runEmbedTableSearchPrewarmChunk(
 	settings: OperonSettings,
 	generation: number | string,
 	columns: readonly TableColumn[],
+	filePropertySnapshot: TableFilePropertySnapshot,
 ): void {
 	if (instance.searchPrewarmKey !== prewarmKey) return;
 	if (!instance.el.isConnected || instance.el.offsetParent === null || deps.indexer.getGeneration() !== generation) {
@@ -2560,7 +2690,8 @@ function runEmbedTableSearchPrewarmChunk(
 		generation,
 		columns,
 		valueResolverOptions: { getProjectSerialDisplay: deps.getProjectSerialDisplay },
-		valueResolverSignature: deps.getProjectSerialSignature?.() ?? '',
+		valueResolverSignature: `${deps.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}`,
+		filePropertyContext: filePropertySnapshot,
 	}, {
 		startIndex: instance.searchPrewarmIndex,
 		timeBudgetMs: TABLE_SEARCH_PREWARM_TIME_BUDGET_MS,
@@ -2582,7 +2713,7 @@ function runEmbedTableSearchPrewarmChunk(
 	}
 	instance.searchPrewarmChunkTimer = window.setTimeout(() => {
 		instance.searchPrewarmChunkTimer = null;
-		runEmbedTableSearchPrewarmChunk(instance, deps, prewarmKey, tasks, tasksToPrewarm, settings, generation, columns);
+		runEmbedTableSearchPrewarmChunk(instance, deps, prewarmKey, tasks, tasksToPrewarm, settings, generation, columns, filePropertySnapshot);
 	}, TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS);
 }
 
@@ -2745,6 +2876,10 @@ function renderEmbedTableCell(
 	}
 	applyTableColumnAlignmentClass(cell, column);
 	const displayValue = renderState.valueResolver.getDisplayValue(task, column.key);
+	if (isTableFilePropertyColumnKey(column.key)) {
+		renderEmbedTableFilePropertyCell(cell, task, column, renderState, deps);
+		return;
+	}
 
 	if (column.key === 'description' || column.key === 'note') {
 		renderEmbedTableInlineTextCell(cell, task, column, displayValue, renderState, deps);
@@ -2765,8 +2900,16 @@ function renderEmbedTableCell(
 			settings: renderState.settings,
 			valueResolver: renderState.valueResolver,
 			iconOnly: shouldUseEmbedTableIconOnlyColumn(column, renderState.settings),
-			onActivate: canWriteEmbedTable(deps) && deps.onContextualAction
-				? ({ task: progressTask, track, trigger, actionAnchorRect }) => deps.onContextualAction?.(
+		onActivate: canWriteEmbedTable(deps) && (deps.onContextualAction || deps.onOpenCheckboxes)
+			? ({ task: progressTask, track, trigger, actionAnchorRect }) => {
+				if (track.kind === 'checkboxes' && deps.onOpenCheckboxes) {
+					return deps.onOpenCheckboxes(
+						progressTask.operonId,
+						trigger,
+						actionAnchorRect,
+					);
+				}
+				return deps.onContextualAction?.(
 					progressTask.operonId,
 					track.kind === 'subtasks' ? 'subtasks' : 'checkboxes',
 					{
@@ -2783,8 +2926,9 @@ function renderEmbedTableCell(
 						actionAnchor: trigger,
 						actionAnchorRect,
 					},
-				)
-				: undefined,
+				);
+			}
+			: undefined,
 		});
 		return;
 	}
@@ -2811,6 +2955,122 @@ function renderEmbedTableCell(
 		locationResolver: renderState.locationResolver,
 		onLocationPreview: (trigger, visual) => openEmbedTableLocationMapPreview(deps, trigger, task, visual, renderState),
 	});
+}
+
+function renderEmbedTableFilePropertyCell(
+	cell: HTMLElement,
+	task: IndexedTask,
+	column: TableColumn,
+	renderState: EmbeddedTableRenderState,
+	deps: EmbedTableDeps,
+): void {
+	const field = (renderState.additionalFields.find(entry => entry.key === column.key && entry.group === 'fileProperty')
+		?? null) as TableFilePropertyField | null;
+	const cellValue = renderState.getFilePropertyCell(task, column.key);
+	const editable = canEditTableFilePropertyCell(task, field, cellValue, canWriteEmbedFileProperty(deps));
+	const label = getTableColumnLabel(column, renderState.settings, renderState.additionalFields);
+	const cellKey = buildTableEditableCellKey(task, column.key);
+	const instance = findEmbedTableInstance(cell);
+	if (editable) {
+		cell.addClass('is-editable');
+		cell.dataset.editCellKey = cellKey;
+		cell.tabIndex = field?.type === 'checkbox' ? -1 : 0;
+		syncEmbedTablePendingCellState(cell, cellKey, instance);
+	} else cell.setAttribute('aria-readonly', 'true');
+	const commit = (mutation: import('../core/raw-yaml-property').RawYamlPropertyMutation): void => {
+		if (instance && field) void commitEmbedTableFilePropertyUpdate(instance, deps, cell, task, field, cellValue, cellKey, mutation);
+	};
+	if (field) bindTableFilePropertyRemovalMenu({ cell, field, cellValue, editable, onRemove: () => commit({ kind: 'delete' }) });
+	if (field?.type === 'checkbox') {
+		renderTableFilePropertyCheckbox({
+			cell, field, label, cellValue, compact: column.displayMode === 'icon', editable, onToggle: commit,
+		});
+		return;
+	}
+	const renderValues = Array.isArray(cellValue.rawValue)
+		? cellValue.rawValue.filter(value => value !== null).map(String)
+		: (cellValue.normalizedValue.trim() ? [cellValue.normalizedValue] : []);
+	if (column.displayMode === 'icon') {
+		const icon = cell.createSpan('operon-table-file-property-icon');
+		setIcon(icon, field?.icon ?? 'text');
+		setAccessibleLabelWithoutTooltip(cell, `${label}: ${cellValue.normalizedValue || t('table', 'filePropertyNotSet')}`);
+	} else if (renderValues.length === 0) cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
+	else for (const value of renderValues) cell.createSpan({
+		cls: `operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip${editable ? ' operon-table-editable-chip' : ' operon-chip-readonly'}`,
+		text: value,
+	});
+	if (!editable || !field || !instance) return;
+	setAccessibleLabelWithoutTooltip(cell, `${label}: ${cellValue.normalizedValue || t('table', 'filePropertyNotSet')}. ${t('table', 'editCellAria')}`);
+	const openPicker = (): void => {
+		if (instance.pendingCellKey !== null) return;
+		closeEmbedTableActivePicker(instance);
+		let closePicker: (() => void) | null = null;
+		closePicker = openTableFilePropertyPicker({
+			app: deps.app,
+			anchor: snapshotFloatingRectAnchor(cell),
+			field,
+			label,
+			cellValue,
+			candidates: renderState.getFilePropertyCandidates(column.key),
+			settings: renderState.settings,
+			sourcePath: task.primary.filePath,
+			onMutation: commit,
+			onClose: () => {
+				if (instance.activePickerClose === closePicker) instance.activePickerClose = null;
+				instance.keepActivePickerOnRender = false;
+			},
+		});
+		if (!closePicker) return;
+		instance.keepActivePickerOnRender = true;
+		instance.activePickerClose = closePicker;
+	};
+	cell.addEventListener('click', event => {
+		event.preventDefault();
+		event.stopPropagation();
+		openPicker();
+	});
+	cell.addEventListener('dblclick', event => event.stopPropagation());
+	cell.addEventListener('keydown', event => {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		event.stopPropagation();
+		openPicker();
+	});
+}
+
+async function commitEmbedTableFilePropertyUpdate(
+	instance: EmbedTableInstance,
+	deps: EmbedTableDeps,
+	cell: HTMLElement,
+	task: IndexedTask,
+	field: TableFilePropertyField,
+	cellValue: TableFilePropertyCellValue,
+	cellKey: string,
+	mutation: import('../core/raw-yaml-property').RawYamlPropertyMutation,
+): Promise<boolean> {
+	const expected = toRawYamlPropertyExpectation(cellValue);
+	if (!expected || !deps.updateFileProperty || instance.pendingCellKey !== null) return false;
+	instance.pendingCellKey = cellKey;
+	instance.pendingFocusKey = cellKey;
+	syncEmbedTablePendingCellState(cell, cellKey, instance);
+	closeEmbedTableActivePicker(instance);
+	let success = false;
+	try {
+		const outcome = await deps.updateFileProperty(task.operonId, {
+			propertyName: field.propertyName, expected, mutation,
+		});
+		success = outcome === 'updated' || outcome === 'already-updated';
+		if (outcome === 'conflict') new Notice(t('table', 'filePropertyConflict'));
+		else if (!success) new Notice(t('notifications', 'taskSaveFailed'));
+	} catch (error: unknown) {
+		console.error('Operon: failed to update embedded Table file property', error);
+		new Notice(t('notifications', 'taskSaveFailed'));
+	} finally {
+		if (instance.pendingCellKey === cellKey) instance.pendingCellKey = null;
+		clearRenderedEmbedTablePendingCellState(instance, cellKey);
+		queueEmbedTablePendingCellFocusRestore(instance);
+	}
+	return success;
 }
 
 function shouldUseEmbedTableIconOnlyColumn(column: TableColumn, settings: Pick<OperonSettings, 'keyMappings'>): boolean {
@@ -3318,18 +3578,26 @@ function syncEmbedTablePendingCellState(
 	if (pending) {
 		cell.setAttribute('aria-busy', 'true');
 		cell.setAttribute('aria-disabled', 'true');
+		const checkbox = cell.querySelector<HTMLButtonElement>('.operon-table-file-property-checkbox');
+		if (checkbox) {
+			checkbox.disabled = true;
+			checkbox.setAttribute('aria-busy', 'true');
+		}
 		return;
 	}
 	cell.removeAttribute('aria-busy');
 	cell.removeAttribute('aria-disabled');
+	const checkbox = cell.querySelector<HTMLButtonElement>('.operon-table-file-property-checkbox');
+	if (checkbox) {
+		checkbox.disabled = false;
+		checkbox.removeAttribute('aria-busy');
+	}
 }
 
 function clearRenderedEmbedTablePendingCellState(instance: EmbedTableInstance, cellKey: string): void {
 	for (const cell of Array.from(instance.el.querySelectorAll<HTMLElement>('.operon-table-cell.is-pending'))) {
 		if (cell.dataset.editCellKey !== cellKey) continue;
-		cell.classList.remove('is-pending');
-		cell.removeAttribute('aria-busy');
-		cell.removeAttribute('aria-disabled');
+		syncEmbedTablePendingCellState(cell, cellKey, instance);
 	}
 }
 
@@ -3339,11 +3607,11 @@ function restoreEmbedTablePendingCellFocus(instance: EmbedTableInstance): void {
 	instance.pendingFocusKey = null;
 	const cell = Array.from(instance.el.querySelectorAll<HTMLElement>('.operon-table-cell.is-editable'))
 		.find(candidate => candidate.dataset.editCellKey === cellKey);
-	(cell ?? instance.bodyScrollerEl)?.focus();
+	(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox') ?? cell ?? instance.bodyScrollerEl)?.focus();
 }
 
 function queueEmbedTablePendingCellFocusRestore(instance: EmbedTableInstance): void {
-	window.requestAnimationFrame(() => {
+	getOwnerWindow(instance.el).requestAnimationFrame(() => {
 		restoreEmbedTablePendingCellFocus(instance);
 	});
 }

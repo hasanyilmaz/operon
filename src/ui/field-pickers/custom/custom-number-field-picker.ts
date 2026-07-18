@@ -1,5 +1,6 @@
 import { t } from '../../../core/i18n';
 import { createButton, focusFloatingInput } from '../common';
+import { getOwnerWindow } from '../../../core/dom-compat';
 import { createCustomFieldPanel, type CustomScalarFieldPickerOptions } from './common';
 
 export type CustomNumberFieldPickerOptions = CustomScalarFieldPickerOptions<'number'>;
@@ -57,7 +58,7 @@ export function showCustomNumberFieldPicker(
 		}
 	});
 
-	window.requestAnimationFrame(() => {
+	getOwnerWindow(input).requestAnimationFrame(() => {
 		focusFloatingInput(input);
 		input.select();
 	});

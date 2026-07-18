@@ -7,7 +7,7 @@
 import { FilterFieldType, FilterGroup, FilterNode, FilterSet, FilterSetCondition, FilterSortSpec } from '../types/settings';
 import { IndexedTask } from '../types/fields';
 import type { Pipeline } from '../types/pipeline';
-import { localToday } from './local-time';
+import { localToday, parseLocalTimestamp } from './local-time';
 import { PinnedCache } from '../storage/pinned-cache';
 import {
 	buildWorkflowStatusOrderIndex,
@@ -21,6 +21,13 @@ import {
 	type ProjectSerialScopeFilterResolver,
 } from './project-serials';
 import type { ProjectSerialScope } from '../types/settings';
+import {
+	classifyFilePropertyCell,
+	isFilePropertyColumnKey,
+	type FilePropertyFieldDescriptor,
+	type FilePropertyQueryContext,
+	type FilePropertyValueState,
+} from './raw-yaml-property';
 
 export interface GroupedFilterSubgroup {
 	key: string;
@@ -39,7 +46,13 @@ export interface GroupedFilterGroup {
 
 export interface GroupedFilterResults {
 	totalCount: number;
+	/** Number of rendered task memberships; list fan-out can exceed totalCount. */
+	renderItemCount?: number;
 	groups: GroupedFilterGroup[];
+	/** Sorted tasks returned directly when a stale raw group rule is suspended. */
+	ungroupedTasks?: IndexedTask[];
+	groupingSuspended?: boolean;
+	subgroupingSuspended?: boolean;
 }
 
 interface EvalContext {
@@ -52,11 +65,14 @@ interface EvalContext {
 	projectTreeMatchCache: Map<string, Set<string>>;
 	folderTreeMatchCache: Map<string, Set<string>>;
 	projectSerialScopeResolver: ProjectSerialScopeFilterResolver | null;
+	filePropertyContext: FilePropertyQueryContext | null;
+	filePropertyFields: ReadonlyMap<string, FilePropertyFieldDescriptor>;
 }
 
 export interface FilterEvaluationOptions {
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	projectSerialScopeTasks?: readonly IndexedTask[];
+	filePropertyContext?: FilePropertyQueryContext;
 }
 
 export interface TaskSortContext {
@@ -64,6 +80,7 @@ export interface TaskSortContext {
 	pipelines?: readonly Pipeline[];
 	isTaskPinned?: (taskId: string) => boolean;
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null;
+	filePropertyContext?: FilePropertyQueryContext | null;
 }
 
 export interface PreparedTaskSortContext extends TaskSortContext {
@@ -159,6 +176,15 @@ export const CHECKBOX_OPERATORS = [
 	{ id: 'isCancelled', label: 'is cancelled' },
 ] as const;
 
+export const FILE_PROPERTY_CHECKBOX_OPERATORS = [
+	{ id: 'isTrue', label: 'is true' },
+	{ id: 'isFalse', label: 'is false' },
+	{ id: 'hasAnyValue', label: 'has any value' },
+	{ id: 'hasNoValue', label: 'has no value' },
+	{ id: 'propPresent', label: 'property is present' },
+	{ id: 'propMissing', label: 'property is missing' },
+] as const;
+
 export const PINNED_OPERATORS = [
 	{ id: 'isPinned', label: 'is pinned' },
 ] as const;
@@ -187,6 +213,7 @@ export const NO_VALUE_OPERATORS = new Set([
 	'thisWeek', 'lastWeek', 'nextWeek',
 	'thisMonth', 'lastMonth', 'nextMonth',
 	'isOpen', 'isDone', 'isCancelled',
+	'isTrue', 'isFalse',
 	'isPinned',
 	'hasProjectSerialGroup', 'hasNoProjectSerialGroup',
 ]);
@@ -221,6 +248,33 @@ export function getOperatorsForType(type: FilterFieldType): readonly { id: strin
 	}
 }
 
+/** Operators for a raw YAML File Task property. Managed-field semantics stay unchanged. */
+export function getFilePropertyOperators(type: FilterFieldType): readonly { id: string; label: string }[] {
+	switch (type) {
+		case 'checkbox': return FILE_PROPERTY_CHECKBOX_OPERATORS;
+		case 'date':
+		case 'datetime': return [
+			...DATE_OPERATORS,
+			{ id: 'propPresent', label: 'property is present' },
+			{ id: 'propMissing', label: 'property is missing' },
+		];
+		case 'list':
+		case 'tags': return [
+			...LIST_OPERATORS,
+			{ id: 'propPresent', label: 'property is present' },
+			{ id: 'propMissing', label: 'property is missing' },
+		];
+		case 'number': return NUMBER_OPERATORS;
+		case 'text':
+		default: return TEXT_OPERATORS;
+	}
+}
+
+/** Resolve operators by both field origin and type. */
+export function getOperatorsForField(field: string, type: FilterFieldType): readonly { id: string; label: string }[] {
+	return isFilePropertyColumnKey(field) ? getFilePropertyOperators(type) : getOperatorsForType(type);
+}
+
 // ============================================================
 // Main evaluation entry point
 // ============================================================
@@ -237,7 +291,7 @@ export function evaluateFilterSet(
 	const sorts = getFilterSortSpecs(filterSet);
 	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, { sorts }, options);
 	const result = tasks.filter(task => matchesFilterSet(filterSet, task, context));
-	return sortTasks(result, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver);
+	return sortTasks(result, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext);
 }
 
 /** Sort a task list using a FilterSet definition without re-applying conditions. */
@@ -251,7 +305,7 @@ export function sortFilterTasks(
 ): IndexedTask[] {
 	const sorts = getFilterSortSpecs(filterSet);
 	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, { sorts }, options);
-	return sortTasks(tasks, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver);
+	return sortTasks(tasks, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext);
 }
 
 /** Filter tasks using filter-set matching only, preserving the original input order. */
@@ -291,6 +345,7 @@ export function evaluateFilterSetGrouped(
 		context.workflowStatusOrder,
 		context.pinnedCache,
 		context.projectSerialScopeResolver,
+		context.filePropertyContext,
 	);
 	return groupSortedFilterTasks(filterSet, sortedTasks, context);
 }
@@ -316,6 +371,7 @@ export function groupFilterTasks(
 		context.workflowStatusOrder,
 		context.pinnedCache,
 		context.projectSerialScopeResolver,
+		context.filePropertyContext,
 	);
 	return groupSortedFilterTasks(filterSet, sortedTasks, context);
 }
@@ -326,30 +382,49 @@ function groupSortedFilterTasks(
 	context: EvalContext,
 ): GroupedFilterResults {
 	const groupBy = filterSet.groupBy!;
-	const subgroupBy = filterSet.subgroupBy;
+	const groupIsSuspended = isUnavailableFilePropertyGroupField(groupBy, context);
+	if (groupIsSuspended) {
+		return {
+			totalCount: sortedTasks.length,
+			renderItemCount: sortedTasks.length,
+			groups: [],
+			ungroupedTasks: sortedTasks,
+			groupingSuspended: true,
+			subgroupingSuspended: false,
+		};
+	}
+	const configuredSubgroupBy = filterSet.subgroupBy;
+	const subgroupIsSuspended = configuredSubgroupBy
+		? isUnavailableFilePropertyGroupField(configuredSubgroupBy, context)
+		: false;
+	const subgroupBy = subgroupIsSuspended ? undefined : configuredSubgroupBy;
 	const groupMap = new Map<string, IndexedTask[]>();
 	const subgroupMaps = new Map<string, Map<string, IndexedTask[]>>();
 
 	for (const task of sortedTasks) {
-		const groupKey = getTaskGroupKey(task, groupBy, context.pinnedCache, context.projectSerialScopeResolver);
-		if (!groupMap.has(groupKey)) groupMap.set(groupKey, []);
-		groupMap.get(groupKey)!.push(task);
+		const groupKeys = getTaskGroupKeys(task, groupBy, context);
+		const subgroupKeys = subgroupBy ? getTaskGroupKeys(task, subgroupBy, context) : [];
+		for (const groupKey of groupKeys) {
+			if (!groupMap.has(groupKey)) groupMap.set(groupKey, []);
+			groupMap.get(groupKey)!.push(task);
 
-		if (subgroupBy) {
-			if (!subgroupMaps.has(groupKey)) subgroupMaps.set(groupKey, new Map());
-			const subgroupKey = getTaskGroupKey(task, subgroupBy, context.pinnedCache, context.projectSerialScopeResolver);
-			const subgroupMap = subgroupMaps.get(groupKey)!;
-			if (!subgroupMap.has(subgroupKey)) subgroupMap.set(subgroupKey, []);
-			subgroupMap.get(subgroupKey)!.push(task);
+			if (subgroupBy) {
+				if (!subgroupMaps.has(groupKey)) subgroupMaps.set(groupKey, new Map());
+				const subgroupMap = subgroupMaps.get(groupKey)!;
+				for (const subgroupKey of subgroupKeys) {
+					if (!subgroupMap.has(subgroupKey)) subgroupMap.set(subgroupKey, []);
+					subgroupMap.get(subgroupKey)!.push(task);
+				}
+			}
 		}
 	}
 
 	const groups = [...groupMap.entries()]
-		.sort(([a], [b]) => compareGroupKeys(a, b, groupBy, filterSet.groupOrder, context.priorityRankMap, context.workflowStatusOrder, context.projectSerialScopeResolver))
+		.sort(([a], [b]) => compareGroupKeys(a, b, groupBy, filterSet.groupOrder, context.priorityRankMap, context.workflowStatusOrder, context.projectSerialScopeResolver, context.filePropertyContext))
 		.map(([key, groupTasks]) => {
 			const subgroups = subgroupBy
 				? [...(subgroupMaps.get(key)?.entries() ?? [])]
-					.sort(([a], [b]) => compareGroupKeys(a, b, subgroupBy, filterSet.subgroupOrder, context.priorityRankMap, context.workflowStatusOrder, context.projectSerialScopeResolver))
+					.sort(([a], [b]) => compareGroupKeys(a, b, subgroupBy, filterSet.subgroupOrder, context.priorityRankMap, context.workflowStatusOrder, context.projectSerialScopeResolver, context.filePropertyContext))
 					.map(([subgroupKey, subgroupTasks]) => ({
 						key: subgroupKey,
 						label: getTaskGroupLabel(subgroupKey, subgroupBy, context.projectSerialScopeResolver),
@@ -369,8 +444,21 @@ function groupSortedFilterTasks(
 
 	return {
 		totalCount: sortedTasks.length,
+		renderItemCount: groups.reduce((total, group) => (
+			total + (group.subgroups?.reduce((subtotal, subgroup) => subtotal + subgroup.tasks.length, 0)
+				?? group.tasks.length)
+		), 0),
 		groups,
+		groupingSuspended: false,
+		subgroupingSuspended: subgroupIsSuspended,
 	};
+}
+
+function isUnavailableFilePropertyGroupField(field: string, context: EvalContext): boolean {
+	if (!field.startsWith('file.property:')) return false;
+	return !isFilePropertyColumnKey(field)
+		|| !context.filePropertyContext
+		|| !context.filePropertyFields.has(field);
 }
 
 export function getTaskGroupKey(
@@ -390,22 +478,53 @@ export function getTaskGroupKey(
 	return groupBy === 'status' ? value.trim() : value;
 }
 
+const FILE_PROPERTY_GROUP_VALUE_PREFIX = '__file_property_value__:';
+export const FILE_PROPERTY_UNSUPPORTED_GROUP_KEY = '__file_property_unsupported__';
+
+function getTaskGroupKeys(task: IndexedTask, groupBy: string, context: EvalContext): string[] {
+	if (!groupBy.startsWith('file.property:')) {
+		return [getTaskGroupKey(task, groupBy, context.pinnedCache, context.projectSerialScopeResolver)];
+	}
+	if (!isFilePropertyColumnKey(groupBy) || !context.filePropertyContext) return [''];
+	const field = context.filePropertyFields.get(groupBy);
+	if (!field) return [''];
+	const state = classifyFilePropertyCell(field, context.filePropertyContext.getCell(task, groupBy));
+	if (state.kind === 'empty') return [''];
+	if (state.kind === 'unsupported') return [FILE_PROPERTY_UNSUPPORTED_GROUP_KEY];
+	const values = Array.isArray(state.value) ? normalizeRawListItems(state.value) : [state.value];
+	const keys = values.map(value => `${FILE_PROPERTY_GROUP_VALUE_PREFIX}${encodeURIComponent(String(value))}`);
+	return keys.length > 0 ? [...new Set(keys)] : [''];
+}
+
 function getTaskGroupLabel(
 	key: string,
 	field: string,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
 ): string {
-	if (!key) return '(no value)';
+	if (!key) return field.startsWith('file.property:') ? '' : '(no value)';
+	if (key === FILE_PROPERTY_UNSUPPORTED_GROUP_KEY) return '';
+	if (key.startsWith(FILE_PROPERTY_GROUP_VALUE_PREFIX)) {
+		try {
+			const decoded = decodeURIComponent(key.slice(FILE_PROPERTY_GROUP_VALUE_PREFIX.length));
+			return decoded.length > 0 ? decoded : '""';
+		} catch {
+			return '(unsupported value)';
+		}
+	}
 	if (field === PROJECT_SERIAL_SCOPE_FILTER_FIELD) {
 		return projectSerialScopeResolver?.getLabel(key) ?? key;
 	}
 	return key;
 }
 
+type FilterTruth = 'true' | 'false' | 'unknown';
+
 function matchesFilterSet(filterSet: FilterSet, task: IndexedTask, context: EvalContext): boolean {
 	const rootGroup = getRootGroup(filterSet);
 	if (rootGroup.children.length === 0) return true;
-	return matchesFilterGroup(rootGroup, task, context);
+	// Unknown at the root is deliberately excluded. It represents a stale or
+	// type-incompatible raw property rule, never permission to include a task.
+	return matchesFilterGroup(rootGroup, task, context) === 'true';
 }
 
 function getRootGroup(filterSet: FilterSet): FilterGroup {
@@ -417,32 +536,40 @@ function getRootGroup(filterSet: FilterSet): FilterGroup {
 	};
 }
 
-function matchesFilterNode(node: FilterNode, task: IndexedTask, context: EvalContext): boolean {
+function matchesFilterNode(node: FilterNode, task: IndexedTask, context: EvalContext): FilterTruth {
 	if (isFilterGroup(node)) return matchesFilterGroup(node, task, context);
+	if (node.field.startsWith('file.property:')) return evaluateFilePropertyCondition(node, task, context);
 	return evaluateCondition(node, task, context);
 }
 
-function matchesFilterGroup(group: FilterGroup, task: IndexedTask, context: EvalContext): boolean {
-	if (group.children.length === 0) return true;
+function matchesFilterGroup(group: FilterGroup, task: IndexedTask, context: EvalContext): FilterTruth {
+	if (group.children.length === 0) return 'true';
 	const orderedChildren = [...group.children].sort(compareFilterNodeCost);
+	let sawUnknown = false;
 
 	switch (group.logic) {
 		case 'all':
 			for (const child of orderedChildren) {
-				if (!matchesFilterNode(child, task, context)) return false;
+				const result = matchesFilterNode(child, task, context);
+				if (result === 'false') return 'false';
+				if (result === 'unknown') sawUnknown = true;
 			}
-			return true;
+			return sawUnknown ? 'unknown' : 'true';
 		case 'any':
 			for (const child of orderedChildren) {
-				if (matchesFilterNode(child, task, context)) return true;
+				const result = matchesFilterNode(child, task, context);
+				if (result === 'true') return 'true';
+				if (result === 'unknown') sawUnknown = true;
 			}
-			return false;
+			return sawUnknown ? 'unknown' : 'false';
 		case 'none':
 			for (const child of orderedChildren) {
-				if (matchesFilterNode(child, task, context)) return false;
+				const result = matchesFilterNode(child, task, context);
+				if (result === 'true') return 'false';
+				if (result === 'unknown') sawUnknown = true;
 			}
-			return true;
-		default: return true;
+			return sawUnknown ? 'unknown' : 'true';
+		default: return 'true';
 	}
 }
 
@@ -481,7 +608,7 @@ export function getFilterSortSpecs(filterSet: FilterSet): FilterSortSpec[] {
 // Condition evaluation
 // ============================================================
 
-function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context: EvalContext): boolean {
+function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context: EvalContext): FilterTruth {
 	const isDescriptionField = cond.field === 'description';
 	const rawFieldValue = isDescriptionField ? task.description : task.fieldValues[cond.field];
 	const hasProperty = isDescriptionField
@@ -492,84 +619,153 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 		case 'date':
 		case 'datetime':
 			if (cond.field === 'happensOn') {
-				return evaluateDateSetCondition(
+				return toFilterTruth(evaluateDateSetCondition(
 					cond.operator,
 					getHappensOnDateValues(task),
 					cond.value ?? '',
 					context.today,
-				);
+				));
 			}
-			return evaluateDateCondition(
+			return toFilterTruth(evaluateDateCondition(
 				cond.operator,
 				rawFieldValue ?? '',
 				cond.value ?? '',
 				context.today,
-			);
+			));
 
 		case 'pinned':
-			return evaluatePinnedCondition(cond.operator, task, context.pinnedCache);
+			return toFilterTruth(evaluatePinnedCondition(cond.operator, task, context.pinnedCache));
 
 		case 'projectTree':
-			return evaluateProjectTreeCondition(
+			return toFilterTruth(evaluateProjectTreeCondition(
 				cond.operator,
 				task,
 				cond.value ?? '',
 				context,
-			);
+			));
 
 		case 'folders':
-			return evaluateFolderCondition(
+			return toFilterTruth(evaluateFolderCondition(
 				cond.operator,
 				task,
 				cond.value ?? '',
 				context,
-			);
+			));
 
 		case 'projectSerialScope':
-			return evaluateProjectSerialScopeCondition(
+			return toFilterTruth(evaluateProjectSerialScopeCondition(
 				cond.operator,
 				cond.value ?? '',
 				cond.values ?? [],
 				context.projectSerialScopeResolver?.resolve(task) ?? null,
-			);
+			));
 
 		case 'checkbox':
-			return evaluateCheckboxCondition(cond.operator, task.checkbox);
+			return toFilterTruth(evaluateCheckboxCondition(cond.operator, task.checkbox));
 
 		case 'text':
-			return evaluateTextCondition(
+			return toFilterTruth(evaluateTextCondition(
 				cond.operator,
 				rawFieldValue,
 				cond.value ?? '',
 				hasProperty,
-			);
+			));
 
 		case 'number':
-			return evaluateNumberCondition(
+			return toFilterTruth(evaluateNumberCondition(
 				cond.operator,
 				rawFieldValue,
 				cond.value ?? '',
 				hasProperty,
-			);
+			));
 
 		case 'list':
-			return evaluateListCondition(
+			return toFilterTruth(evaluateListCondition(
 				cond.operator,
 				parseListValue(task.fieldValues[cond.field] ?? ''),
 				cond.value ?? '',
-			);
+			));
 
 		case 'tags':
-			return evaluateListCondition(
+			return toFilterTruth(evaluateListCondition(
 				cond.operator,
 				task.tags,
 				cond.value ?? '',
-			);
+			));
 
 		default:
-			if (cond.field === 'pinned') return evaluatePinnedCondition(cond.operator, task, context.pinnedCache);
-			return true;
+			if (cond.field === 'pinned') return toFilterTruth(evaluatePinnedCondition(cond.operator, task, context.pinnedCache));
+			return 'true';
 	}
+}
+
+function toFilterTruth(value: boolean): FilterTruth {
+	return value ? 'true' : 'false';
+}
+
+function evaluateFilePropertyCondition(
+	cond: FilterSetCondition,
+	task: IndexedTask,
+	context: EvalContext,
+): FilterTruth {
+	if (!isFilePropertyColumnKey(cond.field)) return 'unknown';
+	const field = context.filePropertyFields.get(cond.field);
+	if (!field || !context.filePropertyContext) return 'unknown';
+	const supportedOperators = getFilePropertyOperators(field.type);
+	if (!supportedOperators.some(operator => operator.id === cond.operator)) return 'unknown';
+
+	const cell = context.filePropertyContext.getCell(task, cond.field);
+	const state = classifyFilePropertyCell(field, cell);
+	if (cond.operator === 'propPresent') return toFilterTruth(cell.present);
+	if (cond.operator === 'propMissing') return toFilterTruth(!cell.present);
+	if (cond.operator === 'hasAnyValue') return toFilterTruth(state.kind !== 'empty');
+	if (cond.operator === 'hasNoValue') return toFilterTruth(state.kind === 'empty');
+	if (state.kind === 'unsupported') return 'false';
+	if (state.kind === 'empty') return 'false';
+
+	const target = cond.value ?? '';
+	switch (field.type) {
+		case 'checkbox':
+			if (typeof state.value !== 'boolean') return 'unknown';
+			return toFilterTruth(cond.operator === 'isTrue' ? state.value : !state.value);
+		case 'number':
+			if (typeof state.value !== 'number') return 'unknown';
+			return toFilterTruth(evaluateTypedNumberCondition(cond.operator, state.value, target));
+		case 'date':
+		case 'datetime':
+			if (typeof state.value !== 'string') return 'unknown';
+			return toFilterTruth(evaluateDateCondition(cond.operator, state.value, target, context.today));
+		case 'list':
+		case 'tags':
+			if (!Array.isArray(state.value)) return 'unknown';
+			return toFilterTruth(evaluateListCondition(cond.operator, normalizeRawListItems(state.value), target));
+		case 'text':
+		default:
+			if (typeof state.value !== 'string') return 'unknown';
+			return toFilterTruth(evaluateTextCondition(cond.operator, state.value, target, cell.present));
+	}
+}
+
+function evaluateTypedNumberCondition(op: string, value: number, target: string): boolean {
+	const targetValue = Number(target);
+	if (!Number.isFinite(targetValue)) return false;
+	switch (op) {
+		case 'eq': return value === targetValue;
+		case 'neq': return value !== targetValue;
+		case 'lt': return value < targetValue;
+		case 'gt': return value > targetValue;
+		case 'lte': return value <= targetValue;
+		case 'gte': return value >= targetValue;
+		case 'divisible': return targetValue !== 0 && value % targetValue === 0;
+		case 'notDivisible': return targetValue !== 0 && value % targetValue !== 0;
+		default: return false;
+	}
+}
+
+function normalizeRawListItems(items: readonly (string | number | boolean | null)[]): string[] {
+	return items
+		.filter((item): item is string | number | boolean => item !== null)
+		.map(item => String(item).trim());
 }
 
 // ============================================================
@@ -959,12 +1155,14 @@ function sortTasks(
 	workflowStatusOrder: WorkflowStatusOrderIndex,
 	pinnedCache?: PinnedCache | null,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
+	filePropertyContext?: FilePropertyQueryContext | null,
 ): IndexedTask[] {
 	return sortTasksBySpecs(tasks, sorts, {
 		priorityRankMap,
 		workflowStatusOrder,
 		isTaskPinned: pinnedCache ? taskId => pinnedCache.isPinned(taskId) : undefined,
 		projectSerialScopeResolver,
+		filePropertyContext,
 	});
 }
 
@@ -980,10 +1178,14 @@ export function sortTasksBySpecs(
 	const prepared = prepareTaskSortContext(sorts, context);
 	const priorityRankMap = prepared.priorityRankMap;
 	const workflowStatusOrder = prepared.workflowStatusOrder;
+	const filePropertyFields = new Map(
+		(context.filePropertyContext?.fields ?? []).map(field => [field.key, field] as const),
+	);
+	const filePropertyStateCache = new WeakMap<IndexedTask, Map<string, FilePropertyValueState>>();
 
 	return [...tasks].sort((a, b) => {
 		for (const sort of sorts) {
-			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, workflowStatusOrder, context.isTaskPinned, context.projectSerialScopeResolver);
+			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, workflowStatusOrder, context.isTaskPinned, context.projectSerialScopeResolver, context.filePropertyContext, filePropertyFields, filePropertyStateCache);
 			if (cmp !== 0) return cmp;
 		}
 		return 0;
@@ -1018,8 +1220,14 @@ function compareTaskBySortSpec(
 	workflowStatusOrder: WorkflowStatusOrderIndex,
 	isTaskPinned?: (taskId: string) => boolean,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
+	filePropertyContext?: FilePropertyQueryContext | null,
+	filePropertyFields?: ReadonlyMap<string, FilePropertyFieldDescriptor>,
+	filePropertyStateCache?: WeakMap<IndexedTask, Map<string, FilePropertyValueState>>,
 ): number {
 	const asc = sort.order !== 'desc';
+	if (sort.field.startsWith('file.property:')) {
+		return compareFilePropertyTasks(a, b, sort, filePropertyContext, filePropertyFields, filePropertyStateCache);
+	}
 	if (sort.field === 'status') {
 		return compareWorkflowStatusValues(
 			a.fieldValues['status'],
@@ -1061,6 +1269,61 @@ function compareTaskBySortSpec(
 	return asc ? cmp : -cmp;
 }
 
+function compareFilePropertyTasks(
+	a: IndexedTask,
+	b: IndexedTask,
+	sort: FilterSortSpec,
+	context?: FilePropertyQueryContext | null,
+	fields?: ReadonlyMap<string, FilePropertyFieldDescriptor>,
+	stateCache?: WeakMap<IndexedTask, Map<string, FilePropertyValueState>>,
+): number {
+	if (!isFilePropertyColumnKey(sort.field) || !context) return 0;
+	const field = fields?.get(sort.field) ?? context.fields.find(candidate => candidate.key === sort.field);
+	if (!field) return 0;
+	const resolveState = (task: IndexedTask): FilePropertyValueState => {
+		const byField = stateCache?.get(task);
+		const cached = byField?.get(sort.field);
+		if (cached) return cached;
+		const state = classifyFilePropertyCell(field, context.getCell(task, sort.field));
+		if (stateCache) {
+			const next = byField ?? new Map<string, FilePropertyValueState>();
+			next.set(sort.field, state);
+			if (!byField) stateCache.set(task, next);
+		}
+		return state;
+	};
+	const aState = resolveState(a);
+	const bState = resolveState(b);
+	const aRank = getFilePropertyStateRank(aState);
+	const bRank = getFilePropertyStateRank(bState);
+	if (aRank !== bRank) return aRank - bRank;
+	if (aState.kind !== 'valid' || bState.kind !== 'valid') return 0;
+	let comparison = compareValidFilePropertyValues(field, aState.value, bState.value);
+	if (sort.order === 'desc') comparison = -comparison;
+	return comparison;
+}
+
+function getFilePropertyStateRank(state: FilePropertyValueState): number {
+	if (state.kind === 'valid') return 0;
+	if (state.kind === 'unsupported') return 1;
+	return 2;
+}
+
+function compareValidFilePropertyValues(
+	field: FilePropertyFieldDescriptor,
+	a: Exclude<FilePropertyValueState, { kind: 'empty' | 'unsupported' }>['value'],
+	b: Exclude<FilePropertyValueState, { kind: 'empty' | 'unsupported' }>['value'],
+): number {
+	if (field.type === 'number' && typeof a === 'number' && typeof b === 'number') return a - b;
+	if (field.type === 'checkbox' && typeof a === 'boolean' && typeof b === 'boolean') return Number(a) - Number(b);
+	if ((field.type === 'date' || field.type === 'datetime') && typeof a === 'string' && typeof b === 'string') {
+		return (parseLocalTimestamp(a) ?? 0) - (parseLocalTimestamp(b) ?? 0);
+	}
+	const aText = Array.isArray(a) ? a.map(item => String(item)).join('; ') : String(a);
+	const bText = Array.isArray(b) ? b.map(item => String(item)).join('; ') : String(b);
+	return aText.localeCompare(bText, undefined, { numeric: field.type === 'date' || field.type === 'datetime', sensitivity: 'base' });
+}
+
 function compareGroupKeys(
 	a: string,
 	b: string,
@@ -1069,7 +1332,11 @@ function compareGroupKeys(
 	priorityRankMap: Record<string, number> | null | undefined,
 	workflowStatusOrder: WorkflowStatusOrderIndex,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
+	filePropertyContext?: FilePropertyQueryContext | null,
 ): number {
+	if (field.startsWith('file.property:')) {
+		return compareFilePropertyGroupKeys(a, b, field, order, filePropertyContext);
+	}
 	if (field === 'status') {
 		return compareWorkflowStatusValues(a, b, workflowStatusOrder, {
 			direction: order === 'desc' ? 'desc' : 'asc',
@@ -1095,6 +1362,40 @@ function compareGroupKeys(
 		cmp = a.localeCompare(b);
 	}
 	return order === 'desc' ? -cmp : cmp;
+}
+
+function compareFilePropertyGroupKeys(
+	a: string,
+	b: string,
+	fieldKey: string,
+	order: 'asc' | 'desc' | undefined,
+	context?: FilePropertyQueryContext | null,
+): number {
+	const rank = (key: string): number => {
+		if (key === '') return 2;
+		if (key === FILE_PROPERTY_UNSUPPORTED_GROUP_KEY) return 1;
+		return 0;
+	};
+	const aRank = rank(a);
+	const bRank = rank(b);
+	if (aRank !== bRank) return aRank - bRank;
+	if (aRank !== 0) return 0;
+	const field = context?.fields.find(candidate => candidate.key === fieldKey);
+	const aLabel = getTaskGroupLabel(a, fieldKey);
+	const bLabel = getTaskGroupLabel(b, fieldKey);
+	let comparison: number;
+	if (field?.type === 'number') {
+		comparison = Number(aLabel) - Number(bLabel);
+	} else if (field?.type === 'checkbox') {
+		comparison = Number(aLabel === 'true') - Number(bLabel === 'true');
+	} else if (field?.type === 'date' || field?.type === 'datetime') {
+		comparison = (parseLocalTimestamp(aLabel) ?? 0) - (parseLocalTimestamp(bLabel) ?? 0);
+	} else {
+		comparison = aLabel.localeCompare(bLabel, undefined, {
+			sensitivity: 'base',
+		});
+	}
+	return order === 'desc' ? -comparison : comparison;
 }
 
 // ============================================================
@@ -1180,6 +1481,10 @@ function createEvalContext(
 		projectSerialScopeResolver: options?.projectSerialScopes
 			? createProjectSerialScopeFilterResolver(options.projectSerialScopes, options.projectSerialScopeTasks ?? tasks)
 			: null,
+		filePropertyContext: options?.filePropertyContext ?? null,
+		filePropertyFields: new Map(
+			(options?.filePropertyContext?.fields ?? []).map(field => [field.key, field] as const),
+		),
 	};
 }
 

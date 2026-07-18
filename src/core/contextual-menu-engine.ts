@@ -453,7 +453,7 @@ export async function executeContextualMenuAction(
 			await deps.createSubtask(context.taskId);
 			return;
 		case 'checkboxes':
-			if (context.task?.checkbox !== 'open') return;
+			if (!context.task) return;
 			await deps.openCheckboxes(context.taskId, invocation?.actionAnchor, invocation?.actionAnchorRect);
 			return;
 		case 'startTimer':
@@ -569,8 +569,7 @@ function isContextualMenuActionAvailable(
 		(actionId === 'markDone'
 			|| actionId === 'startTimer'
 			|| actionId === 'cancelTask'
-			|| actionId === 'createSubtask'
-			|| actionId === 'checkboxes')
+			|| actionId === 'createSubtask')
 		&& task?.checkbox !== 'open'
 	) {
 		return false;

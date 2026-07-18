@@ -28,6 +28,39 @@ export interface RankedTaskSearchResult {
 	score: number;
 }
 
+/**
+ * Opaque, caller-owned cache lifetime for repeated task-search queries.
+ *
+ * Consumers should create a fresh session when the task corpus or key mappings
+ * change. Keeping the state opaque prevents caches from leaking across modal
+ * instances while allowing each modal to reuse matcher and score work.
+ */
+export interface TaskSearchSession {
+	readonly kind: 'task-search-session';
+}
+
+type TaskSearchMatcher = (task: IndexedTask, normalizedQuery: string) => boolean;
+
+interface TaskSearchSessionState {
+	matcherByCorpus: Map<string, TaskSearchMatcher>;
+	projectionByTask: WeakMap<IndexedTask, Map<string, TaskSearchScoreProjection>>;
+	identityByReference: WeakMap<object, number>;
+	nextIdentity: number;
+}
+
+const taskSearchSessionStates = new WeakMap<TaskSearchSession, TaskSearchSessionState>();
+
+export function createTaskSearchSession(): TaskSearchSession {
+	const session: TaskSearchSession = { kind: 'task-search-session' };
+	taskSearchSessionStates.set(session, {
+		matcherByCorpus: new Map(),
+		projectionByTask: new WeakMap(),
+		identityByReference: new WeakMap(),
+		nextIdentity: 1,
+	});
+	return session;
+}
+
 export function parseProjectSearchMode(rawQuery: string): ProjectSearchModeQuery | null {
 	const match = rawQuery.match(/^\s*(pc|pt):\s*(.*)$/iu);
 	if (!match) return null;
@@ -52,7 +85,9 @@ export function buildTaskSearchMatcher(
 	}
 	const descendantNameCache = new Map<string, string[]>();
 	const ancestorIdCache = new Map<string, string[]>();
-	const searchGroupCache = new Map<string, string>();
+	const searchDocumentCache = new Map<string, readonly string[]>();
+	let lastNormalizedQuery = '';
+	let lastQueryTerms: readonly string[] = [];
 
 	const getTaskNameById = (operonId: string): string => {
 		const match = taskLookup.get(operonId);
@@ -101,8 +136,8 @@ export function buildTaskSearchMatcher(
 		return deduped;
 	};
 
-	const buildSearchGroup = (task: IndexedTask): string => {
-		const cached = searchGroupCache.get(task.operonId);
+	const buildSearchDocument = (task: IndexedTask): readonly string[] => {
+		const cached = searchDocumentCache.get(task.operonId);
 		if (cached !== undefined) return cached;
 
 		const values = new Set<string>();
@@ -140,14 +175,19 @@ export function buildTaskSearchMatcher(
 			}
 		}
 
-		const group = Array.from(values).join('\n');
-		searchGroupCache.set(task.operonId, group);
-		return group;
+		const tokens = tokenizeTaskSearchText(Array.from(values).join('\n'));
+		searchDocumentCache.set(task.operonId, tokens);
+		return tokens;
 	};
 
 	return (task: IndexedTask, normalizedQuery: string): boolean => {
-		const group = buildSearchGroup(task);
-		return matchesTaskSearchQueryText(group, normalizedQuery);
+		if (normalizedQuery !== lastNormalizedQuery) {
+			lastNormalizedQuery = normalizedQuery;
+			lastQueryTerms = tokenizeTaskSearchText(normalizedQuery);
+		}
+		if (lastQueryTerms.length === 0) return true;
+		const documentTokens = buildSearchDocument(task);
+		return lastQueryTerms.every(term => matchesSearchTermTokens(documentTokens, term));
 	};
 }
 
@@ -157,16 +197,21 @@ export function rankTaskSearchResults(options: {
 	includeAllTasks: boolean;
 	limit?: number;
 	keyMappings?: readonly KeyMapping[];
+	session?: TaskSearchSession;
 }): RankedTaskSearchResult[] {
 	const normalizedQuery = options.query.trim().toLocaleLowerCase();
 	const limit = options.limit;
-	const matcher = buildTaskSearchMatcher(options.tasks, options.keyMappings ?? []);
+	const keyMappings = options.keyMappings ?? [];
+	const keyMappingsSignature = options.session ? buildKeyMappingsSignature(keyMappings) : '';
+	const matcher = getTaskSearchMatcher(options.tasks, keyMappings, keyMappingsSignature, options.session);
 	const scopedTasks = options.tasks.filter(task => options.includeAllTasks || task.checkbox === 'open');
 	const matches = scopedTasks
 		.filter(task => !normalizedQuery || matcher(task, normalizedQuery))
 		.map(task => ({
 			task,
-			score: normalizedQuery ? scoreTaskSearchResult(task, normalizedQuery, options.keyMappings ?? []) : 0,
+			score: normalizedQuery
+				? getTaskSearchScore(task, normalizedQuery, keyMappings, keyMappingsSignature, options.session)
+				: 0,
 		}));
 
 	matches.sort((left, right) => compareRankedTaskSearchResults(left, right, normalizedQuery));
@@ -185,11 +230,16 @@ export function buildProjectSearchCandidates(
 		visibilityMode?: ProjectSearchMode;
 		candidateFilter?: (task: IndexedTask) => boolean;
 		keyMappings?: readonly KeyMapping[];
+		session?: TaskSearchSession;
 	} = {},
 ): ProjectSearchCandidate[] {
 	const scopedTaskIds = new Set(scopedTasks.map(task => task.operonId));
 	const visibleTaskIds = options.visibleTaskIds ?? scopedTaskIds;
-	const matcher = options.match === 'taskSearch' ? buildTaskSearchMatcher(scopedTasks, options.keyMappings ?? []) : null;
+	const keyMappings = options.keyMappings ?? [];
+	const keyMappingsSignature = options.session ? buildKeyMappingsSignature(keyMappings) : '';
+	const matcher = options.match === 'taskSearch'
+		? getTaskSearchMatcher(scopedTasks, keyMappings, keyMappingsSignature, options.session)
+		: null;
 	const candidates: ProjectSearchCandidate[] = [];
 	for (const task of scopedTasks) {
 		if (options.candidateFilter && !options.candidateFilter(task)) {
@@ -232,17 +282,83 @@ export function buildProjectSearchCandidates(
 			return compareRankedTaskSearchResults(
 				{
 					task: left.task,
-					score: normalizedQuery ? scoreTaskSearchResult(left.task, normalizedQuery, options.keyMappings ?? []) : 0,
+					score: normalizedQuery
+						? getTaskSearchScore(left.task, normalizedQuery, keyMappings, keyMappingsSignature, options.session)
+						: 0,
 				},
 				{
 					task: right.task,
-					score: normalizedQuery ? scoreTaskSearchResult(right.task, normalizedQuery, options.keyMappings ?? []) : 0,
+					score: normalizedQuery
+						? getTaskSearchScore(right.task, normalizedQuery, keyMappings, keyMappingsSignature, options.session)
+						: 0,
 				},
 				normalizedQuery,
 			);
 		}
 		return left.task.description.localeCompare(right.task.description, undefined, { sensitivity: 'base' });
 	});
+}
+
+function getTaskSearchMatcher(
+	tasks: IndexedTask[],
+	keyMappings: readonly KeyMapping[],
+	keyMappingsSignature: string,
+	session: TaskSearchSession | undefined,
+): TaskSearchMatcher {
+	const state = session ? taskSearchSessionStates.get(session) : undefined;
+	if (!state) return buildTaskSearchMatcher(tasks, keyMappings);
+
+	const corpusKey = `${buildReferenceSequenceKey(tasks, state)}|${keyMappingsSignature}`;
+	const cached = state.matcherByCorpus.get(corpusKey);
+	if (cached) return cached;
+
+	const matcher = buildTaskSearchMatcher(tasks, keyMappings);
+	state.matcherByCorpus.set(corpusKey, matcher);
+	return matcher;
+}
+
+function getTaskSearchScore(
+	task: IndexedTask,
+	normalizedQuery: string,
+	keyMappings: readonly KeyMapping[],
+	keyMappingsSignature: string,
+	session: TaskSearchSession | undefined,
+): number {
+	const state = session ? taskSearchSessionStates.get(session) : undefined;
+	if (!state) return scoreTaskSearchResult(task, normalizedQuery, keyMappings);
+
+	const mappingKey = keyMappingsSignature;
+	let projections = state.projectionByTask.get(task);
+	if (!projections) {
+		projections = new Map();
+		state.projectionByTask.set(task, projections);
+	}
+	let projection = projections.get(mappingKey);
+	if (!projection) {
+		projection = buildTaskSearchScoreProjection(task, keyMappings);
+		projections.set(mappingKey, projection);
+	}
+	return scoreTaskSearchProjection(projection, normalizedQuery);
+}
+
+function buildReferenceSequenceKey(
+	references: readonly object[],
+	state: TaskSearchSessionState,
+): string {
+	const identities: number[] = [];
+	for (const reference of references) {
+		let identity = state.identityByReference.get(reference);
+		if (identity === undefined) {
+			identity = state.nextIdentity++;
+			state.identityByReference.set(reference, identity);
+		}
+		identities.push(identity);
+	}
+	return `${identities.length}:${identities.join(',')}`;
+}
+
+function buildKeyMappingsSignature(keyMappings: readonly KeyMapping[]): string {
+	return JSON.stringify(keyMappings);
 }
 
 export function resolveProjectSearchVisibleTaskIds(
@@ -270,7 +386,8 @@ export function resolveProjectSearchVisibleTaskIds(
 export function matchesTaskSearchQueryText(text: string, normalizedQuery: string): boolean {
 	const terms = tokenizeTaskSearchText(normalizedQuery);
 	if (terms.length === 0) return true;
-	return terms.every(term => matchesSearchTerm(text, term));
+	const textTokens = tokenizeTaskSearchText(text);
+	return terms.every(term => matchesSearchTermTokens(textTokens, term));
 }
 
 export function tokenizeTaskSearchText(value: string): string[] {
@@ -281,8 +398,7 @@ export function tokenizeTaskSearchText(value: string): string[] {
 		.filter(Boolean);
 }
 
-function matchesSearchTerm(group: string, term: string): boolean {
-	const tokens = tokenizeTaskSearchText(group);
+function matchesSearchTermTokens(tokens: readonly string[], term: string): boolean {
 	if (/^\d+$/.test(term)) {
 		return tokens.includes(term);
 	}
@@ -294,14 +410,42 @@ function scoreTaskSearchResult(
 	normalizedQuery: string,
 	keyMappings: readonly KeyMapping[] = [],
 ): number {
-	const desc = task.description.toLocaleLowerCase();
-	const id = task.operonId.toLocaleLowerCase();
-	const filePath = task.primary.filePath.toLocaleLowerCase();
-	const status = (task.fieldValues['status'] ?? '').toLocaleLowerCase();
-	const priority = (task.fieldValues['priority'] ?? '').toLocaleLowerCase();
-	const note = (task.fieldValues['note'] ?? '').toLocaleLowerCase();
-	const customValues = getSearchableCustomFieldValues(task, getManagedCustomFieldMappings(keyMappings))
-		.map(value => value.toLocaleLowerCase());
+	return scoreTaskSearchProjection(buildTaskSearchScoreProjection(task, keyMappings), normalizedQuery);
+}
+
+interface TaskSearchScoreProjection {
+	desc: string;
+	id: string;
+	filePath: string;
+	status: string;
+	priority: string;
+	note: string;
+	customValues: readonly string[];
+	checkboxRank: number;
+}
+
+function buildTaskSearchScoreProjection(
+	task: IndexedTask,
+	keyMappings: readonly KeyMapping[],
+): TaskSearchScoreProjection {
+	return {
+		desc: task.description.toLocaleLowerCase(),
+		id: task.operonId.toLocaleLowerCase(),
+		filePath: task.primary.filePath.toLocaleLowerCase(),
+		status: (task.fieldValues['status'] ?? '').toLocaleLowerCase(),
+		priority: (task.fieldValues['priority'] ?? '').toLocaleLowerCase(),
+		note: (task.fieldValues['note'] ?? '').toLocaleLowerCase(),
+		customValues: getSearchableCustomFieldValues(task, getManagedCustomFieldMappings(keyMappings))
+			.map(value => value.toLocaleLowerCase()),
+		checkboxRank: getCheckboxRank(task.checkbox),
+	};
+}
+
+function scoreTaskSearchProjection(
+	projection: TaskSearchScoreProjection,
+	normalizedQuery: string,
+): number {
+	const { desc, id, filePath, status, priority, note, customValues } = projection;
 	const tokens = tokenizeTaskSearchText(normalizedQuery);
 	let score = 0;
 
@@ -328,7 +472,7 @@ function scoreTaskSearchResult(
 		if (customValues.some(value => value.includes(token))) score += 20;
 	}
 
-	score += Math.max(0, 30 - getCheckboxRank(task.checkbox) * 10);
+	score += Math.max(0, 30 - projection.checkboxRank * 10);
 	return score;
 }
 

@@ -94,10 +94,31 @@ export class SecondaryIndexes {
 	}
 
 	applyTaskDeltas(deltas: Array<{ before?: IndexedTask; after?: IndexedTask }>): void {
+		const dueRemovalIds = new Set<string>();
+		const seenDeltaIds = new Set<string>();
+		let canBatchDueRemovals = true;
+		for (const delta of deltas) {
+			if (delta.before) {
+				const beforeId = delta.before.operonId;
+				dueRemovalIds.add(beforeId);
+				if (seenDeltaIds.has(beforeId)) canBatchDueRemovals = false;
+				seenDeltaIds.add(beforeId);
+			}
+			if (delta.after && delta.after.operonId !== delta.before?.operonId) {
+				const afterId = delta.after.operonId;
+				if (seenDeltaIds.has(afterId)) canBatchDueRemovals = false;
+				seenDeltaIds.add(afterId);
+			}
+		}
+
+		if (canBatchDueRemovals && dueRemovalIds.size > 0) {
+			this.byDue = this.byDue.filter(entry => !dueRemovalIds.has(entry.operonId));
+		}
+
 		let touchedDue = false;
 		for (const delta of deltas) {
 			if (delta.before) {
-				this.removeTask(delta.before);
+				this.removeTask(delta.before, !canBatchDueRemovals);
 				if (delta.before.fieldValues['dateDue']) touchedDue = true;
 			}
 			if (delta.after) {
@@ -274,10 +295,10 @@ export class SecondaryIndexes {
 		if (priority) this.addToSetMap(this.byPriority, normalizePriorityValue(priority), id);
 	}
 
-	private removeTask(task: IndexedTask): void {
+	private removeTask(task: IndexedTask, removeDue: boolean = true): void {
 		const id = task.operonId;
 		this.removeFromSetMap(this.byStatus, task.checkbox, id);
-		this.byDue = this.byDue.filter(entry => entry.operonId !== id);
+		if (removeDue) this.byDue = this.byDue.filter(entry => entry.operonId !== id);
 		const parentId = task.fieldValues['parentTask'];
 		if (parentId) this.removeFromSetMap(this.byParent, parentId, id);
 		this.removeFromSetMap(this.byFile, task.primary.filePath, id);

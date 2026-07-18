@@ -6,8 +6,6 @@ import { IndexedTask } from '../types/fields';
 import { OperonSettings } from '../types/settings';
 import { t } from '../core/i18n';
 import { resolveAutomationWorkflowStatus, resolveReverseWorkflowFromTerminalDate } from '../types/pipeline';
-import { TotalDurationCalculator } from './total-duration';
-import { TotalEstimateCalculator } from './total-estimate';
 import {
 	buildTrackerRange,
 	calculateDurationFromTrackers,
@@ -47,12 +45,10 @@ interface ResumeFromIndexOptions {
 	migrateLegacy?: boolean;
 }
 
-interface ReopenTaskResult {
-	task: IndexedTask;
-	ok: boolean;
-}
-
 type ExternalTaskMutationPersist = (payload: Record<string, string>) => Promise<boolean>;
+interface TimeTrackerAggregateRefreshResult {
+	failedWriteCount: number;
+}
 export type TimeTrackerStatusChangeGuard = (
 	task: IndexedTask,
 	payload: Record<string, string>,
@@ -71,9 +67,18 @@ export class TimeTracker {
 	private indexer: OperonIndexer;
 	private writer: TaskWriter;
 	private activeTrackerStore: ActiveTrackerStoreLike;
-	private totalDurationCalculator: TotalDurationCalculator;
 	private getSettings: () => OperonSettings;
-	private refreshDurationAggregates: (operonId: string) => Promise<void>;
+	private refreshDurationAggregates: (
+		operonId: string,
+		modifiedTimestamp: string,
+	) => Promise<TimeTrackerAggregateRefreshResult | void>;
+	private finalizeDurationAggregateRefresh: (() => void) | null;
+	private refreshStartMutation: ((
+		beforeTask: IndexedTask,
+		afterTask: IndexedTask | null,
+		modifiedTimestamp: string,
+	) => Promise<TimeTrackerAggregateRefreshResult | void>) | null;
+	private finalizeStartMutationRefresh: (() => void) | null;
 	private onDuplicateOperonId: ((operonId: string) => void) | null;
 	private statusChangeGuard: TimeTrackerStatusChangeGuard | null;
 	private listeners: Set<TimeTrackerListener> = new Set();
@@ -90,23 +95,33 @@ export class TimeTracker {
 		indexer: OperonIndexer,
 		writer: TaskWriter,
 		activeTrackerStore: ActiveTrackerStoreLike,
-			totalDurationCalculator: TotalDurationCalculator,
-			_totalEstimateCalculator: TotalEstimateCalculator,
-			getSettings: () => OperonSettings,
-			onDuplicateOperonId?: (operonId: string) => void,
-			refreshDurationAggregates?: (operonId: string) => Promise<void>,
-			statusChangeGuard?: TimeTrackerStatusChangeGuard,
-		) {
+		getSettings: () => OperonSettings,
+		onDuplicateOperonId: ((operonId: string) => void) | undefined,
+		refreshDurationAggregates: (
+			operonId: string,
+			modifiedTimestamp: string,
+		) => Promise<TimeTrackerAggregateRefreshResult | void>,
+		statusChangeGuard?: TimeTrackerStatusChangeGuard,
+		refreshStartMutation?: (
+			beforeTask: IndexedTask,
+			afterTask: IndexedTask | null,
+			modifiedTimestamp: string,
+		) => Promise<TimeTrackerAggregateRefreshResult | void>,
+		finalizeStartMutationRefresh?: () => void,
+		finalizeDurationAggregateRefresh?: () => void,
+	) {
 		this.app = app;
 		this.indexer = indexer;
 		this.writer = writer;
-			this.activeTrackerStore = activeTrackerStore;
-			this.totalDurationCalculator = totalDurationCalculator;
-			this.getSettings = getSettings;
-			this.refreshDurationAggregates = refreshDurationAggregates ?? ((operonId) => this.refreshAggregateChainsLegacy(operonId));
-			this.onDuplicateOperonId = onDuplicateOperonId ?? null;
-			this.statusChangeGuard = statusChangeGuard ?? null;
-		}
+		this.activeTrackerStore = activeTrackerStore;
+		this.getSettings = getSettings;
+		this.refreshDurationAggregates = refreshDurationAggregates;
+		this.refreshStartMutation = refreshStartMutation ?? null;
+		this.finalizeStartMutationRefresh = finalizeStartMutationRefresh ?? null;
+		this.finalizeDurationAggregateRefresh = finalizeDurationAggregateRefresh ?? null;
+		this.onDuplicateOperonId = onDuplicateOperonId ?? null;
+		this.statusChangeGuard = statusChangeGuard ?? null;
+	}
 
 	subscribe(listener: TimeTrackerListener): () => void {
 		this.listeners.add(listener);
@@ -271,6 +286,11 @@ export class TimeTracker {
 		const start = this.activeTracker && !this.activeTracker.operonId
 			? this.activeTracker.start
 			: (startOverride?.trim() || localNow());
+		let committedStartMutation: {
+			beforeTask: IndexedTask;
+			afterTask: IndexedTask | null;
+			modifiedTimestamp: string;
+		} | null = null;
 		try {
 			await this.setActiveTracker(operonId, start, source);
 			this.setTransitionState({
@@ -299,27 +319,46 @@ export class TimeTracker {
 		}
 
 		try {
-			const reopened = await this.reopenTaskIfTerminal(task);
-			if (!reopened.ok) {
-				throw new Error('Failed to reopen terminal task before starting timer');
+			// Coalesce the terminal reopen and the tracking-status transition into
+			// one write + one reindex instead of two sequential write/reindex cycles.
+			const startPayload: Record<string, string> = {};
+			const reopenPayload = this.buildTerminalReopenPayload(task);
+			let taskForTracking = task;
+			if (reopenPayload) {
+				Object.assign(startPayload, reopenPayload);
+				taskForTracking = this.previewTaskWithPayload(task, reopenPayload);
 			}
-			task = reopened.task;
 			const settings = this.getSettings();
 			const trackingWorkflow = resolveAutomationWorkflowStatus(
 				settings.pipelines,
-				task.fieldValues['status'],
+				taskForTracking.fieldValues['status'],
 				settings.defaultPipelineName,
 				'tracking',
 			);
-			if (trackingWorkflow && (task.fieldValues['status'] ?? '') !== trackingWorkflow.value) {
-				const wrote = await this.writer.writeTaskFields(operonId, {
-					status: trackingWorkflow.value,
-					datetimeModified: localNow(),
-				}, { reindex: 'none' });
+			if (trackingWorkflow && (taskForTracking.fieldValues['status'] ?? '') !== trackingWorkflow.value) {
+				startPayload['status'] = trackingWorkflow.value;
+			}
+			if (Object.keys(startPayload).length > 0) {
+				const modifiedTimestamp = localNow();
+				startPayload['datetimeModified'] = modifiedTimestamp;
+				const controlledAggregateChain = this.refreshStartMutation !== null;
+				const wrote = await this.writer.writeTaskFields(operonId, startPayload, controlledAggregateChain
+					? { reindex: 'none', touchAncestors: false }
+					: { reindex: 'none' });
 				if (wrote === false) {
-					throw new Error('Failed to write tracking status before starting timer');
+					throw new Error('Failed to apply task updates before starting timer');
 				}
-				await this.indexer.reindexFilePath(task.primary.filePath);
+				await this.indexer.reindexFilePath(
+					task.primary.filePath,
+					controlledAggregateChain ? { notify: false } : undefined,
+				);
+				if (controlledAggregateChain) {
+					committedStartMutation = {
+						beforeTask: task,
+						afterTask: this.indexer.getTask(operonId) ?? null,
+						modifiedTimestamp,
+					};
+				}
 			}
 		} catch (error) {
 			console.error('Operon: Failed to apply task updates for timer start', error);
@@ -328,6 +367,37 @@ export class TimeTracker {
 			this.clearTransitionState();
 			this.emit('state');
 			return false;
+		}
+		if (committedStartMutation && this.refreshStartMutation) {
+			const refreshCommittedMutation = async (): Promise<void> => {
+				const result = await this.refreshStartMutation?.(
+					committedStartMutation.beforeTask,
+					committedStartMutation.afterTask,
+					committedStartMutation.modifiedTimestamp,
+				);
+				if (result && result.failedWriteCount > 0) {
+					throw new Error(`Timer-start aggregate refresh reported ${result.failedWriteCount} failed writes`);
+				}
+			};
+			try {
+				await refreshCommittedMutation();
+			} catch (error) {
+				// The task write and runtime tracker record are already committed. Retry
+				// the idempotent aggregate chain once, but never roll the timer back while
+				// leaving the task reopened on disk.
+				console.warn('Operon: timer-start aggregate refresh failed; retrying once', error);
+				try {
+					await refreshCommittedMutation();
+				} catch (retryError) {
+					console.warn('Operon: timer-start aggregate refresh retry failed', retryError);
+				}
+			} finally {
+				try {
+					this.finalizeStartMutationRefresh?.();
+				} catch (refreshError) {
+					console.warn('Operon: timer-start final view refresh failed', refreshError);
+				}
+			}
 		}
 
 		this.clearTransitionState();
@@ -944,37 +1014,6 @@ export class TimeTracker {
 		this.activeTracker = null;
 	}
 
-	private async reopenTaskIfTerminal(task: IndexedTask): Promise<ReopenTaskResult> {
-		if (task.checkbox === 'open') return { task, ok: true };
-
-		const settings = this.getSettings();
-		const terminalKey = task.checkbox === 'done' ? 'dateCompleted' : 'dateCancelled';
-		const resolution = resolveReverseWorkflowFromTerminalDate(
-			settings.pipelines,
-			task.fieldValues['status'],
-			settings.defaultPipelineName,
-			terminalKey,
-			'',
-		);
-		if (!resolution.isValid || !resolution.workflow) {
-			return { task, ok: true };
-		}
-
-		const now = localNow();
-		const wrote = await this.writer.writeTaskFields(task.operonId, {
-			status: resolution.workflow.value,
-			_checkbox: resolution.checkbox,
-			dateCompleted: '',
-			dateCancelled: '',
-			datetimeModified: now,
-		}, { reindex: 'none' });
-		if (wrote === false) {
-			return { task, ok: false };
-		}
-		await this.indexer.reindexFilePath(task.primary.filePath);
-		return { task: this.indexer.getTask(task.operonId) ?? task, ok: true };
-	}
-
 	private async persistTaskSessions(
 		task: IndexedTask,
 		trackers: string,
@@ -982,6 +1021,9 @@ export class TimeTracker {
 		extraFields: Record<string, string> = {},
 	): Promise<void> {
 		const duration = trackers ? String(calculateDurationFromTrackers(trackers)) : '';
+		// Ancestor timestamps are handled by the duration aggregate refresh below
+		// in the same write as totalDuration; touching them here would write every
+		// ancestor file twice per session change.
 		const wrote = await this.writer.writeTaskFields(task.operonId, {
 			trackers,
 			duration,
@@ -989,13 +1031,14 @@ export class TimeTracker {
 			...extraFields,
 			}, {
 				reindex: 'none',
+				touchAncestors: false,
 			});
 		if (wrote === false) {
 			throw new Error('Failed to persist tracker sessions');
 		}
-		await this.indexer.reindexFilePath(task.primary.filePath);
+		await this.indexer.reindexFilePath(task.primary.filePath, { notify: false });
 		this.invalidateHistoryCache();
-		await this.refreshAggregateChains(task.operonId);
+		await this.refreshAggregateChains(task.operonId, now);
 	}
 
 	private activeRecordToInternal(record: ActiveTrackerRecord): InternalActiveTracker {
@@ -1062,16 +1105,32 @@ export class TimeTracker {
 		return fragments.map(fragment => buildTrackerRange(fragment.start, fragment.end));
 	}
 
-	private async refreshAggregateChains(operonId: string): Promise<void> {
-		await this.refreshDurationAggregates(operonId);
-	}
-
-	private async refreshAggregateChainsLegacy(operonId: string): Promise<void> {
-		if (this.indexer.secondary.getChildIds(operonId).size > 0) {
-			await this.totalDurationCalculator.recalculate(operonId);
-			return;
+	private async refreshAggregateChains(operonId: string, modifiedTimestamp: string): Promise<void> {
+		const refreshCommittedDuration = async (): Promise<void> => {
+			const result = await this.refreshDurationAggregates(operonId, modifiedTimestamp);
+			if (result && result.failedWriteCount > 0) {
+				throw new Error(`Tracker-duration aggregate refresh reported ${result.failedWriteCount} failed writes`);
+			}
+		};
+		try {
+			await refreshCommittedDuration();
+		} catch (error) {
+			// The session write and child reindex already committed. Retry the
+			// idempotent parent rollup once without turning the saved stop/session edit
+			// into a failed operation or leaving its active timer running.
+			console.warn('Operon: tracker-duration aggregate refresh failed; retrying once', error);
+			try {
+				await refreshCommittedDuration();
+			} catch (retryError) {
+				console.warn('Operon: tracker-duration aggregate refresh retry failed', retryError);
+			}
+		} finally {
+			try {
+				this.finalizeDurationAggregateRefresh?.();
+			} catch (refreshError) {
+				console.warn('Operon: tracker-duration final view refresh failed', refreshError);
+			}
 		}
-		await this.totalDurationCalculator.recalculateForChild(operonId);
 	}
 
 	private invalidateHistoryCache(): void {

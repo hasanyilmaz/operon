@@ -7,6 +7,7 @@ import {
 export interface SearchableFieldPickerOption {
 	field: string;
 	label: string;
+	secondaryLabel?: string;
 	type?: string;
 	icon?: string | null;
 	group?: string | null;
@@ -51,6 +52,7 @@ export function showSearchableFieldPicker<TField extends SearchableFieldPickerOp
 	const pickerOptions: Array<SearchableFieldPickerItem<TField>> = options.fields.map(fieldOption => ({
 		value: fieldOption.field,
 		label: fieldOption.label || fieldOption.field,
+		description: fieldOption.secondaryLabel,
 		icon: fieldOption.icon,
 		group: fieldOption.group,
 		groupLabel: fieldOption.groupLabel,
@@ -71,7 +73,7 @@ export function showSearchableFieldPicker<TField extends SearchableFieldPickerOp
 		onSelect: item => options.onSelect(item.fieldOption),
 		onClose: options.onClose,
 		variantClassName: options.variantClassName,
-		getSearchText: item => options.getSearchText?.(item.fieldOption) ?? `${item.label} ${item.value}`,
+		getSearchText: item => options.getSearchText?.(item.fieldOption) ?? `${item.label} ${item.description ?? ''} ${item.value}`,
 		floatingHost: options.floatingHost,
 		floatingScrollHost: options.floatingScrollHost,
 		constrainToFloatingHost: options.constrainToFloatingHost,

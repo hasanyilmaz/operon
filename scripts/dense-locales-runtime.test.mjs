@@ -57,7 +57,7 @@ test('dense locale runtime preserves all source translations and i18n behavior',
 	const { densePack } = runtime;
 
 	assert.deepEqual(densePack.languageOrder, LOCALE_DEFINITIONS.map(definition => definition.code));
-	assert.equal(densePack.keyCount, 2_816);
+	assert.equal(densePack.keyCount, 2_845);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);

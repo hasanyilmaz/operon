@@ -9175,6 +9175,7 @@ body .operon-task-editor button.operon-task-editor-file-panel-overlay-action.is-
 .operon-task-editor-file-panel-editor {
 	display: flex;
 	flex: 1 1 auto;
+	min-width: 0;
 	min-height: 0;
 	padding: 6px 8px 8px 2px;
 	overflow: hidden;
@@ -9227,8 +9228,16 @@ body .operon-task-editor button.operon-task-editor-file-panel-overlay-action.is-
 	--operon-file-fold-gutter: 14px;
 	display: flex;
 	flex: 1 1 auto;
+	min-width: 0;
 	min-height: 0;
 	background: transparent;
+}
+
+.modal.operon-task-editor-modal .operon-task-editor-file-source-editor .operon-filter-surface--dynamic-file-task .operon-reading-task-description {
+	white-space: normal;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	text-overflow: clip;
 }
 
 .operon-task-editor-file-source-editor .cm-editor {
@@ -14779,6 +14788,13 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	flex: 0 1 220px;
 }
 
+.operon-condition-field-picker-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 3px;
+}
+
 .operon-filter-select,
 .operon-condition-select {
 	width: 100%;
@@ -14800,10 +14816,58 @@ button.operon-field-picker-trigger,
 
 .operon-field-picker-trigger-label,
 .operon-condition-field-picker-trigger-label {
+	flex: 1 1 auto;
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.operon-field-picker-trigger-secondary {
+	flex: 0 1 42%;
+	min-width: 0;
+	overflow: hidden;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-field-picker-trigger-secondary.is-hidden {
+	display: none;
+}
+
+.operon-filter-file-property-status {
+	min-width: 0;
+	padding-inline: 2px;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.25;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-filter-file-property-status.is-hidden {
+	display: none;
+}
+
+.operon-filter-file-property-status.is-type-drift {
+	color: var(--text-warning);
+}
+
+.operon-filter-file-property-status.is-unavailable {
+	color: var(--text-faint);
+}
+
+.operon-filter-value-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.3;
+}
+
+.operon-filter-value-error.is-hidden {
+	display: none;
 }
 
 .operon-field-picker-trigger-icon,
@@ -30603,6 +30667,98 @@ button.operon-table-source-button:focus-visible {
 	color: var(--text-faint);
 }
 
+.operon-table-root button.operon-table-file-property-checkbox {
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-width: 0;
+	height: var(--operon-task-chip-height, 26px);
+	min-height: var(--operon-task-chip-height, 26px);
+	padding: 0 var(--operon-task-chip-padding-x, 8px);
+	border: 1px solid var(--operon-task-chip-border, var(--background-modifier-border));
+	border-radius: 6px;
+	box-shadow: none;
+	background: var(--operon-task-chip-bg, transparent);
+	background-color: var(--operon-task-chip-bg, transparent);
+	color: var(--operon-live-chip-color, var(--text-muted));
+	font: inherit;
+	line-height: 1.25;
+}
+
+.operon-table-root button.operon-table-file-property-checkbox.is-compact {
+	width: var(--operon-table-admin-control-size, 28px);
+	min-width: var(--operon-table-admin-control-size, 28px);
+	max-width: var(--operon-table-admin-control-size, 28px);
+	height: var(--operon-table-admin-control-size, 28px);
+	min-height: var(--operon-table-admin-control-size, 28px);
+	padding: 0;
+}
+
+.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):hover,
+.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):focus-visible {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	background: transparent;
+	background-color: transparent;
+	color: var(--text-normal);
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+}
+
+.operon-table-root button.operon-table-file-property-checkbox:disabled {
+	cursor: default;
+	opacity: 1;
+	border-color: var(--operon-task-chip-border, var(--background-modifier-border));
+	box-shadow: none;
+	background: transparent;
+	background-color: transparent;
+	color: var(--text-muted);
+}
+
+.operon-table-file-property-checkbox-icon,
+.operon-table-file-property-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+	color: var(--text-muted);
+}
+
+.operon-table-file-property-checkbox-label {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--text-muted);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-table-root button.operon-table-file-property-checkbox.is-compact .operon-table-file-property-checkbox-icon {
+	width: var(--operon-table-cell-icon-size, 18px);
+	height: var(--operon-table-cell-icon-size, 18px);
+	margin-right: 0;
+}
+
+.operon-table-root button.operon-table-file-property-checkbox.is-compact .operon-table-file-property-checkbox-icon svg {
+	width: var(--operon-table-cell-icon-size, 18px);
+	height: var(--operon-table-cell-icon-size, 18px);
+}
+
+@media (forced-colors: active) {
+	.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):focus-visible {
+		outline-color: ButtonText;
+		box-shadow: none;
+	}
+}
+
+.operon-table-file-property-checkbox-icon svg,
+.operon-table-file-property-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
 .operon-table-empty {
 	flex: 0 0 auto;
 	padding: 18px 12px;
@@ -30772,6 +30928,11 @@ button.operon-table-source-button:focus-visible {
 	white-space: nowrap;
 }
 
+.operon-table-preset-summary-unavailable {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
 .operon-table-preset-grouping-label-wrap {
 	min-width: 0;
 }
@@ -30903,4 +31064,20 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 
 .operon-table-preset-settings-primary-actions {
 	margin-inline-start: auto;
+}
+.operon-searchable-option-picker-item-content {
+	display: flex;
+	min-width: 0;
+	flex: 1 1 auto;
+	flex-direction: column;
+	align-items: flex-start;
+}
+
+.operon-searchable-option-picker-item-description {
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--text-muted);
+	font-size: var(--font-smallest);
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }

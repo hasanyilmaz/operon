@@ -1,5 +1,6 @@
 import { t } from '../../../core/i18n';
 import { createButton, focusFloatingInput } from '../common';
+import { getOwnerWindow } from '../../../core/dom-compat';
 import { createCustomFieldPanel, type CustomScalarFieldPickerOptions } from './common';
 
 export interface CustomTextFieldPickerOptions extends CustomScalarFieldPickerOptions<'text'> {
@@ -108,7 +109,7 @@ export function showCustomTextFieldPicker(
 	panel.appendChild(actions);
 
 	renderSuggestions();
-	window.requestAnimationFrame(() => {
+	getOwnerWindow(input).requestAnimationFrame(() => {
 		focusFloatingInput(input);
 		input.select();
 	});

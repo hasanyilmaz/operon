@@ -63,6 +63,8 @@ import {
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import { renderRelatedViewsLauncher } from './related-views';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from '../types/related-views';
+import { getTableFilePropertyIndex } from './table/table-file-property';
+import { getFilterGroupDisplayLabel } from './filter-group-label';
 
 export const FILTER_VIEW_TYPE = 'operon-filter-view';
 const FILTER_PERF_DEBUG = false;
@@ -343,8 +345,14 @@ export class FilterView extends ItemView {
 		const currentFs = this.getVisibleFilterSets().find(f => f.id === this.currentFilterSetId);
 		if (!currentFs) return;
 		this.pruneOptimisticTaskPatches();
+		const allTasks = this.indexer.getAllTasks();
+		const filePropertyContext = getTableFilePropertyIndex(this.app).getSnapshot(
+			allTasks,
+			this.indexer.getGeneration(),
+			{ keyMappings: this.getSettings().keyMappings },
+		);
 
-		const renderSignature = this.buildRenderSignature(currentFs);
+		const renderSignature = this.buildRenderSignature(currentFs, filePropertyContext.signature);
 		if (renderSignature === this.lastRenderSignature) return;
 		if (renderSignature !== this.lastPaginationSignature) {
 			this.visibleTaskLimit = FILTER_RENDER_BATCH_SIZE;
@@ -396,6 +404,7 @@ export class FilterView extends ItemView {
 					this.getSettings().projectSerialScopes,
 					this.indexer.getAllTasks(),
 				),
+				filePropertyContext,
 			},
 		);
 		const taskRowOptions = {
@@ -445,7 +454,12 @@ export class FilterView extends ItemView {
 						this.lastRenderSignature = null;
 						this.render();
 					}), {
-					indexer: this.indexer,
+						indexer: this.indexer,
+						getFilePropertySnapshot: tasks => getTableFilePropertyIndex(this.app).getSnapshot(
+							tasks,
+							this.indexer.getGeneration(),
+							{ keyMappings: this.getSettings().keyMappings },
+						),
 					getPipelines: this.getPipelines,
 					getPriorities: this.getPriorities,
 					openEditor: (id) => this.openTaskEditor(id),
@@ -483,11 +497,11 @@ export class FilterView extends ItemView {
 		this.listEl?.empty();
 		const list = this.listEl;
 		if (!list) return;
-		const allTasks = this.indexer.getAllTasks();
-		const filterEvaluationOptions = {
-			projectSerialScopes: this.getSettings().projectSerialScopes,
-			projectSerialScopeTasks: allTasks,
-		};
+			const filterEvaluationOptions = {
+				projectSerialScopes: this.getSettings().projectSerialScopes,
+				projectSerialScopeTasks: allTasks,
+				filePropertyContext,
+			};
 
 			if (currentFs.groupBy) {
 				// Grouped rendering
@@ -537,10 +551,21 @@ export class FilterView extends ItemView {
 				this.lastRenderSignature = renderSignature;
 				return;
 			}
+			if (grouped.groupingSuspended) {
+				const tasks = grouped.ungroupedTasks ?? [];
+				for (const task of getVisibleFilterTasks(tasks, this.visibleTaskLimit)) {
+					const bar = buildFilterTaskRowElement(task, callbacks, this.expandedTaskIds, taskRowOptions, list);
+					list.appendChild(bar);
+				}
+				this.attachLazyLoadSentinel(list, tasks.length);
+				this.lastRenderSignature = renderSignature;
+				perfLog('FilterView.render', this.currentFilterSetId ?? 'none', `${Math.round(perfNow() - startedAt)}ms`);
+				return;
+			}
 
 			const visibleGrouped = getVisibleGroupedFilterResults(grouped, this.visibleTaskLimit);
 			for (const group of visibleGrouped.groups) {
-				const label = group.label || t('filterSets', 'groupEmpty');
+				const label = getFilterGroupDisplayLabel(group.key, group.label);
 				const header = list.createDiv('operon-group-header');
 				// Make date-format labels (YYYY-MM-DD) clickable → opens daily note
 				if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
@@ -576,7 +601,7 @@ export class FilterView extends ItemView {
 						const subgroupHeader = list.createDiv('operon-group-header operon-subgroup-header');
 						subgroupHeader.createSpan({
 							cls: 'operon-group-header-label',
-							text: subgroup.label || t('filterSets', 'groupEmpty'),
+							text: getFilterGroupDisplayLabel(subgroup.key, subgroup.label),
 						});
 						subgroupHeader.createSpan({ cls: 'operon-group-header-count', text: String(subgroup.count) });
 
@@ -592,7 +617,7 @@ export class FilterView extends ItemView {
 						}
 					}
 			}
-			this.attachLazyLoadSentinel(list, grouped.totalCount);
+			this.attachLazyLoadSentinel(list, grouped.renderItemCount ?? grouped.totalCount);
 		} else {
 			// Flat rendering
 			const baseTasks = evaluateFilterSet(
@@ -690,7 +715,12 @@ export class FilterView extends ItemView {
 		new FilterSetModal(this.app, createEmptyFilterSet(), this.settings.keyMappings, asyncHandler('filter view create filter failed', async (saved) => {
 			await this.saveNewFilterSet(saved);
 		}), {
-			indexer: this.indexer,
+				indexer: this.indexer,
+				getFilePropertySnapshot: tasks => getTableFilePropertyIndex(this.app).getSnapshot(
+					tasks,
+					this.indexer.getGeneration(),
+					{ keyMappings: this.getSettings().keyMappings },
+				),
 			getPipelines: this.getPipelines,
 			getPriorities: this.getPriorities,
 			openEditor: (id) => this.openTaskEditor(id),
@@ -1061,7 +1091,7 @@ export class FilterView extends ItemView {
 		this.filterPickerButtonEl?.setAttribute('aria-expanded', open ? 'true' : 'false');
 	}
 
-	private buildRenderSignature(filterSet: FilterSet): string {
+	private buildRenderSignature(filterSet: FilterSet, filePropertySignature: string): string {
 		const compactSettingsSignature = JSON.stringify(this.settings.filterTaskCompactChips);
 		const filterActionSettingsSignature = JSON.stringify([
 			this.settings.filterTaskShowPlayAction,
@@ -1089,6 +1119,7 @@ export class FilterView extends ItemView {
 			this.getTrackingSignature?.() ?? '',
 			this.getProjectSerialSignature?.() ?? '',
 			this.getRepeatSkipSignature?.() ?? '',
+			filePropertySignature,
 			this.currentFilterSetId ?? '',
 			this.searchQuery.trim().toLocaleLowerCase(),
 			JSON.stringify(filterSet),

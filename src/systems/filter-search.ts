@@ -71,6 +71,15 @@ export function applyGroupedFilterSearch(
 ): GroupedFilterResults {
 	const normalizedQuery = query.trim().toLocaleLowerCase();
 	if (!normalizedQuery) return grouped;
+	if (grouped.groupingSuspended) {
+		const ungroupedTasks = applyFilterSearch(grouped.ungroupedTasks ?? [], normalizedQuery, keyMappings);
+		return {
+			...grouped,
+			totalCount: ungroupedTasks.length,
+			groups: [],
+			ungroupedTasks,
+		};
+	}
 
 	const groups: GroupedFilterGroup[] = [];
 	for (const group of grouped.groups) {
@@ -108,6 +117,7 @@ export function applyGroupedFilterSearch(
 	}
 
 	return {
+		...grouped,
 		totalCount: groups.reduce((sum, group) => sum + group.count, 0),
 		groups,
 	};

@@ -2,7 +2,7 @@ import { App, FuzzyMatch, FuzzySuggestModal } from 'obsidian';
 import { t } from '../core/i18n';
 import {
 	FileTaskTemplateOption,
-	getBuiltinEmptyFileTaskTemplateDescription,
+	getFileTaskTemplateOptionSecondaryText,
 } from '../core/file-task-templates';
 
 export class FileTaskTemplatePickerModal extends FuzzySuggestModal<FileTaskTemplateOption> {
@@ -35,7 +35,7 @@ export class FileTaskTemplatePickerModal extends FuzzySuggestModal<FileTaskTempl
 	}
 
 	getItemText(item: FileTaskTemplateOption): string {
-		return item.path ? `${item.name} ${item.path}` : item.name;
+		return `${item.name} ${getFileTaskTemplateOptionSecondaryText(item)}`;
 	}
 
 	renderSuggestion(match: FuzzyMatch<FileTaskTemplateOption>, el: HTMLElement): void {
@@ -45,9 +45,9 @@ export class FileTaskTemplatePickerModal extends FuzzySuggestModal<FileTaskTempl
 		const primary = el.createDiv('operon-file-task-template-picker-primary');
 		primary.setText(option.name);
 
-			const secondary = el.createDiv('operon-file-task-template-picker-secondary');
-			secondary.setText(option.path ?? getBuiltinEmptyFileTaskTemplateDescription());
-		}
+		const secondary = el.createDiv('operon-file-task-template-picker-secondary');
+		secondary.setText(getFileTaskTemplateOptionSecondaryText(option));
+	}
 
 	onChooseItem(item: FileTaskTemplateOption): void {
 		this.resolved = true;

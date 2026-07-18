@@ -31,7 +31,14 @@ import {
 	isTableColumnColorModeEligible,
 	resolveEffectiveTableColumnColorMode,
 } from './table-column-color';
-import { buildTableTaskFieldCatalog, getTableTaskField, getTableTaskFieldLabel, type TableTaskField } from './table-field-catalog';
+import {
+	applyTablePresetFieldAliases,
+	buildEffectiveTableTaskFieldCatalog,
+	getEffectiveTableTaskField,
+	getTableTaskField,
+	getTableColumnLabel,
+	type TableTaskField,
+} from './table-field-catalog';
 import {
 	clearTablePresetSummary,
 	cycleTablePresetPrimarySort,
@@ -56,6 +63,7 @@ import type { FloatingHostOptions } from '../field-pickers/common';
 import { buildTableFieldPickerOptions } from './table-field-picker-options';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { showTableColumnRenamePopover } from './table-column-rename-popover';
+import { isTableFilePropertyColumnKey } from './table-file-property';
 
 const TABLE_COLUMN_RESIZE_DRAG_THRESHOLD_PX = 4;
 
@@ -67,6 +75,7 @@ export interface TableHeaderRenderState {
 	summaries: Map<string, TableSummaryCell>;
 	settings: OperonSettings;
 	allTasks: readonly IndexedTask[];
+	additionalFields?: readonly TableTaskField[];
 	valueResolver?: TableSummaryValueResolver;
 	columnGeometry: TableColumnGeometry;
 	scrollbarGutterPx: number;
@@ -141,19 +150,25 @@ export function renderInteractiveTableHeaderCell(
 	}
 	if (!renderState || !settings) {
 		cell.addClass('operon-table-header-cell-readonly');
-		renderTableHeaderLabel(cell, column, null, null);
+		renderTableHeaderLabel(cell, column, null, null, []);
 		return;
 	}
 	if (options.readOnly) {
 		cell.addClass('operon-table-header-cell-readonly');
 		applyTableColumnAlignmentClass(cell, column);
 		cell.setAttribute('aria-sort', 'none');
-		renderTableHeaderLabel(cell, column, settings, null);
+		renderTableHeaderLabel(cell, column, settings, null, renderState.additionalFields ?? []);
 		return;
 	}
 	applyTableColumnAlignmentClass(cell, column);
 	cell.tabIndex = 0;
-	const activeSort = renderState.preset.sortRules.find(rule => rule.key === column.key);
+	const sortableField = getEffectiveTableTaskField(
+		column.key,
+		renderState.settings,
+		renderState.additionalFields ?? [],
+	);
+	const canSortColumn = !!sortableField && sortableField.unavailable !== true;
+	const activeSort = canSortColumn ? renderState.preset.sortRules.find(rule => rule.key === column.key) : undefined;
 	const sortDirection = activeSort?.key === column.key ? activeSort.direction : null;
 	cell.setAttribute('aria-sort', sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none');
 	if (sortDirection) {
@@ -161,6 +176,7 @@ export function renderInteractiveTableHeaderCell(
 	}
 	cell.draggable = true;
 	cell.addEventListener('click', event => {
+		if (!canSortColumn) return;
 		if (options.state.suppressNextHeaderClick) {
 			event.preventDefault();
 			return;
@@ -178,7 +194,7 @@ export function renderInteractiveTableHeaderCell(
 			showTableColumnHeaderKeyboardMenu(event, column, cell, options);
 			return;
 		}
-		if (event.key !== 'Enter' && event.key !== ' ') return;
+		if (!canSortColumn || (event.key !== 'Enter' && event.key !== ' ')) return;
 		event.preventDefault();
 		cycleHeaderSort(column.key, options);
 	});
@@ -215,9 +231,9 @@ export function renderInteractiveTableHeaderCell(
 			options.state.suppressNextHeaderClick = false;
 		}, 0);
 	});
-	const iconOnly = shouldUseIconOnlyColumn(column, settings);
+	const iconOnly = shouldUseIconOnlyColumn(column, settings, renderState.additionalFields);
 	cell.classList.toggle('is-icon-only', iconOnly);
-	renderTableHeaderLabel(cell, column, settings, sortDirection);
+	renderTableHeaderLabel(cell, column, settings, sortDirection, renderState.additionalFields ?? []);
 	const resizeHandle = cell.createSpan('operon-table-header-resize-handle');
 	resizeHandle.setAttribute('aria-hidden', 'true');
 	resizeHandle.addEventListener('click', event => {
@@ -301,10 +317,11 @@ function renderTableHeaderLabel(
 	column: TableColumn,
 	settings: OperonSettings | null,
 	sortDirection: 'asc' | 'desc' | null,
+	additionalFields: readonly TableTaskField[],
 ): void {
-	const field = settings ? getTableTaskField(column.key, settings) : null;
-	const fieldLabel = column.label?.trim() || (settings ? getTableTaskFieldLabel(column.key, settings) : column.key);
-	const iconOnly = settings ? shouldUseIconOnlyColumn(column, settings) : false;
+	const field = settings ? getEffectiveTableTaskField(column.key, settings, additionalFields) : null;
+	const fieldLabel = settings ? getTableColumnLabel(column, settings, additionalFields) : column.label?.trim() || column.key;
+	const iconOnly = settings ? shouldUseIconOnlyColumn(column, settings, additionalFields) : false;
 	setAccessibleLabelWithoutTooltip(cell, fieldLabel);
 	if (iconOnly) {
 		bindOperonHoverTooltip(cell, {
@@ -394,7 +411,7 @@ function buildTableColumnHeaderMenu(
 	if (column.key === 'duration') {
 		addTableDurationDisplayMenuItem(menu, column, options);
 	}
-	if (canUseIconOnlyColumn(column, renderState.settings)) {
+	if (canUseIconOnlyColumn(column, renderState.settings, renderState.additionalFields)) {
 		addTableColumnDisplayMenuItem(menu, column, renderState, options);
 	}
 	menu.addSeparator();
@@ -417,7 +434,11 @@ function buildTableColumnHeaderMenu(
 		addTableColumnColorMenuItems(menu, column, options);
 		menu.addSeparator();
 	}
-	if (getTableSummaryFunctionsForField(column.key, renderState.settings).length > 0) {
+	if (getTableSummaryFunctionsForField(
+		column.key,
+		renderState.settings,
+		renderState.additionalFields ?? [],
+	).length > 0) {
 		const currentSummary = getConfiguredSummaryFunction(column.key, renderState);
 		menu.addItem(item => item
 			.setTitle(t('table', currentSummary ? 'editSummary' : 'summarizeColumn'))
@@ -453,7 +474,11 @@ function openTableColumnRenamePopover(
 	if (!renderState || isTableAdminColumn(column)) return;
 	options.closeActivePicker();
 	const presetId = renderState.preset.id;
-	const originalLabel = getTableTaskFieldLabel(column.key, renderState.settings);
+	const originalLabel = getTableColumnLabel(
+		{ key: column.key },
+		renderState.settings,
+		renderState.additionalFields ?? [],
+	);
 	let closePopover: (() => void) | null = null;
 	closePopover = showTableColumnRenamePopover({
 		anchor,
@@ -513,9 +538,19 @@ function resolveHeaderSubmenuPosition(
 
 function openHeaderSummaryPicker(anchor: HTMLElement, column: TableColumn, options: TableHeaderInteractionOptions): void {
 	const renderState = options.getRenderState();
-	if (!renderState || getTableSummaryFunctionsForField(column.key, renderState.settings).length === 0) return;
+	const additionalFields = renderState
+		? applyTablePresetFieldAliases(renderState.additionalFields ?? [], renderState.preset.columns)
+		: [];
+	if (!renderState || getTableSummaryFunctionsForField(
+		column.key,
+		renderState.settings,
+		additionalFields,
+	).length === 0) return;
 	options.closeActivePicker();
-	const supportedKeys = new Set(buildTableTaskFieldCatalog(renderState.settings).map(field => field.key));
+	const supportedKeys = new Set(buildEffectiveTableTaskFieldCatalog(
+		renderState.settings,
+		additionalFields,
+	).map(field => field.key));
 	let closePicker: (() => void) | null = null;
 	closePicker = showTableSummaryPicker({
 		anchor,
@@ -523,6 +558,7 @@ function openHeaderSummaryPicker(anchor: HTMLElement, column: TableColumn, optio
 		rows: renderState.rows,
 		allTasks: renderState.allTasks,
 		settings: renderState.settings,
+		additionalFields,
 		...(renderState.valueResolver ? { valueResolver: renderState.valueResolver } : {}),
 		currentFunction: getConfiguredSummaryFunction(column.key, renderState),
 		...options.floatingHostOptions,
@@ -584,30 +620,41 @@ function addTableColumnDisplayMenuItem(
 	const nextMode: TableColumnDisplayMode = currentMode === 'icon' ? 'details' : 'icon';
 	menu.addItem(item => item
 		.setTitle(t('table', nextMode === 'icon' ? 'showCompactCell' : 'showDetailedCell'))
-		.setIcon(nextMode === 'icon' ? getTableTaskField(column.key, renderState.settings)?.icon ?? 'text' : 'text')
+		.setIcon(nextMode === 'icon'
+			? getEffectiveTableTaskField(column.key, renderState.settings, renderState.additionalFields)?.icon ?? 'text'
+			: 'text')
 		.onClick(() => {
 			options.savePreset(setTablePresetColumnDisplayMode(
 				options.getCurrentPreset(),
 				column.key,
 				nextMode,
 				renderState.settings,
+				getEffectiveTableTaskField(column.key, renderState.settings, renderState.additionalFields),
 			), 'columns');
 		}));
 }
 
-function canUseIconOnlyColumn(column: TableColumn, settings: Pick<OperonSettings, 'keyMappings'>): boolean {
-	return column.kind === 'task' && !!getTableTaskField(column.key, settings)?.icon;
+function canUseIconOnlyColumn(
+	column: TableColumn,
+	settings: Pick<OperonSettings, 'keyMappings'>,
+	additionalFields: readonly TableTaskField[] = [],
+): boolean {
+	return column.kind === 'task' && !!getEffectiveTableTaskField(column.key, settings, additionalFields)?.icon;
 }
 
-function shouldUseIconOnlyColumn(column: TableColumn, settings: Pick<OperonSettings, 'keyMappings'>): boolean {
-	return canUseIconOnlyColumn(column, settings) && resolveTableColumnDisplayMode(column) === 'icon';
+function shouldUseIconOnlyColumn(
+	column: TableColumn,
+	settings: Pick<OperonSettings, 'keyMappings'>,
+	additionalFields: readonly TableTaskField[] = [],
+): boolean {
+	return canUseIconOnlyColumn(column, settings, additionalFields) && resolveTableColumnDisplayMode(column) === 'icon';
 }
 
 function toggleTableColumnDisplayMode(columnKey: string, options: TableHeaderInteractionOptions): void {
 	const renderState = options.getRenderState();
 	if (!renderState) return;
 	const column = renderState.columns.find(entry => entry.key === columnKey);
-	if (!column || !canUseIconOnlyColumn(column, renderState.settings)) return;
+	if (!column || !canUseIconOnlyColumn(column, renderState.settings, renderState.additionalFields)) return;
 	const nextMode: TableColumnDisplayMode = resolveTableColumnDisplayMode(column) === 'icon' ? 'details' : 'icon';
 	options.closeActivePicker();
 	options.savePreset(setTablePresetColumnDisplayMode(
@@ -615,6 +662,7 @@ function toggleTableColumnDisplayMode(columnKey: string, options: TableHeaderInt
 		column.key,
 		nextMode,
 		renderState.settings,
+		getEffectiveTableTaskField(column.key, renderState.settings, renderState.additionalFields),
 	), 'columns');
 }
 
@@ -693,6 +741,7 @@ function showTableAddColumnPicker(
 				anchorColumn.key,
 				side,
 				renderState.settings,
+				option.tableField,
 			), 'columns');
 		},
 		onClose: () => {
@@ -701,7 +750,7 @@ function showTableAddColumnPicker(
 			}
 		},
 		variantClassName: 'operon-table-field-picker',
-		getSearchText: option => `${option.label} ${option.field} ${option.tableField?.aliases.join(' ') ?? ''}`,
+		getSearchText: option => `${option.label} ${option.field} ${option.type} ${option.tableField?.aliases.join(' ') ?? ''}`,
 		...options.floatingHostOptions,
 		matchWidth: 320,
 		repositionOnWindowResize: true,
@@ -716,11 +765,13 @@ function createHeaderPositionAnchor(position: { x: number; y: number }, root: HT
 }
 
 function getAvailableTableColumnAddFields(renderState: TableHeaderRenderState): TableTaskField[] {
-	const visibleKeys = new Set(renderState.taskColumns.map(column => column.key));
+	const excludedKeys = new Set(renderState.preset.columns
+		.filter(column => !column.hidden || isTableFilePropertyColumnKey(column.key))
+		.map(column => column.key));
 	const normalizedPreset = normalizeTablePresetForColumnUi(renderState.preset);
 	const allowSource = normalizedPreset.display.showSource !== false;
-	return buildTableTaskFieldCatalog(renderState.settings)
-		.filter(field => !visibleKeys.has(field.key) && (allowSource || field.key !== 'source'));
+	return buildEffectiveTableTaskFieldCatalog(renderState.settings, renderState.additionalFields ?? [])
+		.filter(field => !excludedKeys.has(field.key) && (allowSource || field.key !== 'source'));
 }
 
 function canHideTableColumn(key: string, renderState: TableHeaderRenderState | null): boolean {
@@ -748,7 +799,7 @@ function startTableColumnResize(event: PointerEvent, columnKey: string, options:
 	if (!renderState) return;
 	const column = renderState.columns.find(entry => entry.key === columnKey);
 	if (!column) return;
-	if (shouldUseIconOnlyColumn(column, renderState.settings)) return;
+	if (shouldUseIconOnlyColumn(column, renderState.settings, renderState.additionalFields)) return;
 	const ownerDocument = getOwnerDocument(event.currentTarget as Node | null);
 	const startX = event.clientX;
 	const pointerId = event.pointerId;

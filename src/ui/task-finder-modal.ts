@@ -3,10 +3,12 @@ import { t } from '../core/i18n';
 import { OperonIndexer } from '../indexer/indexer';
 import {
 	buildProjectSearchCandidates,
+	createTaskSearchSession,
 	ProjectSearchCandidate,
 	ProjectSearchMode,
 	rankTaskSearchResults,
 	resolveProjectSearchVisibleTaskIds,
+	type TaskSearchSession,
 } from '../systems/task-search';
 import { IndexedTask } from '../types/fields';
 import type { ProjectSerialDisplay } from '../core/project-serials';
@@ -19,7 +21,9 @@ import { resolveTaskDateToneColor } from '../core/task-date-tone';
 import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, OperonSettings, resolveTaskDisplayIcon, TaskFinderDefaultScopeItem } from '../types/settings';
 import {
 	buildInlineTaskCompactChipEntries,
+	createCompactTaskLookup,
 	createInlineTaskCompactChipElement,
+	type CompactTaskLookupContext,
 	InlineTaskCompactChipEntry,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
@@ -64,6 +68,17 @@ export interface TaskFinderModalOptions {
 
 const TASK_FINDER_MIN_QUERY_LENGTH = 2;
 const TASK_FINDER_RENDER_LIMIT = 25;
+const TASK_FINDER_SEARCH_DEBOUNCE_MS = 40;
+
+type TaskFinderSearchSessionRole = 'task' | 'project-candidate' | 'selected-project';
+
+interface TaskFinderSearchSessionCacheEntry {
+	generation: number;
+	corpusIds: string[];
+	scopeSignature: string;
+	keyMappingsSignature: string;
+	session: TaskSearchSession;
+}
 
 export class TaskFinderModal extends Modal {
 	private inputEl!: HTMLTextAreaElement;
@@ -95,6 +110,13 @@ export class TaskFinderModal extends Modal {
 	private activeIndex = 0;
 	private currentResults: TaskFinderResult[] = [];
 	private resolved = false;
+	private searchRenderTimer: number | null = null;
+	private searchRenderPending = false;
+	private isClosing = false;
+	private taskSnapshotGeneration = -1;
+	private taskSnapshot: IndexedTask[] = [];
+	private compactTaskLookup: CompactTaskLookupContext | null = null;
+	private readonly searchSessions = new Map<TaskFinderSearchSessionRole, TaskFinderSearchSessionCacheEntry>();
 	private chipOverflowFrame: number | null = null;
 	private toolbarOverflowFrame: number | null = null;
 	private readonly outsidePointerHandler = (event: PointerEvent) => {
@@ -123,6 +145,8 @@ export class TaskFinderModal extends Modal {
 	}
 
 	onOpen(): void {
+		this.isClosing = false;
+		this.cancelSearchRender();
 		this.containerEl.addClass('operon-task-finder-modal-container');
 		this.modalEl.addClass('operon-task-finder-modal');
 		this.nativeCloseButtonCleanup?.();
@@ -267,6 +291,12 @@ export class TaskFinderModal extends Modal {
 	}
 
 	onClose(): void {
+		this.isClosing = true;
+		this.cancelSearchRender();
+		this.searchSessions.clear();
+		this.taskSnapshotGeneration = -1;
+		this.taskSnapshot = [];
+		this.compactTaskLookup = null;
 		this.nativeCloseButtonCleanup?.();
 		this.nativeCloseButtonCleanup = null;
 		this.containerEl.removeEventListener('pointerdown', this.outsidePointerHandler);
@@ -322,12 +352,13 @@ export class TaskFinderModal extends Modal {
 		}
 		this.query = rawQuery.trim();
 		this.activeIndex = 0;
-		this.render();
+		this.scheduleSearchRender();
 	}
 
 	private applyShortcutCommand(rawQuery: string): boolean {
 		const result = applyTaskSearchBoxShortcutCommand(rawQuery, this.getScopeState(), this.getSettings());
 		if (!result.handled) return false;
+		this.cancelSearchRender();
 		this.inputEl.value = result.query;
 		this.query = this.inputEl.value.trim();
 		const previousProjectMode = this.projectMode;
@@ -336,7 +367,7 @@ export class TaskFinderModal extends Modal {
 			this.selectedProject = null;
 		}
 		this.activeIndex = 0;
-		this.render();
+		this.renderImmediately();
 		this.focusInput();
 		return true;
 	}
@@ -366,7 +397,9 @@ export class TaskFinderModal extends Modal {
 	}
 
 	private handleKeydown(event: KeyboardEvent): void {
+		if (event.isComposing || Reflect.get(event, 'keyCode') === 229) return;
 		if (event.key === 'ArrowDown') {
+			this.flushSearchRender();
 			const visibleCount = this.getVisibleResults().length;
 			if (visibleCount === 0) return;
 			event.preventDefault();
@@ -374,6 +407,7 @@ export class TaskFinderModal extends Modal {
 			return;
 		}
 		if (event.key === 'ArrowUp') {
+			this.flushSearchRender();
 			if (this.getVisibleResults().length === 0) return;
 			event.preventDefault();
 			this.updateActiveResult(Math.max(this.activeIndex - 1, 0));
@@ -381,10 +415,46 @@ export class TaskFinderModal extends Modal {
 		}
 		if (event.key === 'Enter') {
 			event.preventDefault();
+			this.flushSearchRender();
 			const result = this.currentResults[this.activeIndex] ?? this.currentResults[0];
 			if (!result) return;
 			this.chooseResult(result);
 		}
+	}
+
+	private scheduleSearchRender(): void {
+		this.cancelSearchRender();
+		if (this.isClosing) return;
+		this.searchRenderPending = true;
+		this.searchRenderTimer = window.setTimeout(() => {
+			this.searchRenderTimer = null;
+			if (!this.searchRenderPending || this.isClosing) return;
+			this.searchRenderPending = false;
+			this.render();
+		}, TASK_FINDER_SEARCH_DEBOUNCE_MS);
+	}
+
+	private flushSearchRender(): void {
+		if (!this.searchRenderPending || this.isClosing) return;
+		if (this.searchRenderTimer !== null) {
+			window.clearTimeout(this.searchRenderTimer);
+			this.searchRenderTimer = null;
+		}
+		this.searchRenderPending = false;
+		this.render();
+	}
+
+	private cancelSearchRender(): void {
+		if (this.searchRenderTimer !== null) {
+			window.clearTimeout(this.searchRenderTimer);
+			this.searchRenderTimer = null;
+		}
+		this.searchRenderPending = false;
+	}
+
+	private renderImmediately(): void {
+		this.cancelSearchRender();
+		if (!this.isClosing) this.render();
 	}
 
 	private render(): void {
@@ -497,13 +567,13 @@ export class TaskFinderModal extends Modal {
 			event.stopPropagation();
 			this.selectedProject = null;
 			this.activeIndex = 0;
-			this.render();
+			this.renderImmediately();
 			this.focusInput();
 		});
 	}
 
 	private computeResults(): TaskFinderResult[] {
-		const allTasks = this.indexer.getAllTasks();
+		const { generation, tasks: allTasks } = this.getTaskSnapshot();
 		const projectScopeTasks = this.getProjectScopeTasks(allTasks);
 		const scopedTasks = this.getVisibleScopeTasks(projectScopeTasks);
 		const query = this.query.trim();
@@ -524,6 +594,7 @@ export class TaskFinderModal extends Modal {
 
 		if (this.projectMode && !this.selectedProject) {
 			if (query && !queryMeetsThreshold) return [];
+			const session = this.getTaskSearchSession('project-candidate', projectScopeTasks, generation, keyMappings);
 			return buildProjectSearchCandidates(projectScopeTasks, query ? query.toLocaleLowerCase() : '', this.getProjectResolvers(), {
 				match: 'taskSearch',
 				sort: 'taskFinderRank',
@@ -531,6 +602,7 @@ export class TaskFinderModal extends Modal {
 				visibilityMode: this.projectMode,
 				candidateFilter: task => this.matchesCurrentFormatScope(task),
 				keyMappings,
+				session,
 			})
 				.map(candidate => ({ kind: 'project', candidate }));
 		}
@@ -547,21 +619,84 @@ export class TaskFinderModal extends Modal {
 			if (this.showHappensTodayTasks && !query) {
 				return this.computeHappensTodayResults(visibleTasks);
 			}
+			const session = this.getTaskSearchSession('selected-project', visibleTasks, generation, keyMappings);
 			return rankTaskSearchResults({
 				tasks: visibleTasks,
 				query,
 				includeAllTasks: true,
 				keyMappings,
+				session,
 			}).map(result => ({ kind: 'task', task: result.task, score: result.score }));
 		}
 
 		if (!queryMeetsThreshold) return [];
+		const session = this.getTaskSearchSession('task', scopedTasks, generation, keyMappings);
 		return rankTaskSearchResults({
 			tasks: scopedTasks,
 			query,
 			includeAllTasks: true,
 			keyMappings,
+			session,
 		}).map(result => ({ kind: 'task', task: result.task, score: result.score }));
+	}
+
+	private getTaskSnapshot(): { generation: number; tasks: IndexedTask[] } {
+		const generation = this.indexer.getGeneration();
+		if (generation !== this.taskSnapshotGeneration) {
+			this.taskSnapshot = this.indexer.getAllTasks();
+			this.taskSnapshotGeneration = generation;
+			this.compactTaskLookup = null;
+			this.searchSessions.clear();
+		}
+		return { generation: this.taskSnapshotGeneration, tasks: this.taskSnapshot };
+	}
+
+	private getCompactTaskLookup(tasks: IndexedTask[]): CompactTaskLookupContext {
+		this.compactTaskLookup ??= createCompactTaskLookup(tasks);
+		return this.compactTaskLookup;
+	}
+
+	private getTaskSearchSession(
+		role: TaskFinderSearchSessionRole,
+		tasks: IndexedTask[],
+		generation: number,
+		keyMappings: OperonSettings['keyMappings'],
+	): TaskSearchSession {
+		const corpusIds = tasks.map(task => task.operonId);
+		const scopeSignature = this.getTaskSearchScopeSignature(role);
+		const keyMappingsSignature = JSON.stringify(keyMappings);
+		const cached = this.searchSessions.get(role);
+		if (
+			cached
+			&& cached.generation === generation
+			&& cached.scopeSignature === scopeSignature
+			&& cached.keyMappingsSignature === keyMappingsSignature
+			&& areOrderedStringArraysEqual(cached.corpusIds, corpusIds)
+		) {
+			return cached.session;
+		}
+
+		const session = createTaskSearchSession();
+		this.searchSessions.set(role, {
+			generation,
+			corpusIds,
+			scopeSignature,
+			keyMappingsSignature,
+			session,
+		});
+		return session;
+	}
+
+	private getTaskSearchScopeSignature(role: TaskFinderSearchSessionRole): string {
+		return [
+			role,
+			this.projectMode ?? '',
+			this.selectedProject?.operonId ?? '',
+			this.includeInlineTasks ? 'inline' : '',
+			this.includeFileTasks ? 'file' : '',
+			this.includeCancelledTasks ? 'cancelled' : '',
+			this.includeFinishedTasks ? 'finished' : '',
+		].join('|');
 	}
 
 	private renderResults(): void {
@@ -602,8 +737,7 @@ export class TaskFinderModal extends Modal {
 				this.updateActiveResult(index, { scroll: false });
 			});
 			row.addEventListener('click', event => {
-				event.preventDefault();
-				this.chooseResult(result);
+				this.handleResultClick(event, result);
 			});
 			this.resultsEl.appendChild(row);
 		}
@@ -612,6 +746,15 @@ export class TaskFinderModal extends Modal {
 		const active = this.resultsEl.children[this.activeIndex] as HTMLElement | undefined;
 		active?.scrollIntoView({ block: 'nearest' });
 		this.scheduleChipOverflowLayout();
+	}
+
+	private handleResultClick(event: MouseEvent, result: TaskFinderResult): void {
+		event.preventDefault();
+		if (this.searchRenderPending) {
+			this.flushSearchRender();
+			return;
+		}
+		this.chooseResult(result);
 	}
 
 	private applyVisibleResultViewport(): void {
@@ -680,7 +823,7 @@ export class TaskFinderModal extends Modal {
 	private toggleFormatScope(format: 'inline' | 'file'): void {
 		this.applyScopeState(toggleTaskSearchBoxScope(this.getScopeState(), format === 'inline' ? 'includeInline' : 'includeFile'));
 		this.activeIndex = 0;
-		this.render();
+		this.renderImmediately();
 		this.focusInput();
 	}
 
@@ -688,42 +831,42 @@ export class TaskFinderModal extends Modal {
 		this.applyScopeState(toggleTaskSearchBoxScope(this.getScopeState(), mode === 'pc' ? 'projectTasks' : 'projectTree'));
 		this.selectedProject = null;
 		this.activeIndex = 0;
-		this.render();
+		this.renderImmediately();
 		this.focusInput();
 	}
 
 	private toggleOverdueTasks(): void {
 		this.applyScopeState(toggleTaskSearchBoxScope(this.getScopeState(), 'overdue'));
 		this.activeIndex = 0;
-		this.render();
+		this.renderImmediately();
 		this.focusInput();
 	}
 
 	private toggleHappensTodayTasks(): void {
 		this.applyScopeState(toggleTaskSearchBoxScope(this.getScopeState(), 'happensToday'));
 		this.activeIndex = 0;
-		this.render();
+		this.renderImmediately();
 		this.focusInput();
 	}
 
 	private toggleRecentModifiedTasks(): void {
 		this.applyScopeState(toggleTaskSearchBoxScope(this.getScopeState(), 'recentModified'));
 		this.activeIndex = 0;
-		this.render();
+		this.renderImmediately();
 		this.focusInput();
 	}
 
 	private toggleIncludeCancelledTasks(): void {
 		this.applyScopeState(toggleTaskSearchBoxScope(this.getScopeState(), 'includeCancelled'));
 		this.activeIndex = 0;
-		this.render();
+		this.renderImmediately();
 		this.focusInput();
 	}
 
 	private toggleIncludeFinishedTasks(): void {
 		this.applyScopeState(toggleTaskSearchBoxScope(this.getScopeState(), 'includeFinished'));
 		this.activeIndex = 0;
-		this.render();
+		this.renderImmediately();
 		this.focusInput();
 	}
 
@@ -1022,6 +1165,7 @@ export class TaskFinderModal extends Modal {
 
 	private renderTaskChips(container: HTMLElement, task: IndexedTask): void {
 		const settings = this.getSettings();
+		const { tasks } = this.getTaskSnapshot();
 		const locationResolver = shouldResolveLocationCompactChips(settings, settings.taskFinderCompactChips)
 			? getLocationPlaceIndex(this.app, settings).resolve
 			: undefined;
@@ -1029,9 +1173,10 @@ export class TaskFinderModal extends Modal {
 			task.fieldValues,
 			task.tags,
 			settings,
-			this.indexer.getAllTasks(),
+			tasks,
 			settings.taskFinderCompactChips,
 			locationResolver,
+			{ taskLookup: this.getCompactTaskLookup(tasks) },
 		);
 		if (this.showOverdueTasks) {
 			entries = this.prioritizeOverdueDateEntries(entries, task, settings);
@@ -1151,7 +1296,7 @@ export class TaskFinderModal extends Modal {
 			this.query = '';
 			this.inputEl.value = '';
 			this.activeIndex = 0;
-			this.render();
+			this.renderImmediately();
 			this.focusInput();
 			return;
 		}
@@ -1211,16 +1356,18 @@ export class TaskFinderModal extends Modal {
 
 	private canRestoreSelectedProject(task: IndexedTask): boolean {
 		if (!this.projectMode) return false;
-		const allTasks = this.indexer.getAllTasks();
+		const { generation, tasks: allTasks } = this.getTaskSnapshot();
 		const projectScopeTasks = this.getProjectScopeTasks(allTasks);
 		const scopedTasks = this.getVisibleScopeTasks(projectScopeTasks);
+		const keyMappings = this.getSettings().keyMappings;
 		return buildProjectSearchCandidates(projectScopeTasks, '', this.getProjectResolvers(), {
 			match: 'taskSearch',
 			sort: 'taskFinderRank',
 			visibleTaskIds: new Set(scopedTasks.map(scopedTask => scopedTask.operonId)),
 			visibilityMode: this.projectMode,
 			candidateFilter: candidateTask => this.matchesCurrentFormatScope(candidateTask),
-			keyMappings: this.getSettings().keyMappings,
+			keyMappings,
+			session: this.getTaskSearchSession('project-candidate', projectScopeTasks, generation, keyMappings),
 		}).some(candidate => candidate.task.operonId === task.operonId);
 	}
 
@@ -1339,6 +1486,10 @@ function normalizeColor(value: string | null | undefined): string | null {
 	const trimmed = value.trim();
 	if (!trimmed) return null;
 	return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+}
+
+function areOrderedStringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
+	return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function isTodayDateKey(value: string): boolean {

@@ -12,6 +12,8 @@ export interface TableFieldPickerOption extends SearchableFieldPickerOption {
 	groupLabel: string | null;
 	groupOrder: number;
 	tableField?: TableTaskField;
+	secondaryLabel?: string;
+	unavailable?: boolean;
 }
 
 const TABLE_FIELD_GROUP_ORDER: TableTaskFieldGroup[] = [
@@ -20,6 +22,7 @@ const TABLE_FIELD_GROUP_ORDER: TableTaskFieldGroup[] = [
 	'scheduling',
 	'dependencies',
 	'custom',
+	'fileProperty',
 	'source',
 	'identity',
 ];
@@ -40,13 +43,15 @@ export function buildTableFieldPickerOptions(
 		.filter(field => !excludedFieldKeys.has(field.key))
 		.map(field => ({
 			field: field.key,
-			label: field.label,
+			label: getTableFieldPickerOptionLabel(field),
 			type: field.type,
 			icon: field.icon,
 			group: field.group,
 			groupLabel: getTableFieldGroupLabel(field.group),
 			groupOrder: getTableFieldGroupOrder(field.group),
 			tableField: field,
+			...(field.sourceLabel && field.sourceLabel !== field.label ? { secondaryLabel: field.sourceLabel } : {}),
+			...(field.unavailable ? { unavailable: true } : {}),
 		}))
 		.sort(compareTableFieldPickerOptions);
 
@@ -63,6 +68,11 @@ export function buildTableFieldPickerOptions(
 	}
 
 	return pickerOptions;
+}
+
+function getTableFieldPickerOptionLabel(field: TableTaskField): string {
+	if (field.unavailable) return `${field.label} — ${t('table', 'fieldUnavailableInCurrentScope')}`;
+	return field.label;
 }
 
 export function getTableFieldPickerLabel(

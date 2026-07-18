@@ -111,6 +111,7 @@ import {
 	TaskSearchBoxScopeState,
 	toggleTaskSearchBoxScope,
 } from '../task-search-box-integration';
+import { getTableFilePropertyIndex } from '../table/table-file-property';
 import {
 	SEARCH_SCOPE_CONTROL_GROUPS,
 	hasTaskSearchScopeFilters,
@@ -161,7 +162,7 @@ const KANBAN_CELL_SCROLL_RESTORE_TTL_MS = 2000;
 const KANBAN_CELL_SCROLL_ANCHOR_MAX_CARDS = 4;
 const KANBAN_SEARCH_BOX_DISABLED_KEYS = new Set<TaskFinderDefaultScopeKey>();
 const KANBAN_LANE_COLUMN_MIN_WIDTH_PX = 96;
-const KANBAN_SEARCH_REFRESH_DEBOUNCE_MS = 180;
+const KANBAN_SEARCH_REFRESH_DEBOUNCE_MS = 150;
 const KANBAN_CELL_MATERIALIZE_MARGIN_PX = 320;
 const KANBAN_ESTIMATED_CARD_HEIGHT_PX = 72;
 const KANBAN_ESTIMATED_CARD_GAP_PX = 8;
@@ -618,6 +619,7 @@ export class KanbanView extends ItemView {
 			priorities: settings.priorities,
 			keyMappings: settings.keyMappings,
 			projectSerialScopes: settings.projectSerialScopes,
+			filePropertySignature: this.getFilePropertyContext(settings).signature,
 			language: getCurrentLang(),
 			timeFormat: settings.timeFormat,
 			fallbackTaskIconSource: settings.fallbackTaskIconSource,
@@ -749,6 +751,9 @@ export class KanbanView extends ItemView {
 				: undefined,
 			keyMappings: settings.keyMappings,
 			projectSerialScopes: settings.projectSerialScopes,
+			filterEvaluationOptions: {
+				filePropertyContext: this.getFilePropertyContext(settings),
+			},
 		});
 		this.reconcileOptimisticMoves(board, pipeline, preset);
 		this.applyOptimisticMoves(board, settings);
@@ -2310,7 +2315,8 @@ export class KanbanView extends ItemView {
 		task: IndexedTask,
 		track: TaskProgressTrack,
 	): ContextualMenuContext | null {
-		if (task.checkbox !== 'open' || !this.callbacks.onItemAction) return null;
+		if (!this.callbacks.onItemAction) return null;
+		if (track.kind === 'subtasks' && task.checkbox !== 'open') return null;
 		const context = this.resolveHoverContext(task);
 		const actionId = this.getCardProgressActionId(track);
 		if (actionId === 'subtasks') context.hasSubtasks = true;
@@ -4475,8 +4481,17 @@ export class KanbanView extends ItemView {
 			{
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
+				filePropertyContext: this.getFilePropertyContext(settings),
 			},
 		).filter(task => isTaskInPipelineWithIndex(task, pipeline, workflowStatusIdentityIndex));
+	}
+
+	private getFilePropertyContext(settings: OperonSettings) {
+		return getTableFilePropertyIndex(this.app).getSnapshot(
+			this.indexer.getAllTasks(),
+			this.indexer.getGeneration(),
+			{ keyMappings: settings.keyMappings },
+		);
 	}
 
 	private getCurrentSearchScopeTasks(

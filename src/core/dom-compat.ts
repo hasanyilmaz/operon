@@ -1,3 +1,21 @@
+declare global {
+	interface Window {
+		createEl<K extends keyof HTMLElementTagNameMap>(
+			tagName: K,
+			options?: DomElementInfo | string,
+			callback?: (element: HTMLElementTagNameMap[K]) => void,
+		): HTMLElementTagNameMap[K];
+		createDiv(
+			options?: DomElementInfo | string,
+			callback?: (element: HTMLDivElement) => void,
+		): HTMLDivElement;
+		createSpan(
+			options?: DomElementInfo | string,
+			callback?: (element: HTMLSpanElement) => void,
+		): HTMLSpanElement;
+	}
+}
+
 export interface WindowTimeoutHandle {
 	id: ReturnType<Window['setTimeout']>;
 	win: Window;
@@ -36,7 +54,7 @@ export function createOwnerElement<K extends keyof HTMLElementTagNameMap>(
 	owner: Node | null | undefined,
 	tagName: K,
 ): HTMLElementTagNameMap[K] {
-	return getOwnerDocument(owner).createElement(tagName);
+	return getOwnerDocument(owner).win.createEl(tagName);
 }
 
 export function isHTMLElement(value: unknown, owner?: Node | null): value is HTMLElement {

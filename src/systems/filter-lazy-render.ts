@@ -11,6 +11,13 @@ export function getVisibleGroupedFilterResults(
 	grouped: GroupedFilterResults,
 	visibleLimit: number,
 ): GroupedFilterResults {
+	if (grouped.groupingSuspended) {
+		return {
+			...grouped,
+			groups: [],
+			ungroupedTasks: (grouped.ungroupedTasks ?? []).slice(0, visibleLimit),
+		};
+	}
 	let remaining = visibleLimit;
 	const groups: GroupedFilterResults['groups'] = [];
 

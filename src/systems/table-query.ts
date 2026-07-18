@@ -4,6 +4,7 @@ import type { IndexedTask } from '../types/fields';
 import type { TablePreset, TableSortDirection, TableSortRule, TableSummaryRule } from '../types/table';
 import type { FilterSet, OperonSettings, ProjectSerialScope } from '../types/settings';
 import { parseListValue } from '../core/parser';
+import { parseLocalTimestamp } from '../core/local-time';
 import { buildPriorityRankMap } from '../core/priority-rank';
 import {
 	buildWorkflowStatusOrderIndex,
@@ -15,7 +16,13 @@ import {
 	normalizeTableTaskFieldKey,
 	TABLE_WORKFLOW_PIPELINE_FIELD_KEY,
 } from '../ui/table/table-field-catalog';
-import { evaluateTableSummaries, filterCompatibleTableSummaryRules, type TableSummaryCell } from '../ui/table/table-summary';
+import {
+	evaluateTableSummaries,
+	filterCompatibleTableSummaryRules,
+	normalizeTableSummaryRules,
+	type TableSummaryCell,
+} from '../ui/table/table-summary';
+import { decodeTableFilePropertyColumnKey, type TableFilePropertyQueryContext } from '../ui/table/table-file-property';
 import { compareTableSourceOrder } from '../ui/table/table-value-adapter';
 import { CHECKBOX_PROGRESS_COLUMN_KEY } from '../ui/task-progress-tracks';
 import {
@@ -38,6 +45,7 @@ interface TableQueryBucket {
 	value: string;
 	label: string;
 	isNoValue: boolean;
+	isUnsupportedValue?: boolean;
 	sortValue: TableCachedSortValue;
 	count: number;
 	rows: IndexedTask[];
@@ -106,6 +114,7 @@ export function queryTableRows(options: {
 	priorities: { label: string; color?: string }[];
 	pinnedCache?: PinnedCache | null;
 	projectSerialScopes?: readonly ProjectSerialScope[];
+	filePropertyContext?: TableFilePropertyQueryContext;
 	settings?: TableQuerySettings;
 	searchQuery?: string | null;
 	searchMatcher?: (task: IndexedTask, normalizedQuery: string) => boolean;
@@ -125,6 +134,7 @@ export function queryTableRows(options: {
 		: filterTasksForCalendar(filterSet, tasks, priorities, pinnedCache ?? null, {
 			projectSerialScopes: options.projectSerialScopes,
 			projectSerialScopeTasks: tasks,
+			filePropertyContext: options.filePropertyContext,
 		});
 	const scopedAt = enginePerfNow();
 	const allowedTaskIds = options.taskIdFilter ? new Set(options.taskIdFilter) : null;
@@ -155,19 +165,38 @@ export function queryTableRows(options: {
 			options.settings,
 		);
 	const sortedAt = enginePerfNow();
-	const groupBy = resolveTableGroupBy(preset.groupBy, options.settings);
-	const subgroupBy = groupBy ? resolveTableGroupBy(preset.subgroupBy, options.settings) : null;
+	const groupBy = resolveTableGroupBy(preset.groupBy, options.settings, valueResolver);
+	const subgroupBy = groupBy ? resolveTableGroupBy(preset.subgroupBy, options.settings, valueResolver) : null;
 	const resolvedSubgroupBy = subgroupBy && subgroupBy !== groupBy ? subgroupBy : null;
-	const summaries = options.settings ? filterCompatibleTableSummaryRules(preset.summaries, options.settings) : preset.summaries;
-	const resolvedGroupOrder = groupBy ? preset.groupOrder : 'asc';
-	const resolvedSubgroupOrder = resolvedSubgroupBy ? preset.subgroupOrder : 'asc';
-	const resolvedPreset = groupBy === preset.groupBy
+	const summaries = options.settings
+		? filterCompatibleTableSummaryRules(preset.summaries, options.settings, valueResolver)
+		: preset.summaries;
+	const persistedSummaries = options.settings
+		? normalizeTableSummaryRules(preset.summaries, options.settings).filter(rule => (
+			decodeTableFilePropertyColumnKey(rule.key) !== null
+			|| summaries.some(summary => summary.key === rule.key && summary.function === rule.function)
+		))
+		: preset.summaries;
+	const persistedGroupBy = resolvePersistedTableGroupBy(preset.groupBy, options.settings);
+	const persistedSubgroupBy = persistedGroupBy
+		? resolvePersistedTableGroupBy(preset.subgroupBy, options.settings)
+		: null;
+	const resolvedGroupOrder = persistedGroupBy ? preset.groupOrder : 'asc';
+	const resolvedSubgroupOrder = persistedSubgroupBy ? preset.subgroupOrder : 'asc';
+	const resolvedPreset = persistedGroupBy === preset.groupBy
 		&& resolvedGroupOrder === preset.groupOrder
-		&& resolvedSubgroupBy === preset.subgroupBy
+		&& persistedSubgroupBy === preset.subgroupBy
 		&& resolvedSubgroupOrder === preset.subgroupOrder
-		&& summaries === preset.summaries
+		&& persistedSummaries === preset.summaries
 		? preset
-		: { ...preset, groupBy, groupOrder: resolvedGroupOrder, subgroupBy: resolvedSubgroupBy, subgroupOrder: resolvedSubgroupOrder, summaries };
+		: {
+			...preset,
+			groupBy: persistedGroupBy,
+			groupOrder: resolvedGroupOrder,
+			subgroupBy: persistedSubgroupBy,
+			subgroupOrder: resolvedSubgroupOrder,
+			summaries: persistedSummaries,
+		};
 	const groups = groupBy
 		? buildTableGroups(
 			rows,
@@ -263,10 +292,24 @@ function evaluateTableGroupSummaries(
 function resolveTableGroupBy(
 	groupBy: string | null | undefined,
 	settings: TableQuerySettings | undefined,
+	valueResolver: TableValueResolver,
 ): string | null {
 	const trimmed = groupBy?.trim();
 	if (!trimmed) return null;
 	if (trimmed === TABLE_WORKFLOW_PIPELINE_FIELD_KEY) return trimmed;
+	if (decodeTableFilePropertyColumnKey(trimmed)) {
+		return valueResolver.getFilePropertyField(trimmed) ? trimmed : null;
+	}
+	return settings ? normalizeTableTaskFieldKey(trimmed, settings) : trimmed;
+}
+
+function resolvePersistedTableGroupBy(
+	groupBy: string | null | undefined,
+	settings: TableQuerySettings | undefined,
+): string | null {
+	const trimmed = groupBy?.trim();
+	if (!trimmed) return null;
+	if (trimmed === TABLE_WORKFLOW_PIPELINE_FIELD_KEY || decodeTableFilePropertyColumnKey(trimmed)) return trimmed;
 	return settings ? normalizeTableTaskFieldKey(trimmed, settings) : trimmed;
 }
 
@@ -286,8 +329,8 @@ function buildTableGroups(
 	const groupsByValue = new Map<string, TableQueryGroup>();
 	const subgroupsByGroupValue = new Map<string, Map<string, TableQuerySubgroup>>();
 	const { groupBy, groupOrder, subgroupBy, subgroupOrder } = options;
-	const sortKind = getTableSortValueKind(groupBy, settings);
-	const subgroupSortKind = subgroupBy ? getTableSortValueKind(subgroupBy, settings) : null;
+	const sortKind = getTableSortValueKind(groupBy, settings, valueResolver);
+	const subgroupSortKind = subgroupBy ? getTableSortValueKind(subgroupBy, settings, valueResolver) : null;
 	for (const task of rows) {
 		const groupValues = resolveTableGroupValues(task, groupBy, valueResolver, settings);
 		for (const groupValue of groupValues) {
@@ -302,6 +345,7 @@ function buildTableGroups(
 					value: groupValue.rawValue,
 					label: groupValue.label,
 					isNoValue: groupValue.isNoValue,
+					isUnsupportedValue: groupValue.isUnsupportedValue,
 					sortValue,
 					count: 0,
 					rows: [],
@@ -329,6 +373,7 @@ function buildTableGroups(
 						value: subgroupValue.rawValue,
 						label: subgroupValue.label,
 						isNoValue: subgroupValue.isNoValue,
+						isUnsupportedValue: subgroupValue.isUnsupportedValue,
 						sortValue,
 						count: 0,
 						rows: [],
@@ -361,6 +406,10 @@ function resolveTableGroupValues(
 	valueResolver: TableValueResolver,
 	settings: TableQuerySettings | undefined,
 ): TableCachedGroupValue[] {
+	const filePropertyField = valueResolver.getFilePropertyField(groupBy);
+	if (filePropertyField?.type === 'list' || filePropertyField?.type === 'tags') {
+		return resolveTableFilePropertyListGroupValues(task, groupBy, valueResolver);
+	}
 	if (!settings || !isListLikeTableGroupField(groupBy, settings)) {
 		return [valueResolver.getGroupValue(task, groupBy)];
 	}
@@ -381,6 +430,7 @@ function resolveTableGroupValues(
 		return [{
 			rawValue: value,
 			isNoValue: false,
+			isUnsupportedValue: false,
 			valueKey,
 			groupKey: `${groupBy}:${valueKey}`,
 			label: value,
@@ -388,10 +438,41 @@ function resolveTableGroupValues(
 	});
 }
 
+function resolveTableFilePropertyListGroupValues(
+	task: IndexedTask,
+	groupBy: string,
+	valueResolver: TableValueResolver,
+): TableCachedGroupValue[] {
+	const state = valueResolver.getFilePropertyValueState(task, groupBy);
+	if (!state || state.kind !== 'valid' || !Array.isArray(state.value)) {
+		return [valueResolver.getGroupValue(task, groupBy)];
+	}
+	const seen = new Set<string>();
+	const values: TableCachedGroupValue[] = [];
+	for (const item of state.value) {
+		if (item === null) continue;
+		const rawValue = typeof item === 'string' ? item.trim() : String(item);
+		if (!rawValue) continue;
+		const identity = `${typeof item}:${rawValue.toLocaleLowerCase()}`;
+		if (seen.has(identity)) continue;
+		seen.add(identity);
+		values.push({
+			rawValue,
+			isNoValue: false,
+			isUnsupportedValue: false,
+			valueKey: identity,
+			groupKey: `${groupBy}:${identity}`,
+			label: rawValue,
+		});
+	}
+	return values.length > 0 ? values : [createNoValueTableGroupValue(groupBy)];
+}
+
 function createNoValueTableGroupValue(groupBy: string): TableCachedGroupValue {
 	return {
 		rawValue: '',
 		isNoValue: true,
+		isUnsupportedValue: false,
 		valueKey: TABLE_NO_GROUP_VALUE_KEY,
 		groupKey: `${groupBy}:${TABLE_NO_GROUP_VALUE_KEY}`,
 		label: '',
@@ -431,6 +512,10 @@ function compareTableGroups(
 	if (left.isNoValue || right.isNoValue) {
 		if (left.isNoValue && right.isNoValue) return 0;
 		return left.isNoValue ? 1 : -1;
+	}
+	if (left.isUnsupportedValue || right.isUnsupportedValue) {
+		if (left.isUnsupportedValue && right.isUnsupportedValue) return 0;
+		return left.isUnsupportedValue ? 1 : -1;
 	}
 	if (left.fieldKey === 'status' && right.fieldKey === 'status') {
 		return compareWorkflowStatusValues(left.value, right.value, workflowStatusOrder, {
@@ -494,6 +579,12 @@ function compareTableSortRule(
 			{ direction: rule.direction, empty: rule.empty },
 		);
 	}
+	const filePropertyField = valueResolver.getFilePropertyField(rule.key);
+	if (decodeTableFilePropertyColumnKey(rule.key)) {
+		return filePropertyField
+			? compareTableFilePropertySortRule(left, right, rule, filePropertyField.type, valueResolver)
+			: 0;
+	}
 	const sortKind = getTableSortValueKind(rule.key, settings);
 	const leftValue = valueResolver.getSortValue(left, rule.key, sortKind, priorityRank);
 	const rightValue = valueResolver.getSortValue(right, rule.key, sortKind, priorityRank);
@@ -520,8 +611,72 @@ function compareTableSortRule(
 	return rule.direction === 'desc' ? -normalized : normalized;
 }
 
-function getTableSortValueKind(key: string, settings: TableQuerySettings | undefined): TableSortValueKind {
+type TableFilePropertySortValue =
+	| { kind: 'empty' }
+	| { kind: 'unsupported' }
+	| { kind: 'valid'; value: string | number };
+
+function compareTableFilePropertySortRule(
+	left: IndexedTask,
+	right: IndexedTask,
+	rule: TableSortRule,
+	type: NonNullable<ReturnType<TableValueResolver['getFilePropertyField']>>['type'],
+	valueResolver: TableValueResolver,
+): number {
+	const leftValue = resolveTableFilePropertySortValue(left, rule.key, type, valueResolver);
+	const rightValue = resolveTableFilePropertySortValue(right, rule.key, type, valueResolver);
+	if (leftValue.kind === 'empty' || rightValue.kind === 'empty') {
+		if (leftValue.kind === 'empty' && rightValue.kind === 'empty') return 0;
+		const emptyOrder = rule.empty === 'first' ? -1 : 1;
+		return leftValue.kind === 'empty' ? emptyOrder : -emptyOrder;
+	}
+	if (leftValue.kind === 'unsupported' || rightValue.kind === 'unsupported') {
+		if (leftValue.kind === 'unsupported' && rightValue.kind === 'unsupported') return 0;
+		return leftValue.kind === 'unsupported' ? 1 : -1;
+	}
+	const comparison = typeof leftValue.value === 'number' && typeof rightValue.value === 'number'
+		? leftValue.value - rightValue.value
+		: String(leftValue.value).localeCompare(String(rightValue.value), undefined, {
+			numeric: true,
+			sensitivity: 'base',
+		});
+	if (comparison === 0) return 0;
+	const normalized = comparison > 0 ? 1 : -1;
+	return rule.direction === 'desc' ? -normalized : normalized;
+}
+
+function resolveTableFilePropertySortValue(
+	task: IndexedTask,
+	key: string,
+	type: NonNullable<ReturnType<TableValueResolver['getFilePropertyField']>>['type'],
+	valueResolver: TableValueResolver,
+): TableFilePropertySortValue {
+	const state = valueResolver.getFilePropertyValueState(task, key);
+	if (!state || state.kind === 'unsupported') return { kind: 'unsupported' };
+	if (state.kind === 'empty') return { kind: 'empty' };
+	if (type === 'number' && typeof state.value === 'number') return { kind: 'valid', value: state.value };
+	if (type === 'checkbox' && typeof state.value === 'boolean') return { kind: 'valid', value: state.value ? 1 : 0 };
+	if ((type === 'date' || type === 'datetime') && typeof state.value === 'string') {
+		const parsed = parseLocalTimestamp(state.value.trim());
+		return parsed !== null ? { kind: 'valid', value: parsed } : { kind: 'unsupported' };
+	}
+	if ((type === 'list' || type === 'tags') && Array.isArray(state.value)) {
+		return { kind: 'valid', value: JSON.stringify(state.value) };
+	}
+	return typeof state.value === 'string'
+		? { kind: 'valid', value: state.value.trim() }
+		: { kind: 'unsupported' };
+}
+
+function getTableSortValueKind(
+	key: string,
+	settings: TableQuerySettings | undefined,
+	valueResolver?: TableValueResolver,
+): TableSortValueKind {
 	if (key === 'priority') return 'priority';
+	const filePropertyField = valueResolver?.getFilePropertyField(key);
+	if (filePropertyField?.type === 'number' || filePropertyField?.type === 'checkbox') return 'numeric';
+	if (filePropertyField?.type === 'date' || filePropertyField?.type === 'datetime') return 'date';
 	if (settings) {
 		const field = getTableTaskField(key, settings);
 		if (field?.type === 'number') return 'numeric';

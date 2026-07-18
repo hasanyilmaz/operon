@@ -11,6 +11,7 @@ import {
 export interface SearchableOptionPickerItem {
 	value: string;
 	label: string;
+	description?: string;
 	icon?: string | null;
 	title?: string;
 	group?: string | null;
@@ -157,6 +158,12 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 			item.addClass('has-icon');
 			const iconEl = item.createSpan('operon-searchable-option-picker-item-icon');
 			setIcon(iconEl, match.icon);
+		}
+		if (match.description) {
+			const content = item.createSpan('operon-searchable-option-picker-item-content');
+			content.createSpan({ cls: 'operon-searchable-option-picker-item-label', text: match.label || match.value });
+			content.createSpan({ cls: 'operon-searchable-option-picker-item-description', text: match.description });
+		} else if (match.icon) {
 			item.createSpan({ cls: 'operon-searchable-option-picker-item-label', text: match.label || match.value });
 		} else {
 			item.textContent = match.label || match.value;

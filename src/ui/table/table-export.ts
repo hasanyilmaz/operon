@@ -8,7 +8,7 @@ import {
 	type TableColumn,
 	type TablePreset,
 } from '../../types/table';
-import { getTableTaskFieldLabel } from './table-field-catalog';
+import { getTableColumnLabel } from './table-field-catalog';
 import type { TableValueResolver } from './table-value-cache';
 
 export interface TableExportSource {
@@ -69,7 +69,7 @@ function getTableExportHeader(column: TableColumn, settings: Pick<OperonSettings
 	if (column.key === TABLE_LINE_NUMBER_COLUMN_KEY) return t('settings', 'tableShowLineNumbers');
 	if (column.key === TABLE_TASK_ICON_COLUMN_KEY) return t('settings', 'tableShowTaskIcon');
 	if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) return t('settings', 'tableTaskTypeColumn');
-	return getTableTaskFieldLabel(column.key, settings);
+	return getTableColumnLabel(column, settings);
 }
 
 function getTableExportCell(source: TableExportSource, task: IndexedTask, rowIndex: number, column: TableColumn): string {

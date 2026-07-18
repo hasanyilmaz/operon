@@ -16,8 +16,16 @@ import {
 	buildWorkflowStatusIdentityIndex,
 	type WorkflowStatusIdentityIndex,
 } from '../../core/workflow-status-identity';
+import {
+	classifyTableFilePropertyCell,
+	type TableFilePropertyCellValue,
+	type TableFilePropertyField,
+	type TableFilePropertyQueryContext,
+	type TableFilePropertyValueState,
+} from './table-file-property';
 
 export const TABLE_NO_GROUP_VALUE_KEY = '__table_no_value__';
+export const TABLE_UNSUPPORTED_GROUP_VALUE_KEY = '__table_unsupported_value__';
 
 type TableValueCacheSettings = Pick<OperonSettings, 'keyMappings'> & Partial<Pick<OperonSettings, 'pipelines'>>;
 export type TableSortValueKind = 'priority' | 'numeric' | 'date' | 'text';
@@ -26,6 +34,7 @@ export type TableCachedSortValue = string | number | null;
 export interface TableCachedGroupValue {
 	rawValue: string;
 	isNoValue: boolean;
+	isUnsupportedValue: boolean;
 	valueKey: string;
 	groupKey: string;
 	label: string;
@@ -44,11 +53,16 @@ export interface TableValueCacheStats {
 
 export interface TableValueResolverOptions {
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
+	getFilePropertyValue?: (task: IndexedTask, key: string) => string | null;
+	filePropertyContext?: TableFilePropertyQueryContext;
 }
 
 export interface TableValueResolver {
 	readonly taskLookup: TableTaskLookup;
 	readonly workflowStatusIdentityIndex: WorkflowStatusIdentityIndex;
+	getFilePropertyField(key: string): TableFilePropertyField | null;
+	getFilePropertyCell(task: IndexedTask, key: string): TableFilePropertyCellValue | null;
+	getFilePropertyValueState(task: IndexedTask, key: string): TableFilePropertyValueState | null;
 	getRawValue(task: IndexedTask, key: string): string;
 	getDisplayValue(task: IndexedTask, key: string): string;
 	getProgressTrack(task: IndexedTask, kind: TaskProgressTrackKind): TaskProgressTrack | null;
@@ -75,6 +89,9 @@ export function createTableValueResolver(
 	const displayValues = new Map<string, string>();
 	const sortValues = new Map<string, TableCachedSortValue>();
 	const groupValues = new Map<string, TableCachedGroupValue>();
+	const filePropertyCells = new Map<string, TableFilePropertyCellValue>();
+	const filePropertyStates = new Map<string, TableFilePropertyValueState>();
+	const filePropertyFields = new Map((options.filePropertyContext?.fields ?? []).map(field => [field.key, field] as const));
 	const projectSerialDisplays = new Map<string, ProjectSerialDisplay | null>();
 	const stats: TableValueCacheStats = {
 		rawHits: 0,
@@ -89,6 +106,31 @@ export function createTableValueResolver(
 	const resolver: TableValueResolver = {
 		taskLookup,
 		workflowStatusIdentityIndex,
+		getFilePropertyField(key) {
+			return filePropertyFields.get(key) ?? null;
+		},
+		getFilePropertyCell(task, key) {
+			const field = filePropertyFields.get(key);
+			if (!field || !options.filePropertyContext) return null;
+			const cacheKey = buildTaskFieldCacheKey(task, key);
+			const cached = filePropertyCells.get(cacheKey);
+			if (cached) return cached;
+			const cell = options.filePropertyContext.getCell(task, key);
+			filePropertyCells.set(cacheKey, cell);
+			return cell;
+		},
+		getFilePropertyValueState(task, key) {
+			const field = filePropertyFields.get(key);
+			if (!field) return null;
+			const cacheKey = buildTaskFieldCacheKey(task, key);
+			const cached = filePropertyStates.get(cacheKey);
+			if (cached) return cached;
+			const cell = resolver.getFilePropertyCell(task, key);
+			if (!cell) return null;
+			const state = classifyTableFilePropertyCell(field, cell);
+			filePropertyStates.set(cacheKey, state);
+			return state;
+		},
 		getRawValue(task, key) {
 			const cacheKey = buildTaskFieldCacheKey(task, key);
 			const cached = rawValues.get(cacheKey);
@@ -97,14 +139,20 @@ export function createTableValueResolver(
 				return cached;
 			}
 			stats.rawMisses++;
-			const value = key === PROJECT_SERIAL_TABLE_FIELD_KEY
-				? resolveProjectSerialDisplay(task)?.label ?? ''
-				: progressLookup.resolveRawValue(task, key) ?? getTableTaskRawValue(
-					task,
-					key,
-					pipelines,
-					workflowStatusIdentityIndex,
-				);
+			const filePropertyCell = resolver.getFilePropertyCell(task, key);
+			const filePropertyValue = filePropertyCell?.normalizedValue
+				?? options.getFilePropertyValue?.(task, key)
+				?? null;
+			const value = filePropertyValue !== null
+				? filePropertyValue
+				: key === PROJECT_SERIAL_TABLE_FIELD_KEY
+					? resolveProjectSerialDisplay(task)?.label ?? ''
+					: progressLookup.resolveRawValue(task, key) ?? getTableTaskRawValue(
+						task,
+						key,
+						pipelines,
+						workflowStatusIdentityIndex,
+					);
 			rawValues.set(cacheKey, value);
 			return value;
 		},
@@ -153,6 +201,12 @@ export function createTableValueResolver(
 				return cached;
 			}
 			stats.groupMisses++;
+			const filePropertyState = resolver.getFilePropertyValueState(task, groupBy);
+			if (filePropertyState) {
+				const groupValue = createFilePropertyGroupValue(groupBy, filePropertyState);
+				groupValues.set(cacheKey, groupValue);
+				return groupValue;
+			}
 			const projectSerial = groupBy === PROJECT_SERIAL_TABLE_FIELD_KEY
 				? resolveProjectSerialDisplay(task)
 				: null;
@@ -168,6 +222,7 @@ export function createTableValueResolver(
 			const groupValue: TableCachedGroupValue = {
 				rawValue,
 				isNoValue,
+				isUnsupportedValue: false,
 				valueKey,
 				groupKey: `${groupBy}:${valueKey}`,
 				label: isNoValue
@@ -193,6 +248,48 @@ export function createTableValueResolver(
 	}
 
 	return resolver;
+}
+
+function createFilePropertyGroupValue(
+	key: string,
+	state: TableFilePropertyValueState,
+): TableCachedGroupValue {
+	if (state.kind === 'empty') {
+		return {
+			rawValue: '',
+			isNoValue: true,
+			isUnsupportedValue: false,
+			valueKey: TABLE_NO_GROUP_VALUE_KEY,
+			groupKey: `${key}:${TABLE_NO_GROUP_VALUE_KEY}`,
+			label: '',
+		};
+	}
+	if (state.kind === 'unsupported') {
+		return {
+			rawValue: '',
+			isNoValue: false,
+			isUnsupportedValue: true,
+			valueKey: TABLE_UNSUPPORTED_GROUP_VALUE_KEY,
+			groupKey: `${key}:${TABLE_UNSUPPORTED_GROUP_VALUE_KEY}`,
+			label: '',
+		};
+	}
+	const rawValue = formatRawFilePropertyScalar(state.value);
+	const valueKey = rawValue.toLocaleLowerCase();
+	return {
+		rawValue,
+		isNoValue: false,
+		isUnsupportedValue: false,
+		valueKey,
+		groupKey: `${key}:${valueKey}`,
+		label: rawValue,
+	};
+}
+
+function formatRawFilePropertyScalar(value: unknown): string {
+	if (typeof value === 'string') return value.trim();
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	return '';
 }
 
 export function formatTableValueCacheStats(stats: TableValueCacheStats): string {

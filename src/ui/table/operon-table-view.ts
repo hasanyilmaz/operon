@@ -32,7 +32,26 @@ import { filterTasksForCalendar } from '../../systems/calendar-filter-materializ
 import { t } from '../../core/i18n';
 import { localNow } from '../../core/local-time';
 import { normalizeTaskFieldColor } from '../../core/task-color-source';
-import { PROJECT_SERIAL_TABLE_FIELD_KEY, buildTableTaskFieldCatalog, getTableTaskField, getTableTaskFieldLabel, isEditableTableTaskFieldKey } from './table-field-catalog';
+import {
+	PROJECT_SERIAL_TABLE_FIELD_KEY,
+	applyTablePresetFieldAliases,
+	buildEffectiveTableTaskFieldCatalog,
+	getTableTaskField,
+	getTableTaskFieldLabel,
+	getTableColumnLabel,
+	isEditableTableTaskFieldKey,
+	type TableTaskField,
+} from './table-field-catalog';
+import { getTableFilePropertyIndex, isTableFilePropertyColumnKey, type TableFilePropertyCellValue, type TableFilePropertyField, type TableFilePropertySnapshot } from './table-file-property';
+import {
+	bindTableFilePropertyRemovalMenu,
+	canEditTableFilePropertyCell,
+	openTableFilePropertyPicker,
+	renderTableFilePropertyCheckbox,
+	toRawYamlPropertyExpectation,
+	type TableFilePropertyUpdateRequest,
+	type TableFilePropertyUpdateResult,
+} from './table-file-property-editor';
 import {
 	formatTableTaskSource,
 } from './table-value-adapter';
@@ -115,7 +134,7 @@ import {
 	type TableParentSearchSelection,
 	type TableParentSearchUiState,
 } from './table-search-scope';
-import { getTableSummaryIdleDelayMs, type TableSummaryCell } from './table-summary';
+import { getTableSummaryFunctionsForField, getTableSummaryIdleDelayMs, type TableSummaryCell } from './table-summary';
 import { showTableSummaryPicker } from './table-summary-picker';
 import {
 	getExcludedTablePickerTaskIds,
@@ -191,11 +210,17 @@ export interface OperonTableCallbacks {
 	onFlushPresetWrites?: (presetId: string) => Promise<void>;
 	onSaveFilterSet?: (filterSet: FilterSet) => Promise<void>;
 	onUpdateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	onUpdateFileProperty?: (operonId: string, request: TableFilePropertyUpdateRequest) => void | Promise<TableFilePropertyUpdateResult>;
 	getTaskSessions?: (operonId: string) => readonly TrackerSession[];
 	onAddTaskSession?: (operonId: string, start: string, end: string) => void | Promise<boolean>;
 	onEditTaskSession?: (session: TrackerSession, start: string, end: string) => void | Promise<boolean>;
 	onDeleteTaskSession?: (session: TrackerSession) => void | Promise<boolean>;
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
+	onOpenCheckboxes?: (
+		taskId: string,
+		actionAnchor?: HTMLElement | null,
+		actionAnchorRect?: DOMRect | null,
+	) => void | Promise<void>;
 	onContextualAction?: ContextualMenuActionHandler;
 	onOpenRelatedView?: (target: RelatedViewOpenTarget) => void | Promise<void>;
 	onCreateRelatedView?: (target: RelatedViewCreateTarget) => void | Promise<void>;
@@ -226,6 +251,10 @@ interface TableRenderState {
 	searchedTaskCount: number;
 	settings: OperonSettings;
 	allTasks: IndexedTask[];
+	additionalFields: readonly TableTaskField[];
+	filePropertySignature: string;
+	getFilePropertyCell: (task: IndexedTask, columnKey: string) => TableFilePropertyCellValue;
+	getFilePropertyCandidates: (columnKey: string) => readonly string[];
 	valueResolver: TableValueResolver;
 	locationResolver: TableLocationCellResolver | null;
 	locationIndexSignature: string;
@@ -692,19 +721,37 @@ export class OperonTableView extends FileView {
 		const projectSerialSignature = this.callbacks.getProjectSerialSignature?.() ?? '';
 		const preset = this.getCurrentPreset() ?? tablePresets[0] ?? createDefaultTablePreset();
 		this.syncTableSearchStateFromPreset(preset);
-		const filterSet = preset ? resolveTablePresetFilterSet(preset, settings.filterSets) : null;
-		const tasks = this.indexer.getAllTasks();
-		const tasksResolvedAt = enginePerfNow();
-		const searchContext = this.resolveTableSearchContext(filterSet, tasks, settings);
+			const filterSet = preset ? resolveTablePresetFilterSet(preset, settings.filterSets) : null;
+			const tasks = this.indexer.getAllTasks();
+			const tasksResolvedAt = enginePerfNow();
+			const filterFilePropertyContext = getTableFilePropertyIndex(this.app).getSnapshot(
+				tasks,
+				this.indexer.getGeneration(),
+				{ keyMappings: settings.keyMappings },
+			);
+			const searchContext = this.resolveTableSearchContext(filterSet, tasks, settings, filterFilePropertyContext);
 		const searchContextResolvedAt = enginePerfNow();
+		const filePropertySnapshot = getTableFilePropertyIndex(this.app).getSnapshot(
+			searchContext.scopeFilteredTasks,
+			this.indexer.getGeneration(),
+			{ keyMappings: settings.keyMappings },
+		);
 		const resolvedColumns = resolveTableColumns(preset, settings);
 		const taskColumns = resolvedColumns.taskColumns.map(column => ({ ...column }));
 		const columns = resolvedColumns.renderColumns.map(column => ({ ...column }));
 		const locationResolver = getTableLocationCellResolver(this.app, settings, columns);
 		const locationIndexSignature = buildTableLocationCellIndexSignature(this.app, settings, columns);
 		const normalizedSearchQuery = searchContext.activeSearchQuery.trim().toLocaleLowerCase();
-		const searchCacheScopeKey = buildTableSearchCacheScopeKey(searchContext.scopeKey, taskColumns, preset.sortRules);
-		const noSearchResultCacheKey = buildTableNoSearchResultCacheKey(searchContext.scopeKey, taskColumns, preset);
+		const searchCacheScopeKey = buildTableSearchCacheScopeKey(
+			`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}`,
+			taskColumns,
+			preset.sortRules,
+		);
+		const noSearchResultCacheKey = buildTableNoSearchResultCacheKey(
+			`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}`,
+			taskColumns,
+			preset,
+		);
 		const cachedNoSearchResult = !normalizedSearchQuery
 			&& this.noSearchResultCache?.key === noSearchResultCacheKey
 			&& this.noSearchResultCache.summariesEvaluated
@@ -717,7 +764,8 @@ export class OperonTableView extends FileView {
 				generation: this.indexer.getGeneration(),
 				columns: taskColumns,
 				valueResolverOptions: { getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay },
-				valueResolverSignature: projectSerialSignature,
+				valueResolverSignature: `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}`,
+				filePropertyContext: filePropertySnapshot,
 			})
 			: undefined;
 		const matcherResolvedAt = enginePerfNow();
@@ -729,8 +777,10 @@ export class OperonTableView extends FileView {
 				settings,
 				searchContext,
 				columns: taskColumns,
-				cacheKey: searchCacheScopeKey,
-			})
+					cacheKey: searchCacheScopeKey,
+					filePropertySnapshot,
+					filterFilePropertyContext,
+				})
 			: null;
 		const precomputedSearchedTasks = normalizedSearchQuery && searchMatcher
 			? this.resolveIncrementalSearchedTasks(
@@ -747,7 +797,12 @@ export class OperonTableView extends FileView {
 		if (!normalizedSearchQuery) {
 			this.incrementalSearchCache = null;
 		}
-		const hasSummaryRow = hasVisibleTableSummaryRule(preset.summaries, taskColumns);
+		const activeSummaryRules = preset.summaries.filter(rule => getTableSummaryFunctionsForField(
+			rule.key,
+			settings,
+			filePropertySnapshot.fields,
+		).includes(rule.function));
+		const hasSummaryRow = hasVisibleTableSummaryRule(activeSummaryRules, taskColumns);
 		const shouldDeferSummaries = !cachedNoSearchResult && this.deferSummariesForSearch && hasSummaryRow;
 		if (cachedNoSearchResult) {
 			this.deferSummariesForSearch = false;
@@ -758,7 +813,8 @@ export class OperonTableView extends FileView {
 			tasks,
 			priorities: settings.priorities,
 			pinnedCache: this.getPinnedCache(),
-			projectSerialScopes: settings.projectSerialScopes,
+				projectSerialScopes: settings.projectSerialScopes,
+				filePropertyContext: filterFilePropertyContext,
 			settings,
 			searchQuery: searchContext.activeSearchQuery,
 			searchMatcher,
@@ -768,7 +824,13 @@ export class OperonTableView extends FileView {
 			precomputedRows: precomputedRowsForQuery,
 			taskIdFilter: searchContext.taskIdFilter,
 			summaryMode: shouldDeferSummaries ? 'skip' : 'evaluate',
-			valueResolverOptions: { getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay },
+			valueResolverOptions: {
+				getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay,
+				filePropertyContext: filePropertySnapshot,
+				getFilePropertyValue: (task, key) => isTableFilePropertyColumnKey(key)
+					? filePropertySnapshot.getCell(task, key).normalizedValue
+					: null,
+			},
 		});
 		const queryResolvedAt = enginePerfNow();
 		if (!normalizedSearchQuery && !cachedNoSearchResult) {
@@ -806,6 +868,10 @@ export class OperonTableView extends FileView {
 			searchedTaskCount: result.counts.searched,
 			settings,
 			allTasks: tasks,
+			additionalFields: filePropertySnapshot.fields,
+			filePropertySignature: filePropertySnapshot.signature,
+			getFilePropertyCell: (task, columnKey) => filePropertySnapshot.getCell(task, columnKey),
+			getFilePropertyCandidates: columnKey => filePropertySnapshot.getCandidates(columnKey),
 			valueResolver: result.valueResolver,
 			locationResolver,
 			locationIndexSignature,
@@ -828,13 +894,21 @@ export class OperonTableView extends FileView {
 				searchControlSignature,
 				locationIndexSignature,
 				projectSerialSignature,
+				filePropertySignature: filePropertySnapshot.signature,
 			}),
 		};
 		this.lastRenderedRangeKey = null;
 		if (shouldDeferSummaries) {
 			this.scheduleDeferredSummaryRefresh();
 		}
-		this.scheduleSearchPrewarm(tasks, searchContext.scopeFilteredTasks, settings, taskColumns, normalizedSearchQuery);
+		this.scheduleSearchPrewarm(
+			tasks,
+			searchContext.scopeFilteredTasks,
+			settings,
+			taskColumns,
+			normalizedSearchQuery,
+			filePropertySnapshot,
+		);
 
 		if (this.canReuseTableShell(previousRenderState, this.currentRenderState, searchContext.parentSearchUi)) {
 			this.updateExistingTableShell(result.counts.final, this.isSearchEmpty(result.counts.scoped));
@@ -965,6 +1039,7 @@ export class OperonTableView extends FileView {
 		searchControlSignature: string;
 		locationIndexSignature: string;
 		projectSerialSignature: string;
+		filePropertySignature: string;
 	}): string {
 		return [
 			JSON.stringify(input.preset),
@@ -977,6 +1052,7 @@ export class OperonTableView extends FileView {
 			input.searchControlSignature,
 			input.locationIndexSignature,
 			input.projectSerialSignature,
+			input.filePropertySignature,
 			JSON.stringify(this.getAvailableTablePresets().map(preset => [preset.id, preset.name])),
 			JSON.stringify(input.settings.presetFavorites.table),
 			buildTableRelevantSettingsSignature(input.settings),
@@ -1288,6 +1364,7 @@ export class OperonTableView extends FileView {
 			...floatingOptions,
 			preset: editingPreset.id === preset.id ? editingPreset : preset,
 			settings: this.getSettings(),
+			additionalFields: this.currentRenderState?.additionalFields ?? [],
 			onChange: (updatedPreset, scope) => this.savePresetGroupSortDraft(updatedPreset, scope),
 			onClose: () => {
 				button.setAttribute('aria-expanded', 'false');
@@ -1401,10 +1478,16 @@ export class OperonTableView extends FileView {
 			settings.keyMappings,
 			() => undefined,
 			undefined,
-			{
-				getSettings: () => this.getSettings(),
-				getProjectSerialScopeTasks: () => this.indexer.getAllTasks(),
-			},
+				{
+					getSettings: () => this.getSettings(),
+					getProjectSerialScopeTasks: () => this.indexer.getAllTasks(),
+					getFilePropertyDiscoveryTasks: () => this.indexer.getAllTasks(),
+					getFilePropertySnapshot: tasks => getTableFilePropertyIndex(this.app).getSnapshot(
+						tasks,
+						this.indexer.getGeneration(),
+						{ keyMappings: this.getSettings().keyMappings },
+					),
+				},
 		);
 		editor.renderInlineConditionEditor(popover, {
 			onCancel: close,
@@ -1416,10 +1499,15 @@ export class OperonTableView extends FileView {
 					this.indexer.getAllTasks(),
 					this.getSettings().priorities,
 					this.getPinnedCache(),
-					{
-						projectSerialScopes: this.getSettings().projectSerialScopes,
-						projectSerialScopeTasks: this.indexer.getAllTasks(),
-					},
+						{
+							projectSerialScopes: this.getSettings().projectSerialScopes,
+							projectSerialScopeTasks: this.indexer.getAllTasks(),
+							filePropertyContext: getTableFilePropertyIndex(this.app).getSnapshot(
+								this.indexer.getAllTasks(),
+								this.indexer.getGeneration(),
+								{ keyMappings: this.getSettings().keyMappings },
+							),
+						},
 				).length,
 				saveTooltip: sourceFilterSetId
 					? this.buildFilterUsageTooltip(sourceFilterSetId)
@@ -1689,7 +1777,7 @@ export class OperonTableView extends FileView {
 		canvas.style.height = `${items.length * rowHeight}px`;
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${this.bodyScrollerEl?.scrollLeft ?? this.state.scrollLeft}px`);
 		const columnTemplate = renderState.columnGeometry.columnTemplate;
-		const nextCanvasContent = canvas.ownerDocument.createElement('div');
+		const nextCanvasContent = canvas.ownerDocument.win.createDiv();
 
 		for (let index = startIndex; index < endIndex; index++) {
 			const item = items[index];
@@ -1927,7 +2015,11 @@ export class OperonTableView extends FileView {
 		currentFunction: TableSummaryFunction | null,
 	): void {
 		if (renderState.summariesCalculating) return;
-		const fieldLabel = getTableTaskFieldLabel(column.key, renderState.settings);
+		const fieldLabel = getTableColumnLabel(
+			column,
+			renderState.settings,
+			renderState.additionalFields ?? [],
+		);
 		cell.addClass('is-interactive');
 		cell.tabIndex = 0;
 		cell.dataset.summaryColumnKey = column.key;
@@ -1955,7 +2047,14 @@ export class OperonTableView extends FileView {
 		const renderState = this.currentRenderState;
 		if (!renderState) return;
 		this.closeActivePicker();
-		const supportedKeys = new Set(buildTableTaskFieldCatalog(renderState.settings).map(field => field.key));
+		const additionalFields = applyTablePresetFieldAliases(
+			renderState.additionalFields ?? [],
+			renderState.preset.columns,
+		);
+		const supportedKeys = new Set(buildEffectiveTableTaskFieldCatalog(
+			renderState.settings,
+			additionalFields,
+		).map(field => field.key));
 		let closePicker: (() => void) | null = null;
 		closePicker = showTableSummaryPicker({
 			anchor: cell,
@@ -1963,6 +2062,7 @@ export class OperonTableView extends FileView {
 			rows: summaryRows,
 			allTasks: this.indexer.getAllTasks(),
 			settings: renderState.settings,
+			additionalFields,
 			valueResolver: renderState.valueResolver,
 			currentFunction,
 			onSelect: summaryFunction => {
@@ -2066,7 +2166,7 @@ export class OperonTableView extends FileView {
 		if ((editable && !showIconOnly) || canOpenIconOnlyTextPopover) {
 			cell.addClass('is-editable');
 			cell.dataset.editCellKey = cellKey;
-			cell.tabIndex = 0;
+				cell.tabIndex = 0;
 			this.syncPendingCellState(cell, cellKey);
 		} else {
 			cell.removeClass('is-editable');
@@ -2289,6 +2389,10 @@ export class OperonTableView extends FileView {
 		value: string,
 		renderState: TableRenderState,
 	): void {
+		if (isTableFilePropertyColumnKey(column.key)) {
+			this.renderFilePropertyCell(cell, task, column, renderState);
+			return;
+		}
 		if (isTableProgressColumnKey(column.key)) {
 			renderTableProgressCell(cell, {
 				task,
@@ -2296,25 +2400,34 @@ export class OperonTableView extends FileView {
 				settings: renderState.settings,
 				valueResolver: renderState.valueResolver,
 				iconOnly: this.shouldUseIconOnlyColumn(column, renderState.settings),
-				onActivate: this.callbacks.onContextualAction
-					? ({ task: progressTask, track, trigger, actionAnchorRect }) => this.callbacks.onContextualAction?.(
-						progressTask.operonId,
-						track.kind === 'subtasks' ? 'subtasks' : 'checkboxes',
-						{
-							surface: 'tableTask',
-							taskId: progressTask.operonId,
-							task: progressTask,
-							now: localNow(),
-							isPinned: this.callbacks.isTaskPinned?.(progressTask.operonId) === true,
-							hasSubtasks: track.kind === 'subtasks'
-								? true
-								: this.callbacks.hasSubtasks?.(progressTask.operonId) === true,
-						},
-						{
-							actionAnchor: trigger,
-							actionAnchorRect,
-						},
-					)
+				onActivate: this.callbacks.onContextualAction || this.callbacks.onOpenCheckboxes
+					? ({ task: progressTask, track, trigger, actionAnchorRect }) => {
+						if (track.kind === 'checkboxes' && this.callbacks.onOpenCheckboxes) {
+							return this.callbacks.onOpenCheckboxes(
+								progressTask.operonId,
+								trigger,
+								actionAnchorRect,
+							);
+						}
+						return this.callbacks.onContextualAction?.(
+							progressTask.operonId,
+							track.kind === 'subtasks' ? 'subtasks' : 'checkboxes',
+							{
+								surface: 'tableTask',
+								taskId: progressTask.operonId,
+								task: progressTask,
+								now: localNow(),
+								isPinned: this.callbacks.isTaskPinned?.(progressTask.operonId) === true,
+								hasSubtasks: track.kind === 'subtasks'
+									? true
+									: this.callbacks.hasSubtasks?.(progressTask.operonId) === true,
+							},
+							{
+								actionAnchor: trigger,
+								actionAnchorRect,
+							},
+						);
+					}
 					: undefined,
 			});
 			return;
@@ -2350,6 +2463,140 @@ export class OperonTableView extends FileView {
 				}
 			},
 		});
+	}
+
+	private renderFilePropertyCell(
+		cell: HTMLElement,
+		task: IndexedTask,
+		column: TableColumn,
+		renderState: TableRenderState,
+	): void {
+		const field = (renderState.additionalFields.find(entry => entry.key === column.key && entry.group === 'fileProperty')
+			?? null) as TableFilePropertyField | null;
+		const cellValue = renderState.getFilePropertyCell(task, column.key);
+		const editable = canEditTableFilePropertyCell(task, field, cellValue, !!this.callbacks.onUpdateFileProperty);
+		const label = getTableColumnLabel(column, renderState.settings, renderState.additionalFields);
+		const cellKey = buildTableEditableCellKey(task, column.key);
+		if (editable) {
+			cell.addClass('is-editable');
+			cell.dataset.editCellKey = cellKey;
+			cell.tabIndex = field?.type === 'checkbox' ? -1 : 0;
+			this.syncPendingCellState(cell, cellKey);
+		} else {
+			cell.setAttribute('aria-readonly', 'true');
+		}
+		const commit = (mutation: import('../../core/raw-yaml-property').RawYamlPropertyMutation): void => {
+			void this.commitFilePropertyCellUpdate(cell, task, field, cellValue, cellKey, mutation);
+		};
+		bindTableFilePropertyRemovalMenu({
+			cell,
+			field: field ?? {
+				key: column.key, label, type: 'text', group: 'fileProperty', icon: 'text', readonly: true,
+				aliases: [], propertyName: column.key, sourceType: 'unknown', sourceFileCount: 0,
+			},
+			cellValue,
+			editable,
+			onRemove: () => commit({ kind: 'delete' }),
+		});
+		if (field?.type === 'checkbox') {
+			renderTableFilePropertyCheckbox({
+				cell,
+				field,
+				label,
+				cellValue,
+				compact: column.displayMode === 'icon',
+				editable,
+				onToggle: commit,
+			});
+			return;
+		}
+		const renderValues = Array.isArray(cellValue.rawValue)
+			? cellValue.rawValue.filter(value => value !== null).map(String)
+			: (cellValue.normalizedValue.trim() ? [cellValue.normalizedValue] : []);
+		if (column.displayMode === 'icon') {
+			const icon = cell.createSpan('operon-table-file-property-icon');
+			setIcon(icon, field?.icon ?? 'text');
+			setAccessibleLabelWithoutTooltip(cell, `${label}: ${cellValue.normalizedValue || t('table', 'filePropertyNotSet')}`);
+		} else if (renderValues.length === 0) {
+			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
+		} else {
+			for (const value of renderValues) cell.createSpan({
+				cls: `operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip${editable ? ' operon-table-editable-chip' : ' operon-chip-readonly'}`,
+				text: value,
+			});
+		}
+		if (!editable || !field) return;
+		setAccessibleLabelWithoutTooltip(cell, `${label}: ${cellValue.normalizedValue || t('table', 'filePropertyNotSet')}. ${t('table', 'editCellAria')}`);
+		const openPicker = (): void => {
+			if (this.pendingCellKey !== null) return;
+			this.closeActivePicker();
+			let closePicker: (() => void) | null = null;
+			closePicker = openTableFilePropertyPicker({
+				app: this.app,
+				anchor: snapshotFloatingRectAnchor(cell),
+				field,
+				label,
+				cellValue,
+				candidates: renderState.getFilePropertyCandidates(column.key),
+				settings: renderState.settings,
+				sourcePath: task.primary.filePath,
+				onMutation: commit,
+				onClose: () => {
+					if (this.activePickerClose === closePicker) this.activePickerClose = null;
+					this.keepActivePickerOnRender = false;
+				},
+			});
+			if (!closePicker) return;
+			this.keepActivePickerOnRender = true;
+			this.activePickerClose = closePicker;
+		};
+		cell.addEventListener('click', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			openPicker();
+		});
+		cell.addEventListener('dblclick', event => event.stopPropagation());
+		cell.addEventListener('keydown', event => {
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+			event.preventDefault();
+			event.stopPropagation();
+			openPicker();
+		});
+	}
+
+	private async commitFilePropertyCellUpdate(
+		cell: HTMLElement,
+		task: IndexedTask,
+		field: TableFilePropertyField | null,
+		cellValue: TableFilePropertyCellValue,
+		cellKey: string,
+		mutation: import('../../core/raw-yaml-property').RawYamlPropertyMutation,
+	): Promise<boolean> {
+		const expected = toRawYamlPropertyExpectation(cellValue);
+		if (!field || !expected || !this.callbacks.onUpdateFileProperty || this.pendingCellKey !== null) return false;
+		this.pendingCellKey = cellKey;
+		this.pendingFocusKey = cellKey;
+		this.syncPendingCellState(cell, cellKey);
+		this.closeActivePicker();
+		let success = false;
+		try {
+			const outcome = await this.callbacks.onUpdateFileProperty(task.operonId, {
+				propertyName: field.propertyName,
+				expected,
+				mutation,
+			});
+			success = outcome === 'updated' || outcome === 'already-updated';
+			if (outcome === 'conflict') new Notice(t('table', 'filePropertyConflict'));
+			else if (!success) new Notice(t('notifications', 'taskSaveFailed'));
+		} catch (error: unknown) {
+			console.error('Operon: failed to update Table file property', error);
+			new Notice(t('notifications', 'taskSaveFailed'));
+		} finally {
+			if (this.pendingCellKey === cellKey) this.pendingCellKey = null;
+			this.clearRenderedPendingCellState(cellKey);
+			this.queuePendingCellFocusRestore();
+		}
+		return success;
 	}
 
 	private bindLocationMapPreviewTrigger(
@@ -2694,18 +2941,26 @@ export class OperonTableView extends FileView {
 		if (pending) {
 			cell.setAttribute('aria-busy', 'true');
 			cell.setAttribute('aria-disabled', 'true');
+			const checkbox = cell.querySelector<HTMLButtonElement>('.operon-table-file-property-checkbox');
+			if (checkbox) {
+				checkbox.disabled = true;
+				checkbox.setAttribute('aria-busy', 'true');
+			}
 			return;
 		}
 		cell.removeAttribute('aria-busy');
 		cell.removeAttribute('aria-disabled');
+		const checkbox = cell.querySelector<HTMLButtonElement>('.operon-table-file-property-checkbox');
+		if (checkbox) {
+			checkbox.disabled = false;
+			checkbox.removeAttribute('aria-busy');
+		}
 	}
 
 	private clearRenderedPendingCellState(cellKey: string): void {
 		for (const cell of Array.from(this.contentEl.querySelectorAll<HTMLElement>('.operon-table-cell.is-pending'))) {
 			if (cell.dataset.editCellKey !== cellKey) continue;
-			cell.classList.remove('is-pending');
-			cell.removeAttribute('aria-busy');
-			cell.removeAttribute('aria-disabled');
+			this.syncPendingCellState(cell, cellKey);
 		}
 	}
 
@@ -2714,11 +2969,11 @@ export class OperonTableView extends FileView {
 		if (!cellKey) return;
 		this.pendingFocusKey = null;
 		const cell = this.findRenderedEditableCell(cellKey);
-		(cell ?? this.bodyScrollerEl)?.focus();
+		(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox') ?? cell ?? this.bodyScrollerEl)?.focus();
 	}
 
 	private queuePendingCellFocusRestore(): void {
-		window.requestAnimationFrame(() => {
+		getOwnerWindow(this.contentEl).requestAnimationFrame(() => {
 			this.restorePendingCellFocus();
 		});
 	}
@@ -2905,6 +3160,7 @@ export class OperonTableView extends FileView {
 		settings: OperonSettings,
 		columns: readonly TableColumn[],
 		normalizedSearchQuery: string,
+		filePropertySnapshot: TableFilePropertySnapshot,
 	): void {
 		if (normalizedSearchQuery.length > 0 || tasks.length === 0 || tasksToPrewarm.length === 0 || columns.length === 0) {
 			this.cancelSearchPrewarm();
@@ -2916,14 +3172,15 @@ export class OperonTableView extends FileView {
 		}
 		const generation = this.indexer.getGeneration();
 		const projectSerialSignature = this.callbacks.getProjectSerialSignature?.() ?? '';
-		const prewarmKey = buildTableTaskSearchMatcherSignature(tasks, settings, generation, columns, projectSerialSignature);
+		const valueResolverSignature = `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}`;
+		const prewarmKey = buildTableTaskSearchMatcherSignature(tasks, settings, generation, columns, valueResolverSignature);
 		if (this.completedSearchPrewarmKey === prewarmKey || this.searchPrewarmKey === prewarmKey) return;
 		this.cancelSearchPrewarm();
 		this.searchPrewarmKey = prewarmKey;
 		this.searchPrewarmIndex = 0;
 		this.searchPrewarmTimer = window.setTimeout(() => {
 			this.searchPrewarmTimer = null;
-			this.runSearchPrewarmChunk(prewarmKey, tasks, tasksToPrewarm, settings, generation, columns);
+			this.runSearchPrewarmChunk(prewarmKey, tasks, tasksToPrewarm, settings, generation, columns, filePropertySnapshot);
 		}, TABLE_SEARCH_PREWARM_DELAY_MS);
 	}
 
@@ -2934,6 +3191,7 @@ export class OperonTableView extends FileView {
 		settings: OperonSettings,
 		generation: number | string,
 		columns: readonly TableColumn[],
+		filePropertySnapshot: TableFilePropertySnapshot,
 	): void {
 		if (this.searchPrewarmKey !== prewarmKey) return;
 		if (!this.containerEl.isConnected || this.containerEl.offsetParent === null || this.indexer.getGeneration() !== generation) {
@@ -2951,7 +3209,8 @@ export class OperonTableView extends FileView {
 			generation,
 			columns,
 			valueResolverOptions: { getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay },
-			valueResolverSignature: this.callbacks.getProjectSerialSignature?.() ?? '',
+			valueResolverSignature: `${this.callbacks.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}`,
+			filePropertyContext: filePropertySnapshot,
 		}, {
 			startIndex: this.searchPrewarmIndex,
 			timeBudgetMs: TABLE_SEARCH_PREWARM_TIME_BUDGET_MS,
@@ -2973,7 +3232,7 @@ export class OperonTableView extends FileView {
 		}
 		this.searchPrewarmChunkTimer = window.setTimeout(() => {
 			this.searchPrewarmChunkTimer = null;
-			this.runSearchPrewarmChunk(prewarmKey, tasks, tasksToPrewarm, settings, generation, columns);
+			this.runSearchPrewarmChunk(prewarmKey, tasks, tasksToPrewarm, settings, generation, columns, filePropertySnapshot);
 		}, TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS);
 	}
 
@@ -3019,6 +3278,7 @@ export class OperonTableView extends FileView {
 		filterSet: ReturnType<typeof resolveTablePresetFilterSet>,
 		tasks: IndexedTask[],
 		settings: OperonSettings,
+		filePropertyContext: TableFilePropertySnapshot,
 	): TableSearchContext {
 		const filterScopedTasks = resolveTableSearchBaseScopeTasks({
 			filterSet,
@@ -3026,6 +3286,7 @@ export class OperonTableView extends FileView {
 			priorities: settings.priorities,
 			pinnedCache: this.getPinnedCache(),
 			projectSerialScopes: settings.projectSerialScopes,
+			filePropertyContext,
 		});
 		const recentModifiedCutoff = getTaskSearchBoxRecentModifiedCutoff(settings);
 		const scopedTasks = filterScopedTasks.filter(task => matchesTaskSearchBoxScope(task, this.searchScope, { recentModifiedCutoff }));
@@ -3048,7 +3309,7 @@ export class OperonTableView extends FileView {
 			scopedTasks,
 			scopeFilteredTasks,
 			taskIdFilter,
-			scopeKey: this.buildSearchScopeKey(JSON.stringify(filterSet ?? null), scopedTasks, scopeFilteredTasks, settings, recentModifiedCutoff),
+			scopeKey: this.buildSearchScopeKey(JSON.stringify(filterSet ?? null), scopedTasks, scopeFilteredTasks, settings, recentModifiedCutoff, filePropertyContext.signature),
 		};
 	}
 
@@ -3058,6 +3319,7 @@ export class OperonTableView extends FileView {
 		scopeFilteredTasks: readonly IndexedTask[],
 		settings: OperonSettings,
 		recentModifiedCutoff: number,
+		filePropertySignature: string,
 	): string {
 		return [
 			this.indexer.getGeneration(),
@@ -3066,6 +3328,7 @@ export class OperonTableView extends FileView {
 			filterSetSignature,
 			buildTableRelevantSettingsSignature(settings),
 			this.callbacks.getProjectSerialSignature?.() ?? '',
+			filePropertySignature,
 			JSON.stringify(this.searchScope),
 			this.searchScope.showRecentModified ? `recentModifiedCutoff=${recentModifiedCutoff}` : '',
 			this.parentSearchSelection ? `${this.parentSearchSelection.mode}:${this.parentSearchSelection.parentId}` : '',
@@ -3082,6 +3345,8 @@ export class OperonTableView extends FileView {
 		searchContext: TableSearchContext;
 		columns: readonly TableColumn[];
 		cacheKey: string;
+		filePropertySnapshot: TableFilePropertySnapshot;
+		filterFilePropertyContext: TableFilePropertySnapshot;
 	}): IndexedTask[] {
 		if (this.sortedRowsCache?.key === input.cacheKey) return this.sortedRowsCache.rows;
 		const sortedPreset: TablePreset = {
@@ -3096,11 +3361,18 @@ export class OperonTableView extends FileView {
 			priorities: input.settings.priorities,
 			pinnedCache: this.getPinnedCache(),
 			projectSerialScopes: input.settings.projectSerialScopes,
+			filePropertyContext: input.filterFilePropertyContext,
 			settings: input.settings,
 			precomputedScopedTasks: input.searchContext.scopedTasks,
 			precomputedScopeFilteredTasks: input.searchContext.scopeFilteredTasks,
 			summaryMode: 'skip',
-			valueResolverOptions: { getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay },
+			valueResolverOptions: {
+				getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay,
+				filePropertyContext: input.filePropertySnapshot,
+				getFilePropertyValue: (task, key) => isTableFilePropertyColumnKey(key)
+					? input.filePropertySnapshot.getCell(task, key).normalizedValue
+					: null,
+			},
 		});
 		this.sortedRowsCache = {
 			key: input.cacheKey,
@@ -3402,6 +3674,11 @@ export class OperonTableView extends FileView {
 		if (this.searchDebounceTimer !== null) {
 			window.clearTimeout(this.searchDebounceTimer);
 		}
+		this.summaryRefreshToken++;
+		if (this.summaryIdleTimer !== null) {
+			window.clearTimeout(this.summaryIdleTimer);
+			this.summaryIdleTimer = null;
+		}
 		this.searchDebounceTimer = window.setTimeout(() => {
 			this.searchDebounceTimer = null;
 			this.setSearchQuery(searchQuery);
@@ -3499,7 +3776,12 @@ export class OperonTableView extends FileView {
 			collapsedGroupKeys: nextCollapsedGroupKeys,
 		};
 		if (this.currentRenderState) {
-			const hasSummaryRow = hasVisibleTableSummaryRule(nextPreset.summaries, this.currentRenderState.taskColumns);
+			const activeSummaryRules = nextPreset.summaries.filter(rule => getTableSummaryFunctionsForField(
+				rule.key,
+				this.currentRenderState!.settings,
+				this.currentRenderState!.additionalFields,
+			).includes(rule.function));
+			const hasSummaryRow = hasVisibleTableSummaryRule(activeSummaryRules, this.currentRenderState.taskColumns);
 			const items = buildTableRenderItems(
 				this.currentRenderState.rows,
 				this.currentRenderState.groups,

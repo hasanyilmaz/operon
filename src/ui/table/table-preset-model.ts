@@ -21,7 +21,8 @@ import {
 } from '../../types/table';
 import type { FilterFieldType, OperonSettings } from '../../types/settings';
 import type { TablePresetRegistryEntry } from '../../types/table-preset-registry';
-import { getTableTaskField } from './table-field-catalog';
+import { getTableTaskField, type TableTaskField } from './table-field-catalog';
+import { isTableFilePropertyColumnKey } from './table-file-property';
 
 const TABLE_COLUMN_MIN_WIDTH = 80;
 const TABLE_COLUMN_MAX_WIDTH = 640;
@@ -195,6 +196,7 @@ export function setTablePresetColumnVisible(
 	key: string,
 	visible: boolean,
 	settings?: TableColumnDefaultSettings,
+	fieldOverride?: TableTaskField | null,
 ): TablePreset {
 	const normalizedKey = key.trim();
 	if (!normalizedKey) return cloneTablePreset(preset);
@@ -209,7 +211,7 @@ export function setTablePresetColumnVisible(
 		return normalizeTablePresetColumnOrder(draft);
 	}
 	if (visible) {
-		draft.columns.push(createTableColumn(normalizedKey, settings));
+		draft.columns.push(createTableColumn(normalizedKey, settings, fieldOverride));
 	}
 	return normalizeTablePresetColumnOrder(draft);
 }
@@ -304,6 +306,7 @@ export function setTablePresetColumnDisplayMode(
 	key: string,
 	mode: TableColumnDisplayMode,
 	settings: Pick<OperonSettings, 'keyMappings'>,
+	fieldOverride?: TableTaskField | null,
 ): TablePreset {
 	const normalizedKey = key.trim();
 	if (!normalizedKey) return cloneTablePreset(preset);
@@ -312,7 +315,7 @@ export function setTablePresetColumnDisplayMode(
 	if (!column) return draft;
 	const displayMode = normalizeTableColumnDisplayMode(mode);
 	if (displayMode) {
-		if (!getTableTaskField(normalizedKey, settings)?.icon) return draft;
+		if (!(fieldOverride ?? getTableTaskField(normalizedKey, settings))?.icon) return draft;
 		column.displayMode = displayMode;
 	} else {
 		delete column.displayMode;
@@ -326,6 +329,7 @@ export function insertTablePresetColumnNear(
 	anchorKey: string,
 	side: 'left' | 'right',
 	settings?: TableColumnDefaultSettings,
+	fieldOverride?: TableTaskField | null,
 ): TablePreset {
 	const normalizedKey = key.trim();
 	const normalizedAnchorKey = anchorKey.trim();
@@ -335,7 +339,7 @@ export function insertTablePresetColumnNear(
 	const restoringExistingColumn = sourceIndex >= 0;
 	const [column] = sourceIndex >= 0
 		? draft.columns.splice(sourceIndex, 1)
-		: [createTableColumn(normalizedKey, settings)];
+		: [createTableColumn(normalizedKey, settings, fieldOverride)];
 	if (!column) return draft;
 	column.hidden = undefined;
 	const anchorIndex = draft.columns.findIndex(entry => entry.key === normalizedAnchorKey);
@@ -457,7 +461,7 @@ export function filterTablePresetSortRulesBySupportedKeys(
 	const seen = new Set<string>();
 	draft.sortRules = draft.sortRules.filter(rule => {
 		const key = rule.key.trim();
-		if (!key || !supportedKeys.has(key) || seen.has(key)) return false;
+		if (!key || (!supportedKeys.has(key) && !isTableFilePropertyColumnKey(key)) || seen.has(key)) return false;
 		seen.add(key);
 		return true;
 	});
@@ -470,10 +474,11 @@ export function filterTablePresetGroupByBySupportedKeys(
 ): TablePreset {
 	const draft = cloneTablePreset(preset);
 	const groupBy = draft.groupBy?.trim();
-	draft.groupBy = groupBy && supportedKeys.has(groupBy) ? groupBy : null;
+	draft.groupBy = groupBy && (supportedKeys.has(groupBy) || isTableFilePropertyColumnKey(groupBy)) ? groupBy : null;
 	draft.groupOrder = draft.groupBy ? normalizeTablePresetSortDirection(draft.groupOrder) : 'asc';
 	const subgroupBy = draft.subgroupBy?.trim();
-	draft.subgroupBy = draft.groupBy && subgroupBy && subgroupBy !== draft.groupBy && supportedKeys.has(subgroupBy)
+	draft.subgroupBy = draft.groupBy && subgroupBy && subgroupBy !== draft.groupBy
+		&& (supportedKeys.has(subgroupBy) || isTableFilePropertyColumnKey(subgroupBy))
 		? subgroupBy
 		: null;
 	draft.subgroupOrder = draft.subgroupBy ? normalizeTablePresetSortDirection(draft.subgroupOrder) : 'asc';
@@ -487,14 +492,15 @@ export function setTablePresetGroupBy(
 ): TablePreset {
 	const draft = cloneTablePreset(preset);
 	const normalizedGroupBy = groupBy?.trim() || null;
-	draft.groupBy = normalizedGroupBy && (!supportedKeys || supportedKeys.has(normalizedGroupBy))
+	draft.groupBy = normalizedGroupBy && (!supportedKeys || supportedKeys.has(normalizedGroupBy) || isTableFilePropertyColumnKey(normalizedGroupBy))
 		? normalizedGroupBy
 		: null;
 	if (!draft.groupBy) {
 		draft.groupOrder = 'asc';
 		draft.subgroupBy = null;
 		draft.subgroupOrder = 'asc';
-	} else if (draft.subgroupBy === draft.groupBy || (supportedKeys && draft.subgroupBy && !supportedKeys.has(draft.subgroupBy))) {
+	} else if (draft.subgroupBy === draft.groupBy || (supportedKeys && draft.subgroupBy
+		&& !supportedKeys.has(draft.subgroupBy) && !isTableFilePropertyColumnKey(draft.subgroupBy))) {
 		draft.subgroupBy = null;
 		draft.subgroupOrder = 'asc';
 	}
@@ -520,7 +526,7 @@ export function setTablePresetSubgroupBy(
 	draft.subgroupBy = draft.groupBy
 		&& normalizedSubgroupBy
 		&& normalizedSubgroupBy !== draft.groupBy
-		&& (!supportedKeys || supportedKeys.has(normalizedSubgroupBy))
+		&& (!supportedKeys || supportedKeys.has(normalizedSubgroupBy) || isTableFilePropertyColumnKey(normalizedSubgroupBy))
 		? normalizedSubgroupBy
 		: null;
 	draft.subgroupOrder = draft.subgroupBy ? normalizeTablePresetSortDirection(draft.subgroupOrder) : 'asc';
@@ -551,7 +557,7 @@ export function replaceTablePresetSortRules(
 		}))
 		.filter(rule => {
 			if (!rule.key || seen.has(rule.key)) return false;
-			if (supportedKeys && !supportedKeys.has(rule.key)) return false;
+			if (supportedKeys && !supportedKeys.has(rule.key) && !isTableFilePropertyColumnKey(rule.key)) return false;
 			seen.add(rule.key);
 			return true;
 		});
@@ -565,7 +571,9 @@ export function setTablePresetSummary(
 	supportedKeys?: ReadonlySet<string>,
 ): TablePreset {
 	const normalizedKey = key.trim();
-	if (!normalizedKey || (supportedKeys && !supportedKeys.has(normalizedKey))) return cloneTablePreset(preset);
+	if (!normalizedKey || (supportedKeys && !supportedKeys.has(normalizedKey) && !isTableFilePropertyColumnKey(normalizedKey))) {
+		return cloneTablePreset(preset);
+	}
 	const draft = cloneTablePreset(preset);
 	const existing = draft.summaries.find(summary => summary.key === normalizedKey);
 	if (existing) {
@@ -608,17 +616,21 @@ export function normalizeTableColumnWidth(widthPx: number): number {
 	return Math.max(TABLE_COLUMN_MIN_WIDTH, Math.min(TABLE_COLUMN_MAX_WIDTH, Math.round(widthPx)));
 }
 
-function createTableColumn(key: string, settings?: TableColumnDefaultSettings): TableColumn {
+function createTableColumn(
+	key: string,
+	settings?: TableColumnDefaultSettings,
+	fieldOverride?: TableTaskField | null,
+): TableColumn {
 	const column = createDefaultTableColumn(key);
-	const field = settings ? getTableTaskField(key, settings) : null;
-	if (field?.group !== 'custom') return column;
+	const field = fieldOverride ?? (settings ? getTableTaskField(key, settings) : null);
+	if (field?.group !== 'custom' && field?.group !== 'fileProperty') return column;
 	const align = getDefaultCustomTableColumnAlignment(field.type);
 	if (align === 'left') {
 		delete column.align;
 	} else {
 		column.align = align;
 	}
-	const widthPx = getDefaultCustomTableColumnWidth(field.type);
+	const widthPx = getDefaultCustomTableColumnWidth(field.type, field.group === 'fileProperty');
 	if (widthPx !== null) {
 		column.widthPx = widthPx;
 	}
@@ -631,7 +643,9 @@ function getDefaultCustomTableColumnAlignment(type: FilterFieldType): TableColum
 	return 'left';
 }
 
-function getDefaultCustomTableColumnWidth(type: FilterFieldType): number | null {
+function getDefaultCustomTableColumnWidth(type: FilterFieldType, fileProperty: boolean): number | null {
+	if (fileProperty && type === 'number') return 120;
+	if (fileProperty && type === 'checkbox') return 96;
 	if (type === 'date') return 160;
 	if (type === 'datetime') return 180;
 	return null;

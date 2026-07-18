@@ -14,7 +14,6 @@ import {
 import { IndexedTask } from '../types/fields';
 import { KeyMapping } from '../types/settings';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
-import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { ConfirmActionModal } from './confirm-action-modal';
 import { EmbeddedMarkdownSourceEditor } from './embedded-markdown-source-editor';
 import { createFloatingPanel, type FloatingPanelCloseReason } from './field-pickers/common';
@@ -931,7 +930,6 @@ function setPlainCheckboxButtonIconAndLabel(button: HTMLButtonElement, icon: str
 	button.empty();
 	setIcon(button, icon);
 	setAccessibleLabelWithoutTooltip(button, label);
-	bindOperonHoverTooltip(button, { content: label, taskColor: null });
 }
 
 function stopPlainCheckboxControlEvent(event: Event): void {

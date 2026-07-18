@@ -39,7 +39,7 @@ export function setAccessibleLabelWithoutTooltip(target: HTMLElement, label: str
 		labelEl = target.ownerDocument.getElementById(existingLabelId);
 	}
 	if (!labelEl) {
-		labelEl = target.ownerDocument.createElement('span');
+		labelEl = target.ownerDocument.win.createSpan();
 		labelEl.dataset.operonAccessibleLabel = 'true';
 		labelEl.className = 'operon-sr-only';
 		if (canHostLabel) {

@@ -59,6 +59,8 @@ import {
 import { isSpecialDynamicFilterSet } from '../core/dynamic-file-task-filter';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
+import { getTableFilePropertyIndex } from './table/table-file-property';
+import { getFilterGroupDisplayLabel } from './filter-group-label';
 
 function generateFilterSetId(): string {
     return 'fs_' + Math.random().toString(36).slice(2, 9);
@@ -285,15 +287,22 @@ export function renderFilterSurface(
         deps.settings.filterTaskShowSubtaskAction,
         deps.settings.filterTaskShowPlainCheckboxAction,
     ]);
-    const dynamicRootTaskId = options.dynamicRootTaskId?.trim() ?? '';
-    const requestedSubtaskSorts = options.subtaskSorts ?? getFilterSortSpecs(filterSet);
-    const subtaskSorts = requestedSubtaskSorts.length > 0 ? requestedSubtaskSorts : undefined;
-    const renderSignature = [
+	const dynamicRootTaskId = options.dynamicRootTaskId?.trim() ?? '';
+	const requestedSubtaskSorts = options.subtaskSorts ?? getFilterSortSpecs(filterSet);
+	const subtaskSorts = requestedSubtaskSorts.length > 0 ? requestedSubtaskSorts : undefined;
+	const allTasks = deps.indexer.getAllTasks();
+	const filePropertyContext = getTableFilePropertyIndex(deps.app).getSnapshot(
+		allTasks,
+		deps.indexer.getGeneration(),
+		{ keyMappings: deps.getSettings().keyMappings },
+	);
+	const renderSignature = [
         deps.indexer.getGeneration(),
         deps.pinnedCache?.getGeneration() ?? 0,
         deps.getTrackingSignature?.() ?? '',
         deps.getProjectSerialSignature?.() ?? '',
-        deps.getRepeatSkipSignature?.() ?? '',
+		deps.getRepeatSkipSignature?.() ?? '',
+		filePropertyContext.signature,
         filterSet.id,
         instance.searchQuery.trim().toLocaleLowerCase(),
         JSON.stringify(filterSet),
@@ -364,13 +373,13 @@ export function renderFilterSurface(
     if (!embedShowSubtasks && options.preserveManualSubtaskExpansion !== true) {
         instance.expandedTaskIds.clear();
     }
-    const allTasks = deps.indexer.getAllTasks();
-    const priorities = deps.getPriorities();
+	const priorities = deps.getPriorities();
     const pipelines = deps.getPipelines();
     const filterEvaluationOptions = {
-        projectSerialScopes: deps.getSettings().projectSerialScopes,
-        projectSerialScopeTasks: allTasks,
-    };
+		projectSerialScopes: deps.getSettings().projectSerialScopes,
+		projectSerialScopeTasks: allTasks,
+		filePropertyContext,
+	};
     const subtaskSortContext = prepareTaskSortContext(
         subtaskSorts ?? [{ field: 'priority', order: 'asc' }],
         {
@@ -381,6 +390,7 @@ export function renderFilterSurface(
                 embedSettings.projectSerialScopes,
                 allTasks,
             ),
+			filePropertyContext,
         },
     );
     const taskRowOptions = {
@@ -456,15 +466,22 @@ export function renderFilterSurface(
             }
 
             const visibleTaskLimit = Math.max(instance.visibleTaskLimit - dynamicRootCount, 0);
-            renderGroupedFilterTaskRows(
-                list,
-                getVisibleGroupedFilterResults(grouped, visibleTaskLimit),
-                callbacks,
-                instance,
-                taskRowOptions,
-                deps,
-            );
-            attachEmbedLazyLoadSentinel(instance, list, grouped.totalCount + dynamicRootCount, filterSet, deps, options);
+			if (grouped.groupingSuspended) {
+				for (const task of getVisibleFilterTasks(grouped.ungroupedTasks ?? [], visibleTaskLimit)) {
+					const bar = buildFilterTaskRowElement(task, callbacks, instance.expandedTaskIds, taskRowOptions, list);
+					list.appendChild(bar);
+				}
+			} else {
+				renderGroupedFilterTaskRows(
+					list,
+					getVisibleGroupedFilterResults(grouped, visibleTaskLimit),
+					callbacks,
+					instance,
+					taskRowOptions,
+					deps,
+				);
+			}
+			attachEmbedLazyLoadSentinel(instance, list, (grouped.renderItemCount ?? grouped.totalCount) + dynamicRootCount, filterSet, deps, options);
             restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
             return;
         }
@@ -510,15 +527,22 @@ export function renderFilterSurface(
 
         const list = container.createDiv('operon-embed-list');
 
-        renderGroupedFilterTaskRows(
-            list,
-            getVisibleGroupedFilterResults(grouped, instance.visibleTaskLimit),
-            callbacks,
-            instance,
-            taskRowOptions,
-            deps,
-        );
-        attachEmbedLazyLoadSentinel(instance, list, grouped.totalCount, filterSet, deps, options);
+		if (grouped.groupingSuspended) {
+			for (const task of getVisibleFilterTasks(grouped.ungroupedTasks ?? [], instance.visibleTaskLimit)) {
+				const bar = buildFilterTaskRowElement(task, callbacks, instance.expandedTaskIds, taskRowOptions, list);
+				list.appendChild(bar);
+			}
+		} else {
+			renderGroupedFilterTaskRows(
+				list,
+				getVisibleGroupedFilterResults(grouped, instance.visibleTaskLimit),
+				callbacks,
+				instance,
+				taskRowOptions,
+				deps,
+			);
+		}
+		attachEmbedLazyLoadSentinel(instance, list, grouped.renderItemCount ?? grouped.totalCount, filterSet, deps, options);
         restoreEmbedSearchFocus(searchInput, restoreSearchFocus, searchSelectionStart, searchSelectionEnd);
     } else {
         // Flat
@@ -588,14 +612,14 @@ function renderGroupedFilterTaskRows(
     deps: EmbedFilterDeps,
 ): void {
     for (const group of grouped.groups) {
-        const label = group.label || t('filterSets', 'groupEmpty');
+		const label = getFilterGroupDisplayLabel(group.key, group.label);
         renderGroupHeader(list, label, group.count, deps, false);
 
         if (group.subgroups?.length) {
             for (const subgroup of group.subgroups) {
                 renderGroupHeader(
                     list,
-                    subgroup.label || t('filterSets', 'groupEmpty'),
+					getFilterGroupDisplayLabel(subgroup.key, subgroup.label),
                     subgroup.count,
                     deps,
                     true,
@@ -759,9 +783,14 @@ function renderHeader(
 	                    if (idx !== -1) deps.settings.filterSets[idx] = saved;
 	                    await deps.saveSettings();
 	                }
-	            }), {
-                indexer: deps.indexer,
-                getPipelines: deps.getPipelines,
+			}), {
+				indexer: deps.indexer,
+				getFilePropertySnapshot: tasks => getTableFilePropertyIndex(deps.app).getSnapshot(
+					tasks,
+					deps.indexer.getGeneration(),
+					{ keyMappings: deps.getSettings().keyMappings },
+				),
+				getPipelines: deps.getPipelines,
                 getPriorities: deps.getPriorities,
                 openEditor: deps.openTaskEditor,
                 cycleStatus: deps.cycleStatus,

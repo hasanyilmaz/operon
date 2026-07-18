@@ -86,6 +86,7 @@ import { renderTaskDescriptionWikilinks } from '../task-description-wikilinks';
 import { isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
 import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../../core/dom-compat';
 import { enginePerfLog, enginePerfNow } from '../../core/engine-perf';
+import type { FilePropertyQueryContext } from '../../core/raw-yaml-property';
 import {
 	applyOptimisticRenderPatch,
 	buildOptimisticStatusPatch,
@@ -108,6 +109,7 @@ import {
 import type { RelatedFilterablePreset, RelatedViewCreateTarget, RelatedViewOpenTarget } from '../../types/related-views';
 import { getCalendarPresetPickerLabel, showCalendarPresetPicker } from './calendar-preset-picker';
 import { getFavoriteCalendarPresets, isFavoriteCalendarPreset } from './calendar-preset-visibility';
+import { getTableFilePropertyIndex } from '../table/table-file-property';
 
 export const CALENDAR_VIEW_TYPE = 'operon-calendar-view';
 const CALENDAR_SIDEBAR_SECTION_ORDER = ['calendars', 'taskPool'] as const;
@@ -708,6 +710,7 @@ interface MobileTimeGridScrollPreserveOptions {
 }
 
 export interface CalendarViewCallbacks {
+	getFilePropertyContext?: () => FilePropertyQueryContext;
 	getExternalCalendarItems?: (rangeStart: string, rangeEnd: string, presetId?: string, showExternalCalendarsOverride?: boolean) => CalendarItem[];
 	getTrackedSessions?: (rangeStart: string, rangeEnd: string) => TrackerSession[];
 	getActiveTrackerState?: () => ActiveTrackerState | null;
@@ -748,11 +751,19 @@ export interface CalendarViewCallbacks {
 	getRepeatSeriesRevision?: () => number;
 }
 
+const EMPTY_CALENDAR_FILE_PROPERTY_CONTEXT: FilePropertyQueryContext = Object.freeze({
+	signature: 'file-properties-unavailable',
+	fields: Object.freeze([]),
+	getCell: () => ({ present: false, rawValue: undefined, normalizedValue: '' }),
+	getCandidates: () => Object.freeze([]),
+});
+
 export interface CalendarRenderContentSnapshot {
 	renderPresetKey: string;
 	todayKey: string;
 	surfaceType: string;
 	repeatSeriesRevision: number;
+	filePropertySignature: string;
 	scopedTasks: readonly IndexedTask[];
 	optimisticPatchCount: number;
 }
@@ -782,6 +793,7 @@ export function shouldSkipCalendarPassiveRender(
 	if (previous.todayKey !== next.todayKey) return false;
 	// NaN (revision source unavailable) never equals itself, disabling skips.
 	if (previous.repeatSeriesRevision !== next.repeatSeriesRevision) return false;
+	if (previous.filePropertySignature !== next.filePropertySignature) return false;
 	if (previous.scopedTasks.length !== next.scopedTasks.length) return false;
 	for (let index = 0; index < next.scopedTasks.length; index++) {
 		if (previous.scopedTasks[index] !== next.scopedTasks[index]) return false;
@@ -1068,6 +1080,7 @@ export class CalendarView extends ItemView {
 		const context = this.resolveCalendarRenderContext(this.contentEl);
 		if (!context.preset) return null;
 		const activeFilter = this.resolveCalendarPresetFilter(context.preset, context.settings);
+		const filePropertyContext = this.getFilePropertyContext(context.settings);
 		const scopedTasks = filterTasksForCalendar(
 			activeFilter,
 			this.getOptimisticCalendarTasksForRender(),
@@ -1076,21 +1089,29 @@ export class CalendarView extends ItemView {
 			{
 				projectSerialScopes: context.settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
+				filePropertyContext,
 			},
 		);
-		return this.composeCalendarRenderContentSnapshot(context.renderPresetKey, context.preset.surfaceType, scopedTasks);
+		return this.composeCalendarRenderContentSnapshot(
+			context.renderPresetKey,
+			context.preset.surfaceType,
+			scopedTasks,
+			filePropertyContext.signature,
+		);
 	}
 
 	private composeCalendarRenderContentSnapshot(
 		renderPresetKey: string,
 		surfaceType: string,
 		scopedTasks: readonly IndexedTask[],
+		filePropertySignature: string,
 	): CalendarRenderContentSnapshot {
 		return {
 			renderPresetKey,
 			todayKey: localToday(),
 			surfaceType,
 			repeatSeriesRevision: this.callbacks.getRepeatSeriesRevision?.() ?? Number.NaN,
+			filePropertySignature,
 			scopedTasks,
 			optimisticPatchCount: this.optimisticTaskPatches.size,
 		};
@@ -1431,6 +1452,7 @@ export class CalendarView extends ItemView {
 				{
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
+					filePropertyContext: this.getFilePropertyContext(settings),
 				},
 			);
 			const queryAnchorDate = preset.surfaceType === 'multiWeek'
@@ -1527,6 +1549,7 @@ export class CalendarView extends ItemView {
 					{
 						projectSerialScopes: settings.projectSerialScopes,
 						projectSerialScopeTasks: this.indexer.getAllTasks(),
+						filePropertyContext: this.getFilePropertyContext(settings),
 					},
 				);
 				if (scoped.length === 0) return [];
@@ -1804,6 +1827,7 @@ export class CalendarView extends ItemView {
 		}
 		this.lastRenderPresetKey = renderPresetKey;
 		const renderTasks = this.getOptimisticCalendarTasksForRender();
+		const filePropertyContext = this.getFilePropertyContext(settings);
 		const scopedTasks = filterTasksForCalendar(
 			activeFilter,
 			renderTasks,
@@ -1812,12 +1836,14 @@ export class CalendarView extends ItemView {
 			{
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
+				filePropertyContext,
 			},
 		);
 		this.lastRenderContentSnapshot = this.composeCalendarRenderContentSnapshot(
 			renderPresetKey,
 			preset.surfaceType,
 			scopedTasks,
+			filePropertyContext.signature,
 		);
 		const queryPreset = useMobileCalendar
 			? this.buildMobileCalendarQueryPreset(preset, mobileViewMode, settings)
@@ -2067,6 +2093,17 @@ export class CalendarView extends ItemView {
 		return raw ? stripFilterViewOnlyOptions(raw) : null;
 	}
 
+	private getFilePropertyContext(settings: OperonSettings) {
+		const provided = this.callbacks?.getFilePropertyContext?.();
+		if (provided) return provided;
+		if (!this.app || typeof this.app !== 'object') return EMPTY_CALENDAR_FILE_PROPERTY_CONTEXT;
+		return getTableFilePropertyIndex(this.app).getSnapshot(
+			this.indexer.getAllTasks(),
+			this.indexer.getGeneration(),
+			{ keyMappings: settings.keyMappings },
+		);
+	}
+
 	private getCalendarSidebarTaskPoolSourceTasks(
 		tasks: IndexedTask[],
 		preset: CalendarRenderPreset | null | undefined,
@@ -2081,6 +2118,7 @@ export class CalendarView extends ItemView {
 			{
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
+				filePropertyContext: this.getFilePropertyContext(settings),
 			},
 		);
 	}

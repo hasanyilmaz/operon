@@ -9,7 +9,7 @@ import {
 	evaluateFilterSet,
 	evaluateFilterSetGrouped,
 	getFilterSortSpecs,
-	getOperatorsForType,
+	getOperatorsForField,
 	NO_VALUE_OPERATORS,
 	NUMERIC_INPUT_DATE_OPERATORS,
 	prepareTaskSortContext,
@@ -52,6 +52,14 @@ import { isPresetFavorite } from '../core/preset-favorites';
 import { createPresetFavoriteButton } from './preset-favorite-button';
 import { runSettingsAsync } from './settings/async-settings-action';
 import { openSettingsMultiOptionPickerModal, openSettingsOptionPickerModal } from './settings/settings-option-picker-modal';
+import {
+	decodeFilePropertyColumnKey,
+	isFilePropertyColumnKey,
+} from '../core/raw-yaml-property';
+import { parseLocalTimestamp } from '../core/local-time';
+import type { IndexedTask } from '../types/fields';
+import type { TableFilePropertyField, TableFilePropertySnapshot } from './table/table-file-property';
+import { getFilterGroupDisplayLabel } from './filter-group-label';
 
 function generateConditionId(): string {
 	return 'cond_' + Math.random().toString(36).slice(2, 10);
@@ -60,6 +68,8 @@ function generateConditionId(): string {
 function generateGroupId(): string {
 	return 'grp_' + Math.random().toString(36).slice(2, 10);
 }
+
+let filterValueCandidateListInstanceId = 0;
 
 export function bindSettingsModalPickerTrigger(element: HTMLElement, openPicker: () => void): void {
 	element.addEventListener('pointerdown', event => {
@@ -109,6 +119,7 @@ type FilterFieldPickerGroup =
 	| 'scheduling'
 	| 'dependencies'
 	| 'custom'
+	| 'fileProperty'
 	| 'source'
 	| 'special';
 
@@ -120,6 +131,11 @@ interface FilterFieldPickerOption extends SearchableFieldPickerOption {
 	group: FilterFieldPickerGroup | null;
 	groupLabel: string | null;
 	groupOrder: number;
+	searchText?: string;
+	propertyName?: string;
+	sourceType?: TableFilePropertyField['sourceType'];
+	unavailable?: boolean;
+	typeDriftFrom?: FilterFieldType;
 }
 
 const FILTER_FIELD_GROUP_ORDER: FilterFieldPickerGroup[] = [
@@ -128,6 +144,7 @@ const FILTER_FIELD_GROUP_ORDER: FilterFieldPickerGroup[] = [
 	'scheduling',
 	'dependencies',
 	'custom',
+	'fileProperty',
 	'source',
 	'special',
 ];
@@ -218,6 +235,7 @@ function getFilterFieldTypeIcon(type: FilterFieldType): string {
 
 export interface FilterModalEvalDeps {
 	indexer: OperonIndexer;
+	getFilePropertySnapshot?: (tasks: readonly IndexedTask[]) => TableFilePropertySnapshot | null;
 	getPipelines: () => Pipeline[];
 	getPriorities: () => PriorityDefinition[];
 	openEditor: (operonId: string) => void;
@@ -246,7 +264,9 @@ export interface FilterSetModalOptions {
 	showCountBadge?: boolean;
 	quickActions?: FilterSetModalQuickActions;
 	getSettings?: () => OperonSettings;
-	getProjectSerialScopeTasks?: () => readonly import('../types/fields').IndexedTask[];
+	getProjectSerialScopeTasks?: () => readonly IndexedTask[];
+	getFilePropertySnapshot?: (tasks: readonly IndexedTask[]) => TableFilePropertySnapshot | null;
+	getFilePropertyDiscoveryTasks?: () => readonly IndexedTask[];
 	onToggleFavorite?: (filterSetId: string) => Promise<void>;
 	pickerPresentation?: 'floating' | 'modal';
 }
@@ -282,11 +302,11 @@ export function refreshFilterPreviewModals(): void {
 
 export function refreshFilterSetModals(): void {
 	for (const modal of activeFilterSetModals) {
-		if (!modal.modalEl.isConnected) {
+		if (!modal.hasConnectedSurface()) {
 			activeFilterSetModals.delete(modal);
 			continue;
 		}
-		modal.refreshPinnedState();
+		modal.refreshExternalState();
 	}
 }
 
@@ -302,6 +322,8 @@ export class FilterSetModal extends Modal {
 		private bodyDropdowns: HTMLElement[] = [];
 		private inlineEditor: { container: HTMLElement; options: FilterSetInlineEditorOptions } | null = null;
 		private collapsedFilterGroupIds = new Set<string>();
+		private filePropertySnapshot: TableFilePropertySnapshot | null = null;
+		private invalidRawConditionIds = new Set<string>();
 
 	constructor(
 		app: App,
@@ -336,6 +358,7 @@ export class FilterSetModal extends Modal {
 
 	renderInlineConditionEditor(container: HTMLElement, options: FilterSetInlineEditorOptions): void {
 		this.inlineEditor = { container, options };
+		activeFilterSetModals.add(this);
 		this.renderInlineConditionEditorSurface();
 	}
 
@@ -346,6 +369,11 @@ export class FilterSetModal extends Modal {
 		closeFloatingPanelsForRoot(this.inlineEditor.container);
 		this.cleanupBodyDropdowns();
 		this.inlineEditor = null;
+		activeFilterSetModals.delete(this);
+	}
+
+	hasConnectedSurface(): boolean {
+		return this.inlineEditor?.container.isConnected ?? this.modalEl.isConnected;
 	}
 
 	isInlineEditorTarget(target: EventTarget | null): boolean {
@@ -380,6 +408,7 @@ export class FilterSetModal extends Modal {
 		contentEl.createEl('h3', { cls: 'operon-filter-modal-title', text: this.options.title ?? t('filterSets', 'editFilter') });
 
 		this.ensureModernSchema();
+		this.filePropertySnapshot = this.resolveFilePropertySnapshot();
 		this.renderNameField(contentEl);
 		this.renderConditions(contentEl);
 		this.renderSort(contentEl);
@@ -400,6 +429,7 @@ export class FilterSetModal extends Modal {
 		container.addClass('operon-filter-inline-editor');
 
 		this.ensureModernSchema();
+		this.filePropertySnapshot = this.resolveFilePropertySnapshot();
 		this.renderNameField(container);
 		this.renderConditions(container);
 		this.renderButtons(container);
@@ -550,6 +580,7 @@ export class FilterSetModal extends Modal {
 			},
 		});
 		const labelEl = button.createSpan('operon-field-picker-trigger-label');
+		const secondaryEl = button.createSpan('operon-field-picker-trigger-secondary');
 		const iconEl = button.createSpan('operon-field-picker-trigger-icon');
 		setIcon(iconEl, 'chevron-down');
 		let currentValue = value;
@@ -559,25 +590,35 @@ export class FilterSetModal extends Modal {
 			const selected = fields.find(field => field.field === nextValue);
 			const label = selected?.label ?? options.placeholder ?? nextValue;
 			labelEl.textContent = label;
+			secondaryEl.textContent = selected?.secondaryLabel ?? '';
+			secondaryEl.toggleClass('is-hidden', !selected?.secondaryLabel);
 			button.dataset.value = nextValue;
-			const detail = selected && selected.label !== selected.field
-				? `${selected.label} (${selected.field})`
-				: label;
-			setAccessibleLabelWithoutTooltip(button, `${options.label}: ${label}`);
+			const detail = selected?.secondaryLabel
+				? `${label} — ${selected.secondaryLabel}`
+				: selected && selected.label !== selected.field
+					? `${selected.label} (${selected.field})`
+					: label;
+			setAccessibleLabelWithoutTooltip(button, `${options.label}: ${detail}`);
 			bindOperonHoverTooltip(button, { content: detail, taskColor: null });
 		};
 		updateButton(value);
 
 		const openPicker = (): void => {
 			if (button.disabled) return;
+			const pickerFields = this.getPickerFieldOptions(fields, currentValue);
 			if (this.options.pickerPresentation === 'modal') {
 				openSettingsOptionPickerModal(this.app, {
 					title: options.label,
 					value: currentValue,
-					options: fields.map(field => ({ ...field, value: field.field })),
+					options: pickerFields.map(field => ({
+						...field,
+						value: field.field,
+						description: field.secondaryLabel,
+					})),
 					placeholder: t('filterSets', 'conditionFieldSearchPlaceholder'),
 					ariaLabel: options.label,
 					noMatchesText: t('filterSets', 'conditionFieldNoMatches'),
+					getSearchText: option => option.searchText ?? `${option.label} ${option.description ?? ''} ${option.value}`,
 					onSelect: option => {
 						onChange(option.field);
 						updateButton(option.field);
@@ -589,10 +630,11 @@ export class FilterSetModal extends Modal {
 			showSearchableFieldPicker(button, {
 				value: currentValue,
 				getValue: () => currentValue,
-				fields,
+				fields: pickerFields,
 				placeholder: t('filterSets', 'conditionFieldSearchPlaceholder'),
 				ariaLabel: options.label,
 				noMatchesText: t('filterSets', 'conditionFieldNoMatches'),
+				getSearchText: field => field.searchText ?? `${field.label} ${field.secondaryLabel ?? ''} ${field.field}`,
 				onSelect: option => {
 					onChange(option.field);
 					updateButton(option.field);
@@ -636,6 +678,166 @@ export class FilterSetModal extends Modal {
 		this.bodyDropdowns = [];
 	}
 
+	private resolveFilePropertySnapshot(): TableFilePropertySnapshot | null {
+		const provider = this.evalDeps?.getFilePropertySnapshot ?? this.options.getFilePropertySnapshot;
+		if (!provider) return null;
+		const tasks = this.options.getFilePropertyDiscoveryTasks?.()
+			?? this.evalDeps?.indexer.getAllTasks()
+			?? this.options.getProjectSerialScopeTasks?.()
+			?? [];
+		return provider(tasks);
+	}
+
+	private getReferencedFilePropertyTypes(): Map<string, Set<FilterFieldType>> {
+		const referenced = new Map<string, Set<FilterFieldType>>();
+		const add = (field: string, type?: FilterFieldType): void => {
+			if (!isFilePropertyColumnKey(field)) return;
+			const types = referenced.get(field) ?? new Set<FilterFieldType>();
+			if (type) types.add(type);
+			referenced.set(field, types);
+		};
+		const visit = (node: FilterNode): void => {
+			if (isFilterGroupNode(node)) {
+				for (const child of node.children) visit(child);
+				return;
+			}
+			add(node.field, node.fieldType);
+		};
+		visit(this.filterSet.rootGroup);
+		for (const sort of this.filterSet.sorts) add(sort.field);
+		if (this.filterSet.groupBy) add(this.filterSet.groupBy);
+		if (this.filterSet.subgroupBy) add(this.filterSet.subgroupBy);
+		return referenced;
+	}
+
+	private getFilePropertyFieldOptions(): FilterFieldPickerOption[] {
+		const referenced = this.getReferencedFilePropertyTypes();
+		const liveFields = this.filePropertySnapshot?.fields ?? [];
+		const liveKeys = new Set(liveFields.map(field => field.key));
+		const options = liveFields.map(field => {
+			const referencedTypes = [...(referenced.get(field.key) ?? [])];
+			const typeDriftFrom = referencedTypes.find(type => type !== field.type);
+			return this.buildFilePropertyFieldOption(field, typeDriftFrom);
+		});
+
+		for (const [key, types] of referenced) {
+			if (liveKeys.has(key)) continue;
+			const propertyName = decodeFilePropertyColumnKey(key);
+			if (!propertyName) continue;
+			const savedType = [...types][0] ?? 'text';
+			options.push(this.buildUnavailableFilePropertyFieldOption(key, propertyName, savedType));
+		}
+		return options;
+	}
+
+	private buildFilePropertyFieldOption(
+		field: TableFilePropertyField,
+		typeDriftFrom?: FilterFieldType,
+	): FilterFieldPickerOption {
+		const typeLabel = this.getFilePropertyTypeLabel(field.type);
+		const secondaryLabel = typeDriftFrom
+			? t('filterSets', 'filePropertyTypeChanged', {
+				type: typeLabel,
+				savedType: this.getFilePropertyTypeLabel(typeDriftFrom),
+			})
+			: t('filterSets', 'filePropertySourceType', { type: typeLabel });
+		return {
+			field: field.key,
+			label: field.propertyName,
+			secondaryLabel,
+			type: field.type,
+			icon: field.icon,
+			group: 'fileProperty',
+			groupLabel: getFilterFieldGroupLabel('fileProperty'),
+			groupOrder: getFilterFieldGroupOrder('fileProperty'),
+			propertyName: field.propertyName,
+			sourceType: field.sourceType,
+			searchText: [
+				field.propertyName,
+				field.key,
+				`note.${field.propertyName}`,
+				field.type,
+				field.sourceType,
+				...field.aliases,
+			].join(' '),
+			...(typeDriftFrom ? { typeDriftFrom } : {}),
+		};
+	}
+
+	private buildUnavailableFilePropertyFieldOption(
+		key: string,
+		propertyName: string,
+		type: FilterFieldType,
+	): FilterFieldPickerOption {
+		const typeLabel = this.getFilePropertyTypeLabel(type);
+		return {
+			field: key,
+			label: propertyName,
+			secondaryLabel: t('filterSets', 'filePropertyUnavailable', { type: typeLabel }),
+			type,
+			icon: getFilterFieldTypeIcon(type),
+			group: 'fileProperty',
+			groupLabel: getFilterFieldGroupLabel('fileProperty'),
+			groupOrder: getFilterFieldGroupOrder('fileProperty'),
+			propertyName,
+			sourceType: 'unknown',
+			searchText: `${propertyName} ${key} note.${propertyName} ${typeLabel}`,
+			unavailable: true,
+		};
+	}
+
+	private getFilePropertyTypeLabel(type: FilterFieldType): string {
+		switch (type) {
+			case 'text':
+				return t('filterSets', 'filePropertyType_text');
+			case 'list':
+				return t('filterSets', 'filePropertyType_list');
+			case 'number':
+				return t('filterSets', 'filePropertyType_number');
+			case 'checkbox':
+				return t('filterSets', 'filePropertyType_checkbox');
+			case 'date':
+				return t('filterSets', 'filePropertyType_date');
+			case 'datetime':
+				return t('filterSets', 'filePropertyType_datetime');
+			default:
+				return type;
+		}
+	}
+
+	private getFilePropertyCandidates(field: string): readonly string[] {
+		if (!isFilePropertyColumnKey(field)) return [];
+		return (this.filePropertySnapshot?.getCandidates(field) ?? []).slice(0, 500);
+	}
+
+	private attachFilePropertyCandidateList(
+		input: HTMLInputElement,
+		container: HTMLElement,
+		field: string,
+	): void {
+		const candidates = this.getFilePropertyCandidates(field);
+		if (candidates.length === 0) return;
+		filterValueCandidateListInstanceId += 1;
+		const listId = `operon-filter-file-property-candidates-${filterValueCandidateListInstanceId}`;
+		const list = createOwnerElement(input, 'datalist');
+		list.id = listId;
+		for (const candidate of candidates) {
+			const option = createOwnerElement(list, 'option');
+			option.value = candidate;
+			list.appendChild(option);
+		}
+		container.appendChild(list);
+		input.setAttribute('list', listId);
+		input.setAttribute('autocomplete', 'off');
+	}
+
+	private getPickerFieldOptions(
+		fields: readonly FilterFieldPickerOption[],
+		currentValue: string,
+	): FilterFieldPickerOption[] {
+		return fields.filter(field => !field.unavailable || field.field === currentValue);
+	}
+
 	private getFieldOptions(
 		includeConditionOnly = false,
 		includeHappensOn = false,
@@ -671,8 +873,9 @@ export class FilterSetModal extends Modal {
 			'custom',
 			getConfiguredKeyMappingIcon(option.field, this.keyMappings) || getFilterFieldTypeIcon(option.type),
 		));
+		const filePropertyFields = this.getFilePropertyFieldOptions();
 
-		return [...pseudoFields, ...builtInMappings, ...customMappings].sort(compareFilterFieldPickerOptions);
+		return [...pseudoFields, ...builtInMappings, ...customMappings, ...filePropertyFields].sort(compareFilterFieldPickerOptions);
 	}
 
 	private getProjectSerialScopeOptions(): SearchableMultiOption[] {
@@ -1214,8 +1417,10 @@ export class FilterSetModal extends Modal {
 		fieldButton.setAttribute('aria-haspopup', 'listbox');
 		fieldButton.setAttribute('aria-expanded', 'false');
 		const fieldButtonLabel = fieldButton.createSpan('operon-field-picker-trigger-label operon-condition-field-picker-trigger-label');
+		const fieldButtonSecondary = fieldButton.createSpan('operon-field-picker-trigger-secondary');
 		const fieldButtonIcon = fieldButton.createSpan('operon-field-picker-trigger-icon operon-condition-field-picker-trigger-icon');
 		setIcon(fieldButtonIcon, 'chevron-down');
+		const fieldStatus = fieldWrap.createDiv('operon-filter-file-property-status');
 
 		const getSelectedFieldOption = () => fieldOptions.find(optionDef => optionDef.field === cond.field);
 		const getSelectedFieldLabel = () => getSelectedFieldOption()?.label ?? cond.field;
@@ -1223,24 +1428,47 @@ export class FilterSetModal extends Modal {
 			const selectedFieldOption = getSelectedFieldOption();
 			const label = selectedFieldOption?.label ?? cond.field;
 			fieldButtonLabel.textContent = label;
+			fieldButtonSecondary.textContent = selectedFieldOption?.secondaryLabel ?? '';
+			fieldButtonSecondary.toggleClass('is-hidden', !selectedFieldOption?.secondaryLabel);
 			fieldButton.dataset.value = selectedFieldOption?.field ?? cond.field;
-			const detail = selectedFieldOption && selectedFieldOption.label !== selectedFieldOption.field
-				? `${selectedFieldOption.label} (${selectedFieldOption.field})`
-				: label;
-			setAccessibleLabelWithoutTooltip(fieldButton, `${t('filterSets', 'conditionFieldPickerLabel')}: ${label}`);
+			const detail = selectedFieldOption?.secondaryLabel
+				? `${label} — ${selectedFieldOption.secondaryLabel}`
+				: selectedFieldOption && selectedFieldOption.label !== selectedFieldOption.field
+					? `${selectedFieldOption.label} (${selectedFieldOption.field})`
+					: label;
+			setAccessibleLabelWithoutTooltip(fieldButton, `${t('filterSets', 'conditionFieldPickerLabel')}: ${detail}`);
 			bindOperonHoverTooltip(fieldButton, { content: detail, taskColor: null });
+			fieldStatus.empty();
+			fieldStatus.removeClass('is-unavailable', 'is-type-drift');
+			if (selectedFieldOption?.unavailable) {
+				fieldStatus.addClass('is-unavailable');
+				fieldStatus.setText(t('filterSets', 'filePropertyUnavailableShort'));
+			} else if (selectedFieldOption && cond.fieldType !== selectedFieldOption.type) {
+				fieldStatus.addClass('is-type-drift');
+				fieldStatus.setText(t('filterSets', 'filePropertyTypeDriftShort', {
+					savedType: this.getFilePropertyTypeLabel(cond.fieldType),
+					type: this.getFilePropertyTypeLabel(selectedFieldOption.type),
+				}));
+			}
+			fieldStatus.toggleClass('is-hidden', !fieldStatus.textContent);
 		};
 		updateFieldButton();
 
 		const openConditionFieldPicker = (): void => {
+			const pickerFields = this.getPickerFieldOptions(fieldOptions, cond.field);
 			if (this.options.pickerPresentation === 'modal') {
 				openSettingsOptionPickerModal(this.app, {
 					title: t('filterSets', 'conditionFieldPickerLabel'),
 					value: cond.field,
-					options: fieldOptions.map(option => ({ ...option, value: option.field })),
+					options: pickerFields.map(option => ({
+						...option,
+						value: option.field,
+						description: option.secondaryLabel,
+					})),
 					placeholder: t('filterSets', 'conditionFieldSearchPlaceholder'),
 					ariaLabel: t('filterSets', 'conditionFieldPickerLabel'),
 					noMatchesText: t('filterSets', 'conditionFieldNoMatches'),
+					getSearchText: option => option.searchText ?? `${option.label} ${option.description ?? ''} ${option.value}`,
 					onSelect: option => {
 						cond.field = option.field;
 						cond.fieldType = option.type;
@@ -1257,7 +1485,7 @@ export class FilterSetModal extends Modal {
 			fieldButton.setAttribute('aria-expanded', 'true');
 			showFilterConditionPicker(fieldButton, {
 				value: cond.field,
-				fields: fieldOptions,
+				fields: pickerFields,
 				onSelect: (option) => {
 					cond.field = option.field;
 					cond.fieldType = option.type;
@@ -1296,7 +1524,9 @@ export class FilterSetModal extends Modal {
 
 		const buildValueInput = () => {
 			valueWrapper.empty();
+			this.invalidRawConditionIds.delete(cond.id);
 			const isProjectSerialScope = cond.fieldType === 'projectSerialScope';
+			const isRawFileProperty = isFilePropertyColumnKey(cond.field);
 			const usesProjectSerialScopePicker = isProjectSerialScope && (cond.operator === 'isAnyOf' || cond.operator === 'isNoneOf');
 			if (usesProjectSerialScopePicker) {
 				const scopeOptions = this.getProjectSerialScopeOptions();
@@ -1351,16 +1581,51 @@ export class FilterSetModal extends Modal {
 
 			// Determine input type: numeric date operators override date→number
 			const isNumericDateOp = NUMERIC_INPUT_DATE_OPERATORS.has(cond.operator);
+			const isListCountOp = isRawFileProperty
+				&& cond.fieldType === 'list'
+				&& ['countIs', 'countNot', 'countLt', 'countGt'].includes(cond.operator);
 			const useDatePopover = cond.fieldType === 'date' && !isNumericDateOp;
 			const useDatetimePopover = cond.fieldType === 'datetime' && !isNumericDateOp;
 			const inputType =
-				isNumericDateOp ? 'number' :
+				isNumericDateOp || isListCountOp ? 'number' :
 					useDatePopover || useDatetimePopover ? 'text' :
 						cond.fieldType === 'number' ? 'number' : 'text';
 
 			const inp = valueWrapper.createEl('input');
 			inp.type = inputType;
 			inp.value = cond.value ?? '';
+			setAccessibleLabelWithoutTooltip(inp, `${getSelectedFieldLabel()} · ${this.getFilterOperatorLabel({ id: cond.operator, label: cond.operator })}`);
+			const validationError = isRawFileProperty
+				? valueWrapper.createDiv({
+					cls: 'operon-filter-value-error is-hidden',
+					text: t('filterSets', 'filePropertyInvalidConditionValue'),
+				})
+				: null;
+			if (validationError) validationError.id = `operon-filter-value-error-${cond.id}`;
+			const setRawValueValidity = (valid: boolean): void => {
+				inp.setAttribute('aria-invalid', valid ? 'false' : 'true');
+				validationError?.toggleClass('is-hidden', valid);
+				if (valid) {
+					this.invalidRawConditionIds.delete(cond.id);
+					inp.removeAttribute('aria-describedby');
+				} else {
+					this.invalidRawConditionIds.add(cond.id);
+					if (validationError) inp.setAttribute('aria-describedby', validationError.id);
+				}
+			};
+			if (isRawFileProperty) {
+				const initialValue = (cond.value ?? '').trim();
+				if (useDatePopover) {
+					setRawValueValidity(!initialValue || normalizeFilterDateInput(initialValue) !== null);
+				} else if (useDatetimePopover) {
+					setRawValueValidity(!initialValue || parseLocalTimestamp(initialValue) !== null);
+				} else if (cond.fieldType === 'number' || isListCountOp) {
+					const numericValue = Number(initialValue);
+					const valid = !initialValue || (Number.isFinite(numericValue)
+						&& (!isListCountOp || (Number.isInteger(numericValue) && numericValue >= 0)));
+					setRawValueValidity(valid);
+				}
+			}
 			if (useDatePopover) {
 				inp.placeholder = t('filterSets', 'datePlaceholder');
 				inp.inputMode = 'numeric';
@@ -1368,6 +1633,11 @@ export class FilterSetModal extends Modal {
 			}
 			if (useDatetimePopover) {
 				inp.addClass('operon-filter-datetime-popover-input');
+			}
+			if (isListCountOp) {
+				inp.min = '0';
+				inp.step = '1';
+				inp.inputMode = 'numeric';
 			}
 			if (cond.fieldType === 'projectTree') {
 				inp.placeholder = t('filterSets', 'projectTreePlaceholder');
@@ -1395,24 +1665,46 @@ export class FilterSetModal extends Modal {
 			}
 
 			inp.addClass('operon-filter-control');
+			if (isRawFileProperty && (cond.fieldType === 'text' || (cond.fieldType === 'list' && !isListCountOp))) {
+				this.attachFilePropertyCandidateList(inp, valueWrapper, cond.field);
+			}
 			if (useDatePopover) {
 				inp.addEventListener('focus', () => this.openDateConditionPopover(inp, cond));
 				inp.addEventListener('click', () => this.openDateConditionPopover(inp, cond));
 				inp.addEventListener('input', () => {
-					cond.value = normalizeFilterDateInput(inp.value) ?? undefined;
+					const raw = inp.value.trim();
+					const normalized = normalizeFilterDateInput(raw);
+					if (isRawFileProperty) setRawValueValidity(!raw || normalized !== null);
+					cond.value = normalized ?? undefined;
 					this.syncMirroredFilterFields();
+					this.refreshCountBadge?.();
 				});
 			} else if (useDatetimePopover) {
 				inp.addEventListener('focus', () => this.openDatetimeConditionPopover(inp, cond));
 				inp.addEventListener('click', () => this.openDatetimeConditionPopover(inp, cond));
 				inp.addEventListener('input', () => {
-					cond.value = inp.value || undefined;
+					const value = inp.value.trim();
+					const valid = !isRawFileProperty || !value || parseLocalTimestamp(value) !== null;
+					setRawValueValidity(valid);
+					cond.value = valid && value ? value : undefined;
 					this.syncMirroredFilterFields();
+					this.refreshCountBadge?.();
+				});
+			} else if (isRawFileProperty && (cond.fieldType === 'number' || isListCountOp)) {
+				inp.addEventListener('input', () => {
+					const raw = inp.value.trim();
+					const numericValue = Number(raw);
+					const valid = !raw || (Number.isFinite(numericValue) && (!isListCountOp || (Number.isInteger(numericValue) && numericValue >= 0)));
+					setRawValueValidity(valid);
+					cond.value = valid && raw ? raw : undefined;
+					this.syncMirroredFilterFields();
+					this.refreshCountBadge?.();
 				});
 			} else {
 				inp.addEventListener('input', () => {
 					cond.value = inp.value || undefined;
 					this.syncMirroredFilterFields();
+					this.refreshCountBadge?.();
 				});
 			}
 		};
@@ -1432,13 +1724,17 @@ export class FilterSetModal extends Modal {
 		const updateValueInput = () => {
 			const needsValue = !NO_VALUE_OPERATORS.has(cond.operator);
 			valueWrapper.toggleClass('is-hidden', !needsValue);
-			if (needsValue) buildValueInput();
+			if (needsValue) {
+				buildValueInput();
+			} else {
+				this.invalidRawConditionIds.delete(cond.id);
+			}
 			syncCompactSelectWidths();
 		};
 
 		const rebuildOpSel = () => {
 			opSel.empty();
-			const ops = getOperatorsForType(cond.fieldType);
+			const ops = getOperatorsForField(cond.field, cond.fieldType);
 			for (const op of ops) {
 				opSel.createEl('option', { value: op.id, text: this.getFilterOperatorLabel(op) });
 			}
@@ -1461,6 +1757,7 @@ export class FilterSetModal extends Modal {
 		setIcon(delBtn, 'x');
 		bindOperonHoverTooltip(delBtn, { content: t('filterSets', 'deleteCondition'), taskColor: null });
 		delBtn.addEventListener('click', () => {
+			this.invalidRawConditionIds.delete(cond.id);
 			group.children.splice(index, 1);
 			this.syncMirroredFilterFields();
 			this.renderCurrentSurface();
@@ -1716,6 +2013,7 @@ export class FilterSetModal extends Modal {
 							{
 								projectSerialScopes: deps.getSettings().projectSerialScopes,
 								projectSerialScopeTasks: deps.indexer.getAllTasks(),
+								filePropertyContext: this.filePropertySnapshot ?? undefined,
 							},
 						).length
 						: 0;
@@ -1783,6 +2081,10 @@ export class FilterSetModal extends Modal {
 			const name = this.filterSet.name.trim();
 			if (!name) {
 				new Notice(t('filterSets', 'nameRequired'));
+				return;
+			}
+			if (this.invalidRawConditionIds.size > 0) {
+				new Notice(t('filterSets', 'filePropertyInvalidConditionValue'));
 				return;
 			}
 			this.syncMirroredFilterFields();
@@ -1905,6 +2207,16 @@ export class FilterSetModal extends Modal {
 	refreshPinnedState(): void {
 		this.refreshCountBadge?.();
 	}
+
+	refreshExternalState(): void {
+		const previousSignature = this.filePropertySnapshot?.signature ?? '';
+		const nextSignature = this.resolveFilePropertySnapshot()?.signature ?? '';
+		if (nextSignature !== previousSignature) {
+			this.renderCurrentSurface();
+			return;
+		}
+		this.refreshPinnedState();
+	}
 }
 
 /**
@@ -1933,11 +2245,14 @@ class FilterPreviewModal extends Modal {
 	}
 
 	refresh(): void {
+		const allTasks = this.deps.indexer.getAllTasks();
+		const filePropertySnapshot = this.deps.getFilePropertySnapshot?.(allTasks) ?? null;
 		const renderSignature = [
 			this.deps.indexer.getGeneration(),
 			this.deps.pinnedCache?.getGeneration() ?? 0,
 			this.deps.getTrackingSignature?.() ?? '',
 			this.deps.getProjectSerialSignature?.() ?? '',
+			filePropertySnapshot?.signature ?? '',
 			JSON.stringify(this.filterSet),
 			this.deps.getSettings().filterShowSubtasks ? '1' : '0',
 			String(this.deps.getSettings().filterSubtaskAutoExpandLimit),
@@ -1966,7 +2281,6 @@ class FilterPreviewModal extends Modal {
 		if (this.lastRenderSignature === renderSignature) return;
 		this.lastRenderSignature = renderSignature;
 
-		const allTasks = this.deps.indexer.getAllTasks();
 		const priorities = this.deps.getPriorities();
 		const pipelines = this.deps.getPipelines();
 		const settings = this.deps.getSettings();
@@ -1989,12 +2303,16 @@ class FilterPreviewModal extends Modal {
 		const filterEvaluationOptions = {
 			projectSerialScopes: settings.projectSerialScopes,
 			projectSerialScopeTasks: allTasks,
+			filePropertyContext: filePropertySnapshot ?? undefined,
 		};
-		const grouped = this.filterSet.groupBy
+		const groupedResult = this.filterSet.groupBy
 			? evaluateFilterSetGrouped(this.filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines, filterEvaluationOptions)
 			: null;
-		const tasks = grouped
-			? null
+		const grouped = groupedResult?.groupingSuspended ? null : groupedResult;
+		const tasks = groupedResult?.groupingSuspended
+			? groupedResult.ungroupedTasks ?? []
+			: grouped
+				? null
 			: evaluateFilterSet(this.filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines, filterEvaluationOptions);
 		const callbacks: FilterTaskRowCallbacks = {
 			app: this.app,
@@ -2057,6 +2375,7 @@ class FilterPreviewModal extends Modal {
 						settings.projectSerialScopes,
 						allTasks,
 					),
+					filePropertyContext: filePropertySnapshot,
 				},
 			),
 			workflowStatusIdentityIndex: buildWorkflowStatusIdentityIndex(pipelines),
@@ -2072,14 +2391,14 @@ class FilterPreviewModal extends Modal {
 		if (grouped) {
 			for (const group of grouped.groups) {
 				const gh = list.createDiv('operon-group-header');
-				gh.createSpan({ cls: 'operon-group-header-label', text: group.label || t('filterSets', 'groupEmpty') });
+				gh.createSpan({ cls: 'operon-group-header-label', text: getFilterGroupDisplayLabel(group.key, group.label) });
 				gh.createSpan({ cls: 'operon-group-header-count', text: String(group.count) });
 				if (group.subgroups?.length) {
 					for (const subgroup of group.subgroups) {
 						const subgroupHeader = list.createDiv('operon-group-header operon-subgroup-header');
 						subgroupHeader.createSpan({
 							cls: 'operon-group-header-label',
-							text: subgroup.label || t('filterSets', 'groupEmpty'),
+							text: getFilterGroupDisplayLabel(subgroup.key, subgroup.label),
 						});
 							subgroupHeader.createSpan({ cls: 'operon-group-header-count', text: String(subgroup.count) });
 							for (const task of subgroup.tasks) {

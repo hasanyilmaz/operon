@@ -1,6 +1,6 @@
 import {
 	FileTaskTemplateOption,
-	getBuiltinEmptyFileTaskTemplateDescription,
+	getFileTaskTemplateOptionSecondaryText,
 } from '../../core/file-task-templates';
 import { t } from '../../core/i18n';
 import { bindPickerListItemActivation, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
@@ -40,7 +40,7 @@ export function showFileTaskTemplatePicker(
 
 	const candidates = options.options.map(option => ({
 		option,
-		searchText: `${option.name} ${option.path ?? getBuiltinEmptyFileTaskTemplateDescription()}`.toLowerCase(),
+		searchText: `${option.name} ${getFileTaskTemplateOptionSecondaryText(option)}`.toLowerCase(),
 	}));
 	let matches = rankCandidates(candidates, '');
 	const selectedId = options.value?.trim() ?? '';
@@ -73,6 +73,10 @@ export function showFileTaskTemplatePicker(
 				cls: 'operon-file-template-picker-primary',
 				text: candidate.option.name,
 			});
+			button.createDiv({
+				cls: 'operon-file-task-template-picker-secondary',
+				text: getFileTaskTemplateOptionSecondaryText(candidate.option),
+			});
 
 			button.addEventListener('mousemove', () => {
 				if (activeIndex !== index) {
@@ -83,13 +87,13 @@ export function showFileTaskTemplatePicker(
 			bindPickerListItemActivation(button, () => selectTemplate(candidate.option), { stopPropagation: true });
 
 			list.appendChild(button);
-			}
+		}
 
-			const activeItem = list.children[activeIndex] as HTMLElement | undefined;
-			scrollChildIntoView(list, activeItem);
-			const activeOption = matches[activeIndex]?.option;
+		const activeItem = list.children[activeIndex] as HTMLElement | undefined;
+		scrollChildIntoView(list, activeItem);
+		const activeOption = matches[activeIndex]?.option;
 		infoValue.textContent = activeOption
-			? activeOption.path ?? getBuiltinEmptyFileTaskTemplateDescription()
+			? getFileTaskTemplateOptionSecondaryText(activeOption)
 			: '';
 		infoRow.show();
 	};
@@ -98,7 +102,7 @@ export function showFileTaskTemplatePicker(
 		matches = rankCandidates(candidates, query);
 		const selectedIndex = matches.findIndex(candidate => candidate.option.id === selectedId);
 		activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
-		render();
+	render();
 	};
 
 	input.addEventListener('input', () => updateMatches(input.value));

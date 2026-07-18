@@ -12,6 +12,7 @@ import { IndexedTask } from '../types/fields';
 import { TASK_STATS_CANONICAL_KEYS, TaskStatsCanonicalKey } from '../types/keys';
 
 type AggregateRefreshMode = 'full' | 'duration';
+const MAX_BOTTOM_UP_AGGREGATE_DEPTH = 100;
 
 interface AggregateRefreshOptions {
 	modifiedTimestamp?: string;
@@ -21,6 +22,21 @@ interface AggregateRefreshOptions {
 
 interface RefreshAffectedParentsOptions extends AggregateRefreshOptions {
 	forceDatetimeModifiedIds?: Set<string>;
+}
+
+export interface AggregateTaskMutation {
+	before: IndexedTask | null;
+	after: IndexedTask | null;
+}
+
+interface PendingAggregateParentWrite {
+	operonId: string;
+	payload: Record<string, string>;
+	format: string;
+	filePath: string;
+	childCount: number;
+	totalDescendants: number;
+	calculateMs: number;
 }
 
 interface AggregateSummary {
@@ -40,6 +56,14 @@ interface AggregatePayloadResult {
 	payload: Record<string, string>;
 	summary: AggregateSummary;
 }
+
+interface AggregateSubtreeContribution {
+	summary: AggregateSummary;
+	subtreeDuration: number;
+	subtreeEstimate: number;
+}
+
+class AggregateHierarchyFallbackError extends Error {}
 
 interface SameFileStatusCycleAggregatePlan {
 	eligible: boolean;
@@ -80,12 +104,22 @@ export class AggregateCoordinator {
 		afterTask: IndexedTask | null,
 		options: AggregateRefreshOptions = {},
 	): Promise<AggregateRefreshResult> {
+		return await this.refreshAfterTaskMutations([{ before: beforeTask, after: afterTask }], options);
+	}
+
+	async refreshAfterTaskMutations(
+		mutations: AggregateTaskMutation[],
+		options: AggregateRefreshOptions = {},
+	): Promise<AggregateRefreshResult> {
 		const affectedIds = new Set<string>();
-		this.collectTaskAndAncestors(beforeTask, affectedIds);
-		this.collectTaskAndAncestors(afterTask, affectedIds);
 		const forceDatetimeModifiedIds = new Set<string>();
-		if ((options.modifiedTimestamp ?? '').trim()) {
-			this.collectMutationAncestorIds(beforeTask, afterTask, forceDatetimeModifiedIds);
+		const hasModifiedTimestamp = (options.modifiedTimestamp ?? '').trim() !== '';
+		for (const mutation of mutations) {
+			this.collectTaskAndAncestors(mutation.before, affectedIds);
+			this.collectTaskAndAncestors(mutation.after, affectedIds);
+			if (hasModifiedTimestamp) {
+				this.collectMutationAncestorIds(mutation.before, mutation.after, forceDatetimeModifiedIds);
+			}
 		}
 		return await this.refreshAffectedParents(affectedIds, 'full', {
 			modifiedTimestamp: options.modifiedTimestamp,
@@ -160,12 +194,26 @@ export class AggregateCoordinator {
 		return await this.refreshAffectedParents(affectedIds);
 	}
 
-	async refreshDurationAfterTaskIds(operonIds: Iterable<string>): Promise<AggregateRefreshResult> {
+	async refreshDurationAfterTaskIds(
+		operonIds: Iterable<string>,
+		options: AggregateRefreshOptions = {},
+	): Promise<AggregateRefreshResult> {
 		const affectedIds = new Set<string>();
+		const forceDatetimeModifiedIds = new Set<string>();
+		const hasModifiedTimestamp = (options.modifiedTimestamp ?? '').trim() !== '';
 		for (const operonId of operonIds) {
-			this.collectTaskAndAncestors(this.indexer.getTask(operonId) ?? null, affectedIds);
+			const task = this.indexer.getTask(operonId) ?? null;
+			this.collectTaskAndAncestors(task, affectedIds);
+			if (hasModifiedTimestamp) {
+				this.collectMutationAncestorIds(task, task, forceDatetimeModifiedIds);
+			}
 		}
-		return await this.refreshAffectedParents(affectedIds, 'duration');
+		return await this.refreshAffectedParents(affectedIds, 'duration', {
+			modifiedTimestamp: options.modifiedTimestamp,
+			forceDatetimeModifiedIds,
+			indexPerfContext: options.indexPerfContext,
+			precommittedAggregateIds: options.precommittedAggregateIds,
+		});
 	}
 
 	private async refreshAffectedParents(
@@ -196,11 +244,17 @@ export class AggregateCoordinator {
 		const forceDatetimeModifiedIds = options.forceDatetimeModifiedIds ?? new Set<string>();
 		const precommittedAggregateIds = options.precommittedAggregateIds ?? new Set<string>();
 		const filePaths = new Set<string>();
+		const lineShiftedFilePaths = new Set<string>();
 		const patches: AggregateFieldPatch[] = [];
 		let writes = 0;
 		let failedWrites = 0;
 		let skippedPrecommitted = 0;
 
+		// Phase 1: compute every parent payload against the current index.
+		// Nothing here depends on the file writes, so they can be grouped per
+		// file afterwards and applied with one modify per file.
+		const pendingByFile = new Map<string, PendingAggregateParentWrite[]>();
+		const aggregateContributionCache = new Map<string, AggregateSubtreeContribution>();
 		for (const operonId of affectedIds) {
 			const task = this.indexer.getTask(operonId);
 			if (!task) continue;
@@ -226,40 +280,30 @@ export class AggregateCoordinator {
 			}
 
 			const calculateStartedAt = enginePerfNow();
-			const { payload, summary } = this.buildAggregatePayload(task, mode);
+			const summary = this.calculateAggregateSummaryBottomUp(task, aggregateContributionCache);
+			const { payload } = this.buildAggregatePayloadFromSummary(task, mode, summary);
 			const calculateMs = Math.round(enginePerfNow() - calculateStartedAt);
 			stageTimings.calculate += calculateMs;
 			const hasAggregateChanges = Object.keys(payload).length > 0;
 			const shouldTouchDatetimeModified = forceDatetimeModifiedIds.has(operonId) || hasAggregateChanges;
-			let writeMs = 0;
-			let wrote = false;
 
 			if (shouldTouchDatetimeModified) {
 				payload['datetimeModified'] = resolveModifiedTimestamp();
-				const writeStartedAt = enginePerfNow();
-				try {
-					wrote = await this.writer.writeTaskFields(operonId, payload, {
-						reindex: 'none',
-						touchAncestors: false,
-						yamlAggregateFastPath: true,
-					});
-				} catch (error) {
-					console.error(`Operon: aggregate parent write failed for ${operonId}`, error);
-					wrote = false;
-				}
-				writeMs = Math.round(enginePerfNow() - writeStartedAt);
-				stageTimings.parentWrite += writeMs;
-				if (!wrote) {
-					failedWrites++;
-				} else {
-					filePaths.add(task.primary.filePath);
-					patches.push({ operonId, payload });
-					writes++;
-				}
+				const pending = pendingByFile.get(task.primary.filePath) ?? [];
+				pending.push({
+					operonId,
+					payload,
+					format: task.primary.format,
+					filePath: task.primary.filePath,
+					childCount: summary.childCount,
+					totalDescendants: summary.totalDescendants,
+					calculateMs,
+				});
+				pendingByFile.set(task.primary.filePath, pending);
+				continue;
 			}
 
 			if (traceEnabled) {
-				const payloadKeys = Object.keys(payload);
 				enginePerfLog(
 					'aggregate.refresh',
 					...traceMetadata,
@@ -269,33 +313,129 @@ export class AggregateCoordinator {
 					`filePath=${task.primary.filePath}`,
 					`children=${summary.childCount}`,
 					`descendants=${summary.totalDescendants}`,
-					`payloadKeys=${payloadKeys.length > 0 ? payloadKeys.join(',') : 'none'}`,
+					'payloadKeys=none',
 					`calculateMs=${calculateMs}`,
-					`writeMs=${writeMs}`,
-					`wrote=${String(wrote)}`,
+					'writeMs=0',
+					'wrote=false',
+				);
+			}
+		}
+
+		// Phase 2: several ancestors of an inline hierarchy usually live in the
+		// same project file; per-parent writes would rewrite that file once per
+		// ancestor, so multi-parent files go through the same-file batch writer.
+		const canBatchSameFile = typeof this.writer.writeAggregateFieldsSameFile === 'function';
+		for (const [filePath, filePending] of pendingByFile) {
+			const fileWriteStartedAt = enginePerfNow();
+			const written = new Set<string>();
+			const batched = canBatchSameFile && filePending.length > 1;
+			const usesSameFileWriter = canBatchSameFile
+				&& (batched || filePending.some(pending => pending.format === 'yaml'));
+			if (usesSameFileWriter) {
+				try {
+					const batch = await this.writer.writeAggregateFieldsSameFile(
+						filePath,
+						filePending.map(({ operonId, payload }) => ({ operonId, fieldValues: payload })),
+					);
+					for (const operonId of batch.wroteOperonIds) {
+						written.add(operonId);
+					}
+					if (batch.lineNumbersShifted) {
+						lineShiftedFilePaths.add(filePath);
+					}
+				} catch (error) {
+					console.error(`Operon: aggregate batch write failed for ${filePath}`, error);
+				}
+			}
+			for (const pending of filePending) {
+				const entryWriteStartedAt = enginePerfNow();
+				if (!written.has(pending.operonId)) {
+					try {
+						const retried = await this.writer.writeTaskFields(pending.operonId, pending.payload, {
+							reindex: 'none',
+							touchAncestors: false,
+							yamlAggregateFastPath: true,
+						});
+						if (retried) {
+							written.add(pending.operonId);
+							if (usesSameFileWriter && pending.format === 'yaml') {
+								lineShiftedFilePaths.add(filePath);
+							}
+						}
+					} catch (error) {
+						console.error(`Operon: aggregate parent write failed for ${pending.operonId}`, error);
+					}
+				}
+				const wrote = written.has(pending.operonId);
+				if (wrote) {
+					filePaths.add(filePath);
+					patches.push({ operonId: pending.operonId, payload: pending.payload });
+					writes++;
+				} else {
+					failedWrites++;
+				}
+				if (traceEnabled) {
+					const payloadKeys = Object.keys(pending.payload);
+					enginePerfLog(
+						'aggregate.refresh',
+						...traceMetadata,
+						'stage=parent',
+						`parentId=${pending.operonId}`,
+						`format=${pending.format}`,
+						`filePath=${pending.filePath}`,
+						`children=${pending.childCount}`,
+						`descendants=${pending.totalDescendants}`,
+						`payloadKeys=${payloadKeys.length > 0 ? payloadKeys.join(',') : 'none'}`,
+						`calculateMs=${pending.calculateMs}`,
+						`writeMs=${Math.round(enginePerfNow() - entryWriteStartedAt)}`,
+						`wrote=${String(wrote)}`,
+					);
+				}
+			}
+			const fileWriteMs = Math.round(enginePerfNow() - fileWriteStartedAt);
+			stageTimings.parentWrite += fileWriteMs;
+			if (traceEnabled && batched) {
+				enginePerfLog(
+					'aggregate.refresh',
+					...traceMetadata,
+					'stage=file-batch',
+					`filePath=${filePath}`,
+					`tasks=${filePending.length}`,
+					`written=${written.size}`,
+					`writeMs=${fileWriteMs}`,
 				);
 			}
 		}
 
 		let indexPatch = false;
 		let fallbackReindex = false;
-		if (patches.length > 0) {
+		const indexPatches = patches.filter(patch => {
+			const task = this.indexer.getTask(patch.operonId);
+			return !task || !lineShiftedFilePaths.has(task.primary.filePath);
+		});
+		if (indexPatches.length > 0) {
 			const patchOptions = options.indexPerfContext
 				? { perfContext: options.indexPerfContext }
 				: undefined;
 			const canPatchIndex = typeof this.indexer.commitAggregateFieldPatches === 'function';
 			if (canPatchIndex) {
 				const indexPatchStartedAt = enginePerfNow();
-				indexPatch = await this.indexer.commitAggregateFieldPatches(patches, patchOptions);
+				indexPatch = await this.indexer.commitAggregateFieldPatches(indexPatches, patchOptions);
 				stageTimings.indexPatch += Math.round(enginePerfNow() - indexPatchStartedAt);
 			}
 			fallbackReindex = !indexPatch;
 		}
+		if (lineShiftedFilePaths.size > 0) {
+			fallbackReindex = true;
+		}
 
 		if (fallbackReindex && filePaths.size > 0) {
 			const fallbackReindexStartedAt = enginePerfNow();
+			const reindexFilePaths = indexPatches.length > 0 && !indexPatch
+				? Array.from(filePaths)
+				: Array.from(lineShiftedFilePaths);
 			await this.indexer.reindexFilesBatch(
-				Array.from(filePaths),
+				reindexFilePaths,
 				options.indexPerfContext
 					? { notify: false, perfContext: options.indexPerfContext }
 					: { notify: false },
@@ -345,8 +485,16 @@ export class AggregateCoordinator {
 		mode: AggregateRefreshMode,
 		overrides: Map<string, IndexedTask> = new Map(),
 	): AggregatePayloadResult {
-		const payload: Record<string, string> = {};
 		const summary = this.calculateAggregateSummary(parentTask, overrides);
+		return this.buildAggregatePayloadFromSummary(parentTask, mode, summary);
+	}
+
+	private buildAggregatePayloadFromSummary(
+		parentTask: IndexedTask,
+		mode: AggregateRefreshMode,
+		summary: AggregateSummary,
+	): AggregatePayloadResult {
+		const payload: Record<string, string> = {};
 
 		if (mode === 'full' && summary.hasChildren) {
 			const currentProgress = parentTask.fieldValues['progress'] ?? '';
@@ -384,6 +532,110 @@ export class AggregateCoordinator {
 		}
 
 		return { payload, summary };
+	}
+
+	private calculateAggregateSummaryBottomUp(
+		parentTask: IndexedTask,
+		cache: Map<string, AggregateSubtreeContribution>,
+	): AggregateSummary {
+		try {
+			return this.calculateAggregateSubtreeContribution(parentTask, cache, new Set<string>()).summary;
+		} catch (error) {
+			if (error instanceof AggregateHierarchyFallbackError) {
+				// Malformed cycles and dangling hierarchy edges are not part of the
+				// normal task forest, but the legacy iterative traversal terminates and
+				// has established output semantics for them. Preserve that behavior
+				// instead of caching a partial bottom-up result.
+				return this.calculateAggregateSummary(parentTask);
+			}
+			throw error;
+		}
+	}
+
+	private calculateAggregateSubtreeContribution(
+		task: IndexedTask,
+		cache: Map<string, AggregateSubtreeContribution>,
+		visiting: Set<string>,
+	): AggregateSubtreeContribution {
+		const cached = cache.get(task.operonId);
+		if (cached) return cached;
+		if (visiting.has(task.operonId) || visiting.size >= MAX_BOTTOM_UP_AGGREGATE_DEPTH) {
+			throw new AggregateHierarchyFallbackError();
+		}
+
+		visiting.add(task.operonId);
+		try {
+			const childIds = this.indexer.secondary.getChildIds(task.operonId);
+			const hasChildren = childIds.size > 0;
+			let directSubtaskCount = 0;
+			let directDoneSubtaskCount = 0;
+			let directOpenSubtaskCount = 0;
+			let totalDescendants = 0;
+			let finishedDescendants = 0;
+			let cancelledDescendants = 0;
+			let openDescendants = 0;
+			let subtreeDuration = parseInt(task.fieldValues['duration'] ?? '0', 10) || 0;
+			let subtreeEstimate = parseInt(task.fieldValues['estimate'] ?? '0', 10) || 0;
+
+			for (const childId of childIds) {
+				const child = this.indexer.getTask(childId);
+				if (!child) throw new AggregateHierarchyFallbackError();
+
+				directSubtaskCount++;
+				if (child.checkbox === 'done') {
+					directDoneSubtaskCount++;
+				} else if (child.checkbox === 'open') {
+					directOpenSubtaskCount++;
+				}
+
+				const childContribution = this.calculateAggregateSubtreeContribution(child, cache, visiting);
+				totalDescendants += 1 + childContribution.summary.totalDescendants;
+				finishedDescendants += childContribution.summary.finishedDescendants;
+				cancelledDescendants += childContribution.summary.cancelledDescendants;
+				if (child.checkbox === 'done') {
+					finishedDescendants++;
+				} else if (child.checkbox === 'cancelled') {
+					cancelledDescendants++;
+				} else if (child.checkbox === 'open') {
+					openDescendants++;
+				}
+				openDescendants += Number(childContribution.summary.taskStats.treeOpenDescendantCount) || 0;
+				subtreeDuration += childContribution.subtreeDuration;
+				subtreeEstimate += childContribution.subtreeEstimate;
+			}
+
+			const effectiveTotal = totalDescendants - cancelledDescendants;
+			const progress = effectiveTotal > 0
+				? Math.round((finishedDescendants / effectiveTotal) * 100)
+				: 0;
+			const contribution: AggregateSubtreeContribution = {
+				summary: {
+					hasChildren,
+					childCount: childIds.size,
+					totalDescendants,
+					finishedDescendants,
+					cancelledDescendants,
+					effectiveDescendants: effectiveTotal,
+					progress: String(progress),
+					taskStats: {
+						directSubtaskCount: String(directSubtaskCount),
+						directDoneSubtaskCount: String(directDoneSubtaskCount),
+						directOpenSubtaskCount: String(directOpenSubtaskCount),
+						treeDescendantCount: String(totalDescendants),
+						treeDoneDescendantCount: String(finishedDescendants),
+						treeOpenDescendantCount: String(openDescendants),
+					},
+					totalDuration: hasChildren && subtreeDuration > 0 ? String(subtreeDuration) : '',
+					totalEstimate: hasChildren && subtreeEstimate > 0 ? String(subtreeEstimate) : '',
+				},
+				subtreeDuration,
+				subtreeEstimate,
+			};
+			cache.set(task.operonId, contribution);
+			return contribution;
+		} finally {
+			visiting.delete(task.operonId);
+		}
 	}
 
 	private hasStoredTaskStats(task: IndexedTask): boolean {

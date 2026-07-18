@@ -226,7 +226,7 @@ export class ContextualHoverMenuController {
 		if (!host) return false;
 		const hostDocument = getOwnerDocument(host);
 
-		const menu = hostDocument.createElement('div');
+		const menu = hostDocument.win.createDiv();
 		menu.className = this.options.menuClassName ?? 'operon-calendar-hover-menu';
 		menu.tabIndex = -1;
 		applyContextualMenuAccent(menu, options.context);
@@ -248,17 +248,17 @@ export class ContextualHoverMenuController {
 		});
 
 		for (const action of options.actions) {
-			const button = hostDocument.createElement('button');
+			const button = hostDocument.win.createEl('button');
 			button.className = 'operon-calendar-hover-menu-item';
 			button.type = 'button';
 			button.setAttribute('data-action-id', action.id);
 
-			const iconWrap = hostDocument.createElement('span');
+			const iconWrap = hostDocument.win.createSpan();
 			iconWrap.className = 'operon-calendar-hover-menu-icon';
 			setIcon(iconWrap, action.icon);
 			button.appendChild(iconWrap);
 
-			const label = hostDocument.createElement('span');
+			const label = hostDocument.win.createSpan();
 			label.className = 'operon-calendar-hover-menu-label';
 			label.textContent = action.label;
 			button.appendChild(label);

@@ -1,32 +1,60 @@
-import { KeyMapping } from '../types/settings';
+import type { KeyMapping } from '../types/settings';
+import type { Pipeline } from '../types/pipeline';
+import { t } from './i18n';
+import {
+	buildPipelineMinimalFileTaskTemplateId,
+	resolvePipelineMinimalFileTaskTemplateStatusById,
+} from './file-task-template-identity';
 import { parseFrontmatterDocument, ParsedFrontmatterDocument } from './file-task-template-merge';
 
-export interface FileTaskTemplateOption {
+export interface PipelineMinimalFileTaskTemplateOption {
 	id: string;
 	name: string;
-	path: string | null;
-	kind: 'folder' | 'builtin-empty';
+	path: null;
+	kind: 'builtin-pipeline-minimal';
+	pipelineId: string;
+	description: string;
 }
 
-const BUILTIN_EMPTY_TEMPLATE_ID = 'builtin-empty-file-task-template';
-const BUILTIN_EMPTY_TEMPLATE_NAME = 'Minimal File Template for Operon Tasks';
-const BUILTIN_EMPTY_TEMPLATE_DESCRIPTION = 'Adds Operon ID, Created, Modified, Status, and Priority to the file. Preserves any other existing properties.';
+export interface FolderFileTaskTemplateOption {
+	id: string;
+	name: string;
+	path: string;
+	kind: 'folder';
+}
+
+export type FileTaskTemplateOption = PipelineMinimalFileTaskTemplateOption | FolderFileTaskTemplateOption;
 
 function buildFolderTemplateOptionId(path: string): string {
 	return `folder-file-task-template:${path}`;
 }
 
-export function getBuiltinEmptyFileTaskTemplateOption(): FileTaskTemplateOption {
-	return {
-		id: BUILTIN_EMPTY_TEMPLATE_ID,
-		name: BUILTIN_EMPTY_TEMPLATE_NAME,
-		path: null,
-		kind: 'builtin-empty',
-	};
+export function resolvePipelineMinimalFileTaskTemplateStatus(
+	option: PipelineMinimalFileTaskTemplateOption,
+	pipelines: readonly Pipeline[],
+): string | null {
+	return resolvePipelineMinimalFileTaskTemplateStatusById(option.pipelineId, pipelines);
 }
 
-export function getBuiltinEmptyFileTaskTemplateDescription(): string {
-	return BUILTIN_EMPTY_TEMPLATE_DESCRIPTION;
+export function buildPipelineMinimalFileTaskTemplateOptions(
+	pipelines: readonly Pipeline[],
+): PipelineMinimalFileTaskTemplateOption[] {
+	return pipelines.flatMap(pipeline => {
+		const initialStatus = resolvePipelineMinimalFileTaskTemplateStatusById(pipeline.id, pipelines);
+		if (!initialStatus) return [];
+		return [{
+			id: buildPipelineMinimalFileTaskTemplateId(pipeline.id),
+			name: t('taskEditor', 'pipelineMinimalFileTaskTemplateName', { pipeline: pipeline.name }),
+			path: null,
+			kind: 'builtin-pipeline-minimal' as const,
+			pipelineId: pipeline.id,
+			description: t('taskEditor', 'pipelineMinimalFileTaskTemplateDescription', { status: initialStatus }),
+		}];
+	});
+}
+
+export function getFileTaskTemplateOptionSecondaryText(option: FileTaskTemplateOption): string {
+	return option.kind === 'folder' ? option.path : option.description;
 }
 
 export function getTopLevelMarkdownFilesInFolder(
@@ -55,10 +83,11 @@ export function getTopLevelMarkdownFilesInFolder(
 export function buildFileTaskTemplateOptions(
 	folderPath: string,
 	files: ReadonlyArray<{ path: string; basename?: string; parent?: { path: string } | null }>,
+	pipelines: readonly Pipeline[],
 ): FileTaskTemplateOption[] {
 	const folderTemplates = getTopLevelMarkdownFilesInFolder(folderPath, files);
 	return [
-		getBuiltinEmptyFileTaskTemplateOption(),
+		...buildPipelineMinimalFileTaskTemplateOptions(pipelines),
 		...folderTemplates.map(template => ({
 			id: buildFolderTemplateOptionId(template.path),
 			name: template.basename.trim(),
@@ -85,8 +114,12 @@ export function orderFileTaskTemplateOptionsByLastUsed(
 export function resolveDefaultConvertFileTaskTemplateOption(
 	folderPath: string,
 	files: ReadonlyArray<{ path: string; basename?: string; parent?: { path: string } | null }>,
-): FileTaskTemplateOption {
-	return buildFileTaskTemplateOptions(folderPath, files)[1] ?? getBuiltinEmptyFileTaskTemplateOption();
+	pipelines: readonly Pipeline[],
+): FileTaskTemplateOption | null {
+	const options = buildFileTaskTemplateOptions(folderPath, files, pipelines);
+	return options.find(option => option.kind === 'folder')
+		?? options.find(option => option.kind === 'builtin-pipeline-minimal')
+		?? null;
 }
 
 export function findFileTaskTemplateOptionById(
@@ -107,7 +140,7 @@ export async function loadFileTaskTemplateDocument(
 	option: FileTaskTemplateOption | null,
 	keyMappings: KeyMapping[],
 ): Promise<ParsedFrontmatterDocument | null> {
-	if (!option || option.kind === 'builtin-empty' || !option.path) return null;
+	if (!option || option.kind !== 'folder') return null;
 
 	const templateFile = app.vault.getAbstractFileByPath(option.path);
 	if (

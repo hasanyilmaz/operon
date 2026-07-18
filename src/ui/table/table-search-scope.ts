@@ -23,6 +23,7 @@ import {
 	matchesTaskSearchBoxScope,
 	type TaskSearchBoxScopeState,
 } from '../task-search-box-integration';
+import type { TableFilePropertyQueryContext } from './table-file-property';
 import {
 	SEARCH_SCOPE_CONTROL_GROUPS,
 	getTaskSearchScopeButtonLabel,
@@ -120,6 +121,7 @@ export function resolveTableSearchScopedTasks(options: {
 	pinnedCache: PinnedCache | null;
 	scope: TaskSearchBoxScopeState;
 	settings: Pick<OperonSettings, 'taskFinderRecentModifiedDays' | 'projectSerialScopes'>;
+	filePropertyContext?: TableFilePropertyQueryContext;
 }): IndexedTask[] {
 	const recentModifiedCutoff = getTaskSearchBoxRecentModifiedCutoff(options.settings);
 	return resolveTableSearchBaseScopeTasks(options)
@@ -132,6 +134,7 @@ export function resolveTableSearchBaseScopeTasks(options: {
 	priorities: { label: string; color?: string }[];
 	pinnedCache: PinnedCache | null;
 	projectSerialScopes?: OperonSettings['projectSerialScopes'];
+	filePropertyContext?: TableFilePropertyQueryContext;
 }): IndexedTask[] {
 	return filterTasksForCalendar(
 		options.filterSet,
@@ -141,6 +144,7 @@ export function resolveTableSearchBaseScopeTasks(options: {
 		{
 			projectSerialScopes: options.projectSerialScopes,
 			projectSerialScopeTasks: options.tasks,
+			filePropertyContext: options.filePropertyContext,
 		},
 	);
 }

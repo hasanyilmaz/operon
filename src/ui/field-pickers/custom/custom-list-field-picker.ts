@@ -3,6 +3,7 @@ import { t } from '../../../core/i18n';
 import { bindPickerListItemActivation, createButton, requestFloatingInputFocus, scrollChildIntoView } from '../common';
 import { createCustomFieldPanel, type CustomFieldPickerBaseOptions } from './common';
 import { setAccessibleLabelWithoutTooltip } from '../../accessibility-label';
+import { getOwnerWindow } from '../../../core/dom-compat';
 
 const CUSTOM_LIST_PAGE_SIZE = 20;
 const CUSTOM_LIST_LOAD_MORE_SCROLL_THRESHOLD_PX = 48;
@@ -13,6 +14,9 @@ export interface CustomListFieldPickerOptions extends CustomFieldPickerBaseOptio
 	value: string[];
 	candidates: string[];
 	onCommit: (canonicalKey: string, value: string) => void;
+	onCommitValues?: (canonicalKey: string, values: string[]) => void;
+	onRemove?: (canonicalKey: string) => void;
+	canRemove?: boolean;
 }
 
 export function showCustomListFieldPicker(
@@ -39,6 +43,12 @@ export function showCustomListFieldPicker(
 	actions.appendChild(countLabel);
 	const clearButton = createButton(t('buttons', 'clear'), 'operon-floating-btn is-secondary operon-custom-list-picker-clear', actions);
 	clearButton.addEventListener('click', () => {
+		if (options.onRemove && options.canRemove) {
+			completed = true;
+			options.onRemove(options.canonicalKey);
+			close();
+			return;
+		}
 		selectedValues = [];
 		persist();
 		renderSelected();
@@ -54,7 +64,8 @@ export function showCustomListFieldPicker(
 
 	const persist = (): void => {
 		completed = true;
-		options.onCommit(options.canonicalKey, selectedValues.join('; '));
+		if (options.onCommitValues) options.onCommitValues(options.canonicalKey, [...selectedValues]);
+		else options.onCommit(options.canonicalKey, selectedValues.join('; '));
 	};
 
 	const getVisibleMatches = (): string[] => matches.slice(0, loadedCount);
@@ -189,7 +200,7 @@ export function showCustomListFieldPicker(
 		const previousScrollTop = list.scrollTop;
 		event.preventDefault();
 		renderSuggestions(false);
-		window.requestAnimationFrame(() => {
+		getOwnerWindow(input).requestAnimationFrame(() => {
 			list.scrollTop = previousScrollTop + event.deltaY;
 		});
 	});

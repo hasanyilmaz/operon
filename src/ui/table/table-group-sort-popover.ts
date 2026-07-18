@@ -6,7 +6,11 @@ import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { createFloatingPanel, requestFloatingInputFocus } from '../field-pickers/common';
 import { showSearchableFieldPicker } from '../field-pickers/searchable-field-picker';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
-import { buildTableGroupSortFieldCatalog } from './table-field-catalog';
+import {
+	applyTablePresetFieldAliases,
+	buildTableGroupSortFieldCatalog,
+	type TableTaskField,
+} from './table-field-catalog';
 import { buildTableFieldPickerOptions, getTableFieldPickerLabel } from './table-field-picker-options';
 import {
 	type TableGroupSortPresetPatchScope,
@@ -25,12 +29,17 @@ interface TableGroupSortPopoverOptions {
 	constrainToFloatingHost?: boolean;
 	preset: TablePreset;
 	settings: OperonSettings;
+	additionalFields?: readonly TableTaskField[];
 	onChange: (preset: TablePreset, scope: TableGroupSortPresetPatchScope) => void;
 	onClose?: () => void;
 }
 
 export function showTableGroupSortPopover(options: TableGroupSortPopoverOptions): () => void {
-	const catalog = buildTableGroupSortFieldCatalog(options.settings);
+	const preservedKeys = getTablePresetQueryFieldKeys(options.preset);
+	const catalog = applyTablePresetFieldAliases(
+		buildTableGroupSortFieldCatalog(options.settings, options.additionalFields ?? [], preservedKeys),
+		options.preset.columns,
+	);
 	const supportedKeys = new Set(catalog.map(field => field.key));
 	let draft = normalizeTablePresetForEditing(options.preset);
 	const { panel, close: closePanel } = createFloatingPanel(
@@ -212,7 +221,8 @@ function renderSortSection(
 	});
 	setIcon(addButton.createSpan('operon-table-group-sort-button-icon'), 'plus');
 	addButton.createSpan({ text: t('table', 'addSort') });
-	const nextFieldKey = catalog.find(field => !preset.sortRules.some(rule => rule.key === field.key))?.key ?? null;
+	const nextFieldKey = catalog.find(field => !field.unavailable
+		&& !preset.sortRules.some(rule => rule.key === field.key))?.key ?? null;
 	addButton.disabled = !nextFieldKey;
 	addButton.addEventListener('click', event => {
 		event.preventDefault();
@@ -315,10 +325,27 @@ function renderTableFieldPickerButton(
 			'data-operon-table-group-sort-focus': options.focusKey,
 		},
 	});
-	setAccessibleLabelWithoutTooltip(button, options.label);
 	button.disabled = options.disabled === true;
 	const label = getTableFieldPickerLabel(options.catalog, options.value, options.placeholder);
 	button.createSpan({ cls: 'operon-field-picker-trigger-label', text: label });
+	const selectedField = options.catalog.find(field => field.key === options.value);
+	const secondaryLabel = selectedField?.unavailable
+		? t('table', 'fieldUnavailableInCurrentScope')
+		: selectedField?.sourceLabel && selectedField.sourceLabel !== selectedField.label
+			? selectedField.sourceLabel
+			: null;
+	setAccessibleLabelWithoutTooltip(
+		button,
+		`${options.label}: ${label}${secondaryLabel ? `, ${secondaryLabel}` : ''}`,
+	);
+	if (selectedField?.unavailable) {
+		button.createSpan({
+			cls: 'operon-field-picker-trigger-secondary',
+			text: t('table', 'fieldUnavailableInCurrentScope'),
+		});
+	} else if (selectedField?.sourceLabel && selectedField.sourceLabel !== selectedField.label) {
+		button.createSpan({ cls: 'operon-field-picker-trigger-secondary', text: selectedField.sourceLabel });
+	}
 	const iconEl = button.createSpan('operon-field-picker-trigger-icon');
 	setIcon(iconEl, 'chevron-down');
 	button.addEventListener('click', event => {
@@ -327,7 +354,8 @@ function renderTableFieldPickerButton(
 		button.setAttribute('aria-expanded', 'true');
 		showSearchableFieldPicker(button, {
 			value: options.value,
-			fields: buildTableFieldPickerOptions(options.catalog, {
+			fields: buildTableFieldPickerOptions(
+				options.catalog.filter(field => !field.unavailable || field.key === options.value), {
 				excludedFieldKeys: options.excludedFieldKeys,
 			}),
 			placeholder: t('table', 'fieldPickerSearchPlaceholder'),
@@ -338,6 +366,13 @@ function renderTableFieldPickerButton(
 				if (button.isConnected) button.setAttribute('aria-expanded', 'false');
 			},
 			variantClassName: 'operon-table-field-picker',
+			getSearchText: option => [
+				option.label,
+				option.field,
+				option.type,
+				option.tableField?.sourceLabel,
+				...(option.tableField?.aliases ?? []),
+			].filter(Boolean).join(' '),
 			floatingHost: options.floatingHost,
 			floatingScrollHost: options.floatingHost,
 			matchWidth: Math.max(button.getBoundingClientRect().width, 280),
@@ -345,6 +380,14 @@ function renderTableFieldPickerButton(
 			repositionOnWindowResize: true,
 		});
 	});
+}
+
+function getTablePresetQueryFieldKeys(preset: TablePreset): string[] {
+	return [...new Set([
+		preset.groupBy,
+		preset.subgroupBy,
+		...preset.sortRules.map(rule => rule.key),
+	].filter((key): key is string => !!key?.trim()))];
 }
 
 function renderDirectionToggle(

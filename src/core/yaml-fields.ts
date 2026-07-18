@@ -46,6 +46,24 @@ export function getManagedYamlAliases(
 	])];
 }
 
+function hasNonEmptyYamlScalar(value: unknown): boolean {
+	if (Array.isArray(value)) return value.some(item => hasNonEmptyYamlScalar(item));
+	if (typeof value === 'string') return value.trim().length > 0;
+	return typeof value === 'number' || typeof value === 'boolean';
+}
+
+export function hasNonEmptyManagedYamlValue(
+	frontmatter: Record<string, unknown> | null | undefined,
+	canonicalKey: string,
+	keyMappings: KeyMapping[],
+): boolean {
+	if (!frontmatter) return false;
+	return getManagedYamlAliases(canonicalKey, keyMappings).some(alias =>
+		Object.prototype.hasOwnProperty.call(frontmatter, alias)
+		&& hasNonEmptyYamlScalar(frontmatter[alias])
+	);
+}
+
 export function isManagedYamlCanonicalKey(
 	canonicalKey: string,
 	keyMappings: KeyMapping[],

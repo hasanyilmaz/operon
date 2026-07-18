@@ -6,6 +6,7 @@
 import { clonePipeline, createPipelineId, createStatusId, findStatusDef, Pipeline, DEFAULT_PIPELINES, StatusDefinition } from './pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId, sanitizePriorityDefinitions } from './priority';
 import { CANONICAL_KEYS } from './keys';
+import { FILE_PROPERTY_COLUMN_PREFIX, isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import type { WorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
 import {
 	CALENDAR_MOBILE_VIEW_MODES,
@@ -82,8 +83,14 @@ import {
 	normalizePresetFavorites,
 	type PresetFavorites,
 } from '../core/preset-favorites';
+import {
+	buildPipelineMinimalFileTaskTemplateId,
+	getPipelineIdFromMinimalFileTaskTemplateId,
+	LEGACY_BUILTIN_EMPTY_FILE_TASK_TEMPLATE_ID,
+	resolvePipelineMinimalFileTaskTemplateStatusById,
+} from '../core/file-task-template-identity';
 
-export const CURRENT_SETTINGS_VERSION = 105;
+export const CURRENT_SETTINGS_VERSION = 106;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
@@ -296,7 +303,6 @@ export const KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX = 1200;
 export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN = 6;
 export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX = 48;
 export const DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS = [10, 30, 60, 120] as const;
-export const TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS = [10, 15, 30, 45, 60] as const;
 export type TrackerTaskDescriptionClickAction = 'jumpToSource' | 'openTaskEditor';
 export type FlowTimeMode = 'tracktime' | 'flowtime';
 export type InlineTaskSaveMode = 'daily-notes' | 'specific-file' | 'active-file' | 'ask-every-time';
@@ -1269,6 +1275,8 @@ export interface OperonSettings {
 	demoWorkspacePromptDismissed: boolean;
 	releaseNotesShowOnUpdate: boolean;
 	releaseNotesLastShownVersion: string;
+	checkForUpdatesOnStartup: boolean;
+	lastNotifiedReleaseVersion: string;
 	operonDocsFolder: string;
 	operonDocsAutoUpdateEnabled: boolean;
 	operonDocsLastAutoUpdateVersion: string;
@@ -1330,8 +1338,6 @@ export interface OperonSettings {
 	taskCreatorToolbar: TaskCreatorToolbarItem[];
 	/** If true, the Task Editor file body source panel shows source line numbers. */
 	taskEditorShowLineNumbers: boolean;
-	/** Seconds to wait after the last Task Editor edit before autosaving. */
-	taskEditorAutosaveDelaySeconds: number;
 	/** Ordered, user-customizable picker rows shown in the Task Editor workflow area. */
 	taskEditorWorkflowPickers: TaskEditorWorkflowPickerItem[];
 	/** Ordered, phone-only core action icons shown in the Task Editor compact toolbar. */
@@ -1782,6 +1788,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	demoWorkspacePromptDismissed: false,
 	releaseNotesShowOnUpdate: true,
 	releaseNotesLastShownVersion: '',
+	checkForUpdatesOnStartup: true,
+	lastNotifiedReleaseVersion: '',
 	operonDocsFolder: 'Operon/Docs',
 	operonDocsAutoUpdateEnabled: false,
 	operonDocsLastAutoUpdateVersion: '',
@@ -1815,7 +1823,6 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	estimateAutoReallocation: false,
 	taskCreatorToolbar: buildDefaultTaskCreatorToolbarItems(),
 	taskEditorShowLineNumbers: false,
-	taskEditorAutosaveDelaySeconds: 60,
 	taskEditorWorkflowPickers: buildDefaultTaskEditorWorkflowPickerItems(),
 	taskEditorMobileCoreTools: buildDefaultTaskEditorMobileCoreToolItems(),
 	inlineTaskCompactChips: buildDefaultInlineTaskCompactChipItems(),
@@ -2041,7 +2048,6 @@ export const NUMERIC_CONSTRAINTS = {
 	taskCreateDebounceMs: { min: 150, max: 3000 },
 	dockHoverOpenDelayMs: { min: 0, max: 2000 },
 	floatingAutoCloseSec: { min: 5, max: 600 },
-	taskEditorAutosaveDelaySeconds: { min: 10, max: 60 },
 	locationPickerMapDefaultZoom: { min: 1, max: 18 },
 	locationPreviewWidth: { min: 240, max: 900 },
 	locationPreviewHeight: { min: 180, max: 700 },
@@ -3049,7 +3055,7 @@ function normalizeFilterCondition(raw: unknown): FilterSetCondition | null {
 	if (!raw || typeof raw !== 'object') return null;
 	const src = raw as Record<string, unknown>;
 	const id = normalizeOptionalString(src.id);
-	const field = normalizeOptionalString(src.field);
+	const field = normalizeFilterFieldKey(src.field);
 	const operator = normalizeOptionalString(src.operator);
 	if (!id || !field || !operator) return null;
 	const rawValue = typeof src.value === 'string' ? src.value : undefined;
@@ -3075,6 +3081,13 @@ function normalizeFilterCondition(raw: unknown): FilterSetCondition | null {
 	};
 }
 
+function normalizeFilterFieldKey(raw: unknown): string | undefined {
+	const field = normalizeOptionalString(raw);
+	if (!field) return undefined;
+	if (field.startsWith(FILE_PROPERTY_COLUMN_PREFIX) && !isFilePropertyColumnKey(field)) return undefined;
+	return field;
+}
+
 export function normalizeFilterSet(raw: unknown): FilterSet | null {
 	if (!raw || typeof raw !== 'object') return null;
 	const src = raw as Record<string, unknown>;
@@ -3093,15 +3106,15 @@ export function normalizeFilterSet(raw: unknown): FilterSet | null {
 			.filter((condition): condition is FilterSetCondition => !!condition)
 		: [];
 	const icon = normalizeOptionalString(src.icon);
-	const sortBy = normalizeOptionalString(src.sortBy);
+	const sortBy = normalizeFilterFieldKey(src.sortBy);
 	const sortOrder = src.sortOrder === 'asc' || src.sortOrder === 'desc'
 		? src.sortOrder
 		: undefined;
-	const groupBy = normalizeOptionalString(src.groupBy);
+	const groupBy = normalizeFilterFieldKey(src.groupBy);
 	const groupOrder = src.groupOrder === 'asc' || src.groupOrder === 'desc'
 		? src.groupOrder
 		: undefined;
-	const subgroupBy = normalizeOptionalString(src.subgroupBy);
+	const subgroupBy = normalizeFilterFieldKey(src.subgroupBy);
 	const subgroupOrder = src.subgroupOrder === 'asc' || src.subgroupOrder === 'desc'
 		? src.subgroupOrder
 		: undefined;
@@ -3179,7 +3192,7 @@ function normalizeFilterSorts(raw: unknown): FilterSortSpec[] | null {
 		.map(sort => {
 			if (!sort || typeof sort !== 'object') return null;
 			const src = sort as Record<string, unknown>;
-			const field = normalizeOptionalString(src.field);
+			const field = normalizeFilterFieldKey(src.field);
 			if (!field || seen.has(field)) return null;
 			seen.add(field);
 			const order = src.order === 'desc' ? 'desc' : 'asc';
@@ -3246,6 +3259,29 @@ export function normalizeTaskStatusIconColorSource(value: unknown): TaskStatusIc
 	return normalizeTaskColorSource(value, TASK_STATUS_ICON_COLOR_SOURCES, DEFAULT_SETTINGS.taskStatusIconColorSource);
 }
 
+export function normalizeStoredFileTaskTemplateId(
+	rawValue: unknown,
+	pipelines: readonly Pipeline[],
+	defaultPipelineName: string,
+): string | null {
+	const normalized = normalizeOptionalString(rawValue);
+	if (!normalized) return null;
+	const preferredPipeline = pipelines.find(pipeline =>
+		pipeline.name === defaultPipelineName
+		&& !!resolvePipelineMinimalFileTaskTemplateStatusById(pipeline.id, pipelines)
+	) ?? pipelines.find(pipeline => !!resolvePipelineMinimalFileTaskTemplateStatusById(pipeline.id, pipelines));
+	const fallbackId = preferredPipeline
+		? buildPipelineMinimalFileTaskTemplateId(preferredPipeline.id)
+		: null;
+	if (normalized === LEGACY_BUILTIN_EMPTY_FILE_TASK_TEMPLATE_ID) return fallbackId;
+
+	const pipelineId = getPipelineIdFromMinimalFileTaskTemplateId(normalized);
+	if (pipelineId && !resolvePipelineMinimalFileTaskTemplateStatusById(pipelineId, pipelines)) {
+		return fallbackId;
+	}
+	return normalized;
+}
+
 /**
  * Migrate and normalize raw settings data to current schema version.
  * Handles missing keys, invalid types, and out-of-range values.
@@ -3293,6 +3329,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.timeFormat = DEFAULT_SETTINGS.timeFormat;
 	}
 	out.releaseNotesLastShownVersion = out.releaseNotesLastShownVersion.trim();
+	out.lastNotifiedReleaseVersion = out.lastNotifiedReleaseVersion.trim();
 	out.operonDocsFolder = normalizeSettingsFolderPath(out.operonDocsFolder) || DEFAULT_SETTINGS.operonDocsFolder;
 	out.operonDocsLastAutoUpdateVersion = out.operonDocsLastAutoUpdateVersion.trim();
 	out.colorPalette = normalizeColorPalette(src.colorPalette);
@@ -3551,13 +3588,6 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: Object.keys(src).length === 0
 			? DEFAULT_SETTINGS.taskEditorShowLineNumbers
 			: true;
-	out.taskEditorAutosaveDelaySeconds = normalizeAllowedNumber(
-		typeof src.taskEditorAutosaveDelaySeconds === 'number'
-			? Math.round(src.taskEditorAutosaveDelaySeconds)
-			: DEFAULT_SETTINGS.taskEditorAutosaveDelaySeconds,
-		TASK_EDITOR_AUTOSAVE_DELAY_SECONDS_OPTIONS,
-		DEFAULT_SETTINGS.taskEditorAutosaveDelaySeconds,
-	);
 	out.taskEditorWorkflowPickers = normalizeTaskEditorWorkflowPickers(
 		src.taskEditorWorkflowPickers,
 		'taskEditorWorkflowPickers' in src || Object.keys(src).length === 0
@@ -4001,7 +4031,16 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.fileTaskArchiveFolder = DEFAULT_SETTINGS.fileTaskArchiveFolder;
 	}
 	out.fileTaskArchiveDelaySeconds = Math.round(clamp(out.fileTaskArchiveDelaySeconds, 'fileTaskArchiveDelaySeconds'));
-	out.taskCreatorDefaultFileTemplateId = normalizeOptionalString(src.taskCreatorDefaultFileTemplateId) || null;
+	out.taskCreatorDefaultFileTemplateId = normalizeStoredFileTaskTemplateId(
+		src.taskCreatorDefaultFileTemplateId,
+		out.pipelines,
+		out.defaultPipelineName,
+	);
+	out.lastUsedFileTaskTemplateId = normalizeStoredFileTaskTemplateId(
+		src.lastUsedFileTaskTemplateId,
+		out.pipelines,
+		out.defaultPipelineName,
+	);
 	out.fileTaskTemplateFolder = resolveFileTaskTemplateFolder(src);
 	out.excludedFolders = sanitizeExcludedFoldersForFileTasksFolder(
 		normalizeFolderPathList(src.excludedFolders),

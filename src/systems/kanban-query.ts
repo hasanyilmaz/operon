@@ -14,6 +14,7 @@ import {
 	resolveConfiguredStatusIdentity,
 	type WorkflowStatusIdentityIndex,
 } from '../core/workflow-status-identity';
+import type { FilterEvaluationOptions } from '../core/filter-evaluator';
 
 export const KANBAN_NO_VALUE_KEY = '__kanban_no_value__';
 export function getKanbanNoValueLabel(): string {
@@ -65,6 +66,7 @@ export function queryKanbanBoard(options: {
 	manualOrder?: Record<string, string[]>;
 	keyMappings?: readonly KeyMapping[];
 	projectSerialScopes?: readonly ProjectSerialScope[];
+	filterEvaluationOptions?: FilterEvaluationOptions;
 }): KanbanBoardData {
 	const { preset, pipeline, filterSet, priorities, pinnedCache } = options;
 	const keyMappings = options.keyMappings ?? [];
@@ -72,6 +74,7 @@ export function queryKanbanBoard(options: {
 	const allowedTaskIds = options.taskIdFilter ? new Set(options.taskIdFilter) : null;
 	const searchMatcher = normalizedSearchQuery ? buildTaskSearchMatcher(options.tasks, keyMappings) : null;
 	const scopedTasks = filterTasksForCalendar(filterSet, options.tasks, priorities, pinnedCache ?? null, {
+		...options.filterEvaluationOptions,
 		projectSerialScopes: options.projectSerialScopes,
 		projectSerialScopeTasks: options.tasks,
 	});

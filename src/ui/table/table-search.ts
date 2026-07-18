@@ -8,9 +8,17 @@ import {
 	formatTableTaskSource,
 } from './table-value-adapter';
 import { createTableValueResolver, type TableValueResolverOptions } from './table-value-cache';
+import {
+	isTableFilePropertyColumnKey,
+	type TableFilePropertyCellValue,
+} from './table-file-property';
 
 type TableSearchSettings = Pick<OperonSettings, 'keyMappings'>;
 type TableTaskSearchMatcher = (task: IndexedTask, normalizedQuery: string) => boolean;
+
+export interface TableFilePropertySearchContext {
+	getCell(task: IndexedTask, columnKey: string): TableFilePropertyCellValue;
+}
 
 export interface TableTaskSearchMatcherCache {
 	getMatcher(input: {
@@ -20,6 +28,7 @@ export interface TableTaskSearchMatcherCache {
 		columns: readonly TableColumn[];
 		valueResolverOptions?: TableValueResolverOptions;
 		valueResolverSignature?: string;
+		filePropertyContext?: TableFilePropertySearchContext;
 	}): TableTaskSearchMatcher;
 	prewarm(input: {
 		tasks: readonly IndexedTask[];
@@ -28,6 +37,7 @@ export interface TableTaskSearchMatcherCache {
 		columns: readonly TableColumn[];
 		valueResolverOptions?: TableValueResolverOptions;
 		valueResolverSignature?: string;
+		filePropertyContext?: TableFilePropertySearchContext;
 	}, options: {
 		startIndex: number;
 		timeBudgetMs: number;
@@ -52,7 +62,7 @@ export const TABLE_SEARCH_PREWARM_DELAY_MS = 3000;
 export const TABLE_SEARCH_PREWARM_CHUNK_DELAY_MS = 16;
 export const TABLE_SEARCH_PREWARM_TIME_BUDGET_MS = 8;
 export const TABLE_SEARCH_PREWARM_MAX_TASKS_PER_CHUNK = 120;
-export const TABLE_SEARCH_DEBOUNCE_MS = 250;
+export const TABLE_SEARCH_DEBOUNCE_MS = 150;
 
 export function createTableTaskSearchMatcherCache(): TableTaskSearchMatcherCache {
 	let cachedSignature = '';
@@ -64,11 +74,18 @@ export function createTableTaskSearchMatcherCache(): TableTaskSearchMatcherCache
 		columns: readonly TableColumn[];
 		valueResolverOptions?: TableValueResolverOptions;
 		valueResolverSignature?: string;
+		filePropertyContext?: TableFilePropertySearchContext;
 	}): TableTaskSearchMatcherBundle => {
 		const signature = buildTableTaskSearchMatcherSignature(input.tasks, input.settings, input.generation, input.columns, input.valueResolverSignature);
 		if (cachedBundle && cachedSignature === signature) return cachedBundle;
 		cachedSignature = signature;
-		cachedBundle = buildTableTaskSearchMatcherBundle(input.tasks, input.settings, input.columns, input.valueResolverOptions);
+		cachedBundle = buildTableTaskSearchMatcherBundle(
+			input.tasks,
+			input.settings,
+			input.columns,
+			input.valueResolverOptions,
+			input.filePropertyContext,
+		);
 		return cachedBundle;
 	};
 	return {
@@ -107,8 +124,15 @@ export function buildTableTaskSearchMatcher(
 	settings: TableSearchSettings,
 	columns: readonly TableColumn[],
 	valueResolverOptions?: TableValueResolverOptions,
+	filePropertyContext?: TableFilePropertySearchContext,
 ): TableTaskSearchMatcher {
-	return buildTableTaskSearchMatcherBundle(tasks, settings, columns, valueResolverOptions).matcher;
+	return buildTableTaskSearchMatcherBundle(
+		tasks,
+		settings,
+		columns,
+		valueResolverOptions,
+		filePropertyContext,
+	).matcher;
 }
 
 function buildTableTaskSearchMatcherBundle(
@@ -116,6 +140,7 @@ function buildTableTaskSearchMatcherBundle(
 	settings: TableSearchSettings,
 	columns: readonly TableColumn[],
 	valueResolverOptions?: TableValueResolverOptions,
+	filePropertyContext?: TableFilePropertySearchContext,
 ): TableTaskSearchMatcherBundle {
 	const allTasks = [...tasks];
 	const valueResolver = createTableValueResolver(allTasks, settings, valueResolverOptions);
@@ -133,16 +158,23 @@ function buildTableTaskSearchMatcherBundle(
 			if (normalized) values.add(normalized.toLocaleLowerCase());
 		};
 
-			for (const key of visibleColumnKeys) {
-				const rawValue = valueResolver.getRawValue(task, key);
-				addValue(rawValue);
-				if (key === 'source') {
-					addValue(formatCompactTableTaskSource(task));
-					addValue(formatTableTaskSource(task));
-					continue;
+		for (const key of visibleColumnKeys) {
+			if (isTableFilePropertyColumnKey(key)) {
+				const cell = filePropertyContext?.getCell(task, key);
+				if (cell) {
+					for (const value of getTableFilePropertySearchValues(cell)) addValue(value);
 				}
-				addValue(formatTableTaskValueForDisplay(key, rawValue, { settings, taskLookup: valueResolver.taskLookup }));
+				continue;
 			}
+			const rawValue = valueResolver.getRawValue(task, key);
+			addValue(rawValue);
+			if (key === 'source') {
+				addValue(formatCompactTableTaskSource(task));
+				addValue(formatTableTaskSource(task));
+				continue;
+			}
+			addValue(formatTableTaskValueForDisplay(key, rawValue, { settings, taskLookup: valueResolver.taskLookup }));
+		}
 
 		const text = Array.from(values).join('\n');
 		const document = {
@@ -167,6 +199,31 @@ function buildTableTaskSearchMatcherBundle(
 			buildSearchDocument(task);
 		},
 	};
+}
+
+export function getTableFilePropertySearchValues(
+	cell: Pick<TableFilePropertyCellValue, 'present' | 'rawValue'>,
+): readonly string[] {
+	if (!cell.present) return [];
+	const values: string[] = [];
+	const addScalar = (value: unknown): void => {
+		if (typeof value === 'string') {
+			const normalized = value.trim();
+			if (normalized) values.push(normalized);
+			return;
+		}
+		if (typeof value === 'number') {
+			if (Number.isFinite(value)) values.push(String(value));
+			return;
+		}
+		if (typeof value === 'boolean') values.push(String(value));
+	};
+	if (Array.isArray(cell.rawValue)) {
+		for (const item of cell.rawValue) addScalar(item);
+	} else {
+		addScalar(cell.rawValue);
+	}
+	return values;
 }
 
 export function buildTableTaskSearchMatcherSignature(

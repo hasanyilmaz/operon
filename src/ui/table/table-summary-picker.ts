@@ -5,7 +5,7 @@ import type { TableSummaryFunction } from '../../types/table';
 import { t } from '../../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { createFloatingPanel, requestFloatingInputFocus, type FloatingHostOptions } from '../field-pickers/common';
-import { getTableTaskFieldLabel } from './table-field-catalog';
+import { getEffectiveTableTaskField, getTableTaskFieldLabel, type TableTaskField } from './table-field-catalog';
 import {
 	createTableSummaryPickerValueCache,
 	getTablePresetSummaryFunction,
@@ -27,6 +27,7 @@ export interface TableSummaryPickerOptions extends FloatingHostOptions {
 	rows: readonly IndexedTask[];
 	allTasks: readonly IndexedTask[];
 	settings: TableSummaryPickerSettings;
+	additionalFields?: readonly TableTaskField[];
 	valueResolver?: TableSummaryValueResolver;
 	currentFunction: TableSummaryFunction | null;
 	onSelect: (summaryFunction: TableSummaryFunction) => void;
@@ -35,12 +36,14 @@ export interface TableSummaryPickerOptions extends FloatingHostOptions {
 }
 
 export function showTableSummaryPicker(options: TableSummaryPickerOptions): () => void {
-	const functions = getTableSummaryFunctionsForField(options.fieldKey, options.settings);
+	const additionalFields = options.additionalFields ?? [];
+	const functions = getTableSummaryFunctionsForField(options.fieldKey, options.settings, additionalFields);
 	if (functions.length === 0) {
 		options.onClose?.();
 		return () => undefined;
 	}
-	const fieldLabel = getTableTaskFieldLabel(options.fieldKey, options.settings);
+	const fieldLabel = getEffectiveTableTaskField(options.fieldKey, options.settings, additionalFields)?.label
+		?? getTableTaskFieldLabel(options.fieldKey, options.settings);
 	const valueCache = createTableSummaryPickerValueCache({
 		fieldKey: options.fieldKey,
 		functions,

@@ -14,8 +14,8 @@ export const KANBAN_TRACKER_FIELD_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Fields that aggregate systems (progress calculator, total-duration
- * calculator, dependency manager, indexer aggregate patches) may mutate IN
+ * Fields that aggregate systems (AggregateCoordinator, dependency manager,
+ * indexer aggregate patches) may mutate IN
  * PLACE on cached IndexedTask objects without replacing the object. The
  * per-object stable signature cache must exclude them; they are re-read live
  * on every signature build. All other task content only changes when a file

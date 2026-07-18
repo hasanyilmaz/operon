@@ -13,6 +13,55 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '2.4.0',
+		date: '2026-07-18',
+		title: 'Flexible Tables, Faster Workflows',
+		showOnUpdate: true,
+		bannerUrl: 'operon-2-4-0-table-file-properties.png',
+		body: `
+Operon now adapts more naturally to the way your vault already works. File Task property columns let you work with frontmatter properties that are not part of Operon’s own task model, without first turning them into Custom Keys or reshaping your existing notes.
+
+Alongside that flexibility, this release improves the speed and stability of everyday interactions throughout Operon. Table, Kanban, and Task Finder searches respond more smoothly, while task saves and background updates do less unnecessary work.
+
+### New
+- Added editable **File task property columns** to Operon Table: unmanaged frontmatter properties in the current preset scope appear in a searchable column group, retain custom names and layout in presets and \`.table\` files, use typed text, list, number, date, datetime, and Table-aligned detailed or compact checkbox controls across workspace and embedded Tables without requiring Custom Keys, and support value search, typed sorting, grouping, subgrouping, and summaries; unavailable scoped properties keep their saved query rules until they return.
+- Added **Convert to Operon File Task…** to eligible note context menus across File Explorer, tabs, Bases, links, and the editor, opening the shared template picker for the exact selected note without an extra confirmation step.
+- Added an optional startup **release check**, enabled by default, that detects newer compatible GitHub releases and links users to Operon in Community Plugins.
+
+### Improved
+- Simplified the **Checkbox pop-over** header by removing redundant hover tooltips from its move and close icons while retaining accessible labels.
+- Improved **Task Editor and timer saves** by coordinating task writes, ancestor timestamps, aggregate updates, and index refreshes in one save chain, reducing duplicate parent writes and stale intermediate views while preserving existing recent-activity behavior.
+- Improved parent aggregate processing for deep hierarchies, same-file parents, bulk or external edits, and subtask reparenting by batching file and index updates, reusing subtree summaries, and ensuring each mutation has one authoritative aggregate refresh.
+- Improved task and **File Task save responsiveness** by moving Project Serial reconciliation into coalesced background work and removing the fixed 500 ms reindex wait; failed YAML saves now stop safely before rename or body updates.
+- Improved manual **Estimate reallocation** with stale-safe hierarchy checks, one consolidated index and aggregate pass, safe continuation after interrupted updates, protection against deducting the same increase twice, and preserved terminal auto-unpin and archive behavior.
+- Reduced Operon's internal-write event suppression window from one second to 750 ms after live-vault testing, allowing external file changes to be recognized sooner while preserving protection against Operon's own write echoes, including queued writes.
+- Improved **File Task template selection** with one minimal option per configured pipeline, so the selected pipeline's current first status is applied consistently across creation and conversion workflows.
+- Expanded saved **Filters** with globally discovered File Task properties, typed conditions, raw checkbox and presence operators, and typed Filter View sorting and grouping across Filter, Table, Calendar, Kanban, Settings preview, and embedded surfaces; stale or type-changed rules remain saved and safely reactivate when compatible data returns.
+- Improved **Operon Table search responsiveness** across workspace and embedded Tables by refreshing matching rows after 150 ms and deferred summaries after 75 ms, while continued typing cancels stale summary work before it can interrupt the next query.
+- Improved **Kanban search responsiveness** by refreshing matching cards after 150 ms while preserving immediate clear and search-scope actions.
+- Improved **Task Finder search responsiveness** by reusing task lookups and search documents while combining rapid typing into 40 ms updates, especially reducing repeated work when Finished tasks are included without changing matches or ranking.
+
+### Changed
+- Retired the **Task Editor autosave delay** setting; Task Editor changes now autosave automatically two seconds after the last edit, while closing the editor still saves pending changes immediately.
+
+### Fixed
+- Fixed **Checkbox Progress** so it opens the checkbox pop-over for open, completed, and cancelled tasks across detailed and compact Tables, Kanban cards, and task action menus, while Subtask Progress continues to open its subtask filter only for open tasks.
+- Fixed long task descriptions in the **Dynamic File Task Filter** inside Task Editor File Body so they wrap within the available panel width instead of continuing beyond the visible editor area.
+- Fixed starting a timer on a finished or cancelled subtask so same-file parent progress, task counts, and aggregate timestamps refresh together without duplicate ancestor writes.
+
+### New Docs
+- [[DOCS-115 File task property columns|File task property columns]]
+
+### Updated Docs
+- [[DOCS-007 Install and enable Operon|Install and enable Operon]]
+- [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]
+- [[DOCS-021 Task Editor|Task Editor]]
+- [[DOCS-024 Task templates|Task templates]]
+- [[DOCS-025 Filter View|Filter View]]
+- And 8 more updated docs.
+`.trim(),
+	},
+	{
 		version: '2.3.0',
 		date: '2026-07-16',
 		title: 'Faster Index, Smoother Operon',

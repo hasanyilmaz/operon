@@ -15,6 +15,7 @@ import {
 	KeyMapping,
 } from '../types/settings';
 import { PinnedCache } from '../storage/pinned-cache';
+import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
 
 const CALENDAR_OWNED_FILTER_KEYS = new Set([
 	'dateScheduled',
@@ -412,6 +413,7 @@ function getFieldLabel(key: string, keyMappings: KeyMapping[]): string {
 }
 
 function isConditionUnsupportedByField(condition: FilterSetCondition): boolean {
+	if (isFilePropertyColumnKey(condition.field) || condition.field.startsWith('file.property:')) return true;
 	if (condition.field === 'description' || condition.field === 'pinned' || condition.field === 'checkbox' || condition.fieldType === 'projectSerialScope') {
 		return true;
 	}

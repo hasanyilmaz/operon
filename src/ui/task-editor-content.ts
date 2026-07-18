@@ -171,7 +171,9 @@ export interface TaskEditorContentOptions {
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
 	onUpdateRepeatSkips?: (request: TaskEditorRepeatSkipUpdateRequest) => Promise<TaskEditorRepeatSkipUpdateResult> | TaskEditorRepeatSkipUpdateResult;
 	getRepeatSeriesInlineCompletionMode?: (repeatSeriesId: string) => InlineRepeatCompletionMode;
-	onApplyEstimateReallocation?: (request: TaskEditorEstimateReallocationRequest) => Promise<boolean>;
+	onApplyEstimateReallocation?: (
+		request: TaskEditorEstimateReallocationRequest,
+	) => Promise<TaskEditorEstimateReallocationApplyResult>;
 	pinnedCache?: PinnedCache;
 	fileBody?: TaskEditorFileBodyContext | null;
 	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
@@ -201,6 +203,11 @@ export interface TaskEditorEstimateReallocationRequest {
 	}>;
 }
 
+export interface TaskEditorEstimateReallocationApplyResult {
+	complete: boolean;
+	committedSubtractSeconds: number;
+}
+
 export interface TaskEditorRepeatSkipUpdateRequest {
 	operonId: string;
 	repeatSeriesId: string;
@@ -227,6 +234,8 @@ const TASK_EDITOR_DAY_PICKER_DATE_KEYS = new Set<string>([
 	'dateCompleted',
 	'dateCancelled',
 ]);
+
+export const TASK_EDITOR_AUTOSAVE_DELAY_MS = 2_000;
 
 function getLegacyMediaQueryMethod(mediaQuery: MediaQueryList, methodName: 'addListener' | 'removeListener'): LegacyMediaQueryMethod | null {
 	const method = (mediaQuery as unknown as Record<string, unknown>)[methodName];
@@ -325,7 +334,9 @@ export class TaskEditorContent {
 	private onUpdateExistingSubtaskParent: ((childId: string, parentId: string | null) => void | Promise<void>) | null = null;
 	private getRepeatSkipDates: ((repeatSeriesId: string) => string[]) | null = null;
 	private onUpdateRepeatSkips: ((request: TaskEditorRepeatSkipUpdateRequest) => Promise<TaskEditorRepeatSkipUpdateResult> | TaskEditorRepeatSkipUpdateResult) | null = null;
-	private onApplyEstimateReallocation: ((request: TaskEditorEstimateReallocationRequest) => Promise<boolean>) | null = null;
+	private onApplyEstimateReallocation: ((
+		request: TaskEditorEstimateReallocationRequest,
+	) => Promise<TaskEditorEstimateReallocationApplyResult>) | null = null;
 	private pinnedCache: PinnedCache | null = null;
 	private getProjectSerialDisplay: ((operonId: string) => ProjectSerialDisplay | null) | null = null;
 	private taskOperonId: string | null = null;
@@ -2139,7 +2150,7 @@ export class TaskEditorContent {
 				colorRole: 'default',
 				linkTarget: null,
 			}, 'operon-editor-compact-selection-chip', { forceFull: true });
-			const removeButton = chip.ownerDocument.createElement('button');
+			const removeButton = chip.ownerDocument.win.createEl('button');
 			removeButton.type = 'button';
 			removeButton.className = 'operon-editor-compact-selection-chip-remove';
 			setIcon(removeButton, 'x');
@@ -2571,7 +2582,7 @@ export class TaskEditorContent {
 				colorRole: 'default',
 				linkTarget: null,
 			}, 'operon-editor-compact-selection-chip', { forceFull: true });
-				const removeButton = chip.ownerDocument.createElement('button');
+				const removeButton = chip.ownerDocument.win.createEl('button');
 			removeButton.type = 'button';
 			removeButton.className = 'operon-editor-compact-selection-chip-remove';
 			setIcon(removeButton, 'x');
@@ -2610,7 +2621,7 @@ export class TaskEditorContent {
 			colorRole: 'default',
 			linkTarget: null,
 		}, 'operon-editor-compact-selection-chip', { forceFull: true });
-		const removeButton = chip.ownerDocument.createElement('button');
+		const removeButton = chip.ownerDocument.win.createEl('button');
 		removeButton.type = 'button';
 		removeButton.className = 'operon-editor-compact-selection-chip-remove';
 		setIcon(removeButton, 'x');
@@ -3969,7 +3980,7 @@ export class TaskEditorContent {
 			const saved = await this.persistEditorState('estimate-reallocation');
 			if (!saved.ok || !saved.clean) return;
 
-			const applied = await this.onApplyEstimateReallocation({
+			const applyResult = await this.onApplyEstimateReallocation({
 				childOperonId,
 				deltaSeconds: proposal.deltaSeconds,
 				childEstimateBeforeSeconds: proposal.childEstimateBeforeSeconds,
@@ -3983,16 +3994,22 @@ export class TaskEditorContent {
 					estimateAfterSeconds: step.estimateAfterSeconds,
 				})),
 			});
-			if (!applied) {
-				new Notice(t('taskEditor', 'estimateReallocationUnavailable'));
-				this.refreshEstimateReallocationControl?.();
-				return;
+			if (applyResult.complete) {
+				this.commitEstimateReallocationBaseline(proposal.childEstimateAfterSeconds);
+			} else if (applyResult.committedSubtractSeconds > 0) {
+				this.commitEstimateReallocationBaseline(Math.min(
+					proposal.childEstimateAfterSeconds,
+					proposal.childEstimateBeforeSeconds + applyResult.committedSubtractSeconds,
+				));
 			}
 
-			this.commitEstimateReallocationBaseline(proposal.childEstimateAfterSeconds);
 			this.syncTrackingFieldsFromIndex();
 			this.refreshParentContextSection?.();
 			this.refreshEstimateReallocationControl?.();
+			if (!applyResult.complete) {
+				new Notice(t('taskEditor', 'estimateReallocationUnavailable'));
+				return;
+			}
 		} finally {
 			this.resumeAutoSave();
 		}
@@ -4739,7 +4756,7 @@ export class TaskEditorContent {
 				locationMarkerColor: match?.taskColor ?? null,
 			}, 'operon-editor-compact-selection-chip', { forceFull: true });
 			chip.style.setProperty('--operon-inline-chip-icon-color', match?.taskColor ?? this.getThemeColor());
-			const removeButton = chip.ownerDocument.createElement('button');
+			const removeButton = chip.ownerDocument.win.createEl('button');
 			removeButton.type = 'button';
 			removeButton.className = 'operon-editor-compact-selection-chip-remove';
 			setIcon(removeButton, 'x');
@@ -4900,7 +4917,7 @@ export class TaskEditorContent {
 					colorRole: 'default',
 					linkTarget: null,
 				}, 'operon-editor-compact-selection-chip', { forceFull: true });
-				const removeButton = chip.ownerDocument.createElement('button');
+				const removeButton = chip.ownerDocument.win.createEl('button');
 				removeButton.type = 'button';
 				removeButton.className = 'operon-editor-compact-selection-chip-remove';
 				setIcon(removeButton, 'x');
@@ -5548,8 +5565,10 @@ export class TaskEditorContent {
 		if (this.disposed) return;
 		if (this.saveTimer) clearWindowTimeout(this.saveTimer);
 		if (this.autoSaveSuspended) return;
-		const delayMs = this.settings.taskEditorAutosaveDelaySeconds * 1000;
-		this.saveTimer = setWindowTimeout(() => { void this.persistEditorState('autosave'); }, delayMs);
+		this.saveTimer = setWindowTimeout(
+			() => { void this.persistEditorState('autosave'); },
+			TASK_EDITOR_AUTOSAVE_DELAY_MS,
+		);
 	}
 
 	private suspendAutoSave(): void {

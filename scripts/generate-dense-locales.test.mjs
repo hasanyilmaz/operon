@@ -324,12 +324,12 @@ test('atomic artifact writes preserve the last good file and clean up on rename 
 	assert.deepEqual(fs.readdirSync(fixture.rootDir).sort(), ['dense-locales.json', 'locales']);
 });
 
-test('real dense locale pack preserves all 25,344 source values', () => {
+test('real dense locale pack preserves all 25,605 source values', () => {
 	const localeDirectory = path.join(repoRoot, 'i18n/locales');
 	const pack = buildDenseLocalePack({ localeDirectory });
-	assert.equal(pack.keyCount, 2_816);
+	assert.equal(pack.keyCount, 2_845);
 	assert.equal(pack.languageOrder.length, 9);
-	assert.equal(pack.keyCount * pack.languageOrder.length, 25_344);
+	assert.equal(pack.keyCount * pack.languageOrder.length, 25_605);
 	assert.equal(serializeDenseLocalePack(pack), createDenseLocaleArtifact({ localeDirectory }));
 
 	for (const definition of LOCALE_DEFINITIONS) {

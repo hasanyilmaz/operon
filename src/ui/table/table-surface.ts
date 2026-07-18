@@ -15,6 +15,7 @@ import { createTableGroupPathKey, type TableQueryGroup, type TableQuerySubgroup 
 import { t } from '../../core/i18n';
 import { buildTableTaskFieldCatalog } from './table-field-catalog';
 import { orderTablePresetColumnsByPinState } from './table-preset-model';
+import { isTableFilePropertyColumnKey } from './table-file-property';
 
 export const TABLE_ROW_HEIGHT = 38;
 export const TABLE_COMFORTABLE_ROW_HEIGHT = 44;
@@ -155,11 +156,12 @@ export function resolveTableColumns(preset: TablePreset, settings: OperonSetting
 
 export function resolveVisibleTableColumns(preset: TablePreset, settings: OperonSettings): TableColumn[] {
 	const supportedKeys = new Set(buildTableTaskFieldCatalog(settings).map(field => field.key));
+	const isSupportedKey = (key: string): boolean => supportedKeys.has(key) || isTableFilePropertyColumnKey(key);
 	const allowSource = preset.display.showSource !== false;
 	const columns = orderTablePresetColumnsByPinState(preset.columns)
-		.filter(column => supportedKeys.has(column.key) && !column.hidden && (allowSource || column.key !== 'source'));
+		.filter(column => isSupportedKey(column.key) && !column.hidden && (allowSource || column.key !== 'source'));
 	if (columns.length > 0) return columns;
-	const fallback = preset.columns.find(column => supportedKeys.has(column.key) && (allowSource || column.key !== 'source'))
+	const fallback = preset.columns.find(column => isSupportedKey(column.key) && (allowSource || column.key !== 'source'))
 		?? createDefaultTablePreset().columns.find(column => supportedKeys.has(column.key) && (allowSource || column.key !== 'source'));
 	return fallback
 		? [fallback]
@@ -243,7 +245,7 @@ export function measureTableScrollbarGutterPx(ownerDocument: Document): number {
 	if (typeof cached === 'number') return cached;
 	const body = ownerDocument.body;
 	if (!body) return 0;
-	const probe = ownerDocument.createElement('div');
+	const probe = ownerDocument.win.createDiv();
 	probe.className = 'operon-table-scrollbar-measure';
 	body.appendChild(probe);
 	const gutter = Math.max(0, probe.offsetWidth - probe.clientWidth);
@@ -300,6 +302,7 @@ export function buildTableTaskOrdinalMap(items: readonly TableRenderItem[]): Map
 }
 
 export function resolveTableGroupDisplayLabel(group: TableQueryGroup | TableQuerySubgroup): string {
+	if (group.isUnsupportedValue) return t('table', 'groupUnsupportedValue');
 	return group.isNoValue ? t('table', 'groupNoValue') : group.label;
 }
 

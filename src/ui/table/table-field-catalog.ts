@@ -8,6 +8,8 @@ import {
 	type FilterFieldType,
 	type OperonSettings,
 } from '../../types/settings';
+import type { TableColumn } from '../../types/table';
+import { decodeTableFilePropertyColumnKey } from './table-file-property';
 
 export type TableTaskFieldGroup =
 	| 'task'
@@ -16,6 +18,7 @@ export type TableTaskFieldGroup =
 	| 'dependencies'
 	| 'source'
 	| 'identity'
+	| 'fileProperty'
 	| 'custom';
 
 export interface TableTaskField {
@@ -26,6 +29,10 @@ export interface TableTaskField {
 	icon: string;
 	readonly: boolean;
 	aliases: string[];
+	/** Exact source property label when the visible label is a preset-scoped alias. */
+	sourceLabel?: string;
+	/** The key is structurally supported but not present in the current File Task scope. */
+	unavailable?: boolean;
 }
 
 export const PROJECT_SERIAL_TABLE_FIELD_KEY = 'projectSerial';
@@ -117,7 +124,51 @@ export function buildTableTaskFieldCatalog(settings: TableTaskFieldCatalogSettin
 	return resolveTableTaskFieldCatalog(settings).catalog;
 }
 
-export function buildTableGroupSortFieldCatalog(settings: TableTaskFieldCatalogSettings): TableTaskField[] {
+export function buildEffectiveTableTaskFieldCatalog(
+	settings: TableTaskFieldCatalogSettings,
+	additionalFields: readonly TableTaskField[] = [],
+	preservedColumnKeys: readonly string[] = [],
+): TableTaskField[] {
+	if (additionalFields.length === 0 && preservedColumnKeys.length === 0) return buildTableTaskFieldCatalog(settings);
+	const catalog = [...buildTableTaskFieldCatalog(settings)];
+	const seen = new Set(catalog.map(field => field.key));
+	for (const field of additionalFields) {
+		if (!field.key.trim() || seen.has(field.key)) continue;
+		seen.add(field.key);
+		const propertyName = decodeTableFilePropertyColumnKey(field.key);
+		catalog.push(propertyName && field.group === 'fileProperty'
+			? {
+				...field,
+				sourceLabel: field.sourceLabel?.trim() || propertyName,
+				aliases: [...new Set([...field.aliases, propertyName])],
+			}
+			: field);
+	}
+	for (const key of preservedColumnKeys) {
+		if (seen.has(key)) continue;
+		const propertyName = decodeTableFilePropertyColumnKey(key);
+		if (!propertyName) continue;
+		seen.add(key);
+		catalog.push({
+			key,
+			label: propertyName,
+			type: 'text',
+			group: 'fileProperty',
+			icon: 'text',
+			readonly: true,
+			aliases: [propertyName, key, `note.${propertyName}`],
+			sourceLabel: propertyName,
+			unavailable: true,
+		});
+	}
+	return catalog;
+}
+
+export function buildTableGroupSortFieldCatalog(
+	settings: TableTaskFieldCatalogSettings,
+	additionalFields: readonly TableTaskField[] = [],
+	preservedKeys: readonly string[] = [],
+): TableTaskField[] {
 	const pipelineField: TableTaskField = {
 		key: TABLE_WORKFLOW_PIPELINE_FIELD_KEY,
 		label: t('table', 'fieldPipeline'),
@@ -132,8 +183,33 @@ export function buildTableGroupSortFieldCatalog(settings: TableTaskFieldCatalogS
 	};
 	return [
 		pipelineField,
-		...buildTableTaskFieldCatalog(settings).filter(field => field.key !== TABLE_WORKFLOW_PIPELINE_FIELD_KEY),
+		...buildEffectiveTableTaskFieldCatalog(settings, additionalFields, preservedKeys)
+			.filter(field => field.key !== TABLE_WORKFLOW_PIPELINE_FIELD_KEY),
 	];
+}
+
+/** Applies preset-scoped column aliases without changing the YAML property name. */
+export function applyTablePresetFieldAliases(
+	catalog: readonly TableTaskField[],
+	columns: readonly Pick<TableColumn, 'key' | 'label'>[],
+): TableTaskField[] {
+	const labels = new Map(columns
+		.map(column => [column.key, column.label?.trim()] as const)
+		.filter((entry): entry is readonly [string, string] => !!entry[1]));
+	if (labels.size === 0) return [...catalog];
+	return catalog.map(field => {
+		const label = labels.get(field.key);
+		if (!label) return field;
+		const sourceLabel = field.sourceLabel?.trim()
+			|| decodeTableFilePropertyColumnKey(field.key)
+			|| field.label;
+		return {
+			...field,
+			label,
+			sourceLabel,
+			aliases: [...new Set([...field.aliases, sourceLabel, label])],
+		};
+	});
 }
 
 function buildTableTaskFieldCatalogUncached(settings: TableTaskFieldCatalogSettings): TableTaskField[] {
@@ -229,6 +305,37 @@ export function normalizeTableTaskFieldKeys(
 
 export function getTableTaskFieldLabel(key: string, settings: TableTaskFieldCatalogSettings): string {
 	return getTableTaskField(key, settings)?.label ?? key;
+}
+
+export function getEffectiveTableTaskField(
+	key: string,
+	settings: TableTaskFieldCatalogSettings,
+	additionalFields: readonly TableTaskField[] = [],
+): TableTaskField | null {
+	const raw = key?.trim();
+	if (!raw) return null;
+	return getTableTaskField(raw, settings)
+		?? additionalFields.find(field => field.key === raw)
+		?? null;
+}
+
+export function getEffectiveTableTaskFieldLabel(
+	key: string,
+	settings: TableTaskFieldCatalogSettings,
+	additionalFields: readonly TableTaskField[] = [],
+): string {
+	return getEffectiveTableTaskField(key, settings, additionalFields)?.label
+		?? decodeTableFilePropertyColumnKey(key)
+		?? key;
+}
+
+export function getTableColumnLabel(
+	column: Pick<TableColumn, 'key' | 'label'>,
+	settings: TableTaskFieldCatalogSettings,
+	additionalFields: readonly TableTaskField[] = [],
+): string {
+	return column.label?.trim()
+		|| getEffectiveTableTaskFieldLabel(column.key, settings, additionalFields);
 }
 
 export function isEditableTableTaskFieldKey(key: string, settings: TableTaskFieldCatalogSettings): boolean {

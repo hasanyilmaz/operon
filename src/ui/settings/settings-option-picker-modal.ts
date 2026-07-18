@@ -16,6 +16,7 @@ export interface SettingsOptionPickerModalOptions<TOption extends SearchableOpti
 	placeholder: string;
 	ariaLabel: string;
 	noMatchesText: string;
+	getSearchText?: (option: TOption) => string;
 	onSelect: (option: TOption) => void;
 }
 
@@ -56,6 +57,7 @@ export class SettingsOptionPickerModal<TOption extends SearchableOptionPickerIte
 				placeholder: this.options.placeholder,
 				ariaLabel: this.options.ariaLabel,
 				noMatchesText: this.options.noMatchesText,
+				getSearchText: this.options.getSearchText,
 				floatingHost: hostEl,
 				floatingScrollHost: hostEl,
 				constrainToFloatingHost: true,

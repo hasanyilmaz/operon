@@ -68,7 +68,9 @@ export function renderTableProgressCell(
 		options.valueResolver.workflowStatusIdentityIndex,
 	);
 	const ariaLabel = `${fieldLabel}: ${track.tooltip}`;
-	const actionHandler = options.task.checkbox === 'open' ? options.onActivate : undefined;
+	const actionHandler = track.kind === 'checkboxes' || options.task.checkbox === 'open'
+		? options.onActivate
+		: undefined;
 	setAccessibleLabelWithoutTooltip(cell, ariaLabel);
 	if (options.iconOnly) {
 		const actionShell = actionHandler

@@ -11,12 +11,16 @@ import { createPresetFavoriteButton } from '../preset-favorite-button';
 import { renderPresetFilterActions } from '../preset-filter-actions';
 import { isPresetFavorite } from '../../core/preset-favorites';
 import {
+	applyTablePresetFieldAliases,
 	buildTableGroupSortFieldCatalog,
+	buildEffectiveTableTaskFieldCatalog,
 	buildTableTaskFieldCatalog,
-	getTableTaskFieldLabel,
+	getTableColumnLabel,
+	type TableTaskField,
 	TABLE_WORKFLOW_PIPELINE_FIELD_KEY,
 } from './table-field-catalog';
 import { buildTableFieldPickerOptions, getTableFieldPickerLabel } from './table-field-picker-options';
+import { isTableFilePropertyColumnKey, type TableFilePropertyField } from './table-file-property';
 import {
 	filterCompatibleTableSummaryRules,
 	getTableSummaryFunctionsForField,
@@ -48,6 +52,7 @@ interface TablePresetQuickSettingsModalOptions {
 	onSaveFilterSet: (filterSet: FilterSet) => Promise<void>;
 	onToggleFilterFavorite?: (filterSetId: string) => Promise<void>;
 	getFilterModalEvalDeps?: () => FilterModalEvalDeps | null;
+	getAdditionalColumnFields?: (preset: TablePreset) => readonly TableFilePropertyField[];
 	saveWhenClean?: boolean;
 	managementMode?: 'full' | 'current-only';
 }
@@ -172,7 +177,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private renderGroupingSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionGrouping'));
-		const catalog = buildTableGroupSortFieldCatalog(settings);
+		const catalog = this.buildGroupSortCatalog(preset, settings);
 		const supportedKeys = new Set(catalog.map(field => field.key));
 		const normalizedPreset = filterTablePresetGroupByBySupportedKeys(preset, supportedKeys);
 		const rows = card.createDiv('operon-table-preset-grouping-list');
@@ -260,8 +265,19 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private renderColumnsSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionColumns'));
-		const catalog = buildTableTaskFieldCatalog(settings);
+		const additionalFields = this.options.getAdditionalColumnFields?.(preset) ?? [];
+		const catalog = applyTablePresetFieldAliases(
+			buildEffectiveTableTaskFieldCatalog(
+				settings,
+				additionalFields,
+				preset.columns.map(column => column.key),
+			),
+			preset.columns,
+		);
 		const supportedKeys = new Set(catalog.map(field => field.key));
+		for (const column of preset.columns) {
+			if (isTableFilePropertyColumnKey(column.key)) supportedKeys.add(column.key);
+		}
 		const columnPreset = filterTablePresetColumnsBySupportedKeys(preset, supportedKeys);
 		const visibleColumns = columnPreset.columns.filter(column => !column.hidden);
 		const visibleKeys = new Set(visibleColumns.map(column => column.key));
@@ -274,7 +290,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 			setIcon(iconEl, field?.icon ?? 'columns-3');
 			row.createSpan({
 				cls: 'operon-table-preset-column-label',
-				text: field?.label ?? getTableTaskFieldLabel(column.key, settings),
+				text: getTableColumnLabel(column, settings, additionalFields),
 			});
 			const canMoveUp = getTablePresetColumnMoveTargetKey(columnPreset, column.key, -1) !== null;
 			const canMoveDown = getTablePresetColumnMoveTargetKey(columnPreset, column.key, 1) !== null;
@@ -295,19 +311,25 @@ export class TablePresetQuickSettingsModal extends Modal {
 			.addDropdown(dropdown => {
 				dropdown.addOption('', t('table', 'addColumnPlaceholder'));
 				for (const field of hiddenOptions) {
-					dropdown.addOption(field.key, field.label);
+					dropdown.addOption(field.key, getFieldOptionLabel(field));
 				}
 				dropdown.setValue('');
-					dropdown.onChange(value => {
-						if (!value) return;
-						this.updateColumns(setTablePresetColumnVisible(columnPreset, value, true, settings));
-					});
+				dropdown.onChange(value => {
+					if (!value) return;
+					this.updateColumns(setTablePresetColumnVisible(
+						columnPreset,
+						value,
+						true,
+						settings,
+						catalog.find(field => field.key === value),
+					));
 				});
+			});
 	}
 
 	private renderSortSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionSort'));
-		const catalog = buildTableGroupSortFieldCatalog(settings);
+		const catalog = this.buildGroupSortCatalog(preset, settings);
 		const supportedKeys = new Set(catalog.map(field => field.key));
 		const normalizedPreset = filterTablePresetSortRulesBySupportedKeys(preset, supportedKeys);
 		const sortRules = normalizedPreset.sortRules;
@@ -401,7 +423,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 		}
 
 		const usedSortKeys = new Set(sortRules.map(rule => rule.key));
-		const nextField = catalog.find(field => !usedSortKeys.has(field.key)) ?? null;
+		const nextField = catalog.find(field => !field.unavailable && !usedSortKeys.has(field.key)) ?? null;
 		const addRow = card.createDiv('operon-table-preset-sort-add-row');
 		const addButton = addRow.createEl('button', {
 			text: t('table', 'addSort'),
@@ -442,11 +464,28 @@ export class TablePresetQuickSettingsModal extends Modal {
 				'aria-expanded': 'false',
 			},
 		});
-		setAccessibleLabelWithoutTooltip(button, options.label);
 		button.setAttribute(options.focusAttribute, options.focusKey);
 		button.disabled = options.disabled === true;
 		const label = getTableFieldPickerLabel(options.catalog, options.value, options.placeholder);
 		button.createSpan({ cls: 'operon-field-picker-trigger-label', text: label });
+		const selectedField = options.catalog.find(field => field.key === options.value);
+		const secondaryLabel = selectedField?.unavailable
+			? t('table', 'fieldUnavailableInCurrentScope')
+			: selectedField?.sourceLabel && selectedField.sourceLabel !== selectedField.label
+				? selectedField.sourceLabel
+				: null;
+		setAccessibleLabelWithoutTooltip(
+			button,
+			`${options.label}: ${label}${secondaryLabel ? `, ${secondaryLabel}` : ''}`,
+		);
+		if (selectedField?.unavailable) {
+			button.createSpan({
+				cls: 'operon-field-picker-trigger-secondary',
+				text: t('table', 'fieldUnavailableInCurrentScope'),
+			});
+		} else if (selectedField?.sourceLabel && selectedField.sourceLabel !== selectedField.label) {
+			button.createSpan({ cls: 'operon-field-picker-trigger-secondary', text: selectedField.sourceLabel });
+		}
 		const iconEl = button.createSpan('operon-field-picker-trigger-icon');
 		setIcon(iconEl, 'chevron-down');
 		button.addEventListener('click', event => {
@@ -455,7 +494,8 @@ export class TablePresetQuickSettingsModal extends Modal {
 			button.setAttribute('aria-expanded', 'true');
 			showSearchableFieldPicker(button, {
 				value: options.value,
-				fields: buildTableFieldPickerOptions(options.catalog, {
+				fields: buildTableFieldPickerOptions(
+					options.catalog.filter(field => !field.unavailable || field.key === options.value), {
 					excludedFieldKeys: options.excludedFieldKeys,
 					noneLabel: options.noneLabel,
 				}),
@@ -467,6 +507,13 @@ export class TablePresetQuickSettingsModal extends Modal {
 					if (button.isConnected) button.setAttribute('aria-expanded', 'false');
 				},
 				variantClassName: 'operon-table-field-picker',
+				getSearchText: option => [
+					option.label,
+					option.field,
+					option.type,
+					option.tableField?.sourceLabel,
+					...(option.tableField?.aliases ?? []),
+				].filter(Boolean).join(' '),
 				matchWidth: Math.max(button.getBoundingClientRect().width, 280),
 				repositionOnScroll: true,
 				repositionOnWindowResize: true,
@@ -476,8 +523,17 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private renderSummariesSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionSummaries'));
-		const catalog = buildTableTaskFieldCatalog(settings);
-		const summaryRules = filterCompatibleTableSummaryRules(preset.summaries, settings);
+		const additionalFields = this.options.getAdditionalColumnFields?.(preset) ?? [];
+		const presetColumnKeys = new Set(preset.columns.map(column => column.key));
+		const catalog = applyTablePresetFieldAliases(
+			buildEffectiveTableTaskFieldCatalog(
+				settings,
+				additionalFields.filter(field => field.group !== 'fileProperty' || presetColumnKeys.has(field.key)),
+				preset.summaries.map(rule => rule.key),
+			),
+			preset.columns,
+		);
+		const summaryRules = retainTableSummaryRules(preset.summaries, settings);
 		const listEl = card.createDiv('operon-table-preset-summary-list');
 
 		if (summaryRules.length === 0) {
@@ -496,11 +552,12 @@ export class TablePresetQuickSettingsModal extends Modal {
 			setAccessibleLabelWithoutTooltip(fieldSelect, t('table', 'summaryFieldSelectAria'));
 			for (const field of catalog) {
 				if (usedByOtherRules.has(field.key)) continue;
-				fieldSelect.createEl('option', { value: field.key, text: field.label });
+				const option = fieldSelect.createEl('option', { value: field.key, text: getFieldOptionLabel(field) });
+				option.disabled = field.unavailable === true && field.key !== rule.key;
 			}
 			fieldSelect.value = rule.key;
 			fieldSelect.addEventListener('change', () => {
-				const nextFunction = resolveCompatibleSummaryFunction(fieldSelect.value, rule.function, settings);
+				const nextFunction = resolveCompatibleSummaryFunction(fieldSelect.value, rule.function, settings, additionalFields);
 				this.updateSummaries(summaryRules.map((entry, entryIndex) => entryIndex === index
 					? { key: fieldSelect.value, function: nextFunction }
 					: entry));
@@ -510,13 +567,22 @@ export class TablePresetQuickSettingsModal extends Modal {
 				cls: 'operon-table-preset-summary-select',
 			});
 			setAccessibleLabelWithoutTooltip(functionSelect, t('table', 'summaryFunctionSelectAria'));
-			for (const summaryFunction of getTableSummaryFunctionsForField(rule.key, settings)) {
+			const compatibleFunctions = getTableSummaryFunctionsForField(rule.key, settings, additionalFields);
+			const ruleUnavailable = compatibleFunctions.length === 0 || !compatibleFunctions.includes(rule.function);
+			for (const summaryFunction of ruleUnavailable ? [rule.function] : compatibleFunctions) {
 				functionSelect.createEl('option', {
 					value: summaryFunction,
 					text: getTableSummaryFunctionLabel(summaryFunction),
 				});
 			}
 			functionSelect.value = rule.function;
+			functionSelect.disabled = ruleUnavailable;
+			if (ruleUnavailable) {
+				row.createSpan({
+					cls: 'operon-table-preset-summary-unavailable',
+					text: t('table', 'fieldUnavailableInCurrentScope'),
+				});
+			}
 			functionSelect.addEventListener('change', () => {
 				this.updateSummaries(summaryRules.map((entry, entryIndex) => entryIndex === index
 					? { ...entry, function: functionSelect.value as TableSummaryFunction }
@@ -529,7 +595,9 @@ export class TablePresetQuickSettingsModal extends Modal {
 		}
 
 		const usedSummaryKeys = new Set(summaryRules.map(rule => rule.key));
-		const nextField = catalog.find(field => !usedSummaryKeys.has(field.key) && getTableSummaryFunctionsForField(field.key, settings).length > 0) ?? null;
+		const nextField = catalog.find(field => !field.unavailable
+			&& !usedSummaryKeys.has(field.key)
+			&& getTableSummaryFunctionsForField(field.key, settings, additionalFields).length > 0) ?? null;
 		const actionRow = card.createDiv('operon-table-preset-summary-add-row');
 		const addButton = actionRow.createEl('button', {
 			text: t('table', 'addSummary'),
@@ -539,7 +607,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 		addButton.addEventListener('click', event => {
 			event.preventDefault();
 			if (!nextField) return;
-			const summaryFunction = getTableSummaryFunctionsForField(nextField.key, settings)[0];
+			const summaryFunction = getTableSummaryFunctionsForField(nextField.key, settings, additionalFields)[0];
 			if (!summaryFunction) return;
 			this.updateSummaries([...summaryRules, { key: nextField.key, function: summaryFunction }]);
 		});
@@ -747,7 +815,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private updateSortRules(preset: TablePreset, sortRules: readonly TableSortRule[], focusKey?: string): void {
 		if (!this.draftPreset) return;
-		const supportedKeys = new Set(buildTableGroupSortFieldCatalog(this.options.getSettings()).map(field => field.key));
+		const supportedKeys = new Set(this.buildGroupSortCatalog(preset, this.options.getSettings()).map(field => field.key));
 		this.draftPreset.sortRules = replaceTablePresetSortRules(preset, sortRules, supportedKeys).sortRules;
 		this.markDirty('sortRules');
 		this.renderPreservingScroll();
@@ -763,7 +831,10 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private updateSummaries(summaries: readonly TableSummaryRule[]): void {
 		if (!this.draftPreset) return;
-		this.draftPreset.summaries = filterCompatibleTableSummaryRules(summaries, this.options.getSettings());
+		this.draftPreset.summaries = retainTableSummaryRules(
+			summaries,
+			this.options.getSettings(),
+		);
 		this.markDirty('summaries');
 		this.renderPreservingScroll();
 	}
@@ -784,6 +855,22 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private markDirty(field: TablePresetDirtyField): void {
 		this.dirtyFields.add(field);
+	}
+
+	private buildGroupSortCatalog(preset: TablePreset, settings: OperonSettings): TableTaskField[] {
+		const preservedKeys = [
+			preset.groupBy,
+			preset.subgroupBy,
+			...preset.sortRules.map(rule => rule.key),
+		].filter((key): key is string => !!key?.trim());
+		return applyTablePresetFieldAliases(
+			buildTableGroupSortFieldCatalog(
+				settings,
+				this.options.getAdditionalColumnFields?.(preset) ?? [],
+				preservedKeys,
+			),
+			preset.columns,
+		);
 	}
 
 	private buildDirtyPatch(preset: TablePreset): TablePresetPatch {
@@ -853,8 +940,14 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private sanitizePresetForSave(preset: TablePreset): TablePreset {
 		const settings = this.options.getSettings();
-		const columnSupportedKeys = new Set(buildTableTaskFieldCatalog(settings).map(field => field.key));
-		const groupSortSupportedKeys = new Set(buildTableGroupSortFieldCatalog(settings).map(field => field.key));
+		const columnSupportedKeys = new Set(buildEffectiveTableTaskFieldCatalog(
+			settings,
+			this.options.getAdditionalColumnFields?.(preset) ?? [],
+		).map(field => field.key));
+		for (const column of preset.columns) {
+			if (isTableFilePropertyColumnKey(column.key)) columnSupportedKeys.add(column.key);
+		}
+		const groupSortSupportedKeys = new Set(this.buildGroupSortCatalog(preset, settings).map(field => field.key));
 		const sanitized = filterTablePresetSortRulesBySupportedKeys(
 			filterTablePresetGroupByBySupportedKeys(
 				filterTablePresetColumnsBySupportedKeys(normalizeTablePresetForColumnUi(cloneTablePreset(preset)), columnSupportedKeys),
@@ -862,7 +955,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 			),
 			groupSortSupportedKeys,
 		);
-		sanitized.summaries = filterCompatibleTableSummaryRules(sanitized.summaries, settings);
+		sanitized.summaries = retainTableSummaryRules(sanitized.summaries, settings);
 		return sanitized;
 	}
 }
@@ -871,9 +964,39 @@ function resolveCompatibleSummaryFunction(
 	key: string,
 	currentFunction: TableSummaryFunction,
 	settings: OperonSettings,
+	additionalFields: readonly TableTaskField[] = [],
 ): TableSummaryFunction {
-	const functions = getTableSummaryFunctionsForField(key, settings);
+	const functions = getTableSummaryFunctionsForField(key, settings, additionalFields);
 	return functions.includes(currentFunction) ? currentFunction : functions[0] ?? 'Count';
+}
+
+function retainTableSummaryRules(
+	rules: readonly TableSummaryRule[],
+	settings: OperonSettings,
+): TableSummaryRule[] {
+	const retained: TableSummaryRule[] = [];
+	const seen = new Set<string>();
+	for (const rule of rules) {
+		const key = rule.key.trim();
+		if (!key || seen.has(key)) continue;
+		if (isTableFilePropertyColumnKey(key)) {
+			seen.add(key);
+			retained.push({ key, function: rule.function });
+			continue;
+		}
+		const compatible = filterCompatibleTableSummaryRules([rule], settings)[0];
+		if (!compatible) continue;
+		if (seen.has(compatible.key)) continue;
+		seen.add(compatible.key);
+		retained.push(compatible);
+	}
+	return retained;
+}
+
+function getFieldOptionLabel(field: TableTaskField): string {
+	if (field.unavailable) return `${field.label} — ${t('table', 'fieldUnavailableInCurrentScope')}`;
+	if (field.sourceLabel && field.sourceLabel !== field.label) return `${field.label} — ${field.sourceLabel}`;
+	return field.label;
 }
 
 function getTableSummaryFunctionLabel(summaryFunction: TableSummaryFunction): string {

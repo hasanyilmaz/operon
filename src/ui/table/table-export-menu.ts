@@ -136,7 +136,7 @@ function downloadTextFile(ownerDocument: Document, text: string, filename: strin
 	const ownerWindow = ownerDocument.defaultView ?? window;
 	const blob = new ownerWindow.Blob([text], { type: mimeType });
 	const url = ownerWindow.URL.createObjectURL(blob);
-	const link = ownerDocument.createElement('a');
+	const link = ownerDocument.win.createEl('a');
 	link.href = url;
 	link.download = filename;
 	link.rel = 'noopener';
