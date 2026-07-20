@@ -4,6 +4,7 @@ import { isRetiredKeyMapping, KeyMapping, OperonSettings } from '../types/settin
 import { IndexedTask } from '../types/fields';
 import {
 	compareManagedCustomFieldMappings,
+	getManagedCustomKeyMapping,
 	isManagedCustomFieldMapping,
 	isManagedCustomFieldOptionType,
 	normalizeManagedFieldValue,
@@ -52,13 +53,8 @@ export function getCustomFieldMapping(
 	keyMappings: readonly KeyMapping[] | null | undefined,
 	canonicalKey: string,
 ): KeyMapping | null {
-	if (!isKeyMappingArray(keyMappings)) return null;
-	for (const mapping of keyMappings) {
-		if (mapping.canonicalKey !== canonicalKey) continue;
-		if (!isCustomFieldMapping(mapping)) return null;
-		return mapping;
-	}
-	return null;
+	const mapping = getManagedCustomKeyMapping(canonicalKey, keyMappings);
+	return mapping && isCustomFieldMapping(mapping) ? mapping : null;
 }
 
 export function isManagedSurfaceField(

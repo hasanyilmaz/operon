@@ -26,7 +26,7 @@ async function loadDenseRuntime(t) {
 	await build({
 		stdin: {
 			contents: [
-				"export { getCurrentLang, getTranslations, initI18n, t } from './src/core/i18n';",
+				"export { activateI18nLocale, getCurrentLang, getTranslations, initI18n, installI18nLocale, resolveSupportedLocale, t } from './src/core/i18n';",
 				"export { normalizeColorPalette } from './src/core/color-palette';",
 				"export { default as densePack } from './src/generated/dense-locales.json';",
 			].join('\n'),
@@ -51,13 +51,14 @@ function expectedTranslations(locales, category, key) {
 	return [...new Set(values)];
 }
 
-test('dense locale runtime preserves all source translations and i18n behavior', async t => {
+test('English-only runtime installs keyed language packs and preserves i18n behavior', async t => {
 	const runtime = await loadDenseRuntime(t);
 	const locales = readLocales();
 	const { densePack } = runtime;
 
-	assert.deepEqual(densePack.languageOrder, LOCALE_DEFINITIONS.map(definition => definition.code));
-	assert.equal(densePack.keyCount, 2_845);
+	assert.deepEqual(densePack.languageOrder, ['en']);
+	assert.deepEqual(Object.keys(densePack.locales), ['en']);
+	assert.equal(densePack.keyCount, 2_930);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);
@@ -65,7 +66,19 @@ test('dense locale runtime preserves all source translations and i18n behavior',
 	assert.equal(indexes[0], 0);
 	assert.equal(indexes[indexes.length - 1], densePack.keyCount - 1);
 	assert.equal(new Set(indexes).size, densePack.keyCount);
+	const localizedRed = locales.tr.taskEditor.colorNameRed;
+	const preinstallNormalizedPalette = runtime.normalizeColorPalette([
+		{ id: 'red', name: localizedRed, hex: '#DC2626' },
+	]);
+	assert.equal(
+		preinstallNormalizedPalette.find(entry => entry.id === 'red')?.name,
+		'Red',
+		'legacy localized color defaults must normalize before remote packs load',
+	);
 
+	for (const definition of LOCALE_DEFINITIONS.filter(definition => definition.code !== 'en')) {
+		runtime.installI18nLocale(definition.code, locales[definition.code]);
+	}
 	for (const definition of LOCALE_DEFINITIONS) {
 		runtime.initI18n(undefined, definition.code);
 		assert.equal(runtime.getCurrentLang(), definition.code);
@@ -93,17 +106,20 @@ test('dense locale runtime preserves all source translations and i18n behavior',
 
 	const [fallbackCategory, fallbackEntries] = Object.entries(densePack.keyIndex)[0];
 	const [fallbackKey, fallbackIndex] = Object.entries(fallbackEntries)[0];
-	const originalTurkishValue = densePack.locales.tr[fallbackIndex];
-	densePack.locales.tr[fallbackIndex] = '';
+	const partialTurkish = structuredClone(locales.tr);
+	delete partialTurkish[fallbackCategory][fallbackKey];
+	runtime.installI18nLocale('tr', partialTurkish);
 	runtime.initI18n(undefined, 'tr');
 	assert.equal(runtime.t(fallbackCategory, fallbackKey), densePack.locales.en[fallbackIndex]);
-	densePack.locales.tr[fallbackIndex] = originalTurkishValue;
+	runtime.installI18nLocale('tr', locales.tr);
 
 	for (const locale of ['zh', 'zh-CN', 'zh-Hans', 'zh-SG']) {
+		assert.equal(runtime.resolveSupportedLocale(locale), 'zh-CN', locale);
 		runtime.initI18n(locale, undefined);
 		assert.equal(runtime.getCurrentLang(), 'zh-CN', locale);
 	}
 	for (const locale of ['zh-TW', 'zh-Hant', 'zh-HK', 'zh-MO']) {
+		assert.equal(runtime.resolveSupportedLocale(locale), 'zh-TW', locale);
 		runtime.initI18n(locale, undefined);
 		assert.equal(runtime.getCurrentLang(), 'zh-TW', locale);
 	}
@@ -111,12 +127,12 @@ test('dense locale runtime preserves all source translations and i18n behavior',
 	assert.equal(runtime.getCurrentLang(), 'zh-CN');
 	runtime.initI18n('xx-XX', 'unsupported');
 	assert.equal(runtime.getCurrentLang(), 'en');
+	assert.equal(runtime.resolveSupportedLocale('xx-XX'), null);
 	for (const language of ['en', 'tr', 'zh-TW', 'en']) {
 		runtime.initI18n(undefined, language);
 		assert.equal(runtime.getCurrentLang(), language);
 	}
 
-	const localizedRed = locales.tr.taskEditor.colorNameRed;
 	const normalizedPalette = runtime.normalizeColorPalette([
 		{ id: 'red', name: localizedRed, hex: '#DC2626' },
 	]);

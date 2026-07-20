@@ -19,7 +19,7 @@ import {
 	InlineTaskCompactChipEntry,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
-import { bindOperonHoverTooltip, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
@@ -255,6 +255,7 @@ export function buildReadingTaskRowElement(
 		options?.chipItems,
 		locationResolver,
 		{
+			app: callbacks.app,
 			repeatSkipDateResolver: callbacks.getRepeatSkipDates,
 			workflowStatusIdentityIndex,
 		},
@@ -396,7 +397,7 @@ export function buildReadingTaskRowElement(
 	if (noteValue) {
 		const noteIndicator = createOperonHoverIndicator({
 			title: t('taskEditor', 'notes'),
-			content: noteValue,
+			contentEl: createNonInteractiveMarkdownLinkContent(actions, noteValue),
 			icon: getConfiguredKeyMappingIcon('note', callbacks.getSettings().keyMappings) || 'notebook-pen',
 			taskColor,
 			preferredHorizontal: 'right',
@@ -541,6 +542,38 @@ function attachReadingChipAction(
 		event.stopPropagation();
 		if (entry.iconOnly && shouldOpenIconOnlyChipPreview(chip)) {
 			openIconOnlyChipPreview(chip);
+			return;
+		}
+		const reminderItem = entry.reminderItem;
+		if (reminderItem) {
+			openTaskFieldPicker({
+				app: callbacks.app,
+				settings: callbacks.getSettings(),
+				allTasks: callbacks.getAllTasks(),
+				canonicalKey: reminderItem.fieldKey,
+				anchor: chip,
+				currentFieldValues: task.fieldValues,
+				getCurrentFieldValues: () => {
+					const currentTask = callbacks.getAllTasks().find(candidate => candidate.operonId === task.operonId);
+					return currentTask?.fieldValues ?? {
+						...task.fieldValues,
+						[reminderItem.fieldKey]: '',
+					};
+				},
+				currentTags: task.tags,
+				sourcePath: task.primary.filePath,
+				taskFormat: task.primary.format,
+				reminderOperation: {
+					kind: 'edit',
+					item: { index: reminderItem.index, rawValue: reminderItem.rawValue },
+				},
+				onCommit: payload => {
+					const value = payload[reminderItem.fieldKey];
+					if (typeof value !== 'string') return;
+					void callbacks.updateField(task.operonId, reminderItem.fieldKey, value);
+					onCommit?.();
+				},
+			});
 			return;
 		}
 		switch (entry.key) {

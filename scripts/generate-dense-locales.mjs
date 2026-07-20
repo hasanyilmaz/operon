@@ -1,9 +1,42 @@
 import fs from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const DENSE_LOCALE_SCHEMA_VERSION = 1;
+export const LOCALE_PACK_SCHEMA_VERSION = 1;
+export const COMPATIBILITY_ALIAS_DEFINITIONS = Object.freeze({
+	taskEditor: Object.freeze([
+		'colorNameAmber',
+		'colorNameBlack',
+		'colorNameBlue',
+		'colorNameBrown',
+		'colorNameBurgundy',
+		'colorNameCharcoal',
+		'colorNameCoral',
+		'colorNameCyan',
+		'colorNameEmerald',
+		'colorNameFuchsia',
+		'colorNameGreen',
+		'colorNameIndigo',
+		'colorNameLime',
+		'colorNameOlive',
+		'colorNameOrange',
+		'colorNamePink',
+		'colorNamePurple',
+		'colorNameRed',
+		'colorNameRose',
+		'colorNameSand',
+		'colorNameSky',
+		'colorNameSlate',
+		'colorNameSteel',
+		'colorNameTaupe',
+		'colorNameTeal',
+		'colorNameViolet',
+		'colorNameYellow',
+		'colorNameZinc',
+	]),
+});
 export const LOCALE_DEFINITIONS = Object.freeze([
 	{ code: 'en', file: 'en.json' },
 	{ code: 'tr', file: 'tr.json' },
@@ -19,7 +52,12 @@ export const LOCALE_DEFINITIONS = Object.freeze([
 const scriptRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const defaultLocaleDirectory = path.join(scriptRoot, 'i18n/locales');
 const defaultArtifactPath = path.join(scriptRoot, 'src/generated/dense-locales.json');
+const defaultCatalogPath = path.join(scriptRoot, 'src/generated/locale-pack-catalog.json');
+const defaultCompatibilityAliasesPath = path.join(scriptRoot, 'src/generated/locale-compatibility-aliases.json');
+const defaultReleaseAssetDirectory = path.join(scriptRoot, 'release-assets/locales');
+const defaultManifestPath = path.join(scriptRoot, 'manifest.json');
 const placeholderPattern = /\{\{([A-Za-z0-9_]+)\}\}/gu;
+const rawRepositoryBaseUrl = 'https://raw.githubusercontent.com/hasanyilmaz/operon';
 
 export class DenseLocaleError extends Error {
 	constructor(message) {
@@ -36,27 +74,29 @@ function isPlainObject(value) {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function readLocaleFile(filePath, code) {
+function readJsonFile(filePath, label) {
 	let text;
 	try {
 		text = fs.readFileSync(filePath, 'utf8');
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		throw new DenseLocaleError(`Could not read ${code} locale: ${message}`);
+		throw new DenseLocaleError(`Could not read ${label}: ${message}`);
 	}
 
 	try {
 		return JSON.parse(text);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		throw new DenseLocaleError(`Could not parse ${code} locale JSON: ${message}`);
+		throw new DenseLocaleError(`Could not parse ${label} JSON: ${message}`);
 	}
 }
 
+function readLocaleFile(filePath, code) {
+	return readJsonFile(filePath, `${code} locale`);
+}
+
 function flattenLocale(locale, code) {
-	if (!isPlainObject(locale)) {
-		throw new DenseLocaleError(`${code} locale root must be an object.`);
-	}
+	if (!isPlainObject(locale)) throw new DenseLocaleError(`${code} locale root must be an object.`);
 
 	const leaves = new Map();
 	for (const category of Object.keys(locale).sort(compareText)) {
@@ -79,6 +119,10 @@ function flattenLocale(locale, code) {
 
 function extractPlaceholders(value) {
 	return [...value.matchAll(placeholderPattern)].map(match => match[1]).sort(compareText);
+}
+
+function sha256(contents) {
+	return createHash('sha256').update(contents, 'utf8').digest('hex');
 }
 
 function assertLocaleFileInventory(localeDirectory, definitions) {
@@ -110,9 +154,7 @@ function assertLocaleFileInventory(localeDirectory, definitions) {
 function assertLocaleParity(englishLeaves, localeLeaves, code) {
 	for (const [compoundKey, englishLeaf] of englishLeaves) {
 		const localeLeaf = localeLeaves.get(compoundKey);
-		if (!localeLeaf) {
-			throw new DenseLocaleError(`Missing ${code} locale key: ${englishLeaf.category}.${englishLeaf.key}`);
-		}
+		if (!localeLeaf) throw new DenseLocaleError(`Missing ${code} locale key: ${englishLeaf.category}.${englishLeaf.key}`);
 		const englishPlaceholders = extractPlaceholders(englishLeaf.value);
 		const localePlaceholders = extractPlaceholders(localeLeaf.value);
 		if (englishPlaceholders.join('\u0000') !== localePlaceholders.join('\u0000')) {
@@ -130,13 +172,10 @@ function assertLocaleParity(englishLeaves, localeLeaves, code) {
 	}
 }
 
-export function buildDenseLocalePack(options = {}) {
-	const localeDirectory = path.resolve(options.localeDirectory ?? defaultLocaleDirectory);
-	const definitions = options.localeDefinitions ?? LOCALE_DEFINITIONS;
-	if (!Array.isArray(definitions) || definitions.length === 0 || definitions[0]?.code !== 'en') {
-		throw new DenseLocaleError('Locale definitions must begin with English.');
+function validateDefinitions(definitions) {
+	if (!Array.isArray(definitions) || definitions.length < 2 || definitions[0]?.code !== 'en') {
+		throw new DenseLocaleError('Locale definitions must begin with English and include at least one remote locale.');
 	}
-
 	const localeCodes = new Set();
 	const localeFiles = new Set();
 	for (const definition of definitions) {
@@ -151,7 +190,59 @@ export function buildDenseLocalePack(options = {}) {
 		localeCodes.add(definition.code);
 		localeFiles.add(definition.file);
 	}
+}
+
+function readSourceVersion(options) {
+	if (typeof options.sourceVersion === 'string') return options.sourceVersion;
+	const manifestPath = path.resolve(options.manifestPath ?? defaultManifestPath);
+	const manifest = readJsonFile(manifestPath, 'plugin manifest');
+	if (!manifest || typeof manifest.version !== 'string' || !/^\d+\.\d+\.\d+$/u.test(manifest.version)) {
+		throw new DenseLocaleError('Plugin manifest version must be a semver string without a v prefix.');
+	}
+	return manifest.version;
+}
+
+function buildTranslations(orderedEnglishLeaves, localeLeaves) {
+	const translations = {};
+	for (const englishLeaf of orderedEnglishLeaves) {
+		const localeLeaf = localeLeaves.get(`${englishLeaf.category}\u0000${englishLeaf.key}`);
+		if (!translations[englishLeaf.category]) translations[englishLeaf.category] = {};
+		translations[englishLeaf.category][englishLeaf.key] = localeLeaf.value;
+	}
+	return translations;
+}
+
+function buildCompatibilityAliases(locales, definitions, aliasDefinitions) {
+	const aliases = {};
+	for (const category of Object.keys(aliasDefinitions).sort(compareText)) {
+		const categoryAliases = {};
+		for (const key of [...aliasDefinitions[category]].sort(compareText)) {
+			const compoundKey = `${category}\u0000${key}`;
+			if (!locales.get('en')?.has(compoundKey)) continue;
+			const values = definitions
+				.map(definition => locales.get(definition.code)?.get(compoundKey)?.value)
+				.filter(value => typeof value === 'string' && value.length > 0);
+			categoryAliases[key] = [...new Set(values)];
+		}
+		if (Object.keys(categoryAliases).length > 0) aliases[category] = categoryAliases;
+	}
+	return aliases;
+}
+
+export function serializeDenseLocalePack(pack) {
+	return `${JSON.stringify(pack, null, 2)}\n`;
+}
+
+export function serializeLocalePack(pack) {
+	return `${JSON.stringify(pack, null, 2)}\n`;
+}
+
+export function buildLocaleArtifacts(options = {}) {
+	const localeDirectory = path.resolve(options.localeDirectory ?? defaultLocaleDirectory);
+	const definitions = options.localeDefinitions ?? LOCALE_DEFINITIONS;
+	validateDefinitions(definitions);
 	assertLocaleFileInventory(localeDirectory, definitions);
+	const sourceVersion = readSourceVersion(options);
 
 	const locales = new Map();
 	for (const definition of definitions) {
@@ -160,7 +251,6 @@ export function buildDenseLocalePack(options = {}) {
 			flattenLocale(readLocaleFile(path.join(localeDirectory, definition.file), definition.code), definition.code),
 		);
 	}
-
 	const englishLeaves = locales.get('en');
 	if (!englishLeaves) throw new DenseLocaleError('English locale is required.');
 	for (const [code, leaves] of locales) {
@@ -175,37 +265,78 @@ export function buildDenseLocalePack(options = {}) {
 		if (!keyIndex[leaf.category]) keyIndex[leaf.category] = {};
 		keyIndex[leaf.category][leaf.key] = index;
 	});
-
-	const packedLocales = {};
-	for (const definition of definitions) {
-		const localeLeaves = locales.get(definition.code);
-		packedLocales[definition.code] = orderedEnglishLeaves.map(englishLeaf => (
-			localeLeaves.get(`${englishLeaf.category}\u0000${englishLeaf.key}`).value
-		));
-	}
-
-	return {
+	const keyFingerprint = sha256(orderedEnglishLeaves.map(leaf => `${leaf.category}\u0000${leaf.key}`).join('\n'));
+	const englishValues = orderedEnglishLeaves.map(leaf => leaf.value);
+	const embeddedPack = {
 		schemaVersion: DENSE_LOCALE_SCHEMA_VERSION,
-		languageOrder: definitions.map(definition => definition.code),
+		languageOrder: ['en'],
 		keyCount: orderedEnglishLeaves.length,
 		keyIndex,
-		locales: packedLocales,
+		locales: { en: englishValues },
 	};
+	const compatibilityAliases = buildCompatibilityAliases(
+		locales,
+		definitions,
+		options.compatibilityAliasDefinitions ?? COMPATIBILITY_ALIAS_DEFINITIONS,
+	);
+
+	const releaseAssets = [];
+	const catalogLocales = {};
+	for (const definition of definitions.slice(1)) {
+		const localePackContent = {
+			schemaVersion: LOCALE_PACK_SCHEMA_VERSION,
+			locale: definition.code,
+			keyCount: orderedEnglishLeaves.length,
+			keyFingerprint,
+			translations: buildTranslations(orderedEnglishLeaves, locales.get(definition.code)),
+		};
+		const contentSourceVersion = sha256(serializeLocalePack(localePackContent));
+		const localePack = {
+			...localePackContent,
+			sourceVersion: contentSourceVersion,
+		};
+		const contents = serializeLocalePack(localePack);
+		const digest = sha256(contents);
+		const assetName = `operon-locale-${definition.code}-${digest.slice(0, 12)}.json`;
+		releaseAssets.push({ assetName, code: definition.code, contents, pack: localePack, sha256: digest });
+		catalogLocales[definition.code] = {
+			assetName,
+			url: `${rawRepositoryBaseUrl}/${sourceVersion}/release-assets/locales/${assetName}`,
+			sourceVersion: contentSourceVersion,
+			sha256: digest,
+			sizeBytes: Buffer.byteLength(contents, 'utf8'),
+		};
+	}
+
+	const catalog = {
+		schemaVersion: LOCALE_PACK_SCHEMA_VERSION,
+		sourceVersion,
+		keyCount: orderedEnglishLeaves.length,
+		keyFingerprint,
+		languageOrder: definitions.slice(1).map(definition => definition.code),
+		locales: catalogLocales,
+	};
+	return { catalog, compatibilityAliases, embeddedPack, releaseAssets };
 }
 
-export function serializeDenseLocalePack(pack) {
-	return `${JSON.stringify(pack, null, 2)}\n`;
+export function buildDenseLocalePack(options = {}) {
+	return buildLocaleArtifacts(options).embeddedPack;
 }
 
 export function createDenseLocaleArtifact(options = {}) {
 	return serializeDenseLocalePack(buildDenseLocalePack(options));
 }
 
+export function createLocaleCatalogArtifact(options = {}) {
+	return serializeLocalePack(buildLocaleArtifacts(options).catalog);
+}
+
+export function createLocaleCompatibilityAliasesArtifact(options = {}) {
+	return serializeLocalePack(buildLocaleArtifacts(options).compatibilityAliases);
+}
+
 export function writeFileAtomically(filePath, contents, fileSystem = fs) {
-	const tempPath = path.join(
-		path.dirname(filePath),
-		`.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`,
-	);
+	const tempPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`);
 	let fileDescriptor;
 	try {
 		fileDescriptor = fileSystem.openSync(tempPath, 'wx');
@@ -215,11 +346,7 @@ export function writeFileAtomically(filePath, contents, fileSystem = fs) {
 		fileSystem.renameSync(tempPath, filePath);
 	} catch (error) {
 		if (fileDescriptor !== undefined) {
-			try {
-				fileSystem.closeSync(fileDescriptor);
-			} catch {
-				// Preserve the original write failure.
-			}
+			try { fileSystem.closeSync(fileDescriptor); } catch { /* Preserve the original failure. */ }
 		}
 		try {
 			fileSystem.unlinkSync(tempPath);
@@ -232,31 +359,116 @@ export function writeFileAtomically(filePath, contents, fileSystem = fs) {
 	}
 }
 
+function resolveOutputPaths(options) {
+	return {
+		artifactPath: path.resolve(options.artifactPath ?? defaultArtifactPath),
+		catalogPath: path.resolve(options.catalogPath ?? defaultCatalogPath),
+		compatibilityAliasesPath: path.resolve(options.compatibilityAliasesPath ?? defaultCompatibilityAliasesPath),
+		releaseAssetDirectory: path.resolve(options.releaseAssetDirectory ?? defaultReleaseAssetDirectory),
+	};
+}
+
 export function writeDenseLocaleArtifact(options = {}) {
-	const artifactPath = path.resolve(options.artifactPath ?? defaultArtifactPath);
-	const output = createDenseLocaleArtifact(options);
-	fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
-	writeFileAtomically(artifactPath, output, options.fileSystem ?? fs);
-	return { artifactPath, output, pack: JSON.parse(output) };
+	const paths = resolveOutputPaths(options);
+	const artifacts = buildLocaleArtifacts(options);
+	fs.mkdirSync(path.dirname(paths.artifactPath), { recursive: true });
+	fs.mkdirSync(path.dirname(paths.catalogPath), { recursive: true });
+	fs.mkdirSync(path.dirname(paths.compatibilityAliasesPath), { recursive: true });
+	fs.mkdirSync(paths.releaseAssetDirectory, { recursive: true });
+	writeFileAtomically(paths.artifactPath, serializeDenseLocalePack(artifacts.embeddedPack), options.fileSystem ?? fs);
+	writeFileAtomically(paths.catalogPath, serializeLocalePack(artifacts.catalog), options.fileSystem ?? fs);
+	writeFileAtomically(
+		paths.compatibilityAliasesPath,
+		serializeLocalePack(artifacts.compatibilityAliases),
+		options.fileSystem ?? fs,
+	);
+
+	const expectedNames = new Set(artifacts.releaseAssets.map(asset => asset.assetName));
+	for (const entry of fs.readdirSync(paths.releaseAssetDirectory, { withFileTypes: true })) {
+		if (entry.isFile() && entry.name.endsWith('.json') && !expectedNames.has(entry.name)) {
+			fs.unlinkSync(path.join(paths.releaseAssetDirectory, entry.name));
+		}
+	}
+	for (const asset of artifacts.releaseAssets) {
+		writeFileAtomically(path.join(paths.releaseAssetDirectory, asset.assetName), asset.contents, options.fileSystem ?? fs);
+	}
+	return {
+		...paths,
+		...artifacts,
+		output: serializeDenseLocalePack(artifacts.embeddedPack),
+		pack: artifacts.embeddedPack,
+	};
+}
+
+function checkFileContents(filePath, expected, missingMessage, staleMessage) {
+	let actual;
+	try {
+		actual = fs.readFileSync(filePath, 'utf8');
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+			throw new DenseLocaleError(missingMessage);
+		}
+		const message = error instanceof Error ? error.message : String(error);
+		throw new DenseLocaleError(`Could not read generated locale artifact: ${message}`);
+	}
+	if (actual !== expected) throw new DenseLocaleError(staleMessage);
 }
 
 export function checkDenseLocaleArtifact(options = {}) {
-	const artifactPath = path.resolve(options.artifactPath ?? defaultArtifactPath);
-	const expected = createDenseLocaleArtifact(options);
-	let actual;
+	const paths = resolveOutputPaths(options);
+	const artifacts = buildLocaleArtifacts(options);
+	checkFileContents(
+		paths.artifactPath,
+		serializeDenseLocalePack(artifacts.embeddedPack),
+		`Dense locale artifact is missing: ${paths.artifactPath}. Run npm run i18n:generate.`,
+		'Dense locale artifact is stale. Run npm run i18n:generate and review the generated diff.',
+	);
+	checkFileContents(
+		paths.catalogPath,
+		serializeLocalePack(artifacts.catalog),
+		`Locale pack catalog is missing: ${paths.catalogPath}. Run npm run i18n:generate.`,
+		'Locale pack catalog is stale. Run npm run i18n:generate and review the generated diff.',
+	);
+	checkFileContents(
+		paths.compatibilityAliasesPath,
+		serializeLocalePack(artifacts.compatibilityAliases),
+		`Locale compatibility aliases are missing: ${paths.compatibilityAliasesPath}. Run npm run i18n:generate.`,
+		'Locale compatibility aliases are stale. Run npm run i18n:generate and review the generated diff.',
+	);
+
+	let actualAssetNames;
 	try {
-		actual = fs.readFileSync(artifactPath, 'utf8');
+		actualAssetNames = fs.readdirSync(paths.releaseAssetDirectory, { withFileTypes: true })
+			.filter(entry => entry.isFile() && entry.name.endsWith('.json'))
+			.map(entry => entry.name)
+			.sort(compareText);
 	} catch (error) {
 		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-			throw new DenseLocaleError(`Dense locale artifact is missing: ${artifactPath}. Run npm run i18n:dense:generate.`);
+			throw new DenseLocaleError(`Locale release asset directory is missing: ${paths.releaseAssetDirectory}.`);
 		}
-		const message = error instanceof Error ? error.message : String(error);
-		throw new DenseLocaleError(`Could not read dense locale artifact: ${message}`);
+		throw error;
 	}
-	if (actual !== expected) {
-		throw new DenseLocaleError('Dense locale artifact is stale. Run npm run i18n:dense:generate and review the generated diff.');
+	const expectedAssetNames = artifacts.releaseAssets.map(asset => asset.assetName).sort(compareText);
+	if (actualAssetNames.join('\u0000') !== expectedAssetNames.join('\u0000')) {
+		throw new DenseLocaleError(
+			`Locale release asset inventory is stale: expected=[${expectedAssetNames.join(',')}] `
+			+ `actual=[${actualAssetNames.join(',')}]. Run npm run i18n:generate.`,
+		);
 	}
-	return { artifactPath, output: actual, pack: JSON.parse(actual) };
+	for (const asset of artifacts.releaseAssets) {
+		checkFileContents(
+			path.join(paths.releaseAssetDirectory, asset.assetName),
+			asset.contents,
+			`Locale release asset is missing: ${asset.assetName}.`,
+			`Locale release asset is stale: ${asset.assetName}.`,
+		);
+	}
+	return {
+		...paths,
+		...artifacts,
+		output: serializeDenseLocalePack(artifacts.embeddedPack),
+		pack: artifacts.embeddedPack,
+	};
 }
 
 export function runDenseLocaleGenerator(args = [], options = {}) {
@@ -265,23 +477,19 @@ export function runDenseLocaleGenerator(args = [], options = {}) {
 		if (args.length !== 1 || (args[0] !== '--write' && args[0] !== '--check')) {
 			throw new DenseLocaleError('Usage: generate-dense-locales.mjs --write|--check');
 		}
-		const result = args[0] === '--write'
-			? writeDenseLocaleArtifact(options)
-			: checkDenseLocaleArtifact(options);
+		const result = args[0] === '--write' ? writeDenseLocaleArtifact(options) : checkDenseLocaleArtifact(options);
 		const action = args[0] === '--write' ? 'generated' : 'passed freshness check';
 		logger.log(
-			`Operon dense locale artifact ${action}: ${result.pack.keyCount.toLocaleString('en-US')} keys × `
-			+ `${result.pack.languageOrder.length} languages.`,
+			`Operon locale artifacts ${action}: ${result.embeddedPack.keyCount.toLocaleString('en-US')} keys, `
+			+ `English embedded, ${result.releaseAssets.length.toLocaleString('en-US')} downloadable language packs.`,
 		);
 		return 0;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		logger.error(`Operon dense locale generation failed: ${message}`);
+		logger.error(`Operon locale generation failed: ${message}`);
 		return 1;
 	}
 }
 
 const invokedUrl = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
-if (import.meta.url === invokedUrl) {
-	process.exitCode = runDenseLocaleGenerator(process.argv.slice(2));
-}
+if (import.meta.url === invokedUrl) process.exitCode = runDenseLocaleGenerator(process.argv.slice(2));

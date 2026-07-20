@@ -28,7 +28,9 @@ import { formatTaskNotice } from '../core/task-notice';
 import { localNow, localToday } from '../core/local-time';
 import { resolveTaskDateTone, resolveTaskDateToneColor } from '../core/task-date-tone';
 import { parseRepeatRule } from '../core/repeat-rule';
+import { REMINDER_RULE_ANCHORS } from '../core/reminder-rules';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
+import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
 import { formatUiTime } from '../core/ui-time-format';
 import { formatShortLocationCoordinate, parseLocationCoordinate } from '../core/location-coordinates';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
@@ -81,12 +83,15 @@ import { splitTaskListValue } from '../core/task-field-patch';
 import { splitFrontmatterDocument } from '../core/file-task-template-merge';
 import { formatContextDisplay } from './field-pickers/contexts-picker';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { getVisiblePropertyName } from '../core/yaml-fields';
 import { resolveTaskEditorProgressFromStats } from '../core/task-stats-read-model';
 import { resolveSubtaskActionIconForKind, resolveSubtaskActionLabelKeyForKind } from '../core/subtask-action';
 import { createInlineTaskCompactChipElement, InlineTaskCompactChipEntry } from './compact-task-layout';
 import { createProjectSerialChipElement } from './project-serial-chip';
 import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, KeyMapping, TASK_CREATOR_FALLBACK_FIELD_ICONS, TaskEditorWorkflowPickerItem } from '../types/settings';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
+import { formatReminderDisplayItem } from './reminder-display';
+import type { ReminderPickerFieldKey } from '../core/reminder-list-mutation';
 import { showPlainCheckboxPopover } from './plain-checkbox-popover';
 import {
 	getCustomFieldIcon,
@@ -149,6 +154,29 @@ export type TaskEditorSaveOutcome =
 
 export interface TaskEditorCloseRequestDetail {
 	mode?: 'save' | 'force-after-delete';
+}
+
+export function scheduleTaskEditorReminderFocus(options: {
+	ownerWindow: Window;
+	fieldKey: ReminderPickerFieldKey;
+	focusIndex: number;
+	getWorkflowRows: () => HTMLElement | null;
+	getActionButton: () => HTMLButtonElement | undefined;
+	shouldFocus?: () => boolean;
+}): void {
+	options.ownerWindow.requestAnimationFrame(() => {
+		if (options.shouldFocus && !options.shouldFocus()) return;
+		const chip = options.focusIndex >= 0
+			? Array.from(
+				options.getWorkflowRows()?.querySelectorAll<HTMLElement>('.operon-editor-reminder-chip') ?? [],
+			).find(candidate => (
+				candidate.dataset.fieldKey === options.fieldKey
+				&& candidate.dataset.reminderIndex === String(options.focusIndex)
+			))
+			: undefined;
+		const target = chip?.isConnected ? chip : options.getActionButton();
+		if (target?.isConnected) target.focus({ preventScroll: true });
+	});
 }
 
 export interface TaskEditorSubtaskRequest {
@@ -2039,6 +2067,9 @@ export class TaskEditorContent {
 		}
 		this.syncDerivedRepeatFieldsFromDraft();
 		this.refreshSchedulingDraftControls();
+		if (REMINDER_RULE_ANCHORS.some(anchor => anchor in normalizedPatch)) {
+			this.refreshWorkflowPickerSurfaceValues();
+		}
 		if (options.refreshEstimateReallocation === true) {
 			this.refreshEstimateReallocationControl?.();
 		}
@@ -3155,6 +3186,8 @@ export class TaskEditorContent {
 			|| key === 'assignees'
 			|| key === 'location'
 			|| key === 'links'
+			|| key === 'reminderDatetimes'
+			|| key === 'reminderRules'
 			|| key === 'parentTask'
 			|| key === 'subtasks'
 			|| key === 'blocking'
@@ -3233,8 +3266,12 @@ export class TaskEditorContent {
 		button.toggleClass('is-active', active);
 		button.setAttr('aria-pressed', String(active));
 		const locked = key === 'subtasks' && !this.getCurrentOperonId();
+		const ruleAddDisabled = key === 'reminderRules'
+			&& this.isSystemReminderWorkflowKey(key)
+			&& getAvailableReminderRuleAnchors(this.fieldValues).length === 0;
 		button.toggleClass('is-locked', locked);
-		button.setAttr('aria-disabled', String(locked));
+		button.disabled = ruleAddDisabled;
+		button.setAttr('aria-disabled', String(locked || ruleAddDisabled));
 	}
 
 	private getWorkflowPickerLabel(key: string): string {
@@ -3245,6 +3282,9 @@ export class TaskEditorContent {
 		if (key === 'assignees') return t('taskEditor', 'assignees');
 		if (key === 'location') return t('location', 'location');
 		if (key === 'links') return t('taskEditor', 'links');
+		if (key === 'reminderDatetimes' || key === 'reminderRules') {
+			return getVisiblePropertyName(key, this.settings.keyMappings);
+		}
 		if (key === 'parentTask') return t('taskEditor', 'parentTask');
 		if (key === 'subtasks') return t('taskEditor', 'subtasks');
 		if (key === 'blocking') return t('taskEditor', 'blocking');
@@ -3272,7 +3312,7 @@ export class TaskEditorContent {
 				: !!value.trim();
 		}
 		if (key === 'tags') return this.tags.length > 0;
-		if (key === 'contexts' || key === 'links' || key === 'assignees' || key === 'blocking' || key === 'blockedBy' || key === 'related') {
+		if (key === 'contexts' || key === 'links' || key === 'assignees' || key === 'reminderDatetimes' || key === 'reminderRules' || key === 'blocking' || key === 'blockedBy' || key === 'related') {
 			return splitTaskListValue(this.fieldValues[key]).length > 0;
 		}
 		if (key === 'parentTask' || key === 'location') return !!(this.fieldValues[key] ?? '').trim();
@@ -3298,11 +3338,26 @@ export class TaskEditorContent {
 		this.closeActiveWorkflowActionPicker();
 		button.addClass('is-picker-open');
 		let closePicker: (() => void) | null = null;
+		let focusRestoreScheduled = false;
+		const restoreReminderActionFocus = () => {
+			if (!this.isSystemReminderWorkflowKey(key) || focusRestoreScheduled) return;
+			focusRestoreScheduled = true;
+			const ownerWindow = button.ownerDocument.defaultView ?? getActiveWindow();
+			scheduleTaskEditorReminderFocus({
+				ownerWindow,
+				fieldKey: key,
+				focusIndex: -1,
+				getWorkflowRows: () => this.workflowRowsEl,
+				getActionButton: () => this.workflowActionButtons.get(key),
+				shouldFocus: () => !this.workflowActionPickerClose,
+			});
+		};
 		const handleClose = () => {
 			button.removeClass('is-picker-open');
 			if (this.workflowActionPickerClose === closePicker) {
 				this.workflowActionPickerClose = null;
 			}
+			restoreReminderActionFocus();
 		};
 
 		if (key === 'parentTask') {
@@ -3319,7 +3374,13 @@ export class TaskEditorContent {
 				canonicalKey: key,
 				anchor: button,
 				currentFieldValues: { ...this.fieldValues },
+				getCurrentFieldValues: () => this.fieldValues,
 				currentTags: [...this.tags],
+				...(this.isSystemReminderWorkflowKey(key) ? {
+					reminderOperation: {
+						kind: 'add' as const,
+					},
+				} : {}),
 				sourcePath: this.existingTask?.filePath ?? this.fileBodyContext?.filePath ?? '',
 				closeListPickerOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				taskFormat: this.fileBodyContext?.format ?? 'inline',
@@ -3457,6 +3518,10 @@ export class TaskEditorContent {
 			case 'links':
 				this.renderLinksPicker(container);
 				break;
+			case 'reminderDatetimes':
+			case 'reminderRules':
+				this.renderReminderWorkflowPicker(container, key);
+				break;
 			case 'parentTask':
 				this.renderParentTaskPicker(container);
 				break;
@@ -3473,6 +3538,109 @@ export class TaskEditorContent {
 				this.renderRelatedPicker(container);
 				break;
 		}
+	}
+
+	private isSystemReminderWorkflowKey(key: string): key is ReminderPickerFieldKey {
+		return (key === 'reminderDatetimes' || key === 'reminderRules')
+			&& !getCustomFieldMapping(this.settings.keyMappings, key);
+	}
+
+	private renderReminderWorkflowPicker(group: HTMLElement, fieldKey: ReminderPickerFieldKey): void {
+		const setting = new Setting(group);
+		setting.settingEl.addClass('operon-editor-inline-picker-setting', 'operon-editor-reminder-setting');
+		setting.setName(this.getWorkflowPickerLabel(fieldKey));
+		const selectedWrap = setting.controlEl.createDiv(
+			'operon-editor-picker-selected operon-editor-reminder-selection-row',
+		);
+		let closePicker: (() => void) | null = null;
+
+		const render = () => {
+			selectedWrap.replaceChildren();
+			const values = splitTaskListValue(this.fieldValues[fieldKey]);
+			selectedWrap.classList.toggle('is-empty', values.length === 0);
+			for (const [index, rawValue] of values.entries()) {
+				const display = formatReminderDisplayItem({
+					app: this.app,
+					settings: {
+						timeFormat: this.settings.timeFormat,
+						keyMappings: this.settings.keyMappings,
+					},
+					fieldKey,
+					rawValue,
+					fieldValues: this.fieldValues,
+				});
+				const chip = createInlineTaskCompactChipElement({
+					key: fieldKey,
+					label: display.text,
+					icon: this.resolveWorkflowPickerIcon(fieldKey),
+					iconOnly: false,
+					interactive: true,
+					colorRole: 'default',
+					linkTarget: null,
+				}, `operon-editor-compact-selection-chip operon-editor-reminder-chip is-${display.state}`, {
+					forceFull: true,
+				});
+				setAccessibleLabelWithoutTooltip(chip, display.ariaLabel);
+				chip.dataset.fieldKey = fieldKey;
+				chip.dataset.reminderIndex = String(index);
+				bindOperonHoverTooltip(chip, {
+					title: display.tooltipTitle,
+					content: display.tooltipContent,
+					taskColor: this.getThemeColor(),
+				});
+				chip.addEventListener('click', event => {
+					event.preventDefault();
+					openEditPicker(chip, index, rawValue);
+				});
+				selectedWrap.appendChild(chip);
+			}
+		};
+
+		const openEditPicker = (anchor: HTMLElement, index: number, rawValue: string) => {
+			if (closePicker) return;
+			const ownerWindow = anchor.ownerDocument.defaultView ?? getActiveWindow();
+			let committed = false;
+			let closeHandled = false;
+			let focusIndex = index;
+			const handleClose = () => {
+				if (closeHandled) return;
+				closeHandled = true;
+				closePicker = null;
+				if (committed) this.refreshWorkflowPickerSurfaceValues();
+				scheduleTaskEditorReminderFocus({
+					ownerWindow,
+					fieldKey,
+					focusIndex,
+					getWorkflowRows: () => this.workflowRowsEl,
+					getActionButton: () => this.workflowActionButtons.get(fieldKey),
+				});
+			};
+			closePicker = openTaskFieldPicker({
+				app: this.app,
+				settings: this.settings,
+				allTasks: this.indexer.getAllTasks(),
+				canonicalKey: fieldKey,
+				anchor,
+				currentFieldValues: { ...this.fieldValues },
+				getCurrentFieldValues: () => this.fieldValues,
+				currentTags: [...this.tags],
+				reminderOperation: {
+					kind: 'edit',
+					item: { index, rawValue },
+				},
+				onCommit: payload => {
+					this.applyTaskFieldPickerPayload(payload);
+					this.markEdited();
+					committed = true;
+					const remaining = splitTaskListValue(this.fieldValues[fieldKey]).length;
+					focusIndex = remaining > 0 ? Math.min(index, remaining - 1) : -1;
+				},
+				onClose: handleClose,
+				onCancel: handleClose,
+			});
+		};
+
+		render();
 	}
 
 	private renderCustomWorkflowPicker(group: HTMLElement, mapping: KeyMapping): void {

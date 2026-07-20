@@ -31,15 +31,37 @@ export async function writeTextSafely(
 	}
 
 	const tempPath = buildTempPath(path);
+	const backupPath = buildTempPath(`${path}.replace-backup`);
 	let tempWritten = false;
+	let originalMoved = false;
 	try {
 		await adapter.write(tempPath, data);
 		tempWritten = true;
 		if (await adapter.exists(path)) {
-			await adapter.remove(path);
+			await adapter.rename(path, backupPath);
+			originalMoved = true;
 		}
 		await adapter.rename(tempPath, path);
+		tempWritten = false;
+		if (originalMoved) {
+			try {
+				await adapter.remove(backupPath);
+				originalMoved = false;
+			} catch {
+				// The new target is authoritative; an orphaned backup is safer than failing the write.
+			}
+		}
 	} catch (error) {
+		if (originalMoved) {
+			try {
+				if (!await adapter.exists(path) && await adapter.exists(backupPath)) {
+					await adapter.rename(backupPath, path);
+					originalMoved = false;
+				}
+			} catch {
+				// Preserve the backup in place when restoration is unavailable.
+			}
+		}
 		if (tempWritten) {
 			try {
 				if (await adapter.exists(tempPath)) {

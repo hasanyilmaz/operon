@@ -1,11 +1,12 @@
-import { setIcon } from 'obsidian';
+import { type App, setIcon } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { calculateNextRepeatDate, parseRepeatRule, type RepeatRule } from '../core/repeat-rule';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
 import { splitTaskListValue } from '../core/task-field-patch';
+import type { ReminderPickerFieldKey } from '../core/reminder-list-mutation';
 import { OperonSettings, InlineTaskCompactChipItem, InlineTaskCompactChipKey, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, KeyMapping } from '../types/settings';
-import { isInternalCanonicalKey } from '../types/keys';
+import { isInternalCanonicalKey, isReminderStorageKey } from '../types/keys';
 import { IndexedTask } from '../types/fields';
 import { formatAssigneeDisplay } from './field-pickers/assignees-picker';
 import { formatContextDisplay } from './field-pickers/contexts-picker';
@@ -27,6 +28,7 @@ import {
 	isProjectedCustomFieldType,
 	normalizeCustomFieldRawValue,
 } from './custom-field-surfaces';
+import { formatReminderDisplayItem, type ReminderDisplayState } from './reminder-display';
 
 export type CompactVisibleChipKey = string;
 
@@ -46,6 +48,8 @@ export interface CompactTaskLookupContext {
 }
 
 export interface CompactChipEntryBuildOptions {
+	app?: App | null;
+	nowEpochMs?: number;
 	repeatSkipDateResolver?: RepeatSkipDateResolver;
 	taskLookup?: CompactTaskLookupContext;
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
@@ -61,6 +65,8 @@ export const COMPACT_VISIBLE_CHIP_KEYS = [
 	'datetimeStart',
 	'datetimeEnd',
 	'repeat',
+	'reminderDatetimes',
+	'reminderRules',
 	'totalDuration',
 	'totalEstimate',
 	'links',
@@ -87,6 +93,15 @@ export interface InlineTaskCompactChipEntry {
 	taskColor?: string | null;
 	tooltipTitle?: string;
 	tooltipContent?: string;
+	ariaLabel?: string;
+	reminderItem?: CompactReminderItemRef;
+	reminderState?: ReminderDisplayState;
+}
+
+export interface CompactReminderItemRef {
+	fieldKey: ReminderPickerFieldKey;
+	index: number;
+	rawValue: string;
 }
 
 function getCompactChipItems(
@@ -258,6 +273,27 @@ export function buildInlineTaskCompactChipEntries(
 						t('taskEditor', 'repeatChipUnsupportedByPicker'),
 					].join('\n');
 				entries.push(entry);
+				break;
+			}
+			case 'reminderDatetimes':
+			case 'reminderRules': {
+				for (const [index, rawValue] of splitTaskListValue(fieldValues[key]).entries()) {
+					const display = formatReminderDisplayItem({
+						app: options?.app,
+						settings,
+						fieldKey: key,
+						rawValue,
+						fieldValues,
+						nowEpochMs: options?.nowEpochMs,
+					});
+					const entry = createEntry(settings, key, display.text, item?.iconOnly === true);
+					entry.ariaLabel = display.ariaLabel;
+					entry.reminderItem = { fieldKey: key, index, rawValue };
+					entry.reminderState = display.state;
+					entry.tooltipTitle = display.tooltipTitle;
+					entry.tooltipContent = display.tooltipContent;
+					entries.push(entry);
+				}
 				break;
 			}
 			case 'assignees': {
@@ -504,6 +540,7 @@ export function getInlineTaskCompactHiddenKeys(
 		allTasks,
 		options?.taskLookup,
 		options?.workflowStatusIdentityIndex,
+		settings.keyMappings,
 	);
 }
 
@@ -514,6 +551,7 @@ export function collectHiddenKeys(
 	allTasks: IndexedTask[] = [],
 	taskLookup?: CompactTaskLookupContext,
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
+	keyMappings?: readonly KeyMapping[],
 ): string[] {
 	const visible = new Set(visibleKeys);
 	const hidden = new Set<string>();
@@ -521,6 +559,7 @@ export function collectHiddenKeys(
 	for (const key of INLINE_TASK_COMPACT_CHIP_ORDER) {
 		if (isSuppressedByTerminalDate(key, fieldValues, workflowStatusIdentityIndex)) continue;
 		if (visible.has(key)) continue;
+		if (isSystemReminderCompactKey(key, keyMappings)) continue;
 		if (hasCompactValue(key, fieldValues, tags, allTasks, taskLookup)) {
 			hidden.add(key);
 		}
@@ -530,6 +569,7 @@ export function collectHiddenKeys(
 		if (!rawValue?.trim()) continue;
 		if (visible.has(key)) continue;
 		if (isInternalCanonicalKey(key)) continue;
+		if (isSystemReminderCompactKey(key, keyMappings)) continue;
 		if (
 			isBuiltInCompactChipKey(key)
 			&& isSuppressedByTerminalDate(key, fieldValues, workflowStatusIdentityIndex)
@@ -538,6 +578,12 @@ export function collectHiddenKeys(
 	}
 
 	return Array.from(hidden);
+}
+
+function isSystemReminderCompactKey(key: string, keyMappings?: readonly KeyMapping[]): boolean {
+	if (!isReminderStorageKey(key)) return false;
+	const mapping = keyMappings?.find(candidate => candidate.canonicalKey === key);
+	return !mapping || mapping.isSystem !== false;
 }
 
 function hasTerminalDate(fieldValues: Record<string, string>): boolean {
@@ -578,7 +624,7 @@ export function createInlineTaskCompactChipElement(
 	options?: { forceFull?: boolean; owner?: Node | null },
 ): HTMLElement {
 	const iconOnly = entry.iconOnly && options?.forceFull !== true;
-	const tagName = entry.interactive && !iconOnly ? 'button' : 'span';
+	const tagName = entry.interactive && (!iconOnly || entry.reminderItem) ? 'button' : 'span';
 	const chip = createOwnerElement(options?.owner, tagName);
 	if (entry.interactive && tagName === 'button') {
 		(chip as HTMLButtonElement).type = 'button';
@@ -589,11 +635,17 @@ export function createInlineTaskCompactChipElement(
 		'operon-inline-compact-chip',
 		entry.linkTarget || entry.previewLinkTarget || entry.externalUrl ? 'is-linked' : '',
 		entry.locationCoordinate ? 'is-location' : '',
+		entry.reminderItem ? 'is-reminder' : '',
+		entry.reminderState ? `is-${entry.reminderState}` : '',
 		iconOnly ? 'is-icon-only' : '',
 		entry.key === 'priority' ? 'operon-chip-priority' : 'operon-chip-date',
 		entry.interactive ? 'operon-chip-clickable' : 'operon-chip-readonly',
 		extraClasses,
 	].filter(Boolean).join(' ');
+	const ariaLabel = entry.reminderItem && !entry.interactive
+		? [entry.label, entry.tooltipContent].filter(Boolean).join('. ')
+		: entry.ariaLabel;
+	if (ariaLabel) chip.setAttribute('aria-label', ariaLabel);
 
 	const iconEl = createOwnerElement(chip, 'span');
 	iconEl.className = 'operon-inline-compact-chip-icon';
@@ -663,6 +715,8 @@ function hasCompactValue(
 	switch (key) {
 		case 'assignees':
 		case 'contexts':
+		case 'reminderDatetimes':
+		case 'reminderRules':
 			return splitTaskListValue(fieldValues[key]).length > 0;
 		case 'links':
 			return splitTaskListValue(fieldValues['links']).some(value => !!parseExternalLinkValue(value));

@@ -1,4 +1,4 @@
-import { Setting, setIcon } from 'obsidian';
+import { Setting, setIcon, setTooltip } from 'obsidian';
 import type { DropdownComponent, TextComponent, ToggleComponent } from 'obsidian';
 
 interface BaseSettingOptions {
@@ -32,17 +32,70 @@ export function createSettingsAddButton(containerEl: HTMLElement, label: string)
 	return button;
 }
 
-export function renderNativeSettingsSection(containerEl: HTMLElement, title: string, desc?: string): HTMLElement {
+export interface NativeSettingsDocsActionOptions {
+	label: string;
+	onClick: () => void;
+}
+
+export interface NativeSettingsSectionOptions {
+	action?: NativeSettingsDocsActionOptions;
+}
+
+export function renderNativeSettingsPageTitleAction(
+	titlebarEl: HTMLElement,
+	action: NativeSettingsDocsActionOptions,
+): HTMLButtonElement {
+	titlebarEl.addClass('operon-native-settings-page-titlebar-with-docs');
+	const existingButton = titlebarEl.querySelector<HTMLButtonElement>('.operon-native-settings-page-title-docs-action');
+	existingButton?.remove();
+
+	const actionButton = titlebarEl.createEl('button', {
+		cls: 'clickable-icon operon-native-settings-page-title-docs-action',
+		attr: {
+			type: 'button',
+			'aria-label': action.label,
+		},
+	});
+	setIcon(actionButton, 'circle-question-mark');
+	setTooltip(actionButton, action.label);
+	actionButton.addEventListener('click', () => {
+		action.onClick();
+	});
+	return actionButton;
+}
+
+export function renderNativeSettingsSection(
+	containerEl: HTMLElement,
+	title: string,
+	desc?: string,
+	options?: NativeSettingsSectionOptions,
+): HTMLElement {
 	if (!containerEl.closest('.operon-settings-native-page-root')) {
 		renderSettingsHeading(containerEl, title);
 		return containerEl;
 	}
 
 	const sectionEl = containerEl.createDiv('operon-native-settings-section');
-	sectionEl.createEl('h2', {
+	const headingEl = sectionEl.createDiv('operon-native-settings-section-heading');
+	headingEl.createEl('h2', {
 		text: title,
 		cls: 'operon-native-settings-section-title',
 	});
+	const action = options?.action;
+	if (action) {
+		const actionButton = headingEl.createEl('button', {
+			cls: 'clickable-icon operon-native-settings-section-docs-action',
+			attr: {
+				type: 'button',
+				'aria-label': action.label,
+			},
+		});
+		setIcon(actionButton, 'circle-question-mark');
+		setTooltip(actionButton, action.label);
+		actionButton.addEventListener('click', () => {
+			action.onClick();
+		});
+	}
 	if (desc) {
 		sectionEl.createEl('p', {
 			text: desc,
@@ -52,8 +105,13 @@ export function renderNativeSettingsSection(containerEl: HTMLElement, title: str
 	return sectionEl.createDiv('operon-native-settings-section-body');
 }
 
-export function renderNativeSettingsGroupedSection(containerEl: HTMLElement, title: string, desc?: string): HTMLElement {
-	const sectionBody = renderNativeSettingsSection(containerEl, title, desc);
+export function renderNativeSettingsGroupedSection(
+	containerEl: HTMLElement,
+	title: string,
+	desc?: string,
+	options?: NativeSettingsSectionOptions,
+): HTMLElement {
+	const sectionBody = renderNativeSettingsSection(containerEl, title, desc, options);
 	if (sectionBody.closest('.operon-settings-native-page-root')) {
 		sectionBody.addClass('operon-native-settings-section-card');
 	}

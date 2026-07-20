@@ -74,7 +74,8 @@ export const CANONICAL_KEYS: CanonicalKeyDef[] = [
 	{ name: 'treeDescendantCount', type: 'number', sync: 'yes', group: 'workflow', position: 25.4, description: 'Recursive descendant task count across all states' },
 	{ name: 'treeDoneDescendantCount', type: 'number', sync: 'yes', group: 'workflow', position: 25.5, description: 'Recursive descendant task count with done checkbox state' },
 	{ name: 'treeOpenDescendantCount', type: 'number', sync: 'yes', group: 'workflow', position: 25.6, description: 'Recursive descendant task count with open checkbox state' },
-	{ name: 'reminders', type: 'list', sync: 'yes', group: 'workflow', internal: true, position: 26, description: 'Reminder timestamps or offsets' },
+	{ name: 'reminderDatetimes', type: 'list', sync: 'yes', group: 'workflow', position: 26, description: 'Absolute local reminder datetimes' },
+	{ name: 'reminderRules', type: 'list', sync: 'yes', group: 'workflow', position: 26.1, description: 'Dynamic reminder rules relative to supported task scheduling fields' },
 	// Scheduling — Text
 	{ name: 'timezone', type: 'text', sync: 'yes', group: 'scheduling', internal: true, position: 27, description: 'Timezone (city name or UTC offset)' },
 	// Scheduling — Lists
@@ -115,6 +116,10 @@ export const CANONICAL_KEY_ORDER = [...CANONICAL_KEYS].sort((a, b) => a.position
 
 export function isInternalCanonicalKey(name: string): boolean {
 	return INTERNAL_CANONICAL_KEY_SET.has(name);
+}
+
+export function isReminderStorageKey(name: string): boolean {
+	return name === 'reminderDatetimes' || name === 'reminderRules';
 }
 
 /** Checkbox states */

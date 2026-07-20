@@ -64,18 +64,118 @@ export interface DatetimePickerOptions {
 	value?: string;
 	retainInputFocus?: boolean;
 	classNames?: DatetimePickerClassNames;
-	onSelect: (value: string) => void;
-	onRemove?: () => void;
+	onSelect: (value: string) => DatetimePickerActionResult;
+	onRemove?: () => DatetimePickerActionResult;
 	canRemove?: boolean;
 	onCancel?: () => void;
 	onClose?: () => void;
+}
+
+export type DatetimePickerActionResult = void | {
+	status: 'rejected';
+	message: string;
+};
+
+export interface DatetimePickerContentOptions {
+	app?: App;
+	settings: Pick<OperonSettings, 'timeFormat' | 'calendarWeekStart' | 'calendarSidebarShowWeekNumbers'>;
+	fieldKey?: string;
+	language?: DatePickerLang;
+	value?: string;
+	classNames?: Omit<DatetimePickerClassNames, 'panel'>;
+	onSelect: (value: string) => void;
+	onRemove?: () => void;
+	canRemove?: boolean;
+}
+
+export interface DatetimePickerContentController {
+	requestFocus: () => void;
+	destroy: () => void;
 }
 
 const EDITABLE_CARET_POSITIONS = [0, 1, 3, 4];
 
 export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: DatetimePickerOptions): () => void {
 	let completed = false;
-	const app = resolvePickerApp(anchor, options.app);
+	let contentController: DatetimePickerContentController | null = null;
+	let diagnostic: HTMLElement | null = null;
+	const useBaseClasses = options.classNames?.useBaseClasses !== false;
+	const { panel, close } = createFloatingPanel(
+		anchor,
+		joinDatetimePickerClasses(
+			'operon-floating-panel',
+			baseDatetimePickerClass('operon-datetime-picker-panel', useBaseClasses),
+			options.classNames?.panel,
+		),
+		() => {
+			contentController?.destroy();
+			if (!completed) options.onCancel?.();
+			options.onClose?.();
+		},
+		{
+			retainInputFocus: options.retainInputFocus,
+		},
+	);
+
+	contentController = renderDatetimePickerContent(panel, {
+		app: options.app,
+		settings: options.settings,
+		fieldKey: options.fieldKey,
+		language: options.language,
+		value: options.value,
+		classNames: options.classNames,
+		onSelect: value => {
+			completed = true;
+			const result = options.onSelect(value);
+			if (isDatetimePickerRejection(result)) {
+				completed = false;
+				setDatetimePickerDiagnostic(diagnostic, result.message);
+				return;
+			}
+			close();
+		},
+		onRemove: options.onRemove
+			? () => {
+				completed = true;
+				const result = options.onRemove?.();
+				if (isDatetimePickerRejection(result)) {
+					completed = false;
+					setDatetimePickerDiagnostic(diagnostic, result.message);
+					return;
+				}
+				close();
+			}
+			: undefined,
+		canRemove: options.canRemove,
+	});
+	diagnostic = panel.createDiv('operon-datetime-picker-diagnostic');
+	diagnostic.setAttribute('role', 'status');
+	diagnostic.setAttribute('aria-live', 'polite');
+
+	const focusContent = contentController.requestFocus;
+	const ownerWindow = panel.ownerDocument.defaultView;
+	if (ownerWindow) ownerWindow.requestAnimationFrame(focusContent);
+	else window.requestAnimationFrame(focusContent);
+
+	return close;
+}
+
+function isDatetimePickerRejection(result: DatetimePickerActionResult): result is Exclude<DatetimePickerActionResult, void> {
+	return !!result && result.status === 'rejected';
+}
+
+function setDatetimePickerDiagnostic(element: HTMLElement | null, message: string): void {
+	if (!element) return;
+	element.textContent = message;
+}
+
+/** Renders into and owns the container children; selection and removal do not close an outer surface. */
+export function renderDatetimePickerContent(
+	container: HTMLElement,
+	options: DatetimePickerContentOptions,
+): DatetimePickerContentController {
+	container.replaceChildren();
+	const app = resolvePickerApp(container, options.app);
 	const language = resolveDatePickerLanguage(options.language);
 	const strings = getDatePickerLocaleStrings(language);
 	const slots = getQuarterHourSlots();
@@ -90,16 +190,11 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 	const timeItemSelectorClass = useBaseClasses
 		? 'operon-datetime-picker-time-item'
 		: firstDatetimePickerClass(options.classNames?.timeItem) ?? 'operon-datetime-picker-time-item';
-	const { panel, close } = createFloatingPanel(anchor, joinDatetimePickerClasses('operon-floating-panel', baseDatetimePickerClass('operon-datetime-picker-panel', useBaseClasses), options.classNames?.panel), () => {
-		if (!completed) options.onCancel?.();
-		options.onClose?.();
-	}, {
-		retainInputFocus: options.retainInputFocus,
-	});
+	const addedBasePanelClass = useBaseClasses && !container.classList.contains('operon-datetime-picker-panel');
 
-	if (useBaseClasses) panel.classList.add('operon-datetime-picker-panel');
+	if (addedBasePanelClass) container.classList.add('operon-datetime-picker-panel');
 
-	const topRow = panel.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-top-row', useBaseClasses), options.classNames?.topRow));
+	const topRow = container.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-top-row', useBaseClasses), options.classNames?.topRow));
 
 	const input = topRow.createEl('input');
 	input.type = 'text';
@@ -113,9 +208,9 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 	timeInput.className = joinDatetimePickerClasses('operon-floating-input', baseDatetimePickerClass('operon-datetime-picker-time-input', useBaseClasses), options.classNames?.timeInput);
 	timeInput.placeholder = t('taskEditor', 'datetimeTimePlaceholder');
 
-	const results = panel.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-date-picker-results', useBaseClasses), options.classNames?.dateResults));
+	const results = container.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-date-picker-results', useBaseClasses), options.classNames?.dateResults));
 
-	const controlsRow = panel.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-controls-row', useBaseClasses), options.classNames?.controlsRow));
+	const controlsRow = container.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-controls-row', useBaseClasses), options.classNames?.controlsRow));
 
 	const dateSection = controlsRow.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-control-section', useBaseClasses), options.classNames?.dateSection));
 
@@ -139,15 +234,13 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 
 	const timeNotice = topTimeWrap.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-time-notice', useBaseClasses), options.classNames?.timeNotice));
 
-	const actions = panel.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-day-picker-footer operon-datetime-picker-actions', useBaseClasses), options.classNames?.actions));
+	const actions = container.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-day-picker-footer operon-datetime-picker-actions', useBaseClasses), options.classNames?.actions));
 
 	const clearButton = createButton(strings.clear, joinDatetimePickerClasses(baseDatetimePickerClass('operon-day-picker-footer-button', useBaseClasses), options.classNames?.clearButton, 'is-clear'), actions);
 	clearButton.disabled = !options.onRemove || !options.canRemove;
 	clearButton.addEventListener('click', () => {
 		if (clearButton.disabled) return;
-		completed = true;
 		options.onRemove?.();
-		close();
 	});
 	actions.appendChild(clearButton);
 
@@ -156,7 +249,7 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 		dayPickerController?.setFocusedDate(localToday());
 	});
 	actions.appendChild(todayButton);
-	panel.appendChild(actions);
+	container.appendChild(actions);
 
 	let parsedCandidates: DateParseCandidate[] = [];
 	let quickCandidates: DateParseCandidate[] = [];
@@ -178,9 +271,7 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 
 	const commit = (value: string) => {
 		if (!value) return;
-		completed = true;
 		options.onSelect(value);
-		close();
 	};
 
 	const getActiveDateCandidate = (): DateParseCandidate | null => visibleCandidates[activeDateIndex] ?? null;
@@ -622,12 +713,17 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 	syncTimeInputValue();
 	refreshTimeMatches();
 
-	window.requestAnimationFrame(() => {
-		focusFloatingInput(input);
-		input.select();
-	});
-
-	return close;
+	return {
+		requestFocus: () => {
+			if (!input.isConnected) return;
+			focusFloatingInput(input);
+			if (typeof input.select === 'function') input.select();
+		},
+		destroy: () => {
+			container.replaceChildren();
+			if (addedBasePanelClass) container.classList.remove('operon-datetime-picker-panel');
+		},
+	};
 }
 
 function baseDatetimePickerClass(className: string, useBaseClasses: boolean): string {

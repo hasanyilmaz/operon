@@ -2044,6 +2044,7 @@ export class KanbanView extends ItemView {
 				updateSubtasks: this.callbacks.updateSubtasks,
 				updateDependencyField: this.callbacks.updateDependencyField,
 				openEditor: (operonId) => this.callbacks.onItemAction?.(operonId, 'openEditor'),
+				getTaskById: (operonId) => this.indexer.getTask(operonId),
 			}, {
 				allTasks,
 				taskLookup,

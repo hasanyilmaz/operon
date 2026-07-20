@@ -1,5 +1,6 @@
 import { OperonSettings } from '../types/settings';
 import { getCustomSurfaceKeyMappings, isCustomFieldMapping } from './custom-field-surfaces';
+import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
 
 export interface TaskFieldSuggestionItem {
 	canonicalKey: string;
@@ -93,6 +94,11 @@ export function buildTaskFieldSuggestions(
 				break;
 			}
 		}
+	}
+
+	if (getAvailableReminderRuleAnchors(currentFieldValues).length === 0) {
+		const reminderRulesIndex = builtInItems.findIndex(item => item.canonicalKey === 'reminderRules');
+		if (reminderRulesIndex >= 0) builtInItems.splice(reminderRulesIndex, 1);
 	}
 
 	for (const mapping of getCustomSurfaceKeyMappings(settings, surface)) {

@@ -57,7 +57,7 @@ export function getTaskWikilinkOverlayChipSignature(
 		allTasks,
 		settings.taskWikilinkOverlayCompactChips,
 		locationIndex?.resolve,
-		{ repeatSkipDateResolver: getRepeatSkipDates },
+		{ app, repeatSkipDateResolver: getRepeatSkipDates },
 	).map(entry => [
 		entry.key,
 		entry.label,
@@ -72,6 +72,11 @@ export function getTaskWikilinkOverlayChipSignature(
 		entry.locationMarkerColor ?? '',
 		entry.taskColor ?? '',
 		entry.tooltipContent ?? '',
+		entry.reminderItem?.fieldKey ?? '',
+		entry.reminderItem?.index ?? '',
+		entry.reminderItem?.rawValue ?? '',
+		entry.reminderState ?? '',
+		entry.ariaLabel ?? '',
 	].join(':')).join('|');
 	return [
 		locationIndex?.getSignature() ?? '',
@@ -106,7 +111,7 @@ export function buildTaskWikilinkOverlayChipContainer(
 		callbacks.getAllTasks(),
 		settings.taskWikilinkOverlayCompactChips,
 		locationResolver,
-		{ repeatSkipDateResolver: callbacks.getRepeatSkipDates },
+		{ app: callbacks.app, repeatSkipDateResolver: callbacks.getRepeatSkipDates },
 	);
 	const projectSerialDisplay = callbacks.getProjectSerialDisplay?.(task.operonId, task) ?? null;
 	if (entries.length === 0 && !projectSerialDisplay) return null;

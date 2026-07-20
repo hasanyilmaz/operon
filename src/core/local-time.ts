@@ -12,8 +12,7 @@
  */
 export function localNow(): string {
 	const d = new Date();
-	const pad = (n: number) => String(n).padStart(2, '0');
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+	return formatLocalDatetimeParts(d);
 }
 
 /**
@@ -22,24 +21,33 @@ export function localNow(): string {
  */
 export function localToday(): string {
 	const d = new Date();
-	const pad = (n: number) => String(n).padStart(2, '0');
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+	return formatLocalDateParts(d);
 }
 
 /**
  * Convert a Date object to local ISO-like datetime string.
  */
 export function toLocalDatetime(date: Date): string {
-	const pad = (n: number) => String(n).padStart(2, '0');
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+	return formatLocalDatetimeParts(date);
 }
 
 /**
  * Convert a Date object to local date string YYYY-MM-DD.
  */
 export function toLocalDate(date: Date): string {
-	const pad = (n: number) => String(n).padStart(2, '0');
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+	return formatLocalDateParts(date);
+}
+
+function formatLocalDatetimeParts(date: Date): string {
+	return `${formatLocalDateParts(date)}T${padLocalComponent(date.getHours())}:${padLocalComponent(date.getMinutes())}:${padLocalComponent(date.getSeconds())}`;
+}
+
+function formatLocalDateParts(date: Date): string {
+	return `${String(date.getFullYear()).padStart(4, '0')}-${padLocalComponent(date.getMonth() + 1)}-${padLocalComponent(date.getDate())}`;
+}
+
+function padLocalComponent(value: number): string {
+	return String(value).padStart(2, '0');
 }
 
 const LOCAL_DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -59,11 +67,15 @@ export function parseLocalTimestamp(value: string): number | null {
 	if (!trimmed) return null;
 	const dateOnly = LOCAL_DATE_ONLY_RE.exec(trimmed);
 	if (dateOnly) {
-		return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])).getTime();
+		return createLocalDate(
+			Number(dateOnly[1]),
+			Number(dateOnly[2]) - 1,
+			Number(dateOnly[3]),
+		).getTime();
 	}
 	const dateTime = LOCAL_DATETIME_OPTIONAL_SECONDS_RE.exec(trimmed);
 	if (dateTime) {
-		return new Date(
+		return createLocalDate(
 			Number(dateTime[1]),
 			Number(dateTime[2]) - 1,
 			Number(dateTime[3]),
@@ -75,4 +87,19 @@ export function parseLocalTimestamp(value: string): number | null {
 	}
 	const fallback = Date.parse(trimmed);
 	return Number.isFinite(fallback) ? fallback : null;
+}
+
+function createLocalDate(
+	year: number,
+	monthIndex: number,
+	day: number,
+	hours = 0,
+	minutes = 0,
+	seconds = 0,
+	milliseconds = 0,
+): Date {
+	const date = new Date(0);
+	date.setFullYear(year, monthIndex, day);
+	date.setHours(hours, minutes, seconds, milliseconds);
+	return date;
 }

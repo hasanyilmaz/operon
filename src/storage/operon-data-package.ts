@@ -157,6 +157,11 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'fileRepeatCustomFolder',
 	'estimateAutoReallocation',
 	'trackerSplitSessionsAtMidnight',
+	'reminderCatchUpWindowMinutes',
+	'reminderNoticeDurationSeconds',
+	'reminderAutoPinDueTasks',
+	'reminderSystemNotificationsEnabled',
+	'reminderSoundFilePath',
 ] as const satisfies readonly OperonDataPackageOwnedSettingsKey[];
 
 const TASK_UI_PREFERENCE_PACKAGE_KEYS = [
@@ -547,6 +552,11 @@ export function buildOperonDataPackageFromSettings(
 				fileRepeatCustomFolder: normalized.fileRepeatCustomFolder,
 				estimateAutoReallocation: false,
 				trackerSplitSessionsAtMidnight: normalized.trackerSplitSessionsAtMidnight,
+				reminderCatchUpWindowMinutes: normalized.reminderCatchUpWindowMinutes,
+				reminderNoticeDurationSeconds: normalized.reminderNoticeDurationSeconds,
+				reminderAutoPinDueTasks: normalized.reminderAutoPinDueTasks,
+				reminderSystemNotificationsEnabled: normalized.reminderSystemNotificationsEnabled,
+				reminderSoundFilePath: normalized.reminderSoundFilePath,
 			},
 		},
 		integrations: {

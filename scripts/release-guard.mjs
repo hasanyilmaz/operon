@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -255,10 +256,77 @@ function checkVersionAndAssets() {
 	for (const asset of ['main.js', 'manifest.json', 'styles.css']) {
 		assertFileExists(asset);
 	}
+
+	assertFileExists('src/generated/locale-pack-catalog.json');
+	assertFileExists('src/generated/locale-compatibility-aliases.json');
+	const catalog = readJson('src/generated/locale-pack-catalog.json');
+	const expectedLocales = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'];
+	assertEqual('locale catalog source version', catalog.sourceVersion, manifest.version);
+	if (JSON.stringify(catalog.languageOrder) !== JSON.stringify(expectedLocales)) {
+		fail(`locale catalog language order: expected ${expectedLocales.join(',')}`);
+	}
+	const expectedAssets = new Set();
+	for (const locale of expectedLocales) {
+		const entry = catalog.locales?.[locale];
+		if (!entry) {
+			fail(`locale catalog missing language: ${locale}`);
+			continue;
+		}
+		const relativePath = `release-assets/locales/${entry.assetName}`;
+		assertFileExists(relativePath);
+		assertEqual(
+			`${locale} locale repository tag URL`,
+			entry.url,
+			`https://raw.githubusercontent.com/hasanyilmaz/operon/${manifest.version}/release-assets/locales/${entry.assetName}`,
+		);
+		if (!fs.existsSync(path.join(rootDir, relativePath))) continue;
+		const contents = fs.readFileSync(path.join(rootDir, relativePath));
+		const digest = createHash('sha256').update(contents).digest('hex');
+		assertEqual(`${locale} locale asset SHA-256`, digest, entry.sha256);
+		assertEqual(`${locale} locale asset size`, contents.byteLength, entry.sizeBytes);
+		const pack = JSON.parse(contents.toString('utf8'));
+		assertEqual(`${locale} locale asset source version`, pack.sourceVersion, entry.sourceVersion);
+		expectedAssets.add(entry.assetName);
+	}
+	if (fs.existsSync(path.join(rootDir, 'release-assets/locales'))) {
+		const actualAssets = fs.readdirSync(path.join(rootDir, 'release-assets/locales'))
+			.filter(file => file.endsWith('.json'));
+		if (actualAssets.length !== expectedAssets.size || actualAssets.some(file => !expectedAssets.has(file))) {
+			fail('locale release asset inventory must exactly match the embedded catalog');
+		}
+	}
+
+	assertFileExists('src/generated/reminder-sound-pack-catalog.json');
+	const soundCatalog = readJson('src/generated/reminder-sound-pack-catalog.json');
+	const expectedSoundAssets = new Set();
+	for (const entry of soundCatalog.files ?? []) {
+		const relativePath = `release-assets/reminder-sounds/${entry.assetName}`;
+		assertFileExists(relativePath);
+		assertEqual(
+			`${entry.id} reminder sound repository URL`,
+			entry.url,
+			`https://raw.githubusercontent.com/hasanyilmaz/operon/main/release-assets/reminder-sounds/${entry.assetName}`,
+		);
+		if (!fs.existsSync(path.join(rootDir, relativePath))) continue;
+		const contents = fs.readFileSync(path.join(rootDir, relativePath));
+		const digest = createHash('sha256').update(contents).digest('hex');
+		assertEqual(`${entry.id} reminder sound asset SHA-256`, digest, entry.sha256);
+		assertEqual(`${entry.id} reminder sound asset size`, contents.byteLength, entry.sizeBytes);
+		expectedSoundAssets.add(entry.assetName);
+	}
+	const reminderSoundDirectory = path.join(rootDir, 'release-assets/reminder-sounds');
+	if (fs.existsSync(reminderSoundDirectory)) {
+		const actualSoundAssets = fs.readdirSync(reminderSoundDirectory)
+			.filter(file => file.endsWith('.mp3'));
+		if (actualSoundAssets.length !== expectedSoundAssets.size || actualSoundAssets.some(file => !expectedSoundAssets.has(file))) {
+			fail('reminder sound release asset inventory must exactly match the embedded catalog');
+		}
+	}
 }
 
 function checkReleaseWorkflow() {
 	const workflow = '.github/workflows/release.yml';
+	const workflowText = readText(workflow);
 
 	assertIncludes(workflow, 'id-token: write', 'release workflow must grant OIDC token permission for artifact attestations');
 	assertIncludes(workflow, 'attestations: write', 'release workflow must grant artifact attestation permission');
@@ -267,6 +335,46 @@ function checkReleaseWorkflow() {
 	for (const asset of ['manifest.json', 'main.js', 'styles.css']) {
 		assertIncludes(workflow, `subject-path: ${asset}`, `release workflow must attest ${asset}`);
 	}
+	assertIncludes(
+		workflow,
+		'subject-path: release-assets/locales/*.json',
+		'release workflow must attest downloadable locale packs',
+	);
+	assertNoMatch(
+		workflow,
+		/gh release (?:upload|create)[^\n]*release-assets\//u,
+		'repository-managed assets must not be attached to GitHub Releases',
+	);
+	const releaseCommands = workflowText.split(/\r?\n/u)
+		.map(line => line.trim())
+		.filter(line => /^gh release (?:upload|create)\b/u.test(line));
+	const expectedReleaseCommands = [
+		'gh release upload "$GITHUB_REF_NAME" main.js manifest.json styles.css --clobber',
+		'gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --title "$GITHUB_REF_NAME" --notes "Operon $GITHUB_REF_NAME"',
+	];
+	if (JSON.stringify(releaseCommands) !== JSON.stringify(expectedReleaseCommands)) {
+		fail('release workflow commands must upload exactly main.js, manifest.json, and styles.css');
+	}
+	assertIncludes(
+		workflow,
+		'name: Verify published release asset allowlist',
+		'release workflow must verify the final GitHub Release asset set',
+	);
+	assertIncludes(
+		workflow,
+		'actual_assets="$(gh release view "$GITHUB_REF_NAME" --json assets',
+		'release workflow must read back published GitHub Release assets',
+	);
+	assertIncludes(
+		workflow,
+		'expected_assets="$(printf \'%s\\n\' main.js manifest.json styles.css)"',
+		'release workflow asset allowlist must contain exactly the three plugin files',
+	);
+	assertIncludes(
+		workflow,
+		'unexpected_assets="$(gh release view "$GITHUB_REF_NAME" --json assets',
+		'release workflow must reject unapproved assets before updating an existing release',
+	);
 }
 
 function checkCssScorecard() {

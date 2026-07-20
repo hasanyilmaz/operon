@@ -32,6 +32,14 @@ export interface CustomFieldUsageSummary {
 
 export type CustomFieldUsageSurfaceKey = 'editor' | 'creator' | 'chips' | 'kanbanSwimlane';
 
+function matchesManagedCustomCanonicalKey(mappingKey: string, requestedKey: string): boolean {
+	if (mappingKey === requestedKey) return true;
+	const mappingComparable = mappingKey.trim().toLowerCase();
+	const requestedComparable = requestedKey.trim().toLowerCase();
+	return (mappingComparable === 'reminderdatetimes' || mappingComparable === 'reminderrules')
+		&& mappingComparable === requestedComparable;
+}
+
 interface CustomFieldUsageSurfaceOptions {
 	taskCreatorToolbar?: readonly TaskCreatorToolbarItem[];
 	taskEditorWorkflowPickers?: readonly TaskEditorWorkflowPickerItem[];
@@ -47,12 +55,13 @@ export function getManagedCustomKeyMapping(
 	canonicalKey: string,
 	keyMappings: readonly KeyMapping[] | null | undefined,
 ): KeyMapping | null {
-	if (CANONICAL_KEY_MAP.has(canonicalKey)) return null;
 	for (const mapping of getSafeKeyMappings(keyMappings)) {
-		if (mapping.canonicalKey !== canonicalKey) continue;
+		if (!matchesManagedCustomCanonicalKey(mapping.canonicalKey, canonicalKey)) continue;
 		if (isRetiredKeyMapping(mapping.canonicalKey)) continue;
+		if (mapping.isSystem !== false && CANONICAL_KEY_MAP.has(canonicalKey)) return null;
 		return mapping;
 	}
+	if (CANONICAL_KEY_MAP.has(canonicalKey)) return null;
 	return null;
 }
 
@@ -128,9 +137,11 @@ export function getManagedTaskFieldType(
 	keyMappings: readonly KeyMapping[] | null | undefined,
 ): KeyMapping['type'] | null {
 	if (isRetiredKeyMapping(canonicalKey)) return null;
+	const customMapping = getManagedCustomKeyMapping(canonicalKey, keyMappings);
+	if (customMapping?.isSystem === false) return customMapping.type;
 	const canonicalDef = CANONICAL_KEY_MAP.get(canonicalKey);
 	if (canonicalDef) return canonicalDef.type;
-	return getManagedCustomKeyMapping(canonicalKey, keyMappings)?.type ?? null;
+	return customMapping?.type ?? null;
 }
 
 export function getManagedCustomKeyOrder(
@@ -140,9 +151,9 @@ export function getManagedCustomKeyOrder(
 	const mappings = getSafeKeyMappings(keyMappings);
 	for (let index = 0; index < mappings.length; index += 1) {
 		const mapping = mappings[index];
-		if (!mapping || mapping.canonicalKey !== canonicalKey) continue;
-		if (CANONICAL_KEY_MAP.has(mapping.canonicalKey)) return null;
+		if (!mapping || !matchesManagedCustomCanonicalKey(mapping.canonicalKey, canonicalKey)) continue;
 		if (isRetiredKeyMapping(mapping.canonicalKey)) return null;
+		if (mapping.isSystem !== false && CANONICAL_KEY_MAP.has(mapping.canonicalKey)) return null;
 		if (typeof mapping.customOrder === 'number' && Number.isFinite(mapping.customOrder)) {
 			return Math.max(0, Math.floor(mapping.customOrder));
 		}

@@ -13,6 +13,38 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '2.5.0',
+		date: '2026-07-20',
+		title: 'Never Miss What Matters with Reminders',
+		showOnUpdate: true,
+		bannerUrl: 'operon-2-5-0-reminders.png',
+		body: `
+### New
+- Added first-class **Reminders** with absolute **ReminderDatetimes** and dynamic **ReminderRules**, dedicated pickers and compact chips, recurring-rule carry-forward, timezone-safe scheduling and missed-reminder catch-up, clickable in-app or optional desktop notifications, optional pin-on-arrival automation, test controls, and vault audio or downloadable sound-pack choices.
+- Added contextual documentation links (**54 links**) throughout **Core, Tasks, Views, Interface, and Mobile Settings** in Obsidian 1.13, placing broad overview guides beside their page titles while keeping narrower guides beside the relevant section headings; every link opens downloaded Operon Docs first and falls back to the matching web page.
+
+### Improved
+- Improved first-run reminder discoverability by showing **ReminderDatetimes** and **ReminderRules** in the Task Editor, inline tasks, and Filter task rows by default, while keeping denser Creator, Kanban, Task Finder, and Task Wikilink Overlay surfaces unchanged.
+- Improved **Notes hover tooltips** so Markdown web links display as underlined link labels instead of raw URLs while remaining read-only and non-interactive.
+- Reduced Operon's startup bundle by **1.02 MB (22.44%)** by keeping English built in and offering the other interface languages as verified, on-demand downloads that stay updated after installation.
+
+### Changed
+- Changed the default interface language to **English** and removed **Auto**; existing non-English choices are preserved and restored automatically after their language pack is available.
+
+### New Docs
+- [[DOCS-116 Reminders|Reminders]]
+- [[DOCS-117 Reminder rules|Reminder rules]]
+
+### Updated Docs
+- [[DOCS-012 Inline task syntax|Inline task syntax]]
+- [[DOCS-018 Task properties|Task properties]]
+- [[DOCS-020 Task Creator|Task Creator]]
+- [[DOCS-021 Task Editor|Task Editor]]
+- [[DOCS-032 Pinned Task Dock|Pinned Task Dock]]
+- And 7 more updated docs.
+`.trim(),
+	},
+	{
 		version: '2.4.0',
 		date: '2026-07-18',
 		title: 'Flexible Tables, Faster Workflows',

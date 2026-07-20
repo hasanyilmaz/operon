@@ -51,6 +51,7 @@ const COPIED_FIELDS = new Set([
 	'repeat',
 	'repeatSeriesId',
 	'datetimeRepeatEnd',
+	'reminderRules',
 	'priority',
 	'dateStarted',
 	'dateDue',
@@ -85,6 +86,17 @@ const BODY_CLONE_RESET_FIELDS = new Set([
 	'repeatSeriesId',
 	'datetimeRepeatEnd',
 ]);
+
+type RecurrenceReminderField = 'reminderDatetimes' | 'reminderRules';
+
+function hasSystemReminderFieldMapping(
+	keyMappings: readonly KeyMapping[],
+	fieldKey: RecurrenceReminderField,
+): boolean {
+	return keyMappings.some(mapping => (
+		mapping.canonicalKey === fieldKey && mapping.isSystem !== false
+	));
+}
 
 const FILE_REPEAT_PROTECTED_CLEAR_CANONICAL_FIELDS = new Set([
 	'operonId',
@@ -481,6 +493,9 @@ function cloneRecurringInlineBodySubtask(
 	for (const key of BODY_CLONE_RESET_FIELDS) {
 		delete nextFields[key];
 	}
+	if (hasSystemReminderFieldMapping(options.keyMappings, 'reminderDatetimes')) {
+		delete nextFields['reminderDatetimes'];
+	}
 
 	nextFields['operonId'] = (options.generateOperonId ?? generateOperonId)();
 	nextFields['parentTask'] = options.newRootOperonId;
@@ -861,6 +876,10 @@ export class RecurrenceService {
 			if (key === 'operonId' || key === 'datetimeCreated' || key === 'dateScheduled' || key === 'datetimeModified') continue;
 			if (RESET_FIELDS.has(key)) continue;
 			if (!COPIED_FIELDS.has(key)) continue;
+			if (
+				key === 'reminderRules'
+				&& !hasSystemReminderFieldMapping(this.getSettings().keyMappings, key)
+			) continue;
 			fieldValues[key] = value;
 		}
 

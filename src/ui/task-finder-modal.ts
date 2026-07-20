@@ -1176,7 +1176,7 @@ export class TaskFinderModal extends Modal {
 			tasks,
 			settings.taskFinderCompactChips,
 			locationResolver,
-			{ taskLookup: this.getCompactTaskLookup(tasks) },
+			{ app: this.app, taskLookup: this.getCompactTaskLookup(tasks) },
 		);
 		if (this.showOverdueTasks) {
 			entries = this.prioritizeOverdueDateEntries(entries, task, settings);

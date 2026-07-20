@@ -3,6 +3,7 @@ export interface OperonStoragePaths {
 	dataPackagePath: string;
 	tablePresetFileMigrationBackupRootPath: string;
 	state: {
+		reminderDeliveriesRootPath: string;
 		repeatSeriesPath: string;
 		activeTrackersPath: string;
 		pinnedTasksPath: string;
@@ -14,6 +15,11 @@ export interface OperonStoragePaths {
 	runtime: {
 		indexPath: string;
 		indexV8RecoveryRequiredPath: string;
+		locales: {
+			rootPath: string;
+			manifestPath: string;
+			packsPath: string;
+		};
 		indexV8: {
 			rootPath: string;
 			manifestPath: string;
@@ -36,6 +42,7 @@ export function buildOperonStoragePaths(
 		dataPackagePath: joinVaultPath(pluginDir, 'data.json'),
 		tablePresetFileMigrationBackupRootPath: joinVaultPath(pluginDir, 'data', 'migrations', 'table-presets-v1'),
 		state: {
+			reminderDeliveriesRootPath: joinVaultPath(pluginDir, 'state', 'reminder-deliveries'),
 			repeatSeriesPath: joinVaultPath(pluginDir, 'state', 'repeat-series.json'),
 			activeTrackersPath: joinVaultPath(pluginDir, 'state', 'active-trackers.json'),
 			pinnedTasksPath: joinVaultPath(pluginDir, 'state', 'pinned-tasks.json'),
@@ -47,6 +54,11 @@ export function buildOperonStoragePaths(
 		runtime: {
 			indexPath: joinVaultPath(pluginDir, 'runtime', 'index.json'),
 			indexV8RecoveryRequiredPath: joinVaultPath(pluginDir, 'runtime', 'index-v8-recovery-required.json'),
+			locales: {
+				rootPath: joinVaultPath(pluginDir, 'runtime', 'locales'),
+				manifestPath: joinVaultPath(pluginDir, 'runtime', 'locales', 'manifest.json'),
+				packsPath: joinVaultPath(pluginDir, 'runtime', 'locales', 'packs'),
+			},
 			indexV8: {
 				rootPath: joinVaultPath(pluginDir, 'runtime', 'index-v8'),
 				manifestPath: joinVaultPath(pluginDir, 'runtime', 'index-v8', 'manifest.json'),

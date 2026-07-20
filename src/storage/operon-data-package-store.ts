@@ -9,7 +9,11 @@ import {
 } from './operon-data-package';
 import type { OperonStoragePaths } from './operon-storage-paths';
 import { preserveInvalidJsonFile, writeTextSafely } from './storage-file-ops';
-import type { OperonSettings } from '../types/settings';
+import {
+	migrateLegacyLanguageSettings,
+	preserveCanonicalLanguageForLegacyReload,
+	type OperonSettings,
+} from '../types/settings';
 import {
 	validatePipelineTaxonomy,
 	type PipelineTaxonomyIssue,
@@ -89,12 +93,16 @@ export class OperonDataPackageStore {
 
 	async initialize(
 		defaults: OperonSettings,
+		obsidianLocale?: string,
 	): Promise<OperonDataPackageStoreInitResult> {
 		const existingPackage = await this.loadExistingPackage();
 		this.startupPipelineTaxonomyDiagnostics = existingPackage
 			? await this.inspectPipelineTaxonomy(existingPackage)
 			: createPipelineTaxonomyDiagnostics();
-		const mergedPackage = mergeOperonDataPackage(existingPackage, buildFallbackDataPackage(defaults));
+		const migratedExistingPackage = existingPackage
+			? migrateLegacyLanguagePackage(existingPackage, obsidianLocale)
+			: null;
+		const mergedPackage = mergeOperonDataPackage(migratedExistingPackage, buildFallbackDataPackage(defaults));
 		const dataPackage = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
 			? normalizePipelineTaxonomySlice(mergedPackage, defaults)
 			: mergedPackage;
@@ -190,7 +198,8 @@ export class OperonDataPackageStore {
 			}
 
 			const fallback = this.dataPackage ?? buildFallbackDataPackage(defaults);
-			const mergedPackage = mergeOperonDataPackage(externalPackage, fallback);
+			const languageSafeExternalPackage = preserveLegacyReloadLanguageIntent(externalPackage, current);
+			const mergedPackage = mergeOperonDataPackage(languageSafeExternalPackage, fallback);
 			const dataPackage = shouldNormalizePipelineTaxonomy(pipelineTaxonomy)
 				? normalizePipelineTaxonomySlice(mergedPackage, defaults)
 				: mergedPackage;
@@ -479,6 +488,32 @@ function isValidDataPackageDomain(domain: OperonDataPackageDomain, value: unknow
 
 function buildFallbackDataPackage(defaults: OperonSettings): OperonDataPackageV1 {
 	return buildOperonDataPackageFromSettings(defaults);
+}
+
+function migrateLegacyLanguagePackage(
+	dataPackage: Partial<OperonDataPackageV1>,
+	obsidianLocale?: string,
+): Partial<OperonDataPackageV1> {
+	return {
+		...dataPackage,
+		settings: migrateLegacyLanguageSettings(
+			dataPackage.settings,
+			obsidianLocale,
+		) as OperonDataPackageV1['settings'],
+	};
+}
+
+function preserveLegacyReloadLanguageIntent(
+	incoming: Partial<OperonDataPackageV1>,
+	current: OperonDataPackageV1,
+): Partial<OperonDataPackageV1> {
+	return {
+		...incoming,
+		settings: preserveCanonicalLanguageForLegacyReload(
+			incoming.settings,
+			current.settings,
+		) as OperonDataPackageV1['settings'],
+	};
 }
 
 function shouldNormalizePipelineTaxonomy(

@@ -1,3 +1,5 @@
+import type { App } from 'obsidian';
+
 declare global {
 	interface Window {
 		createEl<K extends keyof HTMLElementTagNameMap>(
@@ -32,6 +34,37 @@ export function getActiveDocument(): Document {
 
 export function getActiveWindow(): Window {
 	return activeWindow;
+}
+
+export function getWorkspaceWindows(app: App, fallbackWindow?: Window): Window[] {
+	const windows = new Set<Window>();
+	const fallback = fallbackWindow
+		?? app.workspace.containerEl.ownerDocument.defaultView
+		?? activeWindow;
+	windows.add(fallback);
+	try {
+		windows.add(activeWindow);
+	} catch {
+		// Active globals are unavailable only in restricted/test hosts.
+	}
+	const iterateAllLeaves: unknown = Reflect.get(app.workspace, 'iterateAllLeaves');
+	if (typeof iterateAllLeaves === 'function') {
+		Reflect.apply(iterateAllLeaves, app.workspace, [(leaf: unknown) => {
+			const ownerWindow = (leaf as { containerEl?: HTMLElement }).containerEl?.ownerDocument.defaultView;
+			if (ownerWindow) windows.add(ownerWindow);
+		}]);
+	}
+	return [...windows];
+}
+
+export function isWindowVisibleAndFocused(ownerWindow: Window): boolean {
+	const ownerDocument = ownerWindow.document;
+	return !ownerDocument.hidden
+		&& (typeof ownerDocument.hasFocus !== 'function' || ownerDocument.hasFocus());
+}
+
+export function getFocusedVisibleWorkspaceWindow(app: App, fallbackWindow?: Window): Window | null {
+	return getWorkspaceWindows(app, fallbackWindow).find(isWindowVisibleAndFocused) ?? null;
 }
 
 export function getOwnerDocument(owner: Node | null | undefined): Document {

@@ -1,4 +1,4 @@
-import { Modal, normalizePath, setIcon, TFile } from 'obsidian';
+import { Modal, setIcon } from 'obsidian';
 import type { App } from 'obsidian';
 import { runAsyncAction } from '../core/async-action';
 import { t } from '../core/i18n';
@@ -10,6 +10,8 @@ import {
 import type { OperonReleaseNote } from '../core/release-notes';
 import { OPERON_DOCS_TARGET_ROOT } from '../systems/operon-docs-sync';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { openExternalUrl } from './external-link-actions';
+import { isOperonDocsTarget, openOperonDocsTarget } from './operon-docs-link';
 
 interface OperonReleaseNotesModalOptions {
 	docsFolder?: string;
@@ -301,42 +303,11 @@ function createWikiLink(containerEl: HTMLElement, label: string, target: string,
 
 async function openReleaseNoteWikiLink(app: App, target: string, docsFolder: string): Promise<void> {
 	if (isOperonDocsTarget(target)) {
-		const localFile = getLocalOperonDocsFile(app, target, docsFolder);
-		if (localFile) {
-			await app.workspace.getLeaf(false).openFile(localFile);
-			return;
-		}
-		openExternalUrl(buildOperonDocsFallbackUrl(target));
+		await openOperonDocsTarget(app, target, docsFolder);
 		return;
 	}
 
 	await app.workspace.openLinkText(target, '', false);
-}
-
-function isOperonDocsTarget(target: string): boolean {
-	return /^DOCS-\d{3}\s+/u.test(target.replace(/\.md$/iu, '').trim());
-}
-
-function getLocalOperonDocsFile(app: App, target: string, docsFolder: string): TFile | null {
-	const fileName = target.endsWith('.md') ? target : `${target}.md`;
-	const filePath = normalizePath(`${docsFolder}/${fileName}`);
-	const file = app.vault.getAbstractFileByPath(filePath);
-	return file instanceof TFile ? file : null;
-}
-
-function buildOperonDocsFallbackUrl(target: string): string {
-	const slug = target
-		.replace(/\.md$/iu, '')
-		.normalize('NFKD')
-		.replace(/[\u0300-\u036f]/gu, '')
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/gu, '-')
-		.replace(/^-+|-+$/gu, '');
-	return `https://operon.cc/docs/${slug}/`;
-}
-
-function openExternalUrl(url: string): void {
-	window.open(url, '_blank', 'noopener');
 }
 
 function createExternalLink(containerEl: HTMLElement, label: string, url: string): void {

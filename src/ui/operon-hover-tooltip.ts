@@ -58,9 +58,93 @@ export function createOperonHoverIndicator(options: OperonHoverIndicatorOptions)
 	setIcon(button, options.icon);
 	setAccessibleLabelWithoutTooltip(button, options.title ?? '');
 	wrapper.appendChild(button);
-	wrapper.appendChild(createTooltip(options.title, options.content, undefined, undefined, wrapper));
+	wrapper.appendChild(createTooltip(options.title, options.content, options.contentEl, options.tooltipClassName, wrapper));
 
 	return wrapper;
+}
+
+export function createNonInteractiveMarkdownLinkContent(owner: Node, content: string): HTMLElement {
+	const container = createOwnerElement(owner, 'span');
+	let cursor = 0;
+	const appendText = (text: string): void => {
+		const segment = createOwnerElement(container, 'span');
+		segment.textContent = text;
+		container.appendChild(segment);
+	};
+
+	for (const link of scanMarkdownExternalLinks(content)) {
+		if (link.start > cursor) {
+			appendText(content.slice(cursor, link.start));
+		}
+		const label = createOwnerElement(container, 'span');
+		label.className = 'operon-hover-tooltip-link-label';
+		label.textContent = link.label;
+		container.appendChild(label);
+		cursor = link.end;
+	}
+
+	if (cursor < content.length) {
+		appendText(content.slice(cursor));
+	}
+	return container;
+}
+
+interface MarkdownExternalLinkMatch {
+	start: number;
+	end: number;
+	label: string;
+}
+
+function scanMarkdownExternalLinks(content: string): MarkdownExternalLinkMatch[] {
+	const matches: MarkdownExternalLinkMatch[] = [];
+	let searchFrom = 0;
+	while (searchFrom < content.length) {
+		const start = content.indexOf('[', searchFrom);
+		if (start < 0) break;
+		if (start > 0 && content[start - 1] === '!') {
+			searchFrom = start + 1;
+			continue;
+		}
+		const labelEnd = content.indexOf('](', start + 1);
+		if (labelEnd < 0) break;
+		if (content.slice(start + 1, labelEnd).includes('\n')) {
+			searchFrom = start + 1;
+			continue;
+		}
+		const label = content.slice(start + 1, labelEnd);
+		if (!label || label.includes('[') || label.includes(']')) {
+			searchFrom = start + 1;
+			continue;
+		}
+
+		let depth = 1;
+		let destinationEnd = labelEnd + 2;
+		for (; destinationEnd < content.length; destinationEnd += 1) {
+			const char = content[destinationEnd];
+			if (char === '\n') break;
+			if (char === '\\') {
+				destinationEnd += 1;
+				continue;
+			}
+			if (char === '(') depth += 1;
+			if (char === ')') {
+				depth -= 1;
+				if (depth === 0) break;
+			}
+		}
+		if (depth !== 0) {
+			searchFrom = start + 1;
+			continue;
+		}
+		const destination = content.slice(labelEnd + 2, destinationEnd).trim();
+		if (!/^https?:\/\/\S+$/iu.test(destination)) {
+			searchFrom = start + 1;
+			continue;
+		}
+		matches.push({ start, end: destinationEnd + 1, label });
+		searchFrom = destinationEnd + 1;
+	}
+	return matches;
 }
 
 export function wrapWithOperonHoverTooltip(

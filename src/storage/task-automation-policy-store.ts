@@ -1,5 +1,9 @@
 import { App } from 'obsidian';
-import type { OperonSettings } from '../types/settings';
+import {
+	REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS,
+	type OperonSettings,
+	type ReminderCatchUpWindowMinutes,
+} from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import { buildOperonPluginStoragePath } from './operon-storage-paths';
@@ -20,6 +24,11 @@ export type TaskAutomationPolicyStoreSettings = Pick<
 	| 'fileRepeatCustomFolder'
 	| 'estimateAutoReallocation'
 	| 'trackerSplitSessionsAtMidnight'
+	| 'reminderCatchUpWindowMinutes'
+	| 'reminderNoticeDurationSeconds'
+	| 'reminderAutoPinDueTasks'
+	| 'reminderSystemNotificationsEnabled'
+	| 'reminderSoundFilePath'
 >;
 
 interface TaskAutomationPolicyStoreData extends TaskAutomationPolicyStoreSettings {
@@ -38,6 +47,11 @@ const TASK_AUTOMATION_POLICY_STORE_SETTING_KEYS = [
 	'fileRepeatCustomFolder',
 	'estimateAutoReallocation',
 	'trackerSplitSessionsAtMidnight',
+	'reminderCatchUpWindowMinutes',
+	'reminderNoticeDurationSeconds',
+	'reminderAutoPinDueTasks',
+	'reminderSystemNotificationsEnabled',
+	'reminderSoundFilePath',
 ] as const satisfies readonly (keyof TaskAutomationPolicyStoreSettings)[];
 
 function cloneSettings(settings: TaskAutomationPolicyStoreSettings): TaskAutomationPolicyStoreSettings {
@@ -59,6 +73,13 @@ function readNumber(value: unknown, fallback: number): number {
 	return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+function readReminderCatchUpWindow(value: unknown, fallback: ReminderCatchUpWindowMinutes): ReminderCatchUpWindowMinutes {
+	const numeric = readNumber(value, fallback);
+	return REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS.includes(numeric as ReminderCatchUpWindowMinutes)
+		? numeric as ReminderCatchUpWindowMinutes
+		: fallback;
+}
+
 function readStoreData(
 	raw: Partial<TaskAutomationPolicyStoreData>,
 	fallback: TaskAutomationPolicyStoreSettings,
@@ -78,6 +99,17 @@ function readStoreData(
 		fileRepeatCustomFolder: readString(raw.fileRepeatCustomFolder, fallback.fileRepeatCustomFolder),
 		estimateAutoReallocation: false,
 		trackerSplitSessionsAtMidnight: readBoolean(raw.trackerSplitSessionsAtMidnight, fallback.trackerSplitSessionsAtMidnight),
+		reminderCatchUpWindowMinutes: readReminderCatchUpWindow(
+			raw.reminderCatchUpWindowMinutes,
+			fallback.reminderCatchUpWindowMinutes,
+		),
+		reminderNoticeDurationSeconds: readNumber(raw.reminderNoticeDurationSeconds, fallback.reminderNoticeDurationSeconds) as TaskAutomationPolicyStoreSettings['reminderNoticeDurationSeconds'],
+		reminderAutoPinDueTasks: readBoolean(raw.reminderAutoPinDueTasks, fallback.reminderAutoPinDueTasks),
+		reminderSystemNotificationsEnabled: readBoolean(
+			raw.reminderSystemNotificationsEnabled,
+			fallback.reminderSystemNotificationsEnabled,
+		),
+		reminderSoundFilePath: readString(raw.reminderSoundFilePath, fallback.reminderSoundFilePath).trim(),
 	};
 }
 

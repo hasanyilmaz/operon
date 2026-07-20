@@ -1,45 +1,34 @@
 /**
- * Internationalization (i18n) module for Operon.
- * Multilingual support: English (default), Turkish, German, French, Spanish,
- * Simplified Chinese, Traditional Chinese, Japanese, and Russian.
+ * Internationalization runtime for Operon.
  *
- * Spec Section 25:
- * - JSON locale files at i18n/locales/
- * - Only user-facing UI is translated
- * - System internals (field names, YAML keys, paths) stay in English
- * - {{variableName}} placeholder syntax
- * - Language detection from Obsidian's locale setting
- * - Fallback to English if locale not found
+ * English is embedded in main.js. Other supported languages are keyed, data-only
+ * packs that are validated and cached by LocalePackManager before being installed
+ * into this in-memory runtime.
  */
 
 import denseLocales from '../generated/dense-locales.json';
+import generatedCompatibilityAliases from '../generated/locale-compatibility-aliases.json';
+import { compileLocalePack, type LocaleTranslations } from './locale-pack';
 
-/** Supported language codes */
+/** Supported language codes. */
 export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru';
+export type NonEnglishLangCode = Exclude<LangCode, 'en'>;
 
-/**
- * Maps an Obsidian/browser locale string to a supported LangCode.
- * Chinese needs full-string handling because Simplified ('zh', 'zh-CN', 'zh-Hans')
- * and Traditional ('zh-TW', 'zh-Hant', 'zh-HK') must not both collapse to a bare 'zh'.
- * Returns null when no supported locale matches.
- */
-function normalizeLocale(rawLocale: string): LangCode | null {
-	const lower = rawLocale.trim().toLowerCase();
-	if (!lower) return null;
+export const SUPPORTED_LANGUAGES: readonly LangCode[] = [
+	'en',
+	'tr',
+	'de',
+	'fr',
+	'es',
+	'zh-CN',
+	'zh-TW',
+	'ja',
+	'ru',
+];
 
-	// Chinese script/region disambiguation (checked before the 2-letter fallback).
-	if (lower === 'zh' || lower.startsWith('zh-cn') || lower.startsWith('zh-hans') || lower.startsWith('zh-sg')) {
-		return 'zh-CN' in LOCALES ? 'zh-CN' : null;
-	}
-	if (lower.startsWith('zh-tw') || lower.startsWith('zh-hant') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')) {
-		return 'zh-TW' in LOCALES ? 'zh-TW' : null;
-	}
+const SUPPORTED_LANGUAGE_SET: ReadonlySet<string> = new Set(SUPPORTED_LANGUAGES);
 
-	const short = lower.substring(0, 2);
-	return short in LOCALES ? (short as LangCode) : null;
-}
-
-/** Structure of a locale file — matches Spec Section 25.4 */
+/** Structure of a locale source file. */
 export interface LocaleData {
 	commands: Record<string, string>;
 	presetFavorites: Record<string, string>;
@@ -55,102 +44,140 @@ export interface LocaleData {
 	filters: Record<string, string>;
 	filterSets: Record<string, string>;
 	location: Record<string, string>;
+	reminders: Record<string, string>;
 	taskEditor: Record<string, string>;
 	indexStats: Record<string, string>;
 	pinnedTasks: Record<string, string>;
 	table: Record<string, string>;
 }
 
-interface DenseLocalePack {
+interface EmbeddedLocalePack {
 	schemaVersion: number;
-	languageOrder: LangCode[];
+	languageOrder: string[];
 	keyCount: number;
 	keyIndex: Partial<Record<keyof LocaleData, Record<string, number>>>;
-	locales: Record<LangCode, string[]>;
+	locales: { en: string[] };
 }
 
-const DENSE_LOCALES = denseLocales as unknown as DenseLocalePack;
-const LANGUAGE_ORDER: readonly LangCode[] = DENSE_LOCALES.languageOrder;
-const LOCALE_KEY_INDEX = DENSE_LOCALES.keyIndex;
-const LOCALES = DENSE_LOCALES.locales;
+const EMBEDDED_LOCALES = denseLocales as unknown as EmbeddedLocalePack;
+const LOCALE_KEY_INDEX = EMBEDDED_LOCALES.keyIndex;
+const ENGLISH_LOCALE: readonly string[] = EMBEDDED_LOCALES.locales.en;
+const COMPATIBILITY_ALIASES = generatedCompatibilityAliases as Partial<
+	Record<keyof LocaleData, Record<string, string[]>>
+>;
+const installedLocales = new Map<LangCode, readonly string[]>([['en', ENGLISH_LOCALE]]);
 
-/** Active language state */
 let currentLang: LangCode = 'en';
-let currentLocale: readonly string[] = LOCALES.en;
+let currentLocale: readonly string[] = ENGLISH_LOCALE;
 
 /**
- * Initialize i18n.
- * If languageOverride is a supported language code, use that directly.
- * If languageOverride is 'auto' (or undefined), detect from Obsidian's locale.
- * Falls back to English if the detected locale isn't available.
- *
- * Spec Section 25.7: Detection flow.
+ * Maps an Obsidian/browser locale string to an Operon-supported language.
+ * This is deliberately independent from which language packs are installed.
+ */
+export function resolveSupportedLocale(rawLocale: string): LangCode | null {
+	const lower = rawLocale.trim().toLowerCase();
+	if (!lower) return null;
+
+	if (lower === 'zh' || lower.startsWith('zh-cn') || lower.startsWith('zh-hans') || lower.startsWith('zh-sg')) {
+		return 'zh-CN';
+	}
+	if (lower.startsWith('zh-tw') || lower.startsWith('zh-hant') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')) {
+		return 'zh-TW';
+	}
+
+	const short = lower.substring(0, 2);
+	return SUPPORTED_LANGUAGE_SET.has(short) ? short as LangCode : null;
+}
+
+export function isSupportedLanguage(value: string): value is LangCode {
+	return SUPPORTED_LANGUAGE_SET.has(value);
+}
+
+export function isNonEnglishLanguage(value: string): value is NonEnglishLangCode {
+	return value !== 'en' && isSupportedLanguage(value);
+}
+
+/**
+ * Initializes the active locale from already-installed in-memory packs.
+ * Missing remote packs always fall back to embedded English without changing
+ * the persisted user preference owned by the settings layer.
  */
 export function initI18n(obsidianLocale?: string, languageOverride?: string): void {
-	let lang: LangCode | null = null;
-
-	if (languageOverride && languageOverride !== 'auto' && languageOverride in LOCALES) {
-		lang = languageOverride as LangCode;
+	let requested: LangCode | null = null;
+	if (languageOverride && languageOverride !== 'auto' && isSupportedLanguage(languageOverride)) {
+		requested = languageOverride;
 	} else if (obsidianLocale) {
-		lang = normalizeLocale(obsidianLocale);
+		requested = resolveSupportedLocale(obsidianLocale);
 	}
+	if (!requested || !activateI18nLocale(requested)) resetI18nToEnglish();
+}
 
-	if (lang && lang in LOCALES) {
-		currentLang = lang;
-		currentLocale = LOCALES[lang];
-	} else {
-		currentLang = 'en';
-		currentLocale = LOCALES.en;
-	}
+/** Compiles and installs a previously validated keyed language pack in memory. */
+export function installI18nLocale(locale: NonEnglishLangCode, translations: LocaleTranslations): void {
+	const compiled = compileLocalePack(
+		{ translations },
+		LOCALE_KEY_INDEX,
+		EMBEDDED_LOCALES.keyCount,
+	);
+	installedLocales.set(locale, compiled);
+}
+
+/** Activates an installed locale. Returns false without changing state when unavailable. */
+export function activateI18nLocale(locale: LangCode): boolean {
+	const installed = installedLocales.get(locale);
+	if (!installed) return false;
+	currentLang = locale;
+	currentLocale = installed;
+	return true;
+}
+
+export function hasI18nLocale(locale: LangCode): boolean {
+	return installedLocales.has(locale);
+}
+
+export function removeI18nLocale(locale: NonEnglishLangCode): void {
+	installedLocales.delete(locale);
+	if (currentLang === locale) resetI18nToEnglish();
+}
+
+export function resetI18nToEnglish(): void {
+	currentLang = 'en';
+	currentLocale = ENGLISH_LOCALE;
 }
 
 /**
- * Get a translated string by category and key.
- * Supports {{variableName}} placeholder substitution.
- *
- * @param category - Locale file category (commands, notifications, etc.)
- * @param key - Translation key within the category
- * @param vars - Optional variable replacements for {{placeholders}}
- * @returns Translated string, or the key itself as fallback
+ * Gets a translated string by category and key, with English and key fallbacks.
  */
 export function t(
 	category: keyof LocaleData,
 	key: string,
 	vars?: Record<string, string>,
 ): string {
-	// Try current locale first
 	const index = LOCALE_KEY_INDEX[category]?.[key];
 	let str = index === undefined ? undefined : currentLocale[index];
-
-	// Fallback to English
-	if (!str && currentLang !== 'en') {
-		str = index === undefined ? undefined : LOCALES.en[index];
-	}
-
-	// Final fallback: return the key
+	if (!str && currentLang !== 'en') str = index === undefined ? undefined : ENGLISH_LOCALE[index];
 	if (!str) return key;
 
-	// Replace {{placeholders}}
 	if (vars) {
 		for (const [name, value] of Object.entries(vars)) {
 			str = str.replace(new RegExp(`\\{\\{${name}\\}\\}`, 'g'), value);
 		}
 	}
-
 	return str;
 }
 
-/** Get all available translations for a key across bundled locale files. */
+/** Gets all translations currently installed in memory for a key. */
 export function getTranslations(category: keyof LocaleData, key: string): string[] {
 	const index = LOCALE_KEY_INDEX[category]?.[key];
-	if (index === undefined) return [];
-	const values = LANGUAGE_ORDER
-		.map(language => LOCALES[language][index])
-		.filter((value): value is string => typeof value === 'string' && value.length > 0);
+	const installedValues = index === undefined
+		? []
+		: SUPPORTED_LANGUAGES
+			.map(language => installedLocales.get(language)?.[index])
+			.filter((value): value is string => typeof value === 'string' && value.length > 0);
+	const values = [...installedValues, ...(COMPATIBILITY_ALIASES[category]?.[key] ?? [])];
 	return [...new Set(values)];
 }
 
-/** Get the current language code */
 export function getCurrentLang(): LangCode {
 	return currentLang;
 }

@@ -1,0 +1,281 @@
+{
+  "taskEditor": {
+    "colorNameAmber": [
+      "Amber",
+      "Kehribar",
+      "Bernstein",
+      "Ambre",
+      "Ámbar",
+      "琥珀色",
+      "アンバー",
+      "Янтарный"
+    ],
+    "colorNameBlack": [
+      "Black",
+      "Siyah",
+      "Schwarz",
+      "Noir",
+      "Negro",
+      "黑色",
+      "黒",
+      "Чёрный"
+    ],
+    "colorNameBlue": [
+      "Blue",
+      "Mavi",
+      "Blau",
+      "Bleu",
+      "Azul",
+      "蓝色",
+      "藍色",
+      "青",
+      "Синий"
+    ],
+    "colorNameBrown": [
+      "Brown",
+      "Kahverengi",
+      "Braun",
+      "Marron",
+      "Marrón",
+      "棕色",
+      "茶",
+      "Коричневый"
+    ],
+    "colorNameBurgundy": [
+      "Burgundy",
+      "Bordo",
+      "Burgunderrot",
+      "Bordeaux",
+      "Borgoña",
+      "酒红色",
+      "酒紅色",
+      "バーガンディ",
+      "Бордовый"
+    ],
+    "colorNameCharcoal": [
+      "Charcoal",
+      "Antrasit",
+      "Anthrazit",
+      "Anthracite",
+      "Carbón",
+      "炭灰色",
+      "チャコール",
+      "Угольный"
+    ],
+    "colorNameCoral": [
+      "Coral",
+      "Mercan",
+      "Koralle",
+      "Corail",
+      "珊瑚色",
+      "コーラル",
+      "Коралловый"
+    ],
+    "colorNameCyan": [
+      "Cyan",
+      "Camgöbeği",
+      "Cian",
+      "青色",
+      "シアン",
+      "Голубой"
+    ],
+    "colorNameEmerald": [
+      "Emerald",
+      "Zümrüt",
+      "Smaragd",
+      "Émeraude",
+      "Esmeralda",
+      "翠绿色",
+      "翠綠色",
+      "エメラルド",
+      "Изумрудный"
+    ],
+    "colorNameFuchsia": [
+      "Fuchsia",
+      "Fuşya",
+      "Fucsia",
+      "品红色",
+      "品紅色",
+      "フクシア",
+      "Фуксия"
+    ],
+    "colorNameGreen": [
+      "Green",
+      "Yeşil",
+      "Grün",
+      "Vert",
+      "Verde",
+      "绿色",
+      "綠色",
+      "緑",
+      "Зелёный"
+    ],
+    "colorNameIndigo": [
+      "Indigo",
+      "İndigo",
+      "Índigo",
+      "靛蓝色",
+      "靛藍色",
+      "インディゴ",
+      "Индиго"
+    ],
+    "colorNameLime": [
+      "Lime",
+      "Limon Yeşili",
+      "Limette",
+      "Citron vert",
+      "Lima",
+      "青柠色",
+      "青檸色",
+      "ライム",
+      "Лаймовый"
+    ],
+    "colorNameOlive": [
+      "Olive",
+      "Zeytin",
+      "Oliv",
+      "Oliva",
+      "橄榄色",
+      "橄欖色",
+      "オリーブ",
+      "Оливковый"
+    ],
+    "colorNameOrange": [
+      "Orange",
+      "Turuncu",
+      "Naranja",
+      "橙色",
+      "オレンジ",
+      "Оранжевый"
+    ],
+    "colorNamePink": [
+      "Pink",
+      "Pembe",
+      "Rose vif",
+      "Rosa",
+      "粉色",
+      "ピンク",
+      "Розовый"
+    ],
+    "colorNamePurple": [
+      "Purple",
+      "Mor",
+      "Violett",
+      "Violet",
+      "Púrpura",
+      "紫色",
+      "紫",
+      "Пурпурный"
+    ],
+    "colorNameRed": [
+      "Red",
+      "Kırmızı",
+      "Rot",
+      "Rouge",
+      "Rojo",
+      "红色",
+      "紅色",
+      "赤",
+      "Красный"
+    ],
+    "colorNameRose": [
+      "Rose",
+      "Gül",
+      "Rosé",
+      "Rosado",
+      "玫瑰色",
+      "ローズ",
+      "Роза"
+    ],
+    "colorNameSand": [
+      "Sand",
+      "Kum",
+      "Sable",
+      "Arena",
+      "沙色",
+      "サンド",
+      "Песочный"
+    ],
+    "colorNameSky": [
+      "Sky",
+      "Gök Mavisi",
+      "Himmelblau",
+      "Bleu ciel",
+      "Celeste",
+      "天蓝色",
+      "天藍色",
+      "スカイ",
+      "Небесный"
+    ],
+    "colorNameSlate": [
+      "Slate",
+      "Arduvaz",
+      "Schiefer",
+      "Ardoise",
+      "Pizarra",
+      "石板灰",
+      "スレート",
+      "Сланцевый"
+    ],
+    "colorNameSteel": [
+      "Steel",
+      "Çelik",
+      "Stahl",
+      "Acier",
+      "Acero",
+      "钢蓝色",
+      "鋼藍色",
+      "スチール",
+      "Стальной"
+    ],
+    "colorNameTaupe": [
+      "Taupe",
+      "Boz Kahve",
+      "Topo",
+      "灰褐色",
+      "トープ",
+      "Тауп"
+    ],
+    "colorNameTeal": [
+      "Teal",
+      "Petrol",
+      "Sarcelle",
+      "Verde azulado",
+      "蓝绿色",
+      "藍綠色",
+      "ティール",
+      "Бирюзовый"
+    ],
+    "colorNameViolet": [
+      "Violet",
+      "Menekşe",
+      "Veilchen",
+      "Lavande",
+      "Violeta",
+      "紫罗兰色",
+      "紫羅蘭色",
+      "バイオレット",
+      "Фиолетовый"
+    ],
+    "colorNameYellow": [
+      "Yellow",
+      "Sarı",
+      "Gelb",
+      "Jaune",
+      "Amarillo",
+      "黄色",
+      "黃色",
+      "黄",
+      "Жёлтый"
+    ],
+    "colorNameZinc": [
+      "Zinc",
+      "Çinko",
+      "Zink",
+      "锌灰色",
+      "鋅灰色",
+      "ジンク",
+      "Цинковый"
+    ]
+  }
+}

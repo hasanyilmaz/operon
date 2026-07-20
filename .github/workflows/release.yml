@@ -61,7 +61,65 @@ jobs:
           NODE
 
       - name: Verify release assets
-        run: test -f main.js && test -f manifest.json && test -f styles.css
+        run: |
+          test -f main.js && test -f manifest.json && test -f styles.css
+          node - <<'NODE'
+          const crypto = require("crypto");
+          const fs = require("fs");
+          const path = require("path");
+
+          const catalog = JSON.parse(fs.readFileSync("src/generated/locale-pack-catalog.json", "utf8"));
+          const tag = process.env.GITHUB_REF_NAME;
+          const assetDirectory = "release-assets/locales";
+          const expectedLocales = ["tr", "de", "fr", "es", "zh-CN", "zh-TW", "ja", "ru"];
+          if (catalog.sourceVersion !== tag) {
+            throw new Error(`Locale catalog sourceVersion ${catalog.sourceVersion} does not match tag ${tag}.`);
+          }
+          if (JSON.stringify(catalog.languageOrder) !== JSON.stringify(expectedLocales)) {
+            throw new Error(`Locale catalog languageOrder must be ${expectedLocales.join(", ")}.`);
+          }
+          const expectedAssets = new Set();
+          for (const locale of expectedLocales) {
+            const entry = catalog.locales[locale];
+            if (!entry) throw new Error(`Locale catalog is missing ${locale}.`);
+            if (entry.url !== `https://raw.githubusercontent.com/hasanyilmaz/operon/${tag}/release-assets/locales/${entry.assetName}`) {
+              throw new Error(`Locale catalog URL is not pinned to repository tag ${tag}: ${locale}.`);
+            }
+            const assetPath = path.join(assetDirectory, entry.assetName);
+            const contents = fs.readFileSync(assetPath);
+            const digest = crypto.createHash("sha256").update(contents).digest("hex");
+            if (digest !== entry.sha256) throw new Error(`Locale asset SHA-256 mismatch: ${locale}.`);
+            if (contents.byteLength !== entry.sizeBytes) throw new Error(`Locale asset size mismatch: ${locale}.`);
+            const pack = JSON.parse(contents.toString("utf8"));
+            if (pack.sourceVersion !== entry.sourceVersion) {
+              throw new Error(`Locale asset sourceVersion mismatch: ${locale}.`);
+            }
+            expectedAssets.add(entry.assetName);
+          }
+          const actualAssets = fs.readdirSync(assetDirectory).filter(file => file.endsWith(".json"));
+          if (actualAssets.length !== expectedAssets.size || actualAssets.some(file => !expectedAssets.has(file))) {
+            throw new Error("Locale release asset inventory does not match the embedded catalog.");
+          }
+
+          const soundCatalog = JSON.parse(fs.readFileSync("src/generated/reminder-sound-pack-catalog.json", "utf8"));
+          const soundAssetDirectory = "release-assets/reminder-sounds";
+          const expectedSoundAssets = new Set();
+          for (const entry of soundCatalog.files) {
+            if (entry.url !== `https://raw.githubusercontent.com/hasanyilmaz/operon/main/release-assets/reminder-sounds/${entry.assetName}`) {
+              throw new Error(`Reminder sound catalog URL is not repository-backed: ${entry.id}.`);
+            }
+            const assetPath = path.join(soundAssetDirectory, entry.assetName);
+            const contents = fs.readFileSync(assetPath);
+            const digest = crypto.createHash("sha256").update(contents).digest("hex");
+            if (digest !== entry.sha256) throw new Error(`Reminder sound SHA-256 mismatch: ${entry.id}.`);
+            if (contents.byteLength !== entry.sizeBytes) throw new Error(`Reminder sound size mismatch: ${entry.id}.`);
+            expectedSoundAssets.add(entry.assetName);
+          }
+          const actualSoundAssets = fs.readdirSync(soundAssetDirectory).filter(file => file.endsWith(".mp3"));
+          if (actualSoundAssets.length !== expectedSoundAssets.size || actualSoundAssets.some(file => !expectedSoundAssets.has(file))) {
+            throw new Error("Reminder sound release asset inventory does not match the embedded catalog.");
+          }
+          NODE
 
       - name: Attest manifest
         uses: actions/attest@v4
@@ -78,12 +136,35 @@ jobs:
         with:
           subject-path: styles.css
 
+      - name: Attest locale packs
+        uses: actions/attest@v4
+        with:
+          subject-path: release-assets/locales/*.json
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            unexpected_assets="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name | select(. != "main.js" and . != "manifest.json" and . != "styles.css")')"
+            if [ -n "$unexpected_assets" ]; then
+              echo "Release contains unapproved assets:"
+              echo "$unexpected_assets"
+              exit 1
+            fi
             gh release upload "$GITHUB_REF_NAME" main.js manifest.json styles.css --clobber
           else
             gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --title "$GITHUB_REF_NAME" --notes "Operon $GITHUB_REF_NAME"
+          fi
+
+      - name: Verify published release asset allowlist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          actual_assets="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[].name] | sort | join("\n")')"
+          expected_assets="$(printf '%s\n' main.js manifest.json styles.css)"
+          if [ "$actual_assets" != "$expected_assets" ]; then
+            echo "Unexpected GitHub Release asset set:"
+            echo "$actual_assets"
+            exit 1
           fi

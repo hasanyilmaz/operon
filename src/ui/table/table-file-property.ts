@@ -633,8 +633,8 @@ function normalizeSnapshotLimit(value: number | undefined): number {
 
 function trimSnapshotCache(cache: Map<string, TableFilePropertySnapshot>, limit: number): void {
 	while (cache.size > limit) {
-		const oldestKey = cache.keys().next().value as string | undefined;
-		if (oldestKey === undefined) return;
-		cache.delete(oldestKey);
+		const oldestEntry = cache.keys().next();
+		if (oldestEntry.done) return;
+		cache.delete(oldestEntry.value);
 	}
 }

@@ -135,6 +135,12 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('automation', 'tasksRecurrence', 'fileRepeatCustomFolder', 'settings', 'fileRepeatCustomFolder', 'fileRepeatCustomFolderDesc', 'folder', ['recurring', 'repeat', 'file task', 'occurrence folder']),
 	section('automation', 'tasksRecurrence', 'repeatYamlCleanup', 'settings', 'repeatYamlPropertyRemovalTitle', 'repeatYamlPropertyRemovalDesc', ['recurring', 'repeat', 'frontmatter', 'yaml', 'property cleanup', 'recurring file task']),
 
+	e('automation', 'tasksReminders', 'reminderCatchUpWindowMinutes', 'settings', 'reminderCatchUpWindow', 'reminderCatchUpWindowDesc', 'dropdown', ['reminder', 'notification', 'missed reminder', 'catch up']),
+	e('automation', 'tasksReminders', 'reminderNoticeDurationSeconds', 'settings', 'reminderNoticeDuration', 'reminderNoticeDurationDesc', 'dropdown', ['reminder', 'notification', 'notice', 'duration', 'timeout']),
+	e('automation', 'tasksReminders', 'reminderAutoPinDueTasks', 'settings', 'reminderAutoPinDueTasks', 'reminderAutoPinDueTasksDesc', 'toggle', ['reminder', 'pin', 'pinned tasks', 'automation', 'due reminder']),
+	e('automation', 'tasksReminders', 'reminderSystemNotificationsEnabled', 'settings', 'reminderSystemNotifications', 'reminderSystemNotificationsDesc', 'toggle', ['reminder', 'notification', 'system notification', 'desktop notification']),
+	e('automation', 'tasksReminders', 'reminderSoundFilePath', 'settings', 'reminderSound', 'reminderSoundDesc', 'file', ['reminder', 'sound', 'audio', 'ringtone', 'alert sound']),
+
 	e('automation', 'tasksTracker', 'trackerSplitSessionsAtMidnight', 'settings', 'trackerSplitSessionsAtMidnight', 'trackerSplitSessionsAtMidnightDesc', 'toggle', ['time tracking', 'timer', 'tracker midnight', 'session', 'midnight']),
 	e('ui', 'tasksTracker', 'trackerShowStatusBarTimer', 'settings', 'trackerShowStatusBarTimer', 'trackerShowStatusBarTimerDesc', 'toggle', ['time tracking', 'timer', 'status bar', 'TrackTime']),
 	e('settings', 'tasksTracker', 'trackerHistoryDays', 'settings', 'trackerHistoryWindowDays', 'trackerHistoryWindowDaysDesc', 'number', ['time tracking', 'timer', 'history', 'history window', 'session history']),

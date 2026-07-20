@@ -174,9 +174,11 @@ import {
 	setWindowTimeout,
 } from './src/core/dom-compat';
 import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
+import { ReminderScheduler } from './src/core/reminder-scheduler';
+import { ReminderDeliveryController } from './src/systems/reminder-delivery';
 import { resolveTaskColorSourceForTask } from './src/core/task-color-source';
 import { asyncHandler, runAsyncAction } from './src/core/async-action';
-import { getAppLocale, getCommunityPlugin, isDailyNotesCoreAvailable } from './src/core/obsidian-app';
+import { getCommunityPlugin, isDailyNotesCoreAvailable } from './src/core/obsidian-app';
 import { InlineTaskSaveMode, resolveEffectiveInlineTaskSaveMode } from './src/core/inline-task-save-mode';
 import { isRecord, isUnknownFunction, readString } from './src/core/unknown-value';
 import {
@@ -411,7 +413,19 @@ import {
 	type WorkflowStatusResolution,
 } from './src/types/pipeline';
 import { DEFAULT_PRIORITIES } from './src/types/priority';
-import { initI18n, t } from './src/core/i18n';
+import {
+	activateI18nLocale,
+	initI18n,
+	installI18nLocale,
+	resetI18nToEnglish,
+	t,
+} from './src/core/i18n';
+import { LocalePackManager } from './src/core/locale-pack-manager';
+import {
+	buildLocalePackReconcileOrder,
+	hasLocalePackIntentChanged,
+	shouldActivateReconciledLocale,
+} from './src/core/locale-pack-orchestration';
 import { buildWorkflowStatusSemanticsSignature } from './src/core/workflow-status-semantics';
 import {
 	buildWorkflowStatusIdentityIndex,
@@ -791,6 +805,7 @@ export default class OperonPlugin extends Plugin {
 	recurrenceService!: RecurrenceService;
 	formatConverter!: FormatConverter;
 	settings!: OperonSettings;
+	private localePackManager: LocalePackManager | null = null;
 	private keyMappingSignature = '';
 	private workflowStatusSemanticsSignature = '';
 	private indexV8ManifestFingerprint: string | null = null;
@@ -851,6 +866,8 @@ export default class OperonPlugin extends Plugin {
 	private projectSerialIndexReconcileScheduler: CoalescedAsyncScheduler | null = null;
 	private projectSerialIndexReconcilePendingBeforeStartup = false;
 	private fileTaskArchiver: FileTaskArchiver | null = null;
+	private reminderScheduler: ReminderScheduler | null = null;
+	private reminderDeliveryController: ReminderDeliveryController | null = null;
 	private livePreviewEphemeralSession = new LivePreviewEphemeralSessionController();
 	private activeLivePreviewPickerClose: (() => void) | null = null;
 	private suppressLivePreviewSessionEditorChange = false;
@@ -1150,7 +1167,8 @@ export default class OperonPlugin extends Plugin {
 			this.scheduleSettingsReindex('workflow-semantics');
 		}
 		void this.externalCalendarService?.applySettings(this.settings.externalCalendars);
-		initI18n(getAppLocale(this.app), this.settings.language);
+		this.reminderScheduler?.handleSettingsChanged();
+		initI18n(undefined, this.settings.language);
 		void this.reconcileProjectSerials({ notifyCapacity: true })
 			.then(() => {
 				if (this.startupReady) {
@@ -1166,6 +1184,25 @@ export default class OperonPlugin extends Plugin {
 		this.refreshDuplicateAlertStatusBar();
 		this.mobileGlobalTaskFab?.refresh();
 		this.refreshViews();
+	}
+
+	private async synchronizeLanguagePacksAfterLayout(): Promise<void> {
+		if (!this.localePackManager) return;
+		const orderedLanguages = buildLocalePackReconcileOrder(this.settings);
+		for (const language of orderedLanguages) {
+			try {
+				const pack = await this.localePackManager.ensureLocale(language);
+				installI18nLocale(language, pack.translations);
+				if (!shouldActivateReconciledLocale(language, this.settings.language)) continue;
+				if (!activateI18nLocale(language)) continue;
+				this.settingsTab?.refreshLanguageState();
+				this.trackerStatusBar?.render();
+				this.mobileGlobalTaskFab?.refresh();
+				this.refreshViews();
+			} catch (error) {
+				console.warn(`Operon: language pack synchronization failed for ${language}`, error);
+			}
+		}
 	}
 
 	private getProjectSerialDisplayForTask(operonId: string): ProjectSerialDisplay | null {
@@ -1279,7 +1316,12 @@ export default class OperonPlugin extends Plugin {
 		this.canonicalSettingsReloadRunning = true;
 		this.canonicalSettingsReloadLastCheckAt = Date.now();
 		try {
+			const previousLocaleIntent = {
+				language: this.settings.language,
+				languagePackSubscriptions: [...this.settings.languagePackSubscriptions],
+			};
 			const result = await this.storage.reloadCanonicalSettingsPackage();
+			const localeIntentChanged = hasLocalePackIntentChanged(previousLocaleIntent, this.settings);
 			const taxonomyDiagnostics = result.diagnostics.pipelineTaxonomy;
 			const failed = result.diagnostics.malformedPackage || taxonomyDiagnostics.backupFailed;
 			if (failed) {
@@ -1304,6 +1346,9 @@ export default class OperonPlugin extends Plugin {
 			}
 			if (result.changed) {
 				this.handleSettingsChanged();
+				if (localeIntentChanged) {
+					await this.synchronizeLanguagePacksAfterLayout();
+				}
 				if (mode === 'manual') {
 					new Notice(t('notifications', 'settingsReloadedFromStorage'));
 				}
@@ -2551,6 +2596,12 @@ export default class OperonPlugin extends Plugin {
 			saveData: (data: unknown) => this.saveData(data),
 		});
 		await this.storage.initialize();
+		this.localePackManager = new LocalePackManager({
+			adapter: this.app.vault.adapter,
+			configDir: this.app.vault.configDir,
+			pluginId: this.manifest.id,
+		});
+		await this.localePackManager.initialize();
 		this.projectSerialIndexReconcileScheduler = new CoalescedAsyncScheduler({
 			delayMs: 80,
 			maxRetries: 1,
@@ -2558,7 +2609,12 @@ export default class OperonPlugin extends Plugin {
 			onError: error => console.warn('Operon: failed to reconcile project serials after index mutation', error),
 		});
 		this.settings = this.storage.getSettings();
-		initI18n(getAppLocale(this.app), this.settings.language);
+		resetI18nToEnglish();
+		if (this.settings.language !== 'en') {
+			const cachedLocale = await this.localePackManager.loadCachedLocale(this.settings.language);
+			if (cachedLocale) installI18nLocale(this.settings.language, cachedLocale.translations);
+		}
+		initI18n(undefined, this.settings.language);
 		this.tableFilePropertyIndex = getTableFilePropertyIndex(this.app, {
 			typeResolver: this.tableFilePropertyTypeResolver,
 		});
@@ -2607,6 +2663,32 @@ export default class OperonPlugin extends Plugin {
 		const indexV8Store = new IndexV8Store(this.app.vault.adapter, this.storage.indexV8Paths);
 		const indexV8PersistenceCoordinator = new IndexV8PersistenceCoordinator(indexV8Store);
 		this.indexer = new OperonIndexer(this.app, this.storage, indexV8PersistenceCoordinator, indexV8Store);
+		this.reminderDeliveryController = new ReminderDeliveryController({
+			app: this.app,
+			getSystemNotificationsEnabled: () => this.settings.reminderSystemNotificationsEnabled,
+			getSoundFilePath: () => this.settings.reminderSoundFilePath,
+			getNoticeDurationMs: () => this.settings.reminderNoticeDurationSeconds * 1_000,
+			onOpenTask: operonId => this.openEditorForId(operonId),
+		});
+		this.reminderScheduler = new ReminderScheduler({
+			app: this.app,
+			indexer: this.indexer,
+			getCatchUpWindowMinutes: () => this.settings.reminderCatchUpWindowMinutes,
+		isSystemReminderFieldEnabled: fieldKey => this.settings.keyMappings.some(mapping => (
+			mapping.canonicalKey === fieldKey && mapping.isSystem !== false
+		)),
+		onDueTasks: async tasks => {
+			if (!this.settings.reminderAutoPinDueTasks || !this.pinnedCache) return;
+			for (const task of tasks) {
+				const current = this.indexer.getTask(task.operonId);
+				if (!current || current.checkbox !== 'open') continue;
+				if (this.indexer.hasDuplicateOperonIdConflict(task.operonId)) continue;
+				if (this.pinnedCache.isPinned(task.operonId)) continue;
+				await this.pinnedCache.pin(task.operonId);
+			}
+		},
+		deliveryPort: this.reminderDeliveryController,
+		});
 		setExistingIdsProvider(() => this.indexer.getAllOperonIds());
 		this.writer = new TaskWriter(this.app, this.indexer, this.settings.keyMappings, {
 			onBeforeWriteFile: filePath => this.markInternalTaskWrite(filePath),
@@ -2799,8 +2881,11 @@ export default class OperonPlugin extends Plugin {
 					(input) => this.applyWorkflowFieldRenameTransaction(input),
 					() => this.retryPendingWorkflowRename(),
 					() => this.resolvePendingWorkflowRenameConflict(),
-					this.buildTablePresetSettingsFileIntegration(),
-					);
+			this.buildTablePresetSettingsFileIntegration(),
+			this.localePackManager,
+			() => this.reminderDeliveryController?.previewInOperon(),
+			async () => await this.reminderDeliveryController?.previewSystemNotification() ?? false,
+			);
 		this.addSettingTab(this.settingsTab);
 
 		const statusBarItem = this.addStatusBarItem();
@@ -2815,6 +2900,8 @@ export default class OperonPlugin extends Plugin {
 
 		// Run startup maintenance after layout is ready
 		this.app.workspace.onLayoutReady(() => {
+			runAsyncAction('startup locale pack synchronization failed', () =>
+				this.synchronizeLanguagePacksAfterLayout());
 			const releaseCheckGeneration = ++this.releaseCheckGeneration;
 			this.startupReleaseCheckTimer = setWindowTimeout(() => {
 				this.startupReleaseCheckTimer = null;
@@ -2902,6 +2989,7 @@ export default class OperonPlugin extends Plugin {
 
 					// Mark startup complete — one authoritative render + resumeFromIndex
 				this.startupReady = true;
+				await this.reminderScheduler?.start();
 				if (this.projectSerialIndexReconcilePendingBeforeStartup) {
 					this.scheduleProjectSerialIndexReconcile();
 				}
@@ -3062,6 +3150,10 @@ export default class OperonPlugin extends Plugin {
 		this.subtasksFilterModal = null;
 		this.fileTaskArchiver?.destroy();
 		this.fileTaskArchiver = null;
+		this.reminderDeliveryController?.destroy();
+		this.reminderDeliveryController = null;
+		await this.reminderScheduler?.destroy();
+		this.reminderScheduler = null;
 		this.pinnedDock = null;
 		await this.timeTracker.flushPendingTransitions();
 		this.timeTracker.destroy();

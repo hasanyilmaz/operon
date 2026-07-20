@@ -34,7 +34,7 @@ import {
 	shouldOpenIconOnlyChipPreview,
 } from '../icon-only-chip-preview';
 import { showLocationMapPreview } from '../location-map-preview';
-import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from '../operon-hover-tooltip';
+import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent, wrapWithOperonHoverTooltip } from '../operon-hover-tooltip';
 import { createProjectSerialChipElement } from '../project-serial-chip';
 import { openObsidianTagSearch } from '../tag-search';
 import { openTaskFieldPicker } from '../task-field-picker-dispatch';
@@ -57,6 +57,7 @@ export interface KanbanTaskChipRowCallbacks {
 	updateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	openEditor?: (operonId: string) => void | Promise<void>;
+	getTaskById?: (operonId: string) => IndexedTask | undefined;
 }
 
 export interface KanbanTaskChipRowOptions {
@@ -94,6 +95,8 @@ const KANBAN_PICKER_CHIP_KEYS = new Set<string>([
 	'datetimeEnd',
 	'estimate',
 	'repeat',
+	'reminderDatetimes',
+	'reminderRules',
 ]);
 
 export function buildKanbanTaskChipRow(
@@ -116,6 +119,7 @@ export function buildKanbanTaskChipRow(
 		settings.kanbanTaskCompactChips,
 		locationResolver,
 		{
+			app: callbacks.app,
 			repeatSkipDateResolver: callbacks.getRepeatSkipDates,
 			taskLookup,
 			workflowStatusIdentityIndex: options.workflowStatusIdentityIndex,
@@ -163,7 +167,7 @@ export function buildKanbanTaskChipRow(
 			if (!readOnly) attachKanbanChipAction(chip, entry, task, callbacks, options.allTasks, () => closeIconOnlyChipPreview(chip));
 			if (!readOnly && entry.externalUrl) bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 			if (entry.tooltipContent) bindKanbanChipTooltip(chip, entry, taskColor);
-			if (!readOnly && !entry.interactive) bindIconOnlyChipPreview(chip);
+			if (readOnly || !entry.interactive) bindIconOnlyChipPreview(chip);
 			if (!readOnly) bindKanbanChipLinkPreview(chip, entry, callbacks, task);
 			chipStrip.appendChild(chip);
 			continue;
@@ -331,9 +335,10 @@ function createKanbanTaskActionChipElement(
 	}
 	setIcon(chip, action.icon);
 	setAccessibleLabelWithoutTooltip(chip, action.label);
+	const noteValue = action.actionId === 'openEditor' ? task.fieldValues['note']?.trim() ?? '' : '';
 	bindOperonHoverTooltip(chip, {
 		title: action.label,
-		content: action.actionId === 'openEditor' ? task.fieldValues['note']?.trim() ?? '' : undefined,
+		contentEl: noteValue ? createNonInteractiveMarkdownLinkContent(chip, noteValue) : undefined,
 		taskColor,
 	});
 	bindKanbanAxisActivationBridge(chip);
@@ -458,6 +463,7 @@ function openKanbanTaskFieldPicker(
 	onCommit?: () => void,
 ): void {
 	const settings = callbacks.getSettings();
+	const reminderItem = entry.reminderItem;
 	openTaskFieldPicker({
 		app: callbacks.app,
 		settings,
@@ -465,9 +471,21 @@ function openKanbanTaskFieldPicker(
 		canonicalKey: entry.key,
 		anchor: chip,
 		currentFieldValues: task.fieldValues,
+		getCurrentFieldValues: reminderItem
+			? () => {
+				const currentTask = callbacks.getTaskById?.(task.operonId);
+				return currentTask?.fieldValues ?? { ...task.fieldValues, [reminderItem.fieldKey]: '' };
+			}
+			: undefined,
 		currentTags: task.tags,
 		sourcePath: task.primary.filePath,
 		taskFormat: task.primary.format,
+		...(reminderItem ? {
+			reminderOperation: {
+				kind: 'edit' as const,
+				item: { index: reminderItem.index, rawValue: reminderItem.rawValue },
+			},
+		} : {}),
 		manualDatePicker: getKanbanDirectChipManualDatePickerOptions(entry.key, settings),
 		repeatInlineCompletionMode: callbacks.getRepeatSeriesInlineCompletionMode?.(task.fieldValues['repeatSeriesId'] ?? ''),
 		onRepeatInlineCompletionModeChange: mode => callbacks.updateRepeatSeriesInlineCompletionMode?.(task.operonId, mode),

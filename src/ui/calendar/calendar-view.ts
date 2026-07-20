@@ -76,7 +76,7 @@ import {
 	resolveContextualHoverMenuPosition,
 	resolveVisibleContextualHoverAnchorRect,
 } from '../contextual-hover-menu-position';
-import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
+import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent } from '../operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
@@ -7611,7 +7611,7 @@ export class CalendarView extends ItemView {
 		const indicator = container.createSpan('operon-calendar-sidebar-task-pool-date-indicator');
 		bindOperonHoverTooltip(indicator, {
 			title: t('calendar', 'notes'),
-			content: noteValue,
+			contentEl: createNonInteractiveMarkdownLinkContent(indicator, noteValue),
 			taskColor: null,
 			preferredHorizontal: 'right',
 		});

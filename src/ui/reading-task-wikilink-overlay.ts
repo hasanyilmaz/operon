@@ -22,7 +22,7 @@ import {
 	buildTaskFileLinkProgressTooltip,
 	appendTaskFileLinkProgressCountContent,
 } from './task-file-wikilink-shared';
-import { bindOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlayChipContainer } from './task-wikilink-overlay-chips';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/subtask-action';
@@ -257,7 +257,7 @@ export function enhanceReadingTaskFileWikilinks(
 			setAccessibleLabelWithoutTooltip(noteIndicator, t('taskEditor', 'notes'));
 			bindOperonHoverTooltip(noteIndicator, {
 				title: t('taskEditor', 'notes'),
-				content: noteValue,
+				contentEl: createNonInteractiveMarkdownLinkContent(noteIndicator, noteValue),
 				taskColor: visuals.hoverColor,
 				preferredHorizontal: 'right',
 			});

@@ -5,7 +5,7 @@
 
 import { clonePipeline, createPipelineId, createStatusId, findStatusDef, Pipeline, DEFAULT_PIPELINES, StatusDefinition } from './pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId, sanitizePriorityDefinitions } from './priority';
-import { CANONICAL_KEYS } from './keys';
+import { CANONICAL_KEYS, isReminderStorageKey } from './keys';
 import { FILE_PROPERTY_COLUMN_PREFIX, isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import type { WorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
 import {
@@ -90,16 +90,116 @@ import {
 	resolvePipelineMinimalFileTaskTemplateStatusById,
 } from '../core/file-task-template-identity';
 
-export const CURRENT_SETTINGS_VERSION = 106;
+export const CURRENT_SETTINGS_VERSION = 110;
+const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
-export const SUPPORTED_LANGUAGE_OPTIONS = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'] as const;
+export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
+export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'] as const;
+export type NonEnglishOperonLanguage = typeof NON_ENGLISH_LANGUAGE_OPTIONS[number];
 export const DEFAULT_CHILD_TASK_INHERITANCE_FIELDS = ['status', 'priority', 'taskIcon', 'taskColor'] as const;
 export const CHILD_TASK_INHERITANCE_TAGS_KEY = 'tags';
 export type ChildTaskInheritanceStatusPipelineSource = 'parent' | 'default';
+export const REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS = [0, 30, 60, 360, 1440] as const;
+export type ReminderCatchUpWindowMinutes = typeof REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS[number];
+export const REMINDER_NOTICE_DURATION_SECONDS_OPTIONS = [15, 30, 45, 60] as const;
+export type ReminderNoticeDurationSeconds = typeof REMINDER_NOTICE_DURATION_SECONDS_OPTIONS[number];
 
 export function isSupportedLanguage(value: string): value is OperonLanguage {
 	return (SUPPORTED_LANGUAGE_OPTIONS as readonly string[]).includes(value);
+}
+
+export function isNonEnglishSupportedLanguage(value: string): value is NonEnglishOperonLanguage {
+	return (NON_ENGLISH_LANGUAGE_OPTIONS as readonly string[]).includes(value);
+}
+
+/** Resolve an Obsidian locale against the static supported-language catalog. */
+export function resolveSupportedLanguageFromLocale(rawLocale: string | null | undefined): OperonLanguage | null {
+	const lower = rawLocale?.trim().toLowerCase() ?? '';
+	if (!lower) return null;
+	if (lower === 'zh' || lower.startsWith('zh-cn') || lower.startsWith('zh-hans') || lower.startsWith('zh-sg')) {
+		return 'zh-CN';
+	}
+	if (lower.startsWith('zh-tw') || lower.startsWith('zh-hant') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')) {
+		return 'zh-TW';
+	}
+	const short = lower.slice(0, 2);
+	return isSupportedLanguage(short) ? short : null;
+}
+
+/**
+ * Convert the pre-downloadable-locale setting once, before ordinary normalization can
+ * erase the legacy `auto` value or an absent language key.
+ */
+export function migrateLegacyLanguageSettings(
+	raw: unknown,
+	obsidianLocale?: string,
+): Record<string, unknown> {
+	const src = raw && typeof raw === 'object' && !Array.isArray(raw)
+		? raw as Record<string, unknown>
+		: {};
+	const sourceVersion = typeof src.settingsVersion === 'number' && Number.isFinite(src.settingsVersion)
+		? Math.floor(Number(src.settingsVersion))
+		: 0;
+	if (sourceVersion >= DOWNLOADABLE_LOCALE_SETTINGS_VERSION) return { ...src };
+
+	const hasLanguage = 'language' in src;
+	const legacyLanguage = src.language;
+	let language: OperonLanguage = 'en';
+	if (!hasLanguage || legacyLanguage === 'auto') {
+		language = resolveSupportedLanguageFromLocale(obsidianLocale) ?? 'en';
+	} else if (typeof legacyLanguage === 'string' && isSupportedLanguage(legacyLanguage)) {
+		language = legacyLanguage;
+	}
+
+	const subscriptions = new Set<NonEnglishOperonLanguage>(
+		(Array.isArray(src.languagePackSubscriptions) ? src.languagePackSubscriptions : [])
+			.filter((value): value is NonEnglishOperonLanguage => typeof value === 'string' && isNonEnglishSupportedLanguage(value)),
+	);
+	if (isNonEnglishSupportedLanguage(language)) subscriptions.add(language);
+
+	return {
+		...src,
+		language,
+		languagePackSubscriptions: [...subscriptions],
+	};
+}
+
+/**
+ * A delayed pre-v107 Sync snapshot must not re-apply `auto` detection over an
+ * already-migrated canonical preference. Preserve the current explicit language
+ * intent while allowing the rest of the incoming package to merge normally.
+ */
+export function preserveCanonicalLanguageForLegacyReload(
+	incoming: unknown,
+	current: unknown,
+): Record<string, unknown> {
+	const incomingSettings = incoming && typeof incoming === 'object' && !Array.isArray(incoming)
+		? incoming as Record<string, unknown>
+		: {};
+	const sourceVersion = typeof incomingSettings.settingsVersion === 'number'
+		&& Number.isFinite(incomingSettings.settingsVersion)
+		? Math.floor(Number(incomingSettings.settingsVersion))
+		: 0;
+	if (sourceVersion >= DOWNLOADABLE_LOCALE_SETTINGS_VERSION) return { ...incomingSettings };
+
+	const currentSettings = current && typeof current === 'object' && !Array.isArray(current)
+		? current as Record<string, unknown>
+		: {};
+	const currentLanguage = typeof currentSettings.language === 'string' && isSupportedLanguage(currentSettings.language)
+		? currentSettings.language
+		: 'en';
+	const subscriptions = new Set<NonEnglishOperonLanguage>(
+		(Array.isArray(currentSettings.languagePackSubscriptions) ? currentSettings.languagePackSubscriptions : [])
+			.filter((value): value is NonEnglishOperonLanguage => typeof value === 'string' && isNonEnglishSupportedLanguage(value)),
+	);
+	if (isNonEnglishSupportedLanguage(currentLanguage)) subscriptions.add(currentLanguage);
+
+	return {
+		...incomingSettings,
+		language: currentLanguage,
+		languagePackSubscriptions: [...subscriptions],
+	};
 }
 
 export type FallbackTaskIconSource = 'pipelineStatusIcon' | 'priorityIcon' | 'stateIcon';
@@ -142,7 +242,8 @@ const CHILD_TASK_INHERITANCE_BLOCKED_FIELD_KEYS = new Set<string>([
 	'treeOpenDescendantCount',
 	'repeatSeriesId',
 	'repeatOccurrenceDate',
-	'reminders',
+	'reminderDatetimes',
+	'reminderRules',
 	'timezone',
 	'trackers',
 	'activeTracker',
@@ -651,6 +752,8 @@ export const TASK_CREATOR_TOOLBAR_FIELD_ORDER = [
 	'datetimeEnd',
 	'estimate',
 	'repeat',
+	'reminderDatetimes',
+	'reminderRules',
 	'note',
 	'subtasks',
 	'blocking',
@@ -670,6 +773,8 @@ export const TASK_EDITOR_WORKFLOW_PICKER_ORDER = [
 	'assignees',
 	'location',
 	'links',
+	'reminderDatetimes',
+	'reminderRules',
 	'parentTask',
 	'subtasks',
 	'blocking',
@@ -716,6 +821,8 @@ export const INLINE_TASK_COMPACT_CHIP_ORDER = [
 	'datetimeStart',
 	'datetimeEnd',
 	'repeat',
+	'reminderDatetimes',
+	'reminderRules',
 	'assignees',
 	'contexts',
 	'location',
@@ -743,6 +850,8 @@ export const INLINE_TASK_COMPACT_FALLBACK_ICONS: Record<InlineTaskCompactChipKey
 	datetimeStart: 'between-horizontal-start',
 	datetimeEnd: 'between-horizontal-end',
 	repeat: 'repeat-2',
+	reminderDatetimes: 'alarm-clock',
+	reminderRules: 'bell-ring',
 	assignees: 'users',
 	contexts: 'map-pinned',
 	location: 'map-pin',
@@ -768,6 +877,8 @@ export const TASK_CREATOR_FALLBACK_FIELD_ICONS: Record<TaskCreatorToolbarFieldKe
 	pinned: 'pin',
 	datetimeStart: 'clock-3',
 	datetimeEnd: 'clock-9',
+	reminderDatetimes: 'alarm-clock',
+	reminderRules: 'bell-ring',
 	estimate: 'hourglass',
 	repeat: 'repeat-2',
 	note: 'notebook-pen',
@@ -908,6 +1019,8 @@ function buildDefaultInlineTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'datetimeStart', visible: false, iconOnly: false },
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'repeat', visible: true, iconOnly: false },
+		{ key: 'reminderDatetimes', visible: true, iconOnly: false },
+		{ key: 'reminderRules', visible: true, iconOnly: false },
 		{ key: 'assignees', visible: true, iconOnly: false },
 		{ key: 'contexts', visible: true, iconOnly: false },
 		{ key: 'location', visible: true, iconOnly: false },
@@ -942,6 +1055,8 @@ function buildDefaultTaskCreatorToolbarItems(): TaskCreatorToolbarItem[] {
 		{ key: 'datetimeEnd', visible: false },
 		{ key: 'estimate', visible: true },
 		{ key: 'repeat', visible: true },
+		{ key: 'reminderDatetimes', visible: false },
+		{ key: 'reminderRules', visible: false },
 		{ key: 'subtasks', visible: false },
 		{ key: 'blocking', visible: false },
 		{ key: 'blockedBy', visible: false },
@@ -958,6 +1073,8 @@ function buildDefaultTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerIt
 		{ key: 'assignees', visible: true },
 		{ key: 'location', visible: true },
 		{ key: 'links', visible: true },
+		{ key: 'reminderDatetimes', visible: true },
+		{ key: 'reminderRules', visible: true },
 		{ key: 'parentTask', visible: true },
 		{ key: 'subtasks', visible: true },
 		{ key: 'blocking', visible: false },
@@ -973,7 +1090,10 @@ function buildDefaultTaskEditorMobileCoreToolItems(): TaskEditorMobileCoreToolIt
 }
 
 export function buildCompatibilityTaskEditorWorkflowPickerItems(): TaskEditorWorkflowPickerItem[] {
-	return TASK_EDITOR_WORKFLOW_PICKER_ORDER.map(key => ({ key, visible: true }));
+	return TASK_EDITOR_WORKFLOW_PICKER_ORDER.map(key => ({
+		key,
+		visible: key !== 'reminderDatetimes' && key !== 'reminderRules',
+	}));
 }
 
 function buildDefaultFilterTaskCompactChipItems(): InlineTaskCompactChipItem[] {
@@ -991,6 +1111,8 @@ function buildDefaultFilterTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'datetimeStart', visible: false, iconOnly: false },
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'repeat', visible: true, iconOnly: false },
+		{ key: 'reminderDatetimes', visible: true, iconOnly: false },
+		{ key: 'reminderRules', visible: true, iconOnly: false },
 		{ key: 'assignees', visible: true, iconOnly: false },
 		{ key: 'contexts', visible: true, iconOnly: false },
 		{ key: 'location', visible: true, iconOnly: false },
@@ -1018,6 +1140,8 @@ function buildDefaultKanbanTaskCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'datetimeStart', visible: false, iconOnly: false },
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'repeat', visible: false, iconOnly: false },
+		{ key: 'reminderDatetimes', visible: false, iconOnly: false },
+		{ key: 'reminderRules', visible: false, iconOnly: false },
 		{ key: 'assignees', visible: true, iconOnly: false },
 		{ key: 'contexts', visible: false, iconOnly: false },
 		{ key: 'location', visible: false, iconOnly: false },
@@ -1045,6 +1169,8 @@ function buildDefaultTaskFinderCompactChipItems(): InlineTaskCompactChipItem[] {
 		{ key: 'datetimeStart', visible: false, iconOnly: false },
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'repeat', visible: false, iconOnly: false },
+		{ key: 'reminderDatetimes', visible: false, iconOnly: false },
+		{ key: 'reminderRules', visible: false, iconOnly: false },
 		{ key: 'assignees', visible: false, iconOnly: false },
 		{ key: 'contexts', visible: true, iconOnly: false },
 		{ key: 'location', visible: true, iconOnly: false },
@@ -1072,6 +1198,8 @@ function buildDefaultTaskWikilinkOverlayCompactChipItems(): InlineTaskCompactChi
 		{ key: 'datetimeStart', visible: false, iconOnly: false },
 		{ key: 'datetimeEnd', visible: false, iconOnly: false },
 		{ key: 'repeat', visible: false, iconOnly: false },
+		{ key: 'reminderDatetimes', visible: false, iconOnly: false },
+		{ key: 'reminderRules', visible: false, iconOnly: false },
 		{ key: 'assignees', visible: true, iconOnly: true },
 		{ key: 'contexts', visible: false, iconOnly: false },
 		{ key: 'location', visible: false, iconOnly: false },
@@ -1134,7 +1262,8 @@ const DEFAULT_KEY_MAPPING_ICONS: Record<string, string> = {
 	treeDescendantCount: '',
 	treeDoneDescendantCount: '',
 	treeOpenDescendantCount: '',
-	reminders: 'bell-ring',
+	reminderDatetimes: 'alarm-clock',
+	reminderRules: 'bell-ring',
 	timezone: 'globe-2',
 	trackers: 'history',
 	activeTracker: 'play',
@@ -1150,6 +1279,8 @@ const DEFAULT_KEY_MAPPING_ICONS: Record<string, string> = {
 // Retired canonical keys stay readable through legacy parsers, but must not
 // participate in active key-mapping generation, migration, or visibility rules.
 const RETIRED_KEY_MAPPING_KEYS = new Set<string>(['related']);
+const STALE_UNRELEASED_SYSTEM_SURFACE_KEYS = new Set<string>(['reminders']);
+const RESERVED_REMINDER_CANONICAL_NAMES = new Set<string>(['reminderdatetimes', 'reminderrules']);
 
 export function isRetiredKeyMapping(canonicalKey: string): boolean {
 	return RETIRED_KEY_MAPPING_KEYS.has(canonicalKey);
@@ -1160,8 +1291,22 @@ export function isChildTaskInheritanceEligibleFieldKey(
 	keyMappings: readonly KeyMapping[] | null | undefined,
 ): boolean {
 	const normalizedKey = canonicalKey.trim();
-	if (!normalizedKey || CHILD_TASK_INHERITANCE_BLOCKED_FIELD_KEYS.has(normalizedKey) || isRetiredKeyMapping(normalizedKey)) {
+	const normalizedComparableKey = normalizeKeyMappingComparableName(normalizedKey);
+	const collidingCustomReminderMapping = RESERVED_REMINDER_CANONICAL_NAMES.has(normalizedComparableKey)
+		? keyMappings?.find(candidate => (
+			candidate.isSystem === false
+			&& normalizeKeyMappingComparableName(candidate.canonicalKey) === normalizedComparableKey
+		))
+		: undefined;
+	if (
+		!normalizedKey
+		|| (CHILD_TASK_INHERITANCE_BLOCKED_FIELD_KEYS.has(normalizedKey) && !collidingCustomReminderMapping)
+		|| isRetiredKeyMapping(normalizedKey)
+	) {
 		return false;
+	}
+	if (collidingCustomReminderMapping) {
+		return collidingCustomReminderMapping.isInternal !== true;
 	}
 	if (normalizedKey === CHILD_TASK_INHERITANCE_TAGS_KEY) {
 		return true;
@@ -1208,10 +1353,33 @@ function getDefaultKeyMappingIcon(canonicalKey: string): string {
 
 const DEFAULT_KEY_MAPPING_VISIBLE_NAMES: Record<string, string> = {
 	links: 'Links',
+	reminderDatetimes: 'ReminderDatetimes',
+	reminderRules: 'ReminderRules',
 };
 
 function getDefaultKeyMappingVisibleName(canonicalKey: string): string {
 	return DEFAULT_KEY_MAPPING_VISIBLE_NAMES[canonicalKey] ?? canonicalKey;
+}
+
+function getAvailableDefaultKeyMappingVisibleName(
+	canonicalKey: string,
+	mappings: readonly KeyMapping[],
+): string {
+	const preferred = getDefaultKeyMappingVisibleName(canonicalKey);
+	if (!hasDuplicateKeyMappingVisiblePropertyName(preferred, mappings)) return preferred;
+	if (!isReminderStorageKey(canonicalKey)) return preferred;
+
+	const fallbackBase = `Operon${preferred}`;
+	let suffix = 1;
+	let candidate = fallbackBase;
+	while (
+		hasDuplicateKeyMappingVisiblePropertyName(candidate, mappings)
+		|| hasDuplicateKeyMappingCanonicalKey(candidate, mappings)
+	) {
+		suffix += 1;
+		candidate = `${fallbackBase}${suffix}`;
+	}
+	return candidate;
 }
 
 /** Generate default key mappings from all canonical keys */
@@ -1269,8 +1437,10 @@ export interface OperonSettings {
 	/** Dynamic subtasks filter presentation: hide non-open subtasks under each parent. */
 	dynamicSubtasksFilterShowOnlyOpenSubtasks: boolean;
 
-	/** UI language override. 'auto' = detect from Obsidian locale. */
+	/** Explicit UI language preference. English is always bundled. */
 	language: OperonLanguage;
+	/** Non-English packs retained locally and checked for catalog updates. */
+	languagePackSubscriptions: NonEnglishOperonLanguage[];
 	timeFormat: '24h' | '12h';
 	demoWorkspacePromptDismissed: boolean;
 	releaseNotesShowOnUpdate: boolean;
@@ -1594,6 +1764,15 @@ export interface OperonSettings {
 	// Parent automation
 	autoCompleteParentWhenAllChildrenTerminal: boolean;
 	cascadeCancelToDescendants: boolean;
+	/** How far past a reminder time Operon may create a pending delivery on this device. */
+	reminderCatchUpWindowMinutes: ReminderCatchUpWindowMinutes;
+	reminderNoticeDurationSeconds: ReminderNoticeDurationSeconds;
+	/** Automatically pin open tasks when Operon processes a due reminder. */
+	reminderAutoPinDueTasks: boolean;
+	/** Whether reminders may also use the host system notification API. */
+	reminderSystemNotificationsEnabled: boolean;
+	/** Vault-relative audio file played when a reminder is delivered. Empty means silent. */
+	reminderSoundFilePath: string;
 
 	// Inline expanded task bar chip visibility
 	inlineExpandedTaskChips: InlineExpandedTaskChips;
@@ -1783,7 +1962,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	dynamicSubtasksFilterSubtaskAutoExpandLimit: 10,
 	dynamicSubtasksFilterShowOnlyOpenSubtasks: false,
 
-	language: 'auto',
+	language: 'en',
+	languagePackSubscriptions: [],
 	timeFormat: '24h',
 	demoWorkspacePromptDismissed: false,
 	releaseNotesShowOnUpdate: true,
@@ -2025,6 +2205,11 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 
 	autoCompleteParentWhenAllChildrenTerminal: false,
 	cascadeCancelToDescendants: true,
+	reminderCatchUpWindowMinutes: 60,
+	reminderNoticeDurationSeconds: 15,
+	reminderAutoPinDueTasks: false,
+	reminderSystemNotificationsEnabled: false,
+	reminderSoundFilePath: '',
 
 	inlineExpandedTaskChips: { ...DEFAULT_INLINE_EXPANDED_TASK_CHIPS },
 	taskBarSubtasksDefaultExpanded: true,
@@ -3325,6 +3510,13 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (!isSupportedLanguage(out.language)) {
 		out.language = DEFAULT_SETTINGS.language;
 	}
+	out.languagePackSubscriptions = Array.from(new Set(
+		(Array.isArray(src.languagePackSubscriptions) ? src.languagePackSubscriptions : [])
+			.filter((value): value is NonEnglishOperonLanguage => typeof value === 'string' && isNonEnglishSupportedLanguage(value)),
+	));
+	if (isNonEnglishSupportedLanguage(out.language) && !out.languagePackSubscriptions.includes(out.language)) {
+		out.languagePackSubscriptions.push(out.language);
+	}
 	if (!['24h', '12h'].includes(out.timeFormat)) {
 		out.timeFormat = DEFAULT_SETTINGS.timeFormat;
 	}
@@ -3954,6 +4146,13 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (out.keyMappings.length === 0) {
 		out.keyMappings = buildDefaultKeyMappings();
 	} else {
+		// A custom field may already own one of the newly reserved reminder names.
+		// Keep that mapping authoritative until the user renames or removes it;
+		// silently converting arbitrary custom values into reminder data is unsafe.
+		const customReminderCanonicalCollisions = new Set(out.keyMappings
+			.filter(mapping => mapping.isSystem === false)
+			.map(mapping => normalizeKeyMappingComparableName(mapping.canonicalKey))
+			.filter(key => RESERVED_REMINDER_CANONICAL_NAMES.has(key)));
 		// Backfill missing mapping metadata on older settings files.
 		for (const m of out.keyMappings) {
 			const mapping = m as MigratingKeyMapping;
@@ -3974,6 +4173,12 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			mapping.enabled = true;
 			if (canonical?.internal === true) {
 				mapping.hideInFileTaskView = true;
+			} else if (
+				sourceSettingsVersion < 108
+				&& m.isSystem !== false
+				&& isReminderStorageKey(m.canonicalKey)
+			) {
+				mapping.hideInFileTaskView = false;
 			} else if (mapping.hideInFileTaskView !== true) {
 				mapping.hideInFileTaskView = false;
 			}
@@ -3997,14 +4202,21 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			!isRetiredKeyMapping(m.canonicalKey)
 			&& (!m.isSystem || CANONICAL_KEYS.some(k => k.name === m.canonicalKey))
 		);
+		if (customReminderCanonicalCollisions.size > 0) {
+			out.keyMappings = out.keyMappings.filter(mapping => !(
+				mapping.isSystem !== false
+				&& customReminderCanonicalCollisions.has(normalizeKeyMappingComparableName(mapping.canonicalKey))
+			));
+		}
 		out.keyMappings = dedupeKeyMappingsByCanonicalKey(out.keyMappings);
 		// Add any new canonical keys not yet in mappings
 		for (const k of CANONICAL_KEYS) {
 			if (isRetiredKeyMapping(k.name)) continue;
+			if (customReminderCanonicalCollisions.has(normalizeKeyMappingComparableName(k.name))) continue;
 			if (!out.keyMappings.some(m => m.isSystem !== false && m.canonicalKey === k.name)) {
 				out.keyMappings.push({
 					canonicalKey: k.name,
-					visiblePropertyName: getDefaultKeyMappingVisibleName(k.name),
+					visiblePropertyName: getAvailableDefaultKeyMappingVisibleName(k.name, out.keyMappings),
 					type: k.type,
 					sync: k.sync,
 					enabled: true,
@@ -4111,6 +4323,21 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		DEFAULT_SETTINGS.duplicateAlertDelaySeconds,
 	);
 	out.taskStatsBackfillVersion = normalizeTaskStatsBackfillVersion(src.taskStatsBackfillVersion);
+	out.reminderCatchUpWindowMinutes = normalizeAllowedNumber(
+		Math.floor(out.reminderCatchUpWindowMinutes),
+		REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS,
+		DEFAULT_SETTINGS.reminderCatchUpWindowMinutes,
+	) as ReminderCatchUpWindowMinutes;
+	out.reminderNoticeDurationSeconds = normalizeAllowedNumber(
+		Math.floor(out.reminderNoticeDurationSeconds),
+		REMINDER_NOTICE_DURATION_SECONDS_OPTIONS,
+		DEFAULT_SETTINGS.reminderNoticeDurationSeconds,
+	) as ReminderNoticeDurationSeconds;
+	out.reminderAutoPinDueTasks = src.reminderAutoPinDueTasks === true;
+	out.reminderSystemNotificationsEnabled = src.reminderSystemNotificationsEnabled === true;
+	out.reminderSoundFilePath = typeof src.reminderSoundFilePath === 'string'
+		? src.reminderSoundFilePath.trim()
+		: DEFAULT_SETTINGS.reminderSoundFilePath;
 
 	out.settingsVersion = CURRENT_SETTINGS_VERSION;
 	return out;
@@ -4188,6 +4415,7 @@ function getProjectableCustomSurfaceMappings(keyMappings: readonly KeyMapping[] 
 
 function isPreservedOrphanSurfaceKey(key: string, keyMappings: readonly KeyMapping[] | undefined): boolean {
 	if (!CUSTOM_CANONICAL_KEY_PATTERN.test(key)) return false;
+	if (STALE_UNRELEASED_SYSTEM_SURFACE_KEYS.has(key)) return false;
 	if (ALL_BUILT_IN_SURFACE_KEYS.has(key)) return false;
 	if (BUILT_IN_CANONICAL_KEY_NAMES.has(key)) return false;
 	if (isRetiredKeyMapping(key)) return false;
@@ -4250,9 +4478,14 @@ function normalizeSurfaceItems<T extends { key: string; visible: boolean; iconOn
 	const allowedBuiltIns = new Set<string>(builtInOrder);
 	const customMappings = getProjectableCustomSurfaceMappings(keyMappings);
 	const customByKey = new Map(customMappings.map(mapping => [mapping.canonicalKey, mapping] as const));
+	const customByComparableKey = new Map(customMappings.map(mapping => [
+		normalizeKeyMappingComparableName(mapping.canonicalKey),
+		mapping,
+	] as const));
 	const normalized: T[] = [];
 	const seen = new Set<string>();
-	const rawItems = Array.isArray(raw) ? raw : defaults;
+	const hasRawItems = Array.isArray(raw);
+	const rawItems = hasRawItems ? raw : defaults;
 	const hasIconOnly = defaults.some(item => 'iconOnly' in item);
 
 	for (const rawItem of rawItems) {
@@ -4260,6 +4493,11 @@ function normalizeSurfaceItems<T extends { key: string; visible: boolean; iconOn
 		const record = rawItem as Record<string, unknown>;
 		const key = record.key;
 		if (typeof key !== 'string') continue;
+		const customOwner = customByComparableKey.get(normalizeKeyMappingComparableName(key));
+		const isShadowedBuiltIn = allowedBuiltIns.has(key)
+			&& !!customOwner
+			&& customOwner.canonicalKey !== key;
+		if (isShadowedBuiltIn) continue;
 		const isAllowed = allowedBuiltIns.has(key)
 			|| customByKey.has(key)
 			|| isPreservedOrphanSurfaceKey(key, keyMappings);
@@ -4267,7 +4505,9 @@ function normalizeSurfaceItems<T extends { key: string; visible: boolean; iconOn
 		seen.add(key);
 		const defaultItem = defaults.find(candidate => candidate.key === key);
 		const customMapping = customByKey.get(key);
-		const visible = typeof record.visible === 'boolean'
+		const visible = !hasRawItems && customMapping
+			? getCustomVisible(customMapping)
+			: typeof record.visible === 'boolean'
 			? record.visible
 			: customMapping
 				? getCustomVisible(customMapping)
@@ -4287,8 +4527,14 @@ function normalizeSurfaceItems<T extends { key: string; visible: boolean; iconOn
 
 	for (const item of defaults) {
 		if (seen.has(item.key)) continue;
+		const customOwner = customByComparableKey.get(normalizeKeyMappingComparableName(item.key));
+		if (customOwner && customOwner.canonicalKey !== item.key) continue;
 		seen.add(item.key);
-		insertMissingOrderedItem(normalized, { ...item }, builtInOrder);
+		const customMapping = customByKey.get(item.key);
+		insertMissingOrderedItem(normalized, {
+			...item,
+			...(customMapping ? { visible: getCustomVisible(customMapping) } : {}),
+		}, builtInOrder);
 	}
 
 	for (const mapping of customMappings) {

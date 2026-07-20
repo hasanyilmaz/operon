@@ -4,6 +4,7 @@ import { OperonSettings } from '../types/settings';
 import { DEFAULT_PRIORITIES } from '../types/priority';
 import { t } from '../core/i18n';
 import { splitTaskListValue } from '../core/task-field-patch';
+import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
 import { showStatusPicker } from './field-pickers/status-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
 import { type ManualDatePickerOptions, showDatePicker } from './field-pickers/date-picker';
@@ -20,6 +21,11 @@ import { showEstimatePicker } from './field-pickers/estimate-picker';
 import { showParentTaskPicker } from './field-pickers/parent-task-picker';
 import { showLocationPicker } from './field-pickers/location-picker';
 import { showDependencyTaskPicker } from './field-pickers/dependency-task-picker';
+import {
+	showReminderDatetimePicker,
+	showReminderRulesPicker,
+	type ReminderPickerOperation,
+} from './field-pickers/reminder-picker';
 import { showCustomDateFieldPicker, showCustomDatetimeFieldPicker, showCustomListFieldPicker, showCustomNumberFieldPicker, showCustomTextFieldPicker } from './field-pickers/custom';
 import {
 	collectCustomFieldValueCandidates,
@@ -50,6 +56,7 @@ export interface TaskFieldPickerDispatchOptions {
 	canonicalKey: string;
 	anchor: HTMLElement | DOMRect;
 	currentFieldValues: Record<string, string>;
+	getCurrentFieldValues?: () => Readonly<Record<string, string | undefined>>;
 	currentTags: string[];
 	currentTaskId?: string;
 	excludedTaskIds?: string[];
@@ -59,6 +66,7 @@ export interface TaskFieldPickerDispatchOptions {
 	manualDatePicker?: ManualDatePickerOptions;
 	taskFormat?: 'inline' | 'yaml';
 	repeatInlineCompletionMode?: InlineRepeatCompletionMode;
+	reminderOperation?: ReminderPickerOperation;
 	onCommit: (payload: Record<string, string | string[]>) => void;
 	onRepeatInlineCompletionModeChange?: (mode: InlineRepeatCompletionMode) => void | Promise<void>;
 	onOpenNote?: () => void;
@@ -68,6 +76,36 @@ export interface TaskFieldPickerDispatchOptions {
 
 export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): (() => void) | null {
 	const { canonicalKey, currentFieldValues } = options;
+	const customReminderMapping = canonicalKey === 'reminderDatetimes' || canonicalKey === 'reminderRules'
+		? getCustomFieldMapping(options.settings.keyMappings, canonicalKey)
+		: null;
+	if (!customReminderMapping && (canonicalKey === 'reminderDatetimes' || canonicalKey === 'reminderRules')) {
+		const operation = options.reminderOperation ?? { kind: 'add' as const };
+		const getFieldValues = () => options.getCurrentFieldValues?.() ?? currentFieldValues;
+		if (
+			canonicalKey === 'reminderRules'
+			&& operation.kind === 'add'
+			&& getAvailableReminderRuleAnchors(getFieldValues()).length === 0
+		) {
+			new Notice(t('reminders', 'noAvailableAnchors'));
+			options.onCancel?.();
+			return null;
+		}
+		const showPicker = canonicalKey === 'reminderDatetimes'
+			? showReminderDatetimePicker
+			: showReminderRulesPicker;
+		return showPicker(options.anchor, {
+			app: options.app,
+			settings: options.settings,
+			fieldValues: currentFieldValues,
+			getFieldValues: options.getCurrentFieldValues,
+			operation,
+			retainInputFocus: options.retainInputFocus,
+			onCommit: fieldValue => options.onCommit({ [canonicalKey]: fieldValue }),
+			onCancel: options.onCancel,
+			onClose: options.onClose,
+		});
+	}
 
 	switch (canonicalKey) {
 		case 'status':

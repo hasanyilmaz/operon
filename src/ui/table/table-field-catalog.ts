@@ -1,6 +1,6 @@
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import { t } from '../../core/i18n';
-import { getManagedCustomFieldMappings } from '../../core/managed-task-fields';
+import { getManagedCustomFieldMappings, getManagedCustomKeyMapping } from '../../core/managed-task-fields';
 import { CANONICAL_KEYS, type ValueType } from '../../types/keys';
 import { CHECKBOX_PROGRESS_COLUMN_KEY } from '../task-progress-tracks';
 import {
@@ -230,6 +230,7 @@ function buildTableTaskFieldCatalogUncached(settings: TableTaskFieldCatalogSetti
 
 	for (const canonical of CANONICAL_KEYS) {
 		if (canonical.internal === true || isRetiredKeyMapping(canonical.name)) continue;
+		if (getManagedCustomKeyMapping(canonical.name, keyMappings)?.isSystem === false) continue;
 		const mapping = keyMappings.find(entry => entry.canonicalKey === canonical.name);
 		const customLabel = mapping?.visiblePropertyName?.trim();
 		const label = customLabel && normalizeAlias(customLabel) !== normalizeAlias(canonical.name)

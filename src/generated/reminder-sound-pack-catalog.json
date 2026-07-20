@@ -1,0 +1,37 @@
+{
+	"schemaVersion": 1,
+	"files": [
+		{
+			"id": "reminder-1",
+			"assetName": "operon-reminder-1.mp3",
+			"fileName": "Operon Reminder 1.mp3",
+			"url": "https://raw.githubusercontent.com/hasanyilmaz/operon/main/release-assets/reminder-sounds/operon-reminder-1.mp3",
+			"sha256": "743a211ce910d551dd8bd313cdebfb01d1daa7b0d485df2d265847a28e74d58e",
+			"sizeBytes": 20618
+		},
+		{
+			"id": "reminder-2",
+			"assetName": "operon-reminder-2.mp3",
+			"fileName": "Operon Reminder 2.mp3",
+			"url": "https://raw.githubusercontent.com/hasanyilmaz/operon/main/release-assets/reminder-sounds/operon-reminder-2.mp3",
+			"sha256": "e9bead3b668aa0841ebba6fc85586ec14c8616169629dde8890c744f42bbec3f",
+			"sizeBytes": 13030
+		},
+		{
+			"id": "reminder-3",
+			"assetName": "operon-reminder-3.mp3",
+			"fileName": "Operon Reminder 3.mp3",
+			"url": "https://raw.githubusercontent.com/hasanyilmaz/operon/main/release-assets/reminder-sounds/operon-reminder-3.mp3",
+			"sha256": "c1bf7255a973cfdfc54b7b69fb38c28219b77c3bbd3b1e14a0263dd3b1b19162",
+			"sizeBytes": 17420
+		},
+		{
+			"id": "reminder-4",
+			"assetName": "operon-reminder-4.mp3",
+			"fileName": "Operon Reminder 4.mp3",
+			"url": "https://raw.githubusercontent.com/hasanyilmaz/operon/main/release-assets/reminder-sounds/operon-reminder-4.mp3",
+			"sha256": "9bb379c94d1a3d2257b5deeefda45071040a0d869a955c52196d0dc2b56ea0e5",
+			"sizeBytes": 19993
+		}
+	]
+}

@@ -62,6 +62,7 @@ import {
 } from '../core/preset-favorites';
 import { isSpecialDynamicFilterSetId } from '../core/dynamic-file-task-filter';
 import { cloneTablePreset, type TablePreset, type TablePresetStoreSettings } from '../types/table';
+import { getAppLocale } from '../core/obsidian-app';
 
 export type IndexV8RecoveryMarkerStatus = 'missing' | 'required' | 'invalid' | 'io-error';
 
@@ -203,6 +204,11 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 		fileRepeatCustomFolder: settings.fileRepeatCustomFolder,
 		estimateAutoReallocation: false,
 		trackerSplitSessionsAtMidnight: settings.trackerSplitSessionsAtMidnight,
+		reminderCatchUpWindowMinutes: settings.reminderCatchUpWindowMinutes,
+		reminderNoticeDurationSeconds: settings.reminderNoticeDurationSeconds,
+		reminderAutoPinDueTasks: settings.reminderAutoPinDueTasks,
+		reminderSystemNotificationsEnabled: settings.reminderSystemNotificationsEnabled,
+		reminderSoundFilePath: settings.reminderSoundFilePath,
 	};
 }
 
@@ -402,7 +408,10 @@ export class OperonStorage {
 	 */
 	async initialize(): Promise<void> {
 		await this.ensureCanonicalFolders();
-		const { dataPackage, loadedExistingPinnedTasksPackage } = await this.dataPackageStore.initialize(DEFAULT_SETTINGS);
+		const { dataPackage, loadedExistingPinnedTasksPackage } = await this.dataPackageStore.initialize(
+			DEFAULT_SETTINGS,
+			getAppLocale(this.app),
+		);
 		await this.hydrateFromDataPackage(dataPackage);
 		await this.pinnedCache.load({ preferPackage: loadedExistingPinnedTasksPackage });
 		await this.saveSettings({ forceRecoveredWrite: false });

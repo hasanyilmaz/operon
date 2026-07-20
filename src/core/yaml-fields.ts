@@ -11,7 +11,11 @@ import { isRetiredKeyMapping, KeyMapping } from '../types/settings';
 import { CANONICAL_KEYS, LEGACY_CANONICAL_KEY_ALIASES } from '../types/keys';
 import { normalizeTaskIconValue } from './task-icon-value';
 import { formatTaskColorYamlValue, normalizeTaskColorValue } from './task-color-value';
-import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import {
+	getManagedCustomKeyMapping,
+	getManagedTaskFieldType,
+	isManagedTaskFieldCanonicalKey,
+} from './managed-task-fields';
 
 export function normalizeLegacyCreatedDatetime(value: string): string {
 	const trimmed = value.trim();
@@ -214,6 +218,7 @@ export function buildReverseMapping(mappings: KeyMapping[]): Map<string, string>
 
 	for (const key of CANONICAL_KEYS) {
 		if (isRetiredKeyMapping(key.name)) continue;
+		if (getManagedCustomKeyMapping(key.name, mappings)?.isSystem === false) continue;
 		setIfAbsent(key.name, key.name);
 	}
 	for (const [canonicalKey, aliases] of Object.entries(LEGACY_CANONICAL_KEY_ALIASES)) {

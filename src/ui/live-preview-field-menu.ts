@@ -85,7 +85,15 @@ export function showLivePreviewFieldMenu(anchor: HTMLElement | DOMRect, options:
 	const fieldValues = options.task?.fieldValues ?? Object.fromEntries(options.parsedTask.fields.map(field => [field.key, field.value]));
 	const visibleKeys = new Set(options.visibleKeys ?? VISIBLE_KEYS);
 
-	const hiddenPresentKeys = collectHiddenKeys(fieldValues, options.task?.tags ?? options.parsedTask.tags, visibleKeys, options.allTasks)
+	const hiddenPresentKeys = collectHiddenKeys(
+		fieldValues,
+		options.task?.tags ?? options.parsedTask.tags,
+		visibleKeys,
+		options.allTasks,
+		undefined,
+		undefined,
+		options.settings.keyMappings,
+	)
 		.filter(key => !isInternalCanonicalKey(key))
 		.filter(key => isLivePreviewManagedFieldMenuKey(options.settings, key));
 

@@ -24,7 +24,7 @@ export function getTaskCreatorToolbarTooltipCopy(
 	keyMappings: readonly KeyMapping[],
 ): TaskCreatorToolbarTooltipCopy | null {
 	const mapping = keyMappings.find(candidate => candidate.canonicalKey === key);
-	if (mapping && !CANONICAL_KEY_MAP.has(mapping.canonicalKey)) {
+	if (mapping?.isSystem === false) {
 		return {
 			title: mapping.visiblePropertyName?.trim() || mapping.canonicalKey,
 			content: truncateCustomTooltipDescription(mapping.description),

@@ -1,6 +1,7 @@
 import { App, KeymapEventHandler, Modal, Notice, Platform, getIcon, setIcon } from 'obsidian';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { getSubtaskInheritedFieldKeys, resolveSubtaskInitialFieldsFromParentValues } from '../core/subtask-inheritance';
+import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
 import { applyTaskFieldPatchToState, splitTaskListValue } from '../core/task-field-patch';
 import { t } from '../core/i18n';
 import { resolveReverseWorkflowFromTerminalDate } from '../types/pipeline';
@@ -17,7 +18,9 @@ import type { ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showSubtasksPicker } from './field-pickers/subtasks-picker';
 import { showColorPicker } from './field-pickers/color-picker';
 import { MOBILE_PICKER_CLOSE_EVENT, MOBILE_PICKER_OPEN_EVENT } from './field-pickers/common';
+import type { ReminderPickerOperation } from './field-pickers/reminder-picker';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import { formatReminderDisplayItem } from './reminder-display';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
 import {
@@ -464,6 +467,7 @@ export class TaskCreatorModal extends Modal {
 	private noteEl: HTMLTextAreaElement | null = null;
 	private noteWrapEl: HTMLElement | null = null;
 	private suggestionsEl: HTMLElement | null = null;
+	private reminderStripEl!: HTMLElement;
 	private metadataRowEl!: HTMLElement;
 	private toolsEl!: HTMLElement;
 	private actionRowEl!: HTMLElement;
@@ -630,6 +634,7 @@ export class TaskCreatorModal extends Modal {
 			this.noteWrapEl.show();
 		}
 
+		this.reminderStripEl = body.createDiv('operon-task-creator-reminder-strip');
 		this.metadataRowEl = body.createDiv('operon-task-creator-toolbar');
 		this.toolsEl = this.metadataRowEl.createDiv('operon-task-creator-tools');
 		this.toolsEl.addEventListener('scroll', this.toolbarScrollHandler, { passive: true });
@@ -811,7 +816,6 @@ export class TaskCreatorModal extends Modal {
 
 		if (this.activePickerClose) {
 			this.closeActivePicker();
-			window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
 			return;
 		}
 
@@ -1164,7 +1168,11 @@ export class TaskCreatorModal extends Modal {
 		this.openFieldPicker(item.canonicalKey);
 	}
 
-	private openFieldPicker(canonicalKey: string): void {
+	private openFieldPicker(
+		canonicalKey: string,
+		reminderOperation?: ReminderPickerOperation,
+		anchorOverride?: HTMLElement,
+	): void {
 		this.closeSuggestions();
 		if (canonicalKey === 'note') {
 			this.openNote();
@@ -1188,7 +1196,30 @@ export class TaskCreatorModal extends Modal {
 		}
 
 		const anchorButton = this.fieldButtonMap.get(canonicalKey);
-		const anchor = anchorButton ?? this.descriptionEl;
+		const anchor = anchorOverride ?? anchorButton ?? this.descriptionEl;
+		const resolvedReminderOperation = reminderOperation ?? (
+			canonicalKey === 'reminderDatetimes' || canonicalKey === 'reminderRules'
+				? { kind: 'add' as const }
+				: undefined
+		);
+		let focusRestoreScheduled = false;
+		const restorePickerFocus = () => {
+			if (focusRestoreScheduled) return;
+			focusRestoreScheduled = true;
+			window.setTimeout(() => {
+				let target = anchorOverride?.isConnected ? anchorOverride : null;
+				if (!target && reminderOperation?.kind === 'edit') {
+					target = this.reminderStripEl.querySelector<HTMLElement>(
+						`[data-field-key="${canonicalKey}"][data-reminder-index="${reminderOperation.item.index}"]`,
+					);
+				}
+				if (target) {
+					target.focus();
+					return;
+				}
+				this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length);
+			}, 0);
+		};
 		this.closeActivePicker();
 
 		const close = openTaskFieldPicker({
@@ -1198,7 +1229,9 @@ export class TaskCreatorModal extends Modal {
 			canonicalKey,
 			anchor,
 			currentFieldValues: { ...this.draft.fieldValues },
+			getCurrentFieldValues: () => this.draft.fieldValues,
 			currentTags: [...this.draft.tags],
+			reminderOperation: resolvedReminderOperation,
 			closeListPickerOnSelect: canonicalKey === 'assignees' || canonicalKey === 'tags' || canonicalKey === 'contexts',
 			manualDatePicker: this.getManualDatePickerOptions(canonicalKey),
 			taskFormat: this.activeCreateType === 'file' ? 'yaml' : 'inline',
@@ -1209,7 +1242,7 @@ export class TaskCreatorModal extends Modal {
 					return;
 				}
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				restorePickerFocus();
 			},
 			onRepeatInlineCompletionModeChange: mode => {
 				this.draft.inlineCompletionMode = normalizeInlineCompletionMode(mode);
@@ -1220,11 +1253,11 @@ export class TaskCreatorModal extends Modal {
 			},
 			onCancel: () => {
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				restorePickerFocus();
 			},
 			onClose: () => {
 				this.closeActivePicker();
-				window.setTimeout(() => this.focusDescription(this.descriptionEl.selectionStart ?? this.descriptionEl.value.length), 0);
+				restorePickerFocus();
 			},
 		});
 
@@ -1503,11 +1536,17 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	private renderFieldButtons(): void {
+		this.renderReminderDraftStrip();
 		for (const key of this.getVisibleToolbarFieldOrder()) {
 			const button = this.fieldButtonMap.get(key);
 			if (!button) continue;
 			button.empty();
 			this.syncFieldButtonActiveState(key);
+			const ruleAddDisabled = key === 'reminderRules'
+				&& !getCustomFieldMapping(this.options.settings.keyMappings, key)
+				&& getAvailableReminderRuleAnchors(this.draft.fieldValues).length === 0;
+			button.disabled = ruleAddDisabled;
+			button.setAttribute('aria-disabled', String(ruleAddDisabled));
 
 			const iconWrap = button.createSpan('operon-task-creator-tool-icon');
 			if (key === 'taskIcon' && this.draft.taskIcon.trim()) {
@@ -1522,6 +1561,48 @@ export class TaskCreatorModal extends Modal {
 			}
 			this.bindFieldButtonTooltip(button, key);
 		}
+	}
+
+	private renderReminderDraftStrip(): void {
+		if (!this.reminderStripEl) return;
+		this.reminderStripEl.empty();
+		const fieldValues = this.draft.fieldValues;
+		for (const fieldKey of ['reminderDatetimes', 'reminderRules'] as const) {
+			if (getCustomFieldMapping(this.options.settings.keyMappings, fieldKey)) continue;
+			for (const [index, rawValue] of splitTaskListValue(fieldValues[fieldKey]).entries()) {
+				const display = formatReminderDisplayItem({
+					app: this.app,
+					settings: this.options.settings,
+					fieldKey,
+					rawValue,
+					fieldValues,
+				});
+				const chip = this.reminderStripEl.createEl('button', {
+					cls: `operon-task-creator-reminder-chip is-${display.state}`,
+					attr: {
+						type: 'button',
+						'data-field-key': fieldKey,
+						'data-reminder-index': String(index),
+						'aria-label': display.ariaLabel,
+					},
+				});
+				const icon = chip.createSpan('operon-task-creator-reminder-chip-icon');
+				setIcon(icon, getConfiguredKeyMappingIcon(fieldKey, this.options.settings.keyMappings) || 'bell-ring');
+				chip.createSpan({ cls: 'operon-task-creator-reminder-chip-text', text: display.text });
+				bindOperonHoverTooltip(chip, {
+					title: display.tooltipTitle,
+					content: display.tooltipContent,
+					taskColor: this.getThemeColor(),
+				});
+				chip.addEventListener('click', () => {
+					this.openFieldPicker(fieldKey, {
+						kind: 'edit',
+						item: { index, rawValue },
+					}, chip);
+				});
+			}
+		}
+		this.reminderStripEl.toggleClass('is-empty', this.reminderStripEl.childElementCount === 0);
 	}
 
 	private renderSubmitControls(): void {

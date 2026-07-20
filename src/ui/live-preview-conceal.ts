@@ -30,7 +30,7 @@ import {
 	InlineTaskCompactChipEntry,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
-import { bindOperonHoverTooltip, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
@@ -125,6 +125,54 @@ function getLivePreviewDescriptionEndCursor(
 		editorView: view,
 		trackDescriptionEnd: true,
 	};
+}
+
+export function getLivePreviewCurrentFieldValues(
+	task: ParsedTask,
+	view: EditorView,
+	callbacks: LivePreviewCallbacks,
+): Readonly<Record<string, string | undefined>> {
+	const operonId = task.operonId;
+	if (operonId) {
+		const hintedLineNumber = task.lineNumber + 1;
+		if (hintedLineNumber >= 1 && hintedLineNumber <= view.state.doc.lines) {
+			const hintedLine = view.state.doc.line(hintedLineNumber);
+			const parsed = parseTaskLine(
+				hintedLine.text,
+				hintedLine.number - 1,
+				callbacks.getFilePath(view),
+				callbacks.getSettings().keyMappings,
+			);
+			if (parsed?.operonId === operonId) {
+				return Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
+			}
+		}
+
+		for (let lineNumber = 1; lineNumber <= view.state.doc.lines; lineNumber++) {
+			if (lineNumber === hintedLineNumber) continue;
+			const line = view.state.doc.line(lineNumber);
+			if (!line.text.includes(operonId)) continue;
+			const parsed = parseTaskLine(
+				line.text,
+				line.number - 1,
+				callbacks.getFilePath(view),
+				callbacks.getSettings().keyMappings,
+			);
+			if (parsed?.operonId === operonId) {
+				return Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
+			}
+		}
+
+		// Reminder mutations must be authorized by the current editor document.
+		// Falling back to the index here can resurrect a stale item after the
+		// inline task (or its operonId) changed without an index refresh.
+		return {
+			...Object.fromEntries(task.fields.map(field => [field.key, field.value])),
+			reminderDatetimes: '',
+			reminderRules: '',
+		};
+	}
+	return Object.fromEntries(task.fields.map(field => [field.key, field.value]));
 }
 
 function snapshotLivePreviewAnchor(anchor: HTMLElement): DOMRect {
@@ -355,6 +403,7 @@ class MetadataTailWidget extends WidgetType {
 			undefined,
 			locationResolver,
 			{
+				app: this.callbacks.app,
 				repeatSkipDateResolver: this.callbacks.getRepeatSkipDates,
 				workflowStatusIdentityIndex: this.workflowStatusIdentityIndex,
 			},
@@ -536,7 +585,7 @@ class MetadataTailWidget extends WidgetType {
 		if (noteValue) {
 			const noteIndicator = createOperonHoverIndicator({
 				title: t('taskEditor', 'notes'),
-				content: noteValue,
+				contentEl: createNonInteractiveMarkdownLinkContent(actions, noteValue),
 				icon: getConfiguredKeyMappingIcon('note', this.callbacks.getSettings().keyMappings) || 'notebook-pen',
 				taskColor,
 				preferredHorizontal: 'right',
@@ -846,6 +895,7 @@ export function buildMetadataTailRenderSignature(
 		: null;
 	const locationResolver = locationIndex?.resolve;
 	const entries = buildInlineTaskCompactChipEntries(fieldValues, tags, settings, tasks, undefined, locationResolver, {
+		app: callbacks.app,
 		repeatSkipDateResolver: callbacks.getRepeatSkipDates,
 		workflowStatusIdentityIndex,
 	})
@@ -863,6 +913,11 @@ export function buildMetadataTailRenderSignature(
 			entry.externalRawValue ?? '',
 			entry.locationCoordinate ?? '',
 			entry.locationMarkerIcon ?? '',
+			entry.reminderItem?.fieldKey ?? '',
+			entry.reminderItem?.index ?? '',
+			entry.reminderItem?.rawValue ?? '',
+			entry.reminderState ?? '',
+			entry.ariaLabel ?? '',
 			entry.locationMarkerColor ?? '',
 			entry.taskColor ?? '',
 			entry.tooltipTitle ?? '',
@@ -1003,6 +1058,33 @@ function attachLivePreviewChipAction(
 		if (!operonId) return;
 		const restoreCursor = () => getLivePreviewDescriptionEndCursor(task, view, callbacks);
 		const pickerAnchor = snapshotLivePreviewAnchor(chip);
+		const reminderItem = entry.reminderItem;
+		if (reminderItem) {
+			openTaskFieldPicker({
+				app: callbacks.app,
+				settings: callbacks.getSettings(),
+				allTasks: callbacks.getAllTasks(),
+				canonicalKey: reminderItem.fieldKey,
+				anchor: pickerAnchor,
+				currentFieldValues: fieldValues,
+				getCurrentFieldValues: () => getLivePreviewCurrentFieldValues(task, view, callbacks),
+				currentTags: task.tags,
+				sourcePath: task.filePath,
+				retainInputFocus: true,
+				taskFormat: 'inline',
+				reminderOperation: {
+					kind: 'edit',
+					item: { index: reminderItem.index, rawValue: reminderItem.rawValue },
+				},
+				onCommit: payload => {
+					const value = payload[reminderItem.fieldKey];
+					if (typeof value !== 'string') return;
+					void callbacks.updateField(operonId, reminderItem.fieldKey, value, restoreCursor());
+					onCommit?.();
+				},
+			});
+			return;
+		}
 		switch (entry.key) {
 			case 'status':
 				callbacks.cycleStatus(task, view);

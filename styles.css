@@ -3401,6 +3401,16 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	max-width: 100%;
 }
 
+.operon-datetime-picker-diagnostic {
+	font-size: 11px;
+	line-height: 1.35;
+	color: var(--text-error);
+}
+
+.operon-datetime-picker-diagnostic:empty {
+	display: none;
+}
+
 .operon-time-picker-panel {
 	min-width: 220px;
 	max-width: 300px;
@@ -5222,6 +5232,27 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	text-decoration: none;
 }
 
+.operon-inline-compact-chip.is-reminder {
+	font-variant-numeric: tabular-nums;
+}
+
+.operon-inline-compact-chip.is-reminder.is-past {
+	opacity: 0.7;
+	--operon-inline-chip-icon-color: var(--text-faint);
+	--operon-task-chip-label-color: var(--text-faint);
+}
+
+.operon-inline-compact-chip.is-reminder.is-unresolved {
+	border-color: color-mix(in srgb, var(--text-warning) 34%, var(--background-modifier-border));
+	--operon-inline-chip-icon-color: color-mix(in srgb, var(--text-warning) 72%, var(--text-muted));
+}
+
+.operon-inline-compact-chip.is-reminder.is-invalid {
+	border-color: color-mix(in srgb, var(--text-error) 34%, var(--background-modifier-border));
+	--operon-inline-chip-icon-color: color-mix(in srgb, var(--text-error) 72%, var(--text-muted));
+	--operon-task-chip-label-color: color-mix(in srgb, var(--text-error) 64%, var(--text-muted));
+}
+
 .operon-project-serial-chip {
 	border-color: color-mix(in srgb, var(--interactive-accent) 28%, var(--background-modifier-border));
 	background: color-mix(in srgb, var(--interactive-accent) 7%, var(--background-primary));
@@ -5335,6 +5366,13 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	word-break: break-word;
 	max-height: 220px;
 	overflow: auto;
+}
+
+.operon-hover-tooltip-link-label {
+	color: var(--link-color);
+	text-decoration: underline;
+	cursor: default;
+	pointer-events: none;
 }
 
 .operon-hover-tooltip.operon-kanban-axis-tooltip {
@@ -5938,6 +5976,82 @@ body .modal.operon-subtasks-filter-modal .modal-close-button:focus-visible {
 	background: color-mix(in srgb, var(--operon-task-creator-accent) 12%, transparent);
 	color: var(--text-normal);
 	transform: translateY(-1px);
+}
+
+.operon-task-creator-reminder-strip {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 6px;
+	width: 100%;
+	min-width: 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 1px 0;
+	scrollbar-width: none;
+	overscroll-behavior-x: contain;
+	-webkit-overflow-scrolling: touch;
+}
+
+.operon-task-creator-reminder-strip.is-empty,
+.operon-task-creator-reminder-strip::-webkit-scrollbar {
+	display: none;
+}
+
+.modal.operon-task-creator-modal button.operon-task-creator-reminder-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	flex: 0 0 auto;
+	max-width: 100%;
+	min-height: 26px;
+	padding: 3px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+	background-color: var(--background-secondary);
+	box-shadow: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.25;
+	cursor: pointer;
+}
+
+.operon-task-creator-reminder-chip-icon,
+.operon-task-creator-reminder-chip-icon svg {
+	flex: 0 0 13px;
+	width: 13px;
+	height: 13px;
+}
+
+.operon-task-creator-reminder-chip-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.modal.operon-task-creator-modal button.operon-task-creator-reminder-chip:hover,
+.modal.operon-task-creator-modal button.operon-task-creator-reminder-chip:focus-visible {
+	border-color: var(--operon-task-creator-control-hover-border);
+	background: var(--operon-task-creator-control-hover-bg);
+	background-color: var(--operon-task-creator-control-hover-bg);
+	box-shadow: 0 0 0 2px var(--operon-task-creator-control-focus-ring);
+	color: var(--text-normal);
+	outline: none;
+}
+
+.modal.operon-task-creator-modal button.operon-task-creator-reminder-chip.is-past {
+	color: var(--text-faint);
+}
+
+.modal.operon-task-creator-modal button.operon-task-creator-reminder-chip.is-unresolved {
+	border-color: color-mix(in srgb, var(--text-warning) 45%, var(--background-modifier-border));
+	color: var(--text-warning);
+}
+
+.modal.operon-task-creator-modal button.operon-task-creator-reminder-chip.is-invalid {
+	border-color: color-mix(in srgb, var(--text-error) 45%, var(--background-modifier-border));
+	color: var(--text-error);
 }
 
 .operon-task-creator-toolbar {
@@ -7017,6 +7131,136 @@ body .modal.operon-task-finder-modal textarea.operon-task-finder-search:focus-vi
 	flex-direction: column;
 	gap: 8px;
 	min-width: 0;
+}
+
+.operon-reminder-rules-picker-panel {
+	width: min(460px, calc(100vw - 24px));
+	max-width: min(460px, calc(100vw - 24px));
+	border-radius: 10px;
+	gap: 8px;
+	--operon-reminder-rules-picker-accent: var(--operon-task-creator-accent, var(--operon-task-editor-accent, var(--interactive-accent)));
+	--operon-reminder-rules-picker-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
+	--operon-reminder-rules-picker-hover-border: color-mix(in srgb, var(--operon-reminder-rules-picker-accent) 34%, var(--background-modifier-border));
+	--operon-reminder-rules-picker-focus-ring: color-mix(in srgb, var(--operon-reminder-rules-picker-accent) 12%, transparent);
+}
+
+.operon-reminder-rules-picker-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.operon-reminder-rules-picker-diagnostic {
+	min-height: 16px;
+	font-size: 11px;
+	line-height: 1.35;
+	color: var(--text-muted);
+}
+
+.operon-reminder-rules-picker-diagnostic:is(.is-warning, .is-error) {
+	color: var(--text-error);
+}
+
+.operon-reminder-rules-picker-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-height: calc((44px * 5) + (4px * 4));
+	overflow-y: auto;
+	scroll-padding-block: 4px;
+}
+
+
+/* Keep picker result rows neutral even when the active Obsidian theme styles buttons. */
+body .operon-floating-panel.operon-reminder-rules-picker-panel button.operon-reminder-rules-picker-item {
+	--button-bg: var(--background-primary);
+	--button-hover-bg: var(--background-primary);
+	--button-active-bg: var(--background-primary);
+	--button-shadow: none;
+	appearance: none;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 12px;
+	min-height: 44px;
+	padding: 7px 9px;
+	border: 1px solid var(--operon-reminder-rules-picker-border);
+	border-radius: 8px;
+	background: var(--background-primary);
+	background-color: var(--background-primary);
+	background-image: none;
+	box-shadow: none;
+	filter: none;
+	color: var(--text-normal);
+	text-align: left;
+}
+
+body .operon-floating-panel.operon-reminder-rules-picker-panel button.operon-reminder-rules-picker-item.is-active:not(:disabled) {
+	--button-bg: color-mix(in srgb, var(--operon-reminder-rules-picker-accent) 8%, var(--background-primary));
+	--button-hover-bg: color-mix(in srgb, var(--operon-reminder-rules-picker-accent) 8%, var(--background-primary));
+	--button-active-bg: color-mix(in srgb, var(--operon-reminder-rules-picker-accent) 8%, var(--background-primary));
+	border-color: var(--operon-reminder-rules-picker-hover-border);
+	background: color-mix(in srgb, var(--operon-reminder-rules-picker-accent) 8%, var(--background-primary));
+	background-color: color-mix(in srgb, var(--operon-reminder-rules-picker-accent) 8%, var(--background-primary));
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-reminder-rules-picker-focus-ring);
+}
+
+body .operon-floating-panel.operon-reminder-rules-picker-panel button.operon-reminder-rules-picker-item:hover:not(.is-active):not(:disabled) {
+	border-color: var(--operon-reminder-rules-picker-border);
+	background: var(--background-primary);
+	background-color: var(--background-primary);
+}
+
+body .operon-floating-panel.operon-reminder-rules-picker-panel button.operon-reminder-rules-picker-item:focus-visible:not(:disabled) {
+	border-color: var(--operon-reminder-rules-picker-hover-border);
+	background: var(--background-primary);
+	background-color: var(--background-primary);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--operon-reminder-rules-picker-focus-ring);
+}
+
+.operon-reminder-rules-picker-item:disabled {
+	color: var(--text-faint);
+	opacity: 0.68;
+	cursor: default;
+}
+
+.operon-reminder-rules-picker-item-label,
+.operon-reminder-rules-picker-time {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-reminder-rules-picker-item-label {
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.operon-reminder-rules-picker-preview {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2px;
+	min-width: 0;
+}
+
+.operon-reminder-rules-picker-time,
+.operon-reminder-rules-picker-state {
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+.operon-reminder-rules-picker-state {
+	color: var(--text-error);
+}
+
+.operon-reminder-rules-picker-actions {
+	display: flex;
+	justify-content: flex-start;
+	padding-top: 2px;
 }
 
 .operon-location-place-item {
@@ -12080,6 +12324,24 @@ body .operon-task-editor button.operon-task-editor-workflow-action-button.is-loc
 	color: var(--text-normal);
 	background: var(--background-primary);
 	transform: translateY(-1px);
+}
+
+.operon-editor-reminder-chip {
+	cursor: pointer;
+}
+
+.operon-editor-reminder-chip.is-past {
+	color: var(--text-faint);
+}
+
+.operon-editor-reminder-chip.is-unresolved {
+	border-color: color-mix(in srgb, var(--text-warning) 45%, var(--background-modifier-border));
+	color: var(--text-warning);
+}
+
+.operon-editor-reminder-chip.is-invalid {
+	border-color: color-mix(in srgb, var(--text-error) 45%, var(--background-modifier-border));
+	color: var(--text-error);
 }
 
 .operon-editor-compact-selection-chip .operon-inline-compact-chip-label {
@@ -24719,13 +24981,92 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	margin-top: 18px;
 }
 
-.operon-settings-native-page-root .operon-native-settings-section-title {
+.operon-settings-native-page-root .operon-native-settings-section-heading {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 	margin: 0 0 18px;
+}
+
+.operon-settings-native-page-root .operon-native-settings-section-title {
+	margin: 0;
 	padding: 0;
 	color: var(--text-normal);
 	font-size: var(--font-ui-large);
 	font-weight: 700;
 	line-height: 1.25;
+}
+
+.operon-settings-native-page-root .operon-native-settings-section-docs-action,
+.operon-native-settings-page-title-docs-action,
+.operon-native-settings-declarative-docs-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	min-width: 28px;
+	min-height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 8px;
+	box-shadow: none;
+	background: transparent;
+	color: var(--text-muted);
+	flex: 0 0 28px;
+}
+
+.operon-settings-native-page-root .operon-native-settings-section-docs-action:hover,
+.operon-native-settings-page-title-docs-action:hover,
+.operon-native-settings-declarative-docs-action:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.operon-settings-native-page-root .operon-native-settings-section-docs-action:focus-visible,
+.operon-native-settings-page-title-docs-action:focus-visible,
+.operon-native-settings-declarative-docs-action:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+.operon-settings-native-page-root .operon-native-settings-section-docs-action svg,
+.operon-native-settings-page-title-docs-action svg,
+.operon-native-settings-declarative-docs-action svg {
+	width: 16px;
+	height: 16px;
+}
+
+@media (hover: none), (pointer: coarse) {
+	.operon-settings-native-page-root .operon-native-settings-section-docs-action,
+	.operon-native-settings-page-title-docs-action,
+	.operon-native-settings-declarative-docs-action {
+		width: 36px;
+		height: 36px;
+		min-width: 36px;
+		min-height: 36px;
+		flex-basis: 36px;
+	}
+}
+
+.operon-native-settings-page-titlebar-with-docs {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row {
+	justify-content: flex-start;
+}
+
+.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-info {
+	flex: 0 1 auto;
+}
+
+.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-control {
+	flex: 0 0 auto;
+	justify-content: flex-start;
+	margin-inline-start: 4px;
 }
 
 .operon-settings-native-page-root .operon-native-settings-section-desc {
@@ -25012,6 +25353,10 @@ button.operon-kanban-descendant-toggle:focus-visible {
 .operon-settings-long-text-setting .setting-item-control input.operon-settings-input-long {
 	width: min(250px, 100%);
 	max-width: 100%;
+}
+
+.operon-reminder-sound-setting .setting-item-control {
+	flex-wrap: wrap;
 }
 
 .operon-settings-control-active {
@@ -26745,6 +27090,25 @@ button.operon-kanban-descendant-toggle:focus-visible {
 
 .operon-parent-child-inheritance-heading .setting-item-control {
 	display: none;
+}
+
+.operon-project-serials-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row,
+.operon-parent-child-inheritance-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row {
+	display: flex;
+	align-items: center;
+}
+
+.operon-project-serials-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-info,
+.operon-parent-child-inheritance-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-info {
+	width: auto;
+	flex: 0 1 auto;
+}
+
+.operon-project-serials-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-control,
+.operon-parent-child-inheritance-heading.setting-item.operon-native-settings-declarative-docs-action--inline-heading-row > .setting-item-control {
+	display: flex;
+	flex: 0 0 auto;
+	justify-content: flex-start;
 }
 
 .operon-parent-child-inheritance-setting > .operon-native-settings-section-desc {
@@ -31080,4 +31444,19 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 	font-size: var(--font-smallest);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.operon-settings-inline-error {
+	display: block;
+	margin-block-start: 4px;
+	color: var(--text-error);
+}
+.operon-reminder-notice-icon {
+	display: inline-flex;
+	vertical-align: text-bottom;
+}
+
+.operon-reminder-notice-icon > svg {
+	width: 1em;
+	height: 1em;
 }
