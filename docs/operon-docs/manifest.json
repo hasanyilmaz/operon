@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-07-18T13:39:26.179Z",
+  "generatedAt": "2026-07-20T18:25:54.471Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -10,8 +10,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "356f7cc4cfcaf3c93aff79f29b00c18c3c8b06d12eaa2a1a45538eccf5b36304",
-      "bytes": 8756
+      "sha256": "ec4080bfcaf18625a674a051f62de25b62356478caf658b984ba2c8df1929baa",
+      "bytes": 8836
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -35,8 +35,8 @@
     },
     {
       "path": "DOCS-006 Glossary of Operon terms.md",
-      "sha256": "71cd93e87e72b324492b10dc3815641249febb79908c3ce958d83b0b6e966bcb",
-      "bytes": 5117
+      "sha256": "cfb7a2f41d715c53908673151c3f560b8cc67bdaf21b8eee1352bb30be0b75a5",
+      "bytes": 5859
     },
     {
       "path": "DOCS-007 Install and enable Operon.md",
@@ -65,8 +65,8 @@
     },
     {
       "path": "DOCS-012 Inline task syntax.md",
-      "sha256": "b80393e86afa992da84e33ce8a04cce646ec18aa4ce946ab71dd585d8577658a",
-      "bytes": 13747
+      "sha256": "3ac669aad777d695c6e6fbea8e08dcea5ff9702c19bfc413083c6fceccb487ce",
+      "bytes": 14206
     },
     {
       "path": "DOCS-013 File tasks.md",
@@ -95,8 +95,8 @@
     },
     {
       "path": "DOCS-018 Task properties.md",
-      "sha256": "fb2131851fc14112bfc78492ca78f6c0c92f3c1090f63d6f10f5e292cedf4afa",
-      "bytes": 4886
+      "sha256": "8473c8dd643471e1638cf0a0d42e5323b4dafd0c0bd81642d74f130a39a1c3f0",
+      "bytes": 5329
     },
     {
       "path": "DOCS-019 Converting inline and file tasks.md",
@@ -105,13 +105,13 @@
     },
     {
       "path": "DOCS-020 Task Creator.md",
-      "sha256": "39e9bbf78d6869543074b18e2e607864dedd9fd84e6160a8b2963d61d383a94a",
-      "bytes": 4399
+      "sha256": "3b1a699ad9cb82a62662a7503cba6a04d394920ef5a32f8b1337b5cc1a433001",
+      "bytes": 5591
     },
     {
       "path": "DOCS-021 Task Editor.md",
-      "sha256": "e60a2e4622d4647aea93fac483467c9cc0ce5d213bfdc27a82461f130bf84dbc",
-      "bytes": 4178
+      "sha256": "9aa83868d9a794031a8320ea404de66896f3f47fc2675fb9c065740c1824a6cc",
+      "bytes": 5708
     },
     {
       "path": "DOCS-022 Command palette reference.md",
@@ -165,13 +165,13 @@
     },
     {
       "path": "DOCS-032 Pinned Task Dock.md",
-      "sha256": "eb32ce33715921c84e959000abd4088860f53310194080d604cd1ba33e0257b3",
-      "bytes": 3136
+      "sha256": "77a7b76ffc08cfe4579002dd65c4cfe7d2ab764df47132aa647da5f3b20f146b",
+      "bytes": 4398
     },
     {
       "path": "DOCS-033 Recurring tasks.md",
-      "sha256": "9d89a6eaed634544db8b63be293bac94c50843be47608452c23b55a2c327653d",
-      "bytes": 5452
+      "sha256": "a10ebe88c9b9c792a6d3ad900f71aa4bcdfbd13268a9caba2a6868b22398c23f",
+      "bytes": 5686
     },
     {
       "path": "DOCS-034 Time tracking.md",
@@ -200,8 +200,8 @@
     },
     {
       "path": "DOCS-039 Key mappings.md",
-      "sha256": "bdf8f6c67c50d0ff2371a127793700d3f845b0afe489585f371191457fdf716a",
-      "bytes": 6679
+      "sha256": "e77e53a71878a830d191a0e0bd451937b066f8c51e7925874de540ba80c05314",
+      "bytes": 8908
     },
     {
       "path": "DOCS-040 Custom keys.md",
@@ -210,8 +210,8 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "7fc4c46a5f86a11dc63ffd90d3f6e8c2296f3b557090d1eb554cdef6523e85c0",
-      "bytes": 10065
+      "sha256": "2b7322d649f52ccc855423ff91e49d52c2b5f552406ae9c7e31e28bc0ca3bef0",
+      "bytes": 12001
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
@@ -295,8 +295,8 @@
     },
     {
       "path": "DOCS-058 Operon inheritance rules.md",
-      "sha256": "1457232e8028f16773ca530f3049462214e8fa923998bee2f312c7f5ae0663ff",
-      "bytes": 6167
+      "sha256": "141ba54e238dbf5eb82382a786b1be29e75e84118d6b7f1c9b32750f26ace76b",
+      "bytes": 7019
     },
     {
       "path": "DOCS-059 Dynamic Subtasks Filter.md",
@@ -315,8 +315,8 @@
     },
     {
       "path": "DOCS-062 Field pickers overview.md",
-      "sha256": "39067fbf5f56959a9725a85432591b060114ef71acf6d7cefb708d77b8f88347",
-      "bytes": 4282
+      "sha256": "0e32ca0fd1991627a259e90d8fab963e700bb6e265d574135131f17e974eabec",
+      "bytes": 5464
     },
     {
       "path": "DOCS-063 Date and time picker.md",
@@ -582,6 +582,16 @@
       "path": "DOCS-115 File task property columns.md",
       "sha256": "932e92f2811f0486075acfa111c2dd985abe4b4ad98ba981d1204dbc4ea2c1a7",
       "bytes": 12120
+    },
+    {
+      "path": "DOCS-116 Reminders.md",
+      "sha256": "2d902d8e8ee1a53f68e27f216bbd80f5f4d1112fa41181f96138a2f67738f0dc",
+      "bytes": 14139
+    },
+    {
+      "path": "DOCS-117 Reminder rules.md",
+      "sha256": "0dbfde6f7001b4ac7db683711581db1a827d054e5431d423a7419b175059ee71",
+      "bytes": 12107
     }
   ]
 }

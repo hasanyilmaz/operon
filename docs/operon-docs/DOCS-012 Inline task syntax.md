@@ -11,7 +11,7 @@ tags:
   - taskmodel
   - inlinetask
   - taskproperties
-Updated: 2026-06-27T14:05:00
+Updated: 2026-07-20T15:36:13
 ---
 
 # Inline task syntax
@@ -82,6 +82,8 @@ These are the fields you choose and edit, directly or through the Task Creator a
 | `duration` | Number | Time actually spent, in seconds (usually filled by the timer). | `5400` |
 | `repeat` | Text | Recurrence rule, written as `key=value` pairs. See [[DOCS-033 Recurring tasks\|Recurring tasks]]. | `mode=schedule\|freq=week\|interval=1` |
 | `datetimeRepeatEnd` | Date & time | When recurrence stops. | `2026-12-31T00:00:00` |
+| `reminderDatetimes` | List | Reminders at fixed moments. See [[DOCS-116 Reminders\|Reminders]]. | `2026-05-30T09:00:00` |
+| `reminderRules` | List | Reminders at an offset from one of the task's dates. See [[DOCS-117 Reminder rules\|Reminder rules]]. | `dateDue.1d` |
 | `parentTask` | Text | The `operonId` of the parent task. See [[DOCS-016 Parent and sub-tasks\|Parent and sub-tasks]]. | `xyz9876` |
 | `assignees` | List | Who does the work. | `[[Me]]` |
 | `contexts` | List | Environment or condition. | `[[Home]]` |
@@ -115,17 +117,17 @@ You will sometimes see fields on a task that you never set. That is normal. Oper
 | `activeTracker` | Date & time | The start time of a timer that is currently running. |
 | `repeatSeriesId` | Text | Links a single occurrence to its recurring series. |
 | `repeatOccurrenceDate` | Date | The recurrence slot date for a generated occurrence. |
-| `reminders` | List | Reminder times or offsets for the task. |
 | `timezone` | Text | The task's timezone, when one applies. |
 | `related` | List | Related notes and references, managed through the editor. |
 
-The last several (`repeatSeriesId`, `repeatOccurrenceDate`, `reminders`, `timezone`, `activeTracker`, `related`) are internal bookkeeping. They are stored in your Markdown so the file stays self-contained, but they are not meant to be edited by hand and are normally hidden from the field-management UI.
+The last several (`repeatSeriesId`, `repeatOccurrenceDate`, `timezone`, `activeTracker`, `related`) are internal bookkeeping. They are stored in your Markdown so the file stays self-contained, but they are not meant to be edited by hand and are normally hidden from the field-management UI.
 
 ## Values at a glance
 
 - **Status** uses `Pipeline.Status`, so both the pipeline and the stage are visible. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
 - **Priority** is a single letter from S (highest) to F (lowest). See [[DOCS-038 Task priorities|Task priorities]].
 - **Dates** use `YYYY-MM-DD`. **Datetimes** use `YYYY-MM-DDTHH:MM:SS` in local time.
+- **Reminders** come in two forms: `reminderDatetimes` holds local datetimes, and `reminderRules` holds a reference date and an offset joined by a dot, such as `dateDue.1d`. See [[DOCS-117 Reminder rules|Reminder rules]].
 - **Time fields** (`estimate`, `duration`, and the totals) are stored in seconds, but you normally set them through the Task Editor rather than typing seconds.
 - **List fields** (`assignees`, `contexts`, `links`, `blocking`, `blockedBy`) hold one or more values separated by a semicolon and a space (`; `). To keep a literal semicolon inside a single value, escape it as `\;`.
 - **Task links** (`parentTask`, `blocking`, `blockedBy`) reference other tasks by their `operonId`, not by title or path.
@@ -201,3 +203,4 @@ A quick rule of thumb for what is safe to touch by hand:
 - [[DOCS-011 Inline tasks|Inline tasks]]
 - [[DOCS-013 File tasks|File tasks]]
 - [[DOCS-018 Task properties|Task properties]]
+- [[DOCS-117 Reminder rules|Reminder rules]]

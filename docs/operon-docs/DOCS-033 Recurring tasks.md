@@ -10,7 +10,7 @@ tags:
   - operon
   - recurrence
   - automation
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-20T15:56:48
 ---
 
 # Recurring tasks
@@ -56,7 +56,7 @@ The simplest way to add or change recurrence is the [[DOCS-021 Task Editor|Task 
 
 ## What carries forward, what resets
 
-When a new occurrence is created, structure that should persist (the task's shape, its body for a file task) carries forward, while per-occurrence parts reset: completion state, tracked time, and progress start fresh. This is what stops a recurring task from being a stale copy of the last run. For the exact field-by-field list of what carries forward and what resets, see [[DOCS-058 Operon inheritance rules|Operon inheritance rules]].
+When a new occurrence is created, structure that should persist (the task's shape, its body for a file task) carries forward, while per-occurrence parts reset: completion state, tracked time, and progress start fresh. Relative ReminderRules carry forward and resolve against the new occurrence's dates when their reference date is available; fixed ReminderDatetimes stay with the occurrence where you created them. This is what stops a recurring task from being a stale copy of the last run. For the exact field-by-field list of what carries forward and what resets, see [[DOCS-058 Operon inheritance rules|Operon inheritance rules]] and [[DOCS-116 Reminders|Reminders]].
 
 ## Recurring file tasks
 

@@ -10,7 +10,7 @@ tags:
   - operon
   - taskmodel
   - terms
-Updated: 2026-07-14T00:13:46
+Updated: 2026-07-20T15:25:06
 ---
 
 # Glossary of Operon terms
@@ -52,6 +52,11 @@ Short definitions for the words used across these docs. When a term has its own 
 
 ## Time
 
+- **Reminder**: a notification Operon raises about an open task at a chosen moment, separate from the task's due date. See [[DOCS-116 Reminders|Reminders]].
+- **ReminderDatetimes**: the field holding reminders set at a fixed moment, which never move when the task's dates change.
+- **ReminderRules**: the field holding reminders defined as an offset from one of the task's own dates, so they move when that date moves. See [[DOCS-117 Reminder rules|Reminder rules]].
+- **Reference date**: the task date a reminder rule counts back from, one of `dateDue`, `dateScheduled`, `dateStarted`, `datetimeStart`, or `datetimeEnd`.
+- **Offset**: how long before its reference date a reminder rule fires, written as `1d`, `2h`, `30m`, or a combination.
 - **Time tracking**: recording effort against a task, so duration becomes part of its history. See [[DOCS-034 Time tracking|Time tracking]].
 - **TrackTime**: the count-up mode of time tracking, a stopwatch running on a task.
 - **FlowTime**: the countdown mode of time tracking, a timed focus session with breaks and an overtime notice. See [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]].

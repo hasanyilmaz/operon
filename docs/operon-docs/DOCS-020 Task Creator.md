@@ -11,7 +11,7 @@ tags:
   - taskcreator
   - capture
   - pickers
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-20T15:16:36
 ---
 
 # Task Creator
@@ -43,6 +43,17 @@ Give the task a clear title, then choose its shape:
 
 From there you can set the fields that matter. For a first task, a title, status, priority, and maybe a date are plenty. Contexts, assignees, recurrence, parent links, icons, and colors can wait. The field names follow the canonical set described in [[DOCS-012 Inline task syntax|Inline task syntax]].
 
+## Setting reminders while you create
+
+The toolbar carries a button for each kind of reminder, **ReminderDatetimes** for a fixed moment and **ReminderRules** for an offset from one of the task's dates. Reminders you add before saving appear as chips in the creator, and you can click one to change or remove it before the task exists. See [[DOCS-116 Reminders|Reminders]].
+
+Two things worth knowing:
+
+- **Both buttons are hidden by default.** Turn them on in **Settings → Operon → Interface → Task Chips**, in the Task Creator toolbar section, which is also where you order the toolbar.
+- **The rule button stays disabled until the task has a date**, because a rule counts back from one of the task's own dates. Set a due, scheduled, or start date, or a timed block, first, and it becomes available.
+
+If you would rather not set reminders during capture at all, leave the buttons off and add reminders later from the [[DOCS-021 Task Editor|Task Editor]] or directly from a task's chips.
+
 ## Default to file tasks
 
 Task Creator starts in Inline mode by default, but you can make it open in File mode instead. This is useful if most of your work lives as notes with frontmatter and a body, and you do not want to switch from Inline to File every time.
@@ -69,8 +80,11 @@ Open the new task in the [[DOCS-021 Task Editor|Task Editor]] to see its structu
 
 **Can Task Creator open in File mode by default?** Yes. Enable **Default to File Task in Task Creator** under **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults**.
 
+**Where are the reminder buttons?** Hidden by default. Turn them on in **Settings → Operon → Interface → Task Chips**, in the Task Creator toolbar section.
+
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-009 Create your first task|Create your first task]]
 - [[DOCS-022 Command palette reference|Command palette reference]]
+- [[DOCS-116 Reminders|Reminders]]

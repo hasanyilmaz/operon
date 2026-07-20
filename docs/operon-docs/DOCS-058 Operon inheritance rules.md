@@ -9,7 +9,7 @@ tags:
   - taskmodel
   - inheritance
   - subtasks
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-20T15:56:48
 ---
 
 # Operon inheritance rules
@@ -45,15 +45,19 @@ When you create a subtask, Operon copies a chosen set of the parent's fields int
 - **Status is special.** When `status` is inherited, the child does not copy the parent's exact stage. It starts at the *first* status of a pipeline. The **Status pipeline** setting decides which pipeline supplies that starting status: `Parent's pipeline` (the default) or `Default pipeline`.
 - **Priority** copies the parent's priority, or falls back to your default priority when the parent has none.
 
-Some fields can never be inherited, whatever the setting says, because they must stay unique or be recomputed: `operonId`, `parentTask`, `datetimeCreated`, `datetimeModified`, `blocking`, `blockedBy`, `duration`, `totalEstimate`, `totalDuration`, the subtask counts, `repeatSeriesId`, `repeatOccurrenceDate`, `reminders`, `timezone`, `trackers`, `activeTracker`, and `related`.
+Some fields can never be inherited, whatever the setting says, because they must stay unique or be recomputed: `operonId`, `parentTask`, `datetimeCreated`, `datetimeModified`, `blocking`, `blockedBy`, `duration`, `totalEstimate`, `totalDuration`, the subtask counts, `repeatSeriesId`, `repeatOccurrenceDate`, `reminderDatetimes`, `reminderRules`, `timezone`, `trackers`, `activeTracker`, and `related`.
+
+Reminders are on that list for a practical reason rather than a technical one: a subtask is rarely due when its parent is, so inheriting the parent's reminders would fire notifications about the wrong work at the wrong time. Give a subtask its own reminders when it needs them. See [[DOCS-116 Reminders|Reminders]].
 
 ## 2. Recurrence carry-forward (next occurrence)
 
 When a recurring task is completed, Operon generates the next occurrence and copies fields forward from the run you just finished. See [[DOCS-033 Recurring tasks|Recurring tasks]].
 
-- **Carried forward** (intent and shape): `assignees`, `priority`, `status`, `contexts`, `parentTask`, `repeat`, `datetimeRepeatEnd`, `estimate`, `note`, `taskIcon`, `taskColor`, and the timed block `datetimeStart` and `datetimeEnd` (the time of day is kept, the date is shifted to the next occurrence).
+- **Carried forward** (intent and shape): `assignees`, `priority`, `status`, `contexts`, `parentTask`, `repeat`, `datetimeRepeatEnd`, `reminderRules`, `estimate`, `note`, `taskIcon`, `taskColor`, `dateStarted`, `dateDue`, and the timed block `datetimeStart` and `datetimeEnd` (the relative dates are shifted to the next occurrence).
 - **Reset** (the reality of one run): `dateCompleted`, `dateCancelled`, `duration`, `trackers`, `activeTracker`, `progress`, the subtask counts, `totalEstimate`, and `totalDuration`. Dependencies (`blocking`, `blockedBy`) are not carried forward either.
 - **Fresh each time:** a new `operonId`, a new `datetimeCreated`, the next `dateScheduled`, and an updated `datetimeModified`.
+
+The two reminder fields intentionally behave differently. **ReminderRules carry forward** because they describe a relationship, such as 15 minutes before Start time; Operon resolves that same rule against the new occurrence's shifted dates when the referenced date is available. **ReminderDatetimes do not carry forward** because they are fixed moments that belong to the occurrence where you created them. See [[DOCS-116 Reminders|Reminders]].
 
 ## 3. Display inheritance (color and icon)
 
@@ -89,3 +93,4 @@ Operon settings for this live in **Settings → Operon → Tasks → Relationshi
 - [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
 - [[DOCS-018 Task properties|Task properties]]
 - [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
+- [[DOCS-116 Reminders|Reminders]]

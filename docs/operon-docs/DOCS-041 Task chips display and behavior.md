@@ -11,7 +11,7 @@ tags:
   - settings
   - chips
   - configure
-Updated: 2026-07-01T15:29:10
+Updated: 2026-07-20T15:16:36
 ---
 
 # Task chips: display and behavior
@@ -32,6 +32,7 @@ Chips cover the fields you most often want at a glance:
 - Task links: **Parent**, **Blocking**, and **Blocked by**.
 - **Estimate** and **Duration**, and their rolled-up totals.
 - **Recurrence**, showing a recurring task's pattern (the `repeat` field).
+- **Reminders**, one chip per reminder, from either reminder field. See [[DOCS-116 Reminders|Reminders]].
 - **Location**, shown as a small map chip.
 - **Tags** and external **Links**.
 
@@ -76,6 +77,7 @@ On interactive surfaces, clicking a chip does something specific to its field. S
 | Due, Scheduled, Start, and the other dates | Opens the date picker |
 | Estimate | Opens the estimate picker |
 | Recurrence | Opens the recurrence picker |
+| Reminder | Reopens that reminder's picker, to change or remove it |
 | Assignees, Contexts, Parent, Blocking, Blocked by | Opens the linked task or note, creating it if it does not exist yet |
 | Tags | Opens Obsidian's tag search for that tag |
 | Links | Opens the external link |
@@ -103,6 +105,25 @@ Once a task is finished or cancelled, its date chips drop the color, because the
 ## The recurrence chip
 
 A recurring task shows a **recurrence chip** (from its `repeat` field) that summarizes the pattern: the recurrence rule, or the next occurrence date, or that the next run comes after completion, along with an end if the series has one. You read the rhythm at a glance, and clicking the chip opens the recurrence picker to change it. See [[DOCS-033 Recurring tasks|Recurring tasks]].
+
+## Reminder chips
+
+Reminders differ from every other field here in two ways.
+
+**One chip per reminder, not per field.** A task with two fixed reminders and a rule shows three chips, each carrying its own value, rather than one chip holding a list. Clicking a chip reopens that reminder's own picker so you can change or remove it. A fixed reminder shows just the time when it falls today and the date with the time otherwise; a rule shows itself in words, as **1d before Due date**.
+
+**They are hidden by default on every surface.** Most tasks carry no reminders, so the chips stay off until you ask for them, on each surface separately like any other chip. Turning them off is purely visual: the reminders stay on the task and keep firing, and they are not counted toward a surface's hidden-chip indicator either.
+
+A chip also carries the reminder's state, which is how you spot one that will not fire:
+
+| State | What it means |
+|---|---|
+| Normal | Scheduled, still ahead |
+| Past reminder | Its moment has gone by |
+| Unresolved reminder | A rule whose reference date is missing, so nothing is scheduled |
+| Invalid reminder | The stored value could not be read |
+
+See [[DOCS-116 Reminders|Reminders]] for what the two reminder fields are, and [[DOCS-117 Reminder rules|Reminder rules]] for how a rule resolves.
 
 ## The location chip
 
@@ -136,8 +157,13 @@ Chip configuration lives in **Settings → Operon → Interface → Task Chips**
 
 **Do I need the Maps plugin for locations?** No. The location chip and its popover work from coordinates or a place note on their own. The Maps plugin only adds the rendered map.
 
+**Why do I not see reminder chips?** They are hidden by default on every surface. Turn them on for the surfaces you want under **Settings → Operon → Interface → Task Chips**.
+
+**A reminder chip says "Unresolved". What is wrong?** It is a rule whose reference date is missing, so there is nothing to count back from. Set that date and it resolves again. See [[DOCS-117 Reminder rules|Reminder rules]].
+
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-068 Location picker|Location picker]]
 - [[DOCS-040 Custom keys|Custom keys]]
+- [[DOCS-116 Reminders|Reminders]]

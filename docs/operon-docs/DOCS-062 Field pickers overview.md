@@ -11,7 +11,7 @@ tags:
   - pickers
   - taskcreator
   - taskeditor
-Updated: 2026-07-06T19:27:56
+Updated: 2026-07-20T15:19:54
 ---
 
 # Field pickers overview
@@ -44,7 +44,18 @@ Each built-in field opens a picker built for it. The property type is noted so y
 | `parentTask`, `blocking`, `blockedBy`, `related` | Text and List | Task link pickers | [[DOCS-069 Task link and list pickers\|Task link and list pickers]] |
 | `assignees`, `contexts`, `tags`, `links` | List | List pickers | [[DOCS-069 Task link and list pickers\|Task link and list pickers]] |
 | `estimate` | Number | Estimate picker | [[DOCS-069 Task link and list pickers\|Task link and list pickers]] |
+| `reminderDatetimes` | List | Date and time picker, in add or edit mode | [[DOCS-116 Reminders\|Reminders]] |
+| `reminderRules` | List | Reminder rule picker | [[DOCS-117 Reminder rules\|Reminder rules]] |
 
+
+## The two reminder pickers are list editors
+
+Most pickers set one value. The two reminder fields hold a list, so their pickers work on **one item at a time**: they open in **add** mode from the field's own control, and in **edit** mode when you click an existing reminder's chip, where they also offer to remove it. See [[DOCS-116 Reminders|Reminders]].
+
+The two differ in what they ask for:
+
+- **ReminderDatetimes** reuses the ordinary date and time picker, so a fixed reminder is chosen exactly like a due date, and it refuses a time in the past or one the task already covers.
+- **ReminderRules** is a picker of its own, and the only one that does not ask for the value it stores. You type an offset such as `1d`, and it shows what that resolves to against each of the task's dates so you can pick the one you meant. It does not open at all when the task has no date to count back from. See [[DOCS-117 Reminder rules|Reminder rules]].
 
 ## General pickers for custom keys
 
@@ -69,3 +80,4 @@ Knowing the field-to-picker rule explains the whole editing experience: why a cu
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-094 How to create a task with Task Creator|How to create a task with Task Creator]]
 - [[DOCS-113 Text field editor popover|Text field editor popover]]
+- [[DOCS-116 Reminders|Reminders]]

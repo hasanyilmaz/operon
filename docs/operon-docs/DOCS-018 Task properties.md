@@ -10,7 +10,7 @@ tags:
   - operon
   - taskmodel
   - taskproperties
-Updated: 2026-07-18T15:07:38
+Updated: 2026-07-20T15:10:53
 ---
 
 # Task properties
@@ -39,8 +39,10 @@ A third case sits outside this model entirely: a frontmatter property on a file 
 
 Not every property is yours to fill. Two groups behave very differently:
 
-- **Fields you set**: status, priority, dates, contexts, assignees, parent, recurrence, icon, color, note, and your custom keys. You edit these directly or through the [[DOCS-021 Task Editor|Task Editor]].
+- **Fields you set**: status, priority, dates, contexts, assignees, parent, recurrence, reminders, icon, color, note, and your custom keys. You edit these directly or through the [[DOCS-021 Task Editor|Task Editor]].
 - **Fields Operon manages**: identity, timestamps, progress, subtask counts, totals, dependency links, and tracker bookkeeping. You can read them, but you should not hand-edit them. The full split is listed in [[DOCS-012 Inline task syntax|Inline task syntax]].
+
+One idea can be carried by more than one property. **Reminders** are the clearest example: there is no single reminder field, but two, `reminderDatetimes` for reminders at a fixed moment and `reminderRules` for reminders at an offset from one of the task's own dates. They are separate canonical keys with separate values, and a task can use either or both. See [[DOCS-116 Reminders|Reminders]].
 
 ## One model, two surfaces
 
@@ -73,3 +75,4 @@ Operon settings for this live in two places under **Settings → Operon → Core
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-115 File task property columns|File task property columns]]
+- [[DOCS-116 Reminders|Reminders]]

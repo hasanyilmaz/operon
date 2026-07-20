@@ -10,7 +10,7 @@ tags:
   - operon
   - pinnedtasks
   - plan
-Updated: 2026-06-28T18:48:40
+Updated: 2026-07-20T15:19:54
 ---
 
 # Pinned Task Dock
@@ -24,6 +24,14 @@ The Pinned Task Dock keeps a chosen set of tasks always in view, so the work you
 ## Pin a task
 
 Pin a task from its [[DOCS-042 Contextual menu actions|contextual menu]] with **Pin task**, and remove it later with **Unpin task**. Pinned tasks stay on the dock across notes and sessions until you unpin them.
+
+## Pinning automatically when a reminder arrives
+
+A task can also arrive on the dock on its own. Turn on **Pin task when its reminder time arrives**, in **Settings → Operon → Tasks → Reminders**, and Operon pins a task as it processes one of that task's due reminders. It is off by default.
+
+This turns a reminder from a moment into a state. A plain reminder tells you once and is gone; with this on, the task also lands on the dock and stays there until you unpin it, which suits a nudge that means "this now needs to stay in front of me."
+
+It only ever pins **open** tasks, and never pins a task that is already pinned, so a task with several reminders does not accumulate anything. Unpinning is always yours to do; Operon does not unpin automatically when the reminder passes. See [[DOCS-116 Reminders|Reminders]].
 
 ## Two surfaces: floating dock or side panel
 
@@ -48,12 +56,17 @@ Click a pinned task to open it in the [[DOCS-021 Task Editor|Task Editor]]. Hold
 
 **Is pinning the same as priority?** No. Pinning is a personal "keep this in front of me" choice. Priority is a task field used for sorting and filtering. See [[DOCS-038 Task priorities|Task priorities]].
 
+**A task pinned itself. Why?** You have **Pin task when its reminder time arrives** turned on and one of that task's reminders came due. See [[DOCS-116 Reminders|Reminders]].
+
+**Does an auto-pinned task unpin itself later?** No. Once pinned, it stays until you unpin it.
+
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Interface → Pinned Dock**, which configures the pinned tasks surface, floating dock or sidebar.
+Operon settings for this live in **Settings → Operon → Interface → Pinned Dock**, which configures the pinned tasks surface, floating dock or sidebar. The **Pin task when its reminder time arrives** automation is set separately, in **Settings → Operon → Tasks → Reminders**.
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-025 Filter View|Filter View]]
 - [[DOCS-004 Operon system map|Operon system map]]
+- [[DOCS-116 Reminders|Reminders]]

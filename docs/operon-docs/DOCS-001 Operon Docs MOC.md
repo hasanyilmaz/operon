@@ -6,7 +6,7 @@ tags:
   - operon
   - start
   - navigation
-Updated: 2026-07-18T15:07:38
+Updated: 2026-07-20T14:38:46
 ---
 
 # Operon Docs
@@ -134,6 +134,8 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 ### Automation
 - [[DOCS-033 Recurring tasks|Recurring tasks]]
 - [[DOCS-071 Recurrence rules and modes|Recurrence rules and modes]]
+- [[DOCS-116 Reminders|Reminders]]
+- [[DOCS-117 Reminder rules|Reminder rules]]
 - [[DOCS-034 Time tracking|Time tracking]]
 - [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]]
 - [[DOCS-036 Agent-friendly workflows|Agent-friendly workflows]]

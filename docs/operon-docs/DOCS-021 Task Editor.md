@@ -11,7 +11,7 @@ tags:
   - taskeditor
   - edit
   - pickers
-Updated: 2026-07-18T15:13:08
+Updated: 2026-07-20T15:16:36
 ---
 
 # Task Editor
@@ -42,6 +42,7 @@ The Task Editor exposes the canonical fields as proper controls:
 - Dates: due, scheduled, started, and timed start/end blocks.
 - Parent task and dependencies.
 - Recurrence. See [[DOCS-033 Recurring tasks|Recurring tasks]].
+- Reminders, both kinds. See [[DOCS-116 Reminders|Reminders]].
 - Pinning. See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
 - Time tracking, including session history. See [[DOCS-034 Time tracking|Time tracking]].
 - Icon, color, and a short note.
@@ -51,6 +52,16 @@ For a file task, the editor can also show the Markdown body alongside the fields
 > **MEDIA-DOCS-021-3:** The Task Editor on a file task, the fields beside the Markdown body.
 
 ![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
+
+## Reminder rows
+
+Reminders get their own rows, one for **ReminderDatetimes** and one for **ReminderRules**, and they behave a little differently from a single-value field. Each reminder on the task appears as its own chip in the row, so a task with three reminders shows three chips rather than one crowded value.
+
+- **Add** one from the row's own control, which opens the picker for that kind of reminder.
+- **Edit or remove** one by clicking its chip, which reopens the same picker loaded with that reminder.
+- The **ReminderRules** control is **disabled when the task has no date a rule could attach to**, since there would be nothing for an offset to count back from. Give the task a due, scheduled, or start date, or a timed block, and it becomes available.
+
+Both rows are **hidden by default.** Turn them on in **Settings → Operon → Interface → Task Editor**, under **Workflow Pickers**, which is also where you set the order of the editor's picker rows. Hiding a row never changes the reminders stored on a task. See [[DOCS-116 Reminders|Reminders]].
 
 ## Saving is automatic
 
@@ -68,6 +79,10 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 
 **Do I need to save before closing the Task Editor?** No. It autosaves two seconds after your last edit, and closing it saves any pending change right away.
 
+**Why can I not add a reminder rule to this task?** A rule counts back from one of the task's dates, and this task has none yet. Add a due, scheduled, or start date, or a timed block, first.
+
+**I do not see reminder rows in the editor.** They are hidden by default. Turn them on under **Settings → Operon → Interface → Task Editor**, in **Workflow Pickers**.
+
 ## Settings
 
 Operon settings for this live in **Settings → Operon → Interface → Task Editor**, which configures the Task Editor layout and which fields it shows.
@@ -77,3 +92,4 @@ Operon settings for this live in **Settings → Operon → Interface → Task Ed
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-020 Task Creator|Task Creator]]
 - [[DOCS-012 Inline task syntax|Inline task syntax]]
+- [[DOCS-116 Reminders|Reminders]]
