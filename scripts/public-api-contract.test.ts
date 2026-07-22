@@ -30,6 +30,8 @@ async function run(): Promise<void> {
 	equal(isOperonPublicTransitionTaskInput({ statusId: 'todo' }), true);
 	equal(isOperonPublicTransitionTaskInput({ statusId: 2 }), false);
 	equal(isOperonPublicConvertTaskInput({ target: 'inline', targetPath: 'Project.md' }), true);
+	equal(isOperonPublicConvertTaskInput({ target: 'inline', targetPath: 'Board.canvas' }), false);
+	equal(isOperonPublicConvertTaskInput({ target: 'inline' }), false);
 	equal(isOperonPublicConvertTaskInput({ target: 'yaml' }), false);
 	equal(isOperonPublicFilterQueryInput({ filterSetId: 'now', scopePath: 'Efforts/Projets' }), true);
 	equal(isOperonPublicFilterQueryInput({ filterSetId: 1 }), false);

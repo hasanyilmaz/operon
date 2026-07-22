@@ -149,9 +149,13 @@ export function isOperonPublicTransitionTaskInput(value: unknown): value is Oper
 }
 
 export function isOperonPublicConvertTaskInput(value: unknown): value is OperonPublicConvertTaskInput {
-	return isRecord(value)
-		&& (value.target === 'inline' || value.target === 'file')
-		&& hasOnlyOptionalStrings(value, ['fileTemplateId', 'targetPath', 'targetFolder']);
+	if (!isRecord(value)
+		|| (value.target !== 'inline' && value.target !== 'file')
+		|| !hasOnlyOptionalStrings(value, ['fileTemplateId', 'targetPath', 'targetFolder'])) return false;
+	if (value.target === 'inline') {
+		return typeof value.targetPath === 'string' && /\.md$/iu.test(value.targetPath.trim());
+	}
+	return true;
 }
 
 export function isOperonPublicFilterQueryInput(value: unknown): value is OperonPublicFilterQueryInput {

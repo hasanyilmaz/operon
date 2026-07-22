@@ -2664,7 +2664,8 @@ export default class OperonPlugin extends Plugin {
 				return this.publicMutationResult(false, operonId, 'invalid-input', 'targetPath is required for file-to-inline conversion.');
 			}
 			const targetFile = this.app.vault.getAbstractFileByPath(targetPath);
-			if (!(targetFile instanceof TFile) || targetFile.path === task.primary.filePath) {
+			if (!(targetFile instanceof TFile) || targetFile.extension.toLowerCase() !== 'md'
+				|| targetFile.path === task.primary.filePath) {
 				return this.publicMutationResult(false, operonId, 'invalid-input', 'targetPath must identify a different Markdown file.');
 			}
 			const inlineTaskLine = this.formatConverter.yamlToInline(operonId);
