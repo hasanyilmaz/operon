@@ -118,6 +118,7 @@ import {
 	isOperonPublicTransitionTaskInput,
 	isOperonPublicUpdateTaskInput,
 	isPublicManagedFieldWritable,
+	isPublicTransitionOwnedField,
 	type OperonPublicApiV1,
 	type OperonPublicAdoptInlineTaskInput,
 	type OperonPublicConvertTaskInput,
@@ -2366,6 +2367,17 @@ export default class OperonPlugin extends Plugin {
 		}
 		const description = this.normalizeTaskCreatorText(input.description);
 		if (!description) return this.publicMutationResult(false, null, 'invalid-input', 'Description is required.');
+		const transitionOwnedFields = Object.keys(input.fields ?? {}).filter(key => (
+			key !== 'status' && isPublicTransitionOwnedField(key)
+		));
+		if (transitionOwnedFields.length > 0) {
+			return this.publicMutationResult(
+				false,
+				null,
+				'invalid-input',
+				`Use transitionTask instead of create fields for: ${transitionOwnedFields.join(', ')}`,
+			);
+		}
 		const unsupportedFields = Object.keys(input.fields ?? {}).filter(key => (
 			key !== 'status' && !isPublicManagedFieldWritable(
 				key,
@@ -2558,6 +2570,15 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (input.properties && Object.keys(input.properties).length !== 1) {
 			return this.publicMutationResult(false, operonId, 'invalid-input', 'Update exactly one unmanaged file property per operation.');
+		}
+		const transitionOwnedFields = Object.keys(input.fields ?? {}).filter(isPublicTransitionOwnedField);
+		if (transitionOwnedFields.length > 0) {
+			return this.publicMutationResult(
+				false,
+				operonId,
+				'invalid-input',
+				`Use transitionTask instead of generic field updates for: ${transitionOwnedFields.join(', ')}`,
+			);
 		}
 
 		const unsupportedFields: string[] = [];

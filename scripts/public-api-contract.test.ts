@@ -9,9 +9,11 @@ import {
 	isOperonPublicTransitionTaskInput,
 	isOperonPublicUpdateTaskInput,
 	isPublicManagedFieldWritable,
+	isPublicTransitionOwnedField,
 } from '../src/api/public-api';
 import { getExcludedTablePickerTaskIds } from '../src/ui/table/table-editing';
 import type { IndexedTask } from '../src/types/fields';
+import { CANONICAL_KEYS } from '../src/types/keys';
 
 let assertions = 0;
 
@@ -70,24 +72,77 @@ async function run(): Promise<void> {
 	equal(filterEvaluationOptions.filePropertyContext, filePropertyContext);
 
 	const mappings = [
-		{ canonicalKey: 'priority', sync: 'yes' as const },
-		{ canonicalKey: 'duration', sync: 'yes' as const },
-		{ canonicalKey: 'directSubtaskCount', sync: 'yes' as const },
+		...CANONICAL_KEYS.map(key => ({
+			canonicalKey: key.name,
+			sync: key.sync,
+			...(key.internal ? { isInternal: true } : {}),
+		})),
 		{ canonicalKey: 'customEditable', sync: 'yes' as const },
-		{ canonicalKey: 'repeatSeriesId', sync: 'yes' as const, isInternal: true },
+		{ canonicalKey: 'customReadonly', sync: 'yes' as const },
 		{ canonicalKey: 'derived', sync: 'no' as const },
 	];
-	const editableFields = new Set(['priority', 'customEditable']);
+	const editableFields = new Set([
+		'description',
+		'note',
+		'status',
+		'priority',
+		'dateDue',
+		'dateScheduled',
+		'dateStarted',
+		'datetimeStart',
+		'datetimeEnd',
+		'datetimeRepeatEnd',
+		'estimate',
+		'repeat',
+		'parentTask',
+		'blocking',
+		'blockedBy',
+		'assignees',
+		'contexts',
+		'tags',
+		'links',
+		'taskIcon',
+		'taskColor',
+		'location',
+		'customEditable',
+	]);
 	const isEditableField = (key: string): boolean => editableFields.has(key);
-	equal(isPublicManagedFieldWritable('priority', mappings, isEditableField), true);
+	const expectedWritableCanonicalKeys = new Set([
+		'priority',
+		'dateDue',
+		'dateScheduled',
+		'dateStarted',
+		'datetimeStart',
+		'datetimeEnd',
+		'estimate',
+		'repeat',
+		'datetimeRepeatEnd',
+		'parentTask',
+		'assignees',
+		'contexts',
+		'reminderDatetimes',
+		'reminderRules',
+		'taskIcon',
+		'taskColor',
+		'note',
+		'location',
+		'links',
+	]);
+	for (const key of CANONICAL_KEYS) {
+		equal(
+			isPublicManagedFieldWritable(key.name, mappings, isEditableField),
+			expectedWritableCanonicalKeys.has(key.name),
+			`Unexpected public write policy for ${key.name}`,
+		);
+	}
 	equal(isPublicManagedFieldWritable('customEditable', mappings, isEditableField), true);
-	equal(isPublicManagedFieldWritable('duration', mappings, isEditableField), false);
-	equal(isPublicManagedFieldWritable('directSubtaskCount', mappings, isEditableField), false);
-	equal(isPublicManagedFieldWritable('repeatSeriesId', mappings, isEditableField), false);
+	equal(isPublicManagedFieldWritable('customReadonly', mappings, isEditableField), false);
 	equal(isPublicManagedFieldWritable('derived', mappings, isEditableField), false);
-	equal(isPublicManagedFieldWritable('status', mappings, isEditableField), false);
-	equal(isPublicManagedFieldWritable('operonId', mappings, isEditableField), false);
 	equal(isPublicManagedFieldWritable('unknown', mappings, isEditableField), false);
+	equal(isPublicTransitionOwnedField('status'), true);
+	equal(isPublicTransitionOwnedField('dateCompleted'), true);
+	equal(isPublicTransitionOwnedField('dateCancelled'), true);
+	equal(isPublicTransitionOwnedField('dateDue'), false);
 
 	const hierarchy = [
 		{ operonId: 'root', fieldValues: {} },

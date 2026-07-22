@@ -1,3 +1,5 @@
+import { isReminderStorageKey } from '../types/keys';
+
 export const OPERON_PUBLIC_API_VERSION = '1' as const;
 
 export interface OperonPublicApiCapabilities {
@@ -202,13 +204,20 @@ export interface PublicWritableKeyMapping {
 	isInternal?: boolean;
 }
 
+/** Fields whose invariants are owned by transitionTask rather than generic field writes. */
+export function isPublicTransitionOwnedField(key: string): boolean {
+	return key === 'status' || key === 'dateCompleted' || key === 'dateCancelled';
+}
+
 /** Public mutations may write only explicitly synchronized, non-internal managed fields. */
 export function isPublicManagedFieldWritable(
 	key: string,
 	mappings: readonly PublicWritableKeyMapping[],
 	isEditableField: (key: string) => boolean,
 ): boolean {
-	if (!key || key === 'operonId' || key === 'status' || key === '_checkbox') return false;
+	if (!key || key === 'operonId' || key === '_checkbox' || isPublicTransitionOwnedField(key)) return false;
 	const mapping = mappings.find(candidate => candidate.canonicalKey === key);
-	return mapping?.sync === 'yes' && mapping.isInternal !== true && isEditableField(key);
+	return mapping?.sync === 'yes'
+		&& mapping.isInternal !== true
+		&& (isEditableField(key) || isReminderStorageKey(key));
 }
