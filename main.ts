@@ -535,6 +535,7 @@ import {
 import { buildUniqueRelatedPresetName } from './src/ui/related-views';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from './src/types/related-views';
 import { isEditableTableTaskFieldKey, normalizeTableTaskFieldKey } from './src/ui/table/table-field-catalog';
+import { getExcludedTablePickerTaskIds } from './src/ui/table/table-editing';
 import { buildTableEmbedCode } from './src/ui/table/table-export';
 import { applyTablePresetPatch, resolveTablePresetForSettings } from './src/ui/table/table-preset-model';
 import {
@@ -2563,6 +2564,23 @@ export default class OperonPlugin extends Plugin {
 				'invalid-input',
 				`Unmanaged fields must be supplied through properties: ${unsupportedFields.join(', ')}`,
 			);
+		}
+		if (Object.prototype.hasOwnProperty.call(fields, 'parentTask')) {
+			const requestedParentTaskId = fields['parentTask']?.trim() ?? '';
+			if (requestedParentTaskId) {
+				const excludedParentTaskIds = new Set(getExcludedTablePickerTaskIds(
+					'parentTask',
+					task,
+					this.indexer.getAllTasks(),
+				));
+				if (!this.indexer.getTask(requestedParentTaskId)) {
+					return this.publicMutationResult(false, operonId, 'invalid-input', `Parent task not found: ${requestedParentTaskId}`);
+				}
+				if (excludedParentTaskIds.has(requestedParentTaskId)) {
+					return this.publicMutationResult(false, operonId, 'invalid-input', 'A task cannot use itself or one of its descendants as its parent.');
+				}
+				fields['parentTask'] = requestedParentTaskId;
+			}
 		}
 		const payload: Record<string, string> = { ...fields };
 		if (input.tags !== undefined) {

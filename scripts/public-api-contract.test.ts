@@ -10,6 +10,8 @@ import {
 	isOperonPublicUpdateTaskInput,
 	isPublicManagedFieldWritable,
 } from '../src/api/public-api';
+import { getExcludedTablePickerTaskIds } from '../src/ui/table/table-editing';
+import type { IndexedTask } from '../src/types/fields';
 
 let assertions = 0;
 
@@ -86,6 +88,18 @@ async function run(): Promise<void> {
 	equal(isPublicManagedFieldWritable('status', mappings, isEditableField), false);
 	equal(isPublicManagedFieldWritable('operonId', mappings, isEditableField), false);
 	equal(isPublicManagedFieldWritable('unknown', mappings, isEditableField), false);
+
+	const hierarchy = [
+		{ operonId: 'root', fieldValues: {} },
+		{ operonId: 'child', fieldValues: { parentTask: 'root' } },
+		{ operonId: 'grandchild', fieldValues: { parentTask: 'child' } },
+		{ operonId: 'unrelated', fieldValues: {} },
+	] as IndexedTask[];
+	const excludedParentTaskIds = new Set(getExcludedTablePickerTaskIds('parentTask', hierarchy[0]!, hierarchy));
+	equal(excludedParentTaskIds.has('root'), true);
+	equal(excludedParentTaskIds.has('child'), true);
+	equal(excludedParentTaskIds.has('grandchild'), true);
+	equal(excludedParentTaskIds.has('unrelated'), false);
 
 	console.log(`Public API contract tests passed: ${assertions} assertions`);
 }
