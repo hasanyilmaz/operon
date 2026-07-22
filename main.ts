@@ -2204,6 +2204,9 @@ export default class OperonPlugin extends Plugin {
 		if (!(file instanceof TFile) || file.extension.toLocaleLowerCase() !== 'md') {
 			return this.publicMutationResult(false, null, 'not-found', `Markdown source file not found: ${targetPath}`);
 		}
+		if (isOperonExcludedPath(file.path, this.settings)) {
+			return this.publicMutationResult(false, null, 'invalid-input', 'The adoption source is excluded from Operon indexing.');
+		}
 		const requestedStatusId = input.statusId?.trim() ?? '';
 		const requestedStatusValue = requestedStatusId ? this.resolvePublicStatusValueById(requestedStatusId) : '';
 		const requestedWorkflow = requestedStatusValue
@@ -2316,7 +2319,23 @@ export default class OperonPlugin extends Plugin {
 			this.refreshViews();
 			const adopted = this.indexer.getTask(adoptionState.operonId);
 			if (!adopted || adopted.primary.filePath !== targetPath || adopted.primary.lineNumber !== lineNumber) {
-				return this.publicMutationResult(false, adoptionState.operonId, 'failed', 'The adopted task could not be proven in the final index.');
+				let rolledBack = false;
+				await this.app.vault.process(file, content => {
+					const lines = content.split('\n');
+					const currentLine = lines[lineNumber];
+					if (currentLine === undefined) return content;
+					const normalizedCurrentLine = currentLine.endsWith('\r') ? currentLine.slice(0, -1) : currentLine;
+					if (this.parseInlineTaskLine(normalizedCurrentLine, lineNumber, targetPath)?.operonId !== adoptionState.operonId) {
+						return content;
+					}
+					lines[lineNumber] = `${input.expectedLine}${currentLine.endsWith('\r') ? '\r' : ''}`;
+					rolledBack = true;
+					return lines.join('\n');
+				}).catch(() => undefined);
+				await this.indexer.reindexFilePath(targetPath).catch(() => undefined);
+				return this.publicMutationResult(false, adoptionState.operonId, 'failed', rolledBack
+					? 'The adopted task could not be proven in the final index; the source line was restored.'
+					: 'The adopted task could not be proven and source rollback failed.');
 			}
 			const adoptedDraft = createEmptyTaskCreatorDraft();
 			adoptedDraft.description = adopted.description;
@@ -2370,6 +2389,10 @@ export default class OperonPlugin extends Plugin {
 		if (input.source === 'inline' && input.targetPath?.trim()
 			&& isOperonExcludedPath(input.targetPath.trim(), this.settings)) {
 			return this.publicMutationResult(false, null, 'invalid-input', 'targetPath is excluded from Operon indexing.');
+		}
+		if (input.source === 'file' && input.targetFolder?.trim()
+			&& isOperonExcludedPath(normalizePath(input.targetFolder.trim()), this.settings)) {
+			return this.publicMutationResult(false, null, 'invalid-input', 'targetFolder is excluded from Operon indexing.');
 		}
 		if (input.source === 'file' && input.targetPath?.trim()) {
 			return this.publicMutationResult(false, null, 'invalid-input', 'targetPath is supported only for inline tasks.');
@@ -2454,6 +2477,16 @@ export default class OperonPlugin extends Plugin {
 			});
 			if (!created || !createdOperonId) {
 				return this.publicMutationResult(false, createdOperonId, 'rejected', 'Operon rejected file task creation.');
+			}
+			const indexedCreatedFileTask = this.indexer.getTask(createdOperonId);
+			if (!createdFilePath || indexedCreatedFileTask?.primary.format !== 'yaml'
+				|| indexedCreatedFileTask.primary.filePath !== createdFilePath) {
+				const rolledBack = createdFilePath
+					? await this.deleteYamlTaskByPath(createdFilePath).catch(() => false)
+					: false;
+				return this.publicMutationResult(false, createdOperonId, 'failed', rolledBack
+					? 'File task creation was rolled back because the task was not indexed.'
+					: 'File task creation could not be proven and rollback failed.');
 			}
 			if (input.properties && Object.keys(input.properties).length > 0) {
 				for (const [propertyName, value] of Object.entries(input.properties)) {
@@ -2671,6 +2704,10 @@ export default class OperonPlugin extends Plugin {
 			if (input.target === 'file') {
 				const sourceFile = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 				if (!(sourceFile instanceof TFile)) return this.publicMutationResult(false, operonId, 'not-found');
+				const targetFolder = this.getTargetFileTaskFolder(sourceFile, input.targetFolder?.trim() || null);
+				if (targetFolder && isOperonExcludedPath(normalizePath(targetFolder), this.settings)) {
+					return this.publicMutationResult(false, operonId, 'invalid-input', 'targetFolder is excluded from Operon indexing.');
+				}
 				const parsed = await this.loadEditableParsedTask(task);
 				const options = this.getFileTaskTemplateOptions();
 				const template = findFileTaskTemplateOptionById(
@@ -2682,7 +2719,7 @@ export default class OperonPlugin extends Plugin {
 					sourceFile,
 					parsed,
 					template,
-					input.targetFolder?.trim() || null,
+					targetFolder,
 				);
 				const converted = this.indexer.getTask(operonId);
 				return converted?.primary.format === 'yaml'
@@ -2823,6 +2860,9 @@ export default class OperonPlugin extends Plugin {
 		const targetFile = this.app.vault.getAbstractFileByPath(targetPath);
 		if (!(sourceFile instanceof TFile) || !(targetFile instanceof TFile) || targetFile.extension.toLocaleLowerCase() !== 'md') {
 			return this.publicMutationResult(false, operonId, 'not-found', 'Source or target Markdown file was not found.');
+		}
+		if (isOperonExcludedPath(targetFile.path, this.settings)) {
+			return this.publicMutationResult(false, operonId, 'invalid-input', 'The relocation target is excluded from Operon indexing.');
 		}
 
 		const sourceContent = await this.app.vault.cachedRead(sourceFile);
