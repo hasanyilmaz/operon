@@ -2,7 +2,7 @@ import { App, Setting } from 'obsidian';
 import { t } from '../core/i18n';
 import { cloneFilterSet, type FilterSet, type OperonSettings } from '../types/settings';
 import { CalendarFilterPickerModal } from './calendar/calendar-filter-picker-modal';
-import { FilterSetModal, type FilterModalEvalDeps } from './filter-set-modal';
+import { FilterSetModal, type FilterModalEvalDeps, type FilterSetModalOptions } from './filter-set-modal';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { settingsAsyncHandler } from './settings/async-settings-action';
@@ -18,6 +18,7 @@ interface PresetFilterActionsOptions {
 	onSaveFilterSet: (filterSet: FilterSet) => Promise<void>;
 	onToggleFilterFavorite?: (filterSetId: string) => Promise<void>;
 	getFilterModalEvalDeps?: () => FilterModalEvalDeps | null;
+	filterEditorPickerPresentation?: FilterSetModalOptions['pickerPresentation'];
 	onRefresh: () => void;
 	errorContextPrefix: string;
 }
@@ -91,6 +92,7 @@ export function renderPresetFilterActions(options: PresetFilterActionsOptions): 
 					{
 						getSettings: options.getSettings,
 						onToggleFavorite: options.onToggleFilterFavorite,
+						pickerPresentation: options.filterEditorPickerPresentation,
 					},
 				).open();
 			}));
@@ -113,6 +115,7 @@ export function renderPresetFilterActions(options: PresetFilterActionsOptions): 
 					{
 						getSettings: options.getSettings,
 						onToggleFavorite: options.onToggleFilterFavorite,
+						pickerPresentation: options.filterEditorPickerPresentation,
 					},
 				).open();
 			}));

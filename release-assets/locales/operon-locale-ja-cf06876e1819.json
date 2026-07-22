@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 2930,
-  "keyFingerprint": "a725e0b8caf3203a4f32d57c5ca7e815690bf0c52a4f5479771be8335476afad",
+  "keyCount": 2947,
+  "keyFingerprint": "6db2c3306703763d294907b95b7223a780fd57f6fd069d80cc0485dc0e3ef5f0",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -11,7 +11,6 @@
       "addInlineTask": "インラインタスクを追加",
       "addSubtask": "サブタスクを追加",
       "apply": "適用",
-      "buyMeACoffee": "Buy me a coffee",
       "cancel": "キャンセル",
       "choose": "選択",
       "clear": "クリア",
@@ -24,6 +23,7 @@
       "done": "完了",
       "edit": "編集",
       "file": "ファイル",
+      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
       "inline": "インライン",
       "kanbanNoValue": "値なし",
       "keepAsIs": "そのまま保持",
@@ -302,6 +302,7 @@
       "openTimeSessionHistory": "タイムセッション履歴パネルを開く",
       "rebuildIndex": "インデックスを再構築",
       "reloadSettingsFromStorage": "ストレージから Operon 設定を再読み込み",
+      "repairRecurringFileTaskIdentities": "繰り返しファイルタスクの識別情報を修復",
       "repairTaskWikilinkOverlayLinks": "タスクウィキリンクオーバーレイのリンクを修復",
       "retryPendingWorkflowRename": "保留中のワークフロー名変更を再試行",
       "showIndexStats": "インデックス統計を表示",
@@ -927,6 +928,14 @@
       "add": "お気に入りに追加",
       "remove": "お気に入りから削除"
     },
+    "recurrenceIdentityRepair": {
+      "confirm": "識別情報を修復",
+      "noCandidates": "安全に修復できる繰り返しファイルタスクの識別情報は見つかりませんでした。",
+      "preview": "以下の {{count}} 件の修復を確認してください。変更されるのは repeatOccurrenceDate のみです。",
+      "previewWithRemaining": "{{count}} 件の修復を確認してください。最初の50件を表示し、確認後に残り {{remaining}} 件も処理します。変更されるのは repeatOccurrenceDate のみです。",
+      "result": "{{repaired}} 件を修復し、{{skipped}} 件をスキップしました。",
+      "title": "繰り返しファイルタスクの識別情報を修復"
+    },
     "reminders": {
       "alreadyPassed": "すでに経過",
       "atAnchor": "{{anchor}}の時刻",
@@ -946,6 +955,10 @@
       "offsetPlaceholder": "例: 10分、1時間、2日",
       "openTask": "タスクを開く",
       "pastReminder": "過去のリマインダー",
+      "quickOffsetChoose": "{{offset}}を選択",
+      "quickOffsetOnTime": "時刻どおり",
+      "quickOffsets": "クイックリマインダーオフセット",
+      "saveFailed": "リマインダーを保存できませんでした。",
       "staleItem": "このリマインダーは利用できなくなりました。",
       "unresolvedReminder": "解決できないリマインダー",
       "untitledTask": "無題のタスク"
@@ -1048,8 +1061,6 @@
       "calendarSidebarFinishedTasksDefaultStateDesc": "カレンダーが開いたときに、サイドバーの完了したタスクセクションを展開した状態と折りたたんだ状態のどちらで開始するかを選択します。",
       "calendarSidebarTaskPoolDefaultState": "タスクプールのデフォルト状態",
       "calendarSidebarTaskPoolDefaultStateDesc": "カレンダーが開いたときに、サイドバーのタスクプールを展開した状態と折りたたんだ状態のどちらで開始するかを選択します。",
-      "calendarSidebarTaskPoolFollowPresetFilter": "タスクプールがカレンダーフィルターに従う",
-      "calendarSidebarTaskPoolFollowPresetFilterDesc": "タスクプールのモードと検索を適用する前に、サイドバーのタスクプールをアクティブなカレンダープリセットフィルターに限定します。",
       "calendarSidebarTaskPoolLimitDesc": "サイドバーのタスクプールは、最初に最近更新された {{initialLimit}} 件のタスクを表示します。検索は完全なリストをスキャンし、最大 {{searchLimit}} 件の一致を表示します。",
       "cancelProjectSerialPrefixEdit": "プレフィックスの編集をキャンセル",
       "cancelledStatusAria": "{{pipeline}} のキャンセルステータス: {{status}}",
@@ -1100,6 +1111,8 @@
       "contextualMenuActionConvertInlineToFileTaskDesc": "このインラインタスクをファイルタスクに変換します。",
       "contextualMenuActionCreateSubtask": "サブタスクを作成",
       "contextualMenuActionCreateSubtaskDesc": "現在のタスクがサブタスクを作成できる場合に、このアクションをコンテキストメニューに表示します。",
+      "contextualMenuActionFixedReminder": "固定リマインダー",
+      "contextualMenuActionFixedReminderDesc": "未完了のタスクで固定リマインダーのピッカーを開きます。",
       "contextualMenuActionJumpToSource": "ソースへジャンプ",
       "contextualMenuActionJumpToSourceDesc": "現在の項目がソースノートへジャンプできる場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionMarkDone": "完了にする",
@@ -1108,6 +1121,8 @@
       "contextualMenuActionOpenEditorDesc": "現在の項目がタスクエディターを開ける場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionPinToggle": "タスクをピン留め",
       "contextualMenuActionPinToggleDesc": "現在のタスクがピン留めまたは解除できる場合に、このアクションをコンテキストメニューに表示します。",
+      "contextualMenuActionRelativeReminder": "相対リマインダー",
+      "contextualMenuActionRelativeReminderDesc": "未完了のタスクに使用できる日付または時刻がある場合、相対リマインダーのピッカーを開きます。",
       "contextualMenuActionSetAsTracked": "記録時間として記録",
       "contextualMenuActionSetAsTrackedCalendarTimed": "記録時間として記録",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "この予定の時間ブロックを記録時間として記録します。",
@@ -1736,6 +1751,8 @@
       "mobileGlobalTaskFabResetPositionDesc": "モバイルのクイック作成ボタンをデフォルトの右下の位置に戻します。",
       "mobileInterfaceDesc": "デスクトップのレイアウトを変えずに、スマートフォンとタッチ優先のインターフェースの動作を調整します。",
       "mobileInterfaceTitle": "モバイルインターフェース",
+      "mobileNotificationsSnapshot": "モバイル通知スナップショット",
+      "mobileNotificationsSnapshotDesc": "Operon Mobile Notifications アプリが使用する7日間のリマインダースナップショットを作成し、最新の状態に保ちます。既定ではオフです。オフにすると、最後の無効化スナップショットを書き込んでからエクスポートを停止します。",
       "mobileSubtabCalendar": "カレンダー",
       "mobileSubtabGeneral": "一般",
       "mobileSubtabKanban": "カンバン",
@@ -2051,7 +2068,7 @@
       "subtabTweaks": "ワークスペース調整",
       "subtasksDefaultExpanded": "サブタスクをデフォルトで展開",
       "subtasksDefaultExpandedDesc": "タスクバーの読み込み時にサブタスクリストを展開して表示します。",
-      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, a coffee keeps me building. ☕",
+      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, coffee fuels what comes next. ☕",
       "supportDevelopmentCardTitle": "Enjoying the flow?",
       "tabCalendar": "カレンダー",
       "tabCore": "基本",
@@ -2511,6 +2528,7 @@
     },
     "taskEditor": {
       "activeTrackerReadOnly": "{{task}} のタイマーが実行中です。編集する前に停止してください。",
+      "addNote": "ノートを追加",
       "addSession": "セッションを追加",
       "appearance": "外観",
       "applyingPriorityRenameMigration": "優先度の名前変更の移行を適用中",
@@ -2606,6 +2624,7 @@
       "details": "詳細",
       "dueDate": "期限日",
       "dueDatePlaceholder": "期限日",
+      "editNote": "ノートを編集",
       "editSession": "セッションを編集",
       "editSourceMetadata": "ソースのメタデータを編集",
       "editSubtask": "サブタスクを編集",
@@ -2973,5 +2992,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "9d537c998e4b611ecad39a6890df2f10cad28bacba32cc0e2518d263e3bebf22"
+  "sourceVersion": "431d7a322c1cc54e00ddd2868f5bb78846518d54096adb8cb63a82c7797a629f"
 }

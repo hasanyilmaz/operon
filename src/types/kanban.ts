@@ -117,8 +117,8 @@ export interface KanbanViewCallbacks {
 	onOpenRelatedView?: (target: RelatedViewOpenTarget) => void | Promise<void>;
 	onCreateRelatedView?: (target: RelatedViewCreateTarget) => void | Promise<void>;
 	onCellAction?: (context: KanbanCellActionContext) => void | Promise<void>;
-	updateField?: (operonId: string, key: string, value: string) => void | Promise<void>;
-	updateFields?: (operonId: string, payload: Record<string, string>) => void | Promise<void>;
+	updateField?: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
+	updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>;
 	updateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];

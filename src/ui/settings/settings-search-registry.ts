@@ -139,6 +139,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('automation', 'tasksReminders', 'reminderNoticeDurationSeconds', 'settings', 'reminderNoticeDuration', 'reminderNoticeDurationDesc', 'dropdown', ['reminder', 'notification', 'notice', 'duration', 'timeout']),
 	e('automation', 'tasksReminders', 'reminderAutoPinDueTasks', 'settings', 'reminderAutoPinDueTasks', 'reminderAutoPinDueTasksDesc', 'toggle', ['reminder', 'pin', 'pinned tasks', 'automation', 'due reminder']),
 	e('automation', 'tasksReminders', 'reminderSystemNotificationsEnabled', 'settings', 'reminderSystemNotifications', 'reminderSystemNotificationsDesc', 'toggle', ['reminder', 'notification', 'system notification', 'desktop notification']),
+	e('integrations', 'tasksReminders', 'mobileNotificationsSnapshotEnabled', 'settings', 'mobileNotificationsSnapshot', 'mobileNotificationsSnapshotDesc', 'toggle', ['reminder', 'notification', 'mobile notification', 'android', 'snapshot', 'sync']),
 	e('automation', 'tasksReminders', 'reminderSoundFilePath', 'settings', 'reminderSound', 'reminderSoundDesc', 'file', ['reminder', 'sound', 'audio', 'ringtone', 'alert sound']),
 
 	e('automation', 'tasksTracker', 'trackerSplitSessionsAtMidnight', 'settings', 'trackerSplitSessionsAtMidnight', 'trackerSplitSessionsAtMidnightDesc', 'toggle', ['time tracking', 'timer', 'tracker midnight', 'session', 'midnight']),
@@ -170,7 +171,6 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsCalendar', 'calendarSidebarWidthPx', 'calendar', 'sidebarWidth', 'sidebarWidthDesc', 'number', ['calendar', 'sidebar', 'calendar sidebar width']),
 	e('views', 'viewsCalendar', 'calendarSidebarCalendarsDefaultExpanded', 'settings', 'calendarSidebarCalendarsDefaultState', 'calendarSidebarCalendarsDefaultStateDesc', 'dropdown', ['calendar', 'sidebar', 'calendars section']),
 	e('views', 'viewsCalendar', 'calendarSidebarTaskPoolDefaultExpanded', 'settings', 'calendarSidebarTaskPoolDefaultState', 'calendarSidebarTaskPoolDefaultStateDesc', 'dropdown', ['calendar', 'sidebar', 'task pool section']),
-	e('views', 'viewsCalendar', 'calendarSidebarTaskPoolFollowPresetFilter', 'settings', 'calendarSidebarTaskPoolFollowPresetFilter', 'calendarSidebarTaskPoolFollowPresetFilterDesc', 'toggle', ['calendar', 'sidebar', 'task pool', 'calendar filter', 'preset filter']),
 	section('integrations', 'viewsCalendar', 'externalCalendars', 'settings', 'externalCalendarsTitle', 'externalCalendarsDesc', ['calendar', 'ics', 'external calendar', 'external calendars', 'refresh', 'sync']),
 
 	e('views', 'viewsKanban', 'kanbanDefaultPresetId', 'settings', 'kanbanDefaultPreset', 'kanbanDefaultPresetDesc', 'dropdown', ['kanban', 'kanban default preset', 'kanban preset', 'board preset']),
@@ -202,8 +202,10 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 
 	section('ui', 'interfaceTaskChips', 'taskCreatorToolbar', 'settings', 'taskCreatorToolbarSection', 'taskCreatorToolbarSectionDesc', ['task chips', 'task creator toolbar', 'new operon creator toolbar', 'new operon task toolbar', 'toolbar icons']),
 	section('ui', 'interfaceTaskChips', 'inlineTaskChips', 'settings', 'inlineTaskIconsSection', 'inlineTaskIconsSectionDesc', ['task chips', 'inline task chips', 'inline task icons', 'compact chips']),
+	e('ui', 'interfaceTaskChips', 'inlineTaskShowNoteAction', 'settings', 'inlineTaskNoteAction', 'inlineTaskIconsSectionDesc', 'toggle', ['task chips', 'inline task actions', 'note action', 'not']),
 		section('ui', 'interfaceTaskChips', 'taskFinderChips', 'settings', 'taskFinderIconsSection', 'taskFinderIconsSectionDesc', ['task chips', 'task finder chips', 'task finder icons', 'compact chips']),
 		section('ui', 'interfaceTaskChips', 'filterTaskChips', 'settings', 'filterTaskIconsSection', 'filterTaskIconsSectionDesc', ['task chips', 'filter task chips', 'filter task icons', 'filter view chips']),
+		e('ui', 'interfaceTaskChips', 'filterTaskShowNoteAction', 'settings', 'inlineTaskNoteAction', 'filterTaskIconsSectionDesc', 'toggle', ['task chips', 'filter task actions', 'note action', 'not']),
 		section('ui', 'interfaceTaskChips', 'kanbanTaskChips', 'settings', 'kanbanTaskIconsSection', 'kanbanTaskIconsSectionDesc', ['task chips', 'kanban task chips', 'kanban card chips', 'kanban task icons', 'compact chips']),
 		e('ui', 'interfaceTaskChips', 'kanbanTaskShowPlayAction', 'settings', 'inlineTaskPlayAction', 'kanbanTaskPlayActionDesc', 'toggle', ['task chips', 'kanban task actions', 'kanban card actions', 'timer', 'play action']),
 		e('ui', 'interfaceTaskChips', 'kanbanTaskShowPinAction', 'settings', 'inlineTaskPinAction', 'kanbanTaskPinActionDesc', 'toggle', ['task chips', 'kanban task actions', 'kanban card actions', 'pin action', 'sabitle']),

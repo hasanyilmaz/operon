@@ -120,6 +120,7 @@ export function buildFilterTaskRowElement(
 		chipItems: callbacks.getSettings().filterTaskCompactChips,
 		showPlayAction: callbacks.getSettings().filterTaskShowPlayAction,
 		showPinAction: callbacks.getSettings().filterTaskShowPinAction,
+		showNoteAction: callbacks.getSettings().filterTaskShowNoteAction,
 		showSubtaskAction: options?.showSubtaskAction ?? callbacks.getSettings().filterTaskShowSubtaskAction,
 		rowClassName: 'operon-filter-task-row',
 		projectSerialPlacement: 'tail',
@@ -210,10 +211,10 @@ export function buildFilterTaskRowElement(
 						preferredHorizontal: 'right',
 					});
 				} else {
-					const tooltipTitle = t('tooltips', 'plainCheckboxEditorAdd');
-					setAccessibleLabelWithoutTooltip(control, tooltipTitle);
+					const tooltipLabel = t('tooltips', 'plainCheckboxEditorAdd');
+					setAccessibleLabelWithoutTooltip(control, tooltipLabel);
 					bindOperonHoverTooltip(control, {
-						title: tooltipTitle,
+						content: tooltipLabel,
 						taskColor,
 						preferredHorizontal: 'right',
 					});

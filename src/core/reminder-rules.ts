@@ -195,6 +195,14 @@ export function resolveReminderRules(
 	return rawRules.map(raw => resolveReminderRule(raw, fieldValues));
 }
 
+/** Return task date fields that can currently anchor a relative reminder. */
+export function getAvailableReminderRuleAnchors(
+	fieldValues: Readonly<Record<string, string | undefined>>,
+): ReminderRuleAnchor[] {
+	return REMINDER_RULE_ANCHORS.filter(anchor =>
+		resolveReminderRule(`${anchor}.0m`, fieldValues).status === 'resolved');
+}
+
 /** Canonicalize valid rules and remove canonical duplicates while retaining per-item diagnostics. */
 export function canonicalizeReminderRuleList(rawRules: readonly string[]): CanonicalReminderRuleList {
 	const items = rawRules.map(parseReminderRule);

@@ -1,5 +1,7 @@
-import { Setting, setIcon, setTooltip } from 'obsidian';
+import { Setting, setIcon } from 'obsidian';
 import type { DropdownComponent, TextComponent, ToggleComponent } from 'obsidian';
+import { parseOperonDocsTargetLabel } from '../operon-docs-link';
+import { wrapWithOperonHoverTooltip } from '../operon-hover-tooltip';
 
 interface BaseSettingOptions {
 	settingClass?: string;
@@ -34,6 +36,7 @@ export function createSettingsAddButton(containerEl: HTMLElement, label: string)
 
 export interface NativeSettingsDocsActionOptions {
 	label: string;
+	docsTarget: string;
 	onClick: () => void;
 }
 
@@ -47,7 +50,9 @@ export function renderNativeSettingsPageTitleAction(
 ): HTMLButtonElement {
 	titlebarEl.addClass('operon-native-settings-page-titlebar-with-docs');
 	const existingButton = titlebarEl.querySelector<HTMLButtonElement>('.operon-native-settings-page-title-docs-action');
-	existingButton?.remove();
+	const existingTooltipAnchor = existingButton?.closest('.operon-settings-docs-tooltip-anchor');
+	if (existingTooltipAnchor) existingTooltipAnchor.remove();
+	else existingButton?.remove();
 
 	const actionButton = titlebarEl.createEl('button', {
 		cls: 'clickable-icon operon-native-settings-page-title-docs-action',
@@ -57,11 +62,31 @@ export function renderNativeSettingsPageTitleAction(
 		},
 	});
 	setIcon(actionButton, 'circle-question-mark');
-	setTooltip(actionButton, action.label);
 	actionButton.addEventListener('click', () => {
 		action.onClick();
 	});
+	attachNativeSettingsDocsTooltip(actionButton, action);
 	return actionButton;
+}
+
+export function attachNativeSettingsDocsTooltip(
+	actionButton: HTMLElement,
+	action: NativeSettingsDocsActionOptions,
+): HTMLElement {
+	const { documentId, documentTitle } = parseOperonDocsTargetLabel(action.docsTarget);
+	const parent = actionButton.parentNode;
+	const nextSibling = actionButton.nextSibling;
+	const tooltipAnchor = wrapWithOperonHoverTooltip(actionButton, {
+		title: documentId ?? undefined,
+		titleIcon: documentId ? 'book-open' : undefined,
+		content: documentTitle,
+		taskColor: null,
+		tooltipClassName: 'operon-settings-docs-tooltip',
+		preferredVertical: 'auto',
+	});
+	tooltipAnchor.classList.add('operon-settings-docs-tooltip-anchor');
+	if (parent) parent.insertBefore(tooltipAnchor, nextSibling);
+	return tooltipAnchor;
 }
 
 export function renderNativeSettingsSection(
@@ -91,10 +116,10 @@ export function renderNativeSettingsSection(
 			},
 		});
 		setIcon(actionButton, 'circle-question-mark');
-		setTooltip(actionButton, action.label);
 		actionButton.addEventListener('click', () => {
 			action.onClick();
 		});
+		attachNativeSettingsDocsTooltip(actionButton, action);
 	}
 	if (desc) {
 		sectionEl.createEl('p', {

@@ -114,7 +114,7 @@ import {
 	normalizeInlineCompletionMode,
 } from '../storage/repeat-series-store';
 
-/** Callback to persist editor state. Returning false/null aborts the save. */
+/** Callback to persist editor state. Returning false/null aborts the save; a commit returns authoritative saved state. */
 export interface TaskEditorSaveRequest {
 	taskLine: string;
 	isNew: boolean;
@@ -128,7 +128,22 @@ export interface TaskEditorSaveRequest {
 	} | null;
 }
 
-export type OnSaveCallback = (request: TaskEditorSaveRequest) => boolean | null | void | Promise<boolean | null | void>;
+export interface TaskEditorCanonicalState {
+	description: string;
+	checkbox: ParsedTask['checkbox'];
+	tags: string[];
+	fieldValues: Record<string, string>;
+}
+
+export interface TaskEditorSaveCommit {
+	canonicalState: TaskEditorCanonicalState;
+}
+
+export type TaskEditorSaveCallbackResult = boolean | null | void | TaskEditorSaveCommit;
+
+export type OnSaveCallback = (
+	request: TaskEditorSaveRequest,
+) => TaskEditorSaveCallbackResult | Promise<TaskEditorSaveCallbackResult>;
 
 export const TASK_EDITOR_ESCAPE_INTENT_EVENT = 'operon-editor-escape-intent';
 export const TASK_EDITOR_CLOSE_REQUEST_EVENT = 'operon-editor-close';
@@ -195,6 +210,7 @@ export interface TaskEditorContentOptions {
 	onRequestSubtask?: (context: TaskEditorSubtaskRequest) => void | Promise<void>;
 	onRequestDelete?: (task: ParsedTask) => void | Promise<boolean | void>;
 	onOpenTask?: (operonId: string) => void;
+	onMarkSubtaskDone?: (operonId: string) => Promise<boolean>;
 	onUpdateExistingSubtaskParent?: (childId: string, parentId: string | null) => void | Promise<void>;
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
 	onUpdateRepeatSkips?: (request: TaskEditorRepeatSkipUpdateRequest) => Promise<TaskEditorRepeatSkipUpdateResult> | TaskEditorRepeatSkipUpdateResult;
@@ -320,6 +336,49 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
 	return true;
 }
 
+function hasMatchingRecordEntry(
+	left: Record<string, string>,
+	right: Record<string, string>,
+	key: string,
+): boolean {
+	const leftHasKey = left[key] !== undefined;
+	const rightHasKey = right[key] !== undefined;
+	return leftHasKey === rightHasKey && (!leftHasKey || left[key] === right[key]);
+}
+
+function mergeCanonicalFieldValuesIntoDraft(
+	current: Record<string, string>,
+	submitted: Record<string, string>,
+	canonical: Record<string, string>,
+): Record<string, string> {
+	const merged = { ...current };
+	const committedKeys = new Set([...Object.keys(submitted), ...Object.keys(canonical)]);
+	for (const key of committedKeys) {
+		if (!hasMatchingRecordEntry(current, submitted, key)) continue;
+		if (Object.prototype.hasOwnProperty.call(canonical, key)) {
+			merged[key] = canonical[key];
+		} else {
+			delete merged[key];
+		}
+	}
+	return merged;
+}
+
+function isTaskEditorSaveCommit(value: TaskEditorSaveCallbackResult): value is TaskEditorSaveCommit {
+	if (!value || typeof value !== 'object') return false;
+	const state = value.canonicalState;
+	return !!state
+		&& typeof state === 'object'
+		&& typeof state.description === 'string'
+		&& (state.checkbox === 'open' || state.checkbox === 'done' || state.checkbox === 'cancelled')
+		&& Array.isArray(state.tags)
+		&& state.tags.every(tag => typeof tag === 'string')
+		&& !!state.fieldValues
+		&& typeof state.fieldValues === 'object'
+		&& !Array.isArray(state.fieldValues)
+		&& Object.values(state.fieldValues).every(fieldValue => typeof fieldValue === 'string');
+}
+
 export class TaskEditorContent {
 	private static readonly FILE_BODY_WIDE_MEDIA_QUERY = '(min-width: 980px)';
 
@@ -359,6 +418,7 @@ export class TaskEditorContent {
 	private onRequestSubtask: ((context: TaskEditorSubtaskRequest) => void | Promise<void>) | null = null;
 	private onRequestDelete: ((task: ParsedTask) => void | Promise<boolean | void>) | null = null;
 	private onOpenTask: ((operonId: string) => void) | null = null;
+	private onMarkSubtaskDone: ((operonId: string) => Promise<boolean>) | null = null;
 	private onUpdateExistingSubtaskParent: ((childId: string, parentId: string | null) => void | Promise<void>) | null = null;
 	private getRepeatSkipDates: ((repeatSeriesId: string) => string[]) | null = null;
 	private onUpdateRepeatSkips: ((request: TaskEditorRepeatSkipUpdateRequest) => Promise<TaskEditorRepeatSkipUpdateResult> | TaskEditorRepeatSkipUpdateResult) | null = null;
@@ -376,6 +436,9 @@ export class TaskEditorContent {
 	private refreshTrackingSessionsSection: (() => void) | null = null;
 	private refreshEstimateReallocationControl: (() => void) | null = null;
 	private refreshParentContextSection: (() => void) | null = null;
+	private subtaskCardOrder: string[] = [];
+	private subtaskCardsExpanded = false;
+	private subtaskCompletionInProgress = false;
 	private schedulingDraftRefreshers = new Set<() => void>();
 	private workflowExpanded = false;
 	private workflowActionsEl: HTMLElement | null = null;
@@ -464,6 +527,7 @@ export class TaskEditorContent {
 		this.onRequestSubtask = options.onRequestSubtask ?? null;
 		this.onRequestDelete = options.onRequestDelete ?? null;
 		this.onOpenTask = options.onOpenTask ?? null;
+		this.onMarkSubtaskDone = options.onMarkSubtaskDone ?? null;
 		this.onUpdateExistingSubtaskParent = options.onUpdateExistingSubtaskParent ?? null;
 		this.getRepeatSkipDates = options.getRepeatSkipDates ?? null;
 		this.onUpdateRepeatSkips = options.onUpdateRepeatSkips ?? null;
@@ -1875,10 +1939,16 @@ export class TaskEditorContent {
 	}
 
 	async refreshAfterExternalSubtaskCreated(): Promise<void> {
+		await this.refreshAfterExternalTaskMutation(true);
+	}
+
+	private async refreshAfterExternalTaskMutation(flushBeforeRefresh: boolean): Promise<void> {
 		if (!this.mainPanelEl) return;
 
-		const saved = await this.flushPendingEdits();
-		if (!saved) return;
+		if (flushBeforeRefresh) {
+			const saved = await this.flushPendingEdits();
+			if (!saved) return;
+		}
 
 		this.clearFileBodyPanelRender();
 		await this.refreshFileBodyDraftFromSource();
@@ -2216,8 +2286,11 @@ export class TaskEditorContent {
 		};
 
 		this.renderParentContext(relations, updateVisibility);
-		this.renderSubtaskCards(relations);
-		this.renderProgressSection(section, progressState);
+		const subtaskHost = relations.createDiv('operon-editor-subtask-context-host');
+		this.renderSubtaskCards(subtaskHost);
+
+		const progressHost = section.createDiv('operon-editor-progress-context-host');
+		if (progressState) this.renderProgressSection(progressHost, progressState);
 		updateVisibility();
 	}
 
@@ -2381,16 +2454,17 @@ export class TaskEditorContent {
 
 		const SUBTASK_PREVIEW_COUNT = 1;
 
-		const sorted = [...childIds]
+		const tasks = [...childIds]
 			.map(id => this.indexer.getTask(id))
-			.filter((c): c is IndexedTask => !!c)
-			.sort((a, b) => b.datetimeModified.localeCompare(a.datetimeModified));
+			.filter((c): c is IndexedTask => !!c);
+		const orderedTasks = this.reconcileSubtaskCardOrder(tasks);
 
 		const hiddenCards: HTMLElement[] = [];
 
-		for (let i = 0; i < sorted.length; i++) {
-			const child = sorted[i];
+		for (let i = 0; i < orderedTasks.length; i++) {
+			const child = orderedTasks[i];
 			const cardEl = container.createDiv('operon-editor-subtask-card');
+			cardEl.dataset.operonId = child.operonId;
 			cardEl.style.setProperty('--operon-relation-context-color', this.resolveRelationContextColor(child, 'child'));
 
 			const line1 = cardEl.createDiv('operon-subtask-line-1');
@@ -2403,21 +2477,43 @@ export class TaskEditorContent {
 			}
 			line1.createSpan({ text: child.description || child.operonId, cls: 'operon-subtask-inline-title' });
 
-			if (this.onOpenTask) {
-				const editBtn = line1.createEl('button', {
-					cls: 'operon-subtask-edit-btn',
-					attr: { type: 'button' },
-				});
-				setIcon(editBtn, 'settings-2');
-				setAccessibleLabelWithoutTooltip(editBtn, t('taskEditor', 'editSubtask'));
-				bindOperonHoverTooltip(editBtn, {
-					content: t('taskEditor', 'editSubtask'),
-					taskColor: this.resolveRelationContextColor(child, 'child'),
-				});
-				editBtn.addEventListener('click', (e) => {
-					e.stopPropagation();
-					this.onOpenTask?.(child.operonId);
-				});
+			if (this.onOpenTask || (child.checkbox === 'open' && this.onMarkSubtaskDone)) {
+				const actions = line1.createDiv('operon-subtask-actions');
+				if (child.checkbox === 'open' && this.onMarkSubtaskDone) {
+					const markDoneLabel = t('settings', 'contextualMenuActionMarkDone');
+					const markDoneBtn = actions.createEl('button', {
+						cls: 'operon-subtask-action-btn operon-subtask-mark-done-btn',
+						attr: { type: 'button' },
+					});
+					setIcon(markDoneBtn, 'check');
+					setAccessibleLabelWithoutTooltip(markDoneBtn, markDoneLabel);
+					bindOperonHoverTooltip(markDoneBtn, {
+						content: markDoneLabel,
+						taskColor: this.resolveRelationContextColor(child, 'child'),
+					});
+					markDoneBtn.addEventListener('click', (event) => {
+						event.preventDefault();
+						event.stopPropagation();
+						void this.handleSubtaskMarkDone(child.operonId, markDoneBtn);
+					});
+				}
+
+				if (this.onOpenTask) {
+					const editBtn = actions.createEl('button', {
+						cls: 'operon-subtask-action-btn operon-subtask-edit-btn',
+						attr: { type: 'button' },
+					});
+					setIcon(editBtn, 'settings-2');
+					setAccessibleLabelWithoutTooltip(editBtn, t('taskEditor', 'editSubtask'));
+					bindOperonHoverTooltip(editBtn, {
+						content: t('taskEditor', 'editSubtask'),
+						taskColor: this.resolveRelationContextColor(child, 'child'),
+					});
+					editBtn.addEventListener('click', (e) => {
+						e.stopPropagation();
+						this.onOpenTask?.(child.operonId);
+					});
+				}
 			}
 
 			const childChips = this.buildRelationContextChipEntries(child);
@@ -2426,8 +2522,10 @@ export class TaskEditorContent {
 				this.renderRelationContextChips(line2, child, childChips, 'operon-subtask-chip');
 			}
 
-			if (i >= SUBTASK_PREVIEW_COUNT) {
+			if (i >= SUBTASK_PREVIEW_COUNT && !this.subtaskCardsExpanded) {
 				cardEl.setAttribute('hidden', '');
+				hiddenCards.push(cardEl);
+			} else if (i >= SUBTASK_PREVIEW_COUNT) {
 				hiddenCards.push(cardEl);
 			}
 		}
@@ -2436,10 +2534,8 @@ export class TaskEditorContent {
 			const bar = container.createDiv('operon-subtask-show-more');
 			const label = bar.createSpan('operon-subtask-show-more-label');
 			const chevron = bar.createSpan('operon-subtask-show-more-chevron');
-			let expanded = false;
-
 			const refresh = () => {
-				if (expanded) {
+				if (this.subtaskCardsExpanded) {
 					label.textContent = t('taskEditor', 'showLess');
 					const icon = getIcon('chevron-up');
 					chevron.empty();
@@ -2456,13 +2552,93 @@ export class TaskEditorContent {
 			refresh();
 
 			bar.addEventListener('click', () => {
-				expanded = !expanded;
+				this.subtaskCardsExpanded = !this.subtaskCardsExpanded;
 				for (const card of hiddenCards) {
-					if (expanded) card.removeAttribute('hidden');
+					if (this.subtaskCardsExpanded) card.removeAttribute('hidden');
 					else card.setAttribute('hidden', '');
 				}
 				refresh();
 			});
+		}
+	}
+
+	private reconcileSubtaskCardOrder(tasks: IndexedTask[]): IndexedTask[] {
+		const tasksById = new Map(tasks.map(task => [task.operonId, task]));
+		const retainedOrder = this.subtaskCardOrder.filter(id => tasksById.has(id));
+		const retainedIds = new Set(retainedOrder);
+		const appendedOrder = tasks
+			.filter(task => !retainedIds.has(task.operonId))
+			.sort((a, b) => b.datetimeModified.localeCompare(a.datetimeModified))
+			.map(task => task.operonId);
+		this.subtaskCardOrder = [...retainedOrder, ...appendedOrder];
+		return this.subtaskCardOrder
+			.map(id => tasksById.get(id))
+			.filter((task): task is IndexedTask => !!task);
+	}
+
+	private getCurrentCanonicalStateFromIndex(): TaskEditorCanonicalState | null {
+		const indexed = this.getCurrentIndexedTask();
+		if (!indexed) return null;
+		return {
+			description: indexed.description,
+			checkbox: indexed.checkbox,
+			tags: [...indexed.tags],
+			fieldValues: {
+				...indexed.fieldValues,
+				operonId: indexed.operonId,
+			},
+		};
+	}
+
+	private restoreFocusAfterSubtaskCompletion(operonId: string): void {
+		const cards = Array.from(this.mainPanelEl?.querySelectorAll<HTMLElement>('.operon-editor-subtask-card') ?? []);
+		const completedCard = cards.find(card => card.dataset.operonId === operonId);
+		const target = completedCard?.querySelector<HTMLButtonElement>('.operon-subtask-edit-btn')
+			?? this.mainPanelEl?.querySelector<HTMLButtonElement>('.operon-subtask-mark-done-btn')
+			?? this.mainPanelEl?.querySelector<HTMLButtonElement>('.operon-subtask-edit-btn');
+		target?.focus({ preventScroll: true });
+	}
+
+	private async handleSubtaskMarkDone(operonId: string, button: HTMLButtonElement): Promise<void> {
+		const markDone = this.onMarkSubtaskDone;
+		if (!markDone || this.subtaskCompletionInProgress) return;
+		const restoreFocus = button.ownerDocument.activeElement === button;
+		const buttons = new Set<HTMLButtonElement>([
+			button,
+			...Array.from(this.mainPanelEl?.querySelectorAll<HTMLButtonElement>('.operon-subtask-mark-done-btn') ?? []),
+		]);
+
+		this.subtaskCompletionInProgress = true;
+		for (const actionButton of buttons) actionButton.disabled = true;
+		button.setAttribute('aria-busy', 'true');
+		this.suspendAutoSave();
+		try {
+			const saved = await this.flushPendingEdits();
+			if (!saved) return;
+			const submitted = {
+				description: this.description,
+				checkbox: this.checkbox,
+				tags: [...this.tags],
+				fieldValues: { ...this.fieldValues },
+			};
+			const completed = await markDone(operonId);
+			const refreshedChild = this.indexer.getTask(operonId);
+			if (!completed && refreshedChild?.checkbox === 'open') return;
+
+			const canonical = this.getCurrentCanonicalStateFromIndex();
+			if (canonical) this.applyCanonicalSaveCommit(canonical, submitted);
+			await this.refreshAfterExternalTaskMutation(false);
+			if (restoreFocus) this.restoreFocusAfterSubtaskCompletion(operonId);
+		} catch (error) {
+			console.error('Operon: Task Editor subtask completion failed', error);
+			new Notice(t('notifications', 'taskSaveFailed'));
+		} finally {
+			this.subtaskCompletionInProgress = false;
+			for (const actionButton of buttons) {
+				if (actionButton.isConnected) actionButton.disabled = false;
+			}
+			if (button.isConnected) button.removeAttribute('aria-busy');
+			this.resumeAutoSave();
 		}
 	}
 
@@ -5622,6 +5798,55 @@ export class TaskEditorContent {
 		});
 	}
 
+	private syncExistingTaskCanonicalState(state: TaskEditorCanonicalState): void {
+		if (!this.existingTask) return;
+
+		this.existingTask.description = state.description;
+		this.existingTask.checkbox = state.checkbox;
+		this.existingTask.tags = [...state.tags];
+		const existingKeys = new Set(this.existingTask.fields.map(field => field.key));
+		for (const key of existingKeys) {
+			if (!Object.prototype.hasOwnProperty.call(state.fieldValues, key)) {
+				this.syncExistingTaskFieldSnapshot(key, '');
+			}
+		}
+		for (const [key, value] of Object.entries(state.fieldValues)) {
+			this.syncExistingTaskFieldSnapshot(key, value);
+		}
+		this.existingTask.operonId = state.fieldValues['operonId'] ?? this.existingTask.operonId;
+	}
+
+	private applyCanonicalSaveCommit(
+		state: TaskEditorCanonicalState,
+		submitted: {
+			description: string;
+			checkbox: ParsedTask['checkbox'];
+			tags: string[];
+			fieldValues: Record<string, string>;
+		},
+	): void {
+		if (this.description === submitted.description) {
+			this.description = state.description;
+		}
+		if (this.checkbox === submitted.checkbox) {
+			this.checkbox = state.checkbox;
+		}
+		if (areStringArraysEqual(this.tags, submitted.tags)) {
+			this.tags = [...state.tags];
+		}
+		this.fieldValues = mergeCanonicalFieldValuesIntoDraft(
+			this.fieldValues,
+			submitted.fieldValues,
+			state.fieldValues,
+		);
+
+		this.persistedDescription = state.description;
+		this.persistedCheckbox = state.checkbox;
+		this.persistedTags = [...state.tags];
+		this.persistedFieldValues = { ...state.fieldValues };
+		this.syncExistingTaskCanonicalState(state);
+	}
+
 	private async ensureTaskReadyForTracking(): Promise<string | null> {
 		if (!this.description.trim()) return null;
 
@@ -5996,7 +6221,7 @@ export class TaskEditorContent {
 			const savedFileBodyDraft = this.fileBodyDraft;
 			const savedFileBodyDirty = this.isFileBodyDirty;
 			const savedInlineCompletionMode = this.inlineCompletionMode;
-			let saveResult: boolean | null | void;
+			let saveResult: TaskEditorSaveCallbackResult;
 			try {
 				saveResult = await this.onSave({
 					taskLine,
@@ -6020,10 +6245,22 @@ export class TaskEditorContent {
 			if (saveResult === false || saveResult === null) {
 				return { ok: false, reason: 'write-rejected' };
 			}
-			this.persistedDescription = savedDescription;
-			this.persistedCheckbox = savedCheckbox;
-			this.persistedTags = savedTags;
-			this.persistedFieldValues = savedFieldValues;
+			if (isTaskEditorSaveCommit(saveResult)) {
+				this.applyCanonicalSaveCommit(saveResult.canonicalState, {
+					description: savedDescription,
+					checkbox: savedCheckbox,
+					tags: savedTags,
+					fieldValues: savedFieldValues,
+				});
+			} else {
+				if (saveResult && typeof saveResult === 'object') {
+					console.warn('Operon: task editor save returned an invalid canonical state; using submitted state');
+				}
+				this.persistedDescription = savedDescription;
+				this.persistedCheckbox = savedCheckbox;
+				this.persistedTags = savedTags;
+				this.persistedFieldValues = savedFieldValues;
+			}
 			this.persistedFileBodyDraft = savedFileBodyDraft;
 			this.persistedInlineCompletionMode = savedInlineCompletionMode;
 			this.isFileBodyDirty = this.fileBodyDraft !== this.persistedFileBodyDraft;

@@ -7,7 +7,12 @@ import {
 	type ReminderListItemRef,
 	type ReminderListMutation,
 } from '../../core/reminder-list-mutation';
-import { parseReminderRule, resolveReminderRule, type ReminderRuleAnchor } from '../../core/reminder-rules';
+import {
+	parseReminderOffsetInput,
+	parseReminderRule,
+	resolveReminderRule,
+	type ReminderRuleAnchor,
+} from '../../core/reminder-rules';
 import { splitTaskListValue } from '../../core/task-field-patch';
 import { getVisiblePropertyName } from '../../core/yaml-fields';
 import type { OperonSettings } from '../../types/settings';
@@ -51,6 +56,8 @@ interface ReminderPickerBaseOptions {
 
 type ReminderDatetimePickerOptions = ReminderPickerBaseOptions;
 type ReminderRulesPickerOptions = ReminderPickerBaseOptions;
+
+const REMINDER_RULE_QUICK_OFFSETS = ['0m', '10m', '30m', '1h', '1d'] as const;
 
 interface ReminderMutationSession {
 	getFieldValues: () => Readonly<Record<string, string | undefined>>;
@@ -136,6 +143,20 @@ export function showReminderRulesPicker(
 	input.className = 'operon-floating-input operon-reminder-rules-picker-input';
 	input.placeholder = t('reminders', 'offsetPlaceholder');
 	input.value = getInitialRuleOffset(options.operation);
+	const quickOffsets = panel.createDiv('operon-reminder-rules-picker-quick-offsets');
+	quickOffsets.setAttribute('role', 'group');
+	quickOffsets.setAttribute('aria-label', t('reminders', 'quickOffsets'));
+	const quickOffsetButtons = REMINDER_RULE_QUICK_OFFSETS.map(offset => {
+		const label = offset === '0m' ? t('reminders', 'quickOffsetOnTime') : offset;
+		const button = quickOffsets.createEl('button');
+		button.type = 'button';
+		button.className = 'operon-reminder-rules-picker-quick-offset';
+		button.textContent = label;
+		button.setAttribute('data-offset', offset);
+		button.setAttribute('aria-label', t('reminders', 'quickOffsetChoose', { offset: label }));
+		button.setAttribute('aria-pressed', 'false');
+		return { button, offset };
+	});
 	const ruleList = panel.createDiv('operon-reminder-rules-picker-list');
 	ruleList.id = `operon-reminder-rules-picker-list-${pickerId}`;
 	ruleList.setAttribute('role', 'listbox');
@@ -184,6 +205,13 @@ export function showReminderRulesPicker(
 	};
 
 	const renderRuleCandidates = (): void => {
+		const parsedOffset = parseReminderOffsetInput(input.value);
+		const selectedQuickOffset = parsedOffset.ok ? parsedOffset.value.canonical : null;
+		for (const quickOffset of quickOffsetButtons) {
+			const selected = quickOffset.offset === selectedQuickOffset;
+			quickOffset.button.classList.toggle('is-selected', selected);
+			quickOffset.button.setAttribute('aria-pressed', String(selected));
+		}
 		const evaluation = buildReminderRuleCandidates(input.value, session.modelInput());
 		visibleCandidates = evaluation.candidates;
 		ruleList.replaceChildren();
@@ -243,6 +271,14 @@ export function showReminderRulesPicker(
 		const active = ruleList.children[activeRuleIndex] as HTMLElement | undefined;
 		if (active?.id) input.setAttribute('aria-activedescendant', active.id);
 	};
+
+	for (const quickOffset of quickOffsetButtons) {
+		quickOffset.button.addEventListener('click', () => {
+			input.value = quickOffset.offset;
+			renderRuleCandidates();
+			requestFloatingInputFocus(input);
+		});
+	}
 
 	input.addEventListener('input', renderRuleCandidates);
 	input.addEventListener('keydown', event => {

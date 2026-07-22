@@ -1,5 +1,5 @@
 import { Notice, setIcon, type App } from 'obsidian';
-import { asHTMLElement, getActiveDocument, getOwnerWindow } from '../core/dom-compat';
+import { getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
 import { createFloatingPanel, type FloatingPanelCloseReason } from './field-pickers/common';
@@ -14,7 +14,8 @@ export interface TextFieldPopoverOptions {
 	placeholder?: string;
 	taskColor?: string | null;
 	sessionKey?: string;
-	onCommit: (value: string) => Promise<boolean> | boolean | void;
+	allowEmptyCommit?: boolean;
+	onCommit: (value: string) => Promise<boolean | void> | boolean | void;
 	onClose?: () => void;
 	normalizeValue?: (value: string) => string;
 }
@@ -38,11 +39,9 @@ let textFieldPopoverZIndex = TEXT_FIELD_POPOVER_BASE_Z_INDEX;
 
 export function showTextFieldPopover(options: TextFieldPopoverOptions): () => void {
 	const sessionKey = options.sessionKey?.trim();
-	const anchorEl = asHTMLElement(options.anchor);
-	const ownerDocument = anchorEl?.ownerDocument ?? getActiveDocument();
 	if (sessionKey) {
 		const existing = activeTextFieldPopovers.get(sessionKey);
-		if (existing?.panel.isConnected && existing.panel.ownerDocument === ownerDocument) {
+		if (existing?.panel.isConnected) {
 			existing.bringToFront();
 			return existing.requestClose;
 		}
@@ -148,7 +147,7 @@ export function showTextFieldPopover(options: TextFieldPopoverOptions): () => vo
 
 	function shouldCommitValue(nextValue: string): boolean {
 		if (nextValue === committedValue) return false;
-		return !(committedValue.length > 0 && nextValue.length === 0);
+		return options.allowEmptyCommit === true || !(committedValue.length > 0 && nextValue.length === 0);
 	}
 
 	function forceClose(): void {

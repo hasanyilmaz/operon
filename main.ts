@@ -80,9 +80,14 @@ import {
 	buildSingleOccurrenceOverride,
 	hasRepeatTemporalChange,
 	reanchorRepeatTemporalSnapshotToScheduledDate,
+	resolveAuthoritativeRepeatOccurrenceDate,
 	RepeatEditScopeChoice,
 	RepeatTemporalSnapshot,
 } from './src/systems/recurrence-edit-scope';
+import {
+	buildRecurrenceIdentityRepairPlan,
+	type RecurrenceIdentityRepairCandidate,
+} from './src/systems/recurrence-identity-repair';
 import { TaskEditorModal } from './src/ui/task-editor-modal';
 import {
 	TaskCreatorDraft,
@@ -175,7 +180,13 @@ import {
 } from './src/core/dom-compat';
 import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
 import { ReminderScheduler } from './src/core/reminder-scheduler';
+import { getAvailableReminderRuleAnchors } from './src/core/reminder-rules';
 import { ReminderDeliveryController } from './src/systems/reminder-delivery';
+import {
+	MobileNotificationsExporter,
+	readExistingMobileNotificationsProducerState,
+} from './src/systems/mobile-notifications-exporter';
+import { buildOperonPluginStoragePath } from './src/storage/operon-storage-paths';
 import { resolveTaskColorSourceForTask } from './src/core/task-color-source';
 import { asyncHandler, runAsyncAction } from './src/core/async-action';
 import { getCommunityPlugin, isDailyNotesCoreAvailable } from './src/core/obsidian-app';
@@ -333,6 +344,7 @@ import {
 import { localNow, localToday } from './src/core/local-time';
 import { formatUiTime } from './src/core/ui-time-format';
 import {
+	commitContextualReminderValue,
 	executeContextualMenuAction,
 	type ContextualMenuActionId,
 	type ContextualMenuActionInvocation,
@@ -868,6 +880,7 @@ export default class OperonPlugin extends Plugin {
 	private fileTaskArchiver: FileTaskArchiver | null = null;
 	private reminderScheduler: ReminderScheduler | null = null;
 	private reminderDeliveryController: ReminderDeliveryController | null = null;
+	private mobileNotificationsExporter: MobileNotificationsExporter | null = null;
 	private livePreviewEphemeralSession = new LivePreviewEphemeralSessionController();
 	private activeLivePreviewPickerClose: (() => void) | null = null;
 	private suppressLivePreviewSessionEditorChange = false;
@@ -1168,6 +1181,9 @@ export default class OperonPlugin extends Plugin {
 		}
 		void this.externalCalendarService?.applySettings(this.settings.externalCalendars);
 		this.reminderScheduler?.handleSettingsChanged();
+		runAsyncAction('mobile notifications snapshot settings reconciliation failed', async () => {
+			await this.mobileNotificationsExporter?.handleSettingsChanged();
+		});
 		initI18n(undefined, this.settings.language);
 		void this.reconcileProjectSerials({ notifyCapacity: true })
 			.then(() => {
@@ -2668,7 +2684,7 @@ export default class OperonPlugin extends Plugin {
 			getSystemNotificationsEnabled: () => this.settings.reminderSystemNotificationsEnabled,
 			getSoundFilePath: () => this.settings.reminderSoundFilePath,
 			getNoticeDurationMs: () => this.settings.reminderNoticeDurationSeconds * 1_000,
-			onOpenTask: operonId => this.openEditorForId(operonId),
+			onOpenTask: operonId => this.navigateToTaskById(operonId),
 		});
 		this.reminderScheduler = new ReminderScheduler({
 			app: this.app,
@@ -2687,7 +2703,43 @@ export default class OperonPlugin extends Plugin {
 				await this.pinnedCache.pin(task.operonId);
 			}
 		},
-		deliveryPort: this.reminderDeliveryController,
+			deliveryPort: this.reminderDeliveryController,
+		});
+		const mobileNotificationsSnapshotPath = buildOperonPluginStoragePath(
+			this.app.vault.configDir,
+			'state',
+			'mobile-notifications.json',
+		);
+		let existingMobileNotificationsProducerState: ReturnType<
+			typeof readExistingMobileNotificationsProducerState
+		> | null = null;
+		this.mobileNotificationsExporter = new MobileNotificationsExporter({
+			app: this.app,
+			indexer: this.indexer,
+			canProduce: () => Platform.isDesktopApp,
+			getEnabled: () => this.settings.mobileNotificationsSnapshotEnabled,
+			producerState: {
+				isCancelPending: () => this.storage.getMobileNotificationsIntegration().cancelPending,
+				getOrCreateVaultId: async () => {
+					existingMobileNotificationsProducerState ??= readExistingMobileNotificationsProducerState(
+						this.app.vault.adapter,
+						mobileNotificationsSnapshotPath,
+					);
+					const existingState = await existingMobileNotificationsProducerState;
+					if (existingState) await this.storage.adoptMobileNotificationsIntegration(existingState);
+					return this.storage.getOrCreateMobileNotificationsVaultId(existingState?.vaultId);
+				},
+				reserveGeneratedAtEpochMs: (nowEpochMs, minimumExclusive) => (
+					this.storage.reserveMobileNotificationsGeneratedAtEpochMs(nowEpochMs, minimumExclusive)
+				),
+				markCancelAllPublished: () => this.storage.markMobileNotificationsCancelAllPublished(),
+			},
+			getCatchUpMinutes: () => this.settings.reminderCatchUpWindowMinutes,
+			getAppearanceSettings: () => this.settings,
+			isSystemReminderFieldEnabled: fieldKey => this.settings.keyMappings.some(mapping => (
+				mapping.canonicalKey === fieldKey && mapping.isSystem !== false
+			)),
+			path: mobileNotificationsSnapshotPath,
 		});
 		setExistingIdsProvider(() => this.indexer.getAllOperonIds());
 		this.writer = new TaskWriter(this.app, this.indexer, this.settings.keyMappings, {
@@ -2990,6 +3042,7 @@ export default class OperonPlugin extends Plugin {
 					// Mark startup complete — one authoritative render + resumeFromIndex
 				this.startupReady = true;
 				await this.reminderScheduler?.start();
+				await this.mobileNotificationsExporter?.start();
 				if (this.projectSerialIndexReconcilePendingBeforeStartup) {
 					this.scheduleProjectSerialIndexReconcile();
 				}
@@ -3152,6 +3205,8 @@ export default class OperonPlugin extends Plugin {
 		this.fileTaskArchiver = null;
 		this.reminderDeliveryController?.destroy();
 		this.reminderDeliveryController = null;
+		await this.mobileNotificationsExporter?.destroy();
+		this.mobileNotificationsExporter = null;
 		await this.reminderScheduler?.destroy();
 		this.reminderScheduler = null;
 		this.pinnedDock = null;
@@ -3487,10 +3542,10 @@ export default class OperonPlugin extends Plugin {
 					onOpenTaskSource: openTaskSourceInNewTab,
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
 					updateField: async (operonId, key, value) => {
-						await this.updateTaskFieldAndRefresh(operonId, key, value);
+						return this.updateTaskFieldAndRefresh(operonId, key, value);
 					},
 					updateFields: async (operonId, payload) => {
-						await this.updateTaskFieldsAndRefresh(operonId, payload);
+						return this.updateTaskFieldsAndRefresh(operonId, payload);
 					},
 					updateSubtasks: (operonId, subtaskIds) => {
 						void this.syncExistingSubtasksForParent(operonId, subtaskIds);
@@ -3626,7 +3681,14 @@ export default class OperonPlugin extends Plugin {
 					editor.scrollIntoView?.({ from: { line: task.primary.lineNumber, ch: 0 }, to: { line: task.primary.lineNumber, ch: 0 } }, true);
 				}
 			});
-		}
+	}
+
+	private navigateToTaskById(operonId: string): void {
+		if (this.redirectDuplicateOperonIdAction(operonId)) return;
+		const task = this.indexer.getTask(operonId);
+		if (!task) return;
+		this.navigateToTask(task);
+	}
 
 	private openMaterializedTaskSourceInNewTab(taskId: string): void {
 		const task = this.indexer.getTask(taskId);
@@ -4167,11 +4229,12 @@ export default class OperonPlugin extends Plugin {
 				now,
 			);
 		} else {
-			await this.storage.repeatSeries.upsertFollowingOverride(
+			const overrideCommitted = await this.storage.repeatSeries.upsertFollowingOverride(
 				projected.seriesId,
 				buildFollowingOverride(nextSnapshot, now),
 				now,
 			);
+			if (!overrideCommitted) return false;
 		}
 
 		this.refreshViews();
@@ -4239,13 +4302,32 @@ export default class OperonPlugin extends Plugin {
 			}
 		}
 
-		await this.updateTaskFieldsAndRefresh(task.operonId, persistedPayload, { changedKeys: persistedChangedKeys });
+		const pendingFollowingOverride = scope === 'thisAndFollowingTasks' && seriesId
+			? buildFollowingOverride(followingSnapshot, now)
+			: null;
+		const taskCommitted = await this.persistTaskMutationWithFollowingOverride(
+			seriesId,
+			pendingFollowingOverride,
+			now,
+			() => this.updateTaskFieldsAndRefresh(
+				task.operonId,
+				persistedPayload,
+				{ changedKeys: persistedChangedKeys },
+			),
+			() => this.isPendingRepeatIdentityCommitted(
+				this.indexer.getTask(task.operonId),
+				followingSnapshot,
+				pendingFollowingOverride,
+			),
+		);
+		if (!taskCommitted) return false;
 		if (scope === 'thisAndFollowingTasks' && seriesId) {
-			await this.storage.repeatSeries.upsertFollowingOverride(
-				seriesId,
-				buildFollowingOverride(followingSnapshot, now),
-				now,
-			);
+			if (!pendingFollowingOverride) return false;
+			const afterTask = this.indexer.getTask(task.operonId);
+			if (!this.isPendingRepeatIdentityCommitted(afterTask, followingSnapshot, pendingFollowingOverride)) {
+				console.error('Operon: Calendar edit did not persist the reanchored occurrence identity');
+				return false;
+			}
 		}
 		this.refreshViews();
 		return true;
@@ -4325,6 +4407,9 @@ export default class OperonPlugin extends Plugin {
 				});
 				this.refreshViews();
 			},
+			openReminderPicker: async (id, fieldKey, actionAnchor, actionAnchorRect) => {
+				await this.openReminderPickerForTaskId(id, fieldKey, actionAnchor, actionAnchorRect);
+			},
 			convertInlineToFileTask: async (id) => {
 				await this.convertInlineTaskToFileTaskById(id);
 			},
@@ -4342,6 +4427,73 @@ export default class OperonPlugin extends Plugin {
 				new Notice(t('notifications', 'skippedThisOccurrence'));
 			},
 		}, invocation);
+	}
+
+	private async openReminderPickerForTaskId(
+		taskId: string,
+		fieldKey: 'reminderDatetimes' | 'reminderRules',
+		actionAnchor?: HTMLElement | null,
+		actionAnchorRect?: DOMRect | null,
+	): Promise<void> {
+		const indexedTask = this.indexer.getTask(taskId);
+		if (!indexedTask) {
+			new Notice(t('notifications', 'taskNotInIndex'));
+			return;
+		}
+		if (indexedTask.checkbox !== 'open') return;
+		const fieldEnabled = this.settings.keyMappings.some(mapping => (
+			mapping.canonicalKey === fieldKey && mapping.isSystem !== false
+		));
+		if (!fieldEnabled) return;
+		if (
+			fieldKey === 'reminderRules'
+			&& getAvailableReminderRuleAnchors(indexedTask.fieldValues).length === 0
+		) return;
+
+		const { anchor, cleanup } = this.resolveContextualActionAnchor(actionAnchor, actionAnchorRect);
+		let pickerClosed = false;
+		const cleanupPickerAnchor = () => {
+			if (pickerClosed) return;
+			pickerClosed = true;
+			cleanup();
+		};
+		const closePanel = openTaskFieldPicker({
+			app: this.app,
+			settings: this.settings,
+			allTasks: this.indexer.getAllTasks(),
+			canonicalKey: fieldKey,
+			anchor,
+			currentFieldValues: indexedTask.fieldValues,
+			getCurrentFieldValues: () => this.indexer.getTask(taskId)?.fieldValues ?? indexedTask.fieldValues,
+			currentTags: indexedTask.tags,
+			currentTaskId: indexedTask.operonId,
+			taskFormat: indexedTask.primary.format,
+			reminderOperation: { kind: 'add' },
+			onCommit: payload => {
+				const fieldValue = payload[fieldKey];
+				runAsyncAction('contextual reminder save failed', async () => {
+					const result = await commitContextualReminderValue({
+						fieldValue,
+						getTaskCheckbox: () => this.indexer.getTask(taskId)?.checkbox ?? null,
+						write: value => this.updateTaskFieldsAndRefresh(taskId, { [fieldKey]: value }, {
+							changedKeys: [fieldKey],
+						}),
+					});
+					if (result.status === 'saved') return;
+					if (result.status === 'task-missing') {
+						new Notice(t('notifications', 'taskNotInIndex'));
+						return;
+					}
+					if (result.status === 'write-failed') {
+						console.error('Operon: contextual reminder save failed', result.error);
+					}
+					new Notice(t('reminders', 'saveFailed'));
+				});
+			},
+			onCancel: cleanupPickerAnchor,
+			onClose: cleanupPickerAnchor,
+		});
+		if (!closePanel) cleanupPickerAnchor();
 	}
 
 	private async openCheckboxesForTaskId(
@@ -5758,14 +5910,14 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private async markTaskDoneById(operonId: string): Promise<void> {
+	private async markTaskDoneById(operonId: string): Promise<boolean> {
 		const task = this.indexer.getTask(operonId);
-		if (!task || task.checkbox !== 'open') return;
+		if (!task || task.checkbox !== 'open') return false;
 		const now = localNow();
 			const today = now.substring(0, 10);
 			const statusVal = task.fieldValues['status'] ?? '';
 			const toggleResolution = getCheckboxToggleWorkflowStatus(this.settings.pipelines, statusVal, task.checkbox);
-			if (toggleResolution.checkbox !== 'done') return;
+			if (toggleResolution.checkbox !== 'done') return false;
 
 			const payload: Record<string, string> = {
 			datetimeModified: now,
@@ -5774,14 +5926,24 @@ export default class OperonPlugin extends Plugin {
 			payload['status'] = toggleResolution.workflow.value;
 			}
 			this.applyCheckboxStateToFieldPayload(payload, 'done', today, task.fieldValues);
-			if (!await this.guardTaskStatusChangeOrShow(task, payload)) return;
+			if (!await this.guardTaskStatusChangeOrShow(task, payload)) return false;
+			const changedKeys = ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])];
 			if (this.timeTracker.isTimerRunning(operonId)) {
-				await this.stopActiveTimer('terminal-status');
+				let taskWriteAttempted = false;
+				let taskWriteSucceeded = false;
+				const timerStopped = await this.timeTracker.stopActiveWithExternalTaskMutation(operonId, now, async (timerPayload) => {
+					taskWriteAttempted = true;
+					taskWriteSucceeded = await this.updateTaskFieldsAndRefresh(
+						operonId,
+						{ ...timerPayload, ...payload },
+						{ changedKeys: [...Object.keys(timerPayload), ...changedKeys] },
+					);
+					return taskWriteSucceeded;
+				});
+				return timerStopped && taskWriteAttempted && taskWriteSucceeded;
 			}
 
-			await this.updateTaskFieldsAndRefresh(operonId, payload, {
-			changedKeys: ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])],
-		});
+			return this.updateTaskFieldsAndRefresh(operonId, payload, { changedKeys });
 	}
 
 	private async cancelTaskById(operonId: string): Promise<void> {
@@ -7447,12 +7609,12 @@ export default class OperonPlugin extends Plugin {
 			getChildIds: (parentId: string) => [...this.indexer.secondary.getChildIds(parentId)],
 			navigateToTask: (task: IndexedTask) => this.navigateToTask(task),
 			getSettings: () => this.settings,
-			updateField: (operonId: string, key: string, value: string) => {
-				void this.updateTaskFieldAndRefresh(operonId, key, value);
-			},
-			updateFields: (operonId: string, payload: Record<string, string>) => {
-				void this.updateTaskFieldsAndRefresh(operonId, payload);
-			},
+			updateField: (operonId: string, key: string, value: string) => (
+				this.updateTaskFieldAndRefresh(operonId, key, value)
+			),
+			updateFields: (operonId: string, payload: Record<string, string>) => (
+				this.updateTaskFieldsAndRefresh(operonId, payload)
+			),
 			updateSubtasks: (operonId: string, subtaskIds: string[]) => {
 				void this.syncExistingSubtasksForParent(operonId, subtaskIds);
 			},
@@ -7521,12 +7683,12 @@ export default class OperonPlugin extends Plugin {
 						}
 					},
 				getSettings: () => this.settings,
-				updateField: (operonId: string, key: string, value: string) => {
-					void this.updateTaskFieldAndRefresh(operonId, key, value);
-				},
-				updateFields: (operonId: string, payload: Record<string, string>) => {
-					void this.updateTaskFieldsAndRefresh(operonId, payload);
-				},
+				updateField: (operonId: string, key: string, value: string) => (
+					this.updateTaskFieldAndRefresh(operonId, key, value)
+				),
+				updateFields: (operonId: string, payload: Record<string, string>) => (
+					this.updateTaskFieldsAndRefresh(operonId, payload)
+				),
 				updateSubtasks: (operonId: string, subtaskIds: string[]) => {
 					void this.syncExistingSubtasksForParent(operonId, subtaskIds);
 				},
@@ -7788,21 +7950,22 @@ export default class OperonPlugin extends Plugin {
 					restoreCursor?: { filePath: string; lineNumber: number; ch: number; editorView?: EditorView; trackDescriptionEnd?: boolean },
 				) => {
 						return (async () => {
-							const wrote = await this.updateTaskFieldAndRefresh(operonId, key, value);
+							let wrote = await this.updateTaskFieldAndRefresh(operonId, key, value);
 							if (!wrote && restoreCursor && !this.shouldSuppressLivePreviewFallbackAfterBlockedStatus(operonId)) {
-								await this.updateLivePreviewInlineFieldsFallback(operonId, { [key]: value }, restoreCursor);
+								wrote = await this.updateLivePreviewInlineFieldsFallback(operonId, { [key]: value }, restoreCursor);
 							}
-						if (restoreCursor) {
+						if (restoreCursor && wrote) {
 							this.restoreLivePreviewAuthoringCursor(
 							restoreCursor.filePath,
 							{ line: restoreCursor.lineNumber, ch: restoreCursor.ch },
 								true,
 								true,
 								restoreCursor.editorView,
-								restoreCursor.trackDescriptionEnd === true,
-							);
-						}
-					})();
+									restoreCursor.trackDescriptionEnd === true,
+								);
+							}
+							return wrote;
+						})();
 				},
 				onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 				isTaskPinned: (taskId) => this.pinnedCache?.isPinned(taskId) === true,
@@ -7820,21 +7983,22 @@ export default class OperonPlugin extends Plugin {
 					restoreCursor?: { filePath: string; lineNumber: number; ch: number; editorView?: EditorView; trackDescriptionEnd?: boolean },
 				) => {
 						return (async () => {
-							const wrote = await this.updateTaskFieldsAndRefresh(operonId, payload);
+							let wrote = await this.updateTaskFieldsAndRefresh(operonId, payload);
 							if (!wrote && restoreCursor && !this.shouldSuppressLivePreviewFallbackAfterBlockedStatus(operonId)) {
-								await this.updateLivePreviewInlineFieldsFallback(operonId, payload, restoreCursor);
+								wrote = await this.updateLivePreviewInlineFieldsFallback(operonId, payload, restoreCursor);
 							}
-						if (restoreCursor) {
+						if (restoreCursor && wrote) {
 							this.restoreLivePreviewAuthoringCursor(
 							restoreCursor.filePath,
 							{ line: restoreCursor.lineNumber, ch: restoreCursor.ch },
 								true,
 								true,
 								restoreCursor.editorView,
-								restoreCursor.trackDescriptionEnd === true,
-							);
-						}
-					})();
+									restoreCursor.trackDescriptionEnd === true,
+								);
+							}
+							return wrote;
+						})();
 				},
 			updateSubtasks: (operonId: string, subtaskIds: string[]) => {
 				void this.syncExistingSubtasksForParent(operonId, subtaskIds);
@@ -8072,9 +8236,9 @@ export default class OperonPlugin extends Plugin {
 									});
 							}
 					},
-							updateField: async (operonId: string, key: string, value: string) => {
-								await this.updateTaskFieldAndRefresh(operonId, key, value);
-							},
+							updateField: (operonId: string, key: string, value: string) => (
+								this.updateTaskFieldAndRefresh(operonId, key, value)
+							),
 					onContextualAction: (
 						taskId: string,
 						actionId: ContextualMenuActionId,
@@ -8283,10 +8447,11 @@ export default class OperonPlugin extends Plugin {
 			onRequestSubtask: async (request) => {
 				await this.handleSubtaskRequest(request, task);
 			},
-			onOpenTask: (operonId: string) => {
-				this.openEditorForId(operonId);
-			},
-			onUpdateExistingSubtaskParent: async (childId: string, parentId: string | null) => {
+				onOpenTask: (operonId: string) => {
+					this.openEditorForId(operonId);
+				},
+				onMarkSubtaskDone: (operonId: string) => this.markTaskDoneById(operonId),
+				onUpdateExistingSubtaskParent: async (childId: string, parentId: string | null) => {
 				await this.writeParentToExistingChildTask(childId, parentId);
 			},
 		};
@@ -8835,13 +9000,14 @@ export default class OperonPlugin extends Plugin {
 				new Notice(t('notifications', 'taskSaveFailed'));
 			}
 			return saved;
-		});
+		}, {}, () => this.indexer.getTaskInstance(instanceKey) ?? null);
 	}
 
 	private async openTaskEditorFor(
 		task: ParsedTask | null,
 		onSave: OnSaveCallback,
 		options: TaskEditorContentOptions = {},
+		resolveCanonicalTask?: () => IndexedTask | null,
 	): Promise<void> {
 		const indexedBeforeSave = task?.operonId ? this.indexer.getTask(task.operonId) : null;
 		const fallbackSourceFormat = indexedBeforeSave?.primary.format ?? 'inline';
@@ -8851,24 +9017,33 @@ export default class OperonPlugin extends Plugin {
 			if (saved === false || saved === null) return saved;
 			const parsed = this.parseInlineTaskLine(request.taskLine, task?.lineNumber ?? 0, task?.filePath ?? '');
 			const operonId = parsed?.operonId?.trim();
-			if (!operonId) return;
+			if (!operonId) return saved;
 			const parsedFilePath = parsed?.filePath?.trim() || task?.filePath?.trim() || '';
-			const freshTask = this.indexer.getTask(operonId)
-				?? (parsedFilePath ? await this.awaitIndexedTask(parsedFilePath, operonId) : null);
+			const freshTask = resolveCanonicalTask
+				? resolveCanonicalTask()
+				: this.indexer.getTask(operonId)
+					?? (parsedFilePath ? await this.awaitIndexedTask(parsedFilePath, operonId) : null);
 				if (freshTask) {
 					if (resolvedOptions.fileBody && freshTask.primary.format === 'yaml') {
 						resolvedOptions.fileBody.filePath = freshTask.primary.filePath;
 					}
 					await this.syncRepeatSeriesEntryIfNeeded(freshTask);
 					await this.applyInlineRepeatCompletionModeIfRequested(freshTask, request.inlineCompletionMode);
-					return true;
+					return {
+						canonicalState: {
+							description: freshTask.description,
+							checkbox: freshTask.checkbox,
+							tags: [...freshTask.tags],
+							fieldValues: { ...freshTask.fieldValues },
+						},
+					};
 				}
 
 			const fieldValues = parsed
 				? Object.fromEntries(parsed.fields.map(field => [field.key, field.value]))
 				: {};
 			const seriesId = fieldValues['repeatSeriesId']?.trim();
-			if (!seriesId) return;
+				if (!seriesId) return saved;
 			await this.storage.repeatSeries.ensureSeries({
 				seriesId,
 				sourceTaskId: operonId,
@@ -8885,8 +9060,8 @@ export default class OperonPlugin extends Plugin {
 				description: parsed?.description ?? task?.description ?? null,
 			});
 			this.refreshViews();
-			return true;
-		};
+				return saved;
+			};
 		const baseOptions = {
 			...this.getTaskEditorSubtaskOptions(task),
 			onRequestDelete: async (parsedTask: ParsedTask): Promise<boolean> => {
@@ -14677,6 +14852,7 @@ export default class OperonPlugin extends Plugin {
 			const freshTask = this.indexer.getTask(task.operonId) ?? task;
 			this.maybeApplyScheduledAutomationToParsedTask(parsed, freshTask.fieldValues);
 			const payload = this.buildFieldPayload(parsed);
+			this.preserveAuthoritativeRepeatOccurrenceDate(freshTask, parsed, payload);
 			if (!this.validateDependencyPayloadChanges(freshTask, payload, 'replace')) return null;
 			if (!await this.guardTaskStatusChangeOrShow(freshTask, payload, { mode: 'replace' })) return null;
 			const repeatTemporalScope = await this.resolveEditorRepeatTemporalScope(freshTask, payload);
@@ -14704,10 +14880,11 @@ export default class OperonPlugin extends Plugin {
 		if (realignedParentTaskId) {
 			this.setParsedTaskField(parsed, 'parentTask', realignedParentTaskId, 'text');
 		}
-		const normalizedTaskLine = serializeTask(parsed, this.settings.keyMappings);
-		const pendingRepeatOverride = repeatTemporalScope.scope === 'thisAndFollowingTasks' && pendingRepeatSeriesId && pendingRepeatSnapshot
-			? buildFollowingOverride(pendingRepeatSnapshot, localNow())
-			: null;
+			const normalizedTaskLine = serializeTask(parsed, this.settings.keyMappings);
+			const pendingRepeatOverrideNow = localNow();
+			const pendingRepeatOverride = repeatTemporalScope.scope === 'thisAndFollowingTasks' && pendingRepeatSeriesId && pendingRepeatSnapshot
+				? buildFollowingOverride(pendingRepeatSnapshot, pendingRepeatOverrideNow)
+				: null;
 
 		if (freshTask.primary.format === 'inline') {
 			if (request.fileBody?.dirty && request.fileBody.format === 'inline') {
@@ -14728,30 +14905,45 @@ export default class OperonPlugin extends Plugin {
 				const nextContent = frontmatter == null
 					? mergedBody
 					: `---\n${frontmatter}\n---\n${mergedBody}`;
-				this.markInternalTaskWrite(file.path);
-				await this.app.vault.modify(file, nextContent);
-			} else {
-				const updated = await this.replaceInlineTaskById(
-					freshTask.primary.filePath,
-					freshTask.operonId,
-					normalizedTaskLine,
-					freshTask.primary.lineNumber,
-				);
-				if (!updated) return false;
+					const updated = await this.persistTaskMutationWithFollowingOverride(
+						pendingRepeatSeriesId,
+						pendingRepeatOverride,
+						pendingRepeatOverrideNow,
+						async () => {
+							this.markInternalTaskWrite(file.path);
+							await this.app.vault.modify(file, nextContent);
+							return true;
+						},
+					);
+					if (!updated) return false;
+				} else {
+					const updated = await this.persistTaskMutationWithFollowingOverride(
+						pendingRepeatSeriesId,
+						pendingRepeatOverride,
+						pendingRepeatOverrideNow,
+						() => this.replaceInlineTaskById(
+							freshTask.primary.filePath,
+							freshTask.operonId,
+							normalizedTaskLine,
+							freshTask.primary.lineNumber,
+						),
+					);
+					if (!updated) return false;
 			}
 
 				await this.indexer.reindexFilePath(freshTask.primary.filePath, { notify: false });
 				const afterTask = this.indexer.getTask(freshTask.operonId);
+				if (!this.isPendingRepeatIdentityCommitted(afterTask, pendingRepeatSnapshot, pendingRepeatOverride)) {
+					console.error('Operon: recurring task save did not persist the reanchored occurrence identity');
+					return false;
+				}
 				await this.syncDependencyPayloadChanges(freshTask, payload, 'replace');
 			const modifiedTimestamp = (payload['datetimeModified'] ?? afterTask?.fieldValues['datetimeModified'] ?? '').trim();
 			let recurrenceResult: RecurrenceMaterializationResult | null = null;
 			if (afterTask) {
 				await this.syncRepeatSeriesEntryIfNeeded(afterTask);
 				await this.applyInlineRepeatCompletionModeIfRequested(afterTask, request.inlineCompletionMode);
-				if (pendingRepeatOverride) {
-					await this.storage.repeatSeries.upsertFollowingOverride(pendingRepeatSeriesId, pendingRepeatOverride, localNow());
-				}
-				recurrenceResult = await this.maybeCreateRecurringOccurrence(task, afterTask, localNow());
+					recurrenceResult = await this.maybeCreateRecurringOccurrence(task, afterTask, localNow());
 			}
 			await this.refreshAggregateTotalsAfterTaskMutation(
 				freshTask,
@@ -14768,11 +14960,16 @@ export default class OperonPlugin extends Plugin {
 
 		// YAML saves are full-state replacements for Operon-managed fields:
 		// omitted keys should be removed, while unknown user frontmatter is preserved.
-		const wroteYamlTask = await this.writer.writeTaskFields(
-			freshTask.operonId,
-			payload,
-			{ mode: 'replace', reindex: 'none', touchAncestors: false },
-		);
+			const wroteYamlTask = await this.persistTaskMutationWithFollowingOverride(
+				pendingRepeatSeriesId,
+				pendingRepeatOverride,
+				pendingRepeatOverrideNow,
+				() => this.writer.writeTaskFields(
+					freshTask.operonId,
+					payload,
+					{ mode: 'replace', reindex: 'none', touchAncestors: false },
+				),
+			);
 		if (!wroteYamlTask) return false;
 
 		let indexedPath = file.path;
@@ -14802,16 +14999,17 @@ export default class OperonPlugin extends Plugin {
 
 		await this.indexer.reindexFilePath(indexedPath, { notify: false });
 		const afterTask = this.indexer.getTask(freshTask.operonId);
+		if (!this.isPendingRepeatIdentityCommitted(afterTask, pendingRepeatSnapshot, pendingRepeatOverride)) {
+			console.error('Operon: recurring File Task save did not persist the reanchored occurrence identity');
+			return false;
+		}
 		const modifiedTimestamp = (payload['datetimeModified'] ?? afterTask?.fieldValues['datetimeModified'] ?? '').trim();
 		await this.syncDependencyPayloadChanges(freshTask, payload, 'replace');
 		let recurrenceResult: RecurrenceMaterializationResult | null = null;
 		if (afterTask) {
 			await this.syncRepeatSeriesEntryIfNeeded(afterTask);
 			await this.applyInlineRepeatCompletionModeIfRequested(afterTask, request.inlineCompletionMode);
-			if (pendingRepeatOverride) {
-				await this.storage.repeatSeries.upsertFollowingOverride(pendingRepeatSeriesId, pendingRepeatOverride, localNow());
-			}
-			recurrenceResult = await this.maybeCreateRecurringOccurrence(task, afterTask, localNow());
+				recurrenceResult = await this.maybeCreateRecurringOccurrence(task, afterTask, localNow());
 		}
 		await this.refreshAggregateTotalsAfterTaskMutation(
 			freshTask,
@@ -14821,6 +15019,171 @@ export default class OperonPlugin extends Plugin {
 		this.scheduleProjectSerialIndexReconcile();
 		this.refreshViews();
 		return true;
+	}
+
+	private preserveAuthoritativeRepeatOccurrenceDate(
+		task: IndexedTask,
+		parsed: ParsedTask,
+		payload: Record<string, string>,
+	): void {
+		const occurrenceDate = resolveAuthoritativeRepeatOccurrenceDate(task.fieldValues, payload);
+		if (!occurrenceDate) return;
+		payload['repeatOccurrenceDate'] = occurrenceDate;
+		this.setParsedTaskField(parsed, 'repeatOccurrenceDate', occurrenceDate, 'date');
+	}
+
+	private async persistTaskMutationWithFollowingOverride(
+		seriesId: string,
+		pendingOverride: ReturnType<typeof buildFollowingOverride> | null,
+		now: string,
+		persistTask: () => Promise<boolean>,
+		isTaskCommitted: () => boolean = () => false,
+	): Promise<boolean> {
+		if (!pendingOverride) return persistTask();
+		if (!seriesId) return false;
+		const transaction = await this.storage.repeatSeries.beginFollowingOverrideTransaction(
+			seriesId,
+			pendingOverride,
+			now,
+		);
+		if (!transaction) return false;
+
+		try {
+			const persisted = await persistTask();
+			if (persisted || isTaskCommitted()) return true;
+		} catch (error) {
+			if (isTaskCommitted()) throw error;
+			const rolledBack = await this.storage.repeatSeries.rollbackFollowingOverrideTransaction(transaction);
+			if (!rolledBack) {
+				console.error('Operon: task write failed and tentative following override rollback was rejected', error);
+				throw new Error('Operon: could not roll back tentative following override after task write failure');
+			}
+			throw error;
+		}
+
+		const rolledBack = await this.storage.repeatSeries.rollbackFollowingOverrideTransaction(transaction);
+		if (!rolledBack) {
+			throw new Error('Operon: could not roll back tentative following override after rejected task write');
+		}
+		return false;
+	}
+
+	private isPendingRepeatIdentityCommitted(
+		afterTask: IndexedTask | null | undefined,
+		pendingSnapshot: RepeatTemporalSnapshot | null,
+		pendingOverride: ReturnType<typeof buildFollowingOverride> | null,
+	): boolean {
+		if (!pendingOverride || !pendingSnapshot) return true;
+		return (afterTask?.fieldValues['repeatOccurrenceDate'] ?? '').trim() === pendingSnapshot.occurrenceDate;
+	}
+
+	private async handleRepairRecurringFileTaskIdentitiesCommand(): Promise<void> {
+		const plan = buildRecurrenceIdentityRepairPlan(
+			this.indexer.getAllTasks(),
+			this.storage.repeatSeries.getAllEntries(),
+		);
+		if (plan.candidates.length === 0) {
+			new Notice(t('recurrenceIdentityRepair', 'noCandidates'));
+			return;
+		}
+
+		const previewLimit = 50;
+		const previewCandidates = plan.candidates.slice(0, previewLimit);
+		const remainingCount = plan.candidates.length - previewCandidates.length;
+		const confirmed = await new Promise<boolean>(resolve => {
+			new ConfirmActionModal(this.app, {
+				title: t('recurrenceIdentityRepair', 'title'),
+				message: remainingCount > 0
+					? t('recurrenceIdentityRepair', 'previewWithRemaining', {
+						count: String(plan.candidates.length),
+						remaining: String(remainingCount),
+					})
+					: t('recurrenceIdentityRepair', 'preview', { count: String(plan.candidates.length) }),
+				confirmText: t('recurrenceIdentityRepair', 'confirm'),
+				cancelText: t('buttons', 'cancel'),
+				detailsTable: previewCandidates.map(candidate => ({
+					label: candidate.filePath,
+					before: candidate.fromOccurrenceDate,
+					after: candidate.toOccurrenceDate,
+				})),
+			}, resolve).open();
+		});
+		if (!confirmed) return;
+
+		const outcomes = new Map<string, 'updated' | 'already-updated' | 'conflict' | 'missing' | 'failed'>();
+		const reindexCandidates: RecurrenceIdentityRepairCandidate[] = [];
+		for (const candidate of plan.candidates) {
+			try {
+				// The confirmation modal can remain open while tasks or series state change.
+				// Rebuild the conservative plan immediately before each write and require
+				// the exact previewed candidate to remain eligible.
+				const currentPlan = buildRecurrenceIdentityRepairPlan(
+					this.indexer.getAllTasks(),
+					this.storage.repeatSeries.getAllEntries(),
+				);
+				const currentCandidate = currentPlan.candidates.find(value => value.operonId === candidate.operonId);
+				if (!currentCandidate || !this.isSameRecurrenceIdentityRepairCandidate(candidate, currentCandidate)) {
+					outcomes.set(candidate.operonId, 'conflict');
+					continue;
+				}
+				const outcome = await this.writer.writeTaskFieldIfCurrent(
+					currentCandidate.operonId,
+					'repeatOccurrenceDate',
+					currentCandidate.fromOccurrenceDate,
+					currentCandidate.toOccurrenceDate,
+					{
+						reindex: 'none',
+						additionalExpectedValues: { ...currentCandidate.additionalExpectedValues },
+					},
+				);
+				outcomes.set(candidate.operonId, outcome);
+				if (outcome === 'updated' || outcome === 'already-updated') reindexCandidates.push(currentCandidate);
+			} catch (error) {
+				console.error(`Operon: failed to repair recurring File Task identity ${candidate.operonId}`, error);
+				outcomes.set(candidate.operonId, 'failed');
+			}
+		}
+
+		if (reindexCandidates.length > 0) {
+			await this.indexer.reindexFilesBatch(
+				[...new Set(reindexCandidates.map(candidate => candidate.filePath))],
+				{ notify: false },
+			);
+		}
+
+		let repaired = 0;
+		let skipped = 0;
+		for (const candidate of plan.candidates) {
+			const outcome = outcomes.get(candidate.operonId) ?? 'failed';
+			const indexedOccurrence = (this.indexer.getTask(candidate.operonId)?.fieldValues['repeatOccurrenceDate'] ?? '').trim();
+			if ((outcome === 'updated' || outcome === 'already-updated') && indexedOccurrence === candidate.toOccurrenceDate) {
+				repaired += 1;
+			} else {
+				skipped += 1;
+			}
+		}
+		this.refreshViews();
+		new Notice(t('recurrenceIdentityRepair', 'result', {
+			repaired: String(repaired),
+			skipped: String(skipped),
+		}));
+	}
+
+	private isSameRecurrenceIdentityRepairCandidate(
+		previewed: RecurrenceIdentityRepairCandidate,
+		current: RecurrenceIdentityRepairCandidate,
+	): boolean {
+		return previewed.operonId === current.operonId
+			&& previewed.seriesId === current.seriesId
+			&& previewed.filePath === current.filePath
+			&& previewed.fromOccurrenceDate === current.fromOccurrenceDate
+			&& previewed.toOccurrenceDate === current.toOccurrenceDate
+			&& previewed.repeat === current.repeat
+			&& Object.entries(previewed.additionalExpectedValues).every(([key, value]) => (
+				current.additionalExpectedValues[key] === value
+			))
+			&& Object.keys(previewed.additionalExpectedValues).length
+				=== Object.keys(current.additionalExpectedValues).length;
 	}
 
 	private async refreshAggregateTotalsAfterTaskMutation(
@@ -16258,6 +16621,17 @@ export default class OperonPlugin extends Plugin {
 				runAsyncAction(
 					'repair Task Wikilink Overlay links failed',
 					() => this.handleRepairTaskWikilinkOverlayLinksCommand(),
+				);
+			},
+		});
+
+		this.addCommand({
+			id: 'repair-recurring-file-task-identities',
+			name: t('commands', 'repairRecurringFileTaskIdentities'),
+			callback: () => {
+				runAsyncAction(
+					'repair recurring File Task identities failed',
+					() => this.handleRepairRecurringFileTaskIdentitiesCommand(),
 				);
 			},
 		});

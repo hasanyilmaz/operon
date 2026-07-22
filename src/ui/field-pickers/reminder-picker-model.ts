@@ -1,8 +1,8 @@
 import {
+	getAvailableReminderRuleAnchors,
 	parseAbsoluteReminder,
 	parseReminderOffsetInput,
 	parseReminderRule,
-	REMINDER_RULE_ANCHORS,
 	resolveReminderRule,
 	type ReminderRuleAnchor,
 } from '../../core/reminder-rules';
@@ -10,6 +10,8 @@ import type {
 	ReminderListItemRef,
 	ReminderPickerFieldKey,
 } from '../../core/reminder-list-mutation';
+
+export { getAvailableReminderRuleAnchors };
 
 export interface ReminderPickerEditingItem extends ReminderListItemRef {
 	fieldKey: ReminderPickerFieldKey;
@@ -49,13 +51,6 @@ export type AbsoluteReminderSelectionEvaluation =
 	| { status: 'invalid' }
 	| { status: 'past'; canonical: string; epochMs: number }
 	| { status: 'duplicate'; canonical: string; epochMs: number };
-
-export function getAvailableReminderRuleAnchors(
-	fieldValues: Readonly<Record<string, string | undefined>>,
-): ReminderRuleAnchor[] {
-	return REMINDER_RULE_ANCHORS.filter(anchor =>
-		resolveReminderRule(`${anchor}.0m`, fieldValues).status === 'resolved');
-}
 
 export function buildReminderRuleCandidates(
 	offsetInput: string,

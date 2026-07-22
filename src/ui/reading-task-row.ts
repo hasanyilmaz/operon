@@ -1,9 +1,8 @@
 import { App, setIcon } from 'obsidian';
-import { IndexedTask, ParsedTask } from '../types/fields';
+import { IndexedTask } from '../types/fields';
 import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
-import { showLivePreviewFieldMenu } from './live-preview-field-menu';
 import { InlineTaskCompactChipItem, OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { findStatusDef, Pipeline, resolveWorkflowStatus } from '../types/pipeline';
 import {
@@ -14,8 +13,6 @@ import { PriorityDefinition } from '../types/priority';
 import {
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
-	getInlineTaskCompactHiddenCount,
-	getInlineTaskCompactVisibleKeys,
 	InlineTaskCompactChipEntry,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
@@ -50,6 +47,7 @@ import { enhanceReadingTaskFileWikilinks } from './reading-task-wikilink-overlay
 import { isTaskDescriptionWikilinkEventTarget, renderTaskDescriptionWikilinks } from './task-description-wikilinks';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
+import { createTaskNoteActionButton, showTaskNotePopover } from './task-note-action';
 
 export interface ReadingTaskRowCallbacks {
 	app: App;
@@ -62,13 +60,13 @@ export interface ReadingTaskRowCallbacks {
 	openEditor: (operonId: string) => void;
 	cycleStatus: (operonId: string) => void | Promise<void>;
 	navigateToTask: (task: IndexedTask) => void;
-	updateField: (operonId: string, key: string, value: string) => void | Promise<void>;
+	updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
 	isTaskTracking?: (taskId: string) => boolean;
 	toggleTimer?: (taskId: string) => void | Promise<void>;
 	requestSubtask?: (operonId: string) => void | Promise<void>;
-	updateFields?: (operonId: string, payload: Record<string, string>) => void | Promise<void>;
+	updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>;
 	updateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	getRepeatSeriesInlineCompletionMode?: (repeatSeriesId: string) => InlineRepeatCompletionMode;
@@ -113,6 +111,7 @@ export interface ReadingTaskRowOptions {
 	readOnly?: boolean;
 	showPlayAction?: boolean;
 	showPinAction?: boolean;
+	showNoteAction?: boolean;
 	showSubtaskAction?: boolean;
 	showEditAction?: boolean;
 	rowClassName?: string;
@@ -309,68 +308,39 @@ export function buildReadingTaskRowElement(
 		tail.appendChild(chipNode);
 	}
 
-	const hiddenCount = getInlineTaskCompactHiddenCount(
-		task.fieldValues,
-		task.tags,
-		callbacks.getSettings(),
-		callbacks.getAllTasks(),
-		options?.chipItems,
-		{ workflowStatusIdentityIndex },
-	);
-	if (!readOnly && hiddenCount > 0) {
-		const overflow = el('button', 'operon-live-preview-chip operon-reading-task-overflow operon-task-chip operon-task-chip-overflow', row);
-		overflow.type = 'button';
-		overflow.textContent = `+${hiddenCount}`;
-		if (taskColor) overflow.style.setProperty('--operon-live-hover-border', taskColor);
-		overflow.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			showLivePreviewFieldMenu(overflow, {
-				app: callbacks.app,
-				task,
-				parsedTask: parsedTaskFromIndexed(task),
-				settings: callbacks.getSettings(),
-				allTasks: callbacks.getAllTasks(),
-				updateField: (key, value) => callbacks.updateField(task.operonId, key, value),
-				updateFields: callbacks.updateFields
-					? (payload) => callbacks.updateFields?.(task.operonId, payload)
-					: undefined,
-				updateSubtasks: callbacks.updateSubtasks
-					? (subtaskIds) => callbacks.updateSubtasks?.(task.operonId, subtaskIds)
-					: undefined,
-				updateDependencyField: callbacks.updateDependencyField
-					? (field, value) => callbacks.updateDependencyField?.(task.operonId, field, value)
-					: undefined,
-				repeatInlineCompletionMode: callbacks.getRepeatSeriesInlineCompletionMode?.(task.fieldValues['repeatSeriesId'] ?? ''),
-				onRepeatInlineCompletionModeChange: mode => callbacks.updateRepeatSeriesInlineCompletionMode?.(task.operonId, mode),
-				openEditor: () => callbacks.openEditor(task.operonId),
-				visibleKeys: getInlineTaskCompactVisibleKeys(callbacks.getSettings(), options?.chipItems),
-			});
-		});
-		tail.appendChild(overflow);
-	}
-
 	const actions = el('div', 'operon-reading-task-actions', row);
 
 	const showPlayAction = !readOnly && (options?.showPlayAction ?? callbacks.getSettings().inlineTaskShowPlayAction);
 	const showPinAction = !readOnly && (options?.showPinAction ?? callbacks.getSettings().inlineTaskShowPinAction);
+	const showNoteAction = options?.showNoteAction ?? callbacks.getSettings().inlineTaskShowNoteAction;
 	const showSubtaskAction = !readOnly && (options?.showSubtaskAction ?? callbacks.getSettings().inlineTaskShowSubtaskAction);
 	const showEditAction = !readOnly && (options?.showEditAction ?? true);
 
-	if (!isTerminal && callbacks.toggleTimer && showPlayAction && task.checkbox === 'open') {
-		const isTracking = callbacks.isTaskTracking?.(task.operonId) === true;
-		const playButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-task-chip-action', row);
-		playButton.type = 'button';
-		if (isTracking) playButton.classList.add('is-active');
-		setIcon(playButton, isTracking ? 'square' : 'play');
-		setAccessibleLabelWithoutTooltip(playButton, t('tooltips', isTracking ? 'stopTimer' : 'startTimer'));
-		playButton.addEventListener('click', (event) => {
+	if (!isTerminal && callbacks.requestSubtask && showSubtaskAction) {
+		const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(task));
+		const subtaskButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-task-chip-action', row);
+		subtaskButton.type = 'button';
+		setIcon(subtaskButton, resolveSubtaskActionIcon(task));
+		setAccessibleLabelWithoutTooltip(subtaskButton, subtaskLabel);
+		bindOperonHoverTooltip(subtaskButton, {
+			content: subtaskLabel,
+			taskColor,
+		});
+		subtaskButton.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
-			void callbacks.toggleTimer?.(task.operonId);
+			void callbacks.requestSubtask?.(task.operonId);
 		});
-		if (taskColor) playButton.style.setProperty('--operon-live-hover-border', taskColor);
-		actions.appendChild(playButton);
+		if (taskColor) subtaskButton.style.setProperty('--operon-live-hover-border', taskColor);
+		actions.appendChild(subtaskButton);
+	}
+
+	if (!readOnly) {
+		options?.beforeEditAction?.(actions, {
+			task,
+			taskColor,
+			isTerminal,
+		});
 	}
 
 	if (!isTerminal && callbacks.onContextualAction && showPinAction) {
@@ -393,8 +363,29 @@ export function buildReadingTaskRowElement(
 		actions.appendChild(pinButton);
 	}
 
-	const noteValue = task.fieldValues['note']?.trim();
-	if (noteValue) {
+	if (!isTerminal && callbacks.toggleTimer && showPlayAction && task.checkbox === 'open') {
+		const isTracking = callbacks.isTaskTracking?.(task.operonId) === true;
+		const playButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-task-chip-action operon-task-timer-action', row);
+		playButton.type = 'button';
+		if (isTracking) playButton.classList.add('is-active');
+		setIcon(playButton, isTracking ? 'square' : 'play');
+		const timerLabel = t('tooltips', isTracking ? 'stopTimer' : 'startTimer');
+		setAccessibleLabelWithoutTooltip(playButton, timerLabel);
+		bindOperonHoverTooltip(playButton, {
+			content: timerLabel,
+			taskColor,
+		});
+		playButton.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			void callbacks.toggleTimer?.(task.operonId);
+		});
+		if (taskColor) playButton.style.setProperty('--operon-live-hover-border', taskColor);
+		actions.appendChild(playButton);
+	}
+
+	const noteValue = task.fieldValues['note']?.trim() ?? '';
+	if (showNoteAction && readOnly && noteValue) {
 		const noteIndicator = createOperonHoverIndicator({
 			title: t('taskEditor', 'notes'),
 			contentEl: createNonInteractiveMarkdownLinkContent(actions, noteValue),
@@ -404,36 +395,44 @@ export function buildReadingTaskRowElement(
 		});
 		noteIndicator.querySelector('.operon-hover-trigger')?.classList.add('operon-reading-task-note-neutral', 'operon-task-chip-action');
 		actions.appendChild(noteIndicator);
-	}
-
-	if (!readOnly) {
-		options?.beforeEditAction?.(actions, {
-			task,
+	} else if (showNoteAction && !readOnly && (!isTerminal || noteValue)) {
+		const noteButton = createTaskNoteActionButton({
+			owner: row,
+			noteValue,
+			icon: getConfiguredKeyMappingIcon('note', callbacks.getSettings().keyMappings) || 'notebook-pen',
+			label: t('taskEditor', noteValue ? 'editNote' : 'addNote'),
+			tooltipTitle: t('taskEditor', 'notes'),
 			taskColor,
-			isTerminal,
+			neutral: true,
+			classNames: 'operon-reading-task-edit operon-reading-task-note-action operon-reading-task-note-neutral',
+			onActivate: (anchor) => {
+				showTaskNotePopover({
+					app: callbacks.app,
+					anchor,
+					operonId: task.operonId,
+					initialValue: noteValue,
+					taskDescription: task.description,
+					taskColor,
+					onCommit: value => callbacks.updateField(task.operonId, 'note', value),
+					onClose: () => {
+						if (noteButton.isConnected) noteButton.focus();
+					},
+				});
+			},
 		});
-	}
-
-	if (!isTerminal && callbacks.requestSubtask && showSubtaskAction) {
-		const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(task));
-		const subtaskButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-task-chip-action', row);
-		subtaskButton.type = 'button';
-		setIcon(subtaskButton, resolveSubtaskActionIcon(task));
-		setAccessibleLabelWithoutTooltip(subtaskButton, subtaskLabel);
-		subtaskButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			void callbacks.requestSubtask?.(task.operonId);
-		});
-		if (taskColor) subtaskButton.style.setProperty('--operon-live-hover-border', taskColor);
-		actions.appendChild(subtaskButton);
+		actions.appendChild(noteButton);
 	}
 
 	if (showEditAction) {
 		const editButton = el('button', 'operon-live-preview-edit operon-reading-task-edit operon-task-chip-action', row);
 		editButton.type = 'button';
 		setIcon(editButton, 'settings-2');
-		setAccessibleLabelWithoutTooltip(editButton, t('tooltips', 'editTask'));
+		const editLabel = t('tooltips', 'editTask');
+		setAccessibleLabelWithoutTooltip(editButton, editLabel);
+		bindOperonHoverTooltip(editButton, {
+			content: editLabel,
+			taskColor,
+		});
 		editButton.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -799,35 +798,6 @@ function resolveTerminalVisualState(
 		return 'done';
 	}
 	return null;
-}
-
-function parsedTaskFromIndexed(task: IndexedTask): ParsedTask {
-	const fields = Object.entries(task.fieldValues).map(([key, value]) => ({
-		sourceKey: key,
-		key,
-		value,
-		rawValue: value,
-		type: 'text' as const,
-		isCanonical: true,
-		containerRange: { from: 0, to: 0 },
-		valueRange: { from: 0, to: 0 },
-	}));
-	return {
-		lineNumber: task.primary.lineNumber,
-		filePath: task.primary.filePath,
-		checkbox: task.checkbox,
-		checkboxRange: { from: 0, to: 0 },
-		description: task.description,
-		descriptionRange: { from: 0, to: 0 },
-		fields,
-		tags: task.tags,
-		tagTokens: [],
-		metadataTailRange: null,
-		operonId: task.operonId,
-		rawLine: '',
-		timePrefix: null,
-		timePrefixRange: null,
-	};
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(

@@ -33,7 +33,11 @@ try {
 					loader: 'js',
 					contents: `
 						export class TFile {}
-						export class Notice { hide() {} }
+						export class Notice {
+							static instances = [];
+							constructor(content, duration) { this.content = content; this.duration = duration; Notice.instances.push(this); }
+							hide() {}
+						}
 						export const Platform = { isDesktopApp: true };
 						export const normalizePath = value => value.replace(/\\\\/gu, '/').replace(/\\/{2,}/gu, '/');
 						export const setIcon = () => {};

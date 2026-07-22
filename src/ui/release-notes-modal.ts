@@ -55,7 +55,7 @@ export class OperonReleaseNotesModal extends Modal {
 		});
 		setIcon(supportButtonEl.createSpan('operon-release-notes-support-icon'), 'coffee');
 		supportButtonEl.createSpan({
-			text: t('buttons', 'buyMeACoffee'),
+			text: t('buttons', 'fillOperonsCoffeeJar'),
 			cls: 'operon-release-notes-support-label',
 		});
 		supportButtonEl.addEventListener('click', (event) => {
@@ -64,7 +64,7 @@ export class OperonReleaseNotesModal extends Modal {
 		});
 		footerEl.createEl('button', {
 			text: t('buttons', 'stayInFlow'),
-			cls: 'mod-cta operon-release-notes-thanks',
+			cls: 'operon-release-notes-support operon-release-notes-thanks',
 			attr: { type: 'button' },
 		}).addEventListener('click', () => {
 			this.close();

@@ -31,6 +31,7 @@ const SUPPORTED_LANGUAGE_SET: ReadonlySet<string> = new Set(SUPPORTED_LANGUAGES)
 /** Structure of a locale source file. */
 export interface LocaleData {
 	commands: Record<string, string>;
+	recurrenceIdentityRepair: Record<string, string>;
 	presetFavorites: Record<string, string>;
 	contextMenu: Record<string, string>;
 	modals: Record<string, string>;

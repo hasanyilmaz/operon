@@ -41,9 +41,11 @@ export type TaskUiPreferenceStoreSettings = Pick<
 	| 'taskWikilinkOverlayShowPlainCheckboxAction'
 	| 'inlineTaskShowPlayAction'
 	| 'inlineTaskShowPinAction'
+	| 'inlineTaskShowNoteAction'
 	| 'inlineTaskShowSubtaskAction'
 	| 'filterTaskShowPlayAction'
 	| 'filterTaskShowPinAction'
+	| 'filterTaskShowNoteAction'
 	| 'filterTaskShowSubtaskAction'
 	| 'filterTaskShowPlainCheckboxAction'
 >;
@@ -89,9 +91,11 @@ function cloneSettings(settings: TaskUiPreferenceStoreSettings): TaskUiPreferenc
 		taskWikilinkOverlayShowPlainCheckboxAction: settings.taskWikilinkOverlayShowPlainCheckboxAction,
 		inlineTaskShowPlayAction: settings.inlineTaskShowPlayAction,
 		inlineTaskShowPinAction: settings.inlineTaskShowPinAction,
+		inlineTaskShowNoteAction: settings.inlineTaskShowNoteAction,
 		inlineTaskShowSubtaskAction: settings.inlineTaskShowSubtaskAction,
 		filterTaskShowPlayAction: settings.filterTaskShowPlayAction,
 		filterTaskShowPinAction: settings.filterTaskShowPinAction,
+		filterTaskShowNoteAction: settings.filterTaskShowNoteAction,
 		filterTaskShowSubtaskAction: settings.filterTaskShowSubtaskAction,
 		filterTaskShowPlainCheckboxAction: settings.filterTaskShowPlainCheckboxAction,
 	};
@@ -192,9 +196,11 @@ function readStoreData(
 		),
 		inlineTaskShowPlayAction: readBoolean(raw.inlineTaskShowPlayAction, fallback.inlineTaskShowPlayAction),
 		inlineTaskShowPinAction: readBoolean(raw.inlineTaskShowPinAction, fallback.inlineTaskShowPinAction),
+		inlineTaskShowNoteAction: readBoolean(raw.inlineTaskShowNoteAction, fallback.inlineTaskShowNoteAction),
 		inlineTaskShowSubtaskAction: readBoolean(raw.inlineTaskShowSubtaskAction, fallback.inlineTaskShowSubtaskAction),
 		filterTaskShowPlayAction: readBoolean(raw.filterTaskShowPlayAction, fallback.filterTaskShowPlayAction),
 		filterTaskShowPinAction: readBoolean(raw.filterTaskShowPinAction, fallback.filterTaskShowPinAction),
+		filterTaskShowNoteAction: readBoolean(raw.filterTaskShowNoteAction, fallback.filterTaskShowNoteAction),
 		filterTaskShowSubtaskAction: readBoolean(raw.filterTaskShowSubtaskAction, fallback.filterTaskShowSubtaskAction),
 		filterTaskShowPlainCheckboxAction: readBoolean(raw.filterTaskShowPlainCheckboxAction, fallback.filterTaskShowPlainCheckboxAction),
 	};

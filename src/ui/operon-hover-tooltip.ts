@@ -6,6 +6,7 @@ type OperonHoverTooltipColor = string | null | (() => string | null);
 
 interface OperonHoverTooltipOptions {
 	title?: string;
+	titleIcon?: string;
 	content?: string;
 	contentEl?: HTMLElement;
 	taskColor: OperonHoverTooltipColor;
@@ -58,7 +59,7 @@ export function createOperonHoverIndicator(options: OperonHoverIndicatorOptions)
 	setIcon(button, options.icon);
 	setAccessibleLabelWithoutTooltip(button, options.title ?? '');
 	wrapper.appendChild(button);
-	wrapper.appendChild(createTooltip(options.title, options.content, options.contentEl, options.tooltipClassName, wrapper));
+	wrapper.appendChild(createTooltip(options.title, options.titleIcon, options.content, options.contentEl, options.tooltipClassName, wrapper));
 
 	return wrapper;
 }
@@ -155,7 +156,7 @@ export function wrapWithOperonHoverTooltip(
 	wrapper.classList.add('operon-hover-tooltip-anchor');
 	suppressNativeTooltip(target);
 	wrapper.appendChild(target);
-	wrapper.appendChild(createTooltip(options.title, options.content, undefined, undefined, wrapper));
+	wrapper.appendChild(createTooltip(options.title, options.titleIcon, options.content, undefined, options.tooltipClassName, wrapper));
 	return wrapper;
 }
 
@@ -167,7 +168,7 @@ export function wrapWithOperonHoverContent(
 	wrapper.classList.add('operon-hover-tooltip-anchor');
 	suppressNativeTooltip(target);
 	wrapper.appendChild(target);
-	wrapper.appendChild(createTooltip(options.title, options.content, options.contentEl, options.tooltipClassName, wrapper));
+	wrapper.appendChild(createTooltip(options.title, options.titleIcon, options.content, options.contentEl, options.tooltipClassName, wrapper));
 	if (options.openOnClick) {
 		bindInteractiveOpen(wrapper, target);
 	}
@@ -190,6 +191,8 @@ export function bindOperonHoverTooltip(
 	const ownerWindow = getOwnerWindow(target);
 
 	const close = (): void => {
+		ownerWindow.removeEventListener('scroll', close, true);
+		ownerWindow.removeEventListener('resize', close, true);
 		const tooltip = typedTarget._operonFloatingTooltip;
 		if (!tooltip) return;
 		tooltip.remove();
@@ -205,7 +208,7 @@ export function bindOperonHoverTooltip(
 			positionFloatingTooltip(target, typedTarget._operonFloatingTooltip, options.preferredVertical ?? 'auto');
 			return;
 		}
-		const tooltip = createTooltip(options.title, options.content, options.contentEl, options.tooltipClassName, target);
+		const tooltip = createTooltip(options.title, options.titleIcon, options.content, options.contentEl, options.tooltipClassName, target);
 		tooltip.classList.add('operon-hover-tooltip--floating');
 		const taskColor = resolveOperonHoverTooltipColor(options.taskColor);
 		if (taskColor) {
@@ -213,6 +216,8 @@ export function bindOperonHoverTooltip(
 		}
 		getOwnerBody(target).appendChild(tooltip);
 		positionFloatingTooltip(target, tooltip, options.preferredVertical ?? 'auto');
+		ownerWindow.addEventListener('scroll', close, true);
+		ownerWindow.addEventListener('resize', close, true);
 		ownerWindow.requestAnimationFrame(() => tooltip.classList.add('is-visible'));
 		typedTarget._operonFloatingTooltip = tooltip;
 	};
@@ -226,8 +231,6 @@ export function bindOperonHoverTooltip(
 		target.removeEventListener('focusin', open);
 		target.removeEventListener('focusout', close);
 		target.removeEventListener('blur', close);
-		ownerWindow.removeEventListener('scroll', close, true);
-		ownerWindow.removeEventListener('resize', close, true);
 	};
 
 	target.addEventListener('mouseenter', open);
@@ -237,8 +240,6 @@ export function bindOperonHoverTooltip(
 	target.addEventListener('focusin', open);
 	target.addEventListener('focusout', close);
 	target.addEventListener('blur', close);
-	ownerWindow.addEventListener('scroll', close, true);
-	ownerWindow.addEventListener('resize', close, true);
 	typedTarget._operonHoverCleanup = cleanup;
 }
 
@@ -266,6 +267,7 @@ export function createOperonHoverTooltipShell(options: OperonHoverTooltipOptions
 
 function createTooltip(
 	title?: string,
+	titleIcon?: string,
 	content?: string,
 	contentEl?: HTMLElement,
 	tooltipClassName?: string,
@@ -277,7 +279,19 @@ function createTooltip(
 	if (title) {
 		const tooltipTitle = createOwnerElement(tooltip, 'div');
 		tooltipTitle.className = 'operon-hover-tooltip-title';
-		tooltipTitle.textContent = title;
+		if (titleIcon) {
+			tooltipTitle.classList.add('operon-hover-tooltip-title--with-icon');
+			const titleIconEl = createOwnerElement(tooltipTitle, 'span');
+			titleIconEl.className = 'operon-hover-tooltip-title-icon';
+			setIcon(titleIconEl, titleIcon);
+			tooltipTitle.appendChild(titleIconEl);
+			const titleTextEl = createOwnerElement(tooltipTitle, 'span');
+			titleTextEl.className = 'operon-hover-tooltip-title-text';
+			titleTextEl.textContent = title;
+			tooltipTitle.appendChild(titleTextEl);
+		} else {
+			tooltipTitle.textContent = title;
+		}
 		tooltip.appendChild(tooltipTitle);
 	}
 

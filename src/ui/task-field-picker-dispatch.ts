@@ -4,7 +4,7 @@ import { OperonSettings } from '../types/settings';
 import { DEFAULT_PRIORITIES } from '../types/priority';
 import { t } from '../core/i18n';
 import { splitTaskListValue } from '../core/task-field-patch';
-import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
+import { getAvailableReminderRuleAnchors } from '../core/reminder-rules';
 import { showStatusPicker } from './field-pickers/status-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
 import { type ManualDatePickerOptions, showDatePicker } from './field-pickers/date-picker';

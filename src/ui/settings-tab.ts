@@ -47,6 +47,7 @@ import {
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS,
 	CONFIGURABLE_CONTEXTUAL_MENU_SURFACE_GROUPS,
 	CONTEXTUAL_MENU_SURFACE_LABEL_KEYS,
+	getContextualMenuActionIcon,
 	isContextualMenuActionSupportedOnSurface,
 	type ContextualMenuActionHandler,
 	type ContextualMenuActionId,
@@ -263,6 +264,7 @@ import {
 import { getPresetFavoriteActionLabel } from './preset-favorite-button';
 import {
 	createSettingsCollapsibleSection,
+	attachNativeSettingsDocsTooltip,
 	createSettingsAddButton,
 	renderDropdownSetting,
 	renderNativeSettingsGroupedSection,
@@ -374,7 +376,7 @@ const TASK_CHIPS_SETTINGS_PAGE_META: Record<TaskChipsSettingsPageId, TaskChipsSe
 	inlineTaskChips: {
 		titleKey: 'inlineTaskIconsSection',
 		descKey: 'inlineTaskIconsSectionDesc',
-		entryIds: ['inlineTaskChips'],
+		entryIds: ['inlineTaskChips', 'inlineTaskShowNoteAction'],
 		docsTarget: 'DOCS-041 Task chips display and behavior',
 	},
 	taskFinderChips: {
@@ -386,7 +388,7 @@ const TASK_CHIPS_SETTINGS_PAGE_META: Record<TaskChipsSettingsPageId, TaskChipsSe
 	filterTaskChips: {
 		titleKey: 'filterTaskIconsSection',
 		descKey: 'filterTaskIconsSectionDesc',
-		entryIds: ['filterTaskChips', 'filterTaskShowPlainCheckboxAction'],
+		entryIds: ['filterTaskChips', 'filterTaskShowNoteAction', 'filterTaskShowPlainCheckboxAction'],
 		docsTarget: 'DOCS-041 Task chips display and behavior',
 	},
 	kanbanTaskChips: {
@@ -1591,6 +1593,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderNoticeDurationSeconds'),
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderAutoPinDueTasks'),
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderSystemNotificationsEnabled'),
+				Platform.isDesktopApp
+					? this.buildSettingsSearchSettingDefinition(entries, 'mobileNotificationsSnapshotEnabled')
+					: null,
 				this.buildReminderSoundSettingsDefinition(reminderSoundEntry),
 			]),
 		}, {
@@ -2887,6 +2892,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'kanbanTaskShowNotesPreview') {
 			this.applyPendingSettingsChange();
 		}
+		if (key === 'mobileNotificationsSnapshotEnabled') {
+			this.applyPendingSettingsChange();
+		}
 		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskTypeIcon') {
 			this.applyPendingSettingsChange();
 		}
@@ -3171,7 +3179,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			})
 			.addButton(button => {
 				button
-					.setButtonText(t('buttons', 'buyMeACoffee'))
+					.setButtonText(t('buttons', 'fillOperonsCoffeeJar'))
 					.onClick(() => {
 						openExternalUrl('https://buymeacoffee.com/hasanyilmaz');
 					});
@@ -3185,6 +3193,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			existingIcon.remove();
 		}
 		const iconEl = buttonEl.createSpan('operon-settings-action-icon');
+		iconEl.addClass(`operon-settings-action-icon--${icon}`);
 		setIcon(iconEl, icon);
 		buttonEl.prepend(iconEl);
 	}
@@ -5178,6 +5187,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 				onAfterChange: () => this.redisplayPreservingScroll(),
 			},
 		);
+		if (Platform.isDesktopApp) {
+			this.renderBoundToggleSetting(
+				section,
+				t('settings', 'mobileNotificationsSnapshot'),
+				t('settings', 'mobileNotificationsSnapshotDesc'),
+				'mobileNotificationsSnapshotEnabled',
+				{ onAfterChange: () => this.applyPendingSettingsChange() },
+			);
+		}
 
 		this.configureReminderSoundSetting(new Setting(section));
 		const testSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'reminderNotificationsTestSection'));
@@ -6147,6 +6165,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 					},
 				},
 				{
+					visible: this.settings.inlineTaskShowNoteAction,
+					icon: 'notebook-pen',
+					label: t('settings', 'inlineTaskNoteAction'),
+					searchTargetId: 'ui.inlineTaskShowNoteAction',
+					onToggle: async () => {
+						this.settings.inlineTaskShowNoteAction = !this.settings.inlineTaskShowNoteAction;
+						await this.saveSettings();
+					},
+				},
+				{
 					visible: this.settings.inlineTaskShowSubtaskAction,
 					icon: 'list-plus',
 					label: t('settings', 'inlineTaskSubtaskAction'),
@@ -6539,7 +6567,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 					.setDesc(t('settings', action.descriptionKey));
 				setting.settingEl.addClass('operon-settings-list-card');
 				setting.settingEl.addClass('operon-contextual-menu-action-row');
-				this.decorateContextualMenuActionSetting(setting, action.icon);
+				this.decorateContextualMenuActionSetting(
+					setting,
+					getContextualMenuActionIcon(action, this.settings.keyMappings),
+				);
 
 				setting.addToggle(toggle => {
 					toggle.setValue(enabled);
@@ -6643,13 +6674,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			attr: { role: 'columnheader' },
 		});
 		for (const action of actions) {
+			const actionIcon = getContextualMenuActionIcon(action, this.settings.keyMappings);
 			const headerCell = header.createDiv({
 				cls: 'operon-settings-contextual-menu-matrix-action-cell',
 				attr: { role: 'columnheader' },
 			});
 			createInterfaceMatrixHeaderIcon({
 				containerEl: headerCell,
-				icon: action.icon,
+				icon: actionIcon,
 				label: t('settings', action.labelKey),
 				className: 'operon-settings-contextual-menu-matrix-header-icon',
 			});
@@ -6674,7 +6706,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 					attr: { role: 'rowheader' },
 				});
 				for (const action of actions) {
-					this.renderContextualMenuMatrixCell(row, surface, action.id, action.icon, t('settings', action.labelKey), containerEl);
+					this.renderContextualMenuMatrixCell(
+						row,
+						surface,
+						action.id,
+						getContextualMenuActionIcon(action, this.settings.keyMappings),
+						t('settings', action.labelKey),
+						containerEl,
+					);
 				}
 			}
 		}
@@ -6932,9 +6971,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			],
 			normalize: value => value !== 'collapsed',
 			onBeforeSave: () => this.normalizeCalendarSidebarDefaultState('calendarSidebarTaskPoolDefaultExpanded'),
-			onAfterChange: () => this.redisplayPreservingScroll(),
-		});
-		this.renderBoundToggleSetting(sidebarBody, t('settings', 'calendarSidebarTaskPoolFollowPresetFilter'), t('settings', 'calendarSidebarTaskPoolFollowPresetFilterDesc'), 'calendarSidebarTaskPoolFollowPresetFilter', {
 			onAfterChange: () => this.redisplayPreservingScroll(),
 		});
 		sidebarBody.createEl('p', {
@@ -8121,6 +8157,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const deleteFilePreset = this.tablePresetFileIntegration?.deletePreset;
 		new TablePresetQuickSettingsModal(this.app, {
 			getSettings: () => this.getTablePresetModalSettings(),
+			filterEditorPickerPresentation: 'modal',
+			tableFieldPickerPresentation: 'modal',
 			getAdditionalColumnFields: scopedPreset => {
 				const settings = this.getTablePresetModalSettings();
 				const filterSet = scopedPreset.filterSetId
@@ -8250,6 +8288,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private openKanbanPresetSettingsModal(preset: KanbanPreset | null, onSave: (preset: KanbanPreset) => Promise<void>): void {
 		new KanbanPresetQuickSettingsModal(this.app, {
 			getSettings: () => this.settings,
+			filterEditorPickerPresentation: 'modal',
 			preset,
 			onSave,
 			onToggleFavorite: async presetId => {
@@ -8829,6 +8868,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private openCalendarPresetSettingsModal(preset: CalendarPreset | null, onSave: (preset: CalendarPreset) => Promise<void>): void {
 		new CalendarPresetQuickSettingsModal(this.app, {
 			getSettings: () => this.settings,
+			filterEditorPickerPresentation: 'modal',
 			preset,
 			onSave,
 			onToggleFavorite: async presetId => {
@@ -11337,6 +11377,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return {
 			action: {
 				label: t('settings', 'openDocumentationFor', { name: title }),
+				docsTarget: target,
 				onClick: () => {
 					runSettingsAsync('settings docs link open failed', () => openOperonDocsTarget(
 						this.app,
@@ -11357,12 +11398,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return component => {
 			component
 				.setIcon('circle-question-mark')
-				.setTooltip(action.label)
 				.onClick(action.onClick);
 			component.extraSettingsEl.addClass('operon-native-settings-declarative-docs-action');
 			if (className) component.extraSettingsEl.addClass(className);
 			if (className) component.extraSettingsEl.closest('.setting-item')?.classList.add(`${className}-row`);
 			component.extraSettingsEl.setAttribute('aria-label', action.label);
+			attachNativeSettingsDocsTooltip(component.extraSettingsEl, action);
 		};
 	}
 
@@ -12150,6 +12191,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 					label: t('settings', 'inlineTaskPinAction'),
 					onToggle: async () => {
 						this.settings.filterTaskShowPinAction = !this.settings.filterTaskShowPinAction;
+						await this.saveSettings();
+					},
+				},
+				{
+					visible: this.settings.filterTaskShowNoteAction,
+					icon: 'notebook-pen',
+					label: t('settings', 'inlineTaskNoteAction'),
+					searchTargetId: 'ui.filterTaskShowNoteAction',
+					onToggle: async () => {
+						this.settings.filterTaskShowNoteAction = !this.settings.filterTaskShowNoteAction;
 						await this.saveSettings();
 					},
 				},

@@ -3,6 +3,7 @@ import {
 	buildOperonDataPackageFromSettings,
 	composeOperonSettingsFromDataPackage,
 	hasPinnedTasksPackage,
+	hasRetiredOperonDataPackageSettings,
 	mergeOperonDataPackage,
 	OPERON_DATA_PACKAGE_SCHEMA_VERSION,
 	type OperonDataPackageV1,
@@ -102,11 +103,12 @@ export class OperonDataPackageStore {
 		const migratedExistingPackage = existingPackage
 			? migrateLegacyLanguagePackage(existingPackage, obsidianLocale)
 			: null;
+		const hasRetiredSettings = hasRetiredOperonDataPackageSettings(existingPackage);
 		const mergedPackage = mergeOperonDataPackage(migratedExistingPackage, buildFallbackDataPackage(defaults));
 		const dataPackage = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
 			? normalizePipelineTaxonomySlice(mergedPackage, defaults)
 			: mergedPackage;
-		if (existingPackage && shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)) {
+		if (existingPackage && (shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics) || hasRetiredSettings)) {
 			await this.persistCandidate(dataPackage);
 		}
 		this.setDataPackage(dataPackage);
@@ -481,7 +483,8 @@ function isValidDataPackageDomain(domain: OperonDataPackageDomain, value: unknow
 		return isRecord(value.taskAutomationPolicy);
 	}
 	if (domain === 'integrations') {
-		return isRecord(value.externalCalendarSources);
+		return isRecord(value.externalCalendarSources)
+			&& (!Object.prototype.hasOwnProperty.call(value, 'mobileNotifications') || isRecord(value.mobileNotifications));
 	}
 	return isRecord(value.pinnedTasks);
 }

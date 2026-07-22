@@ -18,6 +18,7 @@ import { WindowTimeoutHandle, clearWindowTimeout, createOwnerElement, getOwnerBo
 import { asyncHandler } from '../core/async-action';
 import { getPinnedTasksForDisplay } from '../core/pinned-task-query';
 import { isTaskSourceOpenModifierClick } from './task-source-open-modifier';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
 export interface PinnedDockCallbacks {
 	openTaskEditor: (operonId: string) => void;
@@ -257,6 +258,7 @@ export class PinnedTasksDock extends Component {
 					attr: { type: 'button' },
 				});
 				setIcon(unpinBtn, 'pin-off');
+				setAccessibleLabelWithoutTooltip(unpinBtn, t('contextMenu', 'unpinTask'));
 				unpinBtn.addEventListener('click', asyncHandler('pinned dock unpin failed', async (e) => {
 					e.stopPropagation();
 					await this.pinnedCache.unpin(task.operonId);
@@ -271,6 +273,7 @@ export class PinnedTasksDock extends Component {
 				});
 				const timerIconName = isTracking ? 'square' : 'play';
 				setIcon(timerBtn, timerIconName);
+				setAccessibleLabelWithoutTooltip(timerBtn, t('tooltips', isTracking ? 'stopTimer' : 'startTimer'));
 
 				timerBtn.addEventListener('click', asyncHandler('pinned dock timer toggle failed', async (e) => {
 					e.stopPropagation();

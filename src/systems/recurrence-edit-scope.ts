@@ -1,4 +1,5 @@
 import { CalendarSlotSelection } from '../types/calendar';
+import { parseRepeatRule } from '../core/repeat-rule';
 import {
 	RepeatFollowingOverride,
 	RepeatSingleOccurrenceOverride,
@@ -29,6 +30,17 @@ export interface RepeatTemporalSnapshotLabels {
 
 export interface RepeatTemporalSnapshotFromSelectionOptions {
 	preserveExistingDuration?: boolean;
+}
+
+export function resolveAuthoritativeRepeatOccurrenceDate(
+	currentFieldValues: Record<string, string>,
+	incomingFieldValues: Record<string, string>,
+): string | null {
+	if (!parseRepeatRule(currentFieldValues['repeat'])) return null;
+	const nextRepeat = incomingFieldValues['repeat'] ?? currentFieldValues['repeat'];
+	if (!parseRepeatRule(nextRepeat)) return null;
+	const occurrenceDate = normalizeDate(currentFieldValues['repeatOccurrenceDate']);
+	return occurrenceDate || null;
 }
 
 const DEFAULT_REPEAT_TEMPORAL_SNAPSHOT_LABELS: RepeatTemporalSnapshotLabels = {

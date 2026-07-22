@@ -1,5 +1,8 @@
 import { t } from './i18n';
 import { parseLocalDatetime, parseTrackerList, splitTrackerRangeByMidnight } from '../systems/tracker-utils';
+import { getConfiguredKeyMappingIcon } from './key-mapping-icons';
+import { getAvailableReminderRuleAnchors } from './reminder-rules';
+import type { KeyMapping } from '../types/settings';
 
 export type ContextualMenuActionId =
 	| 'taskStatus'
@@ -17,6 +20,8 @@ export type ContextualMenuActionId =
 	| 'jumpToSource'
 	| 'setAsTracked'
 	| 'clearDueDate'
+	| 'fixedReminder'
+	| 'relativeReminder'
 	| 'skipThisOccurrence';
 
 export type ContextualMenuSurface =
@@ -136,6 +141,7 @@ export interface ContextualMenuActionDefinition {
 	compactLabel: string;
 	descriptionKey: string;
 	icon: string;
+	canonicalIconKey?: 'reminderDatetimes' | 'reminderRules';
 }
 
 export interface ResolvedContextualMenuAction extends ContextualMenuActionDefinition {
@@ -221,10 +227,42 @@ export interface ContextualMenuExecutionDeps {
 	jumpToSource: (taskId: string) => void | Promise<void>;
 	setAsTracked: (taskId: string, start: string, end: string) => void | Promise<void>;
 	clearDueDate: (taskId: string) => void | Promise<void>;
+	openReminderPicker: (
+		taskId: string,
+		fieldKey: 'reminderDatetimes' | 'reminderRules',
+		actionAnchor?: HTMLElement | null,
+		actionAnchorRect?: DOMRect | null,
+	) => void | Promise<void>;
 	openProjectedOccurrenceLatestTaskEditor: (projected: ContextualMenuProjectedRef) => void | Promise<void>;
 	skipProjectedOccurrence: (projected: ContextualMenuProjectedRef) => void | Promise<void>;
 	convertInlineToFileTask: (taskId: string) => void | Promise<void>;
 	convertFileToInlineTask: (taskId: string) => void | Promise<void>;
+}
+
+export type ContextualReminderCommitResult =
+	| { status: 'saved' }
+	| { status: 'task-missing' }
+	| { status: 'task-terminal' }
+	| { status: 'invalid-value' }
+	| { status: 'write-rejected' }
+	| { status: 'write-failed'; error: unknown };
+
+export async function commitContextualReminderValue(options: {
+	fieldValue: unknown;
+	getTaskCheckbox: () => ContextualTaskActionSource['checkbox'] | null;
+	write: (fieldValue: string) => Promise<boolean>;
+}): Promise<ContextualReminderCommitResult> {
+	const checkbox = options.getTaskCheckbox();
+	if (checkbox === null) return { status: 'task-missing' };
+	if (checkbox !== 'open') return { status: 'task-terminal' };
+	if (typeof options.fieldValue !== 'string') return { status: 'invalid-value' };
+	try {
+		return await options.write(options.fieldValue)
+			? { status: 'saved' }
+			: { status: 'write-rejected' };
+	} catch (error) {
+		return { status: 'write-failed', error };
+	}
 }
 
 export const CONTEXTUAL_MENU_ACTIONS: ContextualMenuActionDefinition[] = [
@@ -334,6 +372,22 @@ export const CONTEXTUAL_MENU_ACTIONS: ContextualMenuActionDefinition[] = [
 		icon: 'calendar-minus',
 	},
 	{
+		id: 'fixedReminder',
+		labelKey: 'contextualMenuActionFixedReminder',
+		compactLabel: 'Fx',
+		descriptionKey: 'contextualMenuActionFixedReminderDesc',
+		icon: 'alarm-clock',
+		canonicalIconKey: 'reminderDatetimes',
+	},
+	{
+		id: 'relativeReminder',
+		labelKey: 'contextualMenuActionRelativeReminder',
+		compactLabel: 'Rl',
+		descriptionKey: 'contextualMenuActionRelativeReminderDesc',
+		icon: 'bell-ring',
+		canonicalIconKey: 'reminderRules',
+	},
+	{
 		id: 'skipThisOccurrence',
 		labelKey: 'contextualMenuActionSkipThisOccurrence',
 		compactLabel: 'Sk',
@@ -359,6 +413,8 @@ const DUE_MARKER_ALLOWED_ACTIONS = new Set<ContextualMenuActionId>([
 	'cancelTask',
 	'jumpToSource',
 	'clearDueDate',
+	'fixedReminder',
+	'relativeReminder',
 ]);
 
 export function getContextualMenuActionLabel(action: Pick<ContextualMenuActionDefinition, 'labelKey'>): string {
@@ -369,29 +425,41 @@ export function getContextualMenuActionDescription(action: Pick<ContextualMenuAc
 	return t('settings', action.descriptionKey);
 }
 
+export function getContextualMenuActionIcon(
+	action: Pick<ContextualMenuActionDefinition, 'icon' | 'canonicalIconKey'>,
+	keyMappings: readonly KeyMapping[],
+): string {
+	return action.canonicalIconKey
+		? getConfiguredKeyMappingIcon(action.canonicalIconKey, keyMappings) || action.icon
+		: action.icon;
+}
+
 export function resolveContextualMenu(
 	context: ContextualMenuContext,
 	allowlist: ContextualMenuActionId[],
 	surfaceActionMatrix?: ContextualMenuSurfaceActionMatrix,
+	keyMappings: readonly KeyMapping[] = [],
 ): ResolvedContextualMenuAction[] {
 	if (context.surface === 'calendarProjectedOccurrence') {
 		return resolveActionsForIds(context, ['skipThisOccurrence']);
 	}
 	const matrixActionIds = getMatrixActionIds(context.surface, allowlist, surfaceActionMatrix);
 	const actionIds = getSurfaceActionIds(context, matrixActionIds);
-	return resolveActionsForIds(context, actionIds);
+	return resolveActionsForIds(context, actionIds, keyMappings);
 }
 
 function resolveActionsForIds(
 	context: ContextualMenuContext,
 	actionIds: ContextualMenuActionId[],
+	keyMappings: readonly KeyMapping[] = [],
 ): ResolvedContextualMenuAction[] {
 	return actionIds
-		.filter(actionId => isContextualMenuActionAvailable(actionId, context))
+		.filter(actionId => isContextualMenuActionAvailable(actionId, context, keyMappings))
 		.map(actionId => CONTEXTUAL_MENU_ACTIONS.find(action => action.id === actionId))
 		.filter((action): action is ContextualMenuActionDefinition => !!action)
 		.map(action => ({
 			...action,
+			icon: getContextualMenuActionIcon(action, keyMappings),
 			label: resolveContextualMenuActionLabel(action, context),
 			description: resolveContextualMenuActionDescription(action, context),
 		}));
@@ -484,6 +552,22 @@ export async function executeContextualMenuAction(
 			if (!getDueValue(context)) return;
 			await deps.clearDueDate(context.taskId);
 			return;
+		case 'fixedReminder':
+			await deps.openReminderPicker(
+				context.taskId,
+				'reminderDatetimes',
+				invocation?.actionAnchor,
+				invocation?.actionAnchorRect,
+			);
+			return;
+		case 'relativeReminder':
+			await deps.openReminderPicker(
+				context.taskId,
+				'reminderRules',
+				invocation?.actionAnchor,
+				invocation?.actionAnchorRect,
+			);
+			return;
 	}
 }
 
@@ -537,6 +621,12 @@ export function isContextualMenuActionSupportedOnSurface(
 	if (actionId === 'cancelTask' && surface === 'calendarFinishedMarker') {
 		return false;
 	}
+	if (
+		(actionId === 'fixedReminder' || actionId === 'relativeReminder')
+		&& (surface === 'trackerTask' || surface === 'calendarFinishedMarker')
+	) {
+		return false;
+	}
 	switch (surface) {
 		case 'calendarExternalItem':
 			return false;
@@ -562,8 +652,19 @@ function getMatrixActionIds(
 function isContextualMenuActionAvailable(
 	actionId: ContextualMenuActionId,
 	context: ContextualMenuContext,
+	keyMappings: readonly KeyMapping[],
 ): boolean {
 	const task = context.task;
+	if (actionId === 'fixedReminder' || actionId === 'relativeReminder') {
+		const materializedTask = task ?? context.calendarItem?.sourceTask ?? null;
+		if (!materializedTask || materializedTask.checkbox !== 'open') return false;
+		const fieldKey = actionId === 'fixedReminder' ? 'reminderDatetimes' : 'reminderRules';
+		if (!isSystemReminderFieldEnabled(keyMappings, fieldKey)) return false;
+		if (
+			actionId === 'relativeReminder'
+			&& getAvailableReminderRuleAnchors(materializedTask.fieldValues).length === 0
+		) return false;
+	}
 
 	if (
 		(actionId === 'markDone'
@@ -600,6 +701,15 @@ function isContextualMenuActionAvailable(
 		return getDueValue(context).length > 0;
 	}
 	return true;
+}
+
+function isSystemReminderFieldEnabled(
+	keyMappings: readonly KeyMapping[],
+	fieldKey: 'reminderDatetimes' | 'reminderRules',
+): boolean {
+	return keyMappings.some(mapping => (
+		mapping.canonicalKey === fieldKey && mapping.isSystem !== false
+	));
 }
 
 function getTaskSourceFormat(context: ContextualMenuContext): 'inline' | 'yaml' | null {

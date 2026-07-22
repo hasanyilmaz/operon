@@ -3,7 +3,7 @@ import { normalizeTaskIconValue } from './task-icon-value';
 
 export function getConfiguredKeyMappingIcon(
 	canonicalKey: string,
-	keyMappings: KeyMapping[],
+	keyMappings: readonly KeyMapping[],
 ): string {
 	return normalizeTaskIconValue(
 		keyMappings.find(mapping => mapping.canonicalKey === canonicalKey)?.icon,

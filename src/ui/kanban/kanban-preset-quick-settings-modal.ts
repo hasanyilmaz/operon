@@ -24,7 +24,7 @@ import { runSettingsAsync, settingsAsyncHandler } from '../settings/async-settin
 import { parsePresetNumber } from '../settings/preset-control-helpers';
 import { getKanbanSwimlaneCustomFieldOptions, getManagedCustomFieldOptionMapping, getManagedCustomFieldOptions } from '../../core/managed-task-fields';
 import { renderPresetFilterActions } from '../preset-filter-actions';
-import type { FilterModalEvalDeps } from '../filter-set-modal';
+import type { FilterModalEvalDeps, FilterSetModalOptions } from '../filter-set-modal';
 import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from '../task-color-source-select';
 import { isPresetFavorite } from '../../core/preset-favorites';
 import { createPresetFavoriteButton } from '../preset-favorite-button';
@@ -37,6 +37,7 @@ interface KanbanPresetQuickSettingsModalOptions {
 	onSaveFilterSet: (filterSet: FilterSet) => Promise<void>;
 	onToggleFilterFavorite?: (filterSetId: string) => Promise<void>;
 	getFilterModalEvalDeps?: () => FilterModalEvalDeps | null;
+	filterEditorPickerPresentation?: FilterSetModalOptions['pickerPresentation'];
 }
 
 export class KanbanPresetQuickSettingsModal extends Modal {
@@ -127,6 +128,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			onSaveFilterSet: this.options.onSaveFilterSet,
 			onToggleFilterFavorite: this.options.onToggleFilterFavorite,
 			getFilterModalEvalDeps: this.options.getFilterModalEvalDeps,
+			filterEditorPickerPresentation: this.options.filterEditorPickerPresentation,
 			onRefresh: () => this.render(),
 			errorContextPrefix: 'kanban preset',
 		});

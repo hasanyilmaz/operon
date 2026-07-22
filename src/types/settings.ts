@@ -90,7 +90,7 @@ import {
 	resolvePipelineMinimalFileTaskTemplateStatusById,
 } from '../core/file-task-template-identity';
 
-export const CURRENT_SETTINGS_VERSION = 110;
+export const CURRENT_SETTINGS_VERSION = 111;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'] as const;
@@ -256,6 +256,8 @@ const DEFAULT_CONTEXTUAL_MENU_ACTION_ALLOWLIST: ContextualMenuActionId[] = [
 	'pinToggle',
 	'unschedule',
 	'clearDueDate',
+	'fixedReminder',
+	'relativeReminder',
 	'openEditor',
 	'convertInlineToFileTask',
 	'convertFileToInlineTask',
@@ -281,7 +283,11 @@ const DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS: ContextualMenuActionId[] =
 	'jumpToSource',
 	'setAsTracked',
 	'clearDueDate',
+	'fixedReminder',
+	'relativeReminder',
 ];
+const DEFAULT_CONTEXTUAL_MENU_WITHOUT_REMINDER_ACTIONS = DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS
+	.filter(actionId => actionId !== 'fixedReminder' && actionId !== 'relativeReminder');
 const DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS: ContextualMenuActionId[] = [
 	'taskStatus',
 	'pinToggle',
@@ -298,6 +304,8 @@ const DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS: ContextualMenuActionId[] = [
 	'jumpToSource',
 	'setAsTracked',
 	'clearDueDate',
+	'fixedReminder',
+	'relativeReminder',
 ];
 const DEFAULT_CONTEXTUAL_MENU_TRACKER_ACTIONS: ContextualMenuActionId[] = [
 	'markDone',
@@ -322,6 +330,8 @@ const DEFAULT_CONTEXTUAL_MENU_KANBAN_ACTIONS: ContextualMenuActionId[] = [
 	'unschedule',
 	'jumpToSource',
 	'clearDueDate',
+	'fixedReminder',
+	'relativeReminder',
 ];
 // Settings version 100 used the Kanban action set for Table tasks.
 const LEGACY_CONTEXTUAL_MENU_TABLE_TASK_ACTIONS: ContextualMenuActionId[] = [
@@ -1560,6 +1570,8 @@ export interface OperonSettings {
 	inlineTaskShowPlayAction: boolean;
 	/** Whether the compact inline row shows the right-side pin action when the task is actionable. */
 	inlineTaskShowPinAction: boolean;
+	/** Whether the compact inline row shows the right-side note action. */
+	inlineTaskShowNoteAction: boolean;
 	/** Whether the compact inline row shows the right-side add subtask action. */
 	inlineTaskShowSubtaskAction: boolean;
 	/** Whether classic Tasks emoji checkbox lines show a hover-only convert icon in Live Preview. */
@@ -1570,6 +1582,8 @@ export interface OperonSettings {
 	filterTaskShowPlayAction: boolean;
 	/** Whether filter rows show the right-side pin action when the task is actionable. */
 	filterTaskShowPinAction: boolean;
+	/** Whether filter rows show the right-side note action. */
+	filterTaskShowNoteAction: boolean;
 	/** Whether filter rows show the right-side add subtask action. */
 	filterTaskShowSubtaskAction: boolean;
 	/** Whether filter rows show the right-side plain checkbox progress action. */
@@ -1665,7 +1679,6 @@ export interface OperonSettings {
 	calendarSidebarShowWeekNumbers: boolean;
 	calendarShowWeekLabelOnFirstDay: boolean;
 	calendarSidebarTaskPoolDefaultExpanded: boolean;
-	calendarSidebarTaskPoolFollowPresetFilter: boolean;
 	calendarSidebarFinishedTasksDefaultExpanded: boolean;
 	calendarTouchTimeGridTaskMoveEnabled: boolean;
 	calendarTouchDragLongPressMs: number;
@@ -1773,6 +1786,8 @@ export interface OperonSettings {
 	reminderSystemNotificationsEnabled: boolean;
 	/** Vault-relative audio file played when a reminder is delivered. Empty means silent. */
 	reminderSoundFilePath: string;
+	/** Export the authoritative seven-day reminder snapshot consumed by Operon Mobile Notifications. */
+	mobileNotificationsSnapshotEnabled: boolean;
 
 	// Inline expanded task bar chip visibility
 	inlineExpandedTaskChips: InlineExpandedTaskChips;
@@ -2029,11 +2044,13 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskWikilinkOverlayShowPlainCheckboxAction: true,
 	inlineTaskShowPlayAction: true,
 	inlineTaskShowPinAction: false,
+	inlineTaskShowNoteAction: true,
 	inlineTaskShowSubtaskAction: true,
 	inlineTaskShowTasksEmojiConvertIcon: true,
 	inlineTaskShowPlainCheckboxConvertIcon: true,
 	filterTaskShowPlayAction: true,
 	filterTaskShowPinAction: false,
+	filterTaskShowNoteAction: true,
 	filterTaskShowSubtaskAction: true,
 	filterTaskShowPlainCheckboxAction: true,
 
@@ -2119,7 +2136,6 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	calendarSidebarShowWeekNumbers: true,
 	calendarShowWeekLabelOnFirstDay: true,
 	calendarSidebarTaskPoolDefaultExpanded: true,
-	calendarSidebarTaskPoolFollowPresetFilter: true,
 	calendarSidebarFinishedTasksDefaultExpanded: false,
 	calendarTouchTimeGridTaskMoveEnabled: true,
 	calendarTouchDragLongPressMs: 260,
@@ -2210,6 +2226,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	reminderAutoPinDueTasks: false,
 	reminderSystemNotificationsEnabled: false,
 	reminderSoundFilePath: '',
+	mobileNotificationsSnapshotEnabled: false,
 
 	inlineExpandedTaskChips: { ...DEFAULT_INLINE_EXPANDED_TASK_CHIPS },
 	taskBarSubtasksDefaultExpanded: true,
@@ -2900,6 +2917,32 @@ function insertContextualMenuActionAfter(
 	];
 }
 
+function appendContextualMenuAction(
+	actionIds: ContextualMenuActionId[],
+	actionId: ContextualMenuActionId,
+): ContextualMenuActionId[] {
+	return actionIds.includes(actionId) ? actionIds : [...actionIds, actionId];
+}
+
+function appendContextualMenuActionToRealTaskSurfaces(
+	matrix: ContextualMenuSurfaceActionMatrix,
+	actionId: ContextualMenuActionId,
+): ContextualMenuSurfaceActionMatrix {
+	const next: ContextualMenuSurfaceActionMatrix = { ...matrix };
+	for (const surface of CONTEXTUAL_MENU_SURFACES) {
+		if (
+			surface === 'trackerTask'
+			|| surface === 'calendarFinishedMarker'
+			|| surface === 'calendarProjectedOccurrence'
+			|| surface === 'calendarExternalItem'
+		) continue;
+		const actionIds = next[surface];
+		if (!Array.isArray(actionIds)) continue;
+		next[surface] = appendContextualMenuAction(actionIds, actionId);
+	}
+	return next;
+}
+
 function insertContextualMenuActionAfterAny(
 	actionIds: ContextualMenuActionId[],
 	actionId: ContextualMenuActionId,
@@ -3022,10 +3065,10 @@ export function buildDefaultContextualMenuSurfaceActionMatrix(): ContextualMenuS
 		calendarTimedItem: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		calendarAllDayScheduledItem: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		calendarDueMarker: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
-		calendarFinishedMarker: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
+		calendarFinishedMarker: [...DEFAULT_CONTEXTUAL_MENU_WITHOUT_REMINDER_ACTIONS],
 		calendarSidebarTaskPoolTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
-		calendarProjectedOccurrence: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
-		calendarExternalItem: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
+		calendarProjectedOccurrence: [...DEFAULT_CONTEXTUAL_MENU_WITHOUT_REMINDER_ACTIONS],
+		calendarExternalItem: [...DEFAULT_CONTEXTUAL_MENU_WITHOUT_REMINDER_ACTIONS],
 	};
 }
 
@@ -3718,6 +3761,18 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			out.contextualMenuSurfaceActionMatrix,
 		);
 	}
+	if (sourceSettingsVersion < 111) {
+		for (const actionId of ['fixedReminder', 'relativeReminder'] as const) {
+			out.contextualMenuActionAllowlist = appendContextualMenuAction(
+				out.contextualMenuActionAllowlist,
+				actionId,
+			);
+			out.contextualMenuSurfaceActionMatrix = appendContextualMenuActionToRealTaskSurfaces(
+				out.contextualMenuSurfaceActionMatrix,
+				actionId,
+			);
+		}
+	}
 	out.contextualMenuOpenDelayMs = normalizeContextualMenuOpenDelayMs(
 		src.contextualMenuOpenDelayMs ?? src.calendarHoverMenuOpenDelayMs,
 	);
@@ -3853,6 +3908,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.inlineTaskShowPinAction = typeof src.inlineTaskShowPinAction === 'boolean'
 		? src.inlineTaskShowPinAction
 		: DEFAULT_SETTINGS.inlineTaskShowPinAction;
+	out.inlineTaskShowNoteAction = typeof src.inlineTaskShowNoteAction === 'boolean'
+		? src.inlineTaskShowNoteAction
+		: DEFAULT_SETTINGS.inlineTaskShowNoteAction;
 	out.inlineTaskShowSubtaskAction = typeof src.inlineTaskShowSubtaskAction === 'boolean'
 		? src.inlineTaskShowSubtaskAction
 		: DEFAULT_SETTINGS.inlineTaskShowSubtaskAction;
@@ -3868,6 +3926,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.filterTaskShowPinAction = typeof src.filterTaskShowPinAction === 'boolean'
 		? src.filterTaskShowPinAction
 		: DEFAULT_SETTINGS.filterTaskShowPinAction;
+	out.filterTaskShowNoteAction = typeof src.filterTaskShowNoteAction === 'boolean'
+		? src.filterTaskShowNoteAction
+		: DEFAULT_SETTINGS.filterTaskShowNoteAction;
 	out.filterTaskShowSubtaskAction = typeof src.filterTaskShowSubtaskAction === 'boolean'
 		? src.filterTaskShowSubtaskAction
 		: DEFAULT_SETTINGS.filterTaskShowSubtaskAction;
@@ -3913,9 +3974,6 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.calendarSidebarTaskPoolDefaultExpanded = typeof src.calendarSidebarTaskPoolDefaultExpanded === 'boolean'
 		? src.calendarSidebarTaskPoolDefaultExpanded
 		: DEFAULT_SETTINGS.calendarSidebarTaskPoolDefaultExpanded;
-	out.calendarSidebarTaskPoolFollowPresetFilter = typeof src.calendarSidebarTaskPoolFollowPresetFilter === 'boolean'
-		? src.calendarSidebarTaskPoolFollowPresetFilter
-		: false;
 	if (src.calendarSidebarFinishedTasksDefaultExpanded === true && !out.calendarSidebarTaskPoolDefaultExpanded) {
 		out.calendarSidebarTaskPoolDefaultExpanded = true;
 	}
@@ -4338,6 +4396,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.reminderSoundFilePath = typeof src.reminderSoundFilePath === 'string'
 		? src.reminderSoundFilePath.trim()
 		: DEFAULT_SETTINGS.reminderSoundFilePath;
+	out.mobileNotificationsSnapshotEnabled = src.mobileNotificationsSnapshotEnabled === true;
 
 	out.settingsVersion = CURRENT_SETTINGS_VERSION;
 	return out;

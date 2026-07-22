@@ -1,10 +1,14 @@
 import type { DataAdapter } from 'obsidian';
 
-type StorageAdapter = Pick<DataAdapter, 'exists' | 'read' | 'write' | 'remove'>
+type StorageAdapter = Pick<DataAdapter, 'exists' | 'write' | 'remove'>
 	& Partial<Pick<DataAdapter, 'process' | 'rename'>>;
 
 export interface RecoveredStoreWriteOptions {
 	forceRecoveredWrite?: boolean;
+}
+
+export interface SafeTextWriteOptions {
+	forceAtomicReplacement?: boolean;
 }
 
 function buildTempPath(path: string): string {
@@ -19,13 +23,17 @@ export async function writeTextSafely(
 	adapter: StorageAdapter,
 	path: string,
 	data: string,
+	options: SafeTextWriteOptions = {},
 ): Promise<void> {
-	if (typeof adapter.process === 'function' && await adapter.exists(path)) {
+	if (!options.forceAtomicReplacement && typeof adapter.process === 'function' && await adapter.exists(path)) {
 		await adapter.process(path, () => data);
 		return;
 	}
 
 	if (typeof adapter.rename !== 'function') {
+		if (options.forceAtomicReplacement) {
+			throw new Error('Atomic replacement requires adapter rename support');
+		}
 		await adapter.write(path, data);
 		return;
 	}

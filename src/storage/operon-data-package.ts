@@ -23,8 +23,11 @@ import type { PresetFavorites } from '../core/preset-favorites';
 
 export const OPERON_DATA_PACKAGE_SCHEMA_VERSION = 2;
 export const OPERON_PINNED_TASKS_PACKAGE_VERSION = 1;
+export const OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION = 1;
 export const OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const RETIRED_DATA_PACKAGE_SETTINGS_KEYS = ['calendarSidebarTaskPoolFollowPresetFilter'] as const;
 const CANONICAL_KEY_ORDER = new Map(CANONICAL_KEYS.map((key, index) => [key.name, index]));
+const LOWERCASE_UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
 export type VersionedStoreSlice<T> = T & {
 	version: number;
@@ -43,6 +46,7 @@ export type OperonDataPackageOwnedSettingsKey =
 	| 'keyMappings'
 	| 'filterSets'
 	| 'externalCalendars'
+	| 'mobileNotificationsSnapshotEnabled'
 	| keyof PipelineStoreSettings
 	| keyof PriorityStoreSettings
 	| keyof CalendarPresetStoreSettings
@@ -59,6 +63,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'keyMappings',
 	'filterSets',
 	'externalCalendars',
+	'mobileNotificationsSnapshotEnabled',
 	'pipelines',
 	'defaultPipelineName',
 	'priorities',
@@ -111,9 +116,11 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'taskWikilinkOverlayShowPlainCheckboxAction',
 	'inlineTaskShowPlayAction',
 	'inlineTaskShowPinAction',
+	'inlineTaskShowNoteAction',
 	'inlineTaskShowSubtaskAction',
 	'filterTaskShowPlayAction',
 	'filterTaskShowPinAction',
+	'filterTaskShowNoteAction',
 	'filterTaskShowSubtaskAction',
 	'filterTaskShowPlainCheckboxAction',
 	'workspaceTweaksHideScrollbars',
@@ -191,9 +198,11 @@ const TASK_UI_PREFERENCE_PACKAGE_KEYS = [
 	'taskWikilinkOverlayShowPlainCheckboxAction',
 	'inlineTaskShowPlayAction',
 	'inlineTaskShowPinAction',
+	'inlineTaskShowNoteAction',
 	'inlineTaskShowSubtaskAction',
 	'filterTaskShowPlayAction',
 	'filterTaskShowPinAction',
+	'filterTaskShowNoteAction',
 	'filterTaskShowSubtaskAction',
 	'filterTaskShowPlainCheckboxAction',
 ] as const satisfies readonly (keyof TaskUiPreferenceStoreSettings)[];
@@ -223,6 +232,19 @@ export interface OperonKanbanOrderPackageV1 {
 export interface OperonExternalCalendarSourcesPackageV1 {
 	version: number;
 	sources: ExternalCalendarSource[];
+}
+
+export interface OperonMobileNotificationsIntegrationV1 {
+	version: typeof OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION;
+	snapshotEnabled: boolean;
+	cancelPending: boolean;
+	vaultId: string | null;
+	lastGeneratedAtEpochMs: number | null;
+}
+
+export interface OperonMobileNotificationsIntegrationAdoption {
+	vaultId?: string | null;
+	lastGeneratedAtEpochMs?: number | null;
 }
 
 export interface OperonPinnedTaskPackageEntry {
@@ -263,6 +285,7 @@ export interface OperonAutomationPackageV1 {
 
 export interface OperonIntegrationsPackageV1 {
 	externalCalendarSources: OperonExternalCalendarSourcesPackageV1;
+	mobileNotifications: OperonMobileNotificationsIntegrationV1;
 }
 
 export interface OperonStatePackageV1 {
@@ -291,9 +314,6 @@ export function composeOperonSettingsFromDataPackage(
 	defaults: OperonSettings,
 ): OperonSettings {
 	const packageSettings = cloneUnknown<Partial<OperonSettings>>(dataPackage.settings);
-	if (!Object.prototype.hasOwnProperty.call(packageSettings, 'calendarSidebarTaskPoolFollowPresetFilter')) {
-		packageSettings.calendarSidebarTaskPoolFollowPresetFilter = false;
-	}
 	const keyMappings = [
 		...readArray(dataPackage.taxonomy.keyMappings.system, []),
 		...readArray(dataPackage.taxonomy.keyMappings.custom, []),
@@ -405,6 +425,7 @@ export function composeOperonSettingsFromDataPackage(
 			: undefined,
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.automation.taskAutomationPolicy),
 		externalCalendars: readArray(dataPackage.integrations.externalCalendarSources.sources, defaults.externalCalendars),
+		mobileNotificationsSnapshotEnabled: dataPackage.integrations.mobileNotifications.snapshotEnabled,
 	});
 }
 
@@ -491,9 +512,11 @@ export function buildOperonDataPackageFromSettings(
 				taskWikilinkOverlayShowPlainCheckboxAction: normalized.taskWikilinkOverlayShowPlainCheckboxAction,
 				inlineTaskShowPlayAction: normalized.inlineTaskShowPlayAction,
 				inlineTaskShowPinAction: normalized.inlineTaskShowPinAction,
+				inlineTaskShowNoteAction: normalized.inlineTaskShowNoteAction,
 				inlineTaskShowSubtaskAction: normalized.inlineTaskShowSubtaskAction,
 				filterTaskShowPlayAction: normalized.filterTaskShowPlayAction,
 				filterTaskShowPinAction: normalized.filterTaskShowPinAction,
+				filterTaskShowNoteAction: normalized.filterTaskShowNoteAction,
 				filterTaskShowSubtaskAction: normalized.filterTaskShowSubtaskAction,
 				filterTaskShowPlainCheckboxAction: normalized.filterTaskShowPlainCheckboxAction,
 			},
@@ -564,6 +587,13 @@ export function buildOperonDataPackageFromSettings(
 				version: 1,
 				sources: cloneUnknown(normalized.externalCalendars),
 			},
+			mobileNotifications: {
+				version: OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION,
+				snapshotEnabled: normalized.mobileNotificationsSnapshotEnabled,
+				cancelPending: false,
+				vaultId: null,
+				lastGeneratedAtEpochMs: null,
+			},
 		},
 		state: {
 			pinnedTasks: normalizePinnedTasksPackage(options.pinnedTasks),
@@ -581,14 +611,21 @@ export function mergeOperonDataPackage(
 	}
 	return {
 		schemaVersion: OPERON_DATA_PACKAGE_SCHEMA_VERSION,
-		settings: cloneExistingDomain(existing?.settings, fallback.settings),
+		settings: cloneSettingsPackageWithoutRetiredKeys(existing?.settings, fallback.settings),
 		taxonomy: mergeTaxonomyPackage(existing?.taxonomy, fallback.taxonomy),
 		views: cloneExistingDomain(existing?.views, fallback.views, isViewsDomain),
 		ui,
 		automation: cloneExistingDomain(existing?.automation, fallback.automation, isAutomationDomain),
-		integrations: cloneExistingDomain(existing?.integrations, fallback.integrations, isIntegrationsDomain),
+		integrations: mergeIntegrationsPackage(existing?.integrations, fallback.integrations, existing?.settings),
 		state: buildStatePackage(existing?.state, fallback.state),
 	};
+}
+
+export function hasRetiredOperonDataPackageSettings(
+	dataPackage: Partial<OperonDataPackageV1> | null | undefined,
+): boolean {
+	if (!isRecord(dataPackage?.settings)) return false;
+	return RETIRED_DATA_PACKAGE_SETTINGS_KEYS.some(key => Object.prototype.hasOwnProperty.call(dataPackage.settings, key));
 }
 
 export function createEmptyPinnedTasksPackage(): OperonPinnedTasksPackageV1 {
@@ -800,6 +837,17 @@ function cloneExistingDomain<T>(
 	return cloneUnknown(isValid(existing) ? existing : fallback);
 }
 
+function cloneSettingsPackageWithoutRetiredKeys(
+	existing: unknown,
+	fallback: OperonDataPackageSettings,
+): OperonDataPackageSettings {
+	const settings = cloneExistingDomain(existing, fallback);
+	for (const key of RETIRED_DATA_PACKAGE_SETTINGS_KEYS) {
+		delete (settings as Record<string, unknown>)[key];
+	}
+	return settings;
+}
+
 function buildStatePackage(
 	existing: Partial<OperonDataPackageV1['state']> | null | undefined,
 	fallback: OperonDataPackageV1['state'],
@@ -889,8 +937,115 @@ function isAutomationDomain(value: unknown): boolean {
 	return isRecord(value) && isRecord(value.taskAutomationPolicy);
 }
 
-function isIntegrationsDomain(value: unknown): boolean {
-	return isRecord(value) && isRecord(value.externalCalendarSources);
+function mergeIntegrationsPackage(
+	existing: Partial<OperonIntegrationsPackageV1> | null | undefined,
+	fallback: OperonIntegrationsPackageV1,
+	legacySettings?: Partial<OperonDataPackageV1['settings']> | null,
+): OperonIntegrationsPackageV1 {
+	const legacySettingsRecord: Record<string, unknown> = isRecord(legacySettings) ? legacySettings : {};
+	const legacyEnabled = typeof legacySettingsRecord.mobileNotificationsSnapshotEnabled === 'boolean'
+		? legacySettingsRecord.mobileNotificationsSnapshotEnabled
+		: fallback.mobileNotifications.snapshotEnabled;
+	return {
+		externalCalendarSources: cloneExistingDomain(
+			existing?.externalCalendarSources,
+			fallback.externalCalendarSources,
+		),
+		mobileNotifications: normalizeMobileNotificationsIntegration(
+			existing?.mobileNotifications,
+			{
+				...fallback.mobileNotifications,
+				snapshotEnabled: legacyEnabled,
+			},
+		),
+	};
+}
+
+export function normalizeMobileNotificationsIntegration(
+	value: unknown,
+	fallback: OperonMobileNotificationsIntegrationV1 = createEmptyMobileNotificationsIntegration(),
+): OperonMobileNotificationsIntegrationV1 {
+	const source = isRecord(value) ? value : {};
+	return {
+		version: OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION,
+		snapshotEnabled: typeof source.snapshotEnabled === 'boolean'
+			? source.snapshotEnabled
+			: fallback.snapshotEnabled,
+		cancelPending: typeof source.cancelPending === 'boolean'
+			? source.cancelPending
+			: fallback.cancelPending,
+		vaultId: normalizeMobileNotificationsVaultId(source.vaultId) ?? fallback.vaultId,
+		lastGeneratedAtEpochMs: normalizeMobileNotificationsEpochMs(source.lastGeneratedAtEpochMs)
+			?? fallback.lastGeneratedAtEpochMs,
+	};
+}
+
+export function adoptMobileNotificationsIntegration(
+	current: unknown,
+	candidate: OperonMobileNotificationsIntegrationAdoption,
+): OperonMobileNotificationsIntegrationV1 {
+	const normalized = normalizeMobileNotificationsIntegration(current);
+	const candidateVaultId = normalizeMobileNotificationsVaultId(candidate.vaultId);
+	const candidateEpochMs = normalizeMobileNotificationsEpochMs(candidate.lastGeneratedAtEpochMs);
+	return {
+		...normalized,
+		vaultId: normalized.vaultId ?? candidateVaultId,
+		lastGeneratedAtEpochMs: maxNullableEpochMs(normalized.lastGeneratedAtEpochMs, candidateEpochMs),
+	};
+}
+
+export function createEmptyMobileNotificationsIntegration(): OperonMobileNotificationsIntegrationV1 {
+	return {
+		version: OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION,
+		snapshotEnabled: false,
+		cancelPending: false,
+		vaultId: null,
+		lastGeneratedAtEpochMs: null,
+	};
+}
+
+export function getNextMobileNotificationsGeneratedAtEpochMs(
+	current: unknown,
+	nowEpochMs: number,
+	minimumExclusive = -1,
+): number {
+	if (!Number.isSafeInteger(nowEpochMs) || nowEpochMs < 0) {
+		throw new Error('Mobile notifications generation time must be a non-negative safe integer');
+	}
+	if (!Number.isSafeInteger(minimumExclusive) || minimumExclusive < -1) {
+		throw new Error('Mobile notifications minimum generation watermark must be a safe integer of at least -1');
+	}
+	const lastGeneratedAtEpochMs = normalizeMobileNotificationsIntegration(current).lastGeneratedAtEpochMs;
+	const nextEpochMs = Math.max(
+		nowEpochMs,
+		(lastGeneratedAtEpochMs ?? -1) + 1,
+		minimumExclusive + 1,
+	);
+	if (!Number.isSafeInteger(nextEpochMs)) {
+		throw new Error('Mobile notifications generation watermark overflowed');
+	}
+	if (nextEpochMs > nowEpochMs + 5 * 60 * 1000) {
+		throw new Error('Mobile notifications generation watermark is more than five minutes in the future');
+	}
+	return nextEpochMs;
+}
+
+function normalizeMobileNotificationsVaultId(value: unknown): string | null {
+	return typeof value === 'string' && LOWERCASE_UUID_V4_RE.test(value) ? value : null;
+}
+
+function normalizeMobileNotificationsEpochMs(value: unknown): number | null {
+	return typeof value === 'number'
+		&& Number.isSafeInteger(value)
+		&& value >= 0
+		? value
+		: null;
+}
+
+function maxNullableEpochMs(left: number | null, right: number | null): number | null {
+	if (left === null) return right;
+	if (right === null) return left;
+	return Math.max(left, right);
 }
 
 function cloneUnknown<T>(value: unknown): T {

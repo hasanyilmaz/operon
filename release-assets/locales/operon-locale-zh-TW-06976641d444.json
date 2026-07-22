@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 2930,
-  "keyFingerprint": "a725e0b8caf3203a4f32d57c5ca7e815690bf0c52a4f5479771be8335476afad",
+  "keyCount": 2947,
+  "keyFingerprint": "6db2c3306703763d294907b95b7223a780fd57f6fd069d80cc0485dc0e3ef5f0",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -11,7 +11,6 @@
       "addInlineTask": "新增行內任務",
       "addSubtask": "新增子任務",
       "apply": "應用",
-      "buyMeACoffee": "Buy me a coffee",
       "cancel": "取消",
       "choose": "選擇",
       "clear": "清除",
@@ -24,6 +23,7 @@
       "done": "完成",
       "edit": "編輯",
       "file": "檔案",
+      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
       "inline": "行內",
       "kanbanNoValue": "無值",
       "keepAsIs": "保持原樣",
@@ -302,6 +302,7 @@
       "openTimeSessionHistory": "開啟時間會話歷史面板",
       "rebuildIndex": "重建完整索引",
       "reloadSettingsFromStorage": "從儲存重新載入 Operon 設定",
+      "repairRecurringFileTaskIdentities": "修復重複檔案任務識別",
       "repairTaskWikilinkOverlayLinks": "修復任務維基連結覆蓋層連結",
       "retryPendingWorkflowRename": "重試待處理的工作流程重新命名",
       "showIndexStats": "顯示索引統計",
@@ -927,6 +928,14 @@
       "add": "加入收藏",
       "remove": "從收藏中移除"
     },
+    "recurrenceIdentityRepair": {
+      "confirm": "修復識別",
+      "noCandidates": "找不到可安全修復的重複檔案任務識別。",
+      "preview": "請檢查下方 {{count}} 項修復。只會變更 repeatOccurrenceDate。",
+      "previewWithRemaining": "請檢查 {{count}} 項修復。下方顯示前50項；確認後還會處理其餘 {{remaining}} 項。只會變更 repeatOccurrenceDate。",
+      "result": "已修復 {{repaired}} 個重複檔案任務識別；略過 {{skipped}} 個。",
+      "title": "修復重複檔案任務識別"
+    },
     "reminders": {
       "alreadyPassed": "已過期",
       "atAnchor": "在{{anchor}}時",
@@ -946,6 +955,10 @@
       "offsetPlaceholder": "例如 10 分鐘、1 小時、2 天",
       "openTask": "開啟任務",
       "pastReminder": "已過期的提醒",
+      "quickOffsetChoose": "選擇 {{offset}}",
+      "quickOffsetOnTime": "準時",
+      "quickOffsets": "快速提醒提前量",
+      "saveFailed": "無法儲存提醒。",
       "staleItem": "此提醒已無法使用。",
       "unresolvedReminder": "無法解析的提醒",
       "untitledTask": "無標題任務"
@@ -1048,8 +1061,6 @@
       "calendarSidebarFinishedTasksDefaultStateDesc": "選擇日曆視窗開啟時，側邊欄「已完成任務」區塊預設展開還是摺疊。",
       "calendarSidebarTaskPoolDefaultState": "任務池預設狀態",
       "calendarSidebarTaskPoolDefaultStateDesc": "選擇日曆視窗開啟時，側邊欄「任務池」預設展開還是摺疊。",
-      "calendarSidebarTaskPoolFollowPresetFilter": "任務池跟隨日曆篩選器",
-      "calendarSidebarTaskPoolFollowPresetFilterDesc": "在套用任務池模式和搜尋之前，將側邊欄任務池限制為目前日曆預設篩選器的範圍。",
       "calendarSidebarTaskPoolLimitDesc": "側邊欄任務池最初顯示最近更新的 {{initialLimit}} 個任務。搜尋會掃描完整列表並顯示最多 {{searchLimit}} 個匹配項。",
       "cancelProjectSerialPrefixEdit": "取消字首編輯",
       "cancelledStatusAria": "{{pipeline}} 中的已取消狀態：{{status}}",
@@ -1100,6 +1111,8 @@
       "contextualMenuActionConvertInlineToFileTaskDesc": "將此行內任務轉換為檔案任務。",
       "contextualMenuActionCreateSubtask": "建立子任務",
       "contextualMenuActionCreateSubtaskDesc": "噹噹前任務可以建立子任務時，在右鍵選單中顯示此操作。",
+      "contextualMenuActionFixedReminder": "固定提醒",
+      "contextualMenuActionFixedReminderDesc": "為開啟的任務開啟固定提醒選擇器。",
       "contextualMenuActionJumpToSource": "跳轉到源",
       "contextualMenuActionJumpToSourceDesc": "噹噹前專案可以跳轉到其源筆記時，在右鍵選單中顯示此操作。",
       "contextualMenuActionMarkDone": "標記完成",
@@ -1108,6 +1121,8 @@
       "contextualMenuActionOpenEditorDesc": "噹噹前專案可以開啟任務編輯器時，在右鍵選單中顯示此操作。",
       "contextualMenuActionPinToggle": "置頂任務",
       "contextualMenuActionPinToggleDesc": "噹噹前任務可以置頂或取消置頂時，在右鍵選單中顯示此操作。",
+      "contextualMenuActionRelativeReminder": "相對提醒",
+      "contextualMenuActionRelativeReminderDesc": "當開啟的任務有可用日期或時間時，開啟相對提醒選擇器。",
       "contextualMenuActionSetAsTracked": "記錄為追蹤",
       "contextualMenuActionSetAsTrackedCalendarTimed": "記錄為追蹤",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "將此計劃時間塊記錄為追蹤時間。",
@@ -1736,6 +1751,8 @@
       "mobileGlobalTaskFabResetPositionDesc": "將移動端快速建立按鈕移回預設的右下角位置。",
       "mobileInterfaceDesc": "在不更改桌面佈局的情況下調整手機和觸控優先的介面行為。",
       "mobileInterfaceTitle": "移動端介面",
+      "mobileNotificationsSnapshot": "行動通知快照",
+      "mobileNotificationsSnapshotDesc": "建立並持續更新 Operon Mobile Notifications 應用程式使用的七天提醒快照。預設關閉；關閉時會寫入最後一個已停用快照，然後停止匯出。",
       "mobileSubtabCalendar": "日曆",
       "mobileSubtabGeneral": "常規",
       "mobileSubtabKanban": "看板",
@@ -2051,7 +2068,7 @@
       "subtabTweaks": "工作區微調",
       "subtasksDefaultExpanded": "預設展開子任務",
       "subtasksDefaultExpandedDesc": "工作列載入時展開顯示子任務列表。",
-      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, a coffee keeps me building. ☕",
+      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, coffee fuels what comes next. ☕",
       "supportDevelopmentCardTitle": "Enjoying the flow?",
       "tabCalendar": "日曆",
       "tabCore": "核心",
@@ -2511,6 +2528,7 @@
     },
     "taskEditor": {
       "activeTrackerReadOnly": "{{task}} 的計時器正在執行。請先停止再編輯。",
+      "addNote": "新增筆記",
       "addSession": "新增會話",
       "appearance": "外觀",
       "applyingPriorityRenameMigration": "正在應用優先順序重新命名遷移",
@@ -2606,6 +2624,7 @@
       "details": "詳情",
       "dueDate": "截止日期",
       "dueDatePlaceholder": "截止日期",
+      "editNote": "編輯筆記",
       "editSession": "編輯會話",
       "editSourceMetadata": "編輯源後設資料",
       "editSubtask": "編輯子任務",
@@ -2973,5 +2992,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "381c3ffa17f59eca9b70167fd86b768c8193e03af3b52df6a779d20c5b25a42b"
+  "sourceVersion": "38a04ba9f2be41fb059c13102299a4c36b44e4778cccb904e3adb8ce6716fb49"
 }

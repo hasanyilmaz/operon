@@ -201,7 +201,13 @@ function dispatchMobilePickerEvent(context: MobilePickerSurfaceContext | null, e
 
 export function snapshotFloatingRectAnchor(anchorEl: HTMLElement): DOMRect {
 	const rect = anchorEl.getBoundingClientRect();
-	const snapshot = new DOMRect(rect.x, rect.y, rect.width, rect.height) as OwnedFloatingRect;
+	const DOMRectCtor = (getOwnerWindow(anchorEl) as unknown as { DOMRect: typeof DOMRect }).DOMRect;
+	const snapshot = new DOMRectCtor(
+		rect.x,
+		rect.y,
+		rect.width,
+		rect.height,
+	) as OwnedFloatingRect;
 	Object.defineProperty(snapshot, FLOATING_RECT_ANCHOR_OWNER, {
 		value: anchorEl,
 	});

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { TFile } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import {
 	buildReminderOccurrences,
 	buildReminderOccurrenceKey,
@@ -144,10 +144,18 @@ class FakeWindow {
 	readonly timers = new Map<number, { callback: () => void; delay: number }>();
 	private nextTimerId = 1;
 	audioFactory: (() => FakeAudio) | null = null;
-	createEl(tagName: string): FakeAudio {
-		if (tagName !== 'audio' || !this.audioFactory) throw new Error(`UNSUPPORTED_ELEMENT:${tagName}`);
-		return this.audioFactory();
+	focusCalls = 0;
+	createEl(tagName: 'audio'): FakeAudio;
+	createEl(tagName: string): FakeElement;
+	createEl(tagName: string): FakeAudio | FakeElement {
+		if (tagName === 'audio') {
+			if (!this.audioFactory) throw new Error(`UNSUPPORTED_ELEMENT:${tagName}`);
+			return this.audioFactory();
+		}
+		return new FakeElement(tagName);
 	}
+	createSpan(): FakeElement { return new FakeElement('span'); }
+	focus(): void { this.focusCalls += 1; }
 	setTimeout(callback: () => void, delay: number): number {
 		const id = this.nextTimerId++;
 		this.timers.set(id, {
@@ -196,16 +204,53 @@ class FakeNotification {
 	onclose: (() => void) | null = null;
 	onerror: (() => void) | null = null;
 	onshow: (() => void) | null = null;
+	closed = false;
 	constructor(readonly title: string, readonly options?: NotificationOptions) {
 		FakeNotification.instances.push(this);
 	}
-	close(): void { this.onclose?.(); }
+	close(): void { this.closed = true; this.onclose?.(); }
+}
+
+class FakeClickEvent {
+	defaultPrevented = false;
+	preventDefault(): void { this.defaultPrevented = true; }
+}
+
+class FakeElement {
+	textContent = '';
+	readonly children: unknown[] = [];
+	readonly classes = new Set<string>();
+	readonly attributes = new Map<string, string>();
+	private readonly listeners = new Map<string, Set<(event: FakeClickEvent) => void>>();
+	constructor(readonly tagName: string) {}
+	append(...items: unknown[]): void { this.children.push(...items); }
+	addClass(name: string): void { this.classes.add(name); }
+	setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
+	addEventListener(type: string, listener: (event: FakeClickEvent) => void): void {
+		const listeners = this.listeners.get(type) ?? new Set<(event: FakeClickEvent) => void>();
+		listeners.add(listener);
+		this.listeners.set(type, listeners);
+	}
+	click(): FakeClickEvent {
+		const event = new FakeClickEvent();
+		for (const listener of this.listeners.get('click') ?? []) listener(event);
+		return event;
+	}
+}
+
+class FakeFragment {
+	readonly children: unknown[] = [];
+	append(...items: unknown[]): void { this.children.push(...items); }
 }
 
 class FakeDocument {
 	hidden = false;
 	focused = true;
 	hasFocus(): boolean { return this.focused; }
+	createRange(): { createContextualFragment: (text: string) => FakeFragment } {
+		return { createContextualFragment: () => new FakeFragment() };
+	}
+	createTextNode(text: string): string { return text; }
 	private readonly listeners = new Map<string, Set<() => void>>();
 	addEventListener(type: string, listener: () => void): void {
 		const listeners = this.listeners.get(type) ?? new Set<() => void>();
@@ -420,11 +465,11 @@ async function run(): Promise<void> {
 		occurrence: notificationOccurrence,
 		task: task('delivery-controller', { reminderDatetimes: toLocalDatetime(nowMs) }),
 	};
-	const buildDeliveryController = (soundPath = ''): ReminderDeliveryController => new ReminderDeliveryController({
+	const buildDeliveryController = (soundPath = '', onOpenTask: (operonId: string) => void = () => {}): ReminderDeliveryController => new ReminderDeliveryController({
 		app: notificationApp as never,
 		getSystemNotificationsEnabled: () => true,
 		getSoundFilePath: () => soundPath,
-		onOpenTask: () => {},
+		onOpenTask,
 		ownerWindow: notificationWindow as never,
 		isDesktopApp: () => true,
 	});
@@ -484,6 +529,44 @@ async function run(): Promise<void> {
 	soundStartTimer?.callback();
 	equal(await timedOutPreview, 'failed', 'a never-settling audio start fails within the bounded startup window');
 	equal(neverPlayingAudio.at(-1)?.paused, true, 'audio startup timeout releases the media element');
+
+	const openedTaskIds: string[] = [];
+	notificationWindow.document.hidden = false;
+	notificationWindow.document.focused = true;
+	const noticeController = buildDeliveryController('', operonId => openedTaskIds.push(operonId));
+	(Notice as unknown as { instances: Array<{ content: FakeFragment }> }).instances.length = 0;
+	await noticeController.deliverBatch([deliveryItem]);
+	const notice = (Notice as unknown as { instances: Array<{ content: FakeFragment }> }).instances.at(-1);
+	const noticeLinks = notice?.content.children.filter((item): item is FakeElement => item instanceof FakeElement && item.tagName === 'a') ?? [];
+	equal(noticeLinks.length, 2, 'in-app reminder exposes the task title and Open task action as links');
+	equal(noticeLinks[0]?.click().defaultPrevented, true, 'in-app reminder title prevents browser hash navigation');
+	equal(openedTaskIds.at(-1), notificationOccurrence.operonId, 'in-app reminder title forwards the reminder task id');
+	equal(noticeLinks[1]?.click().defaultPrevented, true, 'in-app Open task action prevents browser hash navigation');
+	equal(openedTaskIds.at(-1), notificationOccurrence.operonId, 'in-app Open task action forwards the reminder task id');
+	noticeController.previewInOperon();
+	equal(openedTaskIds.length, 2, 'in-app reminder preview never opens a task');
+	noticeController.destroy();
+
+	FakeNotification.instances.length = 0;
+	notificationWindow.document.hidden = true;
+	notificationWindow.document.focused = false;
+	const systemController = buildDeliveryController('', operonId => openedTaskIds.push(operonId));
+	const systemDelivery = systemController.deliverBatch([deliveryItem]);
+	await Promise.resolve();
+	const systemNotification = FakeNotification.instances[0]!;
+	systemNotification.onshow?.();
+	await systemDelivery;
+	const focusCallsBeforeSystemClick = notificationWindow.focusCalls;
+	systemNotification.onclick?.();
+	equal(notificationWindow.focusCalls, focusCallsBeforeSystemClick + 1, 'desktop reminder click focuses the owner window');
+	equal(openedTaskIds.at(-1), notificationOccurrence.operonId, 'desktop reminder click forwards the reminder task id');
+	equal(systemNotification.closed, true, 'desktop reminder click closes the notification');
+	FakeNotification.instances.length = 0;
+	equal(await systemController.previewSystemNotification(), true, 'desktop reminder preview is available with granted permission');
+	const previewNotification = FakeNotification.instances[0]!;
+	previewNotification.onclick?.();
+	equal(openedTaskIds.length, 3, 'desktop reminder preview never opens a task');
+	systemController.destroy();
 
 	const migrated = migrateSettings({ settingsVersion: 108 });
 	equal(migrated.settingsVersion, CURRENT_SETTINGS_VERSION);

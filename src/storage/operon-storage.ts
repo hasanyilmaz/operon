@@ -34,11 +34,15 @@ import {
 import { writeTextSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import {
 	buildOperonDataPackageFromSettings,
+	adoptMobileNotificationsIntegration,
+	getNextMobileNotificationsGeneratedAtEpochMs,
 	composeOperonSettingsFromDataPackage,
 	mergePinnedTasksPackages,
 	OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
 	prunePinnedTaskTombstones,
 	type OperonDataPackageV1,
+	type OperonMobileNotificationsIntegrationAdoption,
+	type OperonMobileNotificationsIntegrationV1,
 } from './operon-data-package';
 import {
 	OperonDataPackageStore,
@@ -153,9 +157,11 @@ function pickTaskUiPreferenceStoreSettings(settings: OperonSettings): TaskUiPref
 		taskWikilinkOverlayShowPlainCheckboxAction: settings.taskWikilinkOverlayShowPlainCheckboxAction,
 		inlineTaskShowPlayAction: settings.inlineTaskShowPlayAction,
 		inlineTaskShowPinAction: settings.inlineTaskShowPinAction,
+		inlineTaskShowNoteAction: settings.inlineTaskShowNoteAction,
 		inlineTaskShowSubtaskAction: settings.inlineTaskShowSubtaskAction,
 		filterTaskShowPlayAction: settings.filterTaskShowPlayAction,
 		filterTaskShowPinAction: settings.filterTaskShowPinAction,
+		filterTaskShowNoteAction: settings.filterTaskShowNoteAction,
 		filterTaskShowSubtaskAction: settings.filterTaskShowSubtaskAction,
 		filterTaskShowPlainCheckboxAction: settings.filterTaskShowPlainCheckboxAction,
 	};
@@ -698,6 +704,8 @@ export class OperonStorage {
 		});
 		try {
 			await this.dataPackageStore.updateDataPackage(currentPackage => {
+				const nextSnapshotEnabled = dataPackage.integrations.mobileNotifications.snapshotEnabled;
+				const currentMobileNotifications = currentPackage.integrations.mobileNotifications;
 				const pinnedTasks = prunePinnedTaskTombstones(
 					mergePinnedTasksPackages(
 						currentPackage.state.pinnedTasks,
@@ -708,6 +716,16 @@ export class OperonStorage {
 				);
 				return {
 					...dataPackage,
+					integrations: {
+						...dataPackage.integrations,
+						mobileNotifications: {
+							...currentMobileNotifications,
+							snapshotEnabled: nextSnapshotEnabled,
+							cancelPending: nextSnapshotEnabled
+								? false
+								: currentMobileNotifications.snapshotEnabled || currentMobileNotifications.cancelPending,
+						},
+					},
 					state: {
 						...dataPackage.state,
 						pinnedTasks,
@@ -1115,6 +1133,86 @@ export class OperonStorage {
 	get externalCalendars(): ExternalCalendarCacheStore { return this.externalCalendarCache; }
 	get externalCalendarSources(): ExternalCalendarSourceStore { return this.externalCalendarSourceStore; }
 	get filters(): FilterStore { return this.filterStore; }
+
+	getMobileNotificationsIntegration(): OperonMobileNotificationsIntegrationV1 {
+		return structuredClone(this.dataPackageStore.getDataPackage().integrations.mobileNotifications);
+	}
+
+	async adoptMobileNotificationsIntegration(
+		candidate: OperonMobileNotificationsIntegrationAdoption,
+	): Promise<OperonMobileNotificationsIntegrationV1> {
+		let adopted = this.getMobileNotificationsIntegration();
+		await this.dataPackageStore.updateDataPackage(dataPackage => {
+			adopted = adoptMobileNotificationsIntegration(dataPackage.integrations.mobileNotifications, candidate);
+			return {
+				...dataPackage,
+				integrations: {
+					...dataPackage.integrations,
+					mobileNotifications: adopted,
+				},
+			};
+		});
+		return structuredClone(adopted);
+	}
+
+	async getOrCreateMobileNotificationsVaultId(adoptedVaultId?: string | null): Promise<string> {
+		let vaultId = '';
+		await this.dataPackageStore.updateDataPackage(dataPackage => {
+			let current = adoptMobileNotificationsIntegration(dataPackage.integrations.mobileNotifications, {
+				vaultId: adoptedVaultId,
+			});
+			if (!current.vaultId) {
+				const generatedVaultId = window.crypto?.randomUUID?.().toLowerCase();
+				if (!generatedVaultId) throw new Error('Could not generate the mobile notifications vault identity');
+				current = adoptMobileNotificationsIntegration(current, { vaultId: generatedVaultId });
+			}
+			vaultId = current.vaultId ?? '';
+			return {
+				...dataPackage,
+				integrations: {
+					...dataPackage.integrations,
+					mobileNotifications: current,
+				},
+			};
+		});
+		if (!vaultId) throw new Error('Could not persist the mobile notifications vault identity');
+		return vaultId;
+	}
+
+	async reserveMobileNotificationsGeneratedAtEpochMs(
+		nowEpochMs: number,
+		minimumExclusive = -1,
+	): Promise<number> {
+		let reservedEpochMs = nowEpochMs;
+		await this.dataPackageStore.updateDataPackage(dataPackage => {
+			const current = dataPackage.integrations.mobileNotifications;
+			reservedEpochMs = getNextMobileNotificationsGeneratedAtEpochMs(current, nowEpochMs, minimumExclusive);
+			return {
+				...dataPackage,
+				integrations: {
+					...dataPackage.integrations,
+					mobileNotifications: {
+						...current,
+						lastGeneratedAtEpochMs: reservedEpochMs,
+					},
+				},
+			};
+		});
+		return reservedEpochMs;
+	}
+
+	async markMobileNotificationsCancelAllPublished(): Promise<void> {
+		await this.dataPackageStore.updateDataPackage(dataPackage => ({
+			...dataPackage,
+			integrations: {
+				...dataPackage.integrations,
+				mobileNotifications: {
+					...dataPackage.integrations.mobileNotifications,
+					cancelPending: false,
+				},
+			},
+		}));
+	}
 
 	async deleteFilterSetWithFavoriteCleanup(filterId: string): Promise<void> {
 		await this.enqueueSettingsTransaction(async () => {

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 2930,
-  "keyFingerprint": "a725e0b8caf3203a4f32d57c5ca7e815690bf0c52a4f5479771be8335476afad",
+  "keyCount": 2947,
+  "keyFingerprint": "6db2c3306703763d294907b95b7223a780fd57f6fd069d80cc0485dc0e3ef5f0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -11,7 +11,6 @@
       "addInlineTask": "Inline-Aufgabe hinzufügen",
       "addSubtask": "Unteraufgabe hinzufügen",
       "apply": "Anwenden",
-      "buyMeACoffee": "Buy me a coffee",
       "cancel": "Abbrechen",
       "choose": "Auswählen",
       "clear": "Leeren",
@@ -24,6 +23,7 @@
       "done": "Fertig",
       "edit": "Bearbeiten",
       "file": "Datei",
+      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
       "inline": "Inline",
       "kanbanNoValue": "Kein Wert",
       "keepAsIs": "Unverändert lassen",
@@ -302,6 +302,7 @@
       "openTimeSessionHistory": "Verlauf der Erfassungssitzungen öffnen",
       "rebuildIndex": "Vollständigen Index neu aufbauen",
       "reloadSettingsFromStorage": "Operon-Einstellungen aus dem Speicher neu laden",
+      "repairRecurringFileTaskIdentities": "Identitäten wiederkehrender Datei-Aufgaben reparieren",
       "repairTaskWikilinkOverlayLinks": "Task Wikilink Overlay-Links reparieren",
       "retryPendingWorkflowRename": "Ausstehende Workflow-Umbenennung erneut versuchen",
       "showIndexStats": "Index-Statistiken anzeigen",
@@ -927,6 +928,14 @@
       "add": "Zu Favoriten hinzufügen",
       "remove": "Aus Favoriten entfernen"
     },
+    "recurrenceIdentityRepair": {
+      "confirm": "Identitäten reparieren",
+      "noCandidates": "Es wurden keine sicher reparierbaren Identitäten wiederkehrender Datei-Aufgaben gefunden.",
+      "preview": "Prüfe die unten angezeigten {{count}} Identitätsreparaturen. Nur repeatOccurrenceDate wird geändert.",
+      "previewWithRemaining": "Prüfe {{count}} Identitätsreparaturen. Die ersten 50 werden unten angezeigt; {{remaining}} weitere werden nach Bestätigung einbezogen. Nur repeatOccurrenceDate wird geändert.",
+      "result": "{{repaired}} Identitäten wiederkehrender Datei-Aufgaben repariert; {{skipped}} übersprungen.",
+      "title": "Identitäten wiederkehrender Datei-Aufgaben reparieren"
+    },
     "reminders": {
       "alreadyPassed": "Bereits vergangen",
       "atAnchor": "Zum Zeitpunkt {{anchor}}",
@@ -946,6 +955,10 @@
       "offsetPlaceholder": "z. B. 10 Min., 1 Std., 2 Tage",
       "openTask": "Aufgabe öffnen",
       "pastReminder": "Vergangene Erinnerung",
+      "quickOffsetChoose": "{{offset}} auswählen",
+      "quickOffsetOnTime": "Pünktlich",
+      "quickOffsets": "Schnelle Erinnerungsabstände",
+      "saveFailed": "Die Erinnerung konnte nicht gespeichert werden.",
       "staleItem": "Diese Erinnerung ist nicht mehr verfügbar.",
       "unresolvedReminder": "Nicht auflösbare Erinnerung",
       "untitledTask": "Unbenannte Aufgabe"
@@ -1048,8 +1061,6 @@
       "calendarSidebarFinishedTasksDefaultStateDesc": "Wähle, ob der Bereich „Erledigte Aufgaben“ der Seitenleiste beim Öffnen eines Kalender-Tabs aufgeklappt oder eingeklappt startet.",
       "calendarSidebarTaskPoolDefaultState": "Standardzustand des Aufgabenpools",
       "calendarSidebarTaskPoolDefaultStateDesc": "Wähle, ob der Aufgabenpool der Seitenleiste beim Öffnen eines Kalender-Tabs aufgeklappt oder eingeklappt startet.",
-      "calendarSidebarTaskPoolFollowPresetFilter": "Aufgabenpool folgt dem Kalenderfilter",
-      "calendarSidebarTaskPoolFollowPresetFilterDesc": "Begrenzt den Aufgabenpool der Seitenleiste auf den aktiven Kalender-Voreinstellungsfilter, bevor Aufgabenpool-Modi und Suche angewendet werden.",
       "calendarSidebarTaskPoolLimitDesc": "Der Aufgabenpool der Seitenleiste zeigt zunächst die {{initialLimit}} zuletzt aktualisierten Aufgaben. Die Suche durchsucht die vollständige Liste und zeigt bis zu {{searchLimit}} Treffer.",
       "cancelProjectSerialPrefixEdit": "Präfix-Bearbeitung abbrechen",
       "cancelledStatusAria": "Abgebrochen-Status in {{pipeline}}: {{status}}",
@@ -1100,6 +1111,8 @@
       "contextualMenuActionConvertInlineToFileTaskDesc": "Diese Inline-Aufgabe in eine Datei-Aufgabe umwandeln.",
       "contextualMenuActionCreateSubtask": "Unteraufgabe erstellen",
       "contextualMenuActionCreateSubtaskDesc": "Diese Aktion im Kontextmenü anzeigen, wenn für die aktuelle Aufgabe eine Unteraufgabe erstellt werden kann.",
+      "contextualMenuActionFixedReminder": "Feste Erinnerung",
+      "contextualMenuActionFixedReminderDesc": "Den Picker für feste Erinnerungen für eine offene Aufgabe öffnen.",
       "contextualMenuActionJumpToSource": "Zur Quelle springen",
       "contextualMenuActionJumpToSourceDesc": "Diese Aktion im Kontextmenü anzeigen, wenn das aktuelle Element zu seiner Quellnotiz springen kann.",
       "contextualMenuActionMarkDone": "Als erledigt markieren",
@@ -1108,6 +1121,8 @@
       "contextualMenuActionOpenEditorDesc": "Diese Aktion im Kontextmenü anzeigen, wenn das aktuelle Element den Aufgaben-Editor öffnen kann.",
       "contextualMenuActionPinToggle": "Aufgabe anheften",
       "contextualMenuActionPinToggleDesc": "Diese Aktion im Kontextmenü anzeigen, wenn die aktuelle Aufgabe angeheftet oder ihre Anheftung entfernt werden kann.",
+      "contextualMenuActionRelativeReminder": "Relative Erinnerung",
+      "contextualMenuActionRelativeReminderDesc": "Den Picker für relative Erinnerungen öffnen, wenn eine offene Aufgabe ein geeignetes Datum oder eine Uhrzeit hat.",
       "contextualMenuActionSetAsTracked": "Als erfasst loggen",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Als erfasst loggen",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Diesen geplanten Zeitblock als erfasste Zeit protokollieren.",
@@ -1736,6 +1751,8 @@
       "mobileGlobalTaskFabResetPositionDesc": "Die mobile Schnell-Erstellen-Schaltfläche auf die Standardposition unten rechts zurücksetzen.",
       "mobileInterfaceDesc": "Für Telefone und Touch-Bedienung optimiertes Oberflächenverhalten anpassen, ohne Desktop-Layouts zu ändern.",
       "mobileInterfaceTitle": "Mobile Oberfläche",
+      "mobileNotificationsSnapshot": "Snapshot für mobile Benachrichtigungen",
+      "mobileNotificationsSnapshotDesc": "Den siebentägigen Reminder-Snapshot für die Operon Mobile Notifications App erstellen und aktuell halten. Standardmäßig deaktiviert; beim Ausschalten wird ein letzter deaktivierter Snapshot geschrieben und der Export beendet.",
       "mobileSubtabCalendar": "Kalender",
       "mobileSubtabGeneral": "Allgemein",
       "mobileSubtabKanban": "Kanban",
@@ -2051,7 +2068,7 @@
       "subtabTweaks": "Workspace Tweaks",
       "subtasksDefaultExpanded": "Unteraufgaben standardmäßig aufgeklappt",
       "subtasksDefaultExpandedDesc": "Unteraufgaben-Listen beim Laden der Aufgabenleiste aufgeklappt anzeigen.",
-      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, a coffee keeps me building. ☕",
+      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, coffee fuels what comes next. ☕",
       "supportDevelopmentCardTitle": "Enjoying the flow?",
       "tabCalendar": "Kalender",
       "tabCore": "Kern",
@@ -2511,6 +2528,7 @@
     },
     "taskEditor": {
       "activeTrackerReadOnly": "Aktiver Timer für {{task}}. Stoppe ihn vor dem Bearbeiten.",
+      "addNote": "Notiz hinzufügen",
       "addSession": "Erfassungssitzung hinzufügen",
       "appearance": "Erscheinungsbild",
       "applyingPriorityRenameMigration": "Prioritäts-Umbenennungs-Migration wird angewendet",
@@ -2606,6 +2624,7 @@
       "details": "Details",
       "dueDate": "Fälligkeitsdatum",
       "dueDatePlaceholder": "Fälligkeitsdatum",
+      "editNote": "Notiz bearbeiten",
       "editSession": "Erfassungssitzung bearbeiten",
       "editSourceMetadata": "Quell-Metadaten bearbeiten",
       "editSubtask": "Unteraufgabe bearbeiten",
@@ -2973,5 +2992,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "9e5cc4e3256191b76f874cbd26694e43c5047a158688d865c959b361ec8d2cec"
+  "sourceVersion": "107093e433b19a3fb840f2d7cafdfecebb7cd009843ffb31556305193ef3fed5"
 }

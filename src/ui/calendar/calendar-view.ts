@@ -1540,20 +1540,18 @@ export class CalendarView extends ItemView {
 			if (!isCalendarSidebarTaskPoolMember(optimisticTask, taskPoolMode, { finishedDate: state.anchorDate })) {
 				return [];
 			}
-			if (settings.calendarSidebarTaskPoolFollowPresetFilter) {
-				const scoped = filterTasksForCalendar(
-					this.resolveCalendarPresetFilter(preset, settings),
-					[optimisticTask],
-					settings.priorities,
-					this.getPinnedCache(),
-					{
-						projectSerialScopes: settings.projectSerialScopes,
-						projectSerialScopeTasks: this.indexer.getAllTasks(),
-						filePropertyContext: this.getFilePropertyContext(settings),
-					},
-				);
-				if (scoped.length === 0) return [];
-			}
+			const scoped = filterTasksForCalendar(
+				this.resolveCalendarPresetFilter(preset, settings),
+				[optimisticTask],
+				settings.priorities,
+				this.getPinnedCache(),
+				{
+					projectSerialScopes: settings.projectSerialScopes,
+					projectSerialScopeTasks: this.indexer.getAllTasks(),
+					filePropertyContext: this.getFilePropertyContext(settings),
+				},
+			);
+			if (scoped.length === 0) return [];
 			const query = this.taskPoolQuery.trim();
 			if (query && !this.evaluateSidebarTaskPoolMatch(optimisticTask, query.toLowerCase(), prepareFuzzySearch(query))) {
 				return [];
@@ -2109,7 +2107,6 @@ export class CalendarView extends ItemView {
 		preset: CalendarRenderPreset | null | undefined,
 		settings: OperonSettings,
 	): IndexedTask[] {
-		if (!settings.calendarSidebarTaskPoolFollowPresetFilter) return tasks;
 		return filterTasksForCalendar(
 			this.resolveCalendarPresetFilter(preset, settings),
 			tasks,
@@ -5772,6 +5769,7 @@ export class CalendarView extends ItemView {
 			context,
 			actionAllowlist,
 			settings.contextualMenuSurfaceActionMatrix,
+			settings.keyMappings,
 		);
 		if (actions.length === 0 || !this.callbacks.onItemAction) {
 			if (this.hoverMenu.isActive(menuKey)) {
@@ -7640,6 +7638,7 @@ export class CalendarView extends ItemView {
 					context,
 					settings.contextualMenuActionAllowlist,
 					settings.contextualMenuSurfaceActionMatrix,
+					settings.keyMappings,
 				);
 				return this.showHoverMenuForActions(triggerEl, task.operonId, actions, undefined, context, mobile);
 			},
@@ -9982,6 +9981,7 @@ export class CalendarView extends ItemView {
 			context,
 			this.getSettings().contextualMenuActionAllowlist,
 			this.getSettings().contextualMenuSurfaceActionMatrix,
+			this.getSettings().keyMappings,
 		);
 		if (actions.length === 0 || !this.callbacks.onItemAction) {
 			if (this.hoverMenu.isActive(item.taskId)) {

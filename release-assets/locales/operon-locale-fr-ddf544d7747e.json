@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 2930,
-  "keyFingerprint": "a725e0b8caf3203a4f32d57c5ca7e815690bf0c52a4f5479771be8335476afad",
+  "keyCount": 2947,
+  "keyFingerprint": "6db2c3306703763d294907b95b7223a780fd57f6fd069d80cc0485dc0e3ef5f0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -11,7 +11,6 @@
       "addInlineTask": "Ajouter une tâche en ligne",
       "addSubtask": "Ajouter une sous-tâche",
       "apply": "Appliquer",
-      "buyMeACoffee": "Buy me a coffee",
       "cancel": "Annuler",
       "choose": "Choisir",
       "clear": "Effacer",
@@ -24,6 +23,7 @@
       "done": "Terminé",
       "edit": "Modifier",
       "file": "Fichier",
+      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
       "inline": "En ligne",
       "kanbanNoValue": "Aucune valeur",
       "keepAsIs": "Conserver tel quel",
@@ -302,6 +302,7 @@
       "openTimeSessionHistory": "Ouvrir le panneau d'historique des sessions de suivi",
       "rebuildIndex": "Reconstruire l'index complet",
       "reloadSettingsFromStorage": "Recharger les paramètres Operon depuis le stockage",
+      "repairRecurringFileTaskIdentities": "Réparer les identités des tâches-fichiers récurrentes",
       "repairTaskWikilinkOverlayLinks": "Réparer les liens Task Wikilink Overlay",
       "retryPendingWorkflowRename": "Réessayer le renommage du workflow en attente",
       "showIndexStats": "Afficher les statistiques de l'index",
@@ -927,6 +928,14 @@
       "add": "Ajouter aux favoris",
       "remove": "Retirer des favoris"
     },
+    "recurrenceIdentityRepair": {
+      "confirm": "Réparer les identités",
+      "noCandidates": "Aucune identité de tâche-fichier récurrente réparable en toute sécurité n’a été trouvée.",
+      "preview": "Vérifiez les {{count}} réparations affichées ci-dessous. Seul repeatOccurrenceDate sera modifié.",
+      "previewWithRemaining": "Vérifiez {{count}} réparations. Les 50 premières sont affichées; {{remaining}} autres seront incluses après confirmation. Seul repeatOccurrenceDate sera modifié.",
+      "result": "{{repaired}} identités de tâches-fichiers récurrentes réparées; {{skipped}} ignorées.",
+      "title": "Réparer les identités des tâches-fichiers récurrentes"
+    },
     "reminders": {
       "alreadyPassed": "Déjà passé",
       "atAnchor": "À {{anchor}}",
@@ -946,6 +955,10 @@
       "offsetPlaceholder": "p. ex. 10 min, 1 h, 2 j",
       "openTask": "Ouvrir la tâche",
       "pastReminder": "Rappel passé",
+      "quickOffsetChoose": "Choisir {{offset}}",
+      "quickOffsetOnTime": "À l’heure",
+      "quickOffsets": "Délais de rappel rapides",
+      "saveFailed": "Le rappel n'a pas pu être enregistré.",
       "staleItem": "Ce rappel n’est plus disponible.",
       "unresolvedReminder": "Rappel non résolu",
       "untitledTask": "Tâche sans titre"
@@ -1048,8 +1061,6 @@
       "calendarSidebarFinishedTasksDefaultStateDesc": "Choisissez si la section Tâches terminées de la barre latérale démarre développée ou réduite à l'ouverture d'un volet de calendrier.",
       "calendarSidebarTaskPoolDefaultState": "État par défaut de la réserve de tâches",
       "calendarSidebarTaskPoolDefaultStateDesc": "Choisissez si la réserve de tâches de la barre latérale démarre développée ou réduite à l'ouverture d'un volet de calendrier.",
-      "calendarSidebarTaskPoolFollowPresetFilter": "La réserve de tâches suit le filtre du calendrier",
-      "calendarSidebarTaskPoolFollowPresetFilterDesc": "Limite la réserve de tâches de la barre latérale au filtre du préréglage de calendrier actif avant d'appliquer les modes et la recherche.",
       "calendarSidebarTaskPoolLimitDesc": "La réserve de tâches de la barre latérale affiche d'abord les {{initialLimit}} tâches mises à jour le plus récemment. La recherche analyse la liste complète et affiche jusqu'à {{searchLimit}} correspondances.",
       "cancelProjectSerialPrefixEdit": "Annuler la modification du préfixe",
       "cancelledStatusAria": "Statut annulé dans {{pipeline}} : {{status}}",
@@ -1100,6 +1111,8 @@
       "contextualMenuActionConvertInlineToFileTaskDesc": "Convertir cette tâche en ligne en tâche fichier.",
       "contextualMenuActionCreateSubtask": "Créer une sous-tâche",
       "contextualMenuActionCreateSubtaskDesc": "Afficher cette action dans le menu contextuel lorsque la tâche actuelle peut créer une sous-tâche.",
+      "contextualMenuActionFixedReminder": "Rappel fixe",
+      "contextualMenuActionFixedReminderDesc": "Ouvrir le sélecteur de rappel fixe pour une tâche ouverte.",
       "contextualMenuActionJumpToSource": "Aller à la source",
       "contextualMenuActionJumpToSourceDesc": "Afficher cette action dans le menu contextuel lorsque l'élément actuel peut accéder à sa note source.",
       "contextualMenuActionMarkDone": "Marquer comme terminée",
@@ -1108,6 +1121,8 @@
       "contextualMenuActionOpenEditorDesc": "Afficher cette action dans le menu contextuel lorsque l'élément actuel peut ouvrir l'éditeur de tâche.",
       "contextualMenuActionPinToggle": "Épingler la tâche",
       "contextualMenuActionPinToggleDesc": "Afficher cette action dans le menu contextuel lorsque la tâche actuelle peut être épinglée ou désépinglée.",
+      "contextualMenuActionRelativeReminder": "Rappel relatif",
+      "contextualMenuActionRelativeReminderDesc": "Ouvrir le sélecteur de rappel relatif lorsqu'une tâche ouverte possède une date ou une heure utilisable.",
       "contextualMenuActionSetAsTracked": "Enregistrer comme suivi",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Enregistrer comme suivi",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Enregistrer ce bloc prévu comme temps suivi.",
@@ -1736,6 +1751,8 @@
       "mobileGlobalTaskFabResetPositionDesc": "Replacer le bouton de création rapide mobile à sa position par défaut en bas à droite.",
       "mobileInterfaceDesc": "Ajustez le comportement de l'interface adaptée aux téléphones et au tactile sans modifier les dispositions de bureau.",
       "mobileInterfaceTitle": "Interface mobile",
+      "mobileNotificationsSnapshot": "Instantané de notifications mobiles",
+      "mobileNotificationsSnapshotDesc": "Créer et maintenir à jour l’instantané de rappels sur sept jours utilisé par l’application Operon Mobile Notifications. Désactivé par défaut ; sa désactivation écrit un dernier instantané désactivé, puis arrête l’exportation.",
       "mobileSubtabCalendar": "Calendrier",
       "mobileSubtabGeneral": "Général",
       "mobileSubtabKanban": "Kanban",
@@ -2051,7 +2068,7 @@
       "subtabTweaks": "Workspace Tweaks",
       "subtasksDefaultExpanded": "Sous-tâches développées par défaut",
       "subtasksDefaultExpandedDesc": "Afficher les listes de sous-tâches développées au chargement de la barre des tâches.",
-      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, a coffee keeps me building. ☕",
+      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, coffee fuels what comes next. ☕",
       "supportDevelopmentCardTitle": "Enjoying the flow?",
       "tabCalendar": "Calendrier",
       "tabCore": "Essentiel",
@@ -2511,6 +2528,7 @@
     },
     "taskEditor": {
       "activeTrackerReadOnly": "Minuteur actif pour {{task}}. Arrêtez-le avant de le modifier.",
+      "addNote": "Ajouter une note",
       "addSession": "Ajouter une session",
       "appearance": "Apparence",
       "applyingPriorityRenameMigration": "Application de la migration de renommage de priorité",
@@ -2606,6 +2624,7 @@
       "details": "Détails",
       "dueDate": "Date d'échéance",
       "dueDatePlaceholder": "Date d'échéance",
+      "editNote": "Modifier la note",
       "editSession": "Modifier la session",
       "editSourceMetadata": "Modifier les métadonnées source",
       "editSubtask": "Modifier la sous-tâche",
@@ -2973,5 +2992,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "60ee6b6eba4bad49c58787775a00c773b781332ba8ddc900f2748150726e8467"
+  "sourceVersion": "1c61f2416da44c81867b019d03e5685a6f970452204ba2ddb1be6dbede31ec66"
 }

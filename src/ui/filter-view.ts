@@ -65,6 +65,7 @@ import { renderRelatedViewsLauncher } from './related-views';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from '../types/related-views';
 import { getTableFilePropertyIndex } from './table/table-file-property';
 import { getFilterGroupDisplayLabel } from './filter-group-label';
+import { cleanupOperonRenderRoot } from './render-root-cleanup';
 
 export const FILTER_VIEW_TYPE = 'operon-filter-view';
 const FILTER_PERF_DEBUG = false;
@@ -116,8 +117,8 @@ export class FilterView extends ItemView {
 	private getChildIds: (parentId: string) => string[];
 	private navigateToTask: (task: IndexedTask) => void;
 	private getSettings: () => OperonSettings;
-	private updateField: (operonId: string, key: string, value: string) => void | Promise<void>;
-	private updateFields?: (operonId: string, payload: Record<string, string>) => void | Promise<void>;
+	private updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
+	private updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>;
 	private updateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
 	private updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	private getRepeatSkipDates?: (repeatSeriesId: string) => string[];
@@ -173,8 +174,8 @@ export class FilterView extends ItemView {
 		getChildIds: (parentId: string) => string[],
 		navigateToTask: (task: IndexedTask) => void,
 		getSettings: () => OperonSettings,
-		updateField: (operonId: string, key: string, value: string) => void | Promise<void>,
-		updateFields?: (operonId: string, payload: Record<string, string>) => void | Promise<void>,
+		updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>,
+		updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>,
 		updateSubtasks?: (operonId: string, subtaskIds: string[]) => void,
 		updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void,
 		getRepeatSkipDates?: (repeatSeriesId: string) => string[],
@@ -329,6 +330,7 @@ export class FilterView extends ItemView {
 			this.ensureLayout(container);
 			this.headerEl?.addClass('is-hidden');
 			if (this.listEl) {
+				cleanupOperonRenderRoot(this.listEl);
 				this.listEl.empty();
 				const empty = this.listEl.createDiv('operon-embed-empty operon-filter-empty');
 				empty.textContent = t('filterSets', 'noFilterSets');
@@ -471,9 +473,9 @@ export class FilterView extends ItemView {
 					getChildIds: this.getChildIds,
 					navigateToTask: this.navigateToTask,
 					getSettings: this.getSettings,
-					updateField: (operonId, key, value) => { void this.updateField(operonId, key, value); },
+					updateField: (operonId, key, value) => this.updateField(operonId, key, value),
 					updateFields: this.updateFields
-						? (operonId, payload) => { void this.updateFields?.(operonId, payload); }
+						? (operonId, payload) => this.updateFields?.(operonId, payload)
 						: undefined,
 					updateSubtasks: this.updateSubtasks,
 					updateDependencyField: this.updateDependencyField,
@@ -494,6 +496,7 @@ export class FilterView extends ItemView {
 		this.lazyLoadObserver?.disconnect();
 		this.lazyLoadObserver = null;
 		this.closeTransientSurfaceUi(container);
+		if (this.listEl) cleanupOperonRenderRoot(this.listEl);
 		this.listEl?.empty();
 		const list = this.listEl;
 		if (!list) return;
@@ -663,6 +666,7 @@ export class FilterView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.closeTransientSurfaceUi(this.contentEl);
+		cleanupOperonRenderRoot(this.contentEl);
 		this.lazyLoadObserver?.disconnect();
 		this.lazyLoadObserver = null;
 		this.clearOptimisticTaskPatches();
@@ -732,9 +736,9 @@ export class FilterView extends ItemView {
 			getChildIds: this.getChildIds,
 			navigateToTask: this.navigateToTask,
 			getSettings: this.getSettings,
-			updateField: (operonId, key, value) => { void this.updateField(operonId, key, value); },
+			updateField: (operonId, key, value) => this.updateField(operonId, key, value),
 			updateFields: this.updateFields
-				? (operonId, payload) => { void this.updateFields?.(operonId, payload); }
+				? (operonId, payload) => this.updateFields?.(operonId, payload)
 				: undefined,
 			updateSubtasks: this.updateSubtasks,
 			updateDependencyField: this.updateDependencyField,
@@ -1096,6 +1100,7 @@ export class FilterView extends ItemView {
 		const filterActionSettingsSignature = JSON.stringify([
 			this.settings.filterTaskShowPlayAction,
 			this.settings.filterTaskShowPinAction,
+			this.settings.filterTaskShowNoteAction,
 			this.settings.filterTaskShowSubtaskAction,
 			this.settings.filterTaskShowPlainCheckboxAction,
 		]);

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 2930,
-  "keyFingerprint": "a725e0b8caf3203a4f32d57c5ca7e815690bf0c52a4f5479771be8335476afad",
+  "keyCount": 2947,
+  "keyFingerprint": "6db2c3306703763d294907b95b7223a780fd57f6fd069d80cc0485dc0e3ef5f0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -11,7 +11,6 @@
       "addInlineTask": "Satır İçi Görev Ekle",
       "addSubtask": "Alt Görev Ekle",
       "apply": "Uygula",
-      "buyMeACoffee": "Buy me a coffee",
       "cancel": "İptal",
       "choose": "Seç",
       "clear": "Temizle",
@@ -24,6 +23,7 @@
       "done": "Bitti",
       "edit": "Düzenle",
       "file": "Dosya",
+      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
       "inline": "Satır içi",
       "kanbanNoValue": "Değer yok",
       "keepAsIs": "Olduğu gibi bırak",
@@ -302,6 +302,7 @@
       "openTimeSessionHistory": "Zaman Oturumları Geçmişi panelini aç",
       "rebuildIndex": "Tam indeksi yeniden oluştur",
       "reloadSettingsFromStorage": "Operon ayarlarını depolamadan yeniden yükle",
+      "repairRecurringFileTaskIdentities": "Tekrarlanan File Task kimliklerini onar",
       "repairTaskWikilinkOverlayLinks": "Task Wikilink Overlay bağlantılarını onar",
       "retryPendingWorkflowRename": "Bekleyen iş akışı yeniden adlandırmasını tekrar dene",
       "showIndexStats": "İndeks istatistiklerini göster",
@@ -927,6 +928,14 @@
       "add": "Favorilere ekle",
       "remove": "Favorilerden kaldır"
     },
+    "recurrenceIdentityRepair": {
+      "confirm": "Kimlikleri onar",
+      "noCandidates": "Güvenle onarılabilecek tekrarlanan File Task kimliği bulunamadı.",
+      "preview": "Aşağıdaki {{count}} File Task kimlik onarımını inceleyin. Yalnızca repeatOccurrenceDate değiştirilecek.",
+      "previewWithRemaining": "{{count}} File Task kimlik onarımını inceleyin. İlk 50 kayıt aşağıda gösteriliyor; onaydan sonra kalan {{remaining}} kayıt da işleme alınacak. Yalnızca repeatOccurrenceDate değiştirilecek.",
+      "result": "{{repaired}} tekrarlanan File Task kimliği onarıldı; {{skipped}} kayıt atlandı.",
+      "title": "Tekrarlanan File Task kimliklerini onar"
+    },
     "reminders": {
       "alreadyPassed": "Zaten geçti",
       "atAnchor": "{{anchor}} zamanında",
@@ -946,6 +955,10 @@
       "offsetPlaceholder": "ör. 10 dk, 1 sa, 2 gün",
       "openTask": "Görevi aç",
       "pastReminder": "Geçmiş hatırlatıcı",
+      "quickOffsetChoose": "{{offset}} seç",
+      "quickOffsetOnTime": "Zamanında",
+      "quickOffsets": "Hızlı hatırlatıcı süreleri",
+      "saveFailed": "Hatırlatıcı kaydedilemedi.",
       "staleItem": "Bu hatırlatıcı artık kullanılamıyor.",
       "unresolvedReminder": "Çözümlenemeyen hatırlatıcı",
       "untitledTask": "Başlıksız görev"
@@ -1048,8 +1061,6 @@
       "calendarSidebarFinishedTasksDefaultStateDesc": "Bir takvim sekmesi açıldığında yan panel Tamamlanan Görevler bölümünün genişletilmiş mi daraltılmış mı başlayacağını seç.",
       "calendarSidebarTaskPoolDefaultState": "Görev Havuzu varsayılan durumu",
       "calendarSidebarTaskPoolDefaultStateDesc": "Bir takvim sekmesi açıldığında yan panel Görev Havuzu bölümünün genişletilmiş mi daraltılmış mı başlayacağını seç.",
-      "calendarSidebarTaskPoolFollowPresetFilter": "Görev Havuzu takvim filtresini izlesin",
-      "calendarSidebarTaskPoolFollowPresetFilterDesc": "Yan panel Görev Havuzu içeriğini Görev Havuzu modları ve arama uygulanmadan önce aktif takvim ön ayarı filtresiyle sınırla.",
       "calendarSidebarTaskPoolLimitDesc": "Yan panel görev havuzu ilk açılışta son güncellenen {{initialLimit}} görevi gösterir. Arama tüm listeyi tarar ve en fazla {{searchLimit}} eşleşme gösterir.",
       "cancelProjectSerialPrefixEdit": "Prefix düzenlemeyi iptal et",
       "cancelledStatusAria": "{{pipeline}} içindeki iptal durumu: {{status}}",
@@ -1100,6 +1111,8 @@
       "contextualMenuActionConvertInlineToFileTaskDesc": "Bu satır içi görevi dosya görevine dönüştür.",
       "contextualMenuActionCreateSubtask": "Alt görev oluştur",
       "contextualMenuActionCreateSubtaskDesc": "Mevcut görev için alt görev oluşturulabiliyorsa bu eylemi bağlamsal menü içinde göster.",
+      "contextualMenuActionFixedReminder": "Sabit hatırlatıcı",
+      "contextualMenuActionFixedReminderDesc": "Açık bir görev için sabit hatırlatıcı seçicisini aç.",
       "contextualMenuActionJumpToSource": "Kaynağa git",
       "contextualMenuActionJumpToSourceDesc": "Mevcut öğe kaynak notuna gidebiliyorsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionMarkDone": "Görevi bitir",
@@ -1108,6 +1121,8 @@
       "contextualMenuActionOpenEditorDesc": "Mevcut öğe görev editörünü açabiliyorsa bu eylemi bağlamsal menü içinde göster.",
       "contextualMenuActionPinToggle": "Görev sabitle",
       "contextualMenuActionPinToggleDesc": "Mevcut görev sabitlenebiliyor veya sabitten çıkarılabiliyorsa bu eylemi bağlamsal menü içinde göster.",
+      "contextualMenuActionRelativeReminder": "Göreli hatırlatıcı",
+      "contextualMenuActionRelativeReminderDesc": "Açık bir görevde kullanılabilecek tarih veya saat varsa göreli hatırlatıcı seçicisini aç.",
       "contextualMenuActionSetAsTracked": "Takip olarak kaydet",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Takip olarak kaydet",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Bu planlı zaman bloğunu takip süresi olarak kaydet.",
@@ -1736,6 +1751,8 @@
       "mobileGlobalTaskFabResetPositionDesc": "Mobil hızlı oluşturma butonunu varsayılan sağ alt konuma geri taşır.",
       "mobileInterfaceDesc": "Masaüstü düzenleri değiştirmeden telefon ve dokunmatik odaklı arayüz davranışlarını ayarla.",
       "mobileInterfaceTitle": "Mobil Arayüz",
+      "mobileNotificationsSnapshot": "Mobil bildirim snapshot’ı",
+      "mobileNotificationsSnapshotDesc": "Operon Mobile Notifications uygulamasının kullandığı yedi günlük reminder snapshot’ını oluştur ve güncel tut. Varsayılan olarak kapalıdır; kapatıldığında son bir devre dışı snapshot yazılır ve dışa aktarma durur.",
       "mobileSubtabCalendar": "Takvim",
       "mobileSubtabGeneral": "Genel",
       "mobileSubtabKanban": "Kanban",
@@ -2051,7 +2068,7 @@
       "subtabTweaks": "Workspace Tweaks",
       "subtasksDefaultExpanded": "Alt görevler varsayılan açık",
       "subtasksDefaultExpandedDesc": "Görev çubuğu yüklendiğinde alt görev listelerini açık göster.",
-      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, a coffee keeps me building. ☕",
+      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, coffee fuels what comes next. ☕",
       "supportDevelopmentCardTitle": "Enjoying the flow?",
       "tabCalendar": "Takvim",
       "tabCore": "Temel",
@@ -2511,6 +2528,7 @@
     },
     "taskEditor": {
       "activeTrackerReadOnly": "{{task}} için aktif zamanlayıcı. Düzenlemek için önce durdur.",
+      "addNote": "Not ekle",
       "addSession": "Oturum ekle",
       "appearance": "Görünüm",
       "applyingPriorityRenameMigration": "Öncelik yeniden adlandırma geçişi uygulanıyor",
@@ -2606,6 +2624,7 @@
       "details": "Ayrıntılar",
       "dueDate": "Bitiş tarihi",
       "dueDatePlaceholder": "Bitiş Tarihi",
+      "editNote": "Notu düzenle",
       "editSession": "Oturumu düzenle",
       "editSourceMetadata": "Kaynak metadatasını düzenle",
       "editSubtask": "Alt görevi düzenle",
@@ -2973,5 +2992,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "8a05f850113e1308da81f5a5afba8238dba20ec78c2bc0716c08f3331defb22f"
+  "sourceVersion": "31ac3e4999afdbf2637a701d18b6c205bdff879ece8d5420fcf30e8ec20c4449"
 }

@@ -70,6 +70,12 @@ export interface RepeatSeriesEntry {
 	overrides: RepeatSeriesOverrides;
 }
 
+export interface RepeatFollowingOverrideTransaction {
+	seriesId: string;
+	previousEntry: RepeatSeriesEntry;
+	tentativeEntry: RepeatSeriesEntry;
+}
+
 interface RepeatSeriesData {
 	version: number;
 	series: Record<string, RepeatSeriesEntry>;
@@ -157,6 +163,10 @@ function cloneTemporalTemplate(template: RepeatTemporalTemplate | null): RepeatT
 		endTime: template.endTime,
 		estimate: template.estimate,
 	};
+}
+
+function repeatSeriesEntriesEqual(left: RepeatSeriesEntry, right: RepeatSeriesEntry): boolean {
+	return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function normalizeRepeatTemporalTemplate(raw: unknown): RepeatTemporalTemplate | null {
@@ -541,12 +551,20 @@ export class RepeatSeriesStore {
 		seriesId: string,
 		override: RepeatFollowingOverride,
 		now: string,
-	): Promise<void> {
-		await this.mutate(async () => {
+	): Promise<boolean> {
+		return (await this.beginFollowingOverrideTransaction(seriesId, override, now)) !== null;
+	}
+
+	async beginFollowingOverrideTransaction(
+		seriesId: string,
+		override: RepeatFollowingOverride,
+		now: string,
+	): Promise<RepeatFollowingOverrideTransaction | null> {
+		return await this.mutate(async () => {
 			const existing = this.data.series[seriesId];
-			if (!existing) return;
+			if (!existing) return null;
 			const normalized = normalizeFollowingOverride(override);
-			if (!normalized) return;
+			if (!normalized) return null;
 
 			const nextFollowing = existing.overrides.following
 				.filter(entry => entry.effectiveFrom < normalized.effectiveFrom)
@@ -560,7 +578,8 @@ export class RepeatSeriesStore {
 				}
 			}
 
-			await this.commit({
+			const previousEntry = this.cloneEntry(existing);
+			const tentativeEntry: RepeatSeriesEntry = {
 				...existing,
 				skipDates: existing.skipDates.filter(date => date < normalized.effectiveFrom),
 				overrides: {
@@ -568,7 +587,24 @@ export class RepeatSeriesStore {
 					following: nextFollowing,
 				},
 				updatedAt: now,
-			});
+			};
+			await this.commit(tentativeEntry);
+			return {
+				seriesId,
+				previousEntry,
+				tentativeEntry: this.cloneEntry(tentativeEntry),
+			};
+		});
+	}
+
+	async rollbackFollowingOverrideTransaction(
+		transaction: RepeatFollowingOverrideTransaction,
+	): Promise<boolean> {
+		return await this.mutate(async () => {
+			const current = this.data.series[transaction.seriesId];
+			if (!current || !repeatSeriesEntriesEqual(current, transaction.tentativeEntry)) return false;
+			await this.commit(transaction.previousEntry);
+			return true;
 		});
 	}
 
@@ -659,8 +695,17 @@ export class RepeatSeriesStore {
 	}
 
 	private async commit(entry: RepeatSeriesEntry): Promise<void> {
+		const previous = this.data.series[entry.seriesId]
+			? this.cloneEntry(this.data.series[entry.seriesId])
+			: null;
 		this.data.series[entry.seriesId] = this.cloneEntry(entry);
-		await this.writeData();
+		try {
+			await this.writeData();
+		} catch (error) {
+			if (previous) this.data.series[entry.seriesId] = previous;
+			else delete this.data.series[entry.seriesId];
+			throw error;
+		}
 	}
 
 	private async writeData(): Promise<void> {

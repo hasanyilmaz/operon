@@ -3,13 +3,14 @@ import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { t } from '../../core/i18n';
 import type { FilterSet, OperonSettings } from '../../types/settings';
 import { cloneTablePreset, type TablePreset, type TablePresetPatch, type TableSortDirection, type TableSortRule, type TableSummaryFunction, type TableSummaryRule } from '../../types/table';
-import type { FilterModalEvalDeps } from '../filter-set-modal';
+import { bindSettingsModalPickerTrigger, type FilterModalEvalDeps, type FilterSetModalOptions } from '../filter-set-modal';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { showSearchableFieldPicker } from '../field-pickers/searchable-field-picker';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { createPresetFavoriteButton } from '../preset-favorite-button';
 import { renderPresetFilterActions } from '../preset-filter-actions';
 import { isPresetFavorite } from '../../core/preset-favorites';
+import { openSettingsOptionPickerModal } from '../settings/settings-option-picker-modal';
 import {
 	applyTablePresetFieldAliases,
 	buildTableGroupSortFieldCatalog,
@@ -17,7 +18,6 @@ import {
 	buildTableTaskFieldCatalog,
 	getTableColumnLabel,
 	type TableTaskField,
-	TABLE_WORKFLOW_PIPELINE_FIELD_KEY,
 } from './table-field-catalog';
 import { buildTableFieldPickerOptions, getTableFieldPickerLabel } from './table-field-picker-options';
 import { isTableFilePropertyColumnKey, type TableFilePropertyField } from './table-file-property';
@@ -52,6 +52,8 @@ interface TablePresetQuickSettingsModalOptions {
 	onSaveFilterSet: (filterSet: FilterSet) => Promise<void>;
 	onToggleFilterFavorite?: (filterSetId: string) => Promise<void>;
 	getFilterModalEvalDeps?: () => FilterModalEvalDeps | null;
+	filterEditorPickerPresentation?: FilterSetModalOptions['pickerPresentation'];
+	tableFieldPickerPresentation?: FilterSetModalOptions['pickerPresentation'];
 	getAdditionalColumnFields?: (preset: TablePreset) => readonly TableFilePropertyField[];
 	saveWhenClean?: boolean;
 	managementMode?: 'full' | 'current-only';
@@ -163,6 +165,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 			onSaveFilterSet: this.options.onSaveFilterSet,
 			onToggleFilterFavorite: this.options.onToggleFilterFavorite,
 			getFilterModalEvalDeps: this.options.getFilterModalEvalDeps,
+			filterEditorPickerPresentation: this.options.filterEditorPickerPresentation,
 			onRefresh: () => this.renderPreservingScroll(),
 			errorContextPrefix: 'table preset',
 		});
@@ -184,7 +187,6 @@ export class TablePresetQuickSettingsModal extends Modal {
 		this.renderGroupingRuleRow({
 			container: rows,
 			label: t('table', 'groupBy'),
-			description: t('table', 'groupByDesc'),
 			fieldValue: normalizedPreset.groupBy ?? '',
 			orderValue: normalizedPreset.groupOrder,
 			fieldPlaceholder: t('table', 'noGrouping'),
@@ -199,7 +201,6 @@ export class TablePresetQuickSettingsModal extends Modal {
 		this.renderGroupingRuleRow({
 			container: rows,
 			label: t('table', 'subgroupBy'),
-			description: t('table', 'subgroupByDesc'),
 			fieldValue: normalizedPreset.subgroupBy ?? '',
 			orderValue: normalizedPreset.subgroupOrder,
 			fieldPlaceholder: t('table', 'noSubgrouping'),
@@ -216,7 +217,6 @@ export class TablePresetQuickSettingsModal extends Modal {
 	private renderGroupingRuleRow(options: {
 		container: HTMLElement;
 		label: string;
-		description: string;
 		fieldValue: string;
 		orderValue: TableSortDirection;
 		fieldPlaceholder: string;
@@ -230,9 +230,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 	}): void {
 		const row = options.container.createDiv('operon-table-preset-grouping-row');
 		row.classList.toggle('is-disabled', options.disabled);
-		const textWrap = row.createDiv('operon-table-preset-grouping-label-wrap');
-		textWrap.createDiv({ cls: 'operon-table-preset-grouping-label', text: options.label });
-		textWrap.createDiv({ cls: 'operon-table-preset-grouping-desc', text: options.description });
+		row.createSpan({ cls: 'operon-table-preset-grouping-label', text: options.label });
 		this.createTableFieldPickerButton(row, {
 			className: 'operon-table-preset-grouping-select',
 			value: options.fieldValue,
@@ -247,19 +245,22 @@ export class TablePresetQuickSettingsModal extends Modal {
 			onFieldChange: options.onFieldChange,
 		});
 
-		const orderSelect = row.createEl('select', {
-			cls: 'operon-table-preset-grouping-order',
+		const directionLabel = getTablePresetDirectionLabel(options.orderValue);
+		const fieldLabel = getTableFieldPickerLabel(options.catalog, options.fieldValue, options.fieldPlaceholder);
+		const orderButton = row.createEl('button', {
+			cls: 'operon-table-preset-sort-toggle operon-table-preset-grouping-order',
 			attr: {
+				type: 'button',
 				'data-operon-table-grouping-focus': options.focusOrderKey,
 			},
+			text: directionLabel,
 		});
-		setAccessibleLabelWithoutTooltip(orderSelect, t('table', 'groupOrder'));
-		orderSelect.createEl('option', { value: 'asc', text: getTableSortDirectionLabel('asc', options.fieldValue) });
-		orderSelect.createEl('option', { value: 'desc', text: getTableSortDirectionLabel('desc', options.fieldValue) });
-		orderSelect.value = options.orderValue;
-		orderSelect.disabled = options.disabled || !options.fieldValue;
-		orderSelect.addEventListener('change', () => {
-			options.onOrderChange(orderSelect.value === 'desc' ? 'desc' : 'asc');
+		setAccessibleLabelWithoutTooltip(orderButton, `${options.label}: ${fieldLabel}, ${directionLabel}`);
+		orderButton.disabled = options.disabled || !options.fieldValue;
+		orderButton.addEventListener('click', event => {
+			event.preventDefault();
+			if (orderButton.disabled) return;
+			options.onOrderChange(toggleTablePresetDirection(options.orderValue));
 		});
 	}
 
@@ -361,7 +362,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 				},
 			});
 
-			const directionLabel = getTableSortDirectionLabel(rule.direction, rule.key);
+			const directionLabel = getTablePresetDirectionLabel(rule.direction);
 			const directionButton = row.createEl('button', {
 				cls: 'operon-table-preset-sort-toggle',
 				text: directionLabel,
@@ -460,10 +461,12 @@ export class TablePresetQuickSettingsModal extends Modal {
 			cls: `${options.className} operon-field-picker-trigger operon-table-field-picker-trigger`,
 			attr: {
 				type: 'button',
-				'aria-haspopup': 'listbox',
-				'aria-expanded': 'false',
+				'aria-haspopup': this.options.tableFieldPickerPresentation === 'modal' ? 'dialog' : 'listbox',
 			},
 		});
+		if (this.options.tableFieldPickerPresentation !== 'modal') {
+			button.setAttribute('aria-expanded', 'false');
+		}
 		button.setAttribute(options.focusAttribute, options.focusKey);
 		button.disabled = options.disabled === true;
 		const label = getTableFieldPickerLabel(options.catalog, options.value, options.placeholder);
@@ -488,17 +491,41 @@ export class TablePresetQuickSettingsModal extends Modal {
 		}
 		const iconEl = button.createSpan('operon-field-picker-trigger-icon');
 		setIcon(iconEl, 'chevron-down');
-		button.addEventListener('click', event => {
-			event.preventDefault();
+		const openPicker = (): void => {
 			if (button.disabled) return;
+			const fields = buildTableFieldPickerOptions(
+				options.catalog.filter(field => !field.unavailable || field.key === options.value), {
+					excludedFieldKeys: options.excludedFieldKeys,
+					noneLabel: options.noneLabel,
+				},
+			);
+			if (this.options.tableFieldPickerPresentation === 'modal') {
+				openSettingsOptionPickerModal(this.app, {
+					title: options.label,
+					value: options.value,
+					options: fields.map(field => ({
+						...field,
+						value: field.field,
+						description: field.secondaryLabel,
+					})),
+					placeholder: t('table', 'fieldPickerSearchPlaceholder'),
+					ariaLabel: options.label,
+					noMatchesText: t('table', 'fieldPickerNoMatches'),
+					getSearchText: option => [
+						option.label,
+						option.field,
+						option.type,
+						option.tableField?.sourceLabel,
+						...(option.tableField?.aliases ?? []),
+					].filter(Boolean).join(' '),
+					onSelect: option => options.onFieldChange(option.field),
+				});
+				return;
+			}
 			button.setAttribute('aria-expanded', 'true');
 			showSearchableFieldPicker(button, {
 				value: options.value,
-				fields: buildTableFieldPickerOptions(
-					options.catalog.filter(field => !field.unavailable || field.key === options.value), {
-					excludedFieldKeys: options.excludedFieldKeys,
-					noneLabel: options.noneLabel,
-				}),
+				fields,
 				placeholder: t('table', 'fieldPickerSearchPlaceholder'),
 				ariaLabel: options.label,
 				noMatchesText: t('table', 'fieldPickerNoMatches'),
@@ -518,7 +545,15 @@ export class TablePresetQuickSettingsModal extends Modal {
 				repositionOnScroll: true,
 				repositionOnWindowResize: true,
 			});
-		});
+		};
+		if (this.options.tableFieldPickerPresentation === 'modal') {
+			bindSettingsModalPickerTrigger(button, openPicker);
+		} else {
+			button.addEventListener('click', event => {
+				event.preventDefault();
+				openPicker();
+			});
+		}
 	}
 
 	private renderSummariesSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
@@ -1003,11 +1038,10 @@ function getTableSummaryFunctionLabel(summaryFunction: TableSummaryFunction): st
 	return t('table', `summary${summaryFunction}`);
 }
 
-function getTableSortDirectionLabel(direction: TableSortDirection, fieldKey: string | null): string {
-	if (fieldKey === 'status' || fieldKey === TABLE_WORKFLOW_PIPELINE_FIELD_KEY) {
-		return direction === 'desc'
-			? t('table', 'sortDirectionWorkflowReverse')
-			: t('table', 'sortDirectionWorkflow');
-	}
+function getTablePresetDirectionLabel(direction: TableSortDirection): string {
 	return direction === 'desc' ? t('table', 'sortDirectionZA') : t('table', 'sortDirectionAZ');
+}
+
+function toggleTablePresetDirection(direction: TableSortDirection): TableSortDirection {
+	return direction === 'asc' ? 'desc' : 'asc';
 }

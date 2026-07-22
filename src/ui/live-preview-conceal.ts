@@ -21,16 +21,13 @@ import { PriorityDefinition } from '../types/priority';
 import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
 import { showEstimatePicker } from './field-pickers/estimate-picker';
-import { showLivePreviewFieldMenu } from './live-preview-field-menu';
 import {
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
-	getInlineTaskCompactHiddenCount,
-	getInlineTaskCompactVisibleKeys,
 	InlineTaskCompactChipEntry,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
-import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
@@ -58,6 +55,7 @@ import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store'
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
+import { createTaskNoteActionButton, showTaskNotePopover } from './task-note-action';
 
 export const operonIndexRefreshEffect = StateEffect.define<void>();
 export const operonEditorCloseRefreshEffect = StateEffect.define<void>();
@@ -72,14 +70,14 @@ export interface LivePreviewCallbacks {
 	getPipelines: () => Pipeline[];
 	getPriorities: () => PriorityDefinition[];
 	getSettings: () => OperonSettings;
-	updateField: (operonId: string, key: string, value: string, restoreCursor?: LivePreviewCursorRestoreRequest) => void | Promise<void>;
+	updateField: (operonId: string, key: string, value: string, restoreCursor?: LivePreviewCursorRestoreRequest) => void | boolean | Promise<void | boolean>;
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
 	isTaskTracking?: (taskId: string) => boolean;
 	toggleTimer?: (taskId: string) => void | Promise<void>;
 	requestSubtask?: (operonId: string) => void | Promise<void>;
-	updateFields?: (operonId: string, payload: Record<string, string>, restoreCursor?: LivePreviewCursorRestoreRequest) => void | Promise<void>;
+	updateFields?: (operonId: string, payload: Record<string, string>, restoreCursor?: LivePreviewCursorRestoreRequest) => void | boolean | Promise<void | boolean>;
 	updateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	getRepeatSeriesInlineCompletionMode?: (repeatSeriesId: string) => InlineRepeatCompletionMode;
@@ -485,74 +483,29 @@ class MetadataTailWidget extends WidgetType {
 			row.appendChild(chipNode);
 		}
 
-		const hiddenCount = getInlineTaskCompactHiddenCount(
-			fieldValues,
-			this.indexedTask?.tags ?? this.task.tags,
-			this.callbacks.getSettings(),
-			tasks,
-			undefined,
-			{ workflowStatusIdentityIndex: this.workflowStatusIdentityIndex },
-		);
-		if (hiddenCount > 0 && operonId) {
-			const moreButton = createOwnerElement(row, 'button');
-			moreButton.type = 'button';
-			moreButton.className = 'operon-chip operon-live-preview-chip operon-live-preview-chip-overflow operon-task-chip operon-task-chip-overflow';
-			moreButton.textContent = `+${hiddenCount}`;
-			if (taskColor) moreButton.setCssProps({
-				'--operon-live-hover-border': taskColor,
-				'--operon-task-chip-hover-accent': taskColor,
-			});
-			bindLivePreviewChipHoverState(moreButton);
-			moreButton.addEventListener('click', (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				showLivePreviewFieldMenu(moreButton, {
-					app: this.callbacks.app,
-					task: this.indexedTask,
-					parsedTask: this.task,
-					settings: this.callbacks.getSettings(),
-					allTasks: tasks,
-					updateField: (key, value, restoreCursor) => this.callbacks.updateField(operonId, key, value, restoreCursor),
-					updateFields: this.callbacks.updateFields
-						? (payload, restoreCursor) => this.callbacks.updateFields?.(operonId, payload, restoreCursor)
-						: undefined,
-					updateSubtasks: this.callbacks.updateSubtasks
-						? (subtaskIds) => this.callbacks.updateSubtasks?.(operonId, subtaskIds)
-						: undefined,
-					updateDependencyField: this.callbacks.updateDependencyField
-						? (field, value) => this.callbacks.updateDependencyField?.(operonId, field, value)
-						: undefined,
-					repeatInlineCompletionMode: this.callbacks.getRepeatSeriesInlineCompletionMode?.(fieldValues['repeatSeriesId'] ?? ''),
-					onRepeatInlineCompletionModeChange: mode => this.callbacks.updateRepeatSeriesInlineCompletionMode?.(operonId, mode),
-					openEditor: () => this.callbacks.openEditor(this.task, view),
-					revealSource: this.revealSource,
-					visibleKeys: getInlineTaskCompactVisibleKeys(this.callbacks.getSettings()),
-					editorView: view,
-				});
-			});
-			row.appendChild(moreButton);
-		}
-
 		const isTerminal = terminalVisualState !== null;
-		if (!isTerminal && operonId && this.callbacks.toggleTimer && this.callbacks.getSettings().inlineTaskShowPlayAction && (this.indexedTask?.checkbox ?? this.task.checkbox) === 'open') {
-			const isTracking = this.trackingSnapshot;
-			const playButton = createOwnerElement(actions, 'button');
-			playButton.type = 'button';
-			playButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-chip-action';
-			if (isTracking) playButton.classList.add('is-active');
-			setIcon(playButton, isTracking ? 'square' : 'play');
-			setAccessibleLabelWithoutTooltip(playButton, t('tooltips', isTracking ? 'stopTimer' : 'startTimer'));
-			if (taskColor) playButton.setCssProps({
+		if (!isTerminal && operonId && this.callbacks.requestSubtask && this.callbacks.getSettings().inlineTaskShowSubtaskAction) {
+			const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(this.indexedTask));
+			const subtaskButton = createOwnerElement(actions, 'button');
+			subtaskButton.type = 'button';
+			subtaskButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-chip-action';
+			setIcon(subtaskButton, resolveSubtaskActionIcon(this.indexedTask));
+			setAccessibleLabelWithoutTooltip(subtaskButton, subtaskLabel);
+			bindOperonHoverTooltip(subtaskButton, {
+				content: subtaskLabel,
+				taskColor,
+			});
+			if (taskColor) subtaskButton.setCssProps({
 				'--operon-live-hover-border': taskColor,
 				'--operon-task-chip-hover-accent': taskColor,
 			});
-			bindLivePreviewChipHoverState(playButton);
-			playButton.addEventListener('click', (event) => {
+			bindLivePreviewChipHoverState(subtaskButton);
+			subtaskButton.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
-				void this.callbacks.toggleTimer?.(operonId);
+				void this.callbacks.requestSubtask?.(operonId);
 			});
-			actions.appendChild(playButton);
+			actions.appendChild(subtaskButton);
 		}
 
 		if (!isTerminal && operonId && this.callbacks.onContextualAction && this.callbacks.getSettings().inlineTaskShowPinAction) {
@@ -581,47 +534,70 @@ class MetadataTailWidget extends WidgetType {
 			actions.appendChild(pinButton);
 		}
 
-		const noteValue = fieldValues['note']?.trim();
-		if (noteValue) {
-			const noteIndicator = createOperonHoverIndicator({
-				title: t('taskEditor', 'notes'),
-				contentEl: createNonInteractiveMarkdownLinkContent(actions, noteValue),
-				icon: getConfiguredKeyMappingIcon('note', this.callbacks.getSettings().keyMappings) || 'notebook-pen',
+		if (!isTerminal && operonId && this.callbacks.toggleTimer && this.callbacks.getSettings().inlineTaskShowPlayAction && (this.indexedTask?.checkbox ?? this.task.checkbox) === 'open') {
+			const isTracking = this.trackingSnapshot;
+			const playButton = createOwnerElement(actions, 'button');
+			playButton.type = 'button';
+			playButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-chip-action operon-task-timer-action';
+			if (isTracking) playButton.classList.add('is-active');
+			setIcon(playButton, isTracking ? 'square' : 'play');
+			const timerLabel = t('tooltips', isTracking ? 'stopTimer' : 'startTimer');
+			setAccessibleLabelWithoutTooltip(playButton, timerLabel);
+			bindOperonHoverTooltip(playButton, {
+				content: timerLabel,
 				taskColor,
-				preferredHorizontal: 'right',
-				owner: actions,
 			});
-			const noteTrigger = noteIndicator.querySelector<HTMLElement>('.operon-hover-trigger');
-			noteTrigger?.classList.add('operon-task-chip-action');
-			if (noteTrigger) bindLivePreviewChipHoverState(noteTrigger);
-			actions.appendChild(noteIndicator);
-		}
-
-		if (!isTerminal && operonId && this.callbacks.requestSubtask && this.callbacks.getSettings().inlineTaskShowSubtaskAction) {
-			const subtaskLabel = t('buttons', resolveSubtaskActionLabelKey(this.indexedTask));
-			const subtaskButton = createOwnerElement(actions, 'button');
-			subtaskButton.type = 'button';
-			subtaskButton.className = 'operon-live-preview-edit operon-live-preview-action operon-task-chip-action';
-			setIcon(subtaskButton, resolveSubtaskActionIcon(this.indexedTask));
-			setAccessibleLabelWithoutTooltip(subtaskButton, subtaskLabel);
-			if (taskColor) subtaskButton.setCssProps({
+			if (taskColor) playButton.setCssProps({
 				'--operon-live-hover-border': taskColor,
 				'--operon-task-chip-hover-accent': taskColor,
 			});
-			bindLivePreviewChipHoverState(subtaskButton);
-			subtaskButton.addEventListener('click', (event) => {
+			bindLivePreviewChipHoverState(playButton);
+			playButton.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
-				void this.callbacks.requestSubtask?.(operonId);
+				void this.callbacks.toggleTimer?.(operonId);
 			});
-			actions.appendChild(subtaskButton);
+			actions.appendChild(playButton);
+		}
+
+		const noteValue = fieldValues['note']?.trim() ?? '';
+		if (operonId && settings.inlineTaskShowNoteAction && (!isTerminal || noteValue)) {
+			const restoreCursor = getLivePreviewDescriptionEndCursor(this.task, view, this.callbacks);
+			const noteButton = createTaskNoteActionButton({
+				owner: actions,
+				noteValue,
+				icon: getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen',
+				label: t('taskEditor', noteValue ? 'editNote' : 'addNote'),
+				tooltipTitle: t('taskEditor', 'notes'),
+				taskColor,
+				classNames: 'operon-live-preview-note-action',
+				onActivate: (anchor) => {
+					showTaskNotePopover({
+						app: this.callbacks.app,
+						anchor,
+						operonId,
+						initialValue: noteValue,
+						taskDescription: this.indexedTask?.description ?? this.task.description,
+						taskColor,
+						onCommit: value => this.callbacks.updateField(operonId, 'note', value, restoreCursor),
+						onClose: () => view.focus(),
+					});
+				},
+			});
+			bindLivePreviewChipHoverState(noteButton);
+			actions.appendChild(noteButton);
 		}
 
 		const editButton = createOwnerElement(actions, 'button');
 		editButton.type = 'button';
 		editButton.className = 'operon-live-preview-edit operon-task-chip-action';
 		setIcon(editButton, 'settings-2');
-		setAccessibleLabelWithoutTooltip(editButton, t('tooltips', 'editTask'));
+		const editLabel = t('tooltips', 'editTask');
+		setAccessibleLabelWithoutTooltip(editButton, editLabel);
+		bindOperonHoverTooltip(editButton, {
+			content: editLabel,
+			taskColor,
+		});
 		if (taskColor) editButton.setCssProps({
 			'--operon-live-hover-border': taskColor,
 			'--operon-task-chip-hover-accent': taskColor,
@@ -933,20 +909,13 @@ export function buildMetadataTailRenderSignature(
 			label: projectSerialDisplay.label,
 			number: projectSerialDisplay.number,
 		} : null,
-		hiddenCount: getInlineTaskCompactHiddenCount(
-			fieldValues,
-			tags,
-			settings,
-			tasks,
-			undefined,
-			{ workflowStatusIdentityIndex },
-		),
 		locationIndexSignature: locationIndex?.getSignature() ?? '',
 		pinnedSnapshot,
 		trackingSnapshot,
 		language: settings.language,
 		inlineTaskShowPlayAction: settings.inlineTaskShowPlayAction,
 		inlineTaskShowPinAction: settings.inlineTaskShowPinAction,
+		inlineTaskShowNoteAction: settings.inlineTaskShowNoteAction,
 		inlineTaskShowSubtaskAction: settings.inlineTaskShowSubtaskAction,
 		keyMappings: settings.keyMappings,
 		pipelines: settings.pipelines,

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 2930,
-  "keyFingerprint": "a725e0b8caf3203a4f32d57c5ca7e815690bf0c52a4f5479771be8335476afad",
+  "keyCount": 2947,
+  "keyFingerprint": "6db2c3306703763d294907b95b7223a780fd57f6fd069d80cc0485dc0e3ef5f0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -11,7 +11,6 @@
       "addInlineTask": "Añadir tarea en línea",
       "addSubtask": "Añadir subtarea",
       "apply": "Aplicar",
-      "buyMeACoffee": "Buy me a coffee",
       "cancel": "Cancelar",
       "choose": "Elegir",
       "clear": "Limpiar",
@@ -24,6 +23,7 @@
       "done": "Hecho",
       "edit": "Editar",
       "file": "Archivo",
+      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
       "inline": "En línea",
       "kanbanNoValue": "Sin valor",
       "keepAsIs": "Mantener como está",
@@ -302,6 +302,7 @@
       "openTimeSessionHistory": "Abrir el panel de historial de sesiones de tiempo",
       "rebuildIndex": "Reconstruir índice completo",
       "reloadSettingsFromStorage": "Recargar la configuración de Operon desde el almacenamiento",
+      "repairRecurringFileTaskIdentities": "Reparar identidades de tareas de archivo recurrentes",
       "repairTaskWikilinkOverlayLinks": "Reparar enlaces de Task Wikilink Overlay",
       "retryPendingWorkflowRename": "Reintentar cambio de nombre del flujo pendiente",
       "showIndexStats": "Mostrar estadísticas del índice",
@@ -927,6 +928,14 @@
       "add": "Añadir a favoritos",
       "remove": "Quitar de favoritos"
     },
+    "recurrenceIdentityRepair": {
+      "confirm": "Reparar identidades",
+      "noCandidates": "No se encontraron identidades de tareas de archivo recurrentes que puedan repararse de forma segura.",
+      "preview": "Revisa las {{count}} reparaciones mostradas abajo. Solo cambiará repeatOccurrenceDate.",
+      "previewWithRemaining": "Revisa {{count}} reparaciones. Se muestran las primeras 50; se incluirán {{remaining}} más tras confirmar. Solo cambiará repeatOccurrenceDate.",
+      "result": "Se repararon {{repaired}} identidades de tareas de archivo recurrentes; se omitieron {{skipped}}.",
+      "title": "Reparar identidades de tareas de archivo recurrentes"
+    },
     "reminders": {
       "alreadyPassed": "Ya pasó",
       "atAnchor": "A la hora de {{anchor}}",
@@ -946,6 +955,10 @@
       "offsetPlaceholder": "p. ej., 10 min, 1 h, 2 d",
       "openTask": "Abrir tarea",
       "pastReminder": "Recordatorio pasado",
+      "quickOffsetChoose": "Elegir {{offset}}",
+      "quickOffsetOnTime": "A la hora",
+      "quickOffsets": "Anticipos rápidos",
+      "saveFailed": "No se pudo guardar el recordatorio.",
       "staleItem": "Este recordatorio ya no está disponible.",
       "unresolvedReminder": "Recordatorio sin resolver",
       "untitledTask": "Tarea sin título"
@@ -1048,8 +1061,6 @@
       "calendarSidebarFinishedTasksDefaultStateDesc": "Elegir si la sección Tareas finalizadas de la barra lateral empieza expandida o contraída cuando se abre una hoja de calendario.",
       "calendarSidebarTaskPoolDefaultState": "Estado predeterminado de la Reserva de tareas",
       "calendarSidebarTaskPoolDefaultStateDesc": "Elegir si la Reserva de tareas de la barra lateral empieza expandida o contraída cuando se abre una hoja de calendario.",
-      "calendarSidebarTaskPoolFollowPresetFilter": "La Reserva de tareas sigue el filtro del calendario",
-      "calendarSidebarTaskPoolFollowPresetFilterDesc": "Limita la Reserva de tareas de la barra lateral al filtro del preajuste de calendario activo antes de aplicar los modos y la búsqueda.",
       "calendarSidebarTaskPoolLimitDesc": "La reserva de tareas de la barra lateral muestra inicialmente las {{initialLimit}} tareas actualizadas más recientemente. La búsqueda escanea la lista completa y muestra hasta {{searchLimit}} coincidencias.",
       "cancelProjectSerialPrefixEdit": "Cancelar edición del prefijo",
       "cancelledStatusAria": "Estado cancelado en {{pipeline}}: {{status}}",
@@ -1100,6 +1111,8 @@
       "contextualMenuActionConvertInlineToFileTaskDesc": "Convertir esta tarea en línea en una tarea de archivo.",
       "contextualMenuActionCreateSubtask": "Crear subtarea",
       "contextualMenuActionCreateSubtaskDesc": "Mostrar esta acción en el menú contextual cuando la tarea actual pueda crear una subtarea.",
+      "contextualMenuActionFixedReminder": "Recordatorio fijo",
+      "contextualMenuActionFixedReminderDesc": "Abrir el selector de recordatorio fijo para una tarea abierta.",
       "contextualMenuActionJumpToSource": "Saltar al origen",
       "contextualMenuActionJumpToSourceDesc": "Mostrar esta acción en el menú contextual cuando el elemento actual pueda saltar a su nota de origen.",
       "contextualMenuActionMarkDone": "Marcar como hecha",
@@ -1108,6 +1121,8 @@
       "contextualMenuActionOpenEditorDesc": "Mostrar esta acción en el menú contextual cuando el elemento actual pueda abrir el editor de tareas.",
       "contextualMenuActionPinToggle": "Fijar tarea",
       "contextualMenuActionPinToggleDesc": "Mostrar esta acción en el menú contextual cuando la tarea actual se pueda fijar o desfijar.",
+      "contextualMenuActionRelativeReminder": "Recordatorio relativo",
+      "contextualMenuActionRelativeReminderDesc": "Abrir el selector de recordatorio relativo cuando una tarea abierta tenga una fecha u hora disponible.",
       "contextualMenuActionSetAsTracked": "Registrar como registrado",
       "contextualMenuActionSetAsTrackedCalendarTimed": "Registrar como registrado",
       "contextualMenuActionSetAsTrackedCalendarTimedDesc": "Registrar este bloque planificado como tiempo registrado.",
@@ -1736,6 +1751,8 @@
       "mobileGlobalTaskFabResetPositionDesc": "Devolver el botón móvil de creación rápida a la posición predeterminada en la esquina inferior derecha.",
       "mobileInterfaceDesc": "Ajustar el comportamiento de la interfaz táctil y de teléfono sin cambiar los diseños de escritorio.",
       "mobileInterfaceTitle": "Interfaz móvil",
+      "mobileNotificationsSnapshot": "Instantánea de notificaciones móviles",
+      "mobileNotificationsSnapshotDesc": "Crear y mantener actualizada la instantánea de recordatorios de siete días que usa la aplicación Operon Mobile Notifications. Está desactivada por defecto; al desactivarla se escribe una instantánea final desactivada y se detiene la exportación.",
       "mobileSubtabCalendar": "Calendario",
       "mobileSubtabGeneral": "General",
       "mobileSubtabKanban": "Kanban",
@@ -2051,7 +2068,7 @@
       "subtabTweaks": "Ajustes del espacio de trabajo",
       "subtasksDefaultExpanded": "Subtareas expandidas por defecto",
       "subtasksDefaultExpandedDesc": "Mostrar las listas de subtareas expandidas cuando se carga la barra de tareas.",
-      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, a coffee keeps me building. ☕",
+      "supportDevelopmentCardDesc": "If Operon earns a place in your daily workflow, coffee fuels what comes next. ☕",
       "supportDevelopmentCardTitle": "Enjoying the flow?",
       "tabCalendar": "Calendario",
       "tabCore": "Esencial",
@@ -2511,6 +2528,7 @@
     },
     "taskEditor": {
       "activeTrackerReadOnly": "Temporizador activo para {{task}}. Detenlo antes de editarlo.",
+      "addNote": "Añadir nota",
       "addSession": "Añadir sesión",
       "appearance": "Apariencia",
       "applyingPriorityRenameMigration": "Aplicando migración de renombrado de prioridades",
@@ -2606,6 +2624,7 @@
       "details": "Detalles",
       "dueDate": "Fecha de vencimiento",
       "dueDatePlaceholder": "Fecha de vencimiento",
+      "editNote": "Editar nota",
       "editSession": "Editar sesión",
       "editSourceMetadata": "Editar metadatos de origen",
       "editSubtask": "Editar subtarea",
@@ -2973,5 +2992,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "953080ae66266e657feee6a04c87a4d6df3c88372028a51ca4ef3abf22c9b997"
+  "sourceVersion": "d80aeefbcbad7f014653442d50bd679e63417981d6bda8f75037e395afb1958a"
 }

@@ -2051,6 +2051,8 @@ export class KanbanView extends ItemView {
 				workflowStatusIdentityIndex,
 				owner: card,
 				readOnly: readOnlyChips,
+				mobileLayout: readOnlyChips,
+				noteEditable: !!this.callbacks.updateFields || !!this.callbacks.updateField,
 			});
 			if (chipRow) card.appendChild(chipRow);
 			this.renderCardProgressTracks(
@@ -2995,6 +2997,7 @@ export class KanbanView extends ItemView {
 			context,
 			settings.contextualMenuActionAllowlist,
 			settings.contextualMenuSurfaceActionMatrix,
+			settings.keyMappings,
 		);
 	}
 

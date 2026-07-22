@@ -60,6 +60,7 @@ import { parseLocalTimestamp } from '../core/local-time';
 import type { IndexedTask } from '../types/fields';
 import type { TableFilePropertyField, TableFilePropertySnapshot } from './table/table-file-property';
 import { getFilterGroupDisplayLabel } from './filter-group-label';
+import { cleanupOperonRenderRoot } from './render-root-cleanup';
 
 function generateConditionId(): string {
 	return 'cond_' + Math.random().toString(36).slice(2, 10);
@@ -243,8 +244,8 @@ export interface FilterModalEvalDeps {
 	getChildIds: (parentId: string) => string[];
 	navigateToTask: (task: import('../types/fields').IndexedTask) => void;
 	getSettings: () => import('../types/settings').OperonSettings;
-	updateField: (operonId: string, key: string, value: string) => void;
-	updateFields?: (operonId: string, payload: Record<string, string>) => void;
+	updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
+	updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>;
 	updateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	onContextualAction?: ContextualMenuActionHandler;
@@ -556,6 +557,35 @@ export class FilterSetModal extends Modal {
 			});
 		}
 		return select;
+	}
+
+	private createDirectionToggle(
+		container: HTMLElement,
+		value: FilterSortSpec['order'],
+		onChange: (value: FilterSortSpec['order']) => void,
+		accessibleLabel: string,
+	): HTMLButtonElement {
+		const wrap = container.createDiv('operon-filter-select-wrap is-order');
+		const button = wrap.createEl('button', {
+			cls: 'operon-filter-direction-toggle',
+			attr: { type: 'button' },
+		});
+		let currentValue = value;
+		const renderValue = (): void => {
+			const valueLabel = currentValue === 'desc'
+				? t('filterSets', 'sortDesc')
+				: t('filterSets', 'sortAsc');
+			button.setText(valueLabel);
+			setAccessibleLabelWithoutTooltip(button, `${accessibleLabel}: ${valueLabel}`);
+		};
+		button.addEventListener('click', event => {
+			event.preventDefault();
+			currentValue = currentValue === 'asc' ? 'desc' : 'asc';
+			renderValue();
+			onChange(currentValue);
+		});
+		renderValue();
+		return button;
 	}
 
 	private createModalFieldPicker(
@@ -1785,11 +1815,6 @@ export class FilterSetModal extends Modal {
 			},
 			...groupFieldOptions,
 		];
-		const orderOptions = [
-			{ value: 'asc', label: t('filterSets', 'sortAsc') },
-			{ value: 'desc', label: t('filterSets', 'sortDesc') },
-		];
-
 		const groupingSection = sep.createDiv('operon-filter-form-section operon-filter-grouping-section');
 		const groupRow = this.createModalFormRow(groupingSection, t('filterSets', 'groupBy'), 'operon-filter-groupby-row');
 		this.createModalFieldPicker(groupRow.controlEl, groupOptions, this.filterSet.groupBy ?? '', (value) => {
@@ -1803,10 +1828,10 @@ export class FilterSetModal extends Modal {
 			label: t('filterSets', 'groupBy'),
 			placeholder: `(${t('filterSets', 'groupNone')})`,
 		});
-		this.createModalSelect(groupRow.actionEl, orderOptions, this.filterSet.groupOrder ?? 'asc', (value) => {
-			this.filterSet.groupOrder = value as 'asc' | 'desc';
+		this.createDirectionToggle(groupRow.actionEl, this.filterSet.groupOrder ?? 'asc', value => {
+			this.filterSet.groupOrder = value;
 			this.syncMirroredFilterFields();
-		}, 'order');
+		}, t('filterSets', 'groupBy'));
 
 		const subgroupRow = this.createModalFormRow(groupingSection, t('filterSets', 'subgroupBy'), 'operon-filter-subgroup-row');
 		this.createModalFieldPicker(subgroupRow.controlEl, groupOptions, this.filterSet.subgroupBy ?? '', (value) => {
@@ -1818,10 +1843,10 @@ export class FilterSetModal extends Modal {
 			label: t('filterSets', 'subgroupBy'),
 			placeholder: `(${t('filterSets', 'groupNone')})`,
 		});
-		this.createModalSelect(subgroupRow.actionEl, orderOptions, this.filterSet.subgroupOrder ?? 'asc', (value) => {
-			this.filterSet.subgroupOrder = value as 'asc' | 'desc';
+		this.createDirectionToggle(subgroupRow.actionEl, this.filterSet.subgroupOrder ?? 'asc', value => {
+			this.filterSet.subgroupOrder = value;
 			this.syncMirroredFilterFields();
-		}, 'order');
+		}, t('filterSets', 'subgroupBy'));
 
 		const sortSection = sep.createDiv('operon-filter-form-section operon-filter-sort-card');
 		sortSection.createEl('h4', {
@@ -1925,18 +1950,14 @@ export class FilterSetModal extends Modal {
 			},
 		);
 
-		this.createModalSelect(
+		this.createDirectionToggle(
 			row,
-			[
-				{ value: 'asc', label: t('filterSets', 'sortAsc') },
-				{ value: 'desc', label: t('filterSets', 'sortDesc') },
-			],
 			sort.order,
-			(value) => {
-				sort.order = value as 'asc' | 'desc';
+			value => {
+				sort.order = value;
 				this.syncMirroredFilterFields();
 			},
-			'order',
+			`${t('filterSets', 'sort')} ${index + 1}`,
 		);
 
 		this.renderSortMoveButtons(row, index);
@@ -2265,6 +2286,7 @@ class FilterPreviewModal extends Modal {
 			JSON.stringify([
 				this.deps.getSettings().filterTaskShowPlayAction,
 				this.deps.getSettings().filterTaskShowPinAction,
+				this.deps.getSettings().filterTaskShowNoteAction,
 				this.deps.getSettings().filterTaskShowSubtaskAction,
 				this.deps.getSettings().filterTaskShowPlainCheckboxAction,
 			]),
@@ -2339,6 +2361,7 @@ class FilterPreviewModal extends Modal {
 		};
 
 		const { contentEl } = this;
+		cleanupOperonRenderRoot(contentEl);
 		contentEl.empty();
 		contentEl.addClass('operon-filter-preview-modal');
 		const surface = contentEl.createDiv('operon-embed operon-filter-surface operon-task-chip-surface operon-filter-surface--preview');
@@ -2421,6 +2444,7 @@ class FilterPreviewModal extends Modal {
 	onClose(): void {
 		activeFilterPreviewModals.delete(this);
 		this.lastRenderSignature = null;
+		cleanupOperonRenderRoot(this.contentEl);
 		this.contentEl.empty();
 	}
 }

@@ -40,6 +40,7 @@ import { openObsidianTagSearch } from '../tag-search';
 import { openTaskFieldPicker } from '../task-field-picker-dispatch';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from '../custom-field-surfaces';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
+import { showTaskNotePopover } from '../task-note-action';
 
 export interface KanbanTaskChipRowCallbacks {
 	app: App;
@@ -52,8 +53,8 @@ export interface KanbanTaskChipRowCallbacks {
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
 	getRepeatSeriesInlineCompletionMode?: (repeatSeriesId: string) => InlineRepeatCompletionMode;
 	updateRepeatSeriesInlineCompletionMode?: (operonId: string, mode: InlineRepeatCompletionMode) => void | Promise<void>;
-	updateField?: (operonId: string, key: string, value: string) => void | Promise<void>;
-	updateFields?: (operonId: string, payload: Record<string, string>) => void | Promise<void>;
+	updateField?: (operonId: string, key: string, value: string) => boolean | void | Promise<boolean | void>;
+	updateFields?: (operonId: string, payload: Record<string, string>) => boolean | void | Promise<boolean | void>;
 	updateSubtasks?: (operonId: string, subtaskIds: string[]) => void;
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	openEditor?: (operonId: string) => void | Promise<void>;
@@ -66,13 +67,18 @@ export interface KanbanTaskChipRowOptions {
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	owner?: Node | null;
 	readOnly?: boolean;
+	mobileLayout?: boolean;
+	noteEditable?: boolean;
 }
 
 interface KanbanTaskActionChip {
 	actionId: ContextualMenuActionId;
 	icon: string;
 	label: string;
+	accessibleLabel?: string;
 	active?: boolean;
+	note?: boolean;
+	empty?: boolean;
 }
 
 const KANBAN_DIRECT_CHIP_DAY_PICKER_DATE_KEYS = new Set<string>([
@@ -109,7 +115,7 @@ export function buildKanbanTaskChipRow(
 		? getLocationPlaceIndex(callbacks.app, settings).resolve
 		: undefined;
 	const taskColor = normalizeTaskColor(task.fieldValues['taskColor']);
-	const actionChips = buildKanbanTaskActionChips(task, callbacks, settings);
+	const actionChips = buildKanbanTaskActionChips(task, callbacks, settings, options.noteEditable === true);
 	const taskLookup = options.taskLookup ?? createCompactTaskLookup(options.allTasks);
 	const entries = buildInlineTaskCompactChipEntries(
 		task.fieldValues,
@@ -131,7 +137,9 @@ export function buildKanbanTaskChipRow(
 	const row = createOwnerElement(options.owner, 'div');
 	row.className = 'operon-kanban-card-chip-row operon-task-chip-surface';
 	const readOnly = options.readOnly === true;
-	row.classList.toggle('is-read-only', readOnly);
+	const mobileLayout = options.mobileLayout === true;
+	row.classList.toggle('is-read-only', readOnly && !mobileLayout);
+	row.classList.toggle('is-mobile-read-only', readOnly && mobileLayout);
 	bindKanbanChipRowDynamicReadOnlyGuard(row);
 	if (!readOnly) bindKanbanChipRowDragShield(row);
 
@@ -189,7 +197,15 @@ export function buildKanbanTaskChipRow(
 	}
 
 	for (const action of actionChips) {
-		actionStrip.appendChild(createKanbanTaskActionChipElement(action, task, callbacks, actionStrip, taskColor, readOnly));
+		actionStrip.appendChild(createKanbanTaskActionChipElement(
+			action,
+			task,
+			callbacks,
+			actionStrip,
+			taskColor,
+			readOnly,
+			options.noteEditable === true,
+		));
 	}
 	if (chipStrip.childElementCount > 0) row.appendChild(chipStrip);
 	if (actionStrip.childElementCount > 0) row.appendChild(actionStrip);
@@ -204,6 +220,7 @@ function isKanbanChipRowReadOnly(row: HTMLElement): boolean {
 
 function isKanbanChipActionReadOnly(chip: HTMLElement): boolean {
 	const row = chip.closest<HTMLElement>('.operon-kanban-card-chip-row');
+	if (chip.classList.contains('is-note-editable') && !row?.classList.contains('is-read-only')) return false;
 	return !!row && isKanbanChipRowReadOnly(row);
 }
 
@@ -268,37 +285,12 @@ function buildKanbanTaskActionChips(
 	task: IndexedTask,
 	callbacks: KanbanTaskChipRowCallbacks,
 	settings: OperonSettings,
+	noteEditable: boolean,
 ): KanbanTaskActionChip[] {
 	const chips: KanbanTaskActionChip[] = [];
 	const canRunActions = !!callbacks.onAction;
 	const canToggleTimer = !!callbacks.toggleTimer || canRunActions;
 	const isTerminal = task.checkbox !== 'open';
-	if (canToggleTimer && settings.kanbanTaskShowPlayAction && task.checkbox === 'open') {
-		const isTracking = !!callbacks.toggleTimer && callbacks.isTaskTracking?.(task.operonId) === true;
-		chips.push({
-			actionId: 'startTimer',
-			icon: isTracking ? 'square' : 'play',
-			label: t('tooltips', isTracking ? 'stopTimer' : 'startTimer'),
-			active: isTracking,
-		});
-	}
-	if (canRunActions && settings.kanbanTaskShowPinAction) {
-		const pinned = callbacks.isTaskPinned?.(task.operonId) === true;
-		chips.push({
-			actionId: 'pinToggle',
-			icon: pinned ? 'pin-off' : 'pin',
-			label: t('contextMenu', pinned ? 'unpinTask' : 'pinTask'),
-			active: pinned,
-		});
-	}
-	const noteValue = task.fieldValues['note']?.trim();
-	if (settings.kanbanTaskShowNoteAction && noteValue) {
-		chips.push({
-			actionId: 'openEditor',
-			icon: getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen',
-			label: t('taskEditor', 'notes'),
-		});
-	}
 	if (canRunActions && settings.kanbanTaskShowSubtaskAction && !isTerminal) {
 		chips.push({
 			actionId: 'createSubtask',
@@ -313,6 +305,35 @@ function buildKanbanTaskActionChips(
 			label: t('settings', 'kanbanTaskOpenCheckboxAction'),
 		});
 	}
+	if (canRunActions && settings.kanbanTaskShowPinAction) {
+		const pinned = callbacks.isTaskPinned?.(task.operonId) === true;
+		chips.push({
+			actionId: 'pinToggle',
+			icon: pinned ? 'pin-off' : 'pin',
+			label: t('contextMenu', pinned ? 'unpinTask' : 'pinTask'),
+			active: pinned,
+		});
+	}
+	if (canToggleTimer && settings.kanbanTaskShowPlayAction && task.checkbox === 'open') {
+		const isTracking = !!callbacks.toggleTimer && callbacks.isTaskTracking?.(task.operonId) === true;
+		chips.push({
+			actionId: 'startTimer',
+			icon: isTracking ? 'square' : 'play',
+			label: t('tooltips', isTracking ? 'stopTimer' : 'startTimer'),
+			active: isTracking,
+		});
+	}
+	const noteValue = task.fieldValues['note']?.trim();
+	if (settings.kanbanTaskShowNoteAction && (noteValue || (noteEditable && !isTerminal))) {
+		chips.push({
+			actionId: 'openEditor',
+			icon: getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen',
+			label: t('taskEditor', 'notes'),
+			accessibleLabel: t('taskEditor', noteValue ? 'editNote' : 'addNote'),
+			note: true,
+			empty: !noteValue,
+		});
+	}
 	return chips;
 }
 
@@ -323,19 +344,28 @@ function createKanbanTaskActionChipElement(
 	owner: Node,
 	taskColor: string | null,
 	readOnly: boolean,
+	noteEditable: boolean,
 ): HTMLElement {
-	const chip = createOwnerElement(owner, readOnly || action.actionId === 'openEditor' ? 'span' : 'button');
+	const canEditNote = action.note === true && noteEditable;
+	const chip = createOwnerElement(
+		owner,
+		(readOnly && !canEditNote) || (action.actionId === 'openEditor' && !canEditNote) ? 'span' : 'button',
+	);
 	chip.className = 'operon-kanban-card-action-chip operon-task-chip-action';
 	if (action.active) chip.classList.add('is-active');
-	chip.classList.toggle('is-read-only', readOnly);
-	if (readOnly) chip.setAttribute('aria-disabled', 'true');
+	chip.classList.toggle('is-timer-action', action.actionId === 'startTimer');
+	chip.classList.toggle('is-note-action', action.note === true);
+	chip.classList.toggle('is-note-editable', canEditNote);
+	chip.classList.toggle('is-empty', action.empty === true);
+	chip.classList.toggle('is-read-only', readOnly && !canEditNote);
+	if (readOnly && !canEditNote) chip.setAttribute('aria-disabled', 'true');
 	if (taskColor) {
 		chip.style.setProperty('--operon-live-hover-border', taskColor);
 		chip.style.setProperty('--operon-task-chip-hover-accent', taskColor);
 	}
 	setIcon(chip, action.icon);
-	setAccessibleLabelWithoutTooltip(chip, action.label);
-	const noteValue = action.actionId === 'openEditor' ? task.fieldValues['note']?.trim() ?? '' : '';
+	setAccessibleLabelWithoutTooltip(chip, canEditNote ? action.accessibleLabel ?? action.label : action.label);
+	const noteValue = action.note === true ? task.fieldValues['note']?.trim() ?? '' : '';
 	bindOperonHoverTooltip(chip, {
 		title: action.label,
 		contentEl: noteValue ? createNonInteractiveMarkdownLinkContent(chip, noteValue) : undefined,
@@ -344,10 +374,39 @@ function createKanbanTaskActionChipElement(
 	bindKanbanAxisActivationBridge(chip);
 	if (isKanbanActionButtonElement(chip)) {
 		chip.type = 'button';
-		chip.addEventListener('click', (event) => {
-			if (readOnly || isKanbanChipActionReadOnly(chip)) return;
+		chip.draggable = false;
+		chip.addEventListener('pointerdown', event => event.stopPropagation());
+		chip.addEventListener('dragstart', event => {
 			event.preventDefault();
 			event.stopPropagation();
+		});
+		chip.addEventListener('click', (event) => {
+			if ((readOnly && !canEditNote) || isKanbanChipActionReadOnly(chip)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			if (canEditNote) {
+				showTaskNotePopover({
+					app: callbacks.app,
+					anchor: chip,
+					operonId: task.operonId,
+					initialValue: task.fieldValues['note'] ?? '',
+					taskDescription: task.description,
+					taskColor,
+					onCommit: nextValue => {
+						if (callbacks.updateFields) {
+							return callbacks.updateFields(task.operonId, { note: nextValue });
+						}
+						if (callbacks.updateField) {
+							return callbacks.updateField(task.operonId, 'note', nextValue);
+						}
+						return false;
+					},
+					onClose: () => {
+					if (chip.isConnected) chip.focus();
+				},
+				});
+				return;
+			}
 			if (action.actionId === 'startTimer' && callbacks.toggleTimer) {
 				void callbacks.toggleTimer(task.operonId);
 				return;

@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [2.6.0] - 2026-07-22
+
+### New
+- Added contextual **Fixed Reminder** and **Relative Reminder** actions to supported open-task menus, with common relative offsets kept visible for faster selection.
+- Added an opt-in **Mobile notification snapshot** setting that keeps the next seven days of reminders ready for the standalone Operon Notify mobile app.
+- Added a **Task Editor** action for completing open direct subtasks without leaving the parent task.
+
+### Improved
+- Improved **Pinned Tasks** in the floating Dock and Sidebar so descriptions use the full row width on desktop, controls appear on hover or keyboard focus, and mobile controls remain visible.
+- Improved **release notes and Settings support actions** with clearer copy, consistent theme-aware styling, and a Sponsor-first layout.
+- Improved **Settings documentation links** with accessible Operon tooltips that show each document number and full title.
+- Improved **Filter and Table preset editors** with compact grouping rows, one-click Ascending/Descending controls, calmer selection states, and reliable searchable Table field pickers in separate Settings windows.
+- Improved **inline task action rails** across Live Preview, Reading Mode, Filters, and Kanban with a consistent order, stable hover behavior, clearer Notes and timer access, and no hidden-field `+N` badges.
+- Improved reminder navigation so in-app reminder titles and actions, and system notifications, open the task's source note; inline tasks also focus their exact task line.
+
+### Fixed
+- Fixed inconsistent colors between the **Notes** pop-over focus ring and border; both now follow the task color or Obsidian accent color together.
+- Fixed **Filter editors** launched from Calendar, Kanban, and Table preset dialogs in a separate Obsidian Settings window, so their field, operator, grouping, and sorting pickers open reliably.
+- Fixed recurring **File Tasks** showing obsolete projected Calendar occurrences after a “this and following” date change; a previewed repair command can safely correct affected File Tasks.
+
+### Removed
+- Retired the **Task Pool follows Calendar filter** setting; the Calendar grid and sidebar Task Pool now always share the active preset filter.
+
+### Validation
+- Validation passed: `npm run check:local` (1,493/1,493 Phase 5 checks) and `npm audit` (0 vulnerabilities).
+
 ## [2.5.0] - 2026-07-20
 
 ### New

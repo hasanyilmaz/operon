@@ -13,7 +13,7 @@ import { runSettingsAsync, settingsAsyncHandler } from '../settings/async-settin
 import { parsePresetNumber } from '../settings/preset-control-helpers';
 import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from '../task-color-source-select';
 import { renderPresetFilterActions } from '../preset-filter-actions';
-import type { FilterModalEvalDeps } from '../filter-set-modal';
+import type { FilterModalEvalDeps, FilterSetModalOptions } from '../filter-set-modal';
 import { isPresetFavorite } from '../../core/preset-favorites';
 import { createPresetFavoriteButton } from '../preset-favorite-button';
 
@@ -25,6 +25,7 @@ interface CalendarPresetQuickSettingsModalOptions {
 	onSaveFilterSet: (filterSet: FilterSet) => Promise<void>;
 	onToggleFilterFavorite?: (filterSetId: string) => Promise<void>;
 	getFilterModalEvalDeps?: () => FilterModalEvalDeps | null;
+	filterEditorPickerPresentation?: FilterSetModalOptions['pickerPresentation'];
 }
 
 export class CalendarPresetQuickSettingsModal extends Modal {
@@ -210,6 +211,7 @@ export class CalendarPresetQuickSettingsModal extends Modal {
 			onSaveFilterSet: this.options.onSaveFilterSet,
 			onToggleFilterFavorite: this.options.onToggleFilterFavorite,
 			getFilterModalEvalDeps: this.options.getFilterModalEvalDeps,
+			filterEditorPickerPresentation: this.options.filterEditorPickerPresentation,
 			onRefresh: () => this.render(),
 			errorContextPrefix: 'calendar preset',
 		});

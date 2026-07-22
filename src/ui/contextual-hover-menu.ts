@@ -33,6 +33,7 @@ type ContextualHoverMenuSettings = Pick<
 	| 'contextualMenuMobileLongPressMs'
 	| 'contextualMenuMobileTransitionGraceMs'
 	| 'contextualMenuMobileAutoHideMs'
+	| 'keyMappings'
 >;
 
 interface ContextualHoverMenuBindOptions {
@@ -609,6 +610,7 @@ export function bindTaskContextualHoverMenu(
 				context,
 				settings.contextualMenuActionAllowlist,
 				settings.contextualMenuSurfaceActionMatrix,
+				settings.keyMappings,
 			);
 			return sharedTaskHoverMenu.show({
 				key: menuKey,

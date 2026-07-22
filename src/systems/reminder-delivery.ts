@@ -323,18 +323,22 @@ export class ReminderDeliveryController implements ReminderDeliveryPort {
 		setIcon(icon, 'bell-ring');
 		fragment.append(icon, targetDocument.createTextNode(' '));
 
-		const label = targetWindow.createEl('strong');
+		const openTask = (event: Event): void => {
+			event.preventDefault();
+			this.options.onOpenTask(item.occurrence.operonId);
+		};
+		const label = targetWindow.createEl('a');
+		label.href = '#';
+		label.addClass('operon-reminder-notice-task-link');
 		label.textContent = item.task.description.trim() || t('reminders', 'untitledTask');
+		label.addEventListener('click', openTask);
 		fragment.append(label);
 		fragment.append(targetDocument.createTextNode(` · ${this.formatLocalDatetime(item.occurrence.localDatetime)} `));
 
 		const action = targetWindow.createEl('a');
 		action.href = '#';
 		action.textContent = t('reminders', 'openTask');
-		action.addEventListener('click', event => {
-			event.preventDefault();
-			this.options.onOpenTask(item.occurrence.operonId);
-		});
+		action.addEventListener('click', openTask);
 		fragment.append(action);
 
 		const durationMs = this.options.getNoticeDurationMs?.() ?? 15_000;
