@@ -163,9 +163,12 @@ export function isOperonPublicConvertTaskInput(value: unknown): value is OperonP
 		|| (value.target !== 'inline' && value.target !== 'file')
 		|| !hasOnlyOptionalStrings(value, ['fileTemplateId', 'targetPath', 'targetFolder'])) return false;
 	if (value.target === 'inline') {
-		return typeof value.targetPath === 'string' && /\.md$/iu.test(value.targetPath.trim());
+		return typeof value.targetPath === 'string'
+			&& /\.md$/iu.test(value.targetPath.trim())
+			&& value.fileTemplateId === undefined
+			&& value.targetFolder === undefined;
 	}
-	return true;
+	return value.targetPath === undefined;
 }
 
 export function isOperonPublicFilterQueryInput(value: unknown): value is OperonPublicFilterQueryInput {

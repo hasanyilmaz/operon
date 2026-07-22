@@ -2400,6 +2400,13 @@ export default class OperonPlugin extends Plugin {
 		if (input.statusId?.trim() && input.fields?.status?.trim()) {
 			return this.publicMutationResult(false, null, 'invalid-input', 'Provide at most one of fields.status or statusId.');
 		}
+		const unsupportedProperty = Object.entries(input.properties ?? {}).find(([propertyName, value]) => (
+			!isWritableRawYamlPropertyName(propertyName, this.settings.keyMappings)
+			|| !isSupportedRawYamlPropertyValue(value)
+		));
+		if (unsupportedProperty) {
+			return this.publicMutationResult(false, null, 'invalid-input', `Unsupported unmanaged property: ${unsupportedProperty[0]}`);
+		}
 		const requestedStatusId = input.statusId?.trim() ?? '';
 		const requestedStatusValue = input.fields?.status?.trim()
 			|| (requestedStatusId ? this.resolvePublicStatusValueById(requestedStatusId) : '');

@@ -45,6 +45,10 @@ async function run(): Promise<void> {
 	equal(isOperonPublicConvertTaskInput({ target: 'inline', targetPath: 'Project.md' }), true);
 	equal(isOperonPublicConvertTaskInput({ target: 'inline', targetPath: 'Board.canvas' }), false);
 	equal(isOperonPublicConvertTaskInput({ target: 'inline' }), false);
+	equal(isOperonPublicConvertTaskInput({ target: 'inline', targetPath: 'Project.md', targetFolder: 'Tasks' }), false);
+	equal(isOperonPublicConvertTaskInput({ target: 'inline', targetPath: 'Project.md', fileTemplateId: 'minimal' }), false);
+	equal(isOperonPublicConvertTaskInput({ target: 'file', targetFolder: 'Tasks', fileTemplateId: 'minimal' }), true);
+	equal(isOperonPublicConvertTaskInput({ target: 'file', targetPath: 'Task.md' }), false);
 	equal(isOperonPublicConvertTaskInput({ target: 'yaml' }), false);
 	equal(isOperonPublicFilterQueryInput({ filterSetId: 'now', scopePath: 'Efforts/Projets' }), true);
 	equal(isOperonPublicFilterQueryInput({ filterSetId: 1 }), false);
