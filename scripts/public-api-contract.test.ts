@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+	buildOperonPublicFilterEvaluationOptions,
 	isOperonPublicAdoptInlineTaskInput,
 	isOperonPublicConvertTaskInput,
 	isOperonPublicCreateTaskInput,
@@ -27,6 +28,9 @@ async function run(): Promise<void> {
 	equal(isOperonPublicAdoptInlineTaskInput({ targetPath: 'Daily.md', line: '1', expectedLine: '- [ ] Task' }), false);
 	equal(isOperonPublicUpdateTaskInput({ fields: { priority: 'High' } }), true);
 	equal(isOperonPublicUpdateTaskInput({ fields: { priority: 2 } }), false);
+	equal(isOperonPublicUpdateTaskInput({ description: 'One line' }), true);
+	equal(isOperonPublicUpdateTaskInput({ description: 'First\nSecond' }), false);
+	equal(isOperonPublicUpdateTaskInput({ description: 'First\rSecond' }), false);
 	equal(isOperonPublicTransitionTaskInput({ statusId: 'todo' }), true);
 	equal(isOperonPublicTransitionTaskInput({ statusId: 2 }), false);
 	equal(isOperonPublicConvertTaskInput({ target: 'inline', targetPath: 'Project.md' }), true);
@@ -37,6 +41,18 @@ async function run(): Promise<void> {
 	equal(isOperonPublicFilterQueryInput({ filterSetId: 1 }), false);
 	equal(isOperonPublicRelocateTaskInput({ targetPath: 'Project.md' }), true);
 	equal(isOperonPublicRelocateTaskInput({ targetPath: null }), false);
+
+	const allTasks = [{ operonId: 'root' }, { operonId: 'child' }];
+	const projectSerialScopes = [{ id: 'scope-1', parentOperonId: 'root' }];
+	const filePropertyContext = { signature: 'file-properties-v1' };
+	const filterEvaluationOptions = buildOperonPublicFilterEvaluationOptions(
+		allTasks,
+		projectSerialScopes,
+		filePropertyContext,
+	);
+	equal(filterEvaluationOptions.projectSerialScopeTasks, allTasks);
+	equal(filterEvaluationOptions.projectSerialScopes, projectSerialScopes);
+	equal(filterEvaluationOptions.filePropertyContext, filePropertyContext);
 
 	const mappings = [
 		{ canonicalKey: 'priority', sync: 'yes' as const },

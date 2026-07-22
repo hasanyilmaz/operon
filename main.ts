@@ -109,6 +109,7 @@ import {
 } from './src/ui/task-creator-modal';
 import {
 	OPERON_PUBLIC_API_VERSION,
+	buildOperonPublicFilterEvaluationOptions,
 	isOperonPublicAdoptInlineTaskInput,
 	isOperonPublicConvertTaskInput,
 	isOperonPublicCreateTaskInput,
@@ -2504,7 +2505,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		try {
 			if (input.description !== undefined) {
-				const description = input.description.trim();
+				const description = this.normalizeTaskCreatorText(input.description);
 				if (!description) return this.publicMutationResult(false, operonId, 'invalid-input', 'Description is required.');
 				const descriptionTask = this.indexer.getTask(operonId);
 				if (!descriptionTask || !await this.updateTableTaskDescriptionAndRefresh(descriptionTask, description)) {
@@ -2732,7 +2733,8 @@ export default class OperonPlugin extends Plugin {
 		}
 		const scopePath = rawScopePath ? normalizePath(rawScopePath).replace(/^\/+|\/+$/gu, '') : '';
 		try {
-			const tasks = this.indexer.getAllTasks().filter(task => (
+			const allTasks = this.indexer.getAllTasks();
+			const tasks = allTasks.filter(task => (
 				!scopePath
 				|| task.primary.filePath === scopePath
 				|| task.primary.filePath.startsWith(`${scopePath}/`)
@@ -2743,6 +2745,11 @@ export default class OperonPlugin extends Plugin {
 				this.settings.priorities,
 				this.pinnedCache,
 				this.settings.pipelines,
+				buildOperonPublicFilterEvaluationOptions(
+					allTasks,
+					this.settings.projectSerialScopes,
+					this.getTableFilePropertySnapshot(),
+				),
 			);
 			return {
 				ok: true,

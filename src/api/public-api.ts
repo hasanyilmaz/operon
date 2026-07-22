@@ -139,6 +139,7 @@ export function isOperonPublicCreateTaskInput(value: unknown): value is OperonPu
 
 export function isOperonPublicUpdateTaskInput(value: unknown): value is OperonPublicUpdateTaskInput {
 	if (!isRecord(value) || !hasOnlyOptionalStrings(value, ['description'])) return false;
+	if (typeof value.description === 'string' && /[\r\n]/u.test(value.description)) return false;
 	if (value.tags !== undefined && (!Array.isArray(value.tags) || !value.tags.every(tag => typeof tag === 'string'))) return false;
 	if (value.fields !== undefined && !isStringRecord(value.fields)) return false;
 	return value.properties === undefined || isRawPropertyRecord(value.properties);
@@ -160,6 +161,23 @@ export function isOperonPublicConvertTaskInput(value: unknown): value is OperonP
 
 export function isOperonPublicFilterQueryInput(value: unknown): value is OperonPublicFilterQueryInput {
 	return isRecord(value) && typeof value.filterSetId === 'string' && hasOnlyOptionalStrings(value, ['scopePath']);
+}
+
+/** Keep public saved-filter queries aligned with the contexts used by Operon's UI surfaces. */
+export function buildOperonPublicFilterEvaluationOptions<TTask, TProjectSerialScope, TFilePropertyContext>(
+	allTasks: readonly TTask[],
+	projectSerialScopes: readonly TProjectSerialScope[],
+	filePropertyContext: TFilePropertyContext | null | undefined,
+): {
+	projectSerialScopes: readonly TProjectSerialScope[];
+	projectSerialScopeTasks: readonly TTask[];
+	filePropertyContext?: TFilePropertyContext;
+} {
+	return {
+		projectSerialScopes,
+		projectSerialScopeTasks: allTasks,
+		...(filePropertyContext ? { filePropertyContext } : {}),
+	};
 }
 
 export function isOperonPublicRelocateTaskInput(value: unknown): value is OperonPublicRelocateTaskInput {
