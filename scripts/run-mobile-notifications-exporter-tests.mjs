@@ -1,6 +1,7 @@
 import { build } from 'esbuild';
+import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -38,12 +39,18 @@ try {
 	const testRun = globalThis.__operonMobileNotificationsExporterTestRun;
 	if (!testRun || typeof testRun.then !== 'function') throw new Error('Producer test runner did not expose completion.');
 	await testRun;
-	const referenceContractPath = path.resolve(
-		homedir(),
-		'Projects/OperonNotify/Android/reference/node/mobile-notifications-contract.mjs',
-	);
+	// Test-only copy of OperonNotify/Android/reference/node/mobile-notifications-contract.mjs.
+	// Source SHA-256: 2419a0c6e87bc6065a819868a502181a4f21c63e196eaf78841a29d61086ac23
+	const referenceContractPath = path.join(rootDir, 'scripts/reference/mobile-notifications-contract.mjs');
 	const referenceContract = await import(pathToFileURL(referenceContractPath).href);
 	referenceContract.validateMobileNotificationsSnapshot(globalThis.__operonMobileNotificationsSample);
+	const invalidEnvelope = structuredClone(globalThis.__operonMobileNotificationsSample);
+	invalidEnvelope.unexpected = true;
+	assert.throws(
+		() => referenceContract.validateMobileNotificationsSnapshot(invalidEnvelope),
+		error => error?.code === 'INVALID_SHAPE',
+		'Android reference contract rejects unexpected producer envelope keys',
+	);
 	console.log('Android reference contract accepted the generated producer snapshot');
 } finally {
 	delete globalThis.__operonMobileNotificationsExporterTestRun;
