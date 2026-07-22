@@ -11,7 +11,7 @@ tags:
   - settings
   - contextmenu
   - configure
-Updated: 2026-07-05T19:28:23
+Updated: 2026-07-22T18:57:46
 ---
 
 # Contextual menu actions
@@ -34,6 +34,7 @@ Grouped by what they do:
 - **Convert**: **Convert to file**, **Convert to inline**. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
 - **Scheduling**: **Unschedule**, **Clear due date**, **Skip this occurrence**.
 - **Pin and time**: **Pin task** / **Unpin task**, **Start timer** / **Stop timer**, **Log as tracked** (record a planned block as tracked time).
+- **Reminders**: **Fixed Reminder** opens the **ReminderDatetimes** picker, **Relative Reminder** opens the **ReminderRules** picker, each icon following its own canonical property. See [[DOCS-116 Reminders|Reminders]].
 - **Remove**: **Delete task**.
 
 ## Settings
@@ -61,3 +62,4 @@ Tune this once to keep the menu short and relevant to how you work.
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-021 Task Editor|Task Editor]]
 - [[DOCS-004 Operon system map|Operon system map]]
+- [[DOCS-116 Reminders|Reminders]]

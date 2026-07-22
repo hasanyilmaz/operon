@@ -10,7 +10,7 @@ tags:
   - operon
   - taskmodel
   - subtasks
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-22T19:14:33
 ---
 
 # Parent and sub-tasks
@@ -63,6 +63,8 @@ To open a task's subtree on demand, run the **Subtasks** action in the contextua
 
 ![MEDIA-DOCS-016-2 - Dynamic Subtasks Filter subtree](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-016-2.png)
 
+For a quicker look at just the immediate family, without opening a separate window, the [[DOCS-021 Task Editor|Task Editor]] itself shows a task's direct parent and direct subtasks as small cards, and lets you complete an open subtask right from its card.
+
 ## Rollups: the parent reflects its children
 
 Operon keeps automatic counts and totals on the parent so you can see progress without opening every child. These are maintained for you, not set by hand:
@@ -105,3 +107,4 @@ Operon settings for this live in **Settings → Operon → Tasks → Relationshi
 - [[DOCS-013 File tasks|File tasks]]
 - [[DOCS-011 Inline tasks|Inline tasks]]
 - [[DOCS-005 Operon core concepts|Operon core concepts]]
+- [[DOCS-021 Task Editor|Task Editor]]

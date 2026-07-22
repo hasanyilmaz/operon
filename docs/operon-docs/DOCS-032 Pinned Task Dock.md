@@ -10,7 +10,7 @@ tags:
   - operon
   - pinnedtasks
   - plan
-Updated: 2026-07-20T15:19:54
+Updated: 2026-07-22T19:14:33
 ---
 
 # Pinned Task Dock
@@ -44,7 +44,9 @@ Which one you get is a setting. In **Settings → Operon**, the pinned-tasks sur
 
 ## Acting on pinned tasks
 
-The dock is not just a list. Each pinned task offers the same contextual actions as anywhere else, so you can open the [[DOCS-021 Task Editor|Task Editor]], change status, start a timer, or mark it done without leaving what you are doing. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
+The dock is not just a list. Each pinned task offers the same contextual menu as anywhere else, so you can open the [[DOCS-021 Task Editor|Task Editor]], change status, start a timer, or mark it done without leaving what you are doing. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
+
+Separately from that menu, each row also carries its own **Unpin** and timer icons directly on it. On desktop, these stay out of the way until you hover the row or reach it with the keyboard, so the task's description gets the full row width the rest of the time. On mobile, where there is no hover, the same icons stay visible all the time instead.
 
 Click a pinned task to open it in the [[DOCS-021 Task Editor|Task Editor]]. Hold **Cmd** (macOS) or **Ctrl** (Windows and Linux) and click to open the task's source in a new Obsidian tab instead: the note for a file task, or the exact line for an inline task, the same convention as opening a link in a new browser tab.
 

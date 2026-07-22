@@ -12,7 +12,7 @@ tags:
   - taskpool
   - plan
   - search
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-22T18:56:26
 ---
 
 # Calendar Task Pool
@@ -27,7 +27,7 @@ This makes it the heart of calendar planning: open the sidebar, choose what you 
 
 ## Where it lives
 
-The Task Pool is one of the three sections of [[DOCS-060 Calendar layout toolbar and sidebar|sidebar mode]], alongside Calendars and Finished Tasks. Switch the Calendar to sidebar mode to use it. Its width, whether it starts open or collapsed, and whether it follows the active Calendar preset filter are set in **Settings → Operon → Views → Calendar**.
+The Task Pool is one of the three sections of [[DOCS-060 Calendar layout toolbar and sidebar|sidebar mode]], alongside Calendars and Finished Tasks. Switch the Calendar to sidebar mode to use it. Its width and whether it starts open or collapsed are set in **Settings → Operon → Views → Calendar**. It always shares the active Calendar preset's filter with the grid; there is no separate setting for that.
 
 ## The four modes
 
@@ -67,7 +67,7 @@ At a glance, which layer reaches which field:
 
 Closer matches are ranked to the top, so the task you mean tends to rise as you type.
 
-The important part is **scope**: search runs over the *entire* set for the current mode, not just the rows you can see. If **Task Pool follows Calendar filter** is enabled, that set is first narrowed by the active Calendar preset's filter. So a task buried deep in a long Overdue or All list still surfaces the moment you type enough of its name, as long as it is inside the current Task Pool scope.
+The important part is **scope**: search runs over the *entire* set for the current mode, not just the rows you can see. That set is always narrowed by the active Calendar preset's filter first. So a task buried deep in a long Overdue or All list still surfaces the moment you type enough of its name, as long as it is inside the current Task Pool scope.
 
 ## Why the list looks capped, and why search still finds everything
 
@@ -81,18 +81,11 @@ This cap is **only visual**. It keeps the sidebar light and quick to scroll; it 
 
 In short, the number you see is a rendering budget, not a search boundary.
 
-## Does the Calendar filter narrow the pool?
+## The pool always follows the Calendar's filter
 
-It depends on the **Task Pool follows Calendar filter** setting in **Settings → Operon → Views → Calendar → Calendar Sidebar Settings**.
+The Task Pool shares its filter with the grid: it always applies the active [[DOCS-029 Calendar presets and time grid|preset]]'s filter first, then applies its own **Overdue**, **Unscheduled**, **All**, or **Finished** mode, and then the search box. This keeps the pool aligned with whichever Calendar preset is currently visible, so switching presets narrows the pool the same way it narrows the grid.
 
-For new installs, this setting is on by default, so the Task Pool follows the active Calendar preset's filter. Existing Operon users keep the previous global Task Pool behavior unless they turn the setting on.
-
-The two behaviors are:
-
-- **On**: the Task Pool first applies the active [[DOCS-029 Calendar presets and time grid|preset]]'s filter, then applies its own **Overdue**, **Unscheduled**, **All**, or **Finished** mode, and then the search box. This keeps the pool aligned with whichever Calendar preset is currently visible.
-- **Off**: the Task Pool draws from your whole task index and narrows it only by its own **mode** and **search box**. This keeps the pool as a global scheduling inbox, even when the grid is filtered.
-
-**Finished** follows the same setting, but it keeps its day-specific behavior: it shows tasks completed on the day the Calendar is anchored to. With the setting on, those finished tasks must also match the active preset filter; with it off, they come from the whole task index for that anchored day.
+**Finished** follows the same rule, but keeps its day-specific behavior: it shows tasks completed on the day the Calendar is anchored to, and those finished tasks must also match the active preset filter.
 
 The Task Pool uses the same filter rules the Calendar grid uses. If the Calendar surface ignores a special or dynamic filter in this context, the Task Pool ignores it too.
 
@@ -102,7 +95,7 @@ Drag a task from the pool onto a day or a time slot to schedule it there. The dr
 
 ## FAQ
 
-**Does the Calendar's filter also filter the Task Pool?** Yes, when **Task Pool follows Calendar filter** is enabled. If the setting is off, the pool pulls from your whole index and is narrowed only by its mode and search. See the section above.
+**Does the Calendar's filter also filter the Task Pool?** Yes, always. The pool first applies the active preset's filter, then its own mode and search box. See the section above.
 
 **Why can I only see 25 tasks?** That is just the display limit (25 normally, 50 while searching). The summary line shows the real total, and search still looks across all matching tasks in the current scope. Type more of a task's name to bring it into view.
 

@@ -11,7 +11,7 @@ tags:
   - reminders
   - scheduling
   - configure
-Updated: 2026-07-20T21:04:57
+Updated: 2026-07-22T19:14:33
 ---
 
 # Reminders
@@ -54,9 +54,9 @@ Reminders stay in the order you added them, so a task's list is a record of how 
 
 ## Adding a rule
 
-The **ReminderRules** picker works differently, and it is worth understanding because it saves a step. You do not pick a date. You type **how long before**, and Operon shows you what that offset resolves to against each of the task's dates.
+The **ReminderRules** picker works differently, and it is worth understanding because it saves a step. You do not pick a date. You type **how long before**, and Operon shows you what that offset resolves to against each of the task's dates. A row of common offsets, **On time**, **10m**, **30m**, **1h**, and **1d**, sits above the input from the moment the picker opens, so the offset you reach for most is usually one click away instead of something you type out.
 
-Type `1d` on a task that has both a due date and a start time, and you get two candidates: one day before the due date, and one day before the start. Pick the one you meant. The list shows the actual date and time each candidate resolves to, so you are choosing a real moment, not guessing at an abstraction.
+Click **1d**, or type it yourself, on a task that has both a due date and a start time, and you get two candidates: one day before the due date, and one day before the start. Pick the one you meant. The list shows the actual date and time each candidate resolves to, so you are choosing a real moment, not guessing at an abstraction.
 
 An offset is written as a short duration: `10m`, `1h`, `2d`, `1w`, or a combination like `1d12h`. An offset of `0m` is valid and means **at** the date itself rather than before it. See [[DOCS-117 Reminder rules|Reminder rules]] for the full syntax and the five dates a rule can attach to.
 
@@ -116,7 +116,19 @@ Operon picks one of three paths at the moment a reminder comes due, in this orde
 2. **Operon is not focused, and system notifications are on.** You get a desktop notification from your operating system. Clicking it focuses Obsidian and opens the task. This path is desktop-only, and it needs both the setting turned on and the permission granted; Operon requests that permission when you enable the setting.
 3. **Neither applies.** The reminder is held rather than lost, and is delivered once Operon is back in front of you, subject to the catch-up window below.
 
-The second path is desktop-only. On mobile a reminder either arrives inside Operon while it is open, or is held until you come back to it.
+The second path is desktop-only. On mobile, a reminder still arrives inside Operon while it is open, or is held until you return to it, exactly as above, unless you use the separate companion app covered next.
+
+## Reminders on your phone, even when Operon is closed
+
+The operating system will not let a closed app schedule its own native notifications, which is why the three paths above are the whole story while Operon is not running. Turn on **Mobile notification snapshot**, in Reminder settings, and Operon keeps a resolved seven-day window of your upcoming reminders ready for a separate **Operon Mobile Notifications** companion app to read and turn into real, native notifications on your phone, even while Operon itself is closed. It is off by default.
+
+The window's start reuses your **Missed reminders** catch-up setting, covered next: the same length of time Operon would still honor a missed desktop or in-app reminder is how far back the snapshot also reaches, so a reminder that only just became due is not silently left out just because the snapshot had not refreshed yet.
+
+The snapshot stays current on its own: it updates shortly after you change a task or a reminder, and rebuilds in full about once a day, so it never drifts far from what your vault actually contains.
+
+If you keep more than one vault on the same device, each vault writes its own identity into its snapshot, so the companion app never mixes up which vault a reminder belongs to.
+
+Turning the setting off does not just stop new snapshots. Operon writes one last, empty snapshot marked disabled, so the companion app can cleanly cancel everything it had scheduled instead of being left guessing why updates stopped.
 
 ## Catching up on missed reminders
 
@@ -171,13 +183,15 @@ Both use your real notification and sound settings, and neither creates or opens
 
 **Why did I not get a desktop notification?** System notifications are desktop-only, off by default, and need permission. Check the setting and use **Send system notification** to test.
 
+**Can I get real notifications on my phone?** Turn on **Mobile notification snapshot** in Reminder settings. It feeds a separate companion app that can notify you even while Operon itself is closed.
+
 **Will I get the same reminder twice on two devices?** No. Delivery is tracked per device, so each one keeps its own record of what it has already shown you.
 
 **I do not see reminder chips on my tasks.** They are hidden by default on every surface. Turn them on for the surfaces you want under **Settings → Operon → Interface**.
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Reminders**: the missed-reminder catch-up window, how long an in-app notification stays visible, the pin-on-reminder automation, system notifications, reminder sound, and the two test notifications.
+Operon settings for this live in **Settings → Operon → Tasks → Reminders**: the missed-reminder catch-up window, how long an in-app notification stays visible, the pin-on-reminder automation, system notifications, the mobile notification snapshot, reminder sound, and the two test notifications.
 
 Where reminders are *shown* is configured separately, under **Settings → Operon → Interface**, in **Task Editor** for the editor's picker rows and **Task Chips** for every chip surface. The two fields' property names and icons are set in **Settings → Operon → Core → Keymapping**. See [[DOCS-039 Key mappings|Key mappings]].
 

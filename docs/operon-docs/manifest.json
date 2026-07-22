@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-07-20T19:09:09.308Z",
+  "generatedAt": "2026-07-22T18:55:57.972Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -85,8 +85,8 @@
     },
     {
       "path": "DOCS-016 Parent and sub-tasks.md",
-      "sha256": "e8630719872a5d7c138a69100c761c91b6df81b934fb9170a538c72e8b3884a1",
-      "bytes": 6341
+      "sha256": "7223f3e4ffc82216dfe8c1edc86512186949a08f3dd781f6398502b7b804f132",
+      "bytes": 6637
     },
     {
       "path": "DOCS-017 Plain checkbox lists.md",
@@ -110,8 +110,8 @@
     },
     {
       "path": "DOCS-021 Task Editor.md",
-      "sha256": "9aa83868d9a794031a8320ea404de66896f3f47fc2675fb9c065740c1824a6cc",
-      "bytes": 5708
+      "sha256": "e2e9870f2874ae07bcaabb90053c604bc2451df3d764ce08d7de5287deef8cdb",
+      "bytes": 6681
     },
     {
       "path": "DOCS-022 Command palette reference.md",
@@ -165,8 +165,8 @@
     },
     {
       "path": "DOCS-032 Pinned Task Dock.md",
-      "sha256": "77a7b76ffc08cfe4579002dd65c4cfe7d2ab764df47132aa647da5f3b20f146b",
-      "bytes": 4398
+      "sha256": "3cc1fbe3e66ae5be97f39c57f0e4480b6f0cf56d4c14ccc217762084db4289f5",
+      "bytes": 4746
     },
     {
       "path": "DOCS-033 Recurring tasks.md",
@@ -210,13 +210,13 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "2b7322d649f52ccc855423ff91e49d52c2b5f552406ae9c7e31e28bc0ca3bef0",
-      "bytes": 12001
+      "sha256": "4ec19710fc67b60f3065fd94c8461ec3fa57492b64bf3b3f99f5d6491065c320",
+      "bytes": 11936
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
-      "sha256": "b6192a7678d08292345f1cb8699b61c526181dcddceac34ee57590045bd383d5",
-      "bytes": 3604
+      "sha256": "97bf1ca8de57da70cb107184796f0376a5b0c45058e36cd3db397ab1928653ae",
+      "bytes": 3859
     },
     {
       "path": "DOCS-043 Settings search.md",
@@ -480,8 +480,8 @@
     },
     {
       "path": "DOCS-095 Calendar Task Pool.md",
-      "sha256": "0ebf18312656bfc796a567b7d12933c045fb97f150d99fa9299bc275bdbf0bde",
-      "bytes": 8446
+      "sha256": "45b90d1dcbfac9388298a1bdd89e1825bad843331bcb16d7475a38b7b14ee914",
+      "bytes": 7818
     },
     {
       "path": "DOCS-096 Mobile Calendar.md",
@@ -585,8 +585,8 @@
     },
     {
       "path": "DOCS-116 Reminders.md",
-      "sha256": "9692fecb8a716c754d0549f075026f312e0e25606e7661779b5507204b6e827b",
-      "bytes": 14533
+      "sha256": "cf20af98b05aeb9dc65b79894a7661001d692acbdce485429e3b341f6fcaf9fd",
+      "bytes": 16580
     },
     {
       "path": "DOCS-117 Reminder rules.md",

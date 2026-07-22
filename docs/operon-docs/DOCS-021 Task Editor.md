@@ -11,7 +11,7 @@ tags:
   - taskeditor
   - edit
   - pickers
-Updated: 2026-07-20T15:16:36
+Updated: 2026-07-22T19:08:38
 ---
 
 # Task Editor
@@ -53,6 +53,15 @@ For a file task, the editor can also show the Markdown body alongside the fields
 
 ![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
 
+## Parent and subtask cards
+
+When a task has a parent, its own direct subtasks, or both, the editor shows them as small cards near the top, above the fields, so you can see the immediate family without leaving the task you opened. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]].
+
+- A **parent card** is navigation only. Click it to open the parent's own editor; there is nothing to complete from here.
+- A **subtask card** for an open subtask offers a **complete** action on hover or keyboard focus, so you can check off a direct subtask without leaving the parent task's editor. A finished or cancelled subtask's card has no such action.
+
+This shows only **direct** parent and children. For a task's whole subtree, run **Subtasks** from its contextual menu to open the [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]] instead.
+
 ## Reminder rows
 
 Reminders get their own rows, one for **ReminderDatetimes** and one for **ReminderRules**, and they behave a little differently from a single-value field. Each reminder on the task appears as its own chip in the row, so a task with three reminders shows three chips rather than one crowded value.
@@ -93,3 +102,5 @@ Operon settings for this live in **Settings → Operon → Interface → Task Ed
 - [[DOCS-020 Task Creator|Task Creator]]
 - [[DOCS-012 Inline task syntax|Inline task syntax]]
 - [[DOCS-116 Reminders|Reminders]]
+- [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
+- [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]]

@@ -11,7 +11,7 @@ tags:
   - settings
   - chips
   - configure
-Updated: 2026-07-20T15:16:36
+Updated: 2026-07-22T19:06:07
 ---
 
 # Task chips: display and behavior
@@ -60,7 +60,7 @@ For each chip on each surface you can turn its visibility on or off, and set it 
 
 ## Kanban card chips
 
-Kanban cards use the **Kanban Task Chips** surface. On desktop, Kanban chips behave like the same chips elsewhere: editable chips open their pickers, link-like chips open or preview their target, and location chips open the map popover. Kanban does not show hidden-chip `+N` counts, so a card only shows the chips you chose to display.
+Kanban cards use the **Kanban Task Chips** surface. On desktop, Kanban chips behave like the same chips elsewhere: editable chips open their pickers, link-like chips open or preview their target, and location chips open the map popover. A card only shows the chips you chose to display, with nothing standing in for the ones you hid.
 
 The end of the Kanban Task Chips page also has **Kanban Task Actions**. These control the trailing action chips on Kanban cards, such as Play, Pin, Note, Add subtask, and Open checkboxes. When the Play action is enabled, it turns into Stop while that task's timer is running.
 
@@ -112,7 +112,7 @@ Reminders differ from every other field here in two ways.
 
 **One chip per reminder, not per field.** A task with two fixed reminders and a rule shows three chips, each carrying its own value, rather than one chip holding a list. Clicking a chip reopens that reminder's own picker so you can change or remove it. A fixed reminder shows just the time when it falls today and the date with the time otherwise; a rule shows itself in words, as **1d before Due date**.
 
-**They are hidden by default on every surface.** Most tasks carry no reminders, so the chips stay off until you ask for them, on each surface separately like any other chip. Turning them off is purely visual: the reminders stay on the task and keep firing, and they are not counted toward a surface's hidden-chip indicator either.
+**They are hidden by default on every surface.** Most tasks carry no reminders, so the chips stay off until you ask for them, on each surface separately like any other chip. Turning them off is purely visual: the reminders stay on the task and keep firing regardless.
 
 A chip also carries the reminder's state, which is how you spot one that will not fire:
 
