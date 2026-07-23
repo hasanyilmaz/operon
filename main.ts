@@ -117,6 +117,7 @@ import {
 	isOperonPublicRelocateTaskInput,
 	isOperonPublicTransitionTaskInput,
 	isOperonPublicUpdateTaskInput,
+	isPublicInitialTaskStateAllowed,
 	isPublicInitialWorkflowStateAllowed,
 	isPublicManagedFieldWritable,
 	isPublicTransitionOwnedField,
@@ -2305,10 +2306,16 @@ export default class OperonPlugin extends Plugin {
 					adoptionState.message ||= 'The source line is not an adoptable plain Markdown or Tasks checkbox.';
 					return content;
 				}
-				const initialCheckbox = requestedWorkflow?.checkbox ?? parsed.checkbox;
-				if (!isPublicInitialWorkflowStateAllowed(initialCheckbox)) {
+				const parsedFieldValues = this.getParsedTaskFieldValues(parsed);
+				const parsedWorkflow = resolveWorkflowStatus(this.settings.pipelines, parsedFieldValues['status']);
+				if (!isPublicInitialTaskStateAllowed({
+					checkbox: parsed.checkbox,
+					statusCheckbox: parsedWorkflow?.checkbox ?? null,
+					dateCompleted: parsedFieldValues['dateCompleted'],
+					dateCancelled: parsedFieldValues['dateCancelled'],
+				})) {
 					adoptionState.outcome = 'invalid';
-					adoptionState.message = 'Adopt an open checkbox, then use transitionTask for terminal states.';
+					adoptionState.message = 'Adopt a task without terminal status or dates, then use transitionTask for terminal states.';
 					return content;
 				}
 				if (requestedWorkflow) {

@@ -8,8 +8,10 @@ import {
 	isOperonPublicRelocateTaskInput,
 	isOperonPublicTransitionTaskInput,
 	isOperonPublicUpdateTaskInput,
+	isPublicInitialTaskStateAllowed,
 	isPublicInitialWorkflowStateAllowed,
 	isPublicManagedFieldWritable,
+	isPublicTaskDescriptionSafe,
 	isPublicTransitionOwnedField,
 } from '../src/api/public-api';
 import { getExcludedTablePickerTaskIds } from '../src/ui/table/table-editing';
@@ -25,6 +27,9 @@ function equal<T>(actual: T, expected: T, message?: string): void {
 
 async function run(): Promise<void> {
 	equal(isOperonPublicCreateTaskInput({ source: 'inline', description: 'Valid' }), true);
+	equal(isOperonPublicCreateTaskInput({ source: 'inline', description: 'Fix {{operonId:: existing}}' }), false);
+	equal(isOperonPublicCreateTaskInput({ source: 'file', description: '{{dateCompleted:: 2026-07-23}}' }), false);
+	equal(isOperonPublicCreateTaskInput({ source: 'inline', description: 'Literal {{braces}} without a field' }), true);
 	equal(isOperonPublicCreateTaskInput({ source: 'other', description: 'Invalid' }), false);
 	equal(isOperonPublicCreateTaskInput(null), false);
 	equal(isOperonPublicCreateTaskInput({ source: 'file', description: 'Invalid', tags: [42] }), false);
@@ -40,6 +45,8 @@ async function run(): Promise<void> {
 	equal(isOperonPublicUpdateTaskInput({ description: 'One line' }), true);
 	equal(isOperonPublicUpdateTaskInput({ description: 'First\nSecond' }), false);
 	equal(isOperonPublicUpdateTaskInput({ description: 'First\rSecond' }), false);
+	equal(isOperonPublicUpdateTaskInput({ description: 'Fix {{operonId:: existing}}' }), false);
+	equal(isOperonPublicUpdateTaskInput({ description: '{{dateCompleted:: 2026-07-23}}' }), false);
 	equal(isOperonPublicUpdateTaskInput({ tags: ['valid', 'nested/tag'] }), true);
 	equal(isOperonPublicUpdateTaskInput({ tags: ['ok\n- [ ] injected'] }), false);
 	equal(isOperonPublicUpdateTaskInput({ tags: ['ok\rinjected'] }), false);
@@ -147,6 +154,16 @@ async function run(): Promise<void> {
 	equal(isPublicInitialWorkflowStateAllowed('open'), true);
 	equal(isPublicInitialWorkflowStateAllowed('done'), false);
 	equal(isPublicInitialWorkflowStateAllowed('cancelled'), false);
+	equal(isPublicTaskDescriptionSafe('Plain {{braces}}'), true);
+	equal(isPublicTaskDescriptionSafe('Plain {{ key :: value }} field'), false);
+	equal(isPublicTaskDescriptionSafe('Unclosed {{operonId:: value'), true);
+	equal(isPublicInitialTaskStateAllowed({ checkbox: 'open' }), true);
+	equal(isPublicInitialTaskStateAllowed({ checkbox: 'done' }), false);
+	equal(isPublicInitialTaskStateAllowed({ checkbox: 'cancelled' }), false);
+	equal(isPublicInitialTaskStateAllowed({ checkbox: 'open', statusCheckbox: 'done' }), false);
+	equal(isPublicInitialTaskStateAllowed({ checkbox: 'open', statusCheckbox: 'cancelled' }), false);
+	equal(isPublicInitialTaskStateAllowed({ checkbox: 'open', dateCompleted: '2026-07-23' }), false);
+	equal(isPublicInitialTaskStateAllowed({ checkbox: 'open', dateCancelled: '2026-07-23' }), false);
 
 	const hierarchy = [
 		{ operonId: 'root', fieldValues: {} },

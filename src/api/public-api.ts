@@ -132,6 +132,23 @@ function isPublicTagArray(value: unknown): value is string[] {
 		});
 }
 
+/** Public descriptions must stay plain text so reparsing cannot create managed inline fields. */
+export function isPublicTaskDescriptionSafe(value: unknown): value is string {
+	if (typeof value !== 'string' || /[\r\n]/u.test(value)) return false;
+	let offset = 0;
+	while (offset < value.length) {
+		const start = value.indexOf('{{', offset);
+		if (start === -1) return true;
+		const end = value.indexOf('}}', start + 2);
+		if (end === -1) return true;
+		const content = value.slice(start + 2, end);
+		const separator = content.indexOf('::');
+		if (separator !== -1 && content.slice(0, separator).trim()) return false;
+		offset = end + 2;
+	}
+	return true;
+}
+
 export function isOperonPublicAdoptInlineTaskInput(value: unknown): value is OperonPublicAdoptInlineTaskInput {
 	return isRecord(value)
 		&& typeof value.targetPath === 'string'
@@ -141,7 +158,8 @@ export function isOperonPublicAdoptInlineTaskInput(value: unknown): value is Ope
 }
 
 export function isOperonPublicCreateTaskInput(value: unknown): value is OperonPublicCreateTaskInput {
-	if (!isRecord(value) || (value.source !== 'inline' && value.source !== 'file') || typeof value.description !== 'string') return false;
+	if (!isRecord(value) || (value.source !== 'inline' && value.source !== 'file')
+		|| !isPublicTaskDescriptionSafe(value.description)) return false;
 	if (!hasOnlyOptionalStrings(value, ['statusId', 'fileTemplateId', 'targetDateKey', 'targetFolder', 'targetPath'])) return false;
 	if (value.tags !== undefined && !isPublicTagArray(value.tags)) return false;
 	if (value.fields !== undefined && !isStringRecord(value.fields)) return false;
@@ -150,7 +168,7 @@ export function isOperonPublicCreateTaskInput(value: unknown): value is OperonPu
 
 export function isOperonPublicUpdateTaskInput(value: unknown): value is OperonPublicUpdateTaskInput {
 	if (!isRecord(value) || !hasOnlyOptionalStrings(value, ['description'])) return false;
-	if (typeof value.description === 'string' && /[\r\n]/u.test(value.description)) return false;
+	if (value.description !== undefined && !isPublicTaskDescriptionSafe(value.description)) return false;
 	if (value.tags !== undefined && !isPublicTagArray(value.tags)) return false;
 	if (value.fields !== undefined && !isStringRecord(value.fields)) return false;
 	return value.properties === undefined || isRawPropertyRecord(value.properties);
@@ -212,6 +230,19 @@ export function isPublicTransitionOwnedField(key: string): boolean {
 /** Creation and adoption seed only open workflow states; terminal invariants belong to transitionTask. */
 export function isPublicInitialWorkflowStateAllowed(checkbox: 'open' | 'done' | 'cancelled'): boolean {
 	return checkbox === 'open';
+}
+
+/** Initial create/adopt state must not smuggle terminal workflow metadata around transitionTask. */
+export function isPublicInitialTaskStateAllowed(input: {
+	checkbox: 'open' | 'done' | 'cancelled';
+	statusCheckbox?: 'open' | 'done' | 'cancelled' | null;
+	dateCompleted?: string;
+	dateCancelled?: string;
+}): boolean {
+	return isPublicInitialWorkflowStateAllowed(input.checkbox)
+		&& (!input.statusCheckbox || isPublicInitialWorkflowStateAllowed(input.statusCheckbox))
+		&& !input.dateCompleted?.trim()
+		&& !input.dateCancelled?.trim();
 }
 
 /** Public mutations may write only explicitly synchronized, non-internal managed fields. */
