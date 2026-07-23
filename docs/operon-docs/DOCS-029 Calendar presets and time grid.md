@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
-  - "[[DOCS-034 Time tracking|Time tracking]]"
-  - "[[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]]"
 Notes: Save Calendar layouts, pick a grid type, and tune the timed grid
 Icon: calendar-cog
 Color: "#0284c7"
-tags:
-  - operon
-  - calendar
-  - plan
-  - presets
-  - time
-Updated: 2026-06-27T19:46:16
+Updated: 2026-07-23T16:45:34
 ---
 
 # Calendar presets and time grid

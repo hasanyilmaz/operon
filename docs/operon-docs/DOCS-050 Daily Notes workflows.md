@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-008 Essential settings to configure first|Essential settings to configure first]]"
-  - "[[DOCS-011 Inline tasks|Inline tasks]]"
-  - "[[DOCS-009 Create your first task|Create your first task]]"
 Notes: Capture inline tasks into your daily note, dated automatically
 Icon: calendar-check
 Color: "#059669"
-tags:
-  - operon
-  - dailynotes
-  - capture
-  - inlinetask
-  - howto
-Updated: 2026-07-10T20:31:43
+Updated: 2026-07-23T16:45:34
 ---
 
 # Daily Notes workflows

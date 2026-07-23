@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-024 Task templates|Task templates]]"
-  - "[[DOCS-061 operonId template variables|operonId template variables]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
 Notes: Use Templater and QuickAdd to capture Operon tasks from a template
 Icon: wand-sparkles
 Color: "#059669"
-tags:
-  - operon
-  - templater
-  - quickadd
-  - capture
-  - howto
-Updated: 2026-07-10T20:31:43
+Updated: 2026-07-23T16:45:34
 ---
 
 # Templater and QuickAdd workflows

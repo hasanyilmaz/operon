@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-025 Filter View|Filter View]]"
-  - "[[DOCS-010 Build your first filtered view|Build your first filtered view]]"
-  - "[[DOCS-018 Task properties|Task properties]]"
 Notes: The conditions, operators, and groups that make up an Operon filter
 Icon: list-filter
 Color: "#0284c7"
-tags:
-  - operon
-  - filterview
-  - search
-  - conditions
-Updated: 2026-07-18T15:13:08
+Updated: 2026-07-23T16:45:34
 ---
 
 # Filter conditions and operators

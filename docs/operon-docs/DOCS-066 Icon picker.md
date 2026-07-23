@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-041 Task chips display and behavior|Task chips]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
 Notes: Search the Lucide icon library to set a task or field icon
 Icon: shapes
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - icon
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Icon picker

@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-105 Table overview|Table overview]]"
-  - "[[DOCS-108 Table summaries|Table summaries]]"
-  - "[[DOCS-106 Table columns|Table columns]]"
 Notes: Arrange table rows into sections and order them by any field
 Icon: arrow-up-down
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - configure
-Updated: 2026-07-18T15:07:38
+Updated: 2026-07-23T16:45:34
 ---
 
 # Table grouping and sorting

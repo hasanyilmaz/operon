@@ -1,15 +1,8 @@
 ---
-Up:
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
 Notes: The object model behind Operon tasks
 Icon: network
 Color: "#16a34a"
-tags:
-  - operon
-  - taskmodel
-Updated: 2026-07-05T19:28:23
+Updated: 2026-07-23T16:45:34
 ---
 
 # Operon core concepts

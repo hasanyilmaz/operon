@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]]"
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
-  - "[[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]"
 Notes: The Calendar sidebar's Task Pool, its modes, search, and how it relates to the preset filter
 Icon: calendar-plus
 Color: "#0284c7"
-tags:
-  - operon
-  - calendar
-  - taskpool
-  - plan
-  - search
-Updated: 2026-07-22T18:56:26
+Updated: 2026-07-23T16:45:34
 ---
 
 # Calendar Task Pool

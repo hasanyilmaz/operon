@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-034 Time tracking|Time tracking]]"
-  - "[[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]]"
-  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
 Notes: Review and correct the time sessions you have tracked
 Icon: history
 Color: "#4f46e5"
-tags:
-  - operon
-  - timetracking
-  - review
-  - track
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Time session history

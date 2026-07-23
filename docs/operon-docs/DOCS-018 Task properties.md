@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-040 Custom keys|Custom keys]]"
 Notes: What a task property is, the four traits every property has, and the same fields shown both ways
 Icon: table-properties
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - taskproperties
-Updated: 2026-07-20T15:10:53
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task properties

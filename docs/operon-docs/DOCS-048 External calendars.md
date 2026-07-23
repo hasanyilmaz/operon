@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
-  - "[[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]"
-  - "[[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]]"
 Notes: Show read-only ICS calendars alongside your tasks
 Icon: calendar-sync
 Color: "#059669"
-tags:
-  - operon
-  - externalcalendars
-  - calendar
-  - integration
-Updated: 2026-07-13T23:36:16
+Updated: 2026-07-23T16:45:34
 ---
 
 # External calendars

@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-024 Task templates|Task templates]]"
 Notes: Command that creates a task as its own note, from several starting points
 Icon: file-plus
 Color: "#475569"
-tags:
-  - operon
-  - commands
-  - filetask
-  - capture
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Create file task

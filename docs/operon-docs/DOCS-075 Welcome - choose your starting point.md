@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-003 Getting started with Operon|Getting started with Operon]]"
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
-  - "[[DOCS-002 How to use these docs|How to use these docs]]"
 Notes: Pick the right starting path based on what you used before Operon
 Icon: compass
 Color: "#2563eb"
-tags:
-  - operon
-  - start
-  - navigation
-  - newuser
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Welcome to Operon: choose your starting point

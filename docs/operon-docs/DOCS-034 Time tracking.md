@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
-  - "[[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]]"
 Notes: Record real effort with TrackTime and FlowTime, with estimate and duration examples
 Icon: timer
 Color: "#9333ea"
-tags:
-  - operon
-  - timetracking
-  - track
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Time tracking

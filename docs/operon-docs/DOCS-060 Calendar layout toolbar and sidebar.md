@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
-  - "[[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]"
-  - "[[DOCS-048 External calendars|External calendars]]"
 Notes: Switch the Calendar between a top toolbar and a side panel
 Icon: panel-left
 Color: "#0284c7"
-tags:
-  - operon
-  - calendar
-  - plan
-  - layout
-Updated: 2026-07-13T23:33:39
+Updated: 2026-07-23T16:45:34
 ---
 
 # Calendar layout: toolbar and sidebar

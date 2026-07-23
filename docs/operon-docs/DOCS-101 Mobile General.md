@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-096 Mobile Calendar|Mobile Calendar]]"
-  - "[[DOCS-100 Mobile Kanban|Mobile Kanban]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
 Notes: General phone-first behavior, the quick-create button, the mobile Task Editor toolbar, and touch menus
 Icon: smartphone
 Color: "#ca8a04"
-tags:
-  - operon
-  - mobile
-  - interface
-  - configure
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Mobile General

@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-033 Recurring tasks|Recurring tasks]]"
-  - "[[DOCS-064 Recurrence picker|Recurrence picker]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
 Notes: The anatomy of a recurrence rule and what each mode is for, with examples
 Icon: repeat-2
 Color: "#9333ea"
-tags:
-  - operon
-  - recurrence
-  - automation
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Recurrence rules and modes

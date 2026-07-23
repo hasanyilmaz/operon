@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-106 Table columns|Table columns]]"
-  - "[[DOCS-105 Table overview|Table overview]]"
-  - "[[DOCS-041 Task chips display and behavior|Task chips: display and behavior]]"
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - cells
-  - configure
-Updated: 2026-07-16T20:08:49
+Updated: 2026-07-23T16:45:34
 ---
 
 # Table cells: display and behavior

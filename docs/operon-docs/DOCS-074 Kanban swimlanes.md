@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-030 Kanban overview|Kanban overview]]"
-  - "[[DOCS-031 Kanban manual order|Kanban manual order]]"
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
 Notes: Split the Kanban into horizontal lanes by a second field
 Icon: rows-3
 Color: "#0284c7"
-tags:
-  - operon
-  - kanban
-  - plan
-  - swimlanes
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Kanban swimlanes

@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-078 Welcome - coming from TaskNotes|Coming from TaskNotes]]"
-  - "[[DOCS-093 How to migrate from TaskNotes|How to migrate from TaskNotes]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
 Notes: Common questions from users moving from the TaskNotes plugin
 Icon: circle-question-mark
 Color: "#2563eb"
-tags:
-  - operon
-  - faq
-  - tasknotes
-  - migrate
-Updated: 2026-06-28T18:10:47
+Updated: 2026-07-23T16:45:34
 ---
 
 # FAQ for TaskNotes users

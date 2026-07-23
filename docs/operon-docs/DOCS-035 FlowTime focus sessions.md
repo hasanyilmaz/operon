@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-034 Time tracking|Time tracking]]"
-  - "[[DOCS-053 Time session history|Time session history]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
 Notes: Run a countdown focus session on a task, with breaks and overtime
 Icon: hourglass
 Color: "#9333ea"
-tags:
-  - operon
-  - timetracking
-  - flowtime
-  - track
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # FlowTime focus sessions

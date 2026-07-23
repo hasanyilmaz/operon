@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-033 Recurring tasks|Recurring tasks]]"
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
 Notes: Build a recurrence rule with controls instead of writing it by hand
 Icon: repeat
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - recurrence
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Recurrence picker

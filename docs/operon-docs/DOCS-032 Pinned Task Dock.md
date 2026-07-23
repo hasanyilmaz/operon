@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
-  - "[[DOCS-038 Task priorities|Task priorities]]"
 Notes: Keep chosen tasks always in view
 Icon: pin
 Color: "#0284c7"
-tags:
-  - operon
-  - pinnedtasks
-  - plan
-Updated: 2026-07-22T19:14:33
+Updated: 2026-07-23T16:45:34
 ---
 
 # Pinned Task Dock

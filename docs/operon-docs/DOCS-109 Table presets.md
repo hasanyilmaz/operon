@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-105 Table overview|Table overview]]"
-  - "[[DOCS-025 Filter View|Filter View]]"
-  - "[[DOCS-106 Table columns|Table columns]]"
 Notes: Save a table as a preset and switch between several tables
 Icon: table-2
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - presets
-  - configure
-Updated: 2026-07-13T23:51:22
+Updated: 2026-07-23T16:45:34
 ---
 
 # Table presets

@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-041 Task chips display and behavior|Task chips: display and behavior]]"
-  - "[[DOCS-027 Task Finder|Task Finder]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
 Notes: Render task chips and actions on a task wikilink, for file and inline tasks
 Icon: link
 Color: "#ca8a04"
-tags:
-  - operon
-  - interface
-  - wikilink
-  - overlay
-Updated: 2026-06-29T12:20:19
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task Wikilink Overlay

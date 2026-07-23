@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-011 Inline tasks|Inline tasks]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
 Notes: Convert Obsidian Tasks emoji lines into Operon inline tasks, with a before and after example
 Icon: move-right
 Color: "#2563eb"
-tags:
-  - operon
-  - migration
-  - migrate
-  - tasks
-  - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Obsidian Tasks migration

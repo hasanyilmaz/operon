@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-045 Markdown task storage|Markdown task storage]]"
-  - "[[DOCS-055 Duplicate IDs|Duplicate IDs]]"
 Notes: When a task is not showing in Operon's views, and how to fix it
 Icon: search-x
 Color: "#dc2626"
-tags:
-  - operon
-  - troubleshoot
-  - search
-  - index
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Missing tasks

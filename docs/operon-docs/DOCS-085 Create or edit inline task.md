@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
-  - "[[DOCS-011 Inline tasks|Inline tasks]]"
 Notes: Context-aware command that creates, converts, upgrades, or edits at the cursor
 Icon: square-pen
 Color: "#475569"
-tags:
-  - operon
-  - commands
-  - inlinetask
-  - edit
-  - capture
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Create or edit inline task

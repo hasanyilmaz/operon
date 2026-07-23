@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-091 Rebuild full index|Rebuild full index]]"
-  - "[[DOCS-046 Plugin data and state files|Plugin data and state files]]"
 Notes: Command that shows a quick notice of Operon task index counts
 Icon: database
 Color: "#475569"
-tags:
-  - operon
-  - commands
-  - index
-  - stats
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Show index stats

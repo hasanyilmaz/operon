@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-020 Task Creator|Task Creator]]"
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
 Notes: Walk through writing a task and triggering field pickers in the Task Creator
 Icon: square-pen
 Color: "#0F766E"
-tags:
-  - operon
-  - taskcreator
-  - capture
-  - pickers
-  - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # How to create a task with Task Creator

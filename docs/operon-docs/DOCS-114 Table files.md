@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-109 Table presets|Table presets]]"
-  - "[[DOCS-105 Table overview|Table overview]]"
-  - "[[DOCS-044 Where Operon stores data|Where Operon stores data]]"
 Notes: How a saved table lives as its own portable .table file in your vault
 Icon: file-cog
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - presets
-  - files
-  - configure
-Updated: 2026-07-14T00:13:46
+Updated: 2026-07-23T16:45:34
 ---
 
 # Table files
@@ -35,7 +25,6 @@ New Table files are created in an **Operon/Tables** folder at the root of your v
 
 - **New** or **Duplicate** from a preset's settings.
 - A **related view** created from a Calendar, Kanban, or Filter View that spins up a new Table preset. See [[DOCS-025 Filter View|Filter View]].
-- The **automatic migration** of presets that predate this file system (see "Migrating older vaults" below).
 
 `Operon/Tables` is a starting point, not a cage. Once a file exists, you can move it anywhere in the vault, rename it, or organize it alongside the project it belongs to, and Operon keeps tracking the same preset at its new location.
 
@@ -92,19 +81,6 @@ Two Table files can end up sharing the same internal id, most often from copying
 
 Resolve it from **Settings → Operon → Views → Tables**: the conflicted entry in the **Table Presets** list is flagged with an **ID conflict** label and offers to keep one file as the original. Choose which file keeps the existing id, and Operon assigns fresh ids to the others and renames them so they load as normal, independent Table presets, no data is lost, they simply become separate tables from that point on.
 
-## Migrating older vaults
-
-If your vault has Table presets from before this file system existed, they migrate into `.table` files automatically, the first time you open this version of Operon:
-
-- Existing presets move into `Operon/Tables`, keeping their name, order, and every setting they already had.
-- Operon keeps a **verified backup** of the pre-migration data until you explicitly confirm the migration is done.
-- **Settings → Operon → Views → Tables** shows a **Table file migration** status card with one of five states, **Pending**, **Running**, **Needs review**, **Completed**, or **Failed**, and the actions that apply to that state.
-- **Needs review** shows up when a preset could not move cleanly, for example its destination filename collided with a file that already existed. The settings card lets you review and resolve those cases individually.
-- **Finalize migration** is a separate, explicit step you take once you are satisfied the migrated files are complete and correct. Finalizing **permanently deletes** the verified backup and the detailed migration journal, and cannot be undone, so Operon asks you to confirm before it happens. Until you finalize, the backup and recovery options stay available.
-- If a legacy preset's backup is still around, it appears as a **recovery backup** you can restore as a brand-new Table preset, even after the rest of the migration has completed.
-
-All of these actions, retrying the migration, resolving an ID conflict, recovering a backup, and finalizing, live on the migration status card in **Settings → Operon → Views → Tables**, each one appearing only when it is relevant to your vault's current migration state.
-
 ## Wikilinks and Page Preview
 
 A `.table` file is an ordinary vault file as far as Obsidian's linking is concerned:
@@ -129,11 +105,9 @@ A `.table` file is an ordinary vault file as far as Obsidian's linking is concer
 
 **Two Table files ended up with the same id. What do I do?** In **Settings → Operon → Views → Tables**, the conflicted entry in the Table Presets list is flagged and lets you keep one file as the original. Choose the file that should keep the existing id; the others get new ids and are renamed automatically.
 
-**What happened to my old presets after updating?** They migrated automatically into `.table` files under `Operon/Tables` the first time you opened this version of Operon. See "Migrating older vaults" above.
-
 ## Settings
 
-Table file migration status, conflict resolution, and recovery backups all live in **Settings → Operon → Views → Tables**, alongside the rest of the Table Preset settings. Day-to-day renaming, duplicating, and deleting a Table file are done from **Edit preset** or the file's own context menu, not from Settings. See [[DOCS-109 Table presets|Table presets]].
+Open this page from the help action beside **General Table Settings** in **Settings → Operon → Views → Tables**. Duplicate-ID conflict resolution remains in the **Table Presets** list, where each conflicted entry lets you choose which file keeps the existing id. Day-to-day renaming, duplicating, and deleting a Table file are done from **Edit preset** or the file's own context menu. See [[DOCS-109 Table presets|Table presets]].
 
 ## Related
 

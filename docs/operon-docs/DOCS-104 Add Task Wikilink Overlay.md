@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-103 Task Wikilink Overlay|Task Wikilink Overlay]]"
-  - "[[DOCS-027 Task Finder|Task Finder]]"
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
 Notes: Insert a task link at the cursor using Task Finder, with overlay controls
 Icon: link
 Color: "#16a34a"
-tags:
-  - operon
-  - command
-  - wikilink
-  - overlay
-  - howto
-Updated: 2026-06-28T19:12:23
+Updated: 2026-07-23T16:45:34
 ---
 
 # Add Task Wikilink Overlay

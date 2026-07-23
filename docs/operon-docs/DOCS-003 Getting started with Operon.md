@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-004 Operon system map|Operon system map]]"
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
-  - "[[DOCS-007 Install and enable Operon|Install and enable Operon]]"
 Notes: Orientation starting point for new Operon users
 Icon: rocket
 Color: "#16a34a"
-tags:
-  - operon
-  - start
-  - newuser
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Getting started with Operon

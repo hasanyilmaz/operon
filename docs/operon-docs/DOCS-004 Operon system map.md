@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-034 Time tracking|Time tracking]]"
-  - "[[DOCS-032 Pinned Task Dock|Pinned Task Dock]]"
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
 Notes: What exists in Operon and when to use each part
 Icon: map
 Color: "#16a34a"
-tags:
-  - operon
-  - start
-  - map
-Updated: 2026-07-05T19:24:35
+Updated: 2026-07-23T16:45:34
 ---
 
 # Operon system map

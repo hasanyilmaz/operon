@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
-  - "[[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]"
-  - "[[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]]"
 Notes: How the Calendar works on a phone, its view modes, cycle, and per-mode presets
 Icon: smartphone
 Color: "#0284c7"
-tags:
-  - operon
-  - calendar
-  - mobile
-  - plan
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Mobile Calendar

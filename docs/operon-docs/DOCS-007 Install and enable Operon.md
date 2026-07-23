@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-008 Essential settings to configure first|Essential settings to configure first]]"
 Notes: Install the plugin and turn it on
 Icon: download
 Color: "#16a34a"
-tags:
-  - operon
-  - start
-  - install
-  - configure
-  - howto
-Updated: 2026-07-18T15:13:08
+Updated: 2026-07-23T16:45:34
 ---
 
 # Install and enable Operon

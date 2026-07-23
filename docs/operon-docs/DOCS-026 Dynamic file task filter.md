@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-025 Filter View|Filter View]]"
 Notes: A file task's subtask tree, embedded automatically in its own note
 Icon: file-search
 Color: "#0284c7"
-tags:
-  - operon
-  - filetask
-  - subtasks
-  - filterview
-  - embed
-Updated: 2026-07-13T23:40:03
+Updated: 2026-07-23T16:45:34
 ---
 
 # Dynamic file task filter

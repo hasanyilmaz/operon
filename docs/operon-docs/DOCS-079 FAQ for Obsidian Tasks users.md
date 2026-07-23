@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-077 Welcome - coming from Obsidian Tasks|Coming from Obsidian Tasks]]"
-  - "[[DOCS-049 Obsidian Tasks migration|Obsidian Tasks migration]]"
-  - "[[DOCS-025 Filter View|Filter View]]"
 Notes: Common questions from users moving off the Obsidian Tasks plugin
 Icon: circle-question-mark
 Color: "#2563eb"
-tags:
-  - operon
-  - faq
-  - tasks
-  - migrate
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # FAQ for Obsidian Tasks users

@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
-  - "[[DOCS-030 Kanban overview|Kanban overview]]"
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
 Notes: When a task looks wrong on the Calendar or Kanban, and why
 Icon: bug
 Color: "#dc2626"
-tags:
-  - operon
-  - troubleshoot
-  - calendar
-  - kanban
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Calendar or Kanban rendering issues

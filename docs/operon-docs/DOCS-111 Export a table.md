@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-105 Table overview|Table overview]]"
-  - "[[DOCS-110 Embed a table in a note|Embed a table in a note]]"
-  - "[[DOCS-109 Table presets|Table presets]]"
 Notes: Copy or download a table as Markdown or CSV, or grab its embed code
 Icon: download
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - export
-  - howto
-Updated: 2026-07-07T21:03:09
+Updated: 2026-07-23T16:45:34
 ---
 
 # Export a table

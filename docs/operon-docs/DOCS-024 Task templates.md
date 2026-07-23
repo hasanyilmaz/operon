@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]]"
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
 Notes: Start file tasks from a reusable body and frontmatter
 Icon: file-code
 Color: "#ea580c"
-tags:
-  - operon
-  - taskcreator
-  - filetask
-  - templates
-  - capture
-Updated: 2026-07-18T15:13:08
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task templates

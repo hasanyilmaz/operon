@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-010 Build your first filtered view|Build your first filtered view]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
-  - "[[DOCS-014 Inline vs file tasks|Inline vs file tasks]]"
 Notes: Make your first Operon task end to end
 Icon: square-plus
 Color: "#16a34a"
-tags:
-  - operon
-  - start
-  - taskcreator
-  - capture
-  - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Create your first task

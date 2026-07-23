@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-021 Task Editor|Task Editor]]"
-  - "[[DOCS-020 Task Creator|Task Creator]]"
-  - "[[DOCS-018 Task properties|Task properties]]"
 Notes: How the Task Creator and Editor open the right picker for each field
 Icon: mouse-pointer-click
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - taskcreator
-  - taskeditor
-Updated: 2026-07-20T15:19:54
+Updated: 2026-07-23T16:45:34
 ---
 
 # Field pickers overview

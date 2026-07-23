@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-024 Task templates|Task templates]]"
-  - "[[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]]"
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
 Notes: Use Operon task variables and Obsidian Templates-compatible creation variables
 Icon: braces
 Color: "#059669"
-tags:
-  - operon
-  - operonid
-  - templates
-  - automation
-Updated: 2026-07-10T20:31:43
+Updated: 2026-07-23T16:45:34
 ---
 
 # Template variables

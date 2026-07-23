@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-044 Where Operon stores data|Where Operon stores data]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-047 Sync conflict safety|Sync conflict safety]]"
 Notes: Where Operon keeps its settings, working state, and rebuildable index
 Icon: folder-cog
 Color: "#0891b2"
-tags:
-  - operon
-  - data
-  - storage
-  - index
-  - settings
-Updated: 2026-07-16T20:09:45
+Updated: 2026-07-23T16:45:34
 ---
 
 # Plugin data and state files

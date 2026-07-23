@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
-  - "[[DOCS-034 Time tracking|Time tracking]]"
-  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-tags:
-  - operon
-  - taskeditor
-  - edit
-  - pickers
-Updated: 2026-07-22T19:08:38
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task Editor

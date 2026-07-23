@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
 Notes: A floating editor for a single free-text field, opened in place across surfaces
 Icon: square-pen
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - fieldcontrol
-Updated: 2026-07-07T21:03:09
+Updated: 2026-07-23T16:45:34
 ---
 
 # Text field editor popover

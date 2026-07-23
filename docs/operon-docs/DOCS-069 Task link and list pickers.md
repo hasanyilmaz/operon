@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
 Notes: Pickers that select tasks, notes, and lists of values, plus the estimate picker
 Icon: link
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - links
-  - lists
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task link and list pickers

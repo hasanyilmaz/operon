@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
-  - "[[DOCS-009 Create your first task|Create your first task]]"
 Notes: The few settings to set before real use
 Icon: sliders-horizontal
 Color: "#16a34a"
-tags:
-  - operon
-  - start
-  - settings
-  - configure
-  - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Essential settings to configure first

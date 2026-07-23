@@ -1,15 +1,8 @@
 ---
-Up:
-  - "[[DOCS-021 Task Editor|Task Editor]]"
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
-  - "[[DOCS-054 Missing tasks|Missing tasks]]"
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-tags:
-  - operon
-  - commands
-Updated: 2026-07-07T14:01:54
+Updated: 2026-07-23T16:45:34
 ---
 
 # Command palette reference

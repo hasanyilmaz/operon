@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
 Notes: Command that collapses a file task back into a single inline task
 Icon: refresh-cw
 Color: "#475569"
-tags:
-  - operon
-  - commands
-  - filetask
-  - inlinetask
-  - convert
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Convert file task to inline task

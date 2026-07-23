@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]"
-  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
-  - "[[DOCS-025 Filter View|Filter View]]"
 Notes: Lightweight checklists inside a task or file, how they are parsed, and how they move on conversion
 Icon: list-checks
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - checkboxes
-Updated: 2026-06-28T18:10:47
+Updated: 2026-07-23T16:45:34
 ---
 
 # Plain checkbox lists

@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-030 Kanban overview|Kanban overview]]"
-  - "[[DOCS-074 Kanban swimlanes|Kanban swimlanes]]"
-  - "[[DOCS-031 Kanban manual order|Kanban manual order]]"
 Notes: How the Kanban board works on a phone, with touch layout, status snap, and the compact swimlane rail
 Icon: smartphone
 Color: "#0284c7"
-tags:
-  - operon
-  - kanban
-  - mobile
-  - plan
-Updated: 2026-07-01T15:29:10
+Updated: 2026-07-23T16:45:34
 ---
 
 # Mobile Kanban

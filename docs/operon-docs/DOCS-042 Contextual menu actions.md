@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]]"
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
 Notes: The right-click and hover action menu on tasks
 Icon: menu
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - contextmenu
-  - configure
-Updated: 2026-07-22T18:57:46
+Updated: 2026-07-23T16:45:34
 ---
 
 # Contextual menu actions

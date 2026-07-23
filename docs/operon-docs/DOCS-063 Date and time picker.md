@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
 Notes: Set dates and times by typing them in words or picking from a calendar
 Icon: calendar-days
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - date
-  - time
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Date and time picker

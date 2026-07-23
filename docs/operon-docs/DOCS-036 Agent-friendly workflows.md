@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
 Notes: Why Operon's data works well for AI agents, and the rules that keep edits correct
 Icon: bot-message-square
 Color: "#9333ea"
-tags:
-  - operon
-  - automation
-  - agent
-  - automate
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Agent-friendly workflows

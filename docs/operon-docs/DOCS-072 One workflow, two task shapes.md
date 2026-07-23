@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
-  - "[[DOCS-014 Inline vs file tasks|Inline vs file tasks]]"
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
 Notes: Why inline and file tasks are one system, not two
 Icon: workflow
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - inlinetask
-  - filetask
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # One workflow, two task shapes

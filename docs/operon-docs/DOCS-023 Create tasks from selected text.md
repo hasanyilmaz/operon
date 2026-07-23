@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-011 Inline tasks|Inline tasks]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
 Notes: Turn lines you already wrote into Operon tasks
 Icon: text-cursor-input
 Color: "#ea580c"
-tags:
-  - operon
-  - capture
-  - inlinetask
-  - selectedtext
-  - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Create tasks from selected text

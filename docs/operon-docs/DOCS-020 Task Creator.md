@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-011 Inline tasks|Inline tasks]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-tags:
-  - operon
-  - taskcreator
-  - capture
-  - pickers
-Updated: 2026-07-20T15:16:36
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task Creator

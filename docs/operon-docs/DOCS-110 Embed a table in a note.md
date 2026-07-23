@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-105 Table overview|Table overview]]"
-  - "[[DOCS-109 Table presets|Table presets]]"
-  - "[[DOCS-083 Embed a filter in a note|Embed a filter in a note]]"
 Notes: Render a preset's live, editable table inside any note
 Icon: panel-top
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - embed
-  - howto
-Updated: 2026-07-07T21:03:09
+Updated: 2026-07-23T16:45:34
 ---
 
 # Embed a table in a note

@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-058 Operon inheritance rules|Operon inheritance rules]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
 Notes: Generate future work from a repeating pattern
 Icon: repeat
 Color: "#9333ea"
-tags:
-  - operon
-  - recurrence
-  - automation
-Updated: 2026-07-20T15:56:48
+Updated: 2026-07-23T16:45:34
 ---
 
 # Recurring tasks

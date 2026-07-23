@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-041 Task chips display and behavior|Task chips]]"
-  - "[[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]"
 Notes: Give a task a color from a named palette or a full custom picker
 Icon: palette
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - color
-Updated: 2026-07-07T16:02:20
+Updated: 2026-07-23T16:45:34
 ---
 
 # Color picker

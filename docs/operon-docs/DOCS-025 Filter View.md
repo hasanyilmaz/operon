@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-010 Build your first filtered view|Build your first filtered view]]"
-  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
-  - "[[DOCS-017 Plain checkbox lists|Plain checkbox lists]]"
 Notes: Query tasks with saved, condition-based views
 Icon: list-filter
 Color: "#0284c7"
-tags:
-  - operon
-  - filterview
-  - plan
-  - search
-Updated: 2026-07-18T15:13:08
+Updated: 2026-07-23T16:45:34
 ---
 
 # Filter View

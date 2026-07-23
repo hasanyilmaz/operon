@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
-  - "[[DOCS-030 Kanban overview|Kanban overview]]"
 Notes: Build your first Filter View
 Icon: list-filter
 Color: "#16a34a"
-tags:
-  - operon
-  - start
-  - filterview
-  - plan
-  - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Build your first filtered view

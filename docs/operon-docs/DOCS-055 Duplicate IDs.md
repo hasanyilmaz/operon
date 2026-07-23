@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
 Notes: Detect and resolve two tasks that share one operonId
 Icon: copy
 Color: "#dc2626"
-tags:
-  - operon
-  - troubleshoot
-  - operonid
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Duplicate IDs

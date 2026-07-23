@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-025 Filter View|Filter View]]"
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
-  - "[[DOCS-109 Table presets|Table presets]]"
 Notes: See tasks as rows and columns on the Operon Table
 Icon: table
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - plan
-Updated: 2026-07-13T23:51:22
+Updated: 2026-07-23T16:45:34
 ---
 
 # Table overview

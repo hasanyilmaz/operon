@@ -2,11 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-tags:
-  - operon
-  - start
-  - navigation
-Updated: 2026-07-20T14:38:46
+Updated: 2026-07-23T16:45:34
 ---
 
 # Operon Docs

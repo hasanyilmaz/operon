@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
-  - "[[DOCS-055 Duplicate IDs|Duplicate IDs]]"
 Notes: The durable identity that keeps a task the same across every surface
 Icon: fingerprint-pattern
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - operonid
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task identity and operonId

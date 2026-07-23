@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-055 Duplicate IDs|Duplicate IDs]]"
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
-  - "[[DOCS-044 Where Operon stores data|Where Operon stores data]]"
 Notes: How Operon's data behaves under sync, and how to resolve conflicts
 Icon: shield-check
 Color: "#0891b2"
-tags:
-  - operon
-  - data
-  - sync
-  - troubleshoot
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Sync conflict safety

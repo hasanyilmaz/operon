@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-001 Operon Docs MOC|Operon Docs MOC]]"
-  - "[[DOCS-003 Getting started with Operon|Getting started with Operon]]"
-  - "[[DOCS-004 Operon system map|Operon system map]]"
 Notes: How to read this bundle in Obsidian or hand it to an LLM
 Icon: book-open
 Color: "#334155"
-tags:
-  - operon
-  - start
-  - navigation
-  - agent
-Updated: 2026-07-11T13:50:20
+Updated: 2026-07-23T16:45:34
 ---
 
 # How to use these docs

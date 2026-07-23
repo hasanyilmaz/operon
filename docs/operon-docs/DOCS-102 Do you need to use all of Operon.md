@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-004 Operon system map|Operon system map]]"
-  - "[[DOCS-003 Getting started with Operon|Getting started with Operon]]"
-  - "[[DOCS-075 Welcome - choose your starting point|Welcome: choose your starting point]]"
 Notes: No, you do not have to use every Operon surface; Operon scales down to a plain, minimal setup
 Icon: feather
 Color: "#16a34a"
-tags:
-  - operon
-  - start
-  - minimal
-  - newuser
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Do you need to use all of Operon?

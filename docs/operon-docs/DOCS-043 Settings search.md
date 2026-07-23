@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-008 Essential settings to configure first|Essential settings to configure first]]"
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
 Notes: Find any Operon setting from Obsidian's settings search
 Icon: search
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - search
-  - configure
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Settings search

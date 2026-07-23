@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-093 How to migrate from TaskNotes|How to migrate from TaskNotes]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
 Notes: Orientation for users moving from the TaskNotes plugin, with a before and after at a glance
 Icon: move-right
 Color: "#2563eb"
-tags:
-  - operon
-  - start
-  - tasknotes
-  - migrate
-Updated: 2026-06-28T18:10:47
+Updated: 2026-07-23T16:45:34
 ---
 
 # Welcome: coming from TaskNotes

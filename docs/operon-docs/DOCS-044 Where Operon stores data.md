@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-045 Markdown task storage|Markdown task storage]]"
-  - "[[DOCS-046 Plugin data and state files|Plugin data and state files]]"
-  - "[[DOCS-047 Sync conflict safety|Sync conflict safety]]"
 Notes: The two places Operon keeps data, all inside your vault
 Icon: database
 Color: "#0891b2"
-tags:
-  - operon
-  - data
-  - storage
-Updated: 2026-07-13T23:27:40
+Updated: 2026-07-23T16:45:34
 ---
 
 # Where Operon stores data

@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-041 Task chips display and behavior|Task chips]]"
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-007 Install and enable Operon|Install and enable Operon]]"
 Notes: Set a task's location from a place note, a map, or coordinates
 Icon: map-pin
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - location
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Location picker

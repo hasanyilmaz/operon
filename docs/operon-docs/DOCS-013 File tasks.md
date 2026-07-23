@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
-  - "[[DOCS-033 Recurring tasks|Recurring tasks]]"
-  - "[[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]"
 Notes: Notes whose frontmatter makes the file itself a task
 Icon: file-text
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - filetask
-Updated: 2026-06-28T18:10:47
+Updated: 2026-07-23T16:45:34
 ---
 
 # File tasks

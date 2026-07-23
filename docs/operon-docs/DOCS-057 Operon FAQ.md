@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-003 Getting started with Operon|Getting started with Operon]]"
-  - "[[DOCS-004 Operon system map|Operon system map]]"
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
 Notes: Common questions across Operon, with links to the full answers
 Icon: circle-question-mark
 Color: "#dc2626"
-tags:
-  - operon
-  - faq
-  - troubleshoot
-  - start
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Operon FAQ

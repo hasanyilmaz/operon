@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
-  - "[[DOCS-026 Dynamic file task filter|Dynamic file task filter]]"
 Notes: On-demand pop-up subtask tree for any task
 Icon: git-branch
 Color: "#0284c7"
-tags:
-  - operon
-  - subtasks
-  - filterview
-  - search
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Dynamic Subtasks Filter

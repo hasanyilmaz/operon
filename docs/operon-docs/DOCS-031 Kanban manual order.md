@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-030 Kanban overview|Kanban overview]]"
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
-  - "[[DOCS-038 Task priorities|Task priorities]]"
 Notes: Arrange cards by hand within a Kanban column
 Icon: list-ordered
 Color: "#0284c7"
-tags:
-  - operon
-  - kanban
-  - plan
-  - ordering
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Kanban manual order

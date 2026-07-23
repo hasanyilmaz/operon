@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-025 Filter View|Filter View]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-028 Calendar overview|Calendar overview]]"
 Notes: Look back at finished work and keep completed tasks tidy
 Icon: list-checks
 Color: "#4f46e5"
-tags:
-  - operon
-  - review
-  - completion
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Completed task review

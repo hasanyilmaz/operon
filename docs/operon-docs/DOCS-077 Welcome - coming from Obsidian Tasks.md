@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-049 Obsidian Tasks migration|Obsidian Tasks migration]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
-  - "[[DOCS-025 Filter View|Filter View]]"
 Notes: Orientation for users moving from the Obsidian Tasks plugin, with a before and after at a glance
 Icon: move-right
 Color: "#2563eb"
-tags:
-  - operon
-  - start
-  - tasks
-  - migrate
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Welcome: coming from Obsidian Tasks

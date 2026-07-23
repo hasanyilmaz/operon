@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
-  - "[[DOCS-025 Filter View|Filter View]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
 Notes: Rank tasks by importance for sorting and planning
 Icon: flag
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - priority
-  - configure
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task priorities

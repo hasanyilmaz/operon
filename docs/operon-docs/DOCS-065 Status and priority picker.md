@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
-  - "[[DOCS-038 Task priorities|Task priorities]]"
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
 Notes: Set a task's status and priority by picking from your own lists
 Icon: list-filter
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - status
-  - priority
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Status and priority picker

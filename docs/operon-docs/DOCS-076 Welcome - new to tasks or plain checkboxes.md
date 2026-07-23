@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-003 Getting started with Operon|Getting started with Operon]]"
-  - "[[DOCS-009 Create your first task|Create your first task]]"
-  - "[[DOCS-017 Plain checkbox lists|Plain checkbox lists]]"
 Notes: Start Operon from scratch or from the plain checkboxes you already write
 Icon: list-checks
 Color: "#2563eb"
-tags:
-  - operon
-  - start
-  - newuser
-  - checkboxes
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Welcome: new to tasks or plain checkboxes

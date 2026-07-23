@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-008 Essential settings to configure first|Essential settings to configure first]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-043 Settings search|Settings search]]"
 Notes: Optional cosmetic workspace helpers for scrollbars, side dock tab icons, and collapsing Properties
 Icon: sliders-horizontal
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - tweaks
-  - interface
-  - configure
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Workspace Tweaks

@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-020 Task Creator|Task Creator]]"
-  - "[[DOCS-009 Create your first task|Create your first task]]"
 Notes: Command that opens the full Task Creator from anywhere
 Icon: square-plus
 Color: "#475569"
-tags:
-  - operon
-  - commands
-  - taskcreator
-  - capture
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Create New Operon Task

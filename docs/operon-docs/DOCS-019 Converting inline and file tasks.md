@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-014 Inline vs file tasks|Inline vs file tasks]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
 Notes: Promote an inline task to a file, or collapse a file task back to a line
 Icon: refresh-cw
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - inlinetask
-  - filetask
-  - convert
-Updated: 2026-07-18T15:13:08
+Updated: 2026-07-23T16:45:34
 ---
 
 # Converting inline and file tasks

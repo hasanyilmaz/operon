@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-093 How to migrate from TaskNotes|How to migrate from TaskNotes]]"
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
 Notes: Adopt many existing notes as Operon file tasks in one pass
 Icon: folder-input
 Color: "#0F766E"
-tags:
-  - operon
-  - filetask
-  - convert
-  - migrate
-  - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Bulk convert a folder into file tasks

@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-105 Table overview|Table overview]]"
-  - "[[DOCS-107 Table grouping and sorting|Table grouping and sorting]]"
-  - "[[DOCS-106 Table columns|Table columns]]"
 Notes: Roll a column up into a total at the foot of the table and each group
 Icon: sigma
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - configure
-Updated: 2026-07-18T15:07:38
+Updated: 2026-07-23T16:45:34
 ---
 
 # Table summaries

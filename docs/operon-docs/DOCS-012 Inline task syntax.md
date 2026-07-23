@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
-  - "[[DOCS-040 Custom keys|Custom keys]]"
 Notes: Complete reference for inline task field syntax and property types, with copy-paste ready examples
 Icon: braces
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - inlinetask
-  - taskproperties
-Updated: 2026-07-20T15:36:13
+Updated: 2026-07-23T16:45:34
 ---
 
 # Inline task syntax

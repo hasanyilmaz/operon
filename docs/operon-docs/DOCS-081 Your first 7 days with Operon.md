@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-003 Getting started with Operon|Getting started with Operon]]"
-  - "[[DOCS-008 Essential settings to configure first|Essential settings to configure first]]"
-  - "[[DOCS-010 Build your first filtered view|Build your first filtered view]]"
 Notes: A paced first week that mirrors the in-product setup project
 Icon: calendar-days
 Color: "#2563eb"
-tags:
-  - operon
-  - start
-  - newuser
-  - configure
-  - howto
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Your first 7 days with Operon

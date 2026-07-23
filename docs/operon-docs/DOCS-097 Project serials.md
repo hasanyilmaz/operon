@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]"
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
-  - "[[DOCS-041 Task chips display and behavior|Task chips]]"
 Notes: Read-only sequential serial IDs assigned to the tasks in a project tree
 Icon: hash
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - serial
-  - projects
-  - identity
-Updated: 2026-07-16T19:53:04
+Updated: 2026-07-23T16:45:34
 ---
 
 # Project serials

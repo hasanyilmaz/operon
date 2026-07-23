@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-040 Custom keys|Custom keys]]"
-  - "[[DOCS-062 Field pickers overview|Field pickers overview]]"
-  - "[[DOCS-018 Task properties|Task properties]]"
 Notes: How a custom key's type decides which picker you get to fill it
 Icon: sliders-horizontal
 Color: "#db2777"
-tags:
-  - operon
-  - pickers
-  - customfields
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Custom field pickers

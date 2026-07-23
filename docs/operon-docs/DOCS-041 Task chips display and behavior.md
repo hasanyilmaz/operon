@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
-  - "[[DOCS-025 Filter View|Filter View]]"
-  - "[[DOCS-040 Custom keys|Custom keys]]"
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - chips
-  - configure
-Updated: 2026-07-22T19:06:07
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task chips: display and behavior

@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
 Notes: Command that edits the open file task or turns the current note into one
 Icon: refresh-cw
 Color: "#475569"
-tags:
-  - operon
-  - commands
-  - filetask
-  - edit
-  - convert
-Updated: 2026-07-18T15:13:08
+Updated: 2026-07-23T16:45:34
 ---
 
 # Edit or convert to file task

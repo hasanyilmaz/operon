@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-116 Reminders|Reminders]]"
-  - "[[DOCS-063 Date and time picker|Date and time picker]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
 Notes: The anatomy of a reminder rule, its reference dates and offset syntax, with examples
 Icon: bell-ring
 Color: "#ca8a04"
-tags:
-  - operon
-  - reminders
-  - automation
-  - reference
-Updated: 2026-07-20T21:04:57
+Updated: 2026-07-23T16:45:34
 ---
 
 # Reminder rules

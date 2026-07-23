@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-011 Inline tasks|Inline tasks]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-044 Where Operon stores data|Where Operon stores data]]"
 Notes: Tasks are plain Markdown, and what that means in practice
 Icon: file-text
 Color: "#0891b2"
-tags:
-  - operon
-  - data
-  - storage
-  - markdown
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Markdown task storage

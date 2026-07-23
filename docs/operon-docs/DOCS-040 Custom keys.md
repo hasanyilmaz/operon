@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-018 Task properties|Task properties]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
 Notes: Add your own task fields when the built-in set is not enough, with inline and frontmatter examples
 Icon: key-square
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - customfields
-  - configure
-Updated: 2026-07-18T15:07:38
+Updated: 2026-07-23T16:45:34
 ---
 
 # Custom keys

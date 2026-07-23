@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
-  - "[[DOCS-031 Kanban manual order|Kanban manual order]]"
-  - "[[DOCS-005 Operon core concepts|Operon core concepts]]"
 Notes: Move tasks through status columns on the Kanban
 Icon: columns-3
 Color: "#0284c7"
-tags:
-  - operon
-  - kanban
-  - plan
-Updated: 2026-07-13T23:51:22
+Updated: 2026-07-23T16:45:34
 ---
 
 # Kanban overview

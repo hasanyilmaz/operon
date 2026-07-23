@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]"
-  - "[[DOCS-048 External calendars|External calendars]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
 Notes: Plan tasks by date on the Operon Calendar
 Icon: calendar-days
 Color: "#0284c7"
-tags:
-  - operon
-  - calendar
-  - plan
-Updated: 2026-07-08T23:32:00
+Updated: 2026-07-23T16:45:34
 ---
 
 # Calendar overview

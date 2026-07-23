@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-017 Plain checkbox lists|Plain checkbox lists]]"
-  - "[[DOCS-058 Operon inheritance rules|Operon inheritance rules]]"
-  - "[[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]]"
 Notes: Build task trees with parent and child tasks, with copyable parent and subtask examples
 Icon: git-branch
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - subtasks
-Updated: 2026-07-22T19:14:33
+Updated: 2026-07-23T16:45:34
 ---
 
 # Parent and sub-tasks

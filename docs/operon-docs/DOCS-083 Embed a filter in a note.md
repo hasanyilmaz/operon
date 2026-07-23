@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-025 Filter View|Filter View]]"
-  - "[[DOCS-073 Filter conditions and operators|Filter conditions and operators]]"
-  - "[[DOCS-077 Welcome - coming from Obsidian Tasks|Coming from Obsidian Tasks]]"
 Notes: Render a saved filter's live task list inside any note
 Icon: panel-top
 Color: "#0284c7"
-tags:
-  - operon
-  - filterview
-  - embed
-  - howto
-Updated: 2026-07-05T19:25:53
+Updated: 2026-07-23T16:45:34
 ---
 
 # Embed a filter in a note

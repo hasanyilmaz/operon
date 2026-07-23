@@ -1,15 +1,8 @@
 ---
-Up:
-  - "[[DOCS-033 Recurring tasks|Recurring tasks]]"
 Notes: What is inherited between tasks and when
 Icon: git-branch-plus
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - inheritance
-  - subtasks
-Updated: 2026-07-20T15:56:48
+Updated: 2026-07-23T16:45:34
 ---
 
 # Operon inheritance rules

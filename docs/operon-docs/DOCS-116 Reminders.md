@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-018 Task properties|Task properties]]"
-  - "[[DOCS-021 Task Editor|Task Editor]]"
-  - "[[DOCS-032 Pinned Task Dock|Pinned Task Dock]]"
 Notes: Get notified about a task, either at a fixed moment or at an offset from one of its dates
 Icon: alarm-clock
 Color: "#ca8a04"
-tags:
-  - operon
-  - reminders
-  - scheduling
-  - configure
-Updated: 2026-07-22T19:14:33
+Updated: 2026-07-23T16:45:34
 ---
 
 # Reminders

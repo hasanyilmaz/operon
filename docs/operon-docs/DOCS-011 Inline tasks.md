@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
-  - "[[DOCS-013 File tasks|File tasks]]"
-  - "[[DOCS-015 Task identity and operonId|Task identity and operonId]]"
 Notes: Tasks written on a single Markdown line
 Icon: list-checks
 Color: "#7c3aed"
-tags:
-  - operon
-  - taskmodel
-  - inlinetask
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Inline tasks

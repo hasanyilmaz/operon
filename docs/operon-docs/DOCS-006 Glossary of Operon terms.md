@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-026 Dynamic file task filter|Dynamic file task filter]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-042 Contextual menu actions|Contextual menu actions]]"
 Notes: Definitions of Operon's core terms
 Icon: book-a
 Color: "#16a34a"
-tags:
-  - operon
-  - taskmodel
-  - terms
-Updated: 2026-07-20T15:25:06
+Updated: 2026-07-23T16:45:34
 ---
 
 # Glossary of Operon terms

@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-105 Table overview|Table overview]]"
-  - "[[DOCS-018 Task properties|Task properties]]"
-  - "[[DOCS-040 Custom keys|Custom keys]]"
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-tags:
-  - operon
-  - table
-  - columns
-  - configure
-Updated: 2026-07-18T15:07:38
+Updated: 2026-07-23T16:45:34
 ---
 
 # Table columns

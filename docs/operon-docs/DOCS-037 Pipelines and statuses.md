@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-030 Kanban overview|Kanban overview]]"
-  - "[[DOCS-038 Task priorities|Task priorities]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
 Notes: Define the workflow stages a task moves through, and the status grid that configures each
 Icon: workflow
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - pipelines
-  - status
-  - configure
-Updated: 2026-07-11T14:16:12
+Updated: 2026-07-23T16:45:34
 ---
 
 # Pipelines and statuses

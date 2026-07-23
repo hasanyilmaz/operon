@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-078 Welcome - coming from TaskNotes|Coming from TaskNotes]]"
-  - "[[DOCS-039 Key mappings|Key mappings]]"
-  - "[[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]]"
 Notes: Step-by-step procedure to bring TaskNotes tasks into Operon, with a before and after example
 Icon: move-right
 Color: "#2563eb"
-tags:
-  - operon
-  - migration
-  - migrate
-  - tasknotes
-  - howto
-Updated: 2026-06-28T18:10:47
+Updated: 2026-07-23T16:45:34
 ---
 
 # How to migrate from TaskNotes

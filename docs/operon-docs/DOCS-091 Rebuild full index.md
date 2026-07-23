@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
-  - "[[DOCS-054 Missing tasks|Missing tasks]]"
-  - "[[DOCS-046 Plugin data and state files|Plugin data and state files]]"
 Notes: Command that re-scans the vault and rebuilds the Operon task index
 Icon: refresh-cw
 Color: "#475569"
-tags:
-  - operon
-  - commands
-  - index
-Updated: 2026-06-25T16:47:21
+Updated: 2026-07-23T16:45:34
 ---
 
 # Rebuild full index

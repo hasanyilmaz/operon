@@ -1,17 +1,8 @@
 ---
-Up:
-  - "[[DOCS-018 Task properties|Task properties]]"
-  - "[[DOCS-040 Custom keys|Custom keys]]"
-  - "[[DOCS-012 Inline task syntax|Inline task syntax]]"
 Notes: Rename property names without changing what a field means
 Icon: key-round
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - keymappings
-  - configure
-Updated: 2026-07-20T15:19:54
+Updated: 2026-07-23T16:45:34
 ---
 
 # Key mappings

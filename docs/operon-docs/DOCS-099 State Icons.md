@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-066 Icon picker|Icon picker]]"
-  - "[[DOCS-037 Pipelines and statuses|Pipelines and statuses]]"
-  - "[[DOCS-038 Task priorities|Task priorities]]"
 Notes: The fallback icon a task shows when it has no taskIcon, plus the color source for the main task icon
 Icon: square-check-big
 Color: "#ca8a04"
-tags:
-  - operon
-  - settings
-  - icons
-  - interface
-  - configure
-Updated: 2026-07-07T13:45:23
+Updated: 2026-07-23T16:45:34
 ---
 
 # State Icons

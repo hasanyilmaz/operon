@@ -1,18 +1,8 @@
 ---
-Up:
-  - "[[DOCS-040 Custom keys|Custom keys]]"
-  - "[[DOCS-106 Table columns|Table columns]]"
-  - "[[DOCS-073 Filter conditions and operators|Filter conditions and operators]]"
 Notes: Frontmatter properties Operon does not manage, surfaced automatically as searchable, typed columns and filter conditions
 Icon: scan-search
 Color: "#ca8a04"
-tags:
-  - operon
-  - table
-  - filetask
-  - customfields
-  - configure
-Updated: 2026-07-18T15:13:08
+Updated: 2026-07-23T16:45:34
 ---
 
 # File task property columns

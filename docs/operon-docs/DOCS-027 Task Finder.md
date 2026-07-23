@@ -1,16 +1,8 @@
 ---
-Up:
-  - "[[DOCS-025 Filter View|Filter View]]"
-  - "[[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]"
-  - "[[DOCS-022 Command palette reference|Command palette reference]]"
 Notes: Fast search to jump straight to one task, with its matching and ranking explained
 Icon: search
 Color: "#0284c7"
-tags:
-  - operon
-  - taskfinder
-  - search
-Updated: 2026-06-28T18:10:47
+Updated: 2026-07-23T16:45:34
 ---
 
 # Task Finder
