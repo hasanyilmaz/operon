@@ -11,6 +11,8 @@ export interface QuickInlineTaskCreationResult {
 	operonId: string;
 	filePath?: string;
 	lineNumber?: number;
+	/** Exact serialized source line captured by the atomic insertion. */
+	sourceLine: string;
 }
 
 export interface QuickInlineTaskCreatorInputOptions {

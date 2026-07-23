@@ -2527,6 +2527,7 @@ export default class OperonPlugin extends Plugin {
 						createdFilePath,
 						created.operonId,
 						createdLineNumber,
+						created.sourceLine,
 					).catch(() => false);
 					await this.indexer.reindexFilePath(createdFilePath).catch(() => undefined);
 					return this.publicMutationResult(false, created.operonId, 'failed', rolledBack
@@ -8024,7 +8025,7 @@ export default class OperonPlugin extends Plugin {
 			fallbackParentFieldValues?: Record<string, string> | null;
 			fallbackParentTags?: string[] | null;
 		} = {},
-	): Promise<{ operonId: string; lineNumber: number } | null> {
+	): Promise<{ operonId: string; lineNumber: number; sourceLine: string } | null> {
 		const content = await this.app.vault.cachedRead(file);
 		const inlineHeading = resolveCalendarInlineHeading(this.settings.calendarInlineTaskHeading);
 		const insertionPreview = insertInlineTaskUnderHeading(content, inlineHeading, '- [ ]');
@@ -8078,6 +8079,7 @@ export default class OperonPlugin extends Plugin {
 		return {
 			operonId: parsed.operonId,
 			lineNumber: insertion.insertedLineNumber,
+			sourceLine: taskLine,
 		};
 	}
 
@@ -14509,7 +14511,7 @@ export default class OperonPlugin extends Plugin {
 			dailyDateHeading?: string | null;
 			autoParentEnabled?: boolean;
 		} = {},
-	): Promise<{ operonId: string; lineNumber: number } | null> {
+	): Promise<{ operonId: string; lineNumber: number; sourceLine: string } | null> {
 		const dailyDateHeading = options.dailyDateHeading?.trim();
 		const explicitInlineHeading = options.inlineHeading;
 		const inlineHeadingKeyword = normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading);
@@ -14546,7 +14548,7 @@ export default class OperonPlugin extends Plugin {
 				this.settings,
 				options.fallbackParentTags ?? null,
 			);
-		let created: { operonId: string; lineNumber: number } | null = null;
+		let created: { operonId: string; lineNumber: number; sourceLine: string } | null = null;
 		await this.app.vault.process(file, sourceContent => {
 			const insertionPreview = insertTaskLine(sourceContent, '- [ ]');
 			const createdLine = this.buildTaskCreatorInlineTaskLine(
@@ -14562,6 +14564,7 @@ export default class OperonPlugin extends Plugin {
 			created = {
 				operonId: createdLine.operonId,
 				lineNumber: insertion.insertedLineNumber,
+				sourceLine: createdLine.taskLine,
 			};
 			this.suppressRawTaskCreationNotice(createdLine.operonId);
 			return insertion.content;
@@ -14598,6 +14601,7 @@ export default class OperonPlugin extends Plugin {
 				operonId: created.operonId,
 				filePath: target.file.path,
 				lineNumber: created.lineNumber,
+				sourceLine: created.sourceLine,
 			},
 		};
 	}
@@ -14637,6 +14641,7 @@ export default class OperonPlugin extends Plugin {
 				operonId: createdLine.operonId,
 				filePath: parentPath,
 				lineNumber: insertedLineNumber,
+				sourceLine: createdLine.taskLine,
 			};
 			this.suppressRawTaskCreationNotice(createdLine.operonId);
 			return lines.join('\n');
@@ -14673,6 +14678,7 @@ export default class OperonPlugin extends Plugin {
 				operonId: createdLine.operonId,
 				filePath: parentPath,
 				lineNumber: insertion.insertedLineNumber,
+				sourceLine: createdLine.taskLine,
 			};
 			this.suppressRawTaskCreationNotice(createdLine.operonId);
 			return insertion.content;
@@ -14730,6 +14736,7 @@ export default class OperonPlugin extends Plugin {
 		const created = creation.result;
 		const createdFilePath = created.filePath;
 		const createdLineNumber = created.lineNumber;
+		const createdSourceLine = created.sourceLine;
 		if (!createdFilePath || createdLineNumber === undefined) {
 			new Notice(t('notifications', 'inlineTaskCreateFailed'));
 			return null;
@@ -14751,6 +14758,7 @@ export default class OperonPlugin extends Plugin {
 				createdFilePath,
 				created.operonId,
 				createdLineNumber,
+				createdSourceLine,
 			).catch(() => false);
 			await this.indexer.reindexFilePath(createdFilePath).catch(() => undefined);
 			const finalizationMessage = error instanceof Error ? error.message : String(error);
@@ -14768,6 +14776,7 @@ export default class OperonPlugin extends Plugin {
 			operonId: created.operonId,
 			filePath: createdFilePath,
 			lineNumber: createdLineNumber,
+			sourceLine: createdSourceLine,
 		};
 	}
 
