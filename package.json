@@ -34,6 +34,7 @@
 		"lint:scorecard": "eslint --config eslint.scorecard.config.mjs main.ts src",
 		"lint:scorecard:strict": "eslint --config eslint.scorecard.config.mjs main.ts src --max-warnings 0",
 		"lint:strict": "eslint . --max-warnings 0",
+		"public-api:test": "node scripts/run-public-api-contract-tests.mjs",
 		"release:check:test": "node scripts/run-release-check-tests.mjs",
 		"reminder:sounds:generate": "node scripts/generate-reminder-sound-pack.mjs --write",
 		"reminder:sounds:check": "node scripts/generate-reminder-sound-pack.mjs --check",
@@ -42,7 +43,7 @@
 		"mobile-notifications:exporter:test": "node scripts/run-mobile-notifications-exporter-tests.mjs",
 		"mobile-notifications:settings:test": "node scripts/run-mobile-notifications-settings-tests.mjs",
 		"build": "npm run i18n:check && npm run reminder:sounds:check && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && npm run bundle:size",
-		"check": "npm run lint:strict && npm run bundle:size:test && npm run release:check:test && npm run reminder:sounds:test && npm run reminder:scheduler:test && npm run mobile-notifications:exporter:test && npm run mobile-notifications:settings:test && npm run i18n:test && npm run i18n:settings:test && npm run i18n:unused:test && npm run i18n:unused -- --summary && npm run build",
+		"check": "npm run lint:strict && npm run bundle:size:test && npm run public-api:test && npm run release:check:test && npm run reminder:sounds:test && npm run reminder:scheduler:test && npm run mobile-notifications:exporter:test && npm run mobile-notifications:settings:test && npm run i18n:test && npm run i18n:settings:test && npm run i18n:unused:test && npm run i18n:unused -- --summary && npm run build",
 		"release:guard": "node scripts/release-guard.mjs",
 		"check:local": "npm run check && npm run index:v8:test && npm run index:v8:storage:test && npm run index:v8:shadow:test && npm run index:v8:hydration:test && npm run index:v8:incremental:test && npm run index:v8:sync:test && npm run index:v8:cutover:test && npm run index:v8:hydration:acceptance:test && npm run release:guard && npm run phase5:regression",
 		"phase5:regression": "node scripts/run-phase5-regression.mjs"

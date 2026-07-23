@@ -174,6 +174,23 @@ export function readRawYamlPropertyExpectation(
 	return isSupportedRawYamlPropertyValue(value) ? { present: true, value } : null;
 }
 
+/** Read a raw-property expectation from current file content instead of MetadataCache state. */
+export function readRawYamlPropertyExpectationFromContent(
+	content: string,
+	propertyName: string,
+	parseYamlContent: (yaml: string) => unknown,
+): RawYamlPropertyExpectation | null {
+	const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+	if (!match) return { present: false, value: undefined };
+	try {
+		const parsed = parseYamlContent(match[1]);
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+		return readRawYamlPropertyExpectation(parsed as Record<string, unknown>, propertyName);
+	} catch {
+		return null;
+	}
+}
+
 export function rawYamlPropertyExpectationsEqual(
 	left: RawYamlPropertyExpectation,
 	right: RawYamlPropertyExpectation,
