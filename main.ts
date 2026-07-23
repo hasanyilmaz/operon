@@ -403,6 +403,7 @@ import {
 	resolveStatusMarkdownRefreshScope,
 } from './src/core/markdown-refresh-scope';
 import { insertInlineTaskUnderFirstHeadingKeyword } from './src/core/markdown-heading-insertion';
+import { removeExactMatchingLine } from './src/core/exact-line-removal';
 import {
 	resolveIndexedTaskSourceFolderPath,
 	resolveInlineParentInsertionLineNumber,
@@ -2908,7 +2909,12 @@ export default class OperonPlugin extends Plugin {
 			const inserted = await this.insertInlineTaskLineIntoFile(targetFile, inlineTaskLine);
 			if (!inserted) return this.publicMutationResult(false, operonId, 'rejected');
 			const rollbackInsertedInline = async (): Promise<boolean> => {
-				const rolledBack = await this.deleteInlineTaskById(targetFile.path, operonId, inserted.lineNumber)
+				const rolledBack = await this.deleteInlineTaskById(
+					targetFile.path,
+					operonId,
+					inserted.lineNumber,
+					inserted.sourceLine,
+				)
 					.catch(() => false);
 				await this.indexer.reindexFilePath(targetFile.path).catch(() => undefined);
 				return rolledBack;
@@ -3050,7 +3056,12 @@ export default class OperonPlugin extends Plugin {
 		let sourceDeleted = false;
 		const removeTargetCopy = async (): Promise<boolean> => {
 			if (insertedLineNumber === null) return true;
-			const removed = await this.deleteInlineTaskById(targetFile.path, operonId, insertedLineNumber).catch(() => false);
+			const removed = await this.deleteInlineTaskById(
+				targetFile.path,
+				operonId,
+				insertedLineNumber,
+				sourceLine,
+			).catch(() => false);
 			await this.indexer.reindexFilePath(targetFile.path).catch(() => undefined);
 			return removed;
 		};
@@ -3077,7 +3088,12 @@ export default class OperonPlugin extends Plugin {
 			if (!inserted) return this.publicMutationResult(false, operonId, 'rejected', 'Operon rejected target insertion.');
 			insertedLineNumber = inserted.lineNumber;
 			await this.indexer.reindexFilePath(targetFile.path);
-			sourceDeleted = await this.deleteInlineTaskById(sourceFile.path, operonId, sourceLineNumber);
+			sourceDeleted = await this.deleteInlineTaskById(
+				sourceFile.path,
+				operonId,
+				sourceLineNumber,
+				sourceLine,
+			);
 			if (!sourceDeleted) {
 				const targetRolledBack = await removeTargetCopy();
 				return this.publicMutationResult(false, operonId, targetRolledBack ? 'conflict' : 'failed', targetRolledBack
@@ -13249,11 +13265,24 @@ export default class OperonPlugin extends Plugin {
 		filePath: string,
 		operonId: string,
 		lineHint: number,
+		expectedLine?: string,
 	): Promise<boolean> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!(file instanceof TFile)) return false;
 		let removed = false;
 		await this.app.vault.process(file, content => {
+			if (expectedLine !== undefined) {
+				const result = removeExactMatchingLine(
+					content,
+					lineHint,
+					expectedLine,
+					(line, lineNumber) => (
+						this.parseInlineTaskLine(line, lineNumber, filePath)?.operonId === operonId
+					),
+				);
+				removed = result.removed;
+				return result.content;
+			}
 			const lines = content.split('\n');
 			let targetLine = -1;
 			if (lineHint >= 0 && lineHint < lines.length) {
@@ -14481,7 +14510,6 @@ export default class OperonPlugin extends Plugin {
 			autoParentEnabled?: boolean;
 		} = {},
 	): Promise<{ operonId: string; lineNumber: number } | null> {
-		const content = await this.app.vault.cachedRead(file);
 		const dailyDateHeading = options.dailyDateHeading?.trim();
 		const explicitInlineHeading = options.inlineHeading;
 		const inlineHeadingKeyword = normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading);
@@ -14502,7 +14530,6 @@ export default class OperonPlugin extends Plugin {
 			}
 			return insertInlineTaskUnderFirstHeadingKeyword(sourceContent, inlineHeadingKeyword, taskLine);
 		};
-		const insertionPreview = insertTaskLine(content, '- [ ]');
 		const now = localNow();
 		const autoParentTaskId = resolveFileTaskAutoParentOperonId({
 			enabled: options.autoParentEnabled ?? this.settings.autoParentFileTask,
@@ -14519,22 +14546,27 @@ export default class OperonPlugin extends Plugin {
 				this.settings,
 				options.fallbackParentTags ?? null,
 			);
-		const createdLine = this.buildTaskCreatorInlineTaskLine(
-			draft,
-			file.path,
-			insertionPreview.insertedLineNumber,
-			inherited,
-			now,
-		);
-		if (!createdLine) return null;
-		if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return null;
-		const insertion = insertTaskLine(content, createdLine.taskLine);
-		this.suppressRawTaskCreationNotice(createdLine.operonId);
-		await this.app.vault.modify(file, insertion.content);
-		return {
-			operonId: createdLine.operonId,
-			lineNumber: insertion.insertedLineNumber,
-		};
+		let created: { operonId: string; lineNumber: number } | null = null;
+		await this.app.vault.process(file, sourceContent => {
+			const insertionPreview = insertTaskLine(sourceContent, '- [ ]');
+			const createdLine = this.buildTaskCreatorInlineTaskLine(
+				draft,
+				file.path,
+				insertionPreview.insertedLineNumber,
+				inherited,
+				now,
+			);
+			if (!createdLine) return sourceContent;
+			if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return sourceContent;
+			const insertion = insertTaskLine(sourceContent, createdLine.taskLine);
+			created = {
+				operonId: createdLine.operonId,
+				lineNumber: insertion.insertedLineNumber,
+			};
+			this.suppressRawTaskCreationNotice(createdLine.operonId);
+			return insertion.content;
+		});
+		return created;
 	}
 
 	private async insertTaskCreatorInlineTaskUsingDefaultTarget(
@@ -14580,33 +14612,36 @@ export default class OperonPlugin extends Plugin {
 		const parentFile = this.app.vault.getAbstractFileByPath(parentPath);
 		if (!(parentFile instanceof TFile) || parentFile.extension !== 'md') return null;
 
-		const content = await this.app.vault.cachedRead(parentFile);
-		const insertedLineNumber = resolveInlineParentInsertionLineNumber({
-			content,
-			parentTask,
-			parseInlineTaskLine: (line, lineNumber, filePath) => this.parseInlineTaskLine(line, lineNumber, filePath),
+		let created: QuickInlineTaskCreationResult | null = null;
+		await this.app.vault.process(parentFile, content => {
+			const insertedLineNumber = resolveInlineParentInsertionLineNumber({
+				content,
+				parentTask,
+				parseInlineTaskLine: (line, lineNumber, filePath) => this.parseInlineTaskLine(line, lineNumber, filePath),
+			});
+			if (insertedLineNumber === null) return content;
+
+			const lines = content.split('\n');
+			const createdLine = this.buildTaskCreatorInlineTaskLine(
+				draft,
+				parentPath,
+				insertedLineNumber,
+				{},
+				localNow(),
+			);
+			if (!createdLine) return content;
+			if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return content;
+
+			lines.splice(insertedLineNumber, 0, createdLine.taskLine);
+			created = {
+				operonId: createdLine.operonId,
+				filePath: parentPath,
+				lineNumber: insertedLineNumber,
+			};
+			this.suppressRawTaskCreationNotice(createdLine.operonId);
+			return lines.join('\n');
 		});
-		if (insertedLineNumber === null) return null;
-
-		const lines = content.split('\n');
-		const createdLine = this.buildTaskCreatorInlineTaskLine(
-			draft,
-			parentPath,
-			insertedLineNumber,
-			{},
-			localNow(),
-		);
-		if (!createdLine) return null;
-		if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return null;
-
-		lines.splice(insertedLineNumber, 0, createdLine.taskLine);
-		this.suppressRawTaskCreationNotice(createdLine.operonId);
-		await this.app.vault.modify(parentFile, lines.join('\n'));
-		return {
-			operonId: createdLine.operonId,
-			filePath: parentPath,
-			lineNumber: insertedLineNumber,
-		};
+		return created;
 	}
 
 	private async insertTaskCreatorInlineTaskInsideFileParent(
@@ -14620,26 +14655,29 @@ export default class OperonPlugin extends Plugin {
 		const parentFile = this.app.vault.getAbstractFileByPath(parentPath);
 		if (!(parentFile instanceof TFile) || parentFile.extension !== 'md') return null;
 
-		const content = await this.app.vault.cachedRead(parentFile);
-		const insertionPreview = insertInlineTaskUnderFirstHeadingKeyword(content, headingKeyword, '- [ ]');
-		const createdLine = this.buildTaskCreatorInlineTaskLine(
-			draft,
-			parentPath,
-			insertionPreview.insertedLineNumber,
-			{},
-			localNow(),
-		);
-		if (!createdLine) return null;
-		if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return null;
+		let created: QuickInlineTaskCreationResult | null = null;
+		await this.app.vault.process(parentFile, content => {
+			const insertionPreview = insertInlineTaskUnderFirstHeadingKeyword(content, headingKeyword, '- [ ]');
+			const createdLine = this.buildTaskCreatorInlineTaskLine(
+				draft,
+				parentPath,
+				insertionPreview.insertedLineNumber,
+				{},
+				localNow(),
+			);
+			if (!createdLine) return content;
+			if (!this.validateDependencyDraftOrShow(createdLine.operonId, createdLine.fieldValues)) return content;
 
-		const insertion = insertInlineTaskUnderFirstHeadingKeyword(content, headingKeyword, createdLine.taskLine);
-		this.suppressRawTaskCreationNotice(createdLine.operonId);
-		await this.app.vault.modify(parentFile, insertion.content);
-		return {
-			operonId: createdLine.operonId,
-			filePath: parentPath,
-			lineNumber: insertion.insertedLineNumber,
-		};
+			const insertion = insertInlineTaskUnderFirstHeadingKeyword(content, headingKeyword, createdLine.taskLine);
+			created = {
+				operonId: createdLine.operonId,
+				filePath: parentPath,
+				lineNumber: insertion.insertedLineNumber,
+			};
+			this.suppressRawTaskCreationNotice(createdLine.operonId);
+			return insertion.content;
+		});
+		return created;
 	}
 
 	private async insertTaskCreatorInlineTaskWithResolvedTarget(
@@ -15059,7 +15097,7 @@ export default class OperonPlugin extends Plugin {
 		file: TFile,
 		taskLine: string,
 		options: { dailyDateHeading?: string | null } = {},
-	): Promise<{ lineNumber: number } | null> {
+	): Promise<{ lineNumber: number; sourceLine: string } | null> {
 		const dailyDateHeading = options.dailyDateHeading?.trim();
 		const normalizedTaskBlock = this.resolveOperonIdPlaceholdersInTaskBlock(taskLine);
 		let insertedLineNumber: number | null = null;
@@ -15074,7 +15112,10 @@ export default class OperonPlugin extends Plugin {
 			insertedLineNumber = insertion.insertedLineNumber;
 			return insertion.content;
 		});
-		return insertedLineNumber === null ? null : { lineNumber: insertedLineNumber };
+		return insertedLineNumber === null ? null : {
+			lineNumber: insertedLineNumber,
+			sourceLine: normalizedTaskBlock,
+		};
 	}
 
 	private resolveFileTaskToInlineCursorTarget(): FileTaskToInlineCursorTarget | null {

@@ -18,6 +18,7 @@ import { getExcludedTablePickerTaskIds } from '../src/ui/table/table-editing';
 import type { IndexedTask } from '../src/types/fields';
 import { CANONICAL_KEYS } from '../src/types/keys';
 import { readRawYamlPropertyExpectationFromContent } from '../src/core/raw-yaml-property';
+import { removeExactMatchingLine } from '../src/core/exact-line-removal';
 
 let assertions = 0;
 
@@ -201,6 +202,41 @@ async function run(): Promise<void> {
 	equal(liveProperty?.value, 2);
 	equal(readRawYamlPropertyExpectationFromContent('Body', 'score', () => ({}))?.present, false);
 	equal(readRawYamlPropertyExpectationFromContent('---\nscore: [\n---\n', 'score', () => { throw new Error('invalid'); }), null);
+
+	const expectedTaskLine = '- [ ] Exact {{operonId:: task-1}}';
+	const exactRemoval = removeExactMatchingLine(
+		`Before\n${expectedTaskLine}\nAfter`,
+		1,
+		expectedTaskLine,
+		line => line.includes('task-1'),
+	);
+	equal(exactRemoval.removed, true);
+	equal(exactRemoval.content, 'Before\nAfter');
+	const movedRemoval = removeExactMatchingLine(
+		`Inserted\nBefore\n${expectedTaskLine}\nAfter`,
+		1,
+		expectedTaskLine,
+		line => line.includes('task-1'),
+	);
+	equal(movedRemoval.removed, true);
+	equal(movedRemoval.content, 'Inserted\nBefore\nAfter');
+	const editedContent = `Before\n- [ ] Edited {{operonId:: task-1}}\nAfter`;
+	const editedRemoval = removeExactMatchingLine(
+		editedContent,
+		1,
+		expectedTaskLine,
+		line => line.includes('task-1'),
+	);
+	equal(editedRemoval.removed, false);
+	equal(editedRemoval.content, editedContent);
+	const crlfRemoval = removeExactMatchingLine(
+		`Before\r\n${expectedTaskLine}\r\nAfter`,
+		1,
+		expectedTaskLine,
+		line => line.includes('task-1'),
+	);
+	equal(crlfRemoval.removed, true);
+	equal(crlfRemoval.content, 'Before\r\nAfter');
 
 	const hierarchy = [
 		{ operonId: 'root', fieldValues: {} },
