@@ -3003,7 +3003,7 @@ export default class OperonPlugin extends Plugin {
 			return this.publicMutationResult(false, operonId, 'invalid-input', 'The relocation target is excluded from Operon indexing.');
 		}
 
-		const sourceContent = await this.app.vault.cachedRead(sourceFile);
+		const sourceContent = await this.app.vault.read(sourceFile);
 		const sourceLines = sourceContent.split('\n');
 		let sourceLineNumber = task.primary.lineNumber;
 		if (this.parseInlineTaskLine(sourceLines[sourceLineNumber] ?? '', sourceLineNumber, sourceFile.path)?.operonId !== operonId) {
@@ -8488,7 +8488,7 @@ export default class OperonPlugin extends Plugin {
 			return this.parsedTaskFromIndexed(task);
 		}
 
-		const content = await this.app.vault.cachedRead(file);
+		const content = await this.app.vault.read(file);
 		const lines = content.split('\n');
 		const hintedLine = task.primary.lineNumber;
 
@@ -13221,33 +13221,25 @@ export default class OperonPlugin extends Plugin {
 	): Promise<boolean> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!(file instanceof TFile)) return false;
-
-		const content = await this.app.vault.cachedRead(file);
-		const lines = content.split('\n');
-
-		let targetLine = -1;
-		if (lineHint >= 0 && lineHint < lines.length) {
-			const hinted = this.parseInlineTaskLine(lines[lineHint], lineHint, filePath);
-			if (hinted?.operonId === operonId) {
-				targetLine = lineHint;
+		let removed = false;
+		await this.app.vault.process(file, content => {
+			const lines = content.split('\n');
+			let targetLine = -1;
+			if (lineHint >= 0 && lineHint < lines.length) {
+				const hinted = this.parseInlineTaskLine(lines[lineHint], lineHint, filePath);
+				if (hinted?.operonId === operonId) targetLine = lineHint;
 			}
-		}
-
-		if (targetLine === -1) {
-			for (let i = 0; i < lines.length; i++) {
-				const parsed = this.parseInlineTaskLine(lines[i], i, filePath);
-				if (parsed?.operonId === operonId) {
-					targetLine = i;
-					break;
-				}
+			if (targetLine === -1) {
+				targetLine = lines.findIndex((line, index) => (
+					this.parseInlineTaskLine(line, index, filePath)?.operonId === operonId
+				));
 			}
-		}
-
-		if (targetLine === -1) return false;
-
-		lines.splice(targetLine, 1);
-		await this.app.vault.modify(file, lines.join('\n'));
-		return true;
+			if (targetLine === -1) return content;
+			lines.splice(targetLine, 1);
+			removed = true;
+			return lines.join('\n');
+		});
+		return removed;
 	}
 
 	private async clearInlineTaskById(
@@ -15030,20 +15022,21 @@ export default class OperonPlugin extends Plugin {
 		taskLine: string,
 		options: { dailyDateHeading?: string | null } = {},
 	): Promise<{ lineNumber: number } | null> {
-		const content = await this.app.vault.cachedRead(file);
 		const dailyDateHeading = options.dailyDateHeading?.trim();
 		const normalizedTaskBlock = this.resolveOperonIdPlaceholdersInTaskBlock(taskLine);
-		const insertion = dailyDateHeading
-			? insertInlineTaskUnderHeading(content, dailyDateHeading, normalizedTaskBlock)
-			: insertInlineTaskUnderFirstHeadingKeyword(
-				content,
-				normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading),
-				normalizedTaskBlock,
-			);
-		await this.app.vault.modify(file, insertion.content);
-		return {
-			lineNumber: insertion.insertedLineNumber,
-		};
+		let insertedLineNumber: number | null = null;
+		await this.app.vault.process(file, content => {
+			const insertion = dailyDateHeading
+				? insertInlineTaskUnderHeading(content, dailyDateHeading, normalizedTaskBlock)
+				: insertInlineTaskUnderFirstHeadingKeyword(
+					content,
+					normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading),
+					normalizedTaskBlock,
+				);
+			insertedLineNumber = insertion.insertedLineNumber;
+			return insertion.content;
+		});
+		return insertedLineNumber === null ? null : { lineNumber: insertedLineNumber };
 	}
 
 	private resolveFileTaskToInlineCursorTarget(): FileTaskToInlineCursorTarget | null {
