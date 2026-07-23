@@ -117,6 +117,7 @@ import {
 	isOperonPublicRelocateTaskInput,
 	isOperonPublicTransitionTaskInput,
 	isOperonPublicUpdateTaskInput,
+	isPublicInitialWorkflowStateAllowed,
 	isPublicManagedFieldWritable,
 	isPublicTransitionOwnedField,
 	type OperonPublicApiV1,
@@ -2217,6 +2218,9 @@ export default class OperonPlugin extends Plugin {
 		if (requestedStatusId && !requestedWorkflow) {
 			return this.publicMutationResult(false, null, 'invalid-input', `Unknown workflow status id: ${requestedStatusId}`);
 		}
+		if (requestedWorkflow && !isPublicInitialWorkflowStateAllowed(requestedWorkflow.checkbox)) {
+			return this.publicMutationResult(false, null, 'invalid-input', 'Adopt the task into an open status, then use transitionTask for terminal states.');
+		}
 
 		const lineNumber = input.line - 1;
 		const adoptionState: {
@@ -2430,8 +2434,14 @@ export default class OperonPlugin extends Plugin {
 		if (requestedStatusId && !requestedStatusValue) {
 			return this.publicMutationResult(false, null, 'invalid-input', `Unknown workflow status id: ${requestedStatusId}`);
 		}
-		if (requestedStatusValue && !resolveWorkflowStatus(this.settings.pipelines, requestedStatusValue)) {
+		const requestedWorkflow = requestedStatusValue
+			? resolveWorkflowStatus(this.settings.pipelines, requestedStatusValue)
+			: null;
+		if (requestedStatusValue && !requestedWorkflow) {
 			return this.publicMutationResult(false, null, 'invalid-input', `Unknown workflow status: ${requestedStatusValue}`);
+		}
+		if (requestedWorkflow && !isPublicInitialWorkflowStateAllowed(requestedWorkflow.checkbox)) {
+			return this.publicMutationResult(false, null, 'invalid-input', 'Create the task in an open status, then use transitionTask for terminal states.');
 		}
 
 		const draft = createEmptyTaskCreatorDraft();
@@ -2444,7 +2454,7 @@ export default class OperonPlugin extends Plugin {
 				.map(([key, value]) => [key, String(value)]),
 		);
 		if (requestedParentTaskId) draft.fieldValues['parentTask'] = requestedParentTaskId;
-		if (requestedStatusValue) draft.fieldValues['status'] = requestedStatusValue;
+		if (requestedWorkflow) draft.fieldValues['status'] = requestedWorkflow.value;
 		draft.explicitFieldKeys = Array.from(new Set([
 			...Object.keys(draft.fieldValues),
 			...(input.tags ? ['tags'] : []),

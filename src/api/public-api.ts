@@ -209,6 +209,11 @@ export function isPublicTransitionOwnedField(key: string): boolean {
 	return key === 'status' || key === 'dateCompleted' || key === 'dateCancelled';
 }
 
+/** Creation and adoption seed only open workflow states; terminal invariants belong to transitionTask. */
+export function isPublicInitialWorkflowStateAllowed(checkbox: 'open' | 'done' | 'cancelled'): boolean {
+	return checkbox === 'open';
+}
+
 /** Public mutations may write only explicitly synchronized, non-internal managed fields. */
 export function isPublicManagedFieldWritable(
 	key: string,

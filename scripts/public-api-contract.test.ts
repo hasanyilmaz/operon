@@ -8,6 +8,7 @@ import {
 	isOperonPublicRelocateTaskInput,
 	isOperonPublicTransitionTaskInput,
 	isOperonPublicUpdateTaskInput,
+	isPublicInitialWorkflowStateAllowed,
 	isPublicManagedFieldWritable,
 	isPublicTransitionOwnedField,
 } from '../src/api/public-api';
@@ -143,6 +144,9 @@ async function run(): Promise<void> {
 	equal(isPublicTransitionOwnedField('dateCompleted'), true);
 	equal(isPublicTransitionOwnedField('dateCancelled'), true);
 	equal(isPublicTransitionOwnedField('dateDue'), false);
+	equal(isPublicInitialWorkflowStateAllowed('open'), true);
+	equal(isPublicInitialWorkflowStateAllowed('done'), false);
+	equal(isPublicInitialWorkflowStateAllowed('cancelled'), false);
 
 	const hierarchy = [
 		{ operonId: 'root', fieldValues: {} },
