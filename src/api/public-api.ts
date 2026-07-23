@@ -159,6 +159,30 @@ export function isPublicTaskDescriptionSafe(value: unknown): value is string {
 	return typeof value === 'string' && !/[\r\n]/u.test(value) && !value.includes('{{');
 }
 
+interface PublicDescriptionParseResult {
+	description: string;
+	tags: readonly string[];
+	timePrefix: unknown;
+	operonId: string | null;
+	fields: readonly { key: string }[];
+}
+
+/** Inline descriptions must round-trip through the real parser without creating metadata. */
+export function isPublicTaskDescriptionRoundTripSafe(
+	value: unknown,
+	parse: (line: string) => PublicDescriptionParseResult | null,
+): value is string {
+	if (!isPublicTaskDescriptionSafe(value) || !value || value !== value.trim()) return false;
+	const probeOperonId = 'public-description-round-trip-probe';
+	const parsed = parse(`- [ ] ${value} {{operonId:: ${probeOperonId}}}`);
+	return parsed !== null
+		&& parsed.operonId === probeOperonId
+		&& parsed.description === value
+		&& parsed.tags.length === 0
+		&& parsed.timePrefix === null
+		&& parsed.fields.every(field => field.key === 'operonId');
+}
+
 export function isOperonPublicAdoptInlineTaskInput(value: unknown): value is OperonPublicAdoptInlineTaskInput {
 	return isRecord(value)
 		&& hasOnlyKeys(value, ['targetPath', 'line', 'expectedLine', 'statusId'])

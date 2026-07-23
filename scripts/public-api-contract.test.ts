@@ -12,6 +12,7 @@ import {
 	isPublicInitialWorkflowStateAllowed,
 	isPublicManagedFieldWritable,
 	isPublicTaskDescriptionSafe,
+	isPublicTaskDescriptionRoundTripSafe,
 	isPublicTransitionOwnedField,
 } from '../src/api/public-api';
 import { getExcludedTablePickerTaskIds } from '../src/ui/table/table-editing';
@@ -19,6 +20,7 @@ import type { IndexedTask } from '../src/types/fields';
 import { CANONICAL_KEYS } from '../src/types/keys';
 import { readRawYamlPropertyExpectationFromContent } from '../src/core/raw-yaml-property';
 import { removeExactMatchingLine } from '../src/core/exact-line-removal';
+import { parseTaskLine } from '../src/core/parser';
 
 let assertions = 0;
 
@@ -186,6 +188,12 @@ async function run(): Promise<void> {
 	equal(isPublicTaskDescriptionSafe('Plain {{braces}}'), false);
 	equal(isPublicTaskDescriptionSafe('Plain {{ key :: value }} field'), false);
 	equal(isPublicTaskDescriptionSafe('Unclosed {{operonId:: value'), false);
+	const parsesPublicDescription = (line: string) => parseTaskLine(line, 0, 'Public.md');
+	equal(isPublicTaskDescriptionRoundTripSafe('Call client', parsesPublicDescription), true);
+	equal(isPublicTaskDescriptionRoundTripSafe('09:00 call client', parsesPublicDescription), false);
+	equal(isPublicTaskDescriptionRoundTripSafe('Call #client', parsesPublicDescription), false);
+	equal(isPublicTaskDescriptionRoundTripSafe('Call  client', parsesPublicDescription), false);
+	equal(isPublicTaskDescriptionRoundTripSafe(' Call client', parsesPublicDescription), false);
 	equal(isPublicInitialTaskStateAllowed({ checkbox: 'open' }), true);
 	equal(isPublicInitialTaskStateAllowed({ checkbox: 'done' }), false);
 	equal(isPublicInitialTaskStateAllowed({ checkbox: 'cancelled' }), false);

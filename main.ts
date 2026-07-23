@@ -120,6 +120,7 @@ import {
 	isPublicInitialTaskStateAllowed,
 	isPublicInitialWorkflowStateAllowed,
 	isPublicManagedFieldWritable,
+	isPublicTaskDescriptionRoundTripSafe,
 	isPublicTransitionOwnedField,
 	type OperonPublicApiV1,
 	type OperonPublicAdoptInlineTaskInput,
@@ -2227,14 +2228,17 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		const lineNumber = input.line - 1;
+		let adoptedSourceLine: string | null = null;
 		const restoreAdoptedSourceLine = async (operonId: string): Promise<boolean> => {
 			let rolledBack = false;
 			await this.app.vault.process(file, content => {
+				if (adoptedSourceLine === null) return content;
 				const lines = content.split('\n');
 				const currentLine = lines[lineNumber];
 				if (currentLine === undefined) return content;
 				const normalizedCurrentLine = currentLine.endsWith('\r') ? currentLine.slice(0, -1) : currentLine;
-				if (this.parseInlineTaskLine(normalizedCurrentLine, lineNumber, targetPath)?.operonId !== operonId) {
+				if (normalizedCurrentLine !== adoptedSourceLine
+					|| this.parseInlineTaskLine(normalizedCurrentLine, lineNumber, targetPath)?.operonId !== operonId) {
 					return content;
 				}
 				lines[lineNumber] = `${input.expectedLine}${currentLine.endsWith('\r') ? '\r' : ''}`;
@@ -2345,7 +2349,8 @@ export default class OperonPlugin extends Plugin {
 				this.touchParsedTaskModifiedTimestamp(parsed, now);
 				adoptionState.operonId = parsed.operonId;
 				const serialized = this.serializeInlineTask(parsed).trimStart();
-				lines[lineNumber] = `${sourceIndent}${serialized}${currentLine.endsWith('\r') ? '\r' : ''}`;
+				adoptedSourceLine = `${sourceIndent}${serialized}`;
+				lines[lineNumber] = `${adoptedSourceLine}${currentLine.endsWith('\r') ? '\r' : ''}`;
 				adoptionState.outcome = 'applied';
 				return lines.join('\n');
 			});
@@ -2405,6 +2410,12 @@ export default class OperonPlugin extends Plugin {
 		}
 		const description = this.normalizeTaskCreatorText(input.description);
 		if (!description) return this.publicMutationResult(false, null, 'invalid-input', 'Description is required.');
+		if (input.source === 'inline' && !isPublicTaskDescriptionRoundTripSafe(
+			input.description,
+			line => this.parseInlineTaskLine(line, 0, ''),
+		)) {
+			return this.publicMutationResult(false, null, 'invalid-input', 'Inline descriptions must round-trip as plain text; provide tags and time fields explicitly.');
+		}
 		const transitionOwnedFields = Object.keys(input.fields ?? {}).filter(key => (
 			key !== 'status' && isPublicTransitionOwnedField(key)
 		));
@@ -2688,6 +2699,12 @@ export default class OperonPlugin extends Plugin {
 			if (input.description !== undefined) {
 				const description = this.normalizeTaskCreatorText(input.description);
 				if (!description) return this.publicMutationResult(false, operonId, 'invalid-input', 'Description is required.');
+				if (task.primary.format === 'inline' && !isPublicTaskDescriptionRoundTripSafe(
+					input.description,
+					line => this.parseInlineTaskLine(line, 0, ''),
+				)) {
+					return this.publicMutationResult(false, operonId, 'invalid-input', 'Inline descriptions must round-trip as plain text; provide tags and time fields explicitly.');
+				}
 				const descriptionTask = this.indexer.getTask(operonId);
 				if (!descriptionTask || !await this.updateTableTaskDescriptionAndRefresh(descriptionTask, description)) {
 					return this.publicMutationResult(false, operonId, 'rejected', 'Operon rejected the description update.');
