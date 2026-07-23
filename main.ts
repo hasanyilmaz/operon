@@ -640,6 +640,7 @@ interface TaskCreatorInlineCreationOptions {
 	forceDailyNote?: boolean;
 	parentAwarePlacement?: boolean;
 	rollbackOnFinalizeFailure?: boolean;
+	validateBeforeFinalize?: (task: IndexedTask | null) => string | null;
 }
 
 interface TaskCreatorInlineTargetFile {
@@ -2355,12 +2356,19 @@ export default class OperonPlugin extends Plugin {
 			await this.indexer.reindexFilePath(targetPath);
 			this.refreshViews();
 			const adopted = this.indexer.getTask(adoptionState.operonId);
+			const initialStateError = adopted ? this.getPublicInitialTaskStateValidationError(adopted) : null;
 			if (!adopted || this.indexer.hasDuplicateOperonIdConflict(adoptionState.operonId)
 				|| adopted.primary.filePath !== targetPath || adopted.primary.lineNumber !== lineNumber) {
 				const rolledBack = await restoreAdoptedSourceLine(adoptionState.operonId);
 				return this.publicMutationResult(false, adoptionState.operonId, 'failed', rolledBack
 					? 'The adopted task could not be proven in the final index; the source line was restored.'
 					: 'The adopted task could not be proven and source rollback failed.');
+			}
+			if (initialStateError) {
+				const rolledBack = await restoreAdoptedSourceLine(adoptionState.operonId);
+				return this.publicMutationResult(false, adoptionState.operonId, 'failed', rolledBack
+					? `Adoption was rolled back: ${initialStateError}`
+					: `Adoption violated the initial-state policy and rollback failed: ${initialStateError}`);
 			}
 			const adoptedDraft = createEmptyTaskCreatorDraft();
 			adoptedDraft.description = adopted.description;
@@ -2494,6 +2502,7 @@ export default class OperonPlugin extends Plugin {
 					forceDailyNote: Boolean(input.targetDateKey?.trim() && !input.targetPath?.trim()),
 					parentAwarePlacement: input.targetPath?.trim() ? false : undefined,
 					rollbackOnFinalizeFailure: true,
+					validateBeforeFinalize: task => this.getPublicInitialTaskStateValidationError(task),
 				});
 				if (!created) return this.publicMutationResult(false, null, 'rejected', 'Operon rejected inline task creation.');
 				const createdFilePath = created.filePath;
@@ -2505,10 +2514,14 @@ export default class OperonPlugin extends Plugin {
 				const parentValidationError = indexedCreatedTask
 					? this.getPublicParentTaskValidationError(indexedCreatedTask, indexedCreatedTask.fieldValues['parentTask'])
 					: null;
+				const initialStateError = indexedCreatedTask
+					? this.getPublicInitialTaskStateValidationError(indexedCreatedTask)
+					: null;
 				if (indexedCreatedTask?.primary.format !== 'inline'
 					|| this.indexer.hasDuplicateOperonIdConflict(created.operonId)
 					|| indexedCreatedTask.primary.filePath !== createdFilePath
-					|| parentValidationError) {
+					|| parentValidationError
+					|| initialStateError) {
 					const rolledBack = await this.deleteInlineTaskById(
 						createdFilePath,
 						created.operonId,
@@ -2516,8 +2529,8 @@ export default class OperonPlugin extends Plugin {
 					).catch(() => false);
 					await this.indexer.reindexFilePath(createdFilePath).catch(() => undefined);
 					return this.publicMutationResult(false, created.operonId, 'failed', rolledBack
-						? parentValidationError
-							? `Inline task creation was rolled back: ${parentValidationError}`
+						? parentValidationError || initialStateError
+							? `Inline task creation was rolled back: ${parentValidationError ?? initialStateError}`
 							: 'Inline task creation was rolled back because the task was not indexed.'
 						: 'Inline task creation could not be proven and rollback failed.');
 				}
@@ -2539,6 +2552,7 @@ export default class OperonPlugin extends Plugin {
 				reopenCreator: () => {},
 				targetFolderOverride: input.targetFolder?.trim() || null,
 				rollbackOnFinalizeFailure: true,
+				validateBeforeFinalize: task => this.getPublicInitialTaskStateValidationError(task),
 				onCreated: result => {
 					createdOperonId = (result.fieldValues['operonId'] ?? '').trim() || null;
 					createdFilePath = result.file.path;
@@ -2551,16 +2565,20 @@ export default class OperonPlugin extends Plugin {
 			const parentValidationError = indexedCreatedFileTask
 				? this.getPublicParentTaskValidationError(indexedCreatedFileTask, indexedCreatedFileTask.fieldValues['parentTask'])
 				: null;
+			const initialStateError = indexedCreatedFileTask
+				? this.getPublicInitialTaskStateValidationError(indexedCreatedFileTask)
+				: null;
 			if (!createdFilePath || indexedCreatedFileTask?.primary.format !== 'yaml'
 				|| this.indexer.hasDuplicateOperonIdConflict(createdOperonId)
 				|| indexedCreatedFileTask.primary.filePath !== createdFilePath
-				|| parentValidationError) {
+				|| parentValidationError
+				|| initialStateError) {
 				const rolledBack = createdFilePath
 					? await this.deleteYamlTaskByPath(createdFilePath).catch(() => false)
 					: false;
 				return this.publicMutationResult(false, createdOperonId, 'failed', rolledBack
-					? parentValidationError
-						? `File task creation was rolled back: ${parentValidationError}`
+					? parentValidationError || initialStateError
+						? `File task creation was rolled back: ${parentValidationError ?? initialStateError}`
 						: 'File task creation was rolled back because the task was not indexed.'
 					: 'File task creation could not be proven and rollback failed.');
 			}
@@ -2724,6 +2742,19 @@ export default class OperonPlugin extends Plugin {
 		return this.indexer.hasDuplicateOperonIdConflict(normalizedParentTaskId)
 			? `Parent task id is duplicated: ${normalizedParentTaskId}`
 			: null;
+	}
+
+	private getPublicInitialTaskStateValidationError(task: IndexedTask | null): string | null {
+		if (!task) return 'The created task is missing from the live index.';
+		const workflow = resolveWorkflowStatus(this.settings.pipelines, task.fieldValues['status']);
+		return isPublicInitialTaskStateAllowed({
+			checkbox: task.checkbox,
+			statusCheckbox: workflow?.checkbox ?? null,
+			dateCompleted: task.fieldValues['dateCompleted'],
+			dateCancelled: task.fieldValues['dateCancelled'],
+		})
+			? null
+			: 'Create or adopt the task in an open state, then use transitionTask for terminal states.';
 	}
 
 	private getPublicParentTaskValidationError(task: IndexedTask, requestedParentTaskId: string | undefined): string | null {
@@ -14179,6 +14210,7 @@ export default class OperonPlugin extends Plugin {
 			targetFolderOverride?: string | null;
 			onCreated?: (created: CreatedCalendarFileTask, draft: TaskCreatorDraft) => void | Promise<void>;
 			rollbackOnFinalizeFailure?: boolean;
+			validateBeforeFinalize?: (task: IndexedTask | null) => string | null;
 		},
 	): Promise<boolean> {
 		const preservedDraft = cloneTaskCreatorDraft(draft);
@@ -14215,6 +14247,10 @@ export default class OperonPlugin extends Plugin {
 			const createdOperonId = (created.fieldValues['operonId'] ?? '').trim();
 			try {
 				await this.indexer.reindexFilePath(created.file.path, { notify: false });
+				const validationError = options.validateBeforeFinalize?.(
+					createdOperonId ? this.indexer.getTask(createdOperonId) ?? null : null,
+				) ?? null;
+				if (validationError) throw new Error(validationError);
 				await this.finalizeTaskCreatorCreatedTask(
 					createdOperonId,
 					preservedDraft,
@@ -14664,6 +14700,8 @@ export default class OperonPlugin extends Plugin {
 		await this.indexer.reindexFilePath(createdFilePath);
 		const createdTask = this.indexer.getTask(created.operonId);
 		try {
+			const validationError = options.validateBeforeFinalize?.(createdTask ?? null) ?? null;
+			if (validationError) throw new Error(validationError);
 			await this.finalizeTaskCreatorCreatedTask(
 				created.operonId,
 				draft,
