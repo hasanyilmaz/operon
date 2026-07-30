@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-07-30T11:46:56
 ---
 
 # Operon Docs
@@ -162,6 +162,28 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]]
 - [[DOCS-050 Daily Notes workflows|Daily Notes workflows]]
 - [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]]
+
+### Agent Runtime and CLI
+For developers and power users connecting an agent, a script, or the `operon-cli` command-line client to Operon. New here? Start with the overview.
+- [[DOCS-118 Operon Agent Runtime overview|Operon Agent Runtime overview]]
+- [[DOCS-119 Install and verify Operon CLI|Install and verify Operon CLI]]
+- [[DOCS-120 Your first safe task read|Your first safe task read]]
+- [[DOCS-121 Reading tasks and building context|Reading tasks and building context]]
+- [[DOCS-122 Changing tasks safely|Changing tasks safely]]
+- [[DOCS-123 Security and trust boundaries|Security and trust boundaries]]
+- [[DOCS-124 Troubleshooting and recovery|Troubleshooting and recovery]]
+- [[DOCS-125 CLI contract and discovery reference|CLI contract and discovery reference]]
+- [[DOCS-126 Compact task syntax|Compact task syntax]]
+- [[DOCS-127 Everyday task commands|Everyday task commands]]
+- [[DOCS-128 Interactive shell and discovery|Interactive shell and discovery]]
+- [[DOCS-133 JSONL sessions for scripts and agents|JSONL sessions for scripts and agents]]
+
+### In-process Developer API
+For Obsidian plugin developers who need typed reads and controlled mutations through a running Operon instance. Start with the overview, then request only the capabilities your plugin needs.
+- [[DOCS-129 In-process Developer API overview|In-process Developer API overview]]
+- [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]]
+- [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]]
+- [[DOCS-132 Developer API recovery, errors and audit|Developer API recovery, errors and audit]]
 
 ### Review
 - [[DOCS-052 Completed task review|Completed task review]]

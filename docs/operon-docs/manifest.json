@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-07-23T20:13:25.894Z",
+  "generatedAt": "2026-07-30T18:37:56.871Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -10,8 +10,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "0adc9934faf8333f71296eb214a82b6b79acd246d48547f958fb520b8dba500b",
-      "bytes": 8794
+      "sha256": "f6ded2bcb036b06013288f6f9d3818f19933f5652c35c4e17799d8fef6ad3b33",
+      "bytes": 10454
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -185,8 +185,8 @@
     },
     {
       "path": "DOCS-036 Agent-friendly workflows.md",
-      "sha256": "7cda94dab73ed6eb27bf861fc42d16529923137d8c886a18fcaa0945416d1cdd",
-      "bytes": 4637
+      "sha256": "5be4539ed64afe8bb89da75a4256a20be46f5d2d678e1981c3aa3e872ce9efa9",
+      "bytes": 7830
     },
     {
       "path": "DOCS-037 Pipelines and statuses.md",
@@ -592,6 +592,86 @@
       "path": "DOCS-117 Reminder rules.md",
       "sha256": "66881fb228c164d95e1891d822ab5eab056aa9d9f949d89170e9a7caca484b0e",
       "bytes": 13977
+    },
+    {
+      "path": "DOCS-118 Operon Agent Runtime overview.md",
+      "sha256": "dc9d8beb8eb1556a8f8bf4b65aca884ff6bab6f490e1dbd292b2875eb6eb5bc2",
+      "bytes": 9747
+    },
+    {
+      "path": "DOCS-119 Install and verify Operon CLI.md",
+      "sha256": "32a009a8570d3ae3ec351b6f7cf98bb77ee72dbcdc6abbd4d661b2a7766a8e74",
+      "bytes": 8598
+    },
+    {
+      "path": "DOCS-120 Your first safe task read.md",
+      "sha256": "50bc17dccfdfdc5018d0b842d7d882571c1150473ba3b6cac90fbc26ca229a60",
+      "bytes": 7439
+    },
+    {
+      "path": "DOCS-121 Reading tasks and building context.md",
+      "sha256": "6d9b36a2c9ace3e97756977d0ee30d8c5c906173c109059e206b329205609ce2",
+      "bytes": 12699
+    },
+    {
+      "path": "DOCS-122 Changing tasks safely.md",
+      "sha256": "c9c43f16ce1a7b7cb730ef88649cb4620d0f53d2583102f0398f7c5ff267c13a",
+      "bytes": 10438
+    },
+    {
+      "path": "DOCS-123 Security and trust boundaries.md",
+      "sha256": "1c04d666a7414e08a2eedd38e02d7e09ab685aac972b4eaa2e8ef5a92870c648",
+      "bytes": 9848
+    },
+    {
+      "path": "DOCS-124 Troubleshooting and recovery.md",
+      "sha256": "3a4648c2b7681b467dd0aeab9b27ccd4093e1cb0cb4dff718d71b88ef6a2582f",
+      "bytes": 12551
+    },
+    {
+      "path": "DOCS-125 CLI contract and discovery reference.md",
+      "sha256": "031ef345645cfc9dfa79c467f3834d34801efd864e7ce845c5b6abf249d85a87",
+      "bytes": 9713
+    },
+    {
+      "path": "DOCS-126 Compact task syntax.md",
+      "sha256": "e58746e5cb408021e7b710bcdf8311a3cce907d6ca8bc4d60be3213a0a247235",
+      "bytes": 12798
+    },
+    {
+      "path": "DOCS-127 Everyday task commands.md",
+      "sha256": "2374e4c34b745086b3d626c6d6d1c98d17114175b2dbd4bc528386653ff18ea0",
+      "bytes": 10987
+    },
+    {
+      "path": "DOCS-128 Interactive shell and discovery.md",
+      "sha256": "2c4f935d0d438116563e1c0f8d7088116163bf2879cd3a7a4a7521de2633303e",
+      "bytes": 7836
+    },
+    {
+      "path": "DOCS-129 In-process Developer API overview.md",
+      "sha256": "bd0b117b087afd28c502d0362735a109789e139fa48218bd403af373df26a8eb",
+      "bytes": 6439
+    },
+    {
+      "path": "DOCS-130 Developer API identity and capability grants.md",
+      "sha256": "82124d4e158c33ca6c5c99f0271d22a499f63b5a79b22c4ff9a6e00eed92b467",
+      "bytes": 6592
+    },
+    {
+      "path": "DOCS-131 Developer API reads and typed mutations.md",
+      "sha256": "86881537c30657c268b0b53c3b79bad02a72c12338c60971698402e9e11a3410",
+      "bytes": 6360
+    },
+    {
+      "path": "DOCS-132 Developer API recovery, errors and audit.md",
+      "sha256": "a9ec89ff2bba962fa84c8a3f48f9447437863fda60fcd28eb161e9f2ee16d214",
+      "bytes": 6427
+    },
+    {
+      "path": "DOCS-133 JSONL sessions for scripts and agents.md",
+      "sha256": "fb0e5e7f9a5881270ae71bc8eeadd71e42520c3c269dc767395154e407dd002c",
+      "bytes": 7141
     }
   ]
 }
