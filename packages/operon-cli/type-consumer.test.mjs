@@ -18,6 +18,12 @@ const scriptPath = fileURLToPath(import.meta.url);
 const packageRoot = path.dirname(scriptPath);
 const require = createRequire(import.meta.url);
 const tscPath = require.resolve('typescript/bin/tsc');
+const npmExecPath = process.env.npm_execpath;
+if (
+	typeof npmExecPath !== 'string'
+	|| !path.isAbsolute(npmExecPath)
+	|| npmExecPath.includes('\0')
+) throw new Error('OPERON_TYPE_CONSUMER_NPM_EXECPATH_REQUIRED');
 const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'operon-cli-type-consumer-'));
 const packRoot = path.join(temporaryRoot, 'pack');
 const consumerRoot = path.join(temporaryRoot, 'consumer');
@@ -34,8 +40,8 @@ try {
 	await mkdir(packRoot, { recursive: true });
 	await mkdir(consumerRoot, { recursive: true });
 	const packResult = runJson(
-		'npm',
-		['pack', '--json', '--pack-destination', packRoot],
+		process.execPath,
+		[npmExecPath, 'pack', '--json', '--pack-destination', packRoot],
 		{ cwd: packageRoot },
 	)[0];
 	assert.equal(packResult.name, 'operon-cli');
@@ -82,8 +88,9 @@ try {
 		`${JSON.stringify({ name: 'operon-cli-clean-room-consumer', private: true, type: 'module' }, null, 2)}\n`,
 	);
 	run(
-		'npm',
+		process.execPath,
 		[
+			npmExecPath,
 			'install',
 			'--ignore-scripts',
 			'--no-audit',
