@@ -15,7 +15,7 @@ export function assertAcceptedReleaseFreeze(index) {
 	if (
 		index?.state !== 'accepted'
 		|| index?.audit?.validation?.status !== 'passed'
-		|| index?.audit?.validation?.result?.status !== 'accepted-development-exception'
+		|| index?.audit?.validation?.result?.status !== 'accepted-clean'
 		|| index?.maintainerAcceptance?.status !== 'accepted'
 		|| typeof index.maintainerAcceptance.acceptedBy !== 'string'
 		|| index.maintainerAcceptance.acceptedBy.trim() === ''

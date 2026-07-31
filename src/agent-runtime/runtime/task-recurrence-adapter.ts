@@ -24,7 +24,7 @@ import {
 } from '../../systems/recurrence-edit-scope';
 import { resolveRepeatTemporalAnchor } from '../../systems/recurrence-domain';
 import type { RepeatFollowingOverride, RepeatSeriesEntry } from '../../storage/repeat-series-store';
-import { toLocalDatetime } from '../../core/local-time';
+import { canonicalizeLocalDatetime, toLocalDatetime } from '../../core/local-time';
 import { runtimeTaskTargetDigestV1 } from './task-mutation-adapter';
 
 const RECURRENCE_FIELDS = [
@@ -37,6 +37,11 @@ const RECURRENCE_FIELDS = [
 	'datetimeEnd',
 	'estimate',
 ] as const;
+const RECURRENCE_DATETIME_FIELDS = new Set([
+	'datetimeRepeatEnd',
+	'datetimeStart',
+	'datetimeEnd',
+]);
 const TEMPORAL_FIELDS = new Set([
 	'dateScheduled',
 	'dateStarted',
@@ -302,7 +307,9 @@ function buildExpectedState(fieldValues: Readonly<Record<string, string>>): Recu
 			const parsed = Number(value);
 			if (Number.isFinite(parsed)) expectedValues.estimate = parsed;
 		} else {
-			expectedValues[field] = value;
+			expectedValues[field] = RECURRENCE_DATETIME_FIELDS.has(field)
+				? canonicalizeLocalDatetime(value)
+				: value;
 		}
 	}
 	return {
@@ -319,7 +326,9 @@ function buildPayload(changes: readonly RecurrenceUpdateItemV1[]): Record<string
 			? ''
 			: change.valueType === 'number'
 				? String(change.value)
-				: change.value,
+				: change.valueType === 'datetime'
+					? canonicalizeLocalDatetime(change.value)
+					: change.value,
 	]));
 }
 
@@ -338,18 +347,36 @@ function sealChange(
 	}
 	const { expectedValue: _expectedValue, ...unsealedChange } = change;
 	if (!trimmed) return unsealedChange;
-	return { ...unsealedChange, expectedValue: trimmed };
+	return {
+		...unsealedChange,
+		expectedValue: change.valueType === 'datetime'
+			? canonicalizeLocalDatetime(trimmed)
+			: trimmed,
+	};
 }
 
 function sameExpectedValue(change: RecurrenceUpdateItemV1, currentValue: string | undefined): boolean {
 	const current = (currentValue ?? '').trim();
 	return change.valueType === 'number'
 		? Number(current) === change.expectedValue
-		: current === change.expectedValue;
+		: change.valueType === 'datetime'
+			? canonicalizeLocalDatetime(current)
+				=== canonicalizeLocalDatetime(change.expectedValue ?? '')
+			: current === change.expectedValue;
 }
 
 function sameExpectedState(left: RecurrenceExpectedStateV1, right: RecurrenceExpectedStateV1): boolean {
-	return canonicalJsonV1(toJsonValueV1(left)) === canonicalJsonV1(toJsonValueV1(right));
+	const canonicalize = (state: RecurrenceExpectedStateV1): RecurrenceExpectedStateV1 => ({
+		...state,
+		fieldValues: Object.fromEntries(Object.entries(state.fieldValues).map(([field, value]) => [
+			field,
+			typeof value === 'string' && RECURRENCE_DATETIME_FIELDS.has(field)
+				? canonicalizeLocalDatetime(value)
+				: value,
+		])),
+	});
+	return canonicalJsonV1(toJsonValueV1(canonicalize(left)))
+		=== canonicalJsonV1(toJsonValueV1(canonicalize(right)));
 }
 
 function applyPatch(

@@ -122,7 +122,7 @@ const result = evaluateReleaseAuditPolicy({
 	artifactMetafiles: provenance.metafiles,
 });
 const output = JSON.stringify(result, null, 2);
-if (result.status === 'accepted-development-exception') {
+if (result.status === 'accepted-clean') {
 	console.log(output);
 } else {
 	console.error(output);

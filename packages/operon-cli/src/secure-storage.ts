@@ -29,6 +29,7 @@ const OPERON_CLI_ROOT_FILES_V1 = new Set([
 ]);
 const OPERON_CLI_ROOT_DIRECTORIES_V1 = new Set(['plans']);
 const POWERSHELL_RESULT_LIMIT_V1 = 16_384;
+export const WINDOWS_ACL_TIMEOUT_MS_V1 = 30_000;
 
 export function cliStorageSecurityBackendV1(
 	platform: NodeJS.Platform = process.platform,
@@ -62,8 +63,12 @@ export function secureCreatedFileV1(
 	path: string,
 	platform: NodeJS.Platform = process.platform,
 ): void {
-	if (platform === 'win32') applyAndVerifyWindowsOwnerOnlyAclV1(path, 'file');
-	else chmodSync(path, 0o600);
+	if (platform === 'win32') {
+		applyAndVerifyWindowsOwnerOnlyAclV1(path, 'file');
+		assertSecurePathKindV1(path, 'file', platform);
+		return;
+	}
+	chmodSync(path, 0o600);
 	assertSecureFileV1(path, platform);
 }
 
@@ -313,7 +318,7 @@ function runWindowsAclScriptV1(
 			OPERON_SECURITY_REPAIR: repair ? '1' : '0',
 		},
 		maxBuffer: POWERSHELL_RESULT_LIMIT_V1,
-		timeout: 15_000,
+		timeout: WINDOWS_ACL_TIMEOUT_MS_V1,
 		killSignal: 'SIGKILL',
 	});
 	if (result.error || result.status !== 0) {

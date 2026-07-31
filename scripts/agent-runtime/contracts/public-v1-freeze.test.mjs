@@ -28,9 +28,9 @@ import { installDeclarationTreeV1 } from '../../../packages/operon-cli/type-buil
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const PASSED_AUDIT_RESULT = Object.freeze({
-	status: 'accepted-development-exception',
+	status: 'accepted-clean',
 	productionVulnerabilities: 0,
-	developmentVulnerabilities: 11,
+	developmentVulnerabilities: 0,
 	directRoot: 'eslint-plugin-obsidianmd',
 });
 
@@ -357,27 +357,13 @@ test('raw npm audit reports are canonically evaluated for freeze acceptance', as
 			critical: 0,
 			total: 0,
 		}));
-		await writeJson(fullPath, auditReport({
-			'dev-tool': {
-				name: 'dev-tool',
-				severity: 'high',
-				isDirect: true,
-				via: [{
-					source: 1,
-					url: 'https://example.invalid/advisory/1',
-				}],
-				effects: [],
-				range: '*',
-				nodes: ['node_modules/dev-tool'],
-				fixAvailable: false,
-			},
-		}, {
+		await writeJson(fullPath, auditReport({}, {
 			info: 0,
 			low: 0,
 			moderate: 0,
-			high: 1,
+			high: 0,
 			critical: 0,
-			total: 1,
+			total: 0,
 		}));
 		assert.deepEqual(await runReleaseAuditForFreeze(root, {
 			productionAuditReportPath: productionPath,
@@ -391,9 +377,9 @@ test('raw npm audit reports are canonically evaluated for freeze acceptance', as
 					cli: { inputs: { 'packages/operon-cli/src/main.ts': { bytes: 1 } } },
 				},
 			}), {
-			status: 'accepted-development-exception',
+			status: 'accepted-clean',
 			productionVulnerabilities: 0,
-			developmentVulnerabilities: 1,
+			developmentVulnerabilities: 0,
 			directRoot: 'dev-tool',
 		});
 		await assert.rejects(
@@ -434,25 +420,17 @@ async function fixtureRoot() {
 		['contracts/agent-runtime/developer-api-v1.md', 'developer\n'],
 		['contracts/agent-runtime/public-v1-baseline.json', '{}\n'],
 		['contracts/release/dev-audit-policy-v1.json', `${JSON.stringify({
+			policyVersion: 2,
 			production: { maximumVulnerabilities: 0 },
-			developmentException: {
+			development: {
+				maximumVulnerabilities: 0,
 				directRoot: 'dev-tool',
-				severity: 'high',
-				expectedCounts: {
-					info: 0,
-					low: 0,
-					moderate: 0,
-					high: 1,
-					critical: 0,
-					total: 1,
-				},
-				vulnerabilityNames: ['dev-tool'],
-				advisories: [{
-					source: 1,
+				resolvedAdvisory: {
+					packageName: 'dev-tool',
 					url: 'https://example.invalid/advisory/1',
-				}],
-				requiredNoFixPackages: ['dev-tool'],
-				rootFixAvailable: false,
+					allowedInstalledVersions: ['1.0.0'],
+				},
+				forbiddenRuntimePackages: ['dev-tool'],
 			},
 		})}\n`],
 		['package.json', `${JSON.stringify({

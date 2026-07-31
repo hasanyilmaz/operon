@@ -104,6 +104,7 @@ type DeveloperPlanExecutionStateV1 =
 
 export interface OperonDeveloperApiRuntimeOptionsV1 {
 	readonly isDesktopAvailable: () => boolean;
+	readonly isHostVersionSupported: () => boolean;
 	readonly lifecyclePhase: () => RuntimeLifecyclePhaseV1;
 	readonly retryAfterMs: () => number | undefined;
 	readonly lifecycleError: () => StructuredErrorV1 | undefined;
@@ -148,6 +149,21 @@ export function getOperonDeveloperApiV1(
 		const error = structuredErrorV1(
 			'unsupported-platform',
 			'The in-process Operon Developer API is supported only in Obsidian Desktop.',
+		);
+		const status = accessFailureStatus(options, 'unsupported-platform', error);
+		return freezeApiStructure({
+			contractVersion: CONTRACT_VERSION_V1,
+			kind: 'developer-api-access-result',
+			ok: false,
+			status,
+			error,
+		});
+	}
+	if (!options.isHostVersionSupported()) {
+		const error = structuredErrorV1(
+			'unsupported-platform',
+			'The in-process Operon Developer API requires Obsidian Desktop 1.12.2 or newer.',
+			{ details: { reasonCode: 'obsidian-version-unsupported' } },
 		);
 		const status = accessFailureStatus(options, 'unsupported-platform', error);
 		return freezeApiStructure({

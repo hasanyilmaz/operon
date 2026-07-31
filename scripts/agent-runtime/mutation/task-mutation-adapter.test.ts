@@ -5,6 +5,7 @@ import type { MutationPreviewRequestV1 } from '../../../src/agent-runtime/contra
 import { buildLivePropertyCatalogV1 } from '../../../src/agent-runtime/runtime/catalog-builder';
 import {
 	getRuntimeTaskFieldMutationPostflightRequirementsV1,
+	buildRuntimeConversionAncestorPredictedEffectsV1,
 	buildRuntimeTaskUpdateBatchEffectsV1,
 	prepareRuntimeTaskFieldMutationV1,
 	prepareRuntimeTaskUpdateBatchV1,
@@ -90,6 +91,88 @@ test('general update resolves stable priority identity and rejects semantic fiel
 	if (!rejected.ok) assert.equal(rejected.code, 'field-not-writable');
 });
 
+test('conversion ancestor effects exclude source groups and coalesce shared ancestor files', () => {
+	const effects = buildRuntimeConversionAncestorPredictedEffectsV1(
+		['Daily/Today.md', 'Converted/Task.md'],
+		[
+			'Daily/Today.md',
+			'Parents/Project.md',
+			'Parents/Project.md',
+			'Parents/Area.md',
+		],
+	);
+	assert.deepEqual(effects, [{
+		resourceKind: 'task-source',
+		resourceKey: 'Parents/Project.md',
+		action: 'update',
+		summary: 'Refresh sealed conversion ancestor timestamps and hierarchy aggregates.',
+	}, {
+		resourceKind: 'task-source',
+		resourceKey: 'Parents/Area.md',
+		action: 'update',
+		summary: 'Refresh sealed conversion ancestor timestamps and hierarchy aggregates.',
+	}]);
+	assert.equal(
+		new Set(effects.map(effect => `${effect.resourceKind}\0${effect.resourceKey}\0${effect.action}`)).size,
+		effects.length,
+	);
+});
+
+test('general update canonicalizes built-in and custom datetimes before no-op and postflight', () => {
+	const catalogWithCustomDatetime = {
+		...catalog,
+		fields: [...catalog.fields, {
+			canonicalKey: 'customDatetime',
+			displayName: 'Custom datetime',
+			description: 'Synthetic custom datetime field.',
+			valueType: 'datetime' as const,
+			source: 'custom' as const,
+			mappingStatus: 'mapped' as const,
+			readable: true,
+			mutationClass: 'general-update' as const,
+			mutationOwner: 'tasks.update',
+			requiresStableTaxonomyId: false,
+		}],
+	};
+	const update = prepareRuntimeTaskFieldMutationV1(
+		request('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [
+				{ field: 'datetimeStart', valueType: 'datetime', value: '2026-07-26T09:30' },
+				{ field: 'customDatetime', valueType: 'datetime', value: '2026-07-26T10:45' },
+			],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		{ catalog: catalogWithCustomDatetime, getTask: () => task },
+	);
+	assert.equal(update.ok, true);
+	if (!update.ok) return;
+	assert.equal(update.value.fieldValues.datetimeStart, '2026-07-26T09:30:00');
+	assert.equal(update.value.fieldValues.customDatetime, '2026-07-26T10:45:00');
+	const committed = {
+		...task,
+		fieldValues: { ...task.fieldValues, ...update.value.fieldValues },
+	};
+	assert.equal(verifyRuntimeTaskFieldMutationPrimaryPostflightV1(
+		update.value,
+		committed,
+	), true);
+
+	const replay = prepareRuntimeTaskFieldMutationV1(
+		request('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [
+				{ field: 'datetimeStart', valueType: 'datetime', value: '2026-07-26T09:30' },
+				{ field: 'customDatetime', valueType: 'datetime', value: '2026-07-26T10:45' },
+			],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		{ catalog: catalogWithCustomDatetime, getTask: () => committed },
+	);
+	assert.equal(replay.ok, true);
+	if (replay.ok) assert.equal(replay.value.noChange, true);
+});
+
 test('update-batch prepares ordered same-source inline updates and sealed effects', () => {
 	const secondTask: RuntimeExactTaskMutationSnapshotV1 = {
 		...task,
@@ -111,7 +194,10 @@ test('update-batch prepares ordered same-source inline updates and sealed effect
 				{
 					itemRef: 'first',
 					target: { operonId: task.operonId, locator: task.locator },
-					changes: [{ field: 'description', valueType: 'text', value: 'Updated first' }],
+					changes: [
+						{ field: 'description', valueType: 'text', value: 'Updated first' },
+						{ field: 'datetimeStart', valueType: 'datetime', value: '2026-07-26T09:30' },
+					],
 				},
 				{
 					itemRef: 'second',
@@ -138,6 +224,10 @@ test('update-batch prepares ordered same-source inline updates and sealed effect
 	if (!result.ok) return;
 	assert.equal(result.value.filePath, 'Tasks.md');
 	assert.deepEqual(result.value.items.map(item => item.itemRef), ['first', 'second']);
+	assert.equal(
+		result.value.items[0].preparation.fieldValues.datetimeStart,
+		'2026-07-26T09:30:00',
+	);
 	const plannedSourceDigest = sha256HexV1('planned source');
 	const effects = buildRuntimeTaskUpdateBatchEffectsV1(result.value, plannedSourceDigest);
 	assert.deepEqual(effects.map(effect => effect.operonId), ['abc1234', 'def5678']);

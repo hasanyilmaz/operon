@@ -135,6 +135,79 @@ function artifactProvenanceFailures(artifactMetafiles, vulnerabilityNames) {
 	return failures;
 }
 
+function evaluateResolvedDevelopmentPolicy({
+	policy,
+	productionCounts,
+	fullReport,
+	packageLock,
+	rootPackage,
+	cliPackage,
+	rootDir,
+	artifactMetafiles,
+}) {
+	const failures = [];
+	const development = policy.development;
+	const fullCounts = auditCounts(fullReport);
+	if (
+		Object.keys(fullReport.vulnerabilities).length !== development.maximumVulnerabilities
+		|| Object.values(fullCounts).some(count => count !== development.maximumVulnerabilities)
+	) {
+		failures.push('Development dependency audit must contain zero vulnerabilities.');
+	}
+
+	const rootDevDependencies = rootPackage?.devDependencies ?? {};
+	const rootProductionDependencies = {
+		...(rootPackage?.dependencies ?? {}),
+		...(rootPackage?.optionalDependencies ?? {}),
+	};
+	if (!Object.hasOwn(rootDevDependencies, development.directRoot)) {
+		failures.push(`${development.directRoot} must remain a direct development dependency.`);
+	}
+	if (Object.hasOwn(rootProductionDependencies, development.directRoot)) {
+		failures.push(`${development.directRoot} must not enter production dependencies.`);
+	}
+
+	const resolved = development.resolvedAdvisory;
+	const installedLocations = Object.entries(packageLock?.packages ?? {})
+		.filter(([location]) => packageNameFromLocation(location) === resolved.packageName);
+	const installedVersions = sorted(new Set(installedLocations.map(([, entry]) => entry.version)));
+	const allowedVersions = sorted(resolved.allowedInstalledVersions);
+	if (!sameJson(installedVersions, allowedVersions)) {
+		failures.push(`${resolved.packageName} installed versions changed: ${installedVersions.join(', ')}.`);
+	}
+	for (const [location, entry] of installedLocations) {
+		if (entry.dev !== true) {
+			failures.push(`${resolved.packageName} node is not dev-only in package-lock.json: ${location}.`);
+		}
+	}
+
+	const forbiddenRuntimePackages = development.forbiddenRuntimePackages;
+	const cliRuntimeDependencies = {
+		...(cliPackage?.dependencies ?? {}),
+		...(cliPackage?.optionalDependencies ?? {}),
+	};
+	for (const name of forbiddenRuntimePackages) {
+		if (Object.hasOwn(cliRuntimeDependencies, name)) {
+			failures.push(`operon-cli runtime dependency includes forbidden development package ${name}.`);
+		}
+	}
+	if ((cliPackage?.files ?? []).some(file => file.includes('node_modules'))) {
+		failures.push('operon-cli package files must not include node_modules.');
+	}
+	failures.push(...artifactProvenanceFailures(artifactMetafiles, forbiddenRuntimePackages));
+	if (rootDir) failures.push(...runtimeArtifactFailures(rootDir, forbiddenRuntimePackages));
+
+	return failures.length > 0
+		? { status: 'mismatch', failures }
+		: {
+			status: 'accepted-clean',
+			failures: [],
+			productionVulnerabilities: productionCounts.total,
+			developmentVulnerabilities: fullCounts.total,
+			directRoot: development.directRoot,
+		};
+}
+
 export function evaluateReleaseAuditPolicy({
 	policy,
 	productionReport,
@@ -159,6 +232,21 @@ export function evaluateReleaseAuditPolicy({
 		|| Object.values(productionCounts).some(count => count !== policy.production.maximumVulnerabilities)
 	) {
 		failures.push('Production dependency audit must contain zero vulnerabilities.');
+	}
+	if (policy.policyVersion === 2) {
+		const resolved = evaluateResolvedDevelopmentPolicy({
+			policy,
+			productionCounts,
+			fullReport,
+			packageLock,
+			rootPackage,
+			cliPackage,
+			rootDir,
+			artifactMetafiles,
+		});
+		return failures.length > 0
+			? { status: 'mismatch', failures: [...failures, ...resolved.failures] }
+			: resolved;
 	}
 
 	const exception = policy.developmentException;

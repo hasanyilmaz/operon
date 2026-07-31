@@ -90,6 +90,7 @@ import {
 	repairCliStorageSecurityV1,
 	resolveWindowsPowerShellV1,
 	secureCreatedFileV1,
+	WINDOWS_ACL_TIMEOUT_MS_V1,
 	writeSecureJsonAtomicV1,
 } from '../../../packages/operon-cli/src/secure-storage';
 import {
@@ -253,6 +254,7 @@ function testCrossPlatformCliStorageAndPaths(): void {
 }
 
 function testWindowsPowerShellResolutionSecurity(): void {
+	assert.equal(WINDOWS_ACL_TIMEOUT_MS_V1, 30_000);
 	const regular = {
 		isFile: () => true,
 		isSymbolicLink: () => false,
@@ -327,7 +329,7 @@ function broadenWindowsPathAclForTest(
 		},
 		stdio: 'ignore',
 		windowsHide: true,
-		timeout: 15_000,
+		timeout: WINDOWS_ACL_TIMEOUT_MS_V1,
 	});
 }
 

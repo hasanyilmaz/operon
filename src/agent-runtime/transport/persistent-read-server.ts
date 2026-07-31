@@ -41,6 +41,8 @@ const DESCRIPTOR_TTL_MS_V1 = 24 * 60 * 60 * 1_000;
 const DESCRIPTOR_REFRESH_MS_V1 = 12 * 60 * 60 * 1_000;
 const HANDSHAKE_DEADLINE_MS_V1 = 5_000;
 const SERVER_REPLAY_CACHE_LIMIT_V1 = 65_536;
+const WINDOWS_ACL_TIMEOUT_MS_V1 = 30_000;
+const WINDOWS_ACL_RESULT_LIMIT_V1 = 16_384;
 
 interface PersistentReadNodeBufferV1 extends Uint8Array {
 	readUInt32BE(offset: number): number;
@@ -134,6 +136,7 @@ interface PersistentReadNodeModulesV1 {
 			shell: false;
 			windowsHide: true;
 			timeout: number;
+			maxBuffer: number;
 			killSignal: 'SIGKILL';
 		}): { status: number | null; stdout: string; stderr: string; error?: Error };
 	};
@@ -254,8 +257,7 @@ async function startAgentRuntimePersistentReadServerInternalV1(
 	const requestRoot = resolvePersistentEndpointRootV1(modules, nodeApi, uid);
 	await nodeApi.mkdir(requestRoot, { recursive: true, mode: 0o700 });
 	if (platform === 'win32') {
-		secureWindowsOwnerOnlyPathV1(modules, requestRoot, true);
-		assertWindowsOwnerOnlyPathV1(modules, requestRoot, true);
+		applyAndVerifyWindowsOwnerOnlyPathV1(modules, requestRoot, true);
 	} else {
 		const rootStat = await modules.fsp.lstat(requestRoot);
 		if (
@@ -1012,8 +1014,7 @@ async function publishWindowsDescriptorV1(
 		{ flag: 'wx', mode: 0o600 },
 	);
 	try {
-		secureWindowsOwnerOnlyPathV1(modules, temporaryPath, false);
-		assertWindowsOwnerOnlyPathV1(modules, temporaryPath, false);
+		applyAndVerifyWindowsOwnerOnlyPathV1(modules, temporaryPath, false);
 		const existing = await modules.fsp.lstat(descriptorPath).catch(() => null);
 			if (existing) {
 				if (existing.isSymbolicLink() || !existing.isFile()) {
@@ -1035,7 +1036,7 @@ async function publishWindowsDescriptorV1(
 	}
 }
 
-function secureWindowsOwnerOnlyPathV1(
+function applyAndVerifyWindowsOwnerOnlyPathV1(
 	modules: PersistentReadNodeModulesV1,
 	path: string,
 	directory: boolean,
@@ -1046,6 +1047,9 @@ function secureWindowsOwnerOnlyPathV1(
 	const setAccessControl = directory
 		? '[IO.Directory]::SetAccessControl($p,$acl)'
 		: '[IO.File]::SetAccessControl($p,$acl)';
+	const getAccessControl = directory
+		? '[IO.Directory]::GetAccessControl($p)'
+		: '[IO.File]::GetAccessControl($p)';
 	const securityDescriptor = directory
 		? '[Security.AccessControl.DirectorySecurity]::new()'
 		: '[Security.AccessControl.FileSecurity]::new()';
@@ -1064,6 +1068,14 @@ function secureWindowsOwnerOnlyPathV1(
 		`$rule=[Security.AccessControl.FileSystemAccessRule]::new($sid,[Security.AccessControl.FileSystemRights]"${rights}",[Security.AccessControl.InheritanceFlags]"${inheritance}",[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)`,
 		'[void]$acl.AddAccessRule($rule)',
 		setAccessControl,
+		`$actual=${getAccessControl}`,
+		'$owner=$actual.GetOwner([Security.Principal.SecurityIdentifier]).Value',
+		'if ($owner -ne $sid.Value) { throw "owner-mismatch" }',
+		'if (-not $actual.AreAccessRulesProtected) { throw "acl-inherited" }',
+		'$rules=$actual.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])',
+		'foreach($access in $rules){ if($access.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or $access.IdentityReference.Value -ne $sid.Value){ throw "acl-too-broad" } }',
+		'if ($rules.Count -eq 0) { throw "acl-too-broad" }',
+		`[Console]::Out.Write('{"ok":true,"directory":${directory ? 'true' : 'false'}}')`,
 	].join(';');
 	const result = modules.childProcess.spawnSync(
 		executable,
@@ -1073,12 +1085,16 @@ function secureWindowsOwnerOnlyPathV1(
 			env: environment,
 			shell: false,
 			windowsHide: true,
-			timeout: 15_000,
+			timeout: WINDOWS_ACL_TIMEOUT_MS_V1,
+			maxBuffer: WINDOWS_ACL_RESULT_LIMIT_V1,
 			killSignal: 'SIGKILL',
 		},
 	);
 	if (result.error || result.status !== 0) {
 		throw new Error('windows-owner-only-acl-setup-failed');
+	}
+	if (result.stdout !== `{"ok":true,"directory":${directory ? 'true' : 'false'}}`) {
+		throw new Error('windows-owner-only-acl-required');
 	}
 }
 
@@ -1117,7 +1133,8 @@ function assertWindowsOwnerOnlyPathV1(
 			env: environment,
 			shell: false,
 			windowsHide: true,
-			timeout: 15_000,
+			timeout: WINDOWS_ACL_TIMEOUT_MS_V1,
+			maxBuffer: WINDOWS_ACL_RESULT_LIMIT_V1,
 			killSignal: 'SIGKILL',
 		},
 	);

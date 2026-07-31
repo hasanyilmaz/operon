@@ -22,6 +22,9 @@ const ACCEPTED_OS_REFS_V1 = new Set([
 	'ubuntu-26.04-amd64',
 	'windows-11-25h2-26200.8875-x64',
 ]);
+const WINDOWS_EXECUTABLE_EXTENSIONS_V1 = new Set(['.exe', '.com']);
+const WINDOWS_POWERSHELL_RESULT_LIMIT_V1 = 16_384;
+const WINDOWS_POWERSHELL_TIMEOUT_MS_V1 = 30_000;
 
 export function assertLiveAcceptanceInputsV1(input, runtime = {
 	nodeMajor: Number(process.versions.node.split('.')[0]),
@@ -48,13 +51,15 @@ export function assertLiveAcceptanceInputsV1(input, runtime = {
 	}
 }
 
-export function nativePlatformIdentityV1() {
+export function nativePlatformIdentityV1(options = {}) {
+	const platform = options.platform ?? process.platform;
+	const environment = options.env ?? process.env;
 	const common = {
-		platform: process.platform,
+		platform,
 		arch: process.arch,
 		release: os.release(),
 	};
-	if (process.platform === 'darwin') {
+	if (platform === 'darwin') {
 		const version = execFileSync('sw_vers', ['-productVersion'], {
 			encoding: 'utf8',
 		}).trim();
@@ -68,7 +73,7 @@ export function nativePlatformIdentityV1() {
 			build,
 		};
 	}
-	if (process.platform === 'linux') {
+	if (platform === 'linux') {
 		const fields = Object.fromEntries(readFileSync('/etc/os-release', 'utf8')
 			.split(/\r?\n/u)
 			.map(line => line.split('=', 2))
@@ -85,19 +90,23 @@ export function nativePlatformIdentityV1() {
 			build: pointVersion,
 		};
 	}
-	if (process.platform === 'win32') {
-		const document = JSON.parse(execFileSync(
-			'powershell.exe',
-			[
-				'-NoProfile',
-				'-NonInteractive',
-				'-Command',
-				'$v=Get-ItemProperty "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";'
-				+ '[ordered]@{DisplayVersion=$v.DisplayVersion;CurrentBuild=$v.CurrentBuild;'
-				+ 'UBR=$v.UBR}|ConvertTo-Json -Compress',
-			],
-			{ encoding: 'utf8', windowsHide: true },
-		).trim());
+	if (platform === 'win32') {
+		const document = runWindowsPowerShellJsonV1(
+			'$v=Get-ItemProperty "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";'
+				+ '[ordered]@{DisplayVersion=[string]$v.DisplayVersion;'
+				+ 'CurrentBuild=[string]$v.CurrentBuild;UBR=[int]$v.UBR}|ConvertTo-Json -Compress',
+			environment,
+			{},
+			options.dependencies,
+		);
+		assert.deepEqual(
+			Object.keys(document).sort(),
+			['CurrentBuild', 'DisplayVersion', 'UBR'],
+			'Native Windows identity returned unexpected fields.',
+		);
+		assert.equal(typeof document.DisplayVersion, 'string');
+		assert.match(document.CurrentBuild, /^[0-9]{5,6}$/u);
+		assert.ok(Number.isSafeInteger(document.UBR) && document.UBR >= 0);
 		const build = `${document.CurrentBuild}.${document.UBR}`;
 		assert.ok(Number(document.CurrentBuild) >= 22_000, 'Native Windows reference must be Windows 11.');
 		const display = String(document.DisplayVersion).toLowerCase();
@@ -171,7 +180,12 @@ export function officialObsidianCliIdentityV1(expectedVersion, options = {}) {
 		?? 'obsidian';
 	const platform = options.platform ?? process.platform;
 	const environment = options.env ?? process.env;
-	const executable = resolveExecutableV1(requestedExecutable, platform, environment);
+	const executable = resolveAcceptanceExecutableV1(
+		requestedExecutable,
+		platform,
+		environment,
+		options.dependencies,
+	);
 	const executableStats = lstatSync(executable);
 	assert.ok(
 		executableStats.isFile() && !executableStats.isSymbolicLink(),
@@ -181,7 +195,12 @@ export function officialObsidianCliIdentityV1(expectedVersion, options = {}) {
 		accessSync(executable, fsConstants.X_OK);
 	}
 	const executableBytes = readFileSync(executable);
-	const nativeIdentity = nativeExecutableIdentityV1(executable, platform);
+	const nativeIdentity = nativeExecutableIdentityV1(
+		executable,
+		platform,
+		environment,
+		options.dependencies,
+	);
 	assert.equal(
 		nativeIdentity.verified,
 		true,
@@ -352,36 +371,65 @@ function bindRepositoryProofHookV1(hookArgument, repositoryRoot, testOnlyAllowUn
 	};
 }
 
-function resolveExecutableV1(requestedExecutable, platform, environment) {
+export function resolveAcceptanceExecutableV1(
+	requestedExecutable,
+	platform,
+	environment,
+	dependencies = {},
+) {
+	if (!requestedExecutable || requestedExecutable.includes('\0')) {
+		throw new Error('OFFICIAL_OBSIDIAN_CLI_EXECUTABLE_INVALID');
+	}
+	const platformPath = platform === 'win32' ? path.win32 : path;
+	const lstat = dependencies.lstat ?? lstatSync;
+	const realpath = dependencies.realpath ?? realpathSync;
+	const cwd = dependencies.cwd ?? process.cwd();
 	const hasSeparator = requestedExecutable.includes('/')
 		|| requestedExecutable.includes('\\')
-		|| path.isAbsolute(requestedExecutable);
+		|| platformPath.isAbsolute(requestedExecutable);
 	const candidates = [];
 	if (hasSeparator) {
-		candidates.push(path.resolve(requestedExecutable));
+		candidates.push(platformPath.resolve(cwd, requestedExecutable));
 	} else {
 		const pathEntries = String(environment.PATH ?? '')
-			.split(path.delimiter)
+			.split(platformPath.delimiter)
 			.filter(Boolean);
-		const extensions = platform === 'win32'
-			? String(environment.PATHEXT ?? '.EXE;.COM;.CMD')
-				.split(';')
-				.filter(Boolean)
+		const requestedExtension = platformPath.extname(requestedExecutable).toLowerCase();
+		if (
+			platform === 'win32'
+			&& requestedExtension
+			&& !WINDOWS_EXECUTABLE_EXTENSIONS_V1.has(requestedExtension)
+		) throw new Error('OFFICIAL_OBSIDIAN_CLI_EXECUTABLE_INVALID');
+		const extensions = platform === 'win32' && !requestedExtension
+			? [...WINDOWS_EXECUTABLE_EXTENSIONS_V1]
 			: [''];
 		for (const directory of pathEntries) {
 			for (const extension of extensions) {
-				const hasExtension = path.extname(requestedExecutable).length > 0;
-				candidates.push(path.join(
+				candidates.push(platformPath.join(
 					directory,
-					hasExtension ? requestedExecutable : `${requestedExecutable}${extension}`,
+					`${requestedExecutable}${extension}`,
 				));
 			}
 		}
 	}
+	if (
+		platform === 'win32'
+		&& !WINDOWS_EXECUTABLE_EXTENSIONS_V1.has(
+			platformPath.extname(candidates[0] ?? requestedExecutable).toLowerCase(),
+		)
+	) throw new Error('OFFICIAL_OBSIDIAN_CLI_EXECUTABLE_INVALID');
 	for (const candidate of candidates) {
 		try {
-			const canonical = realpathSync(candidate);
-			if (lstatSync(canonical).isFile()) return canonical;
+			const candidateStats = lstat(candidate);
+			if (!candidateStats.isFile() || candidateStats.isSymbolicLink()) continue;
+			const canonical = realpath(candidate);
+			const canonicalStats = lstat(canonical);
+			if (!canonicalStats.isFile() || canonicalStats.isSymbolicLink()) continue;
+			if (
+				platform === 'win32'
+				&& !WINDOWS_EXECUTABLE_EXTENSIONS_V1.has(platformPath.extname(canonical).toLowerCase())
+			) continue;
+			return canonical;
 		} catch {
 			// Continue to the next deterministic PATH candidate.
 		}
@@ -389,7 +437,7 @@ function resolveExecutableV1(requestedExecutable, platform, environment) {
 	throw new Error('OFFICIAL_OBSIDIAN_CLI_EXECUTABLE_NOT_FOUND');
 }
 
-function nativeExecutableIdentityV1(executable, platform) {
+function nativeExecutableIdentityV1(executable, platform, environment, dependencies) {
 	if (platform === 'darwin') {
 		const verification = spawnSync('/usr/bin/codesign', [
 			'--verify',
@@ -405,33 +453,136 @@ function nativeExecutableIdentityV1(executable, platform) {
 			status: verification.status,
 		};
 	}
-	if (platform === 'win32' && path.extname(executable).toLowerCase() === '.exe') {
-		const escaped = executable.replaceAll("'", "''");
-		const document = JSON.parse(execFileSync('powershell.exe', [
-			'-NoProfile',
-			'-NonInteractive',
-			'-Command',
-			`$s=Get-AuthenticodeSignature -LiteralPath '${escaped}';`
-				+ '[ordered]@{Status=[string]$s.Status;'
-				+ 'Thumbprint=[string]$s.SignerCertificate.Thumbprint}|ConvertTo-Json -Compress',
-		], {
-			encoding: 'utf8',
-			windowsHide: true,
-		}).trim());
-		assert.equal(document.Status, 'Valid', 'Obsidian CLI Authenticode signature is not valid.');
-		assert.match(document.Thumbprint, /^[A-Fa-f0-9]{40,128}$/u);
-		return {
-			backend: 'windows-authenticode',
-			verified: true,
-			status: document.Status,
-			signerThumbprint: document.Thumbprint.toLowerCase(),
-		};
+	if (platform === 'win32') {
+		return windowsAuthenticodeIdentityV1(executable, environment, dependencies);
 	}
 	return {
 		backend: platform === 'linux' ? 'linux-canonical-executable' : 'canonical-executable',
 		verified: true,
 		status: 'canonical-regular-executable',
 	};
+}
+
+export function windowsAuthenticodeIdentityV1(executable, environment, dependencies = {}) {
+	const extension = path.win32.extname(executable).toLowerCase();
+	assert.ok(
+		WINDOWS_EXECUTABLE_EXTENSIONS_V1.has(extension),
+		'Obsidian CLI Windows executable must use .exe or .com.',
+	);
+	const document = runWindowsPowerShellJsonV1(
+		'$p=[Environment]::GetEnvironmentVariable("OPERON_ACCEPTANCE_EXECUTABLE", "Process");'
+			+ '$s=Get-AuthenticodeSignature -LiteralPath $p;'
+			+ '[ordered]@{Status=[string]$s.Status;'
+			+ 'Thumbprint=[string]$s.SignerCertificate.Thumbprint}|ConvertTo-Json -Compress',
+		environment,
+		{ OPERON_ACCEPTANCE_EXECUTABLE: executable },
+		dependencies,
+	);
+	assert.deepEqual(
+		Object.keys(document).sort(),
+		['Status', 'Thumbprint'],
+		'Authenticode verification returned unexpected fields.',
+	);
+	assert.equal(document.Status, 'Valid', 'Obsidian CLI Authenticode signature is not valid.');
+	assert.match(document.Thumbprint, /^[A-Fa-f0-9]{40,128}$/u);
+	return {
+		backend: 'windows-authenticode',
+		verified: true,
+		status: document.Status,
+		signerThumbprint: document.Thumbprint.toLowerCase(),
+	};
+}
+
+export function resolveAcceptanceWindowsPowerShellV1(environment, dependencies = {}) {
+	const lstat = dependencies.lstat ?? lstatSync;
+	const systemRoot = environment.SystemRoot;
+	const windowsDirectory = environment.WINDIR;
+	if (
+		!systemRoot
+		|| !windowsDirectory
+		|| systemRoot.includes('\0')
+		|| windowsDirectory.includes('\0')
+		|| !path.win32.isAbsolute(systemRoot)
+		|| !path.win32.isAbsolute(windowsDirectory)
+	) throw new Error('ACCEPTANCE_WINDOWS_POWERSHELL_UNAVAILABLE');
+	const normalizedRoot = path.win32.normalize(systemRoot).replace(/[\\/]+$/u, '');
+	const normalizedWindowsDirectory = path.win32.normalize(windowsDirectory).replace(/[\\/]+$/u, '');
+	if (normalizedRoot.toLowerCase() !== normalizedWindowsDirectory.toLowerCase()) {
+		throw new Error('ACCEPTANCE_WINDOWS_POWERSHELL_UNAVAILABLE');
+	}
+	const executable = path.win32.join(
+		normalizedRoot,
+		'System32',
+		'WindowsPowerShell',
+		'v1.0',
+		'powershell.exe',
+	);
+	let cursor = executable;
+	while (true) {
+		let stats;
+		try {
+			stats = lstat(cursor);
+		} catch {
+			throw new Error('ACCEPTANCE_WINDOWS_POWERSHELL_UNAVAILABLE');
+		}
+		if (stats.isSymbolicLink() || (cursor === executable && !stats.isFile())) {
+			throw new Error('ACCEPTANCE_WINDOWS_POWERSHELL_UNAVAILABLE');
+		}
+		const parent = path.win32.dirname(cursor);
+		if (parent === cursor) break;
+		cursor = parent;
+	}
+	return { executable, systemRoot: normalizedRoot };
+}
+
+function runWindowsPowerShellJsonV1(
+	script,
+	environment,
+	commandEnvironment,
+	dependencies = {},
+) {
+	const spawn = dependencies.spawnSync ?? spawnSync;
+	const { executable, systemRoot } = resolveAcceptanceWindowsPowerShellV1(
+		environment,
+		dependencies,
+	);
+	const result = spawn(executable, [
+		'-NoLogo',
+		'-NoProfile',
+		'-NonInteractive',
+		'-ExecutionPolicy',
+		'Bypass',
+		'-Command',
+		script,
+	], {
+		encoding: 'utf8',
+		windowsHide: true,
+		shell: false,
+		env: {
+			SystemRoot: systemRoot,
+			WINDIR: systemRoot,
+			...commandEnvironment,
+		},
+		maxBuffer: WINDOWS_POWERSHELL_RESULT_LIMIT_V1,
+		timeout: WINDOWS_POWERSHELL_TIMEOUT_MS_V1,
+		killSignal: 'SIGKILL',
+	});
+	if (result.error || result.status !== 0 || result.stderr?.trim()) {
+		throw new Error('ACCEPTANCE_WINDOWS_POWERSHELL_UNAVAILABLE');
+	}
+	if (typeof result.stdout !== 'string') {
+		throw new Error('ACCEPTANCE_WINDOWS_POWERSHELL_INVALID_RESULT');
+	}
+	let document;
+	try {
+		document = JSON.parse(result.stdout.trim());
+	} catch {
+		throw new Error('ACCEPTANCE_WINDOWS_POWERSHELL_INVALID_RESULT');
+	}
+	if (!document || typeof document !== 'object' || Array.isArray(document)) {
+		throw new Error('ACCEPTANCE_WINDOWS_POWERSHELL_INVALID_RESULT');
+	}
+	return document;
 }
 
 function strictProofSummaryV1(kind, value) {

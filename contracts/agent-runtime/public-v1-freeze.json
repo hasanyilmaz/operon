@@ -26,8 +26,8 @@
       },
       {
         "path": "contracts/agent-runtime/public-v1-freeze.schema.json",
-        "sha256": "8c5c3b2a0d5b9f410df20279dbb5ec24f8ac2a0761597e2c108a48d817235b93",
-        "bytes": 7478
+        "sha256": "313b7e933a79bc59206a6315ebb80d5afe863686aa88dc4271f3868542a39423",
+        "bytes": 7441
       },
       {
         "path": "scripts/agent-runtime/contracts/contract-evolution.mjs",
@@ -41,11 +41,11 @@
       },
       {
         "path": "scripts/agent-runtime/contracts/public-v1-freeze.mjs",
-        "sha256": "2b15846f1950e04543e8f3a364734e228b6ff219afad9a96c66679a3794c9268",
-        "bytes": 23030
+        "sha256": "ab05bd85943953a9f014ce9570dfe20a7305d2a35bf672e1ab86ee55717f47a2",
+        "bytes": 23000
       }
     ],
-    "aggregateSha256": "145608293f05f41b687a72c9bc45399cd94470eddd1b4c0f45f1614e28373329"
+    "aggregateSha256": "ecd04c229443b86a12b8f3effaca00e26539928c125e6702a97a35da28638ac3"
   },
   "runtime": {
     "contractVersion": 1,
@@ -67,13 +67,13 @@
     "contractDigest": "d280747a21f46add48d70193205c4dc642b1e0f38447209611174e33beff5927",
     "tarball": {
       "path": "packages/operon-cli/freeze/operon-cli-1.0.0.tgz",
-      "sha256": "413b0cdeaa802d3e450d7334b6f5f62b7bfee7104b67f450c99c484f774ad08a",
-      "bytes": 213365
+      "sha256": "29f13c9fd9575812d6e52130107d0b3fdb9bfea8ea91bbc72e99ea27750ea7c7",
+      "bytes": 213375
     },
     "executable": {
       "path": "packages/operon-cli/dist/operon.mjs",
-      "sha256": "88cf316ffdc3b324047b6acebdcc3ab674d103ac340f4875de77a902371beca9",
-      "bytes": 512707
+      "sha256": "405c44ba509e5d276e50be40395dc320dede5ac69d92e1e7c2f3363b12ae88bf",
+      "bytes": 512706
     },
     "license": {
       "path": "packages/operon-cli/LICENSE",
@@ -110,7 +110,7 @@
       "fileCount": 5,
       "aggregateSha256": "2ecd8a3e0ae2e069bc89a7cd70cdb724f4023f2b306391b21fbbabca07dd12c6"
     },
-    "packageInputAggregateSha256": "750ee6c44939a3616c5cd9c3d683997e1c74f22a70af13938038ea9e6ee1d9ee"
+    "packageInputAggregateSha256": "5609fe51030eb2396889361f59cc47043924dab8898dc20cb0049a5c12397917"
   },
   "documentation": {
     "manifest": {
@@ -132,8 +132,8 @@
     "version": "3.0.0",
     "main": {
       "path": "main.js",
-      "sha256": "49c54ee76f3f832923997c8bd7c3b1ccaec83caae0f85002b8a1b979fba7830f",
-      "bytes": 4323301
+      "sha256": "d533af7c8ba3aa0366bba33d56852b7ce0537de1dafaa5de405b10a7a305fc81",
+      "bytes": 4325274
     },
     "manifest": {
       "path": "manifest.json",
@@ -149,18 +149,18 @@
   "audit": {
     "policy": {
       "path": "contracts/release/dev-audit-policy-v1.json",
-      "sha256": "b5f30c4530409785696ace0ac5e823107cb3228b7236e8d3de6a5fb12c484ba3",
-      "bytes": 965
+      "sha256": "6afea1a208bc9dc7d8b0eaf5f5c449791b867952dc1b220d5f10422d932ebe3a",
+      "bytes": 773
     },
     "checker": {
       "path": "scripts/check-release-audit-policy.mjs",
-      "sha256": "45e50324b6f0653860a11ac559896d78903075588fb8bcc5ee7fb3844dada8c3",
-      "bytes": 3565
+      "sha256": "ad7e8361cada8ea13beb86a2d4a911660db3ca6c7db3c199f7d717a2f5fd1eb8",
+      "bytes": 3549
     },
     "evaluator": {
       "path": "scripts/release/audit-policy.mjs",
-      "sha256": "8f3a9f43d6c32bd04f545ea15762041f44ee54f695cf0d5f598968aa7fab481a",
-      "bytes": 10909
+      "sha256": "426b42518d567ca88247debab44d095bdddb553ec40d0db3e300344562ca8bbb",
+      "bytes": 14063
     },
     "rootPackage": {
       "path": "package.json",
@@ -176,9 +176,9 @@
       "command": "npm run release:audit-policy",
       "status": "passed",
       "result": {
-        "status": "accepted-development-exception",
+        "status": "accepted-clean",
         "productionVulnerabilities": 0,
-        "developmentVulnerabilities": 11,
+        "developmentVulnerabilities": 0,
         "directRoot": "eslint-plugin-obsidianmd"
       }
     }
@@ -196,7 +196,7 @@
   "maintainerAcceptance": {
     "status": "accepted",
     "acceptedBy": "Hasan Yilmaz",
-    "acceptedAt": "2026-07-31T17:01:38.000Z"
+    "acceptedAt": "2026-07-31T21:24:11.486Z"
   },
-  "inputsAggregateSha256": "83988602c5b24115d4305df0263c1e0109b1ca921b847b87c325c9c4a8744895"
+  "inputsAggregateSha256": "38ca3f93484dbad2a79b29ef09ba3958b597bbbf3dbd4eeda36b74e8abda3d1d"
 }

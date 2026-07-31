@@ -28,7 +28,11 @@ import {
 	validateRuntimeMutationPreviewRequestV1,
 } from '../../../src/agent-runtime/runtime/mutation-request-validator';
 import { validateCliRuntimeRequestV1 } from '../../../src/agent-runtime/runtime/context-request-validator';
-import type { RuntimeTaskCreationPreparationV1 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
+import {
+	prepareRuntimeTaskCreationV1,
+	type RuntimeTaskCreationPreparationV1,
+} from '../../../src/agent-runtime/runtime/task-creation-adapter';
+import { buildRuntimeConversionAncestorPredictedEffectsV1 } from '../../../src/agent-runtime/runtime/task-mutation-adapter';
 import {
 	GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
 	type GraphTransactionJournalV1,
@@ -40,6 +44,7 @@ import {
 	type SecurityAuditEventV1,
 } from '../../../src/agent-runtime/runtime/receipts';
 import { RuntimeTimingProbeBufferV1 } from '../../../src/agent-runtime/runtime/timing-probe';
+import { DEFAULT_SETTINGS } from '../../../src/types/settings';
 
 const revision: ContextRevisionV1 = {
 	index: {
@@ -610,6 +615,159 @@ test('preview seals one live-verified creation plan and apply replays by receipt
 	});
 	assert.equal(expired.status, 'failed');
 	assert.equal(expired.error?.code, 'plan-expired');
+});
+
+test('minute-precision creation is canonical through Gateway postflight and receipt replay', async () => {
+	const filePath = 'Datetime.md';
+	const sourceBefore = '# Datetime\n';
+	let source = sourceBefore;
+	let commitCount = 0;
+	let verifyCount = 0;
+	let receipt: Parameters<IndexedDbMutationReceiptStoreV1['persist']>[0] | null = null;
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => receipt,
+		persist: async (value: NonNullable<typeof receipt>) => {
+			receipt = value;
+			return { expiredDeleted: 0, overflowDeleted: 0, retained: 1 };
+		},
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	const datetimeRequest: MutationPreviewRequestV1 = {
+		...request,
+		requestId: 'datetime-minute-preview',
+		idempotencyKey: 'datetime-minute-idempotency',
+		spec: {
+			operation: 'create',
+			items: [{
+				itemRef: 'datetime-task',
+				description: 'Minute precision task',
+				target: {
+					representation: 'inline',
+					mode: 'exact-path',
+					filePath,
+				},
+				fields: [{
+					kind: 'datetime',
+					field: 'datetimeStart',
+					value: '2026-07-31T22:00',
+				}],
+				tags: [],
+			}],
+		},
+	};
+	const creationPorts = {
+		settings: () => DEFAULT_SETTINGS,
+		listOperonIds: () => new Set<string>(),
+		listDependencyGraphTasks: () => [],
+		getExistingTask: () => null,
+		readSource: async (requestedPath: string) => ({
+			filePath: requestedPath,
+			content: requestedPath === filePath ? source : null,
+		}),
+		resolveConfiguredInlineTarget: async () => ({
+			filePath,
+			placement: { kind: 'append' as const },
+		}),
+		resolveConfiguredFilePath: async () => filePath,
+		readTemplate: async () => null,
+		creationFieldCatalog: () => [{
+			canonicalKey: 'datetimeStart',
+			displayName: 'Starts at',
+			description: 'Built-in start datetime.',
+			valueType: 'datetime' as const,
+			source: 'built-in' as const,
+			mappingStatus: 'mapped' as const,
+			readable: true,
+			mutationClass: 'general-update' as const,
+			mutationOwner: 'tasks.update',
+			requiresStableTaxonomyId: false,
+		}],
+		resolveCoreTemplateVariables: (content: string) => content,
+		generateOperonId: () => 'dtm0001',
+		now: () => '2026-07-31T20:00:00',
+	};
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async (
+			requestId,
+			spec,
+			sealedIds,
+			effectiveAt,
+			activeItemRefs,
+			sealedSeriesIds,
+		) => await prepareRuntimeTaskCreationV1(
+			requestId,
+			spec,
+			creationPorts,
+			sealedIds,
+			effectiveAt,
+			activeItemRefs,
+			sealedSeriesIds,
+		),
+		commitCreation: async prepared => {
+			commitCount += 1;
+			const group = prepared.plan.sourceGroups[0];
+			assert.ok(group);
+			source = group.resultingContent;
+			return {
+				status: 'committed',
+				groups: [{
+					groupId: group.groupId,
+					filePath,
+					result: { status: 'committed', resultingRevision: sha256HexV1(source) },
+				}],
+				remainingGroupIds: [],
+			};
+		},
+		reindexAffectedSources: async () => undefined,
+		settleAfterMutation: async () => undefined,
+		reconcileCreatedHierarchy: async () => ({
+			ok: true,
+			resourceRevisions: [{
+				resourceKind: 'task-source',
+				resourceKey: filePath,
+				revision: sha256HexV1(source),
+			}],
+		}),
+		verifyCreatedTasks: async prepared => {
+			verifyCount += 1;
+			assert.equal(
+				prepared.plan.tasks[0]?.fieldValues.datetimeStart,
+				'2026-07-31T22:00:00',
+			);
+			assert.match(source, /\{\{datetimeStart:: 2026-07-31T22:00:00\}\}/u);
+			return source === prepared.plan.sourceGroups[0]?.resultingContent;
+		},
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => '9'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-31T20:00:00.000Z'),
+		randomId: () => 'datetime-minute-plan',
+	});
+
+	const preview = await gateway.preview(datetimeRequest);
+	assert.equal(preview.ok, true, JSON.stringify(preview));
+	if (!preview.ok) return;
+	const applyRequest = {
+		contractVersion: 1 as const,
+		requestId: 'datetime-minute-apply',
+		kind: 'mutation-apply' as const,
+		plan: preview.plan,
+		authorization: { basis: 'user-explicit-request' as const },
+		idempotencyKey: datetimeRequest.idempotencyKey,
+		acknowledgements: [],
+	};
+	const applied = await gateway.apply(applyRequest);
+	assert.equal(applied.status, 'applied');
+	assert.equal(applied.postflight?.status, 'verified');
+	assert.equal(commitCount, 1);
+	assert.equal(verifyCount, 1);
+
+	const replay = await gateway.apply({ ...applyRequest, requestId: 'datetime-minute-replay' });
+	assert.equal(replay.status, 'already-applied');
+	assert.deepEqual(replay.postflight, { status: 'receipt-replay' });
+	assert.equal(commitCount, 1, 'receipt replay must not write the canonical source again');
+	assert.equal(verifyCount, 1, 'receipt replay must not rerun semantic postflight');
 });
 
 test('production combined admission wins over legacy methods and receipt replay stays write-free', async () => {
@@ -3248,6 +3406,201 @@ test('file-to-inline postflight failure preserves its durable same-plan recovery
 	assert.equal(recoverCount, 1);
 	assert.equal(journal, null);
 	assert.equal(events.at(-1), 'finalize');
+});
+
+test('same-source conversion ancestor seals one effect and replays without another write', async () => {
+	const conversionRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'same-source-conversion-preview',
+		kind: 'mutation-preview',
+		clientInstanceId: 'test-client',
+		idempotencyKey: 'same-source-conversion-key',
+		capability: 'tasks.convert.preview',
+		mutationKind: 'task.convert',
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline', filePath: 'Daily.md', lineNumber: 2 },
+		},
+		spec: {
+			operation: 'convert',
+			from: 'inline',
+			to: 'file',
+			templateId: 'template:default',
+			targetPath: 'Tasks/Converted.md',
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const sourceGroupPaths = ['Daily.md', 'Tasks/Converted.md'];
+	const predictedEffects = [{
+		resourceKind: 'task-source' as const,
+		resourceKey: 'Daily.md',
+		action: 'update' as const,
+		summary: 'Replace the exact inline task with a wikilink.',
+	}, {
+		resourceKind: 'task-source' as const,
+		resourceKey: 'Tasks/Converted.md',
+		action: 'create' as const,
+		summary: 'Create the exact File Task target.',
+	}, ...buildRuntimeConversionAncestorPredictedEffectsV1(
+		sourceGroupPaths,
+		['Daily.md', 'Daily.md'],
+	)];
+	assert.equal(predictedEffects.length, 2);
+	assert.equal(predictedEffects.filter(effect => effect.resourceKey === 'Daily.md').length, 1);
+	const prepared: RuntimePreparedMutationV1 = {
+		target: {
+			operonId: 'abc1234',
+			locator: conversionRequest.target?.locator,
+			targetDigest: 'd'.repeat(64),
+		},
+		affectedResources: sourceGroupPaths.map((resourceKey, index) => ({
+			resourceKind: 'task-source' as const,
+			resourceKey,
+			revision: String(index + 1).repeat(64),
+		})),
+		atomicGroups: sourceGroupPaths.map((resourceKey, order) => ({
+			groupId: `task-source:${resourceKey}`,
+			order,
+			resources: [{ resourceKind: 'task-source' as const, resourceKey }],
+		})),
+		predictedEffects,
+		warnings: [],
+		conversionEffect: {
+			direction: 'inline-to-file',
+			operonId: 'abc1234',
+			beforeLocator: conversionRequest.target!.locator,
+			afterLocator: { representation: 'file', filePath: 'Tasks/Converted.md' },
+			plannedTargetDigest: 'a'.repeat(64),
+			plannedSourceDigest: 'b'.repeat(64),
+			settingsFingerprint: 'c'.repeat(64),
+			templateId: 'template:default',
+			templateRevision: 'e'.repeat(64),
+			resolvedFieldDiff: [],
+			lossManifest: [],
+			lossManifestDigest: sha256HexV1('[]'),
+			parentOperonId: 'parent1',
+		},
+		token: { kind: 'test-same-source-conversion' },
+	};
+	let receipt: MutationReceiptV1 | null = null;
+	let journal: GraphTransactionJournalV1 | null = null;
+	let commitCount = 0;
+	let verifyCount = 0;
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => receipt,
+		lookupJournal: async () => journal ? structuredClone(journal) : null,
+		acquireJournal: async (value: GraphTransactionJournalV1) => {
+			journal = structuredClone(value);
+			return true;
+		},
+		claimJournal: async () => true,
+		persistJournal: async (value: GraphTransactionJournalV1) => {
+			journal = structuredClone(value);
+		},
+		finalizeReceipt: async (value: MutationReceiptV1) => {
+			receipt = value;
+			journal = null;
+			return { expiredDeleted: 0, overflowDeleted: 0, retained: 1 };
+		},
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		reindexAffectedSources: async () => undefined,
+		settleAfterMutation: async () => undefined,
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		prepareMutation: async () => ({ ok: true, value: prepared }),
+		commitMutation: async () => {
+			throw new Error('Conversion writes must use the graph transaction.');
+		},
+		prepareMutationTransaction: async () => ({
+			ok: true,
+			steps: sourceGroupPaths.map((resourceKey, index) => ({
+				stepId: `source:${resourceKey}`,
+				groupId: `task-source:${resourceKey}`,
+				resourceKind: 'task-source' as const,
+				resourceKey,
+				operation: index === 0 ? 'modify' as const : 'create' as const,
+				before: index === 0
+					? { state: 'present' as const, digest: sha256HexV1('before'), content: 'before' }
+					: { state: 'absent' as const, digest: sha256HexV1(''), content: null },
+				after: {
+					state: 'present' as const,
+					digest: sha256HexV1(`after-${index}`),
+					content: `after-${index}`,
+				},
+			})),
+		}),
+		commitMutationTransaction: async (_request, _prepared, _at, _journal, checkpoint) => {
+			commitCount += 1;
+			await checkpoint({ phase: 'committing', completedStepCount: sourceGroupPaths.length });
+			await checkpoint({ phase: 'postflight', completedStepCount: sourceGroupPaths.length });
+			return {
+				status: 'committed',
+				groupResults: prepared.atomicGroups!.map(group => ({
+					groupId: group.groupId,
+					status: 'committed' as const,
+					resourceRevisions: prepared.affectedResources.filter(resource => (
+						group.resources.some(candidate => (
+							candidate.resourceKind === resource.resourceKind
+								&& candidate.resourceKey === resource.resourceKey
+						))
+					)),
+				})),
+				affectedFilePaths: sourceGroupPaths,
+			};
+		},
+		recoverMutationTransaction: async () => ({
+			status: 'forward-completed',
+			groupResults: prepared.atomicGroups!.map(group => ({
+				groupId: group.groupId,
+				status: 'committed' as const,
+				resourceRevisions: prepared.affectedResources.filter(resource => (
+					group.resources.some(candidate => (
+						candidate.resourceKind === resource.resourceKind
+							&& candidate.resourceKey === resource.resourceKey
+					))
+				)),
+			})),
+			affectedFilePaths: sourceGroupPaths,
+			verified: true,
+		}),
+		verifyMutationTransactionState: async () => true,
+		verifyMutation: async () => {
+			verifyCount += 1;
+			return true;
+		},
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => 'f'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-31T20:00:00.000Z'),
+		randomId: () => 'same-source-conversion-plan',
+	});
+	const preview = await gateway.preview(conversionRequest);
+	assert.equal(preview.ok, true, JSON.stringify(preview));
+	assert.equal(decodeMutationPreviewResultV1(preview).ok, true);
+	if (!preview.ok) return;
+	assert.equal(preview.plan.predictedEffects.filter(effect => effect.resourceKey === 'Daily.md').length, 1);
+	const apply = {
+		contractVersion: 1 as const,
+		requestId: 'same-source-conversion-apply',
+		kind: 'mutation-apply' as const,
+		plan: preview.plan,
+		authorization: { basis: 'user-explicit-request' as const },
+		idempotencyKey: conversionRequest.idempotencyKey,
+		acknowledgements: [],
+	};
+	const applied = await gateway.apply(apply);
+	assert.equal(applied.status, 'applied', JSON.stringify(applied));
+	assert.equal(applied.postflight?.status, 'verified');
+	const replay = await gateway.apply({ ...apply, requestId: 'same-source-conversion-replay' });
+	assert.equal(replay.status, 'already-applied');
+	assert.deepEqual(replay.postflight, { status: 'receipt-replay' });
+	assert.equal(commitCount, 1);
+	assert.equal(verifyCount, 1);
 });
 
 test('relocate and delete source transitions persist a journal before graph writes', async () => {

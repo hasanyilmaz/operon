@@ -4,6 +4,7 @@ import type {
 } from './catalog-builder';
 import type {
 	MutationPreviewRequestV1,
+	PredictedEffectV1,
 	ReminderItemSpecV1,
 	SealedConversionEffectV1,
 	SealedUpdateBatchEffectV1,
@@ -26,6 +27,7 @@ import {
 	resolveReminderRule,
 } from '../../core/reminder-rules';
 import { composeStatusValue } from '../../core/workflow-status-value';
+import { canonicalizeLocalDatetime } from '../../core/local-time';
 
 export interface RuntimeExactTaskMutationSnapshotV1 {
 	readonly operonId: string;
@@ -401,6 +403,21 @@ export function buildRuntimeTaskUpdateBatchEffectsV1(
 		directChange: !item.preparation.noChange,
 		plannedSourceDigest,
 	}));
+}
+
+export function buildRuntimeConversionAncestorPredictedEffectsV1(
+	sourceGroupPaths: readonly string[],
+	ancestorFilePaths: readonly string[],
+): PredictedEffectV1[] {
+	const coveredSourcePaths = new Set(sourceGroupPaths);
+	return [...new Set(ancestorFilePaths)]
+		.filter(filePath => !coveredSourcePaths.has(filePath))
+		.map(filePath => ({
+			resourceKind: 'task-source',
+			resourceKey: filePath,
+			action: 'update',
+			summary: 'Refresh sealed conversion ancestor timestamps and hierarchy aggregates.',
+		}));
 }
 
 export function verifyRuntimeTaskUpdateBatchPrimaryPostflightV1(
@@ -907,6 +924,9 @@ function serializeUpdateValue(
 	if (valueType === 'list') return Array.isArray(value) ? value : null;
 	if (valueType === 'number') return typeof value === 'number' && Number.isFinite(value) ? String(value) : null;
 	if (valueType === 'checkbox') return typeof value === 'boolean' ? String(value) : null;
+	if (valueType === 'datetime') return typeof value === 'string'
+		? canonicalizeLocalDatetime(value)
+		: null;
 	return typeof value === 'string' ? value : null;
 }
 

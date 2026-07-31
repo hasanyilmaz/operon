@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { developmentDependencyClosure, evaluateReleaseAuditPolicy } from './audit-policy.mjs';
+import { evaluateReleaseAuditPolicy } from './audit-policy.mjs';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const readJson = relativePath => JSON.parse(readFileSync(path.join(rootDir, relativePath), 'utf8'));
@@ -19,37 +19,15 @@ const cleanArtifactMetafiles = {
 	cli: { inputs: { 'packages/operon-cli/src/main.ts': { bytes: 1 } } },
 };
 
-function fullReport() {
-	const closure = [...developmentDependencyClosure(packageLock, policy.developmentException.directRoot)];
-	const vulnerabilities = Object.fromEntries(
-		policy.developmentException.vulnerabilityNames.map(name => [name, {
-			name,
-			severity: 'high',
-			isDirect: name === policy.developmentException.directRoot,
-			via: name === 'brace-expansion'
-				? policy.developmentException.advisories.map(advisory => ({ ...advisory }))
-				: [],
-			nodes: [closure.find(location => (
-				location === `node_modules/${name}`
-				|| location.endsWith(`/node_modules/${name}`)
-			))],
-			fixAvailable: false,
-		}]),
-	);
-	return {
-		auditReportVersion: 2,
-		vulnerabilities,
-		metadata: {
-			vulnerabilities: { ...policy.developmentException.expectedCounts },
-		},
-	};
+function cleanFullReport() {
+	return structuredClone(production);
 }
 
 function evaluate(overrides = {}) {
 	return evaluateReleaseAuditPolicy({
 		policy,
 		productionReport: production,
-		fullReport: fullReport(),
+		fullReport: cleanFullReport(),
 		packageLock,
 		rootPackage,
 		cliPackage,
@@ -58,8 +36,14 @@ function evaluate(overrides = {}) {
 	});
 }
 
-test('accepts only the frozen dev-tool exception with a clean production audit', () => {
-	assert.equal(evaluate().status, 'accepted-development-exception');
+test('accepts zero production and development findings with exact patched backports', () => {
+	assert.deepEqual(evaluate(), {
+		status: 'accepted-clean',
+		failures: [],
+		productionVulnerabilities: 0,
+		developmentVulnerabilities: 0,
+		directRoot: 'eslint-plugin-obsidianmd',
+	});
 });
 
 test('rejects a production vulnerability', () => {
@@ -70,79 +54,49 @@ test('rejects a production vulnerability', () => {
 	assert.equal(evaluate({ productionReport: report }).status, 'mismatch');
 });
 
-test('rejects new vulnerability inventory and critical severity', () => {
-	const report = fullReport();
+test('rejects any development vulnerability after the exception is retired', () => {
+	const report = cleanFullReport();
 	report.vulnerabilities.future = {
 		name: 'future',
-		severity: 'critical',
+		severity: 'high',
 		isDirect: false,
 		via: [],
 		nodes: [],
 		fixAvailable: false,
 	};
-	report.metadata.vulnerabilities.high = 11;
-	report.metadata.vulnerabilities.critical = 1;
-	report.metadata.vulnerabilities.total = 12;
-	assert.equal(evaluate({ fullReport: report }).status, 'mismatch');
-});
-
-test('rejects exception-root fix availability', () => {
-	const report = fullReport();
-	report.vulnerabilities['eslint-plugin-obsidianmd'].fixAvailable = true;
+	report.metadata.vulnerabilities.high = 1;
+	report.metadata.vulnerabilities.total = 1;
 	assert.match(
 		evaluate({ fullReport: report }).failures.join('\n'),
-		/fix availability changed/u,
+		/Development dependency audit must contain zero vulnerabilities/u,
 	);
 });
 
-test('accepts wrapper-level fix metadata when advisory leaf and direct root remain unfixable', () => {
-	const report = fullReport();
-	report.vulnerabilities.minimatch.fixAvailable = {
-		name: 'minimatch',
-		version: '10.0.3',
-		isSemVerMajor: false,
-	};
-	assert.equal(evaluate({ fullReport: report }).status, 'accepted-development-exception');
-});
-
-test('rejects fix availability for the advisory-bearing package', () => {
-	const report = fullReport();
-	report.vulnerabilities['brace-expansion'].fixAvailable = {
-		name: 'brace-expansion',
-		version: '5.0.8',
-		isSemVerMajor: false,
-	};
+test('rejects resolved advisory version drift', () => {
+	const changedLock = structuredClone(packageLock);
+	changedLock.packages['node_modules/brace-expansion'].version = '5.0.7';
 	assert.match(
-		evaluate({ fullReport: report }).failures.join('\n'),
-		/brace-expansion fix availability changed/u,
+		evaluate({ packageLock: changedLock }).failures.join('\n'),
+		/brace-expansion installed versions changed/u,
 	);
 });
 
-test('rejects a missing no-fix requirement for an advisory-bearing package', () => {
-	const changedPolicy = structuredClone(policy);
-	changedPolicy.developmentException.requiredNoFixPackages = ['eslint-plugin-obsidianmd'];
+test('rejects a resolved advisory package outside dev dependencies', () => {
+	const changedLock = structuredClone(packageLock);
+	changedLock.packages['node_modules/brace-expansion'].dev = false;
 	assert.match(
-		evaluate({ policy: changedPolicy }).failures.join('\n'),
-		/Advisory-bearing package lacks a no-fix requirement/u,
+		evaluate({ packageLock: changedLock }).failures.join('\n'),
+		/brace-expansion node is not dev-only/u,
 	);
 });
 
-test('rejects changed advisory inventory', () => {
-	const report = fullReport();
-	report.vulnerabilities['brace-expansion'].via[0].source += 1;
-	assert.match(
-		evaluate({ fullReport: report }).failures.join('\n'),
-		/advisory inventory changed/u,
-	);
-});
-
-test('rejects vulnerable nodes outside the approved dev dependency closure', () => {
-	const report = fullReport();
-	report.vulnerabilities.minimatch.nodes = ['node_modules/not-in-approved-closure'];
-	assert.match(
-		evaluate({ fullReport: report }).failures.join('\n'),
-		/outside the eslint-plugin-obsidianmd dependency closure/u,
-	);
+test('rejects a missing or production audit root', () => {
+	const missing = structuredClone(rootPackage);
+	delete missing.devDependencies['eslint-plugin-obsidianmd'];
+	assert.match(evaluate({ rootPackage: missing }).failures.join('\n'), /direct development dependency/u);
+	const productionRoot = structuredClone(rootPackage);
+	productionRoot.dependencies = { 'eslint-plugin-obsidianmd': '0.4.1' };
+	assert.match(evaluate({ rootPackage: productionRoot }).failures.join('\n'), /must not enter production/u);
 });
 
 test('distinguishes unavailable audit output from a policy mismatch', () => {
@@ -152,25 +106,22 @@ test('distinguishes unavailable audit output from a policy mismatch', () => {
 test('rejects malformed or arithmetically inconsistent audit count metadata', () => {
 	for (const counts of [
 		{},
-		{ ...policy.developmentException.expectedCounts, high: -1 },
-		{ ...policy.developmentException.expectedCounts, total: 12 },
+		{ info: 0, low: 0, moderate: 0, high: -1, critical: 0, total: 0 },
+		{ info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 1 },
 	]) {
-		const report = fullReport();
+		const report = cleanFullReport();
 		report.metadata.vulnerabilities = counts;
 		assert.equal(evaluate({ fullReport: report }).status, 'unavailable');
 	}
 });
 
-test('rejects CLI runtime inclusion of an exception package', () => {
+test('rejects a forbidden development package in CLI runtime dependencies', () => {
 	const cli = structuredClone(cliPackage);
-	cli.dependencies = { minimatch: '10.0.2' };
-	assert.match(
-		evaluate({ cliPackage: cli }).failures.join('\n'),
-		/operon-cli runtime dependency includes/u,
-	);
+	cli.dependencies = { minimatch: '10.2.5' };
+	assert.match(evaluate({ cliPackage: cli }).failures.join('\n'), /forbidden development package/u);
 });
 
-test('rejects an exception package marker in a shipped runtime artifact', () => {
+test('rejects a forbidden package marker in a shipped runtime artifact', () => {
 	const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'operon-audit-policy-'));
 	try {
 		writeFileSync(path.join(fixtureRoot, 'main.js'), 'const bundled = "eslint-plugin-obsidianmd";\n');
@@ -183,7 +134,7 @@ test('rejects an exception package marker in a shipped runtime artifact', () => 
 	}
 });
 
-test('rejects an exception package in plugin or CLI bundle provenance', () => {
+test('rejects forbidden packages in plugin or CLI bundle provenance', () => {
 	for (const artifact of ['plugin', 'cli']) {
 		const artifactMetafiles = structuredClone(cleanArtifactMetafiles);
 		artifactMetafiles[artifact].inputs['node_modules/minimatch/dist/commonjs/index.js'] = { bytes: 1 };

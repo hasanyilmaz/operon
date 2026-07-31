@@ -46,6 +46,7 @@ async function run(): Promise<void> {
 	testProductionRequestValidatorParity();
 	const fixture = createFixture();
 	await testEntityTaskAndRelationships(fixture);
+	await testLegacyMinuteDatetimeRead(createFixture());
 	await testReminderItemHydration(createFixture());
 	await testReminderItemHydrationBounds();
 	await testWritableFieldHydration(createFixture());
@@ -63,6 +64,36 @@ async function run(): Promise<void> {
 	testLosslessTrackerHydration();
 	await testRelationshipContractAtHardLimit();
 	console.log('Agent Runtime Context Engine tests passed');
+}
+
+async function testLegacyMinuteDatetimeRead(fixture: Fixture): Promise<void> {
+	const legacyDatetime = '2026-07-31T22:00';
+	const root = fixture.index.getTaskSnapshot('root001');
+	assert.ok(root);
+	root.fieldValues['datetimeStart'] = legacyDatetime;
+	const lines = fixture.sources.get('Tasks.md')?.split('\n');
+	assert.ok(lines);
+	lines[0] += ` {{datetimeStart:: ${legacyDatetime}}}`;
+	fixture.sources.set('Tasks.md', lines.join('\n'));
+
+	const result = await fixture.bridge.getTask({
+		contractVersion: 1,
+		requestId: 'task-legacy-minute-datetime',
+		kind: 'task-get',
+		consistency: 'live-verified',
+		selector: { kind: 'operon-id', operonId: 'root001' },
+		include: ['source-markdown', 'writable-fields'],
+	}, fixture.execution);
+	assert.equal(result.ok, true);
+	if (!result.ok) return;
+	assert.equal(result.task.datetimes.start, legacyDatetime);
+	assert.match(result.task.sourceMarkdown ?? '', /\{\{datetimeStart:: 2026-07-31T22:00\}\}/u);
+	assert.equal(
+		result.task.writableFields?.find(field => field.canonicalKey === 'datetimeStart')?.value,
+		legacyDatetime,
+		'Legacy minute-precision storage must remain readable without an implicit repair write.',
+	);
+	assert.equal(decodeTaskGetResultV1(result).ok, true);
 }
 
 function testLosslessTrackerHydration(): void {

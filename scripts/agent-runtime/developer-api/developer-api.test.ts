@@ -220,6 +220,7 @@ function readFailure(kind: string, requestId: string) {
 function harness(options: {
 	core?: OperonAgentRuntimeCoreV1 | null;
 	desktop?: boolean;
+	hostVersionSupported?: boolean;
 	phase?: RuntimeLifecyclePhaseV1;
 	error?: StructuredErrorV1;
 	active?: { value: boolean };
@@ -269,6 +270,7 @@ function harness(options: {
 	};
 	const accessAs = (consumer: typeof consumerPlugin, request: unknown) => getOperonDeveloperApiV1(core, consumer, request, {
 		isDesktopAvailable: () => options.desktop ?? true,
+		isHostVersionSupported: () => options.hostVersionSupported ?? true,
 		lifecyclePhase: () => phase.value,
 		retryAfterMs: () => phase.value === 'booting' ? 250 : undefined,
 		lifecycleError: () => options.error,
@@ -427,6 +429,15 @@ test('fails access closed off desktop, without a core, while booting, and on ter
 	assert.equal(mobile.ok, false);
 	assert.equal(mobile.ok ? undefined : mobile.error.code, 'unsupported-platform');
 	assert.equal(mobile.status.reason, 'unsupported-platform');
+
+	const oldDesktop = harness({ hostVersionSupported: false }).access(request());
+	assert.equal(oldDesktop.ok, false);
+	assert.equal(oldDesktop.ok ? undefined : oldDesktop.error.code, 'unsupported-platform');
+	assert.equal(
+		oldDesktop.ok ? undefined : oldDesktop.error.details?.reasonCode,
+		'obsidian-version-unsupported',
+	);
+	assert.equal(oldDesktop.status.reason, 'unsupported-platform');
 
 	const missing = harness({ core: null }).access(request());
 	assert.equal(missing.ok, false);

@@ -28,14 +28,14 @@ jobs:
           [[ "$SOURCE_REF" =~ ^cli-v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
             || { echo "source_ref must be an exact stable cli-v tag" >&2; exit 1; }
           test "$GITHUB_REF" = "refs/tags/$SOURCE_REF"
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: refs/tags/${{ inputs.source_ref }}
           fetch-depth: 0
           persist-credentials: false
       - name: Verify checkout equals the dispatch source identity
         run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24.18.0"
           cache: npm
@@ -137,7 +137,7 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: refs/tags/${{ inputs.source_ref }}
           persist-credentials: false
@@ -165,12 +165,12 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.prepare-hosted-portability.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: refs/tags/${{ inputs.source_ref }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -243,12 +243,12 @@ jobs:
       - hosted-portability
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: refs/tags/${{ inputs.source_ref }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24.18.0"
           cache: npm

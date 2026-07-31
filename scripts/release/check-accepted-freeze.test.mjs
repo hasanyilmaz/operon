@@ -12,7 +12,7 @@ function acceptedFreeze() {
 		audit: {
 			validation: {
 				status: 'passed',
-				result: { status: 'accepted-development-exception' },
+				result: { status: 'accepted-clean' },
 			},
 		},
 		maintainerAcceptance: {

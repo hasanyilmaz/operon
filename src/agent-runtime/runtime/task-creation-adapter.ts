@@ -33,6 +33,7 @@ import { parseTaskLine } from '../../core/parser';
 import { serializeTask } from '../../core/serializer';
 import { tryPatchAggregateYamlFrontmatter } from '../../core/task-writer-yaml';
 import { composeStatusValue } from '../../core/workflow-status-value';
+import { canonicalizeLocalDatetime } from '../../core/local-time';
 import {
 	isGeneralUpdateFieldV1,
 	type FieldDescriptorV1,
@@ -1140,8 +1141,12 @@ async function adaptCreateItem(
 			'The exact inline line is not a current blank-body placement candidate.',
 		);
 	}
-	const configuredFields = splitConfiguredCreationFields(configuredInline?.defaultFields);
-	const adaptedFields = adaptFields(item.fields, ports.creationFieldCatalog());
+	const fieldCatalog = ports.creationFieldCatalog();
+	const configuredFields = splitConfiguredCreationFields(
+		configuredInline?.defaultFields,
+		fieldCatalog,
+	);
+	const adaptedFields = adaptFields(item.fields, fieldCatalog);
 	const fields = {
 		...configuredFields.fields,
 		...adaptedFields.fields,
@@ -1264,9 +1269,11 @@ function adaptFields(
 	for (const item of items) {
 		switch (item.kind) {
 			case 'text':
-			case 'date':
-			case 'datetime':
+		case 'date':
 				fields[item.field] = item.value;
+				break;
+			case 'datetime':
+				fields[item.field] = canonicalizeLocalDatetime(item.value);
 				break;
 			case 'number':
 				fields[item.field] = String(item.value);
@@ -1289,9 +1296,11 @@ function adaptFields(
 						);
 					}
 				}
-				fields[item.field] = Array.isArray(item.value)
-					? item.value.join('; ')
-					: String(item.value);
+				fields[item.field] = item.valueType === 'datetime'
+					? canonicalizeLocalDatetime(String(item.value))
+					: Array.isArray(item.value)
+						? item.value.join('; ')
+						: String(item.value);
 				break;
 			case 'reminder-datetimes': {
 				const canonical = canonicalizeAbsoluteReminderList(item.values);
@@ -1349,12 +1358,23 @@ function adaptFields(
 
 function splitConfiguredCreationFields(
 	defaultFields: Readonly<Record<string, string>> | undefined,
+	catalog: readonly FieldDescriptorV1[],
 ): { fields: Record<string, string>; runtimeFields: Record<string, string> } {
 	const fields: Record<string, string> = {};
 	const runtimeFields: Record<string, string> = {};
+	const datetimeFields = new Set(catalog
+		.filter(descriptor => descriptor.valueType === 'datetime')
+		.map(descriptor => descriptor.canonicalKey));
 	for (const [field, value] of Object.entries(defaultFields ?? {})) {
-		if (CONFIGURED_TEMPORAL_CREATION_FIELDS.has(field)) runtimeFields[field] = value;
-		else fields[field] = value;
+		if (CONFIGURED_TEMPORAL_CREATION_FIELDS.has(field)) {
+			runtimeFields[field] = field === 'datetimeRepeatEnd'
+				? canonicalizeLocalDatetime(value)
+				: value;
+		} else {
+			fields[field] = datetimeFields.has(field)
+				? canonicalizeLocalDatetime(value)
+				: value;
+		}
 	}
 	return { fields, runtimeFields };
 }

@@ -979,6 +979,67 @@ async function runCommitPortTests(): Promise<void> {
 		assert.equal(configuredDefault.plan.tasks[0].representation, 'file');
 		assert.equal(configuredDefault.plan.tasks[0].filePath, 'Tasks/Configured default.md');
 	}
+	const configuredDatetimeDefault = await prepareRuntimeTaskCreationV1(
+		'runtime-configured-datetime-default',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'configured-datetime',
+				description: 'Configured datetime default',
+				target: { mode: 'configured-default' },
+				fields: [],
+			}],
+		},
+		{
+			...runtimePorts,
+			settings: () => ({ ...runtimeSettings, taskCreatorDefaultToFileTask: false }),
+			resolveConfiguredInlineTarget: async () => ({
+				filePath: 'Tasks/Configured datetime.md',
+				placement: { kind: 'append' },
+				defaultFields: {
+					datetimeStart: '2026-07-26T09:30',
+					customDatetime: '2026-07-26T10:45',
+				},
+			}),
+			creationFieldCatalog: () => [
+				{
+					canonicalKey: 'datetimeStart',
+					displayName: 'Starts at',
+					description: 'Built-in start datetime.',
+					valueType: 'datetime',
+					source: 'built-in',
+					mappingStatus: 'mapped',
+					readable: true,
+					mutationClass: 'general-update',
+					mutationOwner: 'tasks.update',
+					requiresStableTaxonomyId: false,
+				},
+				{
+					canonicalKey: 'customDatetime',
+					displayName: 'Custom datetime',
+					description: 'Synthetic custom datetime field.',
+					valueType: 'datetime',
+					source: 'custom',
+					mappingStatus: 'mapped',
+					readable: true,
+					mutationClass: 'general-update',
+					mutationOwner: 'tasks.update',
+					requiresStableTaxonomyId: false,
+				},
+			],
+		},
+	);
+	assert.equal(configuredDatetimeDefault.ok, true, JSON.stringify(configuredDatetimeDefault));
+	if (configuredDatetimeDefault.ok) {
+		assert.equal(
+			configuredDatetimeDefault.plan.tasks[0].fieldValues.datetimeStart,
+			'2026-07-26T09:30:00',
+		);
+		assert.equal(
+			configuredDatetimeDefault.plan.tasks[0].fieldValues.customDatetime,
+			'2026-07-26T10:45:00',
+		);
+	}
 	let sameSourceReadCount = 0;
 	let sameSourceCatalogCount = 0;
 	let sameSourceId = 0;
@@ -1155,6 +1216,22 @@ async function runCommitPortTests(): Promise<void> {
 				},
 				fields: [
 					{
+						kind: 'datetime',
+						field: 'datetimeStart',
+						value: '2026-07-26T09:30',
+					},
+					{
+						kind: 'datetime',
+						field: 'datetimeEnd',
+						value: '2026-07-26T10:45:30',
+					},
+					{
+						kind: 'custom',
+						field: 'customDatetime',
+						valueType: 'datetime',
+						value: '2026-07-26T11:15',
+					},
+					{
 						kind: 'reminder-datetimes',
 						values: ['2026-07-26T09:00:00', '2026-07-25T08:00:00'],
 					},
@@ -1165,23 +1242,137 @@ async function runCommitPortTests(): Promise<void> {
 				],
 			}],
 		},
-		runtimePorts,
+		{
+			...runtimePorts,
+			creationFieldCatalog: () => [
+				...['datetimeStart', 'datetimeEnd'].map(field => ({
+					canonicalKey: field,
+					displayName: field,
+					description: `Built-in ${field} field.`,
+					valueType: 'datetime' as const,
+					source: 'built-in' as const,
+					mappingStatus: 'mapped' as const,
+					readable: true,
+					mutationClass: 'general-update' as const,
+					mutationOwner: 'tasks.update',
+					requiresStableTaxonomyId: false,
+				})),
+				{
+					canonicalKey: 'customDatetime',
+					displayName: 'Custom datetime',
+					description: 'Synthetic custom datetime field.',
+					valueType: 'datetime',
+					source: 'custom',
+					mappingStatus: 'mapped',
+					readable: true,
+					mutationClass: 'general-update',
+					mutationOwner: 'tasks.update',
+					requiresStableTaxonomyId: false,
+				},
+			],
+		},
 	);
 	assert.equal(temporalCreation.ok, true, JSON.stringify(temporalCreation));
 	if (temporalCreation.ok) {
 		const temporalTask = temporalCreation.plan.tasks[0];
+		assert.equal(temporalTask.fieldValues['datetimeStart'], '2026-07-26T09:30:00');
+		assert.equal(temporalTask.fieldValues['datetimeEnd'], '2026-07-26T10:45:30');
+		assert.equal(temporalTask.fieldValues['customDatetime'], '2026-07-26T11:15:00');
 		assert.equal(
 			temporalTask.fieldValues['reminderDatetimes'],
 			'2026-07-26T09:00:00; 2026-07-25T08:00:00',
 			'canonical reminder values preserve request order',
 		);
-		assert.equal(temporalTask.fieldValues['repeatOccurrenceDate'], '2026-07-24');
+		assert.equal(temporalTask.fieldValues['repeatOccurrenceDate'], '2026-07-26');
 		assert.equal(temporalTask.fieldValues['repeatSeriesId'], 'series-2');
 		assert.equal(temporalCreation.createEffects[0].repeatSeriesId, 'series-2');
 		assert.equal(temporalCreation.recurrenceResources[0].seriesId, 'series-2');
 		assert.equal(
 			temporalCreation.recurrenceResources[0].baseTemporalTemplate.mode,
-			'allDay',
+			'timed',
+		);
+	}
+	const temporalFileCreation = await prepareRuntimeTaskCreationV1(
+		'runtime-temporal-file-create',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'temporal-file',
+				description: 'Temporal file task',
+				target: {
+					representation: 'file',
+					mode: 'exact-path',
+					filePath: 'Tasks/Temporal file task.md',
+				},
+				fields: [{
+					kind: 'datetime',
+					field: 'datetimeStart',
+					value: '2026-07-26T09:30',
+				}, {
+					kind: 'custom',
+					field: 'customDatetime',
+					valueType: 'datetime',
+					value: '2026-07-26T10:45',
+				}],
+			}],
+		},
+		{
+			...runtimePorts,
+			settings: () => ({
+				...runtimeSettings,
+				keyMappings: [...runtimeSettings.keyMappings, {
+					canonicalKey: 'customDatetime',
+					visiblePropertyName: 'CustomDatetime',
+					type: 'datetime',
+					sync: 'yes',
+					enabled: true,
+					isSystem: false,
+					customOrder: 0,
+				}],
+			}),
+			creationFieldCatalog: () => [{
+				canonicalKey: 'datetimeStart',
+				displayName: 'Starts at',
+				description: 'Built-in start datetime.',
+				valueType: 'datetime',
+				source: 'built-in',
+				mappingStatus: 'mapped',
+				readable: true,
+				mutationClass: 'general-update',
+				mutationOwner: 'tasks.update',
+				requiresStableTaxonomyId: false,
+			}, {
+				canonicalKey: 'customDatetime',
+				displayName: 'Custom datetime',
+				description: 'Synthetic custom datetime field.',
+				valueType: 'datetime',
+				source: 'custom',
+				mappingStatus: 'mapped',
+				readable: true,
+				mutationClass: 'general-update',
+				mutationOwner: 'tasks.update',
+				requiresStableTaxonomyId: false,
+			}],
+		},
+	);
+	assert.equal(temporalFileCreation.ok, true, JSON.stringify(temporalFileCreation));
+	if (temporalFileCreation.ok) {
+		assert.equal(
+			temporalFileCreation.plan.tasks[0].fieldValues['datetimeStart'],
+			'2026-07-26T09:30:00',
+			'inline and file task plans must share canonical datetime storage',
+		);
+		assert.equal(
+			temporalFileCreation.plan.tasks[0].fieldValues['customDatetime'],
+			'2026-07-26T10:45:00',
+		);
+		const renderedFile = temporalFileCreation.plan.tasks[0].renderedFileContent ?? '';
+		assert.match(renderedFile, /^datetimeStart: 2026-07-26T09:30:00$/mu);
+		assert.match(renderedFile, /^CustomDatetime: 2026-07-26T10:45:00$/mu);
+		assert.equal(
+			temporalFileCreation.plan.sourceGroups[0]?.resultingContent,
+			renderedFile,
+			'File Task source group must commit the exact canonical rendered content.',
 		);
 	}
 	const duplicateReminder = await prepareRuntimeTaskCreationV1(

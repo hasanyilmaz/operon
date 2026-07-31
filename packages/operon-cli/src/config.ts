@@ -99,7 +99,6 @@ export function saveOperonCliConfigV1(
 	root: string = operonCliConfigRootV1(),
 ): void {
 	const normalized = decodeConfig(config);
-	ensureOwnerOnlyDirectory(root);
 	writeJsonAtomic(configPathV1(root), normalized);
 }
 

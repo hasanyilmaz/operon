@@ -443,8 +443,6 @@ export function recordMutationOutcomeV1(
 
 function writeStoredPlan(record: StoredMutationPlanV1, root: string): void {
 	validatePlanRef(record.planRef);
-	const plansRoot = join(root, 'plans');
-	ensureOwnerOnlyDirectory(plansRoot);
 	writeJsonAtomic(planPath(record.planRef, root), record);
 	if (process.platform !== 'win32') chmodSync(planPath(record.planRef, root), 0o600);
 }

@@ -149,9 +149,9 @@
                     "directRoot"
                   ],
                   "properties": {
-                    "status": { "const": "accepted-development-exception" },
+                    "status": { "const": "accepted-clean" },
                     "productionVulnerabilities": { "const": 0 },
-                    "developmentVulnerabilities": { "type": "integer", "minimum": 0 },
+                    "developmentVulnerabilities": { "const": 0 },
                     "directRoot": { "type": "string", "minLength": 1 }
                   }
                 }

@@ -357,12 +357,12 @@ function checkContinuousIntegrationWorkflow() {
 	assertIncludes(workflow, 'npm install --global npm@11.12.1', 'CI must pin the canonical npm version');
 	assertIncludes(
 		workflow,
-		'uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4',
+		'uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
 		'CI must use the approved immutable checkout revision',
 	);
 	assertIncludes(
 		workflow,
-		'uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4',
+		'uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7',
 		'CI must use the approved immutable setup-node revision',
 	);
 	assertNoMatch(
@@ -436,12 +436,12 @@ function checkReleaseWorkflow() {
 	}
 	assertIncludes(
 		workflow,
-		'uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4',
+		'uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
 		'release workflow must use the approved immutable checkout revision',
 	);
 	assertIncludes(
 		workflow,
-		'uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4',
+		'uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7',
 		'release workflow must use the approved immutable setup-node revision',
 	);
 	assertIncludes(
@@ -568,11 +568,37 @@ function checkWorkflowSecurityPolicy() {
 		.filter(file => file.endsWith('.yml') || file.endsWith('.yaml'))
 		.sort();
 	const exactCodeqlRevision = 'bce182f857edf1feab116e9795a3393d21977282';
-	const exactCheckoutRevision = '11d5960a326750d5838078e36cf38b85af677262';
+	const exactCheckoutRevision = '3d3c42e5aac5ba805825da76410c181273ba90b1';
+	const exactSetupNodeRevision = '820762786026740c76f36085b0efc47a31fe5020';
+	const exactWorkflowPermissions = new Map([
+		['ci.yml', ['contents: read']],
+		['cli-ci.yml', ['contents: read']],
+		['cli-live-acceptance.yml', ['actions: read', 'attestations: write', 'contents: read', 'id-token: write']],
+		['cli-native-candidate.yml', ['attestations: write', 'contents: read', 'id-token: write']],
+		['cli-publish.yml', ['actions: read', 'attestations: read', 'contents: read', 'id-token: write']],
+		['cli-release-ready.yml', ['contents: read', 'id-token: write', 'attestations: write']],
+		['codeql.yml', ['actions: read', 'contents: read', 'security-events: write']],
+		['release.yml', ['contents: write', 'id-token: write', 'attestations: write']],
+	]);
 
 	for (const file of workflows) {
 		const relativePath = `.github/workflows/${file}`;
-		const lines = readText(relativePath).split(/\r?\n/u);
+		const workflowText = readText(relativePath);
+		const expectedPermissions = exactWorkflowPermissions.get(file);
+		if (!expectedPermissions) {
+			fail(`${relativePath}: workflow lacks an approved permission policy`);
+		}
+		const permissionsMatch = workflowText.match(
+			/^permissions:\s*\n((?:  [a-z-]+:\s+(?:read|write)\s*\n)+)/mu,
+		);
+		const actualPermissions = permissionsMatch?.[1]
+			.trim()
+			.split(/\r?\n/u)
+			.map(line => line.trim());
+		if (JSON.stringify(actualPermissions) !== JSON.stringify(expectedPermissions)) {
+			fail(`${relativePath}: workflow permissions drifted from the least-privilege allowlist`);
+		}
+		const lines = workflowText.split(/\r?\n/u);
 		for (let index = 0; index < lines.length; index += 1) {
 			const line = lines[index];
 			const actionMatch = line.match(/uses:\s+([^@\s]+)@([^\s#]+)/u);
@@ -583,6 +609,9 @@ function checkWorkflowSecurityPolicy() {
 			}
 			if (action === 'actions/checkout' && revision !== exactCheckoutRevision) {
 				fail(`${relativePath}:${index + 1}: checkout must use the approved immutable revision`);
+			}
+			if (action === 'actions/setup-node' && revision !== exactSetupNodeRevision) {
+				fail(`${relativePath}:${index + 1}: setup-node must use the approved immutable revision`);
 			}
 			if (action.startsWith('github/codeql-action/') && revision !== exactCodeqlRevision) {
 				fail(`${relativePath}:${index + 1}: CodeQL must use the approved immutable revision`);
@@ -605,6 +634,12 @@ function checkWorkflowSecurityPolicy() {
 				fail(`${relativePath}:${index + 1}: checkout must set persist-credentials: false`);
 			}
 		}
+	}
+	if (exactWorkflowPermissions.size !== workflows.length) {
+		fail('workflow permission policy must cover every checked-in workflow');
+	}
+	if (!/^permissions:\s*\n\s{2}contents:\s+read\s*$/mu.test(readText('.github/workflows/cli-ci.yml'))) {
+		fail('.github/workflows/cli-ci.yml: workflow must explicitly grant only contents: read');
 	}
 
 	for (const workflow of [
@@ -736,23 +771,19 @@ function checkReleaseAuditPolicy() {
 
 	const policy = JSON.parse(readText('contracts/release/dev-audit-policy-v1.json'));
 	const expectedPolicy = {
-		policyVersion: 1,
+		policyVersion: 2,
 		production: {
 			maximumVulnerabilities: 0,
 		},
-		developmentException: {
+		development: {
+			maximumVulnerabilities: 0,
 			directRoot: 'eslint-plugin-obsidianmd',
-			severity: 'high',
-			maximumCritical: 0,
-			expectedCounts: {
-				info: 0,
-				low: 0,
-				moderate: 0,
-				high: 11,
-				critical: 0,
-				total: 11,
+			resolvedAdvisory: {
+				packageName: 'brace-expansion',
+				url: 'https://github.com/advisories/GHSA-mh99-v99m-4gvg',
+				allowedInstalledVersions: ['1.1.18', '2.1.4', '5.0.9'],
 			},
-			vulnerabilityNames: [
+			forbiddenRuntimePackages: [
 				'@eslint/config-array',
 				'@eslint/eslintrc',
 				'@microsoft/eslint-plugin-sdl',
@@ -765,19 +796,10 @@ function checkReleaseAuditPolicy() {
 				'eslint-plugin-react',
 				'minimatch',
 			],
-			advisories: [{
-				source: 1124334,
-				url: 'https://github.com/advisories/GHSA-mh99-v99m-4gvg',
-			}],
-			requiredNoFixPackages: [
-				'brace-expansion',
-				'eslint-plugin-obsidianmd',
-			],
-			rootFixAvailable: false,
 		},
 	};
 	if (JSON.stringify(policy) !== JSON.stringify(expectedPolicy)) {
-		fail('contracts/release/dev-audit-policy-v1.json must exactly match the approved exception policy');
+		fail('contracts/release/dev-audit-policy-v1.json must exactly match the approved clean audit policy');
 	}
 
 	const packageText = readText('package.json');

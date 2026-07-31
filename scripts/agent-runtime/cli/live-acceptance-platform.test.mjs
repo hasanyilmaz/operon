@@ -7,8 +7,11 @@ import test from 'node:test';
 import {
 	assertLiveAcceptanceInputsV1,
 	officialObsidianCliIdentityV1,
+	resolveAcceptanceExecutableV1,
+	resolveAcceptanceWindowsPowerShellV1,
 	runAcceptanceProofV1,
 	validateDisposableAcceptanceVaultV1,
+	windowsAuthenticodeIdentityV1,
 } from './live-acceptance-platform.mjs';
 
 const full = {
@@ -172,5 +175,179 @@ test('Obsidian CLI identity binds a canonical executable and digest', async () =
 		assert.match(identity.identityDigest, /^[a-f0-9]{64}$/u);
 	} finally {
 		await rm(root, { recursive: true, force: true });
+	}
+});
+
+test('Windows acceptance executable resolution admits only regular exe and com files', () => {
+	const files = new Set([
+		'C:\\Tools\\obsidian.exe',
+		'C:\\Tools\\obsidian.com',
+		'C:\\Tools\\obsidian.cmd',
+		'C:\\Tools\\obsidian.bat',
+	]);
+	const dependencies = {
+		cwd: 'C:\\Work',
+		realpath: candidate => candidate,
+		lstat: candidate => {
+			if (!files.has(candidate)) {
+				const error = new Error('missing');
+				error.code = 'ENOENT';
+				throw error;
+			}
+			return { isFile: () => true, isSymbolicLink: () => false };
+		},
+	};
+	const environment = {
+		PATH: 'C:\\Tools;C:\\Other',
+		PATHEXT: '.CMD;.BAT;.EXE;.COM',
+	};
+	assert.equal(
+		resolveAcceptanceExecutableV1('obsidian', 'win32', environment, dependencies),
+		'C:\\Tools\\obsidian.exe',
+	);
+	files.delete('C:\\Tools\\obsidian.exe');
+	assert.equal(
+		resolveAcceptanceExecutableV1('obsidian', 'win32', environment, dependencies),
+		'C:\\Tools\\obsidian.com',
+	);
+	for (const forbidden of ['obsidian.cmd', 'obsidian.bat', 'C:\\Tools\\obsidian.cmd']) {
+		assert.throws(
+			() => resolveAcceptanceExecutableV1(forbidden, 'win32', environment, dependencies),
+			/OFFICIAL_OBSIDIAN_CLI_EXECUTABLE_INVALID/u,
+		);
+	}
+});
+
+test('Windows acceptance executable resolution rejects symlink candidates', () => {
+	assert.throws(
+		() => resolveAcceptanceExecutableV1('obsidian.exe', 'win32', {
+			PATH: 'C:\\Tools',
+		}, {
+			realpath: candidate => candidate,
+			lstat: () => ({ isFile: () => true, isSymbolicLink: () => true }),
+		}),
+		/OFFICIAL_OBSIDIAN_CLI_EXECUTABLE_NOT_FOUND/u,
+	);
+});
+
+test('Windows acceptance binds PowerShell to the canonical SystemRoot executable', () => {
+	const visited = [];
+	const resolved = resolveAcceptanceWindowsPowerShellV1({
+		SystemRoot: 'C:\\Windows\\',
+		WINDIR: 'c:\\windows',
+	}, {
+		lstat: candidate => {
+			visited.push(candidate);
+			return {
+				isFile: () => candidate.endsWith('powershell.exe'),
+				isSymbolicLink: () => false,
+			};
+		},
+	});
+	assert.equal(
+		resolved.executable,
+		'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+	);
+	assert.equal(resolved.systemRoot, 'C:\\Windows');
+	assert.ok(visited.includes('C:\\Windows'));
+	assert.throws(
+		() => resolveAcceptanceWindowsPowerShellV1({
+			SystemRoot: 'C:\\Windows',
+			WINDIR: 'D:\\Windows',
+		}),
+		/ACCEPTANCE_WINDOWS_POWERSHELL_UNAVAILABLE/u,
+	);
+});
+
+test('Windows acceptance validates exe and com Authenticode with bounded strict JSON', () => {
+	const calls = [];
+	const environment = { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows' };
+	const dependencies = {
+		lstat: candidate => ({
+			isFile: () => candidate.endsWith('powershell.exe'),
+			isSymbolicLink: () => false,
+		}),
+		spawnSync: (executable, args, options) => {
+			calls.push({ executable, args, options });
+			return {
+				status: 0,
+				stdout: JSON.stringify({ Status: 'Valid', Thumbprint: 'A'.repeat(40) }),
+				stderr: '',
+			};
+		},
+	};
+	for (const extension of ['exe', 'com']) {
+		const identity = windowsAuthenticodeIdentityV1(
+			`C:\\Tools\\obsidian.${extension}`,
+			environment,
+			dependencies,
+		);
+		assert.equal(identity.backend, 'windows-authenticode');
+		assert.equal(identity.signerThumbprint, 'a'.repeat(40));
+	}
+	assert.equal(calls.length, 2);
+	for (const call of calls) {
+		assert.equal(
+			call.executable,
+			'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+		);
+		assert.deepEqual(call.args.slice(0, 6), [
+			'-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command',
+		]);
+		assert.equal(call.options.shell, false);
+		assert.equal(call.options.timeout, 30_000);
+		assert.equal(call.options.maxBuffer, 16_384);
+		assert.equal(call.options.killSignal, 'SIGKILL');
+		assert.deepEqual(Object.keys(call.options.env).sort(), [
+			'OPERON_ACCEPTANCE_EXECUTABLE', 'SystemRoot', 'WINDIR',
+		]);
+	}
+	assert.throws(
+		() => windowsAuthenticodeIdentityV1('C:\\Tools\\obsidian.cmd', environment, dependencies),
+		/must use \.exe or \.com/u,
+	);
+});
+
+test('Windows Authenticode admission fails closed on malformed or expanded output', () => {
+	const environment = { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows' };
+	const lstat = candidate => ({
+		isFile: () => candidate.endsWith('powershell.exe'),
+		isSymbolicLink: () => false,
+	});
+	for (const stdout of [
+		'not-json',
+		JSON.stringify({ Status: 'Valid', Thumbprint: 'A'.repeat(40), Subject: 'unexpected' }),
+		JSON.stringify({ Status: 'NotSigned', Thumbprint: '' }),
+	]) {
+		assert.throws(() => windowsAuthenticodeIdentityV1(
+			'C:\\Tools\\obsidian.exe',
+			environment,
+			{
+				lstat,
+				spawnSync: () => ({ status: 0, stdout, stderr: '' }),
+			},
+		));
+	}
+});
+
+test('Windows Authenticode admission fails closed on PowerShell execution failures', () => {
+	const environment = { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows' };
+	const lstat = candidate => ({
+		isFile: () => candidate.endsWith('powershell.exe'),
+		isSymbolicLink: () => false,
+	});
+	for (const result of [
+		{ status: 1, stdout: '', stderr: '' },
+		{ status: 0, stdout: '{}', stderr: 'diagnostic' },
+		{ status: null, stdout: '', stderr: '', error: new Error('timeout') },
+	]) {
+		assert.throws(
+			() => windowsAuthenticodeIdentityV1(
+				'C:\\Tools\\obsidian.exe',
+				environment,
+				{ lstat, spawnSync: () => result },
+			),
+			/ACCEPTANCE_WINDOWS_POWERSHELL_UNAVAILABLE/u,
+		);
 	}
 });

@@ -182,6 +182,84 @@ test('this-task temporal edits leave recurrence identity and series overrides un
 	), true);
 });
 
+test('recurrence datetime edits canonicalize seconds and compare minute precision as equal', () => {
+	const task = snapshot({
+		repeat: 'mode=schedule|freq=day|interval=1',
+		repeatSeriesId: 'rsold01',
+		repeatOccurrenceDate: '2026-07-27',
+		dateScheduled: '2026-07-27',
+		datetimeStart: '2026-07-27T09:30:00',
+	});
+	const changed = prepareRuntimeTaskRecurrenceMutationV1(request({
+		operation: 'update-recurrence',
+		scope: 'this-task',
+		changes: [{
+			field: 'datetimeStart',
+			valueType: 'datetime',
+			value: '2026-07-27T10:15',
+			expectedValue: '2026-07-27T09:30',
+		}],
+	}), effectiveAt, ports(task));
+	assert.equal(changed.ok, true);
+	if (!changed.ok) return;
+	assert.equal(changed.value.fieldValues.datetimeStart, '2026-07-27T10:15:00');
+	const committed = applyPatch(task.fieldValues, changed.value.fieldValues);
+	assert.equal(verifyRuntimeTaskRecurrencePostflightV1(
+		changed.value,
+		() => ({ locator, fieldValues: committed }),
+	), true);
+
+	const noChangeTask = snapshot({
+		...committed,
+		datetimeEnd: '2026-07-27T11:30:00',
+		datetimeRepeatEnd: '2026-08-31T12:45:00',
+		estimate: '4500',
+	});
+	const noChange = prepareRuntimeTaskRecurrenceMutationV1(request({
+		operation: 'update-recurrence',
+		scope: 'this-and-following',
+		changes: [
+			{
+				field: 'datetimeStart',
+				valueType: 'datetime',
+				value: '2026-07-27T10:15',
+				expectedValue: '2026-07-27T10:15',
+			},
+			{
+				field: 'datetimeEnd',
+				valueType: 'datetime',
+				value: '2026-07-27T11:30',
+				expectedValue: '2026-07-27T11:30',
+			},
+			{
+				field: 'datetimeRepeatEnd',
+				valueType: 'datetime',
+				value: '2026-08-31T12:45',
+				expectedValue: '2026-08-31T12:45',
+			},
+		],
+		expected: {
+			fieldValues: {
+				repeat: noChangeTask.fieldValues.repeat,
+				dateScheduled: noChangeTask.fieldValues.dateScheduled,
+				datetimeStart: '2026-07-27T10:15',
+				datetimeEnd: '2026-07-27T11:30',
+				datetimeRepeatEnd: '2026-08-31T12:45',
+				estimate: 4500,
+			},
+			repeatSeriesId: 'rsold01',
+			repeatOccurrenceDate: '2026-07-27',
+		},
+	}), effectiveAt, ports(noChangeTask));
+	assert.equal(noChange.ok, true, JSON.stringify(noChange));
+	if (noChange.ok) {
+		assert.equal(noChange.value.noChange, true, JSON.stringify(noChange.value));
+		assert.deepEqual(noChange.value.fieldValues, {});
+		assert.equal(noChange.value.sealedSpec.changes[0].expectedValue, '2026-07-27T10:15:00');
+		assert.equal(noChange.value.sealedSpec.expected?.fieldValues.datetimeEnd, '2026-07-27T11:30:00');
+	}
+});
+
 test('this-and-following temporal edits reanchor occurrence identity and seal the following override', () => {
 	const task = snapshot({
 		repeat: 'mode=schedule|freq=week|interval=1|days=mo',

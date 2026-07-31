@@ -25,7 +25,7 @@ jobs:
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: node -e "if (!/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT)) throw new Error('source_commit must be an exact lowercase 40-character commit.');"
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ inputs.source_commit }}
           fetch-depth: 0
@@ -34,7 +34,7 @@ jobs:
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: node -e "const {execFileSync}=require('node:child_process'); const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(); if(head!==process.env.SOURCE_COMMIT||head!==process.env.GITHUB_SHA) throw new Error('Checked-out source does not match source_commit.');"
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24.18.0"
           cache: npm

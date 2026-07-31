@@ -32,6 +32,16 @@ export function toLocalDatetime(date: Date): string {
 }
 
 /**
+ * Canonicalize a valid local datetime to Operon's seconds-bearing storage form.
+ * Runtime request decoders remain responsible for validating the calendar value.
+ */
+export function canonicalizeLocalDatetime(value: string): string {
+	return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u.test(value)
+		? `${value}:00`
+		: value;
+}
+
+/**
  * Convert a Date object to local date string YYYY-MM-DD.
  */
 export function toLocalDate(date: Date): string {

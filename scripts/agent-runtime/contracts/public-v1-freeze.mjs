@@ -431,7 +431,7 @@ function assertAcceptedFreeze(index) {
 		index.cli.packageVersion !== '1.0.0'
 		|| index.plugin.version !== '3.0.0'
 		|| index.audit.validation.status !== 'passed'
-		|| index.audit.validation.result?.status !== 'accepted-development-exception'
+		|| index.audit.validation.result?.status !== 'accepted-clean'
 	) {
 		throw new Error('OPERON_PUBLIC_V1_FREEZE_ACCEPTANCE_PREREQUISITES_UNMET');
 	}
@@ -512,11 +512,11 @@ function controlFromIndex(index) {
 
 function normalizeAuditResult(result) {
 	if (
-		result?.status !== 'accepted-development-exception'
+		result?.status !== 'accepted-clean'
 		|| !Number.isSafeInteger(result.productionVulnerabilities)
 		|| result.productionVulnerabilities !== 0
 		|| !Number.isSafeInteger(result.developmentVulnerabilities)
-		|| result.developmentVulnerabilities < 0
+		|| result.developmentVulnerabilities !== 0
 		|| typeof result.directRoot !== 'string'
 		|| result.directRoot === ''
 	) {

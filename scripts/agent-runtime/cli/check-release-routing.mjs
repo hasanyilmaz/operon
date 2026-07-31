@@ -3,7 +3,16 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import {
+	copyFile,
+	mkdir,
+	mkdtemp,
+	readFile,
+	readdir,
+	realpath,
+	rm,
+	writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,14 +47,87 @@ const liveAcceptanceWorkflow = await readFile(
 	'utf8',
 );
 
+const workflowRoot = path.join(pluginRoot, '.github/workflows');
+const workflowFiles = (await readdir(workflowRoot))
+	.filter(file => file.endsWith('.yml') || file.endsWith('.yaml'))
+	.sort();
+const exactCheckoutRevision = '3d3c42e5aac5ba805825da76410c181273ba90b1';
+const exactSetupNodeRevision = '820762786026740c76f36085b0efc47a31fe5020';
+const exactWorkflowPermissions = new Map([
+	['ci.yml', ['contents: read']],
+	['cli-ci.yml', ['contents: read']],
+	['cli-live-acceptance.yml', ['actions: read', 'attestations: write', 'contents: read', 'id-token: write']],
+	['cli-native-candidate.yml', ['attestations: write', 'contents: read', 'id-token: write']],
+	['cli-publish.yml', ['actions: read', 'attestations: read', 'contents: read', 'id-token: write']],
+	['cli-release-ready.yml', ['contents: read', 'id-token: write', 'attestations: write']],
+	['codeql.yml', ['actions: read', 'contents: read', 'security-events: write']],
+	['release.yml', ['contents: write', 'id-token: write', 'attestations: write']],
+]);
+for (const file of workflowFiles) {
+	const workflow = await readFile(path.join(workflowRoot, file), 'utf8');
+	const expectedPermissions = exactWorkflowPermissions.get(file);
+	assert.ok(expectedPermissions, `${file}: workflow lacks an approved permission policy.`);
+	const permissionsMatch = workflow.match(/^permissions:\s*\n((?:  [a-z-]+:\s+(?:read|write)\s*\n)+)/mu);
+	assert.ok(permissionsMatch, `${file}: workflow must declare top-level explicit permissions.`);
+	assert.deepEqual(
+		permissionsMatch[1].trim().split(/\r?\n/u).map(line => line.trim()),
+		expectedPermissions,
+		`${file}: workflow permissions drifted from the least-privilege allowlist.`,
+	);
+	const lines = workflow.split(/\r?\n/u);
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index];
+		const actionMatch = line.match(/uses:\s+([^@\s]+)@([^\s#]+)/u);
+		if (!actionMatch) continue;
+		const [, action, revision] = actionMatch;
+		assert.match(
+			revision,
+			/^[a-f0-9]{40}$/u,
+			`${file}:${index + 1}: ${action} must use an immutable 40-character revision.`,
+		);
+		if (action === 'actions/checkout') {
+			assert.equal(revision, exactCheckoutRevision, `${file}:${index + 1}: checkout revision drifted.`);
+		}
+		if (action === 'actions/setup-node') {
+			assert.equal(revision, exactSetupNodeRevision, `${file}:${index + 1}: setup-node revision drifted.`);
+		}
+		if (action !== 'actions/checkout') continue;
+		const usesIndent = line.length - line.trimStart().length;
+		const stepIndent = line.trimStart().startsWith('- uses:')
+			? usesIndent
+			: Math.max(0, usesIndent - 2);
+		const block = [line];
+		for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+			const candidate = lines[cursor];
+			const indent = candidate.length - candidate.trimStart().length;
+			if (indent <= stepIndent && candidate.trimStart().startsWith('- ')) break;
+			block.push(candidate);
+		}
+		assert.ok(
+			block.some(candidate => /^\s+persist-credentials:\s+false\s*(?:#.*)?$/u.test(candidate)),
+			`${file}:${index + 1}: checkout must set persist-credentials: false.`,
+		);
+	}
+}
+assert.equal(
+	exactWorkflowPermissions.size,
+	workflowFiles.length,
+	'Workflow permission policy must cover every checked-in workflow.',
+);
+assert.match(
+	ciWorkflow,
+	/^permissions:\s*\n\s{2}contents:\s+read\s*$/mu,
+	'CLI CI must explicitly grant only contents: read.',
+);
+
 assert.match(pluginWorkflow, /-\s+["']!cli-v\*["']/u);
 assert.match(
 	pluginWorkflow,
-	/actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/u,
+	/actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/u,
 );
 assert.match(
 	pluginWorkflow,
-	/actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/u,
+	/actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020/u,
 );
 assert.doesNotMatch(pluginWorkflow, /uses:\s+actions\/[^@\s]+@v[0-9]+/u);
 assert.match(candidateWorkflow, /workflow_dispatch:/u);

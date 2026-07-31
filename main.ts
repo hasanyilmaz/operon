@@ -232,6 +232,7 @@ import {
 	prepareRuntimeTaskFieldMutationV1,
 	prepareRuntimeTaskUpdateBatchV1,
 	buildRuntimeTaskUpdateBatchEffectsV1,
+	buildRuntimeConversionAncestorPredictedEffectsV1,
 	verifyRuntimeTaskUpdateBatchPrimaryPostflightV1,
 	prepareRuntimeTaskRecurrenceMutationV1,
 	verifyRuntimeTaskRecurrencePostflightV1,
@@ -1203,6 +1204,7 @@ export default class OperonPlugin extends Plugin {
 		const core = this.agentRuntimeCore ?? null;
 		return getOperonDeveloperApiV1(core, consumerPlugin, request, {
 			isDesktopAvailable: () => Platform.isDesktopApp,
+			isHostVersionSupported: () => requireApiVersion('1.12.2'),
 			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
 			retryAfterMs: () => this.agentRuntimeLifecycle?.getRetryAfterMs(),
 			lifecycleError: () => this.agentRuntimeLifecycle?.getLastError(),
@@ -6432,16 +6434,11 @@ export default class OperonPlugin extends Plugin {
 				summary: 'Remove the deleted task from pinned state.',
 			});
 		}
-		for (const ancestorFilePath of [...new Set(
+		const sourceGroupPaths = new Set(token.groups.map(group => group.filePath));
+		predictedEffects.push(...buildRuntimeConversionAncestorPredictedEffectsV1(
+			[...sourceGroupPaths],
 			(token.ancestorTasks ?? []).map(ancestor => ancestor.locator.filePath),
-		)]) {
-			predictedEffects.push({
-				resourceKind: 'task-source',
-				resourceKey: ancestorFilePath,
-				action: 'update',
-				summary: 'Refresh sealed conversion ancestor timestamps and hierarchy aggregates.',
-			});
-		}
+		));
 		if (token.repeatSeriesId) {
 			predictedEffects.push({
 				resourceKind: 'repeat-series',
@@ -6450,7 +6447,6 @@ export default class OperonPlugin extends Plugin {
 				summary: 'Update the recurring series source representation.',
 			});
 		}
-		const sourceGroupPaths = new Set(token.groups.map(group => group.filePath));
 		const auxiliaryGroups = [
 			...[...new Set(
 				(token.ancestorTasks ?? [])
