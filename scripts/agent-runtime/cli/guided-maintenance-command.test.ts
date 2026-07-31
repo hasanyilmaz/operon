@@ -38,8 +38,14 @@ import {
 	sha256HexV1,
 	toJsonValueV1,
 } from '../../../src/agent-runtime/contracts/v1';
-import type { ProcessResultV1 } from '../../../packages/operon-cli/src/client';
-import { runPublicCommandLineV1 } from '../../../packages/operon-cli/src/command-line';
+import type {
+	ProcessResultV1,
+	WindowsBrokerClientPortV1,
+} from '../../../packages/operon-cli/src/client';
+import {
+	type PublicCommandPortsV1,
+	runPublicCommandLineV1 as runProductionPublicCommandLineV1,
+} from '../../../packages/operon-cli/src/command-line';
 import { readMutationPlanV1 } from '../../../packages/operon-cli/src/plan-store';
 import { requestPathForTokenV1 } from '../../../packages/operon-cli/src/protocol';
 import type { InteractiveTerminalPortV1 } from '../../../packages/operon-cli/src/terminal-port';
@@ -63,6 +69,67 @@ const COMMAND_OPERATIONS = new Map<string, string>([
 	['timer start', 'start'],
 	['timer stop', 'stop'],
 ]);
+
+type HarnessWindowsBrokerFrameV1 = {
+	invocation: CliInvocationV1;
+	state: 'staged' | 'consumed';
+};
+
+const WINDOWS_BROKER_FRAMES = new Map<string, HarnessWindowsBrokerFrameV1>();
+
+function runPublicCommandLineV1(
+	argv: string[],
+	ports: PublicCommandPortsV1 = {},
+): ReturnType<typeof runProductionPublicCommandLineV1> {
+	if (process.platform !== 'win32' || ports._windowsBrokerClient) {
+		return runProductionPublicCommandLineV1(argv, ports);
+	}
+	return runProductionPublicCommandLineV1(argv, {
+		...ports,
+		_windowsBrokerClient: createHarnessWindowsBrokerV1(),
+	});
+}
+
+function createHarnessWindowsBrokerV1(): WindowsBrokerClientPortV1 {
+	const ownedTokens = new Set<string>();
+	return {
+		async stage(invocation) {
+			const requestToken = randomUUID().replaceAll('-', '');
+			ownedTokens.add(requestToken);
+			WINDOWS_BROKER_FRAMES.set(requestToken, {
+				invocation: structuredClone(invocation),
+				state: 'staged',
+			});
+			return {
+				requestToken,
+				stagingReceipt: createHash('sha256').update(requestToken).digest('hex'),
+			};
+		},
+		async status(requestToken) {
+			return {
+				state: ownedTokens.has(requestToken)
+					? WINDOWS_BROKER_FRAMES.get(requestToken)?.state ?? 'unknown'
+					: 'unknown',
+			};
+		},
+		async cancel(requestToken) {
+			const frame = WINDOWS_BROKER_FRAMES.get(requestToken);
+			if (!ownedTokens.has(requestToken) || !frame) {
+				return { cancelled: false, state: 'unknown' };
+			}
+			if (frame.state === 'consumed') {
+				return { cancelled: false, state: 'consumed' };
+			}
+			WINDOWS_BROKER_FRAMES.delete(requestToken);
+			return { cancelled: true, state: 'staged' };
+		},
+		close() {
+			for (const requestToken of ownedTokens) {
+				WINDOWS_BROKER_FRAMES.delete(requestToken);
+			}
+		},
+	};
+}
 
 async function run(): Promise<void> {
 	await testGuidedAdmissionMatrix();
@@ -3510,10 +3577,19 @@ function fixtureRunner(
 	return async (_executable: string, args: string[]): Promise<ProcessResultV1> => {
 		const token = args.find(value => value.startsWith('requestToken='))?.slice('requestToken='.length);
 		assert.ok(token);
-		const invocation = JSON.parse(
-			await readFile(requestPathForTokenV1(token, requestRoot), 'utf8'),
-		) as CliInvocationV1;
-		await unlink(requestPathForTokenV1(token, requestRoot));
+		let invocation: CliInvocationV1;
+		if (process.platform === 'win32') {
+			const frame = WINDOWS_BROKER_FRAMES.get(token);
+			assert.ok(frame);
+			assert.equal(frame.state, 'staged');
+			frame.state = 'consumed';
+			invocation = frame.invocation;
+		} else {
+			invocation = JSON.parse(
+				await readFile(requestPathForTokenV1(token, requestRoot), 'utf8'),
+			) as CliInvocationV1;
+			await unlink(requestPathForTokenV1(token, requestRoot));
+		}
 		invocations.push(structuredClone(invocation));
 		const response = respond(invocation);
 		if ('stdout' in response) return response;
