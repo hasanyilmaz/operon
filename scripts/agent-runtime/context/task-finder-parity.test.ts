@@ -370,16 +370,30 @@ function testFinderPerformanceGate(): void {
 	const coldMedian = percentile(coldSamples, 0.5);
 	const warmMedian = percentile(warmSamples, 0.5);
 	const warmP95 = percentile(warmSamples, 0.95);
-	assert.ok(coldMedian < 150, `Cold Finder median ${coldMedian.toFixed(2)} ms exceeded 150 ms.`);
-	assert.ok(warmMedian < 75, `Warm Finder median ${warmMedian.toFixed(2)} ms exceeded 75 ms.`);
-	assert.ok(warmP95 < 125, `Warm Finder p95 ${warmP95.toFixed(2)} ms exceeded 125 ms.`);
-	assert.ok(
-		warmMedian <= coldMedian * 0.35,
-		`Warm Finder median ${warmMedian.toFixed(2)} ms exceeded 35% of cold ${coldMedian.toFixed(2)} ms.`,
+	const performanceMode = process.env.OPERON_TASK_FINDER_PERFORMANCE_MODE ?? 'enforce';
+	assert.match(
+		performanceMode,
+		/^(?:diagnostic|enforce)$/u,
+		'OPERON_TASK_FINDER_PERFORMANCE_MODE must be diagnostic or enforce.',
 	);
+	const thresholdsPassed = coldMedian < 150
+		&& warmMedian < 75
+		&& warmP95 < 125
+		&& warmMedian <= coldMedian * 0.35;
+	if (performanceMode === 'enforce') {
+		assert.ok(coldMedian < 150, `Cold Finder median ${coldMedian.toFixed(2)} ms exceeded 150 ms.`);
+		assert.ok(warmMedian < 75, `Warm Finder median ${warmMedian.toFixed(2)} ms exceeded 75 ms.`);
+		assert.ok(warmP95 < 125, `Warm Finder p95 ${warmP95.toFixed(2)} ms exceeded 125 ms.`);
+		assert.ok(
+			warmMedian <= coldMedian * 0.35,
+			`Warm Finder median ${warmMedian.toFixed(2)} ms exceeded 35% of cold ${coldMedian.toFixed(2)} ms.`,
+		);
+	}
 	console.log(JSON.stringify({
 		taskFinderPerformance: {
 			corpus: tasks.length,
+			mode: performanceMode,
+			thresholdsPassed,
 			coldMedianMs: Number(coldMedian.toFixed(2)),
 			warmMedianMs: Number(warmMedian.toFixed(2)),
 			warmP95Ms: Number(warmP95.toFixed(2)),

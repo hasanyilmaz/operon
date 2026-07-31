@@ -35,6 +35,8 @@ jobs:
         run: npm run release:audit-policy
 
       - name: Run validation
+        env:
+          OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check
 
       - name: Verify release guard

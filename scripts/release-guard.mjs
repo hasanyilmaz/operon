@@ -380,6 +380,9 @@ function checkContinuousIntegrationWorkflow() {
 		/run:\s+npm audit(?:\s|$)/u,
 		'CI must not bypass the canonical dependency audit policy with raw npm audit',
 	);
+	if (!/- name: Run validation\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
+		fail('CI must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
+	}
 	if (
 		installIndex < 0
 		|| auditPolicyIndex < installIndex

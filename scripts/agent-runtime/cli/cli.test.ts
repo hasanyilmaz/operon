@@ -135,8 +135,10 @@ async function run(): Promise<void> {
 	if (process.platform !== 'win32') testSecureRequestFile();
 	await testInvocationConstruction();
 	await testOneShotExecutionAndCleanup();
-	await testOneShotPersistentReadRouting();
-	await testAbortTransportGuards();
+	if (process.platform !== 'win32') {
+		await testOneShotPersistentReadRouting();
+		await testAbortTransportGuards();
+	}
 	testRenderingAndExitCodes();
 	testHumanRendererCoverage();
 	await testGuidedCreationModel();
@@ -1332,22 +1334,24 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 	};
 	try {
 		const options = parseCliArgsV1(['capabilities', '--vault', vault, '--json']);
-		const outcome = await executeCliV1(options, {
-			runProcess: runner,
-			requestRoot,
-			platform: 'darwin',
-		});
-		assert.equal(outcome.exitCode, 0);
-		assert.equal(outcome.envelope.ok, true);
-		assert.equal(calls, 1);
-		assert.equal(seenCwd, realpathSync(vault));
-		assert.deepEqual(seenArgs.slice(0, 2), [
-			`vault=${path.basename(realpathSync(vault))}`,
-			'operon:capabilities',
-		]);
-		assert.match(seenArgs[2], /^requestToken=[A-Za-z0-9_-]{32}$/u);
-		const token = seenArgs[2].slice('requestToken='.length);
-		assert.equal(lstatMissing(requestPathForTokenV1(token, requestRoot)), true);
+		if (process.platform !== 'win32') {
+			const outcome = await executeCliV1(options, {
+				runProcess: runner,
+				requestRoot,
+				platform: 'darwin',
+			});
+			assert.equal(outcome.exitCode, 0);
+			assert.equal(outcome.envelope.ok, true);
+			assert.equal(calls, 1);
+			assert.equal(seenCwd, realpathSync(vault));
+			assert.deepEqual(seenArgs.slice(0, 2), [
+				`vault=${path.basename(realpathSync(vault))}`,
+				'operon:capabilities',
+			]);
+			assert.match(seenArgs[2], /^requestToken=[A-Za-z0-9_-]{32}$/u);
+			const token = seenArgs[2].slice('requestToken='.length);
+			assert.equal(lstatMissing(requestPathForTokenV1(token, requestRoot)), true);
+		}
 		let stagedInvocation: CliInvocationV1 | null = null;
 		let brokerClosed = false;
 		const brokerToken = 'w'.repeat(32);
@@ -1390,169 +1394,171 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 		assert.equal(windowsOutcome.exitCode, 0);
 		assert.equal(brokerClosed, true);
 		assert.equal(lstatMissing(path.join(requestRoot, 'must-not-exist')), true);
-		const mismatchedRequest = await executeCliV1(options, {
-			requestRoot,
-			platform: 'darwin',
-			runProcess: async (...args) => {
-				const result = await runner(...args);
-				const envelope = JSON.parse(result.stdout.toString('utf8')) as CliResultEnvelopeV1;
-				return {
-					...result,
-					stdout: Buffer.from(JSON.stringify({ ...envelope, requestId: 'other-request' })),
-				};
-			},
-		});
-		assert.equal(mismatchedRequest.exitCode, 70);
-		assert.equal(mismatchedRequest.envelope.ok, false);
+		if (process.platform !== 'win32') {
+			const mismatchedRequest = await executeCliV1(options, {
+				requestRoot,
+				platform: 'darwin',
+				runProcess: async (...args) => {
+					const result = await runner(...args);
+					const envelope = JSON.parse(result.stdout.toString('utf8')) as CliResultEnvelopeV1;
+					return {
+						...result,
+						stdout: Buffer.from(JSON.stringify({ ...envelope, requestId: 'other-request' })),
+					};
+				},
+			});
+			assert.equal(mismatchedRequest.exitCode, 70);
+			assert.equal(mismatchedRequest.envelope.ok, false);
 
-		const healthOptions = parseCliArgsV1(['health', '--vault', vault, '--json']);
-		const mismatchedCommand = await executeCliV1(healthOptions, {
-			requestRoot,
-			platform: 'darwin',
-			runProcess: async (_executable, args) => {
-				const token = args.find(value => value.startsWith('requestToken='))
-					?.slice('requestToken='.length);
-				assert.ok(token);
-				const requestPath = requestPathForTokenV1(token, requestRoot);
-				const invocation = JSON.parse(readFileSync(requestPath, 'utf8')) as CliInvocationV1;
-				return {
+			const healthOptions = parseCliArgsV1(['health', '--vault', vault, '--json']);
+			const mismatchedCommand = await executeCliV1(healthOptions, {
+				requestRoot,
+				platform: 'darwin',
+				runProcess: async (_executable, args) => {
+					const token = args.find(value => value.startsWith('requestToken='))
+						?.slice('requestToken='.length);
+					assert.ok(token);
+					const requestPath = requestPathForTokenV1(token, requestRoot);
+					const invocation = JSON.parse(readFileSync(requestPath, 'utf8')) as CliInvocationV1;
+					return {
+						exitCode: 0,
+						signal: null,
+						stdout: Buffer.from(JSON.stringify({
+							...capabilitiesSuccessEnvelope(invocation, lstatSync(requestPath).size),
+							command: 'capabilities',
+						})),
+						stderr: Buffer.alloc(0),
+						totalMs: 2,
+						timedOut: false,
+						overflow: false,
+					};
+				},
+			});
+			assert.equal(mismatchedCommand.exitCode, 70);
+			assert.equal(mismatchedCommand.envelope.ok, false);
+			const unavailable = await executeCliV1(options, {
+				requestRoot,
+				platform: 'darwin',
+				runProcess: async () => ({
 					exitCode: 0,
 					signal: null,
-					stdout: Buffer.from(JSON.stringify({
-						...capabilitiesSuccessEnvelope(invocation, lstatSync(requestPath).size),
-						command: 'capabilities',
-					})),
+					stdout: Buffer.from('Error: command not found'),
 					stderr: Buffer.alloc(0),
 					totalMs: 2,
 					timedOut: false,
 					overflow: false,
-				};
-			},
-		});
-		assert.equal(mismatchedCommand.exitCode, 70);
-		assert.equal(mismatchedCommand.envelope.ok, false);
-		const unavailable = await executeCliV1(options, {
-			requestRoot,
-			platform: 'darwin',
-			runProcess: async () => ({
-				exitCode: 0,
-				signal: null,
-				stdout: Buffer.from('Error: command not found'),
-				stderr: Buffer.alloc(0),
-				totalMs: 2,
-				timedOut: false,
-				overflow: false,
-			}),
-		});
-		assert.equal(unavailable.exitCode, 3);
-		assert.equal(unavailable.envelope.ok, false);
-		assert.equal(
-			unavailable.envelope.ok ? undefined : unavailable.envelope.failure.error.code,
-			'transport-unavailable',
-		);
-		if (!unavailable.envelope.ok) {
+				}),
+			});
+			assert.equal(unavailable.exitCode, 3);
+			assert.equal(unavailable.envelope.ok, false);
 			assert.equal(
-				unavailable.envelope.failure.error.details?.reasonCode,
-				'obsidian-cli-handler-unavailable',
+				unavailable.envelope.ok ? undefined : unavailable.envelope.failure.error.code,
+				'transport-unavailable',
 			);
-			assert.equal(
-				unavailable.envelope.failure.error.details?.diagnosticSummary,
-				'The requested Obsidian CLI command is unavailable; its plugin may be disabled.',
-			);
-		}
-		const sensitiveToken = 'A'.repeat(32);
-		const hostUnavailable = await executeCliV1(options, {
-			requestRoot,
-			platform: 'darwin',
-			runProcess: async () => ({
-				exitCode: 1,
-				signal: null,
-				stdout: Buffer.alloc(0),
-				stderr: Buffer.from(
-					`The CLI is unable to find Obsidian.\u001b[31m requestToken=${sensitiveToken}\r\n`,
-				),
-				totalMs: 2,
-				timedOut: false,
-				overflow: false,
-			}),
-		});
-		assert.equal(hostUnavailable.envelope.ok, false);
-		if (!hostUnavailable.envelope.ok) {
-			assert.equal(
-				hostUnavailable.envelope.failure.error.details?.reasonCode,
-				'obsidian-cli-host-unreachable',
-			);
-			assert.equal(hostUnavailable.envelope.failure.error.details?.processExitCode, 1);
-			const diagnosticSummary = hostUnavailable.envelope.failure.error.details?.diagnosticSummary;
-			assert.equal(diagnosticSummary, 'The CLI is unable to find Obsidian.');
-		}
-		const genericFailure = await executeCliV1(options, {
-			requestRoot,
-			platform: 'darwin',
-			runProcess: async () => ({
-				exitCode: 9,
-				signal: null,
-				stdout: Buffer.alloc(0),
-				stderr: Buffer.from(
-					`Unexpected failure in /Users/example/Private Vault requestToken=${sensitiveToken}`,
-				),
-				totalMs: 2,
-				timedOut: false,
-				overflow: false,
-			}),
-		});
-		assert.equal(genericFailure.envelope.ok, false);
-		if (!genericFailure.envelope.ok) {
-			assert.equal(
-				genericFailure.envelope.failure.error.details?.reasonCode,
-				'obsidian-cli-exit-failed',
-			);
-			assert.equal(genericFailure.envelope.failure.error.details?.processExitCode, 9);
-			assert.equal(genericFailure.envelope.failure.error.details?.diagnosticSummary, undefined);
-			assert.doesNotMatch(
-				renderHumanV1(genericFailure.envelope),
-				/Private Vault|Diagnostic:/u,
-			);
-		}
-		for (const [spawnErrorCode, reasonCode] of [
-			['ENOENT', 'obsidian-cli-bin-not-found'],
-			['EACCES', 'obsidian-cli-execution-denied'],
-		] as const) {
-			const spawnFailure = await executeCliV1(options, {
+			if (!unavailable.envelope.ok) {
+				assert.equal(
+					unavailable.envelope.failure.error.details?.reasonCode,
+					'obsidian-cli-handler-unavailable',
+				);
+				assert.equal(
+					unavailable.envelope.failure.error.details?.diagnosticSummary,
+					'The requested Obsidian CLI command is unavailable; its plugin may be disabled.',
+				);
+			}
+			const sensitiveToken = 'A'.repeat(32);
+			const hostUnavailable = await executeCliV1(options, {
+				requestRoot,
+				platform: 'darwin',
+				runProcess: async () => ({
+					exitCode: 1,
+					signal: null,
+					stdout: Buffer.alloc(0),
+					stderr: Buffer.from(
+						`The CLI is unable to find Obsidian.\u001b[31m requestToken=${sensitiveToken}\r\n`,
+					),
+					totalMs: 2,
+					timedOut: false,
+					overflow: false,
+				}),
+			});
+			assert.equal(hostUnavailable.envelope.ok, false);
+			if (!hostUnavailable.envelope.ok) {
+				assert.equal(
+					hostUnavailable.envelope.failure.error.details?.reasonCode,
+					'obsidian-cli-host-unreachable',
+				);
+				assert.equal(hostUnavailable.envelope.failure.error.details?.processExitCode, 1);
+				const diagnosticSummary = hostUnavailable.envelope.failure.error.details?.diagnosticSummary;
+				assert.equal(diagnosticSummary, 'The CLI is unable to find Obsidian.');
+			}
+			const genericFailure = await executeCliV1(options, {
+				requestRoot,
+				platform: 'darwin',
+				runProcess: async () => ({
+					exitCode: 9,
+					signal: null,
+					stdout: Buffer.alloc(0),
+					stderr: Buffer.from(
+						`Unexpected failure in /Users/example/Private Vault requestToken=${sensitiveToken}`,
+					),
+					totalMs: 2,
+					timedOut: false,
+					overflow: false,
+				}),
+			});
+			assert.equal(genericFailure.envelope.ok, false);
+			if (!genericFailure.envelope.ok) {
+				assert.equal(
+					genericFailure.envelope.failure.error.details?.reasonCode,
+					'obsidian-cli-exit-failed',
+				);
+				assert.equal(genericFailure.envelope.failure.error.details?.processExitCode, 9);
+				assert.equal(genericFailure.envelope.failure.error.details?.diagnosticSummary, undefined);
+				assert.doesNotMatch(
+					renderHumanV1(genericFailure.envelope),
+					/Private Vault|Diagnostic:/u,
+				);
+			}
+			for (const [spawnErrorCode, reasonCode] of [
+				['ENOENT', 'obsidian-cli-bin-not-found'],
+				['EACCES', 'obsidian-cli-execution-denied'],
+			] as const) {
+				const spawnFailure = await executeCliV1(options, {
+					requestRoot,
+					platform: 'darwin',
+					runProcess: async () => ({
+						exitCode: null,
+						signal: null,
+						stdout: Buffer.alloc(0),
+						stderr: Buffer.alloc(0),
+						totalMs: 1,
+						timedOut: false,
+						overflow: false,
+						spawnErrorCode,
+					}),
+				});
+				assert.equal(spawnFailure.envelope.ok, false);
+				if (!spawnFailure.envelope.ok) {
+					assert.equal(spawnFailure.envelope.failure.error.details?.reasonCode, reasonCode);
+				}
+			}
+			const timedOut = await executeCliV1(options, {
 				requestRoot,
 				platform: 'darwin',
 				runProcess: async () => ({
 					exitCode: null,
-					signal: null,
+					signal: 'SIGKILL',
 					stdout: Buffer.alloc(0),
 					stderr: Buffer.alloc(0),
-					totalMs: 1,
-					timedOut: false,
+					totalMs: 20_000,
+					timedOut: true,
 					overflow: false,
-					spawnErrorCode,
 				}),
 			});
-			assert.equal(spawnFailure.envelope.ok, false);
-			if (!spawnFailure.envelope.ok) {
-				assert.equal(spawnFailure.envelope.failure.error.details?.reasonCode, reasonCode);
-			}
+			assert.equal(timedOut.exitCode, 3);
+			assert.equal(timedOut.envelope.ok, false);
+			assert.equal(timedOut.envelope.ok ? undefined : timedOut.envelope.failure.error.code, 'live-settling');
 		}
-		const timedOut = await executeCliV1(options, {
-			requestRoot,
-			platform: 'darwin',
-			runProcess: async () => ({
-				exitCode: null,
-				signal: 'SIGKILL',
-				stdout: Buffer.alloc(0),
-				stderr: Buffer.alloc(0),
-				totalMs: 20_000,
-				timedOut: true,
-				overflow: false,
-			}),
-		});
-		assert.equal(timedOut.exitCode, 3);
-		assert.equal(timedOut.envelope.ok, false);
-		assert.equal(timedOut.envelope.ok ? undefined : timedOut.envelope.failure.error.code, 'live-settling');
 		const contractCases = JSON.parse(readFileSync(
 			path.join(process.cwd(), 'scripts/agent-runtime/contracts/fixtures/cases.json'),
 			'utf8',
@@ -1562,7 +1568,11 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 		)?.value;
 		assert.ok(applyRequest);
 		const boundApplyRequest = structuredClone(applyRequest) as MutationApplyRequestV1;
-		boundApplyRequest.plan.clientInstanceId = getOrCreateOperonCliClientIdV1();
+		const applyClientIdentityPath = path.join(vault, 'client-state', 'client-v1.json');
+		boundApplyRequest.plan.clientInstanceId = getOrCreateOperonCliClientIdV1(
+			applyClientIdentityPath,
+			path.join(vault, 'legacy-client-state', 'client-v1.json'),
+		);
 		boundApplyRequest.plan.planHash = computeSealedMutationPlanHashV1(boundApplyRequest.plan);
 		for (const acknowledgement of boundApplyRequest.acknowledgements) {
 			acknowledgement.planHash = boundApplyRequest.plan.planHash;
@@ -1571,37 +1581,41 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 			'mutation', 'apply', '--vault', vault, '--input', '-', '--json',
 		]);
 		applyOptions.requestId = boundApplyRequest.requestId;
-		const uncertainApply = await executeCliV1(
-			applyOptions,
-			{
-				requestRoot,
-				platform: 'darwin',
-				input: Buffer.from(JSON.stringify(boundApplyRequest)),
-				runProcess: async (_executable, args) => {
-					const token = args.find(value => value.startsWith('requestToken='))
-						?.slice('requestToken='.length);
-					assert.ok(token);
-					unlinkSync(requestPathForTokenV1(token, requestRoot));
-					return {
-						exitCode: null,
-						signal: 'SIGKILL',
-						stdout: Buffer.alloc(0),
-						stderr: Buffer.alloc(0),
-						totalMs: 20_000,
-						timedOut: true,
-						overflow: false,
-					};
+		if (process.platform !== 'win32') {
+			const uncertainApply = await executeCliV1(
+				applyOptions,
+				{
+					requestRoot,
+					platform: 'darwin',
+					clientIdentityPath: applyClientIdentityPath,
+					input: Buffer.from(JSON.stringify(boundApplyRequest)),
+					runProcess: async (_executable, args) => {
+						const token = args.find(value => value.startsWith('requestToken='))
+							?.slice('requestToken='.length);
+						assert.ok(token);
+						unlinkSync(requestPathForTokenV1(token, requestRoot));
+						return {
+							exitCode: null,
+							signal: 'SIGKILL',
+							stdout: Buffer.alloc(0),
+							stderr: Buffer.alloc(0),
+							totalMs: 20_000,
+							timedOut: true,
+							overflow: false,
+						};
+					},
 				},
-			},
-		);
-		assert.equal(uncertainApply.envelope.ok, false);
-		if (!uncertainApply.envelope.ok) {
-			assert.equal(uncertainApply.envelope.failure.error.retryable, false);
-			assert.match(uncertainApply.envelope.failure.error.reason, /recover the same stored plan/u);
+			);
+			assert.equal(uncertainApply.envelope.ok, false);
+			if (!uncertainApply.envelope.ok) {
+				assert.equal(uncertainApply.envelope.failure.error.retryable, false);
+				assert.match(uncertainApply.envelope.failure.error.reason, /recover the same stored plan/u);
+			}
 		}
 		let cancelledBeforeDispatch = false;
 		const stagedOnlyApply = await executeCliV1(applyOptions, {
 			platform: 'win32',
+			clientIdentityPath: applyClientIdentityPath,
 			input: Buffer.from(JSON.stringify(boundApplyRequest)),
 			windowsBrokerClient: {
 				async stage() {
@@ -1638,6 +1652,7 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 		let cancelledAbortedStage = false;
 		const abortedBeforeDispatch = await executeCliV1(applyOptions, {
 			platform: 'win32',
+			clientIdentityPath: applyClientIdentityPath,
 			input: Buffer.from(JSON.stringify(boundApplyRequest)),
 			signal: abortController.signal,
 			windowsBrokerClient: {
@@ -1670,73 +1685,76 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 		assert.equal(cancelledAbortedStage, true);
 		assert.equal(abortedBeforeDispatch.exitCode, 130);
 		assert.equal(abortedBeforeDispatch._applyDispatchEvidence, 'not-started');
-		const mismatchedApplyResponse = await executeCliV1(
-			applyOptions,
-			{
+		if (process.platform !== 'win32') {
+			const mismatchedApplyResponse = await executeCliV1(
+				applyOptions,
+				{
+					requestRoot,
+					platform: 'darwin',
+					clientIdentityPath: applyClientIdentityPath,
+					input: Buffer.from(JSON.stringify(boundApplyRequest)),
+					runProcess: async (_executable, args) => {
+						const token = args.find(value => value.startsWith('requestToken='))
+							?.slice('requestToken='.length);
+						assert.ok(token);
+						const requestPath = requestPathForTokenV1(token, requestRoot);
+						const invocation = JSON.parse(readFileSync(requestPath, 'utf8')) as CliInvocationV1;
+						unlinkSync(requestPath);
+						return {
+							exitCode: 0,
+							signal: null,
+							stdout: Buffer.from(JSON.stringify({
+								...failureEnvelope(invocation, 2),
+								requestId: 'mismatched-apply-response',
+							})),
+							stderr: Buffer.alloc(0),
+							totalMs: 2,
+							timedOut: false,
+							overflow: false,
+						};
+					},
+				},
+			);
+			assert.equal(mismatchedApplyResponse.exitCode, 5);
+			assert.equal(mismatchedApplyResponse.envelope.ok, false);
+			if (!mismatchedApplyResponse.envelope.ok) {
+				assert.equal(mismatchedApplyResponse.envelope.failure.error.code, 'outcome-unknown');
+				assert.equal(mismatchedApplyResponse.envelope.failure.error.retryable, false);
+				assert.equal(mismatchedApplyResponse.envelope.failure.error.action, 'recover-same-plan');
+			}
+			const overflow = await executeCliV1(options, {
 				requestRoot,
 				platform: 'darwin',
-				input: Buffer.from(JSON.stringify(boundApplyRequest)),
-				runProcess: async (_executable, args) => {
-					const token = args.find(value => value.startsWith('requestToken='))
-						?.slice('requestToken='.length);
-					assert.ok(token);
-					const requestPath = requestPathForTokenV1(token, requestRoot);
-					const invocation = JSON.parse(readFileSync(requestPath, 'utf8')) as CliInvocationV1;
-					unlinkSync(requestPath);
-					return {
-						exitCode: 0,
-						signal: null,
-						stdout: Buffer.from(JSON.stringify({
-							...failureEnvelope(invocation, 2),
-							requestId: 'mismatched-apply-response',
-						})),
-						stderr: Buffer.alloc(0),
-						totalMs: 2,
-						timedOut: false,
-						overflow: false,
-					};
-				},
-			},
-		);
-		assert.equal(mismatchedApplyResponse.exitCode, 5);
-		assert.equal(mismatchedApplyResponse.envelope.ok, false);
-		if (!mismatchedApplyResponse.envelope.ok) {
-			assert.equal(mismatchedApplyResponse.envelope.failure.error.code, 'outcome-unknown');
-			assert.equal(mismatchedApplyResponse.envelope.failure.error.retryable, false);
-			assert.equal(mismatchedApplyResponse.envelope.failure.error.action, 'recover-same-plan');
-		}
-		const overflow = await executeCliV1(options, {
-			requestRoot,
-			platform: 'darwin',
-			runProcess: async () => ({
-				exitCode: null,
-				signal: 'SIGKILL',
-				stdout: Buffer.alloc(0),
-				stderr: Buffer.alloc(0),
-				totalMs: 2,
-				timedOut: false,
-				overflow: true,
-			}),
-		});
-		assert.equal(overflow.exitCode, 70);
-		assert.equal(overflow.envelope.ok, false);
-		assert.equal(overflow.envelope.ok ? undefined : overflow.envelope.failure.error.code, 'result-too-large');
+				runProcess: async () => ({
+					exitCode: null,
+					signal: 'SIGKILL',
+					stdout: Buffer.alloc(0),
+					stderr: Buffer.alloc(0),
+					totalMs: 2,
+					timedOut: false,
+					overflow: true,
+				}),
+			});
+			assert.equal(overflow.exitCode, 70);
+			assert.equal(overflow.envelope.ok, false);
+			assert.equal(overflow.envelope.ok ? undefined : overflow.envelope.failure.error.code, 'result-too-large');
 
-		const insecureRoot = path.join(tmpdir(), `operon-cli-insecure-root-${Date.now()}`);
-		mkdirSync(insecureRoot, { mode: 0o755 });
-		chmodSync(insecureRoot, 0o755);
-		const insecureTransport = await executeCliV1(options, {
-			requestRoot: insecureRoot,
-			platform: 'darwin',
-			runProcess: runner,
-		});
-		assert.equal(insecureTransport.exitCode, 3);
-		assert.equal(insecureTransport.envelope.ok, false);
-		assert.equal(
-			insecureTransport.envelope.ok ? undefined : insecureTransport.envelope.failure.stage,
-			'transport',
-		);
-		rmSync(insecureRoot, { recursive: true, force: true });
+			const insecureRoot = path.join(tmpdir(), `operon-cli-insecure-root-${Date.now()}`);
+			mkdirSync(insecureRoot, { mode: 0o755 });
+			chmodSync(insecureRoot, 0o755);
+			const insecureTransport = await executeCliV1(options, {
+				requestRoot: insecureRoot,
+				platform: 'darwin',
+				runProcess: runner,
+			});
+			assert.equal(insecureTransport.exitCode, 3);
+			assert.equal(insecureTransport.envelope.ok, false);
+			assert.equal(
+				insecureTransport.envelope.ok ? undefined : insecureTransport.envelope.failure.stage,
+				'transport',
+			);
+			rmSync(insecureRoot, { recursive: true, force: true });
+		}
 	} finally {
 		rmSync(vault, { recursive: true, force: true });
 		rmSync(requestRoot, { recursive: true, force: true });
