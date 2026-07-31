@@ -11,7 +11,6 @@ import {
 	writeFile,
 } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,7 +30,7 @@ export async function buildContractTypesV1(options = {}) {
 	if (mode !== 'check' && mode !== 'write') {
 		throw new Error('OPERON_CLI_TYPE_BUILD_MODE_INVALID');
 	}
-	const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'operon-cli-types-'));
+	const temporaryRoot = await mkdtemp(path.join(packageRoot, '.operon-cli-types-'));
 	const generatedRoot = path.join(temporaryRoot, 'types');
 	try {
 		compileDeclarations(generatedRoot);
@@ -54,13 +53,54 @@ export async function buildContractTypesV1(options = {}) {
 			await assertTreesEqual(generatedRoot, targetRoot);
 			return Object.freeze({ mode, files: generatedFiles.length });
 		}
-		await rm(targetRoot, { recursive: true, force: true });
 		await mkdir(path.dirname(targetRoot), { recursive: true });
-		await rename(generatedRoot, targetRoot);
+		await installDeclarationTreeV1(generatedRoot, targetRoot);
 		return Object.freeze({ mode, files: generatedFiles.length });
 	} finally {
 		await rm(temporaryRoot, { recursive: true, force: true });
 	}
+}
+
+export async function installDeclarationTreeV1(
+	generatedRoot,
+	destinationRoot,
+	options = {},
+) {
+	const renamePath = options.renamePath ?? rename;
+	const backupContainer = await mkdtemp(path.join(
+		path.dirname(destinationRoot),
+		'.operon-cli-types-backup-',
+	));
+	const backupRoot = path.join(backupContainer, 'types');
+	let backupCreated = false;
+	try {
+		await renamePath(destinationRoot, backupRoot);
+		backupCreated = true;
+	} catch (error) {
+		if (error?.code !== 'ENOENT') {
+			await rm(backupContainer, { recursive: true, force: true });
+			throw error;
+		}
+	}
+	try {
+		await renamePath(generatedRoot, destinationRoot);
+	} catch (installError) {
+		if (backupCreated) {
+			try {
+				await renamePath(backupRoot, destinationRoot);
+			} catch (rollbackError) {
+				const aggregateError = new AggregateError(
+					[installError, rollbackError],
+					'OPERON_CLI_TYPE_INSTALL_ROLLBACK_FAILED',
+				);
+				aggregateError.recoveryPath = backupRoot;
+				throw aggregateError;
+			}
+		}
+		await rm(backupContainer, { recursive: true, force: true });
+		throw installError;
+	}
+	await rm(backupContainer, { recursive: true, force: true });
 }
 
 function compileDeclarations(outDir) {

@@ -39,7 +39,17 @@ const env = {
 let typedGoldenCaseIds = [];
 
 try {
+	const typeBuildEntriesBefore = new Set(
+		(await readdir(packageRoot)).filter(entry => entry.startsWith('.operon-cli-types-')),
+	);
 	execFileSync(process.execPath, ['build.mjs'], { cwd: packageRoot, env, stdio: 'inherit' });
+	assert.deepEqual(
+		(await readdir(packageRoot)).filter(
+			entry => entry.startsWith('.operon-cli-types-') && !typeBuildEntriesBefore.has(entry),
+		),
+		[],
+		'Type declaration build must clean the staging directories created by this invocation.',
+	);
 	const packageDocument = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
 	const typedCreateGolden = JSON.parse(await readFile(
 		path.join(pluginRoot, 'scripts', 'agent-runtime', 'fixtures', 'typed-create-golden.json'),

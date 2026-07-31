@@ -4,7 +4,9 @@ import {
 	cp,
 	mkdir,
 	mkdtemp,
+	readdir,
 	readFile,
+	rename,
 	rm,
 	writeFile,
 } from 'node:fs/promises';
@@ -22,6 +24,7 @@ import {
 	writeCanonicalCliTarball,
 	writePublicV1FreezeIndex,
 } from './public-v1-freeze.mjs';
+import { installDeclarationTreeV1 } from '../../../packages/operon-cli/type-build.mjs';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const PASSED_AUDIT_RESULT = Object.freeze({
@@ -29,6 +32,93 @@ const PASSED_AUDIT_RESULT = Object.freeze({
 	productionVulnerabilities: 0,
 	developmentVulnerabilities: 11,
 	directRoot: 'eslint-plugin-obsidianmd',
+});
+
+test('type declaration swap restores the last good tree when installation fails', async () => {
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-cli-type-swap-'));
+	const stagingRoot = path.join(root, 'staging');
+	const generatedRoot = path.join(stagingRoot, 'types');
+	const destinationRoot = path.join(root, 'types');
+	try {
+		await mkdir(generatedRoot, { recursive: true });
+		await mkdir(destinationRoot, { recursive: true });
+		await writeFile(path.join(generatedRoot, 'index.d.ts'), 'export type Next = true;\n');
+		await writeFile(path.join(destinationRoot, 'index.d.ts'), 'export type Current = true;\n');
+		let renameCalls = 0;
+		await assert.rejects(
+			installDeclarationTreeV1(generatedRoot, destinationRoot, {
+				renamePath: async (source, target) => {
+					renameCalls += 1;
+					if (renameCalls === 2) {
+						const error = new Error('fixture install failure');
+						error.code = 'EACCES';
+						throw error;
+					}
+					await rename(source, target);
+				},
+			}),
+			/fixture install failure/u,
+		);
+		assert.equal(renameCalls, 3);
+		assert.equal(
+			await readFile(path.join(destinationRoot, 'index.d.ts'), 'utf8'),
+			'export type Current = true;\n',
+		);
+		assert.equal(
+			await readFile(path.join(generatedRoot, 'index.d.ts'), 'utf8'),
+			'export type Next = true;\n',
+		);
+		assert.deepEqual(
+			(await readdir(root)).filter(entry => entry.startsWith('.operon-cli-types-backup-')),
+			[],
+		);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+test('type declaration swap preserves the last good tree when rollback also fails', async () => {
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-cli-type-rescue-'));
+	const stagingRoot = path.join(root, 'staging');
+	const generatedRoot = path.join(stagingRoot, 'types');
+	const destinationRoot = path.join(root, 'types');
+	try {
+		await mkdir(generatedRoot, { recursive: true });
+		await mkdir(destinationRoot, { recursive: true });
+		await writeFile(path.join(generatedRoot, 'index.d.ts'), 'export type Next = true;\n');
+		await writeFile(path.join(destinationRoot, 'index.d.ts'), 'export type Current = true;\n');
+		let renameCalls = 0;
+		let failure;
+		try {
+			await installDeclarationTreeV1(generatedRoot, destinationRoot, {
+				renamePath: async (source, target) => {
+					renameCalls += 1;
+					if (renameCalls >= 2) {
+						const error = new Error(`fixture rename failure ${renameCalls}`);
+						error.code = 'EACCES';
+						throw error;
+					}
+					await rename(source, target);
+				},
+			});
+		} catch (error) {
+			failure = error;
+		}
+		assert.ok(failure instanceof AggregateError);
+		assert.equal(failure.message, 'OPERON_CLI_TYPE_INSTALL_ROLLBACK_FAILED');
+		assert.equal(renameCalls, 3);
+		assert.equal(
+			await readFile(path.join(failure.recoveryPath, 'index.d.ts'), 'utf8'),
+			'export type Current = true;\n',
+		);
+		await rm(stagingRoot, { recursive: true, force: true });
+		assert.equal(
+			await readFile(path.join(failure.recoveryPath, 'index.d.ts'), 'utf8'),
+			'export type Current = true;\n',
+		);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
 });
 
 test('npm pack invocation is shell-free and fail-closed across platforms', () => {
