@@ -1702,6 +1702,9 @@ test('a transport-interrupted plan apply is recovery-only and cannot be discarde
 			stored.planRef,
 			'--confirm',
 			confirmationTokenForPlanV1(plan),
+			...(process.platform === 'win32'
+				? ['--obsidian-bin', process.execPath]
+				: []),
 			'--json',
 		], {
 			configRoot: root,
@@ -1728,12 +1731,15 @@ test('a transport-interrupted plan apply is recovery-only and cannot be discarde
 			assert.doesNotMatch(beforeDispatch.human, /Do not retry|plan recover/u);
 			assert.match(beforeDispatch.human, /Apply was not dispatched/u);
 			assert.match(beforeDispatch.human, new RegExp(`operon plan apply ${stored.planRef}`, 'u'));
-			const first = await runPublicCommandLineV1([
+		const first = await runPublicCommandLineV1([
 			'plan',
 			'apply',
 			stored.planRef,
 			'--confirm',
 			confirmationTokenForPlanV1(plan),
+			...(process.platform === 'win32'
+				? ['--obsidian-bin', process.execPath]
+				: []),
 			'--json',
 		], {
 			configRoot: root,
@@ -1892,6 +1898,9 @@ test('convenience target policy permits targetless timers and rejects unsafe tar
 			vault,
 			'--input',
 			'-',
+			...(process.platform === 'win32'
+				? ['--obsidian-bin', process.execPath]
+				: []),
 			'--json',
 		], {
 			configRoot: path.join(root, 'config'),
@@ -2202,7 +2211,11 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 			releasePath,
 			dispatchedAt,
 		);
-		assert.equal(outcomes.filter(outcome => outcome.ok).length, 1);
+		assert.equal(
+			outcomes.filter(outcome => outcome.ok).length,
+			1,
+			JSON.stringify(outcomes),
+		);
 		assert.deepEqual(
 			outcomes.filter(outcome => !outcome.ok).map(outcome => outcome.code),
 			['RECOVERY_STORE_UNAVAILABLE'],
@@ -2344,6 +2357,8 @@ interface CapacityWorkerOutcomeV1 {
 	ok: boolean;
 	planRef: string;
 	code?: string;
+	stage?: 'read' | 'build' | 'decode' | 'mark';
+	issues?: unknown;
 }
 
 function fakeWindowsBrokerV1(

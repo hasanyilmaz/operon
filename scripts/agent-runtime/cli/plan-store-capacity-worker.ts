@@ -6,6 +6,7 @@ import {
 	markMutationPlanDispatchedV1,
 	readMutationPlanV1,
 } from '../../../packages/operon-cli/src/plan-store';
+import { decodeMutationApplyRequestV1 } from '../../../src/agent-runtime/contracts/v1/decode';
 
 async function main(): Promise<void> {
 	const [root, planRef, releasePath, nowText] = process.argv.slice(2);
@@ -22,12 +23,22 @@ async function main(): Promise<void> {
 		await new Promise(resolve => setTimeout(resolve, 5));
 	}
 
+	let stage: 'read' | 'build' | 'decode' | 'mark' = 'read';
+	let issues: unknown;
 	try {
-		const record = readMutationPlanV1(planRef, root);
+		const record = readMutationPlanV1(planRef, root, { allowExpired: true, now });
+		stage = 'build';
 		const request = buildMutationApplyRequestV1(record, {
 			confirmationToken: confirmationTokenForPlanV1(record.plan),
 			now: new Date(now).toISOString(),
 		});
+		stage = 'decode';
+		const decodedRequest = decodeMutationApplyRequestV1(request);
+		if (!decodedRequest.ok) {
+			issues = decodedRequest.issues;
+			throw new Error('CAPACITY_WORKER_APPLY_REQUEST_MALFORMED');
+		}
+		stage = 'mark';
 		const dispatched = markMutationPlanDispatchedV1(record, request, root, now);
 		process.stdout.write(`${JSON.stringify({
 			ok: true,
@@ -38,7 +49,9 @@ async function main(): Promise<void> {
 		process.stdout.write(`${JSON.stringify({
 			ok: false,
 			planRef,
+			stage,
 			code: error instanceof Error ? error.message : 'UNKNOWN',
+			...(issues === undefined ? {} : { issues }),
 		})}\n`);
 	}
 }
