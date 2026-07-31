@@ -1226,12 +1226,19 @@ function runProcess(executable, args, childEnv, options = {}) {
 }
 
 function runWindowsShimJson(executableShim, args, childEnv) {
-	const quote = value => `"${value.replaceAll('"', '""')}"`;
-	const command = [executableShim, ...args].map(quote).join(' ');
+	assert.match(executableShim, /\.cmd$/iu);
+	assert.ok(!/["\r\n]/u.test(executableShim));
+	for (const arg of args) assert.match(arg, /^[A-Za-z0-9._:-]+$/u);
+	const suffix = args.length > 0 ? ` ${args.join(' ')}` : '';
+	const command = `""${executableShim}"${suffix}"`;
 	return JSON.parse(execFileSync(
 		process.env.ComSpec ?? 'cmd.exe',
 		['/d', '/s', '/c', command],
-		{ env: childEnv, encoding: 'utf8' },
+		{
+			env: childEnv,
+			encoding: 'utf8',
+			windowsVerbatimArguments: true,
+		},
 	));
 }
 
