@@ -1334,6 +1334,7 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 	};
 	try {
 		const options = parseCliArgsV1(['capabilities', '--vault', vault, '--json']);
+		if (process.platform === 'win32') options.obsidianBin = process.execPath;
 		if (process.platform !== 'win32') {
 			const outcome = await executeCliV1(options, {
 				runProcess: runner,
@@ -1580,6 +1581,7 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 		const applyOptions = parseCliArgsV1([
 			'mutation', 'apply', '--vault', vault, '--input', '-', '--json',
 		]);
+		if (process.platform === 'win32') applyOptions.obsidianBin = process.execPath;
 		applyOptions.requestId = boundApplyRequest.requestId;
 		if (process.platform !== 'win32') {
 			const uncertainApply = await executeCliV1(
