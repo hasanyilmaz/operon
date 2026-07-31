@@ -256,7 +256,7 @@ function renderZshCompletion(paths: readonly CompletionPathV1[]): string {
 		'#compdef operon',
 		'# Operon CLI completion for zsh. Generated from the installed command registry.',
 		'if (( ! $+functions[compdef] )); then',
-		'  autoload -Uz compinit && compinit',
+		'  autoload -Uz compinit && compinit -i',
 		'fi',
 		'_operon_completion() {',
 		'  local key option_key positional_index',

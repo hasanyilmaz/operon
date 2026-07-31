@@ -41,11 +41,11 @@
       },
       {
         "path": "scripts/agent-runtime/contracts/public-v1-freeze.mjs",
-        "sha256": "439e1bc24bf1cc91c94c2a93579c9968a084daddda243c80ed37ac4621371add",
-        "bytes": 22392
+        "sha256": "2b15846f1950e04543e8f3a364734e228b6ff219afad9a96c66679a3794c9268",
+        "bytes": 23030
       }
     ],
-    "aggregateSha256": "65732ff4e5d2529d04cd6915dc1bc31b45ffb3ee3d186eb3f31b5aa97d237b95"
+    "aggregateSha256": "145608293f05f41b687a72c9bc45399cd94470eddd1b4c0f45f1614e28373329"
   },
   "runtime": {
     "contractVersion": 1,
@@ -67,13 +67,13 @@
     "contractDigest": "d280747a21f46add48d70193205c4dc642b1e0f38447209611174e33beff5927",
     "tarball": {
       "path": "packages/operon-cli/freeze/operon-cli-1.0.0.tgz",
-      "sha256": "bcfeab32bcf0d8cb1acc3ded7c5316aa6fdd6ea282bc42f6b523eea40bc14dcc",
-      "bytes": 212801
+      "sha256": "791054f1ddfd749058f636397d85ad4408dc7fd82d4417bae6ad443d7c49e111",
+      "bytes": 212804
     },
     "executable": {
       "path": "packages/operon-cli/dist/operon.mjs",
-      "sha256": "e06d1e0e0223aec952917a24fef4e93083371cde7a442838537572c340584c7a",
-      "bytes": 510766
+      "sha256": "f89b9eb68fcd537841bfe5d640fccdc63981f2bb683521c9516edf9a20ad0c37",
+      "bytes": 510769
     },
     "license": {
       "path": "packages/operon-cli/LICENSE",
@@ -110,7 +110,7 @@
       "fileCount": 5,
       "aggregateSha256": "2ecd8a3e0ae2e069bc89a7cd70cdb724f4023f2b306391b21fbbabca07dd12c6"
     },
-    "packageInputAggregateSha256": "1a7e82e88239046d1f7b7037f05e15f8cda6198a908e361c2bea44a6c46aab34"
+    "packageInputAggregateSha256": "a3f073eaa119e35f8cc7a63164669d1b9f300a2e77b03b98650a558eb1bb3724"
   },
   "documentation": {
     "manifest": {
@@ -196,7 +196,7 @@
   "maintainerAcceptance": {
     "status": "accepted",
     "acceptedBy": "Hasan Yilmaz",
-    "acceptedAt": "2026-07-31T09:50:13.032Z"
+    "acceptedAt": "2026-07-31T10:17:04.939Z"
   },
-  "inputsAggregateSha256": "8706e4c77298b6f86a8d894dd5c158c93efaab2b200399d112e8eddd5216e31a"
+  "inputsAggregateSha256": "96e8c32a8825fddbad262e3d98ea00a31ec7279e9fb60ff8c12717811270ebc8"
 }

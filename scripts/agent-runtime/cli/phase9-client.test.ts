@@ -302,6 +302,7 @@ test('external shell completion is deterministic, registry-derived, and local-on
 		}
 	}
 	assert.match(scripts.zsh, /^#compdef operon/u);
+	assert.match(scripts.zsh, /autoload -Uz compinit && compinit -i/u);
 	assert.match(scripts.bash, /complete -F _operon_completion operon/u);
 	assert.match(scripts.fish, /complete -c operon/u);
 	if (!shellAvailableForTest('bash') || !shellAvailableForTest('zsh')) {
@@ -454,6 +455,28 @@ test('external shell completion is deterministic, registry-derived, and local-on
 		assert.equal(cleanZsh.stderr, '');
 		assert.match(cleanZsh.stdout, /compdef: function/u);
 		assert.match(cleanZsh.stdout, /_operon_completion: function/u);
+
+		const insecureZshFpath = path.join(root, 'insecure-zsh-fpath');
+		await mkdir(insecureZshFpath);
+		await chmod(insecureZshFpath, 0o777);
+		const insecureFpathZsh = spawnSync('zsh', ['-f', '-c', [
+			`fpath=(${shellQuoteForTest(insecureZshFpath)} $fpath)`,
+			`source ${shellQuoteForTest(zshScript)}`,
+			'whence -w compdef',
+			'whence -w _operon_completion',
+			'_describe() { print -rl -- "${candidates[@]}" }',
+			'words=(operon completion "")',
+			'CURRENT=3',
+			'_operon_completion',
+		].join('\n')], { encoding: 'utf8', cwd: root, timeout: 5_000 });
+		assert.equal(insecureFpathZsh.error, undefined);
+		assert.equal(insecureFpathZsh.status, 0, insecureFpathZsh.stderr);
+		assert.equal(insecureFpathZsh.stderr, '');
+		assert.match(insecureFpathZsh.stdout, /compdef: function/u);
+		assert.match(insecureFpathZsh.stdout, /_operon_completion: function/u);
+		for (const candidate of ['bash', 'fish', 'zsh']) {
+			assert.match(insecureFpathZsh.stdout, new RegExp(`^${candidate}$`, 'mu'));
+		}
 
 		assert.match(scripts.fish, /__operon_at_command task/u);
 		assert.match(scripts.fish, /__operon_at_command completion/u);

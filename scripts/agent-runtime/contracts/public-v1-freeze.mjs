@@ -182,6 +182,24 @@ export async function writePublicV1FreezeIndex(options = {}) {
 	return index;
 }
 
+export function resolveNpmPackInvocation({
+	npmExecPath = process.env.npm_execpath,
+	platform = process.platform,
+	nodeExecPath = process.execPath,
+} = {}) {
+	const normalizedNpmExecPath = npmExecPath?.trim();
+	if (normalizedNpmExecPath) {
+		return {
+			command: nodeExecPath,
+			argumentPrefix: [normalizedNpmExecPath],
+		};
+	}
+	if (platform === 'win32') {
+		throw new Error('OPERON_PUBLIC_V1_FREEZE_NPM_EXECPATH_REQUIRED');
+	}
+	return { command: 'npm', argumentPrefix: [] };
+}
+
 export async function writeCanonicalCliTarball(root = defaultPluginRoot) {
 	const packageRoot = path.join(root, 'packages/operon-cli');
 	const packageDocument = JSON.parse(await readFile(
@@ -191,9 +209,17 @@ export async function writeCanonicalCliTarball(root = defaultPluginRoot) {
 	assertCliPackageIdentity(packageDocument);
 	const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'operon-public-v1-pack-'));
 	try {
+		const npmInvocation = resolveNpmPackInvocation();
+		const npmArguments = [
+			...npmInvocation.argumentPrefix,
+			'pack',
+			'--json',
+			'--pack-destination',
+			temporaryRoot,
+		];
 		const result = spawnSync(
-			'npm',
-			['pack', '--json', '--pack-destination', temporaryRoot],
+			npmInvocation.command,
+			npmArguments,
 			{
 				cwd: packageRoot,
 				encoding: 'utf8',

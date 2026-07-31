@@ -17,6 +17,7 @@ import {
 	acceptedFreezeControl,
 	checkPublicV1FreezeIndex,
 	preparePublicV1FreezeArtifacts,
+	resolveNpmPackInvocation,
 	runReleaseAuditForFreeze,
 	writeCanonicalCliTarball,
 	writePublicV1FreezeIndex,
@@ -28,6 +29,33 @@ const PASSED_AUDIT_RESULT = Object.freeze({
 	productionVulnerabilities: 0,
 	developmentVulnerabilities: 11,
 	directRoot: 'eslint-plugin-obsidianmd',
+});
+
+test('npm pack invocation is shell-free and fail-closed across platforms', () => {
+	assert.deepEqual(resolveNpmPackInvocation({
+		npmExecPath: ' C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js ',
+		platform: 'win32',
+		nodeExecPath: 'C:\\Program Files\\nodejs\\node.exe',
+	}), {
+		command: 'C:\\Program Files\\nodejs\\node.exe',
+		argumentPrefix: ['C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js'],
+	});
+	assert.deepEqual(resolveNpmPackInvocation({
+		npmExecPath: '   ',
+		platform: 'linux',
+		nodeExecPath: '/usr/bin/node',
+	}), {
+		command: 'npm',
+		argumentPrefix: [],
+	});
+	assert.throws(
+		() => resolveNpmPackInvocation({
+			npmExecPath: null,
+			platform: 'win32',
+			nodeExecPath: 'C:\\Program Files\\nodejs\\node.exe',
+		}),
+		/OPERON_PUBLIC_V1_FREEZE_NPM_EXECPATH_REQUIRED/u,
+	);
 });
 
 test('freeze writer binds exact local inputs and check rejects byte drift', async () => {
