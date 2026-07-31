@@ -65,6 +65,10 @@ assert.match(candidateWorkflow, /hostedPortabilityCellsV1/u);
 assert.match(candidateWorkflow, /name:\s+operon-cli-hosted-portability/u);
 assert.match(candidateWorkflow, /verify-hosted-candidate-install\.mjs/u);
 assert.match(candidateWorkflow, /run-hosted-transport-security-tests\.mjs/u);
+assert.match(
+	candidateWorkflow,
+	/OPERON_CLI_CANDIDATE_ROOT:\s*\$\{\{\s*github\.workspace\s*\}\}\/candidate/u,
+);
 assert.match(candidateWorkflow, /npm run agent-runtime:cli:package/u);
 assert.match(candidateWorkflow, /write-hosted-portability-evidence\.mjs/u);
 assert.match(candidateWorkflow, /aggregate-hosted-portability\.mjs/u);

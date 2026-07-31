@@ -206,10 +206,22 @@ jobs:
             --source-digest "$GITHUB_SHA"
           node scripts/agent-runtime/cli/verify-release-candidate.mjs candidate
           node scripts/agent-runtime/cli/verify-hosted-candidate-install.mjs candidate
-      - run: npm run agent-runtime:contracts
+      - name: Run platform-neutral contract validation
+        run: >
+          npm run agent-runtime:schemas:test &&
+          npm run agent-runtime:schemas:check &&
+          npm run agent-runtime:cli-contracts:check &&
+          npm run agent-runtime:types:check &&
+          npm run agent-runtime:compatibility:check &&
+          npm run agent-runtime:freeze:test &&
+          npm run agent-runtime:cli-schemas:test &&
+          node scripts/agent-runtime/contracts/run-contract-tests.mjs &&
+          node --test scripts/agent-runtime/receipts/receipt-benchmark.test.mjs
       - name: Run platform transport and security checks
         run: node scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs
       - name: Run package lifecycle and contract checks
+        env:
+          OPERON_CLI_CANDIDATE_ROOT: ${{ github.workspace }}/candidate
         run: npm run agent-runtime:cli:package
       - name: Write digest-bound hosted portability evidence
         run: node scripts/agent-runtime/cli/write-hosted-portability-evidence.mjs candidate "${{ matrix.cellId }}" "hosted-portability-${{ matrix.cellId }}.json"

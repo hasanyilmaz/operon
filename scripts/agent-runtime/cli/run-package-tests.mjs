@@ -21,9 +21,13 @@ import {
 	classifyOperonCliExecutableSize,
 	requiresOperonCliBundleContributorReview,
 } from '../../../packages/operon-cli/size-policy.mjs';
+import { loadCandidateBindingV1 } from './native-acceptance-lib.mjs';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const packageRoot = path.join(pluginRoot, 'packages', 'operon-cli');
+const candidateRoot = process.env.OPERON_CLI_CANDIDATE_ROOT
+	? path.resolve(process.env.OPERON_CLI_CANDIDATE_ROOT)
+	: null;
 const tempRoot = await mkdtemp(path.join(tmpdir(), 'operon-cli-package-'));
 const cacheRoot = path.join(tempRoot, 'npm-cache');
 const packRoot = path.join(tempRoot, 'pack');
@@ -671,6 +675,18 @@ try {
 	)));
 
 	const tarball = path.join(packRoot, packResult.filename);
+	let lifecycleTarball = tarball;
+	let lifecycleArtifact = 'source-pack';
+	if (candidateRoot) {
+		const { evidence } = await loadCandidateBindingV1(candidateRoot);
+		assert.equal(
+			evidence.package,
+			`${packageDocument.name}@${packageDocument.version}`,
+			'Immutable candidate package must match the checkout package metadata.',
+		);
+		lifecycleTarball = path.join(candidateRoot, evidence.tarball);
+		lifecycleArtifact = 'immutable-candidate';
+	}
 	const forbidden = [
 		'/Users/',
 		'Dropbox',
@@ -713,7 +729,7 @@ try {
 		env,
 		stdio: 'inherit',
 	});
-	execFileSync(npmCommand, ['install', '--global', '--prefix', prefixRoot, tarball], {
+	execFileSync(npmCommand, ['install', '--global', '--prefix', prefixRoot, lifecycleTarball], {
 		env,
 		stdio: 'inherit',
 	});
@@ -1093,7 +1109,7 @@ try {
 		durableStateBeforeLifecycle,
 		'Exact-version rollback must preserve profiles, client identity, and recovery plans.',
 	);
-	execFileSync(npmCommand, ['install', '--global', '--prefix', prefixRoot, tarball], {
+	execFileSync(npmCommand, ['install', '--global', '--prefix', prefixRoot, lifecycleTarball], {
 		env,
 		stdio: 'inherit',
 	});
@@ -1124,6 +1140,7 @@ try {
 		tarballBytes: packResult.size,
 		entries: packResult.entryCount,
 		lifecycle: {
+			artifact: lifecycleArtifact,
 			steps: ['install', 'rollback', 're-upgrade', 'uninstall'],
 			durableStateFiles: durableStateBeforeLifecycle.length,
 			durableStatePreserved: true,

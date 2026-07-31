@@ -25,7 +25,6 @@ import {
 	writePublicV1FreezeIndex,
 } from './public-v1-freeze.mjs';
 import { installDeclarationTreeV1 } from '../../../packages/operon-cli/type-build.mjs';
-import { diffJsonLeavesV1 } from './diagnose-public-v1-freeze-drift.mjs';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const PASSED_AUDIT_RESULT = Object.freeze({
@@ -33,42 +32,6 @@ const PASSED_AUDIT_RESULT = Object.freeze({
 	productionVulnerabilities: 0,
 	developmentVulnerabilities: 11,
 	directRoot: 'eslint-plugin-obsidianmd',
-});
-
-test('freeze drift diagnostics report exact deterministic leaf paths', () => {
-	assert.deepEqual(
-		diffJsonLeavesV1(
-			{ artifact: { bytes: 10, sha256: 'old' }, list: ['same', 'old'] },
-			{ artifact: { bytes: 11, sha256: 'new' }, list: ['same', 'new', 'added'] },
-		),
-		[
-			{
-				path: '$.artifact.bytes',
-				frozen: { present: true, value: 10 },
-				observed: { present: true, value: 11 },
-			},
-			{
-				path: '$.artifact.sha256',
-				frozen: { present: true, value: 'old' },
-				observed: { present: true, value: 'new' },
-			},
-			{
-				path: '$.list.length',
-				frozen: { present: true, value: 2 },
-				observed: { present: true, value: 3 },
-			},
-			{
-				path: '$.list[1]',
-				frozen: { present: true, value: 'old' },
-				observed: { present: true, value: 'new' },
-			},
-			{
-				path: '$.list[2]',
-				frozen: { present: false },
-				observed: { present: true, value: 'added' },
-			},
-		],
-	);
 });
 
 test('type declaration swap restores the last good tree when installation fails', async () => {

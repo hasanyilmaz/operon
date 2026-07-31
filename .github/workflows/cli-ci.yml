@@ -76,14 +76,20 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+      - run: npm install --global npm@11.12.1
       - run: npm ci
       - id: contracts
-        run: npm run agent-runtime:contracts
-      - name: Diagnose Public V1 freeze drift
-        if: ${{ failure() && steps.contracts.outcome == 'failure' }}
-        run: |
-          npm --version
-          node scripts/agent-runtime/contracts/diagnose-public-v1-freeze-drift.mjs
+        name: Run platform-neutral contract validation
+        run: >
+          npm run agent-runtime:schemas:test &&
+          npm run agent-runtime:schemas:check &&
+          npm run agent-runtime:cli-contracts:check &&
+          npm run agent-runtime:types:check &&
+          npm run agent-runtime:compatibility:check &&
+          npm run agent-runtime:freeze:test &&
+          npm run agent-runtime:cli-schemas:test &&
+          node scripts/agent-runtime/contracts/run-contract-tests.mjs &&
+          node --test scripts/agent-runtime/receipts/receipt-benchmark.test.mjs
       - run: node scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs
       - run: npm run agent-runtime:cli
       - run: npm run agent-runtime:cli:package
