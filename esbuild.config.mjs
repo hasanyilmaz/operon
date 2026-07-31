@@ -71,10 +71,10 @@ const stripAgentRuntimeTimingPlugin = {
 	name: "strip-agent-runtime-timing",
 	setup(build) {
 		build.onLoad(
-			{ filter: /src\/agent-runtime\/runtime\/(coherent-read|mutation-gateway)\.ts$/ },
+			{ filter: /src[\\/]agent-runtime[\\/]runtime[\\/](coherent-read|mutation-gateway)\.ts$/ },
 			async ({ path: sourcePath }) => {
 				const source = await readFile(sourcePath, "utf8");
-				const mutationGateway = sourcePath.endsWith("/mutation-gateway.ts");
+				const mutationGateway = /[\\/]mutation-gateway\.ts$/u.test(sourcePath);
 				const expectedMethod = mutationGateway ? "measureMutation" : "measure";
 				const expectedArity = mutationGateway ? 5 : 4;
 				const expectedTransformCount = mutationGateway ? 30 : 6;
@@ -142,7 +142,7 @@ const disableReceiptCasFastPathPlugin = {
 	name: "disable-receipt-cas-fast-path",
 	setup(build) {
 		build.onLoad(
-			{ filter: /src\/agent-runtime\/runtime\/receipts\/indexeddb-receipt-store\.ts$/ },
+			{ filter: /src[\\/]agent-runtime[\\/]runtime[\\/]receipts[\\/]indexeddb-receipt-store\.ts$/ },
 			async ({ path: sourcePath }) => {
 				const source = await readFile(sourcePath, "utf8");
 				const marker = "const RECEIPT_ADMISSION_FAST_PATH_ENABLED = true;";
