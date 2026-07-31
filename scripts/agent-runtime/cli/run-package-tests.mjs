@@ -1229,17 +1229,19 @@ function runWindowsShimJson(executableShim, args, childEnv) {
 	assert.match(executableShim, /\.cmd$/iu);
 	assert.ok(!/["\r\n]/u.test(executableShim));
 	for (const arg of args) assert.match(arg, /^[A-Za-z0-9._:-]+$/u);
-	const suffix = args.length > 0 ? ` ${args.join(' ')}` : '';
-	const command = `""${executableShim}"${suffix}"`;
-	return JSON.parse(execFileSync(
+	const result = spawnSync(
 		process.env.ComSpec ?? 'cmd.exe',
-		['/d', '/s', '/c', command],
+		['/d', '/c', executableShim, ...args],
 		{
 			env: childEnv,
 			encoding: 'utf8',
-			windowsVerbatimArguments: true,
+			shell: false,
+			windowsHide: true,
 		},
-	));
+	);
+	if (result.error) throw result.error;
+	assert.equal(result.status, 0, result.stderr);
+	return JSON.parse(result.stdout);
 }
 
 function secureWindowsFixturePath(targetPath, kind) {
