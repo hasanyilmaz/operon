@@ -99,7 +99,7 @@ function createHarnessWindowsBrokerV1(): WindowsBrokerClientPortV1 {
 	const ownedTokens = new Set<string>();
 	return {
 		async stage(invocation) {
-			const requestToken = randomUUID().replaceAll('-', '');
+			const requestToken = randomUUID().replace(/-/gu, '');
 			ownedTokens.add(requestToken);
 			WINDOWS_BROKER_FRAMES.set(requestToken, {
 				invocation: structuredClone(invocation),
