@@ -217,8 +217,8 @@ export async function startAgentRuntimePersistentReadServerV1(
 ): Promise<AgentRuntimePersistentReadServerHandleV1> {
 	try {
 		return await startAgentRuntimePersistentReadServerInternalV1(plugin, runtime, options);
-	} catch {
-		return unavailableHandle('persistent-read-server-start-failed');
+	} catch (error) {
+		return unavailableHandle(classifyPersistentReadServerStartFailureV1(error));
 	}
 }
 
@@ -1035,6 +1035,12 @@ function secureWindowsOwnerOnlyPathV1(
 ): void {
 	const rights = directory ? 'FullControl' : 'Read,Write,Delete';
 	const inheritance = directory ? 'ContainerInherit,ObjectInherit' : 'None';
+	const getAccessControl = directory
+		? '[IO.Directory]::GetAccessControl($p)'
+		: '[IO.File]::GetAccessControl($p)';
+	const setAccessControl = directory
+		? '[IO.Directory]::SetAccessControl($p,$acl)'
+		: '[IO.File]::SetAccessControl($p,$acl)';
 	const script = [
 		'$ErrorActionPreference="Stop"',
 		`$p=[System.IO.Path]::GetFullPath(${powershellLiteralV1(path)})`,
@@ -1042,13 +1048,13 @@ function secureWindowsOwnerOnlyPathV1(
 		'$cursor=$item',
 		'while($null -ne $cursor){ if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }; $cursor=$cursor.Parent }',
 		'$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User',
-		'$acl=Get-Acl -LiteralPath $p',
+		`$acl=${getAccessControl}`,
 		'$acl.SetOwner($sid)',
 		'$acl.SetAccessRuleProtection($true,$false)',
 		'foreach($rule in @($acl.Access)){ [void]$acl.RemoveAccessRuleSpecific($rule) }',
 		`$rule=New-Object Security.AccessControl.FileSystemAccessRule($sid,"${rights}","${inheritance}","None","Allow")`,
 		'$acl.AddAccessRule($rule)',
-		'Set-Acl -LiteralPath $p -AclObject $acl',
+		setAccessControl,
 	].join(';');
 	const result = modules.childProcess.spawnSync(
 		'powershell.exe',
@@ -1063,6 +1069,9 @@ function assertWindowsOwnerOnlyPathV1(
 	path: string,
 	directory: boolean,
 ): void {
+	const getAccessControl = directory
+		? '[IO.Directory]::GetAccessControl($p)'
+		: '[IO.File]::GetAccessControl($p)';
 	const script = [
 		'$ErrorActionPreference="Stop"',
 		`$p=[System.IO.Path]::GetFullPath(${powershellLiteralV1(path)})`,
@@ -1070,7 +1079,7 @@ function assertWindowsOwnerOnlyPathV1(
 		'$cursor=$item',
 		'while($null -ne $cursor){ if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }; $cursor=$cursor.Parent }',
 		'$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User',
-		'$acl=Get-Acl -LiteralPath $p',
+		`$acl=${getAccessControl}`,
 		'$owner=(New-Object Security.Principal.NTAccount($acl.Owner)).Translate([Security.Principal.SecurityIdentifier]).Value',
 		'if ($owner -ne $sid.Value) { throw "owner-mismatch" }',
 		'$bad=@($acl.Access | Where-Object { $r=$_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value; $_.AccessControlType -eq "Allow" -and $r -ne $sid.Value -and $r -ne "S-1-5-18" })',
@@ -1127,6 +1136,14 @@ function unavailableHandle(reason: string): AgentRuntimePersistentReadServerHand
 }
 
 function classifyPersistentReadServerStartFailureV1(error: unknown): string {
+	if (
+		error instanceof Error
+		&& [
+			'local-app-data-unavailable',
+			'windows-owner-only-acl-setup-failed',
+			'windows-owner-only-acl-required',
+		].includes(error.message)
+	) return error.message;
 	if (
 		error
 		&& typeof error === 'object'

@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -37,27 +37,6 @@ try {
 						].join('\n'),
 						loader: 'js',
 					}),
-				);
-			},
-		}, {
-			name: 'persistent-startup-test-diagnostics',
-			setup(buildContext) {
-				buildContext.onLoad(
-					{ filter: /persistent-read-server\.ts$/ },
-					async ({ path: sourcePath }) => {
-						const source = await readFile(sourcePath, 'utf8');
-						const caught = source.replace(
-							"\t} catch {\n\t\treturn unavailableHandle('persistent-read-server-start-failed');\n\t}",
-							"\t} catch (error) {\n\t\treturn unavailableHandle(error instanceof Error ? error.message : 'persistent-read-server-start-failed');\n\t}",
-						).replace(
-							"if (result.status !== 0) throw new Error('windows-owner-only-acl-setup-failed');",
-							"if (result.status !== 0) throw new Error(`windows-owner-only-acl-setup-failed:${String(result.stderr).replace(/\\s+/gu, ' ').slice(0, 500)}`);",
-						);
-						if (caught === source || !caught.includes('String(result.stderr)')) {
-							throw new Error('persistent-startup-test-diagnostic-transform-missing');
-						}
-						return { contents: caught, loader: 'ts' };
-					},
 				);
 			},
 		}],
