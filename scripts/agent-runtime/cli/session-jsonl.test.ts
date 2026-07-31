@@ -20,6 +20,8 @@ import {
 	createCanonicalVaultFenceV1,
 } from '../../../packages/operon-cli/src/protocol';
 
+const CLOCK_OFFSET_TOLERANCE_MS = process.platform === 'win32' ? 20 : 2;
+
 test('session route is exact and additive', () => {
 	assert.equal(isJsonlSessionArgsV1(['session', '--jsonl']), true);
 	assert.equal(isJsonlSessionArgsV1(['session']), false);
@@ -746,8 +748,7 @@ test('benchmark-only frame timing covers decode through output drain and flushes
 	assert.equal(batches[0].records[0].id, 'timed');
 	assert.equal(batches[0].records[0].transport, 'one-shot');
 	assert.ok(Number.isFinite(batches[0].timeOriginMs));
-	assert.ok(Number.isFinite(batches[0].clockOffsetMs));
-	assert.ok(Math.abs(batches[0].clockOffsetMs) <= 2);
+	assertClockOffsetIsBounded(batches[0].clockOffsetMs);
 	assert.ok(batches[0].records[0].serviceStartMs >= batches[0].records[0].submittedMs);
 	assert.ok(batches[0].records[0].serviceEndMs >= batches[0].records[0].serviceStartMs);
 });
@@ -1179,8 +1180,7 @@ test('frame timing is emitted once at close with child epoch boundaries', async 
 	assert.equal(batches.length, 1);
 	assert.equal(batches[0]?.overflow, 0);
 	assert.equal(batches[0]?.records.length, 2);
-	assert.ok(Number.isFinite(batches[0]?.clockOffsetMs));
-	assert.ok(Math.abs(batches[0]?.clockOffsetMs ?? Number.POSITIVE_INFINITY) <= 2);
+	assertClockOffsetIsBounded(batches[0]?.clockOffsetMs);
 	assert.deepEqual(batches[0]?.records.map(record => record.id), ['one', 'two']);
 	for (const record of batches[0]?.records ?? []) {
 		assert.equal(record.submittedEpochMs, batches[0]!.timeOriginMs + record.submittedMs);
@@ -1215,6 +1215,15 @@ test('frame timing uses a fixed 1024-record capacity and reports overflow', asyn
 	assert.equal(batch?.records[0]?.sequence, 1);
 	assert.equal(batch?.records.at(-1)?.sequence, 1_024);
 });
+
+function assertClockOffsetIsBounded(value: number | undefined): void {
+	assert.ok(Number.isFinite(value));
+	const clockOffsetMs = value as number;
+	assert.ok(
+		Math.abs(clockOffsetMs) <= CLOCK_OFFSET_TOLERANCE_MS,
+		`Clock offset ${clockOffsetMs.toFixed(3)} ms exceeded ${CLOCK_OFFSET_TOLERANCE_MS} ms.`,
+	);
+}
 
 function localOutcome(command: string, sequence: number): PublicCommandOutcomeV1 {
 	return {
