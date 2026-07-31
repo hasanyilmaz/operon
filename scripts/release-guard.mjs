@@ -476,7 +476,7 @@ function checkReleaseWorkflow() {
 	);
 	assertIncludes(
 		workflow,
-		'uses: actions/attest@36051bcae73b7c2a8a6945a48cbf80953c6baa35 # v4',
+		'uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4',
 		'release workflow must attest release assets with the approved immutable action revision',
 	);
 	assertNoMatch(
