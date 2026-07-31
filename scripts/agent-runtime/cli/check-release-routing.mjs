@@ -200,9 +200,26 @@ const exactTag = `cli-v${packageDocument.version}`;
 const accepted = spawnSync(process.execPath, [checker], {
 	cwd: pluginRoot,
 	encoding: 'utf8',
-	env: { ...process.env, GITHUB_REF_NAME: exactTag },
+	env: {
+		...process.env,
+		GITHUB_REF: `refs/tags/${exactTag}`,
+		GITHUB_REF_NAME: exactTag,
+		GITHUB_REF_TYPE: 'tag',
+	},
 });
 assert.equal(accepted.status, 0, accepted.stderr);
+
+const pullRequest = spawnSync(process.execPath, [checker], {
+	cwd: pluginRoot,
+	encoding: 'utf8',
+	env: {
+		...process.env,
+		GITHUB_REF: 'refs/pull/87/merge',
+		GITHUB_REF_NAME: '87/merge',
+		GITHUB_REF_TYPE: 'branch',
+	},
+});
+assert.equal(pullRequest.status, 0, pullRequest.stderr);
 
 for (const invalidTag of [
 	packageDocument.version,
@@ -214,7 +231,12 @@ for (const invalidTag of [
 	const rejected = spawnSync(process.execPath, [checker], {
 		cwd: pluginRoot,
 		encoding: 'utf8',
-		env: { ...process.env, GITHUB_REF_NAME: invalidTag },
+		env: {
+			...process.env,
+			GITHUB_REF: `refs/tags/${invalidTag}`,
+			GITHUB_REF_NAME: invalidTag,
+			GITHUB_REF_TYPE: 'tag',
+		},
 	});
 	assert.notEqual(rejected.status, 0, `Release checker accepted invalid tag ${invalidTag}.`);
 }

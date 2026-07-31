@@ -1043,6 +1043,7 @@ function secureWindowsOwnerOnlyPathV1(
 		'while($null -ne $cursor){ if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }; $cursor=$cursor.Parent }',
 		'$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User',
 		'$acl=Get-Acl -LiteralPath $p',
+		'$acl.SetOwner($sid)',
 		'$acl.SetAccessRuleProtection($true,$false)',
 		'foreach($rule in @($acl.Access)){ [void]$acl.RemoveAccessRuleSpecific($rule) }',
 		`$rule=New-Object Security.AccessControl.FileSystemAccessRule($sid,"${rights}","${inheritance}","None","Allow")`,

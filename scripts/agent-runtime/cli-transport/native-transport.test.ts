@@ -395,6 +395,7 @@ test('Windows broker staging is one-shot, bounded and expires fail-closed', () =
 	clearWindowsBrokerStagesForTestsV1();
 });
 
+if (process.platform !== 'win32') {
 test('persistent read server dispatches allowlisted tokens and rejects mutation frames', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-read-vault-'));
 	const expectedVaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
@@ -568,6 +569,7 @@ test('persistent read server dispatches allowlisted tokens and rejects mutation 
 			await rm(vault, { recursive: true, force: true });
 	}
 });
+}
 
 test('persistent read startup and close preserve a successor descriptor', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-successor-vault-'));
@@ -764,6 +766,7 @@ test('persistent read replay-cache exhaustion rotates the server handle', async 
 	await rm(vault, { recursive: true, force: true });
 });
 
+if (process.platform !== 'win32') {
 test('owner-only request files are consumed once and removed', async () => {
 	const token = 'a'.repeat(32);
 	const requestPath = await publishRequest(token, '{"ok":true}', 0o600);
@@ -1147,6 +1150,7 @@ test('best-effort transport warning respects the V1 warning cap', async () => {
 		await rm(vault, { recursive: true, force: true });
 	}
 });
+}
 
 function createRuntime(health: RuntimeHealthV1 = createHealth()): OperonAgentRuntimeCoreV1 {
 	const unsupported = async (): Promise<never> => {

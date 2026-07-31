@@ -12,7 +12,11 @@ assert.equal(packageDocument.name, 'operon-cli');
 assert.match(packageDocument.version, /^[0-9]+\.[0-9]+\.[0-9]+$/u);
 
 const refName = process.env.GITHUB_REF_NAME;
-if (refName !== undefined) {
+const isTagRef = process.env.GITHUB_REF_TYPE === 'tag'
+	|| process.env.GITHUB_REF?.startsWith('refs/tags/') === true
+	|| process.env.REQUIRE_EXACT_GIT_TAG === '1';
+if (isTagRef) {
+	assert.ok(refName, 'CLI release tag name is required for a tag release.');
 	assert.equal(
 		refName,
 		`cli-v${packageDocument.version}`,
