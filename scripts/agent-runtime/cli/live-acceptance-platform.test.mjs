@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -153,16 +153,17 @@ test('native acceptance requires a canonical disposable marker-bound vault', asy
 test('Obsidian CLI identity binds a canonical executable and digest', async () => {
 	const root = await realpath(await mkdtemp(path.join(tmpdir(), 'operon-obsidian-cli-identity-')));
 	try {
-		const executable = path.join(root, 'obsidian');
+		const executable = await realpath(process.execPath);
+		const versionBootstrap = path.join(root, 'obsidian-version.cjs');
 		await writeFile(
-			executable,
-			'#!/usr/bin/env node\nprocess.stdout.write(\"Obsidian 1.12.7\\\\n\");\n',
+			versionBootstrap,
+			'require("node:fs").writeSync(1, "Obsidian 1.12.7\\n"); process.exit(0);\n',
 		);
-		await chmod(executable, 0o700);
+		const bootstrapSpecifier = versionBootstrap.split(path.sep).join('/');
 		const identity = officialObsidianCliIdentityV1('1.12.7', {
 			executable,
 			platform: 'linux',
-			env: process.env,
+			env: { ...process.env, NODE_OPTIONS: `--require="${bootstrapSpecifier}"` },
 		});
 		assert.equal(identity.executable, executable);
 		assert.equal(identity.identityBackend, 'linux-canonical-executable');
