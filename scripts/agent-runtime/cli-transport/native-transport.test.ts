@@ -602,7 +602,7 @@ test('persistent read startup and close preserve a successor descriptor', async 
 		return;
 	}
 	assert.equal(first.available, true, first.reason);
-	const vaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
+	const vaultSha256 = await computeRunningVaultSha256V1(nodeApi, plugin.app.vault.adapter);
 	descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
 	const firstDescriptor = JSON.parse(await readFileUtf8(descriptorPath)) as {
 		serverInstanceId: string;
@@ -708,7 +708,7 @@ test('persistent read close waits for and cancels an in-flight descriptor refres
 		return;
 	}
 	assert.equal(handle.available, true, handle.reason);
-	const vaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
+	const vaultSha256 = await computeRunningVaultSha256V1(nodeApi, plugin.app.vault.adapter);
 	descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
 	const descriptorBeforeRefresh = await readFileUtf8(descriptorPath);
 	await withTestTimeout(refreshCommitReached, 'descriptor refresh did not reach commit');
@@ -755,7 +755,7 @@ test('persistent read replay-cache exhaustion rotates the server handle', async 
 		return;
 	}
 	assert.equal(handle.available, true, handle.reason);
-	const vaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
+	const vaultSha256 = await computeRunningVaultSha256V1(nodeApi, plugin.app.vault.adapter);
 	descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
 	const descriptor = JSON.parse(await readFileUtf8(descriptorPath)) as {
 		serverInstanceId: string;
