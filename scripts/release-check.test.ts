@@ -17,6 +17,9 @@ function equal<T>(actual: T, expected: T, message?: string): void {
 async function run(): Promise<void> {
 	equal(compareOperonVersions('2.3.0', '2.2.1'), 1);
 	equal(compareOperonVersions('2.3.0-beta.2', '2.3.0-beta.10'), -1);
+	equal(compareOperonVersions('2.3.0-A', '2.3.0-a'), -1);
+	equal(compareOperonVersions('2.3.0-beta-x.1', '2.3.0-beta-y.1'), -1);
+	equal(compareOperonVersions('2.3.0-1a', '2.3.0-1b'), -1);
 	equal(compareOperonVersions('2.3.0', '2.3.0-beta.10'), 1);
 	equal(compareOperonVersions('2.3.0+build.1', '2.3.0'), 0);
 	equal(compareOperonVersions('2.3.0-beta.2+build.4', '2.3.0-beta.2+build.9'), 0);

@@ -642,7 +642,7 @@ async function run(): Promise<void> {
 		descriptor.sha256 !== concurrentFourth.manifest.shards[index].sha256
 	));
 	check(alternateOnlyDescriptor);
-	check(inspection.protectedShardNames.includes(alternateOnlyDescriptor.path.slice('shards/'.length)));
+	check(!inspection.protectedShardNames.includes(alternateOnlyDescriptor.path.slice('shards/'.length)));
 	check(!adapter.operations.slice(inspectOperationStart).some(operation => operation.startsWith('readBinary:')));
 	assert.deepEqual(adapter.files, beforeInspect);
 	assertions++;
@@ -650,7 +650,8 @@ async function run(): Promise<void> {
 	const boundedPlan = await store.planCleanup({ nowMs: 31 * 24 * 60 * 60 * 1_000, maxFiles: 1 });
 	equal(boundedPlan.suppressedReasons.length, 0);
 	equal(boundedPlan.candidates.length, 1);
-	check(boundedPlan.candidates[0].kind === 'orphan-shard' || boundedPlan.candidates[0].kind === 'owned-temp');
+	equal(boundedPlan.candidates[0].kind, 'alternate-manifest');
+	equal(boundedPlan.hasMoreCandidates, true);
 	const staleManifest = concurrentThird.manifestPayload;
 	adapter.setFile(paths.manifestPath, staleManifest, 1);
 	const staleCleanup = await store.applyCleanup(boundedPlan);
@@ -658,10 +659,17 @@ async function run(): Promise<void> {
 	equal(staleCleanup.deletedCount, 0);
 	adapter.setFile(paths.manifestPath, concurrentFourth.manifestPayload, 2);
 	equal((await store.load()).status, 'loaded');
+	const alternateCleanupPlan = await store.planCleanup({ nowMs: 31 * 24 * 60 * 60 * 1_000 });
+	equal(alternateCleanupPlan.candidates.length, 1);
+	equal(alternateCleanupPlan.candidates[0].kind, 'alternate-manifest');
+	const alternateCleanup = await store.applyCleanup(alternateCleanupPlan);
+	equal(alternateCleanup.status, 'applied');
+	equal(alternateCleanup.backlogRemaining, true);
+	check(!adapter.files.has(`${paths.rootPath}/manifest (conflict copy).json`));
 	const cleanupPlan = await store.planCleanup({ nowMs: 31 * 24 * 60 * 60 * 1_000 });
 	equal(cleanupPlan.suppressedReasons.length, 0);
 	check(cleanupPlan.candidates.length >= 3);
-	check(!cleanupPlan.candidates.some(candidate => candidate.name === alternateOnlyDescriptor.path.slice('shards/'.length)));
+	check(cleanupPlan.candidates.some(candidate => candidate.name === alternateOnlyDescriptor.path.slice('shards/'.length)));
 	const cleanup = await store.applyCleanup(cleanupPlan);
 	equal(cleanup.status, 'applied');
 	check(cleanup.deletedCount >= 3);
@@ -670,7 +678,7 @@ async function run(): Promise<void> {
 	check(!adapter.files.has(`${paths.rootPath}/${manifestTempName}`));
 	check(adapter.files.has(`${paths.shardsPath}/leftover.tmp-123`));
 	check(adapter.files.has(`${paths.shardsPath}/00-conflict-copy.json`));
-	check(adapter.files.has(`${paths.rootPath}/manifest (conflict copy).json`));
+	check(!adapter.files.has(`${paths.rootPath}/manifest (conflict copy).json`));
 
 	const fingerprintAdapter = new IndexV8MemoryAdapter();
 	const fingerprintStore = new IndexV8Store(fingerprintAdapter.asDataAdapter(), paths);

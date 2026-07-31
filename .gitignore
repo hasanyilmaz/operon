@@ -2,6 +2,7 @@ node_modules/
 main.js
 *.map
 dist/
+build/agent-runtime-probe/
 coverage/
 .DS_Store
 .env
@@ -10,8 +11,14 @@ coverage/
 # Local/runtime artifacts
 data/
 data.json
+/data.json.*
+/data (conflict *).json
 state/
 runtime/
+!src/agent-runtime/runtime/
+!src/agent-runtime/runtime/**
+!scripts/agent-runtime/runtime/
+!scripts/agent-runtime/runtime/**
 cache/
 *.log
 npm-debug.log*
@@ -22,8 +29,11 @@ pnpm-debug.log*
 .eslintcache
 
 # Packaged/release byproducts
+/build/agent-runtime-cas-baseline/
+/build/stage51/
 *.tgz
 *.zip
+packages/operon-cli/release/
 
 # Vault-local validation harness. Keep these out of the public source repo.
 PHASE5-ACCEPTANCE.md

@@ -1,0 +1,2736 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "id": "valid-compatibility-offer-v1",
+      "category": "valid",
+      "schemaId": "compatibility-offer",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "runtimeApi": {
+          "min": 1,
+          "max": 1
+        }
+      }
+    },
+    {
+      "id": "incompatible-positive-remote-range",
+      "category": "incompatible",
+      "schemaId": "compatibility-offer",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "runtimeApi": {
+          "min": 2,
+          "max": 2
+        }
+      }
+    },
+    {
+      "id": "valid-incompatible-selection",
+      "category": "incompatible",
+      "schemaId": "compatibility-selection",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "compatible": false,
+        "error": {
+          "contractVersion": 1,
+          "code": "incompatible-version",
+          "reason": "No mutually supported version.",
+          "retryable": false,
+          "action": "upgrade-client"
+        }
+      }
+    },
+    {
+      "id": "valid-closed-capability-registry",
+      "category": "valid",
+      "schemaId": "capability-registry",
+      "expected": true,
+      "value": [
+        {
+          "id": "system.health",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "system.capabilities",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "system.diagnostics",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "catalog.read",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "entities.resolve",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "tasks.read",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "tasks.query",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "tasks.finder",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "relationships.read",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "context.build",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "timers.read",
+          "mode": "read",
+          "destructive": false
+        },
+        {
+          "id": "tasks.create.preview",
+          "mode": "preview",
+          "mutationKind": "task.create",
+          "destructive": false
+        },
+        {
+          "id": "tasks.create.apply",
+          "mode": "apply",
+          "mutationKind": "task.create",
+          "destructive": false
+        },
+        {
+          "id": "tasks.update.preview",
+          "mode": "preview",
+          "mutationKind": "task.update",
+          "destructive": false
+        },
+        {
+          "id": "tasks.update.apply",
+          "mode": "apply",
+          "mutationKind": "task.update",
+          "destructive": false
+        },
+        {
+          "id": "tasks.recurrence.preview",
+          "mode": "preview",
+          "mutationKind": "task.recurrence",
+          "destructive": false
+        },
+        {
+          "id": "tasks.recurrence.apply",
+          "mode": "apply",
+          "mutationKind": "task.recurrence",
+          "destructive": false
+        },
+        {
+          "id": "tasks.relationship.preview",
+          "mode": "preview",
+          "mutationKind": "task.relationship",
+          "destructive": false
+        },
+        {
+          "id": "tasks.relationship.apply",
+          "mode": "apply",
+          "mutationKind": "task.relationship",
+          "destructive": false
+        },
+        {
+          "id": "tasks.reminder.preview",
+          "mode": "preview",
+          "mutationKind": "task.reminder-item",
+          "destructive": false
+        },
+        {
+          "id": "tasks.reminder.apply",
+          "mode": "apply",
+          "mutationKind": "task.reminder-item",
+          "destructive": false
+        },
+        {
+          "id": "tasks.transition.preview",
+          "mode": "preview",
+          "mutationKind": "task.transition",
+          "destructive": false
+        },
+        {
+          "id": "tasks.transition.apply",
+          "mode": "apply",
+          "mutationKind": "task.transition",
+          "destructive": false
+        },
+        {
+          "id": "tasks.pinned.preview",
+          "mode": "preview",
+          "mutationKind": "task.pinned-state",
+          "destructive": false
+        },
+        {
+          "id": "tasks.pinned.apply",
+          "mode": "apply",
+          "mutationKind": "task.pinned-state",
+          "destructive": false
+        },
+        {
+          "id": "timers.control.preview",
+          "mode": "preview",
+          "mutationKind": "timer.control",
+          "destructive": false
+        },
+        {
+          "id": "timers.control.apply",
+          "mode": "apply",
+          "mutationKind": "timer.control",
+          "destructive": false
+        },
+        {
+          "id": "timers.session.preview",
+          "mode": "preview",
+          "mutationKind": "timer.session",
+          "destructive": false
+        },
+        {
+          "id": "timers.session.apply",
+          "mode": "apply",
+          "mutationKind": "timer.session",
+          "destructive": false
+        },
+        {
+          "id": "tasks.convert.preview",
+          "mode": "preview",
+          "mutationKind": "task.convert",
+          "destructive": false
+        },
+        {
+          "id": "tasks.convert.apply",
+          "mode": "apply",
+          "mutationKind": "task.convert",
+          "destructive": false
+        },
+        {
+          "id": "tasks.inline.relocate.preview",
+          "mode": "preview",
+          "mutationKind": "task.inline-relocate",
+          "destructive": false
+        },
+        {
+          "id": "tasks.inline.relocate.apply",
+          "mode": "apply",
+          "mutationKind": "task.inline-relocate",
+          "destructive": false
+        },
+        {
+          "id": "tasks.delete.preview",
+          "mode": "preview",
+          "mutationKind": "task.delete",
+          "destructive": true
+        },
+        {
+          "id": "tasks.delete.apply",
+          "mode": "apply",
+          "mutationKind": "task.delete",
+          "destructive": true
+        }
+      ]
+    },
+    {
+      "id": "valid-live-property-catalog-request",
+      "category": "valid",
+      "schemaId": "catalog-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "catalog-001",
+        "kind": "catalog",
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "invalid-live-property-catalog-request-unknown-field",
+      "category": "invalid",
+      "schemaId": "catalog-request",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "catalog-002",
+        "kind": "catalog",
+        "consistency": "live-verified",
+        "section": "fields"
+      }
+    },
+    {
+      "id": "valid-live-property-catalog-failure-result",
+      "category": "valid",
+      "schemaId": "operon-catalog",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "catalog-result-001",
+        "kind": "catalog-result",
+        "ok": false,
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T12:00:00.000Z",
+          "settled": false
+        },
+        "warnings": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "live-settling",
+          "reason": "Synthetic catalog result is settling.",
+          "retryable": true,
+          "action": "wait-and-retry"
+        }
+      }
+    },
+    {
+      "id": "invalid-live-property-catalog-partial-failure-result",
+      "category": "invalid",
+      "schemaId": "operon-catalog",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "catalog-result-002",
+        "kind": "catalog-result",
+        "ok": false,
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T12:00:00.000Z",
+          "settled": false
+        },
+        "warnings": [],
+        "settingsFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "error": {
+          "contractVersion": 1,
+          "code": "live-settling",
+          "reason": "Synthetic partial catalog result.",
+          "retryable": true,
+          "action": "wait-and-retry"
+        }
+      }
+    },
+    {
+      "id": "valid-built-in-and-custom-field-catalog",
+      "category": "valid",
+      "schemaId": "field-catalog",
+      "expected": true,
+      "value": [
+        {
+          "canonicalKey": "priority",
+          "displayName": "Priority",
+          "description": "Stable priority reference.",
+          "valueType": "text",
+          "source": "built-in",
+          "mappingStatus": "mapped",
+          "readable": true,
+          "mutationClass": "general-update",
+          "mutationOwner": "tasks.update",
+          "requiresStableTaxonomyId": true
+        },
+        {
+          "canonicalKey": "clientReference",
+          "displayName": "Client reference",
+          "description": "Sanitized custom key fixture.",
+          "valueType": "text",
+          "source": "custom",
+          "mappingStatus": "mapped",
+          "readable": true,
+          "mutationClass": "general-update",
+          "mutationOwner": "tasks.update",
+          "requiresStableTaxonomyId": false
+        }
+      ]
+    },
+    {
+      "id": "valid-inline-source-locator",
+      "category": "valid",
+      "schemaId": "task-source-locator",
+      "expected": true,
+      "value": {
+        "representation": "inline",
+        "filePath": "Tasks/Fixture.md",
+        "lineNumber": 0
+      }
+    },
+    {
+      "id": "valid-legacy-invalid-task-context",
+      "category": "legacy",
+      "schemaId": "task-context",
+      "expected": true,
+      "value": {
+        "identity": {
+          "operonId": "LEGACY-ID",
+          "validity": "legacy-invalid",
+          "mutationAllowed": false
+        },
+        "description": "Legacy identity remains readable.",
+        "representation": "inline",
+        "locator": {
+          "representation": "inline",
+          "filePath": "Tasks/Legacy.md",
+          "lineNumber": 2
+        },
+        "checkbox": "open",
+        "dates": {},
+        "datetimes": {},
+        "relationships": {
+          "childOperonIds": [],
+          "blockingOperonIds": [],
+          "blockedByOperonIds": [],
+          "relatedOperonIds": []
+        },
+        "recurrence": {
+          "repeating": false
+        },
+        "tracker": {
+          "active": false,
+          "sessionCount": 0
+        },
+        "pinned": false,
+        "sourceRevision": {
+          "algorithm": "sha256",
+          "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "available",
+              "snapshotId": "fixture-v8",
+              "committedAt": "2026-07-23T08:00:00.000Z"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "writableFields": [
+          {
+            "canonicalKey": "description",
+            "valueType": "text",
+            "present": true,
+            "value": "Legacy task",
+            "canClear": false
+          },
+          {
+            "canonicalKey": "dateDue",
+            "valueType": "date",
+            "present": false,
+            "canClear": true
+          }
+        ],
+        "reminderItems": [
+          {
+            "collection": "reminderDatetimes",
+            "itemId": "item-0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "expectedValue": "2026-07-25T09:00"
+          },
+          {
+            "collection": "reminderRules",
+            "itemId": "item-1-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "expectedValue": "invalid-legacy-token"
+          }
+        ]
+      }
+    },
+    {
+      "id": "valid-exact-context-request",
+      "category": "valid",
+      "schemaId": "context-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-001",
+        "kind": "context",
+        "purpose": "read",
+        "projection": "exact-task",
+        "selector": {
+          "kind": "operon-id",
+          "operonId": "abc1234"
+        },
+        "include": [
+          "notes",
+          "custom-fields",
+          "reminder-items"
+        ],
+        "limit": 1,
+        "depth": 0,
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "valid-placement-lines-context-request",
+      "category": "valid",
+      "schemaId": "context-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-placement-001",
+        "kind": "context",
+        "purpose": "mutation-readiness",
+        "projection": "placement-candidates",
+        "placement": {
+          "mode": "lines",
+          "filePath": "Daily/2026-07-25.md"
+        },
+        "limit": 20,
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "valid-placement-lines-uppercase-extension",
+      "category": "valid",
+      "schemaId": "context-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-placement-uppercase",
+        "kind": "context",
+        "purpose": "mutation-readiness",
+        "projection": "placement-candidates",
+        "placement": {
+          "mode": "lines",
+          "filePath": "Daily/Archive.MD"
+        },
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "invalid-placement-files-control-query",
+      "category": "invalid",
+      "schemaId": "context-request",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-placement-control",
+        "kind": "context",
+        "purpose": "mutation-readiness",
+        "projection": "placement-candidates",
+        "placement": {
+          "mode": "files",
+          "query": "daily\u0000notes"
+        },
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "valid-placement-lines-context-pack",
+      "category": "valid",
+      "schemaId": "context-pack",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-placement-001",
+        "kind": "context-pack",
+        "ok": true,
+        "purpose": "mutation-readiness",
+        "projection": "placement-candidates",
+        "execution": {
+          "source": "live-runtime",
+          "coherence": "verified",
+          "observedAt": "2026-07-25T08:00:00.000Z",
+          "settled": true
+        },
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "missing"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "entities": [],
+        "relationships": {
+          "explicit": [],
+          "derived": [],
+          "inferred": []
+        },
+        "placement": {
+          "mode": "lines",
+          "filePath": "Daily/2026-07-25.md",
+          "sourceRevision": {
+            "algorithm": "sha256",
+            "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "actualCount": 1,
+          "returnedCount": 1,
+          "truncated": false,
+          "lines": [
+            {
+              "locator": {
+                "representation": "inline",
+                "filePath": "Daily/2026-07-25.md",
+                "lineNumber": 5
+              },
+              "heading": "Today",
+              "contextLabel": "Under Today · blank line 6"
+            }
+          ]
+        },
+        "provenance": [
+          {
+            "path": "placement",
+            "source": "live-runtime",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "derived": false
+          }
+        ],
+        "truncations": [],
+        "warnings": []
+      }
+    },
+    {
+      "id": "invalid-placement-lines-traversal",
+      "category": "invalid",
+      "schemaId": "context-request",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-placement-invalid",
+        "kind": "context",
+        "purpose": "mutation-readiness",
+        "projection": "placement-candidates",
+        "placement": {
+          "mode": "lines",
+          "filePath": "../Daily.md"
+        },
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "valid-duplicate-id-task-context-read-only",
+      "category": "legacy",
+      "schemaId": "task-context",
+      "expected": true,
+      "value": {
+        "identity": {
+          "operonId": "abc1234",
+          "validity": "duplicate",
+          "mutationAllowed": false
+        },
+        "description": "Duplicate canonical identity remains readable but not mutable.",
+        "representation": "file",
+        "locator": {
+          "representation": "file",
+          "filePath": "Tasks/Duplicate.md"
+        },
+        "checkbox": "open",
+        "dates": {},
+        "datetimes": {},
+        "relationships": {
+          "childOperonIds": [],
+          "blockingOperonIds": [],
+          "blockedByOperonIds": [],
+          "relatedOperonIds": []
+        },
+        "recurrence": {
+          "repeating": false
+        },
+        "tracker": {
+          "active": false,
+          "sessionCount": 0
+        },
+        "pinned": false,
+        "sourceRevision": {
+          "algorithm": "sha256",
+          "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "available",
+              "snapshotId": "fixture-v8",
+              "committedAt": "2026-07-23T08:00:00.000Z"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      }
+    },
+    {
+      "id": "valid-stale-cursor-context-pack",
+      "category": "stale",
+      "schemaId": "context-pack",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-stale-001",
+        "kind": "context-pack",
+        "ok": false,
+        "purpose": "analysis",
+        "projection": "task-neighborhood",
+        "warnings": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "stale-cursor",
+          "reason": "The cursor is bound to an older context revision.",
+          "retryable": false,
+          "action": "refresh-state"
+        }
+      }
+    },
+    {
+      "id": "valid-update-preview",
+      "category": "valid",
+      "schemaId": "mutation-preview-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "preview-001",
+        "kind": "mutation-preview",
+        "clientInstanceId": "fixture-client",
+        "idempotencyKey": "fixture-update-001",
+        "correlationId": "correlation-update-001",
+        "capability": "tasks.update.preview",
+        "mutationKind": "task.update",
+        "target": {
+          "operonId": "abc1234",
+          "locator": {
+            "representation": "inline",
+            "filePath": "Tasks/Fixture.md",
+            "lineNumber": 0
+          }
+        },
+        "spec": {
+          "operation": "update",
+          "changes": [
+            {
+              "field": "description",
+              "valueType": "text",
+              "value": "Updated fixture"
+            }
+          ]
+        },
+        "authorization": {
+          "basis": "user-explicit-request",
+          "reason": "Explicit fixture request."
+        }
+      }
+    },
+    {
+      "id": "valid-relationship-preview",
+      "category": "valid",
+      "schemaId": "mutation-preview-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "preview-relationship-001",
+        "kind": "mutation-preview",
+        "clientInstanceId": "fixture-client",
+        "idempotencyKey": "fixture-relationship-001",
+        "capability": "tasks.relationship.preview",
+        "mutationKind": "task.relationship",
+        "target": {
+          "operonId": "abc1234",
+          "locator": {
+            "representation": "inline",
+            "filePath": "Tasks/Fixture.md",
+            "lineNumber": 0
+          }
+        },
+        "spec": {
+          "operation": "replace-relationships",
+          "changes": [
+            {
+              "field": "parentTask",
+              "targetOperonIds": []
+            },
+            {
+              "field": "blocking",
+              "targetOperonIds": [
+                "def5678"
+              ]
+            }
+          ]
+        },
+        "authorization": {
+          "basis": "user-explicit-request"
+        }
+      }
+    },
+    {
+      "id": "valid-create-graph-preview",
+      "category": "valid",
+      "schemaId": "mutation-preview-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "preview-create-001",
+        "kind": "mutation-preview",
+        "clientInstanceId": "fixture-client",
+        "idempotencyKey": "fixture-create-001",
+        "correlationId": "correlation-create-001",
+        "capability": "tasks.create.preview",
+        "mutationKind": "task.create",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "root",
+              "description": "Create fixture root",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "Tasks/Fixture.md",
+                "lineNumber": 3
+              },
+              "fields": [
+                {
+                  "kind": "date",
+                  "field": "dateDue",
+                  "value": "2026-07-24"
+                },
+                {
+                  "kind": "custom",
+                  "field": "clientReference",
+                  "valueType": "text",
+                  "value": "fixture-root"
+                }
+              ],
+              "tags": [
+                "phase7"
+              ],
+              "statusId": "status-open",
+              "priorityId": "priority-normal",
+              "related": [
+                {
+                  "kind": "created",
+                  "itemRef": "child"
+                }
+              ]
+            },
+            {
+              "itemRef": "child",
+              "description": "Create fixture child",
+              "target": {
+                "representation": "file",
+                "mode": "exact-path",
+                "filePath": "Tasks/Child Fixture.md",
+                "templateId": "template-standard"
+              },
+              "fields": [
+                {
+                  "kind": "reminder-rules",
+                  "values": [
+                    "at 09:00"
+                  ]
+                }
+              ],
+              "tags": [],
+              "parent": {
+                "kind": "created",
+                "itemRef": "root"
+              }
+            }
+          ]
+        },
+        "authorization": {
+          "basis": "user-explicit-request",
+          "reason": "Explicit fixture create request."
+        }
+      }
+    },
+    {
+      "id": "valid-clear-update-preview",
+      "category": "valid",
+      "schemaId": "mutation-preview-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "preview-clear-001",
+        "kind": "mutation-preview",
+        "clientInstanceId": "fixture-client",
+        "idempotencyKey": "fixture-clear-001",
+        "capability": "tasks.update.preview",
+        "mutationKind": "task.update",
+        "target": {
+          "operonId": "abc1234",
+          "locator": {
+            "representation": "inline",
+            "filePath": "Tasks/Fixture.md",
+            "lineNumber": 0
+          }
+        },
+        "spec": {
+          "operation": "update",
+          "changes": [
+            {
+              "operation": "clear",
+              "field": "dateDue",
+              "valueType": "date"
+            }
+          ]
+        },
+        "authorization": {
+          "basis": "user-explicit-request"
+        }
+      }
+    },
+    {
+      "id": "valid-mutation-preview-failure",
+      "category": "valid",
+      "schemaId": "mutation-preview-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "preview-create-failed-001",
+        "kind": "mutation-preview-result",
+        "ok": false,
+        "error": {
+          "contractVersion": 1,
+          "code": "stale-context",
+          "reason": "The create context changed before the plan could be sealed.",
+          "retryable": false,
+          "action": "refresh-state"
+        },
+        "warnings": []
+      }
+    },
+    {
+      "id": "valid-destructive-delete-plan",
+      "category": "confirmation",
+      "schemaId": "sealed-mutation-plan",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "planId": "plan-delete-001",
+        "planHash": "faaf3b4c61e1b1d380e20eba58b2c74f87e4b911b62041e3963566c07069662c",
+        "clientInstanceId": "fixture-client",
+        "correlationId": "correlation-delete-001",
+        "idempotencyKeyHash": "f32ef15115b17833e5c89a6210a28ac677dc0fd89959ddc44a85b24f07614fd5",
+        "receiptTargetDigest": "f3b8e6005f8d42b7cfbde1243ef2df7898153e6fe9f149b6771b9b1b59dddcd1",
+        "capability": "tasks.delete.preview",
+        "mutationKind": "task.delete",
+        "createdAt": "2026-07-23T08:02:00.000Z",
+        "expiresAt": "2026-07-23T08:03:00.000Z",
+        "targets": [
+          {
+            "operonId": "abc1234",
+            "locator": {
+              "representation": "file",
+              "filePath": "Tasks/Delete Fixture.md"
+            },
+            "targetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        ],
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "available",
+              "snapshotId": "fixture-v8",
+              "committedAt": "2026-07-23T08:00:00.000Z"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "affectedResources": [
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Delete Fixture.md",
+            "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          }
+        ],
+        "atomicGroups": [
+          {
+            "groupId": "group-0",
+            "order": 0,
+            "resources": [
+              {
+                "resourceKind": "task-source",
+                "resourceKey": "Tasks/Delete Fixture.md"
+              }
+            ]
+          }
+        ],
+        "predictedEffects": [
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Delete Fixture.md",
+            "action": "trash",
+            "summary": "Move the exact file task source to Obsidian trash."
+          }
+        ],
+        "riskLevel": "destructive",
+        "requiresConfirmation": true,
+        "requiredAcknowledgements": [
+          "destructive-impact",
+          "target-identity"
+        ],
+        "warnings": [],
+        "spec": {
+          "operation": "delete",
+          "mode": "delete-exact-task",
+          "cascade": false
+        }
+      }
+    },
+    {
+      "id": "valid-create-graph-plan",
+      "category": "valid",
+      "schemaId": "sealed-mutation-plan",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "planId": "plan-create-001",
+        "planHash": "de037f3ce4e8f6a0b7e2795887bf7dcef7fba34c4d7743527bd4105ebbd479e7",
+        "clientInstanceId": "fixture-client",
+        "correlationId": "correlation-create-001",
+        "idempotencyKeyHash": "9bf4a5d6df32248716637d2a522b1fc2bc81612ff5053aba1f93e71e3352b7e8",
+        "receiptTargetDigest": "a7f00973449918ca8249816357e41e1a28be88b4dca7685b848a3f92ba3361ec",
+        "capability": "tasks.create.preview",
+        "mutationKind": "task.create",
+        "createdAt": "2026-07-24T08:00:00.000Z",
+        "expiresAt": "2026-07-24T08:05:00.000Z",
+        "targets": [
+          {
+            "operonId": "aaa1111",
+            "locator": {
+              "representation": "inline",
+              "filePath": "Tasks/Fixture.md",
+              "lineNumber": 3
+            },
+            "targetDigest": "1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          {
+            "operonId": "bbb2222",
+            "locator": {
+              "representation": "file",
+              "filePath": "Tasks/Child Fixture.md"
+            },
+            "targetDigest": "2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        ],
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 5,
+            "durable": {
+              "status": "available",
+              "snapshotId": "fixture-v8",
+              "committedAt": "2026-07-24T07:59:00.000Z"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "affectedResources": [
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Child Fixture.md",
+            "revision": "absent"
+          },
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Fixture.md",
+            "revision": "3333333333333333333333333333333333333333333333333333333333333333"
+          }
+        ],
+        "atomicGroups": [
+          {
+            "groupId": "group-0",
+            "order": 0,
+            "resources": [
+              {
+                "resourceKind": "task-source",
+                "resourceKey": "Tasks/Child Fixture.md"
+              }
+            ]
+          },
+          {
+            "groupId": "group-1",
+            "order": 1,
+            "resources": [
+              {
+                "resourceKind": "task-source",
+                "resourceKey": "Tasks/Fixture.md"
+              }
+            ]
+          }
+        ],
+        "predictedEffects": [
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Child Fixture.md",
+            "action": "create",
+            "summary": "Create the exact YAML file task."
+          },
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Fixture.md",
+            "action": "update",
+            "summary": "Insert the exact inline task."
+          }
+        ],
+        "riskLevel": "routine",
+        "requiresConfirmation": false,
+        "requiredAcknowledgements": [],
+        "warnings": [],
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "root",
+              "description": "Create fixture root",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "Tasks/Fixture.md",
+                "lineNumber": 3
+              },
+              "fields": [
+                {
+                  "kind": "date",
+                  "field": "dateDue",
+                  "value": "2026-07-24"
+                },
+                {
+                  "kind": "custom",
+                  "field": "clientReference",
+                  "valueType": "text",
+                  "value": "fixture-root"
+                }
+              ],
+              "tags": [
+                "phase7"
+              ],
+              "statusId": "status-open",
+              "priorityId": "priority-normal",
+              "related": [
+                {
+                  "kind": "created",
+                  "itemRef": "child"
+                }
+              ]
+            },
+            {
+              "itemRef": "child",
+              "description": "Create fixture child",
+              "target": {
+                "representation": "file",
+                "mode": "exact-path",
+                "filePath": "Tasks/Child Fixture.md",
+                "templateId": "template-standard"
+              },
+              "fields": [
+                {
+                  "kind": "reminder-rules",
+                  "values": [
+                    "at 09:00"
+                  ]
+                }
+              ],
+              "tags": [],
+              "parent": {
+                "kind": "created",
+                "itemRef": "root"
+              }
+            }
+          ]
+        },
+        "createEffects": [
+          {
+            "itemRef": "root",
+            "operonId": "aaa1111",
+            "repeatSeriesId": "series-create-fixture-001",
+            "locator": {
+              "representation": "inline",
+              "filePath": "Tasks/Fixture.md",
+              "lineNumber": 3
+            },
+            "targetBeforeDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+            "renderedTaskDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+            "plannedSourceDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+            "resolvedRelatedOperonIds": [
+              "bbb2222"
+            ]
+          },
+          {
+            "itemRef": "child",
+            "operonId": "bbb2222",
+            "locator": {
+              "representation": "file",
+              "filePath": "Tasks/Child Fixture.md"
+            },
+            "expectedAbsence": true,
+            "renderedTaskDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+            "plannedSourceDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+            "templateId": "template-standard",
+            "templateDigest": "8888888888888888888888888888888888888888888888888888888888888888",
+            "resolvedParentOperonId": "aaa1111",
+            "resolvedRelatedOperonIds": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "valid-destructive-delete-apply",
+      "category": "confirmation",
+      "schemaId": "mutation-apply-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "apply-delete-001",
+        "kind": "mutation-apply",
+        "plan": {
+          "contractVersion": 1,
+          "planId": "plan-delete-001",
+          "planHash": "faaf3b4c61e1b1d380e20eba58b2c74f87e4b911b62041e3963566c07069662c",
+          "clientInstanceId": "fixture-client",
+          "correlationId": "correlation-delete-001",
+          "idempotencyKeyHash": "f32ef15115b17833e5c89a6210a28ac677dc0fd89959ddc44a85b24f07614fd5",
+          "receiptTargetDigest": "f3b8e6005f8d42b7cfbde1243ef2df7898153e6fe9f149b6771b9b1b59dddcd1",
+          "capability": "tasks.delete.preview",
+          "mutationKind": "task.delete",
+          "createdAt": "2026-07-23T08:02:00.000Z",
+          "expiresAt": "2026-07-23T08:03:00.000Z",
+          "targets": [
+            {
+              "operonId": "abc1234",
+              "locator": {
+                "representation": "file",
+                "filePath": "Tasks/Delete Fixture.md"
+              },
+              "targetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            }
+          ],
+          "contextRevision": {
+            "index": {
+              "sessionId": "fixture-session",
+              "ramGeneration": 4,
+              "durable": {
+                "status": "available",
+                "snapshotId": "fixture-v8",
+                "committedAt": "2026-07-23T08:00:00.000Z"
+              }
+            },
+            "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "pinnedGeneration": 1,
+            "activeTrackerGeneration": 2,
+            "repeatSeriesRevision": 3,
+            "projectSerialGeneration": 4,
+            "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "affectedResources": [
+            {
+              "resourceKind": "task-source",
+              "resourceKey": "Tasks/Delete Fixture.md",
+              "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            }
+          ],
+          "atomicGroups": [
+            {
+              "groupId": "group-0",
+              "order": 0,
+              "resources": [
+                {
+                  "resourceKind": "task-source",
+                  "resourceKey": "Tasks/Delete Fixture.md"
+                }
+              ]
+            }
+          ],
+          "predictedEffects": [
+            {
+              "resourceKind": "task-source",
+              "resourceKey": "Tasks/Delete Fixture.md",
+              "action": "trash",
+              "summary": "Move the exact file task source to Obsidian trash."
+            }
+          ],
+          "riskLevel": "destructive",
+          "requiresConfirmation": true,
+          "requiredAcknowledgements": [
+            "destructive-impact",
+            "target-identity"
+          ],
+          "warnings": [],
+          "spec": {
+            "operation": "delete",
+            "mode": "delete-exact-task",
+            "cascade": false
+          }
+        },
+        "authorization": {
+          "basis": "user-explicit-confirmation",
+          "reason": "Fresh destructive confirmation."
+        },
+        "idempotencyKey": "fixture-delete-001",
+        "acknowledgements": [
+          {
+            "code": "destructive-impact",
+            "planHash": "faaf3b4c61e1b1d380e20eba58b2c74f87e4b911b62041e3963566c07069662c",
+            "targetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "acknowledgedAt": "2026-07-23T08:02:30.000Z"
+          },
+          {
+            "code": "target-identity",
+            "planHash": "faaf3b4c61e1b1d380e20eba58b2c74f87e4b911b62041e3963566c07069662c",
+            "targetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "acknowledgedAt": "2026-07-23T08:02:31.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": "valid-partial-atomic-group-result",
+      "category": "atomic-group",
+      "schemaId": "mutation-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "result-partial-001",
+        "kind": "mutation-result",
+        "status": "partial",
+        "mutationMayHaveApplied": true,
+        "retryAllowed": false,
+        "groupResults": [
+          {
+            "groupId": "group-0",
+            "status": "committed",
+            "resourceRevisions": [
+              {
+                "resourceKind": "task-source",
+                "resourceKey": "Tasks/Fixture.md",
+                "revision": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+              }
+            ]
+          },
+          {
+            "groupId": "group-1",
+            "status": "failed",
+            "error": {
+              "contractVersion": 1,
+              "code": "internal-error",
+              "reason": "The second group failed before a durable mutation.",
+              "retryable": false,
+              "action": "report-bug"
+            }
+          }
+        ],
+        "continuation": {
+          "originPlanHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "remainingGroupIds": [
+            "group-1"
+          ],
+          "plan": {
+            "contractVersion": 1,
+            "planId": "plan-continuation-001",
+            "planHash": "7ef90ddfe5171ae0d335051afeabdba16b876f4a8e778247d5d3e215e09ed630",
+            "clientInstanceId": "fixture-client",
+            "correlationId": "correlation-continuation-001",
+            "idempotencyKeyHash": "f32ef15115b17833e5c89a6210a28ac677dc0fd89959ddc44a85b24f07614fd5",
+            "receiptTargetDigest": "f3b8e6005f8d42b7cfbde1243ef2df7898153e6fe9f149b6771b9b1b59dddcd1",
+            "capability": "tasks.delete.preview",
+            "mutationKind": "task.delete",
+            "createdAt": "2026-07-23T08:04:00.000Z",
+            "expiresAt": "2026-07-23T08:05:00.000Z",
+            "targets": [
+              {
+                "operonId": "abc1234",
+                "locator": {
+                  "representation": "file",
+                  "filePath": "Tasks/Delete Fixture.md"
+                },
+                "targetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+              }
+            ],
+            "contextRevision": {
+              "index": {
+                "sessionId": "fixture-session",
+                "ramGeneration": 4,
+                "durable": {
+                  "status": "available",
+                  "snapshotId": "fixture-v8",
+                  "committedAt": "2026-07-23T08:00:00.000Z"
+                }
+              },
+              "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "pinnedGeneration": 1,
+              "activeTrackerGeneration": 2,
+              "repeatSeriesRevision": 3,
+              "projectSerialGeneration": 4,
+              "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "affectedResources": [
+              {
+                "resourceKind": "task-source",
+                "resourceKey": "Tasks/Delete Fixture.md",
+                "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+              }
+            ],
+            "atomicGroups": [
+              {
+                "groupId": "group-1",
+                "order": 0,
+                "resources": [
+                  {
+                    "resourceKind": "task-source",
+                    "resourceKey": "Tasks/Delete Fixture.md"
+                  }
+                ]
+              }
+            ],
+            "predictedEffects": [
+              {
+                "resourceKind": "task-source",
+                "resourceKey": "Tasks/Delete Fixture.md",
+                "action": "trash",
+                "summary": "Move the exact file task source to Obsidian trash."
+              }
+            ],
+            "riskLevel": "destructive",
+            "requiresConfirmation": true,
+            "requiredAcknowledgements": [
+              "destructive-impact",
+              "target-identity"
+            ],
+            "warnings": [],
+            "spec": {
+              "operation": "delete",
+              "mode": "delete-exact-task",
+              "cascade": false
+            }
+          }
+        },
+        "error": {
+          "contractVersion": 1,
+          "code": "internal-error",
+          "reason": "Stopped after the failed group.",
+          "retryable": false,
+          "action": "report-bug"
+        }
+      }
+    },
+    {
+      "id": "valid-metadata-only-receipt",
+      "category": "receipt",
+      "schemaId": "mutation-receipt",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "vaultIdentityHash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "clientInstanceId": "fixture-client",
+        "idempotencyKeyHash": "2222222222222222222222222222222222222222222222222222222222222222",
+        "planHash": "3333333333333333333333333333333333333333333333333333333333333333",
+        "mutationKind": "task.update",
+        "targetDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+        "terminalOutcome": "applied",
+        "effectiveAt": "2026-07-23T08:04:00.000Z",
+        "completedAt": "2026-07-23T08:04:01.000Z",
+        "expiresAt": "2026-07-24T08:04:01.000Z"
+      }
+    },
+    {
+      "id": "invalid-unknown-compatibility-field",
+      "category": "invalid",
+      "schemaId": "compatibility-offer",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "runtimeApi": {
+          "min": 1,
+          "max": 1
+        },
+        "futureField": true
+      }
+    },
+    {
+      "id": "invalid-traversal-locator",
+      "category": "invalid",
+      "schemaId": "task-source-locator",
+      "expected": false,
+      "value": {
+        "representation": "file",
+        "filePath": "../Outside.md"
+      }
+    },
+    {
+      "id": "invalid-negative-inline-line",
+      "category": "invalid",
+      "schemaId": "task-source-locator",
+      "expected": false,
+      "value": {
+        "representation": "inline",
+        "filePath": "Tasks/Fixture.md",
+        "lineNumber": -1
+      }
+    },
+    {
+      "id": "invalid-field-catalog-mapping-state",
+      "category": "invalid",
+      "schemaId": "field-catalog",
+      "expected": false,
+      "value": [
+        {
+          "canonicalKey": "custom",
+          "displayName": "Custom",
+          "description": "",
+          "valueType": "text",
+          "source": "custom",
+          "mappingStatus": "guessed",
+          "readable": true,
+          "mutationClass": "general-update",
+          "requiresStableTaxonomyId": false
+        }
+      ]
+    },
+    {
+      "id": "invalid-unsupported-contract-version",
+      "category": "invalid",
+      "schemaId": "context-request",
+      "expected": false,
+      "value": {
+        "contractVersion": 2,
+        "requestId": "ctx-unsupported",
+        "kind": "context",
+        "purpose": "read",
+        "projection": "exact-task",
+        "selector": {
+          "kind": "operon-id",
+          "operonId": "abc1234"
+        },
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "invalid-prototype-key-request",
+      "category": "invalid",
+      "schemaId": "context-request",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-prototype",
+        "kind": "context",
+        "purpose": "read",
+        "projection": "exact-task",
+        "selector": {
+          "kind": "operon-id",
+          "operonId": "abc1234"
+        },
+        "consistency": "live-verified",
+        "__proto__": {
+          "polluted": true
+        }
+      }
+    },
+    {
+      "id": "invalid-projection-hard-cap",
+      "category": "invalid",
+      "schemaId": "context-request",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "ctx-too-broad",
+        "kind": "context",
+        "purpose": "analysis",
+        "projection": "task-neighborhood",
+        "selector": {
+          "kind": "operon-id",
+          "operonId": "abc1234"
+        },
+        "limit": 101,
+        "depth": 1,
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "invalid-mutation-kind-capability-mismatch",
+      "category": "invalid",
+      "schemaId": "mutation-preview-request",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "preview-mismatch",
+        "kind": "mutation-preview",
+        "capability": "tasks.delete.preview",
+        "mutationKind": "task.update",
+        "target": {
+          "operonId": "abc1234",
+          "locator": {
+            "representation": "file",
+            "filePath": "Tasks/Fixture.md"
+          }
+        },
+        "spec": {
+          "operation": "update",
+          "changes": [
+            {
+              "field": "description",
+              "valueType": "text",
+              "value": "Mismatch"
+            }
+          ]
+        },
+        "authorization": {
+          "basis": "user-explicit-request"
+        }
+      }
+    },
+    {
+      "id": "invalid-non-create-missing-exact-target",
+      "category": "invalid",
+      "schemaId": "mutation-preview-request",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "preview-no-target",
+        "kind": "mutation-preview",
+        "capability": "tasks.update.preview",
+        "mutationKind": "task.update",
+        "spec": {
+          "operation": "update",
+          "changes": [
+            {
+              "field": "description",
+              "valueType": "text",
+              "value": "No target"
+            }
+          ]
+        },
+        "authorization": {
+          "basis": "user-explicit-request"
+        }
+      }
+    },
+    {
+      "id": "invalid-delete-plan-not-destructive",
+      "category": "confirmation",
+      "schemaId": "sealed-mutation-plan",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "planId": "plan-invalid-delete",
+        "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "capability": "tasks.delete.preview",
+        "mutationKind": "task.delete",
+        "createdAt": "2026-07-23T08:02:00.000Z",
+        "expiresAt": "2026-07-23T08:03:00.000Z",
+        "targets": [
+          {
+            "operonId": "abc1234",
+            "locator": {
+              "representation": "file",
+              "filePath": "Tasks/Delete Fixture.md"
+            },
+            "targetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        ],
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "available",
+              "snapshotId": "fixture-v8",
+              "committedAt": "2026-07-23T08:00:00.000Z"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "affectedResources": [
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Delete Fixture.md",
+            "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          }
+        ],
+        "atomicGroups": [
+          {
+            "groupId": "group-0",
+            "order": 0,
+            "resources": [
+              {
+                "resourceKind": "task-source",
+                "resourceKey": "Tasks/Delete Fixture.md"
+              }
+            ]
+          }
+        ],
+        "predictedEffects": [
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Delete Fixture.md",
+            "action": "trash",
+            "summary": "Move exact source to trash."
+          }
+        ],
+        "riskLevel": "routine",
+        "requiresConfirmation": false,
+        "requiredAcknowledgements": [],
+        "warnings": [],
+        "spec": {
+          "operation": "delete",
+          "mode": "delete-exact-task",
+          "cascade": false
+        }
+      }
+    },
+    {
+      "id": "invalid-atomic-group-empty-resources",
+      "category": "atomic-group",
+      "schemaId": "sealed-mutation-plan",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "planId": "plan-empty-group",
+        "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "capability": "tasks.update.preview",
+        "mutationKind": "task.update",
+        "createdAt": "2026-07-23T08:02:00.000Z",
+        "expiresAt": "2026-07-23T08:07:00.000Z",
+        "targets": [
+          {
+            "operonId": "abc1234",
+            "locator": {
+              "representation": "inline",
+              "filePath": "Tasks/Fixture.md",
+              "lineNumber": 0
+            },
+            "targetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        ],
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "available",
+              "snapshotId": "fixture-v8",
+              "committedAt": "2026-07-23T08:00:00.000Z"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "affectedResources": [],
+        "atomicGroups": [
+          {
+            "groupId": "group-0",
+            "order": 0,
+            "resources": []
+          }
+        ],
+        "predictedEffects": [
+          {
+            "resourceKind": "task-source",
+            "resourceKey": "Tasks/Fixture.md",
+            "action": "update",
+            "summary": "Update fixture."
+          }
+        ],
+        "riskLevel": "routine",
+        "requiresConfirmation": false,
+        "requiredAcknowledgements": [],
+        "warnings": [],
+        "spec": {
+          "operation": "update",
+          "changes": [
+            {
+              "field": "description",
+              "valueType": "text",
+              "value": "Updated"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "invalid-outcome-unknown-retry-state",
+      "category": "receipt",
+      "schemaId": "mutation-result",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "result-unknown-invalid",
+        "kind": "mutation-result",
+        "status": "outcome-unknown",
+        "mutationMayHaveApplied": false,
+        "retryAllowed": true,
+        "groupResults": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "outcome-unknown",
+          "reason": "Unknown outcome.",
+          "retryable": false,
+          "action": "recover-same-plan"
+        }
+      }
+    },
+    {
+      "id": "invalid-receipt-task-content-leak",
+      "category": "receipt",
+      "schemaId": "mutation-receipt",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "vaultIdentityHash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "clientInstanceId": "fixture-client",
+        "idempotencyKeyHash": "2222222222222222222222222222222222222222222222222222222222222222",
+        "planHash": "3333333333333333333333333333333333333333333333333333333333333333",
+        "mutationKind": "task.update",
+        "targetDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+        "terminalOutcome": "applied",
+        "effectiveAt": "2026-07-23T08:04:00.000Z",
+        "completedAt": "2026-07-23T08:04:01.000Z",
+        "expiresAt": "2026-07-24T08:04:01.000Z",
+        "description": "Task content must never enter a receipt."
+      }
+    },
+    {
+      "id": "valid-booting-runtime-health",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": true,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": true,
+        "lifecyclePhase": "booting",
+        "v8PersistencePhase": "idle",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [
+          {
+            "id": "system.health",
+            "availability": "available",
+            "stability": "stable"
+          }
+        ],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": false
+        },
+        "admission": {
+          "reads": false,
+          "writes": false
+        },
+        "retryAfterMs": 250,
+        "warnings": []
+      }
+    },
+    {
+      "id": "valid-ready-runtime-health-with-durable-revision",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": true,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": true,
+        "lifecyclePhase": "ready",
+        "v8PersistencePhase": "sync-settling",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [
+          {
+            "id": "system.health",
+            "availability": "available",
+            "stability": "stable"
+          },
+          {
+            "id": "catalog.read",
+            "availability": "contract-only",
+            "reason": "Runtime parity has not been proven.",
+            "stability": "stable"
+          }
+        ],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "verified",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": true
+        },
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "available",
+              "snapshotId": "fixture-v8",
+              "committedAt": "2026-07-23T08:00:00.000Z"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "admission": {
+          "reads": true,
+          "writes": true
+        },
+        "warnings": []
+      }
+    },
+    {
+      "id": "valid-settling-health-with-missing-durable-revision",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": true,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": false,
+        "lifecyclePhase": "settling",
+        "v8PersistencePhase": "recovery-required",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [
+          {
+            "id": "system.health",
+            "availability": "available",
+            "stability": "stable"
+          }
+        ],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "settling",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": false
+        },
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "recovery-required"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "admission": {
+          "reads": false,
+          "writes": false
+        },
+        "retryAfterMs": 500,
+        "warnings": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "live-settling",
+          "reason": "The Runtime is settling.",
+          "retryable": true,
+          "action": "wait-and-retry"
+        }
+      }
+    },
+    {
+      "id": "invalid-ready-health-with-closed-write-admission",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": false,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": true,
+        "lifecyclePhase": "ready",
+        "v8PersistencePhase": "idle",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "verified",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": true
+        },
+        "admission": {
+          "reads": true,
+          "writes": false
+        },
+        "warnings": []
+      }
+    },
+    {
+      "id": "invalid-health-durable-state-claims-snapshot",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": false,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": true,
+        "lifecyclePhase": "settling",
+        "v8PersistencePhase": "recovery-required",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "settling",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": false
+        },
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "unavailable",
+              "snapshotId": "must-not-be-present"
+            }
+          },
+          "settingsFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "admission": {
+          "reads": false,
+          "writes": false
+        },
+        "warnings": []
+      }
+    },
+    {
+      "id": "valid-cache-ready-runtime-health",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": true,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": true,
+        "lifecyclePhase": "cache-ready",
+        "v8PersistencePhase": "rebasing",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [
+          {
+            "id": "system.health",
+            "availability": "available",
+            "stability": "stable"
+          }
+        ],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": false
+        },
+        "admission": {
+          "reads": true,
+          "writes": false
+        },
+        "retryAfterMs": 1000,
+        "warnings": []
+      }
+    },
+    {
+      "id": "valid-unloading-runtime-health",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": true,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": true,
+        "lifecyclePhase": "unloading",
+        "v8PersistencePhase": "idle",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [
+          {
+            "id": "system.health",
+            "availability": "available",
+            "stability": "stable"
+          }
+        ],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": false
+        },
+        "admission": {
+          "reads": false,
+          "writes": false
+        },
+        "warnings": []
+      }
+    },
+    {
+      "id": "invalid-ready-health-with-retry-hint",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": false,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": true,
+        "lifecyclePhase": "ready",
+        "v8PersistencePhase": "idle",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "verified",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": true
+        },
+        "admission": {
+          "reads": true,
+          "writes": true
+        },
+        "retryAfterMs": 250,
+        "warnings": []
+      }
+    },
+    {
+      "id": "invalid-fatal-health-with-retry-hint",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": false,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": false,
+        "lifecyclePhase": "booting",
+        "v8PersistencePhase": "recovery-required",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": false
+        },
+        "admission": {
+          "reads": false,
+          "writes": false
+        },
+        "retryAfterMs": 250,
+        "warnings": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "internal-error",
+          "reason": "Fatal startup failure.",
+          "retryable": false,
+          "action": "report-bug"
+        }
+      }
+    },
+    {
+      "id": "invalid-health-retry-hint-above-phase-cap",
+      "category": "lifecycle",
+      "schemaId": "runtime-health",
+      "expected": false,
+      "value": {
+        "apiVersion": 1,
+        "contractVersion": 1,
+        "ok": true,
+        "lifecyclePhase": "booting",
+        "v8PersistencePhase": "idle",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "capabilities": [],
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T08:00:00.000Z",
+          "settled": false
+        },
+        "admission": {
+          "reads": false,
+          "writes": false
+        },
+        "retryAfterMs": 1001,
+        "warnings": []
+      }
+    },
+    {
+      "id": "valid-entity-resolve-exact-name-request",
+      "category": "valid",
+      "schemaId": "entity-resolve-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "resolve-001",
+        "kind": "entity-resolve",
+        "selector": {
+          "kind": "exact-name",
+          "noteName": "Fixture Task"
+        },
+        "limit": 25,
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "valid-entity-resolution-failure",
+      "category": "valid",
+      "schemaId": "entity-resolution-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "resolve-result-001",
+        "kind": "entity-resolution-result",
+        "ok": false,
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T12:00:00.000Z",
+          "settled": false
+        },
+        "warnings": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "live-settling",
+          "reason": "Synthetic resolver is settling.",
+          "retryable": true,
+          "action": "wait-and-retry"
+        }
+      }
+    },
+    {
+      "id": "valid-task-get-request",
+      "category": "valid",
+      "schemaId": "task-get-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "task-get-001",
+        "kind": "task-get",
+        "selector": {
+          "kind": "operon-id",
+          "operonId": "abc1234"
+        },
+        "include": [
+          "notes",
+          "source-markdown"
+        ],
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "valid-task-get-failure",
+      "category": "valid",
+      "schemaId": "task-get-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "task-get-result-001",
+        "kind": "task-get-result",
+        "ok": false,
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "verified",
+          "observedAt": "2026-07-23T12:00:00.000Z",
+          "settled": true
+        },
+        "warnings": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "entity-not-found",
+          "reason": "Synthetic task was not found.",
+          "retryable": false,
+          "action": "refresh-state"
+        }
+      }
+    },
+    {
+      "id": "valid-task-query-request",
+      "category": "valid",
+      "schemaId": "task-query-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "task-query-001",
+        "kind": "task-query",
+        "filters": {
+          "checkbox": [
+            "open"
+          ],
+          "priorityIds": [
+            "priority-high"
+          ],
+          "due": {
+            "from": "2026-07-23",
+            "to": "2026-07-30"
+          },
+          "text": "fixture"
+        },
+        "limit": 100,
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "valid-task-query-failure",
+      "category": "valid",
+      "schemaId": "task-query-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "task-query-result-001",
+        "kind": "task-query-result",
+        "ok": false,
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "verified",
+          "observedAt": "2026-07-23T12:00:00.000Z",
+          "settled": true
+        },
+        "warnings": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "stale-cursor",
+          "reason": "Synthetic cursor is stale.",
+          "retryable": false,
+          "action": "refresh-state"
+        }
+      }
+    },
+    {
+      "id": "valid-relationship-request",
+      "category": "valid",
+      "schemaId": "relationship-request",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "relationship-001",
+        "kind": "relationship",
+        "selector": {
+          "kind": "operon-id",
+          "operonId": "abc1234"
+        },
+        "kinds": [
+          "parent",
+          "child",
+          "blocking",
+          "blocked-by"
+        ],
+        "limit": 100,
+        "depth": 1,
+        "consistency": "live-verified"
+      }
+    },
+    {
+      "id": "valid-relationship-failure",
+      "category": "valid",
+      "schemaId": "relationship-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "relationship-result-001",
+        "kind": "relationship-result",
+        "ok": false,
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "unverified",
+          "observedAt": "2026-07-23T12:00:00.000Z",
+          "settled": false
+        },
+        "warnings": [],
+        "error": {
+          "contractVersion": 1,
+          "code": "ambiguous-selector",
+          "reason": "Synthetic selector is ambiguous.",
+          "retryable": false,
+          "action": "narrow-request"
+        }
+      }
+    },
+    {
+      "id": "valid-cli-health-invocation",
+      "category": "valid",
+      "schemaId": "cli-invocation",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-invocation",
+        "requestId": "cli-health-001",
+        "command": "health",
+        "mode": "live",
+        "clientVersion": "0.1.0",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "cliContract": {
+          "min": 1,
+          "max": 1
+        },
+        "expectedVaultSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "readinessTimeoutMs": 15000
+      }
+    },
+    {
+      "id": "invalid-cli-command-request-mismatch",
+      "category": "invalid",
+      "schemaId": "cli-invocation",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-invocation",
+        "requestId": "cli-task-001",
+        "command": "task.get",
+        "mode": "live",
+        "clientVersion": "0.1.0",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "cliContract": {
+          "min": 1,
+          "max": 1
+        },
+        "expectedVaultSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "readinessTimeoutMs": 15000,
+        "request": {
+          "contractVersion": 1,
+          "requestId": "cli-task-001",
+          "kind": "task-query",
+          "consistency": "live-verified"
+        }
+      }
+    },
+    {
+      "id": "invalid-cli-request-id-pattern",
+      "category": "invalid",
+      "schemaId": "cli-invocation",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-invocation",
+        "requestId": "invalid request",
+        "command": "health",
+        "mode": "live",
+        "clientVersion": "0.1.0",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "cliContract": {
+          "min": 1,
+          "max": 1
+        },
+        "expectedVaultSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "readinessTimeoutMs": 15000
+      }
+    },
+    {
+      "id": "valid-cli-readiness-failure-result",
+      "category": "valid",
+      "schemaId": "cli-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-result",
+        "requestId": "cli-health-001",
+        "command": "health",
+        "ok": false,
+        "transport": {
+          "channel": "request-file",
+          "inputBytes": 512
+        },
+        "vaultIdentity": {
+          "expectedMatch": true
+        },
+        "timing": {
+          "handlerMs": 15000.25
+        },
+        "warnings": [],
+        "failure": {
+          "stage": "readiness",
+          "error": {
+            "contractVersion": 1,
+            "code": "live-settling",
+            "reason": "Runtime did not become ready before the CLI deadline.",
+            "retryable": true,
+            "action": "wait-and-retry"
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-cli-result-additive-field",
+      "category": "valid",
+      "schemaId": "cli-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-result",
+        "requestId": "cli-health-001",
+        "command": "health",
+        "ok": false,
+        "transport": {
+          "channel": "request-file",
+          "inputBytes": 512
+        },
+        "vaultIdentity": {
+          "expectedMatch": null
+        },
+        "timing": {
+          "handlerMs": 1
+        },
+        "warnings": [],
+        "secretPath": "/private/example",
+        "failure": {
+          "stage": "transport",
+          "error": {
+            "contractVersion": 1,
+            "code": "transport-unavailable",
+            "reason": "Transport is unavailable.",
+            "retryable": true,
+            "action": "wait-and-retry"
+          }
+        }
+      }
+    },
+    {
+      "id": "valid-cli-client-error",
+      "category": "valid",
+      "schemaId": "cli-client-error",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-client-error",
+        "ok": false,
+        "error": {
+          "contractVersion": 1,
+          "code": "invalid-request",
+          "reason": "The CLI command is invalid.",
+          "retryable": false,
+          "action": "fix-request"
+        }
+      }
+    },
+    {
+      "id": "valid-cli-client-error-additive-field",
+      "category": "valid",
+      "schemaId": "cli-client-error",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-client-error",
+        "ok": false,
+        "leakedPath": "/private/example",
+        "error": {
+          "contractVersion": 1,
+          "code": "invalid-request",
+          "reason": "The CLI command is invalid.",
+          "retryable": false,
+          "action": "fix-request"
+        }
+      }
+    },
+    {
+      "id": "invalid-cli-request-id-binding",
+      "category": "invalid",
+      "schemaId": "cli-invocation",
+      "expected": false,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-invocation",
+        "requestId": "cli-task-wrapper",
+        "command": "task.get",
+        "mode": "live",
+        "clientVersion": "0.1.0",
+        "compatibility": {
+          "contractVersion": 1,
+          "runtimeApi": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "cliContract": {
+          "min": 1,
+          "max": 1
+        },
+        "expectedVaultSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "readinessTimeoutMs": 15000,
+        "request": {
+          "contractVersion": 1,
+          "requestId": "cli-task-nested",
+          "kind": "task-get",
+          "selector": {
+            "kind": "operon-id",
+            "operonId": "abc1234"
+          },
+          "consistency": "live-verified"
+        }
+      }
+    },
+    {
+      "id": "valid-cli-capabilities-result",
+      "category": "valid",
+      "schemaId": "cli-result",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "kind": "cli-result",
+        "requestId": "cli-capabilities-001",
+        "command": "capabilities",
+        "ok": true,
+        "transport": {
+          "channel": "request-file",
+          "inputBytes": 384
+        },
+        "vaultIdentity": {
+          "expectedMatch": true
+        },
+        "compatibility": {
+          "contractVersion": 1,
+          "compatible": true,
+          "runtimeApi": 1
+        },
+        "cliContract": 1,
+        "runtime": {
+          "appVersion": "1.13.3",
+          "plugin": {
+            "id": "operon",
+            "version": "2.6.0",
+            "minAppVersion": "1.7.2"
+          },
+          "apiVersion": 1
+        },
+        "timing": {
+          "handlerMs": 2.5,
+          "totalMs": 8.25
+        },
+        "warnings": [],
+        "result": [
+          {
+            "id": "system.health",
+            "availability": "available",
+            "stability": "stable"
+          },
+          {
+            "id": "catalog.read",
+            "availability": "contract-only",
+            "reason": "The catalog publication gate is not complete.",
+            "stability": "stable"
+          }
+        ]
+      }
+    }
+  ]
+}

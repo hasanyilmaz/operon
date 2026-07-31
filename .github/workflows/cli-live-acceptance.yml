@@ -1,0 +1,190 @@
+name: Optional Operon CLI native desktop certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: "Optional certification only: exact candidate commit"
+        required: true
+        type: string
+      candidate_run_id:
+        description: "Optional certification candidate containing immutable CLI and plugin artifacts"
+        required: true
+        type: string
+permissions:
+  actions: read
+  attestations: write
+  contents: read
+  id-token: write
+
+jobs:
+  prepare-native-matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      expected_cells: ${{ steps.matrix.outputs.expected_cells }}
+    steps:
+      - name: Validate the immutable source commit before checkout
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: node -e "if (!/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT)) throw new Error('source_commit must be an exact lowercase 40-character commit.');"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: matrix
+        name: Build the canonical 36-cell native matrix
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const freeze = JSON.parse(fs.readFileSync("contracts/agent-runtime/native-acceptance-matrix-v1.json", "utf8"));
+            const unresolvedBuilds = freeze.operatingSystems.filter(os =>
+              os.buildIdentity?.status !== "frozen"
+              || typeof os.buildIdentity?.value !== "string"
+              || os.buildIdentity.value.length === 0
+            );
+            if (unresolvedBuilds.length) throw new Error(`Native build/image identity freeze is incomplete: ${unresolvedBuilds.map(os => os.id).join(", ")}.`);
+            if (freeze.executionPolicy.allowsHeadless || freeze.executionPolicy.allowsAutomaticObsidianLaunch || freeze.executionPolicy.allowsWsl) {
+              throw new Error("Native acceptance must remain interactive, prestarted, and native.");
+            }
+            const include = freeze.operatingSystems.flatMap(os =>
+              freeze.obsidianVersions.flatMap(obsidian =>
+                freeze.nodeVersions.map(node => ({
+                  cellId: `${os.id}--obsidian-${obsidian.id}-${obsidian.version}--node-${node.major}`,
+                  osRef: os.id,
+                  platform: os.platform,
+                  osVersion: os.version,
+                  architecture: os.architecture,
+                  obsidianId: obsidian.id,
+                  obsidianVersion: obsidian.version,
+                  node: node.version,
+                  nodeMajor: String(node.major),
+                  profile: node.nativeProfile,
+                  runner: [...os.nativeRunnerLabels, obsidian.runnerLabel],
+                  vaultSecret: os.vaultSecret
+                }))
+              )
+            );
+            if (include.length !== freeze.expectedCells.native) throw new Error(`Expected ${freeze.expectedCells.native} native cells, received ${include.length}.`);
+            if (new Set(include.map(cell => cell.cellId)).size !== include.length) throw new Error("Native acceptance cell IDs must be unique.");
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include })}\nexpected_cells=${include.length}\n`);
+          '
+
+  live-acceptance:
+    name: Native (${{ matrix.osRef }}, Obsidian ${{ matrix.obsidianVersion }}, Node ${{ matrix.node }})
+    needs: prepare-native-matrix
+    environment: cli-native-acceptance
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare-native-matrix.outputs.matrix) }}
+    env:
+      OPERON_CLI_ACCEPTANCE_VAULT: ${{ secrets[matrix.vaultSecret] }}
+      OPERON_ACCEPTANCE_ALLOW_APP_LAUNCH: "0"
+      OPERON_ACCEPTANCE_HEADLESS: "0"
+      OPERON_ACCEPTANCE_REQUIRE_INTERACTIVE_DESKTOP: "1"
+      OPERON_ACCEPTANCE_REQUIRE_PRESTARTED_OBSIDIAN: "1"
+    steps:
+      - name: Validate the immutable source commit before checkout
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: node -e "if (!/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT)) throw new Error('source_commit must be an exact lowercase 40-character commit.');"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact source binding
+        env:
+          EXPECTED_SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: node -e "const {execFileSync}=require('node:child_process'); const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(); if (head !== process.env.EXPECTED_SOURCE_COMMIT || head !== process.env.GITHUB_SHA) throw new Error('Checked-out source does not match the requested commit.');"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Pin acceptance npm
+        run: npm install --global npm@11.12.1
+      - name: Verify acceptance toolchain
+        run: node -e "if (process.version !== 'v${{ matrix.node }}') throw new Error('Unexpected frozen Node version.');"
+      - run: npm --version
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: operon-cli-native-candidate
+          path: candidate
+          run-id: ${{ inputs.candidate_run_id }}
+          github-token: ${{ github.token }}
+      - id: candidate
+        name: Resolve the single candidate tarball
+        run: node -e "const fs=require('node:fs'); const path=require('node:path'); const files=fs.readdirSync('candidate').filter(name=>name.endsWith('.tgz')); if(files.length!==1) throw new Error('Candidate artifact must contain exactly one tarball.'); fs.appendFileSync(process.env.GITHUB_OUTPUT,'tarball='+path.resolve('candidate',files[0])+'\n');"
+      - name: Verify candidate provenance and source binding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify "${{ steps.candidate.outputs.tarball }}" --repo "${{ github.repository }}" --signer-workflow "${{ github.repository }}/.github/workflows/cli-native-candidate.yml" --source-digest "${{ inputs.source_commit }}"
+      - name: Verify candidate evidence provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify candidate/candidate-evidence.json --repo "${{ github.repository }}" --signer-workflow "${{ github.repository }}/.github/workflows/cli-native-candidate.yml" --source-digest "${{ inputs.source_commit }}"
+      - name: Verify candidate contents
+        run: node --input-type=module -e "import {loadCandidateBindingV1} from './scripts/agent-runtime/cli/native-acceptance-lib.mjs'; const {evidence}=await loadCandidateBindingV1('candidate'); if (evidence.kind !== 'operon-cli-native-candidate') throw new Error('Optional native certification requires an unpublished native candidate.'); if (evidence.source.commit !== '${{ inputs.source_commit }}') throw new Error('Native candidate source commit mismatch.');"
+      - name: Verify an interactive, prestarted native acceptance vault is configured
+        run: node -e "for (const key of ['OPERON_CLI_ACCEPTANCE_VAULT','OPERON_ACCEPTANCE_MUTATION_HOOK','OPERON_ACCEPTANCE_NATIVE_PROOF_HOOK']) if (!process.env[key]) throw new Error(key+' must be configured on the native runner; this workflow does not launch Obsidian or synthesize native proof.');"
+      - name: Create evidence directory
+        run: node -e "require('node:fs').mkdirSync('acceptance',{recursive:true});"
+      - name: Run full digest-bound native acceptance
+        if: matrix.profile == 'full'
+        run: node scripts/agent-runtime/cli/run-candidate-live-acceptance.mjs --tarball "${{ steps.candidate.outputs.tarball }}" --vault "${{ env.OPERON_CLI_ACCEPTANCE_VAULT }}" --output "acceptance/native-acceptance-${{ matrix.cellId }}.json" --candidate-evidence candidate/candidate-evidence.json --public-plugin-root candidate/operon-plugin-native-candidate --profile "${{ matrix.profile }}" --cell-id "${{ matrix.cellId }}" --expected-obsidian-version "${{ matrix.obsidianVersion }}" --expected-os-ref "${{ matrix.osRef }}"
+      - name: Run digest-bound compatibility smoke
+        if: matrix.profile == 'smoke'
+        run: node scripts/agent-runtime/cli/run-candidate-live-acceptance.mjs --tarball "${{ steps.candidate.outputs.tarball }}" --vault "${{ env.OPERON_CLI_ACCEPTANCE_VAULT }}" --output "acceptance/native-acceptance-${{ matrix.cellId }}.json" --candidate-evidence candidate/candidate-evidence.json --public-plugin-root candidate/operon-plugin-native-candidate --profile "${{ matrix.profile }}" --cell-id "${{ matrix.cellId }}" --expected-obsidian-version "${{ matrix.obsidianVersion }}" --expected-os-ref "${{ matrix.osRef }}"
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: acceptance/native-acceptance-${{ matrix.cellId }}.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operon-cli-native-${{ matrix.cellId }}
+          path: acceptance/native-acceptance-${{ matrix.cellId }}.json
+          if-no-files-found: error
+
+  aggregate-native-acceptance:
+    name: Verify and aggregate all native evidence
+    needs:
+      - prepare-native-matrix
+      - live-acceptance
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: operon-cli-native-*
+          path: acceptance/cells
+          merge-multiple: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: operon-cli-native-candidate
+          path: candidate
+          run-id: ${{ inputs.candidate_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify the complete matrix and write aggregate evidence
+        env:
+          EXPECTED_SOURCE_COMMIT: ${{ inputs.source_commit }}
+          EXPECTED_CELL_COUNT: ${{ needs.prepare-native-matrix.outputs.expected_cells }}
+        run: node scripts/agent-runtime/cli/aggregate-native-acceptance.mjs candidate contracts/agent-runtime/native-acceptance-matrix-v1.json acceptance/cells acceptance/cells/native-acceptance-index.json
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: acceptance/cells/native-acceptance-index.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operon-cli-native-acceptance-matrix
+          path: acceptance/cells
+          if-no-files-found: error

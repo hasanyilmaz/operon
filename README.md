@@ -529,9 +529,25 @@ The **Time Session History** panel gathers tracked sessions into one review surf
 
 Time tracking turns effort into task history instead of leaving it as a separate timer log.
 
+## CLI, Agent Runtime, and Developer API
+
+Operon also provides public desktop integration surfaces for terminal workflows, scripts, agents, and other Obsidian plugins. Tasks remain Markdown in the vault; the Runtime adds versioned reads and applies changes through sealed plans with receipts and same-plan recovery.
+
+`operon-cli` is the public gateway for terminal use and external processes:
+
+```bash
+npm install --global operon-cli
+operon setup
+operon doctor --live
+```
+
+Scripts and agents can use typed requests or persistent JSONL sessions. Another enabled plugin in the same Obsidian Desktop process can use the capability-gated, type-only Developer API. These integration surfaces require Obsidian Desktop and a live Operon Runtime; they do not make the main Operon plugin desktop-only.
+
+Start with the [Agent Runtime overview](https://operon.cc/docs/docs-118-operon-agent-runtime-overview/), [CLI installation guide](https://operon.cc/docs/docs-119-install-and-verify-operon-cli/), [Developer API overview](https://operon.cc/docs/docs-129-in-process-developer-api-overview/), or [JSONL session guide](https://operon.cc/docs/docs-133-jsonl-sessions-for-scripts-and-agents/).
+
 ## Documentation
 
-Operon ships with a full documentation set: **117 guides** covering every surface, from the first task to recurrence rules, field pickers, mobile behavior, and migration paths. Read it wherever it suits you:
+Operon ships with a full documentation set: **133 guides** covering every surface, from the first task to recurrence rules, field pickers, mobile behavior, agent workflows, and integration paths. Read it wherever it suits you:
 
 - **On the web**: the same set is browsable at [operon.cc/docs](https://operon.cc/docs/).
 - **Inside your vault**: Operon can download the docs as normal Markdown files into a folder you choose (default `Operon/Docs`), so they work with Obsidian search, links, and graph view, stay useful to an AI assistant reading your vault, and can refresh themselves after plugin updates.

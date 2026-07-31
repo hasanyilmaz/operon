@@ -29,6 +29,23 @@ export interface AggregateTaskMutation {
 	after: IndexedTask | null;
 }
 
+export interface CreationAggregateProjectionTask {
+	operonId: string;
+	checkbox: IndexedTask['checkbox'];
+	fieldValues: Readonly<Record<string, string>>;
+	filePath: string;
+	format: 'inline' | 'yaml';
+	lineNumber?: number;
+}
+
+export interface CreationAggregateProjectionPatch {
+	operonId: string;
+	filePath: string;
+	format: 'inline' | 'yaml';
+	lineNumber?: number;
+	fieldValues: Record<string, string>;
+}
+
 interface PendingAggregateParentWrite {
 	operonId: string;
 	payload: Record<string, string>;
@@ -61,6 +78,11 @@ interface AggregateSubtreeContribution {
 	summary: AggregateSummary;
 	subtreeDuration: number;
 	subtreeEstimate: number;
+}
+
+interface AggregateProjectionGraph {
+	tasks: ReadonlyMap<string, IndexedTask>;
+	children: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 class AggregateHierarchyFallbackError extends Error {}
@@ -129,6 +151,81 @@ export class AggregateCoordinator {
 		});
 	}
 
+	/**
+	 * Pure graph-create companion to refreshAfterTaskMutations. It projects the
+	 * post-create hierarchy without writing or mutating the live index, so a
+	 * cross-source transaction can seal ancestor aggregate bytes before its
+	 * first source write.
+	 */
+	planCreationAggregatePatches(
+		createdTasks: readonly CreationAggregateProjectionTask[],
+		modifiedTimestamp: string,
+		additionalAffectedOperonIds: readonly string[] = [],
+	): CreationAggregateProjectionPatch[] {
+		const tasks = new Map(this.indexer.getAllTasks().map(task => [task.operonId, task]));
+		for (const task of createdTasks) {
+			tasks.set(task.operonId, {
+				operonId: task.operonId,
+				checkbox: task.checkbox,
+				fieldValues: { ...task.fieldValues },
+				primary: {
+					filePath: task.filePath,
+					format: task.format,
+					...(task.lineNumber === undefined ? {} : { lineNumber: task.lineNumber }),
+				},
+				datetimeModified: task.fieldValues['datetimeModified'] ?? modifiedTimestamp,
+			} as IndexedTask);
+		}
+		const children = new Map<string, Set<string>>();
+		for (const task of tasks.values()) {
+			const parentId = (task.fieldValues['parentTask'] ?? '').trim();
+			if (!parentId) continue;
+			const childIds = children.get(parentId) ?? new Set<string>();
+			childIds.add(task.operonId);
+			children.set(parentId, childIds);
+		}
+		const affected = new Set<string>();
+		for (const rootOperonId of [
+			...createdTasks.map(task => task.operonId),
+			...additionalAffectedOperonIds,
+		]) {
+			let currentId = rootOperonId;
+			const visited = new Set<string>();
+			while (currentId && !visited.has(currentId) && visited.size < MAX_BOTTOM_UP_AGGREGATE_DEPTH) {
+				visited.add(currentId);
+				affected.add(currentId);
+				currentId = (tasks.get(currentId)?.fieldValues['parentTask'] ?? '').trim();
+			}
+		}
+		const cache = new Map<string, AggregateSubtreeContribution>();
+		const projection = { tasks, children };
+		const createdIds = new Set(createdTasks.map(task => task.operonId));
+		const patches: CreationAggregateProjectionPatch[] = [];
+		for (const operonId of affected) {
+			const task = tasks.get(operonId);
+			if (!task) continue;
+			const { payload } = this.buildAggregatePayloadFromSummary(
+				task,
+				'full',
+				this.calculateAggregateSummaryBottomUp(task, cache, projection),
+			);
+			if (!createdIds.has(operonId) || Object.keys(payload).length > 0) {
+				payload['datetimeModified'] = modifiedTimestamp;
+			}
+			if (Object.keys(payload).length === 0) continue;
+			patches.push({
+				operonId,
+				filePath: task.primary.filePath,
+				format: task.primary.format,
+				...(task.primary.lineNumber === undefined
+					? {}
+					: { lineNumber: task.primary.lineNumber }),
+				fieldValues: payload,
+			});
+		}
+		return patches;
+	}
+
 	planSameFileStatusCycleAggregate(
 		childTask: IndexedTask,
 		childPayload: Record<string, string>,
@@ -192,6 +289,46 @@ export class AggregateCoordinator {
 			this.collectTaskAndAncestors(this.indexer.getTask(operonId) ?? null, affectedIds);
 		}
 		return await this.refreshAffectedParents(affectedIds);
+	}
+
+	/**
+	 * Recomputes only the exact sealed task IDs supplied by an external
+	 * coordinator. Unlike refreshAfterTaskIds(), this does not expand the set
+	 * to additional ancestors; callers can therefore preserve their own
+	 * descendant-first resource-group ordering.
+	 */
+	async refreshExactTaskIds(
+		operonIds: Iterable<string>,
+		options: AggregateRefreshOptions = {},
+	): Promise<AggregateRefreshResult> {
+		const exactIds = new Set(operonIds);
+		return await this.refreshAffectedParents(exactIds, 'full', {
+			...options,
+			forceDatetimeModifiedIds: new Set(exactIds),
+		});
+	}
+
+	/**
+	 * Independently recomputes the canonical Runtime-owned aggregate payload
+	 * for exact task IDs. A task is returned only when its indexed aggregate
+	 * fields already match the current hierarchy and no corrective write would
+	 * be produced.
+	 */
+	verifyExactTaskAggregateState(operonIds: Iterable<string>): Set<string> {
+		const verified = new Set<string>();
+		const cache = new Map<string, AggregateSubtreeContribution>();
+		for (const operonId of operonIds) {
+			const task = this.indexer.getTask(operonId);
+			if (!task) continue;
+			try {
+				const summary = this.calculateAggregateSummaryBottomUp(task, cache);
+				const { payload } = this.buildAggregatePayloadFromSummary(task, 'full', summary);
+				if (Object.keys(payload).length === 0) verified.add(operonId);
+			} catch {
+				// Incoherent hierarchy state fails closed during mutation postflight.
+			}
+		}
+		return verified;
 	}
 
 	async refreshDurationAfterTaskIds(
@@ -537,9 +674,15 @@ export class AggregateCoordinator {
 	private calculateAggregateSummaryBottomUp(
 		parentTask: IndexedTask,
 		cache: Map<string, AggregateSubtreeContribution>,
+		projection?: AggregateProjectionGraph,
 	): AggregateSummary {
 		try {
-			return this.calculateAggregateSubtreeContribution(parentTask, cache, new Set<string>()).summary;
+			return this.calculateAggregateSubtreeContribution(
+				parentTask,
+				cache,
+				new Set<string>(),
+				projection,
+			).summary;
 		} catch (error) {
 			if (error instanceof AggregateHierarchyFallbackError) {
 				// Malformed cycles and dangling hierarchy edges are not part of the
@@ -556,6 +699,7 @@ export class AggregateCoordinator {
 		task: IndexedTask,
 		cache: Map<string, AggregateSubtreeContribution>,
 		visiting: Set<string>,
+		projection?: AggregateProjectionGraph,
 	): AggregateSubtreeContribution {
 		const cached = cache.get(task.operonId);
 		if (cached) return cached;
@@ -565,7 +709,9 @@ export class AggregateCoordinator {
 
 		visiting.add(task.operonId);
 		try {
-			const childIds = this.indexer.secondary.getChildIds(task.operonId);
+			const childIds = projection
+				? projection.children.get(task.operonId) ?? new Set<string>()
+				: this.indexer.secondary.getChildIds(task.operonId);
 			const hasChildren = childIds.size > 0;
 			let directSubtaskCount = 0;
 			let directDoneSubtaskCount = 0;
@@ -578,7 +724,7 @@ export class AggregateCoordinator {
 			let subtreeEstimate = parseInt(task.fieldValues['estimate'] ?? '0', 10) || 0;
 
 			for (const childId of childIds) {
-				const child = this.indexer.getTask(childId);
+				const child = projection?.tasks.get(childId) ?? this.indexer.getTask(childId);
 				if (!child) throw new AggregateHierarchyFallbackError();
 
 				directSubtaskCount++;
@@ -588,7 +734,12 @@ export class AggregateCoordinator {
 					directOpenSubtaskCount++;
 				}
 
-				const childContribution = this.calculateAggregateSubtreeContribution(child, cache, visiting);
+				const childContribution = this.calculateAggregateSubtreeContribution(
+					child,
+					cache,
+					visiting,
+					projection,
+				);
 				totalDescendants += 1 + childContribution.summary.totalDescendants;
 				finishedDescendants += childContribution.summary.finishedDescendants;
 				cancelledDescendants += childContribution.summary.cancelledDescendants;

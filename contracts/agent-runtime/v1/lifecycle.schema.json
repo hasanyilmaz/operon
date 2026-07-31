@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:lifecycle.schema.json",
+  "title": "Operon Agent Runtime V1 Lifecycle Health",
+  "$defs": {
+    "runtimeLifecyclePhase": {
+      "type": "string",
+      "enum": ["booting", "cache-ready", "settling", "ready", "unloading"]
+    },
+    "v8PersistencePhase": {
+      "type": "string",
+      "enum": ["idle", "sync-settling", "rebasing", "recovery-required"]
+    },
+    "runtimeAdmission": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["reads", "writes"],
+      "properties": {
+        "reads": { "type": "boolean" },
+        "writes": { "type": "boolean" }
+      }
+    },
+    "runtimeHealth": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "apiVersion",
+        "contractVersion",
+        "ok",
+        "lifecyclePhase",
+        "v8PersistencePhase",
+        "compatibility",
+        "capabilities",
+        "freshness",
+        "admission",
+        "warnings"
+      ],
+      "properties": {
+        "apiVersion": { "const": 1 },
+        "contractVersion": { "const": 1 },
+        "ok": { "type": "boolean" },
+        "lifecyclePhase": { "$ref": "#/$defs/runtimeLifecyclePhase" },
+        "v8PersistencePhase": { "$ref": "#/$defs/v8PersistencePhase" },
+        "compatibility": {
+          "$ref": "urn:operon:schema:runtime:v1:compatibility.schema.json#/$defs/advertisement"
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 512,
+          "x-operon-uniqueBy": "id",
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityAdvertisement"
+          }
+        },
+        "freshness": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness"
+        },
+        "contextRevision": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision"
+        },
+        "admission": { "$ref": "#/$defs/runtimeAdmission" },
+        "retryAfterMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+          }
+        },
+        "error": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": { "ok": { "const": true } },
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "ok": { "const": false } },
+          "required": ["error"]
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": { "lifecyclePhase": { "const": "ready" } },
+            "required": ["lifecyclePhase"]
+          },
+          "then": {
+            "properties": {
+              "admission": {
+                "properties": {
+                  "reads": { "const": true },
+                  "writes": { "const": true }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "admission": {
+                "properties": {
+                  "writes": { "const": false }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "lifecyclePhase": {
+                "enum": ["ready", "unloading"]
+              }
+            },
+            "required": ["lifecyclePhase"]
+          },
+          "then": {
+            "not": {
+              "required": ["retryAfterMs"]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ok": { "const": false },
+              "error": {
+                "properties": {
+                  "retryable": { "const": false }
+                },
+                "required": ["retryable"]
+              }
+            },
+            "required": ["ok", "error"]
+          },
+          "then": {
+            "not": {
+              "required": ["retryAfterMs"]
+            }
+          }
+        }
+      ]
+    },
+    "capabilityAdvertisements": {
+      "type": "array",
+      "maxItems": 512,
+      "x-operon-uniqueBy": "id",
+      "items": {
+        "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityAdvertisement"
+      }
+    },
+    "runtimeDiagnostics": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "contractVersion",
+        "kind",
+        "health",
+        "capabilities",
+        "warnings"
+      ],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "kind": { "const": "runtime-diagnostics" },
+        "health": { "$ref": "#/$defs/runtimeHealth" },
+        "capabilities": { "$ref": "#/$defs/capabilityAdvertisements" },
+        "catalog": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "catalogRevision",
+            "settingsFingerprint",
+            "fieldCount",
+            "pipelineCount",
+            "priorityCount"
+          ],
+          "properties": {
+            "catalogRevision": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "settingsFingerprint": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "fieldCount": { "type": "integer", "minimum": 0 },
+            "pipelineCount": { "type": "integer", "minimum": 0 },
+            "priorityCount": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "transport": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "channel": { "const": "native-cli" },
+            "available": { "type": "boolean" },
+            "endpointKind": {
+              "type": "string",
+              "enum": ["unix-domain-socket", "windows-named-pipe"]
+            },
+            "securityBackend": {
+              "type": "string",
+              "enum": ["posix-mode", "windows-dacl"]
+            },
+            "persistentTransportAvailable": { "type": "boolean" },
+            "failureReason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+          }
+        }
+      }
+    }
+  }
+}

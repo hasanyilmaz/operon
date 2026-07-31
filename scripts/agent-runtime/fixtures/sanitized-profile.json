@@ -1,0 +1,102 @@
+{
+  "fixtureSchemaVersion": 1,
+  "generatedAt": "2026-01-15T10:20:30",
+  "settingsVersion": 111,
+  "defaultPipelineName": "Work",
+  "defaultStatus": "Work.Inbox",
+  "defaultPriority": "P2",
+  "fileTasksFolder": "Tasks",
+  "inlineDefaultTarget": {
+    "mode": "daily",
+    "folder": "Daily",
+    "format": "YYYY-MM-DD"
+  },
+  "pipelines": [
+    {
+      "id": "pipeline-work",
+      "name": "Work",
+      "description": "General synthetic work used only by portable tests.",
+      "statuses": [
+        {
+          "id": "status-inbox",
+          "label": "Inbox",
+          "description": "Captured but not scheduled.",
+          "scheduled": false,
+          "tracking": false,
+          "finished": false,
+          "cancelled": false
+        },
+        {
+          "id": "status-active",
+          "label": "Active",
+          "description": "Work is currently active.",
+          "scheduled": false,
+          "tracking": true,
+          "finished": false,
+          "cancelled": false
+        },
+        {
+          "id": "status-done",
+          "label": "Done",
+          "description": "Work finished successfully.",
+          "scheduled": false,
+          "tracking": false,
+          "finished": true,
+          "cancelled": false
+        }
+      ]
+    }
+  ],
+  "priorities": [
+    {
+      "id": "priority-p1",
+      "name": "P1",
+      "description": "Urgent synthetic priority."
+    },
+    {
+      "id": "priority-p2",
+      "name": "P2",
+      "description": "Normal synthetic priority."
+    }
+  ],
+  "yamlKeys": {
+    "operonId": "Operon ID",
+    "status": "Status",
+    "priority": "Priority",
+    "reminderDatetimes": "Reminder Datetimes",
+    "reminderRules": "Reminder Rules",
+    "taskIcon": "Task Icon",
+    "taskColor": "Task Color",
+    "note": "Note",
+    "links": "Links",
+    "datetimeCreated": "Created",
+    "datetimeModified": "Updated",
+    "fixtureTopic": "Fixture Topic"
+  },
+  "keyMappings": [
+    {
+      "canonicalKey": "fixtureTopic",
+      "visiblePropertyName": "Fixture Topic",
+      "type": "text",
+      "description": "Portable custom field used only by Phase 1 fixtures.",
+      "isSystem": false,
+      "isInternal": false,
+      "customOrder": 0
+    }
+  ],
+  "templates": [
+    {
+      "id": "fixture-template",
+      "name": "Fixture task",
+      "path": "Templates/Fixture Task.md"
+    }
+  ],
+  "taskVisualPresets": [
+    {
+      "id": "fixture-visual",
+      "name": "Fixture",
+      "icon": "circle-check",
+      "color": "336699"
+    }
+  ]
+}

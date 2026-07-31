@@ -2,13 +2,13 @@ import type { KanbanManualOrderBoard } from './kanban-order-store';
 import type { CalendarPresetStoreSettings } from './calendar-preset-store';
 import type { ContextualMenuStoreSettings } from './contextual-menu-store';
 import type { KanbanPresetStoreSettings } from './kanban-preset-store';
-import type { TablePreset, TablePresetPackageSettings, TablePresetStoreSettings } from '../types/table';
+import type { TablePresetPackageSettings, TablePresetProjectionSettings } from '../types/table';
 import type { PipelineStoreSettings } from './pipeline-store';
 import type { PriorityStoreSettings } from './priority-store';
 import type { TaskAutomationPolicyStoreSettings } from './task-automation-policy-store';
 import type { TaskCreationProfileStoreSettings } from './task-creation-profile-store';
 import type { TaskUiPreferenceStoreSettings } from './task-ui-preference-store';
-import { buildTablePresetPackageManifest } from './table-preset-store';
+import { buildTablePresetPackageManifest } from './table-preset-manifest';
 import {
 	type ExternalCalendarSource,
 	type FilterSet,
@@ -20,12 +20,20 @@ import {
 } from '../types/settings';
 import { CANONICAL_KEYS } from '../types/keys';
 import type { PresetFavorites } from '../core/preset-favorites';
+import {
+	createEmptyDeveloperApiGrantPackage,
+	normalizeDeveloperApiGrantPackage,
+	type DeveloperApiGrantPackageV1,
+} from '../agent-runtime/developer-api/grants';
 
 export const OPERON_DATA_PACKAGE_SCHEMA_VERSION = 2;
-export const OPERON_PINNED_TASKS_PACKAGE_VERSION = 1;
+export const OPERON_PINNED_TASKS_PACKAGE_VERSION = 2;
 export const OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION = 1;
 export const OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
-const RETIRED_DATA_PACKAGE_SETTINGS_KEYS = ['calendarSidebarTaskPoolFollowPresetFilter'] as const;
+const RETIRED_DATA_PACKAGE_SETTINGS_KEYS = [
+	'calendarSidebarTaskPoolFollowPresetFilter',
+	'mobileNotificationsSnapshotEnabled',
+] as const;
 const CANONICAL_KEY_ORDER = new Map(CANONICAL_KEYS.map((key, index) => [key.name, index]));
 const LOWERCASE_UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
@@ -46,12 +54,11 @@ export type OperonDataPackageOwnedSettingsKey =
 	| 'keyMappings'
 	| 'filterSets'
 	| 'externalCalendars'
-	| 'mobileNotificationsSnapshotEnabled'
 	| keyof PipelineStoreSettings
 	| keyof PriorityStoreSettings
 	| keyof CalendarPresetStoreSettings
 	| keyof KanbanPresetStoreSettings
-	| keyof TablePresetStoreSettings
+	| keyof TablePresetProjectionSettings
 	| keyof ContextualMenuStoreSettings
 	| keyof TaskUiPreferenceStoreSettings
 	| keyof TaskCreationProfileStoreSettings
@@ -63,7 +70,6 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'keyMappings',
 	'filterSets',
 	'externalCalendars',
-	'mobileNotificationsSnapshotEnabled',
 	'pipelines',
 	'defaultPipelineName',
 	'priorities',
@@ -75,8 +81,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tablePresets',
 	'tablePresetOrderIds',
 	'tablePresetFileBindings',
-	'tablePresetFileMigrationVersion',
-	'tablePresetFileMigrationFinalizedVersion',
+	'tablePresetFileInitialized',
 	'tableDefaultPresetId',
 	'tableEmbedVisibleRows',
 	'tableShowLineNumbers',
@@ -244,7 +249,6 @@ export interface OperonMobileNotificationsIntegrationV1 {
 
 export interface OperonMobileNotificationsIntegrationAdoption {
 	vaultId?: string | null;
-	lastGeneratedAtEpochMs?: number | null;
 }
 
 export interface OperonPinnedTaskPackageEntry {
@@ -252,9 +256,15 @@ export interface OperonPinnedTaskPackageEntry {
 	updatedAt: string;
 }
 
+export interface OperonPinnedTaskManualOrder {
+	operonIds: string[];
+	updatedAt: string;
+}
+
 export interface OperonPinnedTasksPackageV1 {
 	version: number;
 	itemsById: Record<string, OperonPinnedTaskPackageEntry>;
+	manualOrder?: OperonPinnedTaskManualOrder;
 }
 
 export interface OperonTaxonomyPackageV1 {
@@ -286,6 +296,7 @@ export interface OperonAutomationPackageV1 {
 export interface OperonIntegrationsPackageV1 {
 	externalCalendarSources: OperonExternalCalendarSourcesPackageV1;
 	mobileNotifications: OperonMobileNotificationsIntegrationV1;
+	developerApi: DeveloperApiGrantPackageV1;
 }
 
 export interface OperonStatePackageV1 {
@@ -307,6 +318,7 @@ export interface BuildOperonDataPackageOptions {
 	filterSets?: FilterSet[];
 	kanbanOrderBoards?: Record<string, KanbanManualOrderBoard>;
 	pinnedTasks?: OperonPinnedTasksPackageV1;
+	developerApiGrants?: DeveloperApiGrantPackageV1;
 }
 
 export function composeOperonSettingsFromDataPackage(
@@ -324,16 +336,8 @@ export function composeOperonSettingsFromDataPackage(
 		.filter((filterSet): filterSet is FilterSet => !!filterSet);
 	const tablePresetPackage = dataPackage.views.tablePresets;
 	const hasFileBackedTablePresetAuthority = readArray(tablePresetPackage?.fileBindings, []).length > 0
-		|| readNumber(tablePresetPackage?.fileMigrationVersion, 0) >= 1;
-	const tablePresets = readArray<TablePreset>(
-		tablePresetPackage?.tablePresets,
-		hasFileBackedTablePresetAuthority
-			? []
-			: readArray(packageSettings.tablePresets, defaults.tablePresets),
-	);
-	const legacyTablePresetOrderIds = dataPackage.views.tablePresets?.tablePresets
-		? tablePresets.map(preset => preset.id)
-		: readArray(packageSettings.tablePresetOrderIds, defaults.tablePresetOrderIds);
+		|| readNumber(tablePresetPackage?.version, 0) >= 3
+		|| tablePresetPackage?.initialized === true;
 	return migrateSettings({
 		...defaults,
 		...packageSettings,
@@ -353,42 +357,37 @@ export function composeOperonSettingsFromDataPackage(
 			dataPackage.views.kanbanPresets.kanbanDefaultPresetId,
 			defaults.kanbanDefaultPresetId,
 		),
-		tablePresets,
+		tablePresets: [],
 		tablePresetOrderIds: readArray(
 			dataPackage.views.tablePresets?.presetIds,
-			legacyTablePresetOrderIds,
+			[],
 		),
 		tablePresetFileBindings: readArray(
 			dataPackage.views.tablePresets?.fileBindings,
 			defaults.tablePresetFileBindings,
 		),
-		tablePresetFileMigrationVersion: readNumber(
-			dataPackage.views.tablePresets?.fileMigrationVersion,
-			defaults.tablePresetFileMigrationVersion,
-		),
-		tablePresetFileMigrationFinalizedVersion: readNumber(
-			dataPackage.views.tablePresets?.fileMigrationFinalizedVersion,
-			defaults.tablePresetFileMigrationFinalizedVersion,
-		),
+		tablePresetFileInitialized: typeof tablePresetPackage?.initialized === 'boolean'
+			? tablePresetPackage.initialized
+			: hasFileBackedTablePresetAuthority,
 		tableDefaultPresetId: readNullableString(
 			dataPackage.views.tablePresets?.tableDefaultPresetId,
-			readNullableString(packageSettings.tableDefaultPresetId, defaults.tableDefaultPresetId),
+			defaults.tableDefaultPresetId,
 		),
 		tableEmbedVisibleRows: readNumber(
 			dataPackage.views.tablePresets?.tableEmbedVisibleRows,
-			readNumber(packageSettings.tableEmbedVisibleRows, defaults.tableEmbedVisibleRows),
+			defaults.tableEmbedVisibleRows,
 		),
 		tableShowLineNumbers: readBoolean(
 			dataPackage.views.tablePresets?.tableShowLineNumbers,
-			readBoolean(packageSettings.tableShowLineNumbers, defaults.tableShowLineNumbers),
+			defaults.tableShowLineNumbers,
 		),
 		tableShowTaskIcon: readBoolean(
 			dataPackage.views.tablePresets?.tableShowTaskIcon,
-			readBoolean(packageSettings.tableShowTaskIcon, defaults.tableShowTaskIcon),
+			defaults.tableShowTaskIcon,
 		),
 		tableShowTaskTypeIcon: readBoolean(
 			dataPackage.views.tablePresets?.tableShowTaskTypeIcon,
-			readBoolean(packageSettings.tableShowTaskTypeIcon, defaults.tableShowTaskTypeIcon),
+			defaults.tableShowTaskTypeIcon,
 		),
 		contextualMenuActionAllowlist: readArray(
 			dataPackage.ui.contextualMenu.contextualMenuActionAllowlist,
@@ -425,8 +424,16 @@ export function composeOperonSettingsFromDataPackage(
 			: undefined,
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.automation.taskAutomationPolicy),
 		externalCalendars: readArray(dataPackage.integrations.externalCalendarSources.sources, defaults.externalCalendars),
-		mobileNotificationsSnapshotEnabled: dataPackage.integrations.mobileNotifications.snapshotEnabled,
 	});
+}
+
+export function isUnsupportedTablePresetPackage(dataPackage: Partial<OperonDataPackageV1>): boolean {
+	const tablePackage = dataPackage.views?.tablePresets;
+	const version = readNumber(tablePackage?.version, 0);
+	if (version === 3) return false;
+	if (version > 3) return true;
+	if (readArray(tablePackage?.fileBindings, []).length > 0) return false;
+	return true;
 }
 
 export function buildOperonDataPackageFromSettings(
@@ -589,11 +596,14 @@ export function buildOperonDataPackageFromSettings(
 			},
 			mobileNotifications: {
 				version: OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION,
-				snapshotEnabled: normalized.mobileNotificationsSnapshotEnabled,
+				snapshotEnabled: true,
 				cancelPending: false,
 				vaultId: null,
 				lastGeneratedAtEpochMs: null,
 			},
+			developerApi: normalizeDeveloperApiGrantPackage(
+				options.developerApiGrants ?? createEmptyDeveloperApiGrantPackage(),
+			),
 		},
 		state: {
 			pinnedTasks: normalizePinnedTasksPackage(options.pinnedTasks),
@@ -616,7 +626,7 @@ export function mergeOperonDataPackage(
 		views: cloneExistingDomain(existing?.views, fallback.views, isViewsDomain),
 		ui,
 		automation: cloneExistingDomain(existing?.automation, fallback.automation, isAutomationDomain),
-		integrations: mergeIntegrationsPackage(existing?.integrations, fallback.integrations, existing?.settings),
+		integrations: mergeIntegrationsPackage(existing?.integrations, fallback.integrations),
 		state: buildStatePackage(existing?.state, fallback.state),
 	};
 }
@@ -670,9 +680,11 @@ export function normalizePinnedTasksPackage(value: unknown): OperonPinnedTasksPa
 			updatedAt: typeof rawEntry.updatedAt === 'string' ? rawEntry.updatedAt : '',
 		};
 	}
+	const manualOrder = normalizePinnedTaskManualOrder(value.manualOrder);
 	return {
 		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
 		itemsById: sortPinnedTaskEntries(itemsById),
+		...(manualOrder ? { manualOrder } : {}),
 	};
 }
 
@@ -689,9 +701,14 @@ export function mergePinnedTasksPackages(
 		const fallbackEntry = itemsById[operonId];
 		itemsById[operonId] = pickNewerPinnedTaskEntry(primaryEntry, fallbackEntry);
 	}
+	const manualOrder = pickNewerPinnedTaskManualOrder(
+		primaryPackage.manualOrder,
+		fallbackPackage.manualOrder,
+	);
 	return {
 		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
 		itemsById: sortPinnedTaskEntries(itemsById),
+		...(manualOrder ? { manualOrder } : {}),
 	};
 }
 
@@ -713,6 +730,54 @@ export function prunePinnedTaskTombstones(
 	return {
 		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
 		itemsById: sortPinnedTaskEntries(itemsById),
+		...(data.manualOrder ? { manualOrder: clonePinnedTaskManualOrder(data.manualOrder) } : {}),
+	};
+}
+
+function normalizePinnedTaskManualOrder(value: unknown): OperonPinnedTaskManualOrder | undefined {
+	if (!isRecord(value) || !Array.isArray(value.operonIds)) return undefined;
+	if (typeof value.updatedAt !== 'string' || !Number.isFinite(Date.parse(value.updatedAt))) return undefined;
+	const seen = new Set<string>();
+	const operonIds: string[] = [];
+	for (const rawId of value.operonIds) {
+		if (typeof rawId !== 'string') continue;
+		const operonId = rawId.trim();
+		if (!operonId || seen.has(operonId)) continue;
+		seen.add(operonId);
+		operonIds.push(operonId);
+	}
+	return {
+		operonIds,
+		updatedAt: value.updatedAt,
+	};
+}
+
+function pickNewerPinnedTaskManualOrder(
+	primary: OperonPinnedTaskManualOrder | undefined,
+	fallback: OperonPinnedTaskManualOrder | undefined,
+): OperonPinnedTaskManualOrder | undefined {
+	if (!primary) return fallback ? clonePinnedTaskManualOrder(fallback) : undefined;
+	if (!fallback) return clonePinnedTaskManualOrder(primary);
+	const primaryMs = parsePinnedTaskTimestamp(primary.updatedAt);
+	const fallbackMs = parsePinnedTaskTimestamp(fallback.updatedAt);
+	if (primaryMs > fallbackMs) return clonePinnedTaskManualOrder(primary);
+	if (fallbackMs > primaryMs) return clonePinnedTaskManualOrder(fallback);
+
+	// Equal timestamps must converge independently of merge direction. The
+	// canonical sequence signature provides a deterministic final tie-break.
+	const primarySignature = JSON.stringify(primary.operonIds);
+	const fallbackSignature = JSON.stringify(fallback.operonIds);
+	return clonePinnedTaskManualOrder(
+		primarySignature >= fallbackSignature ? primary : fallback,
+	);
+}
+
+function clonePinnedTaskManualOrder(
+	manualOrder: OperonPinnedTaskManualOrder,
+): OperonPinnedTaskManualOrder {
+	return {
+		operonIds: [...manualOrder.operonIds],
+		updatedAt: manualOrder.updatedAt,
 	};
 }
 
@@ -940,12 +1005,7 @@ function isAutomationDomain(value: unknown): boolean {
 function mergeIntegrationsPackage(
 	existing: Partial<OperonIntegrationsPackageV1> | null | undefined,
 	fallback: OperonIntegrationsPackageV1,
-	legacySettings?: Partial<OperonDataPackageV1['settings']> | null,
 ): OperonIntegrationsPackageV1 {
-	const legacySettingsRecord: Record<string, unknown> = isRecord(legacySettings) ? legacySettings : {};
-	const legacyEnabled = typeof legacySettingsRecord.mobileNotificationsSnapshotEnabled === 'boolean'
-		? legacySettingsRecord.mobileNotificationsSnapshotEnabled
-		: fallback.mobileNotifications.snapshotEnabled;
 	return {
 		externalCalendarSources: cloneExistingDomain(
 			existing?.externalCalendarSources,
@@ -953,10 +1013,10 @@ function mergeIntegrationsPackage(
 		),
 		mobileNotifications: normalizeMobileNotificationsIntegration(
 			existing?.mobileNotifications,
-			{
-				...fallback.mobileNotifications,
-				snapshotEnabled: legacyEnabled,
-			},
+			fallback.mobileNotifications,
+		),
+		developerApi: normalizeDeveloperApiGrantPackage(
+			existing?.developerApi ?? fallback.developerApi,
 		),
 	};
 }
@@ -968,15 +1028,10 @@ export function normalizeMobileNotificationsIntegration(
 	const source = isRecord(value) ? value : {};
 	return {
 		version: OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION,
-		snapshotEnabled: typeof source.snapshotEnabled === 'boolean'
-			? source.snapshotEnabled
-			: fallback.snapshotEnabled,
-		cancelPending: typeof source.cancelPending === 'boolean'
-			? source.cancelPending
-			: fallback.cancelPending,
+		snapshotEnabled: true,
+		cancelPending: false,
 		vaultId: normalizeMobileNotificationsVaultId(source.vaultId) ?? fallback.vaultId,
-		lastGeneratedAtEpochMs: normalizeMobileNotificationsEpochMs(source.lastGeneratedAtEpochMs)
-			?? fallback.lastGeneratedAtEpochMs,
+		lastGeneratedAtEpochMs: null,
 	};
 }
 
@@ -986,67 +1041,26 @@ export function adoptMobileNotificationsIntegration(
 ): OperonMobileNotificationsIntegrationV1 {
 	const normalized = normalizeMobileNotificationsIntegration(current);
 	const candidateVaultId = normalizeMobileNotificationsVaultId(candidate.vaultId);
-	const candidateEpochMs = normalizeMobileNotificationsEpochMs(candidate.lastGeneratedAtEpochMs);
 	return {
 		...normalized,
 		vaultId: normalized.vaultId ?? candidateVaultId,
-		lastGeneratedAtEpochMs: maxNullableEpochMs(normalized.lastGeneratedAtEpochMs, candidateEpochMs),
 	};
 }
 
 export function createEmptyMobileNotificationsIntegration(): OperonMobileNotificationsIntegrationV1 {
 	return {
 		version: OPERON_MOBILE_NOTIFICATIONS_INTEGRATION_VERSION,
-		snapshotEnabled: false,
+		snapshotEnabled: true,
 		cancelPending: false,
 		vaultId: null,
 		lastGeneratedAtEpochMs: null,
 	};
 }
 
-export function getNextMobileNotificationsGeneratedAtEpochMs(
-	current: unknown,
-	nowEpochMs: number,
-	minimumExclusive = -1,
-): number {
-	if (!Number.isSafeInteger(nowEpochMs) || nowEpochMs < 0) {
-		throw new Error('Mobile notifications generation time must be a non-negative safe integer');
-	}
-	if (!Number.isSafeInteger(minimumExclusive) || minimumExclusive < -1) {
-		throw new Error('Mobile notifications minimum generation watermark must be a safe integer of at least -1');
-	}
-	const lastGeneratedAtEpochMs = normalizeMobileNotificationsIntegration(current).lastGeneratedAtEpochMs;
-	const nextEpochMs = Math.max(
-		nowEpochMs,
-		(lastGeneratedAtEpochMs ?? -1) + 1,
-		minimumExclusive + 1,
-	);
-	if (!Number.isSafeInteger(nextEpochMs)) {
-		throw new Error('Mobile notifications generation watermark overflowed');
-	}
-	if (nextEpochMs > nowEpochMs + 5 * 60 * 1000) {
-		throw new Error('Mobile notifications generation watermark is more than five minutes in the future');
-	}
-	return nextEpochMs;
-}
-
 function normalizeMobileNotificationsVaultId(value: unknown): string | null {
 	return typeof value === 'string' && LOWERCASE_UUID_V4_RE.test(value) ? value : null;
 }
 
-function normalizeMobileNotificationsEpochMs(value: unknown): number | null {
-	return typeof value === 'number'
-		&& Number.isSafeInteger(value)
-		&& value >= 0
-		? value
-		: null;
-}
-
-function maxNullableEpochMs(left: number | null, right: number | null): number | null {
-	if (left === null) return right;
-	if (right === null) return left;
-	return Math.max(left, right);
-}
 
 function cloneUnknown<T>(value: unknown): T {
 	const parsed: unknown = JSON.parse(JSON.stringify(value));

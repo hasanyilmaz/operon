@@ -1,0 +1,16 @@
+{
+  "caseId": "target-hidden-drift",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": true
+  },
+  "requestSha256": "fbeddd30e91f2a8ae36f3327739709cfd210b136c68a365acd9440c1dfa63673",
+  "seed": 41034,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdoutSha256": "f6dbc68364010748fe4c0ffe5474bef737cb9f444a35ecc1ef7091e2bf6b94ce",
+  "writtenFiles": {
+    ".internal/Hidden.md": "72738b9326e887e5f99d1ac13b5579598655c492b0d4ab617ecc3b0fd620f9f9"
+  }
+}

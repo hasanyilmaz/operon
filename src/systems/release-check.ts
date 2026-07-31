@@ -12,39 +12,57 @@ interface PluginManifest {
 type VersionsManifest = Record<string, string>;
 
 interface ParsedVersion {
-	numbers: number[];
+	numbers: string[];
 	prerelease: string[];
 }
+
+const SEMVER_PATTERN =
+	/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 
 export interface OperonReleaseCheckDependencies {
 	requestJson: (url: string) => Promise<unknown>;
 	canRunMinAppVersion: (minAppVersion: string) => boolean;
 }
 
-function parseVersion(version: string): ParsedVersion {
-	const [precedencePart = ''] = version.trim().split('+', 1);
-	const [mainPart, prereleasePart = ''] = precedencePart.split('-', 2);
-	const numbers = mainPart.split('.').map(part => {
-		const parsed = Number.parseInt(part, 10);
-		return Number.isFinite(parsed) ? parsed : 0;
-	});
+export function isValidOperonVersion(version: string): boolean {
+	const match = SEMVER_PATTERN.exec(version.trim());
+	if (!match) return false;
+	const prerelease = match[4]?.split('.') ?? [];
+	return prerelease.every(identifier => (
+		!/^\d+$/u.test(identifier)
+		|| identifier === '0'
+		|| !identifier.startsWith('0')
+	));
+}
 
+function parseVersion(version: string): ParsedVersion {
+	const match = SEMVER_PATTERN.exec(version.trim());
+	if (!match || !isValidOperonVersion(version)) {
+		return { numbers: ['0', '0', '0'], prerelease: [] };
+	}
 	return {
-		numbers,
-		prerelease: prereleasePart ? prereleasePart.split('.') : [],
+		numbers: [match[1], match[2], match[3]],
+		prerelease: match[4]?.split('.') ?? [],
 	};
 }
 
-function comparePrereleaseIdentifier(left: string, right: string): number {
-	const leftNumber = Number.parseInt(left, 10);
-	const rightNumber = Number.parseInt(right, 10);
-	const leftIsNumber = String(leftNumber) === left;
-	const rightIsNumber = String(rightNumber) === right;
+function compareNumericIdentifier(left: string, right: string): number {
+	if (left.length !== right.length) return Math.sign(left.length - right.length);
+	if (left < right) return -1;
+	if (left > right) return 1;
+	return 0;
+}
 
-	if (leftIsNumber && rightIsNumber) return Math.sign(leftNumber - rightNumber);
+function comparePrereleaseIdentifier(left: string, right: string): number {
+	const leftIsNumber = /^\d+$/u.test(left);
+	const rightIsNumber = /^\d+$/u.test(right);
+
+	if (leftIsNumber && rightIsNumber) return compareNumericIdentifier(left, right);
 	if (leftIsNumber) return -1;
 	if (rightIsNumber) return 1;
-	return left.localeCompare(right);
+	if (left < right) return -1;
+	if (left > right) return 1;
+	return 0;
 }
 
 export function compareOperonVersions(left: string, right: string): number {
@@ -53,8 +71,11 @@ export function compareOperonVersions(left: string, right: string): number {
 	const length = Math.max(leftVersion.numbers.length, rightVersion.numbers.length, 3);
 
 	for (let index = 0; index < length; index += 1) {
-		const difference = (leftVersion.numbers[index] ?? 0) - (rightVersion.numbers[index] ?? 0);
-		if (difference !== 0) return Math.sign(difference);
+		const comparison = compareNumericIdentifier(
+			leftVersion.numbers[index] ?? '0',
+			rightVersion.numbers[index] ?? '0',
+		);
+		if (comparison !== 0) return comparison;
 	}
 
 	if (leftVersion.prerelease.length === 0 && rightVersion.prerelease.length === 0) return 0;

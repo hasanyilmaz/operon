@@ -76,6 +76,17 @@ export interface RepeatFollowingOverrideTransaction {
 	tentativeEntry: RepeatSeriesEntry;
 }
 
+export interface RepeatSeriesCreationTransaction {
+	seriesId: string;
+	createdEntry: RepeatSeriesEntry;
+}
+
+export interface RepeatSeriesCreationBatchTransaction {
+	entries: RepeatSeriesCreationTransaction[];
+}
+
+export type RepeatSeriesCompareAndSetOutcome = 'committed' | 'already-applied' | 'conflict';
+
 interface RepeatSeriesData {
 	version: number;
 	series: Record<string, RepeatSeriesEntry>;
@@ -166,7 +177,21 @@ function cloneTemporalTemplate(template: RepeatTemporalTemplate | null): RepeatT
 }
 
 function repeatSeriesEntriesEqual(left: RepeatSeriesEntry, right: RepeatSeriesEntry): boolean {
-	return JSON.stringify(left) === JSON.stringify(right);
+	return stableRepeatSeriesJson(left) === stableRepeatSeriesJson(right);
+}
+
+function stableRepeatSeriesJson(value: unknown): string {
+	if (value === null || typeof value !== 'object') {
+		return JSON.stringify(value) ?? 'null';
+	}
+	if (Array.isArray(value)) {
+		return `[${value.map(item => stableRepeatSeriesJson(item)).join(',')}]`;
+	}
+	const record = value as Record<string, unknown>;
+	return `{${Object.keys(record)
+		.sort()
+		.map(key => `${JSON.stringify(key)}:${stableRepeatSeriesJson(record[key])}`)
+		.join(',')}}`;
 }
 
 function normalizeRepeatTemporalTemplate(raw: unknown): RepeatTemporalTemplate | null {
@@ -396,27 +421,91 @@ export class RepeatSeriesStore {
 				return this.cloneEntry(next);
 			}
 
-			const created: RepeatSeriesEntry = {
-				seriesId: resolvedId,
-				sourceTaskId: input.sourceTaskId,
-				sourceFormat: input.sourceFormat,
-				baseTitle: input.baseTitle,
-				lastMaterializedTitle: normalizeOptionalText(input.lastMaterializedTitle),
-				naming: normalizeNamingConfig(input.naming),
-				skipDates: [],
-				yamlPropertyValueRemovalConfigured: false,
-				yamlPropertyValueRemovals: [],
-				baseTemporalTemplate: cloneTemporalTemplate(input.baseTemporalTemplate ?? null),
-				inlineCompletionMode: normalizeInlineCompletionMode(input.inlineCompletionMode),
-				createdAt: input.now,
-				updatedAt: input.now,
-				overrides: {
-					single: {},
-					following: [],
-				},
-			};
+			const created = this.buildCreatedEntry(input, resolvedId);
 			await this.commit(created);
 			return this.cloneEntry(created);
+		});
+	}
+
+	/**
+	 * Create one exact, pre-allocated series identity for a larger source
+	 * transaction. Existing identities are conflicts rather than upserts.
+	 */
+	async beginCreationTransaction(
+		input: EnsureRepeatSeriesInput & { seriesId: string },
+	): Promise<RepeatSeriesCreationTransaction | null> {
+		const batch = await this.beginCreationBatchTransaction([input]);
+		return batch?.entries[0] ?? null;
+	}
+
+	planCreationEntry(
+		input: EnsureRepeatSeriesInput & { seriesId: string },
+	): RepeatSeriesEntry {
+		return this.cloneEntry(this.buildCreatedEntry(input, input.seriesId.trim()));
+	}
+
+	async beginCreationBatchTransaction(
+		inputs: readonly (EnsureRepeatSeriesInput & { seriesId: string })[],
+	): Promise<RepeatSeriesCreationBatchTransaction | null> {
+		return await this.mutate(async () => {
+			const seriesIds = inputs.map(input => input.seriesId.trim());
+			if (
+				seriesIds.some(seriesId => !seriesId || !!this.data.series[seriesId])
+				|| new Set(seriesIds).size !== seriesIds.length
+			) return null;
+			const entries = inputs.map((input, index) => {
+				const seriesId = seriesIds[index];
+				const createdEntry = this.buildCreatedEntry({ ...input, seriesId }, seriesId);
+				return { seriesId, createdEntry };
+			});
+			for (const entry of entries) {
+				this.data.series[entry.seriesId] = this.cloneEntry(entry.createdEntry);
+			}
+			try {
+				await this.writeData();
+			} catch (error) {
+				for (const entry of entries) delete this.data.series[entry.seriesId];
+				throw error;
+			}
+			return {
+				entries: entries.map(entry => ({
+					seriesId: entry.seriesId,
+					createdEntry: this.cloneEntry(entry.createdEntry),
+				})),
+			};
+		});
+	}
+
+	/**
+	 * Compare-aware compensation: do not erase a series that another path has
+	 * changed after the tentative creation.
+	 */
+	async rollbackCreationTransaction(
+		transaction: RepeatSeriesCreationTransaction,
+	): Promise<boolean> {
+		return await this.rollbackCreationBatchTransaction({ entries: [transaction] });
+	}
+
+	async rollbackCreationBatchTransaction(
+		transaction: RepeatSeriesCreationBatchTransaction,
+	): Promise<boolean> {
+		return await this.mutate(async () => {
+			for (const entry of transaction.entries) {
+				const current = this.data.series[entry.seriesId];
+				if (!current || !repeatSeriesEntriesEqual(current, entry.createdEntry)) return false;
+			}
+			const previous = transaction.entries.map(entry => ({
+				seriesId: entry.seriesId,
+				entry: this.cloneEntry(this.data.series[entry.seriesId]),
+			}));
+			for (const entry of transaction.entries) delete this.data.series[entry.seriesId];
+			try {
+				await this.writeData();
+			} catch (error) {
+				for (const value of previous) this.data.series[value.seriesId] = value.entry;
+				throw error;
+			}
+			return true;
 		});
 	}
 
@@ -431,6 +520,28 @@ export class RepeatSeriesStore {
 			await this.commit({
 				...existing,
 				baseTemporalTemplate: cloneTemporalTemplate(template),
+				updatedAt: now,
+			});
+		});
+	}
+
+	async updateSourceRepresentation(
+		seriesId: string,
+		sourceTaskId: string,
+		sourceFormat: 'inline' | 'yaml',
+		now: string,
+	): Promise<void> {
+		await this.mutate(async () => {
+			const existing = this.data.series[seriesId];
+			if (!existing) return;
+			if (
+				existing.sourceTaskId === sourceTaskId
+				&& existing.sourceFormat === sourceFormat
+			) return;
+			await this.commit({
+				...existing,
+				sourceTaskId,
+				sourceFormat,
 				updatedAt: now,
 			});
 		});
@@ -561,40 +672,40 @@ export class RepeatSeriesStore {
 		now: string,
 	): Promise<RepeatFollowingOverrideTransaction | null> {
 		return await this.mutate(async () => {
-			const existing = this.data.series[seriesId];
-			if (!existing) return null;
-			const normalized = normalizeFollowingOverride(override);
-			if (!normalized) return null;
+			const planned = this.planFollowingOverrideTransaction(seriesId, override, now);
+			if (!planned) return null;
+			await this.commit(planned.tentativeEntry);
+			return planned;
+		});
+	}
 
-			const nextFollowing = existing.overrides.following
-				.filter(entry => entry.effectiveFrom < normalized.effectiveFrom)
-				.concat(normalized)
-				.sort((left, right) => left.effectiveFrom.localeCompare(right.effectiveFrom));
-
-			const nextSingle: Record<string, RepeatSingleOccurrenceOverride> = {};
-			for (const [occurrenceDate, value] of Object.entries(existing.overrides.single)) {
-				if (occurrenceDate < normalized.effectiveFrom) {
-					nextSingle[occurrenceDate] = value;
-				}
-			}
-
-			const previousEntry = this.cloneEntry(existing);
-			const tentativeEntry: RepeatSeriesEntry = {
+	planFollowingOverrideTransaction(
+		seriesId: string,
+		override: RepeatFollowingOverride,
+		now: string,
+	): RepeatFollowingOverrideTransaction | null {
+		const existing = this.data.series[seriesId];
+		if (!existing) return null;
+		const normalized = normalizeFollowingOverride(override);
+		if (!normalized) return null;
+		const nextFollowing = existing.overrides.following
+			.filter(entry => entry.effectiveFrom < normalized.effectiveFrom)
+			.concat(normalized)
+			.sort((left, right) => left.effectiveFrom.localeCompare(right.effectiveFrom));
+		const nextSingle: Record<string, RepeatSingleOccurrenceOverride> = {};
+		for (const [occurrenceDate, value] of Object.entries(existing.overrides.single)) {
+			if (occurrenceDate < normalized.effectiveFrom) nextSingle[occurrenceDate] = value;
+		}
+		return {
+			seriesId,
+			previousEntry: this.cloneEntry(existing),
+			tentativeEntry: this.cloneEntry({
 				...existing,
 				skipDates: existing.skipDates.filter(date => date < normalized.effectiveFrom),
-				overrides: {
-					single: nextSingle,
-					following: nextFollowing,
-				},
+				overrides: { single: nextSingle, following: nextFollowing },
 				updatedAt: now,
-			};
-			await this.commit(tentativeEntry);
-			return {
-				seriesId,
-				previousEntry,
-				tentativeEntry: this.cloneEntry(tentativeEntry),
-			};
-		});
+			}),
+		};
 	}
 
 	async rollbackFollowingOverrideTransaction(
@@ -605,6 +716,41 @@ export class RepeatSeriesStore {
 			if (!current || !repeatSeriesEntriesEqual(current, transaction.tentativeEntry)) return false;
 			await this.commit(transaction.previousEntry);
 			return true;
+		});
+	}
+
+	async compareAndSetEntry(
+		seriesId: string,
+		expected: RepeatSeriesEntry | null,
+		next: RepeatSeriesEntry | null,
+	): Promise<RepeatSeriesCompareAndSetOutcome> {
+		return await this.mutate(async () => {
+			const current = this.data.series[seriesId] ?? null;
+			if (
+				(current === null && next === null)
+				|| (current !== null && next !== null && repeatSeriesEntriesEqual(current, next))
+			) {
+				return 'already-applied';
+			}
+			if (
+				(current === null) !== (expected === null)
+				|| (
+					current !== null
+					&& expected !== null
+					&& !repeatSeriesEntriesEqual(current, expected)
+				)
+			) return 'conflict';
+			const previous = current ? this.cloneEntry(current) : null;
+			if (next === null) delete this.data.series[seriesId];
+			else this.data.series[seriesId] = this.cloneEntry(next);
+			try {
+				await this.writeData();
+			} catch (error) {
+				if (previous === null) delete this.data.series[seriesId];
+				else this.data.series[seriesId] = previous;
+				throw error;
+			}
+			return 'committed';
 		});
 	}
 
@@ -690,6 +836,28 @@ export class RepeatSeriesStore {
 					Object.entries(entry.overrides.single).map(([date, value]) => [date, { ...value }]),
 				),
 				following: entry.overrides.following.map(value => ({ ...value })),
+			},
+		};
+	}
+
+	private buildCreatedEntry(input: EnsureRepeatSeriesInput, seriesId: string): RepeatSeriesEntry {
+		return {
+			seriesId,
+			sourceTaskId: input.sourceTaskId,
+			sourceFormat: input.sourceFormat,
+			baseTitle: input.baseTitle,
+			lastMaterializedTitle: normalizeOptionalText(input.lastMaterializedTitle),
+			naming: normalizeNamingConfig(input.naming),
+			skipDates: [],
+			yamlPropertyValueRemovalConfigured: false,
+			yamlPropertyValueRemovals: [],
+			baseTemporalTemplate: cloneTemporalTemplate(input.baseTemporalTemplate ?? null),
+			inlineCompletionMode: normalizeInlineCompletionMode(input.inlineCompletionMode),
+			createdAt: input.now,
+			updatedAt: input.now,
+			overrides: {
+				single: {},
+				following: [],
 			},
 		};
 	}

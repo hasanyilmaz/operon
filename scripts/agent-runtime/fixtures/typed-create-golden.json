@@ -1,0 +1,587 @@
+{
+  "schemaVersion": 1,
+  "contract": {
+    "command": "operon task create",
+    "inputFormat": "typed-json",
+    "typedCreateVersion": 1,
+    "typedCreateFeatures": [
+      "exact-inline-placement",
+      "exact-file-target",
+      "deterministic-file-template",
+      "file-body-replacement",
+      "same-source-task-graph",
+      "cross-source-parent-related"
+    ],
+    "lineNumberBase": "zero",
+    "linePlacement": "insert-before",
+    "fileBodyMaxUtf8Bytes": 65536,
+    "crossSourceParentRelated": "fresh-confirmation",
+    "crossSourceDependency": "graph-transaction-gated",
+    "graphTransactionVersion": 1,
+    "graphTransactionFeatures": [
+      "vault-wide-graph-transaction",
+      "compare-aware-compensation",
+      "same-plan-safe-continuation",
+      "cross-source-reciprocal-dependency"
+    ]
+  },
+  "cases": [
+    {
+      "id": "typed-exact-inline-append",
+      "feature": "exact-inline-placement",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user explicitly requested an exact inline append.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "inline-append",
+              "description": "Review exact placement",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Runtime review.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "representation": "inline",
+        "filePath": "20 Projects/Runtime review.md",
+        "placement": "append",
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-exact-inline-line",
+      "feature": "exact-inline-placement",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user selected a live placement candidate.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "inline-line",
+              "description": "Insert before selected line",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Runtime review.md",
+                "lineNumber": 7
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "representation": "inline",
+        "filePath": "20 Projects/Runtime review.md",
+        "lineNumber": 7,
+        "placement": "insert-before",
+        "candidateSource": "placement-candidates",
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-exact-file-target",
+      "feature": "exact-file-target",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user explicitly requested an exact File Task target.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "exact-file",
+              "description": "Exact file target",
+              "target": {
+                "representation": "file",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Exact file target.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "representation": "file",
+        "filePath": "20 Projects/Exact file target.md",
+        "targetState": "absent",
+        "canonicalBasename": "Exact file target",
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-builtin-file-template",
+      "feature": "deterministic-file-template",
+      "templateCandidate": {
+        "id": "builtin:pipeline-minimal:fixture-project",
+        "name": "Project minimal",
+        "kind": "builtin-pipeline-minimal",
+        "pipelineId": "fixture-project",
+        "initialStatusId": "fixture-project-planned"
+      },
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user selected a live built-in File Task template.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "builtin-template",
+              "description": "Built in template task",
+              "target": {
+                "representation": "file",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Built in template task.md",
+                "templateId": "builtin:pipeline-minimal:fixture-project"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "templateSource": "fileTaskTemplateCandidates",
+        "templateRevisionSealed": true,
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-folder-file-template",
+      "feature": "deterministic-file-template",
+      "templateCandidate": {
+        "id": "folder:fixture-template",
+        "name": "Fixture template",
+        "kind": "folder",
+        "sourcePath": "10 Horizon/Templates/Fixture template.md"
+      },
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user selected a live folder File Task template.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "folder-template",
+              "description": "Folder template task",
+              "target": {
+                "representation": "file",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Folder template task.md",
+                "templateId": "folder:fixture-template"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "templateSource": "fileTaskTemplateCandidates",
+        "templateRevisionSealed": true,
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-file-body-replacement",
+      "feature": "file-body-replacement",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user explicitly supplied a File Task body.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "body-replacement",
+              "description": "Body replacement task",
+              "target": {
+                "representation": "file",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Body replacement task.md",
+                "templateId": "folder:fixture-template"
+              },
+              "fields": [],
+              "bodyMarkdown": "## Acceptance\n\n- Validate the typed create contract.\n- Preserve canonical frontmatter.\n"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "bodyMode": "replace-template-body",
+        "frontmatterMode": "canonical-merge",
+        "maxUtf8Bytes": 65536,
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-same-source-parent-child",
+      "feature": "same-source-task-graph",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user explicitly requested a same-source parent-child graph.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "child",
+              "description": "Implement typed create",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Typed create graph.md"
+              },
+              "fields": [],
+              "parent": {
+                "kind": "created",
+                "itemRef": "parent"
+              }
+            },
+            {
+              "itemRef": "parent",
+              "description": "Typed create graph",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Typed create graph.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "atomicSourceGroups": 1,
+        "inputOrderIndependent": true,
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-same-source-related-graph",
+      "feature": "same-source-task-graph",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user explicitly requested related tasks in one source.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "review",
+              "description": "Review typed create",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Typed create graph.md"
+              },
+              "fields": [],
+              "related": [
+                {
+                  "kind": "created",
+                  "itemRef": "implementation"
+                }
+              ]
+            },
+            {
+              "itemRef": "implementation",
+              "description": "Implement typed create",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Typed create graph.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "atomicSourceGroups": 1,
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-same-source-dependency-chain",
+      "feature": "same-source-task-graph",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user explicitly requested a dependency chain in one source.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "contract",
+              "description": "Lock typed contract",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Typed create graph.md"
+              },
+              "fields": [],
+              "dependencies": [
+                {
+                  "relation": "blocks",
+                  "target": {
+                    "kind": "created",
+                    "itemRef": "acceptance"
+                  }
+                }
+              ]
+            },
+            {
+              "itemRef": "acceptance",
+              "description": "Run typed acceptance",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Typed create graph.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "atomicSourceGroups": 1,
+        "riskLevel": "routine"
+      }
+    },
+    {
+      "id": "typed-cross-source-parent-warning",
+      "feature": "cross-source-parent-related",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user explicitly requested one cross-source parent-child unit.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "child",
+              "description": "Cross source child",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Z child source.md"
+              },
+              "fields": [],
+              "parent": {
+                "kind": "created",
+                "itemRef": "parent"
+              }
+            },
+            {
+              "itemRef": "parent",
+              "description": "Cross source parent",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/A parent source.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "riskLevel": "elevated",
+        "warning": "cross-source-graph-partial-risk",
+        "requiredAcknowledgement": "cross-source-graph-partial-risk",
+        "requiresConfirmation": true,
+        "freshUserTurn": true,
+        "requiresGraphTransactionVersion": 1,
+        "requiresGraphTransactionFeatures": [
+          "vault-wide-graph-transaction",
+          "compare-aware-compensation",
+          "same-plan-safe-continuation",
+          "cross-source-reciprocal-dependency"
+        ],
+        "sourceGroupOrder": [
+          "20 Projects/A parent source.md",
+          "20 Projects/Z child source.md"
+        ]
+      }
+    },
+    {
+      "id": "typed-cross-source-parent-legacy-blocker",
+      "feature": "cross-source-parent-related",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user requested one cross-source parent-child unit on a legacy Runtime.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "child",
+              "description": "Legacy cross source child",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Legacy child source.md"
+              },
+              "fields": [],
+              "parent": {
+                "kind": "created",
+                "itemRef": "parent"
+              }
+            },
+            {
+              "itemRef": "parent",
+              "description": "Legacy cross source parent",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Legacy parent source.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "error",
+        "code": "capability-unavailable",
+        "feature": "vault-wide-graph-transaction",
+        "requiresGraphTransactionVersion": 1,
+        "safeFallback": null
+      }
+    },
+    {
+      "id": "typed-cross-source-dependency-blocker",
+      "feature": "same-source-task-graph",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user requested a reciprocal dependency across sources.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "contract",
+              "description": "Cross source contract",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Contract source.md"
+              },
+              "fields": [],
+              "dependencies": [
+                {
+                  "relation": "blocks",
+                  "target": {
+                    "kind": "created",
+                    "itemRef": "acceptance"
+                  }
+                }
+              ]
+            },
+            {
+              "itemRef": "acceptance",
+              "description": "Cross source acceptance",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Acceptance source.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "error",
+        "code": "capability-unavailable",
+        "feature": "vault-wide-graph-transaction",
+        "requiresGraphTransactionVersion": 1,
+        "safeFallback": null
+      }
+    },
+    {
+      "id": "typed-cross-source-dependency-transaction",
+      "feature": "same-source-task-graph",
+      "intent": {
+        "contractVersion": 1,
+        "kind": "mutation-intent",
+        "reason": "The user requested a reciprocal dependency across sources with the graph transaction gate.",
+        "spec": {
+          "operation": "create",
+          "items": [
+            {
+              "itemRef": "contract",
+              "description": "Cross source transaction contract",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/Z transaction contract.md"
+              },
+              "fields": [],
+              "dependencies": [
+                {
+                  "relation": "blocks",
+                  "target": {
+                    "kind": "created",
+                    "itemRef": "acceptance"
+                  }
+                }
+              ]
+            },
+            {
+              "itemRef": "acceptance",
+              "description": "Cross source transaction acceptance",
+              "target": {
+                "representation": "inline",
+                "mode": "exact-path",
+                "filePath": "20 Projects/A transaction acceptance.md"
+              },
+              "fields": []
+            }
+          ]
+        }
+      },
+      "expect": {
+        "route": "typed-preview",
+        "riskLevel": "elevated",
+        "warning": "cross-source-graph-partial-risk",
+        "requiredAcknowledgement": "cross-source-graph-partial-risk",
+        "requiresConfirmation": true,
+        "freshUserTurn": true,
+        "requiresGraphTransactionVersion": 1,
+        "requiresGraphTransactionFeatures": [
+          "vault-wide-graph-transaction",
+          "compare-aware-compensation",
+          "same-plan-safe-continuation",
+          "cross-source-reciprocal-dependency"
+        ],
+        "sourceGroupOrder": [
+          "20 Projects/A transaction acceptance.md",
+          "20 Projects/Z transaction contract.md"
+        ],
+        "safeFallback": null
+      }
+    }
+  ]
+}

@@ -20,6 +20,7 @@ import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { allowsOperonDocumentAugmentations } from './editor-augmentation-scope';
 import {
 	computeTaskFileLinkPlainCheckboxIndicator,
 	computeTaskFileLinkVisuals,
@@ -33,13 +34,16 @@ import {
 	buildTaskFileLinkProgressTooltip,
 	appendTaskFileLinkProgressCountContent,
 } from './task-file-wikilink-shared';
-import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlayChipContainer, getTaskWikilinkOverlayChipSignature } from './task-wikilink-overlay-chips';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/subtask-action';
 import { scanTaskWikiLinksInLine, type TaskWikiLinkMatch } from './task-wikilink-scanner';
 import { bindTaskTitleLinkPreview } from './compact-chip-link-preview';
-import { isTaskDescriptionWikilinkEventTarget, renderTaskDescriptionWikilinks } from './task-description-wikilinks';
+import {
+	isCompactTaskMarkdownLinkEventTarget,
+	renderCompactTaskMarkdown,
+} from './compact-task-markdown-renderer';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 
 export interface LivePreviewTaskWikilinkCallbacks {
@@ -252,7 +256,7 @@ class TaskWikilinkTrailingWidget extends WidgetType {
 			setAccessibleLabelWithoutTooltip(noteIndicator, t('taskEditor', 'notes'));
 			bindOperonHoverTooltip(noteIndicator, {
 				title: t('taskEditor', 'notes'),
-				contentEl: createNonInteractiveMarkdownLinkContent(noteIndicator, noteValue),
+				contentEl: createCompactTaskMarkdownTooltipContent(noteIndicator, noteValue),
 				taskColor: this.visuals.hoverColor,
 				preferredHorizontal: 'right',
 			});
@@ -349,16 +353,18 @@ class TaskWikilinkLabelWidget extends WidgetType {
 		const alias = this.resolved.alias?.trim();
 		const description = this.resolved.task.description.trim();
 		const fallbackText = alias || description || this.resolved.rawLinktext;
-		const rendered = !alias && description
-			? renderTaskDescriptionWikilinks(label, {
+		if (!alias && description) {
+			renderCompactTaskMarkdown(label, {
 				app: this.callbacks.app,
-				description,
+				value: description,
 				sourcePath: this.resolved.task.primary.filePath,
+				mode: 'interactive',
 				containerClassName: 'operon-task-wikilink-label-markdown',
 				linkClassName: 'operon-task-wikilink-label-description-link',
-			})
-			: false;
-		if (!rendered) label.textContent = fallbackText;
+			});
+		} else {
+			label.textContent = fallbackText;
+		}
 		scheduleTaskWikilinkLabelTextFallback(label, fallbackText);
 
 		bindTaskTitleLinkPreview(this.callbacks.app, label, this.resolved.resolvedFile.path, sourcePath);
@@ -366,7 +372,7 @@ class TaskWikilinkLabelWidget extends WidgetType {
 			event.stopPropagation();
 		});
 		label.addEventListener('click', (event) => {
-			if (isTaskDescriptionWikilinkEventTarget(event.target, label)) return;
+			if (isCompactTaskMarkdownLinkEventTarget(event.target, label)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			void this.callbacks.app.workspace.openLinkText(this.resolved.resolvedFile.path, sourcePath, false);
@@ -552,6 +558,7 @@ export function operonLivePreviewTaskWikilinkOverlayExtension(
 		}
 
 		private isLivePreview(view: EditorView): boolean {
+			if (!allowsOperonDocumentAugmentations(view)) return false;
 			try {
 				return view.state.field(editorLivePreviewField);
 			} catch {

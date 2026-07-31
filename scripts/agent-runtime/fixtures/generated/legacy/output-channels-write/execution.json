@@ -1,0 +1,16 @@
+{
+  "caseId": "output-channels-write",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": true
+  },
+  "requestSha256": "424e7a3757afe2154ad1c0e2dbfcb020f22b9eb647f129f4ae50431c172975dd",
+  "seed": 41036,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdoutSha256": "1eaaf90ae76783341b6b2acc4dc35130151f69ff326f9e69717d307701b5bbba",
+  "writtenFiles": {
+    "Tasks/Output.md": "fb07ae5a05a9a378c5ec65d3c41ce8eb6c03c2c423f7c63f70ee9b83affd0113"
+  }
+}

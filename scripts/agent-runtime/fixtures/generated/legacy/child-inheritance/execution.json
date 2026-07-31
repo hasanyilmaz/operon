@@ -1,0 +1,14 @@
+{
+  "caseId": "child-inheritance",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "8c6f3bed8cec6c21badb307649d99714104466ce465e44f16ee7fe0891d8b4d7",
+  "seed": 41021,
+  "stderrSha256": "b7e11db1116fef2bd09204c76e0829e05ebfce8251093b99bd53c3eb9e156f3e",
+  "stdoutSha256": "08a524e32140c0eeb572ef573453fb8a889f271b3d64852bea37ec85c4ec9342",
+  "writtenFiles": {}
+}

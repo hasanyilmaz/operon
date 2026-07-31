@@ -1,0 +1,14 @@
+{
+  "caseId": "rich-inline",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "8ba1ed8e53a99f21d0fa7018ca3c83095cd25e008b308e9b81e4235d6ae78a7d",
+  "seed": 41022,
+  "stderrSha256": "983808eb8f5957c70f8d10fde8ecd4aceafb6bd1631a2922b320cc4493ddb9c4",
+  "stdoutSha256": "376040a090c34d9b6f20bd740b9d07c284d493fc8b32ad6ca86ac0b28dc62e31",
+  "writtenFiles": {}
+}

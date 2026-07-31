@@ -2,6 +2,7 @@ import { IndexedTask } from '../../types/fields';
 import { t } from '../../core/i18n';
 import { bindPickerListItemActivation, createButton, createFloatingPanel, requestFloatingInputFocus, scrollChildIntoView } from './common';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
+import { renderCompactTaskMarkdown } from '../compact-task-markdown-renderer';
 
 const PAGE_SIZE = 20;
 const LOAD_MORE_SCROLL_THRESHOLD_PX = 48;
@@ -149,7 +150,10 @@ export function showParentTaskPicker(anchor: HTMLElement | DOMRect, options: Par
 			if (index === activeIndex) item.classList.add('is-active');
 
 			const label = item.createDiv('operon-parent-task-picker-label');
-			label.textContent = candidate.label;
+			renderCompactTaskMarkdown(label, {
+				value: candidate.label,
+				mode: 'visual-only',
+			});
 
 			item.addEventListener('mousemove', () => setActiveIndex(index));
 			bindPickerListItemActivation(item, () => selectParent(candidate.operonId));

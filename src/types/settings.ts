@@ -89,6 +89,7 @@ import {
 	LEGACY_BUILTIN_EMPTY_FILE_TASK_TEMPLATE_ID,
 	resolvePipelineMinimalFileTaskTemplateStatusById,
 } from '../core/file-task-template-identity';
+import type { PinnedTaskSortMode } from '../core/pinned-task-query';
 
 export const CURRENT_SETTINGS_VERSION = 111;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
@@ -1626,6 +1627,7 @@ export interface OperonSettings {
 	// Pinned tasks
 	pinnedTasksDesktopSurface: PinnedTasksDesktopSurface;
 	pinnedTasksSidebarSide: PinnedTasksSidebarSide;
+	pinnedTaskSortMode: PinnedTaskSortMode;
 	pinnedTaskItemWidth: number;
 	pinnedDockPosition: 'bottom-center' | 'bottom-left' | 'bottom-right';
 	pinnedDockX: number | null;
@@ -1726,8 +1728,7 @@ export interface OperonSettings {
 	tablePresets: TablePreset[];
 	tablePresetOrderIds: string[];
 	tablePresetFileBindings: TablePresetFileBinding[];
-	tablePresetFileMigrationVersion: number;
-	tablePresetFileMigrationFinalizedVersion: number;
+	tablePresetFileInitialized: boolean;
 	tableDefaultPresetId: string | null;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
 	tableShowLineNumbers: boolean;
@@ -1786,8 +1787,6 @@ export interface OperonSettings {
 	reminderSystemNotificationsEnabled: boolean;
 	/** Vault-relative audio file played when a reminder is delivered. Empty means silent. */
 	reminderSoundFilePath: string;
-	/** Export the authoritative seven-day reminder snapshot consumed by Operon Mobile Notifications. */
-	mobileNotificationsSnapshotEnabled: boolean;
 
 	// Inline expanded task bar chip visibility
 	inlineExpandedTaskChips: InlineExpandedTaskChips;
@@ -2081,6 +2080,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 
 	pinnedTasksDesktopSurface: 'floating',
 	pinnedTasksSidebarSide: 'left',
+	pinnedTaskSortMode: 'priority',
 	pinnedTaskItemWidth: 240,
 	pinnedDockPosition: 'bottom-center',
 	pinnedDockX: null,
@@ -2181,8 +2181,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tablePresets: cloneDefaultTablePresets(),
 	tablePresetOrderIds: [DEFAULT_TABLE_PRESET_ID],
 	tablePresetFileBindings: [],
-	tablePresetFileMigrationVersion: 0,
-	tablePresetFileMigrationFinalizedVersion: 0,
+	tablePresetFileInitialized: false,
 	tableDefaultPresetId: DEFAULT_TABLE_PRESET_ID,
 	tableEmbedVisibleRows: DEFAULT_TABLE_EMBED_VISIBLE_ROWS,
 	tableShowLineNumbers: true,
@@ -2226,7 +2225,6 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	reminderAutoPinDueTasks: false,
 	reminderSystemNotificationsEnabled: false,
 	reminderSoundFilePath: '',
-	mobileNotificationsSnapshotEnabled: false,
 
 	inlineExpandedTaskChips: { ...DEFAULT_INLINE_EXPANDED_TASK_CHIPS },
 	taskBarSubtasksDefaultExpanded: true,
@@ -3292,11 +3290,18 @@ function normalizeFilterCondition(raw: unknown): FilterSetCondition | null {
 		: undefined;
 	const fieldType = normalizeFilterFieldType(field, src.fieldType);
 	const isProjectSerialScope = fieldType === 'projectSerialScope';
+	const isDependencyStateOperator = (
+		(field === 'blockedBy' && (operator === 'hasActiveBlockers' || operator === 'hasNoActiveBlockers'))
+		|| (field === 'blocking' && (operator === 'isActivelyBlockingTasks' || operator === 'isNotActivelyBlockingTasks'))
+	);
 	const value = isProjectSerialScope ? rawValue?.trim() || undefined : rawValue;
-	const normalizedValue = isProjectSerialScope && (operator === 'isAnyOf' || operator === 'isNoneOf' || operator === 'hasProjectSerialGroup' || operator === 'hasNoProjectSerialGroup')
+	const normalizedValue = isDependencyStateOperator
+		|| (isProjectSerialScope && (operator === 'isAnyOf' || operator === 'isNoneOf' || operator === 'hasProjectSerialGroup' || operator === 'hasNoProjectSerialGroup'))
 		? undefined
 		: value;
-	const normalizedValues = isProjectSerialScope && (operator === 'isAnyOf' || operator === 'isNoneOf')
+	const normalizedValues = isDependencyStateOperator
+		? undefined
+		: isProjectSerialScope && (operator === 'isAnyOf' || operator === 'isNoneOf')
 		? values
 		: undefined;
 	return {
@@ -3614,6 +3619,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	}
 	if (!['left', 'right'].includes(out.pinnedTasksSidebarSide)) {
 		out.pinnedTasksSidebarSide = DEFAULT_SETTINGS.pinnedTasksSidebarSide;
+	}
+	if (!['priority', 'lastModified', 'manual'].includes(out.pinnedTaskSortMode)) {
+		out.pinnedTaskSortMode = DEFAULT_SETTINGS.pinnedTaskSortMode;
 	}
 	out.pinnedDockColorSource = normalizeTaskColorSource(
 		out.pinnedDockColorSource,
@@ -4111,22 +4119,15 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.leftRailDefaultFilterViewId = out.filterSets.find(filterSet => !SPECIAL_DYNAMIC_FILTER_SET_IDS.has(filterSet.id))?.id ?? null;
 	}
 	out.tablePresetFileBindings = normalizeTablePresetFileBindings(src.tablePresetFileBindings);
-	out.tablePresetFileMigrationVersion = typeof src.tablePresetFileMigrationVersion === 'number'
-		&& Number.isFinite(src.tablePresetFileMigrationVersion)
-		? Math.max(0, Math.floor(src.tablePresetFileMigrationVersion))
-		: 0;
-	out.tablePresetFileMigrationFinalizedVersion = typeof src.tablePresetFileMigrationFinalizedVersion === 'number'
-		&& Number.isFinite(src.tablePresetFileMigrationFinalizedVersion)
-		? Math.max(0, Math.floor(src.tablePresetFileMigrationFinalizedVersion))
-		: 0;
-	if (out.tablePresetFileMigrationFinalizedVersion >= 1) {
-		out.tablePresetFileMigrationVersion = Math.max(1, out.tablePresetFileMigrationVersion);
+	out.tablePresetFileInitialized = src.tablePresetFileInitialized === true;
+	if (out.tablePresetFileBindings.length > 0) {
+		out.tablePresetFileInitialized = true;
 	}
-	const allowEmptyLegacyTablePresets = (out.tablePresetFileBindings.length > 0
-		|| out.tablePresetFileMigrationVersion >= 1)
+	const allowEmptyFileBackedTablePresets = (out.tablePresetFileBindings.length > 0
+		|| out.tablePresetFileInitialized)
 		&& Array.isArray(src.tablePresets)
 		&& src.tablePresets.length === 0;
-	out.tablePresets = allowEmptyLegacyTablePresets
+	out.tablePresets = allowEmptyFileBackedTablePresets
 		? []
 		: normalizeTablePresets(src.tablePresets, {
 			availableFilterSetIds: out.filterSets.map(filterSet => filterSet.id),
@@ -4396,7 +4397,6 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.reminderSoundFilePath = typeof src.reminderSoundFilePath === 'string'
 		? src.reminderSoundFilePath.trim()
 		: DEFAULT_SETTINGS.reminderSoundFilePath;
-	out.mobileNotificationsSnapshotEnabled = src.mobileNotificationsSnapshotEnabled === true;
 
 	out.settingsVersion = CURRENT_SETTINGS_VERSION;
 	return out;

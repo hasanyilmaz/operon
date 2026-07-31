@@ -142,6 +142,14 @@ export class SecondaryIndexes {
 	}
 
 	/**
+	 * Immutable open-task projection for read-only external consumers.
+	 * Unlike getOpenTaskIds(), this never exposes the backing Set.
+	 */
+	getOpenTaskIdsSnapshot(): readonly string[] {
+		return this.snapshotSet(this.byStatus.get('open'));
+	}
+
+	/**
 	 * Get tasks due within a date range (inclusive).
 	 * Uses binary search on sorted byDue array.
 	 * Performance: O(log n + k) where k = result count.
@@ -165,6 +173,14 @@ export class SecondaryIndexes {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Immutable due-range projection. IDs are sorted to make the snapshot
+	 * deterministic; callers that need due ordering should sort hydrated tasks.
+	 */
+	getTaskIdsDueInRangeSnapshot(startDate: string, endDate: string): readonly string[] {
+		return Object.freeze(this.getTasksDueInRange(startDate, endDate).sort());
 	}
 
 	/**
@@ -194,6 +210,11 @@ export class SecondaryIndexes {
 	 */
 	getChildIds(parentOperonId: string): Set<string> {
 		return this.byParent.get(parentOperonId) ?? new Set();
+	}
+
+	/** Immutable child-ID projection that does not expose the backing Set. */
+	getChildIdsSnapshot(parentOperonId: string): readonly string[] {
+		return this.snapshotSet(this.byParent.get(parentOperonId));
 	}
 
 	/**
@@ -226,6 +247,11 @@ export class SecondaryIndexes {
 		return this.byFile.get(filePath) ?? new Set();
 	}
 
+	/** Immutable file-task projection that does not expose the backing Set. */
+	getTaskIdsInFileSnapshot(filePath: string): readonly string[] {
+		return this.snapshotSet(this.byFile.get(filePath));
+	}
+
 	/**
 	 * Get all task IDs for a canonical workflow status value.
 	 */
@@ -233,11 +259,21 @@ export class SecondaryIndexes {
 		return this.byWorkflowStatus.get(statusValue) ?? new Set();
 	}
 
+	/** Immutable workflow-status projection that does not expose the backing Set. */
+	getTaskIdsByWorkflowStatusSnapshot(statusValue: string): readonly string[] {
+		return this.snapshotSet(this.byWorkflowStatus.get(statusValue));
+	}
+
 	/**
 	 * Get all task IDs for a priority value.
 	 */
 	getTaskIdsByPriority(priorityValue: string): Set<string> {
 		return this.byPriority.get(normalizePriorityValue(priorityValue)) ?? new Set();
+	}
+
+	/** Immutable priority projection that does not expose the backing Set. */
+	getTaskIdsByPrioritySnapshot(priorityValue: string): readonly string[] {
+		return this.snapshotSet(this.byPriority.get(normalizePriorityValue(priorityValue)));
 	}
 
 	/**
@@ -279,6 +315,10 @@ export class SecondaryIndexes {
 			map.set(key, set);
 		}
 		set.add(value);
+	}
+
+	private snapshotSet(values: ReadonlySet<string> | undefined): readonly string[] {
+		return Object.freeze(values ? [...values].sort() : []);
 	}
 
 	private addTask(task: IndexedTask): void {

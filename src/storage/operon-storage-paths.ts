@@ -1,7 +1,6 @@
 export interface OperonStoragePaths {
 	pluginDir: string;
 	dataPackagePath: string;
-	tablePresetFileMigrationBackupRootPath: string;
 	state: {
 		reminderDeliveriesRootPath: string;
 		repeatSeriesPath: string;
@@ -9,11 +8,8 @@ export interface OperonStoragePaths {
 		pinnedTasksPath: string;
 		projectSerialsPath: string;
 		fieldRenameJournalPath: string;
-		tablePresetFileMigrationJournalPath: string;
-		tablePresetFileMigrationReceiptPath: string;
 	};
 	runtime: {
-		indexPath: string;
 		indexV8RecoveryRequiredPath: string;
 		locales: {
 			rootPath: string;
@@ -40,7 +36,6 @@ export function buildOperonStoragePaths(
 	return {
 		pluginDir,
 		dataPackagePath: joinVaultPath(pluginDir, 'data.json'),
-		tablePresetFileMigrationBackupRootPath: joinVaultPath(pluginDir, 'data', 'migrations', 'table-presets-v1'),
 		state: {
 			reminderDeliveriesRootPath: joinVaultPath(pluginDir, 'state', 'reminder-deliveries'),
 			repeatSeriesPath: joinVaultPath(pluginDir, 'state', 'repeat-series.json'),
@@ -48,11 +43,8 @@ export function buildOperonStoragePaths(
 			pinnedTasksPath: joinVaultPath(pluginDir, 'state', 'pinned-tasks.json'),
 			projectSerialsPath: joinVaultPath(pluginDir, 'state', 'project-serials.json'),
 			fieldRenameJournalPath: joinVaultPath(pluginDir, 'state', 'field-rename-journal.json'),
-			tablePresetFileMigrationJournalPath: joinVaultPath(pluginDir, 'state', 'table-preset-file-migration.json'),
-			tablePresetFileMigrationReceiptPath: joinVaultPath(pluginDir, 'state', 'table-preset-file-migration-receipt.json'),
 		},
 		runtime: {
-			indexPath: joinVaultPath(pluginDir, 'runtime', 'index.json'),
 			indexV8RecoveryRequiredPath: joinVaultPath(pluginDir, 'runtime', 'index-v8-recovery-required.json'),
 			locales: {
 				rootPath: joinVaultPath(pluginDir, 'runtime', 'locales'),

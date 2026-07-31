@@ -21,6 +21,7 @@ import {
 	createInlineTaskCompactChipElement,
 	type CompactTaskLookupContext,
 	InlineTaskCompactChipEntry,
+	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from '../compact-task-layout';
 import { bindCompactChipLinkPreview } from '../compact-chip-link-preview';
@@ -34,13 +35,12 @@ import {
 	shouldOpenIconOnlyChipPreview,
 } from '../icon-only-chip-preview';
 import { showLocationMapPreview } from '../location-map-preview';
-import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent, wrapWithOperonHoverTooltip } from '../operon-hover-tooltip';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent, wrapWithOperonHoverTooltip } from '../operon-hover-tooltip';
 import { createProjectSerialChipElement } from '../project-serial-chip';
 import { openObsidianTagSearch } from '../tag-search';
 import { openTaskFieldPicker } from '../task-field-picker-dispatch';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from '../custom-field-surfaces';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
-import { showTaskNotePopover } from '../task-note-action';
 
 export interface KanbanTaskChipRowCallbacks {
 	app: App;
@@ -59,6 +59,7 @@ export interface KanbanTaskChipRowCallbacks {
 	updateDependencyField?: (operonId: string, field: 'blocking' | 'blockedBy', value: string) => void;
 	openEditor?: (operonId: string) => void | Promise<void>;
 	getTaskById?: (operonId: string) => IndexedTask | undefined;
+	openNotePopover?: (anchor: HTMLElement, task: IndexedTask) => void;
 }
 
 export interface KanbanTaskChipRowOptions {
@@ -368,7 +369,7 @@ function createKanbanTaskActionChipElement(
 	const noteValue = action.note === true ? task.fieldValues['note']?.trim() ?? '' : '';
 	bindOperonHoverTooltip(chip, {
 		title: action.label,
-		contentEl: noteValue ? createNonInteractiveMarkdownLinkContent(chip, noteValue) : undefined,
+		contentEl: noteValue ? createCompactTaskMarkdownTooltipContent(chip, noteValue) : undefined,
 		taskColor,
 	});
 	bindKanbanAxisActivationBridge(chip);
@@ -385,26 +386,7 @@ function createKanbanTaskActionChipElement(
 			event.preventDefault();
 			event.stopPropagation();
 			if (canEditNote) {
-				showTaskNotePopover({
-					app: callbacks.app,
-					anchor: chip,
-					operonId: task.operonId,
-					initialValue: task.fieldValues['note'] ?? '',
-					taskDescription: task.description,
-					taskColor,
-					onCommit: nextValue => {
-						if (callbacks.updateFields) {
-							return callbacks.updateFields(task.operonId, { note: nextValue });
-						}
-						if (callbacks.updateField) {
-							return callbacks.updateField(task.operonId, 'note', nextValue);
-						}
-						return false;
-					},
-					onClose: () => {
-					if (chip.isConnected) chip.focus();
-				},
-				});
+				callbacks.openNotePopover?.(chip, task);
 				return;
 			}
 			if (action.actionId === 'startTimer' && callbacks.toggleTimer) {
@@ -665,6 +647,8 @@ function applyKanbanChipVisualStyles(
 	}
 	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
 	if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
+	const blockedByColor = resolveCompactBlockedByIconColor(entry);
+	if (blockedByColor) chip.setCssProps({ '--operon-inline-chip-icon-color': blockedByColor });
 }
 
 function lookupStatusColor(

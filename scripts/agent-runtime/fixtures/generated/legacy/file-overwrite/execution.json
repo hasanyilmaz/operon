@@ -1,0 +1,16 @@
+{
+  "caseId": "file-overwrite",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": true,
+    "write": true
+  },
+  "requestSha256": "59266198169c254bdd4289a04ab3449fb3ab1b0580794f7d2f781b9514967c36",
+  "seed": 41029,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdoutSha256": "6c6fdf90480650ab87cf6ca9d6fbf8cadae61130caff074c32682187d82a6fb6",
+  "writtenFiles": {
+    "Tasks/Overwrite.md": "18b974c43aa0a348f3c1f3304217d2e440ece7056cf01c44d19f8dde1f5dc881"
+  }
+}

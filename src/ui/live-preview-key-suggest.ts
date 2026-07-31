@@ -20,6 +20,7 @@ import {
 	resolveTaskFieldSuggestions,
 	TaskFieldSuggestionItem as SuggestionItem,
 } from './task-field-suggest';
+import { allowsOperonDocumentEditor } from './editor-augmentation-scope';
 
 interface LivePreviewKeySuggestCallbacks {
 	getSettings: () => OperonSettings;
@@ -121,6 +122,7 @@ class OperonLivePreviewKeySuggest extends EditorSuggest<SuggestionItem> {
 	}
 
 	private isLivePreview(editor: Editor): boolean {
+		if (!allowsOperonDocumentEditor(editor)) return false;
 		const cm = getEditorViewFromEditor(editor);
 		if (!(cm instanceof EditorView)) return false;
 

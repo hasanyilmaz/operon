@@ -41,6 +41,10 @@ import {
 	type InlineRepeatCompletionMode,
 	normalizeInlineCompletionMode,
 } from '../storage/repeat-series-store';
+import {
+	resolveBlockedByAggregateVisualState,
+	resolveBlockedByVisualStateColor,
+} from '../core/blocked-by-visual-state';
 
 const TASK_CREATOR_NON_FIELD_SUBMIT_KEYS = new Set(['note', 'pinned', 'subtasks', 'tags']);
 const TASK_CREATOR_DAY_PICKER_DATE_KEYS = new Set<string>([
@@ -82,6 +86,8 @@ export interface TaskCreatorSubmitFieldSeed {
 export interface TaskCreatorModalOptions {
 	settings: OperonSettings;
 	allTasks: IndexedTask[];
+	getAllTasks?: () => IndexedTask[];
+	subscribeIndexUpdates?: (listener: () => void) => () => void;
 	initialDraft?: TaskCreatorDraft | null;
 	submitMode?: TaskCreatorSubmitMode;
 	initialCreateType?: TaskCreatorCreateType;
@@ -492,6 +498,7 @@ export class TaskCreatorModal extends Modal {
 	private ignoreOutsidePointerUntil = 0;
 	private toolbarOverflowFrame: number | null = null;
 	private mobilePickerOpenDepth = 0;
+	private indexUpdatesUnsubscribe: (() => void) | null = null;
 	private readonly resizeHandler = () => {
 		this.updateMobileViewportHeight();
 		this.autoSizeRenderedTextareas();
@@ -541,6 +548,10 @@ export class TaskCreatorModal extends Modal {
 		this.updateMobileViewportHeight();
 		this.registerMobilePickerListeners();
 		this.render();
+		this.indexUpdatesUnsubscribe?.();
+		this.indexUpdatesUnsubscribe = this.options.subscribeIndexUpdates?.(() => {
+			this.refreshBlockedByDependencyControl();
+		}) ?? null;
 		this.applyThemeColor();
 		this.allowDirectClose = false;
 		if (this.options.initialOutsidePointerGraceMs && this.options.initialOutsidePointerGraceMs > 0) {
@@ -561,6 +572,8 @@ export class TaskCreatorModal extends Modal {
 	onClose(): void {
 		this.nativeCloseButtonCleanup?.();
 		this.nativeCloseButtonCleanup = null;
+		this.indexUpdatesUnsubscribe?.();
+		this.indexUpdatesUnsubscribe = null;
 		if (this.escapeScopeHandler) {
 			this.scope.unregister(this.escapeScopeHandler);
 			this.escapeScopeHandler = null;
@@ -1332,7 +1345,11 @@ export class TaskCreatorModal extends Modal {
 			fieldKey,
 			value: this.draft.fieldValues[fieldKey] ?? '',
 			oppositeValue: this.draft.fieldValues[oppositeFieldKey] ?? '',
-			allTasks: this.options.allTasks,
+			allTasks: this.getAllTasks(),
+			getAllTasks: () => this.getAllTasks(),
+			subscribeIndexUpdates: this.options.subscribeIndexUpdates,
+			pipelines: this.options.settings.pipelines,
+			keyMappings: this.options.settings.keyMappings,
 			closeOnSelect: true,
 			onSave: payload => {
 				this.applyPayloadToDraft(payload);
@@ -1559,8 +1576,35 @@ export class TaskCreatorModal extends Modal {
 			} else {
 				setIcon(iconWrap, this.resolveFieldIcon(key));
 			}
+			if (key === 'blockedBy') this.applyBlockedByAggregateState(button);
 			this.bindFieldButtonTooltip(button, key);
 		}
+	}
+
+	private getAllTasks(): IndexedTask[] {
+		return this.options.getAllTasks?.() ?? this.options.allTasks;
+	}
+
+	private refreshBlockedByDependencyControl(): void {
+		const button = this.fieldButtonMap.get('blockedBy');
+		if (!button?.isConnected) return;
+		this.applyBlockedByAggregateState(button);
+	}
+
+	private applyBlockedByAggregateState(button: HTMLButtonElement): void {
+		const ids = splitTaskListValue(this.draft.fieldValues['blockedBy']);
+		const tasksById = new Map(this.getAllTasks().map(task => [task.operonId, task]));
+		const state = resolveBlockedByAggregateVisualState(
+			ids,
+			id => tasksById.get(id),
+			this.options.settings.pipelines,
+		);
+		const color = resolveBlockedByVisualStateColor(state);
+		button.classList.toggle('has-blocked-by-state', !!state);
+		if (state) button.dataset.blockedByState = state;
+		else delete button.dataset.blockedByState;
+		if (color) button.style.setProperty('--operon-blocked-by-state-color', color);
+		else button.style.removeProperty('--operon-blocked-by-state-color');
 	}
 
 	private renderReminderDraftStrip(): void {

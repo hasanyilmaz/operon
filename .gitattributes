@@ -1,0 +1,20 @@
+* text=auto eol=lf
+
+*.gif binary
+*.ico binary
+*.jpeg binary
+*.jpg binary
+*.mp3 binary
+*.pdf binary
+*.png binary
+*.tgz binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+
+# Exact legacy stdout captures preserve the renderer's terminal blank line.
+scripts/agent-runtime/fixtures/generated/legacy/file-default-target/stdout.txt whitespace=-blank-at-eof
+scripts/agent-runtime/fixtures/generated/legacy/file-exact-target/stdout.txt whitespace=-blank-at-eof
+scripts/agent-runtime/fixtures/generated/legacy/file-name-sanitization/stdout.txt whitespace=-blank-at-eof
+scripts/agent-runtime/fixtures/generated/legacy/file-template-preservation/stdout.txt whitespace=-blank-at-eof

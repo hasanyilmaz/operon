@@ -9,9 +9,7 @@ import type { IndexV8LoadResult } from './index-v8-store';
 
 export type IndexV8FallbackReason =
 	| 'recovery-required'
-	| 'read-disabled'
 	| 'missing'
-	| 'seed-basis'
 	| 'incomplete'
 	| 'io-error'
 	| 'invalid'
@@ -31,9 +29,8 @@ export type IndexV8StartupDecision =
 	}
 	| {
 		status: 'fallback';
-		reason: Exclude<IndexV8FallbackReason, 'read-disabled'>;
+		reason: IndexV8FallbackReason;
 		code?: string;
-		disableShadow: boolean;
 	}
 	| {
 		status: 'incompatible';
@@ -56,19 +53,11 @@ export function prepareIndexV8Startup(
 			...(loaded.status === 'invalid' || loaded.status === 'unsupported' || loaded.status === 'io-error'
 				? { code: loaded.code }
 				: {}),
-			disableShadow: loaded.status !== 'missing',
 		};
 	}
 
 	const validated = loaded.validatedSnapshot;
 	const manifest = validated.manifest;
-	if (manifest.coherenceBasis !== 'verified-full-scan') {
-		return {
-			status: 'fallback',
-			reason: 'seed-basis',
-			disableShadow: false,
-		};
-	}
 	if (manifest.indexSemanticsSignature !== expectedSemanticsSignature) {
 		return {
 			status: 'incompatible',
@@ -122,7 +111,6 @@ export function prepareIndexV8Startup(
 			status: 'fallback',
 			reason: 'hydration-failed',
 			code: 'HYDRATION_FAILED',
-			disableShadow: true,
 		};
 	}
 }
@@ -132,6 +120,5 @@ function invalidFallback(code: string): IndexV8StartupDecision {
 		status: 'fallback',
 		reason: 'invalid',
 		code,
-		disableShadow: true,
 	};
 }

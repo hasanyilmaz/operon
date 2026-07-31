@@ -6,6 +6,7 @@ import {
 	InlineTaskCompactChipEntry,
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
+	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
 import { OperonSettings } from '../types/settings';
@@ -76,6 +77,7 @@ export function getTaskWikilinkOverlayChipSignature(
 		entry.reminderItem?.index ?? '',
 		entry.reminderItem?.rawValue ?? '',
 		entry.reminderState ?? '',
+		entry.blockedByVisualState ?? '',
 		entry.ariaLabel ?? '',
 	].join(':')).join('|');
 	return [
@@ -262,6 +264,8 @@ function applyOverlayChipVisualStyles(
 	}
 	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
 	if (dateToneColor) cssProps['--operon-inline-chip-icon-color'] = dateToneColor;
+	const blockedByColor = resolveCompactBlockedByIconColor(entry);
+	if (blockedByColor) cssProps['--operon-inline-chip-icon-color'] = blockedByColor;
 	if (Object.keys(cssProps).length > 0) {
 		chip.setCssProps(cssProps);
 	}

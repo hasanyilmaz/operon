@@ -26,9 +26,9 @@ import {
 import { getIndexV8ShardId } from '../src/indexer/persistence/index-v8-partition';
 import { IndexV8StorageError, IndexV8Store } from '../src/indexer/persistence/index-v8-store';
 import {
-	IndexV8ShadowWriter,
-	type IndexV8ShadowInput,
-} from '../src/indexer/persistence/index-v8-shadow-writer';
+	IndexV8PersistenceCoordinator,
+	type IndexV8PersistenceInput,
+} from '../src/indexer/persistence/index-v8-persistence-coordinator';
 import { buildOperonStoragePaths } from '../src/storage/operon-storage-paths';
 import { createSyntheticIndexData } from './index-v8-fixtures';
 import { IndexV8MemoryAdapter } from './index-v8-memory-adapter';
@@ -582,7 +582,7 @@ async function testPersistenceCoordinatorParityGate(): Promise<void> {
 	const paths = buildOperonStoragePaths('.obsidian', 'operon-primary-parity-test').runtime.indexV8;
 	const store = new IndexV8Store(adapter.asDataAdapter(), paths);
 	await store.commit(base);
-	const writer = new IndexV8ShadowWriter(store, {
+	const writer = new IndexV8PersistenceCoordinator(store, {
 		scheduler: {
 			now: () => Date.now(),
 			setTimeout: (callback, delayMs) => globalThis.setTimeout(callback, delayMs),
@@ -599,7 +599,7 @@ async function testPersistenceCoordinatorParityGate(): Promise<void> {
 	const tasks = new Map(Object.entries(changed.tasks));
 	const secondary = new SecondaryIndexes();
 	secondary.rebuild(tasks);
-	const input: IndexV8ShadowInput = {
+	const input: IndexV8PersistenceInput = {
 		sequence: 20,
 		indexData: changed,
 		sourceStats: changedStats,

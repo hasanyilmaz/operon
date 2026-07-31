@@ -25,6 +25,12 @@ export class CoalescedAsyncScheduler {
 	private running = false;
 	private cancelled = false;
 	private consecutiveFailures = 0;
+	private lastError: unknown = null;
+	private flushRequested = false;
+	private idleWaiters = new Set<{
+		resolve: () => void;
+		reject: (error: unknown) => void;
+	}>();
 
 	constructor(options: CoalescedAsyncSchedulerOptions) {
 		this.delayMs = Math.max(0, options.delayMs);
@@ -39,6 +45,7 @@ export class CoalescedAsyncScheduler {
 		if (this.cancelled) return;
 		if (!this.running && this.timer === null && !this.requested) {
 			this.consecutiveFailures = 0;
+			this.lastError = null;
 		}
 		this.requested = true;
 		if (this.running || this.timer !== null) return;
@@ -52,6 +59,37 @@ export class CoalescedAsyncScheduler {
 			this.clearTimer(this.timer);
 			this.timer = null;
 		}
+		this.rejectIdleWaiters(new Error('Coalesced scheduler was cancelled'));
+	}
+
+	isIdle(): boolean {
+		return !this.requested && !this.running && this.timer === null;
+	}
+
+	async whenIdle(): Promise<void> {
+		if (this.cancelled) throw new Error('Coalesced scheduler was cancelled');
+		if (this.isIdle()) {
+			if (this.lastError) throw asError(this.lastError);
+			return;
+		}
+		await new Promise<void>((resolve, reject) => {
+			this.idleWaiters.add({ resolve, reject });
+		});
+	}
+
+	async flushNow(): Promise<void> {
+		if (this.cancelled) throw new Error('Coalesced scheduler was cancelled');
+		if (this.isIdle()) {
+			if (this.lastError) throw asError(this.lastError);
+			return;
+		}
+		this.flushRequested = true;
+		if (this.timer !== null) {
+			this.clearTimer(this.timer);
+			this.timer = null;
+		}
+		if (!this.running && this.requested) this.armTimer();
+		await this.whenIdle();
 	}
 
 	private armTimer(): void {
@@ -59,7 +97,7 @@ export class CoalescedAsyncScheduler {
 		this.timer = this.setTimer(() => {
 			this.timer = null;
 			void this.runPending();
-		}, this.delayMs);
+		}, this.flushRequested ? 0 : this.delayMs);
 	}
 
 	private async runPending(): Promise<void> {
@@ -69,7 +107,9 @@ export class CoalescedAsyncScheduler {
 		try {
 			await this.runTask();
 			this.consecutiveFailures = 0;
+			this.lastError = null;
 		} catch (error) {
+			this.lastError = error;
 			this.onError?.(error);
 			this.consecutiveFailures++;
 			if (this.consecutiveFailures <= this.maxRetries && !this.cancelled) {
@@ -77,7 +117,34 @@ export class CoalescedAsyncScheduler {
 			}
 		} finally {
 			this.running = false;
-			if (this.requested && !this.cancelled) this.armTimer();
+			if (this.requested && !this.cancelled) {
+				this.armTimer();
+			} else if (!this.cancelled) {
+				this.flushRequested = false;
+				this.settleIdleWaiters();
+			}
 		}
 	}
+
+	private settleIdleWaiters(): void {
+		const waiters = [...this.idleWaiters];
+		this.idleWaiters.clear();
+		for (const waiter of waiters) {
+			if (this.lastError) {
+				waiter.reject(this.lastError);
+			} else {
+				waiter.resolve();
+			}
+		}
+	}
+
+	private rejectIdleWaiters(error: unknown): void {
+		const waiters = [...this.idleWaiters];
+		this.idleWaiters.clear();
+		for (const waiter of waiters) waiter.reject(error);
+	}
+}
+
+function asError(error: unknown): Error {
+	return error instanceof Error ? error : new Error(String(error));
 }

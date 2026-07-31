@@ -1,4 +1,4 @@
-import { App, TFile } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { TaskWriter } from '../core/task-writer';
 import { OperonStorage } from '../storage/operon-storage';
@@ -36,6 +36,7 @@ import {
 import {
 	deriveTemporalTemplateFromTaskAtOccurrence,
 	getTaskRepeatOccurrenceDate,
+	resolveRepeatTemporalAnchor,
 	resolveOccurrencePlan,
 } from './recurrence-domain';
 import {
@@ -178,7 +179,7 @@ export function materializeInlineOccurrenceLines(
 	return { lines: nextLines, mode: 'inserted' };
 }
 
-interface PlannedOccurrence {
+export interface PlannedOccurrence {
 	rule: RepeatRule;
 	seriesId: string;
 	nextDate: string;
@@ -192,6 +193,38 @@ interface PlannedOccurrence {
 	baseTitle: string | null;
 	naming: RepeatSeriesNamingConfig | null;
 	inlineCompletionMode: InlineRepeatCompletionMode;
+}
+
+export type AgentRuntimeRecurrencePreview =
+	| {
+		disposition: 'ended';
+		seriesId: string | null;
+		reason: 'repeat-end' | 'count-exhausted' | 'no-next-occurrence';
+	}
+	| {
+		disposition: 'materialize';
+		seriesId: string;
+		nextOperonId: string;
+		nextFilePath: string;
+		nextLineNumber?: number;
+		plannedSourceContent: string;
+		coalescedWithPrimarySource: boolean;
+		sourceTaskRetained: boolean;
+		sourceTaskFinalFilePath?: string;
+		archiveFilePath?: string;
+		archiveSourceContent?: string;
+		lastMaterializedTitle: string | null;
+	};
+
+export interface AgentRuntimeRecurrencePreviewInput {
+	beforeTask: IndexedTask;
+	completedTask: IndexedTask;
+	completionTimestamp: string;
+	effectiveAt: string;
+	postTransitionSourceContent: string;
+	nextOperonId: string;
+	seriesId: string;
+	isOperonIdAvailable?: (operonId: string) => boolean;
 }
 
 export type RecurringBodyTaskKind = 'owned-subtask' | 'foreign-operon-task' | 'plain-content';
@@ -304,15 +337,7 @@ function resolveMaterializationSourceAnchor(rule: RepeatRule, fieldValues: Recor
 }
 
 function resolveMaterializationTemporalAnchor(rule: RepeatRule, fieldValues: Record<string, string>): string {
-	if (rule.mode === 'done') {
-		return normalizeDateOnly(fieldValues['repeatOccurrenceDate'])
-			|| normalizeDateOnly(fieldValues['dateScheduled'])
-			|| normalizeDateOnly(fieldValues['dateStarted'])
-			|| normalizeDateOnly(fieldValues['dateDue'])
-			|| normalizeDateOnly(fieldValues['datetimeStart'])
-			|| normalizeDateOnly(fieldValues['datetimeEnd']);
-	}
-	return resolveMaterializationSourceAnchor(rule, fieldValues);
+	return resolveRepeatTemporalAnchor(rule, fieldValues);
 }
 
 function shiftDateByRootOccurrenceDelta(
@@ -770,6 +795,269 @@ export class RecurrenceService {
 		};
 	}
 
+	/**
+	 * Read-only recurrence projection for the Agent Runtime. It shares the
+	 * canonical recurrence rules and renderers but never creates a series,
+	 * writes a source, or updates repeat-series state.
+	 */
+	previewNextOccurrenceForAgentRuntime(
+		input: AgentRuntimeRecurrencePreviewInput,
+	): AgentRuntimeRecurrencePreview | null {
+		const { beforeTask, completedTask } = input;
+		if (completedTask.checkbox !== 'done' && completedTask.checkbox !== 'cancelled') return null;
+		const rule = parseRepeatRule(completedTask.fieldValues['repeat']);
+		if (!rule) return null;
+		if (rule.mode === 'count' && (!rule.count || rule.count <= 1)) {
+			return {
+				disposition: 'ended',
+				seriesId: input.seriesId || null,
+				reason: 'count-exhausted',
+			};
+		}
+		const series = this.storage.repeatSeries.getEntry(input.seriesId)
+			?? this.buildReadOnlySeriesEntry(completedTask, input.seriesId, input.effectiveAt);
+		const anchorDate = this.resolveNextOccurrenceAnchorDate(
+			rule,
+			completedTask,
+			input.completionTimestamp,
+		);
+		if (!anchorDate) return null;
+		const nextOccurrenceDate = calculateNextRepeatDate(rule, {
+			anchorDate,
+			skipDates: series.skipDates,
+			repeatEnd: completedTask.fieldValues['datetimeRepeatEnd'],
+		});
+		if (!nextOccurrenceDate) {
+			return {
+				disposition: 'ended',
+				seriesId: series.seriesId,
+				reason: completedTask.fieldValues['datetimeRepeatEnd']
+					? 'repeat-end'
+					: 'no-next-occurrence',
+			};
+		}
+		const baseTemplate = series.baseTemporalTemplate
+			?? deriveTemporalTemplateFromTaskAtOccurrence(
+				completedTask,
+				resolveMaterializationTemporalAnchor(rule, completedTask.fieldValues),
+			);
+		const occurrencePlan = resolveOccurrencePlan({
+			entry: series,
+			occurrenceDate: nextOccurrenceDate,
+			fallbackTemplate: baseTemplate,
+		});
+		if (!occurrencePlan) return null;
+		const planned: PlannedOccurrence = {
+			rule,
+			seriesId: series.seriesId,
+			nextDate: occurrencePlan.scheduledDate,
+			nextOccurrenceDate,
+			temporalTemplate: occurrencePlan.temporalTemplate,
+			fieldValues: this.buildNextOccurrenceFieldValues(
+				beforeTask,
+				completedTask,
+				rule,
+				series,
+				nextOccurrenceDate,
+				occurrencePlan.scheduledDate,
+				occurrencePlan.temporalTemplate,
+				input.effectiveAt,
+				input.nextOperonId,
+			),
+			description: this.resolveNextOccurrenceDescription(
+				completedTask,
+				series,
+				occurrencePlan.scheduledDate,
+				nextOccurrenceDate,
+			),
+			tags: [...completedTask.tags],
+			timePrefix: null,
+			sourceTask: completedTask,
+			baseTitle: series.baseTitle,
+			naming: series.naming,
+			inlineCompletionMode: series.inlineCompletionMode,
+		};
+
+		if (completedTask.primary.format === 'inline') {
+			const lines = input.postTransitionSourceContent.split('\n');
+			const lineIndex = this.findTaskLine(
+				lines,
+				completedTask.primary.filePath,
+				completedTask.operonId,
+				completedTask.primary.lineNumber,
+			);
+			if (lineIndex === -1) return null;
+			const parsedSource = parseTaskLine(
+				lines[lineIndex],
+				lineIndex,
+				completedTask.primary.filePath,
+				this.getSettings().keyMappings,
+			);
+			const materialized = materializeInlineOccurrenceLines(
+				lines,
+				lineIndex,
+				this.buildInlineTaskLine(planned, parsedSource),
+				{
+					replaceCompleted: this.shouldReplaceCompletedInlineOccurrence(planned),
+					newOccurrencePosition: this.getSettings().newOccurrencePosition,
+				},
+			);
+			const nextLineNumber = materialized.mode === 'replaced'
+				? lineIndex
+				: this.getSettings().newOccurrencePosition === 'above'
+					? lineIndex
+					: lineIndex + 1;
+			return {
+				disposition: 'materialize',
+				seriesId: series.seriesId,
+				nextOperonId: input.nextOperonId,
+				nextFilePath: completedTask.primary.filePath,
+				nextLineNumber,
+				plannedSourceContent: materialized.lines.join('\n'),
+				coalescedWithPrimarySource: true,
+				sourceTaskRetained: materialized.mode !== 'replaced',
+				lastMaterializedTitle: null,
+			};
+		}
+
+		const sourceFile = this.app.vault.getAbstractFileByPath(completedTask.primary.filePath);
+		if (!(sourceFile instanceof TFile)) return null;
+		const folder = this.resolveRepeatFolder(sourceFile);
+		if (folder && !(this.app.vault.getAbstractFileByPath(folder) instanceof TFolder)) return null;
+		const naming = resolveLatestRepeatSeriesNamingConfig(
+			this.getFileBaseName(sourceFile.path),
+			planned.naming,
+		);
+		const plainNaming = naming?.mode === 'plain';
+		const currentDisplayDate = resolveRecurringFileDisplayDate(completedTask.fieldValues);
+		const nextDisplayDate = resolveRecurringFileDisplayDate(planned.fieldValues);
+		if (!nextDisplayDate || (plainNaming && !currentDisplayDate)) return null;
+		const nextTitle = naming
+			? renderRepeatSeriesTitle(naming, nextDisplayDate)
+			: (planned.baseTitle ?? this.deriveBaseTitle(sourceFile.path));
+		const filePath = plainNaming
+			? sourceFile.path
+			: this.getUniqueRepeatFilePath(folder, this.sanitizeTaskFileName(nextTitle));
+		const archiveFilePath = plainNaming && naming && currentDisplayDate
+			? this.getUniqueRepeatFilePath(
+				folder,
+				this.sanitizeTaskFileName(
+					renderCompletedPlainArchiveTitle(naming, currentDisplayDate),
+				),
+			)
+			: null;
+		const sourceDocument = parseFrontmatterDocument(
+			input.postTransitionSourceContent,
+			this.getSettings().keyMappings,
+		);
+		const sourceDocumentWithYamlRemovals = sourceDocument.hasFrontmatter
+			? applyRawYamlValueRemovals(
+				sourceDocument,
+				this.resolveYamlPropertyValueRemovalsForSeries(planned.seriesId),
+				this.collectProtectedRawYamlKeysForRecurringFileTask(sourceDocument),
+			)
+			: sourceDocument;
+		let generatedChildIndex = 0;
+		let childIdCollision = false;
+		const reservedOperonIds = new Set([input.nextOperonId]);
+		const transformedBody = transformRecurringFileBody({
+			sourceBody: sourceDocumentWithYamlRemovals.body,
+			sourceFilePath: completedTask.primary.filePath,
+			oldRootOperonId: completedTask.operonId,
+			newRootOperonId: input.nextOperonId,
+			oldRootFieldValues: completedTask.fieldValues,
+			newRootFieldValues: planned.fieldValues,
+			rootSeriesId: planned.seriesId,
+			keyMappings: this.getSettings().keyMappings,
+			pipelines: this.getSettings().pipelines,
+			defaultPipelineName: this.getSettings().defaultPipelineName,
+			now: planned.fieldValues['datetimeModified'],
+			generateOperonId: () => {
+				const childIndex = generatedChildIndex++;
+				for (let attempt = 0; attempt < 100; attempt += 1) {
+					const candidate = this.deterministicChildOperonId(
+						input.nextOperonId,
+						childIndex,
+						attempt,
+					);
+					if (
+						!reservedOperonIds.has(candidate)
+						&& (input.isOperonIdAvailable?.(candidate) ?? true)
+					) {
+						reservedOperonIds.add(candidate);
+						return candidate;
+					}
+				}
+				childIdCollision = true;
+				return input.nextOperonId;
+			},
+		});
+		if (childIdCollision) return null;
+		const draft = buildMergedFileTaskDraft({
+			source: {
+				description: nextTitle,
+				fieldValues: planned.fieldValues,
+				fieldPresence: buildRecurringFileFieldPresence(
+					planned.fieldValues,
+					sourceDocumentWithYamlRemovals,
+				),
+				tags: [...planned.tags],
+				tagsPresent: planned.tags.length > 0,
+				frontmatterDocument: {
+					...sourceDocumentWithYamlRemovals,
+					body: transformedBody.body,
+				},
+			},
+			template: null,
+			defaults: resolveFileTaskDefaults({
+				sourceFieldValues: planned.fieldValues,
+				templateFieldValues: {},
+				existingOperonId: input.nextOperonId,
+				defaultPipelineName: this.getSettings().defaultPipelineName,
+				defaultPriority: this.getSettings().defaultPriority,
+				pipelines: this.getSettings().pipelines,
+				now: planned.fieldValues['datetimeModified'],
+				generateOperonId: () => input.nextOperonId,
+			}),
+			keyMappings: this.getSettings().keyMappings,
+			bodyStrategy: 'preserve-source',
+			preserveSourceKeyChoices: true,
+		});
+		return {
+			disposition: 'materialize',
+			seriesId: series.seriesId,
+			nextOperonId: input.nextOperonId,
+			nextFilePath: filePath,
+			plannedSourceContent: draft.content,
+			coalescedWithPrimarySource: plainNaming,
+			sourceTaskRetained: true,
+			...(archiveFilePath
+				? {
+					sourceTaskFinalFilePath: archiveFilePath,
+					archiveFilePath,
+					archiveSourceContent: input.postTransitionSourceContent,
+				}
+				: {}),
+			lastMaterializedTitle: nextTitle,
+		};
+	}
+
+	async commitAgentRuntimeRecurrenceState(
+		sourceTask: IndexedTask,
+		seriesId: string,
+		lastMaterializedTitle: string | null,
+		effectiveAt: string,
+	): Promise<void> {
+		await this.ensureSeriesEntry(sourceTask, seriesId);
+		if (lastMaterializedTitle) {
+			await this.storage.repeatSeries.updateLastMaterializedTitle(
+				seriesId,
+				lastMaterializedTitle,
+				effectiveAt,
+			);
+		}
+	}
+
 	private resolveNextOccurrenceAnchorDate(
 		rule: RepeatRule,
 		completedTask: IndexedTask,
@@ -855,13 +1143,15 @@ export class RecurrenceService {
 		nextOccurrenceDate: string,
 		nextDate: string,
 		temporalTemplate: RepeatTemporalTemplate,
+		effectiveAt: string = localNow(),
+		nextOperonId: string = generateOperonId(),
 	): Record<string, string> {
-		const now = localNow();
+		const now = effectiveAt;
 		const hasSourceScheduledDate = !!normalizeDateOnly(completedTask.fieldValues['dateScheduled']);
 		const sourceTemporalAnchor = resolveMaterializationTemporalAnchor(rule, completedTask.fieldValues);
 		const hasSourceTemporalAnchor = !!sourceTemporalAnchor;
 		const fieldValues: Record<string, string> = {
-			operonId: generateOperonId(),
+			operonId: nextOperonId,
 			datetimeCreated: now,
 			datetimeModified: now,
 			repeatSeriesId: series.seriesId,
@@ -1190,6 +1480,62 @@ export class RecurrenceService {
 		this.onBeforeCreatedTaskReindex(plan.fieldValues['operonId']);
 		this.indexer.scheduleReindex(filePath);
 		return filePath;
+	}
+
+	private buildReadOnlySeriesEntry(
+		task: IndexedTask,
+		seriesId: string,
+		effectiveAt: string,
+	): RepeatSeriesEntry {
+		const rule = parseRepeatRule(task.fieldValues['repeat']);
+		const yamlBaseName = task.primary.format === 'yaml'
+			? this.getFileBaseName(task.primary.filePath)
+			: null;
+		const inlineDescription = task.primary.format === 'inline'
+			? task.description.trim()
+			: null;
+		return {
+			seriesId,
+			sourceTaskId: task.operonId,
+			sourceFormat: task.primary.format,
+			baseTitle: task.primary.format === 'yaml'
+				? this.deriveBaseTitle(task.primary.filePath)
+				: null,
+			lastMaterializedTitle: task.primary.format === 'yaml'
+				? this.getFileBaseName(task.primary.filePath)
+				: task.description.trim(),
+			naming: yamlBaseName
+				? detectRepeatSeriesNamingConfig(yamlBaseName)
+				: inlineDescription
+					? detectRepeatSeriesNamingConfig(inlineDescription)
+					: null,
+			skipDates: [],
+			yamlPropertyValueRemovalConfigured: false,
+			yamlPropertyValueRemovals: [],
+			baseTemporalTemplate: rule
+				? deriveTemporalTemplateFromTaskAtOccurrence(
+					task,
+					resolveMaterializationTemporalAnchor(rule, task.fieldValues),
+				)
+				: null,
+			inlineCompletionMode: 'keep-completed',
+			createdAt: effectiveAt,
+			updatedAt: effectiveAt,
+			overrides: {
+				single: {},
+				following: [],
+			},
+		};
+	}
+
+	private deterministicChildOperonId(rootOperonId: string, index: number, attempt = 0): string {
+		let hash = 2166136261;
+		const input = `${rootOperonId}:${index}:${attempt}`;
+		for (let offset = 0; offset < input.length; offset += 1) {
+			hash ^= input.charCodeAt(offset);
+			hash = Math.imul(hash, 16777619);
+		}
+		return Math.abs(hash >>> 0).toString(36).padStart(7, '0').slice(-7);
 	}
 
 	private resolveYamlPropertyValueRemovalsForSeries(seriesId: string): string[] {

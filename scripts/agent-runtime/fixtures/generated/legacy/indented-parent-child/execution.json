@@ -1,0 +1,14 @@
+{
+  "caseId": "indented-parent-child",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "dc5bbfdde188e364aa9e8da66d1f0f1707eacde6bc73f2e0b46a18b2682fd27d",
+  "seed": 41020,
+  "stderrSha256": "738c108ba9cce0bc84bcd89b5193b044e2be55b87a4fb6e57bd6ab261b5b2d41",
+  "stdoutSha256": "257b011978d38c5a452e0e48588ec92d9972a3a249332895474e61664391024d",
+  "writtenFiles": {}
+}

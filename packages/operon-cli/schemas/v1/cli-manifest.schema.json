@@ -1,0 +1,1857 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:cli:v1:cli-manifest.schema.json",
+  "title": "Operon CLI manifest V1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "manifestVersion",
+    "package",
+    "compatibility",
+    "commands",
+    "runtimeCapabilities",
+    "convenienceMutations",
+    "runtimeContracts",
+    "localContracts",
+    "convenienceContracts",
+    "mutationCapabilities",
+    "projections",
+    "exitCodes",
+    "contractPolicy",
+    "deprecations",
+    "limits",
+    "errorRegistry",
+    "protocols",
+    "platforms",
+    "schemas",
+    "schemaEntrypoints",
+    "contractDigest"
+  ],
+  "properties": {
+    "manifestVersion": {
+      "const": 1
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "executable",
+        "node"
+      ],
+      "properties": {
+        "name": {
+          "const": "operon-cli"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "executable": {
+          "const": "operon"
+        },
+        "node": {
+          "const": "^22.0.0 || ^24.0.0 || ^26.0.0"
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimeApi",
+        "cliContract"
+      ],
+      "properties": {
+        "runtimeApi": {
+          "$ref": "#/$defs/v1Range"
+        },
+        "cliContract": {
+          "$ref": "#/$defs/v1Range"
+        }
+      }
+    },
+    "commands": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "local",
+        "runtime",
+        "convenience"
+      ],
+      "properties": {
+        "local": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 15,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+          }
+        },
+        "runtime": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 13,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)*$"
+          }
+        },
+        "convenience": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 19,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)*$"
+          }
+        }
+      }
+    },
+    "runtimeCapabilities": {
+      "$ref": "#/$defs/runtimeCapabilities"
+    },
+    "convenienceMutations": {
+      "$ref": "#/$defs/convenienceMutations"
+    },
+    "runtimeContracts": {
+      "$ref": "#/$defs/runtimeContracts"
+    },
+    "localContracts": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/localContract"
+      },
+      "minProperties": 15
+    },
+    "convenienceContracts": {
+      "$ref": "#/$defs/convenienceContracts"
+    },
+    "mutationCapabilities": {
+      "$ref": "#/$defs/mutationCapabilities"
+    },
+    "projections": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "enum": [
+          "exact-task",
+          "task-neighborhood",
+          "project-analysis",
+          "planning-workload",
+          "creation-context",
+          "mutation-preview",
+          "placement-candidates"
+        ]
+      }
+    },
+    "exitCodes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "success",
+        "usage",
+        "unavailable",
+        "refused",
+        "runtimeFailure",
+        "internal",
+        "interrupted"
+      ],
+      "properties": {
+        "success": {
+          "const": 0
+        },
+        "usage": {
+          "const": 2
+        },
+        "unavailable": {
+          "const": 3
+        },
+        "refused": {
+          "const": 4
+        },
+        "runtimeFailure": {
+          "const": 5
+        },
+        "internal": {
+          "const": 70
+        },
+        "interrupted": {
+          "const": 130
+        }
+      }
+    },
+    "contractPolicy": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "inputs",
+        "outputs",
+        "unknownCapability",
+        "unknownError",
+        "deprecationRemoval"
+      ],
+      "properties": {
+        "inputs": {
+          "const": "strict"
+        },
+        "outputs": {
+          "const": "additive"
+        },
+        "unknownCapability": {
+          "const": "non-authorizing"
+        },
+        "unknownError": {
+          "const": "stop-and-inspect"
+        },
+        "deprecationRemoval": {
+          "const": "cli-2.0-or-runtime-v2"
+        }
+      }
+    },
+    "deprecations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "errorRegistry": {
+      "type": "array",
+      "minItems": 35,
+      "x-operon-uniqueBy": "code",
+      "items": {
+        "$ref": "#/$defs/errorRegistryEntry"
+      }
+    },
+    "protocols": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "sessionJsonl"
+      ],
+      "properties": {
+        "sessionJsonl": {
+          "$ref": "#/$defs/sessionProtocol"
+        }
+      }
+    },
+    "platforms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "darwin",
+        "linux",
+        "win32",
+        "wsl"
+      ],
+      "properties": {
+        "darwin": {
+          "const": "supported"
+        },
+        "linux": {
+          "const": "acceptance-required"
+        },
+        "win32": {
+          "enum": [
+            "unsupported",
+            "acceptance-required"
+          ]
+        },
+        "wsl": {
+          "const": "unsupported"
+        }
+      }
+    },
+    "schemas": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/schemaFile"
+      }
+    },
+    "schemaEntrypoints": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/schemaEntrypoint"
+      }
+    },
+    "contractDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "localContract": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "output"
+      ],
+      "properties": {
+        "output": {
+          "enum": [
+            "machine-readable",
+            "text-tty-only"
+          ]
+        },
+        "requestSchema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resultSchema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outputSchemas": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "errorRegistryEntry": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "code",
+        "action",
+        "retryable",
+        "recovery",
+        "exitClass",
+        "exitCode"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "recovery": {
+          "enum": [
+            "none",
+            "same-plan"
+          ]
+        },
+        "exitClass": {
+          "enum": [
+            "usage",
+            "unavailable",
+            "refused",
+            "runtime-failure",
+            "internal"
+          ]
+        },
+        "exitCode": {
+          "enum": [
+            2,
+            3,
+            4,
+            5,
+            70
+          ]
+        }
+      }
+    },
+    "sessionProtocol": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "version",
+        "invocation",
+        "transport",
+        "requestSchema",
+        "readGroupSchema",
+        "resultSchema",
+        "failureSchema",
+        "uncertainResultSchema",
+        "readGroupMin",
+        "readGroupMax",
+        "readGroupCommands",
+        "abortExitCode"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "invocation": {
+          "const": "operon session --jsonl"
+        },
+        "transport": {
+          "const": "jsonl-stdio"
+        },
+        "requestSchema": {
+          "const": "session-frame"
+        },
+        "readGroupSchema": {
+          "const": "session-read-group"
+        },
+        "resultSchema": {
+          "const": "session-result"
+        },
+        "failureSchema": {
+          "const": "session-failure"
+        },
+        "uncertainResultSchema": {
+          "const": "session-uncertain-result"
+        },
+        "readGroupMin": {
+          "const": 2
+        },
+        "readGroupMax": {
+          "const": 8
+        },
+        "readGroupCommands": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 4
+        },
+        "abortExitCode": {
+          "const": 130
+        }
+      }
+    },
+    "v1Range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "const": 1
+        },
+        "max": {
+          "const": 1
+        }
+      }
+    },
+    "runtimeCommand": {
+      "enum": [
+        "health",
+        "capabilities",
+        "diagnostics",
+        "catalog",
+        "entity.resolve",
+        "task.get",
+        "tasks.query",
+        "tasks.finder",
+        "relationships.get",
+        "context.build",
+        "timers.read",
+        "mutation.preview",
+        "mutation.apply"
+      ]
+    },
+    "convenienceCommand": {
+      "enum": [
+        "task.create",
+        "task.update",
+        "task.complete",
+        "task.reopen",
+        "task.cancel",
+        "task.pin",
+        "task.unpin",
+        "task.transition",
+        "task.delete",
+        "task.convert",
+        "task.relocate",
+        "reminder.add",
+        "reminder.replace",
+        "reminder.remove",
+        "timer.session.add",
+        "timer.session.update",
+        "timer.session.remove",
+        "timer.start",
+        "timer.stop"
+      ]
+    },
+    "mutationKind": {
+      "enum": [
+        "task.create",
+        "task.update",
+        "task.recurrence",
+        "task.relationship",
+        "task.reminder-item",
+        "task.transition",
+        "task.pinned-state",
+        "timer.control",
+        "timer.session",
+        "task.convert",
+        "task.inline-relocate",
+        "task.delete"
+      ]
+    },
+    "runtimeCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "health",
+        "capabilities",
+        "diagnostics",
+        "catalog",
+        "entity.resolve",
+        "task.get",
+        "tasks.query",
+        "tasks.finder",
+        "relationships.get",
+        "context.build",
+        "timers.read",
+        "mutation.preview",
+        "mutation.apply"
+      ],
+      "properties": {
+        "health": {
+          "const": "system.health"
+        },
+        "capabilities": {
+          "const": "system.capabilities"
+        },
+        "diagnostics": {
+          "const": "system.diagnostics"
+        },
+        "catalog": {
+          "const": "catalog.read"
+        },
+        "entity.resolve": {
+          "const": "entities.resolve"
+        },
+        "task.get": {
+          "const": "tasks.read"
+        },
+        "tasks.query": {
+          "const": "tasks.query"
+        },
+        "tasks.finder": {
+          "const": "tasks.finder"
+        },
+        "relationships.get": {
+          "const": "relationships.read"
+        },
+        "context.build": {
+          "const": "context.build"
+        },
+        "timers.read": {
+          "const": "timers.read"
+        },
+        "mutation.preview": {
+          "const": "mutation-kind-derived"
+        },
+        "mutation.apply": {
+          "const": "mutation-kind-derived"
+        }
+      }
+    },
+    "convenienceMutations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task.create",
+        "task.update",
+        "task.complete",
+        "task.reopen",
+        "task.cancel",
+        "task.pin",
+        "task.unpin",
+        "task.transition",
+        "task.delete",
+        "task.convert",
+        "task.relocate",
+        "reminder.add",
+        "reminder.replace",
+        "reminder.remove",
+        "timer.session.add",
+        "timer.session.update",
+        "timer.session.remove",
+        "timer.start",
+        "timer.stop"
+      ],
+      "properties": {
+        "task.create": {
+          "const": "task.create"
+        },
+        "task.update": {
+          "const": "task.update"
+        },
+        "task.complete": {
+          "const": "task.transition"
+        },
+        "task.reopen": {
+          "const": "task.transition"
+        },
+        "task.cancel": {
+          "const": "task.transition"
+        },
+        "task.pin": {
+          "const": "task.pinned-state"
+        },
+        "task.unpin": {
+          "const": "task.pinned-state"
+        },
+        "task.transition": {
+          "const": "task.transition"
+        },
+        "task.delete": {
+          "const": "task.delete"
+        },
+        "task.convert": {
+          "const": "task.convert"
+        },
+        "task.relocate": {
+          "const": "task.inline-relocate"
+        },
+        "reminder.add": {
+          "const": "task.reminder-item"
+        },
+        "reminder.replace": {
+          "const": "task.reminder-item"
+        },
+        "reminder.remove": {
+          "const": "task.reminder-item"
+        },
+        "timer.session.add": {
+          "const": "timer.session"
+        },
+        "timer.session.update": {
+          "const": "timer.session"
+        },
+        "timer.session.remove": {
+          "const": "timer.session"
+        },
+        "timer.start": {
+          "const": "timer.control"
+        },
+        "timer.stop": {
+          "const": "timer.control"
+        }
+      }
+    },
+    "runtimeContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "requestSchema",
+        "resultSchema"
+      ],
+      "properties": {
+        "capability": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requestSchema": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resultSchema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "runtimeContracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "health",
+        "capabilities",
+        "diagnostics",
+        "catalog",
+        "entity.resolve",
+        "task.get",
+        "tasks.query",
+        "tasks.finder",
+        "relationships.get",
+        "context.build",
+        "timers.read",
+        "mutation.preview",
+        "mutation.apply"
+      ],
+      "properties": {
+        "health": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "system.health"
+            },
+            "requestSchema": {
+              "const": null
+            },
+            "resultSchema": {
+              "const": "runtime-health"
+            }
+          }
+        },
+        "capabilities": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "system.capabilities"
+            },
+            "requestSchema": {
+              "const": null
+            },
+            "resultSchema": {
+              "const": "capability-advertisements"
+            }
+          }
+        },
+        "diagnostics": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "system.diagnostics"
+            },
+            "requestSchema": {
+              "const": null
+            },
+            "resultSchema": {
+              "const": "runtime-diagnostics"
+            }
+          }
+        },
+        "catalog": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "catalog.read"
+            },
+            "requestSchema": {
+              "const": "catalog-request"
+            },
+            "resultSchema": {
+              "const": "operon-catalog"
+            }
+          }
+        },
+        "entity.resolve": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "entities.resolve"
+            },
+            "requestSchema": {
+              "const": "entity-resolve-request"
+            },
+            "resultSchema": {
+              "const": "entity-resolution-result"
+            }
+          }
+        },
+        "task.get": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "tasks.read"
+            },
+            "requestSchema": {
+              "const": "task-get-request"
+            },
+            "resultSchema": {
+              "const": "task-get-result"
+            }
+          }
+        },
+        "tasks.query": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "tasks.query"
+            },
+            "requestSchema": {
+              "const": "task-query-request"
+            },
+            "resultSchema": {
+              "const": "task-query-result"
+            }
+          }
+        },
+        "tasks.finder": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "tasks.finder"
+            },
+            "requestSchema": {
+              "const": "task-finder-request"
+            },
+            "resultSchema": {
+              "const": "task-finder-result"
+            }
+          }
+        },
+        "relationships.get": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "relationships.read"
+            },
+            "requestSchema": {
+              "const": "relationship-request"
+            },
+            "resultSchema": {
+              "const": "relationship-result"
+            }
+          }
+        },
+        "context.build": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "context.build"
+            },
+            "requestSchema": {
+              "const": "context-request"
+            },
+            "resultSchema": {
+              "const": "context-pack"
+            }
+          }
+        },
+        "timers.read": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "timers.read"
+            },
+            "requestSchema": {
+              "const": "timer-read-request"
+            },
+            "resultSchema": {
+              "const": "timer-read-result"
+            }
+          }
+        },
+        "mutation.preview": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "mutation-kind-derived"
+            },
+            "requestSchema": {
+              "const": "mutation-preview-request"
+            },
+            "resultSchema": {
+              "const": "mutation-preview-result"
+            }
+          }
+        },
+        "mutation.apply": {
+          "type": "object",
+          "$ref": "#/$defs/runtimeContract",
+          "properties": {
+            "capability": {
+              "const": "mutation-kind-derived"
+            },
+            "requestSchema": {
+              "const": "mutation-plan-reference"
+            },
+            "resultSchema": {
+              "const": "mutation-result"
+            }
+          }
+        }
+      }
+    },
+    "convenienceContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutationKind",
+        "targetPolicy",
+        "intentSchema",
+        "previewResultSchema",
+        "applyResultSchema"
+      ],
+      "properties": {
+        "mutationKind": {
+          "$ref": "#/$defs/mutationKind"
+        },
+        "targetPolicy": {
+          "enum": [
+            "forbidden",
+            "required",
+            "optional"
+          ]
+        },
+        "intentSchema": {
+          "const": "mutation-intent"
+        },
+        "previewResultSchema": {
+          "const": "mutation-preview-result"
+        },
+        "applyResultSchema": {
+          "const": "mutation-result"
+        },
+        "sourceTransitionRecoveryVersion": {
+          "const": 1
+        },
+        "sourceTransitionRecoveryFeatures": {
+          "const": [
+            "terminal-after-state-verification",
+            "same-plan-forward-continuation",
+            "compare-aware-compensation",
+            "cross-file-transition-journal"
+          ]
+        }
+      },
+      "dependentRequired": {
+        "sourceTransitionRecoveryVersion": [
+          "sourceTransitionRecoveryFeatures"
+        ],
+        "sourceTransitionRecoveryFeatures": [
+          "sourceTransitionRecoveryVersion"
+        ]
+      }
+    },
+    "taskCreateConvenienceContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutationKind",
+        "targetPolicy",
+        "intentSchema",
+        "previewResultSchema",
+        "applyResultSchema",
+        "inputFormats",
+        "compactGrammarVersion",
+        "compactBatchVersion",
+        "compactBatchInputFormat",
+        "compactBatchMaxItems",
+        "typedCreateVersion",
+        "typedCreateFeatures",
+        "temporalCreateVersion",
+        "temporalCreateKeys",
+        "graphTransactionVersion",
+        "graphTransactionFeatures"
+      ],
+      "properties": {
+        "mutationKind": {
+          "const": "task.create"
+        },
+        "targetPolicy": {
+          "const": "forbidden"
+        },
+        "intentSchema": {
+          "const": "mutation-intent"
+        },
+        "previewResultSchema": {
+          "const": "mutation-preview-result"
+        },
+        "applyResultSchema": {
+          "const": "mutation-result"
+        },
+        "inputFormats": {
+          "const": [
+            "json",
+            "compact",
+            "compact-lines"
+          ]
+        },
+        "compactGrammarVersion": {
+          "const": 1
+        },
+        "compactBatchVersion": {
+          "const": 1
+        },
+        "compactBatchInputFormat": {
+          "const": "compact-lines"
+        },
+        "compactBatchMaxItems": {
+          "const": 64
+        },
+        "typedCreateVersion": {
+          "const": 1
+        },
+        "typedCreateFeatures": {
+          "const": [
+            "exact-inline-placement",
+            "exact-file-target",
+            "deterministic-file-template",
+            "file-body-replacement",
+            "same-source-task-graph",
+            "cross-source-parent-related"
+          ]
+        },
+        "temporalCreateVersion": {
+          "const": 1
+        },
+        "temporalCreateKeys": {
+          "const": [
+            "reminderDatetimes",
+            "reminderRules",
+            "repeat",
+            "datetimeRepeatEnd"
+          ]
+        },
+        "graphTransactionVersion": {
+          "const": 1
+        },
+        "graphTransactionFeatures": {
+          "const": [
+            "vault-wide-graph-transaction",
+            "compare-aware-compensation",
+            "same-plan-safe-continuation",
+            "cross-source-reciprocal-dependency"
+          ]
+        }
+      }
+    },
+    "taskUpdateConvenienceContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutationKind",
+        "targetPolicy",
+        "intentSchema",
+        "previewResultSchema",
+        "applyResultSchema"
+      ],
+      "properties": {
+        "mutationKind": {
+          "const": "task.update"
+        },
+        "targetPolicy": {
+          "const": "required"
+        },
+        "intentSchema": {
+          "const": "mutation-intent"
+        },
+        "previewResultSchema": {
+          "const": "mutation-preview-result"
+        },
+        "applyResultSchema": {
+          "const": "mutation-result"
+        },
+        "compactUpdateVersion": {
+          "const": 1
+        },
+        "compactUpdateFeatures": {
+          "const": [
+            "exact-id-target",
+            "exact-description-target",
+            "multi-field-update",
+            "explicit-field-clear",
+            "safe-auto-apply"
+          ]
+        },
+        "compactUpdateBatchVersion": {
+          "const": 1
+        },
+        "compactUpdateBatchInputFormat": {
+          "const": "compact-lines"
+        },
+        "compactUpdateBatchMaxItems": {
+          "const": 64
+        },
+        "compactUpdateBatchFeatures": {
+          "const": [
+            "exact-id-targets",
+            "heterogeneous-general-updates",
+            "explicit-field-clear",
+            "single-source-atomic-plan",
+            "per-target-postflight",
+            "same-plan-recovery"
+          ]
+        },
+        "directRelationshipVersion": {
+          "const": 1
+        },
+        "directRelationshipKeys": {
+          "const": [
+            "parentTask",
+            "blocking",
+            "blockedBy"
+          ]
+        },
+        "directRelationshipFeatures": {
+          "const": [
+            "exact-source-selector",
+            "exact-id-targets",
+            "whole-list-replace",
+            "explicit-field-clear",
+            "reciprocal-dependency",
+            "compare-aware-graph-transaction",
+            "safe-auto-apply"
+          ]
+        },
+        "directRecurrenceVersion": {
+          "const": 1
+        },
+        "directRecurrenceKeys": {
+          "const": [
+            "repeat",
+            "datetimeRepeatEnd",
+            "dateScheduled",
+            "dateStarted",
+            "dateDue",
+            "datetimeStart",
+            "datetimeEnd",
+            "estimate"
+          ]
+        },
+        "directRecurrenceScopes": {
+          "const": [
+            "this-task",
+            "this-and-following"
+          ]
+        },
+        "directRecurrenceFeatures": {
+          "const": [
+            "exact-source-selector",
+            "multi-field-update",
+            "explicit-field-clear",
+            "scoped-temporal-update",
+            "start-recurrence-default-scope",
+            "compare-aware-recurrence-state",
+            "safe-auto-apply"
+          ]
+        }
+      },
+      "dependentRequired": {
+        "compactUpdateVersion": [
+          "compactUpdateFeatures"
+        ],
+        "compactUpdateFeatures": [
+          "compactUpdateVersion"
+        ],
+        "compactUpdateBatchVersion": [
+          "compactUpdateBatchInputFormat",
+          "compactUpdateBatchMaxItems",
+          "compactUpdateBatchFeatures"
+        ],
+        "compactUpdateBatchInputFormat": [
+          "compactUpdateBatchVersion",
+          "compactUpdateBatchMaxItems",
+          "compactUpdateBatchFeatures"
+        ],
+        "compactUpdateBatchMaxItems": [
+          "compactUpdateBatchVersion",
+          "compactUpdateBatchInputFormat",
+          "compactUpdateBatchFeatures"
+        ],
+        "compactUpdateBatchFeatures": [
+          "compactUpdateBatchVersion",
+          "compactUpdateBatchInputFormat",
+          "compactUpdateBatchMaxItems"
+        ],
+        "directRelationshipVersion": [
+          "directRelationshipKeys",
+          "directRelationshipFeatures"
+        ],
+        "directRelationshipKeys": [
+          "directRelationshipVersion",
+          "directRelationshipFeatures"
+        ],
+        "directRelationshipFeatures": [
+          "directRelationshipVersion",
+          "directRelationshipKeys"
+        ],
+        "directRecurrenceVersion": [
+          "directRecurrenceKeys",
+          "directRecurrenceScopes",
+          "directRecurrenceFeatures"
+        ],
+        "directRecurrenceKeys": [
+          "directRecurrenceVersion",
+          "directRecurrenceScopes",
+          "directRecurrenceFeatures"
+        ],
+        "directRecurrenceScopes": [
+          "directRecurrenceVersion",
+          "directRecurrenceKeys",
+          "directRecurrenceFeatures"
+        ],
+        "directRecurrenceFeatures": [
+          "directRecurrenceVersion",
+          "directRecurrenceKeys",
+          "directRecurrenceScopes"
+        ]
+      }
+    },
+    "taskTransitionConvenienceContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutationKind",
+        "targetPolicy",
+        "intentSchema",
+        "previewResultSchema",
+        "applyResultSchema"
+      ],
+      "dependentRequired": {
+        "directTransitionVersion": [
+          "directTransitionActions"
+        ],
+        "directTransitionActions": [
+          "directTransitionVersion"
+        ]
+      },
+      "properties": {
+        "mutationKind": {
+          "const": "task.transition"
+        },
+        "targetPolicy": {
+          "const": "required"
+        },
+        "intentSchema": {
+          "const": "mutation-intent"
+        },
+        "previewResultSchema": {
+          "const": "mutation-preview-result"
+        },
+        "applyResultSchema": {
+          "const": "mutation-result"
+        },
+        "directTransitionVersion": {
+          "const": 1
+        },
+        "directTransitionActions": {
+          "const": [
+            "complete",
+            "reopen",
+            "cancel"
+          ]
+        }
+      }
+    },
+    "reminderConvenienceContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutationKind",
+        "targetPolicy",
+        "intentSchema",
+        "previewResultSchema",
+        "applyResultSchema"
+      ],
+      "dependentRequired": {
+        "directReminderVersion": [
+          "directReminderFeatures"
+        ],
+        "directReminderFeatures": [
+          "directReminderVersion"
+        ]
+      },
+      "properties": {
+        "mutationKind": {
+          "const": "task.reminder-item"
+        },
+        "targetPolicy": {
+          "const": "required"
+        },
+        "intentSchema": {
+          "const": "mutation-intent"
+        },
+        "previewResultSchema": {
+          "const": "mutation-preview-result"
+        },
+        "applyResultSchema": {
+          "const": "mutation-result"
+        },
+        "directReminderVersion": {
+          "const": 1
+        },
+        "directReminderFeatures": {
+          "const": [
+            "exact-id-target",
+            "exact-description-target",
+            "single-item-add",
+            "sealed-item-replace",
+            "sealed-item-remove",
+            "safe-auto-apply"
+          ]
+        }
+      }
+    },
+    "taskPinnedConvenienceContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutationKind",
+        "targetPolicy",
+        "intentSchema",
+        "previewResultSchema",
+        "applyResultSchema"
+      ],
+      "dependentRequired": {
+        "directPinnedVersion": [
+          "directPinnedActions",
+          "directPinnedFeatures"
+        ],
+        "directPinnedActions": [
+          "directPinnedVersion",
+          "directPinnedFeatures"
+        ],
+        "directPinnedFeatures": [
+          "directPinnedVersion",
+          "directPinnedActions"
+        ]
+      },
+      "properties": {
+        "mutationKind": {
+          "const": "task.pinned-state"
+        },
+        "targetPolicy": {
+          "const": "required"
+        },
+        "intentSchema": {
+          "const": "mutation-intent"
+        },
+        "previewResultSchema": {
+          "const": "mutation-preview-result"
+        },
+        "applyResultSchema": {
+          "const": "mutation-result"
+        },
+        "directPinnedVersion": {
+          "const": 1
+        },
+        "directPinnedActions": {
+          "const": [
+            "pin",
+            "unpin"
+          ]
+        },
+        "directPinnedFeatures": {
+          "const": [
+            "exact-id-target",
+            "exact-description-target",
+            "compare-aware-state",
+            "safe-auto-apply"
+          ]
+        }
+      }
+    },
+    "timerSessionConvenienceContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutationKind",
+        "targetPolicy",
+        "intentSchema",
+        "previewResultSchema",
+        "applyResultSchema"
+      ],
+      "dependentRequired": {
+        "directTimerSessionVersion": [
+          "directTimerSessionActions",
+          "directTimerSessionFeatures"
+        ],
+        "directTimerSessionActions": [
+          "directTimerSessionVersion",
+          "directTimerSessionFeatures"
+        ],
+        "directTimerSessionFeatures": [
+          "directTimerSessionVersion",
+          "directTimerSessionActions"
+        ]
+      },
+      "properties": {
+        "mutationKind": {
+          "const": "timer.session"
+        },
+        "targetPolicy": {
+          "const": "required"
+        },
+        "intentSchema": {
+          "const": "mutation-intent"
+        },
+        "previewResultSchema": {
+          "const": "mutation-preview-result"
+        },
+        "applyResultSchema": {
+          "const": "mutation-result"
+        },
+        "directTimerSessionVersion": {
+          "const": 1
+        },
+        "directTimerSessionActions": {
+          "const": [
+            "add",
+            "update",
+            "remove"
+          ]
+        },
+        "directTimerSessionFeatures": {
+          "const": [
+            "oldest-first-session-number",
+            "expected-range-cas",
+            "duration-recalculation",
+            "parent-aggregate-update",
+            "same-plan-recovery"
+          ]
+        }
+      }
+    },
+    "convenienceContracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task.create",
+        "task.update",
+        "task.complete",
+        "task.reopen",
+        "task.cancel",
+        "task.pin",
+        "task.unpin",
+        "task.transition",
+        "task.delete",
+        "task.convert",
+        "task.relocate",
+        "reminder.add",
+        "reminder.replace",
+        "reminder.remove",
+        "timer.session.add",
+        "timer.session.update",
+        "timer.session.remove",
+        "timer.start",
+        "timer.stop"
+      ],
+      "properties": {
+        "task.create": {
+          "$ref": "#/$defs/taskCreateConvenienceContract"
+        },
+        "task.update": {
+          "$ref": "#/$defs/taskUpdateConvenienceContract"
+        },
+        "task.complete": {
+          "$ref": "#/$defs/taskTransitionConvenienceContract"
+        },
+        "task.reopen": {
+          "$ref": "#/$defs/taskTransitionConvenienceContract"
+        },
+        "task.cancel": {
+          "$ref": "#/$defs/taskTransitionConvenienceContract"
+        },
+        "task.pin": {
+          "$ref": "#/$defs/taskPinnedConvenienceContract"
+        },
+        "task.unpin": {
+          "$ref": "#/$defs/taskPinnedConvenienceContract"
+        },
+        "task.transition": {
+          "$ref": "#/$defs/taskTransitionConvenienceContract"
+        },
+        "task.delete": {
+          "type": "object",
+          "$ref": "#/$defs/convenienceContract",
+          "properties": {
+            "mutationKind": {
+              "const": "task.delete"
+            },
+            "targetPolicy": {
+              "const": "required"
+            }
+          }
+        },
+        "task.convert": {
+          "type": "object",
+          "$ref": "#/$defs/convenienceContract",
+          "properties": {
+            "mutationKind": {
+              "const": "task.convert"
+            },
+            "targetPolicy": {
+              "const": "required"
+            }
+          }
+        },
+        "task.relocate": {
+          "type": "object",
+          "$ref": "#/$defs/convenienceContract",
+          "properties": {
+            "mutationKind": {
+              "const": "task.inline-relocate"
+            },
+            "targetPolicy": {
+              "const": "required"
+            }
+          }
+        },
+        "reminder.add": {
+          "$ref": "#/$defs/reminderConvenienceContract"
+        },
+        "reminder.replace": {
+          "$ref": "#/$defs/reminderConvenienceContract"
+        },
+        "reminder.remove": {
+          "$ref": "#/$defs/reminderConvenienceContract"
+        },
+        "timer.session.add": {
+          "$ref": "#/$defs/timerSessionConvenienceContract"
+        },
+        "timer.session.update": {
+          "$ref": "#/$defs/timerSessionConvenienceContract"
+        },
+        "timer.session.remove": {
+          "$ref": "#/$defs/timerSessionConvenienceContract"
+        },
+        "timer.start": {
+          "type": "object",
+          "$ref": "#/$defs/convenienceContract",
+          "properties": {
+            "mutationKind": {
+              "const": "timer.control"
+            },
+            "targetPolicy": {
+              "const": "optional"
+            }
+          }
+        },
+        "timer.stop": {
+          "type": "object",
+          "$ref": "#/$defs/convenienceContract",
+          "properties": {
+            "mutationKind": {
+              "const": "timer.control"
+            },
+            "targetPolicy": {
+              "const": "optional"
+            }
+          }
+        }
+      }
+    },
+    "mutationCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task.create",
+        "task.update",
+        "task.recurrence",
+        "task.relationship",
+        "task.reminder-item",
+        "task.transition",
+        "task.pinned-state",
+        "timer.control",
+        "timer.session",
+        "task.convert",
+        "task.inline-relocate",
+        "task.delete"
+      ],
+      "properties": {
+        "task.create": {
+          "$ref": "#/$defs/createCapabilities"
+        },
+        "task.update": {
+          "$ref": "#/$defs/updateCapabilities"
+        },
+        "task.recurrence": {
+          "$ref": "#/$defs/recurrenceCapabilities"
+        },
+        "task.relationship": {
+          "$ref": "#/$defs/relationshipCapabilities"
+        },
+        "task.reminder-item": {
+          "$ref": "#/$defs/reminderCapabilities"
+        },
+        "task.transition": {
+          "$ref": "#/$defs/transitionCapabilities"
+        },
+        "task.pinned-state": {
+          "$ref": "#/$defs/pinnedCapabilities"
+        },
+        "timer.control": {
+          "$ref": "#/$defs/timerCapabilities"
+        },
+        "timer.session": {
+          "$ref": "#/$defs/timerSessionCapabilities"
+        },
+        "task.convert": {
+          "$ref": "#/$defs/convertCapabilities"
+        },
+        "task.inline-relocate": {
+          "$ref": "#/$defs/relocateCapabilities"
+        },
+        "task.delete": {
+          "$ref": "#/$defs/deleteCapabilities"
+        }
+      }
+    },
+    "createCapabilities": {
+      "$ref": "#/$defs/createCapabilitiesValue"
+    },
+    "createCapabilitiesValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.create.preview"
+        },
+        "apply": {
+          "const": "tasks.create.apply"
+        }
+      }
+    },
+    "updateCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.update.preview"
+        },
+        "apply": {
+          "const": "tasks.update.apply"
+        }
+      }
+    },
+    "recurrenceCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.recurrence.preview"
+        },
+        "apply": {
+          "const": "tasks.recurrence.apply"
+        }
+      }
+    },
+    "relationshipCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.relationship.preview"
+        },
+        "apply": {
+          "const": "tasks.relationship.apply"
+        }
+      }
+    },
+    "reminderCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.reminder.preview"
+        },
+        "apply": {
+          "const": "tasks.reminder.apply"
+        }
+      }
+    },
+    "transitionCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.transition.preview"
+        },
+        "apply": {
+          "const": "tasks.transition.apply"
+        }
+      }
+    },
+    "pinnedCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.pinned.preview"
+        },
+        "apply": {
+          "const": "tasks.pinned.apply"
+        }
+      }
+    },
+    "timerCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "timers.control.preview"
+        },
+        "apply": {
+          "const": "timers.control.apply"
+        }
+      }
+    },
+    "timerSessionCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "timers.session.preview"
+        },
+        "apply": {
+          "const": "timers.session.apply"
+        }
+      }
+    },
+    "convertCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.convert.preview"
+        },
+        "apply": {
+          "const": "tasks.convert.apply"
+        }
+      }
+    },
+    "relocateCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.inline.relocate.preview"
+        },
+        "apply": {
+          "const": "tasks.inline.relocate.apply"
+        }
+      }
+    },
+    "deleteCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preview",
+        "apply"
+      ],
+      "properties": {
+        "preview": {
+          "const": "tasks.delete.preview"
+        },
+        "apply": {
+          "const": "tasks.delete.apply"
+        }
+      }
+    },
+    "schemaFile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "file",
+        "sha256"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+\\.json$"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "schemaEntrypoint": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "schemaId",
+        "ref",
+        "file",
+        "sha256",
+        "stability"
+      ],
+      "properties": {
+        "schemaId": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+$"
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+\\.json$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "stability": {
+          "const": "stable"
+        }
+      }
+    }
+  }
+}

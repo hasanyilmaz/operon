@@ -20,7 +20,7 @@ import {
 	IndexV8StorageError,
 	IndexV8Store,
 } from '../src/indexer/persistence/index-v8-store';
-import { IndexV8PersistenceCoordinator } from '../src/indexer/persistence/index-v8-shadow-writer';
+import { IndexV8PersistenceCoordinator } from '../src/indexer/persistence/index-v8-persistence-coordinator';
 import { buildOperonStoragePaths } from '../src/storage/operon-storage-paths';
 import { createSyntheticIndexData } from './index-v8-fixtures';
 import { IndexV8MemoryAdapter } from './index-v8-memory-adapter';
@@ -271,16 +271,18 @@ async function testMetadataInventoryAndCleanupSafety(): Promise<void> {
 	adapter.setFile(`${paths.rootPath}/${rootShardTempName}`, 'wrong-directory', now - 25 * 60 * 60 * 1_000);
 	adapter.setFile(`${paths.shardsPath}/${shardManifestTempName}`, 'wrong-directory', now - 25 * 60 * 60 * 1_000);
 	adapter.setFile(`${paths.rootPath}/manifest.json.tmp-user-copy`, 'foreign', now - 40 * day);
+	adapter.setFile(`${paths.rootPath}/manifest-notes.json`, 'foreign', now - 40 * day);
 	const operationStart = adapter.operations.length;
 	const inspection = await store.inspect();
 	const inventoryOperations = adapter.operations.slice(operationStart);
 	equal(inspection.manifestStatus, 'loaded');
-	check(inspection.protectedShardNames.includes(protectedName));
+	check(!inspection.protectedShardNames.includes(protectedName));
 	equal(inspection.entries.find(entry => entry.name === oldOrphanName)?.kind, 'orphan-shard');
 	equal(inspection.entries.find(entry => entry.name === oldTempName)?.kind, 'owned-temp');
 	equal(inspection.entries.find(entry => entry.path.endsWith(rootShardTempName))?.kind, 'foreign');
 	equal(inspection.entries.find(entry => entry.path.endsWith(shardManifestTempName))?.kind, 'foreign');
 	equal(inspection.entries.find(entry => entry.name === 'manifest.json.tmp-user-copy')?.kind, 'foreign');
+	equal(inspection.entries.find(entry => entry.name === 'manifest-notes.json')?.kind, 'foreign');
 	check(inventoryOperations.every(operation => !operation.startsWith('readBinary:')), 'inventory must not read shard payloads');
 	check(inventoryOperations.every(operation => (
 		!operation.startsWith(`read:${paths.shardsPath}/`)
@@ -288,16 +290,24 @@ async function testMetadataInventoryAndCleanupSafety(): Promise<void> {
 
 	const plan = await store.planCleanup({ nowMs: now });
 	equal(plan.suppressedReasons.length, 0);
-	check(plan.candidates.some(candidate => candidate.name === oldOrphanName));
-	check(plan.candidates.some(candidate => candidate.name === oldTempName));
-	check(plan.candidates.every(candidate => candidate.name !== youngOrphanName));
-	check(plan.candidates.every(candidate => candidate.name !== protectedName));
+	equal(plan.candidates.length, 1);
+	equal(plan.candidates[0].kind, 'alternate-manifest');
 	const result = await store.applyCleanup(plan);
 	equal(result.status, 'applied');
-	equal(result.deletedCount, 2);
-	check(adapter.files.has(`${paths.shardsPath}/${youngOrphanName}`));
-	check(adapter.files.has(`${paths.shardsPath}/${protectedName}`));
+	equal(result.deletedCount, 1);
+	equal(result.backlogRemaining, true);
+	const orphanPlan = await store.planCleanup({ nowMs: now });
+	check(orphanPlan.candidates.some(candidate => candidate.name === oldOrphanName));
+	check(orphanPlan.candidates.some(candidate => candidate.name === oldTempName));
+	check(orphanPlan.candidates.some(candidate => candidate.name === youngOrphanName));
+	check(orphanPlan.candidates.some(candidate => candidate.name === protectedName));
+	const orphanResult = await store.applyCleanup(orphanPlan);
+	equal(orphanResult.status, 'applied');
+	equal(orphanResult.deletedCount, 4);
+	check(!adapter.files.has(`${paths.shardsPath}/${youngOrphanName}`));
+	check(!adapter.files.has(`${paths.shardsPath}/${protectedName}`));
 	check(adapter.files.has(`${paths.rootPath}/manifest.json.tmp-user-copy`));
+	check(adapter.files.has(`${paths.rootPath}/manifest-notes.json`));
 	check(adapter.files.has(`${paths.rootPath}/${rootShardTempName}`));
 	check(adapter.files.has(`${paths.shardsPath}/${shardManifestTempName}`));
 }
@@ -339,6 +349,20 @@ async function testCleanupPlanSealingAndBudgets(): Promise<void> {
 	equal(stale.status, 'stale');
 	equal(stale.deletedCount, 0);
 	check(sealedCandidateNames.every(name => adapter.files.has(`${paths.shardsPath}/${name}`)));
+
+	const oversizedAdapter = new IndexV8MemoryAdapter();
+	const oversizedStore = new IndexV8Store(oversizedAdapter.asDataAdapter(), paths);
+	await oversizedStore.commit({ ...active, expectedBaseMissing: true });
+	oversizedAdapter.setFile(`${paths.rootPath}/manifest (conflict oversized).json`, 'x'.repeat(16_000_001), 0);
+	const progressName = `00-${'c'.repeat(64)}.json`;
+	oversizedAdapter.setFile(`${paths.shardsPath}/${progressName}`, '{}', 0);
+	const oversizedPlan = await oversizedStore.planCleanup({ nowMs: now });
+	equal(oversizedPlan.candidates.length, 1);
+	equal(oversizedPlan.candidates[0].name, 'manifest (conflict oversized).json');
+	equal(oversizedPlan.hasMoreCandidates, true);
+	equal((await oversizedStore.applyCleanup(oversizedPlan)).status, 'applied');
+	const postOversizedPlan = await oversizedStore.planCleanup({ nowMs: now });
+	equal(postOversizedPlan.candidates[0]?.name, progressName, 'oversized alternate removal must advance to owned files');
 }
 
 async function testCleanupSuppressionAndPartialStop(): Promise<void> {
@@ -349,25 +373,28 @@ async function testCleanupSuppressionAndPartialStop(): Promise<void> {
 	const suppressedStore = new IndexV8Store(suppressedAdapter.asDataAdapter(), paths);
 	await suppressedStore.commit({ ...active, expectedBaseMissing: true });
 	suppressedAdapter.setFile(`${paths.shardsPath}/00-${'d'.repeat(64)}.json`, '{}', 0);
-	suppressedAdapter.setFile(`${paths.rootPath}/manifest invalid.json`, '{invalid', 0);
+	suppressedAdapter.setFile(`${paths.rootPath}/manifest (conflict invalid).json`, '{invalid', 0);
 	const suppressedPlan = await suppressedStore.planCleanup({ nowMs: now });
-	check(suppressedPlan.suppressedReasons.some(reason => reason.startsWith('invalid-alternate-manifest:')));
-	equal(suppressedPlan.candidates.length, 0);
+	equal(suppressedPlan.suppressedReasons.length, 0);
+	equal(suppressedPlan.candidates.length, 1);
+	equal(suppressedPlan.candidates[0].kind, 'alternate-manifest');
 	const suppressedResult = await suppressedStore.applyCleanup(suppressedPlan);
-	equal(suppressedResult.status, 'suppressed');
+	equal(suppressedResult.status, 'applied');
 	check(suppressedAdapter.files.has(`${paths.shardsPath}/00-${'d'.repeat(64)}.json`));
 
 	const partialAdapter = new IndexV8MemoryAdapter();
 	const partialStore = new IndexV8Store(partialAdapter.asDataAdapter(), paths);
 	await partialStore.commit({ ...active, expectedBaseMissing: true });
-	for (const suffix of ['e', 'f']) {
-		partialAdapter.setFile(`${paths.shardsPath}/00-${suffix.repeat(64)}.json`, '{}', 0);
-	}
+	const activeShardNames = new Set(active.manifest.shards.map(descriptor => descriptor.path.slice('shards/'.length)));
+	const remoteOnlyDescriptor = remote.manifest.shards.find(descriptor => !activeShardNames.has(descriptor.path.slice('shards/'.length)));
+	check(remoteOnlyDescriptor);
+	const remoteOnlyPath = `${paths.rootPath}/${remoteOnlyDescriptor.path}`;
+	partialAdapter.setFile(remoteOnlyPath, remote.shardPayloads.get(remoteOnlyDescriptor.shardId)!, 0);
 	const partialPlan = await partialStore.planCleanup({ nowMs: now });
-	equal(partialPlan.candidates.length, 2);
+	equal(partialPlan.candidates.length, 1);
 	let manifestChanged = false;
 	partialAdapter.failOperation = (operation, path) => {
-		if (!manifestChanged && operation === 'remove' && path.startsWith(paths.shardsPath)) {
+		if (!manifestChanged && operation === 'remove' && path.includes('.cleanup-')) {
 			manifestChanged = true;
 			partialAdapter.setFile(paths.manifestPath, remote.manifestPayload);
 		}
@@ -375,9 +402,45 @@ async function testCleanupSuppressionAndPartialStop(): Promise<void> {
 	};
 	const partialResult = await partialStore.applyCleanup(partialPlan);
 	partialAdapter.failOperation = null;
-	equal(partialResult.status, 'partial');
-	equal(partialResult.deletedCount, 1);
+	equal(partialResult.status, 'stale');
+	equal(partialResult.deletedCount, 0);
 	equal(partialResult.skippedCount, 1);
+	check(partialAdapter.files.has(remoteOnlyPath), 'a shard activated during removal must be restored');
+
+	const backupRaceAdapter = new IndexV8MemoryAdapter();
+	const backupRaceStore = new IndexV8Store(backupRaceAdapter.asDataAdapter(), paths);
+	await backupRaceStore.commit({ ...active, expectedBaseMissing: true });
+	backupRaceAdapter.setFile(remoteOnlyPath, remote.shardPayloads.get(remoteOnlyDescriptor.shardId)!, 0);
+	const backupRacePlan = await backupRaceStore.planCleanup({ nowMs: now });
+	let changedDuringBackupDelete = false;
+	backupRaceAdapter.failOperation = (operation, path) => {
+		if (!changedDuringBackupDelete && operation === 'remove' && path.includes('.json.tmp-')) {
+			changedDuringBackupDelete = true;
+			backupRaceAdapter.setFile(paths.manifestPath, remote.manifestPayload);
+		}
+		return false;
+	};
+	const backupRaceResult = await backupRaceStore.applyCleanup(backupRacePlan);
+	backupRaceAdapter.failOperation = null;
+	equal(backupRaceResult.status, 'stale');
+	equal(backupRaceResult.deletedCount, 0);
+	check(backupRaceAdapter.files.has(remoteOnlyPath), 'a shard activated during backup deletion must be restored from memory');
+
+	const unloadRaceAdapter = new IndexV8MemoryAdapter();
+	const unloadRaceStore = new IndexV8Store(unloadRaceAdapter.asDataAdapter(), paths);
+	await unloadRaceStore.commit({ ...active, expectedBaseMissing: true });
+	const unloadRaceName = `00-${'6'.repeat(64)}.json`;
+	const unloadRacePath = `${paths.shardsPath}/${unloadRaceName}`;
+	unloadRaceAdapter.setFile(unloadRacePath, '{}', 0);
+	const unloadRacePlan = await unloadRaceStore.planCleanup({ nowMs: now });
+	let cleanupActive = true;
+	unloadRaceAdapter.afterRead = path => {
+		if (path === paths.manifestPath) cleanupActive = false;
+	};
+	const unloadRaceResult = await unloadRaceStore.applyCleanup(unloadRacePlan, () => cleanupActive);
+	unloadRaceAdapter.afterRead = null;
+	equal(unloadRaceResult.status, 'stale');
+	check(unloadRaceAdapter.files.has(unloadRacePath), 'unload during authority validation must prevent a new claim');
 
 	const preRemoveRaceAdapter = new IndexV8MemoryAdapter();
 	const preRemoveRaceStore = new IndexV8Store(preRemoveRaceAdapter.asDataAdapter(), paths);
@@ -462,10 +525,8 @@ async function testReusedShardFingerprintCache(): Promise<void> {
 
 function testCoordinatorRuntimePhases(): void {
 	const coordinator = new IndexV8PersistenceCoordinator({
-		load: async () => ({ status: 'missing', metrics: { manifestBytes: 0, shardBytes: 0, shardsRead: 0, totalMs: 0 } }),
 		commit: async () => { throw new Error('not used'); },
 	}, {
-		enabled: true,
 		scheduler: {
 			now: () => 0,
 			setTimeout: () => 0,
@@ -484,7 +545,7 @@ function testCoordinatorRuntimePhases(): void {
 	equal(coordinator.getRuntimePhase(), 'recovery-required', 'recovery-required mode must be terminal for the session');
 }
 
-async function testBoundedSettleAndHealthyV7Freeze(): Promise<void> {
+async function testBoundedSettleAndVerifiedPersistence(): Promise<void> {
 	const stable = await snapshot(createSyntheticIndexData(8), BASE_TIME);
 	const loaded = {
 		status: 'loaded' as const,
@@ -505,7 +566,7 @@ async function testBoundedSettleAndHealthyV7Freeze(): Promise<void> {
 	const store = { load: async () => results[Math.min(loadIndex++, results.length - 1)] };
 	let phase: 'idle' | 'sync-settling' | 'rebasing' | 'recovery-required' = 'idle';
 	let primaryPersists = 0;
-	const shadow = {
+	const persistence = {
 		getRuntimePhase: () => phase,
 		setRuntimePhase: (next: typeof phase) => { phase = next; },
 		isVerifiedBaseline: () => false,
@@ -527,14 +588,8 @@ async function testBoundedSettleAndHealthyV7Freeze(): Promise<void> {
 		drain: async () => {},
 		disable: () => {},
 	};
-	let v7Writes = 0;
 	const storage = {
 		getSettings: () => DEFAULT_SETTINGS,
-		loadIndex: async () => null,
-		saveIndex: async () => {
-			v7Writes += 1;
-			return { jsonBytes: 0, stringifyMs: 0, writeMs: 0, queueWaitMs: 0, totalMs: 0 };
-		},
 	};
 	const app = {
 		vault: { getMarkdownFiles: () => [], getAbstractFileByPath: () => null },
@@ -544,7 +599,7 @@ async function testBoundedSettleAndHealthyV7Freeze(): Promise<void> {
 	const delays: number[] = [];
 	let indexer!: OperonIndexer;
 	const recoveryDirtyBatches: Array<{ paths: string[]; ids: string[] }> = [];
-	shadow.persistPrimary = async (input: { sequence: number; committedAt: string }, dirty?: { dirtySourcePaths: ReadonlySet<string>; affectedOperonIds: ReadonlySet<string> }) => {
+	persistence.persistPrimary = async (input: { sequence: number; committedAt: string }, dirty?: { dirtySourcePaths: ReadonlySet<string>; affectedOperonIds: ReadonlySet<string> }) => {
 		primaryPersists += 1;
 		if (dirty) recoveryDirtyBatches.push({ paths: [...dirty.dirtySourcePaths].sort(), ids: [...dirty.affectedOperonIds].sort() });
 		return {
@@ -556,7 +611,7 @@ async function testBoundedSettleAndHealthyV7Freeze(): Promise<void> {
 	indexer = new OperonIndexer(
 		app,
 		storage as never,
-		shadow as never,
+		persistence as never,
 		store as never,
 		{
 			now: () => now,
@@ -575,10 +630,12 @@ async function testBoundedSettleAndHealthyV7Freeze(): Promise<void> {
 	const recoveryMutable = indexer as unknown as {
 		coherentWorkflowStatusSemanticsSignature: string;
 		coherentIndexV8SemanticsSignature: string;
+		coherenceBasis: 'unverified' | 'verified-full-scan';
 		lastFullScanAt: string;
 	};
 	recoveryMutable.coherentWorkflowStatusSemanticsSignature = createSyntheticIndexData(1).workflowStatusSemanticsSignature;
 	recoveryMutable.coherentIndexV8SemanticsSignature = buildIndexV8SemanticsSignature(DEFAULT_SETTINGS);
+	recoveryMutable.coherenceBasis = 'verified-full-scan';
 	recoveryMutable.lastFullScanAt = BASE_TIME;
 	await indexer.observeIndexV8ManifestChange();
 	deepEqual(delays, [1_000, 3_000, 7_000, 3_000]);
@@ -590,7 +647,6 @@ async function testBoundedSettleAndHealthyV7Freeze(): Promise<void> {
 		&& batch.ids.includes('recovery-1')
 		&& batch.ids.includes('recovery-2')
 	)), 'recovery rebase must union changes received while settling');
-	equal(v7Writes, 0, 'healthy recovery must keep V7 frozen');
 }
 
 async function testSecondCasLossWritesOneRecoveryMarker(): Promise<void> {
@@ -605,7 +661,7 @@ async function testSecondCasLossWritesOneRecoveryMarker(): Promise<void> {
 	};
 	let phase: 'idle' | 'sync-settling' | 'rebasing' | 'recovery-required' = 'idle';
 	let casLosses = 0;
-	const shadow = {
+	const persistence = {
 		getRuntimePhase: () => phase,
 		setRuntimePhase: (next: typeof phase) => { phase = next; },
 		isVerifiedBaseline: () => false,
@@ -635,97 +691,15 @@ async function testSecondCasLossWritesOneRecoveryMarker(): Promise<void> {
 	const indexer = new OperonIndexer(
 		app,
 		storage as never,
-		shadow as never,
+		persistence as never,
 		{ load: async () => loaded } as never,
 		{ now: () => now, delay: async delayMs => { now += delayMs; } },
 	);
 	await indexer.observeIndexV8ManifestChange();
 	equal(casLosses, 2, 'recovery must stop after the second CAS loss');
 	equal(indexer.getIndexV8RuntimePhase(), 'recovery-required');
-	equal(emergencyWrites.length, 0, 'second CAS loss must not write a legacy V7 checkpoint');
+	equal(emergencyWrites.length, 0, 'second CAS loss must not write an emergency cache snapshot');
 	equal(recoveryMarkerWrites, 1, 'second CAS loss must seal one durable recovery marker');
-}
-
-async function testLegacyV7NeverAffectsStartupSelection(): Promise<void> {
-	const data = createSyntheticIndexData(24);
-	data.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(DEFAULT_SETTINGS.pipelines);
-	const built = await buildIndexV8Snapshot({
-		committedAt: BASE_TIME,
-		lastFullScanAt: BASE_TIME,
-		coherenceBasis: 'verified-full-scan',
-		indexSemanticsSignature: buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
-		sources: projectIndexDataToV8Sources(data, sourceStats(data)),
-		canonicalInstanceKeys: getIndexV8CanonicalInstanceKeys(data),
-	});
-	const loaded = {
-		status: 'loaded' as const,
-		manifest: built.manifest,
-		manifestPayload: built.manifestPayload,
-		shards: built.shards,
-		validatedSnapshot: await validateIndexV8Snapshot(built.manifestPayload, built.shardPayloads),
-		metrics: { manifestBytes: 1, shardBytes: 1, shardsRead: 32, totalMs: 1 },
-	};
-	const indexPath = '.obsidian/plugins/operon/runtime/index.json';
-	const manifestPath = paths.manifestPath;
-	const runCase = async (
-		v7Mtime: number,
-		manifestMtime: number,
-		markerStatus: 'missing' | 'required' | 'invalid' | 'io-error' = 'missing',
-	) => {
-		let v7Reads = 0;
-		let v8Reads = 0;
-		const storage = {
-			indexPath,
-			indexV8Paths: { manifestPath },
-			getSettings: () => DEFAULT_SETTINGS,
-			loadIndex: async () => { v7Reads += 1; return structuredClone(data); },
-			inspectIndexV8RecoveryRequired: async () => markerStatus,
-		};
-		const app = {
-			vault: {
-				adapter: {
-					stat: async (path: string) => ({
-						type: 'file' as const, ctime: 0,
-						mtime: path === indexPath ? v7Mtime : manifestMtime,
-						size: 1,
-					}),
-				},
-				getAbstractFileByPath: () => null,
-			},
-		} as unknown as App;
-		const indexer = new OperonIndexer(
-			app,
-			storage as never,
-			null,
-			{ load: async () => { v8Reads += 1; return loaded; } } as never,
-		);
-		return { result: await indexer.loadCachedIndex(), v7Reads, v8Reads };
-	};
-	const legacyNewer = await runCase(200, 100);
-	deepEqual(legacyNewer.result, { status: 'loaded', source: 'v8', requiresFullReindex: false });
-	equal(legacyNewer.v7Reads, 0);
-	equal(legacyNewer.v8Reads, 1, 'legacy V7 mtime must not affect V8 authority');
-
-	const healthyV8Newer = await runCase(100, 200);
-	deepEqual(healthyV8Newer.result, { status: 'loaded', source: 'v8', requiresFullReindex: false });
-	equal(healthyV8Newer.v7Reads, 0, 'healthy newer V8 must not read V7 checkpoint content');
-	equal(healthyV8Newer.v8Reads, 1);
-
-	const equalClock = await runCase(200, 200);
-	deepEqual(equalClock.result, { status: 'loaded', source: 'v8', requiresFullReindex: false });
-	equal(equalClock.v7Reads, 0, 'equal coarse mtimes must not reintroduce legacy V7 authority');
-
-	const durableMarker = await runCase(100, 300, 'required');
-	deepEqual(durableMarker.result, { status: 'missing', fallbackReason: 'recovery-required' });
-	equal(durableMarker.v7Reads, 0);
-	equal(durableMarker.v8Reads, 0, 'durable recovery marker must force a Markdown full scan');
-
-	for (const unsafeMarkerStatus of ['invalid', 'io-error'] as const) {
-		const unsafeMarker = await runCase(100, 300, unsafeMarkerStatus);
-		deepEqual(unsafeMarker.result, { status: 'missing', fallbackReason: 'recovery-required' });
-		equal(unsafeMarker.v7Reads, 0);
-		equal(unsafeMarker.v8Reads, 0, `${unsafeMarkerStatus} recovery marker must fail closed before V8 hydration`);
-	}
 }
 
 async function testPreCoherentRecoveryAndUnloadCasAreFailSafe(): Promise<void> {
@@ -737,13 +711,13 @@ async function testPreCoherentRecoveryAndUnloadCasAreFailSafe(): Promise<void> {
 			? { status: 'incomplete' as const, retryable: true as const, snapshotId: 'fixture', manifest: null, manifestPayload: '', missingShardIds: ['00' as const], metrics }
 			: { status: 'invalid' as const, retryable: false as const, code: 'INVALID_SNAPSHOT' as const, metrics },
 	};
-	const shadow = {
+	const persistence = {
 		getRuntimePhase: () => phase,
 		setRuntimePhase: (next: typeof phase) => { phase = next; },
 		disable: () => {},
 		drain: async () => {},
 	};
-	const storage = { getSettings: () => DEFAULT_SETTINGS, loadIndex: async () => null };
+	const storage = { getSettings: () => DEFAULT_SETTINGS };
 	const app = {
 		vault: { getMarkdownFiles: () => [], getAbstractFileByPath: () => null },
 		metadataCache: { getFileCache: () => null },
@@ -751,7 +725,7 @@ async function testPreCoherentRecoveryAndUnloadCasAreFailSafe(): Promise<void> {
 	const preCoherent = new OperonIndexer(
 		app,
 		storage as never,
-		shadow as never,
+		persistence as never,
 		store as never,
 		{ now: () => 0, delay: async () => {} },
 	);
@@ -759,38 +733,33 @@ async function testPreCoherentRecoveryAndUnloadCasAreFailSafe(): Promise<void> {
 	equal(preCoherent.getIndexV8RuntimePhase(), 'idle', 'pre-coherent recovery failure must release sync-settling');
 
 	phase = 'idle';
-	let emergencyWrites = 0;
 	let markerWrites = 0;
-	const unloadShadow = {
-		...shadow,
+	const unloadPersistence = {
+		...persistence,
 		persistPrimary: async () => { throw new IndexV8StorageError('BASE_SNAPSHOT_CHANGED', 'unload CAS fixture'); },
 	};
 	const unloadStorage = {
 		getSettings: () => DEFAULT_SETTINGS,
-		loadIndex: async () => null,
-		saveIndex: async () => {
-			emergencyWrites += 1;
-			return { jsonBytes: 1, stringifyMs: 0, writeMs: 0, queueWaitMs: 0, totalMs: 0 };
-		},
 		markIndexV8RecoveryRequired: async () => {
 			markerWrites += 1;
 			throw new Error('fixture marker write failure');
 		},
 	};
-	const unloadIndexer = new OperonIndexer(app, unloadStorage as never, unloadShadow as never, store as never);
+	const unloadIndexer = new OperonIndexer(app, unloadStorage as never, unloadPersistence as never, store as never);
 	const unloadMutable = unloadIndexer as unknown as {
 		coherentWorkflowStatusSemanticsSignature: string;
 		coherentIndexV8SemanticsSignature: string;
+		coherenceBasis: 'unverified' | 'verified-full-scan';
 		lastFullScanAt: string;
 		persistIndex(options?: object): Promise<void>;
 		pendingPersistData: unknown;
 	};
 	unloadMutable.coherentWorkflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(DEFAULT_SETTINGS.pipelines);
 	unloadMutable.coherentIndexV8SemanticsSignature = buildIndexV8SemanticsSignature(DEFAULT_SETTINGS);
+	unloadMutable.coherenceBasis = 'verified-full-scan';
 	unloadMutable.lastFullScanAt = BASE_TIME;
 	await unloadMutable.persistIndex({ dirtySourcePaths: ['Unload.md'] });
 	await unloadIndexer.prepareForUnload();
-	equal(emergencyWrites, 0, 'unload CAS loss must never persist legacy V7');
 	equal(markerWrites, 1);
 	equal(unloadIndexer.getIndexV8RuntimePhase(), 'recovery-required', 'marker I/O failure must still seal the session terminal');
 	equal(unloadMutable.pendingPersistData, null, 'unload must consume the pending snapshot');
@@ -803,7 +772,7 @@ async function testProductionCleanupIsBackgroundAndUnloadSafe(): Promise<void> {
 	let nextHandle = 1;
 	let runs = 0;
 	const maintenance = startIndexV8CleanupMaintenance({
-		run: async () => ++runs > 1,
+		run: async () => ++runs > 1 ? 'complete' : 'backlog',
 		isActive: () => true,
 		setTimeout: (callback, delayMs) => {
 			const handle = nextHandle++;
@@ -821,7 +790,7 @@ async function testProductionCleanupIsBackgroundAndUnloadSafe(): Promise<void> {
 	callbacks.get(1)?.();
 	await Promise.resolve();
 	await Promise.resolve();
-	deepEqual(delays, [30_000, 15_000]);
+	deepEqual(delays, [30_000, 250]);
 	callbacks.get(2)?.();
 	await Promise.resolve();
 	await Promise.resolve();
@@ -830,9 +799,38 @@ async function testProductionCleanupIsBackgroundAndUnloadSafe(): Promise<void> {
 	maintenance.cancel();
 	await maintenance.drain();
 
+	const activityCallbacks = new Map<number, () => void>();
+	const activityDelays: number[] = [];
+	let activityHandle = 200;
+	let activityRuns = 0;
+	let activityMaintenance!: ReturnType<typeof startIndexV8CleanupMaintenance<number>>;
+	activityMaintenance = startIndexV8CleanupMaintenance({
+		run: async () => {
+			activityRuns += 1;
+			activityMaintenance.request();
+			return 'backlog';
+		},
+		isActive: () => true,
+		setTimeout: (callback, delayMs) => {
+			const handle = activityHandle++;
+			activityCallbacks.set(handle, callback);
+			activityDelays.push(delayMs);
+			return handle;
+		},
+		clearTimeout: handle => { activityCallbacks.delete(handle); },
+		onError: error => { throw error; },
+	});
+	activityCallbacks.get(200)?.();
+	await Promise.resolve();
+	await Promise.resolve();
+	deepEqual(activityDelays, [30_000, 30_000], 'activity during cleanup must restart quiet time before another batch');
+	equal(activityRuns, 1);
+	activityMaintenance.cancel();
+	await activityMaintenance.drain();
+
 	const cancelCallbacks = new Map<number, () => void>();
 	const cancelBeforeRun = startIndexV8CleanupMaintenance({
-		run: async () => true,
+		run: async () => 'complete',
 		isActive: () => true,
 		setTimeout: callback => {
 			cancelCallbacks.set(99, callback);
@@ -854,7 +852,7 @@ async function testProductionCleanupIsBackgroundAndUnloadSafe(): Promise<void> {
 	const activeMaintenance = startIndexV8CleanupMaintenance({
 		run: async () => {
 			await new Promise<void>(resolve => { resolveActive = resolve; });
-			return true;
+			return 'complete';
 		},
 		isActive: () => true,
 		setTimeout: callback => {
@@ -880,6 +878,13 @@ async function testProductionCleanupIsBackgroundAndUnloadSafe(): Promise<void> {
 	const indexerSource = await readFile('src/indexer/indexer.ts', 'utf8');
 	check(indexerSource.includes("'index.v8.cleanup'"));
 	check(mainSource.includes('await this.indexV8CleanupMaintenance?.drain();'));
+	check(mainSource.includes('this.indexer.onIndexV8Persisted = () =>'));
+	check(mainSource.indexOf('this.indexV8CleanupMaintenance?.cancel();')
+		< mainSource.indexOf('await this.externalCalendarService?.destroy();'));
+	const schedulerSource = await readFile('src/indexer/persistence/index-v8-maintenance-scheduler.ts', 'utf8');
+	check(schedulerSource.includes('const MAX_BATCHES_PER_ACTIVATION = 8;'));
+	check(schedulerSource.includes("result === 'restart-quiet'"));
+	check(schedulerSource.includes('schedule(BACKLOG_CONTINUATION_MS)'));
 }
 
 async function run(): Promise<void> {
@@ -894,9 +899,8 @@ async function run(): Promise<void> {
 	await testCleanupSuppressionAndPartialStop();
 	await testReusedShardFingerprintCache();
 	testCoordinatorRuntimePhases();
-	await testBoundedSettleAndHealthyV7Freeze();
+	await testBoundedSettleAndVerifiedPersistence();
 	await testSecondCasLossWritesOneRecoveryMarker();
-	await testLegacyV7NeverAffectsStartupSelection();
 	await testPreCoherentRecoveryAndUnloadCasAreFailSafe();
 	await testProductionCleanupIsBackgroundAndUnloadSafe();
 	console.log(JSON.stringify({
@@ -910,17 +914,16 @@ async function run(): Promise<void> {
 			'conflict-copy-not-authority',
 			'telemetry-content-redaction',
 			'metadata-only-inventory',
-			'retention-and-protected-alternate-manifest',
+			'active-snapshot-only-alternate-cleanup',
 			'sealed-cleanup-and-budgets',
 			'invalid-manifest-cleanup-suppression',
 			'cleanup-partial-stop-on-manifest-change',
 			'mtime-gated-reused-shard-fingerprint',
 			'runtime-phase-terminal-emergency',
 			'bounded-settle-and-markdown-rebase',
-			'healthy-v7-freeze',
+			'verified-persistence-only',
 			'dirty-journal-union-during-recovery',
 			'second-cas-loss-single-recovery-marker',
-			'legacy-v7-never-startup-authority',
 			'pre-coherent-and-unload-fail-safe',
 			'background-cleanup-production-wiring',
 		],

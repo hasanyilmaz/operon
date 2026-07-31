@@ -1,0 +1,884 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:read.schema.json",
+  "title": "Operon Agent Runtime V1 Phase 5 Read Contracts",
+  "$defs": {
+    "consistency": {
+      "type": "string",
+      "enum": ["live-verified", "best-effort", "offline-unverified"]
+    },
+    "hydration": {
+      "type": "string",
+      "enum": ["notes", "links", "custom-fields", "source-markdown", "tracker-history", "reminder-items"]
+    },
+    "hydrations": {
+      "type": "array",
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/hydration" }
+    },
+    "taskGetHydration": {
+      "type": "string",
+      "enum": ["notes", "links", "custom-fields", "source-markdown", "tracker-history", "reminder-items", "writable-fields"]
+    },
+    "taskGetHydrations": {
+      "type": "array",
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/taskGetHydration" }
+    },
+    "projection": {
+      "type": "string",
+      "enum": ["exact-task", "task-neighborhood", "project-analysis", "planning-workload", "creation-context", "mutation-preview", "placement-candidates"]
+    },
+    "purpose": {
+      "type": "string",
+      "enum": ["read", "analysis", "planning", "creation", "mutation-readiness"]
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 4096,
+      "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$"
+    },
+    "placementRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {
+            "mode": { "const": "files" },
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "^(?!\\s)(?!.*\\s$)[^\\u0000-\\u001F\\u007F]+$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "filePath"],
+          "properties": {
+            "mode": { "const": "lines" },
+            "filePath": {
+              "allOf": [
+                { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+                { "pattern": "\\.[mM][dD]$" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "placementFileCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filePath", "noteName"],
+      "properties": {
+        "filePath": {
+          "allOf": [
+            { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+            { "pattern": "\\.[mM][dD]$" }
+          ]
+        },
+        "noteName": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$" }
+      }
+    },
+    "placementLineCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locator", "contextLabel"],
+      "properties": {
+        "locator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["representation", "filePath", "lineNumber"],
+          "properties": {
+            "representation": { "const": "inline" },
+            "filePath": {
+              "allOf": [
+                { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+                { "pattern": "\\.[mM][dD]$" }
+              ]
+            },
+            "lineNumber": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          }
+        },
+        "heading": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$" },
+        "contextLabel": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$" }
+      }
+    },
+    "placementCandidates": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "actualCount", "returnedCount", "truncated", "files"],
+          "properties": {
+            "mode": { "const": "files" },
+            "actualCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "returnedCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "truncated": { "type": "boolean" },
+            "files": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/placementFileCandidate" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "filePath", "sourceRevision", "actualCount", "returnedCount", "truncated", "lines"],
+          "properties": {
+            "mode": { "const": "lines" },
+            "filePath": {
+              "allOf": [
+                { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+                { "pattern": "\\.[mM][dD]$" }
+              ]
+            },
+            "sourceRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sourceRevision" },
+            "actualCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "returnedCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "truncated": { "type": "boolean" },
+            "lines": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/placementLineCandidate" } }
+          }
+        }
+      ]
+    },
+    "readRequestProperties": {
+      "type": "object",
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "consistency": { "$ref": "#/$defs/consistency" }
+      }
+    },
+    "readResultProperties": {
+      "type": "object",
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "ok": { "type": "boolean" },
+        "freshness": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "warnings": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" }
+        },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "description", "locator", "confidence", "reasons", "selector"],
+      "properties": {
+        "identity": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskIdentity" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 65536, "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$" },
+        "locator": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskSourceLocator" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reasons": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048, "x-operon-maxUtf8Bytes": 2048 }
+        },
+        "selector": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "operonId"],
+              "properties": {
+                "kind": { "const": "operon-id" },
+                "operonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "locator"],
+              "properties": {
+                "kind": { "const": "exact-locator" },
+                "locator": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskSourceLocator" },
+                "expectedOperonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "taskQueryFilters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "checkbox": { "type": "array", "uniqueItems": true, "items": { "enum": ["open", "done", "cancelled"] } },
+        "pipelineIds": { "$ref": "#/$defs/filterIds" },
+        "statusIds": { "$ref": "#/$defs/filterIds" },
+        "priorityIds": { "$ref": "#/$defs/filterIds" },
+        "tiers": { "$ref": "#/$defs/filterIds" },
+        "filePath": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+        "parentOperonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" },
+        "due": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "from": { "type": "string", "format": "date" },
+            "to": { "type": "string", "format": "date" }
+          }
+        },
+        "text": { "type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$" }
+      }
+    },
+    "filterIds": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$" }
+    },
+    "taskQueryPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actualCount", "returnedCount", "truncated", "asOf"],
+      "properties": {
+        "actualCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "returnedCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "truncated": { "type": "boolean" },
+        "nextCursor": { "$ref": "#/$defs/cursor" },
+        "asOf": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "truncated": { "const": true } }, "required": ["truncated"] },
+          "then": { "required": ["nextCursor"] },
+          "else": { "not": { "required": ["nextCursor"] } }
+        }
+      ]
+    },
+    "relationshipKind": {
+      "type": "string",
+      "enum": ["parent", "child", "blocking", "blocked-by", "related", "ancestor", "project-member"]
+    },
+    "relationshipEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sourceOperonId", "targetOperonId", "provenanceClass", "reason"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/relationshipKind" },
+        "sourceOperonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" },
+        "targetOperonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" },
+        "provenanceClass": { "enum": ["explicit", "derived", "inferred"] },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 2048, "x-operon-maxUtf8Bytes": 2048 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "if": { "properties": { "provenanceClass": { "const": "inferred" } }, "required": ["provenanceClass"] },
+      "else": { "not": { "required": ["confidence"] } }
+    },
+    "relationshipSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["explicit", "derived", "inferred"],
+      "properties": {
+        "explicit": { "$ref": "#/$defs/explicitEdges" },
+        "derived": { "$ref": "#/$defs/derivedEdges" },
+        "inferred": { "$ref": "#/$defs/inferredEdges" }
+      }
+    },
+    "edges": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/relationshipEdge" } },
+    "explicitEdges": {
+      "allOf": [
+        { "$ref": "#/$defs/edges" },
+        { "items": { "properties": { "provenanceClass": { "const": "explicit" } }, "required": ["provenanceClass"] } }
+      ]
+    },
+    "derivedEdges": {
+      "allOf": [
+        { "$ref": "#/$defs/edges" },
+        { "items": { "properties": { "provenanceClass": { "const": "derived" } }, "required": ["provenanceClass"] } }
+      ]
+    },
+    "inferredEdges": {
+      "allOf": [
+        { "$ref": "#/$defs/edges" },
+        { "items": { "properties": { "provenanceClass": { "const": "inferred" } }, "required": ["provenanceClass"] } }
+      ]
+    },
+    "provenance": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/provenance" }
+    },
+    "truncations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/truncation" }
+    },
+    "entityResolveRequest": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 786432,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "selector", "consistency"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "entity-resolve" },
+        "selector": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskSelector" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 500 },
+        "consistency": { "$ref": "#/$defs/consistency" }
+      }
+    },
+    "entityResolutionResult": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 3145728,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "ok", "freshness", "warnings"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "entity-resolution-result" },
+        "ok": { "type": "boolean" },
+        "freshness": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "resolution": { "enum": ["resolved", "ambiguous", "not-found"] },
+        "candidates": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/candidate" } },
+        "selected": { "$ref": "#/$defs/candidate" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "oneOf": [
+        {
+          "properties": { "ok": { "const": true } },
+          "required": ["contextRevision", "resolution", "candidates"],
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "ok": { "const": false } },
+          "required": ["error"],
+          "allOf": [
+            { "not": { "required": ["resolution"] } },
+            { "not": { "required": ["candidates"] } },
+            { "not": { "required": ["selected"] } }
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": { "properties": { "ok": { "const": true }, "resolution": { "const": "resolved" } }, "required": ["ok", "resolution"] },
+          "then": { "required": ["selected"] },
+          "else": { "not": { "required": ["selected"] } }
+        }
+      ]
+    },
+    "taskGetRequest": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 786432,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "selector", "consistency"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "task-get" },
+        "selector": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskSelector" },
+        "include": { "$ref": "#/$defs/taskGetHydrations" },
+        "consistency": { "$ref": "#/$defs/consistency" }
+      }
+    },
+    "taskGetResult": {
+      "$ref": "#/$defs/taskReadResult",
+      "unevaluatedProperties": false
+    },
+    "taskReadResult": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 3145728,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "ok", "freshness", "warnings"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "task-get-result" },
+        "ok": { "type": "boolean" },
+        "freshness": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "task": { "$ref": "urn:operon:schema:runtime:v1:context.schema.json#/$defs/taskContext" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "truncations": { "$ref": "#/$defs/truncations" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "oneOf": [
+        {
+          "properties": { "ok": { "const": true } },
+          "required": ["contextRevision", "task", "provenance", "truncations"],
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "ok": { "const": false } },
+          "required": ["error"],
+          "allOf": [
+            { "not": { "required": ["task"] } },
+            { "not": { "required": ["provenance"] } },
+            { "not": { "required": ["truncations"] } }
+          ]
+        }
+      ]
+    },
+    "taskQueryRequest": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 786432,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "consistency"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "task-query" },
+        "filters": { "$ref": "#/$defs/taskQueryFilters" },
+        "include": { "$ref": "#/$defs/hydrations" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 250 },
+        "cursor": { "$ref": "#/$defs/cursor" },
+        "consistency": { "$ref": "#/$defs/consistency" }
+      }
+    },
+    "taskQueryResult": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 3145728,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "ok", "freshness", "warnings"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "task-query-result" },
+        "ok": { "type": "boolean" },
+        "freshness": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "tasks": { "type": "array", "maxItems": 250, "items": { "$ref": "urn:operon:schema:runtime:v1:context.schema.json#/$defs/taskContext" } },
+        "page": { "$ref": "#/$defs/taskQueryPage" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "truncations": { "$ref": "#/$defs/truncations" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "oneOf": [
+        {
+          "properties": { "ok": { "const": true } },
+          "required": ["contextRevision", "tasks", "page", "provenance", "truncations"],
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "ok": { "const": false } },
+          "required": ["error"],
+          "allOf": [
+            { "not": { "required": ["tasks"] } },
+            { "not": { "required": ["page"] } },
+            { "not": { "required": ["provenance"] } },
+            { "not": { "required": ["truncations"] } }
+          ]
+        }
+      ]
+    },
+    "taskFinderRequest": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 786432,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "consistency"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "task-finder" },
+        "text": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 4096,
+          "pattern": "^(?=.*[\\p{L}\\p{N}])(?!\\s)(?:[\\s\\S]*\\S)?$"
+        },
+        "filters": {
+          "allOf": [
+            { "$ref": "#/$defs/taskQueryFilters" },
+            {
+              "not": {
+                "anyOf": [
+                  { "required": ["text"] },
+                  { "required": ["filePath"] },
+                  { "required": ["parentOperonId"] }
+                ]
+              }
+            }
+          ]
+        },
+        "representations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "enum": ["inline", "file"] }
+        },
+        "scope": { "enum": ["normal", "overdue", "happens-today", "recent"] },
+        "project": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {
+            "mode": { "enum": ["direct", "tree"] },
+            "rootOperonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }
+          }
+        },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 250 },
+        "cursor": { "$ref": "#/$defs/cursor" },
+        "consistency": { "$ref": "#/$defs/consistency" }
+      }
+    },
+    "taskFinderRow": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "task", "score"],
+          "properties": {
+            "kind": { "const": "task" },
+            "task": { "$ref": "urn:operon:schema:runtime:v1:context.schema.json#/$defs/taskContext" },
+            "score": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind", "task", "score", "directTaskCount", "treeTaskCount",
+            "visibleDirectTaskCount", "visibleTreeTaskCount"
+          ],
+          "properties": {
+            "kind": { "const": "project" },
+            "task": { "$ref": "urn:operon:schema:runtime:v1:context.schema.json#/$defs/taskContext" },
+            "score": { "type": "number" },
+            "directTaskCount": { "type": "integer", "minimum": 0 },
+            "treeTaskCount": { "type": "integer", "minimum": 0 },
+            "visibleDirectTaskCount": { "type": "integer", "minimum": 0 },
+            "visibleTreeTaskCount": { "type": "integer", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "taskFinderResult": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 3145728,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "ok", "freshness", "warnings"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "task-finder-result" },
+        "ok": { "type": "boolean" },
+        "freshness": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "rows": { "type": "array", "maxItems": 250, "items": { "$ref": "#/$defs/taskFinderRow" } },
+        "page": { "$ref": "#/$defs/taskQueryPage" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "truncations": { "$ref": "#/$defs/truncations" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "oneOf": [
+        {
+          "properties": { "ok": { "const": true } },
+          "required": ["contextRevision", "rows", "page", "provenance", "truncations"],
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "ok": { "const": false } },
+          "required": ["error"],
+          "allOf": [
+            { "not": { "required": ["rows"] } },
+            { "not": { "required": ["page"] } },
+            { "not": { "required": ["provenance"] } },
+            { "not": { "required": ["truncations"] } }
+          ]
+        }
+      ]
+    },
+    "relationshipRequest": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 786432,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "selector", "consistency"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "relationship" },
+        "selector": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskSelector" },
+        "kinds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/relationshipKind" } },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 500 },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "consistency": { "$ref": "#/$defs/consistency" }
+      }
+    },
+    "relationshipResult": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 3145728,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "ok", "freshness", "warnings"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "relationship-result" },
+        "ok": { "type": "boolean" },
+        "freshness": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "relationships": { "$ref": "#/$defs/relationshipSet" },
+        "tasks": { "type": "array", "maxItems": 500, "items": { "$ref": "urn:operon:schema:runtime:v1:context.schema.json#/$defs/taskContext" } },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "truncations": { "$ref": "#/$defs/truncations" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "oneOf": [
+        {
+          "properties": { "ok": { "const": true } },
+          "required": ["contextRevision", "relationships", "tasks", "provenance", "truncations"],
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "ok": { "const": false } },
+          "required": ["error"],
+          "allOf": [
+            { "not": { "required": ["relationships"] } },
+            { "not": { "required": ["tasks"] } },
+            { "not": { "required": ["provenance"] } },
+            { "not": { "required": ["truncations"] } }
+          ]
+        }
+      ]
+    },
+    "contextRequest": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 786432,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "purpose", "projection", "consistency"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "context" },
+        "purpose": { "$ref": "#/$defs/purpose" },
+        "projection": { "$ref": "#/$defs/projection" },
+        "selector": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskSelector" },
+        "operonIds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId"
+          }
+        },
+        "filters": { "$ref": "#/$defs/taskQueryFilters" },
+        "include": { "$ref": "#/$defs/hydrations" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 500 },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "cursor": { "$ref": "#/$defs/cursor" },
+        "targetFilePath": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+        "placement": { "$ref": "#/$defs/placementRequest" },
+        "mutationKind": {
+          "enum": ["task.create", "task.update", "task.recurrence", "task.relationship", "task.reminder-item", "task.transition", "task.pinned-state", "timer.control", "timer.session", "task.convert", "task.inline-relocate", "task.delete"]
+        },
+        "consistency": { "$ref": "#/$defs/consistency" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "projection": { "enum": ["exact-task", "task-neighborhood", "project-analysis"] } }, "required": ["projection"] },
+          "then": { "required": ["selector"] }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "exact-task" } }, "required": ["projection"] },
+          "then": {
+            "properties": { "limit": { "const": 1 }, "depth": { "const": 0 } },
+            "not": { "required": ["cursor"] }
+          }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "task-neighborhood" } }, "required": ["projection"] },
+          "then": { "properties": { "limit": { "maximum": 100 }, "depth": { "maximum": 1 } } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "project-analysis" } }, "required": ["projection"] },
+          "then": { "properties": { "limit": { "maximum": 500 }, "depth": { "maximum": 6 } } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "planning-workload" } }, "required": ["projection"] },
+          "then": {
+            "properties": { "limit": { "maximum": 250 } },
+            "allOf": [
+              { "not": { "required": ["selector"] } },
+              { "not": { "required": ["depth"] } }
+            ]
+          },
+          "else": { "not": { "required": ["filters"] } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "creation-context" } }, "required": ["projection"] },
+          "then": {
+            "properties": { "purpose": { "const": "creation" }, "limit": { "maximum": 100 }, "depth": { "maximum": 1 } }
+          },
+          "else": { "not": { "required": ["targetFilePath"] } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "mutation-preview" } }, "required": ["projection"] },
+          "then": {
+            "required": ["mutationKind"],
+            "properties": { "purpose": { "const": "mutation-readiness" }, "limit": { "maximum": 128 } },
+            "allOf": [
+              {
+                "oneOf": [
+                  {
+                    "required": ["selector"],
+                    "not": { "required": ["operonIds"] }
+                  },
+                  {
+                    "required": ["operonIds"],
+                    "properties": { "mutationKind": { "const": "task.update" } },
+                    "allOf": [
+                      { "not": { "required": ["selector"] } },
+                      { "not": { "required": ["limit"] } }
+                    ]
+                  }
+                ]
+              },
+              { "not": { "required": ["cursor"] } },
+              { "not": { "required": ["depth"] } }
+            ]
+          },
+          "else": {
+            "allOf": [
+              { "not": { "required": ["mutationKind"] } },
+              { "not": { "required": ["operonIds"] } }
+            ]
+          }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "placement-candidates" } }, "required": ["projection"] },
+          "then": {
+            "required": ["placement"],
+            "properties": {
+              "purpose": { "const": "mutation-readiness" },
+              "limit": { "maximum": 100 }
+            },
+            "allOf": [
+              { "not": { "required": ["selector"] } },
+              { "not": { "required": ["operonIds"] } },
+              { "not": { "required": ["filters"] } },
+              { "not": { "required": ["include"] } },
+              { "not": { "required": ["depth"] } },
+              { "not": { "required": ["cursor"] } },
+              { "not": { "required": ["targetFilePath"] } },
+              { "not": { "required": ["mutationKind"] } }
+            ]
+          },
+          "else": { "not": { "required": ["placement"] } }
+        }
+      ]
+    },
+    "contextPack": {
+      "type": "object",
+      "x-operon-maxUtf8Bytes": 3145728,
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "ok", "purpose", "projection", "warnings"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "context-pack" },
+        "ok": { "type": "boolean" },
+        "purpose": { "$ref": "#/$defs/purpose" },
+        "projection": { "$ref": "#/$defs/projection" },
+        "execution": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "catalogRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "asOf": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp" },
+        "entities": { "type": "array", "maxItems": 500, "items": { "$ref": "urn:operon:schema:runtime:v1:context.schema.json#/$defs/taskContext" } },
+        "relationships": { "$ref": "#/$defs/relationshipSet" },
+        "catalog": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["taxonomy", "fields"],
+          "properties": {
+            "taxonomy": { "$ref": "urn:operon:schema:runtime:v1:catalog.schema.json#/$defs/taxonomy" },
+            "fields": { "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/fieldCatalog" }
+          }
+        },
+        "policies": { "$ref": "urn:operon:schema:runtime:v1:catalog.schema.json#/$defs/policies" },
+        "resourceRevisions": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/affectedResourceRevisionMap" },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entityCount", "relationshipCount", "openCount", "doneCount", "cancelledCount"],
+          "properties": {
+            "entityCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "relationshipCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "openCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "doneCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "cancelledCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          }
+        },
+        "query": { "$ref": "#/$defs/taskQueryPage" },
+        "placement": { "$ref": "#/$defs/placementCandidates" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "truncations": { "$ref": "#/$defs/truncations" },
+        "warnings": { "type": "array", "maxItems": 256, "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" } },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "oneOf": [
+        {
+          "properties": { "ok": { "const": true } },
+          "required": ["execution", "contextRevision", "entities", "relationships", "provenance", "truncations"],
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "ok": { "const": false } },
+          "required": ["error"],
+          "allOf": [
+            { "not": { "required": ["execution"] } },
+            { "not": { "required": ["entities"] } },
+            { "not": { "required": ["relationships"] } },
+            { "not": { "required": ["catalog"] } },
+            { "not": { "required": ["policies"] } },
+            { "not": { "required": ["resourceRevisions"] } },
+            { "not": { "required": ["summary"] } },
+            { "not": { "required": ["query"] } },
+            { "not": { "required": ["placement"] } },
+            { "not": { "required": ["provenance"] } },
+            { "not": { "required": ["truncations"] } }
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": { "properties": { "projection": { "const": "exact-task" }, "ok": { "const": true } }, "required": ["projection", "ok"] },
+          "then": { "properties": { "entities": { "minItems": 1, "maxItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "task-neighborhood" } }, "required": ["projection"] },
+          "then": { "properties": { "entities": { "maxItems": 100 } } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "planning-workload" } }, "required": ["projection"] },
+          "then": { "properties": { "entities": { "maxItems": 250 } } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "creation-context" } }, "required": ["projection"] },
+          "then": { "properties": { "entities": { "maxItems": 100 } } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "mutation-preview" } }, "required": ["projection"] },
+          "then": { "properties": { "entities": { "maxItems": 128 } } }
+        },
+        {
+          "if": { "properties": { "projection": { "const": "placement-candidates" }, "ok": { "const": true } }, "required": ["projection", "ok"] },
+          "then": {
+            "required": ["placement"],
+            "properties": { "entities": { "maxItems": 0 } }
+          },
+          "else": { "not": { "required": ["placement"] } }
+        }
+      ]
+    }
+  }
+}

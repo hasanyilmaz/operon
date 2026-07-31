@@ -1,0 +1,16 @@
+{
+  "file": {
+    "name": "Portable file task"
+  },
+  "mode": "file",
+  "task": {
+    "description": "Portable file task",
+    "fields": {
+      "fixtureTopic": "Files"
+    },
+    "tags": [
+      "fixture"
+    ]
+  },
+  "timestamp": "2026-01-15T10:20:30"
+}

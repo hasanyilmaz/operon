@@ -1,0 +1,532 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:catalog.schema.json",
+  "title": "Operon Agent Runtime V1 Live Property Catalog",
+  "$defs": {
+    "optionalVaultRelativePath": {
+      "anyOf": [
+        { "const": "" },
+        { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" }
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "consistency"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "catalog" },
+        "consistency": {
+          "type": "string",
+          "enum": ["live-verified", "best-effort", "offline-unverified"]
+        }
+      },
+      "x-operon-maxUtf8Bytes": 786432
+    },
+    "defaultReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuredValue", "status"],
+      "properties": {
+        "configuredValue": { "type": "string", "maxLength": 4096 },
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "status": {
+          "type": "string",
+          "enum": ["resolved", "none", "ambiguous", "unavailable"]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "resolved" } }, "required": ["status"] },
+          "then": { "required": ["id"] },
+          "else": { "not": { "required": ["id"] } }
+        }
+      ]
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "label", "order", "color", "isFinished", "isCancelled",
+        "isScheduledTarget", "isTrackingTarget", "identityStatus"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "order": { "type": "integer", "minimum": 0, "maximum": 127 },
+        "color": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "icon": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "propertyMapping": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "isFinished": { "type": "boolean" },
+        "isCancelled": { "type": "boolean" },
+        "isScheduledTarget": { "type": "boolean" },
+        "isTrackingTarget": { "type": "boolean" },
+        "identityStatus": { "type": "string", "enum": ["resolved", "ambiguous"] }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description", "order", "identityStatus", "statuses"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "description": { "type": "string", "maxLength": 4096 },
+        "order": { "type": "integer", "minimum": 0, "maximum": 127 },
+        "identityStatus": { "type": "string", "enum": ["resolved", "ambiguous"] },
+        "statuses": {
+          "type": "array",
+          "maxItems": 128,
+          "x-operon-uniqueBy": "id",
+          "x-operon-contiguousOrder": true,
+          "items": { "$ref": "#/$defs/status" }
+        }
+      }
+    },
+    "priority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "description", "order", "color", "isDefault", "identityStatus"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "description": { "type": "string", "maxLength": 4096 },
+        "order": { "type": "integer", "minimum": 0, "maximum": 127 },
+        "color": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "icon": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "isDefault": { "type": "boolean" },
+        "identityStatus": { "type": "string", "enum": ["resolved", "ambiguous"] }
+      }
+    },
+    "taxonomy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defaultPipeline", "defaultPriority", "pipelines", "priorities"],
+      "properties": {
+        "defaultPipeline": { "$ref": "#/$defs/defaultReference" },
+        "defaultPriority": { "$ref": "#/$defs/defaultReference" },
+        "pipelines": {
+          "type": "array",
+          "maxItems": 128,
+          "x-operon-uniqueBy": "id",
+          "x-operon-contiguousOrder": true,
+          "items": { "$ref": "#/$defs/pipeline" }
+        },
+        "priorities": {
+          "type": "array",
+          "maxItems": 128,
+          "x-operon-uniqueBy": "id",
+          "x-operon-contiguousOrder": true,
+          "items": { "$ref": "#/$defs/priority" }
+        }
+      }
+    },
+    "filterCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "field", "fieldType", "operator"],
+      "properties": {
+        "kind": { "const": "condition" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "field": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "fieldType": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "operator": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "value": { "type": "string", "maxLength": 65536 },
+        "values": {
+          "type": "array",
+          "maxItems": 512,
+          "items": { "type": "string", "maxLength": 65536 }
+        }
+      }
+    },
+    "filterGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "logic", "children"],
+      "properties": {
+        "kind": { "const": "group" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "logic": { "type": "string", "enum": ["all", "any", "none"] },
+        "children": {
+          "type": "array",
+          "maxItems": 512,
+          "items": { "$ref": "#/$defs/filterNode" }
+        }
+      }
+    },
+    "filterNode": {
+      "oneOf": [
+        { "$ref": "#/$defs/filterGroup" },
+        { "$ref": "#/$defs/filterCondition" }
+      ]
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "root", "sorts"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "icon": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "root": { "$ref": "#/$defs/filterNode" },
+        "sorts": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "order"],
+            "properties": {
+              "field": { "type": "string", "minLength": 1, "maxLength": 4096 },
+              "order": { "type": "string", "enum": ["asc", "desc"] }
+            }
+          }
+        },
+        "subgroupBy": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "subgroupOrder": { "type": "string", "enum": ["asc", "desc"] },
+        "groupBy": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "groupOrder": { "type": "string", "enum": ["asc", "desc"] }
+      }
+    },
+    "templateCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pipelineId", "initialStatusId"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "pipelineId": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "initialStatusId": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "fileTaskTemplateCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "kind"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "kind": { "type": "string", "enum": ["builtin-pipeline-minimal", "folder"] },
+        "sourcePath": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+        "pipelineId": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "initialStatusId": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "creation": {
+      "type": "object",
+      "additionalProperties": false,
+      "dependentRequired": {
+        "typedCreateVersion": ["typedCreateFeatures"],
+        "typedCreateFeatures": ["typedCreateVersion"],
+        "temporalCreateVersion": ["temporalCreateKeys"],
+        "temporalCreateKeys": ["temporalCreateVersion"],
+        "compactBatchVersion": ["compactBatchInputFormat", "compactBatchMaxItems"],
+        "compactBatchInputFormat": ["compactBatchVersion", "compactBatchMaxItems"],
+        "compactBatchMaxItems": ["compactBatchVersion", "compactBatchInputFormat"],
+        "graphTransactionVersion": ["graphTransactionFeatures"],
+        "graphTransactionFeatures": ["graphTransactionVersion"]
+      },
+      "required": [
+        "descriptionRequired", "assigneesRequired", "defaultEstimateMinutes",
+        "defaultToFileTask", "fileTaskTargetFolder", "fileTaskTemplateFolder",
+        "inlineTaskSaveMode", "inlineTaskTargetFile", "inlineTaskHeading",
+        "dailyNoteAddsStartDate", "dailyNoteAddsScheduledDate",
+        "createDailyNotesAsFileTasks", "calendarInlineTaskHeading",
+        "builtInTemplateCandidates"
+      ],
+      "properties": {
+        "descriptionRequired": { "type": "boolean" },
+        "assigneesRequired": { "type": "boolean" },
+        "defaultEstimateMinutes": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "defaultToFileTask": { "type": "boolean" },
+        "fileTaskTargetFolder": { "$ref": "#/$defs/optionalVaultRelativePath" },
+        "fileTaskTemplateFolder": { "$ref": "#/$defs/optionalVaultRelativePath" },
+        "defaultFileTemplateId": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "inlineTaskSaveMode": {
+          "type": "string",
+          "enum": ["daily-notes", "specific-file", "active-file", "ask-every-time"]
+        },
+        "inlineTaskTargetFile": { "$ref": "#/$defs/optionalVaultRelativePath" },
+        "inlineTaskHeading": { "type": "string", "maxLength": 4096 },
+        "dailyNoteAddsStartDate": { "type": "boolean" },
+        "dailyNoteAddsScheduledDate": { "type": "boolean" },
+        "createDailyNotesAsFileTasks": { "type": "boolean" },
+        "calendarInlineTaskHeading": { "type": "string", "maxLength": 4096 },
+        "typedCreateVersion": { "const": 1 },
+        "typedCreateFeatures": {
+          "const": ["exact-inline-placement", "exact-file-target", "deterministic-file-template", "file-body-replacement", "same-source-task-graph", "cross-source-parent-related"]
+        },
+        "temporalCreateVersion": { "const": 1 },
+        "temporalCreateKeys": {
+          "const": ["reminderDatetimes", "reminderRules", "repeat", "datetimeRepeatEnd"]
+        },
+        "compactBatchVersion": { "const": 1 },
+        "compactBatchInputFormat": { "const": "compact-lines" },
+        "compactBatchMaxItems": { "const": 64 },
+        "graphTransactionVersion": { "const": 1 },
+        "graphTransactionFeatures": {
+          "const": ["vault-wide-graph-transaction", "compare-aware-compensation", "same-plan-safe-continuation", "cross-source-reciprocal-dependency"]
+        },
+        "fileTaskTemplateCandidates": {
+          "type": "array",
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/fileTaskTemplateCandidate" }
+        },
+        "builtInTemplateCandidates": {
+          "type": "array",
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/templateCandidate" }
+        }
+      }
+    },
+    "inheritance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fields", "statusPipelineSource", "autoParentFileTask",
+        "autoParentLinkedFileSubtasks", "fileTaskParentInlineTargetMode",
+        "fileTaskParentFileTargetMode", "inlineTaskParentInlineTargetMode",
+        "inlineTaskParentFileTargetMode", "inlineTaskParentFileHeadingKeyword"
+      ],
+      "properties": {
+        "fields": { "type": "array", "maxItems": 512, "items": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+        "statusPipelineSource": { "type": "string", "enum": ["parent", "default"] },
+        "autoParentFileTask": { "type": "boolean" },
+        "autoParentLinkedFileSubtasks": { "type": "boolean" },
+        "fileTaskParentInlineTargetMode": { "type": "string", "enum": ["default", "same-folder"] },
+        "fileTaskParentFileTargetMode": { "type": "string", "enum": ["default", "same-folder"] },
+        "inlineTaskParentInlineTargetMode": { "type": "string", "enum": ["default", "below-parent"] },
+        "inlineTaskParentFileTargetMode": { "type": "string", "enum": ["default", "inside-parent-file"] },
+        "inlineTaskParentFileHeadingKeyword": { "type": "string", "maxLength": 4096 }
+      }
+    },
+    "automation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "autoCompleteParentWhenAllChildrenTerminal", "cascadeCancelToDescendants",
+        "newOccurrencePosition", "fileTaskAutoArchiveEnabled", "fileTaskArchiveFolder",
+        "fileTaskArchiveDelaySeconds", "fileTaskArchiveOnlyFromFileTasksFolder",
+        "fileRepeatDestination", "fileRepeatCustomFolder", "estimateAutoReallocation",
+        "trackerSplitSessionsAtMidnight", "reminderCatchUpWindowMinutes",
+        "reminderAutoPinDueTasks", "pinnedDockAutoPin", "pinnedDockAutoUnpinFinished"
+      ],
+      "properties": {
+        "autoCompleteParentWhenAllChildrenTerminal": { "type": "boolean" },
+        "cascadeCancelToDescendants": { "type": "boolean" },
+        "newOccurrencePosition": { "type": "string", "enum": ["above", "below"] },
+        "fileTaskAutoArchiveEnabled": { "type": "boolean" },
+        "fileTaskArchiveFolder": { "$ref": "#/$defs/optionalVaultRelativePath" },
+        "fileTaskArchiveDelaySeconds": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "fileTaskArchiveOnlyFromFileTasksFolder": { "type": "boolean" },
+        "fileRepeatDestination": { "type": "string", "enum": ["same-folder", "custom-folder"] },
+        "fileRepeatCustomFolder": { "$ref": "#/$defs/optionalVaultRelativePath" },
+        "estimateAutoReallocation": { "type": "boolean" },
+        "trackerSplitSessionsAtMidnight": { "type": "boolean" },
+        "reminderCatchUpWindowMinutes": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "reminderAutoPinDueTasks": { "type": "boolean" },
+        "pinnedDockAutoPin": { "type": "boolean" },
+        "pinnedDockAutoUnpinFinished": { "type": "boolean" }
+      }
+    },
+    "reminderField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonicalKey", "availability"],
+      "properties": {
+        "canonicalKey": { "type": "string", "enum": ["reminderDatetimes", "reminderRules"] },
+        "availability": { "type": "string", "enum": ["available", "unavailable", "collision"] },
+        "visiblePropertyName": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "creation", "inheritance", "exclusions", "filters", "automation",
+        "reminders", "conversion", "taskUpdate", "relationships", "transitions", "timer",
+        "inlineRelocation", "deletion", "projectSerialScopes"
+      ],
+      "properties": {
+        "creation": { "$ref": "#/$defs/creation" },
+        "inheritance": { "$ref": "#/$defs/inheritance" },
+        "exclusions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["folders"],
+          "properties": {
+            "folders": {
+              "type": "array",
+              "maxItems": 512,
+              "items": {
+                "type": "string",
+                "maxLength": 4096,
+                "pattern": "^(?:$|(?!/)(?![A-Za-z]:)(?!\\\\)(?!.*\\\\)(?!.*//)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*[\\u0000-\\u001f\\u007f]).+)$"
+              }
+            }
+          }
+        },
+        "filters": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/filter" } },
+        "automation": { "$ref": "#/$defs/automation" },
+        "reminders": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fields", "ruleAnchors", "itemActions"],
+          "properties": {
+            "fields": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "$ref": "#/$defs/reminderField" }
+            },
+            "ruleAnchors": {
+              "const": ["datetimeStart", "datetimeEnd", "dateStarted", "dateScheduled", "dateDue"]
+            },
+            "itemActions": { "const": ["add", "replace", "remove"] }
+          }
+        },
+        "conversion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "directions", "templateSelection", "targetModes",
+            "inlineToFileMovesPlainCheckboxes", "fileToInlineRequiresExplicitConfirmation"
+          ],
+          "properties": {
+            "directions": { "const": ["inline-to-file", "file-to-inline"] },
+            "templateSelection": { "const": "explicit-or-needs-template" },
+            "targetModes": { "const": ["exact-line", "configured-target"] },
+            "inlineToFileMovesPlainCheckboxes": { "type": "boolean" },
+            "fileToInlineRequiresExplicitConfirmation": { "const": true }
+          }
+        },
+        "taskUpdate": {
+          "type": "object",
+          "additionalProperties": false,
+          "dependentRequired": {
+            "compactUpdateBatchVersion": ["compactUpdateBatchInputFormat", "compactUpdateBatchMaxItems", "compactUpdateBatchFeatures"],
+            "compactUpdateBatchInputFormat": ["compactUpdateBatchVersion", "compactUpdateBatchMaxItems", "compactUpdateBatchFeatures"],
+            "compactUpdateBatchMaxItems": ["compactUpdateBatchVersion", "compactUpdateBatchInputFormat", "compactUpdateBatchFeatures"],
+            "compactUpdateBatchFeatures": ["compactUpdateBatchVersion", "compactUpdateBatchInputFormat", "compactUpdateBatchMaxItems"]
+          },
+          "required": ["writableKeys", "customKeyPolicy"],
+          "properties": {
+            "writableKeys": { "type": "array", "maxItems": 512, "items": { "type": "string", "minLength": 1, "maxLength": 256 } },
+            "customKeyPolicy": { "const": "active-valid-nonreserved-text-number-date-datetime-list-checkbox" },
+            "compactUpdateBatchVersion": { "const": 1 },
+            "compactUpdateBatchInputFormat": { "const": "compact-lines" },
+            "compactUpdateBatchMaxItems": { "const": 64 },
+            "compactUpdateBatchFeatures": {
+              "const": ["exact-id-targets", "heterogeneous-general-updates", "explicit-field-clear", "single-source-atomic-plan", "per-target-postflight", "same-plan-recovery"]
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "writableFields", "actions", "parentMaxTargets", "dependencyInverseWrites"
+          ],
+          "properties": {
+            "writableFields": { "const": ["parentTask", "blocking", "blockedBy"] },
+            "actions": { "const": ["replace", "clear"] },
+            "parentMaxTargets": { "const": 1 },
+            "dependencyInverseWrites": { "const": true }
+          }
+        },
+        "transitions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actions"],
+          "properties": { "actions": { "const": ["set-status", "complete", "cancel", "reopen"] } }
+        },
+        "timer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actions"],
+          "properties": { "actions": { "const": ["start", "stop"] } }
+        },
+        "inlineRelocation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target"],
+          "properties": { "target": { "const": "exact-blank-line" } }
+        },
+        "deletion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requiresExplicitConfirmation", "deleteAdditionalTasks", "referenceCleanup"],
+          "properties": {
+            "requiresExplicitConfirmation": { "const": true },
+            "deleteAdditionalTasks": { "const": false },
+            "referenceCleanup": { "const": "explicit-or-block" }
+          }
+        },
+        "projectSerialScopes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "prefix", "parentOperonId"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+              "prefix": { "type": "string", "minLength": 1, "maxLength": 4096 },
+              "parentOperonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }
+            }
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "ok", "freshness", "warnings"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "catalog-result" },
+        "ok": { "type": "boolean" },
+        "freshness": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "warnings": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" }
+        },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "settingsFingerprint": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "catalogRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "taxonomy": { "$ref": "#/$defs/taxonomy" },
+        "fields": { "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/fieldCatalog" },
+        "policies": { "$ref": "#/$defs/policies" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+          "then": {
+            "required": [
+              "contextRevision", "settingsFingerprint", "catalogRevision",
+              "taxonomy", "fields", "policies"
+            ],
+            "not": { "required": ["error"] }
+          },
+          "else": {
+            "required": ["error"],
+            "not": {
+              "anyOf": [
+                { "required": ["settingsFingerprint"] },
+                { "required": ["catalogRevision"] },
+                { "required": ["taxonomy"] },
+                { "required": ["fields"] },
+                { "required": ["policies"] }
+              ]
+            }
+          }
+        }
+      ],
+      "x-operon-maxUtf8Bytes": 3145728,
+      "x-operon-catalogResultSafety": true
+    }
+  }
+}

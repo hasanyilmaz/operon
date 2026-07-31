@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import type { App } from 'obsidian';
 import { buildIndexV8Snapshot } from '../src/indexer/persistence/index-v8-codec';
 import { IndexV8Store } from '../src/indexer/persistence/index-v8-store';
-import { IndexV8PersistenceCoordinator } from '../src/indexer/persistence/index-v8-shadow-writer';
+import { IndexV8PersistenceCoordinator } from '../src/indexer/persistence/index-v8-persistence-coordinator';
 import { OperonIndexer } from '../src/indexer/indexer';
 import { buildOperonStoragePaths } from '../src/storage/operon-storage-paths';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
@@ -19,60 +19,6 @@ async function buildSnapshot(count: number) {
 		indexSemanticsSignature: 'maintenance-test-v1',
 		sources: createV8SourcesFromIndexData(createSyntheticIndexData(count)),
 	});
-}
-
-async function testDiagnosticsAndV7Retirement(): Promise<void> {
-	const adapter = new IndexV8MemoryAdapter();
-	const store = new IndexV8Store(adapter.asDataAdapter(), paths.indexV8, {
-		legacyIndexPath: paths.indexPath,
-		recoveryRequiredPath: paths.indexV8RecoveryRequiredPath,
-	});
-	const snapshot = await buildSnapshot(64);
-	await store.commit({ ...snapshot, expectedBaseMissing: true });
-	adapter.setFile(paths.indexPath, '{"version":7}', 100);
-	const operationStart = adapter.operations.length;
-	const diagnostics = await store.diagnoseMaintenance();
-	assert.equal(diagnostics.inspection.manifestStatus, 'loaded');
-	assert.equal(diagnostics.verifiedSnapshot, true);
-	assert.equal(diagnostics.legacyIndex.status, 'file');
-	assert.equal(diagnostics.recoveryMarker.status, 'missing');
-	assert.equal(adapter.operations.slice(operationStart).some(operation => operation.startsWith('readBinary:')), false);
-
-	const planStart = adapter.operations.length;
-	const plan = await store.planLegacyIndexV7Retirement(123);
-	assert.deepEqual(plan.suppressedReasons, []);
-	assert.equal(
-		adapter.operations.slice(planStart).some(operation => operation === `read:${paths.indexPath}`),
-		false,
-		'V7 retirement planning must remain metadata-only',
-	);
-	const descriptor = snapshot.manifest.shards.find(candidate => candidate.sourceCount > 0);
-	assert.ok(descriptor);
-	const shardPath = `${paths.indexV8.shardsPath}/${descriptor.shardId}-${descriptor.sha256}.json`;
-	const shardPayload = adapter.files.get(shardPath);
-	assert.ok(shardPayload);
-	const shardMtime = adapter.mtimes.get(shardPath) ?? 0;
-	const corruptShard = `${shardPayload.slice(0, -1)}${shardPayload.endsWith('}') ? ']' : '}'}`;
-	assert.equal(Buffer.byteLength(corruptShard), Buffer.byteLength(shardPayload));
-	adapter.setFile(shardPath, corruptShard, shardMtime);
-	assert.equal((await store.applyLegacyIndexV7Retirement(plan)).status, 'stale');
-	assert.equal(adapter.files.has(paths.indexPath), true);
-	adapter.setFile(shardPath, shardPayload, shardMtime);
-	adapter.setFile(paths.indexPath, '{"version":7,"changed":true}', 101);
-	assert.equal((await store.applyLegacyIndexV7Retirement(plan)).status, 'stale');
-	assert.equal(adapter.files.has(paths.indexPath), true);
-	adapter.setFile(paths.indexPath, '{"version":7}', 100);
-	const result = await store.applyLegacyIndexV7Retirement(plan);
-	assert.equal(result.status, 'applied');
-	assert.equal(adapter.files.has(paths.indexPath), false);
-	assert.equal(adapter.files.get(paths.indexV8.manifestPath), snapshot.manifestPayload);
-
-	adapter.setFile(paths.indexPath, '{"version":7}', 200);
-	adapter.setFile(paths.indexV8RecoveryRequiredPath, '{"version":1,"required":true}', 200);
-	const suppressed = await store.planLegacyIndexV7Retirement(456);
-	assert.ok(suppressed.suppressedReasons.includes('recovery-marker-required'));
-	assert.equal((await store.applyLegacyIndexV7Retirement(suppressed)).status, 'suppressed');
-	assert.equal(adapter.files.has(paths.indexPath), true);
 }
 
 async function testResetSealsUnreadableManifestAndMarkerRace(): Promise<void> {
@@ -123,7 +69,7 @@ async function testResetSealsUnreadableManifestAndMarkerRace(): Promise<void> {
 	assert.equal(manifestRaceAdapter.files.get(paths.indexV8.manifestPath), remoteManifest);
 }
 
-async function testCleanupStopsForRacingAlternateManifest(): Promise<void> {
+async function testCleanupDefersRacingAlternateManifestToNextPlan(): Promise<void> {
 	const adapter = new IndexV8MemoryAdapter();
 	const store = new IndexV8Store(adapter.asDataAdapter(), paths.indexV8);
 	const active = await buildSnapshot(68);
@@ -144,15 +90,16 @@ async function testCleanupStopsForRacingAlternateManifest(): Promise<void> {
 		return false;
 	};
 	const result = await store.applyCleanup(plan);
-	assert.ok(result.status === 'stale' || result.status === 'partial');
-	assert.equal(adapter.files.has(orphanPath), true);
+	assert.equal(result.status, 'applied');
+	assert.equal(adapter.files.has(orphanPath), false);
 	assert.equal(adapter.files.has(alternatePath), true);
+	const followup = await store.planCleanup();
+	assert.ok(followup.candidates.some(candidate => candidate.path === alternatePath));
 }
 
 async function testCanonicalResetPreservesNonCanonicalArtifacts(): Promise<void> {
 	const adapter = new IndexV8MemoryAdapter();
 	const store = new IndexV8Store(adapter.asDataAdapter(), paths.indexV8, {
-		legacyIndexPath: paths.indexPath,
 		recoveryRequiredPath: paths.indexV8RecoveryRequiredPath,
 	});
 	const snapshot = await buildSnapshot(65);
@@ -181,7 +128,6 @@ async function testCanonicalResetPreservesNonCanonicalArtifacts(): Promise<void>
 async function testCanonicalResetRemovesOnlyConflictingDesiredShard(): Promise<void> {
 	const adapter = new IndexV8MemoryAdapter();
 	const store = new IndexV8Store(adapter.asDataAdapter(), paths.indexV8, {
-		legacyIndexPath: paths.indexPath,
 		recoveryRequiredPath: paths.indexV8RecoveryRequiredPath,
 	});
 	const snapshot = await buildSnapshot(66);
@@ -210,7 +156,6 @@ async function testCanonicalResetRemovesOnlyConflictingDesiredShard(): Promise<v
 async function testIndexerRepairRebuildsFromMarkdownAndClearsMarker(): Promise<void> {
 	const adapter = new IndexV8MemoryAdapter();
 	const store = new IndexV8Store(adapter.asDataAdapter(), paths.indexV8, {
-		legacyIndexPath: paths.indexPath,
 		recoveryRequiredPath: paths.indexV8RecoveryRequiredPath,
 	});
 	const snapshot = await buildSnapshot(10);
@@ -247,17 +192,16 @@ async function testIndexerRepairRebuildsFromMarkdownAndClearsMarker(): Promise<v
 }
 
 async function main(): Promise<void> {
-	await testDiagnosticsAndV7Retirement();
 	await testCanonicalResetPreservesNonCanonicalArtifacts();
 	await testCanonicalResetRemovesOnlyConflictingDesiredShard();
 	await testResetSealsUnreadableManifestAndMarkerRace();
-	await testCleanupStopsForRacingAlternateManifest();
+	await testCleanupDefersRacingAlternateManifestToNextPlan();
 	await testIndexerRepairRebuildsFromMarkdownAndClearsMarker();
 	console.log(JSON.stringify({ ok: true, suite: 'index-v8-maintenance' }));
 }
 
 declare global {
-	var __operonIndexV8CutoverTestRun: Promise<void> | undefined;
+	var __operonIndexV8MaintenanceTestRun: Promise<void> | undefined;
 }
 
-globalThis.__operonIndexV8CutoverTestRun = main();
+globalThis.__operonIndexV8MaintenanceTestRun = main();

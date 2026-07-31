@@ -6,9 +6,7 @@ export type IndexV8DiagnosticsAction =
 	| 'refresh'
 	| 'validate'
 	| 'rebuild'
-	| 'repair'
-	| 'cleanup'
-	| 'retire';
+	| 'repair';
 
 export type IndexV8DiagnosticsPhase = 'idle' | 'sync-settling' | 'rebasing' | 'recovery-required';
 export type IndexV8DiagnosticsHealth =
@@ -25,9 +23,7 @@ export type IndexV8DiagnosticsHealthCode =
 	| 'manifest-invalid'
 	| 'manifest-unsupported'
 	| 'io-error'
-	| 'recovery-marker'
-	| 'cleanup-suppressed'
-	| 'retirement-blocked';
+	| 'recovery-marker';
 export type IndexV8DiagnosticsManifestStatus =
 	| 'verified'
 	| 'missing'
@@ -35,7 +31,7 @@ export type IndexV8DiagnosticsManifestStatus =
 	| 'invalid'
 	| 'unsupported'
 	| 'io-error';
-export type IndexV8DiagnosticsDisabledReason = 'busy' | 'unavailable' | 'unsafe' | 'not-needed';
+export type IndexV8DiagnosticsDisabledReason = 'busy' | 'unavailable' | 'unsafe' | 'notNeeded';
 
 export interface IndexV8DiagnosticsActionAvailability {
 	enabled: boolean;
@@ -51,21 +47,11 @@ export interface IndexV8DiagnosticsSummary {
 	taskCount: number;
 	sourceCount: number;
 	activeShardCount: number;
-	orphanShardCount: number;
-	protectedShardCount: number;
-	ownedTempCount: number;
 	activeBytes: number;
 	maxShardBytes: number;
 	averageShardBytes: number;
-	cleanupCandidateCount: number;
-	cleanupCandidateBytes: number;
 	dirtySourceCount: number;
 	recoveryMarkerPresent: boolean;
-	legacy: {
-		present: boolean;
-		bytes: number;
-		retirementEligible: boolean;
-	};
 	lastInspectedAt?: number;
 	actions?: Partial<Record<IndexV8DiagnosticsAction, IndexV8DiagnosticsActionAvailability>>;
 }
@@ -84,8 +70,6 @@ export interface IndexV8DiagnosticsDependencies {
 	validate(): Promise<IndexV8DiagnosticsActionResult>;
 	rebuild(): Promise<IndexV8DiagnosticsActionResult>;
 	repair(): Promise<IndexV8DiagnosticsActionResult>;
-	cleanup(): Promise<IndexV8DiagnosticsActionResult>;
-	retire(): Promise<IndexV8DiagnosticsActionResult>;
 }
 
 const ACTIONS: readonly IndexV8DiagnosticsAction[] = [
@@ -93,11 +77,9 @@ const ACTIONS: readonly IndexV8DiagnosticsAction[] = [
 	'validate',
 	'rebuild',
 	'repair',
-	'cleanup',
-	'retire',
 ];
 
-const CONFIRMED_ACTIONS = new Set<IndexV8DiagnosticsAction>(['rebuild', 'repair', 'cleanup', 'retire']);
+const CONFIRMED_ACTIONS = new Set<IndexV8DiagnosticsAction>(['rebuild', 'repair']);
 
 export class IndexV8DiagnosticsModal extends Modal {
 	private summary: IndexV8DiagnosticsSummary | null = null;
@@ -148,33 +130,13 @@ export class IndexV8DiagnosticsModal extends Modal {
 		this.addSummaryRow('diagnosticsTasks', String(summary.taskCount));
 		this.addSummaryRow('diagnosticsSources', String(summary.sourceCount));
 		this.addSummaryRow('diagnosticsActiveShards', String(summary.activeShardCount));
-		this.addSummaryRow('diagnosticsOrphanShards', String(summary.orphanShardCount));
-		this.addSummaryRow('diagnosticsProtectedShards', String(summary.protectedShardCount));
-		this.addSummaryRow('diagnosticsOwnedTemps', String(summary.ownedTempCount));
 		this.addSummaryRow('diagnosticsActiveBytes', this.formatBytes(summary.activeBytes));
 		this.addSummaryRow('diagnosticsMaxShardBytes', this.formatBytes(summary.maxShardBytes));
 		this.addSummaryRow('diagnosticsAverageShardBytes', this.formatBytes(summary.averageShardBytes));
-		this.addSummaryRow(
-			'diagnosticsCleanupCandidates',
-			t('indexStats', 'diagnosticsFilesAndBytes', {
-				files: String(summary.cleanupCandidateCount),
-				bytes: this.formatBytes(summary.cleanupCandidateBytes),
-			}),
-		);
 		this.addSummaryRow('diagnosticsDirtySources', String(summary.dirtySourceCount));
 		this.addSummaryRow(
 			'diagnosticsRecoveryMarker',
 			t('indexStats', summary.recoveryMarkerPresent ? 'diagnosticsYes' : 'diagnosticsNo'),
-		);
-		this.addSummaryRow(
-			'diagnosticsLegacy',
-			summary.legacy.present
-				? t('indexStats', 'diagnosticsLegacyPresent', { bytes: this.formatBytes(summary.legacy.bytes) })
-				: t('indexStats', 'diagnosticsLegacyMissing'),
-		);
-		this.addSummaryRow(
-			'diagnosticsRetirementEligible',
-			t('indexStats', summary.legacy.retirementEligible ? 'diagnosticsYes' : 'diagnosticsNo'),
 		);
 		this.addSummaryRow(
 			'diagnosticsLastChecked',
@@ -213,8 +175,7 @@ export class IndexV8DiagnosticsModal extends Modal {
 				.setButtonText(this.actionLabel(action))
 				.setDisabled(disabled)
 				.onClick(() => this.requestAction(action));
-			if (action === 'retire') button.buttonEl.addClass('mod-warning');
-			else if (action !== 'refresh') button.setCta();
+			if (action !== 'refresh') button.setCta();
 		});
 	}
 
@@ -232,7 +193,7 @@ export class IndexV8DiagnosticsModal extends Modal {
 				message: t('indexStats', 'diagnosticsConfirmMessage', { action: this.actionLabel(action) }),
 				confirmText: t('indexStats', 'diagnosticsConfirmButton'),
 				cancelText: t('buttons', 'cancel'),
-				danger: action === 'retire',
+				danger: false,
 			},
 			confirmed => {
 				if (confirmed) void this.runAction(action);

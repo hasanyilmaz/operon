@@ -44,6 +44,25 @@ export function resolveOccurrenceDate(task: Pick<IndexedTask, 'fieldValues'>): s
 
 export const getTaskRepeatOccurrenceDate = resolveOccurrenceDate;
 
+/**
+ * Canonical temporal anchor used when a recurring task first acquires its
+ * occurrence identity and when recurrence materialization derives timing.
+ */
+export function resolveRepeatTemporalAnchor(
+	rule: RepeatRule,
+	fieldValues: Readonly<Record<string, string>>,
+	fallbackDate?: string,
+): string {
+	const fieldOrder = rule.mode === 'done'
+		? ['repeatOccurrenceDate', 'dateScheduled', 'dateStarted', 'dateDue', 'datetimeStart', 'datetimeEnd']
+		: ['repeatOccurrenceDate', 'dateScheduled', 'dateDue', 'dateStarted', 'datetimeStart', 'datetimeEnd'];
+	for (const field of fieldOrder) {
+		const date = normalizeAnchorDate(fieldValues[field]);
+		if (date) return date;
+	}
+	return rule.mode === 'done' ? '' : normalizeAnchorDate(fallbackDate);
+}
+
 export function getSeriesMaterializedTasks(tasks: IndexedTask[], seriesId: string): IndexedTask[] {
 	return tasks
 		.filter(task => (task.fieldValues['repeatSeriesId'] ?? '').trim() === seriesId)
@@ -371,6 +390,12 @@ function normalizeOptional(value: string | null | undefined): string | null {
 function normalizeDate(value: string | null | undefined): string {
 	const trimmed = (value ?? '').trim();
 	return DATE_RE.test(trimmed) ? trimmed : '';
+}
+
+function normalizeAnchorDate(value: string | null | undefined): string {
+	const trimmed = (value ?? '').trim();
+	if (DATE_RE.test(trimmed)) return trimmed;
+	return /^\d{4}-\d{2}-\d{2}T/u.test(trimmed) ? trimmed.slice(0, 10) : '';
 }
 
 function normalizeDatetime(value: string | null | undefined): string {

@@ -1,0 +1,14 @@
+{
+  "caseId": "path-guard-absolute",
+  "exitCode": 1,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": true
+  },
+  "requestSha256": "37d0f005ed9ec78fe2684974a069c7a4d89b4919c80347ac3fac9bfe708f4cf5",
+  "seed": 41030,
+  "stderrSha256": "9a1b482b6fc72e6910ab5a18658c4cde81e64f9b8de85e2b6f1c420bf5b43368",
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "writtenFiles": {}
+}

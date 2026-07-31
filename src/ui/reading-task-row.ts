@@ -14,9 +14,10 @@ import {
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
 	InlineTaskCompactChipEntry,
+	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
-import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
@@ -44,7 +45,10 @@ import { resolveTaskStatusIconColor } from '../core/task-color-source';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import type { DescendantTaskSummary } from '../indexer/indexer';
 import { enhanceReadingTaskFileWikilinks } from './reading-task-wikilink-overlay';
-import { isTaskDescriptionWikilinkEventTarget, renderTaskDescriptionWikilinks } from './task-description-wikilinks';
+import {
+	isCompactTaskMarkdownLinkEventTarget,
+	renderCompactTaskMarkdown,
+} from './compact-task-markdown-renderer';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
 import { createTaskNoteActionButton, showTaskNotePopover } from './task-note-action';
@@ -218,7 +222,7 @@ export function buildReadingTaskRowElement(
 		description.classList.add('operon-task-cancelled');
 	}
 	description.addEventListener('click', (event) => {
-		if (isTaskDescriptionWikilinkEventTarget(event.target, description)) return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, description)) return;
 		event.preventDefault();
 		callbacks.navigateToTask(task);
 	});
@@ -384,11 +388,12 @@ export function buildReadingTaskRowElement(
 		actions.appendChild(playButton);
 	}
 
-	const noteValue = task.fieldValues['note']?.trim() ?? '';
+	const rawNoteValue = task.fieldValues['note'] ?? '';
+	const noteValue = rawNoteValue.trim();
 	if (showNoteAction && readOnly && noteValue) {
 		const noteIndicator = createOperonHoverIndicator({
 			title: t('taskEditor', 'notes'),
-			contentEl: createNonInteractiveMarkdownLinkContent(actions, noteValue),
+			contentEl: createCompactTaskMarkdownTooltipContent(actions, noteValue),
 			icon: getConfiguredKeyMappingIcon('note', callbacks.getSettings().keyMappings) || 'notebook-pen',
 			taskColor,
 			preferredHorizontal: 'right',
@@ -410,11 +415,13 @@ export function buildReadingTaskRowElement(
 					app: callbacks.app,
 					anchor,
 					operonId: task.operonId,
-					initialValue: noteValue,
+					sourcePath: task.primary.filePath,
+					lifecycleOwner: resolveReadingTaskNoteLifecycleOwner(row, options?.owner),
+					initialValue: rawNoteValue,
 					taskDescription: task.description,
 					taskColor,
 					onCommit: value => callbacks.updateField(task.operonId, 'note', value),
-					onClose: () => {
+					onFocusReturn: () => {
 						if (noteButton.isConnected) noteButton.focus();
 					},
 				});
@@ -453,24 +460,27 @@ export function buildReadingTaskRowElement(
 	return row;
 }
 
+function resolveReadingTaskNoteLifecycleOwner(row: HTMLElement, preferredOwner: Node | null | undefined): Node {
+	return row.closest(
+		'.operon-filter-view, .operon-filter-set-modal, .operon-embed-filter, .markdown-preview-view, .markdown-source-view',
+	) ?? preferredOwner ?? row;
+}
+
 function renderTaskDescription(
 	descriptionEl: HTMLElement,
 	task: IndexedTask,
 	callbacks: ReadingTaskRowCallbacks,
 ): void {
 	const description = task.description || t('taskEditor', 'untitledTask');
-	const rendered = renderTaskDescriptionWikilinks(descriptionEl, {
+	const rendered = renderCompactTaskMarkdown(descriptionEl, {
 		app: callbacks.app,
-		description,
+		value: description,
 		sourcePath: task.primary.filePath,
+		mode: 'interactive',
 		containerClassName: 'operon-reading-task-description-markdown',
 		linkClassName: 'operon-reading-task-description-wikilink',
 	});
-	if (!rendered) {
-		descriptionEl.textContent = description;
-		return;
-	}
-	enhanceTaskDescriptionWikilinkOverlays(descriptionEl, task, callbacks);
+	if (rendered.hasLinks) enhanceTaskDescriptionWikilinkOverlays(descriptionEl, task, callbacks);
 }
 
 function enhanceTaskDescriptionWikilinkOverlays(
@@ -526,6 +536,8 @@ function applyCompactChipVisualStyles(
 	}
 	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
 	if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
+	const blockedByColor = resolveCompactBlockedByIconColor(entry);
+	if (blockedByColor) chip.setCssProps({ '--operon-inline-chip-icon-color': blockedByColor });
 }
 
 function attachReadingChipAction(

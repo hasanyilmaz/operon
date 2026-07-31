@@ -40,8 +40,12 @@ export function resolveFileTaskAutoParentOperonId({
 	if (indexedYamlTask?.operonId) return indexedYamlTask.operonId;
 
 	if (!frontmatter) return null;
-	if (typeof frontmatter['operonId'] === 'string' && frontmatter['operonId'].trim()) {
-		return frontmatter['operonId'].trim();
+	const rawOperonId = frontmatter['operonId'];
+	if (
+		(typeof rawOperonId === 'string' && rawOperonId.trim())
+		|| (typeof rawOperonId === 'number' && Number.isSafeInteger(rawOperonId) && rawOperonId >= 0)
+	) {
+		return String(rawOperonId).trim();
 	}
 
 	const reverseMap = buildReverseMapping(keyMappings);

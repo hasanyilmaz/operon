@@ -1,0 +1,28 @@
+{
+  "applyDefaults": false,
+  "mode": "inline",
+  "tasks": [
+    {
+      "checkbox": "done",
+      "description": "Türkçe görev ve English context",
+      "fields": {
+        "contexts": "desk; offline",
+        "fixtureTopic": "Architecture",
+        "note": "Literal {{sample}} and backslash \\",
+        "priority": "P1",
+        "status": "Work.Done",
+        "taskColor": "#336699",
+        "taskIcon": "lucide-circle-check"
+      },
+      "tags": [
+        "#phase-one",
+        "çokdilli"
+      ]
+    },
+    {
+      "checkbox": "cancelled",
+      "description": "Cancelled example"
+    }
+  ],
+  "timestamp": "2026-01-15T10:20:30"
+}

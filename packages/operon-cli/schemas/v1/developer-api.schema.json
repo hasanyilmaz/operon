@@ -1,0 +1,930 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:developer-api.schema.json",
+  "title": "Operon Developer API V1 JSON DTOs",
+  "description": "JSON-serializable Developer API boundary DTOs. The function-bearing in-process API object is intentionally not represented.",
+  "oneOf": [
+    { "$ref": "#/$defs/accessRequest" },
+    { "$ref": "#/$defs/accessFailure" },
+    { "$ref": "#/$defs/channelStatus" },
+    { "$ref": "#/$defs/mutationPreviewInput" },
+    { "$ref": "#/$defs/mutationPreviewResult" },
+    { "$ref": "#/$defs/mutationApplyInput" },
+    { "$ref": "#/$defs/mutationRecoverInput" },
+    { "$ref": "#/$defs/mutationPendingRecoveriesResult" },
+    { "$ref": "#/$defs/mutationExecutionResult" }
+  ],
+  "$defs": {
+    "accessRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "runtimeApi", "requestedCapabilities"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "runtimeApi": {
+          "$ref": "urn:operon:schema:runtime:v1:compatibility.schema.json#/$defs/versionRange"
+        },
+        "requestedCapabilities": {
+          "type": "array",
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityId"
+          }
+        }
+      }
+    },
+    "channelStatus": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "contractVersion",
+        "kind",
+        "runtimeApiVersion",
+        "availability",
+        "reason",
+        "authority",
+        "admission",
+        "capabilities"
+      ],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "kind": { "const": "developer-api-channel-status" },
+        "runtimeApiVersion": { "const": 1 },
+        "availability": {
+          "type": "string",
+          "enum": ["available", "degraded", "unavailable"]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "booting",
+            "cache-ready",
+            "settling",
+            "unloading",
+            "terminal-startup-failure",
+            "accessor-unavailable",
+            "unsupported-platform",
+            "unsupported-version"
+          ]
+        },
+        "lifecyclePhase": {
+          "$ref": "urn:operon:schema:runtime:v1:lifecycle.schema.json#/$defs/runtimeLifecyclePhase"
+        },
+        "authority": {
+          "type": "string",
+          "enum": ["read-only", "granted", "revoked"]
+        },
+        "consumer": {
+          "$ref": "#/$defs/consumerSummary"
+        },
+        "grant": {
+          "$ref": "#/$defs/grantSummary"
+        },
+        "admission": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["reads", "writes"],
+          "properties": {
+            "reads": { "type": "boolean" },
+            "writes": { "type": "boolean" }
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityAdvertisement"
+          }
+        },
+        "retryAfterMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "error": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+        }
+      }
+    },
+    "consumerSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "name", "version", "instanceEpoch"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "instanceEpoch": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "grantSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "state",
+        "revision",
+        "requestedCapabilities",
+        "grantedCapabilities",
+        "effectiveCapabilities"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["pending", "active", "suspended", "revoked"]
+        },
+        "revision": { "type": "integer", "minimum": 0 },
+        "requestedCapabilities": { "$ref": "#/$defs/capabilityList" },
+        "grantedCapabilities": { "$ref": "#/$defs/capabilityList" },
+        "effectiveCapabilities": { "$ref": "#/$defs/capabilityList" }
+      }
+    },
+    "capabilityList": {
+      "type": "array",
+      "maxItems": 512,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityId"
+      }
+    },
+    "accessFailure": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["contractVersion", "kind", "ok", "status", "error"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "kind": { "const": "developer-api-access-result" },
+        "ok": { "const": false },
+        "status": { "$ref": "#/$defs/channelStatus" },
+        "error": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+        }
+      },
+      "not": { "required": ["api"] }
+    },
+    "planHandleFields": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "kind",
+        "recoveryRef",
+        "planDigest",
+        "capability",
+        "mutationKind",
+        "createdAt",
+        "expiresAt",
+        "riskLevel",
+        "requiresConsent",
+        "targets",
+        "predictedEffects",
+        "warnings"
+      ],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "kind": { "const": "developer-mutation-plan" },
+        "recoveryRef": { "$ref": "#/$defs/recoveryRef" },
+        "planDigest": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "capability": {
+          "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityId"
+        },
+        "mutationKind": {
+          "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/mutationKind"
+        },
+        "createdAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        },
+        "expiresAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        },
+        "riskLevel": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel"
+        },
+        "requiresConsent": { "type": "boolean" },
+        "targets": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/exactMutationTarget"
+          }
+        },
+        "predictedEffects": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/predictedEffect"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+          }
+        }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["clientInstanceId"] },
+          { "required": ["authorization"] },
+          { "required": ["consentToken"] },
+          { "required": ["acknowledgements"] },
+          { "required": ["idempotencyKey"] },
+          { "required": ["idempotencyKeyHash"] },
+          { "required": ["planRef"] },
+          { "required": ["vaultIdentityHash"] },
+          { "required": ["planHash"] },
+          { "required": ["planId"] },
+          { "required": ["correlationId"] },
+          { "required": ["receiptTargetDigest"] },
+          { "required": ["contextRevision"] },
+          { "required": ["affectedResources"] },
+          { "required": ["atomicGroups"] },
+          { "required": ["requiresConfirmation"] },
+          { "required": ["requiredAcknowledgements"] },
+          { "required": ["spec"] },
+          { "required": ["createEffects"] },
+          { "required": ["conversionEffect"] },
+          { "required": ["updateBatchEffects"] }
+        ]
+      }
+    },
+    "planHandleOutput": {
+      "$ref": "#/$defs/planHandleFields"
+    },
+    "planHandleInput": {
+      "$ref": "#/$defs/planHandleFields",
+      "unevaluatedProperties": false
+    },
+    "mutationPreviewInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "mutationKind", "spec"],
+      "properties": {
+        "capability": {
+          "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityId"
+        },
+        "mutationKind": {
+          "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/mutationKind"
+        },
+        "target": {
+          "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/exactMutationTarget"
+        },
+        "spec": {
+          "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationPreviewSpec"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "mutationKind": { "const": "task.create" } },
+            "required": ["mutationKind"]
+          },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.create.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/createSpec"
+              }
+            },
+            "not": { "required": ["target"] }
+          },
+          "else": {
+            "if": {
+              "properties": { "mutationKind": { "const": "timer.control" } },
+              "required": ["mutationKind"]
+            },
+            "else": {
+              "if": {
+                "properties": {
+                  "spec": {
+                    "properties": { "operation": { "const": "update-batch" } },
+                    "required": ["operation"]
+                  }
+                },
+                "required": ["spec"]
+              },
+              "then": { "not": { "required": ["target"] } },
+              "else": { "required": ["target"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.update" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.update.preview" },
+              "spec": {
+                "oneOf": [
+                  {
+                    "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/updateSpec"
+                  },
+                  {
+                    "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/updateBatchSpec"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.recurrence" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.recurrence.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/recurrenceSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.relationship" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.relationship.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/relationshipSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.reminder-item" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.reminder.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/reminderSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.transition" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.transition.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/transitionSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.pinned-state" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.pinned.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/pinnedStateSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "timer.control" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "timers.control.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/timerSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "timer.session" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "timers.session.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/timerSessionSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.convert" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.convert.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/convertSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.inline-relocate" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.inline.relocate.preview" },
+              "spec": {
+                "oneOf": [
+                  {
+                    "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/relocateSpec"
+                  },
+                  {
+                    "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/relocatePreviewIntent"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.delete" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.delete.preview" },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/deleteSpec"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "mutationPreviewResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["contractVersion", "kind", "requestId", "ok", "plan", "warnings"],
+          "properties": {
+            "contractVersion": { "const": 1 },
+            "kind": { "const": "developer-mutation-preview-result" },
+            "requestId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "ok": { "const": true },
+            "plan": { "$ref": "#/$defs/planHandleOutput" },
+            "warnings": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+              }
+            }
+          },
+          "not": { "required": ["error"] }
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["contractVersion", "kind", "requestId", "ok", "error", "warnings"],
+          "properties": {
+            "contractVersion": { "const": 1 },
+            "kind": { "const": "developer-mutation-preview-result" },
+            "requestId": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+            },
+            "ok": { "const": false },
+            "error": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+            },
+            "warnings": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+              }
+            }
+          },
+          "not": { "required": ["plan"] }
+        }
+      ]
+    },
+    "mutationApplyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan"],
+      "properties": {
+        "plan": { "$ref": "#/$defs/planHandleInput" }
+      }
+    },
+    "mutationRecoverInput": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["plan"],
+          "properties": {
+            "plan": { "$ref": "#/$defs/planHandleInput" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["recoveryRef"],
+          "properties": {
+            "recoveryRef": { "$ref": "#/$defs/recoveryRef" }
+          }
+        }
+      ]
+    },
+    "recoveryRef": {
+      "type": "string",
+      "pattern": "^dvr1_[0-9a-f]{48}$"
+    },
+    "mutationPendingRecovery": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "recoveryRef",
+        "planDigest",
+        "mutationKind",
+        "capability",
+        "riskLevel",
+        "createdAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "recoveryRef": { "$ref": "#/$defs/recoveryRef" },
+        "planDigest": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "mutationKind": {
+          "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/mutationKind"
+        },
+        "capability": {
+          "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityId"
+        },
+        "riskLevel": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/riskLevel"
+        },
+        "createdAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        },
+        "expiresAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        }
+      }
+    },
+    "mutationPendingRecoveriesResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["contractVersion", "kind", "ok", "recoveries"],
+          "properties": {
+            "contractVersion": { "const": 1 },
+            "kind": { "const": "developer-mutation-pending-recoveries-result" },
+            "ok": { "const": true },
+            "recoveries": {
+              "type": "array",
+              "maxItems": 256,
+              "items": { "$ref": "#/$defs/mutationPendingRecovery" }
+            }
+          },
+          "not": { "required": ["error"] }
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["contractVersion", "kind", "ok", "error"],
+          "properties": {
+            "contractVersion": { "const": 1 },
+            "kind": { "const": "developer-mutation-pending-recoveries-result" },
+            "ok": { "const": false },
+            "error": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+            }
+          },
+          "not": { "required": ["recoveries"] }
+        }
+      ]
+    },
+    "mutationReceipt": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "contractVersion",
+        "planDigest",
+        "mutationKind",
+        "targetDigest",
+        "terminalOutcome",
+        "effectiveAt",
+        "completedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "planDigest": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "mutationKind": {
+          "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/mutationKind"
+        },
+        "targetDigest": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "terminalOutcome": {
+          "type": "string",
+          "enum": ["applied", "already-applied"]
+        },
+        "effectiveAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        },
+        "completedAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        },
+        "expiresAt": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+        }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["clientInstanceId"] },
+          { "required": ["idempotencyKey"] },
+          { "required": ["idempotencyKeyHash"] },
+          { "required": ["vaultIdentityHash"] },
+          { "required": ["planHash"] },
+          { "required": ["planRef"] }
+        ]
+      }
+    },
+    "mutationRecovery": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "required",
+        "action",
+        "mutationMayHaveApplied",
+        "recoveryRef",
+        "planDigest",
+        "plan"
+      ],
+      "properties": {
+        "required": { "const": true },
+        "action": { "const": "recover-same-plan" },
+        "mutationMayHaveApplied": { "const": true },
+        "recoveryRef": { "$ref": "#/$defs/recoveryRef" },
+        "planDigest": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "plan": { "$ref": "#/$defs/planHandleOutput" }
+      }
+    },
+    "mutationExecutionResult": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestId",
+        "status",
+        "mutationMayHaveApplied",
+        "retryAllowed",
+        "groupResults"
+      ],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "kind": { "const": "developer-mutation-execution-result" },
+        "requestId": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["applied", "already-applied", "partial", "failed", "outcome-unknown"]
+        },
+        "mutationMayHaveApplied": { "type": "boolean" },
+        "retryAllowed": { "type": "boolean" },
+        "groupResults": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroupResult"
+          }
+        },
+        "receipt": { "$ref": "#/$defs/mutationReceipt" },
+        "postflight": {
+          "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationPostflight"
+        },
+        "error": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+        },
+        "recovery": { "$ref": "#/$defs/mutationRecovery" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "applied" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["receipt", "postflight"],
+            "not": {
+              "anyOf": [
+                { "required": ["error"] },
+                { "required": ["recovery"] }
+              ]
+            },
+            "properties": {
+              "mutationMayHaveApplied": { "const": true },
+              "retryAllowed": { "const": false },
+              "groupResults": {
+                "minItems": 1,
+                "items": {
+                  "allOf": [
+                    {
+                      "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/atomicGroupResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": { "status": { "const": "committed" } }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "allOf": [
+                  { "$ref": "#/$defs/mutationReceipt" },
+                  {
+                    "type": "object",
+                    "properties": { "terminalOutcome": { "const": "applied" } }
+                  }
+                ]
+              },
+              "postflight": {
+                "type": "object",
+                "properties": { "status": { "const": "verified" } },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "already-applied" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["receipt", "postflight"],
+            "not": {
+              "anyOf": [
+                { "required": ["error"] },
+                { "required": ["recovery"] }
+              ]
+            },
+            "properties": {
+              "mutationMayHaveApplied": { "const": true },
+              "retryAllowed": { "const": false },
+              "groupResults": { "maxItems": 0 },
+              "receipt": {
+                "allOf": [
+                  { "$ref": "#/$defs/mutationReceipt" },
+                  {
+                    "type": "object",
+                    "properties": { "terminalOutcome": { "const": "already-applied" } }
+                  }
+                ]
+              },
+              "postflight": {
+                "type": "object",
+                "properties": { "status": { "const": "receipt-replay" } },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "failed" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["error"],
+            "not": {
+              "anyOf": [
+                { "required": ["receipt"] },
+                { "required": ["postflight"] },
+                { "required": ["recovery"] }
+              ]
+            },
+            "properties": {
+              "mutationMayHaveApplied": { "const": false },
+              "retryAllowed": { "const": false },
+              "groupResults": {
+                "not": {
+                  "contains": {
+                    "type": "object",
+                    "properties": {
+                      "status": { "enum": ["committed", "outcome-unknown"] }
+                    },
+                    "required": ["status"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "partial" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["error", "recovery"],
+            "not": {
+              "anyOf": [
+                { "required": ["receipt"] },
+                { "required": ["postflight"] }
+              ]
+            },
+            "properties": {
+              "mutationMayHaveApplied": { "const": true },
+              "retryAllowed": { "const": false },
+              "error": {
+                "allOf": [
+                  {
+                    "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "code": {
+                        "const": "outcome-unknown"
+                      },
+                      "retryable": { "const": false },
+                      "action": { "const": "recover-same-plan" }
+                    }
+                  }
+                ]
+              },
+              "groupResults": {
+                "minItems": 2,
+                "allOf": [
+                  {
+                    "contains": {
+                      "type": "object",
+                      "properties": { "status": { "const": "committed" } },
+                      "required": ["status"]
+                    }
+                  },
+                  {
+                    "contains": {
+                      "type": "object",
+                      "properties": { "status": { "const": "failed" } },
+                      "required": ["status"]
+                    }
+                  },
+                  {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "properties": { "status": { "const": "outcome-unknown" } },
+                        "required": ["status"]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "outcome-unknown" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["error", "recovery"],
+            "not": {
+              "anyOf": [
+                { "required": ["receipt"] },
+                { "required": ["postflight"] }
+              ]
+            },
+            "properties": {
+              "mutationMayHaveApplied": { "const": true },
+              "retryAllowed": { "const": false },
+              "error": {
+                "allOf": [
+                  {
+                    "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "code": {
+                        "const": "outcome-unknown"
+                      },
+                      "retryable": { "const": false },
+                      "action": { "const": "recover-same-plan" }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

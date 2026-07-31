@@ -1,0 +1,2 @@
+- [x] Türkçe görev ve English context #phase-one #çokdilli {{operonId:: 514365z}} {{status:: Work.Done}} {{priority:: P1}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{contexts:: desk; offline}} {{taskIcon:: circle-check}} {{fixtureTopic:: Architecture}} {{taskColor:: 336699}} {{note:: Literal \{{sample\}} and backslash \\}} {{datetimeModified:: 2026-01-15T10:20:30}}
+- [-] Cancelled example {{operonId:: pexu4w3}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{datetimeModified:: 2026-01-15T10:20:30}}

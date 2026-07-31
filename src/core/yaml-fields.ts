@@ -81,6 +81,35 @@ function stringifyYamlScalar(value: unknown): string | null {
 	return null;
 }
 
+export type LosslessYamlListFieldResult =
+	| { ok: true; value: string }
+	| { ok: false };
+
+/**
+ * Read one mapped YAML list field without silently dropping unsupported items.
+ * The general field hydrator remains permissive for legacy callers; mutation
+ * paths use this strict projection before replacing list-backed source data.
+ */
+export function readLosslessYamlListField(
+	frontmatter: Record<string, unknown>,
+	canonicalKey: string,
+	keyMappings: KeyMapping[],
+): LosslessYamlListFieldResult {
+	const aliases = getManagedYamlAliases(canonicalKey, keyMappings)
+		.filter(alias => Object.prototype.hasOwnProperty.call(frontmatter, alias));
+	if (aliases.length === 0) return { ok: true, value: '' };
+	if (aliases.length !== 1) return { ok: false };
+	const rawValue = frontmatter[aliases[0]];
+	if (rawValue === null || rawValue === undefined) return { ok: true, value: '' };
+	const rawItems = Array.isArray(rawValue) ? rawValue : [rawValue];
+	const values = rawItems.map(item => stringifyYamlScalar(item));
+	if (values.some(value => value === null)) return { ok: false };
+	return {
+		ok: true,
+		value: values.join('; '),
+	};
+}
+
 function isNumericYamlString(value: string): boolean {
 	return /^-?\d+(\.\d+)?$/.test(value.trim());
 }

@@ -2,7 +2,7 @@ import { buildWorkflowStatusSemanticsSignature } from '../../core/workflow-statu
 import { isRetiredKeyMapping, type OperonSettings } from '../../types/settings';
 import { INDEX_WARM_THRESHOLD_DAYS } from '../index-tier';
 
-const INDEX_V8_SEMANTICS_VERSION = 1;
+const INDEX_V8_SEMANTICS_VERSION = 2;
 
 /**
  * Build the V8 compatibility signature from settings that can change indexed
@@ -29,6 +29,19 @@ export function buildIndexV8SemanticsSignature(settings: OperonSettings): string
 			warmThresholdDays: INDEX_WARM_THRESHOLD_DAYS,
 		},
 	});
+}
+
+export function hasIndexV8WorkflowSemanticsMismatch(
+	expectedSignature: string,
+	cachedSignature: string,
+): boolean {
+	try {
+		const expected = JSON.parse(expectedSignature) as { workflow?: unknown };
+		const cached = JSON.parse(cachedSignature) as { workflow?: unknown };
+		return JSON.stringify(expected.workflow) !== JSON.stringify(cached.workflow);
+	} catch {
+		return true;
+	}
 }
 
 function normalizeFolder(value: string): string {

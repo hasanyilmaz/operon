@@ -1,0 +1,16 @@
+{
+  "caseId": "target-non-markdown-drift",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": true
+  },
+  "requestSha256": "fe9d406580e59638e1e3ddae3ff316414e47b44acbddd62e433978c38da7911d",
+  "seed": 41033,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdoutSha256": "3b6524680b59b78143e157ed1ccedd14fe3edb418e6acc9d6d47683f3b1476af",
+  "writtenFiles": {
+    "Tasks/Not Markdown.txt": "78523594706d345eaa395d5631050329a96f3cd1e81ba0152a7c2682e75b43a7"
+  }
+}

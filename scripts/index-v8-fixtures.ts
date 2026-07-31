@@ -38,7 +38,6 @@ export function createSyntheticIndexData(taskInstanceCount: number): IndexData {
 		tasks[operonId] = task;
 	}
 	return {
-		version: 7,
 		workflowStatusSemanticsSignature: 'synthetic-semantics-v1',
 		lastFullReindex: SYNTHETIC_TIMESTAMP,
 		tasks,

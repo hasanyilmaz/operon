@@ -1,6 +1,6 @@
 import { App, Editor, Scope, TFile } from 'obsidian';
 import { EditorSelection, Prec } from '@codemirror/state';
-import type { StateEffect } from '@codemirror/state';
+import type { Extension, StateEffect } from '@codemirror/state';
 import {
 	EditorView,
 	highlightActiveLine,
@@ -11,6 +11,7 @@ import {
 	tooltips,
 } from '@codemirror/view';
 import { createOwnerElement, getOwnerBody, getOwnerWindow } from '../core/dom-compat';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 
 export interface EmbeddedMarkdownSourceEditorOptions {
 	value?: string;
@@ -20,6 +21,10 @@ export interface EmbeddedMarkdownSourceEditorOptions {
 	file?: TFile | null;
 	lineNumberOffset?: number;
 	showLineNumbers?: boolean;
+	showActiveLine?: boolean;
+	ariaLabel?: string;
+	ariaMultiline?: boolean;
+	additionalExtensions?: readonly Extension[];
 	onBlur?: () => void;
 	onChange?: (value: string) => void;
 	onEscape?: () => boolean | void;
@@ -96,6 +101,11 @@ export interface EmbeddedMarkdownSourceEditorRefreshScope {
 export interface EmbeddedMarkdownSourceEditorRefreshResult {
 	refreshedEditors: number;
 	skippedEditors: number;
+}
+
+export interface EmbeddedMarkdownSelection {
+	anchor: number;
+	head: number;
 }
 
 const markdownEditViewCtorCache = new WeakMap<App, EmbeddedMarkdownEditViewCtor>();
@@ -329,6 +339,19 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			if (options.className) {
 				this.editorEl.addClass(options.className);
 			}
+			if (options.ariaLabel) {
+				setAccessibleLabelWithoutTooltip(
+					this.editor.cm.contentDOM,
+					options.ariaLabel,
+					this.editorEl,
+				);
+			}
+			if (options.ariaMultiline != null) {
+				this.editor.cm.contentDOM.setAttr(
+					'aria-multiline',
+					options.ariaMultiline ? 'true' : 'false',
+				);
+			}
 			if (this.isFilePanelSourceEditor()) {
 				if (this.shouldShowLineNumbers()) {
 					this.installFilePanelLineNumberRail();
@@ -481,9 +504,9 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 		}
 
 		refreshLayout(): void {
-			if (!this.isFilePanelSourceEditor()) return;
 			const view = this.editor.cm;
 			view.requestMeasure();
+			if (!this.isFilePanelSourceEditor()) return;
 			this.resetHorizontalScroll();
 			this.queueFilePanelLayoutGuard();
 			this.queueFilePanelLineNumberRefresh();
@@ -608,13 +631,22 @@ function resolveEmbeddedMarkdownViewClass(app: App): OperonEmbeddedMarkdownViewC
 			if (isFilePanelSourceEditor) {
 				extensions.push(filePanelLayoutTheme);
 			}
-			extensions.push(highlightActiveLine());
-			if (!isFilePanelSourceEditor && this.shouldShowLineNumbers()) {
+			if (this.options.showActiveLine !== false) {
+				extensions.push(highlightActiveLine());
+			}
+			if (
+				this.options.showActiveLine !== false
+				&& !isFilePanelSourceEditor
+				&& this.shouldShowLineNumbers()
+			) {
 				extensions.push(highlightActiveLineGutter());
 			}
 			extensions.push(tooltips({ parent: getOwnerBody(this.editorEl) }));
 			if (this.options.placeholder) {
 				extensions.push(placeholder(this.options.placeholder));
+			}
+			if (this.options.additionalExtensions) {
+				extensions.push(...this.options.additionalExtensions);
 			}
 			extensions.push(Prec.highest(keymap.of([
 				{
@@ -711,6 +743,14 @@ export class EmbeddedMarkdownSourceEditor {
 		return this.view?.editor.cm.state.doc.toString() ?? '';
 	}
 
+	get selection(): EmbeddedMarkdownSelection {
+		const selection = this.view?.editor.cm.state.selection.main;
+		return {
+			anchor: selection?.anchor ?? 0,
+			head: selection?.head ?? 0,
+		};
+	}
+
 	focus(): void {
 		this.view?.editor.cm.contentDOM.focus();
 	}
@@ -726,8 +766,27 @@ export class EmbeddedMarkdownSourceEditor {
 		view.contentDOM.focus();
 	}
 
-	setValue(value: string): void {
+	setValue(value: string, selection?: EmbeddedMarkdownSelection): void {
 		this.view?.set(value);
+		if (!selection) return;
+		const view = this.view?.editor.cm;
+		if (!view) return;
+		const docLength = view.state.doc.length;
+		const anchor = Math.max(0, Math.min(selection.anchor, docLength));
+		const head = Math.max(0, Math.min(selection.head, docLength));
+		view.dispatch({
+			selection: EditorSelection.range(anchor, head),
+			effects: EditorView.scrollIntoView(head, { y: 'nearest', x: 'start' }),
+		});
+	}
+
+	selectAll(): void {
+		const view = this.view?.editor.cm;
+		if (!view) return;
+		view.dispatch({
+			selection: EditorSelection.range(0, view.state.doc.length),
+		});
+		view.contentDOM.focus();
 	}
 
 	refreshLayout(): void {

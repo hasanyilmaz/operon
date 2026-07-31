@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:capabilities.schema.json",
+  "title": "Operon Agent Runtime V1 Capabilities and Field Catalog",
+  "$defs": {
+    "capabilityId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$",
+      "x-operon-knownValues": [
+        "system.health",
+        "system.capabilities",
+        "system.diagnostics",
+        "catalog.read",
+        "entities.resolve",
+        "tasks.read",
+        "tasks.query",
+        "tasks.finder",
+        "relationships.read",
+        "context.build",
+        "tasks.create.preview",
+        "tasks.create.apply",
+        "tasks.update.preview",
+        "tasks.update.apply",
+        "tasks.recurrence.preview",
+        "tasks.recurrence.apply",
+        "tasks.relationship.preview",
+        "tasks.relationship.apply",
+        "tasks.reminder.preview",
+        "tasks.reminder.apply",
+        "tasks.transition.preview",
+        "tasks.transition.apply",
+        "tasks.pinned.preview",
+        "tasks.pinned.apply",
+        "timers.read",
+        "timers.control.preview",
+        "timers.control.apply",
+        "timers.session.preview",
+        "timers.session.apply",
+        "tasks.convert.preview",
+        "tasks.convert.apply",
+        "tasks.inline.relocate.preview",
+        "tasks.inline.relocate.apply",
+        "tasks.delete.preview",
+        "tasks.delete.apply"
+      ]
+    },
+    "mutationKind": {
+      "type": "string",
+      "enum": [
+        "task.create",
+        "task.update",
+        "task.recurrence",
+        "task.relationship",
+        "task.reminder-item",
+        "task.transition",
+        "task.pinned-state",
+        "timer.control",
+        "timer.session",
+        "task.convert",
+        "task.inline-relocate",
+        "task.delete"
+      ]
+    },
+    "capabilityDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "mode", "destructive"],
+      "properties": {
+        "id": { "$ref": "#/$defs/capabilityId" },
+        "mode": {
+          "type": "string",
+          "enum": ["read", "preview", "apply"]
+        },
+        "mutationKind": { "$ref": "#/$defs/mutationKind" },
+        "destructive": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "mode": { "enum": ["preview", "apply"] } },
+            "required": ["mode"]
+          },
+          "then": { "required": ["mutationKind"] }
+        },
+        {
+          "if": {
+            "properties": { "mode": { "const": "read" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": { "destructive": { "const": false } },
+            "not": { "required": ["mutationKind"] }
+          }
+        }
+      ]
+    },
+    "capabilityAdvertisement": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "availability", "stability"],
+      "properties": {
+        "id": { "$ref": "#/$defs/capabilityId" },
+        "availability": {
+          "type": "string",
+          "enum": ["contract-only", "available", "degraded", "unavailable"]
+        },
+        "stability": { "const": "stable" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "deprecation": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["announcedIn", "removal"],
+          "properties": {
+            "announcedIn": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "removal": { "const": "runtime-v2" },
+            "replacement": { "type": "string", "minLength": 1, "maxLength": 256 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "availability": { "const": "contract-only" } },
+            "required": ["availability"]
+          },
+          "then": {
+            "required": ["reason"]
+          }
+        }
+      ]
+    },
+    "capabilityRegistry": {
+      "type": "array",
+      "x-operon-frozenCapabilityRegistry": true,
+      "minItems": 35,
+      "maxItems": 35,
+      "items": { "$ref": "#/$defs/capabilityDefinition" }
+    },
+    "fieldDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalKey",
+        "displayName",
+        "description",
+        "valueType",
+        "source",
+        "mappingStatus",
+        "readable",
+        "mutationClass",
+        "requiresStableTaxonomyId"
+      ],
+      "properties": {
+        "canonicalKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$"
+        },
+        "description": { "type": "string", "maxLength": 4096 },
+        "valueType": {
+          "type": "string",
+          "enum": ["text", "number", "date", "datetime", "list", "checkbox"]
+        },
+        "source": {
+          "type": "string",
+          "enum": ["built-in", "custom"]
+        },
+        "mappingStatus": {
+          "type": "string",
+          "enum": ["mapped", "unmapped", "collision", "reserved"]
+        },
+        "readable": { "type": "boolean" },
+        "mutationClass": {
+          "type": "string",
+          "enum": ["general-update", "semantic-capability", "runtime-owned"]
+        },
+        "mutationOwner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?!\\s)(?:[\\s\\S]*\\S)?$"
+        },
+        "requiresStableTaxonomyId": { "type": "boolean" }
+      }
+    },
+    "fieldCatalog": {
+      "type": "array",
+      "maxItems": 512,
+      "x-operon-uniqueBy": "canonicalKey",
+      "x-operon-fieldCatalogSafety": true,
+      "items": { "$ref": "#/$defs/fieldDescriptor" }
+    }
+  }
+}

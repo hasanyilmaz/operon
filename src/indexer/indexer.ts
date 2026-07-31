@@ -41,7 +41,7 @@ import {
 } from '../core/engine-perf';
 import { WindowTimeoutHandle, clearWindowTimeout, setWindowTimeout } from '../core/dom-compat';
 import { parseTaskStatsReadModel } from '../core/task-stats-read-model';
-import { isManagedTaskFieldCanonicalKey } from '../core/managed-task-fields';
+import { isReadableTaskFieldCanonicalKey } from '../core/managed-task-fields';
 import { getManagedYamlAliases } from '../core/yaml-fields';
 import { buildWorkflowStatusSemanticsSignature } from '../core/workflow-status-semantics';
 import {
@@ -50,20 +50,22 @@ import {
 } from '../core/workflow-status-identity';
 import { computeIndexTier } from './index-tier';
 import { buildIndexV8SemanticsSignature } from './persistence/index-v8-semantics';
-import type { IndexV8CoherenceBasis } from './persistence/index-v8-contract';
+import type {
+	IndexV8CoherenceBasis,
+	IndexV8RuntimeCoherenceBasis,
+} from './persistence/index-v8-contract';
 import {
-	IndexV8ShadowWriter,
+	IndexV8PersistenceCoordinator,
 	sealIndexData,
-	type IndexV8ShadowInput,
+	type IndexV8PersistenceInput,
 	type IndexV8RuntimePhase,
-} from './persistence/index-v8-shadow-writer';
+} from './persistence/index-v8-persistence-coordinator';
+import type { IndexV8MaintenanceRunResult } from './persistence/index-v8-maintenance-scheduler';
 import {
 	IndexV8StorageError,
 	type IndexV8CleanupPlan,
 	type IndexV8CleanupResult,
 	type IndexV8MaintenanceDiagnostics,
-	type IndexV7RetirementPlan,
-	type IndexV7RetirementResult,
 	type IndexV8CanonicalResetPlan,
 	type IndexV8CanonicalResetResult,
 	type IndexV8LoadResult,
@@ -90,14 +92,6 @@ import {
 } from './persistence/index-v8-partition';
 import type { IndexV8ShardId } from './persistence/index-v8-contract';
 
-declare global {
-	interface Window {
-		operonIndexV8ReadEnabled?: boolean;
-	}
-}
-
-// Bump when index semantics change (e.g., scanner exclusions) so stale cache is discarded.
-const INDEX_VERSION = 7;
 // The final bounded confirmation allows a snapshot that first becomes complete
 // at the 7-second probe to prove stability without exceeding ~15 seconds.
 const INDEX_V8_SETTLE_DELAYS_MS = [1_000, 3_000, 7_000, 3_000] as const;
@@ -126,6 +120,68 @@ export interface IndexedTaskDelta {
 export type IndexReconciliationEvent =
 	| { kind: 'full'; generation: number }
 	| { kind: 'incremental'; generation: number; affectedOperonIds: string[] };
+
+export type IndexDurableRevisionState =
+	| 'available'
+	| 'missing'
+	| 'recovery-required'
+	| 'unavailable';
+
+export type IndexDurableRevisionSnapshot =
+	| {
+		status: 'available';
+		snapshotId: string;
+		committedAt: string;
+	}
+	| {
+		status: Exclude<IndexDurableRevisionState, 'available'>;
+	};
+
+export interface IndexRevisionSourceSnapshot {
+	ramGeneration: number;
+	durable: Readonly<IndexDurableRevisionSnapshot>;
+}
+
+export type IndexRamSettlementState = 'settled' | 'unloading';
+
+export interface IndexRamSettlementSnapshot {
+	state: IndexRamSettlementState;
+	ramGeneration: number;
+}
+
+export type IndexLiveReadAuthorityState =
+	| 'verified'
+	| 'settling'
+	| 'recovery-required'
+	| 'unverified'
+	| 'unloading';
+
+/**
+ * Primitive-only statement of whether the current RAM index is suitable for a
+ * live verified read. It intentionally exposes no persistence or index service.
+ */
+export interface IndexLiveReadAuthoritySnapshot {
+	state: IndexLiveReadAuthorityState;
+	ramGeneration: number;
+	settled: boolean;
+	coherenceBasis: IndexV8RuntimeCoherenceBasis;
+	lastFullScanAt: string | null;
+	durable: Readonly<IndexDurableRevisionSnapshot>;
+}
+
+export type IndexedTaskSnapshot = Readonly<
+	Omit<IndexedTask, 'fieldValues' | 'tags' | 'primary' | 'plainCheckboxProgress'>
+	& {
+		fieldValues: Readonly<Record<string, string>>;
+		tags: readonly string[];
+		primary: Readonly<TaskLocation>;
+		plainCheckboxProgress?: Readonly<NonNullable<IndexedTask['plainCheckboxProgress']>>;
+	}
+>;
+
+export type IndexedTaskInstanceSnapshot = Readonly<
+	IndexedTaskSnapshot & Pick<IndexedTaskInstance, 'instanceKey'>
+>;
 
 export interface ReindexOptions {
 	notify?: boolean;
@@ -162,10 +218,8 @@ export type CachedIndexLoadResult =
 export interface IndexV8ReadStore {
 	load(): Promise<IndexV8LoadResult>;
 	planCleanup?(): Promise<IndexV8CleanupPlan>;
-	applyCleanup?(plan: IndexV8CleanupPlan): Promise<IndexV8CleanupResult>;
+	applyCleanup?(plan: IndexV8CleanupPlan, isActive?: () => boolean): Promise<IndexV8CleanupResult>;
 	diagnoseMaintenance?(): Promise<IndexV8MaintenanceDiagnostics>;
-	planLegacyIndexV7Retirement?(): Promise<IndexV7RetirementPlan>;
-	applyLegacyIndexV7Retirement?(plan: IndexV7RetirementPlan): Promise<IndexV7RetirementResult>;
 	planCanonicalV8Reset?(
 		desiredShardPayloads?: ReadonlyMap<IndexV8ShardId, string>,
 	): Promise<IndexV8CanonicalResetPlan>;
@@ -188,16 +242,10 @@ export interface IndexV8DiagnosticSnapshot {
 	taskCount: number;
 	sourceCount: number;
 	activeShardCount: number;
-	protectedShardCount: number;
 	activeBytes: number;
 	maxShardBytes: number;
 	averageShardBytes: number;
-	maintenanceCounts: Record<string, number>;
-	maintenanceBytes: Record<string, number>;
-	cleanupCandidateCount: number;
-	cleanupCandidateBytes: number;
 	recoveryMarkerPresent: boolean;
-	legacyV7: { present: boolean; bytes: number; retirementEligible: boolean };
 	manifestStatus: IndexV8LoadResult['status'];
 	dirtySourceCount: number;
 	codes: string[];
@@ -236,13 +284,8 @@ function compareDuplicateInstances(left: IndexedTaskInstance, right: IndexedTask
 	return timeCompare !== 0 ? timeCompare : left.instanceKey.localeCompare(right.instanceKey);
 }
 
-function isIndexV8ReadEnabled(): boolean {
-	return typeof window === 'undefined' || window.operonIndexV8ReadEnabled !== false;
-}
-
 interface PersistIndexOptions {
 	immediate?: boolean;
-	shadowImmediate?: boolean;
 	coherenceBasis?: IndexV8CoherenceBasis;
 	dirtySourcePaths?: Iterable<string>;
 	affectedOperonIds?: Iterable<string>;
@@ -258,9 +301,8 @@ export interface IndexV8DirtyBatch {
 }
 
 interface PendingIndexPersistenceSnapshot {
-	input: IndexV8ShadowInput;
+	input: IndexV8PersistenceInput;
 	dirty: IndexV8DirtyBatch;
-	shadowImmediate: boolean;
 	retryCount: 0 | 1;
 }
 
@@ -319,11 +361,15 @@ export class OperonIndexer {
 	/** Debounce timer for coalescing rapid file events */
 	private reindexTimer: WindowTimeoutHandle | null = null;
 	private pendingFiles: Set<string> = new Set();
+	private readonly inFlightReindexPaths = new Set<string>();
+	private readonly reindexPathWaiters = new Map<string, Set<() => void>>();
 	private debounceMs: number;
 
 
 	/** Callback fired after every reindex completes (use to refresh views) */
 	onIndexUpdated: (() => void) | null = null;
+	private readonly indexUpdatedListeners = new Set<() => void>();
+	onIndexV8Persisted: (() => void) | null = null;
 	onTasksRemoved: ((removedTasks: IndexedTask[]) => void) | null = null;
 	onTasksChanged: ((changes: IndexedTaskDelta[]) => void) | null = null;
 	private readonly reconciliationListeners = new Set<(event: IndexReconciliationEvent) => void>();
@@ -344,8 +390,16 @@ export class OperonIndexer {
 	private coherentIndexV8SemanticsSignature: string | null = null;
 	private persistenceSequence = 0;
 	private lastDurableCommittedAt = '';
+	private durableRevisionState: IndexDurableRevisionState;
+	private durableV8SnapshotId: string | null = null;
+	private durablePersistedAt: string | null = null;
+	private pendingRamOperationCount = 0;
+	private activeRamOperationRelease: (() => void) | null = null;
+	private readonly ramSettlementWaiters = new Set<
+		(snapshot: Readonly<IndexRamSettlementSnapshot>) => void
+	>();
 	private lastFullScanAt = '';
-	private coherenceBasis: IndexV8CoherenceBasis = 'v7-startup-seed';
+	private coherenceBasis: IndexV8RuntimeCoherenceBasis = 'unverified';
 	private startupV8SourceStats: Map<string, IndexV8SourceStat> | null = null;
 	private startupV8CommittedAtMs = 0;
 	private shuttingDown = false;
@@ -357,7 +411,7 @@ export class OperonIndexer {
 	constructor(
 		app: App,
 		storage: OperonStorage,
-		private readonly indexV8ShadowWriter: IndexV8ShadowWriter | null = null,
+		private readonly indexV8PersistenceCoordinator: IndexV8PersistenceCoordinator | null = null,
 		private readonly indexV8Store: IndexV8ReadStore | null = null,
 		private readonly indexV8RecoveryScheduler: IndexV8RecoveryScheduler = {
 			now: () => Date.now(),
@@ -368,6 +422,31 @@ export class OperonIndexer {
 		this.storage = storage;
 		this.secondary = new SecondaryIndexes();
 		this.debounceMs = storage.getSettings().indexEventDebounceMs;
+		this.durableRevisionState = indexV8PersistenceCoordinator || indexV8Store
+			? 'missing'
+			: 'unavailable';
+	}
+
+	/**
+	 * Adds a transient index-update listener without taking ownership of the
+	 * legacy single callback used by the plugin lifecycle.
+	 */
+	subscribeIndexUpdates(listener: () => void): () => void {
+		this.indexUpdatedListeners.add(listener);
+		return () => {
+			this.indexUpdatedListeners.delete(listener);
+		};
+	}
+
+	private notifyIndexUpdated(): void {
+		this.onIndexUpdated?.();
+		for (const listener of [...this.indexUpdatedListeners]) {
+			try {
+				listener();
+			} catch (error) {
+				console.error('Operon: index update listener failed', error);
+			}
+		}
 	}
 
 	// --- Full Reindex ---
@@ -382,14 +461,14 @@ export class OperonIndexer {
 	}
 
 	getIndexV8RuntimePhase(): IndexV8RuntimePhase {
-		return this.indexV8ShadowWriter?.getRuntimePhase?.() ?? (this.recoveryRequired ? 'recovery-required' : 'idle');
+		return this.indexV8PersistenceCoordinator?.getRuntimePhase?.() ?? (this.recoveryRequired ? 'recovery-required' : 'idle');
 	}
 
 	/** Stat-gated monitor entry point. A changed stat is validated before recovery starts. */
 	async observeIndexV8ManifestChange(): Promise<void> {
-		if (!this.indexV8Store || !this.indexV8ShadowWriter || this.shuttingDown || this.recoveryRequired) return;
+		if (!this.indexV8Store || !this.indexV8PersistenceCoordinator || this.shuttingDown || this.recoveryRequired) return;
 		const loaded = await this.indexV8Store.load();
-		if (loaded.status === 'loaded' && this.indexV8ShadowWriter.isVerifiedBaseline?.(loaded.manifestPayload)) return;
+		if (loaded.status === 'loaded' && this.indexV8PersistenceCoordinator.isVerifiedBaseline?.(loaded.manifestPayload)) return;
 		if (loaded.status === 'invalid' || loaded.status === 'unsupported') {
 			await this.enterCurrentStateRecoveryRequired(loaded.code);
 			return;
@@ -423,6 +502,9 @@ export class OperonIndexer {
 		this.lastFullScanAt = new Date().toISOString();
 		this.coherenceBasis = 'verified-full-scan';
 		this.generation += 1;
+		// The live index and generation are coherent at this point. A full scan's
+		// immediate V8 commit is deliberately outside the RAM settlement barrier.
+		this.settleActiveRamOperation();
 		const commitMs = enginePerfNow() - commitStartedAt;
 
 		const elapsed = enginePerfNow() - startTime;
@@ -431,7 +513,6 @@ export class OperonIndexer {
 		const persistStartedAt = enginePerfNow();
 		await this.persistIndex({
 			immediate: true,
-			shadowImmediate: true,
 			forceFull: true,
 			perfContext: { source: 'full-reindex' },
 		});
@@ -450,7 +531,7 @@ export class OperonIndexer {
 			`totalMs=${Math.round(enginePerfNow() - startTime)}`,
 		);
 		this.emitIndexReconciliation({ kind: 'full', generation: this.generation });
-		this.onIndexUpdated?.();
+		this.notifyIndexUpdated();
 	}
 
 	private async buildFullIndexState(): Promise<FullIndexBuild> {
@@ -505,10 +586,11 @@ export class OperonIndexer {
 		let fallbackReason: IndexV8FallbackReason | undefined;
 		const markerStatus = await this.inspectDurableV8RecoveryMarker();
 		if (markerStatus !== 'missing') {
+			this.markDurableRevisionState('recovery-required');
 			enginePerfLog('index.load.cached', 'status=recovery-required', 'source=marker', `marker=${markerStatus}`);
 			return { status: 'missing', fallbackReason: 'recovery-required' };
 		}
-		if (this.indexV8Store && isIndexV8ReadEnabled()) {
+		if (this.indexV8Store) {
 			const collectTimings = isOperonEnginePerfDebugEnabled();
 			const startedAt = collectTimings ? enginePerfNow() : 0;
 			const loadStartedAt = collectTimings ? enginePerfNow() : 0;
@@ -517,6 +599,7 @@ export class OperonIndexer {
 			const expectedSignature = buildIndexV8SemanticsSignature(this.storage.getSettings());
 			const decision = prepareIndexV8Startup(loaded, expectedSignature);
 			if (decision.status === 'incompatible') {
+				this.markDurableRevisionState('missing');
 				enginePerfLog(
 					'index.load.cached',
 					'source=v8',
@@ -579,13 +662,16 @@ export class OperonIndexer {
 					this.commitIndexState(staged);
 					this.lastSavedAt = committedAtMs;
 					this.lastDurableCommittedAt = decision.manifest.committedAt;
+					this.markDurableRevisionAvailable(
+						decision.manifest.snapshotId,
+						decision.manifest.committedAt,
+					);
 					this.lastFullScanAt = decision.manifest.lastFullScanAt;
 					this.coherenceBasis = 'verified-full-scan';
 					this.coherentWorkflowStatusSemanticsSignature = workflowStatusSemanticsSignature;
 					this.coherentIndexV8SemanticsSignature = decision.manifest.indexSemanticsSignature;
 					if (loaded.status === 'loaded') {
-						this.indexV8ShadowWriter?.adoptVerifiedBaseline?.(loaded.manifestPayload, {
-							version: INDEX_VERSION,
+						this.indexV8PersistenceCoordinator?.adoptVerifiedBaseline?.(loaded.manifestPayload, {
 							workflowStatusSemanticsSignature,
 							lastFullReindex: decision.manifest.lastFullScanAt,
 							tasks: Object.fromEntries(staged.tasks),
@@ -613,7 +699,7 @@ export class OperonIndexer {
 					return { status: 'loaded', source: 'v8', requiresFullReindex: false };
 				} catch {
 					fallbackReason = 'hydration-failed';
-					this.indexV8ShadowWriter?.disable('STARTUP_HYDRATION_FAILED');
+					this.markDurableRevisionState('missing');
 					enginePerfLog(
 						'index.load.cached',
 						'source=v8',
@@ -625,9 +711,11 @@ export class OperonIndexer {
 				}
 			} else {
 				fallbackReason = decision.reason;
-				if (decision.disableShadow && decision.reason !== 'incomplete' && decision.reason !== 'io-error') {
-					this.indexV8ShadowWriter?.disable(`STARTUP_${decision.code ?? decision.reason.toUpperCase()}`);
-				}
+				this.markDurableRevisionState(
+					decision.reason === 'invalid' || decision.reason === 'unsupported'
+						? 'recovery-required'
+						: 'missing',
+				);
 				enginePerfLog(
 					'index.load.cached',
 					'source=v8',
@@ -637,9 +725,6 @@ export class OperonIndexer {
 					`totalMs=${Math.round(collectTimings ? enginePerfNow() - startedAt : 0)}`,
 				);
 			}
-		} else if (this.indexV8Store) {
-			fallbackReason = 'read-disabled';
-			this.indexV8ShadowWriter?.disable('STARTUP_READ_DISABLED');
 		}
 		return { status: 'missing', ...(fallbackReason ? { fallbackReason } : {}) };
 	}
@@ -783,11 +868,25 @@ export class OperonIndexer {
 	 */
 	async reindexFilePath(filePath: string, options: ReindexOptions = {}): Promise<void> {
 		if (this.shuttingDown) return;
+		if (this.inFlightReindexPaths.has(filePath)) {
+			await this.awaitTrackedReindexPath(filePath);
+			return;
+		}
 		this.noteMarkdownEvent();
-		await this.enqueueIndexOperation(() => this.doReindexFilePath(filePath, options));
+		this.inFlightReindexPaths.add(filePath);
+		try {
+			await this.enqueueIndexOperation(() => this.doReindexFilePath(filePath, options));
+		} finally {
+			this.finishTrackedReindexPath(filePath);
+		}
 	}
 
-	private async doReindexFilePath(filePath: string, options: ReindexOptions = {}): Promise<void> {
+	private async doReindexFilePath(
+		filePath: string,
+		options: ReindexOptions = {},
+		knownFile?: TFile,
+		knownContent?: string,
+	): Promise<void> {
 		const startedAt = enginePerfNow();
 		if (isOperonExcludedPath(filePath, this.storage.getSettings())) {
 			const beforeById = this.snapshotCanonicalTasksByInstanceFile(filePath);
@@ -807,7 +906,7 @@ export class OperonIndexer {
 				this.onTasksRemoved?.(removedTasks);
 			}
 			if (options.notify !== false) {
-				this.onIndexUpdated?.();
+				this.notifyIndexUpdated();
 			}
 			enginePerfLog(
 				'index.reindex.incremental',
@@ -818,14 +917,24 @@ export class OperonIndexer {
 			return;
 		}
 
-		const file = this.app.vault.getAbstractFileByPath(filePath);
+		const file = knownFile?.path === filePath
+			? knownFile
+			: this.app.vault.getAbstractFileByPath(filePath);
 		if (!(file instanceof TFile) || file.extension !== 'md') return;
 
 		const staged = this.createEmptyIndexState();
 		const scanStartedAt = enginePerfNow();
 		let scannedIds: Set<string>;
 		try {
-			scannedIds = await this.indexFile(file, staged);
+			scannedIds = await this.indexFile(
+				file,
+				staged,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				knownContent,
+			);
 		} catch (error) {
 			console.warn(`Operon: failed to reindex ${filePath}; keeping previous index state`, error);
 			return;
@@ -865,7 +974,7 @@ export class OperonIndexer {
 
 		// Notify listeners that the index has changed (e.g. refresh views)
 		if (options.notify !== false) {
-			this.onIndexUpdated?.();
+			this.notifyIndexUpdated();
 		}
 		enginePerfLog(
 			'index.reindex.incremental',
@@ -884,8 +993,138 @@ export class OperonIndexer {
 	 */
 	async reindexFilesBatch(filePaths: string[], options: ReindexOptions = {}): Promise<void> {
 		if (this.shuttingDown) return;
+		const uniquePaths = Array.from(new Set(filePaths));
+		const existingFlights = uniquePaths
+			.filter(filePath => this.inFlightReindexPaths.has(filePath))
+			.map(filePath => this.awaitTrackedReindexPath(filePath));
+		const newPaths = uniquePaths.filter(filePath => !this.inFlightReindexPaths.has(filePath));
+		if (newPaths.length === 0) {
+			await Promise.all(existingFlights);
+			return;
+		}
 		this.noteMarkdownEvent();
-		await this.enqueueIndexOperation(() => this.doReindexFilesBatch(filePaths, options));
+		for (const filePath of newPaths) this.inFlightReindexPaths.add(filePath);
+		try {
+			await this.enqueueIndexOperation(() => this.doReindexFilesBatch(newPaths, options));
+		} finally {
+			for (const filePath of newPaths) this.finishTrackedReindexPath(filePath);
+		}
+		await Promise.all(existingFlights);
+	}
+
+	/**
+	 * Mutation postflight barrier for exact affected sources. It consumes any
+	 * matching debounced request, joins an already-running scan, and returns the
+	 * RAM generations observed around the coalesced reindex.
+	 */
+	async reindexAffectedSources(
+		filePaths: readonly string[],
+		options: ReindexOptions = {},
+	): Promise<Readonly<{ beforeGeneration: number; afterGeneration: number }>> {
+		const paths = Array.from(new Set(filePaths.map(path => path.trim()).filter(Boolean))).sort();
+		const beforeGeneration = this.generation;
+		if (paths.length === 0 || this.shuttingDown) {
+			return Object.freeze({ beforeGeneration, afterGeneration: this.generation });
+		}
+		for (const filePath of paths) this.pendingFiles.delete(filePath);
+		if (this.pendingFiles.size === 0 && this.reindexTimer) {
+			clearWindowTimeout(this.reindexTimer);
+			this.reindexTimer = null;
+		}
+		if (paths.length === 1) {
+			await this.reindexFilePath(paths[0], options);
+		} else {
+			await this.reindexFilesBatch(paths, options);
+		}
+		return Object.freeze({ beforeGeneration, afterGeneration: this.generation });
+	}
+
+	/**
+	 * Exact post-write retry used only after a joined vault-event scan failed
+	 * to publish the task expected by a committed source mutation.
+	 */
+	async forceReindexFilePathAfterMutation(
+		filePath: string,
+		options: ReindexOptions = {},
+	): Promise<void> {
+		if (this.shuttingDown) return;
+		if (this.inFlightReindexPaths.has(filePath)) {
+			await this.awaitTrackedReindexPath(filePath);
+		}
+		this.pendingFiles.delete(filePath);
+		if (this.pendingFiles.size === 0 && this.reindexTimer) {
+			clearWindowTimeout(this.reindexTimer);
+			this.reindexTimer = null;
+		}
+		this.noteMarkdownEvent();
+		this.inFlightReindexPaths.add(filePath);
+		try {
+			await this.enqueueIndexOperation(() => this.doReindexFilePath(filePath, options));
+		} finally {
+			this.finishTrackedReindexPath(filePath);
+		}
+	}
+
+	/**
+	 * Immediate exact-source reindex for a TFile returned by TaskWriter.
+	 * Newly created files can precede Vault path registration briefly.
+	 */
+	async forceReindexKnownFileAfterMutation(
+		file: TFile,
+		options: ReindexOptions = {},
+		knownContent?: string,
+	): Promise<void> {
+		if (this.shuttingDown || file.extension !== 'md') return;
+		if (this.inFlightReindexPaths.has(file.path)) {
+			await this.awaitTrackedReindexPath(file.path);
+		}
+		this.pendingFiles.delete(file.path);
+		if (this.pendingFiles.size === 0 && this.reindexTimer) {
+			clearWindowTimeout(this.reindexTimer);
+			this.reindexTimer = null;
+		}
+		this.noteMarkdownEvent();
+		this.inFlightReindexPaths.add(file.path);
+		try {
+			await this.enqueueIndexOperation(
+				() => this.doReindexFilePath(file.path, options, file, knownContent),
+			);
+		} finally {
+			this.finishTrackedReindexPath(file.path);
+		}
+	}
+
+	/**
+	 * Exact post-write barrier that resolves the expected task from the same
+	 * index-operation turn as the known-content scan. A queued vault event
+	 * cannot overwrite the freshly scanned RAM state between reindex and
+	 * resolution.
+	 */
+	async forceReindexKnownFileAndResolveTaskAfterMutation(
+		file: TFile,
+		operonId: string,
+		options: ReindexOptions = {},
+		knownContent?: string,
+	): Promise<IndexedTask | undefined> {
+		if (this.shuttingDown || file.extension !== 'md') return undefined;
+		if (this.inFlightReindexPaths.has(file.path)) {
+			await this.awaitTrackedReindexPath(file.path);
+		}
+		this.pendingFiles.delete(file.path);
+		if (this.pendingFiles.size === 0 && this.reindexTimer) {
+			clearWindowTimeout(this.reindexTimer);
+			this.reindexTimer = null;
+		}
+		this.noteMarkdownEvent();
+		this.inFlightReindexPaths.add(file.path);
+		try {
+			return await this.enqueueIndexOperation(async () => {
+				await this.doReindexFilePath(file.path, options, file, knownContent);
+				return this.tasks.get(operonId);
+			});
+		} finally {
+			this.finishTrackedReindexPath(file.path);
+		}
 	}
 
 	/**
@@ -1035,7 +1274,7 @@ export class OperonIndexer {
 			this.onTasksRemoved?.(actuallyRemovedTasks);
 		}
 		if (options.notify !== false) {
-			this.onIndexUpdated?.();
+			this.notifyIndexUpdated();
 		}
 		enginePerfLog(
 			'index.reindex.incremental',
@@ -1104,7 +1343,7 @@ export class OperonIndexer {
 			this.emitIncrementalReconciliation(beforeById.keys());
 			this.notifyTaskChanges(deltas);
 			if (removedTasks.length > 0) this.onTasksRemoved?.(removedTasks);
-			this.onIndexUpdated?.();
+			this.notifyIndexUpdated();
 			return;
 		}
 		const movedInstances = Array.from(this.taskInstances.values())
@@ -1166,7 +1405,7 @@ export class OperonIndexer {
 		this.notifyTaskChanges(deltas);
 
 		// Notify views immediately so filter/editor show updated path
-		this.onIndexUpdated?.();
+		this.notifyIndexUpdated();
 
 		// Schedule a reindex of the new path so fresh content is re-read
 		// (the file may have been modified before the move — e.g., status change
@@ -1186,6 +1425,7 @@ export class OperonIndexer {
 		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines),
 		keyMappings: KeyMapping[] = this.storage.getSettings().keyMappings,
 		exclusionSettings: OperonSettings = this.storage.getSettings(),
+		knownContent?: string,
 	): Promise<Set<string>> {
 		const scannedIds = new Set<string>();
 		if (isOperonExcludedPath(file.path, exclusionSettings)) {
@@ -1194,7 +1434,7 @@ export class OperonIndexer {
 			return scannedIds;
 		}
 
-		const result = await scanFileWithMappings(this.app, file, keyMappings);
+		const result = await scanFileWithMappings(this.app, file, keyMappings, knownContent);
 		state.fileMtimes.set(file.path, result.mtime);
 		state.fileSizes.set(file.path, result.sizeBytes);
 
@@ -1216,7 +1456,7 @@ export class OperonIndexer {
 					}
 					continue;
 				}
-				if (!isManagedTaskFieldCanonicalKey(canonicalKey, keyMappings)) continue;
+				if (!isReadableTaskFieldCanonicalKey(canonicalKey, keyMappings)) continue;
 				fieldValues[canonicalKey] = f.value;
 			}
 			const workflowState = resolveWorkflowStatus(pipelines, fieldValues['status'], workflowStatusIdentityIndex);
@@ -1468,10 +1708,14 @@ export class OperonIndexer {
 			console.warn('Operon: skipped index persistence before a coherent cache or full scan was available');
 			return;
 		}
+		const coherenceBasis = options.coherenceBasis ?? this.coherenceBasis;
+		if (coherenceBasis !== 'verified-full-scan') {
+			console.warn('Operon: skipped index persistence until a verified full scan is available');
+			return;
+		}
 		const snapshotStartedAt = enginePerfNow();
 		const committedAt = new Date().toISOString();
 		const data = sealIndexData({
-			version: INDEX_VERSION,
 			workflowStatusSemanticsSignature: this.coherentWorkflowStatusSemanticsSignature,
 			lastFullReindex: committedAt,
 			tasks: Object.fromEntries(this.tasks),
@@ -1498,7 +1742,7 @@ export class OperonIndexer {
 				lastFullScanAt: this.lastFullScanAt || committedAt,
 				indexSemanticsSignature: this.coherentIndexV8SemanticsSignature
 					?? buildIndexV8SemanticsSignature(this.storage.getSettings()),
-				coherenceBasis: options.coherenceBasis ?? this.coherenceBasis,
+				coherenceBasis,
 				incrementalParityProjection: projectIndexV8IncrementalParity(this.tasks, this.secondary),
 			},
 			dirty: {
@@ -1507,7 +1751,6 @@ export class OperonIndexer {
 				affectedOperonIds: new Set(options.affectedOperonIds ?? []),
 				forceFull: options.forceFull === true,
 			},
-			shadowImmediate: options.shadowImmediate ?? options.immediate ?? false,
 			retryCount: 0,
 		};
 		const snapshotBuildMs = enginePerfNow() - snapshotStartedAt;
@@ -1515,7 +1758,7 @@ export class OperonIndexer {
 			...this.resolveIndexPerfContext(options.perfContext, 'index-update'),
 			snapshotBuildMs,
 		};
-		if (!this.recoveryPersistAllowed && this.indexV8ShadowWriter && this.getIndexV8RuntimePhase() !== 'idle') {
+		if (!this.recoveryPersistAllowed && this.indexV8PersistenceCoordinator && this.getIndexV8RuntimePhase() !== 'idle') {
 			this.pendingPersistData = this.pendingPersistData
 				? this.mergePendingPersistSnapshots(this.pendingPersistData, snapshot)
 				: snapshot;
@@ -1538,7 +1781,10 @@ export class OperonIndexer {
 		this.persistRetryScheduled = false;
 		this.persistTimer = setWindowTimeout(() => {
 			this.persistTimer = null;
-			void this.enqueueIndexOperation(() => this.flushPendingPersist());
+			void this.enqueueIndexOperation(
+				() => this.flushPendingPersist(),
+				{ affectsRam: false },
+			);
 		}, this.persistDebounceMs);
 	}
 
@@ -1560,7 +1806,6 @@ export class OperonIndexer {
 				]),
 				forceFull: previous.dirty.forceFull || next.dirty.forceFull,
 			},
-			shadowImmediate: previous.shadowImmediate || next.shadowImmediate,
 			retryCount: next.retryCount,
 		};
 	}
@@ -1597,7 +1842,7 @@ export class OperonIndexer {
 		perfContext: IndexPerfContext,
 		requestCount: number,
 	): Promise<void> {
-		if (!this.recoveryPersistAllowed && this.indexV8ShadowWriter && this.getIndexV8RuntimePhase() !== 'idle') {
+		if (!this.recoveryPersistAllowed && this.indexV8PersistenceCoordinator && this.getIndexV8RuntimePhase() !== 'idle') {
 			this.pendingPersistData = this.pendingPersistData
 				? this.mergePendingPersistSnapshots(snapshot, this.pendingPersistData)
 				: snapshot;
@@ -1606,7 +1851,7 @@ export class OperonIndexer {
 			return;
 		}
 		const data = snapshot.input.indexData as IndexData;
-		if (!this.indexV8ShadowWriter || this.recoveryRequired) {
+		if (!this.indexV8PersistenceCoordinator || this.recoveryRequired) {
 			if (!this.recoveryRequired) {
 				await this.enterRecoveryRequired(
 					new IndexV8StorageError('INVALID_SNAPSHOT', 'V8 primary persistence is unavailable'),
@@ -1620,7 +1865,7 @@ export class OperonIndexer {
 		const startedAt = enginePerfNow();
 		let primaryResult;
 		try {
-			primaryResult = await this.indexV8ShadowWriter.persistPrimary(
+			primaryResult = await this.indexV8PersistenceCoordinator.persistPrimary(
 				snapshot.input,
 				snapshot.dirty,
 				{
@@ -1651,10 +1896,9 @@ export class OperonIndexer {
 			return;
 		}
 
-		if (primaryResult.status === 'committed') {
-			this.lastSavedAt = Date.parse(primaryResult.committedAt);
-			this.lastDurableCommittedAt = primaryResult.committedAt;
-		}
+		this.lastSavedAt = Date.parse(primaryResult.committedAt);
+		this.lastDurableCommittedAt = primaryResult.committedAt;
+		this.markDurableRevisionAvailable(primaryResult.snapshotId, primaryResult.committedAt);
 		if (snapshot.dirty.forceFull && snapshot.input.coherenceBasis === 'verified-full-scan') {
 			const storage = this.storage as OperonStorage & { clearIndexV8RecoveryRequired?: () => Promise<void> };
 			await storage.clearIndexV8RecoveryRequired?.();
@@ -1680,6 +1924,7 @@ export class OperonIndexer {
 			`totalMs=${totalMs}`,
 			`slow=${String(slow)}`,
 		);
+		if (primaryResult.status === 'committed') this.onIndexV8Persisted?.();
 	}
 
 	private scheduleV8PrimaryRetry(
@@ -1699,7 +1944,10 @@ export class OperonIndexer {
 		this.persistTimer = setWindowTimeout(() => {
 			this.persistTimer = null;
 			this.persistRetryScheduled = false;
-			void this.enqueueIndexOperation(() => this.flushPendingPersist());
+			void this.enqueueIndexOperation(
+				() => this.flushPendingPersist(),
+				{ affectsRam: false },
+			);
 		}, 5_000);
 		enginePerfLog(
 			'index.v8.primary.retry',
@@ -1752,7 +2000,7 @@ export class OperonIndexer {
 
 	private requestIndexV8SyncRecovery(reason: string): Promise<void> {
 		if (this.syncRecovery) return this.syncRecovery;
-		if (this.shuttingDown || this.recoveryRequired || !this.indexV8ShadowWriter) return Promise.resolve();
+		if (this.shuttingDown || this.recoveryRequired || !this.indexV8PersistenceCoordinator) return Promise.resolve();
 		this.syncRecovery = this.runIndexV8SyncRecovery(reason)
 			.catch(async error => {
 				await this.enterCurrentStateRecoveryRequired(error);
@@ -1764,32 +2012,31 @@ export class OperonIndexer {
 	}
 
 	private async runIndexV8SyncRecovery(reason: string): Promise<void> {
-		if (!this.indexV8ShadowWriter || !this.indexV8Store) return;
+		if (!this.indexV8PersistenceCoordinator || !this.indexV8Store) return;
 		enginePerfLog('index.v8.sync.recovery', 'status=started', `reason=${reason}`);
 		const recoveryDirtySourcePaths = new Set<string>();
 		const recoveryAffectedOperonIds = new Set<string>();
 		for (let attempt = 0; attempt < 2; attempt++) {
-			this.indexV8ShadowWriter.setRuntimePhase?.('sync-settling');
+			this.indexV8PersistenceCoordinator.setRuntimePhase?.('sync-settling');
 			const stable = await this.settleIndexV8Manifest();
 			if (!stable) throw new IndexV8StorageError('BASE_SNAPSHOT_CHANGED', 'V8 manifest did not settle');
 			try {
 				await this.enqueueIndexOperation(async () => {
 					if (this.shuttingDown || this.recoveryRequired) return;
-					this.indexV8ShadowWriter?.setRuntimePhase?.('rebasing');
+					this.indexV8PersistenceCoordinator?.setRuntimePhase?.('rebasing');
 					await this.doFullReindex();
-					if (!this.indexV8ShadowWriter) return;
+					if (!this.indexV8PersistenceCoordinator) return;
 					for (const path of this.pendingPersistData?.dirty.dirtySourcePaths ?? []) {
 						recoveryDirtySourcePaths.add(path);
 					}
 					for (const operonId of this.pendingPersistData?.dirty.affectedOperonIds ?? []) {
 						recoveryAffectedOperonIds.add(operonId);
 					}
-					this.indexV8ShadowWriter.adoptVerifiedBaseline(stable.manifestPayload, this.sealCurrentIndexData());
+					this.indexV8PersistenceCoordinator.adoptVerifiedBaseline(stable.manifestPayload, this.sealCurrentIndexData());
 					this.recoveryPersistAllowed = true;
 					try {
 						await this.persistIndex({
 							immediate: true,
-							shadowImmediate: true,
 							forceFull: true,
 							dirtySourcePaths: recoveryDirtySourcePaths,
 							affectedOperonIds: recoveryAffectedOperonIds,
@@ -1800,7 +2047,7 @@ export class OperonIndexer {
 						this.recoveryPersistAllowed = false;
 					}
 				});
-				this.indexV8ShadowWriter.setRuntimePhase?.('idle');
+				this.indexV8PersistenceCoordinator.setRuntimePhase?.('idle');
 				enginePerfLog('index.v8.sync.recovery', 'status=recovered', `attempt=${attempt + 1}`);
 				return;
 			} catch (error) {
@@ -1834,7 +2081,6 @@ export class OperonIndexer {
 	private sealCurrentIndexData(): IndexData {
 		const committedAt = this.lastDurableCommittedAt || new Date().toISOString();
 		return sealIndexData({
-			version: INDEX_VERSION,
 			workflowStatusSemanticsSignature: this.coherentWorkflowStatusSemanticsSignature ?? '',
 			lastFullReindex: committedAt,
 			tasks: Object.fromEntries(this.tasks),
@@ -1845,7 +2091,7 @@ export class OperonIndexer {
 	private async enterCurrentStateRecoveryRequired(error: unknown): Promise<void> {
 		if (this.shuttingDown || this.recoveryRequired) return;
 		if (!this.coherentWorkflowStatusSemanticsSignature) {
-			this.indexV8ShadowWriter?.setRuntimePhase?.('idle');
+			this.indexV8PersistenceCoordinator?.setRuntimePhase?.('idle');
 			return;
 		}
 		await this.enqueueIndexOperation(async () => {
@@ -1855,7 +2101,7 @@ export class OperonIndexer {
 				{ source: 'v8-sync-recovery' },
 				1,
 			);
-		});
+		}, { affectsRam: false });
 	}
 
 	private async enterRecoveryRequired(
@@ -1875,8 +2121,9 @@ export class OperonIndexer {
 			markerErrorCode = markerError instanceof Error ? markerError.name : 'unknown';
 		} finally {
 			this.recoveryRequired = true;
-			this.indexV8ShadowWriter?.setRuntimePhase?.('recovery-required');
-			this.indexV8ShadowWriter?.disable(`PRIMARY_${code}`);
+			this.markDurableRevisionState('recovery-required', true);
+			this.indexV8PersistenceCoordinator?.setRuntimePhase?.('recovery-required');
+			this.indexV8PersistenceCoordinator?.disable(`PRIMARY_${code}`);
 		}
 		enginePerfLog(
 			'index.v8.primary',
@@ -1911,88 +2158,29 @@ export class OperonIndexer {
 		};
 	}
 
-	/** Preserve a verified V8 full-scan provenance before cached-startup diff work begins. */
-	async adoptV8ShadowProvenance(): Promise<void> {
-		if (!this.indexV8ShadowWriter || this.shuttingDown || !this.lastDurableCommittedAt) return;
-		let durabilityBoundary = '';
-		let semanticsSignature = '';
-		await this.enqueueIndexOperation(async () => {
-			await this.flushPendingPersist();
-			durabilityBoundary = this.lastDurableCommittedAt;
-			semanticsSignature = this.coherentIndexV8SemanticsSignature
-				?? buildIndexV8SemanticsSignature(this.storage.getSettings());
-		});
-		const decision = await this.indexV8ShadowWriter.inspectStartupSeedOnce(
-			durabilityBoundary,
-			semanticsSignature,
-		);
-		if (decision.action !== 'current') return;
-		await this.enqueueIndexOperation(async () => {
-			const currentSemantics = this.coherentIndexV8SemanticsSignature
-				?? buildIndexV8SemanticsSignature(this.storage.getSettings());
-			if (this.lastDurableCommittedAt !== durabilityBoundary || currentSemantics !== semanticsSignature) return;
-			this.coherenceBasis = decision.manifest.coherenceBasis;
-			this.lastFullScanAt = decision.manifest.lastFullScanAt;
-		});
-	}
-
-	/** Ensure a non-V8 startup state has exactly one matching V8 snapshot. */
-	async ensureV8ShadowSeed(): Promise<void> {
-		if (!this.indexV8ShadowWriter || this.shuttingDown || !this.lastDurableCommittedAt) return;
-		let durabilityBoundary = '';
-		let semanticsSignature = '';
-		await this.enqueueIndexOperation(async () => {
-			await this.flushPendingPersist();
-			durabilityBoundary = this.lastDurableCommittedAt;
-			semanticsSignature = this.coherentIndexV8SemanticsSignature
-				?? buildIndexV8SemanticsSignature(this.storage.getSettings());
-		});
-		const decision = await this.indexV8ShadowWriter.inspectStartupSeed(
-			durabilityBoundary,
-			semanticsSignature,
-		);
-		await this.enqueueIndexOperation(async () => {
-			const currentSemantics = this.coherentIndexV8SemanticsSignature
-				?? buildIndexV8SemanticsSignature(this.storage.getSettings());
-			if (this.lastDurableCommittedAt !== durabilityBoundary || currentSemantics !== semanticsSignature) return;
-			if (decision.action === 'current') {
-				this.coherenceBasis = decision.manifest.coherenceBasis;
-				this.lastFullScanAt = decision.manifest.lastFullScanAt;
-				return;
-			}
-			if (decision.action !== 'rewrite') return;
-			await this.persistIndex({
-				immediate: true,
-				shadowImmediate: true,
-				coherenceBasis: 'v7-startup-seed',
-				perfContext: { source: 'v8-startup-seed' },
-			});
-		});
-	}
-
 	/** Downgrade V8 provenance immediately when settings can change scan semantics. */
 	invalidateV8Coherence(): void {
-		this.coherenceBasis = 'v7-startup-seed';
+		this.coherenceBasis = 'unverified';
 		this.coherentIndexV8SemanticsSignature = buildIndexV8SemanticsSignature(this.storage.getSettings());
 	}
 
-	async drainV8Shadow(): Promise<void> {
-		await this.indexV8ShadowWriter?.drain();
+	async drainV8Persistence(): Promise<void> {
+		await this.indexV8PersistenceCoordinator?.drain();
 	}
 
-	async runIndexV8CleanupMaintenance(): Promise<boolean> {
+	async runIndexV8CleanupMaintenance(): Promise<IndexV8MaintenanceRunResult> {
 		if (!this.indexV8Store?.planCleanup || !this.indexV8Store.applyCleanup
-			|| !this.indexV8ShadowWriter || this.shuttingDown || this.recoveryRequired) return false;
-		if (this.getIndexV8RuntimePhase() !== 'idle') return false;
+			|| !this.indexV8PersistenceCoordinator || this.shuttingDown || this.recoveryRequired) return 'complete';
+		if (this.getIndexV8RuntimePhase() !== 'idle') return 'complete';
 		await this.flushPendingPersist();
-		await this.indexV8ShadowWriter.drain();
+		await this.indexV8PersistenceCoordinator.drain();
 		const ready = await this.enqueueIndexOperation(async () => (
 			this.getIndexV8RuntimePhase() === 'idle' && !this.pendingPersistData && !this.shuttingDown
-		));
-		if (!ready) return false;
+		), { affectsRam: false });
+		if (!ready) return 'complete';
 		const plan = await this.indexV8Store.planCleanup();
-		if (plan.suppressedReasons.length > 0 || this.getIndexV8RuntimePhase() !== 'idle') return false;
-		const result = await this.indexV8Store.applyCleanup(plan);
+		if (plan.suppressedReasons.length > 0 || this.getIndexV8RuntimePhase() !== 'idle') return 'complete';
+		const result = await this.indexV8Store.applyCleanup(plan, () => !this.shuttingDown);
 		enginePerfLog(
 			'index.v8.cleanup',
 			`status=${result.status}`,
@@ -2001,7 +2189,8 @@ export class OperonIndexer {
 			`bytes=${result.deletedBytes}`,
 			`suppressed=${plan.suppressedReasons.length}`,
 		);
-		return result.status !== 'stale' && result.status !== 'suppressed' && result.status !== 'partial';
+		if (result.status === 'stale') return 'restart-quiet';
+		return result.backlogRemaining || result.status === 'partial' ? 'backlog' : 'complete';
 	}
 
 	async getIndexV8Diagnostics(): Promise<IndexV8DiagnosticSnapshot> {
@@ -2009,10 +2198,6 @@ export class OperonIndexer {
 			return this.unavailableIndexV8Diagnostics();
 		}
 		const diagnostics = await this.indexV8Store.diagnoseMaintenance();
-		const cleanupPlan = this.indexV8Store.planCleanup ? await this.indexV8Store.planCleanup() : null;
-		const retirementPlan = this.indexV8Store.planLegacyIndexV7Retirement
-			? await this.indexV8Store.planLegacyIndexV7Retirement()
-			: null;
 		const activeEntries = diagnostics.inspection.entries.filter(entry => entry.kind === 'active-shard');
 		const activeBytes = activeEntries.reduce((sum, entry) => sum + entry.sizeBytes, 0);
 		const maxShardBytes = activeEntries.reduce((max, entry) => Math.max(max, entry.sizeBytes), 0);
@@ -2023,12 +2208,9 @@ export class OperonIndexer {
 		const codes: string[] = [];
 		if (diagnostics.manifestCode) codes.push(diagnostics.manifestCode);
 		if (markerPresent) codes.push('RECOVERY_MARKER_PRESENT');
-		if ((cleanupPlan?.suppressedReasons.length ?? 0) > 0) codes.push('CLEANUP_SUPPRESSED');
-		if ((retirementPlan?.suppressedReasons.length ?? 0) > 0) codes.push('RETIREMENT_BLOCKED');
 		if (maxShardBytes >= 1_000_000 || (activeEntries.length > 0 && maxShardBytes / (activeBytes / activeEntries.length) > 3)) {
 			codes.push('LAYOUT_REVIEW');
 		}
-		const cleanupCandidateBytes = cleanupPlan?.candidates.reduce((sum, candidate) => sum + candidate.sizeBytes, 0) ?? 0;
 		return {
 			health,
 			runtimePhase,
@@ -2036,24 +2218,10 @@ export class OperonIndexer {
 			taskCount: this.tasks.size,
 			sourceCount: this.sourceInstanceKeys.size,
 			activeShardCount: activeEntries.length,
-			protectedShardCount: diagnostics.inspection.protectedShardNames.length,
 			activeBytes,
 			maxShardBytes,
 			averageShardBytes: activeEntries.length > 0 ? activeBytes / activeEntries.length : 0,
-			maintenanceCounts: { ...diagnostics.entryCounts },
-			maintenanceBytes: { ...diagnostics.entryBytes },
-			cleanupCandidateCount: cleanupPlan?.candidates.length ?? 0,
-			cleanupCandidateBytes,
 			recoveryMarkerPresent: markerPresent,
-			legacyV7: {
-				present: diagnostics.legacyIndex.status === 'file',
-				bytes: diagnostics.legacyIndex.fingerprint?.sizeBytes ?? 0,
-				retirementEligible: retirementPlan?.suppressedReasons.length === 0
-					&& runtimePhase === 'idle'
-					&& !this.pendingPersistData
-					&& !this.shuttingDown
-					&& !this.recoveryRequired,
-			},
 			manifestStatus,
 			dirtySourceCount: this.pendingPersistData?.dirty.dirtySourcePaths.size ?? 0,
 			codes: [...new Set(codes)].sort(),
@@ -2067,38 +2235,6 @@ export class OperonIndexer {
 		};
 	}
 
-	async runIndexV8CleanupNow(): Promise<IndexV8CleanupResult> {
-		if (!this.indexV8Store?.planCleanup || !this.indexV8Store.applyCleanup) {
-			return { status: 'suppressed', deletedCount: 0, deletedBytes: 0, skippedCount: 0, errorCodes: ['STORE_UNAVAILABLE'] };
-		}
-		if (this.getIndexV8RuntimePhase() !== 'idle' || this.shuttingDown || this.recoveryRequired) {
-			return { status: 'suppressed', deletedCount: 0, deletedBytes: 0, skippedCount: 0, errorCodes: ['RUNTIME_BUSY'] };
-		}
-		await this.flushPendingPersist();
-		await this.indexV8ShadowWriter?.drain();
-		if (this.getIndexV8RuntimePhase() !== 'idle' || this.pendingPersistData) {
-			return { status: 'suppressed', deletedCount: 0, deletedBytes: 0, skippedCount: 0, errorCodes: ['RUNTIME_BUSY'] };
-		}
-		const plan = await this.indexV8Store.planCleanup();
-		return await this.indexV8Store.applyCleanup(plan);
-	}
-
-	async retireLegacyIndexV7(): Promise<IndexV7RetirementResult> {
-		if (!this.indexV8Store?.planLegacyIndexV7Retirement || !this.indexV8Store.applyLegacyIndexV7Retirement) {
-			return { status: 'suppressed', deletedBytes: 0, errorCodes: ['STORE_UNAVAILABLE'] };
-		}
-		if (this.getIndexV8RuntimePhase() !== 'idle' || this.shuttingDown || this.recoveryRequired) {
-			return { status: 'suppressed', deletedBytes: 0, errorCodes: ['RUNTIME_BUSY'] };
-		}
-		await this.flushPendingPersist();
-		await this.indexV8ShadowWriter?.drain();
-		if (this.getIndexV8RuntimePhase() !== 'idle' || this.pendingPersistData) {
-			return { status: 'suppressed', deletedBytes: 0, errorCodes: ['RUNTIME_BUSY'] };
-		}
-		const plan = await this.indexV8Store.planLegacyIndexV7Retirement();
-		return await this.indexV8Store.applyLegacyIndexV7Retirement(plan);
-	}
-
 	async repairIndexV8FromMarkdown(): Promise<{
 		status: 'applied' | 'suppressed' | 'failed';
 		shardsWritten: number;
@@ -2106,12 +2242,12 @@ export class OperonIndexer {
 		codes: string[];
 	}> {
 		if (!this.indexV8Store?.planCanonicalV8Reset || !this.indexV8Store.applyCanonicalV8Reset
-			|| !this.indexV8ShadowWriter || this.shuttingDown) {
+			|| !this.indexV8PersistenceCoordinator || this.shuttingDown) {
 			return { status: 'suppressed', shardsWritten: 0, bytesWritten: 0, codes: ['STORE_UNAVAILABLE'] };
 		}
 		return await this.enqueueIndexOperation(async () => {
 			await this.flushPendingPersist();
-			await this.indexV8ShadowWriter?.drain();
+			await this.indexV8PersistenceCoordinator?.drain();
 			this.discardPendingPersist();
 			const storage = this.storage as OperonStorage & {
 				markIndexV8RecoveryRequired?: () => Promise<void>;
@@ -2139,9 +2275,9 @@ export class OperonIndexer {
 			if (reset.status !== 'applied') {
 				return { status: 'suppressed', shardsWritten: 0, bytesWritten: 0, codes: reset.errorCodes };
 			}
-			this.indexV8ShadowWriter!.beginSealedRepair();
+			this.indexV8PersistenceCoordinator!.beginSealedRepair();
 			try {
-				const result = await this.indexV8ShadowWriter!.persistPrimary({
+				const result = await this.indexV8PersistenceCoordinator!.persistPrimary({
 					sequence: ++this.persistenceSequence,
 					indexData,
 					sourceStats,
@@ -2165,13 +2301,14 @@ export class OperonIndexer {
 				this.lastFullScanAt = committedAt;
 				this.lastDurableCommittedAt = result.committedAt;
 				this.lastSavedAt = Date.parse(result.committedAt);
+				this.markDurableRevisionAvailable(result.snapshotId, result.committedAt);
 				this.coherenceBasis = 'verified-full-scan';
 				this.generation += 1;
 				await storage.clearIndexV8RecoveryRequired?.();
 				this.recoveryRequired = false;
-				this.indexV8ShadowWriter!.setRuntimePhase('idle');
+				this.indexV8PersistenceCoordinator!.setRuntimePhase('idle');
 				this.emitIndexReconciliation({ kind: 'full', generation: this.generation });
-				this.onIndexUpdated?.();
+				this.notifyIndexUpdated();
 				return {
 					status: 'applied' as const,
 					shardsWritten: result.shardsWritten,
@@ -2179,8 +2316,9 @@ export class OperonIndexer {
 					codes: [],
 				};
 			} catch (error) {
-				this.indexV8ShadowWriter!.setRuntimePhase('recovery-required');
-				this.indexV8ShadowWriter!.disable('REPAIR_FAILED');
+				this.markDurableRevisionState('recovery-required', true);
+				this.indexV8PersistenceCoordinator!.setRuntimePhase('recovery-required');
+				this.indexV8PersistenceCoordinator!.disable('REPAIR_FAILED');
 				return {
 					status: 'failed' as const,
 					shardsWritten: 0,
@@ -2193,7 +2331,6 @@ export class OperonIndexer {
 
 	private sealIndexStateData(state: IndexState, workflowSignature: string, committedAt: string): IndexData {
 		return sealIndexData({
-			version: INDEX_VERSION,
 			workflowStatusSemanticsSignature: workflowSignature,
 			lastFullReindex: committedAt,
 			tasks: Object.fromEntries(state.tasks),
@@ -2228,11 +2365,8 @@ export class OperonIndexer {
 		return {
 			health: 'missing', runtimePhase: this.getIndexV8RuntimePhase(), verifiedThisSession: false,
 			taskCount: this.tasks.size, sourceCount: this.sourceInstanceKeys.size, activeShardCount: 0,
-			protectedShardCount: 0,
 			activeBytes: 0, maxShardBytes: 0, averageShardBytes: 0,
-			maintenanceCounts: {}, maintenanceBytes: {}, cleanupCandidateCount: 0, cleanupCandidateBytes: 0,
 			recoveryMarkerPresent: this.recoveryRequired,
-			legacyV7: { present: false, bytes: 0, retirementEligible: false },
 			manifestStatus: 'missing', dirtySourceCount: this.pendingPersistData?.dirty.dirtySourcePaths.size ?? 0,
 			codes: ['STORE_UNAVAILABLE'],
 		};
@@ -2241,13 +2375,17 @@ export class OperonIndexer {
 	async prepareForUnload(): Promise<void> {
 		// Let an already bounded settle/rebase reach a deterministic V8 or emergency
 		// boundary before shutdown starts suppressing new index work.
+		this.beginUnload();
 		if (this.syncRecovery) await this.syncRecovery;
-		this.shuttingDown = true;
 		if (this.reindexTimer) {
 			clearWindowTimeout(this.reindexTimer);
 			this.reindexTimer = null;
 		}
 		this.pendingFiles.clear();
+		for (const filePath of [...this.inFlightReindexPaths]) {
+			this.finishTrackedReindexPath(filePath);
+		}
+		this.notifyRamSettlementIfReady();
 		await this.indexOperationTail;
 		await this.flushPendingPersist();
 		// Unload cannot leave a delayed primary retry behind; the second attempt
@@ -2255,14 +2393,18 @@ export class OperonIndexer {
 		if (this.pendingPersistData) await this.flushPendingPersist();
 		await this.indexOperationTail;
 		try {
-			await this.drainV8Shadow();
+			await this.drainV8Persistence();
 		} catch (error) {
 			enginePerfLog(
-				'index.v8.shadow.unload',
+				'index.v8.persistence.unload',
 				'status=failed',
 				`code=${error instanceof Error ? error.name : 'unknown'}`,
 			);
 		}
+	}
+
+	beginUnload(): void {
+		this.shuttingDown = true;
 	}
 
 	// --- Query API ---
@@ -2272,8 +2414,82 @@ export class OperonIndexer {
 		return this.tasks.get(operonId);
 	}
 
+	/**
+	 * Get an immutable task snapshot for read-only consumers.
+	 * All mutable nested values are cloned before the snapshot is frozen.
+	 */
+	getTaskSnapshot(operonId: string): IndexedTaskSnapshot | undefined {
+		const task = this.tasks.get(operonId);
+		return task ? this.freezeTaskSnapshot(task) : undefined;
+	}
+
+	/**
+	 * Immutable RAM corpus projection for bounded text search and planning.
+	 * The primary Map and every nested task value remain private.
+	 */
+	getAllTaskSnapshots(): readonly IndexedTaskSnapshot[] {
+		return Object.freeze(
+			[...this.tasks.values()]
+				.map(task => this.freezeTaskSnapshot(task))
+				.sort((left, right) => left.operonId.localeCompare(right.operonId)),
+		);
+	}
+
 	getTaskInstance(instanceKey: string): IndexedTaskInstance | undefined {
 		return this.taskInstances.get(instanceKey);
+	}
+
+	/**
+	 * Return every instance participating in a duplicate-ID conflict without
+	 * exposing the mutable conflict registry or IndexedTaskInstance objects.
+	 */
+	getDuplicateInstanceSnapshots(operonId: string): readonly IndexedTaskInstanceSnapshot[] {
+		const conflict = this.duplicateConflicts.get(operonId);
+		if (!conflict) return Object.freeze([]);
+		return Object.freeze(conflict.instances.map(instance => this.freezeTaskInstanceSnapshot(instance)));
+	}
+
+	/** Immutable projection of all instances currently involved in duplicate-ID conflicts. */
+	getAllDuplicateInstanceSnapshots(): readonly IndexedTaskInstanceSnapshot[] {
+		return Object.freeze(
+			[...this.duplicateConflicts.values()]
+				.flatMap(conflict => conflict.instances.map(instance => this.freezeTaskInstanceSnapshot(instance)))
+				.sort((left, right) => (
+					left.primary.filePath.localeCompare(right.primary.filePath)
+					|| left.primary.lineNumber - right.primary.lineNumber
+					|| left.operonId.localeCompare(right.operonId)
+				)),
+		);
+	}
+
+	/** Immutable task-ID projection for a source file. */
+	getTaskIdsInFileSnapshot(filePath: string): readonly string[] {
+		return this.secondary.getTaskIdsInFileSnapshot(filePath);
+	}
+
+	/** Immutable direct-child projection. */
+	getChildIdsSnapshot(parentOperonId: string): readonly string[] {
+		return this.secondary.getChildIdsSnapshot(parentOperonId);
+	}
+
+	/** Immutable workflow-status projection. */
+	getTaskIdsByWorkflowStatusSnapshot(statusValue: string): readonly string[] {
+		return this.secondary.getTaskIdsByWorkflowStatusSnapshot(statusValue);
+	}
+
+	/** Immutable priority projection. */
+	getTaskIdsByPrioritySnapshot(priorityValue: string): readonly string[] {
+		return this.secondary.getTaskIdsByPrioritySnapshot(priorityValue);
+	}
+
+	/** Immutable due-range projection. */
+	getTaskIdsDueInRangeSnapshot(startDate: string, endDate: string): readonly string[] {
+		return this.secondary.getTaskIdsDueInRangeSnapshot(startDate, endDate);
+	}
+
+	/** Immutable open-task projection. */
+	getOpenTaskIdsSnapshot(): readonly string[] {
+		return this.secondary.getOpenTaskIdsSnapshot();
 	}
 
 	/** Get the YAML/file task whose primary file path matches the given path. */
@@ -2410,6 +2626,92 @@ export class OperonIndexer {
 		return this.generation;
 	}
 
+	/**
+	 * Primitive, immutable revision source for agent-runtime freshness checks.
+	 * This deliberately exposes no index, store, or writer reference.
+	 */
+	getIndexRevisionSource(): Readonly<IndexRevisionSourceSnapshot> {
+		return Object.freeze({
+			ramGeneration: this.generation,
+			durable: this.captureDurableRevisionSnapshot(),
+		});
+	}
+
+	/**
+	 * Primitive, frozen admission snapshot for the live Context provider.
+	 * Verified authority requires settled RAM derived from a verified full scan
+	 * (directly or through a validated V8 snapshot).
+	 */
+	getLiveReadAuthoritySnapshot(): Readonly<IndexLiveReadAuthoritySnapshot> {
+		const settled = this.isRamSettled();
+		const runtimePhase = this.getIndexV8RuntimePhase();
+		let state: IndexLiveReadAuthorityState;
+		if (this.shuttingDown) {
+			state = 'unloading';
+		} else if (this.recoveryRequired || runtimePhase === 'recovery-required') {
+			state = 'recovery-required';
+		} else if (!settled) {
+			state = 'settling';
+		} else if (this.coherenceBasis === 'verified-full-scan') {
+			state = 'verified';
+		} else {
+			state = 'unverified';
+		}
+		return Object.freeze({
+			state,
+			ramGeneration: this.generation,
+			settled,
+			coherenceBasis: this.coherenceBasis,
+			lastFullScanAt: this.lastFullScanAt || null,
+			durable: this.captureDurableRevisionSnapshot(),
+		});
+	}
+
+	/**
+	 * Wait only for already-scheduled RAM indexing work. Persistence-only queue
+	 * entries and V8 idle/drain state are intentionally outside this barrier.
+	 */
+	async awaitRamSettlement(): Promise<Readonly<IndexRamSettlementSnapshot>> {
+		if (this.shuttingDown || this.isRamSettled()) {
+			return this.captureRamSettlementSnapshot();
+		}
+		return await new Promise(resolve => {
+			this.ramSettlementWaiters.add(resolve);
+			this.notifyRamSettlementIfReady();
+		});
+	}
+
+	/**
+	 * Mutation-owned maintenance may arrive while a vault event is waiting on
+	 * the normal debounce timer. Consume that work immediately instead of
+	 * waiting for the timer, while still performing the real reindex. Follow-up
+	 * events raised during the flush are drained in bounded passes; any work
+	 * remaining after the bound is left for the normal settlement barrier.
+	 */
+	async flushPendingRamReindexNow(): Promise<number> {
+		if (this.shuttingDown) return 0;
+		let flushedPathCount = 0;
+		const maxPasses = 4;
+		for (let pass = 0; pass < maxPasses; pass++) {
+			const paths = [...this.pendingFiles];
+			if (this.reindexTimer) {
+				clearWindowTimeout(this.reindexTimer);
+				this.reindexTimer = null;
+			}
+			if (paths.length === 0) {
+				this.notifyRamSettlementIfReady();
+				return flushedPathCount;
+			}
+			this.pendingFiles.clear();
+			flushedPathCount += paths.length;
+			for (const filePath of paths) {
+				await this.forceReindexFilePathAfterMutation(filePath);
+			}
+		}
+		this.notifyRamSettlementIfReady();
+		return flushedPathCount;
+	}
+
 	subscribeIndexReconciliation(listener: (event: IndexReconciliationEvent) => void): () => void {
 		this.reconciliationListeners.add(listener);
 		return () => this.reconciliationListeners.delete(listener);
@@ -2438,6 +2740,7 @@ export class OperonIndexer {
 	// --- Cleanup ---
 
 	destroy(): void {
+		this.shuttingDown = true;
 		if (this.reindexTimer) {
 			clearWindowTimeout(this.reindexTimer);
 			this.reindexTimer = null;
@@ -2447,8 +2750,10 @@ export class OperonIndexer {
 			this.persistTimer = null;
 		}
 		this.pendingFiles.clear();
+		this.notifyRamSettlementIfReady();
+		this.indexUpdatedListeners.clear();
 		this.reconciliationListeners.clear();
-		this.indexV8ShadowWriter?.destroy();
+		this.indexV8PersistenceCoordinator?.destroy();
 	}
 
 	private snapshotTasksByFile(filePath: string): Map<string, IndexedTask | undefined> {
@@ -2533,15 +2838,135 @@ export class OperonIndexer {
 		return indexedTask;
 	}
 
-	private async enqueueIndexOperation<T>(operation: () => Promise<T>): Promise<T> {
+	private freezeTaskSnapshot(task: IndexedTask): IndexedTaskSnapshot {
+		const plainCheckboxProgress = task.plainCheckboxProgress
+			? Object.freeze({ ...task.plainCheckboxProgress })
+			: undefined;
+		return Object.freeze({
+			operonId: task.operonId,
+			description: task.description,
+			checkbox: task.checkbox,
+			fieldValues: Object.freeze({ ...task.fieldValues }),
+			tags: Object.freeze([...task.tags]),
+			primary: Object.freeze({ ...task.primary }),
+			datetimeModified: task.datetimeModified,
+			tier: task.tier,
+			...(plainCheckboxProgress ? { plainCheckboxProgress } : {}),
+		});
+	}
+
+	private freezeTaskInstanceSnapshot(task: IndexedTaskInstance): IndexedTaskInstanceSnapshot {
+		return Object.freeze({
+			...this.freezeTaskSnapshot(task),
+			instanceKey: task.instanceKey,
+		});
+	}
+
+	private async enqueueIndexOperation<T>(
+		operation: () => Promise<T>,
+		options: { affectsRam?: boolean } = {},
+	): Promise<T> {
+		const affectsRam = options.affectsRam !== false;
+		if (affectsRam) this.pendingRamOperationCount += 1;
 		const previous = this.indexOperationTail;
 		let result: T;
 		const next = previous.then(async () => {
-			result = await operation();
+			if (!affectsRam) {
+				result = await operation();
+				return;
+			}
+			let released = false;
+			const release = () => {
+				if (released) return;
+				released = true;
+				this.pendingRamOperationCount = Math.max(0, this.pendingRamOperationCount - 1);
+				this.notifyRamSettlementIfReady();
+			};
+			this.activeRamOperationRelease = release;
+			try {
+				result = await operation();
+			} finally {
+				release();
+				if (this.activeRamOperationRelease === release) {
+					this.activeRamOperationRelease = null;
+				}
+			}
 		});
 		this.indexOperationTail = next.catch(() => {});
 		await next;
 		return result!;
+	}
+
+	private async awaitTrackedReindexPath(filePath: string): Promise<void> {
+		if (!this.inFlightReindexPaths.has(filePath)) return;
+		await new Promise<void>(resolve => {
+			const waiters = this.reindexPathWaiters.get(filePath) ?? new Set<() => void>();
+			waiters.add(resolve);
+			this.reindexPathWaiters.set(filePath, waiters);
+			if (!this.inFlightReindexPaths.has(filePath)) {
+				waiters.delete(resolve);
+				if (waiters.size === 0) this.reindexPathWaiters.delete(filePath);
+				resolve();
+			}
+		});
+	}
+
+	private finishTrackedReindexPath(filePath: string): void {
+		this.inFlightReindexPaths.delete(filePath);
+		const waiters = this.reindexPathWaiters.get(filePath);
+		if (!waiters) return;
+		this.reindexPathWaiters.delete(filePath);
+		for (const resolve of waiters) resolve();
+	}
+
+	private markDurableRevisionAvailable(snapshotId: string, persistedAt: string): void {
+		this.durableRevisionState = 'available';
+		this.durableV8SnapshotId = snapshotId;
+		this.durablePersistedAt = persistedAt;
+	}
+
+	private markDurableRevisionState(state: Exclude<IndexDurableRevisionState, 'available'>, preserveBasis = false): void {
+		this.durableRevisionState = state;
+		if (preserveBasis) return;
+		this.durableV8SnapshotId = null;
+		this.durablePersistedAt = null;
+	}
+
+	private captureDurableRevisionSnapshot(): Readonly<IndexDurableRevisionSnapshot> {
+		if (this.durableRevisionState === 'available') {
+			return Object.freeze({
+				status: 'available',
+				snapshotId: this.durableV8SnapshotId!,
+				committedAt: this.durablePersistedAt!,
+			});
+		}
+		return Object.freeze({ status: this.durableRevisionState });
+	}
+
+	private isRamSettled(): boolean {
+		return this.pendingRamOperationCount === 0
+			&& this.reindexTimer === null
+			&& this.pendingFiles.size === 0;
+	}
+
+	private settleActiveRamOperation(): void {
+		this.activeRamOperationRelease?.();
+	}
+
+	private captureRamSettlementSnapshot(): Readonly<IndexRamSettlementSnapshot> {
+		return Object.freeze({
+			state: this.shuttingDown ? 'unloading' : 'settled',
+			ramGeneration: this.generation,
+		});
+	}
+
+	private notifyRamSettlementIfReady(): void {
+		if (!this.shuttingDown && !this.isRamSettled()) return;
+		if (this.ramSettlementWaiters.size === 0) return;
+		const snapshot = this.captureRamSettlementSnapshot();
+		const waiters = [...this.ramSettlementWaiters];
+		this.ramSettlementWaiters.clear();
+		for (const resolve of waiters) resolve(snapshot);
 	}
 
 	private reconcileOperonId(operonId: string, state: IndexState = this.getLiveIndexState()): void {

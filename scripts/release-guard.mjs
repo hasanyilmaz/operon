@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -60,6 +61,25 @@ function assertNoMatch(relativePath, pattern, label) {
 		fail(`${relativePath}: ${label}`);
 	}
 }
+
+function isGitIgnored(relativePath) {
+	try {
+		execFileSync('git', ['check-ignore', '--quiet', '--no-index', '--', relativePath], {
+			cwd: rootDir,
+			stdio: 'ignore',
+		});
+		return true;
+	} catch (error) {
+		if (error?.status === 1) return false;
+		throw error;
+	}
+}
+
+assertNoMatch(
+	'main.js',
+	/operon:transport-probe/u,
+	'development-only Agent Runtime transport probe must not ship in the production bundle',
+);
 
 function listFiles(relativeDir, predicate) {
 	const absoluteDir = path.join(rootDir, relativeDir);
@@ -324,13 +344,146 @@ function checkVersionAndAssets() {
 	}
 }
 
+function checkContinuousIntegrationWorkflow() {
+	const workflow = '.github/workflows/ci.yml';
+	const workflowText = readText(workflow);
+	const installIndex = workflowText.indexOf('run: npm ci');
+	const auditPolicyIndex = workflowText.indexOf('run: npm run release:audit-policy');
+	const validationIndex = workflowText.indexOf('run: npm run check');
+	const releaseGuardIndex = workflowText.indexOf('run: npm run release:guard');
+	const acceptedFreezeIndex = workflowText.indexOf('run: npm run release:freeze:check');
+
+	assertIncludes(workflow, 'node-version: "24.18.0"', 'CI must use the exact canonical Node release baseline');
+	assertIncludes(workflow, 'npm install --global npm@11.12.1', 'CI must pin the canonical npm version');
+	assertIncludes(
+		workflow,
+		'uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
+		'CI must use the approved immutable checkout revision',
+	);
+	assertIncludes(
+		workflow,
+		'uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7',
+		'CI must use the approved immutable setup-node revision',
+	);
+	assertNoMatch(
+		workflow,
+		/uses:\s+actions\/[^@\s]+@v[0-9]+/u,
+		'CI must not use floating action revisions',
+	);
+	assertIncludes(
+		workflow,
+		'run: npm run release:audit-policy',
+		'CI must enforce the canonical dependency audit policy',
+	);
+	assertNoMatch(
+		workflow,
+		/run:\s+npm audit(?:\s|$)/u,
+		'CI must not bypass the canonical dependency audit policy with raw npm audit',
+	);
+	if (!/- name: Run validation\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
+		fail('CI must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
+	}
+	if (
+		installIndex < 0
+		|| auditPolicyIndex < installIndex
+		|| validationIndex < auditPolicyIndex
+		|| releaseGuardIndex < validationIndex
+		|| acceptedFreezeIndex < releaseGuardIndex
+	) {
+		fail('CI must run npm ci, audit policy, validation, release guard, and final accepted-freeze check in order');
+	}
+}
+
 function checkReleaseWorkflow() {
 	const workflow = '.github/workflows/release.yml';
 	const workflowText = readText(workflow);
+	const installIndex = workflowText.indexOf('run: npm ci');
+	const auditPolicyIndex = workflowText.indexOf('run: npm run release:audit-policy');
+	const acceptedFreezeIndex = workflowText.indexOf('run: npm run release:freeze:check');
+	const validationIndex = workflowText.indexOf('run: npm run check');
+	const releaseGuardIndex = workflowText.indexOf('run: npm run release:guard');
+	const exactTagIndex = workflowText.indexOf('name: Verify exact release tag target');
+	const existingReleaseIndex = workflowText.indexOf('name: Refuse an existing GitHub release');
+	const attestationIndex = workflowText.indexOf('uses: actions/attest@');
+	const releaseCreateIndex = workflowText.indexOf('gh release create');
 
 	assertIncludes(workflow, 'id-token: write', 'release workflow must grant OIDC token permission for artifact attestations');
 	assertIncludes(workflow, 'attestations: write', 'release workflow must grant artifact attestation permission');
-	assertIncludes(workflow, 'uses: actions/attest@v4', 'release workflow must attest release assets');
+	assertIncludes(workflow, 'node-version: "24.18.0"', 'release workflow must use the exact canonical Node release baseline');
+	assertIncludes(workflow, 'npm install --global npm@11.12.1', 'release workflow must pin the canonical npm version');
+	assertIncludes(
+		workflow,
+		'run: npm run release:audit-policy',
+		'release workflow must enforce the canonical dependency audit policy',
+	);
+	assertIncludes(
+		workflow,
+		'run: npm run release:freeze:check',
+		'release workflow must require an accepted Public V1 freeze',
+	);
+	if (
+		exactTagIndex < 0
+		|| existingReleaseIndex < exactTagIndex
+		|| installIndex < existingReleaseIndex
+		|| auditPolicyIndex < installIndex
+		|| validationIndex < auditPolicyIndex
+		|| releaseGuardIndex < validationIndex
+		|| acceptedFreezeIndex < releaseGuardIndex
+		|| attestationIndex < acceptedFreezeIndex
+		|| releaseCreateIndex < attestationIndex
+	) {
+		fail('release workflow must preserve exact-tag, immutable-release, validation, attestation, and publish ordering');
+	}
+	assertIncludes(
+		workflow,
+		'uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
+		'release workflow must use the approved immutable checkout revision',
+	);
+	assertIncludes(
+		workflow,
+		'uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7',
+		'release workflow must use the approved immutable setup-node revision',
+	);
+	assertIncludes(
+		workflow,
+		'persist-credentials: false',
+		'release checkout must not persist a write-capable credential during validation',
+	);
+	assertIncludes(
+		workflow,
+		'fetch-depth: 0',
+		'release checkout must fetch tag history for exact target verification',
+	);
+	assertIncludes(
+		workflow,
+		'git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}"',
+		'release workflow must bind the peeled release tag to the trigger commit',
+	);
+	assertIncludes(
+		workflow,
+		'git rev-parse "$GITHUB_SHA^{commit}"',
+		'release workflow must resolve the triggering commit before release creation',
+	);
+	assertIncludes(
+		workflow,
+		'git rev-parse "HEAD^{commit}"',
+		'release workflow must bind the checked-out commit to the trigger commit',
+	);
+	assertIncludes(
+		workflow,
+		'git ls-remote --tags origin "refs/tags/$GITHUB_REF_NAME^{}"',
+		'release workflow must recheck the live peeled tag before release creation',
+	);
+	assertIncludes(
+		workflow,
+		'uses: actions/attest@36051bcae73b7c2a8a6945a48cbf80953c6baa35 # v4',
+		'release workflow must attest release assets with the approved immutable action revision',
+	);
+	assertNoMatch(
+		workflow,
+		/uses:\s+actions\/[^@\s]+@v[0-9]+/u,
+		'release workflow must not use floating release-critical action revisions',
+	);
 
 	for (const asset of ['manifest.json', 'main.js', 'styles.css']) {
 		assertIncludes(workflow, `subject-path: ${asset}`, `release workflow must attest ${asset}`);
@@ -345,16 +498,53 @@ function checkReleaseWorkflow() {
 		/gh release (?:upload|create)[^\n]*release-assets\//u,
 		'repository-managed assets must not be attached to GitHub Releases',
 	);
+	for (const file of [
+		'scripts/release/extract-changelog-release-notes.mjs',
+		'scripts/release/extract-changelog-release-notes.test.mjs',
+	]) {
+		if (!fs.existsSync(path.join(rootDir, file))) {
+			fail(`${file}: required changelog release-note artifact is missing`);
+		}
+	}
+	assertIncludes(
+		workflow,
+		'node scripts/release/extract-changelog-release-notes.mjs',
+		'release workflow must derive GitHub release notes from CHANGELOG.md',
+	);
+	assertIncludes(
+		workflow,
+		'--version "$GITHUB_REF_NAME"',
+		'release workflow must bind changelog notes to the exact release tag',
+	);
+	assertIncludes(
+		workflow,
+		'--out "$RUNNER_TEMP/operon-release-notes.md"',
+		'release workflow must write changelog-derived notes to a temporary file',
+	);
 	const releaseCommands = workflowText.split(/\r?\n/u)
 		.map(line => line.trim())
 		.filter(line => /^gh release (?:upload|create)\b/u.test(line));
 	const expectedReleaseCommands = [
-		'gh release upload "$GITHUB_REF_NAME" main.js manifest.json styles.css --clobber',
-		'gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --title "$GITHUB_REF_NAME" --notes "Operon $GITHUB_REF_NAME"',
+		'gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --verify-tag --title "Operon $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/operon-release-notes.md"',
 	];
 	if (JSON.stringify(releaseCommands) !== JSON.stringify(expectedReleaseCommands)) {
-		fail('release workflow commands must upload exactly main.js, manifest.json, and styles.css');
+		fail('release workflow must immutably create exactly main.js, manifest.json, and styles.css');
 	}
+	assertNoMatch(
+		workflow,
+		/\bgh release upload\b|--clobber\b|--notes\s/u,
+		'release workflow must never replace or mutate existing release assets',
+	);
+	assertIncludes(
+		workflow,
+		'if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then',
+		'release workflow must refuse an already-published release before validation or attestation',
+	);
+	assertIncludes(
+		workflow,
+		'release assets are immutable.',
+		'release workflow must explain that existing release assets are immutable',
+	);
 	assertIncludes(
 		workflow,
 		'name: Verify published release asset allowlist',
@@ -370,11 +560,267 @@ function checkReleaseWorkflow() {
 		'expected_assets="$(printf \'%s\\n\' main.js manifest.json styles.css)"',
 		'release workflow asset allowlist must contain exactly the three plugin files',
 	);
-	assertIncludes(
-		workflow,
-		'unexpected_assets="$(gh release view "$GITHUB_REF_NAME" --json assets',
-		'release workflow must reject unapproved assets before updating an existing release',
+}
+
+function checkWorkflowSecurityPolicy() {
+	const workflowRoot = path.join(rootDir, '.github/workflows');
+	const workflows = fs.readdirSync(workflowRoot)
+		.filter(file => file.endsWith('.yml') || file.endsWith('.yaml'))
+		.sort();
+	const exactCodeqlRevision = 'bce182f857edf1feab116e9795a3393d21977282';
+	const exactCheckoutRevision = '3d3c42e5aac5ba805825da76410c181273ba90b1';
+	const exactSetupNodeRevision = '820762786026740c76f36085b0efc47a31fe5020';
+	const exactWorkflowPermissions = new Map([
+		['ci.yml', ['contents: read']],
+		['cli-ci.yml', ['contents: read']],
+		['cli-live-acceptance.yml', ['actions: read', 'attestations: write', 'contents: read', 'id-token: write']],
+		['cli-native-candidate.yml', ['attestations: write', 'contents: read', 'id-token: write']],
+		['cli-publish.yml', ['actions: read', 'attestations: read', 'contents: read', 'id-token: write']],
+		['cli-release-ready.yml', ['contents: read', 'id-token: write', 'attestations: write']],
+		['codeql.yml', ['actions: read', 'contents: read', 'security-events: write']],
+		['release.yml', ['contents: write', 'id-token: write', 'attestations: write']],
+	]);
+
+	for (const file of workflows) {
+		const relativePath = `.github/workflows/${file}`;
+		const workflowText = readText(relativePath);
+		const expectedPermissions = exactWorkflowPermissions.get(file);
+		if (!expectedPermissions) {
+			fail(`${relativePath}: workflow lacks an approved permission policy`);
+		}
+		const permissionsMatch = workflowText.match(
+			/^permissions:\s*\n((?:  [a-z-]+:\s+(?:read|write)\s*\n)+)/mu,
+		);
+		const actualPermissions = permissionsMatch?.[1]
+			.trim()
+			.split(/\r?\n/u)
+			.map(line => line.trim());
+		if (JSON.stringify(actualPermissions) !== JSON.stringify(expectedPermissions)) {
+			fail(`${relativePath}: workflow permissions drifted from the least-privilege allowlist`);
+		}
+		const lines = workflowText.split(/\r?\n/u);
+		for (let index = 0; index < lines.length; index += 1) {
+			const line = lines[index];
+			const actionMatch = line.match(/uses:\s+([^@\s]+)@([^\s#]+)/u);
+			if (!actionMatch) continue;
+			const [, action, revision] = actionMatch;
+			if (!/^[a-f0-9]{40}$/u.test(revision)) {
+				fail(`${relativePath}:${index + 1}: action ${action} must use an immutable 40-character revision`);
+			}
+			if (action === 'actions/checkout' && revision !== exactCheckoutRevision) {
+				fail(`${relativePath}:${index + 1}: checkout must use the approved immutable revision`);
+			}
+			if (action === 'actions/setup-node' && revision !== exactSetupNodeRevision) {
+				fail(`${relativePath}:${index + 1}: setup-node must use the approved immutable revision`);
+			}
+			if (action.startsWith('github/codeql-action/') && revision !== exactCodeqlRevision) {
+				fail(`${relativePath}:${index + 1}: CodeQL must use the approved immutable revision`);
+			}
+			if (action !== 'actions/checkout') continue;
+			const usesIndent = line.length - line.trimStart().length;
+			const stepIndent = line.trimStart().startsWith('- uses:')
+				? usesIndent
+				: Math.max(0, usesIndent - 2);
+			const block = [line];
+			for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+				const candidate = lines[cursor];
+				const indent = candidate.length - candidate.trimStart().length;
+				if (indent <= stepIndent && candidate.trimStart().startsWith('- ')) break;
+				block.push(candidate);
+			}
+			if (!block.some(candidate => (
+				/^\s+persist-credentials:\s+false\s*(?:#.*)?$/u.test(candidate)
+			))) {
+				fail(`${relativePath}:${index + 1}: checkout must set persist-credentials: false`);
+			}
+		}
+	}
+	if (exactWorkflowPermissions.size !== workflows.length) {
+		fail('workflow permission policy must cover every checked-in workflow');
+	}
+	if (!/^permissions:\s*\n\s{2}contents:\s+read\s*$/mu.test(readText('.github/workflows/cli-ci.yml'))) {
+		fail('.github/workflows/cli-ci.yml: workflow must explicitly grant only contents: read');
+	}
+
+	for (const workflow of [
+		'.github/workflows/cli-native-candidate.yml',
+		'.github/workflows/cli-release-ready.yml',
+	]) {
+		const text = readText(workflow);
+		const installIndex = text.indexOf('run: npm ci');
+		const auditIndex = text.indexOf('run: npm run release:audit-policy');
+		const guardIndex = text.indexOf('run: npm run release:guard');
+		if (installIndex < 0 || auditIndex < installIndex || guardIndex < auditIndex) {
+			fail(`${workflow}: stable candidate must run npm ci, audit policy, and release guard in order`);
+		}
+	}
+}
+
+function checkPublicSourceHygiene() {
+	const output = execFileSync(
+		'git',
+		['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+		{ cwd: rootDir, encoding: 'utf8' },
 	);
+	const files = output.split('\0').filter(Boolean).sort();
+	const trackedFiles = new Set(
+		execFileSync('git', ['ls-files', '--cached', '-z'], {
+			cwd: rootDir,
+			encoding: 'utf8',
+		}).split('\0').filter(Boolean),
+	);
+	const forbiddenPaths = [
+		/^(?:data(?:$|[./ (])|state\/|runtime\/|cache\/|build\/|node_modules\/)/u,
+		/^packages\/operon-cli\/(?:dist|freeze|release|release-archive)\//u,
+		/^(?:PHASE5-ACCEPTANCE\.md|PHASE7-ACCEPTANCE\.md)$/u,
+		/^scripts\/(?:phase5-regression\.ts|run-phase5-regression\.mjs|test-stubs\/)/u,
+		/\.(?:tgz|zip|bak|orig|rej)$/iu,
+		/(?:^|\/)(?:data )?\(conflict [^)]+\)(?:\.[^/]+)?$/iu,
+		/(?:^|\/)[^/]+\.invalid-backup$/iu,
+	];
+	for (const file of files) {
+		if (forbiddenPaths.some(pattern => pattern.test(file))) {
+			fail(`${file}: private, local-only, or generated artifact must not enter public source`);
+			continue;
+		}
+		const surfaces = [];
+		if (trackedFiles.has(file)) {
+			surfaces.push(['index', execFileSync('git', ['show', `:${file}`], {
+				cwd: rootDir,
+				encoding: 'buffer',
+				maxBuffer: 12_000_000,
+			})]);
+		}
+		const absolute = path.join(rootDir, file);
+		try {
+			const stat = fs.statSync(absolute);
+			if (stat.isFile()) surfaces.push(['worktree', fs.readFileSync(absolute)]);
+		} catch {
+			// Deleted tracked files are represented only by the index surface.
+		}
+		for (const [surface, bytes] of surfaces) {
+			if (bytes.byteLength > 10_000_000) continue;
+			const text = bytes.toString('utf8');
+		for (const [pattern, label] of [
+			[/\/Users\/hasanyilmaz\b/u, 'personal absolute path'],
+			[/Dropbox\/Obsidion_drop\b/u, 'private vault path'],
+			[/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/u, 'private key'],
+			[/\bgh[pousr]_[A-Za-z0-9_]{30,}\b/u, 'GitHub token'],
+			[/\bgithub_pat_[A-Za-z0-9_]{40,}\b/u, 'GitHub fine-grained token'],
+			[/\bnpm_[A-Za-z0-9]{30,}\b/u, 'npm token'],
+			[/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/u, 'AWS access key'],
+		]) {
+				if (pattern.test(text)) {
+					fail(`${file}: public ${surface} source contains ${label}`);
+				}
+			}
+		}
+	}
+}
+
+function checkRepositoryIgnorePolicy() {
+	const visibleRuntimeSources = [
+		'src/agent-runtime/runtime/index.ts',
+		'scripts/agent-runtime/runtime/graph-transaction-executor.test.ts',
+		'scripts/agent-runtime/runtime/run-graph-transaction-executor-tests.mjs',
+		'scripts/agent-runtime/runtime/run-runtime-tests.mjs',
+		'scripts/agent-runtime/runtime/runtime-core.test.ts',
+		'scripts/agent-runtime/runtime/runtime-integration.test.mjs',
+		'scripts/test-support/obsidian.ts',
+	];
+	for (const relativePath of visibleRuntimeSources) {
+		if (isGitIgnored(relativePath)) {
+			fail(`${relativePath}: public Runtime source or tests must not be ignored`);
+		}
+	}
+	const privateArtifacts = [
+		'runtime/private.json',
+		'data.json.invalid-backup',
+		'data (conflict 2026-07-31).json',
+		'state/private.json',
+		'cache/private.json',
+		'build/agent-runtime-cas-baseline/private.mjs',
+		'build/stage51/private.mjs',
+		'packages/operon-cli/release/private.tgz',
+	];
+	for (const relativePath of privateArtifacts) {
+		if (!isGitIgnored(relativePath)) {
+			fail(`${relativePath}: private or generated release artifact must remain ignored`);
+		}
+	}
+	assertIncludes(
+		'package.json',
+		'"agent-runtime:runtime": "node scripts/agent-runtime/runtime/run-graph-transaction-executor-tests.mjs &&',
+		'normal Runtime validation must execute graph transaction recovery tests',
+	);
+}
+
+function checkReleaseAuditPolicy() {
+	for (const file of [
+		'contracts/release/dev-audit-policy-v1.json',
+		'scripts/check-release-audit-policy.mjs',
+		'scripts/release/audit-policy.mjs',
+		'scripts/release/audit-policy.test.mjs',
+		'scripts/release/check-accepted-freeze.mjs',
+		'scripts/release/check-accepted-freeze.test.mjs',
+	]) {
+		if (!fs.existsSync(path.join(rootDir, file))) {
+			fail(`${file}: required release audit-policy artifact is missing`);
+		}
+	}
+
+	const policy = JSON.parse(readText('contracts/release/dev-audit-policy-v1.json'));
+	const expectedPolicy = {
+		policyVersion: 2,
+		production: {
+			maximumVulnerabilities: 0,
+		},
+		development: {
+			maximumVulnerabilities: 0,
+			directRoot: 'eslint-plugin-obsidianmd',
+			resolvedAdvisory: {
+				packageName: 'brace-expansion',
+				url: 'https://github.com/advisories/GHSA-mh99-v99m-4gvg',
+				allowedInstalledVersions: ['1.1.18', '2.1.4', '5.0.9'],
+			},
+			forbiddenRuntimePackages: [
+				'@eslint/config-array',
+				'@eslint/eslintrc',
+				'@microsoft/eslint-plugin-sdl',
+				'brace-expansion',
+				'eslint',
+				'eslint-plugin-import',
+				'eslint-plugin-json-schema-validator',
+				'eslint-plugin-n',
+				'eslint-plugin-obsidianmd',
+				'eslint-plugin-react',
+				'minimatch',
+			],
+		},
+	};
+	if (JSON.stringify(policy) !== JSON.stringify(expectedPolicy)) {
+		fail('contracts/release/dev-audit-policy-v1.json must exactly match the approved clean audit policy');
+	}
+
+	const packageText = readText('package.json');
+	for (const command of [
+		'npm run release:audit-policy:test',
+		'npm run release:notes:test',
+		'npm run release:freeze:test',
+		'npm run docs:public-v1:test',
+	]) {
+		if (!packageText.includes(command)) {
+			fail(`package.json: normal validation must run ${command}`);
+		}
+	}
+	assertIncludes(
+		'package.json',
+		'"release:freeze:check": "node scripts/release/check-accepted-freeze.mjs"',
+		'package scripts must expose the release-only accepted-freeze check',
+	);
+	if (!packageText.includes('"release:audit-policy": "node scripts/check-release-audit-policy.mjs"')) {
+		fail('package scripts must expose the canonical release audit-policy check');
+	}
 }
 
 function checkCssScorecard() {
@@ -899,14 +1345,6 @@ function checkSettingsDescriptionTextareaGuards() {
 	}
 }
 
-function checkDocs() {
-	for (const doc of ['PHASE5-ACCEPTANCE.md', 'PHASE7-ACCEPTANCE.md']) {
-		if (!readText(doc).includes('npm run check:local')) {
-			fail(`${doc}: automated validation must reference npm run check:local`);
-		}
-	}
-}
-
 function checkAuditedRawStrings() {
 	assertNoMatch('main.ts', /name:\s*['"]Create or edit inline task['"]/, 'command label bypasses i18n');
 	assertNoMatch('main.ts', /name:\s*['"]Convert tasks emoji line to inline task['"]/i, 'Tasks emoji command label bypasses i18n');
@@ -965,11 +1403,15 @@ function checkCanonicalOnlyStorageContract() {
 
 compareLocaleFiles();
 checkVersionAndAssets();
+checkReleaseAuditPolicy();
+checkRepositoryIgnorePolicy();
+checkContinuousIntegrationWorkflow();
 checkReleaseWorkflow();
+checkWorkflowSecurityPolicy();
+checkPublicSourceHygiene();
 checkCssScorecard();
 checkCalendarHoverGuideContract();
 checkSettingsDescriptionTextareaGuards();
-checkDocs();
 checkAuditedRawStrings();
 checkCanonicalOnlyStorageContract();
 

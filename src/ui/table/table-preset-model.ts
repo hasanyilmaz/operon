@@ -46,14 +46,10 @@ export function normalizeTablePresetForEditing(preset: TablePreset): TablePreset
 
 export function resolveTablePresetForSettings(
 	registryEntry: Pick<TablePresetRegistryEntry, 'status' | 'preset'> | null | undefined,
-	legacyPreset: TablePreset | null | undefined,
 ): TablePreset | null {
-	if (registryEntry) {
-		return registryEntry.status === 'available' && registryEntry.preset
-			? cloneTablePreset(registryEntry.preset)
-			: null;
-	}
-	return legacyPreset ? cloneTablePreset(legacyPreset) : null;
+	return registryEntry?.status === 'available' && registryEntry.preset
+		? cloneTablePreset(registryEntry.preset)
+		: null;
 }
 
 export function normalizeTablePresetForColumnUi(preset: TablePreset): TablePreset {

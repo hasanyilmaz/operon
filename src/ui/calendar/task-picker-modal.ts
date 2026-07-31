@@ -10,6 +10,7 @@ import {
 	sortCalendarTasksForPicker,
 	summarizeTaskCalendarAssignment,
 } from './calendar-modal-helpers';
+import { renderCompactTaskMarkdown } from '../compact-task-markdown-renderer';
 
 interface TaskPickerModalOptions {
 	getTasks: () => IndexedTask[];
@@ -94,9 +95,10 @@ export class TaskPickerModal extends FuzzySuggestModal<IndexedTask> {
 		this.renderTaskIcon(iconWrap, task);
 
 		const body = el.createDiv('operon-calendar-task-picker-body');
-		body.createDiv({
-			cls: 'operon-calendar-task-picker-title',
-			text: task.description || t('calendar', 'untitledTask'),
+		const title = body.createDiv('operon-calendar-task-picker-title');
+		renderCompactTaskMarkdown(title, {
+			value: task.description || t('calendar', 'untitledTask'),
+			mode: 'visual-only',
 		});
 
 		const meta = body.createDiv('operon-calendar-task-picker-meta');

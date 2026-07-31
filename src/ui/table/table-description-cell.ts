@@ -1,10 +1,13 @@
 import type { App } from 'obsidian';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
-import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import {
-	isTaskDescriptionWikilinkEventTarget,
-	renderTaskDescriptionWikilinks,
-} from '../task-description-wikilinks';
+	isCompactTaskMarkdownLinkEventTarget,
+	renderCompactTaskMarkdown,
+} from '../compact-task-markdown-renderer';
+import {
+	bindOperonHoverTooltip,
+	createCompactTaskMarkdownTooltipContent,
+} from '../operon-hover-tooltip';
 import { renderTableIconOnlyCell } from './table-icon-only-cell';
 
 export interface TableInlineEditSession {
@@ -86,6 +89,7 @@ export function renderTableDescriptionCellContent(
 			if (displayText) {
 				renderTableIconOnlyCell(cell, {
 					...options.iconOnly,
+					contentEl: createCompactTaskMarkdownTooltipContent(cell, value),
 					focusable: options.onIconOnlyOpen ? false : undefined,
 				});
 			}
@@ -102,22 +106,28 @@ export function renderTableDescriptionCellContent(
 		const text = cell.createSpan({
 			cls: textClasses,
 		});
-		const renderedWikilinks = displayText && options.wikilinks
-			? renderTaskDescriptionWikilinks(text, {
+		let overflowTarget = text;
+		if (displayText && options.wikilinks) {
+			const markdownContent = text.createSpan({
+				cls: 'operon-table-description-markdown-content',
+			});
+			overflowTarget = markdownContent;
+			renderCompactTaskMarkdown(markdownContent, {
 				app: options.wikilinks.app,
-				description: value,
+				value,
 				sourcePath: options.wikilinks.sourcePath,
-			})
-			: false;
-		if (!renderedWikilinks) {
+				mode: 'interactive',
+				containerClassName: 'operon-task-description-markdown',
+			});
+		} else {
 			text.setText(displayText ? value : '--');
 		}
 		if (displayText) {
 			bindOperonHoverTooltip(cell, {
-				content: value,
+				contentElFactory: () => createCompactTaskMarkdownTooltipContent(cell, value),
 				taskColor: null,
 				preferredHorizontal: 'center',
-				shouldOpen: () => isInlineTextCellOverflowing(text),
+				shouldOpen: () => isInlineTextCellOverflowing(overflowTarget),
 			});
 		} else {
 			clearInlineTextCellTooltip(cell);
@@ -214,7 +224,7 @@ export function renderTableDescriptionCellContent(
 	}
 
 	cell.addEventListener('click', event => {
-		if (isTaskDescriptionWikilinkEventTarget(event.target, cell)) return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		startEdit();
@@ -222,7 +232,7 @@ export function renderTableDescriptionCellContent(
 	cell.addEventListener('dblclick', event => event.stopPropagation());
 	cell.addEventListener('keydown', event => {
 		if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'F2') return;
-		if (isTaskDescriptionWikilinkEventTarget(event.target, cell)) return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		startEdit();

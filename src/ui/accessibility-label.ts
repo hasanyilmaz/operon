@@ -26,11 +26,16 @@ const RESTRICTED_LABEL_HOST_TAGS = new Set([
 	'WBR',
 ]);
 
-export function setAccessibleLabelWithoutTooltip(target: HTMLElement, label: string): HTMLElement {
+export function setAccessibleLabelWithoutTooltip(
+	target: HTMLElement,
+	label: string,
+	labelHost?: HTMLElement,
+): HTMLElement {
 	target.removeAttribute('title');
 	target.removeAttribute('aria-label');
 
-	const canHostLabel = !RESTRICTED_LABEL_HOST_TAGS.has(target.tagName.toUpperCase());
+	const canHostLabel = labelHost == null
+		&& !RESTRICTED_LABEL_HOST_TAGS.has(target.tagName.toUpperCase());
 	let labelEl = canHostLabel
 		? target.querySelector<HTMLElement>(':scope > [data-operon-accessible-label="true"]')
 		: null;
@@ -42,7 +47,9 @@ export function setAccessibleLabelWithoutTooltip(target: HTMLElement, label: str
 		labelEl = target.ownerDocument.win.createSpan();
 		labelEl.dataset.operonAccessibleLabel = 'true';
 		labelEl.className = 'operon-sr-only';
-		if (canHostLabel) {
+		if (labelHost) {
+			labelHost.appendChild(labelEl);
+		} else if (canHostLabel) {
 			target.appendChild(labelEl);
 		} else {
 			target.insertAdjacentElement('afterend', labelEl);

@@ -14,7 +14,7 @@ try {
 		outfile,
 		bundle: true,
 		alias: {
-			obsidian: path.join(rootDir, 'scripts/test-stubs/obsidian.ts'),
+			obsidian: path.join(rootDir, 'scripts/test-support/obsidian.ts'),
 		},
 		format: 'esm',
 		platform: 'node',

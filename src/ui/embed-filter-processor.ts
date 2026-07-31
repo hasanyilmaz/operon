@@ -11,7 +11,7 @@
  * rendering as the sidebar Filter View.
  */
 
-import { App, MarkdownPostProcessorContext, Notice, setIcon } from 'obsidian';
+import { App, MarkdownPostProcessorContext, MarkdownRenderChild, Notice, setIcon } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import type { IndexedTask } from '../types/fields';
 import { createProjectSerialScopeFilterResolver, type ProjectSerialDisplay } from '../core/project-serials';
@@ -22,7 +22,6 @@ import { t } from '../core/i18n';
 import {
 	evaluateFilterSet,
 	evaluateFilterSetGrouped,
-	filterTasksOnly,
 	getFilterSortSpecs,
 	groupFilterTasks,
 	prepareTaskSortContext,
@@ -60,6 +59,13 @@ import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store'
 import { getTableFilePropertyIndex } from './table/table-file-property';
 import { getFilterGroupDisplayLabel } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
+import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
+import {
+	bindEmbedPercentWidth,
+	type EmbedWidthPercent,
+	parseEmbedWidthPercent,
+	refreshActiveEmbedPercentWidths,
+} from './embed-percent-width';
 
 function generateFilterSetId(): string {
     return 'fs_' + Math.random().toString(36).slice(2, 9);
@@ -116,6 +122,8 @@ export interface FilterSurfaceInstance {
 interface EmbedInstance extends FilterSurfaceInstance {
     filterId: string | null;
     filterName: string | null;
+	widthPercent: EmbedWidthPercent | null;
+	widthCleanup: (() => void) | null;
 }
 
 export interface FilterSurfaceRenderOptions {
@@ -133,6 +141,19 @@ export interface FilterSurfaceRenderOptions {
 /** Active embed instances — pruned on refresh when DOM is detached */
 const activeEmbeds: Set<EmbedInstance> = new Set();
 
+class EmbedFilterRenderChild extends MarkdownRenderChild {
+	constructor(
+		containerEl: HTMLElement,
+		private readonly instance: EmbedInstance,
+	) {
+		super(containerEl);
+	}
+
+	onunload(): void {
+		destroyEmbedFilterInstance(this.instance);
+	}
+}
+
 export function createFilterSurfaceInstance(el: HTMLElement): FilterSurfaceInstance {
     return {
         el,
@@ -147,10 +168,18 @@ export function createFilterSurfaceInstance(el: HTMLElement): FilterSurfaceInsta
 }
 
 export function destroyFilterSurfaceInstance(instance: FilterSurfaceInstance): void {
+    requestCloseTextFieldPopoversForOwner(instance.el);
     cleanupOperonRenderRoot(instance.el);
     instance.lazyLoadObserver?.disconnect();
     instance.lazyLoadObserver = null;
     instance.lastRenderSignature = null;
+}
+
+function destroyEmbedFilterInstance(instance: EmbedInstance): void {
+	instance.widthCleanup?.();
+	instance.widthCleanup = null;
+	destroyFilterSurfaceInstance(instance);
+	activeEmbeds.delete(instance);
 }
 
 /**
@@ -159,9 +188,14 @@ export function destroyFilterSurfaceInstance(instance: FilterSurfaceInstance): v
  * - filterId: "fs_abc123"
  * - filter: "My Filter Name"
  */
-function parseFilterReference(source: string): { filterId: string | null; filterName: string | null } | null {
+function parseFilterReference(source: string): {
+	filterId: string | null;
+	filterName: string | null;
+	widthPercent: EmbedWidthPercent | null;
+} | null {
     let filterId: string | null = null;
     let filterName: string | null = null;
+	let widthPercent: EmbedWidthPercent | null = null;
 
     for (const line of source.split('\n')) {
         const trimmed = line.trim();
@@ -170,10 +204,13 @@ function parseFilterReference(source: string): { filterId: string | null; filter
 
         const nameMatch = trimmed.match(/^filter:\s*["']?(.+?)["']?\s*$/i);
         if (nameMatch) filterName = nameMatch[1];
+
+		const widthMatch = trimmed.match(/^width:\s*(.*?)\s*$/i);
+		if (widthMatch) widthPercent = parseEmbedWidthPercent(widthMatch[1]);
     }
 
     if (!filterId && !filterName) return null;
-    return { filterId, filterName };
+    return { filterId, filterName, widthPercent };
 }
 
 function resolveFilterSet(
@@ -202,7 +239,7 @@ export function registerEmbedFilterProcessor(
     registerFn: (lang: string, handler: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void | Promise<void>) => void,
     deps: EmbedFilterDeps,
 ): void {
-    registerFn('operon', (source: string, el: HTMLElement, _ctx: MarkdownPostProcessorContext) => {
+    registerFn('operon', (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
         const filterRef = parseFilterReference(source);
 
         if (!filterRef) {
@@ -216,10 +253,14 @@ export function registerEmbedFilterProcessor(
             el,
             filterId: filterRef.filterId,
             filterName: filterRef.filterName,
+			widthPercent: filterRef.widthPercent,
+			widthCleanup: null,
         };
         activeEmbeds.add(instance);
+		ctx.addChild(new EmbedFilterRenderChild(el, instance));
 
         renderEmbed(instance, filterRef, deps);
+		instance.widthCleanup = bindEmbedPercentWidth(instance.el, instance.widthPercent);
     });
 }
 
@@ -231,9 +272,7 @@ export function refreshEmbedFilters(deps: EmbedFilterDeps): void {
     for (const instance of activeEmbeds) {
         // Prune detached DOM nodes
         if (!instance.el.isConnected) {
-            cleanupOperonRenderRoot(instance.el);
-            instance.lazyLoadObserver?.disconnect();
-            activeEmbeds.delete(instance);
+			destroyEmbedFilterInstance(instance);
             continue;
         }
         renderEmbed(instance, {
@@ -241,6 +280,7 @@ export function refreshEmbedFilters(deps: EmbedFilterDeps): void {
             filterName: instance.filterName,
         }, deps);
     }
+	refreshActiveEmbedPercentWidths();
 }
 
 function renderEmbed(
@@ -378,6 +418,8 @@ export function renderFilterSurface(
     const filterEvaluationOptions = {
 		projectSerialScopes: deps.getSettings().projectSerialScopes,
 		projectSerialScopeTasks: allTasks,
+		dependencyTasks: allTasks,
+		pipelines,
 		filePropertyContext,
 	};
     const subtaskSortContext = prepareTaskSortContext(
@@ -487,7 +529,7 @@ export function renderFilterSurface(
         }
 
         const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
-        const baseRootTasks = filterTasksOnly(filterSet, allTasks, priorities, deps.pinnedCache, filterEvaluationOptions);
+        const baseRootTasks = baseGrouped.matchedTasks ?? [];
         const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
         const searchInput = renderHeader(container, filterSet, deps, treeScopeTasks.length, instance, options);
 

@@ -2,11 +2,9 @@ import type { OperonTableFileDescriptor, OperonTableFileDiagnostic } from './tab
 import type { TablePreset, TablePresetFileBinding, TablePresetPatch } from './table';
 
 export type TablePresetRegistryConflictCode =
-	| 'duplicate-legacy-id'
 	| 'duplicate-binding-id'
 	| 'duplicate-binding-path'
 	| 'duplicate-table-file'
-	| 'unbound-same-id'
 	| 'bound-id-mismatch';
 
 export interface TablePresetRegistryConflict {
@@ -16,7 +14,7 @@ export interface TablePresetRegistryConflict {
 	paths: string[];
 }
 
-export type TablePresetRegistrySourceKind = 'legacy' | 'table-file' | 'missing-bound-file' | 'conflict';
+export type TablePresetRegistrySourceKind = 'table-file' | 'missing-bound-file' | 'conflict';
 
 export interface TablePresetRegistrySource<TDescriptor extends OperonTableFileDescriptor = OperonTableFileDescriptor> {
 	kind: TablePresetRegistrySourceKind;
@@ -52,12 +50,10 @@ export interface TablePresetRegistryPatchContext<TDescriptor extends OperonTable
 }
 
 export interface TablePresetRegistryCallbacks<TDescriptor extends OperonTableFileDescriptor = OperonTableFileDescriptor> {
-	loadLegacyPresets: () => readonly TablePreset[] | Promise<readonly TablePreset[]>;
 	loadFileBindings: () => readonly TablePresetFileBinding[] | Promise<readonly TablePresetFileBinding[]>;
 	listTableFiles: () => readonly TDescriptor[] | Promise<readonly TDescriptor[]>;
 	readTableFile: (descriptor: TDescriptor) => string | Promise<string>;
 	applyPatch: (preset: TablePreset, patch: TablePresetPatch) => TablePreset;
-	writeLegacyPreset?: (preset: TablePreset, context: TablePresetRegistryPatchContext<TDescriptor>) => void | Promise<void>;
 	writeTableFile?: (path: string, serialized: string, context: TablePresetRegistryPatchContext<TDescriptor>) => void | Promise<void>;
 	getSourceRevision?: () => number;
 	schedulePatch?: (callback: () => void, delayMs: number) => number;

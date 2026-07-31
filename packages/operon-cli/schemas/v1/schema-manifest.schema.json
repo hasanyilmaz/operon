@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:schema-manifest.schema.json",
+  "title": "Operon Runtime API V1 schema manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "manifestVersion",
+    "contractVersion",
+    "contractPolicy",
+    "documents",
+    "entrypoints",
+    "aggregateSha256"
+  ],
+  "properties": {
+    "$schema": { "const": "urn:operon:schema:runtime:v1:schema-manifest.schema.json" },
+    "manifestVersion": { "const": 1 },
+    "contractVersion": { "const": 1 },
+    "contractPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputs", "outputs", "deprecationRemoval"],
+      "properties": {
+        "inputs": { "const": "strict" },
+        "outputs": { "const": "additive" },
+        "deprecationRemoval": { "const": "runtime-v2" }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/document" }
+    },
+    "entrypoints": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/entrypoint" }
+    },
+    "aggregateSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "id", "sha256"],
+      "properties": {
+        "file": { "type": "string", "pattern": "^[a-z0-9-]+\\.schema\\.json$" },
+        "id": { "type": "string", "pattern": "^urn:operon:schema:runtime:v1:" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "entrypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaId", "ref", "file", "sha256", "stability"],
+      "properties": {
+        "schemaId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$" },
+        "ref": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "pattern": "^[a-z0-9-]+\\.schema\\.json$" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "stability": { "const": "stable" },
+        "deprecation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["announcedIn", "removal"],
+          "properties": {
+            "announcedIn": { "type": "string", "minLength": 1 },
+            "removal": { "const": "runtime-v2" },
+            "replacement": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

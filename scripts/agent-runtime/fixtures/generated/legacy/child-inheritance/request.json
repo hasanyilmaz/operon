@@ -1,0 +1,31 @@
+{
+  "applyDefaults": true,
+  "mode": "inline",
+  "tasks": [
+    {
+      "children": [
+        {
+          "description": "Inherited child"
+        },
+        {
+          "description": "Overridden child",
+          "fields": {
+            "priority": "P2",
+            "taskColor": "663399"
+          }
+        }
+      ],
+      "description": "Inheritance parent",
+      "fields": {
+        "priority": "P1",
+        "status": "Work.Active",
+        "taskColor": "#336699",
+        "taskIcon": "lucide-circle-check"
+      },
+      "tags": [
+        "parent"
+      ]
+    }
+  ],
+  "timestamp": "2026-01-15T10:20:30"
+}

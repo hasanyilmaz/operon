@@ -139,7 +139,6 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('automation', 'tasksReminders', 'reminderNoticeDurationSeconds', 'settings', 'reminderNoticeDuration', 'reminderNoticeDurationDesc', 'dropdown', ['reminder', 'notification', 'notice', 'duration', 'timeout']),
 	e('automation', 'tasksReminders', 'reminderAutoPinDueTasks', 'settings', 'reminderAutoPinDueTasks', 'reminderAutoPinDueTasksDesc', 'toggle', ['reminder', 'pin', 'pinned tasks', 'automation', 'due reminder']),
 	e('automation', 'tasksReminders', 'reminderSystemNotificationsEnabled', 'settings', 'reminderSystemNotifications', 'reminderSystemNotificationsDesc', 'toggle', ['reminder', 'notification', 'system notification', 'desktop notification']),
-	e('integrations', 'tasksReminders', 'mobileNotificationsSnapshotEnabled', 'settings', 'mobileNotificationsSnapshot', 'mobileNotificationsSnapshotDesc', 'toggle', ['reminder', 'notification', 'mobile notification', 'android', 'snapshot', 'sync']),
 	e('automation', 'tasksReminders', 'reminderSoundFilePath', 'settings', 'reminderSound', 'reminderSoundDesc', 'file', ['reminder', 'sound', 'audio', 'ringtone', 'alert sound']),
 
 	e('automation', 'tasksTracker', 'trackerSplitSessionsAtMidnight', 'settings', 'trackerSplitSessionsAtMidnight', 'trackerSplitSessionsAtMidnightDesc', 'toggle', ['time tracking', 'timer', 'tracker midnight', 'session', 'midnight']),
@@ -172,6 +171,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsCalendar', 'calendarSidebarCalendarsDefaultExpanded', 'settings', 'calendarSidebarCalendarsDefaultState', 'calendarSidebarCalendarsDefaultStateDesc', 'dropdown', ['calendar', 'sidebar', 'calendars section']),
 	e('views', 'viewsCalendar', 'calendarSidebarTaskPoolDefaultExpanded', 'settings', 'calendarSidebarTaskPoolDefaultState', 'calendarSidebarTaskPoolDefaultStateDesc', 'dropdown', ['calendar', 'sidebar', 'task pool section']),
 	section('integrations', 'viewsCalendar', 'externalCalendars', 'settings', 'externalCalendarsTitle', 'externalCalendarsDesc', ['calendar', 'ics', 'external calendar', 'external calendars', 'refresh', 'sync']),
+	section('integrations', 'coreGeneral', 'developerApi', 'settings', 'developerApiIntegrationsTitle', 'developerApiIntegrationsDesc', ['developer API', 'plugins', 'permissions', 'grants', 'audit', 'integration']),
 
 	e('views', 'viewsKanban', 'kanbanDefaultPresetId', 'settings', 'kanbanDefaultPreset', 'kanbanDefaultPresetDesc', 'dropdown', ['kanban', 'kanban default preset', 'kanban preset', 'board preset']),
 	e('views', 'viewsKanban', 'kanbanExpandedColumnWidthPx', 'settings', 'kanbanExpandedColumnWidth', 'kanbanExpandedColumnWidthDesc', 'number', ['kanban', 'board', 'column', 'kanban column width']),
@@ -217,6 +217,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('ui', 'interfaceTaskChips', 'taskWikilinkOverlayShowPlainCheckboxAction', 'settings', 'taskWikilinkOverlayOpenCheckboxAction', 'taskWikilinkOverlayOpenCheckboxActionDesc', 'toggle', ['task chips', 'task wikilink overlay actions', 'task wikilink overlay', 'file task overlay actions', 'plain checkbox', 'normal checkbox', 'onay kutusu']),
 	e('ui', 'interfacePinnedDock', 'pinnedTasksDesktopSurface', 'settings', 'pinnedTasksDesktopSurface', 'pinnedTasksDesktopSurfaceDesc', 'dropdown', ['pinned', 'pinned tasks', 'pinned tasks desktop display', 'dock', 'sidebar']),
 	e('ui', 'interfacePinnedDock', 'pinnedDockColorSource', 'settings', 'pinnedDockTaskColorSource', 'pinnedDockTaskColorSourceDesc', 'dropdown', ['pinned', 'pinned dock', 'pinned task color source']),
+	e('ui', 'interfacePinnedDock', 'pinnedTaskSortMode', 'settings', 'pinnedTaskSortMode', 'pinnedTaskSortModeDesc', 'dropdown', ['pinned', 'pinned tasks', 'sort', 'order', 'priority', 'last modified', 'manual']),
 	e('ui', 'interfacePinnedDock', 'pinnedDockAutoPin', 'settings', 'pinnedDockAutoPinActiveTimerTask', 'pinnedDockAutoPinActiveTimerTaskDesc', 'toggle', ['pinned', 'pinned dock', 'auto pin', 'timer']),
 	e('ui', 'interfacePinnedDock', 'pinnedDockAutoUnpinFinished', 'settings', 'pinnedDockAutoUnpinFinishedTasks', 'pinnedDockAutoUnpinFinishedTasksDesc', 'toggle', ['pinned', 'pinned dock', 'auto unpin', 'finished task']),
 	e('ui', 'interfacePinnedDock', 'pinnedDockAutoCloseEnabled', 'settings', 'pinnedDockAutoClose', 'pinnedDockAutoCloseDesc', 'toggle', ['pinned', 'pinned dock', 'auto close']),

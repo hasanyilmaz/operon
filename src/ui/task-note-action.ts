@@ -3,7 +3,7 @@ import { asHTMLElement, createOwnerElement } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { snapshotFloatingRectAnchor } from './field-pickers/common';
-import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { showTextFieldPopover } from './text-field-popover';
 
 export interface TaskNoteActionButtonOptions {
@@ -22,11 +22,14 @@ export interface TaskNotePopoverOptions {
 	app: App;
 	anchor: HTMLElement | DOMRect;
 	operonId: string;
+	sourcePath: string;
+	lifecycleOwner: Node;
 	initialValue: string;
 	taskDescription?: string;
 	taskColor?: string | null;
 	onCommit: (value: string) => Promise<boolean | void> | boolean | void;
 	onClose?: () => void;
+	onFocusReturn: () => void;
 }
 
 /**
@@ -49,7 +52,7 @@ export function createTaskNoteActionButton(options: TaskNoteActionButtonOptions)
 	setAccessibleLabelWithoutTooltip(button, options.label);
 	bindOperonHoverTooltip(button, {
 		title: options.tooltipTitle,
-		contentEl: noteValue ? createNonInteractiveMarkdownLinkContent(button, noteValue) : undefined,
+		contentEl: noteValue ? createCompactTaskMarkdownTooltipContent(button, noteValue) : undefined,
 		taskColor: options.taskColor ?? null,
 		preferredHorizontal: 'right',
 	});
@@ -63,8 +66,8 @@ export function createTaskNoteActionButton(options: TaskNoteActionButtonOptions)
 
 /**
  * Opens the shared text-field editor with the task-note editing contract.
- * Note drafts preserve internal line breaks, may be cleared, and reuse one
- * active session key per task note.
+ * Note drafts use compact single-line editing while preserving untouched
+ * legacy source values, and reuse one active session key per task note.
  */
 export function showTaskNotePopover(options: TaskNotePopoverOptions): () => void {
 	const operonId = options.operonId.trim();
@@ -77,14 +80,20 @@ export function showTaskNotePopover(options: TaskNotePopoverOptions): () => void
 		anchor: stableAnchor,
 		title: t('taskEditor', 'notes'),
 		subtitle: options.taskDescription?.trim() || operonId,
+		subtitlePresentation: 'compact-markdown',
 		initialValue: options.initialValue,
 		placeholder: t('taskEditor', 'notesPlaceholder'),
 		taskColor: options.taskColor,
 		sessionKey: `task-text:${operonId}:note`,
 		allowEmptyCommit: true,
-		normalizeValue: normalizeTaskNotePopoverValue,
+		editor: {
+			kind: 'compact-markdown',
+			sourcePath: options.sourcePath,
+		},
 		onCommit: options.onCommit,
 		onClose: options.onClose,
+		lifecycleOwner: options.lifecycleOwner,
+		onFocusReturn: options.onFocusReturn,
 	});
 }
 

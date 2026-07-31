@@ -1,0 +1,10 @@
+{
+  "applyDefaults": true,
+  "mode": "inline",
+  "tasks": [
+    {
+      "description": "Apply portable defaults"
+    }
+  ],
+  "timestamp": "2026-01-15T10:20:30"
+}

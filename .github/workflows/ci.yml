@@ -15,19 +15,32 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 20
+          node-version: "24.18.0"
           cache: npm
+
+      - name: Pin canonical npm
+        run: npm install --global npm@11.12.1
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify release dependency audit policy
+        run: npm run release:audit-policy
+
       - name: Run validation
+        env:
+          OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check
 
-      - name: Audit dependencies
-        run: npm audit
+      - name: Verify release guard
+        run: npm run release:guard
+
+      - name: Verify final accepted Public V1 freeze
+        run: npm run release:freeze:check

@@ -6,22 +6,18 @@
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderer, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
+import { Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
-import { OperonStorage } from './src/storage/operon-storage';
+import { OperonStorage, type OperonStorageReloadSettingsResult } from './src/storage/operon-storage';
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
-import type { TablePresetRegistryEntry, TablePresetRegistryPatchControl } from './src/types/table-preset-registry';
-import { TablePresetFileLifecycle } from './src/storage/table-preset-file-lifecycle';
-import type {
-	TablePresetFileConflictResolutionResult,
-	TablePresetFileMigrationReceiptV1,
-} from './src/types/table-preset-file-lifecycle';
 import {
-	runTablePresetFileMigration,
-	summarizeTablePresetFileMigrationJournal,
-	type TablePresetFileMigrationSummary,
-} from './src/storage/table-preset-file-migration-runner';
+	mergeTablePresetRegistryOrder,
+	resolveTablePresetBootstrapAction,
+} from './src/storage/table-preset-manifest';
+import type { TablePresetRegistryEntry, TablePresetRegistryPatchControl } from './src/types/table-preset-registry';
+import { TablePresetFileConflictResolver } from './src/storage/table-preset-file-conflict-resolver';
+import type { TablePresetFileConflictResolutionResult } from './src/types/table-preset-file-conflict';
 import {
 	buildUniqueOperonTableFilePath,
 	deriveOperonTableNameFromPath,
@@ -33,11 +29,14 @@ import {
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
 import {
 	IndexV8DiagnosticsModal,
-	type IndexV8DiagnosticsActionResult,
 	type IndexV8DiagnosticsSummary,
 } from './src/ui/index-v8-diagnostics-modal';
 import { IndexV8Store } from './src/indexer/persistence/index-v8-store';
-import { IndexV8PersistenceCoordinator } from './src/indexer/persistence/index-v8-shadow-writer';
+import { IndexV8PersistenceCoordinator } from './src/indexer/persistence/index-v8-persistence-coordinator';
+import {
+	buildIndexV8SemanticsSignature,
+	hasIndexV8WorkflowSemanticsMismatch,
+} from './src/indexer/persistence/index-v8-semantics';
 import {
 	startIndexV8CleanupMaintenance,
 	type IndexV8MaintenanceHandle,
@@ -45,7 +44,12 @@ import {
 import type { ProjectSerialDisplay } from './src/core/project-serials';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
 import { TaskWriter } from './src/core/task-writer';
-import type { RawYamlPropertyExpectation, RawYamlPropertyMutation, RawYamlPropertyWriteOutcome } from './src/core/raw-yaml-property';
+import {
+	isWritableRawYamlPropertyName,
+	type RawYamlPropertyExpectation,
+	type RawYamlPropertyMutation,
+	type RawYamlPropertyWriteOutcome,
+} from './src/core/raw-yaml-property';
 import { registerObsidianIconFallbacks } from './src/core/obsidian-icon-fallbacks';
 import { invalidateLocationPlaceIndex } from './src/core/location-source-resolver';
 import { DependencyManager } from './src/systems/dependency-manager';
@@ -54,10 +58,15 @@ import {
 	DependencyEdgeValidationResult,
 	DependencyFieldMutation,
 	DependencyStatusChangeAttempt,
+	parseDependencyIdList,
 	resolveActiveBlockers,
 	resolveDependencyStatusChangeAttempt,
 } from './src/core/dependency-graph';
-import { AggregateCoordinator, type AggregateRefreshResult } from './src/systems/aggregate-coordinator';
+import {
+	AggregateCoordinator,
+	type AggregateRefreshResult,
+	type CreationAggregateProjectionPatch,
+} from './src/systems/aggregate-coordinator';
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
 import { TimeTracker } from './src/systems/time-tracker';
 import { applyManualEstimateReallocationWrites } from './src/systems/estimate-reallocation';
@@ -116,6 +125,7 @@ import {
 	TaskEditorRepeatSkipUpdateResult,
 	TaskEditorSaveRequest,
 	TaskEditorSubtaskRequest,
+	shouldUseTaskEditorSemanticTransition,
 } from './src/ui/task-editor-content';
 import {
 	getEmbeddedMarkdownSourceEditorFilePath,
@@ -152,6 +162,7 @@ import { operonLivePreviewTaskWikilinkOverlayExtension, operonTaskWikilinkForceR
 import { operonLivePreviewKeySuggestExtension } from './src/ui/live-preview-key-suggest';
 import { debugTaskFieldSuggestion } from './src/ui/task-field-suggest';
 import { buildReadingTaskRowElement } from './src/ui/reading-task-row';
+import { renderCompactTaskMarkdown } from './src/ui/compact-task-markdown-renderer';
 import {
 	createIndexedReadingResolvedTask,
 	resolveReadingInlineTaskFromText,
@@ -167,6 +178,7 @@ import {
 	OPERON_TASK_TITLE_HOVER_SOURCE,
 } from './src/ui/compact-chip-link-preview';
 import { cleanupOperonRenderRoot } from './src/ui/render-root-cleanup';
+import { requestCloseAllTextFieldPopovers } from './src/ui/text-field-popover';
 import { hideTaskContextualHoverMenu } from './src/ui/contextual-hover-menu';
 import {
 	WindowTimeoutHandle,
@@ -182,13 +194,166 @@ import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
 import { ReminderScheduler } from './src/core/reminder-scheduler';
 import { getAvailableReminderRuleAnchors } from './src/core/reminder-rules';
 import { ReminderDeliveryController } from './src/systems/reminder-delivery';
-import {
-	MobileNotificationsExporter,
-	readExistingMobileNotificationsProducerState,
-} from './src/systems/mobile-notifications-exporter';
+import { MobileNotificationsExporter } from './src/systems/mobile-notifications-exporter';
 import { buildOperonPluginStoragePath } from './src/storage/operon-storage-paths';
 import { resolveTaskColorSourceForTask } from './src/core/task-color-source';
 import { asyncHandler, runAsyncAction } from './src/core/async-action';
+import {
+	registerTransportProbe,
+	setTransportProbePhase,
+} from './src/agent-runtime/transport-probe';
+import {
+	canonicalJsonV1,
+	sha256HexV1,
+	toJsonValueV1,
+} from './src/agent-runtime/contracts/v1/canonical';
+import {
+	buildLivePropertyCatalogV1,
+	computeContextSettingsFingerprintV1,
+	createAgentRuntimeSessionId,
+	createOperonAgentRuntimeFacadeV1,
+	hashProjectSerialSignatureV1,
+	isCatalogResultWithinTransportLimitV1,
+	RuntimeCoherentReadCoordinatorV1,
+	RuntimeLifecycleCoordinatorV1,
+	RuntimeSettlementBarrierV1,
+	RuntimeSettingsFreshnessCoordinatorV1,
+	RuntimeMutationGatewayV1,
+	RuntimeTimingProbeBufferV1,
+	measureRuntimeTimingSpanV1,
+	executeRuntimeGraphTransactionCommitV1,
+	executeRuntimeGraphTransactionRecoveryV1,
+	classifyTimerControlRecoveryPrefixV1,
+	tryWithRuntimeVaultMutationLockV1,
+	IndexedDbMutationReceiptStoreV1,
+	IndexedDbSecurityAuditStoreV1,
+	findIncompleteDeveloperGrantAuditTransitionsV1,
+	prepareRuntimeTaskCreationV1,
+	prepareRuntimeTaskFieldMutationV1,
+	prepareRuntimeTaskUpdateBatchV1,
+	buildRuntimeTaskUpdateBatchEffectsV1,
+	buildRuntimeConversionAncestorPredictedEffectsV1,
+	verifyRuntimeTaskUpdateBatchPrimaryPostflightV1,
+	prepareRuntimeTaskRecurrenceMutationV1,
+	verifyRuntimeTaskRecurrencePostflightV1,
+	prepareRuntimeTimerSessionMutationV1,
+	verifyRuntimeTimerSessionPostflightV1,
+	prepareRuntimeTaskRelationshipMutationV1,
+	verifyRuntimeTaskRelationshipPostflightV1,
+	prepareRuntimePinnedStateMutationV1,
+	pinnedEntryRevisionV1,
+	isRuntimePinnedStateMutationPreparationV1,
+	planRuntimeSemanticTransitionV1,
+	executeRuntimeSemanticTransitionV1,
+	runtimeSemanticTransitionStepIdsV1,
+	verifyRuntimeSemanticTransitionPostflightV1,
+	getRuntimeTaskFieldMutationPostflightRequirementsV1,
+	resolveRuntimeTaskFieldMutationPostflightEvidenceV1,
+	verifyRuntimeTaskFieldMutationPrimaryPostflightV1,
+	guardRuntimeTimerControlV1,
+	guardRuntimeInlineRelocationV1,
+	analyzeRuntimeFileToInlineLossV1,
+	guardRuntimeExactDeleteV1,
+	verifyRuntimeSourceTransitionPostflightV1,
+	verifyRuntimeConversionAncestorSourceRevisionsV1,
+	sourceRevisionForTaskCreationV1,
+	sampleRuntimeRevisionV1,
+	type OperonAgentRuntimeCoreV1,
+	type CatalogBuildResultV1,
+	type CatalogProjectionV1,
+	type CatalogRequestV1,
+	type ContextPackV1,
+	type ContextRequestV1,
+	type EntityResolutionResultV1,
+	type EntityResolveRequestV1,
+	type OperonCatalogV1,
+	type RelationshipRequestV1,
+	type RelationshipResultV1,
+	type RuntimeReadResultV1,
+	type RuntimeInvocationContextV1,
+	type RuntimeRevisionSnapshotV1,
+	type RuntimeSettingsFreshnessResultV1,
+	type TaskGetRequestV1,
+	type TaskGetResultV1,
+	type TaskFinderRequestV1,
+	type TaskFinderResultV1,
+	type TaskQueryRequestV1,
+	type TaskQueryResultV1,
+	type TimerReadRequestV1,
+	type TimerReadResultV1,
+	type MutationApplyRequestV1,
+	type MutationPreviewRequestV1,
+	type MutationPreviewResultV1,
+	type MutationResultV1,
+	type RuntimePreparedMutationV1,
+	type RuntimePreparedMutationCommitV1,
+	type RuntimeTaskFieldMutationPreparationV1,
+	type RuntimeTaskUpdateBatchPreparationV1,
+	type RuntimeTaskRecurrencePreparationV1,
+	type RuntimeTimerSessionPreparationV1,
+	type RuntimeTaskRelationshipPreparationV1,
+	type RuntimeExactTaskMutationSnapshotV1,
+	type RuntimeSemanticTransitionPlanV1,
+	type RuntimeSemanticTransitionExecutionOptionsV1,
+	type RuntimeSemanticTransitionPostflightEvidenceV1,
+	type RuntimeTimerMutationPreparationV1,
+	type RuntimeSourceTransitionPreparationV1,
+	type RuntimeTaskCreationPreparationV1,
+	type GraphTransactionJournalStepV1,
+	type RuntimeGraphTransactionRecoveryV1,
+	type SecurityAuditEventV1,
+} from './src/agent-runtime/runtime';
+import type { MutationReceiptV1 } from './src/agent-runtime/contracts/v1/mutation';
+import {
+	DeveloperApiGrantControllerV1,
+	getOperonDeveloperApiV1,
+	normalizeDeveloperApiGrantPackage,
+	suspendDeveloperApiGrantForAuditRecovery,
+	type DeveloperApiGrantAuditEventV1,
+	type DeveloperApiConsumerDescriptorV1,
+} from './src/agent-runtime/developer-api';
+import {
+	DeveloperMutationSecurityPolicyV1,
+	type DeveloperCapabilityGrantV1,
+	type DeveloperConsentPromptV1,
+	type DeveloperSecuritySessionV1,
+} from './src/agent-runtime/developer-api/security';
+import type {
+	OperonDeveloperApiAccessRequestV1,
+	OperonDeveloperApiAccessResultV1,
+	OperonDeveloperApiConsumerPluginV1,
+} from './src/agent-runtime/public/v1/developer-api';
+import type {
+	TaskCreationSourceGroupOutcome,
+} from './src/core/task-creation-domain';
+import { ContextBridgeV1 } from './src/agent-runtime/runtime/context-bridge';
+import type { TaskSourceLocatorV1 } from './src/agent-runtime/contracts/v1/identity';
+import { RuntimeContextCursorCodecV1 } from './src/agent-runtime/runtime/context-cursor';
+import { LiveIndexContextProviderV1 } from './src/agent-runtime/runtime/context-provider';
+import { RuntimeSourceHydratorV1 } from './src/agent-runtime/runtime/context-source';
+import {
+	computeRunningVaultSha256V1,
+	createAgentRuntimeCliMetadataV1,
+	loadAgentRuntimeDesktopNodeApiV1,
+	registerAgentRuntimeCliHandlersV1,
+	startAgentRuntimePersistentReadServerV1,
+	AgentRuntimePersistentReadSupervisorV1,
+} from './src/agent-runtime/transport';
+import {
+	CAPABILITY_REGISTRY_V1,
+	isCapabilityIdV1,
+	type CapabilityIdV1,
+} from './src/agent-runtime/contracts/v1/capabilities';
+import type { FileTaskTemplateCandidateV1 } from './src/agent-runtime/contracts/v1/catalog';
+import type {
+	GeneralUpdateItemV1,
+	MutationSpecV1,
+} from './src/agent-runtime/contracts/v1/mutation';
+import {
+	RESOURCE_QUEUE_ORDER_V1,
+	validateVaultRelativePathV1,
+} from './src/agent-runtime/contracts/v1/identity';
+import type { AffectedResourceRevisionMapV1 } from './src/agent-runtime/contracts/v1/identity';
 import { getCommunityPlugin, isDailyNotesCoreAvailable } from './src/core/obsidian-app';
 import { InlineTaskSaveMode, resolveEffectiveInlineTaskSaveMode } from './src/core/inline-task-save-mode';
 import { isRecord, isUnknownFunction, readString } from './src/core/unknown-value';
@@ -240,6 +405,7 @@ import {
 	refreshEmbedTables,
 	type EmbedTableDeps,
 } from './src/ui/embed-table-processor';
+import { refreshActiveEmbedPercentWidths } from './src/ui/embed-percent-width';
 import {
 	clearTableFilePropertyIndex,
 	createCachedTableFilePropertyTypeResolver,
@@ -260,7 +426,11 @@ import {
 import { SubtasksFilterModal } from './src/ui/subtasks-filter-modal';
 import { FilterSetModal, refreshFilterPreviewModals, refreshFilterSetModals, type FilterModalEvalDeps } from './src/ui/filter-set-modal';
 import { OperonReleaseNotesModal } from './src/ui/release-notes-modal';
-import { OperonSettingsTab, type TablePresetSettingsFileIntegration } from './src/ui/settings-tab';
+import {
+	OperonSettingsTab,
+	type DeveloperApiSettingsIntegration,
+	type TablePresetSettingsFileIntegration,
+} from './src/ui/settings-tab';
 import { TimeSessionHistoryView, TIME_SESSION_HISTORY_VIEW_TYPE } from './src/ui/time-session-history-view';
 import { FlowTimeView, FLOW_TIME_VIEW_TYPE } from './src/ui/flow-time-view';
 import { TimeTrackerStatusBar } from './src/ui/time-tracker-status-bar';
@@ -341,7 +511,7 @@ import {
 	resolvePipelineMinimalFileTaskTemplateStatus,
 	templateDocumentContainsTemplaterSyntax,
 } from './src/core/file-task-templates';
-import { localNow, localToday } from './src/core/local-time';
+import { localNow, localToday, toLocalDatetime } from './src/core/local-time';
 import { formatUiTime } from './src/core/ui-time-format';
 import {
 	commitContextualReminderValue,
@@ -382,12 +552,14 @@ import {
 	DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS,
 	FilterSet,
 	normalizeInlineTaskHeadingKeyword,
+	normalizeInlineTaskParentFileHeadingKeyword,
 	normalizeStoredFileTaskTemplateId,
 	OperonSettings,
 } from './src/types/settings';
 import {
 	type InlineRepeatCompletionMode,
 	normalizeInlineCompletionMode,
+	type RepeatSeriesEntry,
 } from './src/storage/repeat-series-store';
 import {
 	CalendarItem,
@@ -534,7 +706,54 @@ import {
 	isOperonEnginePerfDebugEnabled,
 } from './src/core/engine-perf';
 
+declare const OPERON_AGENT_RUNTIME_PROBE_ENABLED: boolean;
+declare const OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED: boolean;
+let pinnedStateProbeArmed = OPERON_AGENT_RUNTIME_PROBE_ENABLED;
+
 const FILTER_PERF_DEBUG = false;
+const AGENT_RUNTIME_PUBLISHED_READ_CAPABILITIES = new Set<CapabilityIdV1>([
+	'catalog.read',
+	'entities.resolve',
+	'tasks.read',
+	'tasks.query',
+	'tasks.finder',
+	'relationships.read',
+	'context.build',
+	'timers.read',
+]);
+const AGENT_RUNTIME_PUBLISHED_MUTATION_CAPABILITIES = new Set<CapabilityIdV1>(
+	CAPABILITY_REGISTRY_V1
+		.filter(definition => definition.mutationKind !== undefined)
+		.map(definition => definition.id),
+);
+
+function runtimeUnavailableError(reason: string) {
+	return {
+		contractVersion: 1 as const,
+		code: 'capability-unavailable' as const,
+		reason,
+		retryable: false,
+		action: 'rediscover' as const,
+	};
+}
+
+function orderRuntimeMutationGroupResults(
+	prepared: RuntimePreparedMutationV1,
+	results: RuntimePreparedMutationCommitV1['groupResults'],
+): RuntimePreparedMutationCommitV1['groupResults'] {
+	const byGroupId = new Map(results.map(result => [result.groupId, result]));
+	const groupIds = prepared.atomicGroups?.map(group => group.groupId)
+		?? prepared.affectedResources.map(resource => `${resource.resourceKind}:${resource.resourceKey}`);
+	const ordered = groupIds
+		.map(groupId => byGroupId.get(groupId))
+		.filter((result): result is RuntimePreparedMutationCommitV1['groupResults'][number] => !!result);
+	const plannedGroupIds = new Set(groupIds);
+	return [
+		...ordered,
+		...results.filter(result => !plannedGroupIds.has(result.groupId)),
+	];
+}
+
 const TABLE_REPEAT_AUXILIARY_WRITEBACK_KEYS = new Set(['repeatSeriesId', 'repeatOccurrenceDate']);
 const perfNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const perfLog = (...args: unknown[]) => {
@@ -706,6 +925,10 @@ interface StatusCyclePerfTrace {
 	startedAt: number;
 }
 
+type AgentRuntimeIndexedTaskSnapshot = NonNullable<
+	ReturnType<OperonIndexer['getTaskSnapshot']>
+>;
+
 interface TaskFieldsUpdateOptions {
 	mode?: 'merge' | 'replace';
 	changedKeys?: string[];
@@ -795,7 +1018,12 @@ interface NativeFileTaskConversionMenuState {
 	item: MenuItem | null;
 }
 
-type SettingsReindexReason = 'key-mappings' | 'workflow-semantics';
+type SettingsReindexReason = 'key-mappings' | 'workflow-semantics' | 'index-semantics';
+
+interface CanonicalSettingsReloadResult extends OperonStorageReloadSettingsResult {
+	failed: boolean;
+	localeIntentChanged: boolean;
+}
 
 interface TablePresetSettingsSnapshot {
 	tablePresets: TablePreset[];
@@ -806,6 +1034,7 @@ interface TablePresetSettingsSnapshot {
 }
 
 export default class OperonPlugin extends Plugin {
+	private agentRuntimeCore!: OperonAgentRuntimeCoreV1;
 	storage!: OperonStorage;
 	indexer!: OperonIndexer;
 	writer!: TaskWriter;
@@ -817,18 +1046,65 @@ export default class OperonPlugin extends Plugin {
 	recurrenceService!: RecurrenceService;
 	formatConverter!: FormatConverter;
 	settings!: OperonSettings;
+	private agentRuntimeLifecycle!: RuntimeLifecycleCoordinatorV1;
+	private agentRuntimeCoherentRead!: RuntimeCoherentReadCoordinatorV1;
+	private agentRuntimeSettingsFreshness: RuntimeSettingsFreshnessCoordinatorV1 | null = null;
+	private agentRuntimeServicesBound = false;
+	private agentRuntimeContextBridge: ContextBridgeV1 | null = null;
+	private agentRuntimeMutationGateway: RuntimeMutationGatewayV1 | null = null;
+	private agentRuntimeTimingProbe: RuntimeTimingProbeBufferV1 | null = null;
+	private agentRuntimeReceiptStore: IndexedDbMutationReceiptStoreV1 | null = null;
+	private agentRuntimeSecurityAuditStore: IndexedDbSecurityAuditStoreV1 | null = null;
+	private developerApiGrantController!: DeveloperApiGrantControllerV1;
+	private developerApiMutationSecurityPolicy!: DeveloperMutationSecurityPolicyV1;
+	private developerApiConsumerEpochs = new WeakMap<object, string>();
+	private agentRuntimeVaultIdentityHash: string | null = null;
+	private agentRuntimeSourceHydrator: RuntimeSourceHydratorV1 | null = null;
+	private agentRuntimeSessionId = '';
+	private agentRuntimePackageRevision = 'unavailable';
+	private agentRuntimeObservedAt = new Date(0).toISOString();
+	private agentRuntimeCliTransportAvailable = false;
+	private agentRuntimeCliTransportFailureReason: string | null = null;
+	private agentRuntimeCliRegistrationRetryTimer: WindowTimeoutHandle | null = null;
+	private agentRuntimePersistentReadSupervisor: AgentRuntimePersistentReadSupervisorV1 | null = null;
+	private agentRuntimePersistentReadShutdown: Promise<void> | null = null;
+	private agentRuntimeStartupSettlementRelease: (() => void) | null = null;
+	private agentRuntimeSettingsFailureRelease: (() => void) | null = null;
+	private agentRuntimeCatalogCache: {
+		fingerprint: string;
+		result: CatalogBuildResultV1;
+	} | null = null;
+	private agentRuntimeSettingsFingerprintCache: {
+		packageRevision: string;
+		fingerprint: string;
+	} | null = null;
+	private settingsReindexRuntimeRelease: (() => void) | null = null;
+	private projectSerialRuntimeRelease: (() => void) | null = null;
+	private projectSerialRuntimeSettlement: Promise<void> | null = null;
+	private aggregateRuntimeSettlements = new Set<Promise<void>>();
+	private pendingAggregateIndexedChanges = new Map<string, IndexedTaskDelta>();
+	private pendingAggregateRemovedTasks = new Map<string, IndexedTask>();
+	private aggregatePendingRetryTimer: WindowTimeoutHandle | null = null;
+	private aggregatePendingDrainRunning = false;
 	private localePackManager: LocalePackManager | null = null;
 	private keyMappingSignature = '';
 	private workflowStatusSemanticsSignature = '';
+	private indexSemanticsSignature = '';
+	private projectSerialScopeSettingsSignature = '';
 	private indexV8ManifestFingerprint: string | null = null;
-	private indexV8ManifestCheckActive = false;
+	private indexV8ManifestCheckPromise: Promise<void> | null = null;
 	private settingsReindexTimer: WindowTimeoutHandle | null = null;
+	private settingsReindexBarrier: Promise<void> | null = null;
+	private settingsReindexBarrierResolve: (() => void) | null = null;
+	private settingsReindexBarrierReject: ((error: unknown) => void) | null = null;
+	private settingsReindexActiveRuns = 0;
 	private startupReleaseCheckTimer: WindowTimeoutHandle | null = null;
 	private releaseCheckGeneration = 0;
 	private pendingSettingsReindexReasons = new Set<SettingsReindexReason>();
+	private settingsReindexNoticePending = false;
 	private settingsReindexRetryAttempted = false;
 	private canonicalSettingsReloadTimer: WindowTimeoutHandle | null = null;
-	private canonicalSettingsReloadRunning = false;
+	private canonicalSettingsReloadPromise: Promise<CanonicalSettingsReloadResult> | null = null;
 	private canonicalSettingsReloadLastCheckAt = 0;
 	private yamlPropertyVisibilityRefreshTimer: WindowTimeoutHandle | null = null;
 	private locationPlaceTableRefreshTimer: WindowTimeoutHandle | null = null;
@@ -848,16 +1124,14 @@ export default class OperonPlugin extends Plugin {
 	private embedTableDeps: EmbedTableDeps | null = null;
 	private readonly tablePresetMutationQueue = new TablePresetMutationQueue();
 	private tablePresetRegistry!: TablePresetRegistry<TFile>;
-	private tablePresetFileLifecycle!: TablePresetFileLifecycle<TFile>;
+	private tablePresetFileConflictResolver!: TablePresetFileConflictResolver<TFile>;
 	private readonly tablePresetRegistrySubscriptions = new Map<string, () => void>();
 	private settingsTab: OperonSettingsTab | null = null;
 	private tablePresetRegistryRefreshTimer: WindowTimeoutHandle | null = null;
 	private readonly expectedTableFileModifyHashes = new Map<string, string>();
 	private readonly expectedTableFileRenames = new Map<string, string>();
 	private readonly expectedTableFileDeletes = new Map<string, string>();
-	private tablePresetFileMigrationRunning = false;
-	private tablePresetFileMigrationSummary: TablePresetFileMigrationSummary | null = null;
-	private tablePresetFileMigrationReceipt: TablePresetFileMigrationReceiptV1 | null = null;
+	private tablePresetMaintenanceRunning = false;
 	private dynamicFileTaskFilterReadingTimers = new Map<string, WindowTimeoutHandle>();
 	private dynamicFileTaskFilterReadingHosts = new Set<HTMLElement>();
 	private dynamicFileTaskFilterReadingInstances = new WeakMap<HTMLElement, FilterSurfaceInstance>();
@@ -875,8 +1149,10 @@ export default class OperonPlugin extends Plugin {
 	private indexV8CleanupMaintenance: IndexV8MaintenanceHandle | null = null;
 	private indexSideEffectRunning = false;
 	private indexSideEffectFollowupRequested = false;
+	private indexSideEffectSettlement!: RuntimeSettlementBarrierV1;
 	private projectSerialIndexReconcileScheduler: CoalescedAsyncScheduler | null = null;
 	private projectSerialIndexReconcilePendingBeforeStartup = false;
+	private projectSerialNotifyCapacityPending = false;
 	private fileTaskArchiver: FileTaskArchiver | null = null;
 	private reminderScheduler: ReminderScheduler | null = null;
 	private reminderDeliveryController: ReminderDeliveryController | null = null;
@@ -920,6 +1196,307 @@ export default class OperonPlugin extends Plugin {
 		private blockedStatusWriteSuppressFallbackUntilById = new Map<string, number>();
 		private calendarDailyNoteParentSeedPromises = new Map<string, Promise<TaskCreatorParentSeed | null>>();
 		private calendarDailyNoteCreatedNoticePaths = new Set<string>();
+
+	getDeveloperApiV1(
+		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
+		request: OperonDeveloperApiAccessRequestV1,
+	): OperonDeveloperApiAccessResultV1 {
+		const core = this.agentRuntimeCore ?? null;
+		return getOperonDeveloperApiV1(core, consumerPlugin, request, {
+			isDesktopAvailable: () => Platform.isDesktopApp,
+			isHostVersionSupported: () => requireApiVersion('1.12.2'),
+			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
+			retryAfterMs: () => this.agentRuntimeLifecycle?.getRetryAfterMs(),
+			lifecycleError: () => this.agentRuntimeLifecycle?.getLastError(),
+			isCoreActive: candidate => (
+				this.agentRuntimeCore === candidate
+				&& this.agentRuntimeLifecycle?.getPhase() !== 'unloading'
+			),
+			grantController: this.developerApiGrantController,
+			mutationSecurityPolicy: this.developerApiMutationSecurityPolicy,
+		});
+	}
+
+	private verifyDeveloperApiConsumer(
+		candidate: OperonDeveloperApiConsumerPluginV1,
+	): DeveloperApiConsumerDescriptorV1 | null {
+		if (!candidate || typeof candidate !== 'object') return null;
+		const manifest = candidate.manifest;
+		if (
+			!manifest
+			|| typeof manifest.id !== 'string'
+			|| typeof manifest.name !== 'string'
+			|| typeof manifest.version !== 'string'
+			|| manifest.id === this.manifest.id
+			|| !this.isDeveloperApiConsumerEnabled(manifest.id)
+		) return null;
+		const livePlugin = getCommunityPlugin(this.app, manifest.id);
+		if (livePlugin !== candidate || typeof livePlugin !== 'object') return null;
+		const liveManifest = (livePlugin as {
+			manifest?: {
+				id?: unknown;
+				name?: unknown;
+				version?: unknown;
+			};
+		}).manifest;
+		if (
+			liveManifest?.id !== manifest.id
+			|| typeof liveManifest.name !== 'string'
+			|| typeof liveManifest.version !== 'string'
+		) return null;
+		let instanceEpoch = this.developerApiConsumerEpochs.get(livePlugin);
+		if (!instanceEpoch) {
+			instanceEpoch = createAgentRuntimeSessionId();
+			this.developerApiConsumerEpochs.set(livePlugin, instanceEpoch);
+		}
+		return {
+			id: manifest.id,
+			name: liveManifest.name,
+			version: liveManifest.version,
+			instanceEpoch,
+		};
+	}
+
+	private isDeveloperApiConsumerEnabled(consumerId: string): boolean {
+		const plugins = (this.app as typeof this.app & {
+			plugins?: { enabledPlugins?: unknown };
+		}).plugins;
+		const enabledPlugins = plugins?.enabledPlugins;
+		return !(enabledPlugins instanceof Set) || enabledPlugins.has(consumerId);
+	}
+
+	private isDeveloperApiConsumerCurrent(
+		consumer: DeveloperApiConsumerDescriptorV1,
+	): boolean {
+		const livePlugin = getCommunityPlugin(this.app, consumer.id);
+		return Boolean(
+			this.isDeveloperApiConsumerEnabled(consumer.id)
+			&&
+			livePlugin
+			&& typeof livePlugin === 'object'
+			&& this.developerApiConsumerEpochs.get(livePlugin) === consumer.instanceEpoch,
+		);
+	}
+
+	private createAgentRuntimeSecurityAuditEvent(
+		event:
+			| 'apply-dispatched'
+			| 'apply-completed'
+			| 'recovery-dispatched'
+			| 'recovery-completed',
+		request: MutationApplyRequestV1,
+		receipt?: MutationReceiptV1,
+	): SecurityAuditEventV1 | null {
+		const clientInstanceId = request.plan.clientInstanceId;
+		const isCli = clientInstanceId.startsWith('operon-cli-');
+		const isDeveloperApi = clientInstanceId.startsWith('developer-api:');
+		if (!isCli && !isDeveloperApi) return null;
+		const occurredAt = new Date().toISOString();
+		let consumerId = clientInstanceId;
+		let grantRevision = 0;
+		if (isDeveloperApi) {
+			const value = clientInstanceId.slice('developer-api:'.length);
+			const epochSeparator = value.lastIndexOf(':');
+			consumerId = epochSeparator < 0 ? value : value.slice(0, epochSeparator);
+			grantRevision = this.developerApiGrantController
+				?.list()
+				.find(record => record.consumerId === consumerId)
+				?.revision ?? 0;
+		}
+		const terminalOutcome = receipt?.terminalOutcome;
+		return {
+			contractVersion: 1,
+			eventId: sha256HexV1(`${getActiveWindow().crypto.randomUUID()}\0${occurredAt}`),
+			event,
+			channel: isCli ? 'cli' : 'developer-api',
+			consumerIdentityHash: sha256HexV1(consumerId),
+			grantRevision,
+			capability: request.plan.capability,
+			mutationKind: request.plan.mutationKind,
+			risk: request.plan.riskLevel,
+			planDigest: request.plan.planHash,
+			targetDigest: request.plan.receiptTargetDigest,
+			vaultIdentityHash: this.agentRuntimeVaultIdentityHash,
+			consent: request.authorization.basis === 'user-explicit-confirmation'
+				? 'approved'
+				: 'not-required',
+			admission: event.endsWith('-dispatched') ? 'dispatched' : 'completed',
+			outcome: event.endsWith('-dispatched')
+				? 'pending'
+				: terminalOutcome === 'applied' || terminalOutcome === 'already-applied'
+					? 'succeeded'
+					: terminalOutcome === 'outcome-unknown'
+						? 'outcome-unknown'
+						: 'failed',
+			errorCode: terminalOutcome === 'outcome-unknown' ? 'outcome-unknown' : null,
+			occurredAt,
+			correlationHash: sha256HexV1(request.requestId),
+		};
+	}
+
+	private async recordDeveloperApiGrantAudit(
+		transition: DeveloperApiGrantAuditEventV1,
+	): Promise<void> {
+		const store = this.agentRuntimeSecurityAuditStore;
+		if (!store || !await store.health()) {
+			throw new Error('Developer API security audit is unavailable.');
+		}
+		const event = transition.action === 'request'
+			? 'grant-requested'
+			: transition.action === 'approve'
+				? 'grant-approved'
+				: transition.action === 'deny'
+					? 'grant-denied'
+					: transition.action === 'version-suspended'
+						? 'grant-suspended'
+						: transition.action === 'version-accepted'
+							? 'grant-approved'
+							: 'grant-revoked';
+		const capabilities = transition.capabilities.length > 0
+			? transition.capabilities
+			: [null];
+		for (const capability of capabilities) {
+			const eventIdSeed = `${getActiveWindow().crypto.randomUUID()}\0${transition.consumerId}\0${capability ?? ''}`;
+			await store.append({
+				contractVersion: 1,
+				eventId: sha256HexV1(eventIdSeed),
+				event,
+				channel: 'developer-api',
+				consumerIdentityHash: sha256HexV1(transition.consumerId),
+				grantRevision: transition.revision,
+				capability,
+				mutationKind: null,
+				risk: null,
+				planDigest: null,
+				targetDigest: null,
+				vaultIdentityHash: this.agentRuntimeVaultIdentityHash,
+				consent: transition.action === 'approve' ? 'approved' : 'not-required',
+				admission: transition.phase === 'intent' ? 'requested' : 'completed',
+				outcome: transition.phase === 'intent' ? 'pending' : 'succeeded',
+				errorCode: null,
+				occurredAt: transition.occurredAt,
+				correlationHash: sha256HexV1(
+					`${transition.action}\0${transition.phase}\0${transition.consumerId}\0${transition.revision}`,
+				),
+			});
+		}
+	}
+
+	private isDeveloperApiSecuritySessionCurrent(
+		session: DeveloperSecuritySessionV1,
+	): boolean {
+		const livePlugin = getCommunityPlugin(this.app, session.consumerId);
+		return Boolean(
+			this.isDeveloperApiConsumerEnabled(session.consumerId)
+			&& livePlugin
+			&& typeof livePlugin === 'object'
+			&& this.developerApiConsumerEpochs.get(livePlugin) === session.instanceEpoch,
+		);
+	}
+
+	private isDeveloperApiGrantCurrent(grant: DeveloperCapabilityGrantV1): boolean {
+		const current = this.developerApiGrantController
+			.list()
+			.find(record => record.consumerId === grant.consumerId);
+		if (!current || current.state !== 'active' || current.revision !== grant.revision) return false;
+		const currentCapabilities = new Set(current.grantedCapabilities);
+		return [...grant.capabilities].every(capability => currentCapabilities.has(capability));
+	}
+
+	private requestDeveloperApiMutationConsent(
+		prompt: DeveloperConsentPromptV1,
+	): Promise<'approved' | 'denied' | 'unavailable'> {
+		if (!this.startupReady || this.agentRuntimeLifecycle?.getPhase() !== 'ready') {
+			return Promise.resolve('unavailable');
+		}
+		return new Promise(resolve => {
+			new ConfirmActionModal(this.app, {
+				title: t('settings', 'developerApiConsentTitle'),
+				message: t('settings', 'developerApiConsentDesc'),
+				confirmText: t('settings', 'developerApiConsentApprove'),
+				cancelText: t('buttons', 'cancel'),
+				danger: prompt.riskLevel === 'destructive',
+				detailsTable: [
+					{
+						label: t('settings', 'developerApiConsentConsumer'),
+						before: prompt.consumerId,
+						after: '',
+					},
+					{
+						label: t('settings', 'developerApiConsentCapability'),
+						before: prompt.capability,
+						after: '',
+					},
+					{
+						label: t('settings', 'developerApiConsentMutation'),
+						before: prompt.mutationKind,
+						after: '',
+					},
+					{
+						label: t('settings', 'developerApiConsentRisk'),
+						before: prompt.riskLevel,
+						after: '',
+					},
+					{
+						label: t('settings', 'developerApiConsentTargets'),
+						before: String(prompt.targetCount),
+						after: '',
+					},
+					{
+						label: t('settings', 'developerApiConsentPlan'),
+						before: prompt.planHash.slice(0, 16),
+						after: '',
+					},
+				],
+			}, confirmed => resolve(confirmed ? 'approved' : 'denied')).open();
+		});
+	}
+
+	private buildDeveloperApiSettingsIntegration(): DeveloperApiSettingsIntegration {
+		const requireAuditStore = (): IndexedDbSecurityAuditStoreV1 => {
+			const store = this.agentRuntimeSecurityAuditStore;
+			if (!store) throw new Error('Developer API security audit is unavailable.');
+			return store;
+		};
+		return {
+			listGrants: () => this.developerApiGrantController.list(),
+			approve: async (consumerId, capabilities) => {
+				const known = capabilities.filter(isCapabilityIdV1);
+				await this.developerApiGrantController.approvePending(consumerId, known);
+			},
+			deny: async consumerId => {
+				await this.developerApiGrantController.denyPending(consumerId);
+			},
+			revoke: async consumerId => {
+				await this.developerApiGrantController.revoke(consumerId);
+			},
+			listAudit: async () => await requireAuditStore().list(),
+			clearAudit: async () => {
+				const occurredAt = new Date().toISOString();
+				const nonce = getActiveWindow().crypto.randomUUID();
+				await requireAuditStore().clear({
+					contractVersion: 1,
+					eventId: sha256HexV1(`audit-clear\0${nonce}\0${occurredAt}`),
+					event: 'audit-cleared',
+					channel: 'developer-api',
+					consumerIdentityHash: sha256HexV1('operon-owner'),
+					grantRevision: 0,
+					capability: null,
+					mutationKind: null,
+					risk: null,
+					planDigest: null,
+					targetDigest: null,
+					vaultIdentityHash: this.agentRuntimeVaultIdentityHash,
+					consent: 'approved',
+					admission: 'completed',
+					outcome: 'succeeded',
+					errorCode: null,
+					occurredAt,
+					correlationHash: sha256HexV1(`audit-clear\0${nonce}`),
+				});
+			},
+		};
+	}
 
 	private isPinnedDockDisabledOnCurrentDevice(): boolean {
 		return this.settings.pinnedDockDisableOnMobile && Platform.isPhone;
@@ -1162,14 +1739,11 @@ export default class OperonPlugin extends Plugin {
 		this.startupReleaseCheckTimer = null;
 	}
 
-	private handleSettingsChanged(): void {
+	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): void {
 		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
 		this.writer.updateKeyMappings(this.settings.keyMappings);
 		const previousKeyMappingSignature = this.keyMappingSignature;
 		this.keyMappingSignature = this.buildKeyMappingSignature();
-		if (previousKeyMappingSignature !== this.keyMappingSignature) {
-			this.scheduleSettingsReindex('key-mappings');
-		}
 		const previousWorkflowStatusSemanticsSignature = this.workflowStatusSemanticsSignature;
 		this.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(this.settings.pipelines);
 		if (previousWorkflowStatusSemanticsSignature !== this.workflowStatusSemanticsSignature) {
@@ -1177,7 +1751,20 @@ export default class OperonPlugin extends Plugin {
 				'workflow semantics reconciliation marker persistence failed',
 				() => this.markTaskStatsBackfillPending(),
 			);
-			this.scheduleSettingsReindex('workflow-semantics');
+		}
+		const previousIndexSemanticsSignature = this.indexSemanticsSignature;
+		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
+		const previousProjectSerialScopeSignature = this.projectSerialScopeSettingsSignature;
+		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
+		if (previousIndexSemanticsSignature && previousIndexSemanticsSignature !== this.indexSemanticsSignature) {
+			const reason: SettingsReindexReason = previousKeyMappingSignature !== this.keyMappingSignature
+				? 'key-mappings'
+				: previousWorkflowStatusSemanticsSignature !== this.workflowStatusSemanticsSignature
+					? 'workflow-semantics'
+					: 'index-semantics';
+			this.scheduleSettingsReindex(reason, {
+				notify: options.notifyReindex !== false,
+			});
 		}
 		void this.externalCalendarService?.applySettings(this.settings.externalCalendars);
 		this.reminderScheduler?.handleSettingsChanged();
@@ -1185,15 +1772,12 @@ export default class OperonPlugin extends Plugin {
 			await this.mobileNotificationsExporter?.handleSettingsChanged();
 		});
 		initI18n(undefined, this.settings.language);
-		void this.reconcileProjectSerials({ notifyCapacity: true })
-			.then(() => {
-				if (this.startupReady) {
-					this.refreshViews({ reason: 'project-serials' });
-				}
-			})
-			.catch(error => {
-				console.warn('Operon: failed to reconcile project serials after settings change', error);
-			});
+		if (
+			previousProjectSerialScopeSignature
+			&& previousProjectSerialScopeSignature !== this.projectSerialScopeSettingsSignature
+		) {
+			this.scheduleProjectSerialIndexReconcile({ notifyCapacity: true });
+		}
 		this.applyWorkspaceTweaks();
 		this.scheduleWorkspacePropertiesCollapseForAllViews();
 		this.trackerStatusBar?.render();
@@ -1259,7 +1843,9 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async reconcileProjectSerialsForIndexMutation(): Promise<void> {
-		await this.reconcileProjectSerials();
+		const notifyCapacity = this.projectSerialNotifyCapacityPending;
+		this.projectSerialNotifyCapacityPending = false;
+		await this.reconcileProjectSerials({ notifyCapacity });
 	}
 
 	private reportStartupPipelineTaxonomyDiagnostics(): void {
@@ -1328,19 +1914,10 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async reloadCanonicalSettingsFromStorage(mode: 'background' | 'manual'): Promise<void> {
-		if (this.canonicalSettingsReloadRunning) return;
-		this.canonicalSettingsReloadRunning = true;
-		this.canonicalSettingsReloadLastCheckAt = Date.now();
 		try {
-			const previousLocaleIntent = {
-				language: this.settings.language,
-				languagePackSubscriptions: [...this.settings.languagePackSubscriptions],
-			};
-			const result = await this.storage.reloadCanonicalSettingsPackage();
-			const localeIntentChanged = hasLocalePackIntentChanged(previousLocaleIntent, this.settings);
+			const result = await this.refreshCanonicalSettingsSingleFlight();
 			const taxonomyDiagnostics = result.diagnostics.pipelineTaxonomy;
-			const failed = result.diagnostics.malformedPackage || taxonomyDiagnostics.backupFailed;
-			if (failed) {
+			if (result.failed) {
 				console.warn('Operon: canonical settings reload warning', result.diagnostics);
 				new Notice(t('notifications', taxonomyDiagnostics.backupFailed
 					? 'pipelineTaxonomyRecoveryFailed'
@@ -1355,16 +1932,7 @@ export default class OperonPlugin extends Plugin {
 					path: taxonomyDiagnostics.backupPath,
 				}));
 			}
-			const hasFileBackedTablePresetAuthority = this.settings.tablePresetFileBindings.length > 0
-				|| this.settings.tablePresetFileMigrationVersion >= 1;
-			if (result.changed || hasFileBackedTablePresetAuthority) {
-				await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-			}
 			if (result.changed) {
-				this.handleSettingsChanged();
-				if (localeIntentChanged) {
-					await this.synchronizeLanguagePacksAfterLayout();
-				}
 				if (mode === 'manual') {
 					new Notice(t('notifications', 'settingsReloadedFromStorage'));
 				}
@@ -1379,9 +1947,56 @@ export default class OperonPlugin extends Plugin {
 			if (mode === 'manual') {
 				new Notice(t('notifications', 'settingsReloadFailed'));
 			}
-		} finally {
-			this.canonicalSettingsReloadRunning = false;
 		}
+	}
+
+	private refreshCanonicalSettingsSingleFlight(): Promise<CanonicalSettingsReloadResult> {
+		if (this.canonicalSettingsReloadPromise) return this.canonicalSettingsReloadPromise;
+		const run = this.performCanonicalSettingsRefresh();
+		this.canonicalSettingsReloadPromise = run;
+		void run.then(
+			() => {
+				if (this.canonicalSettingsReloadPromise === run) this.canonicalSettingsReloadPromise = null;
+			},
+			() => {
+				if (this.canonicalSettingsReloadPromise === run) this.canonicalSettingsReloadPromise = null;
+			},
+		);
+		return run;
+	}
+
+	private async performCanonicalSettingsRefresh(): Promise<CanonicalSettingsReloadResult> {
+		this.canonicalSettingsReloadLastCheckAt = Date.now();
+		const previousLocaleIntent = {
+			language: this.settings.language,
+			languagePackSubscriptions: [...this.settings.languagePackSubscriptions],
+		};
+		const result = await this.storage.reloadCanonicalSettingsPackage();
+		const localeIntentChanged = hasLocalePackIntentChanged(previousLocaleIntent, this.settings);
+		const taxonomyDiagnostics = result.diagnostics.pipelineTaxonomy;
+		const failed = result.diagnostics.malformedPackage || taxonomyDiagnostics.backupFailed;
+		if (failed) {
+			return {
+				...result,
+				failed: true,
+				localeIntentChanged,
+			};
+		}
+		const hasFileBackedTablePresetAuthority = this.settings.tablePresetFileBindings.length > 0
+			|| this.settings.tablePresetFileInitialized;
+		if (result.changed || hasFileBackedTablePresetAuthority) {
+			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+			await this.ensureCanonicalTablePresetBootstrap();
+		}
+		if (result.changed) {
+			this.handleSettingsChanged({ notifyReindex: false });
+			if (localeIntentChanged) await this.synchronizeLanguagePacksAfterLayout();
+		}
+		return {
+			...result,
+			failed: false,
+			localeIntentChanged,
+		};
 	}
 
 	private resolvePreferredFilterSetId(filterSetId: string | null | undefined): string | null {
@@ -2109,37 +2724,7691 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	private initializeAgentRuntime(): void {
+		this.agentRuntimeLifecycle = new RuntimeLifecycleCoordinatorV1();
+		this.agentRuntimeTimingProbe = OPERON_AGENT_RUNTIME_PROBE_ENABLED
+			? new RuntimeTimingProbeBufferV1()
+			: null;
+		this.indexSideEffectSettlement = new RuntimeSettlementBarrierV1(
+			this.agentRuntimeLifecycle,
+			'index-side-effects',
+			'Operon could not settle index-derived Runtime state.',
+		);
+		this.agentRuntimeSessionId = createAgentRuntimeSessionId();
+		this.agentRuntimeStartupSettlementRelease = this.agentRuntimeLifecycle.beginSettling({
+			preservesBestEffortCache: true,
+		});
+		this.agentRuntimeCoherentRead = new RuntimeCoherentReadCoordinatorV1(
+			this.agentRuntimeLifecycle,
+			{
+				refreshSettings: async () => {
+					await this.refreshAgentRuntimeSettingsBoundary();
+					if (this.agentRuntimeServicesBound) await this.checkIndexV8ManifestStat();
+				},
+				settle: async requestId => {
+					await this.awaitAgentRuntimeSettlement({ requestId });
+				},
+				sampleRevision: () => this.sampleAgentRuntimeRevision(),
+				now: () => Date.now(),
+				setTimer: (callback: () => void, delayMs: number) => setWindowTimeout(callback, delayMs),
+				clearTimer: handle => clearWindowTimeout(handle as WindowTimeoutHandle),
+				...(this.agentRuntimeTimingProbe
+					? { timingSink: this.agentRuntimeTimingProbe }
+					: {}),
+			},
+		);
+		this.agentRuntimeCore = createOperonAgentRuntimeFacadeV1(
+			this.agentRuntimeLifecycle,
+			{
+				beforeHealth: async () => {
+					await this.refreshAgentRuntimeSettingsBoundary();
+				},
+				persistencePhase: () => (
+					this.agentRuntimeServicesBound
+						? this.indexer.getIndexV8RuntimePhase()
+						: 'idle'
+				),
+				revision: () => (
+					this.agentRuntimeServicesBound
+						? this.sampleAgentRuntimeRevision()
+						: undefined
+				),
+					observedAt: () => this.agentRuntimeObservedAt,
+					nativeCliTransportAvailable: () => this.agentRuntimeCliTransportAvailable,
+					transportDiagnostics: () => {
+						const persistent = this.agentRuntimePersistentReadSupervisor?.snapshot();
+						const windows = Platform.isWin;
+						const failureReasons = [
+							...(!this.agentRuntimeCliTransportAvailable && this.agentRuntimeCliTransportFailureReason
+								? [`native-cli:${this.agentRuntimeCliTransportFailureReason}`]
+								: []),
+							...(persistent && !persistent.available && persistent.reason
+								? [`persistent:${persistent.reason}`]
+								: []),
+						];
+						return {
+							channel: 'native-cli',
+							available: this.agentRuntimeCliTransportAvailable,
+							endpointKind: windows ? 'windows-named-pipe' : 'unix-domain-socket',
+							securityBackend: windows ? 'windows-dacl' : 'posix-mode',
+							persistentTransportAvailable: persistent?.available === true,
+							...(failureReasons.length > 0
+								? { failureReason: failureReasons.join(';') }
+								: {}),
+						};
+					},
+				capabilityAvailability: capability => {
+					if (AGENT_RUNTIME_PUBLISHED_READ_CAPABILITIES.has(capability)) {
+						return { availability: 'available' };
+					}
+					if (AGENT_RUNTIME_PUBLISHED_MUTATION_CAPABILITIES.has(capability)) {
+						return this.agentRuntimeMutationGateway
+							? { availability: 'available' }
+							: {
+								availability: 'unavailable',
+								reason: 'The live mutation Gateway has not completed its startup gate.',
+							};
+					}
+					return undefined;
+				},
+				catalogSnapshot: (request, context) => this.readAgentRuntimeCatalog(request, context),
+				resolveEntity: (request, context) => this.readAgentRuntimeEntity(request, context),
+				getTask: (request, context) => this.readAgentRuntimeTask(request, context),
+				queryTasks: (request, context) => this.queryAgentRuntimeTasks(request, context),
+				findTasks: (request, context) => this.findAgentRuntimeTasks(request, context),
+				getRelationships: (request, context) => this.readAgentRuntimeRelationships(request, context),
+				buildContext: (request, context) => this.buildAgentRuntimeContext(request, context),
+				readTimer: (request, context) => this.readAgentRuntimeTimer(request, context),
+				previewMutation: (request, context) => this.previewAgentRuntimeMutation(request, context),
+				applyMutation: request => this.applyAgentRuntimeMutation(request),
+			},
+		);
+	}
+
+	private async bindAgentRuntimeServices(): Promise<void> {
+		this.agentRuntimeSettingsFreshness = new RuntimeSettingsFreshnessCoordinatorV1({
+			statFingerprint: () => this.readAgentRuntimeSettingsPackageRevision(),
+			reload: async () => {
+				const result = await this.refreshCanonicalSettingsSingleFlight();
+				const revision = await this.readAgentRuntimeSettingsPackageRevision();
+				return { ok: !result.failed && revision !== 'missing' };
+			},
+		});
+		const primed = await this.agentRuntimeSettingsFreshness.prime();
+		if (!primed.ok) {
+			this.recordAgentRuntimeFreshnessFailure(primed);
+		}
+		this.bindAgentRuntimeContextBridge();
+		this.agentRuntimeServicesBound = true;
+	}
+
+	private bindAgentRuntimeContextBridge(): void {
+		this.agentRuntimeSourceHydrator = new RuntimeSourceHydratorV1({
+			read: async filePath => {
+				const file = this.app.vault.getAbstractFileByPath(filePath);
+				if (!(file instanceof TFile) || file.extension !== 'md') return null;
+				const before = { mtime: file.stat.mtime, size: file.stat.size };
+				const content = await this.app.vault.read(file);
+				const current = this.app.vault.getAbstractFileByPath(filePath);
+				if (!(current instanceof TFile)) return null;
+				return {
+					content,
+					mtimeMs: current.stat.mtime,
+					sizeBytes: current.stat.size,
+					stable: before.mtime === current.stat.mtime && before.size === current.stat.size,
+				};
+			},
+			onMismatch: async filePath => {
+				await this.indexer.reindexFilePath(filePath, { notify: false });
+			},
+		});
+		const provider = new LiveIndexContextProviderV1(
+			this.indexer,
+			{
+				isPinned: operonId => this.pinnedCache?.isPinned(operonId) === true,
+				getActiveTrackerTaskId: () => (
+					this.storage.activeTrackers.getAll().find(record => record.userId === '')?.taskId ?? null
+				),
+			},
+			this.agentRuntimeSourceHydrator,
+			() => this.settings,
+			() => this.requireAgentRuntimeCatalogProjection(),
+			{
+				listMarkdownFilePaths: () => (
+					this.app.vault.getMarkdownFiles().map(file => file.path)
+				),
+			},
+		);
+		this.agentRuntimeContextBridge = new ContextBridgeV1(
+			provider,
+			() => this.requireAgentRuntimeCatalogProjection(),
+			new RuntimeContextCursorCodecV1(getActiveWindow().crypto),
+		);
+	}
+
+	private async bindAgentRuntimeMutationGateway(): Promise<void> {
+		if (!Platform.isDesktopApp) return;
+		const receiptStore = new IndexedDbMutationReceiptStoreV1();
+		const receiptHealth = await receiptStore.health(true);
+		if (!receiptHealth.healthy) {
+			receiptStore.close();
+			return;
+		}
+		const auditStore = this.agentRuntimeSecurityAuditStore
+			?? new IndexedDbSecurityAuditStoreV1();
+		if (!await auditStore.health()) {
+			auditStore.close();
+			if (this.agentRuntimeSecurityAuditStore === auditStore) {
+				this.agentRuntimeSecurityAuditStore = null;
+			}
+			receiptStore.close();
+			return;
+		}
+		const nodeApi = await loadAgentRuntimeDesktopNodeApiV1();
+		this.agentRuntimeVaultIdentityHash = await computeRunningVaultSha256V1(
+			nodeApi,
+			this.app.vault.adapter,
+		);
+		this.agentRuntimeReceiptStore = receiptStore;
+		this.agentRuntimeSecurityAuditStore = auditStore;
+		const graphResourceState = (
+			content: string | null,
+		): GraphTransactionJournalStepV1['before'] => ({
+			state: content === null ? 'absent' : 'present',
+			digest: sha256HexV1(content ?? ''),
+			content,
+		});
+		const activeTrackerGraphContent = (): string => {
+			const active = this.timeTracker.getActiveState();
+			return canonicalJsonV1(toJsonValueV1(active
+				? {
+					operonId: active.operonId,
+					start: active.start,
+					isUnassigned: active.isUnassigned,
+				}
+				: null));
+		};
+		const currentMutationResourceRevision = async (
+			resourceKind: string,
+			resourceKey: string,
+		): Promise<string | null> => {
+			if (resourceKind === 'task-source') {
+				const source = await this.readAgentRuntimeMutationSource(resourceKey);
+				return sourceRevisionForTaskCreationV1(resourceKey, source.content);
+			}
+			if (resourceKind === 'active-tracker') {
+				return sha256HexV1(String(this.storage.activeTrackers.getGeneration()));
+			}
+			if (resourceKind === 'repeat-series') {
+				return sha256HexV1(String(this.storage.repeatSeries.getRevision()));
+			}
+			if (resourceKind === 'pinned') {
+				return sha256HexV1(String(this.pinnedCache?.getGeneration() ?? 0));
+			}
+			if (resourceKind === 'project-serial') {
+				return hashProjectSerialSignatureV1(this.storage.projectSerials.getSignature());
+			}
+			return null;
+		};
+		const semanticTransitionPreparedMutation = (
+			plan: RuntimeSemanticTransitionPlanV1,
+		): RuntimePreparedMutationV1 => ({
+			target: {
+				operonId: plan.prepared.task.operonId,
+				locator: plan.prepared.task.locator,
+				targetDigest: plan.prepared.targetDigest,
+			},
+			affectedResources: [...plan.affectedResources],
+			atomicGroups: [...plan.atomicGroups],
+			predictedEffects: [...plan.predictedEffects],
+			warnings: [],
+			token: plan,
+		});
+		const semanticTransitionCommitEvidence = async (
+			plan: RuntimeSemanticTransitionPlanV1,
+		): Promise<RuntimePreparedMutationCommitV1> => ({
+			status: 'committed',
+			groupResults: await Promise.all(plan.atomicGroups.map(async group => ({
+				groupId: group.groupId,
+				status: 'committed' as const,
+				resourceRevisions: (await Promise.all(group.resources.map(async resource => {
+					const revision = await currentMutationResourceRevision(
+						resource.resourceKind,
+						resource.resourceKey,
+					);
+					return revision ? [{ ...resource, revision }] : [];
+				}))).flat(),
+			}))),
+			affectedFilePaths: plan.affectedResources
+				.filter(resource => resource.resourceKind === 'task-source')
+				.map(resource => resource.resourceKey),
+		});
+		const semanticTransitionBeforeStateMatches = async (
+			plan: RuntimeSemanticTransitionPlanV1,
+		): Promise<boolean> => (
+			(await Promise.all(plan.affectedResources.map(async resource => (
+				await currentMutationResourceRevision(
+					resource.resourceKind,
+					resource.resourceKey,
+				) === resource.revision
+			)))).every(Boolean)
+		);
+		const semanticTransitionAfterStateMatches = async (
+			plan: RuntimeSemanticTransitionPlanV1,
+			committedStepIds: readonly string[] = [],
+		): Promise<boolean> => {
+			if (plan.projectSerialGroup) {
+				// Project-serial settlement has no pure predicted signature. Only
+				// its durable per-step checkpoint is accepted as committed evidence;
+				// a changed current signature alone must never self-certify it.
+				if (!committedStepIds.includes('project-serial')) return false;
+			}
+			if (plan.prepared.transition?.finalizeActiveTimer) {
+				const active = this.timeTracker.getActiveState();
+				const sessions = this.timeTracker.getTaskSessions(plan.prepared.task.operonId);
+				if (
+					active !== null
+					|| !plan.prepared.task.activeTimerStart
+					|| !sessions.some(session => (
+						session.start === plan.prepared.task.activeTimerStart
+					))
+				) return false;
+			}
+			return await this.verifyAgentRuntimeTaskMutation(
+				plan.effectiveAt,
+				semanticTransitionPreparedMutation(plan),
+				await semanticTransitionCommitEvidence(plan),
+			);
+		};
+		const semanticTransitionStepState = async (
+			plan: RuntimeSemanticTransitionPlanV1,
+			stepId: string,
+		): Promise<'before' | 'after' | 'other'> => {
+			let group = stepId === 'primary'
+				? plan.primaryGroup
+				: stepId === 'recurrence'
+					? plan.atomicGroups.find(candidate => candidate.groupId === plan.recurrence?.groupId)
+					: stepId === 'pinned'
+						? plan.pinnedGroup
+						: stepId === 'project-serial'
+							? plan.projectSerialGroup
+							: null;
+			if (stepId.startsWith('ancestor:')) {
+				group = plan.atomicGroups.find(
+					candidate => candidate.groupId === stepId.slice('ancestor:'.length),
+				) ?? null;
+			}
+			const sealedResources = group
+				? plan.affectedResources.filter(resource => group.resources.some(reference => (
+					reference.resourceKind === resource.resourceKind
+					&& reference.resourceKey === resource.resourceKey
+				)))
+				: [];
+			if (
+				sealedResources.length > 0
+				&& (await Promise.all(sealedResources.map(async resource => (
+					await currentMutationResourceRevision(
+						resource.resourceKind,
+						resource.resourceKey,
+					) === resource.revision
+				)))).every(Boolean)
+			) return 'before';
+			if (stepId === 'primary') {
+				const task = this.indexer.getTaskSnapshot(plan.prepared.task.operonId);
+				const expectedCheckbox = plan.prepared.fieldValues['_checkbox'];
+				const fieldsMatch = Object.entries(plan.prepared.fieldValues).every(
+					([key, value]) => key.startsWith('_')
+						? true
+						: (task?.fieldValues[key] ?? '') === value,
+				);
+				return task
+					&& fieldsMatch
+					&& (
+						expectedCheckbox === undefined
+						|| task.checkbox === expectedCheckbox
+					)
+					? 'after'
+					: 'other';
+			}
+			if (stepId === 'recurrence' && plan.recurrence) {
+				const preview = plan.recurrence.preview;
+				if (preview.disposition === 'ended') {
+					return this.storage.repeatSeries.getEntry(plan.recurrence.seriesId ?? '')
+						? 'other'
+						: 'after';
+				}
+				const next = await this.readAgentRuntimeMutationSource(
+					preview.nextLocator.filePath,
+				);
+				const archiveMatches = !preview.archiveSource
+					|| (await this.readAgentRuntimeMutationSource(
+						preview.archiveSource.locator.filePath,
+					)).content === preview.archiveSource.plannedSourceContent;
+				return next.content === preview.plannedSourceContent && archiveMatches
+					? 'after'
+					: 'other';
+			}
+			if (stepId === 'pinned') {
+				return this.pinnedCache?.isPinned(plan.prepared.task.operonId) === false
+					? 'after'
+					: 'other';
+			}
+			if (stepId === 'project-serial') {
+				return sealedResources[0]
+					&& await currentMutationResourceRevision('project-serial', 'global')
+						!== sealedResources[0].revision
+					? 'after'
+					: 'other';
+			}
+			return 'other';
+		};
+		const readGraphResourceState = async (
+			step: GraphTransactionJournalStepV1,
+			): Promise<GraphTransactionJournalStepV1['before']> => {
+				if (step.resourceKind === 'repeat-series') {
+					const entry = this.storage.repeatSeries.getEntry(step.resourceKey);
+					return graphResourceState(entry ? canonicalJsonV1(toJsonValueV1(entry)) : null);
+				}
+				if (step.resourceKind === 'pinned') {
+					const entry = this.pinnedCache?.getCanonicalEntry(step.resourceKey) ?? null;
+					return graphResourceState(entry ? canonicalJsonV1(toJsonValueV1(entry)) : null);
+				}
+				if (step.resourceKind === 'active-tracker') {
+					return graphResourceState(activeTrackerGraphContent());
+				}
+				if (step.resourceKind === 'semantic-transition') {
+					try {
+						const plan = JSON.parse(
+							step.before.content ?? '',
+						) as RuntimeSemanticTransitionPlanV1;
+						if (
+							plan.kind !== 'semantic-transition-plan'
+							|| plan.operation !== 'task.transition'
+						) return graphResourceState(null);
+						if (await semanticTransitionAfterStateMatches(plan)) return step.after;
+						if (await semanticTransitionBeforeStateMatches(plan)) return step.before;
+						return graphResourceState(null);
+					} catch {
+						return graphResourceState(null);
+					}
+				}
+				return graphResourceState(
+				(await this.readAgentRuntimeMutationSource(step.resourceKey)).content,
+			);
+		};
+		const graphStatesMatch = (
+			left: GraphTransactionJournalStepV1['before'],
+			right: GraphTransactionJournalStepV1['before'],
+		): boolean => (
+			left.state === right.state
+			&& left.digest === right.digest
+			&& left.content === right.content
+		);
+		const verifyGraphSteps = async (
+			steps: readonly GraphTransactionJournalStepV1[],
+			expected: 'before' | 'after',
+		): Promise<boolean> => (
+			(await Promise.all(steps.map(readGraphResourceState)))
+				.every((state, index) => graphStatesMatch(state, steps[index][expected]))
+		);
+		const applyGraphStep = async (
+			step: GraphTransactionJournalStepV1,
+			direction: 'forward' | 'reverse',
+		): Promise<boolean> => {
+			const before = direction === 'forward' ? step.before : step.after;
+			const after = direction === 'forward' ? step.after : step.before;
+			if (graphStatesMatch(before, after)) {
+				return verifyGraphSteps([step], direction === 'forward' ? 'before' : 'after');
+			}
+				if (step.resourceKind === 'repeat-series') {
+				const outcome = await this.storage.repeatSeries.compareAndSetEntry(
+					step.resourceKey,
+					before.content ? JSON.parse(before.content) as RepeatSeriesEntry : null,
+					after.content ? JSON.parse(after.content) as RepeatSeriesEntry : null,
+				);
+					return outcome !== 'conflict';
+				}
+				if (step.resourceKind === 'pinned') {
+					if (!this.pinnedCache || !after.content) return false;
+					const expected = before.content
+						? JSON.parse(before.content) as { pinned: boolean; updatedAt: string }
+						: null;
+					const next = JSON.parse(after.content) as { pinned: boolean; updatedAt: string };
+					const outcome = await this.pinnedCache.compareAndSetPinned(
+						step.resourceKey,
+						expected,
+						next.pinned,
+						next.updatedAt,
+					);
+					return outcome.outcome !== 'conflict';
+				}
+				if (
+					step.resourceKind === 'active-tracker'
+					|| step.resourceKind === 'semantic-transition'
+				) {
+					// These operations own high-level commit and recovery paths;
+					// generic graph writes must never bypass compound side effects.
+					return false;
+				}
+			const write = before.state === 'absent'
+				? await this.writer.applyTaskSourceMutation({
+					kind: 'create',
+					filePath: step.resourceKey,
+					nextContent: after.content ?? '',
+				})
+				: after.state === 'absent'
+					? await this.writer.applyTaskSourceMutation({
+						kind: 'trash',
+						filePath: step.resourceKey,
+						expectedContent: before.content ?? '',
+					})
+					: await this.writer.applyTaskSourceMutation({
+						kind: 'modify',
+						filePath: step.resourceKey,
+						expectedContent: before.content ?? '',
+						nextContent: after.content ?? '',
+					});
+			return write.outcome === 'committed';
+		};
+		const requireGraphStep = async (
+			step: GraphTransactionJournalStepV1,
+			direction: 'forward' | 'reverse',
+		): Promise<void> => {
+			if (!await applyGraphStep(step, direction)) throw new Error('Graph CAS conflict.');
+		};
+		type GraphSourceUpdate = {
+			operonId: string;
+			format: 'inline' | 'yaml';
+			lineNumber?: number;
+			fieldValues: Record<string, string>;
+		};
+		const mergeGraphSourceUpdate = (
+			updatesByFile: Map<string, Map<string, GraphSourceUpdate>>,
+			filePath: string,
+			update: GraphSourceUpdate,
+		): void => {
+			const byTask = updatesByFile.get(filePath) ?? new Map<string, GraphSourceUpdate>();
+			const current = byTask.get(update.operonId);
+			byTask.set(update.operonId, {
+				...update,
+				fieldValues: { ...(current?.fieldValues ?? {}), ...update.fieldValues },
+			});
+			updatesByFile.set(filePath, byTask);
+		};
+		const prepareGraphSourceStep = async (
+			filePath: string,
+			affectedResources: readonly { resourceKind: string; resourceKey: string; revision: string }[],
+			updates: readonly GraphSourceUpdate[],
+			label: string,
+		): Promise<
+			| { ok: true; step: GraphTransactionJournalStepV1 }
+			| { ok: false; code: 'stale-source'; reason: string }
+		> => {
+			const expectedRevision = affectedResources.find(resource => (
+				resource.resourceKind === 'task-source' && resource.resourceKey === filePath
+			))?.revision;
+			const source = await this.readAgentRuntimeMutationSource(filePath);
+			if (
+				source.content === null
+				|| expectedRevision === undefined
+				|| sourceRevisionForTaskCreationV1(filePath, source.content) !== expectedRevision
+			) {
+				return { ok: false, code: 'stale-source', reason: `${label} source changed: ${filePath}.` };
+			}
+			const rendered = updates.length === 0
+				? { ok: true as const, content: source.content }
+				: this.writer.renderGuardedTaskSourceContent(filePath, source.content, updates);
+			if (!rendered.ok) {
+				return { ok: false, code: 'stale-source', reason: `Cannot seal ${label} source: ${rendered.reason}` };
+			}
+			return {
+				ok: true,
+				step: {
+					stepId: `source:${filePath}`,
+					groupId: `task-source:${filePath}`,
+					resourceKind: 'task-source',
+					resourceKey: filePath,
+					operation: 'modify',
+					before: graphResourceState(source.content),
+					after: graphResourceState(rendered.content),
+				},
+			};
+		};
+		const buildTaskFieldGraphUpdates = (
+			task: AgentRuntimeIndexedTaskSnapshot,
+			fieldValues: Record<string, string>,
+			noChange: boolean,
+			modifiedAt: string,
+			aggregateAncestorOperonIds: readonly string[] | undefined,
+		): Map<string, Map<string, GraphSourceUpdate>> => {
+			const updatesByFile = new Map<string, Map<string, GraphSourceUpdate>>();
+			mergeGraphSourceUpdate(updatesByFile, task.primary.filePath, {
+				operonId: task.operonId,
+				format: task.primary.format,
+				...(task.primary.lineNumber === undefined
+					? {}
+					: { lineNumber: task.primary.lineNumber }),
+				fieldValues,
+			});
+			for (const patch of this.planAgentRuntimeTaskFieldAggregatePatches(
+				task,
+				fieldValues,
+				noChange,
+				modifiedAt,
+				aggregateAncestorOperonIds,
+			)) {
+				mergeGraphSourceUpdate(updatesByFile, patch.filePath, {
+					operonId: patch.operonId,
+					format: patch.format,
+					...(patch.lineNumber === undefined ? {} : { lineNumber: patch.lineNumber }),
+					fieldValues: { ...patch.fieldValues },
+				});
+			}
+			return updatesByFile;
+		};
+		const indexInlineTaskLines = (
+			content: string,
+			filePath: string,
+		): Map<string, { count: number; lineNumber: number }> => {
+			const index = new Map<string, { count: number; lineNumber: number }>();
+			for (const [lineNumber, line] of content.split(/\r?\n/u).entries()) {
+				const operonId = this.parseInlineTaskLine(line, lineNumber, filePath)?.operonId;
+				if (!operonId) continue;
+				const existing = index.get(operonId);
+				if (existing) {
+					existing.count += 1;
+				} else {
+					index.set(operonId, { count: 1, lineNumber });
+				}
+			}
+			return index;
+		};
+		const uniqueInlineTaskLine = (
+			index: ReadonlyMap<string, { count: number; lineNumber: number }> | undefined,
+			operonId: string,
+		): number | null => {
+			const entry = index?.get(operonId);
+			return entry?.count === 1 ? entry.lineNumber : null;
+		};
+		const expectedRepeatEntry = (
+			recurrence: Extract<
+				RuntimeTaskCreationPreparationV1,
+				{ ok: true }
+			>['recurrenceResources'][number],
+			modifiedAt: string,
+		): RepeatSeriesEntry => {
+			const timestamp = toLocalDatetime(new Date(modifiedAt));
+			return {
+				seriesId: recurrence.seriesId,
+				sourceTaskId: recurrence.operonId,
+				sourceFormat: recurrence.sourceFormat,
+				baseTitle: recurrence.baseTitle,
+				lastMaterializedTitle: recurrence.lastMaterializedTitle,
+				naming: recurrence.naming,
+				skipDates: [],
+				yamlPropertyValueRemovalConfigured: false,
+				yamlPropertyValueRemovals: [],
+				baseTemporalTemplate: recurrence.baseTemporalTemplate,
+				inlineCompletionMode: 'keep-completed',
+				createdAt: timestamp,
+				updatedAt: timestamp,
+				overrides: { single: {}, following: [] },
+			};
+		};
+		let graphTransactionProbeArmed = OPERON_AGENT_RUNTIME_PROBE_ENABLED;
+		let relationshipTransactionProbeArmed = OPERON_AGENT_RUNTIME_PROBE_ENABLED;
+		let recurrenceTransactionProbeArmed = OPERON_AGENT_RUNTIME_PROBE_ENABLED;
+		let timerSessionTransactionProbeArmed = OPERON_AGENT_RUNTIME_PROBE_ENABLED;
+		let sourceTransitionPreTrashProbeArmed = OPERON_AGENT_RUNTIME_PROBE_ENABLED;
+		let sourceTransitionPostTrashProbeArmed = OPERON_AGENT_RUNTIME_PROBE_ENABLED;
+		this.agentRuntimeMutationGateway = new RuntimeMutationGatewayV1({
+			isReady: () => this.agentRuntimeLifecycle.getPhase() === 'ready',
+			sampleContextRevision: () => this.sampleAgentRuntimeRevision().contextRevision,
+			...(this.agentRuntimeTimingProbe
+				? { timingSink: this.agentRuntimeTimingProbe }
+				: {}),
+			prepareCreation: async (
+				requestId,
+				spec,
+				sealedIds,
+				effectiveAt,
+				activeItemRefs,
+				sealedSeriesIds,
+			) => (
+				await prepareRuntimeTaskCreationV1(
+					requestId,
+					spec,
+					{
+						settings: () => this.settings,
+						listOperonIds: () => this.indexer.getAllOperonIds(),
+						getExistingTask: operonId => {
+							const task = this.indexer.getTaskSnapshot(operonId);
+							return task ? {
+								operonId,
+								fieldValues: task.fieldValues,
+								tags: task.tags,
+								duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+								filePath: task.primary.filePath,
+								representation: task.primary.format === 'yaml' ? 'file' : 'inline',
+								...(task.primary.format === 'inline'
+									? { lineNumber: task.primary.lineNumber }
+									: {}),
+							} : null;
+						},
+						listDependencyGraphTasks: () => this.indexer.getAllTasks().map(task => ({
+							operonId: task.operonId,
+							fieldValues: { ...task.fieldValues },
+							tags: [...task.tags],
+						})),
+						readSource: filePath => this.readAgentRuntimeMutationSource(filePath),
+						resolveConfiguredInlineTarget: parent => this.resolveAgentRuntimeInlineCreationTarget(parent),
+						resolveConfiguredFilePath: (description, parent) => (
+							this.resolveAgentRuntimeFileCreationPath(description, parent)
+						),
+						readTemplate: templateId => this.readAgentRuntimeCreationTemplate(templateId),
+						creationFieldCatalog: () => this.getAgentRuntimeCatalogBuild().ok
+							? this.requireAgentRuntimeCatalogProjection().fields
+							: [],
+						resolveCoreTemplateVariables: (content, context) => (
+							resolveCoreTemplateVariables(
+								content,
+								context,
+								{ resolveFencedCodeBlocks: false },
+							)
+						),
+						generateOperonId: () => generateOperonId(),
+						listRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
+						generateRepeatSeriesId: usedIds => generateRepeatSeriesId(new Set(usedIds)),
+						repeatSeriesRevision: () => sha256HexV1(
+							String(this.storage.repeatSeries.getRevision()),
+						),
+						now: () => localNow(),
+					},
+					sealedIds,
+					effectiveAt ? toLocalDatetime(new Date(effectiveAt)) : undefined,
+					activeItemRefs,
+					sealedSeriesIds,
+				)
+			),
+			// The live Runtime always supplies the durable creation transaction ports.
+			// This compatibility fallback remains for alternate V1 gateway embeddings.
+			commitCreation: async () => ({
+				status: 'failed',
+				groups: [],
+				remainingGroupIds: [],
+			}),
+			prepareCreationTransaction: async (prepared, modifiedAt) => {
+				const steps: GraphTransactionJournalStepV1[] = [];
+				const availablePaths = [...new Set([
+					...prepared.plan.sourceGroups.map(group => group.filePath),
+					...prepared.parentResources.map(resource => resource.filePath),
+				])];
+				const orderedPaths = prepared.sourceGroupGraph.sourceOrder;
+				if (
+					orderedPaths.length !== availablePaths.length
+					|| new Set(orderedPaths).size !== orderedPaths.length
+					|| availablePaths.some(path => !orderedPaths.includes(path))
+				) {
+					return {
+						ok: false as const,
+						code: 'invalid-request' as const,
+						reason: 'Invalid sealed graph source order.',
+					};
+				}
+				for (const filePath of orderedPaths) {
+					const sourceGroup = prepared.plan.sourceGroups.find(group => group.filePath === filePath);
+					const parents = prepared.parentResources.filter(parent => parent.filePath === filePath);
+					const expectedContent = sourceGroup?.expectedContent ?? parents[0]?.sourceContent ?? null;
+					let resultingContent = sourceGroup?.resultingContent ?? expectedContent ?? '';
+					if (parents.length > 0) {
+						const rendered = this.writer.renderGuardedTaskSourceContent(
+							filePath,
+							resultingContent,
+							parents.map(parent => ({
+								operonId: parent.operonId,
+								format: parent.format,
+								...(parent.lineNumber === undefined ? {} : { lineNumber: parent.lineNumber }),
+								fieldValues: {
+									datetimeModified: toLocalDatetime(new Date(modifiedAt)),
+								},
+							})),
+						);
+						if (!rendered.ok) {
+							return {
+								ok: false as const,
+								code: 'stale-source' as const,
+								reason: `Cannot seal parent source: ${rendered.reason}`,
+							};
+						}
+						resultingContent = rendered.content;
+					}
+					steps.push({
+						stepId: `source:${filePath}`,
+						groupId: `task-source:${filePath}`,
+						resourceKind: 'task-source',
+						resourceKey: filePath,
+						operation: expectedContent === null ? 'create' : 'modify',
+						before: graphResourceState(expectedContent),
+						after: graphResourceState(resultingContent),
+					});
+					for (const recurrence of prepared.recurrenceResources
+						.filter(resource => resource.filePath === filePath)
+						.sort((left, right) => left.seriesId.localeCompare(right.seriesId))) {
+						const entry = expectedRepeatEntry(recurrence, modifiedAt);
+						const content = canonicalJsonV1(toJsonValueV1(entry));
+						steps.push({
+							stepId: `repeat:${recurrence.seriesId}`,
+							groupId: `task-source:${filePath}`,
+							resourceKind: 'repeat-series',
+							resourceKey: recurrence.seriesId,
+							operation: 'create',
+							before: graphResourceState(null),
+							after: graphResourceState(content),
+						});
+					}
+				}
+				const aggregatePatches = this.aggregateCoordinator.planCreationAggregatePatches(
+					prepared.plan.tasks.map(task => ({
+						operonId: task.operonId,
+						checkbox: task.checkbox,
+						fieldValues: {
+							...task.fieldValues,
+							...(task.parentOperonId ? { parentTask: task.parentOperonId } : {}),
+						},
+						filePath: task.filePath,
+						format: task.representation === 'file' ? 'yaml' : 'inline',
+						...(task.lineNumber === undefined ? {} : { lineNumber: task.lineNumber }),
+					})),
+					toLocalDatetime(new Date(modifiedAt)),
+				);
+				const patchesByFile = new Map<string, typeof aggregatePatches>();
+				for (const patch of aggregatePatches) {
+					const patches = patchesByFile.get(patch.filePath) ?? [];
+					patches.push(patch);
+					patchesByFile.set(patch.filePath, patches);
+				}
+				for (const [filePath, patches] of [...patchesByFile.entries()].sort(([left], [right]) => (
+					left.localeCompare(right)
+				))) {
+					let sourceStep = steps.find(step => (
+						step.resourceKind === 'task-source' && step.resourceKey === filePath
+					));
+					if (!sourceStep) {
+						const source = await this.readAgentRuntimeMutationSource(filePath);
+						if (source.content === null) {
+							return {
+								ok: false as const,
+								code: 'stale-source' as const,
+								reason: `Missing aggregate source: ${filePath}`,
+							};
+						}
+						sourceStep = {
+							stepId: `aggregate:${filePath}`,
+							groupId: `task-source:${filePath}`,
+							resourceKind: 'task-source',
+							resourceKey: filePath,
+							operation: 'modify',
+							before: graphResourceState(source.content),
+							after: graphResourceState(source.content),
+						};
+						steps.push(sourceStep);
+					}
+					const rendered = this.writer.renderGuardedTaskSourceContent(
+						filePath,
+						sourceStep.after.content ?? '',
+						patches.map(patch => ({
+							operonId: patch.operonId,
+							format: patch.format,
+							...(patch.lineNumber === undefined ? {} : { lineNumber: patch.lineNumber }),
+							fieldValues: patch.fieldValues,
+						})),
+					);
+					if (!rendered.ok) {
+						return {
+							ok: false as const,
+							code: 'stale-source' as const,
+							reason: `Cannot seal aggregate source: ${rendered.reason}`,
+						};
+					}
+					sourceStep.after = graphResourceState(rendered.content);
+				}
+				return { ok: true as const, steps };
+			},
+			commitCreationTransaction: async (_prepared, _modifiedAt, journal, checkpoint) => {
+				const execution = await executeRuntimeGraphTransactionCommitV1(
+					journal,
+					async step => await applyGraphStep(step, 'forward'),
+					checkpoint,
+					(_step, index) => {
+						if (
+							OPERON_AGENT_RUNTIME_PROBE_ENABLED
+							&& graphTransactionProbeArmed
+							&& index === 0
+							&& journal.idempotencyKeyHash === sha256HexV1('a6-probe-graph-interrupt-v1')
+							&& new Set(journal.steps
+								.filter(item => item.resourceKind === 'task-source')
+								.map(item => item.resourceKey)).size > 1
+						) {
+							graphTransactionProbeArmed = false;
+							throw new Error('Agent Runtime probe interrupted the cross-source graph commit.');
+						}
+					},
+				);
+				if (execution.status !== 'committed') {
+					return {
+						status: execution.status,
+						groups: [],
+						remainingGroupIds: [...new Set(
+							journal.steps.slice(execution.completedStepCount).map(item => item.groupId),
+						)],
+					};
+				}
+				const repeatRevision = sha256HexV1(String(this.storage.repeatSeries.getRevision()));
+				const groups: TaskCreationSourceGroupOutcome[] = [];
+				for (const groupId of [...new Set(journal.steps.map(step => step.groupId))]) {
+					const steps = journal.steps.filter(step => step.groupId === groupId);
+					const source = steps.find(step => step.resourceKind !== 'repeat-series');
+					if (!source) continue;
+					groups.push({
+						groupId,
+						filePath: source.resourceKey,
+						result: {
+							status: 'committed',
+							resultingRevision: sourceRevisionForTaskCreationV1(
+								source.resourceKey,
+								source.after.content,
+							),
+							resourceRevisions: steps.map(step => ({
+								resourceKind: step.resourceKind === 'repeat-series'
+									? 'repeat-series' as const
+									: 'task-source' as const,
+								resourceKey: step.resourceKey,
+								revision: step.resourceKind === 'repeat-series'
+									? repeatRevision
+									: sourceRevisionForTaskCreationV1(
+										step.resourceKey,
+										step.after.content,
+									),
+							})),
+						},
+					});
+				}
+				await checkpoint({ phase: 'postflight', completedStepCount: journal.steps.length });
+				return { status: 'committed', groups, remainingGroupIds: [] };
+			},
+			recoverCreationTransaction: async (
+				request,
+				journal,
+				checkpoint,
+			): Promise<RuntimeGraphTransactionRecoveryV1> => {
+				const affectedFilePaths = [...new Set(journal.steps
+					.filter(step => step.resourceKind === 'task-source')
+					.map(step => step.resourceKey))];
+					const buildGroupResults = async () => await Promise.all(
+						request.plan.atomicGroups.map(async group => {
+							return {
+								groupId: group.groupId,
+								status: 'committed' as const,
+								resourceRevisions: await Promise.all(group.resources.map(async resource => ({
+									...resource,
+									revision: resource.resourceKind === 'repeat-series'
+										? sha256HexV1(String(this.storage.repeatSeries.getRevision()))
+										: sourceRevisionForTaskCreationV1(
+											resource.resourceKey,
+											(await this.readAgentRuntimeMutationSource(resource.resourceKey)).content,
+										),
+								}))),
+							};
+						}),
+					);
+				const verifyRecoveredGraphPostflight = async (): Promise<boolean> => {
+					await this.awaitAgentRuntimeSettlement();
+					const inlineTaskLinesByFile = new Map<
+						string,
+						Map<string, { count: number; lineNumber: number }>
+					>();
+					const expectedInlineLine = (filePath: string, operonId: string) => {
+						let index = inlineTaskLinesByFile.get(filePath);
+						if (!index) {
+							index = indexInlineTaskLines(
+								journal.steps.find(step => (
+									step.resourceKind === 'task-source'
+									&& step.resourceKey === filePath
+								))?.after.content ?? '',
+								filePath,
+							);
+							inlineTaskLinesByFile.set(filePath, index);
+						}
+						return uniqueInlineTaskLine(index, operonId);
+					};
+					const createItems = request.plan.spec.operation === 'create'
+						? new Map(request.plan.spec.items.map(item => [item.itemRef, item]))
+						: null;
+					for (const effect of request.plan.createEffects ?? []) {
+						const indexed = this.indexer.getTaskSnapshot(effect.operonId);
+						const finalInlineLine = effect.locator.representation === 'inline'
+							? expectedInlineLine(effect.locator.filePath, effect.operonId)
+							: null;
+						if (
+							!indexed
+							|| this.indexer.hasDuplicateOperonIdConflict(effect.operonId)
+							|| indexed.primary.filePath !== effect.locator.filePath
+							|| indexed.primary.format !== (
+								effect.locator.representation === 'file' ? 'yaml' : 'inline'
+							)
+						) return false;
+						if (
+							effect.locator.representation === 'inline'
+							&& (
+								finalInlineLine === null
+								|| indexed.primary.lineNumber !== finalInlineLine
+							)
+						) return false;
+						if (
+							(effect.resolvedParentOperonId ?? '')
+							!== (indexed.fieldValues['parentTask'] ?? '')
+						) return false;
+						const related = new Set(
+							(indexed.fieldValues['related'] ?? '')
+								.split(';')
+								.map(value => value.trim())
+								.filter(Boolean),
+						);
+						if (effect.resolvedRelatedOperonIds.some(operonId => !related.has(operonId))) {
+							return false;
+						}
+						for (const dependency of effect.resolvedDependencies ?? []) {
+							const field = dependency.relation === 'blocks' ? 'blocking' : 'blockedBy';
+							if (!parseDependencyIdList(indexed.fieldValues[field]).includes(dependency.operonId)) {
+								return false;
+							}
+						}
+						if (
+							effect.repeatSeriesId
+							&& !this.storage.repeatSeries.getEntry(effect.repeatSeriesId)
+						) return false;
+						const item = createItems?.get(effect.itemRef);
+						for (const field of item?.fields ?? []) {
+							if (field.kind === 'reminder-datetimes') {
+								const values = (indexed.fieldValues['reminderDatetimes'] ?? '')
+									.split(';').map(value => value.trim()).filter(Boolean);
+								if (canonicalJsonV1(toJsonValueV1(values))
+									!== canonicalJsonV1(toJsonValueV1(field.values))) return false;
+							}
+							if (field.kind === 'reminder-rules') {
+								const values = (indexed.fieldValues['reminderRules'] ?? '')
+									.split(';').map(value => value.trim()).filter(Boolean);
+								if (canonicalJsonV1(toJsonValueV1(values))
+									!== canonicalJsonV1(toJsonValueV1(field.values))) return false;
+							}
+							if (
+								field.kind === 'recurrence'
+								&& (
+									indexed.fieldValues['repeat'] !== field.rule
+									|| (indexed.fieldValues['datetimeRepeatEnd'] ?? '')
+										!== (field.endDatetime ?? '')
+								)
+							) return false;
+						}
+					}
+					return true;
+				};
+				const execution = await executeRuntimeGraphTransactionRecoveryV1(journal, {
+					readState: async step => await readGraphResourceState(step),
+					statesMatch: graphStatesMatch,
+					applyForward: async step => await requireGraphStep(step, 'forward'),
+					applyCompensation: async step => await requireGraphStep(step, 'reverse'),
+					checkpoint,
+					verifyState: async expected => await verifyGraphSteps(journal.steps, expected),
+					verifyForward: async () => {
+						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
+						return await verifyRecoveredGraphPostflight();
+					},
+					verifyCompensation: async () => {
+						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
+						return true;
+					},
+				});
+				if (execution.status === 'forward-completed') {
+					return {
+						status: execution.status,
+						groupResults: await buildGroupResults(),
+						affectedFilePaths,
+						verified: true,
+					};
+				}
+				const verified = execution.status === 'compensated';
+				return {
+					status: execution.status,
+					groupResults: affectedFilePaths.map(filePath => ({
+						groupId: `task-source:${filePath}`,
+						status: verified ? 'failed' as const : 'outcome-unknown' as const,
+					})),
+					affectedFilePaths,
+					verified,
+					reason: verified ? 'Graph compensated.' : 'Graph recovery unresolved.',
+				};
+			},
+				verifyCreationTransactionState: async (journal, expected) => (
+					await verifyGraphSteps(journal.steps, expected)
+				),
+				prepareMutationTransaction: async (request, prepared, modifiedAt) => {
+					const timerControl = prepared.token as RuntimeTimerMutationPreparationV1;
+					if (
+						timerControl?.kind === 'timer'
+						&& request.plan.mutationKind === 'timer.control'
+						&& (
+							request.plan.spec.operation === 'start'
+							|| request.plan.spec.operation === 'stop'
+						)
+					) {
+						const beforeContent = canonicalJsonV1(toJsonValueV1(
+							timerControl.expectedActive,
+						));
+						if (activeTrackerGraphContent() !== beforeContent) {
+							return {
+								ok: false as const,
+								code: 'stale-source' as const,
+								reason: 'The active timer changed after preview.',
+							};
+						}
+						const afterContent = timerControl.noChange
+							? beforeContent
+							: canonicalJsonV1(toJsonValueV1(
+								timerControl.operation === 'stop'
+								? null
+								: {
+									operonId: timerControl.targetOperonId,
+									start: toLocalDatetime(new Date(modifiedAt)),
+									isUnassigned: timerControl.targetOperonId === null,
+								},
+							));
+						const effectiveLocal = toLocalDatetime(new Date(modifiedAt));
+						const updatesByFile = new Map<string, Map<string, GraphSourceUpdate>>();
+						let previousUpdate: GraphSourceUpdate | null = null;
+						let previousFilePath: string | null = null;
+						let targetUpdate: GraphSourceUpdate | null = null;
+						let targetFilePath: string | null = null;
+						const previousOperonId = timerControl.expectedActive?.operonId ?? null;
+						if (
+							previousOperonId
+							&& (
+								timerControl.operation === 'stop'
+								|| previousOperonId !== timerControl.targetOperonId
+							)
+						) {
+							const previous = this.indexer.getTaskSnapshot(previousOperonId);
+							const payload = this.timeTracker.previewStopTaskFields(
+								previousOperonId,
+								effectiveLocal,
+							);
+							if (!previous || payload === null) {
+								return {
+									ok: false as const,
+									code: 'stale-source' as const,
+									reason: 'The active timer task cannot be sealed for recovery.',
+								};
+							}
+							previousFilePath = previous.primary.filePath;
+							previousUpdate = {
+								operonId: previousOperonId,
+								format: previous.primary.format,
+								...(previous.primary.lineNumber === undefined
+									? {}
+									: { lineNumber: previous.primary.lineNumber }),
+								fieldValues: payload,
+							};
+							mergeGraphSourceUpdate(updatesByFile, previousFilePath, previousUpdate);
+						}
+						if (timerControl.operation === 'start' && timerControl.targetOperonId) {
+							const target = this.indexer.getTaskSnapshot(timerControl.targetOperonId);
+							const payload = this.timeTracker.previewStartTaskFields(
+								timerControl.targetOperonId,
+								effectiveLocal,
+							);
+							if (!target || payload === null) {
+								return {
+									ok: false as const,
+									code: 'stale-source' as const,
+									reason: 'The timer target task cannot be sealed for recovery.',
+								};
+							}
+							targetFilePath = target.primary.filePath;
+							targetUpdate = {
+								operonId: timerControl.targetOperonId,
+								format: target.primary.format,
+								...(target.primary.lineNumber === undefined
+									? {}
+									: { lineNumber: target.primary.lineNumber }),
+								fieldValues: payload,
+							};
+							mergeGraphSourceUpdate(updatesByFile, targetFilePath, targetUpdate);
+						}
+						const sourceSteps: GraphTransactionJournalStepV1[] = [];
+						const switchingTasks = timerControl.operation === 'start'
+							&& !!previousOperonId
+							&& previousOperonId !== timerControl.targetOperonId
+							&& !!previousUpdate
+							&& !!previousFilePath
+							&& !!targetUpdate
+							&& !!targetFilePath;
+						if (switchingTasks) {
+							const sealedPreviousFilePath = previousFilePath as string;
+							const sealedPreviousUpdate = previousUpdate as GraphSourceUpdate;
+							const sealedTargetFilePath = targetFilePath as string;
+							const sealedTargetUpdate = targetUpdate as GraphSourceUpdate;
+							const previousStep = await prepareGraphSourceStep(
+								sealedPreviousFilePath,
+								request.plan.affectedResources,
+								[sealedPreviousUpdate],
+								'Timer switch previous task',
+							);
+							if (!previousStep.ok) return previousStep;
+							sourceSteps.push({
+								...previousStep.step,
+								stepId: `timer-control:stop-source:${sealedPreviousFilePath}`,
+								groupId: request.plan.atomicGroups[0]?.groupId
+									?? `timer-control:${timerControl.targetOperonId ?? 'unassigned'}`,
+							});
+							if (sealedTargetFilePath === sealedPreviousFilePath) {
+								const rendered = this.writer.renderGuardedTaskSourceContent(
+									sealedTargetFilePath,
+									previousStep.step.after.content ?? '',
+									[sealedTargetUpdate],
+								);
+								if (!rendered.ok) {
+									return {
+										ok: false as const,
+										code: 'stale-source' as const,
+										reason: `Cannot seal timer switch target source: ${rendered.reason}`,
+									};
+								}
+								sourceSteps.push({
+									stepId: `timer-control:start-source:${sealedTargetFilePath}`,
+									groupId: previousStep.step.groupId,
+									resourceKind: 'task-source',
+									resourceKey: sealedTargetFilePath,
+									operation: 'modify',
+									before: previousStep.step.after,
+									after: graphResourceState(rendered.content),
+								});
+							} else {
+								const targetStep = await prepareGraphSourceStep(
+									sealedTargetFilePath,
+									request.plan.affectedResources,
+									[sealedTargetUpdate],
+									'Timer switch target task',
+								);
+								if (!targetStep.ok) return targetStep;
+								sourceSteps.push({
+									...targetStep.step,
+									stepId: `timer-control:start-source:${sealedTargetFilePath}`,
+									groupId: previousStep.step.groupId,
+								});
+							}
+						} else for (const filePath of timerControl.affectedFilePaths) {
+							const sourceStep = await prepareGraphSourceStep(
+								filePath,
+								request.plan.affectedResources,
+								[...(updatesByFile.get(filePath)?.values() ?? [])],
+								'Timer control',
+							);
+							if (!sourceStep.ok) return sourceStep;
+							sourceSteps.push({
+								...sourceStep.step,
+								stepId: `timer-control:source:${filePath}`,
+								groupId: request.plan.atomicGroups[0]?.groupId
+									?? `timer-control:${timerControl.targetOperonId ?? 'unassigned'}`,
+							});
+						}
+						const trackerStep: GraphTransactionJournalStepV1 = {
+							stepId: 'timer-control:current-user',
+							groupId: request.plan.atomicGroups[0]?.groupId
+								?? `timer-control:${timerControl.targetOperonId ?? 'unassigned'}`,
+							resourceKind: 'active-tracker',
+							resourceKey: 'current-user',
+							operation: 'modify',
+							before: graphResourceState(beforeContent),
+							after: graphResourceState(afterContent),
+						};
+						return {
+							ok: true as const,
+							steps: timerControl.operation === 'stop'
+								? [...sourceSteps, trackerStep]
+								: switchingTasks
+									? [sourceSteps[0], trackerStep, ...sourceSteps.slice(1)]
+									: [trackerStep, ...sourceSteps],
+						};
+					}
+					const semanticTransition = prepared.token as RuntimeSemanticTransitionPlanV1;
+					if (
+						semanticTransition?.kind === 'semantic-transition-plan'
+						&& request.plan.mutationKind === 'task.transition'
+						&& request.plan.spec.operation === 'transition'
+					) {
+						if (!await semanticTransitionBeforeStateMatches(semanticTransition)) {
+							return {
+								ok: false as const,
+								code: 'stale-source' as const,
+								reason: 'The semantic transition resources changed after preview.',
+							};
+						}
+						const serializedPlan = canonicalJsonV1(toJsonValueV1(semanticTransition));
+						const executionStepIds = runtimeSemanticTransitionStepIdsV1(
+							semanticTransition,
+						);
+						return {
+							ok: true as const,
+							steps: executionStepIds.map((stepId, index) => ({
+								stepId: `semantic-transition:${stepId}`,
+								groupId: semanticTransition.atomicGroups[index]?.groupId
+									?? semanticTransition.primaryGroup.groupId,
+								resourceKind: 'semantic-transition' as const,
+								resourceKey: index === 0
+									? semanticTransition.prepared.task.operonId
+									: `${semanticTransition.prepared.task.operonId}:${stepId}`,
+								operation: 'modify' as const,
+								before: graphResourceState(index === 0 ? serializedPlan : stepId),
+								after: graphResourceState(canonicalJsonV1(toJsonValueV1({
+									planDigest: sha256HexV1(serializedPlan),
+									state: 'verified-after',
+									stepId,
+								}))),
+							})),
+						};
+					}
+					const sourceTransition = prepared.token as RuntimeSourceTransitionPreparationV1;
+				if (sourceTransition?.kind === 'source-transition') {
+					const sourceSteps = new Map<string, GraphTransactionJournalStepV1>();
+					for (const group of sourceTransition.groups) {
+						const existing = sourceSteps.get(group.filePath);
+						const expectedContent = group.expectedContent;
+						if (existing && existing.after.content !== expectedContent) {
+							return {
+								ok: false as const,
+								code: 'stale-source' as const,
+								reason: `Cannot coalesce source transition patches for ${group.filePath}.`,
+							};
+						}
+						const currentContent = existing
+							? existing.before.content
+							: (await this.readAgentRuntimeMutationSource(group.filePath)).content;
+						if (!existing && currentContent !== expectedContent) {
+							return {
+								ok: false as const,
+								code: 'stale-source' as const,
+								reason: `Source transition changed after preview: ${group.filePath}.`,
+							};
+						}
+						const nextContent = group.action === 'trash'
+							? null
+							: group.nextContent ?? '';
+						const before = existing?.before ?? graphResourceState(currentContent);
+						sourceSteps.set(group.filePath, {
+							stepId: `source:${group.filePath}`,
+							groupId: `task-source:${group.filePath}`,
+							resourceKind: 'task-source',
+							resourceKey: group.filePath,
+							operation: before.state === 'absent'
+								? 'create'
+								: nextContent === null ? 'delete' : 'modify',
+							before,
+							after: graphResourceState(nextContent),
+						});
+					}
+					if (
+						sourceTransition.operation === 'convert'
+						&& sourceTransition.afterLocator
+						&& sourceTransition.expectedTaskState
+					) {
+						const aggregatePatches = this.aggregateCoordinator.planCreationAggregatePatches(
+							[{
+								operonId: sourceTransition.operonId,
+								checkbox: sourceTransition.expectedTaskState.checkbox,
+								fieldValues: { ...sourceTransition.expectedTaskState.fieldValues },
+								filePath: sourceTransition.afterLocator.filePath,
+								format: sourceTransition.afterLocator.representation === 'file'
+									? 'yaml'
+									: 'inline',
+								...(sourceTransition.afterLocator.representation === 'inline'
+									? { lineNumber: sourceTransition.afterLocator.lineNumber }
+									: {}),
+							}],
+							toLocalDatetime(new Date(modifiedAt)),
+							(sourceTransition.ancestorTasks ?? []).map(task => task.operonId),
+						);
+						for (const patch of aggregatePatches) {
+							let sourceStep = sourceSteps.get(patch.filePath);
+							if (!sourceStep) {
+								const source = await this.readAgentRuntimeMutationSource(patch.filePath);
+								if (source.content === null) {
+									return {
+										ok: false as const,
+										code: 'stale-source' as const,
+										reason: `Conversion ancestor source is unavailable: ${patch.filePath}.`,
+									};
+								}
+								const sealed = prepared.affectedResources.find(resource => (
+									resource.resourceKind === 'task-source'
+									&& resource.resourceKey === patch.filePath
+								));
+								if (
+									!sealed
+									|| sourceRevisionForTaskCreationV1(patch.filePath, source.content)
+										!== sealed.revision
+								) {
+									return {
+										ok: false as const,
+										code: 'stale-source' as const,
+										reason: `Conversion ancestor changed after preview: ${patch.filePath}.`,
+									};
+								}
+								sourceStep = {
+									stepId: `source:${patch.filePath}`,
+									groupId: `task-source:${patch.filePath}`,
+									resourceKind: 'task-source',
+									resourceKey: patch.filePath,
+									operation: 'modify',
+									before: graphResourceState(source.content),
+									after: graphResourceState(source.content),
+								};
+								sourceSteps.set(patch.filePath, sourceStep);
+							}
+							if (sourceStep.after.content === null) {
+								return {
+									ok: false as const,
+									code: 'stale-source' as const,
+									reason: `Cannot patch trashed conversion source: ${patch.filePath}.`,
+								};
+							}
+							const rendered = this.writer.renderGuardedTaskSourceContent(
+								patch.filePath,
+								sourceStep.after.content,
+								[{
+									operonId: patch.operonId,
+									format: patch.format,
+									...(patch.lineNumber === undefined
+										? {}
+										: { lineNumber: patch.lineNumber }),
+									fieldValues: patch.fieldValues,
+								}],
+							);
+							if (!rendered.ok) {
+								return {
+									ok: false as const,
+									code: 'stale-source' as const,
+									reason: `Cannot seal conversion aggregate source: ${rendered.reason}`,
+								};
+							}
+							sourceStep.after = graphResourceState(rendered.content);
+						}
+					}
+					const stepsByResource = new Map<string, GraphTransactionJournalStepV1>(
+						[...sourceSteps.values()].map(step => [
+							`${step.resourceKind}\0${step.resourceKey}`,
+							step,
+						]),
+					);
+					if (sourceTransition.repeatSeriesId) {
+						const before = this.storage.repeatSeries.getEntry(sourceTransition.repeatSeriesId);
+						if (!before) {
+							return {
+								ok: false as const,
+								code: 'stale-source' as const,
+								reason: 'The conversion repeat series changed after preview.',
+							};
+						}
+						const after: RepeatSeriesEntry = {
+							...before,
+							sourceTaskId: sourceTransition.operonId,
+							sourceFormat: sourceTransition.afterLocator?.representation === 'file'
+								? 'yaml'
+								: 'inline',
+							...(sourceTransition.afterLocator?.representation === 'file'
+								? {
+									lastMaterializedTitle: sourceTransition.afterLocator.filePath
+										.split('/').pop()?.replace(/\.md$/iu, '') ?? null,
+								}
+								: {}),
+							updatedAt: toLocalDatetime(new Date(modifiedAt)),
+						};
+						stepsByResource.set(`repeat-series\0${sourceTransition.repeatSeriesId}`, {
+							stepId: `series:${sourceTransition.repeatSeriesId}`,
+							groupId: `repeat-series:${sourceTransition.repeatSeriesId}`,
+							resourceKind: 'repeat-series',
+							resourceKey: sourceTransition.repeatSeriesId,
+							operation: 'modify',
+							before: graphResourceState(canonicalJsonV1(toJsonValueV1(before))),
+							after: graphResourceState(canonicalJsonV1(toJsonValueV1(after))),
+						});
+					}
+					if (sourceTransition.cleanupPinned) {
+						const before = this.pinnedCache?.getCanonicalEntry(sourceTransition.operonId) ?? null;
+						if (
+							before?.pinned !== true
+							|| pinnedEntryRevisionV1(sourceTransition.operonId, before)
+								!== pinnedEntryRevisionV1(
+									sourceTransition.operonId,
+									sourceTransition.cleanupPinnedEntry ?? null,
+								)
+						) {
+							return {
+								ok: false as const,
+								code: 'stale-source' as const,
+								reason: 'The exact pinned state changed after preview.',
+							};
+						}
+						const after = {
+							pinned: false,
+							updatedAt: new Date(modifiedAt).toISOString(),
+						};
+						stepsByResource.set(`pinned\0${sourceTransition.operonId}`, {
+							stepId: `pinned:${sourceTransition.operonId}`,
+							groupId: `pinned:${sourceTransition.operonId}`,
+							resourceKind: 'pinned',
+							resourceKey: sourceTransition.operonId,
+							operation: 'modify',
+							before: graphResourceState(canonicalJsonV1(toJsonValueV1(before))),
+							after: graphResourceState(canonicalJsonV1(toJsonValueV1(after))),
+						});
+					}
+					const steps: GraphTransactionJournalStepV1[] = [];
+					for (const group of request.plan.atomicGroups) {
+						for (const resource of group.resources) {
+							const step = stepsByResource.get(
+								`${resource.resourceKind}\0${resource.resourceKey}`,
+							);
+							if (!step) {
+								return {
+									ok: false as const,
+									code: 'invalid-request' as const,
+									reason: 'The sealed source transition resource grouping is inconsistent.',
+								};
+							}
+							if (steps.some(candidate => candidate.stepId === step.stepId)) continue;
+							steps.push({ ...step, groupId: group.groupId });
+						}
+					}
+					if (steps.length !== stepsByResource.size) {
+						return {
+							ok: false as const,
+							code: 'invalid-request' as const,
+							reason: 'The source transition journal has ungrouped resources.',
+						};
+					}
+					return { ok: true as const, steps };
+				}
+				const taskBatch = prepared.token as RuntimeTaskUpdateBatchPreparationV1;
+				if (
+					taskBatch?.kind === 'task-field-batch'
+					&& request.plan.spec.operation === 'update-batch'
+				) {
+					const resources = request.plan.atomicGroups.flatMap(group => group.resources);
+					if (
+						request.plan.atomicGroups.length !== 1
+						|| resources.length !== 1
+						|| resources[0]?.resourceKind !== 'task-source'
+						|| resources[0]?.resourceKey !== taskBatch.filePath
+						|| prepared.affectedResources.length !== 1
+					) {
+						return {
+							ok: false as const,
+							code: 'invalid-request' as const,
+							reason: 'The sealed batch update resource grouping is inconsistent.',
+						};
+					}
+					const updatesByFile = new Map<string, Map<string, GraphSourceUpdate>>();
+					for (const item of taskBatch.items) {
+						const locator = item.preparation.task.locator;
+						if (locator.representation !== 'inline') {
+							return {
+								ok: false as const,
+								code: 'invalid-request' as const,
+								reason: 'The sealed batch update contains a non-inline target.',
+							};
+						}
+						mergeGraphSourceUpdate(updatesByFile, taskBatch.filePath, {
+							operonId: item.preparation.task.operonId,
+							format: 'inline',
+							lineNumber: locator.lineNumber,
+							fieldValues: { ...item.preparation.fieldValues },
+						});
+					}
+					for (const parent of taskBatch.parentTasks) {
+						if (parent.locator.representation !== 'inline') {
+							return {
+								ok: false as const,
+								code: 'invalid-request' as const,
+								reason: 'The sealed batch update contains a non-inline parent effect.',
+							};
+						}
+						mergeGraphSourceUpdate(updatesByFile, taskBatch.filePath, {
+							operonId: parent.operonId,
+							format: 'inline',
+							lineNumber: parent.locator.lineNumber,
+							fieldValues: {
+								datetimeModified: toLocalDatetime(new Date(modifiedAt)),
+							},
+						});
+					}
+					const sourceStep = await prepareGraphSourceStep(
+						taskBatch.filePath,
+						prepared.affectedResources,
+						[...(updatesByFile.get(taskBatch.filePath)?.values() ?? [])],
+						'Batch update',
+					);
+					if (!sourceStep.ok) return sourceStep;
+					return {
+						ok: true as const,
+						steps: [{
+							...sourceStep.step,
+							groupId: request.plan.atomicGroups[0].groupId,
+						}],
+					};
+				}
+				const singleTaskFields = prepared.token as RuntimeTaskFieldMutationPreparationV1;
+				if (
+					singleTaskFields?.kind === 'task-fields'
+					&& (
+						request.plan.spec.operation === 'update'
+						|| request.plan.spec.operation === 'add'
+						|| request.plan.spec.operation === 'replace'
+						|| request.plan.spec.operation === 'remove'
+					)
+				) {
+					const indexed = this.indexer.getTaskSnapshot(singleTaskFields.task.operonId);
+					if (
+						!indexed
+						|| this.indexer.hasDuplicateOperonIdConflict(indexed.operonId)
+					) {
+						return {
+							ok: false as const,
+							code: indexed ? 'duplicate-operon-id' as const : 'entity-not-found' as const,
+							reason: 'The exact task-field mutation target is unavailable.',
+						};
+					}
+					const updatesByFile = new Map<string, Map<string, GraphSourceUpdate>>();
+					mergeGraphSourceUpdate(
+						updatesByFile,
+						singleTaskFields.task.locator.filePath,
+						{
+							operonId: singleTaskFields.task.operonId,
+							format: singleTaskFields.task.locator.representation === 'file'
+								? 'yaml'
+								: 'inline',
+							...(singleTaskFields.task.locator.representation === 'inline'
+								? { lineNumber: singleTaskFields.task.locator.lineNumber }
+								: {}),
+							fieldValues: { ...singleTaskFields.fieldValues },
+						},
+					);
+					if (singleTaskFields.parentTask) {
+						mergeGraphSourceUpdate(
+							updatesByFile,
+							singleTaskFields.parentTask.locator.filePath,
+							{
+								operonId: singleTaskFields.parentTask.operonId,
+								format: singleTaskFields.parentTask.locator.representation === 'file'
+									? 'yaml'
+									: 'inline',
+								...(singleTaskFields.parentTask.locator.representation === 'inline'
+									? { lineNumber: singleTaskFields.parentTask.locator.lineNumber }
+									: {}),
+								fieldValues: {
+									datetimeModified: toLocalDatetime(new Date(modifiedAt)),
+								},
+							},
+						);
+					}
+					const orderedResources = request.plan.atomicGroups.flatMap(group => (
+						group.resources.map(resource => ({
+							groupId: group.groupId,
+							resource,
+						}))
+					));
+					if (
+						orderedResources.length !== prepared.affectedResources.length
+						|| orderedResources.some(({ resource }) => resource.resourceKind !== 'task-source')
+						|| new Set(orderedResources.map(({ resource }) => resource.resourceKey)).size
+							!== orderedResources.length
+					) {
+						return {
+							ok: false as const,
+							code: 'invalid-request' as const,
+							reason: 'The sealed task-field resource grouping is inconsistent.',
+						};
+					}
+					const steps: GraphTransactionJournalStepV1[] = [];
+					for (const { groupId, resource } of orderedResources) {
+						const sourceStep = await prepareGraphSourceStep(
+							resource.resourceKey,
+							prepared.affectedResources,
+							[...(updatesByFile.get(resource.resourceKey)?.values() ?? [])],
+							singleTaskFields.operation === 'reminder-item'
+								? 'Reminder'
+								: 'Task update',
+						);
+						if (!sourceStep.ok) return sourceStep;
+						steps.push({ ...sourceStep.step, groupId });
+					}
+					return { ok: true as const, steps };
+				}
+				const taskFields = prepared.token as
+					| RuntimeTimerSessionPreparationV1
+					| RuntimeTaskRecurrencePreparationV1;
+				if (
+					(taskFields?.kind === 'timer-session'
+						&& request.plan.mutationKind === 'timer.session')
+					|| (taskFields?.kind === 'task-recurrence'
+						&& request.plan.spec.operation === 'update-recurrence')
+				) {
+					const recurrence = taskFields.kind === 'task-recurrence' ? taskFields : null;
+					const label = recurrence ? 'Recurrence' : 'Timer session';
+					const indexed = this.indexer.getTaskSnapshot(taskFields.task.operonId);
+					if (!indexed || this.indexer.hasDuplicateOperonIdConflict(indexed.operonId)) {
+						return {
+							ok: false as const,
+							code: indexed ? 'duplicate-operon-id' as const : 'entity-not-found' as const,
+							reason: `${label} task is unavailable.`,
+						};
+					}
+					const updatesByFile = buildTaskFieldGraphUpdates(
+						indexed,
+						taskFields.fieldValues,
+						taskFields.noChange,
+						modifiedAt,
+						taskFields.aggregateAncestorOperonIds,
+					);
+					const resources = request.plan.atomicGroups.flatMap(group => group.resources);
+					if (
+						request.plan.atomicGroups.length !== 1
+						|| resources.length !== prepared.affectedResources.length
+						|| new Set(resources.map(resource => `${resource.resourceKind}:${resource.resourceKey}`)).size
+							!== resources.length
+						|| resources.some(resource => (
+							resource.resourceKind !== 'task-source'
+							&& (!recurrence || resource.resourceKind !== 'repeat-series')
+						))
+					) {
+						return {
+							ok: false as const,
+							code: 'invalid-request' as const,
+							reason: `The sealed ${label.toLowerCase()} resource grouping is inconsistent.`,
+						};
+					}
+					const groupId = request.plan.atomicGroups[0].groupId;
+					const steps: GraphTransactionJournalStepV1[] = [];
+					for (const resource of resources) {
+						if (resource.resourceKind === 'repeat-series') {
+							const beforeContent = recurrence!.seriesBefore
+								? canonicalJsonV1(toJsonValueV1(recurrence!.seriesBefore))
+								: null;
+							const afterContent = recurrence!.seriesAfter
+								? canonicalJsonV1(toJsonValueV1(recurrence!.seriesAfter))
+								: null;
+							const current = this.storage.repeatSeries.getEntry(resource.resourceKey);
+							const currentContent = current ? canonicalJsonV1(toJsonValueV1(current)) : null;
+							if (currentContent !== beforeContent) {
+								return {
+									ok: false as const,
+									code: 'stale-source' as const,
+									reason: 'The recurrence series changed after preview.',
+								};
+							}
+							steps.push({
+								stepId: `series:${resource.resourceKey}`,
+								groupId,
+								resourceKind: 'repeat-series',
+								resourceKey: resource.resourceKey,
+								operation: beforeContent === null
+									? 'create'
+									: afterContent === null
+										? 'delete'
+										: 'modify',
+								before: graphResourceState(beforeContent),
+								after: graphResourceState(afterContent),
+							});
+							continue;
+						}
+						const sourceStep = await prepareGraphSourceStep(
+							resource.resourceKey,
+							prepared.affectedResources,
+							[...(updatesByFile.get(resource.resourceKey)?.values() ?? [])],
+							label,
+						);
+						if (!sourceStep.ok) return sourceStep;
+						steps.push({ ...sourceStep.step, groupId });
+					}
+					return { ok: true as const, steps };
+				}
+				const relationship = prepared.token as RuntimeTaskRelationshipPreparationV1;
+				if (
+					relationship?.kind !== 'task-relationships'
+					|| request.plan.spec.operation !== 'replace-relationships'
+				) {
+					return {
+						ok: false as const,
+						code: 'mutation-kind-mismatch' as const,
+						reason: 'The sealed relationship graph preparation is unavailable.',
+					};
+				}
+				const projectedTasks = [];
+				for (const patch of relationship.patches) {
+					const indexed = this.indexer.getTaskSnapshot(patch.task.operonId);
+					if (!indexed) {
+						return {
+							ok: false as const,
+							code: 'entity-not-found' as const,
+							reason: `Relationship task disappeared: ${patch.task.operonId}.`,
+						};
+					}
+					const fieldValues = { ...indexed.fieldValues };
+					for (const [field, value] of Object.entries(patch.fieldValues)) {
+						if (value) fieldValues[field] = value;
+						else delete fieldValues[field];
+					}
+					projectedTasks.push({
+						operonId: indexed.operonId,
+						checkbox: indexed.checkbox,
+						fieldValues,
+						filePath: indexed.primary.filePath,
+						format: indexed.primary.format,
+						...(indexed.primary.lineNumber === undefined
+							? {}
+							: { lineNumber: indexed.primary.lineNumber }),
+					});
+				}
+				const aggregatePatches = relationship.noChange
+					? []
+					: this.aggregateCoordinator.planCreationAggregatePatches(
+						projectedTasks,
+						toLocalDatetime(new Date(modifiedAt)),
+						relationship.aggregateAncestorOperonIds,
+					);
+					const updatesByFile = new Map<string, Map<string, GraphSourceUpdate>>();
+					for (const patch of relationship.patches) {
+						mergeGraphSourceUpdate(updatesByFile, patch.task.locator.filePath, {
+						operonId: patch.task.operonId,
+						format: patch.task.locator.representation === 'file' ? 'yaml' : 'inline',
+						...(patch.task.locator.representation === 'inline'
+							? { lineNumber: patch.task.locator.lineNumber }
+							: {}),
+						fieldValues: patch.fieldValues,
+					});
+					}
+					for (const patch of aggregatePatches) {
+						mergeGraphSourceUpdate(updatesByFile, patch.filePath, {
+							...patch,
+							fieldValues: { ...patch.fieldValues },
+						});
+					}
+				const orderedPaths = request.plan.atomicGroups.flatMap(group => (
+					group.resources
+						.filter(resource => resource.resourceKind === 'task-source')
+						.map(resource => resource.resourceKey)
+				));
+				if (
+					orderedPaths.length !== prepared.affectedResources.length
+					|| new Set(orderedPaths).size !== orderedPaths.length
+				) {
+					return {
+						ok: false as const,
+						code: 'invalid-request' as const,
+						reason: 'The sealed relationship source grouping is inconsistent.',
+					};
+				}
+					const steps: GraphTransactionJournalStepV1[] = [];
+					for (const filePath of orderedPaths) {
+						const sourceStep = await prepareGraphSourceStep(
+							filePath,
+							prepared.affectedResources,
+							[...(updatesByFile.get(filePath)?.values() ?? [])],
+							'Relationship',
+						);
+						if (!sourceStep.ok) return sourceStep;
+						steps.push(sourceStep.step);
+					}
+				return { ok: true as const, steps };
+			},
+				commitMutationTransaction: async (request, prepared, modifiedAt, journal, checkpoint) => {
+					if (
+						(prepared.token as { kind?: string } | null)?.kind === 'timer'
+						&& request.plan.mutationKind === 'timer.control'
+					) {
+						const commit = await this.commitAgentRuntimeTaskMutation(
+							request.plan.spec,
+							prepared,
+							modifiedAt,
+						);
+						if (commit.status === 'committed') {
+							await checkpoint({
+								phase: 'committing',
+								completedStepCount: journal.steps.length,
+							});
+							await checkpoint({
+								phase: 'postflight',
+								completedStepCount: journal.steps.length,
+							});
+						}
+						return commit;
+					}
+					if (
+						(prepared.token as { kind?: string } | null)?.kind === 'semantic-transition-plan'
+						&& request.plan.mutationKind === 'task.transition'
+					) {
+						const commit = await this.commitAgentRuntimeTaskMutation(
+							request.plan.spec,
+							prepared,
+							modifiedAt,
+							{
+								onStepCommitted: async (_stepId, completedStepCount) => {
+									await checkpoint({ phase: 'committing', completedStepCount });
+								},
+							},
+						);
+						if (commit.status === 'committed') {
+							await checkpoint({
+								phase: 'postflight',
+								completedStepCount: journal.steps.length,
+							});
+						}
+						return commit;
+					}
+					const execution = await executeRuntimeGraphTransactionCommitV1(
+					journal,
+					async step => await applyGraphStep(step, 'forward'),
+					checkpoint,
+					(step, index) => {
+						if (
+							OPERON_AGENT_RUNTIME_PROBE_ENABLED
+							&& relationshipTransactionProbeArmed
+							&& index === 0
+							&& journal.steps.length > 1
+							&& journal.idempotencyKeyHash === sha256HexV1(
+								'a11-probe-relationship-interrupt-v1',
+							)
+						) {
+							relationshipTransactionProbeArmed = false;
+							throw new Error('Agent Runtime probe interrupted the relationship transaction.');
+						}
+						if (
+							OPERON_AGENT_RUNTIME_PROBE_ENABLED
+							&& recurrenceTransactionProbeArmed
+							&& (prepared.token as { kind?: string } | null)?.kind === 'task-recurrence'
+							&& index === 0
+							&& journal.idempotencyKeyHash === sha256HexV1(
+								'a12-probe-recurrence-interrupt-v1',
+							)
+							&& journal.steps.some(item => item.resourceKind === 'task-source')
+							&& journal.steps.some(item => item.resourceKind === 'repeat-series')
+						) {
+							recurrenceTransactionProbeArmed = false;
+							throw new Error('Agent Runtime probe interrupted the recurrence transaction.');
+						}
+						if (
+							OPERON_AGENT_RUNTIME_PROBE_ENABLED
+							&& timerSessionTransactionProbeArmed
+							&& (prepared.token as { kind?: string } | null)?.kind === 'timer-session'
+							&& index === 0
+							&& journal.steps.length > 1
+							&& journal.idempotencyKeyHash === sha256HexV1(
+								'a12-probe-timer-session-interrupt-v1',
+							)
+						) {
+							timerSessionTransactionProbeArmed = false;
+							throw new Error('Agent Runtime probe interrupted the timer session transaction.');
+						}
+						if (
+							OPERON_AGENT_RUNTIME_PROBE_ENABLED
+							&& sourceTransitionPreTrashProbeArmed
+							&& (prepared.token as { kind?: string } | null)?.kind === 'source-transition'
+							&& step.resourceKind === 'task-source'
+							&& step.operation !== 'delete'
+							&& !journal.steps.slice(0, index).some(item => (
+								item.resourceKind === 'task-source'
+								&& item.operation !== 'delete'
+							))
+							&& journal.steps.slice(index + 1).some(item => (
+								item.resourceKind === 'task-source'
+								&& item.operation === 'delete'
+							))
+							&& journal.idempotencyKeyHash === sha256HexV1(
+								'a12-probe-source-pre-trash-interrupt-v1',
+							)
+						) {
+							sourceTransitionPreTrashProbeArmed = false;
+							throw new Error(
+								'Agent Runtime probe interrupted the source transition before trash.',
+							);
+						}
+						if (
+							OPERON_AGENT_RUNTIME_PROBE_ENABLED
+							&& sourceTransitionPostTrashProbeArmed
+							&& (prepared.token as { kind?: string } | null)?.kind === 'source-transition'
+							&& step.resourceKind === 'task-source'
+							&& step.operation === 'delete'
+							&& journal.idempotencyKeyHash === sha256HexV1(
+								'a12-probe-source-post-trash-interrupt-v1',
+							)
+						) {
+							sourceTransitionPostTrashProbeArmed = false;
+							throw new Error(
+								'Agent Runtime probe interrupted the source transition after trash.',
+							);
+						}
+					},
+					);
+					const completedSteps = journal.steps.slice(0, execution.completedStepCount);
+					const completedResourceSteps = completedSteps.filter(step => (
+						step.resourceKind !== 'active-tracker'
+						&& step.resourceKind !== 'semantic-transition'
+					));
+					const affectedFilePaths = completedSteps
+						.filter(step => step.resourceKind === 'task-source')
+						.map(step => step.resourceKey);
+					const groupResults = [...completedResourceSteps.reduce((groups, step) => {
+						const resourceRevision = {
+							resourceKind: step.resourceKind as
+								| 'task-source'
+								| 'repeat-series'
+								| 'pinned',
+						resourceKey: step.resourceKey,
+						revision: step.resourceKind === 'task-source'
+							? sourceRevisionForTaskCreationV1(
+								step.resourceKey,
+								step.after.content,
+							)
+							: step.after.digest,
+					};
+					const group = groups.get(step.groupId);
+					if (group) group.resourceRevisions.push(resourceRevision);
+					else groups.set(step.groupId, {
+						groupId: step.groupId,
+						status: 'committed' as const,
+						resourceRevisions: [resourceRevision],
+					});
+					return groups;
+				}, new Map<string, {
+					groupId: string;
+					status: 'committed';
+					resourceRevisions: AffectedResourceRevisionMapV1;
+				}>()).values()];
+				if (execution.status !== 'committed') {
+					return {
+						status: execution.status,
+						groupResults,
+						affectedFilePaths,
+						reason: 'Graph resource write conflicted.',
+					};
+				}
+				await checkpoint({ phase: 'postflight', completedStepCount: journal.steps.length });
+				return {
+					status: 'committed' as const,
+					groupResults,
+					affectedFilePaths,
+				};
+			},
+				recoverMutationTransaction: async (
+					request,
+					journal,
+					checkpoint,
+				): Promise<RuntimeGraphTransactionRecoveryV1> => {
+					if (request.plan.mutationKind === 'task.transition') {
+						const step = journal.steps[0];
+						if (
+							!step
+							|| journal.steps.some(item => item.resourceKind !== 'semantic-transition')
+							|| request.plan.spec.operation !== 'transition'
+						) {
+							return {
+								status: 'outcome-unknown',
+								groupResults: [],
+								affectedFilePaths: [],
+								verified: false,
+								reason: 'The semantic-transition recovery journal is invalid.',
+							};
+						}
+						let transitionPlan: RuntimeSemanticTransitionPlanV1;
+						try {
+							transitionPlan = JSON.parse(
+								step.before.content ?? '',
+							) as RuntimeSemanticTransitionPlanV1;
+						} catch {
+							return {
+								status: 'outcome-unknown',
+								groupResults: [],
+								affectedFilePaths: [],
+								verified: false,
+								reason: 'The semantic-transition recovery material is unreadable.',
+							};
+						}
+						if (
+							!transitionPlan
+							|| typeof transitionPlan !== 'object'
+							|| transitionPlan.kind !== 'semantic-transition-plan'
+							|| transitionPlan.operation !== 'task.transition'
+							|| transitionPlan.prepared?.task?.operonId !== step.resourceKey
+						) {
+							return {
+								status: 'outcome-unknown',
+								groupResults: [],
+								affectedFilePaths: [],
+								verified: false,
+								reason: 'The semantic-transition recovery material is inconsistent.',
+							};
+						}
+						const expectedStepIds = runtimeSemanticTransitionStepIdsV1(transitionPlan);
+						if (
+							journal.steps.length !== expectedStepIds.length
+							|| journal.steps.some((item, index) => (
+								item.stepId !== `semantic-transition:${expectedStepIds[index]}`
+							))
+							|| journal.completedStepCount < 0
+							|| journal.completedStepCount > expectedStepIds.length
+						) {
+							return {
+								status: 'outcome-unknown',
+								groupResults: [],
+								affectedFilePaths: [],
+								verified: false,
+								reason: 'The semantic-transition recovery material is inconsistent.',
+							};
+						}
+						const committedStepIds = expectedStepIds.slice(
+							0,
+							journal.completedStepCount,
+						);
+						const isAfter = await semanticTransitionAfterStateMatches(
+							transitionPlan,
+							committedStepIds,
+						);
+						const isBefore = await semanticTransitionBeforeStateMatches(transitionPlan);
+						if (
+							journal.completedStepCount === 0
+							&& !isAfter
+							&& !isBefore
+						) {
+							return {
+								status: 'outcome-unknown',
+								groupResults: [],
+								affectedFilePaths: [],
+								verified: false,
+								reason: 'The semantic transition has no durable prefix and is neither at its sealed before nor verified after state.',
+							};
+						}
+						if (!isAfter) {
+							if (journal.completedStepCount >= expectedStepIds.length) {
+								return {
+									status: 'outcome-unknown',
+									groupResults: [],
+									affectedFilePaths: [],
+									verified: false,
+									reason: 'The fully checkpointed semantic transition failed exact postflight.',
+								};
+							}
+							const prepared = semanticTransitionPreparedMutation(transitionPlan);
+							const commit = await this.commitAgentRuntimeTaskMutation(
+								request.plan.spec,
+								prepared,
+								transitionPlan.effectiveAt,
+								{
+									completedStepIds: expectedStepIds.slice(
+										0,
+										journal.completedStepCount,
+									),
+									onStepCommitted: async (_stepId, completedStepCount) => {
+										await checkpoint({ phase: 'committing', completedStepCount });
+									},
+									classifyUncheckpointedStep: async stepId => (
+										await semanticTransitionStepState(transitionPlan, stepId)
+									),
+								},
+							);
+							if (
+								commit.status !== 'committed'
+								|| !await semanticTransitionAfterStateMatches(
+									transitionPlan,
+									expectedStepIds,
+								)
+							) {
+								return {
+									status: 'outcome-unknown',
+									groupResults: commit.groupResults,
+									affectedFilePaths: commit.affectedFilePaths,
+									verified: false,
+									reason: commit.reason
+										?? 'Semantic-transition same-plan continuation did not verify.',
+								};
+							}
+						}
+						await checkpoint({
+							phase: 'postflight',
+							completedStepCount: expectedStepIds.length,
+						});
+						const evidence = await semanticTransitionCommitEvidence(transitionPlan);
+						return {
+							status: 'forward-completed',
+							groupResults: evidence.groupResults,
+							affectedFilePaths: evidence.affectedFilePaths,
+							verified: true,
+						};
+					}
+					if (request.plan.mutationKind === 'timer.control') {
+						const trackerStep = journal.steps.find(
+							item => item.resourceKind === 'active-tracker',
+						);
+						const sourceSteps = journal.steps.filter(
+							item => item.resourceKind === 'task-source',
+						);
+						if (
+							!trackerStep
+							|| trackerStep.resourceKey !== 'current-user'
+							|| journal.steps.length !== sourceSteps.length + 1
+							|| (
+								request.plan.spec.operation !== 'start'
+								&& request.plan.spec.operation !== 'stop'
+							)
+						) {
+							return {
+								status: 'outcome-unknown',
+								groupResults: [],
+								affectedFilePaths: [],
+								verified: false,
+								reason: 'The timer-control recovery journal is invalid.',
+							};
+						}
+						const trackerCurrent = await readGraphResourceState(trackerStep);
+						const trackerIsAfter = graphStatesMatch(trackerCurrent, trackerStep.after);
+						const trackerIsBefore = graphStatesMatch(trackerCurrent, trackerStep.before);
+						const sourceStates = await Promise.all(sourceSteps.map(async sourceStep => {
+							const current = await readGraphResourceState(sourceStep);
+							return {
+								step: sourceStep,
+								current,
+								isBefore: graphStatesMatch(current, sourceStep.before),
+								isAfter: graphStatesMatch(current, sourceStep.after),
+							};
+						}));
+						const sourceStateByStepId = new Map(sourceStates.map(state => [
+							state.step.stepId,
+							state,
+						]));
+						const recoveryPrefix = classifyTimerControlRecoveryPrefixV1(
+							journal.steps.map((item, index) => {
+								if (item.resourceKind === 'active-tracker') {
+									return trackerIsBefore
+										? 'before'
+										: trackerIsAfter ? 'after' : 'other';
+								}
+								const state = sourceStateByStepId.get(item.stepId);
+								if (state?.isAfter) return 'after';
+								if (
+									state
+									&& journal.steps.slice(index + 1).some(later => (
+										later.resourceKind === item.resourceKind
+										&& later.resourceKey === item.resourceKey
+										&& graphStatesMatch(state.current, later.after)
+									))
+								) return 'after';
+								return state?.isBefore ? 'before' : 'other';
+							}),
+						);
+						if (recoveryPrefix.status === 'outcome-unknown') {
+							return {
+								status: 'outcome-unknown',
+								groupResults: [],
+								affectedFilePaths: [],
+								verified: false,
+								reason: 'A timer resource no longer matches its exact sealed before or after state.',
+							};
+						}
+						const affectedFilePaths = sourceSteps.map(item => item.resourceKey);
+						const verifyTimerTerminalState = async (): Promise<boolean> => {
+							const latestByResource = new Map<string, GraphTransactionJournalStepV1>();
+							for (const item of journal.steps) {
+								latestByResource.set(`${item.resourceKind}\0${item.resourceKey}`, item);
+							}
+							return await verifyGraphSteps([...latestByResource.values()], 'after');
+						};
+						const effectiveLocal = toLocalDatetime(new Date(journal.effectiveAt));
+						if (recoveryPrefix.completedStepCount === 0) {
+							const targetOperonId = request.plan.targets[0]?.operonId ?? null;
+							const committed = request.plan.spec.operation === 'start'
+								? targetOperonId === null
+									? await this.timeTracker.startUnassigned('command', effectiveLocal)
+									: await this.timeTracker.start(
+										targetOperonId,
+										'command',
+										effectiveLocal,
+										(task, payload) => this.isAgentRuntimeStatusChangeAllowed(task, payload),
+									)
+								: await this.timeTracker.stop('manual', effectiveLocal);
+							await this.timeTracker.flushPendingTransitions();
+							if (
+								!committed
+								|| !await verifyTimerTerminalState()
+							) {
+								return {
+									status: 'outcome-unknown',
+									groupResults: [],
+									affectedFilePaths,
+									verified: false,
+									reason: 'Timer-control same-plan continuation did not verify.',
+								};
+							}
+						} else {
+							for (
+								let index = recoveryPrefix.completedStepCount;
+								index < journal.steps.length;
+								index += 1
+							) {
+								const recoveryStep = journal.steps[index];
+								let continued = false;
+								if (recoveryStep.resourceKind === 'task-source') {
+									continued = await applyGraphStep(recoveryStep, 'forward');
+									if (continued) {
+										await this.indexer.reindexAffectedSources(
+											[recoveryStep.resourceKey],
+											{ notify: false },
+										);
+									}
+								} else if (recoveryStep.resourceKind === 'active-tracker') {
+									let expectedActive: {
+										operonId: string | null;
+										start: string;
+									} | null;
+									let nextActive: {
+										operonId: string | null;
+										start: string;
+									} | null;
+									try {
+										expectedActive = JSON.parse(
+											recoveryStep.before.content ?? '',
+										) as typeof expectedActive;
+										nextActive = JSON.parse(
+											recoveryStep.after.content ?? '',
+										) as typeof nextActive;
+									} catch {
+										expectedActive = null;
+										nextActive = null;
+									}
+									if (
+										request.plan.spec.operation === 'stop'
+										&& expectedActive?.operonId
+										&& nextActive === null
+									) {
+										continued = await this.timeTracker
+											.clearActiveTrackerAfterVerifiedSession(
+												expectedActive.operonId,
+												expectedActive.start,
+											);
+									} else if (
+										request.plan.spec.operation === 'start'
+										&& expectedActive?.operonId
+										&& nextActive?.operonId
+									) {
+										continued = await this.timeTracker
+											.switchActiveTrackerAfterVerifiedSession(
+												expectedActive.operonId,
+												expectedActive.start,
+												nextActive.operonId,
+												nextActive.start,
+											);
+									}
+								}
+								if (!continued) {
+									return {
+										status: 'outcome-unknown',
+										groupResults: [],
+										affectedFilePaths,
+										verified: false,
+										reason: `The sealed timer suffix step could not be committed: ${recoveryStep.stepId}`,
+									};
+								}
+								await checkpoint({
+									phase: 'committing',
+									completedStepCount: index + 1,
+								});
+							}
+						}
+						if (!await verifyTimerTerminalState()) {
+							return {
+								status: 'outcome-unknown',
+								groupResults: [],
+								affectedFilePaths,
+								verified: false,
+								reason: 'Timer-control continuation did not reach its exact sealed after state.',
+							};
+						}
+						await checkpoint({
+							phase: 'postflight',
+							completedStepCount: journal.steps.length,
+						});
+						const resourceRevisions = await Promise.all(
+							request.plan.affectedResources.map(async resource => {
+								if (resource.resourceKind === 'active-tracker') {
+									return {
+										...resource,
+										revision: sourceRevisionForTaskCreationV1(
+											'state/active-trackers.json',
+											trackerStep.after.content,
+										),
+									};
+								}
+								const source = await this.readAgentRuntimeMutationSource(resource.resourceKey);
+								return {
+									...resource,
+									revision: sourceRevisionForTaskCreationV1(
+										resource.resourceKey,
+										source.content,
+									),
+								};
+							}),
+						);
+						return {
+							status: 'forward-completed',
+							groupResults: [{
+								groupId: request.plan.atomicGroups[0]?.groupId ?? trackerStep.groupId,
+								status: 'committed',
+								resourceRevisions,
+							}],
+							affectedFilePaths,
+							verified: true,
+						};
+					}
+					const affectedFilePaths = journal.steps
+					.filter(step => step.resourceKind === 'task-source')
+					.map(step => step.resourceKey);
+				const buildGroupResults = async () => await Promise.all(
+					request.plan.atomicGroups.map(async group => ({
+						groupId: group.groupId,
+						status: 'committed' as const,
+						resourceRevisions: await Promise.all(group.resources.map(async resource => {
+								if (resource.resourceKind === 'repeat-series') {
+								const entry = this.storage.repeatSeries.getEntry(resource.resourceKey);
+								return {
+									...resource,
+									revision: graphResourceState(
+										entry ? canonicalJsonV1(toJsonValueV1(entry)) : null,
+										).digest,
+									};
+								}
+								if (resource.resourceKind === 'pinned') {
+									const entry = this.pinnedCache?.getCanonicalEntry(resource.resourceKey) ?? null;
+									return {
+										...resource,
+										revision: graphResourceState(
+											entry ? canonicalJsonV1(toJsonValueV1(entry)) : null,
+										).digest,
+									};
+								}
+							return {
+								...resource,
+								revision: sourceRevisionForTaskCreationV1(
+									resource.resourceKey,
+									(await this.readAgentRuntimeMutationSource(resource.resourceKey)).content,
+								),
+							};
+						})),
+					})),
+				);
+				const execution = await executeRuntimeGraphTransactionRecoveryV1(journal, {
+					readState: async step => await readGraphResourceState(step),
+					statesMatch: graphStatesMatch,
+					applyForward: async step => await requireGraphStep(step, 'forward'),
+					applyCompensation: async step => await requireGraphStep(step, 'reverse'),
+					checkpoint,
+					verifyState: async expected => await verifyGraphSteps(journal.steps, expected),
+				});
+				if (execution.status === 'forward-completed') {
+					return {
+						status: execution.status,
+						groupResults: await buildGroupResults(),
+						affectedFilePaths,
+						verified: true,
+					};
+				}
+				const verified = execution.status === 'compensated';
+				return {
+					status: execution.status,
+					groupResults: request.plan.atomicGroups.map(group => ({
+						groupId: group.groupId,
+						status: verified ? 'failed' as const : 'outcome-unknown' as const,
+					})),
+					affectedFilePaths,
+					verified,
+					reason: verified
+						? 'Relationship graph compensated.'
+						: 'Relationship graph recovery unresolved.',
+				};
+			},
+			verifyMutationTransactionState: async (journal, expected) => (
+				await verifyGraphSteps(journal.steps, expected)
+			),
+				verifyRecoveredMutationTransaction: async (request, journal) => {
+					if ([
+						'task.inline-relocate',
+						'task.convert',
+						'task.delete',
+					].includes(String(request.plan.mutationKind))) {
+						const operonId = request.plan.targets[0]?.operonId;
+						if (!operonId || !await verifyGraphSteps(journal.steps, 'after')) return false;
+						if (request.plan.spec.operation === 'delete') {
+							return !this.indexer.getTaskSnapshot(operonId)
+								&& this.pinnedCache?.isPinned(operonId) !== true;
+						}
+						const expectedLocator = request.plan.spec.operation === 'relocate-inline'
+							? request.plan.spec.destination.locator
+							: request.plan.conversionEffect?.afterLocator;
+						const task = this.indexer.getTaskSnapshot(operonId);
+						return !!expectedLocator
+							&& !!task
+							&& !this.indexer.hasDuplicateOperonIdConflict(operonId)
+							&& task.primary.filePath === expectedLocator.filePath
+							&& task.primary.format === (
+								expectedLocator.representation === 'file' ? 'yaml' : 'inline'
+							)
+							&& (
+								expectedLocator.representation === 'file'
+								|| task.primary.lineNumber === expectedLocator.lineNumber
+							);
+					}
+					if (request.plan.spec.operation === 'update-batch') {
+						if (!await verifyGraphSteps(journal.steps, 'after')) return false;
+						const effects = request.plan.updateBatchEffects ?? [];
+						if (
+							effects.length !== request.plan.spec.items.length
+							|| effects.length !== request.plan.targets.length
+							|| journal.steps.length !== 1
+						) return false;
+						const step = journal.steps[0];
+						if (
+							step?.resourceKind !== 'task-source'
+							|| step.after.content === null
+							|| effects.some(effect => (
+								effect.locator.filePath !== step.resourceKey
+								|| effect.plannedSourceDigest !== sha256HexV1(step.after.content!)
+							))
+						) return false;
+						const parsedById = new Map<string, ParsedTask[]>();
+						for (const [lineNumber, line] of step.after.content.split(/\r?\n/u).entries()) {
+							const parsed = this.parseInlineTaskLine(line, lineNumber, step.resourceKey);
+							if (!parsed?.operonId) continue;
+							const entries = parsedById.get(parsed.operonId) ?? [];
+							entries.push(parsed);
+							parsedById.set(parsed.operonId, entries);
+						}
+						const indexedMatchesExactSource = (operonId: string): boolean => {
+							const parsedEntries = parsedById.get(operonId);
+							const indexed = this.indexer.getTaskSnapshot(operonId);
+							if (
+								parsedEntries?.length !== 1
+								|| !indexed
+								|| this.indexer.hasDuplicateOperonIdConflict(operonId)
+							) return false;
+							const parsed = parsedEntries[0];
+							return indexed.primary.format === 'inline'
+								&& indexed.primary.filePath === parsed.filePath
+								&& indexed.primary.lineNumber === parsed.lineNumber;
+						};
+						const parentIds = new Set<string>();
+						for (const [index, effect] of effects.entries()) {
+							const item = request.plan.spec.items[index];
+							const target = request.plan.targets[index];
+							const task = this.indexer.getTaskSnapshot(effect.operonId);
+							if (
+								!item
+								|| !target
+								|| item.itemRef !== effect.itemRef
+								|| item.target.operonId !== effect.operonId
+								|| target.operonId !== effect.operonId
+								|| !task
+								|| this.indexer.hasDuplicateOperonIdConflict(effect.operonId)
+								|| task.primary.format !== 'inline'
+								|| task.primary.filePath !== effect.locator.filePath
+								|| task.primary.lineNumber !== effect.locator.lineNumber
+								|| !indexedMatchesExactSource(effect.operonId)
+							) return false;
+							const afterParsed = parsedById.get(effect.operonId)?.[0];
+							const afterFields = afterParsed
+								? this.buildParsedTaskFieldValues(afterParsed)
+								: {};
+							if (effect.directChange) {
+								const parentId = (afterFields['parentTask'] ?? '').trim();
+								if (parentId) parentIds.add(parentId);
+							}
+						}
+						for (const parentId of parentIds) {
+							const parsed = parsedById.get(parentId)?.[0];
+							if (
+								!parsed
+								|| !indexedMatchesExactSource(parentId)
+								|| (this.buildParsedTaskFieldValues(parsed)['datetimeModified'] ?? '')
+									.localeCompare(toLocalDatetime(new Date(request.plan.createdAt))) < 0
+							) return false;
+						}
+						return true;
+					}
+					if (
+						request.plan.spec.operation === 'update'
+						|| request.plan.spec.operation === 'add'
+						|| request.plan.spec.operation === 'replace'
+						|| request.plan.spec.operation === 'remove'
+					) {
+						const target = request.plan.targets[0];
+						const operonId = target?.operonId;
+						if (
+							!target
+							|| !operonId
+							|| !await verifyGraphSteps(journal.steps, 'after')
+							|| this.indexer.hasDuplicateOperonIdConflict(operonId)
+						) return false;
+						const task = this.indexer.getTaskSnapshot(operonId);
+						if (
+							!task
+							|| canonicalJsonV1(toJsonValueV1(this.agentRuntimeTaskLocator(task)))
+								!== canonicalJsonV1(toJsonValueV1(target.locator))
+						) return false;
+						if (
+							request.plan.mutationKind === 'task.reminder-item'
+							&& !this.reminderScheduler
+						) return false;
+						try {
+							await this.reminderScheduler?.whenIdle();
+						} catch {
+							return false;
+						}
+						return true;
+					}
+					if (
+						request.plan.mutationKind === 'task.transition'
+						&& request.plan.spec.operation === 'transition'
+					) {
+						try {
+							const transitionPlan = JSON.parse(
+								journal.steps[0]?.before.content ?? '',
+							) as RuntimeSemanticTransitionPlanV1;
+							return await semanticTransitionAfterStateMatches(
+								transitionPlan,
+								runtimeSemanticTransitionStepIdsV1(transitionPlan).slice(
+									0,
+									journal.completedStepCount,
+								),
+							);
+						} catch {
+							return false;
+						}
+					}
+					if (
+						request.plan.mutationKind === 'timer.control'
+						&& (
+							request.plan.spec.operation === 'start'
+							|| request.plan.spec.operation === 'stop'
+						)
+					) {
+						const latestByResource = new Map<string, GraphTransactionJournalStepV1>();
+						for (const step of journal.steps) {
+							latestByResource.set(`${step.resourceKind}\0${step.resourceKey}`, step);
+						}
+						if (!await verifyGraphSteps([...latestByResource.values()], 'after')) return false;
+						if (request.plan.spec.operation === 'start') {
+							const targetOperonId = request.plan.targets[0]?.operonId ?? null;
+							const active = this.timeTracker.getActiveState();
+							return targetOperonId === null
+								? active?.isUnassigned === true
+								: active?.operonId === targetOperonId
+									&& !this.indexer.hasDuplicateOperonIdConflict(targetOperonId);
+						}
+						const before = journal.steps.find(
+							step => step.resourceKind === 'active-tracker',
+						)?.before.content;
+						if (!before) return false;
+						let expectedActive: {
+							operonId: string | null;
+							start: string;
+							isUnassigned: boolean;
+						} | null;
+						try {
+							expectedActive = JSON.parse(before) as typeof expectedActive;
+						} catch {
+							return false;
+						}
+						if (!expectedActive?.operonId) return this.timeTracker.getActiveState() === null;
+						const task = this.indexer.getTaskSnapshot(expectedActive.operonId);
+						const sessions = this.timeTracker.getTaskSessions(expectedActive.operonId);
+						const duration = Number(task?.fieldValues['duration'] ?? Number.NaN);
+						return this.timeTracker.getActiveState() === null
+							&& !!task
+							&& !this.indexer.hasDuplicateOperonIdConflict(expectedActive.operonId)
+							&& sessions.some(session => session.start === expectedActive.start)
+							&& Number.isFinite(duration)
+							&& sessions.reduce(
+								(total, session) => total + session.durationSeconds,
+								0,
+							) === duration;
+					}
+					if (
+						request.plan.spec.operation === 'add-session'
+					|| request.plan.spec.operation === 'update-session'
+					|| request.plan.spec.operation === 'remove-session'
+				) {
+					const operonId = request.plan.targets[0]?.operonId;
+					if (!operonId || this.indexer.hasDuplicateOperonIdConflict(operonId)) return false;
+					const task = this.indexer.getTaskSnapshot(operonId);
+					if (!task) return false;
+					return (task.fieldValues['trackers'] ?? '').trim()
+							=== (request.plan.spec.nextTrackers ?? '')
+						&& Number(task.fieldValues['duration'] ?? '0')
+							=== request.plan.spec.nextDuration
+						&& await verifyGraphSteps(journal.steps, 'after');
+				}
+				if (request.plan.spec.operation === 'update-recurrence') {
+					const operonId = request.plan.targets[0]?.operonId;
+					if (!operonId || this.indexer.hasDuplicateOperonIdConflict(operonId)) return false;
+					const task = this.indexer.getTaskSnapshot(operonId);
+					if (!task) return false;
+					for (const change of request.plan.spec.changes) {
+						if ('operation' in change) {
+							if ((task.fieldValues[change.field] ?? '').trim()) return false;
+							continue;
+						}
+						const expectedValue = change.valueType === 'number'
+							? String(change.value)
+							: change.value;
+						if ((task.fieldValues[change.field] ?? '') !== expectedValue) return false;
+					}
+					if (!(task.fieldValues['repeat'] ?? '').trim()) {
+						return !(task.fieldValues['repeatSeriesId'] ?? '').trim()
+							&& !(task.fieldValues['repeatOccurrenceDate'] ?? '').trim()
+							&& !(task.fieldValues['datetimeRepeatEnd'] ?? '').trim();
+					}
+					const seriesId = (task.fieldValues['repeatSeriesId'] ?? '').trim();
+					return /^rs[a-z0-9]{5}$/u.test(seriesId)
+						&& !!this.storage.repeatSeries.getEntry(seriesId);
+				}
+				if (request.plan.spec.operation !== 'replace-relationships') return true;
+				const sourceOperonId = request.plan.targets[0]?.operonId;
+				if (!sourceOperonId) return false;
+				const source = this.indexer.getTaskSnapshot(sourceOperonId);
+				if (!source || this.indexer.hasDuplicateOperonIdConflict(sourceOperonId)) return false;
+				const changedTaskIds = new Set<string>();
+				const aggregateAncestorIds = new Set<string>();
+				const sameIds = (left: readonly string[], right: readonly string[]): boolean => (
+					left.length === right.length && left.every((value, index) => value === right[index])
+				);
+				const relationIds = (
+					task: NonNullable<ReturnType<OperonIndexer['getTaskSnapshot']>>,
+					field: 'parentTask' | 'blocking' | 'blockedBy',
+				): string[] => field === 'parentTask'
+					? (task.fieldValues[field] ?? '').trim()
+						? [(task.fieldValues[field] ?? '').trim()]
+						: []
+					: parseDependencyIdList(task.fieldValues[field]);
+				const collectAncestors = (operonId: string): boolean => {
+					let currentId = operonId;
+					const visited = new Set<string>();
+					while (currentId) {
+						if (visited.has(currentId) || visited.size >= 100) return false;
+						visited.add(currentId);
+						const task = this.indexer.getTaskSnapshot(currentId);
+						if (!task || this.indexer.hasDuplicateOperonIdConflict(currentId)) return false;
+						aggregateAncestorIds.add(currentId);
+						currentId = (task.fieldValues['parentTask'] ?? '').trim();
+					}
+					return true;
+				};
+				for (const change of request.plan.spec.changes) {
+					const currentIds = relationIds(source, change.field);
+					if (!sameIds(currentIds, change.targetOperonIds)) return false;
+					const expectedIds = change.expectedTargetOperonIds ?? [];
+					if (!sameIds(expectedIds, change.targetOperonIds)) {
+						changedTaskIds.add(sourceOperonId);
+					}
+					if (change.field === 'parentTask') {
+						const oldParentId = expectedIds[0];
+						if (oldParentId && !collectAncestors(oldParentId)) return false;
+						continue;
+					}
+					const inverseField = change.field === 'blocking' ? 'blockedBy' : 'blocking';
+					const desiredIds = new Set(change.targetOperonIds);
+					for (const targetOperonId of new Set([...expectedIds, ...desiredIds])) {
+						const target = this.indexer.getTaskSnapshot(targetOperonId);
+						if (
+							!target
+							|| this.indexer.hasDuplicateOperonIdConflict(targetOperonId)
+							|| parseDependencyIdList(target.fieldValues[inverseField])
+								.includes(sourceOperonId) !== desiredIds.has(targetOperonId)
+						) return false;
+						if (expectedIds.includes(targetOperonId) !== desiredIds.has(targetOperonId)) {
+							changedTaskIds.add(targetOperonId);
+						}
+					}
+				}
+				for (const operonId of changedTaskIds) {
+					const task = this.indexer.getTaskSnapshot(operonId);
+					if (!task) return false;
+					const parentId = (task.fieldValues['parentTask'] ?? '').trim();
+					if (parentId && !collectAncestors(parentId)) return false;
+				}
+				const expectedModified = toLocalDatetime(new Date(journal.effectiveAt));
+				for (const operonId of new Set([...changedTaskIds, ...aggregateAncestorIds])) {
+					const task = this.indexer.getTaskSnapshot(operonId);
+					const modified = task?.fieldValues['datetimeModified'] ?? '';
+					if (
+						!task
+						|| (
+							task.primary.format === 'yaml'
+								? modified.localeCompare(expectedModified) < 0
+								: modified !== expectedModified
+						)
+					) return false;
+				}
+				return aggregateAncestorIds.size === 0
+					|| this.aggregateCoordinator
+						.verifyExactTaskAggregateState([...aggregateAncestorIds]).size
+						=== aggregateAncestorIds.size;
+			},
+			reindexAffectedSources: async filePaths => {
+				await this.indexer.reindexAffectedSources([...new Set(filePaths)], { notify: false });
+			},
+			settleAfterMutation: async requestId => {
+				await this.awaitAgentRuntimeSettlement({
+					requestId,
+					mutationOwnedMaintenance: true,
+				});
+			},
+			reconcileCreatedHierarchy: async (prepared, modifiedAt) => {
+				const mutations = prepared.plan.tasks.map(task => ({
+					before: null,
+					after: this.indexer.getTask(task.operonId) ?? null,
+				}));
+				if (mutations.some(mutation => mutation.after === null)) {
+					return { ok: false, resourceRevisions: [] };
+				}
+				const aggregateResult = await this.aggregateCoordinator.refreshAfterTaskMutations(
+					mutations,
+					{ modifiedTimestamp: toLocalDatetime(new Date(modifiedAt)) },
+				);
+				if (aggregateResult.failedWriteCount > 0) {
+					return { ok: false, resourceRevisions: [] };
+				}
+				const filePaths = [...new Set([
+					...prepared.plan.sourceGroups.map(group => group.filePath),
+					...prepared.parentResources.map(resource => resource.filePath),
+				])].sort((left, right) => left.localeCompare(right));
+				const resourceRevisions: AffectedResourceRevisionMapV1 = [];
+				for (const filePath of filePaths) {
+					const source = await this.readAgentRuntimeMutationSource(filePath);
+					resourceRevisions.push({
+						resourceKind: 'task-source' as const,
+						resourceKey: filePath,
+						revision: sourceRevisionForTaskCreationV1(filePath, source.content),
+					});
+				}
+				return { ok: true, resourceRevisions };
+			},
+			verifyCreatedTasks: async (prepared, _contextRevision, modifiedAt, groupResults) => {
+				const verifiedSources = new Map<string, string>();
+				const verifiedInlineTaskLines = new Map<
+					string,
+					Map<string, { count: number; lineNumber: number }>
+				>();
+				for (const group of groupResults) {
+					const revision = group.resourceRevisions?.find(
+						resource => resource.resourceKind === 'task-source',
+					);
+					if (!revision) return false;
+					let sourceContent = verifiedSources.get(revision.resourceKey);
+					if (sourceContent === undefined) {
+						const source = await this.readAgentRuntimeMutationSource(revision.resourceKey);
+						if (source.content === null) return false;
+						sourceContent = source.content;
+						verifiedSources.set(revision.resourceKey, sourceContent);
+						verifiedInlineTaskLines.set(
+							revision.resourceKey,
+							indexInlineTaskLines(sourceContent, revision.resourceKey),
+						);
+					}
+					if (
+						sourceRevisionForTaskCreationV1(revision.resourceKey, sourceContent)
+						!== revision.revision
+					) return false;
+				}
+				const finalInlineLineNumber = (
+					filePath: string,
+					operonId: string,
+				): number | null => uniqueInlineTaskLine(
+					verifiedInlineTaskLines.get(filePath),
+					operonId,
+				);
+				for (const task of prepared.plan.tasks) {
+					const indexed = this.indexer.getTaskSnapshot(task.operonId);
+					const expectedInlineLine = task.representation === 'inline'
+						? finalInlineLineNumber(task.filePath, task.operonId)
+						: null;
+					if (
+						!indexed
+						|| this.indexer.hasDuplicateOperonIdConflict(task.operonId)
+						|| indexed.primary.filePath !== task.filePath
+						|| indexed.description !== task.description
+						|| indexed.primary.format !== (task.representation === 'file' ? 'yaml' : 'inline')
+						|| (
+							task.representation === 'inline'
+							&& (
+								expectedInlineLine === null
+								|| indexed.primary.lineNumber !== expectedInlineLine
+							)
+						)
+						|| indexed.checkbox !== task.checkbox
+						|| task.tags.length !== indexed.tags.length
+						|| task.tags.some((tag, index) => indexed.tags[index] !== tag)
+						|| Object.entries(task.fieldValues).some(
+							([key, value]) => (
+								task.representation === 'file' && key === 'datetimeModified'
+									? (indexed.fieldValues[key] ?? '').localeCompare(value) < 0
+									: indexed.fieldValues[key] !== value
+							),
+						)
+						|| (task.parentOperonId ?? '') !== (indexed.fieldValues['parentTask'] ?? '')
+						|| canonicalJsonV1(toJsonValueV1([...task.relatedOperonIds].sort()))
+							!== canonicalJsonV1(toJsonValueV1(
+								(indexed.fieldValues['related'] ?? '')
+									.split(';')
+									.map(value => value.trim())
+									.filter(Boolean)
+									.sort(),
+							))
+					) return false;
+						if (task.representation === 'file' && task.bodyMarkdown !== undefined) {
+							const sourceContent = verifiedSources.get(task.filePath)
+								?? (await this.readAgentRuntimeMutationSource(task.filePath)).content;
+							if (sourceContent === null) return false;
+							const plannedContent = prepared.plan.sourceGroups.find(
+								group => group.filePath === task.filePath,
+							)?.resultingContent;
+							if (
+								plannedContent === undefined
+								|| splitFrontmatterDocument(sourceContent).body
+									!== splitFrontmatterDocument(plannedContent).body
+							) return false;
+						}
+				}
+				const repeatRevision = sha256HexV1(String(this.storage.repeatSeries.getRevision()));
+				for (const recurrence of prepared.recurrenceResources) {
+					const entry = this.storage.repeatSeries.getEntry(recurrence.seriesId);
+					const expectedEntry = expectedRepeatEntry(recurrence, modifiedAt);
+					if (
+						!entry
+						|| canonicalJsonV1(toJsonValueV1(entry))
+							!== canonicalJsonV1(toJsonValueV1(expectedEntry))
+					) return false;
+					const committedResource = groupResults.flatMap(
+						group => group.resourceRevisions ?? [],
+					).find(resource => (
+						resource.resourceKind === 'repeat-series'
+						&& resource.resourceKey === recurrence.seriesId
+					));
+					if (!committedResource || committedResource.revision !== repeatRevision) return false;
+				}
+				const expectedParentModified = toLocalDatetime(new Date(modifiedAt));
+				for (const parent of prepared.parentResources) {
+					const indexed = this.indexer.getTaskSnapshot(parent.operonId);
+					const expectedInlineLine = parent.format === 'inline'
+						? finalInlineLineNumber(parent.filePath, parent.operonId)
+						: null;
+					if (
+						!indexed
+						|| this.indexer.hasDuplicateOperonIdConflict(parent.operonId)
+						|| indexed.primary.filePath !== parent.filePath
+						|| indexed.primary.format !== parent.format
+						|| (
+							parent.format === 'inline'
+							&& (
+								expectedInlineLine === null
+								|| indexed.primary.lineNumber !== expectedInlineLine
+							)
+						)
+						|| (
+							parent.format === 'yaml'
+								? (indexed.fieldValues['datetimeModified'] ?? '').localeCompare(expectedParentModified) < 0
+								: indexed.fieldValues['datetimeModified'] !== expectedParentModified
+						)
+					) return false;
+				}
+				for (const dependency of prepared.dependencyResources ?? []) {
+					const indexed = this.indexer.getTaskSnapshot(dependency.operonId);
+					const expectedInlineLine = dependency.format === 'inline'
+						? finalInlineLineNumber(dependency.filePath, dependency.operonId)
+						: null;
+					if (
+						!indexed
+							|| this.indexer.hasDuplicateOperonIdConflict(dependency.operonId)
+							|| indexed.primary.filePath !== dependency.filePath
+							|| indexed.primary.format !== dependency.format
+							|| (
+								dependency.format === 'inline'
+								&& (
+									expectedInlineLine === null
+									|| indexed.primary.lineNumber !== expectedInlineLine
+								)
+							)
+							|| (
+							dependency.format === 'yaml'
+								? (indexed.fieldValues['datetimeModified'] ?? '')
+									.localeCompare(dependency.expectedModifiedAt) < 0
+								: indexed.fieldValues['datetimeModified'] !== dependency.expectedModifiedAt
+						)
+					) return false;
+					for (const field of ['blocking', 'blockedBy'] as const) {
+						const indexedIds = new Set(parseDependencyIdList(indexed.fieldValues[field]));
+						if (dependency.additions[field].some(operonId => !indexedIds.has(operonId))) {
+							return false;
+						}
+					}
+				}
+				return true;
+			},
+			prepareMutation: async (request, effectiveAt) => (
+				await this.prepareAgentRuntimeTaskMutation(request, effectiveAt)
+			),
+			commitMutation: async (request, prepared, effectiveAt) => (
+				await this.commitAgentRuntimeTaskMutation(request.plan.spec, prepared, effectiveAt)
+			),
+				verifyMutation: async (request, prepared, _postflightRevision, commit) => (
+					await this.verifyAgentRuntimeTaskMutation(request.plan.createdAt, prepared, commit)
+				),
+				recoverMutation: async request => (
+					this.verifyAgentRuntimePinnedAfterState(request.plan)
+				),
+			receiptStore: () => this.agentRuntimeReceiptStore,
+			securityAuditStore: () => this.agentRuntimeSecurityAuditStore,
+			createSecurityAuditEvent: (event, request, receipt) => (
+				this.createAgentRuntimeSecurityAuditEvent(event, request, receipt)
+			),
+			vaultIdentityHash: async () => {
+				if (!this.agentRuntimeVaultIdentityHash) {
+					throw new Error('Runtime vault identity is unavailable.');
+				}
+				return this.agentRuntimeVaultIdentityHash;
+			},
+			nowEpochMs: () => Date.now(),
+			randomId: () => getActiveWindow().crypto.randomUUID(),
+		});
+	}
+
+	private async prepareAgentRuntimeSourceTransition(
+		request: MutationPreviewRequestV1,
+		effectiveAt: string,
+	): Promise<
+		| { ok: true; value: RuntimePreparedMutationV1 }
+		| {
+			ok: false;
+			code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
+			reason: string;
+			retryable?: boolean;
+		}
+	> {
+		if (!request.target) {
+			return { ok: false, code: 'invalid-request', reason: 'An exact task target is required.' };
+		}
+		const task = this.indexer.getTaskSnapshot(request.target.operonId);
+		if (!task) return { ok: false, code: 'entity-not-found', reason: 'The exact task does not exist.' };
+		if (this.indexer.hasDuplicateOperonIdConflict(task.operonId)) {
+			return { ok: false, code: 'duplicate-operon-id', reason: 'Duplicate operonId blocks source transition.' };
+		}
+		const beforeLocator = this.agentRuntimeTaskLocator(task);
+		if (canonicalJsonV1(toJsonValueV1(beforeLocator))
+			!== canonicalJsonV1(toJsonValueV1(request.target.locator))) {
+			return { ok: false, code: 'stale-source', reason: 'The exact task locator changed.' };
+		}
+		const source = await this.readAgentRuntimeMutationSource(beforeLocator.filePath);
+		if (source.content === null) {
+			return { ok: false, code: 'stale-source', reason: 'The exact task source is unavailable.' };
+		}
+		const targetDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1({
+			operonId: task.operonId,
+			locator: beforeLocator,
+			sourceRevision: sha256HexV1(source.content),
+		})));
+		const spec = request.spec;
+		let token: RuntimeSourceTransitionPreparationV1;
+		let warnings: RuntimePreparedMutationV1['warnings'] = [];
+		let requiredAcknowledgements: string[] = [];
+		let predictedEffects: RuntimePreparedMutationV1['predictedEffects'];
+		let affectedResources: RuntimePreparedMutationV1['affectedResources'];
+		let sealedSpec: MutationSpecV1 | undefined;
+
+		if (spec.operation === 'relocate-inline') {
+			if (beforeLocator.representation !== 'inline') {
+				return { ok: false, code: 'invalid-request', reason: 'Inline relocation requires an inline task.' };
+			}
+			const destinationSource = spec.destination.locator.filePath === beforeLocator.filePath
+				? source
+				: await this.readAgentRuntimeMutationSource(spec.destination.locator.filePath);
+			if (destinationSource.content === null) {
+				return { ok: false, code: 'stale-source', reason: 'Relocation destination source is unavailable.' };
+			}
+			const sourceLine = source.content.split('\n')[beforeLocator.lineNumber];
+			const destinationLine = destinationSource.content
+				.split('\n')[spec.destination.locator.lineNumber];
+			if (sourceLine === undefined || destinationLine === undefined) {
+				return { ok: false, code: 'invalid-request', reason: 'Relocation line is outside its source file.' };
+			}
+			const relocationSpec: Extract<MutationSpecV1, { operation: 'relocate-inline' }>
+				= 'source' in spec
+					? spec
+					: {
+						operation: 'relocate-inline',
+						source: {
+							locator: beforeLocator,
+							lineDigest: sha256HexV1(sourceLine),
+							sourceRevision: {
+								algorithm: 'sha256',
+								contentDigest: sha256HexV1(source.content),
+							},
+						},
+						destination: {
+							locator: spec.destination.locator,
+							lineDigest: sha256HexV1(destinationLine),
+							sourceRevision: {
+								algorithm: 'sha256',
+								contentDigest: sha256HexV1(destinationSource.content),
+							},
+							mustBeBlank: true,
+						},
+					};
+			sealedSpec = relocationSpec;
+			const attached = collectScopedPlainCheckboxMoveLines(
+				source.content,
+				beforeLocator.filePath,
+				this.settings.keyMappings,
+				{ kind: 'inline', operonId: task.operonId },
+				beforeLocator.lineNumber,
+			);
+			const guarded = guardRuntimeInlineRelocationV1({
+				operonId: task.operonId,
+				currentLocator: beforeLocator,
+				sourceContent: source.content,
+				destinationContent: destinationSource.content,
+				spec: relocationSpec,
+				parseOperonId: (line, lineNumber, filePath) => (
+					this.parseInlineTaskLine(line, lineNumber, filePath)?.operonId ?? null
+				),
+				attachedCheckboxLineNumbers: attached.map(line => line.lineNumber),
+				attachedCheckboxScopeAmbiguous: false,
+			});
+			if (!guarded.ok) return guarded;
+			warnings = [...guarded.value.warnings];
+			requiredAcknowledgements = [...guarded.value.requiredAcknowledgements];
+			token = {
+				kind: 'source-transition',
+				operation: 'relocate-inline',
+				operonId: task.operonId,
+				beforeLocator,
+				afterLocator: relocationSpec.destination.locator,
+				groups: guarded.value.groups,
+				expectedDescription: task.description,
+			};
+			} else if (spec.operation === 'convert') {
+				const actualRepresentation = beforeLocator.representation;
+				if (spec.from !== actualRepresentation || spec.to === actualRepresentation) {
+					return { ok: false, code: 'invalid-request', reason: 'Conversion direction does not match the exact task representation.' };
+				}
+				if (spec.to === 'file') {
+					if (beforeLocator.representation !== 'inline') {
+						return { ok: false, code: 'invalid-request', reason: 'Inline-to-file conversion requires an inline source.' };
+					}
+					const selectedTemplate = findFileTaskTemplateOptionById(
+						this.getFileTaskTemplateOptions(),
+						spec.templateId,
+					);
+					if (!selectedTemplate) {
+						return { ok: false, code: 'needs-template', reason: 'The selected File Task template is unavailable.' };
+					}
+					const templateSeal = await this.readAgentRuntimeCreationTemplate(selectedTemplate.id);
+					if (!templateSeal) {
+						return { ok: false, code: 'needs-template', reason: 'The selected File Task template cannot be read.' };
+					}
+					let templatePlaceholderIndex = 0;
+					const reservedTemplateIds = new Set<string>([task.operonId]);
+					const templateResult = await this.loadFileTaskTemplateDocumentFromOption(
+						selectedTemplate,
+						() => {
+							for (let attempt = 0; attempt < 100; attempt += 1) {
+								const candidate = sha256HexV1([
+									'conversion-template',
+									task.operonId,
+									selectedTemplate.id,
+									effectiveAt,
+									String(templatePlaceholderIndex),
+									String(attempt),
+								].join('\0')).slice(0, 7);
+								if (
+									!reservedTemplateIds.has(candidate)
+									&& !this.indexer.getTaskSnapshot(candidate)
+								) {
+									templatePlaceholderIndex += 1;
+									reservedTemplateIds.add(candidate);
+									return candidate;
+								}
+							}
+							throw new Error('No deterministic conversion template operonId remained available.');
+						},
+					);
+					const sourceLines = source.content.split('\n');
+					const parsed = this.parseInlineTaskLine(
+						sourceLines[beforeLocator.lineNumber] ?? '',
+						beforeLocator.lineNumber,
+						beforeLocator.filePath,
+					);
+					if (parsed?.operonId !== task.operonId) {
+						return { ok: false, code: 'stale-source', reason: 'Inline conversion source line changed.' };
+					}
+					const initialDescription = parsed.description || task.description;
+					const now = toLocalDatetime(new Date(effectiveAt));
+					const baseFieldValues = this.buildParsedTaskFieldValues(parsed);
+					const baseFieldPresence = new Set(parsed.fields.map(field => field.key));
+					const linkedSeed = await this.buildLinkedFileTaskSeed(
+						beforeLocator.filePath,
+						baseFieldValues,
+						baseFieldPresence,
+						baseFieldValues['parentTask'],
+					);
+					if (selectedTemplate.kind === 'builtin-pipeline-minimal') {
+						const status = resolvePipelineMinimalFileTaskTemplateStatus(
+							selectedTemplate,
+							this.settings.pipelines,
+						);
+						if (!status) {
+							return { ok: false, code: 'needs-template', reason: 'The selected pipeline template no longer resolves to a status.' };
+						}
+						linkedSeed.fieldValues['status'] = status;
+						linkedSeed.fieldPresence.add('status');
+					}
+					const template = this.resolveLoadedFileTaskTemplateDocument(
+						templateResult,
+						this.buildOperonTemplatePlaceholderContext(initialDescription, linkedSeed.fieldValues, now),
+					);
+					const draft = this.buildFileTaskDraft({
+						description: initialDescription,
+						fieldValues: linkedSeed.fieldValues,
+						fieldPresence: linkedSeed.fieldPresence,
+						tags: [...new Set([...parsed.tags, ...linkedSeed.tags])],
+						tagsPresent: parsed.tags.length > 0 || linkedSeed.tags.length > 0,
+					}, template, now, 'use-template');
+					if (draft.operonId !== task.operonId) {
+						return { ok: false, code: 'internal-error', reason: 'Canonical conversion did not preserve operonId.' };
+					}
+					if (this.fileTaskContentNeedsTemplaterProcessing(template, draft.content)) {
+						return {
+							ok: false,
+							code: 'template-processing-required',
+							reason: 'The selected template contains Templater code and cannot run in Runtime V1.',
+						};
+					}
+					const sourceFile = this.app.vault.getAbstractFileByPath(beforeLocator.filePath);
+					const folder = this.getTargetFileTaskFolder(
+						sourceFile instanceof TFile ? sourceFile : null,
+					);
+					const sanitized = this.sanitizeTaskFileName(initialDescription)
+						|| t('taskEditor', 'untitledTaskFile');
+					const targetPath = spec.targetPath
+						?? this.formatConverter.getUniqueFilePath(folder, sanitized);
+					if (this.app.vault.getAbstractFileByPath(targetPath)) {
+						return { ok: false, code: 'stale-source', reason: 'File conversion target already exists.' };
+					}
+					const targetParentPath = targetPath.includes('/')
+						? targetPath.slice(0, targetPath.lastIndexOf('/'))
+						: '';
+					if (
+						targetParentPath
+						&& !(this.app.vault.getAbstractFileByPath(targetParentPath) instanceof TFolder)
+					) {
+						return {
+							ok: false,
+							code: 'needs-target',
+							reason: 'The resolved File Task target folder does not exist.',
+						};
+					}
+					const templateContext = this.buildOperonTemplatePlaceholderContext(
+						initialDescription,
+						draft.fieldValues,
+						now,
+					);
+					let rendered = this.resolveFileTaskTemplatePlaceholdersInContent(
+						draft.content,
+						templateContext,
+						targetPath.slice(targetPath.lastIndexOf('/') + 1, -3),
+					);
+					const attached = this.settings.inlineToFileTaskMovePlainCheckboxes
+						? collectScopedPlainCheckboxMoveLines(
+							source.content,
+							beforeLocator.filePath,
+							this.settings.keyMappings,
+							{ kind: 'inline', operonId: task.operonId },
+							beforeLocator.lineNumber,
+						)
+						: [];
+					const movedPlainCheckboxLines = this.normalizeMovedInlineTaskPlainCheckboxLines(
+						attached.map(line => line.rawLine),
+					);
+					rendered = this.prependMovedPlainCheckboxLinesToFileTaskContent(
+						rendered,
+						movedPlainCheckboxLines,
+					);
+					const fileBasename = targetPath.slice(targetPath.lastIndexOf('/') + 1, -3);
+					sourceLines[beforeLocator.lineNumber] = `[[${this.escapeFileTaskWikilinkTarget(fileBasename)}]]`;
+					const sourceWithReplacement = sourceLines.join('\n');
+					const nextSource = attached.length > 0
+						? removePlainCheckboxMoveLinesFromContent(
+							sourceWithReplacement,
+							beforeLocator.lineNumber,
+							attached,
+						)
+						: sourceWithReplacement;
+					if (nextSource === null) {
+						return { ok: false, code: 'invalid-request', reason: 'Attached checkbox scope is ambiguous.' };
+					}
+					const resolvedFieldDiff = Object.keys(draft.fieldValues)
+						.filter(key => (baseFieldValues[key] ?? '') !== (draft.fieldValues[key] ?? ''))
+						.sort()
+						.map(field => ({
+							field,
+							source: (linkedSeed.fieldValues[field] ?? '') !== (baseFieldValues[field] ?? '')
+								? 'inheritance' as const
+								: 'default' as const,
+							...(baseFieldValues[field] === undefined
+								? {}
+								: { before: baseFieldValues[field] }),
+							after: draft.fieldValues[field] ?? '',
+						}));
+					const afterLocator = { representation: 'file' as const, filePath: targetPath };
+					const conversionEffect = {
+						direction: 'inline-to-file' as const,
+						operonId: task.operonId,
+						beforeLocator,
+						afterLocator,
+						plannedTargetDigest: sha256HexV1(rendered),
+						plannedSourceDigest: sha256HexV1(nextSource),
+						settingsFingerprint: this.getAgentRuntimeSettingsFingerprint(),
+						templateId: selectedTemplate.id,
+						templateRevision: templateSeal.revision,
+						resolvedFieldDiff,
+						...(movedPlainCheckboxLines.length > 0
+							? {
+								checkboxCarryoverDigest: sha256HexV1(movedPlainCheckboxLines.join('\n')),
+								checkboxCarryoverCount: movedPlainCheckboxLines.length,
+							}
+							: {}),
+						lossManifest: [],
+						lossManifestDigest: sha256HexV1('[]'),
+						...(draft.fieldValues['parentTask']
+							? { parentOperonId: draft.fieldValues['parentTask'] }
+							: {}),
+						...(draft.fieldValues['repeatSeriesId']
+							? { repeatSeriesId: draft.fieldValues['repeatSeriesId'] }
+							: {}),
+					};
+					token = {
+						kind: 'source-transition',
+						operation: 'convert',
+						operonId: task.operonId,
+						beforeLocator,
+						afterLocator,
+						expectedDescription: fileBasename,
+						expectedTaskState: {
+							checkbox: resolveWorkflowStatus(
+								this.settings.pipelines,
+								draft.fieldValues['status'],
+							)?.checkbox ?? task.checkbox,
+							fieldValues: { ...draft.fieldValues },
+							tags: [...draft.tags],
+						},
+						conversionEffect,
+						rollbackCreatedTargetOnFailure: true,
+						groups: [{
+							filePath: targetPath,
+							expectedContent: null,
+							nextContent: rendered,
+							action: 'create',
+						}, {
+							filePath: beforeLocator.filePath,
+							expectedContent: source.content,
+							nextContent: nextSource,
+							action: 'modify',
+						}],
+					};
+					warnings = [];
+				} else {
+					if (beforeLocator.representation !== 'file') {
+						return { ok: false, code: 'invalid-request', reason: 'File-to-inline conversion requires an exact external blank line.' };
+					}
+					const configuredFilePath = spec.target.filePath?.trim()
+						|| (
+							spec.target.mode === 'configured-target'
+							&& this.resolveEffectiveInlineTaskSaveMode() === 'specific-file'
+								? this.resolveInlineTaskTargetFilePath()
+								: ''
+						);
+					if (!configuredFilePath) {
+						return {
+							ok: false,
+							code: 'needs-target',
+							reason: 'The configured inline target is not deterministic; provide an exact target file.',
+						};
+					}
+					if (configuredFilePath === beforeLocator.filePath) {
+						return { ok: false, code: 'invalid-request', reason: 'File-to-inline conversion requires an external target.' };
+					}
+					const destination = await this.readAgentRuntimeMutationSource(configuredFilePath);
+					if (destination.content === null) {
+						return { ok: false, code: 'needs-target', reason: 'Inline conversion destination is unavailable.' };
+					}
+					const destinationLines = destination.content.split('\n');
+					const frontmatterClosingLine = destinationLines[0]?.trim() === '---'
+						? destinationLines.findIndex((line, index) => index > 0 && line.trim() === '---')
+						: -1;
+					const firstMarkdownBodyLine = frontmatterClosingLine >= 0
+						? frontmatterClosingLine + 1
+						: 0;
+					const targetLineNumber = spec.target.mode === 'exact-line'
+						? spec.target.lineNumber
+						: destinationLines.findIndex((
+							line,
+							index,
+						) => index >= firstMarkdownBodyLine && line.trim() === '');
+					if (targetLineNumber < 0) {
+						return { ok: false, code: 'needs-target', reason: 'The configured inline target has no exact blank line.' };
+					}
+					if (targetLineNumber < firstMarkdownBodyLine) {
+						return {
+							ok: false,
+							code: 'invalid-request',
+							reason: 'Inline conversion target must be in the Markdown body, not YAML frontmatter.',
+						};
+					}
+					if (destinationLines[targetLineNumber]?.trim() !== '') {
+						return { ok: false, code: 'stale-source', reason: 'Inline conversion destination is not blank.' };
+					}
+					const rendered = this.formatConverter.yamlToInline(task.operonId);
+				if (!rendered) {
+					return { ok: false, code: 'internal-error', reason: 'Canonical inline rendering failed.' };
+				}
+					const renderedTask = this.parseInlineTaskLine(
+						rendered,
+						targetLineNumber,
+						configuredFilePath,
+					);
+					if (!renderedTask || renderedTask.operonId !== task.operonId) {
+						return {
+							ok: false,
+							code: 'internal-error',
+							reason: 'Canonical inline conversion did not preserve task identity.',
+						};
+					}
+					destinationLines[targetLineNumber] = rendered;
+					const afterLocator = {
+						representation: 'inline' as const,
+						filePath: configuredFilePath,
+						lineNumber: targetLineNumber,
+					};
+					const sourceDocument = parseFrontmatterDocument(
+						source.content,
+						this.settings.keyMappings,
+					);
+					const nonRepresentableSections = sourceDocument.sections.filter(section => (
+						section.kind === 'unknown' || section.kind === 'title'
+					));
+					const unmanagedFrontmatterKeys = nonRepresentableSections
+						.filter(section => isWritableRawYamlPropertyName(
+							section.yamlKey,
+							this.settings.keyMappings,
+						))
+						.map(section => section.yamlKey);
+					const reservedFrontmatterKeys = nonRepresentableSections
+						.filter(section => !isWritableRawYamlPropertyName(
+							section.yamlKey,
+							this.settings.keyMappings,
+						))
+						.map(section => section.yamlKey);
+					const loss = analyzeRuntimeFileToInlineLossV1({
+						sourceContent: source.content,
+						unmanagedFrontmatterKeys,
+						reservedFrontmatterKeys,
+						frontmatterRawByKey: Object.fromEntries(
+							nonRepresentableSections.map(section => [
+								section.yamlKey,
+								section.raw,
+							]),
+						),
+					});
+					if (loss.items.length > 256) {
+						return {
+							ok: false,
+							code: 'result-too-large',
+							reason: 'The file-to-inline loss manifest exceeds the V1 item limit.',
+						};
+					}
+					const conversionEffect = {
+						direction: 'file-to-inline' as const,
+						operonId: task.operonId,
+						beforeLocator,
+						afterLocator,
+						plannedTargetDigest: sha256HexV1(destinationLines.join('\n')),
+						plannedSourceDigest: sha256HexV1(''),
+						settingsFingerprint: this.getAgentRuntimeSettingsFingerprint(),
+						resolvedFieldDiff: [],
+						lossManifest: [...loss.items],
+						lossManifestDigest: loss.digest,
+						...(task.fieldValues['parentTask']
+							? { parentOperonId: task.fieldValues['parentTask'] }
+							: {}),
+						...(task.fieldValues['repeatSeriesId']
+							? { repeatSeriesId: task.fieldValues['repeatSeriesId'] }
+							: {}),
+					};
+					token = {
+						kind: 'source-transition',
+						operation: 'convert',
+						operonId: task.operonId,
+						beforeLocator,
+						expectedDescription: renderedTask.description,
+						expectedTaskState: {
+							checkbox: renderedTask.checkbox,
+							fieldValues: this.buildParsedTaskFieldValues(renderedTask),
+							tags: [...renderedTask.tags],
+						},
+						afterLocator,
+						conversionEffect,
+						groups: [{
+							filePath: configuredFilePath,
+							expectedContent: destination.content,
+							nextContent: destinationLines.join('\n'),
+						action: 'modify',
+					}, {
+						filePath: beforeLocator.filePath,
+						expectedContent: source.content,
+							action: 'trash',
+						}],
+					};
+					warnings = [loss.warning];
+				}
+		} else {
+			const relationValues = [
+				task.fieldValues['parentTask'],
+				task.fieldValues['blocking'],
+				task.fieldValues['blockedBy'],
+				task.fieldValues['related'],
+			].filter(value => !!value?.trim());
+			const inboundReferences = this.indexer.getAllTasks()
+				.filter(candidate => (
+					candidate.operonId !== task.operonId
+					&& [
+						candidate.fieldValues['parentTask'],
+						candidate.fieldValues['blocking'],
+						candidate.fieldValues['blockedBy'],
+						candidate.fieldValues['related'],
+					].some(value => (value ?? '').split(';').map(item => item.trim()).includes(task.operonId))
+				))
+				.map(candidate => candidate.operonId)
+				.sort();
+			const deleteGuard = guardRuntimeExactDeleteV1({
+				activeTimer: this.timeTracker.isTimerRunning(task.operonId),
+				activeTracker: this.storage.activeTrackers.getAll().some(
+					record => record.taskId === task.operonId,
+				),
+				childCount: this.indexer.getChildIdsSnapshot(task.operonId).length,
+				inboundReferences,
+				outboundReferences: relationValues,
+				recurrenceMember: !!(task.fieldValues['repeat'] ?? '').trim()
+					|| !!(task.fieldValues['repeatSeriesId'] ?? '').trim(),
+				repeatSeriesOwner: this.storage.repeatSeries.getAllEntries().some(
+					entry => entry.sourceTaskId === task.operonId,
+				),
+			});
+			if (!deleteGuard.ok) return deleteGuard;
+			let groups: RuntimeSourceTransitionPreparationV1['groups'];
+			if (beforeLocator.representation === 'inline') {
+				const lines = source.content.split('\n');
+				if (this.parseInlineTaskLine(
+					lines[beforeLocator.lineNumber] ?? '',
+					beforeLocator.lineNumber,
+					beforeLocator.filePath,
+				)?.operonId !== task.operonId) {
+					return { ok: false, code: 'stale-source', reason: 'Inline delete source changed.' };
+				}
+				lines[beforeLocator.lineNumber] = '';
+				groups = [{
+					filePath: beforeLocator.filePath,
+					expectedContent: source.content,
+					nextContent: lines.join('\n'),
+					action: 'modify',
+				}];
+			} else {
+				groups = [{
+					filePath: beforeLocator.filePath,
+					expectedContent: source.content,
+					action: 'trash',
+				}];
+			}
+			token = {
+				kind: 'source-transition',
+				operation: 'delete',
+				operonId: task.operonId,
+				beforeLocator,
+				groups,
+				cleanupPinned:
+					this.pinnedCache?.getCanonicalEntry(task.operonId)?.pinned === true,
+				cleanupPinnedEntry:
+					this.pinnedCache?.getCanonicalEntry(task.operonId) ?? undefined,
+			};
+		}
+
+		if (token.operation === 'convert' && token.conversionEffect) {
+			const parentOperonId = token.conversionEffect.parentOperonId;
+			if (parentOperonId) {
+				const ancestors: RuntimeExactTaskMutationSnapshotV1[] = [];
+				const visited = new Set<string>([token.operonId]);
+				let ancestorOperonId = parentOperonId;
+				while (ancestorOperonId) {
+					if (visited.has(ancestorOperonId)) {
+						return {
+							ok: false,
+							code: 'invalid-request',
+							reason: 'The conversion hierarchy contains a parent cycle.',
+						};
+					}
+					visited.add(ancestorOperonId);
+					const ancestor = this.indexer.getTaskSnapshot(ancestorOperonId);
+					if (!ancestor || this.indexer.hasDuplicateOperonIdConflict(ancestorOperonId)) {
+						return {
+							ok: false,
+							code: ancestor ? 'duplicate-operon-id' : 'entity-not-found',
+							reason: 'A conversion ancestor task is unavailable or ambiguous.',
+						};
+					}
+					const ancestorSource = await this.readAgentRuntimeMutationSource(
+						ancestor.primary.filePath,
+					);
+					if (ancestorSource.content === null) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: 'A conversion ancestor source is unavailable.',
+						};
+					}
+					ancestors.push({
+						operonId: ancestor.operonId,
+						locator: ancestor.primary.format === 'yaml'
+							? { representation: 'file', filePath: ancestor.primary.filePath }
+							: {
+								representation: 'inline',
+								filePath: ancestor.primary.filePath,
+								lineNumber: ancestor.primary.lineNumber,
+							},
+						description: ancestor.description,
+						checkbox: ancestor.checkbox,
+						fieldValues: { ...ancestor.fieldValues },
+						tags: [...ancestor.tags],
+						sourceContent: ancestorSource.content,
+						duplicate: false,
+					});
+					ancestorOperonId = (ancestor.fieldValues['parentTask'] ?? '').trim();
+				}
+				token = {
+					...token,
+					parentTask: ancestors[0],
+					ancestorTasks: ancestors,
+				};
+			}
+			const repeatSeriesId = token.conversionEffect?.repeatSeriesId;
+			if (repeatSeriesId) {
+				token = {
+					...token,
+					repeatSeriesId,
+				};
+			}
+		}
+
+		affectedResources = token.groups.map(group => ({
+			resourceKind: 'task-source' as const,
+			resourceKey: group.filePath,
+			revision: group.expectedContent === null
+				? sourceRevisionForTaskCreationV1(group.filePath, null)
+				: sourceRevisionForTaskCreationV1(group.filePath, group.expectedContent),
+		}));
+		if (token.cleanupPinned) {
+			if (token.cleanupPinnedEntry?.pinned !== true) {
+				return {
+					ok: false,
+					code: 'stale-source',
+					reason: 'The canonical pinned state is unavailable for exact cleanup.',
+				};
+			}
+			affectedResources.push({
+				resourceKind: 'pinned',
+				resourceKey: token.operonId,
+				revision: pinnedEntryRevisionV1(token.operonId, token.cleanupPinnedEntry),
+			});
+		}
+		for (const ancestor of token.ancestorTasks ?? []) {
+			if (affectedResources.some(resource => (
+				resource.resourceKind === 'task-source'
+					&& resource.resourceKey === ancestor.locator.filePath
+			))) continue;
+			affectedResources.push({
+				resourceKind: 'task-source',
+				resourceKey: ancestor.locator.filePath,
+				revision: sourceRevisionForTaskCreationV1(
+					ancestor.locator.filePath,
+					ancestor.sourceContent,
+				),
+			});
+		}
+		if (token.repeatSeriesId) {
+			affectedResources.push({
+				resourceKind: 'repeat-series',
+				resourceKey: token.repeatSeriesId,
+				revision: sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+			});
+		}
+		affectedResources.sort((left, right) => {
+			const kindOrder = RESOURCE_QUEUE_ORDER_V1[left.resourceKind]
+				- RESOURCE_QUEUE_ORDER_V1[right.resourceKind];
+			if (kindOrder !== 0) return kindOrder;
+			return left.resourceKey.localeCompare(right.resourceKey);
+		});
+		predictedEffects = token.groups.map(group => ({
+			resourceKind: 'task-source' as const,
+			resourceKey: group.filePath,
+			action: group.action === 'create'
+				? 'create' as const
+				: group.action === 'trash' ? 'trash' as const : 'update' as const,
+			summary: `${token.operation} exact Operon task source.`,
+		}));
+		if (token.cleanupPinned) {
+			predictedEffects.push({
+				resourceKind: 'pinned',
+				resourceKey: token.operonId,
+				action: 'state-change',
+				summary: 'Remove the deleted task from pinned state.',
+			});
+		}
+		const sourceGroupPaths = new Set(token.groups.map(group => group.filePath));
+		predictedEffects.push(...buildRuntimeConversionAncestorPredictedEffectsV1(
+			[...sourceGroupPaths],
+			(token.ancestorTasks ?? []).map(ancestor => ancestor.locator.filePath),
+		));
+		if (token.repeatSeriesId) {
+			predictedEffects.push({
+				resourceKind: 'repeat-series',
+				resourceKey: token.repeatSeriesId,
+				action: 'state-change',
+				summary: 'Update the recurring series source representation.',
+			});
+		}
+		const auxiliaryGroups = [
+			...[...new Set(
+				(token.ancestorTasks ?? [])
+					.map(ancestor => ancestor.locator.filePath)
+					.filter(filePath => !sourceGroupPaths.has(filePath)),
+			)].map(filePath => ({
+					groupId: `task-source:${filePath}`,
+					resources: [{
+						resourceKind: 'task-source' as const,
+						resourceKey: filePath,
+					}],
+				})),
+			...(token.repeatSeriesId
+				? [{
+					groupId: `repeat-series:${token.repeatSeriesId}`,
+					resources: [{
+						resourceKind: 'repeat-series' as const,
+						resourceKey: token.repeatSeriesId,
+					}],
+				}]
+				: []),
+		];
+		return {
+			ok: true,
+			value: {
+				target: {
+					operonId: task.operonId,
+					locator: beforeLocator,
+					targetDigest,
+				},
+				affectedResources,
+				atomicGroups: [
+					...token.groups.map((group, order) => ({
+						groupId: `task-source:${group.filePath}`,
+						order,
+						resources: [{
+							resourceKind: 'task-source' as const,
+							resourceKey: group.filePath,
+						}],
+					})),
+					...(token.cleanupPinned
+						? [{
+							groupId: `pinned:${token.operonId}`,
+							order: token.groups.length,
+							resources: [{
+								resourceKind: 'pinned' as const,
+								resourceKey: token.operonId,
+							}],
+						}]
+						: []),
+					...auxiliaryGroups.map((group, offset) => ({
+						...group,
+						order: token.groups.length
+							+ (token.cleanupPinned ? 1 : 0)
+							+ offset,
+					})),
+				],
+					predictedEffects,
+					warnings,
+					...(token.conversionEffect
+						? { conversionEffect: token.conversionEffect }
+						: {}),
+					...(sealedSpec ? { sealedSpec } : {}),
+					...(spec.operation === 'delete' || (
+						spec.operation === 'convert' && spec.from === 'file' && spec.to === 'inline'
+					)
+						? {
+							riskLevel: 'destructive' as const,
+							requiredAcknowledgements: [
+								`confirm:${spec.operation}:${sha256HexV1(canonicalJsonV1(toJsonValueV1({
+									targetDigest,
+									conversionEffect: token.conversionEffect ?? null,
+								}))).slice(0, 16)}`,
+							],
+					}
+					: requiredAcknowledgements.length > 0
+						? {
+							riskLevel: 'elevated' as const,
+							requiredAcknowledgements,
+						}
+						: {}),
+				token,
+			},
+		};
+	}
+
+	private async prepareAgentRuntimeTaskMutation(
+		request: MutationPreviewRequestV1,
+		effectiveAt: string,
+	): Promise<
+		| { ok: true; value: RuntimePreparedMutationV1 }
+		| {
+			ok: false;
+			code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
+			reason: string;
+			retryable?: boolean;
+		}
+	> {
+		if (
+			request.spec.operation === 'relocate-inline'
+			|| request.spec.operation === 'convert'
+			|| request.spec.operation === 'delete'
+		) {
+			return await this.prepareAgentRuntimeSourceTransition(request, effectiveAt);
+		}
+			if (request.mutationKind === 'timer.session') {
+				const indexed = request.target
+					? this.indexer.getTaskSnapshot(request.target.operonId)
+					: null;
+				if (!indexed) {
+					return { ok: false, code: 'entity-not-found', reason: 'The timer session task does not exist.' };
+				}
+					const source = await this.readVerifiedAgentRuntimeMutationTaskSource(indexed);
+					if (!source) {
+						return { ok: false, code: 'stale-source', reason: 'The timer session task source is unavailable.' };
+					}
+					const locator = this.agentRuntimeTaskLocator(indexed);
+					const trackers = this.agentRuntimeSourceHydrator?.resolveLosslessListFieldAtLocator({
+						snapshot: source,
+						locator,
+						canonicalKey: 'trackers',
+						keyMappings: this.settings.keyMappings,
+					});
+					if (!trackers?.ok) {
+						return {
+							ok: false,
+							code: 'invalid-request',
+							reason: 'The timer session tracker source is malformed or lossy.',
+						};
+					}
+					const preparation = prepareRuntimeTimerSessionMutationV1(
+						request,
+						effectiveAt,
+					{
+						getTask: operonId => operonId === indexed.operonId ? {
+								operonId: indexed.operonId,
+								locator,
+								fieldValues: { ...indexed.fieldValues, trackers: trackers.value },
+								sourceContent: source.content,
+								duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+							} : null,
+						splitSessionsAtMidnight: () => this.settings.trackerSplitSessionsAtMidnight,
+					},
+				);
+				if (!preparation.ok) return preparation;
+				const aggregatePatches = this.planAgentRuntimeTaskFieldAggregatePatches(
+					indexed,
+					preparation.value.fieldValues,
+					preparation.value.noChange,
+					effectiveAt,
+				);
+				const timerSession: RuntimeTimerSessionPreparationV1 = {
+					...preparation.value,
+					aggregateAncestorOperonIds: aggregatePatches
+						.map(patch => patch.operonId)
+						.filter(operonId => operonId !== indexed.operonId),
+				};
+				const resources = await this.readAgentRuntimeTaskSourceResources(
+					indexed.primary.filePath,
+					source.content,
+					aggregatePatches,
+					'Timer session',
+				);
+				if (!resources.ok) return resources;
+				const affectedResources = resources.value;
+				return {
+					ok: true,
+					value: {
+						target: {
+							operonId: indexed.operonId,
+							locator,
+							targetDigest: timerSession.targetDigest,
+						},
+						affectedResources,
+						atomicGroups: [{
+							groupId: `timer-session:${indexed.operonId}`,
+							order: 0,
+							resources: affectedResources.map(resource => ({
+								resourceKind: resource.resourceKind,
+								resourceKey: resource.resourceKey,
+							})),
+						}],
+						predictedEffects: affectedResources.map(resource => ({
+							resourceKind: resource.resourceKind,
+							resourceKey: resource.resourceKey,
+							action: 'update' as const,
+							summary: timerSession.noChange
+								? 'The exact tracker sessions already match the request.'
+								: 'Update completed tracker sessions.',
+						})),
+						warnings: [],
+						...(request.spec.operation === 'remove-session'
+							? { riskLevel: 'destructive' as const }
+							: {}),
+						sealedSpec: timerSession.sealedSpec,
+						token: timerSession,
+					},
+				};
+			}
+			if (request.spec.operation === 'update-recurrence') {
+				const indexed = request.target
+					? this.indexer.getTaskSnapshot(request.target.operonId)
+					: null;
+				if (!indexed) {
+					return { ok: false, code: 'entity-not-found', reason: 'The recurrence task does not exist.' };
+				}
+					const source = await this.readVerifiedAgentRuntimeMutationTaskSource(indexed);
+					if (!source) {
+						return { ok: false, code: 'stale-source', reason: 'The recurrence task source is unavailable.' };
+					}
+				const locator = this.agentRuntimeTaskLocator(indexed);
+				const preparation = prepareRuntimeTaskRecurrenceMutationV1(
+					request,
+					effectiveAt,
+					{
+						getTask: operonId => operonId === indexed.operonId ? {
+								operonId: indexed.operonId,
+								locator,
+								fieldValues: { ...indexed.fieldValues },
+								sourceContent: source.content,
+								duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+						} : null,
+						getAllRepeatSeriesIds: () => new Set(this.storage.repeatSeries.getAllSeriesIds()),
+						getRepeatSkipDates: seriesId => this.storage.repeatSeries.getSkipDates(seriesId),
+					},
+				);
+				if (!preparation.ok) return preparation;
+				const projectedFieldValues = this.applyAgentRuntimeTaskFieldValues(
+					indexed.fieldValues,
+					preparation.value.fieldValues,
+				);
+				const projectedTask = { ...indexed, fieldValues: projectedFieldValues };
+				const currentSeriesId = (indexed.fieldValues['repeatSeriesId'] ?? '').trim();
+				const nextSeriesId = (projectedFieldValues['repeatSeriesId'] ?? '').trim();
+				let repeatSeriesId = nextSeriesId || currentSeriesId;
+				let seriesBefore = repeatSeriesId
+					? this.storage.repeatSeries.getEntry(repeatSeriesId)
+					: null;
+				let seriesAfter = seriesBefore;
+				if (nextSeriesId && !seriesBefore && !currentSeriesId) {
+					seriesAfter = this.storage.repeatSeries.planCreationEntry({
+						seriesId: nextSeriesId,
+						sourceTaskId: indexed.operonId,
+						sourceFormat: indexed.primary.format,
+						baseTitle: indexed.primary.format === 'yaml' ? indexed.description : null,
+						lastMaterializedTitle: indexed.description,
+						baseTemporalTemplate: deriveTemporalTemplateFromTask(projectedTask),
+						inlineCompletionMode: this.getRepeatSeriesInlineCompletionMode(nextSeriesId),
+						now: toLocalDatetime(new Date(effectiveAt)),
+					});
+				} else if (nextSeriesId && !seriesBefore) {
+					return {
+						ok: false,
+						code: 'stale-source',
+						reason: 'The existing recurrence series state is unavailable.',
+					};
+				} else if (nextSeriesId && preparation.value.followingOverride) {
+					const planned = this.storage.repeatSeries.planFollowingOverrideTransaction(
+						nextSeriesId,
+						preparation.value.followingOverride,
+						toLocalDatetime(new Date(effectiveAt)),
+					);
+					if (!planned) {
+						return {
+							ok: false,
+							code: 'stale-source',
+							reason: 'The recurrence series changed before preview.',
+						};
+					}
+					seriesBefore = planned.previousEntry;
+					seriesAfter = planned.tentativeEntry;
+				} else if (!nextSeriesId && currentSeriesId) {
+					const hasOtherReference = this.indexer.getAllTasks().some(task => (
+						task.operonId !== indexed.operonId
+						&& (task.fieldValues['repeatSeriesId'] ?? '').trim() === currentSeriesId
+					));
+					if (!hasOtherReference) seriesAfter = null;
+				}
+				const aggregatePatches = this.planAgentRuntimeTaskFieldAggregatePatches(
+					indexed,
+					preparation.value.fieldValues,
+					preparation.value.noChange,
+					effectiveAt,
+				);
+				const aggregateAncestorOperonIds = aggregatePatches
+					.map(patch => patch.operonId)
+					.filter(operonId => operonId !== indexed.operonId);
+				const recurrence: RuntimeTaskRecurrencePreparationV1 = {
+					...preparation.value,
+					...(repeatSeriesId
+						? { repeatSeriesId, seriesBefore, seriesAfter }
+						: {}),
+					aggregateAncestorOperonIds,
+				};
+				const sourceResources = await this.readAgentRuntimeTaskSourceResources(
+					indexed.primary.filePath,
+					source.content,
+					aggregatePatches,
+					'Recurrence',
+				);
+				if (!sourceResources.ok) return sourceResources;
+				const affectedResources = [
+					...(repeatSeriesId && canonicalJsonV1(toJsonValueV1(seriesBefore))
+						!== canonicalJsonV1(toJsonValueV1(seriesAfter))
+						? [{
+							resourceKind: 'repeat-series' as const,
+							resourceKey: repeatSeriesId,
+							revision: sha256HexV1(
+								seriesBefore ? canonicalJsonV1(toJsonValueV1(seriesBefore)) : '',
+							),
+						}]
+						: []),
+					...sourceResources.value,
+				];
+				const atomicGroups = [{
+					groupId: `task-recurrence:${indexed.operonId}`,
+					order: 0,
+					resources: affectedResources.map(resource => ({
+						resourceKind: resource.resourceKind,
+						resourceKey: resource.resourceKey,
+					})),
+				}];
+				return {
+					ok: true,
+					value: {
+						target: {
+							operonId: indexed.operonId,
+							locator,
+							targetDigest: recurrence.targetDigest,
+						},
+						affectedResources,
+						atomicGroups,
+						predictedEffects: affectedResources.map(resource => ({
+							resourceKind: resource.resourceKind,
+							resourceKey: resource.resourceKey,
+							action: resource.resourceKind === 'repeat-series'
+								? seriesBefore === null
+									? 'create' as const
+									: seriesAfter === null
+										? 'state-change' as const
+										: 'update' as const
+								: 'update' as const,
+							summary: recurrence.noChange
+								? 'The exact recurrence state already matches the request.'
+								: recurrence.summary,
+						})),
+						warnings: [],
+						sealedSpec: recurrence.sealedSpec,
+						token: recurrence,
+					},
+				};
+			}
+			if (request.spec.operation === 'replace-relationships') {
+				const snapshots = new Map(this.indexer.getAllTasks().map(task => [
+					task.operonId,
+					{
+						operonId: task.operonId,
+						locator: task.primary.format === 'yaml'
+							? {
+								representation: 'file' as const,
+								filePath: task.primary.filePath,
+							}
+							: {
+								representation: 'inline' as const,
+								filePath: task.primary.filePath,
+								lineNumber: task.primary.lineNumber,
+							},
+						fieldValues: { ...task.fieldValues },
+						sourceContent: '',
+						duplicate: this.indexer.hasDuplicateOperonIdConflict(task.operonId),
+					},
+				]));
+				const preparation = prepareRuntimeTaskRelationshipMutationV1(
+					request,
+					effectiveAt,
+					{
+						getTask: operonId => snapshots.get(operonId) ?? null,
+						getAllTasks: () => [...snapshots.values()],
+					},
+				);
+				if (!preparation.ok) return preparation;
+				const resourceOperonIds = [...new Set([
+					preparation.value.task.operonId,
+					...preparation.value.patches.map(patch => patch.task.operonId),
+					...preparation.value.aggregateAncestorOperonIds,
+				])];
+				const sourceByPath = new Map<string, string>();
+				for (const operonId of resourceOperonIds) {
+					const indexed = this.indexer.getTaskSnapshot(operonId);
+					if (!indexed || this.indexer.hasDuplicateOperonIdConflict(operonId)) {
+						return {
+							ok: false,
+							code: indexed ? 'duplicate-operon-id' as const : 'entity-not-found' as const,
+							reason: `Relationship transaction task is unavailable: ${operonId}.`,
+						};
+					}
+					if (!sourceByPath.has(indexed.primary.filePath)) {
+						const source = await this.readAgentRuntimeMutationSource(indexed.primary.filePath);
+						if (source.content === null) {
+							return {
+								ok: false,
+								code: 'stale-source',
+								reason: `Relationship transaction source is unavailable: ${indexed.primary.filePath}.`,
+							};
+						}
+						sourceByPath.set(indexed.primary.filePath, source.content);
+					}
+				}
+				const exactTask = {
+					...preparation.value.task,
+					sourceContent: sourceByPath.get(preparation.value.task.locator.filePath) ?? '',
+				};
+				const exactPatches = preparation.value.patches.map(patch => ({
+					...patch,
+					task: {
+						...patch.task,
+						sourceContent: sourceByPath.get(patch.task.locator.filePath) ?? '',
+					},
+				}));
+				const prepared: RuntimeTaskRelationshipPreparationV1 = {
+					...preparation.value,
+					task: exactTask,
+					patches: exactPatches,
+				};
+				const affectedResources = [...sourceByPath.entries()]
+					.map(([filePath, content]) => ({
+						resourceKind: 'task-source' as const,
+						resourceKey: filePath,
+						revision: sourceRevisionForTaskCreationV1(filePath, content),
+					}))
+					.sort((left, right) => left.resourceKey.localeCompare(right.resourceKey));
+				const atomicGroups = affectedResources.map((resource, order) => ({
+					groupId: `task-source:${resource.resourceKey}`,
+					order,
+					resources: [{
+						resourceKind: resource.resourceKind,
+						resourceKey: resource.resourceKey,
+					}],
+				}));
+				return {
+					ok: true,
+					value: {
+						target: {
+							operonId: prepared.task.operonId,
+							locator: prepared.task.locator,
+							targetDigest: sourceRevisionForTaskCreationV1(
+								prepared.task.locator.filePath,
+								prepared.task.sourceContent,
+							),
+						},
+						affectedResources,
+						atomicGroups,
+						predictedEffects: affectedResources.map(resource => ({
+							resourceKind: resource.resourceKind,
+							resourceKey: resource.resourceKey,
+							action: 'update' as const,
+							summary: prepared.noChange
+								? 'The exact relationship graph already matches the requested state.'
+								: prepared.summary,
+						})),
+						warnings: [],
+						sealedSpec: prepared.sealedSpec,
+						token: prepared,
+					},
+				};
+			}
+			if (request.spec.operation === 'set-pinned') {
+				return prepareRuntimePinnedStateMutationV1(request, effectiveAt, {
+					canPersist: () => this.pinnedCache?.canPersistCanonical() === true,
+					getPinnedEntry: operonId => this.pinnedCache?.getEntry(operonId) ?? null,
+					getTask: operonId => {
+						const task = this.indexer.getTaskSnapshot(operonId);
+						if (!task) return null;
+						return {
+							operonId: task.operonId,
+							locator: task.primary.format === 'yaml'
+								? {
+									representation: 'file',
+									filePath: task.primary.filePath,
+								}
+								: {
+									representation: 'inline',
+									filePath: task.primary.filePath,
+									lineNumber: task.primary.lineNumber,
+								},
+							duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+						};
+					},
+				});
+			}
+			if (request.spec.operation === 'start' || request.spec.operation === 'stop') {
+			const active = this.timeTracker.getActiveState();
+			const requestedOperonId = request.target?.operonId ?? null;
+			const provisionalTargetOperonId = request.spec.operation === 'start'
+				? requestedOperonId
+				: requestedOperonId ?? active?.operonId ?? null;
+			const provisionalTarget = provisionalTargetOperonId
+				? this.indexer.getTaskSnapshot(provisionalTargetOperonId)
+				: null;
+			const guarded = guardRuntimeTimerControlV1({
+				spec: request.spec,
+				requestedOperonId,
+				active: active
+					? {
+						operonId: active.operonId,
+						start: active.start,
+						isUnassigned: active.isUnassigned,
+					}
+					: null,
+				targetExists: provisionalTargetOperonId === null || provisionalTarget !== null,
+				targetDuplicate: provisionalTargetOperonId !== null
+					&& this.indexer.hasDuplicateOperonIdConflict(provisionalTargetOperonId),
+			});
+			if (!guarded.ok) return guarded;
+			const { targetOperonId, noChange } = guarded.value;
+			const target = targetOperonId ? this.indexer.getTaskSnapshot(targetOperonId) : null;
+			if (
+				request.spec.operation === 'start'
+				&& targetOperonId
+				&& !noChange
+				&& !await this.timeTracker.canStartWithStatusGuard(
+					targetOperonId,
+					(task, payload) => this.isAgentRuntimeStatusChangeAllowed(task, payload),
+				)
+			) {
+				return {
+					ok: false,
+					code: 'invalid-request',
+					reason: 'Timer start is blocked by active task dependencies.',
+				};
+			}
+			const locator = target
+				? target.primary.format === 'yaml'
+					? { representation: 'file' as const, filePath: target.primary.filePath }
+					: {
+						representation: 'inline' as const,
+						filePath: target.primary.filePath,
+						lineNumber: target.primary.lineNumber,
+					}
+				: null;
+			if (
+				request.target
+				&& (
+					!locator
+					|| canonicalJsonV1(toJsonValueV1(locator))
+						!== canonicalJsonV1(toJsonValueV1(request.target.locator))
+				)
+			) {
+				return { ok: false, code: 'stale-source', reason: 'The timer task locator changed.' };
+			}
+			const affectedFilePaths = [...new Set([
+				...(target ? [target.primary.filePath] : []),
+				...(active?.operonId && active.operonId !== targetOperonId
+					? [this.indexer.getTaskSnapshot(active.operonId)?.primary.filePath].filter(
+						(path): path is string => !!path,
+					)
+					: []),
+			])].sort((left, right) => left.localeCompare(right));
+			const sourceResources = [];
+			for (const filePath of affectedFilePaths) {
+				const source = await this.readAgentRuntimeMutationSource(filePath);
+				if (source.content === null) {
+					return { ok: false, code: 'stale-source', reason: `Timer task source is unavailable: ${filePath}` };
+				}
+				sourceResources.push({
+					resourceKind: 'task-source' as const,
+					resourceKey: filePath,
+					revision: sourceRevisionForTaskCreationV1(filePath, source.content),
+				});
+			}
+			const activeMaterial = guarded.value.expectedActive;
+			const token: RuntimeTimerMutationPreparationV1 = {
+				kind: 'timer',
+				operation: request.spec.operation,
+				targetOperonId,
+				expectedActive: activeMaterial,
+				noChange,
+				affectedFilePaths,
+			};
+			const targetDigest = sourceRevisionForTaskCreationV1(
+				'state/active-trackers.json',
+				canonicalJsonV1(toJsonValueV1({
+					operation: request.spec.operation,
+					targetOperonId,
+					locator,
+					activeMaterial,
+				})),
+			);
+			return {
+				ok: true,
+				value: {
+					target: {
+						...(target ? { operonId: target.operonId } : {}),
+						...(locator ? { locator } : {}),
+						targetDigest,
+					},
+					affectedResources: [{
+						resourceKind: 'active-tracker',
+						resourceKey: 'current-user',
+						revision: sourceRevisionForTaskCreationV1(
+							'state/active-trackers.json',
+							canonicalJsonV1(toJsonValueV1(activeMaterial)),
+						),
+					}, ...sourceResources],
+					atomicGroups: [{
+						groupId: `timer-control:${targetOperonId ?? 'unassigned'}`,
+						order: 0,
+						resources: [{
+							resourceKind: 'active-tracker',
+							resourceKey: 'current-user',
+						}, ...sourceResources.map(resource => ({
+							resourceKind: resource.resourceKind,
+							resourceKey: resource.resourceKey,
+						}))],
+					}],
+					predictedEffects: [{
+						resourceKind: 'active-tracker',
+						resourceKey: 'current-user',
+						action: 'state-change',
+						summary: noChange
+							? 'The canonical timer is already in the requested state.'
+							: request.spec.operation === 'start' && targetOperonId === null
+								? 'Start the unassigned Operon timer.'
+								: `${request.spec.operation} the active Operon timer.`,
+					}, ...sourceResources.map(resource => ({
+						resourceKind: resource.resourceKind,
+						resourceKey: resource.resourceKey,
+						action: 'update' as const,
+						summary: 'Apply canonical timer task effects and duration aggregates.',
+					}))],
+					warnings: [],
+					token,
+				},
+			};
+		}
+		if (
+			request.spec.operation !== 'update'
+			&& request.spec.operation !== 'update-batch'
+			&& request.spec.operation !== 'add'
+			&& request.spec.operation !== 'replace'
+			&& request.spec.operation !== 'remove'
+			&& request.spec.operation !== 'transition'
+		) {
+			return {
+				ok: false,
+				code: 'capability-unavailable',
+				reason: 'This mutation family has not completed its Runtime adapter gate.',
+			};
+		}
+		if (request.spec.operation === 'update-batch') {
+			const catalog = this.getAgentRuntimeCatalogBuild();
+			if (!catalog.ok) {
+				return {
+					ok: false,
+					code: catalog.error.code,
+					reason: catalog.error.reason,
+				};
+			}
+			const firstFilePath = request.spec.items[0]?.target.locator.filePath;
+			if (!firstFilePath) {
+				return { ok: false, code: 'invalid-request', reason: 'Batch update has no exact task source.' };
+			}
+			const source = await this.readAgentRuntimeMutationSource(firstFilePath);
+			if (source.content === null) {
+				return { ok: false, code: 'stale-source', reason: 'The batch task source is unavailable.' };
+			}
+			const exactSnapshot = (
+				operonId: string,
+			): RuntimeExactTaskMutationSnapshotV1 | null => {
+				const indexedTask = this.indexer.getTaskSnapshot(operonId);
+				if (!indexedTask || indexedTask.primary.filePath !== firstFilePath) return null;
+				return {
+					operonId: indexedTask.operonId,
+					locator: this.agentRuntimeTaskLocator(indexedTask),
+					description: indexedTask.description,
+					checkbox: indexedTask.checkbox,
+					fieldValues: { ...indexedTask.fieldValues },
+					tags: [...indexedTask.tags],
+					sourceContent: source.content!,
+					duplicate: this.indexer.hasDuplicateOperonIdConflict(indexedTask.operonId),
+					...(this.timeTracker.isTimerRunning(indexedTask.operonId)
+						? { activeTimerStart: this.timeTracker.getActiveState()?.start }
+						: {}),
+				};
+			};
+			const preparation = prepareRuntimeTaskUpdateBatchV1(request, effectiveAt, {
+				catalog: catalog.value,
+				getTask: exactSnapshot,
+				getDependencyTask: operonId => {
+					const dependency = this.indexer.getTaskSnapshot(operonId);
+					return dependency
+						? {
+							operonId: dependency.operonId,
+							checkbox: dependency.checkbox,
+							fieldValues: { ...dependency.fieldValues },
+						}
+						: null;
+				},
+				getAllDependencyTasks: () => this.indexer.getAllTasks().map(dependency => ({
+					operonId: dependency.operonId,
+					checkbox: dependency.checkbox,
+					fieldValues: { ...dependency.fieldValues },
+				})),
+			});
+			if (!preparation.ok) return preparation;
+			const prepared = preparation.value;
+			const updates = new Map<string, {
+				operonId: string;
+				format: 'inline';
+				lineNumber: number;
+				fieldValues: Record<string, string>;
+			}>();
+			for (const item of prepared.items) {
+				const locator = item.preparation.task.locator;
+				if (locator.representation !== 'inline') {
+					return { ok: false, code: 'invalid-request', reason: 'Batch update supports inline tasks only.' };
+				}
+				updates.set(item.preparation.task.operonId, {
+					operonId: item.preparation.task.operonId,
+					format: 'inline',
+					lineNumber: locator.lineNumber,
+					fieldValues: { ...item.preparation.fieldValues },
+				});
+			}
+			for (const parent of prepared.parentTasks) {
+				if (parent.locator.representation !== 'inline') {
+					return { ok: false, code: 'invalid-request', reason: 'Batch parent effects must remain inline.' };
+				}
+				const current = updates.get(parent.operonId);
+				updates.set(parent.operonId, {
+					operonId: parent.operonId,
+					format: 'inline',
+					lineNumber: parent.locator.lineNumber,
+					fieldValues: {
+						...(current?.fieldValues ?? {}),
+						datetimeModified: toLocalDatetime(new Date(effectiveAt)),
+					},
+				});
+			}
+			const rendered = this.writer.renderGuardedTaskSourceContent(
+				prepared.filePath,
+				prepared.sourceContent,
+				[...updates.values()],
+			);
+			if (!rendered.ok) {
+				return {
+					ok: false,
+					code: 'stale-source',
+					reason: `Cannot seal batch update source: ${rendered.reason}`,
+				};
+			}
+			const affectedResources = [{
+				resourceKind: 'task-source' as const,
+				resourceKey: prepared.filePath,
+				revision: sourceRevisionForTaskCreationV1(prepared.filePath, prepared.sourceContent),
+			}];
+			const targets = prepared.items.map(item => ({
+				operonId: item.preparation.task.operonId,
+				locator: item.preparation.task.locator,
+				targetDigest: item.preparation.targetDigest,
+			}));
+			return {
+				ok: true,
+				value: {
+					target: targets[0],
+					targets,
+					affectedResources,
+					atomicGroups: [{
+						groupId: `task-update-batch:${prepared.filePath}`,
+						order: 0,
+						resources: [{ resourceKind: 'task-source', resourceKey: prepared.filePath }],
+					}],
+					predictedEffects: [{
+						resourceKind: 'task-source',
+						resourceKey: prepared.filePath,
+						action: 'update',
+						summary: prepared.noChange
+							? 'All exact task fields already match the batch request.'
+							: `Update ${prepared.items.length} exact tasks atomically.`,
+					}],
+					warnings: [],
+					updateBatchEffects: buildRuntimeTaskUpdateBatchEffectsV1(
+						prepared,
+						sha256HexV1(rendered.content),
+					),
+					token: prepared,
+				},
+			};
+		}
+		if (!request.target) {
+			return { ok: false, code: 'invalid-request', reason: 'An exact task target is required.' };
+		}
+		const indexed = this.indexer.getTaskSnapshot(request.target.operonId);
+		if (!indexed) {
+			return { ok: false, code: 'entity-not-found', reason: 'The exact Operon task does not exist.' };
+		}
+		const source = await this.readAgentRuntimeMutationSource(indexed.primary.filePath);
+		if (source.content === null) {
+			return { ok: false, code: 'stale-source', reason: 'The exact task source is unavailable.' };
+		}
+		const locator = this.agentRuntimeTaskLocator(indexed);
+		const catalog = this.getAgentRuntimeCatalogBuild();
+		if (!catalog.ok) {
+			return {
+				ok: false,
+				code: catalog.error.code,
+				reason: catalog.error.reason,
+			};
+		}
+		const preparation = prepareRuntimeTaskFieldMutationV1(request, effectiveAt, {
+			catalog: catalog.value,
+			getTask: operonId => operonId === indexed.operonId
+				? {
+					operonId: indexed.operonId,
+					locator,
+					description: indexed.description,
+					checkbox: indexed.checkbox,
+					fieldValues: { ...indexed.fieldValues },
+					tags: [...indexed.tags],
+					sourceContent: source.content!,
+					duplicate: this.indexer.hasDuplicateOperonIdConflict(indexed.operonId),
+					...(this.timeTracker.isTimerRunning(indexed.operonId)
+						? { activeTimerStart: this.timeTracker.getActiveState()?.start }
+						: {}),
+				}
+				: null,
+			getDependencyTask: operonId => {
+				const dependency = this.indexer.getTaskSnapshot(operonId);
+				return dependency
+					? {
+						operonId: dependency.operonId,
+						checkbox: dependency.checkbox,
+						fieldValues: { ...dependency.fieldValues },
+					}
+					: null;
+			},
+			getAllDependencyTasks: () => this.indexer.getAllTasks().map(dependency => ({
+				operonId: dependency.operonId,
+				checkbox: dependency.checkbox,
+				fieldValues: { ...dependency.fieldValues },
+			})),
+		});
+		if (!preparation.ok) return preparation;
+		let prepared = preparation.value;
+		if (prepared.operation === 'transition') {
+			const snapshots = new Map<string, RuntimeExactTaskMutationSnapshotV1>([
+				[prepared.task.operonId, prepared.task],
+			]);
+			let ancestorId = (prepared.task.fieldValues['parentTask'] ?? '').trim();
+			const visited = new Set<string>([prepared.task.operonId]);
+			let ancestorDepth = 0;
+			while (ancestorId) {
+				if (ancestorDepth >= 100) {
+					return { ok: false, code: 'invalid-request', reason: 'Transition ancestor chain exceeds 100 tasks.' };
+				}
+				ancestorDepth += 1;
+				if (visited.has(ancestorId)) {
+					return { ok: false, code: 'invalid-request', reason: 'The transition ancestor chain contains a cycle.' };
+				}
+				visited.add(ancestorId);
+				const ancestor = this.indexer.getTaskSnapshot(ancestorId);
+				if (!ancestor) {
+					return { ok: false, code: 'entity-not-found', reason: `Transition ancestor is unavailable: ${ancestorId}.` };
+				}
+				const ancestorSource = await this.readAgentRuntimeMutationSource(ancestor.primary.filePath);
+				if (ancestorSource.content === null) {
+					return { ok: false, code: 'stale-source', reason: `Transition ancestor source is unavailable: ${ancestorId}.` };
+				}
+				const snapshot: RuntimeExactTaskMutationSnapshotV1 = {
+					operonId: ancestor.operonId,
+					locator: ancestor.primary.format === 'yaml'
+						? { representation: 'file', filePath: ancestor.primary.filePath }
+						: {
+							representation: 'inline',
+							filePath: ancestor.primary.filePath,
+							lineNumber: ancestor.primary.lineNumber,
+						},
+					description: ancestor.description,
+					checkbox: ancestor.checkbox,
+					fieldValues: { ...ancestor.fieldValues },
+					tags: [...ancestor.tags],
+					sourceContent: ancestorSource.content,
+					duplicate: this.indexer.hasDuplicateOperonIdConflict(ancestor.operonId),
+				};
+				snapshots.set(snapshot.operonId, snapshot);
+				ancestorId = (snapshot.fieldValues['parentTask'] ?? '').trim();
+			}
+			const transitionPlan = await planRuntimeSemanticTransitionV1(
+				prepared,
+				effectiveAt,
+				{
+					getTask: operonId => snapshots.get(operonId) ?? null,
+					isPinned: operonId => this.pinnedCache?.isPinned(operonId) === true,
+					stateRevisions: () => ({
+						activeTracker: sha256HexV1(String(this.storage.activeTrackers.getGeneration())),
+						repeatSeries: sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+						pinned: sha256HexV1(String(this.pinnedCache?.getGeneration() ?? 0)),
+						projectSerial: hashProjectSerialSignatureV1(
+							this.storage.projectSerials.getSignature(),
+						),
+					}),
+					planRecurrence: async recurrenceRequest => {
+						const effectiveLocal = toLocalDatetime(new Date(recurrenceRequest.effectiveAt));
+						const timerPayload = prepared.transition?.finalizeActiveTimer
+							? this.timeTracker.previewExternalStopPayload(
+								prepared.task.operonId,
+								effectiveLocal,
+							)
+							: {};
+						if (prepared.transition?.finalizeActiveTimer && timerPayload === null) {
+							return {
+								ok: false,
+								code: 'stale-source',
+								reason: 'The active timer changed while recurrence effects were being planned.',
+							};
+						}
+						const renderedPrimary = this.writer.renderGuardedTaskSourceContent(
+							prepared.task.locator.filePath,
+							prepared.task.sourceContent,
+							[{
+								operonId: prepared.task.operonId,
+								format: prepared.task.locator.representation === 'file' ? 'yaml' : 'inline',
+								...(prepared.task.locator.representation === 'inline'
+									? { lineNumber: prepared.task.locator.lineNumber }
+									: {}),
+								fieldValues: {
+									...(timerPayload ?? {}),
+									...prepared.fieldValues,
+								},
+							}],
+						);
+						if (!renderedPrimary.ok) {
+							return {
+								ok: false,
+								code: 'stale-source',
+								reason: 'The terminal task source could not be rendered for recurrence preview.',
+							};
+						}
+						const completedFieldValues = { ...indexed.fieldValues };
+						for (const [key, value] of Object.entries(prepared.fieldValues)) {
+							if (key.startsWith('_')) continue;
+							if (value) completedFieldValues[key] = value;
+							else delete completedFieldValues[key];
+						}
+						for (const [key, value] of Object.entries(timerPayload ?? {})) {
+							if (value) completedFieldValues[key] = value;
+							else delete completedFieldValues[key];
+						}
+						const beforeTaskForRecurrence = {
+							...indexed,
+							tags: [...indexed.tags],
+							primary: { ...indexed.primary },
+							fieldValues: { ...indexed.fieldValues },
+							...(indexed.plainCheckboxProgress
+								? { plainCheckboxProgress: { ...indexed.plainCheckboxProgress } }
+								: {}),
+						};
+						const completedTask = {
+							...beforeTaskForRecurrence,
+							checkbox: prepared.transition?.toCheckbox ?? indexed.checkbox,
+							fieldValues: completedFieldValues,
+						};
+						const seed = [
+							prepared.task.operonId,
+							prepared.sourceRevision,
+							recurrenceRequest.effectiveAt,
+						].join('\0');
+						const requestedSeries = (completedFieldValues['repeatSeriesId'] ?? '').trim();
+						const seriesId = /^rs[a-z0-9]{5}$/u.test(requestedSeries)
+							? requestedSeries
+							: `rs${sha256HexV1(`series\0${seed}`).slice(0, 5)}`;
+						let nextOperonId = '';
+						for (let attempt = 0; attempt < 100; attempt += 1) {
+							const candidate = sha256HexV1(`task\0${seed}\0${attempt}`).slice(0, 7);
+							if (!this.indexer.getTaskSnapshot(candidate)) {
+								nextOperonId = candidate;
+								break;
+							}
+						}
+						if (!nextOperonId) {
+							return {
+								ok: false,
+								code: 'duplicate-operon-id',
+								reason: 'No deterministic recurrence operonId remained collision-free.',
+							};
+						}
+						const recurrencePreview = this.recurrenceService.previewNextOccurrenceForAgentRuntime({
+							beforeTask: beforeTaskForRecurrence,
+							completedTask,
+							completionTimestamp: effectiveLocal,
+							effectiveAt: effectiveLocal,
+							postTransitionSourceContent: renderedPrimary.content,
+							nextOperonId,
+							seriesId,
+							isOperonIdAvailable: operonId => !this.indexer.getTaskSnapshot(operonId),
+						});
+						if (!recurrencePreview) {
+							return {
+								ok: false,
+								code: 'capability-unavailable',
+								reason: 'Canonical recurrence preview requires a supported source, folder, and naming mode.',
+							};
+						}
+						if (recurrencePreview.disposition === 'ended') {
+							return {
+								ok: true,
+								value: recurrencePreview,
+							};
+						}
+						return {
+							ok: true,
+							value: {
+								disposition: 'materialize',
+								seriesId: recurrencePreview.seriesId,
+								nextOperonId: recurrencePreview.nextOperonId,
+								nextLocator: recurrencePreview.nextLineNumber === undefined
+									? {
+										representation: 'file',
+										filePath: recurrencePreview.nextFilePath,
+									}
+									: {
+										representation: 'inline',
+										filePath: recurrencePreview.nextFilePath,
+										lineNumber: recurrencePreview.nextLineNumber,
+									},
+								plannedSourceContent: recurrencePreview.plannedSourceContent,
+								plannedSourceRevision: sha256HexV1(recurrencePreview.plannedSourceContent),
+								applyExpectedSourceContent: recurrencePreview.coalescedWithPrimarySource
+									? renderedPrimary.content
+									: null,
+								sourcePrecondition: recurrencePreview.coalescedWithPrimarySource
+									? { expectedSourceRevision: prepared.sourceRevision }
+									: { expectedAbsence: true },
+								coalescedWithPrimarySource: recurrencePreview.coalescedWithPrimarySource,
+								sourceTaskRetained: recurrencePreview.sourceTaskRetained,
+								...(recurrencePreview.sourceTaskFinalFilePath
+									? {
+										sourceTaskFinalLocator: {
+											representation: 'file' as const,
+											filePath: recurrencePreview.sourceTaskFinalFilePath,
+										},
+									}
+									: {}),
+								...(recurrencePreview.archiveFilePath
+									&& recurrencePreview.archiveSourceContent !== undefined
+									? {
+										archiveSource: {
+											locator: {
+												representation: 'file' as const,
+												filePath: recurrencePreview.archiveFilePath,
+											},
+											plannedSourceContent: recurrencePreview.archiveSourceContent,
+											plannedSourceRevision: sha256HexV1(
+												recurrencePreview.archiveSourceContent,
+											),
+											sourcePrecondition: { expectedAbsence: true as const },
+										},
+									}
+									: {}),
+							},
+						};
+					},
+				},
+			);
+			if (!transitionPlan.ok) return transitionPlan;
+			return {
+				ok: true,
+				value: {
+					target: {
+						operonId: prepared.task.operonId,
+						locator: prepared.task.locator,
+						targetDigest: prepared.targetDigest,
+					},
+					affectedResources: [...transitionPlan.value.affectedResources],
+					atomicGroups: [...transitionPlan.value.atomicGroups],
+					predictedEffects: [...transitionPlan.value.predictedEffects],
+					warnings: [],
+					token: transitionPlan.value,
+				},
+			};
+		}
+		const affectedResources: RuntimePreparedMutationV1['affectedResources'] = [{
+			resourceKind: 'task-source',
+			resourceKey: prepared.task.locator.filePath,
+			revision: prepared.sourceRevision,
+		}];
+		const predictedEffects: RuntimePreparedMutationV1['predictedEffects'] = [{
+			resourceKind: 'task-source',
+			resourceKey: prepared.task.locator.filePath,
+			action: 'update',
+			summary: prepared.summary,
+		}];
+		if (prepared.parentOperonId) {
+			const parent = this.indexer.getTaskSnapshot(prepared.parentOperonId);
+			if (!parent || this.indexer.hasDuplicateOperonIdConflict(prepared.parentOperonId)) {
+				return {
+					ok: false,
+					code: parent ? 'duplicate-operon-id' : 'entity-not-found',
+					reason: 'The exact parent task required for mutation postflight is unavailable.',
+				};
+			}
+			const parentSource = await this.readAgentRuntimeMutationSource(parent.primary.filePath);
+			if (parentSource.content === null) {
+				return { ok: false, code: 'stale-source', reason: 'The parent task source is unavailable.' };
+			}
+			prepared = {
+				...prepared,
+				parentTask: {
+					operonId: parent.operonId,
+					locator: parent.primary.format === 'yaml'
+						? {
+							representation: 'file',
+							filePath: parent.primary.filePath,
+						}
+						: {
+							representation: 'inline',
+							filePath: parent.primary.filePath,
+							lineNumber: parent.primary.lineNumber,
+						},
+					description: parent.description,
+					checkbox: parent.checkbox,
+					fieldValues: { ...parent.fieldValues },
+					tags: [...parent.tags],
+					sourceContent: parentSource.content,
+					duplicate: false,
+				},
+			};
+			if (parent.primary.filePath !== prepared.task.locator.filePath) {
+				affectedResources.push({
+					resourceKind: 'task-source',
+					resourceKey: parent.primary.filePath,
+					revision: sourceRevisionForTaskCreationV1(parent.primary.filePath, parentSource.content),
+				});
+				predictedEffects.push({
+					resourceKind: 'task-source',
+					resourceKey: parent.primary.filePath,
+					action: 'update',
+					summary: `Refresh parent task metadata for ${prepared.parentOperonId}.`,
+				});
+			}
+		}
+		if (prepared.transition?.finalizeActiveTimer) {
+			affectedResources.push({
+				resourceKind: 'active-tracker',
+				resourceKey: 'current-user',
+				revision: sha256HexV1(String(this.storage.activeTrackers.getGeneration())),
+			});
+			predictedEffects.push({
+				resourceKind: 'active-tracker',
+				resourceKey: 'current-user',
+				action: 'state-change',
+				summary: 'Finalize the active timer before the terminal transition.',
+			});
+		}
+		if (prepared.transition?.autoUnpin && this.pinnedCache?.isPinned(prepared.task.operonId)) {
+			affectedResources.push({
+				resourceKind: 'pinned',
+				resourceKey: prepared.task.operonId,
+				revision: sha256HexV1(String(this.pinnedCache.getGeneration())),
+			});
+			predictedEffects.push({
+				resourceKind: 'pinned',
+				resourceKey: prepared.task.operonId,
+				action: 'state-change',
+				summary: 'Remove the finished task from pinned state.',
+			});
+		}
+		affectedResources.sort((left, right) => {
+			const kindOrder = RESOURCE_QUEUE_ORDER_V1[left.resourceKind]
+				- RESOURCE_QUEUE_ORDER_V1[right.resourceKind];
+			if (kindOrder !== 0) return kindOrder;
+			return left.resourceKey.localeCompare(right.resourceKey);
+		});
+		predictedEffects.sort((left, right) => {
+			const kindOrder = RESOURCE_QUEUE_ORDER_V1[left.resourceKind]
+				- RESOURCE_QUEUE_ORDER_V1[right.resourceKind];
+			if (kindOrder !== 0) return kindOrder;
+			return left.resourceKey.localeCompare(right.resourceKey);
+		});
+		const primaryGroupResources = [
+			...(prepared.transition?.finalizeActiveTimer
+				? [{
+					resourceKind: 'active-tracker' as const,
+					resourceKey: 'current-user',
+				}]
+				: []),
+			{
+				resourceKind: 'task-source' as const,
+				resourceKey: prepared.task.locator.filePath,
+			},
+		];
+		const atomicGroups: NonNullable<RuntimePreparedMutationV1['atomicGroups']> = [{
+			groupId: prepared.transition?.finalizeActiveTimer
+				? `task-transition:${prepared.task.operonId}`
+				: `task-source:${prepared.task.locator.filePath}`,
+			order: 0,
+			resources: primaryGroupResources,
+		}];
+		if (
+			prepared.parentTask
+			&& prepared.parentTask.locator.filePath !== prepared.task.locator.filePath
+		) {
+			atomicGroups.push({
+				groupId: `task-source:${prepared.parentTask.locator.filePath}`,
+				order: atomicGroups.length,
+				resources: [{
+					resourceKind: 'task-source',
+					resourceKey: prepared.parentTask.locator.filePath,
+				}],
+			});
+		}
+		if (
+			prepared.transition?.autoUnpin
+			&& affectedResources.some(resource => (
+				resource.resourceKind === 'pinned'
+				&& resource.resourceKey === prepared.task.operonId
+			))
+		) {
+			atomicGroups.push({
+				groupId: `pinned:${prepared.task.operonId}`,
+				order: atomicGroups.length,
+				resources: [{
+					resourceKind: 'pinned',
+					resourceKey: prepared.task.operonId,
+				}],
+			});
+		}
+		return {
+			ok: true,
+			value: {
+				target: {
+					operonId: prepared.task.operonId,
+					locator: prepared.task.locator,
+					targetDigest: prepared.targetDigest,
+				},
+				affectedResources,
+				atomicGroups,
+				predictedEffects,
+				warnings: [],
+				token: prepared,
+			},
+		};
+	}
+
+	private async commitAgentRuntimeTaskMutation(
+			spec: MutationSpecV1,
+			preparedMutation: RuntimePreparedMutationV1,
+			effectiveAt: string,
+			semanticExecutionOptions: RuntimeSemanticTransitionExecutionOptionsV1 = {},
+		): Promise<RuntimePreparedMutationCommitV1> {
+			if (isRuntimePinnedStateMutationPreparationV1(preparedMutation.token)) {
+				const prepared = preparedMutation.token;
+				const groupId = `pinned:${prepared.operonId}`;
+				if (
+					spec.operation !== 'set-pinned'
+					|| spec.effectiveAt !== prepared.effectiveAt
+					|| effectiveAt !== prepared.effectiveAt
+					|| !this.pinnedCache
+				) {
+					return {
+						status: 'failed',
+						groupResults: [{
+							groupId,
+							status: 'failed',
+							error: runtimeUnavailableError(
+								'The sealed pinned-state mutation is unavailable or changed.',
+							),
+						}],
+						affectedFilePaths: [],
+						reason: 'The sealed pinned-state mutation could not be committed.',
+					};
+				}
+				const result = await this.pinnedCache.compareAndSetPinned(
+					prepared.operonId,
+					prepared.expectedEntry,
+					prepared.pinned,
+					prepared.effectiveAt,
+				);
+				if (result.outcome === 'conflict') {
+					return {
+						status: 'failed',
+						groupResults: [{
+							groupId,
+							status: 'failed',
+							error: {
+								contractVersion: 1,
+								code: 'stale-source',
+								reason: 'Pinned state changed after preview.',
+								retryable: false,
+								action: 'refresh-state',
+							},
+						}],
+						affectedFilePaths: [],
+						reason: 'Pinned state changed after preview.',
+					};
+				}
+				if (
+					OPERON_AGENT_RUNTIME_PROBE_ENABLED
+					&& pinnedStateProbeArmed
+					&& result.outcome === 'committed'
+				) {
+					pinnedStateProbeArmed = false;
+					throw new Error('Agent Runtime probe interrupted pinned-state receipt finalization.');
+				}
+				const revision = pinnedEntryRevisionV1(
+					prepared.operonId,
+					result.after,
+				);
+				return {
+					status: 'committed',
+					groupResults: [{
+						groupId,
+						status: 'committed',
+						resourceRevisions: [{
+							resourceKind: 'pinned',
+							resourceKey: prepared.operonId,
+							revision,
+						}],
+					}],
+					affectedFilePaths: [],
+				};
+			}
+			if (
+				preparedMutation.token
+			&& typeof preparedMutation.token === 'object'
+			&& (preparedMutation.token as { kind?: unknown }).kind === 'semantic-transition-plan'
+		) {
+			const plan = preparedMutation.token as RuntimeSemanticTransitionPlanV1;
+			const beforeTask = this.indexer.getTask(plan.prepared.task.operonId);
+			let aggregateAfterTask = beforeTask ?? null;
+			const effectiveLocal = toLocalDatetime(new Date(effectiveAt));
+			const sourceRevisionForGroup = async (
+				filePath: string,
+			): Promise<import('./src/agent-runtime/contracts/v1/identity').ResourceRevisionV1> => {
+				const source = await this.readAgentRuntimeMutationSource(filePath);
+				return {
+					resourceKind: 'task-source',
+					resourceKey: filePath,
+					revision: sourceRevisionForTaskCreationV1(filePath, source.content),
+				};
+			};
+			const execution = await executeRuntimeSemanticTransitionV1(plan, {
+				commitPrimary: async currentPlan => {
+					const primaryPrepared = {
+						...currentPlan.prepared,
+						noChange: false,
+						parentTask: undefined,
+						transition: currentPlan.prepared.transition
+							? {
+								...currentPlan.prepared.transition,
+								autoUnpin: false,
+								materializeRecurrence: false,
+							}
+							: undefined,
+					};
+					const primary = await this.commitAgentRuntimeTaskMutation(
+						spec,
+						{
+							...preparedMutation,
+							affectedResources: preparedMutation.affectedResources.filter(resource => (
+								currentPlan.primaryGroup.resources.some(primaryResource => (
+									primaryResource.resourceKind === resource.resourceKind
+										&& primaryResource.resourceKey === resource.resourceKey
+								))
+							)),
+							atomicGroups: [currentPlan.primaryGroup],
+							token: primaryPrepared,
+						},
+						effectiveAt,
+					);
+					if (primary.status !== 'committed') {
+						return {
+							ok: false,
+							outcomeUnknown: primary.status !== 'failed',
+							reason: primary.reason ?? 'The primary semantic transition did not commit.',
+						};
+					}
+					for (const filePath of primary.affectedFilePaths) {
+						await this.indexer.forceReindexFilePathAfterMutation(
+							filePath,
+							{ notify: false },
+						);
+					}
+					aggregateAfterTask = this.indexer.getTask(currentPlan.prepared.task.operonId) ?? null;
+					return {
+						ok: true,
+						affectedFilePaths: primary.affectedFilePaths,
+						resourceRevisions: primary.groupResults.flatMap(
+							result => result.resourceRevisions ?? [],
+						),
+					};
+				},
+				materializeRecurrence: async effect => {
+					if (effect.preview.disposition === 'ended') {
+						const recurrenceSourceTask = aggregateAfterTask ?? beforeTask;
+						if (recurrenceSourceTask && effect.seriesId) {
+							try {
+								await this.recurrenceService.commitAgentRuntimeRecurrenceState(
+									recurrenceSourceTask,
+									effect.seriesId,
+									null,
+									effectiveLocal,
+								);
+							} catch {
+								return {
+									ok: false,
+									outcomeUnknown: true,
+									reason: 'Recurrence ended, but repeat-series state was not verified.',
+								};
+							}
+						}
+						return {
+							ok: true,
+							disposition: 'ended',
+							resourceRevisions: [{
+								resourceKind: 'repeat-series',
+								resourceKey: effect.seriesId ?? 'global',
+								revision: sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+							}],
+						};
+					}
+					const preview = effect.preview;
+					let archiveCommitted = false;
+					const exactWrittenFiles = new Map<string, {
+						file: TFile;
+						content: string;
+					}>();
+					if (preview.archiveSource) {
+						const archiveWrite = await this.writer.applyTaskSourceMutation({
+							kind: 'create',
+							filePath: preview.archiveSource.locator.filePath,
+							nextContent: preview.archiveSource.plannedSourceContent,
+						});
+						if (archiveWrite.outcome !== 'committed') {
+							return {
+								ok: false,
+								reason: 'The terminal task committed, but its sealed recurrence archive was not created.',
+							};
+						}
+						archiveCommitted = true;
+						if (archiveWrite.file) {
+							exactWrittenFiles.set(archiveWrite.file.path, {
+								file: archiveWrite.file,
+								content: preview.archiveSource.plannedSourceContent,
+							});
+						}
+					}
+					const recurrenceWrite = preview.coalescedWithPrimarySource
+						? await this.writer.applyTaskSourceMutation({
+							kind: 'modify',
+							filePath: preview.nextLocator.filePath,
+							expectedContent: preview.applyExpectedSourceContent ?? '',
+							nextContent: preview.plannedSourceContent,
+						})
+						: await this.writer.applyTaskSourceMutation({
+							kind: 'create',
+							filePath: preview.nextLocator.filePath,
+							nextContent: preview.plannedSourceContent,
+						});
+					if (recurrenceWrite.outcome !== 'committed') {
+						if (archiveCommitted && preview.archiveSource) {
+							const rollback = await this.writer.applyTaskSourceMutation({
+								kind: 'trash',
+								filePath: preview.archiveSource.locator.filePath,
+								expectedContent: preview.archiveSource.plannedSourceContent,
+							});
+							if (rollback.outcome !== 'committed') {
+								return {
+									ok: false,
+									outcomeUnknown: true,
+									reason: 'Plain-name recurrence failed and its created archive could not be rolled back.',
+								};
+							}
+							await this.indexer.handleFileDelete(
+								preview.archiveSource.locator.filePath,
+							);
+						}
+						return {
+							ok: false,
+							reason: 'The terminal task committed, but sealed recurrence materialization failed.',
+						};
+					}
+					if (recurrenceWrite.file) {
+						exactWrittenFiles.set(recurrenceWrite.file.path, {
+							file: recurrenceWrite.file,
+							content: preview.plannedSourceContent,
+						});
+					}
+					const recurrenceFilePaths = [
+						preview.nextLocator.filePath,
+						...(preview.archiveSource
+							? [preview.archiveSource.locator.filePath]
+							: []),
+					];
+					let nextTask = recurrenceWrite.file
+						? await this.indexer.forceReindexKnownFileAndResolveTaskAfterMutation(
+							recurrenceWrite.file,
+							preview.nextOperonId,
+							{ notify: false },
+							preview.plannedSourceContent,
+						)
+						: undefined;
+					for (const written of exactWrittenFiles.values()) {
+						if (written.file.path === recurrenceWrite.file?.path) continue;
+						await this.indexer.forceReindexKnownFileAfterMutation(
+							written.file,
+							{ notify: false },
+							written.content,
+						);
+					}
+					const unresolvedFilePaths = recurrenceFilePaths.filter(
+						filePath => !exactWrittenFiles.has(filePath),
+					);
+					if (unresolvedFilePaths.length > 0) {
+						await this.indexer.reindexAffectedSources(
+							unresolvedFilePaths,
+							{ notify: false },
+						);
+					}
+					for (
+						let retry = 0;
+						retry < 5 && !nextTask;
+						retry += 1
+					) {
+						await new Promise<void>(resolve => {
+							getActiveWindow().setTimeout(resolve, 25 * (2 ** retry));
+						});
+						for (const filePath of recurrenceFilePaths) {
+							const written = exactWrittenFiles.get(filePath);
+							if (written) {
+								const resolved = await this.indexer
+									.forceReindexKnownFileAndResolveTaskAfterMutation(
+										written.file,
+										preview.nextOperonId,
+										{ notify: false },
+										written.content,
+									);
+								nextTask = resolved ?? nextTask;
+							} else {
+								await this.indexer.forceReindexFilePathAfterMutation(
+									filePath,
+									{ notify: false },
+								);
+								nextTask = this.indexer.getTask(preview.nextOperonId) ?? nextTask;
+							}
+						}
+					}
+					if (!nextTask && !preview.sourceTaskRetained) {
+						return {
+							ok: false,
+							outcomeUnknown: true,
+							reason: 'The replacing recurrence source committed without a unique indexed task.',
+						};
+					}
+					const recurrenceSourceTask = preview.sourceTaskFinalLocator
+						? this.indexer.getTask(plan.prepared.task.operonId)
+						: aggregateAfterTask ?? beforeTask;
+					if (!recurrenceSourceTask) {
+						return {
+							ok: false,
+							outcomeUnknown: true,
+							reason: 'Recurrence source state could not be resolved after materialization.',
+						};
+					}
+					try {
+						await this.recurrenceService.commitAgentRuntimeRecurrenceState(
+							recurrenceSourceTask,
+							effect.seriesId ?? preview.nextOperonId,
+							preview.nextLocator.representation === 'file'
+								? preview.nextLocator.filePath.split('/').pop()?.replace(/\.md$/iu, '') ?? null
+								: null,
+							effectiveLocal,
+						);
+					} catch {
+						return {
+							ok: false,
+							outcomeUnknown: true,
+							reason: 'Recurrence source committed, but repeat-series state was not verified.',
+						};
+					}
+					if (!preview.sourceTaskRetained) {
+						aggregateAfterTask = nextTask ?? aggregateAfterTask;
+					} else if (preview.sourceTaskFinalLocator) {
+						aggregateAfterTask = recurrenceSourceTask;
+					}
+					return {
+						ok: true,
+						disposition: 'created',
+						affectedFilePaths: recurrenceFilePaths,
+						resourceRevisions: [
+							{
+								resourceKind: 'repeat-series',
+								resourceKey: effect.seriesId ?? preview.nextOperonId,
+								revision: sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+							},
+							await sourceRevisionForGroup(preview.nextLocator.filePath),
+							...(preview.archiveSource
+								? [await sourceRevisionForGroup(
+									preview.archiveSource.locator.filePath,
+								)]
+								: []),
+						],
+					};
+				},
+				reconcilePrimaryAncestors: async currentPlan => {
+					const result = await this.aggregateCoordinator.refreshExactTaskIds(
+						currentPlan.primaryAncestors.map(ancestor => ancestor.operonId),
+						{ modifiedTimestamp: effectiveLocal },
+					);
+					if (result.failedWriteCount > 0) {
+						return {
+							ok: false,
+							outcomeUnknown: true,
+							reason: 'A co-located transition ancestor aggregate was not verified.',
+						};
+					}
+					return {
+						ok: true,
+						affectedFilePaths: [currentPlan.prepared.task.locator.filePath],
+						resourceRevisions: [
+							await sourceRevisionForGroup(currentPlan.prepared.task.locator.filePath),
+						],
+					};
+				},
+				reconcileAncestorGroup: async group => {
+					const sealed = preparedMutation.affectedResources.find(resource => (
+						resource.resourceKind === 'task-source'
+							&& resource.resourceKey === group.filePath
+					));
+					const current = await this.readAgentRuntimeMutationSource(group.filePath);
+					if (
+						!sealed
+						|| sourceRevisionForTaskCreationV1(group.filePath, current.content)
+							!== sealed.revision
+					) {
+						return {
+							ok: false,
+							reason: 'A sealed transition ancestor changed before reconciliation.',
+						};
+					}
+					const result = await this.aggregateCoordinator.refreshExactTaskIds(
+						group.ancestors.map(ancestor => ancestor.operonId),
+						{ modifiedTimestamp: effectiveLocal },
+					);
+					if (result.failedWriteCount > 0) {
+						return {
+							ok: false,
+							outcomeUnknown: true,
+							reason: 'A transition ancestor aggregate write was not verified.',
+						};
+					}
+					return {
+						ok: true,
+						affectedFilePaths: [group.filePath],
+						resourceRevisions: [await sourceRevisionForGroup(group.filePath)],
+					};
+				},
+				removePinned: async operonId => {
+					try {
+						await this.pinnedCache?.removePinnedIds([operonId]);
+						if (this.pinnedCache?.isPinned(operonId)) {
+							return {
+								ok: false,
+								outcomeUnknown: true,
+								reason: 'Automatic unpin did not reach a verified state.',
+							};
+						}
+						return {
+							ok: true,
+							resourceRevisions: [{
+								resourceKind: 'pinned',
+								resourceKey: operonId,
+								revision: sha256HexV1(String(this.pinnedCache?.getGeneration() ?? 0)),
+							}],
+						};
+					} catch {
+						return {
+							ok: false,
+							outcomeUnknown: true,
+							reason: 'Automatic unpin did not return a verified outcome.',
+						};
+					}
+				},
+				settleProjectSerial: async () => {
+					try {
+						await this.reconcileProjectSerials();
+						await this.storage.projectSerials.drain();
+					} catch {
+						return {
+							ok: false,
+							outcomeUnknown: true,
+							reason: 'Project Serial settlement did not return a verified outcome.',
+						};
+					}
+					return {
+						ok: true,
+						resourceRevisions: [{
+							resourceKind: 'project-serial',
+							resourceKey: 'global',
+							revision: hashProjectSerialSignatureV1(
+								this.storage.projectSerials.getSignature(),
+							),
+						}],
+					};
+				},
+			}, semanticExecutionOptions);
+			if (execution.status === 'committed') {
+				this.fileTaskArchiver?.scheduleForIndexedChange(beforeTask ?? null, aggregateAfterTask);
+			}
+			return {
+				status: execution.status,
+				groupResults: [...execution.groupResults],
+				affectedFilePaths: [...execution.affectedFilePaths],
+				...(execution.reason ? { reason: execution.reason } : {}),
+			};
+		}
+		if (
+			preparedMutation.token
+			&& typeof preparedMutation.token === 'object'
+			&& (preparedMutation.token as { kind?: unknown }).kind === 'timer'
+		) {
+			const prepared = preparedMutation.token as RuntimeTimerMutationPreparationV1;
+			const active = this.timeTracker.getActiveState();
+			const activeMaterial = active
+				? {
+					operonId: active.operonId,
+					start: active.start,
+					isUnassigned: active.isUnassigned,
+				}
+				: null;
+			if (
+				canonicalJsonV1(toJsonValueV1(activeMaterial))
+				!== canonicalJsonV1(toJsonValueV1(prepared.expectedActive))
+			) {
+				return {
+					status: 'failed',
+					groupResults: [],
+					affectedFilePaths: [],
+					reason: 'The active timer changed after preview.',
+				};
+			}
+			for (const filePath of prepared.affectedFilePaths) {
+				const source = await this.readAgentRuntimeMutationSource(filePath);
+				const sealed = preparedMutation.affectedResources.find(resource => (
+					resource.resourceKind === 'task-source'
+						&& resource.resourceKey === filePath
+				));
+				if (
+					source.content === null
+					|| !sealed
+					|| sourceRevisionForTaskCreationV1(filePath, source.content) !== sealed.revision
+				) {
+					return {
+						status: 'failed',
+						groupResults: [],
+						affectedFilePaths: [],
+						reason: 'A timer task source changed after preview.',
+					};
+				}
+			}
+			const succeeded = prepared.noChange
+				? true
+				: prepared.operation === 'start'
+					? prepared.targetOperonId === null
+						? await this.timeTracker.startUnassigned(
+							'command',
+							toLocalDatetime(new Date(effectiveAt)),
+						)
+						: await this.timeTracker.start(
+							prepared.targetOperonId,
+							'command',
+							toLocalDatetime(new Date(effectiveAt)),
+							(task, payload) => this.isAgentRuntimeStatusChangeAllowed(task, payload),
+						)
+					: await this.timeTracker.stop(
+						'manual',
+						toLocalDatetime(new Date(effectiveAt)),
+					);
+			await this.timeTracker.flushPendingTransitions();
+			const after = this.timeTracker.getActiveState();
+			const reachedExpectedState = prepared.operation === 'start'
+				? prepared.targetOperonId === null
+					? after?.isUnassigned === true
+					: after?.operonId === prepared.targetOperonId
+				: after === null;
+			const committedSourceRevisions = new Map<string, string>();
+			for (const filePath of prepared.affectedFilePaths) {
+				const source = await this.readAgentRuntimeMutationSource(filePath);
+				if (source.content !== null) {
+					committedSourceRevisions.set(
+						filePath,
+						sourceRevisionForTaskCreationV1(filePath, source.content),
+					);
+				}
+			}
+			const sourcesVerified = committedSourceRevisions.size === prepared.affectedFilePaths.length;
+			const committed = succeeded && reachedExpectedState && sourcesVerified;
+			const timerGroupId = preparedMutation.atomicGroups?.[0]?.groupId
+				?? `active-tracker:current-user`;
+			const groupResults = committed
+				? [{
+					groupId: timerGroupId,
+					status: 'committed' as const,
+					resourceRevisions: preparedMutation.affectedResources.map(resource => ({
+						...resource,
+						revision: resource.resourceKind === 'active-tracker'
+							? sourceRevisionForTaskCreationV1(
+								'state/active-trackers.json',
+								canonicalJsonV1(toJsonValueV1(
+									after
+										? {
+											operonId: after.operonId,
+											start: after.start,
+											isUnassigned: after.isUnassigned,
+										}
+										: null,
+								)),
+							)
+							: committedSourceRevisions.get(resource.resourceKey) ?? resource.revision,
+					})),
+				}]
+				: [{
+					groupId: timerGroupId,
+					status: 'outcome-unknown' as const,
+					error: runtimeUnavailableError(
+						'Timer control began but the final active state was not verified.',
+					),
+				}];
+			return {
+				status: committed ? 'committed' : 'outcome-unknown',
+				groupResults: committed
+					? orderRuntimeMutationGroupResults(
+						preparedMutation,
+						groupResults,
+					)
+					: groupResults,
+				affectedFilePaths: [...prepared.affectedFilePaths],
+				...(committed
+					? {}
+					: { reason: 'Timer control did not reach a verified terminal state.' }),
+			};
+		}
+		const prepared = preparedMutation.token as RuntimeTaskFieldMutationPreparationV1;
+		if (!prepared || prepared.kind !== 'task-fields') {
+			return {
+				status: 'failed',
+				groupResults: [],
+				affectedFilePaths: [],
+				reason: 'The Runtime mutation preparation token is invalid.',
+			};
+		}
+		const filePath = prepared.task.locator.filePath;
+		const groupId = preparedMutation.atomicGroups?.[0]?.groupId ?? `task-source:${filePath}`;
+		if (prepared.noChange) {
+			return {
+				status: 'committed',
+				groupResults: (preparedMutation.atomicGroups ?? []).map(group => ({
+					groupId: group.groupId,
+					status: 'committed' as const,
+					resourceRevisions: group.resources.map(reference => {
+						const resource = preparedMutation.affectedResources.find(candidate => (
+							candidate.resourceKind === reference.resourceKind
+								&& candidate.resourceKey === reference.resourceKey
+						));
+						return resource
+							? { ...resource }
+							: {
+								...reference,
+								revision: 'unavailable',
+							};
+					}),
+				})),
+				affectedFilePaths: [],
+			};
+		}
+		const commitFields = async (
+			extraFields: Record<string, string> = {},
+		): Promise<import('./src/core/task-writer').TaskSourceMutationResult> => (
+			await this.writer.applyGuardedTaskSourceMutation({
+				filePath,
+				expectedContent: prepared.task.sourceContent,
+				nextContent: prepared.task.sourceContent,
+				taskUpdates: [{
+					operonId: prepared.task.operonId,
+					format: prepared.task.locator.representation === 'file' ? 'yaml' : 'inline',
+					...(prepared.task.locator.representation === 'inline'
+						? { lineNumber: prepared.task.locator.lineNumber }
+						: {}),
+					fieldValues: {
+						...extraFields,
+						...prepared.fieldValues,
+					},
+				}, ...(
+					prepared.parentTask?.locator.filePath === filePath
+						? [{
+							operonId: prepared.parentTask.operonId,
+							format: prepared.parentTask.locator.representation === 'file'
+								? 'yaml' as const
+								: 'inline' as const,
+							...(prepared.parentTask.locator.representation === 'inline'
+								? { lineNumber: prepared.parentTask.locator.lineNumber }
+								: {}),
+							fieldValues: {
+								datetimeModified: toLocalDatetime(new Date(effectiveAt)),
+							},
+						}]
+						: []
+				)],
+			})
+		);
+		const writeState: {
+			result: import('./src/core/task-writer').TaskSourceMutationResult | null;
+		} = { result: null };
+		if (
+			spec.operation === 'transition'
+			&& prepared.fieldValues['_checkbox'] !== 'open'
+			&& this.timeTracker.isTimerRunning(prepared.task.operonId)
+		) {
+			const stopped = await this.timeTracker.stopActiveWithExternalTaskMutation(
+					prepared.task.operonId,
+					toLocalDatetime(new Date(effectiveAt)),
+					async timerPayload => {
+						writeState.result = await commitFields(timerPayload);
+						return writeState.result.outcome === 'committed';
+					},
+				);
+				if (!stopped) {
+					const taskWriteCommitted = writeState.result?.outcome === 'committed';
+					return {
+						status: taskWriteCommitted ? 'outcome-unknown' : 'failed',
+						groupResults: [{
+							groupId,
+							status: taskWriteCommitted ? 'outcome-unknown' : 'failed',
+							error: runtimeUnavailableError(
+								taskWriteCommitted
+									? 'The task transition committed, but timer finalization was not verified.'
+									: 'The timer-aware task transition did not commit.',
+							),
+						}],
+						affectedFilePaths: taskWriteCommitted ? [filePath] : [],
+						reason: 'Timer-aware semantic transition did not complete cleanly.',
+					};
+				}
+			} else {
+				writeState.result = await commitFields();
+			}
+			const writeResult = writeState.result;
+		if (!writeResult || writeResult.outcome !== 'committed') {
+			return {
+				status: 'failed',
+				groupResults: [{
+					groupId,
+					status: 'failed',
+					error: runtimeUnavailableError(
+						`Canonical source writer returned ${writeResult?.outcome ?? 'missing-result'}.`,
+					),
+				}],
+				affectedFilePaths: [],
+				reason: 'The exact task source changed or could not be written.',
+			};
+		}
+		const committedContent = writeResult.committedContent ?? prepared.task.sourceContent;
+		const groupResults: RuntimePreparedMutationCommitV1['groupResults'][number][] = [{
+			groupId,
+			status: 'committed',
+			resourceRevisions: [
+				...(prepared.transition?.finalizeActiveTimer
+					? [{
+						resourceKind: 'active-tracker' as const,
+						resourceKey: 'current-user',
+						revision: sha256HexV1(String(this.storage.activeTrackers.getGeneration())),
+					}]
+					: []),
+				{
+					resourceKind: 'task-source',
+					resourceKey: filePath,
+					revision: sourceRevisionForTaskCreationV1(filePath, committedContent),
+				},
+			],
+		}];
+		const affectedFilePaths = [filePath];
+		if (prepared.parentTask && prepared.parentTask.locator.filePath !== filePath) {
+			const parent = prepared.parentTask;
+			const parentWrite = await this.writer.applyGuardedTaskSourceMutation({
+				filePath: parent.locator.filePath,
+				expectedContent: parent.sourceContent,
+				nextContent: parent.sourceContent,
+				taskUpdates: [{
+					operonId: parent.operonId,
+					format: parent.locator.representation === 'file' ? 'yaml' : 'inline',
+					...(parent.locator.representation === 'inline'
+						? { lineNumber: parent.locator.lineNumber }
+						: {}),
+					fieldValues: {
+						datetimeModified: toLocalDatetime(new Date(effectiveAt)),
+					},
+				}],
+			});
+			if (parentWrite.outcome !== 'committed') {
+				groupResults.push({
+					groupId: `task-source:${parent.locator.filePath}`,
+					status: 'outcome-unknown',
+					error: runtimeUnavailableError(
+						'The child task committed, but the parent modified timestamp was not verified.',
+					),
+				});
+				return {
+					status: 'outcome-unknown',
+					groupResults,
+					affectedFilePaths,
+					reason: 'The task source changed, but parent metadata reconciliation was not verified.',
+				};
+			}
+			const parentContent = parentWrite.committedContent ?? parent.sourceContent;
+			affectedFilePaths.push(parent.locator.filePath);
+			groupResults.push({
+				groupId: `task-source:${parent.locator.filePath}`,
+				status: 'committed',
+				resourceRevisions: [{
+					resourceKind: 'task-source',
+					resourceKey: parent.locator.filePath,
+					revision: sourceRevisionForTaskCreationV1(parent.locator.filePath, parentContent),
+				}],
+			});
+		}
+		if (
+			prepared.transition?.autoUnpin
+			&& this.pinnedCache?.isPinned(prepared.task.operonId)
+		) {
+			try {
+				await this.pinnedCache.removePinnedIds([prepared.task.operonId]);
+				groupResults.push({
+					groupId: `pinned:${prepared.task.operonId}`,
+					status: 'committed',
+					resourceRevisions: [{
+						resourceKind: 'pinned',
+						resourceKey: prepared.task.operonId,
+						revision: sha256HexV1(String(this.pinnedCache.getGeneration())),
+					}],
+				});
+			} catch {
+				groupResults.push({
+					groupId: `pinned:${prepared.task.operonId}`,
+					status: 'outcome-unknown',
+					error: runtimeUnavailableError(
+						'The terminal transition committed, but automatic unpin was not verified.',
+					),
+				});
+				return {
+					status: 'outcome-unknown',
+					groupResults,
+					affectedFilePaths,
+					reason: 'The task transition changed the source, but pinned-state cleanup is uncertain.',
+				};
+			}
+		}
+		return {
+			status: 'committed',
+			groupResults: orderRuntimeMutationGroupResults(
+				preparedMutation,
+				groupResults,
+			),
+			affectedFilePaths,
+			};
+		}
+
+	private verifyAgentRuntimePinnedAfterState(
+		plan: MutationApplyRequestV1['plan'],
+	): boolean {
+		if (plan.mutationKind !== 'task.pinned-state' || plan.spec.operation !== 'set-pinned') {
+			return false;
+		}
+		const spec = plan.spec;
+		const target = plan.targets[0];
+		if (
+			!target?.operonId
+			|| !target.locator
+			|| spec.expectedPinned === undefined
+			|| !spec.expectedEntryRevision
+			|| !spec.effectiveAt
+			|| !this.pinnedCache
+		) return false;
+		const indexed = this.indexer.getTaskSnapshot(target.operonId);
+		if (!indexed || this.indexer.hasDuplicateOperonIdConflict(target.operonId)) return false;
+		const locator = this.agentRuntimeTaskLocator(indexed);
+		if (
+			canonicalJsonV1(toJsonValueV1(locator))
+			!== canonicalJsonV1(toJsonValueV1(target.locator))
+		) return false;
+		const canonicalEntry = this.pinnedCache.getCanonicalEntry(target.operonId);
+		const hydratedEntry = this.pinnedCache.getEntry(target.operonId) ?? null;
+		const expectedAfterRevision = spec.expectedPinned === spec.pinned
+			? spec.expectedEntryRevision
+			: pinnedEntryRevisionV1(target.operonId, {
+				pinned: spec.pinned,
+				updatedAt: spec.effectiveAt,
+			});
+		return pinnedEntryRevisionV1(target.operonId, canonicalEntry) === expectedAfterRevision
+			&& pinnedEntryRevisionV1(target.operonId, hydratedEntry) === expectedAfterRevision
+			&& this.pinnedCache.isPinned(target.operonId) === spec.pinned;
+	}
+
+	private async verifyAgentRuntimeTaskMutation(
+			createdAt: string,
+			preparedMutation: RuntimePreparedMutationV1,
+			commit: RuntimePreparedMutationCommitV1,
+		): Promise<boolean> {
+			if (isRuntimePinnedStateMutationPreparationV1(preparedMutation.token)) {
+				const prepared = preparedMutation.token;
+				if (commit.status !== 'committed' || createdAt !== prepared.effectiveAt || !this.pinnedCache) {
+					return false;
+				}
+				const target = preparedMutation.target;
+				const indexed = this.indexer.getTaskSnapshot(prepared.operonId);
+				if (
+					!indexed
+					|| this.indexer.hasDuplicateOperonIdConflict(prepared.operonId)
+					|| !target.locator
+				) return false;
+				const locator = this.agentRuntimeTaskLocator(indexed);
+				if (
+					canonicalJsonV1(toJsonValueV1(locator))
+					!== canonicalJsonV1(toJsonValueV1(target.locator))
+				) return false;
+				const entry = this.pinnedCache.getCanonicalEntry(prepared.operonId);
+				const hydratedEntry = this.pinnedCache.getEntry(prepared.operonId) ?? null;
+				const committedRevision = commit.groupResults
+					.flatMap(group => group.resourceRevisions ?? [])
+					.find(resource => (
+						resource.resourceKind === 'pinned'
+						&& resource.resourceKey === prepared.operonId
+					))?.revision;
+				return (entry?.pinned ?? false) === prepared.pinned
+					&& (hydratedEntry?.pinned ?? false) === prepared.pinned
+					&& this.pinnedCache.isPinned(prepared.operonId) === prepared.pinned
+					&& committedRevision === pinnedEntryRevisionV1(prepared.operonId, entry)
+					&& committedRevision === pinnedEntryRevisionV1(prepared.operonId, hydratedEntry);
+			}
+			if (
+				preparedMutation.token
+					&& typeof preparedMutation.token === 'object'
+					&& (preparedMutation.token as { kind?: unknown }).kind === 'timer-session'
+			) {
+				const prepared = preparedMutation.token as RuntimeTimerSessionPreparationV1;
+				if (commit.status !== 'committed') return false;
+				const verified = verifyRuntimeTimerSessionPostflightV1(
+					prepared,
+					operonId => {
+						const task = this.indexer.getTaskSnapshot(operonId);
+						if (!task || this.indexer.hasDuplicateOperonIdConflict(operonId)) return null;
+						return { locator: this.agentRuntimeTaskLocator(task), fieldValues: task.fieldValues };
+					},
+				);
+				if (!verified) return false;
+				const ancestors = prepared.aggregateAncestorOperonIds ?? [];
+				return this.aggregateCoordinator.verifyExactTaskAggregateState(
+					ancestors,
+				).size === ancestors.length;
+			}
+			if (
+				preparedMutation.token
+					&& typeof preparedMutation.token === 'object'
+					&& (preparedMutation.token as { kind?: unknown }).kind === 'task-recurrence'
+			) {
+				const prepared = preparedMutation.token as RuntimeTaskRecurrencePreparationV1;
+				if (commit.status !== 'committed') return false;
+				const verified = verifyRuntimeTaskRecurrencePostflightV1(
+					prepared,
+					operonId => {
+						const task = this.indexer.getTaskSnapshot(operonId);
+						if (!task || this.indexer.hasDuplicateOperonIdConflict(operonId)) return null;
+						return {
+							locator: task.primary.format === 'yaml'
+								? { representation: 'file' as const, filePath: task.primary.filePath }
+								: {
+									representation: 'inline' as const,
+									filePath: task.primary.filePath,
+									lineNumber: task.primary.lineNumber,
+								},
+							fieldValues: { ...task.fieldValues },
+						};
+					},
+					(seriesId, effectiveFrom) => this.storage.repeatSeries
+						.getEntry(seriesId)
+						?.overrides.following.find(value => value.effectiveFrom === effectiveFrom)
+						?? null,
+				);
+				if (!verified) return false;
+				return this.aggregateCoordinator.verifyExactTaskAggregateState(
+					prepared.aggregateAncestorOperonIds ?? [],
+				).size === (prepared.aggregateAncestorOperonIds ?? []).length;
+			}
+			if (
+				preparedMutation.token
+				&& typeof preparedMutation.token === 'object'
+				&& (preparedMutation.token as { kind?: unknown }).kind === 'task-relationships'
+			) {
+				const prepared = preparedMutation.token as RuntimeTaskRelationshipPreparationV1;
+				return commit.status === 'committed'
+					&& verifyRuntimeTaskRelationshipPostflightV1(
+						prepared,
+						toLocalDatetime(new Date(createdAt)),
+						operonId => this.indexer.getTaskSnapshot(operonId),
+						operonId => this.indexer.hasDuplicateOperonIdConflict(operonId),
+						ancestorIds => (
+							this.aggregateCoordinator.verifyExactTaskAggregateState(ancestorIds).size
+							=== ancestorIds.length
+						),
+					);
+			}
+			if (
+			preparedMutation.token
+			&& typeof preparedMutation.token === 'object'
+			&& (preparedMutation.token as { kind?: unknown }).kind === 'semantic-transition-plan'
+		) {
+			const plan = preparedMutation.token as RuntimeSemanticTransitionPlanV1;
+			if (commit.status !== 'committed') return false;
+			const indexed = this.indexer.getTaskSnapshot(plan.prepared.task.operonId);
+			const finalSourcePreparation = (
+				plan.recurrence?.preview.disposition === 'materialize'
+				&& plan.recurrence.preview.sourceTaskFinalLocator
+			)
+				? {
+					...plan.prepared,
+					task: {
+						...plan.prepared.task,
+						locator: plan.recurrence.preview.sourceTaskFinalLocator,
+						description: plan.recurrence.preview.sourceTaskFinalLocator.filePath
+							.split('/')
+							.pop()
+							?.replace(/\.md$/iu, '') ?? plan.prepared.task.description,
+					},
+				}
+				: plan.prepared;
+			const postflightPreparation = (
+				indexed
+				&& plan.recurrence?.preview.disposition === 'materialize'
+				&& plan.recurrence.preview.coalescedWithPrimarySource
+				&& plan.prepared.task.locator.representation === 'inline'
+				&& plan.recurrence.preview.nextLocator.representation === 'inline'
+			)
+				? {
+					...finalSourcePreparation,
+					task: {
+						...finalSourcePreparation.task,
+						locator: {
+							...finalSourcePreparation.task.locator,
+							lineNumber: plan.recurrence.preview.nextLocator.lineNumber
+								<= plan.prepared.task.locator.lineNumber
+								? plan.prepared.task.locator.lineNumber + 1
+								: plan.prepared.task.locator.lineNumber,
+						},
+					},
+				}
+				: finalSourcePreparation;
+			const indexedFieldValues = indexed ? { ...indexed.fieldValues } : null;
+			const expectedPrimaryModified = postflightPreparation.fieldValues['datetimeModified'];
+			if (
+				indexedFieldValues
+				&& postflightPreparation.task.locator.representation === 'file'
+				&& expectedPrimaryModified
+				&& (indexedFieldValues['datetimeModified'] ?? '')
+					.localeCompare(expectedPrimaryModified) >= 0
+			) {
+				indexedFieldValues['datetimeModified'] = expectedPrimaryModified;
+			}
+			const primaryVerified = indexed && indexedFieldValues
+				? verifyRuntimeTaskFieldMutationPrimaryPostflightV1(postflightPreparation, {
+					operonId: indexed.operonId,
+					locator: indexed.primary.format === 'yaml'
+						? { representation: 'file', filePath: indexed.primary.filePath }
+						: {
+							representation: 'inline',
+							filePath: indexed.primary.filePath,
+							lineNumber: indexed.primary.lineNumber,
+						},
+					description: indexed.description,
+					checkbox: indexed.checkbox,
+					fieldValues: indexedFieldValues,
+					tags: [...indexed.tags],
+					sourceContent: '',
+					duplicate: this.indexer.hasDuplicateOperonIdConflict(indexed.operonId),
+				})
+				: plan.recurrence?.preview.disposition === 'materialize'
+					&& !plan.recurrence.preview.sourceTaskRetained;
+			const expectedModified = toLocalDatetime(new Date(plan.effectiveAt));
+			const ancestors = [
+				...plan.primaryAncestors,
+				...plan.ancestorGroups.flatMap(group => group.ancestors),
+			];
+			const aggregateVerifiedAncestorIds = this.aggregateCoordinator
+				.verifyExactTaskAggregateState(ancestors.map(ancestor => ancestor.operonId));
+			const verifiedAncestorOperonIds = ancestors
+				.filter(ancestor => (
+					(this.indexer.getTaskSnapshot(ancestor.operonId)?.fieldValues['datetimeModified'] ?? '')
+						.localeCompare(expectedModified) >= 0
+					&& aggregateVerifiedAncestorIds.has(ancestor.operonId)
+				))
+				.map(ancestor => ancestor.operonId);
+			const recurrenceGroupResult = plan.recurrence
+				? commit.groupResults.find(group => group.groupId === plan.recurrence?.groupId)
+				: undefined;
+			const committedRepeatSeriesRevision = recurrenceGroupResult?.resourceRevisions?.find(
+				resource => resource.resourceKind === 'repeat-series',
+			)?.revision;
+			const currentRepeatSeriesRevision = sha256HexV1(
+				String(this.storage.repeatSeries.getRevision()),
+			);
+			const recurrenceEntry = plan.recurrence?.seriesId
+				? this.storage.repeatSeries.getEntry(plan.recurrence.seriesId)
+				: null;
+			const recurrenceStateVerified = !plan.recurrence
+				|| (
+					!!committedRepeatSeriesRevision
+					&& committedRepeatSeriesRevision === currentRepeatSeriesRevision
+					&& (
+						!plan.recurrence.seriesId
+						|| (
+							recurrenceEntry?.sourceTaskId === plan.prepared.task.operonId
+							&& recurrenceEntry.sourceFormat
+								=== (
+									plan.prepared.task.locator.representation === 'file'
+										? 'yaml'
+										: 'inline'
+								)
+						)
+					)
+				);
+			let recurrenceEvidence:
+				| {
+					disposition: 'created';
+					nextOperonId: string;
+					nextLocator: import('./src/agent-runtime/contracts/v1/identity').TaskSourceLocatorV1;
+					sourceRevision: string;
+					committedSourceRevision: string;
+					archiveSourceRevision?: string;
+					stateVerified: boolean;
+				}
+				| { disposition: 'ended'; stateVerified: boolean }
+				| undefined;
+			if (plan.recurrence?.preview.disposition === 'ended') {
+				recurrenceEvidence = {
+					disposition: 'ended',
+					stateVerified: recurrenceStateVerified,
+				};
+			} else if (plan.recurrence?.preview.disposition === 'materialize') {
+				const preview = plan.recurrence.preview;
+				const nextTask = this.indexer.getTaskSnapshot(preview.nextOperonId);
+				const nextSource = await this.readAgentRuntimeMutationSource(preview.nextLocator.filePath);
+				const committedSourceRevision = [...commit.groupResults]
+					.reverse()
+					.flatMap(group => group.resourceRevisions ?? [])
+					.find(resource => (
+						resource.resourceKind === 'task-source'
+							&& resource.resourceKey === preview.nextLocator.filePath
+					))?.revision;
+				const archiveSource = preview.archiveSource
+					? await this.readAgentRuntimeMutationSource(
+						preview.archiveSource.locator.filePath,
+					)
+					: null;
+				if (nextTask && nextSource.content !== null && committedSourceRevision) {
+					recurrenceEvidence = {
+						disposition: 'created',
+						nextOperonId: nextTask.operonId,
+						nextLocator: nextTask.primary.format === 'yaml'
+							? { representation: 'file', filePath: nextTask.primary.filePath }
+							: {
+								representation: 'inline',
+								filePath: nextTask.primary.filePath,
+								lineNumber: nextTask.primary.lineNumber,
+							},
+						sourceRevision: sha256HexV1(nextSource.content),
+						committedSourceRevision,
+						...(archiveSource && archiveSource.content !== null
+							? { archiveSourceRevision: sha256HexV1(archiveSource.content) }
+							: {}),
+						stateVerified: recurrenceStateVerified,
+					};
+				}
+			}
+			const committedProjectSerialRevision = plan.projectSerialGroup
+				? commit.groupResults.find(group => (
+					group.groupId === plan.projectSerialGroup?.groupId
+						&& group.status === 'committed'
+				))?.resourceRevisions?.find(resource => (
+					resource.resourceKind === 'project-serial'
+				))?.revision
+				: undefined;
+			const projectSerialRevision = plan.projectSerialGroup
+				? hashProjectSerialSignatureV1(this.storage.projectSerials.getSignature())
+				: undefined;
+			let timerEvidence:
+				| RuntimeSemanticTransitionPostflightEvidenceV1['timer']
+				| undefined;
+			if (plan.prepared.transition?.finalizeActiveTimer) {
+				await this.timeTracker.flushPendingTransitions();
+				const sessions = this.timeTracker.getTaskSessions(
+					plan.prepared.task.operonId,
+				);
+				const duration = Number.parseInt(indexed?.fieldValues['duration'] ?? '', 10);
+				const committedActiveTrackerRevision = commit.groupResults
+					.find(group => group.groupId === plan.primaryGroup.groupId)
+					?.resourceRevisions
+					?.find(resource => resource.resourceKind === 'active-tracker')
+					?.revision;
+				timerEvidence = {
+					activeTrackerCleared: !this.timeTracker.isTimerRunning(
+						plan.prepared.task.operonId,
+					),
+					sessionStateVerified: sessions.length > 0
+						&& Number.isFinite(duration)
+						&& sessions.reduce(
+							(total, session) => total + session.durationSeconds,
+							0,
+						) === duration,
+					activeTrackerRevision: sha256HexV1(
+						String(this.storage.activeTrackers.getGeneration()),
+					),
+					...(committedActiveTrackerRevision
+						? { committedActiveTrackerRevision }
+						: {}),
+				};
+			}
+			const verification = verifyRuntimeSemanticTransitionPostflightV1(plan, {
+				primaryVerified,
+				...(timerEvidence ? { timer: timerEvidence } : {}),
+				...(recurrenceEvidence ? { recurrence: recurrenceEvidence } : {}),
+				verifiedAncestorOperonIds,
+				pinned: this.pinnedCache?.isPinned(plan.prepared.task.operonId) === true,
+				...(projectSerialRevision ? { projectSerialRevision } : {}),
+				...(committedProjectSerialRevision
+					? { committedProjectSerialRevision }
+					: {}),
+			});
+			if (!verification.ok) {
+				console.error(
+					'Operon: Runtime semantic transition postflight failed',
+					verification.failures,
+				);
+			}
+			return verification.ok;
+		}
+		if (
+			preparedMutation.token
+			&& typeof preparedMutation.token === 'object'
+			&& (preparedMutation.token as { kind?: unknown }).kind === 'source-transition'
+		) {
+			const prepared = preparedMutation.token as RuntimeSourceTransitionPreparationV1;
+			if (commit.status !== 'committed') return false;
+				for (const group of prepared.groups) {
+					const source = await this.readAgentRuntimeMutationSource(group.filePath);
+					if (group.action === 'trash') {
+						if (source.content !== null) return false;
+					} else {
+						const committedRevision = commit.groupResults
+							.flatMap(result => result.resourceRevisions ?? [])
+							.find(resource => (
+								resource.resourceKind === 'task-source'
+								&& resource.resourceKey === group.filePath
+							))?.revision;
+						if (
+							!committedRevision
+							|| sourceRevisionForTaskCreationV1(group.filePath, source.content)
+								!== committedRevision
+						) return false;
+					}
+				}
+			if (prepared.afterLocator) {
+				// The generic mutation barrier reindexes affected paths in stable
+				// lexical order. A moved Operon ID can therefore be indexed at its
+				// destination before the old source's delete is reconciled, which
+				// temporarily clears secondary relationship membership. Reassert the
+				// sealed destination as the final postflight authority.
+				await this.indexer.forceReindexFilePathAfterMutation(
+					prepared.afterLocator.filePath,
+					{ notify: false },
+				);
+			}
+			const indexed = this.indexer.getTaskSnapshot(prepared.operonId);
+			const indexedLocator = indexed
+				? indexed.primary.format === 'yaml'
+				? { representation: 'file' as const, filePath: indexed.primary.filePath }
+				: {
+					representation: 'inline' as const,
+					filePath: indexed.primary.filePath,
+					lineNumber: indexed.primary.lineNumber,
+				}
+				: null;
+			const sourceTransitionVerified = verifyRuntimeSourceTransitionPostflightV1({
+				operation: prepared.operation,
+				operonId: prepared.operonId,
+				...(prepared.afterLocator ? { expectedLocator: prepared.afterLocator } : {}),
+				indexedLocator,
+				duplicate: this.indexer.hasDuplicateOperonIdConflict(prepared.operonId),
+				pinned: this.pinnedCache?.isPinned(prepared.operonId) === true,
+				pinnedCleanupExpected: prepared.cleanupPinned === true,
+			})
+				&& (
+					prepared.expectedDescription === undefined
+					|| indexed?.description === prepared.expectedDescription
+				);
+			if (!sourceTransitionVerified) return false;
+			const conversionAncestorIds = (prepared.ancestorTasks ?? [])
+				.map(ancestor => ancestor.operonId);
+			const aggregateVerifiedAncestorIds = this.aggregateCoordinator
+				.verifyExactTaskAggregateState(conversionAncestorIds);
+			const conversionAncestorFilePaths = (prepared.ancestorTasks ?? [])
+				.map(ancestor => ancestor.locator.filePath);
+			const observedAncestorContents = Object.fromEntries(
+				await Promise.all([...new Set(conversionAncestorFilePaths)].map(
+					async filePath => [
+						filePath,
+						(await this.readAgentRuntimeMutationSource(filePath)).content,
+					] as const,
+				)),
+			);
+			if (!verifyRuntimeConversionAncestorSourceRevisionsV1(
+				conversionAncestorFilePaths,
+				commit.groupResults.flatMap(group => group.resourceRevisions ?? []),
+				observedAncestorContents,
+			)) return false;
+			for (const ancestorSnapshot of prepared.ancestorTasks ?? []) {
+				const parent = this.indexer.getTaskSnapshot(ancestorSnapshot.operonId);
+				const expectedModified = toLocalDatetime(new Date(createdAt));
+				if (
+					!parent
+					|| (parent.fieldValues['datetimeModified'] ?? '').localeCompare(expectedModified) < 0
+					|| !aggregateVerifiedAncestorIds.has(ancestorSnapshot.operonId)
+				) return false;
+			}
+			if (prepared.expectedTaskState) {
+				const expectedModified = prepared.expectedTaskState.fieldValues['datetimeModified'] ?? '';
+				if (
+					!indexed
+					|| indexed.checkbox !== prepared.expectedTaskState.checkbox
+					|| [...prepared.expectedTaskState.tags].sort().join('\0')
+						!== [...indexed.tags].sort().join('\0')
+					|| Object.entries(prepared.expectedTaskState.fieldValues).some(
+						([key, value]) => key === 'datetimeModified'
+							? (indexed.fieldValues[key] ?? '').localeCompare(expectedModified) < 0
+							: (indexed.fieldValues[key] ?? '') !== value,
+					)
+				) return false;
+			}
+			if (prepared.repeatSeriesId) {
+				const entry = this.storage.repeatSeries.getEntry(prepared.repeatSeriesId);
+				const expectedFormat = prepared.afterLocator?.representation === 'file'
+					? 'yaml'
+					: 'inline';
+				if (
+					!entry
+					|| entry.sourceTaskId !== prepared.operonId
+					|| entry.sourceFormat !== expectedFormat
+					) return false;
+				}
+			return true;
+		}
+		if (
+			preparedMutation.token
+			&& typeof preparedMutation.token === 'object'
+			&& (preparedMutation.token as { kind?: unknown }).kind === 'timer'
+		) {
+			const prepared = preparedMutation.token as RuntimeTimerMutationPreparationV1;
+			await this.timeTracker.flushPendingTransitions();
+			const active = this.timeTracker.getActiveState();
+			if (
+				commit.status !== 'committed'
+				|| !(
+					prepared.operation === 'start'
+						? prepared.targetOperonId === null
+							? active?.isUnassigned === true
+							: active?.operonId === prepared.targetOperonId
+						: active === null
+				)
+			) return false;
+			const committedResources = commit.groupResults.flatMap(
+				group => group.resourceRevisions ?? [],
+			);
+			for (const filePath of prepared.affectedFilePaths) {
+				const source = await this.readAgentRuntimeMutationSource(filePath);
+				const committedRevision = committedResources.find(resource => (
+					resource.resourceKind === 'task-source'
+					&& resource.resourceKey === filePath
+				))?.revision;
+				if (
+					source.content === null
+					|| !committedRevision
+					|| sourceRevisionForTaskCreationV1(filePath, source.content)
+						!== committedRevision
+				) return false;
+			}
+			const finalizedOperonId = prepared.expectedActive?.operonId;
+			if (
+				finalizedOperonId
+				&& (
+					prepared.operation === 'stop'
+					|| finalizedOperonId !== prepared.targetOperonId
+				)
+			) {
+				const finalizedTask = this.indexer.getTaskSnapshot(finalizedOperonId);
+				const sessions = this.timeTracker.getTaskSessions(finalizedOperonId);
+				const duration = Number(finalizedTask?.fieldValues['duration'] ?? Number.NaN);
+				if (
+					!finalizedTask
+					|| this.indexer.hasDuplicateOperonIdConflict(finalizedOperonId)
+					|| this.timeTracker.isTimerRunning(finalizedOperonId)
+					|| !sessions.some(session => session.start === prepared.expectedActive?.start)
+					|| !Number.isFinite(duration)
+					|| sessions.reduce((total, session) => total + session.durationSeconds, 0)
+						!== duration
+				) return false;
+			}
+			return true;
+		}
+		if (
+			preparedMutation.token
+			&& typeof preparedMutation.token === 'object'
+			&& (preparedMutation.token as { kind?: unknown }).kind === 'task-field-batch'
+		) {
+			const prepared = preparedMutation.token as RuntimeTaskUpdateBatchPreparationV1;
+			if (commit.status !== 'committed') return false;
+			const observedSource = await this.readAgentRuntimeMutationSource(prepared.filePath);
+			const evidence = resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
+				prepared.filePath,
+				commit.groupResults.flatMap(group => group.resourceRevisions ?? []),
+				observedSource.content,
+			);
+			if (!evidence) return false;
+			const plannedSourceDigests = new Set(
+				(preparedMutation.updateBatchEffects ?? []).map(effect => effect.plannedSourceDigest),
+			);
+			if (
+				plannedSourceDigests.size !== 1
+				|| !observedSource.content
+				|| !plannedSourceDigests.has(sha256HexV1(observedSource.content))
+			) return false;
+			const exactSnapshot = (
+				operonId: string,
+			): RuntimeExactTaskMutationSnapshotV1 | null => {
+				const indexed = this.indexer.getTaskSnapshot(operonId);
+				if (!indexed) return null;
+				return {
+					operonId: indexed.operonId,
+					locator: this.agentRuntimeTaskLocator(indexed),
+					description: indexed.description,
+					checkbox: indexed.checkbox,
+					fieldValues: { ...indexed.fieldValues },
+					tags: [...indexed.tags],
+					sourceContent: observedSource.content ?? '',
+					duplicate: this.indexer.hasDuplicateOperonIdConflict(indexed.operonId),
+				};
+			};
+			if (!verifyRuntimeTaskUpdateBatchPrimaryPostflightV1(
+				prepared,
+				exactSnapshot,
+				evidence,
+			)) return false;
+			const expectedModified = toLocalDatetime(new Date(createdAt));
+			for (const parentTask of prepared.parentTasks) {
+				const parent = exactSnapshot(parentTask.operonId);
+				if (
+					!parent
+					|| (parent.fieldValues['datetimeModified'] ?? '').localeCompare(expectedModified) < 0
+				) return false;
+			}
+			return true;
+		}
+		const prepared = preparedMutation.token as RuntimeTaskFieldMutationPreparationV1;
+		if (!prepared || prepared.kind !== 'task-fields' || commit.status !== 'committed') return false;
+		await this.timeTracker.flushPendingTransitions();
+		const indexed = this.indexer.getTaskSnapshot(prepared.task.operonId);
+		const indexedSnapshot = indexed
+			? {
+				operonId: indexed.operonId,
+				locator: indexed.primary.format === 'yaml'
+					? {
+						representation: 'file' as const,
+						filePath: indexed.primary.filePath,
+					}
+					: {
+						representation: 'inline' as const,
+						filePath: indexed.primary.filePath,
+						lineNumber: indexed.primary.lineNumber,
+					},
+				description: indexed.description,
+				checkbox: indexed.checkbox,
+				fieldValues: { ...indexed.fieldValues },
+				tags: [...indexed.tags],
+				sourceContent: '',
+				duplicate: this.indexer.hasDuplicateOperonIdConflict(prepared.task.operonId),
+			}
+			: null;
+		const observedPrimarySource = await this.readAgentRuntimeMutationSource(
+			prepared.task.locator.filePath,
+		);
+		const primaryPostflightEvidence = resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
+			prepared.task.locator.filePath,
+			commit.groupResults.flatMap(group => group.resourceRevisions ?? []),
+			observedPrimarySource.content,
+		);
+		if (!primaryPostflightEvidence) return false;
+		if (!verifyRuntimeTaskFieldMutationPrimaryPostflightV1(
+			prepared,
+			indexedSnapshot,
+			primaryPostflightEvidence,
+		)) {
+			return false;
+		}
+		const requirements = getRuntimeTaskFieldMutationPostflightRequirementsV1(prepared);
+		if (requirements.reminderSchedulerSettled) {
+			if (!this.reminderScheduler) return false;
+			try {
+				await this.reminderScheduler.whenIdle();
+			} catch {
+				return false;
+			}
+		}
+		if (
+			requirements.timerFinalized
+			&& this.timeTracker.isTimerRunning(prepared.task.operonId)
+		) return false;
+		if (
+			requirements.finishedTaskUnpinned
+			&& this.pinnedCache?.isPinned(prepared.task.operonId) === true
+		) return false;
+		if (requirements.parentModified && prepared.parentTask) {
+			const parent = this.indexer.getTaskSnapshot(prepared.parentTask.operonId);
+			const expectedModified = prepared.fieldValues['datetimeModified'] ?? '';
+			if (
+				!parent
+				|| this.indexer.hasDuplicateOperonIdConflict(prepared.parentTask.operonId)
+				|| (parent.fieldValues['datetimeModified'] ?? '').localeCompare(expectedModified) < 0
+			) return false;
+		}
+		return true;
+	}
+
+	private async readAgentRuntimeMutationSource(filePath: string): Promise<{
+		filePath: string;
+		content: string | null;
+	}> {
+		if (!(await this.isAgentRuntimeMutationPathContained(filePath, true))) {
+			throw new Error('Runtime mutation path is outside the canonical vault boundary.');
+		}
+		const target = this.app.vault.getAbstractFileByPath(filePath);
+		if (!target) return { filePath, content: null };
+		if (!(target instanceof TFile) || target.extension !== 'md') {
+			throw new Error('Runtime mutation target is not a Markdown file.');
+		}
+		return { filePath, content: await this.app.vault.read(target) };
+	}
+
+	private async readVerifiedAgentRuntimeMutationTaskSource(
+		task: AgentRuntimeIndexedTaskSnapshot,
+	): Promise<NonNullable<Awaited<ReturnType<RuntimeSourceHydratorV1['readSnapshot']>>> | null> {
+		if (!(await this.isAgentRuntimeMutationPathContained(task.primary.filePath, false))) {
+			throw new Error('Runtime mutation path is outside the canonical vault boundary.');
+		}
+		const hydrator = this.agentRuntimeSourceHydrator;
+		if (!hydrator) return null;
+		const snapshot = await hydrator.readSnapshot(task.primary.filePath);
+		if (!snapshot) return null;
+		const hydrated = await hydrator.hydrate({
+			task,
+			keyMappings: this.settings.keyMappings,
+			ramGeneration: this.indexer.getGeneration(),
+			includeSourceMarkdown: false,
+			sourceSnapshot: snapshot,
+		});
+		return hydrated.ok ? snapshot : null;
+	}
+
+	private async isAgentRuntimeMutationPathContained(
+		filePath: string,
+		allowAbsent: boolean,
+	): Promise<boolean> {
+		try {
+			const validationError = validateVaultRelativePathV1(filePath);
+			if (validationError || !filePath.toLowerCase().endsWith('.md')) return false;
+			const adapter = this.app.vault.adapter as unknown as {
+				getFullPath(path: string): string;
+			};
+			if (typeof adapter.getFullPath !== 'function') return false;
+			const nodeApi = await loadAgentRuntimeDesktopNodeApiV1();
+			const vaultRoot = await nodeApi.realpath(adapter.getFullPath(''));
+			const fullPath = adapter.getFullPath(filePath);
+			let canonicalTarget: string;
+			try {
+				canonicalTarget = await nodeApi.realpath(fullPath);
+			} catch {
+				if (!allowAbsent) return false;
+				let existingAncestor = nodeApi.dirname(fullPath);
+				const missingSegments = [fullPath.slice(existingAncestor.length + 1)];
+				while (true) {
+					try {
+						const canonicalAncestor = await nodeApi.realpath(existingAncestor);
+						canonicalTarget = nodeApi.join(canonicalAncestor, ...missingSegments);
+						break;
+					} catch {
+						const parent = nodeApi.dirname(existingAncestor);
+						if (parent === existingAncestor) return false;
+						missingSegments.unshift(existingAncestor.slice(parent.length + 1));
+						existingAncestor = parent;
+					}
+				}
+			}
+			return canonicalTarget === vaultRoot || canonicalTarget.startsWith(`${vaultRoot}/`);
+		} catch {
+			return false;
+		}
+	}
+
+	private async resolveAgentRuntimeInlineCreationPath(): Promise<string> {
+		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
+		if (saveMode === 'specific-file') {
+			return this.settings.inlineTaskTargetFile.trim() || DEFAULT_INLINE_TASK_TARGET_FILE;
+		}
+		if (saveMode === 'daily-notes') {
+			const config = await loadDailyNotesCoreConfig(this.app);
+			const path = resolveDailyNotePathFromDateKey(localToday(), config);
+			if (path) {
+				const existing = this.app.vault.getAbstractFileByPath(path);
+				if (
+					!existing
+					&& (config.template.trim() || this.settings.createDailyNotesAsOperonTask)
+				) {
+					throw new Error(
+						'Configured Daily Note creation requires template processing; provide an exact existing target.',
+					);
+				}
+				return path;
+			}
+		}
+		throw new Error('Configured inline target requires an explicit path in agent mode.');
+	}
+
+	private async resolveAgentRuntimeInlineCreationTarget(parent: {
+		filePath: string;
+		representation: 'inline' | 'file';
+		lineNumber?: number;
+	} | null): Promise<{
+		filePath: string;
+		placement:
+			| { kind: 'after-line'; lineNumber: number }
+			| { kind: 'under-heading'; headingKeyword: string };
+		defaultFields?: Readonly<Record<string, string>>;
+	}> {
+		if (
+			parent?.representation === 'inline'
+			&& this.settings.inlineTaskParentInlineTargetMode === 'below-parent'
+		) {
+			if (parent.lineNumber === undefined) {
+				throw new Error('The configured inline parent locator is unavailable.');
+			}
+			return {
+				filePath: parent.filePath,
+				placement: { kind: 'after-line', lineNumber: parent.lineNumber },
+			};
+		}
+		if (
+			parent?.representation === 'file'
+			&& this.settings.inlineTaskParentFileTargetMode === 'inside-parent-file'
+		) {
+			return {
+				filePath: parent.filePath,
+				placement: {
+					kind: 'under-heading',
+					headingKeyword: normalizeInlineTaskParentFileHeadingKeyword(
+						this.settings.inlineTaskParentFileHeadingKeyword,
+					),
+				},
+			};
+		}
+		const filePath = await this.resolveAgentRuntimeInlineCreationPath();
+		const saveMode = this.resolveEffectiveInlineTaskSaveMode();
+		const today = localToday();
+		const scheduledWorkflow = this.settings.inlineTaskDailyNoteAddScheduledDate
+			? resolveAutomationWorkflowStatus(
+				this.settings.pipelines,
+				undefined,
+				this.settings.defaultPipelineName,
+				'scheduled',
+			)
+			: null;
+		const defaultFields = saveMode === 'daily-notes'
+			? {
+				...(this.settings.inlineTaskDailyNoteAddStartDate ? { dateStarted: today } : {}),
+				...(this.settings.inlineTaskDailyNoteAddScheduledDate ? { dateScheduled: today } : {}),
+				...(scheduledWorkflow ? { status: scheduledWorkflow.value } : {}),
+			}
+			: {};
+		const specificFileHeading = saveMode === 'specific-file'
+			? await this.resolveInlineTaskSpecificFileHeading(today)
+			: '';
+		return {
+			filePath,
+			placement: {
+				kind: 'under-heading',
+				headingKeyword: specificFileHeading
+					|| normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading),
+			},
+			...(Object.keys(defaultFields).length > 0 ? { defaultFields } : {}),
+		};
+	}
+
+	private async resolveAgentRuntimeFileCreationPath(
+		description: string,
+		parent: { filePath: string; representation: 'inline' | 'file' } | null = null,
+	): Promise<string> {
+		const fileName = this.sanitizeTaskFileName(description);
+		if (!fileName) throw new Error('Task description cannot produce a safe file name.');
+		const useParentFolder = !!parent && (
+			parent.representation === 'inline'
+				? this.settings.fileTaskParentInlineTargetMode === 'same-folder'
+				: this.settings.fileTaskParentFileTargetMode === 'same-folder'
+		);
+		const parentSlash = parent?.filePath.lastIndexOf('/') ?? -1;
+		const folder = (
+			useParentFolder
+				? parentSlash >= 0 ? parent?.filePath.slice(0, parentSlash) ?? '' : ''
+				: this.settings.fileTasksFolder
+		).trim().replace(/^\/+|\/+$/gu, '');
+		return folder ? `${folder}/${fileName}.md` : `${fileName}.md`;
+	}
+
+	private async readAgentRuntimeCreationTemplate(templateId: string) {
+		const option = findFileTaskTemplateOptionById(this.getFileTaskTemplateOptions(), templateId);
+		if (!option) return null;
+		if (option.kind === 'folder') {
+			if (!(await this.isAgentRuntimeMutationPathContained(option.path, false))) return null;
+			const file = this.app.vault.getAbstractFileByPath(option.path);
+			if (!(file instanceof TFile) || file.extension !== 'md') return null;
+			const content = await this.app.vault.read(file);
+			return {
+				templateId,
+				content,
+				revision: sourceRevisionForTaskCreationV1(option.path, content),
+			};
+		}
+		const status = resolvePipelineMinimalFileTaskTemplateStatus(option, this.settings.pipelines);
+		const statusKey = this.settings.keyMappings.find(mapping => (
+			mapping.canonicalKey === 'status'
+		))?.visiblePropertyName.trim() || 'status';
+		if (!status) return null;
+		const content = `---\n${statusKey}: ${JSON.stringify(status)}\n---\n`;
+		return {
+			templateId,
+			content,
+			revision: sourceRevisionForTaskCreationV1(`template:${templateId}.md`, content),
+		};
+	}
+
+	private async previewAgentRuntimeMutation(
+		request: MutationPreviewRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<MutationPreviewResultV1> {
+		return this.agentRuntimeMutationGateway
+			? await this.agentRuntimeMutationGateway.preview(request, context)
+			: {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'mutation-preview-result',
+				ok: false,
+				warnings: [],
+				error: runtimeUnavailableError('The live mutation Gateway is unavailable.'),
+			};
+	}
+
+	private applyAgentRuntimeTaskFieldValues(
+		current: Readonly<Record<string, string>>,
+		changes: Readonly<Record<string, string>>,
+	): Record<string, string> {
+		const next = { ...current };
+		for (const [field, value] of Object.entries(changes)) {
+			if (value) next[field] = value;
+			else delete next[field];
+		}
+		return next;
+	}
+
+	private agentRuntimeTaskLocator(task: {
+		readonly primary: {
+			readonly format: 'inline' | 'yaml';
+			readonly filePath: string;
+			readonly lineNumber?: number;
+		};
+	}): TaskSourceLocatorV1 {
+		return task.primary.format === 'yaml'
+			? { representation: 'file', filePath: task.primary.filePath }
+			: {
+				representation: 'inline',
+				filePath: task.primary.filePath,
+				lineNumber: task.primary.lineNumber!,
+			};
+	}
+
+	private planAgentRuntimeTaskFieldAggregatePatches(
+		task: AgentRuntimeIndexedTaskSnapshot,
+		changes: Readonly<Record<string, string>>,
+		noChange: boolean,
+		modifiedAt: string,
+		additionalAffectedOperonIds: readonly string[] = [],
+	): CreationAggregateProjectionPatch[] {
+		if (noChange) return [];
+		return this.aggregateCoordinator.planCreationAggregatePatches(
+			[{
+				operonId: task.operonId,
+				checkbox: task.checkbox,
+				fieldValues: this.applyAgentRuntimeTaskFieldValues(task.fieldValues, changes),
+				filePath: task.primary.filePath,
+				format: task.primary.format,
+				...(task.primary.lineNumber === undefined
+					? {}
+					: { lineNumber: task.primary.lineNumber }),
+			}],
+			toLocalDatetime(new Date(modifiedAt)),
+			additionalAffectedOperonIds,
+		);
+	}
+
+	private async readAgentRuntimeTaskSourceResources(
+		primaryFilePath: string,
+		primaryContent: string,
+		aggregatePatches: readonly CreationAggregateProjectionPatch[],
+		label: string,
+	): Promise<
+		| {
+			ok: true;
+			value: Array<{
+				resourceKind: 'task-source';
+				resourceKey: string;
+				revision: string;
+			}>;
+		}
+		| { ok: false; code: 'stale-source'; reason: string }
+	> {
+		const sources = new Map<string, string>([[primaryFilePath, primaryContent]]);
+		for (const filePath of new Set(aggregatePatches.map(patch => patch.filePath))) {
+			if (sources.has(filePath)) continue;
+			const source = await this.readAgentRuntimeMutationSource(filePath);
+			if (source.content === null) {
+				return {
+					ok: false,
+					code: 'stale-source',
+					reason: `${label} aggregate source is unavailable: ${filePath}.`,
+				};
+			}
+			sources.set(filePath, source.content);
+		}
+		return {
+			ok: true,
+			value: [...sources.entries()]
+				.sort(([left], [right]) => left.localeCompare(right))
+				.map(([filePath, content]) => ({
+					resourceKind: 'task-source',
+					resourceKey: filePath,
+					revision: sourceRevisionForTaskCreationV1(filePath, content),
+				})),
+		};
+	}
+
+	private async applyAgentRuntimeMutation(
+		request: MutationApplyRequestV1,
+	): Promise<MutationResultV1> {
+		const apply = async (): Promise<MutationResultV1> => this.agentRuntimeMutationGateway
+			? await this.agentRuntimeMutationGateway.apply(request)
+			: {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'mutation-result',
+				status: 'failed',
+				mutationMayHaveApplied: false,
+				retryAllowed: false,
+				groupResults: [],
+				error: runtimeUnavailableError('The live mutation Gateway is unavailable.'),
+			};
+		return request.plan.mutationKind === 'timer.session'
+			? await this.timeTracker.runSerializedSessionMutation(apply)
+			: await apply();
+	}
+
+	/**
+	 * UI wrapper for the same headless semantic-transition coordinator used by
+	 * Runtime. UI remains responsible for blockers, Notices, rendering, and
+	 * performance traces; durable transition ordering and postflight stay
+	 * shared.
+	 */
+	private async applyUiSemanticTransition(
+		indexed: IndexedTask,
+		targetStatusId: string,
+		expectedStatusId: string,
+		changes: GeneralUpdateItemV1[] = [],
+	): Promise<boolean> {
+		const locator = indexed.primary.format === 'yaml'
+			? { representation: 'file' as const, filePath: indexed.primary.filePath }
+			: indexed.primary.lineNumber === undefined
+				? null
+				: {
+					representation: 'inline' as const,
+					filePath: indexed.primary.filePath,
+					lineNumber: indexed.primary.lineNumber,
+		};
+		if (!locator) return false;
+		const requestId = getActiveWindow().crypto.randomUUID();
+		const idempotencyKey = `operon-ui-transition-${requestId}`;
+		const spec = {
+			operation: 'transition' as const,
+			targetStatusId,
+			expectedStatusId,
+			...(changes.length > 0 ? { changes } : {}),
+		};
+		const previewRequest: MutationPreviewRequestV1 = {
+			contractVersion: 1,
+			requestId,
+			kind: 'mutation-preview',
+			clientInstanceId: 'operon-ui',
+			idempotencyKey,
+			capability: 'tasks.transition.preview',
+			mutationKind: 'task.transition',
+			target: {
+				operonId: indexed.operonId,
+				locator,
+			},
+			spec,
+			authorization: {
+				basis: 'user-explicit-request',
+				reason: 'Operon UI semantic status change.',
+			},
+		};
+		const preview = await this.previewAgentRuntimeMutation(previewRequest);
+		if (!preview.ok) return false;
+		const applied = await this.applyAgentRuntimeMutation({
+			contractVersion: 1,
+			requestId: getActiveWindow().crypto.randomUUID(),
+			kind: 'mutation-apply',
+			plan: preview.plan,
+			authorization: {
+				basis: 'user-explicit-request',
+				reason: 'Operon UI semantic status change.',
+			},
+			idempotencyKey,
+			acknowledgements: [],
+		});
+		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
+			return false;
+		}
+		const markdownScope = createScopedMarkdownRefreshScope(
+			preview.plan.affectedResources
+				.filter(resource => resource.resourceKind === 'task-source')
+				.map(resource => resource.resourceKey),
+			'status-cycle',
+		);
+		this.refreshViews({ reason: 'status-cycle', markdownScope });
+		this.refreshMarkdownTaskSurfaces({ scope: markdownScope });
+		return true;
+	}
+
+	private buildUiSemanticTransitionChanges(
+		task: IndexedTask,
+		payload: Record<string, string>,
+	): GeneralUpdateItemV1[] | null {
+		const catalog = this.getAgentRuntimeCatalogBuild();
+		if (!catalog.ok) return null;
+		const changes: GeneralUpdateItemV1[] = [];
+		for (const [rawField, rawValue] of Object.entries(payload)) {
+			const field = rawField === '_description'
+				? 'description'
+				: rawField === '_tags'
+					? 'tags'
+					: rawField;
+			const current = field === 'description'
+				? task.description
+				: field === 'tags'
+					? [...task.tags].sort().join(';')
+					: task.fieldValues[field] ?? '';
+			const normalizedRaw = field === 'tags'
+				? rawValue.split(';').map(value => value.trim()).filter(Boolean).sort().join(';')
+				: rawValue;
+			if (current === normalizedRaw) continue;
+			const descriptor = catalog.value.fields.find(candidate => (
+				candidate.canonicalKey === field
+			));
+			if (
+				!descriptor
+				|| descriptor.mappingStatus !== 'mapped'
+				|| descriptor.mutationClass !== 'general-update'
+				|| descriptor.mutationOwner !== 'tasks.update'
+			) return null;
+			if (field === 'priority') {
+				const priority = catalog.value.taxonomy.priorities.find(candidate => (
+					candidate.label === rawValue
+				));
+				if (!priority) return null;
+				changes.push({ field, valueType: 'text', value: priority.id });
+			} else if (descriptor.valueType === 'list') {
+				changes.push({
+					field,
+					valueType: 'list',
+					value: rawValue.split(';').map(value => value.trim()).filter(Boolean),
+				});
+			} else if (descriptor.valueType === 'number') {
+				const value = Number(rawValue);
+				if (!Number.isFinite(value)) return null;
+				changes.push({ field, valueType: 'number', value });
+			} else if (descriptor.valueType === 'checkbox') {
+				if (rawValue !== 'true' && rawValue !== 'false') return null;
+				changes.push({ field, valueType: 'checkbox', value: rawValue === 'true' });
+			} else {
+				changes.push({
+					field,
+					valueType: descriptor.valueType,
+					value: rawValue,
+				});
+			}
+		}
+		return changes;
+	}
+
+	private async applyUiCanonicalConversion(
+		indexed: IndexedTask,
+		spec: Extract<MutationSpecV1, { operation: 'convert' }>,
+	): Promise<{ handled: boolean; success: boolean }> {
+		const locator = indexed.primary.format === 'yaml'
+			? { representation: 'file' as const, filePath: indexed.primary.filePath }
+			: indexed.primary.lineNumber === undefined
+				? null
+				: {
+					representation: 'inline' as const,
+					filePath: indexed.primary.filePath,
+					lineNumber: indexed.primary.lineNumber,
+				};
+		if (!locator) return { handled: true, success: false };
+		const requestId = getActiveWindow().crypto.randomUUID();
+		const idempotencyKey = `operon-ui-conversion-${requestId}`;
+		const previewRequest: MutationPreviewRequestV1 = {
+			contractVersion: 1,
+			requestId,
+			kind: 'mutation-preview',
+			clientInstanceId: 'operon-ui',
+			idempotencyKey,
+			capability: 'tasks.convert.preview',
+			mutationKind: 'task.convert',
+			target: { operonId: indexed.operonId, locator },
+			spec,
+			authorization: {
+				basis: 'user-explicit-request',
+				reason: 'Operon UI representation conversion.',
+			},
+		};
+		const preview = await this.previewAgentRuntimeMutation(previewRequest);
+		if (!preview.ok) {
+			return {
+				handled: preview.error.code !== 'template-processing-required',
+				success: false,
+			};
+		}
+		const plan = preview.plan;
+		if (plan.requiresConfirmation) {
+			const disclosedLosses = plan.conversionEffect?.lossManifest
+				.map(item => item.key?.trim() || item.kind)
+				.filter(Boolean)
+				.join(', ');
+			const confirmationMessage = [
+				t('modals', 'convertFileTaskToInlineMessage'),
+				...(disclosedLosses ? [disclosedLosses] : []),
+			].join('\n\n');
+			const confirmed = await this.promptConfirmAction(
+				t('modals', 'convertFileTaskToInlineTitle'),
+				confirmationMessage,
+				t('modals', 'convertAndMoveToTrash'),
+				t('buttons', 'cancel'),
+			);
+			if (!confirmed) return { handled: true, success: false };
+		}
+		const acknowledgements = plan.requiresConfirmation
+			? plan.requiredAcknowledgements.map(code => ({
+				code,
+				planHash: plan.planHash,
+				targetDigest: plan.targets[0]?.targetDigest ?? plan.receiptTargetDigest,
+				acknowledgedAt: new Date().toISOString(),
+			}))
+			: [];
+		const applied = await this.applyAgentRuntimeMutation({
+			contractVersion: 1,
+			requestId: getActiveWindow().crypto.randomUUID(),
+			kind: 'mutation-apply',
+			plan,
+			authorization: {
+				basis: plan.requiresConfirmation
+					? 'user-explicit-confirmation'
+					: 'user-explicit-request',
+				reason: 'Operon UI representation conversion.',
+			},
+			idempotencyKey,
+			acknowledgements,
+		});
+		if (applied.status !== 'applied' && applied.status !== 'already-applied') {
+			return { handled: true, success: false };
+		}
+		const markdownScope = createScopedMarkdownRefreshScope(
+			plan.affectedResources
+				.filter(resource => resource.resourceKind === 'task-source')
+				.map(resource => resource.resourceKey),
+			'inline-to-file-conversion',
+		);
+		this.refreshViews({ reason: 'inline-to-file-conversion', markdownScope });
+		this.refreshMarkdownTaskSurfaces({ scope: markdownScope });
+		return { handled: true, success: true };
+	}
+
+	private getAgentRuntimeCatalogBuild(): CatalogBuildResultV1 {
+		const fileTaskTemplateCandidates = this.getAgentRuntimeFileTaskTemplateCandidates();
+		const fingerprint = sha256HexV1(canonicalJsonV1(toJsonValueV1({
+			settings: this.getAgentRuntimeSettingsFingerprint(),
+			fileTaskTemplateCandidates,
+		})));
+		if (this.agentRuntimeCatalogCache?.fingerprint === fingerprint) {
+			return this.agentRuntimeCatalogCache.result;
+		}
+		const result = buildLivePropertyCatalogV1(this.settings, { fileTaskTemplateCandidates });
+		this.agentRuntimeCatalogCache = { fingerprint, result };
+		return result;
+	}
+
+	private requireAgentRuntimeCatalogProjection(): CatalogProjectionV1 {
+		const catalog = this.getAgentRuntimeCatalogBuild();
+		if (!catalog.ok) throw new Error(catalog.error.reason);
+		return catalog.value;
+	}
+
+	private getAgentRuntimeSettingsFingerprint(): string {
+		if (this.agentRuntimeSettingsFingerprintCache?.packageRevision === this.agentRuntimePackageRevision) {
+			return this.agentRuntimeSettingsFingerprintCache.fingerprint;
+		}
+		const fingerprint = computeContextSettingsFingerprintV1(this.settings);
+		this.agentRuntimeSettingsFingerprintCache = {
+			packageRevision: this.agentRuntimePackageRevision,
+			fingerprint,
+		};
+		return fingerprint;
+	}
+
+	private async readAgentRuntimeSettingsPackageRevision(): Promise<string> {
+		const stat = await this.app.vault.adapter.stat(this.storage.settingsPath);
+		const revision = stat?.type === 'file' ? `${stat.mtime}:${stat.size}` : 'missing';
+		this.agentRuntimePackageRevision = revision;
+		this.agentRuntimeObservedAt = new Date().toISOString();
+		if (revision === 'missing') {
+			throw new Error('Canonical Operon settings package is missing.');
+		}
+		return revision;
+	}
+
+	private async refreshAgentRuntimeSettingsBoundary(): Promise<void> {
+		if (!this.agentRuntimeSettingsFreshness) return;
+		const result = await this.agentRuntimeSettingsFreshness.refresh();
+		if (!result.ok) {
+			this.recordAgentRuntimeFreshnessFailure(result);
+			return;
+		}
+		this.agentRuntimeLifecycle.clearError('settings-freshness');
+		this.agentRuntimeSettingsFailureRelease?.();
+		this.agentRuntimeSettingsFailureRelease = null;
+	}
+
+	private recordAgentRuntimeFreshnessFailure(result: Extract<RuntimeSettingsFreshnessResultV1, { ok: false }>): void {
+		this.agentRuntimeSettingsFailureRelease ??= this.agentRuntimeLifecycle.beginSettling();
+		this.agentRuntimeLifecycle.recordError(result.error, 'settings-freshness');
+	}
+
+	private sampleAgentRuntimeRevision(): RuntimeRevisionSnapshotV1 {
+		const indexSource = this.indexer.getIndexRevisionSource();
+		return sampleRuntimeRevisionV1({
+			indexRevision: () => ({
+				sessionId: this.agentRuntimeSessionId,
+				ramGeneration: indexSource.ramGeneration,
+				durable: { ...indexSource.durable },
+			}),
+			settingsFingerprint: () => this.getAgentRuntimeSettingsFingerprint(),
+			pinnedGeneration: () => this.pinnedCache?.getGeneration() ?? 0,
+			activeTrackerGeneration: () => this.storage.activeTrackers.getGeneration(),
+			repeatSeriesRevision: () => this.storage.repeatSeries.getRevision(),
+			projectSerialGeneration: () => this.storage.projectSerials.getGeneration(),
+			projectSerialSignature: () => hashProjectSerialSignatureV1(
+				this.storage.projectSerials.getSignature(),
+			),
+			packageRevision: () => this.agentRuntimePackageRevision,
+		});
+	}
+
+	private async readAgentRuntimeCatalog(
+		request: CatalogRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<OperonCatalogV1> {
+		const result = await this.agentRuntimeCoherentRead.execute({
+			requestId: request.requestId,
+			minimumConsistency: request.consistency,
+			deadlineAtMs: context?.deadlineAtMs,
+			isRevisionStable: (before, after) => (
+				before.packageRevision === after.packageRevision
+				&& before.contextRevision.settingsFingerprint === after.contextRevision.settingsFingerprint
+			),
+			read: async () => this.getAgentRuntimeCatalogBuild(),
+		});
+		const hasBestEffortWarning = result.warnings.some(warning => (
+			warning.code === 'runtime-not-settled'
+			|| warning.code === 'runtime-revision-drift'
+		));
+		const runtimeReady = this.agentRuntimeLifecycle.getPhase() === 'ready';
+		const freshness = {
+			source: 'live-runtime' as const,
+			coherence: result.ok
+				? hasBestEffortWarning ? 'settling' as const : 'verified' as const
+				: result.error.code === 'live-settling'
+				? 'settling' as const
+				: 'unverified' as const,
+			observedAt: this.agentRuntimeObservedAt,
+			settled: result.ok && runtimeReady && !hasBestEffortWarning,
+		};
+		if (!result.ok) {
+			return {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'catalog-result',
+				ok: false,
+				freshness,
+				warnings: result.warnings,
+				...(result.revision ? { contextRevision: result.revision.contextRevision } : {}),
+				error: result.error,
+			};
+		}
+		if (!result.value.ok) {
+			return {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'catalog-result',
+				ok: false,
+				freshness,
+				warnings: result.warnings,
+				contextRevision: result.revision.contextRevision,
+				error: result.value.error,
+			};
+		}
+		const response: OperonCatalogV1 = {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'catalog-result',
+			ok: true,
+			freshness,
+			warnings: [...result.warnings, ...result.value.value.warnings],
+			contextRevision: result.revision.contextRevision,
+			settingsFingerprint: result.revision.contextRevision.settingsFingerprint,
+			catalogRevision: result.value.value.catalogRevision,
+			taxonomy: result.value.value.taxonomy,
+			fields: result.value.value.fields,
+			policies: result.value.value.policies,
+		};
+		if (isCatalogResultWithinTransportLimitV1(response)) {
+			return response;
+		}
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'catalog-result',
+			ok: false,
+			freshness: {
+				...freshness,
+				coherence: 'unverified',
+				settled: false,
+			},
+			warnings: result.warnings,
+			contextRevision: result.revision.contextRevision,
+			error: {
+				contractVersion: 1,
+				code: 'result-too-large',
+				reason: 'The live Property Catalog exceeds the V1 result limit.',
+				retryable: false,
+				action: 'narrow-request',
+			},
+		};
+	}
+
+	private async executeAgentRuntimeContextRead<T>(
+		requestId: string,
+		consistency: EntityResolveRequestV1['consistency'],
+		context: RuntimeInvocationContextV1 | undefined,
+		project: (
+			revision: RuntimeRevisionSnapshotV1,
+			freshness: EntityResolutionResultV1['freshness'],
+		) => Promise<T>,
+	): Promise<RuntimeReadResultV1<T>> {
+		return await this.agentRuntimeCoherentRead.execute({
+			requestId,
+			minimumConsistency: consistency,
+			deadlineAtMs: context?.deadlineAtMs,
+			read: async revision => await project(
+				revision,
+				this.buildAgentRuntimeReadFreshness(consistency),
+			),
+		});
+	}
+
+	private async readAgentRuntimeTimer(
+		request: TimerReadRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<TimerReadResultV1> {
+		const result = await this.agentRuntimeCoherentRead.execute({
+			requestId: request.requestId,
+			minimumConsistency: request.consistency,
+			deadlineAtMs: context?.deadlineAtMs,
+			read: async revision => {
+				const active = this.timeTracker.getActiveState();
+				const stored = this.storage.activeTrackers.getActiveForUser();
+				const transition = this.timeTracker.getTransitionState();
+				return {
+					state: {
+						active: active
+							? {
+								operonId: active.operonId,
+								start: active.start,
+								source: stored?.source ?? 'command',
+								elapsedSeconds: active.elapsedSeconds,
+								isUnassigned: active.isUnassigned,
+							}
+							: null,
+						transition: transition
+							? {
+								kind: transition.kind,
+								operonId: transition.taskId,
+								start: transition.start,
+							}
+							: null,
+					},
+					contextRevision: revision.contextRevision,
+				};
+			},
+		});
+		const freshness = this.buildAgentRuntimeReadFreshness(request.consistency);
+		if (!result.ok) {
+			return {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'timer-read-result',
+				ok: false,
+				freshness: {
+					...freshness,
+					coherence: result.error.code === 'live-settling' ? 'settling' : 'unverified',
+					settled: false,
+				},
+				warnings: result.warnings,
+				error: result.error,
+			};
+		}
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'timer-read-result',
+			ok: true,
+			freshness,
+			warnings: result.warnings,
+			state: result.value.state,
+			contextRevision: result.value.contextRevision,
+		};
+	}
+
+	private buildAgentRuntimeReadFreshness(
+		consistency: EntityResolveRequestV1['consistency'],
+	): EntityResolutionResultV1['freshness'] {
+		const ready = this.agentRuntimeLifecycle.getPhase() === 'ready';
+		return {
+			source: 'live-runtime',
+			coherence: ready && consistency === 'live-verified' ? 'verified' : 'settling',
+			observedAt: this.agentRuntimeObservedAt,
+			settled: ready && consistency === 'live-verified',
+		};
+	}
+
+	private async readAgentRuntimeEntity(
+		request: EntityResolveRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<EntityResolutionResultV1> {
+		const bridge = this.agentRuntimeContextBridge;
+		if (!bridge) return this.agentRuntimeEntityFailure(request, 'capability-unavailable');
+			const result = await this.executeAgentRuntimeContextRead(
+				request.requestId,
+				request.consistency,
+				context,
+			(revision, freshness) => bridge.resolveEntity(request, {
+				revision: revision.contextRevision,
+				freshness,
+			}),
+		);
+		if (!result.ok) return this.agentRuntimeEntityFailure(request, result.error.code, result.error, result.warnings);
+		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };
+	}
+
+	private async readAgentRuntimeTask(
+		request: TaskGetRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<TaskGetResultV1> {
+		const bridge = this.agentRuntimeContextBridge;
+		if (!bridge) return this.agentRuntimeTaskFailure(request, 'capability-unavailable');
+			const result = await this.executeAgentRuntimeContextRead(
+				request.requestId,
+				request.consistency,
+				context,
+			(revision, freshness) => bridge.getTask(request, {
+				revision: revision.contextRevision,
+				freshness,
+			}),
+		);
+		if (!result.ok) return this.agentRuntimeTaskFailure(request, result.error.code, result.error, result.warnings);
+		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };
+	}
+
+	private async queryAgentRuntimeTasks(
+		request: TaskQueryRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<TaskQueryResultV1> {
+		const bridge = this.agentRuntimeContextBridge;
+		if (!bridge) return this.agentRuntimeTaskQueryFailure(request, 'capability-unavailable');
+			const result = await this.executeAgentRuntimeContextRead(
+				request.requestId,
+				request.consistency,
+				context,
+			(revision, freshness) => bridge.queryTasks(request, {
+				revision: revision.contextRevision,
+				freshness,
+			}),
+		);
+		if (!result.ok) return this.agentRuntimeTaskQueryFailure(request, result.error.code, result.error, result.warnings);
+		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };
+	}
+
+	private async findAgentRuntimeTasks(
+		request: TaskFinderRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<TaskFinderResultV1> {
+		const bridge = this.agentRuntimeContextBridge;
+		if (!bridge) return this.agentRuntimeTaskFinderFailure(request, 'capability-unavailable');
+			const result = await this.executeAgentRuntimeContextRead(
+				request.requestId,
+				request.consistency,
+				context,
+			(revision, freshness) => bridge.findTasks(request, {
+				revision: revision.contextRevision,
+				freshness,
+			}),
+		);
+		if (!result.ok) {
+			return this.agentRuntimeTaskFinderFailure(request, result.error.code, result.error, result.warnings);
+		}
+		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };
+	}
+
+	private async readAgentRuntimeRelationships(
+		request: RelationshipRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<RelationshipResultV1> {
+		const bridge = this.agentRuntimeContextBridge;
+		if (!bridge) return this.agentRuntimeRelationshipFailure(request, 'capability-unavailable');
+			const result = await this.executeAgentRuntimeContextRead(
+				request.requestId,
+				request.consistency,
+				context,
+			(revision, freshness) => bridge.getRelationships(request, {
+				revision: revision.contextRevision,
+				freshness,
+			}),
+		);
+		if (!result.ok) return this.agentRuntimeRelationshipFailure(request, result.error.code, result.error, result.warnings);
+		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };
+	}
+
+	private async buildAgentRuntimeContext(
+		request: ContextRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<ContextPackV1> {
+		const bridge = this.agentRuntimeContextBridge;
+		if (!bridge) return this.agentRuntimeContextFailure(request, 'capability-unavailable');
+			const result = await this.executeAgentRuntimeContextRead(
+				request.requestId,
+				request.consistency,
+				context,
+			(revision, freshness) => bridge.buildContext(request, {
+				revision: revision.contextRevision,
+				freshness,
+			}),
+		);
+		if (!result.ok) return this.agentRuntimeContextFailure(request, result.error.code, result.error, result.warnings);
+		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };
+	}
+
+	private agentRuntimeEntityFailure(
+		request: EntityResolveRequestV1,
+		_code: string,
+		detail?: Extract<EntityResolutionResultV1, { ok: false }>['error'],
+		warnings: EntityResolutionResultV1['warnings'] = [],
+	): EntityResolutionResultV1 {
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'entity-resolution-result',
+			ok: false,
+			freshness: this.buildAgentRuntimeReadFreshness(request.consistency),
+			warnings,
+			error: detail ?? runtimeUnavailableError('The live entity resolver is not available.'),
+		};
+	}
+
+	private agentRuntimeTaskFailure(
+		request: TaskGetRequestV1,
+		_code: string,
+		detail?: Extract<TaskGetResultV1, { ok: false }>['error'],
+		warnings: TaskGetResultV1['warnings'] = [],
+	): TaskGetResultV1 {
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'task-get-result',
+			ok: false,
+			freshness: this.buildAgentRuntimeReadFreshness(request.consistency),
+			warnings,
+			error: detail ?? runtimeUnavailableError('The live task reader is not available.'),
+		};
+	}
+
+	private agentRuntimeTaskQueryFailure(
+		request: TaskQueryRequestV1,
+		_code: string,
+		detail?: Extract<TaskQueryResultV1, { ok: false }>['error'],
+		warnings: TaskQueryResultV1['warnings'] = [],
+	): TaskQueryResultV1 {
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'task-query-result',
+			ok: false,
+			freshness: this.buildAgentRuntimeReadFreshness(request.consistency),
+			warnings,
+			error: detail ?? runtimeUnavailableError('The live task query engine is not available.'),
+		};
+	}
+
+	private agentRuntimeTaskFinderFailure(
+		request: TaskFinderRequestV1,
+		_code: string,
+		detail?: Extract<TaskFinderResultV1, { ok: false }>['error'],
+		warnings: TaskFinderResultV1['warnings'] = [],
+	): TaskFinderResultV1 {
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'task-finder-result',
+			ok: false,
+			freshness: this.buildAgentRuntimeReadFreshness(request.consistency),
+			warnings,
+			error: detail ?? runtimeUnavailableError('The live Task Finder is not available.'),
+		};
+	}
+
+	private agentRuntimeRelationshipFailure(
+		request: RelationshipRequestV1,
+		_code: string,
+		detail?: Extract<RelationshipResultV1, { ok: false }>['error'],
+		warnings: RelationshipResultV1['warnings'] = [],
+	): RelationshipResultV1 {
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'relationship-result',
+			ok: false,
+			freshness: this.buildAgentRuntimeReadFreshness(request.consistency),
+			warnings,
+			error: detail ?? runtimeUnavailableError('The live relationship reader is not available.'),
+		};
+	}
+
+	private agentRuntimeContextFailure(
+		request: ContextRequestV1,
+		_code: string,
+		detail?: Extract<ContextPackV1, { ok: false }>['error'],
+		warnings: ContextPackV1['warnings'] = [],
+	): ContextPackV1 {
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'context-pack',
+			ok: false,
+			purpose: request.purpose,
+			projection: request.projection,
+			warnings,
+			error: detail ?? runtimeUnavailableError('The live Context Engine is not available.'),
+		};
+	}
+
+	private async awaitAgentRuntimeSettlement(options: {
+		requestId?: string;
+		mutationOwnedMaintenance?: boolean;
+	} = {}): Promise<void> {
+		const flow = options.mutationOwnedMaintenance === true ? 'mutation-apply' as const : 'read' as const;
+		const measure = OPERON_AGENT_RUNTIME_PROBE_ENABLED && this.agentRuntimeTimingProbe
+			? <T>(
+				span: Parameters<typeof measureRuntimeTimingSpanV1>[1]['span'],
+				operation: () => Promise<T>,
+			): Promise<T> => Promise.resolve(measureRuntimeTimingSpanV1(
+				this.agentRuntimeTimingProbe ?? undefined,
+				{
+					requestId: options.requestId ?? 'uncorrelated-settlement',
+					flow,
+					span,
+				},
+				operation,
+			))
+			: <T>(
+				_span: Parameters<typeof measureRuntimeTimingSpanV1>[1]['span'],
+				operation: () => Promise<T>,
+			): Promise<T> => operation();
+		if (
+			this.agentRuntimeLifecycle.hasError('settings-reindex')
+			&& this.pendingSettingsReindexReasons.size > 0
+		) {
+			this.settingsReindexRetryAttempted = false;
+			this.ensureSettingsReindexBarrier();
+			this.armSettingsReindexTimer();
+		}
+		await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+			? measure('settlement-settings-reindex', () => this.awaitSettingsReindexSettlement())
+			: this.awaitSettingsReindexSettlement());
+		const settleRam = async (): Promise<void> => {
+			if (options.mutationOwnedMaintenance === true) {
+				await this.indexer.flushPendingRamReindexNow();
+			}
+			await this.indexer.awaitRamSettlement();
+		};
+		await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+			? measure('settlement-ram', settleRam)
+			: settleRam());
+		if (this.agentRuntimeLifecycle.hasError('index-side-effects')) {
+			this.scheduleIndexSideEffects();
+		}
+		if (options.mutationOwnedMaintenance === true) {
+			await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+				? measure(
+					'settlement-index-side-effects-flush',
+					() => this.flushAgentRuntimeIndexSideEffectsNow(),
+				)
+				: this.flushAgentRuntimeIndexSideEffectsNow());
+		}
+		const indexSideEffectSettlement = this.indexSideEffectSettlement.current();
+		if (indexSideEffectSettlement) {
+			await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+				? measure('settlement-index-side-effects', () => indexSideEffectSettlement)
+				: indexSideEffectSettlement);
+		}
+		while (this.aggregateRuntimeSettlements.size > 0) {
+			const settlements = [...this.aggregateRuntimeSettlements];
+			await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+				? measure(
+					'settlement-index-side-effects',
+					() => Promise.allSettled(settlements).then(() => undefined),
+				)
+				: Promise.allSettled(settlements).then(() => undefined));
+		}
+		if (this.agentRuntimeLifecycle.hasError('project-serial')) {
+			this.scheduleProjectSerialIndexReconcile();
+		}
+		const projectSerialSettlement = this.projectSerialRuntimeSettlement;
+		if (options.mutationOwnedMaintenance === true) {
+			await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+				? measure(
+					'settlement-project-serial-scheduler',
+					() => this.projectSerialIndexReconcileScheduler?.flushNow() ?? Promise.resolve(),
+				)
+				: this.projectSerialIndexReconcileScheduler?.flushNow());
+			if (projectSerialSettlement) await projectSerialSettlement;
+		} else {
+			if (projectSerialSettlement) await projectSerialSettlement;
+			await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+				? measure(
+					'settlement-project-serial-scheduler',
+					() => this.projectSerialIndexReconcileScheduler?.whenIdle() ?? Promise.resolve(),
+				)
+				: this.projectSerialIndexReconcileScheduler?.whenIdle());
+		}
+		await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+			? measure('settlement-project-serial-store', () => this.storage.projectSerials.drain())
+			: this.storage.projectSerials.drain());
+		await (OPERON_AGENT_RUNTIME_PROBE_ENABLED
+			? measure(
+				'settlement-reminder-idle',
+				() => this.reminderScheduler?.whenIdle() ?? Promise.resolve(),
+			)
+			: this.reminderScheduler?.whenIdle());
+	}
+
 	onload(): void {
-		runAsyncAction('plugin load failed', () => this.loadPlugin());
+		this.initializeAgentRuntime();
+		this.registerAgentRuntimeCliTransport();
+		if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) {
+			registerTransportProbe(this, {
+				drainRuntimeTimings: () => this.agentRuntimeTimingProbe?.drain() ?? [],
+			});
+			}
+			runAsyncAction('plugin load failed', async () => {
+				try {
+					await this.loadPlugin();
+					if (
+						OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED
+						&& this.agentRuntimeLifecycle.getPhase() !== 'unloading'
+					) {
+						const supervisor = new AgentRuntimePersistentReadSupervisorV1({
+							startServer: isCurrent => startAgentRuntimePersistentReadServerV1(
+								this,
+								this.agentRuntimeCore,
+								{
+									runtimeMetadata: createAgentRuntimeCliMetadataV1(this),
+									isStartCurrent: isCurrent,
+									...(this.agentRuntimeTimingProbe
+										? { timingSink: this.agentRuntimeTimingProbe }
+										: {}),
+								},
+							),
+						});
+						this.agentRuntimePersistentReadSupervisor = supervisor;
+						await supervisor.start();
+						if (this.agentRuntimeLifecycle.getPhase() === 'unloading') {
+							this.agentRuntimePersistentReadShutdown = supervisor.close();
+							await this.agentRuntimePersistentReadShutdown;
+						}
+					}
+					if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('plugin-loaded');
+			} catch (error) {
+				if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('load-failed');
+				this.agentRuntimeLifecycle.recordError({
+					contractVersion: 1,
+					code: 'internal-error',
+					reason: 'Operon Agent Runtime could not complete startup.',
+					retryable: false,
+					action: 'report-bug',
+				}, 'startup');
+				throw error;
+			}
+		});
 	}
 
 	private async initializeTablePresetRegistry(): Promise<void> {
-		await this.executeTablePresetFileMigration({ notify: true, refreshRegistry: false });
 		this.tablePresetRegistry = new TablePresetRegistry<TFile>({
-			loadLegacyPresets: () => this.settings.tablePresetFileMigrationVersion < 1
-				? this.storage.tablePresets.getAll().tablePresets
-				: [],
 			loadFileBindings: () => this.settings.tablePresetFileBindings.map(binding => ({ ...binding })),
 			listTableFiles: () => this.app.vault.getFiles(),
 			readTableFile: file => this.app.vault.read(file),
 			applyPatch: (preset, patch) => applyTablePresetPatch(preset, patch),
 			writeTableFile: (path, serialized, context) => this.writeCanonicalTableFile(path, serialized, context.baseFileContent),
 		});
-		this.tablePresetFileLifecycle = new TablePresetFileLifecycle(
+		this.tablePresetFileConflictResolver = new TablePresetFileConflictResolver(
 			this.app,
 			this.storage,
 			this.tablePresetRegistry,
-			{ receiptPath: this.storage.tablePresetFileMigrationReceiptPath },
 		);
-		try {
-			this.tablePresetFileMigrationReceipt = await this.tablePresetFileLifecycle.reconcileFinalizedReceipt(
-				this.settings.tablePresetFileMigrationFinalizedVersion,
-			);
-		} catch (error) {
-			console.error('Operon: failed to load Table file migration receipt', error);
-			this.tablePresetFileMigrationReceipt = null;
-		}
 		await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
+		await this.ensureCanonicalTablePresetBootstrap();
 		this.registerTablePresetFileWatchers();
 		this.register(() => {
 			if (this.tablePresetRegistryRefreshTimer !== null) {
@@ -2151,52 +10420,42 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
-	private async executeTablePresetFileMigration(
-		options: { notify: boolean; refreshRegistry: boolean },
-	): Promise<TablePresetFileMigrationSummary | null> {
-		if (this.tablePresetFileMigrationRunning) return this.tablePresetFileMigrationSummary;
-		const wasComplete = this.settings.tablePresetFileMigrationVersion >= 1;
-		this.tablePresetFileMigrationRunning = true;
-		try {
-			try {
-				this.tablePresetFileMigrationSummary = await runTablePresetFileMigration(this.app, this.storage);
-			} catch (error) {
-				console.error('Operon: Table file migration failed before it could persist recovery state', error);
-				this.tablePresetFileMigrationSummary = summarizeTablePresetFileMigrationJournal(
-					this.storage.tablePresetFileMigrationJournal.get(),
-					'failed',
-				);
-			}
-		} finally {
-			this.tablePresetFileMigrationRunning = false;
-		}
-		if (options.refreshRegistry && this.tablePresetRegistry) {
-			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-		}
-		this.settingsTab?.refreshTablePresetFileState();
-		if (options.notify && !wasComplete && this.tablePresetFileMigrationSummary) {
-			this.showTablePresetFileMigrationNotice(this.tablePresetFileMigrationSummary);
-		}
-		return this.tablePresetFileMigrationSummary;
-	}
-
-	private showTablePresetFileMigrationNotice(summary: TablePresetFileMigrationSummary): void {
-		if (summary.status === 'completed') {
-			new Notice(t('settings', 'tableFileMigrationCompletedNotice', {
-				count: String(summary.migrated + summary.adopted + summary.alreadyMigrated),
-			}));
+	private async ensureCanonicalTablePresetBootstrap(): Promise<void> {
+		const snapshot = this.tablePresetRegistry.getSnapshot();
+		const action = resolveTablePresetBootstrapAction({
+			initialized: this.settings.tablePresetFileInitialized,
+			registryEntryCount: snapshot.entries.size,
+			bindingCount: this.settings.tablePresetFileBindings.length,
+		});
+		if (action === 'none') return;
+		if (action === 'adopt-existing') {
+			this.settings.tablePresetFileInitialized = true;
+			await this.storage.saveSettings();
 			return;
 		}
-		if (summary.status === 'partial' || summary.status === 'failed') {
-			new Notice(t('settings', 'tableFileMigrationNeedsReviewNotice', {
-				count: String(summary.blocked + summary.failed),
-			}), 8_000);
+		const preset: TablePreset = { ...createDefaultTablePreset(), name: 'Default table' };
+		const previousPresets = this.settings.tablePresets.map(cloneTablePreset);
+		const previousOrder = [...this.settings.tablePresetOrderIds];
+		const previousDefault = this.settings.tableDefaultPresetId;
+		this.settings.tablePresets = [];
+		this.settings.tablePresetOrderIds = [];
+		this.settings.tableDefaultPresetId = null;
+		this.settings.tablePresetFileInitialized = true;
+		try {
+			await this.addTablePresetAndRefresh(preset, undefined, null, true);
+			this.settings.tablePresetFileInitialized = true;
+		} catch (error) {
+			this.settings.tablePresetFileInitialized = false;
+			this.settings.tablePresets = previousPresets;
+			this.settings.tablePresetOrderIds = previousOrder;
+			this.settings.tableDefaultPresetId = previousDefault;
+			throw error;
 		}
 	}
 
 	private registerTablePresetFileWatchers(): void {
 		this.registerEvent(this.app.vault.on('modify', file => {
-			if (this.tablePresetFileMigrationRunning) return;
+			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
 			runAsyncAction('table file modify refresh failed', async () => {
 				const source = await this.app.vault.read(file);
@@ -2209,7 +10468,7 @@ export default class OperonPlugin extends Plugin {
 			});
 		}));
 		this.registerEvent(this.app.vault.on('create', file => {
-			if (this.tablePresetFileMigrationRunning) return;
+			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
 			runAsyncAction('table file create refresh failed', async () => {
 				const source = await this.app.vault.read(file);
@@ -2222,12 +10481,12 @@ export default class OperonPlugin extends Plugin {
 			});
 		}));
 		this.registerEvent(this.app.vault.on('delete', file => {
-			if (this.tablePresetFileMigrationRunning) return;
+			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
 			runAsyncAction('table file delete lifecycle failed', () => this.handleDeletedTableFile(file.path));
 		}));
 		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
-			if (this.tablePresetFileMigrationRunning) return;
+			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || (!isOperonTableFilePath(oldPath) && !isOperonTableFilePath(file.path))) return;
 			runAsyncAction('table file rename synchronization failed', () => this.handleExternalTableFileRename(file, oldPath));
 		}));
@@ -2394,13 +10653,7 @@ export default class OperonPlugin extends Plugin {
 		for (const entry of snapshot.entries.values()) {
 			if (entry.status === 'available' && entry.preset) availableById.set(entry.id, entry.preset);
 		}
-		const nextOrder: string[] = [];
-		const seen = new Set<string>();
-		for (const id of currentOrder) {
-			if (!snapshot.entries.has(id) || seen.has(id)) continue;
-			nextOrder.push(id);
-			seen.add(id);
-		}
+		const seen = new Set(currentOrder);
 		const additions = [...snapshot.entries.values()]
 			.filter(entry => !seen.has(entry.id))
 			.sort((left, right) => {
@@ -2408,7 +10661,7 @@ export default class OperonPlugin extends Plugin {
 				const rightPath = this.tablePresetRegistry.getPath(right.id) ?? right.preset?.name ?? right.id;
 				return leftPath.localeCompare(rightPath, 'en', { sensitivity: 'base' });
 			});
-		nextOrder.push(...additions.map(entry => entry.id));
+		const nextOrder = mergeTablePresetRegistryOrder(currentOrder, additions.map(entry => entry.id));
 		this.settings.tablePresetOrderIds = nextOrder;
 		const next = nextOrder.flatMap(id => {
 			const preset = availableById.get(id);
@@ -2422,13 +10675,9 @@ export default class OperonPlugin extends Plugin {
 
 	private resolveTablePresetForSurface(presetId: string): TablePreset | null {
 		const registryEntry = this.tablePresetRegistry.get(presetId);
-		if (registryEntry) {
-			return registryEntry.status === 'available' && registryEntry.preset
-				? cloneTablePreset(registryEntry.preset)
-				: null;
-		}
-		const legacyPreset = this.settings.tablePresets.find(preset => preset.id === presetId);
-		return legacyPreset ? cloneTablePreset(legacyPreset) : null;
+		return registryEntry?.status === 'available' && registryEntry.preset
+			? cloneTablePreset(registryEntry.preset)
+			: null;
 	}
 
 	private getTablePresetsForSurfaces(): TablePreset[] {
@@ -2449,8 +10698,7 @@ export default class OperonPlugin extends Plugin {
 			if (seen.has(presetId)) continue;
 			ordered.push(cloneTablePreset(preset));
 		}
-		if (ordered.length > 0) return ordered;
-		return snapshot.entries.size === 0 ? this.settings.tablePresets.map(cloneTablePreset) : [];
+		return ordered;
 	}
 
 	private resolveEffectiveTablePresetId(excludedPresetId?: string): string | null {
@@ -2612,6 +10860,99 @@ export default class OperonPlugin extends Plugin {
 			saveData: (data: unknown) => this.saveData(data),
 		});
 		await this.storage.initialize();
+		const developerGrantStore = this.storage.getDeveloperApiGrantDataStore();
+		const developerAuditStore = new IndexedDbSecurityAuditStoreV1();
+		let startupAuditRecoveryTransitions: Array<{
+			consumerId: string;
+			revision: number;
+		}> = [];
+		if (await developerAuditStore.health()) {
+			this.agentRuntimeSecurityAuditStore = developerAuditStore;
+			try {
+				const incomplete = findIncompleteDeveloperGrantAuditTransitionsV1(
+					await developerAuditStore.list(),
+				);
+				const grants = normalizeDeveloperApiGrantPackage(
+					developerGrantStore.getDataPackage().integrations.developerApi,
+				);
+				startupAuditRecoveryTransitions = incomplete.flatMap(transition => {
+					const record = Object.values(grants.consumersById).find(candidate => (
+						sha256HexV1(candidate.consumerId) === transition.consumerIdentityHash
+						&& candidate.revision === transition.revision
+						&& candidate.state !== 'revoked'
+					));
+					return record
+						? [{ consumerId: record.consumerId, revision: record.revision }]
+						: [];
+				});
+			} catch {
+				const grants = normalizeDeveloperApiGrantPackage(
+					developerGrantStore.getDataPackage().integrations.developerApi,
+				);
+				startupAuditRecoveryTransitions = Object.values(grants.consumersById)
+					.filter(record => record.state !== 'revoked')
+					.map(record => ({
+						consumerId: record.consumerId,
+						revision: record.revision,
+					}));
+			}
+		} else {
+			developerAuditStore.close();
+			const grants = normalizeDeveloperApiGrantPackage(
+				developerGrantStore.getDataPackage().integrations.developerApi,
+			);
+			startupAuditRecoveryTransitions = Object.values(grants.consumersById)
+				.filter(record => record.state !== 'revoked')
+				.map(record => ({
+					consumerId: record.consumerId,
+					revision: record.revision,
+				}));
+		}
+		if (startupAuditRecoveryTransitions.length > 0) {
+			const occurredAt = new Date().toISOString();
+			try {
+				await developerGrantStore.updateDataPackage(dataPackage => {
+					let grants = dataPackage.integrations.developerApi;
+					for (const transition of startupAuditRecoveryTransitions) {
+						grants = suspendDeveloperApiGrantForAuditRecovery(
+							grants,
+							transition.consumerId,
+							transition.revision,
+							occurredAt,
+						);
+					}
+					return {
+						...dataPackage,
+						integrations: {
+							...dataPackage.integrations,
+							developerApi: grants,
+						},
+					};
+				});
+			} catch {
+				// The controller receives the same recovery transitions and keeps
+				// them suspended in memory even if startup persistence is unavailable.
+			}
+		}
+		this.developerApiGrantController = new DeveloperApiGrantControllerV1({
+			store: developerGrantStore,
+			verifier: {
+				verify: candidate => this.verifyDeveloperApiConsumer(candidate),
+				isCurrent: consumer => this.isDeveloperApiConsumerCurrent(consumer),
+			},
+			audit: {
+				record: event => this.recordDeveloperApiGrantAudit(event),
+			},
+			startupAuditRecoveryTransitions,
+		});
+		this.developerApiMutationSecurityPolicy = new DeveloperMutationSecurityPolicyV1({
+			consent: {
+				requestConsent: prompt => this.requestDeveloperApiMutationConsent(prompt),
+			},
+			isSessionCurrent: session => this.isDeveloperApiSecuritySessionCurrent(session),
+			isGrantCurrent: grant => this.isDeveloperApiGrantCurrent(grant),
+			now: () => new Date(),
+		});
 		this.localePackManager = new LocalePackManager({
 			adapter: this.app.vault.adapter,
 			configDir: this.app.vault.configDir,
@@ -2631,6 +10972,10 @@ export default class OperonPlugin extends Plugin {
 			if (cachedLocale) installI18nLocale(this.settings.language, cachedLocale.translations);
 		}
 		initI18n(undefined, this.settings.language);
+		if (this.storage.hasUnsupportedTablePresetPackage()) {
+			new Notice(t('settings', 'tableFileUnsupportedPackageNotice'), 10_000);
+			throw new Error('Unsupported Table preset package.');
+		}
 		this.tableFilePropertyIndex = getTableFilePropertyIndex(this.app, {
 			typeResolver: this.tableFilePropertyTypeResolver,
 		});
@@ -2661,6 +11006,8 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.keyMappingSignature = this.buildKeyMappingSignature();
 		this.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(this.settings.pipelines);
+		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
+		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
 
 		this.reportStartupPipelineTaxonomyDiagnostics();
 		this.applyWorkspaceTweaks();
@@ -2679,6 +11026,7 @@ export default class OperonPlugin extends Plugin {
 		const indexV8Store = new IndexV8Store(this.app.vault.adapter, this.storage.indexV8Paths);
 		const indexV8PersistenceCoordinator = new IndexV8PersistenceCoordinator(indexV8Store);
 		this.indexer = new OperonIndexer(this.app, this.storage, indexV8PersistenceCoordinator, indexV8Store);
+		await this.bindAgentRuntimeServices();
 		this.reminderDeliveryController = new ReminderDeliveryController({
 			app: this.app,
 			getSystemNotificationsEnabled: () => this.settings.reminderSystemNotificationsEnabled,
@@ -2710,29 +11058,12 @@ export default class OperonPlugin extends Plugin {
 			'state',
 			'mobile-notifications.json',
 		);
-		let existingMobileNotificationsProducerState: ReturnType<
-			typeof readExistingMobileNotificationsProducerState
-		> | null = null;
 		this.mobileNotificationsExporter = new MobileNotificationsExporter({
 			app: this.app,
 			indexer: this.indexer,
-			canProduce: () => Platform.isDesktopApp,
-			getEnabled: () => this.settings.mobileNotificationsSnapshotEnabled,
+			canProduce: () => Platform.isMobile || Platform.isMobileApp,
 			producerState: {
-				isCancelPending: () => this.storage.getMobileNotificationsIntegration().cancelPending,
-				getOrCreateVaultId: async () => {
-					existingMobileNotificationsProducerState ??= readExistingMobileNotificationsProducerState(
-						this.app.vault.adapter,
-						mobileNotificationsSnapshotPath,
-					);
-					const existingState = await existingMobileNotificationsProducerState;
-					if (existingState) await this.storage.adoptMobileNotificationsIntegration(existingState);
-					return this.storage.getOrCreateMobileNotificationsVaultId(existingState?.vaultId);
-				},
-				reserveGeneratedAtEpochMs: (nowEpochMs, minimumExclusive) => (
-					this.storage.reserveMobileNotificationsGeneratedAtEpochMs(nowEpochMs, minimumExclusive)
-				),
-				markCancelAllPublished: () => this.storage.markMobileNotificationsCancelAllPublished(),
+				getOrCreateVaultId: adoptedVaultId => this.storage.getOrCreateMobileNotificationsVaultId(adoptedVaultId),
 			},
 			getCatchUpMinutes: () => this.settings.reminderCatchUpWindowMinutes,
 			getAppearanceSettings: () => this.settings,
@@ -2744,10 +11075,23 @@ export default class OperonPlugin extends Plugin {
 		setExistingIdsProvider(() => this.indexer.getAllOperonIds());
 		this.writer = new TaskWriter(this.app, this.indexer, this.settings.keyMappings, {
 			onBeforeWriteFile: filePath => this.markInternalTaskWrite(filePath),
+			validateWritePath: async (filePath, allowAbsent) => (
+				await this.isAgentRuntimeMutationPathContained(filePath, allowAbsent)
+			),
 			onDuplicateConflict: operonId => {
 				this.scheduleDuplicateConflictAlert(operonId);
 			},
 		});
+		try {
+			await this.bindAgentRuntimeMutationGateway();
+		} catch (error) {
+			this.agentRuntimeMutationGateway = null;
+			this.agentRuntimeReceiptStore?.close();
+			this.agentRuntimeReceiptStore = null;
+			this.agentRuntimeSecurityAuditStore?.close();
+			this.agentRuntimeSecurityAuditStore = null;
+			console.warn('Operon: Agent Runtime mutation Gateway remains unavailable', error);
+		}
 		this.workflowFieldRenameCoordinator = new WorkflowFieldRenameCoordinator({
 			journal: this.storage.fieldRenameJournal,
 			getCurrentTaxonomySnapshot: () => this.getWorkflowTaxonomySnapshot(),
@@ -2823,11 +11167,18 @@ export default class OperonPlugin extends Plugin {
 
 		// Load cached index first for fast startup (Architecture doc Section 4.5)
 		await this.primeIndexV8ManifestFingerprint();
-		const cacheLoad = await this.indexer.loadCachedIndex();
-		const hasCached = cacheLoad.status === 'loaded';
-		const loadedFromV8 = cacheLoad.status === 'loaded' && cacheLoad.source === 'v8';
-		const requiresFullReindex = cacheLoad.status === 'loaded' && cacheLoad.requiresFullReindex;
-		this.initializeIndexV8ManifestMonitor();
+			const cacheLoad = await this.indexer.loadCachedIndex();
+			const hasCached = cacheLoad.status === 'loaded';
+			if (hasCached) this.agentRuntimeLifecycle.markCacheReady();
+			const requiresFullReindex = cacheLoad.status === 'loaded' && cacheLoad.requiresFullReindex;
+			const requiresWorkflowStatsBackfill = cacheLoad.status === 'incompatible'
+				&& 'cachedSignature' in cacheLoad
+				&& typeof cacheLoad.cachedSignature === 'string'
+				&& hasIndexV8WorkflowSemanticsMismatch(
+					cacheLoad.expectedSignature,
+					cacheLoad.cachedSignature,
+				);
+			this.initializeIndexV8ManifestMonitor();
 		this.initializeTableFilePropertyTypeMonitor();
 
 		// Refresh sidebar views whenever the index is updated
@@ -2835,6 +11186,11 @@ export default class OperonPlugin extends Plugin {
 		this.indexer.onIndexUpdated = () => {
 			if (!this.startupReady) return;
 			this.scheduleIndexSideEffects();
+			this.indexV8CleanupMaintenance?.request();
+		};
+		this.indexer.onIndexV8Persisted = () => {
+			if (!this.startupReady) return;
+			this.indexV8CleanupMaintenance?.request();
 		};
 		this.indexer.onTasksRemoved = (removedTasks) => {
 			if (!this.startupReady || removedTasks.length === 0) return;
@@ -2895,6 +11251,7 @@ export default class OperonPlugin extends Plugin {
 		// Register embedded filter code block processor
 		this.registerEmbedFilterProcessor();
 		this.registerEmbedTableProcessor();
+		this.registerEvent(this.app.workspace.on('css-change', refreshActiveEmbedPercentWidths));
 
 		// Register settings tab
 		this.settingsTab = new OperonSettingsTab(
@@ -2937,6 +11294,7 @@ export default class OperonPlugin extends Plugin {
 			this.localePackManager,
 			() => this.reminderDeliveryController?.previewInOperon(),
 			async () => await this.reminderDeliveryController?.previewSystemNotification() ?? false,
+			this.buildDeveloperApiSettingsIntegration(),
 			);
 		this.addSettingTab(this.settingsTab);
 
@@ -2952,6 +11310,7 @@ export default class OperonPlugin extends Plugin {
 
 		// Run startup maintenance after layout is ready
 		this.app.workspace.onLayoutReady(() => {
+			if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('layout-ready');
 			runAsyncAction('startup locale pack synchronization failed', () =>
 				this.synchronizeLanguagePacksAfterLayout());
 			const releaseCheckGeneration = ++this.releaseCheckGeneration;
@@ -2998,18 +11357,13 @@ export default class OperonPlugin extends Plugin {
 			//   then optionally follow with a full reindex after 15s for completeness
 			if (!hasCached || requiresFullReindex) {
 				await this.indexer.fullReindex();
-				if (cacheLoad.status === 'incompatible') {
+				if (requiresWorkflowStatsBackfill) {
 					await this.runTaskStatsBackfill({ force: true, source: 'workflow-semantics' });
 				} else {
 					await this.runStartupTaskStatsBackfill();
 				}
 			} else {
-				if (loadedFromV8) {
-					await this.indexer.reconcileV8StartupSources();
-				} else {
-					await this.indexer.adoptV8ShadowProvenance();
-					await this.indexer.diffReindex();
-				}
+				await this.indexer.reconcileV8StartupSources();
 				if (this.settings.fullReindexOnStartup) {
 					setWindowTimeout(() => {
 						runAsyncAction('startup full reindex failed', async () => {
@@ -3036,7 +11390,7 @@ export default class OperonPlugin extends Plugin {
 				}
 
 					await this.recurrenceService.reconcileStoredSeries();
-					await this.dependencyManager.reconcileAdditiveInverseLinks();
+					await this.reconcileAdditiveDependencyLinksWhenSafe();
 					await this.reconcileProjectSerials({ notifyCapacity: true });
 
 					// Mark startup complete — one authoritative render + resumeFromIndex
@@ -3047,6 +11401,10 @@ export default class OperonPlugin extends Plugin {
 					this.scheduleProjectSerialIndexReconcile();
 				}
 				await this.timeTracker.resumeFromIndex({ migrateLegacy: true });
+				this.agentRuntimeLifecycle.markReady();
+				this.agentRuntimeStartupSettlementRelease?.();
+				this.agentRuntimeStartupSettlementRelease = null;
+				if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('startup-reconciled');
 				this.indexV8CleanupMaintenance?.cancel();
 				this.indexV8CleanupMaintenance = startIndexV8CleanupMaintenance({
 					run: () => this.indexer.runIndexV8CleanupMaintenance(),
@@ -3077,9 +11435,14 @@ export default class OperonPlugin extends Plugin {
 			if (doc.hidden) return;
 			void this.checkIndexV8ManifestStat();
 		};
+		const checkVisibleAfterResume = (): void => {
+			if (doc.hidden) return;
+			this.indexV8CleanupMaintenance?.request();
+			void this.checkIndexV8ManifestStat();
+		};
 		this.registerInterval(win.setInterval(checkVisible, 30_000));
-		this.registerDomEvent(win, 'focus', checkVisible);
-		this.registerDomEvent(doc, 'visibilitychange', checkVisible);
+		this.registerDomEvent(win, 'focus', checkVisibleAfterResume);
+		this.registerDomEvent(doc, 'visibilitychange', checkVisibleAfterResume);
 		checkVisible();
 	}
 
@@ -3105,39 +11468,78 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async checkIndexV8ManifestStat(): Promise<void> {
-		if (this.indexV8ManifestCheckActive) return;
-		this.indexV8ManifestCheckActive = true;
-		try {
-			const stat = await this.app.vault.adapter.stat(this.storage.indexV8Paths.manifestPath);
-			const fingerprint = stat && stat.type === 'file' ? `${stat.mtime}:${stat.size}` : 'missing';
-			if (this.indexV8ManifestFingerprint === null) {
+		if (this.indexV8ManifestCheckPromise) return await this.indexV8ManifestCheckPromise;
+		const check = (async (): Promise<void> => {
+			try {
+				const stat = await this.app.vault.adapter.stat(this.storage.indexV8Paths.manifestPath);
+				const fingerprint = stat && stat.type === 'file' ? `${stat.mtime}:${stat.size}` : 'missing';
+				if (this.indexV8ManifestFingerprint === null) {
+					this.indexV8ManifestFingerprint = fingerprint;
+					await this.indexer.observeIndexV8ManifestChange();
+					this.indexV8CleanupMaintenance?.request();
+					return;
+				}
+				if (fingerprint === this.indexV8ManifestFingerprint) return;
 				this.indexV8ManifestFingerprint = fingerprint;
 				await this.indexer.observeIndexV8ManifestChange();
-				return;
+				this.indexV8CleanupMaintenance?.request();
+			} catch {
+				console.debug('Operon: V8 manifest monitor probe deferred');
 			}
-			if (fingerprint === this.indexV8ManifestFingerprint) return;
-			this.indexV8ManifestFingerprint = fingerprint;
-			await this.indexer.observeIndexV8ManifestChange();
-		} catch {
-			console.debug('Operon: V8 manifest monitor probe deferred');
+		})();
+		this.indexV8ManifestCheckPromise = check;
+		try {
+			await check;
 		} finally {
-			this.indexV8ManifestCheckActive = false;
+			if (this.indexV8ManifestCheckPromise === check) this.indexV8ManifestCheckPromise = null;
 		}
 	}
 
 	onunload(): void {
+		this.agentRuntimeLifecycle.beginUnloading();
+		this.agentRuntimeCliTransportAvailable = false;
+		if (this.agentRuntimeCliRegistrationRetryTimer !== null) {
+			clearWindowTimeout(this.agentRuntimeCliRegistrationRetryTimer);
+			this.agentRuntimeCliRegistrationRetryTimer = null;
+		}
+		this.agentRuntimePersistentReadShutdown = this.agentRuntimePersistentReadSupervisor?.close()
+			?? Promise.resolve();
+		if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('unloading');
 		this.cancelStartupReleaseCheck();
 		runAsyncAction('plugin unload failed', () => this.unloadPlugin());
 	}
 
 	private async unloadPlugin(): Promise<void> {
+		await this.agentRuntimePersistentReadShutdown?.catch(error => {
+			console.warn('Operon: persistent Agent Runtime transport did not close cleanly', error);
+		});
+		this.agentRuntimePersistentReadShutdown = null;
+		this.agentRuntimePersistentReadSupervisor = null;
+		await this.developerApiGrantController?.drain().catch(error => {
+			console.warn('Operon: Developer API grant persistence did not drain during unload', error);
+		});
+		await Promise.race([
+			requestCloseAllTextFieldPopovers(),
+			new Promise<void>(resolve => window.setTimeout(resolve, 1_500)),
+		]);
 		this.startupReady = false;
+		this.indexV8CleanupMaintenance?.cancel();
+		this.indexer?.beginUnload();
+		this.agentRuntimeMutationGateway = null;
+		this.agentRuntimeReceiptStore?.close();
+		this.agentRuntimeReceiptStore = null;
+		this.agentRuntimeSecurityAuditStore?.close();
+		this.agentRuntimeSecurityAuditStore = null;
+		this.agentRuntimeVaultIdentityHash = null;
 		this.projectSerialIndexReconcilePendingBeforeStartup = false;
 		this.projectSerialIndexReconcileScheduler?.cancel();
 		this.projectSerialIndexReconcileScheduler = null;
 		if (this.settingsReindexTimer) {
 			clearWindowTimeout(this.settingsReindexTimer);
 			this.settingsReindexTimer = null;
+		}
+		if (this.settingsReindexBarrier) {
+			this.rejectSettingsReindexBarrier(new Error('Operon is unloading'));
 		}
 		if (this.canonicalSettingsReloadTimer) {
 			clearWindowTimeout(this.canonicalSettingsReloadTimer);
@@ -3180,9 +11582,14 @@ export default class OperonPlugin extends Plugin {
 			}
 			this.livePreviewAuthoringCursorRestoreLease = null;
 		if (this.indexSideEffectTimer) {
-				clearWindowTimeout(this.indexSideEffectTimer);
-				this.indexSideEffectTimer = null;
-			}
+			clearWindowTimeout(this.indexSideEffectTimer);
+			this.indexSideEffectTimer = null;
+		}
+		if (this.aggregatePendingRetryTimer) {
+			clearWindowTimeout(this.aggregatePendingRetryTimer);
+			this.aggregatePendingRetryTimer = null;
+		}
+		this.indexSideEffectSettlement.cancel(new Error('Operon is unloading'));
 		this.clearDuplicateAlertTimer();
 		this.clearDuplicateAlertResolvedTimer();
 		this.hideDuplicateAlertStatusBar();
@@ -3210,8 +11617,10 @@ export default class OperonPlugin extends Plugin {
 		await this.reminderScheduler?.destroy();
 		this.reminderScheduler = null;
 		this.pinnedDock = null;
-		await this.timeTracker.flushPendingTransitions();
-		this.timeTracker.destroy();
+		if (this.timeTracker) {
+			await this.timeTracker.flushPendingTransitions();
+			this.timeTracker.destroy();
+		}
 		this.closeActiveLivePreviewPicker();
 		this.livePreviewEphemeralSession.cancel('plugin_unload');
 		hideTaskContextualHoverMenu(true);
@@ -3224,13 +11633,16 @@ export default class OperonPlugin extends Plugin {
 		} finally {
 			this.tablePresetRegistry?.dispose();
 		}
-		this.indexV8CleanupMaintenance?.cancel();
 		await this.indexV8CleanupMaintenance?.drain();
 		this.indexV8CleanupMaintenance = null;
-		await this.indexer.prepareForUnload();
-		await this.storage.flushPendingWrites();
-		this.indexer.destroy();
-		this.storage.destroy();
+		if (this.indexer) {
+			await this.indexer.prepareForUnload();
+			this.indexer.destroy();
+		}
+		if (this.storage) {
+			await this.storage.flushPendingWrites();
+			this.storage.destroy();
+		}
 		this.settingsTab = null;
 		if (tablePresetDrainError) {
 			throw tablePresetDrainError instanceof Error
@@ -3252,6 +11664,14 @@ export default class OperonPlugin extends Plugin {
 	private registerViews(): void {
 		const openEditorForId = (operonId: string) => this.openEditorForId(operonId);
 		const openTaskSourceInNewTab = (operonId: string) => this.openMaterializedTaskSourceInNewTab(operonId);
+		const replaceActiveManualOrder = async (orderedTaskIds: string[]): Promise<void> => {
+			try {
+				await this.storage.pinned.reorderVisibleManualOrder(orderedTaskIds);
+			} catch (error) {
+				new Notice(t('notifications', 'pinnedTaskOrderSaveFailed'));
+				throw error;
+			}
+		};
 
 		// Pinned Tasks dock (floating, not a sidebar view).
 		// Initialize dock as a child Component for proper lifecycle.
@@ -3271,6 +11691,7 @@ export default class OperonPlugin extends Plugin {
 						saveSettings: () => {
 							runAsyncAction('pinned dock settings save failed', () => this.storage.saveSettings());
 						},
+						replaceActiveManualOrder,
 					refreshLayout: () => this.pinnedDock?.refreshLayout(),
 				},
 			this.storage.pinned,
@@ -3290,6 +11711,7 @@ export default class OperonPlugin extends Plugin {
 						onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 						hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
 						toggleTimer: (taskId) => this.toggleTimerForTask(taskId, 'command'),
+						replaceActiveManualOrder,
 					},
 					this.storage.pinned,
 				)
@@ -3681,6 +12103,34 @@ export default class OperonPlugin extends Plugin {
 					editor.scrollIntoView?.({ from: { line: task.primary.lineNumber, ch: 0 }, to: { line: task.primary.lineNumber, ch: 0 } }, true);
 				}
 			});
+	}
+
+	private registerAgentRuntimeCliTransport(): void {
+		const result = registerAgentRuntimeCliHandlersV1(
+			this,
+			this.agentRuntimeCore,
+			...(this.agentRuntimeTimingProbe
+				? [{ timingSink: this.agentRuntimeTimingProbe }]
+				: []),
+		);
+		this.agentRuntimeCliTransportAvailable = result.registered;
+		this.agentRuntimeCliTransportFailureReason = result.registered
+			? null
+			: result.commands.length > 0
+				? `partial-registration-${result.commands.length}-of-${result.commands.length + result.missingCommands.length}`
+				: result.reason ?? 'registration-unavailable';
+		if (!result.retryable || result.registered || result.attempt > 3) return;
+		const retryDelays = [250, 1_000, 5_000] as const;
+		const delayMs = retryDelays[result.attempt - 1];
+		if (delayMs === undefined) return;
+		if (this.agentRuntimeCliRegistrationRetryTimer !== null) {
+			clearWindowTimeout(this.agentRuntimeCliRegistrationRetryTimer);
+		}
+		this.agentRuntimeCliRegistrationRetryTimer = setWindowTimeout(() => {
+			this.agentRuntimeCliRegistrationRetryTimer = null;
+			if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
+			this.registerAgentRuntimeCliTransport();
+		}, delayMs);
 	}
 
 	private navigateToTaskById(operonId: string): void {
@@ -5090,15 +13540,6 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private patchTablePreset(patch: TablePresetPatch): void {
-		const index = this.settings.tablePresets.findIndex(entry => entry.id === patch.id);
-		if (index === -1) return;
-		this.settings.tablePresets[index] = applyTablePresetPatch(this.settings.tablePresets[index], patch);
-		if (this.settings.tableDefaultPresetId && !this.settings.tablePresetOrderIds.includes(this.settings.tableDefaultPresetId)) {
-			this.settings.tableDefaultPresetId = this.resolveEffectiveTablePresetId();
-		}
-	}
-
 	private enqueueTablePresetMutation<T>(operation: () => Promise<T>): Promise<T> {
 		return this.tablePresetMutationQueue.enqueue(operation);
 	}
@@ -5132,21 +13573,7 @@ export default class OperonPlugin extends Plugin {
 			await control.flush();
 			return;
 		}
-		if (source?.kind === 'missing-bound-file' || source?.kind === 'conflict') {
-			throw new Error(`Table preset "${patch.id}" cannot be edited while its file source is ${source.kind}.`);
-		}
-		await this.enqueueTablePresetMutation(async () => {
-			const snapshot = this.snapshotTablePresetSettings();
-			this.patchTablePreset(patch);
-			try {
-				await this.storage.saveSettings();
-			} catch (error) {
-				this.restoreTablePresetSettings(snapshot);
-				this.refreshViews();
-				throw error;
-			}
-			this.refreshViews();
-		});
+		throw new Error(`Table preset "${patch.id}" cannot be edited without an available Table file source.`);
 	}
 
 	private queueTablePresetPatchAndRefresh(
@@ -5200,6 +13627,7 @@ export default class OperonPlugin extends Plugin {
 		preset: TablePreset,
 		leaf?: WorkspaceLeaf,
 		insertAfterPresetId?: string | null,
+		retainCreatedFileOnSaveFailure = false,
 	): Promise<void> {
 		await this.enqueueTablePresetMutation(async () => {
 			const snapshot = this.snapshotTablePresetSettings();
@@ -5236,7 +13664,8 @@ export default class OperonPlugin extends Plugin {
 				this.expectedTableFileModifyHashes.delete(getOperonTableFilePathKey(path));
 				this.restoreTablePresetSettings(snapshot);
 				const createdFile = this.app.vault.getAbstractFileByPath(path);
-				if (createdByOperon && createdFile instanceof TFile && await this.app.vault.read(createdFile) === serialized) {
+				if (!retainCreatedFileOnSaveFailure && createdByOperon && createdFile instanceof TFile
+					&& await this.app.vault.read(createdFile) === serialized) {
 					try {
 						await this.app.fileManager.trashFile(createdFile);
 					} catch (rollbackError) {
@@ -5297,96 +13726,35 @@ export default class OperonPlugin extends Plugin {
 			),
 			patchPreset: patch => this.saveTablePresetPatchAndRefresh(patch),
 			deletePreset: presetId => this.deleteTablePresetAndRefresh(presetId),
-			getMigrationSummary: () => this.tablePresetFileMigrationSummary,
-			getMigrationReceipt: () => this.tablePresetFileMigrationReceipt,
-			retryMigration: async () => {
-				await this.executeTablePresetFileMigration({ notify: true, refreshRegistry: true });
-			},
-			recoverMigrationBackup: presetId => this.recoverTablePresetMigrationBackup(presetId),
 			resolveIdConflict: (presetId, originalPath) => this.resolveTablePresetIdConflict(presetId, originalPath),
-			preflightFinalization: () => this.tablePresetFileLifecycle.preflightFinalization(),
-			finalizeMigration: () => this.finalizeTablePresetFileMigration(),
-			retryFinalization: () => this.retryTablePresetFileMigrationFinalization(),
-			openTablesFolder: () => this.openTablePresetMigrationFolder(),
 		};
-	}
-
-	private async recoverTablePresetMigrationBackup(presetId: string): Promise<void> {
-		const result = await this.runTablePresetFileLifecycleMutation(() =>
-			this.tablePresetFileLifecycle.recoverBackup({ presetId })
-		);
-		await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
-		new Notice(t('settings', 'tableFileMigrationRecoveryCompletedNotice', { name: result.createdPreset.name }));
 	}
 
 	private async resolveTablePresetIdConflict(
 		presetId: string,
 		originalPath: string,
 	): Promise<TablePresetFileConflictResolutionResult> {
-		const result = await this.runTablePresetFileLifecycleMutation(() =>
-			this.tablePresetFileLifecycle.resolveDuplicateIdConflict({ presetId, chosenOriginalPath: originalPath })
+		const result = await this.runTablePresetFileMaintenanceMutation(() =>
+			this.tablePresetFileConflictResolver.resolveDuplicateIdConflict({ presetId, chosenOriginalPath: originalPath })
 		);
 		await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
 		new Notice(result.failed.length === 0
-			? t('settings', 'tableFileMigrationConflictResolvedNotice', { count: String(result.succeeded.length) })
-			: t('settings', 'tableFileMigrationConflictPartialNotice', {
+			? t('settings', 'tableFileConflictResolvedNotice', { count: String(result.succeeded.length) })
+			: t('settings', 'tableFileConflictPartialNotice', {
 				succeeded: String(result.succeeded.length),
 				failed: String(result.failed.length),
 			}));
 		return result;
 	}
 
-	private async runTablePresetFileLifecycleMutation<T>(operation: () => Promise<T>): Promise<T> {
-		if (this.tablePresetFileMigrationRunning) throw new Error('A Table file migration operation is already running.');
-		this.tablePresetFileMigrationRunning = true;
+	private async runTablePresetFileMaintenanceMutation<T>(operation: () => Promise<T>): Promise<T> {
+		if (this.tablePresetMaintenanceRunning) throw new Error('A Table file maintenance operation is already running.');
+		this.tablePresetMaintenanceRunning = true;
 		try {
 			return await operation();
 		} finally {
-			this.tablePresetFileMigrationRunning = false;
+			this.tablePresetMaintenanceRunning = false;
 		}
-	}
-
-	private async finalizeTablePresetFileMigration(): Promise<void> {
-		this.tablePresetFileMigrationReceipt = await this.tablePresetFileLifecycle.finalize({
-			commitFinalizedVersion: version => this.storage.commitTablePresetFileMigrationFinalizedVersion(version),
-		});
-		this.settingsTab?.refreshTablePresetFileState();
-		if (this.tablePresetFileMigrationReceipt.status === 'finalized') {
-			new Notice(t('settings', 'tableFileMigrationFinalizedNotice'));
-		} else {
-			new Notice(t('settings', 'tableFileMigrationFinalizationFailedNotice'));
-		}
-	}
-
-	private async retryTablePresetFileMigrationFinalization(): Promise<void> {
-		this.tablePresetFileMigrationReceipt = await this.tablePresetFileLifecycle.retryFinalization({
-			commitFinalizedVersion: version => this.storage.commitTablePresetFileMigrationFinalizedVersion(version),
-		});
-		this.settingsTab?.refreshTablePresetFileState();
-		new Notice(this.tablePresetFileMigrationReceipt.status === 'finalized'
-			? t('settings', 'tableFileMigrationFinalizedNotice')
-			: t('settings', 'tableFileMigrationFinalizationFailedNotice'));
-	}
-
-	private async openTablePresetMigrationFolder(): Promise<void> {
-		await this.ensureVaultFolder('Operon/Tables');
-		const folder = this.app.vault.getAbstractFileByPath('Operon/Tables');
-		if (!(folder instanceof TFolder)) return;
-		let explorerLeaf: WorkspaceLeaf | undefined = this.app.workspace.getLeavesOfType('file-explorer')[0];
-		if (!explorerLeaf) {
-			explorerLeaf = this.app.workspace.getLeftLeaf(false) ?? undefined;
-			await explorerLeaf?.setViewState({ type: 'file-explorer', active: true });
-		}
-		const explorerView = explorerLeaf?.view as { revealInFolder?: (file: TAbstractFile) => Promise<void> | void } | undefined;
-		if (explorerView?.revealInFolder) {
-			await explorerView.revealInFolder(folder);
-			return;
-		}
-		if (explorerLeaf) await this.app.workspace.revealLeaf(explorerLeaf);
-		const firstTableFile = this.app.vault.getFiles()
-			.filter(file => isOperonTableFilePath(file.path) && file.path.startsWith(`${folder.path}/`))
-			.sort((left, right) => left.path.localeCompare(right.path))[0];
-		if (firstTableFile) await this.app.workspace.getLeaf(false).openFile(firstTableFile);
 	}
 
 	private async ensureVaultFolder(path: string): Promise<void> {
@@ -5400,43 +13768,13 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private async deleteTablePresetAndRefresh(presetId: string, leaf?: WorkspaceLeaf): Promise<void> {
+	private async deleteTablePresetAndRefresh(presetId: string): Promise<void> {
 		const source = this.tablePresetRegistry.getSource(presetId);
 		if (source?.kind === 'table-file') {
 			await this.deleteFileBackedTablePresetAndRefresh(presetId);
 			return;
 		}
-		let fallbackPresetId: string | null = null;
-		let deleted = false;
-		await this.enqueueTablePresetMutation(async () => {
-			if (this.settings.tablePresets.length <= 1) {
-				new Notice(t('settings', 'tableAtLeastOnePresetRequired'));
-				return;
-			}
-			const snapshot = this.snapshotTablePresetSettings();
-			const deletedIndex = this.settings.tablePresets.findIndex(entry => entry.id === presetId);
-			if (deletedIndex === -1) return;
-			this.settings.tablePresets.splice(deletedIndex, 1);
-			this.settings.tablePresetOrderIds = this.settings.tablePresetOrderIds.filter(id => id !== presetId);
-			this.settings.presetFavorites = removePresetFavorite(this.settings.presetFavorites, 'table', presetId);
-			deleted = true;
-			fallbackPresetId = this.resolveEffectiveTablePresetId();
-			if (this.settings.tableDefaultPresetId === presetId) {
-				this.settings.tableDefaultPresetId = fallbackPresetId;
-			}
-			try {
-				await this.storage.saveSettings();
-			} catch (error) {
-				this.restoreTablePresetSettings(snapshot);
-				this.refreshViews();
-				throw error;
-			}
-		});
-		if (!deleted) return;
-		if (fallbackPresetId && leaf) {
-			await this.activateTablePresetInLeaf(leaf, fallbackPresetId);
-		}
-		this.refreshViews();
+		throw new Error(`Table preset "${presetId}" cannot be deleted without an available Table file source.`);
 	}
 
 	private async deleteFileBackedTablePresetAndRefresh(presetId: string): Promise<void> {
@@ -5633,8 +13971,7 @@ export default class OperonPlugin extends Plugin {
 	): void {
 		const resolveLeaf = () => typeof leafOrResolver === 'function' ? leafOrResolver() : leafOrResolver;
 		const registryEntry = this.tablePresetRegistry.get(presetId);
-		const legacyPreset = this.settings.tablePresets.find(entry => entry.id === presetId) ?? null;
-		const preset = resolveTablePresetForSettings(registryEntry, legacyPreset);
+		const preset = resolveTablePresetForSettings(registryEntry);
 		const source = this.tablePresetRegistry.getSource(presetId);
 		new TablePresetQuickSettingsModal(this.app, {
 			getSettings: () => ({
@@ -5646,9 +13983,7 @@ export default class OperonPlugin extends Plugin {
 			onCreate: (created) => this.addTablePresetAndRefresh(created, resolveLeaf()),
 			onDuplicate: (created) => this.addTablePresetAndRefresh(created, resolveLeaf(), presetId),
 			...(source?.kind === 'table-file'
-				? { onDelete: (deletedPresetId: string) => this.deleteTablePresetAndRefresh(deletedPresetId, resolveLeaf()) }
-				: source?.kind === 'legacy' || !source
-				? { onDelete: (deletedPresetId: string) => this.deleteTablePresetAndRefresh(deletedPresetId, resolveLeaf()) }
+				? { onDelete: (deletedPresetId: string) => this.deleteTablePresetAndRefresh(deletedPresetId) }
 				: {}),
 			onToggleFavorite: (favoritePresetId) => this.toggleTablePresetFavoriteAndRefresh(favoritePresetId),
 			onToggleFilterFavorite: (filterSetId) => this.togglePresetFavoriteAndRefresh('filter', filterSetId),
@@ -5849,9 +14184,36 @@ export default class OperonPlugin extends Plugin {
 			await this.storage.kanbanOrder.replaceCells(preset.id, manualOrderCells);
 		}
 
-		const wrote = await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
-			changedKeys: plan.changedKeys,
-		});
+		const currentStatusIdentity = resolveConfiguredStatusIdentity(
+			task.fieldValues['status'] ?? '',
+			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+		);
+		const semanticKeys = new Set([
+			'status',
+			'_checkbox',
+			'dateCompleted',
+			'dateCancelled',
+			'datetimeModified',
+		]);
+		const companionPayload = Object.fromEntries(
+			Object.entries(plan.payload).filter(([key]) => !semanticKeys.has(key)),
+		);
+		const semanticChanges = this.buildUiSemanticTransitionChanges(
+			task,
+			companionPayload,
+		);
+		let wrote = currentStatusIdentity.kind === 'configured'
+			? semanticChanges === null
+				? false
+				: await this.applyUiSemanticTransition(
+					task,
+					targetStatus.id,
+					currentStatusIdentity.status.id,
+					semanticChanges,
+				)
+			: await this.updateTaskFieldsAndRefresh(task.operonId, plan.payload, {
+				changedKeys: plan.changedKeys,
+			});
 		if (!wrote) {
 			if (previousManualOrderCells) {
 				await this.storage.kanbanOrder.replaceCells(preset.id, previousManualOrderCells);
@@ -5927,6 +14289,17 @@ export default class OperonPlugin extends Plugin {
 			}
 			this.applyCheckboxStateToFieldPayload(payload, 'done', today, task.fieldValues);
 			if (!await this.guardTaskStatusChangeOrShow(task, payload)) return false;
+			const currentIdentity = resolveConfiguredStatusIdentity(
+				statusVal,
+				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+			);
+			if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
+				return this.applyUiSemanticTransition(
+					task,
+					toggleResolution.workflow.definition.id,
+					currentIdentity.status.id,
+				);
+			}
 			const changedKeys = ['_checkbox', 'dateCompleted', 'dateCancelled', 'datetimeModified', ...(payload['status'] ? ['status'] : [])];
 			if (this.timeTracker.isTimerRunning(operonId)) {
 				let taskWriteAttempted = false;
@@ -5973,6 +14346,21 @@ export default class OperonPlugin extends Plugin {
 			}
 			this.applyCheckboxStateToFieldPayload(payload, 'cancelled', today, task.fieldValues);
 			if (!await this.guardTaskStatusChangeOrShow(task, payload)) return;
+			if (
+				reverseResolution.workflow
+				&& statusIdentity.kind === 'configured'
+			) {
+				if (!await this.applyUiSemanticTransition(
+					task,
+					reverseResolution.workflow.definition.id,
+					statusIdentity.status.id,
+				)) {
+					throw new Error(
+						`Operon cancel failed in the shared semantic coordinator (${operonId})`,
+					);
+				}
+				return;
+			}
 			if (this.timeTracker.isTimerRunning(operonId)) {
 				await this.stopActiveTimer('terminal-status');
 			}
@@ -6203,6 +14591,9 @@ export default class OperonPlugin extends Plugin {
 			datetimeModified: draft.fieldValues['datetimeModified'] || '',
 			tier: 'hot',
 		};
+		const dependencyTasks = this.indexer.getAllTasks()
+			.filter(task => task.operonId !== syntheticTask.operonId);
+		dependencyTasks.push(syntheticTask);
 
 		return filterTasksForCalendar(
 			filterSet,
@@ -6211,6 +14602,8 @@ export default class OperonPlugin extends Plugin {
 			this.pinnedCache,
 			{
 				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
+				dependencyTasks,
+				pipelines: this.settings.pipelines,
 			},
 		).length > 0;
 	}
@@ -8276,34 +16669,16 @@ export default class OperonPlugin extends Plugin {
 							nested.remove();
 						}
 							const renderedDescription = createDiv({ cls: 'operon-reading-task-description-content' });
-							const renderChild = new class extends MarkdownRenderChild {
-								private unloaded = false;
-
-								onunload(): void {
-									this.unloaded = true;
-									cleanupOperonRenderRoot(renderedDescription);
-								}
-
-								isUnloaded(): boolean {
-									return this.unloaded;
-								}
-							}(renderedDescription);
-							ctx.addChild(renderChild);
-							void MarkdownRenderer.render(
-							this.app,
-							indexed.description || '(untitled)',
-							renderedDescription,
-								ctx.sourcePath,
-								renderChild,
-							).then(() => {
-								if (renderChild.isUnloaded() || !renderedDescription.isConnected) {
-									cleanupOperonRenderRoot(renderedDescription);
-									return;
-								}
-								enhanceReadingTaskFileWikilinks(renderedDescription, ctx.sourcePath, linkOverlayCallbacks, {
-									sourceText: indexed.description || '(untitled)',
-								});
-						});
+							renderCompactTaskMarkdown(renderedDescription, {
+								app: this.app,
+								value: indexed.description || '(untitled)',
+								sourcePath: ctx.sourcePath,
+								mode: 'interactive',
+								containerClassName: 'operon-reading-task-description-markdown',
+							});
+							enhanceReadingTaskFileWikilinks(renderedDescription, ctx.sourcePath, linkOverlayCallbacks, {
+								sourceText: indexed.description || '(untitled)',
+							});
 
 							// Replace the task item content while preserving any nested lists.
 							li.empty();
@@ -9008,6 +17383,7 @@ export default class OperonPlugin extends Plugin {
 		onSave: OnSaveCallback,
 		options: TaskEditorContentOptions = {},
 		resolveCanonicalTask?: () => IndexedTask | null,
+		onOpen?: (modal: TaskEditorModal) => void,
 	): Promise<void> {
 		const indexedBeforeSave = task?.operonId ? this.indexer.getTask(task.operonId) : null;
 		const fallbackSourceFormat = indexedBeforeSave?.primary.format ?? 'inline';
@@ -9085,6 +17461,7 @@ export default class OperonPlugin extends Plugin {
 		const modal = new TaskEditorModal(this.app, this.indexer, this.settings, task, wrappedOnSave, this.timeTracker, resolvedOptions);
 		modal.onCloseSaveSettled = () => this.refreshAfterTaskEditorClose(task?.filePath);
 		modal.open();
+		onOpen?.(modal);
 	}
 
 	private async deleteTaskFromEditor(task: ParsedTask): Promise<boolean> {
@@ -9124,6 +17501,19 @@ export default class OperonPlugin extends Plugin {
 		const payload = this.buildFieldPayload(parsed);
 		if (!this.validateDependencyPayloadChanges(task, payload, 'replace')) return null;
 		if (!await this.guardTaskStatusChangeOrShow(task, payload, { mode: 'replace' })) return null;
+		const semanticTransition = this.resolveTaskEditorSemanticTransition(
+			task,
+			payload,
+			request,
+		);
+		if (semanticTransition && !semanticTransition.requiresLegacySave) {
+			return await this.applyUiSemanticTransition(
+				task,
+				semanticTransition.targetStatusId,
+				semanticTransition.expectedStatusId,
+				semanticTransition.changes,
+			);
+		}
 		const normalizedTaskLine = serializeTask(parsed, this.settings.keyMappings);
 		let indexedPath = task.primary.filePath;
 
@@ -9165,7 +17555,7 @@ export default class OperonPlugin extends Plugin {
 				}
 		}
 
-		await this.indexer.reindexFilePath(indexedPath, { notify: false });
+		await this.indexer.forceReindexFilePathAfterMutation(indexedPath, { notify: false });
 		const afterTask = this.indexer.hasDuplicateOperonIdConflict(parsed.operonId)
 			? null
 			: this.indexer.getTask(parsed.operonId) ?? null;
@@ -9183,6 +17573,7 @@ export default class OperonPlugin extends Plugin {
 	 * Refresh all open Operon views (pinned dock, filter view).
 	 */
 	private scheduleIndexSideEffects(): void {
+		this.indexSideEffectSettlement.ensure();
 		this.scheduleProjectSerialIndexReconcile();
 		this.indexSideEffectFollowupRequested = true;
 		if (this.indexSideEffectTimer || this.indexSideEffectRunning) return;
@@ -9193,11 +17584,52 @@ export default class OperonPlugin extends Plugin {
 		}, 80);
 	}
 
-	private scheduleProjectSerialIndexReconcile(): void {
+	private async flushAgentRuntimeIndexSideEffectsNow(): Promise<void> {
+		// Joining an already-running pass keeps its normal follow-up semantics.
+		// The full settlement barrier below remains the fail-safe in that case.
+		if (this.indexSideEffectRunning) return;
+		if (this.indexSideEffectTimer) {
+			clearWindowTimeout(this.indexSideEffectTimer);
+			this.indexSideEffectTimer = null;
+		}
+		if (this.indexSideEffectFollowupRequested) {
+			await this.runScheduledIndexSideEffects();
+		}
+	}
+
+	private scheduleProjectSerialIndexReconcile(options: { notifyCapacity?: boolean } = {}): void {
+		if (options.notifyCapacity === true) this.projectSerialNotifyCapacityPending = true;
 		this.projectSerialIndexReconcilePendingBeforeStartup = true;
 		if (!this.startupReady || !this.projectSerialIndexReconcileScheduler) return;
 		this.projectSerialIndexReconcilePendingBeforeStartup = false;
+		this.projectSerialRuntimeRelease ??= this.agentRuntimeLifecycle.beginSettling();
 		this.projectSerialIndexReconcileScheduler.schedule();
+		if (!this.projectSerialRuntimeSettlement) {
+			const settlement = this.projectSerialIndexReconcileScheduler.whenIdle();
+			this.projectSerialRuntimeSettlement = settlement;
+			void settlement.then(
+				() => {
+					if (this.projectSerialRuntimeSettlement !== settlement) return;
+					this.projectSerialRuntimeSettlement = null;
+					this.agentRuntimeLifecycle.clearError('project-serial');
+					this.projectSerialRuntimeRelease?.();
+					this.projectSerialRuntimeRelease = null;
+				},
+				() => {
+					if (this.projectSerialRuntimeSettlement !== settlement) return;
+					this.projectSerialRuntimeSettlement = null;
+					this.agentRuntimeLifecycle.recordError({
+						contractVersion: 1,
+						code: 'live-settling',
+						reason: 'Operon could not settle Project Serial state.',
+						retryable: true,
+						action: 'wait-and-retry',
+					}, 'project-serial');
+					this.projectSerialRuntimeRelease?.();
+					this.projectSerialRuntimeRelease = null;
+				},
+			);
+		}
 	}
 
 	private async runScheduledIndexSideEffects(): Promise<void> {
@@ -9207,11 +17639,11 @@ export default class OperonPlugin extends Plugin {
 		this.indexSideEffectFollowupRequested = false;
 		const startedAt = enginePerfNow();
 		try {
-				const sideEffects: Array<Promise<unknown>> = [
-					this.timeTracker.resumeFromIndex(),
-					this.recurrenceService.reconcileStoredSeries(),
-					this.dependencyManager.reconcileAdditiveInverseLinks(),
-				];
+			const sideEffects: Array<Promise<unknown>> = [
+				this.timeTracker.resumeFromIndex(),
+				this.recurrenceService.reconcileStoredSeries(),
+				this.reconcileAdditiveDependencyLinksWhenSafe(),
+			];
 			if (this.settings.pinnedDockAutoUnpinFinished) {
 				sideEffects.push(this.autoUnpinFinishedTasks());
 			}
@@ -9220,6 +17652,7 @@ export default class OperonPlugin extends Plugin {
 			for (const result of results) {
 				if (result.status === 'rejected') {
 					console.warn('Operon: index side effect failed', result.reason);
+					this.indexSideEffectSettlement.recordFailure(result.reason);
 				}
 			}
 			this.refreshViews({ fromIndexUpdate: true });
@@ -9230,7 +17663,145 @@ export default class OperonPlugin extends Plugin {
 			if (this.indexSideEffectFollowupRequested) {
 				this.indexSideEffectFollowupRequested = false;
 				this.scheduleIndexSideEffects();
+			} else {
+				this.indexSideEffectSettlement.settleIfIdle(
+					!this.indexSideEffectTimer
+					&& !this.indexSideEffectRunning
+					&& !this.indexSideEffectFollowupRequested,
+				);
 			}
+		}
+	}
+
+	private async reconcileAdditiveDependencyLinksWhenSafe(): Promise<number> {
+		const receiptStore = this.agentRuntimeReceiptStore;
+		if (!Platform.isDesktopApp) {
+			return await this.dependencyManager.reconcileAdditiveInverseLinks();
+		}
+		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
+		if (!receiptStore || !vaultIdentityHash) return 0;
+		const result = await tryWithRuntimeVaultMutationLockV1(
+			vaultIdentityHash,
+			async () => {
+				try {
+					if (await receiptStore.hasUnresolvedGraphTransaction()) return 0;
+				} catch {
+					return 0;
+				}
+				return await this.dependencyManager.reconcileAdditiveInverseLinks();
+			},
+		);
+		return result ?? 0;
+	}
+
+	private async refreshAggregatesAfterIndexedChangesWhenSafe(
+		changes: IndexedTaskDelta[],
+	): Promise<void> {
+		for (const change of changes) {
+			const operonId = change.after?.operonId ?? change.before?.operonId;
+			if (!operonId) continue;
+			const pending = this.pendingAggregateIndexedChanges.get(operonId);
+			this.pendingAggregateIndexedChanges.set(operonId, {
+				before: pending?.before ?? change.before,
+				after: change.after,
+			});
+			if (change.after) this.pendingAggregateRemovedTasks.delete(operonId);
+		}
+		const settlement = this.drainPendingAggregateRefreshesWhenSafe();
+		this.aggregateRuntimeSettlements.add(settlement);
+		try {
+			await settlement;
+		} finally {
+			this.aggregateRuntimeSettlements.delete(settlement);
+		}
+	}
+
+	private schedulePendingAggregateRefreshRetry(): void {
+		if (this.aggregatePendingRetryTimer) return;
+		this.aggregatePendingRetryTimer = setWindowTimeout(() => {
+			this.aggregatePendingRetryTimer = null;
+			void this.drainPendingAggregateRefreshesWhenSafe().catch(error => {
+				console.warn('Operon: pending aggregate refresh retry failed', error);
+				this.schedulePendingAggregateRefreshRetry();
+			});
+		}, 100);
+	}
+
+	private async drainPendingAggregateRefreshesWhenSafe(): Promise<void> {
+		if (this.aggregatePendingDrainRunning) {
+			this.schedulePendingAggregateRefreshRetry();
+			return;
+		}
+		if (
+			this.pendingAggregateIndexedChanges.size === 0
+			&& this.pendingAggregateRemovedTasks.size === 0
+		) return;
+		this.aggregatePendingDrainRunning = true;
+		const changes = [...this.pendingAggregateIndexedChanges.values()];
+		const removedTasks = [...this.pendingAggregateRemovedTasks.values()];
+		this.pendingAggregateIndexedChanges.clear();
+		this.pendingAggregateRemovedTasks.clear();
+		const restorePending = (): void => {
+			for (const change of changes) {
+				const operonId = change.after?.operonId ?? change.before?.operonId;
+				if (!operonId || this.pendingAggregateRemovedTasks.has(operonId)) continue;
+				const pending = this.pendingAggregateIndexedChanges.get(operonId);
+				this.pendingAggregateIndexedChanges.set(operonId, {
+					before: change.before ?? pending?.before ?? null,
+					after: pending?.after ?? change.after,
+				});
+			}
+			for (const task of removedTasks) {
+				if (this.pendingAggregateIndexedChanges.get(task.operonId)?.after) continue;
+				this.pendingAggregateRemovedTasks.set(task.operonId, task);
+				this.pendingAggregateIndexedChanges.delete(task.operonId);
+			}
+		};
+		const refresh = async (): Promise<void> => {
+			if (changes.length > 0) {
+				await this.aggregateCoordinator.refreshAfterTaskMutations(changes);
+			}
+			if (removedTasks.length > 0) {
+				await this.aggregateCoordinator.refreshAfterTaskRemoval(removedTasks);
+			}
+		};
+		try {
+			if (!Platform.isDesktopApp) {
+				await refresh();
+				return;
+			}
+		const receiptStore = this.agentRuntimeReceiptStore;
+		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
+		if (!receiptStore || !vaultIdentityHash) {
+				await refresh();
+			return;
+		}
+			const refreshed = await tryWithRuntimeVaultMutationLockV1(
+			vaultIdentityHash,
+				async (): Promise<boolean> => {
+				try {
+						if (await receiptStore.hasUnresolvedGraphTransaction()) return false;
+				} catch {
+						return false;
+				}
+					await refresh();
+					return true;
+			},
+		);
+			if (refreshed !== true) {
+				restorePending();
+				this.schedulePendingAggregateRefreshRetry();
+			}
+		} catch (error) {
+			restorePending();
+			this.schedulePendingAggregateRefreshRetry();
+			throw error;
+		} finally {
+			this.aggregatePendingDrainRunning = false;
+			if (
+				this.pendingAggregateIndexedChanges.size > 0
+				|| this.pendingAggregateRemovedTasks.size > 0
+			) this.schedulePendingAggregateRefreshRetry();
 		}
 	}
 
@@ -9256,7 +17827,7 @@ export default class OperonPlugin extends Plugin {
 			// Archiver scheduling and auto-unpin for these deltas are covered by
 			// the all-changes loops below.
 			try {
-				await this.aggregateCoordinator.refreshAfterTaskMutations(aggregateChanges);
+				await this.refreshAggregatesAfterIndexedChangesWhenSafe(aggregateChanges);
 			} catch (error) {
 				console.warn('Operon: failed to refresh aggregates after indexed task changes', error);
 			}
@@ -9590,7 +18161,7 @@ export default class OperonPlugin extends Plugin {
 
 	private async handleTasksRemovedFromIndex(removedTasks: IndexedTask[]): Promise<void> {
 		const tasks: Array<Promise<unknown>> = [
-			this.refreshAggregateStateAfterTaskRemoval(removedTasks),
+			this.refreshAggregateStateAfterTaskRemovalWhenSafe(removedTasks),
 		];
 		const results = await Promise.allSettled(tasks);
 		for (const result of results) {
@@ -10094,6 +18665,7 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 			this.app.vault.on('modify', (file: TAbstractFile) => {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
+				this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 				if (this.shouldSuppressInternalTaskWrite(file.path)) return;
 				void this.normalizeWorkflowStateAfterRawEdit(file.path);
 			})
@@ -10103,6 +18675,7 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 			this.app.vault.on('create', (file: TAbstractFile) => {
 				if (file instanceof TFile && file.extension === 'md') {
+					this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 					invalidateCustomFieldValueCandidateCache(this.app);
 					invalidateLocationPlaceIndex(this.app);
 					this.tableFilePropertyIndex?.invalidateFile(file.path);
@@ -10120,6 +18693,7 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 				this.app.vault.on('delete', (file: TAbstractFile) => {
 					if (file instanceof TFile && file.extension === 'md') {
+						this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 						invalidateCustomFieldValueCandidateCache(this.app);
 						invalidateLocationPlaceIndex(this.app);
 						this.tableFilePropertyIndex?.removeFile(file.path);
@@ -10135,6 +18709,8 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(
 			this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
+				this.agentRuntimeSourceHydrator?.invalidatePath(oldPath);
+				this.agentRuntimeSourceHydrator?.invalidatePath(file.path);
 
 				invalidateCustomFieldValueCandidateCache(this.app);
 				invalidateLocationPlaceIndex(this.app);
@@ -10448,6 +19024,24 @@ export default class OperonPlugin extends Plugin {
 				this.logStatusCyclePerfTotal(statusCycleTrace);
 				return;
 			}
+			const currentStatusIdentity = resolveConfiguredStatusIdentity(
+				currentStatus,
+				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+			);
+			if (currentStatusIdentity.kind === 'configured') {
+				const sharedCoordinatorSucceeded = await this.applyUiSemanticTransition(
+					indexed,
+					nextWorkflow.definition.id,
+					currentStatusIdentity.status.id,
+				);
+				this.logStatusCyclePerfTotal(statusCycleTrace);
+				if (!sharedCoordinatorSucceeded) {
+					throw new Error(
+						`Operon status cycle failed in the shared semantic coordinator (${operonId})`,
+					);
+				}
+				return;
+			}
 
 			const buildResolveDetails = (
 			stoppedTimer: boolean,
@@ -10563,6 +19157,22 @@ export default class OperonPlugin extends Plugin {
 
 				fieldValues['datetimeModified'] = now;
 				if (!await this.guardTaskStatusChangeOrShow(indexed, fieldValues)) return;
+				const currentIdentity = resolveConfiguredStatusIdentity(
+					statusVal,
+					buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+				);
+				if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
+					if (!await this.applyUiSemanticTransition(
+						indexed,
+						toggleResolution.workflow.definition.id,
+						currentIdentity.status.id,
+					)) {
+						throw new Error(
+							`Operon checkbox toggle failed in the shared semantic coordinator (${operonId})`,
+						);
+					}
+					return;
+				}
 				if (toggleResolution.checkbox !== 'open' && this.timeTracker.isTimerRunning(operonId)) {
 					await this.stopActiveTimer('terminal-status');
 				}
@@ -10599,6 +19209,22 @@ export default class OperonPlugin extends Plugin {
 			if (!parsed.operonId) return;
 			const payload = this.buildFieldPayload(parsed);
 			if (!await this.guardTaskStatusChangeOrShow(indexed, payload, { mode: 'replace' })) return;
+			const currentIdentity = resolveConfiguredStatusIdentity(
+				indexed.fieldValues['status'] ?? '',
+				buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+			);
+			if (toggleResolution.workflow && currentIdentity.kind === 'configured') {
+				if (!await this.applyUiSemanticTransition(
+					indexed,
+					toggleResolution.workflow.definition.id,
+					currentIdentity.status.id,
+				)) {
+					throw new Error(
+						`Operon checkbox toggle failed in the shared semantic coordinator (${operonId})`,
+					);
+				}
+				return;
+			}
 			if (toggleResolution.checkbox !== 'open' && this.timeTracker.isTimerRunning(operonId)) {
 				await this.stopActiveTimer('terminal-status');
 			}
@@ -10615,6 +19241,68 @@ export default class OperonPlugin extends Plugin {
 		payload['_tags'] = task.tags.join(';');
 		payload['_checkbox'] = task.checkbox;
 		return payload;
+	}
+
+	private resolveTaskEditorSemanticTransition(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		request: TaskEditorSaveRequest,
+	): {
+		targetStatusId: string;
+		expectedStatusId: string;
+		changes: GeneralUpdateItemV1[];
+		requiresLegacySave: boolean;
+	} | null {
+		const identityIndex = buildWorkflowStatusIdentityIndex(this.settings.pipelines);
+		const currentIdentity = resolveConfiguredStatusIdentity(
+			task.fieldValues['status'] ?? '',
+			identityIndex,
+		);
+		const targetIdentity = resolveConfiguredStatusIdentity(
+			payload['status'] ?? '',
+			identityIndex,
+		);
+		if (
+			currentIdentity.kind !== 'configured'
+			|| targetIdentity.kind !== 'configured'
+			|| currentIdentity.status.id === targetIdentity.status.id
+		) {
+			return null;
+		}
+		const semanticKeys = new Set([
+			'status',
+			'_checkbox',
+			'dateCompleted',
+			'dateCancelled',
+			'datetimeModified',
+		]);
+		const companionPayload: Record<string, string> = {};
+		for (const [key, value] of Object.entries(payload)) {
+			if (semanticKeys.has(key)) continue;
+			companionPayload[key] = value;
+		}
+		for (const [key, value] of Object.entries(task.fieldValues)) {
+			if (semanticKeys.has(key) || !value || key in payload) continue;
+			companionPayload[key] = '';
+		}
+		const changes = this.buildUiSemanticTransitionChanges(task, companionPayload);
+		const useCoordinator = shouldUseTaskEditorSemanticTransition({
+			fileBodyDirty: request.fileBody?.dirty === true,
+			requestedInlineCompletionMode: request.inlineCompletionMode,
+			storedInlineCompletionMode: this.getRepeatSeriesInlineCompletionMode(
+				task.fieldValues['repeatSeriesId'],
+			),
+			companionChangesSupported: changes !== null,
+			coordinatorReady: this.agentRuntimeMutationGateway !== null
+				&& this.agentRuntimeLifecycle.getPhase() === 'ready'
+				&& !this.indexer.hasDuplicateOperonIdConflict(task.operonId),
+		});
+		return {
+			targetStatusId: targetIdentity.status.id,
+			expectedStatusId: currentIdentity.status.id,
+			changes: changes ?? [],
+			requiresLegacySave: !useCoordinator,
+		};
 	}
 
 	private buildStatusCycleFieldPayload(
@@ -11646,6 +20334,29 @@ export default class OperonPlugin extends Plugin {
 		);
 	}
 
+	private getAgentRuntimeFileTaskTemplateCandidates(): FileTaskTemplateCandidateV1[] {
+		return this.getFileTaskTemplateOptions().map(option => {
+			if (option.kind === 'folder') {
+				return {
+					id: option.id,
+					name: option.name,
+					kind: option.kind,
+					sourcePath: option.path,
+				};
+			}
+			const pipeline = this.settings.pipelines.find(candidate => candidate.id === option.pipelineId);
+			return {
+				id: option.id,
+				name: option.name,
+				kind: option.kind,
+				pipelineId: option.pipelineId,
+				...(pipeline?.statuses[0]?.id
+					? { initialStatusId: pipeline.statuses[0].id }
+					: {}),
+			};
+		});
+	}
+
 	private getFileTaskTemplateOptionsForPicker(): FileTaskTemplateOption[] {
 		return orderFileTaskTemplateOptionsByLastUsed(
 			this.getFileTaskTemplateOptions(),
@@ -11704,6 +20415,7 @@ export default class OperonPlugin extends Plugin {
 
 	private async loadFileTaskTemplateDocumentFromOption(
 		option: FileTaskTemplateOption | null,
+		generateTemplateOperonId?: () => string,
 	): Promise<LoadedFileTaskTemplateResult> {
 		if (!option || option.kind !== 'folder') {
 			return {
@@ -11724,7 +20436,12 @@ export default class OperonPlugin extends Plugin {
 
 		const rawContent = await this.app.vault.cachedRead(templateFile);
 		const originalDocument = parseFrontmatterDocument(rawContent, this.settings.keyMappings);
-		const resolvedContent = this.resolveOperonIdPlaceholdersInContent(rawContent);
+		const resolvedContent = this.resolveOperonIdPlaceholdersInContent(
+			rawContent,
+			generateTemplateOperonId
+				? { generateOperonId: generateTemplateOperonId }
+				: {},
+		);
 		const resolvedDocument = parseFrontmatterDocument(resolvedContent, this.settings.keyMappings);
 		const originalOperonId = (originalDocument.managedFieldValues['operonId'] ?? '').trim();
 		const resolvedOperonId = (resolvedDocument.managedFieldValues['operonId'] ?? '').trim();
@@ -12092,11 +20809,14 @@ export default class OperonPlugin extends Plugin {
 
 	private resolveOperonIdPlaceholdersInContent(
 		content: string,
-		options: { resolveRawDateTime?: boolean } = {},
+		options: {
+			resolveRawDateTime?: boolean;
+			generateOperonId?: () => string;
+		} = {},
 	): string {
 		const resolveRawTaskLineValues = options.resolveRawDateTime === true;
 		return resolveOperonIdPlaceholders(content, {
-			generateOperonId: () => generateOperonId(),
+			generateOperonId: options.generateOperonId ?? (() => generateOperonId()),
 			now: resolveRawTaskLineValues ? localNow() : undefined,
 			rawContext: resolveRawTaskLineValues ? this.buildRawTaskLinePlaceholderContext() : undefined,
 		});
@@ -12191,9 +20911,9 @@ export default class OperonPlugin extends Plugin {
 		fieldValues: Record<string, string>,
 		tags: string[],
 		options: TaskEditorContentOptions = {},
-	): Promise<void> {
+	): Promise<TaskEditorModal | null> {
 		const operonId = fieldValues['operonId'];
-		if (!operonId) return;
+		if (!operonId) return null;
 
 		const indexedTask = await this.awaitIndexedYamlTask(file.path, operonId);
 		const baseParsed = indexedTask
@@ -12211,6 +20931,7 @@ export default class OperonPlugin extends Plugin {
 				),
 			};
 
+		let openedModal: TaskEditorModal | null = null;
 		await this.openTaskEditorFor(parsed, async (request) => {
 			const indexed = this.indexer.getTask(operonId);
 			const freshTask = indexed?.primary.format === 'yaml'
@@ -12226,22 +20947,19 @@ export default class OperonPlugin extends Plugin {
 				return false;
 			}
 			return true;
-		}, resolvedOptions);
+		}, resolvedOptions, undefined, modal => {
+			openedModal = modal;
+		});
+		return openedModal;
 	}
 
-	private reinforceTaskEditorDescriptionFocus(selectAll = false): void {
+	private reinforceTaskEditorDescriptionFocus(
+		modal: TaskEditorModal,
+		selectAll = false,
+	): void {
 		const focusDescription = () => {
-			const input = getActiveDocument().querySelector<HTMLTextAreaElement>(
-				'.operon-task-editor-modal .operon-editor-description-textarea',
-			);
-			if (!input?.isConnected) return;
-			input.focus();
-			if (selectAll) {
-				input.select();
-				return;
-			}
-			const end = input.value.length;
-			input.setSelectionRange(end, end);
+			if (!modal.modalEl.isConnected) return;
+			modal.content.focusDescription(selectAll);
 		};
 
 		for (const delay of [0, 120, 260, 480, 760, 1100, 1500]) {
@@ -12769,7 +21487,7 @@ export default class OperonPlugin extends Plugin {
 
 		if (options.openEditorOnCreate === true) {
 			await this.app.workspace.getLeaf(false).openFile(created);
-			await this.openYamlTaskEditorByData(
+			const editorModal = await this.openYamlTaskEditorByData(
 				created,
 				created.basename,
 				{ ...finalDocument.managedFieldValues },
@@ -12779,7 +21497,12 @@ export default class OperonPlugin extends Plugin {
 					selectDescriptionOnMount: options.selectDescriptionOnMount ?? true,
 				},
 			);
-			this.reinforceTaskEditorDescriptionFocus(options.selectDescriptionOnMount ?? true);
+			if (editorModal) {
+				this.reinforceTaskEditorDescriptionFocus(
+					editorModal,
+					options.selectDescriptionOnMount ?? true,
+				);
+			}
 		}
 
 		return result;
@@ -12806,6 +21529,8 @@ export default class OperonPlugin extends Plugin {
 		const modal = new TaskCreatorModal(this.app, {
 			settings: this.settings,
 			allTasks: this.indexer.getAllTasks(),
+			getAllTasks: () => this.indexer.getAllTasks(),
+			subscribeIndexUpdates: listener => this.indexer.subscribeIndexUpdates(listener),
 			initialDraft,
 			submitMode: options.submitMode,
 			initialCreateType: shouldApplyGenericDefaults && this.settings.taskCreatorDefaultToFileTask
@@ -13014,6 +21739,29 @@ export default class OperonPlugin extends Plugin {
 		payload: Record<string, string>,
 		options: { mode?: 'merge' | 'replace' } = {},
 	): Promise<boolean> {
+		if (this.isAgentRuntimeStatusChangeAllowed(task, payload, options)) return true;
+		const attempt = resolveDependencyStatusChangeAttempt(task, payload, {
+			mode: options.mode ?? 'merge',
+		});
+		if (!attempt) return true;
+		const blockers = resolveActiveBlockers(
+			task,
+			operonId => this.indexer.getTask(operonId),
+			this.settings.pipelines,
+			() => this.indexer.getAllTasks(),
+		);
+
+		this.blockedStatusWriteSuppressFallbackUntilById.set(task.operonId, Date.now() + 1000);
+		this.showBlockedTaskModal(task, attempt, blockers);
+		this.refreshViews();
+		return false;
+	}
+
+	private isAgentRuntimeStatusChangeAllowed(
+		task: IndexedTask,
+		payload: Record<string, string>,
+		options: { mode?: 'merge' | 'replace' } = {},
+	): boolean {
 		const attempt = resolveDependencyStatusChangeAttempt(task, payload, {
 			mode: options.mode ?? 'merge',
 		});
@@ -13025,12 +21773,7 @@ export default class OperonPlugin extends Plugin {
 			this.settings.pipelines,
 			() => this.indexer.getAllTasks(),
 		);
-		if (blockers.length === 0) return true;
-
-		this.blockedStatusWriteSuppressFallbackUntilById.set(task.operonId, Date.now() + 1000);
-		this.showBlockedTaskModal(task, attempt, blockers);
-		this.refreshViews();
-		return false;
+		return blockers.length === 0;
 	}
 
 	private showBlockedTaskModal(
@@ -13886,6 +22629,42 @@ export default class OperonPlugin extends Plugin {
 		const folder = this.getTargetFileTaskFolder(file);
 
 		const initialDescription = parsed.description || t('taskEditor', 'newOperonTaskFile');
+		await this.ensureFileTaskFolder(folder);
+		const runtimeTargetName = this.sanitizeTaskFileName(initialDescription)
+			|| t('taskEditor', 'untitledTaskFile');
+		const runtimeTargetPath = this.formatConverter.getUniqueFilePath(
+			folder,
+			runtimeTargetName,
+		);
+		const indexedForConversion = parsed.operonId
+			? this.indexer.getTask(parsed.operonId)
+			: null;
+		if (indexedForConversion) {
+			const runtimeConversion = await this.applyUiCanonicalConversion(
+				indexedForConversion,
+				{
+					operation: 'convert',
+					from: 'inline',
+					to: 'file',
+					templateId: selectedTemplate.id,
+					targetPath: runtimeTargetPath,
+				},
+			);
+			if (runtimeConversion.handled) {
+				if (runtimeConversion.success) {
+					const converted = this.indexer.getTask(indexedForConversion.operonId);
+					this.showTaskNotice('inline-to-file', {
+						description: initialDescription,
+						fileBasename: runtimeTargetPath.split('/').pop()?.replace(/\.md$/iu, ''),
+						indexedDescription: converted?.description,
+						operonId: indexedForConversion.operonId,
+					});
+				} else {
+					new Notice(t('notifications', 'inlineToFileTaskFailed'));
+				}
+				return;
+			}
+		}
 		const now = localNow();
 		const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
 		const baseFieldValues = this.buildParsedTaskFieldValues(parsed);
@@ -14110,80 +22889,66 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 
-		const confirmed = await this.promptConfirmAction(
-			t('modals', 'convertFileTaskToInlineTitle'),
-			t('modals', 'convertFileTaskToInlineMessage'),
-			t('modals', 'convertAndMoveToTrash'),
-			t('buttons', 'cancel'),
+		let targetSpec: Extract<
+			Extract<MutationSpecV1, { operation: 'convert' }>,
+			{ from: 'file' }
+		>['target'];
+		if (
+			cursorTarget
+			&& this.isFileTaskToInlineCursorTargetAvailable(cursorTarget, file.path)
+		) {
+			targetSpec = {
+				mode: 'exact-line',
+				filePath: cursorTarget.file.path,
+				lineNumber: cursorTarget.lineNumber,
+			};
+		} else {
+			const target = await this.resolveTaskCreatorInlineTargetFile({
+				excludedFilePath: file.path,
+			});
+			if (target.kind === 'cancelled') return;
+			if (target.kind !== 'target') {
+				new Notice(t('notifications', 'fileTaskToInlineFailed'));
+				return;
+			}
+			if (target.file.path === file.path) {
+				new Notice(t('notifications', 'sameFileInlineTarget'));
+				return;
+			}
+			targetSpec = {
+				mode: 'configured-target',
+				filePath: target.file.path,
+			};
+		}
+		const runtimeConversion = await this.applyUiCanonicalConversion(
+			indexedYamlTask,
+			{
+				operation: 'convert',
+				from: 'file',
+				to: 'inline',
+				target: targetSpec,
+			},
 		);
-		if (!confirmed) return;
-
-		const inlineTaskLine = this.formatConverter.yamlToInline(indexedYamlTask.operonId);
-		if (!inlineTaskLine?.trim()) {
+		if (!runtimeConversion.success) {
 			new Notice(t('notifications', 'fileTaskToInlineFailed'));
 			return;
 		}
 
-		let suppressInlineInsertFailedNotice = false;
-		const inserted = await this.withDuplicateConflictAutoOpenSuppressed(async () => {
-			let insertedTarget = cursorTarget
-				? await this.insertInlineTaskLineAtCursorTarget(cursorTarget, inlineTaskLine, file.path)
-				: null;
-			if (!insertedTarget) {
-				const target = await this.resolveTaskCreatorInlineTargetFile({
-					excludedFilePath: file.path,
-				});
-				if (target.kind === 'cancelled') {
-					suppressInlineInsertFailedNotice = true;
-					return null;
-				}
-				if (target.kind !== 'target') {
-					suppressInlineInsertFailedNotice = true;
-					return null;
-				}
-				if (target.file.path === file.path) {
-					new Notice(t('notifications', 'sameFileInlineTarget'));
-					suppressInlineInsertFailedNotice = true;
-					return null;
-				}
-				const targetInserted = await this.insertInlineTaskLineIntoFile(target.file, inlineTaskLine, {
-					dailyDateHeading: target.dailyDateHeading,
-				});
-				insertedTarget = targetInserted
-					? {
-						file: target.file,
-						lineNumber: targetInserted.lineNumber,
-					}
-					: null;
-			}
-			if (!insertedTarget) return null;
-
-			return await this.withFileTaskToInlineTransitionSafePass(
-				indexedYamlTask.operonId,
-				file.path,
-				insertedTarget.file.path,
-				insertedTarget.lineNumber,
-				async () => {
-					await this.indexer.reindexFilePath(insertedTarget.file.path);
-					const deleted = await this.deleteYamlTaskByPath(file.path);
-					if (!deleted) {
-						new Notice(t('notifications', 'inlineCreatedTrashFailed'));
-						suppressInlineInsertFailedNotice = true;
-						return null;
-					}
-					return insertedTarget;
-				},
+		const converted = this.indexer.getTask(indexedYamlTask.operonId);
+		if (
+			converted?.primary.format === 'inline'
+			&& converted.primary.lineNumber !== undefined
+		) {
+			const targetFile = this.app.vault.getAbstractFileByPath(
+				converted.primary.filePath,
 			);
-		});
-		if (!inserted) {
-			if (!suppressInlineInsertFailedNotice) {
-				new Notice(t('notifications', 'inlineInsertFailed'));
+			if (targetFile instanceof TFile) {
+				await this.openMarkdownFileAtLine(
+					targetFile,
+					converted.primary.lineNumber,
+				);
 			}
-			return;
 		}
-
-		this.refreshViews();
-		await this.openMarkdownFileAtLine(inserted.file, inserted.lineNumber);
 		this.showTaskNotice('file-to-inline', {
 			description: indexedYamlTask.description,
 			fileBasename: file.basename,
@@ -14855,6 +23620,19 @@ export default class OperonPlugin extends Plugin {
 			this.preserveAuthoritativeRepeatOccurrenceDate(freshTask, parsed, payload);
 			if (!this.validateDependencyPayloadChanges(freshTask, payload, 'replace')) return null;
 			if (!await this.guardTaskStatusChangeOrShow(freshTask, payload, { mode: 'replace' })) return null;
+			const semanticTransition = this.resolveTaskEditorSemanticTransition(
+				freshTask,
+				payload,
+				request,
+			);
+			if (semanticTransition && !semanticTransition.requiresLegacySave) {
+				return await this.applyUiSemanticTransition(
+					freshTask,
+					semanticTransition.targetStatusId,
+					semanticTransition.expectedStatusId,
+					semanticTransition.changes,
+				);
+			}
 			const repeatTemporalScope = await this.resolveEditorRepeatTemporalScope(freshTask, payload);
 		if (repeatTemporalScope.action === 'cancel') {
 			return null;
@@ -14931,7 +23709,10 @@ export default class OperonPlugin extends Plugin {
 					if (!updated) return false;
 			}
 
-				await this.indexer.reindexFilePath(freshTask.primary.filePath, { notify: false });
+				await this.indexer.forceReindexFilePathAfterMutation(
+					freshTask.primary.filePath,
+					{ notify: false },
+				);
 				const afterTask = this.indexer.getTask(freshTask.operonId);
 				if (!this.isPendingRepeatIdentityCommitted(afterTask, pendingRepeatSnapshot, pendingRepeatOverride)) {
 					console.error('Operon: recurring task save did not persist the reanchored occurrence identity');
@@ -14992,12 +23773,12 @@ export default class OperonPlugin extends Plugin {
 				await this.writeFileTaskBodyIfNeeded(indexedFile, request.fileBody);
 			} catch (error) {
 				console.error('Operon: failed to write file task body from task editor', error);
-				await this.indexer.reindexFilePath(indexedPath);
+				await this.indexer.forceReindexFilePathAfterMutation(indexedPath);
 				return false;
 			}
 		}
 
-		await this.indexer.reindexFilePath(indexedPath, { notify: false });
+		await this.indexer.forceReindexFilePathAfterMutation(indexedPath, { notify: false });
 		const afterTask = this.indexer.getTask(freshTask.operonId);
 		if (!this.isPendingRepeatIdentityCommitted(afterTask, pendingRepeatSnapshot, pendingRepeatOverride)) {
 			console.error('Operon: recurring File Task save did not persist the reanchored occurrence identity');
@@ -15202,8 +23983,20 @@ export default class OperonPlugin extends Plugin {
 		return result;
 	}
 
-	private async refreshAggregateStateAfterTaskRemoval(removedTasks: IndexedTask[]): Promise<void> {
-		await this.aggregateCoordinator.refreshAfterTaskRemoval(removedTasks);
+	private async refreshAggregateStateAfterTaskRemovalWhenSafe(
+		removedTasks: IndexedTask[],
+	): Promise<void> {
+		for (const task of removedTasks) {
+			this.pendingAggregateRemovedTasks.set(task.operonId, task);
+			this.pendingAggregateIndexedChanges.delete(task.operonId);
+		}
+		const settlement = this.drainPendingAggregateRefreshesWhenSafe();
+		this.aggregateRuntimeSettlements.add(settlement);
+		try {
+			await settlement;
+		} finally {
+			this.aggregateRuntimeSettlements.delete(settlement);
+		}
 	}
 
 	private ensureRepeatSeriesIdPayload(task: IndexedTask, payload: Record<string, string>): void {
@@ -16369,11 +25162,26 @@ export default class OperonPlugin extends Plugin {
 			.join('||');
 	}
 
-	private scheduleSettingsReindex(reason: SettingsReindexReason): void {
+	private scheduleSettingsReindex(
+		reason: SettingsReindexReason,
+		options: { notify?: boolean } = {},
+	): void {
 		this.indexer.invalidateV8Coherence();
 		this.pendingSettingsReindexReasons.add(reason);
+		if (options.notify !== false) this.settingsReindexNoticePending = true;
 		this.settingsReindexRetryAttempted = false;
+		this.ensureSettingsReindexBarrier();
 		this.armSettingsReindexTimer();
+	}
+
+	private ensureSettingsReindexBarrier(): void {
+		if (this.settingsReindexBarrier) return;
+		this.settingsReindexRuntimeRelease = this.agentRuntimeLifecycle.beginSettling();
+		this.settingsReindexBarrier = new Promise<void>((resolve, reject) => {
+			this.settingsReindexBarrierResolve = resolve;
+			this.settingsReindexBarrierReject = reject;
+		});
+		void this.settingsReindexBarrier.catch(() => {});
 	}
 
 	private armSettingsReindexTimer(): void {
@@ -16384,6 +25192,7 @@ export default class OperonPlugin extends Plugin {
 			this.settingsReindexTimer = null;
 			const reasons = new Set(this.pendingSettingsReindexReasons);
 			this.pendingSettingsReindexReasons.clear();
+			this.settingsReindexActiveRuns += 1;
 			runAsyncAction('settings reindex failed', async () => {
 				try {
 					await this.indexer.fullReindex();
@@ -16392,17 +25201,61 @@ export default class OperonPlugin extends Plugin {
 						if (!completed) throw new Error('workflow aggregate reconciliation remains incomplete');
 					}
 					this.settingsReindexRetryAttempted = false;
-					new Notice(t('notifications', 'indexRebuilt', { count: String(this.indexer.taskCount) }));
+					if (this.settingsReindexNoticePending) {
+						this.settingsReindexNoticePending = false;
+						new Notice(t('notifications', 'indexRebuilt', { count: String(this.indexer.taskCount) }));
+					}
 				} catch (error) {
 					for (const reason of reasons) this.pendingSettingsReindexReasons.add(reason);
 					if (!this.settingsReindexRetryAttempted) {
 						this.settingsReindexRetryAttempted = true;
 						this.armSettingsReindexTimer();
+					} else {
+						this.rejectSettingsReindexBarrier(error);
 					}
 					throw error;
+				} finally {
+					this.settingsReindexActiveRuns = Math.max(0, this.settingsReindexActiveRuns - 1);
+					this.resolveSettingsReindexBarrierIfIdle();
 				}
 			});
 		}, 600);
+	}
+
+	private async awaitSettingsReindexSettlement(): Promise<void> {
+		if (!this.settingsReindexBarrier) return;
+		await this.settingsReindexBarrier;
+	}
+
+	private resolveSettingsReindexBarrierIfIdle(): void {
+		if (!this.settingsReindexBarrier) return;
+		if (this.settingsReindexTimer || this.settingsReindexActiveRuns > 0 || this.pendingSettingsReindexReasons.size > 0) return;
+		const resolve = this.settingsReindexBarrierResolve;
+		this.clearSettingsReindexBarrier();
+		this.agentRuntimeLifecycle.clearError('settings-reindex');
+		resolve?.();
+	}
+
+	private rejectSettingsReindexBarrier(error: unknown): void {
+		const reject = this.settingsReindexBarrierReject;
+		this.settingsReindexNoticePending = false;
+		this.agentRuntimeLifecycle.recordError({
+			contractVersion: 1,
+			code: 'live-settling',
+			reason: 'Operon could not settle an index-semantic settings change.',
+			retryable: true,
+			action: 'wait-and-retry',
+		}, 'settings-reindex');
+		this.clearSettingsReindexBarrier();
+		reject?.(error);
+	}
+
+	private clearSettingsReindexBarrier(): void {
+		this.settingsReindexBarrier = null;
+		this.settingsReindexBarrierResolve = null;
+		this.settingsReindexBarrierReject = null;
+		this.settingsReindexRuntimeRelease?.();
+		this.settingsReindexRuntimeRelease = null;
 	}
 
 	private async markTaskStatsBackfillPending(): Promise<void> {
@@ -16484,22 +25337,6 @@ export default class OperonPlugin extends Plugin {
 					affectedBytes: result.bytesWritten,
 				};
 			},
-			cleanup: async () => {
-				const result = await this.indexer.runIndexV8CleanupNow();
-				return {
-					status: this.toIndexV8DiagnosticsResultStatus(result.status),
-					affectedFiles: result.deletedCount,
-					affectedBytes: result.deletedBytes,
-				};
-			},
-			retire: async () => {
-				const result = await this.indexer.retireLegacyIndexV7();
-				return {
-					status: this.toIndexV8DiagnosticsResultStatus(result.status),
-					affectedFiles: result.status === 'applied' ? 1 : 0,
-					affectedBytes: result.deletedBytes,
-				};
-			},
 		}).open();
 	}
 
@@ -16512,8 +25349,6 @@ export default class OperonPlugin extends Plugin {
 		else if (snapshot.manifestStatus === 'unsupported') codeSet.add('manifest-unsupported');
 		else if (snapshot.manifestStatus === 'io-error') codeSet.add('io-error');
 		if (snapshot.recoveryMarkerPresent) codeSet.add('recovery-marker');
-		if (snapshot.codes.includes('CLEANUP_SUPPRESSED')) codeSet.add('cleanup-suppressed');
-		if (snapshot.codes.includes('RETIREMENT_BLOCKED')) codeSet.add('retirement-blocked');
 		return {
 			phase: snapshot.runtimePhase,
 			health: snapshot.health,
@@ -16522,21 +25357,11 @@ export default class OperonPlugin extends Plugin {
 			taskCount: snapshot.taskCount,
 			sourceCount: snapshot.sourceCount,
 			activeShardCount: snapshot.activeShardCount,
-			orphanShardCount: snapshot.maintenanceCounts['orphan-shard'] ?? 0,
-			protectedShardCount: snapshot.protectedShardCount,
-			ownedTempCount: snapshot.maintenanceCounts['owned-temp'] ?? 0,
 			activeBytes: snapshot.activeBytes,
 			maxShardBytes: snapshot.maxShardBytes,
 			averageShardBytes: snapshot.averageShardBytes,
-			cleanupCandidateCount: snapshot.cleanupCandidateCount,
-			cleanupCandidateBytes: snapshot.cleanupCandidateBytes,
 			dirtySourceCount: snapshot.dirtySourceCount,
 			recoveryMarkerPresent: snapshot.recoveryMarkerPresent,
-			legacy: {
-				present: snapshot.legacyV7.present,
-				bytes: snapshot.legacyV7.bytes,
-				retirementEligible: snapshot.legacyV7.retirementEligible,
-			},
 			lastInspectedAt: Date.now(),
 			actions: {
 				refresh: { enabled: true },
@@ -16545,28 +25370,11 @@ export default class OperonPlugin extends Plugin {
 				repair: {
 					enabled: snapshot.health === 'invalid' || snapshot.health === 'unsupported' || snapshot.health === 'recovery-required',
 					...(!(snapshot.health === 'invalid' || snapshot.health === 'unsupported' || snapshot.health === 'recovery-required')
-						? { disabledReason: 'not-needed' as const }
+						? { disabledReason: 'notNeeded' as const }
 						: {}),
-				},
-				cleanup: {
-					enabled: snapshot.cleanupCandidateCount > 0,
-					...(snapshot.cleanupCandidateCount === 0 ? { disabledReason: 'not-needed' as const } : {}),
-				},
-				retire: {
-					enabled: snapshot.legacyV7.retirementEligible,
-					...(!snapshot.legacyV7.retirementEligible ? { disabledReason: 'unsafe' as const } : {}),
 				},
 			},
 		};
-	}
-
-	private toIndexV8DiagnosticsResultStatus(
-		status: string,
-	): IndexV8DiagnosticsActionResult['status'] {
-		if (status === 'applied' || status === 'unchanged' || status === 'suppressed' || status === 'partial') {
-			return status;
-		}
-		return status === 'stale' ? 'suppressed' : 'failed';
 	}
 
 	private registerCommands(): void {

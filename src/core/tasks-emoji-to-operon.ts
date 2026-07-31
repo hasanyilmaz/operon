@@ -2,6 +2,11 @@ import { parseTaskLine, hasOperonFields } from './parser';
 import { buildCanonicalLocalDatetime, deriveDatetimeEnd } from './scheduling-rules';
 import { parseTasksRecurrenceToOperon } from './tasks-recurrence-to-operon';
 import { CheckboxState } from '../types/keys';
+import {
+	collectMarkdownProtectedRanges,
+	findMarkdownProtectedRangeAt,
+	type MarkdownProtectedRange,
+} from './markdown-protected-ranges';
 
 export type TasksEmojiToOperonResult =
 	| {
@@ -20,10 +25,7 @@ export interface TasksEmojiToOperonOptions {
 	priorities?: Array<{ label: string }>;
 }
 
-interface TextRange {
-	from: number;
-	to: number;
-}
+type TextRange = MarkdownProtectedRange;
 
 interface LeadingTimeBlock {
 	range: TextRange;
@@ -66,49 +68,8 @@ const ALL_TASKS_METADATA_EMOJIS = [
 	...UNSUPPORTED_SHORT_EMOJIS,
 ];
 
-function findMarkdownLinkRanges(text: string): TextRange[] {
-	const ranges: TextRange[] = [];
-	let i = 0;
-	while (i < text.length) {
-		if (text[i] !== '[' || text[i + 1] === '[') {
-			i++;
-			continue;
-		}
-
-		const labelEnd = text.indexOf(']', i + 1);
-		if (labelEnd === -1 || text[labelEnd + 1] !== '(') {
-			i++;
-			continue;
-		}
-
-		let depth = 1;
-		let j = labelEnd + 2;
-		while (j < text.length) {
-			const ch = text[j];
-			if (ch === '(') depth++;
-			if (ch === ')') {
-				depth--;
-				if (depth === 0) {
-					ranges.push({ from: i, to: j + 1 });
-					i = j + 1;
-					break;
-				}
-			}
-			j++;
-		}
-
-		if (j >= text.length) {
-			i++;
-		}
-	}
-	return ranges;
-}
-
 function rangeAt(ranges: TextRange[], index: number): TextRange | null {
-	for (const range of ranges) {
-		if (index >= range.from && index < range.to) return range;
-	}
-	return null;
+	return findMarkdownProtectedRangeAt(ranges, index);
 }
 
 function overlaps(left: TextRange, right: TextRange): boolean {
@@ -263,7 +224,7 @@ export function convertTasksEmojiLineToOperon(line: string, options: TasksEmojiT
 
 	const body = line.slice(checkboxMatch[0].length);
 	const leadingTimeBlock = detectLeadingTimeBlock(body);
-	const protectedRanges = findMarkdownLinkRanges(body);
+	const protectedRanges = collectMarkdownProtectedRanges(body);
 	const rangesToRemove: TextRange[] = [];
 	const leftovers: string[] = [];
 	const pendingMetadataFragments: PendingTasksMetadataFragment[] = [];

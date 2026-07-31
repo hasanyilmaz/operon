@@ -139,7 +139,7 @@ export async function assertIndexV8IncrementalParity(
 }
 
 /**
- * Compare a sealed V7 authority snapshot with a fully validated V8 snapshot.
+ * Compare a sealed in-memory authority snapshot with a fully validated persisted snapshot.
  * The result intentionally exposes only aggregate counts and opaque digests.
  */
 export async function compareIndexV8Parity(

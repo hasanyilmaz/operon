@@ -1,0 +1,14 @@
+{
+  "caseId": "file-name-sanitization",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "0b9edd313a1f690fc4ff0fc49511f51e15e28e0795c1f6e5e0f85dbde9024b6a",
+  "seed": 41026,
+  "stderrSha256": "6ea9c0b2412e31fabb43bd82a949c83eb35c3f23d6f314b19c02be1e07e04810",
+  "stdoutSha256": "238083ebb658f50026dea3767b71880f58a5980e30ffcd7d811d15865565558b",
+  "writtenFiles": {}
+}

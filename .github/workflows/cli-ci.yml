@@ -1,0 +1,119 @@
+name: Operon CLI
+
+on:
+  pull_request:
+    paths:
+      - "packages/operon-cli/**"
+      - "src/agent-runtime/**"
+      - "contracts/agent-runtime/**"
+      - "scripts/agent-runtime/cli/**"
+      - "scripts/agent-runtime/cli-transport/**"
+      - "scripts/agent-runtime/contracts/**"
+      - "scripts/agent-runtime/receipts/**"
+      - ".github/workflows/cli-ci.yml"
+      - ".github/workflows/cli-release-ready.yml"
+      - ".github/workflows/cli-native-candidate.yml"
+      - ".github/workflows/cli-live-acceptance.yml"
+      - ".github/workflows/cli-publish.yml"
+      - "package.json"
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/operon-cli/**"
+      - "src/agent-runtime/**"
+      - "contracts/agent-runtime/**"
+      - "scripts/agent-runtime/cli/**"
+      - "scripts/agent-runtime/cli-transport/**"
+      - "scripts/agent-runtime/contracts/**"
+      - "scripts/agent-runtime/receipts/**"
+      - ".github/workflows/cli-ci.yml"
+      - ".github/workflows/cli-release-ready.yml"
+      - ".github/workflows/cli-native-candidate.yml"
+      - ".github/workflows/cli-live-acceptance.yml"
+      - ".github/workflows/cli-publish.yml"
+      - "package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-portability-matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - id: matrix
+        name: Build the canonical 9-cell hosted portability matrix
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const freeze = JSON.parse(fs.readFileSync("contracts/agent-runtime/native-acceptance-matrix-v1.json", "utf8"));
+            const include = freeze.hostedPortability.flatMap(os => freeze.nodeVersions.map(node => ({
+              cellId: `${os.id}-node-${node.major}`,
+              osRef: os.id,
+              platform: os.platform,
+              node: node.version,
+              nodeMajor: String(node.major),
+              runner: os.runner
+            })));
+            if (include.length !== freeze.expectedCells.hostedPortability) throw new Error(`Expected ${freeze.expectedCells.hostedPortability} portability cells, received ${include.length}.`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include })}\n`);
+          '
+
+  platform-portability:
+    name: Portability (${{ matrix.osRef }}, Node ${{ matrix.node }})
+    needs: prepare-portability-matrix
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare-portability-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm install --global npm@11.12.1
+      - run: npm ci
+      - id: contracts
+        name: Run platform-neutral contract validation
+        run: >
+          npm run agent-runtime:schemas:test &&
+          npm run agent-runtime:schemas:check &&
+          npm run agent-runtime:cli-contracts:check &&
+          npm run agent-runtime:types:check &&
+          npm run agent-runtime:compatibility:check &&
+          npm run agent-runtime:freeze:test &&
+          npm run agent-runtime:cli-schemas:test &&
+          node scripts/agent-runtime/contracts/run-contract-tests.mjs &&
+          node --test scripts/agent-runtime/receipts/receipt-benchmark.test.mjs
+      - name: Run platform transport and security checks
+        timeout-minutes: 5
+        run: node scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs
+      - run: npm run agent-runtime:cli
+      - run: npm run agent-runtime:cli:package
+      - run: node --test scripts/agent-runtime/cli/hosted-portability.test.mjs
+
+  shell-completion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm install --global npm@11.12.1
+      - run: npm ci
+      - name: Install Fish and Zsh for executable completion acceptance
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fish zsh
+      - run: node scripts/agent-runtime/cli/run-phase9-client-tests.mjs

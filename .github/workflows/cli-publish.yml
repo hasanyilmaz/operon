@@ -1,0 +1,237 @@
+name: Publish Operon CLI stable
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Exact stable cli-v tag to publish"
+        required: true
+        type: string
+      candidate_run_id:
+        description: "Release-ready workflow run containing the accepted candidate"
+        required: true
+        type: string
+      candidate_sha256:
+        description: "SHA-256 accepted by the complete hosted portability matrix"
+        required: true
+        type: string
+      authentication_mode:
+        description: "Use bootstrap-token only for the first package publication"
+        required: true
+        default: trusted-publisher
+        type: choice
+        options:
+          - trusted-publisher
+          - bootstrap-token
+
+permissions:
+  actions: read
+  attestations: read
+  contents: read
+  id-token: write
+
+jobs:
+  publish-stable:
+    environment:
+      name: ${{ inputs.authentication_mode == 'bootstrap-token' && 'npm-bootstrap' || 'npm' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify workflow was dispatched from the exact CLI tag
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          [[ "$SOURCE_REF" =~ ^cli-v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "source_ref must be an exact stable cli-v tag" >&2; exit 1; }
+          test "$GITHUB_REF" = "refs/tags/$SOURCE_REF"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: refs/tags/${{ inputs.source_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact protected CLI tag before repository code runs
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          [[ "$SOURCE_REF" =~ ^cli-v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "source_ref must be an exact stable cli-v tag" >&2; exit 1; }
+          test "$(git rev-list -n 1 "refs/tags/$SOURCE_REF")" = "$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "EXPECTED_SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24.18.0"
+          registry-url: "https://registry.npmjs.org"
+      - name: Pin trusted-publishing npm
+        run: npm install --global npm@11.12.1
+      - name: Verify release toolchain
+        run: |
+          test "$(node --version)" = "v24.18.0"
+          test "$(npm --version)" = "11.12.1"
+      - name: Verify tag matches package version without running package code
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          PACKAGE_VERSION="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('packages/operon-cli/package.json','utf8')).version)")"
+          test "$SOURCE_REF" = "cli-v$PACKAGE_VERSION"
+      - name: Verify CLI tag and tracked package metadata
+        env:
+          GITHUB_REF_NAME: ${{ inputs.source_ref }}
+          REQUIRE_EXACT_GIT_TAG: "1"
+        run: node scripts/agent-runtime/cli/check-release-tag.mjs
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: operon-cli-candidate-acceptance-required
+          path: candidate
+          run-id: ${{ inputs.candidate_run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: operon-cli-hosted-portability
+          path: acceptance
+          run-id: ${{ inputs.candidate_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify exact source, candidate provenance, and hosted portability
+        env:
+          EXPECTED_SHA256: ${{ inputs.candidate_sha256 }}
+          EXPECTED_SOURCE_REF: ${{ inputs.source_ref }}
+          REQUIRE_EXACT_GIT_TAG: "1"
+          REQUIRE_PUBLIC_PLUGIN_RELEASE: "1"
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          gh attestation verify candidate/*.tgz \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/cli-release-ready.yml" \
+            --source-ref "refs/tags/$SOURCE_REF" \
+            --source-digest "$EXPECTED_SOURCE_COMMIT"
+          gh attestation verify candidate/candidate-evidence.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/cli-release-ready.yml" \
+            --source-ref "refs/tags/$SOURCE_REF" \
+            --source-digest "$EXPECTED_SOURCE_COMMIT"
+          gh attestation verify acceptance/hosted-portability-index.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/cli-release-ready.yml" \
+            --source-ref "refs/tags/$SOURCE_REF" \
+            --source-digest "$EXPECTED_SOURCE_COMMIT"
+          node scripts/agent-runtime/cli/verify-release-candidate.mjs candidate
+          node scripts/agent-runtime/cli/verify-hosted-portability.mjs candidate acceptance
+      - name: Reverify compatible public plugin availability and digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PLUGIN_RELEASE_TAG="$(node -e 'const e=require("./candidate/candidate-evidence.json"); process.stdout.write(e.compatiblePublicPlugin.releaseTag)')"
+          mkdir -p public-plugin-release
+          gh release download "$PLUGIN_RELEASE_TAG" \
+            --pattern main.js \
+            --pattern manifest.json \
+            --pattern styles.css \
+            --dir public-plugin-release
+          for artifact in main.js manifest.json styles.css; do
+            gh attestation verify "public-plugin-release/$artifact" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-ref "refs/tags/$PLUGIN_RELEASE_TAG"
+          done
+          node scripts/agent-runtime/cli/verify-public-plugin-release-evidence.mjs \
+            candidate/candidate-evidence.json \
+            public-plugin-release
+      - name: Verify first-publish bootstrap admission
+        if: inputs.authentication_mode == 'bootstrap-token'
+        run: |
+          if npm view operon-cli version --json \
+            --registry https://registry.npmjs.org/ \
+            >"$RUNNER_TEMP/npm-view.stdout" 2>"$RUNNER_TEMP/npm-view.stderr"; then
+            echo "bootstrap-token is only allowed while operon-cli is unpublished" >&2
+            exit 1
+          fi
+          grep -q "E404" "$RUNNER_TEMP/npm-view.stderr" \
+            || { echo "npm package availability could not be verified as E404" >&2; cat "$RUNNER_TEMP/npm-view.stderr" >&2; exit 1; }
+      - name: Capture the isolated beta channel before stable publication
+        id: beta_before
+        env:
+          AUTHENTICATION_MODE: ${{ inputs.authentication_mode }}
+        run: |
+          if test "$AUTHENTICATION_MODE" = "trusted-publisher"; then
+            DIST_TAGS="$(npm view operon-cli dist-tags --json --registry https://registry.npmjs.org/)"
+          elif ! DIST_TAGS="$(npm view operon-cli dist-tags --json \
+            --registry https://registry.npmjs.org/ \
+            2>"$RUNNER_TEMP/npm-dist-tags.stderr")"; then
+            grep -q "E404" "$RUNNER_TEMP/npm-dist-tags.stderr" \
+              || { echo "npm dist-tags could not be verified before bootstrap publication" >&2; cat "$RUNNER_TEMP/npm-dist-tags.stderr" >&2; exit 1; }
+            DIST_TAGS='{}'
+          fi
+          BETA_VERSION="$(node -e 'const d=JSON.parse(process.argv[1]); process.stdout.write(typeof d.beta==="string" ? d.beta : "")' "$DIST_TAGS")"
+          echo "version=$BETA_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Publish first approved stable release with temporary token and provenance
+        if: inputs.authentication_mode == 'bootstrap-token'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test -n "$NODE_AUTH_TOKEN"
+          npm publish candidate/*.tgz \
+            --registry https://registry.npmjs.org/ \
+            --access public \
+            --tag latest \
+            --provenance
+      - name: Verify trusted-publisher admission
+        if: inputs.authentication_mode == 'trusted-publisher'
+        run: npm view operon-cli version --json --registry https://registry.npmjs.org/ >/dev/null
+      - name: Publish approved stable release through npm trusted publishing
+        if: inputs.authentication_mode == 'trusted-publisher'
+        run: |
+          npm publish candidate/*.tgz \
+            --registry https://registry.npmjs.org/ \
+            --access public \
+            --tag latest \
+            --provenance
+      - name: Verify registry latest without changing the isolated beta channel
+        id: registry_version
+        env:
+          EXPECTED_VERSION: ${{ inputs.source_ref }}
+        run: |
+          EXPECTED_VERSION="${EXPECTED_VERSION#cli-v}"
+          [[ "$EXPECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "Expected stable package version is invalid" >&2; exit 1; }
+          VERIFIED=0
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if test "$(npm view operon-cli@latest version --registry https://registry.npmjs.org/ 2>/dev/null)" = "$EXPECTED_VERSION"; then
+              VERIFIED=1
+              break
+            fi
+            sleep 5
+          done
+          test "$VERIFIED" = "1" \
+            || { echo "Registry verification failed after publish; do not rerun publish, inspect this exact version first" >&2; exit 1; }
+          DIST_TAGS="$(npm view operon-cli dist-tags --json --registry https://registry.npmjs.org/)"
+          node -e 'const d=JSON.parse(process.argv[1]); process.exit(d.latest===process.argv[2] ? 0 : 1)' "$DIST_TAGS" "$EXPECTED_VERSION"
+          node -e 'const d=JSON.parse(process.argv[1]); const beta=typeof d.beta==="string"?d.beta:""; process.exit(beta===process.argv[2] ? 0 : 1)' "$DIST_TAGS" "${{ steps.beta_before.outputs.version }}"
+          echo "version=$EXPECTED_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Verify published tarball round-trip
+        env:
+          EXPECTED_SHA256: ${{ inputs.candidate_sha256 }}
+          EXPECTED_VERSION: ${{ steps.registry_version.outputs.version }}
+        run: |
+          test -n "$EXPECTED_VERSION"
+          mkdir -p "$RUNNER_TEMP/registry-roundtrip"
+          npm pack operon-cli@latest \
+            --pack-destination "$RUNNER_TEMP/registry-roundtrip" \
+            --ignore-scripts \
+            --registry https://registry.npmjs.org/
+          node scripts/agent-runtime/cli/verify-published-release.mjs \
+            candidate \
+            "$RUNNER_TEMP/registry-roundtrip"
+      - name: Verify npm registry signatures and provenance
+        env:
+          EXPECTED_VERSION: ${{ steps.registry_version.outputs.version }}
+        run: |
+          test -n "$EXPECTED_VERSION"
+          mkdir -p "$RUNNER_TEMP/npm-signature-audit"
+          cd "$RUNNER_TEMP/npm-signature-audit"
+          npm init --yes >/dev/null
+          npm install "operon-cli@$EXPECTED_VERSION" \
+            --ignore-scripts \
+            --no-audit \
+            --no-fund \
+            --registry https://registry.npmjs.org/
+          npm audit signatures --registry https://registry.npmjs.org/

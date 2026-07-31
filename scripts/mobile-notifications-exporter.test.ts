@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { buildMobileNotificationsSnapshot, formatOffsetInstant } from '../src/core/mobile-notifications-snapshot';
+import {
+	buildMobileNotificationsSnapshot,
+	formatOffsetInstant,
+} from '../src/core/mobile-notifications-snapshot';
 import {
 	MobileNotificationsExporter,
 	readExistingMobileNotificationsVaultId,
@@ -11,6 +14,7 @@ import type { IndexReconciliationEvent } from '../src/indexer/indexer';
 
 const VAULT_ID = '11111111-2222-4333-8444-555555555555';
 const nowMs = new Date(2026, 6, 21, 12, 0, 0).getTime();
+const path = '.obsidian/plugins/operon/state/mobile-notifications.json';
 
 function localDatetime(epochMs: number): string {
 	const date = new Date(epochMs);
@@ -18,9 +22,9 @@ function localDatetime(epochMs: number): string {
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-function task(description = 'Snapshot task'): IndexedTask {
+function task(description = 'Snapshot task', operonId = 'snapshot-task'): IndexedTask {
 	return {
-		operonId: 'snapshot-task',
+		operonId,
 		description,
 		checkbox: 'open',
 		fieldValues: {
@@ -31,44 +35,54 @@ function task(description = 'Snapshot task'): IndexedTask {
 			taskColor: '12abEF',
 		},
 		tags: [],
-		primary: { filePath: '20 Projects/Snapshot.md', lineNumber: 3, format: 'inline' },
+		primary: { filePath: `20 Projects/${operonId}.md`, lineNumber: 3, format: 'inline' },
 		datetimeModified: localDatetime(nowMs),
 		tier: 'hot',
-	};
-}
-
-function taskAt(operonId: string, reminderEpochMs: number): IndexedTask {
-	return {
-		...task(operonId),
-		operonId,
-		fieldValues: { reminderDatetimes: localDatetime(reminderEpochMs) },
-		primary: { filePath: `20 Projects/${operonId}.md`, lineNumber: 0, format: 'inline' },
 	};
 }
 
 class MemoryAdapter {
 	readonly files = new Map<string, string>();
 	readonly folders = new Set<string>();
-	writes = 0;
-	async exists(path: string): Promise<boolean> { return this.files.has(path) || this.folders.has(path); }
-	async mkdir(path: string): Promise<void> { this.folders.add(path); }
-	async read(path: string): Promise<string> {
-		const value = this.files.get(path);
+	private revision = 0;
+	publishedWrites = 0;
+	statReads = 0;
+	async exists(target: string): Promise<boolean> { return this.files.has(target) || this.folders.has(target); }
+	async mkdir(target: string): Promise<void> { this.folders.add(target); }
+	async read(target: string): Promise<string> {
+		const value = this.files.get(target);
 		if (value === undefined) throw new Error('ENOENT');
 		return value;
 	}
-	async write(path: string, value: string): Promise<void> { this.writes += 1; this.files.set(path, value); }
-	async remove(path: string): Promise<void> { this.files.delete(path); }
+	async stat(target: string): Promise<{ type: 'file'; ctime: number; mtime: number; size: number } | null> {
+		this.statReads += 1;
+		const value = this.files.get(target);
+		return value === undefined ? null : { type: 'file', ctime: 0, mtime: this.revision, size: value.length };
+	}
+	async write(target: string, value: string): Promise<void> {
+		this.revision += 1;
+		this.files.set(target, value);
+	}
+	async remove(target: string): Promise<void> {
+		this.revision += 1;
+		this.files.delete(target);
+	}
 	async rename(from: string, to: string): Promise<void> {
 		const value = this.files.get(from);
 		if (value === undefined) throw new Error('ENOENT');
+		this.revision += 1;
 		this.files.delete(from);
 		this.files.set(to, value);
+		if (to === path) this.publishedWrites += 1;
+	}
+	externalWrite(target: string, value: string): void {
+		this.revision += 1;
+		this.files.set(target, value);
 	}
 }
 
 class FailingReplacementAdapter extends MemoryAdapter {
-	renames = 0;
+	private renames = 0;
 	override async rename(from: string, to: string): Promise<void> {
 		this.renames += 1;
 		if (this.renames === 2) throw new Error('REPLACE_FAILED');
@@ -76,561 +90,356 @@ class FailingReplacementAdapter extends MemoryAdapter {
 	}
 }
 
-class FailingFirstWriteAdapter extends MemoryAdapter {
-	failWrites = true;
-	override async write(path: string, value: string): Promise<void> {
-		if (this.failWrites) throw new Error('TRANSIENT_WRITE_FAILURE');
-		await super.write(path, value);
+class FailNextRenameAdapter extends MemoryAdapter {
+	failNextRename = false;
+	override async rename(from: string, to: string): Promise<void> {
+		if (this.failNextRename) {
+			this.failNextRename = false;
+			throw new Error('TRANSIENT_RENAME_FAILED');
+		}
+		await super.rename(from, to);
 	}
 }
 
-class FakeWindow {
+class FakeEventTarget {
+	readonly listeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
+	addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+		const listeners = this.listeners.get(type) ?? new Set();
+		listeners.add(listener);
+		this.listeners.set(type, listeners);
+	}
+	removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+		this.listeners.get(type)?.delete(listener);
+	}
+	dispatch(type: string): void {
+		for (const listener of this.listeners.get(type) ?? []) {
+			if (typeof listener === 'function') listener({ type } as Event);
+			else listener.handleEvent({ type } as Event);
+		}
+	}
+	listenerCount(): number {
+		return [...this.listeners.values()].reduce((count, listeners) => count + listeners.size, 0);
+	}
+}
+
+class FakeDocument extends FakeEventTarget {
+	visibilityState: DocumentVisibilityState = 'visible';
+	defaultView: FakeWindow | null = null;
+}
+
+class FakeWindow extends FakeEventTarget {
 	private nextId = 1;
 	readonly timers = new Map<number, { callback: () => void; delay: number }>();
-	setTimeout(callback: () => void, delay = 0): number { const id = this.nextId++; this.timers.set(id, { callback, delay }); return id; }
+	setTimeout(callback: () => void, delay = 0): number {
+		const id = this.nextId++;
+		this.timers.set(id, { callback, delay });
+		return id;
+	}
 	clearTimeout(id: number): void { this.timers.delete(id); }
-	runNext(): void {
-		const entry = [...this.timers.entries()].sort((left, right) => left[1].delay - right[1].delay)[0];
-		if (!entry) return;
+	runDelay(delay: number): void {
+		const entry = [...this.timers.entries()].find(([, timer]) => timer.delay === delay);
+		assert.ok(entry, `expected a timer delayed ${delay}ms`);
 		this.timers.delete(entry[0]);
 		entry[1].callback();
+	}
+	captureDelay(delay: number): () => void {
+		const entry = [...this.timers.values()].find(timer => timer.delay === delay);
+		assert.ok(entry, `expected a timer delayed ${delay}ms`);
+		return entry.callback;
 	}
 }
 
 class FakeIndexer {
 	readonly tasks = new Map<string, IndexedTask>();
 	private listeners = new Set<(event: IndexReconciliationEvent) => void>();
-	getAllTasks(): IndexedTask[] { return [...this.tasks.values()]; }
+	fullReads = 0;
+	getAllTasks(): IndexedTask[] {
+		this.fullReads += 1;
+		return [...this.tasks.values()];
+	}
 	getTask(operonId: string): IndexedTask | undefined { return this.tasks.get(operonId); }
 	hasDuplicateOperonIdConflict(): boolean { return false; }
 	subscribeIndexReconciliation(listener: (event: IndexReconciliationEvent) => void): () => void {
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
 	}
-	emit(event: IndexReconciliationEvent): void { for (const listener of this.listeners) listener(event); }
+	emit(event: IndexReconciliationEvent): void {
+		for (const listener of this.listeners) listener(event);
+	}
+	listenerCount(): number { return this.listeners.size; }
+}
+
+function buildSnapshot(tasks: IndexedTask[], generatedAtEpochMs: number) {
+	return buildMobileNotificationsSnapshot({
+		tasks,
+		generatedAtEpochMs,
+		vaultId: VAULT_ID,
+		vaultName: 'Stratejya Next',
+		timezone: 'Europe/Berlin',
+		catchUpMinutes: 60,
+		appearanceSettings: DEFAULT_SETTINGS,
+		isDuplicateOperonId: () => false,
+	});
+}
+
+function serialize(value: unknown): string {
+	return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function readSnapshot(adapter: MemoryAdapter) {
+	return JSON.parse(adapter.files.get(path) ?? '{}') as ReturnType<typeof buildSnapshot>;
+}
+
+function createExporter(
+	adapter: MemoryAdapter,
+	indexer: FakeIndexer,
+	ownerWindow: FakeWindow,
+	ownerDocument: FakeDocument,
+	canProduce = true,
+	onAdoptedVaultId?: (vaultId: string | null | undefined) => void,
+	now: () => number = () => nowMs,
+): MobileNotificationsExporter {
+	return new MobileNotificationsExporter({
+		app: {
+			vault: { adapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
+			workspace: { containerEl: { ownerDocument } },
+		} as never,
+		indexer,
+		canProduce: () => canProduce,
+		producerState: {
+			getOrCreateVaultId: async adoptedVaultId => {
+				onAdoptedVaultId?.(adoptedVaultId);
+				return VAULT_ID;
+			},
+		},
+		getCatchUpMinutes: () => 60,
+		getAppearanceSettings: () => DEFAULT_SETTINGS,
+		isSystemReminderFieldEnabled: () => true,
+		getTimezone: () => 'Europe/Berlin',
+		now,
+		ownerWindow,
+		ownerDocument,
+		path,
+		debounceMs: 10,
+		refreshIntervalMs: 24 * 60 * 60_000,
+		startupRefreshDelaysMs: [60_000, 3 * 60_000, 5 * 60_000],
+		monitorStatIntervalMs: 30_000,
+		monitorFullReadIntervalMs: 5 * 60_000,
+		recoveryDelayMs: 2_000,
+		recoveryAttempts: 3,
+		hashText: async text => text,
+	});
 }
 
 async function run(): Promise<void> {
-	const snapshot = buildMobileNotificationsSnapshot({
-		tasks: [task()],
-		generatedAtEpochMs: nowMs,
-		vaultId: VAULT_ID,
-		vaultName: 'Stratejya Next',
-		timezone: 'Europe/Berlin',
-		catchUpMinutes: 60,
-		appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => false,
-	});
-	globalThis.__operonMobileNotificationsSample = snapshot;
-	assert.equal(snapshot.tasks.length, 1);
-	assert.equal(snapshot.tasks[0]?.notifications.length, 1, 'same-epoch sources merge');
-	assert.deepEqual(snapshot.tasks[0]?.notifications[0]?.sources, [
+	const contractSnapshot = buildSnapshot([task()], nowMs);
+	assert.equal(contractSnapshot.enabled, true);
+	assert.equal(contractSnapshot.tasks[0]?.notifications.length, 1, 'same-epoch sources merge');
+	assert.deepEqual(contractSnapshot.tasks[0]?.notifications[0]?.sources, [
 		{ kind: 'reminderDatetime' },
 		{ kind: 'reminderRule' },
 	]);
-	assert.equal(snapshot.tasks[0]?.appearance.taskIcon, 'rocket');
-	assert.equal(snapshot.tasks[0]?.appearance.taskColor, '#12abEF');
-	assert.equal(snapshot.tasks[0]?.taskStart?.epochMs, nowMs + 90 * 60_000);
-	assert.equal(snapshot.tasks[0]?.notifications[0]?.triggerAt, '2026-07-21T13:00:00+02:00');
-	assert.throws(() => buildMobileNotificationsSnapshot({
-		tasks: [task()], generatedAtEpochMs: nowMs, vaultId: 'not-a-uuid', vaultName: 'Stratejya Next',
-		timezone: 'Europe/Berlin', catchUpMinutes: 60, appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => false,
-	}), /vault id/u);
-	assert.throws(() => buildMobileNotificationsSnapshot({
-		tasks: [task()], generatedAtEpochMs: nowMs, vaultId: VAULT_ID, vaultName: 'Stratejya Next',
-		timezone: 'Not/A-Timezone', catchUpMinutes: 60, appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => false,
-	}), /timezone/u);
-	const duplicateExcluded = buildMobileNotificationsSnapshot({
-		tasks: [task()], generatedAtEpochMs: nowMs, vaultId: VAULT_ID, vaultName: 'Stratejya Next',
-		timezone: 'Europe/Berlin', catchUpMinutes: 60, appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => true,
-	});
-	assert.deepEqual(duplicateExcluded.tasks, [], 'duplicate-id tasks are excluded fail closed');
-	const unsafeTask = { ...task(), primary: { ...task().primary, filePath: '../Unsafe.md' } };
-	const unresolvedTask = {
-		...task(),
-		operonId: 'unresolved-rule',
-		fieldValues: { reminderRules: 'datetimeStart.30m' },
-		primary: { filePath: '20 Projects/Unresolved.md', lineNumber: 0, format: 'inline' as const },
-	};
-	assert.throws(() => buildMobileNotificationsSnapshot({
-		tasks: [unsafeTask], generatedAtEpochMs: nowMs, vaultId: VAULT_ID, vaultName: 'Stratejya Next',
-		timezone: 'Europe/Berlin', catchUpMinutes: 60, appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => false,
-	}), /unsafe mobile notification source path/u);
-	const unresolvedSources = buildMobileNotificationsSnapshot({
-		tasks: [unresolvedTask], generatedAtEpochMs: nowMs, vaultId: VAULT_ID, vaultName: 'Stratejya Next',
-		timezone: 'Europe/Berlin', catchUpMinutes: 60, appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => false,
-	});
-	assert.deepEqual(unresolvedSources.tasks, [], 'unresolved rules do not create incomplete notifications');
-
-	const windowStart = nowMs - 60 * 60_000;
-	const windowEnd = nowMs + 7 * 24 * 60 * 60_000;
-	const boundarySnapshot = buildMobileNotificationsSnapshot({
-		tasks: [
-			taskAt('end-exclusive', windowEnd),
-			taskAt('same-b', nowMs + 2 * 60_000),
-			taskAt('start-inclusive', windowStart),
-			taskAt('same-a', nowMs + 2 * 60_000),
-			taskAt('before-end', windowEnd - 1_000),
-		],
-		generatedAtEpochMs: nowMs, vaultId: VAULT_ID, vaultName: 'Stratejya Next', timezone: 'Europe/Berlin',
-		catchUpMinutes: 60, appearanceSettings: DEFAULT_SETTINGS, isDuplicateOperonId: () => false,
-	});
-	assert.deepEqual(
-		boundarySnapshot.tasks.map(item => item.operonId),
-		['start-inclusive', 'same-a', 'same-b', 'before-end'],
-		'window is inclusive/exclusive and task order is earliest epoch then operonId',
-	);
-
-	const fallbackTask = task();
-	delete fallbackTask.fieldValues.taskIcon;
-	fallbackTask.fieldValues.datetimeStart = 'not-a-datetime';
-	const fallbackSnapshot = buildMobileNotificationsSnapshot({
-		tasks: [fallbackTask], generatedAtEpochMs: nowMs, vaultId: VAULT_ID, vaultName: 'Stratejya Next',
-		timezone: 'Europe/Berlin', catchUpMinutes: 60, appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => false,
-	});
-	assert.equal(fallbackSnapshot.tasks[0]?.appearance.taskIcon, DEFAULT_SETTINGS.fallbackStateIcons.open);
-	assert.equal(fallbackSnapshot.tasks[0]?.taskStart, null, 'invalid task starts remain null rather than using another date');
-	const lowYearTask = task();
-	lowYearTask.fieldValues.datetimeStart = '0001-01-02T03:04:05';
-	const lowYearSnapshot = buildMobileNotificationsSnapshot({
-		tasks: [lowYearTask], generatedAtEpochMs: nowMs, vaultId: VAULT_ID, vaultName: 'Stratejya Next',
-		timezone: 'Europe/Berlin', catchUpMinutes: 60, appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => false,
-	});
-	assert.equal(lowYearSnapshot.tasks[0]?.taskStart?.localDatetime, '0001-01-02T03:04:05');
-	assert.equal(formatOffsetInstant(Date.parse('2026-10-25T00:30:00Z'), 'Europe/Berlin'), '2026-10-25T02:30:00+02:00');
+	assert.equal(contractSnapshot.tasks[0]?.appearance.taskIcon, 'rocket');
+	assert.equal(contractSnapshot.tasks[0]?.appearance.taskColor, '#12abEF');
+	assert.equal(contractSnapshot.tasks[0]?.notifications[0]?.triggerAt, '2026-07-21T13:00:00+02:00');
 	assert.equal(formatOffsetInstant(Date.parse('2026-10-25T01:30:00Z'), 'Europe/Berlin'), '2026-10-25T02:30:00+01:00');
-
-	const disabled = buildMobileNotificationsSnapshot({
-		tasks: [task()],
-		generatedAtEpochMs: nowMs,
-		vaultId: VAULT_ID,
-		vaultName: 'Stratejya Next',
-		timezone: 'Europe/Berlin',
-		catchUpMinutes: 60,
-		appearanceSettings: DEFAULT_SETTINGS,
-		isDuplicateOperonId: () => false,
-		enabled: false,
-	});
-	assert.deepEqual(disabled.tasks, []);
-	assert.deepEqual(disabled.sourcePolicy, { reminderDatetimes: false, reminderRules: false, datetimeStart: false });
 
 	const adapter = new MemoryAdapter();
 	const indexer = new FakeIndexer();
 	indexer.tasks.set('snapshot-task', task());
 	const ownerWindow = new FakeWindow();
-	let enabled = true;
-	let watermark = -1;
-	let cancelAllPublished = 0;
-	const path = '.obsidian/plugins/operon/state/mobile-notifications.json';
-	const exporter = new MobileNotificationsExporter({
-		app: {
-			vault: { adapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: ownerWindow } } },
-		} as never,
-		indexer,
-		getEnabled: () => enabled,
-		producerState: {
-			getOrCreateVaultId: async () => VAULT_ID,
-			reserveGeneratedAtEpochMs: async (now, minimumExclusive) => {
-				watermark = Math.max(now, watermark + 1, minimumExclusive + 1);
-				return watermark;
-			},
-			markCancelAllPublished: async () => { cancelAllPublished += 1; },
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: ownerWindow as never,
-		path,
+	const ownerDocument = new FakeDocument();
+	ownerDocument.defaultView = ownerWindow;
+	const priorGeneratedAt = nowMs + 10_000;
+	adapter.externalWrite(path, serialize(buildSnapshot([task('Stale synced content')], priorGeneratedAt)));
+	let adoptedVaultId: string | null | undefined;
+	const exporter = createExporter(adapter, indexer, ownerWindow, ownerDocument, true, value => {
+		adoptedVaultId = value;
 	});
 	await exporter.start();
-	assert.equal(cancelAllPublished, 0, 'enabled publication never clears a newer cancel intent');
-	assert.equal(adapter.writes, 1, 'startup writes one complete temp snapshot');
-	assert.equal(adapter.folders.has('.obsidian/plugins/operon/state'), true, 'parent state directory is created');
-	assert.equal(await readExistingMobileNotificationsVaultId(adapter as never, path), VAULT_ID, 'existing valid identity is adoptable');
+
+	assert.equal(adoptedVaultId, VAULT_ID, 'existing snapshot vault identity is preserved');
+	assert.equal(adapter.publishedWrites, 1, 'elapsed-zero startup publishes a full snapshot');
+	assert.equal(readSnapshot(adapter).enabled, true, 'automatic snapshots are always enabled');
+	assert.equal(readSnapshot(adapter).generatedAtEpochMs, priorGeneratedAt + 1, 'existing watermark is adopted monotonically');
+	assert.equal(readSnapshot(adapter).tasks[0]?.description, 'Snapshot task', 'startup fully rebuilds from the index');
+	assert.equal(await readExistingMobileNotificationsVaultId(adapter as never, path), VAULT_ID);
+
+	for (const delay of [60_000, 3 * 60_000, 5 * 60_000]) {
+		const previousWatermark = readSnapshot(adapter).generatedAtEpochMs;
+		const previousReads = indexer.fullReads;
+		ownerWindow.runDelay(delay);
+		await exporter.flush();
+		assert.equal(indexer.fullReads, previousReads + 1, `startup ${delay}ms publication fully rebuilds candidates`);
+		assert.equal(readSnapshot(adapter).generatedAtEpochMs, previousWatermark + 1, `startup ${delay}ms publication is distinct`);
+	}
+	assert.equal(adapter.publishedWrites, 4, 'startup publishes at elapsed 0, 1, 3, and 5 minutes');
+	assert.equal(ownerWindow.listenerCount(), 1, 'foreground monitor starts after minute five');
+	assert.equal(ownerDocument.listenerCount(), 1, 'visibility monitor starts after minute five');
+
+	const catchUpAdapter = new MemoryAdapter();
+	const catchUpIndexer = new FakeIndexer();
+	catchUpIndexer.tasks.set('snapshot-task', task());
+	const catchUpWindow = new FakeWindow();
+	const catchUpDocument = new FakeDocument();
+	catchUpDocument.defaultView = catchUpWindow;
+	let catchUpNow = nowMs;
+	const catchUpExporter = createExporter(
+		catchUpAdapter,
+		catchUpIndexer,
+		catchUpWindow,
+		catchUpDocument,
+		true,
+		undefined,
+		() => catchUpNow,
+	);
+	await catchUpExporter.start();
+	const overdueCallbacks = [60_000, 3 * 60_000, 5 * 60_000]
+		.map(delay => catchUpWindow.captureDelay(delay));
+	catchUpNow += 5 * 60_000;
+	for (const callback of overdueCallbacks) callback();
+	await catchUpExporter.flush();
+	assert.equal(catchUpAdapter.publishedWrites, 2, 'overdue 1/3/5-minute checkpoints coalesce into one catch-up snapshot');
+	assert.equal(catchUpWindow.listenerCount(), 1, 'catch-up starts monitoring after consuming the final checkpoint');
+	await catchUpExporter.destroy();
+
+	const monitorFailureAdapter = new FailNextRenameAdapter();
+	const monitorFailureIndexer = new FakeIndexer();
+	monitorFailureIndexer.tasks.set('snapshot-task', task('Local authority'));
+	const monitorFailureWindow = new FakeWindow();
+	const monitorFailureDocument = new FakeDocument();
+	monitorFailureDocument.defaultView = monitorFailureWindow;
+	const monitorFailureExporter = createExporter(
+		monitorFailureAdapter,
+		monitorFailureIndexer,
+		monitorFailureWindow,
+		monitorFailureDocument,
+	);
+	await monitorFailureExporter.start();
+	for (const delay of [60_000, 3 * 60_000, 5 * 60_000]) {
+		monitorFailureWindow.runDelay(delay);
+		await monitorFailureExporter.flush();
+	}
+	monitorFailureAdapter.externalWrite(
+		path,
+		serialize(buildSnapshot([task('External conflict')], readSnapshot(monitorFailureAdapter).generatedAtEpochMs + 10)),
+	);
+	monitorFailureAdapter.failNextRename = true;
+	monitorFailureWindow.runDelay(30_000);
+	await monitorFailureExporter.flush();
+	assert.equal(
+		[...monitorFailureWindow.timers.values()].filter(timer => timer.delay === 30_000).length,
+		2,
+		'transient conflict repair failure keeps both retry and stat-monitor timers armed',
+	);
+	await monitorFailureExporter.destroy();
 
 	indexer.emit({ kind: 'incremental', generation: 1, affectedOperonIds: ['snapshot-task'] });
-	ownerWindow.runNext();
+	ownerWindow.runDelay(10);
 	await exporter.flush();
-	assert.equal(adapter.writes, 1, 'unchanged incremental reconciliation does not rewrite synced state');
+	assert.equal(adapter.publishedWrites, 4, 'unchanged incremental work does not rewrite');
 
-	indexer.tasks.set('snapshot-task', task('Updated snapshot task'));
+	indexer.tasks.set('snapshot-task', task('Updated incrementally'));
 	indexer.emit({ kind: 'incremental', generation: 2, affectedOperonIds: ['snapshot-task'] });
-	ownerWindow.runNext();
+	ownerWindow.runDelay(10);
 	await exporter.flush();
-	assert.equal(adapter.writes, 2, 'affected task is rebuilt and exported incrementally');
+	assert.equal(adapter.publishedWrites, 5);
+	assert.equal(readSnapshot(adapter).tasks[0]?.description, 'Updated incrementally');
 
-	enabled = false;
-	await exporter.handleSettingsChanged();
-	const finalSnapshot = JSON.parse(adapter.files.get(path) ?? '{}') as { enabled?: boolean; tasks?: unknown[] };
-	assert.equal(finalSnapshot.enabled, false);
-	assert.deepEqual(finalSnapshot.tasks, []);
-	assert.equal(cancelAllPublished, 1, 'only a published disabled snapshot clears the cancel intent');
-	await exporter.destroy();
+	indexer.tasks.delete('snapshot-task');
+	indexer.emit({ kind: 'incremental', generation: 3, affectedOperonIds: ['snapshot-task'] });
+	ownerWindow.runDelay(10);
+	await exporter.flush();
+	assert.deepEqual(readSnapshot(adapter).tasks, [], 'incremental deletion removes exported occurrences');
 
-	const malformedAdapter = new MemoryAdapter();
-	const malformedIndexer = new FakeIndexer();
-	malformedIndexer.tasks.set('valid-candidate', taskAt('valid-candidate', nowMs + 60 * 60_000));
-	malformedIndexer.tasks.set('invalid-candidate', taskAt('invalid-candidate', nowMs + 2 * 60 * 60_000));
-	const malformedWindow = new FakeWindow();
-	let malformedWatermark = -1;
-	const malformedExporter = new MobileNotificationsExporter({
-		app: {
-			vault: { adapter: malformedAdapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: malformedWindow } } },
-		} as never,
-		indexer: malformedIndexer,
-		getEnabled: () => true,
-		producerState: {
-			getOrCreateVaultId: async () => VAULT_ID,
-			reserveGeneratedAtEpochMs: async (now, minimum) => (
-				malformedWatermark = Math.max(now, minimum + 1, malformedWatermark + 1)
-			),
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: malformedWindow as never,
-		path,
-	});
-	await malformedExporter.start();
-	const initialMixedSnapshot = JSON.parse(malformedAdapter.files.get(path) ?? '{}') as {
-		tasks?: Array<{ operonId: string }>;
-	};
-	assert.deepEqual(
-		initialMixedSnapshot.tasks?.map(item => item.operonId),
-		['valid-candidate', 'invalid-candidate'],
-		'initial valid candidates establish the stale occurrence regression precondition',
+	const beforeOwnCheck = adapter.publishedWrites;
+	ownerWindow.runDelay(30_000);
+	await exporter.flush();
+	assert.equal(adapter.publishedWrites, beforeOwnCheck, 'stat observation of the exact own hash does not self-loop');
+
+	ownerDocument.visibilityState = 'hidden';
+	const statReadsWhileHidden = adapter.statReads;
+	ownerWindow.runDelay(30_000);
+	await exporter.flush();
+	assert.equal(adapter.statReads, statReadsWhileHidden, '30-second stat polling pauses outside the foreground');
+	ownerDocument.visibilityState = 'visible';
+	ownerDocument.dispatch('visibilitychange');
+	await exporter.flush();
+	assert.equal(adapter.statReads, statReadsWhileHidden + 1, 'visibility wake performs an immediate stat check');
+
+	const semanticallySameWatermark = readSnapshot(adapter).generatedAtEpochMs + 100;
+	adapter.externalWrite(path, serialize(buildSnapshot([], semanticallySameWatermark)));
+	ownerDocument.dispatch('visibilitychange');
+	await exporter.flush();
+	assert.equal(adapter.publishedWrites, beforeOwnCheck, 'generatedAt and derived-window-only external changes are semantic no-ops');
+
+	indexer.tasks.set('snapshot-task', task('After external watermark'));
+	indexer.emit({ kind: 'incremental', generation: 4, affectedOperonIds: ['snapshot-task'] });
+	ownerWindow.runDelay(10);
+	await exporter.flush();
+	assert.equal(
+		readSnapshot(adapter).generatedAtEpochMs,
+		semanticallySameWatermark + 1,
+		'external semantic no-op watermark is still adopted monotonically',
 	);
-	const updatedValidCandidate = taskAt('valid-candidate', nowMs + 90 * 60_000);
-	updatedValidCandidate.description = 'Updated valid candidate';
-	malformedIndexer.tasks.set('valid-candidate', updatedValidCandidate);
-	const malformedCandidate = taskAt('invalid-candidate', nowMs + 2 * 60 * 60_000);
-	malformedCandidate.primary = { ...malformedCandidate.primary, filePath: '../Unsafe.md' };
-	malformedIndexer.tasks.set('invalid-candidate', malformedCandidate);
-	let malformedWarningCaptured = false;
-	const malformedOriginalWarn = console.warn;
-	console.warn = (...args: unknown[]) => {
-		if (String(args[0]).includes('skipped malformed mobile notification candidate')) {
-			malformedWarningCaptured = true;
-		} else {
-			malformedOriginalWarn(...args);
-		}
-	};
-	try {
-		malformedIndexer.emit({
-			kind: 'incremental',
-			generation: 1,
-			affectedOperonIds: ['invalid-candidate', 'valid-candidate'],
-		});
-		malformedWindow.runNext();
-		await malformedExporter.flush();
-	} finally {
-		console.warn = malformedOriginalWarn;
+
+	const externalMismatch = buildSnapshot([task('External conflict')], readSnapshot(adapter).generatedAtEpochMs + 10);
+	adapter.externalWrite(path, serialize(externalMismatch));
+	ownerWindow.dispatch('focus');
+	await exporter.flush();
+	assert.equal(readSnapshot(adapter).tasks[0]?.description, 'After external watermark', 'external semantic mismatch triggers a full authoritative rebuild');
+
+	const beforeMalformedRecovery = adapter.publishedWrites;
+	adapter.externalWrite(path, '{broken');
+	ownerWindow.runDelay(30_000);
+	await exporter.flush();
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		ownerWindow.runDelay(2_000);
+		await exporter.flush();
 	}
-	const recoveredMixedSnapshot = JSON.parse(malformedAdapter.files.get(path) ?? '{}') as {
-		tasks?: Array<{ operonId: string; description: string }>;
-	};
-	assert.equal(malformedWarningCaptured, true, 'the malformed candidate is reported without failing the batch');
-	assert.deepEqual(recoveredMixedSnapshot.tasks?.map(item => ({
-		operonId: item.operonId,
-		description: item.description,
-	})), [{
-		operonId: 'valid-candidate',
-		description: 'Updated valid candidate',
-	}], 'the stale invalid occurrence is removed while the valid candidate is still published');
-	await malformedExporter.destroy();
+	assert.equal(adapter.publishedWrites, beforeMalformedRecovery + 1, 'malformed external state gets bounded retries then recovers');
+	assert.equal(readSnapshot(adapter).enabled, true);
 
-	const drainAdapter = new MemoryAdapter();
-	const drainIndexer = new FakeIndexer();
-	drainIndexer.tasks.set('snapshot-task', task());
-	const drainWindow = new FakeWindow();
-	let drainWatermark = -1;
-	const drainExporter = new MobileNotificationsExporter({
-		app: {
-			vault: { adapter: drainAdapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: drainWindow } } },
-		} as never,
-		indexer: drainIndexer,
-		getEnabled: () => true,
-		producerState: {
-			getOrCreateVaultId: async () => VAULT_ID,
-			reserveGeneratedAtEpochMs: async (now, minimum) => (drainWatermark = Math.max(now, minimum + 1, drainWatermark + 1)),
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: drainWindow as never,
-		path,
-	});
-	await drainExporter.start();
-	drainIndexer.tasks.set('snapshot-task', task('Unload-drained update'));
-	drainIndexer.emit({ kind: 'incremental', generation: 3, affectedOperonIds: ['snapshot-task'] });
-	await drainExporter.destroy();
-	const drained = JSON.parse(drainAdapter.files.get(path) ?? '{}') as { enabled?: boolean; tasks?: Array<{ description: string }> };
-	assert.equal(drained.enabled, true, 'unload does not write a disabled control message');
-	assert.equal(drained.tasks?.[0]?.description, 'Unload-drained update', 'unload drains pending affected ids');
-
-	const rollbackAdapter = new MemoryAdapter();
-	const rollbackIndexer = new FakeIndexer();
-	rollbackIndexer.tasks.set('snapshot-task', task());
-	const rollbackWindow = new FakeWindow();
-	let rollbackEnabled = true;
-	const rollbackExporter = new MobileNotificationsExporter({
-		app: {
-			vault: { adapter: rollbackAdapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: rollbackWindow } } },
-		} as never,
-		indexer: rollbackIndexer,
-		getEnabled: () => rollbackEnabled,
-		producerState: {
-			getOrCreateVaultId: async () => VAULT_ID,
-			reserveGeneratedAtEpochMs: async () => nowMs + 5 * 60_000 + 1,
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: rollbackWindow as never,
-		path,
-	});
-	const originalWarn = console.warn;
-	let rollbackWarningCaptured = false;
-	console.warn = (...args: unknown[]) => {
-		if (String(args[0]).includes('mobile notifications snapshot export failed')) rollbackWarningCaptured = true;
-		else originalWarn(...args);
-	};
-	try {
-		await rollbackExporter.start();
-	} finally {
-		console.warn = originalWarn;
+	const beforeMissingRecovery = adapter.publishedWrites;
+	await adapter.remove(path);
+	ownerWindow.runDelay(30_000);
+	await exporter.flush();
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		ownerWindow.runDelay(2_000);
+		await exporter.flush();
 	}
-	assert.equal(rollbackWarningCaptured, true, 'the expected clock-rollback failure follows the exporter diagnostic path');
-	assert.equal(rollbackAdapter.writes, 0, 'a watermark beyond Android clock tolerance fails closed');
-	assert.equal(rollbackWindow.timers.size > 0, true, 'failed reservation retains work on a bounded retry timer');
-	rollbackEnabled = false;
-	await rollbackExporter.destroy();
+	assert.equal(adapter.publishedWrites, beforeMissingRecovery + 1, 'missing external state gets bounded retries then recovers');
 
-	const retryAdapter = new FailingFirstWriteAdapter();
-	const retryIndexer = new FakeIndexer();
-	retryIndexer.tasks.set('snapshot-task', task());
-	const retryWindow = new FakeWindow();
-	let retryWatermark = -1;
-	const retryExporter = new MobileNotificationsExporter({
-		app: {
-			vault: { adapter: retryAdapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: retryWindow } } },
-		} as never,
-		indexer: retryIndexer,
-		getEnabled: () => true,
-		producerState: {
-			getOrCreateVaultId: async () => VAULT_ID,
-			reserveGeneratedAtEpochMs: async (now, minimum) => (retryWatermark = Math.max(now, minimum + 1, retryWatermark + 1)),
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: retryWindow as never,
-		path,
-	});
-	const retryOriginalWarn = console.warn;
-	console.warn = () => {};
-	try {
-		await retryExporter.start();
-	} finally {
-		console.warn = retryOriginalWarn;
-	}
-	assert.equal(retryAdapter.files.has(path), false, 'transient startup failure preserves the prior file state');
-	retryAdapter.failWrites = false;
-	retryWindow.runNext();
-	await retryExporter.flush();
-	assert.equal(retryAdapter.files.has(path), true, 'retained startup work succeeds on bounded retry');
-	await retryExporter.destroy();
+	const beforeForcedRead = adapter.publishedWrites;
+	ownerWindow.runDelay(5 * 60_000);
+	await exporter.flush();
+	assert.equal(adapter.publishedWrites, beforeForcedRead, 'five-minute forced read recognizes the exact owned snapshot');
 
-	const identityAdapter = new MemoryAdapter();
-	const identityWindow = new FakeWindow();
-	let identityAttempts = 0;
-	let identityWatermark = -1;
-	const identityExporter = new MobileNotificationsExporter({
-		app: {
-			vault: { adapter: identityAdapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: identityWindow } } },
-		} as never,
-		indexer: retryIndexer,
-		getEnabled: () => true,
-		producerState: {
-			getOrCreateVaultId: async () => {
-				identityAttempts += 1;
-				if (identityAttempts === 1) throw new Error('IDENTITY_WRITE_FAILED');
-				return VAULT_ID;
-			},
-			reserveGeneratedAtEpochMs: async (now, minimum) => (
-				identityWatermark = Math.max(now, minimum + 1, identityWatermark + 1)
-			),
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: identityWindow as never,
-		path,
-	});
-	console.warn = () => {};
-	try {
-		await identityExporter.start();
-	} finally {
-		console.warn = retryOriginalWarn;
-	}
-	assert.equal(identityAdapter.files.has(path), false, 'identity persistence failure stays isolated from startup');
-	identityWindow.runNext();
-	await identityExporter.flush();
-	assert.equal(identityAdapter.files.has(path), true, 'identity initialization is retried before activation');
-	await identityExporter.destroy();
+	ownerWindow.runDelay(24 * 60 * 60_000);
+	await exporter.flush();
+	assert.equal(adapter.publishedWrites, beforeForcedRead + 1, '24-hour refresh remains a forced full publication');
 
-	const cancelAdapter = new FailingFirstWriteAdapter();
-	const cancelWindow = new FakeWindow();
-	let cancelPending = true;
-	let cancelWatermark = -1;
-	const createCancelExporter = () => new MobileNotificationsExporter({
-		app: {
-			vault: { adapter: cancelAdapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: cancelWindow } } },
-		} as never,
-		indexer: retryIndexer,
-		getEnabled: () => false,
-		producerState: {
-			isCancelPending: () => cancelPending,
-			getOrCreateVaultId: async () => VAULT_ID,
-			reserveGeneratedAtEpochMs: async (now, minimum) => (
-				cancelWatermark = Math.max(now, minimum + 1, cancelWatermark + 1)
-			),
-			markCancelAllPublished: async () => { cancelPending = false; },
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: cancelWindow as never,
-		path,
-	});
-	const failedCancelExporter = createCancelExporter();
-	console.warn = () => {};
-	try {
-		await failedCancelExporter.start();
-	} finally {
-		console.warn = retryOriginalWarn;
-	}
-	assert.equal(cancelPending, true, 'failed disabled snapshot keeps a durable cancel intent');
-	await failedCancelExporter.destroy();
-	cancelAdapter.failWrites = false;
-	const restartedCancelExporter = createCancelExporter();
-	await restartedCancelExporter.start();
-	const restartedCancel = JSON.parse(cancelAdapter.files.get(path) ?? '{}') as { enabled?: boolean };
-	assert.equal(restartedCancel.enabled, false, 'disabled startup completes the retained cancel-all intent');
-	assert.equal(cancelPending, false, 'successful cancel-all clears the durable intent');
-	await restartedCancelExporter.destroy();
+	await exporter.destroy();
+	assert.equal(ownerWindow.timers.size, 0, 'destroy clears every exporter timer');
+	assert.equal(ownerWindow.listenerCount(), 0, 'destroy removes focus listeners');
+	assert.equal(ownerDocument.listenerCount(), 0, 'destroy removes visibility listeners');
+	assert.equal(indexer.listenerCount(), 0, 'destroy unsubscribes index reconciliation');
 
-	const mobileAdapter = new MemoryAdapter();
-	const mobileExporter = new MobileNotificationsExporter({
-		app: {
-			vault: { adapter: mobileAdapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: cancelWindow } } },
-		} as never,
-		indexer: retryIndexer,
-		canProduce: () => false,
-		getEnabled: () => false,
-		producerState: {
-			isCancelPending: () => true,
-			getOrCreateVaultId: async () => { throw new Error('mobile producer path was entered'); },
-			reserveGeneratedAtEpochMs: async () => { throw new Error('mobile watermark path was entered'); },
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: cancelWindow as never,
-		path,
-	});
-	await mobileExporter.start();
-	assert.equal(mobileAdapter.files.has(path), false, 'non-desktop startup cannot publish a synced pending cancel');
-	await mobileExporter.destroy();
-
-	const raceAdapter = new MemoryAdapter();
-	const raceIndexer = new FakeIndexer();
-	raceIndexer.tasks.set('snapshot-task', task());
-	const raceWindow = new FakeWindow();
-	let raceEnabled = true;
-	let raceWatermark = -1;
-	let blockNextReservation = false;
-	let reservationEntered = (): void => {};
-	let releaseReservation = (): void => {};
-	const reservationEnteredPromise = new Promise<void>(resolve => { reservationEntered = resolve; });
-	const reservationReleasePromise = new Promise<void>(resolve => { releaseReservation = resolve; });
-	const raceExporter = new MobileNotificationsExporter({
-		app: {
-			vault: { adapter: raceAdapter, configDir: '.obsidian', getName: () => 'Stratejya Next' },
-			workspace: { containerEl: { ownerDocument: { defaultView: raceWindow } } },
-		} as never,
-		indexer: raceIndexer,
-		getEnabled: () => raceEnabled,
-		producerState: {
-			getOrCreateVaultId: async () => VAULT_ID,
-			reserveGeneratedAtEpochMs: async (now, minimum) => {
-				if (blockNextReservation) {
-					blockNextReservation = false;
-					reservationEntered();
-					await reservationReleasePromise;
-				}
-				raceWatermark = Math.max(now, minimum + 1, raceWatermark + 1);
-				return raceWatermark;
-			},
-		},
-		getCatchUpMinutes: () => 60,
-		getAppearanceSettings: () => DEFAULT_SETTINGS,
-		isSystemReminderFieldEnabled: () => true,
-		getTimezone: () => 'Europe/Berlin',
-		now: () => nowMs,
-		ownerWindow: raceWindow as never,
-		path,
-	});
-	await raceExporter.start();
-	blockNextReservation = true;
-	raceEnabled = false;
-	const disabling = raceExporter.handleSettingsChanged();
-	await reservationEnteredPromise;
-	raceEnabled = true;
-	const enabling = raceExporter.handleSettingsChanged();
-	releaseReservation();
-	await Promise.all([disabling, enabling]);
-	const raceFinal = JSON.parse(raceAdapter.files.get(path) ?? '{}') as { enabled?: boolean };
-	assert.equal(raceFinal.enabled, true, 'serialized disable-to-enable race leaves the last requested state authoritative');
-	await raceExporter.destroy();
+	const ineligibleAdapter = new MemoryAdapter();
+	const ineligibleWindow = new FakeWindow();
+	const ineligibleDocument = new FakeDocument();
+	ineligibleDocument.defaultView = ineligibleWindow;
+	const ineligibleExporter = createExporter(ineligibleAdapter, indexer, ineligibleWindow, ineligibleDocument, false);
+	await ineligibleExporter.start();
+	assert.equal(ineligibleAdapter.files.has(path), false, 'an ineligible runtime remains non-producing');
+	await ineligibleExporter.destroy();
 
 	const failing = new FailingReplacementAdapter();
-	failing.files.set(path, 'live-snapshot');
+	failing.externalWrite(path, 'live-snapshot');
 	await assert.rejects(() => writeMobileNotificationsSnapshotAtomically(failing as never, path, 'replacement'));
 	assert.equal(failing.files.get(path), 'live-snapshot', 'failed replacement restores the live snapshot');
 
-	console.log('Mobile notification producer unit tests passed');
+	console.log('Mobile notification exporter unit tests passed');
 }
 
 declare global {
@@ -638,4 +447,5 @@ declare global {
 	var __operonMobileNotificationsSample: unknown;
 }
 
+globalThis.__operonMobileNotificationsSample = buildSnapshot([task()], nowMs);
 globalThis.__operonMobileNotificationsExporterTestRun = run();

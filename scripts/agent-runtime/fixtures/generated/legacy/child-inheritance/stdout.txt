@@ -1,0 +1,3 @@
+- [ ] Inheritance parent #parent {{operonId:: lhwa1k4}} {{status:: Work.Active}} {{priority:: P1}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{taskIcon:: circle-check}} {{taskColor:: 336699}} {{datetimeModified:: 2026-01-15T10:20:30}}
+- [ ] Inherited child {{operonId:: lya3ezn}} {{status:: Work.Inbox}} {{priority:: P1}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{parentTask:: lhwa1k4}} {{taskIcon:: circle-check}} {{taskColor:: 336699}} {{datetimeModified:: 2026-01-15T10:20:30}}
+- [ ] Overridden child {{operonId:: q4vryhf}} {{status:: Work.Inbox}} {{priority:: P2}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{parentTask:: lhwa1k4}} {{taskIcon:: circle-check}} {{taskColor:: 663399}} {{datetimeModified:: 2026-01-15T10:20:30}}

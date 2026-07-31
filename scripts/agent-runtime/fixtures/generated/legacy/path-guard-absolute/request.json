@@ -1,0 +1,10 @@
+{
+  "mode": "inline",
+  "target": "<FIXTURE_ROOT>/absolute-target.md",
+  "tasks": [
+    {
+      "description": "Absolute target rejection"
+    }
+  ],
+  "timestamp": "2026-01-15T10:20:30"
+}

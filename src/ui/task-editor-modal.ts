@@ -136,7 +136,13 @@ export class TaskEditorModal extends Modal {
 		let node: Node | null = target;
 		while (node && node !== this.containerEl) {
 			const classList = (node as { classList?: DOMTokenList }).classList;
-			if (classList?.contains('operon-task-editor-file-source-editor')) return true;
+			if (
+				classList?.contains('operon-task-editor-file-source-editor')
+				|| classList?.contains('operon-compact-markdown-editor')
+				|| classList?.contains('operon-compact-markdown-editor-fallback')
+			) {
+				return true;
+			}
 			node = node.parentNode;
 		}
 		return false;

@@ -10,6 +10,7 @@ import {
 	normalizePinnedTasksPackage,
 	OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
 	prunePinnedTaskTombstones,
+	type OperonPinnedTaskPackageEntry,
 	type OperonPinnedTasksPackageV1,
 } from './operon-data-package';
 
@@ -18,6 +19,30 @@ export interface PinnedCachePackagePersistence {
 	updatePackage(mutator: (current: OperonPinnedTasksPackageV1) => OperonPinnedTasksPackageV1): Promise<OperonPinnedTasksPackageV1>;
 	canPersist(): boolean;
 }
+
+export type PinnedCacheEntrySnapshot = OperonPinnedTaskPackageEntry | null;
+
+export type PinnedCacheCompareAndSetResult =
+	| {
+		outcome: 'committed';
+		before: PinnedCacheEntrySnapshot;
+		after: OperonPinnedTaskPackageEntry;
+	}
+	| {
+		outcome: 'no-change';
+		before: PinnedCacheEntrySnapshot;
+		after: PinnedCacheEntrySnapshot;
+	}
+	| {
+		outcome: 'already-applied';
+		before: PinnedCacheEntrySnapshot;
+		after: OperonPinnedTaskPackageEntry;
+	}
+	| {
+		outcome: 'conflict';
+		before: PinnedCacheEntrySnapshot;
+		after: PinnedCacheEntrySnapshot;
+	};
 
 export class PinnedCache {
 	private pinnedPackage: OperonPinnedTasksPackageV1 = createEmptyPinnedTasksPackage();
@@ -31,6 +56,10 @@ export class PinnedCache {
 
 	setPackagePersistence(packagePersistence: PinnedCachePackagePersistence): void {
 		this.packagePersistence = packagePersistence;
+	}
+
+	canPersistCanonical(): boolean {
+		return this.packagePersistence?.canPersist() === true;
 	}
 
 	/**
@@ -65,6 +94,26 @@ export class PinnedCache {
 		return this.pinnedSet.has(operonId);
 	}
 
+	getEntry(operonId: string): OperonPinnedTaskPackageEntry | undefined {
+		const entry = this.pinnedPackage.itemsById[operonId.trim()];
+		return entry ? { ...entry } : undefined;
+	}
+
+	getCanonicalEntry(operonId: string): PinnedCacheEntrySnapshot {
+		const packageData = this.packagePersistence?.getPackage();
+		if (!packageData) return null;
+		const entry = normalizePinnedTasksPackage(packageData).itemsById[operonId.trim()];
+		return entry ? { ...entry } : null;
+	}
+
+	hasManualOrder(): boolean {
+		return !!this.pinnedPackage.manualOrder;
+	}
+
+	getManualOrderIds(): string[] {
+		return [...(this.pinnedPackage.manualOrder?.operonIds ?? [])];
+	}
+
 	/** Pin a task. No-op if already pinned. */
 	async pin(operonId: string): Promise<void> {
 		const normalized = operonId.trim();
@@ -87,6 +136,96 @@ export class PinnedCache {
 		});
 	}
 
+	/**
+	 * Persist one exact pin-state transition only while the canonical entry still
+	 * matches the snapshot sealed during preview. Runtime mutations must use this
+	 * path instead of the permissive UI helpers above: it never falls back to
+	 * memory-only state when canonical data-package persistence is unavailable.
+	 */
+	async compareAndSetPinned(
+		operonId: string,
+		expected: PinnedCacheEntrySnapshot,
+		pinned: boolean,
+		updatedAt: string,
+	): Promise<PinnedCacheCompareAndSetResult> {
+		const normalized = operonId.trim();
+		if (!normalized) throw new Error('Pinned task compare-and-set requires an operonId.');
+		if (!Number.isFinite(Date.parse(updatedAt))) {
+			throw new Error('Pinned task compare-and-set requires a valid updatedAt timestamp.');
+		}
+		const expectedSnapshot = expected ? { ...expected } : null;
+		const run = this.mutationQueue.then(async (): Promise<PinnedCacheCompareAndSetResult> => {
+			if (!this.packagePersistence?.canPersist()) {
+				throw new Error('Canonical pinned task persistence is unavailable.');
+			}
+			const operationState: { result: PinnedCacheCompareAndSetResult | null } = { result: null };
+			let persisted: OperonPinnedTasksPackageV1;
+			try {
+				persisted = await this.packagePersistence.updatePackage(currentPackage => {
+					// Runtime CAS authority is the canonical package passed by the
+					// persistence queue. Never merge the in-memory facade here: doing so
+					// could flush unrelated stale memory entries during one exact mutation.
+					const base = normalizePinnedTasksPackage(currentPackage);
+					const currentEntry = base.itemsById[normalized]
+						? { ...base.itemsById[normalized] }
+						: null;
+					const plannedEntry = { pinned, updatedAt };
+					if (this.entriesEqual(currentEntry, plannedEntry)) {
+						operationState.result = {
+							outcome: 'already-applied',
+							before: expectedSnapshot,
+							after: plannedEntry,
+						};
+						return base;
+					}
+					if (!this.entriesEqual(currentEntry, expectedSnapshot)) {
+						operationState.result = {
+							outcome: 'conflict',
+							before: expectedSnapshot,
+							after: currentEntry,
+						};
+						return base;
+					}
+					if ((currentEntry?.pinned ?? false) === pinned) {
+						operationState.result = {
+							outcome: 'no-change',
+							before: currentEntry,
+							after: currentEntry,
+						};
+						return base;
+					}
+					operationState.result = {
+						outcome: 'committed',
+						before: currentEntry,
+						after: plannedEntry,
+					};
+					return this.withEntry(base, normalized, plannedEntry);
+				});
+			} catch (error) {
+				// The package store may have committed before losing its acknowledgement.
+				// Rehydrate the facade from the canonical read without attempting
+				// another write so same-plan recovery can prove an exact after-state.
+				try {
+					this.applyPackage(this.packagePersistence.getPackage());
+				} catch {
+					// Preserve the original persistence error and its uncertainty fence.
+				}
+				throw error;
+			}
+			this.applyPackage(persisted);
+			const result = operationState.result;
+			if (!result) {
+				throw new Error('Canonical pinned task compare-and-set did not execute.');
+			}
+			if (result.outcome === 'committed' && !this.entriesEqual(this.getEntry(normalized) ?? null, result.after)) {
+				throw new Error('Canonical pinned task compare-and-set could not be verified.');
+			}
+			return result;
+		});
+		this.mutationQueue = run.then(() => undefined, () => undefined);
+		return await run;
+	}
+
 	/** Toggle pin state for a task. */
 	async toggle(operonId: string): Promise<void> {
 		const normalized = operonId.trim();
@@ -100,6 +239,45 @@ export class PinnedCache {
 	/** Return all pinned operonIds. */
 	getPinnedIds(): string[] {
 		return [...this.pinnedSet];
+	}
+
+	async ensureManualOrder(operonIds: Iterable<string>): Promise<void> {
+		await this.mutatePackage((current, now) => {
+			if (current.manualOrder) return current;
+			return this.withManualOrder(current, operonIds, now);
+		}, { requirePersistence: true });
+	}
+
+	async replaceManualOrder(operonIds: Iterable<string>): Promise<void> {
+		await this.mutatePackage((current, now) => {
+			const normalizedIds = this.normalizeOperonIds(operonIds);
+			if (current.manualOrder && this.sameOperonIds(current.manualOrder.operonIds, normalizedIds)) return current;
+			return this.withManualOrder(current, normalizedIds, now);
+		}, { requirePersistence: true });
+	}
+
+	async reorderVisibleManualOrder(operonIds: Iterable<string>): Promise<void> {
+		await this.mutatePackage((current, now) => {
+			const visibleIds = this.normalizeOperonIds(operonIds);
+			const storedIds = current.manualOrder?.operonIds ?? [];
+			const visibleIdSet = new Set(visibleIds);
+			const currentlyVisibleIds = storedIds.filter(operonId => visibleIdSet.has(operonId));
+			const allVisibleIdsAlreadyStored = visibleIds.every(operonId => storedIds.includes(operonId));
+			if (allVisibleIdsAlreadyStored && this.sameOperonIds(currentlyVisibleIds, visibleIds)) return current;
+
+			const firstRemovedIndex = storedIds.findIndex(operonId => visibleIdSet.has(operonId));
+			const retainedIds = storedIds.filter(operonId => !visibleIdSet.has(operonId));
+			const insertAt = firstRemovedIndex < 0
+				? retainedIds.length
+				: Math.min(firstRemovedIndex, retainedIds.length);
+			const nextIds = [
+				...retainedIds.slice(0, insertAt),
+				...visibleIds,
+				...retainedIds.slice(insertAt),
+			];
+			if (current.manualOrder && this.sameOperonIds(storedIds, nextIds)) return current;
+			return this.withManualOrder(current, nextIds, now);
+		}, { requirePersistence: true });
 	}
 
 	getGeneration(): number {
@@ -164,6 +342,7 @@ export class PinnedCache {
 
 	private async mutatePackage(
 		transform: (current: OperonPinnedTasksPackageV1, now: string) => OperonPinnedTasksPackageV1,
+		options: { requirePersistence?: boolean } = {},
 	): Promise<void> {
 		const run = this.mutationQueue.then(async () => {
 			const now = this.nowIso();
@@ -175,6 +354,9 @@ export class PinnedCache {
 				});
 				this.applyPackage(persisted);
 				return;
+			}
+			if (options.requirePersistence) {
+				throw new Error('Pinned task manual order persistence is unavailable.');
 			}
 
 			const next = prunePinnedTaskTombstones(
@@ -199,7 +381,50 @@ export class PinnedCache {
 				...current.itemsById,
 				[operonId]: entry,
 			},
+			...(current.manualOrder ? { manualOrder: current.manualOrder } : {}),
 		});
+	}
+
+	private withManualOrder(
+		current: OperonPinnedTasksPackageV1,
+		operonIds: Iterable<string>,
+		updatedAt: string,
+	): OperonPinnedTasksPackageV1 {
+		return normalizePinnedTasksPackage({
+			version: current.version,
+			itemsById: current.itemsById,
+			manualOrder: {
+				operonIds: this.normalizeOperonIds(operonIds),
+				updatedAt,
+			},
+		});
+	}
+
+	private normalizeOperonIds(operonIds: Iterable<string>): string[] {
+		const seen = new Set<string>();
+		const normalizedIds: string[] = [];
+		for (const rawId of operonIds) {
+			const operonId = rawId.trim();
+			if (!operonId || seen.has(operonId)) continue;
+			seen.add(operonId);
+			normalizedIds.push(operonId);
+		}
+		return normalizedIds;
+	}
+
+	private sameOperonIds(left: readonly string[], right: readonly string[]): boolean {
+		return left.length === right.length && left.every((operonId, index) => operonId === right[index]);
+	}
+
+	private entriesEqual(
+		left: PinnedCacheEntrySnapshot,
+		right: PinnedCacheEntrySnapshot,
+	): boolean {
+		return left === null
+			? right === null
+			: right !== null
+				&& left.pinned === right.pinned
+				&& left.updatedAt === right.updatedAt;
 	}
 
 	private applyPackage(

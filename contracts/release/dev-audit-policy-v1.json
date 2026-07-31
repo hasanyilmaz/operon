@@ -1,0 +1,32 @@
+{
+  "policyVersion": 2,
+  "production": {
+    "maximumVulnerabilities": 0
+  },
+  "development": {
+    "maximumVulnerabilities": 0,
+    "directRoot": "eslint-plugin-obsidianmd",
+    "resolvedAdvisory": {
+      "packageName": "brace-expansion",
+      "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+      "allowedInstalledVersions": [
+        "1.1.18",
+        "2.1.4",
+        "5.0.9"
+      ]
+    },
+    "forbiddenRuntimePackages": [
+      "@eslint/config-array",
+      "@eslint/eslintrc",
+      "@microsoft/eslint-plugin-sdl",
+      "brace-expansion",
+      "eslint",
+      "eslint-plugin-import",
+      "eslint-plugin-json-schema-validator",
+      "eslint-plugin-n",
+      "eslint-plugin-obsidianmd",
+      "eslint-plugin-react",
+      "minimatch"
+    ]
+  }
+}

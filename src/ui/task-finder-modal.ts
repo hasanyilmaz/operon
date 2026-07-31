@@ -25,6 +25,7 @@ import {
 	createInlineTaskCompactChipElement,
 	type CompactTaskLookupContext,
 	InlineTaskCompactChipEntry,
+	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
@@ -44,6 +45,7 @@ import {
 	toggleTaskSearchBoxScope,
 } from './task-search-box-integration';
 import { asHTMLElement, createOwnerElement } from '../core/dom-compat';
+import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
 type TaskFinderResult =
 	| { kind: 'project'; candidate: ProjectSearchCandidate }
@@ -116,6 +118,7 @@ export class TaskFinderModal extends Modal {
 	private taskSnapshotGeneration = -1;
 	private taskSnapshot: IndexedTask[] = [];
 	private compactTaskLookup: CompactTaskLookupContext | null = null;
+	private indexUpdatesUnsubscribe: (() => void) | null = null;
 	private readonly searchSessions = new Map<TaskFinderSearchSessionRole, TaskFinderSearchSessionCacheEntry>();
 	private chipOverflowFrame: number | null = null;
 	private toolbarOverflowFrame: number | null = null;
@@ -287,6 +290,10 @@ export class TaskFinderModal extends Modal {
 		this.footerEl = this.contentEl.createDiv('operon-task-finder-footer');
 
 		this.render();
+		this.indexUpdatesUnsubscribe?.();
+		this.indexUpdatesUnsubscribe = this.indexer.subscribeIndexUpdates(() => {
+			this.refreshAfterIndexUpdate();
+		});
 		this.focusInput();
 	}
 
@@ -297,6 +304,8 @@ export class TaskFinderModal extends Modal {
 		this.taskSnapshotGeneration = -1;
 		this.taskSnapshot = [];
 		this.compactTaskLookup = null;
+		this.indexUpdatesUnsubscribe?.();
+		this.indexUpdatesUnsubscribe = null;
 		this.nativeCloseButtonCleanup?.();
 		this.nativeCloseButtonCleanup = null;
 		this.containerEl.removeEventListener('pointerdown', this.outsidePointerHandler);
@@ -468,6 +477,25 @@ export class TaskFinderModal extends Modal {
 		this.scheduleToolbarOverflowState();
 	}
 
+	private refreshAfterIndexUpdate(): void {
+		if (this.isClosing || !this.modalEl.isConnected) return;
+		const activeResult = this.currentResults[this.activeIndex] ?? null;
+		const activeOperonId = activeResult?.kind === 'task'
+			? activeResult.task.operonId
+			: activeResult?.candidate.task.operonId ?? null;
+		if (this.selectedProject) {
+			this.selectedProject = this.indexer.getTask(this.selectedProject.operonId) ?? this.selectedProject;
+		}
+		this.render();
+		if (!activeOperonId) return;
+		const nextIndex = this.currentResults.findIndex(result => (
+			result.kind === 'task' ? result.task.operonId : result.candidate.task.operonId
+		) === activeOperonId);
+		if (nextIndex < 0 || nextIndex === this.activeIndex) return;
+		this.activeIndex = nextIndex;
+		this.renderResults();
+	}
+
 	private renderButtons(): void {
 		for (const [mode, button] of this.modeButtons.entries()) {
 			button.toggleClass('is-active', this.projectMode === mode);
@@ -551,9 +579,10 @@ export class TaskFinderModal extends Modal {
 		this.renderTaskIcon(icon, this.selectedProject);
 		this.applyTaskIconColor(icon, this.selectedProject);
 		const body = this.selectedProjectEl.createDiv('operon-task-finder-selected-body');
-		body.createDiv({
-			cls: 'operon-task-finder-selected-title',
-			text: this.selectedProject.description || this.selectedProject.operonId,
+		const title = body.createDiv('operon-task-finder-selected-title');
+		renderCompactTaskMarkdown(title, {
+			value: this.selectedProject.description || this.selectedProject.operonId,
+			mode: 'visual-only',
 		});
 		this.renderTaskChipLine(body, this.selectedProject);
 		const clearButton = this.selectedProjectEl.createEl('button', {
@@ -1110,9 +1139,10 @@ export class TaskFinderModal extends Modal {
 		this.renderTaskIcon(iconWrap, candidate.task);
 		this.applyTaskIconColor(iconWrap, candidate.task);
 		const body = row.createDiv('operon-task-finder-result-body');
-		body.createDiv({
-			cls: 'operon-task-finder-result-title',
-			text: candidate.task.description || candidate.task.operonId,
+		const title = body.createDiv('operon-task-finder-result-title');
+		renderCompactTaskMarkdown(title, {
+			value: candidate.task.description || candidate.task.operonId,
+			mode: 'visual-only',
 		});
 		this.renderTaskChipLine(body, candidate.task);
 		return row;
@@ -1128,9 +1158,10 @@ export class TaskFinderModal extends Modal {
 		this.applyTaskIconColor(iconWrap, task);
 
 		const body = row.createDiv('operon-task-finder-result-body');
-		body.createDiv({
-			cls: 'operon-task-finder-result-title',
-			text: task.description || task.operonId,
+		const title = body.createDiv('operon-task-finder-result-title');
+		renderCompactTaskMarkdown(title, {
+			value: task.description || task.operonId,
+			mode: 'visual-only',
 		});
 		this.renderTaskChipLine(body, task);
 		return row;
@@ -1226,6 +1257,8 @@ export class TaskFinderModal extends Modal {
 		}
 		const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
 		if (dateToneColor) chip.setCssProps({ '--operon-inline-chip-icon-color': dateToneColor });
+		const blockedByColor = resolveCompactBlockedByIconColor(entry);
+		if (blockedByColor) chip.setCssProps({ '--operon-inline-chip-icon-color': blockedByColor });
 	}
 
 	private prioritizeOverdueDateEntries(

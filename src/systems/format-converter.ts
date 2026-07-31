@@ -57,7 +57,18 @@ export class FormatConverter {
 		const fileName = this.sanitizeFileName(description) || t('taskEditor', 'untitledTaskFile');
 		const filePath = this.getUniqueFilePath(targetFolder, fileName);
 
-		// Build YAML frontmatter
+		const content = this.renderInlineToYaml(operonId);
+		if (!content) return null;
+		await this.app.vault.create(filePath, content);
+
+		return filePath;
+	}
+
+	/** Render the canonical YAML representation without touching the vault. */
+	renderInlineToYaml(operonId: string): string | null {
+		const task = this.indexer.getTask(operonId);
+		if (!task) return null;
+
 		const yamlLines: string[] = ['---'];
 
 		// operonId first (identity field)
@@ -98,10 +109,7 @@ export class FormatConverter {
 		yamlLines.push('---');
 		yamlLines.push('');
 
-		const content = yamlLines.join('\n');
-		await this.app.vault.create(filePath, content);
-
-		return filePath;
+		return yamlLines.join('\n');
 	}
 
 	/**

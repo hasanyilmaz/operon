@@ -19,6 +19,8 @@ import { asyncHandler } from '../core/async-action';
 import { getPinnedTasksForDisplay } from '../core/pinned-task-query';
 import { isTaskSourceOpenModifierClick } from './task-source-open-modifier';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { bindPinnedTaskReorder, type PinnedTaskReorderController } from './pinned-task-reorder-interaction';
+import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
 export interface PinnedDockCallbacks {
 	openTaskEditor: (operonId: string) => void;
@@ -29,6 +31,7 @@ export interface PinnedDockCallbacks {
 	toggleTimer: (taskId: string) => Promise<boolean>;
 	saveSettings: () => void;
 	refreshLayout: () => void;
+	replaceActiveManualOrder?: (orderedTaskIds: string[]) => Promise<void>;
 }
 
 export class PinnedTasksDock extends Component {
@@ -37,6 +40,7 @@ export class PinnedTasksDock extends Component {
 	private lastRenderSignature: string | null = null;
 	private autoCloseTimer: WindowTimeoutHandle | null = null;
 	private dragState: { startX: number; startY: number; origLeft: number; origTop: number } | null = null;
+	private reorderController: PinnedTaskReorderController | null = null;
 	private unsubscribeTimer: (() => void) | null = null;
 
 	constructor(
@@ -110,6 +114,9 @@ export class PinnedTasksDock extends Component {
 	onunload(): void {
 		this.unsubscribeTimer?.();
 		this.unsubscribeTimer = null;
+		const reorderController = this.reorderController;
+		this.reorderController = null;
+		reorderController?.destroy();
 		this.clearAutoClose();
 		this.containerEl?.remove();
 		this.containerEl = null;
@@ -151,6 +158,11 @@ export class PinnedTasksDock extends Component {
 			return;
 		}
 		if (this.containerEl.classList.contains('is-hidden')) return;
+		if (this.containerEl.classList.contains('is-collapsed')) {
+			this.markDirty();
+			return;
+		}
+		if (this.reorderController?.isActive()) return;
 
 		const pinnedTasks = this.getPinnedTasks();
 		const activeTrackerId = this.timeTracker.getActiveOperonId();
@@ -177,6 +189,16 @@ export class PinnedTasksDock extends Component {
 		if (signature === this.lastRenderSignature) return;
 		this.lastRenderSignature = signature;
 
+		const layout = this.settings.pinnedDockLayout ?? 'horizontal';
+		const previousStrip = this.bodyEl.querySelector<HTMLElement>(':scope > .operon-pinned-cards');
+		const preserveScroll = previousStrip?.classList.contains(`operon-pinned-cards--${layout}`) === true;
+		const previousStripScrollLeft = preserveScroll ? previousStrip.scrollLeft : 0;
+		const previousStripScrollTop = preserveScroll ? previousStrip.scrollTop : 0;
+		const previousBodyScrollLeft = preserveScroll ? this.bodyEl.scrollLeft : 0;
+		const previousBodyScrollTop = preserveScroll ? this.bodyEl.scrollTop : 0;
+		const previousReorderController = this.reorderController;
+		this.reorderController = null;
+		previousReorderController?.destroy();
 		this.bodyEl.empty();
 
 		if (pinnedTasks.length === 0) {
@@ -187,7 +209,6 @@ export class PinnedTasksDock extends Component {
 			return;
 		}
 
-		const layout = this.settings.pinnedDockLayout ?? 'horizontal';
 		const stripCls = `operon-pinned-cards operon-pinned-cards--${layout}`;
 		const strip = this.bodyEl.createDiv(stripCls);
 		strip.style.setProperty('--operon-pinned-item-width', `${this.settings.pinnedTaskItemWidth ?? 240}px`);
@@ -197,6 +218,8 @@ export class PinnedTasksDock extends Component {
 
 		for (const task of pinnedTasks) {
 			const card = strip.createDiv('operon-pinned-card');
+			card.dataset.operonPinnedTaskId = task.operonId;
+			card.draggable = this.isManualOrderEnabled();
 			card.addEventListener('click', (event) => {
 				if (isTaskSourceOpenModifierClick(event) && this.callbacks.openTaskSource) {
 					event.preventDefault();
@@ -230,57 +253,79 @@ export class PinnedTasksDock extends Component {
 			else statusBtn.style.removeProperty('color');
 			this.renderStatusIcon(statusBtn, task);
 
-				statusBtn.addEventListener('click', (e) => {
-					e.stopPropagation();
-					this.callbacks.cycleStatus(task.operonId);
+			statusBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.callbacks.cycleStatus(task.operonId);
+			});
+			if (this.callbacks.onContextualAction) {
+				bindTaskContextualHoverMenu(statusBtn, {
+					surface: 'pinnedTask',
+					taskId: task.operonId,
+					getTask: () => task,
+					getSettings: () => this.settings,
+					onAction: this.callbacks.onContextualAction,
+					isPinned: () => this.pinnedCache.isPinned(task.operonId),
+					hasSubtasks: this.callbacks.hasSubtasks ? () => this.callbacks.hasSubtasks?.(task.operonId) === true : undefined,
 				});
-				if (this.callbacks.onContextualAction) {
-					bindTaskContextualHoverMenu(statusBtn, {
-						surface: 'pinnedTask',
-						taskId: task.operonId,
-						getTask: () => task,
-						getSettings: () => this.settings,
-						onAction: this.callbacks.onContextualAction,
-						isPinned: () => this.pinnedCache.isPinned(task.operonId),
-						hasSubtasks: this.callbacks.hasSubtasks ? () => this.callbacks.hasSubtasks?.(task.operonId) === true : undefined,
-					});
-				}
+			}
 
-				// Description — card click opens Task Editor unless a source-open modifier is held
-				card.createSpan({
-					cls: 'operon-pinned-desc',
-					text: task.description || t('pinnedTasks', 'untitledTask'),
-				});
+			// Description — card click opens Task Editor unless a source-open modifier is held
+			const description = card.createSpan('operon-pinned-desc');
+			renderCompactTaskMarkdown(description, {
+				value: task.description || t('pinnedTasks', 'untitledTask'),
+				mode: 'visual-only',
+			});
 
 			// Unpin button (right side, left of timer) — visible on hover
-				const unpinBtn = card.createEl('button', {
-					cls: 'operon-pinned-unpin',
-					attr: { type: 'button' },
-				});
-				setIcon(unpinBtn, 'pin-off');
-				setAccessibleLabelWithoutTooltip(unpinBtn, t('contextMenu', 'unpinTask'));
-				unpinBtn.addEventListener('click', asyncHandler('pinned dock unpin failed', async (e) => {
-					e.stopPropagation();
-					await this.pinnedCache.unpin(task.operonId);
-				}));
+			const unpinBtn = card.createEl('button', {
+				cls: 'operon-pinned-unpin',
+				attr: { type: 'button' },
+			});
+			setIcon(unpinBtn, 'pin-off');
+			setAccessibleLabelWithoutTooltip(unpinBtn, t('contextMenu', 'unpinTask'));
+			unpinBtn.addEventListener('click', asyncHandler('pinned dock unpin failed', async (e) => {
+				e.stopPropagation();
+				await this.pinnedCache.unpin(task.operonId);
+			}));
 
 			// Play/Stop button (rightmost) — visible on hover
 			const isTracking = this.timeTracker.isTimerRunning(task.operonId);
 			card.toggleClass('operon-pinned-card--tracking', isTracking);
-				const timerBtn = card.createEl('button', {
-					cls: `operon-pinned-timer${isTracking ? ' is-active' : ''}`,
-					attr: { type: 'button' },
-				});
-				const timerIconName = isTracking ? 'square' : 'play';
-				setIcon(timerBtn, timerIconName);
-				setAccessibleLabelWithoutTooltip(timerBtn, t('tooltips', isTracking ? 'stopTimer' : 'startTimer'));
+			const timerBtn = card.createEl('button', {
+				cls: `operon-pinned-timer${isTracking ? ' is-active' : ''}`,
+				attr: { type: 'button' },
+			});
+			const timerIconName = isTracking ? 'square' : 'play';
+			setIcon(timerBtn, timerIconName);
+			setAccessibleLabelWithoutTooltip(timerBtn, t('tooltips', isTracking ? 'stopTimer' : 'startTimer'));
 
-				timerBtn.addEventListener('click', asyncHandler('pinned dock timer toggle failed', async (e) => {
-					e.stopPropagation();
-					await this.callbacks.toggleTimer(task.operonId);
-				}));
-
+			timerBtn.addEventListener('click', asyncHandler('pinned dock timer toggle failed', async (e) => {
+				e.stopPropagation();
+				await this.callbacks.toggleTimer(task.operonId);
+			}));
 		}
+		if (preserveScroll) {
+			const restoreScroll = (): void => {
+				if (!strip.isConnected || !this.bodyEl?.contains(strip)) return;
+				strip.scrollLeft = previousStripScrollLeft;
+				strip.scrollTop = previousStripScrollTop;
+				this.bodyEl.scrollLeft = previousBodyScrollLeft;
+				this.bodyEl.scrollTop = previousBodyScrollTop;
+			};
+			restoreScroll();
+			const immediateStripScrollLeft = strip.scrollLeft;
+			const immediateStripScrollTop = strip.scrollTop;
+			const immediateBodyScrollLeft = this.bodyEl.scrollLeft;
+			const immediateBodyScrollTop = this.bodyEl.scrollTop;
+			strip.ownerDocument.defaultView?.requestAnimationFrame(() => {
+				if (!strip.isConnected || !this.bodyEl?.contains(strip)) return;
+				if (strip.scrollLeft === immediateStripScrollLeft) strip.scrollLeft = previousStripScrollLeft;
+				if (strip.scrollTop === immediateStripScrollTop) strip.scrollTop = previousStripScrollTop;
+				if (this.bodyEl.scrollLeft === immediateBodyScrollLeft) this.bodyEl.scrollLeft = previousBodyScrollLeft;
+				if (this.bodyEl.scrollTop === immediateBodyScrollTop) this.bodyEl.scrollTop = previousBodyScrollTop;
+			});
+		}
+		this.bindTaskReorder(strip, layout);
 	}
 
 	markDirty(): void {
@@ -320,7 +365,42 @@ export class PinnedTasksDock extends Component {
 	}
 
 	private getPinnedTasks(): IndexedTask[] {
-		return getPinnedTasksForDisplay(this.indexer, this.pinnedCache, this.settings.priorities);
+		return getPinnedTasksForDisplay(
+			this.indexer,
+			this.pinnedCache,
+			this.settings.priorities,
+			this.settings.pinnedTaskSortMode,
+		);
+	}
+
+	private isManualOrderEnabled(): boolean {
+		return this.settings.pinnedTaskSortMode === 'manual'
+			&& typeof this.callbacks.replaceActiveManualOrder === 'function';
+	}
+
+	private bindTaskReorder(
+		strip: HTMLElement,
+		layout: 'horizontal' | 'vertical' | 'grid',
+	): void {
+		let controller: PinnedTaskReorderController;
+		controller = bindPinnedTaskReorder(strip, {
+			itemSelector: '.operon-pinned-card',
+			getAxis: () => layout,
+			isEnabled: () => this.isManualOrderEnabled(),
+			onCommit: async (orderedTaskIds) => {
+				const replaceActiveManualOrder = this.callbacks.replaceActiveManualOrder;
+				if (!replaceActiveManualOrder) return;
+				await replaceActiveManualOrder(orderedTaskIds);
+			},
+			onInteractionStart: () => this.clearAutoClose(),
+			onInteractionEnd: () => this.startAutoClose(),
+			onSettled: () => {
+				if (this.reorderController !== controller) return;
+				this.markDirty();
+				this.render();
+			},
+		});
+		this.reorderController = controller;
 	}
 
 	private renderStatusIcon(btn: HTMLElement, task: IndexedTask): void {
@@ -452,6 +532,7 @@ export class PinnedTasksDock extends Component {
 
 	private startAutoClose(): void {
 		this.clearAutoClose();
+		if (this.reorderController?.isActive()) return;
 		if (!this.settings.pinnedDockAutoCloseEnabled) return;
 		if (!this.settings.floatingAutoCloseSec || this.settings.floatingAutoCloseSec <= 0) return;
 		this.autoCloseTimer = setWindowTimeout(() => {

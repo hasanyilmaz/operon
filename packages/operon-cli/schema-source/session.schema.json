@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:cli:v1:session.schema.json",
+  "title": "Operon CLI JSONL session protocol V1",
+  "$defs": {
+    "requestId": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "x-operon-maxUtf8Bytes": 256
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      ]
+    },
+    "argv": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "string",
+        "maxLength": 16384,
+        "x-operon-maxUtf8Bytes": 16384
+      }
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "argv"],
+      "properties": {
+        "id": { "$ref": "#/$defs/requestId" },
+        "argv": { "$ref": "#/$defs/argv" },
+        "input": {}
+      }
+    },
+    "readCommand": {
+      "type": "string",
+      "enum": ["health", "task.get", "tasks.query", "context.build"]
+    },
+    "readFrame": {
+      "allOf": [
+        { "$ref": "#/$defs/frame" },
+        {
+          "x-operon-sessionReadCommand": {
+            "argvFirst": { "$ref": "#/$defs/readCommand" }
+          }
+        }
+      ]
+    },
+    "readGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "reads"],
+      "properties": {
+        "id": { "$ref": "#/$defs/requestId" },
+        "reads": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "x-operon-uniqueBy": "id",
+          "items": { "$ref": "#/$defs/readFrame" }
+        }
+      }
+    },
+    "success": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "exitCode", "result"],
+      "properties": {
+        "id": { "$ref": "#/$defs/requestId" },
+        "exitCode": { "type": "integer" },
+        "result": {}
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "exitCode", "error"],
+      "properties": {
+        "id": {
+          "oneOf": [
+            { "$ref": "#/$defs/requestId" },
+            { "type": "null" }
+          ]
+        },
+        "exitCode": { "enum": [2, 3, 4, 5, 70] },
+        "error": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "planRef", "action", "mutationMayHaveApplied"],
+      "properties": {
+        "required": { "const": true },
+        "planRef": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{31}$" },
+        "action": { "const": "recover-same-plan" },
+        "mutationMayHaveApplied": { "const": true }
+      }
+    },
+    "uncertainResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "exitCode", "error", "recovery"],
+      "properties": {
+        "id": { "$ref": "#/$defs/requestId" },
+        "exitCode": { "const": 5 },
+        "error": {
+          "allOf": [
+            {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+            },
+            {
+              "properties": {
+                "code": { "const": "outcome-unknown" },
+                "retryable": { "const": false },
+                "action": { "const": "recover-same-plan" }
+              }
+            }
+          ]
+        },
+        "recovery": { "$ref": "#/$defs/recovery" }
+      }
+    },
+    "orderedChildResults": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "x-operon-sessionOrder": "request-order",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/success" },
+          { "$ref": "#/$defs/failure" }
+        ]
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version", "invocation", "transport", "requestSchema", "readGroupSchema",
+        "resultSchema", "failureSchema", "uncertainResultSchema", "readGroupMin",
+        "readGroupMax", "readGroupCommands", "ordinaryFrames", "readGroups",
+        "abortExitCode"
+      ],
+      "properties": {
+        "version": { "const": 1 },
+        "invocation": { "const": "operon session --jsonl" },
+        "transport": { "const": "jsonl-stdio" },
+        "requestSchema": { "const": "session-frame" },
+        "readGroupSchema": { "const": "session-read-group" },
+        "resultSchema": { "const": "session-result" },
+        "failureSchema": { "const": "session-failure" },
+        "uncertainResultSchema": { "const": "session-uncertain-result" },
+        "readGroupMin": { "const": 2 },
+        "readGroupMax": { "const": 8 },
+        "readGroupCommands": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            { "const": "health" },
+            { "const": "task.get" },
+            { "const": "tasks.query" },
+            { "const": "context.build" }
+          ],
+          "items": false
+        },
+        "ordinaryFrames": { "const": "sequential" },
+        "readGroups": { "const": "concurrent-ordered" },
+        "abortExitCode": { "const": 130 }
+      }
+    }
+  }
+}

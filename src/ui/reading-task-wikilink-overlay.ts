@@ -22,12 +22,15 @@ import {
 	buildTaskFileLinkProgressTooltip,
 	appendTaskFileLinkProgressCountContent,
 } from './task-file-wikilink-shared';
-import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { buildTaskWikilinkOverlayChipContainer } from './task-wikilink-overlay-chips';
 import { resolveSubtaskActionIcon, resolveSubtaskActionLabelKey } from '../core/subtask-action';
 import { bindTaskTitleLinkPreview } from './compact-chip-link-preview';
-import { isTaskDescriptionWikilinkEventTarget, renderTaskDescriptionWikilinks } from './task-description-wikilinks';
+import {
+	isCompactTaskMarkdownLinkEventTarget,
+	renderCompactTaskMarkdown,
+} from './compact-task-markdown-renderer';
 import { scanTaskWikiLinksInLine, TaskWikiLinkMatch } from './task-wikilink-scanner';
 
 interface ReadingTaskFileWikilinkCallbacks {
@@ -257,7 +260,7 @@ export function enhanceReadingTaskFileWikilinks(
 			setAccessibleLabelWithoutTooltip(noteIndicator, t('taskEditor', 'notes'));
 			bindOperonHoverTooltip(noteIndicator, {
 				title: t('taskEditor', 'notes'),
-				contentEl: createNonInteractiveMarkdownLinkContent(noteIndicator, noteValue),
+				contentEl: createCompactTaskMarkdownTooltipContent(noteIndicator, noteValue),
 				taskColor: visuals.hoverColor,
 				preferredHorizontal: 'right',
 			});
@@ -922,14 +925,15 @@ function createTaskFileLinkLabel(
 	}
 
 	const label = createOwnerElement(anchor, 'span');
-	const rendered = renderTaskDescriptionWikilinks(label, {
+	renderCompactTaskMarkdown(label, {
 		app: callbacks.app,
-		description,
+		value: description,
 		sourcePath: resolved.task.primary.filePath,
+		mode: 'interactive',
 		containerClassName: 'operon-task-wikilink-label-markdown',
 		linkClassName: 'operon-task-wikilink-label-description-link',
 	});
-	if (!rendered || !elementHasChildren(label)) label.textContent = description || resolved.rawLinktext;
+	if (!elementHasChildren(label)) label.textContent = description || resolved.rawLinktext;
 
 	label.classList.add('internal-link', 'operon-task-wikilink-anchor', 'operon-task-wikilink-label');
 	label.dataset.operonTaskWikilinkEnhanced = 'true';
@@ -939,7 +943,7 @@ function createTaskFileLinkLabel(
 	applyTaskFileLinkLabelState(label, visuals);
 	bindTaskTitleLinkPreview(callbacks.app, label, resolved.resolvedFile.path, resolved.sourcePath);
 	label.addEventListener('click', (event) => {
-		if (isTaskDescriptionWikilinkEventTarget(event.target, label)) return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, label)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);

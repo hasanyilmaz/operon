@@ -28,6 +28,7 @@ import {
 } from './embed-filter-processor';
 import { operonIndexRefreshEffect } from './live-preview-conceal';
 import { isPlainCheckboxPopoverEditorElement } from './plain-checkbox-popover-scope';
+import { allowsOperonDocumentAugmentations } from './editor-augmentation-scope';
 
 export const DYNAMIC_FILE_TASK_FILTER_HOST_CLASS = 'operon-dynamic-file-task-filter-host';
 const DYNAMIC_FILE_TASK_FILTER_PLACEMENT_CLASSES = [
@@ -420,6 +421,7 @@ export function operonDynamicFileTaskFilterLivePreviewExtension(
 			}
 
 			private isLivePreview(view: EditorView): boolean {
+				if (!allowsOperonDocumentAugmentations(view)) return false;
 				try {
 					return view.state.field(editorLivePreviewField);
 				} catch {

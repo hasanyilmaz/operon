@@ -1,0 +1,30 @@
+declare module 'obsidian' {
+	export interface PluginManifest {
+		readonly id: string;
+		readonly name: string;
+		readonly version: string;
+	}
+
+	export interface App {
+		readonly plugins: {
+			getPlugin(id: string): unknown;
+		};
+		readonly vault: {
+			readonly configDir: string;
+			readonly adapter: {
+				getBasePath?: () => string;
+			};
+		};
+	}
+
+	export class Plugin {
+		readonly app: App;
+		readonly manifest: PluginManifest;
+		onload(): Promise<void> | void;
+		addCommand(command: {
+			id: string;
+			name: string;
+			callback: () => void;
+		}): void;
+	}
+}
