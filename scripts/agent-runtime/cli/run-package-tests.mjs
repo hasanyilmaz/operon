@@ -1246,13 +1246,12 @@ function secureWindowsFixturePath(targetPath, kind) {
 		'$p = [Environment]::GetEnvironmentVariable("OPERON_TEST_SECURITY_PATH", "Process")',
 		'$kind = [Environment]::GetEnvironmentVariable("OPERON_TEST_SECURITY_KIND", "Process")',
 		'$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User',
-		'$acl = if ($kind -eq "directory") { [IO.Directory]::GetAccessControl($p) } else { [IO.File]::GetAccessControl($p) }',
+		'$acl = if ($kind -eq "directory") { [Security.AccessControl.DirectorySecurity]::new() } else { [Security.AccessControl.FileSecurity]::new() }',
 		'$acl.SetOwner($sid)',
 		'$acl.SetAccessRuleProtection($true, $false)',
-		'foreach ($existingRule in @($acl.Access)) { [void]$acl.RemoveAccessRuleSpecific($existingRule) }',
 		'$inherit = if ($kind -eq "directory") { [Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit" } else { [Security.AccessControl.InheritanceFlags]::None }',
-		'$rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, [Security.AccessControl.FileSystemRights]::FullControl, $inherit, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)',
-		'$acl.AddAccessRule($rule)',
+		'$rule = [Security.AccessControl.FileSystemAccessRule]::new($sid, [Security.AccessControl.FileSystemRights]::FullControl, $inherit, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)',
+		'[void]$acl.AddAccessRule($rule)',
 		'if ($kind -eq "directory") { [IO.Directory]::SetAccessControl($p, $acl) } else { [IO.File]::SetAccessControl($p, $acl) }',
 	].join('; ');
 	execFileSync(powershell, [

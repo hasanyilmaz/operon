@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash, createHmac } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { createConnection, type Socket } from 'node:net';
@@ -667,6 +668,40 @@ test('persistent read startup and close preserve a successor descriptor', async 
 	await unlink(descriptorPath);
 });
 
+if (process.platform === 'win32') {
+test('persistent read rejects a broad existing descriptor ACL', async () => {
+	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-broad-acl-vault-'));
+	installPersistentReadTestWindow();
+	const plugin = persistentReadTestPlugin(vault);
+	let firstHandle: AgentRuntimePersistentReadServerHandleV1 | undefined;
+	let descriptorPath: string | undefined;
+	try {
+		firstHandle = await startAgentRuntimePersistentReadServerV1(
+			plugin as never,
+			createRuntime(),
+			{ runtimeMetadata: persistentReadTestMetadata() },
+		);
+		assert.equal(firstHandle.available, true, firstHandle.reason);
+		const vaultSha256 = await computeRunningVaultSha256V1(nodeApi, plugin.app.vault.adapter);
+		descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
+		const descriptorBeforeTamper = await readFileUtf8(descriptorPath);
+		broadenWindowsAclForTest(descriptorPath, 'file');
+		const refused = await startAgentRuntimePersistentReadServerV1(
+			plugin as never,
+			createRuntime(),
+			{ runtimeMetadata: persistentReadTestMetadata() },
+		);
+		assert.equal(refused.available, false);
+		assert.equal(refused.reason, 'windows-owner-only-acl-required');
+		assert.equal(await readFileUtf8(descriptorPath), descriptorBeforeTamper);
+	} finally {
+		await firstHandle?.close().catch(() => undefined);
+		if (descriptorPath) await unlink(descriptorPath).catch(() => undefined);
+		await rm(vault, { recursive: true, force: true });
+	}
+});
+}
+
 test('persistent read close waits for and cancels an in-flight descriptor refresh', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-refresh-close-vault-'));
 	installPersistentReadTestWindow();
@@ -1321,6 +1356,63 @@ async function withTestTimeout<T>(promise: Promise<T>, message: string): Promise
 	} finally {
 		if (timer) clearTimeout(timer);
 	}
+}
+
+function broadenWindowsAclForTest(
+	target: string,
+	kind: 'file' | 'directory',
+): void {
+	const systemRoot = process.env.SystemRoot;
+	const windowsDirectory = process.env.WINDIR;
+	if (!systemRoot || !windowsDirectory) throw new Error('windows-system-root-unavailable');
+	const normalizedRoot = systemRoot.replace(/\//gu, '\\').replace(/\\+$/u, '');
+	const normalizedWindowsDirectory = windowsDirectory.replace(/\//gu, '\\').replace(/\\+$/u, '');
+	if (normalizedRoot.toLowerCase() !== normalizedWindowsDirectory.toLowerCase()) {
+		throw new Error('windows-system-root-mismatch');
+	}
+	const powershell = join(
+		normalizedRoot,
+		'System32',
+		'WindowsPowerShell',
+		'v1.0',
+		'powershell.exe',
+	);
+	const getAccessControl = kind === 'directory'
+		? '[IO.Directory]::GetAccessControl($p)'
+		: '[IO.File]::GetAccessControl($p)';
+	const setAccessControl = kind === 'directory'
+		? '[IO.Directory]::SetAccessControl($p,$acl)'
+		: '[IO.File]::SetAccessControl($p,$acl)';
+	const inheritance = kind === 'directory'
+		? 'ContainerInherit,ObjectInherit'
+		: 'None';
+	const script = [
+		'$ErrorActionPreference="Stop"',
+		'$p=[Environment]::GetEnvironmentVariable("OPERON_TEST_SECURITY_PATH","Process")',
+		`$acl=${getAccessControl}`,
+		'$users=[Security.Principal.SecurityIdentifier]::new("S-1-5-32-545")',
+		`$rule=[Security.AccessControl.FileSystemAccessRule]::new($users,[Security.AccessControl.FileSystemRights]::ReadAndExecute,[Security.AccessControl.InheritanceFlags]"${inheritance}",[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)`,
+		'[void]$acl.AddAccessRule($rule)',
+		setAccessControl,
+	].join(';');
+	execFileSync(powershell, [
+		'-NoLogo',
+		'-NoProfile',
+		'-NonInteractive',
+		'-ExecutionPolicy',
+		'Bypass',
+		'-Command',
+		script,
+	], {
+		env: {
+			SystemRoot: normalizedRoot,
+			WINDIR: normalizedRoot,
+			OPERON_TEST_SECURITY_PATH: target,
+		},
+		stdio: 'ignore',
+		windowsHide: true,
+		timeout: 15_000,
+	});
 }
 
 async function readFileUtf8(filePath: string): Promise<string> {

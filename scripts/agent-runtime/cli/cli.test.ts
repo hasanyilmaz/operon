@@ -225,7 +225,10 @@ function testCrossPlatformCliStorageAndPaths(): void {
 			);
 			unlinkSync(path.join(root, 'foreign.json.123.12345678-1234-4123-8123-123456789abc.tmp'));
 		if (process.platform === 'win32') {
-			broadenWindowsDirectoryAclForTest(root);
+			broadenWindowsPathAclForTest(root, 'directory');
+			assert.equal(inspectCliStorageSecurityV1(root).secure, false);
+			assert.equal(repairCliStorageSecurityV1(root).secure, true);
+			broadenWindowsPathAclForTest(path.join(root, 'config-v1.json'), 'file');
 			assert.equal(inspectCliStorageSecurityV1(root).secure, false);
 			assert.equal(repairCliStorageSecurityV1(root).secure, true);
 		} else {
@@ -281,16 +284,28 @@ function testWindowsPowerShellResolutionSecurity(): void {
 	);
 }
 
-function broadenWindowsDirectoryAclForTest(target: string): void {
+function broadenWindowsPathAclForTest(
+	target: string,
+	kind: 'file' | 'directory',
+): void {
 	const { executable, systemRoot } = resolveWindowsPowerShellV1();
+	const getAccessControl = kind === 'directory'
+		? '[IO.Directory]::GetAccessControl($p)'
+		: '[IO.File]::GetAccessControl($p)';
+	const setAccessControl = kind === 'directory'
+		? '[IO.Directory]::SetAccessControl($p, $acl)'
+		: '[IO.File]::SetAccessControl($p, $acl)';
+	const inheritance = kind === 'directory'
+		? 'ContainerInherit,ObjectInherit'
+		: 'None';
 	const script = [
 		'$ErrorActionPreference = "Stop"',
 		'$p = [Environment]::GetEnvironmentVariable("OPERON_TEST_SECURITY_PATH", "Process")',
-		'$acl = [IO.Directory]::GetAccessControl($p)',
-		'$users = New-Object Security.Principal.SecurityIdentifier("S-1-5-32-545")',
-		'$rule = New-Object Security.AccessControl.FileSystemAccessRule($users, "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")',
-		'$acl.AddAccessRule($rule)',
-		'[IO.Directory]::SetAccessControl($p, $acl)',
+		`$acl = ${getAccessControl}`,
+		'$users = [Security.Principal.SecurityIdentifier]::new("S-1-5-32-545")',
+		`$rule = [Security.AccessControl.FileSystemAccessRule]::new($users, [Security.AccessControl.FileSystemRights]::ReadAndExecute, [Security.AccessControl.InheritanceFlags]"${inheritance}", [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)`,
+		'[void]$acl.AddAccessRule($rule)',
+		setAccessControl,
 	].join('; ');
 	execFileSync(executable, [
 		'-NoLogo',

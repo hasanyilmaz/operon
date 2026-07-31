@@ -1043,25 +1043,26 @@ function secureWindowsOwnerOnlyPathV1(
 	const { executable, environment } = resolveWindowsPowerShellV1(modules);
 	const rights = directory ? 'FullControl' : 'Read,Write,Delete';
 	const inheritance = directory ? 'ContainerInherit,ObjectInherit' : 'None';
-	const getAccessControl = directory
-		? '[IO.Directory]::GetAccessControl($p)'
-		: '[IO.File]::GetAccessControl($p)';
 	const setAccessControl = directory
 		? '[IO.Directory]::SetAccessControl($p,$acl)'
 		: '[IO.File]::SetAccessControl($p,$acl)';
+	const securityDescriptor = directory
+		? '[Security.AccessControl.DirectorySecurity]::new()'
+		: '[Security.AccessControl.FileSecurity]::new()';
 	const script = [
 		'$ErrorActionPreference="Stop"',
 		`$p=[System.IO.Path]::GetFullPath(${powershellLiteralV1(path)})`,
-		'$item=Get-Item -LiteralPath $p -Force',
-		'$cursor=$item',
+		`$exists=${directory ? '[IO.Directory]::Exists($p)' : '[IO.File]::Exists($p)'}`,
+		'if (-not $exists) { throw "path-kind-mismatch" }',
+		'if (([IO.File]::GetAttributes($p) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }',
+		`$cursor=${directory ? '[IO.DirectoryInfo]::new($p)' : '([IO.FileInfo]::new($p)).Directory'}`,
 		'while($null -ne $cursor){ if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }; $cursor=$cursor.Parent }',
 		'$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User',
-		`$acl=${getAccessControl}`,
+		`$acl=${securityDescriptor}`,
 		'$acl.SetOwner($sid)',
 		'$acl.SetAccessRuleProtection($true,$false)',
-		'foreach($rule in @($acl.Access)){ [void]$acl.RemoveAccessRuleSpecific($rule) }',
-		`$rule=New-Object Security.AccessControl.FileSystemAccessRule($sid,"${rights}","${inheritance}","None","Allow")`,
-		'$acl.AddAccessRule($rule)',
+		`$rule=[Security.AccessControl.FileSystemAccessRule]::new($sid,[Security.AccessControl.FileSystemRights]"${rights}",[Security.AccessControl.InheritanceFlags]"${inheritance}",[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)`,
+		'[void]$acl.AddAccessRule($rule)',
 		setAccessControl,
 	].join(';');
 	const result = modules.childProcess.spawnSync(
@@ -1093,15 +1094,19 @@ function assertWindowsOwnerOnlyPathV1(
 	const script = [
 		'$ErrorActionPreference="Stop"',
 		`$p=[System.IO.Path]::GetFullPath(${powershellLiteralV1(path)})`,
-		'$item=Get-Item -LiteralPath $p -Force',
-		'$cursor=$item',
+		`$exists=${directory ? '[IO.Directory]::Exists($p)' : '[IO.File]::Exists($p)'}`,
+		'if (-not $exists) { throw "path-kind-mismatch" }',
+		'if (([IO.File]::GetAttributes($p) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }',
+		`$cursor=${directory ? '[IO.DirectoryInfo]::new($p)' : '([IO.FileInfo]::new($p)).Directory'}`,
 		'while($null -ne $cursor){ if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }; $cursor=$cursor.Parent }',
 		'$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User',
 		`$acl=${getAccessControl}`,
-		'$owner=(New-Object Security.Principal.NTAccount($acl.Owner)).Translate([Security.Principal.SecurityIdentifier]).Value',
+		'$owner=$acl.GetOwner([Security.Principal.SecurityIdentifier]).Value',
 		'if ($owner -ne $sid.Value) { throw "owner-mismatch" }',
-		'$bad=@($acl.Access | Where-Object { $r=$_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value; $_.AccessControlType -eq "Allow" -and $r -ne $sid.Value -and $r -ne "S-1-5-18" })',
-		'if ($bad.Count -ne 0) { throw "acl-too-broad" }',
+		'if (-not $acl.AreAccessRulesProtected) { throw "acl-inherited" }',
+		'$rules=$acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])',
+		'foreach($access in $rules){ if($access.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or $access.IdentityReference.Value -ne $sid.Value){ throw "acl-too-broad" } }',
+		'if ($rules.Count -eq 0) { throw "acl-too-broad" }',
 		`[Console]::Out.Write('{"ok":true,"directory":${directory ? 'true' : 'false'}}')`,
 	].join(';');
 	const result = modules.childProcess.spawnSync(

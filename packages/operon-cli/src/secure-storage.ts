@@ -255,6 +255,9 @@ function runWindowsAclScriptV1(
 	const setAccessControl = kind === 'directory'
 		? '[IO.Directory]::SetAccessControl($p, $acl)'
 		: '[IO.File]::SetAccessControl($p, $acl)';
+	const securityDescriptor = kind === 'directory'
+		? '[Security.AccessControl.DirectorySecurity]::new()'
+		: '[Security.AccessControl.FileSecurity]::new()';
 	const inheritance = kind === 'directory'
 		? 'ContainerInherit, ObjectInherit'
 		: 'None';
@@ -263,33 +266,31 @@ function runWindowsAclScriptV1(
 		'$p = [Environment]::GetEnvironmentVariable("OPERON_SECURITY_PATH", "Process")',
 		'$expectedKind = [Environment]::GetEnvironmentVariable("OPERON_SECURITY_KIND", "Process")',
 		'$repair = [Environment]::GetEnvironmentVariable("OPERON_SECURITY_REPAIR", "Process") -eq "1"',
-		'$item = Get-Item -LiteralPath $p -Force',
-		'$cursor = $item',
+		'$isDirectory = [IO.Directory]::Exists($p)',
+		'$isFile = [IO.File]::Exists($p)',
+		'if ($expectedKind -eq "directory" -and -not $isDirectory) { throw "SECURE_DIRECTORY_INVALID" }',
+		'if ($expectedKind -eq "file" -and -not $isFile) { throw "SECURE_FILE_INVALID" }',
+		'if (([IO.File]::GetAttributes($p) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "SECURITY_REPARSE_POINT" }',
+		'$cursor = if ($isDirectory) { [IO.DirectoryInfo]::new($p) } else { ([IO.FileInfo]::new($p)).Directory }',
 		'while ($null -ne $cursor) { if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "SECURITY_REPARSE_POINT" }; $cursor = $cursor.Parent }',
-		'if ($expectedKind -eq "directory" -and -not $item.PSIsContainer) { throw "SECURE_DIRECTORY_INVALID" }',
-		'if ($expectedKind -eq "file" -and $item.PSIsContainer) { throw "SECURE_FILE_INVALID" }',
 		'$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User',
-		`$acl = ${getAccessControl}`,
 		'if ($repair) {',
+		`  $acl = ${securityDescriptor}`,
 		'  $acl.SetOwner($sid)',
 		'  $acl.SetAccessRuleProtection($true, $false)',
-		'  foreach ($existingRule in @($acl.Access)) { [void]$acl.RemoveAccessRuleSpecific($existingRule) }',
 		'  $rights = [Security.AccessControl.FileSystemRights]::FullControl',
 		`  $inherit = [Security.AccessControl.InheritanceFlags]"${inheritance}"`,
-		'  $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, $rights, $inherit, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)',
-		'  $acl.AddAccessRule($rule)',
+		'  $rule = [Security.AccessControl.FileSystemAccessRule]::new($sid, $rights, $inherit, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)',
+		'  [void]$acl.AddAccessRule($rule)',
 		`  ${setAccessControl}`,
 		'}',
 		`$actual = ${getAccessControl}`,
-		'$ownerSid = (New-Object Security.Principal.NTAccount($actual.Owner)).Translate([Security.Principal.SecurityIdentifier]).Value',
+		'$ownerSid = $actual.GetOwner([Security.Principal.SecurityIdentifier]).Value',
 		'if ($ownerSid -ne $sid.Value) { throw "SECURITY_WRONG_OWNER" }',
 		'if (-not $actual.AreAccessRulesProtected) { throw "SECURITY_ACL_INHERITED" }',
-		'$bad = @()',
-		'foreach ($access in $actual.Access) {',
-		'  try { $accessSid = $access.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value } catch { $accessSid = "" }',
-		'  if ($access.AccessControlType -ne "Allow" -or $accessSid -ne $sid.Value) { $bad += $access }',
-		'}',
-		'if ($bad.Count -ne 0) { throw "SECURITY_ACL_TOO_BROAD" }',
+		'$rules = $actual.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])',
+		'foreach ($access in $rules) { if ($access.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or $access.IdentityReference.Value -ne $sid.Value) { throw "SECURITY_ACL_TOO_BROAD" } }',
+		'if ($rules.Count -eq 0) { throw "SECURITY_ACL_TOO_BROAD" }',
 		'[Console]::Out.Write(\'{"ok":true}\')',
 	].join('; ');
 	const result = spawnSync(executable, [
