@@ -49,8 +49,11 @@ try {
 						const caught = source.replace(
 							"\t} catch {\n\t\treturn unavailableHandle('persistent-read-server-start-failed');\n\t}",
 							"\t} catch (error) {\n\t\treturn unavailableHandle(error instanceof Error ? error.message : 'persistent-read-server-start-failed');\n\t}",
+						).replace(
+							"if (result.status !== 0) throw new Error('windows-owner-only-acl-setup-failed');",
+							"if (result.status !== 0) throw new Error(`windows-owner-only-acl-setup-failed:${String(result.stderr).replace(/\\s+/gu, ' ').slice(0, 500)}`);",
 						);
-						if (caught === source) {
+						if (caught === source || !caught.includes('String(result.stderr)')) {
 							throw new Error('persistent-startup-test-diagnostic-transform-missing');
 						}
 						return { contents: caught, loader: 'ts' };
