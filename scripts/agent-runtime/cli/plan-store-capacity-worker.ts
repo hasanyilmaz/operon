@@ -27,10 +27,15 @@ async function main(): Promise<void> {
 	let issues: unknown;
 	try {
 		const record = readMutationPlanV1(planRef, root, { allowExpired: true, now });
+		const logicalNow = Date.parse(record.plan.createdAt) + 1_000;
+		if (
+			!Number.isSafeInteger(logicalNow)
+			|| logicalNow >= Date.parse(record.plan.expiresAt)
+		) throw new Error('CAPACITY_WORKER_PLAN_INTERVAL_INVALID');
 		stage = 'build';
 		const request = buildMutationApplyRequestV1(record, {
 			confirmationToken: confirmationTokenForPlanV1(record.plan),
-			now: new Date(now).toISOString(),
+			now: new Date(logicalNow).toISOString(),
 		});
 		stage = 'decode';
 		const decodedRequest = decodeMutationApplyRequestV1(request);
@@ -39,7 +44,7 @@ async function main(): Promise<void> {
 			throw new Error('CAPACITY_WORKER_APPLY_REQUEST_MALFORMED');
 		}
 		stage = 'mark';
-		const dispatched = markMutationPlanDispatchedV1(record, request, root, now);
+		const dispatched = markMutationPlanDispatchedV1(record, request, root, logicalNow);
 		process.stdout.write(`${JSON.stringify({
 			ok: true,
 			planRef,

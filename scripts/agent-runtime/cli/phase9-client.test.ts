@@ -2272,7 +2272,10 @@ test('Windows dispatch mutex publishes concurrent low-cardinality admissions ato
 		const vault = await createVault(root, 'Windows Dispatch Mutex Vault');
 		const planCreatedAt = Date.now();
 		const vaultSha256 = canonicalVaultIdentityV1(vault).sha256;
-		const contenders = ['windows-mutex-a', 'windows-mutex-b'].map(idempotencyKey => {
+		const contenders = [
+			'windows-dispatch-mutex-a',
+			'windows-dispatch-mutex-b',
+		].map(idempotencyKey => {
 			const plan = fakePlan(
 				new Date(planCreatedAt - 1_000).toISOString(),
 				new Date(planCreatedAt + 60_000).toISOString(),
