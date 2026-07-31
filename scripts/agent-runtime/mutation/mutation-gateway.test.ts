@@ -2140,11 +2140,14 @@ test('in-flight preview cannot build a late plan after its deadline', async () =
 		},
 	});
 	try {
-		const result = await gateway.preview(request, { deadlineAtMs: Date.now() + 5 });
+		const deadlineAtMs = Date.now() + 5;
+		const result = await gateway.preview(request, { deadlineAtMs });
 		assert.equal(result.ok, false);
 		if (!result.ok) assert.equal(result.error.code, 'live-settling');
+		const remainingMs = Math.max(0, deadlineAtMs - Date.now() + 1);
+		await new Promise(resolve => setTimeout(resolve, remainingMs));
 		releasePreparation?.();
-		await new Promise(resolve => setTimeout(resolve, 10));
+		await new Promise(resolve => setImmediate(resolve));
 		assert.equal(randomIdCount, 0);
 	} finally {
 		if (previousActiveWindow === undefined) {

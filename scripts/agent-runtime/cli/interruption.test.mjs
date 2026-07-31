@@ -40,7 +40,7 @@ await writeFile(fakeObsidian, `#!/usr/bin/env node
 import { unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-writeFileSync(process.env.OPERON_CLI_INTERRUPT_MARKER, JSON.stringify(process.argv.slice(2)));
+process.on('SIGTERM', () => process.exit(0));
 if (process.argv.some(value => value.includes('mutation-apply'))) {
 	const token = process.argv.find(value => value.startsWith('requestToken='))?.slice(13);
 	if (token) {
@@ -48,7 +48,7 @@ if (process.argv.some(value => value.includes('mutation-apply'))) {
 		unlinkSync(path.join(tmpdir(), 'operon-agent-runtime-uid-' + uid, token + '.request.json'));
 	}
 }
-process.on('SIGTERM', () => process.exit(0));
+writeFileSync(process.env.OPERON_CLI_INTERRUPT_MARKER, JSON.stringify(process.argv.slice(2)));
 setInterval(() => undefined, 1000);
 `);
 await chmod(fakeObsidian, 0o755);
