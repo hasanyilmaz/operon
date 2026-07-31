@@ -2199,6 +2199,21 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 				new Date(contenderPlanCreatedAt + 60_000).toISOString(),
 				idempotencyKey,
 			);
+			if (process.platform === 'win32') {
+				const stored = {
+					version: 1 as const,
+					planRef: randomUUID().split('-').join(''),
+					vaultPath: vault,
+					vaultSha256,
+					clientInstanceId: plan.clientInstanceId,
+					idempotencyKey,
+					plan,
+					createdAt: plan.createdAt,
+					expiresAt: plan.expiresAt,
+				};
+				writeStoredPlanV1(stored, root);
+				return stored;
+			}
 			return storeMutationPlanV1({
 				vaultPath: vault,
 				vaultSha256,
@@ -2211,6 +2226,7 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 			let processCalls = 0;
 			const contender = contenders[0];
 			assert.ok(contender);
+			assert.ok(dispatchedAt < Date.parse(contender.expiresAt));
 			const refused = await runPublicCommandLineV1([
 				'plan',
 				'apply',
