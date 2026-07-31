@@ -1,0 +1,81 @@
+name: Build Operon CLI native acceptance candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: "Exact commit of the ref selected in the Run workflow UI"
+        required: true
+        type: string
+      source_ref:
+        description: "Optional human-readable source ref recorded in candidate evidence"
+        required: false
+        type: string
+
+permissions:
+  attestations: write
+  contents: read
+  id-token: write
+
+jobs:
+  build-native-candidate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate immutable source identity
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: node -e "if (!/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT)) throw new Error('source_commit must be an exact lowercase 40-character commit.');"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact checkout
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: node -e "const {execFileSync}=require('node:child_process'); const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(); if(head!==process.env.SOURCE_COMMIT||head!==process.env.GITHUB_SHA) throw new Error('Checked-out source does not match source_commit.');"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.18.0"
+          cache: npm
+      - name: Pin candidate npm
+        run: npm install --global npm@11.12.1
+      - run: npm ci
+      - run: npm run release:audit-policy
+      - run: npm run agent-runtime:contracts
+      - run: npm run agent-runtime:cli
+      - run: npm run agent-runtime:cli:package
+      - run: npm run build
+      - run: npm run release:guard
+      - name: Assemble immutable unpublished candidate
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+          REQUIRE_CLEAN_SOURCE: "1"
+        run: |
+          node -e "const fs=require('node:fs'); fs.rmSync('packages/operon-cli/release',{recursive:true,force:true}); fs.mkdirSync('packages/operon-cli/release/operon-plugin-native-candidate',{recursive:true}); for(const name of ['main.js','manifest.json','styles.css']) fs.copyFileSync(name,'packages/operon-cli/release/operon-plugin-native-candidate/'+name);"
+          npm pack ./packages/operon-cli \
+            --pack-destination packages/operon-cli/release
+          node scripts/agent-runtime/cli/write-native-candidate-evidence.mjs \
+            packages/operon-cli/release \
+            packages/operon-cli/release/operon-plugin-native-candidate \
+            packages/operon-cli/release/candidate-evidence.json
+        working-directory: .
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: "packages/operon-cli/release/*.tgz"
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: "packages/operon-cli/release/candidate-evidence.json"
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: "packages/operon-cli/release/operon-plugin-native-candidate/*"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operon-cli-native-candidate
+          path: |
+            packages/operon-cli/release/*.tgz
+            packages/operon-cli/release/candidate-evidence.json
+            packages/operon-cli/release/operon-plugin-native-candidate/main.js
+            packages/operon-cli/release/operon-plugin-native-candidate/manifest.json
+            packages/operon-cli/release/operon-plugin-native-candidate/styles.css
+          if-no-files-found: error

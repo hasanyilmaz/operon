@@ -61,6 +61,7 @@ import type { IndexedTask } from '../types/fields';
 import type { TableFilePropertyField, TableFilePropertySnapshot } from './table/table-file-property';
 import { getFilterGroupDisplayLabel } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
+import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
 
 function generateConditionId(): string {
 	return 'cond_' + Math.random().toString(36).slice(2, 10);
@@ -2034,6 +2035,8 @@ export class FilterSetModal extends Modal {
 							{
 								projectSerialScopes: deps.getSettings().projectSerialScopes,
 								projectSerialScopeTasks: deps.indexer.getAllTasks(),
+								dependencyTasks: deps.indexer.getAllTasks(),
+								pipelines: deps.getPipelines(),
 								filePropertyContext: this.filePropertySnapshot ?? undefined,
 							},
 						).length
@@ -2325,6 +2328,8 @@ class FilterPreviewModal extends Modal {
 		const filterEvaluationOptions = {
 			projectSerialScopes: settings.projectSerialScopes,
 			projectSerialScopeTasks: allTasks,
+			dependencyTasks: allTasks,
+			pipelines,
 			filePropertyContext: filePropertySnapshot ?? undefined,
 		};
 		const groupedResult = this.filterSet.groupBy
@@ -2444,6 +2449,7 @@ class FilterPreviewModal extends Modal {
 	onClose(): void {
 		activeFilterPreviewModals.delete(this);
 		this.lastRenderSignature = null;
+		requestCloseTextFieldPopoversForOwner(this.contentEl);
 		cleanupOperonRenderRoot(this.contentEl);
 		this.contentEl.empty();
 	}

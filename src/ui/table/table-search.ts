@@ -268,6 +268,9 @@ export function buildTableNoSearchResultCacheKey(
 ): string {
 	return [
 		scopeKey,
+		// Cached query results retain the resolved preset for subsequent rendering,
+		// so display-only metadata such as column labels must invalidate this cache.
+		`preset=${JSON.stringify(preset)}`,
 		`columns=${buildTableSearchVisibleColumnSignature(columns)}`,
 		`sort=${JSON.stringify(preset.sortRules)}`,
 		`group=${JSON.stringify({

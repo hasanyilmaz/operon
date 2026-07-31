@@ -5,6 +5,26 @@ export interface ParsedTrackerSession {
 	durationSeconds: number;
 }
 
+export type TrackerSessionProjectionInput =
+	| { operation: 'add-session'; start: string; end: string }
+	| { operation: 'update-session'; sessionNumber: number; start: string; end: string }
+	| { operation: 'remove-session'; sessionNumber: number };
+
+export interface TrackerSessionProjection {
+	currentTrackers: string;
+	currentDuration: number;
+	nextTrackers: string;
+	nextDuration: number;
+	selectedRawIndex?: number;
+	selectedStart?: string;
+	selectedEnd?: string;
+	noChange: boolean;
+}
+
+export type TrackerSessionProjectionResult =
+	| { ok: true; value: TrackerSessionProjection }
+	| { ok: false; reason: string };
+
 const LOCAL_DATETIME_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/;
 const DATETIME_LOCAL_WITH_OPTIONAL_SECONDS_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::(\d{2}))?$/;
 
@@ -13,7 +33,7 @@ export function parseLocalDatetime(value: string): Date | null {
 	if (!match) return null;
 
 	const [, year, month, day, hour, minute, second] = match;
-	return new Date(
+	const parsed = new Date(
 		Number(year),
 		Number(month) - 1,
 		Number(day),
@@ -22,6 +42,15 @@ export function parseLocalDatetime(value: string): Date | null {
 		Number(second),
 		0,
 	);
+	if (
+		parsed.getFullYear() !== Number(year)
+		|| parsed.getMonth() !== Number(month) - 1
+		|| parsed.getDate() !== Number(day)
+		|| parsed.getHours() !== Number(hour)
+		|| parsed.getMinutes() !== Number(minute)
+		|| parsed.getSeconds() !== Number(second)
+	) return null;
+	return parsed;
 }
 
 export function toDatetimeLocalValue(value: string | undefined | null): string {
@@ -134,6 +163,76 @@ export function serializeTrackerList(
 
 export function calculateDurationFromTrackers(value: string | undefined | null): number {
 	return parseTrackerList(value).reduce((sum, session) => sum + session.durationSeconds, 0);
+}
+
+export function projectTrackerSessionMutation(
+	currentValue: string | undefined | null,
+	input: TrackerSessionProjectionInput,
+	splitAtMidnight: boolean,
+): TrackerSessionProjectionResult {
+	const currentTrackers = currentValue?.trim() ?? '';
+	const rawItems = currentTrackers ? currentTrackers.split(';').map(item => item.trim()) : [];
+	const sessions: Array<ParsedTrackerSession & { rawIndex: number }> = [];
+	for (let rawIndex = 0; rawIndex < rawItems.length; rawIndex++) {
+		const raw = rawItems[rawIndex];
+		if (!raw || raw.split('/').length !== 2) {
+			return { ok: false, reason: 'The stored tracker list is malformed.' };
+		}
+		const parsed = parseTrackerRange(raw);
+		if (!parsed || parsed.durationSeconds <= 0 || parsed.raw !== raw) {
+			return { ok: false, reason: 'The stored tracker list cannot be hydrated exactly.' };
+		}
+		sessions.push({ ...parsed, rawIndex });
+	}
+	const ordered = [...sessions].sort((left, right) => (
+		left.start.localeCompare(right.start)
+		|| left.end.localeCompare(right.end)
+		|| left.rawIndex - right.rawIndex
+	));
+	const nextRanges = sessions.map(session => session.raw);
+	let selected: (typeof sessions)[number] | undefined;
+	if (input.operation !== 'add-session') {
+		if (!Number.isInteger(input.sessionNumber) || input.sessionNumber < 1) {
+			return { ok: false, reason: 'Session number must be a positive 1-based integer.' };
+		}
+		selected = ordered[input.sessionNumber - 1];
+		if (!selected) return { ok: false, reason: 'The selected tracker session does not exist.' };
+	}
+	if (input.operation === 'remove-session') {
+		nextRanges.splice(selected!.rawIndex, 1);
+	} else {
+		const start = fromDatetimeLocalValue(input.start);
+		const end = fromDatetimeLocalValue(input.end);
+		const startDate = parseLocalDatetime(start);
+		const endDate = parseLocalDatetime(end);
+		if (!start || !end || !startDate || !endDate || endDate.getTime() <= startDate.getTime()) {
+			return { ok: false, reason: 'Tracker session requires a valid local-naive range with end after start.' };
+		}
+		const fragments = (splitAtMidnight ? splitTrackerRangeByMidnight(start, end) : [{ start, end }])
+			.map(fragment => buildTrackerRange(fragment.start, fragment.end));
+		if (input.operation === 'add-session') nextRanges.push(...fragments);
+		else nextRanges.splice(selected!.rawIndex, 1, ...fragments);
+	}
+	const nextTrackers = serializeTrackerList(nextRanges);
+	const currentDuration = sessions.reduce((sum, session) => sum + session.durationSeconds, 0);
+	const nextDuration = calculateDurationFromTrackers(nextTrackers);
+	return {
+		ok: true,
+		value: {
+			currentTrackers,
+			currentDuration,
+			nextTrackers,
+			nextDuration,
+			...(selected
+				? {
+					selectedRawIndex: selected.rawIndex,
+					selectedStart: selected.start,
+					selectedEnd: selected.end,
+				}
+				: {}),
+			noChange: nextTrackers === currentTrackers,
+		},
+	};
 }
 
 export function formatDurationClock(seconds: number): string {

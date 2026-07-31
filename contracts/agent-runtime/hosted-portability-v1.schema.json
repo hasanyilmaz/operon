@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:hosted-portability:v1",
+  "title": "Operon CLI hosted portability evidence V1",
+  "oneOf": [
+    { "$ref": "#/$defs/cell" },
+    { "$ref": "#/$defs/index" }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "candidate": {
+      "type": "object",
+      "required": [
+        "candidateKind", "package", "tarballSha256", "candidateEvidenceSha256",
+        "sourceRef", "sourceCommit", "compatiblePublicPlugin",
+        "cliManifestSha256", "aggregateContractSha256", "platforms"
+      ],
+      "properties": {
+        "candidateKind": { "const": "operon-cli-release-candidate" },
+        "package": { "type": "string", "minLength": 1 },
+        "tarballSha256": { "$ref": "#/$defs/digest" },
+        "candidateEvidenceSha256": { "$ref": "#/$defs/digest" },
+        "sourceRef": { "type": "string", "pattern": "^cli-v" },
+        "sourceCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "compatiblePublicPlugin": { "type": "object" },
+        "cliManifestSha256": { "$ref": "#/$defs/digest" },
+        "aggregateContractSha256": { "$ref": "#/$defs/digest" },
+        "platforms": {
+          "const": {
+            "darwin": "supported",
+            "linux": "acceptance-required",
+            "win32": "acceptance-required",
+            "wsl": "unsupported"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "cell": {
+      "type": "object",
+      "required": [
+        "evidenceVersion", "kind", "status", "cellId", "environment",
+        "candidate", "checks", "workflow", "publishPerformed"
+      ],
+      "properties": {
+        "evidenceVersion": { "const": 1 },
+        "kind": { "const": "operon-cli-hosted-portability-cell" },
+        "status": { "const": "passed" },
+        "cellId": { "type": "string", "minLength": 1 },
+        "environment": { "type": "object" },
+        "candidate": { "$ref": "#/$defs/candidate" },
+        "checks": { "type": "object" },
+        "workflow": { "type": "object" },
+        "publishPerformed": { "const": false }
+      },
+      "additionalProperties": false
+    },
+    "index": {
+      "type": "object",
+      "required": [
+        "evidenceVersion", "kind", "status", "generatedAt", "candidate",
+        "cells", "summary", "nativeDesktopCertification", "publishPerformed"
+      ],
+      "properties": {
+        "evidenceVersion": { "const": 1 },
+        "kind": { "const": "operon-cli-hosted-portability-index" },
+        "status": { "const": "passed" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "candidate": { "$ref": "#/$defs/candidate" },
+        "cells": { "type": "array", "minItems": 9, "maxItems": 9 },
+        "summary": { "type": "object" },
+        "nativeDesktopCertification": {
+          "const": "optional-not-required-for-public-beta"
+        },
+        "publishPerformed": { "const": false }
+      },
+      "additionalProperties": false
+    }
+  }
+}

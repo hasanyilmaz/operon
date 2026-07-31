@@ -1,16 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import type { IndexedTaskInstance, IndexData } from '../src/types/fields';
+import type { IndexedTaskInstance } from '../src/types/fields';
 import {
 	buildIndexV8Snapshot,
 	decodeIndexV8Manifest,
 	deriveIndexV8InstanceKey,
 	finalizeValidatedIndexV8Snapshot,
-	getIndexV8CanonicalInstanceKeys,
 	hydrateIndexV8Shards,
 	hydrateValidatedIndexV8Snapshot,
-	projectIndexDataToV8Sources,
 	selectCanonicalIndexV8InstanceKey,
 	stableCompactStringify,
 	utf8ByteLength,
@@ -166,16 +162,9 @@ async function run(): Promise<void> {
 		...source,
 		instances: [...source.instances].reverse(),
 	}))));
-	const startupSeed = await buildIndexV8Snapshot({
-		...snapshotInput(sources),
-		coherenceBasis: 'v7-startup-seed',
-	});
 	equal(forward.manifestPayload, reversed.manifestPayload);
 	deepEqual([...forward.shardPayloads], [...reversed.shardPayloads]);
 	equal(forward.manifest.coherenceBasis, 'verified-full-scan');
-	equal(startupSeed.manifest.coherenceBasis, 'v7-startup-seed');
-	check(forward.manifest.snapshotId !== startupSeed.manifest.snapshotId);
-	deepEqual([...forward.shardPayloads], [...startupSeed.shardPayloads]);
 	await rejects(
 		() => buildIndexV8Snapshot({
 			...snapshotInput(sources),
@@ -390,23 +379,6 @@ async function run(): Promise<void> {
 		equal(snapshot.manifest.shards.length, 32);
 		check(stats.maxToAverage <= 3, `${count} distribution ratio was ${stats.maxToAverage}`);
 		check(stats.max < (count === 5_300 ? 1_000_000 : 4_000_000), `${count} max shard was ${stats.max}`);
-		const v7Bytes = utf8ByteLength(JSON.stringify(data, null, '\t'));
-		check(stats.total < v7Bytes * 0.7, `${count} V8 payload was not clearly smaller than V7`);
-	}
-
-	if (process.argv.includes('--live')) {
-		const livePath = resolve(process.cwd(), 'runtime/index.json');
-		const livePayload = await readFile(livePath, 'utf8');
-		const liveData = JSON.parse(livePayload) as IndexData;
-		const liveSnapshot = await buildIndexV8Snapshot(snapshotInput(
-			projectIndexDataToV8Sources(liveData),
-			getIndexV8CanonicalInstanceKeys(liveData),
-		));
-		const liveStats = distribution(liveSnapshot);
-		equal(liveSnapshot.manifest.shards.length, 32);
-		check(liveStats.max < 1_000_000, `live max shard was ${liveStats.max}`);
-		check(liveStats.maxToAverage <= 3, `live distribution ratio was ${liveStats.maxToAverage}`);
-		check(liveStats.total < utf8ByteLength(livePayload) * 0.7, 'live V8 payload was not clearly smaller than V7');
 	}
 
 	process.stdout.write(`${JSON.stringify({ ok: true, assertions })}\n`);

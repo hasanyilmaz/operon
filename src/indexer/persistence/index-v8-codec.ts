@@ -280,7 +280,7 @@ export async function buildIndexV8Manifest(
 ): Promise<{ manifest: IndexManifestV8; manifestPayload: string }> {
 	validateTimestamp(input.committedAt, 'committedAt');
 	validateTimestamp(input.lastFullScanAt, 'lastFullScanAt');
-	if (input.coherenceBasis !== 'verified-full-scan' && input.coherenceBasis !== 'v7-startup-seed') {
+	if (input.coherenceBasis !== 'verified-full-scan') {
 		throw new IndexV8CodecError('Invalid coherence basis');
 	}
 	if (!input.indexSemanticsSignature) throw new IndexV8CodecError('indexSemanticsSignature must be non-empty');
@@ -628,7 +628,7 @@ function assertManifestShape(value: unknown): asserts value is IndexManifestV8 {
 	if (typeof value.committedAt !== 'string' || typeof value.lastFullScanAt !== 'string') throw new IndexV8CodecError('Invalid manifest timestamps');
 	validateTimestamp(value.committedAt, 'committedAt');
 	validateTimestamp(value.lastFullScanAt, 'lastFullScanAt');
-	if (value.coherenceBasis !== 'verified-full-scan' && value.coherenceBasis !== 'v7-startup-seed') {
+	if (value.coherenceBasis !== 'verified-full-scan') {
 		throw new IndexV8CodecError('Invalid coherence basis');
 	}
 	if (typeof value.indexSemanticsSignature !== 'string' || !value.indexSemanticsSignature) throw new IndexV8CodecError('Invalid index semantics signature');

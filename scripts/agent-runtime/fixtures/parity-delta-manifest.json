@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "baselineTimestamp": "2026-01-15T10:20:30",
+  "layers": [
+    "legacy-skill-output",
+    "canonical-plugin-creation"
+  ],
+  "behaviors": [
+    {
+      "id": "inline-defaults-on",
+      "classification": "must-preserve",
+      "legacyCase": "inline-defaults-on",
+      "canonicalExpectation": "Live status and priority defaults are applied by the creation owner."
+    },
+    {
+      "id": "inline-defaults-off",
+      "classification": "must-preserve",
+      "legacyCase": "inline-defaults-off",
+      "canonicalExpectation": "Explicit no-default rendering remains available to dry-run tooling."
+    },
+    {
+      "id": "flat-parent-child-hierarchy",
+      "classification": "must-preserve",
+      "legacyCase": "flat-parent-child",
+      "canonicalExpectation": "parentTask is authoritative and child lines are flat by default."
+    },
+    {
+      "id": "explicit-visual-indentation",
+      "classification": "must-preserve",
+      "legacyCase": "indented-parent-child",
+      "canonicalExpectation": "Indentation is presentation-only and requires explicit opt-in."
+    },
+    {
+      "id": "child-inheritance-and-overrides",
+      "classification": "must-preserve",
+      "legacyCase": "child-inheritance",
+      "canonicalExpectation": "The current plugin inheritance resolver owns the final inherited field set."
+    },
+    {
+      "id": "checkbox-tags-unicode-escaping-lists-visual-custom",
+      "classification": "must-preserve",
+      "legacyCase": "rich-inline",
+      "canonicalExpectation": "Canonical serializer preserves Unicode and normalizes icons, colors and inline escaping."
+    },
+    {
+      "id": "daily-target-resolution",
+      "classification": "must-preserve",
+      "legacyCase": "daily-target-write",
+      "canonicalExpectation": "Default target is resolved from current vault configuration."
+    },
+    {
+      "id": "file-default-and-explicit-target",
+      "classification": "must-preserve",
+      "legacyCases": [
+        "file-default-target",
+        "file-exact-target"
+      ],
+      "canonicalExpectation": "File tasks support configured folder and exact vault-relative target."
+    },
+    {
+      "id": "filename-sanitization",
+      "classification": "must-preserve",
+      "legacyCase": "file-name-sanitization",
+      "canonicalExpectation": "Invalid filename characters are normalized deterministically."
+    },
+    {
+      "id": "template-order-unmanaged-fields-tags-body",
+      "classification": "must-preserve",
+      "legacyCase": "file-template-preservation",
+      "canonicalExpectation": "Current file-template merge preserves human property order, unknown fields and body."
+    },
+    {
+      "id": "collision-without-overwrite",
+      "classification": "must-preserve",
+      "legacyCase": "file-collision",
+      "canonicalExpectation": "Creation fails closed when the target already exists."
+    },
+    {
+      "id": "unconfirmed-overwrite",
+      "classification": "intentional-correction",
+      "legacyCase": "file-overwrite",
+      "canonicalExpectation": "Future mutation API must require plan-bound confirmation before replacement."
+    },
+    {
+      "id": "vault-path-guards",
+      "classification": "must-preserve",
+      "legacyCases": [
+        "path-guard-absolute",
+        "path-guard-traversal",
+        "path-guard-symlink"
+      ],
+      "canonicalExpectation": "Absolute, traversal and symlink escape targets fail closed."
+    },
+    {
+      "id": "non-markdown-and-hidden-targets",
+      "classification": "intentional-correction",
+      "legacyCases": [
+        "target-non-markdown-drift",
+        "target-hidden-drift"
+      ],
+      "canonicalExpectation": "Future public creation API accepts only validated Markdown targets and rejects hidden internal targets."
+    },
+    {
+      "id": "stdout-stderr-result-contract",
+      "classification": "must-preserve",
+      "legacyCases": [
+        "output-channels-dry-run",
+        "output-channels-write"
+      ],
+      "canonicalExpectation": "The future CLI may change the envelope but must preserve machine-readable dry-run and write results."
+    },
+    {
+      "id": "caller-provided-operon-id",
+      "classification": "must-preserve",
+      "legacyCase": "caller-id-ignored",
+      "canonicalExpectation": "Runtime owns identity allocation and rejects or ignores caller-owned IDs."
+    },
+    {
+      "id": "legacy-reminders-field",
+      "classification": "obsolete",
+      "legacyCase": "legacy-reminders-drift",
+      "canonicalExpectation": "The retired reminders key is not writable and is replaced by reminderDatetimes and reminderRules."
+    },
+    {
+      "id": "canonical-reminder-fields",
+      "classification": "intentional-correction",
+      "legacyCase": null,
+      "canonicalExpectation": "reminderDatetimes and reminderRules are independently typed list fields."
+    },
+    {
+      "id": "personal-profile-snapshot",
+      "classification": "obsolete",
+      "legacyCase": null,
+      "canonicalExpectation": "Current Runtime context, not a bundled personal snapshot, supplies settings."
+    }
+  ]
+}

@@ -1,0 +1,331 @@
+{
+  "caseCount": 22,
+  "cases": [
+    {
+      "caseId": "inline-defaults-on",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "5dae6d8358cc51c0fcbf6f23128f42f6adda1ba3e8bcc8673a1c17100cbd033e",
+      "seed": 41017,
+      "stderrSha256": "cbad3f73cfc7ba3b581bb5d61627f08dac8fa6170c525f8ffe17c0863d94021f",
+      "stdoutSha256": "a830be7f8e8670dc2be8e8356e67b20935bf4265d0d12b6f9b593a23cb502596",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "inline-defaults-off",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "85e7b05291e4748799dde15bf85f371b3beba3e0919387bb95884656d3a0c5cc",
+      "seed": 41018,
+      "stderrSha256": "c74fbbf58fb63c7a9171ac10ff2563820f6641086a549ef278d69d43ecc3dd4a",
+      "stdoutSha256": "83cd60420fcbcfa04e24b47e2165e4a8296fde6e6da175a2ade79d8449a8e3b8",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "flat-parent-child",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "41f3d73d38c484b9f8a1c45886762deeba3651a10a1625b99995df73663d9f7d",
+      "seed": 41019,
+      "stderrSha256": "d332333fb101baa07abee0b1047848de8c7015cfc813d64ff24a4b3c917cbae3",
+      "stdoutSha256": "901b65f58298b7386df650997f6a24a308f311d4293b4b89d7e88699e394a0e6",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "indented-parent-child",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "dc5bbfdde188e364aa9e8da66d1f0f1707eacde6bc73f2e0b46a18b2682fd27d",
+      "seed": 41020,
+      "stderrSha256": "738c108ba9cce0bc84bcd89b5193b044e2be55b87a4fb6e57bd6ab261b5b2d41",
+      "stdoutSha256": "257b011978d38c5a452e0e48588ec92d9972a3a249332895474e61664391024d",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "child-inheritance",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "8c6f3bed8cec6c21badb307649d99714104466ce465e44f16ee7fe0891d8b4d7",
+      "seed": 41021,
+      "stderrSha256": "b7e11db1116fef2bd09204c76e0829e05ebfce8251093b99bd53c3eb9e156f3e",
+      "stdoutSha256": "08a524e32140c0eeb572ef573453fb8a889f271b3d64852bea37ec85c4ec9342",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "rich-inline",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "8ba1ed8e53a99f21d0fa7018ca3c83095cd25e008b308e9b81e4235d6ae78a7d",
+      "seed": 41022,
+      "stderrSha256": "983808eb8f5957c70f8d10fde8ecd4aceafb6bd1631a2922b320cc4493ddb9c4",
+      "stdoutSha256": "376040a090c34d9b6f20bd740b9d07c284d493fc8b32ad6ca86ac0b28dc62e31",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "daily-target-write",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": true
+      },
+      "requestSha256": "08abc82a635db23fd11ea5595fe06b1b75b7dc7ebb8f3361de828192beacf642",
+      "seed": 41023,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdoutSha256": "2c99c6cc10c940876c24164651bcc5619c0f73c509681bc68e4be466619c9350",
+      "writtenFiles": {
+        "Daily/2026-01-15.md": "9f1ba6e9ad9e105902eb164f74cd5bce4f6b10fd364663e48578055c3b40a308"
+      }
+    },
+    {
+      "caseId": "file-default-target",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "3da5c94b9d3fc58bd3bcacfd4b5ccf1a337599cafe3ba5a34d6fb488ce0c1196",
+      "seed": 41024,
+      "stderrSha256": "9e24bf716ab71ca4a99ba7884bd28be115f353e261e10e5adc51b01a7eb6a7ac",
+      "stdoutSha256": "c43ceab9f7dfa00e2430968484458e1304d283526515d6538cb47e561cc55f3a",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "file-exact-target",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "056a3efc5dff9cfd58a8d87f5424f02bf8f2746d7cd076d2894a084efc831199",
+      "seed": 41025,
+      "stderrSha256": "fbb7da769c7aebd04ec377a3241936ed10034e265e77d5cfa15c96b21eb2a0a9",
+      "stdoutSha256": "ff1f69cb1f491e258ceeded7d1ee6036e8b93877b7cc1d9868f956210dd9e0d9",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "file-name-sanitization",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "0b9edd313a1f690fc4ff0fc49511f51e15e28e0795c1f6e5e0f85dbde9024b6a",
+      "seed": 41026,
+      "stderrSha256": "6ea9c0b2412e31fabb43bd82a949c83eb35c3f23d6f314b19c02be1e07e04810",
+      "stdoutSha256": "238083ebb658f50026dea3767b71880f58a5980e30ffcd7d811d15865565558b",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "file-template-preservation",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "ee9b4cfedfac359860de8a3dae1fd53eddb87b6b2bb29d265da88db8c4e6517d",
+      "seed": 41027,
+      "stderrSha256": "d97c2ea5ca24be14de5a3f801930943292227e260ae7aab4e48d228fa5021dad",
+      "stdoutSha256": "a4c2cd67fed14a52acf75c177bf4afebc2346e11dd8c58dd26720de904a53c58",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "file-collision",
+      "exitCode": 1,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": true
+      },
+      "requestSha256": "2bd35af9b2c4bf79e3f7f097f972b05d2a5725dd4354d238d6e677c414075877",
+      "seed": 41028,
+      "stderrSha256": "046cc16d5d71e4f642c9d7d40e77a19e70e4a19f0406dfeadaeee020c45e312b",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "file-overwrite",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": true,
+        "write": true
+      },
+      "requestSha256": "59266198169c254bdd4289a04ab3449fb3ab1b0580794f7d2f781b9514967c36",
+      "seed": 41029,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdoutSha256": "6c6fdf90480650ab87cf6ca9d6fbf8cadae61130caff074c32682187d82a6fb6",
+      "writtenFiles": {
+        "Tasks/Overwrite.md": "18b974c43aa0a348f3c1f3304217d2e440ece7056cf01c44d19f8dde1f5dc881"
+      }
+    },
+    {
+      "caseId": "path-guard-absolute",
+      "exitCode": 1,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": true
+      },
+      "requestSha256": "37d0f005ed9ec78fe2684974a069c7a4d89b4919c80347ac3fac9bfe708f4cf5",
+      "seed": 41030,
+      "stderrSha256": "9a1b482b6fc72e6910ab5a18658c4cde81e64f9b8de85e2b6f1c420bf5b43368",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "path-guard-traversal",
+      "exitCode": 1,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": true
+      },
+      "requestSha256": "114b5a9b0cb6d9e3bcff4848ed8accfde9f10d65bff4fb9f53ddae3f3512b4cd",
+      "seed": 41031,
+      "stderrSha256": "390f8a2dd558e3182c9a6ae28782085c42af68abeb5079a409c480feff3231d2",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "path-guard-symlink",
+      "exitCode": 1,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": true
+      },
+      "requestSha256": "bb6d7d2b36fdb259315243ce191b81e94832c750a667b55282e7a83446f76dc1",
+      "seed": 41032,
+      "stderrSha256": "6eb8120082f52b95d17daa7f8b7fe4ac9c456ec48ca84a636fe168997c943356",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "target-non-markdown-drift",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": true
+      },
+      "requestSha256": "fe9d406580e59638e1e3ddae3ff316414e47b44acbddd62e433978c38da7911d",
+      "seed": 41033,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdoutSha256": "3b6524680b59b78143e157ed1ccedd14fe3edb418e6acc9d6d47683f3b1476af",
+      "writtenFiles": {
+        "Tasks/Not Markdown.txt": "78523594706d345eaa395d5631050329a96f3cd1e81ba0152a7c2682e75b43a7"
+      }
+    },
+    {
+      "caseId": "target-hidden-drift",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": true
+      },
+      "requestSha256": "fbeddd30e91f2a8ae36f3327739709cfd210b136c68a365acd9440c1dfa63673",
+      "seed": 41034,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdoutSha256": "f6dbc68364010748fe4c0ffe5474bef737cb9f444a35ecc1ef7091e2bf6b94ce",
+      "writtenFiles": {
+        ".internal/Hidden.md": "72738b9326e887e5f99d1ac13b5579598655c492b0d4ab617ecc3b0fd620f9f9"
+      }
+    },
+    {
+      "caseId": "output-channels-dry-run",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "f003f9c430701f79a16dff48f14d69a0dc94f320983dd505cb9eef9749b27967",
+      "seed": 41035,
+      "stderrSha256": "a076c8f3ad8b953c91cf8d82c5f1b6ef77857d84b85ce533edc903f35e3be48e",
+      "stdoutSha256": "906f5e471d297ab39f774a9a64a48ffb62788c73719aa730218e52945f619d2d",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "output-channels-write",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": true
+      },
+      "requestSha256": "424e7a3757afe2154ad1c0e2dbfcb020f22b9eb647f129f4ae50431c172975dd",
+      "seed": 41036,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdoutSha256": "1eaaf90ae76783341b6b2acc4dc35130151f69ff326f9e69717d307701b5bbba",
+      "writtenFiles": {
+        "Tasks/Output.md": "fb07ae5a05a9a378c5ec65d3c41ce8eb6c03c2c423f7c63f70ee9b83affd0113"
+      }
+    },
+    {
+      "caseId": "caller-id-ignored",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "f2d1664cefb6a25ac8cbc734e3fd1161a5c389ae7de4a9fa33638744a854ea11",
+      "seed": 41037,
+      "stderrSha256": "b3f0b28ba035e54cd870dfbad9cffd2e60badddbbac1aada5570b80b13e8b192",
+      "stdoutSha256": "d009e580db77e5b2363709ea698df6a88ae8c9229c3f87e3bbec1d938122e7a3",
+      "writtenFiles": {}
+    },
+    {
+      "caseId": "legacy-reminders-drift",
+      "exitCode": 0,
+      "fixtureSchemaVersion": 1,
+      "invocation": {
+        "overwrite": false,
+        "write": false
+      },
+      "requestSha256": "09951647c364056bf808944a6992eef8bbd66e4b0d2b00048f81b36a64b42867",
+      "seed": 41038,
+      "stderrSha256": "cc4f4f4b3b048ac8760dafb519f8277e3ef75f706530a63a77d082b5b80d94ff",
+      "stdoutSha256": "12378c7319c5eadf5b6e5e559457659d393b1b315aced1b314a3d5af92184170",
+      "writtenFiles": {}
+    }
+  ],
+  "catalogSha256": "2e41b9acd987ff776d805f64abf919c2b79922918b1b1a9fa02c0442f96c7cc7",
+  "fixedTimestamp": "2026-01-15T10:20:30",
+  "fixtureSchemaVersion": 1,
+  "generator": "generate_legacy_fixtures.py",
+  "generatorSha256": "e3b91e53ba97c0c459f643f1ad1f4bf1e2780423ad74488b71b71751329eaf0b",
+  "legacyRendererSha256": "e44413de6b8fcca3d16e4517b2439dc0a606364bbaeb54218c01d83d1c201b6e",
+  "profileSha256": "8260a554b2cecbec11c5642fa53f807ebf81d97957893901165c176de20871be",
+  "templateSha256": "75a6b4ab8118a1ce7511b7c30f7249405ad7635e579f101d03fc3ad330608f19"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "operon-developer-api-native-acceptance-consumer",
+  "name": "Operon Developer API Native Acceptance Consumer",
+  "version": "1.0.0",
+  "minAppVersion": "1.12.2",
+  "description": "Runner-controlled native acceptance fixture for the Operon Developer API V1.",
+  "author": "Operon",
+  "isDesktopOnly": true
+}

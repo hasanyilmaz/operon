@@ -5,6 +5,7 @@ import { formatDurationHuman } from '../systems/tracker-utils';
 import { OperonSettings } from '../types/settings';
 import { asyncHandler } from '../core/async-action';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
 export class TimeTrackerStatusBar {
 	private readonly rootEl: HTMLElement;
@@ -98,9 +99,10 @@ export class TimeTrackerStatusBar {
 
 		// Task name
 		const taskName = active.task?.description || t('taskEditor', 'unassignedTracker');
-		this.taskNameEl = wrapper.createSpan({
-			cls: 'operon-tracker-status-bar-task',
-			text: taskName,
+		this.taskNameEl = wrapper.createSpan('operon-tracker-status-bar-task');
+		renderCompactTaskMarkdown(this.taskNameEl, {
+			value: taskName,
+			mode: 'visual-only',
 		});
 
 		// Stop button

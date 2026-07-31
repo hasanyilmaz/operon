@@ -15,13 +15,20 @@ import { PROJECT_SERIAL_TABLE_FIELD_KEY, getTableTaskField } from './table-field
 import { resolveTableValueCellIcon } from './table-icon-only-cell';
 import { resolveTableLocationCellVisual, type TableLocationCellResolver, type TableLocationCellVisual } from './table-location-cell';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
+import {
+	resolveBlockedByVisualStateColor,
+	resolveBlockedByVisualStateForId,
+} from '../../core/blocked-by-visual-state';
+import type { TableTaskLookup } from './table-value-adapter';
 
 type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities'>;
+const TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH = 37;
 
 export interface TableCellChipRenderOptions {
 	column?: Pick<TableColumn, 'key' | 'colorMode'>;
 	task?: IndexedTask;
 	settings?: TableCellChipSettings;
+	taskLookup?: TableTaskLookup;
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	accentValue?: string;
 	locationResolver?: TableLocationCellResolver | null;
@@ -36,6 +43,7 @@ export interface TableCellChipGroupRenderOptions extends TableCellChipRenderOpti
 interface TableCellChipItem {
 	rawValue: string;
 	displayValue: string;
+	tooltipContent?: string;
 }
 
 export function renderTableCellChips(
@@ -54,6 +62,13 @@ export function renderTableCellChips(
 			...options,
 			accentValue: item.rawValue,
 		});
+		if (item.tooltipContent) {
+			bindOperonHoverTooltip(chip, {
+				content: item.tooltipContent,
+				taskColor: null,
+				preferredHorizontal: 'center',
+			});
+		}
 	}
 }
 
@@ -163,10 +178,50 @@ function getTableCellChipItems(
 	}
 	const listItems = parseListValue(value);
 	const values = listItems.length > 0 ? listItems : [value.trim()];
+	const taskLookup = options.taskLookup;
+	if (isTableDependencyField(key) && taskLookup) {
+		return values.map(rawValue => {
+			const operonId = rawValue.trim();
+			const description = resolveTableDependencyDescription(operonId, taskLookup);
+			return {
+				rawValue,
+				displayValue: truncateTableDependencyDescription(description),
+				tooltipContent: description,
+			};
+		});
+	}
 	return values.map(rawValue => ({
 		rawValue,
 		displayValue: formatTableCellListChipDisplayValue(rawValue),
 	}));
+}
+
+export function formatTableDependencyTooltipContent(
+	key: string,
+	value: string,
+	taskLookup: TableTaskLookup | null | undefined,
+): string | null {
+	if (!isTableDependencyField(key) || !taskLookup) return null;
+	const dependencyIds = parseListValue(value)
+		.map(operonId => operonId.trim())
+		.filter(Boolean);
+	if (dependencyIds.length === 0) return null;
+	return dependencyIds
+		.map(operonId => resolveTableDependencyDescription(operonId, taskLookup))
+		.join('\n');
+}
+
+function isTableDependencyField(key: string): boolean {
+	return key === 'blocking' || key === 'blockedBy';
+}
+
+function resolveTableDependencyDescription(operonId: string, taskLookup: TableTaskLookup): string {
+	return taskLookup.getTask(operonId)?.description.trim() || operonId;
+}
+
+function truncateTableDependencyDescription(value: string): string {
+	if (value.length <= TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH) return value;
+	return `${value.slice(0, TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH - 3).trimEnd()}...`;
 }
 
 function isTableListChipField(key: string, options: TableCellChipRenderOptions): boolean {
@@ -177,7 +232,7 @@ function isTableListChipField(key: string, options: TableCellChipRenderOptions):
 
 function isTableValueIconField(key: string, options: TableCellChipRenderOptions): boolean {
 	if (key === PROJECT_SERIAL_TABLE_FIELD_KEY) return true;
-	if (key === 'status' || key === 'priority') return true;
+	if (key === 'status' || key === 'priority' || key === 'blocking' || key === 'blockedBy') return true;
 	if (!options.settings) return false;
 	const field = getTableTaskField(key, options.settings);
 	return field?.type === 'date' || field?.type === 'datetime';
@@ -296,12 +351,34 @@ function applyTableCellChipAccent(
 	if (accent) {
 		applyTableCellAccentVariables(chip, accent);
 	}
+	const blockedByStateAccent = resolveTableCellBlockedByStateAccent(key, value, options);
+	if (blockedByStateAccent) {
+		chip.addClass('operon-table-blocked-by-state-chip');
+		applyTableCellAccentVariables(chip, blockedByStateAccent);
+	}
 	const dateStateAccent = resolveTableCellDateStateAccent(key, value, options);
 	if (!dateStateAccent) return;
 	chip.addClass('operon-table-field-accent-chip');
 	chip.addClass('operon-table-date-state-chip');
 	chip.addClass(dateStateAccent.tone === 'today' ? 'is-today' : 'is-overdue');
 	applyTableCellAccentVariables(chip, dateStateAccent.color);
+}
+
+function resolveTableCellBlockedByStateAccent(
+	key: string,
+	value: string,
+	options: TableCellChipRenderOptions,
+): string | null {
+	if (key !== 'blockedBy' || !options.settings || !options.taskLookup) return null;
+	const operonId = (options.accentValue ?? value).trim();
+	if (!operonId) return null;
+	const state = resolveBlockedByVisualStateForId(
+		operonId,
+		id => options.taskLookup?.getTask(id) ?? undefined,
+		options.settings.pipelines,
+		options.workflowStatusIdentityIndex,
+	);
+	return resolveBlockedByVisualStateColor(state);
 }
 
 function resolveTableCellChipAccent(

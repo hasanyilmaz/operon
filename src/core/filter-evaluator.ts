@@ -28,6 +28,11 @@ import {
 	type FilePropertyQueryContext,
 	type FilePropertyValueState,
 } from './raw-yaml-property';
+import { isDependencyBlockerResolved } from './dependency-graph';
+import {
+	buildWorkflowStatusIdentityIndex,
+	type WorkflowStatusIdentityIndex,
+} from './workflow-status-identity';
 
 export interface GroupedFilterSubgroup {
 	key: string;
@@ -48,6 +53,8 @@ export interface GroupedFilterResults {
 	totalCount: number;
 	/** Number of rendered task memberships; list fan-out can exceed totalCount. */
 	renderItemCount?: number;
+	/** Matched tasks in source order, reusable by tree/search scopes without re-evaluating the filter. */
+	matchedTasks?: IndexedTask[];
 	groups: GroupedFilterGroup[];
 	/** Sorted tasks returned directly when a stale raw group rule is suspended. */
 	ungroupedTasks?: IndexedTask[];
@@ -62,6 +69,11 @@ interface EvalContext {
 	pinnedCache: PinnedCache | null;
 	taskById: Map<string, IndexedTask>;
 	childIdsByParentId: Map<string, string[]>;
+	dependencyTaskById: Map<string, IndexedTask>;
+	dependencyBlockerIdsByTaskId: Map<string, Set<string>>;
+	dependencyTargetIdsByTaskId: Map<string, Set<string>>;
+	dependencyPipelines: Pipeline[];
+	dependencyWorkflowStatusIdentityIndex: WorkflowStatusIdentityIndex;
 	projectTreeMatchCache: Map<string, Set<string>>;
 	folderTreeMatchCache: Map<string, Set<string>>;
 	projectSerialScopeResolver: ProjectSerialScopeFilterResolver | null;
@@ -72,6 +84,8 @@ interface EvalContext {
 export interface FilterEvaluationOptions {
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	projectSerialScopeTasks?: readonly IndexedTask[];
+	dependencyTasks?: readonly IndexedTask[];
+	pipelines?: readonly Pipeline[];
 	filePropertyContext?: FilePropertyQueryContext;
 }
 
@@ -170,6 +184,16 @@ export const LIST_OPERATORS = [
 	{ id: 'hasNoValue', label: 'has no value' },
 ] as const;
 
+export const BLOCKED_BY_DEPENDENCY_OPERATORS = [
+	{ id: 'hasActiveBlockers', label: 'has active blockers' },
+	{ id: 'hasNoActiveBlockers', label: 'has no active blockers' },
+] as const;
+
+export const BLOCKING_DEPENDENCY_OPERATORS = [
+	{ id: 'isActivelyBlockingTasks', label: 'is actively blocking tasks' },
+	{ id: 'isNotActivelyBlockingTasks', label: 'is not actively blocking tasks' },
+] as const;
+
 export const CHECKBOX_OPERATORS = [
 	{ id: 'isOpen', label: 'is open' },
 	{ id: 'isDone', label: 'is done' },
@@ -209,6 +233,8 @@ export const PROJECT_SERIAL_SCOPE_OPERATORS = [
 /** Operators that require no value input */
 export const NO_VALUE_OPERATORS = new Set([
 	'hasAnyValue', 'hasNoValue', 'propPresent', 'propMissing',
+	'hasActiveBlockers', 'hasNoActiveBlockers',
+	'isActivelyBlockingTasks', 'isNotActivelyBlockingTasks',
 	'isToday', 'notToday', 'beforeToday', 'afterToday',
 	'thisWeek', 'lastWeek', 'nextWeek',
 	'thisMonth', 'lastMonth', 'nextMonth',
@@ -272,6 +298,8 @@ export function getFilePropertyOperators(type: FilterFieldType): readonly { id: 
 
 /** Resolve operators by both field origin and type. */
 export function getOperatorsForField(field: string, type: FilterFieldType): readonly { id: string; label: string }[] {
+	if (field === 'blockedBy') return [...LIST_OPERATORS, ...BLOCKED_BY_DEPENDENCY_OPERATORS];
+	if (field === 'blocking') return [...LIST_OPERATORS, ...BLOCKING_DEPENDENCY_OPERATORS];
 	return isFilePropertyColumnKey(field) ? getFilePropertyOperators(type) : getOperatorsForType(type);
 }
 
@@ -289,7 +317,10 @@ export function evaluateFilterSet(
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
 	const sorts = getFilterSortSpecs(filterSet);
-	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, { sorts }, options);
+	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, {
+		sorts,
+		dependencyState: filterSetUsesDependencyState(filterSet),
+	}, options);
 	const result = tasks.filter(task => matchesFilterSet(filterSet, task, context));
 	return sortTasks(result, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext);
 }
@@ -316,7 +347,9 @@ export function filterTasksOnly(
 	pinnedCache?: PinnedCache | null,
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
-	const context = createEvalContext(tasks, priorities, pinnedCache, undefined, undefined, options);
+	const context = createEvalContext(tasks, priorities, pinnedCache, undefined, {
+		dependencyState: filterSetUsesDependencyState(filterSet),
+	}, options);
 	return tasks.filter(task => matchesFilterSet(filterSet, task, context));
 }
 
@@ -337,9 +370,11 @@ export function evaluateFilterSetGrouped(
 		sorts,
 		groupBy: filterSet.groupBy,
 		subgroupBy: filterSet.subgroupBy,
+		dependencyState: filterSetUsesDependencyState(filterSet),
 	}, options);
+	const matchedTasks = tasks.filter(task => matchesFilterSet(filterSet, task, context));
 	const sortedTasks = sortTasks(
-		tasks.filter(task => matchesFilterSet(filterSet, task, context)),
+		matchedTasks,
 		sorts,
 		context.priorityRankMap,
 		context.workflowStatusOrder,
@@ -347,7 +382,10 @@ export function evaluateFilterSetGrouped(
 		context.projectSerialScopeResolver,
 		context.filePropertyContext,
 	);
-	return groupSortedFilterTasks(filterSet, sortedTasks, context);
+	return {
+		...groupSortedFilterTasks(filterSet, sortedTasks, context),
+		matchedTasks,
+	};
 }
 
 export function groupFilterTasks(
@@ -536,6 +574,17 @@ function getRootGroup(filterSet: FilterSet): FilterGroup {
 	};
 }
 
+function filterSetUsesDependencyState(filterSet: FilterSet): boolean {
+	const visit = (node: FilterNode): boolean => {
+		if (isFilterGroup(node)) return node.children.some(visit);
+		return node.operator === 'hasActiveBlockers'
+			|| node.operator === 'hasNoActiveBlockers'
+			|| node.operator === 'isActivelyBlockingTasks'
+			|| node.operator === 'isNotActivelyBlockingTasks';
+	};
+	return getRootGroup(filterSet).children.some(visit);
+}
+
 function matchesFilterNode(node: FilterNode, task: IndexedTask, context: EvalContext): FilterTruth {
 	if (isFilterGroup(node)) return matchesFilterGroup(node, task, context);
 	if (node.field.startsWith('file.property:')) return evaluateFilePropertyCondition(node, task, context);
@@ -609,6 +658,8 @@ export function getFilterSortSpecs(filterSet: FilterSet): FilterSortSpec[] {
 // ============================================================
 
 function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context: EvalContext): FilterTruth {
+	const dependencyState = evaluateDependencyStateCondition(cond, task, context);
+	if (dependencyState !== null) return toFilterTruth(dependencyState);
 	const isDescriptionField = cond.field === 'description';
 	const rawFieldValue = isDescriptionField ? task.description : task.fieldValues[cond.field];
 	const hasProperty = isDescriptionField
@@ -697,6 +748,52 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 			if (cond.field === 'pinned') return toFilterTruth(evaluatePinnedCondition(cond.operator, task, context.pinnedCache));
 			return 'true';
 	}
+}
+
+function evaluateDependencyStateCondition(
+	cond: FilterSetCondition,
+	task: IndexedTask,
+	context: EvalContext,
+): boolean | null {
+	if (cond.field === 'blockedBy') {
+		const hasActiveBlockers = hasActiveDependencyBlockers(task, context);
+		if (cond.operator === 'hasActiveBlockers') return hasActiveBlockers;
+		if (cond.operator === 'hasNoActiveBlockers') return !hasActiveBlockers;
+		return null;
+	}
+	if (cond.field === 'blocking') {
+		const isActivelyBlocking = isTaskActivelyBlocking(task, context);
+		if (cond.operator === 'isActivelyBlockingTasks') return isActivelyBlocking;
+		if (cond.operator === 'isNotActivelyBlockingTasks') return !isActivelyBlocking;
+	}
+	return null;
+}
+
+function hasActiveDependencyBlockers(task: IndexedTask, context: EvalContext): boolean {
+	const blockerIds = context.dependencyBlockerIdsByTaskId.get(task.operonId);
+	if (!blockerIds || blockerIds.size === 0) return false;
+	for (const blockerId of blockerIds) {
+		if (!isDependencyBlockerResolved(
+			context.dependencyTaskById.get(blockerId),
+			context.dependencyPipelines,
+			context.dependencyWorkflowStatusIdentityIndex,
+		)) return true;
+	}
+	return false;
+}
+
+function isTaskActivelyBlocking(task: IndexedTask, context: EvalContext): boolean {
+	if (isDependencyBlockerResolved(
+		task,
+		context.dependencyPipelines,
+		context.dependencyWorkflowStatusIdentityIndex,
+	)) return false;
+	const targetIds = context.dependencyTargetIdsByTaskId.get(task.operonId);
+	if (!targetIds || targetIds.size === 0) return false;
+	for (const targetId of targetIds) {
+		if (context.dependencyTaskById.has(targetId)) return true;
+	}
+	return false;
 }
 
 function toFilterTruth(value: boolean): FilterTruth {
@@ -1445,6 +1542,7 @@ function createEvalContext(
 		sorts?: readonly FilterSortSpec[];
 		groupBy?: string;
 		subgroupBy?: string;
+		dependencyState?: boolean;
 	} = {},
 	options?: FilterEvaluationOptions,
 ): EvalContext {
@@ -1467,6 +1565,27 @@ function createEvalContext(
 		orderRequirements.groupBy ?? '',
 		orderRequirements.subgroupBy ?? '',
 	]);
+	const dependencyTasks = orderRequirements.dependencyState
+		? options?.dependencyTasks ?? tasks
+		: [];
+	const dependencyTaskById = new Map<string, IndexedTask>(
+		dependencyTasks.map(task => [task.operonId, task]),
+	);
+	const dependencyBlockerIdsByTaskId = new Map<string, Set<string>>();
+	const dependencyTargetIdsByTaskId = new Map<string, Set<string>>();
+	for (const dependencyTask of dependencyTasks) {
+		for (const targetId of parseListValue(dependencyTask.fieldValues['blocking'] ?? '')) {
+			addDependencyIndexValue(dependencyTargetIdsByTaskId, dependencyTask.operonId, targetId);
+			addDependencyIndexValue(dependencyBlockerIdsByTaskId, targetId, dependencyTask.operonId);
+		}
+		for (const blockerId of parseListValue(dependencyTask.fieldValues['blockedBy'] ?? '')) {
+			addDependencyIndexValue(dependencyBlockerIdsByTaskId, dependencyTask.operonId, blockerId);
+			addDependencyIndexValue(dependencyTargetIdsByTaskId, blockerId, dependencyTask.operonId);
+		}
+	}
+	const dependencyPipelines = orderRequirements.dependencyState
+		? [...(pipelines ?? options?.pipelines ?? [])]
+		: [];
 	return {
 		today: localToday(),
 		priorityRankMap: orderFields.has('priority') ? buildPriorityRankMap(priorities) : null,
@@ -1476,6 +1595,11 @@ function createEvalContext(
 		pinnedCache: pinnedCache ?? null,
 		taskById,
 		childIdsByParentId,
+		dependencyTaskById,
+		dependencyBlockerIdsByTaskId,
+		dependencyTargetIdsByTaskId,
+		dependencyPipelines,
+		dependencyWorkflowStatusIdentityIndex: buildWorkflowStatusIdentityIndex(dependencyPipelines),
 		projectTreeMatchCache: new Map<string, Set<string>>(),
 		folderTreeMatchCache: new Map<string, Set<string>>(),
 		projectSerialScopeResolver: options?.projectSerialScopes
@@ -1486,6 +1610,22 @@ function createEvalContext(
 			(options?.filePropertyContext?.fields ?? []).map(field => [field.key, field] as const),
 		),
 	};
+}
+
+function addDependencyIndexValue(
+	index: Map<string, Set<string>>,
+	key: string,
+	value: string,
+): void {
+	const normalizedKey = key.trim();
+	const normalizedValue = value.trim();
+	if (!normalizedKey || !normalizedValue) return;
+	const values = index.get(normalizedKey);
+	if (values) {
+		values.add(normalizedValue);
+	} else {
+		index.set(normalizedKey, new Set([normalizedValue]));
+	}
 }
 
 function buildPriorityRankMap(priorities?: { label: string }[]): Record<string, number> | null {

@@ -45,6 +45,7 @@ export interface FloatingPanelOptions extends FloatingHostOptions {
 	repositionOnPanelResize?: boolean;
 	repositionOnScroll?: boolean;
 	shouldClose?: (reason: FloatingPanelCloseReason) => boolean;
+	shouldHandleEscape?: (event: KeyboardEvent) => boolean;
 }
 
 export interface PickerListItemActivationOptions {
@@ -607,7 +608,15 @@ export function createFloatingPanel(
 	};
 
 	const onKeyDown = (event: KeyboardEvent) => {
-		if (event.key === 'Escape' && !event.isComposing && isTopMostFloatingPanel(record)) requestClose('escape');
+		if (
+			event.key === 'Escape'
+			&& !event.isComposing
+			&& Reflect.get(event, 'keyCode') !== 229
+			&& options.shouldHandleEscape?.(event) !== false
+			&& isTopMostFloatingPanel(record)
+		) {
+			requestClose('escape');
+		}
 	};
 
 	onHostWindowResize = () => {

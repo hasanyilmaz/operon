@@ -1,0 +1,17 @@
+---
+Owner: Human
+Status: Work.Active
+Unmanaged Field: Keep me
+Priority: P1
+tags:
+  - "fixture"
+  - "preserved"
+Operon ID: rpcwthz
+Created: 2026-01-15T10:20:30
+Fixture Topic: Templates
+Updated: 2026-01-15T10:20:30
+---
+# Template body
+
+This body must survive when no explicit body override is supplied.
+

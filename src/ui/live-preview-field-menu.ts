@@ -452,6 +452,8 @@ function openPicker(key: string, anchor: HTMLElement | DOMRect, options: LivePre
 				value: fieldValues[key] ?? '',
 				oppositeValue: fieldValues[key === 'blocking' ? 'blockedBy' : 'blocking'] ?? '',
 				allTasks: options.allTasks,
+				pipelines: options.settings.pipelines,
+				keyMappings: options.settings.keyMappings,
 				excludedIds: [options.task?.operonId?.trim() ?? ''].filter(Boolean),
 				closeOnSelect: true,
 				onSave: payload => {

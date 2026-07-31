@@ -1,0 +1,12 @@
+{
+  "mode": "inline",
+  "tasks": [
+    {
+      "description": "Legacy reminder drift",
+      "fields": {
+        "reminders": "2026-01-16T09:00:00"
+      }
+    }
+  ],
+  "timestamp": "2026-01-15T10:20:30"
+}

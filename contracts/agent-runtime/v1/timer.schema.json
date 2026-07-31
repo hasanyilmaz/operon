@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:timer.schema.json",
+  "title": "Operon Timer Read V1",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "consistency"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "timer-read" },
+        "consistency": {
+          "type": "string",
+          "enum": ["live-verified", "best-effort", "offline-unverified"]
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active", "transition"],
+      "properties": {
+        "active": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["operonId", "start", "source", "elapsedSeconds", "isUnassigned"],
+              "properties": {
+                "operonId": {
+                  "oneOf": [
+                    { "type": "null" },
+                    { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }
+                  ]
+                },
+                "start": { "type": "string", "minLength": 1 },
+                "source": { "type": "string", "minLength": 1 },
+                "elapsedSeconds": { "type": "integer", "minimum": 0 },
+                "isUnassigned": { "type": "boolean" }
+              }
+            }
+          ]
+        },
+        "transition": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "operonId", "start"],
+              "properties": {
+                "kind": { "enum": ["starting", "stopping"] },
+                "operonId": {
+                  "oneOf": [
+                    { "type": "null" },
+                    { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }
+                  ]
+                },
+                "start": { "type": "string", "minLength": 1 }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestId", "kind", "ok", "freshness", "warnings"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "requestId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId" },
+        "kind": { "const": "timer-read-result" },
+        "ok": { "type": "boolean" },
+        "freshness": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/freshness" },
+        "warnings": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning" }
+        },
+        "state": { "$ref": "#/$defs/state" },
+        "contextRevision": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "oneOf": [
+        {
+          "properties": { "ok": { "const": true } },
+          "required": ["state", "contextRevision"],
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "ok": { "const": false } },
+          "required": ["error"],
+          "not": { "anyOf": [{ "required": ["state"] }, { "required": ["contextRevision"] }] }
+        }
+      ]
+    }
+  }
+}

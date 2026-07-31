@@ -1,0 +1,14 @@
+{
+  "caseId": "legacy-reminders-drift",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "09951647c364056bf808944a6992eef8bbd66e4b0d2b00048f81b36a64b42867",
+  "seed": 41038,
+  "stderrSha256": "cc4f4f4b3b048ac8760dafb519f8277e3ef75f706530a63a77d082b5b80d94ff",
+  "stdoutSha256": "12378c7319c5eadf5b6e5e559457659d393b1b315aced1b314a3d5af92184170",
+  "writtenFiles": {}
+}

@@ -10,7 +10,8 @@ export const INDEX_V8_PARTITION_ALGORITHM = 'fnv1a32-utf8-nfc-v1' as const;
 export const INDEX_V8_PARTITION_KEY = 'normalized-source-path' as const;
 
 export type IndexV8ShardId = string;
-export type IndexV8CoherenceBasis = 'verified-full-scan' | 'v7-startup-seed';
+export type IndexV8CoherenceBasis = 'verified-full-scan';
+export type IndexV8RuntimeCoherenceBasis = IndexV8CoherenceBasis | 'unverified';
 
 export interface PersistedTaskLocationV8 {
 	lineNumber: number;
@@ -25,7 +26,7 @@ export interface PersistedTaskInstanceV8 {
 	tags: string[];
 	location: PersistedTaskLocationV8;
 	datetimeModified: string;
-	/** Present only when needed to preserve the current V7 canonical duplicate. */
+	/** Present only when needed to preserve the canonical duplicate instance. */
 	canonical?: true;
 	plainCheckboxProgress?: PlainCheckboxProgress;
 }

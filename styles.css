@@ -1672,6 +1672,53 @@ button.operon-text-field-popover-close:focus-visible {
 	box-shadow: 0 0 0 3px var(--operon-text-field-popover-focus-ring);
 }
 
+.operon-text-field-popover-cm-host {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	min-height: 150px;
+	max-height: min(230px, 48vh);
+	overflow: hidden;
+	border: 1px solid var(--operon-text-field-popover-editor-border);
+	border-radius: 6px;
+	background: transparent;
+	transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.operon-text-field-popover-cm-host:hover {
+	border-color: var(--background-modifier-border-hover);
+}
+
+.operon-text-field-popover-cm-host:focus-within {
+	border-color: var(--operon-text-field-popover-accent);
+	box-shadow: 0 0 0 3px var(--operon-text-field-popover-focus-ring);
+}
+
+.operon-text-field-popover-cm-host .operon-compact-markdown-editor,
+.operon-text-field-popover-cm-host .operon-compact-markdown-editor .cm-editor,
+.operon-text-field-popover-cm-host .operon-compact-markdown-editor-fallback {
+	min-height: 150px;
+	max-height: min(230px, 48vh);
+}
+
+.operon-text-field-popover-cm-host .operon-compact-markdown-editor .cm-content {
+	min-height: 150px;
+}
+
+.operon-text-field-popover-cm-host .operon-compact-markdown-editor .cm-scroller {
+	max-height: min(230px, 48vh);
+}
+
+.operon-text-field-popover-cm-host .operon-compact-markdown-editor .cm-content,
+.operon-text-field-popover-cm-host .operon-compact-markdown-editor-fallback {
+	padding: 8px 12px;
+}
+
+.operon-text-field-popover-cm-host .operon-compact-markdown-editor-fallback:is(:focus, :focus-visible) {
+	border-color: transparent;
+	box-shadow: none;
+}
+
 .operon-plain-checkbox-popover-panel {
 	--operon-plain-checkbox-popover-accent: var(--interactive-accent);
 	--operon-plain-checkbox-popover-border: color-mix(in srgb, var(--background-modifier-border) 64%, transparent);
@@ -1816,6 +1863,88 @@ button.operon-text-field-popover-close:focus-visible {
 
 .operon-plain-checkbox-popover-cm-editor .cm-activeLine {
 	background: color-mix(in srgb, var(--operon-plain-checkbox-popover-accent) 7%, transparent);
+}
+
+.operon-compact-markdown-editor,
+.operon-compact-markdown-editor .cm-editor,
+.operon-compact-markdown-editor-fallback {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 44px;
+	max-height: min(9rem, 30vh);
+	background: transparent;
+	color: var(--text-normal);
+	font-family: var(--font-text);
+	font-size: var(--font-ui-medium);
+	line-height: 1.5;
+}
+
+.operon-compact-markdown-editor .cm-scroller {
+	max-height: min(9rem, 30vh);
+	overflow: auto;
+	font-family: inherit;
+}
+
+.operon-compact-markdown-editor .cm-content {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 44px;
+	padding: 10px 12px;
+	text-align: start;
+}
+
+.operon-compact-markdown-editor .cm-gutters {
+	display: none;
+}
+
+.operon-compact-markdown-editor .cm-line,
+.operon-compact-markdown-editor .cm-line.HyperMD-header,
+.operon-compact-markdown-editor .cm-line.HyperMD-list-line,
+.operon-compact-markdown-editor .cm-line.HyperMD-codeblock {
+	min-height: 0;
+	padding: 0;
+	background: transparent;
+	font-size: inherit;
+	font-weight: inherit;
+	line-height: inherit;
+	overflow-wrap: anywhere;
+}
+
+.operon-compact-markdown-editor .cm-activeLine,
+.operon-compact-markdown-editor .cm-activeLineGutter {
+	background: transparent;
+}
+
+.operon-compact-markdown-editor .operon-compact-markdown-underline {
+	text-decoration: underline;
+}
+
+.operon-compact-markdown-editor :is(
+	.internal-embed,
+	.image-embed,
+	.media-embed,
+	.markdown-embed,
+	.cm-embed-block,
+	img,
+	video,
+	audio
+) {
+	display: none;
+}
+
+.operon-compact-markdown-editor-fallback {
+	display: block;
+	resize: none;
+	padding: 10px 12px;
+	border: 0;
+	outline: none;
+	overflow: auto;
+	overflow-wrap: anywhere;
+	text-align: start;
+}
+
+.operon-compact-markdown-editor-fallback:focus-visible {
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
 }
 
 .operon-plain-checkbox-popover-panel button.operon-plain-checkbox-popover-close,
@@ -5101,12 +5230,56 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	opacity: 0.92;
 }
 
-.operon-task-description-markdown > p,
-.operon-reading-task-description-markdown,
-.operon-reading-task-description-markdown > p {
+.operon-reading-task-description-markdown {
 	display: inline;
 	margin: 0;
 	padding: 0;
+}
+
+.operon-compact-task-markdown {
+	white-space: inherit;
+}
+
+.operon-compact-task-markdown-strong {
+	font-weight: 700;
+}
+
+.operon-compact-task-markdown-emphasis {
+	font-style: italic;
+}
+
+.operon-compact-task-markdown-strikethrough {
+	text-decoration: line-through;
+}
+
+.operon-compact-task-markdown-underline {
+	text-decoration: underline;
+}
+
+.operon-compact-task-markdown-code {
+	padding: 0.05em 0.3em;
+	border-radius: 4px;
+	background: var(--code-background);
+	color: var(--code-normal);
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+}
+
+.operon-compact-task-markdown-link,
+.operon-compact-task-markdown-link-label {
+	color: var(--link-color);
+	text-decoration: var(--link-decoration);
+}
+
+.operon-compact-task-markdown--visual-only .operon-compact-task-markdown-link-label,
+.operon-compact-task-markdown--tooltip .operon-compact-task-markdown-link-label {
+	cursor: inherit;
+	pointer-events: none;
+}
+
+.operon-compact-task-markdown-link:hover {
+	color: var(--link-color-hover);
+	text-decoration: var(--link-decoration-hover);
 }
 
 .operon-task-description-markdown .internal-link,
@@ -5283,6 +5456,10 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 
 .operon-inline-compact-chip.is-linked .operon-inline-compact-chip-icon {
 	color: var(--operon-live-hover-border, var(--interactive-accent));
+}
+
+.operon-inline-compact-chip.is-linked.has-blocked-by-visual-state .operon-inline-compact-chip-icon {
+	color: var(--operon-inline-chip-icon-color, var(--operon-live-hover-border, var(--interactive-accent)));
 }
 
 .operon-inline-compact-chip.is-linked.is-location .operon-inline-compact-chip-icon {
@@ -6213,6 +6390,21 @@ body .modal.operon-subtasks-filter-modal .modal-close-button:focus-visible {
 .operon-task-creator-tool.is-picker-open {
 	border-color: var(--operon-task-creator-accent);
 	box-shadow: 0 0 0 2px var(--operon-task-creator-control-focus-ring);
+}
+
+.modal.operon-task-creator-modal button.operon-task-creator-tool.has-blocked-by-state {
+	border-color: color-mix(in srgb, var(--operon-blocked-by-state-color) 42%, var(--operon-task-creator-control-border));
+	color: var(--operon-blocked-by-state-color);
+}
+
+.modal.operon-task-creator-modal button.operon-task-creator-tool.has-blocked-by-state:hover,
+.modal.operon-task-creator-modal button.operon-task-creator-tool.has-blocked-by-state:focus-visible,
+.modal.operon-task-creator-modal button.operon-task-creator-tool.has-blocked-by-state.is-picker-open {
+	border-color: color-mix(in srgb, var(--operon-blocked-by-state-color) 62%, var(--operon-task-creator-control-hover-border));
+	background: color-mix(in srgb, var(--operon-blocked-by-state-color) 8%, transparent);
+	background-color: color-mix(in srgb, var(--operon-blocked-by-state-color) 8%, transparent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--operon-blocked-by-state-color) 18%, transparent);
+	color: var(--operon-blocked-by-state-color);
 }
 
 .operon-task-creator-tool-icon,
@@ -10873,6 +11065,53 @@ body .operon-task-editor button.operon-editor-tracking-session-action.is-danger:
 	background: transparent;
 }
 
+.operon-task-editor-compact-text-host {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid color-mix(in srgb, var(--text-muted) 24%, var(--background-modifier-border));
+	border-radius: var(--operon-task-editor-control-radius, 6px);
+	background: transparent;
+	transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.operon-task-editor-compact-text-host.is-description,
+.operon-task-editor-compact-text-host.is-description .operon-compact-markdown-editor,
+.operon-task-editor-compact-text-host.is-description .cm-editor,
+.operon-task-editor-compact-text-host.is-description .cm-content,
+.operon-task-editor-compact-text-host.is-description .operon-compact-markdown-editor-fallback {
+	min-height: 64px;
+}
+
+.operon-task-editor-compact-text-host.is-notes,
+.operon-task-editor-compact-text-host.is-notes .operon-compact-markdown-editor,
+.operon-task-editor-compact-text-host.is-notes .cm-editor,
+.operon-task-editor-compact-text-host.is-notes .cm-content,
+.operon-task-editor-compact-text-host.is-notes .operon-compact-markdown-editor-fallback {
+	min-height: 52px;
+}
+
+.operon-task-editor:not(.operon-task-editor-mobile)
+	.operon-task-editor-compact-text-host:is(.is-description, .is-notes)
+	.operon-compact-markdown-editor .cm-content,
+.operon-task-editor:not(.operon-task-editor-mobile)
+	.operon-task-editor-compact-text-host:is(.is-description, .is-notes)
+	.operon-compact-markdown-editor-fallback {
+	padding-inline: 16px;
+}
+
+.operon-task-editor-compact-text-host:focus-within {
+	border-color: var(--operon-task-editor-accent, var(--interactive-accent));
+	box-shadow: 0 0 0 3px var(--operon-task-editor-focus-ring);
+}
+
+.operon-task-editor-compact-text-host .operon-compact-markdown-editor-fallback:focus,
+.operon-task-editor-compact-text-host .operon-compact-markdown-editor-fallback:focus-visible {
+	border-color: transparent;
+	box-shadow: none;
+}
+
 .operon-editor-note-textarea {
 	min-height: 52px;
 }
@@ -12515,6 +12754,20 @@ body .operon-task-editor button.operon-task-editor-workflow-action-button.is-loc
 	transform: translateY(-1px);
 }
 
+.operon-editor-compact-selection-chip[data-blocked-by-state] {
+	border-color: color-mix(in srgb, var(--operon-blocked-by-state-color) 46%, var(--background-modifier-border));
+}
+
+.operon-editor-compact-selection-chip[data-blocked-by-state]:hover,
+.operon-editor-compact-selection-chip[data-blocked-by-state]:focus-within {
+	border-color: color-mix(in srgb, var(--operon-blocked-by-state-color) 62%, var(--background-modifier-border));
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-blocked-by-state-color) 18%, transparent);
+}
+
+.operon-editor-compact-selection-chip[data-blocked-by-state] .operon-inline-compact-chip-icon {
+	color: var(--operon-blocked-by-state-color);
+}
+
 .operon-editor-reminder-chip {
 	cursor: pointer;
 }
@@ -13312,6 +13565,31 @@ body .operon-task-editor button.operon-task-editor-workflow-action-button.is-loc
 	box-sizing: border-box;
 }
 
+.operon-parent-selected-chip.operon-blocked-by-selected-chip {
+	border-color: color-mix(in srgb, var(--operon-blocked-by-state-color) 46%, var(--background-modifier-border));
+}
+
+.operon-parent-selected-chip.operon-blocked-by-selected-chip:hover,
+.operon-parent-selected-chip.operon-blocked-by-selected-chip:focus-within {
+	border-color: color-mix(in srgb, var(--operon-blocked-by-state-color) 62%, var(--background-modifier-border));
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--operon-blocked-by-state-color) 18%, transparent);
+}
+
+.operon-parent-selected-chip-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	flex: 0 0 16px;
+	color: var(--operon-blocked-by-state-color, currentColor);
+}
+
+.operon-parent-selected-chip-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
 .operon-parent-selected-chip-label {
 	font-size: 13px;
 	font-weight: 600;
@@ -13647,8 +13925,8 @@ body .operon-task-editor button.operon-task-editor-workflow-action-button.is-loc
 	padding: 7px 9px;
 	border-radius: var(--operon-pinned-dock-control-radius);
 	border: 1px solid var(--operon-pinned-dock-card-border);
-	background: var(--operon-pinned-card-bg, transparent);
-	background-color: var(--operon-pinned-card-bg, transparent);
+	background: var(--operon-pinned-card-bg, var(--background-primary));
+	background-color: var(--operon-pinned-card-bg, var(--background-primary));
 	cursor: default;
 	flex-shrink: 0;
 	box-sizing: border-box;
@@ -13662,10 +13940,37 @@ body .operon-task-editor button.operon-task-editor-workflow-action-button.is-loc
 }
 
 .operon-pinned-card:hover {
-	background: var(--operon-pinned-card-bg, transparent);
-	background-color: var(--operon-pinned-card-bg, transparent);
+	background: var(--operon-pinned-card-bg, var(--background-primary));
+	background-color: var(--operon-pinned-card-bg, var(--background-primary));
 	border-color: var(--operon-pinned-card-hover-border, var(--operon-pinned-dock-control-hover-border));
 	box-shadow: 0 0 0 2px var(--operon-pinned-dock-control-focus-ring);
+}
+
+.operon-pinned-drop-position--vertical::before,
+.operon-pinned-drop-position--horizontal::before,
+.operon-pinned-drop-position--grid::before {
+	content: "";
+	position: absolute;
+	z-index: 4;
+	border-radius: 999px;
+	background: var(--interactive-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	pointer-events: none;
+}
+
+.operon-pinned-drop-position--vertical::before {
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 2px;
+}
+
+.operon-pinned-drop-position--horizontal::before,
+.operon-pinned-drop-position--grid::before {
+	top: 0;
+	left: 0;
+	width: 2px;
+	height: 100%;
 }
 
 /* Status icon button (left of description) */
@@ -13873,8 +14178,8 @@ button.operon-pinned-unpin svg {
 	padding: 7px 9px;
 	border: 1px solid var(--operon-pinned-sidebar-row-border);
 	border-radius: var(--operon-pinned-sidebar-control-radius);
-	background: var(--operon-pinned-sidebar-row-bg, transparent);
-	background-color: var(--operon-pinned-sidebar-row-bg, transparent);
+	background: var(--operon-pinned-sidebar-row-bg, var(--background-primary));
+	background-color: var(--operon-pinned-sidebar-row-bg, var(--background-primary));
 	box-sizing: border-box;
 	cursor: default;
 	transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
@@ -13883,8 +14188,8 @@ button.operon-pinned-unpin svg {
 
 .operon-pinned-sidebar-row:hover,
 .operon-pinned-sidebar-row:focus-within {
-	background: var(--operon-pinned-sidebar-row-bg, transparent);
-	background-color: var(--operon-pinned-sidebar-row-bg, transparent);
+	background: var(--operon-pinned-sidebar-row-bg, var(--background-primary));
+	background-color: var(--operon-pinned-sidebar-row-bg, var(--background-primary));
 	border-color: var(--operon-pinned-sidebar-row-hover-border, var(--operon-pinned-sidebar-control-hover-border));
 	box-shadow: 0 0 0 2px var(--operon-pinned-sidebar-control-focus-ring);
 }
@@ -31398,6 +31703,15 @@ button.operon-table-source-button {
 	color: var(--text-faint);
 }
 
+.operon-table-description-markdown-content {
+	display: block;
+	min-width: 0;
+	width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 input.operon-table-description-input {
 	box-sizing: border-box;
 	width: 100%;
@@ -31497,6 +31811,13 @@ input.operon-table-description-input:focus-visible {
 .operon-table-cell.is-editable:hover .operon-table-date-state-chip,
 .operon-table-cell.is-editable:focus-visible .operon-table-date-state-chip,
 .operon-table-cell.is-editable:focus-within .operon-table-date-state-chip {
+	--operon-inline-chip-icon-color: var(--operon-table-field-accent, var(--text-muted));
+}
+
+.operon-table-blocked-by-state-chip,
+.operon-table-cell.is-editable:hover .operon-table-blocked-by-state-chip,
+.operon-table-cell.is-editable:focus-visible .operon-table-blocked-by-state-chip,
+.operon-table-cell.is-editable:focus-within .operon-table-blocked-by-state-chip {
 	--operon-inline-chip-icon-color: var(--operon-table-field-accent, var(--text-muted));
 }
 

@@ -99,8 +99,7 @@ export class TablePresetRegistry<TDescriptor extends OperonTableFileDescriptor =
 		const sequence = ++this.refreshSequence;
 		while (sequence === this.refreshSequence && sourceRevision >= this.snapshot.sourceRevision) {
 			const authoritativeGeneration = this.authoritativeGeneration;
-			const [legacyPresets, bindings, descriptors] = await Promise.all([
-				this.callbacks.loadLegacyPresets(),
+			const [bindings, descriptors] = await Promise.all([
 				this.callbacks.loadFileBindings(),
 				this.callbacks.listTableFiles(),
 			]);
@@ -108,7 +107,7 @@ export class TablePresetRegistry<TDescriptor extends OperonTableFileDescriptor =
 			if (sequence !== this.refreshSequence || sourceRevision < this.snapshot.sourceRevision) return false;
 			if (authoritativeGeneration !== this.authoritativeGeneration) continue;
 
-			const merged = mergeRegistryEntries(legacyPresets, bindings, discovery.files);
+			const merged = mergeRegistryEntries(bindings, discovery.files);
 			this.authoritativeEntries = cloneEntries(merged.entries);
 			this.authoritativeGeneration += 1;
 			const optimisticEntries = this.projectPendingPatches(this.authoritativeEntries);
@@ -298,13 +297,10 @@ export class TablePresetRegistry<TDescriptor extends OperonTableFileDescriptor =
 				baseRevision,
 				...(baseFileContent !== undefined ? { baseFileContent } : {}),
 			};
-			if (entry.source.kind === 'table-file') {
-				if (!entry.source.path || !this.callbacks.writeTableFile) throw new Error('No table file writer is configured.');
-				await this.callbacks.writeTableFile(entry.source.path, serializeOperonTableFile(preset), context);
-			} else {
-				if (!this.callbacks.writeLegacyPreset) throw new Error('No legacy preset writer is configured.');
-				await this.callbacks.writeLegacyPreset(cloneTablePreset(preset), context);
+			if (entry.source.kind !== 'table-file' || !entry.source.path || !this.callbacks.writeTableFile) {
+				throw new Error(`Table preset "${pending.presetId}" has no writable table file source.`);
 			}
+			await this.callbacks.writeTableFile(entry.source.path, serializeOperonTableFile(preset), context);
 			const currentEntry = this.snapshot.entries.get(pending.presetId);
 			const authoritativeEntry = this.authoritativeEntries.get(pending.presetId) ?? currentEntry;
 			const persistedEntry: TablePresetRegistryEntry<TDescriptor> | null = authoritativeEntry ? {
@@ -358,21 +354,16 @@ export class TablePresetRegistry<TDescriptor extends OperonTableFileDescriptor =
 }
 
 function mergeRegistryEntries<TDescriptor extends OperonTableFileDescriptor>(
-	legacyPresets: readonly TablePreset[],
 	bindings: readonly TablePresetFileBinding[],
 	files: readonly DiscoveredOperonTableFile<TDescriptor>[],
 ): { entries: Map<string, TablePresetRegistryEntry<TDescriptor>>; conflicts: TablePresetRegistryConflict[] } {
 	const entries = new Map<string, TablePresetRegistryEntry<TDescriptor>>();
 	const conflicts: TablePresetRegistryConflict[] = [];
-	const legacyById = groupBy(legacyPresets, preset => preset.id);
 	const bindingsById = groupBy(bindings.map(binding => ({ ...binding, path: normalizeOperonTableFilePath(binding.path) })), binding => binding.id);
 	const bindingsByPath = groupBy([...bindingsById.values()].flat(), binding => getOperonTableFilePathKey(binding.path));
 	const filesByPath = new Map(files.map(file => [getOperonTableFilePathKey(file.path), file]));
 	const consumedPaths = new Set<string>();
 
-	for (const [id, matches] of legacyById) {
-		if (matches.length > 1) conflicts.push(conflict('duplicate-legacy-id', id, `Legacy preset id "${id}" is duplicated.`, []));
-	}
 	for (const [id, matches] of bindingsById) {
 		if (matches.length > 1) conflicts.push(conflict('duplicate-binding-id', id, `Preset id "${id}" has multiple file bindings.`, matches.map(match => match.path)));
 	}
@@ -435,27 +426,12 @@ function mergeRegistryEntries<TDescriptor extends OperonTableFileDescriptor>(
 			continue;
 		}
 		if (file.status !== 'loaded') continue;
-		if (legacyById.has(id)) {
-			const item = conflict('unbound-same-id', id, `Legacy and unbound table-file presets share id "${id}".`, [file.path]);
-			conflicts.push(item);
-			entries.set(id, conflictEntry(id, file.path, [item]));
-		} else if (!entries.has(id)) {
+		if (!entries.has(id)) {
 			entries.set(id, availableFileEntry(file, false));
 		}
 	}
 
-	for (const [id, matches] of legacyById) {
-		if (entries.has(id)) continue;
-		const ownConflicts = conflicts.filter(item => item.presetId === id);
-		entries.set(id, ownConflicts.length > 0
-			? conflictEntry(id, null, ownConflicts)
-			: availableLegacyEntry(matches[0]));
-	}
 	return { entries, conflicts: dedupeConflicts(conflicts) };
-}
-
-function availableLegacyEntry<TDescriptor extends OperonTableFileDescriptor>(preset: TablePreset): TablePresetRegistryEntry<TDescriptor> {
-	return { id: preset.id, status: 'available', preset: cloneTablePreset(preset), source: source<TDescriptor>('legacy', preset.id, null, null, false, null), conflicts: [] };
 }
 
 function availableFileEntry<TDescriptor extends OperonTableFileDescriptor>(

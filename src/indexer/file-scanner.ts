@@ -62,9 +62,10 @@ export async function scanFileWithMappings(
 	app: App,
 	file: TFile,
 	keyMappings: KeyMapping[],
+	knownContent?: string,
 ): Promise<FileScanResult> {
 	const filePath = file.path;
-	const content = await app.vault.read(file);
+	const content = knownContent ?? await app.vault.read(file);
 
 	// Scan file body once for Operon inline tasks and non-Operon markdown checkboxes.
 	const bodyScan = scanFileBody(content, filePath, keyMappings);
@@ -78,7 +79,9 @@ export async function scanFileWithMappings(
 		plainCheckboxProgress: bodyScan.plainCheckboxProgress,
 		yamlTask,
 		mtime: file.stat.mtime,
-		sizeBytes: file.stat.size,
+		sizeBytes: knownContent === undefined
+			? file.stat.size
+			: new TextEncoder().encode(content).byteLength,
 	};
 }
 
@@ -173,12 +176,13 @@ function scanYamlTask(
 	const fm = parseFrontmatterFromContent(content);
 	if (!fm) return null;
 	const reverseMap = buildReverseMapping(keyMappings);
-	let operonId: string | null = typeof fm['operonId'] === 'string' ? fm['operonId'] : null;
+	let operonId: string | null = yamlOperonIdScalar(fm['operonId']);
 	if (!operonId) {
 		for (const [yamlKey, value] of Object.entries(fm)) {
 			const canonicalKey = reverseMap.get(yamlKey) ?? yamlKey;
-			if (canonicalKey !== 'operonId' || typeof value !== 'string') continue;
-			operonId = value;
+			if (canonicalKey !== 'operonId') continue;
+			operonId = yamlOperonIdScalar(value);
+			if (!operonId) continue;
 			break;
 		}
 	}
@@ -213,6 +217,14 @@ function scanYamlTask(
 		tags,
 		filePath,
 	};
+}
+
+function yamlOperonIdScalar(value: unknown): string | null {
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
+		return String(value);
+	}
+	return null;
 }
 
 function parseFrontmatterFromContent(content: string): Record<string, unknown> | null {

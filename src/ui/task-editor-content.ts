@@ -27,6 +27,11 @@ import { t } from '../core/i18n';
 import { formatTaskNotice } from '../core/task-notice';
 import { localNow, localToday } from '../core/local-time';
 import { resolveTaskDateTone, resolveTaskDateToneColor } from '../core/task-date-tone';
+import {
+	resolveBlockedByAggregateVisualState,
+	resolveBlockedByVisualStateColor,
+	resolveBlockedByVisualStateForId,
+} from '../core/blocked-by-visual-state';
 import { parseRepeatRule } from '../core/repeat-rule';
 import { REMINDER_RULE_ANCHORS } from '../core/reminder-rules';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
@@ -48,6 +53,7 @@ import {
 } from '../systems/estimate-reallocation';
 import { TrackerSession } from '../types/tracker';
 import {
+	closeFloatingPanelsForRoot,
 	TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT,
 	TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT,
 	positionFloatingElement,
@@ -69,6 +75,12 @@ import {
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
 import { formatTrackerDayHeader } from './tracker-time-labels';
 import { EmbeddedMarkdownSourceEditor } from './embedded-markdown-source-editor';
+import {
+	createCompactMarkdownEditorSurface,
+	type CompactMarkdownEditorSurface,
+} from './compact-markdown-editor-surface';
+import type { CompactEditorKeyIntent } from './compact-editor-key-intent';
+import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 import { showTagPicker } from './field-pickers/tag-picker';
 import { showContextsPicker } from './field-pickers/contexts-picker';
 import { showAssigneesPicker } from './field-pickers/assignees-picker';
@@ -133,6 +145,19 @@ export interface TaskEditorCanonicalState {
 	checkbox: ParsedTask['checkbox'];
 	tags: string[];
 	fieldValues: Record<string, string>;
+}
+
+export function shouldUseTaskEditorSemanticTransition(options: {
+	fileBodyDirty: boolean;
+	requestedInlineCompletionMode: InlineRepeatCompletionMode;
+	storedInlineCompletionMode: InlineRepeatCompletionMode;
+	companionChangesSupported: boolean;
+	coordinatorReady: boolean;
+}): boolean {
+	return !options.fileBodyDirty
+		&& options.requestedInlineCompletionMode === options.storedInlineCompletionMode
+		&& options.companionChangesSupported
+		&& options.coordinatorReady;
 }
 
 export interface TaskEditorSaveCommit {
@@ -430,6 +455,7 @@ export class TaskEditorContent {
 	private taskOperonId: string | null = null;
 	private pinnedCacheUnsubscribe: (() => void) | null = null;
 	private trackerUnsubscribe: (() => void) | null = null;
+	private indexUpdatesUnsubscribe: (() => void) | null = null;
 	private refreshCorePinControl: (() => void) | null = null;
 	private bodyDropdowns: HTMLElement[] = [];
 	private refreshCoreTrackerControl: (() => void) | null = null;
@@ -452,6 +478,10 @@ export class TaskEditorContent {
 	private selectDescriptionOnMount = false;
 	private descriptionInputEl: HTMLTextAreaElement | null = null;
 	private noteInputEl: HTMLTextAreaElement | null = null;
+	private descriptionCompactEditor: CompactMarkdownEditorSurface | null = null;
+	private noteCompactEditor: CompactMarkdownEditorSurface | null = null;
+	private descriptionCompactHostEl: HTMLElement | null = null;
+	private noteCompactHostEl: HTMLElement | null = null;
 	private initialDescriptionFocusTimers: WindowTimeoutHandle[] = [];
 	private rootEl: HTMLElement | null = null;
 	private shellEl: HTMLElement | null = null;
@@ -834,7 +864,15 @@ export class TaskEditorContent {
 		button.createSpan({ text: options.text, cls: 'operon-editor-picker-button-text' });
 	}
 
-	private focusDescriptionField(): boolean {
+	private focusDescriptionField(selectAll = this.selectDescriptionOnMount): boolean {
+		if (!Platform.isPhone && this.descriptionCompactEditor) {
+			if (selectAll) {
+				this.descriptionCompactEditor.selectAll();
+			} else {
+				this.descriptionCompactEditor.focusEnd();
+			}
+			return true;
+		}
 		const input = this.descriptionInputEl;
 		const root = this.rootEl;
 		if (!input || !root) return false;
@@ -843,7 +881,7 @@ export class TaskEditorContent {
 
 		input.focus();
 		if (input.ownerDocument.activeElement !== input) return false;
-		if (this.selectDescriptionOnMount) {
+		if (selectAll) {
 			input.select();
 			return true;
 		}
@@ -877,8 +915,95 @@ export class TaskEditorContent {
 		}
 	}
 
-	public focusDescription(): void {
-		this.focusDescriptionField();
+	public focusDescription(selectAll = this.selectDescriptionOnMount): void {
+		this.focusDescriptionField(selectAll);
+	}
+
+	private getCompactTextSourcePath(): string {
+		return this.fileBodyContext?.filePath?.trim()
+			|| this.existingTask?.filePath?.trim()
+			|| '';
+	}
+
+	private destroyCompactTextEditors(): void {
+		this.descriptionCompactEditor?.destroy();
+		this.noteCompactEditor?.destroy();
+		this.descriptionCompactEditor = null;
+		this.noteCompactEditor = null;
+		this.descriptionCompactHostEl = null;
+		this.noteCompactHostEl = null;
+	}
+
+	private refreshCompactTextEditorLayouts(): void {
+		this.descriptionCompactEditor?.refreshLayout();
+		this.noteCompactEditor?.refreshLayout();
+		getActiveWindow().requestAnimationFrame(() => {
+			if (this.disposed) return;
+			this.descriptionCompactEditor?.refreshLayout();
+			this.noteCompactEditor?.refreshLayout();
+		});
+	}
+
+	private focusAdjacentTaskEditorControl(
+		origin: HTMLElement | null,
+		direction: 'next' | 'previous',
+	): void {
+		const root = this.rootEl;
+		if (!origin || !root) return;
+		const selector = [
+			'button:not([disabled])',
+			'input:not([disabled])',
+			'textarea:not([disabled])',
+			'select:not([disabled])',
+			'[contenteditable="true"]',
+			'.cm-content',
+			'[tabindex]:not([tabindex="-1"])',
+		].join(',');
+		const candidates = Array.from(root.querySelectorAll<HTMLElement>(selector))
+			.filter(candidate => {
+				if (!candidate.isConnected) return false;
+				if (candidate.closest('[hidden], .is-hidden')) return false;
+				const compactRoot = candidate.closest('.operon-compact-markdown-editor');
+				if (!compactRoot) return true;
+				return candidate.classList.contains('cm-content');
+			});
+		const activeElement = root.ownerDocument.activeElement;
+		let index = candidates.findIndex(candidate => (
+			candidate === activeElement
+			|| candidate.contains(activeElement)
+		));
+		if (index < 0) {
+			index = candidates.findIndex(candidate => origin.contains(candidate));
+		}
+		if (index < 0) return;
+		const targetIndex = direction === 'next' ? index + 1 : index - 1;
+		candidates[targetIndex]?.focus();
+	}
+
+	private handleCompactTextEditorIntent(
+		field: 'description' | 'note',
+		intent: Exclude<CompactEditorKeyIntent, 'none'>,
+	): void {
+		const origin = field === 'description'
+			? this.descriptionCompactHostEl
+			: this.noteCompactHostEl;
+		switch (intent) {
+			case 'submit':
+			case 'focus-next':
+				this.focusAdjacentTaskEditorControl(origin, 'next');
+				break;
+			case 'focus-previous':
+				this.focusAdjacentTaskEditorControl(origin, 'previous');
+				break;
+			case 'explicit-submit':
+				void this.persistEditorState('explicit-save');
+				break;
+			case 'escape':
+				this.rootEl?.dispatchEvent(new CustomEvent(TASK_EDITOR_ESCAPE_INTENT_EVENT, {
+					bubbles: true,
+				}));
+				break;
+		}
 	}
 
 	private openFileBodySource(): void {
@@ -1430,6 +1555,10 @@ export class TaskEditorContent {
 				value: selectedIds.join('; '),
 				oppositeValue: this.fieldValues[oppositeFieldKey] ?? '',
 				allTasks: this.indexer.getAllTasks(),
+				getAllTasks: () => this.indexer.getAllTasks(),
+				subscribeIndexUpdates: listener => this.indexer.subscribeIndexUpdates(listener),
+				pipelines: this.settings.pipelines,
+				keyMappings: this.settings.keyMappings,
 				excludedIds: currentTaskId ? [currentTaskId] : [],
 				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (payload) => {
@@ -1459,7 +1588,14 @@ export class TaskEditorContent {
 				splitTaskListValue(this.fieldValues[fieldKey]).filter(id => id !== currentTaskId),
 			);
 			this.setMobileCoreButtonIcon(button, this.resolveTaskSelectionIcon(fieldKey));
-			this.setMobileCoreButtonState(button, selectedIds.length > 0);
+			const state = fieldKey === 'blockedBy'
+				? resolveBlockedByAggregateVisualState(selectedIds, id => this.indexer.getTask(id), this.settings.pipelines)
+				: null;
+			this.setMobileCoreButtonState(
+				button,
+				selectedIds.length > 0,
+				fieldKey === 'blockedBy' ? resolveBlockedByVisualStateColor(state) : null,
+			);
 			this.setMobileCoreButtonLabel(button, selectedIds.length > 0 ? `${label}: ${selectedIds.length}` : label);
 		};
 		this.mobileCoreButtonRefreshers.add(refresh);
@@ -1723,8 +1859,7 @@ export class TaskEditorContent {
 	}
 
 	private setMobileCoreButtonLabel(button: HTMLButtonElement, label: string): void {
-		setAccessibleLabelWithoutTooltip(button, label);
-		button.title = label;
+		setAccessibleLabelWithoutTooltip(button, label, button.parentElement ?? undefined);
 	}
 
 	private setMobileCoreButtonIcon(button: HTMLButtonElement, iconId: string): void {
@@ -1886,6 +2021,7 @@ export class TaskEditorContent {
 	mountInto(container: HTMLElement): void {
 		if (this.rootEl && this.rootEl !== container) cleanupOperonHoverTooltips(this.rootEl);
 		cleanupOperonHoverTooltips(container);
+		this.destroyCompactTextEditors();
 		container.empty();
 		container.addClass('operon-task-editor');
 		container.toggleClass('operon-task-editor-mobile', Platform.isPhone);
@@ -1905,6 +2041,11 @@ export class TaskEditorContent {
 		}
 		this.trackerUnsubscribe?.();
 		this.trackerUnsubscribe = this.timeTracker.subscribe(event => this.handleTimeTrackerEvent(event));
+		this.indexUpdatesUnsubscribe?.();
+		this.indexUpdatesUnsubscribe = this.indexer.subscribeIndexUpdates(() => {
+			this.refreshMobileCoreButtons();
+			this.refreshRenderedBlockedBySelectionStates();
+		});
 		this.pinnedCacheUnsubscribe?.();
 		this.pinnedCacheUnsubscribe = this.pinnedCache?.subscribe(() => {
 			this.refreshCorePinControl?.();
@@ -1934,6 +2075,7 @@ export class TaskEditorContent {
 		this.applyThemeColor();
 		if (!Platform.isPhone) {
 			this.updateFileBodyLayout();
+			this.refreshCompactTextEditorLayouts();
 		}
 		this.scheduleMobileCoreToolbarOverflowState();
 	}
@@ -1950,8 +2092,10 @@ export class TaskEditorContent {
 			if (!saved) return;
 		}
 
+		this.destroyCompactTextEditors();
 		this.clearFileBodyPanelRender();
 		await this.refreshFileBodyDraftFromSource();
+		this.destroyCompactTextEditors();
 		this.syncTrackingFieldsFromIndex();
 		this.schedulingDraftRefreshers.clear();
 		this.refreshCorePinControl = null;
@@ -1984,6 +2128,7 @@ export class TaskEditorContent {
 		this.applyThemeColor();
 		if (!Platform.isPhone) {
 			this.updateFileBodyLayout();
+			this.refreshCompactTextEditorLayouts();
 		}
 		this.scheduleMobileCoreToolbarOverflowState();
 	}
@@ -2027,13 +2172,18 @@ export class TaskEditorContent {
 				this.destroyCloseSaveInFlight = false;
 			});
 		}
-		if (this.rootEl) cleanupOperonHoverTooltips(this.rootEl);
+		if (this.rootEl) {
+			closeFloatingPanelsForRoot(this.rootEl);
+			cleanupOperonHoverTooltips(this.rootEl);
+		}
 		this.disposed = true;
 		window.removeEventListener('resize', this.mobileResizeHandler);
 		this.pinnedCacheUnsubscribe?.();
 		this.pinnedCacheUnsubscribe = null;
 		this.trackerUnsubscribe?.();
 		this.trackerUnsubscribe = null;
+		this.indexUpdatesUnsubscribe?.();
+		this.indexUpdatesUnsubscribe = null;
 		this.unregisterFileBodyViewportListener();
 		this.cancelFileBodyEditorLayoutRefresh();
 		this.schedulingDraftRefreshers.clear();
@@ -2055,6 +2205,7 @@ export class TaskEditorContent {
 		this.embedPreviewComponent = null;
 		this.embeddedBodyEditor?.destroy();
 		this.embeddedBodyEditor = null;
+		this.destroyCompactTextEditors();
 		this.fileBodyPanelEl = null;
 		this.fileBodyBackdropEl = null;
 		this.fileBodyToggleButtonEl = null;
@@ -2321,7 +2472,11 @@ export class TaskEditorContent {
 			} else {
 				iconWrap.setText('↑');
 			}
-			line1.createSpan({ text: parent.description || parentId, cls: 'operon-parent-inline-title' });
+			const parentTitle = line1.createSpan('operon-parent-inline-title');
+			renderCompactTaskMarkdown(parentTitle, {
+				value: parent.description || parentId,
+				mode: 'visual-only',
+			});
 
 			if (this.onOpenTask) {
 				const editBtn = line1.createEl('button', {
@@ -2475,7 +2630,11 @@ export class TaskEditorContent {
 			} else {
 				iconWrap.setText('↓');
 			}
-			line1.createSpan({ text: child.description || child.operonId, cls: 'operon-subtask-inline-title' });
+			const childTitle = line1.createSpan('operon-subtask-inline-title');
+			renderCompactTaskMarkdown(childTitle, {
+				value: child.description || child.operonId,
+				mode: 'visual-only',
+			});
 
 			if (this.onOpenTask || (child.checkbox === 'open' && this.onMarkSubtaskDone)) {
 				const actions = line1.createDiv('operon-subtask-actions');
@@ -2663,30 +2822,27 @@ export class TaskEditorContent {
 	private renderDescription(container: HTMLElement, showLabel = true): void {
 		const setting = new Setting(container);
 		if (showLabel) setting.setName(t('taskEditor', 'description'));
-		setting
-			.addTextArea(text => {
-				text.setValue(this.description);
-				text.setPlaceholder(t('taskEditor', 'descriptionPlaceholder'));
-				setAccessibleLabelWithoutTooltip(text.inputEl, t('taskEditor', 'description'));
-				this.descriptionInputEl = text.inputEl;
-				text.inputEl.addClass('operon-editor-description-textarea');
-				text.inputEl.rows = 2;
-
-				const autoResize = () => {
-					text.inputEl.setCssProps({ height: 'auto' });
-					text.inputEl.style.height = `${Math.max(text.inputEl.scrollHeight, 64)}px`;
-				};
-				autoResize();
-
-				text.onChange(val => {
-					this.description = val;
-					autoResize();
-					this.markEdited();
-					this.refreshCoreTrackerControl?.();
-					this.refreshTrackingSessionsSection?.();
-				});
-				text.inputEl.addEventListener('input', autoResize);
-			});
+		const host = setting.controlEl.createDiv(
+			'operon-task-editor-compact-text-host is-description',
+		);
+		this.descriptionCompactHostEl = host;
+		this.descriptionCompactEditor?.destroy();
+		this.descriptionCompactEditor = createCompactMarkdownEditorSurface(host, {
+			app: this.app,
+			sourceValue: this.description,
+			sourcePath: this.getCompactTextSourcePath(),
+			placeholder: t('taskEditor', 'descriptionPlaceholder'),
+			ariaLabel: t('taskEditor', 'description'),
+			onUserChange: draft => {
+				const value = draft.persistableValue;
+				if (value === this.description) return;
+				this.description = value;
+				this.markEdited();
+				this.refreshCoreTrackerControl?.();
+				this.refreshTrackingSessionsSection?.();
+			},
+			onIntent: intent => this.handleCompactTextEditorIntent('description', intent),
+		});
 		setting.settingEl.addClass('operon-description-setting');
 		if (!showLabel) setting.settingEl.addClass('operon-editor-text-field-setting');
 	}
@@ -2850,12 +3006,35 @@ export class TaskEditorContent {
 		for (const operonId of operonIds) {
 			const task = this.indexer.getTask(operonId);
 			const label = task?.description?.trim() || operonId;
-			container.appendChild(this.createTaskSelectionChip(
+			const chip = this.createTaskSelectionChip(
 				label,
 				icon,
 				t('taskEditor', 'removeValue', { value: label }),
 				() => onRemove(operonId),
-			));
+			);
+			if (fieldKey === 'blockedBy') {
+				chip.dataset.blockedById = operonId;
+				this.applyBlockedBySelectionState(chip, operonId);
+			}
+			container.appendChild(chip);
+		}
+	}
+
+	private applyBlockedBySelectionState(chip: HTMLElement, operonId: string): void {
+		const state = resolveBlockedByVisualStateForId(
+			operonId,
+			id => this.indexer.getTask(id),
+			this.settings.pipelines,
+		);
+		const color = resolveBlockedByVisualStateColor(state);
+		chip.dataset.blockedByState = state;
+		if (color) chip.style.setProperty('--operon-blocked-by-state-color', color);
+	}
+
+	private refreshRenderedBlockedBySelectionStates(): void {
+		for (const chip of Array.from(this.rootEl?.querySelectorAll<HTMLElement>('[data-blocked-by-id]') ?? [])) {
+			const operonId = chip.dataset.blockedById?.trim();
+			if (operonId) this.applyBlockedBySelectionState(chip, operonId);
 		}
 	}
 
@@ -2877,35 +3056,30 @@ export class TaskEditorContent {
 	private renderNote(container: HTMLElement, showLabel = true): void {
 		const setting = new Setting(container);
 		if (showLabel) setting.setName(t('taskEditor', 'notes'));
-		setting
-			.addTextArea(text => {
-				text.setValue(this.fieldValues['note'] ?? '');
-				text.setPlaceholder(t('taskEditor', 'notesPlaceholder'));
-				setAccessibleLabelWithoutTooltip(text.inputEl, t('taskEditor', 'notes'));
-				text.inputEl.addClass('operon-editor-note-textarea');
-				text.inputEl.rows = 2;
-
-				const autoResize = () => {
-					text.inputEl.setCssProps({ height: 'auto' });
-					text.inputEl.style.height = `${Math.max(text.inputEl.scrollHeight, 52)}px`;
-				};
-				autoResize();
-
-				text.onChange(val => {
-					const normalized = this.normalizeInlineTextFieldValue(val);
-					if (normalized !== val) {
-						text.inputEl.value = normalized;
-					}
-					if (normalized.trim()) {
-						this.fieldValues['note'] = normalized;
-					} else {
-						delete this.fieldValues['note'];
-					}
-					autoResize();
-					this.markEdited();
-				});
-				text.inputEl.addEventListener('input', autoResize);
-			});
+		const host = setting.controlEl.createDiv(
+			'operon-task-editor-compact-text-host is-notes',
+		);
+		this.noteCompactHostEl = host;
+		this.noteCompactEditor?.destroy();
+		this.noteCompactEditor = createCompactMarkdownEditorSurface(host, {
+			app: this.app,
+			sourceValue: this.fieldValues['note'] ?? '',
+			sourcePath: this.getCompactTextSourcePath(),
+			placeholder: t('taskEditor', 'notesPlaceholder'),
+			ariaLabel: t('taskEditor', 'notes'),
+			onUserChange: draft => {
+				const value = draft.persistableValue;
+				const previous = this.fieldValues['note'] ?? '';
+				if (value.trim()) {
+					this.fieldValues['note'] = value;
+				} else {
+					delete this.fieldValues['note'];
+				}
+				if (value === previous) return;
+				this.markEdited();
+			},
+			onIntent: intent => this.handleCompactTextEditorIntent('note', intent),
+		});
 		setting.settingEl.addClass('operon-note-setting');
 		if (!showLabel) setting.settingEl.addClass('operon-editor-text-field-setting');
 	}
@@ -3629,6 +3803,10 @@ export class TaskEditorContent {
 			value: normalizeListValues(splitTaskListValue(this.fieldValues[fieldKey]).filter(id => id !== currentTaskId)).join('; '),
 			oppositeValue: this.fieldValues[oppositeFieldKey] ?? '',
 			allTasks: this.indexer.getAllTasks(),
+			getAllTasks: () => this.indexer.getAllTasks(),
+			subscribeIndexUpdates: listener => this.indexer.subscribeIndexUpdates(listener),
+			pipelines: this.settings.pipelines,
+			keyMappings: this.settings.keyMappings,
 			excludedIds: currentTaskId ? [currentTaskId] : [],
 			closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 			onSave: payload => this.commitWorkflowActionPayload(payload),
@@ -5442,6 +5620,10 @@ export class TaskEditorContent {
 				value: selectedIds.join('; '),
 				oppositeValue: this.fieldValues[oppositeFieldKey] ?? '',
 				allTasks: this.indexer.getAllTasks(),
+				getAllTasks: () => this.indexer.getAllTasks(),
+				subscribeIndexUpdates: listener => this.indexer.subscribeIndexUpdates(listener),
+				pipelines: this.settings.pipelines,
+				keyMappings: this.settings.keyMappings,
 				excludedIds: currentTaskId ? [currentTaskId] : [],
 				closeOnSelect: this.shouldCloseWorkflowPickerOnSelect(),
 				onSave: (payload) => {
@@ -6035,6 +6217,13 @@ export class TaskEditorContent {
 		return false;
 	}
 
+	private hasCompactTextCommitIntent(): boolean {
+		return (
+			this.descriptionCompactEditor?.getCommit().shouldCommit === true
+			|| this.noteCompactEditor?.getCommit().shouldCommit === true
+		);
+	}
+
 	private commitNoOpSaveBaseline(): void {
 		this.persistedDescription = this.description;
 		this.persistedCheckbox = this.checkbox;
@@ -6163,7 +6352,7 @@ export class TaskEditorContent {
 				return workflowSync;
 			}
 
-			if (!this.hasSemanticDraftChanges()) {
+			if (!this.hasSemanticDraftChanges() && !this.hasCompactTextCommitIntent()) {
 				this.commitNoOpSaveBaseline();
 				this.refreshEstimateReallocationControl?.();
 				return { ok: true, status: 'no-change', clean: true };
@@ -6221,6 +6410,14 @@ export class TaskEditorContent {
 			const savedFileBodyDraft = this.fileBodyDraft;
 			const savedFileBodyDirty = this.isFileBodyDirty;
 			const savedInlineCompletionMode = this.inlineCompletionMode;
+			const descriptionSurface = this.descriptionCompactEditor;
+			const noteSurface = this.noteCompactEditor;
+			const savedDescriptionSurfaceDraft = descriptionSurface?.getDraft() ?? null;
+			const savedNoteSurfaceDraft = noteSurface?.getDraft() ?? null;
+			const descriptionSurfaceShouldCommit =
+				descriptionSurface?.getCommit().shouldCommit ?? false;
+			const noteSurfaceShouldCommit =
+				noteSurface?.getCommit().shouldCommit ?? false;
 			let saveResult: TaskEditorSaveCallbackResult;
 			try {
 				saveResult = await this.onSave({
@@ -6245,6 +6442,15 @@ export class TaskEditorContent {
 			if (saveResult === false || saveResult === null) {
 				return { ok: false, reason: 'write-rejected' };
 			}
+			const descriptionUnchangedSinceSubmit = this.description === savedDescription;
+			const noteUnchangedSinceSubmit =
+				(this.fieldValues['note'] ?? '') === (savedFieldValues['note'] ?? '');
+			const descriptionSurfaceUnchangedSinceSubmit =
+				this.descriptionCompactEditor === descriptionSurface
+				&& descriptionSurface?.getDraft() === savedDescriptionSurfaceDraft;
+			const noteSurfaceUnchangedSinceSubmit =
+				this.noteCompactEditor === noteSurface
+				&& noteSurface?.getDraft() === savedNoteSurfaceDraft;
 			if (isTaskEditorSaveCommit(saveResult)) {
 				this.applyCanonicalSaveCommit(saveResult.canonicalState, {
 					description: savedDescription,
@@ -6264,6 +6470,37 @@ export class TaskEditorContent {
 			this.persistedFileBodyDraft = savedFileBodyDraft;
 			this.persistedInlineCompletionMode = savedInlineCompletionMode;
 			this.isFileBodyDirty = this.fileBodyDraft !== this.persistedFileBodyDraft;
+			const compactTextSourcePath = this.getCompactTextSourcePath();
+			if (
+				descriptionSurfaceShouldCommit
+				&& descriptionUnchangedSinceSubmit
+				&& descriptionSurfaceUnchangedSinceSubmit
+			) {
+				this.descriptionCompactEditor?.acceptCommittedValue(
+					this.persistedDescription,
+					compactTextSourcePath,
+				);
+			} else if (!descriptionSurfaceShouldCommit && descriptionSurfaceUnchangedSinceSubmit) {
+				this.descriptionCompactEditor?.setSourceValue(
+					this.description,
+					compactTextSourcePath,
+				);
+			}
+			if (
+				noteSurfaceShouldCommit
+				&& noteUnchangedSinceSubmit
+				&& noteSurfaceUnchangedSinceSubmit
+			) {
+				this.noteCompactEditor?.acceptCommittedValue(
+					this.persistedFieldValues['note'] ?? '',
+					compactTextSourcePath,
+				);
+			} else if (!noteSurfaceShouldCommit && noteSurfaceUnchangedSinceSubmit) {
+				this.noteCompactEditor?.setSourceValue(
+					this.fieldValues['note'] ?? '',
+					compactTextSourcePath,
+				);
+			}
 			if (reason === 'explicit-save' || reason === 'close-save') {
 				this.commitEstimateReallocationBaseline(this.getDraftEstimateSeconds());
 			}

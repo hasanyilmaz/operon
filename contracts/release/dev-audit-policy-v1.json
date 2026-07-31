@@ -1,0 +1,43 @@
+{
+  "policyVersion": 1,
+  "production": {
+    "maximumVulnerabilities": 0
+  },
+  "developmentException": {
+    "directRoot": "eslint-plugin-obsidianmd",
+    "severity": "high",
+    "maximumCritical": 0,
+    "expectedCounts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 11,
+      "critical": 0,
+      "total": 11
+    },
+    "vulnerabilityNames": [
+      "@eslint/config-array",
+      "@eslint/eslintrc",
+      "@microsoft/eslint-plugin-sdl",
+      "brace-expansion",
+      "eslint",
+      "eslint-plugin-import",
+      "eslint-plugin-json-schema-validator",
+      "eslint-plugin-n",
+      "eslint-plugin-obsidianmd",
+      "eslint-plugin-react",
+      "minimatch"
+    ],
+    "advisories": [
+      {
+        "source": 1124334,
+        "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg"
+      }
+    ],
+    "requiredNoFixPackages": [
+      "brace-expansion",
+      "eslint-plugin-obsidianmd"
+    ],
+    "rootFixAvailable": false
+  }
+}

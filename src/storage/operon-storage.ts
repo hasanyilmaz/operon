@@ -14,7 +14,7 @@ import { FilterStore } from './filter-store';
 import { PipelineStore, PipelineStoreSettings } from './pipeline-store';
 import { CalendarPresetStore, CalendarPresetStoreSettings } from './calendar-preset-store';
 import { KanbanPresetStore, KanbanPresetStoreSettings } from './kanban-preset-store';
-import { pickTablePresetStoreSettings, TablePresetStore } from './table-preset-store';
+import { pickTablePresetProjectionSettings } from './table-preset-manifest';
 import { KanbanOrderStore } from './kanban-order-store';
 import { KeyMappingStore } from './key-mapping-store';
 import { PriorityStore, PriorityStoreSettings } from './priority-store';
@@ -26,7 +26,6 @@ import { TaskAutomationPolicyStore, TaskAutomationPolicyStoreSettings } from './
 import { ActiveTrackerStore } from './active-tracker-store';
 import { ProjectSerialStore } from './project-serial-store';
 import { FieldRenameJournalStore } from './field-rename-journal-store';
-import { TablePresetFileMigrationJournalStore } from './table-preset-file-migration-journal-store';
 import {
 	enginePerfNow,
 	WriteJsonMetrics,
@@ -35,8 +34,8 @@ import { writeTextSafely, type RecoveredStoreWriteOptions } from './storage-file
 import {
 	buildOperonDataPackageFromSettings,
 	adoptMobileNotificationsIntegration,
-	getNextMobileNotificationsGeneratedAtEpochMs,
 	composeOperonSettingsFromDataPackage,
+	isUnsupportedTablePresetPackage,
 	mergePinnedTasksPackages,
 	OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
 	prunePinnedTaskTombstones,
@@ -53,7 +52,6 @@ import {
 } from './operon-data-package-store';
 import {
 	buildOperonStoragePaths,
-	joinVaultPath,
 	type OperonStoragePaths,
 } from './operon-storage-paths';
 import {
@@ -65,7 +63,7 @@ import {
 	type PresetFavoriteKind,
 } from '../core/preset-favorites';
 import { isSpecialDynamicFilterSetId } from '../core/dynamic-file-task-filter';
-import { cloneTablePreset, type TablePreset, type TablePresetStoreSettings } from '../types/table';
+import { cloneTablePreset, type TablePreset, type TablePresetProjectionSettings } from '../types/table';
 import { getAppLocale } from '../core/obsidian-app';
 
 export type IndexV8RecoveryMarkerStatus = 'missing' | 'required' | 'invalid' | 'io-error';
@@ -232,7 +230,6 @@ export class OperonStorage {
 	private pipelineStore: PipelineStore;
 	private calendarPresetStore: CalendarPresetStore;
 	private kanbanPresetStore: KanbanPresetStore;
-	private tablePresetStore: TablePresetStore;
 	private kanbanOrderStore: KanbanOrderStore;
 	private keyMappingStore: KeyMappingStore;
 	private priorityStore: PriorityStore;
@@ -243,7 +240,7 @@ export class OperonStorage {
 	private taskAutomationPolicyStore: TaskAutomationPolicyStore;
 	private activeTrackerStore: ActiveTrackerStore;
 	private projectSerialStore: ProjectSerialStore;
-	private tablePresetFileMigrationJournalStore: TablePresetFileMigrationJournalStore;
+	private unsupportedTablePresetPackage = false;
 	private fieldRenameJournalStore: FieldRenameJournalStore;
 
 	constructor(app: App, options: OperonStorageOptions = {}) {
@@ -306,17 +303,6 @@ export class OperonStorage {
 			app,
 			this.writeQueue,
 			pickKanbanPresetStoreSettings(DEFAULT_SETTINGS),
-		);
-		this.tablePresetStore = new TablePresetStore(
-			app,
-			this.writeQueue,
-			pickTablePresetStoreSettings(DEFAULT_SETTINGS),
-			joinVaultPath(this.storagePaths.pluginDir, 'data', 'table-presets'),
-		);
-		this.tablePresetFileMigrationJournalStore = new TablePresetFileMigrationJournalStore(
-			app,
-			this.writeQueue,
-			this.storagePaths.state.tablePresetFileMigrationJournalPath,
 		);
 		this.kanbanOrderStore = new KanbanOrderStore(app, this.writeQueue);
 		this.keyMappingStore = new KeyMappingStore(app, this.writeQueue);
@@ -410,22 +396,34 @@ export class OperonStorage {
 	}
 
 	/**
+	 * Narrow host-owned persistence seam for Developer API grants. The
+	 * controller receives no direct adapter or plugin-data access.
+	 */
+	getDeveloperApiGrantDataStore(): Pick<
+		OperonDataPackageStore,
+		'getDataPackage' | 'updateDataPackage'
+	> {
+		return this.dataPackageStore;
+	}
+
+	/**
 	 * Initialize storage: create plugin-config folders, load settings package, then load state/cache.
 	 */
 	async initialize(): Promise<void> {
-		await this.ensureCanonicalFolders();
-		const { dataPackage, loadedExistingPinnedTasksPackage } = await this.dataPackageStore.initialize(
+		const { dataPackage, loadedExistingPinnedTasksPackage, unsupportedTablePresetPackage } = await this.dataPackageStore.initialize(
 			DEFAULT_SETTINGS,
 			getAppLocale(this.app),
 		);
+		this.unsupportedTablePresetPackage = unsupportedTablePresetPackage;
 		await this.hydrateFromDataPackage(dataPackage);
+		if (this.unsupportedTablePresetPackage) return;
+		await this.ensureCanonicalFolders();
 		await this.pinnedCache.load({ preferPackage: loadedExistingPinnedTasksPackage });
 		await this.saveSettings({ forceRecoveredWrite: false });
 		await this.activeTrackerStore.load();
 		await this.repeatSeriesStore.load();
 		await this.projectSerialStore.load();
 		await this.fieldRenameJournalStore.load();
-		await this.tablePresetFileMigrationJournalStore.load();
 		await this.externalCalendarCache.load();
 	}
 
@@ -467,62 +465,6 @@ export class OperonStorage {
 		const run = this.settingsSaveQueue.then(() => this.persistSettings(_options));
 		this.settingsSaveQueue = run.catch(() => {});
 		await run;
-	}
-
-	async commitTablePresetFileBinding(presetId: string, path: string): Promise<void> {
-		await this.enqueueSettingsTransaction(async () => {
-			const previousIndex = this.settings.tablePresetFileBindings.findIndex(binding => binding.id === presetId);
-			const previousBinding = previousIndex >= 0
-				? { ...this.settings.tablePresetFileBindings[previousIndex] }
-				: null;
-			this.settings.tablePresetFileBindings = this.settings.tablePresetFileBindings
-				.filter(binding => binding.id !== presetId);
-			this.settings.tablePresetFileBindings.push({ id: presetId, path });
-			try {
-				await this.persistSettings({ forceRecoveredWrite: true });
-			} catch (error) {
-				this.settings.tablePresetFileBindings = this.settings.tablePresetFileBindings
-					.filter(binding => binding.id !== presetId);
-				if (previousBinding) {
-					this.settings.tablePresetFileBindings.splice(
-						Math.min(previousIndex, this.settings.tablePresetFileBindings.length),
-						0,
-						previousBinding,
-					);
-				}
-				throw error;
-			}
-		});
-	}
-
-	async commitTablePresetFileMigrationVersion(version: number): Promise<void> {
-		await this.enqueueSettingsTransaction(async () => {
-			const previousVersion = this.settings.tablePresetFileMigrationVersion;
-			this.settings.tablePresetFileMigrationVersion = version;
-			try {
-				await this.persistSettings({ forceRecoveredWrite: true });
-			} catch (error) {
-				if (this.settings.tablePresetFileMigrationVersion === version) {
-					this.settings.tablePresetFileMigrationVersion = previousVersion;
-				}
-				throw error;
-			}
-		});
-	}
-
-	async commitTablePresetFileMigrationFinalizedVersion(version: number): Promise<void> {
-		await this.enqueueSettingsTransaction(async () => {
-			const previousVersion = this.settings.tablePresetFileMigrationFinalizedVersion;
-			this.settings.tablePresetFileMigrationFinalizedVersion = version;
-			try {
-				await this.persistSettings({ forceRecoveredWrite: true });
-			} catch (error) {
-				if (this.settings.tablePresetFileMigrationFinalizedVersion === version) {
-					this.settings.tablePresetFileMigrationFinalizedVersion = previousVersion;
-				}
-				throw error;
-			}
-		});
 	}
 
 	private enqueueSettingsTransaction<T>(operation: () => Promise<T>): Promise<T> {
@@ -684,64 +626,33 @@ export class OperonStorage {
 		this.settings.filterSets = this.filterStore.getAll();
 		const normalized = migrateSettings(this.settings);
 		this.applySettingsInPlace(normalized);
-		const legacyTableStoreActive = this.settings.tablePresetFileMigrationVersion < 1;
-		const previousTableSettings = legacyTableStoreActive ? this.tablePresetStore.getAll() : null;
-		const fileBackedTablePresetIds = new Set(this.settings.tablePresetFileBindings.map(binding => binding.id));
-		const legacyTableSettings = pickTablePresetStoreSettings(this.settings);
-		legacyTableSettings.tablePresets = legacyTableSettings.tablePresets.filter(preset => !fileBackedTablePresetIds.has(preset.id));
-		legacyTableSettings.tablePresetOrderIds = (legacyTableSettings.tablePresetOrderIds ?? [])
-			.filter(presetId => !fileBackedTablePresetIds.has(presetId));
-		if (legacyTableStoreActive) {
-			await this.tablePresetStore.replaceAll(legacyTableSettings, {
-				preservePresetIds: fileBackedTablePresetIds,
-				allowEmpty: fileBackedTablePresetIds.size > 0,
-			});
-		}
 		const dataPackage = buildOperonDataPackageFromSettings(this.settings, {
 			filterSets: this.filterStore.getAll(),
 			kanbanOrderBoards: this.kanbanOrderStore.toPackage().boards,
 			pinnedTasks: this.pinnedCache.toPackage(),
 		});
-		try {
-			await this.dataPackageStore.updateDataPackage(currentPackage => {
-				const nextSnapshotEnabled = dataPackage.integrations.mobileNotifications.snapshotEnabled;
-				const currentMobileNotifications = currentPackage.integrations.mobileNotifications;
-				const pinnedTasks = prunePinnedTaskTombstones(
-					mergePinnedTasksPackages(
-						currentPackage.state.pinnedTasks,
-						dataPackage.state.pinnedTasks,
-					),
-					new Date().toISOString(),
-					OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
-				);
-				return {
-					...dataPackage,
-					integrations: {
-						...dataPackage.integrations,
-						mobileNotifications: {
-							...currentMobileNotifications,
-							snapshotEnabled: nextSnapshotEnabled,
-							cancelPending: nextSnapshotEnabled
-								? false
-								: currentMobileNotifications.snapshotEnabled || currentMobileNotifications.cancelPending,
-						},
-					},
-					state: {
-						...dataPackage.state,
-						pinnedTasks,
-					},
-				};
-			});
-		} catch (error) {
-			if (previousTableSettings) {
-				try {
-					await this.tablePresetStore.replaceAll(previousTableSettings, { preservePresetIds: fileBackedTablePresetIds });
-				} catch (rollbackError) {
-					console.error('Operon: failed to roll back Table preset storage after settings save failure', rollbackError);
-				}
-			}
-			throw error;
-		}
+		await this.dataPackageStore.updateDataPackage(currentPackage => {
+			const currentMobileNotifications = currentPackage.integrations.mobileNotifications;
+			const pinnedTasks = prunePinnedTaskTombstones(
+				mergePinnedTasksPackages(
+					currentPackage.state.pinnedTasks,
+					dataPackage.state.pinnedTasks,
+				),
+				new Date().toISOString(),
+				OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
+			);
+			return {
+				...dataPackage,
+				integrations: {
+					...dataPackage.integrations,
+					mobileNotifications: adoptMobileNotificationsIntegration(currentMobileNotifications, {}),
+				},
+				state: {
+					...dataPackage.state,
+					pinnedTasks,
+				},
+			};
+		});
 		this.hydratePackageBackedSettingStores();
 	}
 
@@ -824,25 +735,14 @@ export class OperonStorage {
 
 	private getCommittedSettingsSnapshot(): OperonSettings {
 		const committed = this.dataPackageStore.getSettings(DEFAULT_SETTINGS);
-		const packageTableManifest = pickTablePresetStoreSettings(committed);
-		const legacyTableSettings = this.tablePresetStore.getAll();
-		if (this.hasFileBackedTablePresetAuthority(packageTableManifest)) {
-			committed.tablePresets = legacyTableSettings.tablePresets.map(cloneTablePreset);
-			this.applyFileBackedTablePresetManifest(committed, packageTableManifest, this.settings.tablePresets);
-		} else {
-			Object.assign(committed, legacyTableSettings);
-		}
+		const packageTableManifest = pickTablePresetProjectionSettings(committed);
+		this.applyTablePresetManifest(committed, packageTableManifest, this.settings.tablePresets);
 		return committed;
 	}
 
-	private hasFileBackedTablePresetAuthority(settings: TablePresetStoreSettings): boolean {
-		return (settings.tablePresetFileBindings?.length ?? 0) > 0
-			|| settings.tablePresetFileMigrationVersion >= 1;
-	}
-
-	private applyFileBackedTablePresetManifest(
+	private applyTablePresetManifest(
 		target: OperonSettings,
-		manifest: TablePresetStoreSettings,
+		manifest: TablePresetProjectionSettings,
 		runtimePresets: readonly TablePreset[] = [],
 	): void {
 		const boundPresetIds = new Set((manifest.tablePresetFileBindings ?? []).map(binding => binding.id));
@@ -861,8 +761,7 @@ export class OperonStorage {
 		];
 		target.tablePresetOrderIds = orderIds;
 		target.tablePresetFileBindings = (manifest.tablePresetFileBindings ?? []).map(binding => ({ ...binding }));
-		target.tablePresetFileMigrationVersion = manifest.tablePresetFileMigrationVersion;
-		target.tablePresetFileMigrationFinalizedVersion = manifest.tablePresetFileMigrationFinalizedVersion;
+		target.tablePresetFileInitialized = manifest.tablePresetFileInitialized;
 		target.tableDefaultPresetId = manifest.tableDefaultPresetId;
 		target.tableEmbedVisibleRows = manifest.tableEmbedVisibleRows;
 		target.tableShowLineNumbers = manifest.tableShowLineNumbers;
@@ -873,48 +772,17 @@ export class OperonStorage {
 	private async stageCanonicalDataPackageReload(
 		dataPackage: OperonDataPackageV1,
 	): Promise<OperonDataPackageReloadStage> {
+		if (isUnsupportedTablePresetPackage(dataPackage)) {
+			throw new Error('Unsupported Table preset package.');
+		}
 		const nextSettings = composeOperonSettingsFromDataPackage(dataPackage, DEFAULT_SETTINGS);
-		const packageTableManifest = pickTablePresetStoreSettings(nextSettings);
-		const currentFileProjectionSignature = JSON.stringify({
-			orderIds: this.settings.tablePresetOrderIds,
-			bindings: this.settings.tablePresetFileBindings,
-			defaultPresetId: this.settings.tableDefaultPresetId,
-		});
-		const packageFileProjectionSignature = JSON.stringify({
-			orderIds: packageTableManifest.tablePresetOrderIds ?? [],
-			bindings: packageTableManifest.tablePresetFileBindings ?? [],
-			defaultPresetId: packageTableManifest.tableDefaultPresetId,
-		});
+		const packageTableManifest = pickTablePresetProjectionSettings(nextSettings);
 		const stagedFilterStore = new FilterStore(this.app, this.writeQueue);
 		stagedFilterStore.loadFromPackage(dataPackage.views.filters, {
 			seedDynamicDefaultSorts: dataPackage.settings.settingsVersion < 88,
 		});
 		nextSettings.filterSets = stagedFilterStore.getAll();
-		const stagedTablePresetStore = new TablePresetStore(
-			this.app,
-			this.writeQueue,
-			pickTablePresetStoreSettings(nextSettings),
-		);
-		const tableLoad = await stagedTablePresetStore.load(
-			pickTablePresetStoreSettings(nextSettings),
-			{
-				availableFilterSetIds: nextSettings.filterSets.map(filterSet => filterSet.id),
-				canSeedFromFallback: false,
-			},
-		);
-		Object.assign(nextSettings, tableLoad.settings);
-		if (this.hasFileBackedTablePresetAuthority(packageTableManifest)) {
-			this.applyFileBackedTablePresetManifest(nextSettings, packageTableManifest, this.settings.tablePresets);
-		}
-		nextSettings.tablePresetFileMigrationFinalizedVersion = Math.max(
-			nextSettings.tablePresetFileMigrationFinalizedVersion,
-			this.settings.tablePresetFileMigrationFinalizedVersion,
-		);
-		nextSettings.tablePresetFileMigrationVersion = Math.max(
-			nextSettings.tablePresetFileMigrationVersion,
-			this.settings.tablePresetFileMigrationVersion,
-			nextSettings.tablePresetFileMigrationFinalizedVersion >= 1 ? 1 : 0,
-		);
+		this.applyTablePresetManifest(nextSettings, packageTableManifest, this.settings.tablePresets);
 		if (!dataPackage.ui.presetFavorites) {
 			nextSettings.presetFavorites = createDefaultPresetFavorites({
 				table: nextSettings.tableDefaultPresetId,
@@ -925,13 +793,10 @@ export class OperonStorage {
 
 		const previousSettings = cloneOperonSettings(this.settings);
 		const previousDataPackage = this.dataPackageStore.getDataPackage();
-		const previousTableSnapshot = this.tablePresetStore.captureRuntimeSnapshot();
-		Object.assign(previousSettings, previousTableSnapshot.settings);
-		const nextTableSnapshot = stagedTablePresetStore.captureRuntimeSnapshot();
-		const tablePresetsChanged = JSON.stringify(previousTableSnapshot.settings)
-			!== JSON.stringify(nextTableSnapshot.settings);
-		const fileProjectionChanged = this.hasFileBackedTablePresetAuthority(packageTableManifest)
-			&& currentFileProjectionSignature !== packageFileProjectionSignature;
+		const previousTableSnapshot = pickTablePresetProjectionSettings(previousSettings);
+		const nextTableSnapshot = pickTablePresetProjectionSettings(nextSettings);
+		const tableProjectionChanged = JSON.stringify(previousTableSnapshot)
+			!== JSON.stringify(nextTableSnapshot);
 		let commitStarted = false;
 
 		const applyRuntimePackage = (
@@ -951,15 +816,13 @@ export class OperonStorage {
 		};
 
 		return {
-			changed: tablePresetsChanged || fileProjectionChanged,
+			changed: tableProjectionChanged,
 			commit: () => {
 				commitStarted = true;
-				this.tablePresetStore.restoreRuntimeSnapshot(nextTableSnapshot);
 				applyRuntimePackage(dataPackage, nextSettings);
 			},
 			rollback: () => {
 				if (!commitStarted) return;
-				this.tablePresetStore.restoreRuntimeSnapshot(previousTableSnapshot);
 				applyRuntimePackage(previousDataPackage, previousSettings);
 			},
 		};
@@ -978,18 +841,9 @@ export class OperonStorage {
 			resetGeneration: !options.preserveSettingsIdentity,
 		});
 		const nextSettings = composeOperonSettingsFromDataPackage(dataPackage, DEFAULT_SETTINGS);
-		const packageTableManifest = pickTablePresetStoreSettings(nextSettings);
-		const tableLoad = await this.tablePresetStore.load(
-			pickTablePresetStoreSettings(nextSettings),
-			{
-				availableFilterSetIds: this.filterStore.getAll().map(filterSet => filterSet.id),
-				canSeedFromFallback: this.dataPackageStore.canPersist(),
-			},
-		);
-		Object.assign(nextSettings, tableLoad.settings);
-		if (this.hasFileBackedTablePresetAuthority(packageTableManifest)) {
-			this.applyFileBackedTablePresetManifest(nextSettings, packageTableManifest);
-		}
+		const previousTableSnapshot = pickTablePresetProjectionSettings(this.settings);
+		const packageTableManifest = pickTablePresetProjectionSettings(nextSettings);
+		this.applyTablePresetManifest(nextSettings, packageTableManifest);
 		if (shouldSeedPresetFavorites) {
 			nextSettings.presetFavorites = createDefaultPresetFavorites({
 				table: nextSettings.tableDefaultPresetId,
@@ -1004,7 +858,8 @@ export class OperonStorage {
 		}
 		this.settings.filterSets = this.filterStore.getAll();
 		this.hydratePackageBackedSettingStores();
-		return tableLoad.changed;
+		return JSON.stringify(previousTableSnapshot)
+			!== JSON.stringify(pickTablePresetProjectionSettings(nextSettings));
 	}
 
 	private hydratePackageBackedSettingStores(): void {
@@ -1123,7 +978,6 @@ export class OperonStorage {
 
 	get dataFolder(): string { return this.storagePaths.pluginDir; }
 	get settingsPath(): string { return this.storagePaths.dataPackagePath; }
-	get indexPath(): string { return this.storagePaths.runtime.indexPath; }
 	get indexV8Paths(): OperonStoragePaths['runtime']['indexV8'] { return { ...this.storagePaths.runtime.indexV8 }; }
 	get pinned(): PinnedCache { return this.pinnedCache; }
 	get activeTrackers(): ActiveTrackerStore { return this.activeTrackerStore; }
@@ -1179,41 +1033,6 @@ export class OperonStorage {
 		return vaultId;
 	}
 
-	async reserveMobileNotificationsGeneratedAtEpochMs(
-		nowEpochMs: number,
-		minimumExclusive = -1,
-	): Promise<number> {
-		let reservedEpochMs = nowEpochMs;
-		await this.dataPackageStore.updateDataPackage(dataPackage => {
-			const current = dataPackage.integrations.mobileNotifications;
-			reservedEpochMs = getNextMobileNotificationsGeneratedAtEpochMs(current, nowEpochMs, minimumExclusive);
-			return {
-				...dataPackage,
-				integrations: {
-					...dataPackage.integrations,
-					mobileNotifications: {
-						...current,
-						lastGeneratedAtEpochMs: reservedEpochMs,
-					},
-				},
-			};
-		});
-		return reservedEpochMs;
-	}
-
-	async markMobileNotificationsCancelAllPublished(): Promise<void> {
-		await this.dataPackageStore.updateDataPackage(dataPackage => ({
-			...dataPackage,
-			integrations: {
-				...dataPackage.integrations,
-				mobileNotifications: {
-					...dataPackage.integrations.mobileNotifications,
-					cancelPending: false,
-				},
-			},
-		}));
-	}
-
 	async deleteFilterSetWithFavoriteCleanup(filterId: string): Promise<void> {
 		await this.enqueueSettingsTransaction(async () => {
 			if (isSpecialDynamicFilterSetId(filterId)) return;
@@ -1253,10 +1072,7 @@ export class OperonStorage {
 	get pipelines(): PipelineStore { return this.pipelineStore; }
 	get calendarPresets(): CalendarPresetStore { return this.calendarPresetStore; }
 	get kanbanPresets(): KanbanPresetStore { return this.kanbanPresetStore; }
-	get tablePresets(): TablePresetStore { return this.tablePresetStore; }
-	get tablePresetFileMigrationJournal(): TablePresetFileMigrationJournalStore { return this.tablePresetFileMigrationJournalStore; }
-	get tablePresetFileMigrationBackupRootPath(): string { return this.storagePaths.tablePresetFileMigrationBackupRootPath; }
-	get tablePresetFileMigrationReceiptPath(): string { return this.storagePaths.state.tablePresetFileMigrationReceiptPath; }
+	hasUnsupportedTablePresetPackage(): boolean { return this.unsupportedTablePresetPackage; }
 	get kanbanOrder(): KanbanOrderStore { return this.kanbanOrderStore; }
 	get keyMappings(): KeyMappingStore { return this.keyMappingStore; }
 	get priorities(): PriorityStore { return this.priorityStore; }
@@ -1270,7 +1086,6 @@ export class OperonStorage {
 			this.repeatSeriesStore.drain(),
 			this.projectSerialStore.drain(),
 			this.fieldRenameJournalStore.drain(),
-			this.tablePresetFileMigrationJournalStore.drain(),
 			this.externalCalendarCache.drain(),
 		]);
 		await this.writeQueue.drain();

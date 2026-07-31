@@ -1,0 +1,10 @@
+{
+  "name": "operon-developer-api-native-acceptance-consumer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test native-consumer.test.mjs"
+  }
+}

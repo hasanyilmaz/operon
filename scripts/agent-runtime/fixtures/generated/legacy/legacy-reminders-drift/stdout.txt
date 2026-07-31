@@ -1,0 +1,1 @@
+- [ ] Legacy reminder drift {{operonId:: 4no2tx0}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{reminders:: 2026-01-16T09:00:00}} {{datetimeModified:: 2026-01-15T10:20:30}}

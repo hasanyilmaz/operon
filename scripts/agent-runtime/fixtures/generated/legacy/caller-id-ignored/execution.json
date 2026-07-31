@@ -1,0 +1,14 @@
+{
+  "caseId": "caller-id-ignored",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "f2d1664cefb6a25ac8cbc734e3fd1161a5c389ae7de4a9fa33638744a854ea11",
+  "seed": 41037,
+  "stderrSha256": "b3f0b28ba035e54cd870dfbad9cffd2e60badddbbac1aada5570b80b13e8b192",
+  "stdoutSha256": "d009e580db77e5b2363709ea698df6a88ae8c9229c3f87e3bbec1d938122e7a3",
+  "writtenFiles": {}
+}

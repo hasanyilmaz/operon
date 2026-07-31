@@ -1,0 +1,387 @@
+{
+  "schemaVersion": 1,
+  "seed": 41017,
+  "fixedTimestamp": "2026-01-15T10:20:30",
+  "cases": [
+    {
+      "id": "inline-defaults-on",
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "applyDefaults": true,
+        "tasks": [
+          {
+            "description": "Apply portable defaults"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inline-defaults-off",
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "applyDefaults": false,
+        "tasks": [
+          {
+            "description": "Do not apply optional defaults"
+          }
+        ]
+      }
+    },
+    {
+      "id": "flat-parent-child",
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "applyDefaults": true,
+        "tasks": [
+          {
+            "description": "Parent task",
+            "fields": {
+              "status": "Work.Active",
+              "priority": "P1"
+            },
+            "children": [
+              {
+                "description": "Child task"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "indented-parent-child",
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "applyDefaults": true,
+        "indentChildren": true,
+        "tasks": [
+          {
+            "description": "Visible parent",
+            "children": [
+              {
+                "description": "Visually indented child"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "child-inheritance",
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "applyDefaults": true,
+        "tasks": [
+          {
+            "description": "Inheritance parent",
+            "tags": [
+              "parent"
+            ],
+            "fields": {
+              "status": "Work.Active",
+              "priority": "P1",
+              "taskIcon": "lucide-circle-check",
+              "taskColor": "#336699"
+            },
+            "children": [
+              {
+                "description": "Inherited child"
+              },
+              {
+                "description": "Overridden child",
+                "fields": {
+                  "priority": "P2",
+                  "taskColor": "663399"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "rich-inline",
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "applyDefaults": false,
+        "tasks": [
+          {
+            "description": "Türkçe görev ve English context",
+            "checkbox": "done",
+            "tags": [
+              "#phase-one",
+              "çokdilli"
+            ],
+            "fields": {
+              "status": "Work.Done",
+              "priority": "P1",
+              "contexts": "desk; offline",
+              "taskIcon": "lucide-circle-check",
+              "taskColor": "#336699",
+              "fixtureTopic": "Architecture",
+              "note": "Literal {{sample}} and backslash \\"
+            }
+          },
+          {
+            "description": "Cancelled example",
+            "checkbox": "cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "id": "daily-target-write",
+      "write": true,
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "applyDefaults": true,
+        "tasks": [
+          {
+            "description": "Append to synthetic daily note"
+          }
+        ]
+      }
+    },
+    {
+      "id": "file-default-target",
+      "spec": {
+        "mode": "file",
+        "timestamp": "2026-01-15T10:20:30",
+        "file": {
+          "name": "Portable file task"
+        },
+        "task": {
+          "description": "Portable file task",
+          "tags": [
+            "fixture"
+          ],
+          "fields": {
+            "fixtureTopic": "Files"
+          }
+        }
+      }
+    },
+    {
+      "id": "file-exact-target",
+      "spec": {
+        "mode": "file",
+        "timestamp": "2026-01-15T10:20:30",
+        "file": {
+          "path": "Tasks/Exact Target.md",
+          "name": "Ignored name"
+        },
+        "task": {
+          "description": "Exact target task"
+        }
+      }
+    },
+    {
+      "id": "file-name-sanitization",
+      "spec": {
+        "mode": "file",
+        "timestamp": "2026-01-15T10:20:30",
+        "file": {
+          "name": "Quarter 1: plan / review?"
+        },
+        "task": {
+          "description": "Sanitized file name"
+        }
+      }
+    },
+    {
+      "id": "file-template-preservation",
+      "spec": {
+        "mode": "file",
+        "timestamp": "2026-01-15T10:20:30",
+        "file": {
+          "path": "Tasks/From Template.md",
+          "template": "Templates/Fixture Task.md"
+        },
+        "task": {
+          "description": "Template task",
+          "tags": [
+            "fixture",
+            "preserved"
+          ],
+          "fields": {
+            "status": "Work.Active",
+            "priority": "P1",
+            "fixtureTopic": "Templates"
+          }
+        }
+      }
+    },
+    {
+      "id": "file-collision",
+      "write": true,
+      "prepareFiles": {
+        "Tasks/Collision.md": "existing content\n"
+      },
+      "spec": {
+        "mode": "file",
+        "timestamp": "2026-01-15T10:20:30",
+        "file": {
+          "path": "Tasks/Collision.md"
+        },
+        "task": {
+          "description": "Collision"
+        }
+      }
+    },
+    {
+      "id": "file-overwrite",
+      "write": true,
+      "overwrite": true,
+      "prepareFiles": {
+        "Tasks/Overwrite.md": "existing content\n"
+      },
+      "spec": {
+        "mode": "file",
+        "timestamp": "2026-01-15T10:20:30",
+        "file": {
+          "path": "Tasks/Overwrite.md"
+        },
+        "task": {
+          "description": "Overwrite"
+        }
+      }
+    },
+    {
+      "id": "path-guard-absolute",
+      "write": true,
+      "spec": {
+        "mode": "inline",
+        "target": "__ABSOLUTE_TARGET__",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Absolute target rejection"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-guard-traversal",
+      "write": true,
+      "spec": {
+        "mode": "inline",
+        "target": "../Outside.md",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Traversal target rejection"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-guard-symlink",
+      "write": true,
+      "prepareSymlinks": {
+        "LinkedOutside": "__OUTSIDE_DIRECTORY__"
+      },
+      "spec": {
+        "mode": "inline",
+        "target": "LinkedOutside/Escape.md",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Symlink target rejection"
+          }
+        ]
+      }
+    },
+    {
+      "id": "target-non-markdown-drift",
+      "write": true,
+      "spec": {
+        "mode": "inline",
+        "target": "Tasks/Not Markdown.txt",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Legacy non-Markdown target"
+          }
+        ]
+      }
+    },
+    {
+      "id": "target-hidden-drift",
+      "write": true,
+      "spec": {
+        "mode": "inline",
+        "target": ".internal/Hidden.md",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Legacy hidden target"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output-channels-dry-run",
+      "spec": {
+        "mode": "inline",
+        "target": "Tasks/Output.md",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Dry-run channel"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output-channels-write",
+      "write": true,
+      "spec": {
+        "mode": "inline",
+        "target": "Tasks/Output.md",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Write channel"
+          }
+        ]
+      }
+    },
+    {
+      "id": "caller-id-ignored",
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Runtime-owned identity",
+            "fields": {
+              "operonId": "caller1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "legacy-reminders-drift",
+      "spec": {
+        "mode": "inline",
+        "timestamp": "2026-01-15T10:20:30",
+        "tasks": [
+          {
+            "description": "Legacy reminder drift",
+            "fields": {
+              "reminders": "2026-01-16T09:00:00"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

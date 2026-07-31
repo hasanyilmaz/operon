@@ -251,6 +251,8 @@ export function openTaskFieldPicker(options: TaskFieldPickerDispatchOptions): ((
 				value: currentFieldValues[canonicalKey],
 				oppositeValue: currentFieldValues[canonicalKey === 'blocking' ? 'blockedBy' : 'blocking'] ?? '',
 				allTasks: options.allTasks,
+				pipelines: options.settings.pipelines,
+				keyMappings: options.settings.keyMappings,
 				excludedIds: options.currentTaskId ? [options.currentTaskId] : undefined,
 				onSave: payload => options.onCommit(payload),
 				onClose: options.onClose,

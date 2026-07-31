@@ -1,0 +1,265 @@
+name: Operon CLI candidate artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Exact stable cli-v tag to build; dispatch this workflow from the same tag"
+        required: true
+        type: string
+      plugin_release_tag:
+        description: "Exact public Operon release bound by the accepted Public V1 freeze"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  release-ready:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify workflow was dispatched from the exact CLI tag
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          [[ "$SOURCE_REF" =~ ^cli-v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "source_ref must be an exact stable cli-v tag" >&2; exit 1; }
+          test "$GITHUB_REF" = "refs/tags/$SOURCE_REF"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/tags/${{ inputs.source_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify checkout equals the dispatch source identity
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+      - name: Pin release npm
+        run: npm install --global npm@11.12.1
+      - name: Verify release toolchain
+        run: |
+          test "$(node --version)" = "v24.18.0"
+          test "$(npm --version)" = "11.12.1"
+      - name: Verify tag matches package version without running package code
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          PACKAGE_VERSION="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('packages/operon-cli/package.json','utf8')).version)")"
+          test "$SOURCE_REF" = "cli-v$PACKAGE_VERSION"
+      - run: npm ci
+      - run: npm run release:audit-policy
+      - run: npm run agent-runtime:contracts
+      - run: npm run agent-runtime:cli
+      - run: npm run agent-runtime:cli:package
+      - run: npm run release:guard
+      - name: Build one isolated candidate tarball
+        env:
+          npm_config_cache: ${{ runner.temp }}/operon-cli-npm-cache
+        run: |
+          rm -rf packages/operon-cli/release
+          mkdir -p packages/operon-cli/release
+          npm pack --pack-destination release
+        working-directory: packages/operon-cli
+      - name: Download and verify the compatible public Operon plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUGIN_RELEASE_TAG: ${{ inputs.plugin_release_tag }}
+        run: |
+          [[ "$PLUGIN_RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "plugin_release_tag must be an exact stable Operon release tag" >&2; exit 1; }
+          FROZEN_PLUGIN_VERSION="$(node -e 'const f=require("./contracts/agent-runtime/public-v1-freeze.json"); if(f.state!=="accepted") process.exit(1); process.stdout.write(f.plugin.version)')"
+          test "$PLUGIN_RELEASE_TAG" = "$FROZEN_PLUGIN_VERSION" \
+            || { echo "plugin_release_tag must equal the accepted Public V1 freeze" >&2; exit 1; }
+          mkdir -p packages/operon-cli/release/plugin-release
+          gh release download "$PLUGIN_RELEASE_TAG" \
+            --pattern main.js \
+            --pattern manifest.json \
+            --pattern styles.css \
+            --dir packages/operon-cli/release/plugin-release
+          gh attestation verify packages/operon-cli/release/plugin-release/main.js \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-ref "refs/tags/$PLUGIN_RELEASE_TAG"
+          gh attestation verify packages/operon-cli/release/plugin-release/manifest.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-ref "refs/tags/$PLUGIN_RELEASE_TAG"
+          gh attestation verify packages/operon-cli/release/plugin-release/styles.css \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-ref "refs/tags/$PLUGIN_RELEASE_TAG"
+          node scripts/agent-runtime/cli/write-public-plugin-release-evidence.mjs \
+            packages/operon-cli/release/plugin-release \
+            "$PLUGIN_RELEASE_TAG" \
+            packages/operon-cli/release/plugin-release-evidence.json
+      - name: Bind candidate identity and live-acceptance requirement
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+          REQUIRE_CLEAN_SOURCE: "1"
+          REQUIRE_PUBLIC_PLUGIN_RELEASE: "1"
+        run: |
+          node scripts/agent-runtime/cli/write-release-candidate-evidence.mjs \
+            packages/operon-cli/release \
+            packages/operon-cli/release/candidate-evidence.json \
+            packages/operon-cli/release/plugin-release-evidence.json
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: "packages/operon-cli/release/*.tgz"
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: "packages/operon-cli/release/candidate-evidence.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operon-cli-candidate-acceptance-required
+          path: |
+            packages/operon-cli/release/*.tgz
+            packages/operon-cli/release/candidate-evidence.json
+            packages/operon-cli/release/plugin-release/main.js
+            packages/operon-cli/release/plugin-release/manifest.json
+            packages/operon-cli/release/plugin-release/styles.css
+          if-no-files-found: error
+
+      # Publishing remains a separate environment-approved workflow. The exact
+      # candidate bytes must pass the hosted portability jobs below.
+
+  prepare-hosted-portability:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/tags/${{ inputs.source_ref }}
+          persist-credentials: false
+      - id: matrix
+        name: Build the canonical 9-cell hosted portability matrix
+        run: |
+          node --input-type=module -e '
+            import {hostedPortabilityCellsV1} from "./scripts/agent-runtime/cli/hosted-portability-lib.mjs";
+            import fs from "node:fs";
+            const include = hostedPortabilityCellsV1().map(cell => ({
+              ...cell,
+              node: cell.nodeVersion
+            }));
+            if (include.length !== 9) throw new Error("Hosted portability must contain exactly 9 cells.");
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({include})}\n`);
+          '
+
+  hosted-portability:
+    name: Candidate portability (${{ matrix.osRef }}, Node ${{ matrix.node }})
+    needs:
+      - release-ready
+      - prepare-hosted-portability
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare-hosted-portability.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/tags/${{ inputs.source_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Pin portability npm
+        run: npm install --global npm@11.12.1
+      - name: Verify exact source and toolchain
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: node -e "const {execFileSync}=require('node:child_process'); if(process.version!=='v${{ matrix.node }}')throw new Error('Unexpected Node version'); if(execFileSync(process.platform==='win32'?'npm.cmd':'npm',['--version'],{encoding:'utf8'}).trim()!=='11.12.1')throw new Error('Unexpected npm version'); if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.GITHUB_SHA)throw new Error('Source commit drift'); if(process.env.GITHUB_REF!=='refs/tags/'+process.env.SOURCE_REF)throw new Error('Source tag drift');"
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: operon-cli-candidate-acceptance-required
+          path: candidate
+      - name: Verify immutable candidate provenance and binding
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+          REQUIRE_EXACT_GIT_TAG: "1"
+          REQUIRE_PUBLIC_PLUGIN_RELEASE: "1"
+          EXPECTED_SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          gh attestation verify candidate/*.tgz \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/cli-release-ready.yml" \
+            --source-ref "refs/tags/$SOURCE_REF" \
+            --source-digest "$GITHUB_SHA"
+          gh attestation verify candidate/candidate-evidence.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/cli-release-ready.yml" \
+            --source-ref "refs/tags/$SOURCE_REF" \
+            --source-digest "$GITHUB_SHA"
+          node scripts/agent-runtime/cli/verify-release-candidate.mjs candidate
+          node scripts/agent-runtime/cli/verify-hosted-candidate-install.mjs candidate
+      - run: npm run agent-runtime:contracts
+      - name: Run platform transport and security checks
+        run: node scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs
+      - name: Run package lifecycle and contract checks
+        run: npm run agent-runtime:cli:package
+      - name: Write digest-bound hosted portability evidence
+        run: node scripts/agent-runtime/cli/write-hosted-portability-evidence.mjs candidate "${{ matrix.cellId }}" "hosted-portability-${{ matrix.cellId }}.json"
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: hosted-portability-${{ matrix.cellId }}.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operon-cli-hosted-${{ matrix.cellId }}
+          path: hosted-portability-${{ matrix.cellId }}.json
+          if-no-files-found: error
+
+  aggregate-hosted-portability:
+    name: Aggregate immutable 9-cell hosted portability evidence
+    needs:
+      - release-ready
+      - prepare-hosted-portability
+      - hosted-portability
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/tags/${{ inputs.source_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.18.0"
+          cache: npm
+      - name: Pin aggregate npm
+        run: npm install --global npm@11.12.1
+      - name: Verify aggregate toolchain
+        run: |
+          test "$(node --version)" = "v24.18.0"
+          test "$(npm --version)" = "11.12.1"
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: operon-cli-candidate-acceptance-required
+          path: candidate
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: operon-cli-hosted-*
+          path: hosted
+          merge-multiple: true
+      - name: Aggregate and reverify all 9 cells
+        run: |
+          node scripts/agent-runtime/cli/aggregate-hosted-portability.mjs candidate hosted hosted/hosted-portability-index.json
+          node scripts/agent-runtime/cli/verify-hosted-portability.mjs candidate hosted
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: hosted/hosted-portability-index.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operon-cli-hosted-portability
+          path: hosted
+          if-no-files-found: error

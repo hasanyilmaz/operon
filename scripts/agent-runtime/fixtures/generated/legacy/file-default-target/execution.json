@@ -1,0 +1,14 @@
+{
+  "caseId": "file-default-target",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "3da5c94b9d3fc58bd3bcacfd4b5ccf1a337599cafe3ba5a34d6fb488ce0c1196",
+  "seed": 41024,
+  "stderrSha256": "9e24bf716ab71ca4a99ba7884bd28be115f353e261e10e5adc51b01a7eb6a7ac",
+  "stdoutSha256": "c43ceab9f7dfa00e2430968484458e1304d283526515d6538cb47e561cc55f3a",
+  "writtenFiles": {}
+}

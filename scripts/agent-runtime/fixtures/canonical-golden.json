@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "fixedTimestamp": "2026-01-15T10:20:30",
+  "inline": {
+    "remindersCustomUnicode": {
+      "id": "inline-reminders-custom-unicode",
+      "description": "Türkçe görev ve English context",
+      "checkbox": "open",
+      "tags": [
+        "phase-one",
+        "çokdilli"
+      ],
+      "fields": {
+        "operonId": "abc1234",
+        "status": "Work.Active",
+        "priority": "P1",
+        "reminderDatetimes": "2026-01-16T09:00:00; 2026-01-17T10:30:00",
+        "reminderRules": "dateDue.30m",
+        "taskIcon": "lucide-circle-check",
+        "taskColor": "#336699",
+        "note": "First line\nSecond {{literal}}",
+        "fixtureTopic": "Architecture",
+        "datetimeCreated": "2026-01-15T10:20:30",
+        "datetimeModified": "2026-01-15T10:20:30"
+      },
+      "expected": "- [ ] Türkçe görev ve English context #phase-one #çokdilli {{operonId:: abc1234}} {{status:: Work.Active}} {{priority:: P1}} {{reminderDatetimes:: 2026-01-16T09:00:00; 2026-01-17T10:30:00}} {{reminderRules:: dateDue.30m}} {{taskIcon:: circle-check}} {{taskColor:: 336699}} {{note:: First line\\u000ASecond \\{{literal\\}}}} {{fixtureTopic:: Architecture}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{datetimeModified:: 2026-01-15T10:20:30}}"
+    },
+    "checkboxes": [
+      {
+        "state": "open",
+        "expectedPrefix": "- [ ]"
+      },
+      {
+        "state": "done",
+        "expectedPrefix": "- [x]"
+      },
+      {
+        "state": "cancelled",
+        "expectedPrefix": "- [-]"
+      }
+    ]
+  },
+  "inheritance": {
+    "parentTaskId": "parent1",
+    "parentFields": {
+      "status": "Work.Active",
+      "priority": "P1",
+      "taskIcon": "lucide-circle-check",
+      "taskColor": "#336699",
+      "fixtureTopic": "Architecture"
+    },
+    "parentTags": [
+      "#parent",
+      "shared",
+      "parent"
+    ],
+    "expected": {
+      "parentTask": "parent1",
+      "status": "Work.Inbox",
+      "priority": "P1",
+      "taskIcon": "circle-check",
+      "taskColor": "336699",
+      "fixtureTopic": "Architecture",
+      "tags": [
+        "parent",
+        "shared"
+      ]
+    }
+  },
+  "fileTask": {
+    "expectedOrderedYamlKeys": [
+      "Owner",
+      "Status",
+      "Unmanaged Field",
+      "Priority",
+      "tags",
+      "Operon ID",
+      "Reminder Datetimes",
+      "Reminder Rules",
+      "Created",
+      "Updated",
+      "Fixture Topic"
+    ],
+    "expectedBody": "# Template body\n\nThis body must survive when no explicit body override is supplied.\n"
+  }
+}

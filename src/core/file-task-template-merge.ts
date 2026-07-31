@@ -238,7 +238,10 @@ function renderManagedSection(
 		return `${yamlKey}: ${renderScalar(formatTaskColorYamlValue(value))}`;
 	}
 
-	return `${yamlKey}: ${renderScalar(value)}`;
+	return `${yamlKey}: ${renderScalar(
+		value,
+		canonicalKey === 'operonId' && /^\d+$/u.test(value),
+	)}`;
 }
 
 function renderTagsSection(tags: string[]): string {
@@ -465,7 +468,7 @@ function buildMergedManagedFields(
 	}
 
 	for (const key of candidateKeys) {
-		if (!isManagedTaskFieldCanonicalKey(key, keyMappings)) continue;
+		if (key !== 'related' && !isManagedTaskFieldCanonicalKey(key, keyMappings)) continue;
 		const sourceHasValue = sourcePresence.has(key);
 		const templateHasValue = templatePresence.has(key);
 		const sourceValue = sourceValues[key] ?? '';

@@ -417,14 +417,14 @@ function buildTableColumnHeaderMenu(
 	menu.addSeparator();
 	menu.addItem(item => item
 		.setTitle(t('table', 'addColumnLeft'))
-		.setIcon('panel-left-open')
+		.setIcon('panel-right-open')
 		.onClick(event => {
 			const submenuPosition = resolveHeaderSubmenuPosition(event, position, options.root);
 			deferTableHeaderMenuAction(anchor, () => showTableAddColumnPicker(submenuPosition, column, 'left', options));
 		}));
 	menu.addItem(item => item
 		.setTitle(t('table', 'addColumnRight'))
-		.setIcon('panel-right-open')
+		.setIcon('panel-left-open')
 		.onClick(event => {
 			const submenuPosition = resolveHeaderSubmenuPosition(event, position, options.root);
 			deferTableHeaderMenuAction(anchor, () => showTableAddColumnPicker(submenuPosition, column, 'right', options));

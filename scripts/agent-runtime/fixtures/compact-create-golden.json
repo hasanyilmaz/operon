@@ -1,0 +1,724 @@
+{
+  "schemaVersion": 1,
+  "contract": {
+    "command": "operon task create",
+    "representation": "optional-inline-or-file",
+    "fieldKeys": "canonical-only",
+    "duplicateKeys": "reject",
+    "listDelimiter": "semicolon-canonical-space",
+    "rawStdinQuotes": "straight-double-required",
+    "inlineValueParity": "semantic-values-only",
+    "temporalCreate": "atomic-v1",
+    "temporalCreateVersion": 1,
+    "temporalCreateKeys": ["reminderDatetimes", "reminderRules", "repeat", "datetimeRepeatEnd"]
+  },
+  "serializerFixture": {
+    "file": "canonical-golden.json",
+    "caseId": "inline-reminders-custom-unicode"
+  },
+  "cases": [
+    {
+      "id": "legacy-empty-create",
+      "channel": "argv",
+      "argv": ["task", "create"],
+      "expect": { "route": "legacy-guided" }
+    },
+    {
+      "id": "legacy-single-description",
+      "channel": "argv",
+      "argv": ["task", "create", "Review"],
+      "expect": { "route": "legacy-guided" }
+    },
+    {
+      "id": "legacy-single-inline-word",
+      "channel": "argv",
+      "argv": ["task", "create", "inline"],
+      "expect": { "route": "legacy-guided" }
+    },
+    {
+      "id": "configured-default-representation",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "status::Daily.Planned"],
+      "displayCommand": "operon task create \"Test task\" status::\"EXACT LIVE PIPELINE.STATUS\"",
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "status", "value": "Daily.Planned", "valueType": "status" }
+        ]
+      }
+    },
+    {
+      "id": "explicit-inline-without-fields",
+      "channel": "argv",
+      "argv": ["task", "create", "inline", "Test task"],
+      "displayCommand": "operon task create inline \"Test task\"",
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": "inline",
+        "target": { "representation": "inline", "mode": "configured-default" },
+        "assignments": []
+      }
+    },
+    {
+      "id": "explicit-file-representation",
+      "channel": "argv",
+      "argv": ["task", "create", "file", "Test task", "priority::A"],
+      "displayCommand": "operon task create file \"Test task\" priority::\"EXACT LIVE PRIORITY\"",
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": "file",
+        "target": { "representation": "file", "mode": "configured-default" },
+        "assignments": [
+          { "key": "priority", "value": "A", "valueType": "priority" }
+        ]
+      }
+    },
+    {
+      "id": "inline-description-with-omitted-representation",
+      "channel": "argv",
+      "argv": ["task", "create", "inline", "status::Daily.Planned"],
+      "displayCommand": "operon task create \"inline\" status::\"EXACT LIVE PIPELINE.STATUS\"",
+      "expect": {
+        "route": "compact",
+        "description": "inline",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "status", "value": "Daily.Planned", "valueType": "status" }
+        ]
+      }
+    },
+    {
+      "id": "list-spacing-and-multiword-items",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "contexts::Customer Support;Mobile Application; Production Environment"],
+      "displayCommand": "operon task create \"Test task\" contexts::\"Customer Support; Mobile Application; Production Environment\"",
+      "expect": {
+        "route": "compact",
+        "representation": null,
+        "assignments": [
+          {
+            "key": "contexts",
+            "value": "Customer Support;Mobile Application; Production Environment",
+            "valueType": "list",
+            "items": ["Customer Support", "Mobile Application", "Production Environment"],
+            "canonical": "Customer Support; Mobile Application; Production Environment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "list-escaped-semicolon",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "contexts::Research\\; Development; Operon"],
+      "displayCommand": "operon task create \"Test task\" contexts::\"Research\\; Development; Operon\"",
+      "expect": {
+        "route": "compact",
+        "representation": null,
+        "assignments": [
+          {
+            "key": "contexts",
+            "value": "Research\\; Development; Operon",
+            "valueType": "list",
+            "items": ["Research; Development", "Operon"],
+            "canonical": "Research\\; Development; Operon"
+          }
+        ]
+      }
+    },
+    {
+      "id": "scalar-semicolon-literal",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "note::Call contact; bring the invoice"],
+      "displayCommand": "operon task create \"Test task\" note::\"Call contact; bring the invoice\"",
+      "expect": {
+        "route": "compact",
+        "representation": null,
+        "assignments": [
+          {
+            "key": "note",
+            "value": "Call contact; bring the invoice",
+            "valueType": "text"
+          }
+        ]
+      }
+    },
+    {
+      "id": "scalar-double-colon-value",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "note::English :: note"],
+      "displayCommand": "operon task create \"Test task\" note::\"English :: note\"",
+      "expect": {
+        "route": "compact",
+        "representation": null,
+        "assignments": [
+          { "key": "note", "value": "English :: note", "valueType": "text" }
+        ]
+      }
+    },
+    {
+      "id": "tags-links-parent-human",
+      "channel": "argv",
+      "argv": [
+        "task",
+        "create",
+        "Integration follow-up",
+        "tags::backend; urgent",
+        "links::https://example.com/api-docs; https://example.com/integration-guide",
+        "parentTask::abc1234"
+      ],
+      "displayCommand": "operon task create \"Integration follow-up\" tags::\"backend; urgent\" links::\"https://example.com/api-docs; https://example.com/integration-guide\" parentTask::\"abc1234\"",
+      "expect": {
+        "route": "compact",
+        "description": "Integration follow-up",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          {
+            "key": "tags",
+            "value": "backend; urgent",
+            "valueType": "list",
+            "items": ["backend", "urgent"],
+            "canonical": "backend; urgent"
+          },
+          {
+            "key": "links",
+            "value": "https://example.com/api-docs; https://example.com/integration-guide",
+            "valueType": "list",
+            "items": ["https://example.com/api-docs", "https://example.com/integration-guide"],
+            "canonical": "https://example.com/api-docs; https://example.com/integration-guide"
+          },
+          {
+            "key": "parentTask",
+            "value": "abc1234",
+            "valueType": "parent-task"
+          }
+        ]
+      }
+    },
+    {
+      "id": "create-date-due-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Submit proposal", "dateDue::2026-08-15"],
+      "displayCommand": "operon task create \"Submit proposal\" dateDue::\"2026-08-15\"",
+      "expect": {
+        "route": "compact",
+        "description": "Submit proposal",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "dateDue", "value": "2026-08-15", "valueType": "date" }
+        ]
+      }
+    },
+    {
+      "id": "create-date-scheduled-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Prepare workshop", "dateScheduled::2026-08-10"],
+      "displayCommand": "operon task create \"Prepare workshop\" dateScheduled::\"2026-08-10\"",
+      "expect": {
+        "route": "compact",
+        "description": "Prepare workshop",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "dateScheduled", "value": "2026-08-10", "valueType": "date" }
+        ]
+      }
+    },
+    {
+      "id": "create-date-started-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Begin migration", "dateStarted::2026-08-03"],
+      "displayCommand": "operon task create \"Begin migration\" dateStarted::\"2026-08-03\"",
+      "expect": {
+        "route": "compact",
+        "description": "Begin migration",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "dateStarted", "value": "2026-08-03", "valueType": "date" }
+        ]
+      }
+    },
+    {
+      "id": "create-datetime-window-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Design review", "datetimeStart::2026-08-04T09:00:00", "datetimeEnd::2026-08-04T10:30:00"],
+      "displayCommand": "operon task create \"Design review\" datetimeStart::\"2026-08-04T09:00:00\" datetimeEnd::\"2026-08-04T10:30:00\"",
+      "expect": {
+        "route": "compact",
+        "description": "Design review",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "datetimeStart", "value": "2026-08-04T09:00:00", "valueType": "datetime" },
+          { "key": "datetimeEnd", "value": "2026-08-04T10:30:00", "valueType": "datetime" }
+        ]
+      }
+    },
+    {
+      "id": "create-estimate-seconds-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Audit release", "estimate::3600"],
+      "displayCommand": "operon task create \"Audit release\" estimate::\"3600\"",
+      "expect": {
+        "route": "compact",
+        "description": "Audit release",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "estimate", "value": "3600", "valueType": "number" }
+        ]
+      }
+    },
+    {
+      "id": "create-location-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Meet design team", "location::Studio North"],
+      "displayCommand": "operon task create \"Meet design team\" location::\"Studio North\"",
+      "expect": {
+        "route": "compact",
+        "description": "Meet design team",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "location", "value": "Studio North", "valueType": "text" }
+        ]
+      }
+    },
+    {
+      "id": "create-note-double-colon-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Review webhook", "note::Endpoint :: verify response"],
+      "displayCommand": "operon task create \"Review webhook\" note::\"Endpoint :: verify response\"",
+      "expect": {
+        "route": "compact",
+        "description": "Review webhook",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "note", "value": "Endpoint :: verify response", "valueType": "text" }
+        ]
+      }
+    },
+    {
+      "id": "create-style-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Plan launch", "taskIcon::rocket", "taskColor::0e6d95"],
+      "displayCommand": "operon task create \"Plan launch\" taskIcon::\"rocket\" taskColor::\"0e6d95\"",
+      "expect": {
+        "route": "compact",
+        "description": "Plan launch",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "taskIcon", "value": "rocket", "valueType": "text" },
+          { "key": "taskColor", "value": "0e6d95", "valueType": "text" }
+        ]
+      }
+    },
+    {
+      "id": "create-assignees-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Review contract", "assignees::Alex Morgan; Operon Agent"],
+      "displayCommand": "operon task create \"Review contract\" assignees::\"Alex Morgan; Operon Agent\"",
+      "expect": {
+        "route": "compact",
+        "description": "Review contract",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          {
+            "key": "assignees",
+            "value": "Alex Morgan; Operon Agent",
+            "valueType": "list",
+            "items": ["Alex Morgan", "Operon Agent"],
+            "canonical": "Alex Morgan; Operon Agent"
+          }
+        ]
+      }
+    },
+    {
+      "id": "create-contexts-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Investigate mobile sync", "contexts::Mobile Application; Production Environment"],
+      "displayCommand": "operon task create \"Investigate mobile sync\" contexts::\"Mobile Application; Production Environment\"",
+      "expect": {
+        "route": "compact",
+        "description": "Investigate mobile sync",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          {
+            "key": "contexts",
+            "value": "Mobile Application; Production Environment",
+            "valueType": "list",
+            "items": ["Mobile Application", "Production Environment"],
+            "canonical": "Mobile Application; Production Environment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "create-tags-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Triage incident", "tags::urgent; backend"],
+      "displayCommand": "operon task create \"Triage incident\" tags::\"urgent; backend\"",
+      "expect": {
+        "route": "compact",
+        "description": "Triage incident",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          {
+            "key": "tags",
+            "value": "urgent; backend",
+            "valueType": "list",
+            "items": ["urgent", "backend"],
+            "canonical": "urgent; backend"
+          }
+        ]
+      }
+    },
+    {
+      "id": "create-links-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Read API references", "links::https://example.com/api; https://example.com/changelog"],
+      "displayCommand": "operon task create \"Read API references\" links::\"https://example.com/api; https://example.com/changelog\"",
+      "expect": {
+        "route": "compact",
+        "description": "Read API references",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          {
+            "key": "links",
+            "value": "https://example.com/api; https://example.com/changelog",
+            "valueType": "list",
+            "items": ["https://example.com/api", "https://example.com/changelog"],
+            "canonical": "https://example.com/api; https://example.com/changelog"
+          }
+        ]
+      }
+    },
+    {
+      "id": "create-parent-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Write implementation tests", "parentTask::abc1234"],
+      "displayCommand": "operon task create \"Write implementation tests\" parentTask::\"abc1234\"",
+      "expect": {
+        "route": "compact",
+        "description": "Write implementation tests",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "parentTask", "value": "abc1234", "valueType": "parent-task" }
+        ]
+      }
+    },
+    {
+      "id": "create-due-estimate-human",
+      "channel": "argv",
+      "argv": ["task", "create", "Prepare launch checklist", "dateDue::2026-08-20", "estimate::7200"],
+      "displayCommand": "operon task create \"Prepare launch checklist\" dateDue::\"2026-08-20\" estimate::\"7200\"",
+      "expect": {
+        "route": "compact",
+        "description": "Prepare launch checklist",
+        "representation": null,
+        "target": { "mode": "configured-default" },
+        "assignments": [
+          { "key": "dateDue", "value": "2026-08-20", "valueType": "date" },
+          { "key": "estimate", "value": "7200", "valueType": "number" }
+        ]
+      }
+    },
+    {
+      "id": "create-file-metadata-human",
+      "channel": "argv",
+      "argv": ["task", "create", "file", "Publish release notes", "note::Verify links before publishing", "tags::release; documentation"],
+      "displayCommand": "operon task create file \"Publish release notes\" note::\"Verify links before publishing\" tags::\"release; documentation\"",
+      "expect": {
+        "route": "compact",
+        "description": "Publish release notes",
+        "representation": "file",
+        "target": { "representation": "file", "mode": "configured-default" },
+        "assignments": [
+          { "key": "note", "value": "Verify links before publishing", "valueType": "text" },
+          {
+            "key": "tags",
+            "value": "release; documentation",
+            "valueType": "list",
+            "items": ["release", "documentation"],
+            "canonical": "release; documentation"
+          }
+        ]
+      }
+    },
+    {
+      "id": "raw-compact-stdin-valid",
+      "channel": "stdin",
+      "inputFormat": "compact",
+      "input": "file \"Test task\" status::\"Daily.Planned\" contexts::\"Customer Support; Operon\"",
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": "file",
+        "target": { "representation": "file", "mode": "configured-default" },
+        "assignments": [
+          { "key": "status", "value": "Daily.Planned", "valueType": "status" },
+          {
+            "key": "contexts",
+            "value": "Customer Support; Operon",
+            "valueType": "list",
+            "items": ["Customer Support", "Operon"],
+            "canonical": "Customer Support; Operon"
+          }
+        ]
+      }
+    },
+    {
+      "id": "raw-custom-key-with-spaces",
+      "channel": "stdin",
+      "inputFormat": "compact",
+      "input": "\"Review task\" review lane::\"Needs editorial review\"",
+      "expect": {
+        "route": "compact",
+        "description": "Review task",
+        "representation": null,
+        "target": {
+          "mode": "configured-default"
+        },
+        "assignments": [
+          {
+            "key": "review lane",
+            "value": "Needs editorial review",
+            "valueType": "text"
+          }
+        ]
+      }
+    },
+    {
+      "id": "raw-compact-stdin-missing-quotes",
+      "channel": "stdin",
+      "inputFormat": "compact",
+      "input": "\"Test task\" status::Daily.Planned",
+      "expect": {
+        "route": "error",
+        "code": "COMPACT_VALUE_QUOTE_REQUIRED"
+      }
+    },
+    {
+      "id": "raw-compact-stdin-smart-quotes",
+      "channel": "stdin",
+      "inputFormat": "compact",
+      "input": "\"Test task\" status::“Daily.Planned”",
+      "expect": {
+        "route": "error",
+        "code": "COMPACT_VALUE_QUOTE_REQUIRED"
+      }
+    },
+    {
+      "id": "raw-first-unquoted-before-valid-assignment",
+      "channel": "stdin",
+      "inputFormat": "compact",
+      "input": "\"Test task\" status::Daily.Planned note::\"Hello\"",
+      "expect": {
+        "route": "error",
+        "code": "COMPACT_VALUE_QUOTE_REQUIRED"
+      }
+    },
+    {
+      "id": "visible-property-name-rejected",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "Deadline::2026-08-01"],
+      "expect": {
+        "route": "error",
+        "code": "UNKNOWN_CANONICAL_KEY"
+      }
+    },
+    {
+      "id": "unknown-canonical-key-rejected",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "unknownField::value"],
+      "expect": {
+        "route": "error",
+        "code": "UNKNOWN_CANONICAL_KEY"
+      }
+    },
+    {
+      "id": "runtime-owned-key-rejected",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "operonId::abc1234"],
+      "expect": {
+        "route": "error",
+        "code": "FIELD_NOT_WRITABLE"
+      }
+    },
+    {
+      "id": "duplicate-key-rejected",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "contexts::Operon", "contexts::Runtime"],
+      "expect": {
+        "route": "error",
+        "code": "DUPLICATE_KEY"
+      }
+    },
+    {
+      "id": "empty-list-element-rejected",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "contexts::Operon;;Runtime"],
+      "expect": {
+        "route": "error",
+        "code": "EMPTY_LIST_ELEMENT"
+      }
+    },
+    {
+      "id": "compact-positional-input-conflict",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "status::Daily.Planned", "--input", "-"],
+      "expect": {
+        "route": "error",
+        "code": "COMPACT_INPUT_CONFLICT"
+      }
+    },
+    {
+      "id": "input-format-requires-input",
+      "channel": "argv",
+      "argv": ["task", "create", "--input-format", "compact"],
+      "expect": {
+        "route": "error",
+        "code": "INPUT_FORMAT_REQUIRES_INPUT"
+      }
+    },
+    {
+      "id": "preview-only-json-is-preview",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "status::Daily.Planned", "--preview-only", "--json"],
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": null,
+        "target": {
+          "mode": "configured-default"
+        },
+        "assignments": [
+          {
+            "key": "status",
+            "value": "Daily.Planned",
+            "valueType": "status"
+          }
+        ],
+        "action": "preview",
+        "output": "json",
+        "applies": false
+      }
+    },
+    {
+      "id": "absolute-reminder-create-valid",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "reminderDatetimes::2026-08-01T09:00:00"],
+      "displayCommand": "operon task create \"Test task\" reminderDatetimes::\"2026-08-01T09:00:00\"",
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": null,
+        "assignments": [
+          {
+            "key": "reminderDatetimes",
+            "value": "2026-08-01T09:00:00",
+            "valueType": "reminder-datetimes",
+            "items": ["2026-08-01T09:00:00"],
+            "canonical": "2026-08-01T09:00:00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reminder-rule-create-valid",
+      "channel": "argv",
+      "argv": [
+        "task",
+        "create",
+        "Test task",
+        "dateDue::2026-08-01",
+        "reminderRules::dateDue.30m"
+      ],
+      "displayCommand": "operon task create \"Test task\" dateDue::\"2026-08-01\" reminderRules::\"dateDue.30m\"",
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": null,
+        "assignments": [
+          {
+            "key": "dateDue",
+            "value": "2026-08-01",
+            "valueType": "date"
+          },
+          {
+            "key": "reminderRules",
+            "value": "dateDue.30m",
+            "valueType": "reminder-rules",
+            "items": ["dateDue.30m"],
+            "canonical": "dateDue.30m"
+          }
+        ]
+      }
+    },
+    {
+      "id": "recurrence-create-valid",
+      "channel": "argv",
+      "argv": ["task", "create", "Test task", "repeat::mode=schedule|freq=day|interval=1"],
+      "displayCommand": "operon task create \"Test task\" repeat::\"mode=schedule|freq=day|interval=1\"",
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": null,
+        "assignments": [
+          {
+            "key": "repeat",
+            "value": "mode=schedule|freq=day|interval=1",
+            "valueType": "recurrence-rule",
+            "canonical": "mode=schedule|freq=day|interval=1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "repeat-end-create-valid",
+      "channel": "argv",
+      "argv": [
+        "task",
+        "create",
+        "Test task",
+        "datetimeRepeatEnd::2026-12-31T23:59:00",
+        "repeat::mode=schedule|freq=day|interval=1"
+      ],
+      "displayCommand": "operon task create \"Test task\" datetimeRepeatEnd::\"2026-12-31T23:59:00\" repeat::\"mode=schedule|freq=day|interval=1\"",
+      "expect": {
+        "route": "compact",
+        "description": "Test task",
+        "representation": null,
+        "assignments": [
+          {
+            "key": "datetimeRepeatEnd",
+            "value": "2026-12-31T23:59:00",
+            "valueType": "recurrence-end",
+            "canonical": "2026-12-31T23:59:00"
+          },
+          {
+            "key": "repeat",
+            "value": "mode=schedule|freq=day|interval=1",
+            "valueType": "recurrence-rule",
+            "canonical": "mode=schedule|freq=day|interval=1"
+          }
+        ]
+      }
+    }
+  ]
+}

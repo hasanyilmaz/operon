@@ -15,6 +15,7 @@ export interface TableIconOnlyCellOptions {
 	icon: string;
 	title: string;
 	content: string;
+	contentEl?: HTMLElement;
 	ariaLabel: string;
 	color: string | null;
 	focusable?: boolean;
@@ -132,6 +133,7 @@ export function renderTableIconOnlyCell(cell: HTMLElement, options: TableIconOnl
 		bindOperonHoverTooltip(icon, {
 			title: options.title,
 			content: options.content,
+			contentEl: options.contentEl,
 			taskColor: options.color,
 			preferredHorizontal: 'center',
 		});

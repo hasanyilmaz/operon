@@ -13,12 +13,10 @@ const MANAGED_DOC_PATH_RE = /^DOCS-\d{3} .+\.md$/u;
 const SHA256_RE = /^[a-f0-9]{64}$/u;
 const LOCALIZATION_SIGNATURE_VERSION = 1;
 const OPERON_DOCS_SOURCE_KEY_TO_CANONICAL: Record<string, string> = {
-	Up: 'contexts',
 	Notes: 'note',
 	Icon: 'taskIcon',
 	Color: 'taskColor',
 	Updated: 'datetimeModified',
-	tags: 'tags',
 };
 const OPERON_DOCS_SOURCE_KEYS = Object.keys(OPERON_DOCS_SOURCE_KEY_TO_CANONICAL).sort((left, right) => left.localeCompare(right, 'en'));
 
@@ -637,7 +635,6 @@ function getTopLevelYamlKey(line: string): string | null {
 }
 
 function resolveTargetFrontmatterKey(canonicalKey: string, keyMappings: readonly KeyMapping[]): string {
-	if (canonicalKey === 'tags') return 'tags';
 	for (const mapping of keyMappings) {
 		if (isRetiredKeyMapping(mapping.canonicalKey)) continue;
 		if (mapping.canonicalKey !== canonicalKey) continue;

@@ -4,6 +4,7 @@ import {
 	composeOperonSettingsFromDataPackage,
 	hasPinnedTasksPackage,
 	hasRetiredOperonDataPackageSettings,
+	isUnsupportedTablePresetPackage,
 	mergeOperonDataPackage,
 	OPERON_DATA_PACKAGE_SCHEMA_VERSION,
 	type OperonDataPackageV1,
@@ -27,6 +28,7 @@ export interface OperonPluginDataAccess {
 
 export interface OperonDataPackageStoreInitResult {
 	dataPackage: OperonDataPackageV1;
+	unsupportedTablePresetPackage: boolean;
 	loadedExistingPinnedTasksPackage: boolean;
 	pipelineTaxonomyDiagnostics: OperonPipelineTaxonomyDiagnostics;
 }
@@ -97,7 +99,8 @@ export class OperonDataPackageStore {
 		obsidianLocale?: string,
 	): Promise<OperonDataPackageStoreInitResult> {
 		const existingPackage = await this.loadExistingPackage();
-		this.startupPipelineTaxonomyDiagnostics = existingPackage
+		const unsupportedTablePresetPackage = existingPackage ? isUnsupportedTablePresetPackage(existingPackage) : false;
+		this.startupPipelineTaxonomyDiagnostics = existingPackage && !unsupportedTablePresetPackage
 			? await this.inspectPipelineTaxonomy(existingPackage)
 			: createPipelineTaxonomyDiagnostics();
 		const migratedExistingPackage = existingPackage
@@ -108,12 +111,14 @@ export class OperonDataPackageStore {
 		const dataPackage = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
 			? normalizePipelineTaxonomySlice(mergedPackage, defaults)
 			: mergedPackage;
-		if (existingPackage && (shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics) || hasRetiredSettings)) {
+		if (existingPackage && !unsupportedTablePresetPackage
+			&& (shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics) || hasRetiredSettings)) {
 			await this.persistCandidate(dataPackage);
 		}
 		this.setDataPackage(dataPackage);
 		return {
 			dataPackage: this.cloneDataPackage(dataPackage),
+			unsupportedTablePresetPackage,
 			loadedExistingPinnedTasksPackage: hasPinnedTasksPackage(existingPackage),
 			pipelineTaxonomyDiagnostics: clonePipelineTaxonomyDiagnostics(this.startupPipelineTaxonomyDiagnostics),
 		};

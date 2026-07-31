@@ -1,0 +1,1 @@
+Operon task targets must be vault-relative, not absolute: <FIXTURE_ROOT>/absolute-target.md

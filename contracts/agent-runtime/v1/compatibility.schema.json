@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:compatibility.schema.json",
+  "title": "Operon Agent Runtime V1 Compatibility",
+  "oneOf": [
+    { "$ref": "#/$defs/offer" },
+    { "$ref": "#/$defs/selection" }
+  ],
+  "$defs": {
+    "versionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "max": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+      }
+    },
+    "offer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "runtimeApi"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "runtimeApi": { "$ref": "#/$defs/versionRange" }
+      }
+    },
+    "advertisement": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["contractVersion", "runtimeApi"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "runtimeApi": { "$ref": "#/$defs/versionRange" }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["contractVersion", "compatible"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "compatible": { "type": "boolean" },
+        "runtimeApi": { "const": 1 },
+        "error": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": { "compatible": { "const": true } },
+          "required": ["runtimeApi"],
+          "not": { "required": ["error"] }
+        },
+        {
+          "properties": { "compatible": { "const": false } },
+          "required": ["error"],
+          "not": { "required": ["runtimeApi"] }
+        }
+      ]
+    }
+  }
+}

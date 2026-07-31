@@ -1,0 +1,16 @@
+{
+  "caseId": "daily-target-write",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": true
+  },
+  "requestSha256": "08abc82a635db23fd11ea5595fe06b1b75b7dc7ebb8f3361de828192beacf642",
+  "seed": 41023,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdoutSha256": "2c99c6cc10c940876c24164651bcc5619c0f73c509681bc68e4be466619c9350",
+  "writtenFiles": {
+    "Daily/2026-01-15.md": "9f1ba6e9ad9e105902eb164f74cd5bce4f6b10fd364663e48578055c3b40a308"
+  }
+}

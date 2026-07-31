@@ -67,13 +67,9 @@ import {
 	normalizeKanbanCustomFieldReference,
 } from '../types/kanban';
 import { OperonStorage } from '../storage/operon-storage';
-import type { TablePresetFileMigrationSummary } from '../storage/table-preset-file-migration-runner';
-import type {
-	TablePresetFileConflictResolutionResult,
-	TablePresetFileFinalizationPreflightResult,
-	TablePresetFileMigrationReceiptV1,
-} from '../types/table-preset-file-lifecycle';
+import type { TablePresetFileConflictResolutionResult } from '../types/table-preset-file-conflict';
 import { PinnedCache } from '../storage/pinned-cache';
+import { getPinnedTasksForDisplay, type PinnedTaskSortMode } from '../core/pinned-task-query';
 import { getCurrentLang, installI18nLocale, t } from '../core/i18n';
 import type { LocalePackManager } from '../core/locale-pack-manager';
 import { buildLanguagePackDropdownOptions } from './language-pack-options';
@@ -219,6 +215,8 @@ import { bindKeyMappingPropertyInput } from './settings/key-mapping-property-inp
 import { parsePresetNumber } from './settings/preset-control-helpers';
 import { renderTaskColorSourceSelectButton, showTaskColorSourceSelectMenu } from './task-color-source-select';
 import { shouldRenderRepeatSeriesYamlRemovalRow } from './settings/repeat-yaml-removal-visibility';
+import type { DeveloperApiGrantRecordV1 } from '../agent-runtime/developer-api';
+import type { SecurityAuditEventV1 } from '../agent-runtime/runtime';
 import { renderSettingsTabFramework, type SettingsTabDefinition } from './settings/settings-tab-framework';
 import {
 	maybeCopyKanbanManualOrderForPresetDuplicate,
@@ -252,11 +250,10 @@ import {
 } from './settings/settings-search-registry';
 import { getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping } from './custom-field-surfaces';
 import { buildTableGroupSortFieldCatalog } from './table/table-field-catalog';
-import { applyTablePresetPatch, createTablePresetFromSource } from './table/table-preset-model';
+import { createTablePresetFromSource } from './table/table-preset-model';
 import {
 	clonePresetFavorites,
 	isPresetFavorite,
-	removePresetFavorite,
 	togglePresetFavorite,
 	type PresetFavoriteKind,
 	type PresetFavorites,
@@ -434,7 +431,7 @@ type NumberSettingKey = {
 
 type TablePresetSettingsMutationQueue = <T>(operation: () => Promise<T>) => Promise<T>;
 
-export type TablePresetSettingsSourceKind = 'legacy' | 'file-backed' | 'missing' | 'conflict';
+export type TablePresetSettingsSourceKind = 'file-backed' | 'missing' | 'conflict';
 
 export interface TablePresetSettingsSourceMetadata {
 	id: string;
@@ -466,15 +463,16 @@ export interface TablePresetSettingsFileIntegration {
 	createPreset?: TablePresetSettingsCreateCallback;
 	patchPreset?: TablePresetSettingsPatchCallback;
 	deletePreset?: (presetId: string) => Promise<void>;
-	getMigrationSummary?: () => TablePresetFileMigrationSummary | null;
-	getMigrationReceipt?: () => TablePresetFileMigrationReceiptV1 | null;
-	retryMigration?: () => Promise<void>;
-	recoverMigrationBackup?: (presetId: string) => Promise<void>;
 	resolveIdConflict?: (presetId: string, originalPath: string) => Promise<TablePresetFileConflictResolutionResult>;
-	preflightFinalization?: () => Promise<TablePresetFileFinalizationPreflightResult>;
-	finalizeMigration?: () => Promise<void>;
-	retryFinalization?: () => Promise<void>;
-	openTablesFolder?: () => Promise<void>;
+}
+
+export interface DeveloperApiSettingsIntegration {
+	listGrants(): readonly DeveloperApiGrantRecordV1[];
+	approve(consumerId: string, capabilities: readonly string[]): Promise<void>;
+	deny(consumerId: string): Promise<void>;
+	revoke(consumerId: string): Promise<void>;
+	listAudit(): Promise<readonly SecurityAuditEventV1[]>;
+	clearAudit(): Promise<void>;
 }
 
 function generateFilterSetId(): string {
@@ -798,6 +796,7 @@ function isCalendarMobileViewModeEnabledSettingKey(key: OperonSettingSearchKey):
 const SETTINGS_SEARCH_DOCK_KEYS = new Set<OperonSettingSearchKey>([
 	'pinnedTasksDesktopSurface',
 	'pinnedDockColorSource',
+	'pinnedTaskSortMode',
 	'pinnedDockAutoPin',
 	'pinnedDockAutoUnpinFinished',
 	'pinnedDockAutoCloseEnabled',
@@ -907,6 +906,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private reminderSoundPackManager: ReminderSoundPackManager;
 	private previewReminderInOperon: () => void;
 	private previewReminderSystemNotification: () => Promise<boolean>;
+	private developerApiIntegration: DeveloperApiSettingsIntegration | null;
 	private committedWorkflowSettingsSnapshot!: {
 		pipelines: Pipeline[];
 		defaultPipelineName: string;
@@ -957,6 +957,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		localePackManager?: LocalePackManager,
 		previewReminderInOperon?: () => void,
 		previewReminderSystemNotification?: () => Promise<boolean>,
+		developerApiIntegration?: DeveloperApiSettingsIntegration,
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
@@ -1016,6 +1017,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 		this.previewReminderInOperon = previewReminderInOperon ?? (() => { });
 		this.previewReminderSystemNotification = previewReminderSystemNotification ?? (async () => false);
+		this.developerApiIntegration = developerApiIntegration ?? null;
 		if (this.localePackManager) {
 			plugin.register(this.localePackManager.subscribe(() => {
 				this.updateNativeSettingsDefinitions();
@@ -1133,6 +1135,23 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return;
 		}
 		const normalized = this.normalizeSettingsSearchControlValue(entry, value);
+		if (entry.key === 'pinnedTaskSortMode') {
+			const previousMode = this.settings.pinnedTaskSortMode;
+			try {
+				if (normalized === 'manual') await this.ensurePinnedManualOrder(previousMode);
+				this.writeSettingsSearchValue(entry.key, normalized);
+				this.applySettingsSearchBeforeSaveEffects(entry.key, normalized);
+				await this.saveSettings();
+				this.applySettingsSearchAfterSaveEffects(entry.key);
+			} catch (error) {
+				this.settings.pinnedTaskSortMode = previousMode;
+				this.updateNativeSettingsDefinitions();
+				this.onDockRefreshLayout();
+				this.applyPendingSettingsChange();
+				throw error;
+			}
+			return;
+		}
 		this.writeSettingsSearchValue(entry.key, normalized);
 		this.applySettingsSearchBeforeSaveEffects(entry.key, normalized);
 		await this.saveSettings();
@@ -1593,9 +1612,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderNoticeDurationSeconds'),
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderAutoPinDueTasks'),
 				this.buildSettingsSearchSettingDefinition(entries, 'reminderSystemNotificationsEnabled'),
-				Platform.isDesktopApp
-					? this.buildSettingsSearchSettingDefinition(entries, 'mobileNotificationsSnapshotEnabled')
-					: null,
 				this.buildReminderSoundSettingsDefinition(reminderSoundEntry),
 			]),
 		}, {
@@ -1699,6 +1715,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				heading: t('settings', 'pinnedTasksSharedSettings'),
 				items: this.compactSettingsSearchDefinitions([
 					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockColorSource'),
+					this.buildSettingsSearchSettingDefinition(entries, 'pinnedTaskSortMode'),
 					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockAutoPin'),
 					this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockAutoUnpinFinished'),
 				]),
@@ -2444,6 +2461,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'pinnedTasksDesktopSurface') {
 			return text === 'sidebar' ? 'sidebar' : 'floating';
 		}
+		if (key === 'pinnedTaskSortMode') {
+			return text === 'lastModified' || text === 'manual' ? text : 'priority';
+		}
 		if (key === 'fallbackTaskIconSource') {
 			return normalizeFallbackTaskIconSource(text);
 		}
@@ -2640,6 +2660,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return {
 				floating: t('settings', 'pinnedTasksDesktopSurfaceFloating'),
 				sidebar: t('settings', 'pinnedTasksDesktopSurfaceSidebar'),
+			};
+		}
+		if (key === 'pinnedTaskSortMode') {
+			return {
+				priority: t('settings', 'pinnedTaskSortModePriority'),
+				lastModified: t('settings', 'pinnedTaskSortModeLastModified'),
+				manual: t('settings', 'pinnedTaskSortModeManual'),
 			};
 		}
 		if (key === 'fallbackTaskIconSource') {
@@ -2873,12 +2900,26 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 	}
 
+	private async ensurePinnedManualOrder(sortMode: PinnedTaskSortMode): Promise<void> {
+		if (!this.pinnedCache || !this.indexer || this.pinnedCache.hasManualOrder()) return;
+		const taskIds = getPinnedTasksForDisplay(
+			this.indexer,
+			this.pinnedCache,
+			this.settings.priorities,
+			sortMode,
+		).map(task => task.operonId);
+		await this.pinnedCache.ensureManualOrder(taskIds);
+	}
+
 	private applySettingsSearchAfterSaveEffects(key: OperonSettingSearchKey): void {
 		if (key === 'language') {
 			return;
 		}
 		if (SETTINGS_SEARCH_DOCK_KEYS.has(key)) {
 			this.onDockRefreshLayout();
+		}
+		if (key === 'pinnedTaskSortMode') {
+			this.applyPendingSettingsChange();
 		}
 		if (SETTINGS_SEARCH_DOM_REFRESH_KEYS.has(key)) {
 			this.refreshNativeSettingsDom();
@@ -2890,9 +2931,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.applyPendingSettingsChange();
 		}
 		if (key === 'kanbanTaskShowNotesPreview') {
-			this.applyPendingSettingsChange();
-		}
-		if (key === 'mobileNotificationsSnapshotEnabled') {
 			this.applyPendingSettingsChange();
 		}
 		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskTypeIcon') {
@@ -3129,6 +3167,144 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.renderOperonDocsSettings(containerEl);
 		this.renderGeneralSystemTab(containerEl);
 		this.renderUpdateCheckSetting(containerEl);
+		this.renderDeveloperApiIntegrations(containerEl);
+	}
+
+	private renderDeveloperApiIntegrations(containerEl: HTMLElement): void {
+		const section = renderNativeSettingsGroupedSection(
+			containerEl,
+			t('settings', 'developerApiIntegrationsTitle'),
+		);
+		const description = section.createEl('p', {
+			text: t('settings', 'developerApiIntegrationsDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		description.dataset.operonSettingsSearchId = 'integrations.developerApi';
+		const integration = this.developerApiIntegration;
+		if (!integration) {
+			section.createEl('p', {
+				text: t('settings', 'developerApiIntegrationsUnavailable'),
+				cls: 'operon-settings-muted-block',
+			});
+			return;
+		}
+		const grants = integration.listGrants();
+		if (grants.length === 0) {
+			section.createEl('p', {
+				text: t('settings', 'developerApiIntegrationsEmpty'),
+				cls: 'operon-settings-muted-block',
+			});
+		}
+		for (const grant of grants) {
+			const selected = new Set(grant.pendingCapabilities);
+			const setting = new Setting(section)
+				.setName(`${grant.consumerName} (${grant.consumerId})`)
+				.setDesc([
+					`${t('settings', 'developerApiGrantState')}: ${grant.state}`,
+					`${t('settings', 'developerApiGrantVersion')}: ${grant.observedConsumerVersion ?? grant.consumerVersion}`,
+					`${t('settings', 'developerApiGrantedCapabilities')}: ${grant.grantedCapabilities.join(', ') || '—'}`,
+				].join(' · '));
+			if (grant.pendingCapabilities.length > 0 && grant.state !== 'revoked') {
+				const capabilityList = section.createDiv('operon-developer-api-capability-list');
+				for (const capability of grant.pendingCapabilities) {
+					const label = capabilityList.createEl('label');
+					const checkbox = label.createEl('input', {
+						attr: { type: 'checkbox' },
+					});
+					checkbox.checked = true;
+					checkbox.addEventListener('change', () => {
+						if (checkbox.checked) selected.add(capability);
+						else selected.delete(capability);
+					});
+					label.createSpan({ text: capability });
+				}
+				setting.addButton(button => button
+					.setButtonText(t('settings', 'developerApiApproveSelected'))
+					.setCta()
+					.setDisabled(grant.suspensionReason === 'consumer-version-invalid')
+					.onClick(settingsAsyncHandler('settings developer API grant approval failed', async () => {
+						if (selected.size === 0) return;
+						await integration.approve(grant.consumerId, [...selected]);
+						this.redisplayPreservingScroll();
+					})));
+				setting.addButton(button => {
+					button.setButtonText(t('settings', 'developerApiDeny'));
+					button.buttonEl.addClass('mod-warning');
+					button.onClick(settingsAsyncHandler('settings developer API grant denial failed', async () => {
+						await integration.deny(grant.consumerId);
+						this.redisplayPreservingScroll();
+					}));
+				});
+			} else if (grant.state !== 'revoked') {
+				setting.addButton(button => {
+					button.setButtonText(t('settings', 'developerApiRevoke'));
+					button.buttonEl.addClass('mod-warning');
+					button.onClick(() => {
+						new ConfirmActionModal(this.app, {
+							title: t('settings', 'developerApiRevokeTitle'),
+							message: t('settings', 'developerApiRevokeDesc', { name: grant.consumerName }),
+							confirmText: t('settings', 'developerApiRevoke'),
+							cancelText: t('buttons', 'cancel'),
+							danger: true,
+						}, confirmed => {
+							if (!confirmed) return;
+							runSettingsAsync('settings Developer API grant revocation failed', async () => {
+								await integration.revoke(grant.consumerId);
+								this.redisplayPreservingScroll();
+							});
+							}).open();
+						});
+				});
+			}
+		}
+		const auditHost = section.createDiv('operon-developer-api-audit-list');
+		auditHost.createEl('p', {
+			text: t('settings', 'developerApiAuditLoading'),
+			cls: 'operon-settings-muted-block',
+		});
+		runSettingsAsync('settings Developer API audit load failed', async () => {
+			const events = await integration.listAudit();
+			if (!auditHost.isConnected) return;
+			auditHost.empty();
+			auditHost.createDiv({
+				text: t('settings', 'developerApiAuditTitle'),
+				cls: 'setting-item-heading',
+			});
+			for (const event of events.slice(0, 20)) {
+				auditHost.createEl('p', {
+					text: `${event.occurredAt} · ${event.channel} · ${event.event} · ${event.capability ?? '—'} · ${event.outcome}`,
+					cls: 'operon-settings-muted-block',
+				});
+			}
+			if (events.length === 0) {
+				auditHost.createEl('p', {
+					text: t('settings', 'developerApiAuditEmpty'),
+					cls: 'operon-settings-muted-block',
+				});
+			}
+		});
+		new Setting(section)
+			.setName(t('settings', 'developerApiAuditClear'))
+			.setDesc(t('settings', 'developerApiAuditClearDesc'))
+			.addButton(button => {
+				button.setButtonText(t('settings', 'developerApiAuditClear'));
+				button.buttonEl.addClass('mod-warning');
+				button.onClick(() => {
+					new ConfirmActionModal(this.app, {
+						title: t('settings', 'developerApiAuditClear'),
+						message: t('settings', 'developerApiAuditClearConfirm'),
+						confirmText: t('settings', 'developerApiAuditClear'),
+						cancelText: t('buttons', 'cancel'),
+						danger: true,
+					}, confirmed => {
+						if (!confirmed) return;
+						runSettingsAsync('settings Developer API audit clear failed', async () => {
+							await integration.clearAudit();
+							this.redisplayPreservingScroll();
+						});
+					}).open();
+				});
+			});
 	}
 
 	private renderReleaseNotesSettingsCard(containerEl: HTMLElement, options: { includeToggle: boolean }): void {
@@ -5030,6 +5206,22 @@ export class OperonSettingsTab extends PluginSettingTab {
 			},
 		});
 
+		this.renderBoundDropdownSetting(sharedSection, t('settings', 'pinnedTaskSortMode'), t('settings', 'pinnedTaskSortModeDesc'), 'pinnedTaskSortMode', {
+			value: this.settings.pinnedTaskSortMode,
+			dropdownOptions: [
+				{ value: 'priority', label: t('settings', 'pinnedTaskSortModePriority') },
+				{ value: 'lastModified', label: t('settings', 'pinnedTaskSortModeLastModified') },
+				{ value: 'manual', label: t('settings', 'pinnedTaskSortModeManual') },
+			],
+			onBeforeSave: async value => {
+				if (value === 'manual') await this.ensurePinnedManualOrder(this.settings.pinnedTaskSortMode);
+			},
+			onAfterChange: () => this.applyPendingSettingsChange(),
+			assignAfterBeforeSave: true,
+			rollbackOnError: true,
+			errorContext: 'settings pinned task order save failed',
+		});
+
 		this.renderBoundToggleSetting(sharedSection, t('settings', 'pinnedDockAutoPinActiveTimerTask'), t('settings', 'pinnedDockAutoPinActiveTimerTaskDesc'), 'pinnedDockAutoPin');
 		this.renderBoundToggleSetting(sharedSection, t('settings', 'pinnedDockAutoUnpinFinishedTasks'), t('settings', 'pinnedDockAutoUnpinFinishedTasksDesc'), 'pinnedDockAutoUnpinFinished');
 
@@ -5187,16 +5379,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 				onAfterChange: () => this.redisplayPreservingScroll(),
 			},
 		);
-		if (Platform.isDesktopApp) {
-			this.renderBoundToggleSetting(
-				section,
-				t('settings', 'mobileNotificationsSnapshot'),
-				t('settings', 'mobileNotificationsSnapshotDesc'),
-				'mobileNotificationsSnapshotEnabled',
-				{ onAfterChange: () => this.applyPendingSettingsChange() },
-			);
-		}
-
 		this.configureReminderSoundSetting(new Setting(section));
 		const testSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'reminderNotificationsTestSection'));
 		this.configureReminderInAppPreviewSetting(new Setting(testSection));
@@ -7434,9 +7616,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 
 		renderSettingsInfoBox(containerEl, t('table', 'title'), t('settings', 'tableSettingsDesc'));
-		this.renderTableFileMigrationStatus(containerEl, refreshTablesTab);
 
-		const generalSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'tableGeneralSettings'));
+		const generalTitle = t('settings', 'tableGeneralSettings');
+		const generalSection = renderNativeSettingsGroupedSection(
+			containerEl,
+			generalTitle,
+			undefined,
+			this.buildNativeSettingsDocsAction(generalTitle, 'DOCS-114 Table files'),
+		);
 		this.markSettingsSearchTarget(renderDropdownSetting({
 			containerEl: generalSection,
 			name: t('settings', 'tableDefaultPreset'),
@@ -7546,222 +7733,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 					number: String(this.settings.tablePresetOrderIds.length + 1),
 				}));
 				this.openTablePresetSettingsModal(preset, async (_patch, savedPreset) => {
-					if (await this.delegateTablePresetCreate(savedPreset, 'create', null)) {
-						refreshTablesTab();
-						return;
+					if (!await this.delegateTablePresetCreate(savedPreset, 'create', null)) {
+						throw new Error('Table file integration is unavailable.');
 					}
-					await this.saveTableSettingsAndRefresh(() => {
-						this.settings.tablePresets.push(savedPreset);
-						this.settings.tablePresetOrderIds.push(savedPreset.id);
-						if (!this.settings.tableDefaultPresetId) {
-							this.settings.tableDefaultPresetId = this.settings.tablePresets[0]?.id ?? null;
-						}
-					});
 					refreshTablesTab();
 				}, { saveWhenClean: true });
 			}));
-	}
-
-	private renderTableFileMigrationStatus(containerEl: HTMLElement, refreshTab: () => void): void {
-		const summary = this.tablePresetFileIntegration?.getMigrationSummary?.() ?? null;
-		const receipt = this.tablePresetFileIntegration?.getMigrationReceipt?.() ?? null;
-		if (!summary && this.settings.tablePresetFileMigrationVersion <= 0) return;
-		const title = t('settings', 'tableFileMigrationTitle');
-		const section = renderNativeSettingsGroupedSection(
-			containerEl,
-			title,
-			undefined,
-			this.buildNativeSettingsDocsAction(title, 'DOCS-114 Table files'),
-		);
-		section.dataset.operonSettingsSearchId = 'views.tablePresets.migration';
-		const status = summary?.status ?? 'completed';
-		const card = createSettingsListCard({
-			containerEl: section,
-			icon: status === 'completed' ? 'circle-check' : status === 'running' ? 'loader-circle' : 'triangle-alert',
-			title: t('settings', `tableFileMigrationStatus_${status}`),
-			className: 'operon-table-migration-status-card',
-		});
-		card.metaEl.createSpan({
-			cls: 'setting-item-description',
-			text: t('settings', 'tableFileMigrationDestination', { path: summary?.journal?.destinationFolder ?? 'Operon/Tables' }),
-		});
-		if (summary) {
-			createSettingsListCardChip({ containerEl: card.metaEl, label: t('settings', 'tableFileMigrationLegacyCount', { count: String(summary.total) }) });
-			createSettingsListCardChip({ containerEl: card.metaEl, label: t('settings', 'tableFileMigrationMigratedCount', { count: String(summary.migrated) }) });
-			createSettingsListCardChip({ containerEl: card.metaEl, label: t('settings', 'tableFileMigrationAdoptedCount', { count: String(summary.adopted + summary.alreadyMigrated) }) });
-			if (summary.blocked > 0) {
-				createSettingsListCardChip({ containerEl: card.metaEl, label: t('settings', 'tableFileMigrationBlockedCount', { count: String(summary.blocked) }) });
-			}
-			if (summary.failed > 0) {
-				createSettingsListCardChip({ containerEl: card.metaEl, label: t('settings', 'tableFileMigrationFailedCount', { count: String(summary.failed) }) });
-			}
-			const updatedAt = summary.journal?.completedAt ?? summary.journal?.updatedAt;
-			if (updatedAt) card.metaEl.createSpan({
-				cls: 'setting-item-description',
-				text: t('settings', 'tableFileMigrationLastRun', { time: updatedAt }),
-			});
-			if (summary.backupFolder) {
-				card.metaEl.createSpan({
-					cls: 'setting-item-description',
-					text: t('settings', 'tableFileMigrationBackupRetained', { path: summary.backupFolder }),
-				});
-			}
-		}
-		if (receipt) {
-			createSettingsListCardChip({
-				containerEl: card.metaEl,
-				label: t('settings', `tableFileMigrationFinalizationStatus_${receipt.status}`),
-			});
-			if (receipt.finalizedAt) card.metaEl.createSpan({
-				cls: 'setting-item-description',
-				text: t('settings', 'tableFileMigrationFinalizedAt', { time: receipt.finalizedAt }),
-			});
-		}
-		if (this.tablePresetFileIntegration?.retryMigration) {
-			createSettingsListCardActionButton({
-				containerEl: card.actionsEl,
-				label: t('settings', 'tableFileMigrationRetry'),
-				icon: 'refresh-cw',
-				disabled: status === 'running' || status === 'completed',
-				errorContext: 'settings table file migration retry failed',
-				onClick: async () => {
-					await this.tablePresetFileIntegration?.retryMigration?.();
-					refreshTab();
-				},
-			});
-		}
-		if (this.tablePresetFileIntegration?.openTablesFolder) {
-			createSettingsListCardActionButton({
-				containerEl: card.actionsEl,
-				label: t('settings', 'tableFileMigrationOpenFolder'),
-				icon: 'folder-open',
-				errorContext: 'settings open Tables folder failed',
-				onClick: () => this.tablePresetFileIntegration?.openTablesFolder?.(),
-			});
-		}
-		if (status === 'completed' && !receipt && this.tablePresetFileIntegration?.finalizeMigration) {
-			createSettingsListCardActionButton({
-				containerEl: card.actionsEl,
-				label: t('settings', 'tableFileMigrationFinalize'),
-				icon: 'archive-x',
-				danger: true,
-				errorContext: 'settings Table file migration finalization failed',
-				onClick: async () => {
-					const preflight = await this.tablePresetFileIntegration?.preflightFinalization?.();
-					if (!preflight?.ok) {
-						new Notice(t('settings', 'tableFileMigrationFinalizationBlockedNotice', {
-							count: String(preflight?.problems.length ?? 1),
-						}));
-						return;
-					}
-					if (!await this.confirmTableFileMigrationFinalization()) return;
-					await this.tablePresetFileIntegration?.finalizeMigration?.();
-					refreshTab();
-				},
-			});
-		}
-		if (receipt && receipt.status !== 'finalized' && this.tablePresetFileIntegration?.retryFinalization) {
-			createSettingsListCardActionButton({
-				containerEl: card.actionsEl,
-				label: t('settings', 'tableFileMigrationRetryFinalization'),
-				icon: 'rotate-ccw',
-				danger: true,
-				errorContext: 'settings Table file migration finalization retry failed',
-				onClick: async () => {
-					if (!await this.confirmTableFileMigrationFinalizationRetry()) return;
-					await this.tablePresetFileIntegration?.retryFinalization?.();
-					refreshTab();
-				},
-			});
-		}
-
-		const problems = summary?.journal?.items.filter(item => item.outcome === 'blocked' || item.outcome === 'failed') ?? [];
-		let firstProblemEl: HTMLElement | null = null;
-		for (const item of problems) {
-			const problem = createSettingsListCard({
-				containerEl: section,
-				icon: 'file-warning',
-				title: item.presetName,
-				className: 'operon-table-migration-problem-card',
-			});
-			firstProblemEl ??= problem.cardEl;
-			problem.metaEl.createSpan({ cls: 'setting-item-description', text: item.presetId });
-			for (const path of item.relatedPaths ?? []) {
-				problem.metaEl.createSpan({ cls: 'setting-item-description', text: path });
-			}
-			problem.metaEl.createSpan({
-				cls: 'setting-item-description',
-				text: t('settings', item.outcome === 'blocked'
-					? 'tableFileMigrationBlockedReason'
-					: 'tableFileMigrationFailedReason'),
-			});
-		}
-		if (firstProblemEl) {
-			createSettingsListCardActionButton({
-				containerEl: card.actionsEl,
-				label: t('settings', 'tableFileMigrationReviewProblems'),
-				icon: 'list-tree',
-				onClick: () => firstProblemEl?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-			});
-		}
-		const recoverableItems = summary?.journal?.items.filter(item => item.outcome === 'backed-up' && item.backupPath) ?? [];
-		if (!receipt && this.tablePresetFileIntegration?.recoverMigrationBackup && recoverableItems.length > 0) {
-			const recoveryContainer = this.createCollapsibleSection(
-				section,
-				t('settings', 'tableFileMigrationRecoveryBackups'),
-				'table-file-migration-recovery-backups',
-				false,
-				t('settings', 'tableFileMigrationRecoveryBackupsDesc', { count: String(recoverableItems.length) }),
-			);
-			for (const item of recoverableItems) {
-				const recovery = createSettingsListCard({
-					containerEl: recoveryContainer,
-					icon: 'history',
-					title: item.presetName,
-					className: 'operon-table-migration-recovery-card',
-				});
-				recovery.metaEl.createSpan({ cls: 'setting-item-description', text: item.presetId });
-				recovery.metaEl.createSpan({ cls: 'setting-item-description', text: item.backupPath });
-				createSettingsListCardActionButton({
-					containerEl: recovery.actionsEl,
-					label: t('settings', 'tableFileMigrationRecoverBackup'),
-					icon: 'file-plus-2',
-					errorContext: 'settings Table file migration backup recovery failed',
-					onClick: async () => {
-						await this.tablePresetFileIntegration?.recoverMigrationBackup?.(item.presetId);
-						refreshTab();
-					},
-				});
-			}
-		}
-	}
-
-	private async confirmTableFileMigrationFinalization(): Promise<boolean> {
-		const first = await this.promptSettingsConfirmation({
-			title: t('settings', 'tableFileMigrationFinalizeTitle'),
-			message: t('settings', 'tableFileMigrationFinalizeMessage'),
-			confirmText: t('settings', 'tableFileMigrationContinue'),
-			cancelText: t('buttons', 'cancel'),
-			danger: true,
-		});
-		if (!first) return false;
-		return this.promptSettingsConfirmation({
-			title: t('settings', 'tableFileMigrationFinalizePermanentTitle'),
-			message: t('settings', 'tableFileMigrationFinalizePermanentMessage'),
-			confirmText: t('settings', 'tableFileMigrationDeleteBackup'),
-			cancelText: t('buttons', 'cancel'),
-			danger: true,
-		});
-	}
-
-	private confirmTableFileMigrationFinalizationRetry(): Promise<boolean> {
-		return this.promptSettingsConfirmation({
-			title: t('settings', 'tableFileMigrationRetryFinalizationTitle'),
-			message: t('settings', 'tableFileMigrationRetryFinalizationMessage'),
-			confirmText: t('settings', 'tableFileMigrationRetryFinalization'),
-			cancelText: t('buttons', 'cancel'),
-			danger: true,
-		});
 	}
 
 	private promptSettingsConfirmation(options: ConstructorParameters<typeof ConfirmActionModal>[1]): Promise<boolean> {
@@ -7867,9 +7844,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onClick: () => {
 				this.openTablePresetSettingsModal(preset, async patch => {
 					if (!await this.delegateTablePresetPatch(patch)) {
-						await this.saveTableSettingsAndRefresh(() => {
-							this.patchTablePreset(patch);
-						});
+						throw new Error('Table file integration is unavailable.');
 					}
 					refresh();
 				});
@@ -7884,18 +7859,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			errorContext: 'settings table preset duplicate failed',
 			onClick: async () => {
 				const copy = createTablePresetFromSource(preset, t('table', 'duplicatePresetName', { name: presetName }));
-				if (await this.delegateTablePresetCreate(copy, 'duplicate', preset.id)) {
-					refreshTab();
-					return;
+				if (!await this.delegateTablePresetCreate(copy, 'duplicate', preset.id)) {
+					throw new Error('Table file integration is unavailable.');
 				}
-				await this.saveTableSettingsAndRefresh(() => {
-					this.settings.tablePresets.push(copy);
-					if (index === null) {
-						this.settings.tablePresetOrderIds.push(copy.id);
-					} else {
-						this.settings.tablePresetOrderIds.splice(index + 1, 0, copy.id);
-					}
-				});
 				refreshTab();
 			},
 		});
@@ -7935,15 +7901,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			label: t('table', 'deletePreset'),
 			ariaLabel: `${t('table', 'deletePreset')}: ${presetName}`,
 			icon: 'trash-2',
-			disabled: isOnlyPreset || (source?.kind === 'file-backed' && !this.tablePresetFileIntegration?.deletePreset),
+			disabled: isOnlyPreset
+				|| source?.kind !== 'file-backed'
+				|| !this.tablePresetFileIntegration?.deletePreset,
 			danger: true,
 			errorContext: 'settings table preset remove failed',
 			onClick: async () => {
-				if (source?.kind === 'file-backed' && this.tablePresetFileIntegration?.deletePreset) {
-					await this.tablePresetFileIntegration.deletePreset(preset.id);
-				} else {
-					await this.deleteTablePresetFromSettings(preset.id, presetName);
-				}
+				if (source?.kind !== 'file-backed' || !this.tablePresetFileIntegration?.deletePreset) return;
+				await this.tablePresetFileIntegration.deletePreset(preset.id);
 				refreshTab();
 			},
 		});
@@ -7977,18 +7942,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 				const affectedPaths = (source.paths ?? []).filter(candidate => candidate !== path);
 				createSettingsListCardActionButton({
 					containerEl: card.actionsEl,
-					label: t('settings', 'tableFileMigrationKeepOriginal', { name: path.split('/').pop() ?? path }),
+					label: t('settings', 'tableFileConflictKeepOriginal', { name: path.split('/').pop() ?? path }),
 					icon: 'file-check-2',
 					errorContext: 'settings Table file ID conflict resolution failed',
 					onClick: async () => {
 						const confirmed = await this.promptSettingsConfirmation({
-							title: t('settings', 'tableFileMigrationResolveConflictTitle'),
-							message: t('settings', 'tableFileMigrationResolveConflictMessage', {
+							title: t('settings', 'tableFileConflictResolveTitle'),
+							message: t('settings', 'tableFileConflictResolveMessage', {
 								path,
 								count: String(affectedPaths.length),
 								paths: affectedPaths.join('\n'),
 							}),
-							confirmText: t('settings', 'tableFileMigrationResolveConflict'),
+							confirmText: t('settings', 'tableFileConflictResolve'),
 							cancelText: t('buttons', 'cancel'),
 							danger: true,
 						});
@@ -8018,15 +7983,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return buildTableGroupSortFieldCatalog(this.settings).find(field => field.key === key)?.label ?? key;
 	}
 
-	private patchTablePreset(patch: TablePresetPatch): void {
-		const index = this.settings.tablePresets.findIndex(entry => entry.id === patch.id);
-		if (index === -1) return;
-		this.settings.tablePresets[index] = applyTablePresetPatch(this.settings.tablePresets[index], patch);
-		if (this.settings.tableDefaultPresetId && !this.settings.tablePresetOrderIds.includes(this.settings.tableDefaultPresetId)) {
-			this.settings.tableDefaultPresetId = this.resolveEffectiveTablePresetId();
-		}
-	}
-
 	private resolveEffectiveTablePresetId(excludedPresetId?: string): string | null {
 		const tablePresets = this.getAvailableTablePresets();
 		const availableIds = new Set(tablePresets.map(preset => preset.id));
@@ -8037,7 +7993,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getAvailableTablePresets(): TablePreset[] {
-		return this.tablePresetFileIntegration?.listAvailablePresets?.() ?? this.settings.tablePresets;
+		return this.tablePresetFileIntegration?.listAvailablePresets?.() ?? [];
 	}
 
 	private getTablePresetOptionLabels(tablePresets: readonly TablePreset[]): Map<string, string> {
@@ -8079,7 +8035,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private async delegateTablePresetPatch(patch: TablePresetPatch): Promise<boolean> {
 		const source = this.getTablePresetSourceMetadata(patch.id);
 		const patchPreset = this.tablePresetFileIntegration?.patchPreset;
-		if (!source || source.kind === 'legacy' || !patchPreset) return false;
+		if (source?.kind !== 'file-backed' || !patchPreset) return false;
 		await patchPreset(patch, source);
 		return true;
 	}
@@ -8195,46 +8151,23 @@ export class OperonSettingsTab extends PluginSettingTab {
 				} else if (await this.delegateTablePresetPatch(patch)) {
 					this.redisplayPreservingScroll();
 				} else {
-					await this.saveTableSettingsAndRefresh(() => {
-						this.patchTablePreset(patch);
-					});
-					this.redisplayPreservingScroll();
+					throw new Error('Table file integration is unavailable.');
 				}
 			},
 			onCreate: async created => {
-				if (await this.delegateTablePresetCreate(created, 'create', null)) {
-					this.redisplayPreservingScroll();
-					return;
+				if (!await this.delegateTablePresetCreate(created, 'create', null)) {
+					throw new Error('Table file integration is unavailable.');
 				}
-				await this.saveTableSettingsAndRefresh(() => {
-					this.settings.tablePresets.push(created);
-					this.settings.tablePresetOrderIds.push(created.id);
-					if (!this.settings.tableDefaultPresetId) {
-						this.settings.tableDefaultPresetId = created.id;
-					}
-				});
 				this.redisplayPreservingScroll();
 			},
 			onDuplicate: async created => {
-				if (await this.delegateTablePresetCreate(created, 'duplicate', preset?.id ?? null)) {
-					this.redisplayPreservingScroll();
-					return;
+				if (!await this.delegateTablePresetCreate(created, 'duplicate', preset?.id ?? null)) {
+					throw new Error('Table file integration is unavailable.');
 				}
-				await this.saveTableSettingsAndRefresh(() => {
-					this.settings.tablePresets.push(created);
-					this.settings.tablePresetOrderIds.push(created.id);
-				});
 				this.redisplayPreservingScroll();
 			},
 			...(source?.kind === 'file-backed' && deleteFilePreset ? {
 				onDelete: (presetId: string) => deleteFilePreset(presetId),
-			} : source === null || source.kind === 'legacy' ? {
-				onDelete: async (presetId: string) => {
-					const presetName = this.settings.tablePresets.find(entry => entry.id === presetId)?.name
-						?? t('settings', 'tableFallbackPresetName', { number: '1' });
-					await this.deleteTablePresetFromSettings(presetId, presetName);
-					this.redisplayPreservingScroll();
-				},
 			} : {}),
 			onToggleFavorite: async presetId => {
 				await this.saveTableSettingsAndRefresh(() => {
@@ -8255,29 +8188,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			getFilterModalEvalDeps: () => this.makeEvalDeps(),
 			saveWhenClean: options.saveWhenClean,
 		}).open();
-	}
-
-	private async deleteTablePresetFromSettings(presetId: string, presetName: string): Promise<void> {
-		if (this.settings.tablePresets.length <= 1) {
-			new Notice(t('settings', 'tableAtLeastOnePresetRequired'));
-			return;
-		}
-		const confirmed = await this.confirmDeleteTablePreset(presetName);
-		if (!confirmed) return;
-		let deleted = false;
-		await this.saveTableSettingsAndRefresh(() => {
-			if (this.settings.tablePresets.length <= 1) return;
-			const nextPresets = this.settings.tablePresets.filter(entry => entry.id !== presetId);
-			if (nextPresets.length === this.settings.tablePresets.length) return;
-			this.settings.tablePresets = nextPresets;
-			this.settings.tablePresetOrderIds = this.settings.tablePresetOrderIds.filter(id => id !== presetId);
-			this.settings.presetFavorites = removePresetFavorite(this.settings.presetFavorites, 'table', presetId);
-			deleted = true;
-			if (this.settings.tableDefaultPresetId === presetId) {
-				this.settings.tableDefaultPresetId = this.resolveEffectiveTablePresetId(presetId);
-			}
-		});
-		if (!deleted) return;
 	}
 
 	private async toggleSavedPresetFavorite(kind: PresetFavoriteKind, presetId: string, isStored: boolean): Promise<void> {
@@ -11054,17 +10964,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private async confirmDeleteTablePreset(presetName: string): Promise<boolean> {
-		return await new Promise(resolve => {
-			new ConfirmActionModal(this.app, {
-				title: t('settings', 'deleteTablePresetTitle', { name: presetName }),
-				message: t('settings', 'deleteTablePresetMessage'),
-				confirmText: t('table', 'deletePreset'),
-				cancelText: t('buttons', 'cancel'),
-			}, resolve).open();
-		});
-	}
-
 	private async confirmDeleteExternalCalendarSource(sourceName: string): Promise<boolean> {
 		return await new Promise(resolve => {
 			new ConfirmActionModal(this.app, {
@@ -11990,16 +11889,28 @@ export class OperonSettingsTab extends PluginSettingTab {
 			configure?: (dropdown: DropdownComponent) => void;
 			onBeforeSave?: (value: OperonSettings[TKey]) => void | Promise<void>;
 			onAfterChange?: (value: OperonSettings[TKey]) => void | Promise<void>;
+			assignAfterBeforeSave?: boolean;
+			rollbackOnError?: boolean;
 		},
 	): Setting {
 		const applyChange = async (value: TValue): Promise<void> => {
 			const nextValue = options.normalize
 				? options.normalize(value)
 				: value as unknown as OperonSettings[TKey];
-			this.settings[key] = nextValue;
-			await options.onBeforeSave?.(nextValue);
-			await this.saveSettings();
-			await options.onAfterChange?.(nextValue);
+			const previousValue = this.settings[key];
+			try {
+				if (!options.assignAfterBeforeSave) this.settings[key] = nextValue;
+				await options.onBeforeSave?.(nextValue);
+				if (options.assignAfterBeforeSave) this.settings[key] = nextValue;
+				await this.saveSettings();
+				await options.onAfterChange?.(nextValue);
+			} catch (error) {
+				if (options.rollbackOnError) {
+					this.settings[key] = previousValue;
+					this.redisplayPreservingScroll();
+				}
+				throw error;
+			}
 		};
 		return this.markSettingsSearchTarget(renderDropdownSetting({
 			containerEl,

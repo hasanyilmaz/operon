@@ -30,6 +30,7 @@ import { asyncHandler, runAsyncAction } from '../core/async-action';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
 import { localNow } from '../core/local-time';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
 export const FLOW_TIME_VIEW_TYPE = 'operon-flow-time';
 
@@ -346,9 +347,10 @@ export class FlowTimeView extends ItemView {
 		}));
 		this.bindTaskContextMenu(iconBtn, task);
 
-		box.createSpan({
-			cls: 'operon-flow-time-task-name',
-			text: task.description || task.operonId,
+		const taskName = box.createSpan('operon-flow-time-task-name');
+		renderCompactTaskMarkdown(taskName, {
+			value: task.description || task.operonId,
+			mode: 'visual-only',
 		});
 
 		this.renderTaskActionButton(box, active);

@@ -54,6 +54,7 @@ export class ReminderScheduler {
 	private unsubscribeIndex: (() => void) | null = null;
 	private timer: number | null = null;
 	private operationTail: Promise<void> = Promise.resolve();
+	private lastReconciliationFailure: Error | null = null;
 	private started = false;
 	private destroyed = false;
 	private catchUpWindowMinutes: ReminderCatchUpWindowMinutes;
@@ -129,6 +130,14 @@ export class ReminderScheduler {
 		await this.store.drain();
 	}
 
+	/** Await all reminder reconciliation already queued by index/settings events. */
+	async whenIdle(): Promise<void> {
+		await this.operationTail;
+		if (this.lastReconciliationFailure !== null) {
+			throw this.lastReconciliationFailure;
+		}
+	}
+
 	private readonly handleWake = (): void => {
 		if (!getWorkspaceWindows(this.app, this.ownerWindow).some(isWindowVisibleAndFocused)) return;
 		this.enqueue(() => this.reconcileAll());
@@ -178,7 +187,17 @@ export class ReminderScheduler {
 
 	private enqueueAndWait(operation: () => Promise<void>): Promise<void> {
 		if (this.destroyed) return Promise.resolve();
-		const next = this.operationTail.then(operation);
+		const next = this.operationTail.then(async () => {
+			try {
+				await operation();
+				this.lastReconciliationFailure = null;
+			} catch (error) {
+				this.lastReconciliationFailure = error instanceof Error
+					? error
+					: new Error('Reminder scheduler reconciliation failed.');
+				throw error;
+			}
+		});
 		this.operationTail = next.catch(error => {
 			console.warn('Operon: Reminder scheduler reconciliation failed', error);
 		});

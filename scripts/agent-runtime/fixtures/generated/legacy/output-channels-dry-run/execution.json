@@ -1,0 +1,14 @@
+{
+  "caseId": "output-channels-dry-run",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "f003f9c430701f79a16dff48f14d69a0dc94f320983dd505cb9eef9749b27967",
+  "seed": 41035,
+  "stderrSha256": "a076c8f3ad8b953c91cf8d82c5f1b6ef77857d84b85ce533edc903f35e3be48e",
+  "stdoutSha256": "906f5e471d297ab39f774a9a64a48ffb62788c73719aa730218e52945f619d2d",
+  "writtenFiles": {}
+}

@@ -134,6 +134,8 @@ export function queryTableRows(options: {
 		: filterTasksForCalendar(filterSet, tasks, priorities, pinnedCache ?? null, {
 			projectSerialScopes: options.projectSerialScopes,
 			projectSerialScopeTasks: tasks,
+			dependencyTasks: tasks,
+			pipelines: options.settings?.pipelines,
 			filePropertyContext: options.filePropertyContext,
 		});
 	const scopedAt = enginePerfNow();

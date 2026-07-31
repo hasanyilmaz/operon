@@ -1,0 +1,14 @@
+{
+  "caseId": "path-guard-symlink",
+  "exitCode": 1,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": true
+  },
+  "requestSha256": "bb6d7d2b36fdb259315243ce191b81e94832c750a667b55282e7a83446f76dc1",
+  "seed": 41032,
+  "stderrSha256": "6eb8120082f52b95d17daa7f8b7fe4ac9c456ec48ca84a636fe168997c943356",
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "writtenFiles": {}
+}

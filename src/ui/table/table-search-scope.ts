@@ -134,6 +134,7 @@ export function resolveTableSearchBaseScopeTasks(options: {
 	priorities: { label: string; color?: string }[];
 	pinnedCache: PinnedCache | null;
 	projectSerialScopes?: OperonSettings['projectSerialScopes'];
+	pipelines?: OperonSettings['pipelines'];
 	filePropertyContext?: TableFilePropertyQueryContext;
 }): IndexedTask[] {
 	return filterTasksForCalendar(
@@ -144,6 +145,8 @@ export function resolveTableSearchBaseScopeTasks(options: {
 		{
 			projectSerialScopes: options.projectSerialScopes,
 			projectSerialScopeTasks: options.tasks,
+			dependencyTasks: options.tasks,
+			pipelines: options.pipelines,
 			filePropertyContext: options.filePropertyContext,
 		},
 	);

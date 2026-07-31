@@ -1,0 +1,726 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:native-acceptance:v1",
+  "title": "Operon CLI native acceptance evidence V1",
+  "oneOf": [
+    { "$ref": "#/$defs/cell" },
+    { "$ref": "#/$defs/index" }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "pluginNative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind", "pluginId", "pluginVersion", "sourceCommit",
+        "mainJsSha256", "manifestSha256", "stylesCssSha256"
+      ],
+      "properties": {
+        "kind": { "const": "operon-plugin-native-candidate" },
+        "pluginId": { "const": "operon" },
+        "pluginVersion": { "$ref": "#/$defs/semver" },
+        "sourceCommit": { "$ref": "#/$defs/commit" },
+        "releaseTag": { "$ref": "#/$defs/semver" },
+        "mainJsSha256": { "$ref": "#/$defs/digest" },
+        "manifestSha256": { "$ref": "#/$defs/digest" },
+        "stylesCssSha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "pluginPublic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind", "pluginId", "pluginVersion", "releaseTag",
+        "mainJsSha256", "manifestSha256", "stylesCssSha256"
+      ],
+      "properties": {
+        "kind": { "const": "operon-public-plugin-release" },
+        "pluginId": { "const": "operon" },
+        "pluginVersion": { "$ref": "#/$defs/semver" },
+        "releaseTag": { "$ref": "#/$defs/semver" },
+        "sourceCommit": { "$ref": "#/$defs/commit" },
+        "mainJsSha256": { "$ref": "#/$defs/digest" },
+        "manifestSha256": { "$ref": "#/$defs/digest" },
+        "stylesCssSha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "candidateKind": { "const": "operon-cli-native-candidate" }
+            }
+          },
+          "then": {
+            "properties": {
+              "compatiblePublicPlugin": { "$ref": "#/$defs/pluginNative" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "candidateKind": { "const": "operon-cli-release-candidate" }
+            }
+          },
+          "then": {
+            "properties": {
+              "sourceRef": {
+                "type": "string",
+                "pattern": "^cli-v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+              },
+              "compatiblePublicPlugin": { "$ref": "#/$defs/pluginPublic" }
+            }
+          }
+        }
+      ],
+      "required": [
+        "candidateKind", "package", "tarballSha256", "candidateEvidenceSha256",
+        "sourceRef", "sourceCommit", "cliManifestSha256",
+        "aggregateContractSha256", "platforms", "compatiblePublicPlugin"
+      ],
+      "properties": {
+        "candidateKind": {
+          "enum": [
+            "operon-cli-native-candidate",
+            "operon-cli-release-candidate"
+          ]
+        },
+        "package": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9@._/-]+@[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+        },
+        "tarballSha256": { "$ref": "#/$defs/digest" },
+        "candidateEvidenceSha256": { "$ref": "#/$defs/digest" },
+        "sourceRef": { "type": "string", "minLength": 1 },
+        "sourceCommit": { "$ref": "#/$defs/commit" },
+        "cliManifestSha256": { "$ref": "#/$defs/digest" },
+        "aggregateContractSha256": { "$ref": "#/$defs/digest" },
+        "platforms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["darwin", "linux", "win32", "wsl"],
+          "properties": {
+            "darwin": { "enum": ["supported", "acceptance-required"] },
+            "linux": { "enum": ["supported", "acceptance-required"] },
+            "win32": { "enum": ["supported", "acceptance-required"] },
+            "wsl": { "const": "unsupported" }
+          }
+        },
+        "compatiblePublicPlugin": {
+          "oneOf": [
+            { "$ref": "#/$defs/pluginNative" },
+            { "$ref": "#/$defs/pluginPublic" }
+          ]
+        }
+      }
+    },
+    "passedSuite": {
+      "type": "object",
+      "required": ["status", "tests", "skipped", "inconclusive"],
+      "properties": {
+        "status": { "const": "passed" },
+        "tests": { "type": "integer", "minimum": 1 },
+        "skipped": { "const": 0 },
+        "inconclusive": { "const": 0 }
+      }
+    },
+    "interruptionPostDispatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exitCode", "status", "samePlanRecovery"],
+      "properties": {
+        "exitCode": { "const": 5 },
+        "status": { "const": "outcome-unknown" },
+        "samePlanRecovery": { "const": true }
+      }
+    },
+    "interruptionFull": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preDispatch", "postDispatch"],
+      "properties": {
+        "preDispatch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["exitCode", "recoveryPresent"],
+          "properties": {
+            "exitCode": { "const": 130 },
+            "recoveryPresent": { "const": false }
+          }
+        },
+        "postDispatch": { "$ref": "#/$defs/interruptionPostDispatch" }
+      }
+    },
+    "interruptionSmoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["postDispatch"],
+      "properties": {
+        "postDispatch": { "$ref": "#/$defs/interruptionPostDispatch" }
+      }
+    },
+    "performanceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status", "samples", "previewP95Ms",
+        "routineApplyP95Ms", "otherApplyP95Ms"
+      ],
+      "properties": {
+        "status": { "const": "passed" },
+        "samples": { "type": "integer", "minimum": 20 },
+        "previewP95Ms": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 100
+        },
+        "routineApplyP95Ms": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 2000
+        },
+        "otherApplyP95Ms": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 3000
+        }
+      }
+    },
+    "rawDigestEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "bytes", "sha256"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "developerApiProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status", "skipped", "inconclusive", "tests",
+        "consumerArtifactSha256", "registryIdentity",
+        "healthCapabilities", "exactRead", "previewApplyReplay",
+        "recoveryRef", "rawEvidence"
+      ],
+      "properties": {
+        "status": { "const": "passed" },
+        "skipped": { "const": 0 },
+        "inconclusive": { "const": 0 },
+        "tests": { "type": "integer", "minimum": 1 },
+        "consumerArtifactSha256": { "$ref": "#/$defs/digest" },
+        "registryIdentity": { "const": true },
+        "healthCapabilities": { "const": true },
+        "exactRead": { "const": true },
+        "previewApplyReplay": { "const": true },
+        "recoveryRef": { "const": true },
+        "rawEvidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["build", "routine", "recovery", "commandTranscript"],
+          "properties": {
+            "build": { "$ref": "#/$defs/rawDigestEvidence" },
+            "routine": { "$ref": "#/$defs/rawDigestEvidence" },
+            "recovery": { "$ref": "#/$defs/rawDigestEvidence" },
+            "commandTranscript": { "$ref": "#/$defs/rawDigestEvidence" }
+          }
+        }
+      }
+    },
+    "platformSecurityProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "skipped", "inconclusive", "passedChecks"],
+      "properties": {
+        "status": { "const": "passed" },
+        "skipped": { "const": 0 },
+        "inconclusive": { "const": 0 },
+        "passedChecks": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "node24Full": {
+      "allOf": [
+        { "$ref": "#/$defs/passedSuite" },
+        {
+          "type": "object",
+          "required": [
+            "mutationFamilies", "persistentSingleRead", "orderedJsonlReadGroup",
+            "exactPostflight", "receiptReplay", "restartSamePlanRecovery",
+            "installRollbackReupgradeUninstall", "readOnlyResourcesUnchanged",
+            "developerApi", "platformSecurity", "interruption",
+            "performanceReference"
+          ],
+          "properties": {
+            "mutationFamilies": {
+              "type": "array",
+              "minItems": 12,
+              "maxItems": 12,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "task.convert", "task.create", "task.delete",
+                  "task.inline-relocate", "task.pinned-state", "task.recurrence",
+                  "task.relationship", "task.reminder-item", "task.transition",
+                  "task.update", "timer.control", "timer.session"
+                ]
+              }
+            },
+            "persistentSingleRead": { "const": true },
+            "orderedJsonlReadGroup": { "const": true },
+            "exactPostflight": { "const": true },
+            "receiptReplay": { "const": true },
+            "restartSamePlanRecovery": { "const": true },
+            "installRollbackReupgradeUninstall": { "const": true },
+            "readOnlyResourcesUnchanged": { "const": true },
+            "interruption": { "$ref": "#/$defs/interruptionFull" },
+            "developerApi": { "$ref": "#/$defs/developerApiProof" },
+            "platformSecurity": { "$ref": "#/$defs/platformSecurityProof" },
+            "performanceReference": {
+              "oneOf": [
+                { "$ref": "#/$defs/performanceReference" },
+                { "type": "null" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "compatibilitySmoke": {
+      "allOf": [
+        { "$ref": "#/$defs/passedSuite" },
+        {
+          "type": "object",
+          "required": [
+            "installExactTarball", "versionManifestDoctorHealth",
+            "persistentRead", "orderedJsonlReadGroup",
+            "previewApplyReceiptReplay", "interruption"
+          ],
+          "properties": {
+            "installExactTarball": { "const": true },
+            "versionManifestDoctorHealth": { "const": true },
+            "persistentRead": { "const": true },
+            "orderedJsonlReadGroup": { "const": true },
+            "previewApplyReceiptReplay": { "const": true },
+            "interruption": { "$ref": "#/$defs/interruptionSmoke" }
+          }
+        }
+      ]
+    },
+    "vaultEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture", "before", "after", "readOnlyPhaseUnchanged"],
+      "properties": {
+        "fixture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "runId", "nonceSha256"],
+          "properties": {
+            "kind": { "const": "operon-developer-api-native-fixture-vault" },
+            "runId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,160}$"
+            },
+            "nonceSha256": { "$ref": "#/$defs/digest" }
+          }
+        },
+        "before": { "$ref": "#/$defs/vaultState" },
+        "after": { "$ref": "#/$defs/vaultState" },
+        "readOnlyPhaseUnchanged": { "const": true }
+      }
+    },
+    "vaultState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fileCount", "sha256"],
+      "properties": {
+        "fileCount": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "proofProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "outputSha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^scripts/agent-runtime/[A-Za-z0-9._/-]+$",
+          "not": { "pattern": "(^|/)\\.\\.(/|$)" }
+        },
+        "sha256": { "$ref": "#/$defs/digest" },
+        "outputSha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "rawMutationProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tests", "skipped", "inconclusive"],
+      "properties": {
+        "status": { "enum": ["ok", "passed"] },
+        "tests": { "type": "integer", "minimum": 1 },
+        "skipped": { "const": 0 },
+        "inconclusive": { "const": 0 },
+        "publishedFamilies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "exactPostflight": { "type": "boolean" },
+        "receiptReplay": { "type": "boolean" },
+        "previewApplyReceiptReplay": { "type": "boolean" },
+        "postDispatchSamePlanRecovery": { "type": "boolean" },
+        "performanceReference": { "$ref": "#/$defs/performanceReference" }
+      }
+    },
+    "rawNativeProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tests", "skipped", "inconclusive", "interruption"],
+      "properties": {
+        "status": { "enum": ["ok", "passed"] },
+        "tests": { "type": "integer", "minimum": 1 },
+        "skipped": { "const": 0 },
+        "inconclusive": { "const": 0 },
+        "interruption": {
+          "oneOf": [
+            { "$ref": "#/$defs/interruptionFull" },
+            { "$ref": "#/$defs/interruptionSmoke" }
+          ]
+        },
+        "interruptionRecovery": { "type": "boolean" },
+        "restartSamePlanRecovery": { "type": "boolean" },
+        "installRollbackReupgradeUninstall": { "type": "boolean" },
+        "postDispatchSamePlanRecovery": { "type": "boolean" },
+        "developerApi": { "$ref": "#/$defs/developerApiProof" },
+        "platformSecurity": { "$ref": "#/$defs/platformSecurityProof" }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceVersion", "kind", "cellId", "status", "candidate",
+        "environment", "transport", "suites", "workflow", "vaultEvidence",
+        "runner", "proofProviders", "proofEvidence", "publishPerformed"
+      ],
+      "properties": {
+        "evidenceVersion": { "const": 1 },
+        "kind": { "const": "operon-cli-native-acceptance-cell" },
+        "cellId": { "type": "string", "minLength": 1 },
+        "status": { "const": "passed" },
+        "candidate": { "$ref": "#/$defs/candidate" },
+        "environment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "os", "node", "npmVersion", "obsidian", "officialObsidianCli"
+          ],
+          "properties": {
+            "os": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id", "family", "platform", "version", "build", "kernel",
+                "architecture"
+              ],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-z0-9.-]+$" },
+                "family": { "enum": ["darwin", "linux", "win32"] },
+                "platform": { "enum": ["darwin", "linux", "win32"] },
+                "version": { "type": "string", "minLength": 1 },
+                "build": { "type": "string", "minLength": 1 },
+                "kernel": { "type": "string", "minLength": 1 },
+                "architecture": { "enum": ["arm64", "x64"] }
+              }
+            },
+            "node": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["major", "version"],
+              "properties": {
+                "major": { "enum": [22, 24, 26] },
+                "version": {
+                  "enum": ["v22.23.1", "v24.18.0", "v26.5.0"]
+                }
+              }
+            },
+            "npmVersion": { "const": "11.12.1" },
+            "obsidian": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["version", "build"],
+              "properties": {
+                "version": { "enum": ["1.12.2", "1.12.7"] },
+                "build": { "type": "string", "minLength": 1 }
+              }
+            },
+            "officialObsidianCli": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "enabled", "version", "executableSha256", "identityBackend",
+                "identityVerified", "identityDigest", "rawVersionSha256"
+              ],
+              "properties": {
+                "enabled": { "const": true },
+                "version": { "enum": ["1.12.2", "1.12.7"] },
+                "executableSha256": { "$ref": "#/$defs/digest" },
+                "identityBackend": {
+                  "enum": [
+                    "macos-codesign",
+                    "windows-authenticode",
+                    "linux-canonical-executable",
+                    "canonical-executable"
+                  ]
+                },
+                "identityVerified": { "const": true },
+                "identityDigest": { "$ref": "#/$defs/digest" },
+                "rawVersionSha256": { "$ref": "#/$defs/digest" }
+              }
+            }
+          }
+        },
+        "runner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["labels"],
+          "properties": {
+            "labels": {
+              "type": "array",
+              "minItems": 6,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "transport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "endpointKind", "securityBackend", "persistentAvailable",
+            "failureReason"
+          ],
+          "properties": {
+            "endpointKind": {
+              "enum": ["unix-domain-socket", "windows-named-pipe"]
+            },
+            "securityBackend": { "enum": ["posix-mode", "windows-dacl"] },
+            "persistentAvailable": { "const": true },
+            "failureReason": { "type": "null" }
+          }
+        },
+        "suites": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["portablePackage", "node24Full", "compatibilitySmoke"],
+          "properties": {
+            "portablePackage": { "$ref": "#/$defs/passedSuite" },
+            "node24Full": {
+              "oneOf": [
+                { "$ref": "#/$defs/node24Full" },
+                { "type": "null" }
+              ]
+            },
+            "compatibilitySmoke": {
+              "oneOf": [
+                { "$ref": "#/$defs/compatibilitySmoke" },
+                { "type": "null" }
+              ]
+            }
+          }
+        },
+        "workflow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository", "workflow", "runId", "runAttempt",
+            "sourceRef", "sourceCommit"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "pattern": "^[^/\\s]+/[^/\\s]+$"
+            },
+            "workflow": { "type": "string", "minLength": 1 },
+            "runId": {
+              "oneOf": [
+                { "type": "integer", "minimum": 1 },
+                { "type": "string", "pattern": "^[1-9][0-9]*$" }
+              ]
+            },
+            "runAttempt": { "type": "integer", "minimum": 1 },
+            "sourceRef": { "type": "string", "minLength": 1 },
+            "sourceCommit": { "$ref": "#/$defs/commit" }
+          }
+        },
+        "vaultEvidence": { "$ref": "#/$defs/vaultEvidence" },
+        "proofProviders": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mutation", "native"],
+          "properties": {
+            "mutation": { "$ref": "#/$defs/proofProvider" },
+            "native": { "$ref": "#/$defs/proofProvider" }
+          }
+        },
+        "proofEvidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mutation", "native"],
+          "properties": {
+            "mutation": { "$ref": "#/$defs/rawMutationProof" },
+            "native": { "$ref": "#/$defs/rawNativeProof" }
+          }
+        },
+        "publishPerformed": { "const": false }
+      }
+    },
+    "matrix": {
+      "type": "object",
+      "required": [
+        "matrixVersion", "kind", "frozenAt", "operatingSystems",
+        "obsidianVersions", "nodeVersions", "npmVersion",
+        "performanceReference", "expectedCells"
+      ],
+      "properties": {
+        "matrixVersion": { "const": 1 },
+        "kind": { "const": "operon-cli-native-acceptance-freeze" },
+        "frozenAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "operatingSystems": { "type": "array", "minItems": 6, "maxItems": 6 },
+        "obsidianVersions": { "type": "array", "minItems": 2, "maxItems": 2 },
+        "nodeVersions": { "type": "array", "minItems": 3, "maxItems": 3 },
+        "npmVersion": { "const": "11.12.1" },
+        "performanceReference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["osId", "obsidianVersion", "nodeVersion", "thresholdsMs"],
+          "properties": {
+            "osId": { "const": "macos-26.5.2-arm64" },
+            "obsidianVersion": { "const": "1.12.7" },
+            "nodeVersion": { "const": "24.18.0" },
+            "thresholdsMs": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "previewP95Exclusive", "routineApplyP95Exclusive",
+                "otherApplyP95Exclusive"
+              ],
+              "properties": {
+                "previewP95Exclusive": { "const": 100 },
+                "routineApplyP95Exclusive": { "const": 2000 },
+                "otherApplyP95Exclusive": { "const": 3000 }
+              }
+            }
+          }
+        },
+        "expectedCells": {
+          "type": "object",
+          "required": ["hostedPortability", "native"],
+          "properties": {
+            "hostedPortability": { "const": 9 },
+            "native": { "const": 36 }
+          }
+        }
+      }
+    },
+    "indexCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cellId", "evidenceFile", "sha256", "osId",
+        "obsidianVersion", "nodeMajor", "workflow"
+      ],
+      "properties": {
+        "cellId": { "type": "string", "minLength": 1 },
+        "evidenceFile": {
+          "type": "string",
+          "pattern": "^native-acceptance-[A-Za-z0-9.-]+\\.json$"
+        },
+        "sha256": { "$ref": "#/$defs/digest" },
+        "osId": { "type": "string", "minLength": 1 },
+        "obsidianVersion": { "enum": ["1.12.2", "1.12.7"] },
+        "nodeMajor": { "enum": [22, 24, 26] },
+        "workflow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runId", "runAttempt"],
+          "properties": {
+            "runId": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+            "runAttempt": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceVersion", "kind", "status", "generatedAt", "candidate",
+        "matrixSha256", "matrix", "cells", "summary",
+        "promotionEligible", "publishPerformed"
+      ],
+      "properties": {
+        "evidenceVersion": { "const": 1 },
+        "kind": { "const": "operon-cli-native-acceptance-index" },
+        "status": { "const": "passed" },
+        "generatedAt": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
+        },
+        "candidate": { "$ref": "#/$defs/candidate" },
+        "matrixSha256": { "$ref": "#/$defs/digest" },
+        "matrix": { "$ref": "#/$defs/matrix" },
+        "cells": {
+          "type": "array",
+          "minItems": 36,
+          "maxItems": 36,
+          "items": { "$ref": "#/$defs/indexCell" }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "requiredCells", "passedCells", "failedCells",
+            "skippedAssertions", "inconclusiveAssertions",
+            "node24FullCells", "nodeCompatibilitySmokeCells",
+            "developerApiNativeCells"
+          ],
+          "properties": {
+            "requiredCells": { "const": 36 },
+            "passedCells": { "const": 36 },
+            "failedCells": { "const": 0 },
+            "skippedAssertions": { "const": 0 },
+            "inconclusiveAssertions": { "const": 0 },
+            "node24FullCells": { "const": 12 },
+            "nodeCompatibilitySmokeCells": { "const": 24 },
+            "developerApiNativeCells": { "const": 12 }
+          }
+        },
+        "promotionEligible": { "type": "boolean" },
+        "publishPerformed": { "const": false }
+      }
+    }
+  }
+}

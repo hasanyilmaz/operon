@@ -1,0 +1,20 @@
+{
+  "file": {
+    "path": "Tasks/From Template.md",
+    "template": "Templates/Fixture Task.md"
+  },
+  "mode": "file",
+  "task": {
+    "description": "Template task",
+    "fields": {
+      "fixtureTopic": "Templates",
+      "priority": "P1",
+      "status": "Work.Active"
+    },
+    "tags": [
+      "fixture",
+      "preserved"
+    ]
+  },
+  "timestamp": "2026-01-15T10:20:30"
+}

@@ -39,6 +39,10 @@ export default defineConfig([
 			"node_modules/**",
 			"scripts/**",
 			"dist/**",
+			"packages/operon-cli/dist/**",
+			"packages/operon-cli/examples/developer-api-consumer/**",
+			"packages/operon-cli/types/**",
+			"build/**",
 			"coverage/**",
 		],
 	},
@@ -97,6 +101,28 @@ export default defineConfig([
 			"obsidianmd/prefer-window-timers": "warn",
 			"obsidianmd/prefer-instanceof": "warn",
 			"obsidianmd/ui/sentence-case": "warn",
+		},
+	},
+	{
+		files: [
+			"packages/operon-cli/**/*.{ts,mjs}",
+		],
+		languageOptions: {
+			globals: {
+				Buffer: "readonly",
+				process: "readonly",
+			},
+		},
+		rules: {
+			"no-undef": "off",
+			"obsidianmd/no-nodejs-modules": "off",
+			"obsidianmd/prefer-window-timers": "off",
+		},
+	},
+	{
+		files: ["packages/operon-cli/build.mjs"],
+		rules: {
+			"import/no-extraneous-dependencies": "off",
 		},
 	},
 	{

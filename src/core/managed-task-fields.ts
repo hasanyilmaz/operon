@@ -132,6 +132,14 @@ export function isManagedTaskFieldCanonicalKey(
 	return getManagedCustomKeyMapping(canonicalKey, keyMappings) !== null;
 }
 
+export function isReadableTaskFieldCanonicalKey(
+	canonicalKey: string,
+	keyMappings: readonly KeyMapping[] | null | undefined,
+): boolean {
+	return isRetiredKeyMapping(canonicalKey)
+		|| isManagedTaskFieldCanonicalKey(canonicalKey, keyMappings);
+}
+
 export function getManagedTaskFieldType(
 	canonicalKey: string,
 	keyMappings: readonly KeyMapping[] | null | undefined,

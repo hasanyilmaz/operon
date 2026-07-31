@@ -80,9 +80,9 @@ import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-ho
 import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
-import { renderTaskDescriptionWikilinks } from '../task-description-wikilinks';
+import { renderCompactTaskMarkdown } from '../compact-task-markdown-renderer';
 import { isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
-import { showTextFieldPopover } from '../text-field-popover';
+import { showTaskNotePopover } from '../task-note-action';
 import {
 	buildKanbanTaskChipRow,
 	getKanbanTaskChipLocationSignature,
@@ -232,10 +232,6 @@ function isKanbanButtonElement(element: HTMLElement): element is HTMLButtonEleme
 		return elementWithInstanceOf.instanceOf(HTMLButtonElement);
 	}
 	return element.tagName === 'BUTTON';
-}
-
-function normalizeKanbanNotePreviewPopoverValue(value: string): string {
-	return value.replace(/^\s+|\s+$/gu, '');
 }
 
 function bindKanbanNotePreviewDragShield(preview: HTMLElement): void {
@@ -415,6 +411,15 @@ export class KanbanView extends ItemView {
 	private lastRenderSignature: string | null = null;
 	private readonly taskSignatureIndex = new KanbanTaskSignatureIndex();
 	private pendingCellMaterializers = new Map<HTMLElement, () => KanbanCellRenderFinalizer>();
+	private activeTaskNotePopoverClose: (() => void) | null = null;
+	private activeTaskNotePopoverTaskId: string | null = null;
+	private taskNoteShouldReturnFocus = true;
+	private pendingTaskNoteOpen: {
+		anchor: DOMRect;
+		task: IndexedTask;
+		openerSelector: string;
+	} | null = null;
+	private taskNoteScrollSuppressionFrame: { win: Window; id: number } | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -495,6 +500,8 @@ export class KanbanView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		this.pendingTaskNoteOpen = null;
+		this.requestActiveTaskNotePopoverClose(false);
 		this.temporarilyExpandedAutoCollapsedStatusTokens.clear();
 		this.temporarilyExpandedAutoCollapsedLaneTokens.clear();
 		this.resetKanbanSearchScope();
@@ -515,6 +522,10 @@ export class KanbanView extends ItemView {
 		this.cancelPendingManualDropIndicatorUpdate();
 		this.clearKanbanSearchRefreshTimer();
 		this.clearOptimisticMoveExpiryTimer();
+		if (this.taskNoteScrollSuppressionFrame) {
+			this.taskNoteScrollSuppressionFrame.win.cancelAnimationFrame(this.taskNoteScrollSuppressionFrame.id);
+			this.taskNoteScrollSuppressionFrame = null;
+		}
 		this.clearDropScrollAnchor();
 		this.hideHoverMenu(true);
 	}
@@ -1327,6 +1338,7 @@ export class KanbanView extends ItemView {
 		gridViewport.addEventListener('scroll', () => {
 			this.hideCellQuickAdds(boardEl);
 			boardEl.dispatchEvent(new Event('operon-kanban-axis-clear'));
+			this.closeTaskNotePopoverForUserScroll();
 		}, { passive: true });
 		const gridContent = gridViewport.createDiv('operon-kanban-grid-content');
 		const renderAsMobileLayout = this.isKanbanMobileLayoutEligible(gridViewport);
@@ -1765,6 +1777,7 @@ export class KanbanView extends ItemView {
 				sourceLaneKey,
 				cardEl: card,
 			};
+			this.requestActiveTaskNotePopoverClose(false);
 			event.dataTransfer?.setData('text/plain', taskId);
 			if (event.dataTransfer) {
 				event.dataTransfer.effectAllowed = 'move';
@@ -1987,15 +2000,15 @@ export class KanbanView extends ItemView {
 		const titleEl = head.createSpan({
 			cls: 'operon-kanban-card-title',
 		});
-		const renderedWikilinks = renderTaskDescriptionWikilinks(titleEl, {
+		renderCompactTaskMarkdown(titleEl, {
 			app: this.app,
-			description: titleText,
+			value: titleText,
 			sourcePath: task.primary.filePath,
+			mode: 'interactive',
+			containerClassName: 'operon-task-description-markdown',
 		});
-		if (!renderedWikilinks) {
-			titleEl.textContent = titleText;
-		}
-		if (!renderedWikilinks && task.primary.format === 'yaml') {
+		const hasInteractiveDescriptionLink = !!titleEl.querySelector('a.internal-link, a.external-link');
+		if (!hasInteractiveDescriptionLink && task.primary.format === 'yaml') {
 			bindTaskTitleLinkPreview(this.app, titleEl, task.primary.filePath, task.primary.filePath);
 		}
 
@@ -2045,6 +2058,7 @@ export class KanbanView extends ItemView {
 				updateDependencyField: this.callbacks.updateDependencyField,
 				openEditor: (operonId) => this.callbacks.onItemAction?.(operonId, 'openEditor'),
 				getTaskById: (operonId) => this.indexer.getTask(operonId),
+				openNotePopover: (anchor, noteTask) => this.openTaskNotePopover(anchor, noteTask),
 			}, {
 				allTasks,
 				taskLookup,
@@ -2104,16 +2118,17 @@ export class KanbanView extends ItemView {
 		bindKanbanNotePreviewDragShield(preview);
 		const icon = preview.createSpan('operon-kanban-card-note-preview-icon');
 		setIcon(icon, getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen');
-		preview.createSpan({
-			cls: 'operon-kanban-card-note-preview-text',
-			text: noteValue,
+		const noteText = preview.createSpan('operon-kanban-card-note-preview-text');
+		renderCompactTaskMarkdown(noteText, {
+			value: noteValue,
+			mode: 'visual-only',
 		});
 
 		setAccessibleLabelWithoutTooltip(preview, `${t('taskEditor', 'notes')}: ${noteValue}`);
 		const openPopover = (event: Event): void => {
 			event.preventDefault();
 			event.stopPropagation();
-			this.openCardNotePreviewPopover(preview, task, noteValue);
+			this.openTaskNotePopover(preview, task);
 		};
 
 		preview.addEventListener('pointerdown', event => {
@@ -2130,29 +2145,101 @@ export class KanbanView extends ItemView {
 		});
 	}
 
-	private openCardNotePreviewPopover(anchor: HTMLElement, task: IndexedTask, noteValue: string): void {
-		showTextFieldPopover({
+	private openTaskNotePopover(
+		anchor: HTMLElement | DOMRect,
+		task: IndexedTask,
+		openerSelector?: string,
+	): void {
+		const anchorEl = asHTMLElement(anchor);
+		const resolvedOpenerSelector = openerSelector
+			?? (anchorEl?.matches('.operon-kanban-card-note-preview')
+				? '.operon-kanban-card-note-preview'
+				: '.operon-kanban-card-action-chip.is-note-action');
+		if (
+			this.activeTaskNotePopoverClose
+			&& this.activeTaskNotePopoverTaskId
+			&& this.activeTaskNotePopoverTaskId !== task.operonId
+		) {
+			const rect = anchorEl ? anchorEl.getBoundingClientRect() : anchor as DOMRect;
+			this.pendingTaskNoteOpen = { anchor: rect, task, openerSelector: resolvedOpenerSelector };
+			this.requestActiveTaskNotePopoverClose(false);
+			return;
+		}
+		this.taskNoteShouldReturnFocus = true;
+		const closePopover = showTaskNotePopover({
 			app: this.app,
 			anchor,
-			title: t('taskEditor', 'notes'),
-			subtitle: task.description || task.operonId,
-			initialValue: noteValue,
-			placeholder: t('taskEditor', 'notesPlaceholder'),
+			operonId: task.operonId,
+			sourcePath: task.primary.filePath,
+			lifecycleOwner: this.contentEl,
+			initialValue: task.fieldValues['note'] ?? '',
+			taskDescription: task.description,
 			taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
-			sessionKey: `kanban-note:${task.operonId}`,
-			normalizeValue: normalizeKanbanNotePreviewPopoverValue,
-			onCommit: async nextValue => {
+			onCommit: nextValue => {
 				if (this.callbacks.updateFields) {
-					await this.callbacks.updateFields(task.operonId, { note: nextValue });
-					return true;
+					return this.callbacks.updateFields(task.operonId, { note: nextValue });
 				}
 				if (this.callbacks.updateField) {
-					await this.callbacks.updateField(task.operonId, 'note', nextValue);
-					return true;
+					return this.callbacks.updateField(task.operonId, 'note', nextValue);
 				}
 				return false;
 			},
+			onFocusReturn: () => {
+				if (this.activeTaskNotePopoverClose === closePopover) {
+					this.activeTaskNotePopoverClose = null;
+					this.activeTaskNotePopoverTaskId = null;
+				}
+				const pending = this.pendingTaskNoteOpen;
+				this.pendingTaskNoteOpen = null;
+				if (pending) {
+					this.openTaskNotePopover(pending.anchor, pending.task, pending.openerSelector);
+					return;
+				}
+				if (this.taskNoteShouldReturnFocus) {
+					this.restoreTaskNoteTriggerFocus(task.operonId, resolvedOpenerSelector);
+				}
+				this.taskNoteShouldReturnFocus = true;
+			},
 		});
+		this.activeTaskNotePopoverClose = closePopover;
+		this.activeTaskNotePopoverTaskId = task.operonId;
+	}
+
+	private restoreTaskNoteTriggerFocus(operonId: string, openerSelector: string): void {
+		const card = this.contentEl.querySelector<HTMLElement>(
+			`.operon-kanban-card[data-operon-task-id="${CSS.escape(operonId)}"]`,
+		);
+		const trigger = card?.querySelector<HTMLElement>(openerSelector);
+		if (trigger?.isConnected) {
+			trigger.focus();
+			return;
+		}
+		const board = this.contentEl.querySelector<HTMLElement>('.operon-kanban-board');
+		if (!board) return;
+		if (board.tabIndex < 0) board.tabIndex = -1;
+		board.focus();
+	}
+
+	private closeTaskNotePopoverForUserScroll(): void {
+		if (this.taskNoteScrollSuppressionFrame !== null) return;
+		this.requestActiveTaskNotePopoverClose(false);
+	}
+
+	private requestActiveTaskNotePopoverClose(returnFocus: boolean): void {
+		this.taskNoteShouldReturnFocus = returnFocus;
+		this.activeTaskNotePopoverClose?.();
+	}
+
+	private suppressTaskNoteScrollCloseForFrame(owner: HTMLElement): void {
+		const ownerWindow = getOwnerWindow(owner);
+		const current = this.taskNoteScrollSuppressionFrame;
+		if (current) current.win.cancelAnimationFrame(current.id);
+		const id = ownerWindow.requestAnimationFrame(() => {
+			if (this.taskNoteScrollSuppressionFrame?.id === id) {
+				this.taskNoteScrollSuppressionFrame = null;
+			}
+		});
+		this.taskNoteScrollSuppressionFrame = { win: ownerWindow, id };
 	}
 
 	private renderPreviewNode(
@@ -2795,6 +2882,7 @@ export class KanbanView extends ItemView {
 		cell.addEventListener('scroll', () => {
 			setVisible(false);
 			clearAxisHighlight();
+			this.closeTaskNotePopoverForUserScroll();
 		});
 		cell.addEventListener('dragstart', () => {
 			setVisible(false);
@@ -3667,6 +3755,7 @@ export class KanbanView extends ItemView {
 			}
 			clearMobileGestureTimer(gesture);
 			gesture.mode = 'dragging';
+			this.requestActiveTaskNotePopoverClose(false);
 			gesture.previousClientX = gesture.latestClientX;
 			gesture.previousClientY = gesture.latestClientY;
 			suppressNextMobileCardClick(gesture);
@@ -3956,6 +4045,7 @@ export class KanbanView extends ItemView {
 		const dropAnchor = this.getActiveDropScrollAnchor();
 		const { left, top } = dropAnchor?.state ?? this.lastBoardScrollState;
 		if (!dropAnchor && left === 0 && top === 0) return;
+		this.suppressTaskNoteScrollCloseForFrame(board);
 		board.scrollLeft = left;
 		board.scrollTop = top;
 		this.lastBoardScrollState = { left, top };
@@ -4056,6 +4146,7 @@ export class KanbanView extends ItemView {
 		const entry = this.pendingCellScrollRestores.get(key);
 		if (!entry) return;
 		const targetTop = this.resolveCellAnchorScrollTop(cell, entry);
+		this.suppressTaskNoteScrollCloseForFrame(cell);
 		cell.scrollTop = targetTop;
 		const outcome = resolveKanbanCellScrollRestore({
 			targetTop,
@@ -4485,6 +4576,8 @@ export class KanbanView extends ItemView {
 			{
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
+				dependencyTasks: this.indexer.getAllTasks(),
+				pipelines: settings.pipelines,
 				filePropertyContext: this.getFilePropertyContext(settings),
 			},
 		).filter(task => isTaskInPipelineWithIndex(task, pipeline, workflowStatusIdentityIndex));

@@ -144,14 +144,9 @@ async function test(name, fn) {
 
 const sourceDocOne = [
 	'---',
-	'Up:',
-	'  - "[[DOCS-001 Operon Docs MOC|Operon Docs MOC]]"',
 	'Notes: Root index and reading path',
 	'Icon: book-open',
 	'Color: "#334155"',
-	'tags:',
-	'  - operon',
-	'  - start',
 	'Updated: 2026-06-25T16:47:21',
 	'---',
 	'',
@@ -169,14 +164,9 @@ const sourceDocOne = [
 
 const localizedDefaultDocOne = [
 	'---',
-	'contexts:',
-	'  - "[[DOCS-001 Operon Docs MOC|Operon Docs MOC]]"',
 	'note: Root index and reading path',
 	'taskIcon: book-open',
 	'taskColor: "#334155"',
-	'tags:',
-	'  - operon',
-	'  - start',
 	'datetimeModified: 2026-06-25T16:47:21',
 	'---',
 	'',
@@ -193,24 +183,17 @@ const localizedDefaultDocOne = [
 ].join('\n');
 
 const customMappings = [
-	{ canonicalKey: 'contexts', visiblePropertyName: 'Project Up' },
 	{ canonicalKey: 'note', visiblePropertyName: 'Doc Note' },
 	{ canonicalKey: 'taskIcon', visiblePropertyName: 'Doc Icon' },
 	{ canonicalKey: 'taskColor', visiblePropertyName: 'Doc Color' },
 	{ canonicalKey: 'datetimeModified', visiblePropertyName: 'Doc Updated' },
-	{ canonicalKey: 'tags', visiblePropertyName: 'Custom Tags' },
 ];
 
 const localizedCustomDocOne = [
 	'---',
-	'Project Up:',
-	'  - "[[DOCS-001 Operon Docs MOC|Operon Docs MOC]]"',
 	'Doc Note: Root index and reading path',
 	'Doc Icon: book-open',
 	'Doc Color: "#334155"',
-	'tags:',
-	'  - operon',
-	'  - start',
 	'Doc Updated: 2026-06-25T16:47:21',
 	'---',
 	'',
@@ -333,13 +316,11 @@ await test('default localization rewrites only top-level frontmatter keys', asyn
 	assert.ok(content.includes('```yaml\nUp:\n  - "[[Literal example]]"\nUpdated: keep-literal\n```'));
 });
 
-await test('custom localization uses user visible property names and keeps tags stable', async () => {
+await test('custom localization uses user visible property names', async () => {
 	const memory = createMemoryAdapter();
 	await runSync(memory, baseDocs, null, customMappings);
 	const content = memory.files.get('Operon/Docs/DOCS-001 Operon Docs MOC.md');
 	assert.equal(content, localizedCustomDocOne);
-	assert.ok(content.includes('\ntags:\n  - operon\n'));
-	assert.equal(content.includes('Custom Tags:'), false);
 });
 
 await test('state keeps remote source hash separate from localized local hash', async () => {
@@ -404,20 +385,19 @@ await test('manifest removals are reported as stale but not deleted', async () =
 await test('frontmatter key collisions fall back and warn when canonical also exists', async () => {
 	const memory = createMemoryAdapter();
 	const collisionDocs = {
-		'DOCS-003 Collision case.md': '---\nUp:\n  - "[[A]]"\nNotes: source note\ncontexts: existing canonical\n---\n\nBody Up: unchanged\n',
+		'DOCS-003 Collision case.md': '---\nNotes: source note\nDoc Note: existing preferred\nnote: existing canonical\n---\n\nBody Notes: unchanged\n',
 	};
 	const collisionMappings = [
-		{ canonicalKey: 'contexts', visiblePropertyName: 'Notes' },
 		{ canonicalKey: 'note', visiblePropertyName: 'Doc Note' },
 	];
 	const result = await runSync(memory, collisionDocs, null, collisionMappings);
 	const content = memory.files.get('Operon/Docs/DOCS-003 Collision case.md');
-	assert.ok(content.startsWith('---\nUp:\n  - "[[A]]"\nDoc Note: source note\ncontexts: existing canonical\n---'));
+	assert.ok(content.startsWith('---\nNotes: source note\nDoc Note: existing preferred\nnote: existing canonical\n---'));
 	assert.equal(result.warnings.length, 1);
 	assert.equal(result.warnings[0].reason, 'frontmatter-key-collision');
-	assert.equal(result.warnings[0].sourceKey, 'Up');
-	assert.equal(result.warnings[0].preferredKey, 'Notes');
-	assert.equal(result.warnings[0].canonicalKey, 'contexts');
+	assert.equal(result.warnings[0].sourceKey, 'Notes');
+	assert.equal(result.warnings[0].preferredKey, 'Doc Note');
+	assert.equal(result.warnings[0].canonicalKey, 'note');
 });
 
 await fs.rm(bundlePath, { force: true });

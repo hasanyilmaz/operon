@@ -1,0 +1,14 @@
+{
+  "caseId": "file-collision",
+  "exitCode": 1,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": true
+  },
+  "requestSha256": "2bd35af9b2c4bf79e3f7f097f972b05d2a5725dd4354d238d6e677c414075877",
+  "seed": 41028,
+  "stderrSha256": "046cc16d5d71e4f642c9d7d40e77a19e70e4a19f0406dfeadaeee020c45e312b",
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "writtenFiles": {}
+}

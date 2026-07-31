@@ -12,6 +12,8 @@ import { OperonSettings, resolveTaskDisplayIcon } from '../types/settings';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import { isTaskSourceOpenModifierClick } from './task-source-open-modifier';
+import { bindPinnedTaskReorder, type PinnedTaskReorderController } from './pinned-task-reorder-interaction';
+import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
 export const PINNED_TASKS_SIDEBAR_VIEW_TYPE = 'operon-pinned-tasks-sidebar';
 
@@ -22,10 +24,12 @@ export interface PinnedTasksSidebarCallbacks {
 	onContextualAction?: ContextualMenuActionHandler;
 	hasSubtasks?: (taskId: string) => boolean;
 	toggleTimer: (taskId: string) => Promise<boolean>;
+	replaceActiveManualOrder?: (orderedTaskIds: string[]) => Promise<void>;
 }
 
 export class PinnedTasksSidebarView extends ItemView {
 	private lastRenderSignature: string | null = null;
+	private reorderController: PinnedTaskReorderController | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -54,13 +58,25 @@ export class PinnedTasksSidebarView extends ItemView {
 		this.render();
 	}
 
+	async onClose(): Promise<void> {
+		const reorderController = this.reorderController;
+		this.reorderController = null;
+		reorderController?.destroy();
+	}
+
 	markDirty(): void {
 		this.lastRenderSignature = null;
 	}
 
 	render(): void {
 		const container = this.contentEl;
-		const pinnedTasks = getPinnedTasksForDisplay(this.indexer, this.pinnedCache, this.settings.priorities);
+		if (this.reorderController?.isActive()) return;
+		const pinnedTasks = getPinnedTasksForDisplay(
+			this.indexer,
+			this.pinnedCache,
+			this.settings.priorities,
+			this.settings.pinnedTaskSortMode,
+		);
 		const activeTrackerId = this.timeTracker.getActiveOperonId();
 		const colorSettingsSignature = [
 			this.settings.pinnedDockColorSource,
@@ -85,6 +101,12 @@ export class PinnedTasksSidebarView extends ItemView {
 		if (signature === this.lastRenderSignature) return;
 		this.lastRenderSignature = signature;
 
+		const previousList = container.querySelector<HTMLElement>(':scope > .operon-pinned-sidebar-list');
+		const previousListScrollLeft = previousList?.scrollLeft ?? 0;
+		const previousListScrollTop = previousList?.scrollTop ?? 0;
+		const previousReorderController = this.reorderController;
+		this.reorderController = null;
+		previousReorderController?.destroy();
 		container.empty();
 		container.addClass('operon-pinned-sidebar-view');
 
@@ -100,10 +122,28 @@ export class PinnedTasksSidebarView extends ItemView {
 		for (const task of pinnedTasks) {
 			this.renderTaskRow(list, task);
 		}
+		if (previousList) {
+			const restoreScroll = (): void => {
+				if (!list.isConnected || !container.contains(list)) return;
+				list.scrollLeft = previousListScrollLeft;
+				list.scrollTop = previousListScrollTop;
+			};
+			restoreScroll();
+			const immediateScrollLeft = list.scrollLeft;
+			const immediateScrollTop = list.scrollTop;
+			list.ownerDocument.defaultView?.requestAnimationFrame(() => {
+				if (!list.isConnected || !container.contains(list)) return;
+				if (list.scrollLeft === immediateScrollLeft) list.scrollLeft = previousListScrollLeft;
+				if (list.scrollTop === immediateScrollTop) list.scrollTop = previousListScrollTop;
+			});
+		}
+		this.bindTaskReorder(list);
 	}
 
 	private renderTaskRow(container: HTMLElement, task: IndexedTask): void {
 		const row = container.createDiv('operon-pinned-sidebar-row');
+		row.dataset.operonPinnedTaskId = task.operonId;
+		row.draggable = this.isManualOrderEnabled();
 		row.addEventListener('click', (event) => {
 			if (isTaskSourceOpenModifierClick(event) && this.callbacks.openTaskSource) {
 				event.preventDefault();
@@ -143,9 +183,10 @@ export class PinnedTasksSidebarView extends ItemView {
 			});
 		}
 
-		const description = row.createSpan({
-			cls: 'operon-pinned-sidebar-desc',
-			text: task.description || t('pinnedTasks', 'untitledTask'),
+		const description = row.createSpan('operon-pinned-sidebar-desc');
+		renderCompactTaskMarkdown(description, {
+			value: task.description || t('pinnedTasks', 'untitledTask'),
+			mode: 'visual-only',
 		});
 		description.setAttribute('role', 'button');
 		description.setAttribute('tabindex', '0');
@@ -194,6 +235,32 @@ export class PinnedTasksSidebarView extends ItemView {
 				'--operon-pinned-sidebar-row-hover-border': color,
 			});
 		}
+	}
+
+	private isManualOrderEnabled(): boolean {
+		return this.settings.pinnedTaskSortMode === 'manual'
+			&& typeof this.callbacks.replaceActiveManualOrder === 'function';
+	}
+
+	private bindTaskReorder(list: HTMLElement): void {
+		let controller: PinnedTaskReorderController;
+		controller = bindPinnedTaskReorder(list, {
+			itemSelector: '.operon-pinned-sidebar-row',
+			getAxis: () => 'vertical',
+			isEnabled: () => this.isManualOrderEnabled(),
+			onCommit: async (orderedTaskIds) => {
+				const replaceActiveManualOrder = this.callbacks.replaceActiveManualOrder;
+				if (!replaceActiveManualOrder) return;
+				await replaceActiveManualOrder(orderedTaskIds);
+			},
+			onSettled: () => {
+				if (this.reorderController !== controller) return;
+				this.markDirty();
+				this.render();
+			},
+			enableTouch: true,
+		});
+		this.reorderController = controller;
 	}
 
 }

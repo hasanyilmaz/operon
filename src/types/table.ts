@@ -155,12 +155,11 @@ export interface TablePresetNormalizationOptions {
 	availableFilterSetIds: readonly string[];
 }
 
-export interface TablePresetStoreSettings {
+export interface TablePresetProjectionSettings {
 	tablePresets: TablePreset[];
 	tablePresetOrderIds?: string[];
 	tablePresetFileBindings?: TablePresetFileBinding[];
-	tablePresetFileMigrationVersion: number;
-	tablePresetFileMigrationFinalizedVersion: number;
+	tablePresetFileInitialized: boolean;
 	tableDefaultPresetId: string | null;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
 	tableShowLineNumbers: boolean;
@@ -171,14 +170,12 @@ export interface TablePresetStoreSettings {
 export interface TablePresetPackageSettings {
 	presetIds?: string[];
 	fileBindings?: TablePresetFileBinding[];
-	fileMigrationVersion?: number;
-	fileMigrationFinalizedVersion?: number;
+	initialized?: boolean;
 	tableDefaultPresetId: string | null;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskTypeIcon: boolean;
-	tablePresets?: TablePreset[];
 }
 
 export const DEFAULT_TABLE_COLUMN_KEYS = [

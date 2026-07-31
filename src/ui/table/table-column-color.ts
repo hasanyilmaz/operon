@@ -14,6 +14,12 @@ import {
 	type TableColumnColorMode,
 } from '../../types/table';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
+import { parseDependencyIdList } from '../../core/dependency-graph';
+import {
+	resolveBlockedByAggregateVisualState,
+	resolveBlockedByVisualStateColor,
+} from '../../core/blocked-by-visual-state';
+import type { TableTaskLookup } from './table-value-adapter';
 
 export const TABLE_COLUMN_COLOR_MENU_MODES: readonly TableColumnColorMode[] = [
 	'noColor',
@@ -74,9 +80,19 @@ export function resolveTableIconOnlyCellAccent(
 	options: {
 		task?: IndexedTask;
 		settings?: TableColumnColorSettings;
+		taskLookup?: TableTaskLookup;
 		workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	} = {},
 ): string | null {
+	if (column.key === 'blockedBy' && options.settings && options.taskLookup) {
+		const state = resolveBlockedByAggregateVisualState(
+			parseDependencyIdList(value),
+			id => options.taskLookup?.getTask(id) ?? undefined,
+			options.settings.pipelines,
+			options.workflowStatusIdentityIndex,
+		);
+		return resolveBlockedByVisualStateColor(state);
+	}
 	const dateStateAccent = resolveTaskDateToneColor(resolveTaskDateTone(column.key, value, options.task?.fieldValues ?? {}));
 	return dateStateAccent ?? resolveTableColumnCellAccent(column, value, options);
 }

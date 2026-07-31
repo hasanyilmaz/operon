@@ -19,7 +19,6 @@ import { t } from '../core/i18n';
 import {
 	evaluateFilterSet,
 	evaluateFilterSetGrouped,
-	filterTasksOnly,
 	getFilterSortSpecs,
 	prepareTaskSortContext,
 	sortFilterTasks,
@@ -66,6 +65,7 @@ import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from '../types/re
 import { getTableFilePropertyIndex } from './table/table-file-property';
 import { getFilterGroupDisplayLabel } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
+import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
 
 export const FILTER_VIEW_TYPE = 'operon-filter-view';
 const FILTER_PERF_DEBUG = false;
@@ -503,6 +503,8 @@ export class FilterView extends ItemView {
 			const filterEvaluationOptions = {
 				projectSerialScopes: this.getSettings().projectSerialScopes,
 				projectSerialScopeTasks: allTasks,
+				dependencyTasks: allTasks,
+				pipelines: this.getPipelines(),
 				filePropertyContext,
 			};
 
@@ -517,7 +519,7 @@ export class FilterView extends ItemView {
 					filterEvaluationOptions,
 				);
 				const searchActive = isFilterSearchActive(this.searchQuery);
-				const baseRootTasks = filterTasksOnly(currentFs, allTasks, this.getPriorities(), this.pinnedCache, filterEvaluationOptions);
+				const baseRootTasks = baseGrouped.matchedTasks ?? [];
 				const treeScopeTasks = this.getCachedTreeScope(baseRootTasks);
 				this.syncSearchPlaceholder(treeScopeTasks.length);
 
@@ -665,6 +667,7 @@ export class FilterView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		requestCloseTextFieldPopoversForOwner(this.contentEl);
 		this.closeTransientSurfaceUi(this.contentEl);
 		cleanupOperonRenderRoot(this.contentEl);
 		this.lazyLoadObserver?.disconnect();

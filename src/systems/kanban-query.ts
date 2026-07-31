@@ -77,6 +77,8 @@ export function queryKanbanBoard(options: {
 		...options.filterEvaluationOptions,
 		projectSerialScopes: options.projectSerialScopes,
 		projectSerialScopeTasks: options.tasks,
+		dependencyTasks: options.tasks,
+		pipelines: options.pipelines,
 	});
 	const identityIndex = buildWorkflowStatusIdentityIndex(
 		options.pipelines ?? (pipeline ? [pipeline] : []),

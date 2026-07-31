@@ -205,6 +205,7 @@ export function rankTaskSearchResults(options: {
 	const keyMappingsSignature = options.session ? buildKeyMappingsSignature(keyMappings) : '';
 	const matcher = getTaskSearchMatcher(options.tasks, keyMappings, keyMappingsSignature, options.session);
 	const scopedTasks = options.tasks.filter(task => options.includeAllTasks || task.checkbox === 'open');
+	if (normalizedQuery && tokenizeTaskSearchText(normalizedQuery).length === 0) return [];
 	const matches = scopedTasks
 		.filter(task => !normalizedQuery || matcher(task, normalizedQuery))
 		.map(task => ({
@@ -487,7 +488,13 @@ function compareRankedTaskSearchResults(
 	const modifiedDiff = getModifiedTime(right.task) - getModifiedTime(left.task);
 	if (modifiedDiff !== 0) return modifiedDiff;
 	return left.task.description.localeCompare(right.task.description, undefined, { sensitivity: 'base' })
-		|| left.task.operonId.localeCompare(right.task.operonId, undefined, { sensitivity: 'base' });
+		|| left.task.operonId.localeCompare(right.task.operonId, undefined, { sensitivity: 'base' })
+		|| compareExactStrings(left.task.operonId, right.task.operonId);
+}
+
+function compareExactStrings(left: string, right: string): number {
+	if (left === right) return 0;
+	return left < right ? -1 : 1;
 }
 
 function getSearchableSwimlaneValues(task: IndexedTask): string[] {

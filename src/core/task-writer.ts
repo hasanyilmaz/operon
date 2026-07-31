@@ -7,7 +7,7 @@
  * other tasks' files (dependency manager, AggregateCoordinator, etc.).
  */
 
-import { App, parseYaml, TFile } from 'obsidian';
+import { App, normalizePath, parseYaml, stringifyYaml, TFile, TFolder } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 
 import { parseTaskLine } from './parser';
@@ -43,7 +43,48 @@ export interface TaskWriteOptions {
 
 export interface TaskWriterHooks {
 	onBeforeWriteFile?: (filePath: string) => void;
+	validateWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
     onDuplicateConflict?: (operonId: string) => void;
+}
+
+export type TaskSourceMutation =
+    | {
+        kind: 'modify';
+        filePath: string;
+        expectedContent: string;
+        nextContent: string;
+    }
+    | {
+        kind: 'create';
+        filePath: string;
+        nextContent: string;
+    }
+    | {
+        kind: 'trash';
+        filePath: string;
+        expectedContent: string;
+    };
+
+export interface TaskSourceMutationResult {
+    outcome: 'committed' | 'conflict' | 'missing' | 'exists' | 'invalid-target';
+    filePath: string;
+    previousContent?: string;
+    committedContent?: string;
+    /** Internal exact handle for immediate post-write indexing. */
+    file?: TFile;
+}
+
+export interface GuardedTaskSourceFieldUpdate {
+    operonId: string;
+    format: 'inline' | 'yaml';
+    lineNumber?: number;
+    fieldValues: Record<string, string>;
+}
+
+export interface GuardedTaskSourceRenderResult {
+    ok: boolean;
+    content: string;
+    reason: string;
 }
 
 type YamlFastPathState = 'aggregate' | 'fallback' | 'none';
@@ -55,6 +96,12 @@ interface TaskWriteResult {
 }
 
 export interface InlineTaskLinePatchResult {
+    ok: boolean;
+    content: string;
+    fallbackReason: string;
+}
+
+export interface YamlTaskContentPatchResult {
     ok: boolean;
     content: string;
     fallbackReason: string;
@@ -90,6 +137,26 @@ export interface ConditionalTaskFieldWriteOptions {
         filePath: string;
         format: 'inline' | 'yaml';
     };
+}
+
+function isSafeMarkdownTaskSourcePath(originalPath: string, normalizedPath: string): boolean {
+    if (
+        originalPath.length === 0
+        || originalPath !== originalPath.trim()
+        || originalPath.startsWith('/')
+        || originalPath.startsWith('\\')
+        || /^[a-zA-Z]:/u.test(originalPath)
+        || originalPath.includes('\\')
+        || originalPath.includes('\0')
+        || originalPath.split('/').some(segment => segment === '' || segment === '.' || segment === '..')
+        || originalPath !== normalizedPath
+        || !normalizedPath.toLowerCase().endsWith('.md')
+    ) return false;
+    for (let index = 0; index < originalPath.length; index += 1) {
+        const code = originalPath.charCodeAt(index);
+        if (code <= 31 || code === 127) return false;
+    }
+    return true;
 }
 
 function findTaskLineIndex(
@@ -137,14 +204,40 @@ export function tryPatchInlineTaskLineContent(
     keyMappings: KeyMapping[] = [],
 ): InlineTaskLinePatchResult {
     const lines = content.split('\n');
+    const patch = tryPatchInlineTaskLines(
+        lines,
+        filePath,
+        operonId,
+        fieldValues,
+        lineHint,
+        mode,
+        keyMappings,
+    );
+    return patch.ok
+        ? { ok: true, content: lines.join('\n'), fallbackReason: 'none' }
+        : { ok: false, content, fallbackReason: patch.fallbackReason };
+}
+
+function tryPatchInlineTaskLines(
+    lines: string[],
+    filePath: string,
+    operonId: string,
+    fieldValues: Record<string, string>,
+    lineHint: number,
+    mode: 'merge' | 'replace',
+    keyMappings: KeyMapping[],
+): { ok: true; fallbackReason: 'none' } | {
+    ok: false;
+    fallbackReason: 'inline-task-not-found' | 'inline-task-parse-failed';
+} {
     const taskLineIndex = findTaskLineIndex(lines, filePath, operonId, lineHint, keyMappings);
     if (taskLineIndex === -1) {
-        return { ok: false, content, fallbackReason: 'inline-task-not-found' };
+        return { ok: false, fallbackReason: 'inline-task-not-found' };
     }
 
     const parsed = parseTaskLine(lines[taskLineIndex], taskLineIndex, filePath, keyMappings);
     if (!parsed) {
-        return { ok: false, content, fallbackReason: 'inline-task-parse-failed' };
+        return { ok: false, fallbackReason: 'inline-task-parse-failed' };
     }
 
     const canonicalFieldMap = new Map<string, OperonField>();
@@ -218,7 +311,53 @@ export function tryPatchInlineTaskLineContent(
     }
 
     lines[taskLineIndex] = serializeTask(parsed, keyMappings);
-    return { ok: true, content: lines.join('\n'), fallbackReason: 'none' };
+    return { ok: true, fallbackReason: 'none' };
+}
+
+export function tryPatchYamlTaskContent(
+    content: string,
+    operonId: string,
+    fieldValues: Record<string, string>,
+    mode: 'merge' | 'replace',
+    keyMappings: KeyMapping[],
+): YamlTaskContentPatchResult {
+    const match = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---(?:\r?\n|$))/u);
+    if (!match) {
+        return { ok: false, content, fallbackReason: 'malformed-frontmatter' };
+    }
+    let frontmatter: unknown;
+    try {
+        frontmatter = parseYaml(match[2]);
+    } catch {
+        return { ok: false, content, fallbackReason: 'yaml-parse-failed' };
+    }
+    if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) {
+        return { ok: false, content, fallbackReason: 'yaml-object-missing' };
+    }
+    const mutable = frontmatter as Record<string, unknown>;
+    const operonAliases = getManagedYamlAliases('operonId', keyMappings);
+    const exactIds = operonAliases
+        .filter(key => Object.prototype.hasOwnProperty.call(mutable, key))
+        .map(key => mutable[key])
+        .filter(value => typeof value === 'string' || typeof value === 'number')
+        .map(value => String(value).trim())
+        .filter(Boolean);
+    if (exactIds.length !== 1 || exactIds[0] !== operonId) {
+        return { ok: false, content, fallbackReason: 'operonId-mismatch' };
+    }
+    const formattingPlan = applyYamlTaskFieldValues(
+        mutable,
+        fieldValues,
+        mode,
+        keyMappings,
+    );
+    const serialized = stringifyYaml(mutable).trimEnd();
+    const rebuilt = `${match[1]}${serialized}${match[3]}${content.slice(match[0].length)}`;
+    return {
+        ok: true,
+        content: normalizeYamlFrontmatterFormatting(rebuilt, formattingPlan),
+        fallbackReason: 'none',
+    };
 }
 
 export class TaskWriter {
@@ -238,6 +377,261 @@ export class TaskWriter {
     /** Update key mappings when settings change. */
     updateKeyMappings(keyMappings: KeyMapping[]): void {
         this.keyMappings = keyMappings;
+    }
+
+    /**
+     * Canonical source transaction used by Runtime-owned creation and source transitions. The
+     * source comparison and write share TaskWriter's existing per-file queue,
+     * so UI and agent mutations cannot race through independent locks.
+     */
+    async applyTaskSourceMutation(mutation: TaskSourceMutation): Promise<TaskSourceMutationResult> {
+        const filePath = normalizePath(mutation.filePath);
+        if (!isSafeMarkdownTaskSourcePath(mutation.filePath, filePath)) {
+            return { outcome: 'invalid-target', filePath };
+        }
+        return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(filePath), async () => {
+            if (
+                this.hooks.validateWritePath
+                && !(await this.hooks.validateWritePath(filePath, mutation.kind === 'create'))
+            ) {
+                return { outcome: 'invalid-target', filePath };
+            }
+            const current = this.app.vault.getAbstractFileByPath(filePath);
+            if (mutation.kind === 'create') {
+                if (current) return { outcome: 'exists', filePath };
+                const slashIndex = filePath.lastIndexOf('/');
+                if (slashIndex >= 0) {
+                    const parent = this.app.vault.getAbstractFileByPath(filePath.slice(0, slashIndex));
+                    if (!(parent instanceof TFolder)) return { outcome: 'missing', filePath };
+                }
+                if (
+                    this.hooks.validateWritePath
+                    && !(await this.hooks.validateWritePath(filePath, true))
+                ) {
+                    return { outcome: 'invalid-target', filePath };
+                }
+                this.hooks.onBeforeWriteFile?.(filePath);
+                const createdFile = await this.app.vault.create(filePath, mutation.nextContent);
+                return {
+                    outcome: 'committed',
+                    filePath,
+                    committedContent: mutation.nextContent,
+                    file: createdFile,
+                };
+            }
+            if (!(current instanceof TFile) || current.extension !== 'md') {
+                return { outcome: 'missing', filePath };
+            }
+            const previousContent = await this.app.vault.read(current);
+            if (previousContent !== mutation.expectedContent) {
+                return { outcome: 'conflict', filePath, previousContent };
+            }
+            if (
+                this.hooks.validateWritePath
+                && !(await this.hooks.validateWritePath(filePath, false))
+            ) {
+                return { outcome: 'invalid-target', filePath };
+            }
+            const validatedCurrent = this.app.vault.getAbstractFileByPath(filePath);
+            if (!(validatedCurrent instanceof TFile) || validatedCurrent.extension !== 'md') {
+                return { outcome: 'missing', filePath };
+            }
+            const validatedContent = await this.app.vault.read(validatedCurrent);
+            if (validatedContent !== mutation.expectedContent) {
+                return { outcome: 'conflict', filePath, previousContent: validatedContent };
+            }
+            if (mutation.kind === 'trash') {
+                this.hooks.onBeforeWriteFile?.(filePath);
+                await this.app.fileManager.trashFile(validatedCurrent);
+                return {
+                    outcome: 'committed',
+                    filePath,
+                    previousContent: validatedContent,
+                };
+            }
+            this.hooks.onBeforeWriteFile?.(filePath);
+            await this.app.vault.modify(validatedCurrent, mutation.nextContent);
+            return {
+                outcome: 'committed',
+                filePath,
+                previousContent: validatedContent,
+                committedContent: mutation.nextContent,
+                file: validatedCurrent,
+            };
+        });
+    }
+
+    /**
+     * Compare, create/update, and patch exact task fields as one per-source
+     * queued commit. This is the Agent Runtime atomic task-source primitive.
+     */
+    async applyGuardedTaskSourceMutation(
+        mutation: {
+            filePath: string;
+            expectedContent: string | null;
+            nextContent: string;
+            taskUpdates: readonly GuardedTaskSourceFieldUpdate[];
+        },
+    ): Promise<TaskSourceMutationResult> {
+        const filePath = normalizePath(mutation.filePath);
+        if (!isSafeMarkdownTaskSourcePath(mutation.filePath, filePath)) {
+            return { outcome: 'invalid-target', filePath };
+        }
+        return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(filePath), async () => {
+            if (
+                this.hooks.validateWritePath
+                && !(await this.hooks.validateWritePath(filePath, mutation.expectedContent === null))
+            ) {
+                return { outcome: 'invalid-target', filePath };
+            }
+            const current = this.app.vault.getAbstractFileByPath(filePath);
+            let committedFile: TFile;
+            if (mutation.expectedContent === null) {
+                if (current) return { outcome: 'exists', filePath };
+            } else {
+                if (!(current instanceof TFile) || current.extension !== 'md') {
+                    return { outcome: 'missing', filePath };
+                }
+                const currentContent = await this.app.vault.read(current);
+                if (currentContent !== mutation.expectedContent) {
+                    return { outcome: 'conflict', filePath, previousContent: currentContent };
+                }
+            }
+
+            const rendered = this.renderGuardedTaskSourceContent(
+                filePath,
+                mutation.nextContent,
+                mutation.taskUpdates,
+            );
+            if (!rendered.ok) return { outcome: 'conflict', filePath };
+            const committedContent = rendered.content;
+
+            if (mutation.expectedContent === null) {
+                const slashIndex = filePath.lastIndexOf('/');
+                if (slashIndex >= 0) {
+                    const parent = this.app.vault.getAbstractFileByPath(filePath.slice(0, slashIndex));
+                    if (!(parent instanceof TFolder)) return { outcome: 'missing', filePath };
+                }
+                if (
+                    this.hooks.validateWritePath
+                    && !(await this.hooks.validateWritePath(filePath, true))
+                ) {
+                    return { outcome: 'invalid-target', filePath };
+                }
+                this.hooks.onBeforeWriteFile?.(filePath);
+                committedFile = await this.app.vault.create(filePath, committedContent);
+            } else {
+                const file = this.app.vault.getAbstractFileByPath(filePath);
+                if (!(file instanceof TFile) || file.extension !== 'md') {
+                    return { outcome: 'missing', filePath };
+                }
+                if (
+                    this.hooks.validateWritePath
+                    && !(await this.hooks.validateWritePath(filePath, false))
+                ) {
+                    return { outcome: 'invalid-target', filePath };
+                }
+                const validatedFile = this.app.vault.getAbstractFileByPath(filePath);
+                if (!(validatedFile instanceof TFile) || validatedFile.extension !== 'md') {
+                    return { outcome: 'missing', filePath };
+                }
+                const validatedContent = await this.app.vault.read(validatedFile);
+                if (validatedContent !== mutation.expectedContent) {
+                    return {
+                        outcome: 'conflict',
+                        filePath,
+                        previousContent: validatedContent,
+                    };
+                }
+                this.hooks.onBeforeWriteFile?.(filePath);
+                await this.app.vault.modify(validatedFile, committedContent);
+                committedFile = validatedFile;
+            }
+            return {
+                outcome: 'committed',
+                filePath,
+                ...(mutation.expectedContent === null ? {} : { previousContent: mutation.expectedContent }),
+                committedContent,
+                file: committedFile,
+            };
+        });
+    }
+
+    /**
+     * Pure companion to applyGuardedTaskSourceMutation. Runtime preview uses
+     * this exact renderer so apply can compare-and-set the content that was
+     * sealed without running a parallel task serialization path.
+     */
+    renderGuardedTaskSourceContent(
+        filePath: string,
+        content: string,
+        taskUpdates: readonly GuardedTaskSourceFieldUpdate[],
+    ): GuardedTaskSourceRenderResult {
+        if (taskUpdates.every(update => update.format === 'inline')) {
+            const lines = content.split('\n');
+            for (const update of taskUpdates) {
+                const patch = tryPatchInlineTaskLines(
+                    lines,
+                    filePath,
+                    update.operonId,
+                    update.fieldValues,
+                    update.lineNumber ?? -1,
+                    'merge',
+                    this.keyMappings,
+                );
+                if (!patch.ok) {
+                    return { ok: false, content, reason: patch.fallbackReason };
+                }
+            }
+            return { ok: true, content: lines.join('\n'), reason: 'none' };
+        }
+        let renderedContent = content;
+        for (const update of taskUpdates) {
+            if (update.format === 'inline') {
+                const patch = tryPatchInlineTaskLineContent(
+                    renderedContent,
+                    filePath,
+                    update.operonId,
+                    update.fieldValues,
+                    update.lineNumber ?? -1,
+                    'merge',
+                    this.keyMappings,
+                );
+                if (!patch.ok) {
+                    return {
+                        ok: false,
+                        content,
+                        reason: patch.fallbackReason,
+                    };
+                }
+                renderedContent = patch.content;
+                continue;
+            }
+            const aggregatePatch = tryPatchAggregateYamlFrontmatter(
+                renderedContent,
+                update.operonId,
+                update.fieldValues,
+                this.keyMappings,
+            );
+            const patch = aggregatePatch.ok
+                ? aggregatePatch
+                : tryPatchYamlTaskContent(
+                    renderedContent,
+                    update.operonId,
+                    update.fieldValues,
+                    'merge',
+                    this.keyMappings,
+                );
+            if (!patch.ok) {
+                return {
+                    ok: false,
+                    content,
+                    reason: `${aggregatePatch.fallbackReason}:${patch.fallbackReason}`,
+                };
+            }
+            renderedContent = patch.content;
+        }
+        return { ok: true, content: renderedContent, reason: 'none' };
     }
 
     private stringifyFrontmatterScalar(value: unknown): string | null {

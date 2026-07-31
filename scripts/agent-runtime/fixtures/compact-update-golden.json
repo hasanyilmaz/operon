@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "multi-set-clear",
+      "assignments": ["priority::A", "note::Published", "contexts::Operon; Release"],
+      "clear": ["dateDue", "location"],
+      "expect": {
+        "assignments": [
+          { "key": "priority", "value": "A" },
+          { "key": "note", "value": "Published" },
+          { "key": "contexts", "value": "Operon; Release" }
+        ],
+        "clear": ["dateDue", "location"]
+      }
+    },
+    {
+      "id": "scalar-double-colon",
+      "assignments": ["note::Owner::Casey"],
+      "clear": [],
+      "expect": {
+        "assignments": [{ "key": "note", "value": "Owner::Casey" }],
+        "clear": []
+      }
+    },
+    {
+      "id": "unicode-nfc",
+      "assignments": ["note::München"],
+      "clear": [],
+      "expect": {
+        "assignments": [{ "key": "note", "value": "München" }],
+        "clear": []
+      }
+    },
+    {
+      "id": "duplicate-set",
+      "assignments": ["note::One", "note::Two"],
+      "clear": [],
+      "expect": { "code": "DUPLICATE_KEY" }
+    },
+    {
+      "id": "duplicate-clear",
+      "assignments": [],
+      "clear": ["note", "note"],
+      "expect": { "code": "DUPLICATE_CLEAR" }
+    },
+    {
+      "id": "set-clear-conflict",
+      "assignments": ["note::One"],
+      "clear": ["note"],
+      "expect": { "code": "SET_CLEAR_CONFLICT" }
+    },
+    {
+      "id": "empty-update",
+      "assignments": [],
+      "clear": [],
+      "expect": { "code": "UPDATE_CHANGES_REQUIRED" }
+    }
+  ],
+  "batchCases": [
+    {
+      "id": "two-heterogeneous-updates",
+      "input": "--id \"abc1234\" note::\"Review first\" --clear \"location\"\n--id \"def5678\" priority::\"A\"\n",
+      "expect": {
+        "operonIds": ["abc1234", "def5678"],
+        "assignmentKeys": [["note"], ["priority"]],
+        "clearKeys": [["location"], []]
+      }
+    },
+    {
+      "id": "crlf-final-newline-optional",
+      "input": "--id \"abc1234\" note::\"One\"\r\n--id \"def5678\" note::\"Two\"",
+      "expect": {
+        "operonIds": ["abc1234", "def5678"],
+        "assignmentKeys": [["note"], ["note"]],
+        "clearKeys": [[], []]
+      }
+    },
+    {
+      "id": "duplicate-id",
+      "input": "--id \"abc1234\" note::\"One\"\n--id \"abc1234\" note::\"Two\"",
+      "expect": { "code": "COMPACT_UPDATE_BATCH_DUPLICATE_ID" }
+    },
+    {
+      "id": "description-selector-refused",
+      "input": "--description \"One\" note::\"One\"\n--id \"def5678\" note::\"Two\"",
+      "expect": { "code": "COMPACT_UPDATE_BATCH_SELECTOR_REQUIRED" }
+    },
+    {
+      "id": "relationship-route-refused",
+      "input": "--id \"abc1234\" parentTask::\"def5678\"\n--id \"def5678\" note::\"Two\"",
+      "expect": { "code": "FIELD_OWNED_BY_OTHER_COMMAND" }
+    },
+    {
+      "id": "single-line-refused",
+      "input": "--id \"abc1234\" note::\"One\"",
+      "expect": { "code": "COMPACT_UPDATE_BATCH_TOO_FEW_ITEMS" }
+    },
+    {
+      "id": "blank-line-refused",
+      "input": "--id \"abc1234\" note::\"One\"\n\n--id \"def5678\" note::\"Two\"",
+      "expect": { "code": "COMPACT_UPDATE_BATCH_BLANK_LINE" }
+    }
+  ]
+}

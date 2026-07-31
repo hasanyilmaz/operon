@@ -21,5 +21,9 @@
 	},
 	"include": [
 		"**/*.ts"
+	],
+	"exclude": [
+		"scripts/agent-runtime/developer-api/native-acceptance-consumer/**",
+		"packages/operon-cli/examples/developer-api-consumer/**"
 	]
 }

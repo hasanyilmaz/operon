@@ -1,0 +1,229 @@
+{
+  "matrixVersion": 1,
+  "kind": "operon-cli-native-acceptance-freeze",
+  "frozenAt": "2026-07-30",
+  "contract": {
+    "runtimeApi": 1,
+    "cliContract": 1
+  },
+  "executionPolicy": {
+    "requiresInteractiveDesktopSession": true,
+    "requiresPrestartedObsidian": true,
+    "requiresOfficialObsidianCli": true,
+    "allowsHeadless": false,
+    "allowsAutomaticObsidianLaunch": false,
+    "allowsWsl": false,
+    "allowsContainerSubstitution": false
+  },
+  "architectures": {
+    "darwin": "arm64",
+    "linux": "x64",
+    "win32": "x64",
+    "otherArchitectures": "outside-public-v1-reference-matrix"
+  },
+  "sources": [
+    {
+      "claim": "Apple security release versions",
+      "url": "https://support.apple.com/en-ie/109033"
+    },
+    {
+      "claim": "Apple-supported macOS major releases",
+      "url": "https://support.apple.com/en-us/102662"
+    },
+    {
+      "claim": "Ubuntu release images",
+      "url": "https://releases.ubuntu.com/"
+    },
+    {
+      "claim": "Ubuntu 24.04.4 LTS release image",
+      "url": "https://releases.ubuntu.com/24.04/"
+    },
+    {
+      "claim": "Ubuntu 26.04 LTS release image",
+      "url": "https://releases.ubuntu.com/26.04/"
+    },
+    {
+      "claim": "Windows 11 release information",
+      "url": "https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information"
+    },
+    {
+      "claim": "Obsidian Desktop 1.12.2",
+      "url": "https://obsidian.md/changelog/2026-02-18-desktop-v1.12.2/"
+    },
+    {
+      "claim": "Obsidian Desktop 1.12.7",
+      "url": "https://obsidian.md/changelog/2026-03-23-desktop-v1.12.7/"
+    },
+    {
+      "claim": "Official Node.js release index",
+      "url": "https://nodejs.org/dist/index.json"
+    }
+  ],
+  "hostedPortability": [
+    {
+      "id": "ubuntu-24.04",
+      "platform": "linux",
+      "runner": "ubuntu-24.04"
+    },
+    {
+      "id": "macos-hosted-current",
+      "platform": "darwin",
+      "runner": "macos-15"
+    },
+    {
+      "id": "windows-hosted-current",
+      "platform": "win32",
+      "runner": "windows-2025"
+    }
+  ],
+  "operatingSystems": [
+    {
+      "id": "macos-26.5.2-arm64",
+      "family": "darwin",
+      "platform": "darwin",
+      "version": "26.5.2",
+      "architecture": "arm64",
+      "buildIdentity": { "kind": "sw-vers-build", "status": "freeze-required", "value": null },
+      "nativeRunnerLabels": [
+        "self-hosted",
+        "macOS",
+        "ARM64",
+        "operon-cli-live",
+        "operon-macos-26.5.2"
+      ],
+      "vaultSecret": "OPERON_CLI_ACCEPTANCE_VAULT_MACOS_26"
+    },
+    {
+      "id": "macos-15.7.7-arm64",
+      "family": "darwin",
+      "platform": "darwin",
+      "version": "15.7.7",
+      "architecture": "arm64",
+      "buildIdentity": { "kind": "sw-vers-build", "status": "freeze-required", "value": null },
+      "nativeRunnerLabels": [
+        "self-hosted",
+        "macOS",
+        "ARM64",
+        "operon-cli-live",
+        "operon-macos-15.7.7"
+      ],
+      "vaultSecret": "OPERON_CLI_ACCEPTANCE_VAULT_MACOS_15"
+    },
+    {
+      "id": "macos-14.8.7-arm64",
+      "family": "darwin",
+      "platform": "darwin",
+      "version": "14.8.7",
+      "architecture": "arm64",
+      "buildIdentity": { "kind": "sw-vers-build", "status": "freeze-required", "value": null },
+      "nativeRunnerLabels": [
+        "self-hosted",
+        "macOS",
+        "ARM64",
+        "operon-cli-live",
+        "operon-macos-14.8.7"
+      ],
+      "vaultSecret": "OPERON_CLI_ACCEPTANCE_VAULT_MACOS_14"
+    },
+    {
+      "id": "ubuntu-24.04.4-amd64",
+      "family": "linux",
+      "platform": "linux",
+      "version": "24.04.4",
+      "architecture": "x64",
+      "buildIdentity": { "kind": "kernel-release", "status": "freeze-required", "value": null },
+      "nativeRunnerLabels": [
+        "self-hosted",
+        "Linux",
+        "X64",
+        "operon-cli-live",
+        "operon-ubuntu-24.04.4"
+      ],
+      "vaultSecret": "OPERON_CLI_ACCEPTANCE_VAULT_UBUNTU_24"
+    },
+    {
+      "id": "ubuntu-26.04-amd64",
+      "family": "linux",
+      "platform": "linux",
+      "version": "26.04",
+      "architecture": "x64",
+      "buildIdentity": { "kind": "kernel-release", "status": "freeze-required", "value": null },
+      "nativeRunnerLabels": [
+        "self-hosted",
+        "Linux",
+        "X64",
+        "operon-cli-live",
+        "operon-ubuntu-26.04"
+      ],
+      "vaultSecret": "OPERON_CLI_ACCEPTANCE_VAULT_UBUNTU_26"
+    },
+    {
+      "id": "windows-11-25h2-26200.8875-x64",
+      "family": "win32",
+      "platform": "win32",
+      "version": "11-25H2",
+      "build": "26200.8875",
+      "architecture": "x64",
+      "buildIdentity": { "kind": "windows-build", "status": "frozen", "value": "26200.8875" },
+      "nativeRunnerLabels": [
+        "self-hosted",
+        "Windows",
+        "X64",
+        "operon-cli-live",
+        "operon-windows-11-25h2-26200.8875"
+      ],
+      "vaultSecret": "OPERON_CLI_ACCEPTANCE_VAULT_WINDOWS_11"
+    }
+  ],
+  "obsidianVersions": [
+    {
+      "id": "minimum",
+      "version": "1.12.2",
+      "runnerLabel": "obsidian-1.12.2"
+    },
+    {
+      "id": "current-stable",
+      "version": "1.12.7",
+      "runnerLabel": "obsidian-1.12.7"
+    }
+  ],
+  "nodeVersions": [
+    {
+      "major": 22,
+      "version": "22.23.1",
+      "nativeProfile": "smoke"
+    },
+    {
+      "major": 24,
+      "version": "24.18.0",
+      "nativeProfile": "full"
+    },
+    {
+      "major": 26,
+      "version": "26.5.0",
+      "nativeProfile": "smoke"
+    }
+  ],
+  "npmVersion": "11.12.1",
+  "performanceReference": {
+    "osId": "macos-26.5.2-arm64",
+    "obsidianVersion": "1.12.7",
+    "nodeVersion": "24.18.0",
+    "thresholdsMs": {
+      "previewP95Exclusive": 100,
+      "routineApplyP95Exclusive": 2000,
+      "otherApplyP95Exclusive": 3000
+    }
+  },
+  "expectedCells": {
+    "hostedPortability": 9,
+    "native": 36
+  },
+  "promotionPolicy": {
+    "requiresSingleCandidateDigest": true,
+    "requiresEveryCell": true,
+    "allowsSkippedCells": false,
+    "promotePlatformStatusAutomatically": false,
+    "invalidateOnPackagedByteChange": true
+  }
+}

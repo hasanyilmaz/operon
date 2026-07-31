@@ -1,0 +1,16 @@
+{
+  "applyDefaults": true,
+  "indentChildren": true,
+  "mode": "inline",
+  "tasks": [
+    {
+      "children": [
+        {
+          "description": "Visually indented child"
+        }
+      ],
+      "description": "Visible parent"
+    }
+  ],
+  "timestamp": "2026-01-15T10:20:30"
+}

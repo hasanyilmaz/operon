@@ -1,0 +1,202 @@
+{
+  "freezeVersion": 1,
+  "kind": "operon-public-v1-local-freeze",
+  "state": "accepted",
+  "contracts": {
+    "files": [
+      {
+        "path": "contracts/agent-runtime/public-v1-scope.md",
+        "sha256": "b1e987f42192b61084a334141cf132d11990ee44ef3b02fb147d4c6ab073f064",
+        "bytes": 17023
+      },
+      {
+        "path": "contracts/agent-runtime/contract-evolution-v1.md",
+        "sha256": "2f84437e309516d0b37b17439d941c2eecf957c3b1bf16d3c8111cc6c7a90a6e",
+        "bytes": 10029
+      },
+      {
+        "path": "contracts/agent-runtime/developer-api-v1.md",
+        "sha256": "a2769111f98c578ff723890921ee18f23e488530045ed9b1416d07beb49f781f",
+        "bytes": 15429
+      },
+      {
+        "path": "contracts/agent-runtime/public-v1-baseline.json",
+        "sha256": "72a2592d6224573069580d25a27c93e285d07abed3a036bd811174eec1f9bbbc",
+        "bytes": 545444
+      },
+      {
+        "path": "contracts/agent-runtime/public-v1-freeze.schema.json",
+        "sha256": "8c5c3b2a0d5b9f410df20279dbb5ec24f8ac2a0761597e2c108a48d817235b93",
+        "bytes": 7478
+      },
+      {
+        "path": "scripts/agent-runtime/contracts/contract-evolution.mjs",
+        "sha256": "5b48c04c13cf109a9fa3d55fcfb49a0f5089bab1b33abaf1d564596bf10d2329",
+        "bytes": 12587
+      },
+      {
+        "path": "scripts/agent-runtime/contracts/check-public-v1-baseline.mjs",
+        "sha256": "ef119a9f0dbd1f1484c7f9bd5535dcb69958ca0991d104c42eefbf413e530e46",
+        "bytes": 11254
+      },
+      {
+        "path": "scripts/agent-runtime/contracts/public-v1-freeze.mjs",
+        "sha256": "439e1bc24bf1cc91c94c2a93579c9968a084daddda243c80ed37ac4621371add",
+        "bytes": 22392
+      }
+    ],
+    "aggregateSha256": "65732ff4e5d2529d04cd6915dc1bc31b45ffb3ee3d186eb3f31b5aa97d237b95"
+  },
+  "runtime": {
+    "contractVersion": 1,
+    "schemaManifest": {
+      "path": "contracts/agent-runtime/v1/schema-manifest.json",
+      "sha256": "d4c946362281d838b953f0285e28eec217e61f655d31be0875934f265576e9eb",
+      "bytes": 15730
+    },
+    "schemaTree": {
+      "root": "contracts/agent-runtime/v1",
+      "fileCount": 13,
+      "aggregateSha256": "1a826b3998710332df6e8dd3a38fb133781766f5ba463b0010d5c198b434f512"
+    },
+    "schemaAggregateSha256": "7cc7826093758c61491551c9ee925440e7641fecc44b953f7ea2c8595eb345fa"
+  },
+  "cli": {
+    "contractVersion": 1,
+    "packageVersion": "1.0.0",
+    "contractDigest": "d280747a21f46add48d70193205c4dc642b1e0f38447209611174e33beff5927",
+    "tarball": {
+      "path": "packages/operon-cli/freeze/operon-cli-1.0.0.tgz",
+      "sha256": "92019e5dc19378263a5c697223899bed67171a3c4bee6bd331efdeb3b620cef7",
+      "bytes": 212763
+    },
+    "executable": {
+      "path": "packages/operon-cli/dist/operon.mjs",
+      "sha256": "79348a0de969eeb699ee28575e5d1ef71f469b9e6e052626946a0d8422ff33e1",
+      "bytes": 510602
+    },
+    "license": {
+      "path": "packages/operon-cli/LICENSE",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "bytes": 35147
+    },
+    "manifest": {
+      "path": "packages/operon-cli/cli-manifest-v1.json",
+      "sha256": "f4eb0001fe0ebdf01197dbd54bfbacfc3d1604a2fdb4d8836ad290238455ca58",
+      "bytes": 51224
+    },
+    "packageMetadata": {
+      "path": "packages/operon-cli/package.json",
+      "sha256": "c2b1b4b463a7f9085a1dda3981e330db904b22ac045e06b00ee3af75bef89705",
+      "bytes": 1978
+    },
+    "readme": {
+      "path": "packages/operon-cli/README.md",
+      "sha256": "5580e4744f13e7bcb51b28f278bc184be3b128098bc8e7fa4c28072f2280c128",
+      "bytes": 5644
+    },
+    "schemas": {
+      "root": "packages/operon-cli/schemas/v1",
+      "fileCount": 16,
+      "aggregateSha256": "72c12e77474e0f1dcb6eda4cd800f8442926333827dfac94018e00054ae9f72e"
+    },
+    "declarations": {
+      "root": "packages/operon-cli/types",
+      "fileCount": 15,
+      "aggregateSha256": "54813d51f1d352fd91cdfd1ff5250a32caa7139af86649b9bebfda24788f3aca"
+    },
+    "developerExample": {
+      "root": "packages/operon-cli/examples/developer-api-consumer",
+      "fileCount": 5,
+      "aggregateSha256": "2ecd8a3e0ae2e069bc89a7cd70cdb724f4023f2b306391b21fbbabca07dd12c6"
+    },
+    "packageInputAggregateSha256": "846d4c68908ea73d3a5e50ac03380337750df6ef29d5bf82d023953de609a7f6"
+  },
+  "documentation": {
+    "manifest": {
+      "path": "docs/operon-docs/manifest.json",
+      "sha256": "6a1ce4aeb69b9b32c1f47dcd51a38bb407f45a8edb5e90f67217baa7c2a07d7a",
+      "bytes": 22798
+    },
+    "tree": {
+      "root": "docs/operon-docs",
+      "fileCount": 134,
+      "aggregateSha256": "7b0bb897763912ae6c03340fbb2c35b5544b910abef9e2b73a581d9df6745535"
+    },
+    "fileCount": 133,
+    "contentAggregateSha256": "9b9cabf8caae5453750637d0e41ef175c55b05dd19a1601dda332b2dbd58f20f"
+  },
+  "plugin": {
+    "artifactStatus": "provisional-unpublished",
+    "pluginId": "operon",
+    "version": "3.0.0",
+    "main": {
+      "path": "main.js",
+      "sha256": "22c36ecae43c6c63acc2d479d2c821a1c585a6b735cdcb900d7c11cb088d6291",
+      "bytes": 4321236
+    },
+    "manifest": {
+      "path": "manifest.json",
+      "sha256": "6baff55c6918274ce592af8a0c3b6f5a608bb13fd7da8d09cdf845fde720c935",
+      "bytes": 378
+    },
+    "styles": {
+      "path": "styles.css",
+      "sha256": "4ef299aa1c30048a0cb3c12a7fe308249cc361e8195198ddd9e7695af684af41",
+      "bytes": 874739
+    }
+  },
+  "audit": {
+    "policy": {
+      "path": "contracts/release/dev-audit-policy-v1.json",
+      "sha256": "b5f30c4530409785696ace0ac5e823107cb3228b7236e8d3de6a5fb12c484ba3",
+      "bytes": 965
+    },
+    "checker": {
+      "path": "scripts/check-release-audit-policy.mjs",
+      "sha256": "45e50324b6f0653860a11ac559896d78903075588fb8bcc5ee7fb3844dada8c3",
+      "bytes": 3565
+    },
+    "evaluator": {
+      "path": "scripts/release/audit-policy.mjs",
+      "sha256": "8f3a9f43d6c32bd04f545ea15762041f44ee54f695cf0d5f598968aa7fab481a",
+      "bytes": 10909
+    },
+    "rootPackage": {
+      "path": "package.json",
+      "sha256": "5593fbacb818fb4d44de430677024012236d94c0915668833dd851e339cfd44c",
+      "bytes": 16573
+    },
+    "packageLock": {
+      "path": "package-lock.json",
+      "sha256": "23ff9a2d421b71b6d2b955f2bda6c87d0d8f694ff7bc58a220e6dbf7d0840a14",
+      "bytes": 172817
+    },
+    "validation": {
+      "command": "npm run release:audit-policy",
+      "status": "passed",
+      "result": {
+        "status": "accepted-development-exception",
+        "productionVulnerabilities": 0,
+        "developmentVulnerabilities": 11,
+        "directRoot": "eslint-plugin-obsidianmd"
+      }
+    }
+  },
+  "hostedPortability": {
+    "evidenceStatus": "pending-stage-10",
+    "requiredCells": 9,
+    "contractSchema": {
+      "path": "contracts/agent-runtime/hosted-portability-v1.schema.json",
+      "sha256": "32a44b1c1317779578b78868be8157b807aba2901e657ee1eaddf5c5e6658d29",
+      "bytes": 3037
+    },
+    "verificationCommand": "npm run agent-runtime:cli:hosted-portability:test"
+  },
+  "maintainerAcceptance": {
+    "status": "accepted",
+    "acceptedBy": "Hasan Yilmaz",
+    "acceptedAt": "2026-07-31T00:04:11.231Z"
+  },
+  "inputsAggregateSha256": "88fd1f022706c855da44ea9760f4547b5561be847586cc8767e0a7213f58b65c"
+}

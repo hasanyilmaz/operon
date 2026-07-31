@@ -1,0 +1,2 @@
+export const RECOVERY_RETENTION_MS_V1 = 24 * 60 * 60 * 1_000;
+export const RECOVERY_MAX_RECORDS_V1 = 256;

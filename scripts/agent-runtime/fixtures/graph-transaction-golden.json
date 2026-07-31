@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "contract": {
+    "graphTransactionVersion": 1,
+    "graphTransactionFeatures": [
+      "vault-wide-graph-transaction",
+      "compare-aware-compensation",
+      "same-plan-safe-continuation",
+      "cross-source-reciprocal-dependency"
+    ],
+    "maxJournalUtf8Bytes": 8388608,
+    "recoveryPlanPolicy": "same-plan-only"
+  },
+  "cases": [
+    {
+      "id": "graph-before-first-write",
+      "typedCreateCaseId": "typed-cross-source-dependency-transaction",
+      "phase": "prepared",
+      "expect": "forward-completed"
+    },
+    {
+      "id": "graph-exact-committed-prefix",
+      "typedCreateCaseId": "typed-cross-source-dependency-transaction",
+      "phase": "committing",
+      "expect": "forward-completed"
+    },
+    {
+      "id": "graph-all-committed-before-receipt",
+      "typedCreateCaseId": "typed-cross-source-dependency-transaction",
+      "phase": "postflight",
+      "expect": "forward-completed"
+    },
+    {
+      "id": "graph-divergent-suffix-compensation",
+      "typedCreateCaseId": "typed-cross-source-dependency-transaction",
+      "phase": "committing",
+      "expect": "compensated"
+    },
+    {
+      "id": "graph-mid-compensation-resume",
+      "typedCreateCaseId": "typed-cross-source-dependency-transaction",
+      "phase": "compensating",
+      "expect": "compensated"
+    },
+    {
+      "id": "graph-compensation-race",
+      "typedCreateCaseId": "typed-cross-source-dependency-transaction",
+      "phase": "compensating",
+      "expect": "unresolved"
+    },
+    {
+      "id": "graph-receipt-persist-failure",
+      "typedCreateCaseId": "typed-cross-source-dependency-transaction",
+      "phase": "finalizing",
+      "expect": "unresolved"
+    }
+  ]
+}

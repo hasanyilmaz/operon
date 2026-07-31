@@ -15,6 +15,10 @@ import { KeyMapping } from '../types/settings';
 import { normalizeTaskIconValue } from './task-icon-value';
 import { normalizeTaskColorValue } from './task-color-value';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import {
+	collectMarkdownProtectedRanges,
+	findMarkdownProtectedRangeAt,
+} from './markdown-protected-ranges';
 
 /**
  * Fast pre-check: is this line potentially a task line?
@@ -62,8 +66,11 @@ function extractTags(parts: TextPart[]): ParsedTagToken[] {
 	const tags: ParsedTagToken[] = [];
 	const tagRegex = /#([a-zA-Z0-9_\-/]+)/g;
 	for (const part of parts) {
+		const protectedRanges = collectMarkdownProtectedRanges(part.text);
+		tagRegex.lastIndex = 0;
 		let match;
 		while ((match = tagRegex.exec(part.text)) !== null) {
+			if (findMarkdownProtectedRangeAt(protectedRanges, match.index)) continue;
 			tags.push({
 				tag: match[1],
 				range: {
@@ -74,6 +81,23 @@ function extractTags(parts: TextPart[]): ParsedTagToken[] {
 		}
 	}
 	return tags;
+}
+
+function buildDescription(parts: TextPart[], tagTokens: ParsedTagToken[]): string {
+	const withoutTags = parts.map(part => {
+		let cursor = 0;
+		let text = '';
+		for (const token of tagTokens) {
+			if (token.range.from < part.range.from || token.range.to > part.range.to) continue;
+			const from = token.range.from - part.range.from;
+			const to = token.range.to - part.range.from;
+			text += part.text.slice(cursor, from);
+			cursor = to;
+		}
+		text += part.text.slice(cursor);
+		return text;
+	}).join('');
+	return withoutTags.replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -383,19 +407,12 @@ export function parseTaskLine(
 	// Extract fields from rest of line
 	const { fields, textParts } = extractFields(rest, contentStart, reverseMap, keyMappings);
 
-	// Combine text parts to get description + tags
-	const textContent = textParts.map(part => part.text).join('').trim();
-
 	// Extract tags from text content
 	const tagTokens = extractTags(textParts);
 	const tags = tagTokens.map(token => token.tag);
 
-	// Description is text content with tags removed, cleaned up
-	let description = textContent;
-	for (const tag of tags) {
-		description = description.replace(`#${tag}`, '');
-	}
-	description = description.replace(/\s+/g, ' ').trim();
+	// Description is text content with only the exact parsed tag ranges removed.
+	const description = buildDescription(textParts, tagTokens);
 
 	// Find operonId
 	const idField = fields.find(f => f.key === 'operonId');

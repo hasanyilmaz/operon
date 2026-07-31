@@ -1,0 +1,14 @@
+{
+  "caseId": "inline-defaults-off",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "85e7b05291e4748799dde15bf85f371b3beba3e0919387bb95884656d3a0c5cc",
+  "seed": 41018,
+  "stderrSha256": "c74fbbf58fb63c7a9171ac10ff2563820f6641086a549ef278d69d43ecc3dd4a",
+  "stdoutSha256": "83cd60420fcbcfa04e24b47e2165e4a8296fde6e6da175a2ade79d8449a8e3b8",
+  "writtenFiles": {}
+}

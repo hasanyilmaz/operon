@@ -1,0 +1,14 @@
+{
+  "caseId": "path-guard-traversal",
+  "exitCode": 1,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": true
+  },
+  "requestSha256": "114b5a9b0cb6d9e3bcff4848ed8accfde9f10d65bff4fb9f53ddae3f3512b4cd",
+  "seed": 41031,
+  "stderrSha256": "390f8a2dd558e3182c9a6ae28782085c42af68abeb5079a409c480feff3231d2",
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "writtenFiles": {}
+}

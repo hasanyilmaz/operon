@@ -1,0 +1,14 @@
+{
+  "caseId": "file-template-preservation",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "ee9b4cfedfac359860de8a3dae1fd53eddb87b6b2bb29d265da88db8c4e6517d",
+  "seed": 41027,
+  "stderrSha256": "d97c2ea5ca24be14de5a3f801930943292227e260ae7aab4e48d228fa5021dad",
+  "stdoutSha256": "a4c2cd67fed14a52acf75c177bf4afebc2346e11dd8c58dd26720de904a53c58",
+  "writtenFiles": {}
+}

@@ -253,11 +253,86 @@ export class TimeTracker {
 		this.emit('state');
 	}
 
-	async start(operonId: string, source: TrackerSource = 'command', startOverride?: string | null): Promise<boolean> {
-		return this.enqueueTransition(() => this.startInternal(operonId, source, startOverride));
+	async start(
+		operonId: string,
+		source: TrackerSource = 'command',
+		startOverride?: string | null,
+		statusChangeGuardOverride?: TimeTrackerStatusChangeGuard,
+	): Promise<boolean> {
+		return this.enqueueTransition(() => this.startInternal(
+			operonId,
+			source,
+			startOverride,
+			statusChangeGuardOverride,
+		));
 	}
 
-	private async startInternal(operonId: string, source: TrackerSource = 'command', startOverride?: string | null): Promise<boolean> {
+	async canStartWithStatusGuard(
+		operonId: string,
+		statusChangeGuard: TimeTrackerStatusChangeGuard,
+	): Promise<boolean> {
+		const task = this.indexer.getTask(operonId);
+		return !!task && await this.guardTaskStartStatusChanges(task, statusChangeGuard);
+	}
+
+	previewStartTaskFields(
+		operonId: string,
+		modifiedTimestamp: string,
+	): Record<string, string> | null {
+		const task = this.indexer.getTask(operonId);
+		if (!task) return null;
+		const payload = this.buildTerminalReopenPayload(task) ?? {};
+		const taskForTracking = this.previewTaskWithPayload(task, payload);
+		const settings = this.getSettings();
+		const trackingWorkflow = resolveAutomationWorkflowStatus(
+			settings.pipelines,
+			taskForTracking.fieldValues['status'],
+			settings.defaultPipelineName,
+			'tracking',
+		);
+		if (
+			trackingWorkflow
+			&& (taskForTracking.fieldValues['status'] ?? '') !== trackingWorkflow.value
+		) {
+			payload['status'] = trackingWorkflow.value;
+		}
+		if (Object.keys(payload).length > 0) {
+			payload['datetimeModified'] = modifiedTimestamp;
+		}
+		return payload;
+	}
+
+	previewStopTaskFields(
+		operonId: string,
+		end: string,
+	): Record<string, string> | null {
+		this.syncActiveFromStore();
+		const current = this.activeTracker;
+		if (!current || current.operonId !== operonId) return null;
+		const task = this.indexer.getTask(operonId);
+		if (!task) return null;
+		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+		if (
+			this.finalizedActiveRecordIds.has(current.id)
+			|| existingSessions.some(session => session.start === current.start)
+		) return {};
+		const trackers = serializeTrackerList([
+			...existingSessions.map(session => session.raw),
+			...this.buildStoredSessionRanges(current.start, end),
+		]);
+		return {
+			trackers,
+			duration: trackers ? String(calculateDurationFromTrackers(trackers)) : '',
+			datetimeModified: end,
+		};
+	}
+
+	private async startInternal(
+		operonId: string,
+		source: TrackerSource = 'command',
+		startOverride?: string | null,
+		statusChangeGuardOverride?: TimeTrackerStatusChangeGuard,
+	): Promise<boolean> {
 		this.syncActiveFromStore();
 		if (
 			typeof (this.indexer as OperonIndexer & { hasDuplicateOperonIdConflict?: (id: string) => boolean }).hasDuplicateOperonIdConflict === 'function'
@@ -272,7 +347,10 @@ export class TimeTracker {
 
 			let task = this.indexer.getTask(operonId);
 			if (!task) return false;
-			if (!await this.guardTaskStartStatusChanges(task)) {
+			const statusChangeAllowed = statusChangeGuardOverride
+				? await this.guardTaskStartStatusChanges(task, statusChangeGuardOverride)
+				: await this.guardTaskStartStatusChanges(task);
+			if (!statusChangeAllowed) {
 				return false;
 			}
 
@@ -339,7 +417,7 @@ export class TimeTracker {
 				startPayload['status'] = trackingWorkflow.value;
 			}
 			if (Object.keys(startPayload).length > 0) {
-				const modifiedTimestamp = localNow();
+				const modifiedTimestamp = startOverride?.trim() || localNow();
 				startPayload['datetimeModified'] = modifiedTimestamp;
 				const controlledAggregateChain = this.refreshStartMutation !== null;
 				const wrote = await this.writer.writeTaskFields(operonId, startPayload, controlledAggregateChain
@@ -406,12 +484,16 @@ export class TimeTracker {
 		return true;
 	}
 
-	private async guardTaskStartStatusChanges(task: IndexedTask): Promise<boolean> {
-		if (!this.statusChangeGuard) return true;
+	private async guardTaskStartStatusChanges(
+		task: IndexedTask,
+		statusChangeGuardOverride?: TimeTrackerStatusChangeGuard,
+	): Promise<boolean> {
+		const statusChangeGuard = statusChangeGuardOverride ?? this.statusChangeGuard;
+		if (!statusChangeGuard) return true;
 		const reopenPayload = this.buildTerminalReopenPayload(task);
 		let taskForTracking = task;
 		if (reopenPayload) {
-			const allowed = await this.statusChangeGuard(task, reopenPayload, { action: 'timer-start-reopen' });
+			const allowed = await statusChangeGuard(task, reopenPayload, { action: 'timer-start-reopen' });
 			if (!allowed) return false;
 			taskForTracking = this.previewTaskWithPayload(task, reopenPayload);
 		}
@@ -424,7 +506,7 @@ export class TimeTracker {
 			'tracking',
 		);
 		if (trackingWorkflow && (taskForTracking.fieldValues['status'] ?? '') !== trackingWorkflow.value) {
-			return await this.statusChangeGuard(taskForTracking, {
+			return await statusChangeGuard(taskForTracking, {
 				status: trackingWorkflow.value,
 				datetimeModified: localNow(),
 			}, { action: 'timer-start-tracking-status' });
@@ -472,18 +554,24 @@ export class TimeTracker {
 		};
 	}
 
-	async startUnassigned(source: TrackerSource = 'command'): Promise<boolean> {
-		return this.enqueueTransition(() => this.startUnassignedInternal(source));
+	async startUnassigned(
+		source: TrackerSource = 'command',
+		startOverride?: string | null,
+	): Promise<boolean> {
+		return this.enqueueTransition(() => this.startUnassignedInternal(source, startOverride));
 	}
 
-	private async startUnassignedInternal(source: TrackerSource = 'command'): Promise<boolean> {
+	private async startUnassignedInternal(
+		source: TrackerSource = 'command',
+		startOverride?: string | null,
+	): Promise<boolean> {
 		this.syncActiveFromStore();
 		if (this.activeTracker) {
 			return !this.activeTracker.operonId;
 		}
 
 		try {
-			await this.setActiveTracker(null, localNow(), source);
+			await this.setActiveTracker(null, startOverride?.trim() || localNow(), source);
 		} catch (error) {
 			console.error('Operon: Failed to start unassigned active timer', error);
 			new Notice(t('notifications', 'taskSaveFailed'));
@@ -496,9 +584,14 @@ export class TimeTracker {
 		return true;
 	}
 
-	async stop(_reason: TrackerStopReason = 'manual'): Promise<boolean> {
+	async stop(
+		_reason: TrackerStopReason = 'manual',
+		endOverride?: string | null,
+	): Promise<boolean> {
 		if (this.stopPromise) return this.stopPromise;
-		this.stopPromise = this.enqueueTransition(() => this.stopActive(_reason)).finally(() => {
+		this.stopPromise = this.enqueueTransition(
+			() => this.stopActive(_reason, endOverride),
+		).finally(() => {
 			this.stopPromise = null;
 		});
 		return this.stopPromise;
@@ -517,7 +610,90 @@ export class TimeTracker {
 		));
 	}
 
-	private async stopActive(_reason: TrackerStopReason): Promise<boolean> {
+	async clearActiveTrackerAfterVerifiedSession(
+		operonId: string,
+		start: string,
+	): Promise<boolean> {
+		return await this.enqueueTransition(async () => {
+			this.syncActiveFromStore();
+			if (
+				!this.activeTracker
+				|| this.activeTracker.operonId !== operonId
+				|| this.activeTracker.start !== start
+			) return false;
+			const task = this.indexer.getTask(operonId);
+			if (!task) return false;
+			const sessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+			if (!sessions.some(session => session.start === start)) return false;
+			const activeRecordId = this.activeTracker.id;
+			await this.clearActiveTracker();
+			this.finalizedActiveRecordIds.delete(activeRecordId);
+			this.clearTransitionState();
+			this.stopTicker();
+			this.emit('history');
+			this.emit('state');
+			return true;
+		});
+	}
+
+	async switchActiveTrackerAfterVerifiedSession(
+		previousOperonId: string,
+		previousStart: string,
+		targetOperonId: string,
+		targetStart: string,
+		source: TrackerSource = 'command',
+	): Promise<boolean> {
+		return await this.enqueueTransition(async () => {
+			this.syncActiveFromStore();
+			if (
+				!this.activeTracker
+				|| this.activeTracker.operonId !== previousOperonId
+				|| this.activeTracker.start !== previousStart
+			) return false;
+			const previousTask = this.indexer.getTask(previousOperonId);
+			const targetTask = this.indexer.getTask(targetOperonId);
+			if (!previousTask || !targetTask) return false;
+			const sessions = parseTrackerList(previousTask.fieldValues['trackers'] ?? '');
+			if (!sessions.some(session => session.start === previousStart)) return false;
+			const previousRecordId = this.activeTracker.id;
+			await this.setActiveTracker(targetOperonId, targetStart, source);
+			this.finalizedActiveRecordIds.delete(previousRecordId);
+			this.clearTransitionState();
+			this.startTicker();
+			this.emit('history');
+			this.emit('state');
+			return true;
+		});
+	}
+
+	/**
+	 * Pure payload projection used by Runtime transition preview so recurrence
+	 * rendering can seal the same terminal task source that apply will write.
+	 */
+	previewExternalStopPayload(operonId: string, end: string): Record<string, string> | null {
+		this.syncActiveFromStore();
+		const current = this.activeTracker;
+		if (!current || current.operonId !== operonId) return null;
+		const task = this.indexer.getTask(operonId);
+		if (!task) return null;
+		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
+		const alreadyPersisted = this.finalizedActiveRecordIds.has(current.id)
+			|| existingSessions.some(session => session.start === current.start);
+		if (alreadyPersisted) return {};
+		const trackers = serializeTrackerList([
+			...existingSessions.map(session => session.raw),
+			...this.buildStoredSessionRanges(current.start, end),
+		]);
+		return {
+			trackers,
+			duration: trackers ? String(calculateDurationFromTrackers(trackers)) : '',
+		};
+	}
+
+	private async stopActive(
+		_reason: TrackerStopReason,
+		endOverride?: string | null,
+	): Promise<boolean> {
 		this.syncActiveFromStore();
 		if (!this.activeTracker) return false;
 
@@ -567,7 +743,7 @@ export class TimeTracker {
 			return false;
 		}
 
-		const end = localNow();
+		const end = endOverride?.trim() || localNow();
 		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
 		const alreadyPersisted = this.finalizedActiveRecordIds.has(current.id)
 			|| existingSessions.some(session => session.start === current.start);
@@ -860,6 +1036,10 @@ export class TimeTracker {
 			this.emit('state');
 			return true;
 		});
+	}
+
+	async runSerializedSessionMutation<T>(operation: () => Promise<T>): Promise<T> {
+		return await this.enqueueTransition(operation);
 	}
 
 	private async runSessionWrite(context: string, operation: () => Promise<boolean>): Promise<boolean> {

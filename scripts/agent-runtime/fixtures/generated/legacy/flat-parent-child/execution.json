@@ -1,0 +1,14 @@
+{
+  "caseId": "flat-parent-child",
+  "exitCode": 0,
+  "fixtureSchemaVersion": 1,
+  "invocation": {
+    "overwrite": false,
+    "write": false
+  },
+  "requestSha256": "41f3d73d38c484b9f8a1c45886762deeba3651a10a1625b99995df73663d9f7d",
+  "seed": 41019,
+  "stderrSha256": "d332333fb101baa07abee0b1047848de8c7015cfc813d64ff24a4b3c917cbae3",
+  "stdoutSha256": "901b65f58298b7386df650997f6a24a308f311d4293b4b89d7e88699e394a0e6",
+  "writtenFiles": {}
+}

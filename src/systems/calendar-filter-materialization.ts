@@ -39,7 +39,7 @@ interface CalendarMaterializationDraft {
 	tags: string[];
 }
 
-interface MaterializationPlannerOptions {
+interface MaterializationPlannerOptions extends FilterEvaluationOptions {
 	keyMappings?: KeyMapping[];
 	priorities?: { label: string }[];
 	pinnedCache?: PinnedCache | null;
@@ -210,11 +210,18 @@ function matchesFilter(
 		datetimeModified: draft.fieldValues['datetimeModified'] || '',
 		tier: 'hot',
 	};
+	const dependencyTasks = (options.dependencyTasks ?? [])
+		.filter(task => task.operonId !== syntheticTask.operonId);
+	dependencyTasks.push(syntheticTask);
 	return filterTasksOnly(
 		filterSet,
 		[syntheticTask],
 		options.priorities,
 		options.pinnedCache ?? null,
+		{
+			...options,
+			dependencyTasks,
+		},
 	).length > 0;
 }
 

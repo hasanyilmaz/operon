@@ -7,6 +7,15 @@ import {
 	splitTaskListValue,
 } from '../../core/task-field-patch';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
+import { renderCompactTaskMarkdown } from '../compact-task-markdown-renderer';
+import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
+import {
+	resolveBlockedByVisualStateColor,
+	resolveBlockedByVisualStateForId,
+} from '../../core/blocked-by-visual-state';
+import type { Pipeline } from '../../types/pipeline';
+import type { KeyMapping } from '../../types/settings';
+import { setIcon } from 'obsidian';
 
 const PAGE_SIZE = 20;
 const LOAD_MORE_SCROLL_THRESHOLD_PX = 48;
@@ -16,6 +25,10 @@ interface DependencyTaskPickerOptions {
 	value: string;
 	oppositeValue: string;
 	allTasks: IndexedTask[];
+	getAllTasks?: () => IndexedTask[];
+	subscribeIndexUpdates?: (listener: () => void) => () => void;
+	pipelines?: Pipeline[];
+	keyMappings?: KeyMapping[];
 	excludedIds?: string[];
 	closeOnSelect?: boolean;
 	onSave: (payload: Record<DependencyFieldKey, string>) => void;
@@ -30,7 +43,12 @@ interface DependencyCandidate {
 }
 
 export function showDependencyTaskPicker(anchor: HTMLElement | DOMRect, options: DependencyTaskPickerOptions): () => void {
-	const { panel, close } = createFloatingPanel(anchor, 'operon-floating-panel operon-subtasks-picker-panel', options.onClose);
+	let unsubscribeIndexUpdates: (() => void) | null = null;
+	const { panel, close } = createFloatingPanel(anchor, 'operon-floating-panel operon-subtasks-picker-panel', () => {
+		unsubscribeIndexUpdates?.();
+		unsubscribeIndexUpdates = null;
+		options.onClose?.();
+	});
 
 	const selectedWrap = panel.createDiv('operon-subtasks-picker-selected-wrap');
 
@@ -65,10 +83,13 @@ export function showDependencyTaskPicker(anchor: HTMLElement | DOMRect, options:
 		...(options.excludedIds ?? []).map(value => value.trim()).filter(Boolean),
 		...splitTaskListValue(options.oppositeValue),
 	]);
-	const allCandidates = buildCandidates(options.allTasks)
+	let allTasks = options.getAllTasks?.() ?? options.allTasks;
+	let allCandidates = buildCandidates(allTasks)
 		.filter(candidate => !excludedIds.has(candidate.operonId));
-	const candidatesById = new Map(allCandidates.map(candidate => [candidate.operonId, candidate]));
-	let selectedIds = Array.from(new Set(splitTaskListValue(options.value))).filter(id => candidatesById.has(id));
+	let candidatesById = new Map(allCandidates.map(candidate => [candidate.operonId, candidate]));
+	let tasksById = new Map(allTasks.map(task => [task.operonId, task]));
+	let selectedIds = Array.from(new Set(splitTaskListValue(options.value)))
+		.filter(id => !excludedIds.has(id));
 	let matches = rankCandidates(allCandidates.filter(candidate => !selectedIds.includes(candidate.operonId)), '');
 	let activeIndex = 0;
 	let loadedCount = Math.min(PAGE_SIZE, matches.length);
@@ -80,6 +101,19 @@ export function showDependencyTaskPicker(anchor: HTMLElement | DOMRect, options:
 			const candidate = candidatesById.get(operonId);
 			const labelText = candidate?.label || operonId;
 			const chip = selectedWrap.createDiv('operon-parent-selected-chip');
+			if (options.fieldKey === 'blockedBy') {
+				const state = resolveBlockedByVisualStateForId(
+					operonId,
+					id => tasksById.get(id),
+					options.pipelines ?? [],
+				);
+				const color = resolveBlockedByVisualStateColor(state);
+				chip.addClass('operon-blocked-by-selected-chip');
+				chip.dataset.blockedByState = state;
+				if (color) chip.style.setProperty('--operon-blocked-by-state-color', color);
+				const icon = chip.createSpan('operon-parent-selected-chip-icon');
+				setIcon(icon, getConfiguredKeyMappingIcon('blockedBy', options.keyMappings ?? []) || 'circle-pause');
+			}
 			chip.createSpan({
 				text: candidate?.label || operonId,
 				cls: 'operon-parent-selected-chip-label',
@@ -98,6 +132,35 @@ export function showDependencyTaskPicker(anchor: HTMLElement | DOMRect, options:
 					requestFloatingInputFocus(input);
 				});
 		}
+	};
+
+	const refreshCandidates = () => {
+		const activeCandidateId = matches[activeIndex]?.operonId ?? null;
+		const previousActiveIndex = activeIndex;
+		const previousLoadedCount = loadedCount;
+		const previousScrollTop = list.scrollTop;
+		allTasks = options.getAllTasks?.() ?? options.allTasks;
+		allCandidates = buildCandidates(allTasks)
+			.filter(candidate => !excludedIds.has(candidate.operonId));
+		candidatesById = new Map(allCandidates.map(candidate => [candidate.operonId, candidate]));
+		tasksById = new Map(allTasks.map(task => [task.operonId, task]));
+		renderSelected();
+		const available = allCandidates.filter(candidate => !selectedIds.includes(candidate.operonId));
+		matches = rankCandidates(available, input.value);
+		const preservedActiveIndex = activeCandidateId
+			? matches.findIndex(candidate => candidate.operonId === activeCandidateId)
+			: -1;
+		activeIndex = matches.length === 0
+			? 0
+			: preservedActiveIndex >= 0
+				? preservedActiveIndex
+				: Math.min(previousActiveIndex, matches.length - 1);
+		loadedCount = Math.min(
+			matches.length,
+			Math.max(PAGE_SIZE, previousLoadedCount, activeIndex + 1),
+		);
+		render(false);
+		list.scrollTop = previousScrollTop;
 	};
 
 	const getVisibleMatches = (): DependencyCandidate[] => matches.slice(0, loadedCount);
@@ -151,7 +214,10 @@ export function showDependencyTaskPicker(anchor: HTMLElement | DOMRect, options:
 			if (index === activeIndex) item.classList.add('is-active');
 
 			const label = item.createDiv('operon-parent-task-picker-label');
-			label.textContent = candidate.label;
+			renderCompactTaskMarkdown(label, {
+				value: candidate.label,
+				mode: 'visual-only',
+			});
 
 			item.addEventListener('mousemove', () => setActiveIndex(index));
 			bindPickerListItemActivation(item, () => selectId(candidate.operonId));
@@ -237,7 +303,12 @@ export function showDependencyTaskPicker(anchor: HTMLElement | DOMRect, options:
 	renderSelected();
 	updateMatches('');
 	requestFloatingInputFocus(input);
-	return close;
+	unsubscribeIndexUpdates = options.subscribeIndexUpdates?.(refreshCandidates) ?? null;
+	return () => {
+		unsubscribeIndexUpdates?.();
+		unsubscribeIndexUpdates = null;
+		close();
+	};
 }
 
 function buildCandidates(tasks: IndexedTask[]): DependencyCandidate[] {

@@ -13,6 +13,7 @@ import {
 	getTaskSearchBoxShortcutLabel,
 	type TaskSearchBoxScopeState,
 } from './task-search-box-integration';
+import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
 export const SEARCH_SCOPE_CONTROL_GROUPS: TaskFinderDefaultScopeKey[][] = [
 	['projectTasks', 'projectTree'],
@@ -284,9 +285,10 @@ export function renderParentSearchDropdown(options: {
 		item.addEventListener('click', () => {
 			options.onSelect(candidate);
 		});
-		item.createDiv({
-			cls: options.classNames.itemName,
-			text: candidate.task.description,
+		const itemName = item.createDiv(options.classNames.itemName);
+		renderCompactTaskMarkdown(itemName, {
+			value: candidate.task.description,
+			mode: 'visual-only',
 		});
 		item.createDiv({
 			cls: options.classNames.itemMeta,

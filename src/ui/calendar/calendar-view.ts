@@ -76,13 +76,13 @@ import {
 	resolveContextualHoverMenuPosition,
 	resolveVisibleContextualHoverAnchorRect,
 } from '../contextual-hover-menu-position';
-import { bindOperonHoverTooltip, createNonInteractiveMarkdownLinkContent } from '../operon-hover-tooltip';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
+import { renderCompactTaskMarkdown } from '../compact-task-markdown-renderer';
 import { closeFloatingPanelsForRoot } from '../field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from '../icon-only-chip-preview';
-import { renderTaskDescriptionWikilinks } from '../task-description-wikilinks';
 import { isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
 import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../../core/dom-compat';
 import { enginePerfLog, enginePerfNow } from '../../core/engine-perf';
@@ -1089,6 +1089,8 @@ export class CalendarView extends ItemView {
 			{
 				projectSerialScopes: context.settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
+				dependencyTasks: this.indexer.getAllTasks(),
+				pipelines: context.settings.pipelines,
 				filePropertyContext,
 			},
 		);
@@ -1452,6 +1454,8 @@ export class CalendarView extends ItemView {
 				{
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
+					dependencyTasks: this.indexer.getAllTasks(),
+					pipelines: settings.pipelines,
 					filePropertyContext: this.getFilePropertyContext(settings),
 				},
 			);
@@ -1548,6 +1552,8 @@ export class CalendarView extends ItemView {
 				{
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
+					dependencyTasks: this.indexer.getAllTasks(),
+					pipelines: settings.pipelines,
 					filePropertyContext: this.getFilePropertyContext(settings),
 				},
 			);
@@ -1834,6 +1840,8 @@ export class CalendarView extends ItemView {
 			{
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
+				dependencyTasks: this.indexer.getAllTasks(),
+				pipelines: settings.pipelines,
 				filePropertyContext,
 			},
 		);
@@ -2115,6 +2123,8 @@ export class CalendarView extends ItemView {
 			{
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
+				dependencyTasks: this.indexer.getAllTasks(),
+				pipelines: settings.pipelines,
 				filePropertyContext: this.getFilePropertyContext(settings),
 			},
 		);
@@ -7484,15 +7494,15 @@ export class CalendarView extends ItemView {
 		const title = head.createSpan({
 			cls: 'operon-calendar-sidebar-task-pool-row-title',
 		});
-		const renderedWikilinks = renderTaskDescriptionWikilinks(title, {
+		renderCompactTaskMarkdown(title, {
 			app: this.app,
-			description: titleText,
+			value: titleText,
 			sourcePath: task.primary.filePath,
+			mode: 'interactive',
+			containerClassName: 'operon-task-description-markdown',
 		});
-		if (!renderedWikilinks) {
-			title.textContent = titleText;
-		}
-		if (!renderedWikilinks && task.primary.format === 'yaml') {
+		const hasInteractiveDescriptionLink = !!title.querySelector('a.internal-link, a.external-link');
+		if (!hasInteractiveDescriptionLink && task.primary.format === 'yaml') {
 			bindTaskTitleLinkPreview(this.app, title, task.primary.filePath, task.primary.filePath);
 		}
 
@@ -7609,7 +7619,7 @@ export class CalendarView extends ItemView {
 		const indicator = container.createSpan('operon-calendar-sidebar-task-pool-date-indicator');
 		bindOperonHoverTooltip(indicator, {
 			title: t('calendar', 'notes'),
-			contentEl: createNonInteractiveMarkdownLinkContent(indicator, noteValue),
+			contentEl: createCompactTaskMarkdownTooltipContent(indicator, noteValue),
 			taskColor: null,
 			preferredHorizontal: 'right',
 		});
@@ -10150,17 +10160,19 @@ export class CalendarView extends ItemView {
 		const titleEl = wrapper.createSpan({
 			cls: compact ? 'operon-calendar-all-day-text' : 'operon-calendar-timed-title',
 		});
-		const renderedWikilinks = item.origin === 'materialized' && item.sourceTask
-			? renderTaskDescriptionWikilinks(titleEl, {
+		if (item.origin === 'materialized' && item.sourceTask) {
+			renderCompactTaskMarkdown(titleEl, {
 				app: this.app,
-				description: titleText,
+				value: titleText,
 				sourcePath: item.sourceTask.primary.filePath,
-			})
-			: false;
-		if (!renderedWikilinks) {
+				mode: 'interactive',
+				containerClassName: 'operon-task-description-markdown',
+			});
+		} else {
 			titleEl.textContent = titleText;
 		}
-		if (!renderedWikilinks && item.sourceTask?.primary.format === 'yaml') {
+		const hasInteractiveDescriptionLink = !!titleEl.querySelector('a.internal-link, a.external-link');
+		if (!hasInteractiveDescriptionLink && item.sourceTask?.primary.format === 'yaml') {
 			bindTaskTitleLinkPreview(
 				this.app,
 				titleEl,

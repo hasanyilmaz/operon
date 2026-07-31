@@ -13,6 +13,61 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.0.0',
+		date: '2026-07-31',
+		title: 'Welcome Agents',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-0-0-agents-welcome.png',
+		body: `
+Operon 3.0.0 introduces the first stable public contracts for the Agent Runtime, standalone CLI, and in-process Developer API, allowing people, agents, scripts, and other Obsidian plugins to work with live Operon tasks through the same capability-aware, recoverable foundation. This release also brings focused improvements to pinned tasks, dependency visibility, Markdown task fields, mobile reminders, Tables, and index housekeeping.
+
+### New
+- Added **Agent Runtime V1** with the live Property Catalog and Context Engine, providing source-verified task reads, indexed queries, relationship analysis, and sealed, recoverable operations for task creation, updates, lifecycle changes, reminders, recurrence, timers, source transitions, deletion, and multi-source task graphs.
+- Added the standalone **Operon CLI 1.0** for people, agents, and scripts, combining guided setup, interactive and direct task workflows, human-readable results, machine-readable JSON and JSONL sessions, shell completion, compact and typed input, actionable transport diagnostics, resilient reads that reconnect safely after idle closure or plugin reload, and safe preview, apply, and recovery across supported task operations. macOS is supported, native Linux and Windows 11 launch as public-beta targets, and WSL remains unsupported.
+- Added the typed in-process **Developer API V1** for Obsidian Desktop integrations, with Settings-managed capability grants, immutable task data, distributable TypeScript contracts, safe reads and writes, restart-safe recovery, integration guides, and a packaged consumer example.
+- Added persistent **Pinned Task ordering** by Priority, Last modified, or Manual order across the Sidebar and every floating Dock layout, with desktop drag-and-drop, mobile long-press reordering, clear drop feedback, preserved scroll position, and clearer uncolored card surfaces.
+- Added per-embed percentage widths for **Filter** and **Table** code blocks, allowing wide task surfaces to expand beyond the readable line while remaining centered and contained within the active Markdown pane.
+
+### Improved
+- Improved **dependency awareness** across task chips, Tables, Task Finder, Task Editor, and Task Creator with distinct active, resolved, and missing blocker states, plus filters for finding tasks that are actively blocked or actively blocking other work.
+- Improved **Description and Notes** editing and presentation across Task Editor, Tables, Kanban, Calendar, filters, Reading Mode, pinned tasks, FlowTime, finders, overlays, and task pickers with compact Markdown-aware editing, consistent rendering, single-line storage, lossless legacy handling, and safer save behavior.
+- Improved **index storage** to keep only the active verified snapshot and automatically remove superseded shards and Sync conflict artifacts, while preserving Markdown as the canonical recovery source.
+
+### Changed
+- Changed **Mobile notification snapshots** to update automatically on Obsidian Mobile through staged startup reconciliation, live reminder updates, and overwrite recovery instead of the previous desktop-only opt-in workflow.
+- Moved the **Table files** documentation action to **General Table Settings**, while keeping duplicate-ID conflict resolution directly on affected presets.
+
+### Fixed
+- Fixed **Table column controls** so renamed headers refresh immediately across workspace and embedded Tables, and Add column left/right icons match the selected insertion side.
+- Fixed URL fragments, Markdown link anchors, wikilink headings, and inline code containing \`#\` being misread as task tags, while preserving the original link when inline task fields are updated.
+- Fixed prerelease version comparisons so identifiers follow deterministic Semantic Versioning precedence, including case-sensitive ordering.
+
+### Removed
+- Removed retired **V7 index** and legacy **Table preset migration** paths after their transition windows, while keeping current index recovery, file-backed Tables, missing-file handling, and duplicate-ID maintenance unchanged.
+
+### Security
+- Secured **Developer API access** with exact enabled-plugin identity checks, persisted least-capability grants, immediate revocation, version-safety checks, and privacy-redacted audit controls.
+- Secured **CLI storage and transport** with owner-only, vault-bound channels across supported platforms, authenticated Windows named-pipe delivery, strict filesystem and identity validation, and fail-closed handling of unsafe or ambiguous dispatch state.
+- Secured **task mutations** with plan-bound consent, exact Runtime and source revisions, vault-contained targets, durable receipts and transaction journals, reciprocal relationship and cycle validation, same-plan recovery, and fresh impact-bound confirmation for destructive conversion and deletion.
+
+### New Docs
+- [[DOCS-118 Operon Agent Runtime overview|Operon Agent Runtime overview]]
+- [[DOCS-119 Install and verify Operon CLI|Install and verify Operon CLI]]
+- [[DOCS-120 Your first safe task read|Your first safe task read]]
+- [[DOCS-121 Reading tasks and building context|Reading tasks and building context]]
+- [[DOCS-122 Changing tasks safely|Changing tasks safely]]
+- And 11 more new docs.
+
+### Updated Docs
+- [[DOCS-001 Operon Docs MOC|Operon Docs]]
+- [[DOCS-036 Agent-friendly workflows|Agent-friendly workflows]]
+- [[DOCS-002 How to use these docs|How to use these docs]]
+- [[DOCS-003 Getting started with Operon|Getting started with Operon]]
+- [[DOCS-004 Operon system map|Operon system map]]
+- And 112 more updated docs.
+`.trim(),
+	},
+	{
 		version: '2.6.0',
 		date: '2026-07-22',
 		title: 'Controls That Show Up at the Right Moment',

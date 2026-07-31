@@ -16,11 +16,14 @@ import {
 	validateIndexV8Snapshot,
 	type IndexV8SourceInput,
 } from '../src/indexer/persistence/index-v8-codec';
-import { buildIndexV8SemanticsSignature } from '../src/indexer/persistence/index-v8-semantics';
+import {
+	buildIndexV8SemanticsSignature,
+	hasIndexV8WorkflowSemanticsMismatch,
+} from '../src/indexer/persistence/index-v8-semantics';
 import { SecondaryIndexes } from '../src/indexer/secondary-indexes';
 import type { IndexV8CoherenceBasis } from '../src/indexer/persistence/index-v8-contract';
 import { IndexV8Store, type IndexV8LoadResult } from '../src/indexer/persistence/index-v8-store';
-import type { IndexV8ShadowWriter } from '../src/indexer/persistence/index-v8-shadow-writer';
+import type { IndexV8PersistenceCoordinator } from '../src/indexer/persistence/index-v8-persistence-coordinator';
 import type { IndexV8FallbackReason } from '../src/indexer/persistence/index-v8-startup';
 import { createSyntheticIndexData, createV8SourcesFromIndexData } from './index-v8-fixtures';
 import { IndexV8MemoryAdapter } from './index-v8-memory-adapter';
@@ -50,14 +53,14 @@ function deepEqual(actual: unknown, expected: unknown, message?: string): void {
 	assertions++;
 }
 
-function cloneV7Data(taskCount = 20): IndexData {
+function createIndexData(taskCount = 20): IndexData {
 	const data = createSyntheticIndexData(taskCount);
 	data.workflowStatusSemanticsSignature = buildWorkflowStatusSemanticsSignature(DEFAULT_SETTINGS.pipelines);
 	return data;
 }
 
 function createDuplicateData(): IndexData {
-	const data = cloneV7Data(20);
+	const data = createIndexData(20);
 	const original = Object.values(data.taskInstances ?? {})[0];
 	const duplicate = structuredClone(original);
 	duplicate.primary.filePath = 'Synthetic/Duplicate.md';
@@ -157,35 +160,15 @@ function filesFromLoaded(loaded: Extract<IndexV8LoadResult, { status: 'loaded' }
 	)));
 }
 
-function createStorage(
-	v7Data: IndexData | null,
-	onRead?: () => void,
-	settings = DEFAULT_SETTINGS,
-	onSave?: () => void,
-) {
+function createStorage(settings = DEFAULT_SETTINGS) {
 	return {
 		getSettings: () => settings,
-		loadIndex: async () => {
-			onRead?.();
-			return v7Data ? structuredClone(v7Data) : null;
-		},
-		saveIndex: async () => {
-			onSave?.();
-			return {
-				jsonBytes: 0,
-				stringifyMs: 0,
-				writeMs: 0,
-				queueWaitMs: 0,
-				totalMs: 0,
-			};
-		},
 	};
 }
 
-function createShadow(disabledCodes: string[], onEnqueue?: () => void) {
+function createPersistenceStub(disabledCodes: string[]) {
 	return {
 		disable: (code: string) => { disabledCodes.push(code); },
-		enqueue: () => { onEnqueue?.(); },
 	};
 }
 
@@ -248,22 +231,27 @@ async function testVerifiedV8AuthorityAndParity(): Promise<void> {
 
 	const loaded = await createLoadedV8(data);
 	const store = new FakeReadStore(loaded);
-	let v7Reads = 0;
-	let saves = 0;
-	let shadowEnqueues = 0;
 	const disabledCodes: string[] = [];
 	const indexer = new OperonIndexer(
 		createApp(filesFromLoaded(loaded)),
-		createStorage(null, () => { v7Reads += 1; }, DEFAULT_SETTINGS, () => { saves += 1; }) as never,
-		createShadow(disabledCodes, () => { shadowEnqueues += 1; }) as unknown as IndexV8ShadowWriter,
+		createStorage() as never,
+		createPersistenceStub(disabledCodes) as unknown as IndexV8PersistenceCoordinator,
 		store,
 	);
 	const result = await indexer.loadCachedIndex();
 	deepEqual(result, { status: 'loaded', source: 'v8', requiresFullReindex: false });
+	const revision = indexer.getIndexRevisionSource();
+	deepEqual(revision, {
+		ramGeneration: 1,
+		durable: {
+			status: 'available',
+			snapshotId: loaded.manifest.snapshotId,
+			committedAt: COMMITTED_AT,
+		},
+	});
+	check(Object.isFrozen(revision), 'index revision snapshots must be immutable');
+	check(Object.isFrozen(revision.durable), 'durable revision snapshots must be immutable');
 	equal(store.loads, 1);
-	equal(v7Reads, 0, 'eligible V8 must not read V7');
-	equal(saves, 0, 'eligible V8 hydration must not write V7');
-	equal(shadowEnqueues, 0, 'eligible V8 hydration must not enqueue a shadow write');
 	equal(indexer.getAllTasks().length, Object.keys(data.tasks).length);
 	for (const [operonId, expectedTask] of Object.entries(data.tasks)) {
 		const actualTask = indexer.getTask(operonId);
@@ -313,9 +301,8 @@ async function testVerifiedV8AuthorityAndParity(): Promise<void> {
 }
 
 async function testEligibilityAndFallbackMatrix(): Promise<void> {
-	const v7 = cloneV7Data();
-	const verified = await createLoadedV8(v7);
-	const seed = await createLoadedV8(v7, { basis: 'v7-startup-seed' });
+	const data = createIndexData();
+	const verified = await createLoadedV8(data);
 	const invalidProvenance = structuredClone(verified);
 	invalidProvenance.validatedSnapshot.manifest.lastFullScanAt = '2026-01-02T04:00:00.000Z';
 	const invalidMetadata = structuredClone(verified);
@@ -326,10 +313,8 @@ async function testEligibilityAndFallbackMatrix(): Promise<void> {
 		name: string;
 		load: IndexV8LoadResult;
 		reason: IndexV8FallbackReason;
-		disable: boolean;
 	}> = [
-		{ name: 'missing', load: { status: 'missing', metrics: loadMetrics() }, reason: 'missing', disable: false },
-		{ name: 'seed', load: seed, reason: 'seed-basis', disable: false },
+		{ name: 'missing', load: { status: 'missing', metrics: loadMetrics() }, reason: 'missing' },
 		{
 			name: 'incomplete',
 			load: {
@@ -337,17 +322,16 @@ async function testEligibilityAndFallbackMatrix(): Promise<void> {
 				manifest: verified.manifest, manifestPayload: verified.manifestPayload,
 				missingShardIds: ['00'], metrics: loadMetrics(),
 			},
-			reason: 'incomplete', disable: false,
+			reason: 'incomplete',
 		},
-		{ name: 'io-error', load: { status: 'io-error', retryable: true, code: 'ADAPTER_IO', metrics: loadMetrics() }, reason: 'io-error', disable: false },
-		{ name: 'invalid', load: { status: 'invalid', retryable: false, code: 'CHECKSUM', metrics: loadMetrics() }, reason: 'invalid', disable: true },
-		{ name: 'unsupported', load: { status: 'unsupported', retryable: false, code: 'SCHEMA', metrics: loadMetrics() }, reason: 'unsupported', disable: true },
-		{ name: 'invalid-provenance', load: invalidProvenance, reason: 'invalid', disable: true },
-		{ name: 'invalid-metadata', load: invalidMetadata, reason: 'invalid', disable: true },
+		{ name: 'io-error', load: { status: 'io-error', retryable: true, code: 'ADAPTER_IO', metrics: loadMetrics() }, reason: 'io-error' },
+		{ name: 'invalid', load: { status: 'invalid', retryable: false, code: 'CHECKSUM', metrics: loadMetrics() }, reason: 'invalid' },
+		{ name: 'unsupported', load: { status: 'unsupported', retryable: false, code: 'SCHEMA', metrics: loadMetrics() }, reason: 'unsupported' },
+		{ name: 'invalid-provenance', load: invalidProvenance, reason: 'invalid' },
+		{ name: 'invalid-metadata', load: invalidMetadata, reason: 'invalid' },
 	];
 
 	for (const testCase of cases) {
-		let v7Reads = 0;
 		const disabledCodes: string[] = [];
 		const store = new FakeReadStore(testCase.load);
 		const manifestBefore = testCase.load.status === 'loaded'
@@ -357,14 +341,13 @@ async function testEligibilityAndFallbackMatrix(): Promise<void> {
 				: null;
 		const indexer = new OperonIndexer(
 			createApp(),
-			createStorage(v7, () => { v7Reads += 1; }) as never,
-			createShadow(disabledCodes) as unknown as IndexV8ShadowWriter,
+			createStorage() as never,
+			createPersistenceStub(disabledCodes) as unknown as IndexV8PersistenceCoordinator,
 			store,
 		);
 		const result = await indexer.loadCachedIndex();
 		deepEqual(result, { status: 'missing', fallbackReason: testCase.reason }, testCase.name);
-		equal(v7Reads, 0, `${testCase.name} must not read legacy V7`);
-		equal(disabledCodes.length, testCase.disable ? 1 : 0, testCase.name);
+		equal(disabledCodes.length, 0, testCase.name);
 		if (manifestBefore && store.result.status === 'loaded') {
 			deepEqual(store.result.validatedSnapshot.manifest, manifestBefore, `${testCase.name} must not mutate the V8 manifest`);
 		} else if (manifestBefore && store.result.status === 'incomplete') {
@@ -373,50 +356,58 @@ async function testEligibilityAndFallbackMatrix(): Promise<void> {
 	}
 }
 
-async function testReadKillSwitch(): Promise<void> {
-	const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
-	Object.defineProperty(globalThis, 'window', {
-		configurable: true,
-		value: { operonIndexV8ReadEnabled: false, crypto: globalThis.crypto } as unknown as Window,
+async function testSemanticsMismatchRequiresFullReindex(): Promise<void> {
+	const data = createIndexData();
+	const currentSemantics = JSON.parse(
+		buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
+	) as Record<string, unknown>;
+	equal(currentSemantics.version, 2);
+	const loaded = await createLoadedV8(data, {
+		semantics: JSON.stringify({ ...currentSemantics, version: 1 }),
 	});
-	try {
-		let v7Reads = 0;
-		const store = new FakeReadStore({ status: 'missing', metrics: loadMetrics() });
-		const indexer = new OperonIndexer(
-			createApp(),
-			createStorage(cloneV7Data(), () => { v7Reads += 1; }) as never,
-			null,
-			store,
-		);
-		deepEqual(await indexer.loadCachedIndex(), { status: 'missing', fallbackReason: 'read-disabled' });
-		equal(store.loads, 0);
-		equal(v7Reads, 0);
-	} finally {
-		if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
-		else Reflect.deleteProperty(globalThis, 'window');
-	}
-}
-
-async function testSemanticsMismatchSkipsV7(): Promise<void> {
-	const v7 = cloneV7Data();
-	const loaded = await createLoadedV8(v7, { semantics: 'stale-index-semantics' });
-	let v7Reads = 0;
+	equal(hasIndexV8WorkflowSemanticsMismatch(
+		buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
+		loaded.validatedSnapshot.manifest.indexSemanticsSignature,
+	), false);
+	equal(hasIndexV8WorkflowSemanticsMismatch(
+		buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
+		JSON.stringify({ ...currentSemantics, workflow: { changed: true } }),
+	), true);
+	equal(hasIndexV8WorkflowSemanticsMismatch('invalid', 'invalid'), true);
 	const indexer = new OperonIndexer(
 		createApp(filesFromLoaded(loaded)),
-		createStorage(v7, () => { v7Reads += 1; }) as never,
+		createStorage() as never,
 		null,
 		new FakeReadStore(loaded),
 	);
 	const result = await indexer.loadCachedIndex();
 	check(result.status === 'incompatible');
 	if (result.status === 'incompatible') equal(result.reason, 'index-semantics');
-	equal(v7Reads, 0, 'semantics mismatch must go directly to full-reindex decision');
 	equal(indexer.getAllTasks().length, 0);
+
+	const workflowLoaded = await createLoadedV8(data, {
+		semantics: JSON.stringify({ ...currentSemantics, workflow: { changed: true } }),
+	});
+	const workflowIndexer = new OperonIndexer(
+		createApp(filesFromLoaded(workflowLoaded)),
+		createStorage() as never,
+		null,
+		new FakeReadStore(workflowLoaded),
+	);
+	const workflowResult = await workflowIndexer.loadCachedIndex();
+	check(workflowResult.status === 'incompatible' && 'cachedSignature' in workflowResult);
+	if (workflowResult.status === 'incompatible' && 'cachedSignature' in workflowResult) {
+		equal(workflowResult.reason, 'index-semantics');
+		equal(hasIndexV8WorkflowSemanticsMismatch(
+			workflowResult.expectedSignature,
+			workflowResult.cachedSignature ?? '',
+		), true);
+	}
 }
 
 async function testHydrationFailureIsAtomic(): Promise<void> {
-	const v7 = cloneV7Data();
-	const loaded = await createLoadedV8(v7);
+	const data = createIndexData();
+	const loaded = await createLoadedV8(data);
 	const corrupted = structuredClone(loaded);
 	const populatedShard = corrupted.validatedSnapshot.shards.find(shard => shard.sources.length > 0);
 	check(populatedShard);
@@ -425,12 +416,12 @@ async function testHydrationFailureIsAtomic(): Promise<void> {
 	const disabledCodes: string[] = [];
 	const indexer = new OperonIndexer(
 		createApp(filesFromLoaded(loaded)),
-		createStorage(null) as never,
-		createShadow(disabledCodes) as unknown as IndexV8ShadowWriter,
+		createStorage() as never,
+		createPersistenceStub(disabledCodes) as unknown as IndexV8PersistenceCoordinator,
 		new FakeReadStore(corrupted),
 	);
 	const live = mutable(indexer);
-	const sentinel = structuredClone(Object.values(v7.tasks)[0]);
+	const sentinel = structuredClone(Object.values(data.tasks)[0]);
 	sentinel.operonId = 'sentinel-live-task';
 	live.tasks.set(sentinel.operonId, sentinel);
 	const generationBefore = live.generation;
@@ -438,17 +429,17 @@ async function testHydrationFailureIsAtomic(): Promise<void> {
 	deepEqual(result, { status: 'missing', fallbackReason: 'hydration-failed' });
 	equal(indexer.getTask(sentinel.operonId)?.operonId, sentinel.operonId);
 	equal(live.generation, generationBefore);
-	equal(disabledCodes.length, 1);
+	equal(disabledCodes.length, 0);
 }
 
 async function testStagedRebuildFailureFallsBackWithoutPartialCommit(): Promise<void> {
-	const v7 = cloneV7Data();
-	const loaded = await createLoadedV8(v7);
+	const data = createIndexData();
+	const loaded = await createLoadedV8(data);
 	const disabledCodes: string[] = [];
 	const indexer = new OperonIndexer(
 		createApp(filesFromLoaded(loaded)),
-		createStorage(v7) as never,
-		createShadow(disabledCodes) as unknown as IndexV8ShadowWriter,
+		createStorage() as never,
+		createPersistenceStub(disabledCodes) as unknown as IndexV8PersistenceCoordinator,
 		new FakeReadStore(loaded),
 	);
 	const originalRebuild = SecondaryIndexes.prototype.rebuild;
@@ -466,11 +457,11 @@ async function testStagedRebuildFailureFallsBackWithoutPartialCommit(): Promise<
 	equal(rebuildCalls, 1, 'V8 staged rebuild failure must return a Markdown full-scan decision');
 	equal(mutable(indexer).generation, 0, 'failed staged state must never increment live generation');
 	equal(indexer.getAllTasks().length, 0);
-	equal(disabledCodes.length, 1);
+	equal(disabledCodes.length, 0);
 }
 
 async function testStartupReconciliationClassifiesSourcesOnce(): Promise<void> {
-	const data = cloneV7Data(40);
+	const data = createIndexData(40);
 	const loaded = await createLoadedV8(data);
 	const sources = loaded.validatedSnapshot.shards.flatMap(shard => shard.sources);
 	check(sources.length >= 3);
@@ -496,7 +487,7 @@ async function testStartupReconciliationClassifiesSourcesOnce(): Promise<void> {
 			new Set(['Synthetic/Sync-Old-Timestamp.md']),
 			new Set(['Synthetic/Sync-Partial-Cache.md']),
 		),
-		createStorage(null) as never,
+		createStorage() as never,
 		null,
 		new FakeReadStore(loaded),
 	);
@@ -521,7 +512,7 @@ async function testStartupReconciliationClassifiesSourcesOnce(): Promise<void> {
 
 	const cleanIndexer = new OperonIndexer(
 		createApp(filesFromLoaded(loaded)),
-		createStorage(null) as never,
+		createStorage() as never,
 		null,
 		new FakeReadStore(loaded),
 	);
@@ -535,13 +526,13 @@ async function testStartupReconciliationClassifiesSourcesOnce(): Promise<void> {
 
 	const excludedSettings = structuredClone(DEFAULT_SETTINGS);
 	excludedSettings.excludedFolders = ['Synthetic'];
-	const excludedData = cloneV7Data(10);
+	const excludedData = createIndexData(10);
 	const excludedLoaded = await createLoadedV8(excludedData, {
 		semantics: buildIndexV8SemanticsSignature(excludedSettings),
 	});
 	const excludedIndexer = new OperonIndexer(
 		createApp(filesFromLoaded(excludedLoaded)),
-		createStorage(null, undefined, excludedSettings) as never,
+		createStorage(excludedSettings) as never,
 		null,
 		new FakeReadStore(excludedLoaded),
 	);
@@ -559,17 +550,16 @@ async function testStartupReconciliationClassifiesSourcesOnce(): Promise<void> {
 }
 
 async function testStartupReconciliationAppliesOneDurableBatch(): Promise<void> {
-	const data = cloneV7Data(20);
+	const data = createIndexData(20);
 	const loaded = await createLoadedV8(data);
 	const removedSource = loaded.validatedSnapshot.shards
 		.flatMap(shard => shard.sources)
 		.find(source => source.instances.length > 0);
 	check(removedSource);
 	const files = filesFromLoaded(loaded).filter(file => file.path !== removedSource.path);
-	let saves = 0;
 	const indexer = new OperonIndexer(
 		createApp(files),
-		createStorage(null, undefined, DEFAULT_SETTINGS, () => { saves += 1; }) as never,
+		createStorage() as never,
 		null,
 		new FakeReadStore(loaded),
 	);
@@ -577,7 +567,6 @@ async function testStartupReconciliationAppliesOneDurableBatch(): Promise<void> 
 	const initialGeneration = mutable(indexer).generation;
 	await indexer.reconcileV8StartupSources();
 	await indexer.flushPendingPersist();
-	equal(saves, 0, 'startup reconciliation must never write legacy V7');
 	equal(mutable(indexer).generation, initialGeneration + 1);
 	equal(mutable(indexer).secondary.byFile.has(removedSource.path), false);
 	for (const persisted of removedSource.instances) {
@@ -593,10 +582,9 @@ async function testStartupReconciliationRemovesDeletedNonCanonicalDuplicate(): P
 	check(duplicateSource);
 	const duplicateId = duplicateSource.instances[0]?.operonId;
 	check(duplicateId);
-	let saves = 0;
 	const indexer = new OperonIndexer(
 		createApp(filesFromLoaded(loaded).filter(file => file.path !== duplicateSource.path)),
-		createStorage(null, undefined, DEFAULT_SETTINGS, () => { saves += 1; }) as never,
+		createStorage() as never,
 		null,
 		new FakeReadStore(loaded),
 	);
@@ -605,7 +593,6 @@ async function testStartupReconciliationRemovesDeletedNonCanonicalDuplicate(): P
 	const initialInstanceCount = mutable(indexer).taskInstances.size;
 	await indexer.reconcileV8StartupSources();
 	await indexer.flushPendingPersist();
-	equal(saves, 0);
 	check(indexer.getTask(duplicateId), 'canonical duplicate instance must remain indexed');
 	equal(indexer.hasDuplicateOperonIdConflict(duplicateId), false);
 	equal(mutable(indexer).taskInstances.size, initialInstanceCount - 1);
@@ -626,10 +613,9 @@ async function testStartupReconciliationPromotesDuplicateAfterCanonicalDeletion(
 	check(duplicateId);
 	const canonicalPath = data.tasks[duplicateId]?.primary.filePath;
 	check(canonicalPath);
-	let saves = 0;
 	const indexer = new OperonIndexer(
 		createApp(filesFromLoaded(loaded).filter(file => file.path !== canonicalPath)),
-		createStorage(null, undefined, DEFAULT_SETTINGS, () => { saves += 1; }) as never,
+		createStorage() as never,
 		null,
 		new FakeReadStore(loaded),
 	);
@@ -637,7 +623,6 @@ async function testStartupReconciliationPromotesDuplicateAfterCanonicalDeletion(
 	check(indexer.hasDuplicateOperonIdConflict(duplicateId));
 	await indexer.reconcileV8StartupSources();
 	await indexer.flushPendingPersist();
-	equal(saves, 0);
 	equal(indexer.hasDuplicateOperonIdConflict(duplicateId), false);
 	equal(indexer.getTask(duplicateId)?.primary.filePath, duplicateSource.path);
 	equal(mutable(indexer).secondary.byFile.has(canonicalPath), false);
@@ -645,7 +630,7 @@ async function testStartupReconciliationPromotesDuplicateAfterCanonicalDeletion(
 }
 
 async function testTelemetryPrivacy(): Promise<void> {
-	const data = cloneV7Data(20);
+	const data = createIndexData(20);
 	const firstTask = Object.values(data.tasks)[0];
 	const firstInstance = Object.values(data.taskInstances ?? {})[0];
 	firstTask.operonId = PRIVATE_ID;
@@ -667,7 +652,7 @@ async function testTelemetryPrivacy(): Promise<void> {
 	try {
 		const indexer = new OperonIndexer(
 			createApp(filesFromLoaded(loaded)),
-			createStorage(null) as never,
+			createStorage() as never,
 			null,
 			new FakeReadStore(loaded),
 		);
@@ -684,7 +669,7 @@ async function testTelemetryPrivacy(): Promise<void> {
 }
 
 async function testRealStoreStartupPipeline(): Promise<void> {
-	const data = cloneV7Data(24);
+	const data = createIndexData(24);
 	const snapshot = await buildIndexV8Snapshot({
 		committedAt: COMMITTED_AT,
 		lastFullScanAt: FULL_SCAN_AT,
@@ -702,7 +687,7 @@ async function testRealStoreStartupPipeline(): Promise<void> {
 	if (probe.status !== 'loaded') throw new Error('Expected real V8 store fixture to load');
 	const indexer = new OperonIndexer(
 		createApp(filesFromLoaded(probe)),
-		createStorage(null) as never,
+		createStorage() as never,
 		null,
 		store,
 	);
@@ -713,19 +698,20 @@ async function testRealStoreStartupPipeline(): Promise<void> {
 
 async function testMainStartupOrchestrationContract(): Promise<void> {
 	const mainSource = await readFile('main.ts', 'utf8');
-	check(mainSource.includes("const loadedFromV8 = cacheLoad.status === 'loaded' && cacheLoad.source === 'v8';"));
+	check(mainSource.includes("const hasCached = cacheLoad.status === 'loaded';"));
 	check(mainSource.includes("const requiresFullReindex = cacheLoad.status === 'loaded' && cacheLoad.requiresFullReindex;"));
-	check(/if \(loadedFromV8\) \{\s+await this\.indexer\.reconcileV8StartupSources\(\);/u.test(mainSource));
-	check(/await this\.indexer\.adoptV8ShadowProvenance\(\);\s+await this\.indexer\.diffReindex\(\);/u.test(mainSource));
-	check(!mainSource.includes("runAsyncAction('V8 shadow startup seed failed'"));
+	check(mainSource.includes("const requiresWorkflowStatsBackfill = cacheLoad.status === 'incompatible'"));
+	check(!/requiresWorkflowStatsBackfill = cacheLoad\.status === 'incompatible'\s+&& cacheLoad\.reason/u.test(mainSource));
+	check(/if \(!hasCached \|\| requiresFullReindex\) \{\s+await this\.indexer\.fullReindex\(\);/u.test(mainSource));
+	check(/if \(requiresWorkflowStatsBackfill\) \{\s+await this\.runTaskStatsBackfill\(\{ force: true, source: 'workflow-semantics' \}\);/u.test(mainSource));
+	check(/else \{\s+await this\.indexer\.reconcileV8StartupSources\(\);/u.test(mainSource));
 	equal(DEFAULT_SETTINGS.fullReindexOnStartup, false, 'default verified V8 startup must not schedule a full scan');
 }
 
 async function run(): Promise<void> {
 	await testVerifiedV8AuthorityAndParity();
 	await testEligibilityAndFallbackMatrix();
-	await testReadKillSwitch();
-	await testSemanticsMismatchSkipsV7();
+	await testSemanticsMismatchRequiresFullReindex();
 	await testHydrationFailureIsAtomic();
 	await testStagedRebuildFailureFallsBackWithoutPartialCommit();
 	await testStartupReconciliationClassifiesSourcesOnce();

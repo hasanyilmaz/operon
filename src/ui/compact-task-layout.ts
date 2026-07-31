@@ -29,6 +29,12 @@ import {
 	normalizeCustomFieldRawValue,
 } from './custom-field-surfaces';
 import { formatReminderDisplayItem, type ReminderDisplayState } from './reminder-display';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import {
+	resolveBlockedByVisualState,
+	resolveBlockedByVisualStateColor,
+	type BlockedByVisualState,
+} from '../core/blocked-by-visual-state';
 
 export type CompactVisibleChipKey = string;
 
@@ -83,6 +89,7 @@ export interface InlineTaskCompactChipEntry {
 	interactive: boolean;
 	colorRole: 'default' | 'priority' | 'status';
 	iconTone?: 'default' | 'today' | 'overdue';
+	blockedByVisualState?: BlockedByVisualState;
 	linkTarget: string | null;
 	previewLinkTarget?: string | null;
 	externalUrl?: string | null;
@@ -102,6 +109,12 @@ export interface CompactReminderItemRef {
 	fieldKey: ReminderPickerFieldKey;
 	index: number;
 	rawValue: string;
+}
+
+export function resolveCompactBlockedByIconColor(
+	entry: Pick<InlineTaskCompactChipEntry, 'blockedByVisualState'>,
+): string | null {
+	return resolveBlockedByVisualStateColor(entry.blockedByVisualState);
 }
 
 function getCompactChipItems(
@@ -196,6 +209,7 @@ export function buildInlineTaskCompactChipEntries(
 					const dependencyTask = taskById.get(operonId);
 					if (!dependencyTask) {
 						const missingEntry = createEntry(settings, key, operonId, item?.iconOnly === true, 'default', false);
+						if (key === 'blockedBy') missingEntry.blockedByVisualState = 'missing';
 						missingEntry.tooltipTitle = t('taskEditor', 'dependencyMissingTask');
 						missingEntry.tooltipContent = operonId;
 						entries.push(missingEntry);
@@ -205,6 +219,13 @@ export function buildInlineTaskCompactChipEntries(
 					const label = truncateCompactLabel(fullLabel);
 					const linkTarget = dependencyTask.primary.format === 'yaml' ? dependencyTask.primary.filePath : null;
 					const entry = createEntry(settings, key, label, item?.iconOnly === true, 'default', !!linkTarget, linkTarget);
+					if (key === 'blockedBy') {
+						entry.blockedByVisualState = resolveBlockedByVisualState(
+							dependencyTask,
+							settings.pipelines,
+							options?.workflowStatusIdentityIndex,
+						);
+					}
 					if (label !== fullLabel) {
 						entry.tooltipTitle = key === 'blocking' ? t('taskEditor', 'blocking') : t('taskEditor', 'blockedBy');
 						entry.tooltipContent = fullLabel;
@@ -637,6 +658,7 @@ export function createInlineTaskCompactChipElement(
 		entry.locationCoordinate ? 'is-location' : '',
 		entry.reminderItem ? 'is-reminder' : '',
 		entry.reminderState ? `is-${entry.reminderState}` : '',
+		entry.blockedByVisualState ? 'has-blocked-by-visual-state' : '',
 		iconOnly ? 'is-icon-only' : '',
 		entry.key === 'priority' ? 'operon-chip-priority' : 'operon-chip-date',
 		entry.interactive ? 'operon-chip-clickable' : 'operon-chip-readonly',
@@ -645,7 +667,7 @@ export function createInlineTaskCompactChipElement(
 	const ariaLabel = entry.reminderItem && !entry.interactive
 		? [entry.label, entry.tooltipContent].filter(Boolean).join('. ')
 		: entry.ariaLabel;
-	if (ariaLabel) chip.setAttribute('aria-label', ariaLabel);
+	if (ariaLabel) setAccessibleLabelWithoutTooltip(chip, ariaLabel);
 
 	const iconEl = createOwnerElement(chip, 'span');
 	iconEl.className = 'operon-inline-compact-chip-icon';

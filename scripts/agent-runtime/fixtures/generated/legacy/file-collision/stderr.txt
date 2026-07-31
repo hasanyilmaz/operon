@@ -1,0 +1,1 @@
+target exists, use --overwrite: <FIXTURE_VAULT>/Tasks/Collision.md

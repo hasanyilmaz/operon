@@ -1,0 +1,9 @@
+{
+  "id": "operon-developer-api-consumer-example",
+  "name": "Operon Developer API Consumer Example",
+  "version": "0.0.0",
+  "minAppVersion": "1.12.2",
+  "description": "Minimal type-safe consumer of the Operon in-process Developer API.",
+  "author": "Operon",
+  "isDesktopOnly": true
+}

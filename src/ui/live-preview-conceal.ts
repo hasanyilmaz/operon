@@ -25,6 +25,7 @@ import {
 	buildInlineTaskCompactChipEntries,
 	createInlineTaskCompactChipElement,
 	InlineTaskCompactChipEntry,
+	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
 import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
@@ -41,6 +42,7 @@ import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-ac
 import { showLocationMapPreview } from './location-map-preview';
 import { resolveTaskStatusIconColor } from '../core/task-color-source';
 import { createProjectSerialChipElement } from './project-serial-chip';
+import { allowsOperonDocumentAugmentations } from './editor-augmentation-scope';
 import {
 	bindAdaptiveIconOnlyExpansion,
 	bindIconOnlyChipPreview,
@@ -56,6 +58,10 @@ import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { createTaskNoteActionButton, showTaskNotePopover } from './task-note-action';
+import {
+	findCompactMarkdownUnderlineTokens,
+	isCompactMarkdownUnderlineTokenActive,
+} from './compact-markdown-underline-extension';
 
 export const operonIndexRefreshEffect = StateEffect.define<void>();
 export const operonEditorCloseRefreshEffect = StateEffect.define<void>();
@@ -560,7 +566,8 @@ class MetadataTailWidget extends WidgetType {
 			actions.appendChild(playButton);
 		}
 
-		const noteValue = fieldValues['note']?.trim() ?? '';
+		const rawNoteValue = fieldValues['note'] ?? '';
+		const noteValue = rawNoteValue.trim();
 		if (operonId && settings.inlineTaskShowNoteAction && (!isTerminal || noteValue)) {
 			const restoreCursor = getLivePreviewDescriptionEndCursor(this.task, view, this.callbacks);
 			const noteButton = createTaskNoteActionButton({
@@ -576,11 +583,13 @@ class MetadataTailWidget extends WidgetType {
 						app: this.callbacks.app,
 						anchor,
 						operonId,
-						initialValue: noteValue,
+						sourcePath: this.callbacks.getFilePath(view) || this.task.filePath,
+						lifecycleOwner: view.dom,
+						initialValue: rawNoteValue,
 						taskDescription: this.indexedTask?.description ?? this.task.description,
 						taskColor,
 						onCommit: value => this.callbacks.updateField(operonId, 'note', value, restoreCursor),
-						onClose: () => view.focus(),
+						onFocusReturn: () => view.focus(),
 					});
 				},
 			});
@@ -624,6 +633,8 @@ class MetadataTailWidget extends WidgetType {
 }
 
 export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallbacks): Extension {
+	const underlineMark = Decoration.mark({ class: 'operon-compact-markdown-underline' });
+	const hiddenUnderlineMarker = Decoration.replace({});
 	const plugin = ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet = Decoration.none;
@@ -753,6 +764,42 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 						);
 					}
 
+					const description = line.text.slice(
+						parsed.descriptionRange.from,
+						parsed.descriptionRange.to,
+					);
+					for (const token of findCompactMarkdownUnderlineTokens(description)) {
+						const absoluteToken = {
+							from: line.from + parsed.descriptionRange.from + token.from,
+							contentFrom: line.from + parsed.descriptionRange.from + token.contentFrom,
+							contentTo: line.from + parsed.descriptionRange.from + token.contentTo,
+							to: line.from + parsed.descriptionRange.from + token.to,
+						};
+						const active = isCompactMarkdownUnderlineTokenActive(
+							absoluteToken,
+							view.state.selection.ranges,
+						);
+						if (!active) {
+							decorations.add(
+								absoluteToken.from,
+								absoluteToken.contentFrom,
+								hiddenUnderlineMarker,
+							);
+						}
+						decorations.add(
+							absoluteToken.contentFrom,
+							absoluteToken.contentTo,
+							underlineMark,
+						);
+						if (!active) {
+							decorations.add(
+								absoluteToken.contentTo,
+								absoluteToken.to,
+								hiddenUnderlineMarker,
+							);
+						}
+					}
+
 					if (parsed.metadataTailRange && !revealTail) {
 						const tailWidget = new MetadataTailWidget(
 							parsed,
@@ -796,13 +843,49 @@ export function operonLivePreviewConcealExtension(callbacks: LivePreviewCallback
 				const head = view.state.selection.main.head;
 				const line = view.state.doc.lineAt(head);
 				const parsed = parseTaskLine(line.text, line.number - 1, callbacks.getFilePath(view), callbacks.getSettings().keyMappings);
-				if (!parsed?.metadataTailRange) return '';
 				const offset = head - line.from;
-				const isEditingTail = offset >= parsed.metadataTailRange.from && offset <= parsed.metadataTailRange.to;
-				return isEditingTail ? `${parsed.operonId ?? line.number}:${parsed.metadataTailRange.from}:${parsed.metadataTailRange.to}` : '';
+				const tailSignature = parsed?.metadataTailRange
+					&& offset >= parsed.metadataTailRange.from
+					&& offset <= parsed.metadataTailRange.to
+					? `${parsed.operonId ?? line.number}:${parsed.metadataTailRange.from}:${parsed.metadataTailRange.to}`
+					: '';
+				return `${tailSignature}|${this.getUnderlineSelectionSignature(view)}`;
+			}
+
+			private getUnderlineSelectionSignature(view: EditorView): string {
+				const signatures: string[] = [];
+				for (const range of view.state.selection.ranges) {
+					const firstLine = view.state.doc.lineAt(range.from).number;
+					const lastLine = view.state.doc.lineAt(range.to).number;
+					for (let lineNumber = firstLine; lineNumber <= lastLine; lineNumber++) {
+						const line = view.state.doc.line(lineNumber);
+						if (!line.text.includes('- [')) continue;
+						const parsed = parseTaskLine(
+							line.text,
+							lineNumber - 1,
+							callbacks.getFilePath(view),
+							callbacks.getSettings().keyMappings,
+						);
+						if (!parsed || (!parsed.operonId && parsed.fields.length === 0)) continue;
+						const description = line.text.slice(
+							parsed.descriptionRange.from,
+							parsed.descriptionRange.to,
+						);
+						for (const token of findCompactMarkdownUnderlineTokens(description)) {
+							const from = line.from + parsed.descriptionRange.from + token.from;
+							const to = line.from + parsed.descriptionRange.from + token.to;
+							const intersects = range.from === range.to
+								? range.from >= from && range.from < to
+								: range.from < to && range.to > from;
+							if (intersects) signatures.push(`${lineNumber}:${token.from}:${token.to}`);
+						}
+					}
+				}
+				return signatures.join(',');
 			}
 
 			private isLivePreview(view: EditorView): boolean {
+				if (!allowsOperonDocumentAugmentations(view)) return false;
 				try {
 					return view.state.field(editorLivePreviewField);
 				} catch {
@@ -883,6 +966,7 @@ export function buildMetadataTailRenderSignature(
 			entry.interactive,
 			entry.colorRole,
 			entry.iconTone ?? '',
+			entry.blockedByVisualState ?? '',
 			entry.linkTarget ?? '',
 			entry.previewLinkTarget ?? '',
 			entry.externalUrl ?? '',
@@ -1000,6 +1084,8 @@ function applyLivePreviewChipVisualStyles(
 	}
 	const dateToneColor = resolveTaskDateToneColor(entry.iconTone ?? 'default');
 	if (dateToneColor) cssProps['--operon-inline-chip-icon-color'] = dateToneColor;
+	const blockedByColor = resolveCompactBlockedByIconColor(entry);
+	if (blockedByColor) cssProps['--operon-inline-chip-icon-color'] = blockedByColor;
 	if (Object.keys(cssProps).length > 0) {
 		chip.setCssProps(cssProps);
 	}

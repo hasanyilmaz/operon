@@ -16,6 +16,7 @@ import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { t } from '../core/i18n';
 import { operonIndexRefreshEffect } from './live-preview-conceal';
 import { isPlainCheckboxPopoverEditorElement } from './plain-checkbox-popover-scope';
+import { allowsOperonDocumentAugmentations } from './editor-augmentation-scope';
 
 interface ClassicTaskConvertCallbacks {
 	getFilePath: (view: EditorView) => string;
@@ -144,6 +145,7 @@ export function operonLivePreviewClassicTaskConvertExtension(callbacks: ClassicT
 		}
 
 		private isLivePreview(view: EditorView): boolean {
+			if (!allowsOperonDocumentAugmentations(view)) return false;
 			try {
 				return view.state.field(editorLivePreviewField);
 			} catch {

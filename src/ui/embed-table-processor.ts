@@ -47,7 +47,7 @@ import {
 import {
 	formatTableTaskSource,
 } from './table/table-value-adapter';
-import { renderTableCellChips } from './table/table-cell-chip';
+import { formatTableDependencyTooltipContent, renderTableCellChips } from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
 import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table/table-description-cell';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './table/mobile-table-viewport';
@@ -142,6 +142,7 @@ import {
 } from './table/table-editing';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { showTextFieldPopover } from './text-field-popover';
+import { showTaskNotePopover } from './task-note-action';
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
 import { formatDurationHuman } from '../systems/tracker-utils';
 import {
@@ -174,6 +175,11 @@ import { showTableExportMenu } from './table/table-export-menu';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from './related-views';
 import { FilterSetModal } from './filter-set-modal';
+import {
+	bindEmbedPercentWidth,
+	parseEmbedWidthPercent,
+	type EmbedWidthPercent,
+} from './embed-percent-width';
 import {
 	buildTableLocationCellIndexSignature,
 	getTableLocationCellResolver,
@@ -221,6 +227,8 @@ interface EmbedTableInstance {
 	el: HTMLElement;
 	presetId: string;
 	visibleRowsOverride: TableEmbedVisibleRowsOverride | null;
+	widthPercent: EmbedWidthPercent | null;
+	widthCleanup: (() => void) | null;
 	sourceContext: TableEmbedSourceContext | null;
 	sourceContextResolver: (() => TableEmbedSourceContext | null) | null;
 	lastQuerySignature: string | null;
@@ -335,6 +343,7 @@ interface EmbeddedTableNoSearchResultCache {
 export interface TableEmbedReference {
 	presetId: string;
 	rows: TableEmbedVisibleRowsOverride | null;
+	widthPercent: EmbedWidthPercent | null;
 }
 
 export interface TableEmbedSourceContext {
@@ -385,14 +394,17 @@ function createEmptyEmbedTableFilterSet(name: string): FilterSet {
 export function parseTableEmbedReference(source: string): TableEmbedReference | null {
 	let presetId: string | null = null;
 	let rows: TableEmbedVisibleRowsOverride | null = null;
+	let widthPercent: EmbedWidthPercent | null = null;
 	for (const line of source.split('\n')) {
 		const trimmed = line.trim();
 		const idMatch = trimmed.match(/^presetId:\s*(.+?)\s*$/i);
 		if (idMatch) presetId = parseTableEmbedPresetIdValue(idMatch[1]);
 		const rowsMatch = trimmed.match(/^rows:\s*(.+?)\s*$/i);
 		if (rowsMatch) rows = parseTableEmbedRowsValue(rowsMatch[1]);
+		const widthMatch = trimmed.match(/^width:\s*(.+?)\s*$/i);
+		if (widthMatch) widthPercent = parseEmbedWidthPercent(widthMatch[1]);
 	}
-	return presetId ? { presetId, rows } : null;
+	return presetId ? { presetId, rows, widthPercent } : null;
 }
 
 function parseTableEmbedPresetIdValue(value: string | undefined): string | null {
@@ -509,7 +521,10 @@ export function registerEmbedTableProcessor(
 		}
 
 		const sourceContextResolver = (): TableEmbedSourceContext | null => resolveTableEmbedSourceContext(el, ctx);
-		const instance = createEmbedTableInstance(el, tableRef.presetId, tableRef.rows, sourceContextResolver);
+		const instance = createEmbedTableInstance(el, tableRef.presetId, tableRef.rows, tableRef.widthPercent, sourceContextResolver);
+		instance.widthCleanup = bindEmbedPercentWidth(instance.el, instance.widthPercent, {
+			onGeometryChange: () => handleEmbedTableWidthGeometryChange(instance, deps),
+		});
 		activeTableEmbeds.add(instance);
 		ctx.addChild(new EmbedTableRenderChild(el, instance));
 		renderEmbedTable(instance, deps);
@@ -551,12 +566,15 @@ function createEmbedTableInstance(
 	el: HTMLElement,
 	presetId: string,
 	visibleRowsOverride: TableEmbedVisibleRowsOverride | null,
+	widthPercent: EmbedWidthPercent | null,
 	sourceContextResolver: (() => TableEmbedSourceContext | null) | null,
 ): EmbedTableInstance {
 	return {
 		el,
 		presetId,
 		visibleRowsOverride,
+		widthPercent,
+		widthCleanup: null,
 		sourceContext: sourceContextResolver?.() ?? null,
 		sourceContextResolver,
 		lastQuerySignature: null,
@@ -626,6 +644,8 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	cleanupEmbedTableToolbarLayout(instance);
 	cleanupEmbedMobileViewport(instance);
 	cleanupOperonHoverTooltips(instance.el);
+	instance.widthCleanup?.();
+	instance.widthCleanup = null;
 	if (instance.visibleRowsFrame !== null) {
 		window.cancelAnimationFrame(instance.visibleRowsFrame);
 		instance.visibleRowsFrame = null;
@@ -1504,10 +1524,12 @@ function openEmbedTableFilterPopover(
 			deps.indexer.getAllTasks(),
 			deps.getSettings().priorities,
 			deps.getPinnedCache(),
-			{
-				projectSerialScopes: deps.getSettings().projectSerialScopes,
-				projectSerialScopeTasks: deps.indexer.getAllTasks(),
-				filePropertyContext: getTableFilePropertyIndex(deps.app).getSnapshot(
+				{
+					projectSerialScopes: deps.getSettings().projectSerialScopes,
+					projectSerialScopeTasks: deps.indexer.getAllTasks(),
+					dependencyTasks: deps.indexer.getAllTasks(),
+					pipelines: deps.getSettings().pipelines,
+					filePropertyContext: getTableFilePropertyIndex(deps.app).getSnapshot(
 					deps.indexer.getAllTasks(),
 					deps.indexer.getGeneration(),
 					{ keyMappings: deps.getSettings().keyMappings },
@@ -1952,12 +1974,17 @@ function saveEmbedTablePresetFromHeader(
 ): void {
 	if (updatedPreset.id === instance.presetId) {
 		instance.lastRenderedRangeKey = null;
+		instance.lastQuerySignature = null;
+		instance.lastRenderSignature = null;
 	}
 	saveEmbedTablePresetPatch(
 		deps,
 		buildEmbedTableHeaderPresetPatch(updatedPreset, scope),
 		'Operon: failed to save embedded table preset patch',
 	);
+	if (updatedPreset.id === instance.presetId && instance.el.isConnected) {
+		renderEmbedTable(instance, deps);
+	}
 }
 
 function applyEmbedTableColumnTemplate(instance: EmbedTableInstance, columns: readonly TableColumn[]): void {
@@ -2203,10 +2230,11 @@ function resolveEmbedTableSearchContext(
 		filterSet,
 		tasks,
 		priorities: settings.priorities,
-		pinnedCache: deps.getPinnedCache(),
-		projectSerialScopes: settings.projectSerialScopes,
-		filePropertyContext,
-	});
+			pinnedCache: deps.getPinnedCache(),
+			projectSerialScopes: settings.projectSerialScopes,
+			pipelines: settings.pipelines,
+			filePropertyContext,
+		});
 	const recentModifiedCutoff = getTaskSearchBoxRecentModifiedCutoff(settings);
 	const scopedTasks = filterScopedTasks.filter(task => matchesTaskSearchBoxScope(task, instance.searchScope, { recentModifiedCutoff }));
 	const parentSearchUi = buildEmbedTableParentSearchUiState(instance, deps, scopedTasks, filterScopedTasks, settings);
@@ -2951,6 +2979,7 @@ function renderEmbedTableCell(
 		column,
 		task,
 		settings: renderState.settings,
+		taskLookup: renderState.valueResolver.taskLookup,
 		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 		locationResolver: renderState.locationResolver,
 		onLocationPreview: (trigger, visual) => openEmbedTableLocationMapPreview(deps, trigger, task, visual, renderState),
@@ -3093,7 +3122,9 @@ function renderEmbedTableIconOnlyCell(
 		task,
 		locationResolver: renderState.locationResolver,
 	});
-	const content = locationVisual?.label ?? formatTableIconOnlyTooltipContent(value);
+	const content = locationVisual?.label
+		?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)
+		?? formatTableIconOnlyTooltipContent(value);
 	const fallbackIcon = getTableTaskField(column.key, renderState.settings)?.icon ?? 'text';
 	const isTaskIconColumn = column.key === 'taskIcon';
 	const isTaskTypeColumn = column.key === 'taskType';
@@ -3106,6 +3137,7 @@ function renderEmbedTableIconOnlyCell(
 			color: resolveTableIconOnlyCellAccent(column, value, {
 				task,
 				settings: renderState.settings,
+				taskLookup: renderState.valueResolver.taskLookup,
 				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			}),
 			focusable: options.focusable,
@@ -3130,6 +3162,7 @@ function renderEmbedTableIconOnlyCell(
 		color: resolveTableIconOnlyCellAccent(column, value, {
 			task,
 			settings: renderState.settings,
+			taskLookup: renderState.valueResolver.taskLookup,
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 		}),
 		focusable: options.focusable,
@@ -3618,9 +3651,16 @@ function queueEmbedTablePendingCellFocusRestore(instance: EmbedTableInstance): v
 
 function closeEmbedTableActivePicker(instance: EmbedTableInstance): void {
 	const close = instance.activePickerClose;
+	if (!close) {
+		instance.keepActivePickerOnRender = false;
+		return;
+	}
+	const preserveUntilClose = instance.keepActivePickerOnRender;
+	close();
+	if (preserveUntilClose) return;
+	if (instance.activePickerClose !== close) return;
 	instance.activePickerClose = null;
 	instance.keepActivePickerOnRender = false;
-	close?.();
 }
 
 function findEmbedTableInstance(element: HTMLElement): EmbedTableInstance | null {
@@ -3714,34 +3754,58 @@ function openEmbedTableInlineTextPopover(
 	if (instance.pendingCellKey !== null) return;
 	closeEmbedTableActivePicker(instance);
 	let closeTextPopover: (() => void) | null = null;
-	closeTextPopover = showTextFieldPopover({
-		app: deps.app,
-		anchor: cell,
-		title: fieldLabel,
-		subtitle: task.description || formatTableTaskSource(task),
-		initialValue: value,
-		taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
-		sessionKey: `embed-table-text:${task.operonId}:${column.key}`,
-		normalizeValue: normalizeEmbedTableTextFieldPopoverValue,
-		onCommit: async nextValue => {
-			if (instance.activePickerClose === closeTextPopover) {
-				instance.activePickerClose = null;
-			}
-				const success = await commitEmbedTableCellUpdate(instance, deps, cell, task, column.key, cellKey, { [payloadKey]: nextValue }, {
-					showFailureNotice: false,
-				});
-			if (success === false && closeTextPopover) {
+	const releaseTextPopoverOwnership = (): boolean => {
+		if (instance.activePickerClose !== closeTextPopover) return false;
+		instance.activePickerClose = null;
+		instance.keepActivePickerOnRender = false;
+		return true;
+	};
+	const commitValue = async (nextValue: string): Promise<boolean> => {
+			const owned = releaseTextPopoverOwnership();
+			const success = await commitEmbedTableCellUpdate(instance, deps, cell, task, column.key, cellKey, { [payloadKey]: nextValue }, {
+				showFailureNotice: false,
+			});
+			if (success === false && closeTextPopover && owned) {
 				instance.activePickerClose = closeTextPopover;
+				instance.keepActivePickerOnRender = true;
 			}
 			return success;
-		},
-		onClose: () => {
-			if (instance.activePickerClose === closeTextPopover) {
-				instance.activePickerClose = null;
-			}
-		},
-	});
+		};
+	const stableAnchor = snapshotFloatingRectAnchor(cell);
+	closeTextPopover = column.key === 'note'
+		? showTaskNotePopover({
+			app: deps.app,
+			anchor: stableAnchor,
+			operonId: task.operonId,
+			sourcePath: task.primary.filePath,
+			lifecycleOwner: instance.el,
+			initialValue: value,
+			taskDescription: task.description || formatTableTaskSource(task),
+			taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+			onCommit: commitValue,
+			onClose: releaseTextPopoverOwnership,
+			onFocusReturn: () => {
+				if (cell.isConnected) cell.focus();
+			},
+		})
+		: showTextFieldPopover({
+			app: deps.app,
+			anchor: stableAnchor,
+			title: fieldLabel,
+			subtitle: task.description || formatTableTaskSource(task),
+			subtitlePresentation: 'compact-markdown',
+			initialValue: value,
+			taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+			sessionKey: `table-text:${task.operonId}:description`,
+			editor: {
+				kind: 'compact-markdown',
+				sourcePath: task.primary.filePath,
+			},
+			onCommit: commitValue,
+			onClose: releaseTextPopoverOwnership,
+		});
 	instance.activePickerClose = closeTextPopover;
+	instance.keepActivePickerOnRender = true;
 }
 
 function renderEmbedTableSourceCell(
@@ -3910,6 +3974,15 @@ function cleanupEmbedTableToolbarLayout(instance: EmbedTableInstance): void {
 	instance.toolbarLayoutCleanup = null;
 }
 
+function handleEmbedTableWidthGeometryChange(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
+	cleanupTableHeaderActiveResize(instance.headerInteractionState);
+	closeEmbedTableActivePicker(instance);
+	closeFloatingPanelsForRoot(instance.el);
+	closeIconOnlyChipPreviewsForRoot(instance.el);
+	instance.lastRenderedRangeKey = null;
+	scheduleEmbedTableVisibleRowsRender(instance, deps);
+}
+
 function restoreEmbedTableSearchFocus(
 	instance: EmbedTableInstance,
 	input: HTMLInputElement | null | undefined,
@@ -3937,14 +4010,6 @@ function restoreEmbedTableSearchFocus(
 	} catch {
 		// Search focus is enough when a browser/theme rejects selection restoration.
 	}
-}
-
-function normalizeEmbedTableTextFieldPopoverValue(value: string): string {
-	return value.split(/\r?\n/u)
-		.map(line => line.trim())
-		.filter(Boolean)
-		.join(' ')
-		.trim();
 }
 
 function closeEmbedTableTransientUi(root: HTMLElement): void {

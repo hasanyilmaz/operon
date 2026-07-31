@@ -55,7 +55,7 @@ import {
 import {
 	formatTableTaskSource,
 } from './table-value-adapter';
-import { renderTableCellChips } from './table-cell-chip';
+import { formatTableDependencyTooltipContent, renderTableCellChips } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table-description-cell';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './mobile-table-viewport';
@@ -143,6 +143,7 @@ import {
 } from './table-editing';
 import { openTaskFieldPicker } from '../task-field-picker-dispatch';
 import { showTextFieldPopover } from '../text-field-popover';
+import { showTaskNotePopover } from '../task-note-action';
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from '../tracker-session-edit-modal';
 import { formatDurationHuman } from '../../systems/tracker-utils';
 import { getOwnerDocument, getOwnerWindow } from '../../core/dom-compat';
@@ -1499,10 +1500,12 @@ export class OperonTableView extends FileView {
 					this.indexer.getAllTasks(),
 					this.getSettings().priorities,
 					this.getPinnedCache(),
-						{
-							projectSerialScopes: this.getSettings().projectSerialScopes,
-							projectSerialScopeTasks: this.indexer.getAllTasks(),
-							filePropertyContext: getTableFilePropertyIndex(this.app).getSnapshot(
+							{
+								projectSerialScopes: this.getSettings().projectSerialScopes,
+								projectSerialScopeTasks: this.indexer.getAllTasks(),
+								dependencyTasks: this.indexer.getAllTasks(),
+								pipelines: this.getSettings().pipelines,
+								filePropertyContext: getTableFilePropertyIndex(this.app).getSnapshot(
 								this.indexer.getAllTasks(),
 								this.indexer.getGeneration(),
 								{ keyMappings: this.getSettings().keyMappings },
@@ -2233,7 +2236,9 @@ export class OperonTableView extends FileView {
 			task,
 			locationResolver: renderState.locationResolver,
 		});
-		const content = locationVisual?.label ?? formatTableIconOnlyTooltipContent(value);
+		const content = locationVisual?.label
+			?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)
+			?? formatTableIconOnlyTooltipContent(value);
 		const fallbackIcon = getTableTaskField(column.key, renderState.settings)?.icon ?? 'text';
 		const isTaskIconColumn = column.key === 'taskIcon';
 		const isTaskTypeColumn = column.key === 'taskType';
@@ -2246,6 +2251,7 @@ export class OperonTableView extends FileView {
 				color: resolveTableIconOnlyCellAccent(column, value, {
 					task,
 					settings: renderState.settings,
+					taskLookup: renderState.valueResolver.taskLookup,
 					workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 				}),
 				focusable: options.focusable,
@@ -2270,6 +2276,7 @@ export class OperonTableView extends FileView {
 			color: resolveTableIconOnlyCellAccent(column, value, {
 				task,
 				settings: renderState.settings,
+				taskLookup: renderState.valueResolver.taskLookup,
 				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			}),
 			focusable: options.focusable,
@@ -2308,34 +2315,58 @@ export class OperonTableView extends FileView {
 		if (this.pendingCellKey !== null) return;
 		this.closeActivePicker();
 		let closeTextPopover: (() => void) | null = null;
-		closeTextPopover = showTextFieldPopover({
-			app: this.app,
-			anchor: cell,
-			title: fieldLabel,
-			subtitle: task.description || formatTableTaskSource(task),
-			initialValue: value,
-			taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
-			sessionKey: `table-text:${task.operonId}:${column.key}`,
-			normalizeValue: normalizeTableTextFieldPopoverValue,
-			onCommit: async nextValue => {
-				if (this.activePickerClose === closeTextPopover) {
-					this.activePickerClose = null;
-				}
+		const releaseTextPopoverOwnership = (): boolean => {
+			if (this.activePickerClose !== closeTextPopover) return false;
+			this.activePickerClose = null;
+			this.keepActivePickerOnRender = false;
+			return true;
+		};
+		const commitValue = async (nextValue: string): Promise<boolean> => {
+				const owned = releaseTextPopoverOwnership();
 				const success = await this.commitTaskCellUpdate(cell, task, column.key, cellKey, { [payloadKey]: nextValue }, {
 					showFailureNotice: false,
 				});
-				if (success === false && closeTextPopover) {
+				if (success === false && closeTextPopover && owned) {
 					this.activePickerClose = closeTextPopover;
+					this.keepActivePickerOnRender = true;
 				}
 				return success;
-			},
-			onClose: () => {
-				if (this.activePickerClose === closeTextPopover) {
-					this.activePickerClose = null;
-				}
-			},
-		});
+			};
+		const stableAnchor = snapshotFloatingRectAnchor(cell);
+		closeTextPopover = column.key === 'note'
+			? showTaskNotePopover({
+				app: this.app,
+				anchor: stableAnchor,
+				operonId: task.operonId,
+				sourcePath: task.primary.filePath,
+				lifecycleOwner: this.contentEl,
+				initialValue: value,
+				taskDescription: task.description || formatTableTaskSource(task),
+				taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+				onCommit: commitValue,
+				onClose: releaseTextPopoverOwnership,
+				onFocusReturn: () => {
+					if (cell.isConnected) cell.focus();
+				},
+			})
+			: showTextFieldPopover({
+				app: this.app,
+				anchor: stableAnchor,
+				title: fieldLabel,
+				subtitle: task.description || formatTableTaskSource(task),
+				subtitlePresentation: 'compact-markdown',
+				initialValue: value,
+				taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+				sessionKey: `table-text:${task.operonId}:description`,
+				editor: {
+					kind: 'compact-markdown',
+					sourcePath: task.primary.filePath,
+				},
+				onCommit: commitValue,
+				onClose: releaseTextPopoverOwnership,
+			});
 		this.activePickerClose = closeTextPopover;
+		this.keepActivePickerOnRender = true;
 	}
 
 	private renderSourceCell(
@@ -2454,6 +2485,7 @@ export class OperonTableView extends FileView {
 			column,
 			task,
 			settings: renderState.settings,
+			taskLookup: renderState.valueResolver.taskLookup,
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			locationResolver: renderState.locationResolver,
 			onLocationPreview: (trigger, visual) => this.openLocationMapPreview(trigger, task, visual, renderState),
@@ -2985,9 +3017,16 @@ export class OperonTableView extends FileView {
 
 	private closeActivePicker(): void {
 		const close = this.activePickerClose;
+		if (!close) {
+			this.keepActivePickerOnRender = false;
+			return;
+		}
+		const preserveUntilClose = this.keepActivePickerOnRender;
+		close();
+		if (preserveUntilClose) return;
+		if (this.activePickerClose !== close) return;
 		this.activePickerClose = null;
 		this.keepActivePickerOnRender = false;
-		close?.();
 	}
 
 	private closeSearchTransientUi(): void {
@@ -3284,10 +3323,11 @@ export class OperonTableView extends FileView {
 			filterSet,
 			tasks,
 			priorities: settings.priorities,
-			pinnedCache: this.getPinnedCache(),
-			projectSerialScopes: settings.projectSerialScopes,
-			filePropertyContext,
-		});
+				pinnedCache: this.getPinnedCache(),
+				projectSerialScopes: settings.projectSerialScopes,
+				pipelines: settings.pipelines,
+				filePropertyContext,
+			});
 		const recentModifiedCutoff = getTaskSearchBoxRecentModifiedCutoff(settings);
 		const scopedTasks = filterScopedTasks.filter(task => matchesTaskSearchBoxScope(task, this.searchScope, { recentModifiedCutoff }));
 		const parentSearchUi = this.buildParentSearchUiState(this.state.searchQuery, scopedTasks, filterScopedTasks, settings);
@@ -3951,6 +3991,7 @@ export class OperonTableView extends FileView {
 
 	private savePresetFromHeader(updatedPreset: TablePreset, scope: TableHeaderPresetPatchScope): void {
 		this.savePresetPatch(this.buildHeaderPresetPatch(updatedPreset, scope), 'Operon: failed to save table preset patch');
+		this.markDirty();
 	}
 
 	private cleanupActiveResize(): void {
@@ -4014,14 +4055,6 @@ export class OperonTableView extends FileView {
 
 function getTableSummaryFunctionLabel(summaryFunction: string): string {
 	return t('table', `summary${summaryFunction}`);
-}
-
-function normalizeTableTextFieldPopoverValue(value: string): string {
-	return value.split(/\r?\n/u)
-		.map(line => line.trim())
-		.filter(Boolean)
-		.join(' ')
-		.trim();
 }
 
 function areTableLeafStatesEqual(left: TableLeafState, right: TableLeafState): boolean {

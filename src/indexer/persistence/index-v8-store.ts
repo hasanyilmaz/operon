@@ -31,14 +31,12 @@ const MAX_IO_CONCURRENCY = 8;
 const CONTENT_ADDRESSED_SHARD = /^(?:0[0-9a-f]|1[0-9a-f])-[a-f0-9]{64}\.json$/u;
 const OWNED_SHARD_TEMP_FILE = /^(?:0[0-9a-f]|1[0-9a-f])-[a-f0-9]{64}\.json\.tmp-\d{10,}-[a-z0-9]{6}$/u;
 const OWNED_MANIFEST_TEMP_FILE = /^manifest\.json\.tmp-\d{10,}-[a-z0-9]{6}$/u;
-const ALTERNATE_MANIFEST_FILE = /^manifest.*\.json$/iu;
-const MAX_ALTERNATE_MANIFEST_CANDIDATES = 32;
-const DEFAULT_ORPHAN_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
-const DEFAULT_TEMP_RETENTION_MS = 24 * 60 * 60 * 1_000;
+const ALTERNATE_MANIFEST_FILE = /^manifest(?: \([^/]*(?:conflict|conflicted)[^/]*\)|\.sync-conflict-[a-z0-9._-]+)\.json$/iu;
+const OWNED_SHARD_CLEANUP_CLAIM = /^(?:0[0-9a-f]|1[0-9a-f])-[a-f0-9]{64}\.json\.cleanup-\d{10,}-[a-z0-9]{6}$/u;
+const OWNED_MANIFEST_CLEANUP_CLAIM = /^manifest(?: \([^/]*(?:conflict|conflicted)[^/]*\)|\.sync-conflict-[a-z0-9._-]+)?\.json\.cleanup-\d{10,}-[a-z0-9]{6}$/iu;
 const DEFAULT_CLEANUP_MAX_FILES = 32;
 const DEFAULT_CLEANUP_MAX_BYTES = 16_000_000;
 const MAX_RECOVERY_MARKER_BYTES = 4_096;
-const MAX_LEGACY_INDEX_RETIREMENT_BYTES = 64_000_000;
 const RECOVERY_MARKER_PAYLOAD = '{"version":1,"required":true}';
 const ADAPTER_WRITE_QUEUES = new WeakMap<object, WriteQueue>();
 
@@ -153,15 +151,13 @@ export interface IndexV8StorageInspection {
 
 export interface IndexV8CleanupOptions {
 	nowMs?: number;
-	orphanRetentionMs?: number;
-	tempRetentionMs?: number;
 	maxFiles?: number;
 	maxBytes?: number;
 }
 
 export interface IndexV8CleanupCandidate {
 	name: string;
-	kind: 'orphan-shard' | 'owned-temp';
+	kind: 'alternate-manifest' | 'orphan-shard' | 'owned-temp';
 	path: string;
 	sizeBytes: number;
 	mtimeMs: number;
@@ -170,9 +166,9 @@ export interface IndexV8CleanupCandidate {
 export interface IndexV8CleanupPlan {
 	activeSnapshotId: string;
 	expectedManifestPayload: string;
-	expectedAlternateManifests: IndexV8SealedFile[];
 	inspectedAt: number;
 	candidates: IndexV8CleanupCandidate[];
+	hasMoreCandidates: boolean;
 	suppressedReasons: string[];
 }
 
@@ -181,6 +177,7 @@ export interface IndexV8CleanupResult {
 	deletedCount: number;
 	deletedBytes: number;
 	skippedCount: number;
+	backlogRemaining: boolean;
 	errorCodes: string[];
 }
 
@@ -189,34 +186,13 @@ export interface IndexV8FileFingerprint {
 	mtimeMs: number;
 }
 
-export interface IndexV8SealedFile extends IndexV8FileFingerprint {
-	path: string;
-	sha256: string;
-}
-
 export interface IndexV8MaintenanceDiagnostics {
 	inspection: IndexV8StorageInspection;
 	manifestCode?: string;
 	verifiedSnapshot: boolean;
 	entryCounts: Record<IndexV8StorageEntry['kind'], number>;
 	entryBytes: Record<IndexV8StorageEntry['kind'], number>;
-	legacyIndex: { status: 'missing' | 'file' | 'invalid' | 'io-error'; fingerprint?: IndexV8FileFingerprint };
 	recoveryMarker: { status: 'missing' | 'required' | 'invalid' | 'io-error' };
-}
-
-export interface IndexV7RetirementPlan {
-	activeSnapshotId: string;
-	expectedManifestPayload: string;
-	legacyIndexFingerprint: IndexV8FileFingerprint | null;
-	expectedRecoveryMarkerPayload: string | null;
-	plannedAt: number;
-	suppressedReasons: string[];
-}
-
-export interface IndexV7RetirementResult {
-	status: 'applied' | 'unchanged' | 'stale' | 'suppressed' | 'partial';
-	deletedBytes: number;
-	errorCodes: string[];
 }
 
 export interface IndexV8CanonicalResetPlan {
@@ -245,7 +221,6 @@ export interface IndexV8CanonicalResetResult {
 export interface IndexV8StoreOptions {
 	ioConcurrency?: number;
 	collectLoadMetrics?: boolean;
-	legacyIndexPath?: string;
 	recoveryRequiredPath?: string;
 }
 
@@ -285,7 +260,6 @@ export class IndexV8Store {
 	private readonly writeQueue: WriteQueue;
 	private readonly ioConcurrency: number;
 	private readonly collectLoadMetrics: boolean | undefined;
-	private readonly legacyIndexPath: string;
 	private readonly recoveryRequiredPath: string;
 	private readonly verifiedShardFingerprints = new Map<string, { sha256: string; bytes: number; mtimeMs: number }>();
 	private verifiedSnapshotId: string | null = null;
@@ -299,7 +273,6 @@ export class IndexV8Store {
 		this.ioConcurrency = options.ioConcurrency ?? DEFAULT_IO_CONCURRENCY;
 		this.collectLoadMetrics = options.collectLoadMetrics;
 		const runtimeRoot = this.paths.rootPath.slice(0, this.paths.rootPath.lastIndexOf('/'));
-		this.legacyIndexPath = options.legacyIndexPath ?? `${runtimeRoot}/index.json`;
 		this.recoveryRequiredPath = options.recoveryRequiredPath ?? `${runtimeRoot}/index-v8-recovery-required.json`;
 		if (!Number.isInteger(this.ioConcurrency) || this.ioConcurrency < 1 || this.ioConcurrency > MAX_IO_CONCURRENCY) {
 			throw new RangeError(`ioConcurrency must be an integer from 1 to ${MAX_IO_CONCURRENCY}`);
@@ -811,8 +784,6 @@ export class IndexV8Store {
 		}
 		const rootFiles = await this.listFileNames(this.paths.rootPath);
 		const shardFiles = await this.listFileNames(this.paths.shardsPath);
-		const alternateProtection = await this.inspectAlternateManifestProtection(rootFiles);
-		for (const name of alternateProtection.protectedShardNames) protectedShardNames.add(name);
 
 		const activeShardNames = new Set(active.manifest?.shards.map(shardFileName) ?? []);
 		for (const name of shardFiles) {
@@ -824,7 +795,9 @@ export class IndexV8Store {
 				name,
 				kind: activeShardNames.has(name)
 					? 'active-shard'
-					: CONTENT_ADDRESSED_SHARD.test(name) ? 'orphan-shard' : OWNED_SHARD_TEMP_FILE.test(name) ? 'owned-temp' : 'foreign',
+					: CONTENT_ADDRESSED_SHARD.test(name)
+						? 'orphan-shard'
+						: OWNED_SHARD_TEMP_FILE.test(name) || OWNED_SHARD_CLEANUP_CLAIM.test(name) ? 'owned-temp' : 'foreign',
 				path,
 				sizeBytes: stat.size,
 				mtimeMs: stat.mtime,
@@ -838,7 +811,9 @@ export class IndexV8Store {
 			entries.push({
 				name,
 				path: `${this.paths.rootPath}/${name}`,
-				kind: alternateProtection.validAlternateNames.has(name) ? 'alternate-manifest' : OWNED_MANIFEST_TEMP_FILE.test(name) ? 'owned-temp' : 'foreign',
+				kind: ALTERNATE_MANIFEST_FILE.test(name)
+					? 'alternate-manifest'
+					: OWNED_MANIFEST_TEMP_FILE.test(name) || OWNED_MANIFEST_CLEANUP_CLAIM.test(name) ? 'owned-temp' : 'foreign',
 				sizeBytes: stat.size,
 				mtimeMs: stat.mtime,
 			});
@@ -850,7 +825,7 @@ export class IndexV8Store {
 			...(active.payload !== null ? { activeManifestPayload: active.payload } : {}),
 			entries: entries.sort((left, right) => compareText(left.name, right.name)),
 			protectedShardNames: [...protectedShardNames].sort(compareText),
-			cleanupSuppressedReasons: alternateProtection.cleanupSuppressedReasons,
+			cleanupSuppressedReasons: [],
 		};
 	}
 
@@ -862,17 +837,6 @@ export class IndexV8Store {
 			entryCounts[entry.kind] += 1;
 			entryBytes[entry.kind] += entry.sizeBytes;
 		}
-		let legacyIndex: IndexV8MaintenanceDiagnostics['legacyIndex'];
-		try {
-			const stat = await this.adapter.stat(this.legacyIndexPath);
-			legacyIndex = !stat
-				? { status: 'missing' }
-				: stat.type === 'file'
-					? { status: 'file', fingerprint: statFingerprint(stat) }
-					: { status: 'invalid' };
-		} catch {
-			legacyIndex = { status: 'io-error' };
-		}
 		const marker = await this.inspectRecoveryMarker();
 		return {
 			inspection,
@@ -881,111 +845,8 @@ export class IndexV8Store {
 				&& inspection.activeSnapshotId === this.verifiedSnapshotId,
 			entryCounts,
 			entryBytes,
-			legacyIndex,
 			recoveryMarker: { status: marker.status },
 		};
-	}
-
-	async planLegacyIndexV7Retirement(nowMs = Date.now()): Promise<IndexV7RetirementPlan> {
-		const inspection = await this.inspect();
-		const marker = await this.inspectRecoveryMarker();
-		const suppressedReasons = [...inspection.cleanupSuppressedReasons];
-		let legacyIndexFingerprint: IndexV8FileFingerprint | null = null;
-		try {
-			const stat = await this.adapter.stat(this.legacyIndexPath);
-			if (!stat) suppressedReasons.push('legacy-index-missing');
-			else if (stat.type !== 'file') suppressedReasons.push('legacy-index-not-file');
-			else if (stat.size > MAX_LEGACY_INDEX_RETIREMENT_BYTES) suppressedReasons.push('legacy-index-too-large');
-			else legacyIndexFingerprint = statFingerprint(stat);
-		} catch {
-			suppressedReasons.push('legacy-index-io-error');
-		}
-		if (inspection.manifestStatus !== 'loaded' || !inspection.activeSnapshotId || !inspection.activeManifestPayload) {
-			suppressedReasons.push(`active-manifest-${inspection.manifestStatus}`);
-		}
-		if (inspection.activeSnapshotId !== this.verifiedSnapshotId) suppressedReasons.push('active-snapshot-not-verified');
-		if (marker.status !== 'missing') suppressedReasons.push(`recovery-marker-${marker.status}`);
-		return {
-			activeSnapshotId: inspection.activeSnapshotId ?? '',
-			expectedManifestPayload: inspection.activeManifestPayload ?? '',
-			legacyIndexFingerprint,
-			expectedRecoveryMarkerPayload: marker.payload,
-			plannedAt: nowMs,
-			suppressedReasons: [...new Set(suppressedReasons)].sort(compareText),
-		};
-	}
-
-	async applyLegacyIndexV7Retirement(plan: IndexV7RetirementPlan): Promise<IndexV7RetirementResult> {
-		const sealedPlan: IndexV7RetirementPlan = {
-			...plan,
-			legacyIndexFingerprint: plan.legacyIndexFingerprint ? { ...plan.legacyIndexFingerprint } : null,
-			suppressedReasons: [...plan.suppressedReasons],
-		};
-		const unchanged: IndexV7RetirementResult = { status: 'unchanged', deletedBytes: 0, errorCodes: [] };
-		if (sealedPlan.suppressedReasons.length > 0) return { ...unchanged, status: 'suppressed' };
-		if (!sealedPlan.legacyIndexFingerprint) return { ...unchanged, status: 'suppressed' };
-		const expectedLegacyFingerprint = sealedPlan.legacyIndexFingerprint;
-		return await this.writeQueue.enqueue(this.paths.rootPath, async () => {
-			let claimedPath: string | null = null;
-			try {
-				const verified = await this.load();
-				if (verified.status !== 'loaded'
-					|| verified.manifest.snapshotId !== sealedPlan.activeSnapshotId
-					|| verified.manifestPayload !== sealedPlan.expectedManifestPayload) {
-					return { ...unchanged, status: 'stale' };
-				}
-				const marker = await this.inspectRecoveryMarker();
-				if (marker.payload !== sealedPlan.expectedRecoveryMarkerPayload || marker.status !== 'missing') {
-					return { ...unchanged, status: 'stale' };
-				}
-				const stat = await this.adapter.stat(this.legacyIndexPath);
-				if (!stat) return unchanged;
-				if (stat.type !== 'file' || !fingerprintsEqual(statFingerprint(stat), expectedLegacyFingerprint)) {
-					return { ...unchanged, status: 'stale' };
-				}
-				const legacyPayload = await this.readOptionalBounded(
-					this.legacyIndexPath,
-					MAX_LEGACY_INDEX_RETIREMENT_BYTES,
-					'Legacy V7 index exceeds the retirement size limit',
-				);
-				if (legacyPayload === null || utf8ByteLength(legacyPayload) !== stat.size) {
-					return { ...unchanged, status: 'stale' };
-				}
-				const preclaimSha256 = await sha256Hex(legacyPayload);
-				claimedPath = `${this.legacyIndexPath}.retire-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-				await this.adapter.rename(this.legacyIndexPath, claimedPath);
-				const claimedStat = await this.adapter.stat(claimedPath);
-				const claimedPayload = await this.readOptionalBounded(
-					claimedPath,
-					MAX_LEGACY_INDEX_RETIREMENT_BYTES,
-					'Claimed V7 index exceeds the retirement size limit',
-				);
-				if (!claimedStat || claimedStat.type !== 'file'
-					|| claimedPayload === null
-					|| !fingerprintsEqual(statFingerprint(claimedStat), expectedLegacyFingerprint)
-					|| await sha256Hex(claimedPayload) !== preclaimSha256) {
-					await this.restoreClaimNoClobber(claimedPath, this.legacyIndexPath);
-					claimedPath = null;
-					return { ...unchanged, status: 'stale' };
-				}
-				const postMarker = await this.inspectRecoveryMarker();
-				const postVerified = await this.load();
-				if (postMarker.status !== 'missing'
-					|| postVerified.status !== 'loaded'
-					|| postVerified.manifest.snapshotId !== sealedPlan.activeSnapshotId
-					|| postVerified.manifestPayload !== sealedPlan.expectedManifestPayload) {
-					await this.restoreClaimNoClobber(claimedPath, this.legacyIndexPath);
-					claimedPath = null;
-					return { ...unchanged, status: 'stale' };
-				}
-				await this.adapter.remove(claimedPath);
-				claimedPath = null;
-				return { status: 'applied', deletedBytes: stat.size, errorCodes: [] };
-			} catch {
-				if (claimedPath) await this.restoreClaimNoClobber(claimedPath, this.legacyIndexPath);
-				return { ...unchanged, status: 'partial', errorCodes: ['RETIREMENT_IO_FAILED'] };
-			}
-		});
 	}
 
 	async planCanonicalV8Reset(
@@ -1161,92 +1022,109 @@ export class IndexV8Store {
 
 	async planCleanup(options: IndexV8CleanupOptions = {}): Promise<IndexV8CleanupPlan> {
 		const inspectedAt = options.nowMs ?? Date.now();
-		const orphanRetentionMs = options.orphanRetentionMs ?? DEFAULT_ORPHAN_RETENTION_MS;
-		const tempRetentionMs = options.tempRetentionMs ?? DEFAULT_TEMP_RETENTION_MS;
 		const maxFiles = Math.min(options.maxFiles ?? DEFAULT_CLEANUP_MAX_FILES, DEFAULT_CLEANUP_MAX_FILES);
 		const maxBytes = Math.min(options.maxBytes ?? DEFAULT_CLEANUP_MAX_BYTES, DEFAULT_CLEANUP_MAX_BYTES);
-		if (![orphanRetentionMs, tempRetentionMs, maxFiles, maxBytes].every(value => Number.isFinite(value) && value >= 0)) {
+		if (![maxFiles, maxBytes].every(value => Number.isFinite(value) && value >= 0)) {
 			throw new RangeError('Cleanup limits must be finite non-negative numbers');
 		}
+		const verified = await this.load();
 		const inspection = await this.inspect();
-		const alternateSeal = await this.inspectAlternateManifestProtection();
-		const suppressedReasons = [
-			...inspection.cleanupSuppressedReasons,
-			...alternateSeal.cleanupSuppressedReasons,
-		];
-		if (inspection.manifestStatus !== 'loaded' || !inspection.activeSnapshotId || !inspection.activeManifestPayload) {
-			suppressedReasons.push(`active-manifest-${inspection.manifestStatus}`);
+		const marker = await this.inspectRecoveryMarker();
+		const suppressedReasons = [...inspection.cleanupSuppressedReasons];
+		if (verified.status !== 'loaded') {
+			suppressedReasons.push(`active-snapshot-${verified.status}`);
+		} else if (inspection.activeSnapshotId !== verified.manifest.snapshotId
+			|| inspection.activeManifestPayload !== verified.manifestPayload) {
+			suppressedReasons.push('active-manifest-changed-during-planning');
 		}
-		if (inspection.activeSnapshotId !== this.verifiedSnapshotId) suppressedReasons.push('active-snapshot-not-verified');
-		const protectedNames = new Set([
-			...inspection.protectedShardNames,
-			...alternateSeal.protectedShardNames,
-		]);
-		const eligible = inspection.entries
-			.filter((entry): entry is IndexV8StorageEntry & { kind: 'orphan-shard' | 'owned-temp' } => (
-				(entry.kind === 'orphan-shard' && !protectedNames.has(entry.name) && entry.mtimeMs <= inspectedAt - orphanRetentionMs)
-				|| (entry.kind === 'owned-temp' && entry.mtimeMs <= inspectedAt - tempRetentionMs)
-			))
+		if (marker.status !== 'missing') suppressedReasons.push(`recovery-marker-${marker.status}`);
+		const alternates = inspection.entries.filter(
+			(entry): entry is IndexV8StorageEntry & { kind: 'alternate-manifest' } => entry.kind === 'alternate-manifest',
+		);
+		const eligibleOwnedEntries = inspection.entries.filter(
+			(entry): entry is IndexV8StorageEntry & { kind: 'orphan-shard' | 'owned-temp' } => (
+				entry.kind === 'orphan-shard' || entry.kind === 'owned-temp'
+			),
+		);
+		const processingAlternates = alternates.length > 0;
+		const eligible = (processingAlternates ? alternates : eligibleOwnedEntries)
 			.sort((left, right) => left.mtimeMs - right.mtimeMs || compareText(left.name, right.name));
 		const candidates: IndexV8CleanupCandidate[] = [];
 		let bytes = 0;
 		if (suppressedReasons.length === 0) {
 			for (const entry of eligible) {
 				if (candidates.length >= Math.floor(maxFiles)) break;
-				if (bytes + entry.sizeBytes > maxBytes) continue;
+				const budgetBytes = entry.kind === 'alternate-manifest' ? 0 : entry.sizeBytes;
+				if (bytes + budgetBytes > maxBytes) continue;
 				candidates.push({ name: entry.name, kind: entry.kind, path: entry.path, sizeBytes: entry.sizeBytes, mtimeMs: entry.mtimeMs });
-				bytes += entry.sizeBytes;
+				bytes += budgetBytes;
 			}
 		}
 		return {
 			activeSnapshotId: inspection.activeSnapshotId ?? '',
 			expectedManifestPayload: inspection.activeManifestPayload ?? '',
-			expectedAlternateManifests: alternateSeal.sealedFiles.map(file => ({ ...file })),
 			inspectedAt,
 			candidates,
+			hasMoreCandidates: suppressedReasons.length === 0
+				&& (candidates.length < eligible.length || (processingAlternates && eligibleOwnedEntries.length > 0)),
 			suppressedReasons: [...new Set(suppressedReasons)].sort(compareText),
 		};
 	}
 
-	async applyCleanup(plan: IndexV8CleanupPlan): Promise<IndexV8CleanupResult> {
+	async applyCleanup(plan: IndexV8CleanupPlan, isActive: () => boolean = () => true): Promise<IndexV8CleanupResult> {
 		const sealedPlan: IndexV8CleanupPlan = {
 			activeSnapshotId: plan.activeSnapshotId,
 			expectedManifestPayload: plan.expectedManifestPayload,
-			expectedAlternateManifests: plan.expectedAlternateManifests?.map(file => ({ ...file })) ?? [],
 			inspectedAt: plan.inspectedAt,
 			candidates: plan.candidates.map(candidate => ({ ...candidate })),
+			hasMoreCandidates: plan.hasMoreCandidates,
 			suppressedReasons: [...plan.suppressedReasons],
 		};
-		const result: IndexV8CleanupResult = { status: 'unchanged', deletedCount: 0, deletedBytes: 0, skippedCount: 0, errorCodes: [] };
+		const result: IndexV8CleanupResult = {
+			status: 'unchanged',
+			deletedCount: 0,
+			deletedBytes: 0,
+			skippedCount: 0,
+			backlogRemaining: sealedPlan.hasMoreCandidates,
+			errorCodes: [],
+		};
 		if (sealedPlan.suppressedReasons.length > 0) return { ...result, status: 'suppressed' };
-		if (!(await this.cleanupManifestMatches(sealedPlan))) return { ...result, status: 'stale', skippedCount: sealedPlan.candidates.length };
-		if (!(await this.alternateManifestSealMatches(sealedPlan.expectedAlternateManifests))) {
-			return { ...result, status: 'stale', skippedCount: sealedPlan.candidates.length };
+		if (!(await this.cleanupAuthorityMatches(sealedPlan))) {
+			return { ...result, status: 'stale', skippedCount: sealedPlan.candidates.length, backlogRemaining: true };
 		}
 		for (const candidate of sealedPlan.candidates) {
+			if (!isActive()) {
+				result.skippedCount += sealedPlan.candidates.length - result.deletedCount - result.skippedCount;
+				return { ...result, status: result.deletedCount > 0 ? 'partial' : 'stale', backlogRemaining: true };
+			}
 			const shouldContinue = await this.writeQueue.enqueue(this.paths.rootPath, async () => {
 				let candidateDeleted = false;
 				let candidateClaimPath: string | null = null;
+				let candidateBackupPath: string | null = null;
+				let recoverablePayload: string | null = null;
 				try {
-					if (!(await this.cleanupManifestMatches(sealedPlan))) return false;
+					if (!isActive()) return false;
+					const initialAuthorityMatches = await this.cleanupAuthorityMatches(sealedPlan);
+					if (!isActive() || !initialAuthorityMatches) return false;
 					const isShardTemp = OWNED_SHARD_TEMP_FILE.test(candidate.name);
 					const isManifestTemp = OWNED_MANIFEST_TEMP_FILE.test(candidate.name);
-					const expectedPath = candidate.kind === 'orphan-shard' || isShardTemp
+					const isShardClaim = OWNED_SHARD_CLEANUP_CLAIM.test(candidate.name);
+					const isManifestClaim = OWNED_MANIFEST_CLEANUP_CLAIM.test(candidate.name);
+					const expectedPath = candidate.kind === 'orphan-shard' || isShardTemp || isShardClaim
 						? `${this.paths.shardsPath}/${candidate.name}`
 						: `${this.paths.rootPath}/${candidate.name}`;
 					if (candidate.path !== expectedPath
-						|| (candidate.kind === 'orphan-shard'
-							? !CONTENT_ADDRESSED_SHARD.test(candidate.name)
-							: !isShardTemp && !isManifestTemp)) {
+						|| (candidate.kind === 'alternate-manifest'
+							? !ALTERNATE_MANIFEST_FILE.test(candidate.name)
+							: candidate.kind === 'orphan-shard'
+								? !CONTENT_ADDRESSED_SHARD.test(candidate.name)
+								: !isShardTemp && !isManifestTemp && !isShardClaim && !isManifestClaim)) {
 						result.skippedCount += 1;
 						result.errorCodes.push('INVALID_PLAN');
 						return true;
 					}
-					const alternateProtection = await this.inspectAlternateManifestProtection();
 					const currentStat = await this.adapter.stat(expectedPath);
-					if (alternateProtection.cleanupSuppressedReasons.length > 0
-						|| !sealedFilesEqual(alternateProtection.sealedFiles, sealedPlan.expectedAlternateManifests)
-						|| alternateProtection.protectedShardNames.has(candidate.name)
+					if (!isActive()
 						|| !currentStat
 						|| currentStat.type !== 'file'
 						|| currentStat.size !== candidate.sizeBytes
@@ -1254,27 +1132,73 @@ export class IndexV8Store {
 						result.skippedCount += 1;
 						return true;
 					}
-					// Sync may activate a new manifest while alternate protection and
-					// candidate metadata are being checked. Seal authority again at the
-					// last possible point before deletion.
-					if (!(await this.cleanupManifestMatches(sealedPlan))) return false;
-					if (!(await this.alternateManifestSealMatches(sealedPlan.expectedAlternateManifests))) return false;
+					// Sync may activate a new canonical manifest while candidate metadata
+					// is being checked. Seal authority again immediately around the claim.
+					const preclaimAuthorityMatches = await this.cleanupAuthorityMatches(sealedPlan);
+					if (!isActive() || !preclaimAuthorityMatches) return false;
 					candidateClaimPath = `${candidate.path}.cleanup-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+					if (!isActive()) return false;
 					await this.adapter.rename(candidate.path, candidateClaimPath);
-					if (!(await this.cleanupManifestMatches(sealedPlan))
-						|| !(await this.alternateManifestSealMatches(sealedPlan.expectedAlternateManifests))) {
+					const claimedAuthorityMatches = await this.cleanupAuthorityMatches(sealedPlan);
+					if (!isActive() || !claimedAuthorityMatches) {
 						await this.restoreClaimNoClobber(candidateClaimPath, candidate.path);
 						candidateClaimPath = null;
 						return false;
 					}
+					const backupToken = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+					const shardBaseName = candidate.name.match(/^((?:0[0-9a-f]|1[0-9a-f])-[a-f0-9]{64}\.json)/u)?.[1];
+					candidateBackupPath = shardBaseName
+						? `${this.paths.shardsPath}/${shardBaseName}.tmp-${backupToken}`
+						: `${this.paths.rootPath}/manifest.json.tmp-${backupToken}`;
+					if (!isActive()) {
+						await this.restoreClaimNoClobber(candidateClaimPath, candidate.path);
+						candidateClaimPath = null;
+						return false;
+					}
+					await this.adapter.copy(candidateClaimPath, candidateBackupPath);
+					if (candidate.kind !== 'alternate-manifest') {
+						recoverablePayload = await this.readOptionalBounded(
+							candidateBackupPath,
+							DEFAULT_CLEANUP_MAX_BYTES,
+							'Cleanup candidate exceeds the storage batch size limit',
+						);
+						if (recoverablePayload === null) throw new Error('Cleanup backup disappeared');
+					}
+					if (!isActive()) {
+						await this.restoreClaimNoClobber(candidateClaimPath, candidate.path);
+						candidateClaimPath = null;
+						await this.adapter.remove(candidateBackupPath);
+						candidateBackupPath = null;
+						return false;
+					}
 					await this.adapter.remove(candidateClaimPath);
 					candidateClaimPath = null;
+					const postClaimDeleteAuthorityMatches = await this.cleanupAuthorityMatches(sealedPlan);
+					if (!isActive() || !postClaimDeleteAuthorityMatches) {
+						await this.restoreClaimNoClobber(candidateBackupPath, candidate.path);
+						candidateBackupPath = null;
+						return false;
+					}
+					if (!isActive()) {
+						await this.restoreClaimNoClobber(candidateBackupPath, candidate.path);
+						candidateBackupPath = null;
+						return false;
+					}
+					await this.adapter.remove(candidateBackupPath);
+					candidateBackupPath = null;
+					const postBackupDeleteAuthorityMatches = await this.cleanupAuthorityMatches(sealedPlan);
+					if (!isActive() || !postBackupDeleteAuthorityMatches) {
+						if (recoverablePayload !== null) {
+							await this.restorePayloadNoClobber(recoverablePayload, candidate.path);
+						}
+						return false;
+					}
 					candidateDeleted = true;
 					result.deletedCount += 1;
 					result.deletedBytes += candidate.sizeBytes;
-					if (!(await this.cleanupManifestMatches(sealedPlan))) return false;
 				} catch {
 					if (candidateClaimPath) await this.restoreClaimNoClobber(candidateClaimPath, candidate.path);
+					else if (candidateBackupPath) await this.restoreClaimNoClobber(candidateBackupPath, candidate.path);
 					if (!candidateDeleted) result.skippedCount += 1;
 					result.errorCodes.push('CLEANUP_IO_FAILED');
 					return false;
@@ -1284,6 +1208,7 @@ export class IndexV8Store {
 			if (!shouldContinue) {
 				result.skippedCount += sealedPlan.candidates.length - result.deletedCount - result.skippedCount;
 				result.status = result.deletedCount > 0 ? 'partial' : 'stale';
+				result.backlogRemaining = true;
 				return result;
 			}
 		}
@@ -1348,6 +1273,12 @@ export class IndexV8Store {
 		} catch {
 			return false;
 		}
+	}
+
+	private async cleanupAuthorityMatches(plan: IndexV8CleanupPlan): Promise<boolean> {
+		if (!(await this.cleanupManifestMatches(plan))) return false;
+		const marker = await this.inspectRecoveryMarker();
+		return marker.status === 'missing';
 	}
 
 	private async manifestPayloadMatches(expectedPayload: string): Promise<boolean> {
@@ -1442,55 +1373,19 @@ export class IndexV8Store {
 		}
 	}
 
-	private async inspectAlternateManifestProtection(rootFiles?: readonly string[]): Promise<{
-		validAlternateNames: Set<string>;
-		protectedShardNames: Set<string>;
-		sealedFiles: IndexV8SealedFile[];
-		cleanupSuppressedReasons: string[];
-	}> {
-		const names = rootFiles ?? await this.listFileNames(this.paths.rootPath);
-		const alternateNames = names
-			.filter(name => name !== 'manifest.json' && ALTERNATE_MANIFEST_FILE.test(name))
-			.sort(compareText);
-		const validAlternateNames = new Set<string>();
-		const protectedShardNames = new Set<string>();
-		const sealedFiles: IndexV8SealedFile[] = [];
-		const cleanupSuppressedReasons: string[] = [];
-		if (alternateNames.length > MAX_ALTERNATE_MANIFEST_CANDIDATES) {
-			cleanupSuppressedReasons.push('alternate-manifest-scan-limit');
-		}
-		for (const name of alternateNames.slice(0, MAX_ALTERNATE_MANIFEST_CANDIDATES)) {
-			const path = `${this.paths.rootPath}/${name}`;
-			try {
-				const stat = await this.adapter.stat(path);
-				if (!stat || stat.type !== 'file' || stat.size > INDEX_V8_MAX_MANIFEST_BYTES) {
-					cleanupSuppressedReasons.push(`invalid-alternate-manifest:${name}`);
-					continue;
-				}
-				const payload = await this.adapter.read(path);
-				if (utf8ByteLength(payload) > INDEX_V8_MAX_MANIFEST_BYTES) throw new IndexV8CodecError('Manifest exceeds size limit');
-				const manifest = await validateIndexV8Manifest(payload);
-				validAlternateNames.add(name);
-				sealedFiles.push({ path, ...statFingerprint(stat), sha256: await sha256Hex(payload) });
-				for (const descriptor of manifest.shards) protectedShardNames.add(shardFileName(descriptor));
-			} catch (error) {
-				cleanupSuppressedReasons.push(`${error instanceof IndexV8CodecError && error.kind === 'unsupported' ? 'unsupported' : 'invalid'}-alternate-manifest:${name}`);
-			}
-		}
-		return {
-			validAlternateNames,
-			protectedShardNames,
-			sealedFiles: sealedFiles.sort((left, right) => compareText(left.path, right.path)),
-			cleanupSuppressedReasons: [...new Set(cleanupSuppressedReasons)].sort(compareText),
-		};
-	}
-
-	private async alternateManifestSealMatches(expected: readonly IndexV8SealedFile[]): Promise<boolean> {
+	private async restorePayloadNoClobber(payload: string, canonicalPath: string): Promise<void> {
+		const token = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		const name = canonicalPath.slice(canonicalPath.lastIndexOf('/') + 1);
+		const shardBaseName = name.match(/^((?:0[0-9a-f]|1[0-9a-f])-[a-f0-9]{64}\.json)/u)?.[1];
+		const tempPath = shardBaseName
+			? `${this.paths.shardsPath}/${shardBaseName}.tmp-${token}`
+			: `${this.paths.rootPath}/manifest.json.tmp-${token}`;
 		try {
-			const current = await this.inspectAlternateManifestProtection();
-			return current.cleanupSuppressedReasons.length === 0 && sealedFilesEqual(current.sealedFiles, expected);
+			await this.adapter.write(tempPath, payload);
+			await this.restoreClaimNoClobber(tempPath, canonicalPath);
 		} catch {
-			return false;
+			// Keep any successfully written owned temp so a later maintenance pass
+			// can retry without overwriting a concurrent canonical file.
 		}
 	}
 
@@ -1701,7 +1596,7 @@ export class IndexV8Store {
 				currentManifest === attemptedManifest ? previousManifest : currentManifest
 			));
 		} catch {
-			// Preserve the original commit failure; V7 and Markdown remain the recovery authorities.
+			// Preserve the original commit failure; Markdown remains the recovery authority.
 		}
 	}
 
@@ -1813,17 +1708,6 @@ function statFingerprint(stat: { size: number; mtime: number }): IndexV8FileFing
 
 function fingerprintsEqual(left: IndexV8FileFingerprint, right: IndexV8FileFingerprint): boolean {
 	return left.sizeBytes === right.sizeBytes && left.mtimeMs === right.mtimeMs;
-}
-
-function sealedFilesEqual(left: readonly IndexV8SealedFile[], right: readonly IndexV8SealedFile[]): boolean {
-	if (left.length !== right.length) return false;
-	return left.every((file, index) => {
-		const other = right[index];
-		return other !== undefined
-			&& file.path === other.path
-			&& file.sha256 === other.sha256
-			&& fingerprintsEqual(file, other);
-	});
 }
 
 function shardFileName(descriptor: IndexShardDescriptorV8): string {

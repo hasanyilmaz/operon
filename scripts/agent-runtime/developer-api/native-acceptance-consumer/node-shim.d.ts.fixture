@@ -1,0 +1,49 @@
+declare const process: {
+	readonly env: Readonly<Record<string, string | undefined>>;
+	readonly pid: number;
+};
+
+declare module 'node:fs/promises' {
+	interface Stats {
+		readonly nlink: number;
+		isDirectory(): boolean;
+		isFile(): boolean;
+		isSymbolicLink(): boolean;
+	}
+	export function lstat(path: string): Promise<Stats>;
+	export function mkdir(
+		path: string,
+		options?: { recursive?: boolean; mode?: number },
+	): Promise<string | undefined>;
+	export function readFile(path: string): Promise<Uint8Array>;
+	export function readFile(path: string, encoding: 'utf8'): Promise<string>;
+	export function realpath(path: string): Promise<string>;
+	export function rename(oldPath: string, newPath: string): Promise<void>;
+	export function writeFile(
+		path: string,
+		data: string,
+		options: { encoding: 'utf8'; flag: 'wx'; mode: number },
+	): Promise<void>;
+}
+
+declare module 'node:crypto' {
+	interface Hash {
+		update(value: Uint8Array): Hash;
+		digest(encoding: 'hex'): string;
+	}
+	export function createHash(algorithm: 'sha256'): Hash;
+}
+
+declare module 'node:path' {
+	interface PathApi {
+		basename(path: string): string;
+		dirname(path: string): string;
+		isAbsolute(path: string): boolean;
+		join(...paths: string[]): string;
+		relative(from: string, to: string): string;
+		resolve(...paths: string[]): string;
+		readonly sep: string;
+	}
+	const path: PathApi;
+	export default path;
+}

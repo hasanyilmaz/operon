@@ -1,6 +1,6 @@
 import { isValidOperonId } from '../core/id-generator';
 import { parseTaskLine } from '../core/parser';
-import { isManagedTaskFieldCanonicalKey } from '../core/managed-task-fields';
+import { isReadableTaskFieldCanonicalKey } from '../core/managed-task-fields';
 import { buildReverseMapping } from '../core/yaml-fields';
 import type { IndexedTask, ParsedTask } from '../types/fields';
 import { resolveWorkflowStatus, type Pipeline } from '../types/pipeline';
@@ -194,7 +194,7 @@ export function buildReadingParsedTaskSnapshot(
 			}
 			continue;
 		}
-		if (!isManagedTaskFieldCanonicalKey(canonicalKey, keyMappings)) continue;
+		if (!isReadableTaskFieldCanonicalKey(canonicalKey, keyMappings)) continue;
 		fieldValues[canonicalKey] = field.value;
 	}
 
