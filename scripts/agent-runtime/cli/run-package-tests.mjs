@@ -1221,20 +1221,41 @@ function runWindowsShimJson(executableShim, args, childEnv) {
 
 function secureWindowsFixturePath(targetPath, kind) {
 	if (process.platform !== 'win32') return;
+	const systemRoot = process.env.SystemRoot;
+	const windowsDirectory = process.env.WINDIR;
+	const normalize = value => path.win32.normalize(value).replace(/[\\/]+$/u, '');
+	if (
+		!systemRoot
+		|| !windowsDirectory
+		|| systemRoot.includes('\0')
+		|| windowsDirectory.includes('\0')
+		|| !path.win32.isAbsolute(systemRoot)
+		|| !path.win32.isAbsolute(windowsDirectory)
+		|| normalize(systemRoot).toLowerCase() !== normalize(windowsDirectory).toLowerCase()
+	) throw new Error('Windows system directory is unavailable.');
+	const normalizedRoot = normalize(systemRoot);
+	const powershell = path.win32.join(
+		normalizedRoot,
+		'System32',
+		'WindowsPowerShell',
+		'v1.0',
+		'powershell.exe',
+	);
 	const script = [
 		'$ErrorActionPreference = "Stop"',
 		'$p = [Environment]::GetEnvironmentVariable("OPERON_TEST_SECURITY_PATH", "Process")',
 		'$kind = [Environment]::GetEnvironmentVariable("OPERON_TEST_SECURITY_KIND", "Process")',
 		'$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User',
-		'$acl = if ($kind -eq "directory") { New-Object Security.AccessControl.DirectorySecurity } else { New-Object Security.AccessControl.FileSecurity }',
+		'$acl = if ($kind -eq "directory") { [IO.Directory]::GetAccessControl($p) } else { [IO.File]::GetAccessControl($p) }',
 		'$acl.SetOwner($sid)',
 		'$acl.SetAccessRuleProtection($true, $false)',
+		'foreach ($existingRule in @($acl.Access)) { [void]$acl.RemoveAccessRuleSpecific($existingRule) }',
 		'$inherit = if ($kind -eq "directory") { [Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit" } else { [Security.AccessControl.InheritanceFlags]::None }',
 		'$rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, [Security.AccessControl.FileSystemRights]::FullControl, $inherit, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)',
 		'$acl.AddAccessRule($rule)',
-		'Set-Acl -LiteralPath $p -AclObject $acl',
+		'if ($kind -eq "directory") { [IO.Directory]::SetAccessControl($p, $acl) } else { [IO.File]::SetAccessControl($p, $acl) }',
 	].join('; ');
-	execFileSync('powershell.exe', [
+	execFileSync(powershell, [
 		'-NoLogo',
 		'-NoProfile',
 		'-NonInteractive',
@@ -1244,12 +1265,14 @@ function secureWindowsFixturePath(targetPath, kind) {
 		script,
 	], {
 		env: {
-			...process.env,
+			SystemRoot: normalizedRoot,
+			WINDIR: normalizedRoot,
 			OPERON_TEST_SECURITY_PATH: targetPath,
 			OPERON_TEST_SECURITY_KIND: kind,
 		},
 		stdio: 'inherit',
 		windowsHide: true,
+		timeout: 15_000,
 	});
 }
 

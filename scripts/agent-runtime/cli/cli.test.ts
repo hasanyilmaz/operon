@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import {
 	chmodSync,
 	lstatSync,
@@ -87,6 +88,7 @@ import {
 import {
 	inspectCliStorageSecurityV1,
 	repairCliStorageSecurityV1,
+	resolveWindowsPowerShellV1,
 	writeSecureJsonAtomicV1,
 } from '../../../packages/operon-cli/src/secure-storage';
 import {
@@ -126,9 +128,10 @@ globalThis.__operonAgentRuntimeCliTestRun = Promise.resolve().then(run);
 async function run(): Promise<void> {
 	testArgumentMatrix();
 	testCrossPlatformCliStorageAndPaths();
+	testWindowsPowerShellResolutionSecurity();
 	testContractDecoders();
 	testProductionInvocationValidatorParity();
-	testSecureRequestFile();
+	if (process.platform !== 'win32') testSecureRequestFile();
 	await testInvocationConstruction();
 	await testOneShotExecutionAndCleanup();
 	await testOneShotPersistentReadRouting();
@@ -200,7 +203,7 @@ function testCrossPlatformCliStorageAndPaths(): void {
 			profiles: [],
 		});
 			assert.deepEqual(inspectCliStorageSecurityV1(root), {
-				backend: 'posix-mode',
+				backend: process.platform === 'win32' ? 'windows-dacl' : 'posix-mode',
 				secure: true,
 			});
 			const staleAtomicTemp = path.join(
@@ -221,9 +224,15 @@ function testCrossPlatformCliStorageAndPaths(): void {
 				/SECURITY_FOREIGN_CONTENT/u,
 			);
 			unlinkSync(path.join(root, 'foreign.json.123.12345678-1234-4123-8123-123456789abc.tmp'));
+		if (process.platform === 'win32') {
+			broadenWindowsDirectoryAclForTest(root);
+			assert.equal(inspectCliStorageSecurityV1(root).secure, false);
+			assert.equal(repairCliStorageSecurityV1(root).secure, true);
+		} else {
 			chmodSync(path.join(root, 'config-v1.json'), 0o644);
-		assert.equal(inspectCliStorageSecurityV1(root).secure, false);
-		assert.equal(repairCliStorageSecurityV1(root).secure, true);
+			assert.equal(inspectCliStorageSecurityV1(root).secure, false);
+			assert.equal(repairCliStorageSecurityV1(root).secure, true);
+		}
 		writeFileSync(path.join(root, 'foreign.txt'), 'not Operon CLI state\n', 'utf8');
 		assert.throws(
 			() => repairCliStorageSecurityV1(root),
@@ -234,6 +243,73 @@ function testCrossPlatformCliStorageAndPaths(): void {
 	}
 	const doctor = OPERON_CLI_COMMAND_DEFINITIONS_V1.find(definition => definition.id === 'doctor');
 	assert.ok(doctor?.options?.some(option => option.includes('--repair-security')));
+}
+
+function testWindowsPowerShellResolutionSecurity(): void {
+	const regular = {
+		isFile: () => true,
+		isSymbolicLink: () => false,
+	};
+	const resolved = resolveWindowsPowerShellV1({
+		env: { SystemRoot: 'C:\\Windows', WINDIR: 'c:\\windows\\' },
+		lstat: () => regular,
+	});
+	assert.equal(
+		resolved.executable,
+		'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+	);
+	for (const env of [
+		{},
+		{ SystemRoot: 'C:\\Windows', WINDIR: 'D:\\Windows' },
+		{ SystemRoot: 'Windows', WINDIR: 'Windows' },
+		{ SystemRoot: 'C:\\Windows\0fake', WINDIR: 'C:\\Windows\0fake' },
+	]) {
+		assert.throws(
+			() => resolveWindowsPowerShellV1({ env, lstat: () => regular }),
+			/SECURITY_ACL_UNAVAILABLE/u,
+		);
+	}
+	assert.throws(
+		() => resolveWindowsPowerShellV1({
+			env: { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows' },
+			lstat: candidate => ({
+				isFile: () => true,
+				isSymbolicLink: () => candidate.endsWith('\\System32'),
+			}),
+		}),
+		/SECURITY_ACL_UNAVAILABLE/u,
+	);
+}
+
+function broadenWindowsDirectoryAclForTest(target: string): void {
+	const { executable, systemRoot } = resolveWindowsPowerShellV1();
+	const script = [
+		'$ErrorActionPreference = "Stop"',
+		'$p = [Environment]::GetEnvironmentVariable("OPERON_TEST_SECURITY_PATH", "Process")',
+		'$acl = [IO.Directory]::GetAccessControl($p)',
+		'$users = New-Object Security.Principal.SecurityIdentifier("S-1-5-32-545")',
+		'$rule = New-Object Security.AccessControl.FileSystemAccessRule($users, "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")',
+		'$acl.AddAccessRule($rule)',
+		'[IO.Directory]::SetAccessControl($p, $acl)',
+	].join('; ');
+	execFileSync(executable, [
+		'-NoLogo',
+		'-NoProfile',
+		'-NonInteractive',
+		'-ExecutionPolicy',
+		'Bypass',
+		'-Command',
+		script,
+	], {
+		env: {
+			SystemRoot: systemRoot,
+			WINDIR: systemRoot,
+			OPERON_TEST_SECURITY_PATH: target,
+		},
+		stdio: 'ignore',
+		windowsHide: true,
+		timeout: 15_000,
+	});
 }
 
 async function testGuidedTaskFinder(): Promise<void> {
@@ -888,7 +964,14 @@ async function testCliUpdateCheck(): Promise<void> {
 		assert.equal(first?.channel, 'latest');
 		assert.equal(requests, 1);
 		const cachePath = path.join(root, 'update-check-v1.json');
-		assert.equal(lstatSync(cachePath).mode & 0o077, 0);
+		if (process.platform === 'win32') {
+			assert.deepEqual(inspectCliStorageSecurityV1(root), {
+				backend: 'windows-dacl',
+				secure: true,
+			});
+		} else {
+			assert.equal(lstatSync(cachePath).mode & 0o077, 0);
+		}
 
 		const cached = await checkForCliUpdateV1({
 			currentVersion: '0.1.0-beta.23',
@@ -1191,13 +1274,15 @@ async function testInvocationConstruction(): Promise<void> {
 		const clientStatePath = path.join(vault, 'client-state', 'identity.json');
 		const firstClientId = getOrCreateOperonCliClientIdV1(clientStatePath);
 		assert.equal(getOrCreateOperonCliClientIdV1(clientStatePath), firstClientId);
-		assert.equal(lstatSync(path.dirname(clientStatePath)).mode & 0o777, 0o700);
-		assert.equal(lstatSync(clientStatePath).mode & 0o777, 0o600);
-		chmodSync(clientStatePath, 0o644);
-		assert.throws(
-			() => getOrCreateOperonCliClientIdV1(clientStatePath),
-			/owner-only validation/u,
-		);
+		if (process.platform !== 'win32') {
+			assert.equal(lstatSync(path.dirname(clientStatePath)).mode & 0o777, 0o700);
+			assert.equal(lstatSync(clientStatePath).mode & 0o777, 0o600);
+			chmodSync(clientStatePath, 0o644);
+			assert.throws(
+				() => getOrCreateOperonCliClientIdV1(clientStatePath),
+				/owner-only validation/u,
+			);
+		}
 	} finally {
 		rmSync(vault, { recursive: true, force: true });
 	}

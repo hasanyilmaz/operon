@@ -67,13 +67,13 @@
     "contractDigest": "d280747a21f46add48d70193205c4dc642b1e0f38447209611174e33beff5927",
     "tarball": {
       "path": "packages/operon-cli/freeze/operon-cli-1.0.0.tgz",
-      "sha256": "791054f1ddfd749058f636397d85ad4408dc7fd82d4417bae6ad443d7c49e111",
-      "bytes": 212804
+      "sha256": "99e50e718c1c288810fc75a1c57f06043572e7abf8ec4c5cfcd88327e914249b",
+      "bytes": 213165
     },
     "executable": {
       "path": "packages/operon-cli/dist/operon.mjs",
-      "sha256": "f89b9eb68fcd537841bfe5d640fccdc63981f2bb683521c9516edf9a20ad0c37",
-      "bytes": 510769
+      "sha256": "4e3f44589cf5180829a8b5e0a35a8afa47e2e33a7b633a5bc32a5427a94b15b1",
+      "bytes": 511702
     },
     "license": {
       "path": "packages/operon-cli/LICENSE",
@@ -110,7 +110,7 @@
       "fileCount": 5,
       "aggregateSha256": "2ecd8a3e0ae2e069bc89a7cd70cdb724f4023f2b306391b21fbbabca07dd12c6"
     },
-    "packageInputAggregateSha256": "a3f073eaa119e35f8cc7a63164669d1b9f300a2e77b03b98650a558eb1bb3724"
+    "packageInputAggregateSha256": "e2d2e482e99d853f2c62c284ef80a383f7e2d75a9e25fe7244ed95288b12bd5c"
   },
   "documentation": {
     "manifest": {
@@ -132,8 +132,8 @@
     "version": "3.0.0",
     "main": {
       "path": "main.js",
-      "sha256": "217c7c43c15bf47e80ed6af5e8010268c8ed5abc8ad78292fdadae8423cc8c12",
-      "bytes": 4321735
+      "sha256": "b1f79eadce1201c8258d50eb78f38edcb0fa7165689ceef772e5a3dcb08afc9d",
+      "bytes": 4322588
     },
     "manifest": {
       "path": "manifest.json",
@@ -196,7 +196,7 @@
   "maintainerAcceptance": {
     "status": "accepted",
     "acceptedBy": "Hasan Yilmaz",
-    "acceptedAt": "2026-07-31T12:21:03.348Z"
+    "acceptedAt": "2026-07-31T13:09:13.784Z"
   },
-  "inputsAggregateSha256": "65071e932431c7b9ed5c31628372f2ede8855bb2e788175a0c7e1810936d10e8"
+  "inputsAggregateSha256": "5890dc1fb759b289f26cf2d38d3338473237c3980799a77ac4f3bc43eefc3aaa"
 }

@@ -11,7 +11,7 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, win32 } from 'node:path';
 
 export type CliStorageSecurityBackendV1 = 'posix-mode' | 'windows-dacl';
 
@@ -248,6 +248,16 @@ function runWindowsAclScriptV1(
 	kind: 'file' | 'directory',
 	repair: boolean,
 ): void {
+	const { executable, systemRoot } = resolveWindowsPowerShellV1();
+	const getAccessControl = kind === 'directory'
+		? '[IO.Directory]::GetAccessControl($p)'
+		: '[IO.File]::GetAccessControl($p)';
+	const setAccessControl = kind === 'directory'
+		? '[IO.Directory]::SetAccessControl($p, $acl)'
+		: '[IO.File]::SetAccessControl($p, $acl)';
+	const inheritance = kind === 'directory'
+		? 'ContainerInherit, ObjectInherit'
+		: 'None';
 	const script = [
 		'$ErrorActionPreference = "Stop"',
 		'$p = [Environment]::GetEnvironmentVariable("OPERON_SECURITY_PATH", "Process")',
@@ -259,20 +269,20 @@ function runWindowsAclScriptV1(
 		'if ($expectedKind -eq "directory" -and -not $item.PSIsContainer) { throw "SECURE_DIRECTORY_INVALID" }',
 		'if ($expectedKind -eq "file" -and $item.PSIsContainer) { throw "SECURE_FILE_INVALID" }',
 		'$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User',
+		`$acl = ${getAccessControl}`,
 		'if ($repair) {',
-		'  $acl = New-Object Security.AccessControl.FileSecurity',
-		'  if ($expectedKind -eq "directory") { $acl = New-Object Security.AccessControl.DirectorySecurity }',
 		'  $acl.SetOwner($sid)',
 		'  $acl.SetAccessRuleProtection($true, $false)',
+		'  foreach ($existingRule in @($acl.Access)) { [void]$acl.RemoveAccessRuleSpecific($existingRule) }',
 		'  $rights = [Security.AccessControl.FileSystemRights]::FullControl',
-		'  $inherit = [Security.AccessControl.InheritanceFlags]::None',
-		'  if ($expectedKind -eq "directory") { $inherit = [Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit" }',
+		`  $inherit = [Security.AccessControl.InheritanceFlags]"${inheritance}"`,
 		'  $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, $rights, $inherit, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)',
 		'  $acl.AddAccessRule($rule)',
-		'  Set-Acl -LiteralPath $p -AclObject $acl',
+		`  ${setAccessControl}`,
 		'}',
-		'$actual = Get-Acl -LiteralPath $p',
-		'if ($actual.Owner -ne $sid.Value -and $actual.Owner -ne ([Security.Principal.WindowsIdentity]::GetCurrent().Name)) { throw "SECURITY_WRONG_OWNER" }',
+		`$actual = ${getAccessControl}`,
+		'$ownerSid = (New-Object Security.Principal.NTAccount($actual.Owner)).Translate([Security.Principal.SecurityIdentifier]).Value',
+		'if ($ownerSid -ne $sid.Value) { throw "SECURITY_WRONG_OWNER" }',
 		'if (-not $actual.AreAccessRulesProtected) { throw "SECURITY_ACL_INHERITED" }',
 		'$bad = @()',
 		'foreach ($access in $actual.Access) {',
@@ -280,9 +290,9 @@ function runWindowsAclScriptV1(
 		'  if ($access.AccessControlType -ne "Allow" -or $accessSid -ne $sid.Value) { $bad += $access }',
 		'}',
 		'if ($bad.Count -ne 0) { throw "SECURITY_ACL_TOO_BROAD" }',
-		'@{ ok = $true; owner = $sid.Value } | ConvertTo-Json -Compress',
+		'[Console]::Out.Write(\'{"ok":true}\')',
 	].join('; ');
-	const result = spawnSync('powershell.exe', [
+	const result = spawnSync(executable, [
 		'-NoLogo',
 		'-NoProfile',
 		'-NonInteractive',
@@ -295,16 +305,21 @@ function runWindowsAclScriptV1(
 		windowsHide: true,
 		shell: false,
 		env: {
-			...process.env,
+			SystemRoot: systemRoot,
+			WINDIR: systemRoot,
 			OPERON_SECURITY_PATH: path,
 			OPERON_SECURITY_KIND: kind,
 			OPERON_SECURITY_REPAIR: repair ? '1' : '0',
 		},
 		maxBuffer: POWERSHELL_RESULT_LIMIT_V1,
+		timeout: 15_000,
+		killSignal: 'SIGKILL',
 	});
 	if (result.error || result.status !== 0) {
-		const detail = (result.stderr || result.error?.message || '').trim();
-		throw new Error(detail.includes('SECURITY_') ? detail : 'SECURITY_ACL_UNAVAILABLE');
+		const failureCode = (result.stderr || '').match(
+			/\b(SECURITY_REPARSE_POINT|SECURE_DIRECTORY_INVALID|SECURE_FILE_INVALID|SECURITY_WRONG_OWNER|SECURITY_ACL_INHERITED|SECURITY_ACL_TOO_BROAD)\b/u,
+		)?.[1];
+		throw new Error(failureCode ?? 'SECURITY_ACL_UNAVAILABLE');
 	}
 	let parsed: unknown;
 	try {
@@ -318,4 +333,52 @@ function runWindowsAclScriptV1(
 		|| Array.isArray(parsed)
 		|| (parsed as Record<string, unknown>).ok !== true
 	) throw new Error('SECURITY_ACL_INVALID_RESULT');
+}
+
+export function resolveWindowsPowerShellV1(
+	options: {
+		env?: NodeJS.ProcessEnv;
+		lstat?: (path: string) => { isFile(): boolean; isSymbolicLink(): boolean };
+	} = {},
+): { executable: string; systemRoot: string } {
+	const env = options.env ?? process.env;
+	const lstat = options.lstat ?? lstatSync;
+	const systemRoot = env.SystemRoot;
+	const windowsDirectory = env.WINDIR;
+	if (
+		!systemRoot
+		|| !windowsDirectory
+		|| systemRoot.includes('\0')
+		|| windowsDirectory.includes('\0')
+		|| !win32.isAbsolute(systemRoot)
+		|| !win32.isAbsolute(windowsDirectory)
+	) throw new Error('SECURITY_ACL_UNAVAILABLE');
+	const normalizedRoot = win32.normalize(systemRoot).replace(/[\\/]+$/u, '');
+	const normalizedWindowsDirectory = win32.normalize(windowsDirectory).replace(/[\\/]+$/u, '');
+	if (normalizedRoot.toLocaleLowerCase('en-US') !== normalizedWindowsDirectory.toLocaleLowerCase('en-US')) {
+		throw new Error('SECURITY_ACL_UNAVAILABLE');
+	}
+	const executable = win32.join(
+		normalizedRoot,
+		'System32',
+		'WindowsPowerShell',
+		'v1.0',
+		'powershell.exe',
+	);
+	let cursor = executable;
+	while (true) {
+		let stat: ReturnType<typeof lstat>;
+		try {
+			stat = lstat(cursor);
+		} catch {
+			throw new Error('SECURITY_ACL_UNAVAILABLE');
+		}
+		if (stat.isSymbolicLink() || (cursor === executable && !stat.isFile())) {
+			throw new Error('SECURITY_ACL_UNAVAILABLE');
+		}
+		const parent = win32.dirname(cursor);
+		if (parent === cursor) break;
+		cursor = parent;
+	}
+	return { executable, systemRoot: normalizedRoot };
 }

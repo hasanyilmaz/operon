@@ -89,6 +89,10 @@ interface PersistentReadNodeModulesV1 {
 			O_WRONLY: number;
 		};
 		chmodSync(path: string, mode: number): void;
+		lstatSync(path: string): {
+			isFile(): boolean;
+			isSymbolicLink(): boolean;
+		};
 		writeFileSync(path: string, value: Uint8Array, options: { flag: 'wx'; mode: number }): void;
 		renameSync(oldPath: string, newPath: string): void;
 	};
@@ -126,6 +130,7 @@ interface PersistentReadNodeModulesV1 {
 	readonly childProcess: {
 		spawnSync(command: string, args: readonly string[], options: {
 			encoding: 'utf8';
+			env: Record<string, string>;
 			shell: false;
 			windowsHide: true;
 			timeout: number;
@@ -1035,6 +1040,7 @@ function secureWindowsOwnerOnlyPathV1(
 	path: string,
 	directory: boolean,
 ): void {
+	const { executable, environment } = resolveWindowsPowerShellV1(modules);
 	const rights = directory ? 'FullControl' : 'Read,Write,Delete';
 	const inheritance = directory ? 'ContainerInherit,ObjectInherit' : 'None';
 	const getAccessControl = directory
@@ -1059,10 +1065,11 @@ function secureWindowsOwnerOnlyPathV1(
 		setAccessControl,
 	].join(';');
 	const result = modules.childProcess.spawnSync(
-		'powershell.exe',
+		executable,
 		['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
 		{
 			encoding: 'utf8',
+			env: environment,
 			shell: false,
 			windowsHide: true,
 			timeout: 15_000,
@@ -1079,6 +1086,7 @@ function assertWindowsOwnerOnlyPathV1(
 	path: string,
 	directory: boolean,
 ): void {
+	const { executable, environment } = resolveWindowsPowerShellV1(modules);
 	const getAccessControl = directory
 		? '[IO.Directory]::GetAccessControl($p)'
 		: '[IO.File]::GetAccessControl($p)';
@@ -1097,10 +1105,11 @@ function assertWindowsOwnerOnlyPathV1(
 		`[Console]::Out.Write('{"ok":true,"directory":${directory ? 'true' : 'false'}}')`,
 	].join(';');
 	const result = modules.childProcess.spawnSync(
-		'powershell.exe',
+		executable,
 		['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
 		{
 			encoding: 'utf8',
+			env: environment,
 			shell: false,
 			windowsHide: true,
 			timeout: 15_000,
@@ -1114,6 +1123,50 @@ function assertWindowsOwnerOnlyPathV1(
 	) {
 		throw new Error('windows-owner-only-acl-required');
 	}
+}
+
+function resolveWindowsPowerShellV1(modules: PersistentReadNodeModulesV1): {
+	readonly executable: string;
+	readonly environment: Record<string, string>;
+} {
+	const systemRoot = modules.process.env.SystemRoot;
+	const windowsDirectory = modules.process.env.WINDIR;
+	if (
+		!systemRoot
+		|| !windowsDirectory
+		|| systemRoot.includes('\0')
+		|| windowsDirectory.includes('\0')
+		|| !/^[A-Za-z]:[\\/]/u.test(systemRoot)
+		|| !/^[A-Za-z]:[\\/]/u.test(windowsDirectory)
+	) throw new Error('windows-powershell-unavailable');
+	const normalize = (value: string): string => value.replace(/\//gu, '\\').replace(/\\+$/u, '');
+	const normalizedRoot = normalize(systemRoot);
+	if (normalizedRoot.toLocaleLowerCase('en-US') !== normalize(windowsDirectory).toLocaleLowerCase('en-US')) {
+		throw new Error('windows-powershell-unavailable');
+	}
+	const executable = `${normalizedRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
+	let cursor = executable;
+	while (true) {
+		let stat: ReturnType<PersistentReadNodeModulesV1['fs']['lstatSync']>;
+		try {
+			stat = modules.fs.lstatSync(cursor);
+		} catch {
+			throw new Error('windows-powershell-unavailable');
+		}
+		if (stat.isSymbolicLink() || (cursor === executable && !stat.isFile())) {
+			throw new Error('windows-powershell-unavailable');
+		}
+		const separator = cursor.lastIndexOf('\\');
+		if (separator <= 2) break;
+		cursor = cursor.slice(0, separator);
+	}
+	return {
+		executable,
+		environment: {
+			SystemRoot: normalizedRoot,
+			WINDIR: normalizedRoot,
+		},
+	};
 }
 
 function powershellLiteralV1(value: string): string {
@@ -1162,6 +1215,7 @@ function classifyPersistentReadServerStartFailureV1(error: unknown): string {
 			'local-app-data-unavailable',
 			'windows-owner-only-acl-setup-failed',
 			'windows-owner-only-acl-required',
+			'windows-powershell-unavailable',
 		].includes(error.message)
 	) return error.message;
 	if (
