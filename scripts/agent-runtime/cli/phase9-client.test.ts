@@ -49,6 +49,7 @@ import {
 } from '../../../packages/operon-cli/src/command-registry';
 import { renderShellCompletionV1 } from '../../../packages/operon-cli/src/shell-completion';
 import { getOrCreateOperonCliClientIdV1 } from '../../../packages/operon-cli/src/client-identity';
+import { secureCreatedFileV1 } from '../../../packages/operon-cli/src/secure-storage';
 import {
 	OPERON_CLI_CONVENIENCE_COMMANDS_V1,
 	OPERON_CLI_CONVENIENCE_CONTRACTS_V1,
@@ -87,6 +88,7 @@ import {
 } from '../../../packages/operon-cli/src/plan-store';
 import {
 	assertLiveTransportPlatformV1,
+	canonicalVaultIdentityV1,
 	liveTransportPlatformStatusV1,
 } from '../../../packages/operon-cli/src/protocol';
 
@@ -1248,7 +1250,8 @@ test('setup discovers a custom Obsidian configuration directory by the exact Ope
 			path.join(vault, '.custom-obsidian', 'plugins', 'operon', 'manifest.json'),
 			JSON.stringify({ id: 'operon', version: '2.6.0', minAppVersion: '1.8.9' }),
 		);
-		assert.equal(discoverOperonVaultFromCwdV1(vault), await realpath(vault));
+		const canonicalVaultPath = canonicalVaultIdentityV1(vault).canonicalPath;
+		assert.equal(discoverOperonVaultFromCwdV1(vault), canonicalVaultPath);
 		const answers = ['', 'n'];
 		const result = await runPublicCommandLineV1(['setup'], {
 			configRoot: path.join(root, 'config'),
@@ -1263,7 +1266,7 @@ test('setup discovers a custom Obsidian configuration directory by the exact Ope
 		assert.equal(result.exitCode, 0);
 		const config = loadOperonCliConfigV1(path.join(root, 'config'));
 		assert.equal(config.profiles.length, 1);
-		assert.equal(config.profiles[0].canonicalPath, await realpath(vault));
+		assert.equal(config.profiles[0].canonicalPath, canonicalVaultPath);
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
@@ -1404,6 +1407,7 @@ test('legacy client identity migrates once and missing initialized identity fail
 		const clientInstanceId = `operon-cli-${randomUUID()}`;
 		await writeFile(legacy, `${JSON.stringify({ version: 1, clientInstanceId })}\n`, { mode: 0o600 });
 		await chmod(legacy, 0o600);
+		secureCreatedFileV1(legacy);
 		assert.equal(getOrCreateOperonCliClientIdV1(current, legacy), clientInstanceId);
 		assert.equal(JSON.parse(await readFile(current, 'utf8')).clientInstanceId, clientInstanceId);
 		await rm(current);
@@ -1443,7 +1447,7 @@ test('plan store uses opaque references and target-bound destructive confirmatio
 		};
 		const stored = storeMutationPlanV1({
 			vaultPath: vault,
-			vaultSha256: createHash('sha256').update(vault).digest('hex'),
+			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
 			request: previewRequest,
 			plan,
 		}, root);
@@ -1484,7 +1488,7 @@ test('plan show exposes a strict public summary without local routing or idempot
 		);
 		const stored = storeMutationPlanV1({
 			vaultPath: vault,
-			vaultSha256: createHash('sha256').update(vault).digest('hex'),
+			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
 			request: {
 				contractVersion: 1,
 				requestId: randomUUID(),
@@ -1630,7 +1634,7 @@ test('a transport-interrupted plan apply is recovery-only and cannot be discarde
 		);
 		const stored = storeMutationPlanV1({
 			vaultPath: vault,
-			vaultSha256: createHash('sha256').update(vault).digest('hex'),
+			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
 			request: {
 				contractVersion: 1,
 				requestId: randomUUID(),
@@ -1958,7 +1962,7 @@ test('normal expired plans are pruned while prior apply attempts remain recovera
 		};
 		const unused = storeMutationPlanV1({
 			vaultPath: vault,
-			vaultSha256: createHash('sha256').update(vault).digest('hex'),
+			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
 			request: previewRequest,
 			plan: expiredPlan,
 		}, root);
@@ -1985,7 +1989,7 @@ test('normal expired plans are pruned while prior apply attempts remain recovera
 		);
 		const recoverable = storeMutationPlanV1({
 			vaultPath: vault,
-			vaultSha256: createHash('sha256').update(vault).digest('hex'),
+			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
 			request: { ...previewRequest, idempotencyKey: 'expired-recoverable' },
 			plan: recoverablePlan,
 		}, root);
@@ -2017,7 +2021,7 @@ test('terminal apply results remain as 24-hour recovery tombstones and expire ho
 		);
 		const stored = storeMutationPlanV1({
 			vaultPath: vault,
-			vaultSha256: createHash('sha256').update(vault).digest('hex'),
+			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
 			request: fakeDeletePreviewRequest(plan, 'terminal-tombstone'),
 			plan,
 		}, root);
@@ -2072,7 +2076,7 @@ test('terminal tombstone accepts receipt replay without changing the exact apply
 		);
 		const stored = storeMutationPlanV1({
 			vaultPath: vault,
-			vaultSha256: createHash('sha256').update(vault).digest('hex'),
+			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
 			request: fakeDeletePreviewRequest(plan, 'terminal-replay-plan'),
 			plan,
 		}, root);
@@ -2092,7 +2096,7 @@ test('terminal tombstone accepts receipt replay without changing the exact apply
 			plan,
 			randomUUID(),
 			dispatchedAt,
-			createHash('sha256').update(vault).digest('hex'),
+			canonicalVaultIdentityV1(vault).sha256,
 		);
 		recordMutationOutcomeV1(terminal, applyRequest, replay, root);
 		const replayed = readMutationPlanV1(stored.planRef, root, { allowExpired: true });
@@ -2112,7 +2116,7 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 	try {
 		const vault = await createVault(root, 'Recovery Capacity Vault');
 		const dispatchedAt = Date.now();
-		const vaultSha256 = createHash('sha256').update(vault).digest('hex');
+		const vaultSha256 = canonicalVaultIdentityV1(vault).sha256;
 		for (let index = 0; index < MUTATION_RECOVERY_RECORD_LIMIT_V1 - 1; index += 1) {
 			const idempotencyKey = `protected-recovery-record-${index}`;
 			const plan = fakePlan(
@@ -2120,17 +2124,40 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 				new Date(dispatchedAt + 60_000).toISOString(),
 				idempotencyKey,
 			);
-			const stored = storeMutationPlanV1({
-				vaultPath: vault,
-				vaultSha256,
-				request: fakeDeletePreviewRequest(plan, idempotencyKey),
-				plan,
-			}, root);
+			const stored = process.platform === 'win32'
+				? {
+					version: 1 as const,
+					planRef: randomUUID().split('-').join(''),
+					vaultPath: vault,
+					vaultSha256,
+					clientInstanceId: plan.clientInstanceId,
+					idempotencyKey,
+					plan,
+					createdAt: plan.createdAt,
+					expiresAt: plan.expiresAt,
+				}
+				: storeMutationPlanV1({
+					vaultPath: vault,
+					vaultSha256,
+					request: fakeDeletePreviewRequest(plan, idempotencyKey),
+					plan,
+				}, root);
 			const applyRequest = buildMutationApplyRequestV1(stored, {
 				confirmationToken: confirmationTokenForPlanV1(plan),
 				now: new Date(dispatchedAt).toISOString(),
 			});
-			markMutationPlanDispatchedV1(stored, applyRequest, root, dispatchedAt);
+			if (process.platform === 'win32') {
+				writeStoredPlanV1({
+					...stored,
+					applyRequest,
+					recoveryStartedAt: new Date(dispatchedAt).toISOString(),
+					recoveryExpiresAt: new Date(
+						dispatchedAt + MUTATION_RECOVERY_RETENTION_MS_V1,
+					).toISOString(),
+				}, root);
+			} else {
+				markMutationPlanDispatchedV1(stored, applyRequest, root, dispatchedAt);
+			}
 		}
 		const contenders = ['protected-contender-a', 'protected-contender-b'].map(idempotencyKey => {
 			const plan = fakePlan(
@@ -2204,7 +2231,54 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 	}
 });
 
-test('dispatch capacity lock safely recovers a stale lock from a dead owner', async () => {
+test('Windows dispatch mutex publishes concurrent low-cardinality admissions atomically', {
+	skip: process.platform !== 'win32' ? 'Windows named-mutex coverage.' : false,
+}, async () => {
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-cli-windows-dispatch-mutex-'));
+	try {
+		const vault = await createVault(root, 'Windows Dispatch Mutex Vault');
+		const dispatchedAt = Date.now();
+		const vaultSha256 = canonicalVaultIdentityV1(vault).sha256;
+		const contenders = ['windows-mutex-a', 'windows-mutex-b'].map(idempotencyKey => {
+			const plan = fakePlan(
+				new Date(dispatchedAt - 1_000).toISOString(),
+				new Date(dispatchedAt + 60_000).toISOString(),
+				idempotencyKey,
+			);
+			return storeMutationPlanV1({
+				vaultPath: vault,
+				vaultSha256,
+				request: fakeDeletePreviewRequest(plan, idempotencyKey),
+				plan,
+			}, root);
+		});
+		const releasePath = path.join(root, 'release-windows-mutex-workers');
+		const workerPath = path.join(root, 'plan-store-windows-mutex-worker.mjs');
+		await writeFile(workerPath, __OPERON_PLAN_STORE_CAPACITY_WORKER_SOURCE__);
+		const outcomes = await runConcurrentCapacityWorkersV1(
+			contenders.map(record => record.planRef),
+			root,
+			workerPath,
+			releasePath,
+			dispatchedAt,
+		);
+		assert.equal(outcomes.every(outcome => outcome.ok), true, JSON.stringify(outcomes));
+		for (const contender of contenders) {
+			assert.notEqual(
+				readMutationPlanV1(contender.planRef, root, { allowExpired: true }).applyRequest,
+				undefined,
+			);
+		}
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+test('dispatch capacity lock safely recovers a stale lock from a dead owner', {
+	skip: process.platform === 'win32'
+		? 'Windows uses an owner-process named mutex instead of the POSIX stale lock file.'
+		: false,
+}, async () => {
 	const root = await mkdtemp(path.join(tmpdir(), 'operon-cli-recovery-stale-lock-'));
 	try {
 		const vault = await createVault(root, 'Recovery Stale Lock Vault');
@@ -2216,7 +2290,7 @@ test('dispatch capacity lock safely recovers a stale lock from a dead owner', as
 		);
 		const stored = storeMutationPlanV1({
 			vaultPath: vault,
-			vaultSha256: createHash('sha256').update(vault).digest('hex'),
+			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
 			request: fakeDeletePreviewRequest(plan, 'stale-lock-recovery'),
 			plan,
 		}, root);

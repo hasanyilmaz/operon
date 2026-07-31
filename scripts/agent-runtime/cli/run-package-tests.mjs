@@ -33,7 +33,12 @@ const cacheRoot = path.join(tempRoot, 'npm-cache');
 const packRoot = path.join(tempRoot, 'pack');
 const prefixRoot = path.join(tempRoot, 'prefix');
 const homeRoot = path.join(tempRoot, 'home');
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const npmExecPath = process.env.npm_execpath;
+if (
+	typeof npmExecPath !== 'string'
+	|| !path.isAbsolute(npmExecPath)
+	|| npmExecPath.includes('\0')
+) throw new Error('OPERON_PACKAGE_TEST_NPM_EXECPATH_REQUIRED');
 const env = {
 	...process.env,
 	HOME: homeRoot,
@@ -624,8 +629,7 @@ try {
 
 	await rm(packRoot, { recursive: true, force: true });
 	await mkdir(packRoot, { recursive: true });
-	const packJson = execFileSync(
-		npmCommand,
+	const packJson = runNpmSync(
 		['pack', '--json', '--pack-destination', packRoot],
 		{ cwd: packageRoot, env, encoding: 'utf8' },
 	);
@@ -719,22 +723,20 @@ try {
 	);
 	const priorPackRoot = path.join(tempRoot, 'prior-pack');
 	await mkdir(priorPackRoot, { recursive: true });
-	const priorPack = JSON.parse(execFileSync(
-		npmCommand,
+	const priorPack = JSON.parse(runNpmSync(
 		['pack', '--json', '--pack-destination', priorPackRoot],
 		{ cwd: fixtureRoot, env, encoding: 'utf8' },
 	))[0];
 	const priorTarball = path.join(priorPackRoot, priorPack.filename);
-	execFileSync(npmCommand, ['install', '--global', '--prefix', prefixRoot, priorTarball], {
+	runNpmSync(['install', '--global', '--prefix', prefixRoot, priorTarball], {
 		env,
 		stdio: 'inherit',
 	});
-	execFileSync(npmCommand, ['install', '--global', '--prefix', prefixRoot, lifecycleTarball], {
+	runNpmSync(['install', '--global', '--prefix', prefixRoot, lifecycleTarball], {
 		env,
 		stdio: 'inherit',
 	});
-	const installedGlobalRoot = execFileSync(
-		npmCommand,
+	const installedGlobalRoot = runNpmSync(
 		['root', '--global', '--prefix', prefixRoot],
 		{ env, encoding: 'utf8' },
 	).trim();
@@ -835,7 +837,17 @@ try {
 		'--json',
 	], env);
 	assert.equal(setup.ok, true);
-	const lifecycleRecoveryRecord = await createLifecycleRecoveryRecord(lifecycleVault);
+	const lifecycleConfig = JSON.parse(await readFile(
+		path.join(env.OPERON_CONFIG_HOME, 'config-v1.json'),
+		'utf8',
+	));
+	const lifecycleProfile = lifecycleConfig.profiles.find(profile => profile.name === 'lifecycle');
+	assert.equal(typeof lifecycleProfile?.canonicalPath, 'string');
+	assert.match(lifecycleProfile?.vaultSha256 ?? '', /^[a-f0-9]{64}$/u);
+	const lifecycleRecoveryRecord = await createLifecycleRecoveryRecord(
+		lifecycleProfile.canonicalPath,
+		lifecycleProfile.vaultSha256,
+	);
 	const clientIdentityPath = path.join(env.OPERON_CONFIG_HOME, 'client-v1.json');
 	await writeFile(
 		clientIdentityPath,
@@ -1096,7 +1108,7 @@ try {
 		/PACKAGE_ASSET_INVALID|Command failed/u,
 	);
 
-	execFileSync(npmCommand, ['install', '--global', '--prefix', prefixRoot, priorTarball], {
+	runNpmSync(['install', '--global', '--prefix', prefixRoot, priorTarball], {
 		env,
 		stdio: 'inherit',
 	});
@@ -1109,7 +1121,7 @@ try {
 		durableStateBeforeLifecycle,
 		'Exact-version rollback must preserve profiles, client identity, and recovery plans.',
 	);
-	execFileSync(npmCommand, ['install', '--global', '--prefix', prefixRoot, lifecycleTarball], {
+	runNpmSync(['install', '--global', '--prefix', prefixRoot, lifecycleTarball], {
 		env,
 		stdio: 'inherit',
 	});
@@ -1122,7 +1134,7 @@ try {
 		durableStateBeforeLifecycle,
 		'Re-upgrading to the beta candidate must preserve durable CLI state.',
 	);
-	execFileSync(npmCommand, ['uninstall', '--global', '--prefix', prefixRoot, 'operon-cli'], {
+	runNpmSync(['uninstall', '--global', '--prefix', prefixRoot, 'operon-cli'], {
 		env,
 		stdio: 'inherit',
 	});
@@ -1151,7 +1163,7 @@ try {
 	await rm(tempRoot, { recursive: true, force: true });
 }
 
-async function createLifecycleRecoveryRecord(vaultPath) {
+async function createLifecycleRecoveryRecord(vaultPath, vaultSha256) {
 	const now = Date.now();
 	const recoveryStartedAt = new Date(now).toISOString();
 	const recoveryExpiresAt = new Date(now + 24 * 60 * 60 * 1_000).toISOString();
@@ -1168,7 +1180,7 @@ async function createLifecycleRecoveryRecord(vaultPath) {
 		version: 1,
 		planRef: 'p1234567890123456789012345678901',
 		vaultPath,
-		vaultSha256: createHash('sha256').update(vaultPath).digest('hex'),
+		vaultSha256,
 		profile: 'lifecycle',
 		clientInstanceId: plan.clientInstanceId,
 		idempotencyKey,
@@ -1195,6 +1207,10 @@ function runJson(executable, args, childEnv) {
 		`Command failed: ${JSON.stringify({ args, stdout: result.stdout, stderr: result.stderr })}`,
 	);
 	return JSON.parse(result.stdout);
+}
+
+function runNpmSync(args, options) {
+	return execFileSync(process.execPath, [npmExecPath, ...args], options);
 }
 
 function runProcess(executable, args, childEnv, options = {}) {

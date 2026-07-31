@@ -50,9 +50,16 @@ let reported = false;
 const report = state => {
 	if (reported) return;
 	reported = true;
+	const temporaryStatusPath = statusPath + '.' + process.pid + '.' + token + '.tmp';
 	try {
-		fs.writeFileSync(statusPath, JSON.stringify({ state, token }), { flag: 'wx' });
+		fs.writeFileSync(temporaryStatusPath, JSON.stringify({ state, token }), { flag: 'wx' });
+		fs.renameSync(temporaryStatusPath, statusPath);
 	} catch {
+		try {
+			fs.unlinkSync(temporaryStatusPath);
+		} catch {
+			// The status was either published atomically or never created.
+		}
 		process.exit(72);
 	}
 };

@@ -112,14 +112,15 @@ export function createCanonicalVaultFenceV1(vaultPath: string): CanonicalVaultFe
 
 export function assertCanonicalVaultFenceV1(fence: CanonicalVaultFenceV1): void {
 	try {
+		const currentIdentity = canonicalVaultIdentityV1(fence.canonicalPath);
 		const stat = lstatSync(fence.canonicalPath);
 		if (
 			!stat.isDirectory()
 			|| stat.isSymbolicLink()
 			|| stat.dev !== fence.dev
 			|| stat.ino !== fence.ino
-			|| realpathSync(fence.canonicalPath) !== fence.canonicalPath
-			|| sha256HexNodeV1(Buffer.from(fence.canonicalPath, 'utf8')) !== fence.sha256
+			|| currentIdentity.canonicalPath !== fence.canonicalPath
+			|| currentIdentity.sha256 !== fence.sha256
 		) {
 			throw new Error('VAULT_TARGET_CHANGED');
 		}

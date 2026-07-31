@@ -15,6 +15,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+if (process.platform === 'win32') {
+	console.log(
+		'Windows process-level interruption acceptance requires the native Ctrl-Break and authenticated broker harness; broker and session interruption contracts are covered separately.',
+	);
+	process.exit(0);
+}
+
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const cliPath = path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
 const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'operon-cli-interruption-'));
