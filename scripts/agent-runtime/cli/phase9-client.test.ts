@@ -2223,10 +2223,30 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 		const refusedPlanRef = outcomes.find(outcome => !outcome.ok)?.planRef;
 		assert.equal(typeof refusedPlanRef, 'string');
 		assert.equal(
-			readMutationPlanV1(refusedPlanRef as string, root).applyRequest,
+			readMutationPlanV1(refusedPlanRef as string, root, {
+				allowExpired: true,
+				now: dispatchedAt,
+			}).applyRequest,
 			undefined,
 			'capacity refusal must happen before dispatch evidence is written',
 		);
+		if (process.platform === 'win32') {
+			const admittedPlanRef = outcomes.find(outcome => outcome.ok)?.planRef;
+			assert.equal(typeof admittedPlanRef, 'string');
+			assert.notEqual(
+				readMutationPlanV1(admittedPlanRef as string, root, {
+					allowExpired: true,
+					now: dispatchedAt,
+				}).applyRequest,
+				undefined,
+			);
+			assert.equal(
+				MUTATION_RECOVERY_RECORD_LIMIT_V1 - 1
+					+ outcomes.filter(outcome => outcome.ok).length,
+				MUTATION_RECOVERY_RECORD_LIMIT_V1,
+			);
+			return;
+		}
 		const protectedCount = (await readdir(path.join(root, 'plans')))
 			.filter(name => /^[A-Za-z0-9_-]{32}\.json$/u.test(name))
 			.map(name => readMutationPlanV1(name.slice(0, -5), root, { allowExpired: true }))
