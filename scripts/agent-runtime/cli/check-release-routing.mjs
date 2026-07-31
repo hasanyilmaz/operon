@@ -245,6 +245,12 @@ const pluginEvidenceRoot = await mkdtemp(path.join(tmpdir(), 'operon-plugin-rele
 const registryRoundTripRoot = await mkdtemp(path.join(tmpdir(), 'operon-cli-registry-roundtrip-'));
 let sanitizedVault;
 try {
+	const pluginBuild = spawnSync(
+		process.execPath,
+		['esbuild.config.mjs', 'production'],
+		{ cwd: pluginRoot, encoding: 'utf8' },
+	);
+	assert.equal(pluginBuild.status, 0, pluginBuild.stderr);
 	const pluginArtifacts = path.join(pluginEvidenceRoot, 'artifacts');
 	await mkdir(pluginArtifacts);
 	for (const artifact of ['main.js', 'manifest.json', 'styles.css']) {
