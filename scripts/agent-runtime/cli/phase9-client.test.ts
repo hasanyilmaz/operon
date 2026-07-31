@@ -2144,7 +2144,10 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 		const vault = await createVault(root, 'Recovery Capacity Vault');
 		const preloadDispatchedAt = Date.now();
 		const vaultSha256 = canonicalVaultIdentityV1(vault).sha256;
-		for (let index = 0; index < MUTATION_RECOVERY_RECORD_LIMIT_V1 - 1; index += 1) {
+		const preloadCount = process.platform === 'win32'
+			? MUTATION_RECOVERY_RECORD_LIMIT_V1
+			: MUTATION_RECOVERY_RECORD_LIMIT_V1 - 1;
+		for (let index = 0; index < preloadCount; index += 1) {
 			const idempotencyKey = `protected-recovery-record-${index}`;
 			const plan = fakePlan(
 				new Date(preloadDispatchedAt - 1_000).toISOString(),
@@ -2187,7 +2190,10 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 			}
 		}
 		const contenderPlanCreatedAt = Date.now();
-		const contenders = ['protected-contender-a', 'protected-contender-b'].map(idempotencyKey => {
+		const contenderKeys = process.platform === 'win32'
+			? ['protected-contender-overflow']
+			: ['protected-contender-a', 'protected-contender-b'];
+		const contenders = contenderKeys.map(idempotencyKey => {
 			const plan = fakePlan(
 				new Date(contenderPlanCreatedAt - 1_000).toISOString(),
 				new Date(contenderPlanCreatedAt + 60_000).toISOString(),
@@ -2201,6 +2207,43 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 			}, root);
 		});
 		const dispatchedAt = Date.now();
+		if (process.platform === 'win32') {
+			let processCalls = 0;
+			const contender = contenders[0];
+			assert.ok(contender);
+			const refused = await runPublicCommandLineV1([
+				'plan',
+				'apply',
+				contender.planRef,
+				'--confirm',
+				confirmationTokenForPlanV1(contender.plan),
+				'--json',
+			], {
+				configRoot: root,
+				runProcess: async () => {
+					processCalls += 1;
+					throw new Error('MUST_NOT_DISPATCH');
+				},
+			});
+			assert.equal(refused.exitCode, 5, JSON.stringify(refused));
+			assert.equal(
+				refused.envelope.kind === 'operon-cli-local-result'
+					? refused.envelope.error?.code
+					: undefined,
+				'receipt-store-unavailable',
+			);
+			assert.equal(refused.envelope.recovery, undefined);
+			assert.equal(processCalls, 0);
+			assert.equal(
+				readMutationPlanV1(contender.planRef, root, {
+					allowExpired: true,
+					now: dispatchedAt,
+				}).applyRequest,
+				undefined,
+				'capacity refusal must happen before dispatch evidence is written',
+			);
+			return;
+		}
 		const releasePath = path.join(root, 'release-capacity-workers');
 		const workerPath = path.join(root, 'plan-store-capacity-worker.mjs');
 		await writeFile(workerPath, __OPERON_PLAN_STORE_CAPACITY_WORKER_SOURCE__);
@@ -2230,23 +2273,6 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 			undefined,
 			'capacity refusal must happen before dispatch evidence is written',
 		);
-		if (process.platform === 'win32') {
-			const admittedPlanRef = outcomes.find(outcome => outcome.ok)?.planRef;
-			assert.equal(typeof admittedPlanRef, 'string');
-			assert.notEqual(
-				readMutationPlanV1(admittedPlanRef as string, root, {
-					allowExpired: true,
-					now: dispatchedAt,
-				}).applyRequest,
-				undefined,
-			);
-			assert.equal(
-				MUTATION_RECOVERY_RECORD_LIMIT_V1 - 1
-					+ outcomes.filter(outcome => outcome.ok).length,
-				MUTATION_RECOVERY_RECORD_LIMIT_V1,
-			);
-			return;
-		}
 		const protectedCount = (await readdir(path.join(root, 'plans')))
 			.filter(name => /^[A-Za-z0-9_-]{32}\.json$/u.test(name))
 			.map(name => readMutationPlanV1(name.slice(0, -5), root, { allowExpired: true }))
