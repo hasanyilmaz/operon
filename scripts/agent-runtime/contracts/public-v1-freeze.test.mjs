@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
 	acceptedFreezeControl,
@@ -21,7 +22,7 @@ import {
 	writePublicV1FreezeIndex,
 } from './public-v1-freeze.mjs';
 
-const pluginRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const PASSED_AUDIT_RESULT = Object.freeze({
 	status: 'accepted-development-exception',
 	productionVulnerabilities: 0,

@@ -14,10 +14,10 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const fixedTempRoot = await realpath(process.platform === 'darwin' ? '/private/tmp' : tmpdir());
 const defaultVaultPath = path.join(fixedTempRoot, 'cli-test-vault');
 const argumentsV1 = process.argv.slice(2);

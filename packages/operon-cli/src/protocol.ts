@@ -60,6 +60,8 @@ export interface SecureRequestFileV1 {
 	fileIdentity: {
 		dev: number;
 		ino: number;
+		size: number;
+		ctimeMs: number;
 	};
 }
 
@@ -199,9 +201,7 @@ export function writeSecureInvocationV1(
 		fsyncSync(descriptor);
 		options.benchmarkSpan?.('request-fsync', Math.max(0, performance.now() - fsyncStartedAt));
 		const writtenStat = fstatSync(descriptor);
-		fileIdentity = { dev: writtenStat.dev, ino: writtenStat.ino };
-		closeSync(descriptor);
-		descriptor = null;
+		const writtenFileIdentity = captureFileIdentityV1(writtenStat);
 
 		const linkStartedAt = performance.now();
 		linkSync(tempPath, targetPath);
@@ -210,9 +210,15 @@ export function writeSecureInvocationV1(
 		options.benchmarkSpan?.('request-link', Math.max(0, performance.now() - linkStartedAt));
 		const verificationStartedAt = performance.now();
 		const targetStat = assertSecureRequestFileV1(targetPath);
-		if (targetStat.dev !== fileIdentity.dev || targetStat.ino !== fileIdentity.ino) {
+		if (
+			targetStat.dev !== writtenFileIdentity.dev
+			|| targetStat.ino !== writtenFileIdentity.ino
+		) {
 			throw new Error('REQUEST_FILE_CHANGED');
 		}
+		fileIdentity = captureFileIdentityV1(targetStat);
+		closeSync(descriptor);
+		descriptor = null;
 		options.benchmarkSpan?.(
 			'request-verification',
 			Math.max(0, performance.now() - verificationStartedAt),
@@ -261,8 +267,7 @@ export function cleanupSecureInvocationV1(
 			if (
 				stat.isSymbolicLink()
 				|| !stat.isFile()
-				|| stat.dev !== options.fileIdentity.dev
-				|| stat.ino !== options.fileIdentity.ino
+				|| !fileIdentityMatchesV1(options.fileIdentity, stat)
 			) return false;
 		}
 		unlinkSync(filePath);
@@ -301,6 +306,30 @@ function assertSecureRequestFileV1(filePath: string) {
 	if (permissions(stat.mode) !== 0o600) throw new Error('REQUEST_FILE_WRONG_MODE');
 	if (stat.size > CONTRACT_LIMITS_V1.transportInputBytes) throw new Error('REQUEST_FILE_TOO_LARGE');
 	return stat;
+}
+
+function captureFileIdentityV1(stat: {
+	dev: number;
+	ino: number;
+	size: number;
+	ctimeMs: number;
+}): SecureRequestFileV1['fileIdentity'] {
+	return {
+		dev: stat.dev,
+		ino: stat.ino,
+		size: stat.size,
+		ctimeMs: stat.ctimeMs,
+	};
+}
+
+function fileIdentityMatchesV1(
+	expected: SecureRequestFileV1['fileIdentity'],
+	actual: { dev: number; ino: number; size: number; ctimeMs: number },
+): boolean {
+	return expected.dev === actual.dev
+		&& expected.ino === actual.ino
+		&& expected.size === actual.size
+		&& expected.ctimeMs === actual.ctimeMs;
 }
 
 function isErrnoCode(error: unknown, code: string): boolean {

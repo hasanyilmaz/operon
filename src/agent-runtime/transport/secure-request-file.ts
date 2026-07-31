@@ -15,6 +15,13 @@ export interface ConsumedAgentRuntimeRequestFileV1 {
 	readonly inputBytes: number;
 }
 
+interface AgentRuntimeRequestFileIdentityV1 {
+	readonly dev: number;
+	readonly ino: number;
+	readonly size: number;
+	readonly ctimeMs: number;
+}
+
 export function getAgentRuntimeRequestRootV1(nodeApi: AgentRuntimeDesktopNodeApiV1): string {
 	const uid = nodeApi.getuid();
 	if (uid === null) {
@@ -59,14 +66,14 @@ export async function readAndConsumeAgentRuntimeRequestFileV1(
 	}
 
 	let handle: AgentRuntimeTransportFileHandleV1 | null = null;
-	let consumedIdentity: { dev: number; ino: number } | null = null;
+	let consumedIdentity: AgentRuntimeRequestFileIdentityV1 | null = null;
 	try {
 		const pathStat = await nodeApi.lstat(requestPath);
 		if (pathStat.isSymbolicLink() || !pathStat.isFile()) {
 			throw new AgentRuntimeTransportErrorV1('invalid-request', 'request-not-regular-file');
 		}
 		if (pathStat.uid === currentUid) {
-			consumedIdentity = { dev: pathStat.dev, ino: pathStat.ino };
+			consumedIdentity = requestFileIdentityV1(pathStat);
 		}
 		handle = await nodeApi.open(requestPath, nodeApi.fileOpenReadOnlyNoFollow);
 		const openedStat = await handle.stat();
@@ -82,10 +89,10 @@ export async function readAndConsumeAgentRuntimeRequestFileV1(
 				'request-permissions-not-owner-only',
 			);
 		}
-		if (openedStat.dev !== pathStat.dev || openedStat.ino !== pathStat.ino) {
+		if (!requestFileIdentityMatchesV1(requestFileIdentityV1(pathStat), openedStat)) {
 			throw new AgentRuntimeTransportErrorV1('invalid-request', 'request-file-changed');
 		}
-		consumedIdentity = { dev: openedStat.dev, ino: openedStat.ino };
+		consumedIdentity = requestFileIdentityV1(openedStat);
 		if (openedStat.size > CONTRACT_LIMITS_V1.transportInputBytes) {
 			throw new AgentRuntimeTransportErrorV1(
 				'payload-too-large',
@@ -118,13 +125,41 @@ export async function readAndConsumeAgentRuntimeRequestFileV1(
 				currentStat
 				&& !currentStat.isSymbolicLink()
 				&& currentStat.isFile()
-				&& currentStat.dev === consumedIdentity.dev
-				&& currentStat.ino === consumedIdentity.ino
+				&& requestFileIdentityMatchesV1(consumedIdentity, currentStat)
 			) {
 				await nodeApi.unlink(requestPath).catch(() => undefined);
 			}
 		}
 	}
+}
+
+function requestFileIdentityV1(stat: {
+	readonly dev: number;
+	readonly ino: number;
+	readonly size: number;
+	readonly ctimeMs: number;
+}): AgentRuntimeRequestFileIdentityV1 {
+	return {
+		dev: stat.dev,
+		ino: stat.ino,
+		size: stat.size,
+		ctimeMs: stat.ctimeMs,
+	};
+}
+
+function requestFileIdentityMatchesV1(
+	expected: AgentRuntimeRequestFileIdentityV1,
+	actual: {
+		readonly dev: number;
+		readonly ino: number;
+		readonly size: number;
+		readonly ctimeMs: number;
+	},
+): boolean {
+	return expected.dev === actual.dev
+		&& expected.ino === actual.ino
+		&& expected.size === actual.size
+		&& expected.ctimeMs === actual.ctimeMs;
 }
 
 export async function computeRunningVaultSha256V1(

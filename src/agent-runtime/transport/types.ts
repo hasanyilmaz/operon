@@ -3,6 +3,7 @@ export interface AgentRuntimeTransportFileStatV1 {
 	ino: number;
 	mode: number;
 	size: number;
+	ctimeMs: number;
 	uid: number;
 	isDirectory(): boolean;
 	isFile(): boolean;

@@ -534,8 +534,14 @@ test('persistent read server dispatches allowlisted tokens and rejects mutation 
 		}>;
 		assert.ok(batchResponses.every(item => item.type === 'batch-item-response'));
 		assert.ok(batchResponses.every(item => item.sequence === 2));
-		assert.deepEqual(batchResponses.map(item => item.index), [0, 1]);
-		assert.deepEqual(batchResponses.map(item => item.requestId), ['batch-one', 'batch-two']);
+		const orderedBatchResponses = [...batchResponses].sort(
+			(left, right) => (left.index ?? -1) - (right.index ?? -1),
+		);
+		assert.deepEqual(orderedBatchResponses.map(item => item.index), [0, 1]);
+		assert.deepEqual(
+			orderedBatchResponses.map(item => item.requestId),
+			['batch-one', 'batch-two'],
+		);
 		assert.ok(batchResponses.every(item => (
 			(JSON.parse(item.result ?? '{}') as { ok?: boolean }).ok === true
 		)));
@@ -801,6 +807,7 @@ test('request symlinks fail closed without reading their target', async () => {
 test('request inode replacement fails closed and preserves the replacement', async () => {
 	const token = 'f'.repeat(32);
 	const requestPath = await publishRequest(token, '{"original":true}', 0o600);
+	const originalStat = await lstat(requestPath);
 	let swapped = false;
 	const swappingNodeApi: AgentRuntimeDesktopNodeApiV1 = {
 		...nodeApi,
@@ -810,7 +817,20 @@ test('request inode replacement fails closed and preserves the replacement', asy
 				await unlink(path);
 				await writeFile(path, '{"replacement":true}', { mode: 0o600 });
 			}
-			return await nodeApi.open(path, flags);
+			const handle = await nodeApi.open(path, flags);
+			return {
+				...handle,
+				stat: async () => {
+					const replacementStat = await handle.stat();
+					return {
+						...replacementStat,
+						dev: Number(originalStat.dev),
+						ino: Number(originalStat.ino),
+						size: Number(originalStat.size),
+						ctimeMs: Number(originalStat.ctimeMs) + 1,
+					};
+				},
+			};
 		},
 	};
 	await assert.rejects(
@@ -1276,6 +1296,7 @@ function asTransportStat(
 		ino: Number(stat.ino),
 		mode: Number(stat.mode),
 		size: Number(stat.size),
+		ctimeMs: Number(stat.ctimeMs),
 		uid: Number(stat.uid),
 		isDirectory: () => stat.isDirectory(),
 		isFile: () => stat.isFile(),

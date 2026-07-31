@@ -95,8 +95,8 @@ jobs:
           cache: npm
       - run: npm install --global npm@11.12.1
       - run: npm ci
-      - name: Install Fish for executable completion acceptance
+      - name: Install Fish and Zsh for executable completion acceptance
         run: |
           sudo apt-get update
-          sudo apt-get install --yes fish
+          sudo apt-get install --yes fish zsh
       - run: node scripts/agent-runtime/cli/run-phase9-client-tests.mjs

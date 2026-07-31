@@ -100,10 +100,13 @@ test("cleanup never removes a same-token replacement", () => {
 	unlinkSync(written.path);
 });
 
-test("published request identity must match the captured source inode", () => {
-	assert.equal(fileIdentityMatches({ dev: 1, ino: 2 }, { dev: 1, ino: 2 }), true);
-	assert.equal(fileIdentityMatches({ dev: 1, ino: 2 }, { dev: 1, ino: 3 }), false);
-	assert.equal(fileIdentityMatches({ dev: 1, ino: 2 }, { dev: 2, ino: 2 }), false);
+test("published request identity must match the captured file generation", () => {
+	const identity = { dev: 1, ino: 2, size: 3, ctimeMs: 4 };
+	assert.equal(fileIdentityMatches(identity, identity), true);
+	assert.equal(fileIdentityMatches(identity, { ...identity, ino: 3 }), false);
+	assert.equal(fileIdentityMatches(identity, { ...identity, dev: 2 }), false);
+	assert.equal(fileIdentityMatches(identity, { ...identity, size: 4 }), false);
+	assert.equal(fileIdentityMatches(identity, { ...identity, ctimeMs: 5 }), false);
 });
 
 test("insecure request root and symlink root fail closed", () => {

@@ -3,8 +3,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const tempDir = await mkdtemp(path.join(tmpdir(), 'operon-session-jsonl-tests-'));
 const outfile = path.join(tempDir, 'session-jsonl.test.mjs');
 

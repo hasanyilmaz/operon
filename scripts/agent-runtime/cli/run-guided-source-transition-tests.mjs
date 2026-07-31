@@ -2,10 +2,10 @@ import { build } from 'esbuild';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readOperonCliPackageVersion } from './package-version.mjs';
 
-const pluginRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const packageVersion = await readOperonCliPackageVersion(pluginRoot);
 const tempRoot = await mkdtemp(path.join(tmpdir(), 'operon-guided-source-transition-tests-'));
 const outfile = path.join(tempRoot, 'guided-source-transitions.test.mjs');

@@ -271,7 +271,7 @@ test('command registry is the unique manifest and future completion authority', 
 	)));
 });
 
-test('external shell completion is deterministic, registry-derived, and local-only', async () => {
+test('external shell completion is deterministic, registry-derived, and local-only', async context => {
 	const scripts = {
 		zsh: renderShellCompletionV1('zsh'),
 		bash: renderShellCompletionV1('bash'),
@@ -304,6 +304,10 @@ test('external shell completion is deterministic, registry-derived, and local-on
 	assert.match(scripts.zsh, /^#compdef operon/u);
 	assert.match(scripts.bash, /complete -F _operon_completion operon/u);
 	assert.match(scripts.fish, /complete -c operon/u);
+	if (!shellAvailableForTest('bash') || !shellAvailableForTest('zsh')) {
+		context.skip('executable Bash and Zsh completion acceptance requires both shells');
+		return;
+	}
 
 	const root = await mkdtemp(path.join(tmpdir(), 'operon-cli-completion-'));
 	try {
@@ -545,6 +549,11 @@ test('external shell completion is deterministic, registry-derived, and local-on
 
 function shellQuoteForTest(value: string): string {
 	return `'${value.split("'").join("'\\''")}'`;
+}
+
+function shellAvailableForTest(shell: 'bash' | 'zsh'): boolean {
+	const result = spawnSync(shell, ['--version'], { encoding: 'utf8' });
+	return result.status === 0 && result.error === undefined;
 }
 
 test('help and unknown commands are resolved locally before vault or Runtime access', async () => {
@@ -795,7 +804,10 @@ test('help and unknown commands are resolved locally before vault or Runtime acc
 	}
 });
 
-test('benchmark-only CLI subspans use a sibling trace without changing public output', async () => {
+test('benchmark-only CLI subspans use a sibling trace without changing public output', {
+	skip: process.platform !== 'darwin',
+}, async () => {
+	// Benchmark telemetry is deliberately restricted to the private macOS benchmark root.
 	const root = await mkdtemp('/private/tmp/operon-cli-speed-unit-');
 	const previousTracePath = process.env.OPERON_CLI_BENCHMARK_TRACE_PATH;
 	const previousSubspans = process.env.OPERON_CLI_BENCHMARK_SUBSPANS;

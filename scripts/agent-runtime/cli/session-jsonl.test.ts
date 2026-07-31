@@ -3,6 +3,7 @@ import { createHmac } from 'node:crypto';
 import { chmodSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
@@ -88,7 +89,10 @@ test('JSONL session executes frames sequentially without shell parsing', async (
 });
 
 test('JSONL read group runs 2-8 allowlisted children and writes ordered child responses', async () => {
-	const configRoot = await mkdtemp('/private/tmp/operon-session-group-config-');
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-session-group-config-'));
+	const configRoot = path.join(root, 'config');
+	const vault = path.join(root, 'vault');
+	mkdirSync(vault, { recursive: true, mode: 0o700 });
 	const output = captureOutput();
 	const batchCounts: number[] = [];
 	let active = 0;
@@ -108,10 +112,10 @@ test('JSONL read group runs 2-8 allowlisted children and writes ordered child re
 				`${JSON.stringify({
 					id: 'reads',
 					reads: [
-						{ id: 'health', argv: ['health', '--vault', '/private/tmp/cli-test-vault', '--json'] },
+						{ id: 'health', argv: ['health', '--vault', vault, '--json'] },
 						{
 							id: 'query',
-							argv: ['query', '--vault', '/private/tmp/cli-test-vault', '--input', '-', '--json'],
+							argv: ['query', '--vault', vault, '--input', '-', '--json'],
 							input: { kind: 'task-query' },
 						},
 					],
@@ -132,12 +136,12 @@ test('JSONL read group runs 2-8 allowlisted children and writes ordered child re
 		assert.equal(maxActive, 2);
 		assert.deepEqual(output.lines().map(line => line.id), ['health', 'query']);
 	} finally {
-		await rm(configRoot, { recursive: true, force: true });
+		await rm(root, { recursive: true, force: true });
 	}
 });
 
 test('JSONL read group accepts exactly eight children', async () => {
-	const root = await mkdtemp('/private/tmp/operon-session-group-max-');
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-session-group-max-'));
 	const configRoot = path.join(root, 'config');
 	const vault = path.join(root, 'vault');
 	mkdirSync(vault, { recursive: true, mode: 0o700 });
@@ -190,7 +194,10 @@ test('JSONL read group accepts exactly eight children', async () => {
 });
 
 test('JSONL read group emits only the contiguous ordered prefix after out-of-order completion', async () => {
-	const configRoot = await mkdtemp('/private/tmp/operon-session-group-order-');
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-session-group-order-'));
+	const configRoot = path.join(root, 'config');
+	const vault = path.join(root, 'vault');
+	mkdirSync(vault, { recursive: true, mode: 0o700 });
 	const output = captureOutput();
 	const pending = Array.from({ length: 4 }, () => deferred<PublicCommandOutcomeV1>());
 	let calls = 0;
@@ -200,7 +207,7 @@ test('JSONL read group emits only the contiguous ordered prefix after out-of-ord
 				id: 'ordered',
 				reads: Array.from({ length: 4 }, (_, index) => ({
 					id: `read-${index}`,
-					argv: ['health', '--vault', '/private/tmp/cli-test-vault', '--json'],
+					argv: ['health', '--vault', vault, '--json'],
 				})),
 			})}\n`]),
 			output,
@@ -235,12 +242,15 @@ test('JSONL read group emits only the contiguous ordered prefix after out-of-ord
 			'read-3',
 		]);
 	} finally {
-		await rm(configRoot, { recursive: true, force: true });
+		await rm(root, { recursive: true, force: true });
 	}
 });
 
 test('JSONL read group backpressure blocks later children and the next top-level frame', async () => {
-	const configRoot = await mkdtemp('/private/tmp/operon-session-group-backpressure-');
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-session-group-backpressure-'));
+	const configRoot = path.join(root, 'config');
+	const vault = path.join(root, 'vault');
+	mkdirSync(vault, { recursive: true, mode: 0o700 });
 	const chunks: string[] = [];
 	const listeners = new Map<string, (error?: Error) => void>();
 	let calls = 0;
@@ -263,7 +273,7 @@ test('JSONL read group backpressure blocks later children and the next top-level
 					id: 'group',
 					reads: Array.from({ length: 3 }, (_, index) => ({
 						id: `child-${index}`,
-						argv: ['health', '--vault', '/private/tmp/cli-test-vault', '--json'],
+						argv: ['health', '--vault', vault, '--json'],
 					})),
 				})}\n`,
 				`${JSON.stringify({ id: 'after', argv: ['version'] })}\n`,
@@ -294,12 +304,15 @@ test('JSONL read group backpressure blocks later children and the next top-level
 			'after',
 		]);
 	} finally {
-		await rm(configRoot, { recursive: true, force: true });
+		await rm(root, { recursive: true, force: true });
 	}
 });
 
 test('aborting read-group backpressure emits no response after the accepted prefix', async () => {
-	const configRoot = await mkdtemp('/private/tmp/operon-session-group-abort-');
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-session-group-abort-'));
+	const configRoot = path.join(root, 'config');
+	const vault = path.join(root, 'vault');
+	mkdirSync(vault, { recursive: true, mode: 0o700 });
 	const controller = new AbortController();
 	const chunks: string[] = [];
 	const listeners = new Map<string, (error?: Error) => void>();
@@ -321,7 +334,7 @@ test('aborting read-group backpressure emits no response after the accepted pref
 				id: 'group',
 				reads: Array.from({ length: 3 }, (_, index) => ({
 					id: `child-${index}`,
-					argv: ['health', '--vault', '/private/tmp/cli-test-vault', '--json'],
+					argv: ['health', '--vault', vault, '--json'],
 				})),
 			})}\n`]),
 			output,
@@ -342,12 +355,12 @@ test('aborting read-group backpressure emits no response after the accepted pref
 		assert.equal(chunks.length, 1);
 		assert.equal(JSON.parse(chunks[0]!).id, 'child-0');
 	} finally {
-		await rm(configRoot, { recursive: true, force: true });
+		await rm(root, { recursive: true, force: true });
 	}
 });
 
 test('JSONL read group canonicalizes alias, profile, and implicit targets before dispatch', async () => {
-	const root = await mkdtemp('/private/tmp/operon-session-group-target-');
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-session-group-target-'));
 	const configRoot = path.join(root, 'config');
 	const vault = path.join(root, 'vault');
 	const alias = path.join(root, 'vault-alias');
@@ -412,7 +425,7 @@ test('JSONL read group canonicalizes alias, profile, and implicit targets before
 });
 
 test('JSONL read group rejects canonical profile or implicit target mismatch before publication', async () => {
-	const root = await mkdtemp('/private/tmp/operon-session-group-mismatch-');
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-session-group-mismatch-'));
 	const configRoot = path.join(root, 'config');
 	const requestRoot = path.join(root, 'requests');
 	const firstVault = path.join(root, 'first');
@@ -504,7 +517,10 @@ test('JSONL read group rejects invalid bounds, duplicate IDs, target drift, and 
 		{
 			id: 'target-drift',
 			reads: [
-				{ id: 'one', argv: ['health', '--vault', '/private/tmp/cli-test-vault'] },
+				{
+					id: 'one',
+					argv: ['health', '--vault', path.join(tmpdir(), 'operon-cli-test-vault-missing')],
+				},
 				{ id: 'two', argv: ['health', '--profile', 'other'] },
 			],
 		},
@@ -739,7 +755,8 @@ test('benchmark-only frame timing covers decode through output drain and flushes
 test('persistent read client handshakes, preserves request identity, and rejects mutations', {
 	skip: process.platform !== 'darwin',
 }, async t => {
-	const root = await mkdtemp(path.join('/private/tmp', 'operon-persistent-cli-'));
+	// Darwin's Unix socket path limit requires the intentionally short transport root.
+	const root = await mkdtemp('/private/tmp/operon-persistent-cli-');
 	chmodSync(root, 0o700);
 	const vaultPath = path.join(root, 'vault');
 	mkdirSync(vaultPath, { mode: 0o700 });

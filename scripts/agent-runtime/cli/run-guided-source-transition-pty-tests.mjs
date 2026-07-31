@@ -2,11 +2,12 @@ import { execFileSync } from 'node:child_process';
 import { chmod, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
 import { readOperonCliPackageVersion } from './package-version.mjs';
 
-const pluginRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const packageVersion = await readOperonCliPackageVersion(pluginRoot);
 const tempRoot = await mkdtemp(path.join(tmpdir(), 'operon-phase7-pty-responder-'));
 const responder = path.join(tempRoot, 'phase7-pty-responder.mjs');

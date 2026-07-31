@@ -24,7 +24,7 @@ Compact keys are canonical keys only. Visible property names, localized labels, 
 existing-parent reference in the same create intent. It does not resolve task
 names, create a parent task, or construct a related-task graph.
 
-Values are shell data, not inline Markdown. A field token splits at its first `::`; the remainder is its value. Lists use semicolon-separated items, canonicalized with `; `; a literal semicolon is escaped as `\;`. List order is preserved, whitespace adjacent to a delimiter is trimmed, and empty elements are rejected. Semicolons in scalar text fields remain literal. Generated `{{key:: value}}` containers are not accepted as input.
+Values are shell data, not inline Markdown. A field token splits at its first `::`; the remainder is its value. Lists use semicolon-separated items, canonicalized with `; `; a literal semicolon is escaped as `\;` and a literal backslash as `\\`. List order is preserved, whitespace adjacent to a delimiter is trimmed, and empty elements are rejected. Semicolons in scalar text fields remain literal. Generated `{{key:: value}}` containers are not accepted as input.
 
 Every canonical key may occur at most once, including list keys. `status` accepts one exact canonical `Pipeline.Status` value and `priority` accepts one exact configured Operon priority value; the compiler resolves both through the live Catalog to stable IDs. Zero or multiple matches fail closed. Stable IDs remain available through typed JSON, not compact user syntax. File Task property mappings affect serialization only, so a configured visible property such as `Deadline` never replaces compact key `dateDue`.
 

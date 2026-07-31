@@ -53,6 +53,10 @@ jobs:
           PACKAGE_VERSION="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('packages/operon-cli/package.json','utf8')).version)")"
           test "$SOURCE_REF" = "cli-v$PACKAGE_VERSION"
       - run: npm ci
+      - name: Install Fish and Zsh for executable completion acceptance
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fish zsh
       - run: npm run release:audit-policy
       - run: npm run agent-runtime:contracts
       - run: npm run agent-runtime:cli

@@ -1052,6 +1052,14 @@ function testSecureRequestFile(): void {
 		assert.equal(JSON.parse(readFileSync(request.path, 'utf8')).kind, 'cli-invocation');
 		assert.equal(cleanupSecureInvocationV1(request.token, {
 			root,
+			fileIdentity: { ...request.fileIdentity, ctimeMs: request.fileIdentity.ctimeMs + 1 },
+		}), false);
+		assert.equal(cleanupSecureInvocationV1(request.token, {
+			root,
+			fileIdentity: { ...request.fileIdentity, size: request.fileIdentity.size + 1 },
+		}), false);
+		assert.equal(cleanupSecureInvocationV1(request.token, {
+			root,
 			fileIdentity: request.fileIdentity,
 		}), true);
 		assert.equal(cleanupSecureInvocationV1(request.token, { root }), false);

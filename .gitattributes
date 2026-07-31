@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+*.gif binary
+*.ico binary
+*.jpeg binary
+*.jpg binary
+*.mp3 binary
+*.pdf binary
+*.png binary
+*.tgz binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.zip binary

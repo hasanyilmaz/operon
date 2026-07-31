@@ -175,10 +175,13 @@ export function parseCompactListV1(
 	let current = '';
 	for (let index = 0; index < value.length; index += 1) {
 		const character = value[index];
-		if (character === '\\' && value[index + 1] === ';') {
-			current += ';';
-			index += 1;
-			continue;
+		if (character === '\\') {
+			const escaped = value[index + 1];
+			if (escaped === '\\' || escaped === ';') {
+				current += escaped;
+				index += 1;
+				continue;
+			}
 		}
 		if (character === ';') {
 			pushListItem(items, current, key);
@@ -200,7 +203,9 @@ export function parseCompactListV1(
 	}
 	return {
 		items,
-		canonical: items.map(item => item.replace(/;/gu, '\\;')).join('; '),
+		canonical: items
+			.map(item => item.replace(/\\/gu, '\\\\').replace(/;/gu, '\\;'))
+			.join('; '),
 	};
 }
 

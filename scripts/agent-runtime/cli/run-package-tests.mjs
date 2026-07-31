@@ -12,6 +12,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import {
 	OPERON_CLI_EXECUTABLE_HARD_LIMIT_BYTES,
@@ -21,7 +22,7 @@ import {
 	requiresOperonCliBundleContributorReview,
 } from '../../../packages/operon-cli/size-policy.mjs';
 
-const pluginRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const packageRoot = path.join(pluginRoot, 'packages', 'operon-cli');
 const tempRoot = await mkdtemp(path.join(tmpdir(), 'operon-cli-package-'));
 const cacheRoot = path.join(tempRoot, 'npm-cache');

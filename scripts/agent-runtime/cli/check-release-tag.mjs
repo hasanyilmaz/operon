@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const pluginRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const packageDocument = JSON.parse(
 	await readFile(path.join(pluginRoot, 'packages', 'operon-cli', 'package.json'), 'utf8'),
 );

@@ -335,6 +335,18 @@ function testLists(): void {
 		items: ['Research; Development', 'Operon'],
 		canonical: 'Research\\; Development; Operon',
 	});
+	assert.deepEqual(parseCompactListV1('Local\\\\Path; Trailing\\\\; Operon'), {
+		items: ['Local\\Path', 'Trailing\\', 'Operon'],
+		canonical: 'Local\\\\Path; Trailing\\\\; Operon',
+	});
+	const escapedBackslashAndDelimiter = parseCompactListV1(
+		'Research\\\\\\;Development; Operon',
+	);
+	assert.deepEqual(escapedBackslashAndDelimiter.items, ['Research\\;Development', 'Operon']);
+	assert.deepEqual(
+		parseCompactListV1(escapedBackslashAndDelimiter.canonical),
+		escapedBackslashAndDelimiter,
+	);
 	expectCode(() => parseCompactListV1('Operon;;Runtime', 'contexts'), 'EMPTY_LIST_ELEMENT');
 	expectCode(() => parseCompactListV1('Operon; Operon', 'contexts'), 'DUPLICATE_LIST_ELEMENT');
 }

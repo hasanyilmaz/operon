@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import Ajv2020 from 'ajv/dist/2020.js';
 
-const pluginRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const schemaRoot = path.join(pluginRoot, 'packages', 'operon-cli', 'schemas', 'v1');
 const manifest = JSON.parse(await readFile(
 	path.join(pluginRoot, 'packages', 'operon-cli', 'cli-manifest-v1.json'),

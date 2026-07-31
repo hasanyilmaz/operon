@@ -65,6 +65,7 @@ interface ProbeFileStat {
 	ino: number;
 	mode: number;
 	size: number;
+	ctimeMs: number;
 	uid: number;
 	isDirectory(): boolean;
 	isFile(): boolean;
@@ -384,7 +385,12 @@ async function readAndConsumeRequestFile(
 	if (nodeApi.dirname(requestPath) !== rootPath) throw new ProbeError('INVALID_REQUEST', 'request-path-escape');
 
 	let handle: ProbeFileHandle | null = null;
-	let consumedIdentity: { dev: number; ino: number } | null = null;
+	let consumedIdentity: {
+		dev: number;
+		ino: number;
+		size: number;
+		ctimeMs: number;
+	} | null = null;
 	try {
 		const pathStat = await nodeApi.lstat(requestPath);
 		if (pathStat.isSymbolicLink() || !pathStat.isFile()) {
@@ -399,10 +405,20 @@ async function readAndConsumeRequestFile(
 		if ((requestStat.mode & 0o777) !== 0o600) {
 			throw new ProbeError('REQUEST_FILE_INVALID', 'request-permissions-not-owner-only');
 		}
-		if (requestStat.dev !== pathStat.dev || requestStat.ino !== pathStat.ino) {
+		if (
+			requestStat.dev !== pathStat.dev
+			|| requestStat.ino !== pathStat.ino
+			|| requestStat.size !== pathStat.size
+			|| requestStat.ctimeMs !== pathStat.ctimeMs
+		) {
 			throw new ProbeError('REQUEST_FILE_INVALID', 'request-file-changed');
 		}
-		consumedIdentity = { dev: requestStat.dev, ino: requestStat.ino };
+		consumedIdentity = {
+			dev: requestStat.dev,
+			ino: requestStat.ino,
+			size: requestStat.size,
+			ctimeMs: requestStat.ctimeMs,
+		};
 		if (requestStat.size > TRANSPORT_PROBE_MAX_REQUEST_FILE_BYTES) {
 			throw new ProbeError('PAYLOAD_TOO_LARGE', 'request-file-exceeds-probe-limit');
 		}
@@ -425,6 +441,8 @@ async function readAndConsumeRequestFile(
 				&& currentStat.isFile()
 				&& currentStat.dev === consumedIdentity.dev
 				&& currentStat.ino === consumedIdentity.ino
+				&& currentStat.size === consumedIdentity.size
+				&& currentStat.ctimeMs === consumedIdentity.ctimeMs
 			) {
 				await nodeApi.unlink(requestPath).catch(() => undefined);
 			}

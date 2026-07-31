@@ -67,13 +67,13 @@
     "contractDigest": "d280747a21f46add48d70193205c4dc642b1e0f38447209611174e33beff5927",
     "tarball": {
       "path": "packages/operon-cli/freeze/operon-cli-1.0.0.tgz",
-      "sha256": "92019e5dc19378263a5c697223899bed67171a3c4bee6bd331efdeb3b620cef7",
-      "bytes": 212763
+      "sha256": "bcfeab32bcf0d8cb1acc3ded7c5316aa6fdd6ea282bc42f6b523eea40bc14dcc",
+      "bytes": 212801
     },
     "executable": {
       "path": "packages/operon-cli/dist/operon.mjs",
-      "sha256": "79348a0de969eeb699ee28575e5d1ef71f469b9e6e052626946a0d8422ff33e1",
-      "bytes": 510602
+      "sha256": "e06d1e0e0223aec952917a24fef4e93083371cde7a442838537572c340584c7a",
+      "bytes": 510766
     },
     "license": {
       "path": "packages/operon-cli/LICENSE",
@@ -110,7 +110,7 @@
       "fileCount": 5,
       "aggregateSha256": "2ecd8a3e0ae2e069bc89a7cd70cdb724f4023f2b306391b21fbbabca07dd12c6"
     },
-    "packageInputAggregateSha256": "846d4c68908ea73d3a5e50ac03380337750df6ef29d5bf82d023953de609a7f6"
+    "packageInputAggregateSha256": "1a7e82e88239046d1f7b7037f05e15f8cda6198a908e361c2bea44a6c46aab34"
   },
   "documentation": {
     "manifest": {
@@ -132,8 +132,8 @@
     "version": "3.0.0",
     "main": {
       "path": "main.js",
-      "sha256": "22c36ecae43c6c63acc2d479d2c821a1c585a6b735cdcb900d7c11cb088d6291",
-      "bytes": 4321236
+      "sha256": "e812522b92c766060867fddf2ac58af3781d95fcdc132e1c9d74d8c327b0def9",
+      "bytes": 4321339
     },
     "manifest": {
       "path": "manifest.json",
@@ -164,8 +164,8 @@
     },
     "rootPackage": {
       "path": "package.json",
-      "sha256": "5593fbacb818fb4d44de430677024012236d94c0915668833dd851e339cfd44c",
-      "bytes": 16573
+      "sha256": "3a4f169ccb88beaf93d43664af09bab5cfc6cc195afa0a78872c964ac70299fc",
+      "bytes": 16364
     },
     "packageLock": {
       "path": "package-lock.json",
@@ -196,7 +196,7 @@
   "maintainerAcceptance": {
     "status": "accepted",
     "acceptedBy": "Hasan Yilmaz",
-    "acceptedAt": "2026-07-31T00:04:11.231Z"
+    "acceptedAt": "2026-07-31T09:50:13.032Z"
   },
-  "inputsAggregateSha256": "88fd1f022706c855da44ea9760f4547b5561be847586cc8767e0a7213f58b65c"
+  "inputsAggregateSha256": "8706e4c77298b6f86a8d894dd5c158c93efaab2b200399d112e8eddd5216e31a"
 }

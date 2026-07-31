@@ -118,7 +118,19 @@ function assertSecureRequestFile(filePath) {
 }
 
 export function fileIdentityMatches(expected, actual) {
-	return expected.dev === actual.dev && expected.ino === actual.ino;
+	return expected.dev === actual.dev
+		&& expected.ino === actual.ino
+		&& expected.size === actual.size
+		&& expected.ctimeMs === actual.ctimeMs;
+}
+
+function captureFileIdentity(stat) {
+	return {
+		dev: stat.dev,
+		ino: stat.ino,
+		size: stat.size,
+		ctimeMs: stat.ctimeMs,
+	};
 }
 
 export function writeSecureRequest(request, options = {}) {
@@ -149,18 +161,22 @@ export function writeSecureRequest(request, options = {}) {
 		writeFileSync(descriptor, body);
 		fsyncSync(descriptor);
 		const writtenStat = fstatSync(descriptor);
-		fileIdentity = { dev: writtenStat.dev, ino: writtenStat.ino };
-		closeSync(descriptor);
-		descriptor = null;
+		const writtenFileIdentity = captureFileIdentity(writtenStat);
 
 		// link() is atomic and refuses to replace an attacker-created target.
 		linkSync(tempPath, targetPath);
 		published = true;
 		unlinkSync(tempPath);
 		const targetStat = assertSecureRequestFile(targetPath);
-		if (!fileIdentityMatches(fileIdentity, targetStat)) {
+		if (
+			targetStat.dev !== writtenFileIdentity.dev
+			|| targetStat.ino !== writtenFileIdentity.ino
+		) {
 			throw new Error("REQUEST_FILE_CHANGED");
 		}
+		fileIdentity = captureFileIdentity(targetStat);
+		closeSync(descriptor);
+		descriptor = null;
 		return {
 			token,
 			path: targetPath,
@@ -207,7 +223,7 @@ export function readSecureRequest(token, options = {}) {
 		if (uid !== null && openedStat.uid !== uid) {
 			throw new Error("REQUEST_FILE_WRONG_OWNER");
 		}
-		if (openedStat.dev !== pathStat.dev || openedStat.ino !== pathStat.ino) {
+		if (!fileIdentityMatches(captureFileIdentity(pathStat), openedStat)) {
 			throw new Error("REQUEST_FILE_CHANGED");
 		}
 		if (openedStat.size > MAX_REQUEST_FILE_BYTES) {
@@ -224,7 +240,7 @@ export function readSecureRequest(token, options = {}) {
 			try {
 				cleanupRequest(token, {
 					root,
-					fileIdentity: { dev: pathStat.dev, ino: pathStat.ino },
+					fileIdentity: captureFileIdentity(pathStat),
 				});
 			} catch {
 				// The client also performs cleanup after the handler returns.
