@@ -89,6 +89,7 @@ import {
 	inspectCliStorageSecurityV1,
 	repairCliStorageSecurityV1,
 	resolveWindowsPowerShellV1,
+	secureCreatedFileV1,
 	writeSecureJsonAtomicV1,
 } from '../../../packages/operon-cli/src/secure-storage';
 import {
@@ -211,6 +212,7 @@ function testCrossPlatformCliStorageAndPaths(): void {
 				'config-v1.json.123.12345678-1234-4123-8123-123456789abc.tmp',
 			);
 			writeFileSync(staleAtomicTemp, '{}\n', { encoding: 'utf8', mode: 0o600 });
+			secureCreatedFileV1(staleAtomicTemp);
 			assert.equal(inspectCliStorageSecurityV1(root).secure, true);
 			assert.equal(repairCliStorageSecurityV1(root).secure, true);
 			assert.equal(lstatSync(staleAtomicTemp, { throwIfNoEntry: false }), undefined);
