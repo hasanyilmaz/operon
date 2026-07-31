@@ -132,8 +132,8 @@
     "version": "3.0.0",
     "main": {
       "path": "main.js",
-      "sha256": "165b4669e7c34d405134493dd908eb942a15eb17357eecc07d609fd1786e8f49",
-      "bytes": 4321645
+      "sha256": "217c7c43c15bf47e80ed6af5e8010268c8ed5abc8ad78292fdadae8423cc8c12",
+      "bytes": 4321735
     },
     "manifest": {
       "path": "manifest.json",
@@ -196,7 +196,7 @@
   "maintainerAcceptance": {
     "status": "accepted",
     "acceptedBy": "Hasan Yilmaz",
-    "acceptedAt": "2026-07-31T11:50:10.667Z"
+    "acceptedAt": "2026-07-31T12:21:03.348Z"
   },
-  "inputsAggregateSha256": "7eea91079d85e8e031316a771aaaf927205faf4b8da83985a5c306ba880034ed"
+  "inputsAggregateSha256": "65071e932431c7b9ed5c31628372f2ede8855bb2e788175a0c7e1810936d10e8"
 }

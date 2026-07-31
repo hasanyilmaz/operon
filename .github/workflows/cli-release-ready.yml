@@ -218,6 +218,7 @@ jobs:
           node scripts/agent-runtime/contracts/run-contract-tests.mjs &&
           node --test scripts/agent-runtime/receipts/receipt-benchmark.test.mjs
       - name: Run platform transport and security checks
+        timeout-minutes: 5
         run: node scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs
       - name: Run package lifecycle and contract checks
         env:

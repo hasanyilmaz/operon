@@ -90,7 +90,9 @@ jobs:
           npm run agent-runtime:cli-schemas:test &&
           node scripts/agent-runtime/contracts/run-contract-tests.mjs &&
           node --test scripts/agent-runtime/receipts/receipt-benchmark.test.mjs
-      - run: node scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs
+      - name: Run platform transport and security checks
+        timeout-minutes: 5
+        run: node scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs
       - run: npm run agent-runtime:cli
       - run: npm run agent-runtime:cli:package
       - run: node --test scripts/agent-runtime/cli/hosted-portability.test.mjs

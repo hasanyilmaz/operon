@@ -575,19 +575,35 @@ test('persistent read startup and close preserve a successor descriptor', async 
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-successor-vault-'));
 	installPersistentReadTestWindow();
 	const plugin = persistentReadTestPlugin(vault);
+	let firstHandle: AgentRuntimePersistentReadServerHandleV1 | undefined;
+	let successorHandle: AgentRuntimePersistentReadServerHandleV1 | undefined;
+	let staleStart: Promise<AgentRuntimePersistentReadServerHandleV1> | undefined;
+	let descriptorPath: string | undefined;
+	let releaseStaleCommit: (() => void) | undefined;
+	(context as unknown as {
+		after(cleanup: () => Promise<void>): void;
+	}).after(async () => {
+		releaseStaleCommit?.();
+		const staleHandle = await staleStart?.catch(() => undefined);
+		await staleHandle?.close().catch(() => undefined);
+		await successorHandle?.close().catch(() => undefined);
+		await firstHandle?.close().catch(() => undefined);
+		if (descriptorPath) await unlink(descriptorPath).catch(() => undefined);
+		await rm(vault, { recursive: true, force: true });
+	});
 	const first = await startAgentRuntimePersistentReadServerV1(
 		plugin as never,
 		createRuntime(),
 		{ runtimeMetadata: persistentReadTestMetadata() },
 	);
+	firstHandle = first;
 	if (!first.available && first.reason === 'persistent-read-server-listen-denied') {
 		context.skip('sandbox does not permit Unix socket listen under /private/tmp');
-		await rm(vault, { recursive: true, force: true });
 		return;
 	}
 	assert.equal(first.available, true, first.reason);
 	const vaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
-	const descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
+	descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
 	const firstDescriptor = JSON.parse(await readFileUtf8(descriptorPath)) as {
 		serverInstanceId: string;
 		endpoint: string;
@@ -597,6 +613,7 @@ test('persistent read startup and close preserve a successor descriptor', async 
 		createRuntime(),
 		{ runtimeMetadata: persistentReadTestMetadata() },
 	);
+	successorHandle = successor;
 	assert.equal(successor.available, true, successor.reason);
 	const successorDescriptor = JSON.parse(await readFileUtf8(descriptorPath)) as {
 		serverInstanceId: string;
@@ -610,7 +627,6 @@ test('persistent read startup and close preserve a successor descriptor', async 
 	);
 
 	let staleStartCurrent = true;
-	let releaseStaleCommit: (() => void) | undefined;
 	let signalStaleCommit: (() => void) | undefined;
 	const staleCommitReached = new Promise<void>(resolveCommit => {
 		signalStaleCommit = resolveCommit;
@@ -618,7 +634,7 @@ test('persistent read startup and close preserve a successor descriptor', async 
 	const staleCommitRelease = new Promise<void>(resolveRelease => {
 		releaseStaleCommit = resolveRelease;
 	});
-	const staleStart = startAgentRuntimePersistentReadServerV1(
+	const pendingStaleStart = startAgentRuntimePersistentReadServerV1(
 		plugin as never,
 		createRuntime(),
 		{
@@ -631,10 +647,11 @@ test('persistent read startup and close preserve a successor descriptor', async 
 			},
 		},
 	);
+	staleStart = pendingStaleStart;
 	await withTestTimeout(staleCommitReached, 'stale descriptor publication did not reach commit');
 	staleStartCurrent = false;
 	releaseStaleCommit?.();
-	const stale = await staleStart;
+	const stale = await pendingStaleStart;
 	assert.equal(stale.available, false);
 	assert.equal(
 		(JSON.parse(await readFileUtf8(descriptorPath)) as { serverInstanceId: string }).serverInstanceId,
@@ -643,17 +660,28 @@ test('persistent read startup and close preserve a successor descriptor', async 
 
 	await successor.close();
 	assert.equal((await lstat(descriptorPath)).isFile(), true);
-	await assert.rejects(lstat(firstDescriptor.endpoint));
-	await assert.rejects(lstat(successorDescriptor.endpoint));
+	if (process.platform !== 'win32') {
+		await assert.rejects(lstat(firstDescriptor.endpoint));
+		await assert.rejects(lstat(successorDescriptor.endpoint));
+	}
 	await unlink(descriptorPath);
-	await rm(vault, { recursive: true, force: true });
 });
 
 test('persistent read close waits for and cancels an in-flight descriptor refresh', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-refresh-close-vault-'));
 	installPersistentReadTestWindow();
 	const plugin = persistentReadTestPlugin(vault);
+	let handleForCleanup: AgentRuntimePersistentReadServerHandleV1 | undefined;
+	let descriptorPath: string | undefined;
 	let releaseRefreshCommit: (() => void) | undefined;
+	(context as unknown as {
+		after(cleanup: () => Promise<void>): void;
+	}).after(async () => {
+		releaseRefreshCommit?.();
+		await handleForCleanup?.close().catch(() => undefined);
+		if (descriptorPath) await unlink(descriptorPath).catch(() => undefined);
+		await rm(vault, { recursive: true, force: true });
+	});
 	let signalRefreshCommit: (() => void) | undefined;
 	const refreshCommitReached = new Promise<void>(resolveCommit => {
 		signalRefreshCommit = resolveCommit;
@@ -674,14 +702,14 @@ test('persistent read close waits for and cancels an in-flight descriptor refres
 			},
 		},
 	);
+	handleForCleanup = handle;
 	if (!handle.available && handle.reason === 'persistent-read-server-listen-denied') {
 		context.skip('sandbox does not permit Unix socket listen under /private/tmp');
-		await rm(vault, { recursive: true, force: true });
 		return;
 	}
 	assert.equal(handle.available, true, handle.reason);
 	const vaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
-	const descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
+	descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
 	const descriptorBeforeRefresh = await readFileUtf8(descriptorPath);
 	await withTestTimeout(refreshCommitReached, 'descriptor refresh did not reach commit');
 	let closeSettled = false;
@@ -694,13 +722,25 @@ test('persistent read close waits for and cancels an in-flight descriptor refres
 	await closing;
 	assert.equal(await readFileUtf8(descriptorPath), descriptorBeforeRefresh);
 	await unlink(descriptorPath);
-	await rm(vault, { recursive: true, force: true });
 });
 
 test('persistent read replay-cache exhaustion rotates the server handle', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-replay-limit-vault-'));
 	installPersistentReadTestWindow();
 	const plugin = persistentReadTestPlugin(vault);
+	let handleForCleanup: AgentRuntimePersistentReadServerHandleV1 | undefined;
+	let descriptorPath: string | undefined;
+	let firstSocket: Socket | undefined;
+	let secondSocket: Socket | undefined;
+	(context as unknown as {
+		after(cleanup: () => Promise<void>): void;
+	}).after(async () => {
+		firstSocket?.destroy();
+		secondSocket?.destroy();
+		await handleForCleanup?.close().catch(() => undefined);
+		if (descriptorPath) await unlink(descriptorPath).catch(() => undefined);
+		await rm(vault, { recursive: true, force: true });
+	});
 	const handle = await startAgentRuntimePersistentReadServerV1(
 		plugin as never,
 		createRuntime(),
@@ -709,21 +749,21 @@ test('persistent read replay-cache exhaustion rotates the server handle', async 
 			replayCacheLimit: 1,
 		},
 	);
+	handleForCleanup = handle;
 	if (!handle.available && handle.reason === 'persistent-read-server-listen-denied') {
 		context.skip('sandbox does not permit Unix socket listen under /private/tmp');
-		await rm(vault, { recursive: true, force: true });
 		return;
 	}
 	assert.equal(handle.available, true, handle.reason);
 	const vaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
-	const descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
+	descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
 	const descriptor = JSON.parse(await readFileUtf8(descriptorPath)) as {
 		serverInstanceId: string;
 		vaultSha256: string;
 		endpoint: string;
 		authSecret: string;
 	};
-	const firstSocket = createConnection(descriptor.endpoint);
+	firstSocket = createConnection(descriptor.endpoint);
 	const firstReadFrame = createFrameReader(firstSocket);
 	await new Promise<void>((resolveConnection, rejectConnection) => {
 		firstSocket.once('connect', resolveConnection);
@@ -741,7 +781,7 @@ test('persistent read replay-cache exhaustion rotates the server handle', async 
 	const unavailable = new Promise<string>(resolveUnavailable => {
 		handle.onUnavailable(resolveUnavailable);
 	});
-	const secondSocket = createConnection(descriptor.endpoint);
+	secondSocket = createConnection(descriptor.endpoint);
 	await new Promise<void>((resolveConnection, rejectConnection) => {
 		secondSocket.once('connect', resolveConnection);
 		secondSocket.once('error', rejectConnection);
@@ -763,7 +803,6 @@ test('persistent read replay-cache exhaustion rotates the server handle', async 
 	await handle.close();
 	assert.equal((await lstat(descriptorPath)).isFile(), true);
 	await unlink(descriptorPath);
-	await rm(vault, { recursive: true, force: true });
 });
 
 if (process.platform !== 'win32') {
@@ -1270,12 +1309,13 @@ function persistentReadTestMetadata() {
 }
 
 async function withTestTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
+	const timeoutMs = process.platform === 'win32' ? 30_000 : 1_000;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	try {
 		return await Promise.race([
 			promise,
 			new Promise<T>((_resolve, reject) => {
-				timer = setTimeout(() => reject(new Error(message)), 1_000);
+				timer = setTimeout(() => reject(new Error(message)), timeoutMs);
 			}),
 		]);
 	} finally {

@@ -128,7 +128,9 @@ interface PersistentReadNodeModulesV1 {
 			encoding: 'utf8';
 			shell: false;
 			windowsHide: true;
-		}): { status: number | null; stdout: string; stderr: string };
+			timeout: number;
+			killSignal: 'SIGKILL';
+		}): { status: number | null; stdout: string; stderr: string; error?: Error };
 	};
 }
 
@@ -1059,9 +1061,17 @@ function secureWindowsOwnerOnlyPathV1(
 	const result = modules.childProcess.spawnSync(
 		'powershell.exe',
 		['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
-		{ encoding: 'utf8', shell: false, windowsHide: true },
+		{
+			encoding: 'utf8',
+			shell: false,
+			windowsHide: true,
+			timeout: 15_000,
+			killSignal: 'SIGKILL',
+		},
 	);
-	if (result.status !== 0) throw new Error('windows-owner-only-acl-setup-failed');
+	if (result.error || result.status !== 0) {
+		throw new Error('windows-owner-only-acl-setup-failed');
+	}
 }
 
 function assertWindowsOwnerOnlyPathV1(
@@ -1089,9 +1099,19 @@ function assertWindowsOwnerOnlyPathV1(
 	const result = modules.childProcess.spawnSync(
 		'powershell.exe',
 		['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
-		{ encoding: 'utf8', shell: false, windowsHide: true },
+		{
+			encoding: 'utf8',
+			shell: false,
+			windowsHide: true,
+			timeout: 15_000,
+			killSignal: 'SIGKILL',
+		},
 	);
-	if (result.status !== 0 || result.stdout !== `{"ok":true,"directory":${directory ? 'true' : 'false'}}`) {
+	if (
+		result.error
+		|| result.status !== 0
+		|| result.stdout !== `{"ok":true,"directory":${directory ? 'true' : 'false'}}`
+	) {
 		throw new Error('windows-owner-only-acl-required');
 	}
 }

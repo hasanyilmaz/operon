@@ -42,12 +42,22 @@ try {
 		}],
 	});
 	const exitCode = await new Promise((resolve, reject) => {
-		const child = spawn(process.execPath, ['--test', outfile], {
+		const child = spawn(process.execPath, ['--test', '--test-timeout=60000', outfile], {
 			cwd: root,
 			stdio: 'inherit',
 		});
-		child.once('error', reject);
-		child.once('exit', code => resolve(code ?? 1));
+		const watchdog = setTimeout(() => {
+			process.stderr.write('Native transport test process exceeded 180 seconds.\n');
+			child.kill('SIGKILL');
+		}, 180_000);
+		child.once('error', error => {
+			clearTimeout(watchdog);
+			reject(error);
+		});
+		child.once('exit', code => {
+			clearTimeout(watchdog);
+			resolve(code ?? 1);
+		});
 	});
 	if (exitCode !== 0) process.exitCode = exitCode;
 } finally {

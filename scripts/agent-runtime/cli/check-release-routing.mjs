@@ -21,6 +21,10 @@ const candidateWorkflow = await readFile(
 	path.join(pluginRoot, '.github/workflows/cli-release-ready.yml'),
 	'utf8',
 );
+const ciWorkflow = await readFile(
+	path.join(pluginRoot, '.github/workflows/cli-ci.yml'),
+	'utf8',
+);
 const nativeCandidateWorkflow = await readFile(
 	path.join(pluginRoot, '.github/workflows/cli-native-candidate.yml'),
 	'utf8',
@@ -64,7 +68,9 @@ assert.match(candidateWorkflow, /Build the canonical 9-cell hosted portability m
 assert.match(candidateWorkflow, /hostedPortabilityCellsV1/u);
 assert.match(candidateWorkflow, /name:\s+operon-cli-hosted-portability/u);
 assert.match(candidateWorkflow, /verify-hosted-candidate-install\.mjs/u);
-assert.match(candidateWorkflow, /run-hosted-transport-security-tests\.mjs/u);
+const hostedTransportStep = /name:\s+Run platform transport and security checks\s*\n\s+timeout-minutes:\s*5\s*\n\s+run:\s+node scripts\/agent-runtime\/cli\/run-hosted-transport-security-tests\.mjs/u;
+assert.match(candidateWorkflow, hostedTransportStep);
+assert.match(ciWorkflow, hostedTransportStep);
 assert.match(
 	candidateWorkflow,
 	/OPERON_CLI_CANDIDATE_ROOT:\s*\$\{\{\s*github\.workspace\s*\}\}\/candidate/u,
