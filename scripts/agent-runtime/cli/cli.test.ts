@@ -1395,6 +1395,66 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 		assert.equal(windowsOutcome.exitCode, 0);
 		assert.equal(brokerClosed, true);
 		assert.equal(lstatMissing(path.join(requestRoot, 'must-not-exist')), true);
+		const missingWindowsDescriptor = await executeCliV1(options, {
+			platform: 'win32',
+			windowsBrokerClient: {
+				async stage() {
+					throw new PersistentReadTransportErrorV1(
+						'PERSISTENT_DESCRIPTOR_MISSING',
+						false,
+					);
+				},
+				async status() {
+					return { state: 'unknown' as const };
+				},
+				async cancel() {
+					return { cancelled: false, state: 'unknown' as const };
+				},
+				close() {},
+			},
+		});
+		assert.equal(missingWindowsDescriptor.exitCode, 3);
+		assert.equal(missingWindowsDescriptor.envelope.ok, false);
+		if (!missingWindowsDescriptor.envelope.ok) {
+			assert.equal(missingWindowsDescriptor.envelope.failure.stage, 'transport');
+			assert.equal(
+				missingWindowsDescriptor.envelope.failure.error.code,
+				'transport-unavailable',
+			);
+			assert.equal(missingWindowsDescriptor.envelope.failure.error.retryable, true);
+			assert.equal(
+				missingWindowsDescriptor.envelope.failure.error.details?.reasonCode,
+				'persistent-descriptor-missing',
+			);
+		}
+		const insecureWindowsDescriptor = await executeCliV1(options, {
+			platform: 'win32',
+			windowsBrokerClient: {
+				async stage() {
+					throw new PersistentReadTransportErrorV1(
+						'PERSISTENT_DESCRIPTOR_INSECURE',
+						false,
+					);
+				},
+				async status() {
+					return { state: 'unknown' as const };
+				},
+				async cancel() {
+					return { cancelled: false, state: 'unknown' as const };
+				},
+				close() {},
+			},
+		});
+		assert.equal(insecureWindowsDescriptor.exitCode, 3);
+		assert.equal(insecureWindowsDescriptor.envelope.ok, false);
+		if (!insecureWindowsDescriptor.envelope.ok) {
+			assert.equal(
+				insecureWindowsDescriptor.envelope.failure.error.code,
+				'desktop-unavailable',
+			);
+			assert.equal(insecureWindowsDescriptor.envelope.failure.error.retryable, false);
+			assert.equal(insecureWindowsDescriptor.envelope.failure.error.action, 'fix-environment');
+		}
 		if (process.platform !== 'win32') {
 			const mismatchedRequest = await executeCliV1(options, {
 				requestRoot,

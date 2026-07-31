@@ -41,6 +41,7 @@ import { validateCliInvocationForTransportV1 } from '../../../src/agent-runtime/
 import {
 	buildInvocationV1,
 	sanitizeTerminalTextV1,
+	type WindowsBrokerClientPortV1,
 } from '../../../packages/operon-cli/src/client';
 import { runPublicCommandLineV1 } from '../../../packages/operon-cli/src/command-line';
 import {
@@ -1023,8 +1024,11 @@ test('local usage failures include leaf-specific usage without dumping root help
 		);
 		assert.equal(processCalls, 0);
 
-		const blockedConfigRoot = path.join(root, 'config-file');
-		await writeFile(blockedConfigRoot, 'not a directory');
+		const blockedConfigRoot = path.join(root, 'blocked-config');
+		await mkdir(blockedConfigRoot, { recursive: true });
+		const blockedConfigPath = path.join(blockedConfigRoot, 'config-v1.json');
+		await writeFile(blockedConfigPath, '{not-json\n', { mode: 0o600 });
+		secureCreatedFileV1(blockedConfigPath);
 		const internal = await runPublicCommandLineV1(['profile', 'list'], {
 			configRoot: blockedConfigRoot,
 		});
@@ -1632,6 +1636,7 @@ test('a transport-interrupted plan apply is recovery-only and cannot be discarde
 			`${JSON.stringify({ version: 1, clientInstanceId: plan.clientInstanceId })}\n`,
 			{ mode: 0o600 },
 		);
+		secureCreatedFileV1(path.join(root, 'client-v1.json'));
 		const stored = storeMutationPlanV1({
 			vaultPath: vault,
 			vaultSha256: canonicalVaultIdentityV1(vault).sha256,
@@ -1653,11 +1658,15 @@ test('a transport-interrupted plan apply is recovery-only and cannot be discarde
 			plan,
 		}, root);
 		const requestRoot = path.join(root, 'requests');
+		const preDispatchBroker = fakeWindowsBrokerV1('staged');
+		const postDispatchBroker = fakeWindowsBrokerV1('dispatch-started');
 		const transportFailure = async (_executable: string, args: string[]) => {
 			const token = args.find(value => value.startsWith('requestToken='))
 				?.slice('requestToken='.length);
 			assert.ok(token);
-			await unlink(path.join(requestRoot, `${token}.request.json`));
+			if (process.platform !== 'win32') {
+				await unlink(path.join(requestRoot, `${token}.request.json`));
+			}
 			return {
 				exitCode: 1,
 				signal: null,
@@ -1697,6 +1706,9 @@ test('a transport-interrupted plan apply is recovery-only and cannot be discarde
 		], {
 			configRoot: root,
 			requestRoot,
+			...(process.platform === 'win32'
+				? { _windowsBrokerClient: preDispatchBroker }
+				: {}),
 			runProcess: async () => ({
 				exitCode: 1,
 				signal: null,
@@ -1726,6 +1738,9 @@ test('a transport-interrupted plan apply is recovery-only and cannot be discarde
 		], {
 			configRoot: root,
 			requestRoot,
+			...(process.platform === 'win32'
+				? { _windowsBrokerClient: postDispatchBroker }
+				: {}),
 			runProcess: transportFailure,
 		});
 		assert.notEqual(first.exitCode, 0);
@@ -1888,6 +1903,9 @@ test('convenience target policy permits targetless timers and rejects unsafe tar
 			})),
 			runProcess: transportFailure,
 			requestRoot: path.join(root, 'requests'),
+			...(process.platform === 'win32'
+				? { _windowsBrokerClient: fakeWindowsBrokerV1('staged') }
+				: {}),
 		});
 		assert.equal(processCalls, 1, JSON.stringify(targetlessTimer));
 		assert.notEqual(
@@ -2115,13 +2133,13 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 	const root = await mkdtemp(path.join(tmpdir(), 'operon-cli-recovery-capacity-'));
 	try {
 		const vault = await createVault(root, 'Recovery Capacity Vault');
-		const dispatchedAt = Date.now();
+		const preloadDispatchedAt = Date.now();
 		const vaultSha256 = canonicalVaultIdentityV1(vault).sha256;
 		for (let index = 0; index < MUTATION_RECOVERY_RECORD_LIMIT_V1 - 1; index += 1) {
 			const idempotencyKey = `protected-recovery-record-${index}`;
 			const plan = fakePlan(
-				new Date(dispatchedAt - 1_000).toISOString(),
-				new Date(dispatchedAt + 60_000).toISOString(),
+				new Date(preloadDispatchedAt - 1_000).toISOString(),
+				new Date(preloadDispatchedAt + 60_000).toISOString(),
 				idempotencyKey,
 			);
 			const stored = process.platform === 'win32'
@@ -2144,25 +2162,26 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 				}, root);
 			const applyRequest = buildMutationApplyRequestV1(stored, {
 				confirmationToken: confirmationTokenForPlanV1(plan),
-				now: new Date(dispatchedAt).toISOString(),
+				now: new Date(preloadDispatchedAt).toISOString(),
 			});
 			if (process.platform === 'win32') {
 				writeStoredPlanV1({
 					...stored,
 					applyRequest,
-					recoveryStartedAt: new Date(dispatchedAt).toISOString(),
+					recoveryStartedAt: new Date(preloadDispatchedAt).toISOString(),
 					recoveryExpiresAt: new Date(
-						dispatchedAt + MUTATION_RECOVERY_RETENTION_MS_V1,
+						preloadDispatchedAt + MUTATION_RECOVERY_RETENTION_MS_V1,
 					).toISOString(),
 				}, root);
 			} else {
-				markMutationPlanDispatchedV1(stored, applyRequest, root, dispatchedAt);
+				markMutationPlanDispatchedV1(stored, applyRequest, root, preloadDispatchedAt);
 			}
 		}
+		const contenderPlanCreatedAt = Date.now();
 		const contenders = ['protected-contender-a', 'protected-contender-b'].map(idempotencyKey => {
 			const plan = fakePlan(
-				new Date(dispatchedAt - 1_000).toISOString(),
-				new Date(dispatchedAt + 60_000).toISOString(),
+				new Date(contenderPlanCreatedAt - 1_000).toISOString(),
+				new Date(contenderPlanCreatedAt + 60_000).toISOString(),
 				idempotencyKey,
 			);
 			return storeMutationPlanV1({
@@ -2172,6 +2191,7 @@ test('concurrent dispatch capacity reservation never protects more than 256 reco
 				plan,
 			}, root);
 		});
+		const dispatchedAt = Date.now();
 		const releasePath = path.join(root, 'release-capacity-workers');
 		const workerPath = path.join(root, 'plan-store-capacity-worker.mjs');
 		await writeFile(workerPath, __OPERON_PLAN_STORE_CAPACITY_WORKER_SOURCE__);
@@ -2237,12 +2257,12 @@ test('Windows dispatch mutex publishes concurrent low-cardinality admissions ato
 	const root = await mkdtemp(path.join(tmpdir(), 'operon-cli-windows-dispatch-mutex-'));
 	try {
 		const vault = await createVault(root, 'Windows Dispatch Mutex Vault');
-		const dispatchedAt = Date.now();
+		const planCreatedAt = Date.now();
 		const vaultSha256 = canonicalVaultIdentityV1(vault).sha256;
 		const contenders = ['windows-mutex-a', 'windows-mutex-b'].map(idempotencyKey => {
 			const plan = fakePlan(
-				new Date(dispatchedAt - 1_000).toISOString(),
-				new Date(dispatchedAt + 60_000).toISOString(),
+				new Date(planCreatedAt - 1_000).toISOString(),
+				new Date(planCreatedAt + 60_000).toISOString(),
 				idempotencyKey,
 			);
 			return storeMutationPlanV1({
@@ -2252,6 +2272,7 @@ test('Windows dispatch mutex publishes concurrent low-cardinality admissions ato
 				plan,
 			}, root);
 		});
+		const dispatchedAt = Date.now();
 		const releasePath = path.join(root, 'release-windows-mutex-workers');
 		const workerPath = path.join(root, 'plan-store-windows-mutex-worker.mjs');
 		await writeFile(workerPath, __OPERON_PLAN_STORE_CAPACITY_WORKER_SOURCE__);
@@ -2323,6 +2344,26 @@ interface CapacityWorkerOutcomeV1 {
 	ok: boolean;
 	planRef: string;
 	code?: string;
+}
+
+function fakeWindowsBrokerV1(
+	state: 'staged' | 'dispatch-started',
+): WindowsBrokerClientPortV1 {
+	return {
+		async stage() {
+			return {
+				requestToken: 'w'.repeat(32),
+				stagingReceipt: 'a'.repeat(64),
+			};
+		},
+		async status() {
+			return { state };
+		},
+		async cancel() {
+			return { cancelled: state === 'staged', state };
+		},
+		close() {},
+	};
 }
 
 async function runConcurrentCapacityWorkersV1(

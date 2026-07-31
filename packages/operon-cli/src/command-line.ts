@@ -44,6 +44,7 @@ import {
 import {
 	OPERON_CLI_VERSION,
 	type ProcessRunnerV1,
+	type WindowsBrokerClientPortV1,
 	executeCliV1,
 	isPersistentReadCommandV1,
 	parseCliArgsV1,
@@ -250,6 +251,8 @@ export interface PublicCommandPortsV1 {
 	_persistentReadTransport?: PersistentReadTransportV1;
 	/** Internal one-shot transport seam; production uses the build-gated factory. */
 	_createPersistentReadTransport?: () => PersistentReadTransportV1 | undefined;
+	/** Internal Windows broker seam used by platform acceptance tests. */
+	_windowsBrokerClient?: WindowsBrokerClientPortV1;
 }
 
 const CONVENIENCE_COMMAND_SET = new Set<string>(OPERON_CLI_CONVENIENCE_COMMANDS_V1);
@@ -523,6 +526,9 @@ async function runRuntimeCommand(
 			...(options.input ?? ports.input ? { input: options.input ?? ports.input } : {}),
 			...(ports.signal ? { signal: ports.signal } : {}),
 			...(ports.requestRoot ? { requestRoot: ports.requestRoot } : {}),
+			...(ports._windowsBrokerClient
+				? { windowsBrokerClient: ports._windowsBrokerClient }
+				: {}),
 			clientIdentityPath: join(
 				ports.configRoot ?? operonCliConfigRootV1(),
 				'client-v1.json',

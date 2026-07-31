@@ -1187,6 +1187,22 @@ function classifyClientExecutionError(error: unknown): {
 			retryable: false,
 		};
 	}
+	if (error instanceof PersistentReadTransportErrorV1) {
+		if (code === 'PERSISTENT_DESCRIPTOR_MISSING') {
+			return {
+				stage: 'transport',
+				code: 'transport-unavailable',
+				reason: 'The authenticated Operon Runtime transport is unavailable.',
+				retryable: true,
+			};
+		}
+		return {
+			stage: 'transport',
+			code: 'desktop-unavailable',
+			reason: 'The authenticated Operon Runtime transport is unavailable.',
+			retryable: false,
+		};
+	}
 	const transportSecurityCodes = new Set([
 		'REQUEST_ROOT_NOT_SECURE',
 		'REQUEST_ROOT_WRONG_OWNER',
@@ -1199,7 +1215,7 @@ function classifyClientExecutionError(error: unknown): {
 	if (transportSecurityCodes.has(code)) {
 		return {
 			stage: 'transport',
-			code: 'transport-unavailable',
+			code: 'desktop-unavailable',
 			reason: 'The owner-only request transport is unavailable.',
 			retryable: false,
 		};

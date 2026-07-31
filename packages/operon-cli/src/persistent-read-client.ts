@@ -784,7 +784,15 @@ interface PendingFrameV1 {
 function readSecureDescriptor(root: string, vaultSha256: string): PersistentDescriptorV1 {
 	if (!HEX_64.test(vaultSha256)) throw new PersistentReadTransportErrorV1('PERSISTENT_VAULT_SHA_INVALID', false);
 	const descriptorPath = path.join(root, `persistent-read-${vaultSha256}.json`);
-	const pathStat = lstatSync(descriptorPath);
+	let pathStat: ReturnType<typeof lstatSync>;
+	try {
+		pathStat = lstatSync(descriptorPath);
+	} catch (error) {
+		if (isErrorCodeV1(error, 'ENOENT')) {
+			throw new PersistentReadTransportErrorV1('PERSISTENT_DESCRIPTOR_MISSING', false);
+		}
+		throw error;
+	}
 	if (
 		pathStat.isSymbolicLink()
 		|| !pathStat.isFile()
@@ -818,6 +826,13 @@ function readSecureDescriptor(root: string, vaultSha256: string): PersistentDesc
 	} finally {
 		if (descriptorFd !== null) closeSync(descriptorFd);
 	}
+}
+
+function isErrorCodeV1(error: unknown, code: string): boolean {
+	return typeof error === 'object'
+		&& error !== null
+		&& 'code' in error
+		&& (error as { code?: unknown }).code === code;
 }
 
 function assertSecureSocket(socketPath: string): { dev: number; ino: number } {
