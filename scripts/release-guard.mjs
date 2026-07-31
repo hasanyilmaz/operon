@@ -421,6 +421,9 @@ function checkReleaseWorkflow() {
 		'run: npm run release:freeze:check',
 		'release workflow must require an accepted Public V1 freeze',
 	);
+	if (!/- name: Run validation\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
+		fail('release workflow must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
+	}
 	if (
 		exactTagIndex < 0
 		|| existingReleaseIndex < exactTagIndex
