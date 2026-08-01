@@ -63,6 +63,7 @@ assert.deepEqual(evidence.releaseAcceptance, {
 	nativeDesktopCertification: 'optional-post-release',
 });
 if (process.env.REQUIRE_PUBLIC_PLUGIN_RELEASE === '1') {
+	assert.equal(evidence.compatiblePublicPlugin?.evidenceVersion, 2);
 	assert.equal(evidence.compatiblePublicPlugin?.kind, 'operon-public-plugin-release');
 	assert.equal(evidence.compatiblePublicPlugin?.pluginId, 'operon');
 	assert.equal(

@@ -62,14 +62,10 @@ jobs:
       - run: npm run agent-runtime:cli
       - run: npm run agent-runtime:cli:package
       - run: npm run release:guard
-      - name: Build one isolated candidate tarball
-        env:
-          npm_config_cache: ${{ runner.temp }}/operon-cli-npm-cache
-        run: |
-          rm -rf release
-          mkdir -p release
-          npm pack --pack-destination release
-        working-directory: packages/operon-cli
+      - name: Materialize the accepted frozen candidate tarball
+        run: >-
+          node scripts/agent-runtime/cli/materialize-frozen-candidate.mjs
+          packages/operon-cli/release
       - name: Download and verify the compatible public Operon plugin
         env:
           GH_TOKEN: ${{ github.token }}
@@ -112,6 +108,11 @@ jobs:
             packages/operon-cli/release \
             packages/operon-cli/release/candidate-evidence.json \
             packages/operon-cli/release/plugin-release-evidence.json
+      - name: Verify public plugin evidence round trip before attestation
+        run: |
+          node scripts/agent-runtime/cli/verify-public-plugin-release-evidence.mjs \
+            packages/operon-cli/release/candidate-evidence.json \
+            packages/operon-cli/release/plugin-release
       - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: "packages/operon-cli/release/*.tgz"

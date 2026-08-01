@@ -88,6 +88,7 @@ async function createFixture() {
 			trackedTreeClean: true,
 		},
 		compatiblePublicPlugin: {
+			evidenceVersion: 2,
 			kind: 'operon-public-plugin-release',
 			pluginId: 'operon',
 			pluginVersion: '9.8.7',

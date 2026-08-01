@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
 	acceptedFreezeControl,
+	assertCanonicalNpmPackToolchain,
 	checkPublicV1FreezeIndex,
 	preparePublicV1FreezeArtifacts,
 	resolveNpmPackInvocation,
@@ -199,10 +200,10 @@ test('accepted freeze requires final versions, passed audit and explicit maintai
 		);
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
 			name: 'operon-cli',
-			version: '1.0.4',
+			version: '1.0.5',
 		});
 		await writeFile(
-			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.4.tgz'),
+			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.5.tgz'),
 			'stable tarball\n',
 		);
 		await writeJson(path.join(root, 'manifest.json'), {
@@ -232,10 +233,10 @@ test('ordinary write clears prior acceptance and audit attestation', async () =>
 	try {
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
 			name: 'operon-cli',
-			version: '1.0.4',
+			version: '1.0.5',
 		});
 		await writeFile(
-			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.4.tgz'),
+			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.5.tgz'),
 			'stable tarball\n',
 		);
 		await writeJson(path.join(root, 'manifest.json'), {
@@ -291,6 +292,29 @@ test('canonical npm tarball generation is reproducible', async () => {
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
+});
+
+test('canonical npm tarball generation rejects a different npm version', () => {
+	assert.throws(
+		() => assertCanonicalNpmPackToolchain(
+			{ command: 'npm', argumentPrefix: [] },
+			{ runner: () => ({ status: 0, stdout: '11.13.0\n', stderr: '' }) },
+		),
+		/OPERON_PUBLIC_V1_FREEZE_NPM_VERSION_MISMATCH:11\.13\.0:11\.12\.1/u,
+	);
+});
+
+test('canonical npm tarball generation accepts npm 11.12.1', () => {
+	assert.doesNotThrow(() => assertCanonicalNpmPackToolchain(
+		{ command: process.execPath, argumentPrefix: ['/tmp/npm-cli.js'] },
+		{
+			runner: (command, arguments_) => {
+				assert.equal(command, process.execPath);
+				assert.deepEqual(arguments_, ['/tmp/npm-cli.js', '--version']);
+				return { status: 0, stdout: '11.12.1\n', stderr: '' };
+			},
+		},
+	));
 });
 
 test('canonical npm tarball rejects non-public file modes', {

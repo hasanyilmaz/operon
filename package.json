@@ -31,7 +31,7 @@
 		"agent-runtime:cli:native:test": "node --test scripts/agent-runtime/cli/native-acceptance.test.mjs scripts/agent-runtime/cli/live-acceptance-platform.test.mjs",
 		"agent-runtime:cli:hosted-portability:test": "node --test scripts/agent-runtime/cli/hosted-portability.test.mjs",
 		"agent-runtime:cli:meeting": "node scripts/agent-runtime/cli/run-meeting-agent-acceptance.mjs",
-		"agent-runtime:cli:release-tag": "node scripts/agent-runtime/cli/check-release-tag.mjs && node scripts/agent-runtime/cli/check-release-routing.mjs",
+		"agent-runtime:cli:release-tag": "node scripts/agent-runtime/cli/check-release-tag.mjs && node scripts/agent-runtime/cli/check-release-routing.mjs && node --test scripts/agent-runtime/cli/materialize-frozen-candidate.test.mjs",
 		"agent-runtime:cli:candidate-live": "node scripts/agent-runtime/cli/run-candidate-live-acceptance.mjs",
 		"agent-runtime:cli:performance:test": "node --test scripts/agent-runtime/performance/cli-speed-stage1-core.test.mjs scripts/agent-runtime/performance/cli-speed-stage3-core.test.mjs scripts/agent-runtime/performance/cli-speed-stage3-checkpoint-core.test.mjs scripts/agent-runtime/performance/cli-speed-stage4-core.test.mjs scripts/agent-runtime/performance/cli-speed-stage5-core.test.mjs scripts/agent-runtime/performance/cli-speed-stage5-skills.test.mjs scripts/agent-runtime/performance/cli-speed-stage51-core.test.mjs scripts/agent-runtime/performance/cli-speed-stage51-build-gates.test.mjs scripts/agent-runtime/performance/cli-speed-stage6-core.test.mjs scripts/agent-runtime/performance/cli-speed-stage7-core.test.mjs",
 		"agent-runtime:cli:performance:live": "node scripts/agent-runtime/performance/cli-speed-stage1-live.mjs",

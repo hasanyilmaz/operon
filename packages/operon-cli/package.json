@@ -1,6 +1,6 @@
 {
   "name": "operon-cli",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Official command-line client for the Operon Agent Runtime in Obsidian.",
   "type": "module",
   "license": "GPL-3.0-or-later",
