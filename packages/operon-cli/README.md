@@ -10,7 +10,7 @@ Obsidian plugin developers. It is not a JavaScript SDK.
 ## Requirements
 
 - Obsidian Desktop 1.12.2 or later, already running
-- Operon 3.0.0 or later with Agent Runtime API V1
+- Operon 3.0.0 or later with Agent Runtime API V1; Operon 3.0.1 or later is required for Windows mutation use
 - The official Obsidian CLI enabled
 - Node.js 22, 24, or 26
 

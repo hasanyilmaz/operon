@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.0.1] - 2026-08-01
+
+### Fixed
+
+- Fixed Public CLI and Developer API mutations on Windows incorrectly rejecting valid file and inline task paths inside the active vault.
+
+### Validation
+
+- Validated with 1,517 Phase 5 regression checks, the full Public V1 contract and package suites, strict lint, production build, release guard, a clean dependency audit, and clean-room CLI lifecycle and TypeScript consumer tests.
+
 ## [3.0.0] - 2026-07-31
 
 Operon 3.0.0 introduces the first stable public contracts for the Agent Runtime, standalone CLI, and in-process Developer API, allowing people, agents, scripts, and other Obsidian plugins to work with live Operon tasks through the same capability-aware, recoverable foundation. This release also brings focused improvements to pinned tasks, dependency visibility, Markdown task fields, mobile reminders, Tables, and index housekeeping.

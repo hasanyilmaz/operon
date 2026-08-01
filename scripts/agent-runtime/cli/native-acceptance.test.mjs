@@ -28,10 +28,11 @@ const evidenceSchema = JSON.parse(await readFile(
 	'utf8',
 ));
 const validateEvidence = new Ajv2020({ strict: false }).compile(evidenceSchema);
-const FIXTURE_CLI_VERSION = '1.0.2';
+const FIXTURE_CLI_VERSION = '1.0.3';
 const FIXTURE_CLI_TAG = `cli-v${FIXTURE_CLI_VERSION}`;
 const FIXTURE_CLI_PACKAGE = `operon-cli@${FIXTURE_CLI_VERSION}`;
 const FIXTURE_CLI_TARBALL = `operon-cli-${FIXTURE_CLI_VERSION}.tgz`;
+const FIXTURE_PLUGIN_VERSION = '3.0.1';
 
 test('36 digest-bound native cells produce one promotion-eligible aggregate', async () => {
 	const fixture = await createFixture();
@@ -69,7 +70,7 @@ test('36 digest-bound native cells produce one promotion-eligible aggregate', as
 				compatiblePublicPlugin: {
 					...nativeEvidence.compatiblePublicPlugin,
 					kind: 'operon-public-plugin-release',
-					releaseTag: '3.0.0',
+					releaseTag: FIXTURE_PLUGIN_VERSION,
 				},
 			}, null, 2)}\n`,
 		);
@@ -167,7 +168,7 @@ test('offline candidate comparison rejects every critical identity change', asyn
 		release.candidateEvidenceSha256 = '9'.repeat(64);
 	release.sourceRef = FIXTURE_CLI_TAG;
 		release.compatiblePublicPlugin.kind = 'operon-public-plugin-release';
-		release.compatiblePublicPlugin.releaseTag = '3.0.0';
+	release.compatiblePublicPlugin.releaseTag = FIXTURE_PLUGIN_VERSION;
 		assert.doesNotThrow(() => assertStableCandidateIdentityV1(accepted, release));
 		release.cliManifestSha256 = '8'.repeat(64);
 		assert.throws(() => assertStableCandidateIdentityV1(accepted, release));
@@ -355,9 +356,9 @@ async function createFixture(platforms = {
 	const plugin = {
 		kind: 'operon-plugin-native-candidate',
 		pluginId: 'operon',
-		pluginVersion: '3.0.0',
+		pluginVersion: FIXTURE_PLUGIN_VERSION,
 		sourceCommit: 'a'.repeat(40),
-		releaseTag: '3.0.0',
+		releaseTag: FIXTURE_PLUGIN_VERSION,
 		mainJsSha256: '1'.repeat(64),
 		manifestSha256: '2'.repeat(64),
 		stylesCssSha256: '3'.repeat(64),

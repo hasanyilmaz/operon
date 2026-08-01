@@ -147,3 +147,36 @@ test('typed create postflight seals exact inline locators and exact File bodies'
 		/bodyLines\.every|includes\(.*bodyMarkdown|subsequence/iu,
 	);
 });
+
+test('file and inline Runtime mutations use the platform-safe canonical vault fence', () => {
+	const containment = methodBody(
+		mainSource,
+		'\tprivate async isAgentRuntimeMutationPathContained(',
+		'\n\n\tprivate async resolveAgentRuntimeInlineCreationPath',
+	);
+	assert.match(
+		containment,
+		/isCanonicalPathWithinRootV1\(\s*vaultRoot,\s*canonicalTarget,\s*nodeApi\.platform,?\s*\)/u,
+	);
+	assert.doesNotMatch(containment, /canonicalTarget\.startsWith\(`\$\{vaultRoot\}\//u);
+
+	const absentSource = methodBody(
+		mainSource,
+		'\tprivate async readAgentRuntimeMutationSource(',
+		'\n\n\tprivate async readVerifiedAgentRuntimeMutationTaskSource',
+	);
+	assert.match(absentSource, /isAgentRuntimeMutationPathContained\(filePath, true\)/u);
+	const existingSource = methodBody(
+		mainSource,
+		'\tprivate async readVerifiedAgentRuntimeMutationTaskSource(',
+		'\n\n\tprivate async isAgentRuntimeMutationPathContained',
+	);
+	assert.match(
+		existingSource,
+		/isAgentRuntimeMutationPathContained\(task\.primary\.filePath, false\)/u,
+	);
+	assert.match(
+		mainSource,
+		/validateWritePath: async \(filePath, allowAbsent\) => \(\s*await this\.isAgentRuntimeMutationPathContained\(filePath, allowAbsent\)/u,
+	);
+});

@@ -118,6 +118,7 @@ import type {
 } from '../../../src/agent-runtime/contracts/v1';
 import { validateCliInvocationForTransportV1 } from '../../../src/agent-runtime/transport/invocation-validator';
 import {
+	isCanonicalPathWithinRootV1,
 	normalizeCanonicalVaultPathForIdentityV1,
 } from '../../../src/agent-runtime/transport/vault-path-identity';
 
@@ -190,6 +191,70 @@ function testCrossPlatformCliStorageAndPaths(): void {
 		),
 		'\\\\server\\share\\vault',
 	);
+	assert.equal(
+		isCanonicalPathWithinRootV1(
+			'C:\\Vaults\\Operon',
+			'c:\\vaults\\operon\\Tasks\\File.md',
+			'win32',
+		),
+		true,
+	);
+	assert.equal(
+		isCanonicalPathWithinRootV1(
+			'C:\\Vaults\\Operon',
+			'C:\\Vaults\\Operon-copy\\Tasks\\File.md',
+			'win32',
+		),
+		false,
+	);
+	assert.equal(
+		isCanonicalPathWithinRootV1(
+			'\\\\?\\UNC\\SERVER\\Share\\Vault',
+			'\\\\server\\share\\vault\\Inline\\Task.md',
+			'win32',
+		),
+		true,
+	);
+	assert.equal(
+		isCanonicalPathWithinRootV1('/vault', '/vault/Tasks/File.md', 'linux'),
+		true,
+	);
+	assert.equal(
+		isCanonicalPathWithinRootV1('/vault', '/vault-copy/Tasks/File.md', 'linux'),
+		false,
+	);
+	assert.equal(
+		isCanonicalPathWithinRootV1('/tmp/Caf\u00e9', '/tmp/Cafe\u0301/escape.md', 'linux'),
+		false,
+	);
+	assert.equal(
+		isCanonicalPathWithinRootV1(
+			'C:\\Vaults\\Caf\u00e9',
+			'C:\\Vaults\\Cafe\u0301\\escape.md',
+			'win32',
+		),
+		false,
+	);
+	if (process.platform !== 'win32') {
+		const fenceRoot = mkdtempSync(path.join(tmpdir(), 'operon-vault-fence-'));
+		try {
+			const vaultPath = path.join(fenceRoot, 'vault');
+			const outsidePath = path.join(fenceRoot, 'vault-copy');
+			mkdirSync(vaultPath);
+			mkdirSync(outsidePath);
+			symlinkSync(outsidePath, path.join(vaultPath, 'escape'));
+			assert.equal(
+				isCanonicalPathWithinRootV1(
+					realpathSync(vaultPath),
+					realpathSync(path.join(vaultPath, 'escape')),
+					process.platform,
+				),
+				false,
+			);
+		} finally {
+			rmSync(fenceRoot, { force: true, recursive: true });
+		}
+	}
 	assert.equal(resolveObsidianExecutableV1('obsidian', { platform: 'linux' }), 'obsidian');
 	assert.throws(
 		() => resolveObsidianExecutableV1('obsidian.cmd', {

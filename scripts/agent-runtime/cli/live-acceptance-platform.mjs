@@ -120,8 +120,8 @@ export function nativePlatformIdentityV1(options = {}) {
 	throw new Error('LIVE_ACCEPTANCE_PLATFORM_UNSUPPORTED');
 }
 
-export function npmCommandV1() {
-	return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+export function npmCommandV1(platform = process.platform) {
+	return platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
 export function validateDisposableAcceptanceVaultV1(vaultArgument) {
@@ -234,16 +234,34 @@ export function officialObsidianCliIdentityV1(expectedVersion, options = {}) {
 	};
 }
 
-export function execNpmV1(args, options = {}) {
-	const executable = process.platform === 'win32' ? process.execPath : npmCommandV1();
-	const npmArgs = process.platform === 'win32'
-		? [
-			path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-			...args,
-		]
-		: args;
-	return execFileSync(executable, npmArgs, {
+export function resolveNpmInvocationV1(
+	args,
+	platform = process.platform,
+	nodeExecutable = process.execPath,
+) {
+	const pathApi = platform === 'win32' ? path.win32 : path;
+	return platform === 'win32'
+		? {
+			executable: nodeExecutable,
+			args: [
+				pathApi.join(
+					pathApi.dirname(nodeExecutable),
+					'node_modules',
+					'npm',
+					'bin',
+					'npm-cli.js',
+				),
+				...args,
+			],
+		}
+		: { executable: npmCommandV1(platform), args };
+}
+
+export function execNpmV1(args, options = {}, runner = execFileSync) {
+	const invocation = resolveNpmInvocationV1(args);
+	return runner(invocation.executable, invocation.args, {
 		...options,
+		shell: false,
 		windowsHide: true,
 	});
 }

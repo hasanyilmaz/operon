@@ -693,6 +693,39 @@ function checkWorkflowSecurityPolicy() {
 	) {
 		fail('.github/workflows/cli-release-ready.yml: hosted portability must verify npm through a portable shell command');
 	}
+	for (const [candidateScript, expectedCalls] of [
+		[
+			'scripts/agent-runtime/cli/verify-hosted-candidate-install.mjs',
+			[
+				"execNpmV1(\n\t\t['install', '--global'",
+				"execNpmV1(\n\t\t['root', '--global'",
+				"execNpmV1(\n\t\t['uninstall', '--global'",
+			],
+		],
+		[
+			'scripts/agent-runtime/cli/write-hosted-portability-evidence.mjs',
+			["execNpmV1(['--version']"],
+		],
+	]) {
+		const candidateScriptText = readText(candidateScript);
+		const helperCallCount = candidateScriptText.match(/\bexecNpmV1\s*\(/gu)?.length ?? 0;
+		if (helperCallCount !== expectedCalls.length) {
+			fail(`${candidateScript}: expected ${expectedCalls.length} cross-platform npm helper calls, got ${helperCallCount}`);
+		}
+		for (const expectedCall of expectedCalls) {
+			if (!candidateScriptText.includes(expectedCall)) {
+				fail(`${candidateScript}: missing canonical npm helper call ${JSON.stringify(expectedCall)}`);
+			}
+		}
+		if (!/import\s+\{\s*execNpmV1\s*\}\s+from\s+['"]\.\/live-acceptance-platform\.mjs['"]/u.test(candidateScriptText)) {
+			fail(`${candidateScript}: must import the canonical cross-platform npm helper`);
+		}
+		assertNoMatch(
+			candidateScript,
+			/(?:execFileSync|spawnSync)\s*\(\s*(?:['"]npm(?:\.cmd)?['"]|npmCommand(?:V1)?\b)|['"]npm\.cmd['"]|\bnpmCommandV1\b|\bconst\s+npmCommand\b/u,
+			'Windows npm command shims or alternate npm launch paths must not be used',
+		);
+	}
 }
 
 function checkPublicSourceHygiene() {
