@@ -315,7 +315,7 @@ test('Developer API docs preserve projected discovery and typed result distincti
 		sourceDoc('130'),
 		sourceDoc('131'),
 	]);
-	assert.match(overview, /operon-cli\/contracts\/v1\/developer-api/u);
+	assert.match(overview, /@stratejya\/operon-cli\/contracts\/v1\/developer-api/u);
 	assert.match(overview, /"system\.health"/u);
 	assert.match(overview, /"system\.capabilities"/u);
 	assert.match(overview, /projected/iu);
@@ -358,7 +358,7 @@ test('README and discoverable contracts expose the documented public boundary', 
 	const manifest = JSON.parse(manifestSource);
 	const packageDocument = JSON.parse(packageSource);
 
-	assert.match(readme, /npm install --global operon-cli/u);
+	assert.match(readme, /npm install --global @stratejya\/operon-cli/u);
 	assert.match(readme, /Node(?:\.js)? 22, 24, (?:and|or) 26/iu);
 	assert.match(readme, /macOS/u);
 	assert.match(readme, /Linux/u);
@@ -366,7 +366,7 @@ test('README and discoverable contracts expose the documented public boundary', 
 	assert.match(readme, /WSL/u);
 	assert.match(readme, /public beta/iu);
 	assert.match(readme, /recoveryRef/u);
-	assert.match(readme, /operon-cli\/contracts\/v1\/developer-api/u);
+	assert.match(readme, /@stratejya\/operon-cli\/contracts\/v1\/developer-api/u);
 	assert.doesNotMatch(readme, /^## \d+\.\d+/mu, 'README must not copy the package version.');
 	assert.equal(packageDocument.engines.node, '^22.0.0 || ^24.0.0 || ^26.0.0');
 	assert.deepEqual(manifest.platforms, {

@@ -600,8 +600,8 @@
     },
     {
       "path": "DOCS-119 Install and verify Operon CLI.md",
-      "sha256": "32a009a8570d3ae3ec351b6f7cf98bb77ee72dbcdc6abbd4d661b2a7766a8e74",
-      "bytes": 8598
+      "sha256": "c10fc93a642000eda724eb7905644ed696562114ffe49d571ba2d19ad616f059",
+      "bytes": 8609
     },
     {
       "path": "DOCS-120 Your first safe task read.md",
@@ -650,8 +650,8 @@
     },
     {
       "path": "DOCS-129 In-process Developer API overview.md",
-      "sha256": "bd0b117b087afd28c502d0362735a109789e139fa48218bd403af373df26a8eb",
-      "bytes": 6439
+      "sha256": "e45bb7d5a83ad0c42367a8e70cfa3939c2be280d022e585d981476915a10dc40",
+      "bytes": 6450
     },
     {
       "path": "DOCS-130 Developer API identity and capability grants.md",

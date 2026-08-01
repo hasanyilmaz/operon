@@ -29,7 +29,7 @@ checklist below.
 ## Install
 
 ```bash
-npm install --global operon-cli
+npm install --global @stratejya/operon-cli
 ```
 
 Public npm installation becomes available only after the package is published.
@@ -115,7 +115,7 @@ Install the CLI package as a development dependency in an Obsidian consumer
 plugin:
 
 ```bash
-npm install --save-dev operon-cli
+npm install --save-dev @stratejya/operon-cli
 ```
 
 Import only public types:
@@ -124,7 +124,7 @@ Import only public types:
 import type {
 	OperonDeveloperApiAccessorV1,
 	OperonDeveloperApiV1,
-} from 'operon-cli/contracts/v1/developer-api';
+} from '@stratejya/operon-cli/contracts/v1/developer-api';
 ```
 
 These entrypoints export declarations only. Runtime imports, `require()`, raw

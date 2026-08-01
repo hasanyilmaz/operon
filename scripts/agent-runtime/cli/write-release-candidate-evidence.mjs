@@ -7,6 +7,10 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { readAcceptedPublicV1Freeze } from './release-contract.mjs';
+import {
+	assertOperonCliPackageDocumentV1,
+	operonCliTarballFileNameV1,
+} from '../../../packages/operon-cli/package-identity.mjs';
 
 const [releaseRootArgument, outputArgument, pluginEvidenceArgument] = process.argv.slice(2);
 assert.ok(releaseRootArgument, 'Release directory is required.');
@@ -21,10 +25,9 @@ assert.equal(tarballs.length, 1, 'Candidate directory must contain exactly one t
 
 const tarballPath = path.join(releaseRoot, tarballs[0]);
 const bytes = await readFile(tarballPath);
-const packageDocument = JSON.parse(
+const packageDocument = assertOperonCliPackageDocumentV1(JSON.parse(
 	await readFile(path.resolve(releaseRoot, '../package.json'), 'utf8'),
-);
-assert.match(packageDocument.version, /^[0-9]+\.[0-9]+\.[0-9]+$/u);
+));
 const manifestBytes = await readFile(path.resolve(releaseRoot, '../cli-manifest-v1.json'));
 const manifest = JSON.parse(manifestBytes.toString('utf8'));
 const pluginReleaseEvidence = pluginEvidenceArgument
@@ -64,7 +67,7 @@ if (pluginReleaseEvidence) {
 }
 assert.equal(manifest.package.name, packageDocument.name);
 assert.equal(manifest.package.version, packageDocument.version);
-assert.equal(tarballs[0], `${packageDocument.name}-${packageDocument.version}.tgz`);
+assert.equal(tarballs[0], operonCliTarballFileNameV1(packageDocument.version));
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
 	cwd: pluginRoot,
 	encoding: 'utf8',

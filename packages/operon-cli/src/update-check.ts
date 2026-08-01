@@ -11,6 +11,7 @@ import {
 	isValidOperonVersion,
 } from '../../../src/systems/release-check';
 import { OPERON_CLI_VERSION } from './client';
+import { OPERON_CLI_PACKAGE_NAME } from './package-identity';
 import {
 	operonCliConfigRootV1,
 	writeJsonAtomic,
@@ -18,7 +19,7 @@ import {
 import { assertSecureFileV1 } from './secure-storage';
 
 export const OPERON_CLI_DIST_TAGS_URL =
-	'https://registry.npmjs.org/-/package/operon-cli/dist-tags';
+	`https://registry.npmjs.org/-/package/${encodeURIComponent(OPERON_CLI_PACKAGE_NAME)}/dist-tags`;
 
 const UPDATE_CACHE_FILE_V1 = 'update-check-v1.json';
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1_000;
@@ -190,9 +191,9 @@ function createNotice(
 		availableVersion,
 		channel,
 		updateCommand: channel === 'latest'
-			? 'npm install --global operon-cli'
-			: 'npm install --global operon-cli@beta',
-		releaseUrl: `https://www.npmjs.com/package/operon-cli/v/${availableVersion}`,
+			? `npm install --global ${OPERON_CLI_PACKAGE_NAME}`
+			: `npm install --global ${OPERON_CLI_PACKAGE_NAME}@beta`,
+		releaseUrl: `https://www.npmjs.com/package/${OPERON_CLI_PACKAGE_NAME}/v/${availableVersion}`,
 	};
 }
 

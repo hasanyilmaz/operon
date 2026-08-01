@@ -21,7 +21,7 @@ The package exposes type-only TypeScript entrypoints:
 import type {
   OperonDeveloperApiAccessorV1,
   OperonDeveloperApiV1,
-} from "operon-cli/contracts/v1/developer-api";
+} from "@stratejya/operon-cli/contracts/v1/developer-api";
 ```
 
 These imports provide declarations only. They do not include a JavaScript SDK, validators, storage helpers, transports, or Runtime code. Your plugin already runs inside Obsidian, so it obtains the active Operon plugin instance from the host and calls the accessor on that instance.

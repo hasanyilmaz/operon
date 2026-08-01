@@ -11,6 +11,10 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 
+import {
+	OPERON_CLI_NPM_PACKAGE_PATH,
+} from '../../../packages/operon-cli/package-identity.mjs';
+
 const ACCEPTANCE_FIXTURE_MARKER_V1 = '.operon-developer-api-native-fixture.json';
 const ACCEPTANCE_FIXTURE_KIND_V1 = 'operon-developer-api-native-fixture-vault';
 const ACCEPTED_OBSIDIAN_VERSIONS_V1 = new Set(['1.12.2', '1.12.7']);
@@ -282,7 +286,7 @@ export function installedCliArtifactV1(prefixRoot, env) {
 		['root', '--global', '--prefix', prefixRoot],
 		{ env, encoding: 'utf8' },
 	).trim();
-	return path.join(globalRoot, 'operon-cli', 'dist', 'operon.mjs');
+	return path.join(globalRoot, ...OPERON_CLI_NPM_PACKAGE_PATH, 'dist', 'operon.mjs');
 }
 
 export function runCliJsonV1(executable, args, env, input) {

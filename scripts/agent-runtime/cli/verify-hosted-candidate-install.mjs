@@ -9,6 +9,10 @@ import path from 'node:path';
 
 import { execNpmV1 } from './live-acceptance-platform.mjs';
 import { loadCandidateBindingV1 } from './native-acceptance-lib.mjs';
+import {
+	OPERON_CLI_NPM_PACKAGE_NAME,
+	OPERON_CLI_NPM_PACKAGE_PATH,
+} from '../../../packages/operon-cli/package-identity.mjs';
 
 const [candidateRootArgument] = process.argv.slice(2);
 assert.ok(candidateRootArgument, 'Candidate directory is required.');
@@ -34,7 +38,7 @@ try {
 		['root', '--global', '--prefix', prefix],
 		{ env, encoding: 'utf8' },
 	).trim();
-	const installedRoot = path.join(globalRoot, 'operon-cli');
+	const installedRoot = path.join(globalRoot, ...OPERON_CLI_NPM_PACKAGE_PATH);
 	const manifestBytes = await readFile(path.join(installedRoot, 'cli-manifest-v1.json'));
 	assert.equal(
 		createHash('sha256').update(manifestBytes).digest('hex'),
@@ -60,7 +64,7 @@ try {
 		);
 	}
 	execNpmV1(
-		['uninstall', '--global', '--prefix', prefix, 'operon-cli'],
+		['uninstall', '--global', '--prefix', prefix, OPERON_CLI_NPM_PACKAGE_NAME],
 		{ env, stdio: 'inherit' },
 	);
 	process.stdout.write(`${JSON.stringify({

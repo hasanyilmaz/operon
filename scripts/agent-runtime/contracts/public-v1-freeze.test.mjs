@@ -161,7 +161,7 @@ test('freeze writer binds exact local inputs and check rejects byte drift', asyn
 		assert.equal(written.plugin.artifactStatus, 'local-rebuilt-artifact');
 		assert.equal(
 			written.cli.tarball.path,
-			'packages/operon-cli/freeze/operon-cli-0.1.0-beta.1.tgz',
+			'packages/operon-cli/freeze/stratejya-operon-cli-0.1.0-beta.1.tgz',
 		);
 		assert.equal(written.cli.executable.path, 'packages/operon-cli/dist/operon.mjs');
 		assert.equal(written.cli.license.path, 'packages/operon-cli/LICENSE');
@@ -199,11 +199,11 @@ test('accepted freeze requires final versions, passed audit and explicit maintai
 			/OPERON_PUBLIC_V1_FREEZE_ACCEPTANCE_PREREQUISITES_UNMET/u,
 		);
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
-			name: 'operon-cli',
-			version: '1.0.6',
+			name: '@stratejya/operon-cli',
+			version: '1.0.7',
 		});
 		await writeFile(
-			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.6.tgz'),
+			path.join(root, 'packages/operon-cli/freeze/stratejya-operon-cli-1.0.7.tgz'),
 			'stable tarball\n',
 		);
 		await writeJson(path.join(root, 'manifest.json'), {
@@ -232,11 +232,11 @@ test('ordinary write clears prior acceptance and audit attestation', async () =>
 	const root = await fixtureRoot();
 	try {
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
-			name: 'operon-cli',
-			version: '1.0.6',
+			name: '@stratejya/operon-cli',
+			version: '1.0.7',
 		});
 		await writeFile(
-			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.6.tgz'),
+			path.join(root, 'packages/operon-cli/freeze/stratejya-operon-cli-1.0.7.tgz'),
 			'stable tarball\n',
 		);
 		await writeJson(path.join(root, 'manifest.json'), {
@@ -276,7 +276,7 @@ test('canonical npm tarball generation is reproducible', async () => {
 	const root = await fixtureRoot();
 	try {
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
-			name: 'operon-cli',
+			name: '@stratejya/operon-cli',
 			version: '0.1.0-beta.1',
 			files: ['dist/', 'README.md', 'LICENSE'],
 		});
@@ -284,7 +284,7 @@ test('canonical npm tarball generation is reproducible', async () => {
 		const first = await readFile(firstPath);
 		const secondPath = await writeCanonicalCliTarball(root);
 		const second = await readFile(secondPath);
-		assert.equal(path.basename(firstPath), 'operon-cli-0.1.0-beta.1.tgz');
+		assert.equal(path.basename(firstPath), 'stratejya-operon-cli-0.1.0-beta.1.tgz');
 		assert.equal(
 			createHash('sha256').update(first).digest('hex'),
 			createHash('sha256').update(second).digest('hex'),
@@ -323,7 +323,7 @@ test('canonical npm tarball rejects non-public file modes', {
 	const root = await fixtureRoot();
 	try {
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
-			name: 'operon-cli',
+			name: '@stratejya/operon-cli',
 			version: '0.1.0-beta.1',
 			files: ['README.md', 'LICENSE'],
 		});
@@ -361,7 +361,7 @@ test('source-first preparation rebuilds plugin and CLI before packing', async ()
 		]);
 		assert.equal(
 			await readFile(
-				path.join(root, 'packages/operon-cli/freeze/operon-cli-0.1.0-beta.1.tgz'),
+				path.join(root, 'packages/operon-cli/freeze/stratejya-operon-cli-0.1.0-beta.1.tgz'),
 			).then(bytes => bytes.byteLength > 0),
 			true,
 		);
@@ -505,7 +505,7 @@ async function fixtureRoot() {
 		['packages/operon-cli/README.md', 'readme\n'],
 		['packages/operon-cli/LICENSE', 'license\n'],
 		['packages/operon-cli/dist/operon.mjs', 'executable\n'],
-		['packages/operon-cli/freeze/operon-cli-0.1.0-beta.1.tgz', 'tarball\n'],
+		['packages/operon-cli/freeze/stratejya-operon-cli-0.1.0-beta.1.tgz', 'tarball\n'],
 		['packages/operon-cli/schemas/v1/schema.json', '{}\n'],
 		['packages/operon-cli/types/index.d.ts', 'export type Value = string;\n'],
 		['packages/operon-cli/examples/developer-api-consumer/main.ts', 'export {};\n'],
@@ -558,7 +558,7 @@ async function fixtureRoot() {
 		contractDigest: 'b'.repeat(64),
 	});
 	await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
-		name: 'operon-cli',
+		name: '@stratejya/operon-cli',
 		version: '0.1.0-beta.1',
 	});
 	await writeJson(path.join(root, 'manifest.json'), {

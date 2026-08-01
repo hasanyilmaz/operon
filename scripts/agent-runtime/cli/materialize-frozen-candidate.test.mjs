@@ -12,7 +12,7 @@ test('materializes the accepted canonical tarball without rebuilding it', async 
 	try {
 		const output = path.join(fixture.root, 'packages/operon-cli/release');
 		const result = await materializeFrozenCandidate({ repositoryRoot: fixture.root, outputRoot: output });
-		assert.equal(result.fileName, 'operon-cli-1.0.6.tgz');
+		assert.equal(result.fileName, 'stratejya-operon-cli-1.0.7.tgz');
 		assert.deepEqual(await readFile(result.path), fixture.bytes);
 		assert.equal(result.sha256, digest(fixture.bytes));
 	} finally {
@@ -109,12 +109,12 @@ test('rejects symlinked source and output paths', {
 async function createFixture(mutate) {
 	const root = await mkdtemp(path.join(tmpdir(), 'operon-frozen-candidate-'));
 	const bytes = Buffer.from('immutable candidate tarball\n');
-	const source = path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.6.tgz');
+	const source = path.join(root, 'packages/operon-cli/freeze/stratejya-operon-cli-1.0.7.tgz');
 	await mkdir(path.dirname(source), { recursive: true });
 	await mkdir(path.join(root, 'contracts/agent-runtime'), { recursive: true });
 	await writeFile(path.join(root, 'packages/operon-cli/package.json'), `${JSON.stringify({
-		name: 'operon-cli',
-		version: '1.0.6',
+		name: '@stratejya/operon-cli',
+		version: '1.0.7',
 	}, null, 2)}\n`, 'utf8');
 	await writeFile(source, bytes);
 	const freeze = {
@@ -128,9 +128,9 @@ async function createFixture(mutate) {
 		cli: {
 			contractVersion: 1,
 			contractDigest: '2'.repeat(64),
-			packageVersion: '1.0.6',
+			packageVersion: '1.0.7',
 			tarball: {
-				path: 'packages/operon-cli/freeze/operon-cli-1.0.6.tgz',
+				path: 'packages/operon-cli/freeze/stratejya-operon-cli-1.0.7.tgz',
 				bytes: bytes.length,
 				sha256: digest(bytes),
 			},

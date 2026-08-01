@@ -14,6 +14,7 @@ import {
 	CONTRACT_LIMITS_V1,
 	ERROR_REGISTRY_V1,
 } from '../../../src/agent-runtime/contracts/v1/primitives';
+import { OPERON_CLI_PACKAGE_NAME } from './package-identity';
 
 export const OPERON_CLI_MANIFEST_VERSION_V1 = 1 as const;
 export const COMPACT_UPDATE_FEATURES_V1 = Object.freeze([
@@ -355,7 +356,7 @@ export function createCliManifestBaseV1(version: string) {
 	return {
 		manifestVersion: OPERON_CLI_MANIFEST_VERSION_V1,
 		package: {
-			name: 'operon-cli',
+			name: OPERON_CLI_PACKAGE_NAME,
 			version,
 			executable: 'operon',
 			node: '^22.0.0 || ^24.0.0 || ^26.0.0',

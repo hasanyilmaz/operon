@@ -20,7 +20,7 @@ const env = {
 
 const manifest = run(['manifest', '--json']);
 assert.equal(manifest.ok, true);
-assert.equal(manifest.result.package.name, 'operon-cli');
+assert.equal(manifest.result.package.name, '@stratejya/operon-cli');
 const createContract = manifest.result.convenienceContracts['task.create'];
 const updateContract = manifest.result.convenienceContracts['task.update'];
 assert.equal(createContract.mutationKind, 'task.create');

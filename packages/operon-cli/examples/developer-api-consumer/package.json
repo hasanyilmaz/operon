@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "obsidian": "latest",
-    "operon-cli": "*",
+    "@stratejya/operon-cli": "*",
     "typescript": "latest"
   }
 }

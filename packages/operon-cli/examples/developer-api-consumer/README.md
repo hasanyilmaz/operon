@@ -2,7 +2,7 @@
 
 This minimal Obsidian plugin demonstrates the public, in-process Operon
 Developer API V1. It imports only type declarations from
-`operon-cli/contracts/v1/developer-api`; `operon-cli` is not a runtime SDK.
+`@stratejya/operon-cli/contracts/v1/developer-api`; `@stratejya/operon-cli` is not a runtime SDK.
 
 ## Try it
 

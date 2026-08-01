@@ -5,6 +5,8 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
+import { OPERON_CLI_NPM_PACKAGE_NAME } from '../../../packages/operon-cli/package-identity.mjs';
+
 const [candidateRootArgument, registryRootArgument] = process.argv.slice(2);
 assert.ok(candidateRootArgument, 'Candidate directory is required.');
 assert.ok(registryRootArgument, 'Registry download directory is required.');
@@ -34,7 +36,7 @@ const registry = await readSingleTarball(registryRoot, 'Registry download');
 assert.equal(evidence.kind, 'operon-cli-release-candidate');
 assert.equal(evidence.tarball, candidate.name);
 assert.equal(evidence.sha256, candidate.sha256);
-assert.match(evidence.package, /^operon-cli@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u);
+assert.match(evidence.package, /^@stratejya\/operon-cli@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u);
 assert.equal(registry.name, candidate.name);
 assert.equal(
 	registry.sha256,
@@ -48,7 +50,7 @@ assert.deepEqual(
 );
 
 if (process.env.EXPECTED_VERSION) {
-	assert.equal(evidence.package, `operon-cli@${process.env.EXPECTED_VERSION}`);
+	assert.equal(evidence.package, `${OPERON_CLI_NPM_PACKAGE_NAME}@${process.env.EXPECTED_VERSION}`);
 }
 if (process.env.EXPECTED_SHA256) {
 	assert.equal(registry.sha256, process.env.EXPECTED_SHA256);

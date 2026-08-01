@@ -15,6 +15,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
+import {
+	OPERON_CLI_NPM_PACKAGE_NAME,
+	OPERON_CLI_NPM_PACKAGE_PATH,
+} from '../../../../packages/operon-cli/package-identity.mjs';
 
 const fixtureRoot = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(fixtureRoot, '../../../..');
@@ -69,7 +73,11 @@ try {
 		],
 		stagingRoot,
 	);
-	const installedPackageRoot = path.join(stagingRoot, 'node_modules', 'operon-cli');
+	const installedPackageRoot = path.join(
+		stagingRoot,
+		'node_modules',
+		...OPERON_CLI_NPM_PACKAGE_PATH,
+	);
 	const installedPackage = JSON.parse(await readFile(
 		path.join(installedPackageRoot, 'package.json'),
 		'utf8',
@@ -128,7 +136,7 @@ try {
 		package: `${installedPackage.name}@${installedPackage.version}`,
 		tarball: path.basename(tarballPath),
 		tarballSha256: sha256(tarballBytes),
-		publicTypesEntrypoint: 'operon-cli/contracts/v1/developer-api',
+		publicTypesEntrypoint: '@stratejya/operon-cli/contracts/v1/developer-api',
 		runtimeInputs,
 		mainJsSha256: sha256(mainBytes),
 		mainJsBytes: mainBytes.length,
@@ -149,7 +157,7 @@ try {
 			cliPackageRoot,
 		);
 		const packResult = JSON.parse(result.stdout)[0];
-		assert.equal(packResult.name, 'operon-cli');
+		assert.equal(packResult.name, OPERON_CLI_NPM_PACKAGE_NAME);
 		return path.join(packRoot, packResult.filename);
 	}
 } finally {
@@ -159,10 +167,10 @@ try {
 async function assertPublicTypeImportsOnly(stagingRoot) {
 	for (const fileName of ['acceptance.ts', 'main.ts', 'runner-contract.ts']) {
 		const source = await readFile(path.join(stagingRoot, fileName), 'utf8');
-		for (const match of source.matchAll(/\boperon-cli(?:\/[^'"]*)?/gu)) {
+		for (const match of source.matchAll(/@stratejya\/operon-cli(?:\/[^'"]*)?/gu)) {
 			assert.equal(
 				match[0],
-				'operon-cli/contracts/v1/developer-api',
+				'@stratejya/operon-cli/contracts/v1/developer-api',
 				`Fixture imported a non-public or non-Developer-API package path: ${match[0]}`,
 			);
 		}

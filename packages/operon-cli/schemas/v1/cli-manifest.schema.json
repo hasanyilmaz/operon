@@ -42,7 +42,10 @@
       ],
       "properties": {
         "name": {
-          "const": "operon-cli"
+          "enum": [
+            "operon-cli",
+            "@stratejya/operon-cli"
+          ]
         },
         "version": {
           "type": "string",

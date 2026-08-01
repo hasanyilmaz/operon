@@ -61,6 +61,7 @@ import {
 } from '../../../packages/operon-cli/src/interactive-shell';
 import {
 	checkForCliUpdateV1,
+	OPERON_CLI_DIST_TAGS_URL,
 	selectCliUpdateNoticeV1,
 } from '../../../packages/operon-cli/src/update-check';
 import {
@@ -949,8 +950,8 @@ async function testInteractiveShellState(): Promise<void> {
 				currentVersion: '0.1.0-beta.23',
 				availableVersion: '0.1.0',
 				channel: 'latest',
-				updateCommand: 'npm install --global operon-cli',
-				releaseUrl: 'https://www.npmjs.com/package/operon-cli/v/0.1.0',
+				updateCommand: 'npm install --global @stratejya/operon-cli',
+				releaseUrl: 'https://www.npmjs.com/package/@stratejya/operon-cli/v/0.1.0',
 			},
 			runCommand: async tokens => {
 				calls.push([...tokens]);
@@ -986,7 +987,7 @@ async function testInteractiveShellState(): Promise<void> {
 		]);
 		assert.ok(stdout.join('').includes('Operon CLI 0.1.0-test'));
 		assert.ok(stdout.join('').includes('✨ Update available! 0.1.0-beta.23 → 0.1.0'));
-		assert.ok(stdout.join('').includes('npm install --global operon-cli'));
+		assert.ok(stdout.join('').includes('npm install --global @stratejya/operon-cli'));
 		assert.ok(!stdout.join('').includes('operon-cli@beta'));
 		assert.ok(stdout.join('').includes('"command":"version.--json"'));
 		assert.ok(stderr.join('').includes('Error: Unknown command.'));
@@ -1003,19 +1004,23 @@ async function testInteractiveShellState(): Promise<void> {
 }
 
 async function testCliUpdateCheck(): Promise<void> {
+	assert.equal(
+		OPERON_CLI_DIST_TAGS_URL,
+		'https://registry.npmjs.org/-/package/%40stratejya%2Foperon-cli/dist-tags',
+	);
 	const stable = selectCliUpdateNoticeV1('0.1.0-beta.23', {
 		latest: '0.1.0',
 		beta: '0.1.0-beta.24',
 	});
 	assert.equal(stable?.channel, 'latest');
 	assert.equal(stable?.availableVersion, '0.1.0');
-	assert.equal(stable?.updateCommand, 'npm install --global operon-cli');
+	assert.equal(stable?.updateCommand, 'npm install --global @stratejya/operon-cli');
 
 	const beta = selectCliUpdateNoticeV1('0.1.0-beta.23', {
 		beta: '0.1.0-beta.24',
 	});
 	assert.equal(beta?.channel, 'beta');
-	assert.equal(beta?.updateCommand, 'npm install --global operon-cli@beta');
+	assert.equal(beta?.updateCommand, 'npm install --global @stratejya/operon-cli@beta');
 
 	assert.equal(selectCliUpdateNoticeV1('0.1.0', {
 		latest: '0.1.0',
