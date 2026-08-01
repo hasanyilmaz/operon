@@ -66,8 +66,8 @@ jobs:
         env:
           npm_config_cache: ${{ runner.temp }}/operon-cli-npm-cache
         run: |
-          rm -rf packages/operon-cli/release
-          mkdir -p packages/operon-cli/release
+          rm -rf release
+          mkdir -p release
           npm pack --pack-destination release
         working-directory: packages/operon-cli
       - name: Download and verify the compatible public Operon plugin

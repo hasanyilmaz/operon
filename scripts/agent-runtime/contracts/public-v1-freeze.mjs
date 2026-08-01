@@ -126,7 +126,7 @@ export async function buildPublicV1FreezeIndex(options = {}) {
 			contentAggregateSha256: docsAggregate.aggregateSha256,
 		},
 		plugin: {
-			artifactStatus: 'provisional-unpublished',
+			artifactStatus: 'local-rebuilt-artifact',
 			pluginId: pluginManifest.id,
 			version: pluginManifest.version,
 			main: await fileRecord(root, 'main.js'),
@@ -428,7 +428,7 @@ async function buildAuditArtifactMetafiles(root) {
 
 function assertAcceptedFreeze(index) {
 	if (
-		index.cli.packageVersion !== '1.0.0'
+		index.cli.packageVersion !== '1.0.1'
 		|| index.plugin.version !== '3.0.0'
 		|| index.audit.validation.status !== 'passed'
 		|| index.audit.validation.result?.status !== 'accepted-clean'

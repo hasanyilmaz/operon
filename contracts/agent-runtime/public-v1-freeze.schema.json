@@ -97,7 +97,10 @@
       "additionalProperties": false,
       "required": ["artifactStatus", "pluginId", "version", "main", "manifest", "styles"],
       "properties": {
-        "artifactStatus": { "const": "provisional-unpublished" },
+        "artifactStatus": {
+          "const": "local-rebuilt-artifact",
+          "description": "Source-rebuilt plugin bytes bound by this local freeze; public release identity is verified separately."
+        },
         "pluginId": { "const": "operon" },
         "version": { "type": "string", "minLength": 1 },
         "main": { "$ref": "#/$defs/file" },
