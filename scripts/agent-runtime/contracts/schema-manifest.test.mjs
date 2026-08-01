@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -27,6 +27,9 @@ test('runtime schema manifest generation is deterministic and check is read-only
 	assert.equal(first, second);
 	await writeRuntimeSchemaManifestV1({ canonicalRoot: root });
 	const before = await readFile(path.join(root, 'schema-manifest.json'), 'utf8');
+	if (process.platform !== 'win32') {
+		assert.equal((await stat(path.join(root, 'schema-manifest.json'))).mode & 0o777, 0o644);
+	}
 	await checkRuntimeSchemaManifestV1({ canonicalRoot: root });
 	const after = await readFile(path.join(root, 'schema-manifest.json'), 'utf8');
 	assert.equal(after, before);

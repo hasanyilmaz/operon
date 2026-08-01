@@ -250,6 +250,7 @@ export async function writeCanonicalCliTarball(root = defaultPluginRoot) {
 		if (packed[0]?.filename !== expectedFilename) {
 			throw new Error('OPERON_PUBLIC_V1_FREEZE_PACK_FILENAME_INVALID');
 		}
+		assertCanonicalCliTarballModes(packed[0], packageDocument);
 		const freezeRoot = path.join(packageRoot, 'freeze');
 		await mkdir(freezeRoot, { recursive: true });
 		await copyFile(
@@ -259,6 +260,30 @@ export async function writeCanonicalCliTarball(root = defaultPluginRoot) {
 		return path.join(freezeRoot, expectedFilename);
 	} finally {
 		await rm(temporaryRoot, { recursive: true, force: true });
+	}
+}
+
+function assertCanonicalCliTarballModes(packResult, packageDocument) {
+	if (!Array.isArray(packResult.files)) {
+		throw new Error('OPERON_PUBLIC_V1_FREEZE_PACK_FILES_INVALID');
+	}
+	const binValues = typeof packageDocument.bin === 'string'
+		? [packageDocument.bin]
+		: Object.values(packageDocument.bin ?? {});
+	const executablePaths = new Set(binValues.map(value => {
+		if (typeof value !== 'string') {
+			throw new Error('OPERON_PUBLIC_V1_FREEZE_PACKAGE_BIN_INVALID');
+		}
+		return safeRelativePath(value.replace(/^\.\//u, ''));
+	}));
+	for (const file of packResult.files) {
+		const filePath = safeRelativePath(file?.path);
+		const expectedMode = executablePaths.has(filePath) ? 0o755 : 0o644;
+		if (file?.mode !== expectedMode) {
+			throw new Error(
+				`OPERON_PUBLIC_V1_FREEZE_PACK_MODE_INVALID:${filePath}:${file?.mode ?? 'missing'}`,
+			);
+		}
 	}
 }
 

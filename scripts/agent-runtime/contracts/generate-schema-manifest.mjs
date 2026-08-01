@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { chmod, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -113,6 +113,7 @@ export async function writeRuntimeSchemaManifestV1(options = {}) {
 	const output = await buildRuntimeSchemaManifestV1(options);
 	const temporary = `${target}.${process.pid}.tmp`;
 	await writeFile(temporary, output, { encoding: 'utf8', mode: 0o600 });
+	await chmod(temporary, 0o644);
 	await rename(temporary, target);
 	return output;
 }

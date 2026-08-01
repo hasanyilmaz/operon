@@ -216,7 +216,12 @@ for (const sourceRoot of [
 			throw new Error(`OPERON_CLI_SCHEMA_FILENAME_COLLISION:${fileName}`);
 		}
 		copiedSchemaFileNames.add(fileName);
-		await copyFile(path.join(sourceRoot, fileName), path.join(schemaTargetRoot, fileName));
+		const schemaTargetPath = path.join(schemaTargetRoot, fileName);
+		await copyFile(path.join(sourceRoot, fileName), schemaTargetPath);
+		await chmod(schemaTargetPath, 0o644);
+		if (process.platform !== 'win32' && ((await stat(schemaTargetPath)).mode & 0o777) !== 0o644) {
+			throw new Error(`OPERON_CLI_SCHEMA_MODE_INVALID:${fileName}`);
+		}
 	}
 }
 
