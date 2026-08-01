@@ -7341,6 +7341,7 @@ export default class OperonPlugin extends Plugin {
 				{
 					getTask: operonId => snapshots.get(operonId) ?? null,
 					isPinned: operonId => this.pinnedCache?.isPinned(operonId) === true,
+					hasProjectSerialScopes: () => catalog.value.policies.projectSerialScopes.length > 0,
 					stateRevisions: () => ({
 						activeTracker: sha256HexV1(String(this.storage.activeTrackers.getGeneration())),
 						repeatSeries: sha256HexV1(String(this.storage.repeatSeries.getRevision())),

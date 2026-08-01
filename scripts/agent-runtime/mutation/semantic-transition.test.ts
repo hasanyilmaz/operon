@@ -107,11 +107,13 @@ function plannerPorts(
 	) => Promise<RuntimeSemanticTransitionRecurrencePlanningResultV1> = (
 		createFixtureRecurrencePlannerV1()
 	),
+	projectSerialScopes = true,
 ): RuntimeSemanticTransitionPlannerPortsV1 {
 	const byId = new Map(tasks.map(item => [item.operonId, item]));
 	return {
 		getTask: operonId => byId.get(operonId) ?? null,
 		isPinned: () => pinned,
+		hasProjectSerialScopes: () => projectSerialScopes,
 		stateRevisions: () => ({
 			activeTracker: 'tracker-rev',
 			repeatSeries: 'repeat-rev',
@@ -330,6 +332,34 @@ test('planner seals recurrence, two ancestors, pinned cleanup, and project-seria
 		plan.affectedResources.some(resource => resource.resourceKind === 'repeat-series'),
 		true,
 	);
+});
+
+test('planner omits project-serial settlement when no project serial scope is configured', async () => {
+	const source = task('tsk0001', 'Tasks.md');
+	const plan = requirePlan(await planRuntimeSemanticTransitionV1(
+		prepared(source, { from: 'open', to: 'done' }),
+		EFFECTIVE_AT,
+		plannerPorts([source], false, createFixtureRecurrencePlannerV1(), false),
+	));
+
+	assert.equal(plan.projectSerialGroup, null);
+	assert.equal(
+		plan.atomicGroups.some(group => group.groupId === 'project-serial:global'),
+		false,
+	);
+	assert.equal(
+		plan.affectedResources.some(resource => resource.resourceKind === 'project-serial'),
+		false,
+	);
+	assert.equal(
+		plan.predictedEffects.some(effect => effect.resourceKind === 'project-serial'),
+		false,
+	);
+
+	const calls: string[] = [];
+	const result = await executeRuntimeSemanticTransitionV1(plan, coordinatorPorts(calls));
+	assert.equal(result.status, 'committed');
+	assert.deepEqual(calls, ['task-transition:tsk0001']);
 });
 
 test('read-only recurrence preview seals an exact new source and rejects ID or path collisions', async () => {
