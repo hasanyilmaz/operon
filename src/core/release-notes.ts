@@ -13,6 +13,16 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.0.1',
+		date: '2026-08-01',
+		title: 'Operon 3.0.1 - Windows Mutation Reliability',
+		showOnUpdate: true,
+		body: `
+### Fixed
+- Fixed Public CLI and Developer API mutations on Windows incorrectly rejecting valid file and inline task paths inside the active vault.
+`.trim(),
+	},
+	{
 		version: '3.0.0',
 		date: '2026-07-31',
 		title: 'Welcome Agents',

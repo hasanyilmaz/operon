@@ -6,13 +6,52 @@ import test from 'node:test';
 
 import {
 	assertLiveAcceptanceInputsV1,
+	execNpmV1,
 	officialObsidianCliIdentityV1,
 	resolveAcceptanceExecutableV1,
 	resolveAcceptanceWindowsPowerShellV1,
+	resolveNpmInvocationV1,
 	runAcceptanceProofV1,
 	validateDisposableAcceptanceVaultV1,
 	windowsAuthenticodeIdentityV1,
 } from './live-acceptance-platform.mjs';
+
+test('npm invocation bypasses Windows command shims through the current Node runtime', () => {
+	assert.deepEqual(
+		resolveNpmInvocationV1(
+			['--version'],
+			'win32',
+			'C:\\Program Files\\nodejs\\node.exe',
+		),
+		{
+			executable: 'C:\\Program Files\\nodejs\\node.exe',
+			args: [
+				'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
+				'--version',
+			],
+		},
+	);
+	assert.deepEqual(
+		resolveNpmInvocationV1(['--version'], 'linux', '/usr/bin/node'),
+		{ executable: 'npm', args: ['--version'] },
+	);
+});
+
+test('npm execution keeps shell mode disabled when caller options request a shell', () => {
+	let captured;
+	const result = execNpmV1(
+		['--version'],
+		{ encoding: 'utf8', shell: true },
+		(...arguments_) => {
+			captured = arguments_;
+			return '11.12.1\n';
+		},
+	);
+	assert.equal(result, '11.12.1\n');
+	assert.equal(captured[2].encoding, 'utf8');
+	assert.equal(captured[2].shell, false);
+	assert.equal(captured[2].windowsHide, true);
+});
 
 const full = {
 	profile: 'full',

@@ -9,6 +9,7 @@ import {
 	HOSTED_PORTABILITY_CELL_KIND_V1,
 	hostedPortabilityCellsV1,
 } from './hosted-portability-lib.mjs';
+import { execNpmV1 } from './live-acceptance-platform.mjs';
 import { loadCandidateBindingV1 } from './native-acceptance-lib.mjs';
 
 const [candidateRootArgument, cellId, outputArgument] = process.argv.slice(2);
@@ -20,11 +21,7 @@ const expected = hostedPortabilityCellsV1().find(cell => cell.cellId === cellId)
 assert.ok(expected, `Unknown hosted portability cell ${cellId}.`);
 assert.equal(process.platform, expected.platform, 'Hosted runner platform does not match the cell.');
 assert.equal(process.version, `v${expected.nodeVersion}`, 'Hosted runner Node version does not match the cell.');
-const npmVersion = execFileSync(
-	process.platform === 'win32' ? 'npm.cmd' : 'npm',
-	['--version'],
-	{ encoding: 'utf8' },
-).trim();
+const npmVersion = execNpmV1(['--version'], { encoding: 'utf8' }).trim();
 assert.equal(npmVersion, '11.12.1', 'Hosted runner npm version does not match the freeze.');
 const { binding: candidate } = await loadCandidateBindingV1(path.resolve(candidateRootArgument));
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();

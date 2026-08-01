@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { execNpmV1 } from './live-acceptance-platform.mjs';
 import { loadCandidateBindingV1 } from './native-acceptance-lib.mjs';
 
 const [candidateRootArgument] = process.argv.slice(2);
@@ -17,7 +18,6 @@ const root = await mkdtemp(path.join(tmpdir(), 'operon-hosted-candidate-'));
 const prefix = path.join(root, 'prefix');
 const configRoot = path.join(root, 'config');
 const npmCache = path.join(root, 'npm-cache');
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const env = {
 	...process.env,
 	npm_config_cache: npmCache,
@@ -26,13 +26,11 @@ const env = {
 try {
 	await mkdir(configRoot, { recursive: true });
 	const tarball = path.join(candidateRoot, evidence.tarball);
-	execFileSync(
-		npmCommand,
+	execNpmV1(
 		['install', '--global', '--prefix', prefix, '--ignore-scripts', tarball],
 		{ env, stdio: 'inherit' },
 	);
-	const globalRoot = execFileSync(
-		npmCommand,
+	const globalRoot = execNpmV1(
 		['root', '--global', '--prefix', prefix],
 		{ env, encoding: 'utf8' },
 	).trim();
@@ -61,8 +59,7 @@ try {
 			manifest.package.version,
 		);
 	}
-	execFileSync(
-		npmCommand,
+	execNpmV1(
 		['uninstall', '--global', '--prefix', prefix, 'operon-cli'],
 		{ env, stdio: 'inherit' },
 	);

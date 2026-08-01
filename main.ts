@@ -334,6 +334,7 @@ import { RuntimeSourceHydratorV1 } from './src/agent-runtime/runtime/context-sou
 import {
 	computeRunningVaultSha256V1,
 	createAgentRuntimeCliMetadataV1,
+	isCanonicalPathWithinRootV1,
 	loadAgentRuntimeDesktopNodeApiV1,
 	registerAgentRuntimeCliHandlersV1,
 	startAgentRuntimePersistentReadServerV1,
@@ -9254,7 +9255,11 @@ export default class OperonPlugin extends Plugin {
 					}
 				}
 			}
-			return canonicalTarget === vaultRoot || canonicalTarget.startsWith(`${vaultRoot}/`);
+			return isCanonicalPathWithinRootV1(
+				vaultRoot,
+				canonicalTarget,
+				nodeApi.platform,
+			);
 		} catch {
 			return false;
 		}
