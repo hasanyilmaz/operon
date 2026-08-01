@@ -481,7 +481,7 @@ async function buildAuditArtifactMetafiles(root) {
 
 function assertAcceptedFreeze(index) {
 	if (
-		index.cli.packageVersion !== '1.0.5'
+		index.cli.packageVersion !== '1.0.6'
 		|| index.plugin.version !== '3.0.1'
 		|| index.audit.validation.status !== 'passed'
 		|| index.audit.validation.result?.status !== 'accepted-clean'

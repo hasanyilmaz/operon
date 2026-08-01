@@ -200,10 +200,10 @@ test('accepted freeze requires final versions, passed audit and explicit maintai
 		);
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
 			name: 'operon-cli',
-			version: '1.0.5',
+			version: '1.0.6',
 		});
 		await writeFile(
-			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.5.tgz'),
+			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.6.tgz'),
 			'stable tarball\n',
 		);
 		await writeJson(path.join(root, 'manifest.json'), {
@@ -233,10 +233,10 @@ test('ordinary write clears prior acceptance and audit attestation', async () =>
 	try {
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
 			name: 'operon-cli',
-			version: '1.0.5',
+			version: '1.0.6',
 		});
 		await writeFile(
-			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.5.tgz'),
+			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.6.tgz'),
 			'stable tarball\n',
 		);
 		await writeJson(path.join(root, 'manifest.json'), {

@@ -16,7 +16,7 @@ has passed.
 Public V1 launch versions:
 
 - Operon `3.0.1`
-- `operon-cli@1.0.5`
+- `operon-cli@1.0.6`
 - Runtime API and contract version `1`
 
 The current CLI is a private release candidate and is not publicly installable
@@ -52,7 +52,7 @@ versioned Public V1 integration contract.
 | Area | Current implementation truth | Public V1 launch target |
 | --- | --- | --- |
 | Operon release | Operon `3.0.1` is publicly released with Runtime API V1 and the Windows mutation reliability patch | Operon `3.0.1` |
-| CLI package | Local `operon-cli@1.0.5` stable release candidate; not published to public npm | Public stable `operon-cli@1.0.5` |
+| CLI package | Local `operon-cli@1.0.6` stable release candidate; not published to public npm | Public stable `operon-cli@1.0.6` |
 | Runtime contract | Runtime API V1 exists and is exposed on the Operon plugin instance | Runtime API V1 is a supported, typed Developer API contract |
 | Public access channels | The in-process Developer API and Windows mutation reliability patch ship with Operon `3.0.1`; the CLI remains an unpublished local release candidate | CLI and in-process Developer API are both supported public channels |
 | macOS CLI | Supported by the current beta boundary | Supported |
@@ -264,7 +264,7 @@ support, documentation, and release acceptance do not depend on that work.
 | Cross-platform launch boundary, Node support, and beta disclosure | Stage 7 — Cross-platform readiness | Hosted portability and package tests pass on Node 22, 24, and 26 across macOS, Linux, and Windows; platform-specific transport-security, path, lifecycle, interruption, and recovery tests pass; macOS remains `supported`, Linux and Windows remain executable `acceptance-required` public-beta targets, and WSL remains `unsupported` |
 | Public integration guides and examples | Stage 8 — Packaging and documentation | Clean-room CLI and Developer API integration tests using only distributable artifacts and documentation |
 | Stable contract and release candidate | Stage 9 — Hardening and freeze | No launch-blocking contract break, unauthorized access, consent bypass, data loss or corruption, or irrecoverable uncertain outcome remains; all required local contract, security, mutation, Developer API, package, documentation, and release-hardening gates pass; contract, stable manifest, package inputs, types, examples, documentation, source-rebuilt plugin artifact, and development-audit policy are bound by one exact local freeze index; the compatibility baseline has real input/response direction and deprecation coverage; documented maintainer acceptance seals the final local index |
-| Public `operon-cli@1.0.5` | Stage 10 — External release | Before publish, the accepted Stage 9 freeze, final tarball digest, provenance, compatible public Operon artifact, and nine-cell hosted portability evidence pass on the release bytes; after publish, the registry artifact digest equals that tarball and the post-publication audit passes |
+| Public `operon-cli@1.0.6` | Stage 10 — External release | Before publish, the accepted Stage 9 freeze, final tarball digest, provenance, compatible public Operon artifact, and nine-cell hosted portability evidence pass on the release bytes; after publish, the registry artifact digest equals that tarball and the post-publication audit passes |
 
 Failure of a required gate returns the work to its owning stage. Publication is
 not a substitute for contract, safety, package, or hosted portability evidence.

@@ -298,9 +298,28 @@ assert.match(publishWorkflow, /test "\$\(node --version\)" = "v24\.18\.0"/u);
 assert.match(publishWorkflow, /npm install --global npm@11\.12\.1/u);
 assert.match(publishWorkflow, /test "\$GITHUB_REF" = "refs\/tags\/\$SOURCE_REF"/u);
 assert.match(publishWorkflow, /ref:\s+refs\/tags\/\$\{\{\s*inputs\.source_ref\s*\}\}/u);
-assert.match(
+const publishStepPattern = /npm publish \.\/candidate\/\*\.tgz[\s\S]+--access public[\s\S]+--tag latest[\s\S]+--provenance/u;
+for (const [stepName, authenticationMode] of [
+	['Publish first approved stable release with temporary token and provenance', 'bootstrap-token'],
+	['Publish approved stable release through npm trusted publishing', 'trusted-publisher'],
+]) {
+	const escapedStepName = stepName.replace(/[.*+?^\${}()|[\]\\]/gu, '\\$&');
+	const stepBlock = publishWorkflow.match(
+		new RegExp(`- name: ${escapedStepName}\\n[\\s\\S]*?(?=\\n\\s+- name: )`, 'u'),
+	)?.[0];
+	assert.ok(stepBlock, `Missing ${authenticationMode} publish step.`);
+	assert.match(stepBlock, new RegExp(`if: inputs\\.authentication_mode == '${authenticationMode}'`, 'u'));
+	assert.match(stepBlock, publishStepPattern);
+	assert.equal(
+		stepBlock.match(/npm publish \.\/candidate\/\*\.tgz/gu)?.length,
+		1,
+		`The ${authenticationMode} step must publish exactly one explicit local tarball path.`,
+	);
+}
+assert.doesNotMatch(
 	publishWorkflow,
-	/npm publish candidate\/\*\.tgz[\s\S]+--access public[\s\S]+--tag latest[\s\S]+--provenance/u,
+	/npm publish candidate\/\*\.tgz/u,
+	'Bare relative tarball paths can be misinterpreted as GitHub shorthand by npm.',
 );
 assert.match(publishWorkflow, /secrets\.NPM_TOKEN/u);
 assert.match(publishWorkflow, /bootstrap-token is only allowed while operon-cli is unpublished/u);
@@ -323,7 +342,7 @@ for (const commandPattern of [
 	/npm view operon-cli version --json --registry https:\/\/registry\.npmjs\.org\//u,
 	/npm view operon-cli@latest version --registry https:\/\/registry\.npmjs\.org\//u,
 	/npm view operon-cli dist-tags --json --registry https:\/\/registry\.npmjs\.org\//u,
-	/npm publish candidate\/\*\.tgz[\s\S]+--registry https:\/\/registry\.npmjs\.org\//u,
+	/npm publish \.\/candidate\/\*\.tgz[\s\S]+--registry https:\/\/registry\.npmjs\.org\//u,
 ]) {
 	assert.match(publishWorkflow, commandPattern);
 }

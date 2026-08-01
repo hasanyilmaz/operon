@@ -169,7 +169,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           test -n "$NODE_AUTH_TOKEN"
-          npm publish candidate/*.tgz \
+          npm publish ./candidate/*.tgz \
             --registry https://registry.npmjs.org/ \
             --access public \
             --tag latest \
@@ -180,7 +180,7 @@ jobs:
       - name: Publish approved stable release through npm trusted publishing
         if: inputs.authentication_mode == 'trusted-publisher'
         run: |
-          npm publish candidate/*.tgz \
+          npm publish ./candidate/*.tgz \
             --registry https://registry.npmjs.org/ \
             --access public \
             --tag latest \
