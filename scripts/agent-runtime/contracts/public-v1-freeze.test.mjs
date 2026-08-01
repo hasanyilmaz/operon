@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
+	chmod,
 	cp,
 	mkdir,
 	mkdtemp,
@@ -286,6 +287,26 @@ test('canonical npm tarball generation is reproducible', async () => {
 		assert.equal(
 			createHash('sha256').update(first).digest('hex'),
 			createHash('sha256').update(second).digest('hex'),
+		);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+test('canonical npm tarball rejects non-public file modes', {
+	skip: process.platform === 'win32',
+}, async () => {
+	const root = await fixtureRoot();
+	try {
+		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
+			name: 'operon-cli',
+			version: '0.1.0-beta.1',
+			files: ['README.md', 'LICENSE'],
+		});
+		await chmod(path.join(root, 'packages/operon-cli/README.md'), 0o600);
+		await assert.rejects(
+			writeCanonicalCliTarball(root),
+			/OPERON_PUBLIC_V1_FREEZE_PACK_MODE_INVALID:README\.md:384/u,
 		);
 	} finally {
 		await rm(root, { recursive: true, force: true });
