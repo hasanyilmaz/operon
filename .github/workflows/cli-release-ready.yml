@@ -176,10 +176,13 @@ jobs:
           cache: npm
       - name: Pin portability npm
         run: npm install --global npm@11.12.1
-      - name: Verify exact source and toolchain
+      - name: Verify exact source identity
         env:
           SOURCE_REF: ${{ inputs.source_ref }}
-        run: node -e "const {execFileSync}=require('node:child_process'); if(process.version!=='v${{ matrix.node }}')throw new Error('Unexpected Node version'); if(execFileSync(process.platform==='win32'?'npm.cmd':'npm',['--version'],{encoding:'utf8'}).trim()!=='11.12.1')throw new Error('Unexpected npm version'); if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.GITHUB_SHA)throw new Error('Source commit drift'); if(process.env.GITHUB_REF!=='refs/tags/'+process.env.SOURCE_REF)throw new Error('Source tag drift');"
+        run: node -e "const {execFileSync}=require('node:child_process'); if(process.version!=='v${{ matrix.node }}')throw new Error('Unexpected Node version'); if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.GITHUB_SHA)throw new Error('Source commit drift'); if(process.env.GITHUB_REF!=='refs/tags/'+process.env.SOURCE_REF)throw new Error('Source tag drift');"
+      - name: Verify exact npm version
+        shell: bash
+        run: test "$(npm --version)" = "11.12.1"
       - run: npm ci
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
