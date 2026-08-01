@@ -148,6 +148,15 @@ assert.match(candidateWorkflow, /plugin_release_tag:/u);
 assert.match(candidateWorkflow, /node-version:\s*"24\.18\.0"/u);
 assert.match(candidateWorkflow, /test "\$\(node --version\)" = "v24\.18\.0"/u);
 assert.match(candidateWorkflow, /npm install --global npm@11\.12\.1/u);
+const candidatePackStep = candidateWorkflow.match(
+	/^      - name: Build one isolated candidate tarball\s*\n(?:(?!^      - ).*(?:\n|$))*/mu,
+)?.[0];
+assert.ok(candidatePackStep, 'Candidate workflow must contain the isolated tarball build step.');
+assert.match(candidatePackStep, /^[ \t]+working-directory:[ \t]+packages\/operon-cli[ \t]*$/mu);
+assert.match(candidatePackStep, /^[ \t]+rm -rf release[ \t]*$/mu);
+assert.match(candidatePackStep, /^[ \t]+mkdir -p release[ \t]*$/mu);
+assert.match(candidatePackStep, /^[ \t]+npm pack --pack-destination release[ \t]*$/mu);
+assert.doesNotMatch(candidatePackStep, /packages\/operon-cli\/release/u);
 assert.match(candidateWorkflow, /gh release download "\$PLUGIN_RELEASE_TAG"/u);
 assert.match(candidateWorkflow, /FROZEN_PLUGIN_VERSION/u);
 assert.match(candidateWorkflow, /write-public-plugin-release-evidence\.mjs/u);
@@ -383,7 +392,7 @@ for (const invalidTag of [
 	packageDocument.version,
 	`v${packageDocument.version}`,
 	'cli-v0.0.0',
-	'cli-v1.0.0-beta.1',
+	`cli-v${packageDocument.version}-beta.1`,
 	'cli-v0.1.0-beta.11-extra',
 ]) {
 	const rejected = spawnSync(process.execPath, [checker], {

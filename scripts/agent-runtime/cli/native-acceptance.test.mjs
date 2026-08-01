@@ -61,7 +61,7 @@ test('36 digest-bound native cells produce one promotion-eligible aggregate', as
 			`${JSON.stringify({
 				...nativeEvidence,
 				kind: 'operon-cli-release-candidate',
-				source: { ...nativeEvidence.source, ref: 'cli-v1.0.0' },
+				source: { ...nativeEvidence.source, ref: 'cli-v1.0.1' },
 				compatiblePublicPlugin: {
 					...nativeEvidence.compatiblePublicPlugin,
 					kind: 'operon-public-plugin-release',
@@ -147,7 +147,7 @@ test('offline candidate comparison rejects every critical identity change', asyn
 		const accepted = structuredClone(fixture.binding);
 		const mutations = [
 			current => { current.candidateEvidenceSha256 = '9'.repeat(64); },
-			current => { current.sourceRef = 'cli-v1.0.0'; },
+			current => { current.sourceRef = 'cli-v1.0.1'; },
 			current => { current.cliManifestSha256 = '8'.repeat(64); },
 			current => { current.aggregateContractSha256 = '7'.repeat(64); },
 			current => { current.compatiblePublicPlugin.kind = 'operon-public-plugin-release'; },
@@ -161,7 +161,7 @@ test('offline candidate comparison rejects every critical identity change', asyn
 		const release = structuredClone(accepted);
 		release.candidateKind = 'operon-cli-release-candidate';
 		release.candidateEvidenceSha256 = '9'.repeat(64);
-		release.sourceRef = 'cli-v1.0.0';
+		release.sourceRef = 'cli-v1.0.1';
 		release.compatiblePublicPlugin.kind = 'operon-public-plugin-release';
 		release.compatiblePublicPlugin.releaseTag = '3.0.0';
 		assert.doesNotThrow(() => assertStableCandidateIdentityV1(accepted, release));
@@ -345,7 +345,7 @@ async function createFixture(platforms = {
 	await mkdir(candidateRoot);
 	await mkdir(acceptanceRoot);
 	const tarball = Buffer.from('immutable candidate tarball\n');
-	const tarballName = 'operon-cli-1.0.0.tgz';
+	const tarballName = 'operon-cli-1.0.1.tgz';
 	const tarballSha256 = sha256(tarball);
 	await writeFile(path.join(candidateRoot, tarballName), tarball);
 	const plugin = {
@@ -361,7 +361,7 @@ async function createFixture(platforms = {
 	await writeFile(path.join(candidateRoot, 'candidate-evidence.json'), `${JSON.stringify({
 		evidenceVersion: 1,
 		kind: 'operon-cli-native-candidate',
-		package: 'operon-cli@1.0.0',
+		package: 'operon-cli@1.0.1',
 		tarball: tarballName,
 		sha256: tarballSha256,
 		cliManifestSha256: 'c'.repeat(64),

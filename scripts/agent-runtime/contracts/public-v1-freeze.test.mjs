@@ -156,7 +156,7 @@ test('freeze writer binds exact local inputs and check rejects byte drift', asyn
 			generateTarball: false,
 		});
 		assert.equal(written.state, 'provisional');
-		assert.equal(written.plugin.artifactStatus, 'provisional-unpublished');
+		assert.equal(written.plugin.artifactStatus, 'local-rebuilt-artifact');
 		assert.equal(
 			written.cli.tarball.path,
 			'packages/operon-cli/freeze/operon-cli-0.1.0-beta.1.tgz',
@@ -198,10 +198,10 @@ test('accepted freeze requires final versions, passed audit and explicit maintai
 		);
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
 			name: 'operon-cli',
-			version: '1.0.0',
+			version: '1.0.1',
 		});
 		await writeFile(
-			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.0.tgz'),
+			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.1.tgz'),
 			'stable tarball\n',
 		);
 		await writeJson(path.join(root, 'manifest.json'), {
@@ -231,10 +231,10 @@ test('ordinary write clears prior acceptance and audit attestation', async () =>
 	try {
 		await writeJson(path.join(root, 'packages/operon-cli/package.json'), {
 			name: 'operon-cli',
-			version: '1.0.0',
+			version: '1.0.1',
 		});
 		await writeFile(
-			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.0.tgz'),
+			path.join(root, 'packages/operon-cli/freeze/operon-cli-1.0.1.tgz'),
 			'stable tarball\n',
 		);
 		await writeJson(path.join(root, 'manifest.json'), {
