@@ -135,7 +135,8 @@ jobs:
         run: test "$(npm --version)" = "11.12.1"
       - name: Verify exact helper npm identity
         shell: bash
-        run: node --input-type=module -e "import { execNpmV1 } from './scripts/agent-runtime/cli/live-acceptance-platform.mjs'; const version = execNpmV1(['--version'], { encoding: 'utf8' }).trim(); if (version !== '11.12.1') throw new Error('Hosted helper npm identity mismatch');"
+        run: >-
+          node --input-type=module -e "import { execNpmV1 } from './scripts/agent-runtime/cli/live-acceptance-platform.mjs'; const version = execNpmV1(['--version'], { encoding: 'utf8' }).trim(); if (version !== '11.12.1') throw new Error('Hosted helper npm identity mismatch');"
       - run: npm ci
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
