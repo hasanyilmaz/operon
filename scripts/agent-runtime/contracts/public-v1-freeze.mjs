@@ -24,6 +24,7 @@ const FREEZE_RELATIVE_PATH = 'contracts/agent-runtime/public-v1-freeze.json';
 const FREEZE_SCHEMA_RELATIVE_PATH = 'contracts/agent-runtime/public-v1-freeze.schema.json';
 const AUDIT_POLICY_RELATIVE_PATH = 'contracts/release/dev-audit-policy-v1.json';
 const HOSTED_SCHEMA_RELATIVE_PATH = 'contracts/agent-runtime/hosted-portability-v1.schema.json';
+const CANONICAL_NPM_VERSION = '11.12.1';
 const CONTRACT_FILES = [
 	'contracts/agent-runtime/public-v1-scope.md',
 	'contracts/agent-runtime/contract-evolution-v1.md',
@@ -200,6 +201,32 @@ export function resolveNpmPackInvocation({
 	return { command: 'npm', argumentPrefix: [] };
 }
 
+export function assertCanonicalNpmPackToolchain(
+	invocation,
+	{ runner = spawnSync } = {},
+) {
+	const result = runner(
+		invocation.command,
+		[...invocation.argumentPrefix, '--version'],
+		{ encoding: 'utf8', env: process.env },
+	);
+	if (result?.error || result?.status !== 0) {
+		throw new Error(
+			`OPERON_PUBLIC_V1_FREEZE_NPM_VERSION_CHECK_FAILED:${
+				result?.error?.message
+				|| result?.stderr?.trim()
+				|| `exit ${result?.status ?? 'unknown'}`
+			}`,
+		);
+	}
+	const actualVersion = result.stdout?.trim();
+	if (actualVersion !== CANONICAL_NPM_VERSION) {
+		throw new Error(
+			`OPERON_PUBLIC_V1_FREEZE_NPM_VERSION_MISMATCH:${actualVersion || 'missing'}:${CANONICAL_NPM_VERSION}`,
+		);
+	}
+}
+
 export async function writeCanonicalCliTarball(root = defaultPluginRoot) {
 	const packageRoot = path.join(root, 'packages/operon-cli');
 	const packageDocument = JSON.parse(await readFile(
@@ -207,9 +234,10 @@ export async function writeCanonicalCliTarball(root = defaultPluginRoot) {
 		'utf8',
 	));
 	assertCliPackageIdentity(packageDocument);
+	const npmInvocation = resolveNpmPackInvocation();
+	assertCanonicalNpmPackToolchain(npmInvocation);
 	const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'operon-public-v1-pack-'));
 	try {
-		const npmInvocation = resolveNpmPackInvocation();
 		const npmArguments = [
 			...npmInvocation.argumentPrefix,
 			'pack',
@@ -453,7 +481,7 @@ async function buildAuditArtifactMetafiles(root) {
 
 function assertAcceptedFreeze(index) {
 	if (
-		index.cli.packageVersion !== '1.0.4'
+		index.cli.packageVersion !== '1.0.5'
 		|| index.plugin.version !== '3.0.1'
 		|| index.audit.validation.status !== 'passed'
 		|| index.audit.validation.result?.status !== 'accepted-clean'

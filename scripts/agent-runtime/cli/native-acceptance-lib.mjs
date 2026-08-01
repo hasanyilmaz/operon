@@ -193,6 +193,9 @@ export async function loadCandidateBindingV1(candidateRoot) {
 			|| evidence.compatiblePublicPlugin?.kind === 'operon-plugin-native-candidate',
 	);
 	assert.equal(evidence.compatiblePublicPlugin.pluginId, 'operon');
+	if (evidence.compatiblePublicPlugin.kind === 'operon-public-plugin-release') {
+		assert.equal(evidence.compatiblePublicPlugin.evidenceVersion, 2);
+	}
 	for (const key of ['mainJsSha256', 'manifestSha256', 'stylesCssSha256']) {
 		assert.match(evidence.compatiblePublicPlugin[key] ?? '', DIGEST);
 	}

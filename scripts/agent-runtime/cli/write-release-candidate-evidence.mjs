@@ -32,6 +32,7 @@ const pluginReleaseEvidence = pluginEvidenceArgument
 	: null;
 const pluginRelease = pluginReleaseEvidence
 	? {
+		evidenceVersion: pluginReleaseEvidence.evidenceVersion,
 		kind: pluginReleaseEvidence.kind,
 		releaseTag: pluginReleaseEvidence.releaseTag,
 		pluginId: pluginReleaseEvidence.pluginId,

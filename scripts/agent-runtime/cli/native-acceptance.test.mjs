@@ -28,7 +28,7 @@ const evidenceSchema = JSON.parse(await readFile(
 	'utf8',
 ));
 const validateEvidence = new Ajv2020({ strict: false }).compile(evidenceSchema);
-const FIXTURE_CLI_VERSION = '1.0.4';
+const FIXTURE_CLI_VERSION = '1.0.5';
 const FIXTURE_CLI_TAG = `cli-v${FIXTURE_CLI_VERSION}`;
 const FIXTURE_CLI_PACKAGE = `operon-cli@${FIXTURE_CLI_VERSION}`;
 const FIXTURE_CLI_TARBALL = `operon-cli-${FIXTURE_CLI_VERSION}.tgz`;
@@ -69,6 +69,7 @@ test('36 digest-bound native cells produce one promotion-eligible aggregate', as
 				source: { ...nativeEvidence.source, ref: FIXTURE_CLI_TAG },
 				compatiblePublicPlugin: {
 					...nativeEvidence.compatiblePublicPlugin,
+					evidenceVersion: 2,
 					kind: 'operon-public-plugin-release',
 					releaseTag: FIXTURE_PLUGIN_VERSION,
 				},
@@ -79,6 +80,22 @@ test('36 digest-bound native cells produce one promotion-eligible aggregate', as
 			index,
 			'The explicit byte-identical native-to-tagged-release transition must retain acceptance.',
 		);
+		const publicIndex = structuredClone(index);
+		publicIndex.candidate.candidateKind = 'operon-cli-release-candidate';
+		publicIndex.candidate.sourceRef = FIXTURE_CLI_TAG;
+		publicIndex.candidate.compatiblePublicPlugin = {
+			evidenceVersion: 2,
+			kind: 'operon-public-plugin-release',
+			pluginId: 'operon',
+			pluginVersion: FIXTURE_PLUGIN_VERSION,
+			releaseTag: FIXTURE_PLUGIN_VERSION,
+			mainJsSha256: '1'.repeat(64),
+			manifestSha256: '2'.repeat(64),
+			stylesCssSha256: '3'.repeat(64),
+		};
+		assert.equal(validateEvidence(publicIndex), true, JSON.stringify(validateEvidence.errors));
+		delete publicIndex.candidate.compatiblePublicPlugin.evidenceVersion;
+		assert.equal(validateEvidence(publicIndex), false);
 	} finally {
 		await rm(fixture.root, { recursive: true, force: true });
 	}

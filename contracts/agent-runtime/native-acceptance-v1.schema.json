@@ -41,10 +41,11 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind", "pluginId", "pluginVersion", "releaseTag",
+        "evidenceVersion", "kind", "pluginId", "pluginVersion", "releaseTag",
         "mainJsSha256", "manifestSha256", "stylesCssSha256"
       ],
       "properties": {
+        "evidenceVersion": { "const": 2 },
         "kind": { "const": "operon-public-plugin-release" },
         "pluginId": { "const": "operon" },
         "pluginVersion": { "$ref": "#/$defs/semver" },

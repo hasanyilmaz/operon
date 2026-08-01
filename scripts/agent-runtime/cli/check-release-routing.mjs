@@ -49,6 +49,10 @@ const liveAcceptanceWorkflow = await readFile(
 	path.join(pluginRoot, '.github/workflows/cli-live-acceptance.yml'),
 	'utf8',
 );
+const candidateEvidenceWriter = await readFile(
+	path.join(pluginRoot, 'scripts/agent-runtime/cli/write-release-candidate-evidence.mjs'),
+	'utf8',
+);
 
 const workflowRoot = path.join(pluginRoot, '.github/workflows');
 const workflowFiles = (await readdir(workflowRoot))
@@ -200,19 +204,26 @@ for (const [workflowName, workflowText, markers] of [
 	}
 }
 const candidatePackStep = candidateWorkflow.match(
-	/^      - name: Build one isolated candidate tarball\s*\n(?:(?!^      - ).*(?:\n|$))*/mu,
+	/^      - name: Materialize the accepted frozen candidate tarball\s*\n(?:(?!^      - ).*(?:\n|$))*/mu,
 )?.[0];
-assert.ok(candidatePackStep, 'Candidate workflow must contain the isolated tarball build step.');
-assert.match(candidatePackStep, /^[ \t]+working-directory:[ \t]+packages\/operon-cli[ \t]*$/mu);
-assert.match(candidatePackStep, /^[ \t]+rm -rf release[ \t]*$/mu);
-assert.match(candidatePackStep, /^[ \t]+mkdir -p release[ \t]*$/mu);
-assert.match(candidatePackStep, /^[ \t]+npm pack --pack-destination release[ \t]*$/mu);
-assert.doesNotMatch(candidatePackStep, /packages\/operon-cli\/release/u);
+assert.ok(candidatePackStep, 'Candidate workflow must materialize the accepted frozen tarball.');
+assert.match(candidatePackStep, /materialize-frozen-candidate\.mjs/u);
+assert.match(candidatePackStep, /packages\/operon-cli\/release/u);
+assert.doesNotMatch(candidatePackStep, /npm pack|rm -rf/u);
 assert.match(candidateWorkflow, /gh release download "\$PLUGIN_RELEASE_TAG"/u);
 assert.match(candidateWorkflow, /FROZEN_PLUGIN_VERSION/u);
 assert.match(candidateWorkflow, /write-public-plugin-release-evidence\.mjs/u);
 assert.match(candidateWorkflow, /REQUIRE_PUBLIC_PLUGIN_RELEASE:\s*"1"/u);
 assert.match(candidateWorkflow, /subject-path:\s*"packages\/operon-cli\/release\/candidate-evidence\.json"/u);
+assert.match(
+	candidateWorkflow,
+	/Verify public plugin evidence round trip before attestation[\s\S]+verify-public-plugin-release-evidence\.mjs/u,
+);
+assert.match(
+	candidateEvidenceWriter,
+	/evidenceVersion:\s*pluginReleaseEvidence\.evidenceVersion/u,
+	'Candidate evidence must preserve the public plugin evidence version.',
+);
 assert.match(candidateWorkflow, /packages\/operon-cli\/release\/plugin-release\/main\.js/u);
 assert.match(candidateWorkflow, /Build the canonical 9-cell hosted portability matrix/u);
 assert.match(candidateWorkflow, /hostedPortabilityCellsV1/u);
@@ -495,6 +506,46 @@ try {
 		assert.deepEqual(evidence.publicV1Freeze.runtimeApi, { min: 1, max: 1 });
 		assert.match(evidence.mainJsSha256, /^[a-f0-9]{64}$/u);
 		assert.match(evidence.stylesCssSha256, /^[a-f0-9]{64}$/u);
+		const projectedCandidatePath = path.join(pluginEvidenceRoot, 'candidate-evidence.json');
+		const projectedPlugin = {
+			evidenceVersion: evidence.evidenceVersion,
+			kind: evidence.kind,
+			releaseTag: evidence.releaseTag,
+			pluginId: evidence.pluginId,
+			pluginVersion: evidence.pluginVersion,
+			mainJsSha256: evidence.mainJsSha256,
+			manifestSha256: evidence.manifestSha256,
+			stylesCssSha256: evidence.stylesCssSha256,
+		};
+		await writeFile(projectedCandidatePath, `${JSON.stringify({
+			compatiblePublicPlugin: projectedPlugin,
+			publicV1Freeze: evidence.publicV1Freeze,
+		}, null, 2)}\n`, 'utf8');
+		const pluginVerifier = path.join(
+			scriptDirectory,
+			'verify-public-plugin-release-evidence.mjs',
+		);
+		const verifiedProjection = spawnSync(
+			process.execPath,
+			[pluginVerifier, projectedCandidatePath, pluginArtifacts],
+			{ cwd: pluginRoot, encoding: 'utf8' },
+		);
+		assert.equal(verifiedProjection.status, 0, verifiedProjection.stderr);
+		delete projectedPlugin.evidenceVersion;
+		await writeFile(projectedCandidatePath, `${JSON.stringify({
+			compatiblePublicPlugin: projectedPlugin,
+			publicV1Freeze: evidence.publicV1Freeze,
+		}, null, 2)}\n`, 'utf8');
+		const missingEvidenceVersion = spawnSync(
+			process.execPath,
+			[pluginVerifier, projectedCandidatePath, pluginArtifacts],
+			{ cwd: pluginRoot, encoding: 'utf8' },
+		);
+		assert.notEqual(
+			missingEvidenceVersion.status,
+			0,
+			'Plugin release verifier accepted a compact binding without evidenceVersion.',
+		);
 	} else {
 		assert.notEqual(
 			written.status,
