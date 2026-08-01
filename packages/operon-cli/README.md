@@ -26,6 +26,12 @@ portability tests, but they have not completed the optional native desktop
 certification matrix. Please report real-environment results using the feedback
 checklist below.
 
+All read-only Runtime commands use the authenticated persistent transport when
+the desktop server is available, including capability, diagnostics, catalog,
+entity, task, finder, relationship, context, and timer reads. Mutation preview
+and apply remain on the one-shot path so their consent, dispatch, and recovery
+semantics stay separate from read batching.
+
 ## Install
 
 ```bash

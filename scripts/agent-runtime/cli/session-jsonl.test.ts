@@ -903,15 +903,15 @@ test('persistent read client handshakes, preserves request identity, and rejects
 				vaultFence,
 			}),
 			client.invoke({
-				requestId: 'batch-query',
-				command: 'tasks.query',
+				requestId: 'batch-capabilities',
+				command: 'capabilities',
 				requestToken: 'D'.repeat(32),
 				vaultFence,
 			}),
 		]);
 		assert.equal(seen[4]?.type, 'batch');
 		assert.equal((seen[4]?.requests as unknown[]).length, 2);
-		assert.equal(JSON.parse(batch[1]!.result.toString('utf8')).requestId, 'batch-query');
+		assert.equal(JSON.parse(batch[1]!.result.toString('utf8')).requestId, 'batch-capabilities');
 		client.beginBatch(2);
 		const disconnected = await Promise.allSettled([
 			client.invoke({

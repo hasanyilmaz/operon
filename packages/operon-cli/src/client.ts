@@ -44,6 +44,7 @@ import {
 	type PersistentReadTransportV1,
 	createWindowsBrokerClientV1,
 } from './persistent-read-client';
+import { isPersistentReadCommandV1 as isPersistentReadPolicyCommandV1 } from '../../../src/agent-runtime/transport/persistent-read-commands';
 import {
 	resolveObsidianExecutableV1,
 	terminateProcessTreeV1,
@@ -665,10 +666,7 @@ async function mutationDispatchMayHaveStartedV1(
 }
 
 export function isPersistentReadCommandV1(command: CliCommandV1): boolean {
-	return command === 'health'
-		|| command === 'task.get'
-		|| command === 'tasks.query'
-		|| command === 'context.build';
+	return isPersistentReadPolicyCommandV1(command);
 }
 
 function runSpawnTransport(

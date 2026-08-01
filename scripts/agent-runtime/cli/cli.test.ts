@@ -103,6 +103,7 @@ import type {
 	CliInvocationV1,
 	CliResultEnvelopeV1,
 } from '../../../src/agent-runtime/contracts/v1/cli';
+import { PERSISTENT_READ_COMMANDS_V1 } from '../../../src/agent-runtime/transport/persistent-read-commands';
 import type {
 	ContextRevisionV1,
 	OperonCatalogV1,
@@ -134,6 +135,7 @@ async function run(): Promise<void> {
 	testWindowsPowerShellResolutionSecurity();
 	testContractDecoders();
 	testProductionInvocationValidatorParity();
+	testPersistentReadCommandPolicy();
 	if (process.platform !== 'win32') testSecureRequestFile();
 	await testInvocationConstruction();
 	await testOneShotExecutionAndCleanup();
@@ -1891,13 +1893,6 @@ async function testOneShotExecutionAndCleanup(): Promise<void> {
 }
 
 async function testOneShotPersistentReadRouting(): Promise<void> {
-	assert.equal(isPersistentReadCommandV1('health'), true);
-	assert.equal(isPersistentReadCommandV1('task.get'), true);
-	assert.equal(isPersistentReadCommandV1('tasks.query'), true);
-	assert.equal(isPersistentReadCommandV1('context.build'), true);
-	assert.equal(isPersistentReadCommandV1('capabilities'), false);
-	assert.equal(isPersistentReadCommandV1('mutation.apply'), false);
-
 	const vault = mkdtempSync(path.join(tmpdir(), 'operon-cli-persistent-routing-vault-'));
 	const requestRoot = path.join(tmpdir(), `operon-cli-persistent-routing-${Date.now()}`);
 	const configRoot = path.join(tmpdir(), `operon-cli-persistent-config-${Date.now()}`);
@@ -1968,32 +1963,16 @@ async function testOneShotPersistentReadRouting(): Promise<void> {
 				factoryCalls += 1;
 				return transport;
 			},
-			runProcess: async (_executable, args) => {
+			runProcess: async () => {
 				processCalls += 1;
-				const token = args.find(value => value.startsWith('requestToken='))
-					?.slice('requestToken='.length);
-				assert.ok(token);
-				const requestPath = requestPathForTokenV1(token, requestRoot);
-				const request = JSON.parse(readFileSync(requestPath, 'utf8')) as CliInvocationV1;
-				return {
-					exitCode: 0,
-					signal: null,
-					stdout: Buffer.from(JSON.stringify(capabilitiesSuccessEnvelope(
-						request,
-						lstatSync(requestPath).size,
-					))),
-					stderr: Buffer.alloc(0),
-					totalMs: 1,
-					timedOut: false,
-					overflow: false,
-				};
+				throw new Error('eligible read must use the persistent transport first');
 			},
 		});
-		assert.equal(capabilities.exitCode, 0, capabilities.human);
-		assert.equal(factoryCalls, 1);
-		assert.equal(persistentCalls, 1);
-		assert.equal(processCalls, 1);
-		assert.equal(closeCalls, 1);
+		assert.equal(capabilities.exitCode, 3, capabilities.human);
+		assert.equal(factoryCalls, 2);
+		assert.equal(persistentCalls, 2);
+		assert.equal(processCalls, 0);
+		assert.equal(closeCalls, 2);
 
 		const doctor = await runPublicCommandLineV1([
 			'doctor',
@@ -2025,6 +2004,14 @@ async function testOneShotPersistentReadRouting(): Promise<void> {
 		rmSync(requestRoot, { recursive: true, force: true });
 		rmSync(configRoot, { recursive: true, force: true });
 	}
+}
+
+function testPersistentReadCommandPolicy(): void {
+	for (const command of PERSISTENT_READ_COMMANDS_V1) {
+		assert.equal(isPersistentReadCommandV1(command), true, `${command} must use persistent read transport`);
+	}
+	assert.equal(isPersistentReadCommandV1('mutation.preview'), false);
+	assert.equal(isPersistentReadCommandV1('mutation.apply'), false);
 }
 
 async function testAbortTransportGuards(): Promise<void> {

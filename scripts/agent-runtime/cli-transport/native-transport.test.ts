@@ -504,7 +504,7 @@ test('persistent read server dispatches allowlisted tokens and rejects mutation 
 		const batchInvocations = ['batch-one', 'batch-two'].map((requestId, index) => ({
 			...invocation,
 			requestId,
-			command: 'health' as const,
+			command: index === 0 ? 'health' as const : 'capabilities' as const,
 			requestToken: String.fromCharCode(108 + index).repeat(32),
 		}));
 		for (const batchInvocation of batchInvocations) {

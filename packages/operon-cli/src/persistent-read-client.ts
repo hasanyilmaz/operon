@@ -13,6 +13,7 @@ import path from 'node:path';
 
 import { CONTRACT_LIMITS_V1 } from '../../../src/agent-runtime/contracts/v1/primitives';
 import type { CliInvocationV1 } from '../../../src/agent-runtime/contracts/v1/cli';
+import { PERSISTENT_READ_COMMANDS_V1 } from '../../../src/agent-runtime/transport/persistent-read-commands';
 import {
 	type CanonicalVaultFenceV1,
 	assertCanonicalVaultFenceV1,
@@ -30,7 +31,7 @@ const PROTOCOL_VERSION = 1;
 const HEX_64 = /^[a-f0-9]{64}$/u;
 const UNIX_SOCKET_BASENAME = /^read-[a-f0-9]{48}\.sock$/u;
 const WINDOWS_PIPE = /^\\\\\.\\pipe\\operon-[a-f0-9]{64}$/u;
-const READ_COMMANDS = new Set(['health', 'task.get', 'tasks.query', 'context.build']);
+const READ_COMMANDS = new Set<string>(PERSISTENT_READ_COMMANDS_V1);
 
 interface PersistentDescriptorV1 {
 	protocolVersion: 1;

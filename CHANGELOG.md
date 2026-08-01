@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Routed every read-only public CLI command through the authenticated persistent
+  Runtime transport, including Windows capability, diagnostics, catalog, entity,
+  finder, relationship, context, and timer reads; mutation preview and apply
+  remain on their one-shot safety path.
+
 ### Validation
 
 ## [3.0.1] - 2026-08-01
