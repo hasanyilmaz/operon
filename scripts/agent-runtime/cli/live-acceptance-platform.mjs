@@ -238,19 +238,25 @@ export function resolveNpmInvocationV1(
 	args,
 	platform = process.platform,
 	nodeExecutable = process.execPath,
+	pinnedNpmCliPath,
 ) {
 	const pathApi = platform === 'win32' ? path.win32 : path;
+	if (
+		platform === 'win32'
+		&& (
+			typeof pinnedNpmCliPath !== 'string'
+			|| !pathApi.isAbsolute(pinnedNpmCliPath)
+			|| /[\0\r\n]/u.test(pinnedNpmCliPath)
+			|| pathApi.basename(pinnedNpmCliPath).toLowerCase() !== 'npm-cli.js'
+		)
+	) {
+		throw new Error('OPERON_ACCEPTANCE_NPM_CLI_INVALID');
+	}
 	return platform === 'win32'
 		? {
 			executable: nodeExecutable,
 			args: [
-				pathApi.join(
-					pathApi.dirname(nodeExecutable),
-					'node_modules',
-					'npm',
-					'bin',
-					'npm-cli.js',
-				),
+				pinnedNpmCliPath,
 				...args,
 			],
 		}
@@ -258,7 +264,12 @@ export function resolveNpmInvocationV1(
 }
 
 export function execNpmV1(args, options = {}, runner = execFileSync) {
-	const invocation = resolveNpmInvocationV1(args);
+	const invocation = resolveNpmInvocationV1(
+		args,
+		process.platform,
+		process.execPath,
+		(options.env ?? process.env).OPERON_ACCEPTANCE_NPM_CLI_JS,
+	);
 	return runner(invocation.executable, invocation.args, {
 		...options,
 		shell: false,

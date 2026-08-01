@@ -28,7 +28,7 @@ const evidenceSchema = JSON.parse(await readFile(
 	'utf8',
 ));
 const validateEvidence = new Ajv2020({ strict: false }).compile(evidenceSchema);
-const FIXTURE_CLI_VERSION = '1.0.3';
+const FIXTURE_CLI_VERSION = '1.0.4';
 const FIXTURE_CLI_TAG = `cli-v${FIXTURE_CLI_VERSION}`;
 const FIXTURE_CLI_PACKAGE = `operon-cli@${FIXTURE_CLI_VERSION}`;
 const FIXTURE_CLI_TARBALL = `operon-cli-${FIXTURE_CLI_VERSION}.tgz`;

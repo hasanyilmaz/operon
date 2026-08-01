@@ -684,14 +684,55 @@ function checkWorkflowSecurityPolicy() {
 		'        run: test "$(npm --version)" = "11.12.1"',
 	].join('\n');
 	const pinIndex = hostedJob.indexOf('- name: Pin portability npm');
+	const bindingIndex = hostedJob.indexOf('- name: Bind pinned Windows npm CLI');
+	const bindingEnvironmentIndex = hostedJob.indexOf('OPERON_ACCEPTANCE_NPM_CLI_JS=$npmCli');
 	const verificationIndex = hostedJob.indexOf(npmVerification);
+	const helperVerificationIndex = hostedJob.indexOf('- name: Verify exact helper npm identity');
+	const helperCallIndex = hostedJob.indexOf("execNpmV1(['--version'], { encoding: 'utf8' })");
 	const installIndex = hostedJob.indexOf('- run: npm ci');
 	if (
 		pinIndex < 0
-		|| verificationIndex < pinIndex
-		|| installIndex < verificationIndex
+		|| bindingIndex < pinIndex
+		|| bindingEnvironmentIndex < bindingIndex
+		|| verificationIndex < bindingEnvironmentIndex
+		|| helperVerificationIndex < verificationIndex
+		|| helperCallIndex < helperVerificationIndex
+		|| installIndex < helperCallIndex
 	) {
-		fail('.github/workflows/cli-release-ready.yml: hosted portability must verify npm through a portable shell command');
+		fail('.github/workflows/cli-release-ready.yml: hosted portability must bind and verify the pinned npm CLI before install');
+	}
+	const liveAcceptanceWorkflow = readText('.github/workflows/cli-live-acceptance.yml');
+	for (const expected of [
+		'- name: Bind pinned Windows npm CLI',
+		'OPERON_ACCEPTANCE_NPM_CLI_JS=$npmCli',
+		'Pinned npm prefix lookup failed with exit code',
+		'Pinned npm CLI execution failed with exit code',
+		'- name: Verify exact npm version',
+		'run: test "$(npm --version)" = "11.12.1"',
+		'- name: Verify exact helper npm identity',
+		"execNpmV1(['--version'], { encoding: 'utf8' })",
+	]) {
+		if (!liveAcceptanceWorkflow.includes(expected)) {
+			fail(`.github/workflows/cli-live-acceptance.yml: missing pinned npm identity guard ${JSON.stringify(expected)}`);
+		}
+	}
+	const livePinIndex = liveAcceptanceWorkflow.indexOf('- name: Pin acceptance npm');
+	const liveBindingIndex = liveAcceptanceWorkflow.indexOf('- name: Bind pinned Windows npm CLI');
+	const liveBindingEnvironmentIndex = liveAcceptanceWorkflow.indexOf('OPERON_ACCEPTANCE_NPM_CLI_JS=$npmCli');
+	const liveVerificationIndex = liveAcceptanceWorkflow.indexOf(npmVerification);
+	const liveHelperVerificationIndex = liveAcceptanceWorkflow.indexOf('- name: Verify exact helper npm identity');
+	const liveHelperCallIndex = liveAcceptanceWorkflow.indexOf("execNpmV1(['--version'], { encoding: 'utf8' })");
+	const liveInstallIndex = liveAcceptanceWorkflow.indexOf('- run: npm ci');
+	if (
+		livePinIndex < 0
+		|| liveBindingIndex < livePinIndex
+		|| liveBindingEnvironmentIndex < liveBindingIndex
+		|| liveVerificationIndex < liveBindingEnvironmentIndex
+		|| liveHelperVerificationIndex < liveVerificationIndex
+		|| liveHelperCallIndex < liveHelperVerificationIndex
+		|| liveInstallIndex < liveHelperCallIndex
+	) {
+		fail('.github/workflows/cli-live-acceptance.yml: acceptance must bind and verify the pinned npm CLI before install');
 	}
 	for (const [candidateScript, expectedCalls] of [
 		[
