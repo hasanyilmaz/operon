@@ -16,20 +16,14 @@ import {
 	windowsAuthenticodeIdentityV1,
 } from './live-acceptance-platform.mjs';
 
-test('npm invocation bypasses Windows command shims through the current Node runtime', () => {
-	assert.deepEqual(
-		resolveNpmInvocationV1(
+test('npm invocation requires an explicit Windows npm CLI and leaves POSIX behavior unchanged', () => {
+	assert.throws(
+		() => resolveNpmInvocationV1(
 			['--version'],
 			'win32',
 			'C:\\Program Files\\nodejs\\node.exe',
 		),
-		{
-			executable: 'C:\\Program Files\\nodejs\\node.exe',
-			args: [
-				'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
-				'--version',
-			],
-		},
+		/OPERON_ACCEPTANCE_NPM_CLI_INVALID/u,
 	);
 	assert.deepEqual(
 		resolveNpmInvocationV1(['--version'], 'linux', '/usr/bin/node'),
@@ -37,11 +31,62 @@ test('npm invocation bypasses Windows command shims through the current Node run
 	);
 });
 
+test('npm invocation prefers an explicit pinned Windows npm CLI without enabling shell shims', () => {
+	assert.deepEqual(
+		resolveNpmInvocationV1(
+			['--version'],
+			'win32',
+			'C:\\Program Files\\nodejs\\node.exe',
+			'D:\\npm global\\ünicode\\node_modules\\npm\\bin\\npm-cli.js',
+		),
+		{
+			executable: 'C:\\Program Files\\nodejs\\node.exe',
+			args: [
+				'D:\\npm global\\ünicode\\node_modules\\npm\\bin\\npm-cli.js',
+				'--version',
+			],
+		},
+	);
+	assert.throws(
+		() => resolveNpmInvocationV1(
+			['--version'],
+			'win32',
+			'C:\\Program Files\\nodejs\\node.exe',
+			'node_modules\\npm\\bin\\npm-cli.js',
+		),
+		/OPERON_ACCEPTANCE_NPM_CLI_INVALID/u,
+	);
+	assert.throws(
+		() => resolveNpmInvocationV1(
+			['--version'],
+			'win32',
+			'C:\\Program Files\\nodejs\\node.exe',
+			'D:\\npm-global\\npm.cmd',
+		),
+		/OPERON_ACCEPTANCE_NPM_CLI_INVALID/u,
+	);
+	assert.throws(
+		() => resolveNpmInvocationV1(
+			['--version'],
+			'win32',
+			'C:\\Program Files\\nodejs\\node.exe',
+			'D:\\npm-global\\node_modules\\npm\\bin\\npm-cli.js\n',
+		),
+		/OPERON_ACCEPTANCE_NPM_CLI_INVALID/u,
+	);
+});
+
 test('npm execution keeps shell mode disabled when caller options request a shell', () => {
 	let captured;
+	const env = process.platform === 'win32'
+		? {
+			...process.env,
+			OPERON_ACCEPTANCE_NPM_CLI_JS: 'D:\\npm-global\\node_modules\\npm\\bin\\npm-cli.js',
+		}
+		: process.env;
 	const result = execNpmV1(
 		['--version'],
-		{ encoding: 'utf8', shell: true },
+		{ encoding: 'utf8', env, shell: true },
 		(...arguments_) => {
 			captured = arguments_;
 			return '11.12.1\n';

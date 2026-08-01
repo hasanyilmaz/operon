@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "package": {
     "name": "operon-cli",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "executable": "operon",
     "node": "^22.0.0 || ^24.0.0 || ^26.0.0"
   },

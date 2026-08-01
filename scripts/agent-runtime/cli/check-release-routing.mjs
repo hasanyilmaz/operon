@@ -148,6 +148,57 @@ assert.match(candidateWorkflow, /plugin_release_tag:/u);
 assert.match(candidateWorkflow, /node-version:\s*"24\.18\.0"/u);
 assert.match(candidateWorkflow, /test "\$\(node --version\)" = "v24\.18\.0"/u);
 assert.match(candidateWorkflow, /npm install --global npm@11\.12\.1/u);
+assert.match(candidateWorkflow, /name:\s+Bind pinned Windows npm CLI/u);
+assert.match(candidateWorkflow, /OPERON_ACCEPTANCE_NPM_CLI_JS=\$npmCli/u);
+assert.match(candidateWorkflow, /Pinned npm prefix lookup failed with exit code/u);
+assert.match(candidateWorkflow, /Pinned npm CLI execution failed with exit code/u);
+assert.match(candidateWorkflow, /name:\s+Verify exact helper npm identity/u);
+assert.match(candidateWorkflow, /execNpmV1\(\['--version'\], \{ encoding: 'utf8' \}\)/u);
+assert.match(liveAcceptanceWorkflow, /name:\s+Bind pinned Windows npm CLI/u);
+assert.match(liveAcceptanceWorkflow, /OPERON_ACCEPTANCE_NPM_CLI_JS=\$npmCli/u);
+assert.match(liveAcceptanceWorkflow, /Pinned npm prefix lookup failed with exit code/u);
+assert.match(liveAcceptanceWorkflow, /Pinned npm CLI execution failed with exit code/u);
+assert.match(liveAcceptanceWorkflow, /name:\s+Verify exact npm version/u);
+assert.match(liveAcceptanceWorkflow, /test "\$\(npm --version\)" = "11\.12\.1"/u);
+assert.match(liveAcceptanceWorkflow, /name:\s+Verify exact helper npm identity/u);
+for (const [workflowName, workflowText, markers] of [
+	[
+		'candidate',
+		candidateWorkflow,
+		[
+			'Pin portability npm',
+			'Bind pinned Windows npm CLI',
+			'OPERON_ACCEPTANCE_NPM_CLI_JS=$npmCli',
+			'Verify exact npm version',
+			'Verify exact helper npm identity',
+			"execNpmV1(['--version'], { encoding: 'utf8' })",
+			'- run: npm ci',
+		],
+	],
+	[
+		'live acceptance',
+		liveAcceptanceWorkflow,
+		[
+			'Pin acceptance npm',
+			'Bind pinned Windows npm CLI',
+			'OPERON_ACCEPTANCE_NPM_CLI_JS=$npmCli',
+			'Verify exact npm version',
+			'Verify exact helper npm identity',
+			"execNpmV1(['--version'], { encoding: 'utf8' })",
+			'- run: npm ci',
+		],
+	],
+]) {
+	let previousIndex = -1;
+	for (const marker of markers) {
+		const markerIndex = workflowText.indexOf(marker, previousIndex + 1);
+		assert.ok(
+			markerIndex > previousIndex,
+			`${workflowName} npm identity step is missing or out of order: ${marker}`,
+		);
+		previousIndex = markerIndex;
+	}
+}
 const candidatePackStep = candidateWorkflow.match(
 	/^      - name: Build one isolated candidate tarball\s*\n(?:(?!^      - ).*(?:\n|$))*/mu,
 )?.[0];
