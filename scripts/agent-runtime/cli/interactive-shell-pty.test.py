@@ -99,7 +99,7 @@ def main() -> int:
             f"Update available! {expected_version} ".encode(),
             0,
         )
-        cursor = read_until(fd, transcript, b"npm install --global operon-cli", cursor)
+        cursor = read_until(fd, transcript, b"npm install --global @stratejya/operon-cli", cursor)
         cursor = read_until(fd, transcript, f"Operon CLI {expected_version}".encode(), cursor)
         cursor = read_until(fd, transcript, prompt, cursor)
 

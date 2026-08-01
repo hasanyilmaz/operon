@@ -29,6 +29,7 @@ import {
 	CLI_SCHEMA_ENTRYPOINTS_V1,
 } from './contract-manifest.mjs';
 import { buildContractTypesV1 } from './type-build.mjs';
+import { assertOperonCliPackageDocumentV1 } from './package-identity.mjs';
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -36,10 +37,9 @@ const pluginRoot = path.resolve(packageRoot, '../..');
 const distRoot = path.join(packageRoot, 'dist');
 await rm(distRoot, { recursive: true, force: true });
 await mkdir(distRoot, { recursive: true });
-const packageDocument = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
-if (packageDocument.name !== 'operon-cli' || typeof packageDocument.version !== 'string') {
-	throw new Error('OPERON_CLI_PACKAGE_METADATA_INVALID');
-}
+const packageDocument = assertOperonCliPackageDocumentV1(
+	JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8')),
+);
 const frameTimingBuild = process.env.OPERON_CLI_FRAME_TIMING_BUILD === '1';
 const persistentReadOverride = process.env.OPERON_CLI_PERSISTENT_READ_BUILD;
 if (
@@ -129,6 +129,7 @@ const buildResult = await build({
 	metafile: true,
 	banner: { js: '#!/usr/bin/env node' },
 	define: {
+		__OPERON_CLI_PACKAGE_NAME__: JSON.stringify(packageDocument.name),
 		__OPERON_CLI_VERSION__: JSON.stringify(packageDocument.version),
 		__OPERON_CLI_FRAME_TIMING__: frameTimingBuild ? 'true' : 'false',
 		__OPERON_CLI_PERSISTENT_READ__: persistentReadBuild ? 'true' : 'false',

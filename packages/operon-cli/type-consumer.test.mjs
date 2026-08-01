@@ -44,7 +44,7 @@ try {
 		[npmExecPath, 'pack', '--json', '--pack-destination', packRoot],
 		{ cwd: packageRoot },
 	)[0];
-	assert.equal(packResult.name, 'operon-cli');
+	assert.equal(packResult.name, '@stratejya/operon-cli');
 
 	const sourceTypes = await snapshotDeclarationTree(path.join(packageRoot, 'types'));
 	const packedTypePaths = packResult.files
@@ -101,7 +101,7 @@ try {
 		{ cwd: consumerRoot },
 	);
 
-	const installedPackageRoot = path.join(consumerRoot, 'node_modules', 'operon-cli');
+	const installedPackageRoot = path.join(consumerRoot, 'node_modules', '@stratejya', 'operon-cli');
 	assert.deepEqual(
 		await snapshotDeclarationTree(path.join(installedPackageRoot, 'types')),
 		sourceTypes,
@@ -116,10 +116,10 @@ try {
 	const installedExampleSource = await readFile(installedExampleMain, 'utf8');
 	const packageImports = [
 		...installedExampleSource.matchAll(/from\s+['"]([^'"]+)['"]/gu),
-	].map(match => match[1]).filter(specifier => specifier.startsWith('operon-cli'));
+	].map(match => match[1]).filter(specifier => specifier.startsWith('@stratejya/operon-cli'));
 	assert.deepEqual(
 		packageImports,
-		['operon-cli/contracts/v1/developer-api'],
+		['@stratejya/operon-cli/contracts/v1/developer-api'],
 		'Example may import only the public type-only Developer API entrypoint.',
 	);
 	assert.doesNotMatch(installedExampleSource, /\b(import|require)\s*\(\s*['"]/u);
@@ -151,7 +151,7 @@ try {
 		'utf8',
 	));
 	assert.equal(installedExamplePackage.private, true);
-	assert.equal(installedExamplePackage.devDependencies['operon-cli'], '*');
+	assert.equal(installedExamplePackage.devDependencies['@stratejya/operon-cli'], '*');
 
 	await writeFile(path.join(consumerRoot, 'obsidian-stub.d.ts'), `
 declare module 'obsidian' {
@@ -197,17 +197,17 @@ import type {
 	StructuredErrorV1,
 	TaskGetRequestV1,
 	TaskGetResultV1,
-} from 'operon-cli/contracts/v1';
+} from '@stratejya/operon-cli/contracts/v1';
 import type {
 	DeveloperMutationPreviewInputV1,
 	OperonDeveloperApiAccessRequestV1,
 	OperonDeveloperApiAccessResultV1,
 	OperonDeveloperApiV1,
-} from 'operon-cli/contracts/v1/developer-api';
+} from '@stratejya/operon-cli/contracts/v1/developer-api';
 import type {
 	CliInvocationV1,
 	CliResultEnvelopeV1,
-} from 'operon-cli/contracts/v1/cli';
+} from '@stratejya/operon-cli/contracts/v1/cli';
 
 declare const health: RuntimeHealthV1;
 declare const request: TaskGetRequestV1;
@@ -216,9 +216,9 @@ declare const error: StructuredErrorV1;
 declare const accessRequest: OperonDeveloperApiAccessRequestV1;
 declare const accessResult: OperonDeveloperApiAccessResultV1;
 declare const api: OperonDeveloperApiV1;
-declare const target: import('operon-cli/contracts/v1').ExactMutationTargetV1;
-declare const inlineTarget: import('operon-cli/contracts/v1').ExactMutationTargetV1 & {
-	locator: import('operon-cli/contracts/v1').InlineTaskSourceLocatorV1;
+declare const target: import('@stratejya/operon-cli/contracts/v1').ExactMutationTargetV1;
+declare const inlineTarget: import('@stratejya/operon-cli/contracts/v1').ExactMutationTargetV1 & {
+	locator: import('@stratejya/operon-cli/contracts/v1').InlineTaskSourceLocatorV1;
 };
 const mutationPreviews: DeveloperMutationPreviewInputV1[] = [
 	{ capability: 'tasks.create.preview', mutationKind: 'task.create', spec: { operation: 'create', items: [] } },
@@ -265,57 +265,57 @@ void [
 	const negativeCases = [
 		{
 			name: 'developer-capability-kind-mismatch',
-			source: "import type { DeveloperMutationPreviewInputV1 } from 'operon-cli/contracts/v1/developer-api';\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.delete.preview', mutationKind: 'task.update', spec: { operation: 'update-batch', items: [] } };\nvoid value;\n",
+			source: "import type { DeveloperMutationPreviewInputV1 } from '@stratejya/operon-cli/contracts/v1/developer-api';\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.delete.preview', mutationKind: 'task.update', spec: { operation: 'update-batch', items: [] } };\nvoid value;\n",
 			marker: 'DeveloperMutationPreviewInputV1',
 		},
 		{
 			name: 'developer-target-required',
-			source: "import type { DeveloperMutationPreviewInputV1 } from 'operon-cli/contracts/v1/developer-api';\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.update.preview', mutationKind: 'task.update', spec: { operation: 'update', changes: [] } };\nvoid value;\n",
+			source: "import type { DeveloperMutationPreviewInputV1 } from '@stratejya/operon-cli/contracts/v1/developer-api';\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.update.preview', mutationKind: 'task.update', spec: { operation: 'update', changes: [] } };\nvoid value;\n",
 			marker: 'DeveloperMutationPreviewInputV1',
 		},
 		{
 			name: 'developer-spec-kind-mismatch',
-			source: "import type { DeveloperMutationPreviewInputV1 } from 'operon-cli/contracts/v1/developer-api';\ndeclare const target: import('operon-cli/contracts/v1').ExactMutationTargetV1;\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.update.preview', mutationKind: 'task.update', target, spec: { operation: 'transition', targetStatusId: 'done' } };\nvoid value;\n",
+			source: "import type { DeveloperMutationPreviewInputV1 } from '@stratejya/operon-cli/contracts/v1/developer-api';\ndeclare const target: import('@stratejya/operon-cli/contracts/v1').ExactMutationTargetV1;\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.update.preview', mutationKind: 'task.update', target, spec: { operation: 'transition', targetStatusId: 'done' } };\nvoid value;\n",
 			marker: 'DeveloperMutationPreviewInputV1',
 		},
 		{
 			name: 'developer-create-target-forbidden',
-			source: "import type { DeveloperMutationPreviewInputV1 } from 'operon-cli/contracts/v1/developer-api';\ndeclare const target: import('operon-cli/contracts/v1').ExactMutationTargetV1;\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.create.preview', mutationKind: 'task.create', target, spec: { operation: 'create', items: [] } };\nvoid value;\n",
+			source: "import type { DeveloperMutationPreviewInputV1 } from '@stratejya/operon-cli/contracts/v1/developer-api';\ndeclare const target: import('@stratejya/operon-cli/contracts/v1').ExactMutationTargetV1;\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.create.preview', mutationKind: 'task.create', target, spec: { operation: 'create', items: [] } };\nvoid value;\n",
 			marker: 'DeveloperMutationPreviewInputV1',
 		},
 		{
 			name: 'developer-batch-target-forbidden',
-			source: "import type { DeveloperMutationPreviewInputV1 } from 'operon-cli/contracts/v1/developer-api';\ndeclare const target: import('operon-cli/contracts/v1').ExactMutationTargetV1;\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.update.preview', mutationKind: 'task.update', target, spec: { operation: 'update-batch', items: [] } };\nvoid value;\n",
+			source: "import type { DeveloperMutationPreviewInputV1 } from '@stratejya/operon-cli/contracts/v1/developer-api';\ndeclare const target: import('@stratejya/operon-cli/contracts/v1').ExactMutationTargetV1;\nconst value: DeveloperMutationPreviewInputV1 = { capability: 'tasks.update.preview', mutationKind: 'task.update', target, spec: { operation: 'update-batch', items: [] } };\nvoid value;\n",
 			marker: 'DeveloperMutationPreviewInputV1',
 		},
 		{
 			name: 'runtime-value-contract',
-			source: "import { CONTRACT_VERSION_V1 } from 'operon-cli/contracts/v1';\nvoid CONTRACT_VERSION_V1;\n",
+			source: "import { CONTRACT_VERSION_V1 } from '@stratejya/operon-cli/contracts/v1';\nvoid CONTRACT_VERSION_V1;\n",
 			marker: 'CONTRACT_VERSION_V1',
 		},
 		{
 			name: 'runtime-value-cli',
-			source: "import { CLI_EXIT_CODES_V1 } from 'operon-cli/contracts/v1/cli';\nvoid CLI_EXIT_CODES_V1;\n",
+			source: "import { CLI_EXIT_CODES_V1 } from '@stratejya/operon-cli/contracts/v1/cli';\nvoid CLI_EXIT_CODES_V1;\n",
 			marker: 'CLI_EXIT_CODES_V1',
 		},
 		{
 			name: 'removed-capture-contract',
-			source: "import type { CaptureAgentRequestV1 } from 'operon-cli/contracts/v1/capture-agent';\ndeclare const value: CaptureAgentRequestV1;\nvoid value;\n",
+			source: "import type { CaptureAgentRequestV1 } from '@stratejya/operon-cli/contracts/v1/capture-agent';\ndeclare const value: CaptureAgentRequestV1;\nvoid value;\n",
 			marker: 'capture-agent',
 		},
 		{
 			name: 'private-source',
-			source: "import type { JsonValue } from 'operon-cli/src/agent-runtime/contracts/v1/primitives';\ndeclare const value: JsonValue;\nvoid value;\n",
-			marker: 'operon-cli/src/agent-runtime/contracts/v1/primitives',
+			source: "import type { JsonValue } from '@stratejya/operon-cli/src/agent-runtime/contracts/v1/primitives';\ndeclare const value: JsonValue;\nvoid value;\n",
+			marker: '@stratejya/operon-cli/src/agent-runtime/contracts/v1/primitives',
 		},
 		{
 			name: 'private-declaration',
-			source: "import type { JsonValue } from 'operon-cli/types/src/agent-runtime/contracts/v1/primitives';\ndeclare const value: JsonValue;\nvoid value;\n",
-			marker: 'operon-cli/types/src/agent-runtime/contracts/v1/primitives',
+			source: "import type { JsonValue } from '@stratejya/operon-cli/types/src/agent-runtime/contracts/v1/primitives';\ndeclare const value: JsonValue;\nvoid value;\n",
+			marker: '@stratejya/operon-cli/types/src/agent-runtime/contracts/v1/primitives',
 		},
 		{
 			name: 'package-root',
-			source: "import type { RuntimeHealthV1 } from 'operon-cli';\ndeclare const value: RuntimeHealthV1;\nvoid value;\n",
+			source: "import type { RuntimeHealthV1 } from '@stratejya/operon-cli';\ndeclare const value: RuntimeHealthV1;\nvoid value;\n",
 			marker: 'operon-cli',
 		},
 	];
@@ -339,12 +339,12 @@ void [
 	}
 
 	for (const specifier of [
-		'operon-cli',
-		'operon-cli/contracts/v1',
-		'operon-cli/contracts/v1/developer-api',
-		'operon-cli/contracts/v1/cli',
-		'operon-cli/contracts/v1/capture-agent',
-		'operon-cli/src/agent-runtime/contracts/v1/primitives',
+		'@stratejya/operon-cli',
+		'@stratejya/operon-cli/contracts/v1',
+		'@stratejya/operon-cli/contracts/v1/developer-api',
+		'@stratejya/operon-cli/contracts/v1/cli',
+		'@stratejya/operon-cli/contracts/v1/capture-agent',
+		'@stratejya/operon-cli/src/agent-runtime/contracts/v1/primitives',
 	]) {
 		const importResult = run(
 			process.execPath,

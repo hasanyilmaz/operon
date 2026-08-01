@@ -3,7 +3,7 @@ import type {
 	OperonDeveloperApiAccessorV1,
 	OperonDeveloperApiConsumerPluginV1,
 	OperonDeveloperApiV1,
-} from 'operon-cli/contracts/v1/developer-api';
+} from '@stratejya/operon-cli/contracts/v1/developer-api';
 
 import {
 	ACCEPTANCE_OUTPUT_KIND_V1,

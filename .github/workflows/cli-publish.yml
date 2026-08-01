@@ -139,10 +139,10 @@ jobs:
       - name: Verify first-publish bootstrap admission
         if: inputs.authentication_mode == 'bootstrap-token'
         run: |
-          if npm view operon-cli version --json \
+          if npm view @stratejya/operon-cli version --json \
             --registry https://registry.npmjs.org/ \
             >"$RUNNER_TEMP/npm-view.stdout" 2>"$RUNNER_TEMP/npm-view.stderr"; then
-            echo "bootstrap-token is only allowed while operon-cli is unpublished" >&2
+            echo "bootstrap-token is only allowed while @stratejya/operon-cli is unpublished" >&2
             exit 1
           fi
           grep -q "E404" "$RUNNER_TEMP/npm-view.stderr" \
@@ -153,8 +153,8 @@ jobs:
           AUTHENTICATION_MODE: ${{ inputs.authentication_mode }}
         run: |
           if test "$AUTHENTICATION_MODE" = "trusted-publisher"; then
-            DIST_TAGS="$(npm view operon-cli dist-tags --json --registry https://registry.npmjs.org/)"
-          elif ! DIST_TAGS="$(npm view operon-cli dist-tags --json \
+            DIST_TAGS="$(npm view @stratejya/operon-cli dist-tags --json --registry https://registry.npmjs.org/)"
+          elif ! DIST_TAGS="$(npm view @stratejya/operon-cli dist-tags --json \
             --registry https://registry.npmjs.org/ \
             2>"$RUNNER_TEMP/npm-dist-tags.stderr")"; then
             grep -q "E404" "$RUNNER_TEMP/npm-dist-tags.stderr" \
@@ -176,7 +176,7 @@ jobs:
             --provenance
       - name: Verify trusted-publisher admission
         if: inputs.authentication_mode == 'trusted-publisher'
-        run: npm view operon-cli version --json --registry https://registry.npmjs.org/ >/dev/null
+        run: npm view @stratejya/operon-cli version --json --registry https://registry.npmjs.org/ >/dev/null
       - name: Publish approved stable release through npm trusted publishing
         if: inputs.authentication_mode == 'trusted-publisher'
         run: |
@@ -195,7 +195,7 @@ jobs:
             || { echo "Expected stable package version is invalid" >&2; exit 1; }
           VERIFIED=0
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if test "$(npm view operon-cli@latest version --registry https://registry.npmjs.org/ 2>/dev/null)" = "$EXPECTED_VERSION"; then
+            if test "$(npm view @stratejya/operon-cli@latest version --registry https://registry.npmjs.org/ 2>/dev/null)" = "$EXPECTED_VERSION"; then
               VERIFIED=1
               break
             fi
@@ -203,7 +203,7 @@ jobs:
           done
           test "$VERIFIED" = "1" \
             || { echo "Registry verification failed after publish; do not rerun publish, inspect this exact version first" >&2; exit 1; }
-          DIST_TAGS="$(npm view operon-cli dist-tags --json --registry https://registry.npmjs.org/)"
+          DIST_TAGS="$(npm view @stratejya/operon-cli dist-tags --json --registry https://registry.npmjs.org/)"
           node -e 'const d=JSON.parse(process.argv[1]); process.exit(d.latest===process.argv[2] ? 0 : 1)' "$DIST_TAGS" "$EXPECTED_VERSION"
           node -e 'const d=JSON.parse(process.argv[1]); const beta=typeof d.beta==="string"?d.beta:""; process.exit(beta===process.argv[2] ? 0 : 1)' "$DIST_TAGS" "${{ steps.beta_before.outputs.version }}"
           echo "version=$EXPECTED_VERSION" >> "$GITHUB_OUTPUT"
@@ -214,7 +214,7 @@ jobs:
         run: |
           test -n "$EXPECTED_VERSION"
           mkdir -p "$RUNNER_TEMP/registry-roundtrip"
-          npm pack operon-cli@latest \
+          npm pack @stratejya/operon-cli@latest \
             --pack-destination "$RUNNER_TEMP/registry-roundtrip" \
             --ignore-scripts \
             --registry https://registry.npmjs.org/
@@ -229,7 +229,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/npm-signature-audit"
           cd "$RUNNER_TEMP/npm-signature-audit"
           npm init --yes >/dev/null
-          npm install "operon-cli@$EXPECTED_VERSION" \
+          npm install "@stratejya/operon-cli@$EXPECTED_VERSION" \
             --ignore-scripts \
             --no-audit \
             --no-fund \

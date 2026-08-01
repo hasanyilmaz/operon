@@ -28,10 +28,10 @@ const evidenceSchema = JSON.parse(await readFile(
 	'utf8',
 ));
 const validateEvidence = new Ajv2020({ strict: false }).compile(evidenceSchema);
-const FIXTURE_CLI_VERSION = '1.0.6';
+const FIXTURE_CLI_VERSION = '1.0.7';
 const FIXTURE_CLI_TAG = `cli-v${FIXTURE_CLI_VERSION}`;
-const FIXTURE_CLI_PACKAGE = `operon-cli@${FIXTURE_CLI_VERSION}`;
-const FIXTURE_CLI_TARBALL = `operon-cli-${FIXTURE_CLI_VERSION}.tgz`;
+const FIXTURE_CLI_PACKAGE = `@stratejya/operon-cli@${FIXTURE_CLI_VERSION}`;
+const FIXTURE_CLI_TARBALL = `stratejya-operon-cli-${FIXTURE_CLI_VERSION}.tgz`;
 const FIXTURE_PLUGIN_VERSION = '3.0.1';
 
 test('36 digest-bound native cells produce one promotion-eligible aggregate', async () => {

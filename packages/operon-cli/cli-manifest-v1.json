@@ -1,8 +1,8 @@
 {
   "manifestVersion": 1,
   "package": {
-    "name": "operon-cli",
-    "version": "1.0.6",
+    "name": "@stratejya/operon-cli",
+    "version": "1.0.7",
     "executable": "operon",
     "node": "^22.0.0 || ^24.0.0 || ^26.0.0"
   },
@@ -1047,7 +1047,7 @@
     {
       "file": "cli-manifest.schema.json",
       "id": "urn:operon:schema:cli:v1:cli-manifest.schema.json",
-      "sha256": "19eba2fd7be65db0e6f60199cd051f3fc2b7c37a6a64f4aa70e343ed5d625f7e"
+      "sha256": "fe04c04a33f28a063c14546c92da6ea74df354cb1f767cd7b033de1b312f570e"
     },
     {
       "file": "cli.schema.json",
@@ -1592,5 +1592,5 @@
       "stability": "stable"
     }
   ],
-  "contractDigest": "d280747a21f46add48d70193205c4dc642b1e0f38447209611174e33beff5927"
+  "contractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
 }

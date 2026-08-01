@@ -17,6 +17,10 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 
 import { evaluateReleaseAuditPolicy } from '../../release/audit-policy.mjs';
+import {
+	assertOperonCliPackageDocumentV1,
+	operonCliTarballFileNameV1,
+} from '../../../packages/operon-cli/package-identity.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const defaultPluginRoot = path.resolve(path.dirname(scriptPath), '../../..');
@@ -56,7 +60,7 @@ export async function buildPublicV1FreezeIndex(options = {}) {
 	assertCliPackageIdentity(packageDocument);
 	const tarball = await fileRecord(
 		root,
-		`packages/operon-cli/freeze/operon-cli-${packageDocument.version}.tgz`,
+		`packages/operon-cli/freeze/${operonCliTarballFileNameV1(packageDocument.version)}`,
 	);
 	const executable = await fileRecord(root, 'packages/operon-cli/dist/operon.mjs');
 	const license = await fileRecord(root, 'packages/operon-cli/LICENSE');
@@ -274,7 +278,7 @@ export async function writeCanonicalCliTarball(root = defaultPluginRoot) {
 		if (!Array.isArray(packed) || packed.length !== 1) {
 			throw new Error('OPERON_PUBLIC_V1_FREEZE_PACK_RESULT_INVALID');
 		}
-		const expectedFilename = `operon-cli-${packageDocument.version}.tgz`;
+		const expectedFilename = operonCliTarballFileNameV1(packageDocument.version);
 		if (packed[0]?.filename !== expectedFilename) {
 			throw new Error('OPERON_PUBLIC_V1_FREEZE_PACK_FILENAME_INVALID');
 		}
@@ -481,7 +485,7 @@ async function buildAuditArtifactMetafiles(root) {
 
 function assertAcceptedFreeze(index) {
 	if (
-		index.cli.packageVersion !== '1.0.6'
+		index.cli.packageVersion !== '1.0.7'
 		|| index.plugin.version !== '3.0.1'
 		|| index.audit.validation.status !== 'passed'
 		|| index.audit.validation.result?.status !== 'accepted-clean'
@@ -689,13 +693,10 @@ async function verifyDocumentationManifest(root, manifest) {
 }
 
 function assertCliPackageIdentity(packageDocument) {
-	if (
-		packageDocument?.name !== 'operon-cli'
-		|| typeof packageDocument.version !== 'string'
-		|| !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u.test(packageDocument.version)
-	) {
-		throw new Error('OPERON_PUBLIC_V1_FREEZE_PACKAGE_IDENTITY_INVALID');
-	}
+	assertOperonCliPackageDocumentV1(
+		packageDocument,
+		'OPERON_PUBLIC_V1_FREEZE_PACKAGE_IDENTITY_INVALID',
+	);
 }
 
 function safeRelativePath(value) {

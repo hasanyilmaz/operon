@@ -6,7 +6,7 @@ import type {
 	OperonDeveloperApiAccessRequestV1,
 	OperonDeveloperApiAccessorV1,
 	OperonDeveloperApiV1,
-} from 'operon-cli/contracts/v1/developer-api';
+} from '@stratejya/operon-cli/contracts/v1/developer-api';
 
 const REQUESTED_CAPABILITIES = [
 	'system.health',

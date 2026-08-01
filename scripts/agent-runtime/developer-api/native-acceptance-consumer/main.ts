@@ -12,7 +12,7 @@ import path from 'node:path';
 
 import type {
 	OperonDeveloperApiAccessorV1,
-} from 'operon-cli/contracts/v1/developer-api';
+} from '@stratejya/operon-cli/contracts/v1/developer-api';
 
 import { runAcceptanceV1 } from './acceptance.js';
 import {

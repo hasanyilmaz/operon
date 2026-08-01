@@ -63,7 +63,10 @@ test('build consumes an exact operon-cli tarball and emits an isolated Obsidian 
 		));
 		assert.equal(evidence.kind, 'operon-developer-api-native-consumer-build');
 		assert.equal(evidence.package, `${packResult.name}@${packResult.version}`);
-		assert.equal(evidence.publicTypesEntrypoint, 'operon-cli/contracts/v1/developer-api');
+		assert.equal(
+			evidence.publicTypesEntrypoint,
+			'@stratejya/operon-cli/contracts/v1/developer-api',
+		);
 		assert.deepEqual(evidence.runtimeInputs, [
 			'acceptance.ts',
 			'main.ts',

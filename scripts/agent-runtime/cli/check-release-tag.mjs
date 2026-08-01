@@ -4,14 +4,15 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { assertOperonCliPackageDocumentV1 } from '../../../packages/operon-cli/package-identity.mjs';
+
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const packageDocument = JSON.parse(
+const packageDocument = assertOperonCliPackageDocumentV1(JSON.parse(
 	await readFile(path.join(pluginRoot, 'packages', 'operon-cli', 'package.json'), 'utf8'),
-);
+));
 const pluginManifest = JSON.parse(
 	await readFile(path.join(pluginRoot, 'manifest.json'), 'utf8'),
 );
-assert.equal(packageDocument.name, 'operon-cli');
 assert.match(packageDocument.version, /^[0-9]+\.[0-9]+\.[0-9]+$/u);
 assert.equal(pluginManifest.id, 'operon');
 assert.match(pluginManifest.version, /^[0-9]+\.[0-9]+\.[0-9]+$/u);

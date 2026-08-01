@@ -8,6 +8,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readAcceptedPublicV1Freeze } from './release-contract.mjs';
+import {
+	assertOperonCliPackageDocumentV1,
+	operonCliTarballFileNameV1,
+} from '../../../packages/operon-cli/package-identity.mjs';
 
 export async function materializeFrozenCandidate({ repositoryRoot, outputRoot }) {
 	const root = path.resolve(repositoryRoot);
@@ -18,17 +22,17 @@ export async function materializeFrozenCandidate({ repositoryRoot, outputRoot })
 		'Candidate output directory must be the canonical release directory.',
 	);
 	const { freeze } = await readAcceptedPublicV1Freeze(root);
-	const packageDocument = JSON.parse(await readFile(
+	const packageDocument = assertOperonCliPackageDocumentV1(JSON.parse(await readFile(
 		path.join(root, 'packages/operon-cli/package.json'),
 		'utf8',
-	));
+	)));
 	assert.equal(freeze.state, 'accepted', 'Public V1 freeze must be accepted.');
 	assert.equal(
 		freeze.cli?.packageVersion,
 		packageDocument.version,
 		'Frozen CLI version does not match package metadata.',
 	);
-	const fileName = `operon-cli-${packageDocument.version}.tgz`;
+	const fileName = operonCliTarballFileNameV1(packageDocument.version);
 	const relativeSource = `packages/operon-cli/freeze/${fileName}`;
 	assert.equal(
 		freeze.cli?.tarball?.path,

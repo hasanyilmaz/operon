@@ -64,14 +64,14 @@ async function createFixture() {
 	const cellRoot = path.join(root, 'cells');
 	await mkdir(candidateRoot);
 	await mkdir(cellRoot);
-	const tarball = 'operon-cli-9.8.7.tgz';
+	const tarball = 'stratejya-operon-cli-9.8.7.tgz';
 	const tarballBytes = Buffer.from('immutable hosted candidate\n');
 	await writeFile(path.join(candidateRoot, tarball), tarballBytes);
 	const digest = value => createHash('sha256').update(value).digest('hex');
 	const evidence = {
 		evidenceVersion: 1,
 		kind: 'operon-cli-release-candidate',
-		package: 'operon-cli@9.8.7',
+		package: '@stratejya/operon-cli@9.8.7',
 		tarball,
 		sha256: digest(tarballBytes),
 		cliManifestSha256: '1'.repeat(64),

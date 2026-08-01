@@ -21,6 +21,11 @@ import {
 	classifyOperonCliExecutableSize,
 	requiresOperonCliBundleContributorReview,
 } from '../../../packages/operon-cli/size-policy.mjs';
+import {
+	assertOperonCliPackageDocumentV1,
+	OPERON_CLI_NPM_PACKAGE_PATH,
+	operonCliTarballFileNameV1,
+} from '../../../packages/operon-cli/package-identity.mjs';
 import { loadCandidateBindingV1 } from './native-acceptance-lib.mjs';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -59,13 +64,14 @@ try {
 		[],
 		'Type declaration build must clean the staging directories created by this invocation.',
 	);
-	const packageDocument = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
+	const packageDocument = assertOperonCliPackageDocumentV1(JSON.parse(
+		await readFile(path.join(packageRoot, 'package.json'), 'utf8'),
+	));
 	const typedCreateGolden = JSON.parse(await readFile(
 		path.join(pluginRoot, 'scripts', 'agent-runtime', 'fixtures', 'typed-create-golden.json'),
 		'utf8',
 	));
-	assert.equal(packageDocument.name, 'operon-cli');
-		assert.match(packageDocument.version, /^\d+\.\d+\.\d+$/u);
+	assert.match(packageDocument.version, /^\d+\.\d+\.\d+$/u);
 	assert.equal(packageDocument.license, 'GPL-3.0-or-later');
 	assert.equal(packageDocument.private, undefined);
 	assert.equal(packageDocument.engines.node, '^22.0.0 || ^24.0.0 || ^26.0.0');
@@ -634,6 +640,8 @@ try {
 		{ cwd: packageRoot, env, encoding: 'utf8' },
 	);
 	const packResult = JSON.parse(packJson)[0];
+	assert.equal(packResult.name, packageDocument.name);
+	assert.equal(packResult.filename, operonCliTarballFileNameV1(packageDocument.version));
 	assert.ok(packResult.size < 1_000_000);
 	const paths = packResult.files.map(item => item.path);
 	assert.ok(paths.includes('dist/operon.mjs'));
@@ -711,7 +719,7 @@ try {
 	const fixtureRoot = path.join(tempRoot, 'prior-version');
 	await mkdir(path.join(fixtureRoot, 'dist'), { recursive: true });
 	await writeFile(path.join(fixtureRoot, 'package.json'), JSON.stringify({
-		name: 'operon-cli',
+		name: packageDocument.name,
 		version: '0.1.0-beta.0',
 		type: 'module',
 		bin: { operon: './dist/operon.mjs' },
@@ -740,7 +748,7 @@ try {
 		['root', '--global', '--prefix', prefixRoot],
 		{ env, encoding: 'utf8' },
 	).trim();
-	const installedArtifactRoot = path.join(installedGlobalRoot, 'operon-cli');
+	const installedArtifactRoot = path.join(installedGlobalRoot, ...OPERON_CLI_NPM_PACKAGE_PATH);
 	const installedManifestFile = JSON.parse(await readFile(
 		path.join(installedArtifactRoot, 'cli-manifest-v1.json'),
 		'utf8',
@@ -1024,7 +1032,7 @@ try {
 	assert.equal(unknownJsonError.code, 'invalid-request');
 	assert.equal(unknownJsonError.details.reasonCode, 'unknown-command');
 	const installedManifest = runJson(executable, ['manifest', '--json'], env);
-	assert.equal(installedManifest.result.package.name, 'operon-cli');
+	assert.equal(installedManifest.result.package.name, packageDocument.name);
 	assert.equal(installedManifest.result.package.version, packageDocument.version);
 	assert.equal(
 		installedManifest.result.convenienceContracts['task.update'].directRelationshipVersion,
@@ -1134,7 +1142,7 @@ try {
 		durableStateBeforeLifecycle,
 		'Re-upgrading to the beta candidate must preserve durable CLI state.',
 	);
-	runNpmSync(['uninstall', '--global', '--prefix', prefixRoot, 'operon-cli'], {
+	runNpmSync(['uninstall', '--global', '--prefix', prefixRoot, packageDocument.name], {
 		env,
 		stdio: 'inherit',
 	});

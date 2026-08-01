@@ -6,13 +6,13 @@
     "files": [
       {
         "path": "contracts/agent-runtime/public-v1-scope.md",
-        "sha256": "dfefdba1431286861f32a3ab19eb9acffd9ba163afc214ef145e3a727164134e",
-        "bytes": 17302
+        "sha256": "0ccf4fcd685ea7a7d12b14bbc0739dd9413aec2fd5ab26999ca34ff1db07826e",
+        "bytes": 17346
       },
       {
         "path": "contracts/agent-runtime/contract-evolution-v1.md",
-        "sha256": "2f84437e309516d0b37b17439d941c2eecf957c3b1bf16d3c8111cc6c7a90a6e",
-        "bytes": 10029
+        "sha256": "3db221df8f66f63989943044f48b423b530139a37ce899b77ec9917e5c914a6a",
+        "bytes": 10966
       },
       {
         "path": "contracts/agent-runtime/developer-api-v1.md",
@@ -21,8 +21,8 @@
       },
       {
         "path": "contracts/agent-runtime/public-v1-baseline.json",
-        "sha256": "72a2592d6224573069580d25a27c93e285d07abed3a036bd811174eec1f9bbbc",
-        "bytes": 545444
+        "sha256": "bac2f97bab10e5b4664102914ec960382130513ad66f1cfc4d67848fde79b792",
+        "bytes": 545518
       },
       {
         "path": "contracts/agent-runtime/public-v1-freeze.schema.json",
@@ -41,11 +41,11 @@
       },
       {
         "path": "scripts/agent-runtime/contracts/public-v1-freeze.mjs",
-        "sha256": "4d5dfac789b2fc62caa3ce6b8809e2745fc3ad28ab71cf1d20fee946d44b9bf0",
-        "bytes": 24710
+        "sha256": "6e27158ec369a732bd68626023bfabba574e444ee1390822e98de93069736d0e",
+        "bytes": 24717
       }
     ],
-    "aggregateSha256": "fd0e9cf8ff78a7894136c721d2f42db003b9e83d2c60fde2d52df28b64d08a15"
+    "aggregateSha256": "7edece5582759fc7d2cc1703e3a4693b31e987c34309e28c7e2c04b30fb4f108"
   },
   "runtime": {
     "contractVersion": 1,
@@ -63,17 +63,17 @@
   },
   "cli": {
     "contractVersion": 1,
-    "packageVersion": "1.0.6",
-    "contractDigest": "d280747a21f46add48d70193205c4dc642b1e0f38447209611174e33beff5927",
+    "packageVersion": "1.0.7",
+    "contractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b",
     "tarball": {
-      "path": "packages/operon-cli/freeze/operon-cli-1.0.6.tgz",
-      "sha256": "cdacb087231a085074f328023fc28bc70a7ea1ddd2925821875a67152411e8a6",
-      "bytes": 213393
+      "path": "packages/operon-cli/freeze/stratejya-operon-cli-1.0.7.tgz",
+      "sha256": "f03c360ec83663d730d76a5e53e27e4544c82f6c6f1ecfbbc0fba1538cd980a8",
+      "bytes": 213485
     },
     "executable": {
       "path": "packages/operon-cli/dist/operon.mjs",
-      "sha256": "f116dfa086bf64c0837b8b3236c24f0438a1157a038d88af20fe81c866eb72fc",
-      "bytes": 512706
+      "sha256": "6e6b99082d2354faa59aedf7ffcbecef77512989c5b594ed104d47650caeb174",
+      "bytes": 512727
     },
     "license": {
       "path": "packages/operon-cli/LICENSE",
@@ -82,23 +82,23 @@
     },
     "manifest": {
       "path": "packages/operon-cli/cli-manifest-v1.json",
-      "sha256": "bc4db21496ebfb4b6fcb2c442c96089b01a572931478e533a3eb4b19993ed075",
-      "bytes": 51224
+      "sha256": "6cc0ee85e8cd65607e7e8682161d79e4e3e971d12d312e199c2c86651f553805",
+      "bytes": 51235
     },
     "packageMetadata": {
       "path": "packages/operon-cli/package.json",
-      "sha256": "03ffbf12af0bc5ddf8f33b8bd0e30c32a151615fe1815976ad3d4f6258ec3bb6",
-      "bytes": 1978
+      "sha256": "3daee021ff18f7ee389e05aec31e6e625f6f6b80b747a29ed4de771401db8444",
+      "bytes": 1989
     },
     "readme": {
       "path": "packages/operon-cli/README.md",
-      "sha256": "5a905089c3bf70f5602d51de70dea6b1321e385439f0632141880df2bf11aeb3",
-      "bytes": 5704
+      "sha256": "7369af52cbff6f9dd32f436b6b26bbbe6262e6b81222662d2d378e94102e42f6",
+      "bytes": 5737
     },
     "schemas": {
       "root": "packages/operon-cli/schemas/v1",
       "fileCount": 16,
-      "aggregateSha256": "72c12e77474e0f1dcb6eda4cd800f8442926333827dfac94018e00054ae9f72e"
+      "aggregateSha256": "4822e8e47073ba1e6bbce6c2902d6f9cf37556492cdeee452cc0576e0e609272"
     },
     "declarations": {
       "root": "packages/operon-cli/types",
@@ -108,23 +108,23 @@
     "developerExample": {
       "root": "packages/operon-cli/examples/developer-api-consumer",
       "fileCount": 5,
-      "aggregateSha256": "2ecd8a3e0ae2e069bc89a7cd70cdb724f4023f2b306391b21fbbabca07dd12c6"
+      "aggregateSha256": "7b307e0293c91e6591b482e871c645cb088798f7da2c57e24424517d2b005ff2"
     },
-    "packageInputAggregateSha256": "d8eb1ae8f8c3779483e30e31affad23452a589cd37ee60b70536450d9ce3a6bd"
+    "packageInputAggregateSha256": "ac9f097e2acbb4832393e720c2ca4c0ffb3fa28c3d6bce18f8c70880374a9018"
   },
   "documentation": {
     "manifest": {
       "path": "docs/operon-docs/manifest.json",
-      "sha256": "6a1ce4aeb69b9b32c1f47dcd51a38bb407f45a8edb5e90f67217baa7c2a07d7a",
+      "sha256": "6db83ec4633e731e71d76bc70870af53460018ed0c5384a50c731e2de60c2b17",
       "bytes": 22798
     },
     "tree": {
       "root": "docs/operon-docs",
       "fileCount": 134,
-      "aggregateSha256": "7b0bb897763912ae6c03340fbb2c35b5544b910abef9e2b73a581d9df6745535"
+      "aggregateSha256": "f78bb16b7406cf51b06bf4e7484ae80406654129d61235e492b6833a1d1ed972"
     },
     "fileCount": 133,
-    "contentAggregateSha256": "9b9cabf8caae5453750637d0e41ef175c55b05dd19a1601dda332b2dbd58f20f"
+    "contentAggregateSha256": "efc03bda78c1969ec262132fd612438cfdae4f25c40d3de50ee21574cdf35ec5"
   },
   "plugin": {
     "artifactStatus": "local-rebuilt-artifact",
@@ -196,7 +196,7 @@
   "maintainerAcceptance": {
     "status": "accepted",
     "acceptedBy": "Hasan Yilmaz",
-    "acceptedAt": "2026-08-01T15:48:12.000Z"
+    "acceptedAt": "2026-08-01T18:09:48.000Z"
   },
-  "inputsAggregateSha256": "716eb04d5f4b747fa7b34411f2220fd92c0dcb31b8db656c5368e845235d2142"
+  "inputsAggregateSha256": "48414244ab4ea8f3de289c2f2709cc0b9e11690c8d5c54d6724f6a5d6ee94f67"
 }

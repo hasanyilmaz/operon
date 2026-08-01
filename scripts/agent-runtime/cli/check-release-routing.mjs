@@ -322,26 +322,26 @@ assert.doesNotMatch(
 	'Bare relative tarball paths can be misinterpreted as GitHub shorthand by npm.',
 );
 assert.match(publishWorkflow, /secrets\.NPM_TOKEN/u);
-assert.match(publishWorkflow, /bootstrap-token is only allowed while operon-cli is unpublished/u);
-assert.match(publishWorkflow, /npm view operon-cli@latest version/u);
+assert.match(publishWorkflow, /bootstrap-token is only allowed while @stratejya\/operon-cli is unpublished/u);
+assert.match(publishWorkflow, /npm view @stratejya\/operon-cli@latest version/u);
 assert.match(publishWorkflow, /d\.latest===process\.argv\[2\]/u);
 assert.match(publishWorkflow, /Capture the isolated beta channel before stable publication/u);
 assert.match(
 	publishWorkflow,
-	/if test "\$AUTHENTICATION_MODE" = "trusted-publisher"; then[\s\S]+DIST_TAGS="\$\(npm view operon-cli dist-tags/u,
+	/if test "\$AUTHENTICATION_MODE" = "trusted-publisher"; then[\s\S]+DIST_TAGS="\$\(npm view @stratejya\/operon-cli dist-tags/u,
 );
 assert.match(publishWorkflow, /npm dist-tags could not be verified before bootstrap publication/u);
 assert.match(publishWorkflow, /beta===process\.argv\[2\]/u);
-assert.match(publishWorkflow, /npm pack operon-cli@latest/u);
+assert.match(publishWorkflow, /npm pack @stratejya\/operon-cli@latest/u);
 assert.match(publishWorkflow, /verify-published-release\.mjs/u);
 assert.match(publishWorkflow, /npm audit signatures --registry https:\/\/registry\.npmjs\.org\//u);
 assert.match(publishWorkflow, /id:\s+registry_version/u);
 assert.match(publishWorkflow, /steps\.registry_version\.outputs\.version/u);
 assert.doesNotMatch(publishWorkflow, /env\.EXPECTED_PACKAGE_VERSION/u);
 for (const commandPattern of [
-	/npm view operon-cli version --json --registry https:\/\/registry\.npmjs\.org\//u,
-	/npm view operon-cli@latest version --registry https:\/\/registry\.npmjs\.org\//u,
-	/npm view operon-cli dist-tags --json --registry https:\/\/registry\.npmjs\.org\//u,
+	/npm view @stratejya\/operon-cli version --json --registry https:\/\/registry\.npmjs\.org\//u,
+	/npm view @stratejya\/operon-cli@latest version --registry https:\/\/registry\.npmjs\.org\//u,
+	/npm view @stratejya\/operon-cli dist-tags --json --registry https:\/\/registry\.npmjs\.org\//u,
 	/npm publish \.\/candidate\/\*\.tgz[\s\S]+--registry https:\/\/registry\.npmjs\.org\//u,
 ]) {
 	assert.match(publishWorkflow, commandPattern);
@@ -628,7 +628,7 @@ try {
 	const registryRoot = path.join(registryRoundTripRoot, 'registry');
 	await mkdir(candidateRoot);
 	await mkdir(registryRoot);
-	const tarballName = 'operon-cli-9.8.7.tgz';
+	const tarballName = 'stratejya-operon-cli-9.8.7.tgz';
 	const candidateTarball = path.join(candidateRoot, tarballName);
 	const registryTarball = path.join(registryRoot, tarballName);
 	await writeFile(candidateTarball, 'accepted-registry-tarball\n', 'utf8');
@@ -640,7 +640,7 @@ try {
 		path.join(candidateRoot, 'candidate-evidence.json'),
 		`${JSON.stringify({
 			kind: 'operon-cli-release-candidate',
-			package: 'operon-cli@9.8.7',
+			package: '@stratejya/operon-cli@9.8.7',
 			tarball: tarballName,
 			sha256: candidateSha256,
 		}, null, 2)}\n`,

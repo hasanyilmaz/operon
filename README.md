@@ -536,7 +536,7 @@ Operon also provides public desktop integration surfaces for terminal workflows,
 `operon-cli` is the public gateway for terminal use and external processes:
 
 ```bash
-npm install --global operon-cli
+npm install --global @stratejya/operon-cli
 operon setup
 operon doctor --live
 ```

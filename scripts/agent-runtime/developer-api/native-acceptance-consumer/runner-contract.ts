@@ -1,7 +1,7 @@
 import type {
 	OperonDeveloperApiAccessRequestV1,
 	OperonDeveloperApiV1,
-} from 'operon-cli/contracts/v1/developer-api';
+} from '@stratejya/operon-cli/contracts/v1/developer-api';
 
 export const ACCEPTANCE_INPUT_KIND_V1 = 'operon-developer-api-native-consumer-input';
 export const ACCEPTANCE_OUTPUT_KIND_V1 = 'operon-developer-api-native-consumer-output';

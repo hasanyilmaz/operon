@@ -29,7 +29,7 @@ The client depends on Obsidian's own command-line interface being active. If it 
 Install globally:
 
 ```bash
-npm install --global operon-cli
+npm install --global @stratejya/operon-cli
 ```
 
 Confirm the install and your Node version in one step:

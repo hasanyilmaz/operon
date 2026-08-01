@@ -11,6 +11,10 @@ import {
 	assertOperonPublicRuntimeV1,
 	readAcceptedPublicV1Freeze,
 } from './release-contract.mjs';
+import {
+	assertOperonCliPackageDocumentV1,
+	operonCliTarballFileNameV1,
+} from '../../../packages/operon-cli/package-identity.mjs';
 
 const [candidateRootArgument, pluginArtifactRootArgument, outputArgument] = process.argv.slice(2);
 assert.ok(candidateRootArgument, 'Candidate directory is required.');
@@ -24,16 +28,15 @@ const tarballs = (await readdir(candidateRoot)).filter(name => name.endsWith('.t
 assert.equal(tarballs.length, 1, 'Native candidate directory must contain exactly one tarball.');
 const tarballPath = path.join(candidateRoot, tarballs[0]);
 const tarballBytes = await readFile(tarballPath);
-const packageDocument = JSON.parse(await readFile(
+const packageDocument = assertOperonCliPackageDocumentV1(JSON.parse(await readFile(
 	path.join(repositoryRoot, 'packages/operon-cli/package.json'),
 	'utf8',
-));
-assert.match(packageDocument.version, /^[0-9]+\.[0-9]+\.[0-9]+$/u);
+)));
 const cliManifestBytes = await readFile(
 	path.join(repositoryRoot, 'packages/operon-cli/cli-manifest-v1.json'),
 );
 const cliManifest = JSON.parse(cliManifestBytes.toString('utf8'));
-assert.equal(tarballs[0], `${packageDocument.name}-${packageDocument.version}.tgz`);
+assert.equal(tarballs[0], operonCliTarballFileNameV1(packageDocument.version));
 assert.equal(cliManifest.package.name, packageDocument.name);
 assert.equal(cliManifest.package.version, packageDocument.version);
 assert.match(cliManifest.contractDigest, /^[a-f0-9]{64}$/u);

@@ -6,7 +6,7 @@ This document is the normative evolution policy for Runtime API V1 and CLI
 contract V1. The Public V1 scope remains authoritative for product and platform
 commitments.
 
-Operon `3.x` maintains Runtime API V1. `operon-cli` `1.x` maintains CLI
+Operon `3.x` maintains Runtime API V1. `@stratejya/operon-cli` `1.x` maintains CLI
 contract V1. Runtime and CLI compatibility are negotiated by advertised
 contract ranges and capabilities, never by assuming that Operon and CLI
 package versions are equal.
@@ -132,6 +132,22 @@ disclosing the absence of native-environment certification.
 This correction changes a pre-public support promise and release process. It
 does not change request or response DTOs, capability identifiers, error or exit
 semantics, sealed-plan safety, authorization, receipt, or same-plan recovery.
+
+## Pre-public npm namespace correction
+
+The first public npm publication uses the user-scoped package identity
+`@stratejya/operon-cli`. The earlier unscoped `operon-cli` candidate was never
+published, and npm refused that global-registry name before accepting package
+bytes. The executable remains `operon`; CLI commands, Runtime API V1, CLI
+contract V1, exit meanings, recovery behavior, and type shapes are unchanged.
+
+The manifest schema continues to recognize the unpublished legacy package name
+for compatibility inspection, while canonical generators, installation
+instructions, type-only imports, release evidence, and update discovery emit
+the scoped identity. This correction replaces the unpublished compatibility
+baseline and exact local freeze before a new immutable release tag is created.
+After public publication, the scoped package identity follows the normal V1
+breaking-change rules without this exception.
 
 ## Pre-public trust-boundary correction
 
