@@ -649,6 +649,33 @@ function checkWorkflowSecurityPolicy() {
 	if (!/^permissions:\s*\n\s{2}contents:\s+read\s*$/mu.test(readText('.github/workflows/cli-ci.yml'))) {
 		fail('.github/workflows/cli-ci.yml: workflow must explicitly grant only contents: read');
 	}
+	const publishWorkflow = readText('.github/workflows/cli-publish.yml');
+	const publishCommandPattern = /npm publish \.\/candidate\/\*\.tgz[\s\S]+--access public[\s\S]+--tag latest[\s\S]+--provenance/u;
+	for (const [stepName, authenticationMode] of [
+		['Publish first approved stable release with temporary token and provenance', 'bootstrap-token'],
+		['Publish approved stable release through npm trusted publishing', 'trusted-publisher'],
+	]) {
+		const escapedStepName = stepName.replace(/[.*+?^\${}()|[\]\\]/gu, '\\$&');
+		const stepBlock = publishWorkflow.match(
+			new RegExp(`- name: ${escapedStepName}\\n[\\s\\S]*?(?=\\n\\s+- name: )`, 'u'),
+		)?.[0];
+		if (!stepBlock) {
+			fail(`.github/workflows/cli-publish.yml: missing ${authenticationMode} publish step`);
+			continue;
+		}
+		if (!new RegExp(`if: inputs\\.authentication_mode == '${authenticationMode}'`, 'u').test(stepBlock)) {
+			fail(`.github/workflows/cli-publish.yml: ${authenticationMode} publish step must be gated by its exact authentication mode`);
+		}
+		if (!publishCommandPattern.test(stepBlock)) {
+			fail(`.github/workflows/cli-publish.yml: ${authenticationMode} must publish the explicit ./candidate/*.tgz local path with stable flags`);
+		}
+		if ((stepBlock.match(/npm publish \.\/candidate\/\*\.tgz/gu)?.length ?? 0) !== 1) {
+			fail(`.github/workflows/cli-publish.yml: ${authenticationMode} must contain exactly one local tarball publish command`);
+		}
+	}
+	if (/npm publish candidate\/\*\.tgz/u.test(publishWorkflow)) {
+		fail('.github/workflows/cli-publish.yml: bare candidate/*.tgz can be parsed as GitHub shorthand by npm');
+	}
 
 	for (const workflow of [
 		'.github/workflows/cli-native-candidate.yml',
