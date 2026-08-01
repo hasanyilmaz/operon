@@ -383,6 +383,11 @@ function checkContinuousIntegrationWorkflow() {
 	if (!/- name: Run validation\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
 		fail('CI must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
 	}
+	assertNoMatch(
+		workflow,
+		/OPERON_PLUGIN_RELEASE_VALIDATION/u,
+		'CI must not enable plugin-release tag validation',
+	);
 	if (
 		installIndex < 0
 		|| auditPolicyIndex < installIndex
@@ -421,8 +426,8 @@ function checkReleaseWorkflow() {
 		'run: npm run release:freeze:check',
 		'release workflow must require an accepted Public V1 freeze',
 	);
-	if (!/- name: Run validation\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
-		fail('release workflow must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
+	if (!/- name: Run validation\s+env:\s+OPERON_PLUGIN_RELEASE_VALIDATION: "1"\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
+		fail('release workflow must explicitly separate plugin-tag validation and diagnostic shared-runner timings');
 	}
 	if (
 		exactTagIndex < 0

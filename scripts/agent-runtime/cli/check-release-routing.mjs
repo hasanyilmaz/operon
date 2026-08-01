@@ -22,6 +22,9 @@ const pluginRoot = path.resolve(scriptDirectory, '../../..');
 const packageDocument = JSON.parse(
 	await readFile(path.join(pluginRoot, 'packages/operon-cli/package.json'), 'utf8'),
 );
+const pluginManifest = JSON.parse(
+	await readFile(path.join(pluginRoot, 'manifest.json'), 'utf8'),
+);
 const pluginWorkflow = await readFile(
 	path.join(pluginRoot, '.github/workflows/release.yml'),
 	'utf8',
@@ -119,8 +122,13 @@ assert.match(
 	/^permissions:\s*\n\s{2}contents:\s+read\s*$/mu,
 	'CLI CI must explicitly grant only contents: read.',
 );
+assert.doesNotMatch(ciWorkflow, /OPERON_PLUGIN_RELEASE_VALIDATION/u);
 
 assert.match(pluginWorkflow, /-\s+["']!cli-v\*["']/u);
+assert.match(
+	pluginWorkflow,
+	/- name: Run validation\s+env:\s+OPERON_PLUGIN_RELEASE_VALIDATION: "1"\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u,
+);
 assert.match(
 	pluginWorkflow,
 	/actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/u,
@@ -285,11 +293,14 @@ for (const [name, workflow] of [
 
 const checker = path.join(scriptDirectory, 'check-release-tag.mjs');
 const exactTag = `cli-v${packageDocument.version}`;
+const checkerEnvironment = { ...process.env };
+delete checkerEnvironment.OPERON_PLUGIN_RELEASE_VALIDATION;
+delete checkerEnvironment.REQUIRE_EXACT_GIT_TAG;
 const accepted = spawnSync(process.execPath, [checker], {
 	cwd: pluginRoot,
 	encoding: 'utf8',
 	env: {
-		...process.env,
+		...checkerEnvironment,
 		GITHUB_REF: `refs/tags/${exactTag}`,
 		GITHUB_REF_NAME: exactTag,
 		GITHUB_REF_TYPE: 'tag',
@@ -301,13 +312,72 @@ const pullRequest = spawnSync(process.execPath, [checker], {
 	cwd: pluginRoot,
 	encoding: 'utf8',
 	env: {
-		...process.env,
+		...checkerEnvironment,
 		GITHUB_REF: 'refs/pull/87/merge',
 		GITHUB_REF_NAME: '87/merge',
 		GITHUB_REF_TYPE: 'branch',
 	},
 });
 assert.equal(pullRequest.status, 0, pullRequest.stderr);
+
+const pluginRelease = spawnSync(process.execPath, [checker], {
+	cwd: pluginRoot,
+	encoding: 'utf8',
+	env: {
+		...checkerEnvironment,
+		GITHUB_REF: `refs/tags/${pluginManifest.version}`,
+		GITHUB_REF_NAME: pluginManifest.version,
+		GITHUB_REF_TYPE: 'tag',
+		OPERON_PLUGIN_RELEASE_VALIDATION: '1',
+	},
+});
+assert.equal(pluginRelease.status, 0, pluginRelease.stderr);
+
+for (const [name, environment] of [
+	['plugin tag without release mode', {
+		GITHUB_REF: `refs/tags/${pluginManifest.version}`,
+		GITHUB_REF_NAME: pluginManifest.version,
+		GITHUB_REF_TYPE: 'tag',
+	}],
+	['CLI tag in plugin release mode', {
+		GITHUB_REF: `refs/tags/${exactTag}`,
+		GITHUB_REF_NAME: exactTag,
+		GITHUB_REF_TYPE: 'tag',
+		OPERON_PLUGIN_RELEASE_VALIDATION: '1',
+	}],
+	['wrong plugin tag in release mode', {
+		GITHUB_REF: 'refs/tags/0.0.0',
+		GITHUB_REF_NAME: '0.0.0',
+		GITHUB_REF_TYPE: 'tag',
+		OPERON_PLUGIN_RELEASE_VALIDATION: '1',
+	}],
+	['branch in plugin release mode', {
+		GITHUB_REF: 'refs/heads/main',
+		GITHUB_REF_NAME: 'main',
+		GITHUB_REF_TYPE: 'branch',
+		OPERON_PLUGIN_RELEASE_VALIDATION: '1',
+	}],
+	['inconsistent plugin release ref', {
+		GITHUB_REF: `refs/tags/${pluginManifest.version}-other`,
+		GITHUB_REF_NAME: pluginManifest.version,
+		GITHUB_REF_TYPE: 'tag',
+		OPERON_PLUGIN_RELEASE_VALIDATION: '1',
+	}],
+	['plugin and exact CLI release modes together', {
+		GITHUB_REF: `refs/tags/${pluginManifest.version}`,
+		GITHUB_REF_NAME: pluginManifest.version,
+		GITHUB_REF_TYPE: 'tag',
+		OPERON_PLUGIN_RELEASE_VALIDATION: '1',
+		REQUIRE_EXACT_GIT_TAG: '1',
+	}],
+]) {
+	const rejected = spawnSync(process.execPath, [checker], {
+		cwd: pluginRoot,
+		encoding: 'utf8',
+		env: { ...checkerEnvironment, ...environment },
+	});
+	assert.notEqual(rejected.status, 0, `Release checker accepted ${name}.`);
+}
 
 for (const invalidTag of [
 	packageDocument.version,
@@ -320,7 +390,7 @@ for (const invalidTag of [
 		cwd: pluginRoot,
 		encoding: 'utf8',
 		env: {
-			...process.env,
+			...checkerEnvironment,
 			GITHUB_REF: `refs/tags/${invalidTag}`,
 			GITHUB_REF_NAME: invalidTag,
 			GITHUB_REF_TYPE: 'tag',

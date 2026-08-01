@@ -54,6 +54,7 @@ jobs:
 
       - name: Run validation
         env:
+          OPERON_PLUGIN_RELEASE_VALIDATION: "1"
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check
 
