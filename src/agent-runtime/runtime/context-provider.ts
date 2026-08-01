@@ -518,8 +518,9 @@ export class LiveIndexContextProviderV1 {
 				cache.results.size >= FINDER_RESULT_CACHE_MAX_ENTRIES
 				|| cache.resultRows + allRows.length > FINDER_RESULT_CACHE_MAX_TOTAL_ROWS
 			) {
-				const oldest = cache.results.keys().next().value as string | undefined;
-				if (oldest === undefined) break;
+				const oldestEntry = cache.results.keys().next();
+				if (oldestEntry.done) break;
+				const oldest = oldestEntry.value;
 				const removed = cache.results.get(oldest);
 				cache.results.delete(oldest);
 				cache.resultRows -= removed?.length ?? 0;
@@ -528,8 +529,9 @@ export class LiveIndexContextProviderV1 {
 			cache.resultRows += allRows.length;
 		}
 		while (cache.results.size > FINDER_RESULT_CACHE_MAX_ENTRIES) {
-			const oldest = cache.results.keys().next().value as string | undefined;
-			if (oldest === undefined) break;
+			const oldestEntry = cache.results.keys().next();
+			if (oldestEntry.done) break;
+			const oldest = oldestEntry.value;
 			const removed = cache.results.get(oldest);
 			cache.results.delete(oldest);
 			cache.resultRows -= removed?.length ?? 0;
@@ -578,8 +580,9 @@ export class LiveIndexContextProviderV1 {
 		const session = createTaskSearchSession();
 		cache.sessions.set(key, session);
 		while (cache.sessions.size > 8) {
-			const oldest = cache.sessions.keys().next().value as string | undefined;
-			if (oldest === undefined) break;
+			const oldestEntry = cache.sessions.keys().next();
+			if (oldestEntry.done) break;
+			const oldest = oldestEntry.value;
 			cache.sessions.delete(oldest);
 		}
 		return session;

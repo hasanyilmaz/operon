@@ -266,8 +266,9 @@ export class RuntimeSourceHydratorV1 {
 		this.digestCache.delete(key);
 		this.digestCache.set(key, entry);
 		while (this.digestCache.size > MAX_DIGEST_CACHE_ENTRIES) {
-			const oldest = this.digestCache.keys().next().value as string | undefined;
-			if (oldest === undefined) break;
+			const oldestEntry = this.digestCache.keys().next();
+			if (oldestEntry.done) break;
+			const oldest = oldestEntry.value;
 			this.digestCache.delete(oldest);
 		}
 	}

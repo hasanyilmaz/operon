@@ -234,7 +234,7 @@ export class MobileNotificationsExporter {
 			.filter(delay => Number.isFinite(delay) && delay >= 0)
 			.sort((left, right) => left - right);
 		this.startupActivatedAtEpochMs = this.now();
-		const finalDelay = delays.at(-1);
+		const finalDelay = delays.length === 0 ? undefined : delays[delays.length - 1];
 		if (finalDelay === undefined) {
 			this.startMonitoring();
 			return;

@@ -640,7 +640,7 @@ export async function planRuntimeSemanticTransitionV1(
 			pinnedGroup: pinnedGroup
 				? atomicGroups.find(group => group.groupId === pinnedGroup.groupId) ?? null
 				: null,
-			projectSerialGroup: atomicGroups.at(-1) ?? null,
+			projectSerialGroup: atomicGroups[atomicGroups.length - 1] ?? null,
 			affectedResources,
 			atomicGroups,
 			predictedEffects,

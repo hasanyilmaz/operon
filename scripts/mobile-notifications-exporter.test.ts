@@ -198,6 +198,7 @@ function createExporter(
 	canProduce = true,
 	onAdoptedVaultId?: (vaultId: string | null | undefined) => void,
 	now: () => number = () => nowMs,
+	startupRefreshDelaysMs: readonly number[] = [60_000, 3 * 60_000, 5 * 60_000],
 ): MobileNotificationsExporter {
 	return new MobileNotificationsExporter({
 		app: {
@@ -222,7 +223,7 @@ function createExporter(
 		path,
 		debounceMs: 10,
 		refreshIntervalMs: 24 * 60 * 60_000,
-		startupRefreshDelaysMs: [60_000, 3 * 60_000, 5 * 60_000],
+		startupRefreshDelaysMs,
 		monitorStatIntervalMs: 30_000,
 		monitorFullReadIntervalMs: 5 * 60_000,
 		recoveryDelayMs: 2_000,
@@ -302,6 +303,33 @@ async function run(): Promise<void> {
 	assert.equal(catchUpAdapter.publishedWrites, 2, 'overdue 1/3/5-minute checkpoints coalesce into one catch-up snapshot');
 	assert.equal(catchUpWindow.listenerCount(), 1, 'catch-up starts monitoring after consuming the final checkpoint');
 	await catchUpExporter.destroy();
+
+	const immediateMonitorAdapter = new MemoryAdapter();
+	const immediateMonitorIndexer = new FakeIndexer();
+	immediateMonitorIndexer.tasks.set('snapshot-task', task());
+	const immediateMonitorWindow = new FakeWindow();
+	const immediateMonitorDocument = new FakeDocument();
+	immediateMonitorDocument.defaultView = immediateMonitorWindow;
+	const immediateMonitorExporter = createExporter(
+		immediateMonitorAdapter,
+		immediateMonitorIndexer,
+		immediateMonitorWindow,
+		immediateMonitorDocument,
+		true,
+		undefined,
+		() => nowMs,
+		[],
+	);
+	await immediateMonitorExporter.start();
+	assert.equal(immediateMonitorAdapter.publishedWrites, 1, 'empty startup delays publish only the initial snapshot');
+	assert.equal(immediateMonitorWindow.listenerCount(), 1, 'empty startup delays start window monitoring immediately');
+	assert.equal(immediateMonitorDocument.listenerCount(), 1, 'empty startup delays start document monitoring immediately');
+	assert.deepEqual(
+		[...immediateMonitorWindow.timers.values()].map(timer => timer.delay).sort((left, right) => left - right),
+		[30_000, 5 * 60_000, 24 * 60 * 60_000],
+		'empty startup delays leave only monitor and periodic refresh timers',
+	);
+	await immediateMonitorExporter.destroy();
 
 	const monitorFailureAdapter = new FailNextRenameAdapter();
 	const monitorFailureIndexer = new FakeIndexer();
