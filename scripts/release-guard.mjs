@@ -662,6 +662,37 @@ function checkWorkflowSecurityPolicy() {
 			fail(`${workflow}: stable candidate must run npm ci, audit policy, and release guard in order`);
 		}
 	}
+	const releaseReadyWorkflow = readText('.github/workflows/cli-release-ready.yml');
+	const hostedJobHeader = '  hosted-portability:\n';
+	const hostedJobStart = releaseReadyWorkflow.indexOf(hostedJobHeader);
+	const hostedJobRemainder = hostedJobStart < 0
+		? ''
+		: releaseReadyWorkflow.slice(hostedJobStart + hostedJobHeader.length);
+	const nextJobOffset = hostedJobRemainder.search(/^  [a-z0-9-]+:\s*$/mu);
+	const hostedJob = nextJobOffset < 0
+		? hostedJobRemainder
+		: hostedJobRemainder.slice(0, nextJobOffset);
+	if (hostedJobStart < 0 || hostedJob === '') {
+		fail('.github/workflows/cli-release-ready.yml: hosted-portability job is missing');
+	}
+	if (/execFileSync\([^\n]*npm(?:\.cmd)?/u.test(hostedJob)) {
+		fail('.github/workflows/cli-release-ready.yml: Windows npm shims must not be launched with execFileSync');
+	}
+	const npmVerification = [
+		'- name: Verify exact npm version',
+		'        shell: bash',
+		'        run: test "$(npm --version)" = "11.12.1"',
+	].join('\n');
+	const pinIndex = hostedJob.indexOf('- name: Pin portability npm');
+	const verificationIndex = hostedJob.indexOf(npmVerification);
+	const installIndex = hostedJob.indexOf('- run: npm ci');
+	if (
+		pinIndex < 0
+		|| verificationIndex < pinIndex
+		|| installIndex < verificationIndex
+	) {
+		fail('.github/workflows/cli-release-ready.yml: hosted portability must verify npm through a portable shell command');
+	}
 }
 
 function checkPublicSourceHygiene() {

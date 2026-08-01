@@ -28,6 +28,10 @@ const evidenceSchema = JSON.parse(await readFile(
 	'utf8',
 ));
 const validateEvidence = new Ajv2020({ strict: false }).compile(evidenceSchema);
+const FIXTURE_CLI_VERSION = '1.0.2';
+const FIXTURE_CLI_TAG = `cli-v${FIXTURE_CLI_VERSION}`;
+const FIXTURE_CLI_PACKAGE = `operon-cli@${FIXTURE_CLI_VERSION}`;
+const FIXTURE_CLI_TARBALL = `operon-cli-${FIXTURE_CLI_VERSION}.tgz`;
 
 test('36 digest-bound native cells produce one promotion-eligible aggregate', async () => {
 	const fixture = await createFixture();
@@ -61,7 +65,7 @@ test('36 digest-bound native cells produce one promotion-eligible aggregate', as
 			`${JSON.stringify({
 				...nativeEvidence,
 				kind: 'operon-cli-release-candidate',
-				source: { ...nativeEvidence.source, ref: 'cli-v1.0.1' },
+				source: { ...nativeEvidence.source, ref: FIXTURE_CLI_TAG },
 				compatiblePublicPlugin: {
 					...nativeEvidence.compatiblePublicPlugin,
 					kind: 'operon-public-plugin-release',
@@ -147,7 +151,7 @@ test('offline candidate comparison rejects every critical identity change', asyn
 		const accepted = structuredClone(fixture.binding);
 		const mutations = [
 			current => { current.candidateEvidenceSha256 = '9'.repeat(64); },
-			current => { current.sourceRef = 'cli-v1.0.1'; },
+			current => { current.sourceRef = FIXTURE_CLI_TAG; },
 			current => { current.cliManifestSha256 = '8'.repeat(64); },
 			current => { current.aggregateContractSha256 = '7'.repeat(64); },
 			current => { current.compatiblePublicPlugin.kind = 'operon-public-plugin-release'; },
@@ -161,7 +165,7 @@ test('offline candidate comparison rejects every critical identity change', asyn
 		const release = structuredClone(accepted);
 		release.candidateKind = 'operon-cli-release-candidate';
 		release.candidateEvidenceSha256 = '9'.repeat(64);
-		release.sourceRef = 'cli-v1.0.1';
+	release.sourceRef = FIXTURE_CLI_TAG;
 		release.compatiblePublicPlugin.kind = 'operon-public-plugin-release';
 		release.compatiblePublicPlugin.releaseTag = '3.0.0';
 		assert.doesNotThrow(() => assertStableCandidateIdentityV1(accepted, release));
@@ -345,7 +349,7 @@ async function createFixture(platforms = {
 	await mkdir(candidateRoot);
 	await mkdir(acceptanceRoot);
 	const tarball = Buffer.from('immutable candidate tarball\n');
-	const tarballName = 'operon-cli-1.0.1.tgz';
+	const tarballName = FIXTURE_CLI_TARBALL;
 	const tarballSha256 = sha256(tarball);
 	await writeFile(path.join(candidateRoot, tarballName), tarball);
 	const plugin = {
@@ -361,7 +365,7 @@ async function createFixture(platforms = {
 	await writeFile(path.join(candidateRoot, 'candidate-evidence.json'), `${JSON.stringify({
 		evidenceVersion: 1,
 		kind: 'operon-cli-native-candidate',
-		package: 'operon-cli@1.0.1',
+		package: FIXTURE_CLI_PACKAGE,
 		tarball: tarballName,
 		sha256: tarballSha256,
 		cliManifestSha256: 'c'.repeat(64),
