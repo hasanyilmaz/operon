@@ -10,7 +10,9 @@
     "sourceRoot",
     "state",
     "standaloneEvidence",
+    "semanticClosure",
     "unmatchedReferences",
+    "literalReferenceCount",
     "referenceCount",
     "directSourceImportCount",
     "dispositions",
@@ -24,9 +26,11 @@
     "inventoryVersion": { "const": 1 },
     "kind": { "const": "operon-cli-cutover-v1" },
     "sourceRoot": { "const": "packages/operon-cli" },
-    "state": { "const": "stage-8-ready" },
+    "state": { "enum": ["stage-8-ready", "cutover-complete"] },
     "standaloneEvidence": { "$ref": "#/$defs/standaloneEvidence" },
+    "semanticClosure": { "$ref": "#/$defs/semanticClosure" },
     "unmatchedReferences": { "const": 0 },
+    "literalReferenceCount": { "type": "integer", "minimum": 0 },
     "referenceCount": { "type": "integer", "minimum": 1 },
     "directSourceImportCount": { "const": 20 },
     "dispositions": { "$ref": "#/$defs/dispositionMap" },
@@ -67,10 +71,85 @@
     "standaloneEvidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repository", "commit"],
+      "required": ["repository", "commit", "coverageCommit"],
       "properties": {
         "repository": { "const": "hasanyilmaz/operon-cli" },
-        "commit": { "const": "52a2cc8f99b6e27c5f4acc0b18ea4552084ab5ef" }
+        "commit": { "const": "52a2cc8f99b6e27c5f4acc0b18ea4552084ab5ef" },
+        "coverageCommit": { "const": "851e8cc163d89caa6f833a8280311db28e888061" }
+      }
+    },
+    "semanticClosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetState",
+        "packageScriptTargetsBeforeCutover",
+        "workflowRunnerTargetsBeforeCutover",
+        "retiredRunners",
+        "historicalReferencePaths",
+        "policyReferencePaths",
+        "requiredAbsentPaths",
+        "requiredRetainedPaths",
+        "targetCounts"
+      ],
+      "properties": {
+        "targetState": { "const": "cutover-complete" },
+        "packageScriptTargetsBeforeCutover": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^(?:packages/operon-cli|scripts/agent-runtime/cli)/" }
+        },
+        "workflowRunnerTargetsBeforeCutover": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/workflowRunnerTarget" }
+        },
+        "retiredRunners": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/retiredRunner" }
+        },
+        "historicalReferencePaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "policyReferencePaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "requiredAbsentPaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "requiredRetainedPaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "targetCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activeReferences", "directSourceImports", "orphanRunners"],
+          "properties": {
+            "activeReferences": { "const": 0 },
+            "directSourceImports": { "const": 0 },
+            "orphanRunners": { "const": 0 }
+          }
+        }
+      }
+    },
+    "workflowRunnerTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow", "path"],
+      "properties": {
+        "workflow": { "type": "string", "pattern": "^\\.github/workflows/cli-.*\\.ya?ml$" },
+        "path": { "type": "string", "pattern": "^(?:packages|scripts)/" }
+      }
+    },
+    "retiredRunner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "replacementPath"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^scripts/agent-runtime/cli/" },
+        "replacementPath": { "type": "string", "pattern": "^(?:test|scripts)/" }
       }
     },
     "dispositionMap": {

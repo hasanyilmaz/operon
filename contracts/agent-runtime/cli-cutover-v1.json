@@ -3,9 +3,10 @@
   "inventoryVersion": 1,
   "kind": "operon-cli-cutover-v1",
   "sourceRoot": "packages/operon-cli",
-  "state": "stage-8-ready",
+  "state": "cutover-complete",
   "unmatchedReferences": 0,
-  "referenceCount": 80,
+  "literalReferenceCount": 80,
+  "referenceCount": 86,
   "directSourceImportCount": 20,
   "dispositions": {
     "standalone-equivalent": "Equivalent source or test is owned by the standalone CLI repository and the duplicate plugin-repo copy is removed.",
@@ -16,8 +17,8 @@
     "migrate-live-performance-fallback": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
   },
   "counts": {
-    "standalone-equivalent": 11,
-    "convert-to-external-artifact": 14,
+    "standalone-equivalent": 13,
+    "convert-to-external-artifact": 18,
     "retain-plugin-runtime-contract": 4,
     "remove-stage8-workflow-release": 17,
     "historical-freeze": 3,
@@ -200,9 +201,31 @@
       "stage8Action": "Validate public CLI documentation against the published binding and verified external artifact."
     },
     {
+      "path": "scripts/agent-runtime/cli/run-guided-source-transition-pty-tests.mjs",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove after the consolidated standalone process runner remains present at the recorded coverage commit.",
+      "replacementPath": "scripts/run-process-tests.mjs"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/run-interactive-terminal-tests.mjs",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove after the consolidated standalone process runner remains present at the recorded coverage commit.",
+      "replacementPath": "scripts/run-process-tests.mjs"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/run-meeting-agent-acceptance.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Retain meeting acceptance only after its constructed package root is replaced with the verified external executable."
+    },
+    {
       "path": "scripts/agent-runtime/cli/run-package-tests.mjs",
       "disposition": "remove-stage8-workflow-release",
       "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/schema-entrypoints.test.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Validate schema entrypoints against the published binding without constructing a local package path."
     },
     {
       "path": "scripts/agent-runtime/cli/session-jsonl.test.ts",
@@ -241,6 +264,11 @@
       "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
     },
     {
+      "path": "scripts/agent-runtime/contracts/check-public-v1-baseline.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Replace constructed local package paths with historical freeze and published binding evidence."
+    },
+    {
       "path": "scripts/agent-runtime/contracts/public-v1-freeze.mjs",
       "disposition": "historical-freeze",
       "stage8Action": "Immutable Public V1 historical evidence remains byte-for-byte unchanged."
@@ -259,6 +287,11 @@
       "path": "scripts/agent-runtime/developer-api/native-acceptance-consumer/build.mjs",
       "disposition": "retain-plugin-runtime-contract",
       "stage8Action": "Plugin-owned Runtime or contract coverage remains after removing its local CLI build dependency."
+    },
+    {
+      "path": "scripts/agent-runtime/developer-api/native-acceptance-consumer/native-consumer.test.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Run the native consumer against the verified external executable instead of a constructed local package root."
     },
     {
       "path": "scripts/agent-runtime/mutation/live-creation-acceptance.mjs",
@@ -458,9 +491,123 @@
     "scripts/analyze-production-bundle.test.mjs",
     "scripts/release/audit-policy.test.mjs"
   ],
-  "inventoryAggregateSha256": "51eb0cea3d1c60678e23c58869cffb9416f9630e0c80b7f165924c41a2f4d195",
+  "inventoryAggregateSha256": "d8b700f90b8992a95903da7d0b16035be45db0187e83ab058b1ae5c7059f3364",
   "standaloneEvidence": {
     "repository": "hasanyilmaz/operon-cli",
-    "commit": "52a2cc8f99b6e27c5f4acc0b18ea4552084ab5ef"
+    "commit": "52a2cc8f99b6e27c5f4acc0b18ea4552084ab5ef",
+    "coverageCommit": "851e8cc163d89caa6f833a8280311db28e888061"
+  },
+  "semanticClosure": {
+    "targetState": "cutover-complete",
+    "packageScriptTargetsBeforeCutover": [
+      "packages/operon-cli/build.mjs",
+      "packages/operon-cli/type-build.mjs",
+      "packages/operon-cli/type-consumer.test.mjs",
+      "scripts/agent-runtime/cli/check-cli-cutover.mjs",
+      "scripts/agent-runtime/cli/check-package-contracts.mjs",
+      "scripts/agent-runtime/cli/check-published-cli-artifact.mjs",
+      "scripts/agent-runtime/cli/check-published-cli-binding.mjs",
+      "scripts/agent-runtime/cli/check-published-cli-public-proof.mjs",
+      "scripts/agent-runtime/cli/check-release-routing.mjs",
+      "scripts/agent-runtime/cli/check-release-tag.mjs",
+      "scripts/agent-runtime/cli/hosted-portability.test.mjs",
+      "scripts/agent-runtime/cli/interruption.test.mjs",
+      "scripts/agent-runtime/cli/materialize-frozen-candidate.test.mjs",
+      "scripts/agent-runtime/cli/native-acceptance.test.mjs",
+      "scripts/agent-runtime/cli/public-docs.test.mjs",
+      "scripts/agent-runtime/cli/published-cli-v1.test.mjs",
+      "scripts/agent-runtime/cli/run-candidate-live-acceptance.mjs",
+      "scripts/agent-runtime/cli/run-cli-tests.mjs",
+      "scripts/agent-runtime/cli/run-compact-create-tests.mjs",
+      "scripts/agent-runtime/cli/run-compact-update-tests.mjs",
+      "scripts/agent-runtime/cli/run-direct-lifecycle-tests.mjs",
+      "scripts/agent-runtime/cli/run-direct-pinned-tests.mjs",
+      "scripts/agent-runtime/cli/run-direct-reminder-tests.mjs",
+      "scripts/agent-runtime/cli/run-direct-source-transition-tests.mjs",
+      "scripts/agent-runtime/cli/run-direct-timer-session-tests.mjs",
+      "scripts/agent-runtime/cli/run-guided-maintenance-command-tests.mjs",
+      "scripts/agent-runtime/cli/run-guided-source-transition-tests.mjs",
+      "scripts/agent-runtime/cli/run-human-command-golden-tests.mjs",
+      "scripts/agent-runtime/cli/run-interactive-terminal-tests.mjs",
+      "scripts/agent-runtime/cli/run-meeting-agent-acceptance.mjs",
+      "scripts/agent-runtime/cli/run-package-tests.mjs",
+      "scripts/agent-runtime/cli/run-phase9-client-tests.mjs",
+      "scripts/agent-runtime/cli/run-session-jsonl-tests.mjs",
+      "scripts/agent-runtime/cli/schema-entrypoints.test.mjs"
+    ],
+    "workflowRunnerTargetsBeforeCutover": [
+      { "workflow": ".github/workflows/cli-ci.yml", "path": "scripts/agent-runtime/cli/hosted-portability.test.mjs" },
+      { "workflow": ".github/workflows/cli-ci.yml", "path": "scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs" },
+      { "workflow": ".github/workflows/cli-ci.yml", "path": "scripts/agent-runtime/cli/run-phase9-client-tests.mjs" },
+      { "workflow": ".github/workflows/cli-ci.yml", "path": "scripts/agent-runtime/contracts/run-contract-tests.mjs" },
+      { "workflow": ".github/workflows/cli-ci.yml", "path": "scripts/agent-runtime/receipts/receipt-benchmark.test.mjs" },
+      { "workflow": ".github/workflows/cli-live-acceptance.yml", "path": "scripts/agent-runtime/cli/aggregate-native-acceptance.mjs" },
+      { "workflow": ".github/workflows/cli-live-acceptance.yml", "path": "scripts/agent-runtime/cli/run-candidate-live-acceptance.mjs" },
+      { "workflow": ".github/workflows/cli-native-candidate.yml", "path": "scripts/agent-runtime/cli/write-native-candidate-evidence.mjs" },
+      { "workflow": ".github/workflows/cli-publish.yml", "path": "scripts/agent-runtime/cli/check-release-tag.mjs" },
+      { "workflow": ".github/workflows/cli-publish.yml", "path": "scripts/agent-runtime/cli/verify-hosted-portability.mjs" },
+      { "workflow": ".github/workflows/cli-publish.yml", "path": "scripts/agent-runtime/cli/verify-public-plugin-release-evidence.mjs" },
+      { "workflow": ".github/workflows/cli-publish.yml", "path": "scripts/agent-runtime/cli/verify-published-release.mjs" },
+      { "workflow": ".github/workflows/cli-publish.yml", "path": "scripts/agent-runtime/cli/verify-release-candidate.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/aggregate-hosted-portability.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/materialize-frozen-candidate.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/run-hosted-transport-security-tests.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/verify-hosted-candidate-install.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/verify-hosted-portability.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/verify-public-plugin-release-evidence.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/verify-release-candidate.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/write-hosted-portability-evidence.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/write-public-plugin-release-evidence.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/cli/write-release-candidate-evidence.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/contracts/run-contract-tests.mjs" },
+      { "workflow": ".github/workflows/cli-release-ready.yml", "path": "scripts/agent-runtime/receipts/receipt-benchmark.test.mjs" }
+    ],
+    "retiredRunners": [
+      { "path": "scripts/agent-runtime/cli/run-cli-tests.mjs", "replacementPath": "test/unit/client-core.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-compact-create-tests.mjs", "replacementPath": "test/unit/compact-create.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-compact-update-tests.mjs", "replacementPath": "test/unit/compact-update.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-direct-lifecycle-tests.mjs", "replacementPath": "test/unit/direct-lifecycle.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-direct-pinned-tests.mjs", "replacementPath": "test/unit/direct-pinned.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-direct-reminder-tests.mjs", "replacementPath": "test/unit/direct-reminder.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-direct-source-transition-tests.mjs", "replacementPath": "test/unit/direct-source-transitions.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-direct-timer-session-tests.mjs", "replacementPath": "test/unit/direct-timer-session.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-guided-maintenance-command-tests.mjs", "replacementPath": "test/unit/guided-maintenance-command.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-guided-source-transition-pty-tests.mjs", "replacementPath": "scripts/run-process-tests.mjs" },
+      { "path": "scripts/agent-runtime/cli/run-guided-source-transition-tests.mjs", "replacementPath": "test/unit/guided-source-transitions.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-human-command-golden-tests.mjs", "replacementPath": "test/unit/human-command-golden.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-interactive-terminal-tests.mjs", "replacementPath": "scripts/run-process-tests.mjs" },
+      { "path": "scripts/agent-runtime/cli/run-phase9-client-tests.mjs", "replacementPath": "test/unit/phase9-client.test.ts" },
+      { "path": "scripts/agent-runtime/cli/run-session-jsonl-tests.mjs", "replacementPath": "test/transport/session-jsonl.test.ts" }
+    ],
+    "historicalReferencePaths": [
+      "contracts/agent-runtime/public-v1-freeze.json"
+    ],
+    "policyReferencePaths": [
+      "scripts/agent-runtime/contracts/run-contract-tests.mjs",
+      "scripts/analyze-production-bundle.test.mjs",
+      "scripts/release-guard.mjs"
+    ],
+    "requiredAbsentPaths": [
+      ".github/workflows/cli-ci.yml",
+      ".github/workflows/cli-live-acceptance.yml",
+      ".github/workflows/cli-native-candidate.yml",
+      ".github/workflows/cli-publish.yml",
+      ".github/workflows/cli-release-ready.yml",
+      "packages/operon-cli"
+    ],
+    "requiredRetainedPaths": [
+      ".github/workflows/cli-external-compatibility.yml",
+      "contracts/agent-runtime/published-cli-v1.json",
+      "contracts/agent-runtime/published-cli-v1.schema.json",
+      "scripts/agent-runtime/cli/check-published-cli-binding.mjs",
+      "scripts/agent-runtime/cli/run-meeting-agent-acceptance.mjs",
+      "scripts/release/run-published-cli-live-acceptance.mjs",
+      "scripts/release/run-published-cli-stage7-performance.mjs"
+    ],
+    "targetCounts": {
+      "activeReferences": 0,
+      "directSourceImports": 0,
+      "orphanRunners": 0
+    }
   }
 }

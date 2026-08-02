@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,15 @@ const scriptPath = fileURLToPath(import.meta.url);
 const pluginRoot = path.resolve(path.dirname(scriptPath), '../../..');
 const schemaRoot = path.join(pluginRoot, 'contracts', 'agent-runtime', 'v1');
 const baselinePath = path.join(pluginRoot, 'contracts', 'agent-runtime', 'public-v1-baseline.json');
+const PUBLISHED_CLI_V1_EXTERNAL_SURFACE = Object.freeze({
+	cliManifestSha256: '5bc2d14a94f2edec2154d3df901291ff9895a6372ad16dac0bf0ef26ea389c6a',
+	schemaDocuments: Object.freeze({
+		'operon-cli/cli-manifest.schema.json': 'defc68eb6472bff0d7a5e7b10d0f7eb31abf2e8d08ec3648452e83515b5e74d9',
+		'operon-cli/operon-cli-local.schema.json': '51d85837e26426d055aff0680f24c9e45c397456d26f1cfa84a0f05f922428c0',
+		'operon-cli/session.schema.json': 'b9c7eee114339769c239f4f16a05458eff8aba71b5bc8b1205ae2546de1bea31',
+	}),
+	controlSurfaceSha256: '1d6f49861c0fcf857ff0e13dae562ac3216741457ef253479e02ec90057aab1b',
+});
 
 const INPUT_ENTRYPOINTS_V1 = new Set([
 	'catalog-request',
@@ -183,6 +193,30 @@ function assertFrozenExternalSurface(snapshot, binding) {
 	if (binding.runtime.contractDigest !== '407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b') {
 		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_CONTRACT_DIGEST_MISMATCH');
 	}
+	if (binding.artifact.cliManifest.sha256 !== PUBLISHED_CLI_V1_EXTERNAL_SURFACE.cliManifestSha256) {
+		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_MANIFEST_IDENTITY_MISMATCH');
+	}
+	for (const [key, expectedSha256] of Object.entries(PUBLISHED_CLI_V1_EXTERNAL_SURFACE.schemaDocuments)) {
+		const document = snapshot.schemaDocuments?.[key];
+		if (!document || canonicalJsonSha256(document) !== expectedSha256) {
+			throw new Error(`OPERON_PUBLIC_V1_EXTERNAL_SCHEMA_IDENTITY_MISMATCH:${key}`);
+		}
+	}
+	const controlSurface = {
+		entrypoints: snapshot.entrypoints,
+		errorRegistry: snapshot.errorRegistry,
+		capabilities: snapshot.capabilities,
+		exitCodes: snapshot.exitCodes,
+		deprecations: snapshot.deprecations,
+		contractPolicy: snapshot.contractPolicy.cli,
+	};
+	if (canonicalJsonSha256(controlSurface) !== PUBLISHED_CLI_V1_EXTERNAL_SURFACE.controlSurfaceSha256) {
+		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_CONTROL_SURFACE_MISMATCH');
+	}
+}
+
+function canonicalJsonSha256(value) {
+	return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
 export function classifyPublicV1SnapshotDiffV1(baseline, current) {

@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
 	buildPublicV1Snapshot,
+	checkPublicV1Baseline,
 	classifyPublicV1SnapshotDiffV1,
 } from './check-public-v1-baseline.mjs';
 
@@ -70,6 +74,29 @@ test('raw schema direction drift remains manual-blocking', () => {
 	current.schemaDirections['fixture.schema.json']['/'] = 'input';
 	const changes = classifyPublicV1SnapshotDiffV1(baseline, current);
 	assert.ok(changes.some(change => change.kind === 'schema-direction-changed'));
+});
+
+test('published CLI-only schemas and manifest registries are independently identity locked', async () => {
+	const source = new URL('../../../contracts/agent-runtime/public-v1-baseline.json', import.meta.url);
+	const original = JSON.parse(await readFile(source, 'utf8'));
+	const root = await mkdtemp(path.join(tmpdir(), 'operon-public-v1-external-'));
+	const target = path.join(root, 'public-v1-baseline.json');
+
+	const schemaDrift = structuredClone(original);
+	schemaDrift.schemaDocuments['operon-cli/session.schema.json'].title = 'drift';
+	await writeFile(target, `${JSON.stringify(schemaDrift, null, 2)}\n`);
+	await assert.rejects(
+		checkPublicV1Baseline({ baselinePath: target, externalBaselinePath: target }),
+		/OPERON_PUBLIC_V1_EXTERNAL_SCHEMA_IDENTITY_MISMATCH/u,
+	);
+
+	const registryDrift = structuredClone(original);
+	registryDrift.errorRegistry[0].description = 'drift';
+	await writeFile(target, `${JSON.stringify(registryDrift, null, 2)}\n`);
+	await assert.rejects(
+		checkPublicV1Baseline({ baselinePath: target, externalBaselinePath: target }),
+		/OPERON_PUBLIC_V1_EXTERNAL_CONTROL_SURFACE_MISMATCH/u,
+	);
 });
 
 function snapshotWithSchema(document) {

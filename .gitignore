@@ -33,7 +33,6 @@ pnpm-debug.log*
 /build/stage51/
 *.tgz
 *.zip
-packages/operon-cli/release/
 
 # Vault-local validation harness. Keep these out of the public source repo.
 PHASE5-ACCEPTANCE.md

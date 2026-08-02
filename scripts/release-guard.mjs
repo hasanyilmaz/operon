@@ -580,12 +580,7 @@ function checkWorkflowSecurityPolicy() {
 	const exactSetupNodeRevision = '820762786026740c76f36085b0efc47a31fe5020';
 	const exactWorkflowPermissions = new Map([
 		['ci.yml', ['contents: read']],
-		['cli-ci.yml', ['contents: read']],
 		['cli-external-compatibility.yml', ['contents: read']],
-		['cli-live-acceptance.yml', ['actions: read', 'attestations: write', 'contents: read', 'id-token: write']],
-		['cli-native-candidate.yml', ['attestations: write', 'contents: read', 'id-token: write']],
-		['cli-publish.yml', ['actions: read', 'attestations: read', 'contents: read', 'id-token: write']],
-		['cli-release-ready.yml', ['contents: read', 'id-token: write', 'attestations: write']],
 		['codeql.yml', ['actions: read', 'contents: read', 'security-events: write']],
 		['release.yml', ['contents: write', 'id-token: write', 'attestations: write']],
 	]);
@@ -647,153 +642,19 @@ function checkWorkflowSecurityPolicy() {
 	if (exactWorkflowPermissions.size !== workflows.length) {
 		fail('workflow permission policy must cover every checked-in workflow');
 	}
-	if (!/^permissions:\s*\n\s{2}contents:\s+read\s*$/mu.test(readText('.github/workflows/cli-ci.yml'))) {
-		fail('.github/workflows/cli-ci.yml: workflow must explicitly grant only contents: read');
-	}
-	const publishWorkflow = readText('.github/workflows/cli-publish.yml');
-	const publishCommandPattern = /npm publish \.\/candidate\/\*\.tgz[\s\S]+--access public[\s\S]+--tag latest[\s\S]+--provenance/u;
-	for (const [stepName, authenticationMode] of [
-		['Publish first approved stable release with temporary token and provenance', 'bootstrap-token'],
-		['Publish approved stable release through npm trusted publishing', 'trusted-publisher'],
-	]) {
-		const escapedStepName = stepName.replace(/[.*+?^\${}()|[\]\\]/gu, '\\$&');
-		const stepBlock = publishWorkflow.match(
-			new RegExp(`- name: ${escapedStepName}\\n[\\s\\S]*?(?=\\n\\s+- name: )`, 'u'),
-		)?.[0];
-		if (!stepBlock) {
-			fail(`.github/workflows/cli-publish.yml: missing ${authenticationMode} publish step`);
-			continue;
-		}
-		if (!new RegExp(`if: inputs\\.authentication_mode == '${authenticationMode}'`, 'u').test(stepBlock)) {
-			fail(`.github/workflows/cli-publish.yml: ${authenticationMode} publish step must be gated by its exact authentication mode`);
-		}
-		if (!publishCommandPattern.test(stepBlock)) {
-			fail(`.github/workflows/cli-publish.yml: ${authenticationMode} must publish the explicit ./candidate/*.tgz local path with stable flags`);
-		}
-		if ((stepBlock.match(/npm publish \.\/candidate\/\*\.tgz/gu)?.length ?? 0) !== 1) {
-			fail(`.github/workflows/cli-publish.yml: ${authenticationMode} must contain exactly one local tarball publish command`);
-		}
-	}
-	if (/npm publish candidate\/\*\.tgz/u.test(publishWorkflow)) {
-		fail('.github/workflows/cli-publish.yml: bare candidate/*.tgz can be parsed as GitHub shorthand by npm');
-	}
 
-	for (const workflow of [
+	const retiredCliPaths = [
+		'.github/workflows/cli-ci.yml',
+		'.github/workflows/cli-live-acceptance.yml',
 		'.github/workflows/cli-native-candidate.yml',
+		'.github/workflows/cli-publish.yml',
 		'.github/workflows/cli-release-ready.yml',
-	]) {
-		const text = readText(workflow);
-		const installIndex = text.indexOf('run: npm ci');
-		const auditIndex = text.indexOf('run: npm run release:audit-policy');
-		const guardIndex = text.indexOf('run: npm run release:guard');
-		if (installIndex < 0 || auditIndex < installIndex || guardIndex < auditIndex) {
-			fail(`${workflow}: stable candidate must run npm ci, audit policy, and release guard in order`);
+		'packages/operon-cli',
+	];
+	for (const relativePath of retiredCliPaths) {
+		if (fs.existsSync(path.join(rootDir, relativePath))) {
+			fail(`${relativePath}: retired embedded CLI path must remain absent`);
 		}
-	}
-	const releaseReadyWorkflow = readText('.github/workflows/cli-release-ready.yml');
-	const hostedJobHeader = '  hosted-portability:\n';
-	const hostedJobStart = releaseReadyWorkflow.indexOf(hostedJobHeader);
-	const hostedJobRemainder = hostedJobStart < 0
-		? ''
-		: releaseReadyWorkflow.slice(hostedJobStart + hostedJobHeader.length);
-	const nextJobOffset = hostedJobRemainder.search(/^  [a-z0-9-]+:\s*$/mu);
-	const hostedJob = nextJobOffset < 0
-		? hostedJobRemainder
-		: hostedJobRemainder.slice(0, nextJobOffset);
-	if (hostedJobStart < 0 || hostedJob === '') {
-		fail('.github/workflows/cli-release-ready.yml: hosted-portability job is missing');
-	}
-	if (/execFileSync\([^\n]*npm(?:\.cmd)?/u.test(hostedJob)) {
-		fail('.github/workflows/cli-release-ready.yml: Windows npm shims must not be launched with execFileSync');
-	}
-	const npmVerification = [
-		'- name: Verify exact npm version',
-		'        shell: bash',
-		'        run: test "$(npm --version)" = "11.12.1"',
-	].join('\n');
-	const pinIndex = hostedJob.indexOf('- name: Pin portability npm');
-	const bindingIndex = hostedJob.indexOf('- name: Bind pinned Windows npm CLI');
-	const bindingEnvironmentIndex = hostedJob.indexOf('OPERON_ACCEPTANCE_NPM_CLI_JS=$npmCli');
-	const verificationIndex = hostedJob.indexOf(npmVerification);
-	const helperVerificationIndex = hostedJob.indexOf('- name: Verify exact helper npm identity');
-	const helperCallIndex = hostedJob.indexOf("execNpmV1(['--version'], { encoding: 'utf8' })");
-	const installIndex = hostedJob.indexOf('- run: npm ci');
-	if (
-		pinIndex < 0
-		|| bindingIndex < pinIndex
-		|| bindingEnvironmentIndex < bindingIndex
-		|| verificationIndex < bindingEnvironmentIndex
-		|| helperVerificationIndex < verificationIndex
-		|| helperCallIndex < helperVerificationIndex
-		|| installIndex < helperCallIndex
-	) {
-		fail('.github/workflows/cli-release-ready.yml: hosted portability must bind and verify the pinned npm CLI before install');
-	}
-	const liveAcceptanceWorkflow = readText('.github/workflows/cli-live-acceptance.yml');
-	for (const expected of [
-		'- name: Bind pinned Windows npm CLI',
-		'OPERON_ACCEPTANCE_NPM_CLI_JS=$npmCli',
-		'Pinned npm prefix lookup failed with exit code',
-		'Pinned npm CLI execution failed with exit code',
-		'- name: Verify exact npm version',
-		'run: test "$(npm --version)" = "11.12.1"',
-		'- name: Verify exact helper npm identity',
-		"execNpmV1(['--version'], { encoding: 'utf8' })",
-	]) {
-		if (!liveAcceptanceWorkflow.includes(expected)) {
-			fail(`.github/workflows/cli-live-acceptance.yml: missing pinned npm identity guard ${JSON.stringify(expected)}`);
-		}
-	}
-	const livePinIndex = liveAcceptanceWorkflow.indexOf('- name: Pin acceptance npm');
-	const liveBindingIndex = liveAcceptanceWorkflow.indexOf('- name: Bind pinned Windows npm CLI');
-	const liveBindingEnvironmentIndex = liveAcceptanceWorkflow.indexOf('OPERON_ACCEPTANCE_NPM_CLI_JS=$npmCli');
-	const liveVerificationIndex = liveAcceptanceWorkflow.indexOf(npmVerification);
-	const liveHelperVerificationIndex = liveAcceptanceWorkflow.indexOf('- name: Verify exact helper npm identity');
-	const liveHelperCallIndex = liveAcceptanceWorkflow.indexOf("execNpmV1(['--version'], { encoding: 'utf8' })");
-	const liveInstallIndex = liveAcceptanceWorkflow.indexOf('- run: npm ci');
-	if (
-		livePinIndex < 0
-		|| liveBindingIndex < livePinIndex
-		|| liveBindingEnvironmentIndex < liveBindingIndex
-		|| liveVerificationIndex < liveBindingEnvironmentIndex
-		|| liveHelperVerificationIndex < liveVerificationIndex
-		|| liveHelperCallIndex < liveHelperVerificationIndex
-		|| liveInstallIndex < liveHelperCallIndex
-	) {
-		fail('.github/workflows/cli-live-acceptance.yml: acceptance must bind and verify the pinned npm CLI before install');
-	}
-	for (const [candidateScript, expectedCalls] of [
-		[
-			'scripts/agent-runtime/cli/verify-hosted-candidate-install.mjs',
-			[
-				"execNpmV1(\n\t\t['install', '--global'",
-				"execNpmV1(\n\t\t['root', '--global'",
-				"execNpmV1(\n\t\t['uninstall', '--global'",
-			],
-		],
-		[
-			'scripts/agent-runtime/cli/write-hosted-portability-evidence.mjs',
-			["execNpmV1(['--version']"],
-		],
-	]) {
-		const candidateScriptText = readText(candidateScript);
-		const helperCallCount = candidateScriptText.match(/\bexecNpmV1\s*\(/gu)?.length ?? 0;
-		if (helperCallCount !== expectedCalls.length) {
-			fail(`${candidateScript}: expected ${expectedCalls.length} cross-platform npm helper calls, got ${helperCallCount}`);
-		}
-		for (const expectedCall of expectedCalls) {
-			if (!candidateScriptText.includes(expectedCall)) {
-				fail(`${candidateScript}: missing canonical npm helper call ${JSON.stringify(expectedCall)}`);
-			}
-		}
-		if (!/import\s+\{\s*execNpmV1\s*\}\s+from\s+['"]\.\/live-acceptance-platform\.mjs['"]/u.test(candidateScriptText)) {
-			fail(`${candidateScript}: must import the canonical cross-platform npm helper`);
-		}
-		assertNoMatch(
-			candidateScript,
-			/(?:execFileSync|spawnSync)\s*\(\s*(?:['"]npm(?:\.cmd)?['"]|npmCommand(?:V1)?\b)|['"]npm\.cmd['"]|\bnpmCommandV1\b|\bconst\s+npmCommand\b/u,
-			'Windows npm command shims or alternate npm launch paths must not be used',
-		);
 	}
 }
 
@@ -882,7 +743,6 @@ function checkRepositoryIgnorePolicy() {
 		'cache/private.json',
 		'build/agent-runtime-cas-baseline/private.mjs',
 		'build/stage51/private.mjs',
-		'packages/operon-cli/release/private.tgz',
 	];
 	for (const relativePath of privateArtifacts) {
 		if (!isGitIgnored(relativePath)) {
