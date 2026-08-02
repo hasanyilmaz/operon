@@ -7,12 +7,12 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
 const vaultPath = realpathSync(process.argv[2] ?? '/private/tmp/operon-agent-runtime-phase1-v1');
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const dailyRelativePath = 'Daily/2026-01-15.md';
 const cliConfigRoot = mkdtempSync(path.join(tmpdir(), 'operon-phase8-warm-cli-'));
 process.on('exit', () => {

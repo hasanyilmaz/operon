@@ -13,6 +13,10 @@ const source = readFileSync(
 );
 const runnerPath = path.join(scriptDirectory, 'live-recurrence-acceptance.mjs');
 const packageJson = JSON.parse(readFileSync(path.join(pluginRoot, 'package.json'), 'utf8'));
+const publishedLiveSource = readFileSync(
+	path.join(pluginRoot, 'scripts/release/run-published-cli-live-acceptance.mjs'),
+	'utf8',
+);
 
 test('recurrence acceptance is fixed to the reusable sanitized CLI vault', () => {
 	assert.match(source, /vaultPath,\s*'\/private\/tmp\/cli-test-vault'/u);
@@ -128,15 +132,18 @@ test('an invalid phase is rejected before the runner can contact the Runtime', (
 	assert.match(rejected.stderr, /Expected run, happy, prepare or recover phase/u);
 });
 
-test('the static recurrence contract is wired into standard mutation characterization', () => {
+test('the recurrence contract stays in normal checks while live execution uses the verified published lane', () => {
 	assert.match(
 		packageJson.scripts['agent-runtime:mutation:characterization'],
 		/live-recurrence-acceptance\.contract\.test\.mjs/u,
 	);
 	assert.equal(
-		packageJson.scripts['agent-runtime:mutation:live:recurrence'],
-		'node scripts/agent-runtime/mutation/live-recurrence-acceptance.mjs run',
+		packageJson.scripts['agent-runtime:mutation:live:published'],
+		'node scripts/release/run-published-cli-live-acceptance.mjs',
 	);
+	assert.match(source, /requirePublishedCliExecutable/u);
+	assert.match(publishedLiveSource, /withVerifiedPublishedCli/u);
+	assert.doesNotMatch(publishedLiveSource, /OPERON_CLI_EXECUTABLE/u);
 });
 
 function between(startMarker, endMarker) {

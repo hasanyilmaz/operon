@@ -16,6 +16,7 @@ import {
 import { arch, hostname, platform, release } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 import {
 	assertCliSpeedStage1Vault,
@@ -35,7 +36,7 @@ const pluginRoot = path.resolve(scriptDirectory, '../../..');
 const checkpointDirectory = path.dirname(STAGE7_CHECKPOINT_PATH);
 const workerPath = path.join(scriptDirectory, 'cli-speed-stage7-session.mjs');
 const corePath = path.join(scriptDirectory, 'cli-speed-stage7-core.mjs');
-const candidateCli = path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const candidateCli = await requirePublishedCliExecutable(pluginRoot);
 const candidatePlugin = path.join(pluginRoot, 'main.js');
 const probePlugin = path.join(pluginRoot, 'build/agent-runtime-probe/main.js');
 const stage6Evidence =
@@ -192,7 +193,6 @@ if (executionError) {
 
 function buildArtifacts() {
 	for (const args of [
-		['packages/operon-cli/build.mjs'],
 		['esbuild.config.mjs', 'production'],
 		['esbuild.config.mjs', 'production-agent-runtime-probe'],
 	]) {

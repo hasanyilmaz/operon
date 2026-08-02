@@ -6,15 +6,15 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
 const cliTestVault = '/private/tmp/cli-test-vault';
-const typedCreateVault = '/private/tmp/operon-agent-runtime-phase1-v1';
+const typedCreateVault = process.argv[2] ?? '/private/tmp/operon-agent-runtime-phase1-v1';
 const resetRunner = path.join(scriptDirectory, 'run-live-phase8-reset.mjs');
 const phase8Runner = path.join(scriptDirectory, 'run-live-phase8-completion.mjs');
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 
 const evidence = {};
 try {

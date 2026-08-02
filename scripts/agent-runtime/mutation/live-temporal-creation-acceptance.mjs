@@ -16,6 +16,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const TEMPORAL_CREATE_KEYS = [
 	'reminderDatetimes',
@@ -41,8 +42,7 @@ const cliConfigRoot = mkdtempSync(path.join(tmpdir(), 'operon-a4-temporal-cli-')
 process.on('exit', () => {
 	rmSync(cliConfigRoot, { recursive: true, force: true });
 });
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const settingsPath = path.join(vaultPath, '.obsidian/plugins/operon/data.json');
 const repeatSeriesPath = path.join(
 	vaultPath,

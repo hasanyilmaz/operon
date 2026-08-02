@@ -16,6 +16,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const vaultPath = realpathSync('/private/tmp/cli-test-vault');
@@ -25,8 +26,7 @@ const phase = process.argv[2] ?? 'happy';
 assert.ok(['happy', 'prepare', 'recover'].includes(phase));
 assert.equal(process.argv.length, 3);
 
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const fixedTempRoot = realpathSync(process.platform === 'darwin' ? '/private/tmp' : tmpdir());
 const configRoot = phase === 'happy'
 	? path.join(fixedTempRoot, 'operon-a12-timer-happy-cli')

@@ -20,6 +20,7 @@ import {
 	assertPhase8CompletionFamilies,
 	selectPhase8MutationFamilies,
 } from './phase8-capability-selection.mjs';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
@@ -36,8 +37,7 @@ process.on('exit', () => {
 	rmSync(cliConfigRoot, { recursive: true, force: true });
 });
 
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const dailyRelativePath = 'Daily/2026-01-15.md';
 const dailyPath = path.join(vaultPath, dailyRelativePath);
 const settingsPath = path.join(vaultPath, '.obsidian/plugins/operon/data.json');

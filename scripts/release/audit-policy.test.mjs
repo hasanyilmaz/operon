@@ -13,10 +13,8 @@ const policy = readJson('contracts/release/dev-audit-policy-v1.json');
 const production = readJson('scripts/release/fixtures/production-clean.json');
 const rootPackage = readJson('package.json');
 const packageLock = readJson('package-lock.json');
-const cliPackage = readJson('packages/operon-cli/package.json');
 const cleanArtifactMetafiles = {
 	plugin: { inputs: { 'main.ts': { bytes: 1 } } },
-	cli: { inputs: { 'packages/operon-cli/src/main.ts': { bytes: 1 } } },
 };
 
 function cleanFullReport() {
@@ -30,7 +28,6 @@ function evaluate(overrides = {}) {
 		fullReport: cleanFullReport(),
 		packageLock,
 		rootPackage,
-		cliPackage,
 		artifactMetafiles: cleanArtifactMetafiles,
 		...overrides,
 	});
@@ -115,12 +112,6 @@ test('rejects malformed or arithmetically inconsistent audit count metadata', ()
 	}
 });
 
-test('rejects a forbidden development package in CLI runtime dependencies', () => {
-	const cli = structuredClone(cliPackage);
-	cli.dependencies = { minimatch: '10.2.5' };
-	assert.match(evaluate({ cliPackage: cli }).failures.join('\n'), /forbidden development package/u);
-});
-
 test('rejects a forbidden package marker in a shipped runtime artifact', () => {
 	const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'operon-audit-policy-'));
 	try {
@@ -134,20 +125,30 @@ test('rejects a forbidden package marker in a shipped runtime artifact', () => {
 	}
 });
 
-test('rejects forbidden packages in plugin or CLI bundle provenance', () => {
-	for (const artifact of ['plugin', 'cli']) {
-		const artifactMetafiles = structuredClone(cleanArtifactMetafiles);
-		artifactMetafiles[artifact].inputs['node_modules/minimatch/dist/commonjs/index.js'] = { bytes: 1 };
-		assert.match(
-			evaluate({ artifactMetafiles }).failures.join('\n'),
-			new RegExp(`${artifact} bundle includes development audit package minimatch`, 'u'),
-		);
-	}
+test('rejects forbidden packages in plugin bundle provenance', () => {
+	const artifactMetafiles = structuredClone(cleanArtifactMetafiles);
+	artifactMetafiles.plugin.inputs['node_modules/minimatch/dist/commonjs/index.js'] = { bytes: 1 };
+	assert.match(
+		evaluate({ artifactMetafiles }).failures.join('\n'),
+		/plugin bundle includes development audit package minimatch/u,
+	);
+});
+
+test('root release audit does not require or inspect standalone CLI bundle provenance', () => {
+	const result = evaluate({
+		artifactMetafiles: {
+			...cleanArtifactMetafiles,
+			cli: {
+				inputs: { 'node_modules/minimatch/dist/commonjs/index.js': { bytes: 1 } },
+			},
+		},
+	});
+	assert.deepEqual(result.failures, []);
 });
 
 test('fails closed when bundle provenance is unavailable', () => {
 	assert.match(
-		evaluate({ artifactMetafiles: { plugin: cleanArtifactMetafiles.plugin } }).failures.join('\n'),
-		/cli bundle metafile is unavailable or malformed/u,
+		evaluate({ artifactMetafiles: {} }).failures.join('\n'),
+		/plugin bundle metafile is unavailable or malformed/u,
 	);
 });

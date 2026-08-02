@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const GRAPH_TRANSACTION_FEATURES = [
 	'vault-wide-graph-transaction',
@@ -40,8 +41,7 @@ assert.equal(path.dirname(vaultPath), expectedTempRoot, 'Live acceptance target 
 assert.match(path.basename(vaultPath), /^operon-agent-runtime-phase1-[A-Za-z0-9._-]+$/u);
 assert.ok(['run', 'prepare', 'recover'].includes(phase), 'Expected run, prepare or recover phase.');
 
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const configRoot = path.join(expectedTempRoot, 'operon-a6-graph-recovery-cli');
 const statePath = path.join(expectedTempRoot, 'operon-a6-graph-recovery-state.json');
 
@@ -216,7 +216,7 @@ function runPhase(targetPhase) {
 			encoding: 'utf8',
 			env: {
 				...process.env,
-				OPERON_CLI_EXECUTABLE: cliArtifact,
+				OPERON_PUBLISHED_CLI_EXECUTABLE: cliArtifact,
 			},
 			maxBuffer: 4 * 1_024 * 1_024,
 		},

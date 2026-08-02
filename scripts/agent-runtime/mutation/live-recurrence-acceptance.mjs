@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
@@ -43,8 +44,7 @@ assert.equal(
 	'Recurrence acceptance is restricted to /private/tmp/cli-test-vault.',
 );
 
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const runtimeTempRoot = realpathSync(tmpdir());
 const requestRoot = path.join(
 	runtimeTempRoot,
@@ -526,7 +526,7 @@ function runPhase(targetPhase) {
 			encoding: 'utf8',
 			env: {
 				...process.env,
-				OPERON_CLI_EXECUTABLE: cliArtifact,
+				OPERON_PUBLISHED_CLI_EXECUTABLE: cliArtifact,
 			},
 			maxBuffer: 4 * 1_024 * 1_024,
 		},

@@ -13,6 +13,7 @@ import {
 	sanitizedChildEnvironment,
 	verifyCanonicalPluginInputs,
 	verifyTarballIdentity,
+	withVerifiedPublishedCli,
 } from './published-cli-v1.mjs';
 import { readArtifactArguments } from './check-published-cli-artifact.mjs';
 
@@ -119,5 +120,13 @@ test('artifact arguments require one candidate and reject duplicate flags', () =
 	assert.throws(
 		() => readArtifactArguments(['--legacy-tarball', '/tmp/legacy.tgz']),
 		/OPERON_PUBLISHED_CLI_ARTIFACT_USAGE/u,
+	);
+});
+
+test('verified CLI callback API rejects a missing callback before artifact access', async () => {
+	const { binding } = await loadPublishedCliBinding();
+	await assert.rejects(
+		withVerifiedPublishedCli('/not/read/without/a/callback.tgz', binding, null),
+		/OPERON_PUBLISHED_CLI_CALLBACK_REQUIRED/u,
 	);
 });

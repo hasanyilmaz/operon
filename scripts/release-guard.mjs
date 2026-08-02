@@ -899,11 +899,16 @@ function checkRepositoryIgnorePolicy() {
 function checkReleaseAuditPolicy() {
 	for (const file of [
 		'contracts/release/dev-audit-policy-v1.json',
+		'contracts/agent-runtime/public-v1-freeze.json',
 		'scripts/check-release-audit-policy.mjs',
+		'scripts/agent-runtime/contracts/check-historical-public-v1-freeze.mjs',
+		'scripts/agent-runtime/contracts/check-historical-public-v1-freeze.test.mjs',
 		'scripts/release/audit-policy.mjs',
 		'scripts/release/audit-policy.test.mjs',
 		'scripts/release/check-accepted-freeze.mjs',
 		'scripts/release/check-accepted-freeze.test.mjs',
+		'scripts/release/run-published-cli-live-acceptance.mjs',
+		'scripts/release/run-published-cli-live-acceptance.test.mjs',
 	]) {
 		if (!fs.existsSync(path.join(rootDir, file))) {
 			fail(`${file}: required release audit-policy artifact is missing`);
@@ -943,11 +948,22 @@ function checkReleaseAuditPolicy() {
 		fail('contracts/release/dev-audit-policy-v1.json must exactly match the approved clean audit policy');
 	}
 
+	const historicalFreezeBytes = fs.readFileSync(
+		path.join(rootDir, 'contracts/agent-runtime/public-v1-freeze.json'),
+	);
+	assertEqual('historical Public V1 freeze size', historicalFreezeBytes.byteLength, 7178);
+	assertEqual(
+		'historical Public V1 freeze SHA-256',
+		createHash('sha256').update(historicalFreezeBytes).digest('hex'),
+		'41c83bcbcbc8b8117c1e9989d7d430e03f2257c0004ba2af94363f203f4bf71b',
+	);
+
 	const packageText = readText('package.json');
 	for (const command of [
 		'npm run release:audit-policy:test',
 		'npm run release:notes:test',
 		'npm run release:freeze:test',
+		'npm run release:external-live:test',
 		'npm run docs:public-v1:test',
 	]) {
 		if (!packageText.includes(command)) {
@@ -959,6 +975,53 @@ function checkReleaseAuditPolicy() {
 		'"release:freeze:check": "node scripts/release/check-accepted-freeze.mjs"',
 		'package scripts must expose the release-only accepted-freeze check',
 	);
+	assertIncludes(
+		'package.json',
+		'"agent-runtime:historical-freeze:check": "node scripts/agent-runtime/contracts/check-historical-public-v1-freeze.mjs"',
+		'normal validation must expose the immutable historical freeze check',
+	);
+	assertIncludes(
+		'package.json',
+		'"agent-runtime:historical-freeze:test": "node --test scripts/agent-runtime/contracts/check-historical-public-v1-freeze.test.mjs"',
+		'normal validation must test the immutable historical freeze boundary',
+	);
+	const packageManifest = JSON.parse(packageText);
+	if (
+		packageManifest.scripts?.['agent-runtime:mutation:live:published']
+		!== 'node scripts/release/run-published-cli-live-acceptance.mjs'
+	) {
+		fail('published Runtime live validation must use the exact verified-tarball wrapper');
+	}
+	const publishedLiveSource = readText('scripts/release/run-published-cli-live-acceptance.mjs');
+	for (const required of [
+		'withVerifiedPublishedCli',
+		"['--tarball', '--vault', '--output']",
+		'OPERON_PUBLISHED_CLI_LIVE_VAULT_INVALID',
+	]) {
+		if (!publishedLiveSource.includes(required)) {
+			fail(`published Runtime live wrapper is missing ${JSON.stringify(required)}`);
+		}
+	}
+	if (/process\.env\.OPERON_CLI_EXECUTABLE\s*\?\?/u.test(publishedLiveSource)) {
+		fail('published Runtime live wrapper must not accept a user-installed executable fallback');
+	}
+	if (/public-v1-freeze\.mjs --check/u.test(packageManifest.scripts?.['agent-runtime:contracts'] ?? '')) {
+		fail('normal contract validation must not regenerate or source-check the historical Public V1 freeze');
+	}
+	for (const command of [
+		'npm run agent-runtime:historical-freeze:test',
+		'npm run agent-runtime:historical-freeze:check',
+	]) {
+		if (!(packageManifest.scripts?.['agent-runtime:contracts'] ?? '').includes(command)) {
+			fail(`normal contract validation must run ${command}`);
+		}
+	}
+	if ((packageManifest.scripts?.check ?? '').includes('npm run release:freeze:check')) {
+		fail('normal validation must remain independent from the unaccepted external release freeze');
+	}
+	if (!(packageManifest.scripts?.['check:local'] ?? '').endsWith('&& npm run release:freeze:check')) {
+		fail('check:local must leave the accepted external-freeze check as its final stale gate');
+	}
 	if (!packageText.includes('"release:audit-policy": "node scripts/check-release-audit-policy.mjs"')) {
 		fail('package scripts must expose the canonical release audit-policy check');
 	}

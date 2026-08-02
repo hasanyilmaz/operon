@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
@@ -30,8 +31,7 @@ process.on('exit', () => {
 	rmSync(cliConfigRoot, { recursive: true, force: true });
 });
 
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const dailyPath = path.join(vaultPath, 'Daily/2026-01-15.md');
 const fileTaskPath = path.join(vaultPath, 'Tasks/Phase 7 synthetic child.md');
 const settingsPath = path.join(vaultPath, '.obsidian/plugins/operon/data.json');

@@ -101,7 +101,7 @@ function sameJson(left, right) {
 
 function runtimeArtifactFailures(rootDir, vulnerabilityNames) {
 	const failures = [];
-	for (const relativePath of ['main.js', 'packages/operon-cli/dist/operon.mjs']) {
+	for (const relativePath of ['main.js']) {
 		let text;
 		try {
 			text = readFileSync(path.join(rootDir, relativePath), 'utf8');
@@ -119,7 +119,7 @@ function runtimeArtifactFailures(rootDir, vulnerabilityNames) {
 
 function artifactProvenanceFailures(artifactMetafiles, vulnerabilityNames) {
 	const failures = [];
-	for (const artifact of ['plugin', 'cli']) {
+	for (const artifact of ['plugin']) {
 		const metafile = artifactMetafiles?.[artifact];
 		if (!metafile || typeof metafile !== 'object' || !metafile.inputs) {
 			failures.push(`${artifact} bundle metafile is unavailable or malformed.`);
@@ -141,7 +141,6 @@ function evaluateResolvedDevelopmentPolicy({
 	fullReport,
 	packageLock,
 	rootPackage,
-	cliPackage,
 	rootDir,
 	artifactMetafiles,
 }) {
@@ -182,18 +181,6 @@ function evaluateResolvedDevelopmentPolicy({
 	}
 
 	const forbiddenRuntimePackages = development.forbiddenRuntimePackages;
-	const cliRuntimeDependencies = {
-		...(cliPackage?.dependencies ?? {}),
-		...(cliPackage?.optionalDependencies ?? {}),
-	};
-	for (const name of forbiddenRuntimePackages) {
-		if (Object.hasOwn(cliRuntimeDependencies, name)) {
-			failures.push(`operon-cli runtime dependency includes forbidden development package ${name}.`);
-		}
-	}
-	if ((cliPackage?.files ?? []).some(file => file.includes('node_modules'))) {
-		failures.push('operon-cli package files must not include node_modules.');
-	}
 	failures.push(...artifactProvenanceFailures(artifactMetafiles, forbiddenRuntimePackages));
 	if (rootDir) failures.push(...runtimeArtifactFailures(rootDir, forbiddenRuntimePackages));
 
@@ -214,7 +201,6 @@ export function evaluateReleaseAuditPolicy({
 	fullReport,
 	packageLock,
 	rootPackage,
-	cliPackage,
 	rootDir,
 	artifactMetafiles,
 }) {
@@ -240,7 +226,6 @@ export function evaluateReleaseAuditPolicy({
 			fullReport,
 			packageLock,
 			rootPackage,
-			cliPackage,
 			rootDir,
 			artifactMetafiles,
 		});
@@ -351,18 +336,6 @@ export function evaluateReleaseAuditPolicy({
 		}
 	}
 
-	const cliRuntimeDependencies = {
-		...(cliPackage?.dependencies ?? {}),
-		...(cliPackage?.optionalDependencies ?? {}),
-	};
-	for (const name of exception.vulnerabilityNames) {
-		if (Object.hasOwn(cliRuntimeDependencies, name)) {
-			failures.push(`operon-cli runtime dependency includes audit exception package ${name}.`);
-		}
-	}
-	if ((cliPackage?.files ?? []).some(file => file.includes('node_modules'))) {
-		failures.push('operon-cli package files must not include node_modules.');
-	}
 	failures.push(...artifactProvenanceFailures(artifactMetafiles, exception.vulnerabilityNames));
 	if (rootDir) failures.push(...runtimeArtifactFailures(rootDir, exception.vulnerabilityNames));
 

@@ -16,20 +16,24 @@ import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
 import {
-	OPERON_CLI_NPM_PACKAGE_NAME,
-	OPERON_CLI_NPM_PACKAGE_PATH,
-} from '../../../../packages/operon-cli/package-identity.mjs';
+	loadPublishedCliBinding,
+	resolveNpmInvocation,
+	sanitizedChildEnvironment,
+	verifyTarballIdentity,
+} from '../../cli/published-cli-v1.mjs';
 
 const fixtureRoot = path.dirname(fileURLToPath(import.meta.url));
-const pluginRoot = path.resolve(fixtureRoot, '../../../..');
-const cliPackageRoot = path.join(pluginRoot, 'packages', 'operon-cli');
 const require = createRequire(import.meta.url);
 const tscPath = require.resolve('typescript/bin/tsc');
 const options = parseArguments(process.argv.slice(2));
 const outputRoot = path.resolve(options.outputRoot ?? path.join(fixtureRoot, 'dist'));
+const { binding } = await loadPublishedCliBinding();
+const requestedTarballPath = path.resolve(options.tarballPath);
+const tarballBytes = await verifyTarballIdentity(requestedTarballPath, binding);
+const npm = await resolveNpmInvocation(process.env);
 const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'operon-developer-api-consumer-build-'));
 const cleanEnvironment = {
-	...process.env,
+	...sanitizedChildEnvironment(process.env),
 	npm_config_cache: path.join(temporaryRoot, 'npm-cache'),
 	npm_config_audit: 'false',
 	npm_config_fund: 'false',
@@ -38,10 +42,8 @@ const cleanEnvironment = {
 };
 
 try {
-	const tarballPath = options.tarballPath
-		? path.resolve(options.tarballPath)
-		: await packLocalCli();
-	const tarballBytes = await readFile(tarballPath);
+	const tarballPath = path.join(temporaryRoot, 'verified-operon-cli-1.0.8.tgz');
+	await writeFile(tarballPath, tarballBytes, { mode: 0o600 });
 	const stagingRoot = path.join(temporaryRoot, 'consumer');
 	await mkdir(stagingRoot, { recursive: true });
 	for (const fileName of [
@@ -62,10 +64,12 @@ try {
 		'utf8',
 	);
 	run(
-		'npm',
+		process.execPath,
 		[
+			npm.path,
 			'install',
 			'--ignore-scripts',
+			'--offline',
 			'--no-audit',
 			'--no-fund',
 			'--package-lock=false',
@@ -76,12 +80,22 @@ try {
 	const installedPackageRoot = path.join(
 		stagingRoot,
 		'node_modules',
-		...OPERON_CLI_NPM_PACKAGE_PATH,
+		...binding.package.name.split('/'),
 	);
 	const installedPackage = JSON.parse(await readFile(
 		path.join(installedPackageRoot, 'package.json'),
 		'utf8',
 	));
+	assert.equal(
+		installedPackage.name,
+		binding.package.name,
+		'Installed Developer API package name differs from the published binding.',
+	);
+	assert.equal(
+		installedPackage.version,
+		binding.package.version,
+		'Installed Developer API package version differs from the published binding.',
+	);
 	assert.equal(
 		installedPackage.exports?.['./contracts/v1/developer-api']?.default,
 		null,
@@ -127,14 +141,13 @@ try {
 	for (const forbidden of [
 		'operon-cli',
 		'src/agent-runtime',
-		'packages/operon-cli',
 	]) assert.equal(mainSource.includes(forbidden), false, `Runtime type dependency leaked: ${forbidden}`);
 	await copyFile(path.join(fixtureRoot, 'manifest.json'), path.join(outputRoot, 'manifest.json'));
 	const evidence = {
 		evidenceVersion: 1,
 		kind: 'operon-developer-api-native-consumer-build',
 		package: `${installedPackage.name}@${installedPackage.version}`,
-		tarball: path.basename(tarballPath),
+		tarball: path.basename(requestedTarballPath),
 		tarballSha256: sha256(tarballBytes),
 		publicTypesEntrypoint: '@stratejya/operon-cli/contracts/v1/developer-api',
 		runtimeInputs,
@@ -147,19 +160,6 @@ try {
 		'utf8',
 	);
 	process.stdout.write(`${JSON.stringify({ status: 'ok', ...evidence })}\n`);
-
-	async function packLocalCli() {
-		const packRoot = path.join(temporaryRoot, 'pack');
-		await mkdir(packRoot, { recursive: true });
-		const result = run(
-			'npm',
-			['pack', '--json', '--pack-destination', packRoot],
-			cliPackageRoot,
-		);
-		const packResult = JSON.parse(result.stdout)[0];
-		assert.equal(packResult.name, OPERON_CLI_NPM_PACKAGE_NAME);
-		return path.join(packRoot, packResult.filename);
-	}
 } finally {
 	await rm(temporaryRoot, { recursive: true, force: true });
 }
@@ -192,7 +192,7 @@ function parseArguments(args) {
 			throw new Error(`Unknown argument: ${argument}`);
 		}
 	}
-	if (args.length > 0 && (!parsed.tarballPath || !parsed.outputRoot)) {
+	if (!parsed.tarballPath || !parsed.outputRoot) {
 		throw new Error('Usage: build.mjs [--tarball <operon-cli.tgz> --outdir <plugin-dir>]');
 	}
 	return parsed;

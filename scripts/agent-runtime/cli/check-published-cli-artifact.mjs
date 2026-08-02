@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	installAndVerifyPublishedCli,
 	loadPublishedCliBinding,
+	verifyDeveloperApiConsumerBuild,
 	verifyCanonicalPluginInputs,
 	verifyPublishedCliLifecycle,
 } from './published-cli-v1.mjs';
@@ -17,6 +18,11 @@ export async function checkPublishedCliArtifact(options = {}) {
 	const loaded = await loadPublishedCliBinding(options);
 	await verifyCanonicalPluginInputs(loaded.binding, options);
 	const installed = await installAndVerifyPublishedCli(arguments_.tarballPath, loaded.binding, options);
+	const developerApiConsumer = await verifyDeveloperApiConsumerBuild(
+		arguments_.tarballPath,
+		loaded.binding,
+		options,
+	);
 	const lifecycle = arguments_.legacyTarballPath
 		? await verifyPublishedCliLifecycle(
 			arguments_.tarballPath,
@@ -30,6 +36,7 @@ export async function checkPublishedCliArtifact(options = {}) {
 		tarballSha256: loaded.binding.tarball.sha256,
 		inventoryEntries: loaded.binding.artifact.inventoryEntries,
 		npmVersion: installed.npmVersion,
+		developerApiConsumerSha256: developerApiConsumer.mainJsSha256,
 		...(lifecycle ? { lifecycleTransitions: lifecycle.transitions } : {}),
 	});
 }

@@ -7,6 +7,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import Ajv2020 from 'ajv/dist/2020.js';
+import { loadPublishedCliBinding } from './published-cli-v1.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
@@ -20,7 +21,10 @@ if (configuredSourceRoot && !existsSync(externalSourceRoot)) {
 	throw new Error(`OPERON_DOCS_SOURCE_ROOT_NOT_FOUND:${externalSourceRoot}`);
 }
 const sourceRoot = existsSync(externalSourceRoot) ? externalSourceRoot : generatedRoot;
-const cliPackageRoot = path.join(pluginRoot, 'packages/operon-cli');
+const publicBaseline = JSON.parse(await readFile(
+	path.join(pluginRoot, 'contracts/agent-runtime/public-v1-baseline.json'),
+	'utf8',
+));
 const managedPattern = /^DOCS-\d{3} .+\.md$/u;
 const publicIntegrationNumbers = new Set([
 	'001',
@@ -61,11 +65,6 @@ function jsonBlocks(source) {
 }
 
 async function publicSchemaValidators() {
-	const schemaRoot = path.join(cliPackageRoot, 'schemas/v1');
-	const manifest = JSON.parse(await readFile(
-		path.join(cliPackageRoot, 'cli-manifest-v1.json'),
-		'utf8',
-	));
 	const ajv = new Ajv2020({
 		strict: true,
 		strictRequired: false,
@@ -96,12 +95,10 @@ async function publicSchemaValidators() {
 	ajv.addFormat('date-time', /^\d{4}-\d{2}-\d{2}T/u);
 	ajv.addFormat('operon-audit-date-time', /^\d{4}-\d{2}-\d{2}T/u);
 	ajv.addFormat('operon-local-date-time', /^\d{4}-\d{2}-\d{2}T/u);
-	for (const file of await readdir(schemaRoot)) {
-		if (!file.endsWith('.json')) continue;
-		const schema = JSON.parse(await readFile(path.join(schemaRoot, file), 'utf8'));
+	for (const schema of Object.values(publicBaseline.schemaDocuments ?? {})) {
 		if (typeof schema.$id === 'string') ajv.addSchema(schema);
 	}
-	const refs = new Map(manifest.schemaEntrypoints.map(entrypoint => [
+	const refs = new Map(publicBaseline.entrypoints.map(entrypoint => [
 		entrypoint.schemaId,
 		entrypoint.ref,
 	]));
@@ -349,38 +346,22 @@ test('Generated docs and manifest are byte-identical to all source docs', async 
 	}
 });
 
-test('README and discoverable contracts expose the documented public boundary', async () => {
-	const [readme, manifestSource, packageSource] = await Promise.all([
-		readFile(path.join(cliPackageRoot, 'README.md'), 'utf8'),
-		readFile(path.join(cliPackageRoot, 'cli-manifest-v1.json'), 'utf8'),
-		readFile(path.join(cliPackageRoot, 'package.json'), 'utf8'),
-	]);
-	const manifest = JSON.parse(manifestSource);
-	const packageDocument = JSON.parse(packageSource);
-
-	assert.match(readme, /npm install --global @stratejya\/operon-cli/u);
-	assert.match(readme, /Node(?:\.js)? 22, 24, (?:and|or) 26/iu);
-	assert.match(readme, /macOS/u);
-	assert.match(readme, /Linux/u);
-	assert.match(readme, /Windows 11/u);
-	assert.match(readme, /WSL/u);
-	assert.match(readme, /public beta/iu);
-	assert.match(readme, /recoveryRef/u);
-	assert.match(readme, /@stratejya\/operon-cli\/contracts\/v1\/developer-api/u);
-	assert.doesNotMatch(readme, /^## \d+\.\d+/mu, 'README must not copy the package version.');
-	assert.equal(packageDocument.engines.node, '^22.0.0 || ^24.0.0 || ^26.0.0');
-	assert.deepEqual(manifest.platforms, {
-		darwin: 'supported',
-		linux: 'acceptance-required',
-		win32: 'acceptance-required',
-		wsl: 'unsupported',
-	});
-	assert.equal(manifest.exitCodes.interrupted, 130);
-	assert.equal(manifest.exitCodes.runtimeFailure, 5);
-	assert.equal(manifest.protocols.sessionJsonl.invocation, 'operon session --jsonl');
-	assert.equal(manifest.protocols.sessionJsonl.readGroupMin, 2);
-	assert.equal(manifest.protocols.sessionJsonl.readGroupMax, 8);
-	assert.equal(manifest.protocols.sessionJsonl.abortExitCode, 130);
+test('published binding and frozen contracts expose the documented public boundary', async () => {
+	const { binding } = await loadPublishedCliBinding();
+	assert.equal(binding.package.name, '@stratejya/operon-cli');
+	assert.equal(binding.package.version, '1.0.8');
+	assert.equal(binding.runtime.contractVersion, 1);
+	assert.equal(publicBaseline.cliContract, 1);
+	assert.equal(publicBaseline.exitCodes.interrupted, 130);
+	assert.equal(publicBaseline.exitCodes.runtimeFailure, 5);
+	for (const schemaId of [
+		'developer-api-access-request',
+		'developer-mutation-preview-input',
+		'developer-mutation-apply-input',
+		'developer-mutation-recover-input',
+		'session-frame',
+		'session-read-group',
+	]) assert.ok(publicBaseline.entrypoints.some(entry => entry.schemaId === schemaId));
 });
 
 test('DOCS-133 JSONL examples validate against the shipped session schemas', async () => {
@@ -405,14 +386,6 @@ test('DOCS-133 JSONL examples validate against the shipped session schemas', asy
 
 test('DOCS-133 distinguishes protocol IDs, argv prefixes, and frame exit status', async () => {
 	const source = await sourceDoc('133');
-	const manifest = JSON.parse(await readFile(
-		path.join(cliPackageRoot, 'cli-manifest-v1.json'),
-		'utf8',
-	));
-	assert.deepEqual(
-		manifest.protocols.sessionJsonl.readGroupCommands,
-		['health', 'task.get', 'tasks.query', 'context.build'],
-	);
 	for (const row of [
 		/\| `health` \| `\["health"\]` \|/u,
 		/\| `task\.get` \| `\["task", "get"\]` \|/u,

@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
@@ -41,8 +42,7 @@ assert.ok(
 	'Expected run, happy, prepare or recover phase.',
 );
 
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const durableConfigRoot = path.join(expectedTempRoot, 'operon-a11-relationship-recovery-cli');
 const statePath = path.join(expectedTempRoot, 'operon-a11-relationship-recovery-state.json');
 
@@ -241,7 +241,7 @@ function runPhase(targetPhase) {
 			encoding: 'utf8',
 			env: {
 				...process.env,
-				OPERON_CLI_EXECUTABLE: cliArtifact,
+				OPERON_PUBLISHED_CLI_EXECUTABLE: cliArtifact,
 			},
 			maxBuffer: 4 * 1_024 * 1_024,
 		},

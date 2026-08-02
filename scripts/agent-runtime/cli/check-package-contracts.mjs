@@ -1,115 +1,75 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-import { build } from 'esbuild';
 import {
-	buildCliManifestDocumentV1,
-	CLI_SCHEMA_ENTRYPOINTS_V1,
-	contractProjectionV1,
-} from '../../../packages/operon-cli/contract-manifest.mjs';
+	loadPublishedCliBinding,
+	pluginRoot,
+	verifyCanonicalPluginInputs,
+} from './published-cli-v1.mjs';
 
-const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const packageRoot = path.join(pluginRoot, 'packages', 'operon-cli');
-const targetRoot = path.join(packageRoot, 'schemas', 'v1');
-const sourceRoots = [
-	path.join(pluginRoot, 'contracts', 'agent-runtime', 'v1'),
-	path.join(packageRoot, 'schema-source'),
-];
+const { binding } = await loadPublishedCliBinding();
+await verifyCanonicalPluginInputs(binding);
 
-const expectedFiles = new Map();
-for (const sourceRoot of sourceRoots) {
-	for (const file of await readdir(sourceRoot)) {
-		if (!file.endsWith('.json')) continue;
-		assert.ok(!expectedFiles.has(file), `Schema filename collision: ${file}`);
-		expectedFiles.set(file, await readFile(path.join(sourceRoot, file)));
-	}
+const baseline = JSON.parse(await readFile(
+	path.join(pluginRoot, 'contracts', 'agent-runtime', 'public-v1-baseline.json'),
+	'utf8',
+));
+assert.equal(baseline.runtimeContract, binding.runtime.contractVersion);
+assert.equal(baseline.cliContract, 1);
+
+const packagedSchemas = binding.artifact.inventory
+	.filter(item => item.path.startsWith('package/schemas/v1/'))
+	.map(item => path.basename(item.path))
+	.sort();
+const canonicalSchemas = binding.runtime.canonicalSchemas
+	.map(item => path.basename(item.path))
+	.sort();
+const externalSchemas = packagedSchemas.filter(file => (
+	file !== 'schema-manifest.json' && !canonicalSchemas.includes(file)
+));
+assert.deepEqual(externalSchemas, [
+	'cli-manifest.schema.json',
+	'operon-cli-local.schema.json',
+	'session.schema.json',
+]);
+assert.equal(packagedSchemas.length, 16);
+assert.equal(binding.runtime.canonicalSchemas.length, 13);
+
+const baselineDocuments = new Map();
+for (const [key, document] of Object.entries(baseline.schemaDocuments ?? {})) {
+	assert.equal(typeof document?.$id, 'string', `OPERON_CLI_BASELINE_SCHEMA_ID_MISSING:${key}`);
+	assert.equal(baselineDocuments.has(document.$id), false, `OPERON_CLI_BASELINE_SCHEMA_ID_DUPLICATE:${document.$id}`);
+	baselineDocuments.set(document.$id, { key, document });
 }
-const actualFiles = (await readdir(targetRoot)).filter(file => file.endsWith('.json')).sort();
-assert.deepEqual(actualFiles, [...expectedFiles.keys()].sort(), 'CLI schema copy inventory is stale.');
-for (const [file, expected] of expectedFiles) {
-	assert.deepEqual(
-		await readFile(path.join(targetRoot, file)),
-		expected,
-		`CLI schema copy is stale: ${file}`,
-	);
-}
-
-const manifest = JSON.parse(await readFile(path.join(packageRoot, 'cli-manifest-v1.json'), 'utf8'));
 assert.deepEqual(
-	manifest.schemas.map(item => item.file).sort(),
-	actualFiles,
-	'CLI manifest schema inventory is stale.',
+	[...baselineDocuments.values()]
+		.filter(item => item.key.startsWith('operon-cli/'))
+		.map(item => path.basename(item.key))
+		.sort(),
+	externalSchemas,
 );
-const documentsById = new Map();
-const expectedSchemas = [];
-for (const item of manifest.schemas) {
-	const bytes = await readFile(path.join(targetRoot, item.file));
-	assert.equal(digest(bytes), item.sha256, `CLI manifest digest is stale: ${item.file}`);
-	const document = JSON.parse(bytes.toString('utf8'));
-	expectedSchemas.push({
-		file: item.file,
-		...(typeof document.$id === 'string' ? { id: document.$id } : {}),
-		sha256: digest(bytes),
-	});
-	if (typeof document.$id === 'string') {
-		assert.equal(document.$id, item.id, `CLI manifest schema id is stale: ${item.file}`);
-		assert.ok(!documentsById.has(document.$id), `Duplicate CLI schema id: ${document.$id}`);
-		documentsById.set(document.$id, { file: item.file, sha256: item.sha256, document });
-	}
-}
-for (const entrypoint of manifest.schemaEntrypoints) {
+for (const entrypoint of baseline.entrypoints ?? []) {
 	const [id, fragment = ''] = entrypoint.ref.split('#', 2);
-	const document = documentsById.get(id);
-	assert.ok(document, `Unknown CLI schema entrypoint document: ${entrypoint.schemaId}`);
-	assert.equal(document.file, entrypoint.file, `CLI entrypoint file is stale: ${entrypoint.schemaId}`);
-	assert.equal(document.sha256, entrypoint.sha256, `CLI entrypoint digest is stale: ${entrypoint.schemaId}`);
-	assert.notEqual(resolvePointer(document.document, fragment), undefined, `Missing CLI entrypoint: ${entrypoint.schemaId}`);
-}
-const runtimeManifest = JSON.parse(
-	await readFile(path.join(targetRoot, 'schema-manifest.json'), 'utf8'),
-);
-const expectedEntrypoints = [
-	...runtimeManifest.entrypoints,
-	...CLI_SCHEMA_ENTRYPOINTS_V1,
-].map(entrypoint => {
-	const [id, fragment = ''] = entrypoint.ref.split('#', 2);
-	const document = documentsById.get(id);
-	assert.ok(document, `Unknown expected CLI schema document: ${entrypoint.schemaId}`);
+	const record = baselineDocuments.get(id);
+	assert.ok(record, `OPERON_CLI_BASELINE_ENTRYPOINT_DOCUMENT_UNKNOWN:${entrypoint.schemaId}`);
 	assert.notEqual(
-		resolvePointer(document.document, fragment),
+		resolvePointer(record.document, fragment),
 		undefined,
-		`Missing expected CLI schema entrypoint: ${entrypoint.schemaId}`,
+		`OPERON_CLI_BASELINE_ENTRYPOINT_MISSING:${entrypoint.schemaId}`,
 	);
-	return {
-		schemaId: entrypoint.schemaId,
-		ref: entrypoint.ref,
-		file: document.file,
-		sha256: document.sha256,
-		stability: entrypoint.stability ?? 'stable',
-		...(entrypoint.deprecation ? { deprecation: entrypoint.deprecation } : {}),
-	};
-}).sort((left, right) => left.schemaId.localeCompare(right.schemaId));
-const manifestBase = await loadManifestBase();
-const expectedManifest = buildCliManifestDocumentV1(
-	manifestBase,
-	expectedSchemas.sort((left, right) => left.file.localeCompare(right.file)),
-	expectedEntrypoints,
-);
-assert.equal(
-	await readFile(path.join(packageRoot, 'cli-manifest-v1.json'), 'utf8'),
-	`${JSON.stringify(expectedManifest, null, 2)}\n`,
-	'Generated CLI manifest is stale against its source registry.',
-);
-assert.equal(
-	manifest.contractDigest,
-	digest(Buffer.from(JSON.stringify(contractProjectionV1(manifest)), 'utf8')),
-	'CLI aggregate contract digest is stale.',
-);
+}
+assert.equal(new Set((baseline.entrypoints ?? []).map(item => item.schemaId)).size, baseline.entrypoints.length);
+assert.equal(new Set((baseline.errorRegistry ?? []).map(item => item.code)).size, baseline.errorRegistry.length);
+assert.equal(binding.runtime.contractDigest, '407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b');
+
+process.stdout.write(`${JSON.stringify({
+	status: 'ok',
+	package: `${binding.package.name}@${binding.package.version}`,
+	runtimeSchemas: canonicalSchemas.length,
+	externalSchemas: externalSchemas.length,
+	entrypoints: baseline.entrypoints.length,
+})}\n`);
 
 function resolvePointer(document, fragment) {
 	if (fragment === '') return document;
@@ -121,31 +81,4 @@ function resolvePointer(document, fragment) {
 		current = current[token];
 	}
 	return current;
-}
-
-function digest(bytes) {
-	return createHash('sha256').update(bytes).digest('hex');
-}
-
-async function loadManifestBase() {
-	const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'operon-cli-manifest-check-'));
-	const outfile = path.join(temporaryRoot, 'manifest-data.cjs');
-	try {
-		await build({
-			entryPoints: [path.join(packageRoot, 'src', 'manifest-data.ts')],
-			outfile,
-			bundle: true,
-			platform: 'node',
-			format: 'cjs',
-			target: 'node22',
-			minify: true,
-		});
-		const module = createRequire(import.meta.url)(outfile);
-		const packageDocument = JSON.parse(
-			await readFile(path.join(packageRoot, 'package.json'), 'utf8'),
-		);
-		return module.createCliManifestBaseV1(packageDocument.version);
-	} finally {
-		await rm(temporaryRoot, { recursive: true, force: true });
-	}
 }

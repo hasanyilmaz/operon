@@ -5,9 +5,11 @@ import { realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const expectedParent = realpathSync(process.platform === 'darwin' ? '/private/tmp' : '/tmp');
 const requestedVault = path.resolve(
 	process.argv[2] ?? path.join(expectedParent, 'operon-agent-runtime-phase1-v1'),
@@ -68,8 +70,7 @@ async function waitUntilReady(timeoutMs) {
 	const deadline = Date.now() + timeoutMs;
 	do {
 		const health = spawnSync(process.execPath, [
-			process.env.OPERON_CLI_EXECUTABLE
-				?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs'),
+			cliArtifact,
 			'health',
 			'--vault',
 			requestedVault,

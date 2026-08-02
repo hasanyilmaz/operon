@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -7,11 +7,16 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const schemaRoot = path.join(pluginRoot, 'packages', 'operon-cli', 'schemas', 'v1');
-const manifest = JSON.parse(await readFile(
-	path.join(pluginRoot, 'packages', 'operon-cli', 'cli-manifest-v1.json'),
+const publicBaseline = JSON.parse(await readFile(
+	path.join(pluginRoot, 'contracts', 'agent-runtime', 'public-v1-baseline.json'),
 	'utf8',
 ));
+const manifest = {
+	schemaEntrypoints: publicBaseline.entrypoints,
+	errorRegistry: publicBaseline.errorRegistry,
+	exitCodes: publicBaseline.exitCodes,
+	contractPolicy: publicBaseline.contractPolicy.cli,
+};
 const ajv = new Ajv2020({
 	strict: true,
 	strictRequired: false,
@@ -42,10 +47,9 @@ ajv.addFormat('date', /^\d{4}-\d{2}-\d{2}$/u);
 ajv.addFormat('date-time', /^\d{4}-\d{2}-\d{2}T/u);
 ajv.addFormat('operon-audit-date-time', /^\d{4}-\d{2}-\d{2}T/u);
 ajv.addFormat('operon-local-date-time', /^\d{4}-\d{2}-\d{2}T/u);
-const schemaFiles = await readdir(schemaRoot);
-for (const file of schemaFiles) {
-	if (!file.endsWith('.json')) continue;
-	const document = JSON.parse(await readFile(path.join(schemaRoot, file), 'utf8'));
+const schemaEntries = Object.entries(publicBaseline.schemaDocuments ?? {});
+const schemaFiles = schemaEntries.map(([file]) => path.basename(file));
+for (const [, document] of schemaEntries) {
 	if (typeof document.$id === 'string') ajv.addSchema(document);
 }
 
@@ -80,17 +84,11 @@ test('removed Capture contracts are absent from the packaged schema surface', ()
 	]) {
 		assert.equal(validators.has(schemaId), false, `Removed entrypoint remains: ${schemaId}.`);
 	}
-	assert.equal('captureAgent' in manifest.protocols, false);
 });
 
-const local = JSON.parse(await readFile(
-	path.join(schemaRoot, 'operon-cli-local.schema.json'),
-	'utf8',
-));
-const cliManifest = JSON.parse(await readFile(
-	path.join(pluginRoot, 'packages', 'operon-cli', 'cli-manifest-v1.json'),
-	'utf8',
-));
+const local = publicBaseline.schemaDocuments['operon-cli/operon-cli-local.schema.json'];
+assert.ok(local);
+const cliManifest = manifest;
 const contractFixtures = JSON.parse(await readFile(
 	path.join(pluginRoot, 'scripts', 'agent-runtime', 'contracts', 'fixtures', 'cases.json'),
 	'utf8',
@@ -135,7 +133,6 @@ const localCases = {
 		node: 'v26.0.0',
 		platform: 'darwin',
 	}),
-	'manifest-result': success('manifest', cliManifest),
 	'schema-list-result': success('schema.list', {
 		files: ['cli-manifest.schema.json'],
 		entrypoints: [{ schemaId: 'manifest-result', ref: 'urn:example' }],

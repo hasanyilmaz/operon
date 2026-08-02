@@ -6,6 +6,7 @@ import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const sampleCount = 20;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -19,7 +20,7 @@ assert.equal(vaultStat.isSymbolicLink(), false);
 assert.equal(path.dirname(vaultPath), expectedTempRoot);
 assert.match(path.basename(vaultPath), /^operon-agent-runtime-phase1-[A-Za-z0-9._-]+$/u);
 
-const cliArtifact = path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const settingsPath = path.join(vaultPath, '.obsidian/plugins/operon/data.json');
 const settingsBefore = digestFile(settingsPath);
 const previewHandlerMs = [];

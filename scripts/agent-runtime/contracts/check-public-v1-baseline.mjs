@@ -3,13 +3,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { classifyContractDiffV1 } from './contract-evolution.mjs';
+import {
+	loadPublishedCliBinding,
+	verifyCanonicalPluginInputs,
+} from '../cli/published-cli-v1.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const pluginRoot = path.resolve(path.dirname(scriptPath), '../../..');
 const schemaRoot = path.join(pluginRoot, 'contracts', 'agent-runtime', 'v1');
-const cliSchemaRoot = path.join(pluginRoot, 'packages', 'operon-cli', 'schema-source');
 const baselinePath = path.join(pluginRoot, 'contracts', 'agent-runtime', 'public-v1-baseline.json');
-const cliManifestPath = path.join(pluginRoot, 'packages', 'operon-cli', 'cli-manifest-v1.json');
 
 const INPUT_ENTRYPOINTS_V1 = new Set([
 	'catalog-request',
@@ -87,16 +89,40 @@ const RESPONSE_ENTRYPOINTS_V1 = new Set([
 
 export async function buildPublicV1Snapshot(options = {}) {
 	const runtimeRoot = options.schemaRoot ?? schemaRoot;
-	const cliRoot = options.cliSchemaRoot ?? cliSchemaRoot;
-	const manifestFile = options.cliManifestPath ?? cliManifestPath;
 	const schemaDocuments = {};
 	const documentsById = new Map();
 	await loadSchemaRoot(runtimeRoot, '');
-	await loadSchemaRoot(cliRoot, 'operon-cli/');
 	const runtimeManifest = JSON.parse(
 		await readFile(path.join(runtimeRoot, 'schema-manifest.json'), 'utf8'),
 	);
-	const cliManifest = JSON.parse(await readFile(manifestFile, 'utf8'));
+	let cliManifest;
+	if (options.cliSchemaRoot || options.cliManifestPath) {
+		if (!options.cliSchemaRoot || !options.cliManifestPath) {
+			throw new Error('OPERON_PUBLIC_V1_EXTERNAL_INPUTS_INCOMPLETE');
+		}
+		await loadSchemaRoot(options.cliSchemaRoot, 'operon-cli/');
+		cliManifest = JSON.parse(await readFile(options.cliManifestPath, 'utf8'));
+	} else {
+		const externalSnapshot = JSON.parse(await readFile(
+			options.externalBaselinePath ?? baselinePath,
+			'utf8',
+		));
+		const { binding } = await loadPublishedCliBinding(options);
+		await verifyCanonicalPluginInputs(binding, options);
+		assertFrozenExternalSurface(externalSnapshot, binding);
+		for (const [key, document] of Object.entries(externalSnapshot.schemaDocuments ?? {})) {
+			if (!key.startsWith('operon-cli/')) continue;
+			loadSchemaDocument(key, document);
+		}
+		cliManifest = {
+			schemaEntrypoints: externalSnapshot.entrypoints,
+			errorRegistry: externalSnapshot.errorRegistry,
+			runtimeCapabilities: externalSnapshot.capabilities,
+			exitCodes: externalSnapshot.exitCodes,
+			deprecations: externalSnapshot.deprecations,
+			contractPolicy: externalSnapshot.contractPolicy.cli,
+		};
+	}
 	const schemaDirections = buildSchemaDirectionInventoryV1(
 		documentsById,
 		cliManifest.schemaEntrypoints,
@@ -122,12 +148,40 @@ export async function buildPublicV1Snapshot(options = {}) {
 		for (const file of (await readdir(root)).filter(name => name.endsWith('.schema.json')).sort()) {
 			const document = JSON.parse(await readFile(path.join(root, file), 'utf8'));
 			const key = `${keyPrefix}${file}`;
-			schemaDocuments[key] = document;
-			if (typeof document.$id !== 'string' || documentsById.has(document.$id)) {
-				throw new Error(`OPERON_PUBLIC_V1_SCHEMA_ID_INVALID:${document.$id ?? key}`);
-			}
-			documentsById.set(document.$id, { key, document });
+			loadSchemaDocument(key, document);
 		}
+	}
+
+	function loadSchemaDocument(key, document) {
+		schemaDocuments[key] = document;
+		if (typeof document?.$id !== 'string' || documentsById.has(document.$id)) {
+			throw new Error(`OPERON_PUBLIC_V1_SCHEMA_ID_INVALID:${document?.$id ?? key}`);
+		}
+		documentsById.set(document.$id, { key, document });
+	}
+}
+
+function assertFrozenExternalSurface(snapshot, binding) {
+	if (snapshot.runtimeContract !== 1 || snapshot.cliContract !== 1) {
+		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_CONTRACT_INVALID');
+	}
+	const files = Object.keys(snapshot.schemaDocuments ?? {})
+		.filter(key => key.startsWith('operon-cli/'))
+		.map(key => path.basename(key))
+		.sort();
+	const packagedExternal = binding.artifact.inventory
+		.filter(item => item.path.startsWith('package/schemas/v1/'))
+		.map(item => path.basename(item.path))
+		.filter(file => !binding.runtime.canonicalSchemas.some(identity => (
+			path.basename(identity.path) === file
+		)))
+		.filter(file => file !== 'schema-manifest.json')
+		.sort();
+	if (JSON.stringify(files) !== JSON.stringify(packagedExternal)) {
+		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_SCHEMA_INVENTORY_MISMATCH');
+	}
+	if (binding.runtime.contractDigest !== '407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b') {
+		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_CONTRACT_DIGEST_MISMATCH');
 	}
 }
 

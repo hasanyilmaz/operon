@@ -115,6 +115,23 @@ export function artifactInventoryAggregate(inventory, prefix) {
 	), 'utf8'));
 }
 
+export async function verifyPublishedCliExecutablePath(executablePath, binding) {
+	if (!path.isAbsolute(executablePath) || executablePath.includes('\0')) {
+		throw new Error('OPERON_PUBLISHED_CLI_EXECUTABLE_PATH_INVALID');
+	}
+	const stats = await lstat(executablePath);
+	if (!stats.isFile() || stats.isSymbolicLink()) {
+		throw new Error('OPERON_PUBLISHED_CLI_EXECUTABLE_PATH_INVALID');
+	}
+	const bytes = await readFile(executablePath);
+	assert.equal(bytes.length, binding.artifact.executable.size, 'OPERON_PUBLISHED_CLI_EXECUTABLE_BYTES_MISMATCH');
+	assert.equal(sha256(bytes), binding.artifact.executable.sha256, 'OPERON_PUBLISHED_CLI_EXECUTABLE_SHA256_MISMATCH');
+	if (process.platform !== 'win32') {
+		assert.equal(stats.mode & 0o777, binding.artifact.executable.mode, 'OPERON_PUBLISHED_CLI_EXECUTABLE_MODE_MISMATCH');
+	}
+	return executablePath;
+}
+
 export async function verifyCanonicalPluginInputs(binding, options = {}) {
 	const root = options.pluginRoot ?? pluginRoot;
 	for (const identity of [
@@ -148,6 +165,18 @@ export async function verifyTarballIdentity(tarballPath, binding) {
 }
 
 export async function installAndVerifyPublishedCli(tarballPath, binding, options = {}) {
+	return withVerifiedPublishedCli(
+		tarballPath,
+		binding,
+		async ({ npmVersion }) => Object.freeze({ npmVersion }),
+		options,
+	);
+}
+
+export async function withVerifiedPublishedCli(tarballPath, binding, callback, options = {}) {
+	if (typeof callback !== 'function') {
+		throw new TypeError('OPERON_PUBLISHED_CLI_CALLBACK_REQUIRED');
+	}
 	const verifiedTarballBytes = await verifyTarballIdentity(tarballPath, binding);
 	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon cli external ü-'));
 	const prefix = path.join(temporaryRoot, 'global prefix ç');
@@ -182,7 +211,7 @@ export async function installAndVerifyPublishedCli(tarballPath, binding, options
 			},
 		);
 		assertSpawnSucceeded(result, 'OPERON_PUBLISHED_CLI_NPM_INSTALL_FAILED');
-		const packageRoot = path.join(prefix, 'lib', 'node_modules', '@stratejya', 'operon-cli');
+		const packageRoot = path.join(prefix, 'lib', 'node_modules', ...binding.package.name.split('/'));
 		await verifyInstalledPackage(packageRoot, binding);
 		await verifyRuntimeSchemaParity(packageRoot, binding, options.pluginRoot ?? pluginRoot);
 		await verifyDeclarationParity(packageRoot, binding, options.pluginRoot ?? pluginRoot);
@@ -194,7 +223,57 @@ export async function installAndVerifyPublishedCli(tarballPath, binding, options
 			options.pluginRoot ?? pluginRoot,
 			options.env ?? process.env,
 		);
-		return Object.freeze({ packageRoot, prefix, npmVersion: npm.version });
+		const executable = path.join(packageRoot, 'dist', 'operon.mjs');
+		const executableStats = await lstat(executable);
+		assert.ok(
+			executableStats.isFile() && !executableStats.isSymbolicLink(),
+			'OPERON_PUBLISHED_CLI_EXECUTABLE_FILE_INVALID',
+		);
+		return await callback(Object.freeze({
+			packageRoot,
+			executable,
+			prefix,
+			npmVersion: npm.version,
+		}));
+	} finally {
+		await rm(temporaryRoot, { recursive: true, force: true });
+	}
+}
+
+export async function verifyDeveloperApiConsumerBuild(tarballPath, binding, options = {}) {
+	await verifyTarballIdentity(tarballPath, binding);
+	const root = options.pluginRoot ?? pluginRoot;
+	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-developer-api-external-'));
+	try {
+		const outputRoot = path.join(temporaryRoot, 'plugin');
+		const buildScript = path.join(
+			root,
+			'scripts',
+			'agent-runtime',
+			'developer-api',
+			'native-acceptance-consumer',
+			'build.mjs',
+		);
+		const result = spawnSync(process.execPath, [
+			buildScript,
+			'--tarball',
+			tarballPath,
+			'--outdir',
+			outputRoot,
+		], {
+			cwd: root,
+			encoding: 'utf8',
+			env: sanitizedChildEnvironment(options.env ?? process.env),
+		});
+		assertSpawnSucceeded(result, 'OPERON_PUBLISHED_CLI_DEVELOPER_API_CONSUMER_BUILD_FAILED');
+		const evidence = JSON.parse(await readFile(path.join(outputRoot, 'build-evidence.json'), 'utf8'));
+		assert.equal(evidence.kind, 'operon-developer-api-native-consumer-build');
+		assert.equal(evidence.package, `${binding.package.name}@${binding.package.version}`);
+		assert.equal(evidence.tarballSha256, binding.tarball.sha256);
+		assert.deepEqual(evidence.runtimeInputs, ['acceptance.ts', 'main.ts', 'runner-contract.ts']);
+		assert.match(evidence.mainJsSha256, /^[a-f0-9]{64}$/u);
+		assert.ok(Number.isSafeInteger(evidence.mainJsBytes) && evidence.mainJsBytes > 0);
+		return Object.freeze(evidence);
 	} finally {
 		await rm(temporaryRoot, { recursive: true, force: true });
 	}
@@ -294,6 +373,28 @@ export async function verifyInstalledPackage(packageRoot, binding) {
 	assert.equal(packageJson.version, binding.package.version, 'OPERON_PUBLISHED_CLI_PACKAGE_VERSION_MISMATCH');
 	assert.equal(Object.keys(packageJson.dependencies ?? {}).length, 0, 'OPERON_PUBLISHED_CLI_PRODUCTION_DEPENDENCIES_FORBIDDEN');
 	assert.equal(Object.keys(packageJson.optionalDependencies ?? {}).length, 0, 'OPERON_PUBLISHED_CLI_OPTIONAL_DEPENDENCIES_FORBIDDEN');
+	assert.equal(packageJson.engines?.node, '^22.0.0 || ^24.0.0 || ^26.0.0', 'OPERON_PUBLISHED_CLI_NODE_ENGINE_MISMATCH');
+	assert.equal(
+		packageJson.exports?.['./contracts/v1/developer-api']?.types,
+		'./types/src/agent-runtime/public/v1/developer-api.d.ts',
+		'OPERON_PUBLISHED_CLI_DEVELOPER_API_EXPORT_MISMATCH',
+	);
+	assert.equal(
+		packageJson.exports?.['./contracts/v1/developer-api']?.default,
+		null,
+		'OPERON_PUBLISHED_CLI_DEVELOPER_API_RUNTIME_EXPORT_FORBIDDEN',
+	);
+	const readme = await readFile(path.join(packageRoot, 'README.md'), 'utf8');
+	assert.match(readme, /npm install --global @stratejya\/operon-cli/u);
+	assert.match(readme, /Node(?:\.js)? 22, 24, (?:and|or) 26/iu);
+	assert.match(readme, /macOS/u);
+	assert.match(readme, /Linux/u);
+	assert.match(readme, /Windows 11/u);
+	assert.match(readme, /WSL/u);
+	assert.match(readme, /public beta/iu);
+	assert.match(readme, /recoveryRef/u);
+	assert.match(readme, /@stratejya\/operon-cli\/contracts\/v1\/developer-api/u);
+	assert.doesNotMatch(readme, /^## \d+\.\d+/mu, 'OPERON_PUBLISHED_CLI_README_VERSION_HEADING_FORBIDDEN');
 	return true;
 }
 
@@ -396,6 +497,21 @@ export async function verifyBlackBoxSurface(packageRoot, binding, env = process.
 	const manifest = JSON.parse(await readFile(path.join(packageRoot, 'cli-manifest-v1.json'), 'utf8'));
 	assert.equal(manifest.package?.version, binding.package.version, 'OPERON_PUBLISHED_CLI_MANIFEST_VERSION_MISMATCH');
 	assert.equal(manifest.contractDigest, binding.runtime.contractDigest, 'OPERON_PUBLISHED_CLI_MANIFEST_RUNTIME_DIGEST_MISMATCH');
+	assert.deepEqual(manifest.platforms, {
+		darwin: 'supported',
+		linux: 'acceptance-required',
+		win32: 'acceptance-required',
+		wsl: 'unsupported',
+	}, 'OPERON_PUBLISHED_CLI_MANIFEST_PLATFORMS_MISMATCH');
+	assert.deepEqual(
+		manifest.protocols?.sessionJsonl?.readGroupCommands,
+		['health', 'task.get', 'tasks.query', 'context.build'],
+		'OPERON_PUBLISHED_CLI_SESSION_READ_COMMANDS_MISMATCH',
+	);
+	assert.equal(manifest.protocols?.sessionJsonl?.invocation, 'operon session --jsonl');
+	assert.equal(manifest.protocols?.sessionJsonl?.readGroupMin, 2);
+	assert.equal(manifest.protocols?.sessionJsonl?.readGroupMax, 8);
+	assert.equal(manifest.protocols?.sessionJsonl?.abortExitCode, 130);
 	assert.equal(
 		normalizedCliManifestSha256(manifest),
 		binding.artifact.normalizedCliManifestSha256,

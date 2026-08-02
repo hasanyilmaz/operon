@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const SOURCE_TRANSITION_RECOVERY_FEATURES = [
 	'terminal-after-state-verification',
@@ -27,8 +28,7 @@ assert.equal(vaultPath, '/private/tmp/cli-test-vault');
 assert.equal(lstatSync(vaultPath).isSymbolicLink(), false);
 assert.deepEqual(process.argv.slice(2), ['run']);
 
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const configRoot = path.join(
 	realpathSync(process.platform === 'darwin' ? '/private/tmp' : tmpdir()),
 	'operon-a12-source-happy-cli',

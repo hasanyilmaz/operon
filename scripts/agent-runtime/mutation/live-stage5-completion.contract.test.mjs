@@ -6,12 +6,8 @@ const source = readFileSync(
 	new URL('./run-live-stage5-completion.mjs', import.meta.url),
 	'utf8',
 );
-const candidateSource = readFileSync(
-	new URL('../cli/run-candidate-live-acceptance.mjs', import.meta.url),
-	'utf8',
-);
-const verifierSource = readFileSync(
-	new URL('../cli/verify-live-acceptance.mjs', import.meta.url),
+const publishedSource = readFileSync(
+	new URL('../../release/run-published-cli-live-acceptance.mjs', import.meta.url),
 	'utf8',
 );
 
@@ -43,10 +39,10 @@ test('Stage 5 live completion composes every specialized acceptance surface', ()
 	assert.match(source, /runPinnedStateAcceptance\(\)/u);
 	for (const mutationKind of mutationKinds) {
 		assert.match(source, new RegExp(`['"]${mutationKind.replaceAll('.', '\\.')}['"]`, 'u'));
-		assert.match(verifierSource, new RegExp(`['"]${mutationKind.replaceAll('.', '\\.')}['"]`, 'u'));
 	}
-	assert.match(candidateSource, /run-live-stage5-completion\.mjs/u);
-	assert.doesNotMatch(candidateSource, /run-live-phase8-completion\.mjs/u);
+	assert.match(publishedSource, /run-live-stage5-completion\.mjs/u);
+	assert.match(publishedSource, /withVerifiedPublishedCli/u);
+	assert.doesNotMatch(publishedSource, /run-candidate-live-acceptance\.mjs/u);
 });
 
 test('Stage 5 live completion restores the reusable CLI fixture in a finally fence', () => {

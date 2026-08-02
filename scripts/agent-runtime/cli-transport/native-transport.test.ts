@@ -15,11 +15,10 @@ import {
 	unlink,
 	writeFile,
 } from 'node:fs/promises';
-import { constants as fsConstants } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { constants as fsConstants, lstatSync } from 'node:fs';
+import { release, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
-import { persistentEndpointRootV1 } from '../../../packages/operon-cli/src/persistent-read-client';
 import {
 	CLI_COMMANDS_V1,
 	type CliInvocationV1,
@@ -71,6 +70,39 @@ const WINDOWS_BROKER_SCOPE = {
 	serverInstanceId: '1'.repeat(64),
 	vaultSha256: '2'.repeat(64),
 } as const;
+
+function persistentEndpointRootV1(): string {
+	if (process.platform === 'win32') {
+		const localAppData = process.env['LOCALAPPDATA'];
+		if (!localAppData) throw new Error('PERSISTENT_LOCAL_APP_DATA_MISSING');
+		return join(localAppData, 'Operon', 'runtime');
+	}
+	const uid = typeof process.getuid === 'function' ? process.getuid() : null;
+	const userSegment = uid === null ? 'uid-unavailable' : `uid-${uid}`;
+	if (process.platform === 'linux') {
+		if (
+			process.env['WSL_DISTRO_NAME']
+			|| process.env['WSL_INTEROP']
+			|| release().toLowerCase().includes('microsoft')
+		) throw new Error('PERSISTENT_WSL_UNSUPPORTED');
+		const runtimeRoot = uid === null ? null : `/run/user/${uid}`;
+		if (runtimeRoot) {
+			try {
+				const stats = lstatSync(runtimeRoot);
+				if (
+					stats.isDirectory()
+					&& !stats.isSymbolicLink()
+					&& stats.uid === uid
+					&& (stats.mode & 0o077) === 0
+				) return join(runtimeRoot, 'operon-agent-runtime');
+			} catch {
+				// Match the server's verified per-user /tmp fallback.
+			}
+		}
+		return join('/tmp', `operon-agent-runtime-${userSegment}`);
+	}
+	return join('/private/tmp', `operon-agent-runtime-${userSegment}`);
+}
 
 const nodeApi: AgentRuntimeDesktopNodeApiV1 = {
 	platform: process.platform,

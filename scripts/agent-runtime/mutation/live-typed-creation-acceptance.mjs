@@ -16,6 +16,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requirePublishedCliExecutable } from '../cli/require-published-cli-executable.mjs';
 
 const TYPED_CREATE_FEATURES = [
 	'exact-inline-placement',
@@ -49,8 +50,7 @@ const cliConfigRoot = mkdtempSync(path.join(tmpdir(), 'operon-a5-typed-cli-'));
 process.on('exit', () => {
 	rmSync(cliConfigRoot, { recursive: true, force: true });
 });
-const cliArtifact = process.env.OPERON_CLI_EXECUTABLE
-	?? path.join(pluginRoot, 'packages/operon-cli/dist/operon.mjs');
+const cliArtifact = await requirePublishedCliExecutable(pluginRoot);
 const inlinePath = 'Daily/2026-01-15.md';
 
 const manifest = runCli(['manifest']);

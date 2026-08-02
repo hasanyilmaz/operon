@@ -12,11 +12,13 @@ const source = readFileSync(
 	'utf8',
 );
 
-test('live relationship npm target runs the complete recovery scenario', () => {
+test('live relationship recovery remains available only through the verified published executable boundary', () => {
 	assert.equal(
-		packageJson.scripts['agent-runtime:mutation:live:relationships'],
-		'node scripts/agent-runtime/mutation/live-relationship-acceptance.mjs run',
+		packageJson.scripts['agent-runtime:mutation:live:published'],
+		'node scripts/release/run-published-cli-live-acceptance.mjs',
 	);
+	assert.match(source, /requirePublishedCliExecutable/u);
+	assert.doesNotMatch(source, /OPERON_CLI_EXECUTABLE/u);
 	assert.match(source, /const phase = process\.argv\[2\] \?\? 'run';/u);
 	assert.match(source, /path\.basename\(vaultPath\),\s*'cli-test-vault'/u);
 	assert.doesNotMatch(source, /operon-agent-runtime-phase1/u);

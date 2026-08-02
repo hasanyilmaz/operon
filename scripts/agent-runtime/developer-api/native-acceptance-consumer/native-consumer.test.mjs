@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -9,8 +8,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 
 const fixtureRoot = path.dirname(fileURLToPath(import.meta.url));
-const pluginRoot = path.resolve(fixtureRoot, '../../../..');
-const cliPackageRoot = path.join(pluginRoot, 'packages', 'operon-cli');
 const moduleRoot = await mkdtemp(path.join(tmpdir(), 'operon-native-consumer-module-'));
 const modulePath = path.join(moduleRoot, 'acceptance.mjs');
 await build({
@@ -32,58 +29,12 @@ test.after(async () => {
 	await rm(moduleRoot, { recursive: true, force: true });
 });
 
-test('build consumes an exact operon-cli tarball and emits an isolated Obsidian plugin', async () => {
-	const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'operon-native-consumer-build-test-'));
-	try {
-		const packRoot = path.join(temporaryRoot, 'pack');
-		const outputRoot = path.join(temporaryRoot, 'plugin');
-		await mkdir(packRoot);
-		const packResult = JSON.parse(run(
-			'npm',
-			['pack', '--json', '--pack-destination', packRoot],
-			cliPackageRoot,
-			temporaryRoot,
-		).stdout)[0];
-		const tarballPath = path.join(packRoot, packResult.filename);
-		run(
-			process.execPath,
-			[
-				path.join(fixtureRoot, 'build.mjs'),
-				'--tarball',
-				tarballPath,
-				'--outdir',
-				outputRoot,
-			],
-			fixtureRoot,
-			temporaryRoot,
-		);
-		const evidence = JSON.parse(await readFile(
-			path.join(outputRoot, 'build-evidence.json'),
-			'utf8',
-		));
-		assert.equal(evidence.kind, 'operon-developer-api-native-consumer-build');
-		assert.equal(evidence.package, `${packResult.name}@${packResult.version}`);
-		assert.equal(
-			evidence.publicTypesEntrypoint,
-			'@stratejya/operon-cli/contracts/v1/developer-api',
-		);
-		assert.deepEqual(evidence.runtimeInputs, [
-			'acceptance.ts',
-			'main.ts',
-			'runner-contract.ts',
-		]);
-		assert.match(evidence.tarballSha256, /^[0-9a-f]{64}$/u);
-		assert.match(evidence.mainJsSha256, /^[0-9a-f]{64}$/u);
-		assert.ok(evidence.mainJsBytes > 0);
-		const mainSource = await readFile(path.join(outputRoot, 'main.js'), 'utf8');
-		assert.doesNotMatch(mainSource, /operon-cli|src\/agent-runtime|packages\/operon-cli/u);
-		const manifest = JSON.parse(await readFile(path.join(outputRoot, 'manifest.json'), 'utf8'));
-		assert.equal(manifest.id, 'operon-developer-api-native-acceptance-consumer');
-		assert.equal(manifest.minAppVersion, '1.12.2');
-		assert.equal(manifest.isDesktopOnly, true);
-	} finally {
-		await rm(temporaryRoot, { recursive: true, force: true });
-	}
+test('build requires a verified external tarball and has no local package fallback', async () => {
+	const source = await readFile(path.join(fixtureRoot, 'build.mjs'), 'utf8');
+	assert.match(source, /verifyTarballIdentity/u);
+	assert.match(source, /--tarball/u);
+	assert.match(source, /--offline/u);
+	assert.doesNotMatch(source, /npm\s+pack|packLocalCli|packages[/'"]+operon-cli/u);
 });
 
 test('runner contract is strict and rejects caller security material', () => {
@@ -516,28 +467,4 @@ function structuredError(code) {
 		retryable: false,
 		action: code === 'authority-insufficient' ? 'request-authority' : 'inspect',
 	};
-}
-
-function run(command, args, cwd, cacheRoot) {
-	const result = spawnSync(command, args, {
-		cwd,
-		encoding: 'utf8',
-		env: {
-			...process.env,
-			npm_config_cache: path.join(cacheRoot, 'npm-cache'),
-			npm_config_audit: 'false',
-			npm_config_fund: 'false',
-			npm_config_update_notifier: 'false',
-			NO_COLOR: '1',
-		},
-	});
-	if (result.error) throw result.error;
-	if (result.status !== 0) {
-		throw new Error([
-			`Command failed (${result.status}): ${command} ${args.join(' ')}`,
-			result.stdout,
-			result.stderr,
-		].filter(Boolean).join('\n'));
-	}
-	return result;
 }

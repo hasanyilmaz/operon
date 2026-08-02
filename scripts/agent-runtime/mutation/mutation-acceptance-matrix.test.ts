@@ -74,14 +74,11 @@ test('matrix bindings resolve to canonical schema registries and reject fabricat
 	const runtimeManifest = JSON.parse(
 		readFileSync('contracts/agent-runtime/v1/schema-manifest.json', 'utf8'),
 	) as { entrypoints: Array<{ schemaId: string }> };
-	const cliManifest = JSON.parse(
-		readFileSync('packages/operon-cli/cli-manifest-v1.json', 'utf8'),
-	) as { schemaEntrypoints: Array<{ schemaId: string }> };
 	const runtimeEntrypoints = new Set(runtimeManifest.entrypoints.map(item => item.schemaId));
-	const cliEntrypoints = new Set(cliManifest.schemaEntrypoints.map(item => item.schemaId));
+	const externalCliEntrypoints = new Set(['mutation-intent', 'mutation-plan-reference']);
 	for (const definition of MUTATION_ACCEPTANCE_MATRIX_V1) {
-		assert.equal(cliEntrypoints.has(definition.entrypoints.cli.preview), true);
-		assert.equal(cliEntrypoints.has(definition.entrypoints.cli.apply), true);
+		assert.equal(externalCliEntrypoints.has(definition.entrypoints.cli.preview), true);
+		assert.equal(externalCliEntrypoints.has(definition.entrypoints.cli.apply), true);
 		assert.equal(runtimeEntrypoints.has(definition.entrypoints.developerApi.preview), true);
 		assert.equal(runtimeEntrypoints.has(definition.entrypoints.developerApi.apply), true);
 		assert.equal(runtimeEntrypoints.has(definition.receiptValidatorId), true);

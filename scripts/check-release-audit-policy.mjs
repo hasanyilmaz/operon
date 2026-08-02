@@ -46,11 +46,6 @@ function buildArtifactMetafiles() {
 				arguments: ['esbuild.config.mjs', 'production'],
 				environmentKey: 'OPERON_ESBUILD_METAFILE',
 			},
-			{
-				artifact: 'cli',
-				arguments: ['packages/operon-cli/build.mjs'],
-				environmentKey: 'OPERON_CLI_ESBUILD_METAFILE',
-			},
 		];
 		const metafiles = {};
 		for (const definition of definitions) {
@@ -117,7 +112,6 @@ const result = evaluateReleaseAuditPolicy({
 	fullReport: full.report,
 	packageLock: readJson('package-lock.json'),
 	rootPackage: readJson('package.json'),
-	cliPackage: readJson('packages/operon-cli/package.json'),
 	rootDir,
 	artifactMetafiles: provenance.metafiles,
 });
