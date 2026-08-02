@@ -1,0 +1,61 @@
+name: CLI external compatibility proof
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-external-compatibility-v1
+  cancel-in-progress: false
+
+jobs:
+  public-proof:
+    name: Published CLI public proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "1"
+      TZ: UTC
+      NO_COLOR: "1"
+      NODE_AUTH_TOKEN: ""
+      NPM_TOKEN: ""
+    steps:
+      - name: Checkout exact plugin revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node 24.18.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.18.0
+          cache: false
+      - name: Use an empty npm user configuration
+        shell: bash
+        run: |
+          npmrc="${RUNNER_TEMP}/operon-empty.npmrc"
+          : > "${npmrc}"
+          echo "NPM_CONFIG_USERCONFIG=${npmrc}" >> "${GITHUB_ENV}"
+      - name: Acquire integrity-pinned npm 11.12.1
+        shell: bash
+        run: |
+          archive="${RUNNER_TEMP}/npm-11.12.1.tgz"
+          root="${RUNNER_TEMP}/npm-11.12.1"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "${archive}" \
+            'https://registry.npmjs.org/npm/-/npm-11.12.1.tgz'
+          node -e "const fs=require('node:fs');const crypto=require('node:crypto');const actual='sha512-'+crypto.createHash('sha512').update(fs.readFileSync(process.argv[1])).digest('base64');const expected='sha512-VaGaIBw17hFThpbgvHKm6vGu52tKNsHlQwhGLSOElVZBwIMRwE+aUkzITcgZHBhU9yGronJfJaGXXSFhCPjYHw==';if(actual!==expected)throw new Error('OPERON_EXTERNAL_CLI_NPM_INTEGRITY_MISMATCH');" "${archive}"
+          mkdir -p "${root}"
+          tar -xzf "${archive}" -C "${root}"
+          npm_cli="${root}/package/bin/npm-cli.js"
+          test "$(node "${npm_cli}" --version)" = '11.12.1'
+          echo "OPERON_CANONICAL_NPM=${npm_cli}" >> "${GITHUB_ENV}"
+      - name: Install dependencies with canonical npm
+        run: node "${OPERON_CANONICAL_NPM}" ci --no-audit --no-fund --registry=https://registry.npmjs.org/
+      - name: Verify offline binding and cutover inventory
+        run: node "${OPERON_CANONICAL_NPM}" run agent-runtime:external-cli:test
+      - name: Verify published npm and immutable GitHub evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node "${OPERON_CANONICAL_NPM}" run agent-runtime:external-cli:public-proof

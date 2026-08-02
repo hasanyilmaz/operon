@@ -1,0 +1,466 @@
+{
+  "$schema": "./cli-cutover-v1.schema.json",
+  "inventoryVersion": 1,
+  "kind": "operon-cli-cutover-v1",
+  "sourceRoot": "packages/operon-cli",
+  "state": "stage-8-ready",
+  "unmatchedReferences": 0,
+  "referenceCount": 80,
+  "directSourceImportCount": 20,
+  "dispositions": {
+    "standalone-equivalent": "Equivalent source or test is owned by the standalone CLI repository and the duplicate plugin-repo copy is removed.",
+    "convert-to-external-artifact": "Plugin maintenance coverage remains but is rewritten to consume the verified published artifact or binding.",
+    "retain-plugin-runtime-contract": "Plugin-owned Runtime or contract coverage remains after removing its local CLI build dependency.",
+    "remove-stage8-workflow-release": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed.",
+    "historical-freeze": "Immutable Public V1 historical evidence remains byte-for-byte unchanged.",
+    "migrate-live-performance-fallback": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+  },
+  "counts": {
+    "standalone-equivalent": 11,
+    "convert-to-external-artifact": 14,
+    "retain-plugin-runtime-contract": 4,
+    "remove-stage8-workflow-release": 17,
+    "historical-freeze": 3,
+    "migrate-live-performance-fallback": 31
+  },
+  "entries": [
+    {
+      "path": ".github/workflows/cli-ci.yml",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": ".github/workflows/cli-native-candidate.yml",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": ".github/workflows/cli-publish.yml",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": ".github/workflows/cli-release-ready.yml",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": ".gitignore",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Plugin maintenance coverage remains but is rewritten to consume the verified published artifact or binding."
+    },
+    {
+      "path": "contracts/agent-runtime/public-v1-freeze.json",
+      "disposition": "historical-freeze",
+      "stage8Action": "Immutable Public V1 historical evidence remains byte-for-byte unchanged."
+    },
+    {
+      "path": "eslint.config.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Plugin maintenance coverage remains but is rewritten to consume the verified published artifact or binding."
+    },
+    {
+      "path": "package.json",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Plugin maintenance coverage remains but is rewritten to consume the verified published artifact or binding."
+    },
+    {
+      "path": "packages/operon-cli/package.json",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli-transport/native-transport.test.ts",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Rewrite plugin transport coverage to drive the exact verified external executable while retaining plugin-owned transport assertions."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/check-package-contracts.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Replace the local package-root contract check with the published binding and offline artifact verifier."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/check-release-routing.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/check-release-tag.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/cli.test.ts",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Retain unique CLI and Runtime integration scenarios by migrating them to the verified external executable before deleting local CLI source."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/compact-create.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/compact-create.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/compact-create.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/compact-update.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/compact-update.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/compact-update.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/direct-lifecycle.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/direct-lifecycle.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/direct-lifecycle.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/direct-pinned.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/direct-pinned.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/direct-pinned.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/direct-reminder.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/direct-reminder.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/direct-reminder.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/direct-source-transitions.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/direct-source-transitions.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/direct-source-transitions.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/direct-timer-session.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/direct-timer-session.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/direct-timer-session.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/guided-maintenance-command.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/guided-maintenance-command.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/guided-maintenance-command.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/guided-source-transitions.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/guided-source-transitions.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/guided-source-transitions.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/human-command-golden.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/unit/human-command-golden.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/unit/human-command-golden.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/interruption.test.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Migrate packaged process interruption coverage to the verified external executable."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/live-acceptance-platform.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Require an explicitly verified external executable for live acceptance; remove the local build fallback."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/materialize-frozen-candidate.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/materialize-frozen-candidate.test.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/package-version.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/phase7-pty-responder.ts",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Retain as plugin-owned live fixture support while replacing its direct CLI source coupling with the verified external executable."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/phase9-client.test.ts",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Retain unique client, plan-store, profile, completion, and Runtime integration coverage by migrating it to the verified external executable."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/plan-store-capacity-worker.ts",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Retain as a plugin-owned external-artifact test worker until its plan-store scenarios are migrated."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/public-docs.test.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Validate public CLI documentation against the published binding and verified external artifact."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/run-package-tests.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/session-jsonl.test.ts",
+      "disposition": "standalone-equivalent",
+      "stage8Action": "Remove only after exact standalone replacement test/transport/session-jsonl.test.ts at the recorded standalone commit remains present.",
+      "replacementPath": "test/transport/session-jsonl.test.ts"
+    },
+    {
+      "path": "scripts/agent-runtime/cli/verify-hosted-candidate-install.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/verify-published-beta.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/verify-published-release.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/verify-release-candidate.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/write-native-candidate-evidence.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/cli/write-release-candidate-evidence.mjs",
+      "disposition": "remove-stage8-workflow-release",
+      "stage8Action": "Legacy plugin-repo CLI build, packaging, candidate, or publishing infrastructure is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/contracts/public-v1-freeze.mjs",
+      "disposition": "historical-freeze",
+      "stage8Action": "Immutable Public V1 historical evidence remains byte-for-byte unchanged."
+    },
+    {
+      "path": "scripts/agent-runtime/contracts/public-v1-freeze.test.mjs",
+      "disposition": "historical-freeze",
+      "stage8Action": "Immutable Public V1 historical evidence remains byte-for-byte unchanged."
+    },
+    {
+      "path": "scripts/agent-runtime/contracts/run-contract-tests.mjs",
+      "disposition": "retain-plugin-runtime-contract",
+      "stage8Action": "Plugin-owned Runtime or contract coverage remains after removing its local CLI build dependency."
+    },
+    {
+      "path": "scripts/agent-runtime/developer-api/native-acceptance-consumer/build.mjs",
+      "disposition": "retain-plugin-runtime-contract",
+      "stage8Action": "Plugin-owned Runtime or contract coverage remains after removing its local CLI build dependency."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-creation-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-creation-performance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-direct-source-transition-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-graph-transaction-recovery-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-phase8-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-phase8-warm-benchmark.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-recurrence-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-relationship-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-source-transition-recovery-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-temporal-creation-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-timer-session-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/live-typed-creation-acceptance.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/mutation-acceptance-matrix.test.ts",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/run-live-phase8-reset.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/mutation/run-live-stage5-completion.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage1-live.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage2-live.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage3-close.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage3-live.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage3-session.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage4-live.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage5-reads.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage5-session.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage5-skills.test.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage51-build-gates.test.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage51-live.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage51-session.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage6-live.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/agent-runtime/performance/cli-speed-stage7-live.mjs",
+      "disposition": "migrate-live-performance-fallback",
+      "stage8Action": "Live or performance coverage must require an explicitly verified external executable before local CLI fallback is removed."
+    },
+    {
+      "path": "scripts/analyze-production-bundle.test.mjs",
+      "disposition": "retain-plugin-runtime-contract",
+      "stage8Action": "Keep the plugin-owned production bundle audit and remove only its legacy CLI source-root allowance."
+    },
+    {
+      "path": "scripts/check-release-audit-policy.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Plugin maintenance coverage remains but is rewritten to consume the verified published artifact or binding."
+    },
+    {
+      "path": "scripts/release-guard.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Plugin maintenance coverage remains but is rewritten to consume the verified published artifact or binding."
+    },
+    {
+      "path": "scripts/release/audit-policy.mjs",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Plugin maintenance coverage remains but is rewritten to consume the verified published artifact or binding."
+    },
+    {
+      "path": "scripts/release/audit-policy.test.mjs",
+      "disposition": "retain-plugin-runtime-contract",
+      "stage8Action": "Keep the plugin-owned release audit policy and replace local CLI package assertions with published binding assertions."
+    },
+    {
+      "path": "tsconfig.json",
+      "disposition": "convert-to-external-artifact",
+      "stage8Action": "Plugin maintenance coverage remains but is rewritten to consume the verified published artifact or binding."
+    }
+  ],
+  "directSourceImports": [
+    "scripts/agent-runtime/cli-transport/native-transport.test.ts",
+    "scripts/agent-runtime/cli/cli.test.ts",
+    "scripts/agent-runtime/cli/compact-create.test.ts",
+    "scripts/agent-runtime/cli/compact-update.test.ts",
+    "scripts/agent-runtime/cli/direct-lifecycle.test.ts",
+    "scripts/agent-runtime/cli/direct-pinned.test.ts",
+    "scripts/agent-runtime/cli/direct-reminder.test.ts",
+    "scripts/agent-runtime/cli/direct-source-transitions.test.ts",
+    "scripts/agent-runtime/cli/direct-timer-session.test.ts",
+    "scripts/agent-runtime/cli/guided-maintenance-command.test.ts",
+    "scripts/agent-runtime/cli/guided-source-transitions.test.ts",
+    "scripts/agent-runtime/cli/human-command-golden.test.ts",
+    "scripts/agent-runtime/cli/phase7-pty-responder.ts",
+    "scripts/agent-runtime/cli/phase9-client.test.ts",
+    "scripts/agent-runtime/cli/plan-store-capacity-worker.ts",
+    "scripts/agent-runtime/cli/session-jsonl.test.ts",
+    "scripts/agent-runtime/contracts/public-v1-freeze.test.mjs",
+    "scripts/agent-runtime/performance/cli-speed-stage6-live.mjs",
+    "scripts/analyze-production-bundle.test.mjs",
+    "scripts/release/audit-policy.test.mjs"
+  ],
+  "inventoryAggregateSha256": "51eb0cea3d1c60678e23c58869cffb9416f9630e0c80b7f165924c41a2f4d195",
+  "standaloneEvidence": {
+    "repository": "hasanyilmaz/operon-cli",
+    "commit": "52a2cc8f99b6e27c5f4acc0b18ea4552084ab5ef"
+  }
+}

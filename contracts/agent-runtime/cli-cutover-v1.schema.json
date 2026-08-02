@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:maintenance:cli-cutover-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "inventoryVersion",
+    "kind",
+    "sourceRoot",
+    "state",
+    "standaloneEvidence",
+    "unmatchedReferences",
+    "referenceCount",
+    "directSourceImportCount",
+    "dispositions",
+    "counts",
+    "entries",
+    "directSourceImports",
+    "inventoryAggregateSha256"
+  ],
+  "properties": {
+    "$schema": { "const": "./cli-cutover-v1.schema.json" },
+    "inventoryVersion": { "const": 1 },
+    "kind": { "const": "operon-cli-cutover-v1" },
+    "sourceRoot": { "const": "packages/operon-cli" },
+    "state": { "const": "stage-8-ready" },
+    "standaloneEvidence": { "$ref": "#/$defs/standaloneEvidence" },
+    "unmatchedReferences": { "const": 0 },
+    "referenceCount": { "type": "integer", "minimum": 1 },
+    "directSourceImportCount": { "const": 20 },
+    "dispositions": { "$ref": "#/$defs/dispositionMap" },
+    "counts": { "$ref": "#/$defs/countMap" },
+    "entries": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/entry" } },
+    "directSourceImports": { "type": "array", "minItems": 20, "maxItems": 20, "items": { "type": "string", "minLength": 1 } },
+    "inventoryAggregateSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "$defs": {
+    "disposition": {
+      "enum": [
+        "standalone-equivalent",
+        "convert-to-external-artifact",
+        "retain-plugin-runtime-contract",
+        "remove-stage8-workflow-release",
+        "historical-freeze",
+        "migrate-live-performance-fallback"
+      ]
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "disposition", "stage8Action"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "disposition": { "$ref": "#/$defs/disposition" },
+        "stage8Action": { "type": "string", "minLength": 1 },
+        "replacementPath": { "type": "string", "pattern": "^(?:src|test|scripts|docs)/" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "disposition": { "const": "standalone-equivalent" } }, "required": ["disposition"] },
+          "then": { "required": ["replacementPath"] },
+          "else": { "not": { "required": ["replacementPath"] } }
+        }
+      ]
+    },
+    "standaloneEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit"],
+      "properties": {
+        "repository": { "const": "hasanyilmaz/operon-cli" },
+        "commit": { "const": "52a2cc8f99b6e27c5f4acc0b18ea4552084ab5ef" }
+      }
+    },
+    "dispositionMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "standalone-equivalent",
+        "convert-to-external-artifact",
+        "retain-plugin-runtime-contract",
+        "remove-stage8-workflow-release",
+        "historical-freeze",
+        "migrate-live-performance-fallback"
+      ],
+      "properties": {
+        "standalone-equivalent": { "type": "string", "minLength": 1 },
+        "convert-to-external-artifact": { "type": "string", "minLength": 1 },
+        "retain-plugin-runtime-contract": { "type": "string", "minLength": 1 },
+        "remove-stage8-workflow-release": { "type": "string", "minLength": 1 },
+        "historical-freeze": { "type": "string", "minLength": 1 },
+        "migrate-live-performance-fallback": { "type": "string", "minLength": 1 }
+      }
+    },
+    "countMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "standalone-equivalent",
+        "convert-to-external-artifact",
+        "retain-plugin-runtime-contract",
+        "remove-stage8-workflow-release",
+        "historical-freeze",
+        "migrate-live-performance-fallback"
+      ],
+      "properties": {
+        "standalone-equivalent": { "type": "integer", "minimum": 0 },
+        "convert-to-external-artifact": { "type": "integer", "minimum": 0 },
+        "retain-plugin-runtime-contract": { "type": "integer", "minimum": 0 },
+        "remove-stage8-workflow-release": { "type": "integer", "minimum": 0 },
+        "historical-freeze": { "type": "integer", "minimum": 0 },
+        "migrate-live-performance-fallback": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

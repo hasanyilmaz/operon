@@ -581,6 +581,7 @@ function checkWorkflowSecurityPolicy() {
 	const exactWorkflowPermissions = new Map([
 		['ci.yml', ['contents: read']],
 		['cli-ci.yml', ['contents: read']],
+		['cli-external-compatibility.yml', ['contents: read']],
 		['cli-live-acceptance.yml', ['actions: read', 'attestations: write', 'contents: read', 'id-token: write']],
 		['cli-native-candidate.yml', ['attestations: write', 'contents: read', 'id-token: write']],
 		['cli-publish.yml', ['actions: read', 'attestations: read', 'contents: read', 'id-token: write']],
