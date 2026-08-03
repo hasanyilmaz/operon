@@ -5256,6 +5256,11 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	text-decoration: underline;
 }
 
+.operon-compact-task-markdown-highlight {
+	background-color: var(--text-highlight-bg);
+	color: inherit;
+}
+
 .operon-compact-task-markdown-code {
 	padding: 0.05em 0.3em;
 	border-radius: 4px;

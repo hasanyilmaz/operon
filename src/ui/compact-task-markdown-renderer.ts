@@ -9,7 +9,7 @@ export type CompactTaskMarkdownInteractionMode = 'interactive' | 'visual-only' |
 export type CompactTaskMarkdownNode =
 	| { type: 'text'; value: string }
 	| { type: 'code'; value: string }
-	| { type: 'strong' | 'emphasis' | 'strikethrough' | 'underline'; children: CompactTaskMarkdownNode[] }
+	| { type: 'strong' | 'emphasis' | 'strikethrough' | 'underline' | 'highlight'; children: CompactTaskMarkdownNode[] }
 	| { type: 'wikilink'; target: string; label: string }
 	| { type: 'markdown-link'; destination: string; label: string; external: boolean };
 
@@ -152,7 +152,7 @@ function parseInline(value: string): CompactTaskMarkdownNode[] {
 			continue;
 		}
 
-		const format = findFormat(value, cursor);
+		const format = findFormat(value, cursor, protectedRanges);
 		if (format) {
 			flushText(cursor);
 			nodes.push({
@@ -231,21 +231,23 @@ function findMarkdownLink(value: string, start: number): MarkdownLinkMatch | nul
 function findFormat(
 	value: string,
 	start: number,
+	protectedRanges: ReadonlyMap<number, { from: number; to: number }>,
 ): {
-	type: 'strong' | 'emphasis' | 'strikethrough' | 'underline';
+	type: 'strong' | 'emphasis' | 'strikethrough' | 'underline' | 'highlight';
 	contentStart: number;
 	contentEnd: number;
 	end: number;
 } | null {
 	const candidates: Array<{
 		delimiter: string;
-		type: 'strong' | 'emphasis' | 'strikethrough' | 'underline';
+		type: 'strong' | 'emphasis' | 'strikethrough' | 'underline' | 'highlight';
 		wordBoundary: boolean;
 	}> = [
 		{ delimiter: '**', type: 'strong', wordBoundary: false },
 		{ delimiter: '__', type: 'strong', wordBoundary: true },
 		{ delimiter: '~~', type: 'strikethrough', wordBoundary: false },
 		{ delimiter: '++', type: 'underline', wordBoundary: true },
+		{ delimiter: '==', type: 'highlight', wordBoundary: false },
 		{ delimiter: '*', type: 'emphasis', wordBoundary: false },
 		{ delimiter: '_', type: 'emphasis', wordBoundary: true },
 	];
@@ -254,7 +256,13 @@ function findFormat(
 		if (!value.startsWith(candidate.delimiter, start)) continue;
 		if (!isOpeningDelimiter(value, start, candidate.delimiter, candidate.wordBoundary)) continue;
 		const contentStart = start + candidate.delimiter.length;
-		const contentEnd = findClosingDelimiter(value, contentStart, candidate.delimiter, candidate.wordBoundary);
+		const contentEnd = findClosingDelimiter(
+			value,
+			contentStart,
+			candidate.delimiter,
+			candidate.wordBoundary,
+			protectedRanges,
+		);
 		if (contentEnd < 0) continue;
 		return {
 			type: candidate.type,
@@ -271,8 +279,17 @@ function findClosingDelimiter(
 	from: number,
 	delimiter: string,
 	wordBoundary: boolean,
+	protectedRanges: ReadonlyMap<number, { from: number; to: number }>,
 ): number {
 	for (let cursor = from; cursor <= value.length - delimiter.length; cursor++) {
+		const protectedRange = protectedRanges.get(cursor);
+		if (protectedRange) {
+			const trailingDelimiterStart = protectedRange.to - delimiter.length;
+			cursor = value.startsWith(delimiter, trailingDelimiterStart)
+				? trailingDelimiterStart - 1
+				: protectedRange.to - 1;
+			continue;
+		}
 		if (value[cursor] === '\\') {
 			cursor++;
 			continue;
@@ -287,8 +304,10 @@ function findClosingDelimiter(
 		if (!value.startsWith(delimiter, cursor)) continue;
 		if (cursor === from || /\s/u.test(value[cursor - 1] ?? '')) continue;
 		if (
-			delimiter === '++'
-			&& (value[cursor - 1] === '+' || value[cursor + delimiter.length] === '+')
+			(delimiter === '++'
+				&& (value[cursor - 1] === '+' || value[cursor + delimiter.length] === '+'))
+			|| (delimiter === '=='
+				&& (value[cursor - 1] === '=' || value[cursor + delimiter.length] === '='))
 		) continue;
 		if (wordBoundary && isWordCharacter(value[cursor + delimiter.length])) continue;
 		return cursor;
@@ -299,7 +318,10 @@ function findClosingDelimiter(
 function isOpeningDelimiter(value: string, start: number, delimiter: string, wordBoundary: boolean): boolean {
 	const after = value[start + delimiter.length];
 	if (!after || /\s/u.test(after) || after === delimiter[0]) return false;
-	if (delimiter === '++' && value[start - 1] === '+') return false;
+	if (
+		(delimiter === '++' && value[start - 1] === '+')
+		|| (delimiter === '==' && value[start - 1] === '=')
+	) return false;
 	if (wordBoundary && isWordCharacter(value[start - 1])) return false;
 	return true;
 }
@@ -389,7 +411,9 @@ function appendNodes(
 				? 'em'
 				: node.type === 'strikethrough'
 					? 's'
-					: 'span';
+					: node.type === 'highlight'
+						? 'mark'
+						: 'span';
 		const className = `operon-compact-task-markdown-${node.type}`;
 		const element = createOwnerElement(container, tagName);
 		element.className = className;

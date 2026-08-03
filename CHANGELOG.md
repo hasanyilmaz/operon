@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed highlighted Description and Notes text showing raw `==` markers in **Operon hover tooltips** instead of using the theme's highlight appearance.
+
 ### Validation
 
 ## [3.0.1] - 2026-08-01

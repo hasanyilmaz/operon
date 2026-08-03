@@ -114,7 +114,7 @@ function flatten(nodes: readonly CompactTaskMarkdownNode[]): string {
 
 function run(): void {
 	deepEqual(nodeTypes('A **bold** *italic* `code`'), ['text', 'strong', 'text', 'emphasis', 'text', 'code']);
-	deepEqual(nodeTypes('A __bold__ _italic_ ~~strike~~ ++underline++'), [
+	deepEqual(nodeTypes('A __bold__ _italic_ ~~strike~~ ++underline++ ==highlight=='), [
 		'text',
 		'strong',
 		'text',
@@ -123,6 +123,8 @@ function run(): void {
 		'strikethrough',
 		'text',
 		'underline',
+		'text',
+		'highlight',
 	]);
 	deepEqual(parseCompactTaskMarkdown('[[Folder/Note|Label]] [site](https://example.com/a_(b))'), [
 		{ type: 'wikilink', target: 'Folder/Note', label: 'Label' },
@@ -162,6 +164,42 @@ function run(): void {
 		deepEqual(parseCompactTaskMarkdown(value), [{ type: 'text', value }]);
 	}
 	deepEqual(nodeTypes('\\*literal\\* \\++literal\\++'), ['text']);
+	deepEqual(nodeTypes('\\==literal\\== ==shown=='), ['text', 'highlight']);
+	deepEqual(parseCompactTaskMarkdown('`==not highlighted==` [==link==](https://example.com)'), [
+		{ type: 'code', value: '==not highlighted==' },
+		{ type: 'text', value: ' ' },
+		{
+			type: 'markdown-link',
+			destination: 'https://example.com',
+			label: '==link==',
+			external: true,
+		},
+	]);
+	deepEqual(
+		parseCompactTaskMarkdown('==[Label](https://example.com/?q==v)=='),
+		[{
+			type: 'highlight',
+			children: [{
+				type: 'markdown-link',
+				destination: 'https://example.com/?q==v',
+				label: 'Label',
+				external: true,
+			}],
+		}],
+	);
+	deepEqual(nodeTypes('==**bold**=='), ['highlight']);
+	equal(flatten(parseCompactTaskMarkdown('==**bold**==')), 'bold');
+	for (const value of [
+		'**https://example.com/path**',
+		'**see https://example.com/path**',
+		'++https://example.com/path++',
+		'==https://example.com/path==',
+	]) {
+		equal(nodeTypes(value)[0], value.startsWith('**') ? 'strong' : value.startsWith('++') ? 'underline' : 'highlight');
+	}
+	for (const value of ['===foo==', '==foo===', '====foo==', '==foo====']) {
+		deepEqual(parseCompactTaskMarkdown(value), [{ type: 'text', value }]);
+	}
 	deepEqual(nodeTypes('**unclosed ++empty++ ~~ ~~'), ['text', 'underline', 'text']);
 	deepEqual(parseCompactTaskMarkdown('`**not bold** [[not-link]] ++not underline++`'), [{
 		type: 'code',
@@ -180,7 +218,7 @@ function run(): void {
 
 	const tooltip = createContainer();
 	const tooltipResult = renderCompactTaskMarkdown(tooltip as unknown as HTMLElement, {
-		value: 'See [site](https://example.com) and [[Note|note]]',
+		value: 'See [site](https://example.com), [[Note|note]], and ==highlight==',
 		mode: 'tooltip',
 	});
 	deepEqual(tooltipResult, { formatted: true, hasLinks: true });
@@ -189,6 +227,13 @@ function run(): void {
 	equal(tooltip.children.filter(child => child.classList.has('operon-hover-tooltip-link-label')).length, 2);
 	equal(tooltip.children.every(child => child.attributes.has('href') === false), true);
 	equal(tooltip.children.every(child => child.listeners.size === 0), true);
+	equal(
+		tooltip.children.some(child =>
+			child.tagName === 'MARK'
+			&& child.classList.has('operon-compact-task-markdown-highlight')
+		),
+		true,
+	);
 
 	const visualOnly = createContainer();
 	renderCompactTaskMarkdown(visualOnly as unknown as HTMLElement, {
