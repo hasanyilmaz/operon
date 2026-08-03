@@ -30,7 +30,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 24.18.0
-          cache: false
+          package-manager-cache: false
       - name: Use an empty npm user configuration
         shell: bash
         run: |

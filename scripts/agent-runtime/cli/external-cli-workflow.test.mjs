@@ -14,6 +14,8 @@ test('external CLI proof workflow is manual, read-only, and publish-free', async
 	assert.match(source, /^\s+NPM_TOKEN: ""$/mu);
 	assert.match(source, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/u);
 	assert.match(source, /actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020/u);
+	assert.match(source, /^\s+package-manager-cache:\s*false\s*$/mu);
+	assert.doesNotMatch(source, /^\s+cache:/mu);
 	assert.match(source, /npm-11\.12\.1\.tgz/u);
 	assert.match(source, /sha512-VaGaIBw17hFThpbgvHKm6vGu52tKNsHlQwhGLSOElVZBwIMRwE\+aUkzITcgZHBhU9yGronJfJaGXXSFhCPjYHw==/u);
 	assert.doesNotMatch(source, /\bnpx\b/u);
