@@ -99,9 +99,7 @@ test('bundle size guard reports missing and unreadable bundle paths', t => {
 	assert.equal(inspectBundleFile(missingPath).reason, 'missing');
 	assert.match(formatBundleSizeResult(inspectBundleFile(missingPath)), /not found/u);
 
-	const blockingFile = path.join(temporaryDir, 'not-a-directory');
-	fs.writeFileSync(blockingFile, 'blocker', 'utf8');
-	const unreadablePath = path.join(blockingFile, 'main.js');
+	const unreadablePath = path.join(temporaryDir, 'invalid\0main.js');
 	assert.equal(inspectBundleFile(unreadablePath).reason, 'read-error');
 	const messages = createMessages();
 	assert.equal(runBundleSizeCheck(unreadablePath, messages.logger, {}), 1);
