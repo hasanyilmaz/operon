@@ -17,7 +17,7 @@ test('external CLI proof workflow is manual, read-only, and publish-free', async
 	assert.match(source, /^\s+package-manager-cache:\s*false\s*$/mu);
 	assert.doesNotMatch(source, /^\s+cache:/mu);
 	assert.match(source, /npm-11\.12\.1\.tgz/u);
-	assert.match(source, /sha512-VaGaIBw17hFThpbgvHKm6vGu52tKNsHlQwhGLSOElVZBwIMRwE\+aUkzITcgZHBhU9yGronJfJaGXXSFhCPjYHw==/u);
+	assert.match(source, /sha512-zcoUuF1kezGSAo0CqtvoLXX3mkRqzuqYdL6Y5tdo8g69NVV3CkjQ6ZBhBgB4d7vGkPcV6TcvLi3GRKPDFX\+xTA==/u);
 	assert.doesNotMatch(source, /\bnpx\b/u);
 	assert.match(source, /^\s+GH_TOKEN: \$\{\{ github\.token \}\}$/mu);
 	assert.match(source, /agent-runtime:external-cli:public-proof/u);

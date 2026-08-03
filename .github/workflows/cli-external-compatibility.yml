@@ -45,7 +45,7 @@ jobs:
           curl --fail --location --proto '=https' --tlsv1.2 \
             --output "${archive}" \
             'https://registry.npmjs.org/npm/-/npm-11.12.1.tgz'
-          node -e "const fs=require('node:fs');const crypto=require('node:crypto');const actual='sha512-'+crypto.createHash('sha512').update(fs.readFileSync(process.argv[1])).digest('base64');const expected='sha512-VaGaIBw17hFThpbgvHKm6vGu52tKNsHlQwhGLSOElVZBwIMRwE+aUkzITcgZHBhU9yGronJfJaGXXSFhCPjYHw==';if(actual!==expected)throw new Error('OPERON_EXTERNAL_CLI_NPM_INTEGRITY_MISMATCH');" "${archive}"
+          node -e "const fs=require('node:fs');const crypto=require('node:crypto');const actual='sha512-'+crypto.createHash('sha512').update(fs.readFileSync(process.argv[1])).digest('base64');const expected='sha512-zcoUuF1kezGSAo0CqtvoLXX3mkRqzuqYdL6Y5tdo8g69NVV3CkjQ6ZBhBgB4d7vGkPcV6TcvLi3GRKPDFX+xTA==';if(actual!==expected)throw new Error('OPERON_EXTERNAL_CLI_NPM_INTEGRITY_MISMATCH');" "${archive}"
           mkdir -p "${root}"
           tar -xzf "${archive}" -C "${root}"
           npm_cli="${root}/package/bin/npm-cli.js"
