@@ -18,6 +18,7 @@ import {
 	withVerifiedPublishedCli,
 } from './published-cli-v1.mjs';
 import { readArtifactArguments } from './check-published-cli-artifact.mjs';
+import { symlinkCapabilityUnavailableReason } from '../../test-symlink-capability.mjs';
 
 test('accepted binding validates and canonical plugin inputs match', async () => {
 	const { binding } = await loadPublishedCliBinding();
@@ -98,7 +99,7 @@ test('tarball verification rejects a relative path before reading bytes', async 
 });
 
 test('tarball verification rejects a symlink before reading bytes', {
-	skip: process.platform === 'win32' ? 'Windows symbolic-link creation is not available to every contributor.' : false,
+	skip: symlinkCapabilityUnavailableReason(),
 }, async () => {
 	const { binding } = await loadPublishedCliBinding();
 	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-tarball-negative-'));

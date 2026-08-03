@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { symlinkCapabilityUnavailableReason } from "../test-symlink-capability.mjs";
 
 const script = resolve("scripts/agent-runtime/create-sanitized-vault.mjs");
 const fixedTempRoot = process.platform === "darwin" ? "/private/tmp" : tmpdir();
@@ -23,7 +24,7 @@ test("sanitized vault generator rejects targets outside its fixed temp namespace
 });
 
 test("sanitized vault generator refuses a matching-name symlink without touching its target", {
-	skip: process.platform === "win32" ? "Windows symbolic-link creation is not available to every contributor." : false,
+	skip: symlinkCapabilityUnavailableReason(),
 }, () => {
 	const victimRoot = mkdtempSync(join(tmpdir(), "operon-vault-victim-test-"));
 	const sentinel = join(victimRoot, "sentinel.txt");
