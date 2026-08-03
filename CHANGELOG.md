@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Routed `health`, `capabilities`, `diagnostics`, `catalog`, `entity.resolve`,
+  `task.get`, `tasks.query`, `tasks.finder`, `relationships.get`,
+  `context.build`, and `timers.read` through the authenticated persistent
+  Runtime transport, while keeping mutation preview and apply on the one-shot
+  safety path.
+
 ### Validation
 
 ## [3.0.2] - 2026-08-03

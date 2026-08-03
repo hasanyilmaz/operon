@@ -21,6 +21,7 @@ import {
 	unregisterWindowsBrokerScopeV1,
 	type WindowsBrokerScopeV1,
 } from './windows-broker-state';
+import { PERSISTENT_READ_COMMANDS_V1 } from './persistent-read-commands';
 
 const PROTOCOL_VERSION_V1 = 1;
 const MAX_CONNECTIONS_V1 = 4;
@@ -29,10 +30,7 @@ const AUTHENTICATED_FRAME_OVERHEAD_BYTES_V1 = 16 * 1024;
 const MAX_FRAME_BYTES_V1 = CONTRACT_LIMITS_V1.transportInputBytes
 	+ AUTHENTICATED_FRAME_OVERHEAD_BYTES_V1;
 const READ_COMMANDS_V1 = new Set<CliCommandV1>([
-	'health',
-	'task.get',
-	'tasks.query',
-	'context.build',
+	...PERSISTENT_READ_COMMANDS_V1,
 ]);
 const HEX_256_PATTERN_V1 = /^[a-f0-9]{64}$/u;
 const REQUEST_TOKEN_PATTERN_V1 = /^[A-Za-z0-9_-]{32}$/u;
