@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Routed `health`, `capabilities`, `diagnostics`, `catalog`, `entity.resolve`,
+- Expanded the authenticated persistent Runtime server allowlist to accept
+  `health`, `capabilities`, `diagnostics`, `catalog`, `entity.resolve`,
   `task.get`, `tasks.query`, `tasks.finder`, `relationships.get`,
-  `context.build`, and `timers.read` through the authenticated persistent
-  Runtime transport, while keeping mutation preview and apply on the one-shot
-  safety path.
+  `context.build`, and `timers.read`, while keeping mutation preview and apply
+  on the one-shot safety path.
 
 ### Validation
 

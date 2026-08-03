@@ -429,7 +429,7 @@ test('Windows broker staging is one-shot, bounded and expires fail-closed', () =
 		scope: WINDOWS_BROKER_SCOPE,
 		now: 40_001,
 	}), /broker-capacity-full/u);
-clearWindowsBrokerStagesForTestsV1();
+	clearWindowsBrokerStagesForTestsV1();
 });
 
 test('persistent read policy covers every read-only Runtime command and no mutation', () => {
