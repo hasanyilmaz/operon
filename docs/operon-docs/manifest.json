@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-07-30T18:37:56.871Z",
+  "generatedAt": "2026-08-03T09:28:33.575Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -600,8 +600,8 @@
     },
     {
       "path": "DOCS-119 Install and verify Operon CLI.md",
-      "sha256": "c10fc93a642000eda724eb7905644ed696562114ffe49d571ba2d19ad616f059",
-      "bytes": 8609
+      "sha256": "c1a3a85577fa77f1af72eba3a703e2fc6da0c9ab6e4c7a0e6a562dfecee392b8",
+      "bytes": 8792
     },
     {
       "path": "DOCS-120 Your first safe task read.md",
@@ -625,13 +625,13 @@
     },
     {
       "path": "DOCS-124 Troubleshooting and recovery.md",
-      "sha256": "3a4648c2b7681b467dd0aeab9b27ccd4093e1cb0cb4dff718d71b88ef6a2582f",
-      "bytes": 12551
+      "sha256": "7112ff31ec58b623b8e99de266f754b4022fd4a8df4c33e5b29657c834aa000e",
+      "bytes": 12603
     },
     {
       "path": "DOCS-125 CLI contract and discovery reference.md",
-      "sha256": "031ef345645cfc9dfa79c467f3834d34801efd864e7ce845c5b6abf249d85a87",
-      "bytes": 9713
+      "sha256": "18a824fb8e3c5f4fca107ebeda043ec2c48cc63d5f16a27b8cc831fd8674f7df",
+      "bytes": 9932
     },
     {
       "path": "DOCS-126 Compact task syntax.md",
@@ -650,8 +650,8 @@
     },
     {
       "path": "DOCS-129 In-process Developer API overview.md",
-      "sha256": "e45bb7d5a83ad0c42367a8e70cfa3939c2be280d022e585d981476915a10dc40",
-      "bytes": 6450
+      "sha256": "cdf2ea3a8da1173c02b02541155ef758ced2accb9dd8b5bc26eccb2202471872",
+      "bytes": 6681
     },
     {
       "path": "DOCS-130 Developer API identity and capability grants.md",

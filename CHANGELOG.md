@@ -7,11 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.0.2] - 2026-08-03
+
+Operon 3.0.2 completes the standalone CLI repository separation while keeping Runtime V1 stable, cleans up plugin review warnings, and fixes highlighted Markdown in hover tooltips.
+
+### Improved
+
+- Improved **Community Plugin Scorecard compatibility** by removing avoidable plugin-source warnings without changing task or Runtime behavior.
+
+### Changed
+
+- Moved **Operon CLI source and release development** to the standalone [Operon CLI repository](https://github.com/hasanyilmaz/operon-cli), while preserving the `@stratejya/operon-cli` package name and Runtime V1 compatibility.
+
 ### Fixed
 
 - Fixed highlighted Description and Notes text showing raw `==` markers in **Operon hover tooltips** instead of using the theme's highlight appearance.
 
 ### Validation
+
+- Validated with the complete local check suite, 1,518 Phase 5 regression checks, published CLI 1.0.8 artifact and provenance verification, all 12 Runtime mutation families, and a clean dependency audit with 0 production and 0 development findings.
 
 ## [3.0.1] - 2026-08-01
 

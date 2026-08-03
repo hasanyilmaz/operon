@@ -2,7 +2,7 @@
 Notes: Connect an Obsidian plugin to Operon's typed in-process API and choose it instead of the CLI when appropriate
 Icon: plug-zap
 Color: "#059669"
-Updated: 2026-07-30T19:51:40
+Updated: 2026-08-03T10:31:15
 ---
 
 # In-process Developer API overview
@@ -23,6 +23,8 @@ import type {
   OperonDeveloperApiV1,
 } from "@stratejya/operon-cli/contracts/v1/developer-api";
 ```
+
+These type declarations ship in [@stratejya/operon-cli on npm](https://www.npmjs.com/package/@stratejya/operon-cli); their source is maintained in the [standalone Operon CLI repository](https://github.com/hasanyilmaz/operon-cli).
 
 These imports provide declarations only. They do not include a JavaScript SDK, validators, storage helpers, transports, or Runtime code. Your plugin already runs inside Obsidian, so it obtains the active Operon plugin instance from the host and calls the accessor on that instance.
 

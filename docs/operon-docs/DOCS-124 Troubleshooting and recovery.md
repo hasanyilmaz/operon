@@ -2,7 +2,7 @@
 Notes: Symptom-to-action guide for setup, availability, freshness, and uncertain outcomes
 Icon: wrench
 Color: "#059669"
-Updated: 2026-07-30T20:01:33
+Updated: 2026-08-03T10:31:15
 ---
 
 # Troubleshooting and recovery
@@ -78,7 +78,7 @@ operon setup --vault "/new/path/to/vault" --name main --default
 
 ## Platform support
 
-The platform section of `doctor` shows the current transport status. macOS is supported. Native Linux and Windows 11 are public beta and best-effort, so `doctor` warns that the environment is not native-certified but still checks and uses the transport. Include the platform, Obsidian and Node versions, `doctor --json` output, and structured error code when reporting beta feedback. WSL is unsupported, and a live transport refusal there is a platform limit rather than a setup error.
+The platform section of `doctor` shows the current transport status. macOS is supported. Native Linux and Windows 11 are public beta and best-effort, so `doctor` warns that the environment is not native-certified but still checks and uses the transport. Include the platform, Obsidian and Node versions, `doctor --json` output, and structured error code when [reporting beta feedback](https://github.com/hasanyilmaz/operon-cli/issues). WSL is unsupported, and a live transport refusal there is a platform limit rather than a setup error.
 
 ## Reading exit codes
 

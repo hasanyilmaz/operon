@@ -325,6 +325,26 @@ test('Developer API docs preserve projected discovery and typed result distincti
 	assert.match(identity, /Runtime read DTOs still require a caller-generated `requestId`/iu);
 });
 
+test('Public CLI surfaces route source, package, and beta feedback to the standalone repository', async () => {
+	const [install, troubleshooting, contract, developerApi, readme] = await Promise.all([
+		sourceDoc('119'),
+		sourceDoc('124'),
+		sourceDoc('125'),
+		sourceDoc('129'),
+		readFile(path.join(pluginRoot, 'README.md'), 'utf8'),
+	]);
+	for (const source of [install, contract, developerApi, readme]) {
+		assert.match(source, /https:\/\/github\.com\/hasanyilmaz\/operon-cli/u);
+	}
+	for (const source of [install, developerApi, readme]) {
+		assert.match(source, /https:\/\/www\.npmjs\.com\/package\/@stratejya\/operon-cli/u);
+	}
+	assert.match(
+		troubleshooting,
+		/https:\/\/github\.com\/hasanyilmaz\/operon-cli\/issues/u,
+	);
+});
+
 test('Generated docs and manifest are byte-identical to all source docs', async () => {
 	const sourceFiles = await managedFiles(sourceRoot);
 	const generatedFiles = await managedFiles(generatedRoot);

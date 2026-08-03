@@ -2,7 +2,7 @@
 Notes: Install operon-cli, point it at your vault, and confirm it with doctor
 Icon: terminal
 Color: "#059669"
-Updated: 2026-07-30T19:29:41
+Updated: 2026-08-03T10:31:15
 ---
 
 # Install and verify Operon CLI
@@ -31,6 +31,8 @@ Install globally:
 ```bash
 npm install --global @stratejya/operon-cli
 ```
+
+Source and releases: [Operon CLI on GitHub](https://github.com/hasanyilmaz/operon-cli). Package: [@stratejya/operon-cli on npm](https://www.npmjs.com/package/@stratejya/operon-cli).
 
 Confirm the install and your Node version in one step:
 

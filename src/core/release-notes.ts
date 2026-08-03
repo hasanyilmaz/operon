@@ -13,6 +13,30 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.0.2',
+		date: '2026-08-03',
+		title: 'Operon 3.0.2 - CLI Separation and Scorecard Cleanup',
+		showOnUpdate: true,
+		body: `
+Operon 3.0.2 completes the standalone CLI repository separation while keeping Runtime V1 stable, cleans up plugin review warnings, and fixes highlighted Markdown in hover tooltips.
+
+### Improved
+- Improved **Community Plugin Scorecard compatibility** by removing avoidable plugin-source warnings without changing task or Runtime behavior.
+
+### Changed
+- Moved **Operon CLI source and release development** to the standalone [Operon CLI repository](https://github.com/hasanyilmaz/operon-cli), while preserving the \`@stratejya/operon-cli\` package name and Runtime V1 compatibility.
+
+### Fixed
+- Fixed highlighted Description and Notes text showing raw \`==\` markers in **Operon hover tooltips** instead of using the theme's highlight appearance.
+
+### Updated Docs
+- [[DOCS-119 Install and verify Operon CLI|Install and verify Operon CLI]]
+- [[DOCS-124 Troubleshooting and recovery|Troubleshooting and recovery]]
+- [[DOCS-125 CLI contract and discovery reference|CLI contract and discovery reference]]
+- [[DOCS-129 In-process Developer API overview|In-process Developer API overview]]
+`.trim(),
+	},
+	{
 		version: '3.0.1',
 		date: '2026-08-01',
 		title: 'Operon 3.0.1 - Windows Mutation Reliability',

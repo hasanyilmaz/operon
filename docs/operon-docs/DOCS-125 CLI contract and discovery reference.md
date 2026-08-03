@@ -2,7 +2,7 @@
 Notes: Discover and verify the public CLI contract, compatibility ranges, exit codes, and platform support
 Icon: file-json
 Color: "#059669"
-Updated: 2026-07-30T19:44:06
+Updated: 2026-08-03T10:31:15
 ---
 
 # CLI contract and discovery reference
@@ -10,6 +10,8 @@ Updated: 2026-07-30T19:44:06
 > **Maturity:** Public CLI discovery and compatibility · Obsidian Desktop · CLI contract V1
 
 The exact, authoritative CLI contract lives in the package itself: `cli-manifest-v1.json` and the schemas under `schemas/v1/`. This page does not copy those in full. It shows how to read the authoritative data straight from the CLI and carries only small summaries that are verified against those sources.
+
+For source history and release artifacts, see the [standalone Operon CLI repository](https://github.com/hasanyilmaz/operon-cli); the installed manifest and schemas remain authoritative for the version you are running.
 
 ## The source of truth
 

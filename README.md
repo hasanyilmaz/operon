@@ -541,6 +541,8 @@ operon setup
 operon doctor --live
 ```
 
+Source: [Operon CLI on GitHub](https://github.com/hasanyilmaz/operon-cli) · Package: [@stratejya/operon-cli on npm](https://www.npmjs.com/package/@stratejya/operon-cli)
+
 Scripts and agents can use typed requests or persistent JSONL sessions. Another enabled plugin in the same Obsidian Desktop process can use the capability-gated, type-only Developer API. These integration surfaces require Obsidian Desktop and a live Operon Runtime; they do not make the main Operon plugin desktop-only.
 
 Start with the [Agent Runtime overview](https://operon.cc/docs/docs-118-operon-agent-runtime-overview/), [CLI installation guide](https://operon.cc/docs/docs-119-install-and-verify-operon-cli/), [Developer API overview](https://operon.cc/docs/docs-129-in-process-developer-api-overview/), or [JSONL session guide](https://operon.cc/docs/docs-133-jsonl-sessions-for-scripts-and-agents/).
