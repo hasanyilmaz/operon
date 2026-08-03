@@ -43,6 +43,10 @@ import {
 } from "./benchmark.mjs";
 import { hasLivePostReloadPhase } from "./live-lifecycle.mjs";
 
+const POSIX_REQUEST_FILE_TEST_SKIP = process.platform === "win32"
+	? "Request-file transport permission semantics are POSIX-only."
+	: false;
+
 function testRoot() {
 	const parent = mkdtempSync(join(tmpdir(), "operon-transport-test-"));
 	const root = join(parent, "requests");
@@ -55,10 +59,12 @@ test("request token is opaque and path-safe", () => {
 	assert.match(token, /^[A-Za-z0-9_-]{32}$/);
 	assert.equal(validateRequestToken(token), token);
 	assert.throws(() => validateRequestToken("../escape"), /INVALID_REQUEST_TOKEN/);
-	assert.equal(requestPathForToken(token, "/tmp/root"), `/tmp/root/${token}.request.json`);
+	assert.equal(requestPathForToken(token, "/tmp/root"), join("/tmp/root", `${token}.request.json`));
 });
 
-test("secure request write is atomic, mode 0600, and consumed once", () => {
+test("secure request write is atomic, mode 0600, and consumed once", {
+	skip: POSIX_REQUEST_FILE_TEST_SKIP,
+}, () => {
 	const root = testRoot();
 	const request = { probeVersion: 1, requestId: "test", payloadBase64: "YWJj" };
 	const written = writeSecureRequest(request, { root });
@@ -73,7 +79,9 @@ test("secure request write is atomic, mode 0600, and consumed once", () => {
 	assert.equal(cleanupRequest(written.token, { root }), false);
 });
 
-test("atomic publication never removes a pre-existing target", () => {
+test("atomic publication never removes a pre-existing target", {
+	skip: POSIX_REQUEST_FILE_TEST_SKIP,
+}, () => {
 	const root = testRoot();
 	const token = "A".repeat(32);
 	const target = requestPathForToken(token, root);
@@ -86,7 +94,9 @@ test("atomic publication never removes a pre-existing target", () => {
 	assert.equal(readFileSync(target, "utf8"), "attacker sentinel");
 });
 
-test("cleanup never removes a same-token replacement", () => {
+test("cleanup never removes a same-token replacement", {
+	skip: POSIX_REQUEST_FILE_TEST_SKIP,
+}, () => {
 	const root = testRoot();
 	const token = "R".repeat(32);
 	const written = writeSecureRequest({ requestId: "original" }, { root, token });
@@ -109,7 +119,9 @@ test("published request identity must match the captured file generation", () =>
 	assert.equal(fileIdentityMatches(identity, { ...identity, ctimeMs: 5 }), false);
 });
 
-test("insecure request root and symlink root fail closed", () => {
+test("insecure request root and symlink root fail closed", {
+	skip: POSIX_REQUEST_FILE_TEST_SKIP,
+}, () => {
 	const root = testRoot();
 	chmodSync(root, 0o755);
 	assert.throws(() => ensureSecureRequestRoot(root), /REQUEST_ROOT_WRONG_MODE/);
@@ -200,7 +212,9 @@ test("payload files are capped before full allocation and errors stay path-free"
 	);
 });
 
-test("evidence output refuses a pre-existing symlink", () => {
+test("evidence output refuses a pre-existing symlink", {
+	skip: POSIX_REQUEST_FILE_TEST_SKIP,
+}, () => {
 	const outputRoot = ensureSecureRequestRoot(fixedResultsRoot());
 	const suffix = createRequestToken();
 	const outputFile = join(outputRoot, `symlink-${suffix}.json`);
@@ -294,7 +308,9 @@ test("client contract rejects unknown lifecycle phases", () => {
 	}, request, input), "RESULT_PHASE_INVALID");
 });
 
-test("request-file client uses token-only invocation and leaves no request file", async () => {
+test("request-file client uses token-only invocation and leaves no request file", {
+	skip: POSIX_REQUEST_FILE_TEST_SKIP,
+}, async () => {
 	const fixtureRoot = mkdtempSync(join(tmpdir(), "operon-transport-client-test-"));
 	const fakeCli = join(fixtureRoot, "fake-obsidian");
 	const fakeSource = `#!/usr/bin/env node
@@ -344,7 +360,9 @@ process.stdout.write(JSON.stringify({
 	assert.equal(evidence.transport.result.vaultIdentity.expectedMatch, true);
 });
 
-test("client rejects a stale or mismatched structured response", async () => {
+test("client rejects a stale or mismatched structured response", {
+	skip: POSIX_REQUEST_FILE_TEST_SKIP,
+}, async () => {
 	const fixtureRoot = mkdtempSync(join(tmpdir(), "operon-transport-mismatch-test-"));
 	const fakeCli = join(fixtureRoot, "fake-obsidian");
 	const fakeSource = `#!/usr/bin/env node

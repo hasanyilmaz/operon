@@ -89,12 +89,18 @@ test('binding schema rejects an unknown top-level field', async () => {
 	}
 });
 
-test('tarball verification rejects relative and symlink paths before reading bytes', async () => {
+test('tarball verification rejects a relative path before reading bytes', async () => {
 	const { binding } = await loadPublishedCliBinding();
 	await assert.rejects(
 		verifyTarballIdentity('candidate.tgz', binding),
 		/OPERON_PUBLISHED_CLI_TARBALL_PATH_INVALID/u,
 	);
+});
+
+test('tarball verification rejects a symlink before reading bytes', {
+	skip: process.platform === 'win32' ? 'Windows symbolic-link creation is not available to every contributor.' : false,
+}, async () => {
+	const { binding } = await loadPublishedCliBinding();
 	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-tarball-negative-'));
 	try {
 		const real = path.join(temporaryRoot, 'real.tgz');

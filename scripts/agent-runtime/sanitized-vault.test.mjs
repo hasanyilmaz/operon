@@ -22,7 +22,9 @@ test("sanitized vault generator rejects targets outside its fixed temp namespace
 	assert.match(result.stderr, /SANITIZED_VAULT_TARGET_OUTSIDE_FIXED_TEMP_ROOT/u);
 });
 
-test("sanitized vault generator refuses a matching-name symlink without touching its target", () => {
+test("sanitized vault generator refuses a matching-name symlink without touching its target", {
+	skip: process.platform === "win32" ? "Windows symbolic-link creation is not available to every contributor." : false,
+}, () => {
 	const victimRoot = mkdtempSync(join(tmpdir(), "operon-vault-victim-test-"));
 	const sentinel = join(victimRoot, "sentinel.txt");
 	writeFileSync(sentinel, "keep", { mode: 0o600 });

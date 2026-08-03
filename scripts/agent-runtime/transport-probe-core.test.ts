@@ -43,8 +43,12 @@ async function run(): Promise<void> {
 	await testArgvDigestAndVaultIdentity();
 	await testAsyncDelayAndGeneratedOutput();
 	await testRuntimeTimingDrain();
-	await testOwnerOnlyRequestFileAndCleanup();
-	await testUnsafeRequestFilesFailClosed();
+	if (process.platform !== 'win32') {
+		await testOwnerOnlyRequestFileAndCleanup();
+		await testUnsafeRequestFilesFailClosed();
+	} else {
+		console.log('Skipping POSIX request-file permission checks on Windows.');
+	}
 	await testInputAndVaultErrors();
 	console.log('Agent Runtime transport probe core tests passed');
 }
