@@ -41,6 +41,10 @@ import {
 	type AgentRuntimePersistentReadServerHandleV1,
 } from '../../../src/agent-runtime/transport/persistent-read-server';
 import {
+	PERSISTENT_READ_COMMANDS_V1,
+	isPersistentReadCommandV1,
+} from '../../../src/agent-runtime/transport/persistent-read-commands';
+import {
 	AgentRuntimePersistentReadSupervisorV1,
 } from '../../../src/agent-runtime/transport/persistent-read-supervisor';
 import {
@@ -425,7 +429,28 @@ test('Windows broker staging is one-shot, bounded and expires fail-closed', () =
 		scope: WINDOWS_BROKER_SCOPE,
 		now: 40_001,
 	}), /broker-capacity-full/u);
-	clearWindowsBrokerStagesForTestsV1();
+clearWindowsBrokerStagesForTestsV1();
+});
+
+test('persistent read policy covers every read-only Runtime command and no mutation', () => {
+	assert.deepEqual(PERSISTENT_READ_COMMANDS_V1, [
+		'health',
+		'capabilities',
+		'diagnostics',
+		'catalog',
+		'entity.resolve',
+		'task.get',
+		'tasks.query',
+		'tasks.finder',
+		'relationships.get',
+		'context.build',
+		'timers.read',
+	]);
+	for (const command of PERSISTENT_READ_COMMANDS_V1) {
+		assert.equal(isPersistentReadCommandV1(command), true, `${command} must be allowlisted`);
+	}
+	assert.equal(isPersistentReadCommandV1('mutation.preview'), false);
+	assert.equal(isPersistentReadCommandV1('mutation.apply'), false);
 });
 
 if (process.platform !== 'win32') {
