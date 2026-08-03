@@ -760,11 +760,14 @@ function checkReleaseAuditPolicy() {
 	for (const file of [
 		'contracts/release/dev-audit-policy-v1.json',
 		'contracts/agent-runtime/public-v1-freeze.json',
+		'contracts/agent-runtime/public-v1-external-freeze.schema.json',
 		'scripts/check-release-audit-policy.mjs',
 		'scripts/agent-runtime/contracts/check-historical-public-v1-freeze.mjs',
 		'scripts/agent-runtime/contracts/check-historical-public-v1-freeze.test.mjs',
 		'scripts/release/audit-policy.mjs',
 		'scripts/release/audit-policy.test.mjs',
+		'scripts/release/write-external-freeze.mjs',
+		'scripts/release/write-external-freeze.test.mjs',
 		'scripts/release/check-accepted-freeze.mjs',
 		'scripts/release/check-accepted-freeze.test.mjs',
 		'scripts/release/run-published-cli-live-acceptance.mjs',
@@ -832,9 +835,30 @@ function checkReleaseAuditPolicy() {
 	}
 	assertIncludes(
 		'package.json',
+		'"release:freeze:write": "node scripts/release/write-external-freeze.mjs"',
+		'package scripts must expose the one-shot external-freeze writer',
+	);
+	assertIncludes(
+		'package.json',
 		'"release:freeze:check": "node scripts/release/check-accepted-freeze.mjs"',
 		'package scripts must expose the release-only accepted-freeze check',
 	);
+	assertIncludes(
+		'package.json',
+		'"release:freeze:test": "node --test scripts/release/write-external-freeze.test.mjs scripts/release/check-accepted-freeze.test.mjs"',
+		'normal validation must cover both external-freeze writing and checking',
+	);
+	const freezeWriterSource = readText('scripts/release/write-external-freeze.mjs');
+	for (const required of [
+		"new Set(['--live-evidence', '--accepted-by', '--accepted-at'])",
+		"open(target, 'wx', 0o600)",
+		'await link(evidenceTemporaryPath, evidencePath)',
+		'OPERON_EXTERNAL_FREEZE_EXISTS',
+	]) {
+		if (!freezeWriterSource.includes(required)) {
+			fail(`external-freeze writer is missing ${JSON.stringify(required)}`);
+		}
+	}
 	assertIncludes(
 		'package.json',
 		'"agent-runtime:historical-freeze:check": "node scripts/agent-runtime/contracts/check-historical-public-v1-freeze.mjs"',

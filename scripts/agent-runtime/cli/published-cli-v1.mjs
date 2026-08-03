@@ -124,7 +124,7 @@ export async function verifyPublishedCliExecutablePath(executablePath, binding) 
 		throw new Error('OPERON_PUBLISHED_CLI_EXECUTABLE_PATH_INVALID');
 	}
 	const bytes = await readFile(executablePath);
-	assert.equal(bytes.length, binding.artifact.executable.size, 'OPERON_PUBLISHED_CLI_EXECUTABLE_BYTES_MISMATCH');
+	assert.equal(bytes.length, binding.artifact.executable.bytes, 'OPERON_PUBLISHED_CLI_EXECUTABLE_BYTES_MISMATCH');
 	assert.equal(sha256(bytes), binding.artifact.executable.sha256, 'OPERON_PUBLISHED_CLI_EXECUTABLE_SHA256_MISMATCH');
 	if (process.platform !== 'win32') {
 		assert.equal(stats.mode & 0o777, binding.artifact.executable.mode, 'OPERON_PUBLISHED_CLI_EXECUTABLE_MODE_MISMATCH');

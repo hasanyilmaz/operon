@@ -12,6 +12,7 @@ import {
 	sanitizedChildEnvironment,
 	withVerifiedPublishedCli,
 } from '../agent-runtime/cli/published-cli-v1.mjs';
+import { readPluginArtifactIdentity } from './check-accepted-freeze.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const pluginRoot = path.resolve(path.dirname(scriptPath), '../..');
@@ -54,14 +55,27 @@ export async function runPublishedCliLiveAcceptance(arguments_, options = {}) {
 	await assertNewOutputPath(outputPath);
 	const loadBinding = options.loadBinding ?? loadPublishedCliBinding;
 	const installVerified = options.installVerified ?? withVerifiedPublishedCli;
+	const readPluginArtifact = options.readPluginArtifact ?? readPluginArtifactIdentity;
 	const spawn = options.spawn ?? spawnSync;
+	const environment = options.env ?? process.env;
+	const artifactRoot = environment.OPERON_SANITIZED_PLUGIN_ARTIFACT_ROOT;
+	if (
+		typeof artifactRoot !== 'string'
+		|| !path.isAbsolute(artifactRoot)
+		|| artifactRoot.includes('\0')
+	) {
+		throw new Error('OPERON_PUBLISHED_CLI_LIVE_PLUGIN_ARTIFACT_ROOT_INVALID');
+	}
+	const pluginArtifact = await readPluginArtifact(artifactRoot);
 	const { binding } = await loadBinding({ pluginRoot: options.pluginRoot ?? pluginRoot });
 	const result = await installVerified(
 		arguments_.tarballPath,
 		binding,
 		async ({ executable, npmVersion }) => {
+			assert.equal(process.versions.node, '24.18.0', 'OPERON_PUBLISHED_CLI_LIVE_NODE_VERSION_INVALID');
+			assert.equal(npmVersion, '11.12.1', 'OPERON_PUBLISHED_CLI_LIVE_NPM_VERSION_INVALID');
 			const childEnvironment = withoutExecutableOverride(
-				sanitizedChildEnvironment(options.env ?? process.env),
+				sanitizedChildEnvironment(environment),
 			);
 			childEnvironment.OPERON_PUBLISHED_CLI_EXECUTABLE = executable;
 			const child = spawn(
@@ -86,11 +100,13 @@ export async function runPublishedCliLiveAcceptance(arguments_, options = {}) {
 				package: `${binding.package.name}@${binding.package.version}`,
 				tarballSha256: binding.tarball.sha256,
 				runtimeContractDigest: binding.runtime.contractDigest,
+				pluginArtifact,
+				nodeVersion: process.versions.node,
 				npmVersion,
 				acceptance,
 			});
 		},
-		{ pluginRoot: options.pluginRoot ?? pluginRoot, env: options.env ?? process.env },
+		{ pluginRoot: options.pluginRoot ?? pluginRoot, env: environment },
 	);
 	await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`, {
 		encoding: 'utf8',

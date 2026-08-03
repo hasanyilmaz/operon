@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:public-v1-external-freeze:v1",
+  "title": "Operon Public V1 external release freeze",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "freezeVersion",
+    "kind",
+    "state",
+    "runtime",
+    "externalCliBinding",
+    "cli",
+    "pluginArtifact",
+    "audit",
+    "liveAcceptance",
+    "maintainerAcceptance",
+    "inputsAggregateSha256"
+  ],
+  "properties": {
+    "$schema": { "const": "./public-v1-external-freeze.schema.json" },
+    "freezeVersion": { "const": 1 },
+    "kind": { "const": "operon-public-v1-external-freeze" },
+    "state": { "const": "accepted" },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "contractDigest"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "contractDigest": {
+          "const": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
+        }
+      }
+    },
+    "externalCliBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256", "bindingAggregateSha256"],
+      "properties": {
+        "path": { "const": "contracts/agent-runtime/published-cli-v1.json" },
+        "bytes": { "const": 18715 },
+        "sha256": {
+          "const": "b7b446d15218a78d8c696d7c3732461ccffad6c0af6069637a02452c9b3fef98"
+        },
+        "bindingAggregateSha256": {
+          "const": "cf57bad0f84ed590074b8b8130fde64f9a6f0b023fcdd61dce36a43ae5d4265d"
+        }
+      }
+    },
+    "cli": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packageName", "packageVersion", "tarballSha256"],
+      "properties": {
+        "packageName": { "const": "@stratejya/operon-cli" },
+        "packageVersion": { "const": "1.0.8" },
+        "tarballSha256": {
+          "const": "8638e108569f7a17de39a8c7981f48fa609dab47dc2d86e18bf2453046c540c8"
+        }
+      }
+    },
+    "pluginArtifact": { "$ref": "#/$defs/pluginArtifact" },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validation"],
+      "properties": {
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["command", "status", "result"],
+          "properties": {
+            "command": { "const": "npm run release:audit-policy" },
+            "status": { "const": "passed" },
+            "result": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "productionVulnerabilities",
+                "developmentVulnerabilities",
+                "directRoot"
+              ],
+              "properties": {
+                "status": { "const": "accepted-clean" },
+                "productionVulnerabilities": { "const": 0 },
+                "developmentVulnerabilities": { "const": 0 },
+                "directRoot": { "const": "eslint-plugin-obsidianmd" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "liveAcceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence", "publishedFamilies"],
+      "properties": {
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "bytes", "sha256", "sourceEvidenceSha256"],
+          "properties": {
+            "path": {
+              "const": "contracts/agent-runtime/public-v1-live-acceptance.json"
+            },
+            "bytes": { "type": "integer", "minimum": 1 },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "sourceEvidenceSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "publishedFamilies": { "$ref": "#/$defs/publishedFamilies" }
+      }
+    },
+    "maintainerAcceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "acceptedBy", "acceptedAt"],
+      "properties": {
+        "status": { "const": "accepted" },
+        "acceptedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?!\\s)(?!.*\\s$)(?!.*[\\u0000-\\u001F\\u007F]).+$"
+        },
+        "acceptedAt": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        }
+      }
+    },
+    "inputsAggregateSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "pluginArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "files"],
+      "properties": {
+        "version": { "const": "3.0.2" },
+        "files": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "prefixItems": [
+            { "allOf": [{ "$ref": "#/$defs/pluginArtifactFile" }, { "type": "object", "properties": { "path": { "const": "main.js" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/pluginArtifactFile" }, { "type": "object", "properties": { "path": { "const": "manifest.json" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/pluginArtifactFile" }, { "type": "object", "properties": { "path": { "const": "styles.css" } } }] }
+          ],
+          "items": false
+        }
+      }
+    },
+    "pluginArtifactFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": { "enum": ["main.js", "manifest.json", "styles.css"] },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "publishedFamilies": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "prefixItems": [
+        { "const": "task.create" },
+        { "const": "task.update" },
+        { "const": "task.recurrence" },
+        { "const": "task.relationship" },
+        { "const": "task.reminder-item" },
+        { "const": "task.transition" },
+        { "const": "task.pinned-state" },
+        { "const": "timer.control" },
+        { "const": "timer.session" },
+        { "const": "task.convert" },
+        { "const": "task.inline-relocate" },
+        { "const": "task.delete" }
+      ],
+      "items": false
+    },
+    "familyResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "source", "status"],
+      "properties": {
+        "family": { "type": "string", "minLength": 1 },
+        "source": {
+          "enum": [
+            "create",
+            "phase8",
+            "recurrence",
+            "relationship",
+            "timerSession",
+            "pinnedState"
+          ]
+        },
+        "status": { "const": "ok" }
+      }
+    },
+    "liveAcceptanceEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "$schema",
+        "evidenceVersion",
+        "kind",
+        "sourceEvidenceSha256",
+        "package",
+        "tarballSha256",
+        "runtimeContractDigest",
+        "pluginArtifact",
+        "toolchain",
+        "status",
+        "publishedFamilies",
+        "familyResults"
+      ],
+      "properties": {
+        "$schema": {
+          "const": "./public-v1-external-freeze.schema.json#/$defs/liveAcceptanceEvidence"
+        },
+        "evidenceVersion": { "const": 1 },
+        "kind": { "const": "operon-public-v1-live-acceptance-evidence" },
+        "sourceEvidenceSha256": { "$ref": "#/$defs/sha256" },
+        "package": { "const": "@stratejya/operon-cli@1.0.8" },
+        "tarballSha256": {
+          "const": "8638e108569f7a17de39a8c7981f48fa609dab47dc2d86e18bf2453046c540c8"
+        },
+        "runtimeContractDigest": {
+          "const": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
+        },
+        "pluginArtifact": { "$ref": "#/$defs/pluginArtifact" },
+        "toolchain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["nodeVersion", "npmVersion"],
+          "properties": {
+            "nodeVersion": { "const": "24.18.0" },
+            "npmVersion": { "const": "11.12.1" }
+          }
+        },
+        "status": { "const": "ok" },
+        "publishedFamilies": { "$ref": "#/$defs/publishedFamilies" },
+        "familyResults": {
+          "type": "array",
+          "minItems": 12,
+          "maxItems": 12,
+          "prefixItems": [
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.create" }, "source": { "const": "create" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.update" }, "source": { "const": "phase8" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.recurrence" }, "source": { "const": "recurrence" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.relationship" }, "source": { "const": "relationship" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.reminder-item" }, "source": { "const": "phase8" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.transition" }, "source": { "const": "phase8" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.pinned-state" }, "source": { "const": "pinnedState" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "timer.control" }, "source": { "const": "phase8" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "timer.session" }, "source": { "const": "timerSession" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.convert" }, "source": { "const": "phase8" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.inline-relocate" }, "source": { "const": "phase8" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/familyResult" }, { "type": "object", "properties": { "family": { "const": "task.delete" }, "source": { "const": "phase8" } } }] }
+          ],
+          "items": false
+        }
+      }
+    }
+  }
+}

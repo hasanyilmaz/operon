@@ -1,0 +1,110 @@
+{
+  "$schema": "./public-v1-external-freeze.schema.json#/$defs/liveAcceptanceEvidence",
+  "evidenceVersion": 1,
+  "kind": "operon-public-v1-live-acceptance-evidence",
+  "sourceEvidenceSha256": "bc746bdff21f258ecac51d4bdbfe29b377a092cfc05c430d2aa1e30b25cc3bb4",
+  "package": "@stratejya/operon-cli@1.0.8",
+  "tarballSha256": "8638e108569f7a17de39a8c7981f48fa609dab47dc2d86e18bf2453046c540c8",
+  "runtimeContractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b",
+  "pluginArtifact": {
+    "version": "3.0.2",
+    "files": [
+      {
+        "path": "main.js",
+        "bytes": 4327432,
+        "sha256": "7d0663b8eeef2505d181b0bfde0fd469c24bc6e36acaca48133a4270223d6ea4"
+      },
+      {
+        "path": "manifest.json",
+        "bytes": 378,
+        "sha256": "4b39e7fd6410e017c40e4b6342cceda3c5fbfb660771cf17c6d907a0ee3a0eaf"
+      },
+      {
+        "path": "styles.css",
+        "bytes": 874846,
+        "sha256": "d5f94678ac925886cbc28dfc0ab98154cd6d412a4faf55f9a5d8c9a5ed2359e8"
+      }
+    ]
+  },
+  "toolchain": {
+    "nodeVersion": "24.18.0",
+    "npmVersion": "11.12.1"
+  },
+  "status": "ok",
+  "publishedFamilies": [
+    "task.create",
+    "task.update",
+    "task.recurrence",
+    "task.relationship",
+    "task.reminder-item",
+    "task.transition",
+    "task.pinned-state",
+    "timer.control",
+    "timer.session",
+    "task.convert",
+    "task.inline-relocate",
+    "task.delete"
+  ],
+  "familyResults": [
+    {
+      "family": "task.create",
+      "source": "create",
+      "status": "ok"
+    },
+    {
+      "family": "task.update",
+      "source": "phase8",
+      "status": "ok"
+    },
+    {
+      "family": "task.recurrence",
+      "source": "recurrence",
+      "status": "ok"
+    },
+    {
+      "family": "task.relationship",
+      "source": "relationship",
+      "status": "ok"
+    },
+    {
+      "family": "task.reminder-item",
+      "source": "phase8",
+      "status": "ok"
+    },
+    {
+      "family": "task.transition",
+      "source": "phase8",
+      "status": "ok"
+    },
+    {
+      "family": "task.pinned-state",
+      "source": "pinnedState",
+      "status": "ok"
+    },
+    {
+      "family": "timer.control",
+      "source": "phase8",
+      "status": "ok"
+    },
+    {
+      "family": "timer.session",
+      "source": "timerSession",
+      "status": "ok"
+    },
+    {
+      "family": "task.convert",
+      "source": "phase8",
+      "status": "ok"
+    },
+    {
+      "family": "task.inline-relocate",
+      "source": "phase8",
+      "status": "ok"
+    },
+    {
+      "family": "task.delete",
+      "source": "phase8",
+      "status": "ok"
+    }
+  ]
+}

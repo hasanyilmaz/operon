@@ -1,0 +1,81 @@
+{
+  "$schema": "./public-v1-external-freeze.schema.json",
+  "freezeVersion": 1,
+  "kind": "operon-public-v1-external-freeze",
+  "state": "accepted",
+  "runtime": {
+    "contractVersion": 1,
+    "contractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
+  },
+  "externalCliBinding": {
+    "path": "contracts/agent-runtime/published-cli-v1.json",
+    "bytes": 18715,
+    "sha256": "b7b446d15218a78d8c696d7c3732461ccffad6c0af6069637a02452c9b3fef98",
+    "bindingAggregateSha256": "cf57bad0f84ed590074b8b8130fde64f9a6f0b023fcdd61dce36a43ae5d4265d"
+  },
+  "cli": {
+    "packageName": "@stratejya/operon-cli",
+    "packageVersion": "1.0.8",
+    "tarballSha256": "8638e108569f7a17de39a8c7981f48fa609dab47dc2d86e18bf2453046c540c8"
+  },
+  "pluginArtifact": {
+    "version": "3.0.2",
+    "files": [
+      {
+        "path": "main.js",
+        "bytes": 4327432,
+        "sha256": "7d0663b8eeef2505d181b0bfde0fd469c24bc6e36acaca48133a4270223d6ea4"
+      },
+      {
+        "path": "manifest.json",
+        "bytes": 378,
+        "sha256": "4b39e7fd6410e017c40e4b6342cceda3c5fbfb660771cf17c6d907a0ee3a0eaf"
+      },
+      {
+        "path": "styles.css",
+        "bytes": 874846,
+        "sha256": "d5f94678ac925886cbc28dfc0ab98154cd6d412a4faf55f9a5d8c9a5ed2359e8"
+      }
+    ]
+  },
+  "audit": {
+    "validation": {
+      "command": "npm run release:audit-policy",
+      "status": "passed",
+      "result": {
+        "status": "accepted-clean",
+        "productionVulnerabilities": 0,
+        "developmentVulnerabilities": 0,
+        "directRoot": "eslint-plugin-obsidianmd"
+      }
+    }
+  },
+  "liveAcceptance": {
+    "evidence": {
+      "path": "contracts/agent-runtime/public-v1-live-acceptance.json",
+      "bytes": 2603,
+      "sha256": "c33689f2dd37741b39f7dbd4d76da692d339ceca796bbbbe39dccbb6735fb3d6",
+      "sourceEvidenceSha256": "bc746bdff21f258ecac51d4bdbfe29b377a092cfc05c430d2aa1e30b25cc3bb4"
+    },
+    "publishedFamilies": [
+      "task.create",
+      "task.update",
+      "task.recurrence",
+      "task.relationship",
+      "task.reminder-item",
+      "task.transition",
+      "task.pinned-state",
+      "timer.control",
+      "timer.session",
+      "task.convert",
+      "task.inline-relocate",
+      "task.delete"
+    ]
+  },
+  "maintainerAcceptance": {
+    "status": "accepted",
+    "acceptedBy": "Hasan Yilmaz",
+    "acceptedAt": "2026-08-03T09:48:44.000Z"
+  },
+  "inputsAggregateSha256": "ef6808e5b084358ce89c85a2b6a8550fb1372f0432f0c99e71c4087445ab349a"
+}

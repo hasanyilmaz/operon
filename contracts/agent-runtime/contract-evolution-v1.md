@@ -192,9 +192,9 @@ schema, generated declarations, and package copies together. After the Stage 9
 freeze is accepted, these strict input shapes follow the normal V1
 breaking-change rules.
 
-## Stage 9 freeze and directional baseline
+## External-reference freeze and directional baseline
 
-The compatibility baseline and the local release freeze serve different
+The compatibility baseline and the accepted external-reference freeze serve different
 purposes.
 
 - The compatibility baseline classifies evolution across the lifetime of V1.
@@ -206,16 +206,16 @@ purposes.
   or using deprecation metadata to change an existing capability or error
   meaning is breaking. The manifest deprecation inventory is part of the
   baseline.
-- The Stage 9 local freeze is exact-byte evidence for one release candidate.
-  It binds the normative contracts, schema and CLI manifests, package inputs,
-  declarations, example, generated documentation, provisional unpublished
-  plugin artifact, development-audit policy, and explicit maintainer
-  acceptance. Its plugin label is not evidence that a public Operon release
-  exists.
-- Stage 10 independently binds the final tarball, compatible public plugin
-  artifact, provenance, and nine-cell hosted portability evidence. Any change
-  to a Stage 9-bound input requires a new local freeze before publication.
+- The accepted external-reference freeze is exact-byte evidence for one plugin
+  release. It binds the Runtime V1 digest, immutable published CLI binding and
+  tarball, exact `main.js`, `manifest.json`, and `styles.css` identities, clean
+  dependency-audit result, all 12 live mutation families, canonical toolchain,
+  and explicit maintainer acceptance.
+- The standalone CLI release independently binds its registry and immutable
+  GitHub artifacts, provenance, and hosted portability evidence. The plugin
+  freeze consumes that published identity without rebuilding or republishing
+  the CLI. Any change to a freeze-bound plugin asset or external CLI identity
+  requires new live evidence and a newly accepted external-reference freeze.
 
 External integrator and plugin-developer feedback begins after release. It is
-not a substitute for the Stage 9 hardening gates or the Stage 10 artifact
-checks.
+not a substitute for the accepted freeze or published-artifact checks.

@@ -7,22 +7,22 @@ first public stable Operon Runtime and CLI release. When another architecture,
 evaluation, roadmap, package, or documentation source describes a conflicting
 future Public V1 boundary, this document takes precedence.
 
-This document distinguishes current implementation truth from the Public V1
-launch target. A target in this document is not evidence that the capability or
-platform is supported today. Current manifests, schemas, package metadata, and
-Runtime discovery remain authoritative until the corresponding acceptance gate
-has passed.
+This document describes the accepted Public V1 boundary. Current manifests,
+schemas, published package metadata, Runtime discovery, the published CLI
+binding, and the accepted external-reference freeze remain the executable
+authorities for their exact release identities.
 
 Public V1 launch versions:
 
-- Operon `3.0.1`
-- `@stratejya/operon-cli@1.0.7`
+- Operon `3.0.2`
+- `@stratejya/operon-cli@1.0.8`
 - Runtime API and contract version `1`
 
-The current CLI is a private release candidate and is not publicly installable
-from npm. Public npm publication is the final release action after Stages 1–9
-and the Stage 10 pre-publication checks have passed. Registry verification and
-the post-publication audit complete Stage 10 after that single publish action.
+The CLI is publicly installable from npm and maintained in the standalone
+[`hasanyilmaz/operon-cli`](https://github.com/hasanyilmaz/operon-cli) repository.
+Plugin releases consume its immutable published artifact through the
+hash-locked external binding; the plugin repository no longer builds or
+publishes a second CLI copy.
 
 ## 2. Public product model
 
@@ -47,20 +47,20 @@ writers, stores, queues, or source objects.
 Direct Markdown editing remains a human-supervised Operon workflow, not a
 versioned Public V1 integration contract.
 
-## 3. Current state and Public V1 target
+## 3. Current Public V1 state
 
-| Area | Current implementation truth | Public V1 launch target |
+| Area | Current implementation truth | Public V1 support commitment |
 | --- | --- | --- |
-| Operon release | Operon `3.0.1` is publicly released with Runtime API V1 and the Windows mutation reliability patch | Operon `3.0.1` |
-| CLI package | Local `@stratejya/operon-cli@1.0.7` stable release candidate; not published to public npm | Public stable `@stratejya/operon-cli@1.0.7` |
+| Operon release | Operon `3.0.2` carries Runtime API V1 and the external CLI compatibility freeze | Compatible Operon `3.x` releases advertising Runtime API V1 |
+| CLI package | Public `@stratejya/operon-cli@1.0.8` from the standalone repository | Stable `1.x` releases preserving Runtime V1 compatibility |
 | Runtime contract | Runtime API V1 exists and is exposed on the Operon plugin instance | Runtime API V1 is a supported, typed Developer API contract |
-| Public access channels | The in-process Developer API and Windows mutation reliability patch ship with Operon `3.0.1`; the CLI remains an unpublished local release candidate | CLI and in-process Developer API are both supported public channels |
+| Public access channels | The published CLI and in-process Developer API both use Runtime V1 | CLI and in-process Developer API remain supported public channels |
 | macOS CLI | Supported by the current beta boundary | Supported |
 | Linux CLI | `acceptance-required` | Public beta and best-effort on native Linux |
 | Windows CLI | `acceptance-required` | Public beta and best-effort on Windows 11 |
 | WSL | `unsupported` | Outside Public V1 |
 | Mobile | Operon itself is not desktop-only, but Runtime mutation admission and the CLI are desktop-bound | Public CLI and Developer API are desktop-only |
-| npm | No approved public package | Published only after Stages 1–9 and the Stage 10 pre-publication checks accept the immutable release candidate |
+| npm | `@stratejya/operon-cli@1.0.8` is published with provenance from the standalone repository | Exact published artifacts and provenance are verified before plugin release acceptance |
 
 For Linux and Windows, `acceptance-required` is an executable public-beta
 status, not a refusal. It means that the cross-platform implementation and
@@ -87,10 +87,10 @@ New Node major versions are unsupported until they pass hosted CI portability
 and package acceptance. Optional native certification remains separate. A broad
 `>=22` engine declaration alone is not a Public V1 support promise.
 
-Operon `3.0.0` remains the compatible Runtime API V1 floor. Operon `3.0.1` is
-the required release artifact for hosted Windows mutation acceptance and the
-initial public CLI candidate because it fixes platform-safe vault path
-admission for file and inline task writes.
+Operon `3.0.0` remains the compatible Runtime API V1 floor. Operon `3.0.1`
+fixed platform-safe vault path admission for file and inline task writes;
+Operon `3.0.2` binds the published standalone CLI artifact and current plugin
+release assets through the accepted external-reference freeze.
 
 ### 4.2 Desktop operating systems
 
@@ -263,8 +263,8 @@ support, documentation, and release acceptance do not depend on that work.
 | Portable transport and platform security | Stage 6 — Cross-platform implementation | Platform-specific path, ownership, ACL/mode, symlink/reparse, IPC, shell, signal, Unicode, and interruption tests |
 | Cross-platform launch boundary, Node support, and beta disclosure | Stage 7 — Cross-platform readiness | Hosted portability and package tests pass on Node 22, 24, and 26 across macOS, Linux, and Windows; platform-specific transport-security, path, lifecycle, interruption, and recovery tests pass; macOS remains `supported`, Linux and Windows remain executable `acceptance-required` public-beta targets, and WSL remains `unsupported` |
 | Public integration guides and examples | Stage 8 — Packaging and documentation | Clean-room CLI and Developer API integration tests using only distributable artifacts and documentation |
-| Stable contract and release candidate | Stage 9 — Hardening and freeze | No launch-blocking contract break, unauthorized access, consent bypass, data loss or corruption, or irrecoverable uncertain outcome remains; all required local contract, security, mutation, Developer API, package, documentation, and release-hardening gates pass; contract, stable manifest, package inputs, types, examples, documentation, source-rebuilt plugin artifact, and development-audit policy are bound by one exact local freeze index; the compatibility baseline has real input/response direction and deprecation coverage; documented maintainer acceptance seals the final local index |
-| Public `@stratejya/operon-cli@1.0.7` | Stage 10 — External release | Before publish, the accepted Stage 9 freeze, final tarball digest, provenance, compatible public Operon artifact, and nine-cell hosted portability evidence pass on the release bytes; after publish, the registry artifact digest equals that tarball and the post-publication audit passes |
+| Stable Runtime V1 and plugin release | External-reference freeze | Runtime digest, published CLI binding and tarball, exact plugin release assets, clean audit, 12 live mutation families, and maintainer acceptance are bound by the accepted external freeze |
+| Public `@stratejya/operon-cli@1.0.8` | Standalone CLI release | Registry and immutable GitHub artifacts, provenance, hosted portability, package lifecycle, and plugin Runtime V1 compatibility match the published release bytes |
 
 Failure of a required gate returns the work to its owning stage. Publication is
 not a substitute for contract, safety, package, or hosted portability evidence.
@@ -276,7 +276,8 @@ the external release, launch communication requests structured feedback from
 CLI integrators and Obsidian plugin developers, especially for native Linux
 and Windows environments. Reproducible reports are triaged under the normal
 security, compatibility, and patch-release policies; the feedback program does
-not weaken the Stage 9 local freeze or replace Stage 10 artifact verification.
+not weaken the accepted external-reference freeze or replace published-artifact
+verification.
 
 ## 10. Stage 1 completion criteria
 

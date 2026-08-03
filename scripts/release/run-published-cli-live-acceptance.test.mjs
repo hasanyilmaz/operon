@@ -14,6 +14,14 @@ const binding = Object.freeze({
 	tarball: { sha256: '8638e108569f7a17de39a8c7981f48fa609dab47dc2d86e18bf2453046c540c8' },
 	runtime: { contractDigest: '407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b' },
 });
+const pluginArtifact = Object.freeze({
+	version: '3.0.2',
+	files: Object.freeze([
+		Object.freeze({ path: 'main.js', bytes: 10, sha256: '1'.repeat(64) }),
+		Object.freeze({ path: 'manifest.json', bytes: 20, sha256: '2'.repeat(64) }),
+		Object.freeze({ path: 'styles.css', bytes: 30, sha256: '3'.repeat(64) }),
+	]),
+});
 
 test('published live arguments require one exact tarball, vault, and output', () => {
 	assert.deepEqual(readPublishedLiveArguments([
@@ -50,12 +58,17 @@ test('live acceptance receives only the helper-verified executable and writes bo
 			outputPath,
 		}, {
 			pluginRoot: '/fixture/plugin',
-				env: {
-					PATH: '/safe/bin',
+			env: {
+				PATH: '/safe/bin',
+				OPERON_SANITIZED_PLUGIN_ARTIFACT_ROOT: '/verified/plugin-artifact',
 					OPERON_CLI_EXECUTABLE: '/untrusted/user-install',
 					OPERON_PUBLISHED_CLI_EXECUTABLE: '/untrusted/published-path',
 			},
 			loadBinding: async () => ({ binding }),
+			readPluginArtifact: async artifactRoot => {
+				assert.equal(artifactRoot, '/verified/plugin-artifact');
+				return pluginArtifact;
+			},
 			installVerified: async (tarballPath, actualBinding, callback) => {
 				helperCalled = true;
 				assert.equal(tarballPath, '/absolute/reviewed.tgz');
@@ -84,6 +97,9 @@ test('live acceptance receives only the helper-verified executable and writes bo
 		});
 		assert.equal(helperCalled, true);
 		assert.equal(result.package, '@stratejya/operon-cli@1.0.8');
+		assert.equal(result.nodeVersion, '24.18.0');
+		assert.equal(result.npmVersion, '11.12.1');
+		assert.deepEqual(result.pluginArtifact, pluginArtifact);
 		assert.equal(result.acceptance.status, 'ok');
 		assert.deepEqual(JSON.parse(await readFile(outputPath, 'utf8')), result);
 	} finally {
@@ -107,5 +123,28 @@ test('live acceptance rejects non-disposable vault paths before helper installat
 		);
 	} finally {
 		await rm(temporaryRoot, { recursive: true, force: true });
+	}
+});
+
+test('live acceptance requires an exact production plugin artifact root', async () => {
+	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-live-artifact-root-'));
+	const disposableVault = await mkdtemp(path.join(
+		process.platform === 'darwin' ? '/private/tmp' : os.tmpdir(),
+		'operon-agent-runtime-phase1-artifact-root-',
+	));
+	try {
+		await assert.rejects(
+			runPublishedCliLiveAcceptance({
+				tarballPath: '/tmp/reviewed.tgz',
+				vaultPath: disposableVault,
+				outputPath: path.join(temporaryRoot, 'evidence.json'),
+			}, { env: { PATH: '/safe/bin' } }),
+			/OPERON_PUBLISHED_CLI_LIVE_PLUGIN_ARTIFACT_ROOT_INVALID/u,
+		);
+	} finally {
+		await Promise.all([
+			rm(temporaryRoot, { recursive: true, force: true }),
+			rm(disposableVault, { recursive: true, force: true }),
+		]);
 	}
 });

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -11,7 +11,9 @@ import {
 	bindingPath,
 	loadPublishedCliBinding,
 	sanitizedChildEnvironment,
+	sha256,
 	verifyCanonicalPluginInputs,
+	verifyPublishedCliExecutablePath,
 	verifyTarballIdentity,
 	withVerifiedPublishedCli,
 } from './published-cli-v1.mjs';
@@ -102,6 +104,34 @@ test('tarball verification rejects relative and symlink paths before reading byt
 		await assert.rejects(
 			verifyTarballIdentity(link, binding),
 			/OPERON_PUBLISHED_CLI_TARBALL_FILE_INVALID/u,
+		);
+	} finally {
+		await rm(temporaryRoot, { recursive: true, force: true });
+	}
+});
+
+test('published executable verification uses the binding byte identity', async () => {
+	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-executable-identity-'));
+	try {
+		const executable = path.join(temporaryRoot, 'operon.mjs');
+		const bytes = Buffer.from('#!/usr/bin/env node\n', 'utf8');
+		await writeFile(executable, bytes);
+		await chmod(executable, 0o755);
+		const binding = {
+			artifact: {
+				executable: {
+					bytes: bytes.byteLength,
+					mode: 0o755,
+					sha256: sha256(bytes),
+				},
+			},
+		};
+		assert.equal(await verifyPublishedCliExecutablePath(executable, binding), executable);
+		await assert.rejects(
+			verifyPublishedCliExecutablePath(executable, {
+				artifact: { executable: { ...binding.artifact.executable, bytes: bytes.byteLength + 1 } },
+			}),
+			/OPERON_PUBLISHED_CLI_EXECUTABLE_BYTES_MISMATCH/u,
 		);
 	} finally {
 		await rm(temporaryRoot, { recursive: true, force: true });
