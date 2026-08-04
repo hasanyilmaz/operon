@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 2926,
-  "keyFingerprint": "e67d103c629f6ecc1b10dc69602712834c51836458aaa0992338eec9675c0d3b",
+  "keyCount": 2927,
+  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -404,12 +404,7 @@
       "fieldProjectSerialGroup": "プロジェクトシリアルグループ",
       "fieldProjectTree": "プロジェクトツリー",
       "fieldTags": "タグ",
-      "filePropertyConflict": "このプロパティはテーブル外で変更されました。最新の値を復元しました。",
-      "filePropertyEmpty": "空",
-      "filePropertyInvalidBoolean": "{{property}} は真偽値である必要があります。Obsidianのプロパティで修正してください。",
       "filePropertyInvalidConditionValue": "このプロパティ条件に有効な値を入力してください。",
-      "filePropertyNotSet": "未設定",
-      "filePropertyRemove": "プロパティを削除",
       "filePropertySourceType": "YAML プロパティ · {{type}}",
       "filePropertyTypeChanged": "YAML プロパティ · 型の変更: {{savedType}} → {{type}} · 確認が必要です",
       "filePropertyTypeDriftShort": "型の変更: {{savedType}} → {{type}} · 確認が必要です",
@@ -1724,6 +1719,7 @@
       "languageEnglish": "英語",
       "languageFrench": "フランス語",
       "languageGerman": "ドイツ語",
+      "languageItalian": "イタリア語",
       "languageJapanese": "日本語",
       "languagePackDownload": "ダウンロード",
       "languagePackDownloadFailed": "言語パックをダウンロードできませんでした。以前の言語が引き続き使用されます。",
@@ -2372,6 +2368,11 @@
       "fileLoading": "Table を読み込んでいます...",
       "fileNotAttached": "現在、このビューに Table ファイルは関連付けられていません。",
       "fileOpenFailed": "Operon はこの Table ファイルを開けませんでした。",
+      "filePropertyConflict": "このプロパティはテーブル外で変更されました。最新の値を復元しました。",
+      "filePropertyEmpty": "空",
+      "filePropertyInvalidBoolean": "{{property}} は真偽値である必要があります。Obsidianのプロパティで修正してください。",
+      "filePropertyNotSet": "未設定",
+      "filePropertyRemove": "プロパティを削除",
       "filter": "フィルター",
       "groupBy": "グループ化",
       "groupByDesc": "テーブル行をグループ化するフィールドを 1 つ選択します。",
@@ -2971,5 +2972,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c69c7e911a4b7f1059ba05cfaa878bc11b8a0625d181b3cb2d35c1e4d9d3968f"
+  "sourceVersion": "b08aafd1b8376e71d02f84b09c1b228695703333fa3abc1de78eebbb55c71341"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 2926,
-  "keyFingerprint": "e67d103c629f6ecc1b10dc69602712834c51836458aaa0992338eec9675c0d3b",
+  "keyCount": 2927,
+  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -404,12 +404,7 @@
       "fieldProjectSerialGroup": "Группа серий проекта",
       "fieldProjectTree": "Дерево проекта",
       "fieldTags": "Теги",
-      "filePropertyConflict": "Это свойство было изменено вне таблицы. Восстановлено последнее значение.",
-      "filePropertyEmpty": "Пусто",
-      "filePropertyInvalidBoolean": "{{property}} должно быть логическим значением. Исправьте его в свойствах Obsidian.",
       "filePropertyInvalidConditionValue": "Введите допустимое значение для этого условия свойства.",
-      "filePropertyNotSet": "Не задано",
-      "filePropertyRemove": "Удалить свойство",
       "filePropertySourceType": "Свойство YAML · {{type}}",
       "filePropertyTypeChanged": "Свойство YAML · Тип изменён: {{savedType}} → {{type}} · Требуется проверка",
       "filePropertyTypeDriftShort": "Тип изменён: {{savedType}} → {{type}} · Требуется проверка",
@@ -1724,6 +1719,7 @@
       "languageEnglish": "Английский",
       "languageFrench": "Французский",
       "languageGerman": "Немецкий",
+      "languageItalian": "Итальянский",
       "languageJapanese": "日本語",
       "languagePackDownload": "Скачать",
       "languagePackDownloadFailed": "Не удалось скачать языковой пакет. Предыдущий язык остаётся активным.",
@@ -2372,6 +2368,11 @@
       "fileLoading": "Загрузка Table...",
       "fileNotAttached": "К этому представлению сейчас не привязан файл Table.",
       "fileOpenFailed": "Operon не удалось открыть этот файл Table.",
+      "filePropertyConflict": "Это свойство было изменено вне таблицы. Восстановлено последнее значение.",
+      "filePropertyEmpty": "Пусто",
+      "filePropertyInvalidBoolean": "{{property}} должно быть логическим значением. Исправьте его в свойствах Obsidian.",
+      "filePropertyNotSet": "Не задано",
+      "filePropertyRemove": "Удалить свойство",
       "filter": "Фильтр",
       "groupBy": "Группировать по",
       "groupByDesc": "Выберите одно поле для группировки строк таблицы.",
@@ -2971,5 +2972,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "eefc2a9bb10fc5ab0cc7d8c5e8f9ee8c061ae649d155405367ecd69cf16cfd41"
+  "sourceVersion": "73a8d771b67831e31a96c1debbfafa022bf0d2be2da5b43774eee8c750096108"
 }

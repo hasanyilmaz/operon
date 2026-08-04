@@ -267,6 +267,33 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		nextWeekdayLabel: name => `Следующий ${name}`,
 		lastWeekdayLabel: name => `Прошлый ${name}`,
 	},
+	it: {
+		searchPlaceholder: 'Digita una data come martedì prossimo',
+		clear: 'Cancella',
+		apply: 'Applica',
+		manualDate: 'Scegli una data',
+		parsedFrom: input => `Riconosciuto da "${input}"`,
+		quickSuggestions: 'Suggerimenti',
+		today: 'Oggi',
+		tomorrow: 'Domani',
+		yesterday: 'Ieri',
+		thisWeek: 'Questa settimana',
+		nextWeek: 'La settimana prossima',
+		lastWeek: 'La settimana scorsa',
+		thisWeekend: 'Questo fine settimana',
+		nextWeekend: 'Il fine settimana prossimo',
+		lastWeekend: 'Il fine settimana scorso',
+		daysAgo: count => `${count} ${count === 1 ? 'giorno' : 'giorni'} fa`,
+		daysFromNow: count => `tra ${count} ${count === 1 ? 'giorno' : 'giorni'}`,
+		weeksAgo: count => `${count} ${count === 1 ? 'settimana' : 'settimane'} fa`,
+		weeksFromNow: count => `tra ${count} ${count === 1 ? 'settimana' : 'settimane'}`,
+		monthsAgo: count => `${count} ${count === 1 ? 'mese' : 'mesi'} fa`,
+		monthsFromNow: count => `tra ${count} ${count === 1 ? 'mese' : 'mesi'}`,
+		weekdayNames: ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'],
+		// Italian weekdays are masculine except 'domenica', which is feminine.
+		nextWeekdayLabel: name => (name === 'domenica' ? `${name} prossima` : `${name} prossimo`),
+		lastWeekdayLabel: name => (name === 'domenica' ? `${name} scorsa` : `${name} scorso`),
+	},
 };
 
 const ENGLISH_PHRASES: Record<string, (reference: Date) => Date> = {
@@ -426,6 +453,50 @@ const RUSSIAN_WEEKDAYS = new Map<string, number>([
 	['пятницу', 5],
 	['суббота', 6],
 	['субботу', 6],
+]);
+
+// Phrase keys are normalizeInput()-form: lowercase, accents stripped (lunedì → lunedi).
+// Apostrophes survive normalization, so both the straight ' and the typographic ’ are
+// registered for phrases that contain one.
+const ITALIAN_PHRASES: Record<string, (reference: Date) => Date> = {
+	'oggi': reference => cloneDate(reference),
+	'domani': reference => addDays(reference, 1),
+	'dopodomani': reference => addDays(reference, 2),
+	'ieri': reference => addDays(reference, -1),
+	"l'altro ieri": reference => addDays(reference, -2),
+	'l’altro ieri': reference => addDays(reference, -2),
+	'questa settimana': reference => startOfWeek(reference),
+	'la settimana prossima': reference => addDays(startOfWeek(reference), 7),
+	'settimana prossima': reference => addDays(startOfWeek(reference), 7),
+	'la prossima settimana': reference => addDays(startOfWeek(reference), 7),
+	'la settimana scorsa': reference => addDays(startOfWeek(reference), -7),
+	'settimana scorsa': reference => addDays(startOfWeek(reference), -7),
+	'la scorsa settimana': reference => addDays(startOfWeek(reference), -7),
+	'questo fine settimana': reference => saturdayOfWeek(reference),
+	'questo weekend': reference => saturdayOfWeek(reference),
+	'il fine settimana prossimo': reference => addDays(saturdayOfWeek(reference), 7),
+	'fine settimana prossimo': reference => addDays(saturdayOfWeek(reference), 7),
+	'il prossimo fine settimana': reference => addDays(saturdayOfWeek(reference), 7),
+	'il fine settimana scorso': reference => addDays(saturdayOfWeek(reference), -7),
+	'fine settimana scorso': reference => addDays(saturdayOfWeek(reference), -7),
+	'lo scorso fine settimana': reference => addDays(saturdayOfWeek(reference), -7),
+};
+
+// Both the accented and the normalizeInput()-stripped spelling are registered, matching
+// the Spanish precedent (miercoles/miércoles).
+const ITALIAN_WEEKDAYS = new Map<string, number>([
+	['domenica', 0],
+	['lunedi', 1],
+	['lunedì', 1],
+	['martedi', 2],
+	['martedì', 2],
+	['mercoledi', 3],
+	['mercoledì', 3],
+	['giovedi', 4],
+	['giovedì', 4],
+	['venerdi', 5],
+	['venerdì', 5],
+	['sabato', 6],
 ]);
 
 // Chinese relative-date phrases. Keys cover both Simplified and Traditional
@@ -626,6 +697,24 @@ const MONTH_ALIASES: Record<DatePickerLang, MonthAlias[]> = {
 		{ month: 10, aliases: ['октябрь', 'октября', 'окт'] },
 		{ month: 11, aliases: ['ноябрь', 'ноября', 'ноя', 'нояб'] },
 		{ month: 12, aliases: ['декабрь', 'декабря', 'дек'] },
+	],
+	it: [
+		{ month: 1, aliases: ['gennaio', 'gen'] },
+		{ month: 2, aliases: ['febbraio', 'feb'] },
+		{ month: 3, aliases: ['marzo', 'mar'] },
+		{ month: 4, aliases: ['aprile', 'apr'] },
+		{ month: 5, aliases: ['maggio', 'mag'] },
+		{ month: 6, aliases: ['giugno', 'giu'] },
+		{ month: 7, aliases: ['luglio', 'lug'] },
+		{ month: 8, aliases: ['agosto', 'ago'] },
+		// 'set' is deliberately NOT listed: resolveMonthNumbers matches prefixes in both
+		// directions, so the alias would also swallow every week token starting with
+		// "set" (including the full word 'settimane'). 'settembre' alone still matches
+		// '3 set' through the alias-startsWith-token direction, so nothing is lost.
+		{ month: 9, aliases: ['settembre'] },
+		{ month: 10, aliases: ['ottobre', 'ott'] },
+		{ month: 11, aliases: ['novembre', 'nov'] },
+		{ month: 12, aliases: ['dicembre', 'dic'] },
 	],
 };
 
@@ -969,6 +1058,8 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		? SPANISH_PHRASES
 		: language === 'ru'
 		? RUSSIAN_PHRASES
+		: language === 'it'
+		? ITALIAN_PHRASES
 		: ENGLISH_PHRASES;
 	const direct = phrases[input];
 	if (direct) return direct(reference);
@@ -983,6 +1074,8 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		? SPANISH_WEEKDAYS
 		: language === 'ru'
 		? RUSSIAN_WEEKDAYS
+		: language === 'it'
+		? ITALIAN_WEEKDAYS
 		: ENGLISH_WEEKDAYS;
 
 	if (weekdays.has(input)) {
@@ -1026,6 +1119,57 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		if (input.endsWith(lastSuffix)) {
 			const weekday = input.slice(0, -lastSuffix.length).trim();
 			if (weekdays.has(weekday)) return previousWeekday(reference, weekdays.get(weekday)!);
+		}
+		return null;
+	}
+
+	// Italian accepts the qualifier before or after the weekday ('prossimo martedì' /
+	// 'martedì prossimo' / 'martedì scorso'), like Spanish. Unlike Spanish, the weekday
+	// gender matters: six weekdays are masculine but 'domenica' is feminine, so the
+	// qualifier must agree with the parsed weekday.
+	if (language === 'it') {
+		const resolveQualifiedWeekday = (
+			weekday: string,
+			feminineQualifier: boolean,
+			direction: 'next' | 'last',
+		): Date | null => {
+			const weekdayNumber = weekdays.get(weekday);
+			if (weekdayNumber === undefined) return null;
+			const feminineWeekday = weekdayNumber === 0;
+			if (feminineWeekday !== feminineQualifier) return null;
+			return direction === 'next'
+				? nextWeekday(reference, weekdayNumber)
+				: previousWeekday(reference, weekdayNumber);
+		};
+		const prefixes = [
+			{ token: 'prossimo ', feminine: false, direction: 'next' as const },
+			{ token: 'prossima ', feminine: true, direction: 'next' as const },
+			{ token: 'scorso ', feminine: false, direction: 'last' as const },
+			{ token: 'scorsa ', feminine: true, direction: 'last' as const },
+			{ token: 'ultimo ', feminine: false, direction: 'last' as const },
+			{ token: 'ultima ', feminine: true, direction: 'last' as const },
+		];
+		const suffixes = [
+			{ token: ' prossimo', feminine: false, direction: 'next' as const },
+			{ token: ' prossima', feminine: true, direction: 'next' as const },
+			{ token: ' scorso', feminine: false, direction: 'last' as const },
+			{ token: ' scorsa', feminine: true, direction: 'last' as const },
+		];
+		for (const qualifier of prefixes) {
+			if (!input.startsWith(qualifier.token)) continue;
+			return resolveQualifiedWeekday(
+				input.slice(qualifier.token.length).trim(),
+				qualifier.feminine,
+				qualifier.direction,
+			);
+		}
+		for (const qualifier of suffixes) {
+			if (!input.endsWith(qualifier.token)) continue;
+			return resolveQualifiedWeekday(
+				input.slice(0, -qualifier.token.length).trim(),
+				qualifier.feminine,
+				qualifier.direction,
+			);
 		}
 		return null;
 	}
@@ -1218,6 +1362,16 @@ function matchesUnit(token: string, language: DatePickerLang, unit: 'days' | 'we
 			weeks: ['н', 'не', 'нед', 'неделя', 'недели', 'недель'],
 			months: ['м', 'ме', 'мес', 'месяц', 'месяца', 'месяцев'],
 		}
+		: language === 'it'
+		// 'set' is deliberately absent from weeks: it is also the abbreviation for
+		// settembre, and parseFallbackDateCandidates merges numeric-relative and
+		// day-month results, so '3 set' would otherwise mean both "3 weeks" and
+		// "3 September". Weeks start at 'sett', leaving '3 set' unambiguously a date.
+		? {
+			days: ['g', 'gg', 'gio', 'giorno', 'giorni'],
+			weeks: ['sett', 'setti', 'settim', 'settima', 'settiman', 'settimana', 'settimane'],
+			months: ['m', 'me', 'mes', 'mese', 'mesi'],
+		}
 		: {
 			days: ['d', 'da', 'day', 'days'],
 			weeks: ['w', 'we', 'wee', 'week', 'weeks'],
@@ -1338,6 +1492,7 @@ function datePickerLocaleTag(language: DatePickerLang): string {
 	if (language === 'zh-TW') return 'zh-TW';
 	if (language === 'ja') return 'ja-JP';
 	if (language === 'ru') return 'ru-RU';
+	if (language === 'it') return 'it-IT';
 	return 'en-US';
 }
 

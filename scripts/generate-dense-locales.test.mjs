@@ -150,7 +150,7 @@ test('locale generator is deterministic and embeds only English', t => {
 	});
 	assert.equal(first.embeddedPack.locales.en[2], 'Türkçe 日本語 😀 \\ quoted "value"');
 	assert.equal(first.embeddedPack.keyCount, 4);
-	assert.equal(first.releaseAssets.length, 8);
+	assert.equal(first.releaseAssets.length, 9);
 	assert.equal(first.releaseAssets[0].pack.translations.beta.zeta, 'tr {{count}}');
 	assert.deepEqual(first.catalog.languageOrder, LOCALE_DEFINITIONS.slice(1).map(definition => definition.code));
 	assert.equal(first.catalog.sourceVersion, '9.8.7');
@@ -204,10 +204,12 @@ test('dense locale generator rejects missing and unlisted locale files', t => {
 
 	const unlistedFixture = createFixture(t);
 	writeFixtureLocales(unlistedFixture.localeDirectory);
-	fs.writeFileSync(path.join(unlistedFixture.localeDirectory, 'it.json'), '{}', 'utf8');
+	// 'xx' is the private-use code reserved for this test, so adding a real language
+	// to LOCALE_DEFINITIONS can never turn this fixture into a listed locale.
+	fs.writeFileSync(path.join(unlistedFixture.localeDirectory, 'xx.json'), '{}', 'utf8');
 	assert.throws(
 		() => buildDenseLocalePack({ localeDirectory: unlistedFixture.localeDirectory }),
-		/Locale file inventory mismatch: missing=\[none\] unlisted=\[it\.json\]/u,
+		/Locale file inventory mismatch: missing=\[none\] unlisted=\[xx\.json\]/u,
 	);
 });
 
@@ -368,14 +370,14 @@ test('atomic artifact writes preserve the last good file and clean up on rename 
 	assert.deepEqual(fs.readdirSync(fixture.rootDir).sort(), ['dense-locales.json', 'locales']);
 });
 
-test('real locale artifacts preserve English plus all eight keyed remote packs', () => {
+test('real locale artifacts preserve English plus all nine keyed remote packs', () => {
 	const localeDirectory = path.join(repoRoot, 'i18n/locales');
 	const artifacts = buildLocaleArtifacts({ localeDirectory });
 	const pack = artifacts.embeddedPack;
-	assert.equal(pack.keyCount, 2_926);
+	assert.equal(pack.keyCount, 2_927);
 	assert.deepEqual(pack.languageOrder, ['en']);
-	assert.equal(artifacts.releaseAssets.length, 8);
-	assert.equal(pack.keyCount * (1 + artifacts.releaseAssets.length), 26_334);
+	assert.equal(artifacts.releaseAssets.length, 9);
+	assert.equal(pack.keyCount * (1 + artifacts.releaseAssets.length), 29_270);
 	assert.equal(serializeDenseLocalePack(pack), createDenseLocaleArtifact({ localeDirectory }));
 
 	for (const definition of LOCALE_DEFINITIONS) {
