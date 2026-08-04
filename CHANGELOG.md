@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Italian localization**, including Settings language selection, translated interface text, Italian date parsing, repeat summaries, calendar wording, task editing labels, and filter surfaces.
+
+### Fixed
+
+- Fixed **Table file-property editor** labels and conflict messages falling back to untranslated locale keys because their translations were stored under the wrong locale category.
+
 ### Validation
+
+- Validated all 2,927 locale keys across English and nine downloadable language packs with 15 generator/runtime tests, 7 pack-manager tests, 52 settings-migration assertions, 30 Italian date-parser assertions, zero referenced-missing locale keys, strict lint, and the release guard.
 
 ## [3.0.2] - 2026-08-03
 

@@ -67,6 +67,7 @@ function datePickerLocale(language: DatePickerLang): string {
 	if (language === 'zh-TW') return 'zh-TW';
 	if (language === 'ja') return 'ja-JP';
 	if (language === 'ru') return 'ru-RU';
+	if (language === 'it') return 'it-IT';
 	return 'en-US';
 }
 

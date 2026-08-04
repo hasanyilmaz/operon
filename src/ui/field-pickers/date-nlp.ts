@@ -4,7 +4,7 @@ import { getCommunityPlugin } from '../../core/obsidian-app';
 import { isRecord, isUnknownFunction } from '../../core/unknown-value';
 import { getDatePickerStrings, getQuickDateCandidates, parseFallbackDateCandidates } from './date-nlp-fallback';
 
-export type DatePickerLang = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru';
+export type DatePickerLang = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru' | 'it';
 
 export interface DateParseContext {
 	fieldKey: string;
@@ -46,8 +46,9 @@ export function resolveDatePickerLanguage(language?: string): DatePickerLang {
 	if (language === 'zh-TW') return 'zh-TW';
 	if (language === 'ja') return 'ja';
 	if (language === 'ru') return 'ru';
+	if (language === 'it') return 'it';
 	if (language === 'en') return 'en';
-	// Date-picker natural-language parsing supports en/tr/de/fr/es/zh-CN/zh-TW/ja/ru.
+	// Date-picker natural-language parsing supports en/tr/de/fr/es/zh-CN/zh-TW/ja/ru/it.
 	// Other UI locales fall back to English date phrases.
 	const current = getCurrentLang();
 	if (current === 'tr') return 'tr';
@@ -58,6 +59,7 @@ export function resolveDatePickerLanguage(language?: string): DatePickerLang {
 	if (current === 'zh-TW') return 'zh-TW';
 	if (current === 'ja') return 'ja';
 	if (current === 'ru') return 'ru';
+	if (current === 'it') return 'it';
 	return 'en';
 }
 
@@ -196,5 +198,6 @@ function datePickerLocale(language: DatePickerLang): string {
 	if (language === 'zh-TW') return 'zh-TW';
 	if (language === 'ja') return 'ja-JP';
 	if (language === 'ru') return 'ru-RU';
+	if (language === 'it') return 'it-IT';
 	return 'en-US';
 }

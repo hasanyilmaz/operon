@@ -11,7 +11,7 @@ import generatedCompatibilityAliases from '../generated/locale-compatibility-ali
 import { compileLocalePack, type LocaleTranslations } from './locale-pack';
 
 /** Supported language codes. */
-export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru';
+export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru' | 'it';
 export type NonEnglishLangCode = Exclude<LangCode, 'en'>;
 
 export const SUPPORTED_LANGUAGES: readonly LangCode[] = [
@@ -24,6 +24,7 @@ export const SUPPORTED_LANGUAGES: readonly LangCode[] = [
 	'zh-TW',
 	'ja',
 	'ru',
+	'it',
 ];
 
 const SUPPORTED_LANGUAGE_SET: ReadonlySet<string> = new Set(SUPPORTED_LANGUAGES);

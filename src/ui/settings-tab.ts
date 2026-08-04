@@ -2837,6 +2837,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ value: 'zh-TW', label: t('settings', 'languageChineseTraditional') },
 			{ value: 'ja', label: t('settings', 'languageJapanese') },
 			{ value: 'ru', label: t('settings', 'languageRussian') },
+			{ value: 'it', label: t('settings', 'languageItalian') },
 		];
 		return buildLanguagePackDropdownOptions<OperonLanguage>({
 			english: { value: 'en', label: t('settings', 'languageEnglish') },
