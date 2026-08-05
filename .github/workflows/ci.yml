@@ -122,6 +122,7 @@ jobs:
             throw "Tracked runner still uses URL.pathname"
           }
           if ($LASTEXITCODE -ne 1) { exit $LASTEXITCODE }
+          exit 0
 
       - name: Verify tracked worktree remains clean
         shell: pwsh
