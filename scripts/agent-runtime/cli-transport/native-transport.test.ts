@@ -686,8 +686,7 @@ test('persistent read server accepts every V1 read command as a single request',
 			await assertPersistentRequestDispatched(publication);
 		}
 	} finally {
-		await Promise.all(publications.map(cleanupPersistentRequest));
-		await harness.cleanup();
+		await cleanupPersistentHarness(harness, publications);
 	}
 });
 
@@ -755,10 +754,9 @@ test('persistent read server accepts an eight-item read batch', async context =>
 		}
 		assert.deepEqual(ordered.map(response => response.index), requests.map((_request, index) => index));
 		assert.deepEqual(ordered.map(response => response.requestId), requests.map(request => request.requestId));
-		await Promise.all(publications.map(assertPersistentRequestDispatched));
+		await forEachPersistentRequestSequentially(publications, assertPersistentRequestDispatched);
 	} finally {
-		await Promise.all(publications.map(cleanupPersistentRequest));
-		await harness.cleanup();
+		await cleanupPersistentHarness(harness, publications);
 	}
 });
 
@@ -819,10 +817,9 @@ test('persistent read server rejects a mixed read and mutation batch before disp
 			new Promise<void>(resolveClose => harness.socket.once('close', () => resolveClose())),
 			'mixed read and mutation batch was not rejected',
 		);
-		await Promise.all(publications.map(assertPersistentRequestUnconsumed));
+		await forEachPersistentRequestSequentially(publications, assertPersistentRequestUnconsumed);
 	} finally {
-		await Promise.all(publications.map(cleanupPersistentRequest));
-		await harness.cleanup();
+		await cleanupPersistentHarness(harness, publications);
 	}
 });
 
@@ -876,10 +873,9 @@ test('persistent read server rejects a nine-item batch before dispatch', async c
 			new Promise<void>(resolveClose => harness.socket.once('close', () => resolveClose())),
 			'oversized persistent batch was not rejected',
 		);
-		await Promise.all(publications.map(assertPersistentRequestUnconsumed));
+		await forEachPersistentRequestSequentially(publications, assertPersistentRequestUnconsumed);
 	} finally {
-		await Promise.all(publications.map(cleanupPersistentRequest));
-		await harness.cleanup();
+		await cleanupPersistentHarness(harness, publications);
 	}
 });
 
@@ -1839,6 +1835,33 @@ async function cleanupPersistentRequest(publication: PersistentRequestPublicatio
 		return;
 	}
 	if (publication.requestPath) await unlink(publication.requestPath).catch(() => undefined);
+}
+
+async function forEachPersistentRequestSequentially(
+	publications: readonly PersistentRequestPublication[],
+	operation: (publication: PersistentRequestPublication) => Promise<void>,
+): Promise<void> {
+	for (const publication of publications) await operation(publication);
+}
+
+async function cleanupPersistentHarness(
+	harness: { cleanup(): Promise<void> },
+	publications: readonly PersistentRequestPublication[],
+): Promise<void> {
+	let firstError: unknown;
+	for (const publication of publications) {
+		try {
+			await cleanupPersistentRequest(publication);
+		} catch (error) {
+			firstError ??= error;
+		}
+	}
+	try {
+		await harness.cleanup();
+	} catch (error) {
+		firstError ??= error;
+	}
+	if (firstError !== undefined) throw firstError;
 }
 
 async function sendBrokerControlRequest(
