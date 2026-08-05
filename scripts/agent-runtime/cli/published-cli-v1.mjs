@@ -25,12 +25,16 @@ export const bindingPath = path.join(
 	pluginRoot,
 	'contracts',
 	'agent-runtime',
+	'releases',
+	'3.1.0',
 	'published-cli-v1.json',
 );
 export const bindingSchemaPath = path.join(
 	pluginRoot,
 	'contracts',
 	'agent-runtime',
+	'releases',
+	'3.1.0',
 	'published-cli-v1.schema.json',
 );
 
@@ -185,7 +189,7 @@ export async function withVerifiedPublishedCli(tarballPath, binding, callback, o
 	const prefix = path.join(temporaryRoot, 'global prefix ç');
 	try {
 		await mkdir(prefix, { recursive: true });
-		const verifiedTarballPath = path.join(temporaryRoot, 'verified-operon-cli-1.0.8.tgz');
+		const verifiedTarballPath = path.join(temporaryRoot, `verified-operon-cli-${binding.package.version}.tgz`);
 		await writeFile(verifiedTarballPath, verifiedTarballBytes, { mode: 0o600 });
 		const npm = await resolveNpmInvocation(options.env ?? process.env);
 		const childEnvironment = sanitizedChildEnvironment(options.env ?? process.env);
@@ -311,7 +315,7 @@ export async function verifyPublishedCliLifecycle(candidatePath, legacyPath, bin
 			writeFile(sentinel, 'preserve\n', 'utf8'),
 			writeFile(path.join(configRoot, 'settings.json'), '{}\n', 'utf8'),
 		]);
-		const verifiedCandidatePath = path.join(temporaryRoot, 'verified-operon-cli-1.0.8.tgz');
+		const verifiedCandidatePath = path.join(temporaryRoot, `verified-operon-cli-${binding.package.version}.tgz`);
 		const verifiedLegacyPath = path.join(temporaryRoot, 'verified-operon-cli-1.0.7.tgz');
 		await Promise.all([
 			writeFile(verifiedCandidatePath, candidateBytes, { mode: 0o600 }),

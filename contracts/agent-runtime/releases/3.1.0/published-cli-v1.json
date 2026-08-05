@@ -1,0 +1,528 @@
+{
+  "$schema": "./published-cli-v1.schema.json",
+  "bindingVersion": 1,
+  "kind": "operon-published-cli-v1",
+  "state": "accepted",
+  "package": {
+    "name": "@stratejya/operon-cli",
+    "version": "1.0.9",
+    "registry": "https://registry.npmjs.org/",
+    "tarballUrl": "https://registry.npmjs.org/@stratejya/operon-cli/-/operon-cli-1.0.9.tgz"
+  },
+  "tarball": {
+    "bytes": 214810,
+    "sha256": "13d537a752690b8bdd6f0a5afdb64d50e7dae82653e0f1b13d79f5a26b987225",
+    "sha512": "Fl2Axn85XfILTR7B9zLCC9OPpIZ023DbPGGsh8PTaKxHj8JfBz4/3QY4zs0kdIIR83UBDf1Y/gB/ky0vNOFOPQ==",
+    "integrity": "sha512-Fl2Axn85XfILTR7B9zLCC9OPpIZ023DbPGGsh8PTaKxHj8JfBz4/3QY4zs0kdIIR83UBDf1Y/gB/ky0vNOFOPQ==",
+    "registryShasum": "7ddc367e892946e6ba5b4e6ab06a01698d6020c7"
+  },
+  "artifact": {
+    "inventory": [
+      {
+        "path": "package/cli-manifest-v1.json",
+        "mode": 420,
+        "size": 51235,
+        "sha256": "79eb2aef24f443474b3dc8301ba71fbb07142556ec9268783f5cd3a6df9801ac"
+      },
+      {
+        "path": "package/dist/operon.mjs",
+        "mode": 493,
+        "size": 514849,
+        "sha256": "1a1658943ec990fa94bcbb58799afc0dfbc5d1d8c6254102672ae9f340dba731"
+      },
+      {
+        "path": "package/examples/developer-api-consumer/main.ts",
+        "mode": 420,
+        "size": 4911,
+        "sha256": "af28d6bcd936dd540eb09dbac2758cbb4bfa9b6156a14bfe8d28d7d246097af2"
+      },
+      {
+        "path": "package/examples/developer-api-consumer/manifest.json",
+        "mode": 420,
+        "size": 288,
+        "sha256": "a8c3cd4cd6e8b6702e678481423429fa25112e80d734c96458050fc759057552"
+      },
+      {
+        "path": "package/examples/developer-api-consumer/package.json",
+        "mode": 420,
+        "size": 278,
+        "sha256": "c3509d9a733c0e63e6a830225ca3bd2357ac22308001feecb1380fee4a559109"
+      },
+      {
+        "path": "package/examples/developer-api-consumer/README.md",
+        "mode": 420,
+        "size": 1396,
+        "sha256": "a1817c668cd023792f7c4dc60f8a6b526f83af193a16ef4edbc5ddfc58930b98"
+      },
+      {
+        "path": "package/examples/developer-api-consumer/tsconfig.json",
+        "mode": 420,
+        "size": 294,
+        "sha256": "42298f16f1b9c298a952473cb55ebdeee8141d60bb93b54bb6a45334141250ea"
+      },
+      {
+        "path": "package/LICENSE",
+        "mode": 420,
+        "size": 35147,
+        "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+      },
+      {
+        "path": "package/package.json",
+        "mode": 420,
+        "size": 3944,
+        "sha256": "5dd5beb68b60bee1264bc4acaebfe25b244f5624c74573529bddaa3422f028b1"
+      },
+      {
+        "path": "package/README.md",
+        "mode": 420,
+        "size": 6154,
+        "sha256": "8a6c41e4d342a555f723c6a8a10d886abf62889c10c08b580a65bdf856432d9f"
+      },
+      {
+        "path": "package/schemas/v1/capabilities.schema.json",
+        "mode": 420,
+        "size": 5944,
+        "sha256": "04aad7ea7afb01f72adab917820696c76ba8ab35da9d419552b01bf19b199ea7"
+      },
+      {
+        "path": "package/schemas/v1/catalog.schema.json",
+        "mode": 420,
+        "size": 23787,
+        "sha256": "42da56915287a4f2aaf527dbed79143346e1364c6aa93cc2f34c92da956ba5fb"
+      },
+      {
+        "path": "package/schemas/v1/cli-manifest.schema.json",
+        "mode": 420,
+        "size": 44963,
+        "sha256": "fe04c04a33f28a063c14546c92da6ea74df354cb1f767cd7b033de1b312f570e"
+      },
+      {
+        "path": "package/schemas/v1/cli.schema.json",
+        "mode": 420,
+        "size": 20951,
+        "sha256": "1d968c0c5716e497b85e8fc8af639f96e68e2d021e2d6b6315611b37246fe9a8"
+      },
+      {
+        "path": "package/schemas/v1/common.schema.json",
+        "mode": 420,
+        "size": 14362,
+        "sha256": "0ff866e4a1cf5a68f4778a2c083e2a17199a7563773dde5954fd59cbba8dfd67"
+      },
+      {
+        "path": "package/schemas/v1/compatibility.schema.json",
+        "mode": 420,
+        "size": 1908,
+        "sha256": "46773bf48ef5210d10ce6e46b5c8a68d4672f01bea04e6760b4a186793f3ce28"
+      },
+      {
+        "path": "package/schemas/v1/context.schema.json",
+        "mode": 420,
+        "size": 22104,
+        "sha256": "528a1b6412acdbc6df004cdcb5a22e9bc83d0778ae1408f804664a98912418fc"
+      },
+      {
+        "path": "package/schemas/v1/developer-api.schema.json",
+        "mode": 420,
+        "size": 30656,
+        "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc"
+      },
+      {
+        "path": "package/schemas/v1/lifecycle.schema.json",
+        "mode": 420,
+        "size": 6676,
+        "sha256": "d3403e658248c06efc2fc4a46bfa94f11b28147c09b52952e2d13b809e25d708"
+      },
+      {
+        "path": "package/schemas/v1/mutation.schema.json",
+        "mode": 420,
+        "size": 82314,
+        "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98"
+      },
+      {
+        "path": "package/schemas/v1/operon-cli-local.schema.json",
+        "mode": 420,
+        "size": 23171,
+        "sha256": "b1bd81c72fbd07aff24a19909a25c20550b9d33cbc105f641dfbcf2b89130f49"
+      },
+      {
+        "path": "package/schemas/v1/read.schema.json",
+        "mode": 420,
+        "size": 39046,
+        "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e"
+      },
+      {
+        "path": "package/schemas/v1/schema-manifest.json",
+        "mode": 420,
+        "size": 15730,
+        "sha256": "d4c946362281d838b953f0285e28eec217e61f655d31be0875934f265576e9eb"
+      },
+      {
+        "path": "package/schemas/v1/schema-manifest.schema.json",
+        "mode": 420,
+        "size": 2600,
+        "sha256": "14778a19dbf7687e5226a8ee069673957bcee8af819cc6e6b65b891c882ffece"
+      },
+      {
+        "path": "package/schemas/v1/session.schema.json",
+        "mode": 420,
+        "size": 5309,
+        "sha256": "789d6403d00ce6e7956dfa9ec96deddf0f7a44654043f93b14f075b5c9ce820f"
+      },
+      {
+        "path": "package/schemas/v1/timer.schema.json",
+        "mode": 420,
+        "size": 3718,
+        "sha256": "f94a5921478209e72e0e0358cd9a16da3862a0c4ab95b6ec7597b2df04c4a633"
+      },
+      {
+        "path": "package/types/not-exported.d.ts",
+        "mode": 420,
+        "size": 11,
+        "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/capabilities.d.ts",
+        "mode": 420,
+        "size": 2516,
+        "sha256": "08230ee9c5ab00a66edb4d8d9eb9504b0971d659184c7a217827aaac3a1b156c"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/catalog.d.ts",
+        "mode": 420,
+        "size": 12786,
+        "sha256": "58511e2741cdd66e97d5db7a69b093a670fe6e86ff74ff6cab09b8fdc7bc82f5"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/cli.d.ts",
+        "mode": 420,
+        "size": 5134,
+        "sha256": "13dff375dff43d69aeb76b32db76544823dca22be699b4b854886fe254354117"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/context.d.ts",
+        "mode": 420,
+        "size": 13652,
+        "sha256": "d403371c0b33f56f5bb6d05b7984fe10ff9f7da8cd787dd449fd4ee565a940ae"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/identity.d.ts",
+        "mode": 420,
+        "size": 3122,
+        "sha256": "814a5186142c05e24a6e25cfda639198f84261842289e438b8da5ffd819c7972"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/lifecycle.d.ts",
+        "mode": 420,
+        "size": 2212,
+        "sha256": "5fb86a3ae168a92c00d60b853550bbb4a4451c2d35835906d20790c9b89d4f2e"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/mutation.d.ts",
+        "mode": 420,
+        "size": 17783,
+        "sha256": "005a9d0487e79634621e1dda98cee8fb41b5051a89c39e159a9511ce5ce8ca7a"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/primitives.d.ts",
+        "mode": 420,
+        "size": 4778,
+        "sha256": "cba088d69957a34ae17a803db38caf73ea6bc1a493869944440199cf61976af6"
+      },
+      {
+        "path": "package/types/src/agent-runtime/contracts/v1/timer.d.ts",
+        "mode": 420,
+        "size": 1122,
+        "sha256": "3259f84e2c70b59dd907934bbcce63acb6d5683a1a98d6b6329763e3e483e5d7"
+      },
+      {
+        "path": "package/types/src/agent-runtime/public/v1/cli.d.ts",
+        "mode": 420,
+        "size": 275,
+        "sha256": "deebf7e77c5e89e6e4466ec346b72de05032e2925424949c1563c3021b9c42e4"
+      },
+      {
+        "path": "package/types/src/agent-runtime/public/v1/developer-api.d.ts",
+        "mode": 420,
+        "size": 14793,
+        "sha256": "1e674561506672debbdf0dbdec200cce9a731507f65235778a3a0abf97ab9031"
+      },
+      {
+        "path": "package/types/src/agent-runtime/public/v1/index.d.ts",
+        "mode": 420,
+        "size": 4597,
+        "sha256": "9a6f44ffb74cb2627325de22c4284b5a98a3d5207be955edf3778dbbd7747fb2"
+      },
+      {
+        "path": "package/types/src/agent-runtime/public/v1/runtime.d.ts",
+        "mode": 420,
+        "size": 2560,
+        "sha256": "65bde59632840123eab27f37737dc8cedc6f86452d07a3001918c379a1354c7a"
+      },
+      {
+        "path": "package/types/src/agent-runtime/public/v1/shared.d.ts",
+        "mode": 420,
+        "size": 1090,
+        "sha256": "3cc24984d5484890ee07630372fc9e526b61a18fe95cf77d01332ed42c6fc4cb"
+      }
+    ],
+    "inventoryEntries": 41,
+    "executable": {
+      "path": "package/dist/operon.mjs",
+      "bytes": 514849,
+      "mode": 493,
+      "sha256": "1a1658943ec990fa94bcbb58799afc0dfbc5d1d8c6254102672ae9f340dba731"
+    },
+    "cliManifest": {
+      "path": "package/cli-manifest-v1.json",
+      "bytes": 51235,
+      "mode": 420,
+      "sha256": "79eb2aef24f443474b3dc8301ba71fbb07142556ec9268783f5cd3a6df9801ac"
+    },
+    "normalizedCliManifestSha256": "d67f4bd3c672de6db0fc743b05a682c290835fcff105fb137615402ce62ecf67",
+    "historicalCliManifest": {
+      "version": "1.0.7",
+      "bytes": 51235,
+      "sha256": "6cc0ee85e8cd65607e7e8682161d79e4e3e971d12d312e199c2c86651f553805"
+    },
+    "schemaAggregateSha256": "e843f87facf647617b613f3cb1d19ffd858054581a943aeab3ebff25b67db247",
+    "declarationAggregateSha256": "2d1043363a96c156086c4b974bb43d0cd151acc94663a50d5834759fa4d2b45d"
+  },
+  "runtime": {
+    "contractVersion": 1,
+    "contractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b",
+    "canonicalSchemas": [
+      {
+        "path": "contracts/agent-runtime/v1/capabilities.schema.json",
+        "bytes": 5944,
+        "mode": 420,
+        "sha256": "04aad7ea7afb01f72adab917820696c76ba8ab35da9d419552b01bf19b199ea7"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/catalog.schema.json",
+        "bytes": 23787,
+        "mode": 420,
+        "sha256": "42da56915287a4f2aaf527dbed79143346e1364c6aa93cc2f34c92da956ba5fb"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/cli.schema.json",
+        "bytes": 20951,
+        "mode": 420,
+        "sha256": "1d968c0c5716e497b85e8fc8af639f96e68e2d021e2d6b6315611b37246fe9a8"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/common.schema.json",
+        "bytes": 14362,
+        "mode": 420,
+        "sha256": "0ff866e4a1cf5a68f4778a2c083e2a17199a7563773dde5954fd59cbba8dfd67"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/compatibility.schema.json",
+        "bytes": 1908,
+        "mode": 420,
+        "sha256": "46773bf48ef5210d10ce6e46b5c8a68d4672f01bea04e6760b4a186793f3ce28"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/context.schema.json",
+        "bytes": 22104,
+        "mode": 420,
+        "sha256": "528a1b6412acdbc6df004cdcb5a22e9bc83d0778ae1408f804664a98912418fc"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/developer-api.schema.json",
+        "bytes": 30656,
+        "mode": 420,
+        "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/lifecycle.schema.json",
+        "bytes": 6676,
+        "mode": 420,
+        "sha256": "d3403e658248c06efc2fc4a46bfa94f11b28147c09b52952e2d13b809e25d708"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/mutation.schema.json",
+        "bytes": 82314,
+        "mode": 420,
+        "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/read.schema.json",
+        "bytes": 39046,
+        "mode": 420,
+        "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/schema-manifest.json",
+        "bytes": 15730,
+        "mode": 420,
+        "sha256": "d4c946362281d838b953f0285e28eec217e61f655d31be0875934f265576e9eb"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/schema-manifest.schema.json",
+        "bytes": 2600,
+        "mode": 420,
+        "sha256": "14778a19dbf7687e5226a8ee069673957bcee8af819cc6e6b65b891c882ffece"
+      },
+      {
+        "path": "contracts/agent-runtime/v1/timer.schema.json",
+        "bytes": 3718,
+        "mode": 420,
+        "sha256": "f94a5921478209e72e0e0358cd9a16da3862a0c4ab95b6ec7597b2df04c4a633"
+      }
+    ],
+    "canonicalTypeSources": [
+      {
+        "path": "src/agent-runtime/contracts/v1/canonical.ts",
+        "bytes": 6633,
+        "mode": 420,
+        "sha256": "13a292347cd549c19950d829242ead14823fdf7ba664191944f5b37908cded24"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/capabilities.ts",
+        "bytes": 4603,
+        "mode": 420,
+        "sha256": "a28c89771268b2f7df68c3fdfaa815df3f66cde50ed3fdd0a08e48267a63a847"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/catalog.ts",
+        "bytes": 12954,
+        "mode": 420,
+        "sha256": "3ec4bc3a186234745d0a82ba38fa2a6d0ed8eb79801d767aa86ba1022a8b81cd"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/cli.ts",
+        "bytes": 7546,
+        "mode": 420,
+        "sha256": "a8a9bebda146932dc482c6c83e981b3ba9afb6b27c0b7b4f924ddea8199d4969"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/context.ts",
+        "bytes": 13811,
+        "mode": 420,
+        "sha256": "fc430e012422ae9c94b1534f4b1344ec3dec8c7f1c192206cce6ac4af46d946e"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/decode.ts",
+        "bytes": 290450,
+        "mode": 420,
+        "sha256": "f154e8c00b2f8824943131a615316eb0a8cbce15b954bc5ec3e532bdf1ab3482"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/fixture-contracts.ts",
+        "bytes": 274,
+        "mode": 420,
+        "sha256": "80c1d0a4bf2cc50bfb42e15d831006fe6214f9b236a609323e0de9585bef9bb9"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/fixture-decoders.ts",
+        "bytes": 5758,
+        "mode": 420,
+        "sha256": "d8608db49cf5ab9478528a55402bcc9de1cc0633375e085f5f113614c87c1bb5"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/identity.ts",
+        "bytes": 5399,
+        "mode": 420,
+        "sha256": "7217a5dde27bb380967a7fecc8abb063d7aa77326726bf00ce249aa9d15a1879"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/index.ts",
+        "bytes": 343,
+        "mode": 420,
+        "sha256": "0b2728ded68c0e15b2e27a0ce5003d3da71fd4c1518232fcea3cec21860db58a"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/lifecycle.ts",
+        "bytes": 2094,
+        "mode": 420,
+        "sha256": "338ee10dc0d8b1788d88a1522bd8fcab1d9b3aad2239d9ac94eeb086bbfbd836"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/mutation-acceptance.ts",
+        "bytes": 10339,
+        "mode": 420,
+        "sha256": "3199e2e595083d65ca1326b559d7742d08bdda0a6d17e18be4bd11149cc89ec4"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/mutation.ts",
+        "bytes": 19538,
+        "mode": 420,
+        "sha256": "7851b20b505c672845a2512dc2f0901cf603725993067e9210ae42e1c2949563"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/primitives.ts",
+        "bytes": 9604,
+        "mode": 420,
+        "sha256": "9e362e9fff1a8b4c91562281c692992f9a681ede0553254a34cca08c14a9b1af"
+      },
+      {
+        "path": "src/agent-runtime/contracts/v1/timer.ts",
+        "bytes": 1022,
+        "mode": 420,
+        "sha256": "9127f67e0610ec87e7176fe7d3665fb84f61aabfce8f92f285ca1192e6bee638"
+      },
+      {
+        "path": "src/agent-runtime/public/v1/cli.ts",
+        "bytes": 284,
+        "mode": 420,
+        "sha256": "8499c081253cff4b459b12a4dbb13158050ace4d83b7c53dad91e543f427a35d"
+      },
+      {
+        "path": "src/agent-runtime/public/v1/developer-api.ts",
+        "bytes": 14575,
+        "mode": 420,
+        "sha256": "a938e1f4344a29d3bb1de63e2deda48d639f46d2e3049ebeb833552efc050e63"
+      },
+      {
+        "path": "src/agent-runtime/public/v1/index.ts",
+        "bytes": 4782,
+        "mode": 420,
+        "sha256": "b7e9ebcf8d0257a0433b9453aff5adfc36ed28924a1103f26387a01b257259fd"
+      },
+      {
+        "path": "src/agent-runtime/public/v1/runtime.ts",
+        "bytes": 2658,
+        "mode": 420,
+        "sha256": "be81ae28753b3f3d9cc6944b3fea31d13b0d1b52820720fd2cd8722217c378e4"
+      },
+      {
+        "path": "src/agent-runtime/public/v1/shared.ts",
+        "bytes": 1124,
+        "mode": 420,
+        "sha256": "10c13a65f7f7990a460b4bc4dc7c0aee21730468bce4ec43eedefd3554909192"
+      }
+    ]
+  },
+  "source": {
+    "repository": "hasanyilmaz/operon-cli",
+    "commit": "89b9fd1c9c03bc6f08482fbb9420c87215be7194",
+    "tag": "cli-v1.0.9",
+    "annotatedTagObject": "971357a1895e5b595c754b85a4879e939f4e8671",
+    "releaseUrl": "https://github.com/hasanyilmaz/operon-cli/releases/tag/cli-v1.0.9",
+    "releaseTarballUrl": "https://github.com/hasanyilmaz/operon-cli/releases/download/cli-v1.0.9/operon-cli-1.0.9.tgz",
+    "releaseAssets": {
+      "artifactManifest": {
+        "bytes": 10076,
+        "sha256": "b75e68953f5f4462710bf6fb9cec49d8a08b37805a26d5bae014162b0db67659"
+      },
+      "determinismReport": {
+        "bytes": 12183,
+        "sha256": "e8607a1b0d60b0781a0cf4a741f54eb0c461b4786c3d33626409c193a4755366"
+      },
+      "sha256sums": {
+        "bytes": 266,
+        "sha256": "ba54483fb0dcbe9a2be2de8cae4f0165f5804b27ae3abbfb8256c8ce83372821"
+      }
+    }
+  },
+  "provenance": {
+    "provider": "github-actions",
+    "workflow": "npm-staged-release.yml",
+    "ref": "refs/tags/cli-v1.0.9",
+    "commit": "89b9fd1c9c03bc6f08482fbb9420c87215be7194",
+    "environment": "npm-staging",
+    "canonicalHostedRun": 31023909031,
+    "publishRun": 31026733220
+  },
+  "bindingAggregateSha256": "abd295c01ba40115a2e4e8855429a7ba5ab69ea8a69470fecf57dbbf27f13f4a"
+}

@@ -15,12 +15,13 @@ import {
 } from './published-cli-v1.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
-const metadataUrl = 'https://registry.npmjs.org/@stratejya%2foperon-cli/1.0.8';
 const githubApiRoot = 'https://api.github.com/repos/hasanyilmaz/operon-cli';
 
 export async function checkPublishedCliPublicProof(options = {}) {
 	const loaded = await loadPublishedCliBinding(options);
 	const { binding } = loaded;
+	const npmPackagePath = binding.package.name.replace('/', '%2f');
+	const metadataUrl = `${binding.package.registry}${npmPackagePath}/${binding.package.version}`;
 	await verifyCanonicalPluginInputs(binding, options);
 	const metadata = await fetchJson(metadataUrl);
 	assert.equal(metadata.name, binding.package.name, 'OPERON_PUBLISHED_CLI_PUBLIC_PACKAGE_NAME_MISMATCH');
@@ -49,13 +50,13 @@ export async function checkPublishedCliPublicProof(options = {}) {
 	assert.equal(releaseManifest.canonical?.inventory?.length, binding.artifact.inventoryEntries);
 	assert.match(
 		sha256sums.toString('utf8'),
-		new RegExp(`^${binding.tarball.sha256}  operon-cli-1\\.0\\.8\\.tgz$`, 'mu'),
+		new RegExp(`^${binding.tarball.sha256}  operon-cli-${binding.package.version.replaceAll('.', '\\.')}\\.tgz$`, 'mu'),
 		'OPERON_PUBLISHED_CLI_RELEASE_CHECKSUM_MISMATCH',
 	);
 	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-cli-public-proof-'));
 	try {
-		const npmTarballPath = path.join(temporaryRoot, 'npm-operon-cli-1.0.8.tgz');
-		const releaseTarballPath = path.join(temporaryRoot, 'release-operon-cli-1.0.8.tgz');
+		const npmTarballPath = path.join(temporaryRoot, `npm-operon-cli-${binding.package.version}.tgz`);
+		const releaseTarballPath = path.join(temporaryRoot, `release-operon-cli-${binding.package.version}.tgz`);
 		await Promise.all([
 			writeFile(npmTarballPath, npmTarball, { mode: 0o600 }),
 			writeFile(releaseTarballPath, releaseTarball, { mode: 0o600 }),
@@ -78,14 +79,20 @@ export async function checkPublishedCliPublicProof(options = {}) {
 }
 
 async function verifyNpmAttestations(url, binding) {
-	assert.equal(url, 'https://registry.npmjs.org/-/npm/v1/attestations/@stratejya%2foperon-cli@1.0.8');
+	assert.equal(
+		url,
+		`https://registry.npmjs.org/-/npm/v1/attestations/${binding.package.name.replace('/', '%2f')}@${binding.package.version}`,
+	);
 	const response = await fetchJson(url);
 	const provenance = response.attestations?.find(item => item.predicateType === 'https://slsa.dev/provenance/v1');
 	assert.ok(provenance, 'OPERON_PUBLISHED_CLI_PROVENANCE_MISSING');
 	const payload = JSON.parse(Buffer.from(provenance.bundle.dsseEnvelope.payload, 'base64').toString('utf8'));
 	assert.equal(payload.predicateType, 'https://slsa.dev/provenance/v1');
 	assert.equal(payload.subject?.length, 1, 'OPERON_PUBLISHED_CLI_PROVENANCE_SUBJECT_INVALID');
-	assert.equal(payload.subject[0].name, 'pkg:npm/%40stratejya/operon-cli@1.0.8');
+	assert.equal(
+		payload.subject[0].name,
+		`pkg:npm/${binding.package.name.replace('@', '%40')}@${binding.package.version}`,
+	);
 	assert.equal(
 		payload.subject[0].digest.sha512,
 		Buffer.from(binding.tarball.sha512, 'base64').toString('hex'),
@@ -116,7 +123,7 @@ async function verifyGithubIdentity(binding) {
 	const release = await fetchJson(`${githubApiRoot}/releases/tags/${binding.source.tag}`);
 	assert.equal(release.tag_name, binding.source.tag);
 	assert.equal(release.immutable, true, 'OPERON_PUBLISHED_CLI_RELEASE_NOT_IMMUTABLE');
-	const asset = release.assets.find(item => item.name === 'operon-cli-1.0.8.tgz');
+	const asset = release.assets.find(item => item.name === `operon-cli-${binding.package.version}.tgz`);
 	assert.ok(asset, 'OPERON_PUBLISHED_CLI_RELEASE_ASSET_MISSING');
 	assert.equal(asset.size, binding.tarball.bytes);
 	assert.equal(asset.digest, `sha256:${binding.tarball.sha256}`);

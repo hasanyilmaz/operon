@@ -368,9 +368,16 @@ test('Generated docs and manifest are byte-identical to all source docs', async 
 
 test('published binding and frozen contracts expose the documented public boundary', async () => {
 	const { binding } = await loadPublishedCliBinding();
+	const [scope, evolution] = await Promise.all([
+		readFile(path.join(pluginRoot, 'contracts/agent-runtime/public-v1-scope.md'), 'utf8'),
+		readFile(path.join(pluginRoot, 'contracts/agent-runtime/contract-evolution-v1.md'), 'utf8'),
+	]);
 	assert.equal(binding.package.name, '@stratejya/operon-cli');
-	assert.equal(binding.package.version, '1.0.8');
+	assert.equal(binding.package.version, '1.0.9');
 	assert.equal(binding.runtime.contractVersion, 1);
+	assert.match(scope, /append-only external CLI compatibility freeze registry/u);
+	assert.match(scope, /published-CLI live mutation suite was not rerun/u);
+	assert.match(evolution, /Accepted external-reference freezes are append-only, versioned evidence/u);
 	assert.equal(publicBaseline.cliContract, 1);
 	assert.equal(publicBaseline.exitCodes.interrupted, 130);
 	assert.equal(publicBaseline.exitCodes.runtimeFailure, 5);

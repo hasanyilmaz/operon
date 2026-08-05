@@ -141,7 +141,7 @@ test('child environment removes case-variant npm auth and registry configuration
 test('binding mutation fails closed through its self aggregate', async () => {
 	const { binding } = await loadPublishedCliBinding();
 	const mutated = structuredClone(binding);
-	mutated.package.version = '1.0.9';
+	mutated.package.version = '1.0.10';
 	assert.throws(
 		() => assertPublishedCliBinding(mutated),
 		/OPERON_PUBLISHED_CLI_BINDING_AGGREGATE_INVALID/u,
