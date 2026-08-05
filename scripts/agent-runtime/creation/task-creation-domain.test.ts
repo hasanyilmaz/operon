@@ -2225,9 +2225,10 @@ async function runCommitPortTests(): Promise<void> {
 			),
 		);
 		assert.match(emptyVariableContent, /Optional=\/\/\//u);
-		assert.match(
-			emptyVariableContent,
-			new RegExp(`Defaults=${expectedDefaultStatus.replace(/\./gu, '\\.')}/${DEFAULT_SETTINGS.defaultPriority}`, 'u'),
+		assert.ok(
+			emptyVariableContent.includes(
+				`Defaults=${expectedDefaultStatus}/${DEFAULT_SETTINGS.defaultPriority}`,
+			),
 		);
 		assert.doesNotMatch(
 			emptyVariableContent,
