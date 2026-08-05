@@ -461,7 +461,8 @@ function isNonEnglishLangCode(value: string): value is NonEnglishLangCode {
 		|| value === 'zh-CN'
 		|| value === 'zh-TW'
 		|| value === 'ja'
-		|| value === 'ru';
+		|| value === 'ru'
+		|| value === 'it';
 }
 
 function getErrorMessage(error: unknown): string {

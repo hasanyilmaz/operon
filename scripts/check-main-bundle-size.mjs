@@ -79,9 +79,9 @@ export function evaluateBundleSize(
 	};
 }
 
-export function inspectBundleFile(bundlePath = defaultBundlePath) {
+export function inspectBundleFile(bundlePath = defaultBundlePath, statSync = fs.statSync) {
 	try {
-		const stats = fs.statSync(bundlePath);
+		const stats = statSync(bundlePath);
 		if (!stats.isFile()) {
 			return { ok: false, reason: 'missing', bundlePath };
 		}
@@ -130,8 +130,13 @@ export function formatBundleSizeResult(result) {
 		+ `${formatByteCount(result.overBytes)}; the ${hard}-byte hard limit remains absolute.`;
 }
 
-export function runBundleSizeCheck(bundlePath = defaultBundlePath, logger = console, environment = process.env) {
-	const result = inspectBundleFile(bundlePath);
+export function runBundleSizeCheck(
+	bundlePath = defaultBundlePath,
+	logger = console,
+	environment = process.env,
+	inspect = inspectBundleFile,
+) {
+	const result = inspect(bundlePath);
 	const output = formatBundleSizeResult(result);
 	if (result.status === 'pass') {
 		logger.log(output);

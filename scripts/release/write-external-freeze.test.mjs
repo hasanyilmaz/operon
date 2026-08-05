@@ -218,19 +218,24 @@ test('external freeze arguments require exact non-duplicated acceptance inputs',
 });
 
 test('sanitization preserves exact family proof without private live-vault details', async () => {
-	const pluginArtifact = await readPluginArtifactIdentity(pluginRoot);
-	const source = sourceEvidence(pluginArtifact);
-	const sourceBytes = Buffer.from(`${JSON.stringify(source)}\n`, 'utf8');
-	const binding = JSON.parse(await readFile(
-		path.join(pluginRoot, 'contracts/agent-runtime/published-cli-v1.json'),
-		'utf8',
-	));
-	const sanitized = sanitizePublishedLiveEvidence(source, sourceBytes, binding, pluginArtifact);
-	assert.deepEqual(sanitized.publishedFamilies, PUBLISHED_FAMILIES);
-	assert.equal(sanitized.familyResults.length, 12);
-	assert.deepEqual(sanitized.pluginArtifact, pluginArtifact);
-	assert.doesNotMatch(JSON.stringify(sanitized), /private-(?:create|recurrence|relationship|timer)-vault/u);
-	assert.match(sanitized.sourceEvidenceSha256, /^[a-f0-9]{64}$/u);
+	const fixture = await createFixture();
+	try {
+		const pluginArtifact = await readPluginArtifactIdentity(fixture.root);
+		const source = sourceEvidence(pluginArtifact);
+		const sourceBytes = Buffer.from(`${JSON.stringify(source)}\n`, 'utf8');
+		const binding = JSON.parse(await readFile(
+			path.join(fixture.root, 'contracts/agent-runtime/published-cli-v1.json'),
+			'utf8',
+		));
+		const sanitized = sanitizePublishedLiveEvidence(source, sourceBytes, binding, pluginArtifact);
+		assert.deepEqual(sanitized.publishedFamilies, PUBLISHED_FAMILIES);
+		assert.equal(sanitized.familyResults.length, 12);
+		assert.deepEqual(sanitized.pluginArtifact, pluginArtifact);
+		assert.doesNotMatch(JSON.stringify(sanitized), /private-(?:create|recurrence|relationship|timer)-vault/u);
+		assert.match(sanitized.sourceEvidenceSha256, /^[a-f0-9]{64}$/u);
+	} finally {
+		await rm(fixture.root, { recursive: true, force: true });
+	}
 });
 
 test('writer creates validated evidence and accepted freeze once with restrictive modes', async () => {
@@ -246,8 +251,14 @@ test('writer creates validated evidence and accepted freeze once with restrictiv
 		});
 		assert.equal(result.freeze.state, 'accepted');
 		assert.equal(result.evidence.familyResults.length, 12);
-		assert.equal((await lstat(result.freezePath)).mode & 0o777, 0o600);
-		assert.equal((await lstat(result.evidencePath)).mode & 0o777, 0o600);
+		const freezeStats = await lstat(result.freezePath);
+		const evidenceStats = await lstat(result.evidencePath);
+		assert.equal(freezeStats.isFile(), true);
+		assert.equal(evidenceStats.isFile(), true);
+		if (process.platform !== 'win32') {
+			assert.equal(freezeStats.mode & 0o777, 0o600);
+			assert.equal(evidenceStats.mode & 0o777, 0o600);
+		}
 		assert.deepEqual(await checkAcceptedReleaseFreeze({ pluginRoot: fixture.root }), result.freeze);
 		const before = await Promise.all([
 			readFile(result.freezePath),

@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [3.1.0] - 2026-08-05
+
+Operon 3.1.0 adds Italian across the interface and strengthens Windows Runtime and CLI reliability while preserving the existing Runtime V1 contract. It is paired with Operon CLI 1.0.9.
+
+### New
+
+- Added **Italian localization**, including Settings language selection, translated interface text, Italian date parsing, repeat summaries, Calendar wording, task editing labels, and filter surfaces.
+
+### Fixed
+
+- Fixed **Windows CLI reads** falling back to unreliable one-shot paths by routing all 11 Runtime V1 read commands through the authenticated persistent transport while keeping mutations isolated.
+- Fixed Runtime-resolved **configured-default File Task templates** being rejected by the canonical and CLI decoders.
+- Fixed empty optional **File Task variables** remaining as unresolved placeholders while preserving configured status and priority defaults.
+- Fixed **Table file-property editor** labels and conflict messages falling back to untranslated locale keys.
+
+### Validation
+
+- Validated with the complete local candidate check suite, 1,520/1,520 Phase 5 regression checks, Italian locale and date-parser coverage, the exact Plugin 3.1.0 and CLI 1.0.9 Windows pair with zero skips, the canonical 41-file CLI package and provenance checks, all Runtime V1 contract and historical freeze gates, and a clean release dependency audit with 0 production and 0 development findings.
+
 ## [3.0.2] - 2026-08-03
 
 Operon 3.0.2 completes the standalone CLI repository separation while keeping Runtime V1 stable, cleans up plugin review warnings, and fixes highlighted Markdown in hover tooltips.

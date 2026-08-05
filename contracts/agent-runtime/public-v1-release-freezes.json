@@ -1,0 +1,71 @@
+{
+  "registryVersion": 1,
+  "kind": "operon-public-v1-release-freeze-registry",
+  "currentPluginVersion": "3.1.0",
+  "releases": [
+    {
+      "pluginVersion": "3.0.2",
+      "cliVersion": "1.0.8",
+      "evidenceKind": "live-acceptance",
+      "files": [
+        {
+          "path": "contracts/agent-runtime/public-v1-external-freeze.json",
+          "bytes": 2490,
+          "sha256": "946e3f320d5011c7c2c0dc416f3d65d40bc1f1acb58ece71f0f5a3714e3d4350"
+        },
+        {
+          "path": "contracts/agent-runtime/public-v1-external-freeze.schema.json",
+          "bytes": 10753,
+          "sha256": "80f837fc50f1ac30955884c37fc310d337b565327bcf3a9b55edc7f514302968"
+        },
+        {
+          "path": "contracts/agent-runtime/public-v1-live-acceptance.json",
+          "bytes": 2603,
+          "sha256": "c33689f2dd37741b39f7dbd4d76da692d339ceca796bbbbe39dccbb6735fb3d6"
+        },
+        {
+          "path": "contracts/agent-runtime/published-cli-v1.json",
+          "bytes": 18715,
+          "sha256": "b7b446d15218a78d8c696d7c3732461ccffad6c0af6069637a02452c9b3fef98"
+        },
+        {
+          "path": "contracts/agent-runtime/published-cli-v1.schema.json",
+          "bytes": 6870,
+          "sha256": "62d8adbc7b736cd910c35db744cb70b4e2c03cc34c7d11a0e86d3a499cedb8e7"
+        }
+      ]
+    },
+    {
+      "pluginVersion": "3.1.0",
+      "cliVersion": "1.0.9",
+      "evidenceKind": "paired-release-validation",
+      "files": [
+        {
+          "path": "contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.json",
+          "bytes": 2154,
+          "sha256": "85cf7459987ecd7aa18fdae06fcea08acbbe1318189e3edb2557c60aa3d5abe4"
+        },
+        {
+          "path": "contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.schema.json",
+          "bytes": 13326,
+          "sha256": "68f02611afe4398662031e4c4ae64e1afe1521490ecbd2f8d5b17e27f1d0d868"
+        },
+        {
+          "path": "contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json",
+          "bytes": 4254,
+          "sha256": "3352c360c9a2ddd01c3ab622f0263c61bec15f1e83b8ac0c669e5f9b64a35ab5"
+        },
+        {
+          "path": "contracts/agent-runtime/releases/3.1.0/published-cli-v1.json",
+          "bytes": 18715,
+          "sha256": "85d693731d538e30cc983d890b4d8e9df5ff7b225e21795dedd77b02c9ce9932"
+        },
+        {
+          "path": "contracts/agent-runtime/releases/3.1.0/published-cli-v1.schema.json",
+          "bytes": 8942,
+          "sha256": "6465ced9aa799773e9f296db84bcb56a71f723b309f9d68caa2e09636fdcabce"
+        }
+      ]
+    }
+  ]
+}

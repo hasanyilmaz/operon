@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 2926,
-  "keyFingerprint": "e67d103c629f6ecc1b10dc69602712834c51836458aaa0992338eec9675c0d3b",
+  "keyCount": 2927,
+  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -404,12 +404,7 @@
       "fieldProjectSerialGroup": "Project Serial Grubu",
       "fieldProjectTree": "Proje Ağacı",
       "fieldTags": "Etiketler",
-      "filePropertyConflict": "Bu özellik tablo dışında değiştirildi. En güncel değer geri yüklendi.",
-      "filePropertyEmpty": "Boş",
-      "filePropertyInvalidBoolean": "{{property}} boolean olmalıdır. Obsidian Özellikler bölümünde düzeltin.",
       "filePropertyInvalidConditionValue": "Bu özellik koşulu için geçerli bir değer girin.",
-      "filePropertyNotSet": "Ayarlanmadı",
-      "filePropertyRemove": "Özelliği kaldır",
       "filePropertySourceType": "YAML özelliği · {{type}}",
       "filePropertyTypeChanged": "YAML özelliği · Tür değişti: {{savedType}} → {{type}} · İnceleme gerekli",
       "filePropertyTypeDriftShort": "Tür değişti: {{savedType}} → {{type}} · İnceleme gerekli",
@@ -1724,6 +1719,7 @@
       "languageEnglish": "İngilizce",
       "languageFrench": "Fransızca",
       "languageGerman": "Almanca",
+      "languageItalian": "İtalyanca",
       "languageJapanese": "日本語",
       "languagePackDownload": "İndir",
       "languagePackDownloadFailed": "Dil paketi indirilemedi. Önceki diliniz etkin kalmaya devam ediyor.",
@@ -2372,6 +2368,11 @@
       "fileLoading": "Table yükleniyor...",
       "fileNotAttached": "Bu görünüme bağlı bir Table dosyası yok.",
       "fileOpenFailed": "Operon bu Table dosyasını açamadı.",
+      "filePropertyConflict": "Bu özellik tablo dışında değiştirildi. En güncel değer geri yüklendi.",
+      "filePropertyEmpty": "Boş",
+      "filePropertyInvalidBoolean": "{{property}} boolean olmalıdır. Obsidian Özellikler bölümünde düzeltin.",
+      "filePropertyNotSet": "Ayarlanmadı",
+      "filePropertyRemove": "Özelliği kaldır",
       "filter": "Filtre",
       "groupBy": "Grupla",
       "groupByDesc": "Tablo satırlarını gruplamak için tek bir alan seç.",
@@ -2971,5 +2972,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "32ea5c363490078fc242c086dae0d3a9d88272eacceda7d0037b239bb0d8164c"
+  "sourceVersion": "87933628a6e68a5a6fff7e5ca23f141856b7b2e92845d264fea60a3f135e64fb"
 }

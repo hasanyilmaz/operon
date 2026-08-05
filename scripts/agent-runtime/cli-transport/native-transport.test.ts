@@ -70,6 +70,24 @@ const WINDOWS_BROKER_SCOPE = {
 	serverInstanceId: '1'.repeat(64),
 	vaultSha256: '2'.repeat(64),
 } as const;
+const REQUIRE_NATIVE_TRANSPORT = process.env['OPERON_REQUIRE_NATIVE_TRANSPORT'] === '1';
+
+interface PersistentReadTestDescriptor {
+	readonly protocolVersion: 1;
+	readonly serverInstanceId: string;
+	readonly vaultSha256: string;
+	readonly endpointKind: 'unix-domain-socket' | 'windows-named-pipe';
+	readonly endpoint: string;
+	readonly authSecret: string;
+}
+
+interface PersistentRequestPublication {
+	readonly token: string;
+	readonly requestPath?: string;
+	readonly descriptor?: PersistentReadTestDescriptor;
+}
+
+let brokerConnectionSequence = 0;
 
 function persistentEndpointRootV1(): string {
 	if (process.platform === 'win32') {
@@ -456,7 +474,7 @@ test('persistent read server dispatches allowlisted tokens and rejects mutation 
 		},
 	);
 	if (!handle.available && handle.reason === 'persistent-read-server-listen-denied') {
-		context.skip('sandbox does not permit Unix socket listen under /private/tmp');
+		skipUnavailableNativeTransport(context);
 		await rm(vault, { recursive: true, force: true });
 		return;
 	}
@@ -604,6 +622,399 @@ test('persistent read server dispatches allowlisted tokens and rejects mutation 
 });
 }
 
+test('persistent read server accepts every V1 read command as a single request', async context => {
+	const harness = await createAuthenticatedPersistentReadHarness(context, 'all-single-reads');
+	if (!harness) return;
+	const publications: PersistentRequestPublication[] = [];
+	try {
+		const readCommands = [
+			'health',
+			'capabilities',
+			'diagnostics',
+			'catalog',
+			'entity.resolve',
+			'task.get',
+			'tasks.query',
+			'tasks.finder',
+			'relationships.get',
+			'timers.read',
+			'context.build',
+		] as const;
+		for (const [index, command] of readCommands.entries()) {
+			const requestId = `persistent-${command}`;
+			const requestToken = createHash('sha256')
+				.update(`single:${command}`)
+				.digest('hex')
+				.slice(0, 32);
+			const publication = await publishPersistentRequest(
+				harness.descriptor,
+				requestToken,
+				JSON.stringify(persistentReadInvocation(harness.expectedVaultSha256, requestId, command)),
+			);
+			publications.push(publication);
+			writeTestFrame(harness.socket, authenticateTestFrame({
+				type: 'request',
+				sequence: index + 1,
+				connectionNonce: harness.connectionNonce,
+				requestId,
+				command,
+				requestToken: publication.token,
+			}, harness.descriptor.authSecret));
+			const response = await harness.readFrame() as {
+				type?: string;
+				sequence?: number;
+				requestId?: string;
+				result?: string;
+			};
+			assert.equal(response.type, 'response', `${command} must be accepted by persistent transport`);
+			assert.equal(response.sequence, index + 1);
+			assert.equal(response.requestId, requestId);
+			const envelope = JSON.parse(response.result ?? 'null') as {
+				requestId?: string;
+				command?: string;
+				failure?: { stage?: string; error?: { code?: string } };
+			};
+			const decoded = decodeCliResultEnvelopeV1(envelope);
+			assert.equal(
+				decoded.ok,
+				true,
+				decoded.ok ? undefined : `${command}:${JSON.stringify(decoded.issues)}`,
+			);
+			assert.equal(envelope.command, command);
+			assert.equal(envelope.requestId, requestId);
+			assert.notEqual(envelope.failure?.error?.code, 'invalid-request');
+			await assertPersistentRequestDispatched(publication);
+		}
+	} finally {
+		await cleanupPersistentHarness(harness, publications);
+	}
+});
+
+test('persistent read server accepts an eight-item read batch', async context => {
+	const harness = await createAuthenticatedPersistentReadHarness(context, 'maximum-read-batch');
+	if (!harness) return;
+	const publications: PersistentRequestPublication[] = [];
+	try {
+		const commands = [
+			'health',
+			'capabilities',
+			'diagnostics',
+			'catalog',
+			'entity.resolve',
+			'tasks.finder',
+			'relationships.get',
+			'timers.read',
+		] as const;
+		const requests = [] as Array<{
+			requestId: string;
+			command: (typeof commands)[number];
+			requestToken: string;
+		}>;
+		for (const [index, command] of commands.entries()) {
+			const requestId = `persistent-batch-${command}`;
+			const publication = await publishPersistentRequest(
+				harness.descriptor,
+				createHash('sha256').update(`batch:${index}:${command}`).digest('hex').slice(0, 32),
+				JSON.stringify(persistentReadInvocation(
+					harness.expectedVaultSha256,
+					requestId,
+					command,
+				)),
+			);
+			publications.push(publication);
+			requests.push({ requestId, command, requestToken: publication.token });
+		}
+		writeTestFrame(harness.socket, authenticateTestFrame({
+			type: 'batch',
+			sequence: 1,
+			connectionNonce: harness.connectionNonce,
+			requests,
+		}, harness.descriptor.authSecret));
+		const responses = await Promise.all(requests.map(() => harness.readFrame())) as Array<{
+			type?: string;
+			sequence?: number;
+			index?: number;
+			requestId?: string;
+			result?: string;
+		}>;
+		assert.ok(responses.every(response => response.type === 'batch-item-response'));
+		assert.ok(responses.every(response => response.sequence === 1));
+		const ordered = [...responses].sort((left, right) => (left.index ?? -1) - (right.index ?? -1));
+		for (const [index, response] of ordered.entries()) {
+			const envelope = JSON.parse(response.result ?? 'null') as {
+				requestId?: string;
+				command?: string;
+				failure?: { error?: { code?: string } };
+			};
+			const decoded = decodeCliResultEnvelopeV1(envelope);
+			assert.equal(decoded.ok, true, decoded.ok ? undefined : JSON.stringify(decoded.issues));
+			assert.equal(envelope.command, commands[index]);
+			assert.equal(envelope.requestId, requests[index]?.requestId);
+			assert.notEqual(envelope.failure?.error?.code, 'invalid-request');
+		}
+		assert.deepEqual(ordered.map(response => response.index), requests.map((_request, index) => index));
+		assert.deepEqual(ordered.map(response => response.requestId), requests.map(request => request.requestId));
+		await forEachPersistentRequestSequentially(publications, assertPersistentRequestDispatched);
+	} finally {
+		await cleanupPersistentHarness(harness, publications);
+	}
+});
+
+for (const mutationCommand of ['mutation.preview', 'mutation.apply'] as const) {
+	test(`persistent read server rejects ${mutationCommand}`, async context => {
+		const harness = await createAuthenticatedPersistentReadHarness(context, mutationCommand);
+		if (!harness) return;
+		const requestToken = createHash('sha256').update(mutationCommand).digest('hex').slice(0, 32);
+		const publication = await publishPersistentRequest(harness.descriptor, requestToken, '{}');
+		try {
+			writeTestFrame(harness.socket, authenticateTestFrame({
+				type: 'request',
+				sequence: 1,
+				connectionNonce: harness.connectionNonce,
+				requestId: `persistent-reject-${mutationCommand}`,
+				command: mutationCommand,
+				requestToken: publication.token,
+			}, harness.descriptor.authSecret));
+			await withTestTimeout(
+				new Promise<void>(resolveClose => harness.socket.once('close', () => resolveClose())),
+				`${mutationCommand} persistent frame was not rejected`,
+			);
+			await assertPersistentRequestUnconsumed(publication);
+		} finally {
+			await cleanupPersistentHarness(harness, [publication]);
+		}
+	});
+}
+
+test('persistent read server rejects a mixed read and mutation batch before dispatch', async context => {
+	const harness = await createAuthenticatedPersistentReadHarness(context, 'mixed-read-mutation');
+	if (!harness) return;
+	const requestInputs = [
+		{ requestId: 'mixed-health', command: 'health', preferredToken: '1'.repeat(32) },
+		{ requestId: 'mixed-mutation', command: 'mutation.apply', preferredToken: '2'.repeat(32) },
+	] as const;
+	const publications = await Promise.all(
+		requestInputs.map(request => publishPersistentRequest(
+			harness.descriptor,
+			request.preferredToken,
+			'{}',
+		)),
+	);
+	const requests = requestInputs.map((request, index) => ({
+		requestId: request.requestId,
+		command: request.command,
+		requestToken: publications[index]?.token ?? assert.fail('missing staged request token'),
+	}));
+	try {
+		writeTestFrame(harness.socket, authenticateTestFrame({
+			type: 'batch',
+			sequence: 1,
+			connectionNonce: harness.connectionNonce,
+			requests,
+		}, harness.descriptor.authSecret));
+		await withTestTimeout(
+			new Promise<void>(resolveClose => harness.socket.once('close', () => resolveClose())),
+			'mixed read and mutation batch was not rejected',
+		);
+		await forEachPersistentRequestSequentially(publications, assertPersistentRequestUnconsumed);
+	} finally {
+		await cleanupPersistentHarness(harness, publications);
+	}
+});
+
+test('persistent read server rejects a nine-item batch before dispatch', async context => {
+	const harness = await createAuthenticatedPersistentReadHarness(context, 'oversized-read-batch');
+	if (!harness) return;
+	const commands = [
+		'health',
+		'capabilities',
+		'diagnostics',
+		'catalog',
+		'entity.resolve',
+		'task.get',
+		'tasks.query',
+		'tasks.finder',
+		'relationships.get',
+	] as const;
+	const requestInputs = commands.map((command, index) => ({
+		requestId: `oversized-batch-${command}`,
+		command,
+		preferredToken: createHash('sha256')
+			.update(`oversized:${index}:${command}`)
+			.digest('hex')
+			.slice(0, 32),
+	}));
+	const publications: PersistentRequestPublication[] = [];
+	try {
+		for (const request of requestInputs) {
+			publications.push(await publishPersistentRequest(
+				harness.descriptor,
+				request.preferredToken,
+				JSON.stringify(persistentReadInvocation(
+					harness.expectedVaultSha256,
+					request.requestId,
+					request.command,
+				)),
+			));
+		}
+		const requests = requestInputs.map((request, index) => ({
+			requestId: request.requestId,
+			command: request.command,
+			requestToken: publications[index]?.token ?? assert.fail('missing staged request token'),
+		}));
+		writeTestFrame(harness.socket, authenticateTestFrame({
+			type: 'batch',
+			sequence: 1,
+			connectionNonce: harness.connectionNonce,
+			requests,
+		}, harness.descriptor.authSecret));
+		await withTestTimeout(
+			new Promise<void>(resolveClose => harness.socket.once('close', () => resolveClose())),
+			'oversized persistent batch was not rejected',
+		);
+		await forEachPersistentRequestSequentially(publications, assertPersistentRequestUnconsumed);
+	} finally {
+		await cleanupPersistentHarness(harness, publications);
+	}
+});
+
+test('persistent read server rejects a tampered request HMAC without consuming its token', async context => {
+	const harness = await createAuthenticatedPersistentReadHarness(context, 'tampered-request-hmac');
+	if (!harness) return;
+	const requestId = 'tampered-request-hmac';
+	const publication = await publishPersistentRequest(
+		harness.descriptor,
+		createHash('sha256').update(requestId).digest('hex').slice(0, 32),
+		JSON.stringify(persistentReadInvocation(harness.expectedVaultSha256, requestId, 'health')),
+	);
+	try {
+		const authenticated = authenticateTestFrame({
+			type: 'request',
+			sequence: 1,
+			connectionNonce: harness.connectionNonce,
+			requestId,
+			command: 'health',
+			requestToken: publication.token,
+		}, harness.descriptor.authSecret);
+		writeTestFrame(harness.socket, { ...authenticated, authMac: '0'.repeat(64) });
+		await withTestTimeout(
+			new Promise<void>(resolveClose => harness.socket.once('close', () => resolveClose())),
+			'tampered request HMAC was not rejected',
+		);
+		await assertPersistentRequestUnconsumed(publication);
+	} finally {
+		await cleanupPersistentHarness(harness, [publication]);
+	}
+});
+
+test('persistent read server rejects a replayed authenticated hello nonce', async context => {
+	const harness = await createAuthenticatedPersistentReadHarness(context, 'replayed-hello-nonce');
+	if (!harness) return;
+	const replaySocket = createConnection(harness.descriptor.endpoint);
+	try {
+		await new Promise<void>((resolveConnection, rejectConnection) => {
+			replaySocket.once('connect', resolveConnection);
+			replaySocket.once('error', rejectConnection);
+		});
+		writeTestFrame(replaySocket, authenticateTestFrame({
+			type: 'hello',
+			protocolVersion: 1,
+			serverInstanceId: harness.descriptor.serverInstanceId,
+			vaultSha256: harness.descriptor.vaultSha256,
+			connectionNonce: harness.connectionNonce,
+		}, harness.descriptor.authSecret));
+		await withTestTimeout(
+			new Promise<void>(resolveClose => replaySocket.once('close', () => resolveClose())),
+			'replayed authenticated hello nonce was not rejected',
+		);
+	} finally {
+		replaySocket.destroy();
+		await harness.cleanup();
+	}
+});
+
+test('persistent read server rejects an initial sequence gap without consuming its token', async context => {
+	const harness = await createAuthenticatedPersistentReadHarness(context, 'initial-sequence-gap');
+	if (!harness) return;
+	const requestId = 'initial-sequence-gap';
+	const publication = await publishPersistentRequest(
+		harness.descriptor,
+		createHash('sha256').update(requestId).digest('hex').slice(0, 32),
+		JSON.stringify(persistentReadInvocation(harness.expectedVaultSha256, requestId, 'health')),
+	);
+	try {
+		writeTestFrame(harness.socket, authenticateTestFrame({
+			type: 'request',
+			sequence: 2,
+			connectionNonce: harness.connectionNonce,
+			requestId,
+			command: 'health',
+			requestToken: publication.token,
+		}, harness.descriptor.authSecret));
+		await withTestTimeout(
+			new Promise<void>(resolveClose => harness.socket.once('close', () => resolveClose())),
+			'initial sequence gap was not rejected',
+		);
+		await assertPersistentRequestUnconsumed(publication);
+	} finally {
+		await cleanupPersistentHarness(harness, [publication]);
+	}
+});
+
+test('persistent read server rejects a replayed sequence without consuming the next token', async context => {
+	const harness = await createAuthenticatedPersistentReadHarness(context, 'replayed-request-sequence');
+	if (!harness) return;
+	const firstRequestId = 'replayed-sequence-first';
+	const first = await publishPersistentRequest(
+		harness.descriptor,
+		createHash('sha256').update(firstRequestId).digest('hex').slice(0, 32),
+		JSON.stringify(persistentReadInvocation(
+			harness.expectedVaultSha256,
+			firstRequestId,
+			'health',
+		)),
+	);
+	const secondRequestId = 'replayed-sequence-second';
+	let second: PersistentRequestPublication | undefined;
+	try {
+		writeTestFrame(harness.socket, authenticateTestFrame({
+			type: 'request',
+			sequence: 1,
+			connectionNonce: harness.connectionNonce,
+			requestId: firstRequestId,
+			command: 'health',
+			requestToken: first.token,
+		}, harness.descriptor.authSecret));
+		assert.equal((await harness.readFrame() as { type?: string }).type, 'response');
+		await assertPersistentRequestDispatched(first);
+
+		second = await publishPersistentRequest(
+			harness.descriptor,
+			createHash('sha256').update(secondRequestId).digest('hex').slice(0, 32),
+			JSON.stringify(persistentReadInvocation(
+				harness.expectedVaultSha256,
+				secondRequestId,
+				'health',
+			)),
+		);
+		writeTestFrame(harness.socket, authenticateTestFrame({
+			type: 'request',
+			sequence: 1,
+			connectionNonce: harness.connectionNonce,
+			requestId: secondRequestId,
+			command: 'health',
+			requestToken: second.token,
+		}, harness.descriptor.authSecret));
+		await withTestTimeout(
+			new Promise<void>(resolveClose => harness.socket.once('close', () => resolveClose())),
+			'replayed request sequence was not rejected',
+		);
+		await assertPersistentRequestUnconsumed(second);
+	} finally {
+		await cleanupPersistentHarness(harness, [first, ...(second ? [second] : [])]);
+	}
+});
+
 test('persistent read startup and close preserve a successor descriptor', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-successor-vault-'));
 	installPersistentReadTestWindow();
@@ -631,7 +1042,7 @@ test('persistent read startup and close preserve a successor descriptor', async 
 	);
 	firstHandle = first;
 	if (!first.available && first.reason === 'persistent-read-server-listen-denied') {
-		context.skip('sandbox does not permit Unix socket listen under /private/tmp');
+		skipUnavailableNativeTransport(context);
 		return;
 	}
 	assert.equal(first.available, true, first.reason);
@@ -771,7 +1182,7 @@ test('persistent read close waits for and cancels an in-flight descriptor refres
 	);
 	handleForCleanup = handle;
 	if (!handle.available && handle.reason === 'persistent-read-server-listen-denied') {
-		context.skip('sandbox does not permit Unix socket listen under /private/tmp');
+		skipUnavailableNativeTransport(context);
 		return;
 	}
 	assert.equal(handle.available, true, handle.reason);
@@ -818,7 +1229,7 @@ test('persistent read replay-cache exhaustion rotates the server handle', async 
 	);
 	handleForCleanup = handle;
 	if (!handle.available && handle.reason === 'persistent-read-server-listen-denied') {
-		context.skip('sandbox does not permit Unix socket listen under /private/tmp');
+		skipUnavailableNativeTransport(context);
 		return;
 	}
 	assert.equal(handle.available, true, handle.reason);
@@ -1346,6 +1757,179 @@ async function publishRequest(token: string, payload: string, mode: number): Pro
 	return requestPath;
 }
 
+async function publishPersistentRequest(
+	descriptor: PersistentReadTestDescriptor,
+	preferredToken: string,
+	payload: string,
+): Promise<PersistentRequestPublication> {
+	if (process.platform !== 'win32') {
+		return {
+			token: preferredToken,
+			requestPath: await publishRequest(preferredToken, payload, 0o600),
+		};
+	}
+	const response = await sendBrokerControlRequest(descriptor, {
+		type: 'stage',
+		invocation: payload,
+	});
+	assert.equal(response.state, 'staged');
+	assert.match(response.requestToken ?? '', /^[A-Za-z0-9_-]{32}$/u);
+	assert.match(response.stagingReceipt ?? '', /^[a-f0-9]{64}$/u);
+	return { token: response.requestToken as string, descriptor };
+}
+
+async function assertPersistentRequestDispatched(
+	publication: PersistentRequestPublication,
+): Promise<void> {
+	if (publication.descriptor) {
+		const response = await sendBrokerControlRequest(publication.descriptor, {
+			type: 'status',
+			requestToken: publication.token,
+		});
+		assert.equal(response.state, 'consumed');
+		return;
+	}
+	if (!publication.requestPath) assert.fail('persistent request publication has no backing store');
+	await assert.rejects(lstat(publication.requestPath));
+}
+
+async function assertPersistentRequestUnconsumed(
+	publication: PersistentRequestPublication,
+): Promise<void> {
+	if (publication.descriptor) {
+		const response = await sendBrokerControlRequest(publication.descriptor, {
+			type: 'status',
+			requestToken: publication.token,
+		});
+		assert.equal(response.state, 'staged');
+		return;
+	}
+	if (!publication.requestPath) assert.fail('persistent request publication has no backing store');
+	assert.equal((await lstat(publication.requestPath)).isFile(), true);
+}
+
+async function cleanupPersistentRequest(publication: PersistentRequestPublication): Promise<void> {
+	if (publication.descriptor) {
+		const status = await sendBrokerControlRequest(publication.descriptor, {
+			type: 'status',
+			requestToken: publication.token,
+		});
+		if (status.state === 'staged') {
+			const cancelled = await sendBrokerControlRequest(publication.descriptor, {
+				type: 'cancel',
+				requestToken: publication.token,
+			});
+			assert.equal(cancelled.cancelled, true);
+			assert.equal(cancelled.state, 'staged');
+			const afterCancel = await sendBrokerControlRequest(publication.descriptor, {
+				type: 'status',
+				requestToken: publication.token,
+			});
+			assert.equal(afterCancel.state, 'unknown');
+		}
+		return;
+	}
+	if (publication.requestPath) await unlink(publication.requestPath).catch(() => undefined);
+}
+
+async function forEachPersistentRequestSequentially(
+	publications: readonly PersistentRequestPublication[],
+	operation: (publication: PersistentRequestPublication) => Promise<void>,
+): Promise<void> {
+	for (const publication of publications) await operation(publication);
+}
+
+async function cleanupPersistentHarness(
+	harness: { cleanup(): Promise<void> },
+	publications: readonly PersistentRequestPublication[],
+): Promise<void> {
+	let firstError: unknown;
+	for (const publication of publications) {
+		try {
+			await cleanupPersistentRequest(publication);
+		} catch (error) {
+			firstError ??= error;
+		}
+	}
+	try {
+		await harness.cleanup();
+	} catch (error) {
+		firstError ??= error;
+	}
+	if (firstError !== undefined) {
+		throw firstError instanceof Error
+			? firstError
+			: new Error(typeof firstError === 'string' ? firstError : 'Persistent request cleanup failed.');
+	}
+}
+
+async function sendBrokerControlRequest(
+	descriptor: PersistentReadTestDescriptor,
+	request: {
+		readonly type: 'stage';
+		readonly invocation: string;
+	} | {
+		readonly type: 'status' | 'cancel';
+		readonly requestToken: string;
+	},
+): Promise<{
+	type?: string;
+	state?: string;
+	cancelled?: boolean;
+	requestToken?: string;
+	stagingReceipt?: string;
+}> {
+	const socket = createConnection(descriptor.endpoint);
+	const readFrame = createFrameReader(socket);
+	brokerConnectionSequence += 1;
+	const connectionNonce = createHash('sha256')
+		.update(`broker-control:${brokerConnectionSequence}:${request.type}`)
+		.digest('hex');
+	try {
+		await new Promise<void>((resolveConnection, rejectConnection) => {
+			socket.once('connect', resolveConnection);
+			socket.once('error', rejectConnection);
+		});
+		writeTestFrame(socket, authenticateTestFrame({
+			type: 'hello',
+			protocolVersion: 1,
+			serverInstanceId: descriptor.serverInstanceId,
+			vaultSha256: descriptor.vaultSha256,
+			connectionNonce,
+		}, descriptor.authSecret));
+		assert.equal((await readFrame() as { type?: string }).type, 'hello-ack');
+		const requestId = `broker-${request.type}-${brokerConnectionSequence}`;
+		writeTestFrame(socket, authenticateTestFrame({
+			...request,
+			sequence: 1,
+			connectionNonce,
+			requestId,
+		}, descriptor.authSecret));
+		const response = await readFrame() as {
+			type?: string;
+			sequence?: number;
+			requestId?: string;
+			state?: string;
+			cancelled?: boolean;
+			requestToken?: string;
+			stagingReceipt?: string;
+		};
+		assert.equal(response.type, 'broker-response');
+		assert.equal(response.sequence, 1);
+		assert.equal(response.requestId, requestId);
+		return response;
+	} finally {
+		socket.destroy();
+	}
+}
+
+function skipUnavailableNativeTransport(context: { skip(message: string): void }): void {
+	if (REQUIRE_NATIVE_TRANSPORT) {
+		throw new Error('required native transport could not listen');
+	}
+	context.skip('sandbox does not permit native transport listen');
+}
+
 function installPersistentReadTestWindow(): void {
 	const runtimeRequire = createRequire(import.meta.url);
 	(globalThis as { window?: unknown }).window = {
@@ -1373,6 +1957,150 @@ function persistentReadTestMetadata() {
 		plugin: { id: 'operon', version: '2.6.0', minAppVersion: '1.7.2' },
 		apiVersion: 1,
 	} as const;
+}
+
+async function createAuthenticatedPersistentReadHarness(
+	context: { skip(message: string): void },
+	label: string,
+) {
+	const vault = await mkdtemp(join(tmpdir(), `operon-persistent-${label}-vault-`));
+	let handle: AgentRuntimePersistentReadServerHandleV1 | undefined;
+	let socket: Socket | undefined;
+	let descriptorPath: string | undefined;
+	try {
+		installPersistentReadTestWindow();
+		const plugin = persistentReadTestPlugin(vault);
+		const expectedVaultSha256 = await computeRunningVaultSha256V1(
+			nodeApi,
+			plugin.app.vault.adapter,
+		);
+		handle = await startAgentRuntimePersistentReadServerV1(
+			plugin as never,
+			createRuntime(),
+			{ runtimeMetadata: persistentReadTestMetadata() },
+		);
+		if (!handle.available && handle.reason === 'persistent-read-server-listen-denied') {
+			skipUnavailableNativeTransport(context);
+			await handle.close().catch(() => undefined);
+			await rm(vault, { recursive: true, force: true });
+			return null;
+		}
+		assert.equal(handle.available, true, handle.reason);
+		descriptorPath = join(
+			persistentEndpointRootV1(),
+			`persistent-read-${expectedVaultSha256}.json`,
+		);
+		const descriptor = JSON.parse(await readFileUtf8(descriptorPath)) as {
+			protocolVersion: 1;
+			serverInstanceId: string;
+			vaultSha256: string;
+			endpointKind: 'unix-domain-socket' | 'windows-named-pipe';
+			endpoint: string;
+			authSecret: string;
+		};
+		assert.equal(
+			descriptor.endpointKind,
+			process.platform === 'win32' ? 'windows-named-pipe' : 'unix-domain-socket',
+		);
+		socket = createConnection(descriptor.endpoint);
+		const readFrame = createFrameReader(socket);
+		await new Promise<void>((resolveConnection, rejectConnection) => {
+			socket?.once('connect', resolveConnection);
+			socket?.once('error', rejectConnection);
+		});
+		const connectionNonce = createHash('sha256').update(`nonce:${label}`).digest('hex');
+		writeTestFrame(socket, authenticateTestFrame({
+			type: 'hello',
+			protocolVersion: 1,
+			serverInstanceId: descriptor.serverInstanceId,
+			vaultSha256: descriptor.vaultSha256,
+			connectionNonce,
+		}, descriptor.authSecret));
+		assert.equal((await readFrame() as { type?: string }).type, 'hello-ack');
+		const activeHandle = handle;
+		const activeSocket = socket;
+		const activeDescriptorPath = descriptorPath;
+		return {
+			expectedVaultSha256,
+			descriptor,
+			socket: activeSocket,
+			readFrame,
+			connectionNonce,
+			cleanup: async (): Promise<void> => {
+				activeSocket.destroy();
+				await activeHandle.close();
+				await unlink(activeDescriptorPath).catch(() => undefined);
+				await rm(vault, { recursive: true, force: true });
+				if (process.platform === 'win32') clearWindowsBrokerStagesForTestsV1();
+			},
+		};
+	} catch (error) {
+		socket?.destroy();
+		await handle?.close().catch(() => undefined);
+		if (descriptorPath) await unlink(descriptorPath).catch(() => undefined);
+		await rm(vault, { recursive: true, force: true });
+		throw error;
+	}
+}
+
+function persistentReadInvocation(
+	expectedVaultSha256: string,
+	requestId: string,
+	command: (typeof CLI_COMMANDS_V1)[number],
+): CliInvocationV1 {
+	return {
+		contractVersion: CONTRACT_VERSION_V1,
+		kind: 'cli-invocation',
+		requestId,
+		command,
+		mode: 'live',
+		clientVersion: '0.1.0-test',
+		compatibility: COMPATIBILITY,
+		cliContract: { min: 1, max: 1 },
+		expectedVaultSha256,
+		readinessTimeoutMs: 15_000,
+		...(() => {
+			const base = {
+				contractVersion: CONTRACT_VERSION_V1,
+				requestId,
+				consistency: 'live-verified' as const,
+			};
+			const selector = { kind: 'operon-id' as const, operonId: 'abc1234' };
+			switch (command) {
+				case 'health':
+				case 'capabilities':
+				case 'diagnostics':
+					return {};
+				case 'catalog':
+					return { request: { ...base, kind: 'catalog' as const } };
+				case 'entity.resolve':
+					return { request: { ...base, kind: 'entity-resolve' as const, selector } };
+				case 'task.get':
+					return { request: { ...base, kind: 'task-get' as const, selector } };
+				case 'tasks.query':
+					return { request: { ...base, kind: 'task-query' as const } };
+				case 'tasks.finder':
+					return { request: { ...base, kind: 'task-finder' as const } };
+				case 'relationships.get':
+					return { request: { ...base, kind: 'relationship' as const, selector } };
+				case 'context.build':
+					return {
+						request: {
+							...base,
+							kind: 'context' as const,
+							purpose: 'read' as const,
+							projection: 'exact-task' as const,
+							selector,
+						},
+					};
+				case 'timers.read':
+					return { request: { ...base, kind: 'timer-read' as const } };
+				case 'mutation.preview':
+				case 'mutation.apply':
+					throw new Error(`${command} is not a persistent read command`);
+			}
+		})(),
+	};
 }
 
 async function withTestTimeout<T>(promise: Promise<T>, message: string): Promise<T> {

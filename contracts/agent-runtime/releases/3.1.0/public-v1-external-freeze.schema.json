@@ -1,0 +1,483 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:public-v1-external-freeze:v1:3.1.0",
+  "title": "Operon Public V1 external release freeze",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "freezeVersion",
+    "kind",
+    "state",
+    "runtime",
+    "externalCliBinding",
+    "cli",
+    "pluginArtifact",
+    "audit",
+    "pairedReleaseAcceptance",
+    "maintainerAcceptance",
+    "inputsAggregateSha256"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./public-v1-external-freeze.schema.json"
+    },
+    "freezeVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "operon-public-v1-external-freeze"
+    },
+    "state": {
+      "const": "accepted"
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "contractDigest"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "contractDigest": {
+          "const": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
+        }
+      }
+    },
+    "externalCliBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256",
+        "bindingAggregateSha256"
+      ],
+      "properties": {
+        "path": {
+          "const": "contracts/agent-runtime/releases/3.1.0/published-cli-v1.json"
+        },
+        "bytes": {
+          "const": 18715
+        },
+        "sha256": {
+          "const": "85d693731d538e30cc983d890b4d8e9df5ff7b225e21795dedd77b02c9ce9932"
+        },
+        "bindingAggregateSha256": {
+          "const": "abd295c01ba40115a2e4e8855429a7ba5ab69ea8a69470fecf57dbbf27f13f4a"
+        }
+      }
+    },
+    "cli": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packageName",
+        "packageVersion",
+        "tarballSha256"
+      ],
+      "properties": {
+        "packageName": {
+          "const": "@stratejya/operon-cli"
+        },
+        "packageVersion": {
+          "const": "1.0.9"
+        },
+        "tarballSha256": {
+          "const": "13d537a752690b8bdd6f0a5afdb64d50e7dae82653e0f1b13d79f5a26b987225"
+        }
+      }
+    },
+    "pluginArtifact": {
+      "$ref": "#/$defs/pluginArtifact"
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "validation"
+      ],
+      "properties": {
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "command",
+            "status",
+            "result"
+          ],
+          "properties": {
+            "command": {
+              "const": "npm run release:audit-policy"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "result": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "productionVulnerabilities",
+                "developmentVulnerabilities",
+                "directRoot"
+              ],
+              "properties": {
+                "status": {
+                  "const": "accepted-clean"
+                },
+                "productionVulnerabilities": {
+                  "const": 0
+                },
+                "developmentVulnerabilities": {
+                  "const": 0
+                },
+                "directRoot": {
+                  "const": "eslint-plugin-obsidianmd"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "maintainerAcceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "acceptedBy",
+        "acceptedAt"
+      ],
+      "properties": {
+        "status": {
+          "const": "accepted"
+        },
+        "acceptedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?!\\s)(?!.*\\s$)(?!.*[\\u0000-\\u001F\\u007F]).+$"
+        },
+        "acceptedAt": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        }
+      }
+    },
+    "inputsAggregateSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "pairedReleaseAcceptance": {
+      "const": {
+        "evidence": {
+          "path": "contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json",
+          "bytes": 4254,
+          "sha256": "3352c360c9a2ddd01c3ab622f0263c61bec15f1e83b8ac0c669e5f9b64a35ab5"
+        },
+        "scope": "plugin-manual-and-paired-automated"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "pluginArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "files"
+      ],
+      "properties": {
+        "version": {
+          "const": "3.1.0"
+        },
+        "files": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "prefixItems": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/pluginArtifactFile"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "const": "main.js"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/pluginArtifactFile"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "const": "manifest.json"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/pluginArtifactFile"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "const": "styles.css"
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "items": false
+        }
+      }
+    },
+    "pluginArtifactFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "enum": [
+            "main.js",
+            "manifest.json",
+            "styles.css"
+          ]
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "publishedFamilies": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "prefixItems": [
+        {
+          "const": "task.create"
+        },
+        {
+          "const": "task.update"
+        },
+        {
+          "const": "task.recurrence"
+        },
+        {
+          "const": "task.relationship"
+        },
+        {
+          "const": "task.reminder-item"
+        },
+        {
+          "const": "task.transition"
+        },
+        {
+          "const": "task.pinned-state"
+        },
+        {
+          "const": "timer.control"
+        },
+        {
+          "const": "timer.session"
+        },
+        {
+          "const": "task.convert"
+        },
+        {
+          "const": "task.inline-relocate"
+        },
+        {
+          "const": "task.delete"
+        }
+      ],
+      "items": false
+    },
+    "familyResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "family",
+        "source",
+        "status"
+      ],
+      "properties": {
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "enum": [
+            "create",
+            "phase8",
+            "recurrence",
+            "relationship",
+            "timerSession",
+            "pinnedState"
+          ]
+        },
+        "status": {
+          "const": "ok"
+        }
+      }
+    },
+    "pairedReleaseEvidence": {
+      "const": {
+        "$schema": "./public-v1-external-freeze.schema.json#/$defs/pairedReleaseEvidence",
+        "evidenceVersion": 1,
+        "kind": "operon-public-v1-paired-release-evidence",
+        "state": "paired-release-accepted",
+        "runtime": {
+          "contractVersion": 1,
+          "contractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
+        },
+        "plugin": {
+          "version": "3.1.0",
+          "productionCandidateCommit": "2b3859eb3a891c1e4e6403aae2ba799d2779cb84",
+          "artifact": {
+            "version": "3.1.0",
+            "files": [
+              {
+                "path": "main.js",
+                "bytes": 4333045,
+                "sha256": "8c574a2fbef334d421745fc4f0be7d2e17522dc44739b035e8190ca55b7b94bd"
+              },
+              {
+                "path": "manifest.json",
+                "bytes": 378,
+                "sha256": "8d6cb66f37223cf053932a228037a03014d9421b84f64922f95a4054c6685494"
+              },
+              {
+                "path": "styles.css",
+                "bytes": 874846,
+                "sha256": "d5f94678ac925886cbc28dfc0ab98154cd6d412a4faf55f9a5d8c9a5ed2359e8"
+              }
+            ]
+          },
+          "validation": {
+            "checkCandidate": "passed",
+            "phase5": {
+              "passed": 1520,
+              "total": 1520
+            },
+            "releaseGuard": "passed-candidate-mode",
+            "audit": {
+              "status": "accepted-clean",
+              "productionFindings": 0,
+              "developmentFindings": 0
+            },
+            "windows": {
+              "runId": 31015642364,
+              "validateJobId": 92338857251,
+              "nativeJobId": 92338857589,
+              "codeqlRunId": 31015642164,
+              "runner": "windows-2022",
+              "imageVersion": "20260802.262.1",
+              "status": "success"
+            }
+          },
+          "deployment": {
+            "status": "completed",
+            "completedAt": "2026-08-05T15:38:32.867Z",
+            "runtimeLifecycle": "ready",
+            "runtimeWarnings": 0,
+            "protectedStateChanged": false,
+            "rollbackPerformed": false,
+            "receiptSha256": "431dbfca5d5a539d6629e6ba3f4a89954773f08cde59f38f4a5d37062c41bb82",
+            "manualAcceptance": {
+              "scope": "plugin-candidate-only",
+              "status": "accepted",
+              "acceptedBy": "Hasan Yilmaz",
+              "acceptedAt": "2026-08-05T16:08:20.000Z"
+            }
+          }
+        },
+        "cli": {
+          "package": "@stratejya/operon-cli@1.0.9",
+          "candidateCommit": "2f139a199c99bb7d32d3921540b84418a9254ce0",
+          "integratedCommit": "89b9fd1c9c03bc6f08482fbb9420c87215be7194",
+          "integratedTree": "2bbdb8ff74e171f9275fa8e1a86fade2d24cf321",
+          "treeMatchesCandidate": true,
+          "tarball": {
+            "bytes": 214810,
+            "sha256": "13d537a752690b8bdd6f0a5afdb64d50e7dae82653e0f1b13d79f5a26b987225",
+            "sha512": "Fl2Axn85XfILTR7B9zLCC9OPpIZ023DbPGGsh8PTaKxHj8JfBz4/3QY4zs0kdIIR83UBDf1Y/gB/ky0vNOFOPQ==",
+            "inventoryEntries": 41
+          },
+          "publication": {
+            "tag": "cli-v1.0.9",
+            "annotatedTagObject": "971357a1895e5b595c754b85a4879e939f4e8671",
+            "releaseUrl": "https://github.com/hasanyilmaz/operon-cli/releases/tag/cli-v1.0.9",
+            "canonicalHostedRun": 31023909031,
+            "publishRun": 31026733220,
+            "status": "verified"
+          }
+        },
+        "pairedWindowsValidation": {
+          "runId": 31017309679,
+          "windowsPairJobId": 92344727033,
+          "gateJobId": 92349455584,
+          "pluginCommit": "2b3859eb3a891c1e4e6403aae2ba799d2779cb84",
+          "cliCandidateCommit": "2f139a199c99bb7d32d3921540b84418a9254ce0",
+          "pluginNative": {
+            "tests": 22,
+            "failed": 0,
+            "cancelled": 0,
+            "skipped": 0
+          },
+          "cliHosted": {
+            "assertions": 4,
+            "skipped": 0
+          },
+          "trackedClean": true,
+          "status": "passed"
+        },
+        "historicalLiveBaseline": {
+          "scope": "historical-runtime-v1-baseline-only",
+          "pluginVersion": "3.0.2",
+          "cliVersion": "1.0.8",
+          "freezePath": "contracts/agent-runtime/public-v1-external-freeze.json",
+          "freezeSha256": "946e3f320d5011c7c2c0dc416f3d65d40bc1f1acb58ece71f0f5a3714e3d4350",
+          "evidencePath": "contracts/agent-runtime/public-v1-live-acceptance.json",
+          "evidenceSha256": "c33689f2dd37741b39f7dbd4d76da692d339ceca796bbbbe39dccbb6735fb3d6"
+        },
+        "limitations": {
+          "publishedCliLiveMutationSuite": "not-rerun",
+          "cliInstalledInLiveVault": false,
+          "manualAcceptanceScope": "plugin-candidate-only"
+        },
+        "candidateCoordinationRecordSha256": "c8d811e50b68725cf5e5604dc3cfd69094886e02a7203d089becee322df137f8"
+      }
+    }
+  }
+}

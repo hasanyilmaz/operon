@@ -240,6 +240,7 @@ function compareLocaleFiles() {
 		'Chinese Traditional': flattenStringLeaves(readJson('i18n/locales/zh-TW.json')),
 		Japanese: flattenStringLeaves(readJson('i18n/locales/ja.json')),
 		Russian: flattenStringLeaves(readJson('i18n/locales/ru.json')),
+		Italian: flattenStringLeaves(readJson('i18n/locales/it.json')),
 	};
 
 	for (const [label, locale] of Object.entries(translations)) {
@@ -280,7 +281,7 @@ function checkVersionAndAssets() {
 	assertFileExists('src/generated/locale-pack-catalog.json');
 	assertFileExists('src/generated/locale-compatibility-aliases.json');
 	const catalog = readJson('src/generated/locale-pack-catalog.json');
-	const expectedLocales = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru'];
+	const expectedLocales = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it'];
 	assertEqual('locale catalog source version', catalog.sourceVersion, manifest.version);
 	if (JSON.stringify(catalog.languageOrder) !== JSON.stringify(expectedLocales)) {
 		fail(`locale catalog language order: expected ${expectedLocales.join(',')}`);
@@ -761,6 +762,12 @@ function checkReleaseAuditPolicy() {
 		'contracts/release/dev-audit-policy-v1.json',
 		'contracts/agent-runtime/public-v1-freeze.json',
 		'contracts/agent-runtime/public-v1-external-freeze.schema.json',
+		'contracts/agent-runtime/public-v1-release-freezes.json',
+		'contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.json',
+		'contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.schema.json',
+		'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
+		'contracts/agent-runtime/releases/3.1.0/published-cli-v1.json',
+		'contracts/agent-runtime/releases/3.1.0/published-cli-v1.schema.json',
 		'scripts/check-release-audit-policy.mjs',
 		'scripts/agent-runtime/contracts/check-historical-public-v1-freeze.mjs',
 		'scripts/agent-runtime/contracts/check-historical-public-v1-freeze.test.mjs',
@@ -770,6 +777,8 @@ function checkReleaseAuditPolicy() {
 		'scripts/release/write-external-freeze.test.mjs',
 		'scripts/release/check-accepted-freeze.mjs',
 		'scripts/release/check-accepted-freeze.test.mjs',
+		'scripts/release/check-release-freeze-registry.mjs',
+		'scripts/release/check-release-freeze-registry.test.mjs',
 		'scripts/release/run-published-cli-live-acceptance.mjs',
 		'scripts/release/run-published-cli-live-acceptance.test.mjs',
 	]) {
@@ -822,6 +831,15 @@ function checkReleaseAuditPolicy() {
 	);
 
 	const packageText = readText('package.json');
+	const normalCheck = readJson('package.json').scripts.check;
+	const normalCheckCommands = normalCheck.split('&&').map((command) => command.trim());
+	const normalBuildIndexes = normalCheckCommands
+		.map((command, index) => (command === 'npm run build' ? index : -1))
+		.filter((index) => index >= 0);
+	const normalFreezeIndex = normalCheckCommands.indexOf('npm run release:freeze:test');
+	if (normalBuildIndexes.length !== 1 || normalFreezeIndex < 0 || normalBuildIndexes[0] >= normalFreezeIndex) {
+		fail('package.json: normal validation must build production artifacts before release freeze tests');
+	}
 	for (const command of [
 		'npm run release:audit-policy:test',
 		'npm run release:notes:test',
@@ -835,18 +853,18 @@ function checkReleaseAuditPolicy() {
 	}
 	assertIncludes(
 		'package.json',
-		'"release:freeze:write": "node scripts/release/write-external-freeze.mjs"',
-		'package scripts must expose the one-shot external-freeze writer',
+		'"release:freeze:write:historical": "node scripts/release/write-external-freeze.mjs"',
+		'package scripts must identify the one-shot 3.0.2 external-freeze writer as historical',
 	);
 	assertIncludes(
 		'package.json',
-		'"release:freeze:check": "node scripts/release/check-accepted-freeze.mjs"',
-		'package scripts must expose the release-only accepted-freeze check',
+		'"release:freeze:check": "node scripts/release/check-release-freeze-registry.mjs"',
+		'package scripts must expose the append-only release-freeze registry check',
 	);
 	assertIncludes(
 		'package.json',
-		'"release:freeze:test": "node --test scripts/release/write-external-freeze.test.mjs scripts/release/check-accepted-freeze.test.mjs"',
-		'normal validation must cover both external-freeze writing and checking',
+		'"release:freeze:test": "node --test scripts/release/write-external-freeze.test.mjs scripts/release/check-accepted-freeze.test.mjs scripts/release/check-release-freeze-registry.test.mjs"',
+		'normal validation must cover historical freeze writing and append-only registry checking',
 	);
 	const freezeWriterSource = readText('scripts/release/write-external-freeze.mjs');
 	for (const required of [

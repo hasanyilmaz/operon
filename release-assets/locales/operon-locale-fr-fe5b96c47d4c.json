@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 2926,
-  "keyFingerprint": "e67d103c629f6ecc1b10dc69602712834c51836458aaa0992338eec9675c0d3b",
+  "keyCount": 2927,
+  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -404,12 +404,7 @@
       "fieldProjectSerialGroup": "Groupe de serial de projet",
       "fieldProjectTree": "Arborescence du projet",
       "fieldTags": "Étiquettes",
-      "filePropertyConflict": "Cette propriété a été modifiée hors du tableau. La valeur la plus récente a été restaurée.",
-      "filePropertyEmpty": "Vide",
-      "filePropertyInvalidBoolean": "{{property}} doit être une valeur booléenne. Corrigez-la dans les propriétés Obsidian.",
       "filePropertyInvalidConditionValue": "Saisissez une valeur valide pour cette condition de propriété.",
-      "filePropertyNotSet": "Non défini",
-      "filePropertyRemove": "Supprimer la propriété",
       "filePropertySourceType": "Propriété YAML · {{type}}",
       "filePropertyTypeChanged": "Propriété YAML · Type modifié : {{savedType}} → {{type}} · Vérification requise",
       "filePropertyTypeDriftShort": "Type modifié : {{savedType}} → {{type}} · Vérification requise",
@@ -1724,6 +1719,7 @@
       "languageEnglish": "Anglais",
       "languageFrench": "Français",
       "languageGerman": "Allemand",
+      "languageItalian": "Italien",
       "languageJapanese": "日本語",
       "languagePackDownload": "Télécharger",
       "languagePackDownloadFailed": "Impossible de télécharger le pack de langue. La langue précédente reste active.",
@@ -2372,6 +2368,11 @@
       "fileLoading": "Chargement de la Table...",
       "fileNotAttached": "Aucun fichier Table n’est actuellement associé à cette vue.",
       "fileOpenFailed": "Operon n’a pas pu ouvrir ce fichier Table.",
+      "filePropertyConflict": "Cette propriété a été modifiée hors du tableau. La valeur la plus récente a été restaurée.",
+      "filePropertyEmpty": "Vide",
+      "filePropertyInvalidBoolean": "{{property}} doit être une valeur booléenne. Corrigez-la dans les propriétés Obsidian.",
+      "filePropertyNotSet": "Non défini",
+      "filePropertyRemove": "Supprimer la propriété",
       "filter": "Filtre",
       "groupBy": "Regrouper par",
       "groupByDesc": "Choisissez un champ pour regrouper les lignes du tableau.",
@@ -2971,5 +2972,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "dadf1409210afe6bf32818e22091c0a7bc4b227b1ec54e105f3389a11cd5e776"
+  "sourceVersion": "77da7ef0b3a6093897d10ccdb2d92ef3ceaa350f2849673a9d07461231420a59"
 }
