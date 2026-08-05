@@ -307,6 +307,41 @@ test('grant controller verifies object identity and activates grants only after 
 	);
 });
 
+test('grant controller keeps a queued first request pending without weakening active admission', async () => {
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
+	let releasePersist: (() => void) | undefined;
+	const persistGate = new Promise<void>(resolve => {
+		releasePersist = resolve;
+	});
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				await persistGate;
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		now: () => new Date(NOW),
+	});
+
+	const initial = controller.evaluate(consumer(), ['tasks.read']);
+	assert.equal(initial.state, 'pending');
+	controller.recordPending(consumer(), ['tasks.read']);
+	assert.equal(controller.hasPersistenceError(), true);
+	const queued = controller.evaluate(consumer(), ['tasks.read']);
+	assert.equal(queued.state, 'pending');
+	assert.equal(queued.reason, 'capability-approval-required');
+	assert.deepEqual(queued.pendingCapabilities, ['tasks.read']);
+
+	releasePersist?.();
+	await controller.drain();
+	assert.equal(controller.hasPersistenceError(), false);
+});
+
 test('grant controller audits and persists version acceptance and suspension before readmission', async () => {
 	const initialGrants = approveDeveloperApiCapabilities(
 		createEmptyDeveloperApiGrantPackage(),

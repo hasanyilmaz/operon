@@ -108,7 +108,10 @@ export class DeveloperApiGrantControllerV1 {
 	): DeveloperApiGrantEvaluationV1 {
 		this.observeConsumerVersion(consumer, requestedCapabilities);
 		const evaluation = evaluateDeveloperApiGrant(this.grants, consumer, requestedCapabilities);
-		if (!this.hasPersistenceError()) return evaluation;
+		if (
+			this.persistenceError === null
+			&& (evaluation.state !== 'active' || this.pendingWrites === 0)
+		) return evaluation;
 		return {
 			...evaluation,
 			state: 'suspended',
