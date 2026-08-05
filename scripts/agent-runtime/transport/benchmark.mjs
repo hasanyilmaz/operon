@@ -291,6 +291,9 @@ async function pollColdLaunch(options, iteration) {
 }
 
 export function writeEvidenceFile(outputFile, body) {
+	if (process.platform === "win32") {
+		throw new Error("OUTPUT_FILE_CHANNEL_UNAVAILABLE_WINDOWS");
+	}
 	const tempFile = `${outputFile}.${randomBytes(8).toString("hex")}.tmp`;
 	let descriptor = null;
 	let published = false;
@@ -412,6 +415,14 @@ async function measureArgvVisibility(options) {
 
 export async function runBenchmark(argv = process.argv.slice(2)) {
 	const parsed = parseBenchmarkArgs(argv);
+	if (parsed.outputPath) {
+		if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json$/u.test(parsed.outputPath)) {
+			throw new Error("OUTPUT_MUST_BE_A_SAFE_JSON_BASENAME");
+		}
+		if (process.platform === "win32") {
+			throw new Error("OUTPUT_FILE_CHANNEL_UNAVAILABLE_WINDOWS");
+		}
+	}
 	const base = {
 		evidenceVersion: EVIDENCE_VERSION,
 		benchmarkVersion: 1,
@@ -470,9 +481,6 @@ export async function runBenchmark(argv = process.argv.slice(2)) {
 
 	const evidence = assertNoPhysicalPath(base);
 	if (parsed.outputPath) {
-		if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json$/u.test(parsed.outputPath)) {
-			throw new Error("OUTPUT_MUST_BE_A_SAFE_JSON_BASENAME");
-		}
 		const outputRoot = ensureSecureRequestRoot(fixedResultsRoot());
 		const outputFile = join(outputRoot, parsed.outputPath);
 		writeEvidenceFile(outputFile, `${JSON.stringify(evidence, null, 2)}\n`);

@@ -9,6 +9,7 @@ import {
 	type PrepareCanonicalTaskCreationOptions,
 	type TaskCreationCommitPort,
 } from '../../../src/core/task-creation-domain';
+import { resolveDefaultFileTaskStatus } from '../../../src/core/file-task-defaults';
 import {
 	compensateRuntimeTaskCreationFailureV1,
 	prepareRuntimeTaskCreationV1,
@@ -74,6 +75,8 @@ function createOptions(ids: string[]): PrepareCanonicalTaskCreationOptions {
 			'status',
 			'priority',
 			'note',
+			'dateStarted',
+			'dateScheduled',
 			'dateDue',
 			'taskIcon',
 			'taskColor',
@@ -337,6 +340,159 @@ const visibleTemplateKey = (canonicalKey: string): string => (
 	DEFAULT_SETTINGS.keyMappings.find(mapping => mapping.canonicalKey === canonicalKey)
 		?.visiblePropertyName ?? canonicalKey
 );
+const deterministicVariableValues = {
+	note: 'Variable note',
+	dateStarted: '2026-07-20',
+	dateScheduled: '2026-07-25',
+	dateDue: '2026-07-30',
+	status: 'Pipeline 1.Not Started',
+	priority: 'A',
+} as const;
+const deterministicVariables = prepareCanonicalTaskCreation(
+	{
+		requestId: 'deterministic-operon-variables',
+		items: [{
+			itemKey: 'variables',
+			description: 'Resolve every deterministic variable',
+			target: {
+				representation: 'file',
+				source: {
+					filePath: 'Tasks/Deterministic variables.md',
+					content: null,
+					revision: 'missing',
+				},
+				template: {
+					templateId: 'deterministic-variables',
+					revision: 'sha256:deterministic-variables',
+					content: [
+						'---',
+						`${visibleTemplateKey('note')}: "{{note}}"`,
+						`${visibleTemplateKey('dateStarted')}: "{{dateStarted}}"`,
+						`${visibleTemplateKey('dateScheduled')}: "{{dateScheduled}}"`,
+						`${visibleTemplateKey('dateDue')}: "{{dateDue}}"`,
+						`${visibleTemplateKey('status')}: "{{status}}"`,
+						`${visibleTemplateKey('priority')}: "{{priority}}"`,
+						'---',
+						'Date={{date}} Time={{time}} Datetime={{datetime}}',
+						'Description={{taskDescription}}',
+						'Note={{note}} Started={{dateStarted}} Scheduled={{dateScheduled}} Due={{dateDue}}',
+						'Status={{status}} Priority={{priority}}',
+						'- [ ] {{taskDescription}} | {{date}} | {{time}} | {{datetime}} | {{note}} | {{dateStarted}} | {{dateScheduled}} | {{dateDue}} | {{status}} | {{priority}}',
+						'```md',
+						'Literal {{note}} {{dateDue}} {{status}}',
+						'```',
+					].join('\n'),
+				},
+			},
+			fields: deterministicVariableValues,
+		}],
+	},
+	createOptions(['var0001']),
+);
+assert.equal(deterministicVariables.ok, true);
+if (!deterministicVariables.ok) throw new Error('Expected deterministic Operon variables to resolve.');
+const deterministicVariableContent = deterministicVariables.plan.sourceGroups[0].resultingContent;
+assert.match(deterministicVariableContent, /Date=2026-07-24 Time=10:20 Datetime=2026-07-24T10:20:30/u);
+assert.match(deterministicVariableContent, /Description=Resolve every deterministic variable/u);
+assert.match(
+	deterministicVariableContent,
+	/Note=Variable note Started=2026-07-20 Scheduled=2026-07-25 Due=2026-07-30/u,
+);
+assert.match(deterministicVariableContent, /Status=Pipeline 1\.Not Started Priority=A/u);
+for (const [canonicalKey, value] of Object.entries(deterministicVariableValues)) {
+	assert.ok(
+		deterministicVariableContent.split('\n').includes(`${visibleTemplateKey(canonicalKey)}: ${value}`),
+		`${canonicalKey} frontmatter must use the final merged value`,
+	);
+}
+assert.match(
+	deterministicVariableContent,
+	/- \[ \] Resolve every deterministic variable \| 2026-07-24 \| 10:20 \| 2026-07-24T10:20:30 \| Variable note \| 2026-07-20 \| 2026-07-25 \| 2026-07-30 \| Pipeline 1\.Not Started \| A/u,
+);
+assert.match(deterministicVariableContent, /Literal \{\{note\}\} \{\{dateDue\}\} \{\{status\}\}/u);
+assert.doesNotMatch(
+	deterministicVariableContent.replace(/```md[\s\S]*?```/gu, ''),
+	/\{\{(?:date|time|datetime|taskDescription|note|dateStarted|dateScheduled|dateDue|status|priority)\}\}/u,
+);
+
+const literalTemplateDefaults = prepareCanonicalTaskCreation(
+	{
+		requestId: 'literal-template-defaults',
+		items: [{
+			itemKey: 'literal-defaults',
+			description: 'Preserve literal template defaults',
+			target: {
+				representation: 'file',
+				source: {
+					filePath: 'Tasks/Literal template defaults.md',
+					content: null,
+					revision: 'missing',
+				},
+				template: {
+					templateId: 'literal-template-defaults',
+					revision: 'sha256:literal-template-defaults',
+					content: [
+						'---',
+						`${visibleTemplateKey('note')}: Literal template note`,
+						`${visibleTemplateKey('dateDue')}: 2026-08-01`,
+						`${visibleTemplateKey('status')}: Project.Brainstorming`,
+						`${visibleTemplateKey('priority')}: C`,
+						'---',
+					].join('\n'),
+				},
+			},
+		}],
+	},
+	createOptions(['var0004']),
+);
+assert.equal(literalTemplateDefaults.ok, true);
+if (!literalTemplateDefaults.ok) throw new Error('Expected literal template defaults to remain valid.');
+const literalTemplateTask = literalTemplateDefaults.plan.tasks[0];
+const literalTemplateContent = literalTemplateDefaults.plan.sourceGroups[0].resultingContent;
+assert.equal(literalTemplateTask.fieldValues.note, 'Literal template note');
+assert.equal(literalTemplateTask.fieldValues.dateDue, '2026-08-01');
+assert.equal(literalTemplateTask.fieldValues.status, 'Project.Brainstorming');
+assert.equal(literalTemplateTask.fieldValues.priority, 'C');
+assert.ok(
+	literalTemplateContent.split('\n').includes(`${visibleTemplateKey('note')}: Literal template note`),
+);
+assert.doesNotMatch(
+	literalTemplateContent,
+	new RegExp(`^${visibleTemplateKey('dateStarted')}:`, 'mu'),
+);
+
+const unknownDeterministicVariable = prepareCanonicalTaskCreation(
+	{
+		requestId: 'unknown-deterministic-operon-variable',
+		items: [{
+			itemKey: 'unknown-variable',
+			description: 'Reject an unknown deterministic variable',
+			target: {
+				representation: 'file',
+				source: {
+					filePath: 'Tasks/Unknown deterministic variable.md',
+					content: null,
+					revision: 'missing',
+				},
+				template: {
+					templateId: 'unknown-deterministic-variable',
+					revision: 'sha256:unknown-deterministic-variable',
+					content: 'Unknown={{unknownOperonVariable}}',
+				},
+			},
+		}],
+	},
+	createOptions(['var0003']),
+);
+assert.equal(unknownDeterministicVariable.ok, false);
+if (!unknownDeterministicVariable.ok) {
+	assert.ok(
+		unknownDeterministicVariable.blockers.some(
+			blocker => blocker.code === 'template-placeholder-unsupported',
+		),
+	);
+}
+
 const recurringTemplate = prepareCanonicalTaskCreation(
 	{
 		requestId: 'recurring-template-anchor',
@@ -1999,6 +2155,86 @@ async function runCommitPortTests(): Promise<void> {
 	assert.equal(partial.status, 'partial');
 	assert.equal(commitCount, 2, 'commit must stop at the first non-committed group');
 	assert.deepEqual(partial.remainingGroupIds, ['task-source:Tasks/Third.md']);
+
+	const emptyDeterministicVariables = prepareCanonicalTaskCreation(
+		{
+			requestId: 'empty-deterministic-operon-variables',
+			items: [{
+				itemKey: 'empty-variables',
+				description: 'Resolve empty deterministic variables',
+				target: {
+					representation: 'file',
+					source: {
+						filePath: 'Tasks/Empty deterministic variables.md',
+						content: null,
+						revision: 'missing',
+					},
+					template: {
+						templateId: 'empty-deterministic-variables',
+						revision: 'sha256:empty-deterministic-variables',
+						content: [
+							'---',
+							`${visibleTemplateKey('note')}: "{{note}}"`,
+							`${visibleTemplateKey('dateStarted')}: "{{dateStarted}}"`,
+							`${visibleTemplateKey('dateScheduled')}: "{{dateScheduled}}"`,
+							`${visibleTemplateKey('dateDue')}: "{{dateDue}}"`,
+							`${visibleTemplateKey('status')}: "{{status}}"`,
+							`${visibleTemplateKey('priority')}: "{{priority}}"`,
+							'---',
+							'Optional={{note}}/{{dateStarted}}/{{dateScheduled}}/{{dateDue}}',
+							'Defaults={{status}}/{{priority}}',
+						].join('\n'),
+					},
+				},
+			}],
+		},
+		createOptions(['var0002']),
+	);
+	assert.equal(
+		emptyDeterministicVariables.ok,
+		true,
+		emptyDeterministicVariables.ok
+			? 'Empty optional fields and defaulted status/priority must resolve without leaving placeholders.'
+			: JSON.stringify(emptyDeterministicVariables.blockers),
+	);
+	if (emptyDeterministicVariables.ok) {
+		const emptyVariableContent = emptyDeterministicVariables.plan.sourceGroups[0].resultingContent;
+		const emptyVariableTask = emptyDeterministicVariables.plan.tasks[0];
+		const expectedDefaultStatus = resolveDefaultFileTaskStatus(
+			DEFAULT_SETTINGS.pipelines,
+			DEFAULT_SETTINGS.defaultPipelineName,
+		);
+		assert.ok(expectedDefaultStatus);
+		for (const canonicalKey of ['note', 'dateStarted', 'dateScheduled', 'dateDue']) {
+			assert.equal(emptyVariableTask.fieldValues[canonicalKey] ?? '', '');
+			assert.ok(
+				emptyVariableContent.split('\n').includes(`${visibleTemplateKey(canonicalKey)}:`),
+				`${canonicalKey} frontmatter must resolve to an empty scalar`,
+			);
+		}
+		assert.equal(emptyVariableTask.fieldValues.status, expectedDefaultStatus);
+		assert.equal(emptyVariableTask.fieldValues.priority, DEFAULT_SETTINGS.defaultPriority);
+		assert.ok(
+			emptyVariableContent.split('\n').includes(
+				`${visibleTemplateKey('status')}: ${expectedDefaultStatus}`,
+			),
+		);
+		assert.ok(
+			emptyVariableContent.split('\n').includes(
+				`${visibleTemplateKey('priority')}: ${DEFAULT_SETTINGS.defaultPriority}`,
+			),
+		);
+		assert.match(emptyVariableContent, /Optional=\/\/\//u);
+		assert.ok(
+			emptyVariableContent.includes(
+				`Defaults=${expectedDefaultStatus}/${DEFAULT_SETTINGS.defaultPriority}`,
+			),
+		);
+		assert.doesNotMatch(
+			emptyVariableContent,
+			/\{\{(?:note|dateStarted|dateScheduled|dateDue|status|priority)\}\}/u,
+		);
+	}
 
 	console.log('Operon canonical task creation domain tests passed.');
 }

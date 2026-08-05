@@ -331,6 +331,13 @@ export async function executeProbe(options) {
 	if (!options.vaultPath && !options.allowUnverifiedVault) {
 		throw new Error("VAULT_PATH_REQUIRED");
 	}
+	if (
+		process.platform === "win32"
+		&& options.channel === "request-file"
+		&& !options.dryRun
+	) {
+		throw new Error("REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS");
+	}
 
 	const payload = await loadPayload(options);
 	let vaultIdentity = null;

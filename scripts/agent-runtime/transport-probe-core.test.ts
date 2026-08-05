@@ -147,8 +147,6 @@ async function testRuntimeTimingDrain(): Promise<void> {
 
 async function testOwnerOnlyRequestFileAndCleanup(): Promise<void> {
 	const fixture = createPluginFixture();
-	const requestRoot = fixedRequestRoot();
-	await mkdir(requestRoot, { recursive: true, mode: 0o700 });
 	const payload = Buffer.from('owner-only synthetic payload', 'utf8');
 	const built = buildProbeRequest({
 		payload,
@@ -158,6 +156,22 @@ async function testOwnerOnlyRequestFileAndCleanup(): Promise<void> {
 		outputBytes: 0,
 		delayMs: 0,
 	});
+	if (process.platform === 'win32') {
+		assert.throws(
+			() => writeSecureRequest(built.request),
+			/REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/u,
+		);
+		const refused = await invoke(fixture.plugin, {
+			channel: 'request-file',
+			requestToken: requestToken(),
+		});
+		assert.equal(refused.ok, false);
+		assert.equal(refused.error?.code, 'PROBE_UNAVAILABLE');
+		assert.equal(refused.error?.reason, 'windows-request-file-channel-unavailable');
+		return;
+	}
+	const requestRoot = fixedRequestRoot();
+	await mkdir(requestRoot, { recursive: true, mode: 0o700 });
 	const published = writeSecureRequest(built.request);
 
 	const result = await invoke(fixture.plugin, {
@@ -174,6 +188,18 @@ async function testOwnerOnlyRequestFileAndCleanup(): Promise<void> {
 
 async function testUnsafeRequestFilesFailClosed(): Promise<void> {
 	const fixture = createPluginFixture();
+	if (process.platform === 'win32') {
+		const refused = await invoke(fixture.plugin, {
+			operation: 'digest',
+			requestId: 'windows-request-file-refusal',
+			channel: 'request-file',
+			requestToken: requestToken(),
+		});
+		assert.equal(refused.ok, false);
+		assert.equal(refused.error?.code, 'PROBE_UNAVAILABLE');
+		assert.equal(refused.error?.reason, 'windows-request-file-channel-unavailable');
+		return;
+	}
 	const requestRoot = fixedRequestRoot();
 	await mkdir(requestRoot, { recursive: true, mode: 0o700 });
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 2926,
-  "keyFingerprint": "e67d103c629f6ecc1b10dc69602712834c51836458aaa0992338eec9675c0d3b",
+  "keyCount": 2927,
+  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -404,12 +404,7 @@
       "fieldProjectSerialGroup": "專案序列群組",
       "fieldProjectTree": "專案樹",
       "fieldTags": "標籤",
-      "filePropertyConflict": "此屬性已在表格外變更。已還原最新值。",
-      "filePropertyEmpty": "空白",
-      "filePropertyInvalidBoolean": "{{property}} 必須是布林值。請在 Obsidian 屬性中修正。",
       "filePropertyInvalidConditionValue": "請輸入此屬性條件的有效值。",
-      "filePropertyNotSet": "未設定",
-      "filePropertyRemove": "移除屬性",
       "filePropertySourceType": "YAML 屬性 · {{type}}",
       "filePropertyTypeChanged": "YAML 屬性 · 類型已變更：{{savedType}} → {{type}} · 需要檢查",
       "filePropertyTypeDriftShort": "類型已變更：{{savedType}} → {{type}} · 需要檢查",
@@ -1724,6 +1719,7 @@
       "languageEnglish": "英語",
       "languageFrench": "法語",
       "languageGerman": "德語",
+      "languageItalian": "義大利文",
       "languageJapanese": "日本語",
       "languagePackDownload": "下載",
       "languagePackDownloadFailed": "無法下載語言套件。先前的語言仍會保持啟用。",
@@ -2372,6 +2368,11 @@
       "fileLoading": "正在載入 Table...",
       "fileNotAttached": "目前沒有 Table 檔案連結至此檢視。",
       "fileOpenFailed": "Operon 無法開啟此 Table 檔案。",
+      "filePropertyConflict": "此屬性已在表格外變更。已還原最新值。",
+      "filePropertyEmpty": "空白",
+      "filePropertyInvalidBoolean": "{{property}} 必須是布林值。請在 Obsidian 屬性中修正。",
+      "filePropertyNotSet": "未設定",
+      "filePropertyRemove": "移除屬性",
       "filter": "篩選器",
       "groupBy": "依欄位分組",
       "groupByDesc": "選擇一個欄位來分組表格列。",
@@ -2971,5 +2972,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "1d19adc5c6ad4783ea21fa914c391060627ada44662ef9ab11c0c622d53e04f8"
+  "sourceVersion": "0b859fde0c6d133c3b180828bb9695c8a7028ffedce75f15d4b5dd01d3b592e0"
 }

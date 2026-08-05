@@ -38,14 +38,11 @@ import {
 } from "./client.mjs";
 import {
 	compactColdAttempt,
+	runBenchmark,
 	summarizeTimings,
 	writeEvidenceFile,
 } from "./benchmark.mjs";
 import { hasLivePostReloadPhase } from "./live-lifecycle.mjs";
-
-const POSIX_REQUEST_FILE_TEST_SKIP = process.platform === "win32"
-	? "Request-file transport permission semantics are POSIX-only."
-	: false;
 
 function testRoot() {
 	const parent = mkdtempSync(join(tmpdir(), "operon-transport-test-"));
@@ -59,14 +56,22 @@ test("request token is opaque and path-safe", () => {
 	assert.match(token, /^[A-Za-z0-9_-]{32}$/);
 	assert.equal(validateRequestToken(token), token);
 	assert.throws(() => validateRequestToken("../escape"), /INVALID_REQUEST_TOKEN/);
-	assert.equal(requestPathForToken(token, "/tmp/root"), join("/tmp/root", `${token}.request.json`));
+	assert.equal(
+		requestPathForToken(token, "/tmp/root"),
+		join("/tmp/root", `${token}.request.json`),
+	);
 });
 
-test("secure request write is atomic, mode 0600, and consumed once", {
-	skip: POSIX_REQUEST_FILE_TEST_SKIP,
-}, () => {
+test("secure request write is atomic, mode 0600, and consumed once", () => {
 	const root = testRoot();
 	const request = { probeVersion: 1, requestId: "test", payloadBase64: "YWJj" };
+	if (process.platform === "win32") {
+		assert.throws(
+			() => writeSecureRequest(request, { root }),
+			/REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+		);
+		return;
+	}
 	const written = writeSecureRequest(request, { root });
 	const stat = lstatSync(written.path);
 	assert.equal(stat.isFile(), true);
@@ -79,26 +84,32 @@ test("secure request write is atomic, mode 0600, and consumed once", {
 	assert.equal(cleanupRequest(written.token, { root }), false);
 });
 
-test("atomic publication never removes a pre-existing target", {
-	skip: POSIX_REQUEST_FILE_TEST_SKIP,
-}, () => {
+test("atomic publication never removes a pre-existing target", () => {
 	const root = testRoot();
 	const token = "A".repeat(32);
 	const target = requestPathForToken(token, root);
 	writeFileSync(target, "attacker sentinel", { mode: 0o600 });
+	const expectedError = process.platform === "win32"
+		? /REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/
+		: (error) => error?.code === "EEXIST";
 	assert.throws(
 		() => writeSecureRequest({ requestId: "must-fail" }, { root, token }),
-		(error) => error?.code === "EEXIST",
+		expectedError,
 	);
 	assert.equal(existsSync(target), true);
 	assert.equal(readFileSync(target, "utf8"), "attacker sentinel");
 });
 
-test("cleanup never removes a same-token replacement", {
-	skip: POSIX_REQUEST_FILE_TEST_SKIP,
-}, () => {
+test("cleanup never removes a same-token replacement", () => {
 	const root = testRoot();
 	const token = "R".repeat(32);
+	if (process.platform === "win32") {
+		assert.throws(
+			() => writeSecureRequest({ requestId: "original" }, { root, token }),
+			/REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+		);
+		return;
+	}
 	const written = writeSecureRequest({ requestId: "original" }, { root, token });
 	unlinkSync(written.path);
 	writeFileSync(written.path, "replacement", { mode: 0o600 });
@@ -119,10 +130,15 @@ test("published request identity must match the captured file generation", () =>
 	assert.equal(fileIdentityMatches(identity, { ...identity, ctimeMs: 5 }), false);
 });
 
-test("insecure request root and symlink root fail closed", {
-	skip: POSIX_REQUEST_FILE_TEST_SKIP,
-}, () => {
+test("insecure request root and symlink root fail closed", () => {
 	const root = testRoot();
+	if (process.platform === "win32") {
+		assert.throws(
+			() => writeSecureRequest({ requestId: "windows-refusal" }, { root }),
+			/REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+		);
+		return;
+	}
 	chmodSync(root, 0o755);
 	assert.throws(() => ensureSecureRequestRoot(root), /REQUEST_ROOT_WRONG_MODE/);
 
@@ -212,9 +228,35 @@ test("payload files are capped before full allocation and errors stay path-free"
 	);
 });
 
-test("evidence output refuses a pre-existing symlink", {
-	skip: POSIX_REQUEST_FILE_TEST_SKIP,
-}, () => {
+test("Windows request-file refusal precedes payload and stdin access", async () => {
+	if (process.platform !== "win32") return;
+	const base = {
+		vaultRef: "synthetic-vault",
+		allowUnverifiedVault: true,
+		channel: "request-file",
+		operation: "digest",
+		outputBytes: 0,
+		delayMs: 0,
+		timeoutMs: 1_000,
+	};
+	await assert.rejects(
+		executeProbe({ ...base, payloadFile: "Z:\\must-not-be-read.bin" }),
+		/REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+	);
+	await assert.rejects(
+		executeProbe({ ...base, stdin: true }),
+		/REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+	);
+});
+
+test("evidence output refuses a pre-existing symlink", () => {
+	if (process.platform === "win32") {
+		assert.throws(
+			() => writeEvidenceFile(join(fixedResultsRoot(), "unavailable.json"), "{}\n"),
+			/OUTPUT_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+		);
+		return;
+	}
 	const outputRoot = ensureSecureRequestRoot(fixedResultsRoot());
 	const suffix = createRequestToken();
 	const outputFile = join(outputRoot, `symlink-${suffix}.json`);
@@ -224,6 +266,19 @@ test("evidence output refuses a pre-existing symlink", {
 	assert.throws(() => writeEvidenceFile(outputFile, "{}\n"));
 	assert.equal(readFileSync(victim, "utf8"), "victim");
 	unlinkSync(outputFile);
+});
+
+test("benchmark output validates names and fails closed before Windows filesystem access", async () => {
+	await assert.rejects(
+		runBenchmark(["warm", "--output", "../unsafe.json"]),
+		/OUTPUT_MUST_BE_A_SAFE_JSON_BASENAME/,
+	);
+	if (process.platform === "win32") {
+		await assert.rejects(
+			runBenchmark(["warm", "--output", "windows-evidence.json"]),
+			/OUTPUT_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+		);
+	}
 });
 
 test("timing summary is deterministic and excludes failures", () => {
@@ -308,16 +363,16 @@ test("client contract rejects unknown lifecycle phases", () => {
 	}, request, input), "RESULT_PHASE_INVALID");
 });
 
-test("request-file client uses token-only invocation and leaves no request file", {
-	skip: POSIX_REQUEST_FILE_TEST_SKIP,
-}, async () => {
+test("request-file client uses token-only invocation and leaves no request file", async () => {
 	const fixtureRoot = mkdtempSync(join(tmpdir(), "operon-transport-client-test-"));
 	const fakeCli = join(fixtureRoot, "fake-obsidian");
+	const spawnSentinel = join(fixtureRoot, "spawned");
 	const fakeSource = `#!/usr/bin/env node
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
+fs.writeFileSync(${JSON.stringify(spawnSentinel)}, "spawned");
 const tokenArg = process.argv.find((value) => value.startsWith("requestToken="));
 if (!tokenArg) process.exit(3);
 const token = tokenArg.slice("requestToken=".length);
@@ -343,6 +398,24 @@ process.stdout.write(JSON.stringify({
 	chmodSync(fakeCli, 0o755);
 	const vault = join(fixtureRoot, "vault");
 	mkdirSync(vault);
+	if (process.platform === "win32") {
+		await assert.rejects(
+			executeProbe({
+				obsidianBin: fakeCli,
+				vaultRef: "synthetic-vault",
+				vaultPath: vault,
+				operation: "digest",
+				channel: "request-file",
+				payload: "synthetic payload",
+				outputBytes: 0,
+				delayMs: 0,
+				timeoutMs: 5_000,
+			}),
+			/REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+		);
+		assert.equal(existsSync(spawnSentinel), false);
+		return;
+	}
 
 	const evidence = await executeProbe({
 		obsidianBin: fakeCli,
@@ -360,16 +433,16 @@ process.stdout.write(JSON.stringify({
 	assert.equal(evidence.transport.result.vaultIdentity.expectedMatch, true);
 });
 
-test("client rejects a stale or mismatched structured response", {
-	skip: POSIX_REQUEST_FILE_TEST_SKIP,
-}, async () => {
+test("client rejects a stale or mismatched structured response", async () => {
 	const fixtureRoot = mkdtempSync(join(tmpdir(), "operon-transport-mismatch-test-"));
 	const fakeCli = join(fixtureRoot, "fake-obsidian");
+	const spawnSentinel = join(fixtureRoot, "spawned");
 	const fakeSource = `#!/usr/bin/env node
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
+fs.writeFileSync(${JSON.stringify(spawnSentinel)}, "spawned");
 const token = process.argv.find(value => value.startsWith("requestToken=")).slice("requestToken=".length);
 const requestPath = path.join(os.tmpdir(), "operon-agent-runtime-uid-" + process.getuid(), token + ".request.json");
 const request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
@@ -392,6 +465,25 @@ process.stdout.write(JSON.stringify({
 	chmodSync(fakeCli, 0o755);
 	const vault = join(fixtureRoot, "vault");
 	mkdirSync(vault);
+	if (process.platform === "win32") {
+		await assert.rejects(
+			executeProbe({
+				obsidianBin: fakeCli,
+				vaultRef: "synthetic-vault",
+				vaultPath: vault,
+				operation: "digest",
+				channel: "request-file",
+				payload: "synthetic payload",
+				outputBytes: 0,
+				delayMs: 0,
+				timeoutMs: 5_000,
+				requestId: "current-request",
+			}),
+			/REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS/,
+		);
+		assert.equal(existsSync(spawnSentinel), false);
+		return;
+	}
 
 	const evidence = await executeProbe({
 		obsidianBin: fakeCli,

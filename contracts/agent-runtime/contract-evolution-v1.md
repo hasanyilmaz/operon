@@ -206,16 +206,24 @@ purposes.
   or using deprecation metadata to change an existing capability or error
   meaning is breaking. The manifest deprecation inventory is part of the
   baseline.
-- The accepted external-reference freeze is exact-byte evidence for one plugin
-  release. It binds the Runtime V1 digest, immutable published CLI binding and
-  tarball, exact `main.js`, `manifest.json`, and `styles.css` identities, clean
-  dependency-audit result, all 12 live mutation families, canonical toolchain,
-  and explicit maintainer acceptance.
+- Accepted external-reference freezes are append-only, versioned evidence for
+  plugin releases. Every record binds the Runtime V1 digest, immutable
+  published CLI binding and tarball, exact `main.js`, `manifest.json`, and
+  `styles.css` identities, clean dependency-audit result, and explicit
+  maintainer acceptance. The registry preserves the byte identity and evidence
+  scope of every earlier accepted record.
+- A release may use exact-pair hosted validation plus scoped plugin manual
+  acceptance when the Runtime V1 digest is unchanged and the published CLI
+  package is byte-identical to the validated candidate. Such evidence must
+  state that the published-CLI live mutation suite was not rerun and that the
+  CLI was not installed in the live vault. It must not inherit or relabel
+  historical mutation-family results as current live acceptance.
 - The standalone CLI release independently binds its registry and immutable
   GitHub artifacts, provenance, and hosted portability evidence. The plugin
   freeze consumes that published identity without rebuilding or republishing
   the CLI. Any change to a freeze-bound plugin asset or external CLI identity
-  requires new live evidence and a newly accepted external-reference freeze.
+  requires a new evidence record with its actual scope and a newly accepted
+  external-reference freeze.
 
 External integrator and plugin-developer feedback begins after release. It is
 not a substitute for the accepted freeze or published-artifact checks.

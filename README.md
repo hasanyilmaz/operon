@@ -16,7 +16,7 @@ Operon is for Obsidian users who want task management to live inside their vault
 
 It is designed for people who need **more than plain checkboxes**, but still want their tasks to remain readable, editable, linkable Markdown.
 
-Operon supports **nine interface languages**: English, Turkish, German, French, Spanish, Simplified Chinese, Traditional Chinese, Russian, and Japanese. English is built in; the other eight languages install as small on-demand packs. Natural-language date input is available in all nine languages.
+Operon supports **ten interface languages**: English, Turkish, German, French, Spanish, Simplified Chinese, Traditional Chinese, Japanese, Russian, and Italian. English is built in; the other nine languages install as small on-demand packs. Natural-language date input is available in all ten languages.
 
 ![The Operon Calendar with all-day items and timed blocks across a week](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-028-1.png)
 
@@ -567,7 +567,7 @@ Operon has been developed in the maintainer's live Obsidian vault from the begin
 
 ## Compatibility and Requirements
 
-Operon requires Obsidian `1.7.2` or newer and is not marked as desktop-only, so it can be installed on both desktop and mobile Obsidian. Some workflows are naturally more comfortable on larger screens, and the pinned dock can be disabled on phones. The interface language can be chosen in Settings; English is built in, and the other eight languages download as small verified packs on demand.
+Operon requires Obsidian `1.7.2` or newer and is not marked as desktop-only, so it can be installed on both desktop and mobile Obsidian. Some workflows are naturally more comfortable on larger screens, and the pinned dock can be disabled on phones. The interface language can be chosen in Settings; English is built in, and the other nine languages download as small verified packs on demand.
 
 Operon's inline task metadata syntax is specific to Operon. Compatibility risk is more likely to come from overlapping surfaces: another task plugin may also render checkbox rows, rewrite Markdown tasks, manage recurrence, or add its own task planning views. If you use another task-management plugin, test the combination on a small set of notes first and avoid letting multiple plugins manage the same task surfaces.
 

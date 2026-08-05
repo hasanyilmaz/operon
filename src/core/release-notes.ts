@@ -13,6 +13,25 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.1.0',
+		date: '2026-08-05',
+		title: 'Operon 3.1.0 - Italian and Windows Runtime Reliability',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-1-0-italian-task-creator.png',
+		body: `
+Operon 3.1.0 adds Italian across the interface and strengthens Windows Runtime and CLI reliability while preserving the existing Runtime V1 contract. It is paired with Operon CLI 1.0.9.
+
+### New
+- Added **Italian localization**, including Settings language selection, translated interface text, Italian date parsing, repeat summaries, Calendar wording, task editing labels, and filter surfaces.
+
+### Fixed
+- Fixed **Windows CLI reads** falling back to unreliable one-shot paths by routing all 11 Runtime V1 read commands through the authenticated persistent transport while keeping mutations isolated.
+- Fixed Runtime-resolved **configured-default File Task templates** being rejected by the canonical and CLI decoders.
+- Fixed empty optional **File Task variables** remaining as unresolved placeholders while preserving configured status and priority defaults.
+- Fixed **Table file-property editor** labels and conflict messages falling back to untranslated locale keys.
+`.trim(),
+	},
+	{
 		version: '3.0.2',
 		date: '2026-08-03',
 		title: 'Operon 3.0.2 - CLI Separation and Scorecard Cleanup',

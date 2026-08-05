@@ -1,0 +1,126 @@
+{
+  "$schema": "./public-v1-external-freeze.schema.json#/$defs/pairedReleaseEvidence",
+  "evidenceVersion": 1,
+  "kind": "operon-public-v1-paired-release-evidence",
+  "state": "paired-release-accepted",
+  "runtime": {
+    "contractVersion": 1,
+    "contractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
+  },
+  "plugin": {
+    "version": "3.1.0",
+    "productionCandidateCommit": "2b3859eb3a891c1e4e6403aae2ba799d2779cb84",
+    "artifact": {
+      "version": "3.1.0",
+      "files": [
+        {
+          "path": "main.js",
+          "bytes": 4333045,
+          "sha256": "8c574a2fbef334d421745fc4f0be7d2e17522dc44739b035e8190ca55b7b94bd"
+        },
+        {
+          "path": "manifest.json",
+          "bytes": 378,
+          "sha256": "8d6cb66f37223cf053932a228037a03014d9421b84f64922f95a4054c6685494"
+        },
+        {
+          "path": "styles.css",
+          "bytes": 874846,
+          "sha256": "d5f94678ac925886cbc28dfc0ab98154cd6d412a4faf55f9a5d8c9a5ed2359e8"
+        }
+      ]
+    },
+    "validation": {
+      "checkCandidate": "passed",
+      "phase5": {
+        "passed": 1520,
+        "total": 1520
+      },
+      "releaseGuard": "passed-candidate-mode",
+      "audit": {
+        "status": "accepted-clean",
+        "productionFindings": 0,
+        "developmentFindings": 0
+      },
+      "windows": {
+        "runId": 31015642364,
+        "validateJobId": 92338857251,
+        "nativeJobId": 92338857589,
+        "codeqlRunId": 31015642164,
+        "runner": "windows-2022",
+        "imageVersion": "20260802.262.1",
+        "status": "success"
+      }
+    },
+    "deployment": {
+      "status": "completed",
+      "completedAt": "2026-08-05T15:38:32.867Z",
+      "runtimeLifecycle": "ready",
+      "runtimeWarnings": 0,
+      "protectedStateChanged": false,
+      "rollbackPerformed": false,
+      "receiptSha256": "431dbfca5d5a539d6629e6ba3f4a89954773f08cde59f38f4a5d37062c41bb82",
+      "manualAcceptance": {
+        "scope": "plugin-candidate-only",
+        "status": "accepted",
+        "acceptedBy": "Hasan Yilmaz",
+        "acceptedAt": "2026-08-05T16:08:20.000Z"
+      }
+    }
+  },
+  "cli": {
+    "package": "@stratejya/operon-cli@1.0.9",
+    "candidateCommit": "2f139a199c99bb7d32d3921540b84418a9254ce0",
+    "integratedCommit": "89b9fd1c9c03bc6f08482fbb9420c87215be7194",
+    "integratedTree": "2bbdb8ff74e171f9275fa8e1a86fade2d24cf321",
+    "treeMatchesCandidate": true,
+    "tarball": {
+      "bytes": 214810,
+      "sha256": "13d537a752690b8bdd6f0a5afdb64d50e7dae82653e0f1b13d79f5a26b987225",
+      "sha512": "Fl2Axn85XfILTR7B9zLCC9OPpIZ023DbPGGsh8PTaKxHj8JfBz4/3QY4zs0kdIIR83UBDf1Y/gB/ky0vNOFOPQ==",
+      "inventoryEntries": 41
+    },
+    "publication": {
+      "tag": "cli-v1.0.9",
+      "annotatedTagObject": "971357a1895e5b595c754b85a4879e939f4e8671",
+      "releaseUrl": "https://github.com/hasanyilmaz/operon-cli/releases/tag/cli-v1.0.9",
+      "canonicalHostedRun": 31023909031,
+      "publishRun": 31026733220,
+      "status": "verified"
+    }
+  },
+  "pairedWindowsValidation": {
+    "runId": 31017309679,
+    "windowsPairJobId": 92344727033,
+    "gateJobId": 92349455584,
+    "pluginCommit": "2b3859eb3a891c1e4e6403aae2ba799d2779cb84",
+    "cliCandidateCommit": "2f139a199c99bb7d32d3921540b84418a9254ce0",
+    "pluginNative": {
+      "tests": 22,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "cliHosted": {
+      "assertions": 4,
+      "skipped": 0
+    },
+    "trackedClean": true,
+    "status": "passed"
+  },
+  "historicalLiveBaseline": {
+    "scope": "historical-runtime-v1-baseline-only",
+    "pluginVersion": "3.0.2",
+    "cliVersion": "1.0.8",
+    "freezePath": "contracts/agent-runtime/public-v1-external-freeze.json",
+    "freezeSha256": "946e3f320d5011c7c2c0dc416f3d65d40bc1f1acb58ece71f0f5a3714e3d4350",
+    "evidencePath": "contracts/agent-runtime/public-v1-live-acceptance.json",
+    "evidenceSha256": "c33689f2dd37741b39f7dbd4d76da692d339ceca796bbbbe39dccbb6735fb3d6"
+  },
+  "limitations": {
+    "publishedCliLiveMutationSuite": "not-rerun",
+    "cliInstalledInLiveVault": false,
+    "manualAcceptanceScope": "plugin-candidate-only"
+  },
+  "candidateCoordinationRecordSha256": "c8d811e50b68725cf5e5604dc3cfd69094886e02a7203d089becee322df137f8"
+}
