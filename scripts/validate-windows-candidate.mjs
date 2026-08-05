@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 
 const EXPECTED_NODE_VERSION = 'v24.18.0';
 const EXPECTED_NPM_VERSION = '11.12.1';
-const PORTABILITY_NEEDLE = 'new URL(import.meta.url).pathname';
+const PORTABILITY_NEEDLE = ['new URL(import.meta.url)', '.pathname'].join('');
 
 export function assertCanonicalWindowsCandidateContext(context) {
 	if (context.platform !== 'win32') {
