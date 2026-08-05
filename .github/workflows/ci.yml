@@ -94,6 +94,7 @@ jobs:
           if ((npm --version) -ne "11.12.1") { throw "Unexpected npm version" }
 
       - name: Install dependencies
+        if: github.event_name == 'push'
         run: npm ci
 
       - name: Run validation
@@ -102,18 +103,18 @@ jobs:
         run: npm run check
         if: github.event_name == 'push'
 
-      - name: Run paired candidate validation
+      - name: Run canonical Windows candidate validation
         if: github.event_name == 'pull_request'
-        env:
-          OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
-        run: npm run check:candidate
+        run: npm run validate:windows:candidate
 
       - name: Run required native transport validation
+        if: github.event_name == 'push'
         env:
           OPERON_REQUIRE_NATIVE_TRANSPORT: "1"
         run: npm run agent-runtime:transport:native:test
 
       - name: Verify tracked runner URL portability
+        if: github.event_name == 'push'
         shell: pwsh
         run: |
           $matches = git grep -n -F "new URL(import.meta.url).pathname" -- "*.mjs" "*.ts"
@@ -125,6 +126,7 @@ jobs:
           exit 0
 
       - name: Verify tracked worktree remains clean
+        if: github.event_name == 'push'
         shell: pwsh
         run: |
           git diff --exit-code
