@@ -5715,6 +5715,29 @@ export default class OperonPlugin extends Plugin {
 			commitMutation: async (request, prepared, effectiveAt) => (
 				await this.commitAgentRuntimeTaskMutation(request.plan.spec, prepared, effectiveAt)
 			),
+			refreshMutationCommitEvidence: async commit => ({
+				...commit,
+				groupResults: await Promise.all(commit.groupResults.map(async group => ({
+					...group,
+					resourceRevisions: await Promise.all((group.resourceRevisions ?? []).map(
+						async resource => {
+							if (resource.resourceKind !== 'task-source') return resource;
+							try {
+								return {
+									...resource,
+									revision: sourceRevisionForTaskCreationV1(
+										resource.resourceKey,
+										(await this.readAgentRuntimeMutationSource(resource.resourceKey)).content,
+									),
+								};
+							} catch (error) {
+								if (!(await this.app.vault.adapter.exists(resource.resourceKey))) return resource;
+								throw error;
+							}
+						},
+					)),
+				}))),
+			}),
 				verifyMutation: async (request, prepared, _postflightRevision, commit) => (
 					await this.verifyAgentRuntimeTaskMutation(request.plan.createdAt, prepared, commit)
 				),

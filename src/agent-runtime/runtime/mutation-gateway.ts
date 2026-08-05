@@ -244,6 +244,13 @@ export interface RuntimeMutationGatewayPortsV1 {
 		prepared: RuntimePreparedMutationV1,
 		effectiveAt: string,
 	): Promise<RuntimePreparedMutationCommitV1>;
+	/**
+	 * Resample commit evidence after Runtime-owned settlement has completed.
+	 * This is read-only and must never execute or replay a mutation write.
+	 */
+	refreshMutationCommitEvidence?(
+		commit: RuntimePreparedMutationCommitV1,
+	): Promise<RuntimePreparedMutationCommitV1>;
 	verifyMutation?(
 		request: MutationApplyRequestV1,
 		prepared: RuntimePreparedMutationV1,
@@ -1984,7 +1991,10 @@ export class RuntimeMutationGatewayV1 {
 				undefined,
 				() => this.ports.settleAfterMutation(request.requestId),
 			);
-				postflightRevision = await this.ports.sampleContextRevision();
+			if (this.ports.refreshMutationCommitEvidence) {
+				commit = await this.ports.refreshMutationCommitEvidence(commit);
+			}
+			postflightRevision = await this.ports.sampleContextRevision();
 				if (!(await this.measureMutation(
 					request.requestId,
 					'mutation-apply',

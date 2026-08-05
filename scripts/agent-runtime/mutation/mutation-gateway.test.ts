@@ -3165,6 +3165,111 @@ test('prepared mutation postflight failure persists an uncertain receipt and fen
 	assert.equal(commitCount, 1);
 });
 
+test('prepared mutation refreshes commit evidence only after settlement and before postflight', async () => {
+	const updateRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'phase8-update-refresh-evidence-preview',
+		kind: 'mutation-preview',
+		clientInstanceId: 'test-client',
+		idempotencyKey: 'phase8-update-refresh-evidence',
+		capability: 'tasks.update.preview',
+		mutationKind: 'task.update',
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 1 },
+		},
+		spec: {
+			operation: 'update',
+			changes: [{ field: 'note', valueType: 'text', value: 'Updated note' }],
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const prepared = {
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline' as const, filePath: 'Tasks.md', lineNumber: 1 },
+			targetDigest: 'd'.repeat(64),
+		},
+		affectedResources: [{
+			resourceKind: 'task-source' as const,
+			resourceKey: 'Tasks.md',
+			revision: 'e'.repeat(64),
+		}],
+		predictedEffects: [{
+			resourceKind: 'task-source' as const,
+			resourceKey: 'Tasks.md',
+			action: 'update' as const,
+			summary: 'Update one task field.',
+		}],
+		warnings: [],
+		token: { kind: 'test-update' },
+	};
+	const events: string[] = [];
+	const refreshedRevision = 'f'.repeat(64);
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => null,
+		persist: async () => ({ expiredDeleted: 0, overflowDeleted: 0, retained: 1 }),
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		prepareMutation: async () => ({ ok: true, value: prepared }),
+		commitMutation: async () => ({
+			status: 'committed',
+			groupResults: [{
+				groupId: 'task-source:Tasks.md',
+				status: 'committed',
+				resourceRevisions: prepared.affectedResources,
+			}],
+			affectedFilePaths: ['Tasks.md'],
+		}),
+		refreshMutationCommitEvidence: async commit => {
+			events.push('refresh');
+			assert.deepEqual(events, ['reindex', 'settle', 'refresh']);
+			return {
+				...commit,
+				groupResults: commit.groupResults.map(group => ({
+					...group,
+					resourceRevisions: group.resourceRevisions?.map(resource => ({
+						...resource,
+						revision: refreshedRevision,
+					})),
+				})),
+			};
+		},
+		verifyMutation: async (_request, _prepared, _revision, commit) => {
+			events.push('verify');
+			assert.equal(commit.groupResults[0]?.resourceRevisions?.[0]?.revision, refreshedRevision);
+			return true;
+		},
+		reindexAffectedSources: async () => { events.push('reindex'); },
+		settleAfterMutation: async () => { events.push('settle'); },
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => 'c'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-24T08:00:00.000Z'),
+		randomId: () => 'phase8-update-refresh-evidence-plan',
+	});
+	const preview = await gateway.preview(updateRequest);
+	assert.equal(preview.ok, true);
+	if (!preview.ok) return;
+	const result = await gateway.apply({
+		contractVersion: 1,
+		requestId: 'phase8-update-refresh-evidence-apply',
+		kind: 'mutation-apply',
+		plan: preview.plan,
+		authorization: { basis: 'user-explicit-request' },
+		idempotencyKey: updateRequest.idempotencyKey,
+		acknowledgements: [],
+	});
+	assert.equal(result.status, 'applied', JSON.stringify(result));
+	assert.deepEqual(events, ['reindex', 'settle', 'refresh', 'verify']);
+});
+
 test('file-to-inline postflight failure preserves its durable same-plan recovery journal', async () => {
 	const conversionRequest: MutationPreviewRequestV1 = {
 		contractVersion: 1,
