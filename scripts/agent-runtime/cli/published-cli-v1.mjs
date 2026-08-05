@@ -134,6 +134,7 @@ export async function verifyPublishedCliExecutablePath(executablePath, binding) 
 
 export async function verifyCanonicalPluginInputs(binding, options = {}) {
 	const root = options.pluginRoot ?? pluginRoot;
+	const platform = options.platform ?? process.platform;
 	for (const identity of [
 		...binding.runtime.canonicalSchemas,
 		...binding.runtime.canonicalTypeSources,
@@ -144,7 +145,9 @@ export async function verifyCanonicalPluginInputs(binding, options = {}) {
 		const bytes = await readFile(target);
 		assert.equal(bytes.length, identity.bytes, `OPERON_PUBLISHED_CLI_CANONICAL_SIZE_MISMATCH:${identity.path}`);
 		assert.equal(sha256(bytes), identity.sha256, `OPERON_PUBLISHED_CLI_CANONICAL_HASH_MISMATCH:${identity.path}`);
-		assert.equal(stats.mode & 0o777, identity.mode, `OPERON_PUBLISHED_CLI_CANONICAL_MODE_MISMATCH:${identity.path}`);
+		if (platform !== 'win32') {
+			assert.equal(stats.mode & 0o777, identity.mode, `OPERON_PUBLISHED_CLI_CANONICAL_MODE_MISMATCH:${identity.path}`);
+		}
 	}
 	return true;
 }
