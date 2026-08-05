@@ -31,7 +31,7 @@ test("sanitized vault generator refuses a matching-name symlink without touching
 		`operon-agent-runtime-phase1-symlink-${process.pid}-${Date.now()}`,
 	);
 	mkdirSync(victimRoot, { recursive: true });
-	symlinkSync(victimRoot, target);
+	symlinkSync(victimRoot, target, process.platform === "win32" ? "junction" : "dir");
 	try {
 		const result = spawnSync(process.execPath, [script, target], { encoding: "utf8" });
 		assert.notEqual(result.status, 0);

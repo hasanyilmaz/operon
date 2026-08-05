@@ -79,6 +79,7 @@ interface ProbeFileHandle {
 }
 
 interface DesktopNodeApi {
+	platform: string;
 	createHash(value: Uint8Array): string;
 	fileOpenReadOnlyNoFollow: number;
 	lstat(path: string): Promise<ProbeFileStat>;
@@ -365,6 +366,9 @@ async function readAndConsumeRequestFile(
 ): Promise<NormalizedProbeRequest> {
 	const token = tokenValue ?? '';
 	if (!REQUEST_TOKEN_PATTERN.test(token)) throw new ProbeError('INVALID_REQUEST', 'invalid-request-token');
+	if (nodeApi.platform === 'win32') {
+		throw new ProbeError('PROBE_UNAVAILABLE', 'windows-request-file-channel-unavailable');
+	}
 
 	const requestRoot = getTransportProbeRequestRoot(nodeApi);
 	await nodeApi.mkdir(requestRoot, { recursive: true, mode: 0o700 });
@@ -601,12 +605,16 @@ async function loadDesktopNodeApi(): Promise<DesktopNodeApi> {
 				};
 			};
 		};
-		const processModule = runtimeRequire('node:process') as { getuid?: () => number };
+		const processModule = runtimeRequire('node:process') as {
+			getuid?: () => number;
+			platform?: string;
+		};
 		const runtimeGetuid = processModule.getuid;
 		const getuid = typeof runtimeGetuid === 'function'
 			? () => runtimeGetuid()
 			: () => null;
 		return {
+			platform: processModule.platform ?? 'unknown',
 			createHash: value => cryptoModule.createHash('sha256').update(value).digest('hex'),
 			fileOpenReadOnlyNoFollow: fileSystemModule.constants.O_RDONLY
 				| (fileSystemModule.constants.O_NOFOLLOW ?? 0),
