@@ -18,6 +18,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact workflow revision
+        shell: bash
+        run: |
+          expected="${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$expected"
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -35,12 +43,88 @@ jobs:
         run: npm run release:audit-policy
 
       - name: Run validation
+        if: github.event_name == 'push'
         env:
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check
+
+      - name: Run paired candidate validation
+        if: github.event_name == 'pull_request'
+        env:
+          OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
+        run: npm run check:candidate
 
       - name: Verify release guard
         run: npm run release:guard
 
       - name: Verify final accepted Public V1 freeze
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npm run release:freeze:check
+
+  windows-native:
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact workflow revision
+        shell: pwsh
+        run: |
+          $expected = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          $actual = git rev-parse HEAD
+          if ($actual -ne $expected) { throw "Workflow checkout SHA mismatch" }
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24.18.0"
+          cache: npm
+
+      - name: Pin canonical npm
+        run: npm install --global npm@11.12.1
+
+      - name: Verify canonical toolchain
+        shell: pwsh
+        run: |
+          if ((node --version) -ne "v24.18.0") { throw "Unexpected Node version" }
+          if ((npm --version) -ne "11.12.1") { throw "Unexpected npm version" }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run validation
+        if: github.event_name == 'push'
+        env:
+          OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
+        run: npm run check
+
+      - name: Run paired candidate validation
+        if: github.event_name == 'pull_request'
+        env:
+          OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
+        run: npm run check:candidate
+
+      - name: Run required native transport validation
+        env:
+          OPERON_REQUIRE_NATIVE_TRANSPORT: "1"
+        run: npm run agent-runtime:transport:native:test
+
+      - name: Verify tracked runner URL portability
+        shell: pwsh
+        run: |
+          $matches = git grep -n -F "new URL(import.meta.url).pathname" -- "*.mjs" "*.ts"
+          if ($LASTEXITCODE -eq 0) {
+            $matches
+            throw "Tracked runner still uses URL.pathname"
+          }
+          if ($LASTEXITCODE -ne 1) { exit $LASTEXITCODE }
+
+      - name: Verify tracked worktree remains clean
+        shell: pwsh
+        run: |
+          git diff --exit-code
+          git diff --cached --exit-code
