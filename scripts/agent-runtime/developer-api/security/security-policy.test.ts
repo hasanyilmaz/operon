@@ -53,7 +53,15 @@ function plan(options: {
 		mutationKind,
 		createdAt: '2026-07-29T10:00:00.000Z',
 		expiresAt: '2026-07-29T10:10:00.000Z',
-		targets: [],
+		targets: [{
+			operonId: 'abc1234',
+			locator: {
+				representation: 'inline',
+				filePath: 'Tasks.md',
+				lineNumber: 0,
+			},
+			targetDigest: 'sealed-target-digest',
+		}],
 		contextRevision: {
 			index: {
 				sessionId: 'index-session',
@@ -215,13 +223,13 @@ test('mints host-owned destructive confirmation and target-bound acknowledgement
 		{
 			code: 'destructive-delete',
 			planHash: sealed.planHash,
-			targetDigest: sealed.receiptTargetDigest,
+			targetDigest: sealed.targets[0].targetDigest,
 			acknowledgedAt: '2026-07-29T10:01:00.000Z',
 		},
 		{
 			code: 'attached-checkboxes',
 			planHash: sealed.planHash,
-			targetDigest: sealed.receiptTargetDigest,
+			targetDigest: sealed.targets[0].targetDigest,
 			acknowledgedAt: '2026-07-29T10:01:00.000Z',
 		},
 	]);

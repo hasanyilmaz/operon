@@ -141,13 +141,21 @@ export class DeveloperMutationSecurityPolicyV1 {
 		if (postConsentDenial) return postConsentDenial;
 
 		const acknowledgedAt = this.ports.now().toISOString();
+		const acknowledgementTargetDigest = input.plan.targets[0]?.targetDigest;
+		if (!acknowledgementTargetDigest) {
+			return denialResult(
+				'invalid-request',
+				'plan-binding-mismatch',
+				'The sealed plan does not expose a target for confirmation.',
+			);
+		}
 		return {
 			ok: true,
 			authorization: hostAuthorization('user-explicit-confirmation'),
 			acknowledgements: input.plan.requiredAcknowledgements.map(code => ({
 				code,
 				planHash: input.plan.planHash,
-				targetDigest: input.plan.receiptTargetDigest,
+				targetDigest: acknowledgementTargetDigest,
 				acknowledgedAt,
 			})),
 			consent: 'fresh-user-confirmation',
