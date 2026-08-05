@@ -1341,6 +1341,11 @@ test('startup reconciliation finds grant intent without matching activation only
 		findIncompleteDeveloperGrantAuditTransitionsV1([intent, activation]),
 		[],
 	);
+	assert.deepEqual(
+		findIncompleteDeveloperGrantAuditTransitionsV1([activation, intent]),
+		[],
+		'IndexedDB returns newest audit events first, so reconciliation must be order-independent.',
+	);
 });
 
 test('security audit retention enforces 30 days and the newest 2048 records', async () => {

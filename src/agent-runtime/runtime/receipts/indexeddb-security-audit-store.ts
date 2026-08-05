@@ -507,6 +507,7 @@ export function findIncompleteDeveloperGrantAuditTransitionsV1(
 	events: readonly SecurityAuditEventV1[],
 ): readonly IncompleteDeveloperGrantAuditTransitionV1[] {
 	const pending = new Map<string, IncompleteDeveloperGrantAuditTransitionV1>();
+	const completed = new Set<string>();
 	for (const event of events) {
 		if (
 			event.channel !== 'developer-api'
@@ -520,11 +521,14 @@ export function findIncompleteDeveloperGrantAuditTransitionsV1(
 			event.capability ?? '',
 		].join('\0');
 		if (event.admission === 'requested' && event.outcome === 'pending') {
-			pending.set(key, {
-				consumerIdentityHash: event.consumerIdentityHash,
-				revision: event.grantRevision,
-			});
+			if (!completed.has(key)) {
+				pending.set(key, {
+					consumerIdentityHash: event.consumerIdentityHash,
+					revision: event.grantRevision,
+				});
+			}
 		} else if (event.admission === 'completed') {
+			completed.add(key);
 			pending.delete(key);
 		}
 	}

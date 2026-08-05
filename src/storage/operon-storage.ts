@@ -633,6 +633,7 @@ export class OperonStorage {
 		});
 		await this.dataPackageStore.updateDataPackage(currentPackage => {
 			const currentMobileNotifications = currentPackage.integrations.mobileNotifications;
+			const currentDeveloperApi = currentPackage.integrations.developerApi;
 			const pinnedTasks = prunePinnedTaskTombstones(
 				mergePinnedTasksPackages(
 					currentPackage.state.pinnedTasks,
@@ -646,6 +647,7 @@ export class OperonStorage {
 				integrations: {
 					...dataPackage.integrations,
 					mobileNotifications: adoptMobileNotificationsIntegration(currentMobileNotifications, {}),
+					developerApi: currentDeveloperApi,
 				},
 				state: {
 					...dataPackage.state,
