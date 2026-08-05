@@ -20,7 +20,7 @@ const githubApiRoot = 'https://api.github.com/repos/hasanyilmaz/operon-cli';
 export async function checkPublishedCliPublicProof(options = {}) {
 	const loaded = await loadPublishedCliBinding(options);
 	const { binding } = loaded;
-	const npmPackagePath = binding.package.name.replace('/', '%2f');
+	const npmPackagePath = binding.package.name.replaceAll('/', '%2f');
 	const metadataUrl = `${binding.package.registry}${npmPackagePath}/${binding.package.version}`;
 	await verifyCanonicalPluginInputs(binding, options);
 	const metadata = await fetchJson(metadataUrl);
@@ -81,7 +81,7 @@ export async function checkPublishedCliPublicProof(options = {}) {
 async function verifyNpmAttestations(url, binding) {
 	assert.equal(
 		url,
-		`https://registry.npmjs.org/-/npm/v1/attestations/${binding.package.name.replace('/', '%2f')}@${binding.package.version}`,
+		`https://registry.npmjs.org/-/npm/v1/attestations/${binding.package.name.replaceAll('/', '%2f')}@${binding.package.version}`,
 	);
 	const response = await fetchJson(url);
 	const provenance = response.attestations?.find(item => item.predicateType === 'https://slsa.dev/provenance/v1');
@@ -91,7 +91,7 @@ async function verifyNpmAttestations(url, binding) {
 	assert.equal(payload.subject?.length, 1, 'OPERON_PUBLISHED_CLI_PROVENANCE_SUBJECT_INVALID');
 	assert.equal(
 		payload.subject[0].name,
-		`pkg:npm/${binding.package.name.replace('@', '%40')}@${binding.package.version}`,
+		`pkg:npm/${binding.package.name.replaceAll('@', '%40')}@${binding.package.version}`,
 	);
 	assert.equal(
 		payload.subject[0].digest.sha512,
