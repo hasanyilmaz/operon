@@ -27,6 +27,7 @@ import {
 	sanitizePublishedLiveEvidence,
 	writeExternalFreeze,
 } from './write-external-freeze.mjs';
+import { symlinkCapabilityUnavailableReason } from '../test-symlink-capability.mjs';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const acceptedAuditResult = Object.freeze({
@@ -346,7 +347,7 @@ test('writer fails closed before output for identity, family, audit, and accepta
 	}
 });
 
-test('writer rejects relative and symlink live evidence paths', async () => {
+test('writer rejects relative and symlink live evidence paths', async t => {
 	const fixture = await createFixture();
 	try {
 		await assert.rejects(
@@ -357,6 +358,12 @@ test('writer rejects relative and symlink live evidence paths', async () => {
 			}, { pluginRoot: fixture.root, auditResult: acceptedAuditResult }),
 			/OPERON_EXTERNAL_FREEZE_LIVE_EVIDENCE_PATH_INVALID/u,
 		);
+		await assertMissingOutputs(fixture.root);
+		const symlinkUnavailable = symlinkCapabilityUnavailableReason();
+		if (symlinkUnavailable) {
+			t.diagnostic(`Skipping symlink-specific assertions: ${symlinkUnavailable}`);
+			return;
+		}
 		const linkPath = path.join(fixture.root, 'source-link.json');
 		await symlink(fixture.sourcePath, linkPath);
 		await assert.rejects(
