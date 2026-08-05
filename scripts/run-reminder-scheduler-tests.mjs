@@ -2,14 +2,14 @@ import { build } from 'esbuild';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // Reminder resolution intentionally distinguishes calendar and elapsed-time
 // arithmetic across a real DST fold. Keep that matrix deterministic in local
 // development and UTC-based CI runners.
 process.env.TZ = 'Europe/Berlin';
 
-const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tempDir = await mkdtemp(path.join(tmpdir(), 'operon-reminder-scheduler-test-'));
 const outfile = path.join(tempDir, 'reminder-scheduler.test.mjs');
 

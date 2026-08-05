@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 2926,
-  "keyFingerprint": "e67d103c629f6ecc1b10dc69602712834c51836458aaa0992338eec9675c0d3b",
+  "keyCount": 2927,
+  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -404,12 +404,7 @@
       "fieldProjectSerialGroup": "Project-Serial-Gruppe",
       "fieldProjectTree": "Projektbaum",
       "fieldTags": "Tags",
-      "filePropertyConflict": "Diese Eigenschaft wurde außerhalb der Tabelle geändert. Der neueste Wert wurde wiederhergestellt.",
-      "filePropertyEmpty": "Leer",
-      "filePropertyInvalidBoolean": "{{property}} muss ein boolescher Wert sein. Korrigiere ihn in den Obsidian-Eigenschaften.",
       "filePropertyInvalidConditionValue": "Gib einen gültigen Wert für diese Eigenschaftsbedingung ein.",
-      "filePropertyNotSet": "Nicht festgelegt",
-      "filePropertyRemove": "Eigenschaft entfernen",
       "filePropertySourceType": "YAML-Eigenschaft · {{type}}",
       "filePropertyTypeChanged": "YAML-Eigenschaft · Typ geändert: {{savedType}} → {{type}} · Überprüfung erforderlich",
       "filePropertyTypeDriftShort": "Typ geändert: {{savedType}} → {{type}} · Überprüfung erforderlich",
@@ -1724,6 +1719,7 @@
       "languageEnglish": "Englisch",
       "languageFrench": "Französisch",
       "languageGerman": "Deutsch",
+      "languageItalian": "Italienisch",
       "languageJapanese": "日本語",
       "languagePackDownload": "Herunterladen",
       "languagePackDownloadFailed": "Das Sprachpaket konnte nicht heruntergeladen werden. Die vorherige Sprache bleibt aktiv.",
@@ -2372,6 +2368,11 @@
       "fileLoading": "Table wird geladen...",
       "fileNotAttached": "Dieser Ansicht ist derzeit keine Table-Datei zugeordnet.",
       "fileOpenFailed": "Operon konnte diese Table-Datei nicht öffnen.",
+      "filePropertyConflict": "Diese Eigenschaft wurde außerhalb der Tabelle geändert. Der neueste Wert wurde wiederhergestellt.",
+      "filePropertyEmpty": "Leer",
+      "filePropertyInvalidBoolean": "{{property}} muss ein boolescher Wert sein. Korrigiere ihn in den Obsidian-Eigenschaften.",
+      "filePropertyNotSet": "Nicht festgelegt",
+      "filePropertyRemove": "Eigenschaft entfernen",
       "filter": "Filter",
       "groupBy": "Gruppieren nach",
       "groupByDesc": "Wähle ein Feld, nach dem Tabellenzeilen gruppiert werden.",
@@ -2971,5 +2972,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "e3282e814c9da396594e607bfa3a2e3753865f4ec24e32474e3754df1b01f5ec"
+  "sourceVersion": "ef73437c095f48eb209369cea9feb5721f8e09864042756ae682368a0e518816"
 }

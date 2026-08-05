@@ -4,6 +4,7 @@ import {
 	mkdtempSync,
 	mkdirSync,
 	readFileSync,
+	realpathSync,
 	symlinkSync,
 	unlinkSync,
 	writeFileSync,
@@ -13,7 +14,7 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 
 const script = resolve("scripts/agent-runtime/create-sanitized-vault.mjs");
-const fixedTempRoot = process.platform === "darwin" ? "/private/tmp" : tmpdir();
+const fixedTempRoot = realpathSync(process.platform === "darwin" ? "/private/tmp" : tmpdir());
 
 test("sanitized vault generator rejects targets outside its fixed temp namespace", () => {
 	const target = join(mkdtempSync(join(tmpdir(), "operon-vault-target-test-")), "vault");
@@ -31,7 +32,7 @@ test("sanitized vault generator refuses a matching-name symlink without touching
 		`operon-agent-runtime-phase1-symlink-${process.pid}-${Date.now()}`,
 	);
 	mkdirSync(victimRoot, { recursive: true });
-	symlinkSync(victimRoot, target);
+	symlinkSync(victimRoot, target, process.platform === "win32" ? "junction" : "dir");
 	try {
 		const result = spawnSync(process.execPath, [script, target], { encoding: "utf8" });
 		assert.notEqual(result.status, 0);

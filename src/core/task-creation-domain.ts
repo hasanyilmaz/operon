@@ -26,6 +26,15 @@ import {
 export const MAX_CANONICAL_TASK_CREATION_ITEMS = 64;
 export const MAX_CANONICAL_FILE_TASK_BODY_BYTES = 65_536;
 
+const MANAGED_FILE_TASK_VARIABLE_FIELDS = new Set([
+	'note',
+	'dateStarted',
+	'dateScheduled',
+	'dateDue',
+	'status',
+	'priority',
+]);
+
 export type CanonicalTaskRepresentation = 'inline' | 'file';
 export type CanonicalTaskCheckbox = 'open' | 'done' | 'cancelled';
 
@@ -773,13 +782,23 @@ function prepareTask(
 	const templateDocument = item.target.representation === 'file' && item.target.template
 		? parseFrontmatterDocument(item.target.template.content, options.settings.keyMappings)
 		: null;
+	const templateFieldValues = { ...(templateDocument?.managedFieldValues ?? {}) };
+	const managedTemplateVariableFields = new Set(
+		Object.entries(templateFieldValues)
+			.filter(([field, value]) => (
+				MANAGED_FILE_TASK_VARIABLE_FIELDS.has(field)
+				&& value.trim() === `{{${field}}}`
+			))
+			.map(([field]) => field),
+	);
+	for (const field of managedTemplateVariableFields) templateFieldValues[field] = '';
 	const templateTemporalFields = Object.fromEntries(
-		Object.entries(templateDocument?.managedFieldValues ?? {})
+		Object.entries(templateFieldValues)
 			.filter(([field, value]) => (
 				(
 					ADAPTER_OWNED_TEMPORAL_CREATION_FIELDS.has(field)
 					|| (
-						!!parseRepeatRule(templateDocument?.managedFieldValues['repeat'])
+						!!parseRepeatRule(templateFieldValues['repeat'])
 						&& TEMPLATE_RECURRENCE_ANCHOR_FIELDS.has(field)
 					)
 				)
@@ -793,6 +812,9 @@ function prepareTask(
 		...item.fields,
 		...item.runtimeFields,
 	};
+	for (const field of managedTemplateVariableFields) {
+		if (sourceFields[field] === undefined) sourceFields[field] = '';
+	}
 	if (parent) sourceFields['parentTask'] = parent;
 	if (related.length > 0) sourceFields['related'] = Array.from(new Set(related)).join('; ');
 	if (dependencyFields?.blocking.length) {
@@ -804,7 +826,7 @@ function prepareTask(
 	if (!normalizeFinalTemporalFields(sourceFields, item.itemKey, blockers)) return null;
 	const defaults = resolveFileTaskDefaults({
 		sourceFieldValues: sourceFields,
-		templateFieldValues: templateDocument?.managedFieldValues ?? {},
+		templateFieldValues,
 		existingOperonId: operonId,
 		seedCreatedAt: options.now,
 		defaultPipelineName: options.settings.defaultPipelineName,

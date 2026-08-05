@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 2926,
-  "keyFingerprint": "e67d103c629f6ecc1b10dc69602712834c51836458aaa0992338eec9675c0d3b",
+  "keyCount": 2927,
+  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -404,12 +404,7 @@
       "fieldProjectSerialGroup": "Grupo de serial de proyecto",
       "fieldProjectTree": "Árbol del proyecto",
       "fieldTags": "Etiquetas",
-      "filePropertyConflict": "Esta propiedad cambió fuera de la tabla. Se restauró el valor más reciente.",
-      "filePropertyEmpty": "Vacío",
-      "filePropertyInvalidBoolean": "{{property}} debe ser un valor booleano. Corrígelo en Propiedades de Obsidian.",
       "filePropertyInvalidConditionValue": "Introduce un valor válido para esta condición de propiedad.",
-      "filePropertyNotSet": "Sin definir",
-      "filePropertyRemove": "Eliminar propiedad",
       "filePropertySourceType": "Propiedad YAML · {{type}}",
       "filePropertyTypeChanged": "Propiedad YAML · Tipo cambiado: {{savedType}} → {{type}} · Revisión requerida",
       "filePropertyTypeDriftShort": "Tipo cambiado: {{savedType}} → {{type}} · Revisión requerida",
@@ -1724,6 +1719,7 @@
       "languageEnglish": "Inglés",
       "languageFrench": "Francés",
       "languageGerman": "Alemán",
+      "languageItalian": "Italiano",
       "languageJapanese": "日本語",
       "languagePackDownload": "Descargar",
       "languagePackDownloadFailed": "No se pudo descargar el paquete de idioma. El idioma anterior sigue activo.",
@@ -2372,6 +2368,11 @@
       "fileLoading": "Cargando Table...",
       "fileNotAttached": "Actualmente no hay ningún archivo Table asociado a esta vista.",
       "fileOpenFailed": "Operon no pudo abrir este archivo Table.",
+      "filePropertyConflict": "Esta propiedad cambió fuera de la tabla. Se restauró el valor más reciente.",
+      "filePropertyEmpty": "Vacío",
+      "filePropertyInvalidBoolean": "{{property}} debe ser un valor booleano. Corrígelo en Propiedades de Obsidian.",
+      "filePropertyNotSet": "Sin definir",
+      "filePropertyRemove": "Eliminar propiedad",
       "filter": "Filtro",
       "groupBy": "Agrupar por",
       "groupByDesc": "Elige un campo para agrupar las filas de la tabla.",
@@ -2971,5 +2972,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "ae1cb6bf26dcf493defaa065fa39663f0dc26fbda6da3b75de8544e0f79cdcf2"
+  "sourceVersion": "d46448281da7cd51cbaaa789d58fc73804fb8aca7962009de046ab0aae7a6a66"
 }

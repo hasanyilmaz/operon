@@ -134,9 +134,12 @@ function captureFileIdentity(stat) {
 }
 
 export function writeSecureRequest(request, options = {}) {
-	const root = ensureSecureRequestRoot(options.root);
 	const token = options.token ?? createRequestToken();
 	validateRequestToken(token);
+	if (process.platform === "win32") {
+		throw new Error("REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS");
+	}
+	const root = ensureSecureRequestRoot(options.root);
 
 	const targetPath = requestPathForToken(token, root);
 	const tempPath = join(
@@ -208,6 +211,10 @@ export function writeSecureRequest(request, options = {}) {
 }
 
 export function readSecureRequest(token, options = {}) {
+	validateRequestToken(token);
+	if (process.platform === "win32") {
+		throw new Error("REQUEST_FILE_CHANNEL_UNAVAILABLE_WINDOWS");
+	}
 	const root = ensureSecureRequestRoot(options.root);
 	const filePath = requestPathForToken(token, root);
 	const pathStat = assertSecureRequestFile(filePath);

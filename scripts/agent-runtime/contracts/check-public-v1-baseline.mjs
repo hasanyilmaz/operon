@@ -14,7 +14,7 @@ const pluginRoot = path.resolve(path.dirname(scriptPath), '../../..');
 const schemaRoot = path.join(pluginRoot, 'contracts', 'agent-runtime', 'v1');
 const baselinePath = path.join(pluginRoot, 'contracts', 'agent-runtime', 'public-v1-baseline.json');
 const PUBLISHED_CLI_V1_EXTERNAL_SURFACE = Object.freeze({
-	cliManifestSha256: '5bc2d14a94f2edec2154d3df901291ff9895a6372ad16dac0bf0ef26ea389c6a',
+	normalizedCliManifestSha256: 'd67f4bd3c672de6db0fc743b05a682c290835fcff105fb137615402ce62ecf67',
 	schemaDocuments: Object.freeze({
 		'operon-cli/cli-manifest.schema.json': 'defc68eb6472bff0d7a5e7b10d0f7eb31abf2e8d08ec3648452e83515b5e74d9',
 		'operon-cli/operon-cli-local.schema.json': '51d85837e26426d055aff0680f24c9e45c397456d26f1cfa84a0f05f922428c0',
@@ -193,7 +193,7 @@ function assertFrozenExternalSurface(snapshot, binding) {
 	if (binding.runtime.contractDigest !== '407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b') {
 		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_CONTRACT_DIGEST_MISMATCH');
 	}
-	if (binding.artifact.cliManifest.sha256 !== PUBLISHED_CLI_V1_EXTERNAL_SURFACE.cliManifestSha256) {
+	if (binding.artifact.normalizedCliManifestSha256 !== PUBLISHED_CLI_V1_EXTERNAL_SURFACE.normalizedCliManifestSha256) {
 		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_MANIFEST_IDENTITY_MISMATCH');
 	}
 	for (const [key, expectedSha256] of Object.entries(PUBLISHED_CLI_V1_EXTERNAL_SURFACE.schemaDocuments)) {

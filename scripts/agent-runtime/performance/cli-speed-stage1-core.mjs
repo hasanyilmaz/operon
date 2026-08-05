@@ -2,7 +2,7 @@ import path from 'node:path';
 
 export const CLI_SPEED_STAGE1_VAULT = '/private/tmp/cli-test-vault';
 export const CLI_SPEED_STAGE1_RESULTS_DIRECTORY = '/private/tmp/operon-agent-runtime-results';
-export const CLI_SPEED_STAGE1_RESULT_PATH = path.join(
+export const CLI_SPEED_STAGE1_RESULT_PATH = path.posix.join(
 	CLI_SPEED_STAGE1_RESULTS_DIRECTORY,
 	'cli-speed-stage1.json',
 );
@@ -31,12 +31,12 @@ export function assertCliSpeedStage1Vault(
 	if (typeof vaultPath !== 'string' || vaultPath.length === 0) {
 		throw new Error('CLI speed Stage 1 requires an explicit vault path.');
 	}
-	if (path.resolve(vaultPath) !== CLI_SPEED_STAGE1_VAULT) {
+	if (path.posix.resolve(vaultPath) !== CLI_SPEED_STAGE1_VAULT) {
 		throw new Error(`Refusing vault outside ${CLI_SPEED_STAGE1_VAULT}.`);
 	}
 	if (
-		path.dirname(vaultPath) !== '/private/tmp'
-		|| path.basename(vaultPath) !== 'cli-test-vault'
+		path.posix.dirname(vaultPath) !== '/private/tmp'
+		|| path.posix.basename(vaultPath) !== 'cli-test-vault'
 	) {
 		throw new Error('CLI speed Stage 1 vault must be the exact guarded path.');
 	}
@@ -53,7 +53,7 @@ export function assertCliSpeedStage1Vault(
 	if (realpathSync(vaultPath) !== CLI_SPEED_STAGE1_VAULT) {
 		throw new Error('CLI speed Stage 1 vault realpath does not match the guarded path.');
 	}
-	if (realpathSync(path.dirname(vaultPath)) !== '/private/tmp') {
+	if (realpathSync(path.posix.dirname(vaultPath)) !== '/private/tmp') {
 		throw new Error('CLI speed Stage 1 vault parent realpath is not /private/tmp.');
 	}
 	return CLI_SPEED_STAGE1_VAULT;

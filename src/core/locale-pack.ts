@@ -202,5 +202,6 @@ function isLangCode(value: string): value is LangCode {
 		|| value === 'zh-CN'
 		|| value === 'zh-TW'
 		|| value === 'ja'
-		|| value === 'ru';
+		|| value === 'ru'
+		|| value === 'it';
 }

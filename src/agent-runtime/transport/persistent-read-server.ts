@@ -30,9 +30,16 @@ const MAX_FRAME_BYTES_V1 = CONTRACT_LIMITS_V1.transportInputBytes
 	+ AUTHENTICATED_FRAME_OVERHEAD_BYTES_V1;
 const READ_COMMANDS_V1 = new Set<CliCommandV1>([
 	'health',
+	'capabilities',
+	'diagnostics',
+	'catalog',
+	'entity.resolve',
 	'task.get',
 	'tasks.query',
+	'tasks.finder',
+	'relationships.get',
 	'context.build',
+	'timers.read',
 ]);
 const HEX_256_PATTERN_V1 = /^[a-f0-9]{64}$/u;
 const REQUEST_TOKEN_PATTERN_V1 = /^[A-Za-z0-9_-]{32}$/u;

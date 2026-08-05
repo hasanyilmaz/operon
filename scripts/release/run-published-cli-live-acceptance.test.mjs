@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -50,6 +50,7 @@ test('live acceptance receives only the helper-verified executable and writes bo
 		'operon-agent-runtime-phase1-wrapper-',
 	));
 	try {
+		const canonicalDisposableVault = await realpath(disposableVault);
 		const outputPath = path.join(temporaryRoot, 'evidence.json');
 		let helperCalled = false;
 		const result = await runPublishedCliLiveAcceptance({
@@ -81,7 +82,7 @@ test('live acceptance receives only the helper-verified executable and writes bo
 			spawn: (node, argv, spawnOptions) => {
 				assert.equal(node, process.execPath);
 				assert.match(argv[0], /run-live-stage5-completion\.mjs$/u);
-				assert.equal(argv[1], disposableVault);
+				assert.equal(argv[1], canonicalDisposableVault);
 				assert.equal(spawnOptions.env.OPERON_CLI_EXECUTABLE, undefined);
 				assert.equal(
 					spawnOptions.env.OPERON_PUBLISHED_CLI_EXECUTABLE,

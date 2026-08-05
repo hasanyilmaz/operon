@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -24,6 +24,82 @@ test('accepted binding validates and canonical plugin inputs match', async () =>
 	assertPublishedCliBinding(binding);
 	await verifyCanonicalPluginInputs(binding);
 	assert.match(bindingAggregate(binding), /^[a-f0-9]{64}$/u);
+});
+
+test('canonical plugin inputs ignore only POSIX mode on Windows', async t => {
+	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-canonical-input-platform-'));
+	const relativePath = 'contracts/agent-runtime/synthetic-canonical.json';
+	const target = path.join(temporaryRoot, relativePath);
+	const bytes = Buffer.from('{"contractVersion":1}\n', 'utf8');
+	try {
+		await mkdir(path.dirname(target), { recursive: true });
+		await writeFile(target, bytes);
+		await chmod(target, 0o600);
+		const actualMode = (await lstat(target)).mode & 0o777;
+		const mismatchedMode = actualMode === 0o600 ? 0o644 : 0o600;
+		const identity = {
+			path: relativePath,
+			bytes: bytes.byteLength,
+			sha256: sha256(bytes),
+			mode: mismatchedMode,
+		};
+		const binding = {
+			runtime: {
+				canonicalSchemas: [identity],
+				canonicalTypeSources: [],
+			},
+		};
+
+		assert.equal(
+			await verifyCanonicalPluginInputs(binding, { pluginRoot: temporaryRoot, platform: 'win32' }),
+			true,
+		);
+		await assert.rejects(
+			verifyCanonicalPluginInputs(binding, { pluginRoot: temporaryRoot, platform: 'linux' }),
+			/OPERON_PUBLISHED_CLI_CANONICAL_MODE_MISMATCH/u,
+		);
+
+		await assert.rejects(
+			verifyCanonicalPluginInputs({
+				runtime: {
+					canonicalSchemas: [{ ...identity, bytes: identity.bytes + 1 }],
+					canonicalTypeSources: [],
+				},
+			}, { pluginRoot: temporaryRoot, platform: 'win32' }),
+			/OPERON_PUBLISHED_CLI_CANONICAL_SIZE_MISMATCH/u,
+		);
+		await assert.rejects(
+			verifyCanonicalPluginInputs({
+				runtime: {
+					canonicalSchemas: [{ ...identity, sha256: '0'.repeat(64) }],
+					canonicalTypeSources: [],
+				},
+			}, { pluginRoot: temporaryRoot, platform: 'win32' }),
+			/OPERON_PUBLISHED_CLI_CANONICAL_HASH_MISMATCH/u,
+		);
+
+		const realTarget = `${target}.real`;
+		await writeFile(realTarget, bytes);
+		await rm(target);
+		try {
+			await symlink(realTarget, target);
+		} catch (error) {
+			const code = error && typeof error === 'object' && 'code' in error
+				? error.code
+				: undefined;
+			if (process.platform === 'win32' && ['EACCES', 'ENOSYS', 'EPERM'].includes(code)) {
+				t.diagnostic(`Symlink rejection assertion skipped: capability unavailable (${code}).`);
+				return;
+			}
+			throw error;
+		}
+		await assert.rejects(
+			verifyCanonicalPluginInputs(binding, { pluginRoot: temporaryRoot, platform: 'win32' }),
+			/OPERON_PUBLISHED_CLI_CANONICAL_FILE_INVALID/u,
+		);
+	} finally {
+		await rm(temporaryRoot, { recursive: true, force: true });
+	}
 });
 
 test('schema and declaration aggregates are derived from exact inventory subsets', async () => {
@@ -65,7 +141,7 @@ test('child environment removes case-variant npm auth and registry configuration
 test('binding mutation fails closed through its self aggregate', async () => {
 	const { binding } = await loadPublishedCliBinding();
 	const mutated = structuredClone(binding);
-	mutated.package.version = '1.0.9';
+	mutated.package.version = '1.0.10';
 	assert.throws(
 		() => assertPublishedCliBinding(mutated),
 		/OPERON_PUBLISHED_CLI_BINDING_AGGREGATE_INVALID/u,

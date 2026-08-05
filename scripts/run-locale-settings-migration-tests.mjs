@@ -2,9 +2,9 @@ import { build } from 'esbuild';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tempDir = await mkdtemp(path.join(tmpdir(), 'operon-locale-settings-test-'));
 const outfile = path.join(tempDir, 'locale-settings-migration.test.mjs');
 
