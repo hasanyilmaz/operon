@@ -1642,7 +1642,23 @@ function runGeneratedBoundaryDifferential(fixtures, module, validators) {
 		'atomic group resource not covered by revision map',
 	);
 	const createPlan = fixture(fixtures, 'valid-create-graph-plan').value;
+	const resealCreateEffect = (candidate, effectIndex) => {
+		candidate.targets[effectIndex].targetDigest = module.sha256HexV1(
+			module.canonicalJsonV1(candidate.createEffects[effectIndex]),
+		);
+		candidate.receiptTargetDigest = module.computeReceiptTargetDigestV1(candidate.targets);
+		candidate.planHash = module.computeSealedMutationPlanHashV1(candidate);
+	};
 	assertPair('sealed-mutation-plan', createPlan, true, 'sealed create graph plan with exact effects');
+	const explicitTemplateMismatchPlan = structuredClone(createPlan);
+	explicitTemplateMismatchPlan.createEffects[1].templateId = 'template:other';
+	resealCreateEffect(explicitTemplateMismatchPlan, 1);
+	assertPair(
+		'sealed-mutation-plan',
+		explicitTemplateMismatchPlan,
+		false,
+		'explicit file template must match the sealed create effect',
+	);
 	const configuredDefaultCreatePlan = structuredClone(createPlan);
 	configuredDefaultCreatePlan.spec.items[0].target = { mode: 'configured-default' };
 	configuredDefaultCreatePlan.planHash = module.computeSealedMutationPlanHashV1(configuredDefaultCreatePlan);
@@ -1651,6 +1667,100 @@ function runGeneratedBoundaryDifferential(fixtures, module, validators) {
 		configuredDefaultCreatePlan,
 		true,
 		'sealed create plan may resolve configured-default representation at preview time',
+	);
+	const configuredDefaultWithoutTemplatePlan = structuredClone(createPlan);
+	configuredDefaultWithoutTemplatePlan.spec.items[1].target = {
+		representation: 'file',
+		mode: 'configured-default',
+	};
+	delete configuredDefaultWithoutTemplatePlan.createEffects[1].templateId;
+	delete configuredDefaultWithoutTemplatePlan.createEffects[1].templateDigest;
+	resealCreateEffect(configuredDefaultWithoutTemplatePlan, 1);
+	assertPair(
+		'sealed-mutation-plan',
+		configuredDefaultWithoutTemplatePlan,
+		true,
+		'configured-default may resolve without a file template',
+	);
+	const exactPathWithoutRequestedTemplatePlan = structuredClone(createPlan);
+	delete exactPathWithoutRequestedTemplatePlan.spec.items[1].target.templateId;
+	resealCreateEffect(exactPathWithoutRequestedTemplatePlan, 1);
+	assertPair(
+		'sealed-mutation-plan',
+		exactPathWithoutRequestedTemplatePlan,
+		false,
+		'exact-path cannot seal an unrequested file template',
+	);
+	for (const missingTemplateField of ['templateId', 'templateDigest']) {
+		const incompleteTemplateSealPlan = structuredClone(createPlan);
+		incompleteTemplateSealPlan.spec.items[1].target = {
+			representation: 'file',
+			mode: 'configured-default',
+		};
+		delete incompleteTemplateSealPlan.createEffects[1][missingTemplateField];
+		resealCreateEffect(incompleteTemplateSealPlan, 1);
+		assertPair(
+			'sealed-mutation-plan',
+			incompleteTemplateSealPlan,
+			false,
+			`file template seal requires ${missingTemplateField}`,
+		);
+	}
+	const inlineTemplateSealPlan = structuredClone(createPlan);
+	inlineTemplateSealPlan.createEffects[0].templateId = 'template:invalid-inline';
+	inlineTemplateSealPlan.createEffects[0].templateDigest = '9'.repeat(64);
+	resealCreateEffect(inlineTemplateSealPlan, 0);
+	assertPair(
+		'sealed-mutation-plan',
+		inlineTemplateSealPlan,
+		false,
+		'inline create effects cannot seal file template metadata',
+	);
+	const configuredDefaultTemplatePlan = structuredClone(createPlan);
+	configuredDefaultTemplatePlan.spec.items[1].target = {
+		representation: 'file',
+		mode: 'configured-default',
+	};
+	configuredDefaultTemplatePlan.planHash =
+		module.computeSealedMutationPlanHashV1(configuredDefaultTemplatePlan);
+	assertPair(
+		'sealed-mutation-plan',
+		configuredDefaultTemplatePlan,
+		true,
+		'configured-default may seal the Runtime-resolved file template',
+	);
+	const explicitConfiguredDefaultTemplatePlan = structuredClone(createPlan);
+	explicitConfiguredDefaultTemplatePlan.spec.items[1].target = {
+		representation: 'file',
+		mode: 'configured-default',
+		templateId: createPlan.spec.items[1].target.templateId,
+	};
+	explicitConfiguredDefaultTemplatePlan.planHash =
+		module.computeSealedMutationPlanHashV1(explicitConfiguredDefaultTemplatePlan);
+	assertPair(
+		'sealed-mutation-plan',
+		explicitConfiguredDefaultTemplatePlan,
+		true,
+		'configured-default preserves an explicitly requested matching template',
+	);
+	const explicitConfiguredDefaultTemplateMismatchPlan = structuredClone(explicitConfiguredDefaultTemplatePlan);
+	explicitConfiguredDefaultTemplateMismatchPlan.createEffects[1].templateId = 'template:other';
+	resealCreateEffect(explicitConfiguredDefaultTemplateMismatchPlan, 1);
+	assertPair(
+		'sealed-mutation-plan',
+		explicitConfiguredDefaultTemplateMismatchPlan,
+		false,
+		'configured-default rejects an explicitly requested mismatched template',
+	);
+	const unscopedConfiguredDefaultTemplatePlan = structuredClone(createPlan);
+	unscopedConfiguredDefaultTemplatePlan.spec.items[1].target = { mode: 'configured-default' };
+	unscopedConfiguredDefaultTemplatePlan.planHash =
+		module.computeSealedMutationPlanHashV1(unscopedConfiguredDefaultTemplatePlan);
+	assertPair(
+		'sealed-mutation-plan',
+		unscopedConfiguredDefaultTemplatePlan,
+		true,
+		'unscoped configured-default may resolve a file template',
 	);
 	const sameLineCreatePlan = structuredClone(createPlan);
 	sameLineCreatePlan.spec.items[1].target = {
@@ -2445,7 +2555,9 @@ function validateSealedPlanForSchema(plan) {
 					+ (inlineEffectCountByFile.get(effect.locator.filePath) ?? 1)
 			)
 		) return false;
-		if (item.target?.templateId !== effect.templateId) return false;
+		const mayResolveConfiguredDefaultTemplate = item.target?.mode === 'configured-default'
+			&& item.target?.templateId === undefined;
+		if (!mayResolveConfiguredDefaultTemplate && item.target?.templateId !== effect.templateId) return false;
 		const resolveReference = reference => (
 			reference?.kind === 'existing' ? reference.operonId : allocatedByRef.get(reference?.itemRef)
 		);

@@ -5640,7 +5640,9 @@ function checkCreateEffects(
 						'Resolved locator must remain within the exact insertion range.',
 					));
 				}
-				if (item.target.templateId !== effect.templateId) {
+				const mayResolveConfiguredDefaultTemplate = item.target.mode === 'configured-default'
+					&& item.target.templateId === undefined;
+				if (!mayResolveConfiguredDefaultTemplate && item.target.templateId !== effect.templateId) {
 					issues.push(issue(`${itemPath}/templateId`, 'value', 'Sealed template must match the requested template.'));
 				}
 			}
