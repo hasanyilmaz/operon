@@ -43,10 +43,10 @@ jobs:
         run: npm run release:audit-policy
 
       - name: Run validation
-        if: github.event_name == 'push'
         env:
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check
+        if: github.event_name == 'push'
 
       - name: Run paired candidate validation
         if: github.event_name == 'pull_request'
@@ -97,10 +97,10 @@ jobs:
         run: npm ci
 
       - name: Run validation
-        if: github.event_name == 'push'
         env:
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check
+        if: github.event_name == 'push'
 
       - name: Run paired candidate validation
         if: github.event_name == 'pull_request'
