@@ -831,6 +831,15 @@ function checkReleaseAuditPolicy() {
 	);
 
 	const packageText = readText('package.json');
+	const normalCheck = readJson('package.json').scripts.check;
+	const normalCheckCommands = normalCheck.split('&&').map((command) => command.trim());
+	const normalBuildIndexes = normalCheckCommands
+		.map((command, index) => (command === 'npm run build' ? index : -1))
+		.filter((index) => index >= 0);
+	const normalFreezeIndex = normalCheckCommands.indexOf('npm run release:freeze:test');
+	if (normalBuildIndexes.length !== 1 || normalFreezeIndex < 0 || normalBuildIndexes[0] >= normalFreezeIndex) {
+		fail('package.json: normal validation must build production artifacts before release freeze tests');
+	}
 	for (const command of [
 		'npm run release:audit-policy:test',
 		'npm run release:notes:test',
