@@ -18,7 +18,7 @@
     "agent-runtime:schemas:check": "node scripts/agent-runtime/contracts/generate-schema-manifest.mjs --check",
     "agent-runtime:compatibility:check": "node scripts/agent-runtime/contracts/check-public-v1-baseline.mjs --check",
     "agent-runtime:schemas:test": "node --test scripts/agent-runtime/contracts/schema-manifest.test.mjs scripts/agent-runtime/contracts/contract-evolution.test.mjs scripts/agent-runtime/contracts/developer-api-schema.test.mjs scripts/agent-runtime/contracts/check-public-v1-baseline.test.mjs",
-    "agent-runtime:schemas:candidate:test": "node --test scripts/agent-runtime/contracts/schema-manifest.test.mjs scripts/agent-runtime/contracts/contract-evolution.test.mjs scripts/agent-runtime/contracts/developer-api-schema.test.mjs && node --test --test-name-pattern='unclassified schema paths|raw schema direction drift' scripts/agent-runtime/contracts/check-public-v1-baseline.test.mjs",
+    "agent-runtime:schemas:candidate:test": "node --test scripts/agent-runtime/contracts/schema-manifest.test.mjs scripts/agent-runtime/contracts/contract-evolution.test.mjs scripts/agent-runtime/contracts/developer-api-schema.test.mjs && node --test --test-name-pattern=\"unclassified schema paths|raw schema direction drift\" scripts/agent-runtime/contracts/check-public-v1-baseline.test.mjs",
     "agent-runtime:cli-schemas:test": "node --test scripts/agent-runtime/cli/schema-entrypoints.test.mjs",
     "agent-runtime:external-cli:binding:check": "node scripts/agent-runtime/cli/check-published-cli-binding.mjs",
     "agent-runtime:external-cli:artifact:check": "node scripts/agent-runtime/cli/check-published-cli-artifact.mjs",
