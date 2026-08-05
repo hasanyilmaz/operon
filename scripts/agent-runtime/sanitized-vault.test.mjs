@@ -12,7 +12,6 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { symlinkCapabilityUnavailableReason } from "../test-symlink-capability.mjs";
 
 const script = resolve("scripts/agent-runtime/create-sanitized-vault.mjs");
 const fixedTempRoot = realpathSync(process.platform === "darwin" ? "/private/tmp" : tmpdir());
@@ -24,9 +23,7 @@ test("sanitized vault generator rejects targets outside its fixed temp namespace
 	assert.match(result.stderr, /SANITIZED_VAULT_TARGET_OUTSIDE_FIXED_TEMP_ROOT/u);
 });
 
-test("sanitized vault generator refuses a matching-name symlink without touching its target", {
-	skip: symlinkCapabilityUnavailableReason(),
-}, () => {
+test("sanitized vault generator refuses a matching-name symlink without touching its target", () => {
 	const victimRoot = mkdtempSync(join(tmpdir(), "operon-vault-victim-test-"));
 	const sentinel = join(victimRoot, "sentinel.txt");
 	writeFileSync(sentinel, "keep", { mode: 0o600 });
