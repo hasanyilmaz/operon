@@ -781,8 +781,7 @@ for (const mutationCommand of ['mutation.preview', 'mutation.apply'] as const) {
 			);
 			await assertPersistentRequestUnconsumed(publication);
 		} finally {
-			await cleanupPersistentRequest(publication);
-			await harness.cleanup();
+			await cleanupPersistentHarness(harness, [publication]);
 		}
 	});
 }
@@ -904,8 +903,7 @@ test('persistent read server rejects a tampered request HMAC without consuming i
 		);
 		await assertPersistentRequestUnconsumed(publication);
 	} finally {
-		await cleanupPersistentRequest(publication);
-		await harness.cleanup();
+		await cleanupPersistentHarness(harness, [publication]);
 	}
 });
 
@@ -959,8 +957,7 @@ test('persistent read server rejects an initial sequence gap without consuming i
 		);
 		await assertPersistentRequestUnconsumed(publication);
 	} finally {
-		await cleanupPersistentRequest(publication);
-		await harness.cleanup();
+		await cleanupPersistentHarness(harness, [publication]);
 	}
 });
 
@@ -1014,9 +1011,7 @@ test('persistent read server rejects a replayed sequence without consuming the n
 		);
 		await assertPersistentRequestUnconsumed(second);
 	} finally {
-		await cleanupPersistentRequest(first);
-		if (second) await cleanupPersistentRequest(second);
-		await harness.cleanup();
+		await cleanupPersistentHarness(harness, [first, ...(second ? [second] : [])]);
 	}
 });
 
@@ -1861,7 +1856,11 @@ async function cleanupPersistentHarness(
 	} catch (error) {
 		firstError ??= error;
 	}
-	if (firstError !== undefined) throw firstError;
+	if (firstError !== undefined) {
+		throw firstError instanceof Error
+			? firstError
+			: new Error(typeof firstError === 'string' ? firstError : 'Persistent request cleanup failed.');
+	}
 }
 
 async function sendBrokerControlRequest(
