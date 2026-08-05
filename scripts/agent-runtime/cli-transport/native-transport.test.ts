@@ -1947,9 +1947,13 @@ async function createAuthenticatedPersistentReadHarness(
 	let descriptorPath: string | undefined;
 	try {
 		installPersistentReadTestWindow();
-		const expectedVaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
+		const plugin = persistentReadTestPlugin(vault);
+		const expectedVaultSha256 = await computeRunningVaultSha256V1(
+			nodeApi,
+			plugin.app.vault.adapter,
+		);
 		handle = await startAgentRuntimePersistentReadServerV1(
-			persistentReadTestPlugin(vault) as never,
+			plugin as never,
 			createRuntime(),
 			{ runtimeMetadata: persistentReadTestMetadata() },
 		);
