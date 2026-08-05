@@ -29,16 +29,22 @@ const positionalArguments = argumentsV1.filter(argument => (
 ));
 if (positionalArguments.length > 1) throw new Error('SANITIZED_VAULT_ARGUMENTS_INVALID');
 const requestedVaultPath = positionalArguments[0] ?? defaultVaultPath;
-const vaultPath = path.resolve(requestedVaultPath);
+const resolvedRequestedVaultPath = path.resolve(requestedVaultPath);
+const vaultName = path.basename(resolvedRequestedVaultPath);
+const canonicalVaultParent = await realpath(
+	path.dirname(resolvedRequestedVaultPath),
+).catch(() => null);
 if (
-	path.dirname(vaultPath) !== fixedTempRoot
+	canonicalVaultParent === null
+	|| canonicalVaultParent !== fixedTempRoot
 	|| (
-		path.basename(vaultPath) !== 'cli-test-vault'
-		&& !/^operon-agent-runtime-phase1-[A-Za-z0-9._-]+$/u.test(path.basename(vaultPath))
+		vaultName !== 'cli-test-vault'
+		&& !/^operon-agent-runtime-phase1-[A-Za-z0-9._-]+$/u.test(vaultName)
 	)
 ) {
 	throw new Error('SANITIZED_VAULT_TARGET_OUTSIDE_FIXED_TEMP_ROOT');
 }
+const vaultPath = path.join(canonicalVaultParent, vaultName);
 const existingTarget = await lstat(vaultPath).catch(error => {
 	if (error?.code === 'ENOENT') return null;
 	throw error;
