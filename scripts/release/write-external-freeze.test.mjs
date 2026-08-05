@@ -246,8 +246,14 @@ test('writer creates validated evidence and accepted freeze once with restrictiv
 		});
 		assert.equal(result.freeze.state, 'accepted');
 		assert.equal(result.evidence.familyResults.length, 12);
-		assert.equal((await lstat(result.freezePath)).mode & 0o777, 0o600);
-		assert.equal((await lstat(result.evidencePath)).mode & 0o777, 0o600);
+		const freezeStats = await lstat(result.freezePath);
+		const evidenceStats = await lstat(result.evidencePath);
+		assert.equal(freezeStats.isFile(), true);
+		assert.equal(evidenceStats.isFile(), true);
+		if (process.platform !== 'win32') {
+			assert.equal(freezeStats.mode & 0o777, 0o600);
+			assert.equal(evidenceStats.mode & 0o777, 0o600);
+		}
 		assert.deepEqual(await checkAcceptedReleaseFreeze({ pluginRoot: fixture.root }), result.freeze);
 		const before = await Promise.all([
 			readFile(result.freezePath),
