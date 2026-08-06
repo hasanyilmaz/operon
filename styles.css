@@ -15896,7 +15896,7 @@ button.operon-field-picker-trigger,
 /* Shared neutral controls for full FilterSetModal and compact preset filter editors. */
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
@@ -15926,7 +15926,7 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) select.operon-filter-select {
 	background-image: var(--operon-filter-modal-control-chevron);
 	background-position:
@@ -15939,7 +15939,7 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
@@ -15962,11 +15962,11 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-filter-modal-logic-button.is-active,
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]) {
 	border-color: color-mix(in srgb, var(--interactive-accent) 54%, var(--background-modifier-border));
 	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
@@ -15977,11 +15977,11 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-filter-modal-logic-button.is-active:is(:hover, :focus, :focus-visible),
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):is(:hover, :focus, :focus-visible) {
 	border-color: var(--operon-filter-modal-control-hover-border);
 	background-color: var(--operon-filter-modal-control-hover-bg);
@@ -15991,7 +15991,7 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-filter-footer-action-button.is-danger {
 	border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
 	background: transparent;
@@ -16002,7 +16002,7 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-filter-footer-action-button.is-danger:is(:hover, :focus, :focus-visible) {
 	border-color: var(--text-error);
 	background-color: color-mix(in srgb, var(--text-error) 9%, transparent);
@@ -16013,7 +16013,7 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
@@ -16033,11 +16033,11 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-filter-modal-logic-button.is-active:focus-visible,
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):focus-visible {
 	border-color: var(--operon-filter-modal-control-hover-border);
 	box-shadow: var(--operon-filter-modal-control-focus-ring);
@@ -16045,7 +16045,7 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) .operon-filter-footer-action-button.is-danger:focus-visible {
 	border-color: var(--text-error);
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 24%, transparent);
@@ -16053,7 +16053,7 @@ body :is(
 
 body :is(
 	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
-	.operon-preset-filter-popover .operon-filter-inline-editor
+	.operon-preset-filter-popover.operon-filter-inline-editor
 ) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
@@ -30223,7 +30223,7 @@ button.operon-table-group-sort-add-button {
 	box-shadow: var(--shadow-l);
 }
 
-.operon-preset-filter-popover .operon-filter-inline-editor,
+.operon-preset-filter-popover.operon-filter-inline-editor,
 .operon-table-filter-popover .operon-filter-inline-editor {
 	max-height: none;
 	overflow: visible;
