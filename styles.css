@@ -15166,7 +15166,8 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	box-sizing: border-box;
 }
 
-.operon-filter-set-modal-shell {
+.operon-filter-set-modal-shell,
+.operon-table-filter-popover {
 	--operon-filter-modal-control-border: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
 	--operon-filter-modal-control-hover-border: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
 	--operon-filter-modal-control-hover-bg: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
@@ -15175,6 +15176,9 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	--operon-filter-modal-control-chevron:
 		linear-gradient(45deg, transparent 50%, currentColor 50%),
 		linear-gradient(135deg, currentColor 50%, transparent 50%);
+}
+
+.operon-filter-set-modal-shell {
 	width: 780px;
 	max-width: 90vw;
 	max-height: calc(100dvh - 48px);
@@ -15888,8 +15892,11 @@ button.operon-field-picker-trigger,
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 22%, transparent);
 }
 
-/* Full FilterSetModal neutral controls — inline Table editors intentionally excluded. */
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
+/* Shared neutral controls for full FilterSetModal and compact Table filter editors. */
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
 	button.operon-filter-direction-toggle,
@@ -15916,7 +15923,10 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
 	--button-shadow: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal select.operon-filter-select {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) select.operon-filter-select {
 	background-image: var(--operon-filter-modal-control-chevron);
 	background-position:
 		calc(100% - 15px) 50%,
@@ -15926,7 +15936,10 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal select.operon
 	padding-inline-end: 28px;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
 	button.operon-filter-direction-toggle,
@@ -15946,8 +15959,14 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
 	outline: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-modal-logic-button.is-active,
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]) {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-filter-modal-logic-button.is-active,
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]) {
 	border-color: color-mix(in srgb, var(--interactive-accent) 54%, var(--background-modifier-border));
 	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
 	background-color: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
@@ -15955,15 +15974,24 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-prese
 	color: var(--interactive-accent);
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-modal-logic-button.is-active:is(:hover, :focus, :focus-visible),
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):is(:hover, :focus, :focus-visible) {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-filter-modal-logic-button.is-active:is(:hover, :focus, :focus-visible),
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):is(:hover, :focus, :focus-visible) {
 	border-color: var(--operon-filter-modal-control-hover-border);
 	background-color: var(--operon-filter-modal-control-hover-bg);
 	box-shadow: var(--operon-filter-modal-control-focus-shadow);
 	outline: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-footer-action-button.is-danger {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-filter-footer-action-button.is-danger {
 	border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
 	background: transparent;
 	background-color: transparent;
@@ -15971,7 +15999,10 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filte
 	color: var(--text-error);
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-footer-action-button.is-danger:is(:hover, :focus, :focus-visible) {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-filter-footer-action-button.is-danger:is(:hover, :focus, :focus-visible) {
 	border-color: var(--text-error);
 	background-color: color-mix(in srgb, var(--text-error) 9%, transparent);
 	box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error) 12%, transparent);
@@ -15979,7 +16010,10 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filte
 	outline: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
 	button.operon-filter-direction-toggle,
@@ -15996,18 +16030,30 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
 	outline: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-modal-logic-button.is-active:focus-visible,
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):focus-visible {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-filter-modal-logic-button.is-active:focus-visible,
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):focus-visible {
 	border-color: var(--operon-filter-modal-control-hover-border);
 	box-shadow: var(--operon-filter-modal-control-focus-ring);
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-footer-action-button.is-danger:focus-visible {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) .operon-filter-footer-action-button.is-danger:focus-visible {
 	border-color: var(--text-error);
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 24%, transparent);
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-table-filter-popover .operon-filter-inline-editor
+) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
 	button.operon-filter-direction-toggle,
@@ -30148,7 +30194,7 @@ button.operon-table-group-sort-add-button {
 	padding: 14px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
-	background: var(--background-secondary);
+	background: var(--modal-background, var(--background-primary));
 	box-shadow: var(--shadow-l);
 }
 
