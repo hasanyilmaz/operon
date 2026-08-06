@@ -225,6 +225,7 @@ function harness(options: {
 	error?: StructuredErrorV1;
 	active?: { value: boolean };
 	grantState?: { value: 'pending' | 'active' | 'suspended' | 'revoked'; revision: number };
+	grantPersistenceUnavailable?: boolean;
 	consumerCurrent?: { value: boolean };
 	mutationSecurityPolicy?: DeveloperMutationSecurityPolicyV1;
 	recoveryStore?: DeveloperMutationRecoveryStoreV1;
@@ -266,7 +267,7 @@ function harness(options: {
 						: 'consumer-major-version-changed' as const,
 		}),
 		recordPending: () => undefined,
-		hasPersistenceError: () => false,
+		hasPersistenceError: () => options.grantPersistenceUnavailable ?? false,
 	};
 	const accessAs = (consumer: typeof consumerPlugin, request: unknown) => getOperonDeveloperApiV1(core, consumer, request, {
 		isDesktopAvailable: () => options.desktop ?? true,
@@ -422,6 +423,16 @@ test('fails exact-scope access closed while pending and revokes a live session s
 	});
 	assert.equal(refused.ok, false);
 	assert.equal(refused.ok ? undefined : refused.error.code, 'authority-insufficient');
+});
+
+test('keeps a first-request grant pending while its persistence write is queued', () => {
+	const pending = harness({
+		grantState: { value: 'pending', revision: 1 },
+		grantPersistenceUnavailable: true,
+	}).access(request(['tasks.read']));
+	assert.equal(pending.ok, false);
+	assert.equal(pending.ok ? undefined : pending.error.code, 'authority-insufficient');
+	assert.equal(pending.status.grant?.state, 'pending');
 });
 
 test('fails access closed off desktop, without a core, while booting, and on terminal startup failure', () => {
