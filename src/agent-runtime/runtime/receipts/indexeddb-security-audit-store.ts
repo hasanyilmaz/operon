@@ -506,8 +506,11 @@ export function planSecurityAuditPruneV1(
 export function findIncompleteDeveloperGrantAuditTransitionsV1(
 	events: readonly SecurityAuditEventV1[],
 ): readonly IncompleteDeveloperGrantAuditTransitionV1[] {
-	const pending = new Map<string, IncompleteDeveloperGrantAuditTransitionV1>();
-	const completed = new Set<string>();
+	const transitions = new Map<string, {
+		transition: IncompleteDeveloperGrantAuditTransitionV1;
+		intentsByTime: Map<number, number>;
+		completionsByTime: Map<number, number>;
+	}>();
 	for (const event of events) {
 		if (
 			event.channel !== 'developer-api'
@@ -520,22 +523,45 @@ export function findIncompleteDeveloperGrantAuditTransitionsV1(
 			event.grantRevision,
 			event.capability ?? '',
 		].join('\0');
+		const transition = transitions.get(key) ?? {
+			transition: {
+				consumerIdentityHash: event.consumerIdentityHash,
+				revision: event.grantRevision,
+			},
+			intentsByTime: new Map<number, number>(),
+			completionsByTime: new Map<number, number>(),
+		};
+		transitions.set(key, transition);
+		const occurredAtMs = Date.parse(event.occurredAt);
 		if (event.admission === 'requested' && event.outcome === 'pending') {
-			if (!completed.has(key)) {
-				pending.set(key, {
-					consumerIdentityHash: event.consumerIdentityHash,
-					revision: event.grantRevision,
-				});
-			}
+			transition.intentsByTime.set(
+				occurredAtMs,
+				(transition.intentsByTime.get(occurredAtMs) ?? 0) + 1,
+			);
 		} else if (event.admission === 'completed') {
-			completed.add(key);
-			pending.delete(key);
+			transition.completionsByTime.set(
+				occurredAtMs,
+				(transition.completionsByTime.get(occurredAtMs) ?? 0) + 1,
+			);
 		}
 	}
 	const unique = new Map<string, IncompleteDeveloperGrantAuditTransitionV1>();
-	for (const transition of pending.values()) {
-		const key = `${transition.consumerIdentityHash}\0${transition.revision}`;
-		unique.set(key, transition);
+	for (const entry of transitions.values()) {
+		let pendingCount = 0;
+		const times = [...new Set([
+			...entry.intentsByTime.keys(),
+			...entry.completionsByTime.keys(),
+		])].sort((left, right) => left - right);
+		for (const occurredAtMs of times) {
+			pendingCount += entry.intentsByTime.get(occurredAtMs) ?? 0;
+			pendingCount = Math.max(
+				0,
+				pendingCount - (entry.completionsByTime.get(occurredAtMs) ?? 0),
+			);
+		}
+		if (pendingCount === 0) continue;
+		const key = `${entry.transition.consumerIdentityHash}\0${entry.transition.revision}`;
+		unique.set(key, entry.transition);
 	}
 	return [...unique.values()].sort((left, right) => (
 		left.consumerIdentityHash.localeCompare(right.consumerIdentityHash)

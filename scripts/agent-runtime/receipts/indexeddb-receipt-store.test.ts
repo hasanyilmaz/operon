@@ -1348,6 +1348,51 @@ test('startup reconciliation finds grant intent without matching activation only
 	);
 });
 
+test('startup reconciliation preserves a repeated unresolved grant intent at the same revision', () => {
+	const consumerIdentityHash = sha256(41_100);
+	const firstIntent = auditEvent(212, BASE_TIME, {
+		event: 'grant-requested',
+		consumerIdentityHash,
+		grantRevision: 5,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'not-required',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	const activation = auditEvent(213, BASE_TIME, {
+		...firstIntent,
+		eventId: sha256(40_213),
+		admission: 'completed',
+		outcome: 'succeeded',
+	});
+	const interruptedRetry = auditEvent(214, BASE_TIME, {
+		...firstIntent,
+		eventId: sha256(40_214),
+	});
+	const expected = [{ consumerIdentityHash, revision: 5 }];
+	assert.deepEqual(
+		findIncompleteDeveloperGrantAuditTransitionsV1([
+			firstIntent,
+			activation,
+			interruptedRetry,
+		]),
+		expected,
+	);
+	assert.deepEqual(
+		findIncompleteDeveloperGrantAuditTransitionsV1([
+			interruptedRetry,
+			activation,
+			firstIntent,
+		]),
+		expected,
+		'Random eventId order at one millisecond must not hide an unmatched retry.',
+	);
+});
+
 test('security audit retention enforces 30 days and the newest 2048 records', async () => {
 	const factory = new FakeIndexedDbFactory();
 	const now = BASE_TIME + SECURITY_AUDIT_RETENTION_MS_V1;
