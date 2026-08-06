@@ -52,7 +52,7 @@ export type DeveloperApiGrantAuditActionV1 =
 	| 'version-suspended';
 
 export interface DeveloperApiGrantAuditEventV1 {
-	readonly phase: 'intent' | 'activated';
+	readonly phase: 'intent' | 'activated' | 'failed';
 	readonly correlationId: string;
 	readonly action: DeveloperApiGrantAuditActionV1;
 	readonly consumerId: string;
@@ -77,6 +77,7 @@ export interface DeveloperApiGrantAuditPortV1 {
 export class DeveloperApiGrantControllerV1 {
 	private grants: DeveloperApiGrantPackageV1;
 	private persistenceError: Error | null = null;
+	private persistenceErrorRecoverable = false;
 	private pendingWrites = 0;
 	private writeQueue: Promise<void> = Promise.resolve();
 	private readonly startupAuditRecoveryTransitions: readonly Readonly<{
@@ -256,14 +257,20 @@ export class DeveloperApiGrantControllerV1 {
 		audit?: Readonly<{
 			intent: DeveloperApiGrantAuditEventV1;
 			activated: DeveloperApiGrantAuditEventV1;
+			failed: DeveloperApiGrantAuditEventV1;
 		}>,
 	): void {
 		this.persistenceError = null;
+		this.persistenceErrorRecoverable = false;
 		this.pendingWrites += 1;
+		let intentRecorded = false;
 		this.writeQueue = this.writeQueue
 			.catch(() => undefined)
 			.then(async () => {
-				if (audit) await this.options.audit?.record(audit.intent);
+				if (audit) {
+					await this.options.audit?.record(audit.intent);
+					intentRecorded = true;
+				}
 				await this.options.store.updateDataPackage(dataPackage => ({
 					...dataPackage,
 					integrations: {
@@ -273,18 +280,42 @@ export class DeveloperApiGrantControllerV1 {
 				}));
 				if (audit) await this.options.audit?.record(audit.activated);
 				this.pendingWrites -= 1;
-				if (this.pendingWrites === 0) this.persistenceError = null;
+				if (this.pendingWrites === 0) {
+					this.persistenceError = null;
+					this.persistenceErrorRecoverable = false;
+				}
 			})
-			.catch(error => {
+			.catch(async error => {
 				this.pendingWrites -= 1;
+				let recoverable = !audit || !intentRecorded;
+				if (audit && intentRecorded) {
+					const durableGrants = normalizeDeveloperApiGrantPackage(
+						this.options.store.getDataPackage().integrations.developerApi,
+					);
+					const durableSnapshotMatches = JSON.stringify(durableGrants)
+						=== JSON.stringify(normalizeDeveloperApiGrantPackage(snapshot));
+					if (!durableSnapshotMatches) {
+						try {
+							await this.options.audit?.record(audit.failed);
+							recoverable = true;
+						} catch {
+							// The unmatched intent remains the fail-closed restart fence.
+						}
+					}
+				}
 				this.persistenceError = error instanceof Error ? error : new Error(String(error));
+				this.persistenceErrorRecoverable = recoverable;
 				throw this.persistenceError;
 			});
 	}
 
 	private syncFromStoreIfIdle(): void {
-		if (this.pendingWrites > 0 || this.persistenceError) return;
+		if (this.pendingWrites > 0) return;
 		this.grants = this.readGrantsFromStore();
+		if (this.persistenceError && this.persistenceErrorRecoverable) {
+			this.persistenceError = null;
+			this.persistenceErrorRecoverable = false;
+		}
 	}
 
 	private readGrantsFromStore(): DeveloperApiGrantPackageV1 {
@@ -318,7 +349,11 @@ export class DeveloperApiGrantControllerV1 {
 		snapshot: DeveloperApiGrantPackageV1,
 		consumerId: string,
 		capabilities: readonly CapabilityIdV1[],
-	): { intent: DeveloperApiGrantAuditEventV1; activated: DeveloperApiGrantAuditEventV1 } | undefined {
+	): {
+		intent: DeveloperApiGrantAuditEventV1;
+		activated: DeveloperApiGrantAuditEventV1;
+		failed: DeveloperApiGrantAuditEventV1;
+	} | undefined {
 		if (!this.options.audit) return undefined;
 		const record = snapshot.consumersById[consumerId];
 		if (!record) return undefined;
@@ -337,6 +372,7 @@ export class DeveloperApiGrantControllerV1 {
 		return {
 			intent: { ...base, phase: 'intent' },
 			activated: { ...base, phase: 'activated' },
+			failed: { ...base, phase: 'failed' },
 		};
 	}
 

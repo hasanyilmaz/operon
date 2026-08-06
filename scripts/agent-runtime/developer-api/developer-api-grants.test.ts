@@ -332,6 +332,100 @@ test('grant controller verifies object identity and activates grants only after 
 	);
 });
 
+test('grant controller restores durable state after a failed write and permits an exact retry', async () => {
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: recordDeveloperApiGrantRequest(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer(),
+			['tasks.read'],
+			NOW,
+		),
+	});
+	let failNextWrite = true;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				if (failNextWrite) {
+					failNextWrite = false;
+					throw new Error('injected grant persistence failure');
+				}
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		now: () => new Date(LATER),
+	});
+
+	await assert.rejects(
+		controller.approvePending('consumer.test', ['tasks.read']),
+		/injected grant persistence failure/u,
+	);
+	assert.equal(controller.list()[0]?.revision, 0);
+	assert.deepEqual(controller.list()[0]?.pendingCapabilities, ['tasks.read']);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'pending');
+
+	const retried = await controller.approvePending('consumer.test', ['tasks.read']);
+	assert.equal(retried.state, 'active');
+	assert.equal(controller.hasPersistenceError(), false);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'active');
+	assert.equal(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.state,
+		'active',
+	);
+});
+
+test('grant controller closes a failed first pending intent and requeues it in the same session', async () => {
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
+	let failNextWrite = true;
+	const auditEvents: Array<{ phase: string; correlationId: string }> = [];
+	let correlationSequence = 0;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				if (failNextWrite) {
+					failNextWrite = false;
+					throw new Error('injected initial pending persistence failure');
+				}
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => `pending-transition-${++correlationSequence}`,
+			record: async event => {
+				auditEvents.push({ phase: event.phase, correlationId: event.correlationId });
+			},
+		},
+		now: () => new Date(LATER),
+	});
+
+	controller.recordPending(consumer(), ['tasks.read']);
+	await assert.rejects(controller.drain(), /injected initial pending persistence failure/u);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'pending');
+	assert.equal(controller.hasPersistenceError(), false);
+
+	controller.recordPending(consumer(), ['tasks.read']);
+	await controller.drain();
+	assert.deepEqual(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities,
+		['tasks.read'],
+	);
+	assert.deepEqual(auditEvents, [
+		{ phase: 'intent', correlationId: 'pending-transition-1' },
+		{ phase: 'failed', correlationId: 'pending-transition-1' },
+		{ phase: 'intent', correlationId: 'pending-transition-2' },
+		{ phase: 'activated', correlationId: 'pending-transition-2' },
+	]);
+});
+
 test('grant controller preserves an unpersisted startup audit suspension after storage recovers', () => {
 	const initialGrants = approveDeveloperApiCapabilities(
 		createEmptyDeveloperApiGrantPackage(),

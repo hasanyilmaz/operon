@@ -83,7 +83,27 @@ test('grant audit intent and completion records share one transition correlation
 	);
 	assert.match(
 		recordGrantAudit,
-		/`\$\{this\.agentRuntimeVaultIdentityHash\}\\0\$\{transition\.correlationId\}`/u,
+		/`\$\{vaultIdentityHash\}\\0\$\{transition\.correlationId\}`/u,
 	);
 	assert.doesNotMatch(recordGrantAudit, /correlationHash:[\s\S]*?transition\.phase/u);
+});
+
+test('startup grant audit recovery resolves and filters the exact vault identity before reconciliation', () => {
+	const loadPlugin = methodBody(
+		mainSource,
+		'\tprivate async loadPlugin(): Promise<void>',
+		'\n\tprivate async unloadPlugin(): Promise<void>',
+	);
+	const identityIndex = loadPlugin.indexOf('this.agentRuntimeVaultIdentityHash = await computeRunningVaultSha256V1(');
+	const reconciliationIndex = loadPlugin.indexOf('findIncompleteDeveloperGrantAuditTransitionsForVaultV1(');
+	assert.ok(identityIndex >= 0);
+	assert.ok(reconciliationIndex > identityIndex);
+	assert.match(
+		loadPlugin,
+		/findIncompleteDeveloperGrantAuditTransitionsForVaultV1\([\s\S]*?this\.agentRuntimeVaultIdentityHash \?\? ''/u,
+	);
+	assert.match(
+		loadPlugin,
+		/startupAuditRecoveryTransitions = Object\.values\(grants\.consumersById\)[\s\S]*?record\.state !== 'revoked'/u,
+	);
 });

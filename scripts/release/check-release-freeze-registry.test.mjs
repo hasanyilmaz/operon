@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	assertReleaseArtifactMatchesFreeze,
 	checkCandidateFreezeRegistry,
+	checkReleaseFreezeRegistry,
 	readReleaseArtifactIdentity,
 	RELEASE_FREEZE_STALE,
 } from './check-release-freeze-registry.mjs';
@@ -41,6 +42,19 @@ test('candidate registry accepts working artifact drift and absence', async () =
 		]);
 		const result = await checkCandidateFreezeRegistry({ pluginRoot: root });
 		assert.equal(result.freeze.pluginArtifact.version, '3.1.0');
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+test('release registry production path rejects working artifact drift', async () => {
+	const root = await createFixture();
+	try {
+		await appendFile(path.join(root, 'main.js'), 'release drift\n');
+		await assert.rejects(
+			checkReleaseFreezeRegistry({ pluginRoot: root }),
+			new RegExp(RELEASE_FREEZE_STALE, 'u'),
+		);
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}

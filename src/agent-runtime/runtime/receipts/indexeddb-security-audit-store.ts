@@ -157,6 +157,7 @@ export interface SecurityAuditPruneResultV1 {
 }
 
 export interface IncompleteDeveloperGrantAuditTransitionV1 {
+	readonly vaultIdentityHash: string | null;
 	readonly consumerIdentityHash: string;
 	readonly revision: number;
 }
@@ -323,7 +324,24 @@ export class IndexedDbSecurityAuditStoreV1 {
 				requestResult(store.getAll() as IDBRequest<StoredSecurityAuditEventV1[]>),
 				transaction,
 			);
-			const deletes = records.map(record => requestResult(store.delete(record.key)));
+			const protectedIntentKeys = incompleteDeveloperGrantIntentEventIdsV1(
+				records.map(record => record.event),
+			);
+			if (records.some(record => record.key === marker.eventId)) {
+				throw new SecurityAuditStoreErrorV1(
+					'audit-store-invalid-event',
+					'The audit event ID has already been used.',
+				);
+			}
+			if (protectedIntentKeys.size + 1 > SECURITY_AUDIT_MAX_RECORDS_V1) {
+				throw new SecurityAuditStoreErrorV1(
+					'audit-store-unhealthy',
+					'Incomplete grant recovery evidence reached the audit retention limit.',
+				);
+			}
+			const deletes = records
+				.filter(record => !protectedIntentKeys.has(record.key))
+				.map(record => requestResult(store.delete(record.key)));
 			await this.withOperationTimeout(
 				Promise.all([
 					...deletes,
@@ -484,9 +502,20 @@ export function planSecurityAuditPruneV1(
 		}
 		seen.add(record.key);
 	}
-	const expired = records.filter(record => record.expiresAtMs <= now);
+	const protectedIntentKeys = incompleteDeveloperGrantIntentEventIdsV1(
+		records.map(record => record.event),
+	);
+	if (protectedIntentKeys.size > SECURITY_AUDIT_MAX_RECORDS_V1) {
+		throw new SecurityAuditStoreErrorV1(
+			'audit-store-unhealthy',
+			'Incomplete grant recovery evidence reached the audit retention limit.',
+		);
+	}
+	const expired = records.filter(record => (
+		record.expiresAtMs <= now && !protectedIntentKeys.has(record.key)
+	));
 	const live = records
-		.filter(record => record.expiresAtMs > now)
+		.filter(record => record.expiresAtMs > now || protectedIntentKeys.has(record.key))
 		.sort(compareStoredEventsNewestFirst);
 	const correlationPhases = new Map<string, {
 		intent: boolean;
@@ -512,9 +541,11 @@ export function planSecurityAuditPruneV1(
 	for (const record of live) {
 		const correlationKey = developerGrantCorrelationKey(record);
 		const phases = correlationKey ? correlationPhases.get(correlationKey) : undefined;
-		const groupKey = correlationKey && phases?.intent && phases.completion && phases.sameTime
-			? correlationKey
-			: `event\0${record.key}`;
+		const groupKey = protectedIntentKeys.has(record.key)
+			? `recovery\0${record.key}`
+			: correlationKey && phases?.intent && phases.completion && phases.sameTime
+				? correlationKey
+				: `event\0${record.key}`;
 		const group = grantGroups.get(groupKey) ?? [];
 		group.push(record);
 		grantGroups.set(groupKey, group);
@@ -522,7 +553,9 @@ export function planSecurityAuditPruneV1(
 	const orderedGroups = [...grantGroups.entries()]
 		.map(([key, groupRecords]) => ({ key, records: groupRecords }))
 		.sort((left, right) => (
-			Math.max(...right.records.map(record => record.occurredAtMs))
+			Number(right.records.some(record => protectedIntentKeys.has(record.key)))
+			- Number(left.records.some(record => protectedIntentKeys.has(record.key)))
+			|| Math.max(...right.records.map(record => record.occurredAtMs))
 			- Math.max(...left.records.map(record => record.occurredAtMs))
 			|| developerGrantGroupPriority(right.records) - developerGrantGroupPriority(left.records)
 			|| compareStoredEventsNewestFirst(left.records[0], right.records[0])
@@ -548,11 +581,47 @@ export function planSecurityAuditPruneV1(
 export function findIncompleteDeveloperGrantAuditTransitionsV1(
 	events: readonly SecurityAuditEventV1[],
 ): readonly IncompleteDeveloperGrantAuditTransitionV1[] {
-	const transitions = new Map<string, {
-		transition: IncompleteDeveloperGrantAuditTransitionV1;
-		intentsByTime: Map<number, number>;
-		completionsByTime: Map<number, number>;
-	}>();
+	const incompleteIntentIds = incompleteDeveloperGrantIntentEventIdsV1(events);
+	const unique = new Map<string, IncompleteDeveloperGrantAuditTransitionV1>();
+	for (const event of events) {
+		if (!incompleteIntentIds.has(event.eventId)) continue;
+		const transition = {
+			vaultIdentityHash: event.vaultIdentityHash,
+			consumerIdentityHash: event.consumerIdentityHash,
+			revision: event.grantRevision,
+		};
+		const key = `${transition.vaultIdentityHash ?? ''}\0${transition.consumerIdentityHash}\0${transition.revision}`;
+		unique.set(key, transition);
+	}
+	return [...unique.values()].sort((left, right) => (
+		(left.vaultIdentityHash ?? '').localeCompare(right.vaultIdentityHash ?? '')
+		|| left.consumerIdentityHash.localeCompare(right.consumerIdentityHash)
+		|| left.revision - right.revision
+	));
+}
+
+export function findIncompleteDeveloperGrantAuditTransitionsForVaultV1(
+	events: readonly SecurityAuditEventV1[],
+	vaultIdentityHash: string,
+): readonly IncompleteDeveloperGrantAuditTransitionV1[] {
+	if (!SHA256_PATTERN.test(vaultIdentityHash)) {
+		throw new SecurityAuditStoreErrorV1(
+			'audit-store-invalid-event',
+			'Startup grant reconciliation requires an exact vault identity.',
+		);
+	}
+	return findIncompleteDeveloperGrantAuditTransitionsV1(events).filter(transition => (
+		transition.vaultIdentityHash === vaultIdentityHash
+	));
+}
+
+function incompleteDeveloperGrantIntentEventIdsV1(
+	events: readonly SecurityAuditEventV1[],
+): ReadonlySet<string> {
+	const transitions = new Map<string, Map<number, {
+		intents: Array<{ eventId: string; correlationHash: string }>;
+		completions: string[];
+	}>>();
 	for (const event of events) {
 		if (
 			event.channel !== 'developer-api'
@@ -560,55 +629,41 @@ export function findIncompleteDeveloperGrantAuditTransitionsV1(
 			|| event.grantRevision < 1
 		) continue;
 		const key = [
+			event.vaultIdentityHash ?? '',
 			event.event,
 			event.consumerIdentityHash,
 			event.grantRevision,
 			event.capability ?? '',
 		].join('\0');
-		const transition = transitions.get(key) ?? {
-			transition: {
-				consumerIdentityHash: event.consumerIdentityHash,
-				revision: event.grantRevision,
-			},
-			intentsByTime: new Map<number, number>(),
-			completionsByTime: new Map<number, number>(),
-		};
-		transitions.set(key, transition);
 		const occurredAtMs = Date.parse(event.occurredAt);
+		const byTime = transitions.get(key) ?? new Map<number, {
+			intents: Array<{ eventId: string; correlationHash: string }>;
+			completions: string[];
+		}>();
+		const atTime = byTime.get(occurredAtMs) ?? { intents: [], completions: [] };
 		if (event.admission === 'requested' && event.outcome === 'pending') {
-			transition.intentsByTime.set(
-				occurredAtMs,
-				(transition.intentsByTime.get(occurredAtMs) ?? 0) + 1,
-			);
+			atTime.intents.push({ eventId: event.eventId, correlationHash: event.correlationHash });
 		} else if (event.admission === 'completed') {
-			transition.completionsByTime.set(
-				occurredAtMs,
-				(transition.completionsByTime.get(occurredAtMs) ?? 0) + 1,
-			);
+			atTime.completions.push(event.correlationHash);
 		}
+		byTime.set(occurredAtMs, atTime);
+		transitions.set(key, byTime);
 	}
-	const unique = new Map<string, IncompleteDeveloperGrantAuditTransitionV1>();
-	for (const entry of transitions.values()) {
-		let pendingCount = 0;
-		const times = [...new Set([
-			...entry.intentsByTime.keys(),
-			...entry.completionsByTime.keys(),
-		])].sort((left, right) => left - right);
-		for (const occurredAtMs of times) {
-			pendingCount += entry.intentsByTime.get(occurredAtMs) ?? 0;
-			pendingCount = Math.max(
-				0,
-				pendingCount - (entry.completionsByTime.get(occurredAtMs) ?? 0),
-			);
+	const incompleteIntentIds = new Set<string>();
+	for (const byTime of transitions.values()) {
+		const pending: Array<{ eventId: string; correlationHash: string }> = [];
+		for (const occurredAtMs of [...byTime.keys()].sort((left, right) => left - right)) {
+			const atTime = byTime.get(occurredAtMs)!;
+			pending.push(...atTime.intents.sort((left, right) => left.eventId.localeCompare(right.eventId)));
+			for (const correlationHash of atTime.completions.sort((left, right) => left.localeCompare(right))) {
+				const exactIndex = pending.findIndex(intent => intent.correlationHash === correlationHash);
+				if (exactIndex >= 0) pending.splice(exactIndex, 1);
+				else if (pending.length > 0) pending.shift();
+			}
 		}
-		if (pendingCount === 0) continue;
-		const key = `${entry.transition.consumerIdentityHash}\0${entry.transition.revision}`;
-		unique.set(key, entry.transition);
+		for (const intent of pending) incompleteIntentIds.add(intent.eventId);
 	}
-	return [...unique.values()].sort((left, right) => (
-		left.consumerIdentityHash.localeCompare(right.consumerIdentityHash)
-		|| left.revision - right.revision
-	));
+	return incompleteIntentIds;
 }
 
 export function createStoredSecurityAuditEventV1(

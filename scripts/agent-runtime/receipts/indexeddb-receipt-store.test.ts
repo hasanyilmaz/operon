@@ -10,6 +10,7 @@ import {
 	IndexedDbMutationReceiptStoreV1,
 	IndexedDbSecurityAuditStoreV1,
 	findIncompleteDeveloperGrantAuditTransitionsV1,
+	findIncompleteDeveloperGrantAuditTransitionsForVaultV1,
 	GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
 	MUTATION_RECEIPT_MAX_RECORDS_V1,
 	MUTATION_RECEIPT_TTL_MS_V1,
@@ -1311,6 +1312,23 @@ test('security audit events reject extra fields and source-content-shaped metada
 	assert.equal(factory.audits.size, 0);
 });
 
+test('security audit rejects reuse of an existing event ID', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-audit-event-id-reuse',
+	});
+	const event = auditEvent(209);
+	await store.append(event);
+	await assert.rejects(
+		store.append(event),
+		(error: unknown) => error instanceof SecurityAuditStoreErrorV1
+			&& error.code === 'audit-store-invalid-event',
+	);
+	assert.deepEqual(await store.list(), [event]);
+});
+
 test('startup reconciliation finds grant intent without matching activation only', () => {
 	const consumerIdentityHash = sha256(41_000);
 	const intent = auditEvent(210, BASE_TIME, {
@@ -1334,6 +1352,7 @@ test('startup reconciliation finds grant intent without matching activation only
 		outcome: 'succeeded',
 	});
 	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1([intent]), [{
+		vaultIdentityHash: intent.vaultIdentityHash,
 		consumerIdentityHash,
 		revision: 4,
 	}]);
@@ -1373,7 +1392,11 @@ test('startup reconciliation preserves a repeated unresolved grant intent at the
 		...firstIntent,
 		eventId: sha256(40_214),
 	});
-	const expected = [{ consumerIdentityHash, revision: 5 }];
+	const expected = [{
+		vaultIdentityHash: firstIntent.vaultIdentityHash,
+		consumerIdentityHash,
+		revision: 5,
+	}];
 	assert.deepEqual(
 		findIncompleteDeveloperGrantAuditTransitionsV1([
 			firstIntent,
@@ -1391,6 +1414,62 @@ test('startup reconciliation preserves a repeated unresolved grant intent at the
 		expected,
 		'Random eventId order at one millisecond must not hide an unmatched retry.',
 	);
+});
+
+test('startup reconciliation keeps otherwise identical vault transitions isolated', () => {
+	const consumerIdentityHash = sha256(41_150);
+	const firstVault = auditEvent(215, BASE_TIME, {
+		event: 'grant-approved',
+		consumerIdentityHash,
+		grantRevision: 5,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'approved',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	const secondVault = {
+		...firstVault,
+		eventId: sha256(40_216),
+		vaultIdentityHash: sha256(44_001),
+	};
+	const unknownVault = {
+		...firstVault,
+		eventId: sha256(40_217),
+		vaultIdentityHash: null,
+	};
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1([
+		firstVault,
+		secondVault,
+		unknownVault,
+	]), [
+		{
+			vaultIdentityHash: null,
+			consumerIdentityHash,
+			revision: 5,
+		},
+		{
+			vaultIdentityHash: firstVault.vaultIdentityHash,
+			consumerIdentityHash,
+			revision: 5,
+		},
+		{
+			vaultIdentityHash: secondVault.vaultIdentityHash,
+			consumerIdentityHash,
+			revision: 5,
+		},
+	]);
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsForVaultV1(
+		[firstVault, secondVault, unknownVault],
+		firstVault.vaultIdentityHash!,
+	), [{
+		vaultIdentityHash: firstVault.vaultIdentityHash,
+		consumerIdentityHash,
+		revision: 5,
+	}]);
 });
 
 test('security audit retention enforces 30 days and the newest 2048 records', async () => {
@@ -1489,6 +1568,7 @@ test('security audit retention keeps equal-time grant transitions atomic and pre
 	assert.equal(retained.some(event => event.eventId === completion.eventId), false);
 	assert.equal(retained.some(event => event.eventId === interrupted.eventId), true);
 	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1(retained), [{
+		vaultIdentityHash: interrupted.vaultIdentityHash,
 		consumerIdentityHash,
 		revision: 6,
 	}]);
@@ -1559,9 +1639,43 @@ test('security audit retention keeps legacy one-phase correlations per-record at
 		true,
 	);
 	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1(retained), [{
+		vaultIdentityHash: interrupted.vaultIdentityHash,
 		consumerIdentityHash,
 		revision: 7,
 	}]);
+});
+
+test('security audit retention preserves an expired incomplete grant intent until completion', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const now = BASE_TIME + SECURITY_AUDIT_RETENTION_MS_V1 + 1;
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-audit-expired-incomplete-grant',
+	});
+	const intent = auditEvent(404, BASE_TIME, {
+		event: 'grant-approved',
+		grantRevision: 8,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'approved',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	await store.append(intent);
+	assert.deepEqual(await store.list(), [intent]);
+
+	const completion = {
+		...intent,
+		eventId: sha256(40_405),
+		admission: 'completed' as const,
+		outcome: 'succeeded' as const,
+	};
+	await store.append(completion);
+	assert.deepEqual(await store.list(), []);
 });
 
 test('clearing the security audit log atomically retains only the clear marker', async () => {
@@ -1587,6 +1701,47 @@ test('clearing the security audit log atomically retains only the clear marker',
 	});
 	await store.clear(marker);
 	assert.deepEqual(await store.list(), [marker]);
+});
+
+test('clearing the security audit preserves an incomplete grant intent as recovery evidence', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME + 10,
+		databaseName: 'receipt-test-audit-clear-incomplete-grant',
+	});
+	const intent = auditEvent(406, BASE_TIME, {
+		event: 'grant-approved',
+		grantRevision: 9,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'approved',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	await store.append(intent);
+	const marker = auditEvent(407, BASE_TIME + 10, {
+		event: 'audit-cleared',
+		capability: null,
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		vaultIdentityHash: null,
+		consent: 'approved',
+		admission: 'completed',
+		outcome: 'succeeded',
+	});
+	await store.clear(marker);
+	assert.deepEqual(await store.list(), [marker, intent]);
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1(await store.list()), [{
+		vaultIdentityHash: intent.vaultIdentityHash,
+		consumerIdentityHash: intent.consumerIdentityHash,
+		revision: intent.grantRevision,
+	}]);
 });
 
 test('terminal receipt and audit finalization commits atomically', async () => {
