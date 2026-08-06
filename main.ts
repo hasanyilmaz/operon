@@ -1377,7 +1377,7 @@ export default class OperonPlugin extends Plugin {
 				errorCode: null,
 				occurredAt: transition.occurredAt,
 				correlationHash: sha256HexV1(
-					`${transition.action}\0${transition.phase}\0${transition.consumerId}\0${transition.revision}`,
+					`${this.agentRuntimeVaultIdentityHash}\0${transition.correlationId}`,
 				),
 			});
 		}
@@ -10946,6 +10946,7 @@ export default class OperonPlugin extends Plugin {
 				isCurrent: consumer => this.isDeveloperApiConsumerCurrent(consumer),
 			},
 			audit: {
+				createCorrelationId: () => getActiveWindow().crypto.randomUUID(),
 				record: event => this.recordDeveloperApiGrantAudit(event),
 			},
 			startupAuditRecoveryTransitions,

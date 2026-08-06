@@ -74,3 +74,16 @@ test('general settings persistence preserves the host-owned Developer API grant 
 	);
 	assert.match(persistSettings, /developerApi: currentDeveloperApi,/u);
 });
+
+test('grant audit intent and completion records share one transition correlation', () => {
+	const recordGrantAudit = methodBody(
+		mainSource,
+		'\tprivate async recordDeveloperApiGrantAudit(',
+		'\n\tprivate isDeveloperApiSecuritySessionCurrent',
+	);
+	assert.match(
+		recordGrantAudit,
+		/`\$\{this\.agentRuntimeVaultIdentityHash\}\\0\$\{transition\.correlationId\}`/u,
+	);
+	assert.doesNotMatch(recordGrantAudit, /correlationHash:[\s\S]*?transition\.phase/u);
+});

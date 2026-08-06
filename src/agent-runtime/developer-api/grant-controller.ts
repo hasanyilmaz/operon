@@ -52,6 +52,7 @@ export type DeveloperApiGrantAuditActionV1 =
 
 export interface DeveloperApiGrantAuditEventV1 {
 	readonly phase: 'intent' | 'activated';
+	readonly correlationId: string;
 	readonly action: DeveloperApiGrantAuditActionV1;
 	readonly consumerId: string;
 	readonly consumerName: string;
@@ -62,6 +63,7 @@ export interface DeveloperApiGrantAuditEventV1 {
 }
 
 export interface DeveloperApiGrantAuditPortV1 {
+	createCorrelationId(): string;
 	record(event: DeveloperApiGrantAuditEventV1): Promise<void>;
 }
 
@@ -280,7 +282,9 @@ export class DeveloperApiGrantControllerV1 {
 		const record = snapshot.consumersById[consumerId];
 		if (!record) return undefined;
 		const occurredAt = this.nowIso();
+		const correlationId = this.options.audit.createCorrelationId();
 		const base = {
+			correlationId,
 			action,
 			consumerId,
 			consumerName: record.consumerName,

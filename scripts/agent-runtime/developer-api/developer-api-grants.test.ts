@@ -317,7 +317,8 @@ test('grant controller audits and persists version acceptance and suspension bef
 	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
 		developerApiGrants: initialGrants,
 	});
-	const auditEvents: Array<{ phase: string; action: string }> = [];
+	const auditEvents: Array<{ phase: string; action: string; correlationId: string }> = [];
+	let correlationSequence = 0;
 	const controller = new DeveloperApiGrantControllerV1({
 		store: {
 			getDataPackage: () => structuredClone(dataPackage),
@@ -330,8 +331,13 @@ test('grant controller audits and persists version acceptance and suspension bef
 			isCurrent: () => true,
 		},
 		audit: {
+			createCorrelationId: () => `grant-audit-transition-${++correlationSequence}`,
 			record: async event => {
-				auditEvents.push({ phase: event.phase, action: event.action });
+				auditEvents.push({
+					phase: event.phase,
+					action: event.action,
+					correlationId: event.correlationId,
+				});
 			},
 		},
 		now: () => new Date(LATER),
@@ -346,8 +352,8 @@ test('grant controller audits and persists version acceptance and suspension bef
 		'1.4.0',
 	);
 	assert.deepEqual(auditEvents.slice(0, 2), [
-		{ phase: 'intent', action: 'version-accepted' },
-		{ phase: 'activated', action: 'version-accepted' },
+		{ phase: 'intent', action: 'version-accepted', correlationId: 'grant-audit-transition-1' },
+		{ phase: 'activated', action: 'version-accepted', correlationId: 'grant-audit-transition-1' },
 	]);
 
 	const majorConsumer = consumer('2.0.0');
@@ -358,7 +364,7 @@ test('grant controller audits and persists version acceptance and suspension bef
 	assert.equal(suspended?.observedConsumerVersion, '2.0.0');
 	assert.deepEqual(suspended?.pendingCapabilities, ['tasks.read']);
 	assert.deepEqual(auditEvents.slice(2), [
-		{ phase: 'intent', action: 'version-suspended' },
-		{ phase: 'activated', action: 'version-suspended' },
+		{ phase: 'intent', action: 'version-suspended', correlationId: 'grant-audit-transition-2' },
+		{ phase: 'activated', action: 'version-suspended', correlationId: 'grant-audit-transition-2' },
 	]);
 });

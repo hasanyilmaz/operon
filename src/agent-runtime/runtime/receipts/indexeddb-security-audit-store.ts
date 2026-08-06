@@ -10,7 +10,6 @@ import {
 	safeAbortIndexedDbTransactionV1 as safeAbort,
 	withIndexedDbOperationTimeoutV1,
 } from '../../internal/indexeddb-primitives';
-import { planExpiringRecordRetentionV1 } from '../../internal/retention';
 import {
 	AGENT_RUNTIME_DATABASE_VERSION_V1,
 	AGENT_RUNTIME_DEFAULT_DATABASE_NAME_V1,
@@ -485,20 +484,63 @@ export function planSecurityAuditPruneV1(
 		}
 		seen.add(record.key);
 	}
-	const plan = planExpiringRecordRetentionV1({
-		records,
-		now,
-		maximumRecords: SECURITY_AUDIT_MAX_RECORDS_V1,
-		key: record => record.key,
-		expiresAt: record => record.expiresAtMs,
-		compareNewestFirst: compareStoredEventsNewestFirst,
-	});
+	const expired = records.filter(record => record.expiresAtMs <= now);
+	const live = records
+		.filter(record => record.expiresAtMs > now)
+		.sort(compareStoredEventsNewestFirst);
+	const correlationPhases = new Map<string, {
+		intent: boolean;
+		completion: boolean;
+		occurredAtMs: number;
+		sameTime: boolean;
+	}>();
+	for (const record of live) {
+		const correlationKey = developerGrantCorrelationKey(record);
+		if (!correlationKey) continue;
+		const phases = correlationPhases.get(correlationKey) ?? {
+			intent: false,
+			completion: false,
+			occurredAtMs: record.occurredAtMs,
+			sameTime: true,
+		};
+		if (grantAuditRetentionPriority(record.event) === 1) phases.intent = true;
+		if (record.event.admission === 'completed') phases.completion = true;
+		if (phases.occurredAtMs !== record.occurredAtMs) phases.sameTime = false;
+		correlationPhases.set(correlationKey, phases);
+	}
+	const grantGroups = new Map<string, StoredSecurityAuditEventV1[]>();
+	for (const record of live) {
+		const correlationKey = developerGrantCorrelationKey(record);
+		const phases = correlationKey ? correlationPhases.get(correlationKey) : undefined;
+		const groupKey = correlationKey && phases?.intent && phases.completion && phases.sameTime
+			? correlationKey
+			: `event\0${record.key}`;
+		const group = grantGroups.get(groupKey) ?? [];
+		group.push(record);
+		grantGroups.set(groupKey, group);
+	}
+	const orderedGroups = [...grantGroups.entries()]
+		.map(([key, groupRecords]) => ({ key, records: groupRecords }))
+		.sort((left, right) => (
+			Math.max(...right.records.map(record => record.occurredAtMs))
+			- Math.max(...left.records.map(record => record.occurredAtMs))
+			|| developerGrantGroupPriority(right.records) - developerGrantGroupPriority(left.records)
+			|| compareStoredEventsNewestFirst(left.records[0], right.records[0])
+		));
+	const retainedKeys = new Set<string>();
+	let retained = 0;
+	for (const group of orderedGroups.map(entry => entry.records)) {
+		if (retained + group.length > SECURITY_AUDIT_MAX_RECORDS_V1) continue;
+		for (const member of group) retainedKeys.add(member.key);
+		retained += group.length;
+	}
+	const overflow = live.filter(record => !retainedKeys.has(record.key));
 	return {
-		keysToDelete: plan.keysToDelete,
+		keysToDelete: [...expired, ...overflow].map(record => record.key),
 		result: {
-			expiredDeleted: plan.expiredDeleted,
-			overflowDeleted: plan.overflowDeleted,
-			retained: plan.retained,
+			expiredDeleted: expired.length,
+			overflowDeleted: overflow.length,
+			retained,
 		},
 	};
 }
@@ -608,7 +650,33 @@ function compareStoredEventsNewestFirst(
 	left: StoredSecurityAuditEventV1,
 	right: StoredSecurityAuditEventV1,
 ): number {
-	return right.occurredAtMs - left.occurredAtMs || right.key.localeCompare(left.key);
+	return right.occurredAtMs - left.occurredAtMs
+		|| grantAuditRetentionPriority(right.event) - grantAuditRetentionPriority(left.event)
+		|| right.key.localeCompare(left.key);
+}
+
+function grantAuditRetentionPriority(event: SecurityAuditEventV1): number {
+	return event.channel === 'developer-api'
+		&& event.event.startsWith('grant-')
+		&& event.admission === 'requested'
+		&& event.outcome === 'pending'
+		? 1
+		: 0;
+}
+
+function developerGrantCorrelationKey(record: StoredSecurityAuditEventV1): string | null {
+	const event = record.event;
+	// Current grant phases share one host-minted correlation. One-phase buckets,
+	// including legacy phase-specific hashes, stay per-record and fail closed by intent priority.
+	return event.channel === 'developer-api' && event.event.startsWith('grant-')
+		? `grant\0${event.vaultIdentityHash ?? ''}\0${event.correlationHash}`
+		: null;
+}
+
+function developerGrantGroupPriority(records: readonly StoredSecurityAuditEventV1[]): number {
+	const intents = records.filter(record => grantAuditRetentionPriority(record.event) === 1).length;
+	const completions = records.filter(record => record.event.admission === 'completed').length;
+	return intents > completions ? 2 : intents > 0 || completions > 0 ? 1 : 0;
 }
 
 function isCanonicalIso(value: unknown): value is string {

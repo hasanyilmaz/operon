@@ -1430,6 +1430,140 @@ test('security audit retention enforces 30 days and the newest 2048 records', as
 	assert.equal(factory.audits.has(newest.eventId), true);
 });
 
+test('security audit retention keeps equal-time grant transitions atomic and preserves an incomplete group', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const now = BASE_TIME + 10_000;
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-audit-grant-overflow',
+	});
+	await store.health();
+	const consumerIdentityHash = sha256(41_200);
+	const intent = auditEvent(301, now + 1, {
+		event: 'grant-requested',
+		consumerIdentityHash,
+		grantRevision: 6,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'not-required',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	const completion = auditEvent(9_301, now + 1, {
+		...intent,
+		eventId: sha256(9_301),
+		admission: 'completed',
+		outcome: 'succeeded',
+	});
+	const interrupted = auditEvent(302, now + 1, {
+		...intent,
+		eventId: sha256(302),
+		correlationHash: sha256(45_302),
+	});
+	for (const event of [intent, completion, interrupted]) {
+		factory.audits.set(event.eventId, {
+			key: event.eventId,
+			occurredAtMs: now + 1,
+			expiresAtMs: now + 1 + SECURITY_AUDIT_RETENTION_MS_V1,
+			event,
+		});
+	}
+	for (let index = 0; index < SECURITY_AUDIT_MAX_RECORDS_V1 - 2; index += 1) {
+		const event = auditEvent(20_000 + index, now + index + 2);
+		factory.audits.set(event.eventId, {
+			key: event.eventId,
+			occurredAtMs: now + index + 2,
+			expiresAtMs: now + index + 2 + SECURITY_AUDIT_RETENTION_MS_V1,
+			event,
+		});
+	}
+
+	const retained = await store.list();
+
+	assert.equal(retained.length, SECURITY_AUDIT_MAX_RECORDS_V1 - 1);
+	assert.equal(retained.some(event => event.eventId === intent.eventId), false);
+	assert.equal(retained.some(event => event.eventId === completion.eventId), false);
+	assert.equal(retained.some(event => event.eventId === interrupted.eventId), true);
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1(retained), [{
+		consumerIdentityHash,
+		revision: 6,
+	}]);
+});
+
+test('security audit retention keeps legacy one-phase correlations per-record at overflow', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const now = BASE_TIME + 20_000;
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-audit-legacy-overflow',
+	});
+	await store.health();
+	const consumerIdentityHash = sha256(41_300);
+	const legacyIntentHash = sha256(45_400);
+	const firstIntent = auditEvent(401, now + 1, {
+		event: 'grant-requested',
+		consumerIdentityHash,
+		grantRevision: 7,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'not-required',
+		admission: 'requested',
+		outcome: 'pending',
+		correlationHash: legacyIntentHash,
+	});
+	const completion = auditEvent(402, now + 1, {
+		...firstIntent,
+		eventId: sha256(402),
+		admission: 'completed',
+		outcome: 'succeeded',
+		correlationHash: sha256(45_401),
+	});
+	const interrupted = auditEvent(403, now + 1, {
+		...firstIntent,
+		eventId: sha256(403),
+	});
+	for (const event of [firstIntent, completion, interrupted]) {
+		factory.audits.set(event.eventId, {
+			key: event.eventId,
+			occurredAtMs: now + 1,
+			expiresAtMs: now + 1 + SECURITY_AUDIT_RETENTION_MS_V1,
+			event,
+		});
+	}
+	for (let index = 0; index < SECURITY_AUDIT_MAX_RECORDS_V1 - 1; index += 1) {
+		const event = auditEvent(30_000 + index, now + index + 2);
+		factory.audits.set(event.eventId, {
+			key: event.eventId,
+			occurredAtMs: now + index + 2,
+			expiresAtMs: now + index + 2 + SECURITY_AUDIT_RETENTION_MS_V1,
+			event,
+		});
+	}
+
+	const retained = await store.list();
+
+	assert.equal(retained.length, SECURITY_AUDIT_MAX_RECORDS_V1);
+	assert.equal(retained.some(event => event.eventId === completion.eventId), false);
+	assert.equal(
+		retained.some(event => (
+			event.eventId === firstIntent.eventId || event.eventId === interrupted.eventId
+		)),
+		true,
+	);
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1(retained), [{
+		consumerIdentityHash,
+		revision: 7,
+	}]);
+});
+
 test('clearing the security audit log atomically retains only the clear marker', async () => {
 	const factory = new FakeIndexedDbFactory();
 	const store = new IndexedDbSecurityAuditStoreV1({
