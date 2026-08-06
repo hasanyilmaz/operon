@@ -858,6 +858,11 @@ function checkReleaseAuditPolicy() {
 	);
 	assertIncludes(
 		'package.json',
+		'"candidate:freeze:check": "node scripts/release/check-candidate-freeze-registry.mjs"',
+		'package scripts must expose the fail-closed candidate evidence-registry check',
+	);
+	assertIncludes(
+		'package.json',
 		'"release:freeze:check": "node scripts/release/check-release-freeze-registry.mjs"',
 		'package scripts must expose the append-only release-freeze registry check',
 	);
@@ -920,6 +925,13 @@ function checkReleaseAuditPolicy() {
 	}
 	if ((packageManifest.scripts?.check ?? '').includes('npm run release:freeze:check')) {
 		fail('normal validation must remain independent from the unaccepted external release freeze');
+	}
+	const candidateCheck = packageManifest.scripts?.['check:candidate'] ?? '';
+	if (!candidateCheck.endsWith('&& npm run candidate:freeze:check')) {
+		fail('check:candidate must finish with the candidate evidence-registry check');
+	}
+	if (candidateCheck.includes('npm run release:freeze:check')) {
+		fail('check:candidate must not require exact accepted-release artifact identity');
 	}
 	if (!(packageManifest.scripts?.['check:local'] ?? '').endsWith('&& npm run release:freeze:check')) {
 		fail('check:local must leave the accepted external-freeze check as its final stale gate');
