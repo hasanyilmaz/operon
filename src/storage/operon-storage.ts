@@ -401,7 +401,7 @@ export class OperonStorage {
 	 */
 	getDeveloperApiGrantDataStore(): Pick<
 		OperonDataPackageStore,
-		'getDataPackage' | 'updateDataPackage'
+		'canPersist' | 'getDataPackage' | 'updateDataPackage'
 	> {
 		return this.dataPackageStore;
 	}

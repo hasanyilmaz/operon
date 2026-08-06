@@ -19,6 +19,7 @@ import type { OperonDataPackageV1 } from '../../storage/operon-data-package';
 
 export interface DeveloperApiGrantDataStoreV1 {
 	getDataPackage(): OperonDataPackageV1;
+	canPersist?(): boolean;
 	updateDataPackage(
 		mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1,
 	): Promise<void>;
@@ -78,20 +79,16 @@ export class DeveloperApiGrantControllerV1 {
 	private persistenceError: Error | null = null;
 	private pendingWrites = 0;
 	private writeQueue: Promise<void> = Promise.resolve();
+	private readonly startupAuditRecoveryTransitions: readonly Readonly<{
+		consumerId: string;
+		revision: number;
+	}>[];
+	private readonly startupAuditRecoveryAt: string;
 
 	constructor(private readonly options: DeveloperApiGrantControllerOptionsV1) {
-		this.grants = normalizeDeveloperApiGrantPackage(
-			options.store.getDataPackage().integrations.developerApi,
-		);
-		const nowIso = this.nowIso();
-		for (const transition of options.startupAuditRecoveryTransitions ?? []) {
-			this.grants = suspendDeveloperApiGrantForAuditRecovery(
-				this.grants,
-				transition.consumerId,
-				transition.revision,
-				nowIso,
-			);
-		}
+		this.startupAuditRecoveryTransitions = options.startupAuditRecoveryTransitions ?? [];
+		this.startupAuditRecoveryAt = this.nowIso();
+		this.grants = this.readGrantsFromStore();
 	}
 
 	verifyConsumer(
@@ -108,6 +105,7 @@ export class DeveloperApiGrantControllerV1 {
 		consumer: DeveloperApiConsumerDescriptorV1,
 		requestedCapabilities: readonly CapabilityIdV1[],
 	): DeveloperApiGrantEvaluationV1 {
+		this.syncFromStoreIfIdle();
 		this.observeConsumerVersion(consumer, requestedCapabilities);
 		const evaluation = evaluateDeveloperApiGrant(this.grants, consumer, requestedCapabilities);
 		if (!this.hasPersistenceError()) return evaluation;
@@ -123,6 +121,8 @@ export class DeveloperApiGrantControllerV1 {
 		consumer: DeveloperApiConsumerDescriptorV1,
 		requestedCapabilities: readonly CapabilityIdV1[],
 	): boolean {
+		this.syncFromStoreIfIdle();
+		if (this.isStorePersistenceUnavailable()) return false;
 		const reconciliation = reconcileDeveloperApiConsumerVersion(
 			this.grants,
 			consumer,
@@ -151,6 +151,8 @@ export class DeveloperApiGrantControllerV1 {
 		consumer: DeveloperApiConsumerDescriptorV1,
 		requestedCapabilities: readonly CapabilityIdV1[],
 	): void {
+		this.syncFromStoreIfIdle();
+		if (this.isStorePersistenceUnavailable()) return;
 		const nowIso = this.nowIso();
 		const next = recordDeveloperApiGrantRequest(
 			this.grants,
@@ -167,6 +169,7 @@ export class DeveloperApiGrantControllerV1 {
 		consumer: DeveloperApiConsumerMetadataV1,
 		capabilities: readonly CapabilityIdV1[],
 	): Promise<DeveloperApiGrantRecordV1> {
+		this.requirePersistenceAvailable();
 		const next = approveDeveloperApiCapabilities(
 			this.grants,
 			consumer,
@@ -180,6 +183,7 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	async revoke(consumerId: string): Promise<DeveloperApiGrantRecordV1 | null> {
+		this.requirePersistenceAvailable();
 		const next = revokeDeveloperApiGrant(this.grants, consumerId, this.nowIso());
 		this.grants = next;
 		this.enqueuePersist(next, this.auditTransition('revoke', next, consumerId, []));
@@ -191,6 +195,7 @@ export class DeveloperApiGrantControllerV1 {
 		consumerId: string,
 		capabilities: readonly CapabilityIdV1[],
 	): Promise<DeveloperApiGrantRecordV1> {
+		this.requirePersistenceAvailable();
 		const existing = this.requireRecord(consumerId);
 		const pending = new Set(existing.pendingCapabilities);
 		const approved = capabilities.filter(capability => pending.has(capability));
@@ -208,6 +213,7 @@ export class DeveloperApiGrantControllerV1 {
 		consumerId: string,
 		capabilities: readonly CapabilityIdV1[] | 'all' = 'all',
 	): Promise<DeveloperApiGrantRecordV1> {
+		this.requirePersistenceAvailable();
 		const existing = this.requireRecord(consumerId);
 		const next = denyDeveloperApiCapabilities(
 			this.grants,
@@ -225,11 +231,15 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	list(): readonly DeveloperApiGrantRecordV1[] {
+		this.syncFromStoreIfIdle();
+		if (this.isStorePersistenceUnavailable()) return [];
 		return Object.values(this.grants.consumersById).map(record => structuredClone(record));
 	}
 
 	hasPersistenceError(): boolean {
-		return this.persistenceError !== null || this.pendingWrites > 0;
+		return this.persistenceError !== null
+			|| this.pendingWrites > 0
+			|| this.isStorePersistenceUnavailable();
 	}
 
 	getPersistenceError(): Error | null {
@@ -270,6 +280,37 @@ export class DeveloperApiGrantControllerV1 {
 				this.persistenceError = error instanceof Error ? error : new Error(String(error));
 				throw this.persistenceError;
 			});
+	}
+
+	private syncFromStoreIfIdle(): void {
+		if (this.pendingWrites > 0 || this.persistenceError) return;
+		this.grants = this.readGrantsFromStore();
+	}
+
+	private readGrantsFromStore(): DeveloperApiGrantPackageV1 {
+		let grants = normalizeDeveloperApiGrantPackage(
+			this.options.store.getDataPackage().integrations.developerApi,
+		);
+		for (const transition of this.startupAuditRecoveryTransitions) {
+			grants = suspendDeveloperApiGrantForAuditRecovery(
+				grants,
+				transition.consumerId,
+				transition.revision,
+				this.startupAuditRecoveryAt,
+			);
+		}
+		return grants;
+	}
+
+	private isStorePersistenceUnavailable(): boolean {
+		return this.options.store.canPersist?.() === false;
+	}
+
+	private requirePersistenceAvailable(): void {
+		this.syncFromStoreIfIdle();
+		if (this.isStorePersistenceUnavailable()) {
+			throw new Error('Developer API grant persistence is unavailable');
+		}
 	}
 
 	private auditTransition(

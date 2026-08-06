@@ -67,8 +67,20 @@ export function createEmptyDeveloperApiGrantPackage(): DeveloperApiGrantPackageV
 	};
 }
 
+export function isUnsupportedDeveloperApiGrantPackage(value: unknown): boolean {
+	if (value === undefined) return false;
+	if (!isRecord(value)) return true;
+	const version: unknown = value.version;
+	if (!Object.prototype.hasOwnProperty.call(value, 'version')) return true;
+	return version !== DEVELOPER_API_GRANT_PACKAGE_VERSION;
+}
+
 export function normalizeDeveloperApiGrantPackage(value: unknown): DeveloperApiGrantPackageV1 {
-	if (!isRecord(value) || !isRecord(value.consumersById)) {
+	if (
+		!isRecord(value)
+		|| isUnsupportedDeveloperApiGrantPackage(value)
+		|| !isRecord(value.consumersById)
+	) {
 		return createEmptyDeveloperApiGrantPackage();
 	}
 	const consumersById: Record<string, DeveloperApiGrantRecordV1> = {};
