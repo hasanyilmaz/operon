@@ -192,7 +192,7 @@ export function showPresetFilterPopover(options: PresetFilterPopoverOptions): ()
 			if (!isClosed && popover.isConnected) reposition();
 		});
 	};
-	const handleWindowResize = (): void => close(false);
+	const handleWindowResize = (): void => scheduleReposition();
 
 	editor = new FilterSetModal(
 		options.app,

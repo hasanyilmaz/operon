@@ -1577,17 +1577,21 @@ export default class OperonPlugin extends Plugin {
 		await this.storage.filters.upsert(request.filterSet);
 		this.syncFilterSetsFromStore();
 		if (request.sourceFilterSetId) {
+			const currentPreset = this.settings.kanbanPresets.find(entry => entry.id === request.presetId) ?? null;
+			if (!currentPreset || currentPreset.filterSetId !== request.expectedPresetFilterSetId) {
+				throw new Error('Operon: Kanban preset filter changed while the filter was saving.');
+			}
 			this.refreshViews();
 			return;
 		}
 
-		const previousFilterSetId = preset.filterSetId;
-		preset.filterSetId = request.filterSet.id;
-		try {
-			await this.storage.saveSettings();
-		} catch (error) {
-			preset.filterSetId = previousFilterSetId;
-			throw error;
+		const attached = await this.storage.attachKanbanPresetFilterIfUnchanged(
+			request.presetId,
+			request.expectedPresetFilterSetId,
+			request.filterSet.id,
+		);
+		if (!attached) {
+			throw new Error('Operon: Kanban preset filter changed while the filter was saving.');
 		}
 		this.refreshViews();
 	}
