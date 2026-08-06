@@ -24,6 +24,10 @@ import {
 	CALENDAR_TIMED_SNAP_MINUTES,
 } from '../../systems/calendar-writeback';
 import { parseLocalDatetime } from '../../systems/tracker-utils';
+import {
+	canEditAllDayCalendarItemPlacement,
+	resolveAnchoredAllDayMoveRange,
+} from './all-day-drag';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import { t } from '../../core/i18n';
 import { getAppLocale } from '../../core/obsidian-app';
@@ -8393,7 +8397,7 @@ export class CalendarView extends ItemView {
 					this.bindHoverMenuTarget(hoverTrigger, placement.item);
 				}
 				if (!isDueTrack) {
-					if (!this.canEditCalendarItemPlacement(placement.item)) {
+					if (!canEditAllDayCalendarItemPlacement(placement.item)) {
 						itemEl.addClass('is-read-only');
 						this.bindPrimaryItemClick(itemEl, placement.item);
 					} else {
@@ -9653,14 +9657,18 @@ export class CalendarView extends ItemView {
 					}
 				} else {
 					const column = this.resolveAllDayColumnIndex(body, clientX, visibleDates.length);
-					const span = placement.endColumn - placement.startColumn;
-					const delta = column - dragState.anchorColumn;
-					const maxStart = Math.max(0, visibleDates.length - span - 1);
-					const nextStart = Math.max(0, Math.min(maxStart, placement.startColumn + delta));
-					dragState.currentStartColumn = nextStart;
-					dragState.currentEndColumn = nextStart + span;
-					dragState.currentStartDate = visibleDates[nextStart] ?? placement.item.startDate;
-					dragState.currentEndDate = visibleDates[nextStart + span] ?? placement.item.endDate;
+					const targetDate = visibleDates[column] ?? dragState.anchorDate;
+					const nextRange = resolveAnchoredAllDayMoveRange(
+						placement.item.startDate,
+						placement.item.endDate,
+						dragState.anchorDate,
+						targetDate,
+					);
+					const columnDelta = column - dragState.anchorColumn;
+					dragState.currentStartColumn = placement.startColumn + columnDelta;
+					dragState.currentEndColumn = placement.endColumn + columnDelta;
+					dragState.currentStartDate = nextRange.startDate;
+					dragState.currentEndDate = nextRange.endDate;
 				}
 			} else {
 				if (dropContextMode === 'multiWeek') {
