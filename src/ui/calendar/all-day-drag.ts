@@ -13,6 +13,28 @@ export function canEditAllDayCalendarItemPlacement(
 		&& item.repeatRef?.projectionKind !== 'doneRolling';
 }
 
+export function canEditFinishedCalendarItemPlacement(
+	item: Pick<CalendarItem, 'kind' | 'origin' | 'repeatRef'> & {
+		renderSnapshot: Pick<CalendarItem['renderSnapshot'], 'checkbox' | 'fieldValues'>;
+	},
+): boolean {
+	return item.kind === 'finishedMarker'
+		&& item.origin === 'materialized'
+		&& item.repeatRef?.projectionKind !== 'doneRolling'
+		&& item.renderSnapshot.checkbox === 'done'
+		&& parseDateKey(item.renderSnapshot.fieldValues['dateCompleted'] ?? '') !== null;
+}
+
+export function buildFinishedDateMovePayload(
+	currentDate: string,
+	targetDate: string,
+): { dateCompleted: string } | null {
+	if (!parseDateKey(currentDate) || !parseDateKey(targetDate) || currentDate === targetDate) {
+		return null;
+	}
+	return { dateCompleted: targetDate };
+}
+
 export function resolveAnchoredAllDayMoveRange(
 	startDate: string,
 	endDate: string,

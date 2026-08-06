@@ -21612,6 +21612,10 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	padding-right: 18px;
 }
 
+.operon-calendar-all-day-item.is-finished-date-draggable {
+	cursor: grab;
+}
+
 .operon-calendar-all-day-item.is-clickable,
 .operon-calendar-timed-item.is-clickable {
 	cursor: pointer;
@@ -21890,26 +21894,30 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 }
 
 .operon-calendar-multi-week-inday-item {
+	--operon-calendar-inday-surface-border-color: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 20%, var(--background-modifier-border));
+	--operon-calendar-inday-surface-border-style: solid;
+	--operon-calendar-inday-surface-background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 12%, var(--background-secondary));
 	display: flex;
 	align-items: stretch;
 	min-width: 0;
 	padding: 6px 8px;
 	border-radius: 6px;
-	border: 1px solid color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 20%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 12%, var(--background-secondary));
+	border: 1px var(--operon-calendar-inday-surface-border-style) var(--operon-calendar-inday-surface-border-color);
+	background: var(--operon-calendar-inday-surface-background);
 	color: var(--text-normal);
 	font-size: var(--font-ui-smaller);
 }
 
 .operon-calendar-multi-week-inday-item.is-dashed {
-	background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 8%, transparent);
-	border-style: dashed;
+	--operon-calendar-inday-surface-border-style: dashed;
+	--operon-calendar-inday-surface-background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 8%, transparent);
 }
 
 .operon-calendar-multi-week-inday-item.is-projected {
+	--operon-calendar-inday-surface-border-color: color-mix(in srgb, var(--background-modifier-border) 88%, white 12%);
+	--operon-calendar-inday-surface-border-style: dashed;
+	--operon-calendar-inday-surface-background: color-mix(in srgb, var(--background-secondary) 18%, transparent);
 	opacity: 0.68;
-	background: color-mix(in srgb, var(--background-secondary) 18%, transparent);
-	border: 1px dashed color-mix(in srgb, var(--background-modifier-border) 88%, white 12%);
 }
 
 .operon-calendar-multi-week-inday-item.is-done {
@@ -21970,7 +21978,8 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	gap: 4px;
 	padding: 2px 6px;
 	border-radius: 6px;
-	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	border: 1px var(--operon-calendar-inday-surface-border-style) var(--operon-calendar-inday-surface-border-color);
+	background: var(--operon-calendar-inday-surface-background);
 	color: var(--text-muted);
 	font-size: 10px;
 	font-weight: 600;

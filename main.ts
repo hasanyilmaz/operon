@@ -642,6 +642,7 @@ import {
 	PriorityRenamePreview,
 } from './src/core/priority-rename-migration';
 import { CalendarView, CALENDAR_VIEW_TYPE, type CalendarTrackedSessionRef } from './src/ui/calendar/calendar-view';
+import { buildFinishedDateMovePayload } from './src/ui/calendar/all-day-drag';
 import {
 	filterTasksForCalendar,
 } from './src/systems/calendar-filter-materialization';
@@ -11875,6 +11876,7 @@ export default class OperonPlugin extends Plugin {
 					onAllDaySlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
 					onAllDayScheduledMove: (taskId, selection) => this.handleCalendarScheduledMove(taskId, selection),
 					onAllDayScheduledResizeRight: (taskId, selection) => this.handleCalendarScheduledResizeRight(taskId, selection),
+					onFinishedItemMove: (taskId, dateCompleted) => this.handleCalendarFinishedMove(taskId, dateCompleted),
 					onAllDayItemDropToTimed: (taskId, selection, sourcePayload) => this.handleCalendarAllDayDropToTimed(taskId, selection, sourcePayload),
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					onOpenTaskSource: openTaskSourceInNewTab,
@@ -13092,6 +13094,22 @@ export default class OperonPlugin extends Plugin {
 			changedKeys,
 		});
 		this.refreshViews();
+	}
+
+	private async handleCalendarFinishedMove(taskId: string, dateCompleted: string): Promise<boolean> {
+		const task = this.indexer.getTask(taskId);
+		if (!task || task.checkbox !== 'done') return false;
+		const payload = buildFinishedDateMovePayload(
+			(task.fieldValues['dateCompleted'] ?? '').trim(),
+			dateCompleted,
+		);
+		if (!payload) return false;
+
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+			changedKeys: ['dateCompleted'],
+		});
+		this.refreshViews();
+		return updated;
 	}
 
 	private async handleCalendarTimedMove(
