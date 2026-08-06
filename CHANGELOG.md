@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed **Developer API capability grants** losing or ambiguously recovering durable state across plugin restarts, persistence failures, audit retention, and vault-specific startup reconciliation.
+
 ### Validation
+
+- Validated with the complete local candidate check suite, including Developer API grant persistence and recovery, IndexedDB security-audit retention, and release-freeze regression coverage.
 
 ## [3.1.0] - 2026-08-05
 
