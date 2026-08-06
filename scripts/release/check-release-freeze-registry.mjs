@@ -36,7 +36,16 @@ const EXPECTED_CURRENT_FILES = Object.freeze([
 	Object.freeze({ path: `${CURRENT_RELEASE_ROOT}/published-cli-v1.schema.json`, bytes: 8942, sha256: '6465ced9aa799773e9f296db84bcb56a71f723b309f9d68caa2e09636fdcabce' }),
 ]);
 
+export async function checkCandidateFreezeRegistry(options = {}) {
+	return checkFreezeRegistry(options, 'candidate');
+}
+
 export async function checkReleaseFreezeRegistry(options = {}) {
+	return checkFreezeRegistry(options, 'release');
+}
+
+async function checkFreezeRegistry(options, artifactPolicy) {
+	assert.ok(artifactPolicy === 'candidate' || artifactPolicy === 'release');
 	const pluginRoot = options.pluginRoot ?? defaultPluginRoot;
 	try {
 		const registryPath = path.join(pluginRoot, RELEASE_FREEZE_REGISTRY_RELATIVE_PATH);
@@ -134,12 +143,9 @@ export async function checkReleaseFreezeRegistry(options = {}) {
 		assert.equal(evidence.limitations.publishedCliLiveMutationSuite, 'not-rerun');
 		assert.equal(evidence.limitations.cliInstalledInLiveVault, false);
 		assert.equal(evidence.plugin.deployment.manualAcceptance.scope, 'plugin-candidate-only');
-		const manifest = JSON.parse((await readRegularFileNoFollow(path.join(pluginRoot, 'manifest.json'), pluginRoot)).toString('utf8'));
-		assert.equal(manifest.version, CURRENT_PLUGIN_VERSION);
-		for (const identity of freeze.pluginArtifact.files) {
-			const bytes = await readRegularFileNoFollow(path.join(pluginRoot, identity.path), pluginRoot);
-			assert.equal(bytes.byteLength, identity.bytes);
-			assert.equal(sha256(bytes), identity.sha256);
+		if (artifactPolicy === 'release') {
+			const workingArtifact = await readReleaseArtifactIdentity(pluginRoot, freeze.pluginArtifact);
+			assertReleaseArtifactMatchesFreeze(workingArtifact, freeze.pluginArtifact);
 		}
 		const { inputsAggregateSha256: aggregate, ...freezeBody } = freeze;
 		assert.equal(aggregate, sha256(Buffer.from(canonicalJson(freezeBody), 'utf8')));
@@ -148,6 +154,22 @@ export async function checkReleaseFreezeRegistry(options = {}) {
 		if (cause?.message === RELEASE_FREEZE_STALE) throw cause;
 		throw new Error(RELEASE_FREEZE_STALE, { cause });
 	}
+}
+
+export async function readReleaseArtifactIdentity(pluginRoot, frozenArtifact) {
+	const manifest = JSON.parse((await readRegularFileNoFollow(path.join(pluginRoot, 'manifest.json'), pluginRoot)).toString('utf8'));
+	return {
+		version: manifest.version,
+		files: await Promise.all(frozenArtifact.files.map(async identity => {
+			const bytes = await readRegularFileNoFollow(path.join(pluginRoot, identity.path), pluginRoot);
+			return { path: identity.path, bytes: bytes.byteLength, sha256: sha256(bytes) };
+		})),
+	};
+}
+
+export function assertReleaseArtifactMatchesFreeze(workingArtifact, frozenArtifact) {
+	assert.deepEqual(workingArtifact, frozenArtifact);
+	return true;
 }
 
 if (path.resolve(process.argv[1] ?? '') === scriptPath) {

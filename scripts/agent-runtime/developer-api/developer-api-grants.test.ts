@@ -212,7 +212,7 @@ test('incomplete audit activation suspends the exact persisted revision across r
 
 test('normalization rejects forged records and unknown capabilities', () => {
 	const normalized = normalizeDeveloperApiGrantPackage({
-		version: 99,
+		version: 1,
 		consumersById: {
 			'consumer.test': {
 				consumerId: 'different.consumer',
@@ -242,6 +242,31 @@ test('normalization rejects forged records and unknown capabilities', () => {
 	});
 	assert.equal(normalized.consumersById['consumer.test'], undefined);
 	assert.deepEqual(normalized.consumersById['consumer.valid']?.grantedCapabilities, ['tasks.read']);
+});
+
+test('normalization fails closed for explicit unsupported or corrupt package versions', () => {
+	for (const version of [2, 2.5, '2', null]) {
+		assert.deepEqual(
+			normalizeDeveloperApiGrantPackage({
+				version,
+				consumersById: {
+					'consumer.valid': {
+						consumerId: 'consumer.valid',
+						consumerName: 'Valid',
+						consumerVersion: '1.0.0',
+						approvedMajorVersion: 1,
+						state: 'active',
+						revision: 1,
+						grantedCapabilities: ['tasks.read'],
+						pendingCapabilities: [],
+						createdAt: NOW,
+						updatedAt: NOW,
+					},
+				},
+			}),
+			createEmptyDeveloperApiGrantPackage(),
+		);
+	}
 });
 
 test('canonical data package creates and preserves the Developer API integration grant slice', () => {
@@ -307,6 +332,138 @@ test('grant controller verifies object identity and activates grants only after 
 	);
 });
 
+test('grant controller restores durable state after a failed write and permits an exact retry', async () => {
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: recordDeveloperApiGrantRequest(
+			createEmptyDeveloperApiGrantPackage(),
+			consumer(),
+			['tasks.read'],
+			NOW,
+		),
+	});
+	let failNextWrite = true;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				if (failNextWrite) {
+					failNextWrite = false;
+					throw new Error('injected grant persistence failure');
+				}
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		now: () => new Date(LATER),
+	});
+
+	await assert.rejects(
+		controller.approvePending('consumer.test', ['tasks.read']),
+		/injected grant persistence failure/u,
+	);
+	assert.equal(controller.list()[0]?.revision, 0);
+	assert.deepEqual(controller.list()[0]?.pendingCapabilities, ['tasks.read']);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'pending');
+
+	const retried = await controller.approvePending('consumer.test', ['tasks.read']);
+	assert.equal(retried.state, 'active');
+	assert.equal(controller.hasPersistenceError(), false);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'active');
+	assert.equal(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.state,
+		'active',
+	);
+});
+
+test('grant controller closes a failed first pending intent and requeues it in the same session', async () => {
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
+	let failNextWrite = true;
+	const auditEvents: Array<{ phase: string; correlationId: string }> = [];
+	let correlationSequence = 0;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				if (failNextWrite) {
+					failNextWrite = false;
+					throw new Error('injected initial pending persistence failure');
+				}
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		audit: {
+			createCorrelationId: () => `pending-transition-${++correlationSequence}`,
+			record: async event => {
+				auditEvents.push({ phase: event.phase, correlationId: event.correlationId });
+			},
+		},
+		now: () => new Date(LATER),
+	});
+
+	controller.recordPending(consumer(), ['tasks.read']);
+	await assert.rejects(controller.drain(), /injected initial pending persistence failure/u);
+	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'pending');
+	assert.equal(controller.hasPersistenceError(), false);
+
+	controller.recordPending(consumer(), ['tasks.read']);
+	await controller.drain();
+	assert.deepEqual(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities,
+		['tasks.read'],
+	);
+	assert.deepEqual(auditEvents, [
+		{ phase: 'intent', correlationId: 'pending-transition-1' },
+		{ phase: 'failed', correlationId: 'pending-transition-1' },
+		{ phase: 'intent', correlationId: 'pending-transition-2' },
+		{ phase: 'activated', correlationId: 'pending-transition-2' },
+	]);
+});
+
+test('grant controller preserves an unpersisted startup audit suspension after storage recovers', () => {
+	const initialGrants = approveDeveloperApiCapabilities(
+		createEmptyDeveloperApiGrantPackage(),
+		consumer('1.2.3'),
+		['tasks.read'],
+		NOW,
+	);
+	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
+		developerApiGrants: initialGrants,
+	});
+	const revision = initialGrants.consumersById['consumer.test']?.revision ?? -1;
+	let canPersist = false;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			canPersist: () => canPersist,
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async () => {
+				throw new Error('startup audit suspension was not persisted');
+			},
+		},
+		verifier: {
+			verify: () => consumer('1.2.3'),
+			isCurrent: () => true,
+		},
+		startupAuditRecoveryTransitions: [{ consumerId: 'consumer.test', revision }],
+		now: () => new Date(LATER),
+	});
+
+	const unavailable = controller.evaluate(consumer('1.2.3'), ['tasks.read']);
+	assert.equal(unavailable.state, 'suspended');
+	assert.equal(unavailable.reason, 'grant-persistence-unavailable');
+	canPersist = true;
+	const recovered = controller.evaluate(consumer('1.2.3'), ['tasks.read']);
+	assert.equal(recovered.state, 'suspended');
+	assert.equal(recovered.reason, 'audit-activation-incomplete');
+	assert.deepEqual(recovered.effectiveCapabilities, []);
+});
+
 test('grant controller audits and persists version acceptance and suspension before readmission', async () => {
 	const initialGrants = approveDeveloperApiCapabilities(
 		createEmptyDeveloperApiGrantPackage(),
@@ -317,7 +474,8 @@ test('grant controller audits and persists version acceptance and suspension bef
 	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
 		developerApiGrants: initialGrants,
 	});
-	const auditEvents: Array<{ phase: string; action: string }> = [];
+	const auditEvents: Array<{ phase: string; action: string; correlationId: string }> = [];
+	let correlationSequence = 0;
 	const controller = new DeveloperApiGrantControllerV1({
 		store: {
 			getDataPackage: () => structuredClone(dataPackage),
@@ -330,8 +488,13 @@ test('grant controller audits and persists version acceptance and suspension bef
 			isCurrent: () => true,
 		},
 		audit: {
+			createCorrelationId: () => `grant-audit-transition-${++correlationSequence}`,
 			record: async event => {
-				auditEvents.push({ phase: event.phase, action: event.action });
+				auditEvents.push({
+					phase: event.phase,
+					action: event.action,
+					correlationId: event.correlationId,
+				});
 			},
 		},
 		now: () => new Date(LATER),
@@ -346,8 +509,8 @@ test('grant controller audits and persists version acceptance and suspension bef
 		'1.4.0',
 	);
 	assert.deepEqual(auditEvents.slice(0, 2), [
-		{ phase: 'intent', action: 'version-accepted' },
-		{ phase: 'activated', action: 'version-accepted' },
+		{ phase: 'intent', action: 'version-accepted', correlationId: 'grant-audit-transition-1' },
+		{ phase: 'activated', action: 'version-accepted', correlationId: 'grant-audit-transition-1' },
 	]);
 
 	const majorConsumer = consumer('2.0.0');
@@ -358,7 +521,7 @@ test('grant controller audits and persists version acceptance and suspension bef
 	assert.equal(suspended?.observedConsumerVersion, '2.0.0');
 	assert.deepEqual(suspended?.pendingCapabilities, ['tasks.read']);
 	assert.deepEqual(auditEvents.slice(2), [
-		{ phase: 'intent', action: 'version-suspended' },
-		{ phase: 'activated', action: 'version-suspended' },
+		{ phase: 'intent', action: 'version-suspended', correlationId: 'grant-audit-transition-2' },
+		{ phase: 'activated', action: 'version-suspended', correlationId: 'grant-audit-transition-2' },
 	]);
 });

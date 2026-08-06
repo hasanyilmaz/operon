@@ -227,7 +227,7 @@ import {
 	tryWithRuntimeVaultMutationLockV1,
 	IndexedDbMutationReceiptStoreV1,
 	IndexedDbSecurityAuditStoreV1,
-	findIncompleteDeveloperGrantAuditTransitionsV1,
+	findIncompleteDeveloperGrantAuditTransitionsForVaultV1,
 	prepareRuntimeTaskCreationV1,
 	prepareRuntimeTaskFieldMutationV1,
 	prepareRuntimeTaskUpdateBatchV1,
@@ -1339,7 +1339,8 @@ export default class OperonPlugin extends Plugin {
 		transition: DeveloperApiGrantAuditEventV1,
 	): Promise<void> {
 		const store = this.agentRuntimeSecurityAuditStore;
-		if (!store || !await store.health()) {
+		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
+		if (!store || !vaultIdentityHash || !await store.health()) {
 			throw new Error('Developer API security audit is unavailable.');
 		}
 		const event = transition.action === 'request'
@@ -1370,14 +1371,18 @@ export default class OperonPlugin extends Plugin {
 				risk: null,
 				planDigest: null,
 				targetDigest: null,
-				vaultIdentityHash: this.agentRuntimeVaultIdentityHash,
+				vaultIdentityHash,
 				consent: transition.action === 'approve' ? 'approved' : 'not-required',
 				admission: transition.phase === 'intent' ? 'requested' : 'completed',
-				outcome: transition.phase === 'intent' ? 'pending' : 'succeeded',
+				outcome: transition.phase === 'intent'
+					? 'pending'
+					: transition.phase === 'activated'
+						? 'succeeded'
+						: 'failed',
 				errorCode: null,
 				occurredAt: transition.occurredAt,
 				correlationHash: sha256HexV1(
-					`${transition.action}\0${transition.phase}\0${transition.consumerId}\0${transition.revision}`,
+					`${vaultIdentityHash}\0${transition.correlationId}`,
 				),
 			});
 		}
@@ -2906,7 +2911,7 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 		const nodeApi = await loadAgentRuntimeDesktopNodeApiV1();
-		this.agentRuntimeVaultIdentityHash = await computeRunningVaultSha256V1(
+		this.agentRuntimeVaultIdentityHash ??= await computeRunningVaultSha256V1(
 			nodeApi,
 			this.app.vault.adapter,
 		);
@@ -10857,6 +10862,17 @@ export default class OperonPlugin extends Plugin {
 
 	private async loadPlugin(): Promise<void> {
 		registerObsidianIconFallbacks();
+		if (Platform.isDesktopApp) {
+			try {
+				const nodeApi = await loadAgentRuntimeDesktopNodeApiV1();
+				this.agentRuntimeVaultIdentityHash = await computeRunningVaultSha256V1(
+					nodeApi,
+					this.app.vault.adapter,
+				);
+			} catch {
+				this.agentRuntimeVaultIdentityHash = null;
+			}
+		}
 
 		// Initialize storage and settings
 		this.storage = new OperonStorage(this.app, {
@@ -10871,11 +10887,14 @@ export default class OperonPlugin extends Plugin {
 			consumerId: string;
 			revision: number;
 		}> = [];
-		if (await developerAuditStore.health()) {
+		if (!Platform.isDesktopApp) {
+			developerAuditStore.close();
+		} else if (await developerAuditStore.health()) {
 			this.agentRuntimeSecurityAuditStore = developerAuditStore;
 			try {
-				const incomplete = findIncompleteDeveloperGrantAuditTransitionsV1(
+				const incomplete = findIncompleteDeveloperGrantAuditTransitionsForVaultV1(
 					await developerAuditStore.list(),
+					this.agentRuntimeVaultIdentityHash ?? '',
 				);
 				const grants = normalizeDeveloperApiGrantPackage(
 					developerGrantStore.getDataPackage().integrations.developerApi,
@@ -10946,6 +10965,7 @@ export default class OperonPlugin extends Plugin {
 				isCurrent: consumer => this.isDeveloperApiConsumerCurrent(consumer),
 			},
 			audit: {
+				createCorrelationId: () => getActiveWindow().crypto.randomUUID(),
 				record: event => this.recordDeveloperApiGrantAudit(event),
 			},
 			startupAuditRecoveryTransitions,
