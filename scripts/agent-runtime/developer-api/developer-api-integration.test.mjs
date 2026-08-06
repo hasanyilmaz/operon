@@ -7,6 +7,10 @@ const developerRuntimeSource = await readFile(
 	new URL('../../../src/agent-runtime/developer-api/runtime.ts', import.meta.url),
 	'utf8',
 );
+const operonStorageSource = await readFile(
+	new URL('../../../src/storage/operon-storage.ts', import.meta.url),
+	'utf8',
+);
 
 function methodBody(source, signature, nextSignature) {
 	const start = source.indexOf(signature);
@@ -56,4 +60,17 @@ test('Developer API runtime has no CLI, transport, or official Obsidian CLI depe
 		developerRuntimeSource,
 		/agentRuntimeCliTransportAvailable|nativeCliTransportAvailable|Obsidian CLI/u,
 	);
+});
+
+test('general settings persistence preserves the host-owned Developer API grant slice', () => {
+	const persistSettings = methodBody(
+		operonStorageSource,
+		'\tprivate async persistSettings(',
+		'\n\tgetSettings(): OperonSettings',
+	);
+	assert.match(
+		persistSettings,
+		/const currentDeveloperApi = currentPackage\.integrations\.developerApi;/u,
+	);
+	assert.match(persistSettings, /developerApi: currentDeveloperApi,/u);
 });
