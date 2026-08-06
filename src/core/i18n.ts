@@ -11,7 +11,7 @@ import generatedCompatibilityAliases from '../generated/locale-compatibility-ali
 import { compileLocalePack, type LocaleTranslations } from './locale-pack';
 
 /** Supported language codes. */
-export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru' | 'it';
+export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru' | 'it' | 'pt-BR';
 export type NonEnglishLangCode = Exclude<LangCode, 'en'>;
 
 export const SUPPORTED_LANGUAGES: readonly LangCode[] = [
@@ -25,6 +25,7 @@ export const SUPPORTED_LANGUAGES: readonly LangCode[] = [
 	'ja',
 	'ru',
 	'it',
+	'pt-BR',
 ];
 
 const SUPPORTED_LANGUAGE_SET: ReadonlySet<string> = new Set(SUPPORTED_LANGUAGES);
@@ -86,6 +87,7 @@ export function resolveSupportedLocale(rawLocale: string): LangCode | null {
 	if (lower.startsWith('zh-tw') || lower.startsWith('zh-hant') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')) {
 		return 'zh-TW';
 	}
+	if (lower === 'pt' || lower === 'pt-br' || lower.startsWith('pt-br-')) return 'pt-BR';
 
 	const short = lower.substring(0, 2);
 	return SUPPORTED_LANGUAGE_SET.has(short) ? short as LangCode : null;

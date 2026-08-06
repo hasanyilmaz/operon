@@ -58,7 +58,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 
 	assert.deepEqual(densePack.languageOrder, ['en']);
 	assert.deepEqual(Object.keys(densePack.locales), ['en']);
-	assert.equal(densePack.keyCount, 2_927);
+	assert.equal(densePack.keyCount, 2_928);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);
@@ -123,6 +123,12 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 		runtime.initI18n(locale, undefined);
 		assert.equal(runtime.getCurrentLang(), 'zh-TW', locale);
 	}
+	for (const locale of ['pt', 'pt-BR', 'pt-BR-x-private']) {
+		assert.equal(runtime.resolveSupportedLocale(locale), 'pt-BR', locale);
+		runtime.initI18n(locale, undefined);
+		assert.equal(runtime.getCurrentLang(), 'pt-BR', locale);
+	}
+	assert.equal(runtime.resolveSupportedLocale('pt-PT'), null);
 	runtime.initI18n('zh-HK', 'zh-CN');
 	assert.equal(runtime.getCurrentLang(), 'zh-CN');
 	runtime.initI18n('xx-XX', 'unsupported');

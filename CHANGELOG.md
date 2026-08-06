@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Brazilian Portuguese localization**, including Settings language selection and translated interface text. Natural-language date input currently uses the English fallback.
+
 ### Fixed
 
 - Fixed **Developer API capability grants** losing or ambiguously recovering durable state across plugin restarts, persistence failures, audit retention, and vault-specific startup reconciliation.

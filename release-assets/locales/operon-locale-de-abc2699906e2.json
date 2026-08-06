@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "7a2efd490c7248fc4e9f95c01305134147c3c4ebd234a7f6b04de8e00b48e4fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1726,6 +1726,7 @@
       "languagePackDownloading": "Wird heruntergeladen…",
       "languagePackUpdate": "Aktualisieren",
       "languagePackUpdating": "Wird aktualisiert…",
+      "languagePortugueseBrazilian": "Brasilianisches Portugiesisch",
       "languageRussian": "Russisch",
       "languageSpanish": "Spanisch",
       "languageTurkish": "Türkisch",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "ef73437c095f48eb209369cea9feb5721f8e09864042756ae682368a0e518816"
+  "sourceVersion": "f2239502e59e15fe2baf3a6fcee275741aaa5ea65061cad4a85b2431a053ec13"
 }

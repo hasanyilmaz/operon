@@ -105,7 +105,7 @@ jobs:
           const catalog = JSON.parse(fs.readFileSync("src/generated/locale-pack-catalog.json", "utf8"));
           const tag = process.env.GITHUB_REF_NAME;
           const assetDirectory = "release-assets/locales";
-          const expectedLocales = ["tr", "de", "fr", "es", "zh-CN", "zh-TW", "ja", "ru", "it"];
+          const expectedLocales = ["tr", "de", "fr", "es", "zh-CN", "zh-TW", "ja", "ru", "it", "pt-BR"];
           if (catalog.sourceVersion !== tag) {
             throw new Error(`Locale catalog sourceVersion ${catalog.sourceVersion} does not match tag ${tag}.`);
           }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "7a2efd490c7248fc4e9f95c01305134147c3c4ebd234a7f6b04de8e00b48e4fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1726,6 +1726,7 @@
       "languagePackDownloading": "Download in corso…",
       "languagePackUpdate": "Aggiorna",
       "languagePackUpdating": "Aggiornamento in corso…",
+      "languagePortugueseBrazilian": "Portoghese brasiliano",
       "languageRussian": "Russo",
       "languageSpanish": "Spagnolo",
       "languageTurkish": "Turco",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "a1a9fba42401da21c4e161154a95b58a55f987cc5706e9b533f61bddcad7cbda"
+  "sourceVersion": "67d2029f8ad8992aaa948e37e3dd17e78cb6274c6f6a1c8f412329bbf430f95b"
 }

@@ -9,7 +9,8 @@
       "琥珀色",
       "アンバー",
       "Янтарный",
-      "Ambra"
+      "Ambra",
+      "Âmbar"
     ],
     "colorNameBlack": [
       "Black",
@@ -20,7 +21,8 @@
       "黑色",
       "黒",
       "Чёрный",
-      "Nero"
+      "Nero",
+      "Preto"
     ],
     "colorNameBlue": [
       "Blue",
@@ -43,7 +45,8 @@
       "棕色",
       "茶",
       "Коричневый",
-      "Marrone"
+      "Marrone",
+      "Marrom"
     ],
     "colorNameBurgundy": [
       "Burgundy",
@@ -54,7 +57,8 @@
       "酒红色",
       "酒紅色",
       "バーガンディ",
-      "Бордовый"
+      "Бордовый",
+      "Borgonha"
     ],
     "colorNameCharcoal": [
       "Charcoal",
@@ -65,7 +69,8 @@
       "炭灰色",
       "チャコール",
       "Угольный",
-      "Antracite"
+      "Antracite",
+      "Carvão"
     ],
     "colorNameCoral": [
       "Coral",
@@ -105,7 +110,8 @@
       "品红色",
       "品紅色",
       "フクシア",
-      "Фуксия"
+      "Фуксия",
+      "Fúcsia"
     ],
     "colorNameGreen": [
       "Green",
@@ -138,7 +144,8 @@
       "青檸色",
       "ライム",
       "Лаймовый",
-      "Verde lime"
+      "Verde lime",
+      "Limão"
     ],
     "colorNameOlive": [
       "Olive",
@@ -157,7 +164,8 @@
       "橙色",
       "オレンジ",
       "Оранжевый",
-      "Arancione"
+      "Arancione",
+      "Laranja"
     ],
     "colorNamePink": [
       "Pink",
@@ -178,7 +186,8 @@
       "紫色",
       "紫",
       "Пурпурный",
-      "Viola"
+      "Viola",
+      "Roxo"
     ],
     "colorNameRed": [
       "Red",
@@ -190,7 +199,8 @@
       "紅色",
       "赤",
       "Красный",
-      "Rosso"
+      "Rosso",
+      "Vermelho"
     ],
     "colorNameRose": [
       "Rose",
@@ -210,7 +220,8 @@
       "沙色",
       "サンド",
       "Песочный",
-      "Sabbia"
+      "Sabbia",
+      "Areia"
     ],
     "colorNameSky": [
       "Sky",
@@ -222,7 +233,8 @@
       "天藍色",
       "スカイ",
       "Небесный",
-      "Azzurro"
+      "Azzurro",
+      "Céu"
     ],
     "colorNameSlate": [
       "Slate",
@@ -233,7 +245,8 @@
       "石板灰",
       "スレート",
       "Сланцевый",
-      "Ardesia"
+      "Ardesia",
+      "Ardósia"
     ],
     "colorNameSteel": [
       "Steel",
@@ -245,7 +258,8 @@
       "鋼藍色",
       "スチール",
       "Стальной",
-      "Acciaio"
+      "Acciaio",
+      "Aço"
     ],
     "colorNameTaupe": [
       "Taupe",
@@ -265,7 +279,8 @@
       "藍綠色",
       "ティール",
       "Бирюзовый",
-      "Verde petrolio"
+      "Verde petrolio",
+      "Verde-azulado"
     ],
     "colorNameViolet": [
       "Violet",
@@ -289,7 +304,8 @@
       "黃色",
       "黄",
       "Жёлтый",
-      "Giallo"
+      "Giallo",
+      "Amarelo"
     ],
     "colorNameZinc": [
       "Zinc",
