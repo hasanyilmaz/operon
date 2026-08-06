@@ -152,7 +152,11 @@ import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { resolveSurfaceFloatingHostOptions, snapshotFloatingRectAnchor } from '../field-pickers/common';
 import { openWebViewerNewTab } from '../external-link-actions';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
-import { showPresetFilterPopover } from '../preset-filter-popover';
+import {
+	buildPresetFilterUsageTooltip,
+	createUniquePresetFilterName,
+	showPresetFilterPopover,
+} from '../preset-filter-popover';
 import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton } from './table-task-icon-button';
 import { bindTableTaskTypeEditorOpen, renderTableTaskTypeButton } from './table-task-type-button';
 import {
@@ -1395,7 +1399,7 @@ export class OperonTableView extends FileView {
 			triggerHost: host,
 			label: t('table', 'filter'),
 			currentFilter,
-			newFilterName: this.createUniqueTableFilterName(),
+			newFilterName: createUniquePresetFilterName(t('table', 'newFilterName'), settings.filterSets),
 			keyMappings: settings.keyMappings,
 			filterModalOptions: {
 				getSettings: () => this.getSettings(),
@@ -1425,7 +1429,7 @@ export class OperonTableView extends FileView {
 				},
 			).length,
 			saveTooltip: sourceFilterSetId
-				? this.buildFilterUsageTooltip(sourceFilterSetId)
+				? buildPresetFilterUsageTooltip(settings, sourceFilterSetId)
 				: undefined,
 			classNames: ['operon-table-filter-popover'],
 			onCommit: updated => this.saveTableFilterPopoverDraft(updated, sourceFilterSetId, preset),
@@ -1445,47 +1449,6 @@ export class OperonTableView extends FileView {
 		});
 		this.keepActivePickerOnRender = true;
 		this.activePickerClose = closePopover;
-	}
-
-	private createUniqueTableFilterName(): string {
-		const baseName = t('table', 'newFilterName');
-		const existingNames = new Set(
-			this.getSettings().filterSets.map(filterSet => filterSet.name.trim().toLocaleLowerCase()),
-		);
-		if (!existingNames.has(baseName.toLocaleLowerCase())) return baseName;
-		let suffix = 2;
-		while (existingNames.has(`${baseName} ${suffix}`.toLocaleLowerCase())) {
-			suffix += 1;
-		}
-		return `${baseName} ${suffix}`;
-	}
-
-	private buildFilterUsageTooltip(filterSetId: string): { title: string; content: string } | undefined {
-		const settings = this.getSettings();
-		const lines: string[] = [];
-		const calendarPresets = settings.calendarPresets
-			.filter(entry => entry.filterSetId === filterSetId)
-			.map(entry => entry.name.trim() || entry.id);
-		const kanbanPresets = settings.kanbanPresets
-			.filter(entry => entry.filterSetId === filterSetId)
-			.map(entry => entry.name.trim() || entry.id);
-		const tablePresets = settings.tablePresets
-			.filter(entry => entry.filterSetId === filterSetId)
-			.map(entry => entry.name.trim() || entry.id);
-		if (calendarPresets.length > 0) {
-			lines.push(`${t('filterSets', 'usedByCalendar')}: ${calendarPresets.join(', ')}`);
-		}
-		if (kanbanPresets.length > 0) {
-			lines.push(`${t('filterSets', 'usedByKanban')}: ${kanbanPresets.join(', ')}`);
-		}
-		if (tablePresets.length > 0) {
-			lines.push(`${t('filterSets', 'usedByTable')}: ${tablePresets.join(', ')}`);
-		}
-		if (lines.length === 0) return undefined;
-		return {
-			title: t('filterSets', 'usedByTitle'),
-			content: lines.join(' · '),
-		};
 	}
 
 	private async saveTableFilterPopoverDraft(

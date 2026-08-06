@@ -23856,6 +23856,25 @@ button.operon-kanban-toolbar-settings-button {
 	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
+.operon-kanban-filter-popover-host {
+	position: relative;
+	display: flex;
+	flex: 0 0 34px;
+	width: 34px;
+	min-width: 34px;
+}
+
+button.operon-kanban-filter-popover-button {
+	width: 34px;
+	padding-right: 0;
+	padding-left: 0;
+}
+
+button.operon-kanban-filter-popover-button.is-active {
+	border-color: var(--interactive-accent);
+	color: var(--interactive-accent);
+}
+
 .operon-kanban-toolbar-search-wrap {
 	position: relative;
 	display: flex;
@@ -23936,6 +23955,10 @@ button.operon-kanban-toolbar-settings-button {
 	display: none;
 }
 
+.operon-kanban-toolbar.is-phone-preset-dropdown .operon-kanban-toolbar-preset-settings-button {
+	display: none;
+}
+
 .operon-kanban-toolbar.is-phone-preset-dropdown .operon-kanban-toolbar-start {
 	min-width: 0;
 	justify-content: flex-start;
@@ -23949,11 +23972,11 @@ button.operon-kanban-toolbar-settings-button {
 .operon-kanban-toolbar.is-phone-preset-dropdown .operon-kanban-toolbar-mobile-preset-select {
 	display: block;
 	width: min(100%, 180px);
-	max-width: 42vw;
+	max-width: 38vw;
 }
 
 .operon-kanban-toolbar.is-phone-preset-dropdown .operon-kanban-toolbar-search {
-	width: clamp(112px, 34vw, 160px);
+	width: clamp(96px, 30vw, 144px);
 }
 
 .operon-kanban-toolbar-search::-webkit-search-cancel-button,

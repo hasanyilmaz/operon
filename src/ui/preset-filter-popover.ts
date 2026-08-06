@@ -1,7 +1,8 @@
 import type { App } from 'obsidian';
 
 import { getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
-import { cloneFilterSet, type FilterSet, type KeyMapping } from '../types/settings';
+import { cloneFilterSet, type FilterSet, type KeyMapping, type OperonSettings } from '../types/settings';
+import { t } from '../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { resolveSurfaceFloatingHostOptions } from './field-pickers/common';
 import {
@@ -30,6 +31,36 @@ export interface PresetFilterPopoverOptions {
 }
 
 let presetFilterPopoverSequence = 0;
+
+export function createUniquePresetFilterName(baseName: string, filterSets: readonly FilterSet[]): string {
+	const existingNames = new Set(filterSets.map(filterSet => filterSet.name.trim().toLocaleLowerCase()));
+	if (!existingNames.has(baseName.toLocaleLowerCase())) return baseName;
+	let suffix = 2;
+	while (existingNames.has(`${baseName} ${suffix}`.toLocaleLowerCase())) suffix += 1;
+	return `${baseName} ${suffix}`;
+}
+
+export function buildPresetFilterUsageTooltip(
+	settings: Pick<OperonSettings, 'calendarPresets' | 'kanbanPresets' | 'tablePresets'>,
+	filterSetId: string,
+	tablePresets: readonly { id: string; name: string; filterSetId: string | null }[] = settings.tablePresets,
+): { title: string; content: string } | undefined {
+	const lines: string[] = [];
+	const addUsageLine = (label: string, presets: readonly { id: string; name: string; filterSetId: string | null }[]): void => {
+		const names = presets
+			.filter(entry => entry.filterSetId === filterSetId)
+			.map(entry => entry.name.trim() || entry.id);
+		if (names.length > 0) lines.push(`${label}: ${names.join(', ')}`);
+	};
+	addUsageLine(t('filterSets', 'usedByCalendar'), settings.calendarPresets);
+	addUsageLine(t('filterSets', 'usedByKanban'), settings.kanbanPresets);
+	addUsageLine(t('filterSets', 'usedByTable'), tablePresets);
+	if (lines.length === 0) return undefined;
+	return {
+		title: t('filterSets', 'usedByTitle'),
+		content: lines.join(' · '),
+	};
+}
 
 function generateFilterSetId(): string {
 	return 'fs_' + Math.random().toString(36).slice(2, 9);

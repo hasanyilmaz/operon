@@ -101,6 +101,11 @@ import {
 import { getKanbanPresetPickerLabel, showKanbanPresetPicker } from './kanban-preset-picker';
 import { getFavoriteKanbanPresets, resolveKanbanPresetPickerButtonState } from './kanban-preset-visibility';
 import {
+	buildPresetFilterUsageTooltip,
+	createUniquePresetFilterName,
+	showPresetFilterPopover,
+} from '../preset-filter-popover';
+import {
 	applyTaskSearchBoxShortcutCommand,
 	cloneTaskSearchBoxScopeState,
 	getTaskSearchBoxRecentModifiedCutoff,
@@ -380,6 +385,7 @@ export class KanbanView extends ItemView {
 	private boardLayoutRefreshCleanup: (() => void) | null = null;
 	private toolbarLayoutCleanup: (() => void) | null = null;
 	private activePresetPickerClose: (() => void) | null = null;
+	private activeFilterPopoverClose: (() => void) | null = null;
 	private kanbanSearchScopePopoverCleanup: (() => void) | null = null;
 	private kanbanMobileLayoutCleanup: (() => void) | null = null;
 	private kanbanLazyObservers: IntersectionObserver[] = [];
@@ -507,6 +513,7 @@ export class KanbanView extends ItemView {
 		this.resetKanbanSearchScope();
 		this.lastRenderSignature = null;
 		this.closeActivePresetPicker();
+		this.closeActiveFilterPopover();
 		if (this.persistStateTimer !== null) {
 			this.clearPersistStateTimer();
 			this.app.workspace.requestSaveLayout();
@@ -542,13 +549,8 @@ export class KanbanView extends ItemView {
 		const pipeline = preset?.pipelineId
 			? settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null
 			: null;
-		const filterSet = (() => {
-			const raw = preset?.filterSetId
-				? settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
-				: null;
-			if (raw && isSpecialDynamicFilterSet(raw)) return null;
-			return raw ? stripFilterViewOnlyOptions(raw) : null;
-		})();
+		const currentFilter = preset ? this.resolveEditableKanbanFilter(preset, settings) : null;
+		const filterSet = currentFilter ? stripFilterViewOnlyOptions(currentFilter) : null;
 		const parentSearchUi = pipeline && preset
 			? this.buildParentSearchUiState(state.searchQuery, pipeline, filterSet, settings, this.searchScope)
 			: null;
@@ -558,6 +560,7 @@ export class KanbanView extends ItemView {
 		}
 
 		this.closeActivePresetPicker();
+		this.closeActiveFilterPopover();
 		this.hideHoverMenu(true);
 		this.clearKanbanSearchRefreshTimer();
 		this.clearBoardLayoutRefresh();
@@ -579,7 +582,7 @@ export class KanbanView extends ItemView {
 		}
 		this.applyKanbanPresetTheme(root, preset);
 
-		this.renderToolbar(root, state, preset, parentSearchUi);
+		this.renderToolbar(root, state, preset, currentFilter, parentSearchUi);
 		const content = root.createDiv('operon-kanban-content');
 		this.renderBoardContent(content, state, preset, pipeline, filterSet, settings, parentSearchUi);
 		this.restoreSearchFocus(root);
@@ -784,6 +787,7 @@ export class KanbanView extends ItemView {
 		container: HTMLElement,
 		state: KanbanLeafState,
 		preset: KanbanPreset,
+		currentFilter: FilterSet | null,
 		parentSearchUi: KanbanParentSearchUiState | null,
 	): void {
 		const toolbar = container.createDiv('operon-kanban-toolbar');
@@ -837,6 +841,7 @@ export class KanbanView extends ItemView {
 		}
 
 		this.renderKanbanPresetPickerButton(end, kanbanPresets, preset);
+		this.renderKanbanFilterPopoverButton(end, preset, currentFilter);
 
 		const searchWrap = end.createDiv('operon-kanban-toolbar-search-wrap');
 		this.syncKanbanSearchWrapClasses(searchWrap, state.searchQuery);
@@ -956,7 +961,7 @@ export class KanbanView extends ItemView {
 		this.renderParentSearchDropdown(searchWrap, parentSearchUi);
 
 		const settingsButton = end.createEl('button', {
-			cls: 'operon-kanban-toolbar-settings-button',
+			cls: 'operon-kanban-toolbar-settings-button operon-kanban-toolbar-preset-settings-button',
 			attr: { type: 'button' },
 		});
 		setIcon(settingsButton, 'settings-2');
@@ -968,9 +973,116 @@ export class KanbanView extends ItemView {
 		settingsButton.addEventListener('click', () => {
 			if (!preset.id) return;
 			this.closeActivePresetPicker();
+			this.closeActiveFilterPopover();
 			void this.callbacks.onOpenPresetSettings?.(preset.id);
 		});
 		this.applyKanbanToolbarLayoutMode(toolbar, start, center, end);
+	}
+
+	private resolveEditableKanbanFilter(preset: KanbanPreset, settings: OperonSettings): FilterSet | null {
+		if (!preset.filterSetId) return null;
+		const filterSet = settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
+		return filterSet && !isSpecialDynamicFilterSet(filterSet) ? filterSet : null;
+	}
+
+	private renderKanbanFilterPopoverButton(
+		container: HTMLElement,
+		preset: KanbanPreset,
+		currentFilter: FilterSet | null,
+	): void {
+		const host = container.createDiv('operon-kanban-filter-popover-host');
+		const button = host.createEl('button', {
+			cls: 'operon-kanban-toolbar-settings-button operon-kanban-filter-popover-button',
+			attr: {
+				type: 'button',
+				'aria-haspopup': 'dialog',
+				'aria-expanded': 'false',
+			},
+		});
+		button.classList.toggle('is-active', currentFilter !== null);
+		setIcon(button, 'funnel');
+		setAccessibleLabelWithoutTooltip(button, t('table', 'filter'));
+		bindOperonHoverTooltip(button, {
+			content: t('table', 'filter'),
+			taskColor: null,
+			preferredVertical: 'above',
+		});
+		button.addEventListener('click', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			this.closeActivePresetPicker();
+			this.closeActiveFilterPopover();
+			this.openKanbanFilterPopover(host, button, preset, currentFilter);
+		});
+	}
+
+	private openKanbanFilterPopover(
+		host: HTMLElement,
+		button: HTMLButtonElement,
+		preset: KanbanPreset,
+		currentFilter: FilterSet | null,
+	): void {
+		const settings = this.getSettings();
+		const expectedPresetFilterSetId = preset.filterSetId;
+		let closePopover: (() => void) | null = null;
+		closePopover = showPresetFilterPopover({
+			app: this.app,
+			anchor: button,
+			triggerHost: host,
+			label: t('table', 'filter'),
+			currentFilter,
+			newFilterName: createUniquePresetFilterName(t('table', 'newFilterName'), settings.filterSets),
+			keyMappings: settings.keyMappings,
+			filterModalOptions: {
+				getSettings: () => this.getSettings(),
+				getProjectSerialScopeTasks: () => this.indexer.getAllTasks(),
+				getFilePropertyDiscoveryTasks: () => this.indexer.getAllTasks(),
+				getFilePropertySnapshot: tasks => getTableFilePropertyIndex(this.app).getSnapshot(
+					tasks,
+					this.indexer.getGeneration(),
+					{ keyMappings: this.getSettings().keyMappings },
+				),
+			},
+			countTasks: filterSet => filterTasksForCalendar(
+				filterSet,
+				this.indexer.getAllTasks(),
+				this.getSettings().priorities,
+				this.getPinnedCache(),
+				{
+					projectSerialScopes: this.getSettings().projectSerialScopes,
+					projectSerialScopeTasks: this.indexer.getAllTasks(),
+					dependencyTasks: this.indexer.getAllTasks(),
+					pipelines: this.getSettings().pipelines,
+					filePropertyContext: this.getFilePropertyContext(this.getSettings()),
+				},
+			).length,
+			saveTooltip: currentFilter
+				? buildPresetFilterUsageTooltip(settings, currentFilter.id)
+				: undefined,
+			classNames: ['operon-kanban-filter-popover'],
+			onCommit: async (filterSet, sourceFilterSetId) => {
+				if (!this.callbacks.onCommitPresetFilter) {
+					throw new Error('Operon: Kanban filter save callback is unavailable.');
+				}
+				await this.callbacks.onCommitPresetFilter({
+					presetId: preset.id,
+					filterSet,
+					sourceFilterSetId,
+					expectedPresetFilterSetId,
+				});
+			},
+			onCommitError: error => {
+				console.error('Operon: failed to save Kanban filter popover draft', error);
+				new Notice(t('table', 'presetActionFailed'));
+			},
+			onClose: close => {
+				if (this.activeFilterPopoverClose === close) this.activeFilterPopoverClose = null;
+			},
+			resolveFallbackFocusTarget: () => this.contentEl.querySelector<HTMLButtonElement>(
+				'button.operon-kanban-filter-popover-button',
+			),
+		});
+		this.activeFilterPopoverClose = closePopover;
 	}
 
 	private renderKanbanRelatedViewsButton(container: HTMLElement, preset: KanbanPreset): void {
@@ -979,7 +1091,10 @@ export class KanbanView extends ItemView {
 			settings: this.getSettings(),
 			source: { type: 'kanban', preset },
 			buttonClass: 'operon-kanban-related-views-button',
-			closeBeforeOpen: () => this.closeActivePresetPicker(),
+			closeBeforeOpen: () => {
+				this.closeActivePresetPicker();
+				this.closeActiveFilterPopover();
+			},
 			onOpenRelatedView: target => this.callbacks.onOpenRelatedView?.(target),
 			onCreateRelatedView: target => this.callbacks.onCreateRelatedView?.(target),
 		});
@@ -1018,6 +1133,7 @@ export class KanbanView extends ItemView {
 			event.preventDefault();
 			event.stopPropagation();
 			this.closeActivePresetPicker();
+			this.closeActiveFilterPopover();
 			button.setAttribute('aria-expanded', 'true');
 			let closePicker: (() => void) | null = null;
 			closePicker = showKanbanPresetPicker(button, {
@@ -1044,6 +1160,12 @@ export class KanbanView extends ItemView {
 	private closeActivePresetPicker(): void {
 		const close = this.activePresetPickerClose;
 		this.activePresetPickerClose = null;
+		close?.();
+	}
+
+	private closeActiveFilterPopover(): void {
+		const close = this.activeFilterPopoverClose;
+		this.activeFilterPopoverClose = null;
 		close?.();
 	}
 

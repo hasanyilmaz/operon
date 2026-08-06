@@ -578,6 +578,7 @@ import {
 	KanbanCellActionId,
 	KanbanLeafState,
 	KanbanPreset,
+	type KanbanPresetFilterCommitRequest,
 	buildKanbanLaneCollapseScopeKey,
 	buildKanbanStatusCollapseScopeKey,
 	cloneDefaultKanbanPresets,
@@ -1557,6 +1558,37 @@ export default class OperonPlugin extends Plugin {
 	private async saveFilterSetAndRefresh(filterSet: FilterSet): Promise<void> {
 		await this.storage.filters.upsert(filterSet);
 		this.syncFilterSetsFromStore();
+		this.refreshViews();
+	}
+
+	private async commitKanbanPresetFilter(request: KanbanPresetFilterCommitRequest): Promise<void> {
+		const preset = this.settings.kanbanPresets.find(entry => entry.id === request.presetId) ?? null;
+		if (!preset) throw new Error('Operon: Kanban preset is no longer available.');
+		if (preset.filterSetId !== request.expectedPresetFilterSetId) {
+			throw new Error('Operon: Kanban preset filter changed while the editor was open.');
+		}
+		if (request.sourceFilterSetId && (
+			request.sourceFilterSetId !== request.expectedPresetFilterSetId
+			|| request.filterSet.id !== request.sourceFilterSetId
+		)) {
+			throw new Error('Operon: Kanban filter edit no longer matches the selected preset.');
+		}
+
+		await this.storage.filters.upsert(request.filterSet);
+		this.syncFilterSetsFromStore();
+		if (request.sourceFilterSetId) {
+			this.refreshViews();
+			return;
+		}
+
+		const previousFilterSetId = preset.filterSetId;
+		preset.filterSetId = request.filterSet.id;
+		try {
+			await this.storage.saveSettings();
+		} catch (error) {
+			preset.filterSetId = previousFilterSetId;
+			throw error;
+		}
 		this.refreshViews();
 	}
 
@@ -11995,6 +12027,7 @@ export default class OperonPlugin extends Plugin {
 						await this.toggleTimerForTask(operonId, 'command');
 					},
 					getTrackingSignature: () => this.timeTracker.getActiveOperonId() ?? '',
+					onCommitPresetFilter: request => this.commitKanbanPresetFilter(request),
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
 						new KanbanPresetQuickSettingsModal(this.app, {

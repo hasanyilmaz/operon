@@ -174,7 +174,11 @@ import { resolveTableToolbarSurfacePolicy } from './table/table-toolbar-surface-
 import { showTableExportMenu } from './table/table-export-menu';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from './related-views';
-import { showPresetFilterPopover } from './preset-filter-popover';
+import {
+	buildPresetFilterUsageTooltip,
+	createUniquePresetFilterName,
+	showPresetFilterPopover,
+} from './preset-filter-popover';
 import {
 	bindEmbedPercentWidth,
 	parseEmbedWidthPercent,
@@ -1419,7 +1423,7 @@ function openEmbedTableFilterPopover(
 		triggerHost: host,
 		label: t('table', 'filter'),
 		currentFilter,
-		newFilterName: createUniqueEmbedTableFilterName(settings),
+		newFilterName: createUniquePresetFilterName(t('table', 'newFilterName'), settings.filterSets),
 		keyMappings: settings.keyMappings,
 		filterModalOptions: {
 			getSettings: deps.getSettings,
@@ -1449,7 +1453,7 @@ function openEmbedTableFilterPopover(
 			},
 		).length,
 		saveTooltip: sourceFilterSetId
-			? buildEmbedTableFilterUsageTooltip(sourceFilterSetId, deps)
+			? buildPresetFilterUsageTooltip(settings, sourceFilterSetId, getEmbedTablePresets(deps))
 			: undefined,
 		classNames: ['operon-table-filter-popover'],
 		onCommit: updated => saveEmbedTableFilterPopoverDraft(instance, deps, updated, sourceFilterSetId),
@@ -1469,47 +1473,6 @@ function openEmbedTableFilterPopover(
 	});
 	instance.keepActivePickerOnRender = true;
 	instance.activePickerClose = closePopover;
-}
-
-function createUniqueEmbedTableFilterName(settings: OperonSettings): string {
-	const baseName = t('table', 'newFilterName');
-	const existingNames = new Set(
-		settings.filterSets.map(filterSet => filterSet.name.trim().toLocaleLowerCase()),
-	);
-	if (!existingNames.has(baseName.toLocaleLowerCase())) return baseName;
-	let suffix = 2;
-	while (existingNames.has(`${baseName} ${suffix}`.toLocaleLowerCase())) {
-		suffix += 1;
-	}
-	return `${baseName} ${suffix}`;
-}
-
-function buildEmbedTableFilterUsageTooltip(filterSetId: string, deps: EmbedTableDeps): { title: string; content: string } | undefined {
-	const settings = deps.getSettings();
-	const lines: string[] = [];
-	const calendarPresets = settings.calendarPresets
-		.filter(entry => entry.filterSetId === filterSetId)
-		.map(entry => entry.name.trim() || entry.id);
-	const kanbanPresets = settings.kanbanPresets
-		.filter(entry => entry.filterSetId === filterSetId)
-		.map(entry => entry.name.trim() || entry.id);
-	const tablePresets = getEmbedTablePresets(deps)
-		.filter(entry => entry.filterSetId === filterSetId)
-		.map(entry => entry.name.trim() || entry.id);
-	if (calendarPresets.length > 0) {
-		lines.push(`${t('filterSets', 'usedByCalendar')}: ${calendarPresets.join(', ')}`);
-	}
-	if (kanbanPresets.length > 0) {
-		lines.push(`${t('filterSets', 'usedByKanban')}: ${kanbanPresets.join(', ')}`);
-	}
-	if (tablePresets.length > 0) {
-		lines.push(`${t('filterSets', 'usedByTable')}: ${tablePresets.join(', ')}`);
-	}
-	if (lines.length === 0) return undefined;
-	return {
-		title: t('filterSets', 'usedByTitle'),
-		content: lines.join(' · '),
-	};
 }
 
 async function saveEmbedTableFilterPopoverDraft(
