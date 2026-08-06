@@ -3,7 +3,7 @@ import type { OperonIndexer } from '../indexer/indexer';
 import type { PinnedCache } from '../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import type { IndexedTask } from '../types/fields';
-import { cloneFilterSet, type FilterSet, type OperonSettings, type TaskFinderDefaultScopeKey } from '../types/settings';
+import type { FilterSet, OperonSettings, TaskFinderDefaultScopeKey } from '../types/settings';
 import type { TrackerSession } from '../types/tracker';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from '../types/related-views';
 import {
@@ -151,7 +151,7 @@ import {
 	snapshotFloatingRectAnchor,
 } from './field-pickers/common';
 import { closeIconOnlyChipPreviewsForRoot } from './icon-only-chip-preview';
-import { getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
+import { getOwnerWindow } from '../core/dom-compat';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import {
 	applyTaskSearchBoxShortcutCommand,
@@ -174,7 +174,7 @@ import { resolveTableToolbarSurfacePolicy } from './table/table-toolbar-surface-
 import { showTableExportMenu } from './table/table-export-menu';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from './related-views';
-import { FilterSetModal } from './filter-set-modal';
+import { showPresetFilterPopover } from './preset-filter-popover';
 import {
 	bindEmbedPercentWidth,
 	parseEmbedWidthPercent,
@@ -361,34 +361,6 @@ class TableEmbedPresetSourceUpdateSkippedError extends Error {
 		super('Embedded table source no longer matches the active preset reference.');
 		this.name = 'TableEmbedPresetSourceUpdateSkippedError';
 	}
-}
-
-function generateEmbedTableFilterSetId(): string {
-	return 'fs_' + Math.random().toString(36).slice(2, 9);
-}
-
-function generateEmbedTableFilterGroupId(): string {
-	return 'fg_' + Math.random().toString(36).slice(2, 10);
-}
-
-function generateEmbedTableFilterPopoverId(): string {
-	return 'operon-table-filter-popover-' + Math.random().toString(36).slice(2, 10);
-}
-
-function createEmptyEmbedTableFilterSet(name: string): FilterSet {
-	return {
-		id: generateEmbedTableFilterSetId(),
-		name,
-		icon: 'filter',
-		rootGroup: {
-			id: generateEmbedTableFilterGroupId(),
-			logic: 'all',
-			children: [],
-		},
-		sorts: [],
-		matchLogic: 'all',
-		conditions: [],
-	};
 }
 
 export function parseTableEmbedReference(source: string): TableEmbedReference | null {
@@ -1439,71 +1411,17 @@ function openEmbedTableFilterPopover(
 	closeEmbedTableActivePicker(instance);
 	const settings = deps.getSettings();
 	const currentFilter = resolveTablePresetFilterSet(preset, settings.filterSets);
-	const draft = currentFilter
-		? cloneFilterSet(currentFilter)
-		: createEmptyEmbedTableFilterSet(createUniqueEmbedTableFilterName(settings));
 	const sourceFilterSetId = currentFilter?.id ?? null;
-	const ownerDocument = getOwnerDocument(host);
-	const ownerWindow = ownerDocument.defaultView ?? window;
-	const floatingOptions = resolveSurfaceFloatingHostOptions(button);
-	const popoverHost = floatingOptions.floatingHost ?? ownerDocument.body;
-	const floatingScrollHost = floatingOptions.floatingScrollHost ?? ownerWindow;
-	const popover = popoverHost.createDiv('operon-table-filter-popover');
-	const popoverId = generateEmbedTableFilterPopoverId();
-	let editor: FilterSetModal | null = null;
-	let isClosed = false;
-	let repositionFrame: number | null = null;
-	popover.id = popoverId;
-	popover.setAttribute('role', 'dialog');
-	setAccessibleLabelWithoutTooltip(popover, t('table', 'filter'));
-	button.setAttribute('aria-expanded', 'true');
-	button.setAttribute('aria-controls', popoverId);
-
-	const close = (): void => {
-		if (isClosed) return;
-		isClosed = true;
-		if (instance.activePickerClose === close) {
-			instance.activePickerClose = null;
-			instance.keepActivePickerOnRender = false;
-		}
-		ownerDocument.removeEventListener('pointerdown', handleDocumentPointerDown, true);
-		ownerDocument.removeEventListener('keydown', handleDocumentKeyDown, true);
-		ownerWindow.removeEventListener('resize', close);
-		floatingScrollHost.removeEventListener('scroll', scheduleReposition, true);
-		if (repositionFrame !== null) ownerWindow.cancelAnimationFrame(repositionFrame);
-		editor?.destroyInlineConditionEditor();
-		button.setAttribute('aria-expanded', 'false');
-		button.removeAttribute('aria-controls');
-		popover.remove();
-	};
-	const handleDocumentPointerDown = (event: PointerEvent): void => {
-		const target = event.target;
-		if (target && typeof (target as Node).nodeType === 'number' && host.contains(target as Node)) return;
-		if (editor?.isInlineEditorTarget(target)) return;
-		close();
-	};
-	const reposition = (): void => positionEmbedTableFilterPopover(popover, button);
-	const scheduleReposition = (): void => {
-		if (repositionFrame !== null) return;
-		repositionFrame = ownerWindow.requestAnimationFrame(() => {
-			repositionFrame = null;
-			if (!isClosed && popover.isConnected) reposition();
-		});
-	};
-	const handleDocumentKeyDown = (event: KeyboardEvent): void => {
-		if (event.key !== 'Escape') return;
-		if (editor?.isInlineEditorFloatingTarget(event.target)) return;
-		event.preventDefault();
-		close();
-	};
-
-	editor = new FilterSetModal(
-		deps.app,
-		draft,
-		settings.keyMappings,
-		() => undefined,
-		undefined,
-		{
+	let closePopover: (() => void) | null = null;
+	closePopover = showPresetFilterPopover({
+		app: deps.app,
+		anchor: button,
+		triggerHost: host,
+		label: t('table', 'filter'),
+		currentFilter,
+		newFilterName: createUniqueEmbedTableFilterName(settings),
+		keyMappings: settings.keyMappings,
+		filterModalOptions: {
 			getSettings: deps.getSettings,
 			getProjectSerialScopeTasks: () => deps.indexer.getAllTasks(),
 			getFilePropertyDiscoveryTasks: () => deps.indexer.getAllTasks(),
@@ -1512,12 +1430,6 @@ function openEmbedTableFilterPopover(
 				deps.indexer.getGeneration(),
 				{ keyMappings: deps.getSettings().keyMappings },
 			),
-		},
-	);
-	editor.renderInlineConditionEditor(popover, {
-		onCancel: close,
-		onSave: updated => {
-			void saveEmbedTableFilterPopoverDraft(instance, deps, updated, sourceFilterSetId, close);
 		},
 		countTasks: filterSet => filterTasksForCalendar(
 			filterSet,
@@ -1539,44 +1451,24 @@ function openEmbedTableFilterPopover(
 		saveTooltip: sourceFilterSetId
 			? buildEmbedTableFilterUsageTooltip(sourceFilterSetId, deps)
 			: undefined,
+		classNames: ['operon-table-filter-popover'],
+		onCommit: updated => saveEmbedTableFilterPopoverDraft(instance, deps, updated, sourceFilterSetId),
+		onCommitError: error => {
+			console.error('Operon: failed to save embedded table filter popover draft', error);
+			new Notice(t('table', 'presetActionFailed'));
+		},
+		onClose: close => {
+			if (instance.activePickerClose === close) {
+				instance.activePickerClose = null;
+				instance.keepActivePickerOnRender = false;
+			}
+		},
+		resolveFallbackFocusTarget: () => instance.el.querySelector<HTMLButtonElement>(
+			'button.operon-table-filter-popover-button',
+		),
 	});
-	reposition();
-
 	instance.keepActivePickerOnRender = true;
-	instance.activePickerClose = close;
-	ownerDocument.addEventListener('pointerdown', handleDocumentPointerDown, true);
-	ownerDocument.addEventListener('keydown', handleDocumentKeyDown, true);
-	ownerWindow.addEventListener('resize', close);
-	floatingScrollHost.addEventListener('scroll', scheduleReposition, true);
-}
-
-function positionEmbedTableFilterPopover(popover: HTMLElement, button: HTMLElement): void {
-	const rect = button.getBoundingClientRect();
-	const ownerDocument = getOwnerDocument(button);
-	const ownerWindow = ownerDocument.defaultView ?? window;
-	const floatingOptions = resolveSurfaceFloatingHostOptions(button);
-	const floatingHost = floatingOptions.floatingHost;
-	const hostRect = floatingHost?.getBoundingClientRect();
-	const hostScrollLeft = floatingHost?.scrollLeft ?? 0;
-	const hostScrollTop = floatingHost?.scrollTop ?? 0;
-	const margin = 12;
-	const gap = 6;
-	const availableWidth = Math.max(240, (floatingHost?.clientWidth ?? ownerWindow.innerWidth) - margin * 2);
-	const availableHeight = floatingHost?.clientHeight ?? ownerWindow.innerHeight;
-	const width = Math.min(760, availableWidth);
-	const anchorRight = hostRect ? rect.right - hostRect.left + hostScrollLeft : rect.right;
-	const anchorBottom = hostRect ? rect.bottom - hostRect.top + hostScrollTop : rect.bottom;
-	const left = Math.max(hostScrollLeft + margin, Math.min(
-		anchorRight - width,
-		hostScrollLeft + availableWidth - width - margin,
-	));
-	const top = Math.max(hostScrollTop + margin, anchorBottom + gap);
-	const maxHeight = Math.max(240, hostScrollTop + availableHeight - top - margin);
-	popover.style.width = `${Math.round(width)}px`;
-	popover.style.position = floatingHost ? 'absolute' : 'fixed';
-	popover.style.left = `${Math.round(left)}px`;
-	popover.style.top = `${Math.round(top)}px`;
-	popover.style.maxHeight = `${Math.round(maxHeight)}px`;
+	instance.activePickerClose = closePopover;
 }
 
 function createUniqueEmbedTableFilterName(settings: OperonSettings): string {
@@ -1625,24 +1517,19 @@ async function saveEmbedTableFilterPopoverDraft(
 	deps: EmbedTableDeps,
 	filterSet: FilterSet,
 	sourceFilterSetId: string | null,
-	close: () => void,
 ): Promise<void> {
 	if (!deps.onSaveFilterSet) {
-		new Notice(t('table', 'presetActionFailed'));
-		return;
+		throw new Error('Operon: embedded Table filter save callback is unavailable.');
 	}
-	try {
-		await deps.onSaveFilterSet(filterSet);
-		if (!sourceFilterSetId) {
-			await deps.onSavePresetPatch?.({
-				id: getCurrentEmbedTablePreset(instance, deps).id,
-				filterSetId: filterSet.id,
-			});
+	await deps.onSaveFilterSet(filterSet);
+	if (!sourceFilterSetId) {
+		if (!deps.onSavePresetPatch) {
+			throw new Error('Operon: embedded Table preset save callback is unavailable.');
 		}
-		close();
-	} catch (error) {
-		console.error('Operon: failed to save embedded table filter popover draft', error);
-		new Notice(t('table', 'presetActionFailed'));
+		await deps.onSavePresetPatch({
+			id: getCurrentEmbedTablePreset(instance, deps).id,
+			filterSetId: filterSet.id,
+		});
 	}
 }
 
