@@ -121,6 +121,12 @@ export interface RuntimePreparedMutationCommitV1 {
 	readonly groupResults: AtomicGroupResultV1[];
 	readonly affectedFilePaths: string[];
 	readonly reason?: string;
+	/** Internal exact writer evidence. Never serialized into a public result or receipt. */
+	readonly primaryTaskSourceCommitEvidence?: {
+		readonly resourceKey: string;
+		readonly content: string;
+		readonly revision: string;
+	};
 }
 
 export interface RuntimeGraphTransactionCheckpointV1 {
@@ -243,6 +249,11 @@ export interface RuntimeMutationGatewayPortsV1 {
 		request: MutationApplyRequestV1,
 		prepared: RuntimePreparedMutationV1,
 		effectiveAt: string,
+	): Promise<RuntimePreparedMutationCommitV1>;
+	/** Read-only, same-apply evidence reconciliation after Runtime settlement. */
+	refreshMutationCommitEvidence?(
+		prepared: RuntimePreparedMutationV1,
+		commit: RuntimePreparedMutationCommitV1,
 	): Promise<RuntimePreparedMutationCommitV1>;
 	verifyMutation?(
 		request: MutationApplyRequestV1,
@@ -1984,6 +1995,9 @@ export class RuntimeMutationGatewayV1 {
 				undefined,
 				() => this.ports.settleAfterMutation(request.requestId),
 			);
+			if (this.ports.refreshMutationCommitEvidence) {
+				commit = await this.ports.refreshMutationCommitEvidence(prepared.value, commit);
+			}
 				postflightRevision = await this.ports.sampleContextRevision();
 				if (!(await this.measureMutation(
 					request.requestId,
