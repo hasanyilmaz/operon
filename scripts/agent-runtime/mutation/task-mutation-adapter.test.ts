@@ -95,6 +95,33 @@ test('general update resolves stable priority identity and rejects semantic fiel
 	if (!rejected.ok) assert.equal(rejected.code, 'field-not-writable');
 });
 
+test('general update rejects File Task description changes without an explicit rename contract', () => {
+	const fileLocator = { representation: 'file' as const, filePath: 'Tasks/Adapter fixture.md' };
+	const fileTask: RuntimeExactTaskMutationSnapshotV1 = {
+		...task,
+		locator: fileLocator,
+		description: 'Adapter fixture',
+		sourceContent: '---\noperonId: abc1234\n---\n',
+	};
+	const mutationRequest = {
+		...request('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [{ field: 'description', valueType: 'text', value: 'Renamed fixture' }],
+		}),
+		target: { operonId: fileTask.operonId, locator: fileLocator },
+	};
+	const result = prepareRuntimeTaskFieldMutationV1(
+		mutationRequest,
+		'2026-07-24T12:00:00.000Z',
+		{ catalog, getTask: () => fileTask },
+	);
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.equal(result.code, 'field-not-writable');
+		assert.match(result.reason, /explicit rename contract/u);
+	}
+});
+
 test('conversion ancestor effects exclude source groups and coalesce shared ancestor files', () => {
 	const effects = buildRuntimeConversionAncestorPredictedEffectsV1(
 		['Daily/Today.md', 'Converted/Task.md'],
