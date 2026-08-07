@@ -210,12 +210,6 @@ export function buildReadingTaskRowElement(
 	} else {
 		renderTaskDescription(description, task, callbacks);
 	}
-	if (options?.rowClassName !== 'operon-filter-task-row') {
-		bindOperonHoverTooltip(description, {
-			content: t('tooltips', 'goToTask'),
-			taskColor,
-		});
-	}
 	if (terminalVisualState === 'done') {
 		description.classList.add('operon-task-done');
 	} else if (terminalVisualState === 'cancelled') {
