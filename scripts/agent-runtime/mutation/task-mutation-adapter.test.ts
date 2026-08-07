@@ -1005,3 +1005,50 @@ test('File Task postflight evidence requires one exact committed revision and an
 		'A missing canonical reread must fail closed.',
 	);
 });
+
+test('inline task exact-byte evidence records metadata settlement and unrelated source drift separately', () => {
+	const filePath = 'Tasks.md';
+	const committedContent = [
+		'# Tasks',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'- [ ] Unrelated task {{operonId:: def5678}}',
+		'',
+	].join('\n');
+	const metadataSettledContent = committedContent.replace(
+		'2026-07-24T12:00:00',
+		'2026-07-24T12:00:01',
+	);
+	const unrelatedDriftContent = metadataSettledContent.replace(
+		'Unrelated task',
+		'Concurrent unrelated edit',
+	);
+	const committedRevision = sha256HexV1(committedContent);
+	const exactRevision = {
+		resourceKind: 'task-source',
+		resourceKey: filePath,
+		revision: committedRevision,
+	};
+	assert.notEqual(sha256HexV1(metadataSettledContent), committedRevision);
+	assert.notEqual(
+		sha256HexV1(unrelatedDriftContent),
+		sha256HexV1(metadataSettledContent),
+	);
+	assert.equal(
+		resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
+			filePath,
+			[exactRevision],
+			metadataSettledContent,
+		),
+		null,
+		'Current exact-byte evidence exposes the false uncertainty after metadata settlement.',
+	);
+	assert.equal(
+		resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
+			filePath,
+			[exactRevision],
+			unrelatedDriftContent,
+		),
+		null,
+		'Unrelated same-source drift must remain unverified.',
+	);
+});

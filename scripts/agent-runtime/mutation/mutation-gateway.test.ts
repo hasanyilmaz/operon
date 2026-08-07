@@ -32,7 +32,10 @@ import {
 	prepareRuntimeTaskCreationV1,
 	type RuntimeTaskCreationPreparationV1,
 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
-import { buildRuntimeConversionAncestorPredictedEffectsV1 } from '../../../src/agent-runtime/runtime/task-mutation-adapter';
+import {
+	buildRuntimeConversionAncestorPredictedEffectsV1,
+	resolveRuntimeTaskFieldMutationPostflightEvidenceV1,
+} from '../../../src/agent-runtime/runtime/task-mutation-adapter';
 import {
 	GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
 	type GraphTransactionJournalV1,
@@ -3163,6 +3166,144 @@ test('prepared mutation postflight failure persists an uncertain receipt and fen
 	assert.equal(replay.status, 'outcome-unknown');
 	assert.equal(replay.receipt?.terminalOutcome, 'outcome-unknown');
 	assert.equal(commitCount, 1);
+});
+
+async function characterizePreparedTaskUpdateSettlement(
+	caseId: string,
+	committedContent: string,
+	settledContent: string,
+) {
+	const filePath = 'Tasks.md';
+	let durableContent = committedContent;
+	const events: string[] = [];
+	const updateRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: `phase8-update-preview-${caseId}`,
+		kind: 'mutation-preview',
+		clientInstanceId: 'test-client',
+		idempotencyKey: `phase8-update-${caseId}`,
+		capability: 'tasks.update.preview',
+		mutationKind: 'task.update',
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline', filePath, lineNumber: 2 },
+		},
+		spec: {
+			operation: 'update',
+			changes: [{ field: 'description', valueType: 'text', value: 'Updated description' }],
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const committedRevision = sha256HexV1(committedContent);
+	const prepared = {
+		target: {
+			operonId: 'abc1234',
+			locator: { representation: 'inline' as const, filePath, lineNumber: 2 },
+			targetDigest: 'd'.repeat(64),
+		},
+		affectedResources: [{
+			resourceKind: 'task-source' as const,
+			resourceKey: filePath,
+			revision: committedRevision,
+		}],
+		predictedEffects: [{
+			resourceKind: 'task-source' as const,
+			resourceKey: filePath,
+			action: 'update' as const,
+			summary: 'Update the task description.',
+		}],
+		warnings: [],
+		token: { kind: 'task-fields' as const },
+	};
+	const receiptStore = {
+		health: async () => ({ healthy: true }),
+		lookup: async () => null,
+		persist: async () => ({ expiredDeleted: 0, overflowDeleted: 0, retained: 1 }),
+	} as unknown as IndexedDbMutationReceiptStoreV1;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		reindexAffectedSources: async () => { events.push('reindex'); },
+		settleAfterMutation: async () => {
+			events.push('settlement');
+			durableContent = settledContent;
+		},
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		prepareMutation: async () => ({ ok: true, value: prepared }),
+		commitMutation: async () => ({
+			status: 'committed',
+			groupResults: [{
+				groupId: `task-source:${filePath}`,
+				status: 'committed',
+				resourceRevisions: prepared.affectedResources,
+			}],
+			affectedFilePaths: [filePath],
+		}),
+		verifyMutation: async (_request, _prepared, _postflightRevision, commit) => {
+			events.push('postflight');
+			assert.match(durableContent, /Updated description/u);
+			return resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
+				filePath,
+				commit.groupResults.flatMap(group => group.resourceRevisions ?? []),
+				durableContent,
+			) !== null;
+		},
+		receiptStore: () => receiptStore,
+		vaultIdentityHash: async () => 'c'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-24T12:00:02.000Z'),
+		randomId: () => `phase8-update-${caseId}-plan`,
+	});
+	const preview = await gateway.preview(updateRequest);
+	assert.equal(preview.ok, true);
+	if (!preview.ok) throw new Error('Characterization preview must succeed.');
+	const result = await gateway.apply({
+		contractVersion: 1,
+		requestId: `phase8-update-apply-${caseId}`,
+		kind: 'mutation-apply',
+		plan: preview.plan,
+		authorization: { basis: 'user-explicit-request' },
+		idempotencyKey: updateRequest.idempotencyKey,
+		acknowledgements: [],
+	});
+	return { events, result };
+}
+
+test('prepared task update verifies Runtime-owned datetimeModified settlement drift', async () => {
+	const committedContent = [
+		'# Tasks',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent.replace(
+		'2026-07-24T12:00:00',
+		'2026-07-24T12:00:01',
+	);
+	const { events, result } = await characterizePreparedTaskUpdateSettlement(
+		'settlement-metadata',
+		committedContent,
+		settledContent,
+	);
+	assert.deepEqual(events, ['reindex', 'settlement', 'postflight']);
+	assert.equal(result.status, 'applied', JSON.stringify(result));
+});
+
+test('prepared task update does not verify unrelated same-source settlement drift', async () => {
+	const committedContent = [
+		'# Tasks',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'- [ ] Unrelated task {{operonId:: def5678}}',
+		'',
+	].join('\n');
+	const { result } = await characterizePreparedTaskUpdateSettlement(
+		'unrelated-settlement-drift',
+		committedContent,
+		committedContent.replace('Unrelated task', 'Concurrent unrelated edit'),
+	);
+	assert.equal(result.status, 'outcome-unknown', JSON.stringify(result));
+	assert.equal(result.retryAllowed, false);
 });
 
 test('file-to-inline postflight failure preserves its durable same-plan recovery journal', async () => {
