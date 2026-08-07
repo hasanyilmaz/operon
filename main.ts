@@ -8583,8 +8583,7 @@ export default class OperonPlugin extends Plugin {
 				groupResults,
 			),
 			affectedFilePaths,
-			...(prepared.operation === 'update'
-			&& prepared.task.locator.representation === 'inline'
+			...((prepared.operation === 'update' || prepared.operation === 'transition')
 			&& writeResult.committedContent !== undefined
 				? {
 					primaryTaskSourceCommitEvidence: {

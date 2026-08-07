@@ -1171,6 +1171,23 @@ test('inline task exact-byte evidence records metadata settlement and unrelated 
 		refreshedCommit.groupResults[0]?.resourceRevisions?.[1]?.revision,
 		sha256HexV1(metadataSettledContent),
 	);
+	const refreshedTransitionCommit = refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
+		{
+			...preparedMutation,
+			token: {
+				...prepared,
+				operation: 'transition' as const,
+			},
+		},
+		commit,
+		metadataSettledContent,
+		DEFAULT_SETTINGS.keyMappings,
+	);
+	assert.equal(
+		refreshedTransitionCommit.groupResults[0]?.resourceRevisions?.[1]?.revision,
+		sha256HexV1(metadataSettledContent),
+		'Semantic transitions must receive the same bounded metadata settlement as updates.',
+	);
 	assert.deepEqual(
 		refreshedCommit.groupResults[0]?.resourceRevisions?.filter((_, index) => index !== 1),
 		commit.groupResults[0]?.resourceRevisions?.filter((_, index) => index !== 1),
@@ -1385,4 +1402,68 @@ test('inline task settlement accepts only the configured Update time on edit fro
 			label,
 		);
 	}
+});
+
+test('File Task settlement accepts only one bounded configured modified-time frontmatter drift', () => {
+	const filePath = 'Efforts/Projets/_Operon/Adapter fixture.md';
+	const committedContent = [
+		'---',
+		'operonId: abc1234',
+		'priority: F',
+		'datetimeModified: 2026-07-24T12:00:00',
+		'modification: 2026-07-24T11:59',
+		'---',
+		'',
+	].join('\n');
+	const settledContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'modification: 2026-07-24T12:00',
+	);
+	const settlementWindow = {
+		applyStartedAtEpochMs: new Date(2026, 6, 24, 12, 0, 0).getTime(),
+		settlementObservedAtEpochMs: new Date(2026, 6, 24, 12, 0, 2).getTime(),
+	};
+	const prepared: RuntimeTaskFieldMutationPreparationV1 = {
+		kind: 'task-fields',
+		operation: 'update',
+		task: {
+			...task,
+			locator: { representation: 'file', filePath },
+			description: 'Adapter fixture',
+			sourceContent: committedContent,
+		},
+		fieldValues: {
+			priority: 'F',
+			datetimeModified: '2026-07-24T12:00:00',
+		},
+		sourceRevision: 'a'.repeat(64),
+		targetDigest: 'b'.repeat(64),
+		summary: 'Update the File Task priority.',
+		noChange: false,
+	};
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			sha256HexV1(committedContent),
+			settledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+			settlementWindow,
+		),
+		sha256HexV1(settledContent),
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			sha256HexV1(committedContent),
+			settledContent.replace('priority: F', 'priority: A'),
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+			settlementWindow,
+		),
+		null,
+		'Concurrent File Task field drift remains unverified.',
+	);
 });

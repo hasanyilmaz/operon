@@ -257,21 +257,41 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 	settlementWindow?: RuntimeMutationSettlementWindowV1,
 ): { revision: string; datetimeModified?: string } | null {
 	if (
-		prepared.operation !== 'update'
-		|| prepared.task.locator.representation !== 'inline'
+		(prepared.operation !== 'update' && prepared.operation !== 'transition')
 		|| sha256HexV1(committedSourceContent) !== committedSourceRevision
 	) return null;
 	if (observedSourceContent === committedSourceContent) {
 		return { revision: sha256HexV1(observedSourceContent) };
 	}
-	const lineNumber = prepared.task.locator.lineNumber;
+	const lineNumber = prepared.task.locator.representation === 'inline'
+		? prepared.task.locator.lineNumber
+		: -1;
 	const committedLines = committedSourceContent.split('\n');
 	const observedLines = observedSourceContent.split('\n');
-	if (
-		committedLines.length !== observedLines.length
-		|| lineNumber < 0
-		|| lineNumber >= committedLines.length
-	) return null;
+	if (committedLines.length !== observedLines.length) return null;
+	if (prepared.task.locator.representation === 'file') {
+		const driftLineNumbers = committedLines.flatMap((line, index) => (
+			line !== observedLines[index] ? [index] : []
+		));
+		if (driftLineNumbers.length !== 1) return null;
+		const driftLineNumber = driftLineNumbers[0];
+		if (
+			driftLineNumber === undefined
+			|| !resolveBoundedModifiedTimeFrontmatterDriftV1(
+				committedLines,
+				observedLines,
+				driftLineNumber,
+				modifiedTimeFrontmatterKeys,
+				settlementWindow,
+			)
+		) return null;
+		const restoredObservedLines = [...observedLines];
+		restoredObservedLines[driftLineNumber] = committedLines[driftLineNumber] ?? '';
+		return restoredObservedLines.join('\n') === committedSourceContent
+			? { revision: sha256HexV1(observedSourceContent) }
+			: null;
+	}
+	if (lineNumber < 0 || lineNumber >= committedLines.length) return null;
 	const nonTargetDriftLineNumbers = committedLines.flatMap((line, index) => (
 		index !== lineNumber && line !== observedLines[index] ? [index] : []
 	));
@@ -367,8 +387,7 @@ export function runtimeInlineTaskUpdateSettlementEvidenceSourceV1(
 	if (
 		!prepared
 		|| prepared.kind !== 'task-fields'
-		|| prepared.operation !== 'update'
-		|| prepared.task.locator.representation !== 'inline'
+		|| (prepared.operation !== 'update' && prepared.operation !== 'transition')
 		|| !evidence
 		|| evidence.resourceKey !== prepared.task.locator.filePath
 		|| sha256HexV1(evidence.content) !== evidence.revision
