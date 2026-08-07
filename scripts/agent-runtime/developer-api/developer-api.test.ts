@@ -13,11 +13,20 @@ import {
 	type DeveloperMutationRecoveryRecordV1,
 	type DeveloperMutationRecoveryStoreV1,
 } from '../../../src/agent-runtime/developer-api';
+import {
+	DeveloperApiGrantControllerV1,
+	type DeveloperApiGrantDataStoreV1,
+} from '../../../src/agent-runtime/developer-api/grant-controller';
 import { DeveloperMutationSecurityPolicyV1 } from '../../../src/agent-runtime/developer-api/security';
 import type {
 	DeveloperMutationPreviewInputV1,
 } from '../../../src/agent-runtime/public/v1/developer-api';
 import type { OperonAgentRuntimeCoreV1 } from '../../../src/agent-runtime/runtime/types';
+import {
+	buildOperonDataPackageFromSettings,
+	type OperonDataPackageV1,
+} from '../../../src/storage/operon-data-package';
+import { DEFAULT_SETTINGS } from '../../../src/types/settings';
 
 const allCapabilities: CapabilityAdvertisementV1[] = CAPABILITY_REGISTRY_V1.map(definition => ({
 	id: definition.id,
@@ -350,6 +359,157 @@ function request(capabilities: CapabilityIdV1[] = []) {
 	};
 }
 
+interface GrantWriteGate {
+	readonly started: Promise<void>;
+	release(): void;
+}
+
+async function waitForGrantWriteStart(started: Promise<void>, label: string): Promise<void> {
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			started,
+			new Promise<never>((_resolve, reject) => {
+				timeout = setTimeout(() => {
+					reject(new Error(`Timed out waiting for ${label}`));
+				}, 2_000);
+			}),
+		]);
+	} finally {
+		if (timeout) clearTimeout(timeout);
+	}
+}
+
+class GatedGrantDataStore implements DeveloperApiGrantDataStoreV1 {
+	private dataPackage: OperonDataPackageV1;
+	private persistAvailable: boolean;
+	private nextGate: Readonly<{
+		started: () => void;
+		release: Promise<void>;
+	}> | undefined;
+	private nextFailure: Error | undefined;
+	writeCount = 0;
+
+	constructor(dataPackage: OperonDataPackageV1, persistAvailable = true) {
+		this.dataPackage = structuredClone(dataPackage);
+		this.persistAvailable = persistAvailable;
+	}
+
+	canPersist(): boolean {
+		return this.persistAvailable;
+	}
+
+	getDataPackage(): OperonDataPackageV1 {
+		return structuredClone(this.dataPackage);
+	}
+
+	deferNextWrite(): GrantWriteGate {
+		if (this.nextGate) throw new Error('A grant persistence gate is already pending');
+		let markStarted: (() => void) | undefined;
+		let releaseWrite: (() => void) | undefined;
+		const started = new Promise<void>(resolve => {
+			markStarted = resolve;
+		});
+		const release = new Promise<void>(resolve => {
+			releaseWrite = resolve;
+		});
+		this.nextGate = {
+			started: () => markStarted?.(),
+			release,
+		};
+		return {
+			started,
+			release: () => releaseWrite?.(),
+		};
+	}
+
+	failNextWrite(error: Error): void {
+		this.nextFailure = error;
+	}
+
+	snapshot(): OperonDataPackageV1 {
+		return structuredClone(this.dataPackage);
+	}
+
+	async updateDataPackage(
+		mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1,
+	): Promise<void> {
+		this.writeCount += 1;
+		const failure = this.nextFailure;
+		this.nextFailure = undefined;
+		if (failure) throw failure;
+		const gate = this.nextGate;
+		this.nextGate = undefined;
+		if (gate) {
+			gate.started();
+			await gate.release;
+		}
+		this.dataPackage = structuredClone(mutator(structuredClone(this.dataPackage)));
+	}
+}
+
+function realGrantRuntimeHarness(store: GatedGrantDataStore) {
+	const consumerPlugin = {
+		manifest: { id: 'consumer.test', name: 'Consumer Test', version: '1.2.3' },
+	};
+	const controller = new DeveloperApiGrantControllerV1({
+		store,
+		verifier: {
+			verify: candidate => candidate === consumerPlugin
+				? {
+					id: 'consumer.test',
+					name: 'Consumer Test',
+					version: '1.2.3',
+					instanceEpoch: 'real-controller-instance',
+				}
+				: null,
+			isCurrent: candidate => candidate.instanceEpoch === 'real-controller-instance',
+		},
+		now: () => new Date('2026-07-29T00:00:00.000Z'),
+	});
+	const core = runtime();
+	const access = (capabilities: CapabilityIdV1[]) => getOperonDeveloperApiV1(
+		core,
+		consumerPlugin,
+		request(capabilities),
+		{
+			isDesktopAvailable: () => true,
+			isHostVersionSupported: () => true,
+			lifecyclePhase: () => 'ready',
+			retryAfterMs: () => undefined,
+			lifecycleError: () => undefined,
+			isCoreActive: candidate => candidate === core,
+			grantController: controller,
+			recoveryStore: new MemoryDeveloperRecoveryStore(),
+			createSessionId: () => 'real-controller-session',
+			now: () => new Date('2026-07-29T00:00:00.000Z'),
+		},
+	);
+	return { access, controller };
+}
+
+function assertPendingNonAuthorizing(
+	result: ReturnType<ReturnType<typeof realGrantRuntimeHarness>['access']>,
+): void {
+	assert.equal(result.ok, false);
+	assert.equal(result.ok ? undefined : result.error.code, 'authority-insufficient');
+	assert.equal(result.ok ? undefined : result.error.details?.grantState, 'pending');
+	assert.equal(
+		result.ok ? undefined : result.error.details?.reasonCode,
+		'capability-approval-required',
+	);
+	assert.deepEqual(
+		result.ok ? undefined : result.error.details?.pendingCapabilities,
+		['tasks.read'],
+	);
+	assert.equal(result.status.grant?.state, 'pending');
+	assert.deepEqual(result.status.grant?.effectiveCapabilities, []);
+	assert.equal(result.status.authority, 'revoked');
+	assert.equal(result.status.admission.reads, false);
+	assert.equal(result.status.admission.writes, false);
+	assert.equal('api' in result, false);
+}
+
 test('strictly rejects unknown, duplicate, malformed, and disjoint access requests', () => {
 	const { access } = harness();
 	const extra = access({ ...request(), consumerId: 'forbidden' });
@@ -471,6 +631,110 @@ test('keeps queued grant states coherent without granting Runtime authority', ()
 	assert.equal(revoked.ok ? undefined : revoked.error.details?.grantState, 'revoked');
 	assert.equal(revoked.ok ? undefined : revoked.error.details?.reasonCode, 'revoked');
 	assert.equal(revoked.status.grant?.state, 'revoked');
+});
+
+test('keeps real Runtime authority closed until pending and approved grants are durable', async () => {
+	const store = new GatedGrantDataStore(buildOperonDataPackageFromSettings(DEFAULT_SETTINGS));
+	const pendingGate = store.deferNextWrite();
+	const { access, controller } = realGrantRuntimeHarness(store);
+	const mixedCapabilities: CapabilityIdV1[] = ['tasks.read', 'system.health'];
+
+	const initial = access(mixedCapabilities);
+	assertPendingNonAuthorizing(initial);
+	assert.deepEqual(initial.status.grant?.requestedCapabilities, mixedCapabilities);
+	try {
+		await waitForGrantWriteStart(pendingGate.started, 'initial Runtime grant persistence');
+		assert.equal(controller.hasPersistenceError(), true);
+		const queued = access(mixedCapabilities);
+		assertPendingNonAuthorizing(queued);
+		assert.deepEqual(queued.status.grant?.requestedCapabilities, mixedCapabilities);
+		assert.equal(store.writeCount, 1);
+	} finally {
+		pendingGate.release();
+	}
+	await controller.drain();
+	const durablePending = store.snapshot().integrations.developerApi.consumersById['consumer.test'];
+	assert.deepEqual(durablePending?.grantedCapabilities, []);
+	assert.deepEqual(durablePending?.pendingCapabilities, ['tasks.read']);
+	assertPendingNonAuthorizing(access(['tasks.read']));
+
+	const approvalGate = store.deferNextWrite();
+	const approval = controller.approvePending('consumer.test', ['tasks.read']);
+	try {
+		await waitForGrantWriteStart(approvalGate.started, 'Runtime grant approval persistence');
+		const gatedActive = access(['tasks.read']);
+		assert.equal(gatedActive.ok, false);
+		assert.equal(gatedActive.ok ? undefined : gatedActive.error.code, 'authority-insufficient');
+		assert.equal(gatedActive.ok ? undefined : gatedActive.error.details?.grantState, 'suspended');
+		assert.equal(
+			gatedActive.ok ? undefined : gatedActive.error.details?.reasonCode,
+			'grant-persistence-unavailable',
+		);
+		assert.equal(gatedActive.status.grant?.state, 'suspended');
+		assert.deepEqual(gatedActive.status.grant?.effectiveCapabilities, []);
+		assert.equal(gatedActive.status.admission.reads, false);
+		assert.equal(gatedActive.status.admission.writes, false);
+		assert.equal('api' in gatedActive, false);
+	} finally {
+		approvalGate.release();
+	}
+	await approval;
+
+	const durableActive = store.snapshot().integrations.developerApi.consumersById['consumer.test'];
+	assert.equal(durableActive?.state, 'active');
+	assert.deepEqual(durableActive?.grantedCapabilities, ['tasks.read']);
+	assert.deepEqual(durableActive?.pendingCapabilities, []);
+	const active = access(['tasks.read']);
+	assert.equal(active.ok, true);
+	if (!active.ok) return;
+	assert.equal(active.status.authority, 'granted');
+	assert.equal(active.status.grant?.state, 'active');
+	assert.deepEqual(active.status.grant?.effectiveCapabilities, ['tasks.read']);
+	assert.equal(active.api.hasCapability('tasks.read'), true);
+	assert.equal(store.writeCount, 2);
+});
+
+test('keeps the real controller and Runtime fail-closed when persistence is unavailable', async () => {
+	const store = new GatedGrantDataStore(
+		buildOperonDataPackageFromSettings(DEFAULT_SETTINGS),
+		false,
+	);
+	const { access, controller } = realGrantRuntimeHarness(store);
+	const unavailable = access(['tasks.read']);
+	assert.equal(unavailable.ok, false);
+	assert.equal(unavailable.ok ? undefined : unavailable.error.code, 'authority-insufficient');
+	assert.equal(unavailable.ok ? undefined : unavailable.error.details?.grantState, 'suspended');
+	assert.equal(
+		unavailable.ok ? undefined : unavailable.error.details?.reasonCode,
+		'grant-persistence-unavailable',
+	);
+	assert.equal(unavailable.status.grant?.state, 'suspended');
+	assert.deepEqual(unavailable.status.grant?.effectiveCapabilities, []);
+	assert.equal(unavailable.status.admission.reads, false);
+	assert.equal(unavailable.status.admission.writes, false);
+	assert.equal('api' in unavailable, false);
+	await controller.drain();
+	assert.equal(store.writeCount, 0);
+	assert.deepEqual(store.snapshot().integrations.developerApi.consumersById, {});
+});
+
+test('retries a failed real pending write without exposing Runtime authority', async () => {
+	const store = new GatedGrantDataStore(buildOperonDataPackageFromSettings(DEFAULT_SETTINGS));
+	store.failNextWrite(new Error('injected real pending grant write failure'));
+	const { access, controller } = realGrantRuntimeHarness(store);
+
+	assertPendingNonAuthorizing(access(['tasks.read']));
+	await assert.rejects(controller.drain(), /injected real pending grant write failure/u);
+	assert.equal(store.writeCount, 1);
+	assert.deepEqual(store.snapshot().integrations.developerApi.consumersById, {});
+
+	assertPendingNonAuthorizing(access(['tasks.read']));
+	await controller.drain();
+	assert.equal(store.writeCount, 2);
+	const durable = store.snapshot().integrations.developerApi.consumersById['consumer.test'];
+	assert.deepEqual(durable?.grantedCapabilities, []);
+	assert.deepEqual(durable?.pendingCapabilities, ['tasks.read']);
+	assertPendingNonAuthorizing(access(['tasks.read']));
 });
 
 test('fails access closed off desktop, without a core, while booting, and on terminal startup failure', () => {

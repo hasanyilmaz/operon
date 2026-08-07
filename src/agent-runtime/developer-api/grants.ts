@@ -211,7 +211,33 @@ export function recordDeveloperApiGrantRequest(
 		createdAt: reconciledExisting?.createdAt ?? nowIso,
 		updatedAt: nowIso,
 	};
+	if (reconciledExisting && grantRecordsEqualExceptUpdatedAt(next, reconciledExisting)) {
+		return reconciled;
+	}
 	return replaceRecord(reconciled, next);
+}
+
+function grantRecordsEqualExceptUpdatedAt(
+	left: DeveloperApiGrantRecordV1,
+	right: DeveloperApiGrantRecordV1,
+): boolean {
+	return left.consumerId === right.consumerId
+		&& left.consumerName === right.consumerName
+		&& left.consumerVersion === right.consumerVersion
+		&& left.observedConsumerVersion === right.observedConsumerVersion
+		&& left.approvedMajorVersion === right.approvedMajorVersion
+		&& left.state === right.state
+		&& left.suspensionReason === right.suspensionReason
+		&& left.revision === right.revision
+		&& left.createdAt === right.createdAt
+		&& left.grantedCapabilities.length === right.grantedCapabilities.length
+		&& left.grantedCapabilities.every((capability, index) => (
+			capability === right.grantedCapabilities[index]
+		))
+		&& left.pendingCapabilities.length === right.pendingCapabilities.length
+		&& left.pendingCapabilities.every((capability, index) => (
+			capability === right.pendingCapabilities[index]
+		));
 }
 
 export function suspendDeveloperApiGrantForAuditRecovery(
