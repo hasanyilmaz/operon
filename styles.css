@@ -31556,11 +31556,15 @@ button.operon-table-summary-picker-action:focus-visible {
 	width: auto;
 	height: var(--operon-task-chip-height);
 	min-width: 0;
+	max-width: 100%;
 	min-height: var(--operon-task-chip-height);
 	padding: 0 6px;
 	font-size: 12px;
 	line-height: 1.25;
 	font-variant-numeric: tabular-nums;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .operon-table-icon-only-button:hover,

@@ -13,7 +13,7 @@ import {
 import type { OperonSettings } from '../../types/settings';
 import { createTableGroupPathKey, type TableQueryGroup, type TableQuerySubgroup } from '../../systems/table-query';
 import { t } from '../../core/i18n';
-import { buildTableTaskFieldCatalog } from './table-field-catalog';
+import { buildTableTaskFieldCatalog, getTableTaskField } from './table-field-catalog';
 import { orderTablePresetColumnsByPinState } from './table-preset-model';
 import { isTableFilePropertyColumnKey } from './table-file-property';
 
@@ -22,6 +22,7 @@ export const TABLE_COMFORTABLE_ROW_HEIGHT = 44;
 export const TABLE_OVERSCAN_ROWS = 8;
 export const TABLE_DEFAULT_BODY_HEIGHT = 520;
 export const TABLE_ICON_ONLY_COLUMN_WIDTH = 56;
+export const TABLE_COMPACT_DATETIME_12H_COLUMN_WIDTH = 76;
 export const TABLE_SUBGROUP_PARENT_LABEL_MAX_LENGTH = 15;
 
 export type TableRenderItem =
@@ -77,6 +78,8 @@ export interface TableColumnGeometry {
 	lastPinnedIndex: number;
 	signature: string;
 }
+
+type TableColumnWidthSettings = Pick<OperonSettings, 'keyMappings' | 'timeFormat'>;
 
 export function buildTableRenderItems(
 	rows: readonly IndexedTask[],
@@ -172,12 +175,12 @@ export function resolveTableRowHeight(preset: TablePreset): number {
 	return preset.display.density === 'comfortable' ? TABLE_COMFORTABLE_ROW_HEIGHT : TABLE_ROW_HEIGHT;
 }
 
-export function buildTableColumnTemplate(columns: readonly TableColumn[]): string {
-	return buildTableColumnGeometry(columns).columnTemplate;
+export function buildTableColumnTemplate(columns: readonly TableColumn[], settings?: TableColumnWidthSettings): string {
+	return buildTableColumnGeometry(columns, settings).columnTemplate;
 }
 
-export function calculateTableMinWidth(columns: readonly TableColumn[]): number {
-	return buildTableColumnGeometry(columns).tableWidthPx;
+export function calculateTableMinWidth(columns: readonly TableColumn[], settings?: TableColumnWidthSettings): number {
+	return buildTableColumnGeometry(columns, settings).tableWidthPx;
 }
 
 export function calculateTableLeadingAdminWidth(columns: readonly TableColumn[]): number {
@@ -189,13 +192,16 @@ export function calculateTableLeadingAdminWidth(columns: readonly TableColumn[])
 	return total;
 }
 
-export function buildTableColumnGeometry(columns: readonly TableColumn[]): TableColumnGeometry {
+export function buildTableColumnGeometry(
+	columns: readonly TableColumn[],
+	settings?: TableColumnWidthSettings,
+): TableColumnGeometry {
 	let tableWidthPx = 0;
 	let pinnedBoundaryPx = 0;
 	let lastPinnedIndex = -1;
 	let inPinnedSegment = true;
 	const entries: TableColumnGeometryEntry[] = columns.map((column, index): TableColumnGeometryEntry => {
-		const widthPx = resolveTableColumnWidth(column);
+		const widthPx = resolveTableColumnWidth(column, settings);
 		const stickyLeftPx = tableWidthPx;
 		const pinned = inPinnedSegment && isTableColumnRenderPinned(column);
 		if (pinned) {
@@ -254,8 +260,12 @@ export function measureTableScrollbarGutterPx(ownerDocument: Document): number {
 	return gutter;
 }
 
-export function resolveTableColumnWidth(column: TableColumn): number {
+export function resolveTableColumnWidth(column: TableColumn, settings?: TableColumnWidthSettings): number {
 	if (column.kind === 'task' && resolveTableColumnDisplayMode(column) === 'icon') {
+		if (
+			settings?.timeFormat === '12h'
+			&& getTableTaskField(column.key, settings)?.type === 'datetime'
+		) return TABLE_COMPACT_DATETIME_12H_COLUMN_WIDTH;
 		return TABLE_ICON_ONLY_COLUMN_WIDTH;
 	}
 	return column.widthPx ?? DEFAULT_TABLE_COLUMN_WIDTHS[column.key] ?? 150;

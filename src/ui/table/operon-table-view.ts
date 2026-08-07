@@ -55,7 +55,7 @@ import {
 import {
 	formatTableTaskSource,
 } from './table-value-adapter';
-import { formatTableDependencyTooltipContent, renderTableCellChips } from './table-cell-chip';
+import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table-description-cell';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './mobile-table-viewport';
@@ -818,7 +818,7 @@ export class OperonTableView extends FileView {
 			};
 		}
 		const rowHeight = resolveTableRowHeight(result.preset);
-		const columnGeometry = buildTableColumnGeometry(columns);
+		const columnGeometry = buildTableColumnGeometry(columns, settings);
 		const tableWidthPx = columnGeometry.tableWidthPx;
 		const scrollbarGutterPx = measureTableScrollbarGutterPx(this.contentEl.ownerDocument);
 		const searchControlSignature = this.buildSearchControlSignature(searchContext.parentSearchUi);
@@ -2090,15 +2090,19 @@ export class OperonTableView extends FileView {
 			task,
 			locationResolver: renderState.locationResolver,
 		});
-		const content = locationVisual?.label
+		const field = getTableTaskField(column.key, renderState.settings);
+		const content = field?.type === 'datetime'
+			? formatTableDetailedDatetimeValue(column.key, value, renderState.settings)
+			: locationVisual?.label
 			?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)
 			?? formatTableIconOnlyTooltipContent(value);
-		const fallbackIcon = getTableTaskField(column.key, renderState.settings)?.icon ?? 'text';
+		const fallbackIcon = field?.icon ?? 'text';
 		const isTaskIconColumn = column.key === 'taskIcon';
 		const isTaskTypeColumn = column.key === 'taskType';
-		if (column.key === 'datetimeStart' || column.key === 'datetimeEnd') {
+		if (field?.type === 'datetime') {
 			renderTableCompactDatetimeCell(cell, {
 				value,
+				timeFormat: renderState.settings.timeFormat,
 				title: fieldLabel,
 				content,
 				ariaLabel: `${fieldLabel}: ${content}`,

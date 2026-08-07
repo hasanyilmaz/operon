@@ -256,7 +256,7 @@ export function applyInteractiveTableColumnTemplate(
 	currentRenderState: TableHeaderRenderState | null,
 	columns: readonly TableColumn[],
 ): TableColumnGeometry {
-	const columnGeometry = buildTableColumnGeometry(columns);
+	const columnGeometry = buildTableColumnGeometry(columns, currentRenderState?.settings);
 	const template = columnGeometry.columnTemplate;
 	const tableWidthPx = columnGeometry.tableWidthPx;
 	const tableWidth = `${tableWidthPx}px`;

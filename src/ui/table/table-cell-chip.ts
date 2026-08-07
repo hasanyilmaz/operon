@@ -20,11 +20,12 @@ import {
 	resolveBlockedByVisualStateForId,
 } from '../../core/blocked-by-visual-state';
 import type { TableTaskLookup } from './table-value-adapter';
-import { parseLocalDatetime } from '../../systems/tracker-utils';
+import { formatTableDetailedDatetimeValue } from './table-datetime-format';
+
+export { formatTableDetailedDatetimeValue } from './table-datetime-format';
 
 type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
 const TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH = 37;
-const TABLE_DETAILED_DATETIME_RE = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2}):(\d{2})$/u;
 
 export interface TableCellChipRenderOptions {
 	column?: Pick<TableColumn, 'key' | 'colorMode'>;
@@ -163,28 +164,6 @@ function renderTableExternalLinkChip(
 		event.preventDefault();
 		event.stopPropagation();
 	});
-}
-
-export function formatTableDetailedDatetimeValue(
-	key: string,
-	value: string,
-	settings?: TableCellChipSettings,
-): string {
-	const isDatetime = settings
-		? getTableTaskField(key, settings)?.type === 'datetime'
-		: key === 'datetimeStart' || key === 'datetimeEnd';
-	if (!isDatetime) return value;
-
-	const trimmed = value.trim();
-	const match = TABLE_DETAILED_DATETIME_RE.exec(trimmed);
-	if (!match) return value;
-	const [, date, hourText, minute, second] = match;
-	if (!parseLocalDatetime(`${date}T${hourText}:${minute}:${second}`)) return value;
-	if (settings?.timeFormat !== '12h') return `${date} ${hourText}:${minute}:${second}`;
-
-	const hour = Number(hourText);
-	const displayHour = hour % 12 || 12;
-	return `${date} ${displayHour}:${minute}:${second} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
 function getTableCellChipItems(
