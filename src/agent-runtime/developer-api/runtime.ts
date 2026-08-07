@@ -1116,7 +1116,7 @@ function evaluateSessionGrant(
 		};
 	}
 	const grant = options.grantController.evaluate(consumer, required);
-	if (options.grantController.hasPersistenceError()) {
+	if (grant.state === 'active' && options.grantController.hasPersistenceError()) {
 		return {
 			...grant,
 			state: 'suspended',

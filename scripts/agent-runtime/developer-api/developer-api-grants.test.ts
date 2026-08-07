@@ -321,7 +321,10 @@ test('grant controller verifies object identity and activates grants only after 
 	assert.equal(controller.verifyConsumer({ manifest: { ...plugin.manifest } }), null);
 	const approval = controller.approve(consumer(), ['tasks.read']);
 	assert.equal(controller.hasPersistenceError(), true);
-	assert.equal(controller.evaluate(consumer(), ['tasks.read']).state, 'suspended');
+	const blocked = controller.evaluate(consumer(), ['tasks.read']);
+	assert.equal(blocked.state, 'suspended');
+	assert.equal(blocked.reason, 'grant-persistence-unavailable');
+	assert.deepEqual(blocked.effectiveCapabilities, []);
 	releasePersist?.();
 	await approval;
 	assert.equal(controller.hasPersistenceError(), false);
@@ -330,6 +333,80 @@ test('grant controller verifies object identity and activates grants only after 
 		dataPackage.integrations.developerApi.consumersById['consumer.test']?.state,
 		'active',
 	);
+});
+
+test('grant controller keeps a queued first request pending until its durable record is written', async () => {
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
+	let releasePersist: (() => void) | undefined;
+	const persistGate = new Promise<void>(resolve => {
+		releasePersist = resolve;
+	});
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async mutator => {
+				await persistGate;
+				dataPackage = mutator(dataPackage);
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		now: () => new Date(NOW),
+	});
+
+	const initial = controller.evaluate(consumer(), ['tasks.read']);
+	assert.equal(initial.state, 'pending');
+	assert.equal(initial.reason, 'capability-approval-required');
+	assert.deepEqual(initial.effectiveCapabilities, []);
+
+	controller.recordPending(consumer(), ['tasks.read']);
+	assert.equal(controller.hasPersistenceError(), true);
+	const queued = controller.evaluate(consumer(), ['tasks.read']);
+	assert.equal(queued.state, 'pending');
+	assert.equal(queued.reason, 'capability-approval-required');
+	assert.deepEqual(queued.pendingCapabilities, ['tasks.read']);
+	assert.deepEqual(queued.effectiveCapabilities, []);
+
+	releasePersist?.();
+	await controller.drain();
+	assert.equal(controller.hasPersistenceError(), false);
+	const durable = dataPackage.integrations.developerApi.consumersById['consumer.test'];
+	assert.equal(durable?.state, 'active');
+	assert.deepEqual(durable?.grantedCapabilities, []);
+	assert.deepEqual(durable?.pendingCapabilities, ['tasks.read']);
+	const settled = controller.evaluate(consumer(), ['tasks.read']);
+	assert.equal(settled.state, 'pending');
+	assert.deepEqual(settled.effectiveCapabilities, []);
+});
+
+test('grant controller keeps a first request suspended when the store cannot persist', async () => {
+	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
+	let updateCalls = 0;
+	const controller = new DeveloperApiGrantControllerV1({
+		store: {
+			canPersist: () => false,
+			getDataPackage: () => structuredClone(dataPackage),
+			updateDataPackage: async () => {
+				updateCalls += 1;
+			},
+		},
+		verifier: {
+			verify: () => consumer(),
+			isCurrent: () => true,
+		},
+		now: () => new Date(NOW),
+	});
+
+	const unavailable = controller.evaluate(consumer(), ['tasks.read']);
+	assert.equal(unavailable.state, 'suspended');
+	assert.equal(unavailable.reason, 'grant-persistence-unavailable');
+	assert.deepEqual(unavailable.effectiveCapabilities, []);
+	controller.recordPending(consumer(), ['tasks.read']);
+	await controller.drain();
+	assert.equal(updateCalls, 0);
+	assert.deepEqual(dataPackage.integrations.developerApi.consumersById, {});
 });
 
 test('grant controller restores durable state after a failed write and permits an exact retry', async () => {

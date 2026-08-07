@@ -225,6 +225,7 @@ function harness(options: {
 	error?: StructuredErrorV1;
 	active?: { value: boolean };
 	grantState?: { value: 'pending' | 'active' | 'suspended' | 'revoked'; revision: number };
+	grantWriteQueued?: boolean;
 	consumerCurrent?: { value: boolean };
 	mutationSecurityPolicy?: DeveloperMutationSecurityPolicyV1;
 	recoveryStore?: DeveloperMutationRecoveryStoreV1;
@@ -266,7 +267,7 @@ function harness(options: {
 						: 'consumer-major-version-changed' as const,
 		}),
 		recordPending: () => undefined,
-		hasPersistenceError: () => false,
+		hasPersistenceError: () => options.grantWriteQueued ?? false,
 	};
 	const accessAs = (consumer: typeof consumerPlugin, request: unknown) => getOperonDeveloperApiV1(core, consumer, request, {
 		isDesktopAvailable: () => options.desktop ?? true,
@@ -422,6 +423,54 @@ test('fails exact-scope access closed while pending and revokes a live session s
 	});
 	assert.equal(refused.ok, false);
 	assert.equal(refused.ok ? undefined : refused.error.code, 'authority-insufficient');
+});
+
+test('keeps queued grant states coherent without granting Runtime authority', () => {
+	const pending = harness({
+		grantState: { value: 'pending', revision: 1 },
+		grantWriteQueued: true,
+	}).access(request(['tasks.read']));
+	assert.equal(pending.ok, false);
+	assert.equal(pending.ok ? undefined : pending.error.code, 'authority-insufficient');
+	assert.equal(pending.ok ? undefined : pending.error.details?.grantState, 'pending');
+	assert.equal(
+		pending.ok ? undefined : pending.error.details?.reasonCode,
+		'capability-approval-required',
+	);
+	assert.deepEqual(
+		pending.ok ? undefined : pending.error.details?.pendingCapabilities,
+		['tasks.read'],
+	);
+	assert.equal(pending.status.grant?.state, 'pending');
+	assert.deepEqual(pending.status.grant?.effectiveCapabilities, []);
+	assert.equal(pending.status.authority, 'revoked');
+	assert.equal(pending.status.admission.reads, false);
+	assert.equal(pending.status.admission.writes, false);
+
+	const active = harness({
+		grantState: { value: 'active', revision: 2 },
+		grantWriteQueued: true,
+	}).access(request(['tasks.read']));
+	assert.equal(active.ok, false);
+	assert.equal(active.ok ? undefined : active.error.code, 'authority-insufficient');
+	assert.equal(active.ok ? undefined : active.error.details?.grantState, 'suspended');
+	assert.equal(
+		active.ok ? undefined : active.error.details?.reasonCode,
+		'grant-persistence-unavailable',
+	);
+	assert.equal(active.status.grant?.state, 'suspended');
+	assert.deepEqual(active.status.grant?.effectiveCapabilities, []);
+	assert.equal(active.status.admission.reads, false);
+	assert.equal(active.status.admission.writes, false);
+
+	const revoked = harness({
+		grantState: { value: 'revoked', revision: 3 },
+		grantWriteQueued: true,
+	}).access(request(['tasks.read']));
+	assert.equal(revoked.ok, false);
+	assert.equal(revoked.ok ? undefined : revoked.error.details?.grantState, 'revoked');
+	assert.equal(revoked.ok ? undefined : revoked.error.details?.reasonCode, 'revoked');
+	assert.equal(revoked.status.grant?.state, 'revoked');
 });
 
 test('fails access closed off desktop, without a core, while booting, and on terminal startup failure', () => {
