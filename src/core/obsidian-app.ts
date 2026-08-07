@@ -1,4 +1,4 @@
-import { Editor, App } from 'obsidian';
+import type { Editor, App } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { isRecord, isUnknownFunction } from './unknown-value';
 
@@ -27,6 +27,29 @@ export function getCommunityPlugin(app: App | undefined, pluginId: string): unkn
 	}
 	const plugins = pluginsHost.plugins;
 	return isRecord(plugins) ? plugins[pluginId] : null;
+}
+
+export function getExternalModifiedTimeFrontmatterPropertyNames(
+	app: App | undefined,
+): string[] {
+	const integrations = [
+		{ pluginId: 'update-time-on-edit', settingName: 'headerUpdated' },
+		{ pluginId: 'frontmatter-date-manager', settingName: 'headerUpdated' },
+		{ pluginId: 'update-time', settingName: 'updatedPropertyName' },
+	] as const;
+	const propertyNames = integrations.flatMap(({ pluginId, settingName }) => {
+		const plugin = getCommunityPlugin(app, pluginId);
+		if (!isRecord(plugin) || !isRecord(plugin.settings)) return [];
+		const propertyName = plugin.settings[settingName];
+		if (
+			typeof propertyName !== 'string'
+			|| propertyName.trim() !== propertyName
+			|| propertyName.length === 0
+			|| /[\r\n:]/u.test(propertyName)
+		) return [];
+		return [propertyName];
+	});
+	return [...new Set(propertyNames)];
 }
 
 export function getInternalPlugin(app: App, pluginId: string): unknown {

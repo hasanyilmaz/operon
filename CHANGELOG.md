@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed successful inline Runtime updates being reported as `outcome-unknown` when an enabled supported modified-time plugin advances its configured frontmatter property during the same bounded settlement cycle, including **Update time on edit**, **Frontmatter Date Manager**, and **Update Time**.
+
 ### Validation
 
 ## [3.1.1] - 2026-08-07

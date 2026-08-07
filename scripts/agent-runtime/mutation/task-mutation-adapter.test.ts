@@ -1271,3 +1271,99 @@ test('inline task exact-byte evidence records metadata settlement and unrelated 
 		'Unrelated same-source drift must remain unverified.',
 	);
 });
+
+test('inline task settlement accepts only the configured Update time on edit frontmatter drift', () => {
+	const filePath = 'Tasks.md';
+	const committedContent = [
+		'---',
+		'created: 2026-07-24T09:00',
+		'modification: 2026-07-24T11:59',
+		'---',
+		'# Tasks',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'- [ ] Unrelated task {{operonId:: def5678}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent
+		.replace('modification: 2026-07-24T11:59', 'modification: 2026-07-24T12:00')
+		.replace('2026-07-24T12:00:00', '2026-07-24T12:00:01');
+	const frontmatterOnlySettledContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'modification: 2026-07-24T12:00',
+	);
+	const committedRevision = sha256HexV1(committedContent);
+	const prepared: RuntimeTaskFieldMutationPreparationV1 = {
+		kind: 'task-fields',
+		operation: 'update',
+		task: {
+			...task,
+			locator: { representation: 'inline', filePath, lineNumber: 5 },
+			description: 'Before update',
+			sourceContent: committedContent,
+		},
+		fieldValues: {
+			_description: 'Updated description',
+			datetimeModified: '2026-07-24T12:00:00',
+		},
+		sourceRevision: 'a'.repeat(64),
+		targetDigest: 'b'.repeat(64),
+		summary: 'Update the task description.',
+		noChange: false,
+	};
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			committedRevision,
+			settledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+		),
+		sha256HexV1(settledContent),
+		'The configured modified-time property and target task timestamp may settle together.',
+	);
+	assert.deepEqual(
+		resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
+			prepared,
+			committedContent,
+			committedRevision,
+			frontmatterOnlySettledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+		),
+		{ revision: sha256HexV1(frontmatterOnlySettledContent) },
+		'The configured modified-time property may settle without a second task timestamp write.',
+	);
+	for (const [label, observedContent, permittedKeys] of [
+		['missing provider evidence', settledContent, []],
+		['wrong configured property', settledContent, ['updated']],
+		[
+			'unrelated frontmatter datetime',
+			settledContent.replace('created: 2026-07-24T09:00', 'created: 2026-07-24T12:00'),
+			['modification'],
+		],
+		[
+			'different settlement minute',
+			settledContent.replace('modification: 2026-07-24T12:00', 'modification: 2026-07-24T12:01'),
+			['modification'],
+		],
+		[
+			'unrelated body drift',
+			settledContent.replace('Unrelated task', 'Concurrent unrelated edit'),
+			['modification'],
+		],
+	] as const) {
+		assert.equal(
+			resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+				prepared,
+				committedContent,
+				committedRevision,
+				observedContent,
+				DEFAULT_SETTINGS.keyMappings,
+				permittedKeys,
+			),
+			null,
+			label,
+		);
+	}
+});

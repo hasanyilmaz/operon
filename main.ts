@@ -358,7 +358,11 @@ import {
 	validateVaultRelativePathV1,
 } from './src/agent-runtime/contracts/v1/identity';
 import type { AffectedResourceRevisionMapV1 } from './src/agent-runtime/contracts/v1/identity';
-import { getCommunityPlugin, isDailyNotesCoreAvailable } from './src/core/obsidian-app';
+import {
+	getCommunityPlugin,
+	getExternalModifiedTimeFrontmatterPropertyNames,
+	isDailyNotesCoreAvailable,
+} from './src/core/obsidian-app';
 import { InlineTaskSaveMode, resolveEffectiveInlineTaskSaveMode } from './src/core/inline-task-save-mode';
 import { isRecord, isUnknownFunction, readString } from './src/core/unknown-value';
 import {
@@ -5772,6 +5776,7 @@ export default class OperonPlugin extends Plugin {
 					commit,
 					observed.content,
 					this.settings.keyMappings,
+					getExternalModifiedTimeFrontmatterPropertyNames(this.app),
 				);
 			},
 				verifyMutation: async (request, prepared, _postflightRevision, commit) => (
@@ -9228,6 +9233,7 @@ export default class OperonPlugin extends Plugin {
 				commit.primaryTaskSourceCommitEvidence.revision,
 				observedPrimarySource.content,
 				this.settings.keyMappings,
+				getExternalModifiedTimeFrontmatterPropertyNames(this.app),
 			)
 			: null;
 		const primaryPostflightEvidence = exactPrimaryPostflightEvidence

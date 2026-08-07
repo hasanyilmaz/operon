@@ -9,6 +9,7 @@ try {
 	const outputFile = join(outputDirectory, 'mutation-gateway.test.js');
 	await build({
 		entryPoints: [
+			'scripts/agent-runtime/mutation/modified-time-plugin-integration.test.ts',
 			'scripts/agent-runtime/mutation/mutation-acceptance-matrix.test.ts',
 			'scripts/agent-runtime/mutation/mutation-gateway.test.ts',
 			'scripts/agent-runtime/mutation/source-transition-guards.test.ts',
@@ -32,6 +33,7 @@ try {
 			OPERON_AGENT_RUNTIME_PROBE_ENABLED: 'true',
 		},
 	});
+	await import(pathToFileURL(join(outputDirectory, 'modified-time-plugin-integration.test.js')).href);
 	await import(pathToFileURL(join(outputDirectory, 'mutation-acceptance-matrix.test.js')).href);
 	await import(pathToFileURL(outputFile).href);
 	await import(pathToFileURL(join(outputDirectory, 'source-transition-guards.test.js')).href);

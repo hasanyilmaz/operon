@@ -583,7 +583,10 @@ Some workflows use Obsidian core plugin behavior:
 - **Page Preview**: used by Obsidian's `hover-link` preview behavior for task title and wikilink previews. If Page Preview is disabled, those hover previews may not appear, but the task data and task actions still work.
 - **Web Viewer**: used to open web links from Operon Table cells in a new tab when available.
 
-One optional community integration: if the **Maps** plugin is installed, the Location picker's Map tab and location chip map previews use it. Places and manual coordinate entry work without it.
+Optional community integrations:
+
+- If the **Maps** plugin is installed, the Location picker's Map tab and location chip map previews use it. Places and manual coordinate entry work without it.
+- If **Update time on edit**, **Frontmatter Date Manager**, or **Update Time** is enabled, Runtime postflight recognizes its configured modified-time frontmatter property as bounded settlement metadata while continuing to reject unrelated source changes.
 
 Operon bundles **CodeMirror** modules for editor integrations and **ical.js** for parsing read-only external Calendar sources.
 

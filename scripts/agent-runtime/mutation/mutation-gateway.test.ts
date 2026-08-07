@@ -3176,9 +3176,15 @@ async function characterizePreparedTaskUpdateSettlement(
 	caseId: string,
 	committedContent: string,
 	settledContent: string,
-	options: { postRefreshContent?: string; refreshThrows?: boolean } = {},
+	options: {
+		modifiedTimeFrontmatterKeys?: readonly string[];
+		postRefreshContent?: string;
+		refreshThrows?: boolean;
+	} = {},
 ) {
 	const filePath = 'Tasks.md';
+	const targetLineNumber = committedContent.split('\n').findIndex(line => line.includes('operonId:: abc1234'));
+	assert.notEqual(targetLineNumber, -1, 'The settlement fixture must contain the target task.');
 	let durableContent = committedContent;
 	let commitCount = 0;
 	const events: string[] = [];
@@ -3192,7 +3198,7 @@ async function characterizePreparedTaskUpdateSettlement(
 		mutationKind: 'task.update',
 		target: {
 			operonId: 'abc1234',
-			locator: { representation: 'inline', filePath, lineNumber: 2 },
+			locator: { representation: 'inline', filePath, lineNumber: targetLineNumber },
 		},
 		spec: {
 			operation: 'update',
@@ -3206,7 +3212,7 @@ async function characterizePreparedTaskUpdateSettlement(
 		operation: 'update',
 		task: {
 			operonId: 'abc1234',
-			locator: { representation: 'inline', filePath, lineNumber: 2 },
+			locator: { representation: 'inline', filePath, lineNumber: targetLineNumber },
 			description: 'Before update',
 			checkbox: 'open',
 			fieldValues: { datetimeModified: '2026-07-24T11:59:59' },
@@ -3226,7 +3232,7 @@ async function characterizePreparedTaskUpdateSettlement(
 	const prepared = {
 		target: {
 			operonId: 'abc1234',
-			locator: { representation: 'inline' as const, filePath, lineNumber: 2 },
+			locator: { representation: 'inline' as const, filePath, lineNumber: targetLineNumber },
 			targetDigest: 'd'.repeat(64),
 		},
 		affectedResources: [{
@@ -3290,6 +3296,7 @@ async function characterizePreparedTaskUpdateSettlement(
 				commit,
 				durableContent,
 				DEFAULT_SETTINGS.keyMappings,
+				options.modifiedTimeFrontmatterKeys,
 			);
 			if (options.postRefreshContent !== undefined) {
 				assert.equal(
@@ -3323,6 +3330,7 @@ async function characterizePreparedTaskUpdateSettlement(
 					evidence.revision,
 					durableContent,
 					DEFAULT_SETTINGS.keyMappings,
+					options.modifiedTimeFrontmatterKeys,
 				)
 				: null;
 			const observedModified = /\{\{datetimeModified:: ([^}]+)\}\}/u.exec(
@@ -3388,6 +3396,57 @@ test('prepared task update verifies Runtime-owned datetimeModified settlement dr
 		/primaryTaskSourceCommitEvidence|# Tasks/u,
 		'Internal committed source evidence must not enter the public result.',
 	);
+	assert.equal(replayResult.status, 'already-applied', JSON.stringify(replayResult));
+	assert.equal(commitCount, 1);
+});
+
+test('prepared task update verifies configured modified-time frontmatter settlement drift', async () => {
+	const committedContent = [
+		'---',
+		'created: 2026-07-24T09:00',
+		'modification: 2026-07-24T11:59',
+		'---',
+		'# Tasks',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent
+		.replace('modification: 2026-07-24T11:59', 'modification: 2026-07-24T12:00')
+		.replace('2026-07-24T12:00:00', '2026-07-24T12:00:01');
+	const { commitCount, events, replayResult, result } = await characterizePreparedTaskUpdateSettlement(
+		'settlement-frontmatter-metadata',
+		committedContent,
+		settledContent,
+		{ modifiedTimeFrontmatterKeys: ['modification'] },
+	);
+	assert.deepEqual(events, ['reindex', 'settlement', 'refresh', 'postflight']);
+	assert.equal(result.status, 'applied', JSON.stringify(result));
+	assert.equal(replayResult.status, 'already-applied', JSON.stringify(replayResult));
+	assert.equal(commitCount, 1);
+});
+
+test('prepared task update verifies configured frontmatter-only settlement drift', async () => {
+	const committedContent = [
+		'---',
+		'created: 2026-07-24T09:00',
+		'modification: 2026-07-24T11:59',
+		'---',
+		'# Tasks',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'modification: 2026-07-24T12:00',
+	);
+	const { commitCount, events, replayResult, result } = await characterizePreparedTaskUpdateSettlement(
+		'settlement-frontmatter-only',
+		committedContent,
+		settledContent,
+		{ modifiedTimeFrontmatterKeys: ['modification'] },
+	);
+	assert.deepEqual(events, ['reindex', 'settlement', 'refresh', 'postflight']);
+	assert.equal(result.status, 'applied', JSON.stringify(result));
 	assert.equal(replayResult.status, 'already-applied', JSON.stringify(replayResult));
 	assert.equal(commitCount, 1);
 });
