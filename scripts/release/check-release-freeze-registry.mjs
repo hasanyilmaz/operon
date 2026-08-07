@@ -172,6 +172,95 @@ export function assertReleaseArtifactMatchesFreeze(workingArtifact, frozenArtifa
 	return true;
 }
 
+export function assertAutomatedReleaseEvidence({ freeze, evidence, binding }) {
+	assert.deepEqual(Object.keys(evidence).sort(), [
+		'$schema', 'acceptance', 'cli', 'evidenceVersion', 'historicalLiveBaseline', 'kind',
+		'limitations', 'pairedWindowsValidation', 'plugin', 'runtime', 'state',
+	]);
+	assert.equal(evidence.evidenceVersion, 2);
+	assert.equal(evidence.kind, 'operon-public-v1-paired-release-evidence');
+	assert.equal(evidence.state, 'paired-release-accepted');
+	assert.deepEqual(Object.keys(evidence.acceptance).sort(), [
+		'candidateCommit', 'mode', 'scope', 'status',
+	]);
+	assert.equal(evidence.acceptance.mode, 'automated-validation');
+	assert.equal(evidence.acceptance.scope, 'release-only-packaging');
+	assert.equal(evidence.acceptance.status, 'accepted');
+	assert.match(evidence.acceptance.candidateCommit, /^[a-f0-9]{40}$/u);
+	assert.deepEqual(Object.keys(evidence.plugin).sort(), [
+		'artifact', 'productionCandidateCommit', 'validation', 'version',
+	]);
+	assert.equal(Object.hasOwn(evidence.plugin, 'deployment'), false);
+	assert.equal(Object.hasOwn(evidence, 'maintainerAcceptance'), false);
+	assert.equal(evidence.plugin.productionCandidateCommit, evidence.acceptance.candidateCommit);
+	assert.deepEqual(freeze.runtime, evidence.runtime);
+	assert.deepEqual(freeze.pluginArtifact, evidence.plugin.artifact);
+
+	const artifactAggregateSha256 = sha256(Buffer.from(canonicalJson(evidence.plugin.artifact), 'utf8'));
+	const { local, hosted } = evidence.plugin.validation;
+	assert.deepEqual(Object.keys(evidence.plugin.validation).sort(), ['hosted', 'local']);
+	assert.deepEqual(Object.keys(local).sort(), [
+		'artifactAggregateSha256', 'audit', 'candidateCommit', 'checkCandidate', 'node', 'npm',
+		'npmCi', 'phase5', 'releaseGuard', 'trackedClean',
+	]);
+	assert.equal(local.candidateCommit, evidence.acceptance.candidateCommit);
+	assert.equal(local.trackedClean, true);
+	assert.equal(local.node, '24.18.0');
+	assert.equal(local.npm, '11.12.1');
+	assert.equal(local.npmCi, 'passed');
+	assert.equal(local.checkCandidate, 'passed');
+	assert.ok(Number.isSafeInteger(local.phase5.passed) && local.phase5.passed > 0);
+	assert.equal(local.phase5.total, local.phase5.passed);
+	assert.equal(local.releaseGuard, 'passed-candidate-mode');
+	assert.deepEqual(local.audit, {
+		status: 'accepted-clean',
+		productionFindings: 0,
+		developmentFindings: 0,
+	});
+	assert.equal(local.artifactAggregateSha256, artifactAggregateSha256);
+
+	assert.deepEqual(Object.keys(hosted).sort(), [
+		'artifactAggregateSha256', 'candidateCommit', 'ci', 'codeql',
+	]);
+	assert.equal(hosted.candidateCommit, evidence.acceptance.candidateCommit);
+	assert.equal(hosted.artifactAggregateSha256, artifactAggregateSha256);
+	for (const result of [hosted.ci, hosted.codeql]) {
+		assert.deepEqual(Object.keys(result).sort(), ['headSha', 'runId', 'status']);
+		assert.equal(result.headSha, evidence.acceptance.candidateCommit);
+		assert.ok(Number.isSafeInteger(result.runId) && result.runId > 0);
+		assert.equal(result.status, 'success');
+	}
+
+	const pair = evidence.pairedWindowsValidation;
+	assert.deepEqual(Object.keys(pair).sort(), [
+		'artifactAggregateSha256', 'cliCandidateCommit', 'cliHosted', 'gateJobId', 'pluginCommit',
+		'pluginNative', 'runId', 'status', 'trackedClean', 'windowsPairJobId',
+	]);
+	assert.equal(pair.pluginCommit, evidence.acceptance.candidateCommit);
+	assert.equal(pair.cliCandidateCommit, binding.source.commit);
+	assert.equal(pair.artifactAggregateSha256, artifactAggregateSha256);
+	assert.ok(Number.isSafeInteger(pair.runId) && pair.runId > 0);
+	assert.ok(Number.isSafeInteger(pair.windowsPairJobId) && pair.windowsPairJobId > 0);
+	assert.ok(Number.isSafeInteger(pair.gateJobId) && pair.gateJobId > 0);
+	assert.deepEqual(pair.pluginNative, { tests: 22, failed: 0, cancelled: 0, skipped: 0 });
+	assert.deepEqual(pair.cliHosted, { assertions: 4, skipped: 0 });
+	assert.equal(pair.trackedClean, true);
+	assert.equal(pair.status, 'passed');
+
+	assert.deepEqual(evidence.limitations, {
+		liveDeployment: 'not-run',
+		manualAcceptance: 'not-run-not-required',
+		publishedCliLiveMutationSuite: 'not-rerun',
+		cliInstalledInLiveVault: false,
+	});
+	assert.deepEqual(freeze.releaseAcceptance, {
+		mode: 'automated-validation',
+		status: 'accepted',
+		candidateCommit: evidence.acceptance.candidateCommit,
+	});
+	return artifactAggregateSha256;
+}
+
 if (path.resolve(process.argv[1] ?? '') === scriptPath) {
 	const result = await checkReleaseFreezeRegistry();
 	console.log(`Operon ${result.freeze.pluginArtifact.version} / CLI ${result.binding.package.version} release freeze registry verified.`);

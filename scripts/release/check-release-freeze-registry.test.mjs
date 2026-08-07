@@ -6,13 +6,111 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { canonicalJson } from './check-accepted-freeze.mjs';
+
 import {
+	assertAutomatedReleaseEvidence,
 	assertReleaseArtifactMatchesFreeze,
 	checkCandidateFreezeRegistry,
 	checkReleaseFreezeRegistry,
 	readReleaseArtifactIdentity,
 	RELEASE_FREEZE_STALE,
 } from './check-release-freeze-registry.mjs';
+
+test('automated release evidence binds one exact local, hosted, and Windows identity without live claims', () => {
+	const candidateCommit = 'a'.repeat(40);
+	const artifact = {
+		version: '3.1.1',
+		files: [
+			{ path: 'main.js', bytes: 10, sha256: '1'.repeat(64) },
+			{ path: 'manifest.json', bytes: 20, sha256: '2'.repeat(64) },
+			{ path: 'styles.css', bytes: 30, sha256: '3'.repeat(64) },
+		],
+	};
+	const artifactAggregateSha256 = createHash('sha256')
+		.update(canonicalJson(artifact))
+		.digest('hex');
+	const binding = { source: { commit: 'b'.repeat(40) } };
+	const freeze = {
+		runtime: { contractVersion: 1, contractDigest: 'c'.repeat(64) },
+		pluginArtifact: artifact,
+		releaseAcceptance: {
+			mode: 'automated-validation',
+			status: 'accepted',
+			candidateCommit,
+		},
+	};
+	const evidence = {
+		$schema: './public-v1-external-freeze.schema.json#/$defs/pairedReleaseEvidence',
+		evidenceVersion: 2,
+		kind: 'operon-public-v1-paired-release-evidence',
+		state: 'paired-release-accepted',
+		runtime: structuredClone(freeze.runtime),
+		acceptance: {
+			mode: 'automated-validation',
+			scope: 'release-only-packaging',
+			status: 'accepted',
+			candidateCommit,
+		},
+		plugin: {
+			version: '3.1.1',
+			productionCandidateCommit: candidateCommit,
+			artifact: structuredClone(artifact),
+			validation: {
+				local: {
+					candidateCommit,
+					trackedClean: true,
+					node: '24.18.0',
+					npm: '11.12.1',
+					npmCi: 'passed',
+					checkCandidate: 'passed',
+					phase5: { passed: 1526, total: 1526 },
+					releaseGuard: 'passed-candidate-mode',
+					audit: { status: 'accepted-clean', productionFindings: 0, developmentFindings: 0 },
+					artifactAggregateSha256,
+				},
+				hosted: {
+					candidateCommit,
+					ci: { runId: 1, headSha: candidateCommit, status: 'success' },
+					codeql: { runId: 2, headSha: candidateCommit, status: 'success' },
+					artifactAggregateSha256,
+				},
+			},
+		},
+		cli: {},
+		pairedWindowsValidation: {
+			runId: 3,
+			windowsPairJobId: 4,
+			gateJobId: 5,
+			pluginCommit: candidateCommit,
+			cliCandidateCommit: binding.source.commit,
+			pluginNative: { tests: 22, failed: 0, cancelled: 0, skipped: 0 },
+			cliHosted: { assertions: 4, skipped: 0 },
+			trackedClean: true,
+			status: 'passed',
+			artifactAggregateSha256,
+		},
+		historicalLiveBaseline: {},
+		limitations: {
+			liveDeployment: 'not-run',
+			manualAcceptance: 'not-run-not-required',
+			publishedCliLiveMutationSuite: 'not-rerun',
+			cliInstalledInLiveVault: false,
+		},
+	};
+	assert.equal(assertAutomatedReleaseEvidence({ freeze, evidence, binding }), artifactAggregateSha256);
+
+	for (const mutate of [
+		input => { input.plugin.deployment = {}; },
+		input => { input.plugin.validation.hosted.codeql.status = 'failed'; },
+		input => { input.pairedWindowsValidation.pluginNative.skipped = 1; },
+		input => { input.plugin.validation.local.artifactAggregateSha256 = 'f'.repeat(64); },
+	]) {
+		const drift = structuredClone(evidence);
+		mutate(drift);
+		assert.throws(() => assertAutomatedReleaseEvidence({ freeze, evidence: drift, binding }));
+	}
+});
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 

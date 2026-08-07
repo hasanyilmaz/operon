@@ -209,15 +209,21 @@ purposes.
 - Accepted external-reference freezes are append-only, versioned evidence for
   plugin releases. Every record binds the Runtime V1 digest, immutable
   published CLI binding and tarball, exact `main.js`, `manifest.json`, and
-  `styles.css` identities, clean dependency-audit result, and explicit
-  maintainer acceptance. The registry preserves the byte identity and evidence
-  scope of every earlier accepted record.
+  `styles.css` identities, a clean dependency-audit result, and an explicit
+  acceptance mode. The registry preserves the byte identity and evidence scope
+  of every earlier accepted record.
 - A release may use exact-pair hosted validation plus scoped plugin manual
   acceptance when the Runtime V1 digest is unchanged and the published CLI
   package is byte-identical to the validated candidate. Such evidence must
   state that the published-CLI live mutation suite was not rerun and that the
   CLI was not installed in the live vault. It must not inherit or relabel
   historical mutation-family results as current live acceptance.
+- A release-only packaging composition may instead use automated validation
+  when its diff introduces no new product behavior. This lane requires exact
+  canonical local validation, clean audits, exact-commit hosted CI and CodeQL,
+  and a zero-skip Windows Plugin-CLI pair bound to the same candidate and
+  artifact aggregate. It must omit deployment and maintainer-acceptance claims,
+  state that live deployment was not run, and make no new live-behavior claim.
 - The standalone CLI release independently binds its registry and immutable
   GitHub artifacts, provenance, and hosted portability evidence. The plugin
   freeze consumes that published identity without rebuilding or republishing
