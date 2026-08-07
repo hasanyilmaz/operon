@@ -42,7 +42,11 @@ import {
 } from '../core/dynamic-file-task-filter';
 import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
-import { closeFloatingPanelsForRoot, isFloatingPanelTargetForRoot } from './field-pickers/common';
+import {
+	closeFloatingPanelsForRoot,
+	isFloatingPanelTargetForRoot,
+	requestFloatingPanelCloseForRoot,
+} from './field-pickers/common';
 import { showFilterConditionPicker } from './field-pickers/filter-condition-picker';
 import { showSearchableMultiOptionPicker, type SearchableMultiOption } from './field-pickers/list-picker';
 import { showSearchableFieldPicker, type SearchableFieldPickerOption } from './field-pickers/searchable-field-picker';
@@ -395,6 +399,16 @@ export class FilterSetModal extends Modal {
 		const targetNode = target as Node;
 		return isFloatingPanelTargetForRoot(inlineEditor.container, targetNode)
 			|| this.bodyDropdowns.some(dropdown => dropdown.contains(targetNode));
+	}
+
+	requestInlineEditorChildEscapeClose(): boolean {
+		const inlineEditor = this.inlineEditor;
+		if (!inlineEditor) return false;
+		if (requestFloatingPanelCloseForRoot(inlineEditor.container, 'escape')) return true;
+		const openDropdown = this.bodyDropdowns.find(dropdown => dropdown.hasClass('is-open'));
+		if (!openDropdown) return false;
+		openDropdown.removeClass('is-open');
+		return true;
 	}
 
 	private renderModal(): void {

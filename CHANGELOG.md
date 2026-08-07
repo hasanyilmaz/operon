@@ -7,10 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added a responsive **Filter pop-over to Kanban**, allowing the selected preset filter to be edited or a new filter to be created and attached without leaving the board.
+
+### Improved
+
+- Improved **Filter pop-over consistency** across workspace Tables, embedded Tables, and Kanban with a shared lifecycle and visuals aligned with the full Filter editor.
+- Improved completed-task date correction in the Calendar by allowing tasks in the **Finished row** to be dragged to another completion date.
+- Improved Calendar **In Day time chips** so their background and border colors follow the task’s configured color instead of the interface accent.
+- Standardized built-in and custom **datetime columns in Tables**: detailed cells show readable date and seconds, compact cells show hours and minutes, hover tooltips use the detailed format, and both modes respect the selected 12-hour or 24-hour preference with appropriate default column widths.
+- Extended the **Table task contextual menu** to Task Type icons while preserving their existing click-to-open behavior.
+
 ### Fixed
 
 - Fixed **Developer API capability grants** losing or ambiguously recovering durable state across plugin restarts, persistence failures, audit retention, and vault-specific startup reconciliation.
 - Fixed **queued Developer API grant requests** being reported as persistence failures before durable storage completed, while avoiding redundant writes and audit transitions for semantically unchanged pending requests.
+- Fixed multi-day **Calendar All Day tasks** being unavailable for drag-and-drop while preserving their duration and the grabbed-day offset.
+- Removed the redundant **“Go to Task” tooltip** from inline tasks in Reading Mode.
 
 ### Validation
 

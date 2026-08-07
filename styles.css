@@ -15166,7 +15166,9 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	box-sizing: border-box;
 }
 
-.operon-filter-set-modal-shell {
+.operon-filter-set-modal-shell,
+.operon-preset-filter-popover,
+.operon-table-filter-popover {
 	--operon-filter-modal-control-border: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
 	--operon-filter-modal-control-hover-border: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
 	--operon-filter-modal-control-hover-bg: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
@@ -15175,6 +15177,9 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	--operon-filter-modal-control-chevron:
 		linear-gradient(45deg, transparent 50%, currentColor 50%),
 		linear-gradient(135deg, currentColor 50%, transparent 50%);
+}
+
+.operon-filter-set-modal-shell {
 	width: 780px;
 	max-width: 90vw;
 	max-height: calc(100dvh - 48px);
@@ -15888,8 +15893,11 @@ button.operon-field-picker-trigger,
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 22%, transparent);
 }
 
-/* Full FilterSetModal neutral controls — inline Table editors intentionally excluded. */
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
+/* Shared neutral controls for full FilterSetModal and compact preset filter editors. */
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
 	button.operon-filter-direction-toggle,
@@ -15916,7 +15924,10 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
 	--button-shadow: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal select.operon-filter-select {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) select.operon-filter-select {
 	background-image: var(--operon-filter-modal-control-chevron);
 	background-position:
 		calc(100% - 15px) 50%,
@@ -15926,7 +15937,10 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal select.operon
 	padding-inline-end: 28px;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
 	button.operon-filter-direction-toggle,
@@ -15946,8 +15960,14 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
 	outline: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-modal-logic-button.is-active,
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]) {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-filter-modal-logic-button.is-active,
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]) {
 	border-color: color-mix(in srgb, var(--interactive-accent) 54%, var(--background-modifier-border));
 	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
 	background-color: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
@@ -15955,15 +15975,24 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-prese
 	color: var(--interactive-accent);
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-modal-logic-button.is-active:is(:hover, :focus, :focus-visible),
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):is(:hover, :focus, :focus-visible) {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-filter-modal-logic-button.is-active:is(:hover, :focus, :focus-visible),
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):is(:hover, :focus, :focus-visible) {
 	border-color: var(--operon-filter-modal-control-hover-border);
 	background-color: var(--operon-filter-modal-control-hover-bg);
 	box-shadow: var(--operon-filter-modal-control-focus-shadow);
 	outline: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-footer-action-button.is-danger {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-filter-footer-action-button.is-danger {
 	border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
 	background: transparent;
 	background-color: transparent;
@@ -15971,7 +16000,10 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filte
 	color: var(--text-error);
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-footer-action-button.is-danger:is(:hover, :focus, :focus-visible) {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-filter-footer-action-button.is-danger:is(:hover, :focus, :focus-visible) {
 	border-color: var(--text-error);
 	background-color: color-mix(in srgb, var(--text-error) 9%, transparent);
 	box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error) 12%, transparent);
@@ -15979,7 +16011,10 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filte
 	outline: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
 	button.operon-filter-direction-toggle,
@@ -15996,18 +16031,30 @@ body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
 	outline: none;
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-modal-logic-button.is-active:focus-visible,
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):focus-visible {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-filter-modal-logic-button.is-active:focus-visible,
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"]):focus-visible {
 	border-color: var(--operon-filter-modal-control-hover-border);
 	box-shadow: var(--operon-filter-modal-control-focus-ring);
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal .operon-filter-footer-action-button.is-danger:focus-visible {
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) .operon-filter-footer-action-button.is-danger:focus-visible {
 	border-color: var(--text-error);
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 24%, transparent);
 }
 
-body .modal.operon-filter-set-modal-shell .operon-filter-set-modal :is(
+body :is(
+	.modal.operon-filter-set-modal-shell .operon-filter-set-modal,
+	.operon-preset-filter-popover.operon-filter-inline-editor
+) :is(
 	select.operon-filter-select,
 	button.operon-filter-select,
 	button.operon-filter-direction-toggle,
@@ -21612,6 +21659,10 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	padding-right: 18px;
 }
 
+.operon-calendar-all-day-item.is-finished-date-draggable {
+	cursor: grab;
+}
+
 .operon-calendar-all-day-item.is-clickable,
 .operon-calendar-timed-item.is-clickable {
 	cursor: pointer;
@@ -21890,26 +21941,30 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 }
 
 .operon-calendar-multi-week-inday-item {
+	--operon-calendar-inday-surface-border-color: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 20%, var(--background-modifier-border));
+	--operon-calendar-inday-surface-border-style: solid;
+	--operon-calendar-inday-surface-background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 12%, var(--background-secondary));
 	display: flex;
 	align-items: stretch;
 	min-width: 0;
 	padding: 6px 8px;
 	border-radius: 6px;
-	border: 1px solid color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 20%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 12%, var(--background-secondary));
+	border: 1px var(--operon-calendar-inday-surface-border-style) var(--operon-calendar-inday-surface-border-color);
+	background: var(--operon-calendar-inday-surface-background);
 	color: var(--text-normal);
 	font-size: var(--font-ui-smaller);
 }
 
 .operon-calendar-multi-week-inday-item.is-dashed {
-	background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 8%, transparent);
-	border-style: dashed;
+	--operon-calendar-inday-surface-border-style: dashed;
+	--operon-calendar-inday-surface-background: color-mix(in srgb, var(--operon-calendar-accent, var(--interactive-accent)) 8%, transparent);
 }
 
 .operon-calendar-multi-week-inday-item.is-projected {
+	--operon-calendar-inday-surface-border-color: color-mix(in srgb, var(--background-modifier-border) 88%, white 12%);
+	--operon-calendar-inday-surface-border-style: dashed;
+	--operon-calendar-inday-surface-background: color-mix(in srgb, var(--background-secondary) 18%, transparent);
 	opacity: 0.68;
-	background: color-mix(in srgb, var(--background-secondary) 18%, transparent);
-	border: 1px dashed color-mix(in srgb, var(--background-modifier-border) 88%, white 12%);
 }
 
 .operon-calendar-multi-week-inday-item.is-done {
@@ -21970,7 +22025,8 @@ body .operon-calendar-root button.operon-calendar-lane-toggle-button:is(:hover, 
 	gap: 4px;
 	padding: 2px 6px;
 	border-radius: 6px;
-	background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+	border: 1px var(--operon-calendar-inday-surface-border-style) var(--operon-calendar-inday-surface-border-color);
+	background: var(--operon-calendar-inday-surface-background);
 	color: var(--text-muted);
 	font-size: 10px;
 	font-weight: 600;
@@ -23800,6 +23856,25 @@ button.operon-kanban-toolbar-settings-button {
 	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
+.operon-kanban-filter-popover-host {
+	position: relative;
+	display: flex;
+	flex: 0 0 34px;
+	width: 34px;
+	min-width: 34px;
+}
+
+button.operon-kanban-filter-popover-button {
+	width: 34px;
+	padding-right: 0;
+	padding-left: 0;
+}
+
+button.operon-kanban-filter-popover-button.is-active {
+	border-color: var(--interactive-accent);
+	color: var(--interactive-accent);
+}
+
 .operon-kanban-toolbar-search-wrap {
 	position: relative;
 	display: flex;
@@ -23880,6 +23955,10 @@ button.operon-kanban-toolbar-settings-button {
 	display: none;
 }
 
+.operon-kanban-toolbar.is-phone-preset-dropdown .operon-kanban-toolbar-preset-settings-button {
+	display: none;
+}
+
 .operon-kanban-toolbar.is-phone-preset-dropdown .operon-kanban-toolbar-start {
 	min-width: 0;
 	justify-content: flex-start;
@@ -23893,11 +23972,11 @@ button.operon-kanban-toolbar-settings-button {
 .operon-kanban-toolbar.is-phone-preset-dropdown .operon-kanban-toolbar-mobile-preset-select {
 	display: block;
 	width: min(100%, 180px);
-	max-width: 42vw;
+	max-width: 38vw;
 }
 
 .operon-kanban-toolbar.is-phone-preset-dropdown .operon-kanban-toolbar-search {
-	width: clamp(112px, 34vw, 160px);
+	width: clamp(96px, 30vw, 144px);
 }
 
 .operon-kanban-toolbar-search::-webkit-search-cancel-button,
@@ -30130,6 +30209,7 @@ button.operon-table-group-sort-add-button {
 	}
 }
 
+.operon-preset-filter-popover,
 .operon-table-filter-popover {
 	position: fixed;
 	z-index: var(--layer-popover);
@@ -30139,15 +30219,17 @@ button.operon-table-group-sort-add-button {
 	padding: 14px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
-	background: var(--background-secondary);
+	background: var(--modal-background, var(--background-primary));
 	box-shadow: var(--shadow-l);
 }
 
+.operon-preset-filter-popover.operon-filter-inline-editor,
 .operon-table-filter-popover .operon-filter-inline-editor {
 	max-height: none;
 	overflow: visible;
 }
 
+.operon-preset-filter-popover .operon-filter-form-section:first-child,
 .operon-table-filter-popover .operon-filter-form-section:first-child {
 	margin-top: 0;
 }
@@ -31474,11 +31556,15 @@ button.operon-table-summary-picker-action:focus-visible {
 	width: auto;
 	height: var(--operon-task-chip-height);
 	min-width: 0;
+	max-width: 100%;
 	min-height: var(--operon-task-chip-height);
 	padding: 0 6px;
 	font-size: 12px;
 	line-height: 1.25;
 	font-variant-numeric: tabular-nums;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .operon-table-icon-only-button:hover,

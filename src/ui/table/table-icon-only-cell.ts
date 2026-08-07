@@ -6,6 +6,9 @@ import type { OperonSettings } from '../../types/settings';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
+import { formatTableCompactDatetimeValue } from './table-datetime-format';
+
+export { formatTableCompactDatetimeValue } from './table-datetime-format';
 
 type TableValueIconSettings = Pick<OperonSettings, 'pipelines' | 'priorities'>;
 
@@ -24,12 +27,8 @@ export interface TableIconOnlyCellOptions {
 
 export type TableCompactDatetimeCellOptions = Omit<TableIconOnlyCellOptions, 'icon'> & {
 	value: string;
+	timeFormat: Pick<OperonSettings, 'timeFormat'>['timeFormat'];
 };
-
-export function formatTableCompactDatetimeValue(value: string): string {
-	const match = /(?:^|[T\s])(\d{2}):(\d{2})(?::\d{2})?(?:$|[.+-])/u.exec(value.trim());
-	return match ? `${match[1]}:${match[2]}` : value.trim();
-}
 
 export function renderTableCompactDatetimeCell(
 	cell: HTMLElement,
@@ -44,7 +43,7 @@ export function renderTableCompactDatetimeCell(
 		control.style.setProperty('--operon-live-hover-border', options.color);
 		control.style.setProperty('--operon-task-chip-hover-accent', options.color);
 	}
-	control.setText(formatTableCompactDatetimeValue(options.value));
+	control.setText(formatTableCompactDatetimeValue(options.value, options.timeFormat));
 	if (options.showTooltip !== false) {
 		bindOperonHoverTooltip(control, {
 			title: options.title,
