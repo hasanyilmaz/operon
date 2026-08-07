@@ -1,0 +1,131 @@
+{
+  "$schema": "./public-v1-external-freeze.schema.json#/$defs/pairedReleaseEvidence",
+  "evidenceVersion": 2,
+  "kind": "operon-public-v1-paired-release-evidence",
+  "state": "paired-release-accepted",
+  "runtime": {
+    "contractVersion": 1,
+    "contractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
+  },
+  "acceptance": {
+    "mode": "automated-validation",
+    "scope": "release-only-packaging",
+    "status": "accepted",
+    "candidateCommit": "fdcdd251709f9bf37a2333812f8517c58d8a6389"
+  },
+  "plugin": {
+    "version": "3.1.1",
+    "productionCandidateCommit": "fdcdd251709f9bf37a2333812f8517c58d8a6389",
+    "artifact": {
+      "version": "3.1.1",
+      "files": [
+        {
+          "path": "main.js",
+          "bytes": 4355117,
+          "sha256": "e9a260e722f53fb91dc1703e4e67fd7d2b9ea173e6865f10452461aefb7d95b7"
+        },
+        {
+          "path": "manifest.json",
+          "bytes": 378,
+          "sha256": "6987accc78798a8a863304bb8b6bd00391335892edfc8570dea7cbeedcdc0d62"
+        },
+        {
+          "path": "styles.css",
+          "bytes": 877220,
+          "sha256": "17fa6e91927174700e6439231188eb87ae3a243d8484eeebd1e9060b920137fa"
+        }
+      ]
+    },
+    "validation": {
+      "local": {
+        "candidateCommit": "fdcdd251709f9bf37a2333812f8517c58d8a6389",
+        "trackedClean": true,
+        "node": "24.18.0",
+        "npm": "11.12.1",
+        "npmCi": "passed",
+        "checkCandidate": "passed",
+        "phase5": {
+          "passed": 1526,
+          "total": 1526
+        },
+        "releaseGuard": "passed-candidate-mode",
+        "audit": {
+          "status": "accepted-clean",
+          "productionFindings": 0,
+          "developmentFindings": 0
+        },
+        "artifactAggregateSha256": "508db3afc1c108c65720ee79b57ed44f5e3f06a6e793a104b11f9bf079ced226"
+      },
+      "hosted": {
+        "candidateCommit": "fdcdd251709f9bf37a2333812f8517c58d8a6389",
+        "ci": {
+          "runId": 31199385914,
+          "jobId": 92935420881,
+          "headSha": "fdcdd251709f9bf37a2333812f8517c58d8a6389",
+          "status": "success"
+        },
+        "codeql": {
+          "runId": 31199385807,
+          "headSha": "fdcdd251709f9bf37a2333812f8517c58d8a6389",
+          "status": "success"
+        },
+        "artifactAggregateSha256": "508db3afc1c108c65720ee79b57ed44f5e3f06a6e793a104b11f9bf079ced226"
+      }
+    }
+  },
+  "cli": {
+    "package": "@stratejya/operon-cli@1.0.9",
+    "candidateCommit": "2f139a199c99bb7d32d3921540b84418a9254ce0",
+    "integratedCommit": "89b9fd1c9c03bc6f08482fbb9420c87215be7194",
+    "integratedTree": "2bbdb8ff74e171f9275fa8e1a86fade2d24cf321",
+    "treeMatchesCandidate": true,
+    "tarball": {
+      "bytes": 214810,
+      "sha256": "13d537a752690b8bdd6f0a5afdb64d50e7dae82653e0f1b13d79f5a26b987225",
+      "sha512": "Fl2Axn85XfILTR7B9zLCC9OPpIZ023DbPGGsh8PTaKxHj8JfBz4/3QY4zs0kdIIR83UBDf1Y/gB/ky0vNOFOPQ==",
+      "inventoryEntries": 41
+    },
+    "publication": {
+      "tag": "cli-v1.0.9",
+      "annotatedTagObject": "971357a1895e5b595c754b85a4879e939f4e8671",
+      "releaseUrl": "https://github.com/hasanyilmaz/operon-cli/releases/tag/cli-v1.0.9",
+      "canonicalHostedRun": 31023909031,
+      "publishRun": 31026733220,
+      "status": "verified"
+    }
+  },
+  "pairedWindowsValidation": {
+    "runId": 31199440331,
+    "windowsPairJobId": 92935608168,
+    "pluginCommit": "fdcdd251709f9bf37a2333812f8517c58d8a6389",
+    "cliCandidateCommit": "2f139a199c99bb7d32d3921540b84418a9254ce0",
+    "pluginNative": {
+      "tests": 22,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "cliHosted": {
+      "assertions": 4,
+      "skipped": 0
+    },
+    "trackedClean": true,
+    "status": "passed",
+    "artifactAggregateSha256": "508db3afc1c108c65720ee79b57ed44f5e3f06a6e793a104b11f9bf079ced226"
+  },
+  "historicalLiveBaseline": {
+    "scope": "historical-runtime-v1-baseline-only",
+    "pluginVersion": "3.1.0",
+    "cliVersion": "1.0.9",
+    "freezePath": "contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.json",
+    "freezeSha256": "85cf7459987ecd7aa18fdae06fcea08acbbe1318189e3edb2557c60aa3d5abe4",
+    "evidencePath": "contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json",
+    "evidenceSha256": "3352c360c9a2ddd01c3ab622f0263c61bec15f1e83b8ac0c669e5f9b64a35ab5"
+  },
+  "limitations": {
+    "liveDeployment": "not-run",
+    "manualAcceptance": "not-run-not-required",
+    "publishedCliLiveMutationSuite": "not-rerun",
+    "cliInstalledInLiveVault": false
+  }
+}

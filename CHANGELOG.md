@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Validated with the complete local and native Windows candidate check suites, including Developer API grant persistence and recovery, queued-request deduplication, IndexedDB security-audit retention, and release-freeze regression coverage.
+- Validated with the complete local candidate check suite and 1,526/1,526 Phase 5 regression checks, including Developer API grant persistence and recovery, queued-request deduplication, IndexedDB security-audit retention, and release-freeze regression coverage; the exact Plugin 3.1.1 and CLI 1.0.9 Windows pair passed with zero skips, hosted CI and CodeQL passed for the bound candidate, and the release dependency audit reported 0 production and 0 development findings.
 
 ## [3.1.0] - 2026-08-05
 

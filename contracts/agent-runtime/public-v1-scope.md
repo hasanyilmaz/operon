@@ -14,7 +14,7 @@ authorities for their exact release identities.
 
 Current accepted Public V1 release identities:
 
-- Operon `3.1.0`
+- Operon `3.1.1`
 - `@stratejya/operon-cli@1.0.9`
 - Runtime API and contract version `1`
 
@@ -51,7 +51,7 @@ versioned Public V1 integration contract.
 
 | Area | Current implementation truth | Public V1 support commitment |
 | --- | --- | --- |
-| Operon release | Operon `3.1.0` carries Runtime API V1 and the append-only external CLI compatibility freeze registry | Compatible Operon `3.x` releases advertising Runtime API V1 |
+| Operon release | Operon `3.1.1` carries Runtime API V1 and the append-only external CLI compatibility freeze registry | Compatible Operon `3.x` releases advertising Runtime API V1 |
 | CLI package | Public `@stratejya/operon-cli@1.0.9` from the standalone repository | Stable `1.x` releases preserving Runtime V1 compatibility |
 | Runtime contract | Runtime API V1 exists and is exposed on the Operon plugin instance | Runtime API V1 is a supported, typed Developer API contract |
 | Public access channels | The published CLI and in-process Developer API both use Runtime V1 | CLI and in-process Developer API remain supported public channels |
@@ -93,7 +93,11 @@ Operon `3.0.2` binds the published standalone CLI artifact and its historical
 plugin release assets through the original accepted external-reference freeze.
 Operon `3.1.0` adds a versioned paired-release record that binds the exact
 Plugin candidate, published CLI `1.0.9`, zero-skip Windows pair validation,
-and plugin-scoped manual acceptance. Its evidence explicitly records that the
+and plugin-scoped manual acceptance. Operon `3.1.1` adds a release-only
+automated-validation record that binds the exact local candidate suite, hosted
+CI and CodeQL runs, zero-skip Windows pair, clean audit, and unchanged release
+artifact identities without asserting a new live deployment or manual
+acceptance. The evidence records that the
 published-CLI live mutation suite was not rerun and the CLI was not installed
 in the live vault.
 
@@ -268,7 +272,7 @@ support, documentation, and release acceptance do not depend on that work.
 | Portable transport and platform security | Stage 6 — Cross-platform implementation | Platform-specific path, ownership, ACL/mode, symlink/reparse, IPC, shell, signal, Unicode, and interruption tests |
 | Cross-platform launch boundary, Node support, and beta disclosure | Stage 7 — Cross-platform readiness | Hosted portability and package tests pass on Node 22, 24, and 26 across macOS, Linux, and Windows; platform-specific transport-security, path, lifecycle, interruption, and recovery tests pass; macOS remains `supported`, Linux and Windows remain executable `acceptance-required` public-beta targets, and WSL remains `unsupported` |
 | Public integration guides and examples | Stage 8 — Packaging and documentation | Clean-room CLI and Developer API integration tests using only distributable artifacts and documentation |
-| Stable Runtime V1 and plugin release | External-reference freeze registry | Runtime digest, published CLI binding and tarball, exact plugin release assets, clean audit, evidence scope, and maintainer acceptance are bound by an append-only accepted freeze; live mutation claims are required only when that suite actually ran for the exact pair |
+| Stable Runtime V1 and plugin release | External-reference freeze registry | Runtime digest, published CLI binding and tarball, exact plugin release assets, clean audit, prior behavioral acceptance, and exact automated release-composition evidence are bound by an append-only accepted freeze; live mutation claims are required only when that suite actually ran for the exact pair |
 | Public `@stratejya/operon-cli@1.0.9` | Standalone CLI release | Registry and immutable GitHub artifacts, provenance, hosted portability, package lifecycle, and plugin Runtime V1 compatibility match the published release bytes |
 
 Failure of a required gate returns the work to its owning stage. Publication is

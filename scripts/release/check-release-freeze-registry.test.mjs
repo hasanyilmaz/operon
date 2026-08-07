@@ -31,6 +31,7 @@ test('automated release evidence binds one exact local, hosted, and Windows iden
 		.update(canonicalJson(artifact))
 		.digest('hex');
 	const binding = { source: { commit: 'b'.repeat(40) } };
+	const cliCandidateCommit = 'd'.repeat(40);
 	const freeze = {
 		runtime: { contractVersion: 1, contractDigest: 'c'.repeat(64) },
 		pluginArtifact: artifact,
@@ -71,26 +72,38 @@ test('automated release evidence binds one exact local, hosted, and Windows iden
 				},
 				hosted: {
 					candidateCommit,
-					ci: { runId: 1, headSha: candidateCommit, status: 'success' },
+					ci: { runId: 1, jobId: 6, headSha: candidateCommit, status: 'success' },
 					codeql: { runId: 2, headSha: candidateCommit, status: 'success' },
 					artifactAggregateSha256,
 				},
 			},
 		},
-		cli: {},
+		cli: {
+			candidateCommit: cliCandidateCommit,
+			integratedCommit: binding.source.commit,
+			integratedTree: 'e'.repeat(40),
+			treeMatchesCandidate: true,
+		},
 		pairedWindowsValidation: {
 			runId: 3,
 			windowsPairJobId: 4,
-			gateJobId: 5,
 			pluginCommit: candidateCommit,
-			cliCandidateCommit: binding.source.commit,
+			cliCandidateCommit,
 			pluginNative: { tests: 22, failed: 0, cancelled: 0, skipped: 0 },
 			cliHosted: { assertions: 4, skipped: 0 },
 			trackedClean: true,
 			status: 'passed',
 			artifactAggregateSha256,
 		},
-		historicalLiveBaseline: {},
+		historicalLiveBaseline: {
+			scope: 'historical-runtime-v1-baseline-only',
+			pluginVersion: '3.1.0',
+			cliVersion: '1.0.9',
+			freezePath: 'contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.json',
+			freezeSha256: '85cf7459987ecd7aa18fdae06fcea08acbbe1318189e3edb2557c60aa3d5abe4',
+			evidencePath: 'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
+			evidenceSha256: '3352c360c9a2ddd01c3ab622f0263c61bec15f1e83b8ac0c669e5f9b64a35ab5',
+		},
 		limitations: {
 			liveDeployment: 'not-run',
 			manualAcceptance: 'not-run-not-required',
@@ -120,10 +133,14 @@ test('candidate registry validates historical byte identity and current paired e
 		'contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.json',
 		'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
 		'contracts/agent-runtime/releases/3.1.0/published-cli-v1.json',
+		'contracts/agent-runtime/releases/3.1.1/public-v1-external-freeze.json',
+		'contracts/agent-runtime/releases/3.1.1/public-v1-external-freeze.schema.json',
+		'contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json',
 	];
 	const before = await Promise.all(protectedPaths.map(relativePath => readFile(path.join(pluginRoot, relativePath))));
 	const result = await checkCandidateFreezeRegistry({ pluginRoot });
-	assert.equal(result.registry.releases.length, 2);
+	assert.equal(result.registry.releases.length, 3);
+	assert.equal(result.freeze.releaseAcceptance.mode, 'automated-validation');
 	assert.equal(result.evidence.limitations.publishedCliLiveMutationSuite, 'not-rerun');
 	assert.equal(result.evidence.limitations.cliInstalledInLiveVault, false);
 	const after = await Promise.all(protectedPaths.map(relativePath => readFile(path.join(pluginRoot, relativePath))));
@@ -139,7 +156,7 @@ test('candidate registry accepts working artifact drift and absence', async () =
 			rm(path.join(root, 'styles.css')),
 		]);
 		const result = await checkCandidateFreezeRegistry({ pluginRoot: root });
-		assert.equal(result.freeze.pluginArtifact.version, '3.1.0');
+		assert.equal(result.freeze.pluginArtifact.version, '3.1.1');
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
@@ -231,6 +248,7 @@ test('release registry maps registry and historical byte drift to stale', async 
 		'contracts/agent-runtime/public-v1-release-freezes.json',
 		'contracts/agent-runtime/public-v1-live-acceptance.json',
 		'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
+		'contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json',
 	]) {
 		const root = await createFixture();
 		try {
@@ -248,14 +266,14 @@ test('release registry maps registry and historical byte drift to stale', async 
 test('release registry rejects self-consistent current evidence and registry drift', async () => {
 	const root = await createFixture();
 	try {
-		const evidencePath = 'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json';
+		const evidencePath = 'contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json';
 		const registryPath = 'contracts/agent-runtime/public-v1-release-freezes.json';
 		const evidence = JSON.parse(await readFile(path.join(root, evidencePath), 'utf8'));
 		evidence.limitations.cliInstalledInLiveVault = true;
 		const evidenceBytes = Buffer.from(`${JSON.stringify(evidence, null, 2)}\n`);
 		await writeFile(path.join(root, evidencePath), evidenceBytes);
 		const registry = JSON.parse(await readFile(path.join(root, registryPath), 'utf8'));
-		const identity = registry.releases[1].files.find(file => file.path === evidencePath);
+		const identity = registry.releases[2].files.find(file => file.path === evidencePath);
 		identity.bytes = evidenceBytes.byteLength;
 		identity.sha256 = createHash('sha256').update(evidenceBytes).digest('hex');
 		await writeFile(path.join(root, registryPath), `${JSON.stringify(registry, null, 2)}\n`, 'utf8');
@@ -301,6 +319,9 @@ async function createFixture() {
 		'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
 		'contracts/agent-runtime/releases/3.1.0/published-cli-v1.json',
 		'contracts/agent-runtime/releases/3.1.0/published-cli-v1.schema.json',
+		'contracts/agent-runtime/releases/3.1.1/public-v1-external-freeze.json',
+		'contracts/agent-runtime/releases/3.1.1/public-v1-external-freeze.schema.json',
+		'contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json',
 	];
 	for (const relativePath of files) {
 		await mkdir(path.dirname(path.join(root, relativePath)), { recursive: true });
