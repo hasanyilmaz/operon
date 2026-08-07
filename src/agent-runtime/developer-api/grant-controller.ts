@@ -109,7 +109,10 @@ export class DeveloperApiGrantControllerV1 {
 		this.syncFromStoreIfIdle();
 		this.observeConsumerVersion(consumer, requestedCapabilities);
 		const evaluation = evaluateDeveloperApiGrant(this.grants, consumer, requestedCapabilities);
-		if (!this.hasPersistenceError()) return evaluation;
+		if (
+			!this.hasPersistenceFailure()
+			&& (evaluation.state !== 'active' || this.pendingWrites === 0)
+		) return evaluation;
 		return {
 			...evaluation,
 			state: 'suspended',
@@ -238,9 +241,7 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	hasPersistenceError(): boolean {
-		return this.persistenceError !== null
-			|| this.pendingWrites > 0
-			|| this.isStorePersistenceUnavailable();
+		return this.hasPersistenceFailure() || this.pendingWrites > 0;
 	}
 
 	getPersistenceError(): Error | null {
@@ -335,6 +336,10 @@ export class DeveloperApiGrantControllerV1 {
 
 	private isStorePersistenceUnavailable(): boolean {
 		return this.options.store.canPersist?.() === false;
+	}
+
+	private hasPersistenceFailure(): boolean {
+		return this.persistenceError !== null || this.isStorePersistenceUnavailable();
 	}
 
 	private requirePersistenceAvailable(): void {

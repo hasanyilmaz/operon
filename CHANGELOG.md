@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed **Developer API capability grants** losing or ambiguously recovering durable state across plugin restarts, persistence failures, audit retention, and vault-specific startup reconciliation.
+- Fixed **queued Developer API grant requests** being reported as persistence failures before durable storage completed, while avoiding redundant writes and audit transitions for semantically unchanged pending requests.
 
 ### Validation
 
-- Validated with the complete local candidate check suite, including Developer API grant persistence and recovery, IndexedDB security-audit retention, and release-freeze regression coverage.
+- Validated with the complete local and native Windows candidate check suites, including Developer API grant persistence and recovery, queued-request deduplication, IndexedDB security-audit retention, and release-freeze regression coverage.
 
 ## [3.1.0] - 2026-08-05
 
