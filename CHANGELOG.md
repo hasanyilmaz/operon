@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.1.1] - 2026-08-07
+
 ### New
 
 - Added a responsive **Filter pop-over to Kanban**, allowing the selected preset filter to be edited or a new filter to be created and attached without leaving the board.
@@ -23,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed **Developer API capability grants** losing or ambiguously recovering durable state across plugin restarts, persistence failures, audit retention, and vault-specific startup reconciliation.
 - Fixed **queued Developer API grant requests** being reported as persistence failures before durable storage completed, while avoiding redundant writes and audit transitions for semantically unchanged pending requests.
+- Fixed confirmation-gated **Developer API mutations** failing before Runtime dispatch, allowing elevated and destructive applies to preserve their recovery proof and proceed after consent while targetless plans continue to fail closed.
+- Fixed successful inline task updates through the **Agent Runtime, CLI, and Developer API** being reported as `outcome-unknown` when Obsidian advanced only the task’s `datetimeModified` metadata after the write, while preserving fail-closed verification and replay fencing for all other source changes.
 - Fixed multi-day **Calendar All Day tasks** being unavailable for drag-and-drop while preserving their duration and the grabbed-day offset.
 - Removed the redundant **“Go to Task” tooltip** from inline tasks in Reading Mode.
 
