@@ -578,6 +578,7 @@ import {
 	KanbanCellActionId,
 	KanbanLeafState,
 	KanbanPreset,
+	type KanbanPresetFilterCommitRequest,
 	buildKanbanLaneCollapseScopeKey,
 	buildKanbanStatusCollapseScopeKey,
 	cloneDefaultKanbanPresets,
@@ -642,6 +643,7 @@ import {
 	PriorityRenamePreview,
 } from './src/core/priority-rename-migration';
 import { CalendarView, CALENDAR_VIEW_TYPE, type CalendarTrackedSessionRef } from './src/ui/calendar/calendar-view';
+import { buildFinishedDateMovePayload } from './src/ui/calendar/all-day-drag';
 import {
 	filterTasksForCalendar,
 } from './src/systems/calendar-filter-materialization';
@@ -1561,6 +1563,41 @@ export default class OperonPlugin extends Plugin {
 	private async saveFilterSetAndRefresh(filterSet: FilterSet): Promise<void> {
 		await this.storage.filters.upsert(filterSet);
 		this.syncFilterSetsFromStore();
+		this.refreshViews();
+	}
+
+	private async commitKanbanPresetFilter(request: KanbanPresetFilterCommitRequest): Promise<void> {
+		const preset = this.settings.kanbanPresets.find(entry => entry.id === request.presetId) ?? null;
+		if (!preset) throw new Error('Operon: Kanban preset is no longer available.');
+		if (preset.filterSetId !== request.expectedPresetFilterSetId) {
+			throw new Error('Operon: Kanban preset filter changed while the editor was open.');
+		}
+		if (request.sourceFilterSetId && (
+			request.sourceFilterSetId !== request.expectedPresetFilterSetId
+			|| request.filterSet.id !== request.sourceFilterSetId
+		)) {
+			throw new Error('Operon: Kanban filter edit no longer matches the selected preset.');
+		}
+
+		await this.storage.filters.upsert(request.filterSet);
+		this.syncFilterSetsFromStore();
+		if (request.sourceFilterSetId) {
+			const currentPreset = this.settings.kanbanPresets.find(entry => entry.id === request.presetId) ?? null;
+			if (!currentPreset || currentPreset.filterSetId !== request.expectedPresetFilterSetId) {
+				throw new Error('Operon: Kanban preset filter changed while the filter was saving.');
+			}
+			this.refreshViews();
+			return;
+		}
+
+		const attached = await this.storage.attachKanbanPresetFilterIfUnchanged(
+			request.presetId,
+			request.expectedPresetFilterSetId,
+			request.filterSet.id,
+		);
+		if (!attached) {
+			throw new Error('Operon: Kanban preset filter changed while the filter was saving.');
+		}
 		this.refreshViews();
 	}
 
@@ -11895,6 +11932,7 @@ export default class OperonPlugin extends Plugin {
 					onAllDaySlotSelection: (selection) => this.handleCalendarSlotSelection(leaf, selection),
 					onAllDayScheduledMove: (taskId, selection) => this.handleCalendarScheduledMove(taskId, selection),
 					onAllDayScheduledResizeRight: (taskId, selection) => this.handleCalendarScheduledResizeRight(taskId, selection),
+					onFinishedItemMove: (taskId, dateCompleted) => this.handleCalendarFinishedMove(taskId, dateCompleted),
 					onAllDayItemDropToTimed: (taskId, selection, sourcePayload) => this.handleCalendarAllDayDropToTimed(taskId, selection, sourcePayload),
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					onOpenTaskSource: openTaskSourceInNewTab,
@@ -12013,6 +12051,7 @@ export default class OperonPlugin extends Plugin {
 						await this.toggleTimerForTask(operonId, 'command');
 					},
 					getTrackingSignature: () => this.timeTracker.getActiveOperonId() ?? '',
+					onCommitPresetFilter: request => this.commitKanbanPresetFilter(request),
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
 						new KanbanPresetQuickSettingsModal(this.app, {
@@ -13112,6 +13151,22 @@ export default class OperonPlugin extends Plugin {
 			changedKeys,
 		});
 		this.refreshViews();
+	}
+
+	private async handleCalendarFinishedMove(taskId: string, dateCompleted: string): Promise<boolean> {
+		const task = this.indexer.getTask(taskId);
+		if (!task || task.checkbox !== 'done') return false;
+		const payload = buildFinishedDateMovePayload(
+			(task.fieldValues['dateCompleted'] ?? '').trim(),
+			dateCompleted,
+		);
+		if (!payload) return false;
+
+		const updated = await this.updateTaskFieldsAndRefresh(task.operonId, payload, {
+			changedKeys: ['dateCompleted'],
+		});
+		this.refreshViews();
+		return updated;
 	}
 
 	private async handleCalendarTimedMove(

@@ -3,7 +3,7 @@ import type { OperonIndexer } from '../../indexer/indexer';
 import type { PinnedCache } from '../../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../../core/project-serials';
 import type { IndexedTask } from '../../types/fields';
-import { cloneFilterSet, type FilterSet, type OperonSettings } from '../../types/settings';
+import type { FilterSet, OperonSettings } from '../../types/settings';
 import type { TaskFinderDefaultScopeKey } from '../../types/settings';
 import type { TrackerSession } from '../../types/tracker';
 import {
@@ -55,7 +55,7 @@ import {
 import {
 	formatTableTaskSource,
 } from './table-value-adapter';
-import { formatTableDependencyTooltipContent, renderTableCellChips } from './table-cell-chip';
+import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table-description-cell';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './mobile-table-viewport';
@@ -146,13 +146,17 @@ import { showTextFieldPopover } from '../text-field-popover';
 import { showTaskNotePopover } from '../task-note-action';
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from '../tracker-session-edit-modal';
 import { formatDurationHuman } from '../../systems/tracker-utils';
-import { getOwnerDocument, getOwnerWindow } from '../../core/dom-compat';
+import { getOwnerWindow } from '../../core/dom-compat';
 import type { ContextualMenuActionHandler } from '../../core/contextual-menu-engine';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { resolveSurfaceFloatingHostOptions, snapshotFloatingRectAnchor } from '../field-pickers/common';
 import { openWebViewerNewTab } from '../external-link-actions';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
-import { FilterSetModal } from '../filter-set-modal';
+import {
+	buildPresetFilterUsageTooltip,
+	createUniquePresetFilterName,
+	showPresetFilterPopover,
+} from '../preset-filter-popover';
 import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton } from './table-task-icon-button';
 import { bindTableTaskTypeEditorOpen, renderTableTaskTypeButton } from './table-task-type-button';
 import {
@@ -300,34 +304,6 @@ interface TableNoSearchResultCache {
 	key: string;
 	result: TableQueryResult;
 	summariesEvaluated: boolean;
-}
-
-function generateTableFilterSetId(): string {
-	return 'fs_' + Math.random().toString(36).slice(2, 9);
-}
-
-function generateTableFilterGroupId(): string {
-	return 'fg_' + Math.random().toString(36).slice(2, 10);
-}
-
-function generateTableFilterPopoverId(): string {
-	return 'operon-table-filter-popover-' + Math.random().toString(36).slice(2, 10);
-}
-
-function createEmptyTableFilterSet(name: string): FilterSet {
-	return {
-		id: generateTableFilterSetId(),
-		name,
-		icon: 'filter',
-		rootGroup: {
-			id: generateTableFilterGroupId(),
-			logic: 'all',
-			children: [],
-		},
-		sorts: [],
-		matchLogic: 'all',
-		conditions: [],
-	};
 }
 
 export class OperonTableView extends FileView {
@@ -842,7 +818,7 @@ export class OperonTableView extends FileView {
 			};
 		}
 		const rowHeight = resolveTableRowHeight(result.preset);
-		const columnGeometry = buildTableColumnGeometry(columns);
+		const columnGeometry = buildTableColumnGeometry(columns, settings);
 		const tableWidthPx = columnGeometry.tableWidthPx;
 		const scrollbarGutterPx = measureTableScrollbarGutterPx(this.contentEl.ownerDocument);
 		const searchControlSignature = this.buildSearchControlSignature(searchContext.parentSearchUi);
@@ -1415,210 +1391,84 @@ export class OperonTableView extends FileView {
 		this.closeActivePicker();
 		const settings = this.getSettings();
 		const currentFilter = resolveTablePresetFilterSet(preset, settings.filterSets);
-		const draft = currentFilter
-			? cloneFilterSet(currentFilter)
-			: createEmptyTableFilterSet(this.createUniqueTableFilterName());
 		const sourceFilterSetId = currentFilter?.id ?? null;
-		const ownerDocument = getOwnerDocument(host);
-		const ownerWindow = ownerDocument.defaultView ?? window;
-		const floatingOptions = resolveSurfaceFloatingHostOptions(button);
-		const popoverHost = floatingOptions.floatingHost ?? ownerDocument.body;
-		const floatingScrollHost = floatingOptions.floatingScrollHost ?? ownerWindow;
-		const popover = popoverHost.createDiv('operon-table-filter-popover');
-		const popoverId = generateTableFilterPopoverId();
-		let editor: FilterSetModal | null = null;
-		let isClosed = false;
-		let repositionFrame: number | null = null;
-		popover.id = popoverId;
-		popover.setAttribute('role', 'dialog');
-		setAccessibleLabelWithoutTooltip(popover, t('table', 'filter'));
-		button.setAttribute('aria-expanded', 'true');
-		button.setAttribute('aria-controls', popoverId);
-
-		const close = (): void => {
-			if (isClosed) return;
-			isClosed = true;
-			if (this.activePickerClose === close) {
-				this.activePickerClose = null;
-				this.keepActivePickerOnRender = false;
-			}
-			ownerDocument.removeEventListener('pointerdown', handleDocumentPointerDown, true);
-			ownerDocument.removeEventListener('keydown', handleDocumentKeyDown, true);
-			ownerWindow.removeEventListener('resize', close);
-			floatingScrollHost.removeEventListener('scroll', scheduleReposition, true);
-			if (repositionFrame !== null) ownerWindow.cancelAnimationFrame(repositionFrame);
-			editor?.destroyInlineConditionEditor();
-			button.setAttribute('aria-expanded', 'false');
-			button.removeAttribute('aria-controls');
-			popover.remove();
-		};
-		const handleDocumentPointerDown = (event: PointerEvent): void => {
-			const target = event.target;
-			if (target && typeof (target as Node).nodeType === 'number' && host.contains(target as Node)) return;
-			if (editor?.isInlineEditorTarget(target)) return;
-			close();
-		};
-		const handleDocumentKeyDown = (event: KeyboardEvent): void => {
-			if (event.key !== 'Escape') return;
-			if (editor?.isInlineEditorFloatingTarget(event.target)) return;
-			event.preventDefault();
-			close();
-		};
-		const reposition = (): void => this.positionTableFilterPopover(popover, button);
-		const scheduleReposition = (): void => {
-			if (repositionFrame !== null) return;
-			repositionFrame = ownerWindow.requestAnimationFrame(() => {
-				repositionFrame = null;
-				if (!isClosed && popover.isConnected) reposition();
-			});
-		};
-
-		editor = new FilterSetModal(
-			this.app,
-			draft,
-			settings.keyMappings,
-			() => undefined,
-			undefined,
+		let closePopover: (() => void) | null = null;
+		closePopover = showPresetFilterPopover({
+			app: this.app,
+			anchor: button,
+			triggerHost: host,
+			label: t('table', 'filter'),
+			currentFilter,
+			newFilterName: createUniquePresetFilterName(t('table', 'newFilterName'), settings.filterSets),
+			keyMappings: settings.keyMappings,
+			filterModalOptions: {
+				getSettings: () => this.getSettings(),
+				getProjectSerialScopeTasks: () => this.indexer.getAllTasks(),
+				getFilePropertyDiscoveryTasks: () => this.indexer.getAllTasks(),
+				getFilePropertySnapshot: tasks => getTableFilePropertyIndex(this.app).getSnapshot(
+					tasks,
+					this.indexer.getGeneration(),
+					{ keyMappings: this.getSettings().keyMappings },
+				),
+			},
+			countTasks: filterSet => filterTasksForCalendar(
+				filterSet,
+				this.indexer.getAllTasks(),
+				this.getSettings().priorities,
+				this.getPinnedCache(),
 				{
-					getSettings: () => this.getSettings(),
-					getProjectSerialScopeTasks: () => this.indexer.getAllTasks(),
-					getFilePropertyDiscoveryTasks: () => this.indexer.getAllTasks(),
-					getFilePropertySnapshot: tasks => getTableFilePropertyIndex(this.app).getSnapshot(
-						tasks,
+					projectSerialScopes: this.getSettings().projectSerialScopes,
+					projectSerialScopeTasks: this.indexer.getAllTasks(),
+					dependencyTasks: this.indexer.getAllTasks(),
+					pipelines: this.getSettings().pipelines,
+					filePropertyContext: getTableFilePropertyIndex(this.app).getSnapshot(
+						this.indexer.getAllTasks(),
 						this.indexer.getGeneration(),
 						{ keyMappings: this.getSettings().keyMappings },
 					),
 				},
-		);
-		editor.renderInlineConditionEditor(popover, {
-			onCancel: close,
-			onSave: updated => {
-				void this.saveTableFilterPopoverDraft(updated, sourceFilterSetId, preset, close);
+			).length,
+			saveTooltip: sourceFilterSetId
+				? buildPresetFilterUsageTooltip(settings, sourceFilterSetId)
+				: undefined,
+			classNames: ['operon-table-filter-popover'],
+			onCommit: updated => this.saveTableFilterPopoverDraft(updated, sourceFilterSetId, preset),
+			onCommitError: error => {
+				console.error('Operon: failed to save table filter popover draft', error);
+				new Notice(t('table', 'presetActionFailed'));
 			},
-				countTasks: filterSet => filterTasksForCalendar(
-					filterSet,
-					this.indexer.getAllTasks(),
-					this.getSettings().priorities,
-					this.getPinnedCache(),
-							{
-								projectSerialScopes: this.getSettings().projectSerialScopes,
-								projectSerialScopeTasks: this.indexer.getAllTasks(),
-								dependencyTasks: this.indexer.getAllTasks(),
-								pipelines: this.getSettings().pipelines,
-								filePropertyContext: getTableFilePropertyIndex(this.app).getSnapshot(
-								this.indexer.getAllTasks(),
-								this.indexer.getGeneration(),
-								{ keyMappings: this.getSettings().keyMappings },
-							),
-						},
-				).length,
-				saveTooltip: sourceFilterSetId
-					? this.buildFilterUsageTooltip(sourceFilterSetId)
-					: undefined,
-			});
-		reposition();
-
+			onClose: close => {
+				if (this.activePickerClose === close) {
+					this.activePickerClose = null;
+					this.keepActivePickerOnRender = false;
+				}
+			},
+			resolveFallbackFocusTarget: () => this.contentEl.querySelector<HTMLButtonElement>(
+				'button.operon-table-filter-popover-button',
+			),
+		});
 		this.keepActivePickerOnRender = true;
-		this.activePickerClose = close;
-		ownerDocument.addEventListener('pointerdown', handleDocumentPointerDown, true);
-		ownerDocument.addEventListener('keydown', handleDocumentKeyDown, true);
-		ownerWindow.addEventListener('resize', close);
-		floatingScrollHost.addEventListener('scroll', scheduleReposition, true);
-	}
-
-	private positionTableFilterPopover(popover: HTMLElement, button: HTMLElement): void {
-		const rect = button.getBoundingClientRect();
-		const ownerDocument = getOwnerDocument(button);
-		const ownerWindow = ownerDocument.defaultView ?? window;
-		const floatingOptions = resolveSurfaceFloatingHostOptions(button);
-		const floatingHost = floatingOptions.floatingHost;
-		const hostRect = floatingHost?.getBoundingClientRect();
-		const hostScrollLeft = floatingHost?.scrollLeft ?? 0;
-		const hostScrollTop = floatingHost?.scrollTop ?? 0;
-		const margin = 12;
-		const gap = 6;
-		const availableWidth = Math.max(240, (floatingHost?.clientWidth ?? ownerWindow.innerWidth) - margin * 2);
-		const availableHeight = floatingHost?.clientHeight ?? ownerWindow.innerHeight;
-		const width = Math.min(760, availableWidth);
-		const anchorRight = hostRect ? rect.right - hostRect.left + hostScrollLeft : rect.right;
-		const anchorBottom = hostRect ? rect.bottom - hostRect.top + hostScrollTop : rect.bottom;
-		const left = Math.max(hostScrollLeft + margin, Math.min(
-			anchorRight - width,
-			hostScrollLeft + availableWidth - width - margin,
-		));
-		const top = Math.max(hostScrollTop + margin, anchorBottom + gap);
-		const maxHeight = Math.max(240, hostScrollTop + availableHeight - top - margin);
-		popover.style.width = `${Math.round(width)}px`;
-		popover.style.position = floatingHost ? 'absolute' : 'fixed';
-		popover.style.left = `${Math.round(left)}px`;
-		popover.style.top = `${Math.round(top)}px`;
-		popover.style.maxHeight = `${Math.round(maxHeight)}px`;
-	}
-
-	private createUniqueTableFilterName(): string {
-		const baseName = t('table', 'newFilterName');
-		const existingNames = new Set(
-			this.getSettings().filterSets.map(filterSet => filterSet.name.trim().toLocaleLowerCase()),
-		);
-		if (!existingNames.has(baseName.toLocaleLowerCase())) return baseName;
-		let suffix = 2;
-		while (existingNames.has(`${baseName} ${suffix}`.toLocaleLowerCase())) {
-			suffix += 1;
-		}
-		return `${baseName} ${suffix}`;
-	}
-
-	private buildFilterUsageTooltip(filterSetId: string): { title: string; content: string } | undefined {
-		const settings = this.getSettings();
-		const lines: string[] = [];
-		const calendarPresets = settings.calendarPresets
-			.filter(entry => entry.filterSetId === filterSetId)
-			.map(entry => entry.name.trim() || entry.id);
-		const kanbanPresets = settings.kanbanPresets
-			.filter(entry => entry.filterSetId === filterSetId)
-			.map(entry => entry.name.trim() || entry.id);
-		const tablePresets = settings.tablePresets
-			.filter(entry => entry.filterSetId === filterSetId)
-			.map(entry => entry.name.trim() || entry.id);
-		if (calendarPresets.length > 0) {
-			lines.push(`${t('filterSets', 'usedByCalendar')}: ${calendarPresets.join(', ')}`);
-		}
-		if (kanbanPresets.length > 0) {
-			lines.push(`${t('filterSets', 'usedByKanban')}: ${kanbanPresets.join(', ')}`);
-		}
-		if (tablePresets.length > 0) {
-			lines.push(`${t('filterSets', 'usedByTable')}: ${tablePresets.join(', ')}`);
-		}
-		if (lines.length === 0) return undefined;
-		return {
-			title: t('filterSets', 'usedByTitle'),
-			content: lines.join(' · '),
-		};
+		this.activePickerClose = closePopover;
 	}
 
 	private async saveTableFilterPopoverDraft(
 		filterSet: FilterSet,
 		sourceFilterSetId: string | null,
 		preset: TablePreset,
-		close: () => void,
 	): Promise<void> {
 		if (!this.callbacks.onSaveFilterSet) {
-			new Notice(t('table', 'presetActionFailed'));
-			return;
+			throw new Error('Operon: Table filter save callback is unavailable.');
 		}
-		try {
-			await this.callbacks.onSaveFilterSet(filterSet);
-			if (!sourceFilterSetId) {
-				const ticket = this.callbacks.onSavePresetPatch?.({
-					id: preset.id,
-					filterSetId: filterSet.id,
-				}, { surfaceToken: this.surfaceToken });
-				await ticket?.flush();
+		await this.callbacks.onSaveFilterSet(filterSet);
+		if (!sourceFilterSetId) {
+			if (!this.callbacks.onSavePresetPatch) {
+				throw new Error('Operon: Table preset save callback is unavailable.');
 			}
-			close();
-		} catch (error) {
-			console.error('Operon: failed to save table filter popover draft', error);
-			new Notice(t('table', 'presetActionFailed'));
+			const ticket = this.callbacks.onSavePresetPatch({
+				id: preset.id,
+				filterSetId: filterSet.id,
+			}, { surfaceToken: this.surfaceToken });
+			await ticket.flush();
 		}
 	}
 
@@ -2145,10 +1995,14 @@ export class OperonTableView extends FileView {
 		}
 		if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) {
 			cell.addClass('operon-table-task-type-cell');
-				renderTableTaskTypeButton(cell, {
-					task,
-					onOpenTaskEditor: this.callbacks.onOpenTaskEditor,
-					onOpenTaskSource: this.callbacks.onOpenTaskSource,
+			renderTableTaskTypeButton(cell, {
+				task,
+				onOpenTaskEditor: this.callbacks.onOpenTaskEditor,
+				onOpenTaskSource: this.callbacks.onOpenTaskSource,
+				settings: renderState.settings,
+				onContextualAction: this.callbacks.onContextualAction,
+				isPinned: this.callbacks.isTaskPinned,
+				hasSubtasks: this.callbacks.hasSubtasks,
 			});
 		}
 	}
@@ -2236,15 +2090,19 @@ export class OperonTableView extends FileView {
 			task,
 			locationResolver: renderState.locationResolver,
 		});
-		const content = locationVisual?.label
+		const field = getTableTaskField(column.key, renderState.settings);
+		const content = field?.type === 'datetime'
+			? formatTableDetailedDatetimeValue(column.key, value, renderState.settings)
+			: locationVisual?.label
 			?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)
 			?? formatTableIconOnlyTooltipContent(value);
-		const fallbackIcon = getTableTaskField(column.key, renderState.settings)?.icon ?? 'text';
+		const fallbackIcon = field?.icon ?? 'text';
 		const isTaskIconColumn = column.key === 'taskIcon';
 		const isTaskTypeColumn = column.key === 'taskType';
-		if (column.key === 'datetimeStart' || column.key === 'datetimeEnd') {
+		if (field?.type === 'datetime') {
 			renderTableCompactDatetimeCell(cell, {
 				value,
+				timeFormat: renderState.settings.timeFormat,
 				title: fieldLabel,
 				content,
 				ariaLabel: `${fieldLabel}: ${content}`,
@@ -2285,7 +2143,7 @@ export class OperonTableView extends FileView {
 		if (locationVisual) {
 			this.bindLocationMapPreviewTrigger(icon, task, locationVisual, renderState);
 		}
-		if (isTaskIconColumn && this.callbacks.onContextualAction) {
+		if ((isTaskIconColumn || isTaskTypeColumn) && this.callbacks.onContextualAction) {
 			bindTableTaskContextualHoverMenu(icon, {
 				task,
 				settings: renderState.settings,

@@ -4,6 +4,7 @@ import type { ProjectSerialDisplay } from '../core/project-serials';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import type { IndexedTask } from './fields';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from './related-views';
+import type { FilterSet } from './settings';
 
 export type BuiltInKanbanSwimlaneBy =
 	| 'priority'
@@ -107,6 +108,13 @@ export interface KanbanCellActionContext {
 	pipelineId: string | null;
 }
 
+export interface KanbanPresetFilterCommitRequest {
+	presetId: string;
+	filterSet: FilterSet;
+	sourceFilterSetId: string | null;
+	expectedPresetFilterSetId: string | null;
+}
+
 export interface KanbanViewCallbacks {
 	getManualOrder?: (presetId: string) => Record<string, string[]>;
 	onCardDrop?: (context: KanbanDropContext) => void | Promise<void>;
@@ -114,6 +122,7 @@ export interface KanbanViewCallbacks {
 	onOpenTaskSource?: (taskId: string) => void | Promise<void>;
 	onStatusIconClick?: (taskId: string) => void | Promise<void>;
 	onOpenPresetSettings?: (presetId: string) => void | Promise<void>;
+	onCommitPresetFilter?: (request: KanbanPresetFilterCommitRequest) => Promise<void>;
 	onOpenRelatedView?: (target: RelatedViewOpenTarget) => void | Promise<void>;
 	onCreateRelatedView?: (target: RelatedViewCreateTarget) => void | Promise<void>;
 	onCellAction?: (context: KanbanCellActionContext) => void | Promise<void>;
