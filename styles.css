@@ -30223,7 +30223,6 @@ button.operon-table-group-sort-add-button {
 	box-shadow: var(--shadow-l);
 }
 
-.operon-preset-filter-popover.operon-filter-inline-editor,
 .operon-table-filter-popover .operon-filter-inline-editor {
 	max-height: none;
 	overflow: visible;
