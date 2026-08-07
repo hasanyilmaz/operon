@@ -31,6 +31,7 @@ import { canonicalizeLocalDatetime } from '../../core/local-time';
 import { parseTaskLine } from '../../core/parser';
 import type { KeyMapping } from '../../types/settings';
 import type {
+	RuntimeMutationSettlementWindowV1,
 	RuntimePreparedMutationCommitV1,
 	RuntimePreparedMutationV1,
 } from './mutation-gateway';
@@ -64,8 +65,8 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 	committedLines: readonly string[],
 	observedLines: readonly string[],
 	driftLineNumber: number,
-	observedTaskDatetimeModified: string,
 	modifiedTimeFrontmatterKeys: readonly string[],
+	settlementWindow: RuntimeMutationSettlementWindowV1 | undefined,
 ): boolean {
 	if (
 		committedLines[0]?.replace(/\r$/u, '') !== '---'
@@ -80,6 +81,21 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 		|| driftLineNumber <= 0
 		|| driftLineNumber >= closingLineNumber
 	) return false;
+	if (!settlementWindow) return false;
+	const windowDurationMs = settlementWindow.settlementObservedAtEpochMs
+		- settlementWindow.applyStartedAtEpochMs;
+	if (
+		!Number.isFinite(settlementWindow.applyStartedAtEpochMs)
+		|| !Number.isFinite(settlementWindow.settlementObservedAtEpochMs)
+		|| windowDurationMs < 0
+		|| windowDurationMs > 5 * 60 * 1000
+	) return false;
+	const applyStartedAt = toLocalDatetime(
+		new Date(settlementWindow.applyStartedAtEpochMs).toISOString(),
+	);
+	const settlementObservedAt = toLocalDatetime(
+		new Date(settlementWindow.settlementObservedAtEpochMs).toISOString(),
+	);
 	const permittedKeys = [...new Set(modifiedTimeFrontmatterKeys)].filter(key => (
 		key.trim() === key
 		&& key.length > 0
@@ -99,11 +115,19 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 		const observedRaw = observedLine.slice(prefix.length).replace(/\r$/u, '').trim();
 		const committedCanonical = parseStrictCanonicalLocalDatetime(committedRaw);
 		const observedCanonical = parseStrictCanonicalLocalDatetime(observedRaw);
+		const observedMatch = STRICT_LOCAL_DATETIME_RE.exec(observedRaw);
+		const observedAtOrAfterApply = observedMatch?.[6] === undefined
+			? observedCanonical?.slice(0, 16).localeCompare(applyStartedAt.slice(0, 16)) ?? -1
+			: observedCanonical?.localeCompare(applyStartedAt) ?? -1;
+		const observedAtOrBeforeSettlement = observedMatch?.[6] === undefined
+			? observedCanonical?.slice(0, 16).localeCompare(settlementObservedAt.slice(0, 16)) ?? 1
+			: observedCanonical?.localeCompare(settlementObservedAt) ?? 1;
 		if (
 			!committedCanonical
 			|| !observedCanonical
 			|| observedCanonical.localeCompare(committedCanonical) <= 0
-			|| observedCanonical.slice(0, 16) !== observedTaskDatetimeModified.slice(0, 16)
+			|| observedAtOrAfterApply < 0
+			|| observedAtOrBeforeSettlement > 0
 		) continue;
 		return true;
 	}
@@ -230,6 +254,7 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 	observedSourceContent: string,
 	keyMappings: readonly KeyMapping[],
 	modifiedTimeFrontmatterKeys: readonly string[] = [],
+	settlementWindow?: RuntimeMutationSettlementWindowV1,
 ): { revision: string; datetimeModified?: string } | null {
 	if (
 		prepared.operation !== 'update'
@@ -300,8 +325,8 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 			committedLines,
 			observedLines,
 			frontmatterDriftLineNumber,
-			observedCanonical,
 			modifiedTimeFrontmatterKeys,
+			settlementWindow,
 		)) return null;
 		restoredObservedLines[frontmatterDriftLineNumber] = committedLines[frontmatterDriftLineNumber] ?? '';
 	}
@@ -320,6 +345,7 @@ export function resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
 	observedSourceContent: string,
 	keyMappings: readonly KeyMapping[],
 	modifiedTimeFrontmatterKeys: readonly string[] = [],
+	settlementWindow?: RuntimeMutationSettlementWindowV1,
 ): string | null {
 	return resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 		prepared,
@@ -328,6 +354,7 @@ export function resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
 		observedSourceContent,
 		keyMappings,
 		modifiedTimeFrontmatterKeys,
+		settlementWindow,
 	)?.revision ?? null;
 }
 
@@ -365,6 +392,7 @@ export function refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
 	observedSourceContent: string | null,
 	keyMappings: readonly KeyMapping[],
 	modifiedTimeFrontmatterKeys: readonly string[] = [],
+	settlementWindow?: RuntimeMutationSettlementWindowV1,
 ): RuntimePreparedMutationCommitV1 {
 	const source = runtimeInlineTaskUpdateSettlementEvidenceSourceV1(preparedMutation, commit);
 	const evidence = commit.primaryTaskSourceCommitEvidence;
@@ -376,6 +404,7 @@ export function refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
 		observedSourceContent,
 		keyMappings,
 		modifiedTimeFrontmatterKeys,
+		settlementWindow,
 	);
 	if (!revision || revision === evidence.revision) return commit;
 	return {

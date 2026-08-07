@@ -290,6 +290,7 @@ import {
 	type MutationResultV1,
 	type RuntimePreparedMutationV1,
 	type RuntimePreparedMutationCommitV1,
+	type RuntimeMutationSettlementWindowV1,
 	type RuntimeTaskFieldMutationPreparationV1,
 	type RuntimeTaskUpdateBatchPreparationV1,
 	type RuntimeTaskRecurrencePreparationV1,
@@ -5764,7 +5765,7 @@ export default class OperonPlugin extends Plugin {
 			commitMutation: async (request, prepared, effectiveAt) => (
 				await this.commitAgentRuntimeTaskMutation(request.plan.spec, prepared, effectiveAt)
 			),
-			refreshMutationCommitEvidence: async (preparedMutation, commit) => {
+			refreshMutationCommitEvidence: async (preparedMutation, commit, settlementWindow) => {
 				const source = runtimeInlineTaskUpdateSettlementEvidenceSourceV1(
 					preparedMutation,
 					commit,
@@ -5777,10 +5778,16 @@ export default class OperonPlugin extends Plugin {
 					observed.content,
 					this.settings.keyMappings,
 					getExternalModifiedTimeFrontmatterPropertyNames(this.app),
+					settlementWindow,
 				);
 			},
-				verifyMutation: async (request, prepared, _postflightRevision, commit) => (
-					await this.verifyAgentRuntimeTaskMutation(request.plan.createdAt, prepared, commit)
+				verifyMutation: async (request, prepared, _postflightRevision, commit, settlementWindow) => (
+					await this.verifyAgentRuntimeTaskMutation(
+						request.plan.createdAt,
+						prepared,
+						commit,
+						settlementWindow,
+					)
 				),
 				recoverMutation: async request => (
 					this.verifyAgentRuntimePinnedAfterState(request.plan)
@@ -8630,6 +8637,7 @@ export default class OperonPlugin extends Plugin {
 			createdAt: string,
 			preparedMutation: RuntimePreparedMutationV1,
 			commit: RuntimePreparedMutationCommitV1,
+			settlementWindow?: RuntimeMutationSettlementWindowV1,
 		): Promise<boolean> {
 			if (isRuntimePinnedStateMutationPreparationV1(preparedMutation.token)) {
 				const prepared = preparedMutation.token;
@@ -9234,6 +9242,7 @@ export default class OperonPlugin extends Plugin {
 				observedPrimarySource.content,
 				this.settings.keyMappings,
 				getExternalModifiedTimeFrontmatterPropertyNames(this.app),
+				settlementWindow,
 			)
 			: null;
 		const primaryPostflightEvidence = exactPrimaryPostflightEvidence

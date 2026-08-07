@@ -1292,6 +1292,10 @@ test('inline task settlement accepts only the configured Update time on edit fro
 		'modification: 2026-07-24T12:00',
 	);
 	const committedRevision = sha256HexV1(committedContent);
+	const settlementWindow = {
+		applyStartedAtEpochMs: new Date(2026, 6, 24, 12, 0, 0).getTime(),
+		settlementObservedAtEpochMs: new Date(2026, 6, 24, 12, 0, 2).getTime(),
+	};
 	const prepared: RuntimeTaskFieldMutationPreparationV1 = {
 		kind: 'task-fields',
 		operation: 'update',
@@ -1318,6 +1322,7 @@ test('inline task settlement accepts only the configured Update time on edit fro
 			settledContent,
 			DEFAULT_SETTINGS.keyMappings,
 			['modification'],
+			settlementWindow,
 		),
 		sha256HexV1(settledContent),
 		'The configured modified-time property and target task timestamp may settle together.',
@@ -1330,9 +1335,22 @@ test('inline task settlement accepts only the configured Update time on edit fro
 			frontmatterOnlySettledContent,
 			DEFAULT_SETTINGS.keyMappings,
 			['modification'],
+			settlementWindow,
 		),
 		{ revision: sha256HexV1(frontmatterOnlySettledContent) },
 		'The configured modified-time property may settle without a second task timestamp write.',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			committedRevision,
+			frontmatterOnlySettledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+		),
+		null,
+		'Modified-time frontmatter drift requires a bounded apply-time window.',
 	);
 	for (const [label, observedContent, permittedKeys] of [
 		['missing provider evidence', settledContent, []],
@@ -1361,6 +1379,7 @@ test('inline task settlement accepts only the configured Update time on edit fro
 				observedContent,
 				DEFAULT_SETTINGS.keyMappings,
 				permittedKeys,
+				settlementWindow,
 			),
 			null,
 			label,

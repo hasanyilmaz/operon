@@ -3180,6 +3180,9 @@ async function characterizePreparedTaskUpdateSettlement(
 		modifiedTimeFrontmatterKeys?: readonly string[];
 		postRefreshContent?: string;
 		refreshThrows?: boolean;
+		previewEpochMs?: number;
+		applyStartedAtEpochMs?: number;
+		settlementObservedAtEpochMs?: number;
 	} = {},
 ) {
 	const filePath = 'Tasks.md';
@@ -3188,6 +3191,9 @@ async function characterizePreparedTaskUpdateSettlement(
 	let durableContent = committedContent;
 	let commitCount = 0;
 	const events: string[] = [];
+	const defaultApplyStartedAtEpochMs = new Date(2026, 6, 24, 12, 0, 0).getTime();
+	const defaultSettlementObservedAtEpochMs = new Date(2026, 6, 24, 12, 0, 2).getTime();
+	let nowEpochMs = options.previewEpochMs ?? defaultApplyStartedAtEpochMs;
 	const updateRequest: MutationPreviewRequestV1 = {
 		contractVersion: 1,
 		requestId: `phase8-update-preview-${caseId}`,
@@ -3267,6 +3273,7 @@ async function characterizePreparedTaskUpdateSettlement(
 		settleAfterMutation: async () => {
 			events.push('settlement');
 			durableContent = settledContent;
+			nowEpochMs = options.settlementObservedAtEpochMs ?? defaultSettlementObservedAtEpochMs;
 		},
 		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
 		verifyCreatedTasks: async () => false,
@@ -3288,7 +3295,7 @@ async function characterizePreparedTaskUpdateSettlement(
 			},
 			});
 		},
-		refreshMutationCommitEvidence: async (preparedMutation, commit) => {
+		refreshMutationCommitEvidence: async (preparedMutation, commit, settlementWindow) => {
 			events.push('refresh');
 			if (options.refreshThrows) throw new Error('simulated source read failure');
 			const refreshedCommit = refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
@@ -3297,6 +3304,7 @@ async function characterizePreparedTaskUpdateSettlement(
 				durableContent,
 				DEFAULT_SETTINGS.keyMappings,
 				options.modifiedTimeFrontmatterKeys,
+				settlementWindow,
 			);
 			if (options.postRefreshContent !== undefined) {
 				assert.equal(
@@ -3313,7 +3321,13 @@ async function characterizePreparedTaskUpdateSettlement(
 			}
 			return refreshedCommit;
 		},
-		verifyMutation: async (_request, preparedMutation, _postflightRevision, commit) => {
+		verifyMutation: async (
+			_request,
+			preparedMutation,
+			_postflightRevision,
+			commit,
+			settlementWindow,
+		) => {
 			events.push('postflight');
 			assert.match(durableContent, /Updated description/u);
 			const exactEvidence = resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
@@ -3331,6 +3345,7 @@ async function characterizePreparedTaskUpdateSettlement(
 					durableContent,
 					DEFAULT_SETTINGS.keyMappings,
 					options.modifiedTimeFrontmatterKeys,
+					settlementWindow,
 				)
 				: null;
 			const observedModified = /\{\{datetimeModified:: ([^}]+)\}\}/u.exec(
@@ -3353,12 +3368,13 @@ async function characterizePreparedTaskUpdateSettlement(
 		},
 		receiptStore: () => receiptStore,
 		vaultIdentityHash: async () => 'c'.repeat(64),
-		nowEpochMs: () => Date.parse('2026-07-24T12:00:02.000Z'),
+		nowEpochMs: () => nowEpochMs,
 		randomId: () => `phase8-update-${caseId}-plan`,
 	});
 	const preview = await gateway.preview(updateRequest);
 	assert.equal(preview.ok, true);
 	if (!preview.ok) throw new Error('Characterization preview must succeed.');
+	nowEpochMs = options.applyStartedAtEpochMs ?? defaultApplyStartedAtEpochMs;
 	const applyRequest = {
 		contractVersion: 1,
 		requestId: `phase8-update-apply-${caseId}`,
@@ -3446,6 +3462,36 @@ test('prepared task update verifies configured frontmatter-only settlement drift
 		{ modifiedTimeFrontmatterKeys: ['modification'] },
 	);
 	assert.deepEqual(events, ['reindex', 'settlement', 'refresh', 'postflight']);
+	assert.equal(result.status, 'applied', JSON.stringify(result));
+	assert.equal(replayResult.status, 'already-applied', JSON.stringify(replayResult));
+	assert.equal(commitCount, 1);
+});
+
+test('prepared task update correlates modified-time drift with a later apply minute', async () => {
+	const committedContent = [
+		'---',
+		'created: 2026-07-24T09:00',
+		'modification: 2026-07-24T11:59',
+		'---',
+		'# Tasks',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'modification: 2026-07-24T12:01',
+	);
+	const { commitCount, replayResult, result } = await characterizePreparedTaskUpdateSettlement(
+		'settlement-frontmatter-later-apply-minute',
+		committedContent,
+		settledContent,
+		{
+			modifiedTimeFrontmatterKeys: ['modification'],
+			previewEpochMs: new Date(2026, 6, 24, 12, 0, 0).getTime(),
+			applyStartedAtEpochMs: new Date(2026, 6, 24, 12, 1, 0).getTime(),
+			settlementObservedAtEpochMs: new Date(2026, 6, 24, 12, 1, 2).getTime(),
+		},
+	);
 	assert.equal(result.status, 'applied', JSON.stringify(result));
 	assert.equal(replayResult.status, 'already-applied', JSON.stringify(replayResult));
 	assert.equal(commitCount, 1);
