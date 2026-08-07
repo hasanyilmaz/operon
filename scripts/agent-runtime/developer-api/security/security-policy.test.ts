@@ -18,6 +18,16 @@ const session: DeveloperSecuritySessionV1 = {
 	sessionId: 'session-1',
 };
 
+const confirmationTargets: SealedMutationPlanV1['targets'] = [{
+	operonId: 'abc1234',
+	locator: {
+		representation: 'inline',
+		filePath: 'Tasks.md',
+		lineNumber: 0,
+	},
+	targetDigest: 'primary-target-digest',
+}];
+
 function grant(
 	capabilities: CapabilityIdV1[],
 	overrides: Partial<DeveloperCapabilityGrantV1> = {},
@@ -37,6 +47,7 @@ function plan(options: {
 	riskLevel?: RiskLevelV1;
 	planHash?: string;
 	requiredAcknowledgements?: string[];
+	targets?: SealedMutationPlanV1['targets'];
 } = {}): SealedMutationPlanV1 {
 	const capability = options.capability ?? 'tasks.update.preview';
 	const mutationKind = options.mutationKind ?? 'task.update';
@@ -53,7 +64,7 @@ function plan(options: {
 		mutationKind,
 		createdAt: '2026-07-29T10:00:00.000Z',
 		expiresAt: '2026-07-29T10:10:00.000Z',
-		targets: [],
+		targets: options.targets ?? [],
 		contextRevision: {
 			index: {
 				sessionId: 'index-session',
@@ -198,6 +209,18 @@ test('mints host-owned destructive confirmation and target-bound acknowledgement
 		mutationKind: 'task.delete',
 		riskLevel: 'destructive',
 		requiredAcknowledgements: ['destructive-delete', 'attached-checkboxes'],
+		targets: [
+			...confirmationTargets,
+			{
+				operonId: 'def5678',
+				locator: {
+					representation: 'inline',
+					filePath: 'Tasks.md',
+					lineNumber: 1,
+				},
+				targetDigest: 'secondary-target-digest',
+			},
+		],
 	});
 	const activeGrant = grant([sealed.capability, 'tasks.delete.apply']);
 	const binding = bindPlan(policy, activeGrant, sealed);
@@ -215,22 +238,54 @@ test('mints host-owned destructive confirmation and target-bound acknowledgement
 		{
 			code: 'destructive-delete',
 			planHash: sealed.planHash,
-			targetDigest: sealed.receiptTargetDigest,
+			targetDigest: sealed.targets[0].targetDigest,
 			acknowledgedAt: '2026-07-29T10:01:00.000Z',
 		},
 		{
 			code: 'attached-checkboxes',
 			planHash: sealed.planHash,
-			targetDigest: sealed.receiptTargetDigest,
+			targetDigest: sealed.targets[0].targetDigest,
 			acknowledgedAt: '2026-07-29T10:01:00.000Z',
 		},
 	]);
-	assert.equal(prompts.length, 1);
+	assert.deepEqual(prompts, [{
+		consumerId: session.consumerId,
+		capability: 'tasks.delete.apply',
+		mutationKind: sealed.mutationKind,
+		riskLevel: sealed.riskLevel,
+		planHash: sealed.planHash,
+		targetDigest: sealed.receiptTargetDigest,
+		targetCount: 2,
+		predictedEffects: sealed.predictedEffects,
+		acknowledgementCodes: sealed.requiredAcknowledgements,
+	}]);
+});
+
+test('fails closed before consent when a confirmation plan has no sealed target', async () => {
+	const { policy, prompts } = harness(['approved']);
+	const sealed = plan({
+		riskLevel: 'elevated',
+		requiredAcknowledgements: ['terminal-transition'],
+	});
+	const activeGrant = grant([sealed.capability, 'tasks.update.apply']);
+	const binding = bindPlan(policy, activeGrant, sealed);
+
+	const denied = await policy.admitApply({
+		session,
+		grant: activeGrant,
+		binding,
+		plan: sealed,
+	});
+
+	assert.equal(denied.ok, false);
+	assert.equal(denied.ok ? undefined : denied.code, 'invalid-request');
+	assert.equal(denied.ok ? undefined : denied.reasonCode, 'plan-binding-mismatch');
+	assert.deepEqual(prompts, []);
 });
 
 test('blocks consent replay after cancellation and fails closed when UI throws', async () => {
 	const cancelledHarness = harness(['denied', 'approved']);
-	const sealed = plan({ riskLevel: 'elevated' });
+	const sealed = plan({ riskLevel: 'elevated', targets: confirmationTargets });
 	const activeGrant = grant([sealed.capability, 'tasks.update.apply']);
 	const binding = bindPlan(cancelledHarness.policy, activeGrant, sealed);
 
@@ -283,7 +338,7 @@ test('rechecks grant revision after consent and preserves only same-plan recover
 		isGrantCurrent: candidate => candidate.revision === currentGrantRevision,
 		now: () => new Date(),
 	});
-	const sealed = plan({ riskLevel: 'elevated' });
+	const sealed = plan({ riskLevel: 'elevated', targets: confirmationTargets });
 	const activeGrant = grant([sealed.capability, 'tasks.update.apply']);
 	const binding = bindPlan(policy, activeGrant, sealed);
 
