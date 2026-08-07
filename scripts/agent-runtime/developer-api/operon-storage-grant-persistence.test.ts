@@ -333,7 +333,7 @@ function assertAllowedFixtureFiles(
 		);
 	}
 	for (const operation of durable.operations) {
-		const canonical = CANONICAL_DATA_PATH.replace(/\./gu, '\\.');
+		const canonical = CANONICAL_DATA_PATH.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 		const backup = `${canonical}\\.invalid-\\d+\\.bak`;
 		const backupTemporary = `${backup}\\.tmp-\\d+-[a-z0-9]+`;
 		const allowed = [
