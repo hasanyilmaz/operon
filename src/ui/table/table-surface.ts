@@ -23,6 +23,7 @@ export const TABLE_OVERSCAN_ROWS = 8;
 export const TABLE_DEFAULT_BODY_HEIGHT = 520;
 export const TABLE_ICON_ONLY_COLUMN_WIDTH = 56;
 export const TABLE_COMPACT_DATETIME_12H_COLUMN_WIDTH = 76;
+export const TABLE_DETAILED_DATETIME_12H_WIDTH_DELTA = 20;
 export const TABLE_SUBGROUP_PARENT_LABEL_MAX_LENGTH = 15;
 
 export type TableRenderItem =
@@ -268,7 +269,14 @@ export function resolveTableColumnWidth(column: TableColumn, settings?: TableCol
 		) return TABLE_COMPACT_DATETIME_12H_COLUMN_WIDTH;
 		return TABLE_ICON_ONLY_COLUMN_WIDTH;
 	}
-	return column.widthPx ?? DEFAULT_TABLE_COLUMN_WIDTHS[column.key] ?? 150;
+	if (column.widthPx !== undefined) return column.widthPx;
+	const defaultWidth = DEFAULT_TABLE_COLUMN_WIDTHS[column.key] ?? 150;
+	if (
+		column.kind === 'task'
+		&& settings?.timeFormat === '12h'
+		&& getTableTaskField(column.key, settings)?.type === 'datetime'
+	) return defaultWidth + TABLE_DETAILED_DATETIME_12H_WIDTH_DELTA;
+	return defaultWidth;
 }
 
 export function resolveTableColumnAlignment(column: TableColumn): TableColumnAlignment {
