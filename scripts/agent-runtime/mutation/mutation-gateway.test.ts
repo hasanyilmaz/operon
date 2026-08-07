@@ -3176,7 +3176,7 @@ async function characterizePreparedTaskUpdateSettlement(
 	caseId: string,
 	committedContent: string,
 	settledContent: string,
-	options: { refreshThrows?: boolean } = {},
+	options: { postRefreshContent?: string; refreshThrows?: boolean } = {},
 ) {
 	const filePath = 'Tasks.md';
 	let durableContent = committedContent;
@@ -3285,12 +3285,26 @@ async function characterizePreparedTaskUpdateSettlement(
 		refreshMutationCommitEvidence: async (preparedMutation, commit) => {
 			events.push('refresh');
 			if (options.refreshThrows) throw new Error('simulated source read failure');
-			return refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
+			const refreshedCommit = refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
 				preparedMutation,
 				commit,
 				durableContent,
 				DEFAULT_SETTINGS.keyMappings,
 			);
+			if (options.postRefreshContent !== undefined) {
+				assert.equal(
+					refreshedCommit.groupResults.flatMap(
+						group => group.resourceRevisions ?? [],
+					).find(resource => (
+						resource.resourceKind === 'task-source'
+						&& resource.resourceKey === filePath
+					))?.revision,
+					sha256HexV1(durableContent),
+					'The race fixture must first prove that settlement evidence was refreshed.',
+				);
+				durableContent = options.postRefreshContent;
+			}
+			return refreshedCommit;
 		},
 		verifyMutation: async (_request, preparedMutation, _postflightRevision, commit) => {
 			events.push('postflight');
@@ -3415,6 +3429,36 @@ test('prepared task update source-read failure remains uncertain and replay-fenc
 	assert.equal(result.retryAllowed, false);
 	assert.equal(replayResult.status, 'outcome-unknown', JSON.stringify(replayResult));
 	assert.equal(commitCount, 1, 'A failed refresh must still fence writer replay.');
+});
+
+test('prepared task update rejects same-source drift after evidence refresh and fences replay', async () => {
+	const committedContent = [
+		'# Tasks',
+		'',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'- [ ] Unrelated task {{operonId:: def5678}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent.replace(
+		'2026-07-24T12:00:00',
+		'2026-07-24T12:00:01',
+	);
+	const { commitCount, events, replayResult, result } = await characterizePreparedTaskUpdateSettlement(
+		'post-refresh-source-drift',
+		committedContent,
+		settledContent,
+		{
+			postRefreshContent: settledContent.replace(
+				'Unrelated task',
+				'Concurrent post-refresh edit',
+			),
+		},
+	);
+	assert.deepEqual(events, ['reindex', 'settlement', 'refresh', 'postflight']);
+	assert.equal(result.status, 'outcome-unknown', JSON.stringify(result));
+	assert.equal(result.retryAllowed, false);
+	assert.equal(replayResult.status, 'outcome-unknown', JSON.stringify(replayResult));
+	assert.equal(commitCount, 1, 'Post-refresh drift must not authorize writer replay.');
 });
 
 test('file-to-inline postflight failure preserves its durable same-plan recovery journal', async () => {
