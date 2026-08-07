@@ -9,9 +9,13 @@ import {
 	buildRuntimeTaskUpdateBatchEffectsV1,
 	prepareRuntimeTaskFieldMutationV1,
 	prepareRuntimeTaskUpdateBatchV1,
+	refreshRuntimeInlineTaskUpdateSettlementEvidenceV1,
 	reminderItemIdV1,
+	resolveRuntimeInlineTaskUpdateSettlementEvidenceV1,
+	resolveRuntimeInlineTaskUpdateSettlementRevisionV1,
 	resolveRuntimeTaskFieldMutationPostflightEvidenceV1,
 	type RuntimeExactTaskMutationSnapshotV1,
+	type RuntimeTaskFieldMutationPreparationV1,
 	verifyRuntimeTaskFieldMutationPrimaryPostflightV1,
 } from '../../../src/agent-runtime/runtime/task-mutation-adapter';
 import { sha256HexV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
@@ -949,7 +953,7 @@ test('File Task postflight evidence requires one exact committed revision and an
 	].join('\n');
 	const committedRevision = sha256HexV1(committedContent);
 	const exactRevision = {
-		resourceKind: 'task-source',
+		resourceKind: 'task-source' as const,
 		resourceKey: filePath,
 		revision: committedRevision,
 	};
@@ -1010,6 +1014,7 @@ test('inline task exact-byte evidence records metadata settlement and unrelated 
 	const filePath = 'Tasks.md';
 	const committedContent = [
 		'# Tasks',
+		'',
 		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
 		'- [ ] Unrelated task {{operonId:: def5678}}',
 		'',
@@ -1023,8 +1028,26 @@ test('inline task exact-byte evidence records metadata settlement and unrelated 
 		'Concurrent unrelated edit',
 	);
 	const committedRevision = sha256HexV1(committedContent);
+	const prepared: RuntimeTaskFieldMutationPreparationV1 = {
+		kind: 'task-fields',
+		operation: 'update',
+		task: {
+			...task,
+			locator: { representation: 'inline', filePath, lineNumber: 2 },
+			description: 'Before update',
+			sourceContent: committedContent,
+		},
+		fieldValues: {
+			_description: 'Updated description',
+			datetimeModified: '2026-07-24T12:00:00',
+		},
+		sourceRevision: 'a'.repeat(64),
+		targetDigest: 'b'.repeat(64),
+		summary: 'Update the task description.',
+		noChange: false,
+	};
 	const exactRevision = {
-		resourceKind: 'task-source',
+		resourceKind: 'task-source' as const,
 		resourceKey: filePath,
 		revision: committedRevision,
 	};
@@ -1033,6 +1056,202 @@ test('inline task exact-byte evidence records metadata settlement and unrelated 
 		sha256HexV1(unrelatedDriftContent),
 		sha256HexV1(metadataSettledContent),
 	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			committedRevision,
+			committedContent,
+			DEFAULT_SETTINGS.keyMappings,
+		),
+		committedRevision,
+		'An unchanged exact reread remains valid without refreshing evidence.',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			committedRevision,
+			metadataSettledContent,
+			DEFAULT_SETTINGS.keyMappings,
+		),
+		sha256HexV1(metadataSettledContent),
+		'Only the exact target datetimeModified value may advance after settlement.',
+	);
+	const rejectedObservedSources = [
+		metadataSettledContent.replace('2026-07-24T12:00:01', '2026-07-24T11:59:59'),
+		metadataSettledContent.replace('2026-07-24T12:00:01', 'not-a-datetime'),
+		metadataSettledContent.replace(
+			' {{datetimeModified:: 2026-07-24T12:00:01}}',
+			'',
+		),
+		metadataSettledContent.replace(
+			'{{datetimeModified:: 2026-07-24T12:00:01}}',
+			'{{datetimeModified:: 2026-07-24T12:00:01}} {{datetimeModified:: 2026-07-24T12:00:02}}',
+		),
+		metadataSettledContent.replace('Updated description', 'Concurrent description edit'),
+		unrelatedDriftContent,
+	];
+	for (const observedContent of rejectedObservedSources) {
+		assert.equal(
+			resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+				prepared,
+				committedContent,
+				committedRevision,
+				observedContent,
+				DEFAULT_SETTINGS.keyMappings,
+			),
+			null,
+		);
+	}
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			{
+				...prepared,
+				task: {
+					...prepared.task,
+					locator: { representation: 'inline', filePath, lineNumber: 1 },
+				},
+			},
+			committedContent,
+			committedRevision,
+			metadataSettledContent,
+			DEFAULT_SETTINGS.keyMappings,
+		),
+		null,
+		'A shifted target locator must not authorize evidence refresh.',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			'c'.repeat(64),
+			metadataSettledContent,
+			DEFAULT_SETTINGS.keyMappings,
+		),
+		null,
+		'The exact committed content must remain bound to its writer revision.',
+	);
+	const preparedMutation = {
+		target: {
+			operonId: prepared.task.operonId,
+			locator: prepared.task.locator,
+			targetDigest: prepared.targetDigest,
+		},
+		affectedResources: [exactRevision],
+		predictedEffects: [],
+		warnings: [],
+		token: prepared,
+	};
+	const commit = {
+		status: 'committed' as const,
+		groupResults: [{
+			groupId: `task-source:${filePath}`,
+			status: 'committed' as const,
+			resourceRevisions: [
+				{ resourceKind: 'pinned' as const, resourceKey: 'abc1234', revision: 'd'.repeat(64) },
+				exactRevision,
+				{ resourceKind: 'task-source' as const, resourceKey: 'Other.md', revision: 'e'.repeat(64) },
+			],
+		}],
+		affectedFilePaths: [filePath],
+		primaryTaskSourceCommitEvidence: {
+			resourceKey: filePath,
+			content: committedContent,
+			revision: committedRevision,
+		},
+	};
+	const refreshedCommit = refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
+		preparedMutation,
+		commit,
+		metadataSettledContent,
+		DEFAULT_SETTINGS.keyMappings,
+	);
+	assert.equal(
+		refreshedCommit.groupResults[0]?.resourceRevisions?.[1]?.revision,
+		sha256HexV1(metadataSettledContent),
+	);
+	assert.deepEqual(
+		refreshedCommit.groupResults[0]?.resourceRevisions?.filter((_, index) => index !== 1),
+		commit.groupResults[0]?.resourceRevisions?.filter((_, index) => index !== 1),
+		'Non-primary and non-source revisions must be preserved exactly.',
+	);
+	assert.equal(
+		refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
+			preparedMutation,
+			commit,
+			null,
+			DEFAULT_SETTINGS.keyMappings,
+		),
+		commit,
+		'A missing source reread must leave commit evidence unchanged.',
+	);
+	for (const guardedCommit of [{
+		...commit,
+		groupResults: [{
+			...commit.groupResults[0],
+			resourceRevisions: [...(commit.groupResults[0]?.resourceRevisions ?? []), exactRevision],
+		}],
+	}, {
+		...commit,
+		groupResults: [{
+			...commit.groupResults[0],
+			resourceRevisions: commit.groupResults[0]?.resourceRevisions?.map(resource => (
+				resource === exactRevision ? { ...resource, revision: 'f'.repeat(64) } : resource
+			)),
+		}],
+	}, {
+		...commit,
+		primaryTaskSourceCommitEvidence: {
+			...commit.primaryTaskSourceCommitEvidence,
+			revision: '0'.repeat(64),
+		},
+	}]) {
+		assert.equal(
+			refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
+				preparedMutation,
+				guardedCommit,
+				metadataSettledContent,
+				DEFAULT_SETTINGS.keyMappings,
+			),
+			guardedCommit,
+			'Duplicate, stale, or hash-mismatched source evidence must remain unchanged.',
+		);
+	}
+	const boundedSettlement = resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
+		prepared,
+		committedContent,
+		committedRevision,
+		metadataSettledContent,
+		DEFAULT_SETTINGS.keyMappings,
+	);
+	assert.equal(boundedSettlement?.datetimeModified, '2026-07-24T12:00:01');
+	assert.equal(verifyRuntimeTaskFieldMutationPrimaryPostflightV1(
+		prepared,
+		{
+			...prepared.task,
+			description: 'Updated description',
+			fieldValues: { datetimeModified: '2026-07-24T12:00:01' },
+		},
+		{
+			committedSourceRevision: sha256HexV1(metadataSettledContent),
+			observedSourceRevision: sha256HexV1(metadataSettledContent),
+			settlementDatetimeModified: boundedSettlement?.datetimeModified,
+		},
+	), true, 'The real inline semantic verifier accepts only the bounded settlement timestamp.');
+	assert.equal(verifyRuntimeTaskFieldMutationPrimaryPostflightV1(
+		prepared,
+		{
+			...prepared.task,
+			description: 'Updated description',
+			fieldValues: { datetimeModified: '2026-07-24T12:00:02' },
+		},
+		{
+			committedSourceRevision: sha256HexV1(metadataSettledContent),
+			observedSourceRevision: sha256HexV1(metadataSettledContent),
+			settlementDatetimeModified: boundedSettlement?.datetimeModified,
+		},
+	), false, 'A later indexed value not proven by the bounded source evidence is rejected.');
 	assert.equal(
 		resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
 			filePath,
