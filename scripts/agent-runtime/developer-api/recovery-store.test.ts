@@ -64,6 +64,51 @@ test('production recovery store persists, isolates, lists, and retains terminal 
 	assert.deepEqual(await store.list(refused.consumerId), []);
 });
 
+test('production recovery store accepts host confirmation bound to the sealed target', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = createStore(factory);
+	const base = recoveryRecord(77);
+	const sealed = structuredClone(base.sealed);
+	sealed.riskLevel = 'elevated';
+	sealed.requiresConfirmation = true;
+	sealed.requiredAcknowledgements = ['terminal-transition'];
+	sealed.planHash = computeSealedMutationPlanHashV1(sealed);
+	const record: DeveloperMutationRecoveryRecordV1 = {
+		...base,
+		planDigest: sealed.planHash,
+		sealed,
+		binding: {
+			...base.binding,
+			planHash: sealed.planHash,
+		},
+		authorization: { basis: 'user-explicit-confirmation' },
+		acknowledgements: [{
+			code: 'terminal-transition',
+			planHash: sealed.planHash,
+			targetDigest: sealed.targets[0].targetDigest,
+			acknowledgedAt: sealed.createdAt,
+		}],
+	};
+
+	await store.putPrepared(record);
+
+	const aggregateBound: DeveloperMutationRecoveryRecordV1 = {
+		...structuredClone(record),
+		recoveryRef: `dvr1_${'4e'.padStart(48, '0')}`,
+		acknowledgements: record.acknowledgements.map(acknowledgement => ({
+			...acknowledgement,
+			targetDigest: sealed.receiptTargetDigest,
+		})),
+	};
+	await assert.rejects(
+		store.putPrepared(aggregateBound),
+		(error: unknown) => (
+			error instanceof DeveloperMutationRecoveryStoreErrorV1
+			&& error.code === 'recovery-store-corrupt'
+		),
+	);
+});
+
 test('production recovery store prunes expired records and protects 256 live records', async () => {
 	let now = BASE_TIME;
 	const factory = new FakeIndexedDbFactory();

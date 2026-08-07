@@ -82,6 +82,14 @@ export class DeveloperMutationSecurityPolicyV1 {
 				consent: 'standing-grant',
 			};
 		}
+		const acknowledgementTargetDigest = input.plan.targets[0]?.targetDigest;
+		if (!acknowledgementTargetDigest) {
+			return denialResult(
+				'invalid-request',
+				'plan-binding-mismatch',
+				'The sealed plan does not expose a target for confirmation.',
+			);
+		}
 
 		const consentKey = planKey(input.session.consumerId, input.plan.planHash);
 		if (this.deniedConsentPlans.has(consentKey)) {
@@ -147,7 +155,7 @@ export class DeveloperMutationSecurityPolicyV1 {
 			acknowledgements: input.plan.requiredAcknowledgements.map(code => ({
 				code,
 				planHash: input.plan.planHash,
-				targetDigest: input.plan.receiptTargetDigest,
+				targetDigest: acknowledgementTargetDigest,
 				acknowledgedAt,
 			})),
 			consent: 'fresh-user-confirmation',
