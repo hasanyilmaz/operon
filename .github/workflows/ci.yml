@@ -57,9 +57,9 @@ jobs:
       - name: Verify release guard
         run: npm run release:guard
 
-      - name: Verify final accepted Public V1 freeze
+      - name: Verify candidate Public V1 freeze
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: npm run release:freeze:check
+        run: npm run candidate:freeze:check
 
   windows-native:
     runs-on: windows-2022

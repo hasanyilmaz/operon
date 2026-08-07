@@ -352,7 +352,7 @@ function checkContinuousIntegrationWorkflow() {
 	const auditPolicyIndex = workflowText.indexOf('run: npm run release:audit-policy');
 	const validationIndex = workflowText.indexOf('run: npm run check');
 	const releaseGuardIndex = workflowText.indexOf('run: npm run release:guard');
-	const acceptedFreezeIndex = workflowText.indexOf('run: npm run release:freeze:check');
+	const candidateFreezeIndex = workflowText.indexOf('run: npm run candidate:freeze:check');
 
 	assertIncludes(workflow, 'node-version: "24.18.0"', 'CI must use the exact canonical Node release baseline');
 	assertIncludes(workflow, 'npm install --global npm@11.12.1', 'CI must pin the canonical npm version');
@@ -381,6 +381,19 @@ function checkContinuousIntegrationWorkflow() {
 		/run:\s+npm audit(?:\s|$)/u,
 		'CI must not bypass the canonical dependency audit policy with raw npm audit',
 	);
+	assertIncludes(
+		workflow,
+		'run: npm run candidate:freeze:check',
+		'CI main pushes must verify candidate evidence without requiring accepted-release artifact identity',
+	);
+	assertNoMatch(
+		workflow,
+		/run:\s+npm run release:freeze:check/u,
+		'CI must reserve exact accepted-release artifact identity for the release workflow',
+	);
+	if (!/- name: Verify candidate Public V1 freeze\s+if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'\s+run: npm run candidate:freeze:check/u.test(workflowText)) {
+		fail('CI must bind the candidate evidence check to exact main-branch pushes');
+	}
 	if (!/- name: Run validation\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
 		fail('CI must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
 	}
@@ -394,9 +407,9 @@ function checkContinuousIntegrationWorkflow() {
 		|| auditPolicyIndex < installIndex
 		|| validationIndex < auditPolicyIndex
 		|| releaseGuardIndex < validationIndex
-		|| acceptedFreezeIndex < releaseGuardIndex
+		|| candidateFreezeIndex < releaseGuardIndex
 	) {
-		fail('CI must run npm ci, audit policy, validation, release guard, and final accepted-freeze check in order');
+		fail('CI must run npm ci, audit policy, validation, release guard, and candidate evidence check in order');
 	}
 }
 
