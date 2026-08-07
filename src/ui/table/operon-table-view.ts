@@ -1995,10 +1995,14 @@ export class OperonTableView extends FileView {
 		}
 		if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) {
 			cell.addClass('operon-table-task-type-cell');
-				renderTableTaskTypeButton(cell, {
-					task,
-					onOpenTaskEditor: this.callbacks.onOpenTaskEditor,
-					onOpenTaskSource: this.callbacks.onOpenTaskSource,
+			renderTableTaskTypeButton(cell, {
+				task,
+				onOpenTaskEditor: this.callbacks.onOpenTaskEditor,
+				onOpenTaskSource: this.callbacks.onOpenTaskSource,
+				settings: renderState.settings,
+				onContextualAction: this.callbacks.onContextualAction,
+				isPinned: this.callbacks.isTaskPinned,
+				hasSubtasks: this.callbacks.hasSubtasks,
 			});
 		}
 	}
@@ -2135,7 +2139,7 @@ export class OperonTableView extends FileView {
 		if (locationVisual) {
 			this.bindLocationMapPreviewTrigger(icon, task, locationVisual, renderState);
 		}
-		if (isTaskIconColumn && this.callbacks.onContextualAction) {
+		if ((isTaskIconColumn || isTaskTypeColumn) && this.callbacks.onContextualAction) {
 			bindTableTaskContextualHoverMenu(icon, {
 				task,
 				settings: renderState.settings,

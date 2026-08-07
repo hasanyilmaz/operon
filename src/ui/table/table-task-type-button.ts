@@ -1,14 +1,32 @@
 import { setIcon } from 'obsidian';
+import type { ContextualMenuActionHandler } from '../../core/contextual-menu-engine';
 import type { IndexedTask } from '../../types/fields';
+import type { OperonSettings } from '../../types/settings';
 import { resolveSubtaskActionIcon } from '../../core/subtask-action';
 import { t } from '../../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
+import { bindTableTaskContextualHoverMenu } from './table-task-icon-button';
 
 export interface TableTaskTypeButtonOptions {
 	task: IndexedTask;
 	onOpenTaskEditor?: (operonId: string) => void;
 	onOpenTaskSource?: (operonId: string) => void | Promise<void>;
+	settings?: OperonSettings;
+	onContextualAction?: ContextualMenuActionHandler;
+	isPinned?: (taskId: string) => boolean;
+	hasSubtasks?: (taskId: string) => boolean;
+}
+
+function bindTableTaskTypeContextualHoverMenu(trigger: HTMLElement, options: TableTaskTypeButtonOptions): void {
+	if (!options.settings || !options.onContextualAction) return;
+	bindTableTaskContextualHoverMenu(trigger, {
+		task: options.task,
+		settings: options.settings,
+		onContextualAction: options.onContextualAction,
+		isPinned: options.isPinned,
+		hasSubtasks: options.hasSubtasks,
+	});
 }
 
 function handleTableTaskTypeClick(event: MouseEvent, options: TableTaskTypeButtonOptions): void {
@@ -24,19 +42,21 @@ function handleTableTaskTypeClick(event: MouseEvent, options: TableTaskTypeButto
 }
 
 export function bindTableTaskTypeEditorOpen(trigger: HTMLElement, options: TableTaskTypeButtonOptions): void {
-	if (!options.onOpenTaskEditor && !options.onOpenTaskSource) return;
-	trigger.addClass('is-task-type-editor-trigger');
-	trigger.setAttribute('role', 'button');
-	setAccessibleLabelWithoutTooltip(trigger, t('tooltips', 'openTaskEditor'));
-	trigger.addEventListener('click', event => {
-		handleTableTaskTypeClick(event, options);
-	});
-	trigger.addEventListener('keydown', event => {
-		if (event.key !== 'Enter' && event.key !== ' ') return;
-		event.preventDefault();
-		event.stopPropagation();
-		options.onOpenTaskEditor?.(options.task.operonId);
-	});
+	if (options.onOpenTaskEditor || options.onOpenTaskSource) {
+		trigger.addClass('is-task-type-editor-trigger');
+		trigger.setAttribute('role', 'button');
+		setAccessibleLabelWithoutTooltip(trigger, t('tooltips', 'openTaskEditor'));
+		trigger.addEventListener('click', event => {
+			handleTableTaskTypeClick(event, options);
+		});
+		trigger.addEventListener('keydown', event => {
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+			event.preventDefault();
+			event.stopPropagation();
+			options.onOpenTaskEditor?.(options.task.operonId);
+		});
+	}
+	bindTableTaskTypeContextualHoverMenu(trigger, options);
 }
 
 export function renderTableTaskTypeButton(container: HTMLElement, options: TableTaskTypeButtonOptions): void {
@@ -49,4 +69,5 @@ export function renderTableTaskTypeButton(container: HTMLElement, options: Table
 	button.addEventListener('click', event => {
 		handleTableTaskTypeClick(event, options);
 	});
+	bindTableTaskTypeContextualHoverMenu(button, options);
 }

@@ -3021,7 +3021,7 @@ function renderEmbedTableIconOnlyCell(
 	if (locationVisual) {
 		bindEmbedTableLocationMapPreviewTrigger(icon, deps, task, locationVisual, renderState);
 	}
-	if (isTaskIconColumn && canWriteEmbedTable(deps) && deps.onContextualAction) {
+	if ((isTaskIconColumn || isTaskTypeColumn) && canWriteEmbedTable(deps) && deps.onContextualAction) {
 		bindTableTaskContextualHoverMenu(icon, {
 			task,
 			settings: renderState.settings,
@@ -3116,11 +3116,16 @@ function renderEmbedTableAdminCell(
 		return;
 	}
 	if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) {
+		const canWrite = canWriteEmbedTable(deps);
 		cell.addClass('operon-table-task-type-cell');
 		renderTableTaskTypeButton(cell, {
 			task,
 			onOpenTaskEditor: deps.openTaskEditor,
 			onOpenTaskSource: deps.openTaskSource,
+			settings: renderState.settings,
+			onContextualAction: canWrite ? deps.onContextualAction : undefined,
+			isPinned: deps.isTaskPinned,
+			hasSubtasks: deps.hasSubtasks,
 		});
 	}
 }
