@@ -13,6 +13,7 @@
         "entity.resolve",
         "task.get",
         "tasks.query",
+        "tasks.filter-query",
         "tasks.finder",
         "relationships.get",
         "context.build",
@@ -40,6 +41,7 @@
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/entityResolveRequest" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskGetRequest" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskQueryRequest" },
+        { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFilterQueryRequest" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFinderRequest" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/relationshipRequest" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/contextRequest" },
@@ -141,6 +143,13 @@
             "request": {
               "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskQueryRequest"
             }
+          },
+          "required": ["command", "request"]
+        },
+        {
+          "properties": {
+            "command": { "const": "tasks.filter-query" },
+            "request": { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFilterQueryRequest" }
           },
           "required": ["command", "request"]
         },
@@ -297,6 +306,7 @@
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/entityResolutionResult" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskGetResult" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskQueryResult" },
+        { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFilterQueryResult" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFinderResult" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/relationshipResult" },
         { "$ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/contextPack" },

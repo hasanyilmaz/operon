@@ -29,6 +29,8 @@ import {
 	TaskGetResultV1,
 	TaskFinderRequestV1,
 	TaskFinderResultV1,
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
 	TaskContextV1,
 	TaskQueryRequestV1,
 	TaskQueryResultV1,
@@ -202,6 +204,7 @@ export function decodeDeveloperMutationPreviewInputV1(value: unknown): DecodeRes
 	if (object.target !== undefined) checkExactMutationTarget(object.target, '/target', issues);
 	if (
 		object.mutationKind !== 'task.create'
+		&& object.mutationKind !== 'task.adopt'
 		&& object.mutationKind !== 'timer.control'
 		&& object.target === undefined
 		&& !(isPlainRecord(object.spec) && object.spec.operation === 'update-batch')
@@ -2247,6 +2250,43 @@ export function decodeTaskQueryResultV1(value: unknown): DecodeResultV1<TaskQuer
 	return finish<TaskQueryResultV1>(value, issues);
 }
 
+export function decodeTaskFilterQueryRequestV1(value: unknown): DecodeResultV1<TaskFilterQueryRequestV1> {
+	const issues: DecodeIssueV1[] = [];
+	const object = checkReadRequest(value, 'task-filter-query', [
+		'filterSetId', 'scope', 'include', 'limit', 'cursor',
+	], issues);
+	if (object) {
+		checkBoundedNonEmptyString(object.filterSetId, '/filterSetId', 256, issues);
+		if (object.scope !== undefined) {
+			const scope = inspectObject(object.scope, '/scope', ['kind', 'path'], issues);
+			if (scope) {
+				checkEnum(scope.kind, ['exact-file', 'folder-tree'], '/scope/kind', issues);
+				checkVaultRelativePath(scope.path, '/scope/path', issues);
+			}
+		}
+		if (object.include !== undefined) checkHydrationKeys(object.include, '/include', issues);
+		if (object.limit !== undefined) checkBoundedPositiveInteger(object.limit, '/limit', 250, issues);
+		if (object.cursor !== undefined) checkCursor(object.cursor, '/cursor', issues);
+	}
+	return finish<TaskFilterQueryRequestV1>(value, issues);
+}
+
+export function decodeTaskFilterQueryResultV1(value: unknown): DecodeResultV1<TaskFilterQueryResultV1> {
+	const issues: DecodeIssueV1[] = [];
+	const object = checkReadResult(value, 'task-filter-query-result', [
+		'contextRevision', 'tasks', 'page', 'provenance', 'truncations', 'error',
+	], issues);
+	if (object) {
+		checkSuccessFailureState(object, ['tasks', 'page', 'provenance', 'truncations'], [], issues);
+		if (object.contextRevision !== undefined) checkContextRevision(object.contextRevision, '/contextRevision', issues);
+		if (object.tasks !== undefined) checkTaskArray(object.tasks, '/tasks', 250, issues);
+		if (object.page !== undefined) checkTaskQueryPage(object.page, '/page', issues);
+		if (object.provenance !== undefined) checkProvenance(object.provenance, '/provenance', issues);
+		if (object.truncations !== undefined) checkTruncations(object.truncations, '/truncations', issues);
+	}
+	return finish<TaskFilterQueryResultV1>(value, issues);
+}
+
 export function decodeTaskFinderRequestV1(value: unknown): DecodeResultV1<TaskFinderRequestV1> {
 	const issues: DecodeIssueV1[] = [];
 	const object = checkReadRequest(value, 'task-finder', [
@@ -2968,6 +3008,7 @@ export function decodeMutationPreviewRequestV1(value: unknown): DecodeResultV1<M
 	if (object.target !== undefined) checkExactMutationTarget(object.target, '/target', issues);
 	if (
 		object.mutationKind !== 'task.create'
+		&& object.mutationKind !== 'task.adopt'
 		&& object.mutationKind !== 'timer.control'
 		&& object.target === undefined
 		&& !(isPlainRecord(object.spec) && object.spec.operation === 'update-batch')
@@ -4389,7 +4430,7 @@ function checkMutationSpec(
 				issues.push(issue(`${path}/to`, 'value', 'Conversion must change representation.'));
 			}
 			break;
-		case 'relocate-inline':
+	case 'relocate-inline':
 			if (allowPreviewRelocationIntent && value.source === undefined) {
 				checkObjectFields(value, path, ['operation', 'destination'], issues);
 				checkRelocationPreviewDestination(value.destination, `${path}/destination`, issues);
@@ -4399,6 +4440,49 @@ function checkMutationSpec(
 				checkRelocationEndpoint(value.destination, `${path}/destination`, true, issues);
 			}
 			break;
+		case 'adopt-inline': {
+			checkObjectFields(value, path, [
+				'operation', 'source', 'statusId', 'terminalSourcePolicy', 'operonId',
+				'resolvedStatusId', 'resultingLine', 'sourceDigest', 'resultDigest', 'locator',
+			], issues);
+			if (!isPlainRecord(value.source)) {
+				issues.push(issue(`${path}/source`, 'type', 'Expected an object.'));
+			} else {
+				checkObjectFields(value.source, `${path}/source`, ['filePath', 'lineNumber', 'expectedLine'], issues);
+				checkNonEmptyString(value.source.filePath, `${path}/source/filePath`, issues);
+				checkVaultRelativePath(value.source.filePath, `${path}/source/filePath`, issues);
+				checkNonNegativeInteger(value.source.lineNumber, `${path}/source/lineNumber`, issues);
+				checkBoundedString(value.source.expectedLine, `${path}/source/expectedLine`, 65_536, issues);
+			}
+			if (value.statusId !== undefined) checkBoundedNonEmptyString(value.statusId, `${path}/statusId`, 256, issues);
+			if (value.terminalSourcePolicy !== undefined) {
+				checkLiteral(value.terminalSourcePolicy, 'reopen', `${path}/terminalSourcePolicy`, issues);
+			}
+			const sealed = [value.operonId, value.resultingLine, value.sourceDigest, value.resultDigest, value.locator];
+			const sealedCount = sealed.filter(item => item !== undefined).length;
+			if (allowPreviewRelocationIntent && (sealedCount !== 0 || value.resolvedStatusId !== undefined)) {
+				issues.push(issue(path, 'value', 'Adoption preview sealing fields are Runtime-owned.'));
+			}
+			if (!allowPreviewRelocationIntent && sealedCount !== sealed.length) {
+				issues.push(issue(path, 'required', 'Sealed adoption plans require identity, line, digest, and locator proof.'));
+			}
+			if (
+				!allowPreviewRelocationIntent
+				&& (value.statusId === undefined) !== (value.resolvedStatusId === undefined)
+			) {
+				issues.push(issue(path, 'value', 'Sealed adoption statusId and resolvedStatusId must be supplied together.'));
+			}
+			if (sealedCount !== 0 && sealedCount !== sealed.length) {
+				issues.push(issue(path, 'value', 'Adoption sealing fields must be supplied together.'));
+			}
+			if (value.operonId !== undefined) checkCanonicalOperonId(value.operonId, `${path}/operonId`, issues);
+			if (value.resolvedStatusId !== undefined) checkBoundedNonEmptyString(value.resolvedStatusId, `${path}/resolvedStatusId`, 256, issues);
+			if (value.resultingLine !== undefined) checkBoundedString(value.resultingLine, `${path}/resultingLine`, 65_536, issues);
+			if (value.sourceDigest !== undefined) checkSha256(value.sourceDigest, `${path}/sourceDigest`, issues);
+			if (value.resultDigest !== undefined) checkSha256(value.resultDigest, `${path}/resultDigest`, issues);
+			if (value.locator !== undefined) checkLocator(value.locator, `${path}/locator`, issues);
+			break;
+		}
 		case 'delete':
 			checkObjectFields(value, path, ['operation', 'mode', 'cascade'], issues);
 			checkLiteral(value.mode, 'delete-exact-task', `${path}/mode`, issues);
@@ -4431,6 +4515,7 @@ function mutationKindForOperation(operation: unknown): string | null {
 	) return 'timer.session';
 	if (operation === 'convert') return 'task.convert';
 	if (operation === 'relocate-inline') return 'task.inline-relocate';
+	if (operation === 'adopt-inline') return 'task.adopt';
 	if (operation === 'delete') return 'task.delete';
 	return null;
 }
@@ -4653,7 +4738,7 @@ function checkCreateTaskSpec(
 }
 
 function checkCreateTarget(value: unknown, path: string, issues: DecodeIssueV1[]): void {
-	const object = inspectObject(value, path, ['representation', 'mode', 'filePath', 'lineNumber', 'templateId'], issues);
+	const object = inspectObject(value, path, ['representation', 'mode', 'filePath', 'lineNumber', 'templateId', 'identityPlaceholderPolicy'], issues);
 	if (!object) return;
 	checkEnum(object.mode, ['configured-default', 'exact-path'], `${path}/mode`, issues);
 	if (object.mode === 'configured-default') {
@@ -4674,17 +4759,30 @@ function checkCreateTarget(value: unknown, path: string, issues: DecodeIssueV1[]
 	} else if (object.mode !== 'configured-default') {
 		issues.push(issue(`${path}/representation`, 'required', 'Exact-path target requires a representation.'));
 	}
+	if (object.identityPlaceholderPolicy !== undefined && object.representation !== 'file') {
+		issues.push(issue(
+			`${path}/identityPlaceholderPolicy`,
+			'value',
+			'Identity placeholder resolution requires an explicit File Task target.',
+		));
+	}
 	if (object.representation === 'inline') {
 		if (object.templateId !== undefined) {
 			issues.push(issue(`${path}/templateId`, 'value', 'Inline target cannot select a file template.'));
 		}
 		if (object.lineNumber !== undefined) checkNonNegativeInteger(object.lineNumber, `${path}/lineNumber`, issues);
+		if (object.identityPlaceholderPolicy !== undefined) {
+			issues.push(issue(`${path}/identityPlaceholderPolicy`, 'value', 'Inline target cannot resolve File Task identity placeholders.'));
+		}
 	} else if (object.representation === 'file') {
 		if (object.lineNumber !== undefined) {
 			issues.push(issue(`${path}/lineNumber`, 'value', 'File target cannot include a line number.'));
 		}
 		if (object.templateId !== undefined) checkBoundedNonEmptyString(object.templateId, `${path}/templateId`, 256, issues);
 		if (object.templateId !== undefined) checkCreateScalarSafety(object.templateId, `${path}/templateId`, issues);
+		if (object.identityPlaceholderPolicy !== undefined) {
+			checkLiteral(object.identityPlaceholderPolicy, 'resolve-operon-id-v1', `${path}/identityPlaceholderPolicy`, issues);
+		}
 	}
 }
 
@@ -5512,7 +5610,7 @@ function checkCreateEffects(
 			'itemRef', 'operonId', 'repeatSeriesId', 'locator', 'targetBeforeDigest', 'expectedAbsence',
 			'renderedTaskDigest', 'plannedSourceDigest', 'templateId', 'templateDigest',
 			'resolvedParentOperonId', 'resolvedRelatedOperonIds',
-			'resolvedDependencies', 'bodyMarkdownSummary',
+			'resolvedDependencies', 'bodyMarkdownSummary', 'templateIdentityAllocations',
 		], issues);
 		if (!effect) continue;
 		checkRequestId(effect.itemRef, `${itemPath}/itemRef`, issues);
@@ -5537,6 +5635,21 @@ function checkCreateEffects(
 			checkSha256(effect.templateDigest, `${itemPath}/templateDigest`, issues);
 			if (!isPlainRecord(effect.locator) || effect.locator.representation !== 'file') {
 				issues.push(issue(`${itemPath}/templateId`, 'value', 'Only file creation may seal a template.'));
+			}
+		}
+		if (effect.templateIdentityAllocations !== undefined) {
+			if (!Array.isArray(effect.templateIdentityAllocations) || effect.templateIdentityAllocations.length > 256) {
+				issues.push(issue(`${itemPath}/templateIdentityAllocations`, 'value', 'Template identity allocations must be a bounded array.'));
+			} else {
+				for (let allocationIndex = 0; allocationIndex < effect.templateIdentityAllocations.length; allocationIndex++) {
+					const allocation = inspectObject(effect.templateIdentityAllocations[allocationIndex], `${itemPath}/templateIdentityAllocations/${allocationIndex}`, ['occurrence', 'suffix', 'operonId'], issues);
+					if (!allocation) continue;
+					checkNonNegativeInteger(allocation.occurrence, `${itemPath}/templateIdentityAllocations/${allocationIndex}/occurrence`, issues);
+					if (allocation.suffix !== undefined && (typeof allocation.suffix !== 'string' || !/^[0-9A-Za-z]$/u.test(allocation.suffix))) {
+						issues.push(issue(`${itemPath}/templateIdentityAllocations/${allocationIndex}/suffix`, 'value', 'Invalid identity placeholder suffix.'));
+					}
+					checkCanonicalOperonId(allocation.operonId, `${itemPath}/templateIdentityAllocations/${allocationIndex}/operonId`, issues);
+				}
 			}
 		}
 		if (effect.resolvedParentOperonId !== undefined) {
@@ -6263,6 +6376,9 @@ function checkCliInvocationRequest(
 		case 'tasks.query':
 			decoded = decodeTaskQueryRequestV1(value);
 			break;
+		case 'tasks.filter-query':
+			decoded = decodeTaskFilterQueryRequestV1(value);
+			break;
 		case 'tasks.finder':
 			decoded = decodeTaskFinderRequestV1(value);
 			break;
@@ -6319,6 +6435,9 @@ function checkCliCommandResult(
 			break;
 		case 'tasks.query':
 			decoded = decodeTaskQueryResultV1(value);
+			break;
+		case 'tasks.filter-query':
+			decoded = decodeTaskFilterQueryResultV1(value);
 			break;
 		case 'tasks.finder':
 			decoded = decodeTaskFinderResultV1(value);
