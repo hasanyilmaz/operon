@@ -321,6 +321,7 @@ import {
 	type DeveloperConsentPromptV1,
 	type DeveloperSecuritySessionV1,
 } from './src/agent-runtime/developer-api/security';
+import { requestBoundedDeveloperConsentV1 } from './src/agent-runtime/developer-api/security/bounded-consent';
 import type {
 	OperonDeveloperApiAccessRequestV1,
 	OperonDeveloperApiAccessResultV1,
@@ -1420,8 +1421,15 @@ export default class OperonPlugin extends Plugin {
 		if (!this.startupReady || this.agentRuntimeLifecycle?.getPhase() !== 'ready') {
 			return Promise.resolve('unavailable');
 		}
-		return new Promise(resolve => {
-			new ConfirmActionModal(this.app, {
+		const ownerDocument = this.app.workspace.containerEl.ownerDocument;
+		const ownerWindow = ownerDocument.defaultView;
+		if (!ownerWindow) return Promise.resolve('unavailable');
+		return requestBoundedDeveloperConsentV1({
+			ownerWindow,
+			ownerDocument,
+			timeoutMs: 45_000,
+			show: onDecision => {
+				const modal = new ConfirmActionModal(this.app, {
 				title: t('settings', 'developerApiConsentTitle'),
 				message: t('settings', 'developerApiConsentDesc'),
 				confirmText: t('settings', 'developerApiConsentApprove'),
@@ -1459,7 +1467,10 @@ export default class OperonPlugin extends Plugin {
 						after: '',
 					},
 				],
-			}, confirmed => resolve(confirmed ? 'approved' : 'denied')).open();
+				}, onDecision);
+				modal.open();
+				return () => modal.close();
+			},
 		});
 	}
 
