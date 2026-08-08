@@ -838,6 +838,16 @@ function prepareUpdate(
 			return failure('invalid-request', 'Task description must be non-empty and single-line.');
 		}
 		if (
+			change.field === 'description'
+			&& task.locator.representation === 'file'
+			&& serialized !== task.description
+		) {
+			return failure(
+				'field-not-writable',
+				'File Task descriptions are filename identities and require an explicit rename contract.',
+			);
+		}
+		if (
 			change.field === 'tags'
 			&& (
 				!Array.isArray(change.value)
