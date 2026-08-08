@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "7a2efd490c7248fc4e9f95c01305134147c3c4ebd234a7f6b04de8e00b48e4fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1726,6 +1726,7 @@
       "languagePackDownloading": "Descargando…",
       "languagePackUpdate": "Actualizar",
       "languagePackUpdating": "Actualizando…",
+      "languagePortugueseBrazilian": "Portugués (Brasil)",
       "languageRussian": "Ruso",
       "languageSpanish": "Español",
       "languageTurkish": "Turco",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d46448281da7cd51cbaaa789d58fc73804fb8aca7962009de046ab0aae7a6a66"
+  "sourceVersion": "b00fc7efef7762062de760a8fd97a787b8034a3d411d117b84f9778c5f1e4316"
 }

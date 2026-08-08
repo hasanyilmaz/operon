@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 - Added a responsive **Filter pop-over to Kanban**, allowing the selected preset filter to be edited or a new filter to be created and attached without leaving the board.
+- Added **Brazilian Portuguese localization**, including Settings language selection and translated interface text. Natural-language date input currently uses the English fallback.
 
 ### Improved
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "7a2efd490c7248fc4e9f95c01305134147c3c4ebd234a7f6b04de8e00b48e4fb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1726,6 +1726,7 @@
       "languagePackDownloading": "Загрузка…",
       "languagePackUpdate": "Обновить",
       "languagePackUpdating": "Обновление…",
+      "languagePortugueseBrazilian": "Бразильский португальский",
       "languageRussian": "Русский",
       "languageSpanish": "Испанский",
       "languageTurkish": "Турецкий",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "73a8d771b67831e31a96c1debbfafa022bf0d2be2da5b43774eee8c750096108"
+  "sourceVersion": "da9253b093477f0d2c72ad3e7aa92c96ee72acdfc2cab5ef8819435d7f37c19c"
 }
