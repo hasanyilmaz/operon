@@ -63,6 +63,7 @@ const COMMAND_DESCRIPTIONS_V1: Readonly<Record<CliCommandV1, string>> = Object.f
 	'entity.resolve': 'Resolve a live Operon task selector.',
 	'task.get': 'Read one exact live Operon task.',
 	'tasks.query': 'Query the bounded live Operon task index.',
+	'tasks.filter-query': 'Evaluate one saved Operon filter against the live task index.',
 	'tasks.finder': 'Search the live Operon Task Finder index with native ranking.',
 	'relationships.get': 'Read live Operon task relationships.',
 	'context.build': 'Build a bounded live Operon Context Pack.',

@@ -38,6 +38,8 @@ import {
 	decodeTaskFinderResultV1,
 	decodeTaskGetRequestV1,
 	decodeTaskGetResultV1,
+	decodeTaskFilterQueryRequestV1,
+	decodeTaskFilterQueryResultV1,
 	decodeTaskQueryRequestV1,
 	decodeTaskQueryResultV1,
 	decodeTaskSourceLocatorV1,
@@ -66,6 +68,8 @@ export type ContractSchemaIdV1 =
 	| 'task-get-result'
 	| 'task-query-request'
 	| 'task-query-result'
+	| 'task-filter-query-request'
+	| 'task-filter-query-result'
 	| 'task-finder-request'
 	| 'task-finder-result'
 	| 'relationship-request'
@@ -115,6 +119,8 @@ export const DECODER_REGISTRY_V1: Readonly<Record<ContractSchemaIdV1, ContractDe
 		'task-get-result': decodeTaskGetResultV1,
 		'task-query-request': decodeTaskQueryRequestV1,
 		'task-query-result': decodeTaskQueryResultV1,
+		'task-filter-query-request': decodeTaskFilterQueryRequestV1,
+		'task-filter-query-result': decodeTaskFilterQueryResultV1,
 		'task-finder-request': decodeTaskFinderRequestV1,
 		'task-finder-result': decodeTaskFinderResultV1,
 		'relationship-request': decodeRelationshipRequestV1,
