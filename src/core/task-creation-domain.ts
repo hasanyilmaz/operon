@@ -14,6 +14,7 @@ import { resolveSubtaskInitialFieldsFromParentValues } from './subtask-inheritan
 import { insertInlineTaskUnderFirstHeadingKeyword } from './markdown-heading-insertion';
 import type { OperonSettings } from '../types/settings';
 import { resolveWorkflowStatus } from '../types/pipeline';
+import { resolveOperonIdPlaceholders } from './operon-id-placeholders';
 import { deriveCountModeRepeatEndFromFieldValues } from './task-field-patch';
 import { parseRepeatRule, serializeRepeatRule } from './repeat-rule';
 import { resolveRepeatTemporalAnchor } from '../systems/recurrence-domain';
@@ -80,6 +81,7 @@ export interface FileTaskCreationTarget {
 	representation: 'file';
 	source: TaskCreationSourceSnapshot;
 	template?: DeterministicFileTaskTemplate;
+	identityPlaceholderPolicy?: 'resolve-operon-id-v1';
 }
 
 export type TaskCreationTarget = InlineTaskCreationTarget | FileTaskCreationTarget;
@@ -191,6 +193,11 @@ export interface PreparedTaskCreationTask {
 		templateId: string;
 		revision: string;
 	};
+	templateIdentityAllocations?: readonly {
+		occurrence: number;
+		suffix?: string;
+		operonId: string;
+	}[];
 }
 
 export interface PreparedTaskCreationSourceGroup {
@@ -323,6 +330,11 @@ interface MutablePreparedTask {
 		templateId: string;
 		revision: string;
 	};
+	templateIdentityAllocations?: Array<{
+		occurrence: number;
+		suffix?: string;
+		operonId: string;
+	}>;
 	requestOrder: number;
 	placement?: InlineTaskCreationPlacement;
 }
@@ -925,6 +937,14 @@ function prepareTask(
 		options.now,
 		options.resolveCoreTemplateVariables,
 	);
+	if (item.target.identityPlaceholderPolicy === 'resolve-operon-id-v1') {
+		const allocations: Array<{ occurrence: number; suffix?: string; operonId: string }> = [];
+		resolvedContent = resolveOperonIdPlaceholders(resolvedContent, {
+			generateOperonId: options.generateOperonId,
+			onIdentityAllocation: allocation => allocations.push(allocation),
+		});
+		prepared.templateIdentityAllocations = allocations;
+	}
 	if (item.bodyMarkdown !== undefined) {
 		const injectedOperonTask = item.bodyMarkdown.split('\n').some(
 			(line, lineNumber) => parseTaskLine(
@@ -1485,5 +1505,8 @@ function stripMutableTask(task: MutablePreparedTask): PreparedTaskCreationTask {
 		resolvedDependencies: task.resolvedDependencies.map(dependency => ({ ...dependency })),
 		...(task.bodyMarkdown === undefined ? {} : { bodyMarkdown: task.bodyMarkdown }),
 		...(task.template === undefined ? {} : { template: { ...task.template } }),
+		...(task.templateIdentityAllocations === undefined
+			? {}
+			: { templateIdentityAllocations: task.templateIdentityAllocations.map(allocation => ({ ...allocation })) }),
 	};
 }
