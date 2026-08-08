@@ -1171,6 +1171,26 @@ test('inline task exact-byte evidence records metadata settlement and unrelated 
 		refreshedCommit.groupResults[0]?.resourceRevisions?.[1]?.revision,
 		sha256HexV1(metadataSettledContent),
 	);
+	const refreshedTransitionCommit = refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
+		{
+			...preparedMutation,
+			token: {
+				kind: 'semantic-transition-plan' as const,
+				prepared: {
+					...prepared,
+					operation: 'transition' as const,
+				},
+			},
+		},
+		commit,
+		metadataSettledContent,
+		DEFAULT_SETTINGS.keyMappings,
+	);
+	assert.equal(
+		refreshedTransitionCommit.groupResults[0]?.resourceRevisions?.[1]?.revision,
+		sha256HexV1(metadataSettledContent),
+		'Semantic transitions must receive the same bounded metadata settlement as updates.',
+	);
 	assert.deepEqual(
 		refreshedCommit.groupResults[0]?.resourceRevisions?.filter((_, index) => index !== 1),
 		commit.groupResults[0]?.resourceRevisions?.filter((_, index) => index !== 1),
@@ -1270,4 +1290,282 @@ test('inline task exact-byte evidence records metadata settlement and unrelated 
 		null,
 		'Unrelated same-source drift must remain unverified.',
 	);
+});
+
+test('inline task settlement accepts only the configured Update time on edit frontmatter drift', () => {
+	const filePath = 'Tasks.md';
+	const committedContent = [
+		'---',
+		'created: 2026-07-24T09:00',
+		'modification: 2026-07-24T11:59',
+		'---',
+		'# Tasks',
+		'- [ ] Updated description {{operonId:: abc1234}} {{datetimeModified:: 2026-07-24T12:00:00}}',
+		'- [ ] Unrelated task {{operonId:: def5678}}',
+		'',
+	].join('\n');
+	const settledContent = committedContent
+		.replace('modification: 2026-07-24T11:59', 'modification: 2026-07-24T12:00')
+		.replace('2026-07-24T12:00:00', '2026-07-24T12:00:01');
+	const frontmatterOnlySettledContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'modification: 2026-07-24T12:00',
+	);
+	const committedRevision = sha256HexV1(committedContent);
+	const settlementWindow = {
+		applyStartedAtEpochMs: new Date(2026, 6, 24, 12, 0, 0).getTime(),
+		settlementObservedAtEpochMs: new Date(2026, 6, 24, 12, 0, 2).getTime(),
+	};
+	const prepared: RuntimeTaskFieldMutationPreparationV1 = {
+		kind: 'task-fields',
+		operation: 'update',
+		task: {
+			...task,
+			locator: { representation: 'inline', filePath, lineNumber: 5 },
+			description: 'Before update',
+			sourceContent: committedContent,
+		},
+		fieldValues: {
+			_description: 'Updated description',
+			datetimeModified: '2026-07-24T12:00:00',
+		},
+		sourceRevision: 'a'.repeat(64),
+		targetDigest: 'b'.repeat(64),
+		summary: 'Update the task description.',
+		noChange: false,
+	};
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			committedRevision,
+			settledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+			settlementWindow,
+		),
+		sha256HexV1(settledContent),
+		'The configured modified-time property and target task timestamp may settle together.',
+	);
+	assert.deepEqual(
+		resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
+			prepared,
+			committedContent,
+			committedRevision,
+			frontmatterOnlySettledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+			settlementWindow,
+		),
+		{ revision: sha256HexV1(frontmatterOnlySettledContent) },
+		'The configured modified-time property may settle without a second task timestamp write.',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			committedRevision,
+			frontmatterOnlySettledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+		),
+		null,
+		'Modified-time frontmatter drift requires a bounded apply-time window.',
+	);
+	for (const [label, observedContent, permittedKeys] of [
+		['missing provider evidence', settledContent, []],
+		['wrong configured property', settledContent, ['updated']],
+		[
+			'unrelated frontmatter datetime',
+			settledContent.replace('created: 2026-07-24T09:00', 'created: 2026-07-24T12:00'),
+			['modification'],
+		],
+		[
+			'different settlement minute',
+			settledContent.replace('modification: 2026-07-24T12:00', 'modification: 2026-07-24T12:01'),
+			['modification'],
+		],
+		[
+			'unrelated body drift',
+			settledContent.replace('Unrelated task', 'Concurrent unrelated edit'),
+			['modification'],
+		],
+	] as const) {
+		assert.equal(
+			resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+				prepared,
+				committedContent,
+				committedRevision,
+				observedContent,
+				DEFAULT_SETTINGS.keyMappings,
+				permittedKeys,
+				settlementWindow,
+			),
+			null,
+			label,
+		);
+	}
+});
+
+test('File Task settlement accepts only one bounded configured modified-time frontmatter drift', () => {
+	const filePath = 'Efforts/Projets/_Operon/Adapter fixture.md';
+	const committedContent = [
+		'---',
+		'operonId: abc1234',
+		'priority: F',
+		'datetimeModified: 2026-07-24T12:00:00',
+		'modification: 2026-07-24T11:59',
+		'---',
+		'',
+	].join('\n');
+	const settledContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'modification: 2026-07-24T12:00',
+	);
+	const settlementWindow = {
+		applyStartedAtEpochMs: new Date(2026, 6, 24, 12, 0, 0).getTime(),
+		settlementObservedAtEpochMs: new Date(2026, 6, 24, 12, 0, 2).getTime(),
+	};
+	const prepared: RuntimeTaskFieldMutationPreparationV1 = {
+		kind: 'task-fields',
+		operation: 'update',
+		task: {
+			...task,
+			locator: { representation: 'file', filePath },
+			description: 'Adapter fixture',
+			sourceContent: committedContent,
+		},
+		fieldValues: {
+			priority: 'F',
+			datetimeModified: '2026-07-24T12:00:00',
+		},
+		sourceRevision: 'a'.repeat(64),
+		targetDigest: 'b'.repeat(64),
+		summary: 'Update the File Task priority.',
+		noChange: false,
+	};
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			sha256HexV1(committedContent),
+			settledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+			settlementWindow,
+		),
+		sha256HexV1(settledContent),
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			sha256HexV1(committedContent),
+			settledContent.replace('priority: F', 'priority: A'),
+			DEFAULT_SETTINGS.keyMappings,
+			['modification'],
+			settlementWindow,
+		),
+		null,
+		'Concurrent File Task field drift remains unverified.',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			sha256HexV1(committedContent),
+			committedContent.replace(
+				'datetimeModified: 2026-07-24T12:00:00',
+				'datetimeModified: 2026-07-24T12:00:01',
+			),
+			DEFAULT_SETTINGS.keyMappings,
+			['datetimeModified'],
+			settlementWindow,
+		),
+		null,
+		'A plugin property that collides with an Operon-managed File Task key must not be admitted.',
+	);
+	const mappedSettings = {
+		...DEFAULT_SETTINGS,
+		keyMappings: DEFAULT_SETTINGS.keyMappings.map(mapping => (
+			mapping.canonicalKey === 'datetimeCreated'
+				? { ...mapping, visiblePropertyName: 'createdAt' }
+				: mapping
+		)),
+	};
+	const mappedCollisionContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'createdAt: 2026-07-24T11:59',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			mappedCollisionContent,
+			sha256HexV1(mappedCollisionContent),
+			mappedCollisionContent.replace(
+				'createdAt: 2026-07-24T11:59',
+				'createdAt: 2026-07-24T12:00',
+			),
+			mappedSettings.keyMappings,
+			['createdAt'],
+			settlementWindow,
+		),
+		null,
+		'A configured visible name for an Operon-managed key must also remain fail-closed.',
+	);
+	for (const reservedKey of ['tags', 'related'] as const) {
+		const reservedCollisionContent = committedContent.replace(
+			'modification: 2026-07-24T11:59',
+			`${reservedKey}: 2026-07-24T11:59`,
+		);
+		assert.equal(
+			resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+				prepared,
+				reservedCollisionContent,
+				sha256HexV1(reservedCollisionContent),
+				reservedCollisionContent.replace(
+					`${reservedKey}: 2026-07-24T11:59`,
+					`${reservedKey}: 2026-07-24T12:00`,
+				),
+				DEFAULT_SETTINGS.keyMappings,
+				[reservedKey],
+				settlementWindow,
+			),
+			null,
+			`${reservedKey} remains reserved task state even when it is absent from active key mappings.`,
+		);
+	}
+	const customSettings = {
+		...DEFAULT_SETTINGS,
+		keyMappings: [...DEFAULT_SETTINGS.keyMappings, {
+			canonicalKey: 'reviewScore',
+			visiblePropertyName: 'reviewScoreVisible',
+			type: 'datetime' as const,
+			sync: 'yes' as const,
+			enabled: true,
+			isSystem: false,
+		}],
+	};
+	for (const customKey of ['reviewScore', 'reviewScoreVisible'] as const) {
+		const customCollisionContent = committedContent.replace(
+			'modification: 2026-07-24T11:59',
+			`${customKey}: 2026-07-24T11:59`,
+		);
+		assert.equal(
+			resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+				prepared,
+				customCollisionContent,
+				sha256HexV1(customCollisionContent),
+				customCollisionContent.replace(
+					`${customKey}: 2026-07-24T11:59`,
+					`${customKey}: 2026-07-24T12:00`,
+				),
+				customSettings.keyMappings,
+				[customKey],
+				settlementWindow,
+			),
+			null,
+			`${customKey} remains managed task state for settlement collision checks.`,
+		);
+	}
 });

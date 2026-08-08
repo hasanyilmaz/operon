@@ -290,6 +290,7 @@ import {
 	type MutationResultV1,
 	type RuntimePreparedMutationV1,
 	type RuntimePreparedMutationCommitV1,
+	type RuntimeMutationSettlementWindowV1,
 	type RuntimeTaskFieldMutationPreparationV1,
 	type RuntimeTaskUpdateBatchPreparationV1,
 	type RuntimeTaskRecurrencePreparationV1,
@@ -359,7 +360,11 @@ import {
 	validateVaultRelativePathV1,
 } from './src/agent-runtime/contracts/v1/identity';
 import type { AffectedResourceRevisionMapV1 } from './src/agent-runtime/contracts/v1/identity';
-import { getCommunityPlugin, isDailyNotesCoreAvailable } from './src/core/obsidian-app';
+import {
+	getCommunityPlugin,
+	getExternalModifiedTimeFrontmatterPropertyNames,
+	isDailyNotesCoreAvailable,
+} from './src/core/obsidian-app';
 import { InlineTaskSaveMode, resolveEffectiveInlineTaskSaveMode } from './src/core/inline-task-save-mode';
 import { isRecord, isUnknownFunction, readString } from './src/core/unknown-value';
 import {
@@ -5771,7 +5776,7 @@ export default class OperonPlugin extends Plugin {
 			commitMutation: async (request, prepared, effectiveAt) => (
 				await this.commitAgentRuntimeTaskMutation(request.plan.spec, prepared, effectiveAt)
 			),
-			refreshMutationCommitEvidence: async (preparedMutation, commit) => {
+			refreshMutationCommitEvidence: async (preparedMutation, commit, settlementWindow) => {
 				const source = runtimeInlineTaskUpdateSettlementEvidenceSourceV1(
 					preparedMutation,
 					commit,
@@ -5783,10 +5788,17 @@ export default class OperonPlugin extends Plugin {
 					commit,
 					observed.content,
 					this.settings.keyMappings,
+					getExternalModifiedTimeFrontmatterPropertyNames(this.app),
+					settlementWindow,
 				);
 			},
-				verifyMutation: async (request, prepared, _postflightRevision, commit) => (
-					await this.verifyAgentRuntimeTaskMutation(request.plan.createdAt, prepared, commit)
+				verifyMutation: async (request, prepared, _postflightRevision, commit, settlementWindow) => (
+					await this.verifyAgentRuntimeTaskMutation(
+						request.plan.createdAt,
+						prepared,
+						commit,
+						settlementWindow,
+					)
 				),
 				recoverMutation: async request => (
 					this.verifyAgentRuntimePinnedAfterState(request.plan)
@@ -7859,6 +7871,7 @@ export default class OperonPlugin extends Plugin {
 					revision: sourceRevisionForTaskCreationV1(filePath, source.content),
 				};
 			};
+			let primaryTaskSourceCommitEvidence: RuntimePreparedMutationCommitV1['primaryTaskSourceCommitEvidence'];
 			const execution = await executeRuntimeSemanticTransitionV1(plan, {
 				commitPrimary: async currentPlan => {
 					const primaryPrepared = {
@@ -7895,6 +7908,7 @@ export default class OperonPlugin extends Plugin {
 							reason: primary.reason ?? 'The primary semantic transition did not commit.',
 						};
 					}
+					primaryTaskSourceCommitEvidence = primary.primaryTaskSourceCommitEvidence;
 					for (const filePath of primary.affectedFilePaths) {
 						await this.indexer.forceReindexFilePathAfterMutation(
 							filePath,
@@ -8232,6 +8246,7 @@ export default class OperonPlugin extends Plugin {
 				groupResults: [...execution.groupResults],
 				affectedFilePaths: [...execution.affectedFilePaths],
 				...(execution.reason ? { reason: execution.reason } : {}),
+				...(primaryTaskSourceCommitEvidence ? { primaryTaskSourceCommitEvidence } : {}),
 			};
 		}
 		if (
@@ -8582,8 +8597,7 @@ export default class OperonPlugin extends Plugin {
 				groupResults,
 			),
 			affectedFilePaths,
-			...(prepared.operation === 'update'
-			&& prepared.task.locator.representation === 'inline'
+			...((prepared.operation === 'update' || prepared.operation === 'transition')
 			&& writeResult.committedContent !== undefined
 				? {
 					primaryTaskSourceCommitEvidence: {
@@ -8636,6 +8650,7 @@ export default class OperonPlugin extends Plugin {
 			createdAt: string,
 			preparedMutation: RuntimePreparedMutationV1,
 			commit: RuntimePreparedMutationCommitV1,
+			settlementWindow?: RuntimeMutationSettlementWindowV1,
 		): Promise<boolean> {
 			if (isRuntimePinnedStateMutationPreparationV1(preparedMutation.token)) {
 				const prepared = preparedMutation.token;
@@ -8785,6 +8800,42 @@ export default class OperonPlugin extends Plugin {
 					},
 				}
 				: finalSourcePreparation;
+			const requiresExactPrimarySourceEvidence = !plan.recurrence
+				&& plan.primaryAncestors.length === 0
+				&& plan.ancestorGroups.length === 0;
+			const observedPrimarySource = requiresExactPrimarySourceEvidence
+				? await this.readAgentRuntimeMutationSource(
+					postflightPreparation.task.locator.filePath,
+				)
+				: null;
+			const exactPrimaryPostflightEvidence = observedPrimarySource
+				? resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
+					postflightPreparation.task.locator.filePath,
+					commit.groupResults.flatMap(group => group.resourceRevisions ?? []),
+					observedPrimarySource.content,
+				)
+				: null;
+			const primarySettlementEvidence = commit.primaryTaskSourceCommitEvidence
+				&& observedPrimarySource?.content !== null
+				&& observedPrimarySource?.content !== undefined
+				? resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
+					postflightPreparation,
+					commit.primaryTaskSourceCommitEvidence.content,
+					commit.primaryTaskSourceCommitEvidence.revision,
+					observedPrimarySource.content,
+					this.settings.keyMappings,
+					getExternalModifiedTimeFrontmatterPropertyNames(this.app),
+					settlementWindow,
+				)
+				: null;
+			const primaryPostflightEvidence = exactPrimaryPostflightEvidence
+				? {
+					...exactPrimaryPostflightEvidence,
+					...(primarySettlementEvidence?.datetimeModified
+						? { settlementDatetimeModified: primarySettlementEvidence.datetimeModified }
+						: {}),
+				}
+				: null;
 			const indexedFieldValues = indexed ? { ...indexed.fieldValues } : null;
 			const expectedPrimaryModified = postflightPreparation.fieldValues['datetimeModified'];
 			if (
@@ -8796,7 +8847,9 @@ export default class OperonPlugin extends Plugin {
 			) {
 				indexedFieldValues['datetimeModified'] = expectedPrimaryModified;
 			}
-			const primaryVerified = indexed && indexedFieldValues
+			const primaryVerified = (
+				!requiresExactPrimarySourceEvidence || primaryPostflightEvidence !== null
+			) && indexed && indexedFieldValues
 				? verifyRuntimeTaskFieldMutationPrimaryPostflightV1(postflightPreparation, {
 					operonId: indexed.operonId,
 					locator: indexed.primary.format === 'yaml'
@@ -8812,7 +8865,7 @@ export default class OperonPlugin extends Plugin {
 					tags: [...indexed.tags],
 					sourceContent: '',
 					duplicate: this.indexer.hasDuplicateOperonIdConflict(indexed.operonId),
-				})
+				}, primaryPostflightEvidence ?? undefined)
 				: plan.recurrence?.preview.disposition === 'materialize'
 					&& !plan.recurrence.preview.sourceTaskRetained;
 			const expectedModified = toLocalDatetime(new Date(plan.effectiveAt));
@@ -9239,6 +9292,8 @@ export default class OperonPlugin extends Plugin {
 				commit.primaryTaskSourceCommitEvidence.revision,
 				observedPrimarySource.content,
 				this.settings.keyMappings,
+				getExternalModifiedTimeFrontmatterPropertyNames(this.app),
+				settlementWindow,
 			)
 			: null;
 		const primaryPostflightEvidence = exactPrimaryPostflightEvidence
