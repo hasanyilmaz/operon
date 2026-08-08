@@ -9,6 +9,8 @@ import type {
 	RelationshipResultV1,
 	TaskFinderRequestV1,
 	TaskFinderResultV1,
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
 	TaskGetRequestV1,
 	TaskGetResultV1,
 	TaskQueryRequestV1,
@@ -17,6 +19,7 @@ import type {
 import type { RuntimeDiagnosticsV1, RuntimeHealthV1, RuntimeLifecyclePhaseV1 } from '../../contracts/v1/lifecycle';
 import type {
 	AtomicGroupResultV1,
+	AdoptTaskPreviewIntentV1,
 	ConvertTaskSpecV1,
 	CreateTaskSpecV1,
 	DeleteTaskSpecV1,
@@ -184,6 +187,9 @@ export interface DeveloperApiTasksV1 {
 	readonly query: (
 		request: DeepReadonlyV1<TaskQueryRequestV1>,
 	) => Promise<DeepReadonlyV1<TaskQueryResultV1>>;
+	readonly filterQuery: (
+		request: DeepReadonlyV1<TaskFilterQueryRequestV1>,
+	) => Promise<DeepReadonlyV1<TaskFilterQueryResultV1>>;
 	readonly find: (
 		request: DeepReadonlyV1<TaskFinderRequestV1>,
 	) => Promise<DeepReadonlyV1<TaskFinderResultV1>>;
@@ -233,6 +239,12 @@ export type DeveloperMutationPreviewInputV1 =
 		mutationKind: 'task.create';
 		target?: never;
 		spec: DeepReadonlyV1<CreateTaskSpecV1>;
+	}>
+	| Readonly<{
+		capability: 'tasks.adopt.preview';
+		mutationKind: 'task.adopt';
+		target?: never;
+		spec: DeepReadonlyV1<AdoptTaskPreviewIntentV1>;
 	}>
 	| DeveloperTargetedMutationPreviewInputV1<
 		'task.update',

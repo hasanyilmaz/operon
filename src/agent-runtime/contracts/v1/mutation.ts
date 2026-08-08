@@ -97,12 +97,14 @@ export type CreateTaskTargetV1 =
 		mode: 'configured-default';
 		filePath?: never;
 		templateId?: string;
+		identityPlaceholderPolicy?: 'resolve-operon-id-v1';
 	}
 	| {
 		representation: 'file';
 		mode: 'exact-path';
 		filePath: string;
 		templateId?: string;
+		identityPlaceholderPolicy?: 'resolve-operon-id-v1';
 	};
 
 export type CreateFieldItemV1 =
@@ -461,6 +463,40 @@ export interface DeleteTaskSpecV1 {
 	cascade: false;
 }
 
+export interface AdoptTaskSpecV1 {
+	operation: 'adopt-inline';
+	source: {
+		filePath: string;
+		lineNumber: number;
+		expectedLine: string;
+	};
+	statusId?: string;
+	terminalSourcePolicy?: 'reopen';
+	/** Runtime-sealed identity and exact source/result proof. */
+	operonId?: string;
+	resolvedStatusId?: string;
+	resultingLine?: string;
+	sourceDigest?: string;
+	resultDigest?: string;
+	locator?: Extract<TaskSourceLocatorV1, { representation: 'inline' }>;
+}
+
+export type AdoptTaskPreviewIntentV1 = Omit<AdoptTaskSpecV1,
+	| 'operonId'
+	| 'resolvedStatusId'
+	| 'resultingLine'
+	| 'sourceDigest'
+	| 'resultDigest'
+	| 'locator'
+> & {
+	operonId?: never;
+	resolvedStatusId?: never;
+	resultingLine?: never;
+	sourceDigest?: never;
+	resultDigest?: never;
+	locator?: never;
+};
+
 export type MutationSpecV1 =
 	| CreateTaskSpecV1
 	| UpdateTaskSpecV1
@@ -474,10 +510,12 @@ export type MutationSpecV1 =
 	| TimerSessionSpecV1
 	| ConvertTaskSpecV1
 	| RelocateInlineTaskSpecV1
+	| AdoptTaskSpecV1
 	| DeleteTaskSpecV1;
 
 export type MutationPreviewSpecV1 =
 	| MutationSpecV1
+	| AdoptTaskPreviewIntentV1
 	| RelocateInlineTaskPreviewIntentV1;
 
 export interface MutationPreviewRequestV1 {
@@ -520,6 +558,11 @@ export type SealedCreateEffectV1 = {
 	plannedSourceDigest: string;
 	templateId?: string;
 	templateDigest?: string;
+	templateIdentityAllocations?: Array<{
+		occurrence: number;
+		suffix?: string;
+		operonId: string;
+	}>;
 	resolvedParentOperonId?: string;
 	resolvedRelatedOperonIds: string[];
 	resolvedDependencies?: Array<{
@@ -734,6 +777,7 @@ export function requiredRiskForSpecV1(spec: MutationPreviewSpecV1): RiskLevelV1 
 		case 'remove-session':
 			return 'destructive';
 		case 'create':
+		case 'adopt-inline':
 		case 'update':
 		case 'update-batch':
 		case 'update-recurrence':

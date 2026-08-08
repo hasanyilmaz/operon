@@ -11,7 +11,9 @@ import {
 	decodeTaskGetResultV1,
 	decodeTaskQueryRequestV1,
 	decodeTaskQueryResultV1,
+	decodeTaskFilterQueryResultV1,
 } from '../../../src/agent-runtime/contracts/v1/decode';
+import { structuredErrorV1 } from '../../../src/agent-runtime/contracts/v1/primitives';
 import type { ContextRevisionV1 } from '../../../src/agent-runtime/contracts/v1/identity';
 import type {
 	ContextRequestV1,
@@ -52,6 +54,7 @@ async function run(): Promise<void> {
 	await testWritableFieldHydration(createFixture());
 	await testWritableFieldBulkRefusal(createFixture());
 	await testQueryCursorAndTamper(fixture);
+	await testSavedFilterQuery(fixture);
 	await testQueryBuildsCatalogOnce();
 	await testFinderProjectRootAmbiguity();
 	testRelatedReferencesRejectDuplicateIds();
@@ -610,6 +613,83 @@ async function testQueryCursorAndTamper(fixture: Fixture): Promise<void> {
 	}, fixture.execution);
 	assert.equal(tampered.ok, false);
 	assert.equal(!tampered.ok && tampered.error.code, 'stale-cursor');
+}
+
+async function testSavedFilterQuery(fixture: Fixture): Promise<void> {
+	const catalog = buildLivePropertyCatalogV1(fixture.settings);
+	if (!catalog.ok) throw new Error(catalog.error.reason);
+	let definitionDigest = 'a'.repeat(64);
+	const bridge = new ContextBridgeV1(
+		fixture.provider,
+		() => catalog.value,
+		new RuntimeContextCursorCodecV1(webcrypto as unknown as Crypto, new Uint8Array(32).fill(9)),
+		request => {
+			if (request.filterSetId !== 'saved-filter') {
+				return { ok: false, error: structuredErrorV1('entity-not-found', 'Saved filter does not exist.') };
+			}
+			const scoped = fixture.index.getAllTaskSnapshots().filter(taskValue => {
+				if (!request.scope) return true;
+				if (request.scope.kind === 'exact-file') return taskValue.primary.filePath === request.scope.path;
+				return taskValue.primary.filePath === request.scope.path
+					|| taskValue.primary.filePath.startsWith(`${request.scope.path}/`);
+			});
+			return {
+				ok: true,
+				tasks: [scoped[1], scoped[0], scoped[1]].filter((taskValue): taskValue is IndexedTask => !!taskValue),
+				queryDigest: definitionDigest,
+			};
+		},
+	);
+	const first = await bridge.filterQueryTasks({
+		contractVersion: 1,
+		requestId: 'saved-filter-first',
+		kind: 'task-filter-query',
+		consistency: 'live-verified',
+		filterSetId: 'saved-filter',
+		scope: { kind: 'exact-file', path: 'Tasks.md' },
+		limit: 1,
+	}, fixture.execution);
+	assert.equal(first.ok, true);
+	assert.equal(first.ok && first.tasks[0]?.identity.operonId, 'child01', 'native evaluator order must be retained');
+	assert.equal(first.ok && first.page.actualCount, 2, 'duplicate evaluator rows must be unique by operonId');
+	assert.equal(decodeTaskFilterQueryResultV1(first).ok, true);
+	if (!first.ok || !first.page.nextCursor) return;
+	const second = await bridge.filterQueryTasks({
+		contractVersion: 1,
+		requestId: 'saved-filter-second',
+		kind: 'task-filter-query',
+		consistency: 'live-verified',
+		filterSetId: 'saved-filter',
+		scope: { kind: 'exact-file', path: 'Tasks.md' },
+		limit: 1,
+		cursor: first.page.nextCursor,
+	}, fixture.execution);
+	assert.equal(second.ok, true);
+	assert.equal(second.ok && second.tasks[0]?.identity.operonId, 'root001');
+	definitionDigest = 'b'.repeat(64);
+	const stale = await bridge.filterQueryTasks({
+		contractVersion: 1,
+		requestId: 'saved-filter-stale',
+		kind: 'task-filter-query',
+		consistency: 'live-verified',
+		filterSetId: 'saved-filter',
+		scope: { kind: 'exact-file', path: 'Tasks.md' },
+		limit: 1,
+		cursor: first.page.nextCursor,
+	}, fixture.execution);
+	assert.equal(stale.ok, false);
+	assert.equal(!stale.ok && stale.error.code, 'stale-cursor');
+	assert.equal(!stale.ok && stale.error.retryable, false);
+	assert.equal(!stale.ok && stale.error.action, 'refresh-state');
+	const missing = await bridge.filterQueryTasks({
+		contractVersion: 1,
+		requestId: 'saved-filter-missing',
+		kind: 'task-filter-query',
+		consistency: 'live-verified',
+		filterSetId: 'missing',
+	}, fixture.execution);
+	assert.equal(missing.ok, false);
+	assert.equal(!missing.ok && missing.error.code, 'entity-not-found');
 }
 
 async function testQueryBuildsCatalogOnce(): Promise<void> {

@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Operon 3.2.0 pairs with Operon CLI 1.1.0 while keeping the Runtime contract at V1.
+
+### New
+
+- Added native **saved-filter evaluation** to the Runtime, Developer API, and CLI through `tasks.filter-query`, returning bounded, paginated task summaries with exact file or folder scope, freshness, provenance, and stale-cursor protection.
+- Added safe **Markdown checkbox adoption** through the Runtime and `operon task adopt`, with sealed preview/apply behavior, exact source-line validation, replay protection, and explicit reopening for completed or cancelled checkboxes.
+- Added opt-in **File Task identity placeholders** for task creation, allowing `{{operonId}}` and single-character suffixed IDs to preserve deterministic parent-child template relationships without changing existing templates that do not request the policy.
+
+### Fixed
+
+- Fixed active **modified-time frontmatter plugins** causing successful inline and File Task updates or transitions to be reported as `outcome-unknown`, while continuing to fail closed for unrelated source changes, unsafe property collisions, or unsupported timestamp writes.
+- Fixed **Developer API consent** requests from secondary Obsidian windows opening outside their owning window or remaining pending indefinitely; UI failures and timeouts now resolve as bounded `unavailable` outcomes without weakening post-consent authorization checks.
+
 ### Validation
+
+- Validated locally with the complete Plugin candidate suite and CLI 1.1.0 package suite on Node 24.18.0 / npm 11.12.1, including Runtime V1 contract and schema parity, the three additive capabilities, the canonical 41-file CLI tarball, and portable Windows policy and contract coverage; hosted CI, native Windows pair validation, live deployment, and manual acceptance were not run for this local freeze.
 
 ## [3.1.1] - 2026-08-07
 

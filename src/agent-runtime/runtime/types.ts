@@ -22,6 +22,8 @@ import type {
 	TaskGetResultV1,
 	TaskFinderRequestV1,
 	TaskFinderResultV1,
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
 	TaskQueryRequestV1,
 	TaskQueryResultV1,
 } from '../contracts/v1/context';
@@ -44,6 +46,8 @@ export type {
 	TaskGetResultV1,
 	TaskFinderRequestV1,
 	TaskFinderResultV1,
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
 	TaskQueryRequestV1,
 	TaskQueryResultV1,
 } from '../contracts/v1/context';
@@ -95,6 +99,7 @@ export interface RuntimeEntitiesFacadeV1 {
 export interface RuntimeTasksFacadeV1 {
 	get(request: TaskGetRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskGetResultV1>;
 	query(request: TaskQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskQueryResultV1>;
+	filterQuery?(request: TaskFilterQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFilterQueryResultV1>;
 	find(request: TaskFinderRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFinderResultV1>;
 }
 

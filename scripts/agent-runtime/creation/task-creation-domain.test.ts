@@ -10,9 +10,12 @@ import {
 	type TaskCreationCommitPort,
 } from '../../../src/core/task-creation-domain';
 import { resolveDefaultFileTaskStatus } from '../../../src/core/file-task-defaults';
+import { resolveOperonIdPlaceholders } from '../../../src/core/operon-id-placeholders';
+import { parseTaskLine } from '../../../src/core/parser';
 import {
 	compensateRuntimeTaskCreationFailureV1,
 	prepareRuntimeTaskCreationV1,
+	sealedTemplateIdentityGenerationQueueV1,
 	sourceRevisionForTaskCreationV1,
 	type RuntimeTaskCreationAdapterPortsV1,
 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
@@ -335,6 +338,245 @@ assert.match(
 	/Literal \{\{date:YYYY\/MM\/DD\}\} and \{\{taskDescription\}\}\./u,
 );
 assert.doesNotMatch(file.plan.sourceGroups[0].resultingContent, /\{\{title\}\}/u);
+
+const identityPlaceholders = prepareCanonicalTaskCreation(
+	{
+		requestId: 'file-task-identity-placeholders',
+		items: [{
+			itemKey: 'identity-file',
+			description: 'Identity placeholder file',
+			target: {
+				representation: 'file',
+				source: { filePath: 'Tasks/Identity.md', content: null, revision: 'missing' },
+				identityPlaceholderPolicy: 'resolve-operon-id-v1',
+				template: {
+					templateId: 'identity-placeholders',
+					revision: 'sha256:identity-placeholders',
+					content: [
+						'---',
+						'IdentityA: {{operonIdA}}',
+						'Identitya: {{operonIda}}',
+						'---',
+						'- [ ] Parent {{operonIdA}}',
+						'- [ ] Child {{operonId0}} {{parentTask:: {{operonIdA}}}}',
+						'- [ ] Lower {{operonIda}} and upper {{operonIdA}}',
+						'- [ ] Fresh {{operonId}} then {{operonId}} and nine {{operonId9}}',
+						'Date {{date}}',
+						'```md',
+						'- [ ] Literal {{operonIdA}}',
+						'```',
+					].join('\n'),
+				},
+			},
+		}],
+	},
+	createOptions(['fil0002', 'upa0001', 'loa0001', 'num0001', 'new0001', 'new0002', 'num0009']),
+);
+assert.equal(identityPlaceholders.ok, true, identityPlaceholders.ok ? '' : JSON.stringify(identityPlaceholders.blockers));
+if (!identityPlaceholders.ok) throw new Error('Expected identity placeholders to resolve.');
+const identityTask = identityPlaceholders.plan.tasks[0];
+const identityContent = identityPlaceholders.plan.sourceGroups[0].resultingContent;
+assert.equal(identityTask.templateIdentityAllocations?.length, 10);
+assert.notEqual(
+	identityTask.templateIdentityAllocations?.find(allocation => allocation.suffix === 'A')?.operonId,
+	identityTask.templateIdentityAllocations?.find(allocation => allocation.suffix === 'a')?.operonId,
+	'uppercase and lowercase suffixes must remain distinct',
+);
+assert.equal(
+	new Set(identityTask.templateIdentityAllocations?.filter(allocation => allocation.suffix === 'A').map(allocation => allocation.operonId)).size,
+	1,
+	'repeated suffixes must reuse one ID',
+);
+assert.match(identityContent, /\{\{parentTask:: upa0001\}\}/u);
+assert.match(identityContent, /```md\n- \[ \] Literal \{\{operonIdA\}\}\n```/u);
+assert.match(identityContent, /2026-07-24/u, 'existing date variables must still resolve');
+
+const allIdentitySuffixes = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+const allIdentitySuffixAllocations: Array<{ occurrence: number; suffix?: string; operonId: string }> = [];
+let allIdentitySuffixCursor = 0;
+const allIdentitySuffixContent = resolveOperonIdPlaceholders(
+	`---\n---\n- [ ] All suffixes ${allIdentitySuffixes.map(suffix => `{{operonId${suffix}}}`).join(' ')}`,
+	{
+		generateOperonId: () => `x${(allIdentitySuffixCursor++).toString(36).padStart(6, '0')}`,
+		onIdentityAllocation: allocation => allIdentitySuffixAllocations.push(allocation),
+	},
+);
+assert.deepEqual(
+	allIdentitySuffixAllocations.map(allocation => allocation.suffix),
+	allIdentitySuffixes,
+	'every documented numeric, uppercase, and lowercase identity suffix must resolve',
+);
+assert.doesNotMatch(allIdentitySuffixContent, /\{\{operonId/u);
+
+const fileIdentityGraphRequest: CanonicalTaskCreationRequest = {
+	requestId: 'file-task-primary-identity-graph',
+	items: [{
+		itemKey: 'file-identity-graph',
+		description: 'Identity Graph',
+		target: {
+			representation: 'file',
+			source: { filePath: 'Tasks/Identity Graph.md', content: null, revision: 'missing' },
+			identityPlaceholderPolicy: 'resolve-operon-id-v1',
+			template: {
+				templateId: 'file-identity-graph-template',
+				revision: 'sha256:file-identity-graph-template',
+				content: [
+					'---',
+					'operonId: {{operonId1}}',
+					'---',
+					'Context {{title}} {{date}} {{time}} {{datetime}} {{taskDescription}} {{note}} {{dateStarted}} {{dateScheduled}} {{dateDue}} {{status}} {{priority}}',
+					'## Group One',
+					'- [ ] Root A {{operonId:: {{operonIdA}}}} {{parentTask:: {{operonId1}}}}',
+					'- [ ] Child B {{operonId:: {{operonIdB}}}} {{parentTask:: {{operonIdA}}}}',
+					'## Group Two',
+					'- [ ] Root C {{operonId:: {{operonIdC}}}} {{parentTask:: {{operonId1}}}}',
+					'- [ ] Child D {{operonId:: {{operonIdD}}}} {{parentTask:: {{operonIdC}}}}',
+					'## Independent Group',
+					'- [ ] Root E {{operonId:: {{operonIdE}}}}',
+				].join('\n'),
+			},
+		},
+		fields: {
+			note: 'Graph note',
+			dateStarted: '2026-07-20',
+			dateScheduled: '2026-07-25',
+			dateDue: '2026-07-30',
+			status: 'Pipeline 1.Not Started',
+			priority: 'A',
+		},
+	}],
+};
+const fileIdentityGraph = prepareCanonicalTaskCreation(
+	fileIdentityGraphRequest,
+	createOptions(['fil0003', 'gra0001', 'grb0001', 'grc0001', 'grd0001', 'gre0001', 'grf0001']),
+);
+assert.equal(fileIdentityGraph.ok, true, fileIdentityGraph.ok ? '' : JSON.stringify(fileIdentityGraph.blockers));
+if (!fileIdentityGraph.ok) throw new Error('Expected File Task identity graph to resolve.');
+const fileIdentityGraphTask = fileIdentityGraph.plan.tasks[0];
+const fileIdentityGraphContent = fileIdentityGraph.plan.sourceGroups[0].resultingContent;
+assert.equal(fileIdentityGraphTask.operonId, 'fil0003');
+assert.match(fileIdentityGraphContent, /^operonId: fil0003$/mu);
+assert.equal(
+	fileIdentityGraphTask.templateIdentityAllocations
+		?.find(allocation => allocation.suffix === '1')?.operonId,
+	'fil0003',
+	'canonical File Task identity suffix must resolve to the sealed File Task ID',
+);
+const graphInlineTasks = fileIdentityGraphContent.split('\n').flatMap((line, lineNumber) => {
+	const parsed = parseTaskLine(line, lineNumber, 'Tasks/Identity Graph.md', DEFAULT_SETTINGS.keyMappings);
+	return parsed ? [parsed] : [];
+});
+const graphTaskByDescription = new Map(graphInlineTasks.map(task => [task.description, task]));
+const parentOf = (description: string): string | undefined => (
+	graphTaskByDescription.get(description)?.fields.find(field => field.key === 'parentTask')?.value
+);
+assert.equal(graphTaskByDescription.get('Root A')?.operonId, 'gra0001');
+assert.equal(parentOf('Root A'), 'fil0003');
+assert.equal(graphTaskByDescription.get('Child B')?.operonId, 'grb0001');
+assert.equal(parentOf('Child B'), 'gra0001');
+assert.equal(graphTaskByDescription.get('Root C')?.operonId, 'grc0001');
+assert.equal(parentOf('Root C'), 'fil0003');
+assert.equal(graphTaskByDescription.get('Child D')?.operonId, 'grd0001');
+assert.equal(parentOf('Child D'), 'grc0001');
+assert.equal(graphTaskByDescription.get('Root E')?.operonId, 'gre0001');
+assert.equal(parentOf('Root E'), undefined);
+assert.match(
+	fileIdentityGraphContent,
+	/Context Identity Graph 2026-07-24 10:20 2026-07-24T10:20:30 Identity Graph Graph note 2026-07-20 2026-07-25 2026-07-30 Pipeline 1\.Not Started A/u,
+	'all deterministic File Task variables must continue to resolve alongside identity graphs',
+);
+const replayIdentityQueue = [
+	fileIdentityGraphTask.operonId,
+	...sealedTemplateIdentityGenerationQueueV1(
+		fileIdentityGraphRequest.items,
+		new Map([[
+			fileIdentityGraphTask.itemKey,
+			fileIdentityGraphTask.templateIdentityAllocations ?? [],
+		]]),
+	),
+];
+const replayedFileIdentityGraph = prepareCanonicalTaskCreation(
+	fileIdentityGraphRequest,
+	createOptions(replayIdentityQueue),
+);
+assert.equal(
+	replayedFileIdentityGraph.ok,
+	true,
+	replayedFileIdentityGraph.ok ? '' : JSON.stringify(replayedFileIdentityGraph.blockers),
+);
+if (!replayedFileIdentityGraph.ok) throw new Error('Expected sealed File Task identity graph replay to resolve.');
+assert.equal(
+	replayedFileIdentityGraph.plan.sourceGroups[0].resultingContent,
+	fileIdentityGraphContent,
+	'preview/apply replay must preserve every File Task and inline graph identity',
+);
+assert.deepEqual(
+	sealedTemplateIdentityGenerationQueueV1([
+		{
+			itemKey: 'child',
+			description: 'Child',
+			target: { representation: 'file', source: { filePath: 'Child.md', content: null, revision: 'missing' } },
+			parent: { kind: 'local', itemKey: 'parent' },
+		},
+		{
+			itemKey: 'parent',
+			description: 'Parent',
+			target: { representation: 'file', source: { filePath: 'Parent.md', content: null, revision: 'missing' } },
+		},
+	], new Map([
+		['parent', [
+			{ occurrence: 0, suffix: 'A', operonId: 'parenta' },
+			{ occurrence: 1, suffix: 'A', operonId: 'parenta' },
+			{ occurrence: 2, operonId: 'parentb' },
+		]],
+		['child', [{ occurrence: 0, suffix: 'a', operonId: 'childaa' }]],
+	])),
+	['parenta', 'parentb', 'childaa'],
+	'sealed placeholder IDs must replay once per unique suffix in parent-first preparation order',
+);
+assert.deepEqual(
+	sealedTemplateIdentityGenerationQueueV1([
+		{
+			itemKey: 'left',
+			description: 'Left',
+			target: { representation: 'file', source: { filePath: 'Left.md', content: null, revision: 'missing' } },
+			parent: { kind: 'local', itemKey: 'right' },
+		},
+		{
+			itemKey: 'right',
+			description: 'Right',
+			target: { representation: 'file', source: { filePath: 'Right.md', content: null, revision: 'missing' } },
+			parent: { kind: 'local', itemKey: 'left' },
+		},
+	], new Map()),
+	[],
+	'invalid local cycles must remain bounded until canonical validation rejects them',
+);
+
+const invalidIdentityPlaceholder = prepareCanonicalTaskCreation(
+	{
+		requestId: 'invalid-file-task-identity-placeholder',
+		items: [{
+			itemKey: 'invalid-identity',
+			description: 'Invalid identity placeholder',
+			target: {
+				representation: 'file',
+				source: { filePath: 'Tasks/Invalid Identity.md', content: null, revision: 'missing' },
+				identityPlaceholderPolicy: 'resolve-operon-id-v1',
+				template: {
+					templateId: 'invalid-identity-placeholder',
+					revision: 'sha256:invalid-identity-placeholder',
+					content: '---\n---\n- [ ] Invalid {{operonIdAA}}',
+				},
+			},
+		}],
+	},
+	createOptions(['fil0003']),
+);
+assert.equal(invalidIdentityPlaceholder.ok, false);
+if (!invalidIdentityPlaceholder.ok) {
+	assert.ok(invalidIdentityPlaceholder.blockers.some(blocker => blocker.code === 'template-placeholder-unsupported'));
+}
 
 const visibleTemplateKey = (canonicalKey: string): string => (
 	DEFAULT_SETTINGS.keyMappings.find(mapping => mapping.canonicalKey === canonicalKey)

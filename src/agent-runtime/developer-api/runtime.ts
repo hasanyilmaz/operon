@@ -22,6 +22,8 @@ import type {
 	TaskGetRequestV1,
 	TaskGetResultV1,
 	TaskQueryRequestV1,
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
 	TaskQueryResultV1,
 } from '../contracts/v1/context';
 import type {
@@ -485,6 +487,25 @@ function createDeveloperApiSession(
 				)));
 			}
 			return core.tasks.query(snapshot).then(cloneOutput);
+		},
+		filterQuery: (request: TaskFilterQueryRequestV1) => {
+			const decoded = snapshotInput<TaskFilterQueryRequestV1>(request);
+			if (!decoded.ok) {
+				return Promise.resolve(cloneOutput(readFailure(
+					'task-filter-query-result',
+					request,
+					decoded.error,
+				)));
+			}
+			const snapshot = decoded.value;
+			if (!canUse('tasks.filter-query') || !core.tasks.filterQuery) {
+				return Promise.resolve(cloneOutput(readFailure(
+					'task-filter-query-result',
+					snapshot,
+					sessionError(core, options, requested, consumer, 'tasks.filter-query'),
+				)));
+			}
+			return core.tasks.filterQuery(snapshot).then(cloneOutput);
 		},
 		find: (request: TaskFinderRequestV1) => {
 			const decoded = snapshotInput<TaskFinderRequestV1>(request);
@@ -1399,6 +1420,7 @@ type ReadFailureKindV1 =
 	| 'entity-resolution-result'
 	| 'task-get-result'
 	| 'task-query-result'
+	| 'task-filter-query-result'
 	| 'task-finder-result'
 	| 'relationship-result';
 
@@ -1418,6 +1440,11 @@ function readFailure(
 	error: StructuredErrorV1,
 ): TaskQueryResultV1;
 function readFailure(
+	kind: 'task-filter-query-result',
+	request: unknown,
+	error: StructuredErrorV1,
+): TaskFilterQueryResultV1;
+function readFailure(
 	kind: 'task-finder-result',
 	request: unknown,
 	error: StructuredErrorV1,
@@ -1434,6 +1461,7 @@ function readFailure(
 ): EntityResolutionResultV1
 	| TaskGetResultV1
 	| TaskQueryResultV1
+	| TaskFilterQueryResultV1
 	| TaskFinderResultV1
 	| RelationshipResultV1 {
 	return {

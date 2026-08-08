@@ -327,7 +327,8 @@
           "properties": {
             "representation": { "const": "file" },
             "mode": { "const": "configured-default" },
-            "templateId": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$", "x-operon-maxUtf8Bytes": 256 }
+            "templateId": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$", "x-operon-maxUtf8Bytes": 256 },
+            "identityPlaceholderPolicy": { "const": "resolve-operon-id-v1" }
           }
         },
         {
@@ -340,7 +341,8 @@
             "filePath": {
               "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath"
             },
-            "templateId": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$", "x-operon-maxUtf8Bytes": 256 }
+            "templateId": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$", "x-operon-maxUtf8Bytes": 256 },
+            "identityPlaceholderPolicy": { "const": "resolve-operon-id-v1" }
           }
         }
       ]
@@ -1131,6 +1133,59 @@
         "cascade": { "const": false }
       }
     },
+    "adoptSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "source", "operonId", "resultingLine", "sourceDigest", "resultDigest", "locator"],
+      "properties": {
+        "operation": { "const": "adopt-inline" },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["filePath", "lineNumber", "expectedLine"],
+          "properties": {
+            "filePath": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+            "lineNumber": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "expectedLine": { "type": "string", "maxLength": 65536, "x-operon-maxUtf8Bytes": 65536 }
+          }
+        },
+        "statusId": { "type": "string", "minLength": 1, "maxLength": 256, "x-operon-maxUtf8Bytes": 256 },
+        "terminalSourcePolicy": { "const": "reopen" },
+        "operonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" },
+        "resolvedStatusId": { "type": "string", "minLength": 1, "maxLength": 256, "x-operon-maxUtf8Bytes": 256 },
+        "resultingLine": { "type": "string", "maxLength": 65536, "x-operon-maxUtf8Bytes": 65536 },
+        "sourceDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "resultDigest": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256" },
+        "locator": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/inlineLocator" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["statusId"] },
+          "then": { "required": ["resolvedStatusId"] },
+          "else": { "not": { "required": ["resolvedStatusId"] } }
+        }
+      ]
+    },
+    "adoptPreviewIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "source"],
+      "properties": {
+        "operation": { "const": "adopt-inline" },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["filePath", "lineNumber", "expectedLine"],
+          "properties": {
+            "filePath": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/vaultRelativePath" },
+            "lineNumber": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "expectedLine": { "type": "string", "maxLength": 65536, "x-operon-maxUtf8Bytes": 65536 }
+          }
+        },
+        "statusId": { "type": "string", "minLength": 1, "maxLength": 256, "x-operon-maxUtf8Bytes": 256 },
+        "terminalSourcePolicy": { "const": "reopen" }
+      }
+    },
     "mutationSpec": {
       "oneOf": [
         { "$ref": "#/$defs/createSpec" },
@@ -1145,12 +1200,14 @@
         { "$ref": "#/$defs/timerSessionSpec" },
         { "$ref": "#/$defs/convertSpec" },
         { "$ref": "#/$defs/relocateSpec" },
+        { "$ref": "#/$defs/adoptSpec" },
         { "$ref": "#/$defs/deleteSpec" }
       ]
     },
     "mutationPreviewSpec": {
       "oneOf": [
         { "$ref": "#/$defs/mutationSpec" },
+        { "$ref": "#/$defs/adoptPreviewIntent" },
         { "$ref": "#/$defs/relocatePreviewIntent" }
       ]
     },
@@ -1208,6 +1265,7 @@
           "type": "string",
           "enum": [
             "tasks.create.preview",
+            "tasks.adopt.preview",
             "tasks.update.preview",
             "tasks.recurrence.preview",
             "tasks.relationship.preview",
@@ -1239,6 +1297,12 @@
             "not": { "required": ["target"] }
           },
           "else": {
+            "if": { "properties": { "mutationKind": { "const": "task.adopt" } }, "required": ["mutationKind"] },
+            "then": {
+              "properties": { "capability": { "const": "tasks.adopt.preview" }, "spec": { "$ref": "#/$defs/adoptPreviewIntent" } },
+              "not": { "required": ["target"] }
+            },
+            "else": {
             "if": {
               "properties": { "mutationKind": { "const": "timer.control" } },
               "required": ["mutationKind"]
@@ -1255,6 +1319,7 @@
               },
               "then": { "not": { "required": ["target"] } },
               "else": { "required": ["target"] }
+            }
             }
           }
         },
@@ -1422,6 +1487,20 @@
         "templateId": { "type": "string", "minLength": 1, "maxLength": 256, "x-operon-maxUtf8Bytes": 256 },
         "templateDigest": {
           "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+        },
+        "templateIdentityAllocations": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["occurrence", "operonId"],
+            "properties": {
+              "occurrence": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "suffix": { "type": "string", "pattern": "^[0-9A-Za-z]$" },
+              "operonId": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId" }
+            }
+          }
         },
         "resolvedParentOperonId": {
           "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/operonId"
@@ -1717,6 +1796,7 @@
           "type": "string",
           "enum": [
             "tasks.create.preview",
+            "tasks.adopt.preview",
             "tasks.update.preview",
             "tasks.recurrence.preview",
             "tasks.relationship.preview",
@@ -1805,6 +1885,18 @@
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": { "mutationKind": { "const": "task.adopt" } },
+            "required": ["mutationKind"]
+          },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.adopt.preview" },
+              "spec": { "$ref": "#/$defs/adoptSpec" }
+            }
+          }
+        },
         {
           "if": {
             "properties": { "mutationKind": { "const": "task.recurrence" } },

@@ -20,6 +20,7 @@ import {
 	type RelationshipRequestV1,
 	type TaskGetRequestV1,
 	type TaskFinderRequestV1,
+	type TaskFilterQueryRequestV1,
 	type TaskQueryFiltersV1,
 	type TaskQueryRequestV1,
 } from '../contracts/v1/context';
@@ -51,6 +52,7 @@ type RuntimeReadRequestV1 =
 	| TaskGetRequestV1
 	| TaskFinderRequestV1
 	| TaskQueryRequestV1
+	| TaskFilterQueryRequestV1
 	| RelationshipRequestV1
 	| ContextRequestV1
 	| MutationPreviewRequestV1
@@ -99,6 +101,8 @@ export function validateCliRuntimeRequestV1(
 			return validateTaskGetRequestV1(value);
 		case 'tasks.query':
 			return validateTaskQueryRequestV1(value);
+		case 'tasks.filter-query':
+			return validateTaskFilterQueryRequestV1(value);
 		case 'tasks.finder':
 			return validateTaskFinderRequestV1(value);
 		case 'relationships.get':
@@ -145,6 +149,21 @@ export function validateTaskGetRequestV1(value: unknown): ValidatedRequestV1<Tas
 export function validateTaskQueryRequestV1(value: unknown): ValidatedRequestV1<TaskQueryRequestV1> {
 	return validateReadRequest(value, 'task-query', ['filters', 'include', 'limit', 'cursor'], object => (
 		(object.filters === undefined || isTaskQueryFilters(object.filters))
+		&& (object.include === undefined || isHydrationKeys(object.include))
+		&& (object.limit === undefined || isIntegerInRange(object.limit, 1, 250))
+		&& (object.cursor === undefined || isCursor(object.cursor))
+	));
+}
+
+export function validateTaskFilterQueryRequestV1(value: unknown): ValidatedRequestV1<TaskFilterQueryRequestV1> {
+	return validateReadRequest(value, 'task-filter-query', ['filterSetId', 'scope', 'include', 'limit', 'cursor'], object => (
+		isBoundedNonEmptyString(object.filterSetId, 256)
+		&& (object.scope === undefined || (
+			isExactObject(object.scope, ['kind', 'path'])
+			&& isEnum(object.scope.kind, ['exact-file', 'folder-tree'] as const)
+			&& typeof object.scope.path === 'string'
+			&& validateVaultRelativePathV1(object.scope.path) === null
+		))
 		&& (object.include === undefined || isHydrationKeys(object.include))
 		&& (object.limit === undefined || isIntegerInRange(object.limit, 1, 250))
 		&& (object.cursor === undefined || isCursor(object.cursor))

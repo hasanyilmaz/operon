@@ -21,6 +21,8 @@ import {
 	type TaskGetResultV1,
 	type TaskFinderRequestV1,
 	type TaskFinderResultV1,
+	type TaskFilterQueryRequestV1,
+	type TaskFilterQueryResultV1,
 	type TaskQueryRequestV1,
 	type TaskQueryResultV1,
 } from '../contracts/v1/context';
@@ -63,6 +65,7 @@ import {
 	validateTaskGetRequestV1,
 	validateTaskFinderRequestV1,
 	validateTaskQueryRequestV1,
+	validateTaskFilterQueryRequestV1,
 	validateTimerReadRequestV1,
 } from './context-request-validator';
 
@@ -86,6 +89,7 @@ export interface RuntimeFacadePortsV1 {
 	resolveEntity?(request: EntityResolveRequestV1, context?: RuntimeInvocationContextV1): Promise<EntityResolutionResultV1>;
 	getTask?(request: TaskGetRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskGetResultV1>;
 	queryTasks?(request: TaskQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskQueryResultV1>;
+	filterQueryTasks?(request: TaskFilterQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFilterQueryResultV1>;
 	findTasks?(request: TaskFinderRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFinderResultV1>;
 	getRelationships?(request: RelationshipRequestV1, context?: RuntimeInvocationContextV1): Promise<RelationshipResultV1>;
 	buildContext?(request: ContextRequestV1, context?: RuntimeInvocationContextV1): Promise<ContextPackV1>;
@@ -307,6 +311,19 @@ export function createOperonAgentRuntimeFacadeV1(
 		}
 	};
 
+	const filterQueryTasks = async (request: TaskFilterQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFilterQueryResultV1> => {
+		const decoded = validateTaskFilterQueryRequestV1(request);
+		if (!decoded.ok) return readFailure('task-filter-query-result', request, ports, 'invalid-request');
+		if (!ports.filterQueryTasks || !isPublished('tasks.filter-query')) {
+			return readFailure('task-filter-query-result', decoded.value, ports, 'capability-unavailable');
+		}
+		try {
+			return await ports.filterQueryTasks(decoded.value, context);
+		} catch {
+			return readFailure('task-filter-query-result', decoded.value, ports, 'internal-error');
+		}
+	};
+
 	const findTasks = async (request: TaskFinderRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFinderResultV1> => {
 		const decoded = validateTaskFinderRequestV1(request);
 		if (!decoded.ok) return readFailure('task-finder-result', request, ports, 'invalid-request');
@@ -438,7 +455,7 @@ export function createOperonAgentRuntimeFacadeV1(
 		snapshot: catalogSnapshot,
 	});
 	const entities = Object.freeze({ resolve: resolveEntity });
-	const tasks = Object.freeze({ get: getTask, query: queryTasks, find: findTasks });
+	const tasks = Object.freeze({ get: getTask, query: queryTasks, filterQuery: filterQueryTasks, find: findTasks });
 	const relationships = Object.freeze({ get: getRelationships });
 	const context = Object.freeze({ build: buildContext });
 	const timers = Object.freeze({ read: readTimer });
@@ -531,6 +548,7 @@ type NonContextReadResultKindV1 =
 	| 'entity-resolution-result'
 	| 'task-get-result'
 	| 'task-query-result'
+	| 'task-filter-query-result'
 	| 'task-finder-result'
 	| 'relationship-result';
 
@@ -553,6 +571,12 @@ function readFailure(
 	code: 'invalid-request' | 'capability-unavailable' | 'internal-error',
 ): TaskQueryResultV1;
 function readFailure(
+	kind: 'task-filter-query-result',
+	request: unknown,
+	ports: RuntimeFacadePortsV1,
+	code: 'invalid-request' | 'capability-unavailable' | 'internal-error',
+): TaskFilterQueryResultV1;
+function readFailure(
 	kind: 'task-finder-result',
 	request: unknown,
 	ports: RuntimeFacadePortsV1,
@@ -569,7 +593,7 @@ function readFailure(
 	request: unknown,
 	ports: RuntimeFacadePortsV1,
 	code: 'invalid-request' | 'capability-unavailable' | 'internal-error',
-): EntityResolutionResultV1 | TaskGetResultV1 | TaskQueryResultV1 | TaskFinderResultV1 | RelationshipResultV1 {
+): EntityResolutionResultV1 | TaskGetResultV1 | TaskQueryResultV1 | TaskFilterQueryResultV1 | TaskFinderResultV1 | RelationshipResultV1 {
 	const base = {
 		contractVersion: CONTRACT_VERSION_V1,
 		requestId: readRequestId(request) ?? 'invalid-request',
@@ -585,6 +609,7 @@ function readFailure(
 		case 'entity-resolution-result': return base;
 		case 'task-get-result': return base;
 		case 'task-query-result': return base;
+		case 'task-filter-query-result': return base;
 		case 'task-finder-result': return base;
 		case 'relationship-result': return base;
 	}

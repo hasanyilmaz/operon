@@ -196,6 +196,11 @@ export async function prepareRuntimeTaskCreationV1(
 	effectiveAt?: string,
 	activeItemRefs?: ReadonlySet<string>,
 	sealedSeriesIds?: ReadonlyMap<string, string>,
+	sealedTemplateIdentityAllocations?: ReadonlyMap<string, readonly {
+		occurrence: number;
+		suffix?: string;
+		operonId: string;
+	}[]>,
 ): Promise<RuntimeTaskCreationPreparationV1> {
 	const settings = ports.settings();
 	const creationFieldCatalog = [...ports.creationFieldCatalog()];
@@ -334,7 +339,13 @@ export async function prepareRuntimeTaskCreationV1(
 		ids: ReadonlyMap<string, string> | undefined,
 	) => {
 		const sealedIdQueue = ids
-			? itemsForPreparation.map(item => ids.get(item.itemRef) ?? '')
+			? [
+				...itemsForPreparation.map(item => ids.get(item.itemRef) ?? ''),
+				...sealedTemplateIdentityGenerationQueueV1(
+					canonicalItems,
+					sealedTemplateIdentityAllocations,
+				),
+			]
 			: [];
 		let generatedIndex = 0;
 		return prepareCanonicalTaskCreation({ requestId, items: canonicalItems }, {
@@ -577,6 +588,50 @@ export async function prepareRuntimeTaskCreationV1(
 		sourceGroupGraph,
 		recurrenceResources,
 	};
+}
+
+export function sealedTemplateIdentityGenerationQueueV1(
+	items: readonly CanonicalTaskCreationItem[],
+	allocationsByItem: ReadonlyMap<string, readonly {
+		occurrence: number;
+		suffix?: string;
+		operonId: string;
+	}[]> | undefined,
+): string[] {
+	if (!allocationsByItem) return [];
+	const itemsByKey = new Map(items.map(item => [item.itemKey, item]));
+	const orderedKeys = buildCanonicalParentFirstOrderV1(items, itemsByKey);
+	return orderedKeys.flatMap(itemKey => {
+		const seenSuffixes = new Set<string>();
+		return [...(allocationsByItem.get(itemKey) ?? [])]
+			.sort((left, right) => left.occurrence - right.occurrence)
+			.flatMap(allocation => {
+				if (allocation.suffix === undefined) return [allocation.operonId];
+				if (seenSuffixes.has(allocation.suffix)) return [];
+				seenSuffixes.add(allocation.suffix);
+				return [allocation.operonId];
+			});
+	});
+}
+
+function buildCanonicalParentFirstOrderV1(
+	items: readonly CanonicalTaskCreationItem[],
+	itemsByKey: ReadonlyMap<string, CanonicalTaskCreationItem>,
+): string[] {
+	const visited = new Set<string>();
+	const visiting = new Set<string>();
+	const ordered: string[] = [];
+	const visit = (itemKey: string): void => {
+		if (visited.has(itemKey) || visiting.has(itemKey)) return;
+		visiting.add(itemKey);
+		const parent = itemsByKey.get(itemKey)?.parent;
+		if (parent?.kind === 'local' && itemsByKey.has(parent.itemKey)) visit(parent.itemKey);
+		visiting.delete(itemKey);
+		visited.add(itemKey);
+		ordered.push(itemKey);
+	};
+	for (const item of items) visit(item.itemKey);
+	return ordered;
 }
 
 function createSealedEffects(
@@ -1046,6 +1101,9 @@ function createSealedEffect(
 				templateDigest: task.template.revision,
 			}
 			: {}),
+		...(task.templateIdentityAllocations === undefined
+			? {}
+			: { templateIdentityAllocations: task.templateIdentityAllocations.map(allocation => ({ ...allocation })) }),
 		...(task.parentOperonId ? { resolvedParentOperonId: task.parentOperonId } : {}),
 		resolvedRelatedOperonIds: [...task.relatedOperonIds],
 		...(task.resolvedDependencies.length > 0
@@ -1190,6 +1248,9 @@ async function adaptCreateItem(
 				representation: 'file',
 				source: snapshot,
 				...(template ? { template } : {}),
+				...('identityPlaceholderPolicy' in item.target && item.target.identityPlaceholderPolicy
+					? { identityPlaceholderPolicy: item.target.identityPlaceholderPolicy }
+					: {}),
 			},
 		fields,
 		...(Object.keys(runtimeFields).length > 0
