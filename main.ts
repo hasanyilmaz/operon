@@ -248,7 +248,10 @@ import {
 	runtimeSemanticTransitionStepIdsV1,
 	verifyRuntimeSemanticTransitionPostflightV1,
 	getRuntimeTaskFieldMutationPostflightRequirementsV1,
+	refreshRuntimeInlineTaskUpdateSettlementEvidenceV1,
+	resolveRuntimeInlineTaskUpdateSettlementEvidenceV1,
 	resolveRuntimeTaskFieldMutationPostflightEvidenceV1,
+	runtimeInlineTaskUpdateSettlementEvidenceSourceV1,
 	verifyRuntimeTaskFieldMutationPrimaryPostflightV1,
 	guardRuntimeTimerControlV1,
 	guardRuntimeInlineRelocationV1,
@@ -5757,6 +5760,20 @@ export default class OperonPlugin extends Plugin {
 			commitMutation: async (request, prepared, effectiveAt) => (
 				await this.commitAgentRuntimeTaskMutation(request.plan.spec, prepared, effectiveAt)
 			),
+			refreshMutationCommitEvidence: async (preparedMutation, commit) => {
+				const source = runtimeInlineTaskUpdateSettlementEvidenceSourceV1(
+					preparedMutation,
+					commit,
+				);
+				if (!source) return commit;
+				const observed = await this.readAgentRuntimeMutationSource(source.resourceKey);
+				return refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
+					preparedMutation,
+					commit,
+					observed.content,
+					this.settings.keyMappings,
+				);
+			},
 				verifyMutation: async (request, prepared, _postflightRevision, commit) => (
 					await this.verifyAgentRuntimeTaskMutation(request.plan.createdAt, prepared, commit)
 				),
@@ -8452,6 +8469,7 @@ export default class OperonPlugin extends Plugin {
 			};
 		}
 		const committedContent = writeResult.committedContent ?? prepared.task.sourceContent;
+		const committedRevision = sourceRevisionForTaskCreationV1(filePath, committedContent);
 		const groupResults: RuntimePreparedMutationCommitV1['groupResults'][number][] = [{
 			groupId,
 			status: 'committed',
@@ -8466,7 +8484,7 @@ export default class OperonPlugin extends Plugin {
 				{
 					resourceKind: 'task-source',
 					resourceKey: filePath,
-					revision: sourceRevisionForTaskCreationV1(filePath, committedContent),
+					revision: committedRevision,
 				},
 			],
 		}];
@@ -8553,6 +8571,17 @@ export default class OperonPlugin extends Plugin {
 				groupResults,
 			),
 			affectedFilePaths,
+			...(prepared.operation === 'update'
+			&& prepared.task.locator.representation === 'inline'
+			&& writeResult.committedContent !== undefined
+				? {
+					primaryTaskSourceCommitEvidence: {
+						resourceKey: filePath,
+						content: committedContent,
+						revision: committedRevision,
+					},
+				}
+				: {}),
 			};
 		}
 
@@ -9186,11 +9215,29 @@ export default class OperonPlugin extends Plugin {
 		const observedPrimarySource = await this.readAgentRuntimeMutationSource(
 			prepared.task.locator.filePath,
 		);
-		const primaryPostflightEvidence = resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
+		const exactPrimaryPostflightEvidence = resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
 			prepared.task.locator.filePath,
 			commit.groupResults.flatMap(group => group.resourceRevisions ?? []),
 			observedPrimarySource.content,
 		);
+		const settlementEvidence = commit.primaryTaskSourceCommitEvidence
+			&& observedPrimarySource.content !== null
+			? resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
+				prepared,
+				commit.primaryTaskSourceCommitEvidence.content,
+				commit.primaryTaskSourceCommitEvidence.revision,
+				observedPrimarySource.content,
+				this.settings.keyMappings,
+			)
+			: null;
+		const primaryPostflightEvidence = exactPrimaryPostflightEvidence
+			? {
+				...exactPrimaryPostflightEvidence,
+				...(settlementEvidence?.datetimeModified
+					? { settlementDatetimeModified: settlementEvidence.datetimeModified }
+					: {}),
+			}
+			: null;
 		if (!primaryPostflightEvidence) return false;
 		if (!verifyRuntimeTaskFieldMutationPrimaryPostflightV1(
 			prepared,

@@ -1,0 +1,67 @@
+{
+  "$schema": "./public-v1-external-freeze.schema.json",
+  "freezeVersion": 1,
+  "kind": "operon-public-v1-external-freeze",
+  "state": "accepted",
+  "runtime": {
+    "contractVersion": 1,
+    "contractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b"
+  },
+  "externalCliBinding": {
+    "path": "contracts/agent-runtime/releases/3.1.0/published-cli-v1.json",
+    "bytes": 18715,
+    "sha256": "85d693731d538e30cc983d890b4d8e9df5ff7b225e21795dedd77b02c9ce9932",
+    "bindingAggregateSha256": "abd295c01ba40115a2e4e8855429a7ba5ab69ea8a69470fecf57dbbf27f13f4a"
+  },
+  "cli": {
+    "packageName": "@stratejya/operon-cli",
+    "packageVersion": "1.0.9",
+    "tarballSha256": "13d537a752690b8bdd6f0a5afdb64d50e7dae82653e0f1b13d79f5a26b987225"
+  },
+  "pluginArtifact": {
+    "version": "3.1.1",
+    "files": [
+      {
+        "path": "main.js",
+        "bytes": 4355117,
+        "sha256": "e9a260e722f53fb91dc1703e4e67fd7d2b9ea173e6865f10452461aefb7d95b7"
+      },
+      {
+        "path": "manifest.json",
+        "bytes": 378,
+        "sha256": "6987accc78798a8a863304bb8b6bd00391335892edfc8570dea7cbeedcdc0d62"
+      },
+      {
+        "path": "styles.css",
+        "bytes": 877220,
+        "sha256": "17fa6e91927174700e6439231188eb87ae3a243d8484eeebd1e9060b920137fa"
+      }
+    ]
+  },
+  "audit": {
+    "validation": {
+      "command": "npm run release:audit-policy",
+      "status": "passed",
+      "result": {
+        "status": "accepted-clean",
+        "productionVulnerabilities": 0,
+        "developmentVulnerabilities": 0,
+        "directRoot": "eslint-plugin-obsidianmd"
+      }
+    }
+  },
+  "pairedReleaseAcceptance": {
+    "evidence": {
+      "path": "contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json",
+      "bytes": 4538,
+      "sha256": "eeb0eeaefef9aa3937a5d50de6bfc535c7b23d12e449c5b174f769e292e27008"
+    },
+    "scope": "plugin-local-hosted-and-paired-automated"
+  },
+  "releaseAcceptance": {
+    "mode": "automated-validation",
+    "status": "accepted",
+    "candidateCommit": "fdcdd251709f9bf37a2333812f8517c58d8a6389"
+  },
+  "inputsAggregateSha256": "6efeb8ac0184ed4b146439d4abfefb5ef8365db19d3c696d9317dd7fb8aebb84"
+}

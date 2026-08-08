@@ -28,6 +28,37 @@ import {
 } from '../../core/reminder-rules';
 import { composeStatusValue } from '../../core/workflow-status-value';
 import { canonicalizeLocalDatetime } from '../../core/local-time';
+import { parseTaskLine } from '../../core/parser';
+import type { KeyMapping } from '../../types/settings';
+import type {
+	RuntimePreparedMutationCommitV1,
+	RuntimePreparedMutationV1,
+} from './mutation-gateway';
+
+const STRICT_LOCAL_DATETIME_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/u;
+
+function parseStrictCanonicalLocalDatetime(value: string): string | null {
+	const match = STRICT_LOCAL_DATETIME_RE.exec(value);
+	if (!match) return null;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const hour = Number(match[4]);
+	const minute = Number(match[5]);
+	const second = Number(match[6] ?? 0);
+	if (
+		year < 1
+		|| month < 1
+		|| month > 12
+		|| hour > 23
+		|| minute > 59
+		|| second > 59
+	) return null;
+	const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+	const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ?? 0;
+	if (day < 1 || day > daysInMonth) return null;
+	return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${String(second).padStart(2, '0')}`;
+}
 
 export interface RuntimeExactTaskMutationSnapshotV1 {
 	readonly operonId: string;
@@ -85,6 +116,8 @@ export interface RuntimeTaskFieldMutationPostflightRequirementsV1 {
 export interface RuntimeTaskFieldMutationPostflightEvidenceV1 {
 	readonly committedSourceRevision: string;
 	readonly observedSourceRevision: string;
+	/** Exact later inline timestamp proven by bounded settlement reconciliation. */
+	readonly settlementDatetimeModified?: string;
 }
 
 export interface RuntimeTaskUpdateBatchItemPreparationV1 {
@@ -137,6 +170,155 @@ export function resolveRuntimeTaskFieldMutationPostflightEvidenceV1(
 	return {
 		committedSourceRevision,
 		observedSourceRevision,
+	};
+}
+
+export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
+	prepared: RuntimeTaskFieldMutationPreparationV1,
+	committedSourceContent: string,
+	committedSourceRevision: string,
+	observedSourceContent: string,
+	keyMappings: readonly KeyMapping[],
+): { revision: string; datetimeModified?: string } | null {
+	if (
+		prepared.operation !== 'update'
+		|| prepared.task.locator.representation !== 'inline'
+		|| sha256HexV1(committedSourceContent) !== committedSourceRevision
+	) return null;
+	if (observedSourceContent === committedSourceContent) {
+		return { revision: sha256HexV1(observedSourceContent) };
+	}
+	const lineNumber = prepared.task.locator.lineNumber;
+	const committedLines = committedSourceContent.split('\n');
+	const observedLines = observedSourceContent.split('\n');
+	if (
+		committedLines.length !== observedLines.length
+		|| lineNumber < 0
+		|| lineNumber >= committedLines.length
+	) return null;
+	for (let index = 0; index < committedLines.length; index++) {
+		if (index !== lineNumber && committedLines[index] !== observedLines[index]) return null;
+	}
+	const filePath = prepared.task.locator.filePath;
+	const committedLine = committedLines[lineNumber] ?? '';
+	const observedLine = observedLines[lineNumber] ?? '';
+	const committedTask = parseTaskLine(committedLine, lineNumber, filePath, [...keyMappings]);
+	const observedTask = parseTaskLine(observedLine, lineNumber, filePath, [...keyMappings]);
+	if (
+		!committedTask
+		|| !observedTask
+		|| committedTask.operonId !== prepared.task.operonId
+		|| observedTask.operonId !== prepared.task.operonId
+	) return null;
+	const committedModified = committedTask.fields.filter(field => field.key === 'datetimeModified');
+	const observedModified = observedTask.fields.filter(field => field.key === 'datetimeModified');
+	if (committedModified.length !== 1 || observedModified.length !== 1) return null;
+	const committedField = committedModified[0];
+	const observedField = observedModified[0];
+	const expectedModified = prepared.fieldValues['datetimeModified'] ?? '';
+	const committedCanonical = committedField
+		? parseStrictCanonicalLocalDatetime(committedField.value)
+		: null;
+	const observedCanonical = observedField
+		? parseStrictCanonicalLocalDatetime(observedField.value)
+		: null;
+	if (
+		!committedField
+		|| !observedField
+		|| committedField.sourceKey !== observedField.sourceKey
+		|| committedCanonical !== expectedModified
+		|| observedCanonical !== observedField.value
+		|| observedCanonical.localeCompare(committedCanonical) <= 0
+	) return null;
+	const restoredObservedLine = [
+		observedLine.slice(0, observedField.valueRange.from),
+		committedField.rawValue,
+		observedLine.slice(observedField.valueRange.to),
+	].join('');
+	return restoredObservedLine === committedLine
+		? {
+			revision: sha256HexV1(observedSourceContent),
+			datetimeModified: observedCanonical,
+		}
+		: null;
+}
+
+export function resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+	prepared: RuntimeTaskFieldMutationPreparationV1,
+	committedSourceContent: string,
+	committedSourceRevision: string,
+	observedSourceContent: string,
+	keyMappings: readonly KeyMapping[],
+): string | null {
+	return resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
+		prepared,
+		committedSourceContent,
+		committedSourceRevision,
+		observedSourceContent,
+		keyMappings,
+	)?.revision ?? null;
+}
+
+export function runtimeInlineTaskUpdateSettlementEvidenceSourceV1(
+	preparedMutation: RuntimePreparedMutationV1,
+	commit: RuntimePreparedMutationCommitV1,
+): { preparation: RuntimeTaskFieldMutationPreparationV1; resourceKey: string } | null {
+	const prepared = preparedMutation.token as RuntimeTaskFieldMutationPreparationV1;
+	const evidence = commit.primaryTaskSourceCommitEvidence;
+	if (
+		!prepared
+		|| prepared.kind !== 'task-fields'
+		|| prepared.operation !== 'update'
+		|| prepared.task.locator.representation !== 'inline'
+		|| !evidence
+		|| evidence.resourceKey !== prepared.task.locator.filePath
+		|| sha256HexV1(evidence.content) !== evidence.revision
+	) return null;
+	const matchingResources = commit.groupResults.flatMap(
+		group => group.resourceRevisions ?? [],
+	).filter(resource => (
+		resource.resourceKind === 'task-source'
+		&& resource.resourceKey === evidence.resourceKey
+	));
+	if (
+		matchingResources.length !== 1
+		|| matchingResources[0]?.revision !== evidence.revision
+	) return null;
+	return { preparation: prepared, resourceKey: evidence.resourceKey };
+}
+
+export function refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
+	preparedMutation: RuntimePreparedMutationV1,
+	commit: RuntimePreparedMutationCommitV1,
+	observedSourceContent: string | null,
+	keyMappings: readonly KeyMapping[],
+): RuntimePreparedMutationCommitV1 {
+	const source = runtimeInlineTaskUpdateSettlementEvidenceSourceV1(preparedMutation, commit);
+	const evidence = commit.primaryTaskSourceCommitEvidence;
+	if (!source || !evidence || observedSourceContent === null) return commit;
+	const revision = resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+		source.preparation,
+		evidence.content,
+		evidence.revision,
+		observedSourceContent,
+		keyMappings,
+	);
+	if (!revision || revision === evidence.revision) return commit;
+	return {
+		...commit,
+		groupResults: commit.groupResults.map(group => ({
+			...group,
+			...(group.resourceRevisions
+				? {
+					resourceRevisions: group.resourceRevisions.map(resource => (
+						resource.resourceKind === 'task-source'
+						&& resource.resourceKey === evidence.resourceKey
+							? { ...resource, revision }
+							: resource
+					)),
+				}
+				: {}),
+		})),
 	};
 }
 
@@ -901,15 +1083,23 @@ export function verifyRuntimeTaskFieldMutationPrimaryPostflightV1(
 			if (task.checkbox !== expected) return false;
 		} else {
 			const observed = task.fieldValues[field] ?? '';
+			const boundedInlineSettlement = field === 'datetimeModified'
+				&& task.locator.representation === 'inline'
+				&& evidence?.settlementDatetimeModified === observed;
 			if (
 				observed !== expected
 				&& !(
 					field === 'datetimeModified'
-					&& task.locator.representation === 'file'
-					&& observed.localeCompare(expected) > 0
 					&& evidence !== undefined
 					&& /^[a-f0-9]{64}$/u.test(evidence.committedSourceRevision)
 					&& evidence.observedSourceRevision === evidence.committedSourceRevision
+					&& parseStrictCanonicalLocalDatetime(observed) === observed
+					&& parseStrictCanonicalLocalDatetime(expected) === expected
+					&& observed.localeCompare(expected) > 0
+					&& (
+						task.locator.representation === 'file'
+						|| boundedInlineSettlement
+					)
 				)
 			) return false;
 		}

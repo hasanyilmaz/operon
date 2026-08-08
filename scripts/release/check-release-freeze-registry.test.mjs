@@ -6,13 +6,124 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { canonicalJson } from './check-accepted-freeze.mjs';
+
 import {
+	assertAutomatedReleaseEvidence,
 	assertReleaseArtifactMatchesFreeze,
 	checkCandidateFreezeRegistry,
 	checkReleaseFreezeRegistry,
 	readReleaseArtifactIdentity,
 	RELEASE_FREEZE_STALE,
 } from './check-release-freeze-registry.mjs';
+
+test('automated release evidence binds one exact local, hosted, and Windows identity without live claims', () => {
+	const candidateCommit = 'a'.repeat(40);
+	const artifact = {
+		version: '3.1.1',
+		files: [
+			{ path: 'main.js', bytes: 10, sha256: '1'.repeat(64) },
+			{ path: 'manifest.json', bytes: 20, sha256: '2'.repeat(64) },
+			{ path: 'styles.css', bytes: 30, sha256: '3'.repeat(64) },
+		],
+	};
+	const artifactAggregateSha256 = createHash('sha256')
+		.update(canonicalJson(artifact))
+		.digest('hex');
+	const binding = { source: { commit: 'b'.repeat(40) } };
+	const cliCandidateCommit = 'd'.repeat(40);
+	const freeze = {
+		runtime: { contractVersion: 1, contractDigest: 'c'.repeat(64) },
+		pluginArtifact: artifact,
+		releaseAcceptance: {
+			mode: 'automated-validation',
+			status: 'accepted',
+			candidateCommit,
+		},
+	};
+	const evidence = {
+		$schema: './public-v1-external-freeze.schema.json#/$defs/pairedReleaseEvidence',
+		evidenceVersion: 2,
+		kind: 'operon-public-v1-paired-release-evidence',
+		state: 'paired-release-accepted',
+		runtime: structuredClone(freeze.runtime),
+		acceptance: {
+			mode: 'automated-validation',
+			scope: 'release-only-packaging',
+			status: 'accepted',
+			candidateCommit,
+		},
+		plugin: {
+			version: '3.1.1',
+			productionCandidateCommit: candidateCommit,
+			artifact: structuredClone(artifact),
+			validation: {
+				local: {
+					candidateCommit,
+					trackedClean: true,
+					node: '24.18.0',
+					npm: '11.12.1',
+					npmCi: 'passed',
+					checkCandidate: 'passed',
+					phase5: { passed: 1526, total: 1526 },
+					releaseGuard: 'passed-candidate-mode',
+					audit: { status: 'accepted-clean', productionFindings: 0, developmentFindings: 0 },
+					artifactAggregateSha256,
+				},
+				hosted: {
+					candidateCommit,
+					ci: { runId: 1, jobId: 6, headSha: candidateCommit, status: 'success' },
+					codeql: { runId: 2, headSha: candidateCommit, status: 'success' },
+					artifactAggregateSha256,
+				},
+			},
+		},
+		cli: {
+			candidateCommit: cliCandidateCommit,
+			integratedCommit: binding.source.commit,
+			integratedTree: 'e'.repeat(40),
+			treeMatchesCandidate: true,
+		},
+		pairedWindowsValidation: {
+			runId: 3,
+			windowsPairJobId: 4,
+			pluginCommit: candidateCommit,
+			cliCandidateCommit,
+			pluginNative: { tests: 22, failed: 0, cancelled: 0, skipped: 0 },
+			cliHosted: { assertions: 4, skipped: 0 },
+			trackedClean: true,
+			status: 'passed',
+			artifactAggregateSha256,
+		},
+		historicalLiveBaseline: {
+			scope: 'historical-runtime-v1-baseline-only',
+			pluginVersion: '3.1.0',
+			cliVersion: '1.0.9',
+			freezePath: 'contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.json',
+			freezeSha256: '85cf7459987ecd7aa18fdae06fcea08acbbe1318189e3edb2557c60aa3d5abe4',
+			evidencePath: 'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
+			evidenceSha256: '3352c360c9a2ddd01c3ab622f0263c61bec15f1e83b8ac0c669e5f9b64a35ab5',
+		},
+		limitations: {
+			liveDeployment: 'not-run',
+			manualAcceptance: 'not-run-not-required',
+			publishedCliLiveMutationSuite: 'not-rerun',
+			cliInstalledInLiveVault: false,
+		},
+	};
+	assert.equal(assertAutomatedReleaseEvidence({ freeze, evidence, binding }), artifactAggregateSha256);
+
+	for (const mutate of [
+		input => { input.plugin.deployment = {}; },
+		input => { input.plugin.validation.hosted.codeql.status = 'failed'; },
+		input => { input.pairedWindowsValidation.pluginNative.skipped = 1; },
+		input => { input.plugin.validation.local.artifactAggregateSha256 = 'f'.repeat(64); },
+	]) {
+		const drift = structuredClone(evidence);
+		mutate(drift);
+		assert.throws(() => assertAutomatedReleaseEvidence({ freeze, evidence: drift, binding }));
+	}
+});
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -22,10 +133,14 @@ test('candidate registry validates historical byte identity and current paired e
 		'contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.json',
 		'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
 		'contracts/agent-runtime/releases/3.1.0/published-cli-v1.json',
+		'contracts/agent-runtime/releases/3.1.1/public-v1-external-freeze.json',
+		'contracts/agent-runtime/releases/3.1.1/public-v1-external-freeze.schema.json',
+		'contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json',
 	];
 	const before = await Promise.all(protectedPaths.map(relativePath => readFile(path.join(pluginRoot, relativePath))));
 	const result = await checkCandidateFreezeRegistry({ pluginRoot });
-	assert.equal(result.registry.releases.length, 2);
+	assert.equal(result.registry.releases.length, 3);
+	assert.equal(result.freeze.releaseAcceptance.mode, 'automated-validation');
 	assert.equal(result.evidence.limitations.publishedCliLiveMutationSuite, 'not-rerun');
 	assert.equal(result.evidence.limitations.cliInstalledInLiveVault, false);
 	const after = await Promise.all(protectedPaths.map(relativePath => readFile(path.join(pluginRoot, relativePath))));
@@ -41,7 +156,7 @@ test('candidate registry accepts working artifact drift and absence', async () =
 			rm(path.join(root, 'styles.css')),
 		]);
 		const result = await checkCandidateFreezeRegistry({ pluginRoot: root });
-		assert.equal(result.freeze.pluginArtifact.version, '3.1.0');
+		assert.equal(result.freeze.pluginArtifact.version, '3.1.1');
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
@@ -133,6 +248,7 @@ test('release registry maps registry and historical byte drift to stale', async 
 		'contracts/agent-runtime/public-v1-release-freezes.json',
 		'contracts/agent-runtime/public-v1-live-acceptance.json',
 		'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
+		'contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json',
 	]) {
 		const root = await createFixture();
 		try {
@@ -150,14 +266,14 @@ test('release registry maps registry and historical byte drift to stale', async 
 test('release registry rejects self-consistent current evidence and registry drift', async () => {
 	const root = await createFixture();
 	try {
-		const evidencePath = 'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json';
+		const evidencePath = 'contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json';
 		const registryPath = 'contracts/agent-runtime/public-v1-release-freezes.json';
 		const evidence = JSON.parse(await readFile(path.join(root, evidencePath), 'utf8'));
 		evidence.limitations.cliInstalledInLiveVault = true;
 		const evidenceBytes = Buffer.from(`${JSON.stringify(evidence, null, 2)}\n`);
 		await writeFile(path.join(root, evidencePath), evidenceBytes);
 		const registry = JSON.parse(await readFile(path.join(root, registryPath), 'utf8'));
-		const identity = registry.releases[1].files.find(file => file.path === evidencePath);
+		const identity = registry.releases[2].files.find(file => file.path === evidencePath);
 		identity.bytes = evidenceBytes.byteLength;
 		identity.sha256 = createHash('sha256').update(evidenceBytes).digest('hex');
 		await writeFile(path.join(root, registryPath), `${JSON.stringify(registry, null, 2)}\n`, 'utf8');
@@ -203,6 +319,9 @@ async function createFixture() {
 		'contracts/agent-runtime/releases/3.1.0/paired-release-evidence.json',
 		'contracts/agent-runtime/releases/3.1.0/published-cli-v1.json',
 		'contracts/agent-runtime/releases/3.1.0/published-cli-v1.schema.json',
+		'contracts/agent-runtime/releases/3.1.1/public-v1-external-freeze.json',
+		'contracts/agent-runtime/releases/3.1.1/public-v1-external-freeze.schema.json',
+		'contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json',
 	];
 	for (const relativePath of files) {
 		await mkdir(path.dirname(path.join(root, relativePath)), { recursive: true });

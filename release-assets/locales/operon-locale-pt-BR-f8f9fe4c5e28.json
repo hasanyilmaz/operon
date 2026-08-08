@@ -2837,7 +2837,7 @@
       "repeatWeekdayShortSa": "sáb",
       "repeatWeekdayShortSu": "dom",
       "repeatWeekdayShortTh": "qui",
-      "repeatWeekdayShortTu": "quarta",
+      "repeatWeekdayShortTu": "ter",
       "repeatWeekdayShortWe": "qua",
       "repeatWeekdays": "Dias da semana",
       "replayTaskTimer": "Reproduzir cronômetro da tarefa",
@@ -2973,5 +2973,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "682ca1514371990d6dfd14821a1afa82e0fca0602f7c564447136f1c05a6ce91"
+  "sourceVersion": "2caf29ea190b48c498fb80f2cea07cca975de77c3614e7cb91529fb383e1d7cf"
 }

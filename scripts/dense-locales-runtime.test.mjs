@@ -27,6 +27,7 @@ async function loadDenseRuntime(t) {
 		stdin: {
 			contents: [
 				"export { activateI18nLocale, getCurrentLang, getTranslations, initI18n, installI18nLocale, resolveSupportedLocale, t } from './src/core/i18n';",
+				"export { formatRepeatRuleSummaryI18n } from './src/core/repeat-rule-i18n';",
 				"export { normalizeColorPalette } from './src/core/color-palette';",
 				"export { default as densePack } from './src/generated/dense-locales.json';",
 			].join('\n'),
@@ -129,6 +130,23 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 		assert.equal(runtime.getCurrentLang(), 'pt-BR', locale);
 	}
 	assert.equal(runtime.resolveSupportedLocale('pt-PT'), null);
+	runtime.initI18n(undefined, 'pt-BR');
+	assert.equal(
+		runtime.t('taskEditor', 'repeatWeekdayShortTu'),
+		'ter',
+		'Brazilian Portuguese recurrence picker labels Tuesday correctly',
+	);
+	assert.equal(
+		runtime.formatRepeatRuleSummaryI18n({
+			mode: 'schedule',
+			freq: 'year',
+			interval: 1,
+			month: 1,
+			monthdays: [1],
+		}),
+		'Todo ano em janeiro 1',
+		'Brazilian Portuguese yearly summaries use cardinal day numbers',
+	);
 	runtime.initI18n('zh-HK', 'zh-CN');
 	assert.equal(runtime.getCurrentLang(), 'zh-CN');
 	runtime.initI18n('xx-XX', 'unsupported');

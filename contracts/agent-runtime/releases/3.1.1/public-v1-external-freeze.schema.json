@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:public-v1-external-freeze:v1:3.1.1",
+  "title": "Operon Public Runtime V1 External Freeze 3.1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "freezeVersion",
+    "kind",
+    "state",
+    "runtime",
+    "externalCliBinding",
+    "cli",
+    "pluginArtifact",
+    "audit",
+    "pairedReleaseAcceptance",
+    "releaseAcceptance",
+    "inputsAggregateSha256"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./public-v1-external-freeze.schema.json"
+    },
+    "freezeVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "operon-public-v1-external-freeze"
+    },
+    "state": {
+      "const": "accepted"
+    },
+    "runtime": {
+      "type": "object"
+    },
+    "externalCliBinding": {
+      "type": "object"
+    },
+    "cli": {
+      "type": "object"
+    },
+    "pluginArtifact": {
+      "type": "object"
+    },
+    "audit": {
+      "type": "object"
+    },
+    "pairedReleaseAcceptance": {
+      "type": "object"
+    },
+    "releaseAcceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "status",
+        "candidateCommit"
+      ],
+      "properties": {
+        "mode": {
+          "const": "automated-validation"
+        },
+        "status": {
+          "const": "accepted"
+        },
+        "candidateCommit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        }
+      }
+    },
+    "inputsAggregateSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "pairedReleaseEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "$schema",
+        "evidenceVersion",
+        "kind",
+        "state",
+        "runtime",
+        "acceptance",
+        "plugin",
+        "cli",
+        "pairedWindowsValidation",
+        "historicalLiveBaseline",
+        "limitations"
+      ],
+      "properties": {
+        "$schema": {
+          "const": "./public-v1-external-freeze.schema.json#/$defs/pairedReleaseEvidence"
+        },
+        "evidenceVersion": {
+          "const": 2
+        },
+        "kind": {
+          "const": "operon-public-v1-paired-release-evidence"
+        },
+        "state": {
+          "const": "paired-release-accepted"
+        },
+        "runtime": {
+          "type": "object"
+        },
+        "acceptance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "scope",
+            "status",
+            "candidateCommit"
+          ],
+          "properties": {
+            "mode": {
+              "const": "automated-validation"
+            },
+            "scope": {
+              "const": "release-only-packaging"
+            },
+            "status": {
+              "const": "accepted"
+            },
+            "candidateCommit": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          }
+        },
+        "plugin": {
+          "type": "object"
+        },
+        "cli": {
+          "type": "object"
+        },
+        "pairedWindowsValidation": {
+          "type": "object"
+        },
+        "historicalLiveBaseline": {
+          "type": "object"
+        },
+        "limitations": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}
