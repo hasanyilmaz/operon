@@ -1046,6 +1046,9 @@ function createSealedEffect(
 				templateDigest: task.template.revision,
 			}
 			: {}),
+		...(task.templateIdentityAllocations === undefined
+			? {}
+			: { templateIdentityAllocations: task.templateIdentityAllocations.map(allocation => ({ ...allocation })) }),
 		...(task.parentOperonId ? { resolvedParentOperonId: task.parentOperonId } : {}),
 		resolvedRelatedOperonIds: [...task.relatedOperonIds],
 		...(task.resolvedDependencies.length > 0
@@ -1190,6 +1193,9 @@ async function adaptCreateItem(
 				representation: 'file',
 				source: snapshot,
 				...(template ? { template } : {}),
+				...('identityPlaceholderPolicy' in item.target && item.target.identityPlaceholderPolicy
+					? { identityPlaceholderPolicy: item.target.identityPlaceholderPolicy }
+					: {}),
 			},
 		fields,
 		...(Object.keys(runtimeFields).length > 0

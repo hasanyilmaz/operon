@@ -44,6 +44,8 @@ export type {
 	V8PersistencePhaseV1,
 } from './shared';
 export type {
+	AdoptTaskPreviewIntentV1,
+	AdoptTaskSpecV1,
 	CatalogDefaultReferenceV1,
 	CatalogFilterNodeV1,
 	CatalogFilterV1,
@@ -134,6 +136,8 @@ export type {
 	TaskQueryPageV1,
 	TaskQueryRequestV1,
 	TaskQueryResultV1,
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
 	TaskRelationshipFieldV1,
 	TaxonomyReferenceV1,
 	TimerControlSpecV1,

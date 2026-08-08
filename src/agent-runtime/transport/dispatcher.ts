@@ -13,6 +13,7 @@ import type {
 	RelationshipRequestV1,
 	TaskGetRequestV1,
 	TaskQueryRequestV1,
+	TaskFilterQueryRequestV1,
 	TaskFinderRequestV1,
 } from '../contracts/v1/context';
 import {
@@ -479,6 +480,8 @@ async function invokeRuntimeReadV1(
 			return await runtime.tasks.get(invocation.request as TaskGetRequestV1, context);
 		case 'tasks.query':
 			return await runtime.tasks.query(invocation.request as TaskQueryRequestV1, context);
+		case 'tasks.filter-query':
+			return await runtime.tasks.filterQuery!(invocation.request as TaskFilterQueryRequestV1, context);
 		case 'tasks.finder':
 			return await runtime.tasks.find(invocation.request as TaskFinderRequestV1, context);
 		case 'relationships.get':

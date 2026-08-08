@@ -36,6 +36,7 @@ const READ_COMMANDS_V1 = new Set<CliCommandV1>([
 	'entity.resolve',
 	'task.get',
 	'tasks.query',
+	'tasks.filter-query',
 	'tasks.finder',
 	'relationships.get',
 	'context.build',

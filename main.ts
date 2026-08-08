@@ -192,6 +192,8 @@ import {
 } from './src/core/dom-compat';
 import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
 import { ReminderScheduler } from './src/core/reminder-scheduler';
+import { evaluateFilterSet } from './src/core/filter-evaluator';
+import { structuredErrorV1 } from './src/agent-runtime/contracts/v1/primitives';
 import { getAvailableReminderRuleAnchors } from './src/core/reminder-rules';
 import { ReminderDeliveryController } from './src/systems/reminder-delivery';
 import { MobileNotificationsExporter } from './src/systems/mobile-notifications-exporter';
@@ -282,6 +284,8 @@ import {
 	type TaskFinderResultV1,
 	type TaskQueryRequestV1,
 	type TaskQueryResultV1,
+	type TaskFilterQueryRequestV1,
+	type TaskFilterQueryResultV1,
 	type TimerReadRequestV1,
 	type TimerReadResultV1,
 	type MutationApplyRequestV1,
@@ -728,6 +732,7 @@ const AGENT_RUNTIME_PUBLISHED_READ_CAPABILITIES = new Set<CapabilityIdV1>([
 	'entities.resolve',
 	'tasks.read',
 	'tasks.query',
+	'tasks.filter-query',
 	'tasks.finder',
 	'relationships.read',
 	'context.build',
@@ -2860,6 +2865,14 @@ export default class OperonPlugin extends Plugin {
 						};
 					},
 				capabilityAvailability: capability => {
+					if (capability === 'tasks.create.identity-placeholders') {
+						return this.agentRuntimeMutationGateway
+							? { availability: 'available' }
+							: {
+								availability: 'unavailable',
+								reason: 'The live mutation Gateway has not completed its startup gate.',
+							};
+					}
 					if (AGENT_RUNTIME_PUBLISHED_READ_CAPABILITIES.has(capability)) {
 						return { availability: 'available' };
 					}
@@ -2877,6 +2890,7 @@ export default class OperonPlugin extends Plugin {
 				resolveEntity: (request, context) => this.readAgentRuntimeEntity(request, context),
 				getTask: (request, context) => this.readAgentRuntimeTask(request, context),
 				queryTasks: (request, context) => this.queryAgentRuntimeTasks(request, context),
+				filterQueryTasks: (request, context) => this.filterQueryAgentRuntimeTasks(request, context),
 				findTasks: (request, context) => this.findAgentRuntimeTasks(request, context),
 				getRelationships: (request, context) => this.readAgentRuntimeRelationships(request, context),
 				buildContext: (request, context) => this.buildAgentRuntimeContext(request, context),
@@ -2945,7 +2959,57 @@ export default class OperonPlugin extends Plugin {
 			provider,
 			() => this.requireAgentRuntimeCatalogProjection(),
 			new RuntimeContextCursorCodecV1(getActiveWindow().crypto),
+			request => this.evaluateAgentRuntimeSavedFilter(request),
 		);
+	}
+
+	private evaluateAgentRuntimeSavedFilter(request: TaskFilterQueryRequestV1) {
+		const filterSet = this.settings.filterSets.find(entry => entry.id === request.filterSetId);
+		if (!filterSet) {
+			return {
+				ok: false as const,
+				error: structuredErrorV1('entity-not-found', 'The saved filter does not exist.', { retryable: false }),
+			};
+		}
+		let tasks = this.indexer.getAllTasks();
+		if (request.scope) {
+			const abstract = this.app.vault.getAbstractFileByPath(request.scope.path);
+			if (
+				(request.scope.kind === 'exact-file' && !(abstract instanceof TFile))
+				|| (request.scope.kind === 'folder-tree' && !(abstract instanceof TFolder))
+			) {
+				return {
+					ok: false as const,
+					error: structuredErrorV1('invalid-locator', 'The saved-filter scope does not match an existing file or folder.', { retryable: false }),
+				};
+			}
+			tasks = request.scope.kind === 'exact-file'
+				? tasks.filter(task => task.primary.filePath === request.scope?.path)
+				: tasks.filter(task => (
+					task.primary.filePath === request.scope?.path
+					|| task.primary.filePath.startsWith(`${request.scope?.path}/`)
+				));
+		}
+		const allTasks = this.indexer.getAllTasks();
+		const evaluated = evaluateFilterSet(
+			filterSet,
+			tasks,
+			this.settings.priorities,
+			this.pinnedCache,
+			this.settings.pipelines,
+			{
+				projectSerialScopes: this.settings.projectSerialScopes,
+				projectSerialScopeTasks: allTasks,
+				dependencyTasks: allTasks,
+				pipelines: this.settings.pipelines,
+				filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
+			},
+		);
+		return {
+			ok: true as const,
+			tasks: evaluated,
+			queryDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1({ filterSet, scope: request.scope ?? null }))),
+		};
 	}
 
 	private async bindAgentRuntimeMutationGateway(): Promise<void> {
@@ -3855,6 +3919,42 @@ export default class OperonPlugin extends Plugin {
 					await verifyGraphSteps(journal.steps, expected)
 				),
 				prepareMutationTransaction: async (request, prepared, modifiedAt) => {
+					const adoption = prepared.token as {
+						kind?: string;
+						filePath?: string;
+						beforeContent?: string;
+						afterContent?: string;
+					};
+					if (
+						adoption.kind === 'task-adoption'
+						&& request.plan.mutationKind === 'task.adopt'
+						&& request.plan.spec.operation === 'adopt-inline'
+						&& adoption.filePath
+						&& adoption.beforeContent !== undefined
+						&& adoption.afterContent !== undefined
+					) {
+						const resource = prepared.affectedResources[0];
+						if (
+							prepared.affectedResources.length !== 1
+							|| resource?.resourceKind !== 'task-source'
+							|| resource.resourceKey !== adoption.filePath
+							|| sourceRevisionForTaskCreationV1(adoption.filePath, adoption.beforeContent) !== resource.revision
+						) {
+							return { ok: false as const, code: 'invalid-request' as const, reason: 'The sealed adoption source is inconsistent.' };
+						}
+						return {
+							ok: true as const,
+							steps: [{
+								stepId: `source:${adoption.filePath}`,
+								groupId: `task-source:${adoption.filePath}`,
+								resourceKind: 'task-source' as const,
+								resourceKey: adoption.filePath,
+								operation: 'modify' as const,
+								before: graphResourceState(adoption.beforeContent),
+								after: graphResourceState(adoption.afterContent),
+							}],
+						};
+					}
 					const timerControl = prepared.token as RuntimeTimerMutationPreparationV1;
 					if (
 						timerControl?.kind === 'timer'
@@ -5248,6 +5348,17 @@ export default class OperonPlugin extends Plugin {
 				await verifyGraphSteps(journal.steps, expected)
 			),
 				verifyRecoveredMutationTransaction: async (request, journal) => {
+					if (request.plan.mutationKind === 'task.adopt' && request.plan.spec.operation === 'adopt-inline') {
+						const spec = request.plan.spec;
+						if (!spec.operonId || !spec.locator || !spec.resultingLine) return false;
+						if (!await verifyGraphSteps(journal.steps, 'after')) return false;
+						const task = this.indexer.getTaskSnapshot(spec.operonId);
+						return !!task
+							&& !this.indexer.hasDuplicateOperonIdConflict(spec.operonId)
+							&& task.primary.format === 'inline'
+							&& task.primary.filePath === spec.locator.filePath
+							&& task.primary.lineNumber === spec.locator.lineNumber;
+					}
 					if ([
 						'task.inline-relocate',
 						'task.convert',
@@ -6628,6 +6739,155 @@ export default class OperonPlugin extends Plugin {
 			retryable?: boolean;
 		}
 	> {
+		if (request.mutationKind === 'task.adopt' && request.spec.operation === 'adopt-inline') {
+			const spec = request.spec;
+			const source = await this.readAgentRuntimeMutationSource(spec.source.filePath);
+			if (source.content === null) {
+				return { ok: false, code: 'invalid-locator', reason: 'The adoption source file does not exist.' };
+			}
+			const separator = source.content.includes('\r\n') ? '\r\n' : '\n';
+			const lines = source.content.split(/\r?\n/u);
+			if (spec.source.lineNumber >= lines.length) {
+				return { ok: false, code: 'invalid-locator', reason: 'The adoption line is outside the source file.' };
+			}
+			if (lines[spec.source.lineNumber] !== spec.source.expectedLine) {
+				return { ok: false, code: 'stale-source', reason: 'The checkbox line changed after it was selected.' };
+			}
+			const parsed = this.parseInlineTaskLine(
+				spec.source.expectedLine,
+				spec.source.lineNumber,
+				spec.source.filePath,
+			);
+			if (!parsed || parsed.operonId) {
+				return {
+					ok: false,
+					code: 'invalid-request',
+					reason: parsed ? 'The checkbox is already an Operon task.' : 'The selected line is not a supported checkbox task.',
+				};
+			}
+			if (parsed.checkbox !== 'open' && spec.terminalSourcePolicy !== 'reopen') {
+				return {
+					ok: false,
+					code: 'invalid-request',
+					reason: 'A terminal checkbox requires terminalSourcePolicy "reopen".',
+				};
+			}
+			let resolvedStatusId: string | undefined;
+			if (spec.statusId) {
+				const matches = this.settings.pipelines.flatMap(pipeline => (
+					pipeline.statuses
+						.filter(status => status.id === spec.statusId)
+						.map(status => ({ pipeline, status }))
+				));
+				if (matches.length !== 1) {
+					return { ok: false, code: 'invalid-request', reason: 'The requested statusId is missing or ambiguous.' };
+				}
+				if (matches[0].status.isFinished || matches[0].status.isCancelled) {
+					return { ok: false, code: 'invalid-request', reason: 'Adoption requires a non-terminal status.' };
+				}
+				resolvedStatusId = matches[0].status.id;
+				this.setParsedTaskField(
+					parsed,
+					'status',
+					composeStatusValue(matches[0].pipeline.name, matches[0].status.label),
+					'text',
+				);
+			}
+			if (parsed.checkbox !== 'open') {
+				parsed.checkbox = 'open';
+				parsed.fields = parsed.fields.filter(field => (
+					field.key !== 'dateCompleted'
+					&& field.key !== 'dateCancelled'
+					&& (spec.statusId !== undefined || field.key !== 'status')
+				));
+			}
+			let operonId = spec.operonId;
+			if (operonId) {
+				if (this.indexer.getTaskSnapshot(operonId) || this.indexer.hasDuplicateOperonIdConflict(operonId)) {
+					return { ok: false, code: 'duplicate-operon-id', reason: 'The sealed adoption operonId is no longer unique.' };
+				}
+			} else {
+				for (let attempt = 0; attempt < 100; attempt += 1) {
+					const candidate = generateOperonId();
+					if (this.indexer.getTaskSnapshot(candidate) || this.indexer.hasDuplicateOperonIdConflict(candidate)) continue;
+					operonId = candidate;
+					break;
+				}
+				if (!operonId) {
+					return { ok: false, code: 'internal-error', reason: 'A unique Operon task identity could not be allocated.' };
+				}
+			}
+			this.setParsedTaskField(parsed, 'operonId', operonId, 'text');
+			const localEffectiveAt = toLocalDatetime(new Date(effectiveAt));
+			this.normalizeParsedTaskCreatedTimestamp(parsed, localEffectiveAt);
+			this.setParsedTaskField(parsed, 'datetimeModified', localEffectiveAt, 'datetime');
+			const resultingLine = this.serializeInlineTask(parsed);
+			const sourceDigest = sha256HexV1(spec.source.expectedLine);
+			const resultDigest = sha256HexV1(resultingLine);
+			const locator = {
+				representation: 'inline' as const,
+				filePath: spec.source.filePath,
+				lineNumber: spec.source.lineNumber,
+			};
+			if (
+				(spec.operonId !== undefined && spec.operonId !== operonId)
+				|| (spec.resolvedStatusId !== undefined && spec.resolvedStatusId !== resolvedStatusId)
+				|| (spec.resultingLine !== undefined && spec.resultingLine !== resultingLine)
+				|| (spec.sourceDigest !== undefined && spec.sourceDigest !== sourceDigest)
+				|| (spec.resultDigest !== undefined && spec.resultDigest !== resultDigest)
+				|| (spec.locator !== undefined && canonicalJsonV1(toJsonValueV1(spec.locator)) !== canonicalJsonV1(toJsonValueV1(locator)))
+			) {
+				return { ok: false, code: 'stale-source', reason: 'The sealed adoption result no longer matches preview.' };
+			}
+			lines[spec.source.lineNumber] = resultingLine;
+			const nextContent = lines.join(separator);
+			const affectedResources = [{
+				resourceKind: 'task-source' as const,
+				resourceKey: spec.source.filePath,
+				revision: sourceRevisionForTaskCreationV1(spec.source.filePath, source.content),
+			}];
+			return {
+				ok: true,
+				value: {
+					target: {
+						operonId,
+						locator,
+						targetDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1({ locator, sourceDigest }))),
+					},
+					affectedResources,
+					atomicGroups: [{
+						groupId: `task-source:${spec.source.filePath}`,
+						order: 0,
+						resources: [{ resourceKind: 'task-source', resourceKey: spec.source.filePath }],
+					}],
+					predictedEffects: [{
+						resourceKind: 'task-source',
+						resourceKey: spec.source.filePath,
+						action: 'update',
+						summary: `Adopt checkbox task ${operonId}.`,
+					}],
+					warnings: [],
+					sealedSpec: {
+						...spec,
+						operonId,
+						...(resolvedStatusId ? { resolvedStatusId } : {}),
+						resultingLine,
+						sourceDigest,
+						resultDigest,
+						locator,
+					},
+					token: {
+						kind: 'task-adoption',
+						filePath: spec.source.filePath,
+						beforeContent: source.content,
+						afterContent: nextContent,
+						operonId,
+						locator,
+						resultDigest,
+					},
+				},
+			};
+		}
 		if (
 			request.spec.operation === 'relocate-inline'
 			|| request.spec.operation === 'convert'
@@ -8652,6 +8912,31 @@ export default class OperonPlugin extends Plugin {
 			commit: RuntimePreparedMutationCommitV1,
 			settlementWindow?: RuntimeMutationSettlementWindowV1,
 		): Promise<boolean> {
+			if (
+				preparedMutation.token
+				&& typeof preparedMutation.token === 'object'
+				&& (preparedMutation.token as { kind?: unknown }).kind === 'task-adoption'
+			) {
+				if (commit.status !== 'committed') return false;
+				const adoption = preparedMutation.token as {
+					operonId: string;
+					locator: { representation: 'inline'; filePath: string; lineNumber: number };
+					afterContent: string;
+					resultDigest: string;
+				};
+				const task = this.indexer.getTaskSnapshot(adoption.operonId);
+				if (
+					!task
+					|| this.indexer.hasDuplicateOperonIdConflict(adoption.operonId)
+					|| task.primary.format !== 'inline'
+					|| task.primary.filePath !== adoption.locator.filePath
+					|| task.primary.lineNumber !== adoption.locator.lineNumber
+				) return false;
+				const source = await this.readAgentRuntimeMutationSource(adoption.locator.filePath);
+				if (source.content !== adoption.afterContent) return false;
+				const line = source.content?.split(/\r?\n/u)[adoption.locator.lineNumber];
+				return typeof line === 'string' && sha256HexV1(line) === adoption.resultDigest;
+			}
 			if (isRuntimePinnedStateMutationPreparationV1(preparedMutation.token)) {
 				const prepared = preparedMutation.token;
 				if (commit.status !== 'committed' || createdAt !== prepared.effectiveAt || !this.pinnedCache) {
@@ -10242,6 +10527,25 @@ export default class OperonPlugin extends Plugin {
 		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };
 	}
 
+	private async filterQueryAgentRuntimeTasks(
+		request: TaskFilterQueryRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<TaskFilterQueryResultV1> {
+		const bridge = this.agentRuntimeContextBridge;
+		if (!bridge) return this.agentRuntimeTaskFilterQueryFailure(request, 'capability-unavailable');
+		const result = await this.executeAgentRuntimeContextRead(
+			request.requestId,
+			request.consistency,
+			context,
+			(revision, freshness) => bridge.filterQueryTasks(request, {
+				revision: revision.contextRevision,
+				freshness,
+			}),
+		);
+		if (!result.ok) return this.agentRuntimeTaskFilterQueryFailure(request, result.error.code, result.error, result.warnings);
+		return { ...result.value, warnings: [...result.warnings, ...result.value.warnings] };
+	}
+
 	private async findAgentRuntimeTasks(
 		request: TaskFinderRequestV1,
 		context?: RuntimeInvocationContextV1,
@@ -10349,6 +10653,23 @@ export default class OperonPlugin extends Plugin {
 			freshness: this.buildAgentRuntimeReadFreshness(request.consistency),
 			warnings,
 			error: detail ?? runtimeUnavailableError('The live task query engine is not available.'),
+		};
+	}
+
+	private agentRuntimeTaskFilterQueryFailure(
+		request: TaskFilterQueryRequestV1,
+		_code: string,
+		detail?: Extract<TaskFilterQueryResultV1, { ok: false }>['error'],
+		warnings: TaskFilterQueryResultV1['warnings'] = [],
+	): TaskFilterQueryResultV1 {
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'task-filter-query-result',
+			ok: false,
+			freshness: this.buildAgentRuntimeReadFreshness(request.consistency),
+			warnings,
+			error: detail ?? runtimeUnavailableError('The live saved-filter query engine is not available.'),
 		};
 	}
 

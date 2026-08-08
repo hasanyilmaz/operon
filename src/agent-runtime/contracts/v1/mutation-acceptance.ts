@@ -10,6 +10,7 @@ export type MutationRecoveryStrategyV1 =
 	| 'compare-and-set';
 export type MutationPostflightAssertionV1 =
 	| 'created-task-state'
+	| 'adopted-task-state'
 	| 'task-field-state'
 	| 'recurrence-state'
 	| 'relationship-state'
@@ -63,6 +64,7 @@ const MUTATION_ACCEPTANCE_SCHEMA_ENTRYPOINT_IDS_V1 = new Set([
 
 const MUTATION_FINAL_STATE_ASSERTION_IDS_V1 = new Set<MutationPostflightAssertionV1>([
 	'created-task-state',
+	'adopted-task-state',
 	'task-field-state',
 	'recurrence-state',
 	'relationship-state',
@@ -140,6 +142,17 @@ export const MUTATION_ACCEPTANCE_MATRIX_V1:
 			capabilities: { preview: 'tasks.create.preview', apply: 'tasks.create.apply' },
 			recovery: 'graph-journal',
 			postflight: ['created-task-state'],
+		}),
+		mutationAcceptance({
+			mutationKind: 'task.adopt',
+			operations: [{
+				operation: 'adopt-inline',
+				target: 'forbidden',
+				risks: ['routine'],
+			}],
+			capabilities: { preview: 'tasks.adopt.preview', apply: 'tasks.adopt.apply' },
+			recovery: 'graph-journal',
+			postflight: ['adopted-task-state'],
 		}),
 		mutationAcceptance({
 			mutationKind: 'task.update',

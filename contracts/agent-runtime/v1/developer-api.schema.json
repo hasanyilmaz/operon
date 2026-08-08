@@ -295,6 +295,18 @@
           },
           "else": {
             "if": {
+              "properties": { "mutationKind": { "const": "task.adopt" } },
+              "required": ["mutationKind"]
+            },
+            "then": {
+              "properties": {
+                "capability": { "const": "tasks.adopt.preview" },
+                "spec": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/adoptPreviewIntent" }
+              },
+              "not": { "required": ["target"] }
+            },
+            "else": {
+            "if": {
               "properties": { "mutationKind": { "const": "timer.control" } },
               "required": ["mutationKind"]
             },
@@ -310,6 +322,16 @@
               },
               "then": { "not": { "required": ["target"] } },
               "else": { "required": ["target"] }
+            }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mutationKind": { "const": "task.adopt" } } },
+          "then": {
+            "properties": {
+              "capability": { "const": "tasks.adopt.preview" },
+              "spec": { "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/adoptPreviewIntent" }
             }
           }
         },

@@ -14,11 +14,15 @@
         "entities.resolve",
         "tasks.read",
         "tasks.query",
+        "tasks.filter-query",
         "tasks.finder",
         "relationships.read",
         "context.build",
         "tasks.create.preview",
         "tasks.create.apply",
+        "tasks.create.identity-placeholders",
+        "tasks.adopt.preview",
+        "tasks.adopt.apply",
         "tasks.update.preview",
         "tasks.update.apply",
         "tasks.recurrence.preview",
@@ -48,6 +52,7 @@
       "type": "string",
       "enum": [
         "task.create",
+        "task.adopt",
         "task.update",
         "task.recurrence",
         "task.relationship",
@@ -77,8 +82,11 @@
       "allOf": [
         {
           "if": {
-            "properties": { "mode": { "enum": ["preview", "apply"] } },
-            "required": ["mode"]
+            "properties": {
+              "mode": { "enum": ["preview", "apply"] },
+              "id": { "not": { "const": "tasks.create.identity-placeholders" } }
+            },
+            "required": ["mode", "id"]
           },
           "then": { "required": ["mutationKind"] }
         },
@@ -132,8 +140,8 @@
     "capabilityRegistry": {
       "type": "array",
       "x-operon-frozenCapabilityRegistry": true,
-      "minItems": 35,
-      "maxItems": 35,
+      "minItems": 39,
+      "maxItems": 39,
       "items": { "$ref": "#/$defs/capabilityDefinition" }
     },
     "fieldDescriptor": {

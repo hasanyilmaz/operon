@@ -336,6 +336,83 @@ assert.match(
 );
 assert.doesNotMatch(file.plan.sourceGroups[0].resultingContent, /\{\{title\}\}/u);
 
+const identityPlaceholders = prepareCanonicalTaskCreation(
+	{
+		requestId: 'file-task-identity-placeholders',
+		items: [{
+			itemKey: 'identity-file',
+			description: 'Identity placeholder file',
+			target: {
+				representation: 'file',
+				source: { filePath: 'Tasks/Identity.md', content: null, revision: 'missing' },
+				identityPlaceholderPolicy: 'resolve-operon-id-v1',
+				template: {
+					templateId: 'identity-placeholders',
+					revision: 'sha256:identity-placeholders',
+					content: [
+						'---',
+						'IdentityA: {{operonIdA}}',
+						'Identitya: {{operonIda}}',
+						'---',
+						'- [ ] Parent {{operonIdA}}',
+						'- [ ] Child {{operonId0}} {{parentTask:: {{operonIdA}}}}',
+						'- [ ] Lower {{operonIda}} and upper {{operonIdA}}',
+						'- [ ] Fresh {{operonId}} then {{operonId}} and nine {{operonId9}}',
+						'Date {{date}}',
+						'```md',
+						'- [ ] Literal {{operonIdA}}',
+						'```',
+					].join('\n'),
+				},
+			},
+		}],
+	},
+	createOptions(['fil0002', 'upa0001', 'loa0001', 'num0001', 'new0001', 'new0002', 'num0009']),
+);
+assert.equal(identityPlaceholders.ok, true, identityPlaceholders.ok ? '' : JSON.stringify(identityPlaceholders.blockers));
+if (!identityPlaceholders.ok) throw new Error('Expected identity placeholders to resolve.');
+const identityTask = identityPlaceholders.plan.tasks[0];
+const identityContent = identityPlaceholders.plan.sourceGroups[0].resultingContent;
+assert.equal(identityTask.templateIdentityAllocations?.length, 10);
+assert.notEqual(
+	identityTask.templateIdentityAllocations?.find(allocation => allocation.suffix === 'A')?.operonId,
+	identityTask.templateIdentityAllocations?.find(allocation => allocation.suffix === 'a')?.operonId,
+	'uppercase and lowercase suffixes must remain distinct',
+);
+assert.equal(
+	new Set(identityTask.templateIdentityAllocations?.filter(allocation => allocation.suffix === 'A').map(allocation => allocation.operonId)).size,
+	1,
+	'repeated suffixes must reuse one ID',
+);
+assert.match(identityContent, /\{\{parentTask:: upa0001\}\}/u);
+assert.match(identityContent, /```md\n- \[ \] Literal \{\{operonIdA\}\}\n```/u);
+assert.match(identityContent, /2026-07-24/u, 'existing date variables must still resolve');
+
+const invalidIdentityPlaceholder = prepareCanonicalTaskCreation(
+	{
+		requestId: 'invalid-file-task-identity-placeholder',
+		items: [{
+			itemKey: 'invalid-identity',
+			description: 'Invalid identity placeholder',
+			target: {
+				representation: 'file',
+				source: { filePath: 'Tasks/Invalid Identity.md', content: null, revision: 'missing' },
+				identityPlaceholderPolicy: 'resolve-operon-id-v1',
+				template: {
+					templateId: 'invalid-identity-placeholder',
+					revision: 'sha256:invalid-identity-placeholder',
+					content: '---\n---\n- [ ] Invalid {{operonIdAA}}',
+				},
+			},
+		}],
+	},
+	createOptions(['fil0003']),
+);
+assert.equal(invalidIdentityPlaceholder.ok, false);
+if (!invalidIdentityPlaceholder.ok) {
+	assert.ok(invalidIdentityPlaceholder.blockers.some(blocker => blocker.code === 'template-placeholder-unsupported'));
+}
+
 const visibleTemplateKey = (canonicalKey: string): string => (
 	DEFAULT_SETTINGS.keyMappings.find(mapping => mapping.canonicalKey === canonicalKey)
 		?.visiblePropertyName ?? canonicalKey
