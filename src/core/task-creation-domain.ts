@@ -795,6 +795,28 @@ function prepareTask(
 		? parseFrontmatterDocument(item.target.template.content, options.settings.keyMappings)
 		: null;
 	const templateFieldValues = { ...(templateDocument?.managedFieldValues ?? {}) };
+	const templateOperonIdPlaceholder = (templateFieldValues['operonId'] ?? '').trim();
+	const templateOperonIdPlaceholderMatch = templateOperonIdPlaceholder.match(
+		/^\{\{operonId([0-9A-Za-z]?)\}\}$/u,
+	);
+	if (
+		item.target.representation === 'file'
+		&& item.target.identityPlaceholderPolicy === 'resolve-operon-id-v1'
+		&& templateOperonIdPlaceholder.includes('{{operonId')
+		&& !templateOperonIdPlaceholderMatch
+	) {
+		blockers.push({
+			code: 'template-placeholder-unsupported',
+			message: 'The File Task operonId field contains an invalid identity placeholder.',
+			itemKey: item.itemKey,
+			filePath: item.target.source.filePath,
+		});
+		return null;
+	}
+	const templatePrimaryIdentitySuffix = item.target.representation === 'file'
+		&& item.target.identityPlaceholderPolicy === 'resolve-operon-id-v1'
+		? templateOperonIdPlaceholderMatch?.[1] || undefined
+		: undefined;
 	const managedTemplateVariableFields = new Set(
 		Object.entries(templateFieldValues)
 			.filter(([field, value]) => (
@@ -941,6 +963,9 @@ function prepareTask(
 		const allocations: Array<{ occurrence: number; suffix?: string; operonId: string }> = [];
 		resolvedContent = resolveOperonIdPlaceholders(resolvedContent, {
 			generateOperonId: options.generateOperonId,
+			...(templatePrimaryIdentitySuffix
+				? { stableSuffixOperonIds: { [templatePrimaryIdentitySuffix]: operonId } }
+				: {}),
 			onIdentityAllocation: allocation => allocations.push(allocation),
 		});
 		prepared.templateIdentityAllocations = allocations;

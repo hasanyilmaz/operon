@@ -3,6 +3,8 @@ import { splitFrontmatterDocument } from './file-task-template-merge';
 
 export interface ResolveOperonIdPlaceholdersOptions {
 	generateOperonId: () => string;
+	/** Pre-bind reusable one-character suffixes to already sealed task identities. */
+	stableSuffixOperonIds?: Readonly<Record<string, string>>;
 	now?: string;
 	rawContext?: RawOperonTaskLinePlaceholderContext;
 	onIdentityAllocation?: (allocation: { occurrence: number; suffix?: string; operonId: string }) => void;
@@ -161,8 +163,14 @@ export function resolveOperonIdPlaceholders(
 	if (!content.includes('{{operonId') && !hasRawTaskLinePlaceholder(content)) return content;
 
 	const { frontmatter, body } = splitFrontmatterDocument(content);
-	const usedIds = new Set<string>();
 	const stableIds = new Map<string, string>();
+	for (const [suffix, operonId] of Object.entries(options.stableSuffixOperonIds ?? {})) {
+		if (!/^[0-9A-Za-z]$/u.test(suffix) || !/^[a-z0-9]{7}$/u.test(operonId)) {
+			throw new Error('Invalid pre-bound operonId placeholder suffix or identity');
+		}
+		stableIds.set(suffix, operonId);
+	}
+	const usedIds = new Set(stableIds.values());
 	const ordinal = { value: 0 };
 	const nextFrontmatter = frontmatter == null
 		? null

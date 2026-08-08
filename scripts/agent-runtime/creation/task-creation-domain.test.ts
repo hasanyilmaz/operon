@@ -10,6 +10,8 @@ import {
 	type TaskCreationCommitPort,
 } from '../../../src/core/task-creation-domain';
 import { resolveDefaultFileTaskStatus } from '../../../src/core/file-task-defaults';
+import { resolveOperonIdPlaceholders } from '../../../src/core/operon-id-placeholders';
+import { parseTaskLine } from '../../../src/core/parser';
 import {
 	compensateRuntimeTaskCreationFailureV1,
 	prepareRuntimeTaskCreationV1,
@@ -388,6 +390,126 @@ assert.equal(
 assert.match(identityContent, /\{\{parentTask:: upa0001\}\}/u);
 assert.match(identityContent, /```md\n- \[ \] Literal \{\{operonIdA\}\}\n```/u);
 assert.match(identityContent, /2026-07-24/u, 'existing date variables must still resolve');
+
+const allIdentitySuffixes = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+const allIdentitySuffixAllocations: Array<{ occurrence: number; suffix?: string; operonId: string }> = [];
+let allIdentitySuffixCursor = 0;
+const allIdentitySuffixContent = resolveOperonIdPlaceholders(
+	`---\n---\n- [ ] All suffixes ${allIdentitySuffixes.map(suffix => `{{operonId${suffix}}}`).join(' ')}`,
+	{
+		generateOperonId: () => `x${(allIdentitySuffixCursor++).toString(36).padStart(6, '0')}`,
+		onIdentityAllocation: allocation => allIdentitySuffixAllocations.push(allocation),
+	},
+);
+assert.deepEqual(
+	allIdentitySuffixAllocations.map(allocation => allocation.suffix),
+	allIdentitySuffixes,
+	'every documented numeric, uppercase, and lowercase identity suffix must resolve',
+);
+assert.doesNotMatch(allIdentitySuffixContent, /\{\{operonId/u);
+
+const fileIdentityGraphRequest: CanonicalTaskCreationRequest = {
+	requestId: 'file-task-primary-identity-graph',
+	items: [{
+		itemKey: 'file-identity-graph',
+		description: 'Identity Graph',
+		target: {
+			representation: 'file',
+			source: { filePath: 'Tasks/Identity Graph.md', content: null, revision: 'missing' },
+			identityPlaceholderPolicy: 'resolve-operon-id-v1',
+			template: {
+				templateId: 'file-identity-graph-template',
+				revision: 'sha256:file-identity-graph-template',
+				content: [
+					'---',
+					'operonId: {{operonId1}}',
+					'---',
+					'Context {{title}} {{date}} {{time}} {{datetime}} {{taskDescription}} {{note}} {{dateStarted}} {{dateScheduled}} {{dateDue}} {{status}} {{priority}}',
+					'## Group One',
+					'- [ ] Root A {{operonId:: {{operonIdA}}}} {{parentTask:: {{operonId1}}}}',
+					'- [ ] Child B {{operonId:: {{operonIdB}}}} {{parentTask:: {{operonIdA}}}}',
+					'## Group Two',
+					'- [ ] Root C {{operonId:: {{operonIdC}}}} {{parentTask:: {{operonId1}}}}',
+					'- [ ] Child D {{operonId:: {{operonIdD}}}} {{parentTask:: {{operonIdC}}}}',
+					'## Independent Group',
+					'- [ ] Root E {{operonId:: {{operonIdE}}}}',
+				].join('\n'),
+			},
+		},
+		fields: {
+			note: 'Graph note',
+			dateStarted: '2026-07-20',
+			dateScheduled: '2026-07-25',
+			dateDue: '2026-07-30',
+			status: 'Pipeline 1.Not Started',
+			priority: 'A',
+		},
+	}],
+};
+const fileIdentityGraph = prepareCanonicalTaskCreation(
+	fileIdentityGraphRequest,
+	createOptions(['fil0003', 'gra0001', 'grb0001', 'grc0001', 'grd0001', 'gre0001', 'grf0001']),
+);
+assert.equal(fileIdentityGraph.ok, true, fileIdentityGraph.ok ? '' : JSON.stringify(fileIdentityGraph.blockers));
+if (!fileIdentityGraph.ok) throw new Error('Expected File Task identity graph to resolve.');
+const fileIdentityGraphTask = fileIdentityGraph.plan.tasks[0];
+const fileIdentityGraphContent = fileIdentityGraph.plan.sourceGroups[0].resultingContent;
+assert.equal(fileIdentityGraphTask.operonId, 'fil0003');
+assert.match(fileIdentityGraphContent, /^operonId: fil0003$/mu);
+assert.equal(
+	fileIdentityGraphTask.templateIdentityAllocations
+		?.find(allocation => allocation.suffix === '1')?.operonId,
+	'fil0003',
+	'canonical File Task identity suffix must resolve to the sealed File Task ID',
+);
+const graphInlineTasks = fileIdentityGraphContent.split('\n').flatMap((line, lineNumber) => {
+	const parsed = parseTaskLine(line, lineNumber, 'Tasks/Identity Graph.md', DEFAULT_SETTINGS.keyMappings);
+	return parsed ? [parsed] : [];
+});
+const graphTaskByDescription = new Map(graphInlineTasks.map(task => [task.description, task]));
+const parentOf = (description: string): string | undefined => (
+	graphTaskByDescription.get(description)?.fields.find(field => field.key === 'parentTask')?.value
+);
+assert.equal(graphTaskByDescription.get('Root A')?.operonId, 'gra0001');
+assert.equal(parentOf('Root A'), 'fil0003');
+assert.equal(graphTaskByDescription.get('Child B')?.operonId, 'grb0001');
+assert.equal(parentOf('Child B'), 'gra0001');
+assert.equal(graphTaskByDescription.get('Root C')?.operonId, 'grc0001');
+assert.equal(parentOf('Root C'), 'fil0003');
+assert.equal(graphTaskByDescription.get('Child D')?.operonId, 'grd0001');
+assert.equal(parentOf('Child D'), 'grc0001');
+assert.equal(graphTaskByDescription.get('Root E')?.operonId, 'gre0001');
+assert.equal(parentOf('Root E'), undefined);
+assert.match(
+	fileIdentityGraphContent,
+	/Context Identity Graph 2026-07-24 10:20 2026-07-24T10:20:30 Identity Graph Graph note 2026-07-20 2026-07-25 2026-07-30 Pipeline 1\.Not Started A/u,
+	'all deterministic File Task variables must continue to resolve alongside identity graphs',
+);
+const replayIdentityQueue = [
+	fileIdentityGraphTask.operonId,
+	...sealedTemplateIdentityGenerationQueueV1(
+		fileIdentityGraphRequest.items,
+		new Map([[
+			fileIdentityGraphTask.itemKey,
+			fileIdentityGraphTask.templateIdentityAllocations ?? [],
+		]]),
+	),
+];
+const replayedFileIdentityGraph = prepareCanonicalTaskCreation(
+	fileIdentityGraphRequest,
+	createOptions(replayIdentityQueue),
+);
+assert.equal(
+	replayedFileIdentityGraph.ok,
+	true,
+	replayedFileIdentityGraph.ok ? '' : JSON.stringify(replayedFileIdentityGraph.blockers),
+);
+if (!replayedFileIdentityGraph.ok) throw new Error('Expected sealed File Task identity graph replay to resolve.');
+assert.equal(
+	replayedFileIdentityGraph.plan.sourceGroups[0].resultingContent,
+	fileIdentityGraphContent,
+	'preview/apply replay must preserve every File Task and inline graph identity',
+);
 assert.deepEqual(
 	sealedTemplateIdentityGenerationQueueV1([
 		{
