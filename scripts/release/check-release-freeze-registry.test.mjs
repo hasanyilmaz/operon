@@ -16,6 +16,7 @@ import {
 	readReleaseArtifactIdentity,
 	RELEASE_FREEZE_STALE,
 } from './check-release-freeze-registry.mjs';
+import { symlinkCapabilityUnavailableReason } from '../test-symlink-capability.mjs';
 
 test('automated release evidence binds one exact local, hosted, and Windows identity without live claims', () => {
 	const candidateCommit = 'a'.repeat(40);
@@ -286,7 +287,9 @@ test('release registry rejects self-consistent current evidence and registry dri
 	}
 });
 
-test('release registry rejects symlinked current binding input', async () => {
+test('release registry rejects symlinked current binding input', {
+	skip: symlinkCapabilityUnavailableReason(),
+}, async () => {
 	const root = await createFixture();
 	try {
 		const relativePath = 'contracts/agent-runtime/releases/3.1.0/published-cli-v1.json';

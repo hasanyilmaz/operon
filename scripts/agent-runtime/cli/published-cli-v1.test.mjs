@@ -18,6 +18,7 @@ import {
 	withVerifiedPublishedCli,
 } from './published-cli-v1.mjs';
 import { readArtifactArguments } from './check-published-cli-artifact.mjs';
+import { symlinkCapabilityUnavailableReason } from '../../test-symlink-capability.mjs';
 
 test('accepted binding validates and canonical plugin inputs match', async () => {
 	const { binding } = await loadPublishedCliBinding();
@@ -165,12 +166,18 @@ test('binding schema rejects an unknown top-level field', async () => {
 	}
 });
 
-test('tarball verification rejects relative and symlink paths before reading bytes', async () => {
+test('tarball verification rejects a relative path before reading bytes', async () => {
 	const { binding } = await loadPublishedCliBinding();
 	await assert.rejects(
 		verifyTarballIdentity('candidate.tgz', binding),
 		/OPERON_PUBLISHED_CLI_TARBALL_PATH_INVALID/u,
 	);
+});
+
+test('tarball verification rejects a symlink before reading bytes', {
+	skip: symlinkCapabilityUnavailableReason(),
+}, async () => {
+	const { binding } = await loadPublishedCliBinding();
 	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-tarball-negative-'));
 	try {
 		const real = path.join(temporaryRoot, 'real.tgz');
