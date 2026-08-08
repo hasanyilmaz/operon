@@ -13,6 +13,7 @@ import { resolveDefaultFileTaskStatus } from '../../../src/core/file-task-defaul
 import {
 	compensateRuntimeTaskCreationFailureV1,
 	prepareRuntimeTaskCreationV1,
+	sealedTemplateIdentityGenerationQueueV1,
 	sourceRevisionForTaskCreationV1,
 	type RuntimeTaskCreationAdapterPortsV1,
 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
@@ -387,6 +388,48 @@ assert.equal(
 assert.match(identityContent, /\{\{parentTask:: upa0001\}\}/u);
 assert.match(identityContent, /```md\n- \[ \] Literal \{\{operonIdA\}\}\n```/u);
 assert.match(identityContent, /2026-07-24/u, 'existing date variables must still resolve');
+assert.deepEqual(
+	sealedTemplateIdentityGenerationQueueV1([
+		{
+			itemKey: 'child',
+			description: 'Child',
+			target: { representation: 'file', source: { filePath: 'Child.md', content: null, revision: 'missing' } },
+			parent: { kind: 'local', itemKey: 'parent' },
+		},
+		{
+			itemKey: 'parent',
+			description: 'Parent',
+			target: { representation: 'file', source: { filePath: 'Parent.md', content: null, revision: 'missing' } },
+		},
+	], new Map([
+		['parent', [
+			{ occurrence: 0, suffix: 'A', operonId: 'parenta' },
+			{ occurrence: 1, suffix: 'A', operonId: 'parenta' },
+			{ occurrence: 2, operonId: 'parentb' },
+		]],
+		['child', [{ occurrence: 0, suffix: 'a', operonId: 'childaa' }]],
+	])),
+	['parenta', 'parentb', 'childaa'],
+	'sealed placeholder IDs must replay once per unique suffix in parent-first preparation order',
+);
+assert.deepEqual(
+	sealedTemplateIdentityGenerationQueueV1([
+		{
+			itemKey: 'left',
+			description: 'Left',
+			target: { representation: 'file', source: { filePath: 'Left.md', content: null, revision: 'missing' } },
+			parent: { kind: 'local', itemKey: 'right' },
+		},
+		{
+			itemKey: 'right',
+			description: 'Right',
+			target: { representation: 'file', source: { filePath: 'Right.md', content: null, revision: 'missing' } },
+			parent: { kind: 'local', itemKey: 'left' },
+		},
+	], new Map()),
+	[],
+	'invalid local cycles must remain bounded until canonical validation rejects them',
+);
 
 const invalidIdentityPlaceholder = prepareCanonicalTaskCreation(
 	{

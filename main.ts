@@ -217,6 +217,7 @@ import {
 	hashProjectSerialSignatureV1,
 	isCatalogResultWithinTransportLimitV1,
 	RuntimeCoherentReadCoordinatorV1,
+	savedFilterQueryDigestV1,
 	RuntimeLifecycleCoordinatorV1,
 	RuntimeSettlementBarrierV1,
 	RuntimeSettingsFreshnessCoordinatorV1,
@@ -3008,7 +3009,7 @@ export default class OperonPlugin extends Plugin {
 		return {
 			ok: true as const,
 			tasks: evaluated,
-			queryDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1({ filterSet, scope: request.scope ?? null }))),
+			queryDigest: savedFilterQueryDigestV1(filterSet, request.scope),
 		};
 	}
 
@@ -3500,6 +3501,7 @@ export default class OperonPlugin extends Plugin {
 				effectiveAt,
 				activeItemRefs,
 				sealedSeriesIds,
+				sealedTemplateIdentityAllocations,
 			) => (
 				await prepareRuntimeTaskCreationV1(
 					requestId,
@@ -3554,6 +3556,7 @@ export default class OperonPlugin extends Plugin {
 					effectiveAt ? toLocalDatetime(new Date(effectiveAt)) : undefined,
 					activeItemRefs,
 					sealedSeriesIds,
+					sealedTemplateIdentityAllocations,
 				)
 			),
 			// The live Runtime always supplies the durable creation transaction ports.

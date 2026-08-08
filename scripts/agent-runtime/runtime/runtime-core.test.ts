@@ -9,6 +9,7 @@ import {
 	RuntimeLifecycleCoordinatorV1,
 	RuntimeSettlementBarrierV1,
 	RuntimeSettingsFreshnessCoordinatorV1,
+	savedFilterQueryDigestV1,
 	SealedIndexRevisionV1,
 	SingleFlightRuntimeBarrierV1,
 	type RuntimeRevisionSnapshotV1,
@@ -25,6 +26,7 @@ async function run(): Promise<void> {
 	await testFrozenFacadeAndHealth();
 	await testHealthRevisionIsolationAndPerformance();
 	testSettingsFingerprintBoundary();
+	testSavedFilterQueryDigest();
 	testSealedIndexRevision();
 	assert.match(createAgentRuntimeSessionId(), /^runtime-[a-f0-9]{32}$/u);
 	assert.equal(hashProjectSerialSignatureV1('project-serial-signature').length, 64);
@@ -620,9 +622,39 @@ async function testProjectionIsolationAndPrivateErrors(): Promise<void> {
 	assert.equal(failed.ok, false);
 	if (!failed.ok) {
 		assert.equal(failed.error.reason, 'Runtime freshness coordination failed.');
+		assert.equal(failed.error.retryable, false);
+		assert.equal(failed.error.action, 'report-bug');
 		assert.equal(JSON.stringify(failed).includes('/Users/private-vault'), false);
 		assert.equal(JSON.stringify(failed).includes('Task secret'), false);
 	}
+}
+
+function testSavedFilterQueryDigest(): void {
+	const filter = {
+		id: 'fs_runtime_digest',
+		name: 'Runtime digest',
+		rootGroup: { id: 'group', logic: 'all' as const, children: [] },
+		sorts: [],
+		subgroupBy: undefined,
+		subgroupOrder: undefined,
+		matchLogic: 'all' as const,
+		conditions: [],
+		groupBy: undefined,
+		groupOrder: undefined,
+	};
+	const compact = {
+		id: filter.id,
+		name: filter.name,
+		rootGroup: filter.rootGroup,
+		sorts: filter.sorts,
+		matchLogic: filter.matchLogic,
+		conditions: filter.conditions,
+	};
+	assert.equal(savedFilterQueryDigestV1(filter, undefined), savedFilterQueryDigestV1(compact, undefined));
+	assert.notEqual(
+		savedFilterQueryDigestV1(filter, undefined),
+		savedFilterQueryDigestV1(filter, { kind: 'folder-tree', path: 'Stage7' }),
+	);
 }
 
 async function testDeadlineAndAbort(): Promise<void> {

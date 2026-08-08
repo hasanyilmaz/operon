@@ -175,6 +175,11 @@ export interface RuntimeMutationGatewayPortsV1 {
 		effectiveAt?: string,
 		activeItemRefs?: ReadonlySet<string>,
 		sealedSeriesIds?: ReadonlyMap<string, string>,
+		sealedTemplateIdentityAllocations?: ReadonlyMap<string, readonly {
+			occurrence: number;
+			suffix?: string;
+			operonId: string;
+		}[]>,
 	): Promise<RuntimeTaskCreationPreparationV1>;
 	commitCreation(
 		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
@@ -844,6 +849,13 @@ export class RuntimeMutationGatewayV1 {
 					effect.repeatSeriesId ? [[effect.itemRef, effect.repeatSeriesId] as const] : []
 				)),
 			);
+			const sealedTemplateIdentityAllocations = new Map(
+				(request.plan.createEffects ?? []).flatMap(effect => (
+					effect.templateIdentityAllocations
+						? [[effect.itemRef, effect.templateIdentityAllocations] as const]
+						: []
+				)),
+			);
 			const createSpec = request.plan.spec;
 			const previewPrepared = await this.measureMutation(
 				request.requestId,
@@ -863,6 +875,7 @@ export class RuntimeMutationGatewayV1 {
 							.map(effect => effect.itemRef),
 					),
 					sealedSeriesIds,
+					sealedTemplateIdentityAllocations,
 				),
 			);
 		if (!previewPrepared.ok) {
@@ -888,6 +901,7 @@ export class RuntimeMutationGatewayV1 {
 				effectiveAt,
 				new Set((request.plan.createEffects ?? []).map(effect => effect.itemRef)),
 				sealedSeriesIds,
+				sealedTemplateIdentityAllocations,
 			),
 		);
 		if (!prepared.ok || !preparationStaticShapeMatches(previewPrepared, prepared)) {

@@ -285,7 +285,7 @@ function staleCursor(): ContextCursorDecodeResultV1 {
 		error: structuredErrorV1(
 			'stale-cursor',
 			'The cursor is invalid, stale, or belongs to another Runtime session.',
-			{ retryable: true },
+			{ retryable: false },
 		),
 	};
 }

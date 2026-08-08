@@ -276,7 +276,7 @@ function runtimeFailure(
 		error: boundaryError ?? structuredErrorV1(
 			'internal-error',
 			'Runtime freshness coordination failed.',
-			{ retryable: true },
+			{ retryable: false },
 		),
 		warnings,
 		attempts,

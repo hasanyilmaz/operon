@@ -679,6 +679,8 @@ async function testSavedFilterQuery(fixture: Fixture): Promise<void> {
 	}, fixture.execution);
 	assert.equal(stale.ok, false);
 	assert.equal(!stale.ok && stale.error.code, 'stale-cursor');
+	assert.equal(!stale.ok && stale.error.retryable, false);
+	assert.equal(!stale.ok && stale.error.action, 'refresh-state');
 	const missing = await bridge.filterQueryTasks({
 		contractVersion: 1,
 		requestId: 'saved-filter-missing',

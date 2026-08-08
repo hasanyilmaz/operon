@@ -1,6 +1,7 @@
 export * from './catalog-builder';
 export * from './coherent-read';
 export * from './facade';
+export * from './filter-query-digest';
 export * from './graph-transaction-executor';
 export * from './lifecycle';
 export * from './mutation-gateway';
