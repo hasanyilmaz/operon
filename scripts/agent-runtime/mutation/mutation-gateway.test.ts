@@ -158,6 +158,39 @@ test('Runtime admission preserves the contract tag-count boundary', () => {
 	assert.equal(validateRuntimeMutationPreviewRequestV1(rejected).ok, false);
 });
 
+test('checkbox adoption preview admission is targetless, exact, and reopen-only', () => {
+	const adoption: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'adopt-preview',
+		kind: 'mutation-preview',
+		clientInstanceId: 'test-client',
+		idempotencyKey: 'adopt-idempotency-key',
+		capability: 'tasks.adopt.preview',
+		mutationKind: 'task.adopt',
+		spec: {
+			operation: 'adopt-inline',
+			source: {
+				filePath: 'Tasks.md',
+				lineNumber: 0,
+				expectedLine: '- [ ] Plain markdown task',
+			},
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	assert.equal(validateRuntimeMutationPreviewRequestV1(adoption).ok, true);
+	const terminal = structuredClone(adoption);
+	if (terminal.spec.operation !== 'adopt-inline') return;
+	terminal.spec.source.expectedLine = '- [x] Completed task';
+	terminal.spec.terminalSourcePolicy = 'reopen';
+	assert.equal(validateRuntimeMutationPreviewRequestV1(terminal).ok, true);
+	const invalidPolicy = structuredClone(terminal) as unknown as Record<string, unknown>;
+	((invalidPolicy.spec as Record<string, unknown>).terminalSourcePolicy) = 'preserve-terminal';
+	assert.equal(validateRuntimeMutationPreviewRequestV1(invalidPolicy).ok, false);
+	const movedLine = structuredClone(adoption) as unknown as Record<string, unknown>;
+	((movedLine.spec as { source: Record<string, unknown> }).source.lineNumber) = -1;
+	assert.equal(validateRuntimeMutationPreviewRequestV1(movedLine).ok, false);
+});
+
 test('creation capability refusal preserves structured adapter details', async () => {
 	const gateway = new RuntimeMutationGatewayV1({
 		isReady: () => true,

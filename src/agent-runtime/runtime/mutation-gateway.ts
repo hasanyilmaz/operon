@@ -2554,11 +2554,20 @@ function buildPreparedMutationPlan(
 function isSealedMutationSpecV1(
 	spec: MutationPreviewRequestV1['spec'],
 ): spec is MutationSpecV1 {
-	return spec.operation !== 'relocate-inline' || 'source' in spec;
+	if (spec.operation === 'relocate-inline') return 'source' in spec;
+	if (spec.operation === 'adopt-inline') {
+		return spec.operonId !== undefined
+			&& spec.resultingLine !== undefined
+			&& spec.sourceDigest !== undefined
+			&& spec.resultDigest !== undefined
+			&& spec.locator !== undefined;
+	}
+	return true;
 }
 
 function isPreparedGraphTransactionPlan(plan: SealedMutationPlanV1): boolean {
 	return [
+		'task.adopt',
 		'task.inline-relocate',
 		'task.convert',
 		'task.delete',
