@@ -1175,8 +1175,11 @@ test('inline task exact-byte evidence records metadata settlement and unrelated 
 		{
 			...preparedMutation,
 			token: {
-				...prepared,
-				operation: 'transition' as const,
+				kind: 'semantic-transition-plan' as const,
+				prepared: {
+					...prepared,
+					operation: 'transition' as const,
+				},
 			},
 		},
 		commit,
@@ -1466,4 +1469,103 @@ test('File Task settlement accepts only one bounded configured modified-time fro
 		null,
 		'Concurrent File Task field drift remains unverified.',
 	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			committedContent,
+			sha256HexV1(committedContent),
+			committedContent.replace(
+				'datetimeModified: 2026-07-24T12:00:00',
+				'datetimeModified: 2026-07-24T12:00:01',
+			),
+			DEFAULT_SETTINGS.keyMappings,
+			['datetimeModified'],
+			settlementWindow,
+		),
+		null,
+		'A plugin property that collides with an Operon-managed File Task key must not be admitted.',
+	);
+	const mappedSettings = {
+		...DEFAULT_SETTINGS,
+		keyMappings: DEFAULT_SETTINGS.keyMappings.map(mapping => (
+			mapping.canonicalKey === 'datetimeCreated'
+				? { ...mapping, visiblePropertyName: 'createdAt' }
+				: mapping
+		)),
+	};
+	const mappedCollisionContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'createdAt: 2026-07-24T11:59',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			mappedCollisionContent,
+			sha256HexV1(mappedCollisionContent),
+			mappedCollisionContent.replace(
+				'createdAt: 2026-07-24T11:59',
+				'createdAt: 2026-07-24T12:00',
+			),
+			mappedSettings.keyMappings,
+			['createdAt'],
+			settlementWindow,
+		),
+		null,
+		'A configured visible name for an Operon-managed key must also remain fail-closed.',
+	);
+	for (const reservedKey of ['tags', 'related'] as const) {
+		const reservedCollisionContent = committedContent.replace(
+			'modification: 2026-07-24T11:59',
+			`${reservedKey}: 2026-07-24T11:59`,
+		);
+		assert.equal(
+			resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+				prepared,
+				reservedCollisionContent,
+				sha256HexV1(reservedCollisionContent),
+				reservedCollisionContent.replace(
+					`${reservedKey}: 2026-07-24T11:59`,
+					`${reservedKey}: 2026-07-24T12:00`,
+				),
+				DEFAULT_SETTINGS.keyMappings,
+				[reservedKey],
+				settlementWindow,
+			),
+			null,
+			`${reservedKey} remains reserved task state even when it is absent from active key mappings.`,
+		);
+	}
+	const customSettings = {
+		...DEFAULT_SETTINGS,
+		keyMappings: [...DEFAULT_SETTINGS.keyMappings, {
+			canonicalKey: 'reviewScore',
+			visiblePropertyName: 'reviewScoreVisible',
+			type: 'datetime' as const,
+			sync: 'yes' as const,
+			enabled: true,
+			isSystem: false,
+		}],
+	};
+	for (const customKey of ['reviewScore', 'reviewScoreVisible'] as const) {
+		const customCollisionContent = committedContent.replace(
+			'modification: 2026-07-24T11:59',
+			`${customKey}: 2026-07-24T11:59`,
+		);
+		assert.equal(
+			resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+				prepared,
+				customCollisionContent,
+				sha256HexV1(customCollisionContent),
+				customCollisionContent.replace(
+					`${customKey}: 2026-07-24T11:59`,
+					`${customKey}: 2026-07-24T12:00`,
+				),
+				customSettings.keyMappings,
+				[customKey],
+				settlementWindow,
+			),
+			null,
+			`${customKey} remains managed task state for settlement collision checks.`,
+		);
+	}
 });

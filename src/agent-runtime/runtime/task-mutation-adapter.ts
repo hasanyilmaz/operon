@@ -29,6 +29,8 @@ import {
 import { composeStatusValue } from '../../core/workflow-status-value';
 import { canonicalizeLocalDatetime } from '../../core/local-time';
 import { parseTaskLine } from '../../core/parser';
+import { getManagedYamlAliases } from '../../core/yaml-fields';
+import { CANONICAL_KEYS } from '../../types/keys';
 import type { KeyMapping } from '../../types/settings';
 import type {
 	RuntimeMutationSettlementWindowV1,
@@ -66,6 +68,7 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 	observedLines: readonly string[],
 	driftLineNumber: number,
 	modifiedTimeFrontmatterKeys: readonly string[],
+	keyMappings: readonly KeyMapping[],
 	settlementWindow: RuntimeMutationSettlementWindowV1 | undefined,
 ): boolean {
 	if (
@@ -96,10 +99,21 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 	const settlementObservedAt = toLocalDatetime(
 		new Date(settlementWindow.settlementObservedAtEpochMs).toISOString(),
 	);
+	const managedCanonicalKeys = new Set([
+		...CANONICAL_KEYS.map(key => key.name),
+		...keyMappings.map(mapping => mapping.canonicalKey),
+	]);
+	const managedTaskKeys = new Set([
+		'tags',
+		...[...managedCanonicalKeys].flatMap(canonicalKey => (
+			getManagedYamlAliases(canonicalKey, [...keyMappings])
+		)),
+	]);
 	const permittedKeys = [...new Set(modifiedTimeFrontmatterKeys)].filter(key => (
 		key.trim() === key
 		&& key.length > 0
 		&& !/[\r\n:]/u.test(key)
+		&& !managedTaskKeys.has(key)
 	));
 	for (const key of permittedKeys) {
 		const prefix = `${key}:`;
@@ -282,6 +296,7 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 				observedLines,
 				driftLineNumber,
 				modifiedTimeFrontmatterKeys,
+				keyMappings,
 				settlementWindow,
 			)
 		) return null;
@@ -346,6 +361,7 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 			observedLines,
 			frontmatterDriftLineNumber,
 			modifiedTimeFrontmatterKeys,
+			keyMappings,
 			settlementWindow,
 		)) return null;
 		restoredObservedLines[frontmatterDriftLineNumber] = committedLines[frontmatterDriftLineNumber] ?? '';
@@ -382,7 +398,13 @@ export function runtimeInlineTaskUpdateSettlementEvidenceSourceV1(
 	preparedMutation: RuntimePreparedMutationV1,
 	commit: RuntimePreparedMutationCommitV1,
 ): { preparation: RuntimeTaskFieldMutationPreparationV1; resourceKey: string } | null {
-	const prepared = preparedMutation.token as RuntimeTaskFieldMutationPreparationV1;
+	const token = preparedMutation.token as {
+		kind?: unknown;
+		prepared?: RuntimeTaskFieldMutationPreparationV1;
+	};
+	const prepared = token?.kind === 'semantic-transition-plan'
+		? token.prepared
+		: token as RuntimeTaskFieldMutationPreparationV1;
 	const evidence = commit.primaryTaskSourceCommitEvidence;
 	if (
 		!prepared

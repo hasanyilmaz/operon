@@ -33,13 +33,36 @@ export function getExternalModifiedTimeFrontmatterPropertyNames(
 	app: App | undefined,
 ): string[] {
 	const integrations = [
-		{ pluginId: 'update-time-on-edit', settingName: 'headerUpdated' },
-		{ pluginId: 'frontmatter-date-manager', settingName: 'headerUpdated' },
-		{ pluginId: 'update-time', settingName: 'updatedPropertyName' },
+		{
+			pluginId: 'update-time-on-edit',
+			settingName: 'headerUpdated',
+			isActive: (settings: Record<string, unknown>) => (
+				(settings.dateFormat === "yyyy-MM-dd'T'HH:mm"
+					|| settings.dateFormat === "yyyy-MM-dd'T'HH:mm:ss")
+				&& settings.enableNumberProperties !== true
+			),
+		},
+		{
+			pluginId: 'frontmatter-date-manager',
+			settingName: 'headerUpdated',
+			isActive: (settings: Record<string, unknown>) => (
+				settings.enableAutoUpdate === true
+				&& settings.enableModifiedTime !== false
+				&& (settings.dateFormat === "yyyy-MM-dd'T'HH:mm"
+					|| settings.dateFormat === "yyyy-MM-dd'T'HH:mm:ss")
+				&& settings.enableNumberProperties !== true
+				&& (settings.timezone === undefined || settings.timezone === '')
+			),
+		},
+		{
+			pluginId: 'update-time',
+			settingName: 'updatedPropertyName',
+			isActive: () => true,
+		},
 	] as const;
-	const propertyNames = integrations.flatMap(({ pluginId, settingName }) => {
+	const propertyNames = integrations.flatMap(({ pluginId, settingName, isActive }) => {
 		const plugin = getCommunityPlugin(app, pluginId);
-		if (!isRecord(plugin) || !isRecord(plugin.settings)) return [];
+		if (!isRecord(plugin) || !isRecord(plugin.settings) || !isActive(plugin.settings)) return [];
 		const propertyName = plugin.settings[settingName];
 		if (
 			typeof propertyName !== 'string'
