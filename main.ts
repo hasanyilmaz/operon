@@ -1144,6 +1144,7 @@ export default class OperonPlugin extends Plugin {
 	private agentRuntimeContextBridge: ContextBridgeV1 | null = null;
 	private agentRuntimeMutationGateway: RuntimeMutationGatewayV1 | null = null;
 	private agentRuntimeTaskWorkflowGateway: TaskWorkflowGatewayV1 | null = null;
+	private agentRuntimeGatewayStartupFailureReason: string | null = 'Gateway startup unavailable: startup-pending.';
 	private agentRuntimeTimingProbe: RuntimeTimingProbeBufferV1 | null = null;
 	private agentRuntimeReceiptStore: IndexedDbMutationReceiptStoreV1 | null = null;
 	private agentRuntimeSecurityAuditStore: IndexedDbSecurityAuditStoreV1 | null = null;
@@ -2979,7 +2980,8 @@ export default class OperonPlugin extends Plugin {
 							? { availability: 'available' }
 							: {
 								availability: 'unavailable',
-								reason: 'The live mutation Gateway has not completed its startup gate.',
+								reason: this.agentRuntimeGatewayStartupFailureReason
+									?? 'Gateway startup unavailable: startup-pending.',
 							};
 					}
 					if (
@@ -2997,13 +2999,15 @@ export default class OperonPlugin extends Plugin {
 								? { availability: 'available' }
 								: {
 									availability: 'unavailable',
-									reason: 'The task-workflow extension Gateway has not completed its startup gate.',
+									reason: this.agentRuntimeGatewayStartupFailureReason
+										?? 'Gateway startup unavailable: startup-pending.',
 								}
 							: this.agentRuntimeMutationGateway
 							? { availability: 'available' }
 							: {
 								availability: 'unavailable',
-								reason: 'The live mutation Gateway has not completed its startup gate.',
+								reason: this.agentRuntimeGatewayStartupFailureReason
+									?? 'Gateway startup unavailable: startup-pending.',
 							};
 					}
 					return undefined;
@@ -3137,16 +3141,23 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async bindAgentRuntimeMutationGateway(): Promise<void> {
-		if (!Platform.isDesktopApp) return;
+		this.agentRuntimeGatewayStartupFailureReason = 'Gateway startup unavailable: startup-pending.';
+		if (!Platform.isDesktopApp) {
+			this.agentRuntimeGatewayStartupFailureReason = 'Gateway startup unavailable: desktop-runtime-required.';
+			return;
+		}
 		const receiptStore = new IndexedDbMutationReceiptStoreV1();
 		const receiptHealth = await receiptStore.health(true);
 		if (!receiptHealth.healthy) {
+			const detail = receiptStore.getStartupFailureDetail();
+			this.agentRuntimeGatewayStartupFailureReason = `Gateway startup unavailable: receipt-store:${detail ?? receiptHealth.reason}.`;
 			receiptStore.close();
 			return;
 		}
 		const auditStore = this.agentRuntimeSecurityAuditStore
 			?? new IndexedDbSecurityAuditStoreV1();
 		if (!await auditStore.health()) {
+			this.agentRuntimeGatewayStartupFailureReason = 'Gateway startup unavailable: security-audit-store:health-check-failed.';
 			auditStore.close();
 			if (this.agentRuntimeSecurityAuditStore === auditStore) {
 				this.agentRuntimeSecurityAuditStore = null;
@@ -6013,6 +6024,7 @@ export default class OperonPlugin extends Plugin {
 			auditDispatched: request => this.recordTaskWorkflowSecurityAudit('apply-dispatched', request),
 			auditCompleted: (request, result) => this.recordTaskWorkflowSecurityAudit('apply-completed', request, result),
 		});
+		this.agentRuntimeGatewayStartupFailureReason = null;
 	}
 
 	private async prepareAgentRuntimeSourceTransition(
@@ -12924,6 +12936,8 @@ export default class OperonPlugin extends Plugin {
 			await this.bindAgentRuntimeMutationGateway();
 		} catch (error) {
 			this.agentRuntimeMutationGateway = null;
+			this.agentRuntimeTaskWorkflowGateway = null;
+			this.agentRuntimeGatewayStartupFailureReason = 'Gateway startup unavailable: gateway-bind:unexpected-failure.';
 			this.agentRuntimeReceiptStore?.close();
 			this.agentRuntimeReceiptStore = null;
 			this.agentRuntimeSecurityAuditStore?.close();
@@ -13364,6 +13378,8 @@ export default class OperonPlugin extends Plugin {
 		this.indexV8CleanupMaintenance?.cancel();
 		this.indexer?.beginUnload();
 		this.agentRuntimeMutationGateway = null;
+		this.agentRuntimeTaskWorkflowGateway = null;
+		this.agentRuntimeGatewayStartupFailureReason = 'Gateway startup unavailable: startup-pending.';
 		this.agentRuntimeReceiptStore?.close();
 		this.agentRuntimeReceiptStore = null;
 		this.agentRuntimeSecurityAuditStore?.close();

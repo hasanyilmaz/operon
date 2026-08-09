@@ -41,6 +41,25 @@ test('does not announce ready before timer state is resumed', () => {
 	assert.ok(readyOffset > resumeOffset);
 });
 
+test('preserves bounded Gateway startup failure reasons in capability advertisements', () => {
+	const initialization = methodBody(
+		mainSource,
+		'\tprivate initializeAgentRuntime(): void {',
+		'\n\n\tprivate async bindAgentRuntimeServices',
+	);
+	const gatewayBinding = methodBody(
+		mainSource,
+		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
+		'\n\n\tprivate async prepareAgentRuntimeSourceTransition',
+	);
+	assert.match(gatewayBinding, /receipt-store:\$\{detail \?\? receiptHealth\.reason\}/u);
+	assert.match(gatewayBinding, /security-audit-store:health-check-failed/u);
+	assert.match(gatewayBinding, /agentRuntimeGatewayStartupFailureReason = null/u);
+	assert.match(initialization, /reason: this\.agentRuntimeGatewayStartupFailureReason/u);
+	assert.match(mainSource, /gateway-bind:unexpected-failure/u);
+	assert.doesNotMatch(initialization, /has not completed its startup gate/u);
+});
+
 test('binds freshness after index construction and marks only a usable cache ready', () => {
 	const initialization = methodBody(
 		mainSource,

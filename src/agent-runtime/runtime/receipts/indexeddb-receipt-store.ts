@@ -69,12 +69,12 @@ export const MUTATION_RECEIPT_MAX_RECORDS_V1 = RECOVERY_MAX_RECORDS_V1;
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const ISO_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-const TERMINAL_OUTCOMES = new Set<MutationReceiptV1['terminalOutcome']>([
+const TERMINAL_OUTCOMES = new Set<string>([
 	'applied',
 	'already-applied',
 	'outcome-unknown',
 ]);
-const MUTATION_KINDS = new Set<MutationKindV1>(MUTATION_KINDS_V1);
+const MUTATION_KINDS = new Set<string>(MUTATION_KINDS_V1);
 
 export interface MutationReceiptScopeV1 {
 	vaultIdentityHash: string;
@@ -139,10 +139,20 @@ export interface MutationReceiptApplyDiagnosticContextV1 {
 	timingNow: () => number;
 }
 
+interface LegacyTaskAdoptReceiptV1 extends Omit<MutationReceiptV1, 'mutationKind'> {
+	mutationKind: 'task.adopt';
+}
+
+type PersistedMutationReceiptV1 = MutationReceiptV1 | LegacyTaskAdoptReceiptV1;
+
 interface StoredMutationReceiptV1 {
 	key: string;
 	completedAtMs: number;
 	expiresAtMs: number;
+	receipt: PersistedMutationReceiptV1;
+}
+
+interface StoredCurrentMutationReceiptV1 extends Omit<StoredMutationReceiptV1, 'receipt'> {
 	receipt: MutationReceiptV1;
 }
 
@@ -207,6 +217,7 @@ export class IndexedDbMutationReceiptStoreV1 {
 		MutationReceiptApplyAdmissionTokenV1,
 		ReceiptAdmissionClaimV1
 	>();
+	private startupFailureDetail: string | null = null;
 	private closed = false;
 
 	constructor(options: IndexedDbMutationReceiptStoreOptionsV1 = {}) {
@@ -222,6 +233,7 @@ export class IndexedDbMutationReceiptStoreV1 {
 		if (this.closed) return this.setHealth(false, 'closed', 'store-closed');
 		if (!this.indexedDBFactory) return this.setHealth(false, 'unavailable', 'indexeddb-unavailable');
 		if (!force && this.healthState?.healthy) return { ...this.healthState };
+		this.startupFailureDetail = null;
 
 		let transaction: IDBTransaction | null = null;
 		try {
@@ -264,7 +276,8 @@ export class IndexedDbMutationReceiptStoreV1 {
 			const auditProbeDelete = auditStore.delete(HEALTH_PROBE_KEY);
 			const metadataRequest = metadataStore.get(RECEIPT_GENERATION_KEY);
 			const allRequest = store.getAll();
-			const [, , , , , , , , metadata, records] = await this.withOperationTimeout(
+			const legacyJournalRequest = containsLegacyTaskAdoptJournalCandidate(journalStore);
+			const [, , , , , , , , metadata, records, containsLegacyJournal] = await this.withOperationTimeout(
 				Promise.all([
 					requestResult(putRequest),
 					requestResult(deleteRequest),
@@ -278,10 +291,18 @@ export class IndexedDbMutationReceiptStoreV1 {
 						metadataRequest as IDBRequest<StoredReceiptMetadataV1 | undefined>,
 					),
 					requestResult(allRequest as IDBRequest<StoredMutationReceiptV1[]>),
+					legacyJournalRequest,
 				]),
 				transaction,
 			);
 			assertValidReceiptMetadata(metadata);
+			if (containsLegacyJournal) {
+				this.startupFailureDetail = 'legacy-task-adopt-journal-recovery-required';
+				throw new MutationReceiptStoreErrorV1(
+					'receipt-store-corrupt',
+					'A legacy task-adoption journal requires explicit recovery.',
+				);
+			}
 			const prune = planPrune(records, this.now());
 			const deletes = prune.keysToDelete.map(recordKey => requestResult(store.delete(recordKey)));
 			const generationWrite = deletes.length > 0
@@ -300,6 +321,10 @@ export class IndexedDbMutationReceiptStoreV1 {
 			this.closeDatabase();
 			return this.setHealth(false, 'unhealthy', reason);
 		}
+	}
+
+	getStartupFailureDetail(): string | null {
+		return this.startupFailureDetail;
 	}
 
 	async lookup(scope: MutationReceiptScopeV1): Promise<MutationReceiptV1 | null> {
@@ -333,7 +358,7 @@ export class IndexedDbMutationReceiptStoreV1 {
 				await this.withOperationTimeout(completion, transaction);
 				return null;
 			}
-			if (!isStoredReceiptValid(stored) || !receiptMatchesScope(stored.receipt, scope)) {
+			if (!isStoredCurrentReceiptValid(stored) || !receiptMatchesScope(stored.receipt, scope)) {
 				this.markUnhealthy('operation-failed');
 				throw new MutationReceiptStoreErrorV1(
 					'receipt-store-corrupt',
@@ -520,7 +545,10 @@ export class IndexedDbMutationReceiptStoreV1 {
 			const storedReceipt = records.find(record => record.key === key);
 			if (
 				storedReceipt
-				&& !receiptMatchesScope(storedReceipt.receipt, scope)
+				&& (
+					!isStoredCurrentReceiptValid(storedReceipt)
+					|| !receiptMatchesScope(storedReceipt.receipt, scope)
+				)
 			) {
 				throw new MutationReceiptStoreErrorV1(
 					'receipt-store-corrupt',
@@ -1346,7 +1374,7 @@ export class IndexedDbMutationReceiptStoreV1 {
 				transaction,
 			);
 			assertValidReceiptMetadata(metadata);
-			if (records.some(record => !isStoredReceiptValid(record))) {
+			if (records.some(record => !isStoredPersistedReceiptValid(record))) {
 				safeAbort(transaction);
 				this.markUnhealthy('operation-failed');
 				throw new MutationReceiptStoreErrorV1(
@@ -1623,7 +1651,7 @@ function cloneStoredReceipt(
 		key: stored.key,
 		completedAtMs: stored.completedAtMs,
 		expiresAtMs: stored.expiresAtMs,
-		receipt: cloneReceipt(stored.receipt),
+		receipt: clonePersistedReceipt(stored.receipt),
 	};
 }
 
@@ -1650,7 +1678,33 @@ function assertValidReceipt(receipt: MutationReceiptV1, now: number): void {
 	}
 }
 
-function isReceiptValid(receipt: MutationReceiptV1): boolean {
+interface PersistedReceiptShapeV1 {
+	contractVersion: 1;
+	vaultIdentityHash: string;
+	clientInstanceId: string;
+	idempotencyKeyHash: string;
+	planHash: string;
+	mutationKind: string;
+	targetDigest: string;
+	terminalOutcome: MutationReceiptV1['terminalOutcome'];
+	effectiveAt: string;
+	completedAt: string;
+	expiresAt: string;
+}
+
+function isReceiptValid(receipt: unknown): receipt is MutationReceiptV1 {
+	return isPersistedReceiptShapeValid(receipt) && MUTATION_KINDS.has(receipt.mutationKind);
+}
+
+function isLegacyTaskAdoptReceiptValid(receipt: unknown): receipt is LegacyTaskAdoptReceiptV1 {
+	return isPersistedReceiptShapeValid(receipt) && receipt.mutationKind === 'task.adopt';
+}
+
+function isPersistedReceiptValid(receipt: unknown): receipt is PersistedMutationReceiptV1 {
+	return isReceiptValid(receipt) || isLegacyTaskAdoptReceiptValid(receipt);
+}
+
+function isPersistedReceiptShapeValid(receipt: unknown): receipt is PersistedReceiptShapeV1 {
 	if (!isPlainObject(receipt)) return false;
 	if (!hasExactKeys(receipt, [
 		'contractVersion',
@@ -1672,7 +1726,8 @@ function isReceiptValid(receipt: MutationReceiptV1): boolean {
 		|| !isSha256(receipt.planHash)
 		|| !isSha256(receipt.targetDigest)
 		|| !isBoundedClientInstanceId(receipt.clientInstanceId)
-		|| !MUTATION_KINDS.has(receipt.mutationKind)
+		|| typeof receipt.mutationKind !== 'string'
+		|| typeof receipt.terminalOutcome !== 'string'
 		|| !TERMINAL_OUTCOMES.has(receipt.terminalOutcome)
 	) return false;
 	if (
@@ -1884,6 +1939,31 @@ function isStoredJournalValid(value: unknown): value is StoredGraphTransactionJo
 	return true;
 }
 
+function isStoredLegacyTaskAdoptJournalCandidate(value: unknown): boolean {
+	return isPlainObject(value)
+		&& isPlainObject(value.journal)
+		&& value.journal.mutationKind === 'task.adopt';
+}
+
+function containsLegacyTaskAdoptJournalCandidate(store: IDBObjectStore): Promise<boolean> {
+	return new Promise((resolve, reject) => {
+		const request = store.openCursor();
+		request.onerror = () => reject(request.error ?? new Error('Journal cursor failed.'));
+		request.onsuccess = () => {
+			const cursor = request.result;
+			if (!cursor) {
+				resolve(false);
+				return;
+			}
+			if (isStoredLegacyTaskAdoptJournalCandidate(cursor.value)) {
+				resolve(true);
+				return;
+			}
+			cursor.continue();
+		};
+	});
+}
+
 function assertValidLeaseOwner(value: string): void {
 	if (!isValidLeaseOwner(value)) {
 		throw new MutationReceiptStoreErrorV1(
@@ -1951,13 +2031,26 @@ function cloneJournal(journal: GraphTransactionJournalV1): GraphTransactionJourn
 	};
 }
 
-function isStoredReceiptValid(value: unknown): value is StoredMutationReceiptV1 {
+function isStoredCurrentReceiptValid(value: unknown): value is StoredCurrentMutationReceiptV1 {
+	return isStoredReceiptWrapperValid(value) && isReceiptValid(value.receipt);
+}
+
+function isStoredPersistedReceiptValid(value: unknown): value is StoredMutationReceiptV1 {
+	return isStoredReceiptWrapperValid(value) && isPersistedReceiptValid(value.receipt);
+}
+
+function isStoredReceiptWrapperValid(value: unknown): value is {
+	key: string;
+	completedAtMs: number;
+	expiresAtMs: number;
+	receipt: unknown;
+} {
 	if (!isPlainObject(value)) return false;
 	if (!hasExactKeys(value, ['key', 'completedAtMs', 'expiresAtMs', 'receipt'])) return false;
 	if (!isSha256(value.key)) return false;
 	if (!Number.isSafeInteger(value.completedAtMs) || !Number.isSafeInteger(value.expiresAtMs)) return false;
-	if (!isReceiptValid(value.receipt as MutationReceiptV1)) return false;
-	const receipt = value.receipt as MutationReceiptV1;
+	if (!isPersistedReceiptValid(value.receipt)) return false;
+	const receipt = value.receipt;
 	return value.completedAtMs === Date.parse(receipt.completedAt)
 		&& value.expiresAtMs === Date.parse(receipt.expiresAt);
 }
@@ -1990,6 +2083,23 @@ function cloneReceipt(receipt: MutationReceiptV1): MutationReceiptV1 {
 		idempotencyKeyHash: receipt.idempotencyKeyHash,
 		planHash: receipt.planHash,
 		mutationKind: receipt.mutationKind,
+		targetDigest: receipt.targetDigest,
+		terminalOutcome: receipt.terminalOutcome,
+		effectiveAt: receipt.effectiveAt,
+		completedAt: receipt.completedAt,
+		expiresAt: receipt.expiresAt,
+	};
+}
+
+function clonePersistedReceipt(receipt: PersistedMutationReceiptV1): PersistedMutationReceiptV1 {
+	if (receipt.mutationKind !== 'task.adopt') return cloneReceipt(receipt);
+	return {
+		contractVersion: 1,
+		vaultIdentityHash: receipt.vaultIdentityHash,
+		clientInstanceId: receipt.clientInstanceId,
+		idempotencyKeyHash: receipt.idempotencyKeyHash,
+		planHash: receipt.planHash,
+		mutationKind: 'task.adopt',
 		targetDigest: receipt.targetDigest,
 		terminalOutcome: receipt.terminalOutcome,
 		effectiveAt: receipt.effectiveAt,
@@ -2034,7 +2144,7 @@ function planPruneRecords(
 		),
 		...(validate ? {
 			validate: (record: StoredMutationReceiptV1) => {
-				if (!isStoredReceiptValid(record)) {
+				if (!isStoredPersistedReceiptValid(record)) {
 					throw new MutationReceiptStoreErrorV1(
 						'receipt-store-corrupt',
 						'The receipt store contains invalid metadata.',
