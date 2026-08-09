@@ -2254,8 +2254,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 
 		if (entry.id === 'integrations.developerApi') {
-			const host = setting.settingEl.createDiv('operon-developer-api-declarative-content');
-			this.renderDeveloperApiIntegrationContent(host);
+			setting.settingEl.empty();
+			setting.settingEl.addClass('operon-settings-search-bounded-render');
+			this.renderDeveloperApiIntegrations(setting.settingEl);
 			return;
 		}
 

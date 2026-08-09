@@ -13,8 +13,8 @@ test('declarative settings render the live Developer API grant controls', () => 
 	);
 	assert.match(
 		settingsSource,
-		/if \(entry\.id === 'integrations\.developerApi'\) \{[\s\S]*?this\.renderDeveloperApiIntegrationContent\(host\);/u,
-		'The declarative settings entry must render the same live grant content as the imperative fallback',
+		/if \(entry\.id === 'integrations\.developerApi'\) \{\s*setting\.settingEl\.empty\(\);\s*setting\.settingEl\.addClass\('operon-settings-search-bounded-render'\);\s*this\.renderDeveloperApiIntegrations\(setting\.settingEl\);/u,
+		'The declarative settings entry must use the bounded full-width renderer instead of appending controls to the setting row',
 	);
 	assert.match(
 		settingsSource,
