@@ -522,6 +522,18 @@ test('expired legacy task-adopt receipts prune once and remain idempotent', asyn
 test('malformed legacy and future receipts fail closed without partial pruning', async () => {
 	for (const [name, invalidReceipt] of [
 		['malformed-legacy', { ...receipt(91), mutationKind: 'task.adopt', unexpected: true }],
+		['missing-field', (() => {
+			const { planHash: _planHash, ...value } = receipt(91);
+			return { ...value, mutationKind: 'task.adopt' };
+		})()],
+		['bad-hash', { ...receipt(91), mutationKind: 'task.adopt', planHash: 'not-a-digest' }],
+		['invalid-timestamp', { ...receipt(91), mutationKind: 'task.adopt', completedAt: 'not-a-timestamp' }],
+		['ttl-too-long', {
+			...receipt(91),
+			mutationKind: 'task.adopt',
+			expiresAt: new Date(BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1 + 1).toISOString(),
+		}],
+		['invalid-outcome', { ...receipt(91), mutationKind: 'task.adopt', terminalOutcome: 'unknown' }],
 		['future-kind', { ...receipt(92), mutationKind: 'task.future' }],
 	] as const) {
 		const factory = new FakeIndexedDbFactory();
@@ -545,6 +557,7 @@ test('malformed legacy and future receipts fail closed without partial pruning',
 			receipt: invalidReceipt,
 		} as unknown as FakeStoredRecord);
 		const before = structuredClone([...factory.records.entries()]);
+		const metadataBefore = structuredClone([...factory.metadata.entries()]);
 
 		assert.deepEqual(await store.health(true), {
 			healthy: false,
@@ -552,6 +565,7 @@ test('malformed legacy and future receipts fail closed without partial pruning',
 			reason: 'operation-failed',
 		});
 		assert.deepEqual([...factory.records.entries()], before);
+		assert.deepEqual([...factory.metadata.entries()], metadataBefore);
 	}
 });
 
