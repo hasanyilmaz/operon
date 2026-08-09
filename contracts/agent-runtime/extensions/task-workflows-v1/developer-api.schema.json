@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:extension:task-workflows:developer-api",
+  "title": "Operon Runtime V1 task workflow Developer API extension",
+  "$defs": {
+    "accessRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "runtimeApi", "requestedCapabilities"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "runtimeApi": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "type": "integer", "minimum": 1 },
+            "max": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "requestedCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "prefixItems": [{ "const": "tasks.filter-query" }],
+          "items": false
+        }
+      }
+    },
+    "accessResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "kind", "ok"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "kind": { "const": "task-workflow-developer-api-access-result" },
+        "ok": { "type": "boolean" },
+        "api": { "type": "object" },
+        "error": { "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/structuredError" }
+      },
+      "allOf": [
+        { "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] }, "then": { "required": ["api"], "not": { "required": ["error"] } } },
+        { "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] }, "then": { "required": ["error"], "not": { "required": ["api"] } } }
+      ]
+    }
+  }
+}

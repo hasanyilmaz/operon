@@ -15,14 +15,16 @@ import {
 	type TaskFinderRequestV1,
 	type TaskFinderResultV1,
 	type TaskFinderRowV1,
-	type TaskFilterQueryRequestV1,
-	type TaskFilterQueryResultV1,
 	type TaskGetRequestV1,
 	type TaskGetResultV1,
 	type TaskQueryFiltersV1,
 	type TaskQueryRequestV1,
 	type TaskQueryResultV1,
 } from '../contracts/v1/context';
+import type {
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
+} from '../extensions/task-workflows-v1';
 import type {
 	ContextRevisionV1,
 	ResourceRevisionV1,

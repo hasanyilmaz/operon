@@ -175,11 +175,6 @@ export interface RuntimeMutationGatewayPortsV1 {
 		effectiveAt?: string,
 		activeItemRefs?: ReadonlySet<string>,
 		sealedSeriesIds?: ReadonlyMap<string, string>,
-		sealedTemplateIdentityAllocations?: ReadonlyMap<string, readonly {
-			occurrence: number;
-			suffix?: string;
-			operonId: string;
-		}[]>,
 	): Promise<RuntimeTaskCreationPreparationV1>;
 	commitCreation(
 		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
@@ -849,13 +844,6 @@ export class RuntimeMutationGatewayV1 {
 					effect.repeatSeriesId ? [[effect.itemRef, effect.repeatSeriesId] as const] : []
 				)),
 			);
-			const sealedTemplateIdentityAllocations = new Map(
-				(request.plan.createEffects ?? []).flatMap(effect => (
-					effect.templateIdentityAllocations
-						? [[effect.itemRef, effect.templateIdentityAllocations] as const]
-						: []
-				)),
-			);
 			const createSpec = request.plan.spec;
 			const previewPrepared = await this.measureMutation(
 				request.requestId,
@@ -875,7 +863,6 @@ export class RuntimeMutationGatewayV1 {
 							.map(effect => effect.itemRef),
 					),
 					sealedSeriesIds,
-					sealedTemplateIdentityAllocations,
 				),
 			);
 		if (!previewPrepared.ok) {
@@ -901,7 +888,6 @@ export class RuntimeMutationGatewayV1 {
 				effectiveAt,
 				new Set((request.plan.createEffects ?? []).map(effect => effect.itemRef)),
 				sealedSeriesIds,
-				sealedTemplateIdentityAllocations,
 			),
 		);
 		if (!prepared.ok || !preparationStaticShapeMatches(previewPrepared, prepared)) {
@@ -2568,20 +2554,11 @@ function buildPreparedMutationPlan(
 function isSealedMutationSpecV1(
 	spec: MutationPreviewRequestV1['spec'],
 ): spec is MutationSpecV1 {
-	if (spec.operation === 'relocate-inline') return 'source' in spec;
-	if (spec.operation === 'adopt-inline') {
-		return spec.operonId !== undefined
-			&& spec.resultingLine !== undefined
-			&& spec.sourceDigest !== undefined
-			&& spec.resultDigest !== undefined
-			&& spec.locator !== undefined;
-	}
-	return true;
+	return spec.operation !== 'relocate-inline' || 'source' in spec;
 }
 
 function isPreparedGraphTransactionPlan(plan: SealedMutationPlanV1): boolean {
 	return [
-		'task.adopt',
 		'task.inline-relocate',
 		'task.convert',
 		'task.delete',

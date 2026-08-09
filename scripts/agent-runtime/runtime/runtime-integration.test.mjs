@@ -180,3 +180,21 @@ test('file and inline Runtime mutations use the platform-safe canonical vault fe
 		/validateWritePath: async \(filePath, allowAbsent\) => \(\s*await this\.isAgentRuntimeMutationPathContained\(filePath, allowAbsent\)/u,
 	);
 });
+
+test('identity apply refuses unreceipted after-state convergence before creating a receipt', () => {
+	const applyIdentity = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	const convergenceIndex = applyIdentity.indexOf('const afterStateAlreadyPresent =');
+	const refusalIndex = applyIdentity.indexOf("'Identity-placeholder after-state exists without the sealed receipt; preview again.'");
+	const receiptIndex = applyIdentity.indexOf('const receipt: TaskWorkflowMutationReceiptV1');
+	assert.ok(convergenceIndex >= 0);
+	assert.ok(refusalIndex > convergenceIndex);
+	assert.ok(receiptIndex > refusalIndex);
+	assert.match(
+		applyIdentity.slice(convergenceIndex, receiptIndex),
+		/if \(afterStateAlreadyPresent\) \{[\s\S]*?'stale-source'/u,
+	);
+});

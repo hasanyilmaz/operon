@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import type { OperonSettings } from '../../../src/types/settings';
+import { canonicalJsonV1, sha256HexV1, toJsonValueV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
+import { decodeCapabilityAdvertisementsV1 } from '../../../src/agent-runtime/contracts/v1/decode';
 import {
 	computeContextSettingsFingerprintV1,
 	createAgentRuntimeSessionId,
@@ -14,6 +16,18 @@ import {
 	SingleFlightRuntimeBarrierV1,
 	type RuntimeRevisionSnapshotV1,
 } from '../../../src/agent-runtime/runtime';
+import {
+	TaskWorkflowGatewayV1,
+	admitTaskWorkflowApplyRequestExtensionV1,
+	decodeTaskFilterQueryResultExtensionV1,
+	decodeTaskWorkflowApplyRequestExtensionV1,
+	decodeTaskWorkflowCliResultEnvelopeExtensionV1,
+	decodeTaskWorkflowMutationResultExtensionV1,
+	decodeTaskWorkflowPreviewResultExtensionV1,
+	taskWorkflowTerminalAuditFieldsV1,
+	type TaskWorkflowApplyRequestV1,
+	type TaskWorkflowPreviewRequestV1,
+} from '../../../src/agent-runtime/extensions/task-workflows-v1';
 
 declare global {
 	var __operonAgentRuntimeCoreTestRun: Promise<void> | undefined;
@@ -24,6 +38,7 @@ globalThis.__operonAgentRuntimeCoreTestRun = run();
 async function run(): Promise<void> {
 	testLifecycleAndAdmission();
 	await testFrozenFacadeAndHealth();
+	await testTaskWorkflowGatewayIsolation();
 	await testHealthRevisionIsolationAndPerformance();
 	testSettingsFingerprintBoundary();
 	testSavedFilterQueryDigest();
@@ -43,6 +58,300 @@ async function run(): Promise<void> {
 	await testDeadlineAndAbort();
 	await testSettingsFreshnessCoordinator();
 	console.log('Agent Runtime core tests passed');
+}
+
+async function testTaskWorkflowGatewayIsolation(): Promise<void> {
+	const envelope = {
+		contractVersion: 1,
+		kind: 'cli-result',
+		requestId: 'filter-envelope',
+		command: 'tasks.filter-query',
+		ok: true,
+		transport: { channel: 'request-file', inputBytes: 1 },
+		vaultIdentity: { expectedMatch: true },
+		compatibility: { contractVersion: 1, compatible: true, runtimeApi: 1 },
+		cliContract: 1,
+		runtime: { appVersion: '1.13.3', plugin: { id: 'operon', version: '3.2.0', minAppVersion: '1.7.2' }, apiVersion: 1 },
+		timing: { handlerMs: 1 },
+		warnings: [],
+		result: {
+			contractVersion: 1,
+			requestId: 'filter-envelope',
+			kind: 'task-filter-query-result',
+			ok: false,
+			freshness: { source: 'live-runtime', coherence: 'verified', observedAt: '2026-08-09T00:00:00.000Z', settled: true },
+			warnings: [],
+			error: { contractVersion: 1, code: 'capability-unavailable', reason: 'Unavailable.', retryable: false, action: 'rediscover' },
+		},
+	} as const;
+	const decodedEnvelope = decodeTaskWorkflowCliResultEnvelopeExtensionV1(envelope);
+	assert.equal(decodedEnvelope.ok, true, decodedEnvelope.ok ? undefined : JSON.stringify(decodedEnvelope.issues));
+	assert.equal(decodeTaskWorkflowCliResultEnvelopeExtensionV1({ ...envelope, result: { ...envelope.result, requestId: 'different-request' } }).ok, false);
+	assert.equal(decodeTaskWorkflowCliResultEnvelopeExtensionV1({ ...envelope, result: { contractVersion: 1, requestId: 'filter-envelope', kind: 'mutation-preview-result', ok: false, warnings: [], error: envelope.result.error } }).ok, false);
+	assert.equal(decodeTaskWorkflowCliResultEnvelopeExtensionV1({ ...envelope, transport: {} }).ok, false);
+	assert.equal(decodeTaskWorkflowCliResultEnvelopeExtensionV1({
+		...envelope,
+		client: { planRef: 'plan-ref' },
+		recovery: { required: true, planRef: 'plan-ref', action: 'recover-same-plan', mutationMayHaveApplied: true },
+	}).ok, false);
+	assert.equal(decodeTaskWorkflowCliResultEnvelopeExtensionV1({
+		...envelope,
+		result: {
+			...envelope.result,
+			error: { ...envelope.result.error, code: 'future-additive-error', retryable: false, action: 'do-not-retry' },
+		},
+	}).ok, true, 'unknown additive errors use the safe fallback policy');
+	assert.equal(decodeTaskWorkflowCliResultEnvelopeExtensionV1({
+		...envelope,
+		result: { ...envelope.result, error: { ...envelope.result.error, retryable: true } },
+	}).ok, false, 'known errors must retain their published retry policy');
+	assert.equal(decodeTaskWorkflowCliResultEnvelopeExtensionV1({
+		...envelope,
+		result: { ...envelope.result, error: { ...envelope.result.error, reason: 'x'.repeat(2_049) } },
+	}).ok, false, 'structured error reasons retain the frozen 2048-byte limit');
+	const malformedTaskResult = decodeTaskFilterQueryResultExtensionV1({
+		contractVersion: 1,
+		requestId: 'filter-envelope',
+		kind: 'task-filter-query-result',
+		ok: true,
+		freshness: { source: 'live-runtime', coherence: 'verified', observedAt: '2026-08-09T00:00:00.000Z', settled: true },
+		warnings: [],
+		contextRevision: {
+			index: { sessionId: 'session-a', ramGeneration: 1, durable: { status: 'missing' } },
+			settingsFingerprint: 'a'.repeat(64),
+			pinnedGeneration: 0,
+			activeTrackerGeneration: 0,
+			repeatSeriesRevision: 0,
+			projectSerialGeneration: 0,
+			projectSerialSignature: 'b'.repeat(64),
+		},
+		tasks: [{}],
+		page: { actualCount: 1, returnedCount: 1, truncated: false, asOf: '2026-08-09T00:00:00.000Z' },
+		provenance: [],
+		truncations: [],
+	});
+	assert.equal(malformedTaskResult.ok, false);
+	assert.equal(!malformedTaskResult.ok && malformedTaskResult.issues.some(item => item.path.startsWith('/tasks/0/identity')), true);
+	assert.deepEqual(taskWorkflowTerminalAuditFieldsV1({
+		contractVersion: 1,
+		requestId: 'audit-applied',
+		kind: 'mutation-result',
+		status: 'applied',
+		mutationMayHaveApplied: true,
+		retryAllowed: false,
+		groupResults: [],
+	}), { outcome: 'succeeded', errorCode: null });
+	assert.deepEqual(taskWorkflowTerminalAuditFieldsV1({
+		contractVersion: 1,
+		requestId: 'audit-unknown',
+		kind: 'mutation-result',
+		status: 'outcome-unknown',
+		mutationMayHaveApplied: true,
+		retryAllowed: false,
+		groupResults: [],
+		ambiguitySource: 'group-outcome',
+		error: {
+			contractVersion: 1,
+			code: 'outcome-unknown',
+			reason: 'test',
+			retryable: false,
+			action: 'recover-same-plan',
+		},
+	}), { outcome: 'outcome-unknown', errorCode: 'outcome-unknown' });
+	assert.deepEqual(taskWorkflowTerminalAuditFieldsV1({
+		contractVersion: 1,
+		requestId: 'audit-failed',
+		kind: 'mutation-result',
+		status: 'failed',
+		mutationMayHaveApplied: false,
+		retryAllowed: false,
+		groupResults: [],
+		error: {
+			contractVersion: 1,
+			code: 'stale-context',
+			reason: 'test',
+			retryable: false,
+			action: 'refresh-state',
+		},
+	}), { outcome: 'failed', errorCode: 'stale-context' });
+	let previewCalls = 0;
+	let applyCalls = 0;
+	let dispatchAudits = 0;
+	let terminalAudits = 0;
+	let previewOutputMode: 'valid' | 'invalid-output' | 'wrong-request' = 'valid';
+	let applyMode: 'invalid-output' | 'wrong-request' | 'throw' = 'invalid-output';
+	const terminalAuditResults: import('../../../src/agent-runtime/extensions/task-workflows-v1').TaskWorkflowMutationResultV1[] = [];
+	const gateway = new TaskWorkflowGatewayV1({
+		isReady: () => true,
+		nowEpochMs: () => Date.parse('2026-08-09T00:00:00.000Z'),
+		preview: async request => {
+			previewCalls += 1;
+			if (previewOutputMode === 'invalid-output') {
+				return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview-result', ok: true } as unknown as import('../../../src/agent-runtime/extensions/task-workflows-v1').TaskWorkflowPreviewResultV1;
+			}
+			return {
+				contractVersion: 1,
+				requestId: previewOutputMode === 'wrong-request' ? 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' : request.requestId,
+				kind: 'mutation-preview-result',
+				ok: false,
+				warnings: [],
+				error: {
+					contractVersion: 1,
+					code: 'capability-unavailable',
+					reason: 'test',
+					retryable: false,
+					action: 'wait-and-retry',
+				},
+			};
+		},
+		apply: async request => {
+			applyCalls += 1;
+			if (applyMode === 'throw') throw new Error(request.requestId);
+			if (applyMode === 'wrong-request') {
+				return {
+					contractVersion: 1,
+					requestId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+					kind: 'mutation-result',
+					status: 'failed',
+					mutationMayHaveApplied: false,
+					retryAllowed: false,
+					groupResults: [],
+					error: {
+						contractVersion: 1,
+						code: 'stale-context',
+						reason: 'wrong request',
+						retryable: false,
+						action: 'refresh-state',
+					},
+				};
+			}
+			return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-result', status: 'applied' } as unknown as import('../../../src/agent-runtime/extensions/task-workflows-v1').TaskWorkflowMutationResultV1;
+		},
+		auditDispatched: async () => { dispatchAudits += 1; },
+		auditCompleted: async (_request, result) => {
+			terminalAudits += 1;
+			terminalAuditResults.push(result);
+		},
+	});
+	const preview: TaskWorkflowPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+		kind: 'mutation-preview',
+		clientInstanceId: 'runtime-test',
+		idempotencyKey: 'identity-preview-0001',
+		capability: 'tasks.create.identity-placeholders',
+		mutationKind: 'task.create',
+		spec: {
+			operation: 'create',
+			items: [{
+				itemRef: 'item-1',
+				description: 'Task',
+				target: {
+					representation: 'file',
+					mode: 'configured-default',
+					identityPlaceholderPolicy: 'resolve-operon-id-v1',
+				},
+				fields: [],
+			}],
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const previewResult = await gateway.preview(preview);
+	assert.equal(previewResult.ok, false);
+	assert.equal(previewCalls, 1);
+	const confused = await gateway.preview({ ...preview, capability: 'tasks.create.preview' });
+	assert.equal(confused.ok, false);
+	assert.equal(confused.error.code, 'invalid-request');
+	assert.equal(previewCalls, 1, 'cross-kind request must not reach extension execution');
+	previewOutputMode = 'invalid-output';
+	const invalidPreviewResult = await gateway.preview(preview);
+	assert.equal(invalidPreviewResult.ok, false);
+	assert.equal(invalidPreviewResult.error.code, 'internal-error');
+	assert.equal(decodeTaskWorkflowPreviewResultExtensionV1(invalidPreviewResult).ok, true);
+	previewOutputMode = 'wrong-request';
+	const wrongRequestPreviewResult = await gateway.preview(preview);
+	assert.equal(wrongRequestPreviewResult.ok, false);
+	assert.equal(wrongRequestPreviewResult.requestId, preview.requestId);
+	assert.equal(decodeTaskWorkflowPreviewResultExtensionV1(wrongRequestPreviewResult).ok, true);
+
+	const applyPlan: TaskWorkflowApplyRequestV1['plan'] = {
+			contractVersion: 1,
+			planId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+			planHash: '',
+			clientInstanceId: 'runtime-test',
+			correlationId: preview.requestId,
+			idempotencyKeyHash: sha256HexV1('identity-preview-0001'),
+			receiptTargetDigest: '',
+			capability: 'tasks.create.identity-placeholders' as const,
+			mutationKind: 'task.create' as const,
+			createdAt: '2026-08-08T23:57:30.000Z',
+			expiresAt: '2026-08-09T00:02:30.000Z',
+			targets: [{
+				operonId: 'abc1234',
+				locator: { representation: 'file', filePath: 'Tasks/Task.md' },
+				targetDigest: 'd'.repeat(64),
+			}],
+			contextRevision: { ...revision(1).contextRevision, projectSerialSignature: '2'.repeat(64) },
+			affectedResources: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Task.md', revision: 'e'.repeat(64) }],
+			atomicGroups: [{ groupId: 'task-source:Tasks/Task.md', order: 0, resources: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Task.md' }] }],
+			predictedEffects: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Task.md', action: 'create', summary: 'Create task.' }],
+			riskLevel: 'routine' as const,
+			requiresConfirmation: false,
+			requiredAcknowledgements: [],
+			warnings: [],
+			spec: preview.spec,
+			createEffects: [{
+				itemRef: 'item-1',
+				operonId: 'abc1234',
+				locator: { representation: 'file', filePath: 'Tasks/Task.md' },
+				renderedTaskDigest: 'f'.repeat(64),
+				plannedSourceDigest: '1'.repeat(64),
+				expectedAbsence: true,
+				templateIdentityAllocations: [{ occurrence: 0, operonId: 'def5678' }],
+				resolvedRelatedOperonIds: [],
+			}],
+	};
+	applyPlan.receiptTargetDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1(applyPlan.targets)));
+	const { planHash: _planHash, ...planMaterial } = applyPlan;
+	applyPlan.planHash = sha256HexV1(canonicalJsonV1(toJsonValueV1(planMaterial)));
+	const apply = {
+		contractVersion: 1,
+		requestId: preview.requestId,
+		kind: 'mutation-apply',
+		plan: applyPlan,
+		authorization: { basis: 'user-explicit-request' },
+		idempotencyKey: 'identity-preview-0001',
+		acknowledgements: [],
+	} satisfies TaskWorkflowApplyRequestV1;
+	const decodedApply = decodeTaskWorkflowApplyRequestExtensionV1(apply);
+	if (!decodedApply.ok) throw new Error(JSON.stringify(decodedApply.issues));
+	assert.equal(decodeTaskWorkflowApplyRequestExtensionV1({ ...apply, idempotencyKey: 'different-key-0001' }).ok, false);
+	assert.equal(decodeTaskWorkflowApplyRequestExtensionV1({ ...apply, plan: { ...apply.plan, expiresAt: 'not-a-date' } }).ok, false);
+	assert.equal(decodeTaskWorkflowApplyRequestExtensionV1({ ...apply, acknowledgements: [{ code: 'not-required', planHash: apply.plan.planHash, targetDigest: apply.plan.targets[0].targetDigest, acknowledgedAt: apply.plan.createdAt }] }).ok, false);
+	assert.equal(admitTaskWorkflowApplyRequestExtensionV1(apply, Date.parse(apply.plan.createdAt) - 1).ok, false);
+	const applyResult = await gateway.apply(apply);
+	assert.equal(applyCalls, 1);
+	assert.equal(dispatchAudits, 1);
+	assert.equal(terminalAudits, 1);
+	assert.equal(applyResult.status, 'outcome-unknown');
+	assert.equal(applyResult.mutationMayHaveApplied, true);
+	assert.equal(decodeTaskWorkflowMutationResultExtensionV1(applyResult).ok, true);
+	assert.equal(terminalAuditResults.at(-1)?.status, 'outcome-unknown');
+	assert.equal(decodeTaskWorkflowMutationResultExtensionV1(terminalAuditResults.at(-1)).ok, true);
+	applyMode = 'wrong-request';
+	const wrongRequestApplyResult = await gateway.apply(apply);
+	assert.equal(wrongRequestApplyResult.status, 'outcome-unknown');
+	assert.equal(wrongRequestApplyResult.requestId, apply.requestId);
+	assert.equal(decodeTaskWorkflowMutationResultExtensionV1(wrongRequestApplyResult).ok, true);
+	assert.equal(terminalAuditResults.at(-1)?.requestId, apply.requestId);
+	applyMode = 'throw';
+	const thrownApplyResult = await gateway.apply(apply);
+	assert.equal(thrownApplyResult.status, 'outcome-unknown');
+	assert.equal(decodeTaskWorkflowMutationResultExtensionV1(thrownApplyResult).ok, true);
+	assert.equal(applyCalls, 3);
+	assert.equal(dispatchAudits, 3);
+	assert.equal(terminalAudits, 3);
+	assert.equal(terminalAuditResults.at(-1)?.status, 'outcome-unknown');
 }
 
 function testLifecycleAndAdmission(): void {
@@ -171,6 +480,12 @@ async function testFrozenFacadeAndHealth(): Promise<void> {
 		facade.system.capabilities().find(item => item.id === 'tasks.read')?.availability,
 		'contract-only',
 	);
+	const advertisedCapabilities = facade.system.capabilities();
+	assert.deepEqual(
+		advertisedCapabilities.filter(item => item.id.startsWith('tasks.adopt') || item.id.includes('identity-placeholders') || item.id === 'tasks.filter-query').map(item => item.id),
+		['tasks.filter-query', 'tasks.create.identity-placeholders', 'tasks.adopt.preview', 'tasks.adopt.apply'],
+	);
+	assert.equal(decodeCapabilityAdvertisementsV1(advertisedCapabilities).ok, true, 'old V1 decoders must tolerate additive advertisement ids');
 	const gatedCatalog = await facade.catalog.snapshot({
 		contractVersion: 1,
 		requestId: 'catalog-gated-001',

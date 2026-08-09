@@ -86,11 +86,6 @@
           "destructive": false
         },
         {
-          "id": "tasks.filter-query",
-          "mode": "read",
-          "destructive": false
-        },
-        {
           "id": "tasks.finder",
           "mode": "read",
           "destructive": false
@@ -120,23 +115,6 @@
           "id": "tasks.create.apply",
           "mode": "apply",
           "mutationKind": "task.create",
-          "destructive": false
-        },
-        {
-          "id": "tasks.create.identity-placeholders",
-          "mode": "preview",
-          "destructive": false
-        },
-        {
-          "id": "tasks.adopt.preview",
-          "mode": "preview",
-          "mutationKind": "task.adopt",
-          "destructive": false
-        },
-        {
-          "id": "tasks.adopt.apply",
-          "mode": "apply",
-          "mutationKind": "task.adopt",
           "destructive": false
         },
         {

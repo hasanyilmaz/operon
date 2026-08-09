@@ -4,6 +4,7 @@ import type {
 	CreateTaskSpecV1,
 	SealedCreateEffectV1,
 } from '../contracts/v1/mutation';
+import type { IdentityPlaceholderSealedCreateEffectV1 } from '../extensions/task-workflows-v1';
 import { sha256HexV1 } from '../contracts/v1/canonical';
 import {
 	normalizeInlineTaskParentFileHeadingKeyword,
@@ -1069,7 +1070,7 @@ function createSealedEffect(
 	task: PreparedCanonicalTaskCreationPlan['tasks'][number],
 	sourceGroup: PreparedCanonicalTaskCreationPlan['sourceGroups'][number],
 	plannedSourceDigest: string,
-): SealedCreateEffectV1 {
+): SealedCreateEffectV1 | IdentityPlaceholderSealedCreateEffectV1 {
 	const locator = task.representation === 'inline'
 		? {
 			representation: 'inline' as const,
@@ -1248,8 +1249,8 @@ async function adaptCreateItem(
 				representation: 'file',
 				source: snapshot,
 				...(template ? { template } : {}),
-				...('identityPlaceholderPolicy' in item.target && item.target.identityPlaceholderPolicy
-					? { identityPlaceholderPolicy: item.target.identityPlaceholderPolicy }
+				...((item.target as { identityPlaceholderPolicy?: unknown }).identityPlaceholderPolicy === 'resolve-operon-id-v1'
+					? { identityPlaceholderPolicy: 'resolve-operon-id-v1' as const }
 					: {}),
 			},
 		fields,

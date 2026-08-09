@@ -15,8 +15,6 @@ import type {
 	TaskGetResultV1,
 	TaskFinderRequestV1,
 	TaskFinderResultV1,
-	TaskFilterQueryRequestV1,
-	TaskFilterQueryResultV1,
 	TaskQueryRequestV1,
 	TaskQueryResultV1,
 } from './context';
@@ -48,7 +46,6 @@ export const CLI_COMMANDS_V1 = [
 	'entity.resolve',
 	'task.get',
 	'tasks.query',
-	'tasks.filter-query',
 	'tasks.finder',
 	'relationships.get',
 	'context.build',
@@ -89,7 +86,6 @@ export const CLI_COMMAND_CAPABILITY_V1: Readonly<Partial<Record<CliCommandV1, Ca
 	'entity.resolve': 'entities.resolve',
 	'task.get': 'tasks.read',
 	'tasks.query': 'tasks.query',
-	'tasks.filter-query': 'tasks.filter-query',
 	'tasks.finder': 'tasks.finder',
 	'relationships.get': 'relationships.read',
 	'context.build': 'context.build',
@@ -104,7 +100,6 @@ export const CLI_COMMAND_HANDLER_V1: Readonly<Record<CliCommandV1, string>> = Ob
 	'entity.resolve': 'operon:entity-resolve',
 	'task.get': 'operon:task-get',
 	'tasks.query': 'operon:query',
-	'tasks.filter-query': 'operon:filter-query',
 	'tasks.finder': 'operon:task-finder',
 	'relationships.get': 'operon:relationships',
 	'context.build': 'operon:context',
@@ -118,7 +113,6 @@ export type CliRuntimeRequestV1 =
 	| EntityResolveRequestV1
 	| TaskGetRequestV1
 	| TaskQueryRequestV1
-	| TaskFilterQueryRequestV1
 	| TaskFinderRequestV1
 	| RelationshipRequestV1
 	| ContextRequestV1
@@ -134,7 +128,6 @@ export type CliRuntimeResultV1 =
 	| EntityResolutionResultV1
 	| TaskGetResultV1
 	| TaskQueryResultV1
-	| TaskFilterQueryResultV1
 	| TaskFinderResultV1
 	| RelationshipResultV1
 	| ContextPackV1
@@ -269,8 +262,6 @@ export function cliRequestKindForCommandV1(command: CliCommandV1): CliRuntimeReq
 			return 'task-get';
 		case 'tasks.query':
 			return 'task-query';
-		case 'tasks.filter-query':
-			return 'task-filter-query';
 		case 'tasks.finder':
 			return 'task-finder';
 		case 'relationships.get':
@@ -301,8 +292,6 @@ export function cliResultKindForCommandV1(command: CliCommandV1): string | undef
 			return 'task-get-result';
 		case 'tasks.query':
 			return 'task-query-result';
-		case 'tasks.filter-query':
-			return 'task-filter-query-result';
 		case 'tasks.finder':
 			return 'task-finder-result';
 		case 'relationships.get':

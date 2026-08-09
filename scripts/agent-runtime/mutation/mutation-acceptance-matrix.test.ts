@@ -21,14 +21,14 @@ test('Public V1 mutation acceptance matrix covers every family and capability pa
 	);
 	assert.equal(new Set(
 		MUTATION_ACCEPTANCE_MATRIX_V1.map(definition => definition.mutationKind),
-	).size, 13);
+	).size, 12);
 
 	const matrixCapabilities = MUTATION_ACCEPTANCE_MATRIX_V1.flatMap(definition => [
 		definition.capabilities.preview,
 		definition.capabilities.apply,
 	]);
-	assert.equal(matrixCapabilities.length, 26);
-	assert.equal(new Set(matrixCapabilities).size, 26);
+	assert.equal(matrixCapabilities.length, 24);
+	assert.equal(new Set(matrixCapabilities).size, 24);
 	assert.deepEqual(
 		matrixCapabilities,
 		CAPABILITY_REGISTRY_V1
@@ -67,7 +67,7 @@ test('Public V1 mutation acceptance matrix covers every family and capability pa
 		assert.deepEqual(definition.channels, ['cli', 'developer-api']);
 		assert.equal(definition.admission, 'candidate-stable');
 	}
-	assert.equal(COMPLETE_MUTATION_ACCEPTANCE_MATRIX_V1.length, 13);
+	assert.equal(COMPLETE_MUTATION_ACCEPTANCE_MATRIX_V1.length, 12);
 });
 
 test('matrix bindings resolve to canonical schema registries and reject fabricated bindings', () => {
@@ -108,7 +108,6 @@ test('Public V1 target, risk, recovery, and postflight admission remains explici
 		byKind.get(kind)?.operations.find(candidate => candidate.operation === name)
 	);
 	assert.equal(operation('task.create', 'create')?.target, 'forbidden');
-	assert.equal(operation('task.adopt', 'adopt-inline')?.target, 'forbidden');
 	assert.equal(operation('task.update', 'update')?.target, 'required');
 	assert.equal(operation('task.update', 'update-batch')?.target, 'forbidden');
 	assert.equal(operation('timer.control', 'start')?.target, 'optional');

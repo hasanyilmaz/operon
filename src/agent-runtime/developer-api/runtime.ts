@@ -22,10 +22,12 @@ import type {
 	TaskGetRequestV1,
 	TaskGetResultV1,
 	TaskQueryRequestV1,
-	TaskFilterQueryRequestV1,
-	TaskFilterQueryResultV1,
 	TaskQueryResultV1,
 } from '../contracts/v1/context';
+import type {
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
+} from '../extensions/task-workflows-v1';
 import type {
 	RuntimeDiagnosticsV1,
 	RuntimeHealthV1,
@@ -341,15 +343,15 @@ function createDeveloperApiSession(
 	const status = (): DeveloperApiChannelStatusV1 => (
 		currentChannelStatus(core, options, requested, consumer)
 	);
-	const canUse = (capability: CapabilityIdV1): boolean => (
-		requested.has(capability)
+	const canUse = (capability: CapabilityIdV1 | 'tasks.filter-query'): boolean => (
+		(requested as ReadonlySet<string>).has(capability)
 		&& (
-			BASELINE_DISCOVERY_CAPABILITIES_V1.has(capability)
-			|| evaluateSessionGrant(options, consumer, requested).effectiveCapabilities.includes(capability)
+			(capability !== 'tasks.filter-query' && BASELINE_DISCOVERY_CAPABILITIES_V1.has(capability))
+				|| evaluateSessionGrant(options, consumer, requested).effectiveCapabilities.includes(capability)
 		)
 		&& options.isCoreActive(core)
 		&& (
-			READ_CAPABILITIES_V1.has(capability)
+			(capability === 'tasks.filter-query' || READ_CAPABILITIES_V1.has(capability))
 				? status().admission.reads
 				: status().admission.writes
 		)
@@ -502,7 +504,7 @@ function createDeveloperApiSession(
 				return Promise.resolve(cloneOutput(readFailure(
 					'task-filter-query-result',
 					snapshot,
-					sessionError(core, options, requested, consumer, 'tasks.filter-query'),
+					sessionError(core, options, requested, consumer, 'tasks.filter-query' as CapabilityIdV1),
 				)));
 			}
 			return core.tasks.filterQuery(snapshot).then(cloneOutput);
@@ -1186,7 +1188,7 @@ function currentChannelStatus(
 	);
 	const writes = reads
 		&& phase === 'ready'
-		&& grant.effectiveCapabilities.some(capability => !READ_CAPABILITIES_V1.has(capability));
+		&& grant.effectiveCapabilities.some(capability => isCapabilityIdV1(capability) && !READ_CAPABILITIES_V1.has(capability));
 	const availability = !sessionActive || phase === 'booting' || terminalLifecycleError
 		? 'unavailable'
 		: phase === 'ready' && !lifecycleError
@@ -1212,8 +1214,8 @@ function currentChannelStatus(
 			state: grant.state,
 			revision: grant.revision,
 			requestedCapabilities: [...requested],
-			grantedCapabilities: grant.grantedCapabilities,
-			effectiveCapabilities: grant.effectiveCapabilities,
+			grantedCapabilities: grant.grantedCapabilities.filter(isCapabilityIdV1),
+			effectiveCapabilities: grant.effectiveCapabilities.filter(isCapabilityIdV1),
 		},
 		admission: {
 			reads,
@@ -1525,7 +1527,9 @@ function currentSecurityGrant(
 		state: evaluation.state,
 		revision: evaluation.revision,
 		capabilities: new Set(
-			evaluation.effectiveCapabilities.filter(capability => (
+			evaluation.effectiveCapabilities.filter((capability): capability is CapabilityIdV1 => (
+				isCapabilityIdV1(capability)
+				&&
 				!BASELINE_DISCOVERY_CAPABILITIES_V1.has(capability)
 			)),
 		),

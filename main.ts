@@ -206,6 +206,7 @@ import {
 } from './src/agent-runtime/transport-probe';
 import {
 	canonicalJsonV1,
+	computeReceiptTargetDigestV1,
 	sha256HexV1,
 	toJsonValueV1,
 } from './src/agent-runtime/contracts/v1/canonical';
@@ -227,6 +228,7 @@ import {
 	executeRuntimeGraphTransactionCommitV1,
 	executeRuntimeGraphTransactionRecoveryV1,
 	classifyTimerControlRecoveryPrefixV1,
+	withRuntimeVaultMutationLockV1,
 	tryWithRuntimeVaultMutationLockV1,
 	IndexedDbMutationReceiptStoreV1,
 	IndexedDbSecurityAuditStoreV1,
@@ -309,6 +311,7 @@ import {
 	type RuntimeSourceTransitionPreparationV1,
 	type RuntimeTaskCreationPreparationV1,
 	type GraphTransactionJournalStepV1,
+	type GraphTransactionJournalV1,
 	type RuntimeGraphTransactionRecoveryV1,
 	type SecurityAuditEventV1,
 } from './src/agent-runtime/runtime';
@@ -321,6 +324,7 @@ import {
 	type DeveloperApiGrantAuditEventV1,
 	type DeveloperApiConsumerDescriptorV1,
 } from './src/agent-runtime/developer-api';
+import type { DeveloperApiGrantCapabilityV1 } from './src/agent-runtime/developer-api/grants';
 import {
 	DeveloperMutationSecurityPolicyV1,
 	type DeveloperCapabilityGrantV1,
@@ -355,6 +359,29 @@ import {
 	isCapabilityIdV1,
 	type CapabilityIdV1,
 } from './src/agent-runtime/contracts/v1/capabilities';
+import {
+	TASK_WORKFLOW_CAPABILITY_REGISTRY_V1,
+	TaskWorkflowGatewayV1,
+	getOperonTaskWorkflowDeveloperApiV1,
+	taskWorkflowTerminalAuditFieldsV1,
+	isTaskWorkflowCapabilityIdV1,
+	type AdoptTaskPreviewIntentV1,
+	type AdoptTaskSealedPlanV1,
+	type AdoptTaskSpecV1,
+	decodeTaskWorkflowPreviewResultExtensionV1,
+	type IdentityPlaceholderCreateSpecV1,
+	type IdentityPlaceholderSealedPlanV1,
+	type TemplateIdentityAllocationV1,
+	type TaskWorkflowApplyRequestV1,
+	type TaskWorkflowCapabilityIdV1,
+	type TaskWorkflowDeveloperApiAccessRequestV1,
+	type TaskWorkflowDeveloperApiAccessResultV1,
+	type TaskWorkflowMutationResultV1,
+	type TaskWorkflowMutationReceiptV1,
+	type TaskWorkflowPreviewRequestV1,
+	type TaskWorkflowPreviewResultV1,
+	type TaskWorkflowSealedPlanV1,
+} from './src/agent-runtime/extensions/task-workflows-v1';
 import type { FileTaskTemplateCandidateV1 } from './src/agent-runtime/contracts/v1/catalog';
 import type {
 	GeneralUpdateItemV1,
@@ -733,15 +760,22 @@ const AGENT_RUNTIME_PUBLISHED_READ_CAPABILITIES = new Set<CapabilityIdV1>([
 	'entities.resolve',
 	'tasks.read',
 	'tasks.query',
-	'tasks.filter-query',
 	'tasks.finder',
 	'relationships.read',
 	'context.build',
 	'timers.read',
 ]);
+const AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_READ_CAPABILITIES = new Set<TaskWorkflowCapabilityIdV1>([
+	'tasks.filter-query',
+]);
 const AGENT_RUNTIME_PUBLISHED_MUTATION_CAPABILITIES = new Set<CapabilityIdV1>(
 	CAPABILITY_REGISTRY_V1
 		.filter(definition => definition.mutationKind !== undefined)
+		.map(definition => definition.id),
+);
+const AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_MUTATION_CAPABILITIES = new Set<TaskWorkflowCapabilityIdV1>(
+	TASK_WORKFLOW_CAPABILITY_REGISTRY_V1
+		.filter(definition => definition.mode !== 'read')
 		.map(definition => definition.id),
 );
 
@@ -1051,6 +1085,45 @@ interface TablePresetSettingsSnapshot {
 	presetFavorites: PresetFavorites;
 }
 
+interface PreparedTaskAdoptionV1 {
+	target: {
+		operonId: string;
+		locator: { representation: 'inline'; filePath: string; lineNumber: number };
+		targetDigest: string;
+	};
+	affectedResources: Array<{ resourceKind: 'task-source'; resourceKey: string; revision: string }>;
+	atomicGroups: Array<{
+		groupId: string;
+		order: number;
+		resources: Array<{ resourceKind: 'task-source'; resourceKey: string }>;
+	}>;
+	predictedEffects: Array<{
+		resourceKind: 'task-source';
+		resourceKey: string;
+		action: 'update';
+		summary: string;
+	}>;
+	sealedSpec: AdoptTaskSpecV1;
+	token: {
+		kind: 'task-adoption';
+		filePath: string;
+		beforeContent: string;
+		afterContent: string;
+		operonId: string;
+		locator: { representation: 'inline'; filePath: string; lineNumber: number };
+		resultDigest: string;
+	};
+}
+
+type PreparedTaskAdoptionResultV1 =
+	| { ok: true; value: PreparedTaskAdoptionV1 }
+	| {
+		ok: false;
+		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1;
+		reason: string;
+		retryable?: boolean;
+	};
+
 export default class OperonPlugin extends Plugin {
 	private agentRuntimeCore!: OperonAgentRuntimeCoreV1;
 	storage!: OperonStorage;
@@ -1070,6 +1143,7 @@ export default class OperonPlugin extends Plugin {
 	private agentRuntimeServicesBound = false;
 	private agentRuntimeContextBridge: ContextBridgeV1 | null = null;
 	private agentRuntimeMutationGateway: RuntimeMutationGatewayV1 | null = null;
+	private agentRuntimeTaskWorkflowGateway: TaskWorkflowGatewayV1 | null = null;
 	private agentRuntimeTimingProbe: RuntimeTimingProbeBufferV1 | null = null;
 	private agentRuntimeReceiptStore: IndexedDbMutationReceiptStoreV1 | null = null;
 	private agentRuntimeSecurityAuditStore: IndexedDbSecurityAuditStoreV1 | null = null;
@@ -1235,6 +1309,20 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
+	getTaskWorkflowDeveloperApiV1(
+		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
+		request: TaskWorkflowDeveloperApiAccessRequestV1,
+	): TaskWorkflowDeveloperApiAccessResultV1 {
+		const core = this.agentRuntimeCore ?? null;
+		return getOperonTaskWorkflowDeveloperApiV1(core, consumerPlugin, request, {
+			isDesktopAvailable: () => Platform.isDesktopApp,
+			isHostVersionSupported: () => requireApiVersion('1.12.2'),
+			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
+			isCoreActive: candidate => this.agentRuntimeCore === candidate && this.agentRuntimeLifecycle?.getPhase() !== 'unloading',
+			grantController: this.developerApiGrantController,
+		});
+	}
+
 	private verifyDeveloperApiConsumer(
 		candidate: OperonDeveloperApiConsumerPluginV1,
 	): DeveloperApiConsumerDescriptorV1 | null {
@@ -1302,8 +1390,9 @@ export default class OperonPlugin extends Plugin {
 			| 'apply-completed'
 			| 'recovery-dispatched'
 			| 'recovery-completed',
-		request: MutationApplyRequestV1,
-		receipt?: MutationReceiptV1,
+		request: MutationApplyRequestV1 | TaskWorkflowApplyRequestV1,
+		receipt?: MutationReceiptV1 | TaskWorkflowMutationReceiptV1,
+		taskWorkflowResult?: TaskWorkflowMutationResultV1,
 	): SecurityAuditEventV1 | null {
 		const clientInstanceId = request.plan.clientInstanceId;
 		const isCli = clientInstanceId.startsWith('operon-cli-');
@@ -1322,6 +1411,9 @@ export default class OperonPlugin extends Plugin {
 				?.revision ?? 0;
 		}
 		const terminalOutcome = receipt?.terminalOutcome;
+		const taskWorkflowTerminal = taskWorkflowResult
+			? taskWorkflowTerminalAuditFieldsV1(taskWorkflowResult)
+			: null;
 		return {
 			contractVersion: 1,
 			eventId: sha256HexV1(`${getActiveWindow().crypto.randomUUID()}\0${occurredAt}`),
@@ -1341,15 +1433,29 @@ export default class OperonPlugin extends Plugin {
 			admission: event.endsWith('-dispatched') ? 'dispatched' : 'completed',
 			outcome: event.endsWith('-dispatched')
 				? 'pending'
-				: terminalOutcome === 'applied' || terminalOutcome === 'already-applied'
+				: taskWorkflowTerminal?.outcome
+					?? (terminalOutcome === 'applied' || terminalOutcome === 'already-applied'
 					? 'succeeded'
 					: terminalOutcome === 'outcome-unknown'
 						? 'outcome-unknown'
-						: 'failed',
-			errorCode: terminalOutcome === 'outcome-unknown' ? 'outcome-unknown' : null,
+						: 'failed'),
+			errorCode: taskWorkflowTerminal?.errorCode
+				?? (terminalOutcome === 'outcome-unknown' ? 'outcome-unknown' : null),
 			occurredAt,
 			correlationHash: sha256HexV1(request.requestId),
 		};
+	}
+
+	private async recordTaskWorkflowSecurityAudit(
+		event: 'apply-dispatched' | 'apply-completed',
+		request: TaskWorkflowApplyRequestV1,
+		result?: TaskWorkflowMutationResultV1,
+	): Promise<void> {
+		const store = this.agentRuntimeSecurityAuditStore;
+		if (!store || !this.agentRuntimeVaultIdentityHash || !await store.health()) throw new Error('Task-workflow security audit is unavailable.');
+		const audit = this.createAgentRuntimeSecurityAuditEvent(event, request, result?.receipt, result);
+		if (!audit) throw new Error('Task-workflow security audit identity is unavailable.');
+		await store.append(audit);
 	}
 
 	private async recordDeveloperApiGrantAudit(
@@ -1494,7 +1600,9 @@ export default class OperonPlugin extends Plugin {
 		return {
 			listGrants: () => this.developerApiGrantController.list(),
 			approve: async (consumerId, capabilities) => {
-				const known = capabilities.filter(isCapabilityIdV1);
+				const known = capabilities.filter((capability): capability is DeveloperApiGrantCapabilityV1 => (
+					isCapabilityIdV1(capability) || isTaskWorkflowCapabilityIdV1(capability)
+				));
 				await this.developerApiGrantController.approvePending(consumerId, known);
 			},
 			deny: async consumerId => {
@@ -2867,18 +2975,31 @@ export default class OperonPlugin extends Plugin {
 					},
 				capabilityAvailability: capability => {
 					if (capability === 'tasks.create.identity-placeholders') {
-						return this.agentRuntimeMutationGateway
+						return this.agentRuntimeTaskWorkflowGateway
 							? { availability: 'available' }
 							: {
 								availability: 'unavailable',
 								reason: 'The live mutation Gateway has not completed its startup gate.',
 							};
 					}
-					if (AGENT_RUNTIME_PUBLISHED_READ_CAPABILITIES.has(capability)) {
+					if (
+						(capability === 'tasks.filter-query' && AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_READ_CAPABILITIES.has(capability))
+						|| (isCapabilityIdV1(capability) && AGENT_RUNTIME_PUBLISHED_READ_CAPABILITIES.has(capability))
+					) {
 						return { availability: 'available' };
 					}
-					if (AGENT_RUNTIME_PUBLISHED_MUTATION_CAPABILITIES.has(capability)) {
-						return this.agentRuntimeMutationGateway
+					if (
+						(isCapabilityIdV1(capability) && AGENT_RUNTIME_PUBLISHED_MUTATION_CAPABILITIES.has(capability))
+						|| (isTaskWorkflowCapabilityIdV1(capability) && AGENT_RUNTIME_PUBLISHED_TASK_WORKFLOW_MUTATION_CAPABILITIES.has(capability))
+					) {
+						return isTaskWorkflowCapabilityIdV1(capability)
+							? this.agentRuntimeTaskWorkflowGateway
+								? { availability: 'available' }
+								: {
+									availability: 'unavailable',
+									reason: 'The task-workflow extension Gateway has not completed its startup gate.',
+								}
+							: this.agentRuntimeMutationGateway
 							? { availability: 'available' }
 							: {
 								availability: 'unavailable',
@@ -2898,6 +3019,8 @@ export default class OperonPlugin extends Plugin {
 				readTimer: (request, context) => this.readAgentRuntimeTimer(request, context),
 				previewMutation: (request, context) => this.previewAgentRuntimeMutation(request, context),
 				applyMutation: request => this.applyAgentRuntimeMutation(request),
+				previewTaskWorkflowMutation: (request, context) => this.previewAgentRuntimeTaskWorkflowMutation(request, context),
+				applyTaskWorkflowMutation: request => this.applyAgentRuntimeTaskWorkflowMutation(request),
 			},
 		);
 	}
@@ -3501,7 +3624,6 @@ export default class OperonPlugin extends Plugin {
 				effectiveAt,
 				activeItemRefs,
 				sealedSeriesIds,
-				sealedTemplateIdentityAllocations,
 			) => (
 				await prepareRuntimeTaskCreationV1(
 					requestId,
@@ -3556,7 +3678,6 @@ export default class OperonPlugin extends Plugin {
 					effectiveAt ? toLocalDatetime(new Date(effectiveAt)) : undefined,
 					activeItemRefs,
 					sealedSeriesIds,
-					sealedTemplateIdentityAllocations,
 				)
 			),
 			// The live Runtime always supplies the durable creation transaction ports.
@@ -3922,42 +4043,6 @@ export default class OperonPlugin extends Plugin {
 					await verifyGraphSteps(journal.steps, expected)
 				),
 				prepareMutationTransaction: async (request, prepared, modifiedAt) => {
-					const adoption = prepared.token as {
-						kind?: string;
-						filePath?: string;
-						beforeContent?: string;
-						afterContent?: string;
-					};
-					if (
-						adoption.kind === 'task-adoption'
-						&& request.plan.mutationKind === 'task.adopt'
-						&& request.plan.spec.operation === 'adopt-inline'
-						&& adoption.filePath
-						&& adoption.beforeContent !== undefined
-						&& adoption.afterContent !== undefined
-					) {
-						const resource = prepared.affectedResources[0];
-						if (
-							prepared.affectedResources.length !== 1
-							|| resource?.resourceKind !== 'task-source'
-							|| resource.resourceKey !== adoption.filePath
-							|| sourceRevisionForTaskCreationV1(adoption.filePath, adoption.beforeContent) !== resource.revision
-						) {
-							return { ok: false as const, code: 'invalid-request' as const, reason: 'The sealed adoption source is inconsistent.' };
-						}
-						return {
-							ok: true as const,
-							steps: [{
-								stepId: `source:${adoption.filePath}`,
-								groupId: `task-source:${adoption.filePath}`,
-								resourceKind: 'task-source' as const,
-								resourceKey: adoption.filePath,
-								operation: 'modify' as const,
-								before: graphResourceState(adoption.beforeContent),
-								after: graphResourceState(adoption.afterContent),
-							}],
-						};
-					}
 					const timerControl = prepared.token as RuntimeTimerMutationPreparationV1;
 					if (
 						timerControl?.kind === 'timer'
@@ -5351,17 +5436,6 @@ export default class OperonPlugin extends Plugin {
 				await verifyGraphSteps(journal.steps, expected)
 			),
 				verifyRecoveredMutationTransaction: async (request, journal) => {
-					if (request.plan.mutationKind === 'task.adopt' && request.plan.spec.operation === 'adopt-inline') {
-						const spec = request.plan.spec;
-						if (!spec.operonId || !spec.locator || !spec.resultingLine) return false;
-						if (!await verifyGraphSteps(journal.steps, 'after')) return false;
-						const task = this.indexer.getTaskSnapshot(spec.operonId);
-						return !!task
-							&& !this.indexer.hasDuplicateOperonIdConflict(spec.operonId)
-							&& task.primary.format === 'inline'
-							&& task.primary.filePath === spec.locator.filePath
-							&& task.primary.lineNumber === spec.locator.lineNumber;
-					}
 					if ([
 						'task.inline-relocate',
 						'task.convert',
@@ -5929,7 +6003,15 @@ export default class OperonPlugin extends Plugin {
 				return this.agentRuntimeVaultIdentityHash;
 			},
 			nowEpochMs: () => Date.now(),
-			randomId: () => getActiveWindow().crypto.randomUUID(),
+				randomId: () => getActiveWindow().crypto.randomUUID(),
+		});
+		this.agentRuntimeTaskWorkflowGateway = new TaskWorkflowGatewayV1({
+			isReady: () => this.agentRuntimeLifecycle.getPhase() === 'ready',
+			nowEpochMs: () => Date.now(),
+			preview: (request, context) => this.previewAgentRuntimeTaskWorkflowExecution(request, context),
+			apply: request => this.applyAgentRuntimeTaskWorkflowExecution(request),
+			auditDispatched: request => this.recordTaskWorkflowSecurityAudit('apply-dispatched', request),
+			auditCompleted: (request, result) => this.recordTaskWorkflowSecurityAudit('apply-completed', request, result),
 		});
 	}
 
@@ -6730,6 +6812,387 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+	private async prepareAgentRuntimeTaskAdoption(
+		spec: AdoptTaskPreviewIntentV1 | AdoptTaskSpecV1,
+		effectiveAt: string,
+	): Promise<PreparedTaskAdoptionResultV1> {
+		const source = await this.readAgentRuntimeMutationSource(spec.source.filePath);
+		if (source.content === null) {
+			return { ok: false, code: 'invalid-locator', reason: 'The adoption source file does not exist.' };
+		}
+		const separator = source.content.includes('\r\n') ? '\r\n' : '\n';
+		const lines = source.content.split(/\r?\n/u);
+		if (spec.source.lineNumber >= lines.length) {
+			return { ok: false, code: 'invalid-locator', reason: 'The adoption line is outside the source file.' };
+		}
+		if (lines[spec.source.lineNumber] !== spec.source.expectedLine) {
+			return { ok: false, code: 'stale-source', reason: 'The checkbox line changed after it was selected.' };
+		}
+		const parsed = this.parseInlineTaskLine(
+			spec.source.expectedLine,
+			spec.source.lineNumber,
+			spec.source.filePath,
+		);
+		if (!parsed || parsed.operonId) {
+			return {
+				ok: false,
+				code: 'invalid-request',
+				reason: parsed ? 'The checkbox is already an Operon task.' : 'The selected line is not a supported checkbox task.',
+			};
+		}
+		if (parsed.checkbox !== 'open' && spec.terminalSourcePolicy !== 'reopen') {
+			return {
+				ok: false,
+				code: 'invalid-request',
+				reason: 'A terminal checkbox requires terminalSourcePolicy "reopen".',
+			};
+		}
+		let resolvedStatusId: string | undefined;
+		if (spec.statusId) {
+			const matches = this.settings.pipelines.flatMap(pipeline => (
+				pipeline.statuses
+					.filter(status => status.id === spec.statusId)
+					.map(status => ({ pipeline, status }))
+			));
+			if (matches.length !== 1) {
+				return { ok: false, code: 'invalid-request', reason: 'The requested statusId is missing or ambiguous.' };
+			}
+			if (matches[0].status.isFinished || matches[0].status.isCancelled) {
+				return { ok: false, code: 'invalid-request', reason: 'Adoption requires a non-terminal status.' };
+			}
+			resolvedStatusId = matches[0].status.id;
+			this.setParsedTaskField(
+				parsed,
+				'status',
+				composeStatusValue(matches[0].pipeline.name, matches[0].status.label),
+				'text',
+			);
+		}
+		if (parsed.checkbox !== 'open') {
+			parsed.checkbox = 'open';
+			parsed.fields = parsed.fields.filter(field => (
+				field.key !== 'dateCompleted'
+				&& field.key !== 'dateCancelled'
+				&& (spec.statusId !== undefined || field.key !== 'status')
+			));
+		}
+		let operonId = 'operonId' in spec ? spec.operonId : undefined;
+		if (operonId) {
+			const indexed = this.indexer.getTaskSnapshot(operonId);
+			if (indexed || this.indexer.hasDuplicateOperonIdConflict(operonId)) {
+				return { ok: false, code: 'duplicate-operon-id', reason: 'The sealed adoption operonId is no longer unique.' };
+			}
+		} else {
+			for (let attempt = 0; attempt < 100; attempt += 1) {
+				const candidate = generateOperonId();
+				if (this.indexer.getTaskSnapshot(candidate) || this.indexer.hasDuplicateOperonIdConflict(candidate)) continue;
+				operonId = candidate;
+				break;
+			}
+			if (!operonId) {
+				return { ok: false, code: 'internal-error', reason: 'A unique Operon task identity could not be allocated.' };
+			}
+		}
+		this.setParsedTaskField(parsed, 'operonId', operonId, 'text');
+		const localEffectiveAt = toLocalDatetime(new Date(effectiveAt));
+		this.normalizeParsedTaskCreatedTimestamp(parsed, localEffectiveAt);
+		this.setParsedTaskField(parsed, 'datetimeModified', localEffectiveAt, 'datetime');
+		const resultingLine = this.serializeInlineTask(parsed);
+		const sourceDigest = sha256HexV1(spec.source.expectedLine);
+		const resultDigest = sha256HexV1(resultingLine);
+		const locator = {
+			representation: 'inline' as const,
+			filePath: spec.source.filePath,
+			lineNumber: spec.source.lineNumber,
+		};
+		if (
+			('operonId' in spec && spec.operonId !== operonId)
+			|| ('resolvedStatusId' in spec && spec.resolvedStatusId !== resolvedStatusId)
+			|| ('resultingLine' in spec && spec.resultingLine !== resultingLine)
+			|| ('sourceDigest' in spec && spec.sourceDigest !== sourceDigest)
+			|| ('resultDigest' in spec && spec.resultDigest !== resultDigest)
+			|| ('locator' in spec && canonicalJsonV1(toJsonValueV1(spec.locator)) !== canonicalJsonV1(toJsonValueV1(locator)))
+		) {
+			return { ok: false, code: 'stale-source', reason: 'The sealed adoption result no longer matches preview.' };
+		}
+		lines[spec.source.lineNumber] = resultingLine;
+		const nextContent = lines.join(separator);
+		const affectedResources = [{
+			resourceKind: 'task-source' as const,
+			resourceKey: spec.source.filePath,
+			revision: sourceRevisionForTaskCreationV1(spec.source.filePath, source.content),
+		}];
+		return {
+			ok: true,
+			value: {
+				target: {
+					operonId,
+					locator,
+					targetDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1({ locator, sourceDigest }))),
+				},
+				affectedResources,
+				atomicGroups: [{
+					groupId: `task-source:${spec.source.filePath}`,
+					order: 0,
+					resources: [{ resourceKind: 'task-source', resourceKey: spec.source.filePath }],
+				}],
+				predictedEffects: [{
+					resourceKind: 'task-source',
+					resourceKey: spec.source.filePath,
+					action: 'update',
+					summary: `Adopt checkbox task ${operonId}.`,
+				}],
+				sealedSpec: {
+					...spec,
+					operonId,
+					...(resolvedStatusId ? { resolvedStatusId } : {}),
+					resultingLine,
+					sourceDigest,
+					resultDigest,
+					locator,
+				},
+				token: {
+					kind: 'task-adoption',
+					filePath: spec.source.filePath,
+					beforeContent: source.content,
+					afterContent: nextContent,
+					operonId,
+					locator,
+					resultDigest,
+				},
+			},
+		};
+	}
+
+	private async applyAgentRuntimeTaskAdoption(
+		request: TaskWorkflowApplyRequestV1 & { plan: AdoptTaskSealedPlanV1 },
+	): Promise<TaskWorkflowMutationResultV1> {
+		const plan = request.plan;
+		if (
+			request.authorization.basis !== 'user-explicit-request'
+			|| request.idempotencyKey.length < 16
+		) {
+			return this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'authority-insufficient',
+				'Task adoption apply requires the original explicit user request.',
+			);
+		}
+		if (
+			sha256HexV1(request.idempotencyKey) !== plan.idempotencyKeyHash
+			|| this.computeTaskWorkflowPlanHash(plan) !== plan.planHash
+		) {
+			return this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'stale-plan',
+				'The sealed task-adoption plan or idempotency binding is invalid.',
+			);
+		}
+		if (!this.agentRuntimeReceiptStore || !this.agentRuntimeVaultIdentityHash) {
+			return this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'receipt-store-unavailable',
+				'The durable mutation receipt store is unavailable.',
+				true,
+			);
+		}
+		const receiptStore = this.agentRuntimeReceiptStore;
+		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
+		return await withRuntimeVaultMutationLockV1(vaultIdentityHash, async () => {
+			const shadowIdempotencyKeyHash = sha256HexV1(`task-adopt\0${request.idempotencyKey}`);
+			const scope = {
+				vaultIdentityHash,
+				clientInstanceId: plan.clientInstanceId,
+				idempotencyKeyHash: shadowIdempotencyKeyHash,
+				mutationKind: 'task.update' as const,
+			};
+			const admission = await receiptStore.lookupForApplyAdmission(scope);
+			if (!admission.health.healthy) {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'receipt-store-unavailable',
+					'The durable mutation receipt store failed adoption admission.',
+					true,
+				);
+			}
+			if (admission.receipt) {
+				if (
+					admission.receipt.planHash !== plan.planHash
+					|| admission.receipt.targetDigest !== plan.receiptTargetDigest
+				) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'stale-plan',
+						'The adoption idempotency key is bound to a different plan.',
+					);
+				}
+				return {
+					contractVersion: 1,
+					requestId: request.requestId,
+					kind: 'mutation-result',
+					status: 'already-applied',
+					mutationMayHaveApplied: true,
+					retryAllowed: false,
+					groupResults: [],
+					receipt: this.taskWorkflowReceiptFromShadow(admission.receipt, plan.idempotencyKeyHash),
+					postflight: { status: 'receipt-replay' },
+				};
+			}
+
+			const existingSource = await this.readAgentRuntimeMutationSource(plan.spec.locator.filePath);
+			const existingLine = existingSource.content?.split(/\r?\n/u)[plan.spec.locator.lineNumber];
+			let recoveredAfterState = existingLine === plan.spec.resultingLine;
+			let prepared: PreparedTaskAdoptionV1 | null = null;
+			if (!recoveredAfterState) {
+				const preparation = await this.prepareAgentRuntimeTaskAdoption(plan.spec, plan.createdAt);
+				if (!preparation.ok) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						preparation.code,
+						preparation.reason,
+						preparation.retryable ?? false,
+					);
+				}
+				prepared = preparation.value;
+				if (
+					canonicalJsonV1(toJsonValueV1(prepared.target)) !== canonicalJsonV1(toJsonValueV1(plan.targets[0]))
+					|| canonicalJsonV1(toJsonValueV1(prepared.affectedResources)) !== canonicalJsonV1(toJsonValueV1(plan.affectedResources))
+					|| canonicalJsonV1(toJsonValueV1(prepared.sealedSpec)) !== canonicalJsonV1(toJsonValueV1(plan.spec))
+				) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'stale-source',
+						'The adoption source changed after preview.',
+					);
+				}
+				const write = await this.writer.applyTaskSourceMutation({
+					kind: 'modify',
+					filePath: prepared.token.filePath,
+					expectedContent: prepared.token.beforeContent,
+					nextContent: prepared.token.afterContent,
+				});
+				if (write.outcome !== 'committed') {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'stale-source',
+						'The checkbox source changed before adoption could commit.',
+					);
+				}
+				recoveredAfterState = true;
+			}
+
+			if (!recoveredAfterState) {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'outcome-unknown',
+					'The adoption after-state could not be established.',
+				);
+			}
+			try {
+				await this.indexer.reindexAffectedSources([plan.spec.locator.filePath], { notify: false });
+				await this.awaitAgentRuntimeSettlement({ requestId: request.requestId });
+				const indexed = this.indexer.getTaskSnapshot(plan.spec.operonId);
+				const settledSource = await this.readAgentRuntimeMutationSource(plan.spec.locator.filePath);
+				const settledLine = settledSource.content?.split(/\r?\n/u)[plan.spec.locator.lineNumber];
+				if (
+					!indexed
+					|| this.indexer.hasDuplicateOperonIdConflict(plan.spec.operonId)
+					|| indexed.primary.format !== 'inline'
+					|| indexed.primary.filePath !== plan.spec.locator.filePath
+					|| indexed.primary.lineNumber !== plan.spec.locator.lineNumber
+					|| settledLine !== plan.spec.resultingLine
+				) throw new Error('Adoption postflight mismatch.');
+			} catch {
+				return {
+					contractVersion: 1,
+					requestId: request.requestId,
+					kind: 'mutation-result',
+					status: 'outcome-unknown',
+					mutationMayHaveApplied: true,
+					retryAllowed: false,
+					groupResults: [{
+						groupId: plan.atomicGroups[0]?.groupId ?? `task-source:${plan.spec.locator.filePath}`,
+						status: 'outcome-unknown',
+						error: structuredErrorV1('outcome-unknown', 'Adoption committed, but postflight did not settle.', { retryable: false }),
+					}],
+					ambiguitySource: 'group-outcome',
+					error: structuredErrorV1('outcome-unknown', 'Same-plan recovery is required.', { retryable: false }),
+				};
+			}
+
+			const completedAt = new Date().toISOString();
+			const shadowReceipt: MutationReceiptV1 = {
+				contractVersion: 1,
+				vaultIdentityHash,
+				clientInstanceId: plan.clientInstanceId,
+				idempotencyKeyHash: shadowIdempotencyKeyHash,
+				planHash: plan.planHash,
+				mutationKind: 'task.update',
+				targetDigest: plan.receiptTargetDigest,
+				terminalOutcome: prepared ? 'applied' : 'already-applied',
+				effectiveAt: plan.createdAt,
+				completedAt,
+				expiresAt: new Date(Date.parse(completedAt) + 24 * 60 * 60_000).toISOString(),
+			};
+			if (admission.admissionToken) {
+				await receiptStore.persistAfterApplyAdmission(shadowReceipt, admission.admissionToken);
+			} else {
+				await receiptStore.persist(shadowReceipt);
+			}
+			const postflightRevision = this.sampleAgentRuntimeRevision().contextRevision;
+			return {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'mutation-result',
+				status: prepared ? 'applied' : 'already-applied',
+				mutationMayHaveApplied: true,
+				retryAllowed: false,
+				groupResults: [{
+					groupId: plan.atomicGroups[0]?.groupId ?? `task-source:${plan.spec.locator.filePath}`,
+					status: 'committed',
+					resourceRevisions: [{
+						resourceKind: 'task-source',
+						resourceKey: plan.spec.locator.filePath,
+						revision: sourceRevisionForTaskCreationV1(
+							plan.spec.locator.filePath,
+							(await this.readAgentRuntimeMutationSource(plan.spec.locator.filePath)).content,
+						),
+					}],
+				}],
+				receipt: this.taskWorkflowReceiptFromShadow(shadowReceipt, plan.idempotencyKeyHash),
+				postflight: {
+					status: 'verified',
+					observedAt: completedAt,
+					contextRevision: postflightRevision,
+				},
+			};
+		});
+	}
+
+	private taskWorkflowReceiptFromShadow(
+		receipt: MutationReceiptV1,
+		idempotencyKeyHash: string,
+	): TaskWorkflowMutationReceiptV1 {
+		return {
+			contractVersion: 1,
+			vaultIdentityHash: receipt.vaultIdentityHash,
+			clientInstanceId: receipt.clientInstanceId,
+			idempotencyKeyHash,
+			planHash: receipt.planHash,
+			mutationKind: 'task.adopt',
+			targetDigest: receipt.targetDigest,
+			terminalOutcome: receipt.terminalOutcome,
+			effectiveAt: receipt.effectiveAt,
+			completedAt: receipt.completedAt,
+			expiresAt: receipt.expiresAt,
+		};
+	}
+
+	private computeTaskWorkflowPlanHash(plan: TaskWorkflowSealedPlanV1): string {
+		const { planHash: _planHash, ...material } = plan;
+		return sha256HexV1(canonicalJsonV1(toJsonValueV1(material)));
+	}
+
 	private async prepareAgentRuntimeTaskMutation(
 		request: MutationPreviewRequestV1,
 		effectiveAt: string,
@@ -6742,155 +7205,6 @@ export default class OperonPlugin extends Plugin {
 			retryable?: boolean;
 		}
 	> {
-		if (request.mutationKind === 'task.adopt' && request.spec.operation === 'adopt-inline') {
-			const spec = request.spec;
-			const source = await this.readAgentRuntimeMutationSource(spec.source.filePath);
-			if (source.content === null) {
-				return { ok: false, code: 'invalid-locator', reason: 'The adoption source file does not exist.' };
-			}
-			const separator = source.content.includes('\r\n') ? '\r\n' : '\n';
-			const lines = source.content.split(/\r?\n/u);
-			if (spec.source.lineNumber >= lines.length) {
-				return { ok: false, code: 'invalid-locator', reason: 'The adoption line is outside the source file.' };
-			}
-			if (lines[spec.source.lineNumber] !== spec.source.expectedLine) {
-				return { ok: false, code: 'stale-source', reason: 'The checkbox line changed after it was selected.' };
-			}
-			const parsed = this.parseInlineTaskLine(
-				spec.source.expectedLine,
-				spec.source.lineNumber,
-				spec.source.filePath,
-			);
-			if (!parsed || parsed.operonId) {
-				return {
-					ok: false,
-					code: 'invalid-request',
-					reason: parsed ? 'The checkbox is already an Operon task.' : 'The selected line is not a supported checkbox task.',
-				};
-			}
-			if (parsed.checkbox !== 'open' && spec.terminalSourcePolicy !== 'reopen') {
-				return {
-					ok: false,
-					code: 'invalid-request',
-					reason: 'A terminal checkbox requires terminalSourcePolicy "reopen".',
-				};
-			}
-			let resolvedStatusId: string | undefined;
-			if (spec.statusId) {
-				const matches = this.settings.pipelines.flatMap(pipeline => (
-					pipeline.statuses
-						.filter(status => status.id === spec.statusId)
-						.map(status => ({ pipeline, status }))
-				));
-				if (matches.length !== 1) {
-					return { ok: false, code: 'invalid-request', reason: 'The requested statusId is missing or ambiguous.' };
-				}
-				if (matches[0].status.isFinished || matches[0].status.isCancelled) {
-					return { ok: false, code: 'invalid-request', reason: 'Adoption requires a non-terminal status.' };
-				}
-				resolvedStatusId = matches[0].status.id;
-				this.setParsedTaskField(
-					parsed,
-					'status',
-					composeStatusValue(matches[0].pipeline.name, matches[0].status.label),
-					'text',
-				);
-			}
-			if (parsed.checkbox !== 'open') {
-				parsed.checkbox = 'open';
-				parsed.fields = parsed.fields.filter(field => (
-					field.key !== 'dateCompleted'
-					&& field.key !== 'dateCancelled'
-					&& (spec.statusId !== undefined || field.key !== 'status')
-				));
-			}
-			let operonId = spec.operonId;
-			if (operonId) {
-				if (this.indexer.getTaskSnapshot(operonId) || this.indexer.hasDuplicateOperonIdConflict(operonId)) {
-					return { ok: false, code: 'duplicate-operon-id', reason: 'The sealed adoption operonId is no longer unique.' };
-				}
-			} else {
-				for (let attempt = 0; attempt < 100; attempt += 1) {
-					const candidate = generateOperonId();
-					if (this.indexer.getTaskSnapshot(candidate) || this.indexer.hasDuplicateOperonIdConflict(candidate)) continue;
-					operonId = candidate;
-					break;
-				}
-				if (!operonId) {
-					return { ok: false, code: 'internal-error', reason: 'A unique Operon task identity could not be allocated.' };
-				}
-			}
-			this.setParsedTaskField(parsed, 'operonId', operonId, 'text');
-			const localEffectiveAt = toLocalDatetime(new Date(effectiveAt));
-			this.normalizeParsedTaskCreatedTimestamp(parsed, localEffectiveAt);
-			this.setParsedTaskField(parsed, 'datetimeModified', localEffectiveAt, 'datetime');
-			const resultingLine = this.serializeInlineTask(parsed);
-			const sourceDigest = sha256HexV1(spec.source.expectedLine);
-			const resultDigest = sha256HexV1(resultingLine);
-			const locator = {
-				representation: 'inline' as const,
-				filePath: spec.source.filePath,
-				lineNumber: spec.source.lineNumber,
-			};
-			if (
-				(spec.operonId !== undefined && spec.operonId !== operonId)
-				|| (spec.resolvedStatusId !== undefined && spec.resolvedStatusId !== resolvedStatusId)
-				|| (spec.resultingLine !== undefined && spec.resultingLine !== resultingLine)
-				|| (spec.sourceDigest !== undefined && spec.sourceDigest !== sourceDigest)
-				|| (spec.resultDigest !== undefined && spec.resultDigest !== resultDigest)
-				|| (spec.locator !== undefined && canonicalJsonV1(toJsonValueV1(spec.locator)) !== canonicalJsonV1(toJsonValueV1(locator)))
-			) {
-				return { ok: false, code: 'stale-source', reason: 'The sealed adoption result no longer matches preview.' };
-			}
-			lines[spec.source.lineNumber] = resultingLine;
-			const nextContent = lines.join(separator);
-			const affectedResources = [{
-				resourceKind: 'task-source' as const,
-				resourceKey: spec.source.filePath,
-				revision: sourceRevisionForTaskCreationV1(spec.source.filePath, source.content),
-			}];
-			return {
-				ok: true,
-				value: {
-					target: {
-						operonId,
-						locator,
-						targetDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1({ locator, sourceDigest }))),
-					},
-					affectedResources,
-					atomicGroups: [{
-						groupId: `task-source:${spec.source.filePath}`,
-						order: 0,
-						resources: [{ resourceKind: 'task-source', resourceKey: spec.source.filePath }],
-					}],
-					predictedEffects: [{
-						resourceKind: 'task-source',
-						resourceKey: spec.source.filePath,
-						action: 'update',
-						summary: `Adopt checkbox task ${operonId}.`,
-					}],
-					warnings: [],
-					sealedSpec: {
-						...spec,
-						operonId,
-						...(resolvedStatusId ? { resolvedStatusId } : {}),
-						resultingLine,
-						sourceDigest,
-						resultDigest,
-						locator,
-					},
-					token: {
-						kind: 'task-adoption',
-						filePath: spec.source.filePath,
-						beforeContent: source.content,
-						afterContent: nextContent,
-						operonId,
-						locator,
-						resultDigest,
-					},
-				},
-			};
-		}
 		if (
 			request.spec.operation === 'relocate-inline'
 			|| request.spec.operation === 'convert'
@@ -9862,6 +10176,1031 @@ export default class OperonPlugin extends Plugin {
 				warnings: [],
 				error: runtimeUnavailableError('The live mutation Gateway is unavailable.'),
 			};
+	}
+
+	private async previewAgentRuntimeTaskWorkflowMutation(
+		request: TaskWorkflowPreviewRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<TaskWorkflowPreviewResultV1> {
+		return this.agentRuntimeTaskWorkflowGateway
+			? await this.agentRuntimeTaskWorkflowGateway.preview(request, context)
+			: this.agentRuntimeTaskWorkflowPreviewFailure(
+				request.requestId,
+				'capability-unavailable',
+				'The task-workflow extension Gateway is unavailable.',
+			);
+	}
+
+	private async applyAgentRuntimeTaskWorkflowMutation(
+		request: TaskWorkflowApplyRequestV1,
+	): Promise<TaskWorkflowMutationResultV1> {
+		return this.agentRuntimeTaskWorkflowGateway
+			? await this.agentRuntimeTaskWorkflowGateway.apply(request)
+			: this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'capability-unavailable',
+				'The task-workflow extension Gateway is unavailable.',
+			);
+	}
+
+	private async previewAgentRuntimeTaskWorkflowExecution(
+		request: TaskWorkflowPreviewRequestV1,
+		_context?: RuntimeInvocationContextV1,
+	): Promise<TaskWorkflowPreviewResultV1> {
+		if (request.mutationKind === 'task.create') {
+			return await this.previewAgentRuntimeIdentityCreation(request, _context);
+		}
+		if (request.authorization.basis !== 'user-explicit-request') {
+			return this.agentRuntimeTaskWorkflowPreviewFailure(
+				request.requestId,
+				'authority-insufficient',
+				'Task adoption preview requires an explicit user request.',
+			);
+		}
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const revisionBefore = this.sampleAgentRuntimeRevision().contextRevision;
+			const createdAt = new Date(Date.now()).toISOString();
+			const prepared = await this.prepareAgentRuntimeTaskAdoption(request.spec, createdAt);
+			if (!prepared.ok) {
+				return this.agentRuntimeTaskWorkflowPreviewFailure(
+					request.requestId,
+					prepared.code,
+					prepared.reason,
+					prepared.retryable ?? false,
+				);
+			}
+			const revisionAfter = this.sampleAgentRuntimeRevision().contextRevision;
+			if (canonicalJsonV1(toJsonValueV1(revisionBefore)) !== canonicalJsonV1(toJsonValueV1(revisionAfter))) {
+				if (attempt === 0 && this.agentRuntimeLifecycle.getPhase() === 'ready') continue;
+				return this.agentRuntimeTaskWorkflowPreviewFailure(
+					request.requestId,
+					'live-settling',
+					'Runtime context changed while the adoption plan was prepared.',
+					true,
+				);
+			}
+			const targets = [prepared.value.target];
+			const plan = {
+				contractVersion: 1 as const,
+				planId: getActiveWindow().crypto.randomUUID(),
+				planHash: '0'.repeat(64),
+				clientInstanceId: request.clientInstanceId,
+				correlationId: request.correlationId ?? request.requestId,
+				idempotencyKeyHash: sha256HexV1(request.idempotencyKey),
+				receiptTargetDigest: computeReceiptTargetDigestV1(targets),
+				capability: 'tasks.adopt.preview' as const,
+				mutationKind: 'task.adopt' as const,
+				createdAt,
+				expiresAt: new Date(Date.parse(createdAt) + 5 * 60_000).toISOString(),
+				targets,
+				contextRevision: revisionAfter,
+				affectedResources: prepared.value.affectedResources,
+				atomicGroups: prepared.value.atomicGroups,
+				predictedEffects: prepared.value.predictedEffects,
+				riskLevel: 'routine' as const,
+				requiresConfirmation: false,
+				requiredAcknowledgements: [],
+				warnings: [],
+				spec: prepared.value.sealedSpec,
+			};
+			plan.planHash = this.computeTaskWorkflowPlanHash(plan);
+			return {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'mutation-preview-result',
+				ok: true,
+				warnings: [],
+				plan,
+			};
+		}
+		return this.agentRuntimeTaskWorkflowPreviewFailure(
+			request.requestId,
+			'live-settling',
+			'Runtime context could not settle for task adoption.',
+			true,
+		);
+	}
+
+	private async applyAgentRuntimeTaskWorkflowExecution(
+		request: TaskWorkflowApplyRequestV1,
+	): Promise<TaskWorkflowMutationResultV1> {
+		if (request.plan.mutationKind === 'task.create') {
+			return await this.applyAgentRuntimeIdentityCreation({ ...request, plan: request.plan });
+		}
+		return await this.applyAgentRuntimeTaskAdoption({ ...request, plan: request.plan });
+	}
+
+	private async prepareAgentRuntimeIdentityCreation(
+		requestId: string,
+		spec: IdentityPlaceholderCreateSpecV1,
+		effectiveAt: string,
+		sealedIds?: ReadonlyMap<string, string>,
+		activeItemRefs?: ReadonlySet<string>,
+		sealedSeriesIds?: ReadonlyMap<string, string>,
+		sealedAllocations?: ReadonlyMap<string, readonly TemplateIdentityAllocationV1[]>,
+	): Promise<RuntimeTaskCreationPreparationV1> {
+		return await prepareRuntimeTaskCreationV1(
+			requestId,
+			spec,
+			{
+				settings: () => this.settings,
+				listOperonIds: () => this.indexer.getAllOperonIds(),
+				getExistingTask: operonId => {
+					const task = this.indexer.getTaskSnapshot(operonId);
+					return task ? {
+						operonId,
+						fieldValues: task.fieldValues,
+						tags: task.tags,
+						duplicate: this.indexer.hasDuplicateOperonIdConflict(operonId),
+						filePath: task.primary.filePath,
+						representation: task.primary.format === 'yaml' ? 'file' : 'inline',
+						...(task.primary.format === 'inline' ? { lineNumber: task.primary.lineNumber } : {}),
+					} : null;
+				},
+				listDependencyGraphTasks: () => this.indexer.getAllTasks().map(task => ({
+					operonId: task.operonId,
+					fieldValues: { ...task.fieldValues },
+					tags: [...task.tags],
+				})),
+				readSource: filePath => this.readAgentRuntimeMutationSource(filePath),
+				resolveConfiguredInlineTarget: parent => this.resolveAgentRuntimeInlineCreationTarget(parent),
+				resolveConfiguredFilePath: (description, parent) => this.resolveAgentRuntimeFileCreationPath(description, parent),
+				readTemplate: templateId => this.readAgentRuntimeCreationTemplate(templateId),
+				creationFieldCatalog: () => this.getAgentRuntimeCatalogBuild().ok
+					? this.requireAgentRuntimeCatalogProjection().fields
+					: [],
+				resolveCoreTemplateVariables: (content, context) => resolveCoreTemplateVariables(
+					content,
+					context,
+					{ resolveFencedCodeBlocks: false },
+				),
+				generateOperonId: () => generateOperonId(),
+				listRepeatSeriesIds: () => this.storage.repeatSeries.getAllSeriesIds(),
+				generateRepeatSeriesId: usedIds => generateRepeatSeriesId(new Set(usedIds)),
+				repeatSeriesRevision: () => sha256HexV1(String(this.storage.repeatSeries.getRevision())),
+				now: () => localNow(),
+			},
+			sealedIds,
+			toLocalDatetime(new Date(effectiveAt)),
+			activeItemRefs,
+			sealedSeriesIds,
+			sealedAllocations,
+		);
+	}
+
+	private async previewAgentRuntimeIdentityCreation(
+		request: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }>,
+		_context?: RuntimeInvocationContextV1,
+	): Promise<TaskWorkflowPreviewResultV1> {
+		if (request.authorization.basis !== 'user-explicit-request') {
+			return this.agentRuntimeTaskWorkflowPreviewFailure(
+				request.requestId,
+				'authority-insufficient',
+				'Identity-placeholder creation requires an explicit user request.',
+			);
+		}
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const revisionBefore = this.sampleAgentRuntimeRevision().contextRevision;
+			const createdAt = new Date().toISOString();
+			const prepared = await this.prepareAgentRuntimeIdentityCreation(
+				request.requestId,
+				request.spec,
+				createdAt,
+			);
+			if (!prepared.ok) {
+				return this.agentRuntimeTaskWorkflowPreviewFailure(
+					request.requestId,
+					prepared.code,
+					prepared.reason,
+				);
+			}
+			const revisionAfter = this.sampleAgentRuntimeRevision().contextRevision;
+			if (canonicalJsonV1(toJsonValueV1(revisionBefore)) !== canonicalJsonV1(toJsonValueV1(revisionAfter))) {
+				if (attempt === 0 && this.agentRuntimeLifecycle.getPhase() === 'ready') continue;
+				return this.agentRuntimeTaskWorkflowPreviewFailure(
+					request.requestId,
+					'live-settling',
+					'Runtime context changed while identity placeholders were sealed.',
+					true,
+				);
+			}
+			const graph = await this.prepareAgentRuntimeIdentityGraphSteps(prepared, createdAt);
+			if (!graph.ok) return this.agentRuntimeTaskWorkflowPreviewFailure(request.requestId, 'stale-source', graph.reason);
+			const candidate = this.buildAgentRuntimeIdentityPlanCandidate(
+				request,
+				prepared,
+				revisionAfter,
+				createdAt,
+				getActiveWindow().crypto.randomUUID(),
+				graph.steps,
+			);
+			const admitted = decodeTaskWorkflowPreviewResultExtensionV1(candidate);
+			if (!admitted.ok || !admitted.value.ok) {
+				return this.agentRuntimeTaskWorkflowPreviewFailure(
+					request.requestId,
+					'internal-error',
+					'The identity-placeholder executor did not seal every allocation.',
+				);
+			}
+			const plan = {
+				...admitted.value.plan,
+				planHash: this.computeTaskWorkflowPlanHash(admitted.value.plan),
+			};
+			const finalResult = decodeTaskWorkflowPreviewResultExtensionV1({
+				...admitted.value,
+				plan,
+			});
+			return finalResult.ok
+				? finalResult.value
+				: this.agentRuntimeTaskWorkflowPreviewFailure(
+					request.requestId,
+					'internal-error',
+					'The identity-placeholder plan hash could not be sealed.',
+				);
+		}
+		return this.agentRuntimeTaskWorkflowPreviewFailure(
+			request.requestId,
+			'live-settling',
+			'Runtime context could not settle for identity-placeholder creation.',
+			true,
+		);
+	}
+
+	private buildAgentRuntimeIdentityPlanCandidate(
+		request: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }>,
+		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
+		contextRevision: ReturnType<OperonPlugin['sampleAgentRuntimeRevision']>['contextRevision'],
+		createdAt: string,
+		planId: string,
+		graphSteps?: readonly GraphTransactionJournalStepV1[],
+	): unknown {
+		const resourceCandidates = [
+			...prepared.plan.sourceGroups.map(group => ({
+				resourceKind: 'task-source' as const,
+				resourceKey: group.filePath,
+				revision: group.expectedRevision,
+			})),
+			...prepared.parentResources.map(parent => ({
+				resourceKind: 'task-source' as const,
+				resourceKey: parent.filePath,
+				revision: parent.sourceRevision,
+			})),
+			...prepared.recurrenceResources.map(resource => ({
+				resourceKind: 'repeat-series' as const,
+				resourceKey: resource.seriesId,
+				revision: resource.revision,
+			})),
+		];
+		const affectedResources = [...new Map(resourceCandidates.map(resource => [
+			`${resource.resourceKind}\0${resource.resourceKey}`,
+			resource,
+		])).values()].sort((left, right) => (
+			RESOURCE_QUEUE_ORDER_V1[left.resourceKind] - RESOURCE_QUEUE_ORDER_V1[right.resourceKind]
+			|| left.resourceKey.localeCompare(right.resourceKey)
+		));
+		const finalSources = new Map((graphSteps ?? []).filter(step => step.resourceKind === 'task-source').map(step => [step.resourceKey, step.after]));
+		const createEffects = prepared.createEffects.map(effect => {
+			const source = finalSources.get(effect.locator.filePath);
+			const rendered = source?.content === null || source?.content === undefined
+				? undefined
+				: effect.locator.representation === 'file'
+					? source.content
+					: source.content.split(/\r?\n/u)[effect.locator.lineNumber];
+			return {
+				...effect,
+				plannedSourceDigest: source?.digest ?? effect.plannedSourceDigest,
+				renderedTaskDigest: rendered === undefined ? effect.renderedTaskDigest : sha256HexV1(rendered),
+			};
+		});
+		const targets = createEffects.map(effect => ({
+			operonId: effect.operonId,
+			locator: effect.locator,
+			targetDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1(effect))),
+		}));
+		const sourcePaths = prepared.sourceGroupGraph.sourceOrder;
+		const atomicGroups = sourcePaths.map((filePath, order) => ({
+			groupId: `task-source:${filePath}`,
+			order,
+			resources: [
+				...prepared.recurrenceResources
+					.filter(resource => resource.filePath === filePath)
+					.map(resource => ({ resourceKind: 'repeat-series' as const, resourceKey: resource.seriesId })),
+				{ resourceKind: 'task-source' as const, resourceKey: filePath },
+			],
+		}));
+		const crossSourceRisk = prepared.sourceGroupGraph.crossSourcePartialRisk;
+		const warnings = [{
+			code: 'apply-time-values-projected',
+			message: 'Creation and modified timestamps are projected at preview and captured authoritatively at apply.',
+		}, ...(crossSourceRisk ? [{
+			code: 'cross-source-graph-partial-risk',
+			message: 'This creation graph spans ordered task sources; a later source conflict can leave an earlier source committed.',
+		}] : [])];
+		return {
+			contractVersion: 1,
+			requestId: request.requestId,
+			kind: 'mutation-preview-result',
+			ok: true,
+			warnings,
+			plan: {
+				contractVersion: 1,
+				planId,
+				planHash: '0'.repeat(64),
+				clientInstanceId: request.clientInstanceId,
+				correlationId: request.correlationId ?? request.requestId,
+				idempotencyKeyHash: sha256HexV1(request.idempotencyKey),
+				receiptTargetDigest: computeReceiptTargetDigestV1(targets),
+				capability: 'tasks.create.identity-placeholders',
+				mutationKind: 'task.create',
+				createdAt,
+				expiresAt: new Date(Date.parse(createdAt) + 5 * 60_000).toISOString(),
+				targets,
+				contextRevision,
+				affectedResources,
+				atomicGroups,
+				predictedEffects: affectedResources.map(resource => ({
+					resourceKind: resource.resourceKind,
+					resourceKey: resource.resourceKey,
+					action: resource.resourceKind === 'repeat-series' ? 'state-change' : 'create',
+					summary: resource.resourceKind === 'repeat-series'
+						? `Create repeat series ${resource.resourceKey}.`
+						: `Create Operon task source ${resource.resourceKey}.`,
+				})),
+				riskLevel: crossSourceRisk ? 'elevated' : 'routine',
+				requiresConfirmation: crossSourceRisk,
+				requiredAcknowledgements: crossSourceRisk ? ['confirm:cross-source-graph-partial-risk'] : [],
+				warnings,
+				spec: request.spec,
+				createEffects,
+			},
+		};
+	}
+
+	private async applyAgentRuntimeIdentityCreation(
+		request: TaskWorkflowApplyRequestV1 & { plan: IdentityPlaceholderSealedPlanV1 },
+	): Promise<TaskWorkflowMutationResultV1> {
+		const plan = request.plan;
+		if (
+			sha256HexV1(request.idempotencyKey) !== plan.idempotencyKeyHash
+			|| this.computeTaskWorkflowPlanHash(plan) !== plan.planHash
+		) {
+			return this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'stale-plan',
+				'The sealed identity-placeholder plan or idempotency binding is invalid.',
+			);
+		}
+		const expectedBasis = plan.requiresConfirmation
+			? 'user-explicit-confirmation'
+			: 'user-explicit-request';
+		if (request.authorization.basis !== expectedBasis) {
+			return this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'authority-insufficient',
+				'Identity-placeholder apply requires the authority sealed by preview.',
+			);
+		}
+		const acknowledged = new Set(request.acknowledgements.map(item => item.code));
+		if (plan.requiredAcknowledgements.some(code => !acknowledged.has(code))) {
+			return this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'authority-insufficient',
+				'Identity-placeholder apply is missing a required acknowledgement.',
+			);
+		}
+		if (!this.agentRuntimeReceiptStore || !this.agentRuntimeVaultIdentityHash) {
+			return this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'receipt-store-unavailable',
+				'The durable mutation receipt store is unavailable.',
+				true,
+			);
+		}
+		const receiptStore = this.agentRuntimeReceiptStore;
+		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
+		return await withRuntimeVaultMutationLockV1(vaultIdentityHash, async () => {
+			const admission = await receiptStore.lookupForApplyAdmission({
+				vaultIdentityHash,
+				clientInstanceId: plan.clientInstanceId,
+				idempotencyKeyHash: plan.idempotencyKeyHash,
+				mutationKind: 'task.create',
+			});
+			if (!admission.health.healthy) {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'receipt-store-unavailable',
+					'The durable receipt store failed identity-placeholder admission.',
+					true,
+				);
+			}
+			if (admission.receipt) {
+				if (
+					admission.receipt.planHash !== plan.planHash
+					|| admission.receipt.targetDigest !== plan.receiptTargetDigest
+				) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'stale-plan',
+						'The creation idempotency key is bound to a different plan.',
+					);
+				}
+				return {
+					contractVersion: 1,
+					requestId: request.requestId,
+					kind: 'mutation-result',
+					status: 'already-applied',
+					mutationMayHaveApplied: true,
+					retryAllowed: false,
+					groupResults: [],
+					receipt: this.taskWorkflowIdentityReceipt(admission.receipt),
+					postflight: { status: 'receipt-replay' },
+				};
+			}
+
+			const leaseOwner = getActiveWindow().crypto.randomUUID();
+			let journal = admission.journal;
+			let journalOwned = false;
+			let appliedThisAttempt = false;
+			let groupResults: TaskWorkflowMutationResultV1['groupResults'] = [];
+			const affectedFilePaths = [...new Set(plan.affectedResources
+				.filter(resource => resource.resourceKind === 'task-source')
+				.map(resource => resource.resourceKey))];
+			const checkpoint = async (value: { phase: GraphTransactionJournalV1['phase']; completedStepCount: number }): Promise<void> => {
+				if (!journal || !journalOwned) throw new Error('Identity graph journal is not owned.');
+				journal = { ...journal, ...value };
+				await receiptStore.persistJournal(journal, leaseOwner);
+			};
+			if (journal) {
+				if (!this.agentRuntimeIdentityJournalMatchesPlan(journal, plan, vaultIdentityHash)) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-plan', 'The unresolved identity graph journal belongs to a different sealed plan.');
+				}
+				journalOwned = await receiptStore.claimJournal({
+					vaultIdentityHash,
+					clientInstanceId: plan.clientInstanceId,
+					idempotencyKeyHash: plan.idempotencyKeyHash,
+					mutationKind: 'task.create',
+				}, journal, leaseOwner);
+				if (!journalOwned) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'conflict', 'The identity graph recovery journal is already leased.', true);
+				const recovered = await executeRuntimeGraphTransactionRecoveryV1(journal, {
+					readState: step => this.readAgentRuntimeIdentityGraphState(step),
+					statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
+					applyForward: async step => {
+						if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Identity graph forward CAS failed.');
+					},
+					applyCompensation: async step => {
+						if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'reverse')) throw new Error('Identity graph reverse CAS failed.');
+					},
+					checkpoint,
+					verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
+					verifyForward: async () => {
+						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
+						await this.awaitAgentRuntimeSettlement({ requestId: request.requestId, mutationOwnedMaintenance: true });
+						return await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal!.steps);
+					},
+					verifyCompensation: async () => {
+						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
+						return true;
+					},
+				});
+				if (recovered.status === 'compensated') {
+					await receiptStore.deleteJournal({ vaultIdentityHash, clientInstanceId: plan.clientInstanceId, idempotencyKeyHash: plan.idempotencyKeyHash, mutationKind: 'task.create' }, journal, leaseOwner);
+					return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'The interrupted identity graph was safely compensated; preview again.', true);
+				}
+				if (recovered.status !== 'forward-completed') {
+					return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph recovery could not prove a safe terminal state.', plan.atomicGroups[0]?.groupId);
+				}
+				appliedThisAttempt = true;
+				groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+			}
+			if (!journal) {
+				const liveContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
+				if (
+					canonicalJsonV1(toJsonValueV1(liveContextRevision))
+					!== canonicalJsonV1(toJsonValueV1(plan.contextRevision))
+				) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'stale-context',
+						'Runtime context changed after identity-placeholder preview. Create a fresh plan.',
+					);
+				}
+			}
+
+			const afterStateAlreadyPresent = !journal && await this.verifyAgentRuntimeIdentityPlanAfterState(plan);
+			if (afterStateAlreadyPresent) {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'stale-source',
+					'Identity-placeholder after-state exists without the sealed receipt; preview again.',
+				);
+			}
+			const sealedIds = new Map(plan.createEffects.map(effect => [effect.itemRef, effect.operonId]));
+			const sealedSeriesIds = new Map(plan.createEffects.flatMap(effect => (
+				effect.repeatSeriesId ? [[effect.itemRef, effect.repeatSeriesId] as const] : []
+			)));
+			const sealedAllocations = new Map(plan.createEffects.map(effect => [
+				effect.itemRef,
+				effect.templateIdentityAllocations,
+			] as const));
+			let prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }> | null = null;
+			let preparedGraph: Extract<Awaited<ReturnType<OperonPlugin['prepareAgentRuntimeIdentityGraphSteps']>>, { ok: true }> | null = null;
+			if (!afterStateAlreadyPresent) {
+				const preparation = await this.prepareAgentRuntimeIdentityCreation(
+					request.requestId,
+					plan.spec,
+					plan.createdAt,
+					sealedIds,
+					new Set(plan.createEffects.map(effect => effect.itemRef)),
+					sealedSeriesIds,
+					sealedAllocations,
+				);
+				if (!preparation.ok) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						preparation.code,
+						preparation.reason,
+					);
+				}
+				prepared = preparation;
+				const graph = await this.prepareAgentRuntimeIdentityGraphSteps(prepared, plan.createdAt);
+				if (!graph.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', graph.reason);
+				preparedGraph = graph;
+				const preparedContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
+				if (
+					canonicalJsonV1(toJsonValueV1(preparedContextRevision))
+					!== canonicalJsonV1(toJsonValueV1(plan.contextRevision))
+				) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'stale-context',
+						'Runtime context changed while identity-placeholder apply values were prepared.',
+					);
+				}
+				const previewRequest: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }> = {
+					contractVersion: 1,
+					requestId: request.requestId,
+					kind: 'mutation-preview',
+					clientInstanceId: plan.clientInstanceId,
+					idempotencyKey: request.idempotencyKey,
+					correlationId: plan.correlationId,
+					capability: 'tasks.create.identity-placeholders',
+					mutationKind: 'task.create',
+					spec: plan.spec,
+					authorization: request.authorization,
+				};
+				const rebuilt = decodeTaskWorkflowPreviewResultExtensionV1(
+					this.buildAgentRuntimeIdentityPlanCandidate(
+						previewRequest,
+						prepared,
+						plan.contextRevision,
+						plan.createdAt,
+						plan.planId,
+						graph.steps,
+					),
+				);
+				if (!rebuilt.ok || !rebuilt.value.ok) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'internal-error',
+						'Identity-placeholder apply could not rebuild its sealed plan.',
+					);
+				}
+				const rebuiltPlan = {
+					...rebuilt.value.plan,
+					planHash: this.computeTaskWorkflowPlanHash(rebuilt.value.plan),
+				};
+				if (canonicalJsonV1(toJsonValueV1(rebuiltPlan)) !== canonicalJsonV1(toJsonValueV1(plan))) {
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'stale-source',
+						'Identity-placeholder source or allocation state changed after preview.',
+					);
+				}
+			}
+
+			if (prepared) {
+				const graph = preparedGraph;
+				if (!graph) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'internal-error', 'Identity graph preparation was not retained.');
+				journal = {
+					contractVersion: 1,
+					vaultIdentityHash,
+					clientInstanceId: plan.clientInstanceId,
+					idempotencyKeyHash: plan.idempotencyKeyHash,
+					mutationKind: 'task.create',
+					planHash: plan.planHash,
+					targetDigest: plan.receiptTargetDigest,
+					planId: plan.planId,
+					effectiveAt: plan.createdAt,
+					createdAt: new Date().toISOString(),
+					phase: 'prepared',
+					completedStepCount: 0,
+					steps: graph.steps,
+				};
+				journalOwned = await receiptStore.acquireJournal(journal, leaseOwner);
+				if (!journalOwned) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'conflict', 'An identity graph journal already exists.', true);
+				const execution = await executeRuntimeGraphTransactionCommitV1(
+					journal,
+					(step) => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
+					checkpoint,
+				);
+				if (execution.status === 'failed') {
+					await receiptStore.deleteJournal({ vaultIdentityHash, clientInstanceId: plan.clientInstanceId, idempotencyKeyHash: plan.idempotencyKeyHash, mutationKind: 'task.create' }, journal, leaseOwner);
+					return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'Identity graph source changed before the first commit.');
+				}
+				if (execution.status !== 'committed') return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph commit stopped after a durable prefix.', plan.atomicGroups[0]?.groupId);
+				appliedThisAttempt = true;
+				groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+			}
+
+			try {
+				await this.indexer.reindexAffectedSources(
+					[...new Set(plan.affectedResources
+						.filter(resource => resource.resourceKind === 'task-source')
+						.map(resource => resource.resourceKey))],
+					{ notify: false },
+				);
+				await this.awaitAgentRuntimeSettlement({
+					requestId: request.requestId,
+					mutationOwnedMaintenance: true,
+				});
+				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal?.steps)) throw new Error();
+				if (journal && journal.phase !== 'postflight') await checkpoint({ phase: 'postflight', completedStepCount: journal.steps.length });
+			} catch {
+				return this.agentRuntimeIdentityOutcomeUnknown(
+					request.requestId,
+					groupResults,
+					'Creation committed, but identity-placeholder postflight did not settle.',
+					plan.atomicGroups.at(-1)?.groupId,
+				);
+			}
+
+			const completedAt = new Date().toISOString();
+			const receipt: TaskWorkflowMutationReceiptV1 & { mutationKind: 'task.create' } = {
+				contractVersion: 1,
+				vaultIdentityHash,
+				clientInstanceId: plan.clientInstanceId,
+				idempotencyKeyHash: plan.idempotencyKeyHash,
+				planHash: plan.planHash,
+				mutationKind: 'task.create',
+				targetDigest: plan.receiptTargetDigest,
+				terminalOutcome: appliedThisAttempt ? 'applied' : 'already-applied',
+				effectiveAt: plan.createdAt,
+				completedAt,
+				expiresAt: new Date(Date.parse(completedAt) + 24 * 60 * 60_000).toISOString(),
+			};
+			if (journal && journalOwned && admission.admissionToken) {
+				await receiptStore.finalizeReceiptAfterApplyAdmission(receipt, journal, leaseOwner, admission.admissionToken);
+			} else if (journal && journalOwned) {
+				await receiptStore.finalizeReceipt(receipt, journal, leaseOwner);
+			} else if (admission.admissionToken) {
+				await receiptStore.persistAfterApplyAdmission(receipt, admission.admissionToken);
+			} else {
+				await receiptStore.persist(receipt);
+			}
+			return {
+				contractVersion: 1,
+				requestId: request.requestId,
+				kind: 'mutation-result',
+				status: appliedThisAttempt ? 'applied' : 'already-applied',
+				mutationMayHaveApplied: true,
+				retryAllowed: false,
+				groupResults,
+				receipt,
+				postflight: {
+					status: 'verified',
+					observedAt: completedAt,
+					contextRevision: this.sampleAgentRuntimeRevision().contextRevision,
+				},
+			};
+		});
+	}
+
+	private taskWorkflowIdentityReceipt(
+		receipt: MutationReceiptV1,
+	): TaskWorkflowMutationReceiptV1 {
+		return {
+			contractVersion: 1,
+			vaultIdentityHash: receipt.vaultIdentityHash,
+			clientInstanceId: receipt.clientInstanceId,
+			idempotencyKeyHash: receipt.idempotencyKeyHash,
+			planHash: receipt.planHash,
+			mutationKind: 'task.create',
+			targetDigest: receipt.targetDigest,
+			terminalOutcome: receipt.terminalOutcome,
+			effectiveAt: receipt.effectiveAt,
+			completedAt: receipt.completedAt,
+			expiresAt: receipt.expiresAt,
+		};
+	}
+
+	private async prepareAgentRuntimeIdentityGraphSteps(
+		prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>,
+		modifiedAt: string,
+	): Promise<{
+		ok: true;
+		steps: GraphTransactionJournalStepV1[];
+	} | {
+		ok: false;
+		reason: string;
+	}> {
+		const contents = new Map<string, { expected: string | null; resulting: string }>();
+		for (const filePath of prepared.sourceGroupGraph.sourceOrder) {
+			const group = prepared.plan.sourceGroups.find(candidate => candidate.filePath === filePath);
+			const parents = prepared.parentResources.filter(parent => parent.filePath === filePath);
+			const expected = group?.expectedContent ?? parents[0]?.sourceContent ?? null;
+			let resulting = group?.resultingContent ?? expected ?? '';
+			if (parents.length > 0) {
+				const rendered = this.writer.renderGuardedTaskSourceContent(
+					filePath,
+					resulting,
+					parents.map(parent => ({
+						operonId: parent.operonId,
+						format: parent.format,
+						...(parent.lineNumber === undefined ? {} : { lineNumber: parent.lineNumber }),
+						fieldValues: { datetimeModified: toLocalDatetime(new Date(modifiedAt)) },
+					})),
+				);
+				if (!rendered.ok) {
+					return { ok: false, reason: rendered.reason };
+				}
+				resulting = rendered.content;
+			}
+			contents.set(filePath, { expected, resulting });
+		}
+		const aggregatePatches = this.aggregateCoordinator.planCreationAggregatePatches(
+			prepared.plan.tasks.map(task => ({
+				operonId: task.operonId,
+				checkbox: task.checkbox,
+				fieldValues: {
+					...task.fieldValues,
+					...(task.parentOperonId ? { parentTask: task.parentOperonId } : {}),
+				},
+				filePath: task.filePath,
+				format: task.representation === 'file' ? 'yaml' : 'inline',
+				...(task.lineNumber === undefined ? {} : { lineNumber: task.lineNumber }),
+			})),
+			toLocalDatetime(new Date(modifiedAt)),
+		);
+		for (const filePath of new Set(aggregatePatches.map(patch => patch.filePath))) {
+			let entry = contents.get(filePath);
+			if (!entry) {
+				const source = await this.readAgentRuntimeMutationSource(filePath);
+				if (source.content === null) {
+					return { ok: false, reason: `Missing aggregate source: ${filePath}` };
+				}
+				entry = { expected: source.content, resulting: source.content };
+			}
+			const rendered = this.writer.renderGuardedTaskSourceContent(
+				filePath,
+				entry.resulting,
+				aggregatePatches.filter(patch => patch.filePath === filePath).map(patch => ({
+					operonId: patch.operonId,
+					format: patch.format,
+					...(patch.lineNumber === undefined ? {} : { lineNumber: patch.lineNumber }),
+					fieldValues: patch.fieldValues,
+				})),
+			);
+			if (!rendered.ok) {
+				return { ok: false, reason: rendered.reason };
+			}
+			contents.set(filePath, { ...entry, resulting: rendered.content });
+		}
+
+		const steps: GraphTransactionJournalStepV1[] = [];
+		for (const filePath of prepared.sourceGroupGraph.sourceOrder) {
+			const content = contents.get(filePath);
+			if (!content) {
+				return { ok: false, reason: `Missing sealed source group: ${filePath}` };
+			}
+			steps.push({
+				stepId: `source:${filePath}`,
+				groupId: `task-source:${filePath}`,
+				resourceKind: 'task-source',
+				resourceKey: filePath,
+				operation: content.expected === null ? 'create' : 'modify',
+				before: this.agentRuntimeIdentityGraphState(content.expected),
+				after: this.agentRuntimeIdentityGraphState(content.resulting),
+			});
+			for (const recurrence of prepared.recurrenceResources.filter(item => item.filePath === filePath)) {
+				const timestamp = toLocalDatetime(new Date(modifiedAt));
+				const entry: RepeatSeriesEntry = {
+						seriesId: recurrence.seriesId,
+						sourceTaskId: recurrence.operonId,
+						sourceFormat: recurrence.sourceFormat,
+						baseTitle: recurrence.baseTitle,
+						lastMaterializedTitle: recurrence.lastMaterializedTitle,
+						naming: recurrence.naming,
+						skipDates: [],
+						yamlPropertyValueRemovalConfigured: false,
+						yamlPropertyValueRemovals: [],
+						baseTemporalTemplate: recurrence.baseTemporalTemplate,
+						inlineCompletionMode: 'keep-completed',
+						createdAt: timestamp,
+						updatedAt: timestamp,
+						overrides: { single: {}, following: [] },
+				};
+				steps.push({
+					stepId: `repeat:${recurrence.seriesId}`,
+					groupId: `task-source:${filePath}`,
+					resourceKind: 'repeat-series',
+					resourceKey: recurrence.seriesId,
+					operation: 'create',
+					before: this.agentRuntimeIdentityGraphState(null),
+					after: this.agentRuntimeIdentityGraphState(canonicalJsonV1(toJsonValueV1(entry))),
+				});
+			}
+		}
+		return { ok: true, steps };
+	}
+
+	private agentRuntimeIdentityGraphState(content: string | null): GraphTransactionJournalStepV1['before'] {
+		return { state: content === null ? 'absent' : 'present', digest: sha256HexV1(content ?? ''), content };
+	}
+
+	private agentRuntimeIdentityGraphStatesMatch(
+		left: GraphTransactionJournalStepV1['before'],
+		right: GraphTransactionJournalStepV1['before'],
+	): boolean {
+		return left.state === right.state && left.digest === right.digest && left.content === right.content;
+	}
+
+	private async readAgentRuntimeIdentityGraphState(step: GraphTransactionJournalStepV1): Promise<GraphTransactionJournalStepV1['before']> {
+		if (step.resourceKind === 'repeat-series') {
+			const entry = this.storage.repeatSeries.getEntry(step.resourceKey);
+			return this.agentRuntimeIdentityGraphState(entry ? canonicalJsonV1(toJsonValueV1(entry)) : null);
+		}
+		if (step.resourceKind !== 'task-source') return this.agentRuntimeIdentityGraphState(null);
+		return this.agentRuntimeIdentityGraphState((await this.readAgentRuntimeMutationSource(step.resourceKey)).content);
+	}
+
+	private async applyAgentRuntimeIdentityGraphStep(
+		step: GraphTransactionJournalStepV1,
+		direction: 'forward' | 'reverse',
+	): Promise<boolean> {
+		const before = direction === 'forward' ? step.before : step.after;
+		const after = direction === 'forward' ? step.after : step.before;
+		if (this.agentRuntimeIdentityGraphStatesMatch(before, after)) {
+			return this.agentRuntimeIdentityGraphStatesMatch(await this.readAgentRuntimeIdentityGraphState(step), before);
+		}
+		if (step.resourceKind === 'repeat-series') {
+			const outcome = await this.storage.repeatSeries.compareAndSetEntry(
+				step.resourceKey,
+				before.content ? JSON.parse(before.content) as RepeatSeriesEntry : null,
+				after.content ? JSON.parse(after.content) as RepeatSeriesEntry : null,
+			);
+			return outcome !== 'conflict';
+		}
+		if (step.resourceKind !== 'task-source') return false;
+		const write = before.state === 'absent'
+			? await this.writer.applyTaskSourceMutation({ kind: 'create', filePath: step.resourceKey, nextContent: after.content ?? '' })
+			: after.state === 'absent'
+				? await this.writer.applyTaskSourceMutation({ kind: 'trash', filePath: step.resourceKey, expectedContent: before.content ?? '' })
+				: await this.writer.applyTaskSourceMutation({ kind: 'modify', filePath: step.resourceKey, expectedContent: before.content ?? '', nextContent: after.content ?? '' });
+		return write.outcome === 'committed';
+	}
+
+	private async verifyAgentRuntimeIdentityGraphSteps(
+		steps: readonly GraphTransactionJournalStepV1[],
+		expected: 'before' | 'after',
+	): Promise<boolean> {
+		const states = await Promise.all(steps.map(step => this.readAgentRuntimeIdentityGraphState(step)));
+		return states.every((state, index) => this.agentRuntimeIdentityGraphStatesMatch(state, steps[index][expected]));
+	}
+
+	private agentRuntimeIdentityJournalMatchesPlan(
+		journal: GraphTransactionJournalV1,
+		plan: IdentityPlaceholderSealedPlanV1,
+		vaultIdentityHash: string,
+	): boolean {
+		return journal.vaultIdentityHash === vaultIdentityHash
+			&& journal.clientInstanceId === plan.clientInstanceId
+			&& journal.idempotencyKeyHash === plan.idempotencyKeyHash
+			&& journal.mutationKind === 'task.create'
+			&& journal.planId === plan.planId
+			&& journal.planHash === plan.planHash
+			&& journal.targetDigest === plan.receiptTargetDigest;
+	}
+
+	private async agentRuntimeIdentityGroupResults(journal: GraphTransactionJournalV1): Promise<TaskWorkflowMutationResultV1['groupResults']> {
+		const repeatRevision = sha256HexV1(String(this.storage.repeatSeries.getRevision()));
+		return [...new Set(journal.steps.map(step => step.groupId))].map(groupId => ({
+			groupId,
+			status: 'committed' as const,
+			resourceRevisions: journal.steps.filter(step => step.groupId === groupId).map(step => ({
+				resourceKind: step.resourceKind === 'repeat-series' ? 'repeat-series' as const : 'task-source' as const,
+				resourceKey: step.resourceKey,
+				revision: step.resourceKind === 'repeat-series' ? repeatRevision : sourceRevisionForTaskCreationV1(step.resourceKey, step.after.content),
+			})),
+		}));
+	}
+
+	private agentRuntimeIdentityOutcomeUnknown(
+		requestId: string,
+		groupResults: TaskWorkflowMutationResultV1['groupResults'],
+		reason: string,
+		fallbackGroupId?: string,
+	): TaskWorkflowMutationResultV1 {
+		const error = structuredErrorV1('outcome-unknown', reason, { retryable: false });
+		const normalizedGroups = groupResults.some(group => group.status === 'outcome-unknown')
+			? groupResults
+			: groupResults.length > 0
+				? [
+					...groupResults.slice(0, -1),
+					{ groupId: groupResults[groupResults.length - 1].groupId, status: 'outcome-unknown' as const, error },
+				]
+				: [{ groupId: fallbackGroupId ?? 'identity-graph', status: 'outcome-unknown' as const, error }];
+		return {
+			contractVersion: 1,
+			requestId,
+			kind: 'mutation-result',
+			status: 'outcome-unknown',
+			mutationMayHaveApplied: true,
+			retryAllowed: false,
+			groupResults: normalizedGroups,
+			ambiguitySource: 'group-outcome',
+			error,
+		};
+	}
+
+	private async verifyAgentRuntimeIdentityPlanAfterState(
+		plan: IdentityPlaceholderSealedPlanV1,
+		steps?: readonly GraphTransactionJournalStepV1[],
+	): Promise<boolean> {
+		if (steps && !await this.verifyAgentRuntimeIdentityGraphSteps(steps, 'after')) return false;
+		const sourceByPath = new Map<string, string>();
+		for (const effect of plan.createEffects) {
+			const indexed = this.indexer.getTaskSnapshot(effect.operonId);
+			if (
+				!indexed
+				|| this.indexer.hasDuplicateOperonIdConflict(effect.operonId)
+				|| indexed.primary.filePath !== effect.locator.filePath
+				|| indexed.primary.format !== (effect.locator.representation === 'file' ? 'yaml' : 'inline')
+				|| (effect.locator.representation === 'inline' && indexed.primary.lineNumber !== effect.locator.lineNumber)
+				|| (effect.resolvedParentOperonId ?? '') !== (indexed.fieldValues['parentTask'] ?? '')
+			) return false;
+			const related = [...new Set(
+				(indexed.fieldValues['related'] ?? '').split(';').map(value => value.trim()).filter(Boolean),
+			)].sort();
+			if (canonicalJsonV1(toJsonValueV1(related)) !== canonicalJsonV1(toJsonValueV1([...effect.resolvedRelatedOperonIds].sort()))) return false;
+			for (const relation of ['blocks', 'blocked-by'] as const) {
+				const field = relation === 'blocks' ? 'blocking' : 'blockedBy';
+				const actual = [...new Set(parseDependencyIdList(indexed.fieldValues[field]))].sort();
+				const expected = [...new Set((effect.resolvedDependencies ?? []).filter(item => item.relation === relation).map(item => item.operonId))].sort();
+				if (canonicalJsonV1(toJsonValueV1(actual)) !== canonicalJsonV1(toJsonValueV1(expected))) return false;
+			}
+			let sourceContent = sourceByPath.get(effect.locator.filePath);
+			if (sourceContent === undefined) {
+				const source = await this.readAgentRuntimeMutationSource(effect.locator.filePath);
+				if (source.content === null) return false;
+				sourceContent = source.content;
+				sourceByPath.set(effect.locator.filePath, sourceContent);
+			}
+			if (sha256HexV1(sourceContent) !== effect.plannedSourceDigest) return false;
+			const rendered = effect.locator.representation === 'file'
+				? sourceContent
+				: sourceContent.split(/\r?\n/u)[effect.locator.lineNumber];
+			if (rendered === undefined || sha256HexV1(rendered) !== effect.renderedTaskDigest) return false;
+			if (effect.templateIdentityAllocations.some(allocation => !sourceContent.includes(allocation.operonId))) return false;
+			if (effect.repeatSeriesId) {
+				const entry = this.storage.repeatSeries.getEntry(effect.repeatSeriesId);
+				if (!entry || entry.sourceTaskId !== effect.operonId) return false;
+			}
+		}
+		return true;
+	}
+
+	private agentRuntimeTaskWorkflowPreviewFailure(
+		requestId: string,
+		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1,
+		reason: string,
+		retryable = false,
+	): TaskWorkflowPreviewResultV1 {
+		return {
+			contractVersion: 1,
+			requestId,
+			kind: 'mutation-preview-result',
+			ok: false,
+			warnings: [],
+			error: structuredErrorV1(code, reason, { retryable }),
+		};
+	}
+
+	private agentRuntimeTaskWorkflowApplyFailure(
+		requestId: string,
+		code: import('./src/agent-runtime/contracts/v1/primitives').StructuredErrorCodeV1,
+		reason: string,
+		retryable = false,
+	): TaskWorkflowMutationResultV1 {
+		return {
+			contractVersion: 1,
+			requestId,
+			kind: 'mutation-result',
+			status: 'failed',
+			mutationMayHaveApplied: false,
+			retryAllowed: retryable,
+			groupResults: [],
+			error: structuredErrorV1(code, reason, { retryable }),
+		};
 	}
 
 	private applyAgentRuntimeTaskFieldValues(
