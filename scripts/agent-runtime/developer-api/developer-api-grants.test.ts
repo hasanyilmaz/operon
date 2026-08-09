@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { CapabilityIdV1 } from '../../../src/agent-runtime/contracts/v1/capabilities';
 import {
 	approveDeveloperApiCapabilities,
 	createEmptyDeveloperApiGrantPackage,
@@ -11,6 +10,7 @@ import {
 	revokeDeveloperApiGrant,
 	suspendDeveloperApiGrantForAuditRecovery,
 	type DeveloperApiConsumerDescriptorV1,
+	type DeveloperApiGrantCapabilityV1,
 } from '../../../src/agent-runtime/developer-api/grants';
 import { DeveloperApiGrantControllerV1 } from '../../../src/agent-runtime/developer-api/grant-controller';
 import {
@@ -269,7 +269,7 @@ test('incomplete audit activation suspends the exact persisted revision across r
 	);
 });
 
-test('normalization rejects forged records and unknown capabilities', () => {
+test('normalization preserves canonical extension grants and rejects forged capabilities', () => {
 	const normalized = normalizeDeveloperApiGrantPackage({
 		version: 1,
 		consumersById: {
@@ -292,15 +292,31 @@ test('normalization rejects forged records and unknown capabilities', () => {
 				approvedMajorVersion: 1,
 				state: 'active',
 				revision: 1,
-				grantedCapabilities: ['tasks.read', 'forged.capability'] as CapabilityIdV1[],
-				pendingCapabilities: [],
+				grantedCapabilities: [
+					'tasks.read',
+					'tasks.filter-query',
+					'tasks.create.identity-placeholders',
+					'tasks.adopt.apply',
+					'tasks.filter-query',
+					'forged.capability',
+				] as DeveloperApiGrantCapabilityV1[],
+				pendingCapabilities: ['tasks.adopt.preview', 'tasks.filter-query'],
 				createdAt: NOW,
 				updatedAt: NOW,
 			},
 		},
 	});
 	assert.equal(normalized.consumersById['consumer.test'], undefined);
-	assert.deepEqual(normalized.consumersById['consumer.valid']?.grantedCapabilities, ['tasks.read']);
+	assert.deepEqual(normalized.consumersById['consumer.valid']?.grantedCapabilities, [
+		'tasks.adopt.apply',
+		'tasks.create.identity-placeholders',
+		'tasks.filter-query',
+		'tasks.read',
+	]);
+	assert.deepEqual(normalized.consumersById['consumer.valid']?.pendingCapabilities, [
+		'tasks.adopt.preview',
+		'tasks.filter-query',
+	]);
 });
 
 test('normalization fails closed for explicit unsupported or corrupt package versions', () => {
@@ -392,6 +408,35 @@ test('grant controller verifies object identity and activates grants only after 
 		dataPackage.integrations.developerApi.consumersById['consumer.test']?.state,
 		'active',
 	);
+});
+
+test('grant controller persists and restores an exact task-workflow extension grant', async () => {
+	let dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
+	const store = {
+		getDataPackage: () => structuredClone(dataPackage),
+		updateDataPackage: async (mutator: (value: typeof dataPackage) => typeof dataPackage) => {
+			dataPackage = mutator(dataPackage);
+		},
+	};
+	const verifier = {
+		verify: () => consumer(),
+		isCurrent: () => true,
+	};
+	const controller = new DeveloperApiGrantControllerV1({ store, verifier, now: () => new Date(NOW) });
+	controller.recordPending(consumer(), ['tasks.filter-query']);
+	await controller.drain();
+	assert.deepEqual(
+		dataPackage.integrations.developerApi.consumersById['consumer.test']?.pendingCapabilities,
+		['tasks.filter-query'],
+	);
+	await controller.approvePending('consumer.test', ['tasks.filter-query']);
+	assert.equal(controller.evaluate(consumer(), ['tasks.filter-query']).state, 'active');
+
+	const restarted = new DeveloperApiGrantControllerV1({ store, verifier, now: () => new Date(LATER) });
+	const restored = restarted.evaluate(consumer(), ['tasks.filter-query']);
+	assert.equal(restored.state, 'active');
+	assert.deepEqual(restored.effectiveCapabilities, ['tasks.filter-query']);
+	assert.deepEqual(restored.grantedCapabilities, ['tasks.filter-query']);
 });
 
 test('grant controller keeps a queued first request pending until its durable record is written', async () => {

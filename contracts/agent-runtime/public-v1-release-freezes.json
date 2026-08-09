@@ -1,7 +1,7 @@
 {
   "registryVersion": 1,
   "kind": "operon-public-v1-release-freeze-registry",
-  "currentPluginVersion": "3.1.1",
+  "currentPluginVersion": "3.2.1",
   "releases": [
     {
       "pluginVersion": "3.0.2",
@@ -86,6 +86,50 @@
           "path": "contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json",
           "bytes": 4538,
           "sha256": "eeb0eeaefef9aa3937a5d50de6bfc535c7b23d12e449c5b174f769e292e27008"
+        }
+      ]
+    },
+    {
+      "pluginVersion": "3.2.0",
+      "cliVersion": "1.1.0",
+      "evidenceKind": "paired-evidence-seal-v3",
+      "files": [
+        {
+          "path": "contracts/agent-runtime/releases/3.2.0/paired-release-evidence.json",
+          "bytes": 5529,
+          "sha256": "8b4dfa79e438edd7d0761ed16d3749bc0dbac82dd2cd31f9ace4df58abd88b79"
+        },
+        {
+          "path": "contracts/agent-runtime/releases/3.2.0/public-v1-external-freeze.json",
+          "bytes": 2238,
+          "sha256": "ea15d952a7a4e0e0f819a6781f4bb5d87019f12dc005adb4e3563bb81a95ba47"
+        },
+        {
+          "path": "contracts/agent-runtime/releases/3.2.0/public-v1-external-freeze.schema.json",
+          "bytes": 2513,
+          "sha256": "72007b8a0209617c0087f72ac6ad1d4f959623f4af33286327c085bd8c72a524"
+        }
+      ]
+    },
+    {
+      "pluginVersion": "3.2.1",
+      "cliVersion": "1.1.0",
+      "evidenceKind": "paired-evidence-seal-v3",
+      "files": [
+        {
+          "path": "contracts/agent-runtime/releases/3.2.1/paired-release-evidence.json",
+          "bytes": 5529,
+          "sha256": "7aad4e1ef2de70ee5850e31edb7b3872aca614f7d4a9a5f36bc93f09109e87d0"
+        },
+        {
+          "path": "contracts/agent-runtime/releases/3.2.1/public-v1-external-freeze.json",
+          "bytes": 2238,
+          "sha256": "6503f8be6ed76c5b6ffb59ad78a01ebc051bf8d77af7faa1b772db80fde66b93"
+        },
+        {
+          "path": "contracts/agent-runtime/releases/3.2.1/public-v1-external-freeze.schema.json",
+          "bytes": 2513,
+          "sha256": "b5f5f0cf7d7805a614305aa149045293297433e65bf40075067e63b723880e09"
         }
       ]
     }

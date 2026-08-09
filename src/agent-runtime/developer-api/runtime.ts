@@ -25,6 +25,10 @@ import type {
 	TaskQueryResultV1,
 } from '../contracts/v1/context';
 import type {
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
+} from '../extensions/task-workflows-v1';
+import type {
 	RuntimeDiagnosticsV1,
 	RuntimeHealthV1,
 	RuntimeLifecyclePhaseV1,
@@ -339,15 +343,15 @@ function createDeveloperApiSession(
 	const status = (): DeveloperApiChannelStatusV1 => (
 		currentChannelStatus(core, options, requested, consumer)
 	);
-	const canUse = (capability: CapabilityIdV1): boolean => (
-		requested.has(capability)
+	const canUse = (capability: CapabilityIdV1 | 'tasks.filter-query'): boolean => (
+		(requested as ReadonlySet<string>).has(capability)
 		&& (
-			BASELINE_DISCOVERY_CAPABILITIES_V1.has(capability)
-			|| evaluateSessionGrant(options, consumer, requested).effectiveCapabilities.includes(capability)
+			(capability !== 'tasks.filter-query' && BASELINE_DISCOVERY_CAPABILITIES_V1.has(capability))
+				|| evaluateSessionGrant(options, consumer, requested).effectiveCapabilities.includes(capability)
 		)
 		&& options.isCoreActive(core)
 		&& (
-			READ_CAPABILITIES_V1.has(capability)
+			(capability === 'tasks.filter-query' || READ_CAPABILITIES_V1.has(capability))
 				? status().admission.reads
 				: status().admission.writes
 		)
@@ -485,6 +489,25 @@ function createDeveloperApiSession(
 				)));
 			}
 			return core.tasks.query(snapshot).then(cloneOutput);
+		},
+		filterQuery: (request: TaskFilterQueryRequestV1) => {
+			const decoded = snapshotInput<TaskFilterQueryRequestV1>(request);
+			if (!decoded.ok) {
+				return Promise.resolve(cloneOutput(readFailure(
+					'task-filter-query-result',
+					request,
+					decoded.error,
+				)));
+			}
+			const snapshot = decoded.value;
+			if (!canUse('tasks.filter-query') || !core.tasks.filterQuery) {
+				return Promise.resolve(cloneOutput(readFailure(
+					'task-filter-query-result',
+					snapshot,
+					sessionError(core, options, requested, consumer, 'tasks.filter-query' as CapabilityIdV1),
+				)));
+			}
+			return core.tasks.filterQuery(snapshot).then(cloneOutput);
 		},
 		find: (request: TaskFinderRequestV1) => {
 			const decoded = snapshotInput<TaskFinderRequestV1>(request);
@@ -1165,7 +1188,7 @@ function currentChannelStatus(
 	);
 	const writes = reads
 		&& phase === 'ready'
-		&& grant.effectiveCapabilities.some(capability => !READ_CAPABILITIES_V1.has(capability));
+		&& grant.effectiveCapabilities.some(capability => isCapabilityIdV1(capability) && !READ_CAPABILITIES_V1.has(capability));
 	const availability = !sessionActive || phase === 'booting' || terminalLifecycleError
 		? 'unavailable'
 		: phase === 'ready' && !lifecycleError
@@ -1191,8 +1214,8 @@ function currentChannelStatus(
 			state: grant.state,
 			revision: grant.revision,
 			requestedCapabilities: [...requested],
-			grantedCapabilities: grant.grantedCapabilities,
-			effectiveCapabilities: grant.effectiveCapabilities,
+			grantedCapabilities: grant.grantedCapabilities.filter(isCapabilityIdV1),
+			effectiveCapabilities: grant.effectiveCapabilities.filter(isCapabilityIdV1),
 		},
 		admission: {
 			reads,
@@ -1399,6 +1422,7 @@ type ReadFailureKindV1 =
 	| 'entity-resolution-result'
 	| 'task-get-result'
 	| 'task-query-result'
+	| 'task-filter-query-result'
 	| 'task-finder-result'
 	| 'relationship-result';
 
@@ -1418,6 +1442,11 @@ function readFailure(
 	error: StructuredErrorV1,
 ): TaskQueryResultV1;
 function readFailure(
+	kind: 'task-filter-query-result',
+	request: unknown,
+	error: StructuredErrorV1,
+): TaskFilterQueryResultV1;
+function readFailure(
 	kind: 'task-finder-result',
 	request: unknown,
 	error: StructuredErrorV1,
@@ -1434,6 +1463,7 @@ function readFailure(
 ): EntityResolutionResultV1
 	| TaskGetResultV1
 	| TaskQueryResultV1
+	| TaskFilterQueryResultV1
 	| TaskFinderResultV1
 	| RelationshipResultV1 {
 	return {
@@ -1497,7 +1527,9 @@ function currentSecurityGrant(
 		state: evaluation.state,
 		revision: evaluation.revision,
 		capabilities: new Set(
-			evaluation.effectiveCapabilities.filter(capability => (
+			evaluation.effectiveCapabilities.filter((capability): capability is CapabilityIdV1 => (
+				isCapabilityIdV1(capability)
+				&&
 				!BASELINE_DISCOVERY_CAPABILITIES_V1.has(capability)
 			)),
 		),

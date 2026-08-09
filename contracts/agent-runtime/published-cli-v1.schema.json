@@ -17,141 +17,371 @@
     "bindingAggregateSha256"
   ],
   "properties": {
-    "$schema": { "const": "./published-cli-v1.schema.json" },
-    "bindingVersion": { "const": 1 },
-    "kind": { "const": "operon-published-cli-v1" },
-    "state": { "const": "accepted" },
-    "package": { "$ref": "#/$defs/package" },
-    "tarball": { "$ref": "#/$defs/tarball" },
-    "artifact": { "$ref": "#/$defs/artifact" },
-    "runtime": { "$ref": "#/$defs/runtime" },
-    "source": { "$ref": "#/$defs/source" },
-    "provenance": { "$ref": "#/$defs/provenance" },
-    "bindingAggregateSha256": { "$ref": "#/$defs/sha256" }
+    "$schema": {
+      "const": "./published-cli-v1.schema.json"
+    },
+    "bindingVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "operon-published-cli-v1"
+    },
+    "state": {
+      "const": "accepted"
+    },
+    "package": {
+      "$ref": "#/$defs/package"
+    },
+    "tarball": {
+      "$ref": "#/$defs/tarball"
+    },
+    "artifact": {
+      "$ref": "#/$defs/artifact"
+    },
+    "runtime": {
+      "$ref": "#/$defs/runtime"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "provenance": {
+      "$ref": "#/$defs/provenance"
+    },
+    "bindingAggregateSha256": {
+      "$ref": "#/$defs/sha256"
+    }
   },
   "$defs": {
-    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "sha512": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" },
-    "gitOid": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sha512": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]{86}==$"
+    },
+    "gitOid": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
     "file": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "mode", "size", "sha256"],
+      "required": [
+        "path",
+        "mode",
+        "size",
+        "sha256"
+      ],
       "properties": {
-        "path": { "type": "string", "pattern": "^package/(?!/|.*(?:^|/)\\.\\.(?:/|$)).+" },
-        "mode": { "enum": [420, 493] },
-        "size": { "type": "integer", "minimum": 1 },
-        "sha256": { "$ref": "#/$defs/sha256" }
+        "path": {
+          "type": "string",
+          "pattern": "^package/(?!/|.*(?:^|/)\\.\\.(?:/|$)).+"
+        },
+        "mode": {
+          "enum": [
+            420,
+            493
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
       }
     },
     "sourceFile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "bytes", "mode", "sha256"],
+      "required": [
+        "path",
+        "bytes",
+        "mode",
+        "sha256"
+      ],
       "properties": {
-        "path": { "type": "string", "pattern": "^(?:contracts|src)/agent-runtime/" },
-        "bytes": { "type": "integer", "minimum": 1 },
-        "mode": { "const": 420 },
-        "sha256": { "$ref": "#/$defs/sha256" }
+        "path": {
+          "type": "string",
+          "pattern": "^(?:contracts|src)/agent-runtime/"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "const": 420
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
       }
     },
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "bytes", "mode", "sha256"],
+      "required": [
+        "path",
+        "bytes",
+        "mode",
+        "sha256"
+      ],
       "properties": {
-        "path": { "type": "string", "minLength": 1 },
-        "bytes": { "type": "integer", "minimum": 1 },
-        "mode": { "enum": [420, 493] },
-        "sha256": { "$ref": "#/$defs/sha256" }
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "enum": [
+            420,
+            493
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
       }
     },
     "package": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "version", "registry", "tarballUrl"],
+      "required": [
+        "name",
+        "version",
+        "registry",
+        "tarballUrl"
+      ],
       "properties": {
-        "name": { "const": "@stratejya/operon-cli" },
-        "version": { "const": "1.0.8" },
-        "registry": { "const": "https://registry.npmjs.org/" },
-        "tarballUrl": { "const": "https://registry.npmjs.org/@stratejya/operon-cli/-/operon-cli-1.0.8.tgz" }
+        "name": {
+          "const": "@stratejya/operon-cli"
+        },
+        "version": {
+          "const": "1.1.0"
+        },
+        "registry": {
+          "const": "https://registry.npmjs.org/"
+        },
+        "tarballUrl": {
+          "const": "https://registry.npmjs.org/@stratejya/operon-cli/-/operon-cli-1.1.0.tgz"
+        }
       }
     },
     "tarball": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["bytes", "sha256", "sha512", "integrity", "registryShasum"],
+      "required": [
+        "bytes",
+        "sha256",
+        "sha512",
+        "integrity",
+        "registryShasum"
+      ],
       "properties": {
-        "bytes": { "const": 214687 },
-        "sha256": { "$ref": "#/$defs/sha256" },
-        "sha512": { "$ref": "#/$defs/sha512" },
-        "integrity": { "type": "string", "pattern": "^sha512-" },
-        "registryShasum": { "type": "string", "pattern": "^[a-f0-9]{40}$" }
+        "bytes": {
+          "const": 237750
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sha512": {
+          "$ref": "#/$defs/sha512"
+        },
+        "integrity": {
+          "type": "string",
+          "pattern": "^sha512-"
+        },
+        "registryShasum": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        }
       }
     },
     "artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["inventory", "inventoryEntries", "executable", "cliManifest", "normalizedCliManifestSha256", "historicalCliManifest", "schemaAggregateSha256", "declarationAggregateSha256"],
+      "required": [
+        "inventory",
+        "inventoryEntries",
+        "executable",
+        "cliManifest",
+        "normalizedCliManifestSha256",
+        "historicalCliManifest",
+        "schemaAggregateSha256",
+        "declarationAggregateSha256"
+      ],
       "properties": {
-        "inventory": { "type": "array", "minItems": 41, "maxItems": 41, "items": { "$ref": "#/$defs/file" } },
-        "inventoryEntries": { "const": 41 },
-        "executable": { "$ref": "#/$defs/identity" },
-        "cliManifest": { "$ref": "#/$defs/identity" },
-        "normalizedCliManifestSha256": { "$ref": "#/$defs/sha256" },
+        "inventory": {
+          "type": "array",
+          "minItems": 48,
+          "maxItems": 48,
+          "items": {
+            "$ref": "#/$defs/file"
+          }
+        },
+        "inventoryEntries": {
+          "const": 48
+        },
+        "executable": {
+          "$ref": "#/$defs/identity"
+        },
+        "cliManifest": {
+          "$ref": "#/$defs/identity"
+        },
+        "normalizedCliManifestSha256": {
+          "$ref": "#/$defs/sha256"
+        },
         "historicalCliManifest": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["version", "bytes", "sha256"],
+          "required": [
+            "version",
+            "bytes",
+            "sha256"
+          ],
           "properties": {
-            "version": { "const": "1.0.7" },
-            "bytes": { "const": 51235 },
-            "sha256": { "const": "6cc0ee85e8cd65607e7e8682161d79e4e3e971d12d312e199c2c86651f553805" }
+            "version": {
+              "const": "1.0.7"
+            },
+            "bytes": {
+              "const": 51235
+            },
+            "sha256": {
+              "const": "6cc0ee85e8cd65607e7e8682161d79e4e3e971d12d312e199c2c86651f553805"
+            }
           }
         },
-        "schemaAggregateSha256": { "$ref": "#/$defs/sha256" },
-        "declarationAggregateSha256": { "$ref": "#/$defs/sha256" }
+        "schemaAggregateSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "declarationAggregateSha256": {
+          "$ref": "#/$defs/sha256"
+        }
       }
     },
     "runtime": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["contractVersion", "contractDigest", "canonicalSchemas", "canonicalTypeSources"],
+      "required": [
+        "contractVersion",
+        "contractDigest",
+        "canonicalSchemas",
+        "canonicalTypeSources"
+      ],
       "properties": {
-        "contractVersion": { "const": 1 },
-        "contractDigest": { "const": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b" },
-        "canonicalSchemas": { "type": "array", "minItems": 13, "maxItems": 13, "items": { "$ref": "#/$defs/sourceFile" } },
-        "canonicalTypeSources": { "type": "array", "minItems": 20, "maxItems": 20, "items": { "$ref": "#/$defs/sourceFile" } }
+        "contractVersion": {
+          "const": 1
+        },
+        "contractDigest": {
+          "const": "daaa7cce4b8ada5fd6d0a90a6676be887e854998f1d2ea4f23d7228be795a7ee"
+        },
+        "canonicalSchemas": {
+          "type": "array",
+          "minItems": 19,
+          "maxItems": 19,
+          "items": {
+            "$ref": "#/$defs/sourceFile"
+          }
+        },
+        "canonicalTypeSources": {
+          "type": "array",
+          "minItems": 22,
+          "maxItems": 22,
+          "items": {
+            "$ref": "#/$defs/sourceFile"
+          }
+        }
       }
     },
     "releaseAsset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["bytes", "sha256"],
+      "required": [
+        "bytes",
+        "sha256"
+      ],
       "properties": {
-        "bytes": { "type": "integer", "minimum": 1 },
-        "sha256": { "$ref": "#/$defs/sha256" }
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
       }
     },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repository", "commit", "tag", "annotatedTagObject", "releaseUrl", "releaseTarballUrl", "releaseAssets"],
+      "required": [
+        "repository",
+        "commit",
+        "tag",
+        "tagObject",
+        "releaseUrl",
+        "releaseTarballUrl",
+        "releaseAssets"
+      ],
       "properties": {
-        "repository": { "const": "hasanyilmaz/operon-cli" },
-        "commit": { "$ref": "#/$defs/gitOid" },
-        "tag": { "const": "cli-v1.0.8" },
-        "annotatedTagObject": { "$ref": "#/$defs/gitOid" },
-        "releaseUrl": { "type": "string", "format": "uri" },
-        "releaseTarballUrl": { "type": "string", "format": "uri" },
+        "repository": {
+          "const": "hasanyilmaz/operon-cli"
+        },
+        "commit": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "tag": {
+          "const": "cli-v1.1.0"
+        },
+        "releaseUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "releaseTarballUrl": {
+          "type": "string",
+          "format": "uri"
+        },
         "releaseAssets": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["artifactManifest", "determinismReport", "sha256sums"],
+          "required": [
+            "artifactManifest",
+            "determinismReport",
+            "sha256sums"
+          ],
           "properties": {
-            "artifactManifest": { "$ref": "#/$defs/releaseAsset" },
-            "determinismReport": { "$ref": "#/$defs/releaseAsset" },
-            "sha256sums": { "$ref": "#/$defs/releaseAsset" }
+            "artifactManifest": {
+              "$ref": "#/$defs/releaseAsset"
+            },
+            "determinismReport": {
+              "$ref": "#/$defs/releaseAsset"
+            },
+            "sha256sums": {
+              "$ref": "#/$defs/releaseAsset"
+            }
+          }
+        },
+        "tagObject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "sha"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "commit",
+                "tag"
+              ]
+            },
+            "sha": {
+              "$ref": "#/$defs/gitOid"
+            }
           }
         }
       }
@@ -159,15 +389,41 @@
     "provenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["provider", "workflow", "ref", "commit", "environment", "canonicalHostedRun", "publishRun"],
+      "required": [
+        "provider",
+        "workflow",
+        "ref",
+        "commit",
+        "environment",
+        "canonicalHostedRun",
+        "publishRun",
+        "publishRunAttempt"
+      ],
       "properties": {
-        "provider": { "const": "github-actions" },
-        "workflow": { "const": "npm-staged-release.yml" },
-        "ref": { "const": "refs/tags/cli-v1.0.8" },
-        "commit": { "$ref": "#/$defs/gitOid" },
-        "environment": { "const": "npm-staging" },
-        "canonicalHostedRun": { "const": 30763967000 },
-        "publishRun": { "const": 30764733065 }
+        "provider": {
+          "const": "github-actions"
+        },
+        "workflow": {
+          "const": "npm-staged-release.yml"
+        },
+        "ref": {
+          "const": "refs/tags/cli-v1.1.0"
+        },
+        "commit": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "environment": {
+          "const": "npm-staging"
+        },
+        "canonicalHostedRun": {
+          "const": 31315643781
+        },
+        "publishRun": {
+          "const": 31316712249
+        },
+        "publishRunAttempt": {
+          "const": 2
+        }
       }
     }
   }

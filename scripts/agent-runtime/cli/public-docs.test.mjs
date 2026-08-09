@@ -373,7 +373,7 @@ test('published binding and frozen contracts expose the documented public bounda
 		readFile(path.join(pluginRoot, 'contracts/agent-runtime/contract-evolution-v1.md'), 'utf8'),
 	]);
 	assert.equal(binding.package.name, '@stratejya/operon-cli');
-	assert.equal(binding.package.version, '1.0.9');
+	assert.equal(binding.package.version, '1.1.0');
 	assert.equal(binding.runtime.contractVersion, 1);
 	assert.match(scope, /append-only external CLI compatibility freeze registry/u);
 	assert.match(scope, /published-CLI live mutation suite was not rerun/u);

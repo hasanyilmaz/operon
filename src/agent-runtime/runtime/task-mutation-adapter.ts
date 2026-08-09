@@ -29,8 +29,11 @@ import {
 import { composeStatusValue } from '../../core/workflow-status-value';
 import { canonicalizeLocalDatetime } from '../../core/local-time';
 import { parseTaskLine } from '../../core/parser';
+import { getManagedYamlAliases } from '../../core/yaml-fields';
+import { CANONICAL_KEYS } from '../../types/keys';
 import type { KeyMapping } from '../../types/settings';
 import type {
+	RuntimeMutationSettlementWindowV1,
 	RuntimePreparedMutationCommitV1,
 	RuntimePreparedMutationV1,
 } from './mutation-gateway';
@@ -58,6 +61,91 @@ function parseStrictCanonicalLocalDatetime(value: string): string | null {
 	const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ?? 0;
 	if (day < 1 || day > daysInMonth) return null;
 	return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${String(second).padStart(2, '0')}`;
+}
+
+function resolveBoundedModifiedTimeFrontmatterDriftV1(
+	committedLines: readonly string[],
+	observedLines: readonly string[],
+	driftLineNumber: number,
+	modifiedTimeFrontmatterKeys: readonly string[],
+	keyMappings: readonly KeyMapping[],
+	settlementWindow: RuntimeMutationSettlementWindowV1 | undefined,
+): boolean {
+	if (
+		committedLines[0]?.replace(/\r$/u, '') !== '---'
+		|| observedLines[0]?.replace(/\r$/u, '') !== '---'
+	) return false;
+	const closingLineNumber = committedLines.findIndex((line, index) => (
+		index > 0 && line.replace(/\r$/u, '') === '---'
+	));
+	if (
+		closingLineNumber < 0
+		|| observedLines[closingLineNumber]?.replace(/\r$/u, '') !== '---'
+		|| driftLineNumber <= 0
+		|| driftLineNumber >= closingLineNumber
+	) return false;
+	if (!settlementWindow) return false;
+	const windowDurationMs = settlementWindow.settlementObservedAtEpochMs
+		- settlementWindow.applyStartedAtEpochMs;
+	if (
+		!Number.isFinite(settlementWindow.applyStartedAtEpochMs)
+		|| !Number.isFinite(settlementWindow.settlementObservedAtEpochMs)
+		|| windowDurationMs < 0
+		|| windowDurationMs > 5 * 60 * 1000
+	) return false;
+	const applyStartedAt = toLocalDatetime(
+		new Date(settlementWindow.applyStartedAtEpochMs).toISOString(),
+	);
+	const settlementObservedAt = toLocalDatetime(
+		new Date(settlementWindow.settlementObservedAtEpochMs).toISOString(),
+	);
+	const managedCanonicalKeys = new Set([
+		...CANONICAL_KEYS.map(key => key.name),
+		...keyMappings.map(mapping => mapping.canonicalKey),
+	]);
+	const managedTaskKeys = new Set([
+		'tags',
+		...[...managedCanonicalKeys].flatMap(canonicalKey => (
+			getManagedYamlAliases(canonicalKey, [...keyMappings])
+		)),
+	]);
+	const permittedKeys = [...new Set(modifiedTimeFrontmatterKeys)].filter(key => (
+		key.trim() === key
+		&& key.length > 0
+		&& !/[\r\n:]/u.test(key)
+		&& !managedTaskKeys.has(key)
+	));
+	for (const key of permittedKeys) {
+		const prefix = `${key}:`;
+		const matchingCommittedLines = committedLines.slice(1, closingLineNumber)
+			.filter(line => line.startsWith(prefix));
+		const matchingObservedLines = observedLines.slice(1, closingLineNumber)
+			.filter(line => line.startsWith(prefix));
+		if (matchingCommittedLines.length !== 1 || matchingObservedLines.length !== 1) continue;
+		const committedLine = committedLines[driftLineNumber] ?? '';
+		const observedLine = observedLines[driftLineNumber] ?? '';
+		if (!committedLine.startsWith(prefix) || !observedLine.startsWith(prefix)) continue;
+		const committedRaw = committedLine.slice(prefix.length).replace(/\r$/u, '').trim();
+		const observedRaw = observedLine.slice(prefix.length).replace(/\r$/u, '').trim();
+		const committedCanonical = parseStrictCanonicalLocalDatetime(committedRaw);
+		const observedCanonical = parseStrictCanonicalLocalDatetime(observedRaw);
+		const observedMatch = STRICT_LOCAL_DATETIME_RE.exec(observedRaw);
+		const observedAtOrAfterApply = observedMatch?.[6] === undefined
+			? observedCanonical?.slice(0, 16).localeCompare(applyStartedAt.slice(0, 16)) ?? -1
+			: observedCanonical?.localeCompare(applyStartedAt) ?? -1;
+		const observedAtOrBeforeSettlement = observedMatch?.[6] === undefined
+			? observedCanonical?.slice(0, 16).localeCompare(settlementObservedAt.slice(0, 16)) ?? 1
+			: observedCanonical?.localeCompare(settlementObservedAt) ?? 1;
+		if (
+			!committedCanonical
+			|| !observedCanonical
+			|| observedCanonical.localeCompare(committedCanonical) <= 0
+			|| observedAtOrAfterApply < 0
+			|| observedAtOrBeforeSettlement > 0
+		) continue;
+		return true;
+	}
+	return false;
 }
 
 export interface RuntimeExactTaskMutationSnapshotV1 {
@@ -179,26 +267,50 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 	committedSourceRevision: string,
 	observedSourceContent: string,
 	keyMappings: readonly KeyMapping[],
+	modifiedTimeFrontmatterKeys: readonly string[] = [],
+	settlementWindow?: RuntimeMutationSettlementWindowV1,
 ): { revision: string; datetimeModified?: string } | null {
 	if (
-		prepared.operation !== 'update'
-		|| prepared.task.locator.representation !== 'inline'
+		(prepared.operation !== 'update' && prepared.operation !== 'transition')
 		|| sha256HexV1(committedSourceContent) !== committedSourceRevision
 	) return null;
 	if (observedSourceContent === committedSourceContent) {
 		return { revision: sha256HexV1(observedSourceContent) };
 	}
-	const lineNumber = prepared.task.locator.lineNumber;
+	const lineNumber = prepared.task.locator.representation === 'inline'
+		? prepared.task.locator.lineNumber
+		: -1;
 	const committedLines = committedSourceContent.split('\n');
 	const observedLines = observedSourceContent.split('\n');
-	if (
-		committedLines.length !== observedLines.length
-		|| lineNumber < 0
-		|| lineNumber >= committedLines.length
-	) return null;
-	for (let index = 0; index < committedLines.length; index++) {
-		if (index !== lineNumber && committedLines[index] !== observedLines[index]) return null;
+	if (committedLines.length !== observedLines.length) return null;
+	if (prepared.task.locator.representation === 'file') {
+		const driftLineNumbers = committedLines.flatMap((line, index) => (
+			line !== observedLines[index] ? [index] : []
+		));
+		if (driftLineNumbers.length !== 1) return null;
+		const driftLineNumber = driftLineNumbers[0];
+		if (
+			driftLineNumber === undefined
+			|| !resolveBoundedModifiedTimeFrontmatterDriftV1(
+				committedLines,
+				observedLines,
+				driftLineNumber,
+				modifiedTimeFrontmatterKeys,
+				keyMappings,
+				settlementWindow,
+			)
+		) return null;
+		const restoredObservedLines = [...observedLines];
+		restoredObservedLines[driftLineNumber] = committedLines[driftLineNumber] ?? '';
+		return restoredObservedLines.join('\n') === committedSourceContent
+			? { revision: sha256HexV1(observedSourceContent) }
+			: null;
 	}
+	if (lineNumber < 0 || lineNumber >= committedLines.length) return null;
+	const nonTargetDriftLineNumbers = committedLines.flatMap((line, index) => (
+		index !== lineNumber && line !== observedLines[index] ? [index] : []
+	));
+	if (nonTargetDriftLineNumbers.length > 1) return null;
 	const filePath = prepared.task.locator.filePath;
 	const committedLine = committedLines[lineNumber] ?? '';
 	const observedLine = observedLines[lineNumber] ?? '';
@@ -222,23 +334,42 @@ export function resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 	const observedCanonical = observedField
 		? parseStrictCanonicalLocalDatetime(observedField.value)
 		: null;
+	const targetLineChanged = observedLine !== committedLine;
 	if (
 		!committedField
 		|| !observedField
 		|| committedField.sourceKey !== observedField.sourceKey
 		|| committedCanonical !== expectedModified
 		|| observedCanonical !== observedField.value
-		|| observedCanonical.localeCompare(committedCanonical) <= 0
+		|| (
+			targetLineChanged
+				? observedCanonical.localeCompare(committedCanonical) <= 0
+				: observedCanonical !== committedCanonical
+		)
 	) return null;
-	const restoredObservedLine = [
+	const restoredObservedTaskLine = [
 		observedLine.slice(0, observedField.valueRange.from),
 		committedField.rawValue,
 		observedLine.slice(observedField.valueRange.to),
 	].join('');
-	return restoredObservedLine === committedLine
+	const restoredObservedLines = [...observedLines];
+	restoredObservedLines[lineNumber] = restoredObservedTaskLine;
+	const frontmatterDriftLineNumber = nonTargetDriftLineNumbers[0];
+	if (frontmatterDriftLineNumber !== undefined) {
+		if (!resolveBoundedModifiedTimeFrontmatterDriftV1(
+			committedLines,
+			observedLines,
+			frontmatterDriftLineNumber,
+			modifiedTimeFrontmatterKeys,
+			keyMappings,
+			settlementWindow,
+		)) return null;
+		restoredObservedLines[frontmatterDriftLineNumber] = committedLines[frontmatterDriftLineNumber] ?? '';
+	}
+	return restoredObservedLines.join('\n') === committedSourceContent
 		? {
 			revision: sha256HexV1(observedSourceContent),
-			datetimeModified: observedCanonical,
+			...(targetLineChanged ? { datetimeModified: observedCanonical } : {}),
 		}
 		: null;
 }
@@ -249,6 +380,8 @@ export function resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
 	committedSourceRevision: string,
 	observedSourceContent: string,
 	keyMappings: readonly KeyMapping[],
+	modifiedTimeFrontmatterKeys: readonly string[] = [],
+	settlementWindow?: RuntimeMutationSettlementWindowV1,
 ): string | null {
 	return resolveRuntimeInlineTaskUpdateSettlementEvidenceV1(
 		prepared,
@@ -256,6 +389,8 @@ export function resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
 		committedSourceRevision,
 		observedSourceContent,
 		keyMappings,
+		modifiedTimeFrontmatterKeys,
+		settlementWindow,
 	)?.revision ?? null;
 }
 
@@ -263,13 +398,18 @@ export function runtimeInlineTaskUpdateSettlementEvidenceSourceV1(
 	preparedMutation: RuntimePreparedMutationV1,
 	commit: RuntimePreparedMutationCommitV1,
 ): { preparation: RuntimeTaskFieldMutationPreparationV1; resourceKey: string } | null {
-	const prepared = preparedMutation.token as RuntimeTaskFieldMutationPreparationV1;
+	const token = preparedMutation.token as {
+		kind?: unknown;
+		prepared?: RuntimeTaskFieldMutationPreparationV1;
+	};
+	const prepared = token?.kind === 'semantic-transition-plan'
+		? token.prepared
+		: token as RuntimeTaskFieldMutationPreparationV1;
 	const evidence = commit.primaryTaskSourceCommitEvidence;
 	if (
 		!prepared
 		|| prepared.kind !== 'task-fields'
-		|| prepared.operation !== 'update'
-		|| prepared.task.locator.representation !== 'inline'
+		|| (prepared.operation !== 'update' && prepared.operation !== 'transition')
 		|| !evidence
 		|| evidence.resourceKey !== prepared.task.locator.filePath
 		|| sha256HexV1(evidence.content) !== evidence.revision
@@ -292,6 +432,8 @@ export function refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
 	commit: RuntimePreparedMutationCommitV1,
 	observedSourceContent: string | null,
 	keyMappings: readonly KeyMapping[],
+	modifiedTimeFrontmatterKeys: readonly string[] = [],
+	settlementWindow?: RuntimeMutationSettlementWindowV1,
 ): RuntimePreparedMutationCommitV1 {
 	const source = runtimeInlineTaskUpdateSettlementEvidenceSourceV1(preparedMutation, commit);
 	const evidence = commit.primaryTaskSourceCommitEvidence;
@@ -302,6 +444,8 @@ export function refreshRuntimeInlineTaskUpdateSettlementEvidenceV1(
 		evidence.revision,
 		observedSourceContent,
 		keyMappings,
+		modifiedTimeFrontmatterKeys,
+		settlementWindow,
 	);
 	if (!revision || revision === evidence.revision) return commit;
 	return {

@@ -41,6 +41,25 @@ test('does not announce ready before timer state is resumed', () => {
 	assert.ok(readyOffset > resumeOffset);
 });
 
+test('preserves bounded Gateway startup failure reasons in capability advertisements', () => {
+	const initialization = methodBody(
+		mainSource,
+		'\tprivate initializeAgentRuntime(): void {',
+		'\n\n\tprivate async bindAgentRuntimeServices',
+	);
+	const gatewayBinding = methodBody(
+		mainSource,
+		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
+		'\n\n\tprivate async prepareAgentRuntimeSourceTransition',
+	);
+	assert.match(gatewayBinding, /receipt-store:\$\{detail \?\? receiptHealth\.reason\}/u);
+	assert.match(gatewayBinding, /security-audit-store:health-check-failed/u);
+	assert.match(gatewayBinding, /agentRuntimeGatewayStartupFailureReason = null/u);
+	assert.match(initialization, /reason: this\.agentRuntimeGatewayStartupFailureReason/u);
+	assert.match(mainSource, /gateway-bind:unexpected-failure/u);
+	assert.doesNotMatch(initialization, /has not completed its startup gate/u);
+});
+
 test('binds freshness after index construction and marks only a usable cache ready', () => {
 	const initialization = methodBody(
 		mainSource,
@@ -130,6 +149,11 @@ test('typed create postflight seals exact inline locators and exact File bodies'
 		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
 		'\n\n\tprivate async prepareAgentRuntimeSourceTransition',
 	);
+	const identityApply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
 	assert.match(
 		gatewayBinding,
 		/const finalInlineLineNumber = \(\s*filePath: string,\s*operonId: string/u,
@@ -146,6 +170,11 @@ test('typed create postflight seals exact inline locators and exact File bodies'
 		gatewayBinding,
 		/bodyLines\.every|includes\(.*bodyMarkdown|subsequence/iu,
 	);
+	assert.match(
+		identityApply,
+		/plan\.atomicGroups\[plan\.atomicGroups\.length - 1\]\?\.groupId/u,
+	);
+	assert.doesNotMatch(identityApply, /\.at\(/u);
 });
 
 test('file and inline Runtime mutations use the platform-safe canonical vault fence', () => {
@@ -178,5 +207,23 @@ test('file and inline Runtime mutations use the platform-safe canonical vault fe
 	assert.match(
 		mainSource,
 		/validateWritePath: async \(filePath, allowAbsent\) => \(\s*await this\.isAgentRuntimeMutationPathContained\(filePath, allowAbsent\)/u,
+	);
+});
+
+test('identity apply refuses unreceipted after-state convergence before creating a receipt', () => {
+	const applyIdentity = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	const convergenceIndex = applyIdentity.indexOf('const afterStateAlreadyPresent =');
+	const refusalIndex = applyIdentity.indexOf("'Identity-placeholder after-state exists without the sealed receipt; preview again.'");
+	const receiptIndex = applyIdentity.indexOf('const receipt: TaskWorkflowMutationReceiptV1');
+	assert.ok(convergenceIndex >= 0);
+	assert.ok(refusalIndex > convergenceIndex);
+	assert.ok(receiptIndex > refusalIndex);
+	assert.match(
+		applyIdentity.slice(convergenceIndex, receiptIndex),
+		/if \(afterStateAlreadyPresent\) \{[\s\S]*?'stale-source'/u,
 	);
 });

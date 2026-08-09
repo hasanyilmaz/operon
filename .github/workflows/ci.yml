@@ -7,16 +7,19 @@ on:
       - main
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
   validate:
+    name: Validation gate
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 2
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
@@ -39,6 +42,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build release artifacts for seal classification
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run build
+
+      - name: Classify exact evidence-seal commit
+        id: evidence_seal
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          classification="$(npm run --silent release:evidence-seal:classify)"
+          mode="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.mode);' "$classification")"
+          test "$mode" = candidate || test "$mode" = evidence-seal
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
       - name: Verify release dependency audit policy
         run: npm run release:audit-policy
 
@@ -46,7 +63,7 @@ jobs:
         env:
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'
 
       - name: Run paired candidate validation
         if: github.event_name == 'pull_request'
@@ -57,8 +74,18 @@ jobs:
       - name: Verify release guard
         run: npm run release:guard
 
+      - name: Verify exact evidence seal and hosted proof
+        if: github.event_name == 'push' && steps.evidence_seal.outputs.mode == 'evidence-seal'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          npm run release:evidence-seal:check
+          npm run release:hosted-evidence:check
+          npm run agent-runtime:external-cli:public-proof
+          npm run release:freeze:check
+
       - name: Verify candidate Public V1 freeze
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.evidence_seal.outputs.mode != 'evidence-seal'
         run: npm run candidate:freeze:check
 
   windows-native:
@@ -68,6 +95,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 2
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
@@ -97,24 +125,37 @@ jobs:
         if: github.event_name == 'push'
         run: npm ci
 
+      - name: Build release artifacts for seal classification
+        if: github.event_name == 'push'
+        run: npm run build
+
+      - name: Classify exact evidence-seal commit
+        id: evidence_seal
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $classification = npm run --silent release:evidence-seal:classify | ConvertFrom-Json
+          if ($classification.mode -notin @('candidate', 'evidence-seal')) { throw "Unexpected release evidence mode" }
+          "mode=$($classification.mode)" >> $env:GITHUB_OUTPUT
+
       - name: Run validation
         env:
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'
 
       - name: Run canonical Windows candidate validation
         if: github.event_name == 'pull_request'
         run: npm run validate:windows:candidate
 
       - name: Run required native transport validation
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'
         env:
           OPERON_REQUIRE_NATIVE_TRANSPORT: "1"
         run: npm run agent-runtime:transport:native:test
 
       - name: Verify tracked runner URL portability
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'
         shell: pwsh
         run: |
           $matches = git grep -n -F "new URL(import.meta.url).pathname" -- "*.mjs" "*.ts"
@@ -124,6 +165,10 @@ jobs:
           }
           if ($LASTEXITCODE -ne 1) { exit $LASTEXITCODE }
           exit 0
+
+      - name: Verify exact evidence seal
+        if: github.event_name == 'push' && steps.evidence_seal.outputs.mode == 'evidence-seal'
+        run: npm run release:evidence-seal:check
 
       - name: Verify tracked worktree remains clean
         if: github.event_name == 'push'

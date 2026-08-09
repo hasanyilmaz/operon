@@ -127,7 +127,7 @@ test('automated release evidence binds one exact local, hosted, and Windows iden
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-test('candidate registry validates historical byte identity and current paired evidence read-only', async () => {
+test('candidate registry validates historical byte identity and 3.1.1 paired evidence read-only', async () => {
 	const protectedPaths = [
 		'contracts/agent-runtime/public-v1-release-freezes.json',
 		'contracts/agent-runtime/releases/3.1.0/public-v1-external-freeze.json',
@@ -139,7 +139,15 @@ test('candidate registry validates historical byte identity and current paired e
 	];
 	const before = await Promise.all(protectedPaths.map(relativePath => readFile(path.join(pluginRoot, relativePath))));
 	const result = await checkCandidateFreezeRegistry({ pluginRoot });
-	assert.equal(result.registry.releases.length, 3);
+	assert.deepEqual(
+		result.registry.releases.slice(0, 3).map(release => release.pluginVersion),
+		['3.0.2', '3.1.0', '3.1.1'],
+	);
+	assert.equal(
+		result.registry.currentPluginVersion,
+		result.registry.releases.at(-1)?.pluginVersion,
+	);
+	assert.equal(result.freeze.pluginArtifact.version, '3.1.1');
 	assert.equal(result.freeze.releaseAcceptance.mode, 'automated-validation');
 	assert.equal(result.evidence.limitations.publishedCliLiveMutationSuite, 'not-rerun');
 	assert.equal(result.evidence.limitations.cliInstalledInLiveVault, false);
@@ -159,6 +167,43 @@ test('candidate registry accepts working artifact drift and absence', async () =
 		assert.equal(result.freeze.pluginArtifact.version, '3.1.1');
 	} finally {
 		await rm(root, { recursive: true, force: true });
+	}
+});
+
+test('historical registry rejects malformed or non-monotonic appended releases', async () => {
+	for (const mutate of [
+		registry => {
+			registry.releases[3].pluginVersion = '3.1.1';
+			registry.currentPluginVersion = '3.1.1';
+		},
+		registry => {
+			registry.releases[3].pluginVersion = '3.0.9';
+			registry.currentPluginVersion = '3.0.9';
+		},
+		registry => {
+			registry.releases[3].pluginVersion = '4.0.0';
+			registry.currentPluginVersion = '4.0.0';
+		},
+		registry => {
+			registry.releases[3].files = [];
+		},
+		registry => {
+			delete registry.releases[3].evidenceKind;
+		},
+	]) {
+		const root = await createFixture();
+		try {
+			const registryPath = path.join(root, 'contracts/agent-runtime/public-v1-release-freezes.json');
+			const registry = JSON.parse(await readFile(registryPath, 'utf8'));
+			mutate(registry);
+			await writeFile(registryPath, `${JSON.stringify(registry, null, 2)}\n`, 'utf8');
+			await assert.rejects(
+				checkCandidateFreezeRegistry({ pluginRoot: root }),
+				new RegExp(RELEASE_FREEZE_STALE, 'u'),
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
 	}
 });
 

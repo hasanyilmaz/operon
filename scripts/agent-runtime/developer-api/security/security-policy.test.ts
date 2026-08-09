@@ -11,6 +11,89 @@ import {
 	type DeveloperConsentDecisionV1,
 	type DeveloperSecuritySessionV1,
 } from '../../../../src/agent-runtime/developer-api/security';
+import { requestBoundedDeveloperConsentV1 } from '../../../../src/agent-runtime/developer-api/security/bounded-consent';
+
+class FakeConsentWindow {
+	focused = false;
+	activeWindow: FakeConsentWindow = this;
+	activeDocument: Document = { marker: 'previous' } as unknown as Document;
+	private nextHandle = 1;
+	private readonly timers = new Map<number, { handler: () => void; timeoutMs: number }>();
+
+	focus(): void {
+		this.focused = true;
+	}
+
+	setTimeout(handler: () => void, timeoutMs: number): number {
+		const handle = this.nextHandle++;
+		this.timers.set(handle, { handler, timeoutMs });
+		return handle;
+	}
+
+	clearTimeout(handle: number): void {
+		this.timers.delete(handle);
+	}
+
+	run(timeoutMs: number): void {
+		const matches = [...this.timers.entries()]
+			.filter(([, timer]) => timer.timeoutMs === timeoutMs);
+		for (const [handle, timer] of matches) {
+			this.timers.delete(handle);
+			timer.handler();
+		}
+	}
+}
+
+test('opens Developer API consent in the owning window and returns the decision', async () => {
+	const ownerWindow = new FakeConsentWindow();
+	const ownerDocument = { marker: 'owner' } as unknown as Document;
+	const previousWindow = new FakeConsentWindow();
+	const previousDocument = ownerWindow.activeDocument;
+	ownerWindow.activeWindow = previousWindow;
+	let decide: ((confirmed: boolean) => void) | undefined;
+	let openedAgainstOwner = false;
+	const decisionPromise = requestBoundedDeveloperConsentV1({
+		ownerWindow,
+		ownerDocument,
+		timeoutMs: 45_000,
+		show: onDecision => {
+			openedAgainstOwner = ownerWindow.activeWindow === ownerWindow
+				&& ownerWindow.activeDocument === ownerDocument;
+			decide = onDecision;
+			return () => {};
+		},
+	});
+	assert.equal(ownerWindow.focused, true);
+	ownerWindow.run(0);
+	assert.equal(openedAgainstOwner, true);
+	assert.equal(ownerWindow.activeWindow, previousWindow);
+	assert.equal(ownerWindow.activeDocument, previousDocument);
+	decide?.(true);
+	assert.equal(await decisionPromise, 'approved');
+});
+
+test('closes unavailable Developer API consent after a bounded timeout', async () => {
+	const ownerWindow = new FakeConsentWindow();
+	const ownerDocument = { marker: 'owner' } as unknown as Document;
+	let closed = false;
+	let decide: ((confirmed: boolean) => void) | undefined;
+	const decisionPromise = requestBoundedDeveloperConsentV1({
+		ownerWindow,
+		ownerDocument,
+		timeoutMs: 45_000,
+		show: onDecision => {
+			decide = onDecision;
+			return () => {
+				closed = true;
+			};
+		},
+	});
+	ownerWindow.run(0);
+	ownerWindow.run(45_000);
+	assert.equal(await decisionPromise, 'unavailable');
+	assert.equal(closed, true);
+	decide?.(true);
+});
 
 const session: DeveloperSecuritySessionV1 = {
 	consumerId: 'obsidian-plugin:test.consumer',

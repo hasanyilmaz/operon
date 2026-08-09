@@ -14,7 +14,9 @@ const pluginRoot = path.resolve(path.dirname(scriptPath), '../../..');
 const schemaRoot = path.join(pluginRoot, 'contracts', 'agent-runtime', 'v1');
 const baselinePath = path.join(pluginRoot, 'contracts', 'agent-runtime', 'public-v1-baseline.json');
 const PUBLISHED_CLI_V1_EXTERNAL_SURFACE = Object.freeze({
-	normalizedCliManifestSha256: 'd67f4bd3c672de6db0fc743b05a682c290835fcff105fb137615402ce62ecf67',
+	combinedContractDigest: 'daaa7cce4b8ada5fd6d0a90a6676be887e854998f1d2ea4f23d7228be795a7ee',
+	coreContractDigest: '407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b',
+	normalizedCliManifestSha256: '0e42bba89f907a7b4a9dcaca9fdaa39b8bbbe8d2ebad65a583479c0f5ccaade5',
 	schemaDocuments: Object.freeze({
 		'operon-cli/cli-manifest.schema.json': 'defc68eb6472bff0d7a5e7b10d0f7eb31abf2e8d08ec3648452e83515b5e74d9',
 		'operon-cli/operon-cli-local.schema.json': '51d85837e26426d055aff0680f24c9e45c397456d26f1cfa84a0f05f922428c0',
@@ -119,7 +121,11 @@ export async function buildPublicV1Snapshot(options = {}) {
 		));
 		const { binding } = await loadPublishedCliBinding(options);
 		await verifyCanonicalPluginInputs(binding, options);
-		assertFrozenExternalSurface(externalSnapshot, binding);
+		const extensionManifest = JSON.parse(await readFile(
+			path.join(pluginRoot, 'contracts', 'agent-runtime', 'extensions', 'task-workflows-v1', 'extension-manifest.json'),
+			'utf8',
+		));
+		assertFrozenExternalSurface(externalSnapshot, binding, extensionManifest);
 		for (const [key, document] of Object.entries(externalSnapshot.schemaDocuments ?? {})) {
 			if (!key.startsWith('operon-cli/')) continue;
 			loadSchemaDocument(key, document);
@@ -171,7 +177,7 @@ export async function buildPublicV1Snapshot(options = {}) {
 	}
 }
 
-function assertFrozenExternalSurface(snapshot, binding) {
+function assertFrozenExternalSurface(snapshot, binding, extensionManifest) {
 	if (snapshot.runtimeContract !== 1 || snapshot.cliContract !== 1) {
 		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_CONTRACT_INVALID');
 	}
@@ -181,20 +187,27 @@ function assertFrozenExternalSurface(snapshot, binding) {
 		.sort();
 	const packagedExternal = binding.artifact.inventory
 		.filter(item => item.path.startsWith('package/schemas/v1/'))
-		.map(item => path.basename(item.path))
-		.filter(file => !binding.runtime.canonicalSchemas.some(identity => (
-			path.basename(identity.path) === file
-		)))
+		.map(item => item.path.slice('package/schemas/v1/'.length))
+		.filter(file => !binding.runtime.canonicalSchemas.some(identity => canonicalSchemaPackagePath(identity.path) === file))
 		.filter(file => file !== 'schema-manifest.json')
 		.sort();
 	if (JSON.stringify(files) !== JSON.stringify(packagedExternal)) {
 		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_SCHEMA_INVENTORY_MISMATCH');
 	}
-	if (binding.runtime.contractDigest !== '407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b') {
+	if (binding.runtime.contractDigest !== PUBLISHED_CLI_V1_EXTERNAL_SURFACE.combinedContractDigest) {
 		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_CONTRACT_DIGEST_MISMATCH');
 	}
 	if (binding.artifact.normalizedCliManifestSha256 !== PUBLISHED_CLI_V1_EXTERNAL_SURFACE.normalizedCliManifestSha256) {
 		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_MANIFEST_IDENTITY_MISMATCH');
+	}
+	if (extensionManifest.baseContractDigest !== PUBLISHED_CLI_V1_EXTERNAL_SURFACE.coreContractDigest) {
+		throw new Error('OPERON_PUBLIC_V1_EXTENSION_BASE_CONTRACT_DIGEST_MISMATCH');
+	}
+	const extensionManifestIdentity = binding.runtime.canonicalSchemas.find(identity => (
+		identity.path === 'contracts/agent-runtime/extensions/task-workflows-v1/extension-manifest.json'
+	));
+	if (!extensionManifestIdentity || extensionManifestIdentity.sha256 !== '8a7b6d5994ee0ffc89b524e84719e6ed1e7d5182ee3053ad15d868db5249fc86') {
+		throw new Error('OPERON_PUBLIC_V1_EXTENSION_MANIFEST_IDENTITY_MISMATCH');
 	}
 	for (const [key, expectedSha256] of Object.entries(PUBLISHED_CLI_V1_EXTERNAL_SURFACE.schemaDocuments)) {
 		const document = snapshot.schemaDocuments?.[key];
@@ -213,6 +226,14 @@ function assertFrozenExternalSurface(snapshot, binding) {
 	if (canonicalJsonSha256(controlSurface) !== PUBLISHED_CLI_V1_EXTERNAL_SURFACE.controlSurfaceSha256) {
 		throw new Error('OPERON_PUBLIC_V1_EXTERNAL_CONTROL_SURFACE_MISMATCH');
 	}
+}
+
+function canonicalSchemaPackagePath(sourcePath) {
+	const corePrefix = 'contracts/agent-runtime/v1/';
+	if (sourcePath.startsWith(corePrefix)) return sourcePath.slice(corePrefix.length);
+	const extensionPrefix = 'contracts/agent-runtime/extensions/';
+	if (sourcePath.startsWith(extensionPrefix)) return `extensions/${sourcePath.slice(extensionPrefix.length)}`;
+	throw new Error(`OPERON_PUBLIC_V1_CANONICAL_SCHEMA_PATH_INVALID:${sourcePath}`);
 }
 
 function canonicalJsonSha256(value) {
