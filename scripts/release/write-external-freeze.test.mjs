@@ -398,16 +398,16 @@ async function createFixture(mutate = () => {}) {
 	const root = await mkdtemp(path.join(await realpath(os.tmpdir()), 'operon-freeze-writer-'));
 	const contracts = path.join(root, 'contracts', 'agent-runtime');
 	await mkdir(contracts, { recursive: true });
-	for (const file of [
-		'published-cli-v1.json',
-		'published-cli-v1.schema.json',
-		'public-v1-external-freeze.schema.json',
-	]) {
+	for (const file of ['published-cli-v1.json', 'published-cli-v1.schema.json']) {
 		await copyFile(
-			path.join(pluginRoot, 'contracts', 'agent-runtime', file),
+			path.join(pluginRoot, 'scripts', 'release', 'fixtures', 'legacy-cli-1.0.8', file),
 			path.join(contracts, file),
 		);
 	}
+	await copyFile(
+		path.join(pluginRoot, 'contracts', 'agent-runtime', 'public-v1-external-freeze.schema.json'),
+		path.join(contracts, 'public-v1-external-freeze.schema.json'),
+	);
 	await Promise.all([
 		writeFile(path.join(root, 'main.js'), 'fixture-main\n'),
 		writeFile(path.join(root, 'manifest.json'), '{"version":"3.0.2"}\n'),

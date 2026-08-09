@@ -28,7 +28,7 @@ const IDLE_TIMEOUT_MS_V1 = 30_000;
 const AUTHENTICATED_FRAME_OVERHEAD_BYTES_V1 = 16 * 1024;
 const MAX_FRAME_BYTES_V1 = CONTRACT_LIMITS_V1.transportInputBytes
 	+ AUTHENTICATED_FRAME_OVERHEAD_BYTES_V1;
-const READ_COMMANDS_V1 = new Set<CliCommandV1>([
+const READ_COMMANDS_V1 = new Set<string>([
 	'health',
 	'capabilities',
 	'diagnostics',
@@ -36,6 +36,7 @@ const READ_COMMANDS_V1 = new Set<CliCommandV1>([
 	'entity.resolve',
 	'task.get',
 	'tasks.query',
+	'tasks.filter-query',
 	'tasks.finder',
 	'relationships.get',
 	'context.build',
@@ -700,7 +701,7 @@ function isValidReadRequestV1(value: unknown): value is PersistentReadRequestV1 
 		&& typeof value['requestId'] === 'string'
 		&& value['requestId'].length > 0
 		&& typeof value['command'] === 'string'
-		&& READ_COMMANDS_V1.has(value['command'] as CliCommandV1)
+		&& READ_COMMANDS_V1.has(value['command'])
 		&& typeof value['requestToken'] === 'string'
 		&& REQUEST_TOKEN_PATTERN_V1.test(value['requestToken'])
 		&& hasAuthenticationFieldsV1(value);
@@ -727,7 +728,7 @@ function isValidReadBatchRequestV1(value: unknown): value is PersistentReadBatch
 			|| request['requestId'].length === 0
 			|| ids.has(request['requestId'])
 			|| typeof request['command'] !== 'string'
-			|| !READ_COMMANDS_V1.has(request['command'] as CliCommandV1)
+			|| !READ_COMMANDS_V1.has(request['command'])
 			|| typeof request['requestToken'] !== 'string'
 			|| !REQUEST_TOKEN_PATTERN_V1.test(request['requestToken'])
 		) return false;

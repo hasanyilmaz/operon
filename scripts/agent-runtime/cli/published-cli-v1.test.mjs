@@ -19,12 +19,107 @@ import {
 } from './published-cli-v1.mjs';
 import { readArtifactArguments } from './check-published-cli-artifact.mjs';
 import { symlinkCapabilityUnavailableReason } from '../../test-symlink-capability.mjs';
+import { fetchPublicProofBytes, publicProofRequest, verifyGithubTagIdentity } from './check-published-cli-public-proof.mjs';
 
 test('accepted binding validates and canonical plugin inputs match', async () => {
 	const { binding } = await loadPublishedCliBinding();
 	assertPublishedCliBinding(binding);
 	await verifyCanonicalPluginInputs(binding);
+	assert.equal(binding.package.version, '1.1.0');
+	assert.deepEqual(binding.source.tagObject, {
+		type: 'commit',
+		sha: binding.source.commit,
+	});
+	assert.equal(binding.runtime.canonicalSchemas.filter(item => item.path.includes('/extensions/')).length, 6);
 	assert.match(bindingAggregate(binding), /^[a-f0-9]{64}$/u);
+});
+
+test('GitHub tag proof accepts exact lightweight and annotated tag identities', async () => {
+	const commit = 'a'.repeat(40);
+	const tagObject = 'b'.repeat(40);
+	const lightweight = {
+		source: {
+			tag: 'cli-v1.1.0',
+			commit,
+			tagObject: { type: 'commit', sha: commit },
+		},
+	};
+	let requests = 0;
+	assert.equal(await verifyGithubTagIdentity(lightweight, async () => {
+		requests += 1;
+		return { object: { type: 'commit', sha: commit } };
+	}), true);
+	assert.equal(requests, 1);
+
+	const annotated = {
+		source: {
+			tag: 'cli-v1.0.9',
+			commit,
+			tagObject: { type: 'tag', sha: tagObject },
+		},
+	};
+	requests = 0;
+	assert.equal(await verifyGithubTagIdentity(annotated, async url => {
+		requests += 1;
+		return url.includes('/git/tags/')
+			? { object: { type: 'commit', sha: commit } }
+			: { object: { type: 'tag', sha: tagObject } };
+	}), true);
+	assert.equal(requests, 2);
+
+	await assert.rejects(
+		verifyGithubTagIdentity(lightweight, async () => ({
+			object: { type: 'commit', sha: 'c'.repeat(40) },
+		})),
+		/OPERON_PUBLISHED_CLI_TAG_OBJECT_MISMATCH/u,
+	);
+});
+
+test('public proof authenticates only GitHub API requests', () => {
+	assert.deepEqual(
+		publicProofRequest('https://api.github.com/repos/hasanyilmaz/operon-cli/actions/runs/1', { accept: 'application/json' }, { GH_TOKEN: ' fixture-token ', GITHUB_TOKEN: 'fallback' }),
+		{ githubApi: true, headers: { accept: 'application/json', authorization: 'Bearer fixture-token', 'user-agent': 'operon-plugin-public-cli-proof/1' }, redirect: 'manual' },
+	);
+	assert.deepEqual(
+		publicProofRequest('https://api.github.com/repos/example', {}, { GITHUB_TOKEN: 'fallback' }),
+		{ githubApi: true, headers: { authorization: 'Bearer fallback', 'user-agent': 'operon-plugin-public-cli-proof/1' }, redirect: 'manual' },
+	);
+	for (const url of [
+		'https://github.com/hasanyilmaz/operon-cli/releases/download/cli-v1.1.0/file.tgz',
+		'https://objects.githubusercontent.com/release-asset',
+		'https://registry.npmjs.org/package',
+		'https://registry.npmjs.org/package/-/package.tgz',
+		'https://api.github.com.evil.example/repos/example',
+		'http://api.github.com/repos/example',
+		'https://api.github.com:444/repos/example',
+		'https://user:password@api.github.com/repos/example',
+	]) {
+		assert.deepEqual(
+			publicProofRequest(url, { Authorization: 'caller-controlled' }, { GH_TOKEN: 'fixture-token' }),
+			{ githubApi: false, headers: { 'user-agent': 'operon-plugin-public-cli-proof/1' }, redirect: 'follow' },
+		);
+	}
+	assert.deepEqual(
+		publicProofRequest('https://api.github.com/repos/example', {}, {}),
+		{ githubApi: true, headers: { 'user-agent': 'operon-plugin-public-cli-proof/1' }, redirect: 'manual' },
+	);
+});
+
+test('public proof refuses GitHub API redirects without following the location', async () => {
+	let requests = 0;
+	await assert.rejects(
+		fetchPublicProofBytes('https://api.github.com/repos/example', {}, {
+			environment: { GH_TOKEN: 'fixture-token' },
+			fetchImpl: async (_url, init) => {
+				requests += 1;
+				assert.equal(init.redirect, 'manual');
+				assert.equal(init.headers.authorization, 'Bearer fixture-token');
+				return { status: 302, ok: false, arrayBuffer: async () => new ArrayBuffer(0) };
+			},
+		}),
+		/OPERON_PUBLISHED_CLI_GITHUB_API_REDIRECT_REFUSED/u,
+	);
+	assert.equal(requests, 1);
 });
 
 test('canonical plugin inputs ignore only POSIX mode on Windows', async t => {

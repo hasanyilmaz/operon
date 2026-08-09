@@ -3,8 +3,11 @@ import { splitFrontmatterDocument } from './file-task-template-merge';
 
 export interface ResolveOperonIdPlaceholdersOptions {
 	generateOperonId: () => string;
+	/** Pre-bind reusable one-character suffixes to already sealed task identities. */
+	stableSuffixOperonIds?: Readonly<Record<string, string>>;
 	now?: string;
 	rawContext?: RawOperonTaskLinePlaceholderContext;
+	onIdentityAllocation?: (allocation: { occurrence: number; suffix?: string; operonId: string }) => void;
 }
 
 export interface RawOperonTaskLinePlaceholderContext {
@@ -86,17 +89,15 @@ function replaceYamlPlaceholders(
 	usedIds: Set<string>,
 	stableIds: Map<string, string>,
 	context?: OperonTemplatePlaceholderContext,
+	ordinal: { value: number } = { value: 0 },
 ): string {
 	const resolvedIds = frontmatter.replace(PLACEHOLDER_PATTERN, (_match, suffix: string) => {
-		if (!suffix) {
-			return generateUniqueLocalOperonId(options.generateOperonId, usedIds);
-		}
-
-		const existing = stableIds.get(suffix);
-		if (existing) return existing;
-		const next = generateUniqueLocalOperonId(options.generateOperonId, usedIds);
-		stableIds.set(suffix, next);
-		return next;
+		const operonId = !suffix
+			? generateUniqueLocalOperonId(options.generateOperonId, usedIds)
+			: stableIds.get(suffix) ?? generateUniqueLocalOperonId(options.generateOperonId, usedIds);
+		if (suffix && !stableIds.has(suffix)) stableIds.set(suffix, operonId);
+		options.onIdentityAllocation?.({ occurrence: ordinal.value++, ...(suffix ? { suffix } : {}), operonId });
+		return operonId;
 	});
 
 	if (context) return replaceTemplatePlaceholders(resolvedIds, context);
@@ -110,6 +111,7 @@ function replaceCheckboxLinePlaceholders(
 	stableIds: Map<string, string>,
 	context?: OperonTemplatePlaceholderContext,
 	resolveBodyText = false,
+	ordinal: { value: number } = { value: 0 },
 ): string {
 	const lines = body.split('\n');
 	let inFencedCodeBlock = false;
@@ -125,17 +127,14 @@ function replaceCheckboxLinePlaceholders(
 
 		let nextLine = line;
 		if (isTaskLineCandidate(nextLine) && nextLine.includes('{{operonId')) {
-			nextLine = nextLine.replace(PLACEHOLDER_PATTERN, (_match, suffix: string) => {
-				if (!suffix) {
-					return generateUniqueLocalOperonId(options.generateOperonId, usedIds);
-				}
-
-				const existing = stableIds.get(suffix);
-				if (existing) return existing;
-				const next = generateUniqueLocalOperonId(options.generateOperonId, usedIds);
-				stableIds.set(suffix, next);
-				return next;
-			});
+				nextLine = nextLine.replace(PLACEHOLDER_PATTERN, (_match, suffix: string) => {
+					const operonId = !suffix
+						? generateUniqueLocalOperonId(options.generateOperonId, usedIds)
+						: stableIds.get(suffix) ?? generateUniqueLocalOperonId(options.generateOperonId, usedIds);
+					if (suffix && !stableIds.has(suffix)) stableIds.set(suffix, operonId);
+					options.onIdentityAllocation?.({ occurrence: ordinal.value++, ...(suffix ? { suffix } : {}), operonId });
+					return operonId;
+				});
 		}
 		if (context && resolveBodyText && nextLine.includes('{{')) {
 			nextLine = replaceTemplatePlaceholders(nextLine, context);
@@ -164,12 +163,19 @@ export function resolveOperonIdPlaceholders(
 	if (!content.includes('{{operonId') && !hasRawTaskLinePlaceholder(content)) return content;
 
 	const { frontmatter, body } = splitFrontmatterDocument(content);
-	const usedIds = new Set<string>();
 	const stableIds = new Map<string, string>();
+	for (const [suffix, operonId] of Object.entries(options.stableSuffixOperonIds ?? {})) {
+		if (!/^[0-9A-Za-z]$/u.test(suffix) || !/^[a-z0-9]{7}$/u.test(operonId)) {
+			throw new Error('Invalid pre-bound operonId placeholder suffix or identity');
+		}
+		stableIds.set(suffix, operonId);
+	}
+	const usedIds = new Set(stableIds.values());
+	const ordinal = { value: 0 };
 	const nextFrontmatter = frontmatter == null
 		? null
-		: replaceYamlPlaceholders(frontmatter, options, usedIds, stableIds);
-	const nextBody = replaceCheckboxLinePlaceholders(body, options, usedIds, stableIds);
+		: replaceYamlPlaceholders(frontmatter, options, usedIds, stableIds, undefined, ordinal);
+	const nextBody = replaceCheckboxLinePlaceholders(body, options, usedIds, stableIds, undefined, false, ordinal);
 
 	if (nextFrontmatter == null) return nextBody;
 	return `---\n${nextFrontmatter}\n---\n${nextBody}`;
@@ -184,9 +190,10 @@ export function resolveOperonTemplatePlaceholders(
 	const { frontmatter, body } = splitFrontmatterDocument(content);
 	const usedIds = new Set<string>();
 	const stableIds = new Map<string, string>();
+	const ordinal = { value: 0 };
 	const nextFrontmatter = frontmatter == null
 		? null
-		: replaceYamlPlaceholders(frontmatter, options, usedIds, stableIds, options.context);
+		: replaceYamlPlaceholders(frontmatter, options, usedIds, stableIds, options.context, ordinal);
 	const nextBody = replaceCheckboxLinePlaceholders(
 		body,
 		options,
@@ -194,6 +201,7 @@ export function resolveOperonTemplatePlaceholders(
 		stableIds,
 		options.context,
 		options.resolveBodyText !== false,
+		ordinal,
 	);
 
 	if (nextFrontmatter == null) return nextBody;

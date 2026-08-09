@@ -4,7 +4,7 @@ import {
 	toJsonValueV1,
 } from '../contracts/v1/canonical';
 import type { JsonValue } from '../contracts/v1/primitives';
-import type { OperonSettings } from '../../types/settings';
+import type { FilterSet, OperonSettings } from '../../types/settings';
 
 export const CONTEXT_SETTINGS_FINGERPRINT_VERSION_V1 = 1 as const;
 
@@ -110,6 +110,16 @@ export function projectContextSettingsV1(settings: Readonly<OperonSettings>): Js
 
 export function computeContextSettingsFingerprintV1(settings: Readonly<OperonSettings>): string {
 	return sha256HexV1(canonicalJsonV1(projectContextSettingsV1(settings)));
+}
+
+export function savedFilterQueryDigestV1(
+	filterSet: FilterSet,
+	scope: { kind: 'exact-file' | 'folder-tree'; path: string } | undefined,
+): string {
+	return sha256HexV1(canonicalJsonV1(toJsonValueV1(compactJson({
+		filterSet,
+		scope: scope ?? null,
+	}))));
 }
 
 function pickSettings<K extends keyof OperonSettings>(

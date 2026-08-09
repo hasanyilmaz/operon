@@ -7,6 +7,7 @@ on:
       - "!cli-v*"
 
 permissions:
+  actions: read
   contents: write
   id-token: write
   attestations: write
@@ -49,17 +50,33 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build exact release artifacts
+        run: npm run build
+
+      - name: Require exact evidence-seal tag target
+        run: |
+          classification="$(npm run --silent release:evidence-seal:classify)"
+          mode="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.mode);' "$classification")"
+          test "$mode" = evidence-seal
+
       - name: Verify release dependency audit policy
         run: npm run release:audit-policy
 
-      - name: Run validation
-        env:
-          OPERON_PLUGIN_RELEASE_VALIDATION: "1"
-          OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
-        run: npm run check
-
       - name: Verify release guard
         run: npm run release:guard
+
+      - name: Verify exact evidence seal
+        run: npm run release:evidence-seal:check
+
+      - name: Verify hosted evidence online
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run release:hosted-evidence:check
+
+      - name: Verify exact published CLI public proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run agent-runtime:external-cli:public-proof
 
       - name: Verify final accepted Public V1 freeze
         run: npm run release:freeze:check

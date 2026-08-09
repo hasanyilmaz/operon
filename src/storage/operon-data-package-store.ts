@@ -20,6 +20,10 @@ import {
 	validatePipelineTaxonomy,
 	type PipelineTaxonomyIssue,
 } from '../core/pipeline-taxonomy-validation';
+import {
+	isUnsupportedDeveloperApiGrantPackage,
+	normalizeDeveloperApiGrantPackage,
+} from '../agent-runtime/developer-api/grants';
 
 export interface OperonPluginDataAccess {
 	loadData(): Promise<unknown>;
@@ -86,6 +90,12 @@ export class OperonDataPackageStore {
 	private writesSuspended = false;
 	private writeSuspensionReason: string | null = null;
 	private writeSuspensionRequiresExplicitRecovery = false;
+	private unsupportedDeveloperApiGrantPackage = false;
+	private suspensionBeforeUnsupportedDeveloperApiGrantPackage: {
+		writesSuspended: boolean;
+		writeSuspensionReason: string | null;
+		writeSuspensionRequiresExplicitRecovery: boolean;
+	} | null = null;
 	private startupPipelineTaxonomyDiagnostics = createPipelineTaxonomyDiagnostics();
 
 	constructor(
@@ -99,6 +109,15 @@ export class OperonDataPackageStore {
 		obsidianLocale?: string,
 	): Promise<OperonDataPackageStoreInitResult> {
 		const existingPackage = await this.loadExistingPackage();
+		const existingDeveloperApiGrantPackage = existingPackage?.integrations?.developerApi;
+		const unsupportedDeveloperApiGrantPackage = isUnsupportedDeveloperApiGrantPackage(
+			existingDeveloperApiGrantPackage,
+		);
+		const recoverableDeveloperApiGrantPackageDrift = !unsupportedDeveloperApiGrantPackage
+			&& isRecord(existingDeveloperApiGrantPackage)
+			&& buildStableJsonSignature(existingDeveloperApiGrantPackage)
+				!== buildStableJsonSignature(normalizeDeveloperApiGrantPackage(existingDeveloperApiGrantPackage));
+		if (unsupportedDeveloperApiGrantPackage) this.suspendForUnsupportedDeveloperApiGrantPackage();
 		const unsupportedTablePresetPackage = existingPackage ? isUnsupportedTablePresetPackage(existingPackage) : false;
 		this.startupPipelineTaxonomyDiagnostics = existingPackage && !unsupportedTablePresetPackage
 			? await this.inspectPipelineTaxonomy(existingPackage)
@@ -111,8 +130,15 @@ export class OperonDataPackageStore {
 		const dataPackage = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
 			? normalizePipelineTaxonomySlice(mergedPackage, defaults)
 			: mergedPackage;
-		if (existingPackage && !unsupportedTablePresetPackage
-			&& (shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics) || hasRetiredSettings)) {
+		if (existingPackage && !unsupportedTablePresetPackage && !unsupportedDeveloperApiGrantPackage
+			&& (
+				shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
+				|| hasRetiredSettings
+				|| recoverableDeveloperApiGrantPackageDrift
+			)) {
+			if (recoverableDeveloperApiGrantPackageDrift && !this.startupPipelineTaxonomyDiagnostics.backupPath) {
+				await this.backupCanonicalDataPackageNow(existingPackage);
+			}
 			await this.persistCandidate(dataPackage);
 		}
 		this.setDataPackage(dataPackage);
@@ -146,12 +172,24 @@ export class OperonDataPackageStore {
 	}
 
 	suspendWrites(reason: string): void {
+		const nextReason = reason.trim() || 'Canonical data package writes were suspended';
+		if (this.unsupportedDeveloperApiGrantPackage) {
+			this.suspensionBeforeUnsupportedDeveloperApiGrantPackage = {
+				writesSuspended: true,
+				writeSuspensionReason: nextReason,
+				writeSuspensionRequiresExplicitRecovery: true,
+			};
+		}
 		this.writesSuspended = true;
-		this.writeSuspensionReason = reason.trim() || 'Canonical data package writes were suspended';
+		this.writeSuspensionReason = nextReason;
 		this.writeSuspensionRequiresExplicitRecovery = true;
 	}
 
 	resumeWrites(): void {
+		if (this.unsupportedDeveloperApiGrantPackage) {
+			this.suspendForUnsupportedDeveloperApiGrantPackage();
+			return;
+		}
 		this.writesSuspended = false;
 		this.writeSuspensionReason = null;
 		this.writeSuspensionRequiresExplicitRecovery = false;
@@ -167,7 +205,7 @@ export class OperonDataPackageStore {
 						: this.getDataPackage();
 				}
 				const serialized = await this.readCanonicalBackupSource(fallback);
-				const backupPath = await preserveInvalidJsonFile(this.adapter, this.paths.dataPackagePath, serialized);
+				const backupPath = await this.writeVerifiedBackup(serialized);
 				this.resumeWrites();
 				return backupPath;
 			} catch (error) {
@@ -194,6 +232,16 @@ export class OperonDataPackageStore {
 					diagnostics,
 				};
 			}
+			if (isUnsupportedDeveloperApiGrantPackage(externalPackage.integrations?.developerApi)) {
+				this.suspendForUnsupportedDeveloperApiGrantPackage();
+				diagnostics.warnings.push('Unsupported future Developer API grant package version');
+				return {
+					dataPackage: current,
+					changed: false,
+					diagnostics,
+				};
+			}
+			this.clearUnsupportedDeveloperApiGrantPackageSuspension();
 			const pipelineTaxonomy = await this.inspectPipelineTaxonomy(externalPackage);
 			diagnostics.pipelineTaxonomy = pipelineTaxonomy;
 			if (pipelineTaxonomy.backupFailed) {
@@ -321,14 +369,54 @@ export class OperonDataPackageStore {
 	private async backupCanonicalDataPackageNow(raw: unknown): Promise<string> {
 		try {
 			const serialized = await this.readCanonicalBackupSource(raw);
-			const backupPath = await preserveInvalidJsonFile(this.adapter, this.paths.dataPackagePath, serialized);
-			this.resumeWrites();
-			return backupPath;
+			return await this.writeVerifiedBackup(serialized);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.suspendWrites(`data.json backup failed: ${message}`);
 			throw error;
 		}
+	}
+
+	private async writeVerifiedBackup(serialized: string): Promise<string> {
+		const backupPath = await preserveInvalidJsonFile(this.adapter, this.paths.dataPackagePath, serialized);
+		try {
+			const verified = await this.adapter.read(backupPath);
+			if (verified !== serialized) {
+				throw new Error('Canonical data package backup verification failed');
+			}
+			return backupPath;
+		} catch (error) {
+			try {
+				await this.adapter.remove(backupPath);
+			} catch {
+				// Preserve the verification failure; writes remain suspended by the caller.
+			}
+			throw error;
+		}
+	}
+
+	private suspendForUnsupportedDeveloperApiGrantPackage(): void {
+		if (!this.unsupportedDeveloperApiGrantPackage) {
+			this.suspensionBeforeUnsupportedDeveloperApiGrantPackage = {
+				writesSuspended: this.writesSuspended,
+				writeSuspensionReason: this.writeSuspensionReason,
+				writeSuspensionRequiresExplicitRecovery: this.writeSuspensionRequiresExplicitRecovery,
+			};
+		}
+		this.unsupportedDeveloperApiGrantPackage = true;
+		this.writesSuspended = true;
+		this.writeSuspensionReason = 'Unsupported future Developer API grant package version';
+		this.writeSuspensionRequiresExplicitRecovery = true;
+	}
+
+	private clearUnsupportedDeveloperApiGrantPackageSuspension(): void {
+		if (!this.unsupportedDeveloperApiGrantPackage) return;
+		this.unsupportedDeveloperApiGrantPackage = false;
+		const previous = this.suspensionBeforeUnsupportedDeveloperApiGrantPackage;
+		this.suspensionBeforeUnsupportedDeveloperApiGrantPackage = null;
+		this.writesSuspended = previous?.writesSuspended ?? false;
+		this.writeSuspensionReason = previous?.writeSuspensionReason ?? null;
+		this.writeSuspensionRequiresExplicitRecovery = previous?.writeSuspensionRequiresExplicitRecovery ?? false;
 	}
 
 	private async inspectPipelineTaxonomy(rawPackage: Partial<OperonDataPackageV1>): Promise<OperonPipelineTaxonomyDiagnostics> {

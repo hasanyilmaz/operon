@@ -14,6 +14,7 @@ import { resolveSubtaskInitialFieldsFromParentValues } from './subtask-inheritan
 import { insertInlineTaskUnderFirstHeadingKeyword } from './markdown-heading-insertion';
 import type { OperonSettings } from '../types/settings';
 import { resolveWorkflowStatus } from '../types/pipeline';
+import { resolveOperonIdPlaceholders } from './operon-id-placeholders';
 import { deriveCountModeRepeatEndFromFieldValues } from './task-field-patch';
 import { parseRepeatRule, serializeRepeatRule } from './repeat-rule';
 import { resolveRepeatTemporalAnchor } from '../systems/recurrence-domain';
@@ -80,6 +81,7 @@ export interface FileTaskCreationTarget {
 	representation: 'file';
 	source: TaskCreationSourceSnapshot;
 	template?: DeterministicFileTaskTemplate;
+	identityPlaceholderPolicy?: 'resolve-operon-id-v1';
 }
 
 export type TaskCreationTarget = InlineTaskCreationTarget | FileTaskCreationTarget;
@@ -191,6 +193,11 @@ export interface PreparedTaskCreationTask {
 		templateId: string;
 		revision: string;
 	};
+	templateIdentityAllocations?: readonly {
+		occurrence: number;
+		suffix?: string;
+		operonId: string;
+	}[];
 }
 
 export interface PreparedTaskCreationSourceGroup {
@@ -323,6 +330,11 @@ interface MutablePreparedTask {
 		templateId: string;
 		revision: string;
 	};
+	templateIdentityAllocations?: Array<{
+		occurrence: number;
+		suffix?: string;
+		operonId: string;
+	}>;
 	requestOrder: number;
 	placement?: InlineTaskCreationPlacement;
 }
@@ -783,6 +795,28 @@ function prepareTask(
 		? parseFrontmatterDocument(item.target.template.content, options.settings.keyMappings)
 		: null;
 	const templateFieldValues = { ...(templateDocument?.managedFieldValues ?? {}) };
+	const templateOperonIdPlaceholder = (templateFieldValues['operonId'] ?? '').trim();
+	const templateOperonIdPlaceholderMatch = templateOperonIdPlaceholder.match(
+		/^\{\{operonId([0-9A-Za-z]?)\}\}$/u,
+	);
+	if (
+		item.target.representation === 'file'
+		&& item.target.identityPlaceholderPolicy === 'resolve-operon-id-v1'
+		&& templateOperonIdPlaceholder.includes('{{operonId')
+		&& !templateOperonIdPlaceholderMatch
+	) {
+		blockers.push({
+			code: 'template-placeholder-unsupported',
+			message: 'The File Task operonId field contains an invalid identity placeholder.',
+			itemKey: item.itemKey,
+			filePath: item.target.source.filePath,
+		});
+		return null;
+	}
+	const templatePrimaryIdentitySuffix = item.target.representation === 'file'
+		&& item.target.identityPlaceholderPolicy === 'resolve-operon-id-v1'
+		? templateOperonIdPlaceholderMatch?.[1] || undefined
+		: undefined;
 	const managedTemplateVariableFields = new Set(
 		Object.entries(templateFieldValues)
 			.filter(([field, value]) => (
@@ -925,6 +959,17 @@ function prepareTask(
 		options.now,
 		options.resolveCoreTemplateVariables,
 	);
+	if (item.target.identityPlaceholderPolicy === 'resolve-operon-id-v1') {
+		const allocations: Array<{ occurrence: number; suffix?: string; operonId: string }> = [];
+		resolvedContent = resolveOperonIdPlaceholders(resolvedContent, {
+			generateOperonId: options.generateOperonId,
+			...(templatePrimaryIdentitySuffix
+				? { stableSuffixOperonIds: { [templatePrimaryIdentitySuffix]: operonId } }
+				: {}),
+			onIdentityAllocation: allocation => allocations.push(allocation),
+		});
+		prepared.templateIdentityAllocations = allocations;
+	}
 	if (item.bodyMarkdown !== undefined) {
 		const injectedOperonTask = item.bodyMarkdown.split('\n').some(
 			(line, lineNumber) => parseTaskLine(
@@ -1485,5 +1530,8 @@ function stripMutableTask(task: MutablePreparedTask): PreparedTaskCreationTask {
 		resolvedDependencies: task.resolvedDependencies.map(dependency => ({ ...dependency })),
 		...(task.bodyMarkdown === undefined ? {} : { bodyMarkdown: task.bodyMarkdown }),
 		...(task.template === undefined ? {} : { template: { ...task.template } }),
+		...(task.templateIdentityAllocations === undefined
+			? {}
+			: { templateIdentityAllocations: task.templateIdentityAllocations.map(allocation => ({ ...allocation })) }),
 	};
 }
