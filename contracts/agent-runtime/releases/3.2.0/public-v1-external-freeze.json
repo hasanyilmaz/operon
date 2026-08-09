@@ -1,0 +1,68 @@
+{
+  "$schema": "./public-v1-external-freeze.schema.json",
+  "freezeVersion": 1,
+  "evidenceVersion": 3,
+  "kind": "operon-public-v1-external-freeze",
+  "state": "accepted",
+  "runtime": {
+    "contractVersion": 1,
+    "contractDigest": "daaa7cce4b8ada5fd6d0a90a6676be887e854998f1d2ea4f23d7228be795a7ee"
+  },
+  "externalCliBinding": {
+    "path": "contracts/agent-runtime/published-cli-v1.json",
+    "bytes": 22295,
+    "sha256": "861449b34c46f54e34f6447bddf145c0d9f175f02cebff1ebbe767f8da659a1d",
+    "bindingAggregateSha256": "168af5704eb5001fcf787995c4c17f46ed37da06618aab00cf965ba7435616a4"
+  },
+  "cli": {
+    "packageName": "@stratejya/operon-cli",
+    "packageVersion": "1.1.0",
+    "tarballSha256": "e95338275ea0e7c921303c39c94362d49c6261d50354a2095b3e2b30ba51dd1d"
+  },
+  "pluginArtifact": {
+    "version": "3.2.0",
+    "files": [
+      {
+        "path": "main.js",
+        "bytes": 4447496,
+        "sha256": "3dc1220ce5fe7abc2e4a955b7126fd371abda415085306dc1e2652010dd72bc9"
+      },
+      {
+        "path": "manifest.json",
+        "bytes": 378,
+        "sha256": "7ff667a79736c09cdba76531eec18de1c30125c560cfb426a4d2fc69c44b2306"
+      },
+      {
+        "path": "styles.css",
+        "bytes": 877220,
+        "sha256": "17fa6e91927174700e6439231188eb87ae3a243d8484eeebd1e9060b920137fa"
+      }
+    ]
+  },
+  "audit": {
+    "validation": {
+      "command": "npm run release:audit-policy",
+      "status": "passed",
+      "result": {
+        "status": "accepted-clean",
+        "productionVulnerabilities": 0,
+        "developmentVulnerabilities": 0
+      }
+    }
+  },
+  "pairedReleaseAcceptance": {
+    "evidence": {
+      "path": "contracts/agent-runtime/releases/3.2.0/paired-release-evidence.json",
+      "bytes": 5529,
+      "sha256": "5da06fc01ab244bad2d332f9f6e6bc8bce9a96fc48e46a5f1f8d867aedff40f1"
+    },
+    "scope": "plugin-local-hosted-and-paired-automated"
+  },
+  "releaseAcceptance": {
+    "mode": "automated-validation",
+    "status": "accepted",
+    "candidateCommit": "073a499eb253574e242e3f6a2b2e9fbb83f40ffc",
+    "artifactAggregateSha256": "3b907bf326ffd8e8358c70b0bb1e6533b605bbf64c836a8b944f33b52d23dd7c"
+  },
+  "inputsAggregateSha256": "9d7e70610b099f1906f4e038c9e86487ee30785c64a8008086a1087f9be466c7"
+}
