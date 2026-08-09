@@ -381,7 +381,7 @@ function validateReceipt(receipt) {
 	assert.equal(receipt.cli.treeMatchesCandidate, true);
 	validateHostedProof(receipt.windowsPairProof, receipt.cli.candidateCommit, 'hasanyilmaz/operon-cli', true);
 	assert.equal(receipt.windowsPairProof.workflowPath, '.github/workflows/windows-pair-validation.yml');
-	assert.equal(receipt.windowsPairProof.jobName, 'Validate exact Windows pair');
+	assert.equal(receipt.windowsPairProof.jobName, 'validate-pair');
 	assert.equal(receipt.windowsPairProof.pluginCommit, receipt.candidateCommit);
 	assert.equal(receipt.windowsPairProof.cliCandidateCommit, receipt.cli.candidateCommit);
 	assert.deepEqual(receipt.limitations, expectedLimitations());
@@ -452,7 +452,7 @@ function validateReceiptDerivedEvidence(evidence) {
 	assertExactKeys(evidence.cli.publication, ['canonicalHostedRun', 'publishRun', 'publishRunAttempt', 'releaseUrl', 'status', 'tag', 'tagObject']);
 	validateHostedProof(evidence.pairedWindowsValidation, evidence.cli.candidateCommit, 'hasanyilmaz/operon-cli', true);
 	assert.equal(evidence.pairedWindowsValidation.workflowPath, '.github/workflows/windows-pair-validation.yml');
-	assert.equal(evidence.pairedWindowsValidation.jobName, 'Validate exact Windows pair');
+	assert.equal(evidence.pairedWindowsValidation.jobName, 'validate-pair');
 	assert.equal(evidence.pairedWindowsValidation.pluginCommit, evidence.acceptance.candidateCommit);
 	assert.equal(evidence.pairedWindowsValidation.cliCandidateCommit, evidence.cli.candidateCommit);
 	assertExactKeys(evidence.historicalReleaseBaseline, ['cliVersion', 'pluginVersion', 'registryEntrySha256']);

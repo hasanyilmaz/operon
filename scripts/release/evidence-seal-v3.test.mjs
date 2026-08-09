@@ -171,7 +171,7 @@ async function createFixture() {
 		localValidation: { candidateCommit, trackedClean: true, node: '24.18.0', npm: '11.12.1', npmCi: 'passed', checkCandidate: 'passed', phase5: { passed: 1526, total: 1526 }, releaseGuard: 'passed-candidate-mode', audit: { status: 'accepted-clean', productionFindings: 0, developmentFindings: 0 }, artifact },
 		hostedValidation: { candidateCommit, ci: proof('hasanyilmaz/operon', '.github/workflows/ci.yml', 101, 201, 'Validation gate'), codeql: proof('hasanyilmaz/operon', '.github/workflows/codeql.yml', 102, 202, 'CodeQL gate') },
 		cli: { candidateCommit: 'b'.repeat(40), integratedCommit: binding.source.commit, integratedTree: 'c'.repeat(40), treeMatchesCandidate: true },
-		windowsPairProof: { ...proof('hasanyilmaz/operon-cli', '.github/workflows/windows-pair-validation.yml', 103, 203, 'Validate exact Windows pair'), headSha: 'b'.repeat(40), pluginCommit: candidateCommit, cliCandidateCommit: 'b'.repeat(40), pluginNative: { tests: 22, failed: 0, cancelled: 0, skipped: 0 }, cliHosted: { assertions: 4, skipped: 0 }, trackedClean: true },
+		windowsPairProof: { ...proof('hasanyilmaz/operon-cli', '.github/workflows/windows-pair-validation.yml', 103, 203, 'validate-pair'), headSha: 'b'.repeat(40), pluginCommit: candidateCommit, cliCandidateCommit: 'b'.repeat(40), pluginNative: { tests: 22, failed: 0, cancelled: 0, skipped: 0 }, cliHosted: { assertions: 4, skipped: 0 }, trackedClean: true },
 		limitations: { liveDeployment: 'not-run', manualAcceptance: 'not-run-not-required', publishedCliLiveMutationSuite: 'not-rerun', cliInstalledInLiveVault: false },
 	};
 	const receiptPath = `${root}-receipt.json`;
