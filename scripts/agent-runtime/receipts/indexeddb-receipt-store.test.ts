@@ -486,6 +486,76 @@ test('current fallback and admission-token writes preserve a live legacy task-ad
 	assert.deepEqual(await store.lookup(scope(admissionReceipt)), admissionReceipt);
 });
 
+test('live legacy task-adopt receipts are excluded from current receipt overflow', async () => {
+	const factory = new FakeIndexedDbFactory();
+	let now = BASE_TIME + MUTATION_RECEIPT_MAX_RECORDS_V1 + 2;
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-legacy-task-adopt-overflow',
+	});
+	assert.equal((await store.health()).healthy, true);
+	for (let index = 1; index <= MUTATION_RECEIPT_MAX_RECORDS_V1; index += 1) {
+		const currentReceipt = receipt(index, BASE_TIME + index);
+		factory.records.set(sha256(index), {
+			key: sha256(index),
+			completedAtMs: BASE_TIME + index,
+			expiresAtMs: BASE_TIME + index + MUTATION_RECEIPT_TTL_MS_V1,
+			receipt: currentReceipt,
+		});
+	}
+	const storedLegacyReceipts = [1_000, 1_001].map(id => ({
+		key: sha256(id),
+		completedAtMs: BASE_TIME,
+		expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+		receipt: { ...receipt(id), mutationKind: 'task.adopt' },
+	}));
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		factory.records.set(
+			storedLegacyReceipt.key,
+			storedLegacyReceipt as unknown as FakeStoredRecord,
+		);
+	}
+
+	assert.equal((await store.health(true)).healthy, true);
+	assert.deepEqual(await store.prune(), {
+		expiredDeleted: 0,
+		overflowDeleted: 0,
+		retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+	});
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+
+	const fallbackReceipt = receipt(2_000, now);
+	assert.deepEqual(await store.persist(fallbackReceipt), {
+		expiredDeleted: 0,
+		overflowDeleted: 1,
+		retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+	});
+	assert.equal(factory.records.has(sha256(1)), false);
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+
+	now += 1;
+	const admissionReceipt = receipt(2_001, now);
+	const admission = await store.lookupForApplyAdmission(scope(admissionReceipt));
+	assert.ok(admission.admissionToken);
+	assert.deepEqual(
+		await store.persistAfterApplyAdmission(admissionReceipt, admission.admissionToken),
+		{
+			expiredDeleted: 0,
+			overflowDeleted: 1,
+			retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+		},
+	);
+	assert.equal(factory.records.has(sha256(2)), false);
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+});
+
 test('expired legacy task-adopt receipts prune once and remain idempotent', async () => {
 	const factory = new FakeIndexedDbFactory();
 	const store = new IndexedDbMutationReceiptStoreV1({

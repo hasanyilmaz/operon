@@ -2132,8 +2132,20 @@ function planPruneRecords(
 	now: number,
 	validate: boolean,
 ): { keysToDelete: string[]; result: MutationReceiptPruneResultV1 } {
+	if (validate) {
+		for (const record of records) {
+			if (!isStoredPersistedReceiptValid(record)) {
+				throw new MutationReceiptStoreErrorV1(
+					'receipt-store-corrupt',
+					'The receipt store contains invalid metadata.',
+				);
+			}
+		}
+	}
+	const legacyRecords = records.filter(record => record.receipt.mutationKind === 'task.adopt');
+	const currentRecords = records.filter(record => record.receipt.mutationKind !== 'task.adopt');
 	const plan = planExpiringRecordRetentionV1({
-		records,
+		records: currentRecords,
 		now,
 		maximumRecords: MUTATION_RECEIPT_MAX_RECORDS_V1,
 		key: record => record.key,
@@ -2142,23 +2154,18 @@ function planPruneRecords(
 			right.completedAtMs - left.completedAtMs
 			|| left.key.localeCompare(right.key)
 		),
-		...(validate ? {
-			validate: (record: StoredMutationReceiptV1) => {
-				if (!isStoredPersistedReceiptValid(record)) {
-					throw new MutationReceiptStoreErrorV1(
-						'receipt-store-corrupt',
-						'The receipt store contains invalid metadata.',
-					);
-				}
-			},
-		} : {}),
 	});
+	const expiredLegacyRecords = legacyRecords.filter(record => record.expiresAtMs <= now);
+	const liveLegacyCount = legacyRecords.length - expiredLegacyRecords.length;
 	return {
-		keysToDelete: plan.keysToDelete,
+		keysToDelete: [
+			...plan.keysToDelete,
+			...expiredLegacyRecords.map(record => record.key),
+		],
 		result: {
-			expiredDeleted: plan.expiredDeleted,
+			expiredDeleted: plan.expiredDeleted + expiredLegacyRecords.length,
 			overflowDeleted: plan.overflowDeleted,
-			retained: plan.retained,
+			retained: plan.retained + liveLegacyCount,
 		},
 	};
 }
