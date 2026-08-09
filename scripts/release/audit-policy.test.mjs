@@ -1,154 +1,95 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 import { evaluateReleaseAuditPolicy } from './audit-policy.mjs';
 
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const readJson = relativePath => JSON.parse(readFileSync(path.join(rootDir, relativePath), 'utf8'));
-const policy = readJson('contracts/release/dev-audit-policy-v1.json');
-const production = readJson('scripts/release/fixtures/production-clean.json');
-const rootPackage = readJson('package.json');
-const packageLock = readJson('package-lock.json');
-const cleanArtifactMetafiles = {
-	plugin: { inputs: { 'main.ts': { bytes: 1 } } },
-};
-
-function cleanFullReport() {
-	return structuredClone(production);
+function cleanReport() {
+	return {
+		auditReportVersion: 2,
+		vulnerabilities: {},
+		metadata: {
+			vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 },
+		},
+	};
 }
+
+const cleanBundleMetafile = {
+	inputs: {
+		'main.ts': { bytes: 1 },
+		'node_modules/runtime-package/index.js': { bytes: 1 },
+	},
+};
+const cleanPackageLock = {
+	packages: {
+		'': {},
+		'node_modules/runtime-package': { version: '1.0.0' },
+		'node_modules/dev-package': { version: '1.0.0', dev: true },
+	},
+};
 
 function evaluate(overrides = {}) {
 	return evaluateReleaseAuditPolicy({
-		policy,
-		productionReport: production,
-		fullReport: cleanFullReport(),
-		packageLock,
-		rootPackage,
-		artifactMetafiles: cleanArtifactMetafiles,
+		productionReport: cleanReport(),
+		bundleMetafile: cleanBundleMetafile,
+		packageLock: cleanPackageLock,
 		...overrides,
 	});
 }
 
-test('accepts zero production and development findings with exact patched backports', () => {
+test('accepts a clean production dependency audit', () => {
 	assert.deepEqual(evaluate(), {
 		status: 'accepted-clean',
 		failures: [],
 		productionVulnerabilities: 0,
-		developmentVulnerabilities: 0,
-		directRoot: 'eslint-plugin-obsidianmd',
 	});
 });
 
-test('rejects a production vulnerability', () => {
-	const report = structuredClone(production);
+test('rejects a production dependency vulnerability', () => {
+	const report = cleanReport();
 	report.vulnerabilities.prod = { severity: 'high' };
 	report.metadata.vulnerabilities.high = 1;
 	report.metadata.vulnerabilities.total = 1;
-	assert.equal(evaluate({ productionReport: report }).status, 'mismatch');
+	assert.deepEqual(evaluate({ productionReport: report }), {
+		status: 'mismatch',
+		failures: ['Production dependency audit must contain zero vulnerabilities.'],
+		productionVulnerabilities: 1,
+	});
 });
 
-test('rejects any development vulnerability after the exception is retired', () => {
-	const report = cleanFullReport();
-	report.vulnerabilities.future = {
-		name: 'future',
-		severity: 'high',
-		isDirect: false,
-		via: [],
-		nodes: [],
-		fixAvailable: false,
-	};
-	report.metadata.vulnerabilities.high = 1;
-	report.metadata.vulnerabilities.total = 1;
-	assert.match(
-		evaluate({ fullReport: report }).failures.join('\n'),
-		/Development dependency audit must contain zero vulnerabilities/u,
-	);
+test('does not inspect development-only audit findings', () => {
+	const report = cleanReport();
+	assert.equal(evaluate({
+		fullReport: { error: { code: 'DEV_FINDING' } },
+	}).status, 'accepted-clean');
 });
 
-test('rejects resolved advisory version drift', () => {
-	const changedLock = structuredClone(packageLock);
-	changedLock.packages['node_modules/brace-expansion'].version = '5.0.7';
-	assert.match(
-		evaluate({ packageLock: changedLock }).failures.join('\n'),
-		/brace-expansion installed versions changed/u,
-	);
+test('rejects a development-only package in the production bundle', () => {
+	const bundleMetafile = structuredClone(cleanBundleMetafile);
+	bundleMetafile.inputs['node_modules/dev-package/index.js'] = { bytes: 1 };
+	assert.deepEqual(evaluate({ bundleMetafile }), {
+		status: 'mismatch',
+		failures: ['Development-only package entered the production bundle: node_modules/dev-package.'],
+		productionVulnerabilities: 0,
+	});
 });
 
-test('rejects a resolved advisory package outside dev dependencies', () => {
-	const changedLock = structuredClone(packageLock);
-	changedLock.packages['node_modules/brace-expansion'].dev = false;
-	assert.match(
-		evaluate({ packageLock: changedLock }).failures.join('\n'),
-		/brace-expansion node is not dev-only/u,
-	);
+test('fails closed when production bundle evidence is unavailable', () => {
+	assert.match(evaluate({ bundleMetafile: {} }).failures.join('\n'), /evidence is unavailable/u);
 });
 
-test('rejects a missing or production audit root', () => {
-	const missing = structuredClone(rootPackage);
-	delete missing.devDependencies['eslint-plugin-obsidianmd'];
-	assert.match(evaluate({ rootPackage: missing }).failures.join('\n'), /direct development dependency/u);
-	const productionRoot = structuredClone(rootPackage);
-	productionRoot.dependencies = { 'eslint-plugin-obsidianmd': '0.4.1' };
-	assert.match(evaluate({ rootPackage: productionRoot }).failures.join('\n'), /must not enter production/u);
-});
-
-test('distinguishes unavailable audit output from a policy mismatch', () => {
-	assert.equal(evaluate({ fullReport: { error: { code: 'ENETUNREACH' } } }).status, 'unavailable');
-});
-
-test('rejects malformed or arithmetically inconsistent audit count metadata', () => {
-	for (const counts of [
-		{},
-		{ info: 0, low: 0, moderate: 0, high: -1, critical: 0, total: 0 },
-		{ info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 1 },
-	]) {
-		const report = cleanFullReport();
-		report.metadata.vulnerabilities = counts;
-		assert.equal(evaluate({ fullReport: report }).status, 'unavailable');
-	}
-});
-
-test('rejects a forbidden package marker in a shipped runtime artifact', () => {
-	const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'operon-audit-policy-'));
-	try {
-		writeFileSync(path.join(fixtureRoot, 'main.js'), 'const bundled = "eslint-plugin-obsidianmd";\n');
-		assert.match(
-			evaluate({ rootDir: fixtureRoot }).failures.join('\n'),
-			/main\.js contains development audit package marker/u,
-		);
-	} finally {
-		rmSync(fixtureRoot, { recursive: true, force: true });
-	}
-});
-
-test('rejects forbidden packages in plugin bundle provenance', () => {
-	const artifactMetafiles = structuredClone(cleanArtifactMetafiles);
-	artifactMetafiles.plugin.inputs['node_modules/minimatch/dist/commonjs/index.js'] = { bytes: 1 };
-	assert.match(
-		evaluate({ artifactMetafiles }).failures.join('\n'),
-		/plugin bundle includes development audit package minimatch/u,
-	);
-});
-
-test('root release audit does not require or inspect standalone CLI bundle provenance', () => {
-	const result = evaluate({
-		artifactMetafiles: {
-			...cleanArtifactMetafiles,
-			cli: {
-				inputs: { 'node_modules/minimatch/dist/commonjs/index.js': { bytes: 1 } },
+test('distinguishes unavailable or malformed production audit output', () => {
+	for (const report of [
+		null,
+		{ error: { code: 'ENETUNREACH' } },
+		{ auditReportVersion: 2, vulnerabilities: {}, metadata: { vulnerabilities: {} } },
+		{
+			auditReportVersion: 2,
+			vulnerabilities: {},
+			metadata: {
+				vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 1 },
 			},
 		},
-	});
-	assert.deepEqual(result.failures, []);
-});
-
-test('fails closed when bundle provenance is unavailable', () => {
-	assert.match(
-		evaluate({ artifactMetafiles: {} }).failures.join('\n'),
-		/plugin bundle metafile is unavailable or malformed/u,
-	);
+	]) {
+		assert.equal(evaluate({ productionReport: report }).status, 'unavailable');
+	}
 });
