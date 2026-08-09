@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 
 import { canonicalJson, checkEvidenceSealV3, classifyEvidenceSealV3, sealPaths, writeEvidenceSealV3 } from './evidence-seal-v3.mjs';
@@ -28,6 +28,30 @@ test('writer creates only the v3 allowlist and classifier requires its direct-ch
 	} finally {
 		await rm(fixture.receiptPath, { force: true });
 		await rm(fixture.root, { recursive: true, force: true });
+	}
+});
+
+test('classifier rejects shallow depth one and accepts the exact depth-two seal history', async () => {
+	const fixture = await createFixture();
+	const cloneParent = await mkdtemp(path.join(os.tmpdir(), 'operon-evidence-seal-clones-'));
+	try {
+		await writeEvidenceSealV3(fixture.receiptPath, { pluginRoot: fixture.root });
+		git(fixture.root, ['add', ...sealPaths('3.2.0')]);
+		git(fixture.root, ['commit', '-m', 'chore(release): seal Operon 3.2.0 evidence']);
+		const source = pathToFileURL(fixture.root).href;
+		const depthOne = path.join(cloneParent, 'depth-one');
+		const depthTwo = path.join(cloneParent, 'depth-two');
+		execFileSync('git', ['clone', '--quiet', '--depth', '1', source, depthOne]);
+		execFileSync('git', ['clone', '--quiet', '--depth', '2', source, depthTwo]);
+		await assert.rejects(
+			classifyEvidenceSealV3({ pluginRoot: depthOne }),
+			/OPERON_EVIDENCE_SEAL_HISTORY_INCOMPLETE/u,
+		);
+		assert.equal((await classifyEvidenceSealV3({ pluginRoot: depthTwo })).mode, 'evidence-seal');
+	} finally {
+		await rm(fixture.receiptPath, { force: true });
+		await rm(fixture.root, { recursive: true, force: true });
+		await rm(cloneParent, { recursive: true, force: true });
 	}
 });
 

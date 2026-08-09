@@ -358,6 +358,7 @@ function checkContinuousIntegrationWorkflow() {
 	const windows = document.jobs?.['windows-native'];
 	assertEqual('CI validation gate name', validation?.name, 'Validation gate');
 	const validationSteps = new Map((validation?.steps ?? []).map(step => [step.name, step]));
+	assertEqual('CI validation checkout history depth', validationSteps.get('Check out repository')?.with?.['fetch-depth'], 2);
 	assertEqual('CI seal classifier id', validationSteps.get('Classify exact evidence-seal commit')?.id, 'evidence_seal');
 	assertEqual('CI heavy validation condition', validationSteps.get('Run validation')?.if, "github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'");
 	assertEqual('CI seal validation condition', validationSteps.get('Verify exact evidence seal and hosted proof')?.if, "github.event_name == 'push' && steps.evidence_seal.outputs.mode == 'evidence-seal'");
@@ -365,6 +366,7 @@ function checkContinuousIntegrationWorkflow() {
 		if (!validationSteps.get('Verify exact evidence seal and hosted proof')?.run?.includes(command)) fail(`CI seal step must execute ${command}`);
 	}
 	const windowsSteps = new Map((windows?.steps ?? []).map(step => [step.name, step]));
+	assertEqual('CI Windows checkout history depth', windowsSteps.get('Check out repository')?.with?.['fetch-depth'], 2);
 	assertEqual('Windows seal validation condition', windowsSteps.get('Verify exact evidence seal')?.if, "github.event_name == 'push' && steps.evidence_seal.outputs.mode == 'evidence-seal'");
 	assertEqual('Windows heavy validation condition', windowsSteps.get('Run validation')?.if, "github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'");
 	const installIndex = workflowText.indexOf('run: npm ci');
@@ -455,6 +457,8 @@ function checkCodeqlWorkflow() {
 	const workflowText = readText(workflow);
 	const document = readWorkflow(workflow);
 	assertEqual('CodeQL gate name', document.jobs?.gate?.name, 'CodeQL gate');
+	const classifySteps = new Map((document.jobs?.classify?.steps ?? []).map(step => [step.name, step]));
+	assertEqual('CodeQL classifier checkout history depth', classifySteps.get('Check out repository')?.with?.['fetch-depth'], 2);
 	assertEqual('CodeQL analysis seal condition', document.jobs?.analyze?.if, "needs.classify.outputs.mode != 'evidence-seal'");
 	assertEqual('CodeQL gate dependency result condition', document.jobs?.gate?.if, "always() && needs.classify.result == 'success'");
 	if (!Array.isArray(document.jobs?.gate?.needs) || JSON.stringify(document.jobs.gate.needs) !== JSON.stringify(['classify', 'analyze'])) {
@@ -495,6 +499,7 @@ function checkReleaseWorkflow() {
 		previous = index;
 	}
 	const releaseSteps = new Map(steps.map(step => [step.name, step]));
+	assertEqual('release checkout history depth', releaseSteps.get('Check out repository')?.with?.['fetch-depth'], 0);
 	assertEqual('release strict seal command', releaseSteps.get('Verify exact evidence seal')?.run, 'npm run release:evidence-seal:check');
 	assertEqual('release hosted evidence command', releaseSteps.get('Verify hosted evidence online')?.run, 'npm run release:hosted-evidence:check');
 	assertEqual('release public CLI proof command', releaseSteps.get('Verify exact published CLI public proof')?.run, 'npm run agent-runtime:external-cli:public-proof');

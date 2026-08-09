@@ -94,7 +94,10 @@ export async function classifyEvidenceSealV3(options = {}) {
 	const root = options.pluginRoot ?? pluginRoot;
 	const head = git(root, ['rev-parse', 'HEAD']);
 	const parentLine = git(root, ['rev-list', '--parents', '-n', '1', 'HEAD']).split(' ');
-	if (parentLine.length !== 2) return Object.freeze({ mode: 'candidate', reason: 'HEAD is not a single-parent commit' });
+	if (parentLine.length !== 2) {
+		assert.notEqual(git(root, ['rev-parse', '--is-shallow-repository']), 'true', 'OPERON_EVIDENCE_SEAL_HISTORY_INCOMPLETE');
+		return Object.freeze({ mode: 'candidate', reason: 'HEAD is not a single-parent commit' });
+	}
 	const candidateCommit = parentLine[1];
 	const changed = git(root, ['diff-tree', '--no-commit-id', '--name-only', '-r', candidateCommit, head]).split('\n').filter(Boolean).sort();
 	const packageVersion = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).version;
