@@ -1,0 +1,165 @@
+{
+  "$schema": "./public-v1-external-freeze.schema.json#/$defs/pairedReleaseEvidence",
+  "evidenceVersion": 3,
+  "kind": "operon-public-v1-paired-release-evidence",
+  "state": "paired-release-sealed",
+  "runtime": {
+    "contractVersion": 1,
+    "contractDigest": "daaa7cce4b8ada5fd6d0a90a6676be887e854998f1d2ea4f23d7228be795a7ee"
+  },
+  "acceptance": {
+    "mode": "automated-validation",
+    "scope": "release-only-packaging",
+    "status": "accepted",
+    "candidateCommit": "b151b35a34142eb0c30235b593e98245a3280a91"
+  },
+  "plugin": {
+    "version": "3.2.0",
+    "productionCandidateCommit": "b151b35a34142eb0c30235b593e98245a3280a91",
+    "artifact": {
+      "version": "3.2.0",
+      "files": [
+        {
+          "path": "main.js",
+          "bytes": 4447496,
+          "sha256": "3dc1220ce5fe7abc2e4a955b7126fd371abda415085306dc1e2652010dd72bc9"
+        },
+        {
+          "path": "manifest.json",
+          "bytes": 378,
+          "sha256": "7ff667a79736c09cdba76531eec18de1c30125c560cfb426a4d2fc69c44b2306"
+        },
+        {
+          "path": "styles.css",
+          "bytes": 877220,
+          "sha256": "17fa6e91927174700e6439231188eb87ae3a243d8484eeebd1e9060b920137fa"
+        }
+      ]
+    },
+    "validation": {
+      "local": {
+        "candidateCommit": "b151b35a34142eb0c30235b593e98245a3280a91",
+        "trackedClean": true,
+        "node": "24.18.0",
+        "npm": "11.12.1",
+        "npmCi": "passed",
+        "checkCandidate": "passed",
+        "phase5": {
+          "passed": 1526,
+          "total": 1526
+        },
+        "releaseGuard": "passed-candidate-mode",
+        "audit": {
+          "status": "accepted-clean",
+          "productionFindings": 0,
+          "developmentFindings": 0
+        },
+        "artifact": {
+          "version": "3.2.0",
+          "files": [
+            {
+              "path": "main.js",
+              "bytes": 4447496,
+              "sha256": "3dc1220ce5fe7abc2e4a955b7126fd371abda415085306dc1e2652010dd72bc9"
+            },
+            {
+              "path": "manifest.json",
+              "bytes": 378,
+              "sha256": "7ff667a79736c09cdba76531eec18de1c30125c560cfb426a4d2fc69c44b2306"
+            },
+            {
+              "path": "styles.css",
+              "bytes": 877220,
+              "sha256": "17fa6e91927174700e6439231188eb87ae3a243d8484eeebd1e9060b920137fa"
+            }
+          ]
+        },
+        "artifactAggregateSha256": "3b907bf326ffd8e8358c70b0bb1e6533b605bbf64c836a8b944f33b52d23dd7c"
+      },
+      "hosted": {
+        "candidateCommit": "b151b35a34142eb0c30235b593e98245a3280a91",
+        "ci": {
+          "repository": "hasanyilmaz/operon",
+          "workflowPath": ".github/workflows/ci.yml",
+          "runId": 31320456959,
+          "runAttempt": 1,
+          "jobId": 93262481630,
+          "jobName": "Validation gate",
+          "headSha": "b151b35a34142eb0c30235b593e98245a3280a91",
+          "status": "success"
+        },
+        "codeql": {
+          "repository": "hasanyilmaz/operon",
+          "workflowPath": ".github/workflows/codeql.yml",
+          "runId": 31320456974,
+          "runAttempt": 1,
+          "jobId": 93263341957,
+          "jobName": "CodeQL gate",
+          "headSha": "b151b35a34142eb0c30235b593e98245a3280a91",
+          "status": "success"
+        },
+        "artifactAggregateSha256": "3b907bf326ffd8e8358c70b0bb1e6533b605bbf64c836a8b944f33b52d23dd7c"
+      }
+    }
+  },
+  "cli": {
+    "package": "@stratejya/operon-cli@1.1.0",
+    "candidateCommit": "44ab95174d0444af739c3863e6e098792cea8312",
+    "integratedCommit": "44ab95174d0444af739c3863e6e098792cea8312",
+    "integratedTree": "5234234a16eb9aecbb9027390502a22e77405702",
+    "treeMatchesCandidate": true,
+    "tarball": {
+      "bytes": 237750,
+      "sha256": "e95338275ea0e7c921303c39c94362d49c6261d50354a2095b3e2b30ba51dd1d",
+      "sha512": "7CSYIpxQdX9Obb4x/2MQbt4sVe2TpQFSmTxYUg1AqBpjdnEgtirwctJtoeZLhEXgOQStVgCwIM5IQeHRCppg4g==",
+      "inventoryEntries": 48
+    },
+    "publication": {
+      "tag": "cli-v1.1.0",
+      "tagObject": {
+        "type": "commit",
+        "sha": "44ab95174d0444af739c3863e6e098792cea8312"
+      },
+      "releaseUrl": "https://github.com/hasanyilmaz/operon-cli/releases/tag/cli-v1.1.0",
+      "canonicalHostedRun": 31315643781,
+      "publishRun": 31316712249,
+      "publishRunAttempt": 2,
+      "status": "verified"
+    }
+  },
+  "pairedWindowsValidation": {
+    "repository": "hasanyilmaz/operon-cli",
+    "workflowPath": ".github/workflows/windows-pair-validation.yml",
+    "runId": 31320818829,
+    "runAttempt": 1,
+    "jobId": 93263403857,
+    "jobName": "validate-pair",
+    "headSha": "44ab95174d0444af739c3863e6e098792cea8312",
+    "status": "success",
+    "pluginCommit": "b151b35a34142eb0c30235b593e98245a3280a91",
+    "cliCandidateCommit": "44ab95174d0444af739c3863e6e098792cea8312",
+    "pluginNative": {
+      "tests": 22,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "cliHosted": {
+      "assertions": 4,
+      "skipped": 0
+    },
+    "trackedClean": true,
+    "artifactAggregateSha256": "3b907bf326ffd8e8358c70b0bb1e6533b605bbf64c836a8b944f33b52d23dd7c"
+  },
+  "historicalReleaseBaseline": {
+    "pluginVersion": "3.1.1",
+    "cliVersion": "1.0.9",
+    "registryEntrySha256": "8888b19015ffe7aa5b55e76c4df6b48933c6f42ee608bca1fcf0faba934f9b46"
+  },
+  "limitations": {
+    "liveDeployment": "not-run",
+    "manualAcceptance": "not-run-not-required",
+    "publishedCliLiveMutationSuite": "not-rerun",
+    "cliInstalledInLiveVault": false
+  }
+}
