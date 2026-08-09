@@ -10842,7 +10842,7 @@ export default class OperonPlugin extends Plugin {
 					request.requestId,
 					groupResults,
 					'Creation committed, but identity-placeholder postflight did not settle.',
-					plan.atomicGroups.at(-1)?.groupId,
+					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
 				);
 			}
 

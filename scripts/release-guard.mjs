@@ -1070,6 +1070,29 @@ function checkReleaseAuditPolicy() {
 	if ((packageManifest.scripts?.check ?? '').includes('npm run release:freeze:check')) {
 		fail('normal validation must remain independent from the unaccepted external release freeze');
 	}
+	if (
+		packageManifest.scripts?.['lint:scorecard:strict']
+		!== 'eslint --config eslint.scorecard.config.mjs main.ts src --max-warnings 0'
+	) {
+		fail('strict scorecard lint must preserve the isolated type-aware source boundary');
+	}
+	for (const scriptName of ['check', 'check:candidate']) {
+		const validationCommands = (packageManifest.scripts?.[scriptName] ?? '')
+			.split('&&')
+			.map(command => command.trim());
+		const strictLintOffsets = validationCommands.flatMap((command, index) => (
+			command === 'npm run lint:strict' ? [index] : []
+		));
+		const scorecardOffsets = validationCommands.flatMap((command, index) => (
+			command === 'npm run lint:scorecard:strict' ? [index] : []
+		));
+		if (strictLintOffsets.length !== 1 || scorecardOffsets.length !== 1) {
+			fail(`${scriptName} must run normal and scorecard strict lint exactly once`);
+		}
+		if (scorecardOffsets[0] !== strictLintOffsets[0] + 1) {
+			fail(`${scriptName} must run strict scorecard lint immediately after normal strict lint`);
+		}
+	}
 	const candidateCheck = packageManifest.scripts?.['check:candidate'] ?? '';
 	if (!candidateCheck.endsWith('&& npm run candidate:freeze:check')) {
 		fail('check:candidate must finish with the candidate evidence-registry check');

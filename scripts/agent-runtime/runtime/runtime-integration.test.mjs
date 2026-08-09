@@ -149,6 +149,11 @@ test('typed create postflight seals exact inline locators and exact File bodies'
 		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
 		'\n\n\tprivate async prepareAgentRuntimeSourceTransition',
 	);
+	const identityApply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
 	assert.match(
 		gatewayBinding,
 		/const finalInlineLineNumber = \(\s*filePath: string,\s*operonId: string/u,
@@ -165,6 +170,11 @@ test('typed create postflight seals exact inline locators and exact File bodies'
 		gatewayBinding,
 		/bodyLines\.every|includes\(.*bodyMarkdown|subsequence/iu,
 	);
+	assert.match(
+		identityApply,
+		/plan\.atomicGroups\[plan\.atomicGroups\.length - 1\]\?\.groupId/u,
+	);
+	assert.doesNotMatch(identityApply, /\.at\(/u);
 });
 
 test('file and inline Runtime mutations use the platform-safe canonical vault fence', () => {
