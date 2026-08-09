@@ -10,6 +10,7 @@ import {
 	IndexedDbMutationReceiptStoreV1,
 	IndexedDbSecurityAuditStoreV1,
 	findIncompleteDeveloperGrantAuditTransitionsV1,
+	findIncompleteDeveloperGrantAuditTransitionsForVaultV1,
 	GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
 	MUTATION_RECEIPT_MAX_RECORDS_V1,
 	MUTATION_RECEIPT_TTL_MS_V1,
@@ -418,6 +419,267 @@ test('forced health detects corrupt stored payloads before apply admission', asy
 		status: 'unhealthy',
 		reason: 'operation-failed',
 	});
+});
+
+test('forced health accepts an exact legacy task-adopt receipt without rewriting it', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt',
+	});
+	assert.equal((await store.health()).healthy, true);
+	const legacyReceipt = {
+		...receipt(97),
+		mutationKind: 'task.adopt',
+	};
+	const storedLegacyReceipt = {
+		key: sha256(97),
+		completedAtMs: BASE_TIME,
+		expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+		receipt: legacyReceipt,
+	};
+	factory.records.set(
+		storedLegacyReceipt.key,
+		storedLegacyReceipt as unknown as FakeStoredRecord,
+	);
+
+	assert.deepEqual(await store.health(true), {
+		healthy: true,
+		status: 'healthy',
+		reason: 'ready',
+	});
+	assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+});
+
+test('current fallback and admission-token writes preserve a live legacy task-adopt receipt', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt-current-writes',
+	});
+	assert.equal((await store.health()).healthy, true);
+	const legacyReceipt = { ...receipt(94), mutationKind: 'task.adopt' };
+	const storedLegacyReceipt = {
+		key: sha256(94),
+		completedAtMs: BASE_TIME,
+		expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+		receipt: legacyReceipt,
+	};
+	factory.records.set(
+		storedLegacyReceipt.key,
+		storedLegacyReceipt as unknown as FakeStoredRecord,
+	);
+	assert.equal((await store.health(true)).healthy, true);
+
+	const fallbackReceipt = receipt(95);
+	await store.persist(fallbackReceipt);
+	const admissionReceipt = receipt(96);
+	const admission = await store.lookupForApplyAdmission(scope(admissionReceipt));
+	assert.equal(admission.health.healthy, true);
+	assert.ok(admission.admissionToken);
+	await store.persistAfterApplyAdmission(admissionReceipt, admission.admissionToken);
+
+	assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	assert.deepEqual(await store.lookup(scope(fallbackReceipt)), fallbackReceipt);
+	assert.deepEqual(await store.lookup(scope(admissionReceipt)), admissionReceipt);
+});
+
+test('live legacy task-adopt receipts are excluded from current receipt overflow', async () => {
+	const factory = new FakeIndexedDbFactory();
+	let now = BASE_TIME + MUTATION_RECEIPT_MAX_RECORDS_V1 + 2;
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-legacy-task-adopt-overflow',
+	});
+	assert.equal((await store.health()).healthy, true);
+	for (let index = 1; index <= MUTATION_RECEIPT_MAX_RECORDS_V1; index += 1) {
+		const currentReceipt = receipt(index, BASE_TIME + index);
+		factory.records.set(sha256(index), {
+			key: sha256(index),
+			completedAtMs: BASE_TIME + index,
+			expiresAtMs: BASE_TIME + index + MUTATION_RECEIPT_TTL_MS_V1,
+			receipt: currentReceipt,
+		});
+	}
+	const storedLegacyReceipts = [1_000, 1_001].map(id => ({
+		key: sha256(id),
+		completedAtMs: BASE_TIME,
+		expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+		receipt: { ...receipt(id), mutationKind: 'task.adopt' },
+	}));
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		factory.records.set(
+			storedLegacyReceipt.key,
+			storedLegacyReceipt as unknown as FakeStoredRecord,
+		);
+	}
+
+	assert.equal((await store.health(true)).healthy, true);
+	assert.deepEqual(await store.prune(), {
+		expiredDeleted: 0,
+		overflowDeleted: 0,
+		retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+	});
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+
+	const fallbackReceipt = receipt(2_000, now);
+	assert.deepEqual(await store.persist(fallbackReceipt), {
+		expiredDeleted: 0,
+		overflowDeleted: 1,
+		retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+	});
+	assert.equal(factory.records.has(sha256(1)), false);
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+
+	now += 1;
+	const admissionReceipt = receipt(2_001, now);
+	const admission = await store.lookupForApplyAdmission(scope(admissionReceipt));
+	assert.ok(admission.admissionToken);
+	assert.deepEqual(
+		await store.persistAfterApplyAdmission(admissionReceipt, admission.admissionToken),
+		{
+			expiredDeleted: 0,
+			overflowDeleted: 1,
+			retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+		},
+	);
+	assert.equal(factory.records.has(sha256(2)), false);
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+});
+
+test('expired legacy task-adopt receipts prune once and remain idempotent', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt-expired',
+	});
+	assert.equal((await store.health()).healthy, true);
+	const legacyReceipt = {
+		...receipt(93, BASE_TIME - MUTATION_RECEIPT_TTL_MS_V1),
+		mutationKind: 'task.adopt',
+	};
+	factory.records.set(sha256(93), {
+		key: sha256(93),
+		completedAtMs: BASE_TIME - MUTATION_RECEIPT_TTL_MS_V1,
+		expiresAtMs: BASE_TIME,
+		receipt: legacyReceipt,
+	} as unknown as FakeStoredRecord);
+	const beforeGeneration = structuredClone(factory.metadata.get('receipt-generation')) as {
+		generation: number;
+	};
+
+	assert.equal((await store.health(true)).healthy, true);
+	assert.equal(factory.records.size, 0);
+	const afterFirstGeneration = structuredClone(factory.metadata.get('receipt-generation')) as {
+		generation: number;
+	};
+	assert.equal(afterFirstGeneration.generation, beforeGeneration.generation + 1);
+	assert.equal((await store.health(true)).healthy, true);
+	assert.equal(factory.records.size, 0);
+	assert.deepEqual(factory.metadata.get('receipt-generation'), afterFirstGeneration);
+});
+
+test('malformed legacy and future receipts fail closed without partial pruning', async () => {
+	for (const [name, invalidReceipt] of [
+		['malformed-legacy', { ...receipt(91), mutationKind: 'task.adopt', unexpected: true }],
+		['missing-field', (() => {
+			const { planHash: _planHash, ...value } = receipt(91);
+			return { ...value, mutationKind: 'task.adopt' };
+		})()],
+		['bad-hash', { ...receipt(91), mutationKind: 'task.adopt', planHash: 'not-a-digest' }],
+		['invalid-timestamp', { ...receipt(91), mutationKind: 'task.adopt', completedAt: 'not-a-timestamp' }],
+		['ttl-too-long', {
+			...receipt(91),
+			mutationKind: 'task.adopt',
+			expiresAt: new Date(BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1 + 1).toISOString(),
+		}],
+		['invalid-outcome', { ...receipt(91), mutationKind: 'task.adopt', terminalOutcome: 'unknown' }],
+		['future-kind', { ...receipt(92), mutationKind: 'task.future' }],
+	] as const) {
+		const factory = new FakeIndexedDbFactory();
+		const store = new IndexedDbMutationReceiptStoreV1({
+			indexedDBFactory: factory as unknown as IDBFactory,
+			now: () => BASE_TIME,
+			databaseName: `receipt-test-${name}`,
+		});
+		assert.equal((await store.health()).healthy, true);
+		const expired = receipt(90, BASE_TIME - MUTATION_RECEIPT_TTL_MS_V1);
+		factory.records.set(sha256(90), {
+			key: sha256(90),
+			completedAtMs: Date.parse(expired.completedAt),
+			expiresAtMs: Date.parse(expired.expiresAt),
+			receipt: expired,
+		});
+		factory.records.set(sha256(91), {
+			key: sha256(91),
+			completedAtMs: BASE_TIME,
+			expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+			receipt: invalidReceipt,
+		} as unknown as FakeStoredRecord);
+		const before = structuredClone([...factory.records.entries()]);
+		const metadataBefore = structuredClone([...factory.metadata.entries()]);
+
+		assert.deepEqual(await store.health(true), {
+			healthy: false,
+			status: 'unhealthy',
+			reason: 'operation-failed',
+		});
+		assert.deepEqual([...factory.records.entries()], before);
+		assert.deepEqual([...factory.metadata.entries()], metadataBefore);
+	}
+});
+
+test('new writes cannot use the legacy task-adopt receipt kind', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt-write-rejected',
+	});
+	const legacyReceipt = { ...receipt(89), mutationKind: 'task.adopt' };
+	await assert.rejects(
+		store.persist(legacyReceipt as unknown as MutationReceiptV1),
+		(error: unknown) => error instanceof MutationReceiptStoreErrorV1
+			&& error.code === 'receipt-store-invalid-receipt',
+	);
+	assert.equal(factory.records.size, 0);
+});
+
+test('legacy task-adopt journals require explicit recovery and remain untouched', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt-journal',
+	});
+	assert.equal((await store.health()).healthy, true);
+	const legacyJournal = { ...journal(88), mutationKind: 'task.adopt' };
+	factory.journals.set(sha256(88), {
+		key: sha256(88),
+		updatedAtMs: BASE_TIME,
+		leaseOwner: LEASE_OWNER,
+		leaseExpiresAtMs: BASE_TIME + 30_000,
+		journal: legacyJournal,
+	});
+	const before = structuredClone([...factory.journals.entries()]);
+
+	assert.deepEqual(await store.health(true), {
+		healthy: false,
+		status: 'unhealthy',
+		reason: 'operation-failed',
+	});
+	assert.equal(store.getStartupFailureDetail(), 'legacy-task-adopt-journal-recovery-required');
+	assert.deepEqual([...factory.journals.entries()], before);
 });
 
 test('a blocked upgrade times out and closes a later successful database handle', async () => {
@@ -1146,6 +1408,7 @@ test('graph journal enforces the 8 MiB pre-write recovery bound', async () => {
 		GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
 	);
 	assert.equal(await store.acquireJournal(atLimit, LEASE_OWNER), true);
+	assert.equal((await store.health(true)).healthy, true);
 	assert.ok(await store.lookupJournal(scope(receipt(2))));
 
 	const oversized = structuredClone(atLimit);
@@ -1311,6 +1574,23 @@ test('security audit events reject extra fields and source-content-shaped metada
 	assert.equal(factory.audits.size, 0);
 });
 
+test('security audit rejects reuse of an existing event ID', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-audit-event-id-reuse',
+	});
+	const event = auditEvent(209);
+	await store.append(event);
+	await assert.rejects(
+		store.append(event),
+		(error: unknown) => error instanceof SecurityAuditStoreErrorV1
+			&& error.code === 'audit-store-invalid-event',
+	);
+	assert.deepEqual(await store.list(), [event]);
+});
+
 test('startup reconciliation finds grant intent without matching activation only', () => {
 	const consumerIdentityHash = sha256(41_000);
 	const intent = auditEvent(210, BASE_TIME, {
@@ -1334,6 +1614,7 @@ test('startup reconciliation finds grant intent without matching activation only
 		outcome: 'succeeded',
 	});
 	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1([intent]), [{
+		vaultIdentityHash: intent.vaultIdentityHash,
 		consumerIdentityHash,
 		revision: 4,
 	}]);
@@ -1341,6 +1622,116 @@ test('startup reconciliation finds grant intent without matching activation only
 		findIncompleteDeveloperGrantAuditTransitionsV1([intent, activation]),
 		[],
 	);
+	assert.deepEqual(
+		findIncompleteDeveloperGrantAuditTransitionsV1([activation, intent]),
+		[],
+		'IndexedDB returns newest audit events first, so reconciliation must be order-independent.',
+	);
+});
+
+test('startup reconciliation preserves a repeated unresolved grant intent at the same revision', () => {
+	const consumerIdentityHash = sha256(41_100);
+	const firstIntent = auditEvent(212, BASE_TIME, {
+		event: 'grant-requested',
+		consumerIdentityHash,
+		grantRevision: 5,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'not-required',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	const activation = auditEvent(213, BASE_TIME, {
+		...firstIntent,
+		eventId: sha256(40_213),
+		admission: 'completed',
+		outcome: 'succeeded',
+	});
+	const interruptedRetry = auditEvent(214, BASE_TIME, {
+		...firstIntent,
+		eventId: sha256(40_214),
+	});
+	const expected = [{
+		vaultIdentityHash: firstIntent.vaultIdentityHash,
+		consumerIdentityHash,
+		revision: 5,
+	}];
+	assert.deepEqual(
+		findIncompleteDeveloperGrantAuditTransitionsV1([
+			firstIntent,
+			activation,
+			interruptedRetry,
+		]),
+		expected,
+	);
+	assert.deepEqual(
+		findIncompleteDeveloperGrantAuditTransitionsV1([
+			interruptedRetry,
+			activation,
+			firstIntent,
+		]),
+		expected,
+		'Random eventId order at one millisecond must not hide an unmatched retry.',
+	);
+});
+
+test('startup reconciliation keeps otherwise identical vault transitions isolated', () => {
+	const consumerIdentityHash = sha256(41_150);
+	const firstVault = auditEvent(215, BASE_TIME, {
+		event: 'grant-approved',
+		consumerIdentityHash,
+		grantRevision: 5,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'approved',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	const secondVault = {
+		...firstVault,
+		eventId: sha256(40_216),
+		vaultIdentityHash: sha256(44_001),
+	};
+	const unknownVault = {
+		...firstVault,
+		eventId: sha256(40_217),
+		vaultIdentityHash: null,
+	};
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1([
+		firstVault,
+		secondVault,
+		unknownVault,
+	]), [
+		{
+			vaultIdentityHash: null,
+			consumerIdentityHash,
+			revision: 5,
+		},
+		{
+			vaultIdentityHash: firstVault.vaultIdentityHash,
+			consumerIdentityHash,
+			revision: 5,
+		},
+		{
+			vaultIdentityHash: secondVault.vaultIdentityHash,
+			consumerIdentityHash,
+			revision: 5,
+		},
+	]);
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsForVaultV1(
+		[firstVault, secondVault, unknownVault],
+		firstVault.vaultIdentityHash!,
+	), [{
+		vaultIdentityHash: firstVault.vaultIdentityHash,
+		consumerIdentityHash,
+		revision: 5,
+	}]);
 });
 
 test('security audit retention enforces 30 days and the newest 2048 records', async () => {
@@ -1380,6 +1771,175 @@ test('security audit retention enforces 30 days and the newest 2048 records', as
 	assert.equal(factory.audits.has(newest.eventId), true);
 });
 
+test('security audit retention keeps equal-time grant transitions atomic and preserves an incomplete group', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const now = BASE_TIME + 10_000;
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-audit-grant-overflow',
+	});
+	await store.health();
+	const consumerIdentityHash = sha256(41_200);
+	const intent = auditEvent(301, now + 1, {
+		event: 'grant-requested',
+		consumerIdentityHash,
+		grantRevision: 6,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'not-required',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	const completion = auditEvent(9_301, now + 1, {
+		...intent,
+		eventId: sha256(9_301),
+		admission: 'completed',
+		outcome: 'succeeded',
+	});
+	const interrupted = auditEvent(302, now + 1, {
+		...intent,
+		eventId: sha256(302),
+		correlationHash: sha256(45_302),
+	});
+	for (const event of [intent, completion, interrupted]) {
+		factory.audits.set(event.eventId, {
+			key: event.eventId,
+			occurredAtMs: now + 1,
+			expiresAtMs: now + 1 + SECURITY_AUDIT_RETENTION_MS_V1,
+			event,
+		});
+	}
+	for (let index = 0; index < SECURITY_AUDIT_MAX_RECORDS_V1 - 2; index += 1) {
+		const event = auditEvent(20_000 + index, now + index + 2);
+		factory.audits.set(event.eventId, {
+			key: event.eventId,
+			occurredAtMs: now + index + 2,
+			expiresAtMs: now + index + 2 + SECURITY_AUDIT_RETENTION_MS_V1,
+			event,
+		});
+	}
+
+	const retained = await store.list();
+
+	assert.equal(retained.length, SECURITY_AUDIT_MAX_RECORDS_V1 - 1);
+	assert.equal(retained.some(event => event.eventId === intent.eventId), false);
+	assert.equal(retained.some(event => event.eventId === completion.eventId), false);
+	assert.equal(retained.some(event => event.eventId === interrupted.eventId), true);
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1(retained), [{
+		vaultIdentityHash: interrupted.vaultIdentityHash,
+		consumerIdentityHash,
+		revision: 6,
+	}]);
+});
+
+test('security audit retention keeps legacy one-phase correlations per-record at overflow', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const now = BASE_TIME + 20_000;
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-audit-legacy-overflow',
+	});
+	await store.health();
+	const consumerIdentityHash = sha256(41_300);
+	const legacyIntentHash = sha256(45_400);
+	const firstIntent = auditEvent(401, now + 1, {
+		event: 'grant-requested',
+		consumerIdentityHash,
+		grantRevision: 7,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'not-required',
+		admission: 'requested',
+		outcome: 'pending',
+		correlationHash: legacyIntentHash,
+	});
+	const completion = auditEvent(402, now + 1, {
+		...firstIntent,
+		eventId: sha256(402),
+		admission: 'completed',
+		outcome: 'succeeded',
+		correlationHash: sha256(45_401),
+	});
+	const interrupted = auditEvent(403, now + 1, {
+		...firstIntent,
+		eventId: sha256(403),
+	});
+	for (const event of [firstIntent, completion, interrupted]) {
+		factory.audits.set(event.eventId, {
+			key: event.eventId,
+			occurredAtMs: now + 1,
+			expiresAtMs: now + 1 + SECURITY_AUDIT_RETENTION_MS_V1,
+			event,
+		});
+	}
+	for (let index = 0; index < SECURITY_AUDIT_MAX_RECORDS_V1 - 1; index += 1) {
+		const event = auditEvent(30_000 + index, now + index + 2);
+		factory.audits.set(event.eventId, {
+			key: event.eventId,
+			occurredAtMs: now + index + 2,
+			expiresAtMs: now + index + 2 + SECURITY_AUDIT_RETENTION_MS_V1,
+			event,
+		});
+	}
+
+	const retained = await store.list();
+
+	assert.equal(retained.length, SECURITY_AUDIT_MAX_RECORDS_V1);
+	assert.equal(retained.some(event => event.eventId === completion.eventId), false);
+	assert.equal(
+		retained.some(event => (
+			event.eventId === firstIntent.eventId || event.eventId === interrupted.eventId
+		)),
+		true,
+	);
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1(retained), [{
+		vaultIdentityHash: interrupted.vaultIdentityHash,
+		consumerIdentityHash,
+		revision: 7,
+	}]);
+});
+
+test('security audit retention preserves an expired incomplete grant intent until completion', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const now = BASE_TIME + SECURITY_AUDIT_RETENTION_MS_V1 + 1;
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-audit-expired-incomplete-grant',
+	});
+	const intent = auditEvent(404, BASE_TIME, {
+		event: 'grant-approved',
+		grantRevision: 8,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'approved',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	await store.append(intent);
+	assert.deepEqual(await store.list(), [intent]);
+
+	const completion = {
+		...intent,
+		eventId: sha256(40_405),
+		admission: 'completed' as const,
+		outcome: 'succeeded' as const,
+	};
+	await store.append(completion);
+	assert.deepEqual(await store.list(), []);
+});
+
 test('clearing the security audit log atomically retains only the clear marker', async () => {
 	const factory = new FakeIndexedDbFactory();
 	const store = new IndexedDbSecurityAuditStoreV1({
@@ -1403,6 +1963,47 @@ test('clearing the security audit log atomically retains only the clear marker',
 	});
 	await store.clear(marker);
 	assert.deepEqual(await store.list(), [marker]);
+});
+
+test('clearing the security audit preserves an incomplete grant intent as recovery evidence', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbSecurityAuditStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME + 10,
+		databaseName: 'receipt-test-audit-clear-incomplete-grant',
+	});
+	const intent = auditEvent(406, BASE_TIME, {
+		event: 'grant-approved',
+		grantRevision: 9,
+		capability: 'tasks.read',
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		consent: 'approved',
+		admission: 'requested',
+		outcome: 'pending',
+	});
+	await store.append(intent);
+	const marker = auditEvent(407, BASE_TIME + 10, {
+		event: 'audit-cleared',
+		capability: null,
+		mutationKind: null,
+		risk: null,
+		planDigest: null,
+		targetDigest: null,
+		vaultIdentityHash: null,
+		consent: 'approved',
+		admission: 'completed',
+		outcome: 'succeeded',
+	});
+	await store.clear(marker);
+	assert.deepEqual(await store.list(), [marker, intent]);
+	assert.deepEqual(findIncompleteDeveloperGrantAuditTransitionsV1(await store.list()), [{
+		vaultIdentityHash: intent.vaultIdentityHash,
+		consumerIdentityHash: intent.consumerIdentityHash,
+		revision: intent.grantRevision,
+	}]);
 });
 
 test('terminal receipt and audit finalization commits atomically', async () => {
@@ -1689,6 +2290,47 @@ class FakeTransaction {
 		return new FakeRequest<T>() as unknown as IDBRequest<T>;
 	}
 
+	cursor(name: string): IDBRequest<IDBCursorWithValue | null> {
+		const request = new FakeRequest<IDBCursorWithValue | null>();
+		const values = [...this.mutableRecords(name).values()].map(value => structuredClone(value));
+		let index = 0;
+		this.pending += 1;
+		const advance = () => {
+			queueMicrotask(() => {
+				if (this.aborted) return;
+				if (index >= values.length) {
+					request.result = null;
+					request.onsuccess?.call(
+						request as unknown as IDBRequest<IDBCursorWithValue | null>,
+						new Event('success'),
+					);
+					this.pending -= 1;
+					this.scheduleCompletion();
+					return;
+				}
+				let continued = false;
+				request.result = {
+					value: values[index],
+					continue: () => {
+						continued = true;
+						index += 1;
+						advance();
+					},
+				} as IDBCursorWithValue;
+				request.onsuccess?.call(
+					request as unknown as IDBRequest<IDBCursorWithValue | null>,
+					new Event('success'),
+				);
+				if (!continued) {
+					this.pending -= 1;
+					this.scheduleCompletion();
+				}
+			});
+		};
+		advance();
+		return request as unknown as IDBRequest<IDBCursorWithValue | null>;
+	}
+
 	shouldFailPut(name: string): boolean {
 		return this.factory.failPutStoreName === name;
 	}
@@ -1753,6 +2395,10 @@ class FakeObjectStore {
 			[...this.transaction.mutableRecords(this.name).values()]
 				.map(value => structuredClone(value))
 		));
+	}
+
+	openCursor(): IDBRequest<IDBCursorWithValue | null> {
+		return this.transaction.cursor(this.name);
 	}
 
 	put(value: { key: string }): IDBRequest<IDBValidKey> {

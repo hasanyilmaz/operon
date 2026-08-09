@@ -9,6 +9,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [3.2.1] - 2026-08-09
+
+Operon 3.2.1 is a Plugin-only patch release. Operon CLI remains at 1.1.0 and the Runtime contract remains at V1.
+
+### Fixed
+
+- Fixed legacy task-adoption receipts preventing mutation and task-workflow Gateway capabilities from becoming available after an update or live reload.
+- Fixed Community Plugin Scorecard unsafe-value warnings in the File Task identity transaction path and added strict scorecard lint to the release validation path.
+
+### Validation
+
+- Validated on Node 24.18.0 / npm 11.12.1 with `npm run phase5:regression` passing 1,526/1,526 checks and `npm run check:candidate` passing the complete Plugin candidate suite; the release dependency audit reported 0 production and 0 development findings.
+
+## [3.2.0] - 2026-08-09
+
+Operon 3.2.0 pairs with Operon CLI 1.1.0 while keeping the Runtime contract at V1.
+
+### New
+
+- Added native **saved-filter evaluation** to the Runtime, Developer API, and CLI through `tasks.filter-query`, returning bounded, paginated task summaries with exact file or folder scope, freshness, provenance, and stale-cursor protection.
+- Added safe **Markdown checkbox adoption** through the Runtime and `operon task adopt`, with sealed preview/apply behavior, exact source-line validation, replay protection, and explicit reopening for completed or cancelled checkboxes.
+- Added opt-in **File Task identity placeholders** for task creation, allowing `{{operonId}}` and single-character suffixed IDs to preserve deterministic parent-child template relationships without changing existing templates that do not request the policy.
+
+### Fixed
+
+- Fixed active **modified-time frontmatter plugins** causing successful inline and File Task updates or transitions to be reported as `outcome-unknown`, while continuing to fail closed for unrelated source changes, unsafe property collisions, or unsupported timestamp writes.
+- Fixed **Developer API consent** requests from secondary Obsidian windows opening outside their owning window or remaining pending indefinitely; UI failures and timeouts now resolve as bounded `unavailable` outcomes without weakening post-consent authorization checks.
+
+### Validation
+
+- Validated on Node 24.18.0 / npm 11.12.1 with `npm run phase5:regression` passing 1,526/1,526 checks and `npm run check:candidate` passing the complete Plugin candidate suite; the release dependency audit reported 0 production and 0 development findings, and the published Operon CLI 1.1.0 binding preserves Runtime V1 compatibility with its canonical 48-file package inventory.
+
+## [3.1.1] - 2026-08-07
+
+### New
+
+- Added a responsive **Filter pop-over to Kanban**, allowing the selected preset filter to be edited or a new filter to be created and attached without leaving the board.
+
+### Improved
+
+- Improved **Filter pop-over consistency** across workspace Tables, embedded Tables, and Kanban with a shared lifecycle and visuals aligned with the full Filter editor.
+- Improved completed-task date correction in the Calendar by allowing tasks in the **Finished row** to be dragged to another completion date.
+- Improved Calendar **In Day time chips** so their background and border colors follow the task’s configured color instead of the interface accent.
+- Standardized built-in and custom **datetime columns in Tables**: detailed cells show readable date and seconds, compact cells show hours and minutes, hover tooltips use the detailed format, and both modes respect the selected 12-hour or 24-hour preference with appropriate default column widths.
+- Extended the **Table task contextual menu** to Task Type icons while preserving their existing click-to-open behavior.
+
+### Fixed
+
+- Fixed **Developer API capability grants** losing or ambiguously recovering durable state across plugin restarts, persistence failures, audit retention, and vault-specific startup reconciliation.
+- Fixed **queued Developer API grant requests** being reported as persistence failures before durable storage completed, while avoiding redundant writes and audit transitions for semantically unchanged pending requests.
+- Fixed confirmation-gated **Developer API mutations** failing before Runtime dispatch, allowing elevated and destructive applies to preserve their recovery proof and proceed after consent while targetless plans continue to fail closed.
+- Fixed successful inline task updates through the **Agent Runtime, CLI, and Developer API** being reported as `outcome-unknown` when Obsidian advanced only the task’s `datetimeModified` metadata after the write, while preserving fail-closed verification and replay fencing for all other source changes.
+- Fixed multi-day **Calendar All Day tasks** being unavailable for drag-and-drop while preserving their duration and the grabbed-day offset.
+- Removed the redundant **“Go to Task” tooltip** from inline tasks in Reading Mode.
+
+### Validation
+
+- Validated with the complete local candidate check suite and 1,526/1,526 Phase 5 regression checks, including Developer API grant persistence and recovery, queued-request deduplication, IndexedDB security-audit retention, and release-freeze regression coverage; the exact Plugin 3.1.1 and CLI 1.0.9 Windows pair passed with zero skips, hosted CI and CodeQL passed for the bound candidate, and the release dependency audit reported 0 production and 0 development findings.
+
 ## [3.1.0] - 2026-08-05
 
 Operon 3.1.0 adds Italian across the interface and strengthens Windows Runtime and CLI reliability while preserving the existing Runtime V1 contract. It is paired with Operon CLI 1.0.9.

@@ -24,6 +24,10 @@ import {
 	type TaskQueryRequestV1,
 } from '../contracts/v1/context';
 import {
+	decodeTaskFilterQueryRequestExtensionV1,
+	type TaskFilterQueryRequestV1,
+} from '../extensions/task-workflows-v1';
+import {
 	OPERON_ID_PATTERN_V1,
 	validateVaultRelativePathV1,
 	type TaskSelectorV1,
@@ -51,6 +55,7 @@ type RuntimeReadRequestV1 =
 	| TaskGetRequestV1
 	| TaskFinderRequestV1
 	| TaskQueryRequestV1
+	| TaskFilterQueryRequestV1
 	| RelationshipRequestV1
 	| ContextRequestV1
 	| MutationPreviewRequestV1
@@ -149,6 +154,11 @@ export function validateTaskQueryRequestV1(value: unknown): ValidatedRequestV1<T
 		&& (object.limit === undefined || isIntegerInRange(object.limit, 1, 250))
 		&& (object.cursor === undefined || isCursor(object.cursor))
 	));
+}
+
+export function validateTaskFilterQueryRequestV1(value: unknown): ValidatedRequestV1<TaskFilterQueryRequestV1> {
+	const decoded = decodeTaskFilterQueryRequestExtensionV1(value);
+	return decoded.ok ? { ok: true, value: decoded.value } : { ok: false };
 }
 
 export function validateTaskFinderRequestV1(value: unknown): ValidatedRequestV1<TaskFinderRequestV1> {

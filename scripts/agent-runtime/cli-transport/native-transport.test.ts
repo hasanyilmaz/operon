@@ -24,6 +24,12 @@ import {
 	type CliInvocationV1,
 } from '../../../src/agent-runtime/contracts/v1/cli';
 import { decodeCliResultEnvelopeV1 } from '../../../src/agent-runtime/contracts/v1/decode';
+import { canonicalJsonV1, sha256HexV1, toJsonValueV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
+import type { MutationApplyRequestV1 } from '../../../src/agent-runtime/contracts/v1/mutation';
+import {
+	decodeTaskWorkflowCliInvocationExtensionV1,
+	type TaskWorkflowApplyRequestV1,
+} from '../../../src/agent-runtime/extensions/task-workflows-v1';
 import {
 	CONTRACT_VERSION_V1,
 	type CompatibilityOfferV1,
@@ -202,11 +208,11 @@ test('native CLI registration retries only handlers missing from a partial attem
 	assert.equal(first.registered, false);
 	assert.equal(first.retryable, true);
 	assert.equal(first.commands.length, 2);
-	assert.equal(first.missingCommands.length, CLI_COMMANDS_V1.length - 2);
+	assert.equal(first.missingCommands.length, CLI_COMMANDS_V1.length + 1 - 2);
 	const second = registerAgentRuntimeCliHandlersV1(plugin as never, createRuntime());
 	assert.equal(second.registered, true);
 	assert.equal(second.retryable, false);
-	assert.equal(second.commands.length, CLI_COMMANDS_V1.length);
+	assert.equal(second.commands.length, CLI_COMMANDS_V1.length + 1);
 	assert.equal(second.missingCommands.length, 0);
 	assert.equal([...attempts.values()].filter(count => count > 1).length, 1);
 });
@@ -1482,6 +1488,232 @@ test('dispatcher verifies vault identity, compatibility and command binding', as
 		assert.equal(requestIdMismatchEnvelope.ok, false);
 		assert.equal(requestIdMismatchEnvelope.failure?.stage, 'client-input');
 		assert.equal(requestIdMismatchEnvelope.failure?.error?.code, 'invalid-request');
+	} finally {
+		await rm(vault, { recursive: true, force: true });
+	}
+});
+
+test('dispatcher keeps legacy task.create on core and routes exact identity apply to the extension', async () => {
+	const vault = await mkdtemp(join(tmpdir(), 'operon-cli-routing-vault-'));
+	try {
+		const expectedVaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
+		let corePreviewCalls = 0;
+		let coreApplyCalls = 0;
+		let extensionApplyCalls = 0;
+		const health = {
+			...createHealth(),
+			capabilities: [
+				...createHealth().capabilities,
+				{ id: 'tasks.create.preview' as const, availability: 'available' as const, stability: 'stable' as const },
+				{ id: 'tasks.create.apply' as const, availability: 'available' as const, stability: 'stable' as const },
+				{ id: 'tasks.create.identity-placeholders' as const, availability: 'available' as const, stability: 'stable' as const },
+			],
+		};
+		const base = createRuntime(health);
+		const runtime: OperonAgentRuntimeCoreV1 = {
+			...base,
+			hasCapability: capability => health.capabilities.some(item => item.id === capability),
+			mutations: {
+				...base.mutations,
+				preview: async request => {
+					corePreviewCalls += 1;
+					return {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-preview-result',
+						ok: false,
+						warnings: [],
+						error: { contractVersion: 1, code: 'capability-unavailable', reason: 'core route proof', retryable: false, action: 'wait-and-retry' },
+					};
+				},
+				apply: async request => {
+					coreApplyCalls += 1;
+					return {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-result',
+						status: 'failed',
+						mutationMayHaveApplied: false,
+						retryAllowed: false,
+						groupResults: [],
+						error: { contractVersion: 1, code: 'capability-unavailable', reason: 'core apply route proof', retryable: false, action: 'wait-and-retry' },
+					};
+				},
+				applyTaskWorkflow: async request => {
+					extensionApplyCalls += 1;
+					return {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-result',
+						status: 'failed',
+						mutationMayHaveApplied: false,
+						retryAllowed: false,
+						groupResults: [],
+						error: { contractVersion: 1, code: 'capability-unavailable', reason: 'extension route proof', retryable: false, action: 'wait-and-retry' },
+					};
+				},
+			},
+		};
+		const legacyRequestId = 'legacy-create-route';
+		const legacy: CliInvocationV1 = {
+			contractVersion: 1,
+			kind: 'cli-invocation',
+			requestId: legacyRequestId,
+			command: 'mutation.preview',
+			mode: 'live',
+			clientVersion: '1.0.8',
+			compatibility: COMPATIBILITY,
+			cliContract: { min: 1, max: 1 },
+			expectedVaultSha256,
+			readinessTimeoutMs: 15_000,
+			request: {
+				contractVersion: 1,
+				requestId: legacyRequestId,
+				kind: 'mutation-preview',
+				clientInstanceId: 'operon-cli-legacy',
+				idempotencyKey: 'legacy-create-route-key',
+				capability: 'tasks.create.preview',
+				mutationKind: 'task.create',
+				spec: {
+					operation: 'create',
+					items: [{ itemRef: 'item-1', description: 'Legacy task', target: { representation: 'file', mode: 'configured-default' }, fields: [] }],
+				},
+				authorization: { basis: 'user-explicit-request' },
+			},
+		};
+		await publishRequest('k'.repeat(32), JSON.stringify(legacy), 0o600);
+		const legacyOutput = await dispatchAgentRuntimeCliV1({
+			runtime,
+			nodeApi,
+			vaultAdapter: { getFullPath: () => vault },
+			runtimeMetadata: { appVersion: '1.13.3', plugin: { id: 'operon', version: '3.2.0', minAppVersion: '1.7.2' }, apiVersion: 1 },
+			monotonicNow: () => 10,
+		}, { expectedCommand: 'mutation.preview', requestToken: 'k'.repeat(32) });
+		assert.equal(corePreviewCalls, 1, legacyOutput);
+		assert.equal(coreApplyCalls, 0);
+		assert.equal(extensionApplyCalls, 0);
+
+		const legacyApplyIdempotencyKey = 'legacy-create-apply-key-0001';
+		const legacyApplyPlan: MutationApplyRequestV1['plan'] = {
+			contractVersion: 1,
+			planId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+			planHash: '',
+			clientInstanceId: 'operon-cli-legacy',
+			correlationId: 'legacy-create-apply-route',
+			idempotencyKeyHash: sha256HexV1(legacyApplyIdempotencyKey),
+			receiptTargetDigest: '',
+			capability: 'tasks.create.preview',
+			mutationKind: 'task.create',
+			createdAt: '2026-08-08T23:57:30.000Z',
+			expiresAt: '2026-08-09T00:02:30.000Z',
+			targets: [{ operonId: 'ghi9012', locator: { representation: 'file', filePath: 'Tasks/Legacy.md' }, targetDigest: '3'.repeat(64) }],
+			contextRevision: {
+				index: { sessionId: 'runtime-test', ramGeneration: 1, durable: { status: 'missing' } },
+				settingsFingerprint: '1'.repeat(64),
+				pinnedGeneration: 0,
+				activeTrackerGeneration: 0,
+				repeatSeriesRevision: 0,
+				projectSerialGeneration: 0,
+				projectSerialSignature: '2'.repeat(64),
+			},
+			affectedResources: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Legacy.md', revision: 'absent' }],
+			atomicGroups: [{ groupId: 'task-source:Tasks/Legacy.md', order: 0, resources: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Legacy.md' }] }],
+			predictedEffects: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Legacy.md', action: 'create', summary: 'Create legacy task.' }],
+			riskLevel: 'routine',
+			requiresConfirmation: false,
+			requiredAcknowledgements: [],
+			warnings: [],
+			spec: { operation: 'create', items: [{ itemRef: 'legacy-item-1', description: 'Legacy task', target: { representation: 'file', mode: 'configured-default' }, fields: [] }] },
+			createEffects: [{ itemRef: 'legacy-item-1', operonId: 'ghi9012', locator: { representation: 'file', filePath: 'Tasks/Legacy.md' }, renderedTaskDigest: '4'.repeat(64), plannedSourceDigest: '5'.repeat(64), expectedAbsence: true, resolvedRelatedOperonIds: [] }],
+		};
+		legacyApplyPlan.receiptTargetDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1(legacyApplyPlan.targets)));
+		const { planHash: _legacyPlanHash, ...legacyPlanMaterial } = legacyApplyPlan;
+		legacyApplyPlan.planHash = sha256HexV1(canonicalJsonV1(toJsonValueV1(legacyPlanMaterial)));
+		const legacyApplyInvocation: CliInvocationV1 = {
+			...legacy,
+			requestId: 'legacy-create-apply-route',
+			command: 'mutation.apply',
+			request: {
+				contractVersion: 1,
+				requestId: 'legacy-create-apply-route',
+				kind: 'mutation-apply',
+				plan: legacyApplyPlan,
+				authorization: { basis: 'user-explicit-request' },
+				idempotencyKey: legacyApplyIdempotencyKey,
+				acknowledgements: [],
+			},
+		};
+		await publishRequest('m'.repeat(32), JSON.stringify(legacyApplyInvocation), 0o600);
+		const legacyApplyOutput = await dispatchAgentRuntimeCliV1({
+			runtime,
+			nodeApi,
+			vaultAdapter: { getFullPath: () => vault },
+			runtimeMetadata: { appVersion: '1.13.3', plugin: { id: 'operon', version: '3.2.0', minAppVersion: '1.7.2' }, apiVersion: 1 },
+			monotonicNow: () => Date.parse('2026-08-09T00:00:00.000Z'),
+		}, { expectedCommand: 'mutation.apply', requestToken: 'm'.repeat(32) });
+		assert.equal(coreApplyCalls, 1, legacyApplyOutput);
+		assert.equal(extensionApplyCalls, 0);
+
+		const idempotencyKey = 'identity-route-key-0001';
+		const plan: TaskWorkflowApplyRequestV1['plan'] = {
+			contractVersion: 1,
+			planId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+			planHash: '',
+			clientInstanceId: 'operon-cli-extension',
+			correlationId: 'identity-apply-route',
+			idempotencyKeyHash: sha256HexV1(idempotencyKey),
+			receiptTargetDigest: '',
+			capability: 'tasks.create.identity-placeholders',
+			mutationKind: 'task.create',
+			createdAt: '2026-08-08T23:57:30.000Z',
+			expiresAt: '2026-08-09T00:02:30.000Z',
+			targets: [{ operonId: 'abc1234', locator: { representation: 'file', filePath: 'Tasks/Task.md' }, targetDigest: 'd'.repeat(64) }],
+			contextRevision: {
+				index: { sessionId: 'runtime-test', ramGeneration: 1, durable: { status: 'missing' } },
+				settingsFingerprint: '1'.repeat(64),
+				pinnedGeneration: 0,
+				activeTrackerGeneration: 0,
+				repeatSeriesRevision: 0,
+				projectSerialGeneration: 0,
+				projectSerialSignature: '2'.repeat(64),
+			},
+			affectedResources: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Task.md', revision: 'e'.repeat(64) }],
+			atomicGroups: [{ groupId: 'task-source:Tasks/Task.md', order: 0, resources: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Task.md' }] }],
+			predictedEffects: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Task.md', action: 'create', summary: 'Create task.' }],
+			riskLevel: 'routine',
+			requiresConfirmation: false,
+			requiredAcknowledgements: [],
+			warnings: [],
+			spec: { operation: 'create', items: [{ itemRef: 'item-1', description: 'Task', target: { representation: 'file', mode: 'configured-default', identityPlaceholderPolicy: 'resolve-operon-id-v1' }, fields: [] }] },
+			createEffects: [{ itemRef: 'item-1', operonId: 'abc1234', locator: { representation: 'file', filePath: 'Tasks/Task.md' }, renderedTaskDigest: 'f'.repeat(64), plannedSourceDigest: '1'.repeat(64), expectedAbsence: true, templateIdentityAllocations: [{ occurrence: 0, operonId: 'def5678' }], resolvedRelatedOperonIds: [] }],
+		};
+		plan.receiptTargetDigest = sha256HexV1(canonicalJsonV1(toJsonValueV1(plan.targets)));
+		const { planHash: _planHash, ...planMaterial } = plan;
+		plan.planHash = sha256HexV1(canonicalJsonV1(toJsonValueV1(planMaterial)));
+		const extensionInvocation = {
+			...legacy,
+			requestId: 'identity-apply-route',
+			command: 'mutation.apply' as const,
+			clientVersion: '1.1.0',
+			request: { contractVersion: 1 as const, requestId: 'identity-apply-route', kind: 'mutation-apply' as const, plan, authorization: { basis: 'user-explicit-request' as const }, idempotencyKey, acknowledgements: [] },
+		};
+		const decodedExtensionInvocation = decodeTaskWorkflowCliInvocationExtensionV1(extensionInvocation);
+		assert.equal(
+			decodedExtensionInvocation.ok,
+			true,
+			decodedExtensionInvocation.ok ? undefined : JSON.stringify(decodedExtensionInvocation.issues),
+		);
+		await publishRequest('l'.repeat(32), JSON.stringify(extensionInvocation), 0o600);
+		const extensionOutput = await dispatchAgentRuntimeCliV1({
+			runtime,
+			nodeApi,
+			vaultAdapter: { getFullPath: () => vault },
+			runtimeMetadata: { appVersion: '1.13.3', plugin: { id: 'operon', version: '3.2.0', minAppVersion: '1.7.2' }, apiVersion: 1 },
+			monotonicNow: () => Date.parse('2026-08-09T00:00:00.000Z'),
+		}, { expectedCommand: 'mutation.apply', requestToken: 'l'.repeat(32) });
+		assert.equal(corePreviewCalls, 1);
+		assert.equal(coreApplyCalls, 1);
+		assert.equal(extensionApplyCalls, 1, extensionOutput);
 	} finally {
 		await rm(vault, { recursive: true, force: true });
 	}

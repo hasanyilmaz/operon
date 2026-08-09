@@ -2,6 +2,9 @@ import {
 	isCapabilityIdV1,
 	type CapabilityIdV1,
 } from '../contracts/v1/capabilities';
+import { isTaskWorkflowCapabilityIdV1, type TaskWorkflowCapabilityIdV1 } from '../extensions/task-workflows-v1';
+
+export type DeveloperApiGrantCapabilityV1 = CapabilityIdV1 | TaskWorkflowCapabilityIdV1;
 
 export const DEVELOPER_API_GRANT_PACKAGE_VERSION = 1 as const;
 
@@ -32,8 +35,8 @@ export interface DeveloperApiGrantRecordV1 {
 	readonly state: DeveloperApiPersistedGrantStateV1;
 	readonly suspensionReason?: DeveloperApiGrantSuspensionReasonV1;
 	readonly revision: number;
-	readonly grantedCapabilities: readonly CapabilityIdV1[];
-	readonly pendingCapabilities: readonly CapabilityIdV1[];
+	readonly grantedCapabilities: readonly DeveloperApiGrantCapabilityV1[];
+	readonly pendingCapabilities: readonly DeveloperApiGrantCapabilityV1[];
 	readonly createdAt: string;
 	readonly updatedAt: string;
 }
@@ -46,9 +49,9 @@ export interface DeveloperApiGrantPackageV1 {
 export interface DeveloperApiGrantEvaluationV1 {
 	readonly state: 'pending' | DeveloperApiPersistedGrantStateV1;
 	readonly revision: number;
-	readonly grantedCapabilities: readonly CapabilityIdV1[];
-	readonly effectiveCapabilities: readonly CapabilityIdV1[];
-	readonly pendingCapabilities: readonly CapabilityIdV1[];
+	readonly grantedCapabilities: readonly DeveloperApiGrantCapabilityV1[];
+	readonly effectiveCapabilities: readonly DeveloperApiGrantCapabilityV1[];
+	readonly pendingCapabilities: readonly DeveloperApiGrantCapabilityV1[];
 	readonly reason:
 		| 'active'
 		| 'capability-approval-required'
@@ -67,8 +70,20 @@ export function createEmptyDeveloperApiGrantPackage(): DeveloperApiGrantPackageV
 	};
 }
 
+export function isUnsupportedDeveloperApiGrantPackage(value: unknown): boolean {
+	if (value === undefined) return false;
+	if (!isRecord(value)) return true;
+	const version: unknown = value.version;
+	if (!Object.prototype.hasOwnProperty.call(value, 'version')) return true;
+	return version !== DEVELOPER_API_GRANT_PACKAGE_VERSION;
+}
+
 export function normalizeDeveloperApiGrantPackage(value: unknown): DeveloperApiGrantPackageV1 {
-	if (!isRecord(value) || !isRecord(value.consumersById)) {
+	if (
+		!isRecord(value)
+		|| isUnsupportedDeveloperApiGrantPackage(value)
+		|| !isRecord(value.consumersById)
+	) {
 		return createEmptyDeveloperApiGrantPackage();
 	}
 	const consumersById: Record<string, DeveloperApiGrantRecordV1> = {};
@@ -86,7 +101,7 @@ export function normalizeDeveloperApiGrantPackage(value: unknown): DeveloperApiG
 export function evaluateDeveloperApiGrant(
 	value: unknown,
 	consumer: DeveloperApiConsumerMetadataV1,
-	requestedCapabilities: readonly CapabilityIdV1[],
+	requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 ): DeveloperApiGrantEvaluationV1 {
 	const grantPackage = normalizeDeveloperApiGrantPackage(value);
 	const record = grantPackage.consumersById[consumer.id];
@@ -153,7 +168,7 @@ export function evaluateDeveloperApiGrant(
 export function recordDeveloperApiGrantRequest(
 	value: unknown,
 	consumer: DeveloperApiConsumerMetadataV1,
-	requestedCapabilities: readonly CapabilityIdV1[],
+	requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	nowIso: string,
 ): DeveloperApiGrantPackageV1 {
 	const grantPackage = normalizeDeveloperApiGrantPackage(value);
@@ -199,7 +214,33 @@ export function recordDeveloperApiGrantRequest(
 		createdAt: reconciledExisting?.createdAt ?? nowIso,
 		updatedAt: nowIso,
 	};
+	if (reconciledExisting && grantRecordsEqualExceptUpdatedAt(next, reconciledExisting)) {
+		return reconciled;
+	}
 	return replaceRecord(reconciled, next);
+}
+
+function grantRecordsEqualExceptUpdatedAt(
+	left: DeveloperApiGrantRecordV1,
+	right: DeveloperApiGrantRecordV1,
+): boolean {
+	return left.consumerId === right.consumerId
+		&& left.consumerName === right.consumerName
+		&& left.consumerVersion === right.consumerVersion
+		&& left.observedConsumerVersion === right.observedConsumerVersion
+		&& left.approvedMajorVersion === right.approvedMajorVersion
+		&& left.state === right.state
+		&& left.suspensionReason === right.suspensionReason
+		&& left.revision === right.revision
+		&& left.createdAt === right.createdAt
+		&& left.grantedCapabilities.length === right.grantedCapabilities.length
+		&& left.grantedCapabilities.every((capability, index) => (
+			capability === right.grantedCapabilities[index]
+		))
+		&& left.pendingCapabilities.length === right.pendingCapabilities.length
+		&& left.pendingCapabilities.every((capability, index) => (
+			capability === right.pendingCapabilities[index]
+		));
 }
 
 export function suspendDeveloperApiGrantForAuditRecovery(
@@ -228,13 +269,13 @@ export interface DeveloperApiConsumerVersionReconciliationV1 {
 	readonly grantPackage: DeveloperApiGrantPackageV1;
 	readonly changed: boolean;
 	readonly transition?: 'accepted' | 'suspended';
-	readonly capabilities: readonly CapabilityIdV1[];
+	readonly capabilities: readonly DeveloperApiGrantCapabilityV1[];
 }
 
 export function reconcileDeveloperApiConsumerVersion(
 	value: unknown,
 	consumer: DeveloperApiConsumerMetadataV1,
-	requestedCapabilities: readonly CapabilityIdV1[],
+	requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	nowIso: string,
 ): DeveloperApiConsumerVersionReconciliationV1 {
 	const grantPackage = normalizeDeveloperApiGrantPackage(value);
@@ -308,7 +349,7 @@ export function reconcileDeveloperApiConsumerVersion(
 export function approveDeveloperApiCapabilities(
 	value: unknown,
 	consumer: DeveloperApiConsumerMetadataV1,
-	capabilities: readonly CapabilityIdV1[],
+	capabilities: readonly DeveloperApiGrantCapabilityV1[],
 	nowIso: string,
 ): DeveloperApiGrantPackageV1 {
 	const version = parseStrictSemver(consumer.version);
@@ -358,7 +399,7 @@ export function revokeDeveloperApiGrant(
 export function denyDeveloperApiCapabilities(
 	value: unknown,
 	consumerId: string,
-	capabilities: readonly CapabilityIdV1[] | 'all',
+	capabilities: readonly DeveloperApiGrantCapabilityV1[] | 'all',
 	nowIso: string,
 ): DeveloperApiGrantPackageV1 {
 	const grantPackage = normalizeDeveloperApiGrantPackage(value);
@@ -454,10 +495,10 @@ function replaceRecord(
 	};
 }
 
-function normalizeCapabilities(value: unknown): CapabilityIdV1[] {
+function normalizeCapabilities(value: unknown): DeveloperApiGrantCapabilityV1[] {
 	if (!Array.isArray(value)) return [];
-	return [...new Set(value.filter((item): item is CapabilityIdV1 => (
-		typeof item === 'string' && isCapabilityIdV1(item)
+	return [...new Set(value.filter((item): item is DeveloperApiGrantCapabilityV1 => (
+		typeof item === 'string' && (isCapabilityIdV1(item) || isTaskWorkflowCapabilityIdV1(item))
 	)))].sort((left, right) => left.localeCompare(right));
 }
 

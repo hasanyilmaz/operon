@@ -24,6 +24,12 @@ import {
 	CALENDAR_TIMED_SNAP_MINUTES,
 } from '../../systems/calendar-writeback';
 import { parseLocalDatetime } from '../../systems/tracker-utils';
+import {
+	buildFinishedDateMovePayload,
+	canEditAllDayCalendarItemPlacement,
+	canEditFinishedCalendarItemPlacement,
+	resolveAnchoredAllDayMoveRange,
+} from './all-day-drag';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import { t } from '../../core/i18n';
 import { getAppLocale } from '../../core/obsidian-app';
@@ -726,6 +732,7 @@ export interface CalendarViewCallbacks {
 	onAllDaySlotSelection?: (selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayScheduledMove?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayScheduledResizeRight?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
+	onFinishedItemMove?: (taskId: string, dateCompleted: string) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
 	onTimedItemDropToAllDay?: (taskId: string, selection: CalendarSlotSelection) => void | Promise<void>;
 	onAllDayItemDropToTimed?: (taskId: string, selection: CalendarSlotSelection, sourcePayload?: CalendarDropSourcePayload) => CalendarDropCallbackResult | Promise<CalendarDropCallbackResult>;
 	onItemAction?: ContextualMenuActionHandler;
@@ -861,8 +868,10 @@ export class CalendarView extends ItemView {
 	private renderFrame: number | null = null;
 	private preserveScrollOnNextRender = false;
 	private allDayDropContext: CalendarAllDayDropContext | null = null;
+	private finishedDropContext: CalendarAllDayDropContext | null = null;
 	private timedDropContext: CalendarTimedDropContext | null = null;
 	private multiWeekAllDayDropContexts: CalendarAllDayDropContext[] = [];
+	private multiWeekFinishedDropContexts: CalendarAllDayDropContext[] = [];
 	private multiWeekInDayDropContexts: CalendarMultiWeekInDayDropContext[] = [];
 	private expandedHiddenTimeKey: string | null = null;
 	private lastRenderPresetKey: string | null = null;
@@ -1794,8 +1803,10 @@ export class CalendarView extends ItemView {
 		this.sidebarTaskPoolListEl = null;
 		this.mobileTimeGridScrollEl = null;
 		this.allDayDropContext = null;
+		this.finishedDropContext = null;
 		this.timedDropContext = null;
 		this.multiWeekAllDayDropContexts = [];
+		this.multiWeekFinishedDropContexts = [];
 		this.multiWeekInDayDropContexts = [];
 		const {
 			settings,
@@ -8295,13 +8306,13 @@ export class CalendarView extends ItemView {
 	): void {
 		const section = container.createDiv('operon-calendar-all-day-section');
 		if (showAllDayLane) {
-			this.renderAllDayTrack(section, t('calendar', 'allDay'), 'allDay', visibleDates, scheduledItems, false, preset, settings, dropContextMode);
+			this.renderAllDayTrack(section, t('calendar', 'allDay'), 'allDay', visibleDates, scheduledItems, preset, settings, dropContextMode);
 		}
 		if (showDueMarkers) {
-			this.renderAllDayTrack(section, t('calendar', 'due'), 'due', visibleDates, dueItems, true, preset, settings, dropContextMode);
+			this.renderAllDayTrack(section, t('calendar', 'due'), 'due', visibleDates, dueItems, preset, settings, dropContextMode);
 		}
 		if (showFinishedLane) {
-			this.renderAllDayTrack(section, t('calendar', 'finished'), 'finished', visibleDates, finishedItems, true, preset, settings, dropContextMode);
+			this.renderAllDayTrack(section, t('calendar', 'finished'), 'finished', visibleDates, finishedItems, preset, settings, dropContextMode);
 		}
 	}
 
@@ -8311,7 +8322,6 @@ export class CalendarView extends ItemView {
 		trackKind: 'allDay' | 'due' | 'finished',
 		visibleDates: string[],
 		items: CalendarItem[],
-		isDueTrack: boolean,
 		preset: CalendarRenderPreset,
 		settings: OperonSettings,
 		dropContextMode: 'timeGrid' | 'multiWeek' = 'timeGrid',
@@ -8349,14 +8359,16 @@ export class CalendarView extends ItemView {
 
 		const grid = body.createDiv('operon-calendar-all-day-grid');
 		grid.style.gridTemplateColumns = `repeat(${Math.max(1, visibleDates.length)}, minmax(0, 1fr))`;
+		const cells: HTMLElement[] = [];
 		for (const dateKey of visibleDates) {
 			const cell = grid.createDiv('operon-calendar-all-day-cell');
+			cells.push(cell);
 			const dayDate = this.parseDateKey(dateKey);
 			cell.classList.toggle('is-weekend', dayDate?.getDay() === 0 || dayDate?.getDay() === 6);
 			if (dateKey === localToday()) {
 				cell.addClass('is-today');
 			}
-			if (!isDueTrack) {
+			if (trackKind === 'allDay') {
 				this.bindCalendarCellQuickAdd(cell, dateKey, () => {
 					void this.callbacks.onAllDaySlotSelection?.(buildAllDaySlotSelection(dateKey, dateKey));
 				});
@@ -8364,7 +8376,7 @@ export class CalendarView extends ItemView {
 		}
 
 		const overlay = body.createDiv('operon-calendar-all-day-overlay');
-		if (!isDueTrack) {
+		if (trackKind === 'allDay' || trackKind === 'finished') {
 			const dropContext = {
 				body,
 				overlay,
@@ -8372,8 +8384,15 @@ export class CalendarView extends ItemView {
 				laneHeight,
 				laneInset,
 				previewLane: totalLaneCount - 1,
+				cells,
 			};
-			if (dropContextMode === 'multiWeek') {
+			if (trackKind === 'finished') {
+				if (dropContextMode === 'multiWeek') {
+					this.multiWeekFinishedDropContexts.push(dropContext);
+				} else {
+					this.finishedDropContext = dropContext;
+				}
+			} else if (dropContextMode === 'multiWeek') {
 				this.multiWeekAllDayDropContexts.push(dropContext);
 			} else {
 				this.allDayDropContext = dropContext;
@@ -8392,8 +8411,8 @@ export class CalendarView extends ItemView {
 				if (hoverTrigger) {
 					this.bindHoverMenuTarget(hoverTrigger, placement.item);
 				}
-				if (!isDueTrack) {
-					if (!this.canEditCalendarItemPlacement(placement.item)) {
+				if (trackKind === 'allDay') {
+					if (!canEditAllDayCalendarItemPlacement(placement.item)) {
 						itemEl.addClass('is-read-only');
 						this.bindPrimaryItemClick(itemEl, placement.item);
 					} else {
@@ -8409,6 +8428,13 @@ export class CalendarView extends ItemView {
 							dropContextMode,
 						);
 					}
+				} else if (trackKind === 'finished' && canEditFinishedCalendarItemPlacement(placement.item)) {
+					itemEl.addClass('is-finished-date-draggable');
+					this.bindFinishedAllDayItemInteraction(
+						itemEl,
+						placement,
+						dropContextMode,
+					);
 				} else {
 					itemEl.addClass('is-read-only');
 					this.bindPrimaryItemClick(itemEl, placement.item);
@@ -9653,14 +9679,18 @@ export class CalendarView extends ItemView {
 					}
 				} else {
 					const column = this.resolveAllDayColumnIndex(body, clientX, visibleDates.length);
-					const span = placement.endColumn - placement.startColumn;
-					const delta = column - dragState.anchorColumn;
-					const maxStart = Math.max(0, visibleDates.length - span - 1);
-					const nextStart = Math.max(0, Math.min(maxStart, placement.startColumn + delta));
-					dragState.currentStartColumn = nextStart;
-					dragState.currentEndColumn = nextStart + span;
-					dragState.currentStartDate = visibleDates[nextStart] ?? placement.item.startDate;
-					dragState.currentEndDate = visibleDates[nextStart + span] ?? placement.item.endDate;
+					const targetDate = visibleDates[column] ?? dragState.anchorDate;
+					const nextRange = resolveAnchoredAllDayMoveRange(
+						placement.item.startDate,
+						placement.item.endDate,
+						dragState.anchorDate,
+						targetDate,
+					);
+					const columnDelta = column - dragState.anchorColumn;
+					dragState.currentStartColumn = placement.startColumn + columnDelta;
+					dragState.currentEndColumn = placement.endColumn + columnDelta;
+					dragState.currentStartDate = nextRange.startDate;
+					dragState.currentEndDate = nextRange.endDate;
 				}
 			} else {
 				if (dropContextMode === 'multiWeek') {
@@ -9784,6 +9814,103 @@ export class CalendarView extends ItemView {
 			);
 		};
 
+		itemEl.addEventListener('pointerup', (event: PointerEvent) => this.finishActiveCalendarDragSession('commit', event));
+		itemEl.addEventListener('pointercancel', (event: PointerEvent) => this.finishActiveCalendarDragSession('cancel', event));
+	}
+
+	private bindFinishedAllDayItemInteraction(
+		itemEl: HTMLElement,
+		placement: AllDayPlacement,
+		dropContextMode: 'timeGrid' | 'multiWeek',
+	): void {
+		const dragThresholdPx = 6;
+		let dragState: {
+			pointerId: number;
+			activated: boolean;
+			initialClientX: number;
+			initialClientY: number;
+			targetDate: string;
+			dragGhostEl: HTMLElement | null;
+		} | null = null;
+
+		const updateFromClient = (clientX: number, clientY: number): void => {
+			if (!dragState) return;
+			if (!dragState.activated) {
+				const deltaX = clientX - dragState.initialClientX;
+				const deltaY = clientY - dragState.initialClientY;
+				if (Math.hypot(deltaX, deltaY) < dragThresholdPx) return;
+				dragState.activated = true;
+				itemEl.addClass('is-dragging');
+				dragState.dragGhostEl = this.createCalendarDragGhost(
+					itemEl,
+					'operon-calendar-finished-drag-ghost',
+				);
+				itemEl.addClass('operon-calendar-drag-source-hidden');
+			}
+
+			this.updateCalendarDragGhostPosition(dragState.dragGhostEl, clientX, clientY);
+			const target = dropContextMode === 'multiWeek'
+				? this.resolveMultiWeekFinishedDropTarget(clientX, clientY)
+				: this.resolveFinishedDropTarget(this.finishedDropContext, clientX, clientY);
+			if (target?.dateKey) {
+				dragState.targetDate = target.dateKey;
+			} else {
+				dragState.targetDate = placement.item.startDate;
+			}
+		};
+
+		const finishDrag = (reason: CalendarDragEndReason, event: PointerEvent | null): void => {
+			if (!dragState) return;
+			if (event && dragState.pointerId !== event.pointerId) return;
+			if (event) updateFromClient(event.clientX, event.clientY);
+			const pointerId = dragState.pointerId;
+			const activated = dragState.activated;
+			const targetDate = dragState.targetDate;
+			this.releaseCalendarPointerCapture(itemEl, pointerId);
+			itemEl.removeClass('is-dragging', 'operon-calendar-drag-source-hidden');
+			this.removeCalendarDragGhost(dragState.dragGhostEl);
+			dragState = null;
+
+			if (reason !== 'commit') return;
+			if (!activated) {
+				if (event && this.maybeOpenMaterializedTaskSourceFromEvent(event, placement.item.taskId, true)) return;
+				void this.callbacks.onItemAction?.(placement.item.taskId, 'openEditor');
+				return;
+			}
+
+			const payload = buildFinishedDateMovePayload(placement.item.startDate, targetDate);
+			if (!payload) return;
+			itemEl.dataset.suppressCalendarClick = 'true';
+			this.invokeCalendarDropCallback(
+				placement.item.taskId,
+				payload,
+				() => this.callbacks.onFinishedItemMove?.(placement.item.taskId, payload.dateCompleted),
+				{ verifyOptimisticPatchAfterWrite: true },
+			);
+		};
+
+		itemEl.addEventListener('pointerdown', (event: PointerEvent) => {
+			if (event.button !== 0) return;
+			const target = asHTMLElement(event.target, itemEl);
+			if (target?.closest('.operon-calendar-status-button, a.internal-link')) return;
+			event.stopPropagation();
+			this.hideCalendarHoverMenu(true);
+			dragState = {
+				pointerId: event.pointerId,
+				activated: false,
+				initialClientX: event.clientX,
+				initialClientY: event.clientY,
+				targetDate: placement.item.startDate,
+				dragGhostEl: null,
+			};
+			this.beginCalendarDragSession(itemEl, event.pointerId, finishDrag);
+			itemEl.setPointerCapture?.(event.pointerId);
+		});
+
+		itemEl.addEventListener('pointermove', (event: PointerEvent) => {
+			if (!dragState || dragState.pointerId !== event.pointerId) return;
+			updateFromClient(event.clientX, event.clientY);
+		});
 		itemEl.addEventListener('pointerup', (event: PointerEvent) => this.finishActiveCalendarDragSession('commit', event));
 		itemEl.addEventListener('pointercancel', (event: PointerEvent) => this.finishActiveCalendarDragSession('cancel', event));
 	}
@@ -10719,6 +10846,34 @@ export class CalendarView extends ItemView {
 			return { context, column, dateKey };
 		}
 		return null;
+	}
+
+	private resolveMultiWeekFinishedDropTarget(
+		clientX: number,
+		clientY: number,
+	): { context: CalendarAllDayDropContext; column: number; dateKey: string } | null {
+		for (const context of this.multiWeekFinishedDropContexts) {
+			const target = this.resolveFinishedDropTarget(context, clientX, clientY);
+			if (target) return target;
+		}
+		return null;
+	}
+
+	private resolveFinishedDropTarget(
+		context: CalendarAllDayDropContext | null,
+		clientX: number,
+		clientY: number,
+	): { context: CalendarAllDayDropContext; column: number; dateKey: string } | null {
+		if (!context) return null;
+		const rect = context.body.getBoundingClientRect();
+		const inside = clientX >= rect.left
+			&& clientX <= rect.right
+			&& clientY >= rect.top
+			&& clientY <= rect.bottom;
+		if (!inside) return null;
+		const column = this.resolveAllDayColumnIndex(context.body, clientX, context.visibleDates.length);
+		const dateKey = context.visibleDates[column];
+		return dateKey ? { context, column, dateKey } : null;
 	}
 
 	private setMobileAllDayDropHighlight(context: CalendarAllDayDropContext | null, column: number): void {

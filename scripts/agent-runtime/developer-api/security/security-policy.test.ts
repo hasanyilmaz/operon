@@ -11,12 +11,105 @@ import {
 	type DeveloperConsentDecisionV1,
 	type DeveloperSecuritySessionV1,
 } from '../../../../src/agent-runtime/developer-api/security';
+import { requestBoundedDeveloperConsentV1 } from '../../../../src/agent-runtime/developer-api/security/bounded-consent';
+
+class FakeConsentWindow {
+	focused = false;
+	activeWindow: FakeConsentWindow = this;
+	activeDocument: Document = { marker: 'previous' } as unknown as Document;
+	private nextHandle = 1;
+	private readonly timers = new Map<number, { handler: () => void; timeoutMs: number }>();
+
+	focus(): void {
+		this.focused = true;
+	}
+
+	setTimeout(handler: () => void, timeoutMs: number): number {
+		const handle = this.nextHandle++;
+		this.timers.set(handle, { handler, timeoutMs });
+		return handle;
+	}
+
+	clearTimeout(handle: number): void {
+		this.timers.delete(handle);
+	}
+
+	run(timeoutMs: number): void {
+		const matches = [...this.timers.entries()]
+			.filter(([, timer]) => timer.timeoutMs === timeoutMs);
+		for (const [handle, timer] of matches) {
+			this.timers.delete(handle);
+			timer.handler();
+		}
+	}
+}
+
+test('opens Developer API consent in the owning window and returns the decision', async () => {
+	const ownerWindow = new FakeConsentWindow();
+	const ownerDocument = { marker: 'owner' } as unknown as Document;
+	const previousWindow = new FakeConsentWindow();
+	const previousDocument = ownerWindow.activeDocument;
+	ownerWindow.activeWindow = previousWindow;
+	let decide: ((confirmed: boolean) => void) | undefined;
+	let openedAgainstOwner = false;
+	const decisionPromise = requestBoundedDeveloperConsentV1({
+		ownerWindow,
+		ownerDocument,
+		timeoutMs: 45_000,
+		show: onDecision => {
+			openedAgainstOwner = ownerWindow.activeWindow === ownerWindow
+				&& ownerWindow.activeDocument === ownerDocument;
+			decide = onDecision;
+			return () => {};
+		},
+	});
+	assert.equal(ownerWindow.focused, true);
+	ownerWindow.run(0);
+	assert.equal(openedAgainstOwner, true);
+	assert.equal(ownerWindow.activeWindow, previousWindow);
+	assert.equal(ownerWindow.activeDocument, previousDocument);
+	decide?.(true);
+	assert.equal(await decisionPromise, 'approved');
+});
+
+test('closes unavailable Developer API consent after a bounded timeout', async () => {
+	const ownerWindow = new FakeConsentWindow();
+	const ownerDocument = { marker: 'owner' } as unknown as Document;
+	let closed = false;
+	let decide: ((confirmed: boolean) => void) | undefined;
+	const decisionPromise = requestBoundedDeveloperConsentV1({
+		ownerWindow,
+		ownerDocument,
+		timeoutMs: 45_000,
+		show: onDecision => {
+			decide = onDecision;
+			return () => {
+				closed = true;
+			};
+		},
+	});
+	ownerWindow.run(0);
+	ownerWindow.run(45_000);
+	assert.equal(await decisionPromise, 'unavailable');
+	assert.equal(closed, true);
+	decide?.(true);
+});
 
 const session: DeveloperSecuritySessionV1 = {
 	consumerId: 'obsidian-plugin:test.consumer',
 	instanceEpoch: 'instance-1',
 	sessionId: 'session-1',
 };
+
+const confirmationTargets: SealedMutationPlanV1['targets'] = [{
+	operonId: 'abc1234',
+	locator: {
+		representation: 'inline',
+		filePath: 'Tasks.md',
+		lineNumber: 0,
+	},
+	targetDigest: 'primary-target-digest',
+}];
 
 function grant(
 	capabilities: CapabilityIdV1[],
@@ -37,6 +130,7 @@ function plan(options: {
 	riskLevel?: RiskLevelV1;
 	planHash?: string;
 	requiredAcknowledgements?: string[];
+	targets?: SealedMutationPlanV1['targets'];
 } = {}): SealedMutationPlanV1 {
 	const capability = options.capability ?? 'tasks.update.preview';
 	const mutationKind = options.mutationKind ?? 'task.update';
@@ -53,7 +147,7 @@ function plan(options: {
 		mutationKind,
 		createdAt: '2026-07-29T10:00:00.000Z',
 		expiresAt: '2026-07-29T10:10:00.000Z',
-		targets: [],
+		targets: options.targets ?? [],
 		contextRevision: {
 			index: {
 				sessionId: 'index-session',
@@ -198,6 +292,18 @@ test('mints host-owned destructive confirmation and target-bound acknowledgement
 		mutationKind: 'task.delete',
 		riskLevel: 'destructive',
 		requiredAcknowledgements: ['destructive-delete', 'attached-checkboxes'],
+		targets: [
+			...confirmationTargets,
+			{
+				operonId: 'def5678',
+				locator: {
+					representation: 'inline',
+					filePath: 'Tasks.md',
+					lineNumber: 1,
+				},
+				targetDigest: 'secondary-target-digest',
+			},
+		],
 	});
 	const activeGrant = grant([sealed.capability, 'tasks.delete.apply']);
 	const binding = bindPlan(policy, activeGrant, sealed);
@@ -215,22 +321,54 @@ test('mints host-owned destructive confirmation and target-bound acknowledgement
 		{
 			code: 'destructive-delete',
 			planHash: sealed.planHash,
-			targetDigest: sealed.receiptTargetDigest,
+			targetDigest: sealed.targets[0].targetDigest,
 			acknowledgedAt: '2026-07-29T10:01:00.000Z',
 		},
 		{
 			code: 'attached-checkboxes',
 			planHash: sealed.planHash,
-			targetDigest: sealed.receiptTargetDigest,
+			targetDigest: sealed.targets[0].targetDigest,
 			acknowledgedAt: '2026-07-29T10:01:00.000Z',
 		},
 	]);
-	assert.equal(prompts.length, 1);
+	assert.deepEqual(prompts, [{
+		consumerId: session.consumerId,
+		capability: 'tasks.delete.apply',
+		mutationKind: sealed.mutationKind,
+		riskLevel: sealed.riskLevel,
+		planHash: sealed.planHash,
+		targetDigest: sealed.receiptTargetDigest,
+		targetCount: 2,
+		predictedEffects: sealed.predictedEffects,
+		acknowledgementCodes: sealed.requiredAcknowledgements,
+	}]);
+});
+
+test('fails closed before consent when a confirmation plan has no sealed target', async () => {
+	const { policy, prompts } = harness(['approved']);
+	const sealed = plan({
+		riskLevel: 'elevated',
+		requiredAcknowledgements: ['terminal-transition'],
+	});
+	const activeGrant = grant([sealed.capability, 'tasks.update.apply']);
+	const binding = bindPlan(policy, activeGrant, sealed);
+
+	const denied = await policy.admitApply({
+		session,
+		grant: activeGrant,
+		binding,
+		plan: sealed,
+	});
+
+	assert.equal(denied.ok, false);
+	assert.equal(denied.ok ? undefined : denied.code, 'invalid-request');
+	assert.equal(denied.ok ? undefined : denied.reasonCode, 'plan-binding-mismatch');
+	assert.deepEqual(prompts, []);
 });
 
 test('blocks consent replay after cancellation and fails closed when UI throws', async () => {
 	const cancelledHarness = harness(['denied', 'approved']);
-	const sealed = plan({ riskLevel: 'elevated' });
+	const sealed = plan({ riskLevel: 'elevated', targets: confirmationTargets });
 	const activeGrant = grant([sealed.capability, 'tasks.update.apply']);
 	const binding = bindPlan(cancelledHarness.policy, activeGrant, sealed);
 
@@ -283,7 +421,7 @@ test('rechecks grant revision after consent and preserves only same-plan recover
 		isGrantCurrent: candidate => candidate.revision === currentGrantRevision,
 		now: () => new Date(),
 	});
-	const sealed = plan({ riskLevel: 'elevated' });
+	const sealed = plan({ riskLevel: 'elevated', targets: confirmationTargets });
 	const activeGrant = grant([sealed.capability, 'tasks.update.apply']);
 	const binding = bindPlan(policy, activeGrant, sealed);
 

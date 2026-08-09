@@ -25,16 +25,12 @@ export const bindingPath = path.join(
 	pluginRoot,
 	'contracts',
 	'agent-runtime',
-	'releases',
-	'3.1.0',
 	'published-cli-v1.json',
 );
 export const bindingSchemaPath = path.join(
 	pluginRoot,
 	'contracts',
 	'agent-runtime',
-	'releases',
-	'3.1.0',
 	'published-cli-v1.schema.json',
 );
 
@@ -90,6 +86,19 @@ export function assertPublishedCliBinding(binding) {
 		binding.provenance.commit,
 		'OPERON_PUBLISHED_CLI_BINDING_COMMIT_MISMATCH',
 	);
+	const tagObject = binding.source.tagObject ?? (
+		typeof binding.source.annotatedTagObject === 'string'
+			? { type: 'tag', sha: binding.source.annotatedTagObject }
+			: null
+	);
+	assert.ok(tagObject?.type === 'commit' || tagObject?.type === 'tag', 'OPERON_PUBLISHED_CLI_TAG_OBJECT_TYPE_INVALID');
+	if (tagObject.type === 'commit') {
+		assert.equal(
+			tagObject.sha,
+			binding.source.commit,
+			'OPERON_PUBLISHED_CLI_LIGHTWEIGHT_TAG_COMMIT_MISMATCH',
+		);
+	}
 	assert.equal(
 		binding.artifact.inventory.length,
 		binding.artifact.inventoryEntries,
@@ -391,6 +400,16 @@ export async function verifyInstalledPackage(packageRoot, binding) {
 		null,
 		'OPERON_PUBLISHED_CLI_DEVELOPER_API_RUNTIME_EXPORT_FORBIDDEN',
 	);
+	assert.equal(
+		packageJson.exports?.['./contracts/v1/extensions/task-workflows-v1']?.types,
+		'./types/src/agent-runtime/extensions/task-workflows-v1/contracts.d.ts',
+		'OPERON_PUBLISHED_CLI_TASK_WORKFLOWS_EXTENSION_EXPORT_MISMATCH',
+	);
+	assert.equal(
+		packageJson.exports?.['./contracts/v1/extensions/task-workflows-v1']?.default,
+		null,
+		'OPERON_PUBLISHED_CLI_TASK_WORKFLOWS_EXTENSION_RUNTIME_EXPORT_FORBIDDEN',
+	);
 	const readme = await readFile(path.join(packageRoot, 'README.md'), 'utf8');
 	assert.match(readme, /npm install --global @stratejya\/operon-cli/u);
 	assert.match(readme, /Node(?:\.js)? 22, 24, (?:and|or) 26/iu);
@@ -407,12 +426,22 @@ export async function verifyInstalledPackage(packageRoot, binding) {
 
 export async function verifyRuntimeSchemaParity(packageRoot, binding, root = pluginRoot) {
 	for (const identity of binding.runtime.canonicalSchemas) {
-		const file = path.basename(identity.path);
-		const actual = await readFile(path.join(packageRoot, 'schemas', 'v1', file));
+		const packagedPath = packagedRuntimeSchemaPath(identity.path);
+		const actual = await readFile(path.join(packageRoot, 'schemas', 'v1', packagedPath));
 		const expected = await readFile(resolveRepositoryPath(root, identity.path));
-		assert.deepEqual(actual, expected, `OPERON_PUBLISHED_CLI_SCHEMA_PARITY_MISMATCH:${file}`);
+		assert.deepEqual(actual, expected, `OPERON_PUBLISHED_CLI_SCHEMA_PARITY_MISMATCH:${packagedPath}`);
 	}
 	return true;
+}
+
+function packagedRuntimeSchemaPath(sourcePath) {
+	const corePrefix = 'contracts/agent-runtime/v1/';
+	if (sourcePath.startsWith(corePrefix)) return sourcePath.slice(corePrefix.length);
+	const extensionPrefix = 'contracts/agent-runtime/extensions/';
+	if (sourcePath.startsWith(extensionPrefix)) {
+		return `extensions/${sourcePath.slice(extensionPrefix.length)}`;
+	}
+	throw new Error(`OPERON_PUBLISHED_CLI_SCHEMA_SOURCE_PATH_INVALID:${sourcePath}`);
 }
 
 export async function verifyDeclarationParity(packageRoot, binding, root = pluginRoot) {
@@ -464,6 +493,7 @@ export async function generatePublicDeclarations(root, outDir) {
 				path.join(root, 'src/agent-runtime/public/v1/index.ts'),
 				path.join(root, 'src/agent-runtime/public/v1/developer-api.ts'),
 				path.join(root, 'src/agent-runtime/public/v1/cli.ts'),
+				path.join(root, 'src/agent-runtime/extensions/task-workflows-v1/contracts.ts'),
 			],
 		};
 		await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
@@ -512,7 +542,7 @@ export async function verifyBlackBoxSurface(packageRoot, binding, env = process.
 	}, 'OPERON_PUBLISHED_CLI_MANIFEST_PLATFORMS_MISMATCH');
 	assert.deepEqual(
 		manifest.protocols?.sessionJsonl?.readGroupCommands,
-		['health', 'task.get', 'tasks.query', 'context.build'],
+		['health', 'task.get', 'tasks.query', 'tasks.filter-query', 'context.build'],
 		'OPERON_PUBLISHED_CLI_SESSION_READ_COMMANDS_MISMATCH',
 	);
 	assert.equal(manifest.protocols?.sessionJsonl?.invocation, 'operon session --jsonl');
@@ -923,13 +953,26 @@ async function normalizeDeclarationImports(root) {
 	for (const item of await listFileInventory(root, '')) {
 		const target = path.join(root, item.path);
 		const source = await readFile(target, 'utf8');
-		const normalized = source
+		let normalized = source
 			.replace(/(\bfrom\s+['"])(\.\.?\/[^'"]+)(['"])/gu, (_match, before, specifier, after) => (
 				`${before}${withJavaScriptExtension(specifier)}${after}`
 			))
 			.replace(/(\bimport\(\s*['"])(\.\.?\/[^'"]+)(['"]\s*\))/gu, (_match, before, specifier, after) => (
 				`${before}${withJavaScriptExtension(specifier)}${after}`
 			));
+		if (item.path === 'src/agent-runtime/extensions/task-workflows-v1/contracts.d.ts') {
+			normalized = normalized
+				.replace(/^export declare const TASK_WORKFLOW_CAPABILITY_IDS_V1:.*\n/mu, '')
+				.replace(
+					/^export type TaskWorkflowCapabilityIdV1 = typeof TASK_WORKFLOW_CAPABILITY_IDS_V1\[number\];$/mu,
+					"export type TaskWorkflowCapabilityIdV1 = 'tasks.filter-query' | 'tasks.create.identity-placeholders' | 'tasks.adopt.preview' | 'tasks.adopt.apply';",
+				)
+				.replace(
+					/^export declare const TASK_WORKFLOW_CAPABILITY_REGISTRY_V1:[\s\S]*?(?=^export declare function isTaskWorkflowCapabilityIdV1)/mu,
+					'',
+				)
+				.replace(/^export declare function isTaskWorkflowCapabilityIdV1\(.*\n/mu, '');
+		}
 		if (normalized !== source) await writeFile(target, normalized, 'utf8');
 	}
 }

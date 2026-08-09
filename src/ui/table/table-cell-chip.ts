@@ -20,8 +20,11 @@ import {
 	resolveBlockedByVisualStateForId,
 } from '../../core/blocked-by-visual-state';
 import type { TableTaskLookup } from './table-value-adapter';
+import { formatTableDetailedDatetimeValue } from './table-datetime-format';
 
-type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities'>;
+export { formatTableDetailedDatetimeValue } from './table-datetime-format';
+
+type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
 const TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH = 37;
 
 export interface TableCellChipRenderOptions {
@@ -84,7 +87,7 @@ export function renderTableCellChipContent(
 		renderTableExternalLinkChip(chip, externalLink, options.onExternalLinkModifierActivate!);
 		return;
 	}
-	const displayValue = formatTableDetailedDatetimeValue(key, value);
+	const displayValue = formatTableDetailedDatetimeValue(key, value, options.settings);
 	const locationVisual = resolveTableLocationCellVisual(key, value, options);
 	if (locationVisual) {
 		renderTableLocationChipContent(
@@ -161,11 +164,6 @@ function renderTableExternalLinkChip(
 		event.preventDefault();
 		event.stopPropagation();
 	});
-}
-
-export function formatTableDetailedDatetimeValue(key: string, value: string): string {
-	if (key !== 'datetimeStart' && key !== 'datetimeEnd') return value;
-	return value.replace(/^(\d{4}-\d{2}-\d{2})T/u, '$1 ');
 }
 
 function getTableCellChipItems(

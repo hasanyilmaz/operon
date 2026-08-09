@@ -401,7 +401,7 @@ export class OperonStorage {
 	 */
 	getDeveloperApiGrantDataStore(): Pick<
 		OperonDataPackageStore,
-		'getDataPackage' | 'updateDataPackage'
+		'canPersist' | 'getDataPackage' | 'updateDataPackage'
 	> {
 		return this.dataPackageStore;
 	}
@@ -615,6 +615,29 @@ export class OperonStorage {
 		});
 	}
 
+	async attachKanbanPresetFilterIfUnchanged(
+		presetId: string,
+		expectedFilterSetId: string | null,
+		nextFilterSetId: string,
+	): Promise<boolean> {
+		return this.enqueueSettingsTransaction(async () => {
+			const preset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
+			if (!preset || preset.filterSetId !== expectedFilterSetId) return false;
+			preset.filterSetId = nextFilterSetId;
+			try {
+				await this.persistSettings({ forceRecoveredWrite: true });
+			} catch (error) {
+				const currentPreset = this.settings.kanbanPresets.find(entry => entry.id === presetId) ?? null;
+				if (currentPreset?.filterSetId === nextFilterSetId) {
+					currentPreset.filterSetId = expectedFilterSetId;
+					this.syncKanbanPresetStoreFromSettings();
+				}
+				throw error;
+			}
+			return this.settings.kanbanPresets.find(entry => entry.id === presetId)?.filterSetId === nextFilterSetId;
+		});
+	}
+
 	private async persistSettings(_options: RecoveredStoreWriteOptions): Promise<void> {
 		if (!this.dataPackageStore.canPersist()) {
 			if (_options.forceRecoveredWrite === false) return;
@@ -633,6 +656,7 @@ export class OperonStorage {
 		});
 		await this.dataPackageStore.updateDataPackage(currentPackage => {
 			const currentMobileNotifications = currentPackage.integrations.mobileNotifications;
+			const currentDeveloperApi = currentPackage.integrations.developerApi;
 			const pinnedTasks = prunePinnedTaskTombstones(
 				mergePinnedTasksPackages(
 					currentPackage.state.pinnedTasks,
@@ -646,6 +670,7 @@ export class OperonStorage {
 				integrations: {
 					...dataPackage.integrations,
 					mobileNotifications: adoptMobileNotificationsIntegration(currentMobileNotifications, {}),
+					developerApi: currentDeveloperApi,
 				},
 				state: {
 					...dataPackage.state,

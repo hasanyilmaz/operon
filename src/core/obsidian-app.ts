@@ -1,4 +1,4 @@
-import { Editor, App } from 'obsidian';
+import type { Editor, App } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { isRecord, isUnknownFunction } from './unknown-value';
 
@@ -27,6 +27,52 @@ export function getCommunityPlugin(app: App | undefined, pluginId: string): unkn
 	}
 	const plugins = pluginsHost.plugins;
 	return isRecord(plugins) ? plugins[pluginId] : null;
+}
+
+export function getExternalModifiedTimeFrontmatterPropertyNames(
+	app: App | undefined,
+): string[] {
+	const integrations = [
+		{
+			pluginId: 'update-time-on-edit',
+			settingName: 'headerUpdated',
+			isActive: (settings: Record<string, unknown>) => (
+				(settings.dateFormat === "yyyy-MM-dd'T'HH:mm"
+					|| settings.dateFormat === "yyyy-MM-dd'T'HH:mm:ss")
+				&& settings.enableNumberProperties !== true
+			),
+		},
+		{
+			pluginId: 'frontmatter-date-manager',
+			settingName: 'headerUpdated',
+			isActive: (settings: Record<string, unknown>) => (
+				settings.enableAutoUpdate === true
+				&& settings.enableModifiedTime !== false
+				&& (settings.dateFormat === "yyyy-MM-dd'T'HH:mm"
+					|| settings.dateFormat === "yyyy-MM-dd'T'HH:mm:ss")
+				&& settings.enableNumberProperties !== true
+				&& (settings.timezone === undefined || settings.timezone === '')
+			),
+		},
+		{
+			pluginId: 'update-time',
+			settingName: 'updatedPropertyName',
+			isActive: () => true,
+		},
+	] as const;
+	const propertyNames = integrations.flatMap(({ pluginId, settingName, isActive }) => {
+		const plugin = getCommunityPlugin(app, pluginId);
+		if (!isRecord(plugin) || !isRecord(plugin.settings) || !isActive(plugin.settings)) return [];
+		const propertyName = plugin.settings[settingName];
+		if (
+			typeof propertyName !== 'string'
+			|| propertyName.trim() !== propertyName
+			|| propertyName.length === 0
+			|| /[\r\n:]/u.test(propertyName)
+		) return [];
+		return [propertyName];
+	});
+	return [...new Set(propertyNames)];
 }
 
 export function getInternalPlugin(app: App, pluginId: string): unknown {

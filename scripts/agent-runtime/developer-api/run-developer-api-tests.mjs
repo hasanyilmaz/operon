@@ -9,7 +9,9 @@ const tempDirectory = await mkdtemp(path.join(tmpdir(), 'operon-developer-api-te
 try {
 	for (const entry of [
 		'developer-api.test.ts',
+		'task-workflows-developer-api.test.ts',
 		'developer-api-grants.test.ts',
+		'operon-storage-grant-persistence.test.ts',
 		'recovery-store.test.ts',
 	]) {
 		const outfile = path.join(tempDirectory, entry.replace(/\.ts$/u, '.mjs'));

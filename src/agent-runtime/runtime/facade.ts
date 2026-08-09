@@ -24,6 +24,16 @@ import {
 	type TaskQueryRequestV1,
 	type TaskQueryResultV1,
 } from '../contracts/v1/context';
+import {
+	TASK_WORKFLOW_CAPABILITY_REGISTRY_V1,
+	isTaskWorkflowCapabilityIdV1,
+	type TaskFilterQueryRequestV1,
+	type TaskFilterQueryResultV1,
+	type TaskWorkflowApplyRequestV1,
+	type TaskWorkflowMutationResultV1,
+	type TaskWorkflowPreviewRequestV1,
+	type TaskWorkflowPreviewResultV1,
+} from '../extensions/task-workflows-v1';
 import type {
 	RuntimeDiagnosticsV1,
 	RuntimeTransportDiagnosticsV1,
@@ -48,6 +58,8 @@ import type { TimerReadRequestV1, TimerReadResultV1 } from '../contracts/v1/time
 import {
 	validateRuntimeMutationApplyRequestV1,
 	validateRuntimeMutationPreviewRequestV1,
+	validateRuntimeTaskWorkflowApplyRequestV1,
+	validateRuntimeTaskWorkflowPreviewRequestV1,
 } from './mutation-request-validator';
 import { RuntimeLifecycleCoordinatorV1 } from './lifecycle';
 import { cloneRuntimeRevisionV1 } from './revision';
@@ -63,6 +75,7 @@ import {
 	validateTaskGetRequestV1,
 	validateTaskFinderRequestV1,
 	validateTaskQueryRequestV1,
+	validateTaskFilterQueryRequestV1,
 	validateTimerReadRequestV1,
 } from './context-request-validator';
 
@@ -78,7 +91,7 @@ export interface RuntimeFacadePortsV1 {
 	observedAt?(): string;
 	nativeCliTransportAvailable?(): boolean;
 	transportDiagnostics?(): RuntimeTransportDiagnosticsV1 | undefined;
-	capabilityAvailability?(capability: CapabilityIdV1): {
+	capabilityAvailability?(capability: CapabilityIdV1 | import('../extensions/task-workflows-v1').TaskWorkflowCapabilityIdV1): {
 		availability: CapabilityAvailabilityV1;
 		reason?: string;
 	} | undefined;
@@ -86,19 +99,22 @@ export interface RuntimeFacadePortsV1 {
 	resolveEntity?(request: EntityResolveRequestV1, context?: RuntimeInvocationContextV1): Promise<EntityResolutionResultV1>;
 	getTask?(request: TaskGetRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskGetResultV1>;
 	queryTasks?(request: TaskQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskQueryResultV1>;
+	filterQueryTasks?(request: TaskFilterQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFilterQueryResultV1>;
 	findTasks?(request: TaskFinderRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFinderResultV1>;
 	getRelationships?(request: RelationshipRequestV1, context?: RuntimeInvocationContextV1): Promise<RelationshipResultV1>;
 	buildContext?(request: ContextRequestV1, context?: RuntimeInvocationContextV1): Promise<ContextPackV1>;
 	readTimer?(request: TimerReadRequestV1, context?: RuntimeInvocationContextV1): Promise<TimerReadResultV1>;
 	previewMutation?(request: MutationPreviewRequestV1, context?: RuntimeInvocationContextV1): Promise<MutationPreviewResultV1>;
 	applyMutation?(request: MutationApplyRequestV1): Promise<MutationResultV1>;
+	previewTaskWorkflowMutation?(request: TaskWorkflowPreviewRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskWorkflowPreviewResultV1>;
+	applyTaskWorkflowMutation?(request: TaskWorkflowApplyRequestV1): Promise<TaskWorkflowMutationResultV1>;
 }
 
 export function createOperonAgentRuntimeFacadeV1(
 	lifecycle: RuntimeLifecycleCoordinatorV1,
 	ports: RuntimeFacadePortsV1,
 ): OperonAgentRuntimeCoreV1 {
-	const capabilities = (): CapabilityAdvertisementV1[] => CAPABILITY_REGISTRY_V1.map(definition => {
+	const capabilities = (): CapabilityAdvertisementV1[] => [...CAPABILITY_REGISTRY_V1, ...TASK_WORKFLOW_CAPABILITY_REGISTRY_V1].map(definition => {
 		if (lifecycle.getPhase() === 'unloading' && definition.id !== 'system.health') {
 			return {
 				id: definition.id,
@@ -142,7 +158,7 @@ export function createOperonAgentRuntimeFacadeV1(
 	});
 
 	const hasCapability = (name: string): boolean => {
-		if (!isCapabilityIdV1(name)) return false;
+		if (!isCapabilityIdV1(name) && !isTaskWorkflowCapabilityIdV1(name)) return false;
 		const capability = capabilities().find(candidate => candidate.id === name);
 		return capability?.availability === 'available' || capability?.availability === 'degraded';
 	};
@@ -307,6 +323,19 @@ export function createOperonAgentRuntimeFacadeV1(
 		}
 	};
 
+	const filterQueryTasks = async (request: TaskFilterQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFilterQueryResultV1> => {
+		const decoded = validateTaskFilterQueryRequestV1(request);
+		if (!decoded.ok) return readFailure('task-filter-query-result', request, ports, 'invalid-request');
+		if (!ports.filterQueryTasks || !isPublished('tasks.filter-query')) {
+			return readFailure('task-filter-query-result', decoded.value, ports, 'capability-unavailable');
+		}
+		try {
+			return await ports.filterQueryTasks(decoded.value, context);
+		} catch {
+			return readFailure('task-filter-query-result', decoded.value, ports, 'internal-error');
+		}
+	};
+
 	const findTasks = async (request: TaskFinderRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFinderResultV1> => {
 		const decoded = validateTaskFinderRequestV1(request);
 		if (!decoded.ok) return readFailure('task-finder-result', request, ports, 'invalid-request');
@@ -365,14 +394,15 @@ export function createOperonAgentRuntimeFacadeV1(
 	): Promise<MutationPreviewResultV1> => {
 		const decoded = validateRuntimeMutationPreviewRequestV1(request);
 		if (!decoded.ok) return mutationPreviewFacadeFailure(request, 'invalid-request');
-		const capability = MUTATION_CAPABILITY_MAP_V1[decoded.value.mutationKind]?.preview;
+		const baseRequest = decoded.value;
+		const capability = MUTATION_CAPABILITY_MAP_V1[baseRequest.mutationKind]?.preview;
 		if (!capability || !ports.previewMutation || !isPublished(capability)) {
-			return mutationPreviewFacadeFailure(decoded.value, 'capability-unavailable');
+			return mutationPreviewFacadeFailure(baseRequest, 'capability-unavailable');
 		}
 		try {
-			return await ports.previewMutation(decoded.value, context);
+			return await ports.previewMutation(baseRequest, context);
 		} catch {
-			return mutationPreviewFacadeFailure(decoded.value, 'internal-error');
+			return mutationPreviewFacadeFailure(baseRequest, 'internal-error');
 		}
 	};
 
@@ -381,14 +411,44 @@ export function createOperonAgentRuntimeFacadeV1(
 	): Promise<MutationResultV1> => {
 		const decoded = validateRuntimeMutationApplyRequestV1(request, Date.now(), { allowExpired: true });
 		if (!decoded.ok) return mutationApplyFacadeFailure(request, 'invalid-request');
-		const capability = MUTATION_CAPABILITY_MAP_V1[decoded.value.plan.mutationKind]?.apply;
+		const baseRequest = decoded.value;
+		const capability = MUTATION_CAPABILITY_MAP_V1[baseRequest.plan.mutationKind]?.apply;
 		if (!capability || !ports.applyMutation || !isPublished(capability)) {
-			return mutationApplyFacadeFailure(decoded.value, 'capability-unavailable');
+			return mutationApplyFacadeFailure(baseRequest, 'capability-unavailable');
 		}
 		try {
-			return await ports.applyMutation(decoded.value);
+			return await ports.applyMutation(baseRequest);
 		} catch {
-			return mutationApplyFacadeFailure(decoded.value, 'internal-error');
+			return mutationApplyFacadeFailure(baseRequest, 'internal-error');
+		}
+	};
+
+	const previewTaskWorkflowMutation = async (
+		request: TaskWorkflowPreviewRequestV1,
+		context?: RuntimeInvocationContextV1,
+	): Promise<TaskWorkflowPreviewResultV1> => {
+		const decoded = validateRuntimeTaskWorkflowPreviewRequestV1(request);
+		if (!decoded.ok) return mutationPreviewFacadeFailure(request, 'invalid-request') as TaskWorkflowPreviewResultV1;
+		const capability = decoded.value.mutationKind === 'task.adopt' ? 'tasks.adopt.preview' : 'tasks.create.identity-placeholders';
+		if (!ports.previewTaskWorkflowMutation || !isPublished(capability)) return mutationPreviewFacadeFailure(decoded.value, 'capability-unavailable') as TaskWorkflowPreviewResultV1;
+		try {
+			return await ports.previewTaskWorkflowMutation(decoded.value, context);
+		} catch {
+			return mutationPreviewFacadeFailure(decoded.value, 'internal-error') as TaskWorkflowPreviewResultV1;
+		}
+	};
+
+	const applyTaskWorkflowMutation = async (
+		request: TaskWorkflowApplyRequestV1,
+	): Promise<TaskWorkflowMutationResultV1> => {
+		const decoded = validateRuntimeTaskWorkflowApplyRequestV1(request, Date.now());
+		if (!decoded.ok) return mutationApplyFacadeFailure(request, 'invalid-request') as TaskWorkflowMutationResultV1;
+		const capability = decoded.value.plan.mutationKind === 'task.adopt' ? 'tasks.adopt.apply' : 'tasks.create.apply';
+		if (!ports.applyTaskWorkflowMutation || !isPublished(capability)) return mutationApplyFacadeFailure(decoded.value, 'capability-unavailable') as TaskWorkflowMutationResultV1;
+		try {
+			return await ports.applyTaskWorkflowMutation(decoded.value);
+		} catch {
+			return mutationApplyFacadeFailure(decoded.value, 'internal-error') as TaskWorkflowMutationResultV1;
 		}
 	};
 
@@ -438,11 +498,16 @@ export function createOperonAgentRuntimeFacadeV1(
 		snapshot: catalogSnapshot,
 	});
 	const entities = Object.freeze({ resolve: resolveEntity });
-	const tasks = Object.freeze({ get: getTask, query: queryTasks, find: findTasks });
+	const tasks = Object.freeze({ get: getTask, query: queryTasks, filterQuery: filterQueryTasks, find: findTasks });
 	const relationships = Object.freeze({ get: getRelationships });
 	const context = Object.freeze({ build: buildContext });
 	const timers = Object.freeze({ read: readTimer });
-	const mutations = Object.freeze({ preview: previewMutation, apply: applyMutation });
+	const mutations = Object.freeze({
+		preview: previewMutation,
+		apply: applyMutation,
+		previewTaskWorkflow: previewTaskWorkflowMutation,
+		applyTaskWorkflow: applyTaskWorkflowMutation,
+	});
 	return Object.freeze({
 		apiVersion: RUNTIME_API_VERSION_V1,
 		hasCapability,
@@ -457,7 +522,7 @@ export function createOperonAgentRuntimeFacadeV1(
 	});
 
 	function isPublished(
-		capability: CapabilityIdV1,
+		capability: CapabilityIdV1 | import('../extensions/task-workflows-v1').TaskWorkflowCapabilityIdV1,
 	): boolean {
 		const advertisement = capabilities().find(item => item.id === capability);
 		return advertisement?.availability === 'available' || advertisement?.availability === 'degraded';
@@ -531,6 +596,7 @@ type NonContextReadResultKindV1 =
 	| 'entity-resolution-result'
 	| 'task-get-result'
 	| 'task-query-result'
+	| 'task-filter-query-result'
 	| 'task-finder-result'
 	| 'relationship-result';
 
@@ -553,6 +619,12 @@ function readFailure(
 	code: 'invalid-request' | 'capability-unavailable' | 'internal-error',
 ): TaskQueryResultV1;
 function readFailure(
+	kind: 'task-filter-query-result',
+	request: unknown,
+	ports: RuntimeFacadePortsV1,
+	code: 'invalid-request' | 'capability-unavailable' | 'internal-error',
+): TaskFilterQueryResultV1;
+function readFailure(
 	kind: 'task-finder-result',
 	request: unknown,
 	ports: RuntimeFacadePortsV1,
@@ -569,7 +641,7 @@ function readFailure(
 	request: unknown,
 	ports: RuntimeFacadePortsV1,
 	code: 'invalid-request' | 'capability-unavailable' | 'internal-error',
-): EntityResolutionResultV1 | TaskGetResultV1 | TaskQueryResultV1 | TaskFinderResultV1 | RelationshipResultV1 {
+): EntityResolutionResultV1 | TaskGetResultV1 | TaskQueryResultV1 | TaskFilterQueryResultV1 | TaskFinderResultV1 | RelationshipResultV1 {
 	const base = {
 		contractVersion: CONTRACT_VERSION_V1,
 		requestId: readRequestId(request) ?? 'invalid-request',
@@ -585,6 +657,7 @@ function readFailure(
 		case 'entity-resolution-result': return base;
 		case 'task-get-result': return base;
 		case 'task-query-result': return base;
+		case 'task-filter-query-result': return base;
 		case 'task-finder-result': return base;
 		case 'relationship-result': return base;
 	}

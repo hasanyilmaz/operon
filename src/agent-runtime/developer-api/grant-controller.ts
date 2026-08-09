@@ -1,4 +1,3 @@
-import type { CapabilityIdV1 } from '../contracts/v1/capabilities';
 import type { OperonDeveloperApiConsumerPluginV1 } from '../public/v1/developer-api';
 import {
 	approveDeveloperApiCapabilities,
@@ -14,11 +13,13 @@ import {
 	type DeveloperApiGrantEvaluationV1,
 	type DeveloperApiGrantPackageV1,
 	type DeveloperApiGrantRecordV1,
+	type DeveloperApiGrantCapabilityV1,
 } from './grants';
 import type { OperonDataPackageV1 } from '../../storage/operon-data-package';
 
 export interface DeveloperApiGrantDataStoreV1 {
 	getDataPackage(): OperonDataPackageV1;
+	canPersist?(): boolean;
 	updateDataPackage(
 		mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1,
 	): Promise<void>;
@@ -51,17 +52,19 @@ export type DeveloperApiGrantAuditActionV1 =
 	| 'version-suspended';
 
 export interface DeveloperApiGrantAuditEventV1 {
-	readonly phase: 'intent' | 'activated';
+	readonly phase: 'intent' | 'activated' | 'failed';
+	readonly correlationId: string;
 	readonly action: DeveloperApiGrantAuditActionV1;
 	readonly consumerId: string;
 	readonly consumerName: string;
 	readonly consumerVersion: string;
-	readonly capabilities: readonly CapabilityIdV1[];
+	readonly capabilities: readonly DeveloperApiGrantCapabilityV1[];
 	readonly revision: number;
 	readonly occurredAt: string;
 }
 
 export interface DeveloperApiGrantAuditPortV1 {
+	createCorrelationId(): string;
 	record(event: DeveloperApiGrantAuditEventV1): Promise<void>;
 }
 
@@ -74,22 +77,19 @@ export interface DeveloperApiGrantAuditPortV1 {
 export class DeveloperApiGrantControllerV1 {
 	private grants: DeveloperApiGrantPackageV1;
 	private persistenceError: Error | null = null;
+	private persistenceErrorRecoverable = false;
 	private pendingWrites = 0;
 	private writeQueue: Promise<void> = Promise.resolve();
+	private readonly startupAuditRecoveryTransitions: readonly Readonly<{
+		consumerId: string;
+		revision: number;
+	}>[];
+	private readonly startupAuditRecoveryAt: string;
 
 	constructor(private readonly options: DeveloperApiGrantControllerOptionsV1) {
-		this.grants = normalizeDeveloperApiGrantPackage(
-			options.store.getDataPackage().integrations.developerApi,
-		);
-		const nowIso = this.nowIso();
-		for (const transition of options.startupAuditRecoveryTransitions ?? []) {
-			this.grants = suspendDeveloperApiGrantForAuditRecovery(
-				this.grants,
-				transition.consumerId,
-				transition.revision,
-				nowIso,
-			);
-		}
+		this.startupAuditRecoveryTransitions = options.startupAuditRecoveryTransitions ?? [];
+		this.startupAuditRecoveryAt = this.nowIso();
+		this.grants = this.readGrantsFromStore();
 	}
 
 	verifyConsumer(
@@ -104,11 +104,15 @@ export class DeveloperApiGrantControllerV1 {
 
 	evaluate(
 		consumer: DeveloperApiConsumerDescriptorV1,
-		requestedCapabilities: readonly CapabilityIdV1[],
+		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): DeveloperApiGrantEvaluationV1 {
+		this.syncFromStoreIfIdle();
 		this.observeConsumerVersion(consumer, requestedCapabilities);
 		const evaluation = evaluateDeveloperApiGrant(this.grants, consumer, requestedCapabilities);
-		if (!this.hasPersistenceError()) return evaluation;
+		if (
+			!this.hasPersistenceFailure()
+			&& (evaluation.state !== 'active' || this.pendingWrites === 0)
+		) return evaluation;
 		return {
 			...evaluation,
 			state: 'suspended',
@@ -119,8 +123,10 @@ export class DeveloperApiGrantControllerV1 {
 
 	observeConsumerVersion(
 		consumer: DeveloperApiConsumerDescriptorV1,
-		requestedCapabilities: readonly CapabilityIdV1[],
+		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): boolean {
+		this.syncFromStoreIfIdle();
+		if (this.isStorePersistenceUnavailable()) return false;
 		const reconciliation = reconcileDeveloperApiConsumerVersion(
 			this.grants,
 			consumer,
@@ -147,8 +153,10 @@ export class DeveloperApiGrantControllerV1 {
 
 	recordPending(
 		consumer: DeveloperApiConsumerDescriptorV1,
-		requestedCapabilities: readonly CapabilityIdV1[],
+		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): void {
+		this.syncFromStoreIfIdle();
+		if (this.isStorePersistenceUnavailable()) return;
 		const nowIso = this.nowIso();
 		const next = recordDeveloperApiGrantRequest(
 			this.grants,
@@ -163,8 +171,9 @@ export class DeveloperApiGrantControllerV1 {
 
 	async approve(
 		consumer: DeveloperApiConsumerMetadataV1,
-		capabilities: readonly CapabilityIdV1[],
+		capabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): Promise<DeveloperApiGrantRecordV1> {
+		this.requirePersistenceAvailable();
 		const next = approveDeveloperApiCapabilities(
 			this.grants,
 			consumer,
@@ -178,6 +187,7 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	async revoke(consumerId: string): Promise<DeveloperApiGrantRecordV1 | null> {
+		this.requirePersistenceAvailable();
 		const next = revokeDeveloperApiGrant(this.grants, consumerId, this.nowIso());
 		this.grants = next;
 		this.enqueuePersist(next, this.auditTransition('revoke', next, consumerId, []));
@@ -187,8 +197,9 @@ export class DeveloperApiGrantControllerV1 {
 
 	async approvePending(
 		consumerId: string,
-		capabilities: readonly CapabilityIdV1[],
+		capabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): Promise<DeveloperApiGrantRecordV1> {
+		this.requirePersistenceAvailable();
 		const existing = this.requireRecord(consumerId);
 		const pending = new Set(existing.pendingCapabilities);
 		const approved = capabilities.filter(capability => pending.has(capability));
@@ -204,8 +215,9 @@ export class DeveloperApiGrantControllerV1 {
 
 	async denyPending(
 		consumerId: string,
-		capabilities: readonly CapabilityIdV1[] | 'all' = 'all',
+		capabilities: readonly DeveloperApiGrantCapabilityV1[] | 'all' = 'all',
 	): Promise<DeveloperApiGrantRecordV1> {
+		this.requirePersistenceAvailable();
 		const existing = this.requireRecord(consumerId);
 		const next = denyDeveloperApiCapabilities(
 			this.grants,
@@ -223,11 +235,13 @@ export class DeveloperApiGrantControllerV1 {
 	}
 
 	list(): readonly DeveloperApiGrantRecordV1[] {
+		this.syncFromStoreIfIdle();
+		if (this.isStorePersistenceUnavailable()) return [];
 		return Object.values(this.grants.consumersById).map(record => structuredClone(record));
 	}
 
 	hasPersistenceError(): boolean {
-		return this.persistenceError !== null || this.pendingWrites > 0;
+		return this.hasPersistenceFailure() || this.pendingWrites > 0;
 	}
 
 	getPersistenceError(): Error | null {
@@ -244,14 +258,20 @@ export class DeveloperApiGrantControllerV1 {
 		audit?: Readonly<{
 			intent: DeveloperApiGrantAuditEventV1;
 			activated: DeveloperApiGrantAuditEventV1;
+			failed: DeveloperApiGrantAuditEventV1;
 		}>,
 	): void {
 		this.persistenceError = null;
+		this.persistenceErrorRecoverable = false;
 		this.pendingWrites += 1;
+		let intentRecorded = false;
 		this.writeQueue = this.writeQueue
 			.catch(() => undefined)
 			.then(async () => {
-				if (audit) await this.options.audit?.record(audit.intent);
+				if (audit) {
+					await this.options.audit?.record(audit.intent);
+					intentRecorded = true;
+				}
 				await this.options.store.updateDataPackage(dataPackage => ({
 					...dataPackage,
 					integrations: {
@@ -261,26 +281,91 @@ export class DeveloperApiGrantControllerV1 {
 				}));
 				if (audit) await this.options.audit?.record(audit.activated);
 				this.pendingWrites -= 1;
-				if (this.pendingWrites === 0) this.persistenceError = null;
+				if (this.pendingWrites === 0) {
+					this.persistenceError = null;
+					this.persistenceErrorRecoverable = false;
+				}
 			})
-			.catch(error => {
+			.catch(async error => {
 				this.pendingWrites -= 1;
+				let recoverable = !audit || !intentRecorded;
+				if (audit && intentRecorded) {
+					const durableGrants = normalizeDeveloperApiGrantPackage(
+						this.options.store.getDataPackage().integrations.developerApi,
+					);
+					const durableSnapshotMatches = JSON.stringify(durableGrants)
+						=== JSON.stringify(normalizeDeveloperApiGrantPackage(snapshot));
+					if (!durableSnapshotMatches) {
+						try {
+							await this.options.audit?.record(audit.failed);
+							recoverable = true;
+						} catch {
+							// The unmatched intent remains the fail-closed restart fence.
+						}
+					}
+				}
 				this.persistenceError = error instanceof Error ? error : new Error(String(error));
+				this.persistenceErrorRecoverable = recoverable;
 				throw this.persistenceError;
 			});
+	}
+
+	private syncFromStoreIfIdle(): void {
+		if (this.pendingWrites > 0) return;
+		this.grants = this.readGrantsFromStore();
+		if (this.persistenceError && this.persistenceErrorRecoverable) {
+			this.persistenceError = null;
+			this.persistenceErrorRecoverable = false;
+		}
+	}
+
+	private readGrantsFromStore(): DeveloperApiGrantPackageV1 {
+		let grants = normalizeDeveloperApiGrantPackage(
+			this.options.store.getDataPackage().integrations.developerApi,
+		);
+		for (const transition of this.startupAuditRecoveryTransitions) {
+			grants = suspendDeveloperApiGrantForAuditRecovery(
+				grants,
+				transition.consumerId,
+				transition.revision,
+				this.startupAuditRecoveryAt,
+			);
+		}
+		return grants;
+	}
+
+	private isStorePersistenceUnavailable(): boolean {
+		return this.options.store.canPersist?.() === false;
+	}
+
+	private hasPersistenceFailure(): boolean {
+		return this.persistenceError !== null || this.isStorePersistenceUnavailable();
+	}
+
+	private requirePersistenceAvailable(): void {
+		this.syncFromStoreIfIdle();
+		if (this.isStorePersistenceUnavailable()) {
+			throw new Error('Developer API grant persistence is unavailable');
+		}
 	}
 
 	private auditTransition(
 		action: DeveloperApiGrantAuditActionV1,
 		snapshot: DeveloperApiGrantPackageV1,
 		consumerId: string,
-		capabilities: readonly CapabilityIdV1[],
-	): { intent: DeveloperApiGrantAuditEventV1; activated: DeveloperApiGrantAuditEventV1 } | undefined {
+		capabilities: readonly DeveloperApiGrantCapabilityV1[],
+	): {
+		intent: DeveloperApiGrantAuditEventV1;
+		activated: DeveloperApiGrantAuditEventV1;
+		failed: DeveloperApiGrantAuditEventV1;
+	} | undefined {
 		if (!this.options.audit) return undefined;
 		const record = snapshot.consumersById[consumerId];
 		if (!record) return undefined;
 		const occurredAt = this.nowIso();
+		const correlationId = this.options.audit.createCorrelationId();
 		const base = {
+			correlationId,
 			action,
 			consumerId,
 			consumerName: record.consumerName,
@@ -292,6 +377,7 @@ export class DeveloperApiGrantControllerV1 {
 		return {
 			intent: { ...base, phase: 'intent' },
 			activated: { ...base, phase: 'activated' },
+			failed: { ...base, phase: 'failed' },
 		};
 	}
 

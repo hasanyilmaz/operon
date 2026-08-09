@@ -118,6 +118,23 @@ export class RuntimeContextCursorCodecV1 {
 		});
 	}
 
+	async encodeFilterQuery(options: {
+		revision: ContextRevisionV1;
+		queryDigest: string;
+		asOf: string;
+		offset: number;
+	}): Promise<string> {
+		return await this.encodeDigest(options);
+	}
+
+	async decodeFilterQuery(options: {
+		cursor: string;
+		revision: ContextRevisionV1;
+		queryDigest: string;
+	}): Promise<ContextCursorDecodeResultV1> {
+		return await this.decodeDigest(options);
+	}
+
 	private async encodeDigest(options: {
 		revision: ContextRevisionV1;
 		queryDigest: string;
@@ -268,7 +285,7 @@ function staleCursor(): ContextCursorDecodeResultV1 {
 		error: structuredErrorV1(
 			'stale-cursor',
 			'The cursor is invalid, stale, or belongs to another Runtime session.',
-			{ retryable: true },
+			{ retryable: false },
 		),
 	};
 }
