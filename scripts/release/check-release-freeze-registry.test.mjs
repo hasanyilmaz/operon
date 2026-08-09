@@ -243,7 +243,7 @@ test('release artifact comparison accepts exact identity and rejects every artif
 	}
 });
 
-test('release artifact reader enforces no-follow identity for every working artifact', async () => {
+test('release artifact reader enforces no-follow identity for every working artifact', async t => {
 	const root = await mkdtemp(path.join(await realpath(os.tmpdir()), 'operon-release-artifact-reader-'));
 	try {
 		const contents = {
@@ -279,6 +279,11 @@ test('release artifact reader enforces no-follow identity for every working arti
 		await rm(path.join(root, 'styles.css'));
 		await assert.rejects(readReleaseArtifactIdentity(root, frozen));
 		await writeFile(path.join(root, 'styles.css'), contents['styles.css']);
+		const symlinkUnavailable = symlinkCapabilityUnavailableReason();
+		if (symlinkUnavailable) {
+			t.diagnostic(`Symlink-specific assertion skipped: ${symlinkUnavailable}`);
+			return;
+		}
 		await rm(path.join(root, 'manifest.json'));
 		const validManifestTarget = path.join(root, 'manifest-target.json');
 		await writeFile(validManifestTarget, contents['manifest.json']);
