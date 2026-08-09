@@ -58,8 +58,6 @@ export type {
 	TaskQueryPageV1,
 	TaskQueryRequestV1,
 	TaskQueryResultV1,
-	TaskFilterQueryRequestV1,
-	TaskFilterQueryResultV1,
 	TaxonomyReferenceV1,
 	TrackerSummaryV1,
 	WorkflowReferenceV1,
@@ -67,8 +65,6 @@ export type {
 } from '../../contracts/v1/context';
 
 export type {
-	AdoptTaskSpecV1,
-	AdoptTaskPreviewIntentV1,
 	ConvertTaskSpecV1,
 	CreateFieldItemV1,
 	CreateTaskDependencyRelationV1,

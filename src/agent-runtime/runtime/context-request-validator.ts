@@ -20,10 +20,13 @@ import {
 	type RelationshipRequestV1,
 	type TaskGetRequestV1,
 	type TaskFinderRequestV1,
-	type TaskFilterQueryRequestV1,
 	type TaskQueryFiltersV1,
 	type TaskQueryRequestV1,
 } from '../contracts/v1/context';
+import {
+	decodeTaskFilterQueryRequestExtensionV1,
+	type TaskFilterQueryRequestV1,
+} from '../extensions/task-workflows-v1';
 import {
 	OPERON_ID_PATTERN_V1,
 	validateVaultRelativePathV1,
@@ -101,8 +104,6 @@ export function validateCliRuntimeRequestV1(
 			return validateTaskGetRequestV1(value);
 		case 'tasks.query':
 			return validateTaskQueryRequestV1(value);
-		case 'tasks.filter-query':
-			return validateTaskFilterQueryRequestV1(value);
 		case 'tasks.finder':
 			return validateTaskFinderRequestV1(value);
 		case 'relationships.get':
@@ -156,18 +157,8 @@ export function validateTaskQueryRequestV1(value: unknown): ValidatedRequestV1<T
 }
 
 export function validateTaskFilterQueryRequestV1(value: unknown): ValidatedRequestV1<TaskFilterQueryRequestV1> {
-	return validateReadRequest(value, 'task-filter-query', ['filterSetId', 'scope', 'include', 'limit', 'cursor'], object => (
-		isBoundedNonEmptyString(object.filterSetId, 256)
-		&& (object.scope === undefined || (
-			isExactObject(object.scope, ['kind', 'path'])
-			&& isEnum(object.scope.kind, ['exact-file', 'folder-tree'] as const)
-			&& typeof object.scope.path === 'string'
-			&& validateVaultRelativePathV1(object.scope.path) === null
-		))
-		&& (object.include === undefined || isHydrationKeys(object.include))
-		&& (object.limit === undefined || isIntegerInRange(object.limit, 1, 250))
-		&& (object.cursor === undefined || isCursor(object.cursor))
-	));
+	const decoded = decodeTaskFilterQueryRequestExtensionV1(value);
+	return decoded.ok ? { ok: true, value: decoded.value } : { ok: false };
 }
 
 export function validateTaskFinderRequestV1(value: unknown): ValidatedRequestV1<TaskFinderRequestV1> {

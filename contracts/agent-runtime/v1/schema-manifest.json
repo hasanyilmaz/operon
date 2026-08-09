@@ -11,7 +11,7 @@
     {
       "file": "capabilities.schema.json",
       "id": "urn:operon:schema:runtime:v1:capabilities.schema.json",
-      "sha256": "6a742a42eb61d60f5cad8163445fde555e1003259a68840723afd5faeb55b623"
+      "sha256": "04aad7ea7afb01f72adab917820696c76ba8ab35da9d419552b01bf19b199ea7"
     },
     {
       "file": "catalog.schema.json",
@@ -21,7 +21,7 @@
     {
       "file": "cli.schema.json",
       "id": "urn:operon:schema:runtime:v1:cli.schema.json",
-      "sha256": "13845ec93cc0b035d623ffc75beb40713fe3eacc8e170de990c4a353958d2515"
+      "sha256": "1d968c0c5716e497b85e8fc8af639f96e68e2d021e2d6b6315611b37246fe9a8"
     },
     {
       "file": "common.schema.json",
@@ -41,7 +41,7 @@
     {
       "file": "developer-api.schema.json",
       "id": "urn:operon:schema:runtime:v1:developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b"
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc"
     },
     {
       "file": "lifecycle.schema.json",
@@ -51,12 +51,12 @@
     {
       "file": "mutation.schema.json",
       "id": "urn:operon:schema:runtime:v1:mutation.schema.json",
-      "sha256": "37adca88cb21dab51afe4b2efdabd26ef6cbf3360d8b1947ffd50189434ae368"
+      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98"
     },
     {
       "file": "read.schema.json",
       "id": "urn:operon:schema:runtime:v1:read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1"
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e"
     },
     {
       "file": "schema-manifest.schema.json",
@@ -81,7 +81,7 @@
       "schemaId": "capability-registry",
       "ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityRegistry",
       "file": "capabilities.schema.json",
-      "sha256": "6a742a42eb61d60f5cad8163445fde555e1003259a68840723afd5faeb55b623",
+      "sha256": "04aad7ea7afb01f72adab917820696c76ba8ab35da9d419552b01bf19b199ea7",
       "stability": "stable"
     },
     {
@@ -95,21 +95,21 @@
       "schemaId": "cli-client-error",
       "ref": "urn:operon:schema:runtime:v1:cli.schema.json#/$defs/clientError",
       "file": "cli.schema.json",
-      "sha256": "13845ec93cc0b035d623ffc75beb40713fe3eacc8e170de990c4a353958d2515",
+      "sha256": "1d968c0c5716e497b85e8fc8af639f96e68e2d021e2d6b6315611b37246fe9a8",
       "stability": "stable"
     },
     {
       "schemaId": "cli-invocation",
       "ref": "urn:operon:schema:runtime:v1:cli.schema.json#/$defs/invocation",
       "file": "cli.schema.json",
-      "sha256": "13845ec93cc0b035d623ffc75beb40713fe3eacc8e170de990c4a353958d2515",
+      "sha256": "1d968c0c5716e497b85e8fc8af639f96e68e2d021e2d6b6315611b37246fe9a8",
       "stability": "stable"
     },
     {
       "schemaId": "cli-result",
       "ref": "urn:operon:schema:runtime:v1:cli.schema.json#/$defs/result",
       "file": "cli.schema.json",
-      "sha256": "13845ec93cc0b035d623ffc75beb40713fe3eacc8e170de990c4a353958d2515",
+      "sha256": "1d968c0c5716e497b85e8fc8af639f96e68e2d021e2d6b6315611b37246fe9a8",
       "stability": "stable"
     },
     {
@@ -130,133 +130,133 @@
       "schemaId": "context-pack",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/contextPack",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "context-request",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/contextRequest",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "developer-api-access-failure",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/accessFailure",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "developer-api-access-request",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/accessRequest",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "developer-api-channel-status",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/channelStatus",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "developer-mutation-apply-input",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/mutationApplyInput",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "developer-mutation-execution-result",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/mutationExecutionResult",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "developer-mutation-pending-recoveries-result",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/mutationPendingRecoveriesResult",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "developer-mutation-preview-input",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/mutationPreviewInput",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "developer-mutation-preview-result",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/mutationPreviewResult",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "developer-mutation-recover-input",
       "ref": "urn:operon:schema:runtime:v1:developer-api.schema.json#/$defs/mutationRecoverInput",
       "file": "developer-api.schema.json",
-      "sha256": "b28859e3e276b0f1a32bef2218e3bb6d36a8caef3e0a4ba4277b922acd77be8b",
+      "sha256": "27c099c472830cc87d69ce59706b10508872d5a32d9e148a6704aa46f2a8c4dc",
       "stability": "stable"
     },
     {
       "schemaId": "entity-resolution-result",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/entityResolutionResult",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "entity-resolve-request",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/entityResolveRequest",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "field-catalog",
       "ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/fieldCatalog",
       "file": "capabilities.schema.json",
-      "sha256": "6a742a42eb61d60f5cad8163445fde555e1003259a68840723afd5faeb55b623",
+      "sha256": "04aad7ea7afb01f72adab917820696c76ba8ab35da9d419552b01bf19b199ea7",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-apply-request",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationApplyRequest",
       "file": "mutation.schema.json",
-      "sha256": "37adca88cb21dab51afe4b2efdabd26ef6cbf3360d8b1947ffd50189434ae368",
+      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-preview-request",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationPreviewRequest",
       "file": "mutation.schema.json",
-      "sha256": "37adca88cb21dab51afe4b2efdabd26ef6cbf3360d8b1947ffd50189434ae368",
+      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-preview-result",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationPreviewResult",
       "file": "mutation.schema.json",
-      "sha256": "37adca88cb21dab51afe4b2efdabd26ef6cbf3360d8b1947ffd50189434ae368",
+      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-receipt",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationReceipt",
       "file": "mutation.schema.json",
-      "sha256": "37adca88cb21dab51afe4b2efdabd26ef6cbf3360d8b1947ffd50189434ae368",
+      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
       "stability": "stable"
     },
     {
       "schemaId": "mutation-result",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationResult",
       "file": "mutation.schema.json",
-      "sha256": "37adca88cb21dab51afe4b2efdabd26ef6cbf3360d8b1947ffd50189434ae368",
+      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
       "stability": "stable"
     },
     {
@@ -270,14 +270,14 @@
       "schemaId": "relationship-request",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/relationshipRequest",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "relationship-result",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/relationshipResult",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
@@ -298,7 +298,7 @@
       "schemaId": "sealed-mutation-plan",
       "ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/sealedMutationPlan",
       "file": "mutation.schema.json",
-      "sha256": "37adca88cb21dab51afe4b2efdabd26ef6cbf3360d8b1947ffd50189434ae368",
+      "sha256": "c0b193182e05b69c0e2cfb3a7d38c839ba516a6f4c9e71bb612b7d704a8fdf98",
       "stability": "stable"
     },
     {
@@ -316,59 +316,45 @@
       "stability": "stable"
     },
     {
-      "schemaId": "task-filter-query-request",
-      "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFilterQueryRequest",
-      "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
-      "stability": "stable"
-    },
-    {
-      "schemaId": "task-filter-query-result",
-      "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFilterQueryResult",
-      "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
-      "stability": "stable"
-    },
-    {
       "schemaId": "task-finder-request",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFinderRequest",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "task-finder-result",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskFinderResult",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "task-get-request",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskGetRequest",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "task-get-result",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskGetResult",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "task-query-request",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskQueryRequest",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
       "schemaId": "task-query-result",
       "ref": "urn:operon:schema:runtime:v1:read.schema.json#/$defs/taskQueryResult",
       "file": "read.schema.json",
-      "sha256": "63b86b0e9617f33274aefbac8e30273ad2d412f89134406ec040295612c05cd1",
+      "sha256": "330c4f353d91a911bb49d31109cd872ba0bcf1d686fd88579c1fd2515c50405e",
       "stability": "stable"
     },
     {
@@ -393,5 +379,5 @@
       "stability": "stable"
     }
   ],
-  "aggregateSha256": "d1ade3d9214c5ad06f3731388c15751d240993045e124da39f09f1a0ba099c4e"
+  "aggregateSha256": "7cc7826093758c61491551c9ee925440e7641fecc44b953f7ea2c8595eb345fa"
 }

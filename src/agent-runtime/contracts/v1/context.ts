@@ -473,41 +473,6 @@ export type TaskQueryResultV1 = ReadResultBaseV1 & {
 	}
 );
 
-export interface TaskFilterQueryRequestV1 extends ReadRequestBaseV1 {
-	kind: 'task-filter-query';
-	filterSetId: string;
-	scope?: {
-		kind: 'exact-file' | 'folder-tree';
-		path: string;
-	};
-	include?: ContextHydrationKeyV1[];
-	limit?: number;
-	cursor?: string;
-}
-
-export type TaskFilterQueryResultV1 = ReadResultBaseV1 & {
-	kind: 'task-filter-query-result';
-} & (
-	| {
-		ok: true;
-		contextRevision: ContextRevisionV1;
-		tasks: TaskContextV1[];
-		page: TaskQueryPageV1;
-		provenance: ProvenanceV1[];
-		truncations: TruncationV1[];
-		error?: never;
-	}
-	| {
-		ok: false;
-		contextRevision?: ContextRevisionV1;
-		error: StructuredErrorV1;
-		tasks?: never;
-		page?: never;
-		provenance?: never;
-		truncations?: never;
-	}
-);
-
 export interface RelationshipRequestV1 extends ReadRequestBaseV1 {
 	kind: 'relationship';
 	selector: TaskSelectorV1;

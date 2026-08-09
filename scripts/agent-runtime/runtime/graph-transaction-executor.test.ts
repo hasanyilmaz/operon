@@ -32,6 +32,8 @@ async function run(): Promise<void> {
 	await testPostflightDriftDoesNotMoveBackToCommitting();
 	await testCompensationConflict();
 	await testInspectionFailure();
+	await testIdentitySourceRepeatInterruptionRecoveryAndReplay();
+	await testIdentityRepeatConflictCompensatesSource();
 	console.log('Graph transaction executor tests passed');
 }
 
@@ -337,6 +339,57 @@ async function testInspectionFailure(): Promise<void> {
 	});
 }
 
+async function testIdentitySourceRepeatInterruptionRecoveryAndReplay(): Promise<void> {
+	const journal = buildIdentityJournal('prepared', 0);
+	const states: State[] = ['before', null];
+	const checkpoints: string[] = [];
+	await assert.rejects(executeRuntimeGraphTransactionCommitV1(
+		journal,
+		async (_step, index) => {
+			states[index] = 'after';
+			return true;
+		},
+		async value => { checkpoints.push(`${value.phase}:${value.completedStepCount}`); },
+		(_step, index) => {
+			if (index === 0) throw new Error('identity-source-interruption');
+		},
+	));
+	assert.deepEqual(states, ['after', null]);
+	assert.deepEqual(checkpoints, ['committing:1']);
+	const retained = { ...journal, phase: 'committing' as const, completedStepCount: 1 };
+	const recoveryEvents: string[] = [];
+	const recoveryPorts = buildPorts(states, recoveryEvents);
+	recoveryPorts.verifyState = async expected => journal.steps.every((step, index) => stateMatches(states[index], step[expected]));
+	const recovered = await executeRuntimeGraphTransactionRecoveryV1(retained, recoveryPorts);
+	assert.equal(recovered.status, 'forward-completed');
+	assert.deepEqual(states, ['after', 'after']);
+	const replayEvents: string[] = [];
+	const replayPorts = buildPorts(states, replayEvents);
+	replayPorts.verifyState = async expected => journal.steps.every((step, index) => stateMatches(states[index], step[expected]));
+	const replayed = await executeRuntimeGraphTransactionRecoveryV1(
+		{ ...retained, phase: 'postflight', completedStepCount: 2 },
+		replayPorts,
+	);
+	assert.equal(replayed.status, 'forward-completed');
+	assert.equal(replayEvents.some(event => event.startsWith('forward:')), false, 'all-after same-plan replay must not rewrite source or repeat state');
+}
+
+async function testIdentityRepeatConflictCompensatesSource(): Promise<void> {
+	const journal = buildIdentityJournal('prepared', 0);
+	const states: State[] = ['before', null];
+	const events: string[] = [];
+	const ports = buildPorts(states, events);
+	ports.applyForward = async (_step, index) => {
+		events.push(`forward:${index}`);
+		if (index === 1) throw new Error('repeat-series-conflict');
+		states[index] = 'after';
+	};
+	ports.verifyState = async expected => journal.steps.every((step, index) => stateMatches(states[index], step[expected]));
+	const result = await executeRuntimeGraphTransactionRecoveryV1(journal, ports);
+	assert.equal(result.status, 'compensated');
+	assert.deepEqual(states, ['before', null]);
+}
+
 function buildPorts(
 	states: State[],
 	events: string[],
@@ -422,6 +475,19 @@ function buildSourceDeleteJournal(
 			content: null,
 		},
 	};
+	return journal;
+}
+
+function buildIdentityJournal(
+	phase: GraphTransactionJournalV1['phase'],
+	completedStepCount: number,
+): GraphTransactionJournalV1 {
+	const journal = buildJournal(phase, completedStepCount, 2);
+	journal.mutationKind = 'task.create';
+	journal.steps = [
+		{ ...journal.steps[0], stepId: 'source:Task.md', groupId: 'task-source:Task.md', resourceKey: 'Task.md' },
+		{ ...journal.steps[1], stepId: 'repeat:series-1', groupId: 'task-source:Task.md', resourceKind: 'repeat-series', resourceKey: 'series-1', operation: 'create', before: resourceState(null), after: resourceState('after') },
+	];
 	return journal;
 }
 

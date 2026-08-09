@@ -11,8 +11,8 @@ import {
 	decodeTaskGetResultV1,
 	decodeTaskQueryRequestV1,
 	decodeTaskQueryResultV1,
-	decodeTaskFilterQueryResultV1,
 } from '../../../src/agent-runtime/contracts/v1/decode';
+import { decodeTaskFilterQueryResultExtensionV1 as decodeTaskFilterQueryResultV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1';
 import { structuredErrorV1 } from '../../../src/agent-runtime/contracts/v1/primitives';
 import type { ContextRevisionV1 } from '../../../src/agent-runtime/contracts/v1/identity';
 import type {

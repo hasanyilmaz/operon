@@ -16,6 +16,7 @@ import {
 	structuredErrorV1,
 } from '../contracts/v1/primitives';
 import type { OperonAgentRuntimeCoreV1 } from '../runtime/types';
+import type { TaskWorkflowCliResultEnvelopeV1 } from '../extensions/task-workflows-v1';
 import type { RuntimeTimingSinkV1 } from '../runtime/timing-probe';
 import { createAgentRuntimeDesktopNodeApiLoaderV1 } from './desktop-node-api';
 import { dispatchAgentRuntimeCliV1 } from './dispatcher';
@@ -55,7 +56,14 @@ interface AgentRuntimeCliRegistrationStateV1 {
 
 const registrationByPluginInstance = new WeakMap<object, AgentRuntimeCliRegistrationStateV1>();
 
-const COMMAND_DESCRIPTIONS_V1: Readonly<Record<CliCommandV1, string>> = Object.freeze({
+type RuntimeCliCommandV1 = CliCommandV1 | 'tasks.filter-query';
+const RUNTIME_CLI_COMMANDS_V1: readonly RuntimeCliCommandV1[] = [...CLI_COMMANDS_V1, 'tasks.filter-query'];
+const RUNTIME_CLI_HANDLERS_V1: Readonly<Record<RuntimeCliCommandV1, string>> = Object.freeze({
+	...CLI_COMMAND_HANDLER_V1,
+	'tasks.filter-query': 'operon:filter-query',
+});
+
+const COMMAND_DESCRIPTIONS_V1: Readonly<Record<RuntimeCliCommandV1, string>> = Object.freeze({
 	health: 'Read the current Operon Agent Runtime health.',
 	capabilities: 'List Operon Agent Runtime capabilities.',
 	diagnostics: 'Inspect Operon Runtime, catalog, compatibility, and CLI readiness.',
@@ -105,14 +113,14 @@ export function registerAgentRuntimeCliHandlersV1(
 		attempt: 0,
 	};
 	registrationByPluginInstance.set(plugin, state);
-	if (state.commands.size === CLI_COMMANDS_V1.length) {
+	if (state.commands.size === RUNTIME_CLI_COMMANDS_V1.length) {
 		return registrationResultV1([...state.commands], state.attempt);
 	}
 	state.attempt += 1;
 	const loadNodeApi = createAgentRuntimeDesktopNodeApiLoaderV1();
 	try {
-		for (const command of CLI_COMMANDS_V1) {
-			const handlerId = CLI_COMMAND_HANDLER_V1[command];
+		for (const command of RUNTIME_CLI_COMMANDS_V1) {
+			const handlerId = RUNTIME_CLI_HANDLERS_V1[command];
 			if (state.commands.has(handlerId)) continue;
 			(registerCliHandler as RegisterCliHandlerLike).call(
 				plugin,
@@ -191,8 +199,8 @@ function registrationResultV1(
 	retryable = false,
 ): AgentRuntimeCliRegistrationResultV1 {
 	const commandSet = new Set(commands);
-	const missingCommands = CLI_COMMANDS_V1
-		.map(command => CLI_COMMAND_HANDLER_V1[command])
+	const missingCommands = RUNTIME_CLI_COMMANDS_V1
+		.map(command => RUNTIME_CLI_HANDLERS_V1[command])
 		.filter(command => !commandSet.has(command));
 	const registered = missingCommands.length === 0;
 	return Object.freeze({
@@ -218,14 +226,14 @@ export function createAgentRuntimeCliMetadataV1(plugin: Plugin): CliRuntimeMetad
 }
 
 function fallbackFailureEnvelope(
-	command: CliCommandV1,
+	command: RuntimeCliCommandV1,
 	runtimeMetadata: CliRuntimeMetadataV1,
 	handlerMs: number,
 	stage: 'transport' | 'internal',
 	code: 'transport-unavailable' | 'internal-error',
 	reason: string,
 	retryable: boolean,
-): CliResultEnvelopeV1 {
+): CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 {
 	return {
 		contractVersion: CONTRACT_VERSION_V1,
 		kind: 'cli-result',

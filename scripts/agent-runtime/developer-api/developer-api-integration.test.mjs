@@ -75,6 +75,22 @@ test('general settings persistence preserves the host-owned Developer API grant 
 	assert.match(persistSettings, /developerApi: currentDeveloperApi,/u);
 });
 
+test('settings grant approval admits exact base and task-workflow extension capabilities', () => {
+	const settingsIntegration = methodBody(
+		mainSource,
+		'\tprivate buildDeveloperApiSettingsIntegration(): DeveloperApiSettingsIntegration',
+		'\n\tprivate isPinnedDockDisabledOnCurrentDevice',
+	);
+	assert.match(
+		settingsIntegration,
+		/isCapabilityIdV1\(capability\) \|\| isTaskWorkflowCapabilityIdV1\(capability\)/u,
+	);
+	assert.match(
+		settingsIntegration,
+		/approvePending\(consumerId, known\)/u,
+	);
+});
+
 test('grant audit intent and completion records share one transition correlation', () => {
 	const recordGrantAudit = methodBody(
 		mainSource,
