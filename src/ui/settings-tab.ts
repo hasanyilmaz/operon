@@ -2253,6 +2253,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return;
 		}
 
+		if (entry.id === 'integrations.developerApi') {
+			const host = setting.settingEl.createDiv('operon-developer-api-declarative-content');
+			this.renderDeveloperApiIntegrationContent(host);
+			return;
+		}
+
 		if (entry.id === 'ui.mobileGlobalTaskFabReset') {
 			setting.addButton(button => {
 				button
@@ -3181,6 +3187,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			cls: 'operon-settings-muted-block',
 		});
 		description.dataset.operonSettingsSearchId = 'integrations.developerApi';
+		this.renderDeveloperApiIntegrationContent(section);
+	}
+
+	private renderDeveloperApiIntegrationContent(section: HTMLElement): void {
 		const integration = this.developerApiIntegration;
 		if (!integration) {
 			section.createEl('p', {
