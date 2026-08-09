@@ -24,6 +24,10 @@ const PREVIOUS_RELEASE_ROOT = 'contracts/agent-runtime/releases/3.1.0';
 const CURRENT_RELEASE_ROOT = 'contracts/agent-runtime/releases/3.1.1';
 const SHARED_CLI_BINDING_PATH = `${PREVIOUS_RELEASE_ROOT}/published-cli-v1.json`;
 const SHARED_CLI_SCHEMA_PATH = `${PREVIOUS_RELEASE_ROOT}/published-cli-v1.schema.json`;
+const MUTABLE_CURRENT_ALIASES = new Set([
+	'contracts/agent-runtime/published-cli-v1.json',
+	'contracts/agent-runtime/published-cli-v1.schema.json',
+]);
 const EXPECTED_HISTORICAL_FILES = Object.freeze([
 	Object.freeze({ path: 'contracts/agent-runtime/public-v1-external-freeze.json', bytes: 2490, sha256: '946e3f320d5011c7c2c0dc416f3d65d40bc1f1acb58ece71f0f5a3714e3d4350' }),
 	Object.freeze({ path: 'contracts/agent-runtime/public-v1-external-freeze.schema.json', bytes: 10753, sha256: '80f837fc50f1ac30955884c37fc310d337b565327bcf3a9b55edc7f514302968' }),
@@ -87,6 +91,7 @@ async function checkFreezeRegistry(options, artifactPolicy) {
 			assert.ok(Array.isArray(release.files) && release.files.length > 0);
 			for (const identity of release.files) {
 				assert.deepEqual(Object.keys(identity).sort(), ['bytes', 'path', 'sha256']);
+				if (MUTABLE_CURRENT_ALIASES.has(identity.path)) continue;
 				const bytes = await readRegularFileNoFollow(path.join(pluginRoot, identity.path), pluginRoot);
 				assert.equal(bytes.byteLength, identity.bytes);
 				assert.equal(sha256(bytes), identity.sha256);

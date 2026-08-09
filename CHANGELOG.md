@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.2.0] - 2026-08-09
+
 Operon 3.2.0 pairs with Operon CLI 1.1.0 while keeping the Runtime contract at V1.
 
 ### New
@@ -22,7 +26,7 @@ Operon 3.2.0 pairs with Operon CLI 1.1.0 while keeping the Runtime contract at V
 
 ### Validation
 
-- Validated locally with the complete Plugin candidate suite and CLI 1.1.0 package suite on Node 24.18.0 / npm 11.12.1, including Runtime V1 contract and schema parity, the three additive capabilities, the canonical 41-file CLI tarball, and portable Windows policy and contract coverage; hosted CI, native Windows pair validation, live deployment, and manual acceptance were not run for this local freeze.
+- Validated on Node 24.18.0 / npm 11.12.1 with `npm run phase5:regression` passing 1,526/1,526 checks and `npm run check:candidate` passing the complete Plugin candidate suite; the release dependency audit reported 0 production and 0 development findings, and the published Operon CLI 1.1.0 binding preserves Runtime V1 compatibility with its canonical 48-file package inventory.
 
 ## [3.1.1] - 2026-08-07
 

@@ -18,12 +18,60 @@ import {
 	withVerifiedPublishedCli,
 } from './published-cli-v1.mjs';
 import { readArtifactArguments } from './check-published-cli-artifact.mjs';
+import { verifyGithubTagIdentity } from './check-published-cli-public-proof.mjs';
 
 test('accepted binding validates and canonical plugin inputs match', async () => {
 	const { binding } = await loadPublishedCliBinding();
 	assertPublishedCliBinding(binding);
 	await verifyCanonicalPluginInputs(binding);
+	assert.equal(binding.package.version, '1.1.0');
+	assert.deepEqual(binding.source.tagObject, {
+		type: 'commit',
+		sha: binding.source.commit,
+	});
+	assert.equal(binding.runtime.canonicalSchemas.filter(item => item.path.includes('/extensions/')).length, 6);
 	assert.match(bindingAggregate(binding), /^[a-f0-9]{64}$/u);
+});
+
+test('GitHub tag proof accepts exact lightweight and annotated tag identities', async () => {
+	const commit = 'a'.repeat(40);
+	const tagObject = 'b'.repeat(40);
+	const lightweight = {
+		source: {
+			tag: 'cli-v1.1.0',
+			commit,
+			tagObject: { type: 'commit', sha: commit },
+		},
+	};
+	let requests = 0;
+	assert.equal(await verifyGithubTagIdentity(lightweight, async () => {
+		requests += 1;
+		return { object: { type: 'commit', sha: commit } };
+	}), true);
+	assert.equal(requests, 1);
+
+	const annotated = {
+		source: {
+			tag: 'cli-v1.0.9',
+			commit,
+			tagObject: { type: 'tag', sha: tagObject },
+		},
+	};
+	requests = 0;
+	assert.equal(await verifyGithubTagIdentity(annotated, async url => {
+		requests += 1;
+		return url.includes('/git/tags/')
+			? { object: { type: 'commit', sha: commit } }
+			: { object: { type: 'tag', sha: tagObject } };
+	}), true);
+	assert.equal(requests, 2);
+
+	await assert.rejects(
+		verifyGithubTagIdentity(lightweight, async () => ({
+			object: { type: 'commit', sha: 'c'.repeat(40) },
+		})),
+		/OPERON_PUBLISHED_CLI_TAG_OBJECT_MISMATCH/u,
+	);
 });
 
 test('canonical plugin inputs ignore only POSIX mode on Windows', async t => {
