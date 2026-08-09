@@ -71,8 +71,34 @@ async function checkFreezeRegistry(options, artifactPolicy) {
 		]);
 		assert.equal(registry.registryVersion, 1);
 		assert.equal(registry.kind, 'operon-public-v1-release-freeze-registry');
-		assert.equal(registry.currentPluginVersion, CURRENT_PLUGIN_VERSION);
-		assert.deepEqual(registry.releases.map(release => release.pluginVersion), ['3.0.2', '3.1.0', '3.1.1']);
+		assert.equal(
+			registry.currentPluginVersion,
+			registry.releases.at(-1)?.pluginVersion,
+		);
+		assert.deepEqual(
+			registry.releases.slice(0, 3).map(release => release.pluginVersion),
+			['3.0.2', '3.1.0', '3.1.1'],
+		);
+		let previousPluginVersion;
+		for (const release of registry.releases) {
+			assert.deepEqual(Object.keys(release).sort(), ['cliVersion', 'evidenceKind', 'files', 'pluginVersion']);
+			const pluginVersion = parseStableSemver(release.pluginVersion);
+			assert.equal(pluginVersion[0], 3);
+			parseStableSemver(release.cliVersion);
+			assert.match(release.evidenceKind, /^[a-z][a-z0-9-]+$/u);
+			assert.ok(Array.isArray(release.files) && release.files.length > 0);
+			assert.equal(new Set(release.files.map(identity => identity.path)).size, release.files.length);
+			for (const identity of release.files) {
+				assert.deepEqual(Object.keys(identity).sort(), ['bytes', 'path', 'sha256']);
+				assert.match(identity.path, /^contracts\/agent-runtime\/[a-zA-Z0-9./-]+$/u);
+				assert.ok(Number.isSafeInteger(identity.bytes) && identity.bytes > 0);
+				assert.match(identity.sha256, /^[a-f0-9]{64}$/u);
+			}
+			if (previousPluginVersion !== undefined) {
+				assert.equal(compareSemver(previousPluginVersion, pluginVersion) < 0, true);
+			}
+			previousPluginVersion = pluginVersion;
+		}
 		assert.deepEqual(registry.releases[0], {
 			pluginVersion: '3.0.2',
 			cliVersion: '1.0.8',
@@ -86,11 +112,8 @@ async function checkFreezeRegistry(options, artifactPolicy) {
 			files: EXPECTED_PREVIOUS_FILES,
 		});
 		const verifiedFiles = new Map();
-		for (const release of registry.releases) {
-			assert.deepEqual(Object.keys(release).sort(), ['cliVersion', 'evidenceKind', 'files', 'pluginVersion']);
-			assert.ok(Array.isArray(release.files) && release.files.length > 0);
+		for (const release of registry.releases.slice(0, 3)) {
 			for (const identity of release.files) {
-				assert.deepEqual(Object.keys(identity).sort(), ['bytes', 'path', 'sha256']);
 				if (MUTABLE_CURRENT_ALIASES.has(identity.path)) continue;
 				const bytes = await readRegularFileNoFollow(path.join(pluginRoot, identity.path), pluginRoot);
 				assert.equal(bytes.byteLength, identity.bytes);
@@ -168,6 +191,20 @@ async function checkFreezeRegistry(options, artifactPolicy) {
 		if (cause?.message === RELEASE_FREEZE_STALE) throw cause;
 		throw new Error(RELEASE_FREEZE_STALE, { cause });
 	}
+}
+
+function parseStableSemver(value) {
+	assert.match(value, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u);
+	const parts = value.split('.').map(Number);
+	assert.equal(parts.every(Number.isSafeInteger), true);
+	return parts;
+}
+
+function compareSemver(left, right) {
+	for (let index = 0; index < 3; index += 1) {
+		if (left[index] !== right[index]) return left[index] - right[index];
+	}
+	return 0;
 }
 
 export async function readReleaseArtifactIdentity(pluginRoot, frozenArtifact) {

@@ -18,15 +18,18 @@ const mutableAliases = new Set([
 const registryBytes = await readRegularFileNoFollow(path.join(pluginRoot, registryRelativePath), pluginRoot);
 assert.equal(
 	sha256(registryBytes),
-	'0ad9c6d7fc06b47377ae01ed5479fe426d928585d26937eaf916daca72daeaca',
+	'15c3714c98e8d233af7ab5d5ed8ed2ac4dd331e1fd14103a0e527a5c61a81013',
 	'OPERON_PUBLIC_V1_CANDIDATE_REGISTRY_DRIFT',
 );
 const registry = JSON.parse(registryBytes.toString('utf8'));
 assert.deepEqual(Object.keys(registry).sort(), ['currentPluginVersion', 'kind', 'registryVersion', 'releases']);
 assert.equal(registry.registryVersion, 1);
 assert.equal(registry.kind, 'operon-public-v1-release-freeze-registry');
-assert.equal(registry.currentPluginVersion, '3.1.1');
-assert.deepEqual(registry.releases.map(release => release.pluginVersion), ['3.0.2', '3.1.0', '3.1.1']);
+assert.equal(registry.currentPluginVersion, '3.2.0');
+assert.deepEqual(
+	registry.releases.map(release => release.pluginVersion),
+	['3.0.2', '3.1.0', '3.1.1', '3.2.0'],
+);
 for (const release of registry.releases) {
 	assert.deepEqual(Object.keys(release).sort(), ['cliVersion', 'evidenceKind', 'files', 'pluginVersion']);
 	for (const identity of release.files) {
