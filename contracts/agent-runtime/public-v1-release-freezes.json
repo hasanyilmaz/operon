@@ -1,7 +1,7 @@
 {
   "registryVersion": 1,
   "kind": "operon-public-v1-release-freeze-registry",
-  "currentPluginVersion": "3.2.0",
+  "currentPluginVersion": "3.1.1",
   "releases": [
     {
       "pluginVersion": "3.0.2",
@@ -86,28 +86,6 @@
           "path": "contracts/agent-runtime/releases/3.1.1/paired-release-evidence.json",
           "bytes": 4538,
           "sha256": "eeb0eeaefef9aa3937a5d50de6bfc535c7b23d12e449c5b174f769e292e27008"
-        }
-      ]
-    },
-    {
-      "pluginVersion": "3.2.0",
-      "cliVersion": "1.1.0",
-      "evidenceKind": "paired-evidence-seal-v3",
-      "files": [
-        {
-          "path": "contracts/agent-runtime/releases/3.2.0/paired-release-evidence.json",
-          "bytes": 5529,
-          "sha256": "5da06fc01ab244bad2d332f9f6e6bc8bce9a96fc48e46a5f1f8d867aedff40f1"
-        },
-        {
-          "path": "contracts/agent-runtime/releases/3.2.0/public-v1-external-freeze.json",
-          "bytes": 2238,
-          "sha256": "1168bf6eb6fed7397cef2d6a89ae4fb7b4ba06c2252a07f8de0f11a1f5d32212"
-        },
-        {
-          "path": "contracts/agent-runtime/releases/3.2.0/public-v1-external-freeze.schema.json",
-          "bytes": 2513,
-          "sha256": "72007b8a0209617c0087f72ac6ad1d4f959623f4af33286327c085bd8c72a524"
         }
       ]
     }

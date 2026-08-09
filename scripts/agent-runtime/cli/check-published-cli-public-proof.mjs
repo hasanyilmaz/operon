@@ -212,16 +212,44 @@ async function fetchJson(url) {
 }
 
 async function fetchBytes(url, headers = {}) {
-	const response = await fetch(url, {
-		headers: {
-			...headers,
-			'user-agent': 'operon-plugin-public-cli-proof/1',
-		},
-		redirect: 'follow',
+	return fetchPublicProofBytes(url, headers);
+}
+
+export async function fetchPublicProofBytes(url, headers = {}, options = {}) {
+	const request = publicProofRequest(url, headers, options.environment ?? process.env);
+	const response = await (options.fetchImpl ?? fetch)(url, {
+		headers: request.headers,
+		redirect: request.redirect,
 		signal: AbortSignal.timeout(30_000),
 	});
+	if (request.githubApi && response.status >= 300 && response.status < 400) {
+		throw new Error(`OPERON_PUBLISHED_CLI_GITHUB_API_REDIRECT_REFUSED:${response.status}:${url}`);
+	}
 	if (!response.ok) throw new Error(`OPERON_PUBLISHED_CLI_FETCH_FAILED:${response.status}:${url}`);
 	return Buffer.from(await response.arrayBuffer());
+}
+
+export function publicProofRequest(url, headers = {}, environment = process.env) {
+	const parsed = new URL(url);
+	const requestHeaders = new Headers(headers);
+	requestHeaders.delete('authorization');
+	requestHeaders.set('user-agent', 'operon-plugin-public-cli-proof/1');
+	const githubApi = (
+		parsed.protocol === 'https:'
+		&& parsed.hostname === 'api.github.com'
+		&& parsed.port === ''
+		&& parsed.username === ''
+		&& parsed.password === ''
+	);
+	const token = [environment.GH_TOKEN, environment.GITHUB_TOKEN]
+		.find(value => typeof value === 'string' && value.trim() !== '')
+		?.trim();
+	if (githubApi && token) requestHeaders.set('authorization', `Bearer ${token}`);
+	return Object.freeze({
+		githubApi,
+		headers: Object.freeze(Object.fromEntries(requestHeaders.entries())),
+		redirect: githubApi ? 'manual' : 'follow',
+	});
 }
 
 function verifyReleaseAsset(bytes, identity, name) {
