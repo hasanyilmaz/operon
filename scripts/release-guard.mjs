@@ -872,18 +872,16 @@ function checkReleaseAuditPolicy() {
 	const normalBuildIndexes = normalCheckCommands
 		.map((command, index) => (command === 'npm run build' ? index : -1))
 		.filter((index) => index >= 0);
-	const normalFreezeIndex = normalCheckCommands.indexOf('npm run release:freeze:test');
-	if (normalBuildIndexes.length !== 1 || normalFreezeIndex < 0 || normalBuildIndexes[0] >= normalFreezeIndex) {
-		fail('package.json: normal validation must build production artifacts before release freeze tests');
+	if (normalBuildIndexes.length !== 1) {
+		fail('package.json: normal validation must build production artifacts exactly once');
 	}
 	for (const command of [
 		'npm run release:audit-policy:test',
 		'npm run release:notes:test',
-		'npm run release:freeze:test',
 		'npm run release:external-live:test',
 		'npm run docs:public-v1:test',
 	]) {
-		if (!packageText.includes(command)) {
+		if (!normalCheck.includes(command)) {
 			fail(`package.json: normal validation must run ${command}`);
 		}
 	}
@@ -914,7 +912,7 @@ function checkReleaseAuditPolicy() {
 	assertIncludes(
 		'package.json',
 		'"release:freeze:test": "node --test scripts/release/write-external-freeze.test.mjs scripts/release/check-accepted-freeze.test.mjs scripts/release/check-release-freeze-registry.test.mjs"',
-		'normal validation must cover historical freeze writing and append-only registry checking',
+		'package scripts must preserve the explicitly invoked historical freeze test suite',
 	);
 	const freezeWriterSource = readText('scripts/release/write-external-freeze.mjs');
 	for (const required of [
@@ -981,6 +979,15 @@ function checkReleaseAuditPolicy() {
 		const validationCommands = (packageManifest.scripts?.[scriptName] ?? '')
 			.split('&&')
 			.map(command => command.trim());
+		const buildOffsets = validationCommands.flatMap((command, index) => (
+			command === 'npm run build' ? [index] : []
+		));
+		if (buildOffsets.length !== 1) {
+			fail(`${scriptName} must build production artifacts exactly once`);
+		}
+		if (validationCommands.includes('npm run release:freeze:test')) {
+			fail(`${scriptName} must not run the historical release freeze test suite`);
+		}
 		const strictLintOffsets = validationCommands.flatMap((command, index) => (
 			command === 'npm run lint:strict' ? [index] : []
 		));
