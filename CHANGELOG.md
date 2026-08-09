@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [3.2.1] - 2026-08-09
+
+Operon 3.2.1 is a Plugin-only patch release. Operon CLI remains at 1.1.0 and the Runtime contract remains at V1.
+
+### Fixed
+
+- Fixed legacy task-adoption receipts preventing mutation and task-workflow Gateway capabilities from becoming available after an update or live reload.
+- Fixed Community Plugin Scorecard unsafe-value warnings in the File Task identity transaction path and added strict scorecard lint to the release validation path.
+
+### Validation
+
+- Validated on Node 24.18.0 / npm 11.12.1 with `npm run phase5:regression` passing 1,526/1,526 checks and `npm run check:candidate` passing the complete Plugin candidate suite; the release dependency audit reported 0 production and 0 development findings.
+
 ## [3.2.0] - 2026-08-09
 
 Operon 3.2.0 pairs with Operon CLI 1.1.0 while keeping the Runtime contract at V1.

@@ -13,6 +13,19 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.2.1',
+		date: '2026-08-09',
+		title: 'Operon 3.2.1 - Runtime Startup and Lint Fixes',
+		showOnUpdate: true,
+		body: `
+Operon 3.2.1 is a Plugin-only patch release. Operon CLI remains at 1.1.0 and the Runtime contract remains at V1.
+
+### Fixed
+- Fixed legacy task-adoption receipts preventing mutation and task-workflow Gateway capabilities from becoming available after an update or live reload.
+- Fixed Community Plugin Scorecard unsafe-value warnings in the File Task identity transaction path and added strict scorecard lint to the release validation path.
+`.trim(),
+	},
+	{
 		version: '3.2.0',
 		date: '2026-08-09',
 		title: 'Operon 3.2.0 - Agent Task Workflows',
