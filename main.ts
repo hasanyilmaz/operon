@@ -9,7 +9,16 @@
 import { Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
-import { OperonStorage, type OperonStorageReloadSettingsResult } from './src/storage/operon-storage';
+import {
+	OperonStorage,
+	type OperonSettingsBackupUndoResultV1,
+	type OperonStorageReloadSettingsResult,
+} from './src/storage/operon-storage';
+import {
+	finalizeOperonSettingsBackupApplyReceiptV1,
+	type OperonSettingsBackupApplyInputV1,
+	type OperonSettingsBackupApplyResultV1,
+} from './src/core/settings-backup-apply';
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
 	mergeTablePresetRegistryOrder,
@@ -652,6 +661,7 @@ import {
 	buildLocalePackReconcileOrder,
 	hasLocalePackIntentChanged,
 	shouldActivateReconciledLocale,
+	type LocalePackIntent,
 } from './src/core/locale-pack-orchestration';
 import { buildWorkflowStatusSemanticsSignature } from './src/core/workflow-status-semantics';
 import {
@@ -1072,6 +1082,36 @@ interface NativeFileTaskConversionMenuState {
 
 type SettingsReindexReason = 'key-mappings' | 'workflow-semantics' | 'index-semantics';
 
+export type OperonSettingsBackupRuntimeRefreshStep =
+	| 'standard-refresh'
+	| 'locale'
+	| 'agent-runtime'
+	| 'reindex'
+	| 'external-calendars'
+	| 'mobile-notifications';
+
+export interface OperonSettingsBackupRuntimeRefreshResult {
+	status: 'settled' | 'degraded';
+	failedSteps: readonly OperonSettingsBackupRuntimeRefreshStep[];
+}
+
+export type OperonSettingsBackupLocaleIntent = LocalePackIntent;
+
+interface SettingsChangedSettlement {
+	externalCalendars: Promise<void>;
+	mobileNotifications: Promise<void>;
+	reindexReason: SettingsReindexReason | null;
+}
+
+interface PendingSettingsBackupRuntimeRecovery {
+	receiptId: string;
+	undoTokenId: string | null;
+	failedSteps: readonly OperonSettingsBackupRuntimeRefreshStep[];
+	localeIntentChanged: boolean;
+	reindexReason: SettingsReindexReason | null;
+	needsCanonicalReload: boolean;
+}
+
 interface CanonicalSettingsReloadResult extends OperonStorageReloadSettingsResult {
 	failed: boolean;
 	localeIntentChanged: boolean;
@@ -1196,6 +1236,8 @@ export default class OperonPlugin extends Plugin {
 	private pendingSettingsReindexReasons = new Set<SettingsReindexReason>();
 	private settingsReindexNoticePending = false;
 	private settingsReindexRetryAttempted = false;
+	private pendingSettingsBackupRuntimeRecovery: PendingSettingsBackupRuntimeRecovery | null = null;
+	private settingsBackupRestoreQueue: Promise<void> = Promise.resolve();
 	private canonicalSettingsReloadTimer: WindowTimeoutHandle | null = null;
 	private canonicalSettingsReloadPromise: Promise<CanonicalSettingsReloadResult> | null = null;
 	private canonicalSettingsReloadLastCheckAt = 0;
@@ -1916,7 +1958,315 @@ export default class OperonPlugin extends Plugin {
 		this.startupReleaseCheckTimer = null;
 	}
 
-	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): void {
+	/**
+	 * Settle the runtime-only consequences of a settings backup commit. The
+	 * returned result intentionally exposes step identifiers only; errors and
+	 * setting values remain in the owning runtime logs.
+	 */
+	private async settleSettingsBackupRuntimeRefresh(
+		previousLocaleIntent: OperonSettingsBackupLocaleIntent,
+		owner: { receiptId: string; undoTokenId: string | null },
+	): Promise<OperonSettingsBackupRuntimeRefreshResult> {
+		const localeIntentChanged = hasLocalePackIntentChanged(previousLocaleIntent, this.settings);
+		const failedSteps = new Set<OperonSettingsBackupRuntimeRefreshStep>();
+		let settlement: SettingsChangedSettlement | null = null;
+		try {
+			settlement = this.handleSettingsChanged({ notifyReindex: false });
+		} catch {
+			failedSteps.add('standard-refresh');
+		}
+
+		await Promise.all([
+			...(settlement ? [
+				this.captureSettingsBackupRefreshStep('external-calendars', settlement.externalCalendars, failedSteps),
+				this.captureSettingsBackupRefreshStep('mobile-notifications', settlement.mobileNotifications, failedSteps),
+			] : []),
+			...(localeIntentChanged ? [this.captureSettingsBackupRefreshStep(
+				'locale',
+				this.synchronizeLanguagePacksAfterLayoutStrict(),
+				failedSteps,
+			)] : []),
+			this.captureSettingsBackupRefreshStep(
+				'agent-runtime',
+				this.refreshAgentRuntimeSettingsBoundaryStrict(),
+				failedSteps,
+			),
+			this.captureSettingsBackupRefreshStep(
+				'reindex',
+				this.awaitAgentRuntimeSettlement({ mutationOwnedMaintenance: true }),
+				failedSteps,
+			),
+		]);
+
+		return this.finishSettingsBackupRuntimeRefresh(
+			failedSteps,
+			localeIntentChanged,
+			settlement?.reindexReason ?? null,
+			owner,
+		);
+	}
+
+	async applySettingsBackupRestorePlanV1(
+		input: OperonSettingsBackupApplyInputV1,
+	): Promise<OperonSettingsBackupApplyResultV1> {
+		return this.enqueueSettingsBackupRestoreOperation(
+			() => this.applySettingsBackupRestorePlanUnlockedV1(input),
+		);
+	}
+
+	private async applySettingsBackupRestorePlanUnlockedV1(
+		input: OperonSettingsBackupApplyInputV1,
+	): Promise<OperonSettingsBackupApplyResultV1> {
+		if (this.pendingSettingsBackupRuntimeRecovery) {
+			return {
+				status: 'blocked',
+				receipt: null,
+				blockedReason: 'user-decision-required',
+				failurePhase: null,
+			};
+		}
+		const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+		const storageResult = await this.storage.applySettingsBackupRestorePlanV1(input);
+		if (storageResult.status !== 'success' && storageResult.status !== 'success-with-migrations') {
+			if (storageResult.status === 'partial-user-decision-required'
+				&& storageResult.failurePhase === 'runtime-commit'
+				&& storageResult.receipt) {
+				this.pendingSettingsBackupRuntimeRecovery = {
+					receiptId: storageResult.receipt.receiptId,
+					undoTokenId: storageResult.receipt.recovery.undoTokenId,
+					failedSteps: ['standard-refresh'],
+					localeIntentChanged: false,
+					reindexReason: null,
+					needsCanonicalReload: true,
+				};
+			}
+			return storageResult;
+		}
+		if (storageResult.receipt.alreadyApplied) return storageResult;
+		const runtimeOwner = {
+			receiptId: storageResult.receipt.receiptId,
+			undoTokenId: storageResult.receipt.recovery.undoTokenId,
+		};
+		const runtime = await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, runtimeOwner);
+		const finalizedReceipt = finalizeOperonSettingsBackupApplyReceiptV1(storageResult.receipt, {
+			status: runtime.status === 'degraded'
+				? 'runtime-degraded'
+				: storageResult.receipt.status,
+			runtimeSettlement: runtime.status,
+			warnings: runtime.status === 'degraded'
+				? ['One or more runtime refresh steps require an explicit retry or recovery decision.']
+				: [],
+			recovery: runtime.status === 'degraded'
+				? {
+					...storageResult.receipt.recovery,
+					keepAvailable: true,
+					retryRuntimeRefreshAvailable: true,
+				}
+				: storageResult.receipt.recovery,
+		});
+		const undoTokenId = finalizedReceipt.recovery.undoTokenId;
+		if (undoTokenId) {
+			this.storage.updateSettingsBackupUndoReceiptId(
+				undoTokenId,
+				storageResult.receipt.receiptId,
+				finalizedReceipt.receiptId,
+			);
+		}
+		this.rebindSettingsBackupRuntimeRecoveryReceipt(
+			storageResult.receipt.receiptId,
+			finalizedReceipt.receiptId,
+		);
+		if (runtime.status === 'degraded') {
+			return {
+				status: 'partial-user-decision-required',
+				receipt: finalizedReceipt,
+				blockedReason: null,
+				failurePhase: 'runtime-commit',
+			};
+		}
+		return {
+			...storageResult,
+			receipt: finalizedReceipt,
+		};
+	}
+
+	async resolveSettingsBackupRestoreRecoveryV1(input: {
+		action: 'keep' | 'retry-runtime-refresh' | 'undo';
+		receiptId: string;
+		undoTokenId: string | null;
+	}): Promise<OperonSettingsBackupRuntimeRefreshResult | OperonSettingsBackupUndoResultV1> {
+		return this.enqueueSettingsBackupRestoreOperation(
+			() => this.resolveSettingsBackupRestoreRecoveryUnlockedV1(input),
+		);
+	}
+
+	private async resolveSettingsBackupRestoreRecoveryUnlockedV1(input: {
+		action: 'keep' | 'retry-runtime-refresh' | 'undo';
+		receiptId: string;
+		undoTokenId: string | null;
+	}): Promise<OperonSettingsBackupRuntimeRefreshResult | OperonSettingsBackupUndoResultV1> {
+		const pending = this.pendingSettingsBackupRuntimeRecovery;
+		if (pending && pending.receiptId !== input.receiptId) {
+			return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
+		}
+		if (pending && pending.undoTokenId !== input.undoTokenId) {
+			return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
+		}
+		if (input.action === 'keep') {
+			if (!pending) {
+				return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
+			}
+			if (pending?.needsCanonicalReload) {
+				const refreshed = await this.reloadSettingsBackupCanonicalRuntime(pending);
+				if (refreshed.status === 'degraded') return refreshed;
+			}
+			if (input.undoTokenId) {
+				this.storage.discardSettingsBackupUndo(input.undoTokenId, input.receiptId);
+			}
+			this.keepSettingsBackupRestore();
+			return { status: 'settled', failedSteps: [] };
+		}
+		if (input.action === 'undo') {
+			if (!input.undoTokenId) {
+				return { status: 'blocked', receiptId: '', blockedReason: 'not-available' };
+			}
+			const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+			const undone = await this.storage.undoSettingsBackupRestoreV1(input.undoTokenId, input.receiptId);
+			if (undone.status === 'partial-user-decision-required') {
+				if (undone.failurePhase === 'commit-state-unknown') return undone;
+				this.pendingSettingsBackupRuntimeRecovery = {
+					receiptId: undone.receiptId,
+					undoTokenId: null,
+					failedSteps: ['standard-refresh'],
+					localeIntentChanged: false,
+					reindexReason: null,
+					needsCanonicalReload: true,
+				};
+				return undone;
+			}
+			if (undone.status !== 'success') return undone;
+			const runtime = await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, {
+				receiptId: undone.receiptId,
+				undoTokenId: null,
+			});
+			if (runtime.status === 'degraded') return runtime;
+			return undone;
+		}
+		if (!pending) {
+			return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
+		}
+		if (pending.needsCanonicalReload) return this.reloadSettingsBackupCanonicalRuntime(pending);
+		return this.retrySettingsBackupRuntimeRefresh();
+	}
+
+	private async reloadSettingsBackupCanonicalRuntime(
+		recovery: PendingSettingsBackupRuntimeRecovery,
+	): Promise<OperonSettingsBackupRuntimeRefreshResult> {
+		const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+		try {
+			const result = await this.storage.reloadCanonicalSettingsPackage();
+			if (result.diagnostics.malformedPackage || result.diagnostics.pipelineTaxonomy.backupFailed) {
+				return { status: 'degraded', failedSteps: ['standard-refresh'] };
+			}
+		} catch {
+			return { status: 'degraded', failedSteps: ['standard-refresh'] };
+		}
+		recovery.needsCanonicalReload = false;
+		return this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, {
+			receiptId: recovery.receiptId,
+			undoTokenId: recovery.undoTokenId,
+		});
+	}
+
+	private captureSettingsBackupLocaleIntent(): OperonSettingsBackupLocaleIntent {
+		return {
+			language: this.settings.language,
+			languagePackSubscriptions: [...this.settings.languagePackSubscriptions],
+		};
+	}
+
+	private enqueueSettingsBackupRestoreOperation<T>(operation: () => Promise<T>): Promise<T> {
+		const run = this.settingsBackupRestoreQueue.then(operation);
+		this.settingsBackupRestoreQueue = run.then(() => undefined, () => undefined);
+		return run;
+	}
+
+	private rebindSettingsBackupRuntimeRecoveryReceipt(previousReceiptId: string, receiptId: string): void {
+		if (this.pendingSettingsBackupRuntimeRecovery?.receiptId === previousReceiptId) {
+			this.pendingSettingsBackupRuntimeRecovery.receiptId = receiptId;
+		}
+	}
+
+	private async retrySettingsBackupRuntimeRefresh(): Promise<OperonSettingsBackupRuntimeRefreshResult> {
+		const recovery = this.pendingSettingsBackupRuntimeRecovery;
+		if (!recovery) return { status: 'settled', failedSteps: [] };
+		const retrySteps = new Set(recovery.failedSteps);
+		const failedSteps = new Set<OperonSettingsBackupRuntimeRefreshStep>();
+		let reindexReason = recovery.reindexReason;
+		let standardSettlement: SettingsChangedSettlement | null = null;
+		if (retrySteps.has('standard-refresh')) {
+			try {
+				standardSettlement = this.handleSettingsChanged({ notifyReindex: false });
+				reindexReason = standardSettlement.reindexReason ?? reindexReason;
+			} catch {
+				failedSteps.add('standard-refresh');
+			}
+		}
+
+		const retries: Promise<void>[] = [];
+		const externalCalendars = standardSettlement?.externalCalendars
+			?? (retrySteps.has('external-calendars')
+				? this.trackSettingsChangedPromise(
+					'external calendar settings reconciliation failed',
+					this.externalCalendarService?.applySettings(this.settings.externalCalendars) ?? Promise.resolve(),
+				)
+				: null);
+		if (externalCalendars) retries.push(this.captureSettingsBackupRefreshStep(
+			'external-calendars', externalCalendars, failedSteps,
+		));
+		const mobileNotifications = standardSettlement?.mobileNotifications
+			?? (retrySteps.has('mobile-notifications')
+				? this.trackSettingsChangedPromise(
+					'mobile notifications snapshot settings reconciliation failed',
+					this.mobileNotificationsExporter?.handleSettingsChanged() ?? Promise.resolve(),
+				)
+				: null);
+		if (mobileNotifications) retries.push(this.captureSettingsBackupRefreshStep(
+			'mobile-notifications', mobileNotifications, failedSteps,
+		));
+		if (retrySteps.has('locale') && recovery.localeIntentChanged) retries.push(
+			this.captureSettingsBackupRefreshStep(
+					'locale', this.synchronizeLanguagePacksAfterLayoutStrict(), failedSteps,
+			),
+		);
+		if (retrySteps.has('agent-runtime')) retries.push(this.captureSettingsBackupRefreshStep(
+			'agent-runtime', this.refreshAgentRuntimeSettingsBoundaryStrict(), failedSteps,
+		));
+		if (retrySteps.has('reindex')) {
+			if (reindexReason) {
+				this.scheduleSettingsReindex(reindexReason, { notify: false });
+			}
+			retries.push(this.captureSettingsBackupRefreshStep(
+				'reindex', this.awaitAgentRuntimeSettlement({ mutationOwnedMaintenance: true }), failedSteps,
+			));
+		}
+		await Promise.all(retries);
+		return this.finishSettingsBackupRuntimeRefresh(
+			failedSteps,
+			recovery.localeIntentChanged,
+			reindexReason,
+			{
+				receiptId: recovery.receiptId,
+				undoTokenId: recovery.undoTokenId,
+			},
+		);
+	}
+
+	private keepSettingsBackupRestore(): void {
+		this.pendingSettingsBackupRuntimeRecovery = null;
+	}
+
+	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): SettingsChangedSettlement {
 		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
 		this.writer.updateKeyMappings(this.settings.keyMappings);
 		const previousKeyMappingSignature = this.keyMappingSignature;
@@ -1933,21 +2283,26 @@ export default class OperonPlugin extends Plugin {
 		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
 		const previousProjectSerialScopeSignature = this.projectSerialScopeSettingsSignature;
 		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
+		let reindexReason: SettingsReindexReason | null = null;
 		if (previousIndexSemanticsSignature && previousIndexSemanticsSignature !== this.indexSemanticsSignature) {
-			const reason: SettingsReindexReason = previousKeyMappingSignature !== this.keyMappingSignature
+			reindexReason = previousKeyMappingSignature !== this.keyMappingSignature
 				? 'key-mappings'
 				: previousWorkflowStatusSemanticsSignature !== this.workflowStatusSemanticsSignature
 					? 'workflow-semantics'
 					: 'index-semantics';
-			this.scheduleSettingsReindex(reason, {
+			this.scheduleSettingsReindex(reindexReason, {
 				notify: options.notifyReindex !== false,
 			});
 		}
-		void this.externalCalendarService?.applySettings(this.settings.externalCalendars);
+		const externalCalendars = this.trackSettingsChangedPromise(
+			'external calendar settings reconciliation failed',
+			this.externalCalendarService?.applySettings(this.settings.externalCalendars) ?? Promise.resolve(),
+		);
 		this.reminderScheduler?.handleSettingsChanged();
-		runAsyncAction('mobile notifications snapshot settings reconciliation failed', async () => {
-			await this.mobileNotificationsExporter?.handleSettingsChanged();
-		});
+		const mobileNotifications = this.trackSettingsChangedPromise(
+			'mobile notifications snapshot settings reconciliation failed',
+			this.mobileNotificationsExporter?.handleSettingsChanged() ?? Promise.resolve(),
+		);
 		initI18n(undefined, this.settings.language);
 		if (
 			previousProjectSerialScopeSignature
@@ -1961,10 +2316,64 @@ export default class OperonPlugin extends Plugin {
 		this.refreshDuplicateAlertStatusBar();
 		this.mobileGlobalTaskFab?.refresh();
 		this.refreshViews();
+		return { externalCalendars, mobileNotifications, reindexReason };
 	}
 
-	private async synchronizeLanguagePacksAfterLayout(): Promise<void> {
-		if (!this.localePackManager) return;
+	private trackSettingsChangedPromise(label: string, operation: Promise<void>): Promise<void> {
+		const tracked = operation.catch(error => {
+			console.warn(`Operon: ${label}`, error);
+			throw error;
+		});
+		void tracked.catch(() => {});
+		return tracked;
+	}
+
+	private async captureSettingsBackupRefreshStep(
+		step: OperonSettingsBackupRuntimeRefreshStep,
+		operation: Promise<void>,
+		failedSteps: Set<OperonSettingsBackupRuntimeRefreshStep>,
+	): Promise<void> {
+		try {
+			await operation;
+		} catch {
+			failedSteps.add(step);
+		}
+	}
+
+	private finishSettingsBackupRuntimeRefresh(
+		failedSteps: ReadonlySet<OperonSettingsBackupRuntimeRefreshStep>,
+		localeIntentChanged: boolean,
+		reindexReason: SettingsReindexReason | null,
+		owner: { receiptId: string; undoTokenId: string | null },
+	): OperonSettingsBackupRuntimeRefreshResult {
+		const orderedSteps: readonly OperonSettingsBackupRuntimeRefreshStep[] = [
+			'standard-refresh',
+			'locale',
+			'agent-runtime',
+			'reindex',
+			'external-calendars',
+			'mobile-notifications',
+		];
+		const failed = orderedSteps.filter(step => failedSteps.has(step));
+		this.pendingSettingsBackupRuntimeRecovery = failed.length > 0
+			? {
+				receiptId: owner.receiptId,
+				undoTokenId: owner.undoTokenId,
+				failedSteps: failed,
+				localeIntentChanged,
+				reindexReason,
+				needsCanonicalReload: false,
+			}
+			: null;
+		return {
+			status: failed.length > 0 ? 'degraded' : 'settled',
+			failedSteps: failed,
+		};
+	}
+
+	private async synchronizeLanguagePacksAfterLayout(): Promise<boolean> {
+		if (!this.localePackManager) return true;
+		let succeeded = true;
 		const orderedLanguages = buildLocalePackReconcileOrder(this.settings);
 		for (const language of orderedLanguages) {
 			try {
@@ -1977,8 +2386,16 @@ export default class OperonPlugin extends Plugin {
 				this.mobileGlobalTaskFab?.refresh();
 				this.refreshViews();
 			} catch (error) {
+				succeeded = false;
 				console.warn(`Operon: language pack synchronization failed for ${language}`, error);
 			}
+		}
+		return succeeded;
+	}
+
+	private async synchronizeLanguagePacksAfterLayoutStrict(): Promise<void> {
+		if (!await this.synchronizeLanguagePacksAfterLayout()) {
+			throw new Error('Language pack reconciliation did not settle.');
 		}
 	}
 
@@ -11601,15 +12018,26 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async refreshAgentRuntimeSettingsBoundary(): Promise<void> {
-		if (!this.agentRuntimeSettingsFreshness) return;
+		await this.refreshAgentRuntimeSettingsBoundaryResult();
+	}
+
+	private async refreshAgentRuntimeSettingsBoundaryResult(): Promise<boolean> {
+		if (!this.agentRuntimeSettingsFreshness) return true;
 		const result = await this.agentRuntimeSettingsFreshness.refresh();
 		if (!result.ok) {
 			this.recordAgentRuntimeFreshnessFailure(result);
-			return;
+			return false;
 		}
 		this.agentRuntimeLifecycle.clearError('settings-freshness');
 		this.agentRuntimeSettingsFailureRelease?.();
 		this.agentRuntimeSettingsFailureRelease = null;
+		return true;
+	}
+
+	private async refreshAgentRuntimeSettingsBoundaryStrict(): Promise<void> {
+		if (!await this.refreshAgentRuntimeSettingsBoundaryResult()) {
+			throw new Error('Agent Runtime settings boundary did not settle.');
+		}
 	}
 
 	private recordAgentRuntimeFreshnessFailure(result: Extract<RuntimeSettingsFreshnessResultV1, { ok: false }>): void {
@@ -13163,8 +13591,9 @@ export default class OperonPlugin extends Plugin {
 		// Run startup maintenance after layout is ready
 		this.app.workspace.onLayoutReady(() => {
 			if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('layout-ready');
-			runAsyncAction('startup locale pack synchronization failed', () =>
-				this.synchronizeLanguagePacksAfterLayout());
+			runAsyncAction('startup locale pack synchronization failed', async () => {
+				await this.synchronizeLanguagePacksAfterLayout();
+			});
 			const releaseCheckGeneration = ++this.releaseCheckGeneration;
 			this.startupReleaseCheckTimer = setWindowTimeout(() => {
 				this.startupReleaseCheckTimer = null;

@@ -75,6 +75,12 @@ export interface OperonDataPackageReloadOptions {
 	stage?: (dataPackage: OperonDataPackageV1) => Promise<OperonDataPackageReloadStage>;
 }
 
+export type OperonDataPackageObservedReplaceResult =
+	| { status: 'unchanged' | 'committed'; dataPackage: OperonDataPackageV1 }
+	| { status: 'committed-after-error'; dataPackage: OperonDataPackageV1 }
+	| { status: 'failed-clean'; dataPackage: OperonDataPackageV1 }
+	| { status: 'commit-state-unknown'; dataPackage: OperonDataPackageV1 };
+
 type PluginDataAccess = OperonPluginDataAccess | null | undefined;
 type OperonDataPackageDomain = Exclude<keyof OperonDataPackageV1, 'schemaVersion'>;
 
@@ -321,6 +327,43 @@ export class OperonDataPackageStore {
 		});
 	}
 
+	/**
+	 * Replace the canonical package and classify an acknowledgement failure by
+	 * rereading the canonical source. This never retries a failed write.
+	 */
+	async replaceDataPackageObserved(dataPackage: OperonDataPackageV1): Promise<OperonDataPackageObservedReplaceResult> {
+		const candidate = this.cloneDataPackage(dataPackage);
+		return this.updateDataPackageObserved(() => candidate);
+	}
+
+	async updateDataPackageObserved(
+		mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1,
+	): Promise<OperonDataPackageObservedReplaceResult> {
+		return this.enqueueMutation(async () => {
+			const previous = this.getDataPackage();
+			const candidate = this.cloneDataPackage(mutator(previous));
+			const previousSignature = buildStableJsonSignature(previous);
+			const candidateSignature = buildStableJsonSignature(candidate);
+			if (candidateSignature === previousSignature) return { status: 'unchanged', dataPackage: previous };
+			try {
+				await this.persistCandidate(candidate);
+				this.setDataPackage(candidate);
+				return { status: 'committed', dataPackage: this.cloneDataPackage(candidate) };
+			} catch {
+				const observed = await this.readCanonicalDataPackageForObservation();
+				if (observed && buildStableJsonSignature(observed) === candidateSignature) {
+					this.setDataPackage(candidate);
+					return { status: 'committed-after-error', dataPackage: this.cloneDataPackage(candidate) };
+				}
+				if (observed && buildStableJsonSignature(observed) === previousSignature) {
+					return { status: 'failed-clean', dataPackage: previous };
+				}
+				this.suspendWrites('Canonical data package commit state could not be verified after a failed write');
+				return { status: 'commit-state-unknown', dataPackage: previous };
+			}
+		});
+	}
+
 	async updateDataPackage(mutator: (dataPackage: OperonDataPackageV1) => OperonDataPackageV1): Promise<void> {
 		await this.enqueueMutation(async () => {
 			const next = this.cloneDataPackage(mutator(this.getDataPackage()));
@@ -363,6 +406,17 @@ export class OperonDataPackageStore {
 		if (!(await this.adapter.exists(this.paths.dataPackagePath))) return null;
 		const raw = await this.adapter.read(this.paths.dataPackagePath);
 		return JSON.parse(raw);
+	}
+
+	private async readCanonicalDataPackageForObservation(): Promise<OperonDataPackageV1 | null> {
+		try {
+			const raw = this.pluginData
+				? await this.pluginData.loadData()
+				: await this.loadPackageFromAdapter();
+			return isCompleteDataPackage(raw) ? this.cloneDataPackage(raw) : null;
+		} catch {
+			return null;
+		}
 	}
 
 	private async loadCanonicalPackageForReload(
