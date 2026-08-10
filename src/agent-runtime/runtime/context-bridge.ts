@@ -22,6 +22,10 @@ import {
 	type TaskQueryResultV1,
 } from '../contracts/v1/context';
 import type {
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
+} from '../extensions/task-workflows-v1';
+import type {
 	ContextRevisionV1,
 	ResourceRevisionV1,
 } from '../contracts/v1/identity';
@@ -44,6 +48,10 @@ export interface ContextBridgeExecutionV1 {
 	freshness: FreshnessV1;
 }
 
+export type SavedFilterEvaluationV1 =
+	| { ok: true; tasks: IndexedTask[]; queryDigest: string }
+	| { ok: false; error: StructuredErrorV1 };
+
 /**
  * Internal, transport-neutral bridge from the verified Runtime read coordinator
  * to bounded Context Engine DTOs. It owns no mutable domain state.
@@ -53,6 +61,7 @@ export class ContextBridgeV1 {
 		private readonly provider: LiveIndexContextProviderV1,
 		private readonly getCatalog: () => CatalogProjectionV1,
 		private readonly cursors: RuntimeContextCursorCodecV1,
+		private readonly evaluateSavedFilter?: (request: TaskFilterQueryRequestV1) => SavedFilterEvaluationV1,
 	) {}
 
 	async resolveEntity(
@@ -184,6 +193,80 @@ export class ContextBridgeV1 {
 			response,
 			() => taskQueryFailure(request, execution, resultTooLarge()),
 		);
+	}
+
+	async filterQueryTasks(
+		request: TaskFilterQueryRequestV1,
+		execution: ContextBridgeExecutionV1,
+	): Promise<TaskFilterQueryResultV1> {
+		const authorityError = this.authorityError();
+		if (authorityError) return taskFilterQueryFailure(request, execution, authorityError);
+		if (requestsWritableFields(request.include)) {
+			return taskFilterQueryFailure(request, execution, error(
+				'invalid-request',
+				'writable-fields hydration is available only through exact task.get.',
+				false,
+			));
+		}
+		if (!this.evaluateSavedFilter) {
+			return taskFilterQueryFailure(
+				request,
+				execution,
+				error('capability-unavailable', 'Saved-filter evaluation is not available.', false),
+			);
+		}
+		const evaluated = this.evaluateSavedFilter(request);
+		if (!evaluated.ok) return taskFilterQueryFailure(request, execution, evaluated.error);
+		let offset = 0;
+		let asOf = new Date().toISOString();
+		if (request.cursor) {
+			const decoded = await this.cursors.decodeFilterQuery({
+				cursor: request.cursor,
+				revision: execution.revision,
+				queryDigest: evaluated.queryDigest,
+			});
+			if (!decoded.ok) return taskFilterQueryFailure(request, execution, decoded.error);
+			offset = decoded.value.offset;
+			asOf = decoded.value.asOf;
+		}
+		const unique = [...new Map(evaluated.tasks.map(task => [task.operonId, task])).values()];
+		const limit = Math.max(1, Math.min(request.limit ?? 25, 250));
+		const pageTasks = unique.slice(offset, offset + limit);
+		const hydrated = await this.provider.hydrateTasks({
+			tasks: pageTasks,
+			include: request.include,
+			contextRevision: execution.revision,
+		});
+		if (hydrated.error) return taskFilterQueryFailure(request, execution, hydrated.error, hydrated.warnings);
+		const nextOffset = offset + pageTasks.length;
+		const nextCursor = nextOffset < unique.length
+			? await this.cursors.encodeFilterQuery({
+				revision: execution.revision,
+				queryDigest: evaluated.queryDigest,
+				asOf,
+				offset: nextOffset,
+			})
+			: undefined;
+		const response: TaskFilterQueryResultV1 = {
+			contractVersion: CONTRACT_VERSION_V1,
+			requestId: request.requestId,
+			kind: 'task-filter-query-result',
+			ok: true,
+			freshness: execution.freshness,
+			contextRevision: execution.revision,
+			tasks: hydrated.tasks,
+			page: {
+				actualCount: unique.length,
+				returnedCount: hydrated.tasks.length,
+				truncated: nextCursor !== undefined,
+				...(nextCursor ? { nextCursor } : {}),
+				asOf,
+			},
+			provenance: hydrated.provenance,
+			truncations: hydrated.truncations,
+			warnings: hydrated.warnings,
+		};
+		return this.guardResultBytes(response, () => taskFilterQueryFailure(request, execution, resultTooLarge()));
 	}
 
 	async findTasks(
@@ -727,6 +810,24 @@ function taskQueryFailure(
 		contractVersion: CONTRACT_VERSION_V1,
 		requestId: request.requestId,
 		kind: 'task-query-result',
+		ok: false,
+		freshness: execution.freshness,
+		contextRevision: execution.revision,
+		error: failure,
+		warnings,
+	});
+}
+
+function taskFilterQueryFailure(
+	request: TaskFilterQueryRequestV1,
+	execution: ContextBridgeExecutionV1,
+	failure: StructuredErrorV1,
+	warnings: ContractWarningV1[] = [],
+): TaskFilterQueryResultV1 {
+	return freezeDto({
+		contractVersion: CONTRACT_VERSION_V1,
+		requestId: request.requestId,
+		kind: 'task-filter-query-result',
 		ok: false,
 		freshness: execution.freshness,
 		contextRevision: execution.revision,

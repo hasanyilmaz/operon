@@ -24,6 +24,10 @@ const PREVIOUS_RELEASE_ROOT = 'contracts/agent-runtime/releases/3.1.0';
 const CURRENT_RELEASE_ROOT = 'contracts/agent-runtime/releases/3.1.1';
 const SHARED_CLI_BINDING_PATH = `${PREVIOUS_RELEASE_ROOT}/published-cli-v1.json`;
 const SHARED_CLI_SCHEMA_PATH = `${PREVIOUS_RELEASE_ROOT}/published-cli-v1.schema.json`;
+const MUTABLE_CURRENT_ALIASES = new Set([
+	'contracts/agent-runtime/published-cli-v1.json',
+	'contracts/agent-runtime/published-cli-v1.schema.json',
+]);
 const EXPECTED_HISTORICAL_FILES = Object.freeze([
 	Object.freeze({ path: 'contracts/agent-runtime/public-v1-external-freeze.json', bytes: 2490, sha256: '946e3f320d5011c7c2c0dc416f3d65d40bc1f1acb58ece71f0f5a3714e3d4350' }),
 	Object.freeze({ path: 'contracts/agent-runtime/public-v1-external-freeze.schema.json', bytes: 10753, sha256: '80f837fc50f1ac30955884c37fc310d337b565327bcf3a9b55edc7f514302968' }),
@@ -67,8 +71,34 @@ async function checkFreezeRegistry(options, artifactPolicy) {
 		]);
 		assert.equal(registry.registryVersion, 1);
 		assert.equal(registry.kind, 'operon-public-v1-release-freeze-registry');
-		assert.equal(registry.currentPluginVersion, CURRENT_PLUGIN_VERSION);
-		assert.deepEqual(registry.releases.map(release => release.pluginVersion), ['3.0.2', '3.1.0', '3.1.1']);
+		assert.equal(
+			registry.currentPluginVersion,
+			registry.releases.at(-1)?.pluginVersion,
+		);
+		assert.deepEqual(
+			registry.releases.slice(0, 3).map(release => release.pluginVersion),
+			['3.0.2', '3.1.0', '3.1.1'],
+		);
+		let previousPluginVersion;
+		for (const release of registry.releases) {
+			assert.deepEqual(Object.keys(release).sort(), ['cliVersion', 'evidenceKind', 'files', 'pluginVersion']);
+			const pluginVersion = parseStableSemver(release.pluginVersion);
+			assert.equal(pluginVersion[0], 3);
+			parseStableSemver(release.cliVersion);
+			assert.match(release.evidenceKind, /^[a-z][a-z0-9-]+$/u);
+			assert.ok(Array.isArray(release.files) && release.files.length > 0);
+			assert.equal(new Set(release.files.map(identity => identity.path)).size, release.files.length);
+			for (const identity of release.files) {
+				assert.deepEqual(Object.keys(identity).sort(), ['bytes', 'path', 'sha256']);
+				assert.match(identity.path, /^contracts\/agent-runtime\/[a-zA-Z0-9./-]+$/u);
+				assert.ok(Number.isSafeInteger(identity.bytes) && identity.bytes > 0);
+				assert.match(identity.sha256, /^[a-f0-9]{64}$/u);
+			}
+			if (previousPluginVersion !== undefined) {
+				assert.equal(compareSemver(previousPluginVersion, pluginVersion) < 0, true);
+			}
+			previousPluginVersion = pluginVersion;
+		}
 		assert.deepEqual(registry.releases[0], {
 			pluginVersion: '3.0.2',
 			cliVersion: '1.0.8',
@@ -82,11 +112,9 @@ async function checkFreezeRegistry(options, artifactPolicy) {
 			files: EXPECTED_PREVIOUS_FILES,
 		});
 		const verifiedFiles = new Map();
-		for (const release of registry.releases) {
-			assert.deepEqual(Object.keys(release).sort(), ['cliVersion', 'evidenceKind', 'files', 'pluginVersion']);
-			assert.ok(Array.isArray(release.files) && release.files.length > 0);
+		for (const release of registry.releases.slice(0, 3)) {
 			for (const identity of release.files) {
-				assert.deepEqual(Object.keys(identity).sort(), ['bytes', 'path', 'sha256']);
+				if (MUTABLE_CURRENT_ALIASES.has(identity.path)) continue;
 				const bytes = await readRegularFileNoFollow(path.join(pluginRoot, identity.path), pluginRoot);
 				assert.equal(bytes.byteLength, identity.bytes);
 				assert.equal(sha256(bytes), identity.sha256);
@@ -163,6 +191,20 @@ async function checkFreezeRegistry(options, artifactPolicy) {
 		if (cause?.message === RELEASE_FREEZE_STALE) throw cause;
 		throw new Error(RELEASE_FREEZE_STALE, { cause });
 	}
+}
+
+function parseStableSemver(value) {
+	assert.match(value, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u);
+	const parts = value.split('.').map(Number);
+	assert.equal(parts.every(Number.isSafeInteger), true);
+	return parts;
+}
+
+function compareSemver(left, right) {
+	for (let index = 0; index < 3; index += 1) {
+		if (left[index] !== right[index]) return left[index] - right[index];
+	}
+	return 0;
 }
 
 export async function readReleaseArtifactIdentity(pluginRoot, frozenArtifact) {

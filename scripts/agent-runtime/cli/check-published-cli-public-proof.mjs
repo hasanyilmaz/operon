@@ -108,18 +108,13 @@ async function verifyNpmAttestations(url, binding) {
 	);
 	assert.match(
 		payload.predicate.runDetails.metadata.invocationId,
-		new RegExp(`/actions/runs/${binding.provenance.publishRun}/attempts/1$`, 'u'),
+		new RegExp(`/actions/runs/${binding.provenance.publishRun}/attempts/${binding.provenance.publishRunAttempt}$`, 'u'),
 	);
 	return true;
 }
 
 async function verifyGithubIdentity(binding) {
-	const tagRef = await fetchJson(`${githubApiRoot}/git/ref/tags/${binding.source.tag}`);
-	assert.equal(tagRef.object.type, 'tag');
-	assert.equal(tagRef.object.sha, binding.source.annotatedTagObject);
-	const tag = await fetchJson(`${githubApiRoot}/git/tags/${binding.source.annotatedTagObject}`);
-	assert.equal(tag.object.type, 'commit');
-	assert.equal(tag.object.sha, binding.source.commit);
+	await verifyGithubTagIdentity(binding);
 	const release = await fetchJson(`${githubApiRoot}/releases/tags/${binding.source.tag}`);
 	assert.equal(release.tag_name, binding.source.tag);
 	assert.equal(release.immutable, true, 'OPERON_PUBLISHED_CLI_RELEASE_NOT_IMMUTABLE');
@@ -146,6 +141,23 @@ async function verifyGithubIdentity(binding) {
 		assert.equal(run.conclusion, 'success');
 		assert.equal(run.path, expected.path, 'OPERON_PUBLISHED_CLI_RUN_WORKFLOW_MISMATCH');
 		assert.equal(run.head_branch, expected.headBranch, 'OPERON_PUBLISHED_CLI_RUN_REF_MISMATCH');
+	}
+	return true;
+}
+
+export async function verifyGithubTagIdentity(binding, fetchJson_ = fetchJson) {
+	const tagRef = await fetchJson_(`${githubApiRoot}/git/ref/tags/${binding.source.tag}`);
+	assert.deepEqual(
+		{ type: tagRef.object?.type, sha: tagRef.object?.sha },
+		binding.source.tagObject,
+		'OPERON_PUBLISHED_CLI_TAG_OBJECT_MISMATCH',
+	);
+	if (binding.source.tagObject.type === 'commit') {
+		assert.equal(tagRef.object.sha, binding.source.commit, 'OPERON_PUBLISHED_CLI_LIGHTWEIGHT_TAG_COMMIT_MISMATCH');
+	} else {
+		const tag = await fetchJson_(`${githubApiRoot}/git/tags/${binding.source.tagObject.sha}`);
+		assert.equal(tag.object.type, 'commit');
+		assert.equal(tag.object.sha, binding.source.commit);
 	}
 	return true;
 }
@@ -200,16 +212,44 @@ async function fetchJson(url) {
 }
 
 async function fetchBytes(url, headers = {}) {
-	const response = await fetch(url, {
-		headers: {
-			...headers,
-			'user-agent': 'operon-plugin-public-cli-proof/1',
-		},
-		redirect: 'follow',
+	return fetchPublicProofBytes(url, headers);
+}
+
+export async function fetchPublicProofBytes(url, headers = {}, options = {}) {
+	const request = publicProofRequest(url, headers, options.environment ?? process.env);
+	const response = await (options.fetchImpl ?? fetch)(url, {
+		headers: request.headers,
+		redirect: request.redirect,
 		signal: AbortSignal.timeout(30_000),
 	});
+	if (request.githubApi && response.status >= 300 && response.status < 400) {
+		throw new Error(`OPERON_PUBLISHED_CLI_GITHUB_API_REDIRECT_REFUSED:${response.status}:${url}`);
+	}
 	if (!response.ok) throw new Error(`OPERON_PUBLISHED_CLI_FETCH_FAILED:${response.status}:${url}`);
 	return Buffer.from(await response.arrayBuffer());
+}
+
+export function publicProofRequest(url, headers = {}, environment = process.env) {
+	const parsed = new URL(url);
+	const requestHeaders = new Headers(headers);
+	requestHeaders.delete('authorization');
+	requestHeaders.set('user-agent', 'operon-plugin-public-cli-proof/1');
+	const githubApi = (
+		parsed.protocol === 'https:'
+		&& parsed.hostname === 'api.github.com'
+		&& parsed.port === ''
+		&& parsed.username === ''
+		&& parsed.password === ''
+	);
+	const token = [environment.GH_TOKEN, environment.GITHUB_TOKEN]
+		.find(value => typeof value === 'string' && value.trim() !== '')
+		?.trim();
+	if (githubApi && token) requestHeaders.set('authorization', `Bearer ${token}`);
+	return Object.freeze({
+		githubApi,
+		headers: Object.freeze(Object.fromEntries(requestHeaders.entries())),
+		redirect: githubApi ? 'manual' : 'follow',
+	});
 }
 
 function verifyReleaseAsset(bytes, identity, name) {

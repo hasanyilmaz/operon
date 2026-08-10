@@ -15,6 +15,15 @@ import type {
 	TaskQueryRequestV1,
 	TaskFinderRequestV1,
 } from '../contracts/v1/context';
+import type {
+	TaskFilterQueryResultV1,
+	TaskWorkflowApplyRequestV1,
+	TaskWorkflowCliInvocationV1,
+	TaskWorkflowCliResultEnvelopeV1,
+	TaskWorkflowMutationResultV1,
+	TaskWorkflowPreviewRequestV1,
+	TaskWorkflowPreviewResultV1,
+} from '../extensions/task-workflows-v1';
 import {
 	CONTRACT_LIMITS_V1,
 	CONTRACT_VERSION_V1,
@@ -64,7 +73,7 @@ export interface AgentRuntimeCliDispatcherPortsV1 {
 }
 
 export interface AgentRuntimeCliDispatchInputV1 {
-	readonly expectedCommand: CliCommandV1;
+	readonly expectedCommand: CliCommandV1 | 'tasks.filter-query';
 	readonly expectedRequestId?: string;
 	readonly requestToken?: string;
 	readonly nodeApiLoadDurationMs?: number;
@@ -340,14 +349,29 @@ export async function dispatchAgentRuntimeCliV1(
 	}
 }
 
-function timingFlowForInvocationV1(invocation: CliInvocationV1): RuntimeTimingFlowV1 {
+type RuntimeCliInvocationV1 = CliInvocationV1 | TaskWorkflowCliInvocationV1;
+type RuntimeCliResultV1 = CliRuntimeResultV1 | TaskFilterQueryResultV1 | TaskWorkflowPreviewResultV1 | TaskWorkflowMutationResultV1;
+
+function timingFlowForInvocationV1(invocation: RuntimeCliInvocationV1): RuntimeTimingFlowV1 {
 	if (invocation.command === 'mutation.preview') return 'mutation-preview';
 	if (invocation.command === 'mutation.apply') return 'mutation-apply';
 	return 'read';
 }
 
-function resolveInvocationCapabilityV1(invocation: CliInvocationV1) {
-	const capability = resolveCliInvocationCapabilityV1(invocation);
+function resolveInvocationCapabilityV1(invocation: RuntimeCliInvocationV1): string {
+	let capability: string | undefined;
+	if (invocation.command === 'tasks.filter-query') capability = 'tasks.filter-query';
+	else if (invocation.command === 'mutation.preview' && (invocation.request as { mutationKind?: string } | undefined)?.mutationKind === 'task.adopt') capability = 'tasks.adopt.preview';
+	else if (
+		invocation.command === 'mutation.preview'
+		&& (invocation.request as { capability?: string } | undefined)?.capability === 'tasks.create.identity-placeholders'
+	) capability = 'tasks.create.identity-placeholders';
+	else if (invocation.command === 'mutation.apply' && (invocation.request as { plan?: { mutationKind?: string } } | undefined)?.plan?.mutationKind === 'task.adopt') capability = 'tasks.adopt.apply';
+	else if (
+		invocation.command === 'mutation.apply'
+		&& (invocation.request as { plan?: { capability?: string } } | undefined)?.plan?.capability === 'tasks.create.identity-placeholders'
+	) capability = 'tasks.create.identity-placeholders';
+	else capability = resolveCliInvocationCapabilityV1(invocation as CliInvocationV1);
 	if (!capability) {
 		throw new CliDispatchFailureV1(
 			'capability',
@@ -363,7 +387,7 @@ function resolveInvocationCapabilityV1(invocation: CliInvocationV1) {
 
 async function awaitReadAdmissionV1(
 	ports: AgentRuntimeCliDispatcherPortsV1,
-	invocation: CliInvocationV1,
+	invocation: RuntimeCliInvocationV1,
 	initialHealth: RuntimeHealthV1,
 	deadline: number,
 ): Promise<RuntimeHealthV1> {
@@ -466,9 +490,9 @@ async function awaitMutationAdmissionV1(
 
 async function invokeRuntimeReadV1(
 	runtime: OperonAgentRuntimeCoreV1,
-	invocation: CliInvocationV1,
+	invocation: RuntimeCliInvocationV1,
 	deadlineAtMs: number,
-): Promise<CliRuntimeResultV1> {
+): Promise<RuntimeCliResultV1> {
 	const context = { deadlineAtMs };
 	switch (invocation.command) {
 		case 'catalog':
@@ -479,6 +503,9 @@ async function invokeRuntimeReadV1(
 			return await runtime.tasks.get(invocation.request as TaskGetRequestV1, context);
 		case 'tasks.query':
 			return await runtime.tasks.query(invocation.request as TaskQueryRequestV1, context);
+		case 'tasks.filter-query':
+			if (!runtime.tasks.filterQuery) throw new Error('task-filter-query-unavailable');
+			return await runtime.tasks.filterQuery(invocation.request, context);
 		case 'tasks.finder':
 			return await runtime.tasks.find(invocation.request as TaskFinderRequestV1, context);
 		case 'relationships.get':
@@ -488,8 +515,22 @@ async function invokeRuntimeReadV1(
 		case 'timers.read':
 			return await runtime.timers.read(invocation.request as TimerReadRequestV1, context);
 		case 'mutation.preview':
+			if (
+				(invocation.request as { mutationKind?: string }).mutationKind === 'task.adopt'
+				|| (invocation.request as { capability?: string }).capability === 'tasks.create.identity-placeholders'
+			) {
+				if (!runtime.mutations.previewTaskWorkflow) throw new Error('task-workflow-preview-unavailable');
+				return await runtime.mutations.previewTaskWorkflow(invocation.request as TaskWorkflowPreviewRequestV1, context);
+			}
 			return await runtime.mutations.preview(invocation.request as MutationPreviewRequestV1, context);
 		case 'mutation.apply':
+			if (
+				(invocation.request as { plan?: { mutationKind?: string } }).plan?.mutationKind === 'task.adopt'
+				|| (invocation.request as { plan?: { capability?: string } }).plan?.capability === 'tasks.create.identity-placeholders'
+			) {
+				if (!runtime.mutations.applyTaskWorkflow) throw new Error('task-workflow-apply-unavailable');
+				return await runtime.mutations.applyTaskWorkflow(invocation.request as TaskWorkflowApplyRequestV1);
+			}
 			return await runtime.mutations.apply(invocation.request as MutationApplyRequestV1);
 		case 'health':
 			return await runtime.system.health();
@@ -501,12 +542,12 @@ async function invokeRuntimeReadV1(
 }
 
 function successEnvelope(
-	invocation: CliInvocationV1,
-	result: CliRuntimeResultV1,
+	invocation: RuntimeCliInvocationV1,
+	result: RuntimeCliResultV1,
 	state: DispatchStateV1,
 	ports: AgentRuntimeCliDispatcherPortsV1,
 	startedAt: number,
-): CliResultEnvelopeV1 {
+): CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 {
 	let warnings = readWarnings(result);
 	if (readInvocationConsistency(invocation) === 'best-effort') {
 		const bestEffortWarning: ContractWarningV1 = {
@@ -535,18 +576,18 @@ function successEnvelope(
 		timing: { handlerMs: elapsedMilliseconds(ports, startedAt) },
 		warnings,
 		result,
-	};
+	} as CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1;
 }
 
 function failureEnvelope(
-	command: CliCommandV1,
+	command: CliCommandV1 | 'tasks.filter-query',
 	state: DispatchStateV1,
 	ports: AgentRuntimeCliDispatcherPortsV1,
 	startedAt: number,
 	stage: CliFailureStageV1,
 	error: StructuredErrorV1,
 	warnings: ContractWarningV1[] = [],
-): CliResultEnvelopeV1 {
+): CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 {
 	return {
 		contractVersion: CONTRACT_VERSION_V1,
 		kind: 'cli-result',
@@ -568,7 +609,7 @@ function failureEnvelope(
 
 function serializeBoundedEnvelopeV1(
 	ports: AgentRuntimeCliDispatcherPortsV1,
-	envelope: CliResultEnvelopeV1,
+	envelope: CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1,
 ): string {
 	let serialized: string;
 	try {
@@ -582,7 +623,7 @@ function serializeBoundedEnvelopeV1(
 	if (!envelope.ok) {
 		throw new AgentRuntimeTransportErrorV1('result-too-large', 'failure-envelope-exceeds-result-limit');
 	}
-	const failure: CliResultEnvelopeV1 = {
+	const failure = {
 		contractVersion: CONTRACT_VERSION_V1,
 		kind: 'cli-result',
 		requestId: envelope.requestId,
@@ -603,7 +644,7 @@ function serializeBoundedEnvelopeV1(
 				false,
 			),
 		},
-	};
+	} as CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1;
 	return JSON.stringify(failure);
 }
 
@@ -616,7 +657,7 @@ function parseInvocationJson(raw: string): unknown {
 }
 
 function readInvocationConsistency(
-	invocation: CliInvocationV1,
+	invocation: RuntimeCliInvocationV1,
 ): 'live-verified' | 'best-effort' | 'offline-unverified' {
 	if (!invocation.request) return 'live-verified';
 	return 'consistency' in invocation.request
@@ -624,7 +665,7 @@ function readInvocationConsistency(
 		: 'live-verified';
 }
 
-function readRuntimeOperationError(result: CliRuntimeResultV1): StructuredErrorV1 | null {
+function readRuntimeOperationError(result: RuntimeCliResultV1): StructuredErrorV1 | null {
 	if (Array.isArray(result) || typeof result !== 'object' || result === null) return null;
 	// A decoded mutation result is itself the domain outcome. Preserve partial
 	// and ambiguous group evidence in the success envelope for the client.
@@ -634,7 +675,7 @@ function readRuntimeOperationError(result: CliRuntimeResultV1): StructuredErrorV
 	return error && typeof error === 'object' ? error : null;
 }
 
-function readWarnings(result: CliRuntimeResultV1): ContractWarningV1[] {
+function readWarnings(result: RuntimeCliResultV1): ContractWarningV1[] {
 	if (Array.isArray(result) || typeof result !== 'object' || result === null) return [];
 	if (!('warnings' in result) || !Array.isArray(result.warnings)) return [];
 	return result.warnings.map(warning => ({ ...warning }));

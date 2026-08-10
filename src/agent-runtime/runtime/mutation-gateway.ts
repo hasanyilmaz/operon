@@ -129,6 +129,11 @@ export interface RuntimePreparedMutationCommitV1 {
 	};
 }
 
+export interface RuntimeMutationSettlementWindowV1 {
+	readonly applyStartedAtEpochMs: number;
+	readonly settlementObservedAtEpochMs: number;
+}
+
 export interface RuntimeGraphTransactionCheckpointV1 {
 	phase: GraphTransactionJournalPhaseV1;
 	completedStepCount: number;
@@ -254,12 +259,14 @@ export interface RuntimeMutationGatewayPortsV1 {
 	refreshMutationCommitEvidence?(
 		prepared: RuntimePreparedMutationV1,
 		commit: RuntimePreparedMutationCommitV1,
+		settlementWindow: RuntimeMutationSettlementWindowV1,
 	): Promise<RuntimePreparedMutationCommitV1>;
 	verifyMutation?(
 		request: MutationApplyRequestV1,
 		prepared: RuntimePreparedMutationV1,
 		postflightRevision: ContextRevisionV1,
 		commit: RuntimePreparedMutationCommitV1,
+		settlementWindow: RuntimeMutationSettlementWindowV1,
 	): Promise<boolean>;
 	/**
 	 * Read-only same-plan recovery for mutations whose exact sealed after-state
@@ -1444,6 +1451,7 @@ export class RuntimeMutationGatewayV1 {
 			await receiptStore.persistJournal(journal, journalLeaseOwner);
 		};
 		let commit: RuntimePreparedMutationCommitV1;
+		const applyStartedAtEpochMs = this.ports.nowEpochMs();
 		try {
 			commit = await this.measureMutation(
 				request.requestId,
@@ -1537,13 +1545,23 @@ export class RuntimeMutationGatewayV1 {
 				undefined,
 				() => this.ports.settleAfterMutation(request.requestId),
 			);
+			const settlementWindow: RuntimeMutationSettlementWindowV1 = {
+				applyStartedAtEpochMs,
+				settlementObservedAtEpochMs: this.ports.nowEpochMs(),
+			};
 			postflightRevision = await this.ports.sampleContextRevision();
 			if (!(await this.measureMutation(
 				request.requestId,
 				'mutation-apply',
 				'semantic-postflight',
 				undefined,
-				() => this.ports.verifyMutation!(request, prepared, postflightRevision, commit),
+				() => this.ports.verifyMutation!(
+					request,
+					prepared,
+					postflightRevision,
+					commit,
+					settlementWindow,
+				),
 			))) {
 				throw new Error('Mutation semantic postflight did not verify.');
 			}
@@ -1910,6 +1928,7 @@ export class RuntimeMutationGatewayV1 {
 				let commit: RuntimePreparedMutationCommitV1;
 			let postflightRevision: ContextRevisionV1 | null = null;
 			let postflightObservedAt: string | null = null;
+			const applyStartedAtEpochMs = this.ports.nowEpochMs();
 			try {
 				commit = await this.measureMutation(
 					request.requestId,
@@ -1995,8 +2014,16 @@ export class RuntimeMutationGatewayV1 {
 				undefined,
 				() => this.ports.settleAfterMutation(request.requestId),
 			);
+			const settlementWindow: RuntimeMutationSettlementWindowV1 = {
+				applyStartedAtEpochMs,
+				settlementObservedAtEpochMs: this.ports.nowEpochMs(),
+			};
 			if (this.ports.refreshMutationCommitEvidence) {
-				commit = await this.ports.refreshMutationCommitEvidence(prepared.value, commit);
+				commit = await this.ports.refreshMutationCommitEvidence(
+					prepared.value,
+					commit,
+					settlementWindow,
+				);
 			}
 				postflightRevision = await this.ports.sampleContextRevision();
 				if (!(await this.measureMutation(
@@ -2009,6 +2036,7 @@ export class RuntimeMutationGatewayV1 {
 						prepared.value,
 						postflightRevision!,
 						commit,
+						settlementWindow,
 					),
 				))) {
 				return await this.persistPreparedMutationUncertainty(

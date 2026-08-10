@@ -421,6 +421,267 @@ test('forced health detects corrupt stored payloads before apply admission', asy
 	});
 });
 
+test('forced health accepts an exact legacy task-adopt receipt without rewriting it', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt',
+	});
+	assert.equal((await store.health()).healthy, true);
+	const legacyReceipt = {
+		...receipt(97),
+		mutationKind: 'task.adopt',
+	};
+	const storedLegacyReceipt = {
+		key: sha256(97),
+		completedAtMs: BASE_TIME,
+		expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+		receipt: legacyReceipt,
+	};
+	factory.records.set(
+		storedLegacyReceipt.key,
+		storedLegacyReceipt as unknown as FakeStoredRecord,
+	);
+
+	assert.deepEqual(await store.health(true), {
+		healthy: true,
+		status: 'healthy',
+		reason: 'ready',
+	});
+	assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+});
+
+test('current fallback and admission-token writes preserve a live legacy task-adopt receipt', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt-current-writes',
+	});
+	assert.equal((await store.health()).healthy, true);
+	const legacyReceipt = { ...receipt(94), mutationKind: 'task.adopt' };
+	const storedLegacyReceipt = {
+		key: sha256(94),
+		completedAtMs: BASE_TIME,
+		expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+		receipt: legacyReceipt,
+	};
+	factory.records.set(
+		storedLegacyReceipt.key,
+		storedLegacyReceipt as unknown as FakeStoredRecord,
+	);
+	assert.equal((await store.health(true)).healthy, true);
+
+	const fallbackReceipt = receipt(95);
+	await store.persist(fallbackReceipt);
+	const admissionReceipt = receipt(96);
+	const admission = await store.lookupForApplyAdmission(scope(admissionReceipt));
+	assert.equal(admission.health.healthy, true);
+	assert.ok(admission.admissionToken);
+	await store.persistAfterApplyAdmission(admissionReceipt, admission.admissionToken);
+
+	assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	assert.deepEqual(await store.lookup(scope(fallbackReceipt)), fallbackReceipt);
+	assert.deepEqual(await store.lookup(scope(admissionReceipt)), admissionReceipt);
+});
+
+test('live legacy task-adopt receipts are excluded from current receipt overflow', async () => {
+	const factory = new FakeIndexedDbFactory();
+	let now = BASE_TIME + MUTATION_RECEIPT_MAX_RECORDS_V1 + 2;
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => now,
+		databaseName: 'receipt-test-legacy-task-adopt-overflow',
+	});
+	assert.equal((await store.health()).healthy, true);
+	for (let index = 1; index <= MUTATION_RECEIPT_MAX_RECORDS_V1; index += 1) {
+		const currentReceipt = receipt(index, BASE_TIME + index);
+		factory.records.set(sha256(index), {
+			key: sha256(index),
+			completedAtMs: BASE_TIME + index,
+			expiresAtMs: BASE_TIME + index + MUTATION_RECEIPT_TTL_MS_V1,
+			receipt: currentReceipt,
+		});
+	}
+	const storedLegacyReceipts = [1_000, 1_001].map(id => ({
+		key: sha256(id),
+		completedAtMs: BASE_TIME,
+		expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+		receipt: { ...receipt(id), mutationKind: 'task.adopt' },
+	}));
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		factory.records.set(
+			storedLegacyReceipt.key,
+			storedLegacyReceipt as unknown as FakeStoredRecord,
+		);
+	}
+
+	assert.equal((await store.health(true)).healthy, true);
+	assert.deepEqual(await store.prune(), {
+		expiredDeleted: 0,
+		overflowDeleted: 0,
+		retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+	});
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+
+	const fallbackReceipt = receipt(2_000, now);
+	assert.deepEqual(await store.persist(fallbackReceipt), {
+		expiredDeleted: 0,
+		overflowDeleted: 1,
+		retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+	});
+	assert.equal(factory.records.has(sha256(1)), false);
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+
+	now += 1;
+	const admissionReceipt = receipt(2_001, now);
+	const admission = await store.lookupForApplyAdmission(scope(admissionReceipt));
+	assert.ok(admission.admissionToken);
+	assert.deepEqual(
+		await store.persistAfterApplyAdmission(admissionReceipt, admission.admissionToken),
+		{
+			expiredDeleted: 0,
+			overflowDeleted: 1,
+			retained: MUTATION_RECEIPT_MAX_RECORDS_V1 + storedLegacyReceipts.length,
+		},
+	);
+	assert.equal(factory.records.has(sha256(2)), false);
+	for (const storedLegacyReceipt of storedLegacyReceipts) {
+		assert.deepEqual(factory.records.get(storedLegacyReceipt.key), storedLegacyReceipt);
+	}
+});
+
+test('expired legacy task-adopt receipts prune once and remain idempotent', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt-expired',
+	});
+	assert.equal((await store.health()).healthy, true);
+	const legacyReceipt = {
+		...receipt(93, BASE_TIME - MUTATION_RECEIPT_TTL_MS_V1),
+		mutationKind: 'task.adopt',
+	};
+	factory.records.set(sha256(93), {
+		key: sha256(93),
+		completedAtMs: BASE_TIME - MUTATION_RECEIPT_TTL_MS_V1,
+		expiresAtMs: BASE_TIME,
+		receipt: legacyReceipt,
+	} as unknown as FakeStoredRecord);
+	const beforeGeneration = structuredClone(factory.metadata.get('receipt-generation')) as {
+		generation: number;
+	};
+
+	assert.equal((await store.health(true)).healthy, true);
+	assert.equal(factory.records.size, 0);
+	const afterFirstGeneration = structuredClone(factory.metadata.get('receipt-generation')) as {
+		generation: number;
+	};
+	assert.equal(afterFirstGeneration.generation, beforeGeneration.generation + 1);
+	assert.equal((await store.health(true)).healthy, true);
+	assert.equal(factory.records.size, 0);
+	assert.deepEqual(factory.metadata.get('receipt-generation'), afterFirstGeneration);
+});
+
+test('malformed legacy and future receipts fail closed without partial pruning', async () => {
+	for (const [name, invalidReceipt] of [
+		['malformed-legacy', { ...receipt(91), mutationKind: 'task.adopt', unexpected: true }],
+		['missing-field', (() => {
+			const { planHash: _planHash, ...value } = receipt(91);
+			return { ...value, mutationKind: 'task.adopt' };
+		})()],
+		['bad-hash', { ...receipt(91), mutationKind: 'task.adopt', planHash: 'not-a-digest' }],
+		['invalid-timestamp', { ...receipt(91), mutationKind: 'task.adopt', completedAt: 'not-a-timestamp' }],
+		['ttl-too-long', {
+			...receipt(91),
+			mutationKind: 'task.adopt',
+			expiresAt: new Date(BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1 + 1).toISOString(),
+		}],
+		['invalid-outcome', { ...receipt(91), mutationKind: 'task.adopt', terminalOutcome: 'unknown' }],
+		['future-kind', { ...receipt(92), mutationKind: 'task.future' }],
+	] as const) {
+		const factory = new FakeIndexedDbFactory();
+		const store = new IndexedDbMutationReceiptStoreV1({
+			indexedDBFactory: factory as unknown as IDBFactory,
+			now: () => BASE_TIME,
+			databaseName: `receipt-test-${name}`,
+		});
+		assert.equal((await store.health()).healthy, true);
+		const expired = receipt(90, BASE_TIME - MUTATION_RECEIPT_TTL_MS_V1);
+		factory.records.set(sha256(90), {
+			key: sha256(90),
+			completedAtMs: Date.parse(expired.completedAt),
+			expiresAtMs: Date.parse(expired.expiresAt),
+			receipt: expired,
+		});
+		factory.records.set(sha256(91), {
+			key: sha256(91),
+			completedAtMs: BASE_TIME,
+			expiresAtMs: BASE_TIME + MUTATION_RECEIPT_TTL_MS_V1,
+			receipt: invalidReceipt,
+		} as unknown as FakeStoredRecord);
+		const before = structuredClone([...factory.records.entries()]);
+		const metadataBefore = structuredClone([...factory.metadata.entries()]);
+
+		assert.deepEqual(await store.health(true), {
+			healthy: false,
+			status: 'unhealthy',
+			reason: 'operation-failed',
+		});
+		assert.deepEqual([...factory.records.entries()], before);
+		assert.deepEqual([...factory.metadata.entries()], metadataBefore);
+	}
+});
+
+test('new writes cannot use the legacy task-adopt receipt kind', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt-write-rejected',
+	});
+	const legacyReceipt = { ...receipt(89), mutationKind: 'task.adopt' };
+	await assert.rejects(
+		store.persist(legacyReceipt as unknown as MutationReceiptV1),
+		(error: unknown) => error instanceof MutationReceiptStoreErrorV1
+			&& error.code === 'receipt-store-invalid-receipt',
+	);
+	assert.equal(factory.records.size, 0);
+});
+
+test('legacy task-adopt journals require explicit recovery and remain untouched', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-legacy-task-adopt-journal',
+	});
+	assert.equal((await store.health()).healthy, true);
+	const legacyJournal = { ...journal(88), mutationKind: 'task.adopt' };
+	factory.journals.set(sha256(88), {
+		key: sha256(88),
+		updatedAtMs: BASE_TIME,
+		leaseOwner: LEASE_OWNER,
+		leaseExpiresAtMs: BASE_TIME + 30_000,
+		journal: legacyJournal,
+	});
+	const before = structuredClone([...factory.journals.entries()]);
+
+	assert.deepEqual(await store.health(true), {
+		healthy: false,
+		status: 'unhealthy',
+		reason: 'operation-failed',
+	});
+	assert.equal(store.getStartupFailureDetail(), 'legacy-task-adopt-journal-recovery-required');
+	assert.deepEqual([...factory.journals.entries()], before);
+});
+
 test('a blocked upgrade times out and closes a later successful database handle', async () => {
 	const factory = new BlockedThenLateSuccessIndexedDbFactory();
 	const store = new IndexedDbMutationReceiptStoreV1({
@@ -1147,6 +1408,7 @@ test('graph journal enforces the 8 MiB pre-write recovery bound', async () => {
 		GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
 	);
 	assert.equal(await store.acquireJournal(atLimit, LEASE_OWNER), true);
+	assert.equal((await store.health(true)).healthy, true);
 	assert.ok(await store.lookupJournal(scope(receipt(2))));
 
 	const oversized = structuredClone(atLimit);
@@ -2028,6 +2290,47 @@ class FakeTransaction {
 		return new FakeRequest<T>() as unknown as IDBRequest<T>;
 	}
 
+	cursor(name: string): IDBRequest<IDBCursorWithValue | null> {
+		const request = new FakeRequest<IDBCursorWithValue | null>();
+		const values = [...this.mutableRecords(name).values()].map(value => structuredClone(value));
+		let index = 0;
+		this.pending += 1;
+		const advance = () => {
+			queueMicrotask(() => {
+				if (this.aborted) return;
+				if (index >= values.length) {
+					request.result = null;
+					request.onsuccess?.call(
+						request as unknown as IDBRequest<IDBCursorWithValue | null>,
+						new Event('success'),
+					);
+					this.pending -= 1;
+					this.scheduleCompletion();
+					return;
+				}
+				let continued = false;
+				request.result = {
+					value: values[index],
+					continue: () => {
+						continued = true;
+						index += 1;
+						advance();
+					},
+				} as IDBCursorWithValue;
+				request.onsuccess?.call(
+					request as unknown as IDBRequest<IDBCursorWithValue | null>,
+					new Event('success'),
+				);
+				if (!continued) {
+					this.pending -= 1;
+					this.scheduleCompletion();
+				}
+			});
+		};
+		advance();
+		return request as unknown as IDBRequest<IDBCursorWithValue | null>;
+	}
+
 	shouldFailPut(name: string): boolean {
 		return this.factory.failPutStoreName === name;
 	}
@@ -2092,6 +2395,10 @@ class FakeObjectStore {
 			[...this.transaction.mutableRecords(this.name).values()]
 				.map(value => structuredClone(value))
 		));
+	}
+
+	openCursor(): IDBRequest<IDBCursorWithValue | null> {
+		return this.transaction.cursor(this.name);
 	}
 
 	put(value: { key: string }): IDBRequest<IDBValidKey> {

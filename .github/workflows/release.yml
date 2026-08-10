@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  checks: read
   id-token: write
   attestations: write
 
@@ -27,6 +28,27 @@ jobs:
           TRIGGER_COMMIT="$(git rev-parse "$GITHUB_SHA^{commit}")"
           test "$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")" = "$TRIGGER_COMMIT"
           test "$(git rev-parse "HEAD^{commit}")" = "$TRIGGER_COMMIT"
+
+      - name: Verify release commit eligibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TRIGGER_COMMIT="$(git rev-parse "$GITHUB_SHA^{commit}")"
+          git merge-base --is-ancestor "$TRIGGER_COMMIT" refs/remotes/origin/main
+          gh api "repos/$GITHUB_REPOSITORY/commits/$TRIGGER_COMMIT/check-runs?per_page=100" > "$RUNNER_TEMP/operon-check-runs.json"
+          node - "$RUNNER_TEMP/operon-check-runs.json" <<'NODE'
+          const fs = require("fs");
+          const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const required = ["Validation gate", "windows-native", "CodeQL gate"];
+          for (const name of required) {
+            const passed = report.check_runs.some(run => (
+              run.name === name
+              && run.status === "completed"
+              && run.conclusion === "success"
+            ));
+            if (!passed) throw new Error(`Required check has not passed for the release commit: ${name}`);
+          }
+          NODE
 
       - name: Refuse an existing GitHub release
         env:
@@ -49,20 +71,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build exact release artifacts
+        run: npm run build
+
       - name: Verify release dependency audit policy
         run: npm run release:audit-policy
 
-      - name: Run validation
-        env:
-          OPERON_PLUGIN_RELEASE_VALIDATION: "1"
-          OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
-        run: npm run check
-
       - name: Verify release guard
         run: npm run release:guard
-
-      - name: Verify final accepted Public V1 freeze
-        run: npm run release:freeze:check
 
       - name: Verify tag and manifest metadata
         run: |

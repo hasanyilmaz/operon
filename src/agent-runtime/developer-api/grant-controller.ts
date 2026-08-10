@@ -1,4 +1,3 @@
-import type { CapabilityIdV1 } from '../contracts/v1/capabilities';
 import type { OperonDeveloperApiConsumerPluginV1 } from '../public/v1/developer-api';
 import {
 	approveDeveloperApiCapabilities,
@@ -14,6 +13,7 @@ import {
 	type DeveloperApiGrantEvaluationV1,
 	type DeveloperApiGrantPackageV1,
 	type DeveloperApiGrantRecordV1,
+	type DeveloperApiGrantCapabilityV1,
 } from './grants';
 import type { OperonDataPackageV1 } from '../../storage/operon-data-package';
 
@@ -58,7 +58,7 @@ export interface DeveloperApiGrantAuditEventV1 {
 	readonly consumerId: string;
 	readonly consumerName: string;
 	readonly consumerVersion: string;
-	readonly capabilities: readonly CapabilityIdV1[];
+	readonly capabilities: readonly DeveloperApiGrantCapabilityV1[];
 	readonly revision: number;
 	readonly occurredAt: string;
 }
@@ -104,7 +104,7 @@ export class DeveloperApiGrantControllerV1 {
 
 	evaluate(
 		consumer: DeveloperApiConsumerDescriptorV1,
-		requestedCapabilities: readonly CapabilityIdV1[],
+		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): DeveloperApiGrantEvaluationV1 {
 		this.syncFromStoreIfIdle();
 		this.observeConsumerVersion(consumer, requestedCapabilities);
@@ -123,7 +123,7 @@ export class DeveloperApiGrantControllerV1 {
 
 	observeConsumerVersion(
 		consumer: DeveloperApiConsumerDescriptorV1,
-		requestedCapabilities: readonly CapabilityIdV1[],
+		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): boolean {
 		this.syncFromStoreIfIdle();
 		if (this.isStorePersistenceUnavailable()) return false;
@@ -153,7 +153,7 @@ export class DeveloperApiGrantControllerV1 {
 
 	recordPending(
 		consumer: DeveloperApiConsumerDescriptorV1,
-		requestedCapabilities: readonly CapabilityIdV1[],
+		requestedCapabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): void {
 		this.syncFromStoreIfIdle();
 		if (this.isStorePersistenceUnavailable()) return;
@@ -171,7 +171,7 @@ export class DeveloperApiGrantControllerV1 {
 
 	async approve(
 		consumer: DeveloperApiConsumerMetadataV1,
-		capabilities: readonly CapabilityIdV1[],
+		capabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): Promise<DeveloperApiGrantRecordV1> {
 		this.requirePersistenceAvailable();
 		const next = approveDeveloperApiCapabilities(
@@ -197,7 +197,7 @@ export class DeveloperApiGrantControllerV1 {
 
 	async approvePending(
 		consumerId: string,
-		capabilities: readonly CapabilityIdV1[],
+		capabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): Promise<DeveloperApiGrantRecordV1> {
 		this.requirePersistenceAvailable();
 		const existing = this.requireRecord(consumerId);
@@ -215,7 +215,7 @@ export class DeveloperApiGrantControllerV1 {
 
 	async denyPending(
 		consumerId: string,
-		capabilities: readonly CapabilityIdV1[] | 'all' = 'all',
+		capabilities: readonly DeveloperApiGrantCapabilityV1[] | 'all' = 'all',
 	): Promise<DeveloperApiGrantRecordV1> {
 		this.requirePersistenceAvailable();
 		const existing = this.requireRecord(consumerId);
@@ -353,7 +353,7 @@ export class DeveloperApiGrantControllerV1 {
 		action: DeveloperApiGrantAuditActionV1,
 		snapshot: DeveloperApiGrantPackageV1,
 		consumerId: string,
-		capabilities: readonly CapabilityIdV1[],
+		capabilities: readonly DeveloperApiGrantCapabilityV1[],
 	): {
 		intent: DeveloperApiGrantAuditEventV1;
 		activated: DeveloperApiGrantAuditEventV1;

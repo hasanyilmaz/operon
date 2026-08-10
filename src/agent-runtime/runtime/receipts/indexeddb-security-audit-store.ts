@@ -62,7 +62,7 @@ const OUTCOMES = new Set<SecurityAuditOutcomeV1>([
 	'failed',
 	'outcome-unknown',
 ]);
-const MUTATION_KINDS = new Set<MutationKindV1>(MUTATION_KINDS_V1);
+const MUTATION_KINDS = new Set<string>([...MUTATION_KINDS_V1, 'task.adopt']);
 const RISKS = new Set<RiskLevelV1>([
 	'none',
 	'routine',
@@ -137,7 +137,7 @@ export interface SecurityAuditEventV1 {
 	consumerIdentityHash: string;
 	grantRevision: number;
 	capability: string | null;
-	mutationKind: MutationKindV1 | null;
+	mutationKind: MutationKindV1 | 'task.adopt' | null;
 	risk: RiskLevelV1 | null;
 	planDigest: string | null;
 	targetDigest: string | null;

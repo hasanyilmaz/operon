@@ -11,12 +11,14 @@ permissions:
 
 jobs:
   validate:
+    name: Validation gate
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 2
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
@@ -39,9 +41,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify release dependency audit policy
-        run: npm run release:audit-policy
-
       - name: Run validation
         env:
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
@@ -54,12 +53,11 @@ jobs:
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check:candidate
 
+      - name: Verify release dependency audit policy
+        run: npm run release:audit-policy
+
       - name: Verify release guard
         run: npm run release:guard
-
-      - name: Verify candidate Public V1 freeze
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: npm run candidate:freeze:check
 
   windows-native:
     runs-on: windows-2022
@@ -68,6 +66,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 2
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 

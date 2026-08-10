@@ -11,9 +11,13 @@ import {
 	type CompatibilityOfferV1,
 } from '../contracts/v1/primitives';
 import { validateCliRuntimeRequestV1 } from '../runtime/context-request-validator';
+import {
+	decodeTaskWorkflowCliInvocationExtensionV1,
+	type TaskWorkflowCliInvocationV1,
+} from '../extensions/task-workflows-v1';
 
 type InvocationValidationV1 =
-	| { ok: true; value: CliInvocationV1 }
+	| { ok: true; value: CliInvocationV1 | TaskWorkflowCliInvocationV1 }
 	| { ok: false };
 
 const INVOCATION_KEYS = [
@@ -31,6 +35,8 @@ const INVOCATION_KEYS = [
 ] as const;
 
 export function validateCliInvocationForTransportV1(value: unknown): InvocationValidationV1 {
+	const extension = decodeTaskWorkflowCliInvocationExtensionV1(value);
+	if (extension.ok) return { ok: true, value: extension.value };
 	if (
 		!isExactObject(value, INVOCATION_KEYS)
 		|| value.contractVersion !== CONTRACT_VERSION_V1

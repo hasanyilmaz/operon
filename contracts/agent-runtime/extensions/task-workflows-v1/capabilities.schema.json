@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:operon:schema:runtime:v1:extension:task-workflows:capabilities",
+  "title": "Operon Runtime V1 task workflow extension capabilities",
+  "$defs": {
+    "capabilityId": {
+      "type": "string",
+      "enum": [
+        "tasks.filter-query",
+        "tasks.create.identity-placeholders",
+        "tasks.adopt.preview",
+        "tasks.adopt.apply"
+      ]
+    },
+    "capabilityDefinition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "mode", "destructive"],
+          "properties": {
+            "id": { "const": "tasks.filter-query" },
+            "mode": { "const": "read" },
+            "destructive": { "const": false }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "mode", "destructive"],
+          "properties": {
+            "id": { "const": "tasks.create.identity-placeholders" },
+            "mode": { "const": "preview" },
+            "destructive": { "const": false }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "mode", "mutationKind", "destructive"],
+          "properties": {
+            "id": { "enum": ["tasks.adopt.preview", "tasks.adopt.apply"] },
+            "mode": { "enum": ["preview", "apply"] },
+            "mutationKind": { "const": "task.adopt" },
+            "destructive": { "const": false }
+          }
+        }
+      ]
+    },
+    "capabilityRegistry": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "type": "object", "additionalProperties": false, "required": ["id", "mode", "destructive"], "properties": { "id": { "const": "tasks.filter-query" }, "mode": { "const": "read" }, "destructive": { "const": false } } },
+        { "type": "object", "additionalProperties": false, "required": ["id", "mode", "destructive"], "properties": { "id": { "const": "tasks.create.identity-placeholders" }, "mode": { "const": "preview" }, "destructive": { "const": false } } },
+        { "type": "object", "additionalProperties": false, "required": ["id", "mode", "mutationKind", "destructive"], "properties": { "id": { "const": "tasks.adopt.preview" }, "mode": { "const": "preview" }, "mutationKind": { "const": "task.adopt" }, "destructive": { "const": false } } },
+        { "type": "object", "additionalProperties": false, "required": ["id", "mode", "mutationKind", "destructive"], "properties": { "id": { "const": "tasks.adopt.apply" }, "mode": { "const": "apply" }, "mutationKind": { "const": "task.adopt" }, "destructive": { "const": false } } }
+      ],
+      "items": false
+    },
+    "combinedCapabilityAdvertisement": {
+      "anyOf": [
+        { "$ref": "urn:operon:schema:runtime:v1:capabilities.schema.json#/$defs/capabilityAdvertisement" },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["id", "availability", "stability"],
+          "properties": {
+            "id": { "$ref": "#/$defs/capabilityId" },
+            "availability": { "enum": ["contract-only", "available", "degraded", "unavailable"] },
+            "stability": { "const": "stable" },
+            "reason": { "type": "string", "minLength": 1, "maxLength": 1024 }
+          }
+        }
+      ]
+    },
+    "combinedCapabilityAdvertisements": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/combinedCapabilityAdvertisement" },
+      "allOf": [
+        { "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.filter-query" } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.create.identity-placeholders" } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.adopt.preview" } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "required": ["id"], "properties": { "id": { "const": "tasks.adopt.apply" } } }, "minContains": 1, "maxContains": 1 }
+      ]
+    }
+  }
+}

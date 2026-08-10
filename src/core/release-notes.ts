@@ -13,6 +13,37 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.2.1',
+		date: '2026-08-09',
+		title: 'Operon 3.2.1 - Runtime Startup and Lint Fixes',
+		showOnUpdate: true,
+		body: `
+Operon 3.2.1 is a Plugin-only patch release. Operon CLI remains at 1.1.0 and the Runtime contract remains at V1.
+
+### Fixed
+- Fixed legacy task-adoption receipts preventing mutation and task-workflow Gateway capabilities from becoming available after an update or live reload.
+- Fixed Community Plugin Scorecard unsafe-value warnings in the File Task identity transaction path and added strict scorecard lint to the release validation path.
+`.trim(),
+	},
+	{
+		version: '3.2.0',
+		date: '2026-08-09',
+		title: 'Operon 3.2.0 - Agent Task Workflows',
+		showOnUpdate: true,
+		body: `
+Operon 3.2.0 pairs with Operon CLI 1.1.0 while keeping the Runtime contract at V1.
+
+### New
+- Added native **saved-filter evaluation** to the Runtime, Developer API, and CLI through \`tasks.filter-query\`, returning bounded, paginated task summaries with exact file or folder scope, freshness, provenance, and stale-cursor protection.
+- Added safe **Markdown checkbox adoption** through the Runtime and \`operon task adopt\`, with sealed preview/apply behavior, exact source-line validation, replay protection, and explicit reopening for completed or cancelled checkboxes.
+- Added opt-in **File Task identity placeholders** for task creation, allowing \`{{operonId}}\` and single-character suffixed IDs to preserve deterministic parent-child template relationships without changing existing templates that do not request the policy.
+
+### Fixed
+- Fixed active **modified-time frontmatter plugins** causing successful inline and File Task updates or transitions to be reported as \`outcome-unknown\`, while continuing to fail closed for unrelated source changes, unsafe property collisions, or unsupported timestamp writes.
+- Fixed **Developer API consent** requests from secondary Obsidian windows opening outside their owning window or remaining pending indefinitely; UI failures and timeouts now resolve as bounded \`unavailable\` outcomes without weakening post-consent authorization checks.
+`.trim(),
+	},
+	{
 		version: '3.1.1',
 		date: '2026-08-07',
 		title: 'Operon 3.1.1 - Workflow Polish and Runtime Reliability',

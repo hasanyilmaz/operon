@@ -53,6 +53,15 @@ export type {
 	MutationPreviewResultV1,
 	MutationResultV1,
 } from '../contracts/v1/mutation';
+import type {
+	TaskFilterQueryRequestV1,
+	TaskFilterQueryResultV1,
+	TaskWorkflowApplyRequestV1,
+	TaskWorkflowMutationResultV1,
+	TaskWorkflowPreviewRequestV1,
+	TaskWorkflowPreviewResultV1,
+} from '../extensions/task-workflows-v1';
+export type { TaskFilterQueryRequestV1, TaskFilterQueryResultV1 } from '../extensions/task-workflows-v1';
 import { RUNTIME_API_VERSION_V1 } from '../contracts/v1/lifecycle';
 import type { RuntimeTimingSinkV1 } from './timing-probe';
 
@@ -95,6 +104,7 @@ export interface RuntimeEntitiesFacadeV1 {
 export interface RuntimeTasksFacadeV1 {
 	get(request: TaskGetRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskGetResultV1>;
 	query(request: TaskQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskQueryResultV1>;
+	filterQuery?(request: TaskFilterQueryRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFilterQueryResultV1>;
 	find(request: TaskFinderRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskFinderResultV1>;
 }
 
@@ -109,6 +119,8 @@ export interface RuntimeContextFacadeV1 {
 export interface RuntimeMutationsFacadeV1 {
 	preview(request: MutationPreviewRequestV1, context?: RuntimeInvocationContextV1): Promise<MutationPreviewResultV1>;
 	apply(request: MutationApplyRequestV1): Promise<MutationResultV1>;
+	previewTaskWorkflow?(request: TaskWorkflowPreviewRequestV1, context?: RuntimeInvocationContextV1): Promise<TaskWorkflowPreviewResultV1>;
+	applyTaskWorkflow?(request: TaskWorkflowApplyRequestV1): Promise<TaskWorkflowMutationResultV1>;
 }
 
 export interface RuntimeTimersFacadeV1 {
