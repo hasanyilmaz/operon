@@ -4,6 +4,7 @@ import {
 	createDefaultTableColumn,
 	createDefaultTablePreset,
 	createTablePresetId,
+	isTableColumnColorModeLocked,
 	normalizeTableCollapsedGroupKeys,
 	normalizeTableColumnColorMode,
 	normalizeTableColumnDisplayMode,
@@ -269,7 +270,7 @@ export function setTablePresetColumnColorMode(
 	const draft = cloneTablePreset(preset);
 	const column = draft.columns.find(entry => entry.key === normalizedKey);
 	if (!column) return draft;
-	const colorMode = normalizeTableColumnColorMode(mode, normalizedKey);
+	const colorMode = normalizeEditableTableColumnColorMode(mode, normalizedKey);
 	if (colorMode) {
 		column.colorMode = colorMode;
 	} else {
@@ -423,7 +424,7 @@ export function replaceTablePresetColumns(preset: TablePreset, columns: readonly
 			if (column.pinned !== true) {
 				delete column.pinned;
 			}
-			const colorMode = normalizeTableColumnColorMode(column.colorMode, column.key);
+			const colorMode = normalizeEditableTableColumnColorMode(column.colorMode, column.key);
 			if (colorMode) {
 				column.colorMode = colorMode;
 			} else {
@@ -462,6 +463,11 @@ export function filterTablePresetSortRulesBySupportedKeys(
 		return true;
 	});
 	return draft;
+}
+
+function normalizeEditableTableColumnColorMode(value: unknown, key: string): TableColumnColorMode | undefined {
+	if (isTableColumnColorModeLocked(key)) return undefined;
+	return normalizeTableColumnColorMode(value, key);
 }
 
 export function filterTablePresetGroupByBySupportedKeys(

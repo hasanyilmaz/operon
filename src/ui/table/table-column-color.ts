@@ -10,6 +10,7 @@ import { findStatusDef } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
 import {
 	getDefaultTableColumnColorMode,
+	isTableColumnColorModeLocked,
 	type TableColumn,
 	type TableColumnColorMode,
 } from '../../types/table';
@@ -34,10 +35,13 @@ type TableColumnColorSettings = Pick<OperonSettings, 'colorPalette' | 'pipelines
 const TABLE_COLUMN_COLOR_INELIGIBLE_KEYS = new Set(['description', 'source', 'duration']);
 
 export function isTableColumnColorModeEligible(column: TableColumn): boolean {
-	return column.kind === 'task' && !TABLE_COLUMN_COLOR_INELIGIBLE_KEYS.has(column.key);
+	return column.kind === 'task'
+		&& !isTableColumnColorModeLocked(column.key)
+		&& !TABLE_COLUMN_COLOR_INELIGIBLE_KEYS.has(column.key);
 }
 
 export function resolveEffectiveTableColumnColorMode(column: Pick<TableColumn, 'key' | 'colorMode'>): TableColumnColorMode {
+	if (isTableColumnColorModeLocked(column.key)) return getDefaultTableColumnColorMode(column.key);
 	return column.colorMode ?? getDefaultTableColumnColorMode(column.key);
 }
 
