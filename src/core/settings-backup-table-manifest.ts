@@ -11,6 +11,8 @@ import { parseOperonSettingsBackupV1 } from './settings-backup-format';
 export const OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_FORMAT = 'operon-settings-backup-table-manifest' as const;
 export const OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_VERSION = 1 as const;
 export const OPERON_SETTINGS_BACKUP_MAX_TABLE_FILES = 1_000;
+export const OPERON_SETTINGS_BACKUP_MAX_MANIFEST_BYTES = 1 * 1024 * 1024;
+export const OPERON_SETTINGS_BACKUP_MAX_SETTINGS_ENTRY_BYTES = 10 * 1024 * 1024;
 export const OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES = 5 * 1024 * 1024;
 export const OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_TOTAL_BYTES = 100 * 1024 * 1024;
 
@@ -37,6 +39,8 @@ export interface OperonSettingsBackupTableManifestV1 {
 	manifestVersion: typeof OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_VERSION;
 	settings: OperonSettingsBackupArchiveFileDescriptorV1 & { path: 'settings.json' };
 	tableFiles: OperonSettingsBackupTableFileDescriptorV1[];
+	/** Optional for legacy V1 manifests; new included bundles always declare it. */
+	defaultPresetId?: string | null;
 }
 
 export interface OperonSettingsBackupValidatedTableEntryV1 {
@@ -86,11 +90,14 @@ export function validateOperonSettingsBackupTableManifestV1(
 		const entry = archiveEntries[index];
 		const path = entry.path;
 		totalEntryBytes += entry.bytes.byteLength;
-		if (entry.bytes.byteLength > OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES) {
+		const entryLimit = path === 'settings.json'
+			? OPERON_SETTINGS_BACKUP_MAX_SETTINGS_ENTRY_BYTES
+			: OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES;
+		if (entry.bytes.byteLength > entryLimit) {
 			diagnostics.push(error(
 				`$.entries[${index}].bytes`,
 				'value',
-				`Archive entry exceeds the ${OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES} byte limit.`,
+				`Archive entry exceeds the ${entryLimit} byte limit.`,
 			));
 		}
 		if (!isSafeArchivePath(path, path === 'settings.json')) {
@@ -167,7 +174,13 @@ function parseManifest(
 	raw: unknown,
 	diagnostics: OperonSettingsBackupDiagnostic[],
 ): OperonSettingsBackupTableManifestV1 | null {
-	const object = inspectObject(raw, '$', ['format', 'manifestVersion', 'settings', 'tableFiles'], diagnostics);
+	const object = inspectObject(
+		raw,
+		'$',
+		['format', 'manifestVersion', 'settings', 'tableFiles', 'defaultPresetId'],
+		diagnostics,
+		['defaultPresetId'],
+	);
 	if (!object) return null;
 	if (object.format !== OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_FORMAT) {
 		diagnostics.push(error('$.format', 'value', `Expected ${OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_FORMAT}.`));
@@ -175,7 +188,13 @@ function parseManifest(
 	if (object.manifestVersion !== OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_VERSION) {
 		diagnostics.push(error('$.manifestVersion', 'unsupported-version', `Unsupported Table manifest version: ${String(object.manifestVersion)}.`));
 	}
-	const settings = parseFileDescriptor(object.settings, '$.settings', diagnostics, true);
+	const settings = parseFileDescriptor(
+		object.settings,
+		'$.settings',
+		diagnostics,
+		true,
+		OPERON_SETTINGS_BACKUP_MAX_SETTINGS_ENTRY_BYTES,
+	);
 	if (settings && settings.path !== 'settings.json') {
 		diagnostics.push(error('$.settings.path', 'value', 'Settings archive path must be settings.json.'));
 	}
@@ -206,7 +225,7 @@ function parseManifest(
 		if (!item) continue;
 		const id = readString(item, 'id', path, diagnostics);
 		const originalPath = readString(item, 'originalPath', path, diagnostics);
-		const descriptor = parseFileDescriptor(item, path, diagnostics, false);
+		const descriptor = parseFileDescriptor(item, path, diagnostics, false, OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES);
 		const formatVersion = item.formatVersion;
 		if (formatVersion !== OPERON_TABLE_FILE_LEGACY_VERSION && formatVersion !== OPERON_TABLE_FILE_VERSION) {
 			diagnostics.push(error(`${path}.formatVersion`, 'unsupported-version', `Unsupported Table file version: ${String(formatVersion)}.`));
@@ -240,6 +259,14 @@ function parseManifest(
 			tableFiles.push({ ...descriptor, id, originalPath, formatVersion });
 		}
 	}
+	let defaultPresetId: string | null | undefined;
+	if (object.defaultPresetId === null) defaultPresetId = null;
+	else if (object.defaultPresetId !== undefined) {
+		defaultPresetId = readString(object, 'defaultPresetId', '$', diagnostics);
+		if (defaultPresetId && !tableFiles.some(item => item.id === defaultPresetId)) {
+			diagnostics.push(error('$.defaultPresetId', 'value', 'defaultPresetId must reference a declared Table file.'));
+		}
+	}
 	if (
 		object.format !== OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_FORMAT
 		|| object.manifestVersion !== OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_VERSION
@@ -253,6 +280,7 @@ function parseManifest(
 		manifestVersion: OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_VERSION,
 		settings: { ...settings, path: 'settings.json' },
 		tableFiles,
+		...(defaultPresetId !== undefined ? { defaultPresetId } : {}),
 	};
 }
 
@@ -261,6 +289,7 @@ function parseFileDescriptor(
 	path: string,
 	diagnostics: OperonSettingsBackupDiagnostic[],
 	inspect: boolean,
+	byteLimit: number,
 ): OperonSettingsBackupArchiveFileDescriptorV1 | null {
 	const object = inspect
 		? inspectObject(raw, path, ['path', 'sha256', 'bytes'], diagnostics)
@@ -274,16 +303,16 @@ function parseFileDescriptor(
 	}
 	if (typeof bytes !== 'number' || !Number.isSafeInteger(bytes) || bytes < 0) {
 		diagnostics.push(error(`${path}.bytes`, 'type', 'bytes must be a non-negative safe integer.'));
-	} else if (bytes > OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES) {
+	} else if (bytes > byteLimit) {
 		diagnostics.push(error(
 			`${path}.bytes`,
 			'value',
-			`bytes exceeds the ${OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES} byte entry limit.`,
+			`bytes exceeds the ${byteLimit} byte entry limit.`,
 		));
 	}
 	if (!entryPath || !sha256 || !/^[a-f0-9]{64}$/u.test(sha256)
 		|| typeof bytes !== 'number' || !Number.isSafeInteger(bytes) || bytes < 0
-		|| bytes > OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES) return null;
+		|| bytes > byteLimit) return null;
 	return { path: entryPath, sha256, bytes };
 }
 
@@ -318,6 +347,7 @@ function inspectObject(
 	path: string,
 	allowedFields: readonly string[],
 	diagnostics: OperonSettingsBackupDiagnostic[],
+	optionalFields: readonly string[] = [],
 ): Record<string, unknown> | null {
 	if (!isPlainRecord(value)) {
 		diagnostics.push(error(path, 'type', 'Expected a plain JSON object.'));
@@ -331,7 +361,9 @@ function inspectObject(
 			diagnostics.push(error(`${path}.${key}`, 'unknown-field', `Unknown field: ${key}.`));
 		}
 	}
+	const optional = new Set(optionalFields);
 	for (const key of allowedFields) {
+		if (optional.has(key)) continue;
 		if (!Object.prototype.hasOwnProperty.call(value, key)) {
 			diagnostics.push(error(`${path}.${key}`, 'required', 'Required field is missing.'));
 		}
@@ -399,15 +431,19 @@ function validateSettingsTableInventory(
 		return;
 	}
 	const inventory = parsed.value.body.tableInventory.items;
-	const byId = new Map(inventory.map(item => [item.id, item]));
-	if (byId.size !== inventory.length) {
+	const inventoryIds = new Set(inventory.map(item => item.id));
+	if (inventoryIds.size !== inventory.length) {
 		diagnostics.push(error('$.settings.content.body.tableInventory.items', 'value', 'Table inventory contains duplicate IDs.'));
 	}
 	for (const [index, descriptor] of manifest.tableFiles.entries()) {
-		const item = byId.get(descriptor.id);
+		const item = inventory[index];
 		const path = `$.tableFiles[${index}]`;
 		if (!item) {
-			diagnostics.push(error(`${path}.id`, 'required', `Table inventory is missing ID: ${descriptor.id}.`));
+			diagnostics.push(error(`${path}.id`, 'required', `Table inventory is missing ordered ID: ${descriptor.id}.`));
+			continue;
+		}
+		if (item.id !== descriptor.id) {
+			diagnostics.push(error(`${path}.id`, 'value', 'Table inventory order or ID does not match the manifest.'));
 			continue;
 		}
 		if (item.originalPath !== descriptor.originalPath) {
@@ -416,10 +452,19 @@ function validateSettingsTableInventory(
 		if (item.sha256 !== descriptor.sha256) {
 			diagnostics.push(error(`${path}.sha256`, 'integrity-failed', 'Table inventory checksum does not match the manifest.'));
 		}
-		byId.delete(descriptor.id);
 	}
-	for (const id of byId.keys()) {
-		diagnostics.push(error('$.settings.content.body.tableInventory.items', 'unknown-field', `Table inventory contains undeclared ID: ${id}.`));
+	if (inventory.length > manifest.tableFiles.length) {
+		for (const item of inventory.slice(manifest.tableFiles.length)) {
+			diagnostics.push(error('$.settings.content.body.tableInventory.items', 'unknown-field', `Table inventory contains undeclared ID: ${item.id}.`));
+		}
+	}
+	const inventoryDefault = parsed.value.body.tableInventory.defaultPresetId;
+	if (inventoryDefault !== manifest.defaultPresetId) {
+		diagnostics.push(error(
+			'$.defaultPresetId',
+			'value',
+			'Table inventory defaultPresetId does not match the manifest.',
+		));
 	}
 }
 

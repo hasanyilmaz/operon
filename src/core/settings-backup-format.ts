@@ -65,6 +65,8 @@ export interface OperonSettingsBackupTableInventoryItemV1 {
 export interface OperonSettingsBackupTableInventoryV1 {
 	mode: 'excluded' | 'included';
 	items: OperonSettingsBackupTableInventoryItemV1[];
+	/** Included bundles use this to bind the source default to the exact ordered inventory. */
+	defaultPresetId?: string | null;
 }
 
 export interface OperonSettingsBackupBodyV1 {
@@ -538,7 +540,7 @@ function parseTableInventory(
 	diagnostics: OperonSettingsBackupDiagnostic[],
 ): OperonSettingsBackupTableInventoryV1 | null {
 	const path = '$.body.tableInventory';
-	const object = inspectObject(raw, path, ['mode', 'items'], diagnostics);
+	const object = inspectObject(raw, path, ['mode', 'items', 'defaultPresetId'], diagnostics, ['defaultPresetId']);
 	if (!object) return null;
 	const mode = readLiteral(object, 'mode', ['excluded', 'included'], path, diagnostics);
 	if (!Array.isArray(object.items)) {
@@ -561,8 +563,24 @@ function parseTableInventory(
 		}
 		if (id && originalPath && (sha256 === null || isSha256(sha256))) items.push({ id, originalPath, sha256 });
 	}
-	if (!mode || items.length !== object.items.length) return null;
-	return { mode, items };
+	let defaultPresetId: string | null | undefined;
+	if (object.defaultPresetId === null) defaultPresetId = null;
+	else if (object.defaultPresetId !== undefined) {
+		defaultPresetId = readString(object, 'defaultPresetId', path, diagnostics);
+	}
+	if (defaultPresetId && !items.some(item => item.id === defaultPresetId)) {
+		diagnostics.push(diagnostic(
+			`${path}.defaultPresetId`,
+			'value',
+			'defaultPresetId must reference an item in the Table inventory.',
+		));
+	}
+	if (!mode || items.length !== object.items.length || (object.defaultPresetId !== undefined && defaultPresetId === undefined)) return null;
+	return {
+		mode,
+		items,
+		...(defaultPresetId !== undefined ? { defaultPresetId } : {}),
+	};
 }
 
 function parseIntegrity(
