@@ -3,16 +3,26 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import type { App } from 'obsidian';
+import { sha256HexV1 } from '../src/agent-runtime/contracts/v1/canonical';
 import {
 	createOperonSettingsBackupApplyAcknowledgementV1,
+	projectOperonSettingsBackupApplyDataPackageV1,
 } from '../src/core/settings-backup-apply';
 import { exportOperonSettingsBackupJsonV1 } from '../src/core/settings-backup-export';
-import type { OperonSettingsBackupBodyV1 } from '../src/core/settings-backup-format';
+import {
+	canonicalizeOperonSettingsBackupJson,
+	type OperonSettingsBackupBodyV1,
+} from '../src/core/settings-backup-format';
 import { validateOperonSettingsBackupGroupsV1 } from '../src/core/settings-backup-group-validation';
 import {
 	preflightOperonSettingsBackupRestoreV1,
 	type OperonSettingsBackupRestorePlanV1,
 } from '../src/core/settings-backup-preflight';
+import {
+	computeOperonSettingsBackupTableResourcePlanIdV1,
+	type OperonSettingsBackupTableResourceProjectionV1,
+	type OperonSettingsBackupTableResourceRestorePlanV1,
+} from '../src/core/settings-backup-table-resource-preflight';
 import {
 	buildOperonDataPackageFromSettings,
 	composeOperonSettingsFromDataPackage,
@@ -212,6 +222,28 @@ function applyInput(sourceJson: string, plan: OperonSettingsBackupRestorePlanV1,
 		appliedAt,
 		refreshedVaultReferenceChecks: plan.vaultReferenceChecks,
 	};
+}
+
+function createTableResourcePlan(
+	settingsPlan: OperonSettingsBackupRestorePlanV1,
+	projection: OperonSettingsBackupTableResourceProjectionV1,
+): OperonSettingsBackupTableResourceRestorePlanV1 {
+	const material = {
+		version: 1 as const,
+		archiveSha256: 'a'.repeat(64),
+		sourceBodyChecksum: settingsPlan.sourceBodyChecksum,
+		targetFingerprint: 'b'.repeat(64),
+		decisionFingerprint: 'c'.repeat(64),
+		actions: [{
+			id: 'table-imported',
+			path: 'Tables/Imported.table',
+			sha256: 'd'.repeat(64),
+			archivePath: 'tables/table-imported.table',
+			kind: 'create' as const,
+		}],
+		projection,
+	};
+	return { ...material, planId: computeOperonSettingsBackupTableResourcePlanIdV1(material) };
 }
 
 function protectedProjection(dataPackage: OperonDataPackageV1) {
@@ -629,4 +661,185 @@ test('session undo restores selected groups once and rejects stale-target undo w
 	assert.equal(staleUndo.blockedReason, 'stale-target');
 	assert.equal(harness.data.saveAttempts, attemptsBeforeUndo);
 	assert.equal(JSON.stringify(staleUndo).includes(SECRET_URL), false);
+});
+
+test('Table resource projection is opt-in and leaves JSON-only package authority unchanged', () => {
+	const current = canonicalPackage(baselineSettings());
+	const candidate = composeOperonSettingsFromDataPackage(current, DEFAULT_SETTINGS);
+	changeLanguage(candidate);
+	const jsonOnly = projectOperonSettingsBackupApplyDataPackageV1(current, candidate);
+	assert.deepEqual(jsonOnly.views.tablePresets, {
+		...current.views.tablePresets,
+		tableEmbedVisibleRows: candidate.tableEmbedVisibleRows,
+		tableShowLineNumbers: candidate.tableShowLineNumbers,
+		tableShowTaskIcon: candidate.tableShowTaskIcon,
+		tableShowTaskTypeIcon: candidate.tableShowTaskTypeIcon,
+	});
+
+	const projection: OperonSettingsBackupTableResourceProjectionV1 = {
+		tablePresetFileBindings: [{ id: 'table-imported', path: 'Tables/Imported.table' }],
+		tablePresetOrderIds: ['table-imported'],
+		tableDefaultPresetId: 'table-imported',
+		tablePresetFileInitialized: true,
+		tableFavoriteIds: ['table-imported'],
+	};
+	const withResources = projectOperonSettingsBackupApplyDataPackageV1(
+		current,
+		candidate,
+		{ tableResourceProjection: projection },
+	);
+	assert.deepEqual(withResources.views.tablePresets.fileBindings, projection.tablePresetFileBindings);
+	assert.deepEqual(withResources.views.tablePresets.presetIds, projection.tablePresetOrderIds);
+	assert.equal(withResources.views.tablePresets.tableDefaultPresetId, projection.tableDefaultPresetId);
+	assert.equal(withResources.views.tablePresets.initialized, true);
+	assert.deepEqual(withResources.ui.presetFavorites?.table, ['table-imported']);
+	assert.deepEqual(withResources.state, current.state);
+	assert.deepEqual(withResources.integrations.developerApi, current.integrations.developerApi);
+});
+
+test('Table resource canonical commit writes settings and projection once, then conditionally undoes both', async () => {
+	const harness = await createHarness(canonicalPackage(baselineSettings()));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	changeLanguage(source);
+	const { plan: settingsPlan } = await createPlan(harness.storage, source);
+	assert.equal(settingsPlan.targetConfigurationFingerprint, sha256HexV1(canonicalizeOperonSettingsBackupJson(clone({
+		settings: current,
+		dataPackageSchemaVersion: 2,
+		settingsVersion: current.settingsVersion,
+	}))));
+	const projection: OperonSettingsBackupTableResourceProjectionV1 = {
+		tablePresetFileBindings: [{ id: 'table-imported', path: 'Tables/Imported.table' }],
+		tablePresetOrderIds: ['table-imported'],
+		tableDefaultPresetId: 'table-imported',
+		tablePresetFileInitialized: true,
+		tableFavoriteIds: ['table-imported'],
+	};
+	const tablePlan = createTableResourcePlan(settingsPlan, projection);
+	const committed = await harness.storage.commitSettingsBackupTableResourceProjectionV1({
+		settingsPlan,
+		tablePlan,
+		installed: [{
+			id: 'table-imported',
+			path: 'Tables/Imported.table',
+			sha256: 'd'.repeat(64),
+			disposition: 'created',
+		}],
+		appliedAt: APPLIED_AT,
+	});
+	assert.ok(
+		committed.state === 'committed' || committed.state === 'committed-after-error',
+		JSON.stringify(committed),
+	);
+	if (committed.state !== 'committed' && committed.state !== 'committed-after-error') {
+		throw new Error('Expected committed canonical Table projection.');
+	}
+	assert.equal(harness.data.saveAttempts, 1);
+	const applied = await harness.storage.captureCommittedSettingsBackupSnapshot();
+	assert.equal(applied.settings.language, source.language);
+	assert.deepEqual(applied.settings.tablePresetFileBindings, projection.tablePresetFileBindings);
+	assert.deepEqual(applied.settings.tablePresetOrderIds, projection.tablePresetOrderIds);
+	assert.equal(applied.settings.tableDefaultPresetId, projection.tableDefaultPresetId);
+	assert.deepEqual(applied.settings.presetFavorites.table, projection.tableFavoriteIds);
+
+	const undone = await harness.storage.undoSettingsBackupTableResourceProjectionV1({
+		canonicalUndoStateId: committed.canonicalUndoStateId,
+		expectedCurrentFingerprint: committed.currentFingerprint,
+	});
+	assert.equal(undone, 'committed');
+	assert.equal(harness.data.saveAttempts, 2);
+	const restored = await harness.storage.captureCommittedSettingsBackupSnapshot();
+	assert.equal(restored.settings.language, current.language);
+	assert.deepEqual(restored.settings.tablePresetFileBindings, current.tablePresetFileBindings);
+	assert.deepEqual(restored.settings.tablePresetOrderIds, current.tablePresetOrderIds);
+	assert.equal(restored.settings.tableDefaultPresetId, current.tableDefaultPresetId);
+	assert.deepEqual(restored.settings.presetFavorites.table, current.presetFavorites.table);
+	assert.equal(harness.storage.discardSettingsBackupTableResourceUndoStateV1(committed.canonicalUndoStateId), false);
+});
+
+test('Table resource canonical admission rejects stale settings and cross-bound plans with zero writes', async () => {
+	const harness = await createHarness(canonicalPackage(baselineSettings()));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	changeLanguage(source);
+	const { plan: settingsPlan } = await createPlan(harness.storage, source);
+	const projection: OperonSettingsBackupTableResourceProjectionV1 = {
+		tablePresetFileBindings: [{ id: 'table-imported', path: 'Tables/Imported.table' }],
+		tablePresetOrderIds: ['table-imported'],
+		tableDefaultPresetId: 'table-imported',
+		tablePresetFileInitialized: true,
+		tableFavoriteIds: ['table-imported'],
+	};
+	const tablePlan = createTableResourcePlan(settingsPlan, projection);
+	const installed = [{
+		id: 'table-imported',
+		path: 'Tables/Imported.table',
+		sha256: 'd'.repeat(64),
+		disposition: 'created' as const,
+	}];
+	const mismatchedMaterial = {
+		...tablePlan,
+		sourceBodyChecksum: 'e'.repeat(64),
+	};
+	const { planId: _oldId, ...mismatchedWithoutId } = mismatchedMaterial;
+	const mismatchedPlan = {
+		...mismatchedWithoutId,
+		planId: computeOperonSettingsBackupTableResourcePlanIdV1(mismatchedWithoutId),
+	};
+	const mismatched = await harness.storage.commitSettingsBackupTableResourceProjectionV1({
+		settingsPlan,
+		tablePlan: mismatchedPlan,
+		installed,
+		appliedAt: APPLIED_AT,
+	});
+	assert.deepEqual(mismatched, { state: 'failed-clean' });
+	assert.equal(harness.data.saveAttempts, 0);
+
+	await harness.storage.updateSettings({ checkForUpdatesOnStartup: !current.checkForUpdatesOnStartup });
+	const attemptsBeforeStale = harness.data.saveAttempts;
+	const stale = await harness.storage.commitSettingsBackupTableResourceProjectionV1({
+		settingsPlan,
+		tablePlan,
+		installed,
+		appliedAt: APPLIED_AT,
+	});
+	assert.deepEqual(stale, { state: 'failed-clean' });
+	assert.equal(harness.data.saveAttempts, attemptsBeforeStale);
+});
+
+test('Table canonical commit and undo report when runtime publication requires a canonical reload', async () => {
+	const harness = await createHarness(canonicalPackage(baselineSettings()));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	changeLanguage(source);
+	const { plan: settingsPlan } = await createPlan(harness.storage, source);
+	const projection: OperonSettingsBackupTableResourceProjectionV1 = {
+		tablePresetFileBindings: [{ id: 'table-imported', path: 'Tables/Imported.table' }],
+		tablePresetOrderIds: ['table-imported'], tableDefaultPresetId: 'table-imported',
+		tablePresetFileInitialized: true, tableFavoriteIds: ['table-imported'],
+	};
+	const tablePlan = createTableResourcePlan(settingsPlan, projection);
+	const stageOwner = harness.storage as unknown as {
+		stageCanonicalDataPackageReload(dataPackage: OperonDataPackageV1): {
+			changed: boolean; commit(): void; rollback(): void;
+		};
+	};
+	const originalStage = stageOwner.stageCanonicalDataPackageReload.bind(harness.storage);
+	stageOwner.stageCanonicalDataPackageReload = dataPackage => {
+		const staged = originalStage(dataPackage);
+		return { ...staged, commit: () => { throw new Error('injected runtime publication failure'); } };
+	};
+	const committed = await harness.storage.commitSettingsBackupTableResourceProjectionV1({
+		settingsPlan, tablePlan,
+		installed: [{ id: 'table-imported', path: 'Tables/Imported.table', sha256: 'd'.repeat(64), disposition: 'created' }],
+		appliedAt: APPLIED_AT,
+	});
+	assert.ok(committed.state === 'committed' || committed.state === 'committed-after-error');
+	if (committed.state !== 'committed' && committed.state !== 'committed-after-error') return;
+	assert.equal(committed.needsCanonicalReload, true);
+	const undone = await harness.storage.undoSettingsBackupTableResourceProjectionV1({
+		canonicalUndoStateId: committed.canonicalUndoStateId,
+		expectedCurrentFingerprint: committed.currentFingerprint,
+	});
+	assert.equal(undone, 'committed-reload-required');
 });

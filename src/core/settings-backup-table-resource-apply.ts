@@ -27,6 +27,7 @@ export type OperonSettingsBackupCanonicalTableWriteResultV1 =
 		state: 'committed' | 'committed-after-error';
 		currentFingerprint: string;
 		canonicalUndoStateId: string;
+		needsCanonicalReload?: boolean;
 	}
 	| { state: 'failed-clean' }
 	| { state: 'state-unknown' };

@@ -18,6 +18,7 @@ import type {
 	OperonSettingsBackupVaultReferenceCheckV1,
 } from './settings-backup-preflight';
 import type { SettingsBackupVaultReferenceKey } from './settings-backup-compatibility';
+import type { OperonSettingsBackupTableResourceProjectionV1 } from './settings-backup-table-resource-preflight';
 
 export type OperonSettingsBackupApplyBlockedReasonV1 =
 	| 'acknowledgement-mismatch'
@@ -232,8 +233,23 @@ export function computeOperonSettingsBackupSelectedSettingsFingerprintV1(
 export function projectOperonSettingsBackupApplyDataPackageV1(
 	current: OperonDataPackageV1,
 	candidateSettings: OperonSettings,
+	options: {
+		tableResourceProjection?: OperonSettingsBackupTableResourceProjectionV1;
+	} = {},
 ): OperonDataPackageV1 {
 	const mutableCandidate = cloneJson(candidateSettings);
+	const tableResourceProjection = options.tableResourceProjection;
+	if (tableResourceProjection) {
+		mutableCandidate.tablePresetFileBindings = tableResourceProjection.tablePresetFileBindings
+			.map(binding => ({ ...binding }));
+		mutableCandidate.tablePresetOrderIds = [...tableResourceProjection.tablePresetOrderIds];
+		mutableCandidate.tableDefaultPresetId = tableResourceProjection.tableDefaultPresetId;
+		mutableCandidate.tablePresetFileInitialized = tableResourceProjection.tablePresetFileInitialized;
+		mutableCandidate.presetFavorites = {
+			...mutableCandidate.presetFavorites,
+			table: [...tableResourceProjection.tableFavoriteIds],
+		};
+	}
 	const projected = buildOperonDataPackageFromSettings(mutableCandidate, {
 		filterSets: mutableCandidate.filterSets,
 		kanbanOrderBoards: current.views.kanbanOrder.boards,
@@ -241,13 +257,15 @@ export function projectOperonSettingsBackupApplyDataPackageV1(
 		developerApiGrants: current.integrations.developerApi,
 	});
 	projected.views.kanbanOrder = cloneJson(current.views.kanbanOrder);
-	projected.views.tablePresets = {
-		...cloneJson(current.views.tablePresets),
-		tableEmbedVisibleRows: projected.views.tablePresets.tableEmbedVisibleRows,
-		tableShowLineNumbers: projected.views.tablePresets.tableShowLineNumbers,
-		tableShowTaskIcon: projected.views.tablePresets.tableShowTaskIcon,
-		tableShowTaskTypeIcon: projected.views.tablePresets.tableShowTaskTypeIcon,
-	};
+	if (!tableResourceProjection) {
+		projected.views.tablePresets = {
+			...cloneJson(current.views.tablePresets),
+			tableEmbedVisibleRows: projected.views.tablePresets.tableEmbedVisibleRows,
+			tableShowLineNumbers: projected.views.tablePresets.tableShowLineNumbers,
+			tableShowTaskIcon: projected.views.tablePresets.tableShowTaskIcon,
+			tableShowTaskTypeIcon: projected.views.tablePresets.tableShowTaskTypeIcon,
+		};
+	}
 	projected.integrations.mobileNotifications = cloneJson(current.integrations.mobileNotifications);
 	projected.integrations.developerApi = cloneJson(current.integrations.developerApi);
 	projected.state = cloneJson(current.state);

@@ -6,7 +6,7 @@
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
+import { Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, apiVersion, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
 import {
@@ -15,6 +15,7 @@ import {
 	type OperonStorageReloadSettingsResult,
 } from './src/storage/operon-storage';
 import {
+	createOperonSettingsBackupApplyAcknowledgementV1,
 	finalizeOperonSettingsBackupApplyReceiptV1,
 	type OperonSettingsBackupApplyInputV1,
 	type OperonSettingsBackupApplyResultV1,
@@ -482,6 +483,51 @@ import {
 	type DeveloperApiSettingsIntegration,
 	type TablePresetSettingsFileIntegration,
 } from './src/ui/settings-tab';
+import type {
+	SettingsBackupApplyResult,
+	SettingsBackupPendingRecovery,
+	SettingsBackupPreviewDecisions,
+	SettingsBackupRestorePreview,
+	SettingsBackupSelectedFile,
+	SettingsBackupUiIntegration,
+} from './src/ui/settings-backup-ui';
+import { exportOperonSettingsBackupJsonV1 } from './src/core/settings-backup-export';
+import {
+	createOperonSettingsBackupTableBundleArchiveV1,
+	exportOperonSettingsBackupTableBundleV1,
+	readOperonSettingsBackupTableBundleArchiveV1,
+} from './src/core/settings-backup-table-bundle';
+import {
+	preflightOperonSettingsBackupRestoreV1,
+	type OperonSettingsBackupPreflightResultV1,
+	type OperonSettingsBackupRestorePlanV1,
+	type OperonSettingsBackupVaultReferenceCheckV1,
+} from './src/core/settings-backup-preflight';
+import {
+	SETTINGS_BACKUP_GROUPS,
+	SETTINGS_BACKUP_VAULT_REFERENCE_KEYS,
+	type SettingsBackupProfileGroupId,
+	type SettingsBackupVaultReferenceKey,
+} from './src/core/settings-backup-compatibility';
+import { parseOperonSettingsBackupV1 } from './src/core/settings-backup-format';
+import {
+	preflightOperonSettingsBackupTableResourcesV1,
+	type OperonSettingsBackupTargetTableSnapshotV1,
+	type OperonSettingsBackupValidatedTableBundleV1,
+} from './src/core/settings-backup-table-resource-preflight';
+import {
+	coordinateOperonSettingsBackupTableResourceApplyV1,
+} from './src/core/settings-backup-table-resource-coordinator';
+import {
+	undoOperonSettingsBackupTableResourcesV1,
+	type OperonSettingsBackupTableResourceSessionUndoV1,
+} from './src/core/settings-backup-table-resource-apply';
+import {
+	composeOperonSettingsBackupTableBundleRestorePlanV1,
+	createOperonSettingsBackupTableBundleAcknowledgementV1,
+	validateOperonSettingsBackupTableBundleAcknowledgementV1,
+	type OperonSettingsBackupTableBundleRestorePlanV1,
+} from './src/core/settings-backup-table-bundle-restore';
 import { TimeSessionHistoryView, TIME_SESSION_HISTORY_VIEW_TYPE } from './src/ui/time-session-history-view';
 import { FlowTimeView, FLOW_TIME_VIEW_TYPE } from './src/ui/flow-time-view';
 import { TimeTrackerStatusBar } from './src/ui/time-tracker-status-bar';
@@ -1112,6 +1158,14 @@ interface PendingSettingsBackupRuntimeRecovery {
 	needsCanonicalReload: boolean;
 }
 
+interface SettingsBackupUiPreparedRestore {
+	preview: SettingsBackupRestorePreview;
+	settingsPreflight: OperonSettingsBackupPreflightResultV1;
+	settingsPlan: OperonSettingsBackupRestorePlanV1 | null;
+	bundle: OperonSettingsBackupValidatedTableBundleV1 | null;
+	combinedPlan: OperonSettingsBackupTableBundleRestorePlanV1 | null;
+}
+
 interface CanonicalSettingsReloadResult extends OperonStorageReloadSettingsResult {
 	failed: boolean;
 	localeIntentChanged: boolean;
@@ -1238,6 +1292,8 @@ export default class OperonPlugin extends Plugin {
 	private settingsReindexRetryAttempted = false;
 	private pendingSettingsBackupRuntimeRecovery: PendingSettingsBackupRuntimeRecovery | null = null;
 	private settingsBackupRestoreQueue: Promise<void> = Promise.resolve();
+	private readonly settingsBackupTableResourceSessions = new Map<string, OperonSettingsBackupTableResourceSessionUndoV1>();
+	private lastSettingsBackupUiRecovery: SettingsBackupPendingRecovery | null = null;
 	private canonicalSettingsReloadTimer: WindowTimeoutHandle | null = null;
 	private canonicalSettingsReloadPromise: Promise<CanonicalSettingsReloadResult> | null = null;
 	private canonicalSettingsReloadLastCheckAt = 0;
@@ -1267,6 +1323,7 @@ export default class OperonPlugin extends Plugin {
 	private readonly expectedTableFileRenames = new Map<string, string>();
 	private readonly expectedTableFileDeletes = new Map<string, string>();
 	private tablePresetMaintenanceRunning = false;
+	private tablePresetWatcherDirtyDuringMaintenance = false;
 	private dynamicFileTaskFilterReadingTimers = new Map<string, WindowTimeoutHandle>();
 	private dynamicFileTaskFilterReadingHosts = new Set<HTMLElement>();
 	private dynamicFileTaskFilterReadingInstances = new WeakMap<HTMLElement, FilterSurfaceInstance>();
@@ -2183,6 +2240,649 @@ export default class OperonPlugin extends Plugin {
 			language: this.settings.language,
 			languagePackSubscriptions: [...this.settings.languagePackSubscriptions],
 		};
+	}
+
+	private buildSettingsBackupUiIntegration(): SettingsBackupUiIntegration {
+		return {
+			exportBackup: options => this.exportSettingsBackupArtifactV1(options),
+			preflightRestore: (file, decisions) => this.prepareSettingsBackupRestoreForUiV1(file, decisions)
+				.then(result => result.preview),
+			applyRestore: input => this.applySettingsBackupRestoreFromUiV1(input),
+			getPendingRecovery: () => {
+				const pending = this.pendingSettingsBackupRuntimeRecovery;
+				if (pending) return {
+					receiptId: pending.receiptId,
+					undoTokenId: pending.undoTokenId,
+					message: 'Runtime refresh requires a recovery decision.',
+					canRetryRuntimeRefresh: true,
+					canUndo: pending.undoTokenId !== null,
+				};
+				return this.lastSettingsBackupUiRecovery;
+			},
+			resolveRecovery: input => this.resolveSettingsBackupRecoveryFromUiV1(input),
+		};
+	}
+
+	private async exportSettingsBackupArtifactV1(options: {
+		includeTablePresetFiles: boolean;
+		includeExternalCalendarUrls: boolean;
+	}): Promise<{ fileName: string; mimeType: string; bytes: Uint8Array }> {
+		const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
+		const exportInput = {
+			settings: committed.settings,
+			source: {
+				pluginVersion: this.manifest.version,
+				obsidianVersion: apiVersion,
+				dataPackageSchemaVersion: committed.dataPackageSchemaVersion,
+			},
+			createdAt: new Date().toISOString(),
+			includeExternalCalendarUrls: options.includeExternalCalendarUrls,
+			canonicalWritesSuspended: committed.canonicalWritesSuspended,
+		};
+		if (!options.includeTablePresetFiles) {
+			const result = exportOperonSettingsBackupJsonV1(exportInput);
+			if (!result.ok) throw new Error('Operon settings backup export failed validation.');
+			return {
+				fileName: result.suggestedFileName,
+				mimeType: 'application/json',
+				bytes: new TextEncoder().encode(result.json),
+			};
+		}
+		const tableFiles: Array<{ path: string; text: string }> = [];
+		for (const binding of committed.settings.tablePresetFileBindings) {
+			const file = this.app.vault.getAbstractFileByPath(binding.path);
+			if (!(file instanceof TFile)) throw new Error('A bound Table preset file is missing.');
+			const before = await this.app.vault.read(file);
+			const after = await this.app.vault.read(file);
+			if (before !== after) throw new Error('A bound Table preset file changed during export.');
+			tableFiles.push({ path: binding.path, text: before });
+		}
+		const logical = exportOperonSettingsBackupTableBundleV1({ ...exportInput, tableFiles });
+		if (!logical.ok) throw new Error('Operon Table backup export failed validation.');
+		return {
+			fileName: logical.bundle.suggestedFileName,
+			mimeType: 'application/zip',
+			bytes: await createOperonSettingsBackupTableBundleArchiveV1(logical.bundle),
+		};
+	}
+
+	private async prepareSettingsBackupRestoreForUiV1(
+		file: SettingsBackupSelectedFile,
+		decisions: SettingsBackupPreviewDecisions,
+	): Promise<SettingsBackupUiPreparedRestore> {
+		const sourceJson = file.kind === 'zip'
+			? (await readOperonSettingsBackupTableBundleArchiveV1(file.bytes)).settingsText
+			: new TextDecoder('utf-8', { fatal: true }).decode(file.bytes);
+		const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
+		const selectedGroups = this.normalizeSettingsBackupUiGroups(decisions.selectedGroups);
+		const vaultReferenceDecisions = decisions.vaultReferences ?? {};
+		const vaultReferenceChecks = this.captureSettingsBackupVaultReferenceChecksV1(sourceJson);
+		const settingsPreflight = preflightOperonSettingsBackupRestoreV1({
+			sourceJson,
+			targetSnapshot: committed,
+			...(decisions.selectedGroups ? { selectedGroups } : {}),
+			vaultReferenceChecks,
+			vaultReferenceDecisions,
+		});
+		let bundle: OperonSettingsBackupValidatedTableBundleV1 | null = null;
+		let combinedPlan: OperonSettingsBackupTableBundleRestorePlanV1 | null = null;
+		let tableResources: SettingsBackupRestorePreview['tableResources'] = [];
+		let classification: SettingsBackupRestorePreview['classification'] = settingsPreflight.ok
+			? settingsPreflight.classification
+			: 'blocked';
+		if (file.kind === 'zip' && settingsPreflight.ok) {
+			bundle = await readOperonSettingsBackupTableBundleArchiveV1(file.bytes);
+			const target = await this.captureSettingsBackupTargetTableSnapshotV1(committed.settings);
+			const tablePreflight = preflightOperonSettingsBackupTableResourcesV1({
+				bundle,
+				target,
+				availableFilterSetIds: settingsPreflight.restorePlan?.candidateSettings.filterSets.map(item => item.id)
+					?? committed.settings.filterSets.map(item => item.id),
+				includeSourceTableFavorites: settingsPreflight.restorePlan?.selectedGroups.includes('preset-favorites') === true,
+				conflictDecisions: decisions.tableConflicts,
+			});
+			const composed = composeOperonSettingsBackupTableBundleRestorePlanV1({
+				archiveSha256: bundle.archiveSha256,
+				settingsPreflight,
+				tablePreflight,
+			});
+			combinedPlan = composed.plan;
+			classification = composed.classification;
+			const actionById = new Map(tablePreflight.actions.map(action => [action.id, action]));
+			tableResources = bundle.tableFiles.map(item => {
+				const action = actionById.get(item.descriptor.id);
+				const conflict = tablePreflight.conflicts.find(candidate => candidate.sourceId === item.descriptor.id);
+				return {
+					id: item.descriptor.id,
+					path: item.descriptor.originalPath,
+					action: conflict ? 'conflict' : action?.kind ?? 'conflict',
+					conflictId: conflict?.id ?? null,
+					message: conflict?.message ?? null,
+					decision: conflict?.decision ?? null,
+				};
+			});
+		}
+		const preview = this.mapSettingsBackupPreviewForUiV1(
+			file.kind,
+			sourceJson,
+			settingsPreflight,
+			classification,
+			file.kind === 'zip' ? combinedPlan?.planId ?? null : settingsPreflight.restorePlan?.planId ?? null,
+			tableResources,
+		);
+		return {
+			preview,
+			settingsPreflight,
+			settingsPlan: settingsPreflight.ok ? settingsPreflight.restorePlan : null,
+			bundle,
+			combinedPlan,
+		};
+	}
+
+	private captureSettingsBackupVaultReferenceChecksV1(
+		sourceJson: string,
+	): Partial<Record<SettingsBackupVaultReferenceKey, OperonSettingsBackupVaultReferenceCheckV1>> {
+		const parsed = parseOperonSettingsBackupV1(sourceJson);
+		if (!parsed.ok) return {};
+		const general = parsed.value.body.groups.general?.data;
+		if (!general || typeof general !== 'object' || Array.isArray(general)) return {};
+		const values = general as Record<string, unknown>;
+		const checks: Partial<Record<SettingsBackupVaultReferenceKey, OperonSettingsBackupVaultReferenceCheckV1>> = {};
+		const folderKeys = new Set<SettingsBackupVaultReferenceKey>([
+			'operonDocsFolder', 'fileTasksFolder', 'fileTaskArchiveFolder', 'fileTaskTemplateFolder',
+			'fileRepeatCustomFolder', 'workspaceTweaksPropertiesExcludedFolders', 'excludedFolders',
+		]);
+		const fileKeys = new Set<SettingsBackupVaultReferenceKey>(['inlineTaskTargetFile', 'reminderSoundFilePath']);
+		for (const key of SETTINGS_BACKUP_VAULT_REFERENCE_KEYS) {
+			if (!(key in values)) continue;
+			const value = values[key];
+			if (folderKeys.has(key)) {
+				checks[key] = { status: this.classifySettingsBackupVaultPathsV1(value, 'folder') };
+			} else if (fileKeys.has(key)) {
+				checks[key] = { status: this.classifySettingsBackupVaultPathsV1(value, 'file') };
+			} else {
+				// These values are identity-bound rather than direct Vault paths. They
+				// remain explicit decisions and are sealed as unchecked at admission.
+				checks[key] = { status: 'unchecked' };
+			}
+		}
+		return checks;
+	}
+
+	private classifySettingsBackupVaultPathsV1(
+		value: unknown,
+		expected: 'file' | 'folder',
+	): OperonSettingsBackupVaultReferenceCheckV1['status'] {
+		const paths = typeof value === 'string'
+			? [value]
+			: Array.isArray(value) && value.every(item => typeof item === 'string')
+				? value
+				: null;
+		if (!paths) return 'wrong-type';
+		let status: OperonSettingsBackupVaultReferenceCheckV1['status'] = 'valid';
+		for (const rawPath of paths) {
+			const path = rawPath.trim();
+			if (!path) continue;
+			const item = this.app.vault.getAbstractFileByPath(path);
+			if (!item) return 'missing';
+			if ((expected === 'file' && !(item instanceof TFile))
+				|| (expected === 'folder' && !(item instanceof TFolder))) status = 'wrong-type';
+		}
+		return status;
+	}
+
+	private normalizeSettingsBackupUiGroups(groups: readonly string[] | undefined): SettingsBackupProfileGroupId[] {
+		if (!groups) return [];
+		const valid = new Set<string>(SETTINGS_BACKUP_GROUPS.map(group => group.id));
+		return [...new Set(groups.filter((group): group is SettingsBackupProfileGroupId => valid.has(group)))];
+	}
+
+	private mapSettingsBackupPreviewForUiV1(
+		kind: SettingsBackupSelectedFile['kind'],
+		sourceJson: string,
+		preflight: OperonSettingsBackupPreflightResultV1,
+		classification: SettingsBackupRestorePreview['classification'],
+		planId: string | null,
+		tableResources: SettingsBackupRestorePreview['tableResources'],
+	): SettingsBackupRestorePreview {
+		if (!preflight.ok) return {
+			kind,
+			classification: 'blocked',
+			compatibility: 'unsupported',
+			planId: null,
+			groups: [], vaultReferences: [], tableResources: [],
+			diagnostics: ['The selected backup is invalid or unsupported.'],
+		};
+		const parsedSource = parseOperonSettingsBackupV1(sourceJson);
+		const generalData = parsedSource.ok && parsedSource.value.body.groups.general?.data
+			&& typeof parsedSource.value.body.groups.general.data === 'object'
+			&& !Array.isArray(parsedSource.value.body.groups.general.data)
+			? parsedSource.value.body.groups.general.data as Record<string, unknown>
+			: {};
+		return {
+			kind,
+			classification,
+			compatibility: preflight.preview.compatibility,
+			planId,
+			groups: preflight.preview.groups.map(group => ({
+				id: group.group,
+				label: group.group,
+				status: group.status === 'blocked-invalid' || group.status === 'blocked-dependency'
+					? 'blocked' : group.status,
+				selected: group.selected,
+				defaultSelected: group.defaultSelected,
+				selectable: group.selectable,
+				sensitive: group.sensitive,
+				counts: {
+					added: group.counts.added, removed: group.counts.removed,
+					changed: group.counts.changed, unchanged: group.counts.unchanged,
+					conflicts: group.counts.conflicts,
+				},
+				issues: group.issues,
+			})),
+			vaultReferences: preflight.preview.issues.filter(issue => issue.kind === 'vault-reference').map(issue => {
+				const key = issue.id.replace(/^vault-reference-/u, '') as SettingsBackupVaultReferenceKey;
+				return {
+					key, label: key, path: this.describeSettingsBackupVaultReferenceValueV1(generalData[key]),
+					status: preflight.restorePlan?.vaultReferenceChecks[key]?.status ?? 'unchecked',
+					decision: issue.resolution,
+					required: !issue.resolved,
+				};
+			}),
+			tableResources,
+			diagnostics: preflight.diagnostics.map(() => 'One or more backup groups require compatibility handling.'),
+		};
+	}
+
+	private describeSettingsBackupVaultReferenceValueV1(value: unknown): string {
+		if (typeof value === 'string') return value || '(not set)';
+		if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
+			return value.length > 0 ? value.join(', ') : '(not set)';
+		}
+		return value == null ? '(not set)' : '(identity-bound value)';
+	}
+
+	private async captureSettingsBackupTargetTableSnapshotV1(
+		settings: Readonly<OperonSettings>,
+	): Promise<OperonSettingsBackupTargetTableSnapshotV1> {
+		const paths: OperonSettingsBackupTargetTableSnapshotV1['paths'][number][] = [];
+		for (const item of this.app.vault.getAllLoadedFiles()) {
+			if (item instanceof TFolder) {
+				paths.push({ path: item.path, kind: 'folder', id: null, sha256: null });
+				continue;
+			}
+			if (!(item instanceof TFile)) continue;
+			let id: string | null = null;
+			let sha256: string | null = null;
+			if (isOperonTableFilePath(item.path)) {
+				try {
+					const source = await this.app.vault.read(item);
+					const parsed = parseOperonTableFile(source, item.path);
+					if (parsed.status === 'valid') id = parsed.preset.id;
+					sha256 = sha256HexV1(source);
+				} catch {
+					// The occupied path remains part of collision admission.
+				}
+			}
+			paths.push({ path: item.path, kind: 'file', id, sha256 });
+		}
+		return {
+			paths,
+			bindings: settings.tablePresetFileBindings.map(binding => ({ ...binding })),
+			orderIds: [...settings.tablePresetOrderIds],
+			defaultPresetId: settings.tableDefaultPresetId,
+			initialized: settings.tablePresetFileInitialized,
+			tableFavoriteIds: [...settings.presetFavorites.table],
+		};
+	}
+
+	private async applySettingsBackupRestoreFromUiV1(input: {
+		file: SettingsBackupSelectedFile;
+		planId: string;
+		decisions: SettingsBackupPreviewDecisions;
+		acceptsNoCrashSafeRollback: true;
+		acceptsConditionalSessionOnlyUndo: true;
+	}, restoreLaneOwned = false, tableLaneOwned = false): Promise<SettingsBackupApplyResult> {
+		if (input.acceptsNoCrashSafeRollback !== true
+			|| input.acceptsConditionalSessionOnlyUndo !== true) {
+			return this.settingsBackupUiFailure('The restore recovery limits must be acknowledged.');
+		}
+		if (!restoreLaneOwned) {
+			return this.enqueueSettingsBackupRestoreOperation(() => this.applySettingsBackupRestoreFromUiV1(input, true, false));
+		}
+		if (input.file.kind === 'zip' && !tableLaneOwned) {
+			return this.enqueueTablePresetMutation(async () => {
+				await this.tablePresetRegistry.flushPatches();
+				this.tablePresetMaintenanceRunning = true;
+				try {
+					return await this.applySettingsBackupRestoreFromUiV1(input, true, true);
+				} finally {
+					if (this.tablePresetWatcherDirtyDuringMaintenance) {
+						this.tablePresetWatcherDirtyDuringMaintenance = false;
+						try {
+							await this.refreshTablePresetRegistry({
+								adoptUnbound: false, persistBindings: false, reconcileFileNames: false,
+							});
+						} catch (error) {
+							console.debug('Operon: deferred Table registry refresh failed', error);
+						}
+					}
+					this.tablePresetMaintenanceRunning = false;
+					if (this.tablePresetWatcherDirtyDuringMaintenance) {
+						this.tablePresetWatcherDirtyDuringMaintenance = false;
+						this.scheduleTablePresetRegistryRefresh();
+					}
+				}
+			});
+		}
+		if (input.file.kind === 'zip' && this.pendingSettingsBackupRuntimeRecovery) {
+			return this.settingsBackupUiFailure('Resolve the pending restore recovery before starting another restore.');
+		}
+		const prepared = await this.prepareSettingsBackupRestoreForUiV1(input.file, input.decisions);
+		if (prepared.preview.classification !== 'ready' || prepared.preview.planId !== input.planId) {
+			return this.settingsBackupUiFailure('The restore preview is stale. Review the updated preview.');
+		}
+		if (input.file.kind === 'json') {
+			if (!prepared.settingsPlan) return this.settingsBackupUiFailure('The JSON restore plan is not ready.');
+			const result = await this.applySettingsBackupRestorePlanUnlockedV1({
+				sourceJson: new TextDecoder('utf-8', { fatal: true }).decode(input.file.bytes),
+				restorePlan: prepared.settingsPlan,
+				refreshedVaultReferenceChecks: prepared.settingsPlan.vaultReferenceChecks,
+				acknowledgement: createOperonSettingsBackupApplyAcknowledgementV1(prepared.settingsPlan),
+				appliedAt: new Date().toISOString(),
+			});
+			if (!result.receipt) return this.settingsBackupUiFailure('The JSON restore was blocked.');
+			const uiResult: SettingsBackupApplyResult = {
+				status: result.receipt.canonicalWrite === 'state-unknown' ? 'state-unknown'
+					: result.receipt.canonicalWrite === 'committed-after-error' ? 'committed-after-error'
+						: 'committed',
+				message: result.status.startsWith('success') ? 'Settings restored.' : 'A recovery decision is required.',
+				receiptId: result.receipt.receiptId,
+				undoTokenId: result.receipt.recovery.undoTokenId,
+				recoveryRequired: result.status === 'partial-user-decision-required',
+			};
+			if (uiResult.undoTokenId && uiResult.receiptId) this.lastSettingsBackupUiRecovery = {
+				receiptId: uiResult.receiptId, undoTokenId: uiResult.undoTokenId,
+				message: uiResult.recoveryRequired
+					? 'Runtime refresh requires a recovery decision.'
+					: 'A conditional session undo remains available.',
+				canRetryRuntimeRefresh: uiResult.recoveryRequired,
+				canUndo: true,
+			};
+			return uiResult;
+		}
+		if (!prepared.bundle || !prepared.combinedPlan || !prepared.settingsPlan) {
+			return this.settingsBackupUiFailure('The Table restore plan is not ready.');
+		}
+		const acknowledgement = createOperonSettingsBackupTableBundleAcknowledgementV1(prepared.combinedPlan);
+		if (!validateOperonSettingsBackupTableBundleAcknowledgementV1(prepared.combinedPlan, acknowledgement).ok) {
+			return this.settingsBackupUiFailure('The Table restore acknowledgement is invalid.');
+		}
+		const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+		let admittedPlan: OperonSettingsBackupTableBundleRestorePlanV1 | null = null;
+		let canonicalReloadRequired = false;
+		const coordinated = await coordinateOperonSettingsBackupTableResourceApplyV1({
+			bundle: prepared.bundle,
+			target: await this.captureSettingsBackupTargetTableSnapshotV1(this.settings),
+			availableFilterSetIds: prepared.settingsPlan.candidateSettings.filterSets.map(item => item.id),
+			includeSourceTableFavorites: prepared.settingsPlan.selectedGroups.includes('preset-favorites'),
+			conflictDecisions: input.decisions.tableConflicts,
+			approvedPlan: prepared.combinedPlan.tablePlan,
+			appliedAt: new Date().toISOString(),
+		}, {
+			runExclusive: async operation => {
+				const fresh = await this.prepareSettingsBackupRestoreForUiV1(input.file, input.decisions);
+				if (!fresh.combinedPlan || fresh.combinedPlan.planId !== input.planId) throw new Error('stale-plan');
+				admittedPlan = fresh.combinedPlan;
+				return operation();
+			},
+			captureAdmission: async () => {
+				const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
+				return {
+					target: await this.captureSettingsBackupTargetTableSnapshotV1(committed.settings),
+					availableFilterSetIds: (admittedPlan ?? prepared.combinedPlan)!.settingsPlan.candidateSettings.filterSets.map(item => item.id),
+				};
+			},
+			readFile: async path => {
+				const file = this.app.vault.getAbstractFileByPath(path);
+				return file instanceof TFile ? new Uint8Array(await this.app.vault.readBinary(file)) : null;
+			},
+			createFileExclusive: async (path, bytes) => {
+				if (this.app.vault.getAbstractFileByPath(path)) throw new Error('create-conflict');
+				await this.ensureParentFolderPathExists(path);
+				const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+				const pathKey = getOperonTableFilePathKey(path);
+				this.expectedTableFileModifyHashes.set(pathKey, this.hashTableFileContent(text));
+				try {
+					await this.app.vault.createBinary(path, new Uint8Array(bytes).buffer);
+				} catch (error) {
+					this.expectedTableFileModifyHashes.delete(pathKey);
+					throw error;
+				}
+			},
+			removeFileIfUnchanged: async (path, expectedBytes, expectedSha256) => {
+				const file = this.app.vault.getAbstractFileByPath(path);
+				if (!(file instanceof TFile)) return 'missing';
+				const current = new Uint8Array(await this.app.vault.readBinary(file));
+				if (await this.sha256SettingsBackupBytes(current) !== expectedSha256
+					|| !this.equalSettingsBackupBytes(current, expectedBytes)) return 'changed';
+				const pathKey = getOperonTableFilePathKey(path);
+				this.expectedTableFileDeletes.set(pathKey, 'settings-backup-restore');
+				try {
+					await this.app.fileManager.trashFile(file);
+				} catch (error) {
+					this.expectedTableFileDeletes.delete(pathKey);
+					throw error;
+				}
+				return 'removed';
+			},
+			digestBytes: bytes => this.sha256SettingsBackupBytes(bytes),
+			commitCanonical: async installed => {
+				if (!admittedPlan) return { state: 'failed-clean' };
+				const result = await this.storage.commitSettingsBackupTableResourceProjectionV1({
+					settingsPlan: admittedPlan.settingsPlan,
+					tablePlan: admittedPlan.tablePlan,
+					installed,
+					appliedAt: new Date().toISOString(),
+				});
+				if (result.state === 'committed' || result.state === 'committed-after-error') {
+					canonicalReloadRequired = result.needsCanonicalReload === true;
+				}
+				return result;
+			},
+		});
+		if (coordinated.status === 'stale-plan') return this.settingsBackupUiFailure('The restore preview is stale.');
+		const applied = coordinated.result;
+		if (applied.sessionUndo) this.settingsBackupTableResourceSessions.set(applied.receipt.receiptId, applied.sessionUndo);
+		if (applied.receipt.status === 'success' || applied.receipt.status === 'runtime-degraded') {
+			if (canonicalReloadRequired) {
+				try {
+					const reload = await this.storage.reloadCanonicalSettingsPackage();
+					if (reload.diagnostics.malformedPackage || reload.diagnostics.pipelineTaxonomy.backupFailed) throw new Error('reload-failed');
+				} catch {
+					this.pendingSettingsBackupRuntimeRecovery = {
+						receiptId: applied.receipt.receiptId,
+						undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
+						failedSteps: ['standard-refresh'], localeIntentChanged: false,
+						reindexReason: null, needsCanonicalReload: true,
+					};
+					this.lastSettingsBackupUiRecovery = {
+						receiptId: applied.receipt.receiptId,
+						undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
+						message: 'Canonical settings reload requires a recovery decision.',
+						canRetryRuntimeRefresh: true,
+						canUndo: applied.sessionUndo !== null,
+					};
+					return {
+						status: 'committed', message: 'Canonical settings reload requires a recovery decision.',
+						receiptId: applied.receipt.receiptId, undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
+						recoveryRequired: true,
+					};
+				}
+			}
+			await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
+			const runtime = await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, {
+				receiptId: applied.receipt.receiptId,
+				undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
+			});
+			const uiResult: SettingsBackupApplyResult = {
+				status: applied.receipt.canonicalWrite === 'committed-after-error' ? 'committed-after-error' : 'committed',
+				message: runtime.status === 'settled' ? 'Settings and Table resources restored.' : 'Runtime refresh requires a recovery decision.',
+				receiptId: applied.receipt.receiptId,
+				undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
+				recoveryRequired: runtime.status === 'degraded',
+			};
+			if (uiResult.undoTokenId && uiResult.receiptId) this.lastSettingsBackupUiRecovery = {
+				receiptId: uiResult.receiptId, undoTokenId: uiResult.undoTokenId,
+				message: uiResult.recoveryRequired
+					? 'Runtime refresh requires a recovery decision.'
+					: 'A conditional session undo remains available.',
+				canRetryRuntimeRefresh: uiResult.recoveryRequired,
+				canUndo: true,
+			};
+			return uiResult;
+		}
+		return {
+			status: applied.receipt.status === 'commit-state-unknown' ? 'state-unknown' : 'failed-clean',
+			message: applied.receipt.status === 'commit-state-unknown'
+				? 'Canonical commit state is unknown; manual recovery is required.'
+				: 'The restore failed without a verified canonical commit.',
+			receiptId: applied.receipt.receiptId,
+			undoTokenId: null,
+			recoveryRequired: applied.receipt.status === 'commit-state-unknown',
+		};
+	}
+
+	private async resolveSettingsBackupRecoveryFromUiV1(input: {
+		action: 'keep' | 'retry-runtime-refresh' | 'undo';
+		receiptId: string;
+		undoTokenId: string | null;
+	}, restoreLaneOwned = false, tableLaneOwned = false): Promise<SettingsBackupApplyResult> {
+		const tableSession = this.settingsBackupTableResourceSessions.get(input.receiptId);
+		if (tableSession && !restoreLaneOwned) {
+			return this.enqueueSettingsBackupRestoreOperation(() => this.resolveSettingsBackupRecoveryFromUiV1(input, true, false));
+		}
+		if (tableSession && !tableLaneOwned) {
+			return this.enqueueTablePresetMutation(() => this.resolveSettingsBackupRecoveryFromUiV1(input, true, true));
+		}
+		if (!tableSession) {
+			const result = await this.resolveSettingsBackupRestoreRecoveryV1(input);
+			if ('failedSteps' in result) {
+				if (result.status === 'settled') this.lastSettingsBackupUiRecovery = null;
+				return {
+				status: result.status === 'settled' ? 'committed' : 'failed-clean',
+				message: result.status === 'settled' ? 'Runtime refresh completed.' : 'Runtime refresh remains incomplete.',
+				receiptId: input.receiptId,
+				undoTokenId: input.undoTokenId,
+				recoveryRequired: result.status !== 'settled',
+				};
+			}
+			if (result.status === 'success') this.lastSettingsBackupUiRecovery = null;
+			return {
+				status: result.status === 'partial-user-decision-required' ? 'state-unknown'
+					: result.status === 'success' ? 'committed' : 'failed-clean',
+				message: result.status === 'success' ? 'Restore recovery completed.' : 'Restore recovery could not be completed.',
+				receiptId: result.receiptId,
+				undoTokenId: null,
+				recoveryRequired: result.status === 'partial-user-decision-required',
+			};
+		}
+		if (!input.undoTokenId || input.undoTokenId !== tableSession.undoTokenId) {
+			return this.settingsBackupUiFailure('The recovery receipt or token does not match this session.');
+		}
+		const pendingOwner = this.pendingSettingsBackupRuntimeRecovery;
+		if (pendingOwner && (pendingOwner.receiptId !== input.receiptId
+			|| pendingOwner.undoTokenId !== input.undoTokenId)) {
+			return this.settingsBackupUiFailure('Another restore owns the pending runtime recovery.');
+		}
+		if (input.action === 'keep') {
+			this.storage.discardSettingsBackupTableResourceUndoStateV1(tableSession.canonicalUndoStateId);
+			this.settingsBackupTableResourceSessions.delete(input.receiptId);
+			this.lastSettingsBackupUiRecovery = null;
+			if (this.pendingSettingsBackupRuntimeRecovery?.receiptId === input.receiptId) this.keepSettingsBackupRestore();
+			return { status: 'committed', message: 'Restored settings were kept.', receiptId: input.receiptId, undoTokenId: null, recoveryRequired: false };
+		}
+		if (input.action === 'retry-runtime-refresh') {
+			await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
+			const runtime = await this.retrySettingsBackupRuntimeRefresh();
+			return {
+				status: runtime.status === 'settled' ? 'committed' : 'failed-clean',
+				message: runtime.status === 'settled' ? 'Runtime refresh completed.' : 'Runtime refresh remains incomplete.',
+				receiptId: input.receiptId,
+				undoTokenId: input.undoTokenId,
+				recoveryRequired: runtime.status !== 'settled',
+			};
+		}
+		const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+		const undone = await undoOperonSettingsBackupTableResourcesV1(
+				tableSession,
+					{ receiptId: input.receiptId, undoTokenId: input.undoTokenId },
+				{
+					readFile: async path => {
+						const file = this.app.vault.getAbstractFileByPath(path);
+						return file instanceof TFile ? new Uint8Array(await this.app.vault.readBinary(file)) : null;
+					},
+					removeFileIfUnchanged: async (path, expectedBytes, expectedSha256) => {
+						const file = this.app.vault.getAbstractFileByPath(path);
+						if (!(file instanceof TFile)) return 'missing';
+						const current = new Uint8Array(await this.app.vault.readBinary(file));
+						if (!this.equalSettingsBackupBytes(current, expectedBytes)
+							|| await this.sha256SettingsBackupBytes(current) !== expectedSha256) return 'changed';
+						const pathKey = getOperonTableFilePathKey(path);
+						this.expectedTableFileDeletes.set(pathKey, 'settings-backup-undo');
+						try {
+							await this.app.fileManager.trashFile(file);
+						} catch (error) {
+							this.expectedTableFileDeletes.delete(pathKey);
+							throw error;
+						}
+						return 'removed';
+					},
+					digestBytes: bytes => this.sha256SettingsBackupBytes(bytes),
+					undoCanonical: async request => {
+						const result = await this.storage.undoSettingsBackupTableResourceProjectionV1(request);
+						if (result !== 'committed-reload-required') return result;
+						try {
+							const reload = await this.storage.reloadCanonicalSettingsPackage();
+							return reload.diagnostics.malformedPackage || reload.diagnostics.pipelineTaxonomy.backupFailed
+								? 'state-unknown' : 'committed';
+						} catch {
+							return 'state-unknown';
+						}
+					},
+					isPathReferenced: async path => this.settings.tablePresetFileBindings
+						.some(binding => getOperonTableFilePathKey(binding.path) === getOperonTableFilePathKey(path)),
+				},
+			);
+		if (undone.status !== 'success') {
+			return {
+				status: undone.status === 'manual-recovery-required' ? 'state-unknown' : 'failed-clean',
+				message: 'Undo requires manual recovery or a fresh retry.',
+				receiptId: input.receiptId,
+				undoTokenId: input.undoTokenId,
+				recoveryRequired: true,
+			};
+		}
+		this.settingsBackupTableResourceSessions.delete(input.receiptId);
+		this.lastSettingsBackupUiRecovery = null;
+		await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
+		await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, { receiptId: input.receiptId, undoTokenId: null });
+		return { status: 'committed', message: 'Restore was undone.', receiptId: input.receiptId, undoTokenId: null, recoveryRequired: false };
+	}
+
+	private settingsBackupUiFailure(message: string): SettingsBackupApplyResult {
+		return { status: 'failed-clean', message, receiptId: null, undoTokenId: null, recoveryRequired: false };
+	}
+
+	private async sha256SettingsBackupBytes(bytes: Uint8Array): Promise<string> {
+		const digest = await crypto.subtle.digest('SHA-256', bytes.slice());
+		return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+	}
+
+	private equalSettingsBackupBytes(left: Uint8Array, right: Uint8Array): boolean {
+		if (left.byteLength !== right.byteLength) return false;
+		for (let index = 0; index < left.byteLength; index++) if (left[index] !== right[index]) return false;
+		return true;
 	}
 
 	private enqueueSettingsBackupRestoreOperation<T>(operation: () => Promise<T>): Promise<T> {
@@ -12718,8 +13418,11 @@ export default class OperonPlugin extends Plugin {
 
 	private registerTablePresetFileWatchers(): void {
 		this.registerEvent(this.app.vault.on('modify', file => {
-			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
+			if (this.tablePresetMaintenanceRunning) {
+				this.tablePresetWatcherDirtyDuringMaintenance = true;
+				return;
+			}
 			runAsyncAction('table file modify refresh failed', async () => {
 				const source = await this.app.vault.read(file);
 				const pathKey = getOperonTableFilePathKey(file.path);
@@ -12731,8 +13434,11 @@ export default class OperonPlugin extends Plugin {
 			});
 		}));
 		this.registerEvent(this.app.vault.on('create', file => {
-			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
+			if (this.tablePresetMaintenanceRunning) {
+				this.tablePresetWatcherDirtyDuringMaintenance = true;
+				return;
+			}
 			runAsyncAction('table file create refresh failed', async () => {
 				const source = await this.app.vault.read(file);
 				const pathKey = getOperonTableFilePathKey(file.path);
@@ -12744,13 +13450,19 @@ export default class OperonPlugin extends Plugin {
 			});
 		}));
 		this.registerEvent(this.app.vault.on('delete', file => {
-			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
+			if (this.tablePresetMaintenanceRunning) {
+				this.tablePresetWatcherDirtyDuringMaintenance = true;
+				return;
+			}
 			runAsyncAction('table file delete lifecycle failed', () => this.handleDeletedTableFile(file.path));
 		}));
 		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
-			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || (!isOperonTableFilePath(oldPath) && !isOperonTableFilePath(file.path))) return;
+			if (this.tablePresetMaintenanceRunning) {
+				this.tablePresetWatcherDirtyDuringMaintenance = true;
+				return;
+			}
 			runAsyncAction('table file rename synchronization failed', () => this.handleExternalTableFileRename(file, oldPath));
 		}));
 	}
@@ -12811,7 +13523,7 @@ export default class OperonPlugin extends Plugin {
 		}, 120);
 	}
 
-	private async refreshTablePresetRegistry(options: { adoptUnbound?: boolean; persistBindings?: boolean } = {}): Promise<void> {
+	private async refreshTablePresetRegistry(options: { adoptUnbound?: boolean; persistBindings?: boolean; reconcileFileNames?: boolean } = {}): Promise<void> {
 		const previousSnapshot = this.tablePresetRegistry.getSnapshot();
 		const previousOrderSignature = this.settings.tablePresetOrderIds.join('\u0000');
 		await this.tablePresetRegistry.refresh();
@@ -12833,7 +13545,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (bindingsChanged) await this.tablePresetRegistry.refresh();
 		this.syncTablePresetProjectionFromRegistry();
-		if (await this.reconcileBoundTableFileNames()) {
+		if (options.reconcileFileNames !== false && await this.reconcileBoundTableFileNames()) {
 			await this.tablePresetRegistry.refresh();
 			this.syncTablePresetProjectionFromRegistry();
 		}
@@ -13575,6 +14287,7 @@ export default class OperonPlugin extends Plugin {
 			() => this.reminderDeliveryController?.previewInOperon(),
 			async () => await this.reminderDeliveryController?.previewSystemNotification() ?? false,
 			this.buildDeveloperApiSettingsIntegration(),
+			this.buildSettingsBackupUiIntegration(),
 			);
 		this.addSettingTab(this.settingsTab);
 
@@ -16055,6 +16768,10 @@ export default class OperonPlugin extends Plugin {
 			return await operation();
 		} finally {
 			this.tablePresetMaintenanceRunning = false;
+			if (this.tablePresetWatcherDirtyDuringMaintenance) {
+				this.tablePresetWatcherDirtyDuringMaintenance = false;
+				this.scheduleTablePresetRegistryRefresh();
+			}
 		}
 	}
 

@@ -1,9 +1,11 @@
 import type { Entry, FileEntry } from '@zip.js/zip.js';
-// The package exports this runtime-only subpath but its types require modern
-// moduleResolution. Keep the project-wide resolver unchanged and bind the
-// subpath to the package's public type surface explicitly.
-// @ts-expect-error TS7016 -- declaration is supplied by the typed binding below.
-import * as zipCoreNativeRuntime from '@zip.js/zip.js/lib/zip-core-native.js';
+// These public core entrypoints avoid bundling zip.js' 35 KiB JavaScript
+// DEFLATE fallback. Operon V1 archives intentionally use and accept STORE only,
+// so behavior is identical on desktop and mobile hosts without CompressionStream.
+// @ts-expect-error TS7016 -- package export maps this subpath to the public declarations.
+import * as zipCoreReaderRuntime from '@zip.js/zip.js/lib/zip-core-reader.js';
+// @ts-expect-error TS7016 -- package export maps this subpath to the public declarations.
+import * as zipCoreWriterRuntime from '@zip.js/zip.js/lib/zip-core-writer.js';
 import {
 	OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_ENTRY_BYTES,
 	OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_TOTAL_BYTES,
@@ -11,8 +13,61 @@ import {
 } from './settings-backup-table-manifest';
 import { OPERON_SETTINGS_BACKUP_MAX_SOURCE_UTF8_BYTES } from './settings-backup-format';
 
-const zipCoreNative = zipCoreNativeRuntime as typeof import('@zip.js/zip.js');
-const { Uint8ArrayReader, Uint8ArrayWriter, ZipReader, ZipWriter } = zipCoreNative;
+const { ZipReader } = zipCoreReaderRuntime as Pick<typeof import('@zip.js/zip.js'), 'ZipReader'>;
+const { ZipWriter } = zipCoreWriterRuntime as Pick<typeof import('@zip.js/zip.js'), 'ZipWriter'>;
+
+class BoundedUint8ArrayReader {
+	readonly size: number;
+	readonly initialized = true;
+
+	constructor(private readonly bytes: Uint8Array) {
+		this.size = bytes.byteLength;
+	}
+
+	get readable(): ReadableStream<Uint8Array> {
+		return this.createReadable();
+	}
+
+	createReadable(options: { offset?: number; size?: number } = {}): ReadableStream<Uint8Array> {
+		const offset = options.offset ?? 0;
+		const size = options.size ?? this.size - offset;
+		const chunk = this.bytes.slice(offset, offset + size);
+		return new ReadableStream({ start(controller) { controller.enqueue(chunk); controller.close(); } });
+	}
+
+	async readUint8Array(offset: number, length: number): Promise<Uint8Array> {
+		return this.bytes.slice(offset, offset + length);
+	}
+}
+
+class GrowingUint8ArrayWriter {
+	size = 0;
+	readonly writable: WritableStream<Uint8Array>;
+	initialized = false;
+	private chunks: Uint8Array[] = [];
+
+	constructor() {
+		this.writable = new WritableStream({ write: chunk => this.writeUint8Array(chunk) });
+	}
+
+	init(): void {
+		this.initialized = true;
+	}
+
+	async writeUint8Array(bytes: Uint8Array): Promise<void> {
+		this.chunks.push(bytes.slice());
+	}
+
+	async getData(): Promise<Uint8Array> {
+		const output = new Uint8Array(this.size);
+		let offset = 0;
+		for (const chunk of this.chunks) {
+			output.set(chunk, offset);
+			offset += chunk.byteLength;
+		}
+		return output;
+	}
+}
 
 export const OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
 export const OPERON_SETTINGS_BACKUP_MAX_MANIFEST_BYTES = 1024 * 1024;
@@ -26,7 +81,7 @@ const ARCHIVE_SETTINGS_PATH = 'settings.json';
 const ZIP_EPOCH = new Date('1980-01-01T00:00:00.000Z');
 const WINDOWS_RESERVED_SEGMENT = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
 const WINDOWS_DRIVE_PATH = /^[a-z]:/iu;
-const SUPPORTED_COMPRESSION_METHODS = new Set([0, 8]);
+const SUPPORTED_COMPRESSION_METHODS = new Set([0]);
 const UNIX_FILE_TYPE_MASK = 0o170000;
 const UNIX_REGULAR_FILE = 0o100000;
 const UNIX_SYMBOLIC_LINK = 0o120000;
@@ -117,7 +172,7 @@ export async function readOperonSettingsBackupArchiveV1(
 		throw archiveError('archive-size-limit', `Archive exceeds the ${resolved.maxArchiveBytes} byte limit.`);
 	}
 
-	const reader = new ZipReader(new Uint8ArrayReader(copyBytes(archiveBytes)), {
+	const reader = new ZipReader(new BoundedUint8ArrayReader(copyBytes(archiveBytes)), {
 		strictness: 'strict',
 		useWebWorkers: false,
 		checkSignature: true,
@@ -181,8 +236,8 @@ export async function createOperonSettingsBackupArchiveV1(
 	validateDeclaredInputInventory(entries, declaredPaths);
 	entries.sort((left, right) => compareArchivePaths(left.path, right.path));
 
-	const output = new Uint8ArrayWriter();
-	const writer = new ZipWriter(output, {
+	const output = new GrowingUint8ArrayWriter();
+	const writer = new ZipWriter<Uint8Array>(output, {
 		bufferedWrite: true,
 		dataDescriptor: false,
 		extendedTimestamp: false,
@@ -194,7 +249,7 @@ export async function createOperonSettingsBackupArchiveV1(
 	});
 	try {
 		for (const entry of entries) {
-			await writer.add(entry.path, new Uint8ArrayReader(entry.bytes), {
+				await writer.add(entry.path, new BoundedUint8ArrayReader(entry.bytes), {
 				bufferedWrite: true,
 				dataDescriptor: false,
 				extendedTimestamp: false,

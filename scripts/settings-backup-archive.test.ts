@@ -244,12 +244,12 @@ test('reader rejects encrypted, symbolic-link and special Unix entries', async (
 	await expectCode(() => readOperonSettingsBackupArchiveV1(fifo), 'special-entry');
 });
 
-test('reader rejects high-ratio compressed entries before inflation', async () => {
+test('reader rejects compressed bomb entries before inflation', async () => {
 	const compressed = await rawZip([
 		{ path: 'manifest.json', data: manifest() },
 		{ path: 'settings.json', data: bytes('a'.repeat(200_000)) },
 	], { level: 9 });
-	await expectCode(() => readOperonSettingsBackupArchiveV1(compressed), 'compression-ratio-limit');
+	await expectCode(() => readOperonSettingsBackupArchiveV1(compressed), 'unsupported-compression');
 });
 
 test('reader rejects unsupported compression methods declared consistently in both headers', async () => {
@@ -261,6 +261,14 @@ test('reader rejects unsupported compression methods declared consistently in bo
 		() => readOperonSettingsBackupArchiveV1(setCompressionMethod(archive, 'settings.json', 99)),
 		'unsupported-compression',
 	);
+});
+
+test('reader accepts only portable STORE archives and rejects DEFLATE without host-dependent behavior', async () => {
+	const archive = await rawZip([
+		{ path: 'manifest.json', data: manifest() },
+		{ path: 'settings.json', data: bytes('{}') },
+	], { level: 9 });
+	await expectCode(() => readOperonSettingsBackupArchiveV1(archive), 'unsupported-compression');
 });
 
 test('strict reader rejects local and central header filename disagreement', async () => {

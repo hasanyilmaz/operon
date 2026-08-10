@@ -153,6 +153,15 @@ test('vault references require field-level decisions without discarding other Ge
 	assert.equal(applied.ok, true);
 	if (!applied.ok) return;
 	assert.equal(applied.restorePlan?.candidateSettings.fileTasksFolder, 'Source/Tasks');
+	const validButUndecided = preflightOperonSettingsBackupRestoreV1({
+		sourceJson,
+		targetSnapshot: targetSnapshot(target),
+		vaultReferenceChecks: { fileTasksFolder: { status: 'valid' } },
+	});
+	assert.equal(validButUndecided.ok, true);
+	if (!validButUndecided.ok) return;
+	assert.equal(validButUndecided.classification, 'decision-required');
+	assert.equal(validButUndecided.restorePlan, null);
 	const validButPreserved = preflightOperonSettingsBackupRestoreV1({
 		sourceJson,
 		targetSnapshot: targetSnapshot(target),

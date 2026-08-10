@@ -69,6 +69,7 @@ import {
 	buildOperonSettingsBackupSelectedPatchV1,
 	computeOperonSettingsBackupSelectedSettingsFingerprintV1,
 	computeOperonSettingsBackupSettingsFingerprintV1,
+	createOperonSettingsBackupApplyAcknowledgementV1,
 	createOperonSettingsBackupApplyReceiptV1,
 	projectOperonSettingsBackupApplyDataPackageV1,
 	validateOperonSettingsBackupApplyAcknowledgementV1,
@@ -84,6 +85,15 @@ import {
 } from '../core/settings-backup-preflight';
 import { sha256HexV1 } from '../agent-runtime/contracts/v1/canonical';
 import { canonicalizeOperonSettingsBackupJson } from '../core/settings-backup-format';
+import {
+	computeOperonSettingsBackupTableResourcePlanIdV1,
+	type OperonSettingsBackupTableResourceProjectionV1,
+	type OperonSettingsBackupTableResourceRestorePlanV1,
+} from '../core/settings-backup-table-resource-preflight';
+import type {
+	OperonSettingsBackupCanonicalTableWriteResultV1,
+	OperonSettingsBackupInstalledTableResourceV1,
+} from '../core/settings-backup-table-resource-apply';
 
 export type IndexV8RecoveryMarkerStatus = 'missing' | 'required' | 'invalid' | 'io-error';
 
@@ -123,6 +133,25 @@ interface OperonSettingsBackupUndoEntryV1 {
 	previousSettings: OperonSettings;
 	expectedSelectedFingerprint: string;
 }
+
+interface OperonSettingsBackupTableResourceUndoEntryV1 {
+	previousSettings: OperonSettings;
+	selectedGroups: OperonSettingsBackupRestorePlanV1['selectedGroups'];
+	expectedCurrentFingerprint: string;
+}
+
+export interface OperonSettingsBackupTableResourceCanonicalCommitInputV1 {
+	settingsPlan: OperonSettingsBackupRestorePlanV1;
+	tablePlan: OperonSettingsBackupTableResourceRestorePlanV1;
+	installed: readonly OperonSettingsBackupInstalledTableResourceV1[];
+	appliedAt: string;
+}
+
+export type OperonSettingsBackupTableResourceCanonicalUndoResultV1 =
+	| 'committed'
+	| 'committed-reload-required'
+	| 'failed-clean'
+	| 'state-unknown';
 
 function blockedSettingsBackupApply(
 	reason: OperonSettingsBackupApplyBlockedReasonV1,
@@ -186,6 +215,60 @@ function isCanonicalIsoTimestamp(value: string): boolean {
 
 function buildSettingsBackupUndoTokenId(planId: string, appliedAt: string): string {
 	return sha256HexV1(`settings-backup-undo-v1\n${planId}\n${appliedAt}`);
+}
+
+function buildSettingsBackupTableResourceUndoStateId(
+	settingsPlanId: string,
+	tablePlanId: string,
+	appliedAt: string,
+	expectedCurrentFingerprint: string,
+): string {
+	return sha256HexV1(canonicalizeOperonSettingsBackupJson({
+		version: 1,
+		settingsPlanId,
+		tablePlanId,
+		appliedAt,
+		expectedCurrentFingerprint,
+	}));
+}
+
+function computeSettingsBackupTargetConfigurationFingerprint(
+	settings: OperonSettings,
+	dataPackageSchemaVersion: OperonDataPackageV1['schemaVersion'],
+): string {
+	return sha256HexV1(canonicalizeOperonSettingsBackupJson(JSON.parse(JSON.stringify({
+		settings,
+		dataPackageSchemaVersion,
+		settingsVersion: settings.settingsVersion,
+	}))));
+}
+
+function installedTableResourcesMatchPlan(
+	installed: readonly OperonSettingsBackupInstalledTableResourceV1[],
+	plan: OperonSettingsBackupTableResourceRestorePlanV1,
+): boolean {
+	const activeActions = plan.actions.filter(action => action.kind !== 'skip');
+	if (installed.length !== activeActions.length) return false;
+	return activeActions.every((action, index) => {
+		const item = installed[index];
+		return !!item
+			&& item.id === action.id
+			&& item.path === action.path
+			&& item.sha256 === action.sha256
+			&& item.disposition === (action.kind === 'reuse' ? 'reused' : 'created');
+	});
+}
+
+function tableResourceProjectionFromSettings(
+	settings: OperonSettings,
+): OperonSettingsBackupTableResourceProjectionV1 {
+	return {
+		tablePresetFileBindings: settings.tablePresetFileBindings.map(binding => ({ ...binding })),
+		tablePresetOrderIds: [...settings.tablePresetOrderIds],
+		tableDefaultPresetId: settings.tableDefaultPresetId,
+		tablePresetFileInitialized: settings.tablePresetFileInitialized,
+		tableFavoriteIds: [...settings.presetFavorites.table],
+	};
 }
 
 function cloneOperonSettings(settings: OperonSettings): OperonSettings {
@@ -352,6 +435,7 @@ export class OperonStorage {
 	private unsupportedTablePresetPackage = false;
 	private fieldRenameJournalStore: FieldRenameJournalStore;
 	private settingsBackupUndoEntries = new Map<string, OperonSettingsBackupUndoEntryV1>();
+	private settingsBackupTableResourceUndoEntries = new Map<string, OperonSettingsBackupTableResourceUndoEntryV1>();
 
 	constructor(app: App, options: OperonStorageOptions = {}) {
 		this.app = app;
@@ -1001,6 +1085,165 @@ export class OperonStorage {
 				};
 			}
 			return successfulSettingsBackupApply(receipt);
+		});
+	}
+
+	/**
+	 * Commit the one canonical package for a freshly admitted Table-resource
+	 * restore. Resource files are installed and verified by the owning outer
+	 * transaction before this method is called.
+	 */
+	async commitSettingsBackupTableResourceProjectionV1(
+		input: OperonSettingsBackupTableResourceCanonicalCommitInputV1,
+	): Promise<OperonSettingsBackupCanonicalTableWriteResultV1> {
+		return this.enqueueSettingsTransaction(async () => {
+			if (!isCanonicalIsoTimestamp(input.appliedAt) || !this.dataPackageStore.canPersist()) {
+				return { state: 'failed-clean' };
+			}
+			const acknowledgement = validateOperonSettingsBackupApplyAcknowledgementV1(
+				input.settingsPlan,
+				createOperonSettingsBackupApplyAcknowledgementV1(input.settingsPlan),
+			);
+			const { planId: _planId, ...tablePlanMaterial } = input.tablePlan;
+			if (
+				!acknowledgement.ok
+				|| input.tablePlan.sourceBodyChecksum !== input.settingsPlan.sourceBodyChecksum
+				|| input.tablePlan.planId !== computeOperonSettingsBackupTableResourcePlanIdV1(tablePlanMaterial)
+				|| !installedTableResourcesMatchPlan(input.installed, input.tablePlan)
+			) {
+				return { state: 'failed-clean' };
+			}
+
+			let staged: OperonDataPackageReloadStage | null = null;
+			let previousSettings: OperonSettings | null = null;
+			let expectedCurrentFingerprint: string | null = null;
+			let stale = false;
+			let observed: Awaited<ReturnType<OperonDataPackageStore['updateDataPackageObserved']>>;
+			try {
+				observed = await this.dataPackageStore.updateDataPackageObserved(currentPackage => {
+					const currentSettings = composeOperonSettingsFromDataPackage(currentPackage, DEFAULT_SETTINGS);
+					if (
+						computeSettingsBackupTargetConfigurationFingerprint(currentSettings, currentPackage.schemaVersion)
+						!== input.settingsPlan.targetConfigurationFingerprint
+					) {
+						stale = true;
+						return currentPackage;
+					}
+					previousSettings = cloneOperonSettings(currentSettings);
+					const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(
+						currentPackage,
+						input.settingsPlan.candidateSettings,
+						{ tableResourceProjection: input.tablePlan.projection },
+					);
+					expectedCurrentFingerprint = computeOperonSettingsBackupSettingsFingerprintV1(
+						composeOperonSettingsFromDataPackage(candidatePackage, DEFAULT_SETTINGS),
+					);
+					staged = this.stageCanonicalDataPackageReload(candidatePackage);
+					return candidatePackage;
+				});
+			} catch {
+				return { state: 'failed-clean' };
+			}
+			if (stale || !previousSettings || !expectedCurrentFingerprint) return { state: 'failed-clean' };
+			if (observed.status === 'failed-clean') return { state: 'failed-clean' };
+			if (observed.status === 'commit-state-unknown') return { state: 'state-unknown' };
+
+			const stagedRuntime = staged as OperonDataPackageReloadStage | null;
+			let needsCanonicalReload = false;
+			try {
+				stagedRuntime?.commit();
+			} catch {
+				needsCanonicalReload = true;
+				try {
+					stagedRuntime?.rollback();
+				} catch {
+					// Canonical state is committed; the outer coordinator owns runtime settlement.
+				}
+			}
+			const canonicalUndoStateId = buildSettingsBackupTableResourceUndoStateId(
+				input.settingsPlan.planId,
+				input.tablePlan.planId,
+				input.appliedAt,
+				expectedCurrentFingerprint,
+			);
+			this.settingsBackupTableResourceUndoEntries.set(canonicalUndoStateId, {
+				previousSettings,
+				selectedGroups: [...input.settingsPlan.selectedGroups],
+				expectedCurrentFingerprint,
+			});
+			return {
+				state: observed.status === 'committed-after-error' ? 'committed-after-error' : 'committed',
+				currentFingerprint: expectedCurrentFingerprint,
+				canonicalUndoStateId,
+				needsCanonicalReload,
+			};
+		});
+	}
+
+	discardSettingsBackupTableResourceUndoStateV1(canonicalUndoStateId: string): boolean {
+		return this.settingsBackupTableResourceUndoEntries.delete(canonicalUndoStateId);
+	}
+
+	async undoSettingsBackupTableResourceProjectionV1(input: {
+		canonicalUndoStateId: string;
+		expectedCurrentFingerprint: string;
+	}): Promise<OperonSettingsBackupTableResourceCanonicalUndoResultV1> {
+		return this.enqueueSettingsTransaction(async () => {
+			const entry = this.settingsBackupTableResourceUndoEntries.get(input.canonicalUndoStateId);
+			if (
+				!entry
+				|| input.expectedCurrentFingerprint !== entry.expectedCurrentFingerprint
+				|| !this.dataPackageStore.canPersist()
+			) return 'failed-clean';
+
+			let staged: OperonDataPackageReloadStage | null = null;
+			let stale = false;
+			let observed: Awaited<ReturnType<OperonDataPackageStore['updateDataPackageObserved']>>;
+			try {
+				observed = await this.dataPackageStore.updateDataPackageObserved(currentPackage => {
+					const currentSettings = composeOperonSettingsFromDataPackage(currentPackage, DEFAULT_SETTINGS);
+					if (
+						computeOperonSettingsBackupSettingsFingerprintV1(currentSettings)
+						!== entry.expectedCurrentFingerprint
+					) {
+						stale = true;
+						return currentPackage;
+					}
+					const previousPatch = buildOperonSettingsBackupSelectedPatchV1({
+						selectedGroups: entry.selectedGroups,
+						candidateSettings: entry.previousSettings,
+					});
+					const candidateSettings = migrateSettings({ ...currentSettings, ...previousPatch });
+					const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(
+						currentPackage,
+						candidateSettings,
+						{ tableResourceProjection: tableResourceProjectionFromSettings(entry.previousSettings) },
+					);
+					staged = this.stageCanonicalDataPackageReload(candidatePackage);
+					return candidatePackage;
+				});
+			} catch {
+				return 'failed-clean';
+			}
+			if (stale || observed.status === 'failed-clean') return 'failed-clean';
+			if (observed.status === 'commit-state-unknown') {
+				this.settingsBackupTableResourceUndoEntries.delete(input.canonicalUndoStateId);
+				return 'state-unknown';
+			}
+			const stagedRuntime = staged as OperonDataPackageReloadStage | null;
+			let needsCanonicalReload = false;
+			try {
+				stagedRuntime?.commit();
+			} catch {
+				needsCanonicalReload = true;
+				try {
+					stagedRuntime?.rollback();
+				} catch {
+					// Canonical undo is committed; the outer coordinator owns runtime settlement.
+				}
+			}
+			this.settingsBackupTableResourceUndoEntries.delete(input.canonicalUndoStateId);
+			return needsCanonicalReload ? 'committed-reload-required' : 'committed';
 		});
 	}
 

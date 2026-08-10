@@ -588,7 +588,6 @@ function applyVaultReferenceDecisions(
 		const status = checks[key]?.status ?? 'unchecked';
 		const decision = decisions[key] ?? null;
 		if (decision === 'preserve-target') Object.assign(next, { [key]: cloneJson(target[key]) });
-		if (status === 'valid') continue;
 		issues.push({
 			id: `vault-reference-${key}`,
 			kind: 'vault-reference',
