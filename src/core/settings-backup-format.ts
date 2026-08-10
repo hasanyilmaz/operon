@@ -98,7 +98,8 @@ export type OperonSettingsBackupDiagnosticCode =
 	| 'unsupported-version'
 	| 'integrity-failed'
 	| 'migration-required'
-	| 'partial-compatibility';
+	| 'partial-compatibility'
+	| 'provenance-warning';
 
 export interface OperonSettingsBackupDiagnostic {
 	path: string;
@@ -284,18 +285,16 @@ export function classifyOperonSettingsBackupV1(
 		.filter(isNonNegativeInteger)
 		.sort((left, right) => left - right);
 	if (!schemaVersions.includes(backup.body.source.dataPackageSchemaVersion)) {
-		blocked = true;
-		diagnostics.push(diagnostic(
-			'$.body.source.dataPackageSchemaVersion',
-			'unsupported-version',
-			`Unsupported data package schema version: ${backup.body.source.dataPackageSchemaVersion}.`,
-		));
-	} else if (backup.body.source.dataPackageSchemaVersion !== schemaVersions[schemaVersions.length - 1]) {
-		migrationRequired = true;
 		diagnostics.push(warning(
 			'$.body.source.dataPackageSchemaVersion',
-			'migration-required',
-			`Data package schema version ${backup.body.source.dataPackageSchemaVersion} requires migration.`,
+			'provenance-warning',
+			`Source data package schema version ${backup.body.source.dataPackageSchemaVersion} differs from this Operon version; group codecs determine import compatibility.`,
+		));
+	} else if (backup.body.source.dataPackageSchemaVersion !== schemaVersions[schemaVersions.length - 1]) {
+		diagnostics.push(warning(
+			'$.body.source.dataPackageSchemaVersion',
+			'provenance-warning',
+			`Source data package schema version is ${backup.body.source.dataPackageSchemaVersion}; group codecs determine import compatibility.`,
 		));
 	}
 
@@ -304,18 +303,16 @@ export function classifyOperonSettingsBackupV1(
 		sourceSettingsVersion > support.currentSettingsVersion
 		|| sourceSettingsVersion < support.minimumSettingsVersion
 	) {
-		blocked = true;
-		diagnostics.push(diagnostic(
-			'$.body.source.settingsVersion',
-			'unsupported-version',
-			`Unsupported settings version: ${sourceSettingsVersion}.`,
-		));
-	} else if (sourceSettingsVersion < support.currentSettingsVersion) {
-		migrationRequired = true;
 		diagnostics.push(warning(
 			'$.body.source.settingsVersion',
-			'migration-required',
-			`Settings version ${sourceSettingsVersion} requires migration.`,
+			'provenance-warning',
+			`Source settings version ${sourceSettingsVersion} differs from the supported provenance range; group codecs determine import compatibility.`,
+		));
+	} else if (sourceSettingsVersion < support.currentSettingsVersion) {
+		diagnostics.push(warning(
+			'$.body.source.settingsVersion',
+			'provenance-warning',
+			`Source settings version is ${sourceSettingsVersion}; group codecs determine import compatibility.`,
 		));
 	}
 
@@ -331,15 +328,9 @@ export function classifyOperonSettingsBackupV1(
 					supportedCodecVersion,
 				};
 			}
-			migrationRequired = true;
-			diagnostics.push(warning(
-				`$.body.groups.${group}`,
-				'migration-required',
-				`Missing optional ${group} group requires migration or target fallback.`,
-			));
 			return {
 				group,
-				classification: 'migration-required' as const,
+				classification: 'not-included' as const,
 				sourceCodecVersion: null,
 				supportedCodecVersion,
 			};

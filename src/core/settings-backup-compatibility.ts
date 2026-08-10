@@ -352,6 +352,17 @@ const NON_PORTABLE_SUPPORT_BY_KEY = {
 	reminderSoundFilePath: 'vault-reference',
 } as const satisfies Partial<Record<keyof OperonSettings, SettingsBackupSupportClass>>;
 
+export type SettingsBackupVaultReferenceKey = {
+	[K in keyof typeof NON_PORTABLE_SUPPORT_BY_KEY]:
+		typeof NON_PORTABLE_SUPPORT_BY_KEY[K] extends 'vault-reference' ? K : never;
+}[keyof typeof NON_PORTABLE_SUPPORT_BY_KEY];
+
+export const SETTINGS_BACKUP_VAULT_REFERENCE_KEYS = Object.freeze(
+	Object.entries(NON_PORTABLE_SUPPORT_BY_KEY)
+		.filter(([, support]) => support === 'vault-reference')
+		.map(([key]) => key as SettingsBackupVaultReferenceKey),
+);
+
 const PIPELINE_KEYS = ['pipelines', 'defaultPipelineName'] as const satisfies readonly (keyof OperonSettings)[];
 const PRIORITY_KEYS = ['priorities', 'defaultPriority'] as const satisfies readonly (keyof OperonSettings)[];
 const KEY_MAPPING_KEYS = ['keyMappings'] as const satisfies readonly (keyof OperonSettings)[];

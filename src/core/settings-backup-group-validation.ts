@@ -99,6 +99,8 @@ export interface OperonSettingsBackupGroupPayloadsV1 {
 
 export interface OperonSettingsBackupGroupValidationContextV1 {
 	targetSettings?: OperonSettings;
+	/** JSON-only restore keeps target Table favorites and treats source Table references as advisory. */
+	ignoreTableFavoriteReferences?: boolean;
 }
 
 export interface OperonSettingsBackupGroupValidationResultV1 {
@@ -524,7 +526,9 @@ function validateReferences(
 		validateFavoriteRefs(favorites.filter, filters?.map(item => item.id), '$.body.groups.preset-favorites.data.presetFavorites.filter', diagnostics);
 		validateFavoriteRefs(favorites.calendar, calendars?.map(item => item.id), '$.body.groups.preset-favorites.data.presetFavorites.calendar', diagnostics);
 		validateFavoriteRefs(favorites.kanban, kanbans?.map(item => item.id), '$.body.groups.preset-favorites.data.presetFavorites.kanban', diagnostics);
-		validateFavoriteRefs(favorites.table, target?.tablePresetOrderIds, '$.body.groups.preset-favorites.data.presetFavorites.table', diagnostics);
+		if (!context.ignoreTableFavoriteReferences) {
+			validateFavoriteRefs(favorites.table, target?.tablePresetOrderIds, '$.body.groups.preset-favorites.data.presetFavorites.table', diagnostics);
+		}
 	}
 }
 

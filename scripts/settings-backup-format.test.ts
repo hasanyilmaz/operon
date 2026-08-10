@@ -127,14 +127,16 @@ test('compatibility is graded for old, missing, future optional and future found
 	const old = cloneBody(base);
 	old.source.settingsVersion -= 1;
 	old.source.dataPackageSchemaVersion = 1;
-	assert.equal(classifyOperonSettingsBackupV1(buildOperonSettingsBackupV1(old), currentSupport()).classification, 'migration-required');
+	assert.equal(classifyOperonSettingsBackupV1(buildOperonSettingsBackupV1(old), currentSupport()).classification, 'exact');
 
 	const missingOptional = cloneBody(base);
 	delete missingOptional.groups.filters;
 	const missingParsed = parseOperonSettingsBackupV1(serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(missingOptional)));
 	assert.equal(missingParsed.ok, true);
 	if (missingParsed.ok) {
-		assert.equal(classifyOperonSettingsBackupV1(missingParsed.value, currentSupport()).classification, 'migration-required');
+		const compatibility = classifyOperonSettingsBackupV1(missingParsed.value, currentSupport());
+		assert.equal(compatibility.classification, 'exact');
+		assert.equal(compatibility.groups.find(group => group.group === 'filters')?.classification, 'not-included');
 	}
 
 	const futureOptional = cloneBody(base);
