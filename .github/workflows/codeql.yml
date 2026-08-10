@@ -9,59 +9,12 @@ on:
     - cron: "0 3 * * 1"
 
 permissions:
-  actions: read
   contents: read
   security-events: write
 
 jobs:
-  classify:
-    name: Classify release evidence
-    runs-on: ubuntu-latest
-    outputs:
-      mode: ${{ steps.mode.outputs.mode }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 2
-          persist-credentials: false
-
-      - name: Set up Node
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: "24.18.0"
-          cache: npm
-
-      - name: Pin canonical npm
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: npm install --global npm@11.12.1
-
-      - name: Install dependencies
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: npm ci
-
-      - name: Build release artifacts for seal classification
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: npm run build
-
-      - name: Classify exact evidence-seal commit
-        id: mode
-        shell: bash
-        run: |
-          mode=candidate
-          if test "$GITHUB_EVENT_NAME" = push && test "$GITHUB_REF" = refs/heads/main; then
-            classification="$(npm run --silent release:evidence-seal:classify)"
-            mode="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.mode);' "$classification")"
-          fi
-          test "$mode" = candidate || test "$mode" = evidence-seal
-          echo "mode=$mode" >> "$GITHUB_OUTPUT"
-
   analyze:
-    needs: classify
-    name: Analyze
-    if: needs.classify.outputs.mode != 'evidence-seal'
+    name: CodeQL gate
     runs-on: ubuntu-latest
 
     steps:
@@ -77,22 +30,3 @@ jobs:
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@bce182f857edf1feab116e9795a3393d21977282 # v4
-
-  gate:
-    needs: [classify, analyze]
-    name: CodeQL gate
-    if: always() && needs.classify.result == 'success'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Require the correct CodeQL lane
-        env:
-          MODE: ${{ needs.classify.outputs.mode }}
-          ANALYZE_RESULT: ${{ needs.analyze.result }}
-        run: |
-          if test "$MODE" = evidence-seal; then
-            test "$ANALYZE_RESULT" = skipped
-          else
-            test "$MODE" = candidate
-            test "$ANALYZE_RESULT" = success
-          fi
