@@ -112,8 +112,13 @@ import {
 	applyTableColumnGeometryClass,
 	buildTableColumnGeometry,
 	buildTableEditableCellKey,
+	buildTableEditableCellFocusKey,
 	buildTableRenderItems,
 	buildTableTaskOrdinalMap,
+	collectTableParentContextTasks,
+	createTableFilePropertyRenderProjection,
+	findTableEditableCellByFocusKey,
+	formatTableRowOrdinal,
 	formatTableTaskCount,
 	formatTableSearchPlaceholder,
 	hasVisibleTableSummaryRule,
@@ -125,6 +130,7 @@ import {
 	truncateTableSubgroupParentLabel,
 	type TableColumnGeometry,
 	type TableRenderItem,
+	type TableRowOrdinal,
 } from './table/table-surface';
 import {
 	applyInteractiveTableColumnTemplate,
@@ -296,9 +302,12 @@ interface EmbeddedTableRenderState {
 	settings: OperonSettings;
 	allTasks: IndexedTask[];
 	additionalFields: readonly TableTaskField[];
+	contextRenderFields: readonly TableTaskField[];
 	filePropertySignature: string;
 	getFilePropertyCell: (task: IndexedTask, columnKey: string) => TableFilePropertyCellValue;
 	getFilePropertyCandidates: (columnKey: string) => readonly string[];
+	getContextFilePropertyCell: (task: IndexedTask, columnKey: string) => TableFilePropertyCellValue;
+	getContextFilePropertyCandidates: (columnKey: string) => readonly string[];
 	valueResolver: TableValueResolver;
 	locationResolver: TableLocationCellResolver | null;
 	locationIndexSignature: string;
@@ -825,15 +834,33 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	const tableWidthPx = columnGeometry.tableWidthPx;
 	const scrollbarGutterPx = measureTableScrollbarGutterPx(instance.el.ownerDocument);
 	const collapsedGroupKeys = result.preset.collapsedGroupKeys;
-	const items = buildTableRenderItems(
+	const ordinalItems = buildTableRenderItems(
 		result.rows,
 		result.groups,
-		collapsedGroupKeys,
+		[],
 		hasSummaryRow,
+		result.valueResolver.taskLookup,
 	);
-	const ordinalItems = collapsedGroupKeys.length === 0
-		? items
-		: buildTableRenderItems(result.rows, result.groups, [], hasSummaryRow);
+	const items = collapsedGroupKeys.length === 0
+		? ordinalItems
+		: buildTableRenderItems(
+			result.rows,
+			result.groups,
+			collapsedGroupKeys,
+			hasSummaryRow,
+			result.valueResolver.taskLookup,
+		);
+	const contextParentTasks = collectTableParentContextTasks(ordinalItems);
+	const contextFilePropertySnapshot = getTableFilePropertyIndex(deps.app).getSnapshot(
+		contextParentTasks,
+		deps.indexer.getGeneration(),
+		{ keyMappings: settings.keyMappings },
+	);
+	const filePropertyRenderProjection = createTableFilePropertyRenderProjection(
+		filePropertySnapshot,
+		contextFilePropertySnapshot,
+		columns,
+	);
 	const renderSignature = buildEmbedTableRenderSignature(
 		instance,
 		deps,
@@ -844,7 +871,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		result.groups,
 		items,
 		locationIndexSignature,
-		filePropertySnapshot.signature,
+		filePropertyRenderProjection.signature,
 		filterFilePropertyContext.signature,
 	);
 	instance.lastQuerySignature = querySignature;
@@ -868,9 +895,12 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		settings,
 		allTasks,
 		additionalFields: filePropertySnapshot.fields,
-		filePropertySignature: filePropertySnapshot.signature,
-		getFilePropertyCell: (task, columnKey) => filePropertySnapshot.getCell(task, columnKey),
-		getFilePropertyCandidates: columnKey => filePropertySnapshot.getCandidates(columnKey),
+		contextRenderFields: filePropertyRenderProjection.fields,
+		filePropertySignature: filePropertyRenderProjection.signature,
+		getFilePropertyCell: (task, columnKey) => filePropertyRenderProjection.getCell(task, columnKey, false),
+		getFilePropertyCandidates: columnKey => filePropertyRenderProjection.getCandidates(columnKey, false),
+		getContextFilePropertyCell: (task, columnKey) => filePropertyRenderProjection.getCell(task, columnKey, true),
+		getContextFilePropertyCandidates: columnKey => filePropertyRenderProjection.getCandidates(columnKey, true),
 		valueResolver: result.valueResolver,
 		locationResolver,
 		locationIndexSignature,
@@ -959,6 +989,8 @@ function buildEmbedTableRenderSignature(
 	filePropertySignature: string,
 	filterFilePropertySignature: string,
 ): string {
+	const sessionTasks = new Map(rows.map(task => [task.operonId, task] as const));
+	for (const task of collectTableParentContextTasks(items)) sessionTasks.set(task.operonId, task);
 	return [
 		deps.indexer.getGeneration(),
 		deps.getPinnedCache()?.getGeneration() ?? 0,
@@ -971,10 +1003,12 @@ function buildEmbedTableRenderSignature(
 		columnGeometry.signature,
 		columns.map(column => `${column.key}:${column.widthPx ?? ''}:${column.hidden === true ? 'hidden' : 'visible'}:${column.pinned === true ? 'pinned' : 'unpinned'}`).join(','),
 		rows.map(task => task.operonId).join(','),
-		buildEmbedTableSessionSignature(deps, rows),
+		buildEmbedTableSessionSignature(deps, Array.from(sessionTasks.values())),
 		groups.map(group => `${group.key}:${group.count}`).join(','),
 		items.map(item => item.kind === 'task'
-			? item.task.operonId
+			? `task:${item.ordinalKey}:${item.task.operonId}`
+			: item.kind === 'parentContext'
+				? `parentContext:${item.occurrenceKey}:${item.task.operonId}:${item.task.datetimeModified}`
 			: item.kind === 'group' || item.kind === 'groupSummary'
 				? `${item.kind}:${item.groupKey}:${item.depth}`
 				: 'summary').join(','),
@@ -1910,6 +1944,8 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 				renderState.groupSummaries.get(item.groupKey) ?? new Map<string, TableSummaryCell>(),
 				true,
 			);
+		} else if (item.kind === 'parentContext') {
+			renderEmbedTableTaskRow(canvas, item.task, index, columnTemplate, renderState, deps, 'P', item.occurrenceKey);
 		} else if (item.kind === 'task') {
 			renderEmbedTableTaskRow(canvas, item.task, index, columnTemplate, renderState, deps, renderState.taskOrdinals.get(item.ordinalKey) ?? null);
 		}
@@ -2000,6 +2036,7 @@ function renderEmbedTableGroupRow(
 				instance.currentRenderState.groups,
 				nextCollapsedGroupKeys,
 				hasSummaryRow,
+				instance.currentRenderState.valueResolver.taskLookup,
 			);
 			const ordinalItems = nextCollapsedGroupKeys.length === 0
 				? items
@@ -2008,6 +2045,7 @@ function renderEmbedTableGroupRow(
 					instance.currentRenderState.groups,
 					[],
 					hasSummaryRow,
+					instance.currentRenderState.valueResolver.taskLookup,
 				);
 			instance.currentRenderState = {
 				...instance.currentRenderState,
@@ -2653,21 +2691,31 @@ function renderEmbedTableTaskRow(
 	columnTemplate: string,
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
-	rowOrdinal: number | null,
+	rowOrdinal: TableRowOrdinal,
+	parentContextOccurrenceKey: string | null = null,
 ): void {
 	const row = canvas.createDiv('operon-table-row');
+	row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
 	row.setAttribute('role', 'row');
 	row.setAttribute('aria-rowindex', String(index + 2));
 	row.style.gridTemplateColumns = columnTemplate;
 	row.style.width = `${renderState.tableWidthPx}px`;
 	row.style.transform = `translateY(${index * renderState.rowHeight}px)`;
 	row.dataset.operonId = task.operonId;
+	if (parentContextOccurrenceKey) row.dataset.occurrenceKey = parentContextOccurrenceKey;
 	row.addEventListener('dblclick', () => {
 		deps.openTaskEditor(task.operonId);
 	});
 
 	for (const [columnIndex, column] of renderState.columns.entries()) {
-		renderEmbedTableCell(row, task, column, renderState, columnIndex, deps, rowOrdinal);
+		renderEmbedTableCell(row, task, column, renderState, columnIndex, deps, rowOrdinal, parentContextOccurrenceKey !== null);
+		const renderedCell = row.lastElementChild as HTMLElement | null;
+		if (parentContextOccurrenceKey && renderedCell?.dataset.editCellKey) {
+			renderedCell.dataset.editFocusKey = buildTableEditableCellFocusKey(
+				renderedCell.dataset.editCellKey,
+				parentContextOccurrenceKey,
+			);
+		}
 	}
 }
 
@@ -2744,7 +2792,8 @@ function renderEmbedTableCell(
 	renderState: EmbeddedTableRenderState,
 	columnIndex: number,
 	deps: EmbedTableDeps,
-	rowOrdinal: number | null,
+	rowOrdinal: TableRowOrdinal,
+	isParentContext: boolean,
 ): void {
 	const cell = row.createDiv('operon-table-cell');
 	cell.setAttribute('role', 'gridcell');
@@ -2758,7 +2807,7 @@ function renderEmbedTableCell(
 	applyTableColumnAlignmentClass(cell, column);
 	const displayValue = renderState.valueResolver.getDisplayValue(task, column.key);
 	if (isTableFilePropertyColumnKey(column.key)) {
-		renderEmbedTableFilePropertyCell(cell, task, column, renderState, deps);
+		renderEmbedTableFilePropertyCell(cell, task, column, renderState, deps, isParentContext);
 		return;
 	}
 
@@ -2845,12 +2894,16 @@ function renderEmbedTableFilePropertyCell(
 	column: TableColumn,
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
+	isParentContext: boolean,
 ): void {
-	const field = (renderState.additionalFields.find(entry => entry.key === column.key && entry.group === 'fileProperty')
+	const availableFields = isParentContext ? renderState.contextRenderFields : renderState.additionalFields;
+	const field = (availableFields.find(entry => entry.key === column.key && entry.group === 'fileProperty')
 		?? null) as TableFilePropertyField | null;
-	const cellValue = renderState.getFilePropertyCell(task, column.key);
+	const cellValue = isParentContext
+		? renderState.getContextFilePropertyCell(task, column.key)
+		: renderState.getFilePropertyCell(task, column.key);
 	const editable = canEditTableFilePropertyCell(task, field, cellValue, canWriteEmbedFileProperty(deps));
-	const label = getTableColumnLabel(column, renderState.settings, renderState.additionalFields);
+	const label = getTableColumnLabel(column, renderState.settings, availableFields);
 	const cellKey = buildTableEditableCellKey(task, column.key);
 	const instance = findEmbedTableInstance(cell);
 	if (editable) {
@@ -2887,7 +2940,9 @@ function renderEmbedTableFilePropertyCell(
 			field,
 			label,
 			cellValue,
-			candidates: renderState.getFilePropertyCandidates(column.key),
+			candidates: isParentContext
+				? renderState.getContextFilePropertyCandidates(column.key)
+				: renderState.getFilePropertyCandidates(column.key),
 			settings: renderState.settings,
 			sourcePath: task.primary.filePath,
 			onMutation: commit,
@@ -2927,7 +2982,7 @@ async function commitEmbedTableFilePropertyUpdate(
 	const expected = toRawYamlPropertyExpectation(cellValue);
 	if (!expected || !deps.updateFileProperty || instance.pendingCellKey !== null) return false;
 	instance.pendingCellKey = cellKey;
-	instance.pendingFocusKey = cellKey;
+	instance.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 	syncEmbedTablePendingCellState(cell, cellKey, instance);
 	closeEmbedTableActivePicker(instance);
 	let success = false;
@@ -3090,14 +3145,17 @@ function renderEmbedTableAdminCell(
 	column: TableColumn,
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
-	rowOrdinal: number | null,
+	rowOrdinal: TableRowOrdinal,
 ): void {
 	cell.addClass('operon-table-admin-cell');
 	if (column.key === TABLE_LINE_NUMBER_COLUMN_KEY) {
 		cell.addClass('operon-table-line-number-cell');
+		if (rowOrdinal === 'P') {
+			setAccessibleLabelWithoutTooltip(cell, getTableTaskFieldLabel('parentTask', renderState.settings));
+		}
 		cell.createSpan({
 			cls: 'operon-table-line-number',
-			text: rowOrdinal === null ? '' : String(rowOrdinal),
+			text: formatTableRowOrdinal(rowOrdinal),
 		});
 		return;
 	}
@@ -3345,7 +3403,7 @@ async function commitEmbedTableCellUpdate(
 	if (!canWriteEmbedTable(deps)) return false;
 	if (instance.pendingCellKey !== null) return false;
 	instance.pendingCellKey = cellKey;
-	instance.pendingFocusKey = cellKey;
+	instance.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 	syncEmbedTablePendingCellState(cell, cellKey, instance);
 	closeEmbedTableActivePicker(instance);
 	let success = false;
@@ -3436,7 +3494,7 @@ async function commitEmbedTableSessionCellUpdate(
 	if (!canWriteEmbedTable(deps)) return;
 	if (instance.pendingCellKey !== null) return;
 	instance.pendingCellKey = cellKey;
-	instance.pendingFocusKey = cellKey;
+	instance.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 	syncEmbedTablePendingCellState(cell, cellKey, instance);
 	try {
 		const wrote = await operation();
@@ -3494,8 +3552,10 @@ function restoreEmbedTablePendingCellFocus(instance: EmbedTableInstance): void {
 	const cellKey = instance.pendingFocusKey;
 	if (!cellKey) return;
 	instance.pendingFocusKey = null;
-	const cell = Array.from(instance.el.querySelectorAll<HTMLElement>('.operon-table-cell.is-editable'))
-		.find(candidate => candidate.dataset.editCellKey === cellKey);
+	const cell = findTableEditableCellByFocusKey(
+		Array.from(instance.el.querySelectorAll<HTMLElement>('.operon-table-cell.is-editable')),
+		cellKey,
+	);
 	(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox') ?? cell ?? instance.bodyScrollerEl)?.focus();
 }
 

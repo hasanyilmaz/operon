@@ -68,8 +68,13 @@ import {
 	buildTableColumnGeometry,
 	buildTableColumnTemplate,
 	buildTableEditableCellKey,
+	buildTableEditableCellFocusKey,
 	buildTableRenderItems,
 	buildTableTaskOrdinalMap,
+	collectTableParentContextTasks,
+	createTableFilePropertyRenderProjection,
+	findTableEditableCellByFocusKey,
+	formatTableRowOrdinal,
 	formatTableTaskCount,
 	formatTableSearchPlaceholder,
 	hasVisibleTableSummaryRule,
@@ -81,6 +86,7 @@ import {
 	truncateTableSubgroupParentLabel,
 	type TableColumnGeometry,
 	type TableRenderItem,
+	type TableRowOrdinal,
 } from './table-surface';
 import {
 	buildTableGroupSortPresetPatch,
@@ -257,9 +263,12 @@ interface TableRenderState {
 	settings: OperonSettings;
 	allTasks: IndexedTask[];
 	additionalFields: readonly TableTaskField[];
+	contextRenderFields: readonly TableTaskField[];
 	filePropertySignature: string;
 	getFilePropertyCell: (task: IndexedTask, columnKey: string) => TableFilePropertyCellValue;
 	getFilePropertyCandidates: (columnKey: string) => readonly string[];
+	getContextFilePropertyCell: (task: IndexedTask, columnKey: string) => TableFilePropertyCellValue;
+	getContextFilePropertyCandidates: (columnKey: string) => readonly string[];
 	valueResolver: TableValueResolver;
 	locationResolver: TableLocationCellResolver | null;
 	locationIndexSignature: string;
@@ -822,15 +831,33 @@ export class OperonTableView extends FileView {
 		const tableWidthPx = columnGeometry.tableWidthPx;
 		const scrollbarGutterPx = measureTableScrollbarGutterPx(this.contentEl.ownerDocument);
 		const searchControlSignature = this.buildSearchControlSignature(searchContext.parentSearchUi);
-		const items = buildTableRenderItems(
+		const ordinalItems = buildTableRenderItems(
 			result.rows,
 			result.groups,
-			result.preset.collapsedGroupKeys,
+			[],
 			hasSummaryRow,
+			result.valueResolver.taskLookup,
 		);
-		const ordinalItems = result.preset.collapsedGroupKeys.length === 0
-			? items
-			: buildTableRenderItems(result.rows, result.groups, [], hasSummaryRow);
+		const items = result.preset.collapsedGroupKeys.length === 0
+			? ordinalItems
+			: buildTableRenderItems(
+				result.rows,
+				result.groups,
+				result.preset.collapsedGroupKeys,
+				hasSummaryRow,
+				result.valueResolver.taskLookup,
+			);
+		const contextParentTasks = collectTableParentContextTasks(ordinalItems);
+		const contextFilePropertySnapshot = getTableFilePropertyIndex(this.app).getSnapshot(
+			contextParentTasks,
+			this.indexer.getGeneration(),
+			{ keyMappings: settings.keyMappings },
+		);
+		const filePropertyRenderProjection = createTableFilePropertyRenderProjection(
+			filePropertySnapshot,
+			contextFilePropertySnapshot,
+			columns,
+		);
 		this.currentRenderState = {
 			preset: result.preset,
 			columns,
@@ -846,9 +873,12 @@ export class OperonTableView extends FileView {
 			settings,
 			allTasks: tasks,
 			additionalFields: filePropertySnapshot.fields,
-			filePropertySignature: filePropertySnapshot.signature,
-			getFilePropertyCell: (task, columnKey) => filePropertySnapshot.getCell(task, columnKey),
-			getFilePropertyCandidates: columnKey => filePropertySnapshot.getCandidates(columnKey),
+			contextRenderFields: filePropertyRenderProjection.fields,
+			filePropertySignature: filePropertyRenderProjection.signature,
+			getFilePropertyCell: (task, columnKey) => filePropertyRenderProjection.getCell(task, columnKey, false),
+			getFilePropertyCandidates: columnKey => filePropertyRenderProjection.getCandidates(columnKey, false),
+			getContextFilePropertyCell: (task, columnKey) => filePropertyRenderProjection.getCell(task, columnKey, true),
+			getContextFilePropertyCandidates: columnKey => filePropertyRenderProjection.getCandidates(columnKey, true),
 			valueResolver: result.valueResolver,
 			locationResolver,
 			locationIndexSignature,
@@ -871,7 +901,7 @@ export class OperonTableView extends FileView {
 				searchControlSignature,
 				locationIndexSignature,
 				projectSerialSignature,
-				filePropertySignature: filePropertySnapshot.signature,
+				filePropertySignature: filePropertyRenderProjection.signature,
 			}),
 		};
 		this.lastRenderedRangeKey = null;
@@ -1678,7 +1708,10 @@ export class OperonTableView extends FileView {
 			);
 			return;
 		}
-		if (item.kind === 'parentContext') return;
+		if (item.kind === 'parentContext') {
+			this.renderRow(canvas, item.task, index, columnTemplate, renderState, 'P', item.occurrenceKey);
+			return;
+		}
 		this.renderRow(canvas, item.task, index, columnTemplate, renderState, renderState.taskOrdinals.get(item.ordinalKey) ?? null);
 	}
 
@@ -1778,21 +1811,31 @@ export class OperonTableView extends FileView {
 		index: number,
 		columnTemplate: string,
 		renderState: TableRenderState,
-		rowOrdinal: number | null,
+		rowOrdinal: TableRowOrdinal,
+		parentContextOccurrenceKey: string | null = null,
 	): void {
 		const row = canvas.createDiv('operon-table-row');
+		row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
 		row.setAttribute('role', 'row');
 		row.setAttribute('aria-rowindex', String(index + 2));
 		row.style.gridTemplateColumns = columnTemplate;
 		row.style.width = `${renderState.tableWidthPx}px`;
 		row.style.transform = `translateY(${index * renderState.rowHeight}px)`;
 		row.dataset.operonId = task.operonId;
+		if (parentContextOccurrenceKey) row.dataset.occurrenceKey = parentContextOccurrenceKey;
 		row.addEventListener('dblclick', () => {
 			this.callbacks.onOpenTaskEditor?.(task.operonId);
 		});
 
 		for (const [columnIndex, column] of renderState.columns.entries()) {
-			this.renderCell(row, task, column, renderState, columnIndex, rowOrdinal);
+			this.renderCell(row, task, column, renderState, columnIndex, rowOrdinal, parentContextOccurrenceKey !== null);
+			const renderedCell = row.lastElementChild as HTMLElement | null;
+			if (parentContextOccurrenceKey && renderedCell?.dataset.editCellKey) {
+				renderedCell.dataset.editFocusKey = buildTableEditableCellFocusKey(
+					renderedCell.dataset.editCellKey,
+					parentContextOccurrenceKey,
+				);
+			}
 		}
 	}
 
@@ -1943,7 +1986,8 @@ export class OperonTableView extends FileView {
 		column: TableColumn,
 		renderState: TableRenderState,
 		columnIndex: number,
-		rowOrdinal: number | null,
+		rowOrdinal: TableRowOrdinal,
+		isParentContext: boolean,
 	): void {
 		const cell = row.createDiv('operon-table-cell');
 		cell.setAttribute('role', 'gridcell');
@@ -1965,7 +2009,7 @@ export class OperonTableView extends FileView {
 			this.renderSourceCell(cell, task, column, displayValue, renderState);
 			return;
 		}
-		this.renderValueCell(cell, task, column, displayValue, renderState);
+		this.renderValueCell(cell, task, column, displayValue, renderState, isParentContext);
 	}
 
 	private renderAdminCell(
@@ -1973,14 +2017,17 @@ export class OperonTableView extends FileView {
 		task: IndexedTask,
 		column: TableColumn,
 		renderState: TableRenderState,
-		rowOrdinal: number | null,
+		rowOrdinal: TableRowOrdinal,
 	): void {
 		cell.addClass('operon-table-admin-cell');
 		if (column.key === TABLE_LINE_NUMBER_COLUMN_KEY) {
 			cell.addClass('operon-table-line-number-cell');
+			if (rowOrdinal === 'P') {
+				setAccessibleLabelWithoutTooltip(cell, getTableTaskFieldLabel('parentTask', renderState.settings));
+			}
 			cell.createSpan({
 				cls: 'operon-table-line-number',
-				text: rowOrdinal === null ? '' : String(rowOrdinal),
+				text: formatTableRowOrdinal(rowOrdinal),
 			});
 			return;
 		}
@@ -2281,9 +2328,10 @@ export class OperonTableView extends FileView {
 		column: TableColumn,
 		value: string,
 		renderState: TableRenderState,
+		isParentContext: boolean,
 	): void {
 		if (isTableFilePropertyColumnKey(column.key)) {
-			this.renderFilePropertyCell(cell, task, column, renderState);
+			this.renderFilePropertyCell(cell, task, column, renderState, isParentContext);
 			return;
 		}
 		if (isTableProgressColumnKey(column.key)) {
@@ -2364,12 +2412,16 @@ export class OperonTableView extends FileView {
 		task: IndexedTask,
 		column: TableColumn,
 		renderState: TableRenderState,
+		isParentContext: boolean,
 	): void {
-		const field = (renderState.additionalFields.find(entry => entry.key === column.key && entry.group === 'fileProperty')
+		const availableFields = isParentContext ? renderState.contextRenderFields : renderState.additionalFields;
+		const field = (availableFields.find(entry => entry.key === column.key && entry.group === 'fileProperty')
 			?? null) as TableFilePropertyField | null;
-		const cellValue = renderState.getFilePropertyCell(task, column.key);
+		const cellValue = isParentContext
+			? renderState.getContextFilePropertyCell(task, column.key)
+			: renderState.getFilePropertyCell(task, column.key);
 		const editable = canEditTableFilePropertyCell(task, field, cellValue, !!this.callbacks.onUpdateFileProperty);
-		const label = getTableColumnLabel(column, renderState.settings, renderState.additionalFields);
+		const label = getTableColumnLabel(column, renderState.settings, availableFields);
 		const cellKey = buildTableEditableCellKey(task, column.key);
 		if (editable) {
 			cell.addClass('is-editable');
@@ -2416,7 +2468,9 @@ export class OperonTableView extends FileView {
 				field,
 				label,
 				cellValue,
-				candidates: renderState.getFilePropertyCandidates(column.key),
+				candidates: isParentContext
+					? renderState.getContextFilePropertyCandidates(column.key)
+					: renderState.getFilePropertyCandidates(column.key),
 				settings: renderState.settings,
 				sourcePath: task.primary.filePath,
 				onMutation: commit,
@@ -2454,7 +2508,7 @@ export class OperonTableView extends FileView {
 		const expected = toRawYamlPropertyExpectation(cellValue);
 		if (!field || !expected || !this.callbacks.onUpdateFileProperty || this.pendingCellKey !== null) return false;
 		this.pendingCellKey = cellKey;
-		this.pendingFocusKey = cellKey;
+		this.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 		this.syncPendingCellState(cell, cellKey);
 		this.closeActivePicker();
 		let success = false;
@@ -2658,7 +2712,7 @@ export class OperonTableView extends FileView {
 	): Promise<void> {
 		if (this.pendingCellKey !== null) return;
 		this.pendingCellKey = cellKey;
-		this.pendingFocusKey = cellKey;
+		this.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 		this.syncPendingCellState(cell, cellKey);
 		try {
 			const wrote = await operation();
@@ -2786,7 +2840,7 @@ export class OperonTableView extends FileView {
 		const showFailureNotice = options.showFailureNotice !== false;
 		if (this.pendingCellKey !== null) return false;
 		this.pendingCellKey = cellKey;
-		this.pendingFocusKey = cellKey;
+		this.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 		this.syncPendingCellState(cell, cellKey);
 		this.closeActivePicker();
 		let success = false;
@@ -2858,8 +2912,10 @@ export class OperonTableView extends FileView {
 	}
 
 	private findRenderedEditableCell(cellKey: string): HTMLElement | null {
-		return Array.from(this.contentEl.querySelectorAll<HTMLElement>('.operon-table-cell.is-editable'))
-			.find(candidate => candidate.dataset.editCellKey === cellKey) ?? null;
+		return findTableEditableCellByFocusKey(
+			Array.from(this.contentEl.querySelectorAll<HTMLElement>('.operon-table-cell.is-editable')),
+			cellKey,
+		);
 	}
 
 	private closeActivePicker(): void {
@@ -3674,10 +3730,17 @@ export class OperonTableView extends FileView {
 				this.currentRenderState.groups,
 				nextCollapsedGroupKeys,
 				hasSummaryRow,
+				this.currentRenderState.valueResolver.taskLookup,
 			);
 			const ordinalItems = nextCollapsedGroupKeys.length === 0
 				? items
-				: buildTableRenderItems(this.currentRenderState.rows, this.currentRenderState.groups, [], hasSummaryRow);
+				: buildTableRenderItems(
+					this.currentRenderState.rows,
+					this.currentRenderState.groups,
+					[],
+					hasSummaryRow,
+					this.currentRenderState.valueResolver.taskLookup,
+				);
 			this.currentRenderState = {
 				...this.currentRenderState,
 				preset: nextPreset,
