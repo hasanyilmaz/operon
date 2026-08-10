@@ -1678,6 +1678,7 @@ export class OperonTableView extends FileView {
 			);
 			return;
 		}
+		if (item.kind === 'parentContext') return;
 		this.renderRow(canvas, item.task, index, columnTemplate, renderState, renderState.taskOrdinals.get(item.ordinalKey) ?? null);
 	}
 

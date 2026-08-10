@@ -16,6 +16,7 @@ import { t } from '../../core/i18n';
 import { buildTableTaskFieldCatalog, getTableTaskField } from './table-field-catalog';
 import { orderTablePresetColumnsByPinState } from './table-preset-model';
 import { isTableFilePropertyColumnKey } from './table-file-property';
+import type { TableTaskLookup } from './table-value-adapter';
 
 export const TABLE_ROW_HEIGHT = 38;
 export const TABLE_COMFORTABLE_ROW_HEIGHT = 44;
@@ -29,6 +30,7 @@ export const TABLE_SUBGROUP_PARENT_LABEL_MAX_LENGTH = 15;
 export type TableRenderItem =
 	| { kind: 'group'; group: TableQueryGroup | TableQuerySubgroup; groupKey: string; depth: number; parentGroup?: TableQueryGroup }
 	| { kind: 'task'; task: IndexedTask; groupKey: string | null; ordinalKey: string }
+	| { kind: 'parentContext'; task: IndexedTask; groupKey: string; occurrenceKey: string }
 	| { kind: 'groupSummary'; group: TableQueryGroup | TableQuerySubgroup; groupKey: string; depth: number }
 	| { kind: 'summary' };
 
@@ -87,6 +89,7 @@ export function buildTableRenderItems(
 	groups: readonly TableQueryGroup[],
 	collapsedGroupKeys: readonly string[],
 	hasSummaryRow: boolean,
+	parentTaskLookup?: TableTaskLookup,
 ): TableRenderItem[] {
 	const taskOccurrenceCounts = new Map<string, number>();
 	const createTaskItem = (task: IndexedTask, groupKey: string | null): TableRenderItem => {
@@ -104,6 +107,23 @@ export function buildTableRenderItems(
 		if (hasSummaryRow) items.push({ kind: 'summary' });
 		return items;
 	};
+	const createParentContextItem = (
+		group: TableQueryGroup | TableQuerySubgroup,
+		groupKey: string,
+	): TableRenderItem | null => {
+		if (!parentTaskLookup || group.fieldKey !== 'parentTask' || group.isNoValue || group.isUnsupportedValue) return null;
+		const parentId = group.value.trim();
+		if (!parentId) return null;
+		const parentTask = parentTaskLookup.getTask(parentId);
+		if (!parentTask || parentTask.operonId !== parentId) return null;
+		if ((parentTask.fieldValues['parentTask'] ?? '').trim() === parentTask.operonId) return null;
+		return {
+			kind: 'parentContext',
+			task: parentTask,
+			groupKey,
+			occurrenceKey: `${groupKey}\u0000parentContext\u0000${parentTask.operonId}`,
+		};
+	};
 	if (groups.length === 0) {
 		return appendSummary(rows.map(task => createTaskItem(task, null)));
 	}
@@ -112,11 +132,15 @@ export function buildTableRenderItems(
 	for (const group of groups) {
 		items.push({ kind: 'group', group, groupKey: group.key, depth: 0 });
 		if (collapsed.has(group.key)) continue;
+		const groupParentContext = createParentContextItem(group, group.key);
+		if (groupParentContext) items.push(groupParentContext);
 		if (group.subgroups?.length) {
 			for (const subgroup of group.subgroups) {
 				const subgroupKey = createTableGroupPathKey(group.key, subgroup.key);
 				items.push({ kind: 'group', group: subgroup, groupKey: subgroupKey, depth: 1, parentGroup: group });
 				if (collapsed.has(subgroupKey)) continue;
+				const subgroupParentContext = createParentContextItem(subgroup, subgroupKey);
+				if (subgroupParentContext) items.push(subgroupParentContext);
 				for (const task of subgroup.rows) {
 					items.push(createTaskItem(task, subgroupKey));
 				}

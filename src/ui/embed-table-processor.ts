@@ -1910,7 +1910,7 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 				renderState.groupSummaries.get(item.groupKey) ?? new Map<string, TableSummaryCell>(),
 				true,
 			);
-		} else {
+		} else if (item.kind === 'task') {
 			renderEmbedTableTaskRow(canvas, item.task, index, columnTemplate, renderState, deps, renderState.taskOrdinals.get(item.ordinalKey) ?? null);
 		}
 	}
