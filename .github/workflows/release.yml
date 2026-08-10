@@ -7,8 +7,8 @@ on:
       - "!cli-v*"
 
 permissions:
-  actions: read
   contents: write
+  checks: read
   id-token: write
   attestations: write
 
@@ -28,6 +28,27 @@ jobs:
           TRIGGER_COMMIT="$(git rev-parse "$GITHUB_SHA^{commit}")"
           test "$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")" = "$TRIGGER_COMMIT"
           test "$(git rev-parse "HEAD^{commit}")" = "$TRIGGER_COMMIT"
+
+      - name: Verify release commit eligibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TRIGGER_COMMIT="$(git rev-parse "$GITHUB_SHA^{commit}")"
+          git merge-base --is-ancestor "$TRIGGER_COMMIT" refs/remotes/origin/main
+          gh api "repos/$GITHUB_REPOSITORY/commits/$TRIGGER_COMMIT/check-runs?per_page=100" > "$RUNNER_TEMP/operon-check-runs.json"
+          node - "$RUNNER_TEMP/operon-check-runs.json" <<'NODE'
+          const fs = require("fs");
+          const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const required = ["Validation gate", "windows-native", "CodeQL gate"];
+          for (const name of required) {
+            const passed = report.check_runs.some(run => (
+              run.name === name
+              && run.status === "completed"
+              && run.conclusion === "success"
+            ));
+            if (!passed) throw new Error(`Required check has not passed for the release commit: ${name}`);
+          }
+          NODE
 
       - name: Refuse an existing GitHub release
         env:
@@ -53,33 +74,11 @@ jobs:
       - name: Build exact release artifacts
         run: npm run build
 
-      - name: Require exact evidence-seal tag target
-        run: |
-          classification="$(npm run --silent release:evidence-seal:classify)"
-          mode="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.mode);' "$classification")"
-          test "$mode" = evidence-seal
-
       - name: Verify release dependency audit policy
         run: npm run release:audit-policy
 
       - name: Verify release guard
         run: npm run release:guard
-
-      - name: Verify exact evidence seal
-        run: npm run release:evidence-seal:check
-
-      - name: Verify hosted evidence online
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: npm run release:hosted-evidence:check
-
-      - name: Verify exact published CLI public proof
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: npm run agent-runtime:external-cli:public-proof
-
-      - name: Verify final accepted Public V1 freeze
-        run: npm run release:freeze:check
 
       - name: Verify tag and manifest metadata
         run: |
