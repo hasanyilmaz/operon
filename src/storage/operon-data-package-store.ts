@@ -37,6 +37,11 @@ export interface OperonDataPackageStoreInitResult {
 	pipelineTaxonomyDiagnostics: OperonPipelineTaxonomyDiagnostics;
 }
 
+export interface OperonCommittedSettingsDataPackageSnapshot {
+	settings: OperonSettings;
+	dataPackageSchemaVersion: OperonDataPackageV1['schemaVersion'];
+}
+
 export interface OperonPipelineTaxonomyDiagnostics {
 	issues: PipelineTaxonomyIssue[];
 	hasDestructiveIssues: boolean;
@@ -153,6 +158,23 @@ export class OperonDataPackageStore {
 	getDataPackage(): OperonDataPackageV1 {
 		if (!this.dataPackage) throw new Error('Operon data package store has not been initialized');
 		return this.cloneDataPackage(this.dataPackage);
+	}
+
+	/**
+	 * Capture logical settings from the last successfully persisted package after
+	 * all package mutations queued before this read. Composition occurs at the
+	 * queue linearization point and does not expose non-settings package domains.
+	 */
+	async captureCommittedSettingsSnapshot(
+		defaults: OperonSettings,
+	): Promise<OperonCommittedSettingsDataPackageSnapshot> {
+		return this.enqueueMutation(async () => {
+			const dataPackage = this.getDataPackage();
+			return {
+				settings: composeOperonSettingsFromDataPackage(dataPackage, defaults),
+				dataPackageSchemaVersion: dataPackage.schemaVersion,
+			};
+		});
 	}
 
 	getSettings(defaults: OperonSettings): OperonSettings {

@@ -79,6 +79,14 @@ export interface OperonStorageReloadSettingsResult {
 	diagnostics: OperonDataPackageReloadDiagnostics;
 }
 
+export interface OperonCommittedSettingsBackupSnapshot {
+	settings: OperonSettings;
+	dataPackageSchemaVersion: OperonDataPackageV1['schemaVersion'];
+	settingsVersion: number;
+	canonicalWritesSuspended: boolean;
+	canonicalWriteSuspensionReason: string | null;
+}
+
 function cloneOperonSettings(settings: OperonSettings): OperonSettings {
 	return migrateSettings(JSON.parse(JSON.stringify(settings)) as unknown);
 }
@@ -686,6 +694,27 @@ export class OperonStorage {
 	 */
 	getSettings(): OperonSettings {
 		return this.settings;
+	}
+
+	/**
+	 * Capture a logical settings snapshot from the last successfully persisted
+	 * canonical package. This read participates in both settings and package
+	 * queues and intentionally does not overlay runtime Table preset contents.
+	 */
+	captureCommittedSettingsBackupSnapshot(): Promise<OperonCommittedSettingsBackupSnapshot> {
+		return this.enqueueSettingsTransaction(async () => {
+			const committed = await this.dataPackageStore.captureCommittedSettingsSnapshot(DEFAULT_SETTINGS);
+			const canonicalWritesSuspended = !this.dataPackageStore.canPersist();
+			return {
+				settings: committed.settings,
+				dataPackageSchemaVersion: committed.dataPackageSchemaVersion,
+				settingsVersion: committed.settings.settingsVersion,
+				canonicalWritesSuspended,
+				canonicalWriteSuspensionReason: canonicalWritesSuspended
+					? this.dataPackageStore.getWriteSuspensionReason() ?? 'Canonical settings writes are suspended'
+					: null,
+			};
+		});
 	}
 
 	/**
