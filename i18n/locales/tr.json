@@ -2867,6 +2867,8 @@
 		"pinColumn": "Sütunu sabitle",
 		"unpinColumn": "Sütun sabitlemesini kaldır",
 		"columnColor": "Renk...",
+		"colorMode": "Renk modu",
+		"colorModeCustomColors": "Özel renkler",
 		"colorModeNoColor": "Renksiz",
 		"colorModeTaskColor": "Görev rengi",
 		"colorModePriorityColor": "Öncelik rengi",

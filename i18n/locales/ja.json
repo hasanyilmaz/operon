@@ -2867,6 +2867,8 @@
 		"pinColumn": "列を固定",
 		"unpinColumn": "列の固定を解除",
 		"columnColor": "色...",
+		"colorMode": "カラーモード",
+		"colorModeCustomColors": "カスタムカラー",
 		"colorModeNoColor": "色なし",
 		"colorModeTaskColor": "タスクの色",
 		"colorModePriorityColor": "優先度の色",

@@ -2867,6 +2867,8 @@
 		"pinColumn": "固定列",
 		"unpinColumn": "取消固定列",
 		"columnColor": "颜色...",
+		"colorMode": "颜色模式",
+		"colorModeCustomColors": "自定义颜色",
 		"colorModeNoColor": "无颜色",
 		"colorModeTaskColor": "任务颜色",
 		"colorModePriorityColor": "优先级颜色",

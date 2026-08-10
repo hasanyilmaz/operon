@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 2928,
-  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
+  "keyCount": 2930,
+  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2312,6 +2312,8 @@
       "clearAllSummaries": "Cancella tutti i riepiloghi",
       "clearSearch": "Cancella ricerca",
       "collapseGroup": "Comprimi gruppo",
+      "colorMode": "Modalità colore",
+      "colorModeCustomColors": "Colori personalizzati",
       "colorModeNoColor": "Nessun colore",
       "colorModePriorityColor": "Colore priorità",
       "colorModeRandomColors": "Colori casuali",
@@ -2973,5 +2975,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "4c0107eb28953cd995915782756f6d0006f05462af083e92adefebb8e204372f"
+  "sourceVersion": "25d3df56335b9c05124c11b22d7e849778fda68f61126200472613814ad72bdd"
 }

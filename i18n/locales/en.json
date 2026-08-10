@@ -2867,6 +2867,8 @@
 		"pinColumn": "Pin column",
 		"unpinColumn": "Unpin column",
 		"columnColor": "Color...",
+		"colorMode": "Color mode",
+		"colorModeCustomColors": "Custom colors",
 		"colorModeNoColor": "No color",
 		"colorModeTaskColor": "Task color",
 		"colorModePriorityColor": "Priority color",

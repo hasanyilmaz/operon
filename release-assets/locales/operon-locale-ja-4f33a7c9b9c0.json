@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 2928,
-  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
+  "keyCount": 2930,
+  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2312,6 +2312,8 @@
       "clearAllSummaries": "すべてのサマリーをクリア",
       "clearSearch": "検索をクリア",
       "collapseGroup": "グループを折りたたむ",
+      "colorMode": "カラーモード",
+      "colorModeCustomColors": "カスタムカラー",
       "colorModeNoColor": "色なし",
       "colorModePriorityColor": "優先度の色",
       "colorModeRandomColors": "ランダムカラー",
@@ -2973,5 +2975,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "3819a357a470b03ea6e3a812707b1252740b44413f5351b07a2be5dd3c6ea7a8"
+  "sourceVersion": "e777dddb9699c3fa3fb000b398726938f97c9cad3b99eef0b047b4d653774b9c"
 }

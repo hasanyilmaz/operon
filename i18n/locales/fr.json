@@ -2867,6 +2867,8 @@
 		"pinColumn": "Épingler la colonne",
 		"unpinColumn": "Désépingler la colonne",
 		"columnColor": "Couleur...",
+		"colorMode": "Mode de couleur",
+		"colorModeCustomColors": "Couleurs personnalisées",
 		"colorModeNoColor": "Aucune couleur",
 		"colorModeTaskColor": "Couleur de tâche",
 		"colorModePriorityColor": "Couleur de priorité",

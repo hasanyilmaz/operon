@@ -2867,6 +2867,8 @@
 		"pinColumn": "Fissa colonna",
 		"unpinColumn": "Rimuovi fissaggio colonna",
 		"columnColor": "Colore...",
+		"colorMode": "Modalità colore",
+		"colorModeCustomColors": "Colori personalizzati",
 		"colorModeNoColor": "Nessun colore",
 		"colorModeTaskColor": "Colore attività",
 		"colorModePriorityColor": "Colore priorità",

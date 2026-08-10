@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 2928,
-  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
+  "keyCount": 2930,
+  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2312,6 +2312,8 @@
       "clearAllSummaries": "Очистить все сводки",
       "clearSearch": "Очистить поиск",
       "collapseGroup": "Свернуть группу",
+      "colorMode": "Режим цвета",
+      "colorModeCustomColors": "Пользовательские цвета",
       "colorModeNoColor": "Без цвета",
       "colorModePriorityColor": "Цвет приоритета",
       "colorModeRandomColors": "Случайные цвета",
@@ -2973,5 +2975,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "688c5294ae282ccadabe1b9e048f92ff15886c61dbfef17df3d3a17511335de9"
+  "sourceVersion": "9f9f10919fe8ddbed7bb472dec04250f709d6ab26e429be634052f15f7ff7462"
 }

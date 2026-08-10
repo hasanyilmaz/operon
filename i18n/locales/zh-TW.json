@@ -2867,6 +2867,8 @@
 		"pinColumn": "固定欄",
 		"unpinColumn": "取消固定欄",
 		"columnColor": "顏色...",
+		"colorMode": "顏色模式",
+		"colorModeCustomColors": "自訂顏色",
 		"colorModeNoColor": "無顏色",
 		"colorModeTaskColor": "任務顏色",
 		"colorModePriorityColor": "優先順序顏色",

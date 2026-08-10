@@ -2867,6 +2867,8 @@
 		"pinColumn": "Закрепить столбец",
 		"unpinColumn": "Открепить столбец",
 		"columnColor": "Цвет...",
+		"colorMode": "Режим цвета",
+		"colorModeCustomColors": "Пользовательские цвета",
 		"colorModeNoColor": "Без цвета",
 		"colorModeTaskColor": "Цвет задачи",
 		"colorModePriorityColor": "Цвет приоритета",

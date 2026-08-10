@@ -2867,6 +2867,8 @@
 		"pinColumn": "Fijar columna",
 		"unpinColumn": "Dejar de fijar columna",
 		"columnColor": "Color...",
+		"colorMode": "Modo de color",
+		"colorModeCustomColors": "Colores personalizados",
 		"colorModeNoColor": "Sin color",
 		"colorModeTaskColor": "Color de tarea",
 		"colorModePriorityColor": "Color de prioridad",

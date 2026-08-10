@@ -24,11 +24,21 @@ import type { FilterFieldType, OperonSettings } from '../../types/settings';
 import type { TablePresetRegistryEntry } from '../../types/table-preset-registry';
 import { getTableTaskField, type TableTaskField } from './table-field-catalog';
 import { isTableFilePropertyColumnKey } from './table-file-property';
+import { isTableColumnColorModeEligible, resolveEffectiveTableColumnColorMode } from './table-column-color';
 
 const TABLE_COLUMN_MIN_WIDTH = 80;
 const TABLE_COLUMN_MAX_WIDTH = 640;
 type TableColumnDefaultSettings = Pick<OperonSettings, 'keyMappings'>;
 export type TableGroupSortPresetPatchScope = 'grouping' | 'sortRules';
+export type TablePresetColorMode = 'customColors' | 'noColor' | 'taskColor' | 'priorityColor' | 'statusColor';
+
+export const TABLE_PRESET_COLOR_MODES: readonly TablePresetColorMode[] = [
+	'customColors',
+	'noColor',
+	'taskColor',
+	'priorityColor',
+	'statusColor',
+];
 
 function hasTablePresetPatchKey<K extends keyof TablePresetPatch>(patch: TablePresetPatch, key: K): boolean {
 	return Object.prototype.hasOwnProperty.call(patch, key) === true;
@@ -277,6 +287,48 @@ export function setTablePresetColumnColorMode(
 		delete column.colorMode;
 	}
 	return draft;
+}
+
+export function hasTablePresetColorModeColumns(
+	preset: TablePreset,
+	supportedKeys?: ReadonlySet<string>,
+): boolean {
+	return preset.columns.some(column => isTablePresetColorModeCandidate(column, supportedKeys));
+}
+
+export function deriveTablePresetColorMode(
+	preset: TablePreset,
+	supportedKeys?: ReadonlySet<string>,
+): TablePresetColorMode {
+	const candidates = preset.columns.filter(column => isTablePresetColorModeCandidate(column, supportedKeys));
+	if (candidates.length === 0) return 'customColors';
+	const firstMode = resolveEffectiveTableColumnColorMode(candidates[0]);
+	if (firstMode === 'randomColors') return 'customColors';
+	return candidates.every(column => resolveEffectiveTableColumnColorMode(column) === firstMode)
+		? firstMode
+		: 'customColors';
+}
+
+export function applyTablePresetColorMode(
+	preset: TablePreset,
+	mode: TablePresetColorMode,
+	supportedKeys?: ReadonlySet<string>,
+): TablePreset {
+	const draft = cloneTablePreset(preset);
+	if (mode === 'customColors') return draft;
+	for (const column of draft.columns) {
+		if (!isTablePresetColorModeCandidate(column, supportedKeys)) continue;
+		const colorMode = normalizeTableColumnColorMode(mode, column.key);
+		if (colorMode) column.colorMode = colorMode;
+		else delete column.colorMode;
+	}
+	return draft;
+}
+
+function isTablePresetColorModeCandidate(column: TableColumn, supportedKeys?: ReadonlySet<string>): boolean {
+	return column.hidden !== true
+		&& (supportedKeys === undefined || supportedKeys.has(column.key))
+		&& isTableColumnColorModeEligible(column);
 }
 
 export function setTablePresetColumnDurationDisplayMode(

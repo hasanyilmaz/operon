@@ -2867,6 +2867,8 @@
 		"pinColumn": "Spalte fixieren",
 		"unpinColumn": "Spalte lösen",
 		"columnColor": "Farbe...",
+		"colorMode": "Farbmodus",
+		"colorModeCustomColors": "Benutzerdefinierte Farben",
 		"colorModeNoColor": "Keine Farbe",
 		"colorModeTaskColor": "Aufgabenfarbe",
 		"colorModePriorityColor": "Prioritätsfarbe",

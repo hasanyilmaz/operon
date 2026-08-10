@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 2928,
-  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
+  "keyCount": 2930,
+  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2312,6 +2312,8 @@
       "clearAllSummaries": "Borrar todos los resúmenes",
       "clearSearch": "Borrar búsqueda",
       "collapseGroup": "Contraer grupo",
+      "colorMode": "Modo de color",
+      "colorModeCustomColors": "Colores personalizados",
       "colorModeNoColor": "Sin color",
       "colorModePriorityColor": "Color de prioridad",
       "colorModeRandomColors": "Colores aleatorios",
@@ -2973,5 +2975,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "8dc075304e983235808e240a47831fa73956301d32a09c3755f817c53cbc769f"
+  "sourceVersion": "8bf852f1b3ddffdafc32e07c97993ac820b318ee43024adf81419c4cedf2c1d1"
 }

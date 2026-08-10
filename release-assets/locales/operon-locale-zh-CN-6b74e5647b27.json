@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 2928,
-  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
+  "keyCount": 2930,
+  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2312,6 +2312,8 @@
       "clearAllSummaries": "清除所有汇总",
       "clearSearch": "清除搜索",
       "collapseGroup": "折叠分组",
+      "colorMode": "颜色模式",
+      "colorModeCustomColors": "自定义颜色",
       "colorModeNoColor": "无颜色",
       "colorModePriorityColor": "优先级颜色",
       "colorModeRandomColors": "随机颜色",
@@ -2973,5 +2975,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "fb065fc138af0f885e870bcaf88adabe3d2f83819125a3b4aa3913cf33f2952b"
+  "sourceVersion": "6d8c02128ab3e595a6192bfc94020b52682f2e15192cb3a0882fdfca0865fed7"
 }
