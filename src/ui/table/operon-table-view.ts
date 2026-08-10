@@ -1219,7 +1219,7 @@ export class OperonTableView extends FileView {
 			name: getTablePresetPickerLabel(preset),
 		});
 		const editButton = end.createEl('button', {
-			cls: 'operon-table-toolbar-icon-button',
+			cls: 'operon-table-toolbar-icon-button operon-table-preset-settings-button',
 			attr: { type: 'button' },
 		});
 		setAccessibleLabelWithoutTooltip(editButton, editPresetLabel);
@@ -1477,7 +1477,7 @@ export class OperonTableView extends FileView {
 
 	private renderTableExportButton(controls: HTMLElement): void {
 		const button = controls.createEl('button', {
-			cls: 'operon-table-toolbar-icon-button',
+			cls: 'operon-table-toolbar-icon-button operon-table-export-button',
 			attr: {
 				type: 'button',
 				'aria-haspopup': 'menu',

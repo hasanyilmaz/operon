@@ -1073,6 +1073,47 @@ function checkCssScorecard() {
 		'Table column resize handles must remain reachable',
 	);
 
+	assertIncludes(
+		'styles.css',
+		'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-toolbar {\n\tgrid-template-columns: minmax(0, 1fr);\n\tgrid-template-areas: \'end\';\n\talign-items: center;\n}',
+		'desktop sidebar Table leaves must keep only the end toolbar region',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-start,\nbody:not(.is-mobile) .mod-sidedock',
+		'desktop sidebar Table leaves must hide the title region only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-center,\nbody:not(.is-mobile) .mod-sidedock',
+		'desktop sidebar Table leaves must hide the favorite preset region only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-group-sort-button,\nbody:not(.is-mobile) .mod-sidedock',
+		'desktop sidebar Table leaves must hide Group and Sort only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-filter-popover-host,\nbody:not(.is-mobile) .mod-sidedock',
+		'desktop sidebar Table leaves must hide Filter only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-export-button {\n\tdisplay: none;\n}',
+		'desktop sidebar Table leaves must hide Export only inside sidedocks',
+	);
+	assertIncludes(
+		'src/ui/table/operon-table-view.ts',
+		"cls: 'operon-table-toolbar-icon-button operon-table-preset-settings-button'",
+		'Table preset settings must keep a stable semantic toolbar class',
+	);
+	assertIncludes(
+		'src/ui/table/operon-table-view.ts',
+		"cls: 'operon-table-toolbar-icon-button operon-table-export-button'",
+		'Table export must keep a stable semantic toolbar class',
+	);
+
 	assertCssScopedRuleExcludes(
 		'styles.css',
 		'.operon-table-embed',

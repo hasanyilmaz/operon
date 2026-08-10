@@ -29725,6 +29725,39 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content:is(
 	flex-wrap: wrap;
 }
 
+/* Keep desktop Table leaves intentionally sparse when they live in either Obsidian sidebar. */
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar {
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-areas: 'end';
+	align-items: center;
+}
+
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar-start,
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar-center,
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-group-sort-button,
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-filter-popover-host,
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-export-button {
+	display: none;
+}
+
 .operon-table-title-wrap {
 	display: flex;
 	align-items: center;
