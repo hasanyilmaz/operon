@@ -30,6 +30,7 @@ pnpm-debug.log*
 
 # Packaged/release byproducts
 /build/agent-runtime-cas-baseline/
+/build/release/main-metafile.json
 /build/stage51/
 *.tgz
 *.zip

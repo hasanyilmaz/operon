@@ -1,8 +1,9 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from "node:module";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import ts from "typescript";
+import { dirname } from "node:path";
 import { OPERON_PRODUCTION_PERSISTENT_READ } from "./operon-build-config.mjs";
 
 const banner = `/*
@@ -27,6 +28,8 @@ if (![
 	throw new Error(`Unsupported Operon build mode: ${buildMode}`);
 }
 const prod = buildMode !== "development";
+const metafilePath = process.env.OPERON_ESBUILD_METAFILE
+	?? (buildMode === "production" ? "build/release/main-metafile.json" : "");
 const agentRuntimeProbe = [
 	"production-agent-runtime-probe",
 	"production-agent-runtime-cas-baseline-probe",
@@ -198,7 +201,7 @@ const context = await esbuild.context({
 		...(prod && !agentRuntimeProbe ? [stripAgentRuntimeTimingPlugin] : []),
 		...(receiptCasBaseline ? [disableReceiptCasFastPathPlugin] : []),
 	],
-	metafile: Boolean(process.env.OPERON_ESBUILD_METAFILE),
+	metafile: Boolean(metafilePath),
 	define: {
 		OPERON_AGENT_RUNTIME_PROBE_ENABLED: agentRuntimeProbe ? "true" : "false",
 		OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED: agentRuntimePersistentRead ? "true" : "false",
@@ -208,8 +211,9 @@ const context = await esbuild.context({
 
 if (prod) {
 	const result = await context.rebuild();
-	if (process.env.OPERON_ESBUILD_METAFILE && result.metafile) {
-		await writeFile(process.env.OPERON_ESBUILD_METAFILE, JSON.stringify(result.metafile));
+	if (metafilePath && result.metafile) {
+		await mkdir(dirname(metafilePath), { recursive: true });
+		await writeFile(metafilePath, JSON.stringify(result.metafile));
 	}
 	process.exit(0);
 } else {

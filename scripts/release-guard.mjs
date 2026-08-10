@@ -359,30 +359,22 @@ function checkContinuousIntegrationWorkflow() {
 	assertEqual('CI validation gate name', validation?.name, 'Validation gate');
 	const validationSteps = new Map((validation?.steps ?? []).map(step => [step.name, step]));
 	assertEqual('CI validation checkout history depth', validationSteps.get('Check out repository')?.with?.['fetch-depth'], 2);
-	assertEqual('CI seal classifier id', validationSteps.get('Classify exact evidence-seal commit')?.id, 'evidence_seal');
-	assertEqual('CI heavy validation condition', validationSteps.get('Run validation')?.if, "github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'");
-	assertEqual('CI seal validation condition', validationSteps.get('Verify exact evidence seal and hosted proof')?.if, "github.event_name == 'push' && steps.evidence_seal.outputs.mode == 'evidence-seal'");
-	for (const command of ['npm run release:evidence-seal:check', 'npm run release:hosted-evidence:check', 'npm run agent-runtime:external-cli:public-proof', 'npm run release:freeze:check']) {
-		if (!validationSteps.get('Verify exact evidence seal and hosted proof')?.run?.includes(command)) fail(`CI seal step must execute ${command}`);
-	}
+	assertEqual('CI main validation condition', validationSteps.get('Run validation')?.if, "github.event_name == 'push'");
+	assertEqual('CI main validation command', validationSteps.get('Run validation')?.run, 'npm run check');
+	assertEqual('CI PR validation condition', validationSteps.get('Run paired candidate validation')?.if, "github.event_name == 'pull_request'");
+	assertEqual('CI PR validation command', validationSteps.get('Run paired candidate validation')?.run, 'npm run check:candidate');
 	const windowsSteps = new Map((windows?.steps ?? []).map(step => [step.name, step]));
 	assertEqual('CI Windows checkout history depth', windowsSteps.get('Check out repository')?.with?.['fetch-depth'], 2);
-	assertEqual('Windows seal validation condition', windowsSteps.get('Verify exact evidence seal')?.if, "github.event_name == 'push' && steps.evidence_seal.outputs.mode == 'evidence-seal'");
-	assertEqual('Windows heavy validation condition', windowsSteps.get('Run validation')?.if, "github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'");
+	assertEqual('Windows main validation condition', windowsSteps.get('Run validation')?.if, "github.event_name == 'push'");
+	assertEqual('Windows native transport condition', windowsSteps.get('Run required native transport validation')?.if, "github.event_name == 'push'");
+	assertEqual('Windows URL portability condition', windowsSteps.get('Verify tracked runner URL portability')?.if, "github.event_name == 'push'");
 	const installIndex = workflowText.indexOf('run: npm ci');
-	const buildIndex = workflowText.indexOf('run: npm run build');
-	const classifyIndex = workflowText.indexOf('release:evidence-seal:classify');
 	const auditPolicyIndex = workflowText.indexOf('run: npm run release:audit-policy');
 	const validationIndex = workflowText.indexOf('run: npm run check');
 	const releaseGuardIndex = workflowText.indexOf('run: npm run release:guard');
-	const evidenceSealIndex = workflowText.indexOf('npm run release:evidence-seal:check');
-	const hostedEvidenceIndex = workflowText.indexOf('npm run release:hosted-evidence:check');
-	const publicProofIndex = workflowText.indexOf('npm run agent-runtime:external-cli:public-proof');
-	const candidateFreezeIndex = workflowText.indexOf('run: npm run candidate:freeze:check');
 
 	assertIncludes(workflow, 'node-version: "24.18.0"', 'CI must use the exact canonical Node release baseline');
 	assertIncludes(workflow, 'npm install --global npm@11.12.1', 'CI must pin the canonical npm version');
-	assertIncludes(workflow, 'actions: read', 'CI must read exact hosted release evidence');
 	assertIncludes(
 		workflow,
 		'uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
@@ -408,29 +400,10 @@ function checkContinuousIntegrationWorkflow() {
 		/run:\s+npm audit(?:\s|$)/u,
 		'CI must not bypass the canonical dependency audit policy with raw npm audit',
 	);
-	assertIncludes(
-		workflow,
-		'run: npm run candidate:freeze:check',
-		'CI main pushes must verify candidate evidence without requiring accepted-release artifact identity',
-	);
-	for (const command of [
-		'release:evidence-seal:classify',
-		'npm run release:evidence-seal:check',
-		'npm run release:hosted-evidence:check',
-		'npm run agent-runtime:external-cli:public-proof',
-		'npm run release:freeze:check',
-	]) assertIncludes(workflow, command, `CI evidence-seal lane must run ${command}`);
-	if (!/- name: Verify candidate Public V1 freeze\s+if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main' && steps\.evidence_seal\.outputs\.mode != 'evidence-seal'\s+run: npm run candidate:freeze:check/u.test(workflowText)) {
-		fail('CI must bind the candidate evidence check to exact main-branch pushes');
-	}
 	if (!/- name: Run validation\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
 		fail('CI must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
 	}
-	assertIncludes(
-		workflow,
-		"if: github.event_name == 'push' && steps.evidence_seal.outputs.mode != 'evidence-seal'",
-		'CI must skip the heavy suite only for a strictly classified evidence seal',
-	);
+	assertNoMatch(workflow, /evidence-seal|hosted-evidence|candidate:freeze:check/u, 'CI must use one normal validation lane per commit');
 	assertNoMatch(
 		workflow,
 		/OPERON_PLUGIN_RELEASE_VALIDATION/u,
@@ -438,43 +411,24 @@ function checkContinuousIntegrationWorkflow() {
 	);
 	if (
 		installIndex < 0
-		|| buildIndex < installIndex
-		|| classifyIndex < buildIndex
-		|| auditPolicyIndex < classifyIndex
-		|| validationIndex < auditPolicyIndex
-		|| releaseGuardIndex < validationIndex
-		|| evidenceSealIndex < releaseGuardIndex
-		|| hostedEvidenceIndex < evidenceSealIndex
-		|| publicProofIndex < hostedEvidenceIndex
-		|| candidateFreezeIndex < publicProofIndex
+		|| validationIndex < installIndex
+		|| auditPolicyIndex < validationIndex
+		|| releaseGuardIndex < auditPolicyIndex
 	) {
-		fail('CI must run install, artifact build, classification, audit, guarded validation, seal proof, and candidate evidence in order');
+		fail('CI must run install, validation, production audit, and release guard in order');
 	}
 }
 
 function checkCodeqlWorkflow() {
 	const workflow = '.github/workflows/codeql.yml';
-	const workflowText = readText(workflow);
 	const document = readWorkflow(workflow);
-	assertEqual('CodeQL gate name', document.jobs?.gate?.name, 'CodeQL gate');
-	const classifySteps = new Map((document.jobs?.classify?.steps ?? []).map(step => [step.name, step]));
-	assertEqual('CodeQL classifier checkout history depth', classifySteps.get('Check out repository')?.with?.['fetch-depth'], 2);
-	assertEqual('CodeQL analysis seal condition', document.jobs?.analyze?.if, "needs.classify.outputs.mode != 'evidence-seal'");
-	assertEqual('CodeQL gate dependency result condition', document.jobs?.gate?.if, "always() && needs.classify.result == 'success'");
-	if (!Array.isArray(document.jobs?.gate?.needs) || JSON.stringify(document.jobs.gate.needs) !== JSON.stringify(['classify', 'analyze'])) {
-		fail('CodeQL gate must depend exactly on classification and analysis');
+	const analyze = document.jobs?.analyze;
+	assertEqual('CodeQL gate name', analyze?.name, 'CodeQL gate');
+	const steps = new Map((analyze?.steps ?? []).map(step => [step.name, step]));
+	if (!steps.has('Check out repository') || !steps.has('Initialize CodeQL') || !steps.has('Perform CodeQL analysis')) {
+		fail('CodeQL gate must check out, initialize, and analyze every target commit');
 	}
-	const gateRun = document.jobs?.gate?.steps?.find(step => step.name === 'Require the correct CodeQL lane')?.run ?? '';
-	for (const assertion of ['test "$ANALYZE_RESULT" = skipped', 'test "$ANALYZE_RESULT" = success']) {
-		if (!gateRun.includes(assertion)) fail(`CodeQL gate must enforce ${assertion}`);
-	}
-	assertIncludes(workflow, 'name: CodeQL gate', 'CodeQL must expose the stable release evidence gate');
-	assertIncludes(workflow, 'release:evidence-seal:classify', 'CodeQL must classify exact main evidence-seal commits');
-	assertIncludes(workflow, "if: needs.classify.outputs.mode != 'evidence-seal'", 'CodeQL analysis must be skipped only for a strict evidence seal');
-	assertIncludes(workflow, 'test "$ANALYZE_RESULT" = skipped', 'CodeQL gate must require skipped analysis for an evidence seal');
-	assertIncludes(workflow, 'test "$ANALYZE_RESULT" = success', 'CodeQL gate must require successful analysis for candidates');
-	assertIncludes(workflow, 'node-version: "24.18.0"', 'CodeQL seal classification must use canonical Node');
-	assertIncludes(workflow, 'npm install --global npm@11.12.1', 'CodeQL seal classification must pin canonical npm');
+	assertNoMatch(workflow, /evidence-seal|classify release evidence/u, 'CodeQL must analyze every release commit without a seal bypass');
 }
 
 function checkReleaseWorkflow() {
@@ -484,13 +438,22 @@ function checkReleaseWorkflow() {
 	const steps = document.jobs?.['build-release']?.steps ?? [];
 	const stepNames = steps.map(step => step.name);
 	const requiredOrder = [
-		'Require exact evidence-seal tag target',
+		'Verify exact release tag target',
+		'Verify release commit eligibility',
+		'Refuse an existing GitHub release',
+		'Install dependencies',
+		'Build exact release artifacts',
 		'Verify release dependency audit policy',
 		'Verify release guard',
-		'Verify exact evidence seal',
-		'Verify hosted evidence online',
-		'Verify exact published CLI public proof',
-		'Verify final accepted Public V1 freeze',
+		'Verify tag and manifest metadata',
+		'Verify release assets',
+		'Attest manifest',
+		'Attest plugin bundle',
+		'Attest styles',
+		'Attest locale packs',
+		'Build GitHub release notes from changelog',
+		'Create GitHub release',
+		'Verify published release asset allowlist',
 	];
 	let previous = -1;
 	for (const name of requiredOrder) {
@@ -500,18 +463,9 @@ function checkReleaseWorkflow() {
 	}
 	const releaseSteps = new Map(steps.map(step => [step.name, step]));
 	assertEqual('release checkout history depth', releaseSteps.get('Check out repository')?.with?.['fetch-depth'], 0);
-	assertEqual('release strict seal command', releaseSteps.get('Verify exact evidence seal')?.run, 'npm run release:evidence-seal:check');
-	assertEqual('release hosted evidence command', releaseSteps.get('Verify hosted evidence online')?.run, 'npm run release:hosted-evidence:check');
-	assertEqual('release public CLI proof command', releaseSteps.get('Verify exact published CLI public proof')?.run, 'npm run agent-runtime:external-cli:public-proof');
-	assertEqual('release final freeze command', releaseSteps.get('Verify final accepted Public V1 freeze')?.run, 'npm run release:freeze:check');
 	const installIndex = workflowText.indexOf('run: npm ci');
 	const buildIndex = workflowText.indexOf('run: npm run build');
-	const classifyIndex = workflowText.indexOf('release:evidence-seal:classify');
 	const auditPolicyIndex = workflowText.indexOf('run: npm run release:audit-policy');
-	const evidenceSealIndex = workflowText.indexOf('run: npm run release:evidence-seal:check');
-	const hostedEvidenceIndex = workflowText.indexOf('run: npm run release:hosted-evidence:check');
-	const publicProofIndex = workflowText.indexOf('run: npm run agent-runtime:external-cli:public-proof');
-	const acceptedFreezeIndex = workflowText.indexOf('run: npm run release:freeze:check');
 	const releaseGuardIndex = workflowText.indexOf('run: npm run release:guard');
 	const exactTagIndex = workflowText.indexOf('name: Verify exact release tag target');
 	const existingReleaseIndex = workflowText.indexOf('name: Refuse an existing GitHub release');
@@ -520,7 +474,7 @@ function checkReleaseWorkflow() {
 
 	assertIncludes(workflow, 'id-token: write', 'release workflow must grant OIDC token permission for artifact attestations');
 	assertIncludes(workflow, 'attestations: write', 'release workflow must grant artifact attestation permission');
-	assertIncludes(workflow, 'actions: read', 'release workflow must verify hosted evidence online');
+	assertIncludes(workflow, 'checks: read', 'release workflow must read exact-SHA hosted check results');
 	assertIncludes(workflow, 'node-version: "24.18.0"', 'release workflow must use the exact canonical Node release baseline');
 	assertIncludes(workflow, 'npm install --global npm@11.12.1', 'release workflow must pin the canonical npm version');
 	assertIncludes(
@@ -528,32 +482,19 @@ function checkReleaseWorkflow() {
 		'run: npm run release:audit-policy',
 		'release workflow must enforce the canonical dependency audit policy',
 	);
-	assertIncludes(
-		workflow,
-		'run: npm run release:freeze:check',
-		'release workflow must require an accepted Public V1 freeze',
-	);
-	assertIncludes(workflow, 'release:evidence-seal:classify', 'release workflow must require an exact evidence-seal tag target');
-	assertIncludes(workflow, 'run: npm run release:evidence-seal:check', 'release workflow must validate the exact evidence seal');
-	assertIncludes(workflow, 'run: npm run release:hosted-evidence:check', 'release workflow must verify hosted evidence online');
-	assertIncludes(workflow, 'run: npm run agent-runtime:external-cli:public-proof', 'release workflow must reverify the exact published CLI proof');
-	assertNoMatch(workflow, /run:\s+npm run check(?:\s|$)/u, 'release workflow must not replay the heavy product suite after an accepted evidence seal');
+	assertNoMatch(workflow, /evidence-seal|hosted-evidence|release:freeze:check|external-cli:public-proof/u, 'release workflow must tag the validated release commit directly');
+	assertNoMatch(workflow, /run:\s+npm run check(?:\s|$)/u, 'release workflow must not replay the broad product suite');
 	if (
 		exactTagIndex < 0
 		|| existingReleaseIndex < exactTagIndex
 		|| installIndex < existingReleaseIndex
 		|| buildIndex < installIndex
-		|| classifyIndex < buildIndex
-		|| auditPolicyIndex < classifyIndex
+		|| auditPolicyIndex < buildIndex
 		|| releaseGuardIndex < auditPolicyIndex
-		|| evidenceSealIndex < releaseGuardIndex
-		|| hostedEvidenceIndex < evidenceSealIndex
-		|| publicProofIndex < hostedEvidenceIndex
-		|| acceptedFreezeIndex < publicProofIndex
-		|| attestationIndex < acceptedFreezeIndex
+		|| attestationIndex < releaseGuardIndex
 		|| releaseCreateIndex < attestationIndex
 	) {
-		fail('release workflow must preserve exact-tag, immutable-release, evidence-seal, attestation, and publish ordering');
+		fail('release workflow must preserve exact-tag, immutable-release, validation, attestation, and publish ordering');
 	}
 	assertIncludes(
 		workflow,
@@ -595,6 +536,19 @@ function checkReleaseWorkflow() {
 		'git ls-remote --tags origin "refs/tags/$GITHUB_REF_NAME^{}"',
 		'release workflow must recheck the live peeled tag before release creation',
 	);
+	assertIncludes(
+		workflow,
+		'git merge-base --is-ancestor "$TRIGGER_COMMIT" refs/remotes/origin/main',
+		'release workflow must require the tag target to be on main',
+	);
+	assertIncludes(
+		workflow,
+		'commits/$TRIGGER_COMMIT/check-runs?per_page=100',
+		'release workflow must read checks for the exact tag target',
+	);
+	for (const requiredCheck of ['Validation gate', 'windows-native', 'CodeQL gate']) {
+		assertIncludes(workflow, `"${requiredCheck}"`, `release workflow must require ${requiredCheck}`);
+	}
 	assertIncludes(
 		workflow,
 		'uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4',
@@ -692,10 +646,10 @@ function checkWorkflowSecurityPolicy() {
 	const exactCheckoutRevision = '3d3c42e5aac5ba805825da76410c181273ba90b1';
 	const exactSetupNodeRevision = '820762786026740c76f36085b0efc47a31fe5020';
 	const exactWorkflowPermissions = new Map([
-		['ci.yml', ['actions: read', 'contents: read']],
+		['ci.yml', ['contents: read']],
 		['cli-external-compatibility.yml', ['contents: read']],
-		['codeql.yml', ['actions: read', 'contents: read', 'security-events: write']],
-		['release.yml', ['actions: read', 'contents: write', 'id-token: write', 'attestations: write']],
+		['codeql.yml', ['contents: read', 'security-events: write']],
+		['release.yml', ['contents: write', 'checks: read', 'id-token: write', 'attestations: write']],
 	]);
 
 	for (const file of workflows) {
@@ -855,6 +809,7 @@ function checkRepositoryIgnorePolicy() {
 		'state/private.json',
 		'cache/private.json',
 		'build/agent-runtime-cas-baseline/private.mjs',
+		'build/release/main-metafile.json',
 		'build/stage51/private.mjs',
 	];
 	for (const relativePath of privateArtifacts) {
@@ -871,7 +826,6 @@ function checkRepositoryIgnorePolicy() {
 
 function checkReleaseAuditPolicy() {
 	for (const file of [
-		'contracts/release/dev-audit-policy-v1.json',
 		'contracts/agent-runtime/public-v1-freeze.json',
 		'contracts/agent-runtime/public-v1-external-freeze.schema.json',
 		'contracts/agent-runtime/public-v1-release-freezes.json',
@@ -894,48 +848,12 @@ function checkReleaseAuditPolicy() {
 		'scripts/release/check-accepted-freeze.test.mjs',
 		'scripts/release/check-release-freeze-registry.mjs',
 		'scripts/release/check-release-freeze-registry.test.mjs',
-		'scripts/release/evidence-seal-v3.mjs',
-		'scripts/release/evidence-seal-v3.test.mjs',
-		'scripts/release/verify-hosted-evidence-v3.mjs',
 		'scripts/release/run-published-cli-live-acceptance.mjs',
 		'scripts/release/run-published-cli-live-acceptance.test.mjs',
 	]) {
 		if (!fs.existsSync(path.join(rootDir, file))) {
 			fail(`${file}: required release audit-policy artifact is missing`);
 		}
-	}
-
-	const policy = JSON.parse(readText('contracts/release/dev-audit-policy-v1.json'));
-	const expectedPolicy = {
-		policyVersion: 2,
-		production: {
-			maximumVulnerabilities: 0,
-		},
-		development: {
-			maximumVulnerabilities: 0,
-			directRoot: 'eslint-plugin-obsidianmd',
-			resolvedAdvisory: {
-				packageName: 'brace-expansion',
-				url: 'https://github.com/advisories/GHSA-mh99-v99m-4gvg',
-				allowedInstalledVersions: ['1.1.18', '2.1.4', '5.0.9'],
-			},
-			forbiddenRuntimePackages: [
-				'@eslint/config-array',
-				'@eslint/eslintrc',
-				'@microsoft/eslint-plugin-sdl',
-				'brace-expansion',
-				'eslint',
-				'eslint-plugin-import',
-				'eslint-plugin-json-schema-validator',
-				'eslint-plugin-n',
-				'eslint-plugin-obsidianmd',
-				'eslint-plugin-react',
-				'minimatch',
-			],
-		},
-	};
-	if (JSON.stringify(policy) !== JSON.stringify(expectedPolicy)) {
-		fail('contracts/release/dev-audit-policy-v1.json must exactly match the approved clean audit policy');
 	}
 
 	const historicalFreezeBytes = fs.readFileSync(
@@ -954,18 +872,16 @@ function checkReleaseAuditPolicy() {
 	const normalBuildIndexes = normalCheckCommands
 		.map((command, index) => (command === 'npm run build' ? index : -1))
 		.filter((index) => index >= 0);
-	const normalFreezeIndex = normalCheckCommands.indexOf('npm run release:freeze:test');
-	if (normalBuildIndexes.length !== 1 || normalFreezeIndex < 0 || normalBuildIndexes[0] >= normalFreezeIndex) {
-		fail('package.json: normal validation must build production artifacts before release freeze tests');
+	if (normalBuildIndexes.length !== 1) {
+		fail('package.json: normal validation must build production artifacts exactly once');
 	}
 	for (const command of [
 		'npm run release:audit-policy:test',
 		'npm run release:notes:test',
-		'npm run release:freeze:test',
 		'npm run release:external-live:test',
 		'npm run docs:public-v1:test',
 	]) {
-		if (!packageText.includes(command)) {
+		if (!normalCheck.includes(command)) {
 			fail(`package.json: normal validation must run ${command}`);
 		}
 	}
@@ -976,26 +892,9 @@ function checkReleaseAuditPolicy() {
 	);
 	assertIncludes(
 		'package.json',
-		'"candidate:freeze:check": "node scripts/release/check-candidate-freeze-registry.mjs"',
-		'package scripts must expose the fail-closed candidate evidence-registry check',
-	);
-	assertIncludes(
-		'package.json',
 		'"release:freeze:check:historical": "node scripts/release/check-release-freeze-registry.mjs"',
 		'package scripts must preserve the historical append-only release-freeze registry check',
 	);
-	assertIncludes(
-		'package.json',
-		'"release:freeze:check": "npm run release:evidence-seal:check"',
-		'package scripts must bind the final release freeze gate to the strict evidence seal',
-	);
-	for (const script of [
-		'"release:evidence-seal:write": "node scripts/release/evidence-seal-v3.mjs write"',
-		'"release:evidence-seal:classify": "node scripts/release/evidence-seal-v3.mjs classify"',
-		'"release:evidence-seal:check": "node scripts/release/evidence-seal-v3.mjs check"',
-		'"release:evidence-seal:test": "node --test scripts/release/evidence-seal-v3.test.mjs"',
-		'"release:hosted-evidence:check": "node scripts/release/verify-hosted-evidence-v3.mjs"',
-	]) assertIncludes('package.json', script, `package scripts must expose ${script}`);
 	for (const fixture of [
 		'scripts/release/fixtures/legacy-cli-1.0.8/published-cli-v1.json',
 		'scripts/release/fixtures/legacy-cli-1.0.8/published-cli-v1.schema.json',
@@ -1013,7 +912,7 @@ function checkReleaseAuditPolicy() {
 	assertIncludes(
 		'package.json',
 		'"release:freeze:test": "node --test scripts/release/write-external-freeze.test.mjs scripts/release/check-accepted-freeze.test.mjs scripts/release/check-release-freeze-registry.test.mjs"',
-		'normal validation must cover historical freeze writing and append-only registry checking',
+		'package scripts must preserve the explicitly invoked historical freeze test suite',
 	);
 	const freezeWriterSource = readText('scripts/release/write-external-freeze.mjs');
 	for (const required of [
@@ -1080,6 +979,15 @@ function checkReleaseAuditPolicy() {
 		const validationCommands = (packageManifest.scripts?.[scriptName] ?? '')
 			.split('&&')
 			.map(command => command.trim());
+		const buildOffsets = validationCommands.flatMap((command, index) => (
+			command === 'npm run build' ? [index] : []
+		));
+		if (buildOffsets.length !== 1) {
+			fail(`${scriptName} must build production artifacts exactly once`);
+		}
+		if (validationCommands.includes('npm run release:freeze:test')) {
+			fail(`${scriptName} must not run the historical release freeze test suite`);
+		}
 		const strictLintOffsets = validationCommands.flatMap((command, index) => (
 			command === 'npm run lint:strict' ? [index] : []
 		));
@@ -1094,18 +1002,38 @@ function checkReleaseAuditPolicy() {
 		}
 	}
 	const candidateCheck = packageManifest.scripts?.['check:candidate'] ?? '';
-	if (!candidateCheck.endsWith('&& npm run candidate:freeze:check')) {
-		fail('check:candidate must finish with the candidate evidence-registry check');
-	}
 	if (candidateCheck.includes('npm run release:freeze:check')) {
 		fail('check:candidate must not require exact accepted-release artifact identity');
 	}
-	if (!(packageManifest.scripts?.['check:local'] ?? '').endsWith('&& npm run release:freeze:check')) {
-		fail('check:local must leave the accepted external-freeze check as its final stale gate');
+	if (candidateCheck.includes('npm run candidate:freeze:check')) {
+		fail('check:candidate must not require a release evidence-registry seal');
+	}
+	if ((packageManifest.scripts?.['check:local'] ?? '').includes('npm run release:freeze:check')) {
+		fail('check:local must not require an accepted release evidence seal');
 	}
 	if (!packageText.includes('"release:audit-policy": "node scripts/check-release-audit-policy.mjs"')) {
 		fail('package scripts must expose the canonical release audit-policy check');
 	}
+	assertIncludes(
+		'scripts/check-release-audit-policy.mjs',
+		"['audit', '--omit=dev', '--json']",
+		'release audit policy must inspect production dependencies only',
+	);
+	assertIncludes(
+		'esbuild.config.mjs',
+		'build/release/main-metafile.json',
+		'production build must emit dependency evidence for the release audit',
+	);
+	assertIncludes(
+		'scripts/check-release-audit-policy.mjs',
+		"readJson('build/release/main-metafile.json')",
+		'release audit policy must inspect the exact production build dependency evidence',
+	);
+	assertNoMatch(
+		'scripts/check-release-audit-policy.mjs',
+		/spawnSync\('npm', \['audit', '--json'\]/u,
+		'release audit policy must not make development-only findings release blockers',
+	);
 }
 
 function checkCssScorecard() {
