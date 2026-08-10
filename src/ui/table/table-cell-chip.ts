@@ -345,10 +345,7 @@ function applyTableCellChipAccent(
 	value: string,
 	options: TableCellChipRenderOptions,
 ): void {
-	const accent = resolveTableCellChipAccent(key, value, options);
-	if (accent) {
-		applyTableCellAccentVariables(chip, accent);
-	}
+	applyTableColumnCellAccent(chip, options.column ?? { key }, options.accentValue ?? value, options);
 	const blockedByStateAccent = resolveTableCellBlockedByStateAccent(key, value, options);
 	if (blockedByStateAccent) {
 		chip.addClass('operon-table-blocked-by-state-chip');
@@ -360,6 +357,14 @@ function applyTableCellChipAccent(
 	chip.addClass('operon-table-date-state-chip');
 	chip.addClass(dateStateAccent.tone === 'today' ? 'is-today' : 'is-overdue');
 	applyTableCellAccentVariables(chip, dateStateAccent.color);
+}
+
+function resolveTableCellChipAccent(
+	key: string,
+	value: string,
+	options: TableCellChipRenderOptions,
+): string | null {
+	return resolveTableColumnCellAccent(options.column ?? { key }, options.accentValue ?? value, options);
 }
 
 function resolveTableCellBlockedByStateAccent(
@@ -379,14 +384,6 @@ function resolveTableCellBlockedByStateAccent(
 	return resolveBlockedByVisualStateColor(state);
 }
 
-function resolveTableCellChipAccent(
-	key: string,
-	value: string,
-	options: TableCellChipRenderOptions,
-): string | null {
-	return resolveTableColumnCellAccent(options.column ?? { key }, options.accentValue ?? value, options);
-}
-
 function resolveTableCellDateStateAccent(
 	key: string,
 	value: string,
@@ -398,10 +395,26 @@ function resolveTableCellDateStateAccent(
 	return { tone, color };
 }
 
-function applyTableCellAccentVariables(chip: HTMLElement, accent: string): void {
-	chip.addClass('operon-table-field-accent-chip');
-	chip.style.setProperty('--operon-table-field-accent', accent);
-	chip.style.setProperty('--operon-inline-chip-icon-color', accent);
-	chip.style.setProperty('--operon-task-chip-hover-accent', accent);
-	chip.style.setProperty('--operon-live-hover-border', accent);
+function applyTableCellAccentVariables(target: HTMLElement, accent: string, decorateAsChip = true): void {
+	if (decorateAsChip) target.addClass('operon-table-field-accent-chip');
+	target.style.setProperty('--operon-table-field-accent', accent);
+	target.style.setProperty('--operon-inline-chip-icon-color', accent);
+	target.style.setProperty('--operon-task-chip-hover-accent', accent);
+	target.style.setProperty('--operon-live-hover-border', accent);
+}
+
+export function applyTableColumnCellAccent(
+	target: HTMLElement,
+	column: Pick<TableColumn, 'key' | 'colorMode'>,
+	value: string,
+	options: {
+		task?: IndexedTask;
+		settings?: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities'>;
+		workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
+		decorateAsChip?: boolean;
+	} = {},
+): string | null {
+	const accent = resolveTableColumnCellAccent(column, value, options);
+	if (accent) applyTableCellAccentVariables(target, accent, options.decorateAsChip);
+	return accent;
 }

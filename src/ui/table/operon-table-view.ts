@@ -47,7 +47,7 @@ import {
 	bindTableFilePropertyRemovalMenu,
 	canEditTableFilePropertyCell,
 	openTableFilePropertyPicker,
-	renderTableFilePropertyCheckbox,
+	renderTableFilePropertyValue,
 	toRawYamlPropertyExpectation,
 	type TableFilePropertyUpdateRequest,
 	type TableFilePropertyUpdateResult,
@@ -2391,33 +2391,18 @@ export class OperonTableView extends FileView {
 			editable,
 			onRemove: () => commit({ kind: 'delete' }),
 		});
-		if (field?.type === 'checkbox') {
-			renderTableFilePropertyCheckbox({
-				cell,
-				field,
-				label,
-				cellValue,
-				compact: column.displayMode === 'icon',
-				editable,
-				onToggle: commit,
-			});
-			return;
-		}
-		const renderValues = Array.isArray(cellValue.rawValue)
-			? cellValue.rawValue.filter(value => value !== null).map(String)
-			: (cellValue.normalizedValue.trim() ? [cellValue.normalizedValue] : []);
-		if (column.displayMode === 'icon') {
-			const icon = cell.createSpan('operon-table-file-property-icon');
-			setIcon(icon, field?.icon ?? 'text');
-			setAccessibleLabelWithoutTooltip(cell, `${label}: ${cellValue.normalizedValue || t('table', 'filePropertyNotSet')}`);
-		} else if (renderValues.length === 0) {
-			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
-		} else {
-			for (const value of renderValues) cell.createSpan({
-				cls: `operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip${editable ? ' operon-table-editable-chip' : ' operon-chip-readonly'}`,
-				text: value,
-			});
-		}
+		if (renderTableFilePropertyValue({
+			cell,
+			field,
+			label,
+			cellValue,
+			column,
+			task,
+			settings: renderState.settings,
+			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			editable,
+			onToggle: commit,
+		})) return;
 		if (!editable || !field) return;
 		setAccessibleLabelWithoutTooltip(cell, `${label}: ${cellValue.normalizedValue || t('table', 'filePropertyNotSet')}. ${t('table', 'editCellAria')}`);
 		const openPicker = (): void => {

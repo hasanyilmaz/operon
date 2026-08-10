@@ -1,6 +1,8 @@
 import { App, Menu, Notice, setIcon } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
+import type { TableColumn } from '../../types/table';
+import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import { t } from '../../core/i18n';
 import {
 	isSupportedRawYamlPropertyValue,
@@ -16,6 +18,7 @@ import {
 	showCustomTextFieldPicker,
 } from '../field-pickers/custom';
 import type { TableFilePropertyCellValue, TableFilePropertyField } from './table-file-property';
+import { applyTableColumnCellAccent } from './table-cell-chip';
 
 export interface TableFilePropertyUpdateRequest {
 	propertyName: string;
@@ -139,7 +142,7 @@ export function renderTableFilePropertyCheckbox(options: {
 	compact: boolean;
 	editable: boolean;
 	onToggle: (mutation: RawYamlPropertyMutation) => void;
-}): void {
+}): HTMLButtonElement {
 	const { cell, cellValue } = options;
 	const rawValue = cellValue.rawValue;
 	const validBoolean = typeof rawValue === 'boolean';
@@ -166,14 +169,73 @@ export function renderTableFilePropertyCheckbox(options: {
 	});
 	if (invalid) {
 		button.addEventListener('click', () => new Notice(t('table', 'filePropertyInvalidBoolean', { property: options.field.propertyName })));
-		return;
+		return button;
 	}
-	if (!options.editable) return;
+	if (!options.editable) return button;
 	button.addEventListener('click', event => {
 		event.preventDefault();
 		event.stopPropagation();
 		options.onToggle({ kind: 'set', value: validBoolean ? !rawValue : true });
 	});
+	return button;
+}
+
+export function renderTableFilePropertyValue(options: {
+	cell: HTMLElement;
+	field: TableFilePropertyField | null;
+	label: string;
+	cellValue: TableFilePropertyCellValue;
+	column: TableColumn;
+	task: IndexedTask;
+	settings: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities'>;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
+	editable: boolean;
+	onToggle: (mutation: RawYamlPropertyMutation) => void;
+}): boolean {
+	const accentOptions = {
+		task: options.task,
+		settings: options.settings,
+		workflowStatusIdentityIndex: options.workflowStatusIdentityIndex,
+	};
+	if (options.field?.type === 'checkbox') {
+		const checkbox = renderTableFilePropertyCheckbox({
+			cell: options.cell,
+			field: options.field,
+			label: options.label,
+			cellValue: options.cellValue,
+			compact: options.column.displayMode === 'icon',
+			editable: options.editable,
+			onToggle: options.onToggle,
+		});
+		applyTableColumnCellAccent(checkbox, options.column, options.cellValue.normalizedValue, accentOptions);
+		return true;
+	}
+	const renderValues = Array.isArray(options.cellValue.rawValue)
+		? options.cellValue.rawValue.filter(value => value !== null).map(String)
+		: (options.cellValue.normalizedValue.trim() ? [options.cellValue.normalizedValue] : []);
+	if (options.column.displayMode === 'icon') {
+		const icon = options.cell.createSpan('operon-table-file-property-icon');
+		setIcon(icon, options.field?.icon ?? 'text');
+		applyTableColumnCellAccent(icon, options.column, options.cellValue.normalizedValue, {
+			...accentOptions,
+			decorateAsChip: false,
+		});
+		setAccessibleLabelWithoutTooltip(
+			options.cell,
+			`${options.label}: ${options.cellValue.normalizedValue || t('table', 'filePropertyNotSet')}`,
+		);
+	} else if (renderValues.length === 0) {
+		options.cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
+	} else {
+		for (const value of renderValues) {
+			const chip = options.cell.createSpan({
+				cls: `operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip${options.editable ? ' operon-table-editable-chip' : ' operon-chip-readonly'}`,
+				text: value,
+			});
+			applyTableColumnCellAccent(chip, options.column, value, accentOptions);
+		}
+	}
+	return false;
 }
 
 export function bindTableFilePropertyRemovalMenu(options: {

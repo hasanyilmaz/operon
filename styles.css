@@ -32027,6 +32027,13 @@ button.operon-table-source-button:focus-visible {
 	outline-offset: 2px;
 }
 
+.operon-table-root button.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):hover,
+.operon-table-root button.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):focus-visible {
+	border-color: var(--operon-task-chip-border);
+	box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);
+	color: var(--text-normal);
+}
+
 .operon-table-root button.operon-table-file-property-checkbox:disabled {
 	cursor: default;
 	opacity: 1;
@@ -32044,7 +32051,7 @@ button.operon-table-source-button:focus-visible {
 	justify-content: center;
 	width: 14px;
 	height: 14px;
-	color: var(--text-muted);
+	color: var(--operon-inline-chip-icon-color, var(--text-muted));
 }
 
 .operon-table-file-property-checkbox-label {
@@ -32067,7 +32074,8 @@ button.operon-table-source-button:focus-visible {
 }
 
 @media (forced-colors: active) {
-	.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):focus-visible {
+	.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):focus-visible,
+	.operon-table-root button.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):focus-visible {
 		outline-color: ButtonText;
 		box-shadow: none;
 	}
