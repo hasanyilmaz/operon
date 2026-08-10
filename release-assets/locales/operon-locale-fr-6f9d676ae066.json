@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2334,6 +2334,7 @@
       "duplicatePresetName": "Copie de {{name}}",
       "editCellAria": "Cliquez ou appuyez sur Entree, Espace ou F2 pour modifier.",
       "editPreset": "Modifier le préréglage de tableau",
+      "editPresetNamed": "Modifier le préréglage : {{name}}",
       "editSummary": "Modifier le résumé...",
       "embedCodeCopied": "Code d’intégration Table copié",
       "embedInvalidSyntax": "Syntaxe d’intégration Table invalide. Utilisez presetId: \"table-preset-id\".",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "77da7ef0b3a6093897d10ccdb2d92ef3ceaa350f2849673a9d07461231420a59"
+  "sourceVersion": "bc53e3240bb9135ec3623d54d2b40e3eb06a607e5a15b7c2dca50f59ad6fb3ee"
 }

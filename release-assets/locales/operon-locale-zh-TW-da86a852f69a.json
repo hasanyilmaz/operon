@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2334,6 +2334,7 @@
       "duplicatePresetName": "{{name}} 副本",
       "editCellAria": "點擊，或按 Enter、Space、F2 編輯。",
       "editPreset": "編輯表格預設",
+      "editPresetNamed": "編輯預設：{{name}}",
       "editSummary": "編輯彙總...",
       "embedCodeCopied": "已複製 Table 嵌入程式碼",
       "embedInvalidSyntax": "Table 嵌入語法無效。請使用 presetId: \"table-preset-id\"。",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "0b859fde0c6d133c3b180828bb9695c8a7028ffedce75f15d4b5dd01d3b592e0"
+  "sourceVersion": "518bbcc3f9729344e6afa5929714d56864bc5b1672962d9c03abd3077fbd2bb0"
 }

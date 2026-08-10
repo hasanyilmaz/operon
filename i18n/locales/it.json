@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "Cerca preimpostazioni tabella...",
 		"presetPickerNoMatches": "Nessuna preimpostazione tabella corrispondente",
 		"editPreset": "Modifica preimpostazione tabella",
+		"editPresetNamed": "Modifica preimpostazione: {{name}}",
 		"filter": "Filtro",
 		"groupSort": "Raggruppa e ordina",
 		"relatedViewsMenuLabel": "Apri viste correlate",

@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "Поиск пресетов таблиц...",
 		"presetPickerNoMatches": "Совпадающих пресетов таблиц нет",
 		"editPreset": "Изменить пресет таблицы",
+		"editPresetNamed": "Редактировать пресет: {{name}}",
 		"filter": "Фильтр",
 		"groupSort": "Группировать и сортировать",
 		"relatedViewsMenuLabel": "Открыть связанные представления",

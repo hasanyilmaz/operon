@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2334,6 +2334,7 @@
       "duplicatePresetName": "{{name}} のコピー",
       "editCellAria": "クリック、Enter、Space、F2で編集します。",
       "editPreset": "テーブルプリセットを編集",
+      "editPresetNamed": "プリセットを編集: {{name}}",
       "editSummary": "集計を編集...",
       "embedCodeCopied": "Table 埋め込みコードをコピーしました",
       "embedInvalidSyntax": "Table 埋め込み構文が無効です。presetId: \"table-preset-id\" を使用してください。",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "b08aafd1b8376e71d02f84b09c1b228695703333fa3abc1de78eebbb55c71341"
+  "sourceVersion": "3819a357a470b03ea6e3a812707b1252740b44413f5351b07a2be5dd3c6ea7a8"
 }

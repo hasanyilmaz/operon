@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "Tablo preset'lerinde ara...",
 		"presetPickerNoMatches": "Eşleşen tablo preset'i yok",
 		"editPreset": "Tablo preset'ini düzenle",
+		"editPresetNamed": "Ön ayarı düzenle: {{name}}",
 		"filter": "Filtre",
 		"groupSort": "Grupla & Sırala",
 		"relatedViewsMenuLabel": "İlgili görünümleri aç",

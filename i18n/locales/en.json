@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "Search table presets...",
 		"presetPickerNoMatches": "No matching table presets",
 		"editPreset": "Edit table preset",
+		"editPresetNamed": "Edit {{name}} preset",
 		"filter": "Filter",
 		"groupSort": "Group & Sort",
 		"relatedViewsMenuLabel": "Open related views",

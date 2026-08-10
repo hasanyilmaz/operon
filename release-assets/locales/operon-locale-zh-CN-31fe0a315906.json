@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2334,6 +2334,7 @@
       "duplicatePresetName": "{{name}} 副本",
       "editCellAria": "点击，或按 Enter、Space、F2 编辑。",
       "editPreset": "编辑表格预设",
+      "editPresetNamed": "编辑预设：{{name}}",
       "editSummary": "编辑汇总...",
       "embedCodeCopied": "已复制 Table 嵌入代码",
       "embedInvalidSyntax": "Table 嵌入语法无效。请使用 presetId: \"table-preset-id\"。",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "a06cfa5376a00070cab3045fed555c279f6defd735912279ab657cc8e03026d8"
+  "sourceVersion": "fb065fc138af0f885e870bcaf88adabe3d2f83819125a3b4aa3913cf33f2952b"
 }

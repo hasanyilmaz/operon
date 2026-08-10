@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "テーブルプリセットを検索...",
 		"presetPickerNoMatches": "一致するテーブルプリセットはありません",
 		"editPreset": "テーブルプリセットを編集",
+		"editPresetNamed": "プリセットを編集: {{name}}",
 		"filter": "フィルター",
 		"groupSort": "グループ化と並べ替え",
 		"relatedViewsMenuLabel": "関連ビューを開く",

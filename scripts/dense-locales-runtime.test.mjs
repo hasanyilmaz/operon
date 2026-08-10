@@ -58,7 +58,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 
 	assert.deepEqual(densePack.languageOrder, ['en']);
 	assert.deepEqual(Object.keys(densePack.locales), ['en']);
-	assert.equal(densePack.keyCount, 2_927);
+	assert.equal(densePack.keyCount, 2_928);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);
@@ -101,6 +101,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 	}
 
 	assert.equal(runtime.t('modals', 'releaseNotesVersion', { version: '9.9.9' }), 'Version 9.9.9');
+	assert.equal(runtime.t('table', 'editPresetNamed', { name: 'Last modified' }), 'Edit Last modified preset');
 	assert.equal(runtime.t('missing', 'unknownKey'), 'unknownKey');
 	assert.deepEqual(runtime.getTranslations('missing', 'unknownKey'), []);
 

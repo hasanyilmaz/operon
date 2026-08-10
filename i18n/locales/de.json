@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "Tabellenpresets suchen...",
 		"presetPickerNoMatches": "Keine passenden Tabellenpresets",
 		"editPreset": "Tabellenpreset bearbeiten",
+		"editPresetNamed": "Voreinstellung bearbeiten: {{name}}",
 		"filter": "Filter",
 		"groupSort": "Gruppieren & Sortieren",
 		"relatedViewsMenuLabel": "Verwandte Ansichten öffnen",

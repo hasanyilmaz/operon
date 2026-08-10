@@ -1287,16 +1287,19 @@ function renderEmbedTablePresetPickerButton(
 
 function renderEmbedTablePresetSettingsButton(controls: HTMLElement, preset: TablePreset, deps: EmbedTableDeps): void {
 	if (!deps.onOpenPresetSettings) return;
+	const editPresetLabel = t('table', 'editPresetNamed', {
+		name: getTablePresetPickerLabel(preset),
+	});
 	const button = controls.createEl('button', {
 		cls: 'operon-table-toolbar-icon-button',
 		attr: {
 			type: 'button',
 		},
 	});
-	setAccessibleLabelWithoutTooltip(button, t('table', 'editPreset'));
+	setAccessibleLabelWithoutTooltip(button, editPresetLabel);
 	setIcon(button, 'settings-2');
 	bindOperonHoverTooltip(button, {
-		content: t('table', 'editPreset'),
+		content: editPresetLabel,
 		taskColor: null,
 		preferredVertical: 'above',
 	});

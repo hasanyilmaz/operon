@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2334,6 +2334,7 @@
       "duplicatePresetName": "{{name}} Copia",
       "editCellAria": "Haz clic o pulsa Enter, Espacio o F2 para editar.",
       "editPreset": "Editar preset de tabla",
+      "editPresetNamed": "Editar preajuste: {{name}}",
       "editSummary": "Editar resumen...",
       "embedCodeCopied": "Código incrustado de Table copiado",
       "embedInvalidSyntax": "Sintaxis de Table incrustada no válida. Usa presetId: \"table-preset-id\".",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d46448281da7cd51cbaaa789d58fc73804fb8aca7962009de046ab0aae7a6a66"
+  "sourceVersion": "8dc075304e983235808e240a47831fa73956301d32a09c3755f817c53cbc769f"
 }

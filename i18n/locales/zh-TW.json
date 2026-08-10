@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "搜尋表格預設……",
 		"presetPickerNoMatches": "沒有匹配的表格預設",
 		"editPreset": "編輯表格預設",
+		"editPresetNamed": "編輯預設：{{name}}",
 		"filter": "篩選器",
 		"groupSort": "分組和排序",
 		"relatedViewsMenuLabel": "開啟相關檢視",

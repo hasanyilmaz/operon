@@ -1215,14 +1215,17 @@ export class OperonTableView extends FileView {
 		preset: TablePreset,
 		managementMode: 'full' | 'current-only',
 	): void {
+		const editPresetLabel = t('table', 'editPresetNamed', {
+			name: getTablePresetPickerLabel(preset),
+		});
 		const editButton = end.createEl('button', {
 			cls: 'operon-table-toolbar-icon-button',
 			attr: { type: 'button' },
 		});
-		setAccessibleLabelWithoutTooltip(editButton, t('table', 'editPreset'));
+		setAccessibleLabelWithoutTooltip(editButton, editPresetLabel);
 		setIcon(editButton, 'settings-2');
 		bindOperonHoverTooltip(editButton, {
-			content: t('table', 'editPreset'),
+			content: editPresetLabel,
 			taskColor: null,
 			preferredVertical: 'above',
 		});

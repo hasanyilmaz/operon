@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 2927,
-  "keyFingerprint": "920f58dda2f6a197f3cddc68f99d42e3defa673812245af6e112f18c453b9a5a",
+  "keyCount": 2928,
+  "keyFingerprint": "570c59cf82c53b24212aee8a38f3f5c90fe0809206a35d15fa8c1c569a2b519f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2334,6 +2334,7 @@
       "duplicatePresetName": "{{name}} Kopie",
       "editCellAria": "Zum Bearbeiten klicken oder Enter, Leertaste oder F2 drücken.",
       "editPreset": "Tabellenpreset bearbeiten",
+      "editPresetNamed": "Voreinstellung bearbeiten: {{name}}",
       "editSummary": "Zusammenfassung bearbeiten...",
       "embedCodeCopied": "Table-Einbettungscode kopiert",
       "embedInvalidSyntax": "Ungültige Table-Einbettungssyntax. Verwende presetId: \"table-preset-id\".",
@@ -2972,5 +2973,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "ef73437c095f48eb209369cea9feb5721f8e09864042756ae682368a0e518816"
+  "sourceVersion": "4a48f9a5a2c4e0533a941645fef72932e42865f1dbead8362f875e4e61bd38ab"
 }

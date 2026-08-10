@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "Rechercher des préréglages de tableau...",
 		"presetPickerNoMatches": "Aucun préréglage de tableau correspondant",
 		"editPreset": "Modifier le préréglage de tableau",
+		"editPresetNamed": "Modifier le préréglage : {{name}}",
 		"filter": "Filtre",
 		"groupSort": "Regrouper et trier",
 		"relatedViewsMenuLabel": "Ouvrir les vues liées",

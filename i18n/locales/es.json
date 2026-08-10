@@ -2781,6 +2781,7 @@
 		"presetPickerSearchPlaceholder": "Buscar presets de tabla...",
 		"presetPickerNoMatches": "No hay presets de tabla coincidentes",
 		"editPreset": "Editar preset de tabla",
+		"editPresetNamed": "Editar preajuste: {{name}}",
 		"filter": "Filtro",
 		"groupSort": "Agrupar y ordenar",
 		"relatedViewsMenuLabel": "Abrir vistas relacionadas",
