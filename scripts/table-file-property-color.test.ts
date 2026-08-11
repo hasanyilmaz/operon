@@ -86,6 +86,10 @@ class FakeElement {
 		this.attributes.set(name, value);
 	}
 
+	getAttribute(name: string): string | null {
+		return this.attributes.get(name) ?? null;
+	}
+
 	removeAttribute(name: string): void {
 		this.attributes.delete(name);
 	}
@@ -262,10 +266,12 @@ async function run(): Promise<void> {
 		editable: true,
 		onToggle: () => {},
 	}), false);
-	equal(listCell.children.length, 2);
+	const listChipParent = findChildByClass(listCell, 'operon-table-cell-chip-list');
+	ok(listChipParent);
+	equal(listChipParent.children.length, 2);
 	for (const [index, value] of ['Alpha', 'Beta'].entries()) {
 		equal(
-			listCell.children[index]?.style.values.get('--operon-table-field-accent'),
+			listChipParent.children[index]?.style.values.get('--operon-table-field-accent'),
 			resolveTableRandomColumnColor(columnKey, value, settings),
 		);
 	}

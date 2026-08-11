@@ -18,7 +18,11 @@ import {
 	showCustomTextFieldPicker,
 } from '../field-pickers/custom';
 import type { TableFilePropertyCellValue, TableFilePropertyField } from './table-file-property';
-import { applyTableColumnCellAccent } from './table-cell-chip';
+import {
+	applyTableColumnCellAccent,
+	decorateTableListValueChip,
+	formatTableCellListChipDisplayValue,
+} from './table-cell-chip';
 
 export interface TableFilePropertyUpdateRequest {
 	propertyName: string;
@@ -227,12 +231,22 @@ export function renderTableFilePropertyValue(options: {
 	} else if (renderValues.length === 0) {
 		options.cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 	} else {
+		const listValue = options.field?.type === 'list' || Array.isArray(options.cellValue.rawValue);
+		const chipParent = listValue
+			? options.cell.createSpan('operon-table-cell-chip-list')
+			: options.cell;
 		for (const value of renderValues) {
-			const chip = options.cell.createSpan({
+			const displayValue = listValue ? formatTableCellListChipDisplayValue(value) : value;
+			const chip = chipParent.createSpan({
 				cls: `operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip${options.editable ? ' operon-table-editable-chip' : ' operon-chip-readonly'}`,
-				text: value,
 			});
+			if (listValue) {
+				chip.createSpan({ cls: 'operon-table-cell-chip-label', text: displayValue });
+			} else {
+				chip.setText(displayValue);
+			}
 			applyTableColumnCellAccent(chip, options.column, value, accentOptions);
+			if (listValue) decorateTableListValueChip(chip, displayValue);
 		}
 	}
 	return false;

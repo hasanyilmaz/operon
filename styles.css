@@ -29631,6 +29631,7 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content:is(
 	--operon-table-admin-control-size: 28px;
 	--operon-table-admin-text-size: 16px;
 	--operon-table-cell-icon-size: 18px;
+	--operon-table-detailed-value-max-width: 168px;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -31736,7 +31737,7 @@ button.operon-table-summary-picker-action:focus-visible {
 	width: auto;
 	height: var(--operon-task-chip-height);
 	min-width: 0;
-	max-width: 100%;
+	max-width: min(100%, var(--operon-table-detailed-value-max-width));
 	min-height: var(--operon-task-chip-height);
 	padding: 0 6px;
 	font-size: 12px;
@@ -32042,6 +32043,36 @@ input.operon-table-description-input:focus-visible {
 	overflow: hidden;
 	min-width: 0;
 	max-width: 100%;
+}
+
+.operon-table-list-value-chip {
+	flex: 0 0 auto;
+	width: max-content;
+	min-width: 0;
+	max-width: var(--operon-table-detailed-value-max-width);
+	overflow: hidden;
+	background: transparent;
+	background-color: transparent;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-table-list-value-chip > .operon-table-cell-chip-label {
+	min-width: 0;
+	max-width: 100%;
+}
+
+.operon-table-root .operon-table-list-value-chip:is(:hover, .is-operon-chip-hovered, :focus-visible),
+.operon-table-root .operon-table-cell.is-editable:is(:hover, :focus-visible, :focus-within) .operon-table-list-value-chip {
+	border-color: color-mix(
+		in srgb,
+		var(--operon-table-field-accent, var(--interactive-accent)) 62%,
+		var(--background-modifier-border)
+	);
+	background: transparent;
+	background-color: transparent;
+	box-shadow: none;
+	color: var(--text-normal);
 }
 
 .operon-table-cell-chip-label {

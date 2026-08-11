@@ -25,7 +25,6 @@ import { formatTableDetailedDatetimeValue } from './table-datetime-format';
 export { formatTableDetailedDatetimeValue } from './table-datetime-format';
 
 type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
-const TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH = 37;
 
 export interface TableCellChipRenderOptions {
 	column?: Pick<TableColumn, 'key' | 'colorMode'>;
@@ -46,7 +45,10 @@ export interface TableCellChipGroupRenderOptions extends TableCellChipRenderOpti
 interface TableCellChipItem {
 	rawValue: string;
 	displayValue: string;
-	tooltipContent?: string;
+}
+
+interface TableListValueChipOptions {
+	tooltipMode?: 'overflow' | 'none';
 }
 
 export function renderTableCellChips(
@@ -55,8 +57,9 @@ export function renderTableCellChips(
 	value: string,
 	options: TableCellChipGroupRenderOptions,
 ): void {
+	const listField = isTableListChipField(key, options);
 	const items = getTableCellChipItems(key, value, options);
-	const chipParent = items.length > 1
+	const chipParent = listField
 		? container.createSpan('operon-table-cell-chip-list')
 		: container;
 	for (const item of items) {
@@ -65,14 +68,40 @@ export function renderTableCellChips(
 			...options,
 			accentValue: item.rawValue,
 		});
-		if (item.tooltipContent) {
-			bindOperonHoverTooltip(chip, {
-				content: item.tooltipContent,
-				taskColor: null,
-				preferredHorizontal: 'center',
+		if (listField) {
+			decorateTableListValueChip(chip, item.displayValue, {
+				tooltipMode: key === 'links' && options.onExternalLinkModifierActivate
+					? 'none'
+					: 'overflow',
 			});
 		}
 	}
+}
+
+export function decorateTableListValueChip(
+	chip: HTMLElement,
+	displayValue: string,
+	options: TableListValueChipOptions = {},
+): void {
+	chip.addClass('operon-table-list-value-chip');
+	const tooltipMode = options.tooltipMode ?? 'overflow';
+	if (tooltipMode === 'none' || !displayValue) return;
+	bindOperonHoverTooltip(chip, {
+		content: displayValue,
+		taskColor: null,
+		preferredHorizontal: 'center',
+		shouldOpen: () => isTableListValueChipOverflowing(chip),
+	});
+}
+
+function isTableListValueChipOverflowing(chip: HTMLElement): boolean {
+	const overflowTarget = chip.querySelector<HTMLElement>('.operon-table-cell-chip-label') ?? chip;
+	if (overflowTarget.scrollWidth > overflowTarget.clientWidth + 1) return true;
+	const clippingParent = chip.closest<HTMLElement>('.operon-table-cell-chip-list');
+	if (!clippingParent) return false;
+	const chipRect = chip.getBoundingClientRect();
+	const parentRect = clippingParent.getBoundingClientRect();
+	return chipRect.left < parentRect.left - 1 || chipRect.right > parentRect.right + 1;
 }
 
 export function renderTableCellChipContent(
@@ -88,6 +117,13 @@ export function renderTableCellChipContent(
 		return;
 	}
 	const displayValue = formatTableDetailedDatetimeValue(key, value, options.settings);
+	if (isTableListChipField(key, options)) {
+		chip.createSpan({
+			cls: 'operon-table-cell-chip-label',
+			text: displayValue,
+		});
+		return;
+	}
 	const locationVisual = resolveTableLocationCellVisual(key, value, options);
 	if (locationVisual) {
 		renderTableLocationChipContent(
@@ -183,8 +219,7 @@ function getTableCellChipItems(
 			const description = resolveTableDependencyDescription(operonId, taskLookup);
 			return {
 				rawValue,
-				displayValue: truncateTableDependencyDescription(description),
-				tooltipContent: description,
+				displayValue: description,
 			};
 		});
 	}
@@ -217,11 +252,6 @@ function resolveTableDependencyDescription(operonId: string, taskLookup: TableTa
 	return taskLookup.getTask(operonId)?.description.trim() || operonId;
 }
 
-function truncateTableDependencyDescription(value: string): string {
-	if (value.length <= TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH) return value;
-	return `${value.slice(0, TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH - 3).trimEnd()}...`;
-}
-
 function isTableListChipField(key: string, options: TableCellChipRenderOptions): boolean {
 	if (!options.settings) return false;
 	const field = getTableTaskField(key, options.settings);
@@ -236,7 +266,7 @@ function isTableValueIconField(key: string, options: TableCellChipRenderOptions)
 	return field?.type === 'date' || field?.type === 'datetime';
 }
 
-function formatTableCellListChipDisplayValue(rawValue: string): string {
+export function formatTableCellListChipDisplayValue(rawValue: string): string {
 	const trimmed = rawValue.trim();
 	const match = /^!?\[\[([^\]]+)\]\]$/u.exec(trimmed);
 	if (!match) return rawValue;
