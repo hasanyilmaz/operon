@@ -1147,6 +1147,46 @@ function checkCssScorecard() {
 	);
 	assertIncludes(
 		'styles.css',
+		'body.is-mobile .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-toolbar {\n\tgrid-template-columns: minmax(0, 1fr);\n\tgrid-template-areas: \'end\';\n\talign-items: center;\n}',
+		'mobile Table leaves must keep only the end toolbar region regardless of workspace placement',
+	);
+	assertIncludes(
+		'styles.css',
+		'body.is-mobile .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-toolbar-end {\n\tjustify-content: flex-start;\n\twidth: 100%;\n}',
+		'mobile Table controls must keep preset buttons aligned to the start edge',
+	);
+	assertIncludes(
+		'styles.css',
+		'body.is-mobile .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-search-wrap {\n\tflex: 1 1 var(--operon-table-search-width);\n\twidth: auto;\n\tmin-width: 0;\n\tmax-width: var(--operon-table-search-width);\n\tmargin-inline-start: auto;\n}',
+		'mobile Table search must stay at the logical end and remain shrinkable',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-start,\nbody.is-mobile .workspace-leaf-content:is(',
+		'mobile Table leaves must hide the title region across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-center,\nbody.is-mobile .workspace-leaf-content:is(',
+		'mobile Table leaves must hide favorite presets across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-group-sort-button,\nbody.is-mobile .workspace-leaf-content:is(',
+		'mobile Table leaves must hide Group and Sort across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-filter-popover-host,\nbody.is-mobile .workspace-leaf-content:is(',
+		'mobile Table leaves must hide Filter across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		'body.is-mobile .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-export-button {\n\tdisplay: none;\n}',
+		'mobile Table leaves must hide Export across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
 		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) {\n\t\tbox-sizing: border-box;\n\t\theight: 16px;\n\t\tmin-height: 16px;\n\t\tmax-height: 16px;',
 		'sidebar Table toolbar must preserve hover, keyboard focus, and open popup expansion while using the 16px compact rail',
 	);
@@ -1167,7 +1207,7 @@ function checkCssScorecard() {
 			'height: 4px;',
 			'opacity: 0;',
 		],
-		['.operon-table-embed-toolbar'],
+		['body.is-mobile', '.operon-table-embed-toolbar'],
 		'sidebar Table toolbar auto-collapse must stay fine-pointer, desktop, direct-leaf, and embed-safe',
 	);
 	assertCssAtRuleContains(

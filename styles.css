@@ -29777,6 +29777,58 @@ body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 	display: none;
 }
 
+/* Keep mobile Table leaves compact without relying on hover-only controls. */
+body.is-mobile .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar {
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-areas: 'end';
+	align-items: center;
+}
+
+body.is-mobile .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar-end {
+	justify-content: flex-start;
+	width: 100%;
+}
+
+body.is-mobile .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-search-wrap {
+	flex: 1 1 var(--operon-table-search-width);
+	width: auto;
+	min-width: 0;
+	max-width: var(--operon-table-search-width);
+	margin-inline-start: auto;
+}
+
+body.is-mobile .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar-start,
+body.is-mobile .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar-center,
+body.is-mobile .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-group-sort-button,
+body.is-mobile .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-filter-popover-host,
+body.is-mobile .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-export-button {
+	display: none;
+}
+
 @media (hover: hover) and (pointer: fine) {
 	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 		[data-type="operon-table-view"],
