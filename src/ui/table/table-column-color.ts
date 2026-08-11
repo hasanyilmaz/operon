@@ -34,10 +34,23 @@ type TableColumnColorSettings = Pick<OperonSettings, 'colorPalette' | 'pipelines
 
 const TABLE_COLUMN_COLOR_INELIGIBLE_KEYS = new Set(['description', 'source', 'duration']);
 
-export function isTableColumnColorModeEligible(column: TableColumn): boolean {
+export interface TableColumnColorField {
+	type: string;
+	unavailable?: boolean;
+}
+
+export function isTableFieldColorModeEligible(field?: TableColumnColorField | null): boolean {
+	return field?.type !== 'text' || field.unavailable === true;
+}
+
+export function isTableColumnColorModeEligible(
+	column: TableColumn,
+	field?: TableColumnColorField | null,
+): boolean {
 	return column.kind === 'task'
 		&& !isTableColumnColorModeLocked(column.key)
-		&& !TABLE_COLUMN_COLOR_INELIGIBLE_KEYS.has(column.key);
+		&& !TABLE_COLUMN_COLOR_INELIGIBLE_KEYS.has(column.key)
+		&& isTableFieldColorModeEligible(field);
 }
 
 export function resolveEffectiveTableColumnColorMode(column: Pick<TableColumn, 'key' | 'colorMode'>): TableColumnColorMode {

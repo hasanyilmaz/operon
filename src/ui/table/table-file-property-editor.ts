@@ -23,6 +23,9 @@ import {
 	decorateTableListValueChip,
 	formatTableCellListChipDisplayValue,
 } from './table-cell-chip';
+import { renderTableTextValueDisplay } from './table-description-cell';
+import { formatTableIconOnlyTooltipContent, renderTableIconOnlyCell } from './table-icon-only-cell';
+import { createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
 
 export interface TableFilePropertyUpdateRequest {
 	propertyName: string;
@@ -193,9 +196,12 @@ export function renderTableFilePropertyValue(options: {
 	task: IndexedTask;
 	settings: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities'>;
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
+	app?: App;
+	sourcePath?: string;
 	editable: boolean;
 	onToggle: (mutation: RawYamlPropertyMutation) => void;
 }): boolean {
+	const isTextField = options.field?.type === 'text' && options.field.unavailable !== true;
 	const accentOptions = {
 		task: options.task,
 		settings: options.settings,
@@ -217,7 +223,28 @@ export function renderTableFilePropertyValue(options: {
 	const renderValues = Array.isArray(options.cellValue.rawValue)
 		? options.cellValue.rawValue.filter(value => value !== null).map(String)
 		: (options.cellValue.normalizedValue.trim() ? [options.cellValue.normalizedValue] : []);
-	if (options.column.displayMode === 'icon') {
+	if (isTextField && options.column.displayMode !== 'icon') {
+		renderTableTextValueDisplay(options.cell, {
+			value: options.cellValue.normalizedValue,
+			...(options.app && options.sourcePath
+				? { wikilinks: { app: options.app, sourcePath: options.sourcePath } }
+				: {}),
+		});
+	} else if (isTextField && options.column.displayMode === 'icon') {
+		if (!options.cellValue.normalizedValue.trim()) return false;
+		const content = formatTableIconOnlyTooltipContent(options.cellValue.normalizedValue);
+		renderTableIconOnlyCell(options.cell, {
+			icon: options.field?.icon ?? 'text',
+			color: null,
+			title: options.label,
+			content,
+			...(options.app
+				? { contentEl: createCompactTaskMarkdownTooltipContent(options.cell, options.cellValue.normalizedValue) }
+				: {}),
+			ariaLabel: `${options.label}: ${content}`,
+			focusable: !options.editable,
+		});
+	} else if (options.column.displayMode === 'icon') {
 		const icon = options.cell.createSpan('operon-table-file-property-icon');
 		setIcon(icon, options.field?.icon ?? 'text');
 		applyTableColumnCellAccent(icon, options.column, options.cellValue.normalizedValue, {

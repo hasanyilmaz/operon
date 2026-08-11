@@ -32063,16 +32063,26 @@ input.operon-table-description-input:focus-visible {
 }
 
 .operon-table-root .operon-table-list-value-chip:is(:hover, .is-operon-chip-hovered, :focus-visible),
-.operon-table-root .operon-table-cell.is-editable:is(:hover, :focus-visible, :focus-within) .operon-table-list-value-chip {
-	border-color: color-mix(
+.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-list-value-chip {
+	--operon-task-chip-border: color-mix(
 		in srgb,
 		var(--operon-table-field-accent, var(--interactive-accent)) 62%,
 		var(--background-modifier-border)
 	);
+	--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-border) 38%, transparent);
+	border-color: var(--operon-task-chip-border);
+	background: transparent;
+	background-color: transparent;
+	box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);
+	color: var(--text-normal);
+}
+
+.operon-table-plain-text-value,
+.operon-table-cell.is-editable:is(:hover, :focus-visible, :focus-within) .operon-table-plain-text-value {
+	border: 0;
 	background: transparent;
 	background-color: transparent;
 	box-shadow: none;
-	color: var(--text-normal);
 }
 
 .operon-table-cell-chip-label {

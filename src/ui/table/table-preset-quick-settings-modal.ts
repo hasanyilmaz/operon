@@ -21,6 +21,7 @@ import {
 } from './table-field-catalog';
 import { buildTableFieldPickerOptions, getTableFieldPickerLabel } from './table-field-picker-options';
 import { isTableFilePropertyColumnKey, type TableFilePropertyField } from './table-file-property';
+import { isTableFieldColorModeEligible } from './table-column-color';
 import {
 	filterCompatibleTableSummaryRules,
 	getTableSummaryFunctionsForField,
@@ -678,7 +679,10 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private renderDisplaySection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionDisplay'));
-		const { supportedKeys } = this.buildColumnUiState(preset, settings);
+		const { catalog } = this.buildColumnUiState(preset, settings);
+		const colorModeKeys = new Set(catalog
+			.filter(field => isTableFieldColorModeEligible(field))
+			.map(field => field.key));
 		new Setting(card)
 			.setName(t('table', 'colorMode'))
 			.addDropdown(dropdown => {
@@ -687,11 +691,11 @@ export class TablePresetQuickSettingsModal extends Modal {
 				}
 				const customOption = dropdown.selectEl.querySelector<HTMLOptionElement>('option[value="customColors"]');
 				if (customOption) customOption.disabled = true;
-				dropdown.selectEl.disabled = !hasTablePresetColorModeColumns(preset, supportedKeys);
-				dropdown.setValue(deriveTablePresetColorMode(preset, supportedKeys));
+				dropdown.selectEl.disabled = !hasTablePresetColorModeColumns(preset, colorModeKeys);
+				dropdown.setValue(deriveTablePresetColorMode(preset, colorModeKeys));
 				dropdown.onChange(value => {
 					if (value !== 'noColor' && value !== 'taskColor' && value !== 'priorityColor' && value !== 'statusColor') return;
-					this.updateColumns(applyTablePresetColorMode(preset, value, supportedKeys));
+					this.updateColumns(applyTablePresetColorMode(preset, value, colorModeKeys));
 				});
 			});
 		new Setting(card)

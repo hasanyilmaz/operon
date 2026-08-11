@@ -1140,16 +1140,24 @@ function checkCssScorecard() {
 	assertIncludes(
 		'styles.css',
 		'.operon-table-root .operon-table-list-value-chip:is(:hover, .is-operon-chip-hovered, :focus-visible),\n'
-			+ '.operon-table-root .operon-table-cell.is-editable:is(:hover, :focus-visible, :focus-within) .operon-table-list-value-chip {\n'
-			+ '\tborder-color: color-mix(\n'
+			+ '.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-list-value-chip {\n'
+			+ '\t--operon-task-chip-border: color-mix(\n'
 			+ '\t\tin srgb,\n'
 			+ '\t\tvar(--operon-table-field-accent, var(--interactive-accent)) 62%,\n'
 			+ '\t\tvar(--background-modifier-border)\n'
 			+ '\t);\n'
+			+ '\t--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-border) 38%, transparent);\n'
+			+ '\tborder-color: var(--operon-task-chip-border);\n'
 			+ '\tbackground: transparent;\n'
 			+ '\tbackground-color: transparent;\n'
-			+ '\tbox-shadow: none;',
-		'Table list hover and focus must remain border-only with field-accent precedence',
+			+ '\tbox-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);',
+		'Table list hover and focus must use the shared border and glow treatment',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-plain-text-value',
+		['border: 0;', 'background-color: transparent;', 'box-shadow: none;'],
+		'Table scalar text values must stay borderless and neutral',
 	);
 
 	assertIncludes(

@@ -132,6 +132,10 @@ class FakeElement {
 		this.attributes.delete(name);
 	}
 
+	setText(value: string): void {
+		this.textContent = value;
+	}
+
 	addEventListener(): void {}
 
 	private addClasses(value: string): void {
@@ -421,20 +425,22 @@ async function run(): Promise<void> {
 		resolveTableRandomColumnColor(columnKey, '[[Folder/Cast.md|Cast label]]', settings),
 	);
 
-	const emptyCell = new FakeElement('DIV');
+	const detailedTextCell = new FakeElement('DIV');
 	equal(renderTableFilePropertyValue({
-		cell: asHtmlElement(emptyCell),
+		cell: asHtmlElement(detailedTextCell),
 		field: textField,
 		label: 'Team',
-		cellValue: { present: false, rawValue: undefined, normalizedValue: '' },
+		cellValue: { present: true, rawValue: 'A long summary', normalizedValue: 'A long summary' },
 		column: { key: columnKey, kind: 'task', colorMode: 'randomColors' },
 		task,
 		settings,
 		editable: false,
 		onToggle: () => {},
 	}), false);
-	equal(findChildByClass(emptyCell, 'operon-table-empty-value')?.textContent, '--');
-	equal(findChildByClass(emptyCell, 'operon-table-field-accent-chip'), undefined);
+	equal(detailedTextCell.classes.has('operon-table-text-cell'), true);
+	equal(findDescendantByClass(detailedTextCell, 'operon-table-plain-text-value')?.textContent, 'A long summary');
+	equal(findChildByClass(detailedTextCell, 'operon-table-cell-chip'), undefined);
+	equal(findChildByClass(detailedTextCell, 'operon-table-field-accent-chip'), undefined);
 
 	const iconCell = new FakeElement('DIV');
 	equal(renderTableFilePropertyValue({
@@ -448,10 +454,8 @@ async function run(): Promise<void> {
 		editable: false,
 		onToggle: () => {},
 	}), false);
-	const propertyIcon = findChildByClass(iconCell, 'operon-table-file-property-icon');
-	ok(propertyIcon);
-	equal(propertyIcon.classes.has('operon-table-field-accent-chip'), false);
-	equal(propertyIcon.style.values.get('--operon-inline-chip-icon-color'), '#aa1122');
+	equal(findChildByClass(iconCell, 'operon-table-icon-only-button'), undefined);
+	equal(iconCell.classes.has('operon-table-icon-only-cell'), false);
 
 	for (const rawValue of [undefined, 'unsupported']) {
 		const checkboxCell = new FakeElement('DIV');
@@ -493,11 +497,21 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('max-width: var(--operon-table-detailed-value-max-width);'));
 	ok(cssSource.includes('.operon-table-cell-chip-list {\n\tdisplay: flex;'));
 	ok(cssSource.includes('background-color: transparent;'));
+	ok(cssSource.includes('box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);'));
+	ok(cssSource.includes('.operon-table-plain-text-value,'));
 	ok(editorSource.includes('formatTableCellListChipDisplayValue(value)'));
+	ok(editorSource.includes("options.field?.type === 'text' && options.field.unavailable !== true"));
+	ok(editorSource.includes('renderTableTextValueDisplay(options.cell'));
+	ok(editorSource.includes('renderTableIconOnlyCell(options.cell'));
 	ok(chipSource.includes('bindOperonHoverTooltip(chip, {\n\t\tcontent: displayValue,'));
 	ok(chipSource.includes('shouldOpen: () => isTableListValueChipOverflowing(chip),'));
 	ok(workspaceSource.includes('renderTableCellChips('));
 	ok(embedSource.includes('renderTableCellChips('));
+	ok(workspaceSource.includes('isCompactTaskMarkdownLinkEventTarget(event.target, cell)'));
+	ok(embedSource.includes('isCompactTaskMarkdownLinkEventTarget(event.target, cell)'));
+	ok(workspaceSource.includes('contentEl: createCompactTaskMarkdownTooltipContent(cell, value)'));
+	ok(embedSource.includes('contentEl: createCompactTaskMarkdownTooltipContent(cell, value)'));
+	ok(editorSource.includes('contentEl: createCompactTaskMarkdownTooltipContent(options.cell, options.cellValue.normalizedValue)'));
 
 	console.log(`Table file-property color tests passed: ${assertions} assertions`);
 }

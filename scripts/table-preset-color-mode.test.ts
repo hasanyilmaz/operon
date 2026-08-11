@@ -108,6 +108,18 @@ async function run(): Promise<void> {
 	equal(dirtyPatch.display, undefined);
 	deepEqual(buildTablePresetDirtyPatch(source, new Set(), source), { id: source.id });
 
+	const typeAwareSource = createPreset([
+		{ key: 'summary', kind: 'task', colorMode: 'randomColors' },
+		{ key: 'status', kind: 'task', colorMode: 'randomColors' },
+		{ key: 'file.property:cast', kind: 'task', colorMode: 'randomColors' },
+	]);
+	const nonTextColorKeys = new Set(['status']);
+	const typeAwareUpdated = applyTablePresetColorMode(typeAwareSource, 'priorityColor', nonTextColorKeys);
+	equal(column(typeAwareUpdated, 'status').colorMode, 'priorityColor');
+	equal(column(typeAwareUpdated, 'summary').colorMode, 'randomColors');
+	equal(column(typeAwareUpdated, 'file.property:cast').colorMode, 'randomColors');
+	equal(deriveTablePresetColorMode(typeAwareUpdated, nonTextColorKeys), 'priorityColor');
+
 	const modalSource = await readFile(path.join(process.cwd(), 'src/ui/table/table-preset-quick-settings-modal.ts'), 'utf8');
 	const displayStart = modalSource.indexOf('private renderDisplaySection(');
 	const buttonsStart = modalSource.indexOf('private renderButtons(', displayStart);
@@ -116,6 +128,7 @@ async function run(): Promise<void> {
 	ok(displaySource.indexOf(".setName(t('table', 'colorMode'))") < displaySource.indexOf(".setName(t('table', 'density'))"));
 	ok(displaySource.includes('customOption.disabled = true'));
 	ok(displaySource.includes('dropdown.selectEl.disabled = !hasTablePresetColorModeColumns'));
+	ok(displaySource.includes('isTableFieldColorModeEligible(field)'));
 	ok(displaySource.includes('this.updateColumns(applyTablePresetColorMode'));
 	equal(displaySource.includes('onSave('), false, 'Display changes must not write directly');
 

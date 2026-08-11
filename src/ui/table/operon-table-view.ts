@@ -57,7 +57,9 @@ import {
 } from './table-value-adapter';
 import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
-import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table-description-cell';
+import { renderTableDescriptionCellContent, renderTableTextValueDisplay, type TableInlineEditSession } from './table-description-cell';
+import { isCompactTaskMarkdownLinkEventTarget } from '../compact-task-markdown-renderer';
+import { createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './mobile-table-viewport';
 import { formatTableValueCacheStats, type TableValueResolver } from './table-value-cache';
 import {
@@ -2082,7 +2084,7 @@ export class OperonTableView extends FileView {
 			cell.removeAttribute('tabindex');
 		}
 		const fieldLabel = getTableTaskFieldLabel(key, renderState.settings);
-		const iconColor = showIconOnly
+		const iconColor = showIconOnly && getTableTaskField(key, renderState.settings)?.type !== 'text'
 			? resolveTableColumnCellAccent(column, value, {
 				task,
 				settings: renderState.settings,
@@ -2181,8 +2183,11 @@ export class OperonTableView extends FileView {
 			),
 			title: fieldLabel,
 			content,
+			...(field?.type === 'text'
+				? { contentEl: createCompactTaskMarkdownTooltipContent(cell, value) }
+				: {}),
 			ariaLabel: `${fieldLabel}: ${content}`,
-			color: resolveTableIconOnlyCellAccent(column, value, {
+			color: field?.type === 'text' ? null : resolveTableIconOnlyCellAccent(column, value, {
 				task,
 				settings: renderState.settings,
 				taskLookup: renderState.valueResolver.taskLookup,
@@ -2386,6 +2391,13 @@ export class OperonTableView extends FileView {
 			this.renderIconOnlyCell(cell, task, column, value, renderState, { focusable: !editable });
 			return;
 		}
+		if (getTableTaskField(column.key, renderState.settings)?.type === 'text') {
+			renderTableTextValueDisplay(cell, {
+				value,
+				wikilinks: { app: this.app, sourcePath: task.primary.filePath },
+			});
+			return;
+		}
 		if (!value.trim()) {
 			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 			return;
@@ -2453,6 +2465,8 @@ export class OperonTableView extends FileView {
 			task,
 			settings: renderState.settings,
 			workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+			app: this.app,
+			sourcePath: task.primary.filePath,
 			editable,
 			onToggle: commit,
 		})) return;
@@ -2484,6 +2498,7 @@ export class OperonTableView extends FileView {
 			this.activePickerClose = closePicker;
 		};
 		cell.addEventListener('click', event => {
+			if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			openPicker();
@@ -2491,6 +2506,7 @@ export class OperonTableView extends FileView {
 		cell.addEventListener('dblclick', event => event.stopPropagation());
 		cell.addEventListener('keydown', event => {
 			if (event.key !== 'Enter' && event.key !== ' ') return;
+			if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			openPicker();
@@ -2797,6 +2813,7 @@ export class OperonTableView extends FileView {
 		let suppressPointerClickToken = 0;
 		cell.addEventListener('pointerdown', event => {
 			if (event.button !== 0) return;
+			if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 			suppressPointerClick = true;
 			const token = suppressPointerClickToken + 1;
 			suppressPointerClickToken = token;
@@ -2810,6 +2827,7 @@ export class OperonTableView extends FileView {
 			}, 2000);
 		});
 		cell.addEventListener('click', event => {
+			if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			if (suppressPointerClick && event.detail > 0) {
@@ -2823,6 +2841,7 @@ export class OperonTableView extends FileView {
 		});
 		cell.addEventListener('keydown', event => {
 			if (event.key !== 'Enter' && event.key !== ' ') return;
+			if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			openPicker();

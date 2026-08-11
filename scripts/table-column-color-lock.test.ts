@@ -58,6 +58,13 @@ async function run(): Promise<void> {
 	equal(isTableColumnColorModeEligible({ key: 'taskColor', kind: 'task' }), false);
 	equal(isTableColumnColorModeEligible({ key: 'status', kind: 'task' }), true);
 	equal(isTableColumnColorModeEligible({ key: 'file.property:team', kind: 'task' }), true);
+	equal(isTableColumnColorModeEligible({ key: 'summary', kind: 'task' }, { type: 'text' }), false);
+	equal(isTableColumnColorModeEligible({ key: 'custom.list', kind: 'task' }, { type: 'list' }), true);
+	equal(isTableColumnColorModeEligible({ key: 'file.property:summary', kind: 'task' }, { type: 'text' }), false);
+	equal(isTableColumnColorModeEligible(
+		{ key: 'file.property:missing', kind: 'task' },
+		{ type: 'text', unavailable: true },
+	), true, 'unavailable File Property types must not be treated as proven text');
 
 	const preset = createDefaultTablePreset();
 	const originalTaskColor = getTaskColorColumn(preset);

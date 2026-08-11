@@ -14,6 +14,15 @@ export interface TableInlineEditSession {
 	finish(commit: boolean): void;
 }
 
+export interface TableTextValueDisplayOptions {
+	value: string;
+	textClassName?: string;
+	wikilinks?: {
+		app: App;
+		sourcePath: string;
+	};
+}
+
 export interface TableDescriptionCellOptions {
 	value: string;
 	editable: boolean;
@@ -45,6 +54,46 @@ function isInlineTextCellOverflowing(text: HTMLElement): boolean {
 
 function clearInlineTextCellTooltip(cell: HTMLElement): void {
 	bindOperonHoverTooltip(cell, { taskColor: null });
+}
+
+export function renderTableTextValueDisplay(
+	cell: HTMLElement,
+	options: TableTextValueDisplayOptions,
+): void {
+	cell.addClass('operon-table-description-cell');
+	cell.addClass('operon-table-text-cell');
+	const displayText = options.value.trim();
+	const textClasses = [
+		'operon-table-description-text',
+		'operon-table-plain-text-value',
+		options.textClassName,
+		displayText ? '' : 'is-empty',
+	].filter(Boolean).join(' ');
+	const text = cell.createSpan({ cls: textClasses });
+	let overflowTarget = text;
+	if (displayText && options.wikilinks) {
+		const markdownContent = text.createSpan({ cls: 'operon-table-description-markdown-content' });
+		overflowTarget = markdownContent;
+		renderCompactTaskMarkdown(markdownContent, {
+			app: options.wikilinks.app,
+			value: options.value,
+			sourcePath: options.wikilinks.sourcePath,
+			mode: 'interactive',
+			containerClassName: 'operon-task-description-markdown',
+		});
+	} else {
+		text.setText(displayText ? options.value : '--');
+	}
+	if (displayText) {
+		bindOperonHoverTooltip(cell, {
+			contentElFactory: () => createCompactTaskMarkdownTooltipContent(cell, options.value),
+			taskColor: null,
+			preferredHorizontal: 'center',
+			shouldOpen: () => isInlineTextCellOverflowing(overflowTarget),
+		});
+	} else {
+		clearInlineTextCellTooltip(cell);
+	}
 }
 
 export function renderTableDescriptionCellContent(
@@ -98,40 +147,11 @@ export function renderTableDescriptionCellContent(
 			}
 			return;
 		}
-		const textClasses = [
-			'operon-table-description-text',
-			options.textClassName,
-			displayText ? '' : 'is-empty',
-		].filter(Boolean).join(' ');
-		const text = cell.createSpan({
-			cls: textClasses,
+		renderTableTextValueDisplay(cell, {
+			value,
+			textClassName: options.textClassName,
+			wikilinks: options.wikilinks,
 		});
-		let overflowTarget = text;
-		if (displayText && options.wikilinks) {
-			const markdownContent = text.createSpan({
-				cls: 'operon-table-description-markdown-content',
-			});
-			overflowTarget = markdownContent;
-			renderCompactTaskMarkdown(markdownContent, {
-				app: options.wikilinks.app,
-				value,
-				sourcePath: options.wikilinks.sourcePath,
-				mode: 'interactive',
-				containerClassName: 'operon-task-description-markdown',
-			});
-		} else {
-			text.setText(displayText ? value : '--');
-		}
-		if (displayText) {
-			bindOperonHoverTooltip(cell, {
-				contentElFactory: () => createCompactTaskMarkdownTooltipContent(cell, value),
-				taskColor: null,
-				preferredHorizontal: 'center',
-				shouldOpen: () => isInlineTextCellOverflowing(overflowTarget),
-			});
-		} else {
-			clearInlineTextCellTooltip(cell);
-		}
 		if (shouldSyncEditableAccessibleLabel()) {
 			syncEditableAccessibleLabel(displayValue);
 		}

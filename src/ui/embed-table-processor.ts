@@ -49,7 +49,9 @@ import {
 } from './table/table-value-adapter';
 import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
-import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table/table-description-cell';
+import { renderTableDescriptionCellContent, renderTableTextValueDisplay, type TableInlineEditSession } from './table/table-description-cell';
+import { isCompactTaskMarkdownLinkEventTarget } from './compact-task-markdown-renderer';
+import { createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './table/mobile-table-viewport';
 import {
 	formatTableIconOnlyTooltipContent,
@@ -2871,6 +2873,13 @@ function renderEmbedTableCell(
 		renderEmbedTableIconOnlyCell(cell, task, column, displayValue, renderState, deps, { focusable: !editable });
 		return;
 	}
+	if (getTableTaskField(column.key, renderState.settings)?.type === 'text') {
+		renderTableTextValueDisplay(cell, {
+			value: displayValue,
+			wikilinks: { app: deps.app, sourcePath: task.primary.filePath },
+		});
+		return;
+	}
 	if (!displayValue.trim()) {
 		cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 		return;
@@ -2925,6 +2934,8 @@ function renderEmbedTableFilePropertyCell(
 		task,
 		settings: renderState.settings,
 		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+		app: deps.app,
+		sourcePath: task.primary.filePath,
 		editable,
 		onToggle: commit,
 	})) return;
@@ -2956,6 +2967,7 @@ function renderEmbedTableFilePropertyCell(
 		instance.activePickerClose = closePicker;
 	};
 	cell.addEventListener('click', event => {
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		openPicker();
@@ -2963,6 +2975,7 @@ function renderEmbedTableFilePropertyCell(
 	cell.addEventListener('dblclick', event => event.stopPropagation());
 	cell.addEventListener('keydown', event => {
 		if (event.key !== 'Enter' && event.key !== ' ') return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		openPicker();
@@ -3064,8 +3077,11 @@ function renderEmbedTableIconOnlyCell(
 		),
 		title: fieldLabel,
 		content,
+		...(field?.type === 'text'
+			? { contentEl: createCompactTaskMarkdownTooltipContent(cell, value) }
+			: {}),
 		ariaLabel: `${fieldLabel}: ${content}`,
-		color: resolveTableIconOnlyCellAccent(column, value, {
+		color: field?.type === 'text' ? null : resolveTableIconOnlyCellAccent(column, value, {
 			task,
 			settings: renderState.settings,
 			taskLookup: renderState.valueResolver.taskLookup,
@@ -3357,6 +3373,7 @@ function decorateEmbedTableEditableTaskCell(
 	let suppressPointerClickToken = 0;
 	cell.addEventListener('pointerdown', event => {
 		if (event.button !== 0) return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		suppressPointerClick = true;
 		const token = suppressPointerClickToken + 1;
 		suppressPointerClickToken = token;
@@ -3370,6 +3387,7 @@ function decorateEmbedTableEditableTaskCell(
 		}, 2000);
 	});
 	cell.addEventListener('click', event => {
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		if (suppressPointerClick && event.detail > 0) {
@@ -3383,6 +3401,7 @@ function decorateEmbedTableEditableTaskCell(
 	});
 	cell.addEventListener('keydown', event => {
 		if (event.key !== 'Enter' && event.key !== ' ') return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		openPicker();
@@ -3612,7 +3631,7 @@ function renderEmbedTableInlineTextCell(
 		cell.removeAttribute('tabindex');
 	}
 	const fieldLabel = getTableTaskFieldLabel(key, renderState.settings);
-	const iconColor = showIconOnly
+	const iconColor = showIconOnly && getTableTaskField(key, renderState.settings)?.type !== 'text'
 		? resolveTableColumnCellAccent(column, value, {
 			task,
 			settings: renderState.settings,
