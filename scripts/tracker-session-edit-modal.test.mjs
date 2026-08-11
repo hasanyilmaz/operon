@@ -62,7 +62,10 @@ test('footer geometry keeps Add right aligned and Edit delete isolated on the le
 
 test('session Save and Delete lifecycle remains independent from note persistence', () => {
 	assert.match(modalSource, /if \(!this\.beginModalAction\(\)\) return;/u);
+	assert.equal((modalSource.match(/if \(!await this\.closeOwnedTaskNotePopover\(\)\)/gu) ?? []).length, 2);
 	assert.match(modalSource, /this\.closeImmediately\(\);[\s\S]*?this\.options\.onSave\(start, end\)/u);
+	assert.ok(modalSource.indexOf('if (!await this.closeOwnedTaskNotePopover())') < modalSource.indexOf('this.options.onSave(start, end)'));
+	assert.ok(modalSource.lastIndexOf('if (!await this.closeOwnedTaskNotePopover())') < modalSource.indexOf('result = await this.options.onDelete?.()'));
 	assert.match(modalSource, /result = await this\.options\.onDelete\?\.\(\);/u);
 	assert.match(modalSource, /if \(result === false\) \{[\s\S]*?this\.resetModalAction\(\);/u);
 	assert.match(modalSource, /noteButton\.disabled = disabled;/u);

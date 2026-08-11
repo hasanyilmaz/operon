@@ -54,6 +54,7 @@ interface TextFieldPopoverSession {
 }
 
 export interface TextFieldPopoverDependencies {
+	createPanel: typeof createFloatingPanel;
 	createCompactEditorSurface: (
 		container: HTMLElement,
 		options: CompactMarkdownEditorSurfaceOptions,
@@ -68,6 +69,7 @@ export interface TextFieldPopoverCloseHandle {
 const TEXT_FIELD_POPOVER_BASE_Z_INDEX = 10090;
 const activeTextFieldPopovers = new Map<string, TextFieldPopoverSession>();
 const DEFAULT_TEXT_FIELD_POPOVER_DEPENDENCIES: TextFieldPopoverDependencies = {
+	createPanel: createFloatingPanel,
 	createCompactEditorSurface: createCompactMarkdownEditorSurface,
 };
 let textFieldPopoverZIndex = TEXT_FIELD_POPOVER_BASE_Z_INDEX;
@@ -127,7 +129,7 @@ export function showTextFieldPopover(
 		void commitAndClose(commit.value);
 		return false;
 	};
-	const { panel, close } = createFloatingPanel(
+	const { panel, close } = dependencies.createPanel(
 		options.anchor,
 		'operon-floating-panel operon-text-field-popover-panel',
 		() => {
