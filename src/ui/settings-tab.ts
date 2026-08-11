@@ -3213,14 +3213,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			text: settingsBackupT('settingsBackupExportDesc'),
 			cls: 'operon-settings-muted-block',
 		});
-		let includeTablePresetFiles = false;
 		let includeExternalCalendarUrls = false;
-		new Setting(exportSection)
-			.setName(settingsBackupT('settingsBackupIncludeTables'))
-			.setDesc(settingsBackupT('settingsBackupIncludeTablesDesc'))
-			.addToggle(toggle => toggle.setValue(false).onChange(value => {
-				includeTablePresetFiles = value;
-			}));
 		new Setting(exportSection)
 			.setName(settingsBackupT('settingsBackupIncludeExternalCalendars'))
 			.setDesc(settingsBackupT('settingsBackupIncludeExternalCalendarsDesc'))
@@ -3238,7 +3231,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 					try {
 						try {
 							const artifact = await integration.exportBackup({
-								includeTablePresetFiles,
 								includeExternalCalendarUrls,
 							});
 							downloadSettingsBackupArtifact(containerEl.ownerDocument, artifact);

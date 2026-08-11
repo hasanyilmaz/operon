@@ -27,9 +27,5 @@
     "kanban": { "codecVersion": 1, "data": { "kanbanPresets": [], "kanbanDefaultPresetId": null } },
     "preset-favorites": { "codecVersion": 1, "data": { "presetFavorites": { "calendar": [], "kanban": [], "filter": [], "table": [] } } },
     "table-global": { "codecVersion": 1, "data": { "tableEmbedVisibleRows": 10, "tableShowLineNumbers": false, "tableShowTaskIcon": true, "tableShowTaskTypeIcon": true } }
-  },
-  "tableInventory": {
-    "mode": "excluded",
-    "items": []
   }
 }

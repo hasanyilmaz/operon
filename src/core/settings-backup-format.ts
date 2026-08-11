@@ -38,7 +38,7 @@ export interface OperonSettingsBackupSourceV1 {
 
 export interface OperonSettingsBackupScopeV1 {
 	configuration: 'portable';
-	tableFiles: 'excluded' | 'included';
+	tableFiles: 'excluded';
 	externalCalendarUrls: 'excluded' | 'included';
 	developerApiGrants: 'excluded';
 	mobileIdentity: 'excluded';
@@ -56,25 +56,11 @@ export type OperonSettingsBackupGroupsV1 =
 	Partial<Record<OperonSettingsBackupGroupNameV1, OperonSettingsBackupVersionedGroupV1>>
 	& Record<OperonSettingsBackupFoundationalGroupNameV1, OperonSettingsBackupVersionedGroupV1>;
 
-export interface OperonSettingsBackupTableInventoryItemV1 {
-	id: string;
-	originalPath: string;
-	sha256: string | null;
-}
-
-export interface OperonSettingsBackupTableInventoryV1 {
-	mode: 'excluded' | 'included';
-	items: OperonSettingsBackupTableInventoryItemV1[];
-	/** Included bundles use this to bind the source default to the exact ordered inventory. */
-	defaultPresetId?: string | null;
-}
-
 export interface OperonSettingsBackupBodyV1 {
 	createdAt: string;
 	source: OperonSettingsBackupSourceV1;
 	scope: OperonSettingsBackupScopeV1;
 	groups: OperonSettingsBackupGroupsV1;
-	tableInventory?: OperonSettingsBackupTableInventoryV1;
 }
 
 export interface OperonSettingsBackupIntegrityV1 {
@@ -400,9 +386,8 @@ function parseBody(
 	const object = inspectObject(
 		raw,
 		'$.body',
-		['createdAt', 'source', 'scope', 'groups', 'tableInventory'],
+		['createdAt', 'source', 'scope', 'groups'],
 		diagnostics,
-		['tableInventory'],
 	);
 	if (!object) return null;
 	const createdAt = readString(object, 'createdAt', '$.body', diagnostics);
@@ -412,18 +397,14 @@ function parseBody(
 	const source = parseSource(object.source, diagnostics);
 	const scope = parseScope(object.scope, diagnostics);
 	const groups = parseGroups(object.groups, diagnostics);
-	const tableInventory = object.tableInventory === undefined
-		? undefined
-		: parseTableInventory(object.tableInventory, diagnostics);
-	if (!createdAt || !source || !scope || !groups || (object.tableInventory !== undefined && !tableInventory)) return null;
-	validateScopeCoherence(scope, groups, tableInventory ?? undefined, diagnostics);
-	return { createdAt, source, scope, groups, ...(tableInventory ? { tableInventory } : {}) };
+	if (!createdAt || !source || !scope || !groups) return null;
+	validateScopeCoherence(scope, groups, diagnostics);
+	return { createdAt, source, scope, groups };
 }
 
 function validateScopeCoherence(
 	scope: OperonSettingsBackupScopeV1,
 	groups: OperonSettingsBackupGroupsV1,
-	tableInventory: OperonSettingsBackupTableInventoryV1 | undefined,
 	diagnostics: OperonSettingsBackupDiagnostic[],
 ): void {
 	const externalCalendars = groups['external-calendars'];
@@ -432,12 +413,6 @@ function validateScopeCoherence(
 	}
 	if (scope.externalCalendarUrls === 'excluded' && externalCalendars) {
 		diagnostics.push(diagnostic('$.body.groups.external-calendars', 'value', 'External Calendar URLs are excluded but the sensitive group is present.'));
-	}
-	if (scope.tableFiles === 'included' && tableInventory?.mode !== 'included') {
-		diagnostics.push(diagnostic('$.body.tableInventory', 'required', 'Included Table files require an included Table inventory.'));
-	}
-	if (scope.tableFiles === 'excluded' && tableInventory?.mode === 'included') {
-		diagnostics.push(diagnostic('$.body.tableInventory.mode', 'value', 'Table inventory cannot be included when Table files are excluded.'));
 	}
 }
 
@@ -472,7 +447,7 @@ function parseScope(
 	const object = inspectObject(raw, path, keys, diagnostics);
 	if (!object) return null;
 	const configuration = readLiteral(object, 'configuration', ['portable'], path, diagnostics);
-	const tableFiles = readLiteral(object, 'tableFiles', ['excluded', 'included'], path, diagnostics);
+	const tableFiles = readLiteral(object, 'tableFiles', ['excluded'], path, diagnostics);
 	const externalCalendarUrls = readLiteral(object, 'externalCalendarUrls', ['excluded', 'included'], path, diagnostics);
 	const developerApiGrants = readLiteral(object, 'developerApiGrants', ['excluded'], path, diagnostics);
 	const mobileIdentity = readLiteral(object, 'mobileIdentity', ['excluded'], path, diagnostics);
@@ -533,54 +508,6 @@ function parseGroups(
 	return OPERON_SETTINGS_BACKUP_FOUNDATIONAL_GROUP_NAMES.every(name => !!groups[name])
 		? groups as OperonSettingsBackupGroupsV1
 		: null;
-}
-
-function parseTableInventory(
-	raw: unknown,
-	diagnostics: OperonSettingsBackupDiagnostic[],
-): OperonSettingsBackupTableInventoryV1 | null {
-	const path = '$.body.tableInventory';
-	const object = inspectObject(raw, path, ['mode', 'items', 'defaultPresetId'], diagnostics, ['defaultPresetId']);
-	if (!object) return null;
-	const mode = readLiteral(object, 'mode', ['excluded', 'included'], path, diagnostics);
-	if (!Array.isArray(object.items)) {
-		diagnostics.push(diagnostic(`${path}.items`, 'type', 'items must be an array.'));
-		return null;
-	}
-	const items: OperonSettingsBackupTableInventoryItemV1[] = [];
-	for (let index = 0; index < object.items.length; index++) {
-		const itemPath = `${path}.items[${index}]`;
-		const item = inspectObject(object.items[index], itemPath, ['id', 'originalPath', 'sha256'], diagnostics);
-		if (!item) continue;
-		const id = readString(item, 'id', itemPath, diagnostics);
-		const originalPath = readString(item, 'originalPath', itemPath, diagnostics);
-		let sha256: string | null = null;
-		if (item.sha256 !== null) {
-			sha256 = readString(item, 'sha256', itemPath, diagnostics);
-			if (sha256 && !isSha256(sha256)) {
-				diagnostics.push(diagnostic(`${itemPath}.sha256`, 'value', 'sha256 must be 64 lowercase hexadecimal characters.'));
-			}
-		}
-		if (id && originalPath && (sha256 === null || isSha256(sha256))) items.push({ id, originalPath, sha256 });
-	}
-	let defaultPresetId: string | null | undefined;
-	if (object.defaultPresetId === null) defaultPresetId = null;
-	else if (object.defaultPresetId !== undefined) {
-		defaultPresetId = readString(object, 'defaultPresetId', path, diagnostics);
-	}
-	if (defaultPresetId && !items.some(item => item.id === defaultPresetId)) {
-		diagnostics.push(diagnostic(
-			`${path}.defaultPresetId`,
-			'value',
-			'defaultPresetId must reference an item in the Table inventory.',
-		));
-	}
-	if (!mode || items.length !== object.items.length || (object.defaultPresetId !== undefined && defaultPresetId === undefined)) return null;
-	return {
-		mode,
-		items,
-		...(defaultPresetId !== undefined ? { defaultPresetId } : {}),
-	};
 }
 
 function parseIntegrity(

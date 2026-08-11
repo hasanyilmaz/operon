@@ -6,28 +6,25 @@ import {
 	isSettingsBackupFileSizeAllowed,
 	SettingsBackupFileAdmissionError,
 	SETTINGS_BACKUP_JSON_MAX_BYTES,
-	SETTINGS_BACKUP_ZIP_MAX_BYTES,
 } from '../src/ui/settings-backup-file-admission';
 
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
 
-test('file admission identifies JSON and ZIP from bytes, not extension or MIME', () => {
+test('file admission identifies JSON from bytes and rejects ZIP magic', () => {
 	assert.equal(detectSettingsBackupFileKind(encode('  {"format":"operon-settings"}')), 'json');
-	assert.equal(detectSettingsBackupFileKind(new Uint8Array([0x50, 0x4b, 0x03, 0x04])), 'zip');
-	assert.equal(detectSettingsBackupFileKind(new Uint8Array([0x50, 0x4b, 0x05, 0x06])), 'zip');
+	assert.equal(detectSettingsBackupFileKind(new Uint8Array([0x50, 0x4b, 0x03, 0x04])), null);
+	assert.equal(detectSettingsBackupFileKind(new Uint8Array([0x50, 0x4b, 0x05, 0x06])), null);
 	assert.equal(detectSettingsBackupFileKind(encode('["not-an-operon-backup"]')), null);
 });
 
-test('file admission enforces exact JSON and ZIP byte limits before full read', () => {
+test('file admission enforces the exact JSON byte limit before full read', () => {
 	assert.equal(isSettingsBackupFileSizeAllowed('json', SETTINGS_BACKUP_JSON_MAX_BYTES), true);
 	assert.equal(isSettingsBackupFileSizeAllowed('json', SETTINGS_BACKUP_JSON_MAX_BYTES + 1), false);
-	assert.equal(isSettingsBackupFileSizeAllowed('zip', SETTINGS_BACKUP_ZIP_MAX_BYTES), true);
-	assert.equal(isSettingsBackupFileSizeAllowed('zip', SETTINGS_BACKUP_ZIP_MAX_BYTES + 1), false);
 	assert.equal(isSettingsBackupFileSizeAllowed('json', -1), false);
 });
 
 test('file admission failures use stable typed codes without provider details', () => {
-	for (const code of ['unsupported-content', 'json-size-limit', 'zip-size-limit', 'provider-read-failed'] as const) {
+	for (const code of ['unsupported-content', 'json-size-limit', 'provider-read-failed'] as const) {
 		const error = new SettingsBackupFileAdmissionError(code);
 		assert.equal(error.code, code);
 		assert.equal(error.message, code);
@@ -37,7 +34,7 @@ test('file admission failures use stable typed codes without provider details', 
 test('picker is transient, owner-document scoped, reset, and detached in finally', () => {
 	const source = readFileSync('src/ui/settings-backup-ui.ts', 'utf8');
 	assert.match(source, /ownerDocument\.win\.createEl\('input'\)/u);
-	assert.match(source, /input\.accept = '\.json,\.zip,application\/json,application\/zip'/u);
+	assert.match(source, /input\.accept = '\.json,application\/json'/u);
 	assert.match(source, /finally \{\s*input\.value = '';\s*input\.remove\(\);/u);
 	assert.doesNotMatch(source, /electron|showOpenDialog|require\(['"]fs/u);
 });
@@ -49,12 +46,11 @@ test('download uses the owner window Blob and revokes its object URL', () => {
 	assert.match(source, /ownerWindow\.URL\.revokeObjectURL/u);
 });
 
-test('Settings tab keeps backup options transient and defaults both opt-ins off', () => {
+test('Settings tab keeps the sensitive export option transient and default-off', () => {
 	const source = readFileSync('src/ui/settings-tab.ts', 'utf8');
-	assert.match(source, /let includeTablePresetFiles = false;/u);
 	assert.match(source, /let includeExternalCalendarUrls = false;/u);
 	assert.match(source, /id: 'coreBackupRestore', groupId: 'core'/u);
-	assert.doesNotMatch(source, /this\.settings\.includeTablePresetFiles/u);
+	assert.doesNotMatch(source, /includeTablePresetFiles|settingsBackupIncludeTables/u);
 });
 
 test('restore flow uses one responsive Obsidian modal with keyboard focus support', () => {
@@ -70,7 +66,6 @@ test('initial decisions are re-preflighted and every mutable decision invalidate
 	assert.match(source, /if \(this\.seedDefaultDecisions\(preview\)\) \{\s*await this\.refreshPreview\(\);/u);
 	assert.match(source, /beginDecisionChange\(`group:/u);
 	assert.match(source, /beginDecisionChange\(`vault:/u);
-	assert.match(source, /beginDecisionChange\(`table:/u);
 	assert.match(source, /this\.acknowledged = false;/u);
 	assert.match(source, /this\.preview\.planId !== preview\.planId\) this\.acknowledged = false/u);
 });
@@ -115,13 +110,4 @@ test('restore errors are redacted and successful receipts retain conditional rec
 	assert.match(source, /private renderError[\s\S]*this\.focusFirstControl\(\);/u);
 	assert.doesNotMatch(source, /text: error instanceof Error \? error\.message/u);
 	assert.match(source, /result\.recoveryRequired \|\| result\.undoTokenId !== null/u);
-});
-
-test('production wiring exposes post-commit registry and manual-cleanup failures truthfully', () => {
-	const source = readFileSync('main.ts', 'utf8');
-	assert.match(source, /const recoveryRequired = !registrySettled \|\| runtime\.status === 'degraded'/u);
-	assert.match(source, /applied\.receipt\.recovery\.mode === 'manual-backup-required'/u);
-	assert.match(source, /if \(manualRecoveryRequired\) \{[\s\S]*receiptId: applied\.receipt\.receiptId,[\s\S]*runtimeRetryRequired: false,[\s\S]*undoAvailable: false/u);
-	assert.match(source, /if \(undone\.status === 'manual-recovery-required'\)[\s\S]*settingsBackupTableResourceSessions\.delete/u);
-	assert.match(source, /runtimeRetryRequired: false, undoAvailable: false/u);
 });

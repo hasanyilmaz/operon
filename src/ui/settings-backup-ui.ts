@@ -10,7 +10,6 @@ import {
 
 export {
 	SETTINGS_BACKUP_JSON_MAX_BYTES,
-	SETTINGS_BACKUP_ZIP_MAX_BYTES,
 	SettingsBackupFileAdmissionError,
 	type SettingsBackupFileAdmissionErrorCode,
 	type SettingsBackupFileKind,
@@ -20,11 +19,9 @@ export function settingsBackupT(key: string, vars?: Record<string, string>): str
 }
 
 export type SettingsBackupVaultReferenceDecision = 'apply-source' | 'preserve-target';
-export type SettingsBackupTableConflictDecision = 'skip' | 'cancel';
 export type SettingsBackupRecoveryAction = 'keep' | 'retry-runtime-refresh' | 'undo';
 
 export interface SettingsBackupExportOptions {
-	includeTablePresetFiles: boolean;
 	includeExternalCalendarUrls: boolean;
 }
 
@@ -43,7 +40,6 @@ export interface SettingsBackupSelectedFile {
 export interface SettingsBackupPreviewDecisions {
 	selectedGroups?: readonly string[];
 	vaultReferences?: Readonly<Record<string, SettingsBackupVaultReferenceDecision>>;
-	tableConflicts?: Readonly<Record<string, SettingsBackupTableConflictDecision>>;
 }
 
 export interface SettingsBackupPreviewGroup {
@@ -73,15 +69,6 @@ export interface SettingsBackupPreviewVaultReference {
 	required: boolean;
 }
 
-export interface SettingsBackupPreviewTableResource {
-	id: string;
-	path: string;
-	action: 'reuse' | 'create' | 'conflict' | 'skip';
-	conflictId: string | null;
-	message: string | null;
-	decision: SettingsBackupTableConflictDecision | null;
-}
-
 export interface SettingsBackupRestorePreview {
 	kind: SettingsBackupFileKind;
 	classification: 'ready' | 'decision-required' | 'blocked' | 'canceled';
@@ -89,7 +76,6 @@ export interface SettingsBackupRestorePreview {
 	planId: string | null;
 	groups: readonly SettingsBackupPreviewGroup[];
 	vaultReferences: readonly SettingsBackupPreviewVaultReference[];
-	tableResources: readonly SettingsBackupPreviewTableResource[];
 	diagnostics: readonly string[];
 }
 
@@ -125,7 +111,7 @@ export interface SettingsBackupUiIntegration {
 export async function chooseSettingsBackupFile(ownerDocument: Document): Promise<SettingsBackupSelectedFile | null> {
 	const input = ownerDocument.win.createEl('input');
 	input.type = 'file';
-	input.accept = '.json,.zip,application/json,application/zip';
+	input.accept = '.json,application/json';
 	input.hidden = true;
 	ownerDocument.body.appendChild(input);
 	try {
@@ -154,7 +140,7 @@ export async function chooseSettingsBackupFile(ownerDocument: Document): Promise
 			throw new SettingsBackupFileAdmissionError('provider-read-failed');
 		}
 		if (!isSettingsBackupFileSizeAllowed(kind, file.size)) {
-			throw new SettingsBackupFileAdmissionError(kind === 'zip' ? 'zip-size-limit' : 'json-size-limit');
+			throw new SettingsBackupFileAdmissionError('json-size-limit');
 		}
 		try {
 			return { fileName: file.name, kind, bytes: new Uint8Array(await file.arrayBuffer()) };
@@ -309,7 +295,6 @@ export class SettingsBackupRestoreModal extends Modal {
 		});
 		this.renderGroups(preview);
 		this.renderVaultReferences(preview);
-		this.renderTableResources(preview);
 		for (const diagnostic of preview.diagnostics) {
 			this.contentEl.createEl('p', { text: diagnostic, cls: 'operon-settings-muted-block' });
 		}
@@ -386,38 +371,6 @@ export class SettingsBackupRestoreModal extends Modal {
 						void this.refreshPreview();
 					});
 				});
-		}
-	}
-
-	private renderTableResources(preview: SettingsBackupRestorePreview): void {
-		if (preview.tableResources.length === 0) return;
-		this.contentEl.createEl('h3', { text: settingsBackupT('settingsBackupTableResources') });
-		for (const resource of preview.tableResources) {
-			const setting = new Setting(this.contentEl)
-				.setName(resource.path)
-				.setDesc(resource.message ?? settingsBackupT(resource.action === 'reuse'
-					? 'settingsBackupTableReuse'
-					: resource.action === 'create'
-						? 'settingsBackupTableCreate'
-						: resource.action === 'skip'
-							? 'settingsBackupTableSkip'
-							: 'settingsBackupTableConflict'));
-			if (resource.action !== 'conflict' || !resource.conflictId) continue;
-			setting.addDropdown(dropdown => {
-				dropdown.selectEl.dataset.operonSettingsBackupControl = `table:${resource.conflictId}`;
-				dropdown.addOption('', settingsBackupT('settingsBackupChooseDecision'))
-				.addOption('skip', settingsBackupT('settingsBackupSkipTable'))
-				.addOption('cancel', settingsBackupT('settingsBackupCancelRestore'))
-				.setValue(resource.decision ?? this.decisions.tableConflicts?.[resource.conflictId as string] ?? '')
-				.onChange(value => {
-					this.beginDecisionChange(`table:${resource.conflictId as string}`);
-					const decisions = { ...(this.decisions.tableConflicts ?? {}) };
-					if (value === 'skip' || value === 'cancel') decisions[resource.conflictId as string] = value;
-					else delete decisions[resource.conflictId as string];
-					this.decisions = { ...this.decisions, tableConflicts: decisions };
-					void this.refreshPreview();
-				});
-			});
 		}
 	}
 
@@ -540,6 +493,5 @@ function settingsBackupFileAdmissionMessage(error: unknown): string {
 	if (!(error instanceof SettingsBackupFileAdmissionError)) return settingsBackupT('settingsBackupOperationFailed');
 	if (error.code === 'unsupported-content') return settingsBackupT('settingsBackupUnsupportedFile');
 	if (error.code === 'json-size-limit') return settingsBackupT('settingsBackupJsonTooLarge');
-	if (error.code === 'zip-size-limit') return settingsBackupT('settingsBackupZipTooLarge');
 	return settingsBackupT('settingsBackupOperationFailed');
 }

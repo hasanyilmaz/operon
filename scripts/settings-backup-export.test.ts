@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import type { App } from 'obsidian';
-import { exportOperonSettingsBackupJsonV1 } from '../src/core/settings-backup-export';
+import {
+	exportOperonSettingsBackupJsonV1,
+	suggestOperonSettingsBackupFileNameV1,
+} from '../src/core/settings-backup-export';
 import { parseOperonSettingsBackupV1, type OperonSettingsBackupBodyV1 } from '../src/core/settings-backup-format';
 import { validateOperonSettingsBackupGroupsV1 } from '../src/core/settings-backup-group-validation';
 import {
@@ -15,7 +18,7 @@ import { buildOperonStoragePaths } from '../src/storage/operon-storage-paths';
 import { OperonStorage } from '../src/storage/operon-storage';
 import { DEFAULT_SETTINGS, migrateSettings, type OperonSettings } from '../src/types/settings';
 
-const CREATED_AT = '2026-08-10T16:30:00.000Z';
+const CREATED_AT = '2026-08-11T09:30:45.000Z';
 const SECRET_URL = 'https://example.invalid/private-token.ics';
 const SECRET_VAULT_ID = 'SECRET_VAULT_ID';
 const SECRET_PINNED_ID = 'SECRET_PINNED_ID';
@@ -106,7 +109,7 @@ test('export is deterministic, parseable and does not mutate its committed snaps
 	if (!first.ok || !second.ok) return;
 	assert.equal(first.json, second.json);
 	assert.equal(first.bodyChecksum, second.bodyChecksum);
-	assert.equal(first.suggestedFileName, 'operon-settings-backup-20260810T163000Z.json');
+	assert.equal(first.suggestedFileName, 'operon-settings-backup-20260811T093045Z.json');
 	assert.equal(parseOperonSettingsBackupV1(first.json).ok, true);
 	assert.equal(first.backup.body.groups['external-calendars'], undefined);
 	const decoded = validateOperonSettingsBackupGroupsV1(first.backup.body.groups);
@@ -121,6 +124,14 @@ test('export is deterministic, parseable and does not mutate its committed snaps
 	assert.equal(first.report.recordCounts.customKeys, 1);
 	assert.equal(first.report.recordCounts.filters, 1);
 	assert.equal(first.report.recordCounts.reservedFiltersOmitted, 1);
+});
+
+test('export filename helper uses the exact UTC stamp and a safe fallback', () => {
+	assert.equal(
+		suggestOperonSettingsBackupFileNameV1('2026-08-11T09:30:45.000Z'),
+		'operon-settings-backup-20260811T093045Z.json',
+	);
+	assert.equal(suggestOperonSettingsBackupFileNameV1('not-a-timestamp'), 'operon-settings-backup.json');
 });
 
 test('external calendar URLs are absent by default and included only by explicit opt-in', () => {
@@ -148,7 +159,7 @@ test('external calendar URLs are absent by default and included only by explicit
 	assert.equal(included.backup.body.groups['external-calendars']?.codecVersion, 1);
 });
 
-test('Table files remain advisory excluded inventory and never block configuration export', () => {
+test('Table file authority is omitted and never blocks configuration export', () => {
 	const settings = representativeSettings();
 	settings.tablePresetFileBindings.push(
 		{ id: 'table-first', path: 'tables/first.table' },
@@ -157,16 +168,31 @@ test('Table files remain advisory excluded inventory and never block configurati
 	const result = exportOperonSettingsBackupJsonV1(exportInput(settings));
 	assert.equal(result.ok, true);
 	if (!result.ok) return;
-	assert.deepEqual(result.backup.body.tableInventory?.items.map(item => item.id), [
-		'table-second', 'table-first', 'table-first', 'unsafe',
-	]);
-	assert.ok(result.backup.body.tableInventory?.items.every(item => item.sha256 === null));
-	assert.equal(result.report.tableFiles.contentCount, 0);
-	assert.equal(result.report.tableFiles.duplicateIdCount, 1);
-	assert.equal(result.report.tableFiles.duplicatePathCount, 1);
-	assert.equal(result.report.tableFiles.unsafeIdCount, 0);
-	assert.equal(result.report.tableFiles.nonPortablePathCount, 1);
+	assert.equal(Object.prototype.hasOwnProperty.call(result.backup.body, 'tableInventory'), false);
+	assert.equal(Object.prototype.hasOwnProperty.call(result.report, 'tableFiles'), false);
 	assert.equal(result.json.includes('tablePresets'), false);
+	assert.equal(result.json.includes('tablePresetFileBindings'), false);
+	assert.equal(result.json.includes('tablePresetOrderIds'), false);
+	assert.equal(result.json.includes('tableDefaultPresetId'), false);
+	assert.deepEqual(
+		result.backup.body.groups['preset-favorites']?.data,
+		{
+			presetFavorites: {
+				calendar: ['calendar-client'],
+				filter: ['filter-client'],
+				kanban: ['kanban-client'],
+				table: [],
+			},
+		},
+	);
+
+	const malformedAuthority = representativeSettings() as unknown as Record<string, unknown>;
+	malformedAuthority.tablePresetFileBindings = null;
+	const malformedResult = exportOperonSettingsBackupJsonV1(
+		exportInput(malformedAuthority as unknown as OperonSettings),
+	);
+	assert.equal(malformedResult.ok, true);
+	if (malformedResult.ok) assert.equal(malformedResult.json.includes('tablePresetFileBindings'), false);
 });
 
 test('validation failures never return a partial JSON artifact', () => {
@@ -192,13 +218,6 @@ test('validation failures never return a partial JSON artifact', () => {
 	assert.equal(oversizedResult.ok, false);
 	assert.equal(oversizedResult.json, null);
 
-	const malformedTableCollections = representativeSettings() as unknown as Record<string, unknown>;
-	malformedTableCollections.tablePresetFileBindings = null;
-	const malformedResult = exportOperonSettingsBackupJsonV1(
-		exportInput(malformedTableCollections as unknown as OperonSettings),
-	);
-	assert.equal(malformedResult.ok, false);
-	assert.equal(malformedResult.json, null);
 });
 
 class MemoryAdapter {

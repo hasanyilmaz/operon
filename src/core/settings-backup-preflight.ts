@@ -384,7 +384,6 @@ function preflightWithMigrations(
 		}
 
 		const tableReferenceSummary = summarizeTableReferences(
-			backup.body.tableInventory?.items ?? [],
 			validation.payloads['preset-favorites']?.presetFavorites.table ?? [],
 			targetSettings,
 		);
@@ -394,7 +393,7 @@ function preflightWithMigrations(
 				kind: 'table-reference',
 				severity: 'warning',
 				group: 'preset-favorites',
-				path: '$.body.tableInventory',
+				path: '$.body.groups.preset-favorites.data.presetFavorites.table',
 				message: `${tableReferenceSummary.unmatched} source Table reference(s) do not match the target Table registry and remain advisory.`,
 				resolved: true,
 				resolution: null,
@@ -857,12 +856,11 @@ function summarizeRows(
 }
 
 function summarizeTableReferences(
-	items: readonly { id: string }[],
 	favoriteIds: readonly string[],
 	target: OperonSettings,
 ): { matched: number; unmatched: number } {
 	const targetIds = new Set(target.tablePresetOrderIds);
-	const sourceIds = new Set([...items.map(item => item.id), ...favoriteIds]);
+	const sourceIds = new Set(favoriteIds);
 	let matched = 0;
 	let unmatched = 0;
 	for (const id of sourceIds) targetIds.has(id) ? matched += 1 : unmatched += 1;

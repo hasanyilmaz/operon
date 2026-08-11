@@ -21,15 +21,7 @@ import {
 	type OperonSettingsBackupBodyV1,
 	type OperonSettingsBackupCompatibilitySupport,
 } from '../src/core/settings-backup-format';
-import {
-	OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_FORMAT,
-	OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_VERSION,
-	validateOperonSettingsBackupTableManifestV1,
-} from '../src/core/settings-backup-table-manifest';
 import { validateOperonSettingsBackupGroupsV1 } from '../src/core/settings-backup-group-validation';
-import { sha256HexV1 } from '../src/agent-runtime/contracts/v1/canonical';
-import { serializeOperonTableFile } from '../src/storage/table-file';
-import { createDefaultTablePreset } from '../src/types/table';
 import { CURRENT_SETTINGS_VERSION, DEFAULT_SETTINGS } from '../src/types/settings';
 
 const FIXTURE_DIR = path.resolve('scripts/settings-backup-fixtures');
@@ -171,9 +163,18 @@ test('scope declarations authoritatively match sensitive and external-resource g
 	includedWithoutSensitiveGroup.scope.externalCalendarUrls = 'included';
 	assert.throws(() => serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(includedWithoutSensitiveGroup)));
 
-	const includedTablesWithoutInventory = cloneBody(readBodyFixture('minimal-body.json'));
-	includedTablesWithoutInventory.scope.tableFiles = 'included';
-	assert.throws(() => serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(includedTablesWithoutInventory)));
+	const includedTables = structuredClone(readBodyFixture('minimal-body.json')) as unknown as Record<string, unknown>;
+	(includedTables.scope as Record<string, unknown>).tableFiles = 'included';
+	assert.equal(parseOperonSettingsBackupV1(JSON.stringify({
+		...buildOperonSettingsBackupV1(readBodyFixture('minimal-body.json')),
+		body: includedTables,
+	})).classification, 'invalid');
+
+	const legacyInventory = structuredClone(readBodyFixture('minimal-body.json')) as unknown as Record<string, unknown>;
+	legacyInventory.tableInventory = { mode: 'excluded', items: [] };
+	assert.throws(() => serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(
+		legacyInventory as unknown as OperonSettingsBackupBodyV1,
+	)));
 });
 
 test('compatibility registry is exhaustive and preserves approved portability boundaries', () => {
@@ -287,85 +288,4 @@ test('group codecs reject duplicates, reserved filters, unknown fields and dangl
 	result = validateOperonSettingsBackupGroupsV1(missingFavoriteAuthority.groups);
 	assert.equal(result.ok, false);
 	assert.ok(result.diagnostics.some(item => item.code === 'required' && item.message.includes('Favorite references')));
-});
-
-test('logical Table manifest verifies paths, IDs, versions, bytes and hashes', () => {
-	const preset = { ...createDefaultTablePreset(), id: 'table-client', name: 'Client table' };
-	const tableText = serializeOperonTableFile(preset);
-	const tableSha256 = sha256HexV1(tableText);
-	const settingsBody = cloneBody(readBodyFixture('minimal-body.json'));
-	settingsBody.scope.tableFiles = 'included';
-	settingsBody.tableInventory = {
-		mode: 'included',
-		items: [{ id: preset.id, originalPath: 'Tables/Client.table', sha256: tableSha256 }],
-	};
-	const settingsText = serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(settingsBody));
-	const encoder = new TextEncoder();
-	const settingsBytes = encoder.encode(settingsText);
-	const tableBytes = encoder.encode(tableText);
-	const manifest = {
-		format: OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_FORMAT,
-		manifestVersion: OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_VERSION,
-		settings: { path: 'settings.json', sha256: sha256HexV1(settingsText), bytes: settingsBytes.byteLength },
-		tableFiles: [{
-			id: preset.id,
-			originalPath: 'Tables/Client.table',
-			path: 'tables/001-client.table',
-			formatVersion: 2,
-			sha256: tableSha256,
-			bytes: tableBytes.byteLength,
-		}],
-	};
-	const entries = [
-		{ path: 'settings.json', bytes: settingsBytes },
-		{ path: 'tables/001-client.table', bytes: tableBytes },
-	];
-	assert.equal(validateOperonSettingsBackupTableManifestV1(manifest, entries).ok, true);
-
-	const unsafe = structuredClone(manifest);
-	unsafe.tableFiles[0].path = 'tables/../Client.table';
-	assert.equal(validateOperonSettingsBackupTableManifestV1(unsafe, entries).ok, false);
-	const wrongHash = structuredClone(manifest);
-	wrongHash.tableFiles[0].sha256 = '0'.repeat(64);
-	assert.equal(validateOperonSettingsBackupTableManifestV1(wrongHash, entries).ok, false);
-	const unsupported = structuredClone(manifest);
-	unsupported.tableFiles[0].formatVersion = 99;
-	assert.equal(validateOperonSettingsBackupTableManifestV1(unsupported, entries).ok, false);
-	const duplicate = structuredClone(manifest);
-	duplicate.tableFiles.push({ ...duplicate.tableFiles[0], path: 'tables/002-client.table' });
-	assert.equal(validateOperonSettingsBackupTableManifestV1(duplicate, entries).ok, false);
-
-	const caseCollision = structuredClone(manifest);
-	caseCollision.tableFiles.push({
-		...caseCollision.tableFiles[0],
-		id: 'table-client-copy',
-		originalPath: 'tables/client.table',
-		path: 'tables/002-client.table',
-	});
-	assert.equal(validateOperonSettingsBackupTableManifestV1(caseCollision, entries).ok, false);
-
-	const drivePath = structuredClone(manifest);
-	drivePath.tableFiles[0].originalPath = 'C:/Tables/Client.table';
-	assert.equal(validateOperonSettingsBackupTableManifestV1(drivePath, entries).ok, false);
-	for (const invalidWindowsPath of ['Tables/CON.table', 'Tables/Client .table', 'Tables/Client:Private.table', 'Tables/Client\u0001.table']) {
-		const windowsInvalid = structuredClone(manifest);
-		windowsInvalid.tableFiles[0].originalPath = invalidWindowsPath;
-		assert.equal(validateOperonSettingsBackupTableManifestV1(windowsInvalid, entries).ok, false, invalidWindowsPath);
-	}
-
-	const inventoryMismatchBody = cloneBody(settingsBody);
-	assert.equal(inventoryMismatchBody.tableInventory?.mode, 'included');
-	if (inventoryMismatchBody.tableInventory?.mode === 'included') inventoryMismatchBody.tableInventory.items[0].sha256 = 'f'.repeat(64);
-	const inventoryMismatchText = serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(inventoryMismatchBody));
-	const inventoryMismatchEntries = [
-		{ path: 'settings.json', bytes: encoder.encode(inventoryMismatchText) },
-		entries[1],
-	];
-	const inventoryMismatchManifest = structuredClone(manifest);
-	inventoryMismatchManifest.settings = {
-		path: 'settings.json',
-		sha256: sha256HexV1(inventoryMismatchText),
-		bytes: encoder.encode(inventoryMismatchText).byteLength,
-	};
-	assert.equal(validateOperonSettingsBackupTableManifestV1(inventoryMismatchManifest, inventoryMismatchEntries).ok, false);
 });

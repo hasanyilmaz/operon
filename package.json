@@ -104,11 +104,6 @@
 		"settings-backup:export:test": "node scripts/run-settings-backup-export-tests.mjs",
 		"settings-backup:preflight:test": "node scripts/run-settings-backup-preflight-tests.mjs",
 		"settings-backup:apply:test": "node scripts/run-settings-backup-apply-tests.mjs",
-		"settings-backup:archive:test": "node scripts/run-settings-backup-archive-tests.mjs",
-		"settings-backup:table-resources:test": "node scripts/run-settings-backup-table-resource-tests.mjs",
-		"settings-backup:table-resource-apply:test": "node scripts/run-settings-backup-table-resource-apply-tests.mjs",
-		"settings-backup:table-bundle-restore:test": "node scripts/run-settings-backup-table-bundle-restore-tests.mjs",
-		"settings-backup:production-recovery:test": "node scripts/run-settings-backup-production-recovery-tests.mjs",
 		"settings-backup:ui:test": "node scripts/run-settings-backup-ui-tests.mjs",
 		"date-nlp:it:test": "node scripts/run-date-nlp-italian-tests.mjs",
 		"build": "npm run i18n:check && npm run reminder:sounds:check && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && npm run bundle:size && npm run agent-runtime:bundle:guard",
@@ -141,7 +136,6 @@
 		"@codemirror/language": "^6.12.3",
 		"@codemirror/state": "6.5.0",
 		"@codemirror/view": "6.38.6",
-		"@zip.js/zip.js": "2.8.36",
 		"ical.js": "^2.2.1"
 	}
 }

@@ -4,7 +4,7 @@
   "files": {
     "future-format.json": "dc51adfa440c946e36ed574b0c31f85cd1446d1c2a7496ee48c591e8c1c07d50",
     "malformed.json": "bfe6bfa13fb4f3565ff28df1bfb6ccd9bd3735f282876119f1919430c2f4a8dd",
-    "minimal-body.json": "16529f36adcad5db80edfeb8036cd85eea83f8232041dede1054aef692b13821",
-    "representative-body.json": "9b20020741c3fe8862db6a94117bd34c9ca9eb11d708d0418dc35d2c103e3ecf"
+    "minimal-body.json": "346d680dc13d0cc7c2327341b3cf59f24830e1907b46268f919a97295aba4b6b",
+    "representative-body.json": "cb667882505eb1b01914e998e5f5ec2a929a3f02eae6eb705503c16fabc080c0"
   }
 }

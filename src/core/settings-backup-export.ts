@@ -1,6 +1,5 @@
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
 import type { OperonSettings } from '../types/settings';
-import { isSafeTablePresetId } from '../types/table';
 import {
 	ALL_OPERON_SETTINGS_BACKUP_KEYS,
 	SETTINGS_BACKUP_COMPATIBILITY_BY_KEY,
@@ -19,7 +18,6 @@ import {
 	type OperonSettingsBackupDiagnostic,
 	type OperonSettingsBackupGroupsV1,
 	type OperonSettingsBackupScopeV1,
-	type OperonSettingsBackupTableInventoryV1,
 	type OperonSettingsBackupV1,
 } from './settings-backup-format';
 import { validateOperonSettingsBackupGroupsV1 } from './settings-backup-group-validation';
@@ -62,15 +60,6 @@ export interface OperonSettingsBackupExportReportV1 {
 		includedUrlCount: number;
 		maskedUrlCount: number;
 	};
-	tableFiles: {
-		mode: 'excluded';
-		inventoryCount: number;
-		contentCount: 0;
-		duplicateIdCount: number;
-		duplicatePathCount: number;
-		unsafeIdCount: number;
-		nonPortablePathCount: number;
-	};
 }
 
 export type OperonSettingsBackupExportResultV1 =
@@ -106,11 +95,9 @@ export function exportOperonSettingsBackupJsonV1(
 	let report = createEmptyReport(includeExternalCalendars, input.canonicalWritesSuspended === true);
 
 	try {
-		const tableInventory = buildExcludedTableInventory(input.settings);
 		report = createReport(
 			input.settings,
 			includeExternalCalendars,
-			tableInventory,
 			input.canonicalWritesSuspended === true,
 		);
 		const groups = buildGroups(input.settings, includeExternalCalendars);
@@ -137,7 +124,6 @@ export function exportOperonSettingsBackupJsonV1(
 			},
 			scope,
 			groups,
-			tableInventory: tableInventory.inventory,
 		});
 		const json = serializeOperonSettingsBackupV1(backup);
 		const utf8Bytes = new TextEncoder().encode(json).byteLength;
@@ -156,7 +142,7 @@ export function exportOperonSettingsBackupJsonV1(
 			json,
 			utf8Bytes,
 			bodyChecksum: parsed.value.integrity.value,
-			suggestedFileName: suggestedFileName(input.createdAt),
+			suggestedFileName: suggestOperonSettingsBackupFileNameV1(input.createdAt),
 			report,
 			diagnostics: [],
 		};
@@ -208,7 +194,12 @@ function buildGroups(
 			calendarMobileThreeDaySourcePresetId: settings.calendarMobileThreeDaySourcePresetId,
 		}),
 		kanban: versioned({ kanbanPresets: settings.kanbanPresets, kanbanDefaultPresetId: settings.kanbanDefaultPresetId }),
-		'preset-favorites': versioned({ presetFavorites: settings.presetFavorites }),
+		'preset-favorites': versioned({
+			presetFavorites: {
+				...settings.presetFavorites,
+				table: [],
+			},
+		}),
 		'table-global': versioned({
 			tableEmbedVisibleRows: settings.tableEmbedVisibleRows,
 			tableShowLineNumbers: settings.tableShowLineNumbers,
@@ -275,52 +266,9 @@ function toBackupJsonValue(value: unknown, stack: Set<object>): JsonValue {
 	}
 }
 
-interface ExcludedTableInventoryResult {
-	inventory: OperonSettingsBackupTableInventoryV1;
-	duplicateIdCount: number;
-	duplicatePathCount: number;
-	unsafeIdCount: number;
-	nonPortablePathCount: number;
-}
-
-function buildExcludedTableInventory(settings: Readonly<OperonSettings>): ExcludedTableInventoryResult {
-	const order = new Map(settings.tablePresetOrderIds.map((id, index) => [id, index]));
-	const bindings = settings.tablePresetFileBindings.map(binding => ({ ...binding })).sort((left, right) => {
-		const leftOrder = order.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-		const rightOrder = order.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-		return leftOrder - rightOrder || compareCodeUnits(left.id, right.id) || compareCodeUnits(left.path, right.path);
-	});
-	const ids = new Set<string>();
-	const paths = new Set<string>();
-	let duplicateIdCount = 0;
-	let duplicatePathCount = 0;
-	let unsafeIdCount = 0;
-	let nonPortablePathCount = 0;
-	for (const binding of bindings) {
-		if (!isSafeTablePresetId(binding.id)) unsafeIdCount += 1;
-		if (!isSafePortableTablePath(binding.path)) nonPortablePathCount += 1;
-		if (ids.has(binding.id)) duplicateIdCount += 1;
-		const pathKey = portablePathKey(binding.path);
-		if (paths.has(pathKey)) duplicatePathCount += 1;
-		ids.add(binding.id);
-		paths.add(pathKey);
-	}
-	return {
-		inventory: {
-			mode: 'excluded',
-			items: bindings.map(binding => ({ id: binding.id, originalPath: binding.path, sha256: null })),
-		},
-		duplicateIdCount,
-		duplicatePathCount,
-		unsafeIdCount,
-		nonPortablePathCount,
-	};
-}
-
 function createReport(
 	settings: Readonly<OperonSettings>,
 	includeExternalCalendars: boolean,
-	tableInventory: ExcludedTableInventoryResult,
 	canonicalWritesSuspended: boolean,
 ): OperonSettingsBackupExportReportV1 {
 	const includedGroups = SETTINGS_BACKUP_GROUPS
@@ -348,8 +296,7 @@ function createReport(
 			reservedFiltersOmitted: settings.filterSets.filter(filter => RESERVED_DYNAMIC_FILTER_IDS.has(filter.id)).length,
 			calendarPresets: settings.calendarPresets.length,
 			kanbanPresets: settings.kanbanPresets.length,
-			presetFavorites: settings.presetFavorites.table.length
-				+ settings.presetFavorites.calendar.length
+			presetFavorites: settings.presetFavorites.calendar.length
 				+ settings.presetFavorites.kanban.length
 				+ settings.presetFavorites.filter.length,
 		},
@@ -359,15 +306,6 @@ function createReport(
 			sourceCount: settings.externalCalendars.length,
 			includedUrlCount: includeExternalCalendars ? settings.externalCalendars.length : 0,
 			maskedUrlCount: includeExternalCalendars ? 0 : settings.externalCalendars.length,
-		},
-		tableFiles: {
-			mode: 'excluded',
-			inventoryCount: tableInventory.inventory.items.length,
-			contentCount: 0,
-			duplicateIdCount: tableInventory.duplicateIdCount,
-			duplicatePathCount: tableInventory.duplicatePathCount,
-			unsafeIdCount: tableInventory.unsafeIdCount,
-			nonPortablePathCount: tableInventory.nonPortablePathCount,
 		},
 	};
 }
@@ -398,37 +336,10 @@ function createEmptyReport(
 			includedUrlCount: 0,
 			maskedUrlCount: 0,
 		},
-		tableFiles: {
-			mode: 'excluded',
-			inventoryCount: 0,
-			contentCount: 0,
-			duplicateIdCount: 0,
-			duplicatePathCount: 0,
-			unsafeIdCount: 0,
-			nonPortablePathCount: 0,
-		},
 	};
 }
 
-function isSafePortableTablePath(path: string): boolean {
-	if (!path.endsWith('.table') || path.startsWith('/') || /^[A-Za-z]:/u.test(path) || path.includes('\\')) return false;
-	const segments = path.split('/');
-	return segments.every(segment => {
-		if (!segment || segment === '.' || segment === '..') return false;
-		if ([...segment].some(character => character.charCodeAt(0) <= 0x1F)) return false;
-		if (/[<>:"|?*]/u.test(segment) || /[. ]$/u.test(segment)) return false;
-		const deviceStem = segment.split('.')[0]?.toLocaleLowerCase('en-US') ?? '';
-		return !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/u.test(deviceStem);
-	});
-}
-
-function portablePathKey(path: string): string {
-	return path.split('/').map(segment => (
-		segment.normalize('NFC').replace(/[. ]+$/u, '').toLocaleLowerCase('en-US')
-	)).join('/');
-}
-
-function suggestedFileName(createdAt: string): string {
+export function suggestOperonSettingsBackupFileNameV1(createdAt: string): string {
 	const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?Z$/u.exec(createdAt);
 	if (!match) return 'operon-settings-backup.json';
 	return `operon-settings-backup-${match[1]}${match[2]}${match[3]}T${match[4]}${match[5]}${match[6]}Z.json`;
@@ -456,10 +367,4 @@ function diagnostic(
 	message: string,
 ): OperonSettingsBackupDiagnostic {
 	return { path, code, severity: 'error', message };
-}
-
-function compareCodeUnits(left: string, right: string): number {
-	if (left < right) return -1;
-	if (left > right) return 1;
-	return 0;
 }

@@ -28,9 +28,5 @@
     "preset-favorites": { "codecVersion": 1, "data": { "presetFavorites": { "calendar": ["calendar-client"], "kanban": ["kanban-client"], "filter": ["filter-client"], "table": [] } } },
     "table-global": { "codecVersion": 1, "data": { "tableEmbedVisibleRows": 20, "tableShowLineNumbers": true, "tableShowTaskIcon": true, "tableShowTaskTypeIcon": false } },
     "external-calendars": { "codecVersion": 1, "data": { "externalCalendars": [{ "id": "private-calendar", "type": "ics", "name": "Private", "url": "https://example.invalid/private-token.ics", "color": "#336699", "enabled": true, "hideCreatedEvents": false, "refreshIntervalHours": 6 }] } }
-  },
-  "tableInventory": {
-    "mode": "excluded",
-    "items": [{ "id": "table-client", "originalPath": "Tables/Client.table", "sha256": null }]
   }
 }
