@@ -1890,6 +1890,29 @@ function checkAuditedRawStrings() {
 	assertNoMatch('src/ui/time-session-history-view.ts', /['"]Open task editor['"]/, 'time history editor action label bypasses i18n');
 }
 
+function checkTrackerSessionNoteActionContract() {
+	assertIncludes(
+		'styles.css',
+		'.operon-tracker-session-modal-actions-primary {\n\tdisplay: flex;\n\talign-items: center;\n\tmargin-inline-start: auto;',
+		'tracker session primary actions must stay right aligned',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-tracker-session-modal-actions {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: space-between;\n\tflex-wrap: wrap;',
+		'tracker session actions must wrap on narrow modal surfaces',
+	);
+	assertIncludes(
+		'styles.css',
+		'button.operon-tracker-session-modal-note {\n\tdisplay: inline-flex;',
+		'tracker session Note action must retain its visible icon control',
+	);
+	assertNoMatch(
+		'styles.css',
+		/\.operon-tracker-session-modal-note[^{}]*\{[^{}]*(?:display:\s*none|visibility:\s*hidden|opacity:\s*0(?![.\d]))/u,
+		'tracker session Note action must not be hidden',
+	);
+}
+
 function checkCanonicalOnlyStorageContract() {
 	const productionFiles = [
 		'main.ts',
@@ -1945,6 +1968,7 @@ checkCssScorecard();
 checkCalendarHoverGuideContract();
 checkSettingsDescriptionTextareaGuards();
 checkAuditedRawStrings();
+checkTrackerSessionNoteActionContract();
 checkCanonicalOnlyStorageContract();
 
 if (failures.length > 0) {

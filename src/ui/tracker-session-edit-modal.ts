@@ -1,4 +1,4 @@
-import { App, Modal } from 'obsidian';
+import { App, Modal, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { localNow } from '../core/local-time';
 import {
@@ -10,6 +10,20 @@ import {
 import { ConfirmActionModal } from './confirm-action-modal';
 import { asyncHandler, runAsyncAction } from '../core/async-action';
 import { getActiveWindow } from '../core/dom-compat';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import { showTaskNotePopover } from './task-note-action';
+import type { TextFieldPopoverCloseHandle } from './text-field-popover';
+
+export interface TrackerSessionTaskNoteOptions {
+	operonId: string;
+	sourcePath: string;
+	initialValue: string;
+	taskDescription?: string;
+	taskColor?: string | null;
+	icon?: string;
+	onCommit: (value: string) => Promise<boolean | void> | boolean | void;
+}
 
 export interface TrackerSessionEditModalOptions {
 	title: string;
@@ -19,6 +33,7 @@ export interface TrackerSessionEditModalOptions {
 	initialEnd?: string;
 	onSave: (start: string, end: string) => Promise<boolean | void> | boolean | void;
 	onDelete?: () => Promise<boolean | void> | boolean | void;
+	taskNote: TrackerSessionTaskNoteOptions;
 }
 
 export function buildTrackerSessionEditContext(options: {
@@ -77,11 +92,29 @@ function getTrackerSessionDurationSeconds(start: string, end: string): number {
 
 export class TrackerSessionEditModal extends Modal {
 	private readonly options: TrackerSessionEditModalOptions;
+	private closeTaskNotePopover: TextFieldPopoverCloseHandle | null = null;
+	private closeTaskNotePromise: Promise<boolean> | null = null;
+	private actionPending = false;
+	private setModalActionsDisabled: ((disabled: boolean) => void) | null = null;
 
 	constructor(app: App, options: TrackerSessionEditModalOptions) {
 		super(app);
 		this.modalEl.addClass('operon-tracker-session-edit-modal');
 		this.options = options;
+	}
+
+	override close(): void {
+		if (!this.beginModalAction()) return;
+		void this.closeOwnedTaskNotePopover().then(closed => {
+			if (closed) {
+				this.closeImmediately();
+			} else {
+				this.resetModalAction();
+			}
+		}).catch(error => {
+			this.resetModalAction();
+			console.error('Operon: tracker session modal close failed', error);
+		});
 	}
 
 	onOpen(): void {
@@ -155,6 +188,17 @@ export class TrackerSessionEditModal extends Modal {
 			})
 			: null;
 		const primaryActions = actions.createDiv('operon-tracker-session-modal-actions-primary');
+		const noteButton = primaryActions.createEl('button', {
+			cls: 'operon-tracker-session-modal-note',
+			attr: { type: 'button' },
+		});
+		setIcon(noteButton, this.options.taskNote.icon || 'notebook-pen');
+		setAccessibleLabelWithoutTooltip(noteButton, t('taskEditor', 'notes'));
+		bindOperonHoverTooltip(noteButton, {
+			title: t('taskEditor', 'notes'),
+			taskColor: this.options.taskNote.taskColor ?? null,
+			preferredHorizontal: 'right',
+		});
 		const cancelButton = primaryActions.createEl('button', {
 			text: t('buttons', 'cancel'),
 			cls: 'operon-tracker-session-modal-cancel',
@@ -238,19 +282,59 @@ export class TrackerSessionEditModal extends Modal {
 		const endPlusButton = createAdjustmentButton(endAdjustments, t('taskEditor', 'sessionAddFiveMinutes'), endInput, 5);
 		const endMinusButton = createAdjustmentButton(endAdjustments, t('taskEditor', 'sessionSubtractFiveMinutes'), endInput, -5);
 
+		let currentNoteValue = this.options.taskNote.initialValue;
+		noteButton.addEventListener('click', () => {
+			this.closeTaskNotePopover = showTaskNotePopover({
+				app: this.app,
+				anchor: noteButton,
+				operonId: this.options.taskNote.operonId,
+				sourcePath: this.options.taskNote.sourcePath,
+				lifecycleOwner: contentEl,
+				initialValue: currentNoteValue,
+				taskDescription: this.options.taskNote.taskDescription,
+				taskColor: this.options.taskNote.taskColor,
+				onCommit: async value => {
+					const result = await this.options.taskNote.onCommit(value);
+					if (result !== false) currentNoteValue = value;
+					return result;
+				},
+				onClose: () => {
+					this.closeTaskNotePopover = null;
+				},
+				onFocusReturn: () => {
+					if (noteButton.isConnected) noteButton.focus();
+				},
+			});
+		});
+
 		const submit = async (): Promise<void> => {
 			if (!refresh()) return;
-			const { start, end } = getNormalizedValues();
-			this.close();
-			getActiveWindow().setTimeout(() => {
-				void Promise.resolve(this.options.onSave(start, end)).catch((error: unknown) => {
-					console.error('Operon: tracker session background save failed', error);
-				});
-			}, 0);
+			if (!this.beginModalAction()) return;
+			try {
+				if (!await this.closeOwnedTaskNotePopover()) {
+					this.resetModalAction();
+					return;
+				}
+				if (!refresh()) {
+					this.resetModalAction();
+					return;
+				}
+				const { start, end } = getNormalizedValues();
+				this.closeImmediately();
+				getActiveWindow().setTimeout(() => {
+					void Promise.resolve(this.options.onSave(start, end)).catch((error: unknown) => {
+						console.error('Operon: tracker session background save failed', error);
+					});
+				}, 0);
+			} catch (error) {
+				this.resetModalAction();
+				throw error;
+			}
 		};
 
 		const setActionDisabled = (disabled: boolean) => {
 			if (deleteButton) deleteButton.disabled = disabled;
+			noteButton.disabled = disabled;
 			cancelButton.disabled = disabled;
 			saveButton.disabled = disabled;
 			startPlusButton.disabled = disabled;
@@ -258,9 +342,20 @@ export class TrackerSessionEditModal extends Modal {
 			endPlusButton.disabled = disabled;
 			endMinusButton.disabled = disabled;
 		};
+		this.setModalActionsDisabled = setActionDisabled;
 
-		const remove = () => {
+		const remove = async () => {
 			if (!this.options.onDelete) return;
+			if (!this.beginModalAction()) return;
+			try {
+				if (!await this.closeOwnedTaskNotePopover()) {
+					this.resetModalAction();
+					return;
+				}
+			} catch (error) {
+				this.resetModalAction();
+				throw error;
+			}
 			new ConfirmActionModal(this.app, {
 				title: t('taskEditor', 'deleteSessionTitle'),
 				message: t('taskEditor', 'deleteSessionMessage', {
@@ -269,15 +364,23 @@ export class TrackerSessionEditModal extends Modal {
 				confirmText: t('taskEditor', 'deleteSessionConfirm'),
 				cancelText: t('buttons', 'cancel'),
 			}, asyncHandler('tracker session delete failed', async confirmed => {
-				if (!confirmed) return;
-				setActionDisabled(true);
-				const result = await this.options.onDelete?.();
+				if (!confirmed) {
+					this.resetModalAction();
+					return;
+				}
+				let result: boolean | void;
+				try {
+					result = await this.options.onDelete?.();
+				} catch (error) {
+					this.resetModalAction();
+					throw error;
+				}
 				if (result === false) {
-					setActionDisabled(false);
+					this.resetModalAction();
 					refresh();
 					return;
 				}
-				this.close();
+				this.closeImmediately();
 			})).open();
 		};
 
@@ -297,7 +400,9 @@ export class TrackerSessionEditModal extends Modal {
 		});
 
 		cancelButton.addEventListener('click', () => this.close());
-		deleteButton?.addEventListener('click', remove);
+		deleteButton?.addEventListener('click', () => {
+			runAsyncAction('tracker session note close failed', remove);
+		});
 		saveButton.addEventListener('click', () => {
 			runAsyncAction('tracker session submit failed', submit);
 		});
@@ -307,6 +412,37 @@ export class TrackerSessionEditModal extends Modal {
 	}
 
 	onClose(): void {
+		this.closeTaskNotePopover = null;
+		this.closeTaskNotePromise = null;
+		this.setModalActionsDisabled = null;
+		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
+	}
+
+	private closeOwnedTaskNotePopover(): Promise<boolean> {
+		if (!this.closeTaskNotePopover) return Promise.resolve(true);
+		if (this.closeTaskNotePromise) return this.closeTaskNotePromise;
+		const handle = this.closeTaskNotePopover;
+		const pending = handle.requestCloseAndWait().finally(() => {
+			if (this.closeTaskNotePromise === pending) this.closeTaskNotePromise = null;
+		});
+		this.closeTaskNotePromise = pending;
+		return pending;
+	}
+
+	private beginModalAction(): boolean {
+		if (this.actionPending) return false;
+		this.actionPending = true;
+		this.setModalActionsDisabled?.(true);
+		return true;
+	}
+
+	private resetModalAction(): void {
+		this.actionPending = false;
+		this.setModalActionsDisabled?.(false);
+	}
+
+	private closeImmediately(): void {
+		super.close();
 	}
 }

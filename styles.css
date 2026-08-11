@@ -11910,16 +11910,19 @@ body .modal.operon-tracker-session-edit-modal .operon-tracker-session-modal-fiel
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	flex-wrap: wrap;
 	gap: 8px;
 }
 
 .operon-tracker-session-modal-actions-primary {
 	display: flex;
 	align-items: center;
+	margin-inline-start: auto;
 	gap: 8px;
 }
 
 body .modal.operon-tracker-session-edit-modal button:is(
+	.operon-tracker-session-modal-note,
 	.operon-tracker-session-modal-cancel,
 	.operon-tracker-session-modal-save,
 	.operon-tracker-session-modal-delete
@@ -11944,7 +11947,22 @@ body .modal.operon-tracker-session-edit-modal button:is(
 	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
 }
 
+body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-modal-note {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	min-width: 34px;
+	padding: 0;
+}
+
+body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-modal-note svg {
+	width: 17px;
+	height: 17px;
+}
+
 body .modal.operon-tracker-session-edit-modal button:is(
+	.operon-tracker-session-modal-note,
 	.operon-tracker-session-modal-cancel,
 	.operon-tracker-session-modal-save,
 	.operon-tracker-session-modal-delete
@@ -11981,6 +11999,7 @@ body .modal.operon-tracker-session-edit-modal button.operon-tracker-session-moda
 }
 
 body .modal.operon-tracker-session-edit-modal button:is(
+	.operon-tracker-session-modal-note,
 	.operon-tracker-session-modal-cancel,
 	.operon-tracker-session-modal-save,
 	.operon-tracker-session-modal-delete,

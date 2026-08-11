@@ -32,6 +32,7 @@ import { filterTasksForCalendar } from '../../systems/calendar-filter-materializ
 import { t } from '../../core/i18n';
 import { localNow } from '../../core/local-time';
 import { normalizeTaskFieldColor } from '../../core/task-color-source';
+import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import {
 	PROJECT_SERIAL_TABLE_FIELD_KEY,
 	applyTablePresetFieldAliases,
@@ -154,7 +155,11 @@ import { openTaskFieldPicker } from '../task-field-picker-dispatch';
 import { showTextFieldPopover } from '../text-field-popover';
 import { resolveTableTaskTextEditRoute } from './table-text-edit-route';
 import { showTaskNotePopover } from '../task-note-action';
-import { buildTrackerSessionEditContext, TrackerSessionEditModal } from '../tracker-session-edit-modal';
+import {
+	buildTrackerSessionEditContext,
+	TrackerSessionEditModal,
+	type TrackerSessionTaskNoteOptions,
+} from '../tracker-session-edit-modal';
 import { formatDurationHuman } from '../../systems/tracker-utils';
 import { getOwnerWindow } from '../../core/dom-compat';
 import type { ContextualMenuActionHandler } from '../../core/contextual-menu-engine';
@@ -2672,6 +2677,7 @@ export class OperonTableView extends FileView {
 		new TrackerSessionEditModal(this.app, {
 			title: t('taskEditor', 'addSession'),
 			contextTitle: task.description || task.operonId,
+			taskNote: this.buildTrackerSessionTaskNoteOptions(task),
 			onSave: async (start, end) => {
 				await this.commitTaskSessionCellUpdate(cell, cellKey, async () => {
 					const wrote = await this.callbacks.onAddTaskSession?.(task.operonId, start, end);
@@ -2684,6 +2690,7 @@ export class OperonTableView extends FileView {
 	private openEditTaskSessionModal(cell: HTMLElement, task: IndexedTask, session: TrackerSession, cellKey: string): void {
 		new TrackerSessionEditModal(this.app, {
 			title: t('taskEditor', 'editSession'),
+			taskNote: this.buildTrackerSessionTaskNoteOptions(task),
 			...buildTrackerSessionEditContext({
 				taskLabel: task.description || session.task.description || session.operonId,
 				start: session.start,
@@ -2706,6 +2713,18 @@ export class OperonTableView extends FileView {
 				}
 				: undefined,
 		}).open();
+	}
+
+	private buildTrackerSessionTaskNoteOptions(task: IndexedTask): TrackerSessionTaskNoteOptions {
+		return {
+			operonId: task.operonId,
+			sourcePath: task.primary.filePath,
+			initialValue: task.fieldValues['note'] ?? '',
+			taskDescription: task.description,
+			taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+			icon: getConfiguredKeyMappingIcon('note', this.getSettings().keyMappings) || 'notebook-pen',
+			onCommit: value => this.callbacks.onUpdateTaskFields?.(task.operonId, { note: value }) ?? false,
+		};
 	}
 
 	private async commitTaskSessionCellUpdate(

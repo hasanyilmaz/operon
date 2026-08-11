@@ -60,6 +60,11 @@ export interface TextFieldPopoverDependencies {
 	) => CompactMarkdownEditorSurface;
 }
 
+export interface TextFieldPopoverCloseHandle {
+	(): void;
+	requestCloseAndWait: () => Promise<boolean>;
+}
+
 const TEXT_FIELD_POPOVER_BASE_Z_INDEX = 10090;
 const activeTextFieldPopovers = new Map<string, TextFieldPopoverSession>();
 const DEFAULT_TEXT_FIELD_POPOVER_DEPENDENCIES: TextFieldPopoverDependencies = {
@@ -70,7 +75,7 @@ let textFieldPopoverZIndex = TEXT_FIELD_POPOVER_BASE_Z_INDEX;
 export function showTextFieldPopover(
 	options: TextFieldPopoverOptions,
 	dependencies: TextFieldPopoverDependencies = DEFAULT_TEXT_FIELD_POPOVER_DEPENDENCIES,
-): () => void {
+): TextFieldPopoverCloseHandle {
 	const sessionKey = options.sessionKey?.trim();
 	if (sessionKey) {
 		const existing = activeTextFieldPopovers.get(sessionKey);
@@ -79,7 +84,7 @@ export function showTextFieldPopover(
 			if (options.lifecycleOwner) existing.lifecycleOwners.add(options.lifecycleOwner);
 			existing.focusReturn = options.onFocusReturn ?? null;
 			existing.bringToFront();
-			return existing.requestClose;
+			return createTextFieldPopoverCloseHandle(existing.requestClose, existing.requestCloseAndWait);
 		}
 		activeTextFieldPopovers.delete(sessionKey);
 	}
@@ -207,17 +212,19 @@ export function showTextFieldPopover(
 		editorSurface?.focusEnd();
 	});
 
+	const requestCloseAndWait = (): Promise<boolean> => new Promise<boolean>(resolve => {
+		if (closed) {
+			resolve(true);
+			return;
+		}
+		closeAttemptWaiters.add(resolve);
+		requestClose();
+	});
+
 	if (sessionKey) {
 		session.panel = panel;
 		session.requestClose = requestClose;
-		session.requestCloseAndWait = () => new Promise<boolean>(resolve => {
-			if (closed) {
-				resolve(true);
-				return;
-			}
-			closeAttemptWaiters.add(resolve);
-			requestClose();
-		});
+		session.requestCloseAndWait = requestCloseAndWait;
 		session.bringToFront = () => bringTextFieldPopoverToFront(panel);
 		activeTextFieldPopovers.set(sessionKey, session);
 	}
@@ -275,7 +282,14 @@ export function showTextFieldPopover(
 		closeAttemptWaiters.clear();
 	}
 
-	return requestClose;
+	return createTextFieldPopoverCloseHandle(requestClose, requestCloseAndWait);
+}
+
+function createTextFieldPopoverCloseHandle(
+	requestClose: () => void,
+	requestCloseAndWait: () => Promise<boolean>,
+): TextFieldPopoverCloseHandle {
+	return Object.assign(requestClose, { requestCloseAndWait });
 }
 
 export function requestCloseTextFieldPopoversForOwner(root: ParentNode): number {

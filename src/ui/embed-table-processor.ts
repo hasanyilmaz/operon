@@ -26,6 +26,7 @@ import { filterTasksForCalendar } from '../systems/calendar-filter-materializati
 import { t } from '../core/i18n';
 import { localNow } from '../core/local-time';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
+import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import {
 	PROJECT_SERIAL_TABLE_FIELD_KEY,
 	getTableTaskField,
@@ -153,7 +154,11 @@ import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { showTextFieldPopover } from './text-field-popover';
 import { resolveTableTaskTextEditRoute } from './table/table-text-edit-route';
 import { showTaskNotePopover } from './task-note-action';
-import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
+import {
+	buildTrackerSessionEditContext,
+	TrackerSessionEditModal,
+	type TrackerSessionTaskNoteOptions,
+} from './tracker-session-edit-modal';
 import { formatDurationHuman } from '../systems/tracker-utils';
 import {
 	closeFloatingPanelsForRoot,
@@ -3462,6 +3467,7 @@ function openEmbedTableAddTaskSessionModal(
 	new TrackerSessionEditModal(deps.app, {
 		title: t('taskEditor', 'addSession'),
 		contextTitle: task.description || task.operonId,
+		taskNote: buildEmbedTrackerSessionTaskNoteOptions(deps, task),
 		onSave: async (start, end) => {
 			await commitEmbedTableSessionCellUpdate(instance, deps, cell, cellKey, async () => {
 				const wrote = await deps.addTaskSession?.(task.operonId, start, end);
@@ -3481,6 +3487,7 @@ function openEmbedTableEditTaskSessionModal(
 ): void {
 	new TrackerSessionEditModal(deps.app, {
 		title: t('taskEditor', 'editSession'),
+		taskNote: buildEmbedTrackerSessionTaskNoteOptions(deps, task),
 		...buildTrackerSessionEditContext({
 			taskLabel: task.description || session.task.description || session.operonId,
 			start: session.start,
@@ -3503,6 +3510,22 @@ function openEmbedTableEditTaskSessionModal(
 			}
 			: undefined,
 	}).open();
+}
+
+function buildEmbedTrackerSessionTaskNoteOptions(
+	deps: EmbedTableDeps,
+	task: IndexedTask,
+): TrackerSessionTaskNoteOptions {
+	const settings = deps.getSettings();
+	return {
+		operonId: task.operonId,
+		sourcePath: task.primary.filePath,
+		initialValue: task.fieldValues['note'] ?? '',
+		taskDescription: task.description,
+		taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+		icon: getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen',
+		onCommit: value => deps.updateTaskFields?.(task.operonId, { note: value }) ?? false,
+	};
 }
 
 async function commitEmbedTableSessionCellUpdate(

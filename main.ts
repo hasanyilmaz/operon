@@ -198,7 +198,8 @@ import { getAvailableReminderRuleAnchors } from './src/core/reminder-rules';
 import { ReminderDeliveryController } from './src/systems/reminder-delivery';
 import { MobileNotificationsExporter } from './src/systems/mobile-notifications-exporter';
 import { buildOperonPluginStoragePath } from './src/storage/operon-storage-paths';
-import { resolveTaskColorSourceForTask } from './src/core/task-color-source';
+import { normalizeTaskFieldColor, resolveTaskColorSourceForTask } from './src/core/task-color-source';
+import { getConfiguredKeyMappingIcon } from './src/core/key-mapping-icons';
 import { asyncHandler, runAsyncAction } from './src/core/async-action';
 import {
 	registerTransportProbe,
@@ -13660,6 +13661,7 @@ export default class OperonPlugin extends Plugin {
 					getPipelines: () => this.settings.pipelines,
 					getSettings: () => this.settings,
 					startTimerForTask: (operonId, source) => this.startTimerForTask(operonId, source),
+					updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
 					onContextualAction: (
 						taskId: string,
 						actionId: ContextualMenuActionId,
@@ -15108,6 +15110,15 @@ export default class OperonPlugin extends Plugin {
 
 		new TrackerSessionEditModal(this.app, {
 			title: t('taskEditor', 'editSession'),
+			taskNote: {
+				operonId: session.operonId,
+				sourcePath: task.primary.filePath,
+				initialValue: task.fieldValues['note'] ?? '',
+				taskDescription: task.description,
+				taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+				icon: getConfiguredKeyMappingIcon('note', this.settings.keyMappings) || 'notebook-pen',
+				onCommit: value => this.updateTableTaskFieldsAndRefresh(session.operonId, { note: value }),
+			},
 			...buildTrackerSessionEditContext({
 				taskLabel,
 				start: currentSession.start,
