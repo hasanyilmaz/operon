@@ -1139,8 +1139,13 @@ function checkCssScorecard() {
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-table-root',
-		['--operon-table-detailed-value-max-width: 168px;', '--operon-table-chip-glow-size: 2px;'],
-		'Table list values and detailed datetime controls must share stable width and glow geometry tokens',
+		[
+			'--operon-table-detailed-value-max-width: 168px;',
+			'--operon-table-chip-glow-size: 2px;',
+			'--operon-table-progress-segment-glow-size: 1px;',
+			'--operon-table-row-highlight-size: 1px;',
+		],
+		'Table values, progress segments, and active-row rails must share stable geometry tokens',
 	);
 	assertCssRuleContains(
 		'styles.css',
@@ -1172,8 +1177,18 @@ function checkCssScorecard() {
 	);
 	assertIncludes(
 		'styles.css',
-		'.operon-table-progress-action-shell:not(.is-empty-mode):is(:hover, :focus-within)',
-		'Table progress surfaces must glow as one surrounding shell',
+		'.operon-table-progress-action-shell.is-details-mode:is(:hover, :focus-within) .operon-task-progress-segment',
+		'Table detailed progress must glow each segment without a surrounding shell',
+	);
+	assertIncludes(
+		'styles.css',
+		'box-shadow: 0 0 0 var(--operon-table-progress-segment-glow-size, 1px) color-mix(in srgb, var(--operon-task-progress-color) 28%, transparent);',
+		'Table detailed progress segments must use the 1px segment glow token',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-progress-action-shell.is-icon-mode:is(:hover, :focus-within),',
+		'Table compact progress must retain its surrounding control glow',
 	);
 	assertCssRuleContains(
 		'styles.css',
@@ -1181,16 +1196,38 @@ function checkCssScorecard() {
 		['box-shadow: inset 0 0 0 var(--operon-table-chip-glow-size, 2px)'],
 		'empty Checkbox Progress controls must keep a visible keyboard focus ring without a progress graphic',
 	);
-	for (const selector of [
-		'.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-wrap',
+	assertIncludes(
+		'styles.css',
+		'.operon-table-progress-cell.is-details-mode:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-wrap .operon-task-progress-segment',
+		'Table readonly detailed progress must keep per-segment visual-only hover glow',
+	);
+	assertIncludes(
+		'styles.css',
 		'.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-ring',
-	]) {
-		assertIncludes(
-			'styles.css',
-			selector,
-			'Table readonly progress visuals must keep their visual-only hover glow',
-		);
-	}
+		'Table readonly compact progress must keep its visual-only hover glow',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (hover: hover) and (pointer: fine)',
+		[
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-description-text:not(.is-empty)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-icon-only-button',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-file-property-checkbox',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-icon-button:disabled',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-progress-action-shell.is-details-mode .operon-task-progress-segment',
+			'background: var(--operon-task-chip-bg, transparent);',
+			'background: transparent;',
+		],
+		['body.is-mobile', '.operon-table-progress-action-shell.is-empty-mode'],
+		'Table row-wide hover must remain desktop fine-pointer-only and leave empty progress visually blank',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-cell.is-active-cell::before',
+		['height: var(--operon-table-row-highlight-size, 1px);'],
+		'Table active-cell rails must use the subtle 1px row highlight token',
+	);
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-table-root .operon-table-progress-action-shell:focus-within',
