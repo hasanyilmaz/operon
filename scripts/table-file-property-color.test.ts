@@ -12,6 +12,7 @@ import {
 import { resolveTableRandomColumnColor } from '../src/ui/table/table-column-color';
 import { renderTableFilePropertyValue } from '../src/ui/table/table-file-property-editor';
 import type { TableFilePropertyField } from '../src/ui/table/table-file-property';
+import { renderTableDescriptionCellContent } from '../src/ui/table/table-description-cell';
 
 let assertions = 0;
 
@@ -52,6 +53,8 @@ class FakeElement {
 	clientWidth = 0;
 	left = 0;
 	right = 0;
+	tabIndex = -1;
+	readonly listeners = new Map<string, Array<(event: any) => void>>();
 
 	constructor(tagName = 'SPAN') {
 		this.tagName = tagName;
@@ -132,11 +135,35 @@ class FakeElement {
 		this.attributes.delete(name);
 	}
 
+	removeClass(name: string): void {
+		this.classes.delete(name);
+	}
+
+	empty(): void {
+		this.children.length = 0;
+		this.textContent = '';
+	}
+
 	setText(value: string): void {
 		this.textContent = value;
 	}
 
-	addEventListener(): void {}
+	addEventListener(type: string, listener: (event: any) => void): void {
+		const listeners = this.listeners.get(type) ?? [];
+		listeners.push(listener);
+		this.listeners.set(type, listeners);
+	}
+
+	dispatch(type: string, overrides: Record<string, unknown> = {}): void {
+		const event = {
+			target: this,
+			key: '',
+			preventDefault() {},
+			stopPropagation() {},
+			...overrides,
+		};
+		for (const listener of this.listeners.get(type) ?? []) listener(event);
+	}
 
 	private addClasses(value: string): void {
 		for (const name of value.split(/\s+/u).filter(Boolean)) this.classes.add(name);
@@ -370,6 +397,38 @@ async function run(): Promise<void> {
 	equal(iconOnlyElement.classes.has('operon-table-field-accent-chip'), false);
 	equal(iconOnlyElement.style.values.get('--operon-inline-chip-icon-color'), '#aa1122');
 
+	let textPopoverOpens = 0;
+	const detailedPopoverCell = new FakeElement('DIV');
+	renderTableDescriptionCellContent(asHtmlElement(detailedPopoverCell), {
+		value: 'Detailed text',
+		fieldLabel: 'Description',
+		editLabel: 'Edit cell',
+		onOpen: () => { textPopoverOpens += 1; },
+	});
+	equal(findDescendantByClass(detailedPopoverCell, 'operon-table-description-input'), undefined);
+	detailedPopoverCell.dispatch('click');
+	equal(textPopoverOpens, 1, 'detailed text must open the popover rather than an inline input');
+	detailedPopoverCell.dispatch('keydown', { key: 'Enter' });
+	equal(textPopoverOpens, 2);
+
+	const emptyCompactPopoverCell = new FakeElement('DIV');
+	renderTableDescriptionCellContent(asHtmlElement(emptyCompactPopoverCell), {
+		value: '',
+		fieldLabel: 'Note',
+		editLabel: 'Edit cell',
+		iconOnly: {
+			icon: 'sticky-note',
+			color: null,
+			title: 'Note',
+			content: '--',
+			ariaLabel: 'Note: --',
+		},
+		onOpen: () => { textPopoverOpens += 1; },
+	});
+	equal(findDescendantByClass(emptyCompactPopoverCell, 'operon-table-icon-only-button'), undefined);
+	emptyCompactPopoverCell.dispatch('click');
+	equal(textPopoverOpens, 3, 'empty compact text must remain clickable without rendering an icon');
+
 	for (const checkboxValue of ['', 'unsupported']) {
 		const checkboxElement = new FakeElement();
 		equal(applyTableColumnCellAccent(
@@ -512,6 +571,10 @@ async function run(): Promise<void> {
 	ok(workspaceSource.includes('contentEl: createCompactTaskMarkdownTooltipContent(cell, value)'));
 	ok(embedSource.includes('contentEl: createCompactTaskMarkdownTooltipContent(cell, value)'));
 	ok(editorSource.includes('contentEl: createCompactTaskMarkdownTooltipContent(options.cell, options.cellValue.normalizedValue)'));
+	ok(workspaceSource.includes('onOpen: canOpenTextPopover'));
+	ok(embedSource.includes('onOpen: canOpenTextPopover'));
+	equal(workspaceSource.includes('onInlineEditStart:'), false);
+	equal(embedSource.includes('onInlineEditStart:'), false);
 
 	console.log(`Table file-property color tests passed: ${assertions} assertions`);
 }

@@ -30933,14 +30933,6 @@ button.operon-table-search-selected-parent-clear svg {
 	text-align: right;
 }
 
-.operon-table-cell.is-align-center input.operon-table-description-input {
-	text-align: center;
-}
-
-.operon-table-cell.is-align-right input.operon-table-description-input {
-	text-align: right;
-}
-
 .operon-table-header-cell-readonly {
 	cursor: default;
 }
@@ -31982,30 +31974,6 @@ button.operon-table-source-button {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-input.operon-table-description-input {
-	box-sizing: border-box;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-	padding: 0 12px;
-	border: 0;
-	border-radius: 0;
-	box-shadow: none;
-	background: transparent;
-	color: var(--text-normal);
-	font: inherit;
-	line-height: inherit;
-}
-
-input.operon-table-description-input:hover,
-input.operon-table-description-input:focus,
-input.operon-table-description-input:focus-visible {
-	border: 0;
-	box-shadow: none;
-	background: transparent;
-	outline: none;
 }
 
 .operon-table-cell-chip {

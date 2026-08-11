@@ -49,7 +49,7 @@ import {
 } from './table/table-value-adapter';
 import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
-import { renderTableDescriptionCellContent, renderTableTextValueDisplay, type TableInlineEditSession } from './table/table-description-cell';
+import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table/table-description-cell';
 import { isCompactTaskMarkdownLinkEventTarget } from './compact-task-markdown-renderer';
 import { createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './table/mobile-table-viewport';
@@ -253,7 +253,6 @@ interface EmbedTableInstance {
 	parentSearchHighlightedIndex: number;
 	parentSearchDismissed: boolean;
 	pendingSearchFocus: { start: number; end: number } | null;
-	activeMobileInlineEdit: TableInlineEditSession | null;
 	pendingMobileTextInputRender: boolean;
 	mobileViewportCleanup: (() => void) | null;
 	mobileScrollGestureUntil: number;
@@ -574,7 +573,6 @@ function createEmbedTableInstance(
 		parentSearchHighlightedIndex: 0,
 		parentSearchDismissed: false,
 		pendingSearchFocus: null,
-		activeMobileInlineEdit: null,
 		pendingMobileTextInputRender: false,
 		mobileViewportCleanup: null,
 		mobileScrollGestureUntil: 0,
@@ -615,8 +613,6 @@ function createEmbedTableInstance(
 function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	instance.pendingMobileTextInputRender = false;
 	instance.mobileScrollGestureUntil = 0;
-	finishEmbedTableMobileInlineEdit(instance, false);
-	instance.activeMobileInlineEdit = null;
 	closeEmbedTableTransientUi(instance.el);
 	closeEmbedTableActivePicker(instance);
 	cancelEmbedTableSearchDebounce(instance);
@@ -676,7 +672,6 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 }
 
 function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
-	finishEmbedTableMobileInlineEdit(instance, true);
 	const renderStartedAt = enginePerfNow();
 	const settings = deps.getSettings();
 	const preset = resolveEmbedTablePreset(deps, instance.presetId);
@@ -1609,9 +1604,6 @@ function renderEmbedTableShell(
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
 		instance.scrollTop = bodyScroller.scrollTop;
 		instance.scrollLeft = bodyScroller.scrollLeft;
-		if (!Platform.isPhone || Date.now() < instance.mobileScrollGestureUntil) {
-			finishEmbedTableMobileInlineEdit(instance, true);
-		}
 		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});
 }
@@ -1890,9 +1882,6 @@ function applyEmbedTableColumnTemplate(instance: EmbedTableInstance, columns: re
 
 function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
 	const startedAt = enginePerfNow();
-	if (force && hasActiveEmbedTableMobileInlineEdit(instance)) {
-		finishEmbedTableMobileInlineEdit(instance, true);
-	}
 	const renderState = instance.currentRenderState;
 	const scroller = instance.bodyScrollerEl;
 	const canvas = instance.bodyCanvasEl;
@@ -3619,8 +3608,8 @@ function renderEmbedTableInlineTextCell(
 	const cellKey = buildTableEditableCellKey(task, key);
 	const payloadKey = key === 'description' ? '_description' : key;
 	const showIconOnly = shouldUseEmbedTableIconOnlyColumn(column, renderState.settings);
-	const canOpenIconOnlyTextPopover = editable && showIconOnly && !!instance;
-	if ((editable && !showIconOnly) || canOpenIconOnlyTextPopover) {
+	const canOpenTextPopover = editable && !!instance;
+	if (canOpenTextPopover) {
 		cell.addClass('is-editable');
 		cell.dataset.editCellKey = cellKey;
 		cell.tabIndex = 0;
@@ -3641,7 +3630,6 @@ function renderEmbedTableInlineTextCell(
 	const iconContent = formatTableIconOnlyTooltipContent(value);
 	renderTableDescriptionCellContent(cell, {
 		value,
-		editable: editable && !showIconOnly,
 		fieldLabel,
 		editLabel: t('table', 'editCellAria'),
 		...(key === 'note' ? { cellClassName: 'operon-table-note-cell' } : {}),
@@ -3660,18 +3648,9 @@ function renderEmbedTableInlineTextCell(
 			app: deps.app,
 			sourcePath: task.primary.filePath,
 		},
-		onIconOnlyOpen: canOpenIconOnlyTextPopover && instance
+		onOpen: canOpenTextPopover && instance
 			? () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column, value, fieldLabel, cellKey, payloadKey)
 			: undefined,
-		onCommit: editable && !showIconOnly && instance
-			? nextValue => commitEmbedTableCellUpdate(instance, deps, cell, task, key, cellKey, { [payloadKey]: nextValue })
-			: undefined,
-		...(Platform.isPhone && instance
-			? {
-				onInlineEditStart: (session: TableInlineEditSession) => beginEmbedTableMobileInlineEdit(instance, session),
-				onInlineEditFinish: (session: TableInlineEditSession) => endEmbedTableMobileInlineEdit(instance, session, deps),
-			}
-			: {}),
 	});
 }
 
@@ -3806,36 +3785,8 @@ function scheduleEmbedTableVisibleRowsRender(instance: EmbedTableInstance, deps:
 	});
 }
 
-function hasActiveEmbedTableMobileInlineEdit(instance: EmbedTableInstance): boolean {
-	return Platform.isPhone && instance.activeMobileInlineEdit !== null;
-}
-
 function shouldDeferEmbedMobileVisibleRows(instance: EmbedTableInstance): boolean {
-	return hasActiveEmbedTableMobileInlineEdit(instance)
-		|| isMobileTableTextInputFocused(instance.el);
-}
-
-function beginEmbedTableMobileInlineEdit(instance: EmbedTableInstance, session: TableInlineEditSession): void {
-	if (!Platform.isPhone) return;
-	finishEmbedTableMobileInlineEdit(instance, true);
-	instance.activeMobileInlineEdit = session;
-	instance.pendingSearchFocus = null;
-}
-
-function endEmbedTableMobileInlineEdit(
-	instance: EmbedTableInstance,
-	session: TableInlineEditSession,
-	deps: EmbedTableDeps,
-): void {
-	if (instance.activeMobileInlineEdit !== session) return;
-	instance.activeMobileInlineEdit = null;
-	flushEmbedMobileDeferredVisibleRows(instance, deps);
-}
-
-function finishEmbedTableMobileInlineEdit(instance: EmbedTableInstance, commit: boolean): void {
-	const session = instance.activeMobileInlineEdit;
-	if (!session) return;
-	session.finish(commit);
+	return isMobileTableTextInputFocused(instance.el);
 }
 
 function bindEmbedMobileViewport(instance: EmbedTableInstance, deps: EmbedTableDeps, root: HTMLElement): void {
@@ -3925,10 +3876,6 @@ function restoreEmbedTableSearchFocus(
 	selectionStart: number | null,
 	selectionEnd: number | null,
 ): void {
-	if (hasActiveEmbedTableMobileInlineEdit(instance)) {
-		instance.pendingSearchFocus = null;
-		return;
-	}
 	const pending = instance.pendingSearchFocus;
 	if (!shouldRestore && !pending) return;
 	const searchInput = input?.isConnected

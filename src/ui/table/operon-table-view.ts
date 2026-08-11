@@ -57,7 +57,7 @@ import {
 } from './table-value-adapter';
 import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
-import { renderTableDescriptionCellContent, renderTableTextValueDisplay, type TableInlineEditSession } from './table-description-cell';
+import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table-description-cell';
 import { isCompactTaskMarkdownLinkEventTarget } from '../compact-task-markdown-renderer';
 import { createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './mobile-table-viewport';
@@ -342,9 +342,7 @@ export class OperonTableView extends FileView {
 	private pendingCellKey: string | null = null;
 	private pendingFocusKey: string | null = null;
 	private pendingSearchFocus: { start: number; end: number } | null = null;
-	private activeMobileInlineEdit: TableInlineEditSession | null = null;
 	private pendingMobileTextInputRender = false;
-	private pendingMobileFullRender = false;
 	private mobileViewportCleanup: (() => void) | null = null;
 	private mobileScrollGestureUntil = 0;
 	private isSearchComposing = false;
@@ -497,10 +495,7 @@ export class OperonTableView extends FileView {
 		if (presetId && !this.pagePreviewSurface) await this.callbacks.onFlushPresetWrites?.(presetId);
 		this.closeActivePicker();
 		this.pendingMobileTextInputRender = false;
-		this.pendingMobileFullRender = false;
 		this.mobileScrollGestureUntil = 0;
-		this.finishMobileInlineEdit(false);
-		this.activeMobileInlineEdit = null;
 		if (this.renderFrame !== null) {
 			window.cancelAnimationFrame(this.renderFrame);
 			this.renderFrame = null;
@@ -666,11 +661,6 @@ export class OperonTableView extends FileView {
 	}
 
 	render(): void {
-		if (this.hasActiveMobileInlineEdit()) {
-			this.pendingMobileFullRender = true;
-			return;
-		}
-		this.finishMobileInlineEdit(true);
 		if (!this.keepActivePickerOnRender) {
 			this.closeActivePicker();
 		}
@@ -1592,9 +1582,6 @@ export class OperonTableView extends FileView {
 				scrollTop: bodyScroller.scrollTop,
 				scrollLeft: bodyScroller.scrollLeft,
 			};
-			if (!Platform.isPhone || Date.now() < this.mobileScrollGestureUntil) {
-				this.finishMobileInlineEdit(true);
-			}
 			this.scheduleVisibleRowsRender();
 			this.scheduleLeafStatePersistence();
 		});
@@ -1628,9 +1615,6 @@ export class OperonTableView extends FileView {
 
 	private renderVisibleRows(force = false): void {
 		const startedAt = enginePerfNow();
-		if (force && this.hasActiveMobileInlineEdit()) {
-			this.finishMobileInlineEdit(true);
-		}
 		const renderState = this.currentRenderState;
 		const scroller = this.bodyScrollerEl;
 		const canvas = this.bodyCanvasEl;
@@ -2072,8 +2056,8 @@ export class OperonTableView extends FileView {
 		const cellKey = buildTableEditableCellKey(task, key);
 		const payloadKey = key === 'description' ? '_description' : key;
 		const showIconOnly = this.shouldUseIconOnlyColumn(column, renderState.settings);
-		const canOpenIconOnlyTextPopover = editable && showIconOnly && !!this.callbacks.onUpdateTaskFields;
-		if ((editable && !showIconOnly) || canOpenIconOnlyTextPopover) {
+		const canOpenTextPopover = editable && !!this.callbacks.onUpdateTaskFields;
+		if (canOpenTextPopover) {
 			cell.addClass('is-editable');
 			cell.dataset.editCellKey = cellKey;
 				cell.tabIndex = 0;
@@ -2094,7 +2078,6 @@ export class OperonTableView extends FileView {
 		const iconContent = formatTableIconOnlyTooltipContent(value);
 		renderTableDescriptionCellContent(cell, {
 			value,
-			editable: editable && !showIconOnly,
 			fieldLabel,
 			editLabel: t('table', 'editCellAria'),
 			...(key === 'note' ? { cellClassName: 'operon-table-note-cell' } : {}),
@@ -2113,18 +2096,9 @@ export class OperonTableView extends FileView {
 				app: this.app,
 				sourcePath: task.primary.filePath,
 			},
-			onIconOnlyOpen: canOpenIconOnlyTextPopover
+			onOpen: canOpenTextPopover
 				? () => this.openInlineTextPopover(cell, task, column, value, fieldLabel, cellKey, payloadKey)
 				: undefined,
-			onCommit: editable && !showIconOnly
-				? nextValue => this.commitTaskCellUpdate(cell, task, key, cellKey, { [payloadKey]: nextValue })
-				: undefined,
-			...(Platform.isPhone
-				? {
-					onInlineEditStart: (session: TableInlineEditSession) => this.beginMobileInlineEdit(session),
-					onInlineEditFinish: (session: TableInlineEditSession) => this.endMobileInlineEdit(session),
-				}
-				: {}),
 		});
 	}
 
@@ -2982,38 +2956,8 @@ export class OperonTableView extends FileView {
 		});
 	}
 
-	private hasActiveMobileInlineEdit(): boolean {
-		return Platform.isPhone && this.activeMobileInlineEdit !== null;
-	}
-
 	private shouldDeferMobileVisibleRowsRender(): boolean {
-		return this.hasActiveMobileInlineEdit()
-			|| isMobileTableTextInputFocused(this.contentEl);
-	}
-
-	private beginMobileInlineEdit(session: TableInlineEditSession): void {
-		if (!Platform.isPhone) return;
-		this.finishMobileInlineEdit(true);
-		this.activeMobileInlineEdit = session;
-		this.pendingSearchFocus = null;
-	}
-
-	private endMobileInlineEdit(session: TableInlineEditSession): void {
-		if (this.activeMobileInlineEdit !== session) return;
-		this.activeMobileInlineEdit = null;
-		if (this.pendingMobileFullRender) {
-			this.pendingMobileFullRender = false;
-			this.pendingMobileTextInputRender = false;
-			this.scheduleRender();
-			return;
-		}
-		this.flushMobileDeferredVisibleRows();
-	}
-
-	private finishMobileInlineEdit(commit: boolean): void {
-		const session = this.activeMobileInlineEdit;
-		if (!session) return;
-		session.finish(commit);
+		return isMobileTableTextInputFocused(this.contentEl);
 	}
 
 	private bindMobileViewport(root: HTMLElement): void {
@@ -3718,7 +3662,6 @@ export class OperonTableView extends FileView {
 
 	private toggleGroupCollapsed(groupKey: string): void {
 		this.closeActivePicker();
-		this.finishMobileInlineEdit(true);
 		const currentPreset = this.getCurrentEditingPreset();
 		if (this.currentRenderState
 			&& (this.currentRenderState.preset.groupBy !== currentPreset.groupBy
@@ -3784,10 +3727,6 @@ export class OperonTableView extends FileView {
 	}
 
 	private restoreSearchFocus(): void {
-		if (this.hasActiveMobileInlineEdit()) {
-			this.pendingSearchFocus = null;
-			return;
-		}
 		const pending = this.pendingSearchFocus;
 		if (!pending) return;
 		const input = this.contentEl.querySelector<HTMLInputElement>('.operon-table-search-input');
