@@ -152,15 +152,31 @@ function compareSettingsBackupRestorePlans(
 	current: OperonSettingsBackupRestorePlanV1,
 ): OperonSettingsBackupApplyBlockedReasonV1 | null {
 	if (expected.sourceBodyChecksum !== current.sourceBodyChecksum) return 'source-mismatch';
-	if (sha256HexV1(canonicalizeOperonSettingsBackupJson(expected.vaultReferenceChecks))
-		!== sha256HexV1(canonicalizeOperonSettingsBackupJson(current.vaultReferenceChecks))) {
-		return 'vault-reference-changed';
-	}
+	if (!settingsBackupVaultReferenceChecksMatch(expected, current)) return 'vault-reference-changed';
 	if (expected.targetConfigurationFingerprint !== current.targetConfigurationFingerprint) return 'stale-target';
 	if (expected.selectionFingerprint !== current.selectionFingerprint) return 'selection-mismatch';
 	if (expected.candidateFingerprint !== current.candidateFingerprint) return 'candidate-mismatch';
 	if (expected.planId !== current.planId) return 'acknowledgement-mismatch';
 	return null;
+}
+
+function compareSettingsBackupRestoreContentIdentity(
+	expected: OperonSettingsBackupRestorePlanV1,
+	current: OperonSettingsBackupRestorePlanV1,
+): OperonSettingsBackupApplyBlockedReasonV1 | null {
+	if (expected.sourceBodyChecksum !== current.sourceBodyChecksum) return 'source-mismatch';
+	if (!settingsBackupVaultReferenceChecksMatch(expected, current)) return 'vault-reference-changed';
+	if (expected.selectionFingerprint !== current.selectionFingerprint) return 'selection-mismatch';
+	if (expected.candidateFingerprint !== current.candidateFingerprint) return 'candidate-mismatch';
+	return null;
+}
+
+function settingsBackupVaultReferenceChecksMatch(
+	expected: OperonSettingsBackupRestorePlanV1,
+	current: OperonSettingsBackupRestorePlanV1,
+): boolean {
+	return sha256HexV1(canonicalizeOperonSettingsBackupJson(expected.vaultReferenceChecks))
+		=== sha256HexV1(canonicalizeOperonSettingsBackupJson(current.vaultReferenceChecks));
 }
 
 function pickSettingsBackupApplyCounts(
@@ -875,6 +891,11 @@ export class OperonStorage {
 					return currentPackage;
 				}
 				activeSummary = fresh.preview.summary;
+				const contentMismatch = compareSettingsBackupRestoreContentIdentity(input.restorePlan, fresh.restorePlan);
+				if (contentMismatch) {
+					admissionResult = blockedSettingsBackupApply(contentMismatch);
+					return currentPackage;
+				}
 				const currentSettingsFingerprint = computeOperonSettingsBackupSettingsFingerprintV1(currentSettings);
 				if (fresh.restorePlan.candidateFingerprint === currentSettingsFingerprint) {
 					alreadyApplied = true;

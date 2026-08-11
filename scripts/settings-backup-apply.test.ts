@@ -260,11 +260,15 @@ async function createHarness(initial: OperonDataPackageV1): Promise<Harness> {
 	return { storage, data, adapter };
 }
 
-function exportJson(settings: OperonSettings, includeExternalCalendars = false): string {
+function exportJson(
+	settings: OperonSettings,
+	includeExternalCalendars = false,
+	createdAt = EXPORTED_AT,
+): string {
 	const result = exportOperonSettingsBackupJsonV1({
 		settings,
 		source: { pluginVersion: '3.2.1', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
-		createdAt: EXPORTED_AT,
+		createdAt,
 		includeExternalCalendarUrls: includeExternalCalendars,
 	});
 	assert.equal(result.ok, true, result.diagnostics.map(item => item.message).join('\n'));
@@ -575,6 +579,37 @@ test('reapplying the same plan is idempotent and performs no second write', asyn
 	assert.equal(second.receipt?.canonicalWrite, 'not-attempted');
 	assert.equal(second.receipt?.currentTargetFingerprint, plan.candidateFingerprint);
 	assert.equal(harness.data.saveAttempts, 1);
+});
+
+test('already-applied admission rejects an equivalent swapped source and changed refreshed Vault checks without writing', async () => {
+	const target = baselineSettings();
+	const harness = await createHarness(canonicalPackage(target));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	changeLanguage(source);
+	const { sourceJson, plan } = await createPlan(harness.storage, source);
+	const first = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.ok(first.receipt);
+	assert.equal(harness.data.saveAttempts, 1);
+	const committed = clone(harness.data.committed);
+
+	const equivalentSwappedSource = exportJson(source, true, '2026-08-10T18:00:01.000Z');
+	const swapped = await harness.storage.applySettingsBackupRestorePlanV1(
+		applyInput(equivalentSwappedSource, plan, '2026-08-10T20:01:00.000Z'),
+	);
+	assert.equal(swapped.status, 'blocked');
+	assert.equal(swapped.blockedReason, 'source-mismatch');
+
+	const changedChecksInput = applyInput(sourceJson, plan, '2026-08-10T20:02:00.000Z');
+	changedChecksInput.refreshedVaultReferenceChecks = {
+		...plan.vaultReferenceChecks,
+		fileTasksFolder: { status: 'valid' },
+	};
+	const changedChecks = await harness.storage.applySettingsBackupRestorePlanV1(changedChecksInput);
+	assert.equal(changedChecks.status, 'blocked');
+	assert.equal(changedChecks.blockedReason, 'vault-reference-changed');
+	assert.equal(harness.data.saveAttempts, 1);
+	assert.deepEqual(harness.data.committed, committed);
 });
 
 test('clean persistence rejection returns failed without publishing candidate state', async () => {
