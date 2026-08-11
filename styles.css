@@ -29632,6 +29632,7 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content:is(
 	--operon-table-admin-text-size: 16px;
 	--operon-table-cell-icon-size: 18px;
 	--operon-table-detailed-value-max-width: 168px;
+	--operon-table-chip-glow-size: 2px;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -32008,9 +32009,13 @@ button.operon-table-source-button {
 	display: flex;
 	align-items: center;
 	gap: 6px;
+	box-sizing: border-box;
+	width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));
+	margin: calc(-1 * var(--operon-table-chip-glow-size));
+	padding: var(--operon-table-chip-glow-size);
 	overflow: hidden;
 	min-width: 0;
-	max-width: 100%;
+	max-width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));
 }
 
 .operon-table-list-value-chip {
@@ -32041,7 +32046,7 @@ button.operon-table-source-button {
 	border-color: var(--operon-task-chip-border);
 	background: transparent;
 	background-color: transparent;
-	box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
 	color: var(--text-normal);
 }
 
@@ -32084,7 +32089,7 @@ button.operon-table-source-button {
 	border-color: var(--operon-task-chip-border);
 	background: var(--operon-task-chip-bg, transparent);
 	background-color: var(--operon-task-chip-bg, transparent);
-	box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
 }
 
 .operon-table-date-state-chip,
@@ -32176,7 +32181,7 @@ button.operon-table-source-button:focus-visible {
 .operon-table-root button.operon-table-file-property-checkbox:not(:disabled):hover,
 .operon-table-root button.operon-table-file-property-checkbox:not(:disabled):focus-visible {
 	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	background: transparent;
 	background-color: transparent;
 	color: var(--text-normal);
@@ -32187,7 +32192,7 @@ button.operon-table-source-button:focus-visible {
 .operon-table-root button.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):hover,
 .operon-table-root button.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):focus-visible {
 	border-color: var(--operon-task-chip-border);
-	box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
 	color: var(--text-normal);
 }
 
@@ -32231,9 +32236,11 @@ button.operon-table-source-button:focus-visible {
 }
 
 @media (forced-colors: active) {
+	.operon-table-root .operon-table-list-value-chip:focus-visible,
+	.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-list-value-chip,
 	.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):focus-visible,
 	.operon-table-root button.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):focus-visible {
-		outline-color: ButtonText;
+		outline: 2px solid ButtonText;
 		box-shadow: none;
 	}
 }

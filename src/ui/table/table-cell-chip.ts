@@ -282,6 +282,14 @@ export function formatTableCellListChipDisplayValue(rawValue: string): string {
 	return formatTableCellWikiLinkTargetLabel(linkTarget) || rawValue;
 }
 
+export function formatTableListIconOnlyTooltipContent(values: readonly string[]): string {
+	return values
+		.map(formatTableCellListChipDisplayValue)
+		.map(value => value.trim())
+		.filter(Boolean)
+		.join('\n');
+}
+
 function formatTableCellWikiLinkTargetLabel(linkTarget: string): string {
 	const lastSegment = linkTarget.split('/').pop()?.trim() ?? linkTarget.trim();
 	return lastSegment.replace(/\.md(?=($|[#^]))/i, '');

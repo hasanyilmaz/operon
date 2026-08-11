@@ -22,7 +22,9 @@ import {
 	applyTableColumnCellAccent,
 	decorateTableListValueChip,
 	formatTableCellListChipDisplayValue,
+	formatTableListIconOnlyTooltipContent,
 } from './table-cell-chip';
+import { resolveTableColumnCellAccent } from './table-column-color';
 import { renderTableTextValueDisplay } from './table-description-cell';
 import { formatTableIconOnlyTooltipContent, renderTableIconOnlyCell } from './table-icon-only-cell';
 import { createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
@@ -248,6 +250,7 @@ export function renderTableFilePropertyValue(options: {
 	const renderValues = Array.isArray(options.cellValue.rawValue)
 		? options.cellValue.rawValue.filter(value => value !== null).map(String)
 		: (options.cellValue.normalizedValue.trim() ? [options.cellValue.normalizedValue] : []);
+	const listValue = options.field?.type === 'list' || Array.isArray(options.cellValue.rawValue);
 	if (isTextField && options.column.displayMode !== 'icon') {
 		renderTableTextValueDisplay(options.cell, {
 			value: options.cellValue.normalizedValue,
@@ -269,6 +272,21 @@ export function renderTableFilePropertyValue(options: {
 			ariaLabel: `${options.label}: ${content}`,
 			focusable: !options.editable,
 		});
+	} else if (listValue && options.column.displayMode === 'icon') {
+		const content = formatTableListIconOnlyTooltipContent(renderValues);
+		if (!content) return false;
+		renderTableIconOnlyCell(options.cell, {
+			icon: options.field?.icon ?? 'text',
+			color: resolveTableColumnCellAccent(
+				options.column,
+				options.cellValue.normalizedValue,
+				accentOptions,
+			),
+			title: options.label,
+			content,
+			ariaLabel: `${options.label}: ${content}`,
+			focusable: !options.editable,
+		});
 	} else if (options.column.displayMode === 'icon') {
 		const icon = options.cell.createSpan('operon-table-file-property-icon');
 		setIcon(icon, options.field?.icon ?? 'text');
@@ -283,7 +301,6 @@ export function renderTableFilePropertyValue(options: {
 	} else if (renderValues.length === 0) {
 		options.cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 	} else {
-		const listValue = options.field?.type === 'list' || Array.isArray(options.cellValue.rawValue);
 		const chipParent = listValue
 			? options.cell.createSpan('operon-table-cell-chip-list')
 			: options.cell;

@@ -1108,8 +1108,8 @@ function checkCssScorecard() {
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-table-root',
-		['--operon-table-detailed-value-max-width: 168px;'],
-		'Table list values and detailed datetime controls must share a stable width cap',
+		['--operon-table-detailed-value-max-width: 168px;', '--operon-table-chip-glow-size: 2px;'],
+		'Table list values and detailed datetime controls must share stable width and glow geometry tokens',
 	);
 	assertCssRuleContains(
 		'styles.css',
@@ -1120,8 +1120,18 @@ function checkCssScorecard() {
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-table-cell-chip-list',
-		['display: flex;', 'gap: 6px;', 'overflow: hidden;', 'min-width: 0;', 'max-width: 100%;'],
-		'Table list wrappers must clip non-shrinking sibling values inside the column',
+		[
+			'display: flex;',
+			'gap: 6px;',
+			'box-sizing: border-box;',
+			'width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));',
+			'margin: calc(-1 * var(--operon-table-chip-glow-size));',
+			'padding: var(--operon-table-chip-glow-size);',
+			'overflow: hidden;',
+			'min-width: 0;',
+			'max-width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));',
+		],
+		'Table list wrappers must reserve glow paint space while clipping non-shrinking sibling values inside the column',
 	);
 	assertCssRuleContains(
 		'styles.css',
@@ -1150,7 +1160,7 @@ function checkCssScorecard() {
 			+ '\tborder-color: var(--operon-task-chip-border);\n'
 			+ '\tbackground: transparent;\n'
 			+ '\tbackground-color: transparent;\n'
-			+ '\tbox-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);',
+			+ '\tbox-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);',
 		'Table list hover and focus must use the shared border and glow treatment',
 	);
 	assertCssRuleContains(

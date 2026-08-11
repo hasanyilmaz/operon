@@ -6,6 +6,7 @@ import type { OperonSettings } from '../src/types/settings';
 import {
 	applyTableColumnCellAccent,
 	formatTableCellListChipDisplayValue,
+	formatTableListIconOnlyTooltipContent,
 	isTableListValueChipOverflowing,
 	renderTableCellChips,
 } from '../src/ui/table/table-cell-chip';
@@ -269,6 +270,10 @@ async function run(): Promise<void> {
 	for (const [rawValue, displayValue] of wikilinkCases) {
 		equal(formatTableCellListChipDisplayValue(rawValue), displayValue);
 	}
+	equal(
+		formatTableListIconOnlyTooltipContent(['[[Folder/Cast.md|Cast label]]', '[[Crew.md]]', ' Plain ']),
+		'Cast label\nCrew\nPlain',
+	);
 
 	const canonicalListCell = new FakeElement('DIV');
 	renderTableCellChips(
@@ -508,6 +513,55 @@ async function run(): Promise<void> {
 		resolveTableRandomColumnColor(columnKey, '[[Folder/Cast.md|Cast label]]', settings),
 	);
 
+	for (const editable of [true, false]) {
+		const compactListCell = new FakeElement('DIV');
+		equal(renderTableFilePropertyValue({
+			cell: asHtmlElement(compactListCell),
+			field: { ...textField, type: 'list', icon: 'users' },
+			label: 'Cast',
+			cellValue: {
+				present: true,
+				rawValue: ['[[Folder/Cast.md|Cast label]]', '[[Crew.md]]', 'Plain'],
+				normalizedValue: '[[Folder/Cast.md|Cast label]]; [[Crew.md]]; Plain',
+			},
+			column: { key: columnKey, kind: 'task', colorMode: 'taskColor', displayMode: 'icon' },
+			task,
+			settings,
+			editable,
+			onToggle: () => {},
+		}), false);
+		equal(compactListCell.classes.has('operon-table-icon-only-cell'), true);
+		const compactListIcon = findChildByClass(compactListCell, 'operon-table-icon-only-button');
+		ok(compactListIcon);
+		equal(findChildByClass(compactListCell, 'operon-table-file-property-icon'), undefined);
+		equal(compactListIcon.tabIndex, editable ? -1 : 0);
+		equal(compactListIcon.attributes.get('role'), 'img');
+		equal(compactListIcon.style.values.get('--operon-table-icon-only-color'), '#aa1122');
+		equal(
+			compactListIcon.children.find(child => child.dataset.operonAccessibleLabel === 'true')?.textContent,
+			'Cast: Cast label\nCrew\nPlain',
+		);
+		ok((compactListIcon.listeners.get('mouseenter')?.length ?? 0) > 0);
+		equal(compactListIcon.listeners.has('keydown'), false);
+	}
+
+	for (const rawValue of [[], [''], ['   '], [null]]) {
+		const emptyCompactListCell = new FakeElement('DIV');
+		equal(renderTableFilePropertyValue({
+			cell: asHtmlElement(emptyCompactListCell),
+			field: { ...textField, type: 'list', icon: 'users' },
+			label: 'Cast',
+			cellValue: { present: true, rawValue, normalizedValue: '' },
+			column: { key: columnKey, kind: 'task', colorMode: 'taskColor', displayMode: 'icon' },
+			task,
+			settings,
+			editable: true,
+			onToggle: () => {},
+		}), false);
+		equal(findChildByClass(emptyCompactListCell, 'operon-table-icon-only-button'), undefined);
+		equal(findChildByClass(emptyCompactListCell, 'operon-table-file-property-icon'), undefined);
+	}
+
 	const detailedTextCell = new FakeElement('DIV');
 	equal(renderTableFilePropertyValue({
 		cell: asHtmlElement(detailedTextCell),
@@ -573,16 +627,23 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('color: var(--operon-inline-chip-icon-color, var(--text-muted));'));
 	ok(cssSource.includes('.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):hover'));
 	ok(cssSource.includes('border-color: var(--operon-task-chip-border);'));
-	ok(cssSource.includes('.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):focus-visible {\n\t\toutline-color: ButtonText;'));
+	ok(cssSource.includes('.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled):focus-visible {\n\t\toutline: 2px solid ButtonText;'));
 	ok(cssSource.includes('--operon-table-detailed-value-max-width: 168px;'));
 	ok(cssSource.includes('max-width: min(100%, var(--operon-table-detailed-value-max-width));'));
 	ok(cssSource.includes('.operon-table-list-value-chip {\n\tflex: 0 0 auto;'));
 	ok(cssSource.includes('max-width: var(--operon-table-detailed-value-max-width);'));
 	ok(cssSource.includes('.operon-table-cell-chip-list {\n\tdisplay: flex;'));
+	ok(cssSource.includes('--operon-table-chip-glow-size: 2px;'));
+	ok(cssSource.includes('width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));'));
+	ok(cssSource.includes('margin: calc(-1 * var(--operon-table-chip-glow-size));'));
+	ok(cssSource.includes('padding: var(--operon-table-chip-glow-size);'));
+	ok(cssSource.includes('box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);'));
+	ok(cssSource.includes('@media (forced-colors: active) {\n\t.operon-table-root .operon-table-list-value-chip:focus-visible,'));
 	ok(cssSource.includes('background-color: transparent;'));
-	ok(cssSource.includes('box-shadow: 0 0 0 2px var(--operon-task-chip-focus-ring);'));
+	ok(cssSource.includes('box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);'));
 	ok(cssSource.includes('.operon-table-plain-text-value,'));
 	ok(editorSource.includes('formatTableCellListChipDisplayValue(value)'));
+	ok(editorSource.includes('formatTableListIconOnlyTooltipContent(renderValues)'));
 	ok(editorSource.includes("options.field?.type === 'text' && options.field.unavailable !== true"));
 	ok(editorSource.includes('renderTableTextValueDisplay(options.cell'));
 	ok(editorSource.includes('renderTableIconOnlyCell(options.cell'));
