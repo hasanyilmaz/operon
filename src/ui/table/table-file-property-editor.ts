@@ -20,6 +20,7 @@ import {
 import type { TableFilePropertyCellValue, TableFilePropertyField } from './table-file-property';
 import {
 	applyTableColumnCellAccent,
+	decorateTableDateValueChip,
 	decorateTableListValueChip,
 	formatTableCellListChipDisplayValue,
 	formatTableListIconOnlyTooltipContent,
@@ -309,6 +310,7 @@ export function renderTableFilePropertyValue(options: {
 			const chip = chipParent.createSpan({
 				cls: `operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip${options.editable ? ' operon-table-editable-chip' : ' operon-chip-readonly'}`,
 			});
+			decorateTableDateValueChip(chip, options.field?.type);
 			if (listValue) {
 				chip.createSpan({ cls: 'operon-table-cell-chip-label', text: displayValue });
 			} else {

@@ -32099,6 +32099,15 @@ button.operon-table-source-button {
 	--operon-inline-chip-icon-color: var(--operon-table-field-accent, var(--text-muted));
 }
 
+.operon-table-root .operon-table-date-value-chip,
+.operon-table-root .operon-table-date-value-chip:is(:hover, .is-operon-chip-hovered, :focus-visible),
+.operon-table-root .operon-table-cell.is-editable:is(:hover, :focus-visible, :focus-within) .operon-table-date-value-chip {
+	--operon-task-chip-bg: transparent;
+	--operon-task-chip-hover-bg: transparent;
+	background: transparent;
+	background-color: transparent;
+}
+
 .operon-table-blocked-by-state-chip,
 .operon-table-cell.is-editable:hover .operon-table-blocked-by-state-chip,
 .operon-table-cell.is-editable:focus-visible .operon-table-blocked-by-state-chip,
@@ -32236,6 +32245,8 @@ button.operon-table-source-button:focus-visible {
 }
 
 @media (forced-colors: active) {
+	.operon-table-root .operon-table-date-value-chip:focus-visible,
+	.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-date-value-chip,
 	.operon-table-root .operon-table-list-value-chip:focus-visible,
 	.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-list-value-chip,
 	.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):focus-visible,

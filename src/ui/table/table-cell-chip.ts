@@ -42,6 +42,14 @@ export interface TableCellChipGroupRenderOptions extends TableCellChipRenderOpti
 	chipClassName: string;
 }
 
+export function isTableDateLikeFieldType(type: string | null | undefined): boolean {
+	return type === 'date' || type === 'datetime';
+}
+
+export function decorateTableDateValueChip(chip: HTMLElement, type: string | null | undefined): void {
+	if (isTableDateLikeFieldType(type)) chip.addClass('operon-table-date-value-chip');
+}
+
 interface TableCellChipItem {
 	rawValue: string;
 	displayValue: string;
@@ -110,6 +118,8 @@ export function renderTableCellChipContent(
 	value: string,
 	options: TableCellChipRenderOptions = {},
 ): void {
+	const field = options.settings ? getTableTaskField(key, options.settings) : null;
+	decorateTableDateValueChip(chip, field?.type);
 	applyTableCellChipAccent(chip, key, value, options);
 	const externalLink = resolveTableExternalLink(key, value, options);
 	if (externalLink) {
@@ -135,7 +145,6 @@ export function renderTableCellChipContent(
 		return;
 	}
 	if (isTableValueIconField(key, options)) {
-		const field = options.settings ? getTableTaskField(key, options.settings) : null;
 		const preserveDateIconSlot = field?.type === 'date' || field?.type === 'datetime';
 		renderTableValueIconChipContent(
 			chip,

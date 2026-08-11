@@ -1119,6 +1119,23 @@ function checkCssScorecard() {
 	);
 	assertCssRuleContains(
 		'styles.css',
+		'.operon-table-root .operon-table-date-value-chip',
+		[
+			'--operon-task-chip-bg: transparent;',
+			'--operon-task-chip-hover-bg: transparent;',
+			'background: transparent;',
+			'background-color: transparent;',
+		],
+		'Table date and datetime chips must keep a neutral fill in every color mode',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root .operon-table-date-value-chip:focus-visible',
+		['outline: 2px solid ButtonText;', 'box-shadow: none;'],
+		'Table date and datetime chips must keep a forced-colors focus indicator',
+	);
+	assertCssRuleContains(
+		'styles.css',
 		'.operon-table-cell-chip-list',
 		[
 			'display: flex;',

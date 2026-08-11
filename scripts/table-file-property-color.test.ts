@@ -5,8 +5,10 @@ import type { IndexedTask } from '../src/types/fields';
 import type { OperonSettings } from '../src/types/settings';
 import {
 	applyTableColumnCellAccent,
+	decorateTableDateValueChip,
 	formatTableCellListChipDisplayValue,
 	formatTableListIconOnlyTooltipContent,
+	isTableDateLikeFieldType,
 	isTableListValueChipOverflowing,
 	renderTableCellChips,
 } from '../src/ui/table/table-cell-chip';
@@ -14,6 +16,7 @@ import { resolveTableRandomColumnColor } from '../src/ui/table/table-column-colo
 import { renderTableFilePropertyValue } from '../src/ui/table/table-file-property-editor';
 import type { TableFilePropertyField } from '../src/ui/table/table-file-property';
 import { renderTableDescriptionCellContent } from '../src/ui/table/table-description-cell';
+import { renderTableCompactDatetimeCell, renderTableIconOnlyCell } from '../src/ui/table/table-icon-only-cell';
 
 let assertions = 0;
 
@@ -227,7 +230,26 @@ function countInFunction(source: string, functionName: string, needle: string): 
 
 async function run(): Promise<void> {
 	const settings = {
-		keyMappings: [],
+		keyMappings: [
+			{
+				canonicalKey: 'customDate',
+				visiblePropertyName: 'Custom date',
+				type: 'date',
+				sync: 'yes',
+				enabled: true,
+				isSystem: false,
+				customOrder: 0,
+			},
+			{
+				canonicalKey: 'customDatetime',
+				visiblePropertyName: 'Custom datetime',
+				type: 'datetime',
+				sync: 'yes',
+				enabled: true,
+				isSystem: false,
+				customOrder: 1,
+			},
+		],
 		colorPalette: [
 			{ id: 'red', name: 'Red', hex: '#aa0000' },
 			{ id: 'blue', name: 'Blue', hex: '#0000aa' },
@@ -331,8 +353,76 @@ async function run(): Promise<void> {
 		const structuredTextChip = findDescendantByClass(structuredTextCell, 'operon-table-cell-chip');
 		ok(structuredTextChip);
 		equal(findDescendantByClass(structuredTextChip, 'operon-table-cell-chip-label')?.textContent, value);
+		equal(structuredTextChip.classes.has('operon-table-date-value-chip'), false);
 		assertAccentContract(structuredTextChip, accent);
 	}
+
+	for (const type of ['date', 'datetime'] as const) {
+		equal(isTableDateLikeFieldType(type), true);
+	}
+	for (const type of [undefined, 'text', 'number', 'list']) {
+		equal(isTableDateLikeFieldType(type), false);
+	}
+	const undecoratedTemporalChip = new FakeElement('SPAN');
+	decorateTableDateValueChip(asHtmlElement(undecoratedTemporalChip), 'text');
+	equal(undecoratedTemporalChip.classes.has('operon-table-date-value-chip'), false);
+
+	for (const [key, value] of [
+		['dateStarted', '2026-08-12'],
+		['datetimeStart', '2026-08-12T10:30:00'],
+		['customDate', '2026-08-12'],
+		['customDatetime', '2026-08-12T10:30:00'],
+	] as const) {
+		for (const colorMode of ['noColor', 'taskColor', 'priorityColor', 'statusColor', 'randomColors'] as const) {
+			const temporalCell = new FakeElement('DIV');
+			renderTableCellChips(asHtmlElement(temporalCell), key, value, {
+				chipClassName: 'operon-table-cell-chip',
+				column: { key, colorMode },
+				task,
+				settings,
+			});
+			const temporalChip = findDescendantByClass(temporalCell, 'operon-table-cell-chip');
+			ok(temporalChip, `${key}/${colorMode} must render a detailed chip`);
+			equal(temporalChip.classes.has('operon-table-date-value-chip'), true, `${key}/${colorMode} must keep a neutral fill contract`);
+			const expectedAccent = colorMode === 'noColor'
+				? null
+				: colorMode === 'taskColor'
+					? '#aa1122'
+					: colorMode === 'priorityColor'
+						? '#223344'
+						: colorMode === 'statusColor'
+							? '#334455'
+							: resolveTableRandomColumnColor(key, value, settings);
+			if (expectedAccent) assertAccentContract(temporalChip, expectedAccent);
+			else equal(temporalChip.classes.has('operon-table-field-accent-chip'), false);
+		}
+	}
+
+	const compactDateCell = new FakeElement('DIV');
+	const compactDateControl = renderTableIconOnlyCell(asHtmlElement(compactDateCell), {
+		icon: 'calendar',
+		title: 'Date',
+		content: '2026-08-12',
+		ariaLabel: 'Date: 2026-08-12',
+		color: '#aa1122',
+		showTooltip: false,
+	});
+	equal(compactDateCell.classes.has('operon-table-icon-only-cell'), true);
+	equal((compactDateControl as unknown as FakeElement).style.values.get('--operon-table-icon-only-color'), '#aa1122');
+
+	const compactDatetimeCell = new FakeElement('DIV');
+	const compactDatetimeControl = renderTableCompactDatetimeCell(asHtmlElement(compactDatetimeCell), {
+		value: '2026-08-12T10:30:00',
+		timeFormat: '24h',
+		title: 'Datetime',
+		content: '2026-08-12 10:30',
+		ariaLabel: 'Datetime: 2026-08-12 10:30',
+		color: '#334455',
+		showTooltip: false,
+	});
+	equal(compactDatetimeCell.classes.has('operon-table-icon-only-cell'), true);
+	equal((compactDatetimeControl as unknown as FakeElement).classes.has('operon-table-compact-datetime'), true);
+	equal((compactDatetimeControl as unknown as FakeElement).style.values.get('--operon-table-icon-only-color'), '#334455');
 
 	const overflowWrapper = new FakeElement('SPAN');
 	overflowWrapper.addClass('operon-table-cell-chip-list');
@@ -579,6 +669,42 @@ async function run(): Promise<void> {
 	equal(findChildByClass(detailedTextCell, 'operon-table-cell-chip'), undefined);
 	equal(findChildByClass(detailedTextCell, 'operon-table-field-accent-chip'), undefined);
 
+	for (const type of ['date', 'datetime'] as const) {
+		for (const colorMode of ['noColor', 'taskColor', 'priorityColor', 'statusColor', 'randomColors'] as const) {
+			const temporalFilePropertyCell = new FakeElement('DIV');
+			equal(renderTableFilePropertyValue({
+				cell: asHtmlElement(temporalFilePropertyCell),
+				field: { ...textField, type, sourceType: type },
+				label: type === 'date' ? 'Review date' : 'Review time',
+				cellValue: {
+					present: true,
+					rawValue: type === 'date' ? '2026-08-12' : '2026-08-12T10:30:00',
+					normalizedValue: type === 'date' ? '2026-08-12' : '2026-08-12T10:30:00',
+				},
+				column: { key: columnKey, kind: 'task', colorMode },
+				task,
+				settings,
+				editable: true,
+				onToggle: () => {},
+			}), false);
+			const temporalFilePropertyChip = findChildByClass(temporalFilePropertyCell, 'operon-table-cell-chip');
+			ok(temporalFilePropertyChip, `File Property ${type}/${colorMode} must render a detailed chip`);
+			equal(temporalFilePropertyChip.classes.has('operon-table-date-value-chip'), true, `File Property ${type}/${colorMode} must keep a neutral fill contract`);
+			const rawValue = type === 'date' ? '2026-08-12' : '2026-08-12T10:30:00';
+			const expectedAccent = colorMode === 'noColor'
+				? null
+				: colorMode === 'taskColor'
+					? '#aa1122'
+					: colorMode === 'priorityColor'
+						? '#223344'
+						: colorMode === 'statusColor'
+							? '#334455'
+							: resolveTableRandomColumnColor(columnKey, rawValue, settings);
+			if (expectedAccent) assertAccentContract(temporalFilePropertyChip, expectedAccent);
+			else equal(temporalFilePropertyChip.classes.has('operon-table-field-accent-chip'), false);
+		}
+	}
+
 	const iconCell = new FakeElement('DIV');
 	equal(renderTableFilePropertyValue({
 		cell: asHtmlElement(iconCell),
@@ -638,10 +764,17 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('margin: calc(-1 * var(--operon-table-chip-glow-size));'));
 	ok(cssSource.includes('padding: var(--operon-table-chip-glow-size);'));
 	ok(cssSource.includes('box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);'));
-	ok(cssSource.includes('@media (forced-colors: active) {\n\t.operon-table-root .operon-table-list-value-chip:focus-visible,'));
+	ok(cssSource.includes('@media (forced-colors: active) {'));
+	ok(cssSource.includes('.operon-table-root .operon-table-list-value-chip:focus-visible,'));
 	ok(cssSource.includes('background-color: transparent;'));
 	ok(cssSource.includes('box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);'));
 	ok(cssSource.includes('.operon-table-plain-text-value,'));
+	ok(cssSource.includes('.operon-table-root .operon-table-date-value-chip,'), 'temporal neutral-fill selector must exist');
+	ok(cssSource.includes('--operon-task-chip-bg: transparent;\n\t--operon-task-chip-hover-bg: transparent;\n\tbackground: transparent;\n\tbackground-color: transparent;'), 'temporal base and hover fill must stay transparent');
+	ok(cssSource.includes('.operon-table-cell.is-editable:is(:hover, :focus-visible, :focus-within) .operon-table-date-value-chip'), 'editable temporal cells must retain neutral fill');
+	ok(cssSource.includes('.operon-table-root .operon-table-date-value-chip:focus-visible,\n\t.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-date-value-chip,'), 'temporal forced-colors selectors must exist');
+	ok(cssSource.includes('outline: 2px solid ButtonText;\n\t\tbox-shadow: none;'), 'forced-colors focus must use a system outline');
+	ok(cssSource.includes('.operon-table-icon-only-button:hover,\n.operon-table-icon-only-button:focus-visible {'), 'compact temporal shell must keep the shared transparent hover rule');
 	ok(editorSource.includes('formatTableCellListChipDisplayValue(value)'));
 	ok(editorSource.includes('formatTableListIconOnlyTooltipContent(renderValues)'));
 	ok(editorSource.includes("options.field?.type === 'text' && options.field.unavailable !== true"));
