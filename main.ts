@@ -491,6 +491,11 @@ import type {
 	SettingsBackupSelectedFile,
 	SettingsBackupUiIntegration,
 } from './src/ui/settings-backup-ui';
+import {
+	buildOperonSettingsBackupRecoveryCapabilitiesV1,
+	settleOperonSettingsBackupRecoveryRetryV1,
+} from './src/core/settings-backup-recovery-state';
+import { coordinateOperonSettingsBackupProductionRecoveryV1 } from './src/core/settings-backup-production-recovery';
 import { exportOperonSettingsBackupJsonV1 } from './src/core/settings-backup-export';
 import {
 	createOperonSettingsBackupTableBundleArchiveV1,
@@ -1293,6 +1298,7 @@ export default class OperonPlugin extends Plugin {
 	private pendingSettingsBackupRuntimeRecovery: PendingSettingsBackupRuntimeRecovery | null = null;
 	private settingsBackupRestoreQueue: Promise<void> = Promise.resolve();
 	private readonly settingsBackupTableResourceSessions = new Map<string, OperonSettingsBackupTableResourceSessionUndoV1>();
+	private readonly settingsBackupTableRuntimeRecoveryReceipts = new Set<string>();
 	private lastSettingsBackupUiRecovery: SettingsBackupPendingRecovery | null = null;
 	private canonicalSettingsReloadTimer: WindowTimeoutHandle | null = null;
 	private canonicalSettingsReloadPromise: Promise<CanonicalSettingsReloadResult> | null = null;
@@ -2171,6 +2177,10 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (input.action === 'keep') {
 			if (!pending) {
+				if (input.undoTokenId
+					&& this.storage.discardSettingsBackupUndo(input.undoTokenId, input.receiptId)) {
+					return { status: 'settled', failedSteps: [] };
+				}
 				return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
 			}
 			if (pending?.needsCanonicalReload) {
@@ -2250,13 +2260,13 @@ export default class OperonPlugin extends Plugin {
 			applyRestore: input => this.applySettingsBackupRestoreFromUiV1(input),
 			getPendingRecovery: () => {
 				const pending = this.pendingSettingsBackupRuntimeRecovery;
-				if (pending) return {
+				if (pending) return buildOperonSettingsBackupRecoveryCapabilitiesV1({
 					receiptId: pending.receiptId,
 					undoTokenId: pending.undoTokenId,
 					message: 'Runtime refresh requires a recovery decision.',
-					canRetryRuntimeRefresh: true,
-					canUndo: pending.undoTokenId !== null,
-				};
+					runtimeRetryRequired: true,
+					undoAvailable: pending.undoTokenId !== null,
+				});
 				return this.lastSettingsBackupUiRecovery;
 			},
 			resolveRecovery: input => this.resolveSettingsBackupRecoveryFromUiV1(input),
@@ -2605,14 +2615,14 @@ export default class OperonPlugin extends Plugin {
 				undoTokenId: result.receipt.recovery.undoTokenId,
 				recoveryRequired: result.status === 'partial-user-decision-required',
 			};
-			if (uiResult.undoTokenId && uiResult.receiptId) this.lastSettingsBackupUiRecovery = {
+			if (uiResult.undoTokenId && uiResult.receiptId) this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
 				receiptId: uiResult.receiptId, undoTokenId: uiResult.undoTokenId,
 				message: uiResult.recoveryRequired
 					? 'Runtime refresh requires a recovery decision.'
 					: 'A conditional session undo remains available.',
-				canRetryRuntimeRefresh: uiResult.recoveryRequired,
-				canUndo: true,
-			};
+				runtimeRetryRequired: uiResult.recoveryRequired,
+				undoAvailable: true,
+			});
 			return uiResult;
 		}
 		if (!prepared.bundle || !prepared.combinedPlan || !prepared.settingsPlan) {
@@ -2696,13 +2706,13 @@ export default class OperonPlugin extends Plugin {
 						failedSteps: ['standard-refresh'], localeIntentChanged: false,
 						reindexReason: null, needsCanonicalReload: true,
 					};
-					this.lastSettingsBackupUiRecovery = {
+					this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
 						receiptId: applied.receipt.receiptId,
 						undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
 						message: 'Canonical settings reload requires a recovery decision.',
-						canRetryRuntimeRefresh: true,
-						canUndo: applied.sessionUndo !== null,
-					};
+						runtimeRetryRequired: true,
+						undoAvailable: applied.sessionUndo !== null,
+					});
 					return {
 						status: 'committed', message: 'Canonical settings reload requires a recovery decision.',
 						receiptId: applied.receipt.receiptId, undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
@@ -2722,14 +2732,14 @@ export default class OperonPlugin extends Plugin {
 				undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
 				recoveryRequired: runtime.status === 'degraded',
 			};
-			if (uiResult.undoTokenId && uiResult.receiptId) this.lastSettingsBackupUiRecovery = {
+			if (uiResult.undoTokenId && uiResult.receiptId) this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
 				receiptId: uiResult.receiptId, undoTokenId: uiResult.undoTokenId,
 				message: uiResult.recoveryRequired
 					? 'Runtime refresh requires a recovery decision.'
 					: 'A conditional session undo remains available.',
-				canRetryRuntimeRefresh: uiResult.recoveryRequired,
-				canUndo: true,
-			};
+				runtimeRetryRequired: uiResult.recoveryRequired,
+				undoAvailable: true,
+			});
 			return uiResult;
 		}
 		return {
@@ -2749,16 +2759,28 @@ export default class OperonPlugin extends Plugin {
 		undoTokenId: string | null;
 	}, restoreLaneOwned = false, tableLaneOwned = false): Promise<SettingsBackupApplyResult> {
 		const tableSession = this.settingsBackupTableResourceSessions.get(input.receiptId);
-		if (tableSession && !restoreLaneOwned) {
+		const tableRuntimeOnlyRecovery = this.settingsBackupTableRuntimeRecoveryReceipts.has(input.receiptId);
+		if ((tableSession || tableRuntimeOnlyRecovery) && !restoreLaneOwned) {
 			return this.enqueueSettingsBackupRestoreOperation(() => this.resolveSettingsBackupRecoveryFromUiV1(input, true, false));
 		}
-		if (tableSession && !tableLaneOwned) {
+		if ((tableSession || tableRuntimeOnlyRecovery) && !tableLaneOwned) {
 			return this.enqueueTablePresetMutation(() => this.resolveSettingsBackupRecoveryFromUiV1(input, true, true));
 		}
-		if (!tableSession) {
+		if (!tableSession && !tableRuntimeOnlyRecovery) {
 			const result = await this.resolveSettingsBackupRestoreRecoveryV1(input);
 			if ('failedSteps' in result) {
-				if (result.status === 'settled') this.lastSettingsBackupUiRecovery = null;
+				if (result.status === 'settled') {
+					if (input.action === 'retry-runtime-refresh' && this.lastSettingsBackupUiRecovery
+						&& this.lastSettingsBackupUiRecovery.receiptId === input.receiptId
+						&& this.lastSettingsBackupUiRecovery.undoTokenId === input.undoTokenId) {
+						this.lastSettingsBackupUiRecovery = settleOperonSettingsBackupRecoveryRetryV1(
+							this.lastSettingsBackupUiRecovery,
+							'A conditional session undo remains available.',
+						);
+					} else {
+						this.lastSettingsBackupUiRecovery = null;
+					}
+				}
 				return {
 				status: result.status === 'settled' ? 'committed' : 'failed-clean',
 				message: result.status === 'settled' ? 'Runtime refresh completed.' : 'Runtime refresh remains incomplete.',
@@ -2777,6 +2799,25 @@ export default class OperonPlugin extends Plugin {
 				recoveryRequired: result.status === 'partial-user-decision-required',
 			};
 		}
+		if (tableRuntimeOnlyRecovery) {
+			const pending = this.pendingSettingsBackupRuntimeRecovery;
+			if (input.action !== 'retry-runtime-refresh' || input.undoTokenId !== null
+				|| !pending || pending.receiptId !== input.receiptId || pending.undoTokenId !== null) {
+				return this.settingsBackupUiFailure('The recovery receipt or action does not match this session.');
+			}
+			const runtime = await this.settleSettingsBackupTableRecoveryV1(pending);
+			if (runtime.status === 'settled') {
+				this.settingsBackupTableRuntimeRecoveryReceipts.delete(input.receiptId);
+				this.lastSettingsBackupUiRecovery = null;
+			}
+			return {
+				status: runtime.status === 'settled' ? 'committed' : 'failed-clean',
+				message: runtime.status === 'settled' ? 'Runtime refresh completed.' : 'Runtime refresh remains incomplete.',
+				receiptId: input.receiptId, undoTokenId: null,
+				recoveryRequired: runtime.status !== 'settled',
+			};
+		}
+		if (!tableSession) return this.settingsBackupUiFailure('The recovery session is unavailable.');
 		if (!input.undoTokenId || input.undoTokenId !== tableSession.undoTokenId) {
 			return this.settingsBackupUiFailure('The recovery receipt or token does not match this session.');
 		}
@@ -2786,6 +2827,15 @@ export default class OperonPlugin extends Plugin {
 			return this.settingsBackupUiFailure('Another restore owns the pending runtime recovery.');
 		}
 		if (input.action === 'keep') {
+			if (pendingOwner?.needsCanonicalReload) {
+				const recovered = await this.settleSettingsBackupTableRecoveryV1(pendingOwner);
+				if (recovered.status === 'degraded') {
+					return {
+						status: 'failed-clean', message: 'Canonical settings reload remains incomplete.',
+						receiptId: input.receiptId, undoTokenId: input.undoTokenId, recoveryRequired: true,
+					};
+				}
+			}
 			this.storage.discardSettingsBackupTableResourceUndoStateV1(tableSession.canonicalUndoStateId);
 			this.settingsBackupTableResourceSessions.delete(input.receiptId);
 			this.lastSettingsBackupUiRecovery = null;
@@ -2793,8 +2843,13 @@ export default class OperonPlugin extends Plugin {
 			return { status: 'committed', message: 'Restored settings were kept.', receiptId: input.receiptId, undoTokenId: null, recoveryRequired: false };
 		}
 		if (input.action === 'retry-runtime-refresh') {
-			await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
-			const runtime = await this.retrySettingsBackupRuntimeRefresh();
+			const runtime = await this.settleSettingsBackupTableRecoveryV1(pendingOwner);
+			if (runtime.status === 'settled' && this.lastSettingsBackupUiRecovery) {
+				this.lastSettingsBackupUiRecovery = settleOperonSettingsBackupRecoveryRetryV1(
+					this.lastSettingsBackupUiRecovery,
+					'A conditional session undo remains available.',
+				);
+			}
 			return {
 				status: runtime.status === 'settled' ? 'committed' : 'failed-clean',
 				message: runtime.status === 'settled' ? 'Runtime refresh completed.' : 'Runtime refresh remains incomplete.',
@@ -2847,11 +2902,80 @@ export default class OperonPlugin extends Plugin {
 				recoveryRequired: true,
 			};
 		}
+		let registrySettled = true;
+		try {
+			await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
+		} catch {
+			registrySettled = false;
+		}
+		const runtime = await this.settleSettingsBackupRuntimeRefresh(
+			previousLocaleIntent,
+			{ receiptId: input.receiptId, undoTokenId: null },
+		);
 		this.settingsBackupTableResourceSessions.delete(input.receiptId);
+		if (!registrySettled || runtime.status === 'degraded') {
+			this.settingsBackupTableRuntimeRecoveryReceipts.add(input.receiptId);
+			if (!registrySettled && runtime.status === 'settled') {
+				this.pendingSettingsBackupRuntimeRecovery = {
+					receiptId: input.receiptId, undoTokenId: null,
+					failedSteps: ['standard-refresh'], localeIntentChanged: false,
+					reindexReason: null, needsCanonicalReload: false,
+				};
+			}
+			this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+				receiptId: input.receiptId,
+				undoTokenId: null,
+				message: 'Undo committed, but runtime refresh remains incomplete.',
+				runtimeRetryRequired: true,
+				undoAvailable: false,
+			});
+			return {
+				status: 'committed', message: 'Undo committed, but runtime refresh remains incomplete.',
+				receiptId: input.receiptId, undoTokenId: null, recoveryRequired: true,
+			};
+		}
 		this.lastSettingsBackupUiRecovery = null;
-		await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
-		await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, { receiptId: input.receiptId, undoTokenId: null });
 		return { status: 'committed', message: 'Restore was undone.', receiptId: input.receiptId, undoTokenId: null, recoveryRequired: false };
+	}
+
+	private async settleSettingsBackupTableRecoveryV1(
+		recovery: PendingSettingsBackupRuntimeRecovery | null,
+	): Promise<OperonSettingsBackupRuntimeRefreshResult> {
+		if (!recovery) return { status: 'settled', failedSteps: [] };
+		const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+		const neededCanonicalReload = recovery.needsCanonicalReload;
+		const result = await coordinateOperonSettingsBackupProductionRecoveryV1(
+			neededCanonicalReload,
+			{
+				reloadCanonical: async () => {
+					const reloaded = await this.storage.reloadCanonicalSettingsPackage();
+					const ok = !reloaded.diagnostics.malformedPackage
+						&& !reloaded.diagnostics.pipelineTaxonomy.backupFailed;
+					if (ok) recovery.needsCanonicalReload = false;
+					return ok;
+				},
+				refreshTableRegistry: () => this.refreshTablePresetRegistry({
+					adoptUnbound: false, persistBindings: false, reconcileFileNames: false,
+				}),
+				settleRuntime: async () => {
+					const runtime = neededCanonicalReload
+						? await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, {
+							receiptId: recovery.receiptId, undoTokenId: recovery.undoTokenId,
+						})
+						: await this.retrySettingsBackupRuntimeRefresh();
+					return runtime.status === 'settled';
+				},
+			},
+		);
+		if (result.status === 'settled') return { status: 'settled', failedSteps: [] };
+		if (result.phase !== 'runtime') {
+			this.pendingSettingsBackupRuntimeRecovery = {
+				...recovery,
+				failedSteps: ['standard-refresh'],
+				needsCanonicalReload: result.phase === 'canonical-reload',
+			};
+		}
+		return { status: 'degraded', failedSteps: ['standard-refresh'] };
 	}
 
 	private settingsBackupUiFailure(message: string): SettingsBackupApplyResult {

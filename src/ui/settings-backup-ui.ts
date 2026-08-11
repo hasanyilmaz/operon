@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../core/i18n';
+import type { OperonSettingsBackupRecoveryCapabilitiesV1 } from '../core/settings-backup-recovery-state';
 import {
 	detectSettingsBackupFileKind,
 	isSettingsBackupFileSizeAllowed,
@@ -97,13 +98,7 @@ export interface SettingsBackupApplyResult {
 	recoveryRequired: boolean;
 }
 
-export interface SettingsBackupPendingRecovery {
-	receiptId: string;
-	undoTokenId: string | null;
-	message: string;
-	canRetryRuntimeRefresh: boolean;
-	canUndo: boolean;
-}
+export type SettingsBackupPendingRecovery = OperonSettingsBackupRecoveryCapabilitiesV1;
 
 /** Single boundary injected by the plugin. UI code never reads canonical storage directly. */
 export interface SettingsBackupUiIntegration {
@@ -427,9 +422,9 @@ export class SettingsBackupRestoreModal extends Modal {
 		this.contentEl.createEl('h3', { text: settingsBackupT('settingsBackupRecoveryTitle') });
 		this.contentEl.createEl('p', { text: recovery.message });
 		const setting = new Setting(this.contentEl);
-		setting.addButton(button => button.setButtonText(settingsBackupT('settingsBackupKeep')).onClick(() => {
-			void this.resolveRecovery('keep', recovery);
-		}));
+		if (recovery.canKeep) setting.addButton(button => button
+			.setButtonText(settingsBackupT('settingsBackupKeep'))
+			.onClick(() => { void this.resolveRecovery('keep', recovery); }));
 		if (recovery.canRetryRuntimeRefresh) setting.addButton(button => button
 			.setButtonText(settingsBackupT('settingsBackupRetry'))
 			.onClick(() => { void this.resolveRecovery('retry-runtime-refresh', recovery); }));

@@ -108,6 +108,7 @@
 		"settings-backup:table-resources:test": "node scripts/run-settings-backup-table-resource-tests.mjs",
 		"settings-backup:table-resource-apply:test": "node scripts/run-settings-backup-table-resource-apply-tests.mjs",
 		"settings-backup:table-bundle-restore:test": "node scripts/run-settings-backup-table-bundle-restore-tests.mjs",
+		"settings-backup:production-recovery:test": "node scripts/run-settings-backup-production-recovery-tests.mjs",
 		"settings-backup:ui:test": "node scripts/run-settings-backup-ui-tests.mjs",
 		"date-nlp:it:test": "node scripts/run-date-nlp-italian-tests.mjs",
 		"build": "npm run i18n:check && npm run reminder:sounds:check && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && npm run bundle:size && npm run agent-runtime:bundle:guard",
