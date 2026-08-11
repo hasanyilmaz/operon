@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { IndexedTask } from '../src/types/fields';
 import type { OperonSettings } from '../src/types/settings';
+import { buildWorkflowStatusIdentityIndex } from '../src/core/workflow-status-identity';
+import { t } from '../src/core/i18n';
 import {
 	applyTableColumnCellAccent,
 	decorateTableDateValueChip,
@@ -17,6 +19,7 @@ import { renderTableFilePropertyValue } from '../src/ui/table/table-file-propert
 import type { TableFilePropertyField } from '../src/ui/table/table-file-property';
 import { renderTableDescriptionCellContent } from '../src/ui/table/table-description-cell';
 import { renderTableCompactDatetimeCell, renderTableIconOnlyCell } from '../src/ui/table/table-icon-only-cell';
+import { renderTableProgressCell } from '../src/ui/table/table-progress-cell';
 
 let assertions = 0;
 
@@ -283,6 +286,7 @@ async function run(): Promise<void> {
 			status: 'Flow.Doing',
 		},
 	} as unknown as IndexedTask;
+	const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(settings.pipelines);
 
 	const wikilinkCases = new Map([
 		['[[Folder/Note]]', 'Note'],
@@ -590,6 +594,17 @@ async function run(): Promise<void> {
 	emptyCompactPopoverCell.dispatch('click');
 	equal(textPopoverOpens, 3, 'empty compact text must remain clickable without rendering an icon');
 
+	const emptyDetailedPopoverCell = new FakeElement('DIV');
+	renderTableDescriptionCellContent(asHtmlElement(emptyDetailedPopoverCell), {
+		value: '',
+		fieldLabel: 'Description',
+		editLabel: 'Edit cell',
+		onOpen: () => { textPopoverOpens += 1; },
+	});
+	equal(findDescendantByClass(emptyDetailedPopoverCell, 'operon-table-description-text')?.textContent, '');
+	emptyDetailedPopoverCell.dispatch('keydown', { key: ' ' });
+	equal(textPopoverOpens, 4, 'empty detailed text must remain keyboard editable without a dash');
+
 	for (const checkboxValue of ['', 'unsupported']) {
 		const checkboxElement = new FakeElement();
 		equal(applyTableColumnCellAccent(
@@ -778,13 +793,88 @@ async function run(): Promise<void> {
 		const checkbox = findChildByClass(checkboxCell, 'operon-table-file-property-checkbox');
 		ok(checkbox);
 		assertAccentContract(checkbox, '#334455');
+		equal(findDescendantByClass(checkbox, 'operon-table-file-property-checkbox-label'), undefined);
 	}
 
+	const editableProgressLabels: string[] = [];
+	for (const iconOnly of [false, true]) {
+		const emptyProgressCell = new FakeElement('DIV');
+		const activations: Array<{ kind: string; track: unknown; trigger: FakeElement; rect: DOMRect }> = [];
+		const activationResolvers: Array<() => void> = [];
+		renderTableProgressCell(asHtmlElement(emptyProgressCell), {
+			task,
+			column: { key: 'checkboxProgress', kind: 'task' },
+			settings,
+			valueResolver: {
+				getProgressTrack: () => null,
+				workflowStatusIdentityIndex,
+			},
+			iconOnly,
+			onActivate: ({ kind, track, trigger, actionAnchorRect }) => {
+				activations.push({
+					kind,
+					track,
+					trigger: trigger as unknown as FakeElement,
+					rect: actionAnchorRect,
+				});
+				return new Promise<void>(resolve => activationResolvers.push(resolve));
+			},
+		});
+		const emptyShell = findDescendantByClass(emptyProgressCell, 'operon-table-progress-action-shell');
+		const emptyButton = findDescendantByClass(emptyProgressCell, 'operon-table-progress-action');
+		ok(emptyShell);
+		ok(emptyButton);
+		equal(emptyShell.classes.has('is-empty-mode'), true);
+		equal(findDescendantByClass(emptyProgressCell, 'operon-table-progress-track'), undefined);
+		equal(findDescendantByClass(emptyProgressCell, 'operon-table-progress-ring'), undefined);
+		equal(findDescendantByClass(emptyProgressCell, 'operon-table-empty-value'), undefined);
+		equal(emptyButton.attributes.get('aria-haspopup'), 'dialog');
+		equal(emptyButton.attributes.has('aria-describedby'), false);
+		const editableProgressLabel = emptyButton.querySelector('[data-operon-accessible-label="true"]')?.textContent ?? '';
+		ok(editableProgressLabel.length > 0);
+		ok(editableProgressLabel.includes(t('table', 'editCellAria')));
+		editableProgressLabels.push(editableProgressLabel);
+		emptyButton.dispatch('click');
+		emptyButton.dispatch('click');
+		equal(activations.length, 1);
+		equal(activations[0]?.kind, 'checkboxes');
+		equal(activations[0]?.track, null);
+		equal(activations[0]?.trigger, emptyButton);
+		equal(activations[0]?.rect.left, emptyButton.left);
+		activationResolvers.shift()?.();
+		await Promise.resolve();
+		await Promise.resolve();
+		emptyButton.dispatch('click');
+		equal(activations.length, 2);
+		activationResolvers.shift()?.();
+	}
+
+	const emptyReadOnlyProgressCell = new FakeElement('DIV');
+	renderTableProgressCell(asHtmlElement(emptyReadOnlyProgressCell), {
+		task,
+		column: { key: 'checkboxProgress', kind: 'task' },
+		settings,
+		valueResolver: {
+			getProgressTrack: () => null,
+			workflowStatusIdentityIndex,
+		},
+		iconOnly: false,
+	});
+	equal(findDescendantByClass(emptyReadOnlyProgressCell, 'operon-table-progress-action'), undefined);
+	equal(findDescendantByClass(emptyReadOnlyProgressCell, 'operon-table-empty-value'), undefined);
+	const readOnlyProgressLabel = emptyReadOnlyProgressCell.querySelector('[data-operon-accessible-label="true"]')?.textContent ?? '';
+	ok(readOnlyProgressLabel.length > 0);
+	equal(readOnlyProgressLabel.includes(t('table', 'editCellAria')), false);
+	equal(editableProgressLabels.every(label => label.length > readOnlyProgressLabel.length), true);
+
 	const rootDir = process.cwd();
-	const [workspaceSource, embedSource, editorSource, chipSource, cssSource] = await Promise.all([
+	const [mainSource, workspaceSource, embedSource, editorSource, descriptionSource, progressSource, chipSource, cssSource] = await Promise.all([
+		readFile(path.join(rootDir, 'main.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/table/operon-table-view.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/embed-table-processor.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/table/table-file-property-editor.ts'), 'utf8'),
+		readFile(path.join(rootDir, 'src/ui/table/table-description-cell.ts'), 'utf8'),
+		readFile(path.join(rootDir, 'src/ui/table/table-progress-cell.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/table/table-cell-chip.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'styles.css'), 'utf8'),
 	]);
@@ -831,6 +921,15 @@ async function run(): Promise<void> {
 	ok(embedSource.includes('renderTableCellChips('));
 	ok(workspaceSource.includes('isTablePlainTextField(getTableTaskField(column.key, renderState.settings))'));
 	ok(embedSource.includes('isTablePlainTextField(getTableTaskField(column.key, renderState.settings))'));
+	equal(workspaceSource.includes('operon-table-empty-value'), false);
+	equal(embedSource.includes('operon-table-empty-value'), false);
+	equal(editorSource.includes('operon-table-empty-value'), false);
+	equal(descriptionSource.includes("text.setText(displayText ? options.value : '--')"), false);
+	equal(progressSource.includes('operon-table-empty-value'), false);
+	equal(cssSource.includes('.operon-table-empty-value'), false);
+	equal((mainSource.match(/openCheckboxesForTaskId\(taskId, actionAnchor, actionAnchorRect, false\)/g) ?? []).length, 3);
+	ok(mainSource.includes('centerOnDesktop = true'));
+	ok(mainSource.includes('centerOnDesktop,'));
 	ok(workspaceSource.includes('isCompactTaskMarkdownLinkEventTarget(event.target, cell)'));
 	ok(embedSource.includes('isCompactTaskMarkdownLinkEventTarget(event.target, cell)'));
 	ok(workspaceSource.includes('contentEl: createCompactTaskMarkdownTooltipContent(cell, value)'));

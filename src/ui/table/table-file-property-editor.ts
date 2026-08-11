@@ -198,9 +198,9 @@ export function renderTableFilePropertyCheckbox(options: {
 	setAccessibleLabelWithoutTooltip(button, `${options.label}: ${stateText}`);
 	const icon = button.createSpan('operon-table-file-property-checkbox-icon operon-inline-compact-chip-icon operon-table-cell-chip-icon');
 	setIcon(icon, validBoolean ? (rawValue ? 'square-check-big' : 'square') : 'square-dashed');
-	if (!options.compact) button.createSpan({
+	if (!options.compact && validBoolean) button.createSpan({
 		cls: 'operon-table-file-property-checkbox-label operon-inline-compact-chip-label operon-table-cell-chip-label',
-		text: validBoolean ? String(rawValue) : '--',
+		text: String(rawValue),
 	});
 	if (invalid) {
 		button.addEventListener('click', () => new Notice(t('table', 'filePropertyInvalidBoolean', { property: options.field.propertyName })));
@@ -299,9 +299,7 @@ export function renderTableFilePropertyValue(options: {
 			options.cell,
 			`${options.label}: ${options.cellValue.normalizedValue || t('table', 'filePropertyNotSet')}`,
 		);
-	} else if (renderValues.length === 0) {
-		options.cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
-	} else {
+	} else if (renderValues.length > 0) {
 		const chipParent = listValue
 			? options.cell.createSpan('operon-table-cell-chip-list')
 			: options.cell;

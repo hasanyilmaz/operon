@@ -2757,10 +2757,7 @@ function renderEmbedTableSummaryRow(
 			});
 			continue;
 		}
-		if (!summary) {
-			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
-			continue;
-		}
+		if (!summary) continue;
 		cell.createSpan({
 			cls: 'operon-table-summary-label',
 			text: t('table', `summary${summary.function}`),
@@ -2770,8 +2767,6 @@ function renderEmbedTableSummaryRow(
 				cls: 'operon-table-summary-value',
 				text: summary.value,
 			});
-		} else {
-			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 		}
 	}
 }
@@ -2829,8 +2824,8 @@ function renderEmbedTableCell(
 			valueResolver: renderState.valueResolver,
 			iconOnly: shouldUseEmbedTableIconOnlyColumn(column, renderState.settings),
 		onActivate: canWriteEmbedTable(deps) && (deps.onContextualAction || deps.onOpenCheckboxes)
-			? ({ task: progressTask, track, trigger, actionAnchorRect }) => {
-				if (track.kind === 'checkboxes' && deps.onOpenCheckboxes) {
+			? ({ task: progressTask, kind, trigger, actionAnchorRect }) => {
+				if (kind === 'checkboxes' && deps.onOpenCheckboxes) {
 					return deps.onOpenCheckboxes(
 						progressTask.operonId,
 						trigger,
@@ -2839,14 +2834,14 @@ function renderEmbedTableCell(
 				}
 				return deps.onContextualAction?.(
 					progressTask.operonId,
-					track.kind === 'subtasks' ? 'subtasks' : 'checkboxes',
+					kind === 'subtasks' ? 'subtasks' : 'checkboxes',
 					{
 						surface: 'tableTask',
 						taskId: progressTask.operonId,
 						task: progressTask,
 						now: localNow(),
 						isPinned: deps.isTaskPinned?.(progressTask.operonId) === true,
-						hasSubtasks: track.kind === 'subtasks'
+						hasSubtasks: kind === 'subtasks'
 							? true
 							: deps.hasSubtasks?.(progressTask.operonId) === true,
 					},
@@ -2877,7 +2872,6 @@ function renderEmbedTableCell(
 		return;
 	}
 	if (!displayValue.trim()) {
-		cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 		return;
 	}
 	const chipClass = editable ? 'operon-table-editable-chip' : 'operon-chip-readonly';
@@ -3274,7 +3268,6 @@ function renderEmbedTableDurationFallbackValue(
 	renderState: EmbeddedTableRenderState,
 ): void {
 	if (!value.trim()) {
-		cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 		return;
 	}
 	const chip = cell.createSpan('operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-chip-readonly');
@@ -3799,7 +3792,7 @@ function renderEmbedTableSourceCell(
 	setAccessibleLabelWithoutTooltip(button, t('table', 'openSource', { source: fullSource }));
 	const iconEl = button.createSpan('operon-table-source-icon');
 	setIcon(iconEl, task.primary.format === 'inline' ? 'text-cursor-input' : 'file-text');
-	button.createSpan({ cls: 'operon-table-source-label', text: value || '--' });
+	button.createSpan({ cls: 'operon-table-source-label', text: value });
 	button.addEventListener('click', event => {
 		event.preventDefault();
 		event.stopPropagation();

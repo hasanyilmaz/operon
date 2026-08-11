@@ -73,7 +73,7 @@ export function renderTableTextValueDisplay(
 			containerClassName: 'operon-task-description-markdown',
 		});
 	} else {
-		text.setText(displayText ? options.value : '--');
+		text.setText(displayText ? options.value : '');
 	}
 	if (displayText) {
 		bindOperonHoverTooltip(cell, {

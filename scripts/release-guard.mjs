@@ -1104,6 +1104,37 @@ function checkCssScorecard() {
 		['width: 7px;', 'cursor: col-resize;'],
 		'Table column resize handles must remain reachable',
 	);
+	for (const relativePath of [
+		'src/ui/table/operon-table-view.ts',
+		'src/ui/embed-table-processor.ts',
+		'src/ui/table/table-description-cell.ts',
+		'src/ui/table/table-file-property-editor.ts',
+		'src/ui/table/table-progress-cell.ts',
+		'styles.css',
+	]) {
+		assertNoMatch(
+			relativePath,
+			/operon-table-empty-value/u,
+			'Table empty cells must stay visually blank without removing their interaction owner',
+		);
+		if (relativePath !== 'styles.css') {
+			assertNoMatch(
+				relativePath,
+				/['"]--['"]/u,
+				'Table cell renderers must not reintroduce visible double-dash placeholders',
+			);
+		}
+	}
+	assertIncludes(
+		'src/ui/table/table-progress-cell.ts',
+		"const editable = kind === 'checkboxes' && !!options.onActivate;",
+		'empty Checkbox Progress cells must keep their shared activation target',
+	);
+	assertIncludes(
+		'main.ts',
+		'openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect, false)',
+		'Table Checkbox Progress popovers must opt into cell-anchored desktop placement',
+	);
 
 	assertCssRuleContains(
 		'styles.css',

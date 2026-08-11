@@ -13892,7 +13892,7 @@ export default class OperonPlugin extends Plugin {
 					onEditTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 					onDeleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
-					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
+					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect, false),
 					onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					getProjectSerialDisplay: (operonId, task) => task
 						? this.getReadingProjectSerialDisplayForTask(operonId, task)
@@ -13929,7 +13929,7 @@ export default class OperonPlugin extends Plugin {
 					onEditTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 					onDeleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
-					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
+					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect, false),
 					onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					getProjectSerialDisplay: (operonId, task) => task
 						? this.getReadingProjectSerialDisplayForTask(operonId, task)
@@ -14808,6 +14808,7 @@ export default class OperonPlugin extends Plugin {
 		taskId: string,
 		actionAnchor?: HTMLElement | null,
 		actionAnchorRect?: DOMRect | null,
+		centerOnDesktop = true,
 	): Promise<void> {
 		const indexedTask = this.indexer.getTask(taskId);
 		if (!indexedTask) {
@@ -14821,7 +14822,7 @@ export default class OperonPlugin extends Plugin {
 			keyMappings: this.settings.keyMappings,
 			taskColor: this.resolveCheckboxPopoverTaskColor(indexedTask),
 			seedEmptyDraft: (indexedTask.plainCheckboxProgress?.total ?? 0) <= 0,
-			centerOnDesktop: true,
+			centerOnDesktop,
 			onDispose: cleanup,
 		});
 	}
@@ -18044,7 +18045,7 @@ export default class OperonPlugin extends Plugin {
 			editTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 			deleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 			onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
-			onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
+			onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect, false),
 			onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 			onOpenPresetSettings: (presetId) => this.openTablePresetSettingsModal(presetId, () => this.resolveTablePresetSettingsLeafForEmbed()),
 			onSavePresetPatch: (patch) => this.queueTablePresetPatchAndRefresh(

@@ -31895,6 +31895,13 @@ button.operon-table-summary-picker-action:focus-visible {
 	min-width: 28px;
 }
 
+.operon-table-progress-action-shell.is-empty-mode {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
 .operon-table-progress-action-shell .operon-table-progress-wrap,
 .operon-table-progress-action-shell .operon-table-progress-track,
 .operon-table-progress-action-shell .operon-table-progress-ring {
@@ -32256,10 +32263,6 @@ button.operon-table-source-button:focus-visible {
 	min-width: 0;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.operon-table-empty-value {
-	color: var(--text-faint);
 }
 
 .operon-table-root button.operon-table-file-property-checkbox {

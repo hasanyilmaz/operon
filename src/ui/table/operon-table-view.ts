@@ -1874,10 +1874,7 @@ export class OperonTableView extends FileView {
 				});
 				continue;
 			}
-			if (!summary) {
-				cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
-				continue;
-			}
+			if (!summary) continue;
 			cell.createSpan({
 				cls: 'operon-table-summary-label',
 				text: getTableSummaryFunctionLabel(summary.function),
@@ -1887,8 +1884,6 @@ export class OperonTableView extends FileView {
 					cls: 'operon-table-summary-value',
 					text: summary.value,
 				});
-			} else {
-				cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 			}
 		}
 	}
@@ -2306,7 +2301,7 @@ export class OperonTableView extends FileView {
 		setAccessibleLabelWithoutTooltip(button, t('table', 'openSource', { source: fullSource }));
 		const iconEl = button.createSpan('operon-table-source-icon');
 		setIcon(iconEl, task.primary.format === 'inline' ? 'text-cursor-input' : 'file-text');
-		button.createSpan({ cls: 'operon-table-source-label', text: value || '--' });
+		button.createSpan({ cls: 'operon-table-source-label', text: value });
 		button.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -2334,8 +2329,8 @@ export class OperonTableView extends FileView {
 				valueResolver: renderState.valueResolver,
 				iconOnly: this.shouldUseIconOnlyColumn(column, renderState.settings),
 				onActivate: this.callbacks.onContextualAction || this.callbacks.onOpenCheckboxes
-					? ({ task: progressTask, track, trigger, actionAnchorRect }) => {
-						if (track.kind === 'checkboxes' && this.callbacks.onOpenCheckboxes) {
+					? ({ task: progressTask, kind, trigger, actionAnchorRect }) => {
+						if (kind === 'checkboxes' && this.callbacks.onOpenCheckboxes) {
 							return this.callbacks.onOpenCheckboxes(
 								progressTask.operonId,
 								trigger,
@@ -2344,14 +2339,14 @@ export class OperonTableView extends FileView {
 						}
 						return this.callbacks.onContextualAction?.(
 							progressTask.operonId,
-							track.kind === 'subtasks' ? 'subtasks' : 'checkboxes',
+							kind === 'subtasks' ? 'subtasks' : 'checkboxes',
 							{
 								surface: 'tableTask',
 								taskId: progressTask.operonId,
 								task: progressTask,
 								now: localNow(),
 								isPinned: this.callbacks.isTaskPinned?.(progressTask.operonId) === true,
-								hasSubtasks: track.kind === 'subtasks'
+								hasSubtasks: kind === 'subtasks'
 									? true
 									: this.callbacks.hasSubtasks?.(progressTask.operonId) === true,
 							},
@@ -2386,7 +2381,6 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		if (!value.trim()) {
-			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 			return;
 		}
 		renderTableCellChips(cell, column.key, value, {
@@ -2641,7 +2635,6 @@ export class OperonTableView extends FileView {
 
 	private renderDurationFallbackValue(cell: HTMLElement, value: string, renderState: TableRenderState): void {
 		if (!value.trim()) {
-			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 			return;
 		}
 		const chip = cell.createSpan('operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-chip-readonly');
