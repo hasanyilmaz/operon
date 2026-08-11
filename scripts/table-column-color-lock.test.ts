@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import {
 	createDefaultTablePreset,
 	normalizeTableColumnColorMode,
@@ -57,6 +59,10 @@ async function run(): Promise<void> {
 	equal(normalizeTableColumnColorMode('statusColor', 'taskColor'), 'statusColor');
 
 	equal(isTableColumnColorModeEligible({ key: 'taskColor', kind: 'task' }), false);
+	equal(isTableColumnColorModeEligible(
+		{ key: 'taskIcon', kind: 'task' },
+		{ key: 'taskIcon', type: 'text' },
+	), true);
 	equal(isTableColumnColorModeEligible({ key: 'status', kind: 'task' }), true);
 	equal(isTableColumnColorModeEligible({ key: 'file.property:team', kind: 'task' }), true);
 	equal(isTableColumnColorModeEligible({ key: 'summary', kind: 'task' }, { key: 'summary', type: 'text' }), false);
@@ -74,6 +80,8 @@ async function run(): Promise<void> {
 	equal(isTablePlainTextField({ key: 'summary', type: 'text' }), true);
 	equal(isTablePlainTextField({ key: 'status', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'priority', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'taskIcon', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'taskColor', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'contexts', type: 'list' }), false);
 
 	const preset = createDefaultTablePreset();
@@ -120,6 +128,11 @@ async function run(): Promise<void> {
 	ok(invalidTaskColor);
 	invalidTaskColor.colorMode = 'notAColorMode';
 	equal(parseOperonTableFile(JSON.stringify(invalidFile)).status, 'invalid');
+
+	const headerSource = await readFile(path.join(process.cwd(), 'src/ui/table/table-header-interactions.ts'), 'utf8');
+	ok(headerSource.includes('if (isTableColumnColorModeEligible('));
+	ok(headerSource.includes('for (const mode of TABLE_COLUMN_COLOR_MENU_MODES)'));
+	ok(headerSource.includes("options.savePreset(setTablePresetColumnColorMode(options.getCurrentPreset(), column.key, mode), 'columns')"));
 
 	console.log(`Table column color lock tests passed: ${assertions} assertions`);
 }

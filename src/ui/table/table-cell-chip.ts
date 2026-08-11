@@ -127,7 +127,7 @@ export function renderTableCellChipContent(
 		return;
 	}
 	const displayValue = formatTableDetailedDatetimeValue(key, value, options.settings);
-	if (isTableListChipField(key, options)) {
+	if (isTableListChipField(key, options) && !isTableDependencyField(key)) {
 		chip.createSpan({
 			cls: 'operon-table-cell-chip-label',
 			text: displayValue,

@@ -8,14 +8,19 @@ const TASK_TEXT_POPOVER_EXCLUDED_KEYS = new Set([
 	'taskIcon',
 	'taskColor',
 ]);
-const STRUCTURED_TASK_TEXT_FIELD_KEYS = new Set(['status', 'priority']);
+const SPECIALIZED_TASK_TEXT_FIELD_KEYS = new Set([
+	'status',
+	'priority',
+	'taskIcon',
+	'taskColor',
+]);
 
 export function isTablePlainTextField(
 	field?: { key: string; type: string; unavailable?: boolean } | null,
 ): boolean {
 	return field?.type === 'text'
 		&& field.unavailable !== true
-		&& !STRUCTURED_TASK_TEXT_FIELD_KEYS.has(field.key);
+		&& !SPECIALIZED_TASK_TEXT_FIELD_KEYS.has(field.key);
 }
 
 export function resolveTableTextEditRoute(

@@ -39,8 +39,8 @@ async function run(): Promise<void> {
 		equal(resolveTableTaskTextEditRoute({ key, type: 'text' }, 'Alpha'), 'picker', `${key} must keep its special editor`);
 		equal(resolveTableTaskTextEditRoute({ key, type: 'text' }, ''), 'picker', `${key} must keep its special editor when empty`);
 	}
-	equal(isTablePlainTextField({ key: 'taskIcon', type: 'text' }), true);
-	equal(isTablePlainTextField({ key: 'taskColor', type: 'text' }), true);
+	equal(isTablePlainTextField({ key: 'taskIcon', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'taskColor', type: 'text' }), false);
 	equal(resolveTableTaskTextEditRoute({ key: 'contexts', type: 'list' }, 'Alpha'), 'picker');
 
 	deepEqual(buildTableFilePropertyTextMutation(' Alpha '), { kind: 'set', value: 'Alpha' });

@@ -112,6 +112,7 @@ class FakeElement {
 		if (!selector) return null;
 		const className = selector.startsWith('.') ? selector.slice(1) : null;
 		for (const child of this.children) {
+			if (selector.toLowerCase() === child.tagName.toLowerCase()) return child;
 			if (className && child.classes.has(className)) return child;
 			if (selector.includes('data-operon-accessible-label') && child.dataset.operonAccessibleLabel === 'true') return child;
 			const nested = child.querySelector(selector);
@@ -229,6 +230,11 @@ function countInFunction(source: string, functionName: string, needle: string): 
 }
 
 async function run(): Promise<void> {
+	(globalThis as typeof globalThis & {
+		__operonTestSetIcon?: (target: FakeElement, name: string) => void;
+	}).__operonTestSetIcon = target => {
+		target.appendChild(new FakeElement('SVG'));
+	};
 	const settings = {
 		keyMappings: [
 			{
@@ -337,7 +343,43 @@ async function run(): Promise<void> {
 	const dependencyWrapper = findChildByClass(dependencyCell, 'operon-table-cell-chip-list');
 	ok(dependencyWrapper);
 	equal(findDescendantByClass(dependencyWrapper, 'operon-table-cell-chip-label')?.textContent, dependencyDescription);
-	equal(findDescendantByClass(dependencyWrapper, 'operon-table-cell-chip-icon'), undefined);
+	ok(findDescendantByClass(dependencyWrapper, 'operon-table-cell-chip-icon'));
+	ok(findDescendantByClass(dependencyWrapper, 'operon-table-blocked-by-state-chip'));
+
+	const blockingCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(blockingCell), 'blocking', 'parent-1', {
+		chipClassName: 'operon-table-cell-chip',
+		settings,
+		taskLookup: {
+			getTask: () => ({
+				operonId: 'parent-1',
+				description: dependencyDescription,
+				fieldValues: { status: '' },
+			}) as unknown as IndexedTask,
+		},
+	});
+	ok(findDescendantByClass(blockingCell, 'operon-table-cell-chip-icon'));
+	equal(findDescendantByClass(blockingCell, 'operon-table-cell-chip-label')?.textContent, dependencyDescription);
+
+	const taskIconCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(taskIconCell), 'taskIcon', 'github', {
+		chipClassName: 'operon-table-cell-chip',
+		column: { key: 'taskIcon', colorMode: 'taskColor' },
+		task,
+		settings,
+	});
+	ok(findDescendantByClass(taskIconCell, 'operon-table-cell-chip-icon'));
+	equal(findDescendantByClass(taskIconCell, 'operon-table-cell-chip-label')?.textContent, 'github');
+	assertAccentContract(findDescendantByClass(taskIconCell, 'operon-table-cell-chip')!, '#aa1122');
+
+	const taskColorCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(taskColorCell), 'taskColor', '#aa1122', {
+		chipClassName: 'operon-table-cell-chip',
+		column: { key: 'taskColor', colorMode: 'statusColor' },
+		task,
+		settings,
+	});
+	assertAccentContract(findDescendantByClass(taskColorCell, 'operon-table-cell-chip')!, '#aa1122');
 
 	for (const [key, value, accent] of [
 		['status', 'Flow.Doing', '#334455'],
@@ -783,6 +825,8 @@ async function run(): Promise<void> {
 	ok(chipSource.includes('bindOperonHoverTooltip(chip, {\n\t\tcontent: displayValue,'));
 	ok(chipSource.includes('shouldOpen: () => isTableListValueChipOverflowing(chip),'));
 	ok(chipSource.includes("key === 'status' || key === 'priority'"));
+	ok(chipSource.includes('isTableListChipField(key, options) && !isTableDependencyField(key)'));
+	ok(chipSource.includes("key === 'status' || key === 'priority' || key === 'blocking' || key === 'blockedBy'"));
 	ok(workspaceSource.includes('renderTableCellChips('));
 	ok(embedSource.includes('renderTableCellChips('));
 	ok(workspaceSource.includes('isTablePlainTextField(getTableTaskField(column.key, renderState.settings))'));
