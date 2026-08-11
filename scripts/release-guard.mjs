@@ -1305,6 +1305,81 @@ function checkCssScorecard() {
 		['.operon-table-embed-toolbar'],
 		'sidebar Table toolbar reduced-motion override must stay desktop, direct-leaf, and embed-safe',
 	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (hover: hover) and (pointer: fine)',
+		[
+			'body:not(.is-mobile) .mod-sidedock',
+			'[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar',
+			'[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header',
+			':not(:hover):not(:focus-within):not(:has([aria-expanded="true"]))',
+			'height: 16px;',
+			'height: 4px;',
+			'position: relative;',
+			'position: absolute;',
+			'top: 6px;',
+			'inset-inline: 8px;',
+			'opacity: 0;',
+			'opacity: 1;',
+			'pointer-events: none;',
+		],
+		[
+			'body.is-mobile',
+			'.operon-calendar-mobile-root',
+			'.operon-filter-surface--preview',
+			'.operon-filter-surface--dynamic-file-task',
+			'.operon-embed-filter',
+		],
+		'Calendar and Filter sidebar toolbar rails must stay desktop, fine-pointer, direct-leaf, and popup-safe',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (prefers-reduced-motion: reduce)',
+		[
+			'body:not(.is-mobile) .mod-sidedock',
+			'[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar',
+			'[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header',
+			'transition-duration: 0ms;',
+		],
+		['.operon-calendar-mobile-root', '.operon-filter-surface--preview', '.operon-embed-filter'],
+		'Calendar and Filter sidebar toolbar rails must honor reduced motion without leaking into embedded surfaces',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-filter-surface--sidebar .operon-filter-header',
+		['position: sticky;', 'top: 0;', 'z-index: 20;'],
+		'Filter sidebar toolbar rail must preserve the sticky header positioning contract',
+	);
+	assertIncludes(
+		'styles.css',
+		')::after {\n\t\tcontent: \'\';\n\t\tposition: absolute;\n\t\ttop: 6px;\n\t\tinset-inline: 8px;\n\t\theight: 4px;\n\t\tborder-radius: 999px;',
+		'Calendar and Filter sidebar toolbar rails must keep their scoped pseudo-element geometry',
+	);
+	assertIncludes(
+		'src/ui/calendar/calendar-view.ts',
+		"button.setAttribute('aria-expanded', 'true');",
+		'Calendar sidebar toolbar collapse must remain open while the preset picker owns expansion',
+	);
+	assertIncludes(
+		'src/ui/calendar/calendar-view.ts',
+		"button.setAttribute('aria-expanded', 'false');",
+		'Calendar sidebar toolbar collapse must resume after the preset picker closes',
+	);
+	assertIncludes(
+		'src/ui/filter-view.ts',
+		"this.filterPickerButtonEl?.setAttribute('aria-expanded', open ? 'true' : 'false');",
+		'Filter sidebar toolbar collapse must remain open while the filter picker owns expansion',
+	);
+	assertIncludes(
+		'src/ui/related-views.ts',
+		"anchor.setAttribute('aria-expanded', 'true');",
+		'Calendar and Filter sidebar toolbar collapse must remain open while Related Views owns expansion',
+	);
+	assertIncludes(
+		'src/ui/related-views.ts',
+		"anchor.setAttribute('aria-expanded', 'false');",
+		'Calendar and Filter sidebar toolbar collapse must resume after Related Views closes',
+	);
 	assertIncludes(
 		'src/ui/table/operon-table-view.ts',
 		"cls: 'operon-table-toolbar-icon-button operon-table-preset-settings-button'",

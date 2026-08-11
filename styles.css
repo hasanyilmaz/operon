@@ -29908,6 +29908,91 @@ body.is-mobile .workspace-leaf-content:is(
 	}
 }
 
+/* Match Table's desktop side-dock toolbar rail for Calendar and Filter leaves. */
+@media (hover: hover) and (pointer: fine) {
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	) {
+		box-sizing: border-box;
+		transition:
+			height 110ms ease-out,
+			min-height 110ms ease-out,
+			max-height 110ms ease-out,
+			padding 110ms ease-out;
+	}
+
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content[data-type="operon-calendar-view"]
+		> .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar {
+		position: relative;
+	}
+
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	)::after {
+		content: '';
+		position: absolute;
+		top: 6px;
+		inset-inline: 8px;
+		height: 4px;
+		border-radius: 999px;
+		background-color: var(--background-modifier-hover);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 90ms ease-out;
+	}
+
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	) > * {
+		transition: opacity 90ms ease-out;
+	}
+
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	):not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) {
+		height: 16px;
+		min-height: 16px;
+		max-height: 16px;
+		overflow: hidden;
+		padding-block: 6px;
+	}
+
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	):not(:hover):not(:focus-within):not(:has([aria-expanded="true"]))::after {
+		opacity: 1;
+	}
+
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	):not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) > * {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	),
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	)::after,
+	body:not(.is-mobile) .mod-sidedock :is(
+		.workspace-leaf-content[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar,
+		.workspace-leaf-content[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header
+	) > * {
+		transition-duration: 0ms;
+	}
+}
+
 .operon-table-title-wrap {
 	display: flex;
 	align-items: center;
