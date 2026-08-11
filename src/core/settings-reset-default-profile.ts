@@ -60,7 +60,6 @@ export function createOperonSettingsResetDefaultProfileV1(
 		settings: defaults,
 		source: input.source,
 		createdAt: input.createdAt,
-		includeExternalCalendarUrls: true,
 	});
 }
 

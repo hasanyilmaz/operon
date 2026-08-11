@@ -81,12 +81,11 @@ function representativeSettings(): OperonSettings {
 	});
 }
 
-function exportInput(settings: OperonSettings, includeExternalCalendarUrls = false) {
+function exportInput(settings: OperonSettings) {
 	return {
 		settings,
 		source: { pluginVersion: '3.2.1', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
 		createdAt: CREATED_AT,
-		includeExternalCalendarUrls,
 	};
 }
 
@@ -142,7 +141,8 @@ test('export is deterministic, parseable and does not mutate its committed snaps
 	assert.equal(first.bodyChecksum, second.bodyChecksum);
 	assert.equal(first.suggestedFileName, 'operon-settings-backup-20260811T093045Z.json');
 	assert.equal(parseOperonSettingsBackupV1(first.json).ok, true);
-	assert.equal(first.backup.body.groups['external-calendars'], undefined);
+	assert.equal(first.backup.body.scope.externalCalendarUrls, 'included');
+	assert.equal(first.backup.body.groups['external-calendars']?.codecVersion, 1);
 	const decoded = validateOperonSettingsBackupGroupsV1(first.backup.body.groups);
 	assert.equal(decoded.ok, true);
 	assert.equal(decoded.payloads['custom-keys']?.customKeys[0]?.canonicalKey, 'client');
@@ -258,29 +258,28 @@ test('export filename helper uses the exact UTC stamp and a safe fallback', () =
 	assert.equal(suggestOperonSettingsBackupFileNameV1('not-a-timestamp'), 'operon-settings-backup.json');
 });
 
-test('external calendar URLs are absent by default and included only by explicit opt-in', () => {
+test('external calendar sources, URLs and preset visibility are always included', () => {
 	const settings = representativeSettings();
 	assert.equal(settings.externalCalendars[0]?.url, SECRET_URL);
 	if (settings.externalCalendars[0]) settings.externalCalendars[0].id = SECRET_URL;
 	if (settings.calendarPresets[0]) settings.calendarPresets[0].externalCalendarVisibility = { [SECRET_URL]: true };
-	const excluded = exportOperonSettingsBackupJsonV1(exportInput(settings));
-	assert.equal(excluded.ok, true);
-	if (!excluded.ok) return;
-	assert.equal(excluded.json.includes(SECRET_URL), false);
-	assert.equal(JSON.stringify(excluded.report).includes(SECRET_URL), false);
-	assert.equal(JSON.stringify(excluded.diagnostics).includes(SECRET_URL), false);
-	assert.deepEqual(excluded.report.externalCalendars, {
-		included: false,
-		sourceCount: 1,
-		includedUrlCount: 0,
-		maskedUrlCount: 1,
-	});
-
-	const included = exportOperonSettingsBackupJsonV1(exportInput(settings, true));
+	const included = exportOperonSettingsBackupJsonV1(exportInput(settings));
 	assert.equal(included.ok, true);
 	if (!included.ok) return;
+	assert.equal(included.backup.body.scope.externalCalendarUrls, 'included');
 	assert.equal(included.json.includes(SECRET_URL), true);
+	assert.equal(JSON.stringify(included.report).includes(SECRET_URL), false);
+	assert.equal(JSON.stringify(included.diagnostics).includes(SECRET_URL), false);
+	assert.deepEqual(included.report.externalCalendars, {
+		included: true,
+		sourceCount: 1,
+		includedUrlCount: 1,
+		maskedUrlCount: 0,
+	});
 	assert.equal(included.backup.body.groups['external-calendars']?.codecVersion, 1);
+	const decoded = validateOperonSettingsBackupGroupsV1(included.backup.body.groups);
+	assert.equal(decoded.ok, true);
+	assert.equal(decoded.payloads.calendar?.calendarPresets[0]?.externalCalendarVisibility[SECRET_URL], true);
 });
 
 test('Table file authority is omitted and never blocks configuration export', () => {

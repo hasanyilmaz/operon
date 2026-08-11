@@ -3214,13 +3214,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			text: settingsBackupT('settingsBackupExportDesc'),
 			cls: 'operon-settings-muted-block',
 		});
-		let includeExternalCalendarUrls = false;
-		new Setting(exportSection)
-			.setName(settingsBackupT('settingsBackupIncludeExternalCalendars'))
-			.setDesc(settingsBackupT('settingsBackupIncludeExternalCalendarsDesc'))
-			.addToggle(toggle => toggle.setValue(false).onChange(value => {
-				includeExternalCalendarUrls = value;
-			}));
 		new Setting(exportSection)
 			.setName(settingsBackupT('settingsBackupExportAction'))
 			.setDesc(settingsBackupT('settingsBackupExportActionDesc'))
@@ -3231,9 +3224,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					button.setDisabled(true);
 					try {
 						try {
-							const artifact = await integration.exportBackup({
-								includeExternalCalendarUrls,
-							});
+							const artifact = await integration.exportBackup();
 							downloadSettingsBackupArtifact(containerEl.ownerDocument, artifact);
 							new Notice(settingsBackupT('settingsBackupExportReady'));
 						} catch (error) {

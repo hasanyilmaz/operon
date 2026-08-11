@@ -264,14 +264,12 @@ async function createHarness(initial: OperonDataPackageV1): Promise<Harness> {
 
 function exportJson(
 	settings: OperonSettings,
-	includeExternalCalendars = false,
 	createdAt = EXPORTED_AT,
 ): string {
 	const result = exportOperonSettingsBackupJsonV1({
 		settings,
 		source: { pluginVersion: '3.2.1', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
 		createdAt,
-		includeExternalCalendarUrls: includeExternalCalendars,
 	});
 	assert.equal(result.ok, true, result.diagnostics.map(item => item.message).join('\n'));
 	if (!result.ok) throw new Error('Expected export to succeed.');
@@ -287,7 +285,7 @@ async function createPlan(
 	plan: OperonSettingsBackupRestorePlanV1;
 }> {
 	const target = await storage.captureCommittedSettingsBackupSnapshot();
-	const sourceJson = exportJson(source, true);
+	const sourceJson = exportJson(source);
 	const preflight = preflightOperonSettingsBackupRestoreV1({ sourceJson, targetSnapshot: target, selectedGroups });
 	assert.equal(preflight.ok, true);
 	if (!preflight.ok) throw new Error('Expected valid preflight.');
@@ -654,7 +652,7 @@ test('already-applied admission rejects an equivalent swapped source and changed
 	assert.equal(harness.data.saveAttempts, 1);
 	const committed = clone(harness.data.committed);
 
-	const equivalentSwappedSource = exportJson(source, true, '2026-08-10T18:00:01.000Z');
+	const equivalentSwappedSource = exportJson(source, '2026-08-10T18:00:01.000Z');
 	const swapped = await harness.storage.applySettingsBackupRestorePlanV1(
 		applyInput(equivalentSwappedSource, plan, '2026-08-10T20:01:00.000Z'),
 	);

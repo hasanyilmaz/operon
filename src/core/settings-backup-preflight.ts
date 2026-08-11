@@ -373,7 +373,6 @@ function preflightWithMigrations(
 				dataPackageSchemaVersion: input.targetSnapshot.dataPackageSchemaVersion,
 			},
 			createdAt: backup.body.createdAt,
-			includeExternalCalendarUrls: true,
 			canonicalWritesSuspended: input.targetSnapshot.canonicalWritesSuspended,
 		});
 		if (!candidateValidation.ok) {

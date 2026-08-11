@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 2975,
-  "keyFingerprint": "b359a5f0b6ab0d0cb02aa7ec978b95f36d2308e1c5918512e229c949b7e70856",
+  "keyCount": 2973,
+  "keyFingerprint": "ef4949d62166fa6ce27979b74208124575113facb14b3301c2c3b19f70303888",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2043,13 +2043,11 @@
       "settingsBackupDownloadUnavailable": "Downloads are unavailable in this window.",
       "settingsBackupExportAction": "Download backup",
       "settingsBackupExportActionDesc": "The backup is generated from committed settings without changing the vault.",
-      "settingsBackupExportDesc": "Export portable JSON settings. Sensitive Calendar URLs are opt-in.",
+      "settingsBackupExportDesc": "Export your Operon settings as a portable JSON backup.",
       "settingsBackupExportReady": "Settings backup download started.",
       "settingsBackupExportTitle": "Export backup",
       "settingsBackupGroupCounts": "Added {{added}} · removed {{removed}} · changed {{changed}} · unchanged {{unchanged}}",
       "settingsBackupGroups": "Settings groups",
-      "settingsBackupIncludeExternalCalendars": "Include external Calendar URLs",
-      "settingsBackupIncludeExternalCalendarsDesc": "Sensitive: the exported backup will contain external Calendar source URLs.",
       "settingsBackupJsonTooLarge": "The JSON backup exceeds the 10 MiB limit.",
       "settingsBackupKeep": "Keep restored settings",
       "settingsBackupOperationFailed": "The backup operation could not be completed. Review the backup and try again.",
@@ -3020,5 +3018,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "b6ad22aff043966d59eaf2f78cd9f1dc2b3d5ac2d23af8021e3a62de9f598dc7"
+  "sourceVersion": "f5cd21a0472f9b95bdee00d01daa7042db6f0835dbe7253678fc36b0da5eda93"
 }

@@ -189,10 +189,10 @@ test('compatibility registry is exhaustive and preserves approved portability bo
 	]);
 	assert.equal(SETTINGS_BACKUP_COMPATIBILITY_BY_KEY.fileTasksFolder.support, 'vault-reference');
 	assert.equal(SETTINGS_BACKUP_COMPATIBILITY_BY_KEY.taskFinderSelectedProjectId.support, 'vault-reference');
-	assert.equal(SETTINGS_BACKUP_COMPATIBILITY_BY_KEY.externalCalendars.support, 'sensitive-opt-in');
+	assert.equal(SETTINGS_BACKUP_COMPATIBILITY_BY_KEY.externalCalendars.support, 'portable');
 	assert.equal(SETTINGS_BACKUP_COMPATIBILITY_BY_KEY.tablePresets.support, 'external-resource');
 	assert.equal(SETTINGS_BACKUP_COMPATIBILITY_BY_KEY.settingsVersion.support, 'operational-excluded');
-	assert.equal(SETTINGS_BACKUP_GROUPS.find(group => group.id === 'external-calendars')?.defaultSelected, false);
+	assert.equal(SETTINGS_BACKUP_GROUPS.find(group => group.id === 'external-calendars')?.defaultSelected, true);
 	assert.deepEqual(
 		SETTINGS_BACKUP_GROUPS.filter(group => group.id !== 'system-key-mappings').map(group => group.mergeStrategy),
 		Array(10).fill('replace'),

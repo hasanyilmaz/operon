@@ -100,11 +100,18 @@ test('download uses the owner window Blob and revokes its object URL', () => {
 	assert.match(source, /ownerWindow\.URL\.revokeObjectURL/u);
 });
 
-test('Settings tab keeps the sensitive export option transient and default-off', () => {
+test('Settings tab exports portable JSON without transient inclusion options', () => {
 	const source = readFileSync('src/ui/settings-tab.ts', 'utf8');
-	assert.match(source, /let includeExternalCalendarUrls = false;/u);
+	assert.match(source, /integration\.exportBackup\(\)/u);
+	assert.doesNotMatch(source, /includeExternalCalendarUrls|settingsBackupIncludeExternalCalendars/u);
 	assert.match(source, /id: 'coreBackupRestore', groupId: 'core'/u);
 	assert.doesNotMatch(source, /includeTablePresetFiles|settingsBackupIncludeTables/u);
+});
+
+test('Settings backup integration exposes an option-free export boundary', () => {
+	const source = readFileSync('src/ui/settings-backup-ui.ts', 'utf8');
+	assert.match(source, /exportBackup\(\): Promise<SettingsBackupDownloadArtifact>;/u);
+	assert.doesNotMatch(source, /SettingsBackupExportOptions|includeExternalCalendarUrls/u);
 });
 
 test('restore flow uses one responsive Obsidian modal with keyboard focus support', () => {

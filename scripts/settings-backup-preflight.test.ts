@@ -76,12 +76,11 @@ function representativeSettings(): OperonSettings {
 	});
 }
 
-function exportJson(settings: OperonSettings, includeExternalCalendarUrls = false): string {
+function exportJson(settings: OperonSettings): string {
 	const result = exportOperonSettingsBackupJsonV1({
 		settings,
 		source: { pluginVersion: '3.2.1', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
 		createdAt: CREATED_AT,
-		includeExternalCalendarUrls,
 	});
 	assert.equal(result.ok, true, result.diagnostics.map(item => item.message).join('\n'));
 	if (!result.ok) throw new Error('Expected export to succeed.');
@@ -354,7 +353,7 @@ test('selection preserves target groups and reverse dependency breakage blocks t
 	assert.equal(ready.restorePlan?.candidateSettings.language, target.language);
 });
 
-test('Calendar visibility is target-preserved when sensitive sources are not selected', () => {
+test('Calendar visibility is target-preserved when External Calendars are explicitly unselected', () => {
 	const source = representativeSettings();
 	const target = clone(source);
 	const presetId = source.calendarPresets[0]?.id;
@@ -363,6 +362,7 @@ test('Calendar visibility is target-preserved when sensitive sources are not sel
 	const result = preflightOperonSettingsBackupRestoreV1({
 		sourceJson: exportJson(source),
 		targetSnapshot: targetSnapshot(target),
+		selectedGroups: selectedDefaultGroups().filter(group => group !== 'external-calendars'),
 	});
 	assert.equal(result.ok, true);
 	if (!result.ok) return;
@@ -405,15 +405,15 @@ test('same-ID preset changes are normal diffs and nested vault conditions are ex
 	assert.equal(acknowledged.classification, 'ready');
 });
 
-test('sensitive External Calendar changes are masked while explicit selection enables the group', () => {
+test('External Calendar changes are masked in preview and selected by default', () => {
 	const source = representativeSettings();
 	const target = clone(source);
 	source.externalCalendars[0].url = SECRET_SOURCE_URL;
 	target.externalCalendars[0].url = SECRET_TARGET_URL;
 	const result = preflightOperonSettingsBackupRestoreV1({
-		sourceJson: exportJson(source, true),
+		sourceJson: exportJson(source),
 		targetSnapshot: targetSnapshot(target),
-		selectedGroups: [...selectedDefaultGroups(), 'external-calendars'],
+		selectedGroups: selectedDefaultGroups(),
 	});
 	assert.equal(result.ok, true);
 	if (!result.ok) return;
@@ -484,7 +484,6 @@ test('provenance is advisory while future optional and foundational codecs are g
 		settings: source,
 		source: { pluginVersion: '3.2.1', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
 		createdAt: CREATED_AT,
-		includeExternalCalendarUrls: true,
 	});
 	assert.equal(sensitiveExport.ok, true);
 	if (!sensitiveExport.ok) return;

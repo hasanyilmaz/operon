@@ -23,10 +23,6 @@ export function settingsBackupT(key: string, vars?: Record<string, string>): str
 export type SettingsBackupVaultReferenceDecision = 'apply-source' | 'preserve-target';
 export type SettingsBackupRecoveryAction = 'keep' | 'retry-runtime-refresh' | 'undo';
 
-export interface SettingsBackupExportOptions {
-	includeExternalCalendarUrls: boolean;
-}
-
 export interface SettingsBackupDownloadArtifact {
 	fileName: string;
 	mimeType: string;
@@ -93,7 +89,7 @@ export type SettingsBackupPendingRecovery = OperonSettingsBackupRecoveryCapabili
 
 /** Single boundary injected by the plugin. UI code never reads canonical storage directly. */
 export interface SettingsBackupUiIntegration {
-	exportBackup(options: SettingsBackupExportOptions): Promise<SettingsBackupDownloadArtifact>;
+	exportBackup(): Promise<SettingsBackupDownloadArtifact>;
 	resetSettings(): Promise<SettingsBackupApplyResult>;
 	preflightRestore(file: SettingsBackupSelectedFile, decisions: SettingsBackupPreviewDecisions): Promise<SettingsBackupRestorePreview>;
 	applyRestore(input: {

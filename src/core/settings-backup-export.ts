@@ -37,7 +37,6 @@ export interface OperonSettingsBackupExportInputV1 {
 	settings: Readonly<OperonSettings>;
 	source: OperonSettingsBackupExportSourceV1;
 	createdAt: string;
-	includeExternalCalendarUrls?: boolean;
 	canonicalWritesSuspended?: boolean;
 }
 
@@ -94,16 +93,14 @@ export type OperonSettingsBackupExportResultV1 =
 export function exportOperonSettingsBackupJsonV1(
 	input: OperonSettingsBackupExportInputV1,
 ): OperonSettingsBackupExportResultV1 {
-	const includeExternalCalendars = input.includeExternalCalendarUrls === true;
-	let report = createEmptyReport(includeExternalCalendars, input.canonicalWritesSuspended === true);
+	let report = createEmptyReport(input.canonicalWritesSuspended === true);
 
 	try {
 		report = createReport(
 			input.settings,
-			includeExternalCalendars,
 			input.canonicalWritesSuspended === true,
 		);
-		const groups = buildGroups(input.settings, includeExternalCalendars);
+		const groups = buildGroups(input.settings);
 		const groupValidation = validateOperonSettingsBackupGroupsV1(groups, {
 			targetSettings: input.settings,
 		});
@@ -112,7 +109,7 @@ export function exportOperonSettingsBackupJsonV1(
 		const scope: OperonSettingsBackupScopeV1 = {
 			configuration: 'portable',
 			tableFiles: 'excluded',
-			externalCalendarUrls: includeExternalCalendars ? 'included' : 'excluded',
+			externalCalendarUrls: 'included',
 			developerApiGrants: 'excluded',
 			mobileIdentity: 'excluded',
 			operationalState: 'excluded',
@@ -160,10 +157,7 @@ export function exportOperonSettingsBackupJsonV1(
 	}
 }
 
-function buildGroups(
-	settings: Readonly<OperonSettings>,
-	includeExternalCalendars: boolean,
-): OperonSettingsBackupGroupsV1 {
+function buildGroups(settings: Readonly<OperonSettings>): OperonSettingsBackupGroupsV1 {
 	const generalDefinition = SETTINGS_BACKUP_GROUPS.find(group => group.id === 'general');
 	if (!generalDefinition) throw new Error('Missing general settings backup group.');
 	const general = Object.fromEntries(generalDefinition.settingKeys.map(key => [key, settings[key]]));
@@ -187,9 +181,7 @@ function buildGroups(
 			dynamicTemplates: projectDynamicFilterTemplatePreferences(settings.filterSets),
 		}),
 		calendar: versioned({
-			calendarPresets: includeExternalCalendars
-				? settings.calendarPresets
-				: scrubExternalCalendarVisibility(settings),
+			calendarPresets: settings.calendarPresets,
 			calendarDefaultPresetId: settings.calendarDefaultPresetId,
 			calendarMobileDefaultSourcePresetId: settings.calendarMobileDefaultSourcePresetId,
 			calendarMobileAgendaSourcePresetId: settings.calendarMobileAgendaSourcePresetId,
@@ -210,21 +202,9 @@ function buildGroups(
 			tableShowTaskIcon: settings.tableShowTaskIcon,
 			tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,
 		}),
+		'external-calendars': versioned({ externalCalendars: settings.externalCalendars }),
 	};
-	if (includeExternalCalendars) {
-		groups['external-calendars'] = versioned({ externalCalendars: settings.externalCalendars });
-	}
 	return groups;
-}
-
-function scrubExternalCalendarVisibility(settings: Readonly<OperonSettings>): OperonSettings['calendarPresets'] {
-	const sensitiveKeys = new Set(settings.externalCalendars.flatMap(source => [source.id, source.url]));
-	return settings.calendarPresets.map(preset => ({
-		...preset,
-		externalCalendarVisibility: Object.fromEntries(Object.entries(preset.externalCalendarVisibility).filter(([key]) => (
-			!sensitiveKeys.has(key) && !/^(?:https?|webcal):\/\//iu.test(key)
-		))),
-	}));
 }
 
 function versioned(data: unknown): { codecVersion: number; data: JsonValue } {
@@ -272,12 +252,9 @@ function toBackupJsonValue(value: unknown, stack: Set<object>): JsonValue {
 
 function createReport(
 	settings: Readonly<OperonSettings>,
-	includeExternalCalendars: boolean,
 	canonicalWritesSuspended: boolean,
 ): OperonSettingsBackupExportReportV1 {
-	const includedGroups = SETTINGS_BACKUP_GROUPS
-		.filter(group => group.id !== 'external-calendars' || includeExternalCalendars)
-		.map(group => group.id);
+	const includedGroups = SETTINGS_BACKUP_GROUPS.map(group => group.id);
 	const includedKeys = new Set(SETTINGS_BACKUP_GROUPS
 		.filter(group => includedGroups.includes(group.id))
 		.flatMap(group => group.settingKeys));
@@ -306,16 +283,15 @@ function createReport(
 		},
 		canonicalStorage: { writesSuspended: canonicalWritesSuspended },
 		externalCalendars: {
-			included: includeExternalCalendars,
+			included: true,
 			sourceCount: settings.externalCalendars.length,
-			includedUrlCount: includeExternalCalendars ? settings.externalCalendars.length : 0,
-			maskedUrlCount: includeExternalCalendars ? 0 : settings.externalCalendars.length,
+			includedUrlCount: settings.externalCalendars.length,
+			maskedUrlCount: 0,
 		},
 	};
 }
 
 function createEmptyReport(
-	includeExternalCalendars: boolean,
 	canonicalWritesSuspended: boolean,
 ): OperonSettingsBackupExportReportV1 {
 	return {
@@ -335,7 +311,7 @@ function createEmptyReport(
 		},
 		canonicalStorage: { writesSuspended: canonicalWritesSuspended },
 		externalCalendars: {
-			included: includeExternalCalendars,
+			included: true,
 			sourceCount: 0,
 			includedUrlCount: 0,
 			maskedUrlCount: 0,

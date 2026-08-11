@@ -2239,7 +2239,7 @@ export default class OperonPlugin extends Plugin {
 
 	private buildSettingsBackupUiIntegration(): SettingsBackupUiIntegration {
 		return {
-			exportBackup: options => this.exportSettingsBackupArtifactV1(options),
+			exportBackup: () => this.exportSettingsBackupArtifactV1(),
 			resetSettings: () => this.resetSettingsToDefaultsFromUiV1(),
 			preflightRestore: (file, decisions) => this.prepareSettingsBackupRestoreForUiV1(file, decisions)
 				.then(result => result.preview),
@@ -2323,9 +2323,7 @@ export default class OperonPlugin extends Plugin {
 		return { ...result, undoTokenId: null };
 	}
 
-	private async exportSettingsBackupArtifactV1(options: {
-		includeExternalCalendarUrls: boolean;
-	}): Promise<{ fileName: string; mimeType: string; bytes: Uint8Array }> {
+	private async exportSettingsBackupArtifactV1(): Promise<{ fileName: string; mimeType: string; bytes: Uint8Array }> {
 		const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
 		const exportInput = {
 			settings: committed.settings,
@@ -2335,7 +2333,6 @@ export default class OperonPlugin extends Plugin {
 				dataPackageSchemaVersion: committed.dataPackageSchemaVersion,
 			},
 			createdAt: new Date().toISOString(),
-			includeExternalCalendarUrls: options.includeExternalCalendarUrls,
 			canonicalWritesSuspended: committed.canonicalWritesSuspended,
 		};
 		const result = exportOperonSettingsBackupJsonV1(exportInput);

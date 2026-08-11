@@ -5,7 +5,6 @@ export const SETTINGS_BACKUP_GROUP_CODEC_VERSION = 1;
 export type SettingsBackupSupportClass =
 	| 'portable'
 	| 'vault-reference'
-	| 'sensitive-opt-in'
 	| 'device-local-excluded'
 	| 'operational-excluded'
 	| 'external-resource'
@@ -331,7 +330,7 @@ const NON_PORTABLE_SUPPORT_BY_KEY = {
 	pinnedDockVisible: 'device-local-excluded',
 	pinnedDockCollapsed: 'device-local-excluded',
 	mobileGlobalTaskFabPosition: 'device-local-excluded',
-	externalCalendars: 'sensitive-opt-in',
+	externalCalendars: 'portable',
 	tablePresets: 'external-resource',
 	tablePresetOrderIds: 'external-resource',
 	tablePresetFileBindings: 'external-resource',
@@ -442,7 +441,7 @@ export const SETTINGS_BACKUP_GROUPS = [
 	defineGroup('kanban', KANBAN_KEYS, ['pipelines', 'filters', 'system-key-mappings', 'custom-keys'], 'replace'),
 	defineGroup('preset-favorites', FAVORITE_KEYS, ['filters', 'calendar', 'kanban'], 'replace'),
 	defineGroup('table-global', TABLE_GLOBAL_KEYS, [], 'replace'),
-	defineGroup('external-calendars', EXTERNAL_CALENDAR_KEYS, [], 'replace', { defaultSelected: false }),
+	defineGroup('external-calendars', EXTERNAL_CALENDAR_KEYS, [], 'replace'),
 ] as const satisfies readonly SettingsBackupGroupDefinition[];
 
 /** Keys that a portable profile must preserve from the target unchanged. */
