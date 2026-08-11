@@ -497,6 +497,11 @@ import {
 } from './src/core/settings-backup-recovery-state';
 import { exportOperonSettingsBackupJsonV1 } from './src/core/settings-backup-export';
 import {
+	createOperonSettingsResetDefaultProfileV1,
+	OPERON_SETTINGS_RESET_DEFAULT_GROUPS_V1,
+	OPERON_SETTINGS_RESET_DEFAULT_VAULT_REFERENCE_DECISIONS_V1,
+} from './src/core/settings-reset-default-profile';
+import {
 	preflightOperonSettingsBackupRestoreV1,
 	type OperonSettingsBackupPreflightResultV1,
 	type OperonSettingsBackupRestorePlanV1,
@@ -2095,11 +2100,16 @@ export default class OperonPlugin extends Plugin {
 				? ['One or more runtime refresh steps require an explicit retry or recovery decision.']
 				: [],
 			recovery: runtime.status === 'degraded'
-				? {
-					...storageResult.receipt.recovery,
-					keepAvailable: true,
-					retryRuntimeRefreshAvailable: true,
-				}
+				? storageResult.receipt.recovery.undoTokenId
+					? {
+						...storageResult.receipt.recovery,
+						keepAvailable: true,
+						retryRuntimeRefreshAvailable: true,
+					}
+					: {
+						mode: 'reload-required', undoTokenId: null, expectedCurrentFingerprint: null,
+						keepAvailable: false, retryRuntimeRefreshAvailable: true, undoAvailable: false,
+					}
 				: storageResult.receipt.recovery,
 		});
 		const undoTokenId = finalizedReceipt.recovery.undoTokenId;
@@ -2230,6 +2240,7 @@ export default class OperonPlugin extends Plugin {
 	private buildSettingsBackupUiIntegration(): SettingsBackupUiIntegration {
 		return {
 			exportBackup: options => this.exportSettingsBackupArtifactV1(options),
+			resetSettings: () => this.resetSettingsToDefaultsFromUiV1(),
 			preflightRestore: (file, decisions) => this.prepareSettingsBackupRestoreForUiV1(file, decisions)
 				.then(result => result.preview),
 			applyRestore: input => this.applySettingsBackupRestoreFromUiV1(input),
@@ -2246,6 +2257,70 @@ export default class OperonPlugin extends Plugin {
 			},
 			resolveRecovery: input => this.resolveSettingsBackupRecoveryFromUiV1(input),
 		};
+	}
+
+	private async resetSettingsToDefaultsFromUiV1(): Promise<SettingsBackupApplyResult> {
+		return this.enqueueSettingsBackupRestoreOperation(async () => {
+			if (this.pendingSettingsBackupRuntimeRecovery || this.lastSettingsBackupUiRecovery) {
+				return this.settingsBackupUiFailure('Resolve the pending settings recovery before resetting settings.');
+			}
+			const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
+			const createdAt = new Date().toISOString();
+			const profile = createOperonSettingsResetDefaultProfileV1({
+				source: {
+					pluginVersion: this.manifest.version,
+					obsidianVersion: apiVersion,
+					dataPackageSchemaVersion: committed.dataPackageSchemaVersion,
+				},
+				createdAt,
+			});
+			if (!profile.ok) return this.settingsBackupUiFailure('The default settings profile failed validation.');
+			const file: SettingsBackupSelectedFile = {
+				fileName: profile.suggestedFileName,
+				kind: 'json',
+				bytes: new TextEncoder().encode(profile.json),
+			};
+			const decisions: SettingsBackupPreviewDecisions = {
+				selectedGroups: OPERON_SETTINGS_RESET_DEFAULT_GROUPS_V1,
+				vaultReferences: OPERON_SETTINGS_RESET_DEFAULT_VAULT_REFERENCE_DECISIONS_V1,
+			};
+			const prepared = await this.prepareSettingsBackupRestoreForUiV1(file, decisions);
+			if (prepared.preview.classification !== 'ready' || !prepared.preview.planId) {
+				return this.settingsBackupUiFailure('The default settings reset plan is not ready.');
+			}
+			const applied = await this.applySettingsBackupRestoreFromUiV1({
+				file,
+				planId: prepared.preview.planId,
+				decisions,
+				acceptsNoCrashSafeRollback: true,
+				acceptsConditionalSessionOnlyUndo: true,
+			}, true, false);
+			return this.finalizeSettingsResetWithoutUndoV1(applied);
+		});
+	}
+
+	private finalizeSettingsResetWithoutUndoV1(result: SettingsBackupApplyResult): SettingsBackupApplyResult {
+		const { receiptId } = result;
+		if (receiptId && this.pendingSettingsBackupRuntimeRecovery?.receiptId === receiptId) {
+			this.lastSettingsBackupUiRecovery = null;
+			return { ...result, undoTokenId: null, recoveryRequired: true };
+		}
+		if (result.status === 'state-unknown' && receiptId) {
+			this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+				receiptId,
+				undoTokenId: null,
+				message: 'The reset commit state could not be verified. Manual recovery is required.',
+				runtimeRetryRequired: false,
+				undoAvailable: false,
+			});
+			return { ...result, undoTokenId: null, recoveryRequired: true };
+		}
+		this.lastSettingsBackupUiRecovery = null;
+		if (!result.recoveryRequired
+			&& (result.status === 'committed' || result.status === 'committed-after-error')) {
+			return { ...result, status: 'committed', undoTokenId: null };
+		}
+		return { ...result, undoTokenId: null };
 	}
 
 	private async exportSettingsBackupArtifactV1(options: {
@@ -2432,13 +2507,15 @@ export default class OperonPlugin extends Plugin {
 		decisions: SettingsBackupPreviewDecisions;
 		acceptsNoCrashSafeRollback: true;
 		acceptsConditionalSessionOnlyUndo: true;
-	}, restoreLaneOwned = false): Promise<SettingsBackupApplyResult> {
+	}, restoreLaneOwned = false, retainSessionUndo = true): Promise<SettingsBackupApplyResult> {
 		if (input.acceptsNoCrashSafeRollback !== true
 			|| input.acceptsConditionalSessionOnlyUndo !== true) {
 			return this.settingsBackupUiFailure('The restore recovery limits must be acknowledged.');
 		}
 		if (!restoreLaneOwned) {
-			return this.enqueueSettingsBackupRestoreOperation(() => this.applySettingsBackupRestoreFromUiV1(input, true));
+			return this.enqueueSettingsBackupRestoreOperation(
+				() => this.applySettingsBackupRestoreFromUiV1(input, true, retainSessionUndo),
+			);
 		}
 		const prepared = await this.prepareSettingsBackupRestoreForUiV1(input.file, input.decisions);
 		if (prepared.preview.classification !== 'ready' || prepared.preview.planId !== input.planId) {
@@ -2451,6 +2528,7 @@ export default class OperonPlugin extends Plugin {
 			refreshedVaultReferenceChecks: prepared.settingsPlan.vaultReferenceChecks,
 			acknowledgement: createOperonSettingsBackupApplyAcknowledgementV1(prepared.settingsPlan),
 			appliedAt: new Date().toISOString(),
+			retainSessionUndo,
 		});
 		if (!result.receipt) return this.settingsBackupUiFailure('The JSON restore was blocked.');
 		const uiResult: SettingsBackupApplyResult = {

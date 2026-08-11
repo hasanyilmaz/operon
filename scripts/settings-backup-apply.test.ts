@@ -453,6 +453,30 @@ test('commit acknowledgement loss is verified as success and publishes canonical
 	assert.equal((await harness.storage.captureCommittedSettingsBackupSnapshot()).settings.language, source.language);
 });
 
+test('reset-style apply commits without creating or advertising session Undo', async () => {
+	const harness = await createHarness(canonicalPackage(baselineSettings()));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	changeLanguage(source);
+	const { sourceJson, plan } = await createPlan(harness.storage, source);
+
+	const result = await harness.storage.applySettingsBackupRestorePlanV1({
+		...applyInput(sourceJson, plan),
+		retainSessionUndo: false,
+	});
+
+	assert.ok(result.status === 'success' || result.status === 'success-with-migrations');
+	assert.ok(result.receipt);
+	assert.equal(result.receipt.recovery.mode, 'none');
+	assert.equal(result.receipt.recovery.undoTokenId, null);
+	assert.equal(result.receipt.recovery.keepAvailable, false);
+	assert.equal(result.receipt.recovery.retryRuntimeRefreshAvailable, false);
+	assert.equal(result.receipt.recovery.undoAvailable, false);
+	assert.equal(harness.data.saveAttempts, 1);
+	assert.equal(harness.data.saveSuccesses, 1);
+	assert.equal(harness.data.committed.settings.language, source.language);
+});
+
 test('ambiguous persistence failure suspends writes, returns a redacted decision receipt, and never retries', async () => {
 	const target = baselineSettings();
 	const initial = canonicalPackage(target);

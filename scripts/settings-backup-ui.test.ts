@@ -164,4 +164,68 @@ test('restore errors are redacted and successful receipts retain conditional rec
 	assert.match(source, /private renderError[\s\S]*this\.focusFirstControl\(\);/u);
 	assert.doesNotMatch(source, /text: error instanceof Error \? error\.message/u);
 	assert.match(source, /result\.recoveryRequired \|\| result\.undoTokenId !== null/u);
+	assert.match(source, /settingsBackupRestoreSuccessTitle/u);
+	assert.match(source, /operon-settings-backup-success-actions/u);
+	assert.match(source, /action === 'keep' && result\.status === 'committed' && !result\.recoveryRequired[\s\S]*this\.close\(\)/u);
+	assert.match(source, /setTimeout\(\(\) => keepButton\.focus\(\), 0\)/u);
+	const committedRenderer = source.slice(
+		source.indexOf('private renderCommittedRestore'),
+		source.indexOf('private focusFirstControl'),
+	);
+	assert.doesNotMatch(committedRenderer, /setButtonText\(t\('buttons', 'close'\)\)|new Setting/u);
+});
+
+test('Settings backup integration exposes reset and the Reset card is guarded and deduplicated', () => {
+	const uiSource = readFileSync('src/ui/settings-backup-ui.ts', 'utf8');
+	const tabSource = readFileSync('src/ui/settings-tab.ts', 'utf8');
+	const confirmSource = readFileSync('src/ui/confirm-action-modal.ts', 'utf8');
+	const pluginSource = readFileSync('main.ts', 'utf8');
+	assert.match(uiSource, /resetSettings\(\): Promise<SettingsBackupApplyResult>/u);
+	assert.match(tabSource, /settingsBackupResetTitle/u);
+	assert.match(tabSource, /if \(resetRunning\) return;/u);
+	assert.match(tabSource, /if \(!confirmed\) \{[\s\S]*return;[\s\S]*integration\.resetSettings\(\)/u);
+	assert.match(tabSource, /initialFocus: 'cancel'/u);
+	assert.match(tabSource, /integration\.resetSettings\(\)/u);
+	assert.match(tabSource, /result\.status === 'committed' && !result\.recoveryRequired[\s\S]*settingsBackupResetSuccess/u);
+	assert.match(tabSource, /result\.recoveryRequired \|\| result\.status === 'state-unknown'[\s\S]*new SettingsBackupRestoreModal/u);
+	assert.match(confirmSource, /initialFocus\?: 'confirm' \| 'cancel'/u);
+	assert.match(confirmSource, /this\.options\.initialFocus === 'cancel' \? cancelButton : confirmButton/u);
+	assert.match(pluginSource, /resetSettings: \(\) => this\.resetSettingsToDefaultsFromUiV1\(\)/u);
+	assert.match(pluginSource, /createOperonSettingsResetDefaultProfileV1/u);
+	assert.match(pluginSource, /selectedGroups: OPERON_SETTINGS_RESET_DEFAULT_GROUPS_V1/u);
+	assert.match(pluginSource, /vaultReferences: OPERON_SETTINGS_RESET_DEFAULT_VAULT_REFERENCE_DECISIONS_V1/u);
+	assert.match(pluginSource, /applySettingsBackupRestoreFromUiV1\([\s\S]*\}, true, false\)/u);
+	assert.match(pluginSource, /retainSessionUndo,/u);
+	assert.match(pluginSource, /recovery\.undoTokenId[\s\S]*mode: 'reload-required'/u);
+	assert.match(pluginSource, /return \{ \.\.\.result, status: 'committed', undoTokenId: null \}/u);
+	const resetCard = tabSource.slice(
+		tabSource.indexOf("settingsBackupT('settingsBackupResetTitle')"),
+		tabSource.indexOf('private renderDeveloperApiIntegrations'),
+	);
+	assert.doesNotMatch(resetCard, /DEFAULT_SETTINGS|saveSettings\(/u);
+});
+
+test('Backup and Restore card descriptions use a scoped inset', () => {
+	const tabSource = readFileSync('src/ui/settings-tab.ts', 'utf8');
+	const styles = readFileSync('styles.css', 'utf8');
+	assert.ok((tabSource.match(/operon-settings-backup-section-card/gu) ?? []).length >= 3);
+	assert.match(styles, /operon-settings-backup-section-card > \.operon-settings-muted-block[\s\S]*padding: 18px 24px 14px/u);
+});
+
+test('restore success and reset confirmation use the approved copy', () => {
+	const locale = JSON.parse(readFileSync('i18n/locales/en.json', 'utf8')) as {
+		settings: Record<string, string>;
+	};
+	assert.equal(locale.settings.settingsBackupRestoreSuccessTitle, 'Settings restored');
+	assert.equal(
+		locale.settings.settingsBackupRestoreSuccessBody,
+		'Your backup is now active. Keep these settings, or undo the restore during this Obsidian session.',
+	);
+	assert.equal(locale.settings.settingsBackupResetConfirmTitle, 'Reset all settings?');
+	assert.equal(
+		locale.settings.settingsBackupResetConfirmMessage,
+		'This restores Operon’s current default settings. Your vault content and Table files will not be deleted.',
+	);
+	assert.equal(locale.settings.settingsBackupResetConfirm, 'Reset settings');
+	assert.equal(locale.settings.settingsBackupResetSuccess, 'Settings reset.');
 });

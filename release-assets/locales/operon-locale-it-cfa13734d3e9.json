@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 2965,
-  "keyFingerprint": "2d910cabf3945030e7df4bdcb744b674f7c62def6f908a2cc1391467599cf149",
+  "keyCount": 2975,
+  "keyFingerprint": "b359a5f0b6ab0d0cb02aa7ec978b95f36d2308e1c5918512e229c949b7e70856",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2059,8 +2059,18 @@
       "settingsBackupPreserveTarget": "Keep current value",
       "settingsBackupRecoveryTitle": "Restore recovery",
       "settingsBackupRecoveryUnavailable": "There is no pending recovery to resume.",
+      "settingsBackupResetAction": "Reset settings",
+      "settingsBackupResetActionDesc": "Review and confirm before applying the reset.",
+      "settingsBackupResetConfirm": "Reset settings",
+      "settingsBackupResetConfirmMessage": "This restores Operon’s current default settings. Your vault content and Table files will not be deleted.",
+      "settingsBackupResetConfirmTitle": "Reset all settings?",
+      "settingsBackupResetDesc": "Restore Operon’s current default settings. Your vault content and Table files are preserved.",
+      "settingsBackupResetSuccess": "Settings reset.",
+      "settingsBackupResetTitle": "Reset settings",
       "settingsBackupRestoreAction": "Restore selected settings",
       "settingsBackupRestoreDesc": "Choose a portable JSON backup. Operon previews changes before writing anything.",
+      "settingsBackupRestoreSuccessBody": "Your backup is now active. Keep these settings, or undo the restore during this Obsidian session.",
+      "settingsBackupRestoreSuccessTitle": "Settings restored",
       "settingsBackupRestoreTitle": "Restore settings backup",
       "settingsBackupResumeRecovery": "Resume recovery",
       "settingsBackupRetry": "Retry runtime refresh",
@@ -3010,5 +3020,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "6e664dee55286c29cf28383bdbd793b3a718fc8e1f8acbc4bf40306f26332bb0"
+  "sourceVersion": "bf514fd12c39fd185962e5bec9ef23da36102b7ce29ef06040f1461b08cbd06b"
 }

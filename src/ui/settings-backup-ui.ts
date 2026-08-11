@@ -94,6 +94,7 @@ export type SettingsBackupPendingRecovery = OperonSettingsBackupRecoveryCapabili
 /** Single boundary injected by the plugin. UI code never reads canonical storage directly. */
 export interface SettingsBackupUiIntegration {
 	exportBackup(options: SettingsBackupExportOptions): Promise<SettingsBackupDownloadArtifact>;
+	resetSettings(): Promise<SettingsBackupApplyResult>;
 	preflightRestore(file: SettingsBackupSelectedFile, decisions: SettingsBackupPreviewDecisions): Promise<SettingsBackupRestorePreview>;
 	applyRestore(input: {
 		file: SettingsBackupSelectedFile;
@@ -402,6 +403,12 @@ export class SettingsBackupRestoreModal extends Modal {
 	}
 
 	private renderResult(result: SettingsBackupApplyResult): void {
+		if ((result.status === 'committed' || result.status === 'committed-after-error')
+			&& !result.recoveryRequired && result.undoTokenId !== null) {
+			this.renderCommittedRestore();
+			return;
+		}
+		this.titleEl.setText(settingsBackupT('settingsBackupRestoreTitle'));
 		this.contentEl.empty();
 		this.contentEl.createEl('p', { text: result.message });
 		if (result.recoveryRequired || result.undoTokenId !== null) {
@@ -413,6 +420,35 @@ export class SettingsBackupRestoreModal extends Modal {
 			.setCta()
 			.onClick(() => this.close()));
 		this.focusFirstControl();
+	}
+
+	private renderCommittedRestore(): void {
+		this.contentEl.empty();
+		this.titleEl.setText(settingsBackupT('settingsBackupRestoreSuccessTitle'));
+		this.contentEl.createEl('p', {
+			text: settingsBackupT('settingsBackupRestoreSuccessBody'),
+			attr: { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
+		});
+		const recovery = this.integration.getPendingRecovery();
+		if (!recovery) return;
+		const actions = this.contentEl.createDiv('operon-settings-backup-success-actions');
+		if (recovery.canUndo) {
+			const undoButton = actions.createEl('button', {
+				text: settingsBackupT('settingsBackupUndo'),
+				attr: { type: 'button' },
+			});
+			undoButton.addClass('mod-warning');
+			undoButton.addEventListener('click', () => { void this.resolveRecovery('undo', recovery); });
+		}
+		if (recovery.canKeep) {
+			const keepButton = actions.createEl('button', {
+				text: settingsBackupT('settingsBackupKeep'),
+				attr: { type: 'button' },
+			});
+			keepButton.addClass('mod-cta');
+			keepButton.addEventListener('click', () => { void this.resolveRecovery('keep', recovery); });
+			this.contentEl.ownerDocument.defaultView?.setTimeout(() => keepButton.focus(), 0);
+		}
 	}
 
 	private focusFirstControl(): void {
@@ -464,11 +500,16 @@ export class SettingsBackupRestoreModal extends Modal {
 		this.running = true;
 		this.renderLoading();
 		try {
-			this.renderResult(await this.integration.resolveRecovery({
+			const result = await this.integration.resolveRecovery({
 				action,
 				receiptId: recovery.receiptId,
 				undoTokenId: recovery.undoTokenId,
-			}));
+			});
+			if (action === 'keep' && result.status === 'committed' && !result.recoveryRequired) {
+				this.close();
+				return;
+			}
+			this.renderResult(result);
 		} catch (error) {
 			this.renderError(error);
 		} finally {

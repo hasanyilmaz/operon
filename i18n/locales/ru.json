@@ -1704,10 +1704,20 @@
 		"settingsBackupChooseDecision": "Choose…",
 		"settingsBackupApplySource": "Use backup value",
 		"settingsBackupPreserveTarget": "Keep current value",
+		"settingsBackupRestoreSuccessTitle": "Settings restored",
+		"settingsBackupRestoreSuccessBody": "Your backup is now active. Keep these settings, or undo the restore during this Obsidian session.",
 		"settingsBackupRecoveryTitle": "Restore recovery",
 		"settingsBackupKeep": "Keep restored settings",
 		"settingsBackupRetry": "Retry runtime refresh",
-		"settingsBackupUndo": "Undo restore"
+		"settingsBackupUndo": "Undo restore",
+		"settingsBackupResetTitle": "Reset settings",
+		"settingsBackupResetDesc": "Restore Operon’s current default settings. Your vault content and Table files are preserved.",
+		"settingsBackupResetAction": "Reset settings",
+		"settingsBackupResetActionDesc": "Review and confirm before applying the reset.",
+		"settingsBackupResetConfirmTitle": "Reset all settings?",
+		"settingsBackupResetConfirmMessage": "This restores Operon’s current default settings. Your vault content and Table files will not be deleted.",
+		"settingsBackupResetConfirm": "Reset settings",
+		"settingsBackupResetSuccess": "Settings reset."
 	},
 	"buttons": {
 		"ok": "ОК",

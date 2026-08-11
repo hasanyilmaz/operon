@@ -48,6 +48,8 @@ export interface OperonSettingsBackupApplyInputV1 {
 	acknowledgement: OperonSettingsBackupApplyAcknowledgementV1;
 	appliedAt: string;
 	refreshedVaultReferenceChecks: Readonly<Partial<Record<SettingsBackupVaultReferenceKey, OperonSettingsBackupVaultReferenceCheckV1>>>;
+	/** Defaults to true. Reset uses false so its immutable receipt never advertises session Undo. */
+	retainSessionUndo?: boolean;
 }
 
 export interface OperonSettingsBackupApplyRecoveryV1 {

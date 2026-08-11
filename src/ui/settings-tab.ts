@@ -3209,6 +3209,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			containerEl,
 			settingsBackupT('settingsBackupExportTitle'),
 		);
+		exportSection.addClass('operon-settings-backup-section-card');
 		exportSection.createEl('p', {
 			text: settingsBackupT('settingsBackupExportDesc'),
 			cls: 'operon-settings-muted-block',
@@ -3248,6 +3249,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			containerEl,
 			settingsBackupT('settingsBackupRestoreTitle'),
 		);
+		restoreSection.addClass('operon-settings-backup-section-card');
 		restoreSection.createEl('p', {
 			text: settingsBackupT('settingsBackupRestoreDesc'),
 			cls: 'operon-settings-muted-block',
@@ -3274,6 +3276,62 @@ export class OperonSettingsTab extends PluginSettingTab {
 						new SettingsBackupRestoreModal(this.app, integration, null).open();
 					});
 				if (pending) button.buttonEl.addClass('mod-warning');
+				});
+
+		const resetSection = renderNativeSettingsGroupedSection(
+			containerEl,
+			settingsBackupT('settingsBackupResetTitle'),
+		);
+		resetSection.addClass('operon-settings-backup-section-card');
+		resetSection.createEl('p', {
+			text: settingsBackupT('settingsBackupResetDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		let resetRunning = false;
+		new Setting(resetSection)
+			.setName(settingsBackupT('settingsBackupResetAction'))
+			.setDesc(settingsBackupT('settingsBackupResetActionDesc'))
+			.addButton(button => {
+				button.setButtonText(settingsBackupT('settingsBackupResetAction'))
+					.onClick(() => {
+						if (resetRunning) return;
+						resetRunning = true;
+						button.setDisabled(true);
+						new ConfirmActionModal(this.app, {
+							title: settingsBackupT('settingsBackupResetConfirmTitle'),
+							message: settingsBackupT('settingsBackupResetConfirmMessage'),
+							confirmText: settingsBackupT('settingsBackupResetConfirm'),
+							cancelText: t('buttons', 'cancel'),
+							danger: true,
+							initialFocus: 'cancel',
+						}, confirmed => {
+							if (!confirmed) {
+								resetRunning = false;
+								button.setDisabled(false);
+								return;
+							}
+							void integration.resetSettings().then(result => {
+								if (result.status === 'committed' && !result.recoveryRequired) {
+									new Notice(settingsBackupT('settingsBackupResetSuccess'));
+									this.redisplayPreservingScroll();
+									return;
+								}
+								if (result.recoveryRequired || result.status === 'state-unknown'
+									|| result.status === 'committed-after-error') {
+									new SettingsBackupRestoreModal(this.app, integration, null).open();
+									return;
+								}
+								new Notice(settingsBackupT('settingsBackupOperationFailed'));
+							}).catch(error => {
+								console.debug('Operon: settings reset failed', error);
+								new Notice(settingsBackupT('settingsBackupOperationFailed'));
+							}).finally(() => {
+								resetRunning = false;
+								button.setDisabled(false);
+							});
+						}).open();
+					});
+				button.buttonEl.addClass('mod-warning');
 			});
 	}
 

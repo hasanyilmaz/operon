@@ -104,6 +104,7 @@
 		"settings-backup:export:test": "node scripts/run-settings-backup-export-tests.mjs",
 		"settings-backup:preflight:test": "node scripts/run-settings-backup-preflight-tests.mjs",
 		"settings-backup:apply:test": "node scripts/run-settings-backup-apply-tests.mjs",
+		"settings-backup:reset-defaults:test": "node scripts/run-settings-reset-default-profile-tests.mjs",
 		"settings-backup:ui:test": "node scripts/run-settings-backup-ui-tests.mjs",
 		"date-nlp:it:test": "node scripts/run-date-nlp-italian-tests.mjs",
 		"build": "npm run i18n:check && npm run reminder:sounds:check && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && npm run bundle:size && npm run agent-runtime:bundle:guard",

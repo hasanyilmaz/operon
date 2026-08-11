@@ -956,7 +956,8 @@ export class OperonStorage {
 					// The canonical package is already committed. Main owns explicit reload recovery.
 				}
 			}
-			const recoveryTokenId = runtimeCommitFailed || previousSettings
+			const retainSessionUndo = input.retainSessionUndo !== false;
+			const recoveryTokenId = retainSessionUndo && (runtimeCommitFailed || previousSettings)
 				? buildSettingsBackupUndoTokenId(activePlan.planId, input.appliedAt)
 				: null;
 			const receipt = createOperonSettingsBackupApplyReceiptV1({
@@ -972,14 +973,19 @@ export class OperonStorage {
 					? {
 						mode: 'session-conditional-undo',
 						undoTokenId: recoveryTokenId,
-					expectedCurrentFingerprint: computeOperonSettingsBackupSelectedSettingsFingerprintV1(
-						activePlan.candidateSettings,
-						activePlan.selectedGroups,
-					),
+						expectedCurrentFingerprint: computeOperonSettingsBackupSelectedSettingsFingerprintV1(
+							activePlan.candidateSettings,
+							activePlan.selectedGroups,
+						),
 						keepAvailable: true,
 						retryRuntimeRefreshAvailable: runtimeCommitFailed,
 						undoAvailable: true,
 					}
+					: runtimeCommitFailed
+						? {
+							mode: 'reload-required', undoTokenId: null, expectedCurrentFingerprint: null,
+							keepAvailable: false, retryRuntimeRefreshAvailable: true, undoAvailable: false,
+						}
 					: {
 						mode: 'none', undoTokenId: null, expectedCurrentFingerprint: null,
 						keepAvailable: false, retryRuntimeRefreshAvailable: false, undoAvailable: false,
