@@ -154,6 +154,10 @@ test('restore admission binds both recovery acknowledgements and fresh Vault che
 	assert.match(pluginSource, /input\.acceptsNoCrashSafeRollback !== true[\s\S]*input\.acceptsConditionalSessionOnlyUndo !== true/u);
 	assert.match(pluginSource, /captureSettingsBackupVaultReferenceChecksV1\(sourceJson\)/u);
 	assert.match(pluginSource, /getAbstractFileByPath\(path\)/u);
+	assert.match(
+		pluginSource,
+		/if \(this\.pendingSettingsBackupRuntimeRecovery \|\| this\.lastSettingsBackupUiRecovery\) \{[\s\S]*Resolve the pending settings recovery before restoring another backup\./u,
+	);
 	assert.doesNotMatch(pluginSource, /Object\.keys\(vaultReferenceDecisions\)[\s\S]{0,120}status: 'unchecked'/u);
 });
 

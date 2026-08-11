@@ -2517,6 +2517,9 @@ export default class OperonPlugin extends Plugin {
 				() => this.applySettingsBackupRestoreFromUiV1(input, true, retainSessionUndo),
 			);
 		}
+		if (this.pendingSettingsBackupRuntimeRecovery || this.lastSettingsBackupUiRecovery) {
+			return this.settingsBackupUiFailure('Resolve the pending settings recovery before restoring another backup.');
+		}
 		const prepared = await this.prepareSettingsBackupRestoreForUiV1(input.file, input.decisions);
 		if (prepared.preview.classification !== 'ready' || prepared.preview.planId !== input.planId) {
 			return this.settingsBackupUiFailure('The restore preview is stale. Review the updated preview.');
