@@ -32,6 +32,7 @@ import {
 	getTableTaskFieldLabel,
 	getTableColumnLabel,
 	isEditableTableTaskFieldKey,
+	isTablePlainTextField,
 	type TableTaskField,
 } from './table/table-field-catalog';
 import { getTableFilePropertyIndex, isTableFilePropertyColumnKey, type TableFilePropertyCellValue, type TableFilePropertyField, type TableFilePropertySnapshot } from './table/table-file-property';
@@ -2862,7 +2863,7 @@ function renderEmbedTableCell(
 		renderEmbedTableIconOnlyCell(cell, task, column, displayValue, renderState, deps, { focusable: !editable });
 		return;
 	}
-	if (getTableTaskField(column.key, renderState.settings)?.type === 'text') {
+	if (isTablePlainTextField(getTableTaskField(column.key, renderState.settings))) {
 		renderTableTextValueDisplay(cell, {
 			value: displayValue,
 			wikilinks: { app: deps.app, sourcePath: task.primary.filePath },
@@ -3066,11 +3067,11 @@ function renderEmbedTableIconOnlyCell(
 		),
 		title: fieldLabel,
 		content,
-		...(field?.type === 'text'
+		...(isTablePlainTextField(field)
 			? { contentEl: createCompactTaskMarkdownTooltipContent(cell, value) }
 			: {}),
 		ariaLabel: `${fieldLabel}: ${content}`,
-		color: field?.type === 'text' ? null : resolveTableIconOnlyCellAccent(column, value, {
+		color: isTablePlainTextField(field) ? null : resolveTableIconOnlyCellAccent(column, value, {
 			task,
 			settings: renderState.settings,
 			taskLookup: renderState.valueResolver.taskLookup,

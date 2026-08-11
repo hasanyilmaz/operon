@@ -13,6 +13,7 @@ import {
 	replaceTablePresetColumns,
 	setTablePresetColumnColorMode,
 } from '../src/ui/table/table-preset-model';
+import { isTablePlainTextField } from '../src/ui/table/table-field-catalog';
 import {
 	parseOperonTableFile,
 	serializeOperonTableFile,
@@ -58,13 +59,22 @@ async function run(): Promise<void> {
 	equal(isTableColumnColorModeEligible({ key: 'taskColor', kind: 'task' }), false);
 	equal(isTableColumnColorModeEligible({ key: 'status', kind: 'task' }), true);
 	equal(isTableColumnColorModeEligible({ key: 'file.property:team', kind: 'task' }), true);
-	equal(isTableColumnColorModeEligible({ key: 'summary', kind: 'task' }, { type: 'text' }), false);
-	equal(isTableColumnColorModeEligible({ key: 'custom.list', kind: 'task' }, { type: 'list' }), true);
-	equal(isTableColumnColorModeEligible({ key: 'file.property:summary', kind: 'task' }, { type: 'text' }), false);
+	equal(isTableColumnColorModeEligible({ key: 'summary', kind: 'task' }, { key: 'summary', type: 'text' }), false);
+	equal(isTableColumnColorModeEligible({ key: 'status', kind: 'task' }, { key: 'status', type: 'text' }), true);
+	equal(isTableColumnColorModeEligible({ key: 'priority', kind: 'task' }, { key: 'priority', type: 'text' }), true);
+	equal(isTableColumnColorModeEligible({ key: 'custom.list', kind: 'task' }, { key: 'custom.list', type: 'list' }), true);
+	equal(isTableColumnColorModeEligible(
+		{ key: 'file.property:summary', kind: 'task' },
+		{ key: 'file.property:summary', type: 'text' },
+	), false);
 	equal(isTableColumnColorModeEligible(
 		{ key: 'file.property:missing', kind: 'task' },
-		{ type: 'text', unavailable: true },
+		{ key: 'file.property:missing', type: 'text', unavailable: true },
 	), true, 'unavailable File Property types must not be treated as proven text');
+	equal(isTablePlainTextField({ key: 'summary', type: 'text' }), true);
+	equal(isTablePlainTextField({ key: 'status', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'priority', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'contexts', type: 'list' }), false);
 
 	const preset = createDefaultTablePreset();
 	const originalTaskColor = getTaskColorColumn(preset);

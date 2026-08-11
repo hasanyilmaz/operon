@@ -40,6 +40,7 @@ import {
 	getTableTaskFieldLabel,
 	getTableColumnLabel,
 	isEditableTableTaskFieldKey,
+	isTablePlainTextField,
 	type TableTaskField,
 } from './table-field-catalog';
 import { getTableFilePropertyIndex, isTableFilePropertyColumnKey, type TableFilePropertyCellValue, type TableFilePropertyField, type TableFilePropertySnapshot } from './table-file-property';
@@ -2157,11 +2158,11 @@ export class OperonTableView extends FileView {
 			),
 			title: fieldLabel,
 			content,
-			...(field?.type === 'text'
+			...(isTablePlainTextField(field)
 				? { contentEl: createCompactTaskMarkdownTooltipContent(cell, value) }
 				: {}),
 			ariaLabel: `${fieldLabel}: ${content}`,
-			color: field?.type === 'text' ? null : resolveTableIconOnlyCellAccent(column, value, {
+			color: isTablePlainTextField(field) ? null : resolveTableIconOnlyCellAccent(column, value, {
 				task,
 				settings: renderState.settings,
 				taskLookup: renderState.valueResolver.taskLookup,
@@ -2365,7 +2366,7 @@ export class OperonTableView extends FileView {
 			this.renderIconOnlyCell(cell, task, column, value, renderState, { focusable: !editable });
 			return;
 		}
-		if (getTableTaskField(column.key, renderState.settings)?.type === 'text') {
+		if (isTablePlainTextField(getTableTaskField(column.key, renderState.settings))) {
 			renderTableTextValueDisplay(cell, {
 				value,
 				wikilinks: { app: this.app, sourcePath: task.primary.filePath },

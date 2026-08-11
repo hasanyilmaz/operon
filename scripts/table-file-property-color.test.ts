@@ -97,6 +97,13 @@ class FakeElement {
 		return child;
 	}
 
+	remove(): void {
+		if (!this.parentElement) return;
+		const index = this.parentElement.children.indexOf(this);
+		if (index >= 0) this.parentElement.children.splice(index, 1);
+		this.parentElement = null;
+	}
+
 	querySelector(selector?: string): FakeElement | null {
 		if (!selector) return null;
 		const className = selector.startsWith('.') ? selector.slice(1) : null;
@@ -304,6 +311,23 @@ async function run(): Promise<void> {
 	ok(dependencyWrapper);
 	equal(findDescendantByClass(dependencyWrapper, 'operon-table-cell-chip-label')?.textContent, dependencyDescription);
 	equal(findDescendantByClass(dependencyWrapper, 'operon-table-cell-chip-icon'), undefined);
+
+	for (const [key, value, accent] of [
+		['status', 'Flow.Doing', '#334455'],
+		['priority', 'high', '#223344'],
+	] as const) {
+		const structuredTextCell = new FakeElement('DIV');
+		renderTableCellChips(asHtmlElement(structuredTextCell), key, value, {
+			chipClassName: 'operon-table-cell-chip',
+			column: { key },
+			task,
+			settings,
+		});
+		const structuredTextChip = findDescendantByClass(structuredTextCell, 'operon-table-cell-chip');
+		ok(structuredTextChip);
+		equal(findDescendantByClass(structuredTextChip, 'operon-table-cell-chip-label')?.textContent, value);
+		assertAccentContract(structuredTextChip, accent);
+	}
 
 	const overflowWrapper = new FakeElement('SPAN');
 	overflowWrapper.addClass('operon-table-cell-chip-list');
@@ -564,8 +588,11 @@ async function run(): Promise<void> {
 	ok(editorSource.includes('renderTableIconOnlyCell(options.cell'));
 	ok(chipSource.includes('bindOperonHoverTooltip(chip, {\n\t\tcontent: displayValue,'));
 	ok(chipSource.includes('shouldOpen: () => isTableListValueChipOverflowing(chip),'));
+	ok(chipSource.includes("key === 'status' || key === 'priority'"));
 	ok(workspaceSource.includes('renderTableCellChips('));
 	ok(embedSource.includes('renderTableCellChips('));
+	ok(workspaceSource.includes('isTablePlainTextField(getTableTaskField(column.key, renderState.settings))'));
+	ok(embedSource.includes('isTablePlainTextField(getTableTaskField(column.key, renderState.settings))'));
 	ok(workspaceSource.includes('isCompactTaskMarkdownLinkEventTarget(event.target, cell)'));
 	ok(embedSource.includes('isCompactTaskMarkdownLinkEventTarget(event.target, cell)'));
 	ok(workspaceSource.includes('contentEl: createCompactTaskMarkdownTooltipContent(cell, value)'));
