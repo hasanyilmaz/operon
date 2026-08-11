@@ -26,6 +26,8 @@ import {
 import { renderTableTextValueDisplay } from './table-description-cell';
 import { formatTableIconOnlyTooltipContent, renderTableIconOnlyCell } from './table-icon-only-cell';
 import { createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
+import { showTextFieldPopover } from '../text-field-popover';
+import { buildTableFilePropertyTextMutation, resolveTableTextEditRoute } from './table-text-edit-route';
 
 export interface TableFilePropertyUpdateRequest {
 	propertyName: string;
@@ -71,6 +73,9 @@ export function openTableFilePropertyPicker(options: {
 	candidates: readonly string[];
 	settings: Pick<OperonSettings, 'timeFormat' | 'calendarWeekStart' | 'calendarSidebarShowWeekNumbers'>;
 	sourcePath: string;
+	lifecycleOwner?: Node;
+	sessionKey?: string;
+	onFocusReturn?: () => void;
 	onMutation: (mutation: RawYamlPropertyMutation) => void;
 	onClose?: () => void;
 }): (() => void) | null {
@@ -131,6 +136,26 @@ export function openTableFilePropertyPicker(options: {
 			});
 		case 'text':
 		default:
+			if (resolveTableTextEditRoute(normalizedValue, true) === 'popover') {
+				return showTextFieldPopover({
+					app: options.app,
+					anchor: options.anchor,
+					title: options.label,
+					initialValue: normalizedValue,
+					allowEmptyCommit: true,
+					sessionKey: options.sessionKey,
+					lifecycleOwner: options.lifecycleOwner,
+					onFocusReturn: options.onFocusReturn,
+					editor: {
+						kind: 'compact-markdown',
+						sourcePath: options.sourcePath,
+					},
+					onCommit: value => {
+						options.onMutation(buildTableFilePropertyTextMutation(value));
+					},
+					onClose: options.onClose,
+				});
+			}
 			return showCustomTextFieldPicker(options.anchor, {
 				...common,
 				type: 'text',

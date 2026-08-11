@@ -10,6 +10,7 @@ import {
 } from '../../types/settings';
 import type { TableColumn } from '../../types/table';
 import { decodeTableFilePropertyColumnKey } from './table-file-property';
+export { isTablePlainTextField } from './table-text-edit-route';
 
 export type TableTaskFieldGroup =
 	| 'task'
@@ -37,16 +38,6 @@ export interface TableTaskField {
 
 export const PROJECT_SERIAL_TABLE_FIELD_KEY = 'projectSerial';
 export const TABLE_WORKFLOW_PIPELINE_FIELD_KEY = 'workflow.pipeline';
-
-const TABLE_STRUCTURED_TEXT_FIELD_KEYS = new Set(['status', 'priority']);
-
-export function isTablePlainTextField(
-	field?: { key: string; type: string; unavailable?: boolean } | null,
-): boolean {
-	return field?.type === 'text'
-		&& field.unavailable !== true
-		&& !TABLE_STRUCTURED_TEXT_FIELD_KEYS.has(field.key);
-}
 
 type TableTaskFieldCatalogSettings = Pick<OperonSettings, 'keyMappings'>;
 

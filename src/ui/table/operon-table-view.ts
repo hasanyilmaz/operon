@@ -152,6 +152,7 @@ import {
 } from './table-editing';
 import { openTaskFieldPicker } from '../task-field-picker-dispatch';
 import { showTextFieldPopover } from '../text-field-popover';
+import { resolveTableTaskTextEditRoute } from './table-text-edit-route';
 import { showTaskNotePopover } from '../task-note-action';
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from '../tracker-session-edit-modal';
 import { formatDurationHuman } from '../../systems/tracker-utils';
@@ -2098,7 +2099,7 @@ export class OperonTableView extends FileView {
 				sourcePath: task.primary.filePath,
 			},
 			onOpen: canOpenTextPopover
-				? () => this.openInlineTextPopover(cell, task, column, value, fieldLabel, cellKey, payloadKey)
+				? () => this.openInlineTextPopover(cell, task, column.key, value, fieldLabel, cellKey, payloadKey)
 				: undefined,
 		});
 	}
@@ -2195,11 +2196,12 @@ export class OperonTableView extends FileView {
 	private openInlineTextPopover(
 		cell: HTMLElement,
 		task: IndexedTask,
-		column: TableColumn,
+		key: string,
 		value: string,
 		fieldLabel: string,
 		cellKey: string,
 		payloadKey: string,
+		allowEmptyCommit = false,
 	): void {
 		if (this.pendingCellKey !== null) return;
 		this.closeActivePicker();
@@ -2212,7 +2214,7 @@ export class OperonTableView extends FileView {
 		};
 		const commitValue = async (nextValue: string): Promise<boolean> => {
 				const owned = releaseTextPopoverOwnership();
-				const success = await this.commitTaskCellUpdate(cell, task, column.key, cellKey, { [payloadKey]: nextValue }, {
+				const success = await this.commitTaskCellUpdate(cell, task, key, cellKey, { [payloadKey]: nextValue }, {
 					showFailureNotice: false,
 				});
 				if (success === false && closeTextPopover && owned) {
@@ -2222,7 +2224,7 @@ export class OperonTableView extends FileView {
 				return success;
 			};
 		const stableAnchor = snapshotFloatingRectAnchor(cell);
-		closeTextPopover = column.key === 'note'
+		closeTextPopover = key === 'note'
 			? showTaskNotePopover({
 				app: this.app,
 				anchor: stableAnchor,
@@ -2245,14 +2247,19 @@ export class OperonTableView extends FileView {
 				subtitle: task.description || formatTableTaskSource(task),
 				subtitlePresentation: 'compact-markdown',
 				initialValue: value,
+				allowEmptyCommit,
 				taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
-				sessionKey: `table-text:${task.operonId}:description`,
+				sessionKey: `table-text:${task.operonId}:${key}`,
+				lifecycleOwner: this.contentEl,
 				editor: {
 					kind: 'compact-markdown',
 					sourcePath: task.primary.filePath,
 				},
 				onCommit: commitValue,
 				onClose: releaseTextPopoverOwnership,
+				onFocusReturn: () => {
+					if (cell.isConnected) cell.focus();
+				},
 			});
 		this.activePickerClose = closeTextPopover;
 		this.keepActivePickerOnRender = true;
@@ -2462,6 +2469,11 @@ export class OperonTableView extends FileView {
 					: renderState.getFilePropertyCandidates(column.key),
 				settings: renderState.settings,
 				sourcePath: task.primary.filePath,
+				lifecycleOwner: this.contentEl,
+				sessionKey: `table-file-property:${task.operonId}:${field.propertyName}`,
+				onFocusReturn: () => {
+					if (cell.isConnected) cell.focus();
+				},
 				onMutation: commit,
 				onClose: () => {
 					if (this.activePickerClose === closePicker) this.activePickerClose = null;
@@ -2748,8 +2760,14 @@ export class OperonTableView extends FileView {
 			valueLabel ? `${fieldLabel}: ${valueLabel}. ${editCellLabel}` : `${fieldLabel}. ${editCellLabel}`,
 		);
 		this.syncPendingCellState(cell, cellKey);
+		const field = getTableTaskField(key, renderState.settings);
+		const editRoute = resolveTableTaskTextEditRoute(field, value);
 		const openPicker = () => {
 			if (this.pendingCellKey !== null) return;
+			if (editRoute === 'popover') {
+				this.openInlineTextPopover(cell, task, key, value, fieldLabel, cellKey, key, true);
+				return;
+			}
 			this.closeActivePicker();
 			const allTasks = this.indexer.getAllTasks();
 			const closePicker = openTaskFieldPicker({

@@ -151,6 +151,7 @@ import {
 } from './table/table-editing';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { showTextFieldPopover } from './text-field-popover';
+import { resolveTableTaskTextEditRoute } from './table/table-text-edit-route';
 import { showTaskNotePopover } from './task-note-action';
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
 import { formatDurationHuman } from '../systems/tracker-utils';
@@ -2946,6 +2947,11 @@ function renderEmbedTableFilePropertyCell(
 				: renderState.getFilePropertyCandidates(column.key),
 			settings: renderState.settings,
 			sourcePath: task.primary.filePath,
+			lifecycleOwner: instance.el,
+			sessionKey: `embed-table-file-property:${task.operonId}:${field.propertyName}`,
+			onFocusReturn: () => {
+				if (cell.isConnected) cell.focus();
+			},
 			onMutation: commit,
 			onClose: () => {
 				if (instance.activePickerClose === closePicker) instance.activePickerClose = null;
@@ -3322,9 +3328,15 @@ function decorateEmbedTableEditableTaskCell(
 		valueLabel ? `${fieldLabel}: ${valueLabel}. ${editCellLabel}` : `${fieldLabel}. ${editCellLabel}`,
 	);
 	syncEmbedTablePendingCellState(cell, cellKey, instance);
+	const field = getTableTaskField(key, renderState.settings);
+	const editRoute = resolveTableTaskTextEditRoute(field, value);
 	const openPicker = () => {
 		const activeInstance = findEmbedTableInstance(cell);
 		if (!activeInstance || activeInstance.pendingCellKey !== null) return;
+		if (editRoute === 'popover') {
+			openEmbedTableInlineTextPopover(activeInstance, deps, cell, task, key, value, fieldLabel, cellKey, key, true);
+			return;
+		}
 		closeEmbedTableActivePicker(activeInstance);
 		const allTasks = deps.indexer.getAllTasks();
 		const closePicker = openTaskFieldPicker({
@@ -3650,7 +3662,7 @@ function renderEmbedTableInlineTextCell(
 			sourcePath: task.primary.filePath,
 		},
 		onOpen: canOpenTextPopover && instance
-			? () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column, value, fieldLabel, cellKey, payloadKey)
+			? () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column.key, value, fieldLabel, cellKey, payloadKey)
 			: undefined,
 	});
 }
@@ -3660,11 +3672,12 @@ function openEmbedTableInlineTextPopover(
 	deps: EmbedTableDeps,
 	cell: HTMLElement,
 	task: IndexedTask,
-	column: TableColumn,
+	key: string,
 	value: string,
 	fieldLabel: string,
 	cellKey: string,
 	payloadKey: string,
+	allowEmptyCommit = false,
 ): void {
 	if (instance.pendingCellKey !== null) return;
 	closeEmbedTableActivePicker(instance);
@@ -3677,7 +3690,7 @@ function openEmbedTableInlineTextPopover(
 	};
 	const commitValue = async (nextValue: string): Promise<boolean> => {
 			const owned = releaseTextPopoverOwnership();
-			const success = await commitEmbedTableCellUpdate(instance, deps, cell, task, column.key, cellKey, { [payloadKey]: nextValue }, {
+		const success = await commitEmbedTableCellUpdate(instance, deps, cell, task, key, cellKey, { [payloadKey]: nextValue }, {
 				showFailureNotice: false,
 			});
 			if (success === false && closeTextPopover && owned) {
@@ -3687,7 +3700,7 @@ function openEmbedTableInlineTextPopover(
 			return success;
 		};
 	const stableAnchor = snapshotFloatingRectAnchor(cell);
-	closeTextPopover = column.key === 'note'
+	closeTextPopover = key === 'note'
 		? showTaskNotePopover({
 			app: deps.app,
 			anchor: stableAnchor,
@@ -3710,14 +3723,19 @@ function openEmbedTableInlineTextPopover(
 			subtitle: task.description || formatTableTaskSource(task),
 			subtitlePresentation: 'compact-markdown',
 			initialValue: value,
+			allowEmptyCommit,
 			taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
-			sessionKey: `table-text:${task.operonId}:description`,
+			sessionKey: `embed-table-text:${task.operonId}:${key}`,
+			lifecycleOwner: instance.el,
 			editor: {
 				kind: 'compact-markdown',
 				sourcePath: task.primary.filePath,
 			},
 			onCommit: commitValue,
 			onClose: releaseTextPopoverOwnership,
+			onFocusReturn: () => {
+				if (cell.isConnected) cell.focus();
+			},
 		});
 	instance.activePickerClose = closeTextPopover;
 	instance.keepActivePickerOnRender = true;
