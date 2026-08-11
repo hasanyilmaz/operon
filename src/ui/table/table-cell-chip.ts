@@ -94,7 +94,7 @@ export function decorateTableListValueChip(
 	});
 }
 
-function isTableListValueChipOverflowing(chip: HTMLElement): boolean {
+export function isTableListValueChipOverflowing(chip: HTMLElement): boolean {
 	const overflowTarget = chip.querySelector<HTMLElement>('.operon-table-cell-chip-label') ?? chip;
 	if (overflowTarget.scrollWidth > overflowTarget.clientWidth + 1) return true;
 	const clippingParent = chip.closest<HTMLElement>('.operon-table-cell-chip-list');

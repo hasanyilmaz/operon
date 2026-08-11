@@ -1105,6 +1105,53 @@ function checkCssScorecard() {
 		'Table column resize handles must remain reachable',
 	);
 
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root',
+		['--operon-table-detailed-value-max-width: 168px;'],
+		'Table list values and detailed datetime controls must share a stable width cap',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-icon-only-button.operon-table-compact-datetime',
+		['max-width: min(100%, var(--operon-table-detailed-value-max-width));'],
+		'Table detailed datetime controls must consume the shared value width cap',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-cell-chip-list',
+		['display: flex;', 'gap: 6px;', 'overflow: hidden;', 'min-width: 0;', 'max-width: 100%;'],
+		'Table list wrappers must clip non-shrinking sibling values inside the column',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-list-value-chip',
+		[
+			'flex: 0 0 auto;',
+			'width: max-content;',
+			'max-width: var(--operon-table-detailed-value-max-width);',
+			'overflow: hidden;',
+			'background-color: transparent;',
+			'text-overflow: ellipsis;',
+			'white-space: nowrap;',
+		],
+		'Table list values must retain their natural width, shared cap, neutral fill, and ellipsis',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-root .operon-table-list-value-chip:is(:hover, .is-operon-chip-hovered, :focus-visible),\n'
+			+ '.operon-table-root .operon-table-cell.is-editable:is(:hover, :focus-visible, :focus-within) .operon-table-list-value-chip {\n'
+			+ '\tborder-color: color-mix(\n'
+			+ '\t\tin srgb,\n'
+			+ '\t\tvar(--operon-table-field-accent, var(--interactive-accent)) 62%,\n'
+			+ '\t\tvar(--background-modifier-border)\n'
+			+ '\t);\n'
+			+ '\tbackground: transparent;\n'
+			+ '\tbackground-color: transparent;\n'
+			+ '\tbox-shadow: none;',
+		'Table list hover and focus must remain border-only with field-accent precedence',
+	);
+
 	assertIncludes(
 		'styles.css',
 		'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-toolbar {\n\tgrid-template-columns: minmax(0, 1fr);\n\tgrid-template-areas: \'end\';\n\talign-items: center;\n}',
