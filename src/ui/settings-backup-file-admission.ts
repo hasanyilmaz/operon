@@ -2,6 +2,21 @@ export const SETTINGS_BACKUP_JSON_MAX_BYTES = 10 * 1024 * 1024;
 export const SETTINGS_BACKUP_ZIP_MAX_BYTES = 50 * 1024 * 1024;
 
 export type SettingsBackupFileKind = 'json' | 'zip';
+export type SettingsBackupFileAdmissionErrorCode =
+	| 'unsupported-content'
+	| 'json-size-limit'
+	| 'zip-size-limit'
+	| 'provider-read-failed';
+
+export class SettingsBackupFileAdmissionError extends Error {
+	readonly code: SettingsBackupFileAdmissionErrorCode;
+
+	constructor(code: SettingsBackupFileAdmissionErrorCode) {
+		super(code);
+		this.name = 'SettingsBackupFileAdmissionError';
+		this.code = code;
+	}
+}
 
 export function detectSettingsBackupFileKind(head: Uint8Array): SettingsBackupFileKind | null {
 	if (head.length >= 4 && head[0] === 0x50 && head[1] === 0x4b && (

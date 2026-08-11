@@ -202,6 +202,23 @@ test('reader rejects archives over the physical byte limit', async () => {
 	await expectCode(() => readOperonSettingsBackupArchiveV1(archive, { maxArchiveBytes: archive.length - 1 }), 'archive-size-limit');
 });
 
+test('valid near-limit STORE archive round-trips within the platform-neutral 50 MiB cap', async () => {
+	const tablePaths = Array.from({ length: 9 }, (_, index) => `tables/near-limit-${index}.table`);
+	const payload = new Uint8Array(OPERON_SETTINGS_BACKUP_MAX_TABLE_ENTRY_BYTES);
+	payload.fill(0x61);
+	const entries = [
+		{ path: 'manifest.json', bytes: manifest(tablePaths) },
+		{ path: 'settings.json', bytes: bytes('{}') },
+		...tablePaths.map(path => ({ path, bytes: payload })),
+	];
+	const archive = await createOperonSettingsBackupArchiveV1(entries);
+	assert.ok(archive.byteLength > 45 * 1024 * 1024);
+	assert.ok(archive.byteLength <= OPERON_SETTINGS_BACKUP_MAX_ARCHIVE_BYTES);
+	const opened = await readOperonSettingsBackupArchiveV1(archive);
+	assert.equal(opened.entries.length, entries.length);
+	assert.equal(opened.entries.every(entry => entry.compressedBytes === entry.uncompressedBytes), true);
+});
+
 test('strict reader rejects duplicate central entries and unsafe names before extraction', async () => {
 	const base = await rawZip([
 		{ path: 'manifest.json', data: manifest() },

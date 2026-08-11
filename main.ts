@@ -2720,17 +2720,31 @@ export default class OperonPlugin extends Plugin {
 					};
 				}
 			}
-			await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
+			let registrySettled = true;
+			try {
+				await this.refreshTablePresetRegistry({ adoptUnbound: false, persistBindings: false, reconcileFileNames: false });
+			} catch {
+				registrySettled = false;
+			}
 			const runtime = await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, {
 				receiptId: applied.receipt.receiptId,
 				undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
 			});
+			if (!registrySettled && runtime.status === 'settled') {
+				this.pendingSettingsBackupRuntimeRecovery = {
+					receiptId: applied.receipt.receiptId,
+					undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
+					failedSteps: ['standard-refresh'], localeIntentChanged: false,
+					reindexReason: null, needsCanonicalReload: false,
+				};
+			}
+			const recoveryRequired = !registrySettled || runtime.status === 'degraded';
 			const uiResult: SettingsBackupApplyResult = {
 				status: applied.receipt.canonicalWrite === 'committed-after-error' ? 'committed-after-error' : 'committed',
-				message: runtime.status === 'settled' ? 'Settings and Table resources restored.' : 'Runtime refresh requires a recovery decision.',
+				message: recoveryRequired ? 'Runtime refresh requires a recovery decision.' : 'Settings and Table resources restored.',
 				receiptId: applied.receipt.receiptId,
 				undoTokenId: applied.sessionUndo?.undoTokenId ?? null,
-				recoveryRequired: runtime.status === 'degraded',
+				recoveryRequired,
 			};
 			if (uiResult.undoTokenId && uiResult.receiptId) this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
 				receiptId: uiResult.receiptId, undoTokenId: uiResult.undoTokenId,
@@ -2742,14 +2756,28 @@ export default class OperonPlugin extends Plugin {
 			});
 			return uiResult;
 		}
+		const manualRecoveryRequired = applied.receipt.status === 'commit-state-unknown'
+			|| applied.receipt.recovery.mode === 'manual-backup-required';
+		const failureMessage = applied.receipt.status === 'commit-state-unknown'
+			? 'Canonical commit state is unknown; manual recovery is required.'
+			: manualRecoveryRequired
+				? 'The restore left resources that require manual cleanup.'
+				: 'The restore failed without a verified canonical commit.';
+		if (manualRecoveryRequired) {
+			this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+				receiptId: applied.receipt.receiptId,
+				undoTokenId: null,
+				message: failureMessage,
+				runtimeRetryRequired: false,
+				undoAvailable: false,
+			});
+		}
 		return {
-			status: applied.receipt.status === 'commit-state-unknown' ? 'state-unknown' : 'failed-clean',
-			message: applied.receipt.status === 'commit-state-unknown'
-				? 'Canonical commit state is unknown; manual recovery is required.'
-				: 'The restore failed without a verified canonical commit.',
+			status: manualRecoveryRequired ? 'state-unknown' : 'failed-clean',
+			message: failureMessage,
 			receiptId: applied.receipt.receiptId,
 			undoTokenId: null,
-			recoveryRequired: applied.receipt.status === 'commit-state-unknown',
+			recoveryRequired: manualRecoveryRequired,
 		};
 	}
 
@@ -2894,11 +2922,24 @@ export default class OperonPlugin extends Plugin {
 				},
 			);
 		if (undone.status !== 'success') {
+			if (undone.status === 'manual-recovery-required') {
+				const message = undone.reason === 'canonical-state-unknown'
+					? 'Canonical Undo state is unknown; manual recovery is required.'
+					: 'Undo committed partially; manual resource cleanup is required.';
+				this.settingsBackupTableResourceSessions.delete(input.receiptId);
+				this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+					receiptId: input.receiptId, undoTokenId: null,
+					message,
+					runtimeRetryRequired: false, undoAvailable: false,
+				});
+			}
 			return {
 				status: undone.status === 'manual-recovery-required' ? 'state-unknown' : 'failed-clean',
-				message: 'Undo requires manual recovery or a fresh retry.',
+				message: undone.status === 'manual-recovery-required'
+					? this.lastSettingsBackupUiRecovery?.message ?? 'Undo requires manual recovery.'
+					: 'Undo could not be committed; a fresh retry is available.',
 				receiptId: input.receiptId,
-				undoTokenId: input.undoTokenId,
+				undoTokenId: undone.status === 'manual-recovery-required' ? null : input.undoTokenId,
 				recoveryRequired: true,
 			};
 		}
