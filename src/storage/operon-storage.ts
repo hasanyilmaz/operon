@@ -900,7 +900,7 @@ export class OperonStorage {
 				admittedCurrentSettingsFingerprint = currentSettingsFingerprint;
 				if (fresh.restorePlan.candidateFingerprint === currentSettingsFingerprint) {
 					alreadyApplied = true;
-					activePlan = input.restorePlan;
+					activePlan = fresh.restorePlan;
 					return currentPackage;
 				}
 				const staleReason = compareSettingsBackupRestorePlans(input.restorePlan, fresh.restorePlan);

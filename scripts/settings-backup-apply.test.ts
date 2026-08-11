@@ -5,6 +5,7 @@ import test from 'node:test';
 import type { App } from 'obsidian';
 import { sha256HexV1 } from '../src/agent-runtime/contracts/v1/canonical';
 import {
+	computeOperonSettingsBackupApplyPlanIdV1,
 	computeOperonSettingsBackupSettingsFingerprintV1,
 	createOperonSettingsBackupApplyAcknowledgementV1,
 	projectOperonSettingsBackupApplyDataPackageV1,
@@ -280,7 +281,7 @@ function exportJson(
 async function createPlan(
 	storage: OperonStorage,
 	source: OperonSettings,
-	selectedGroups: readonly ('general' | 'filters' | 'table-global')[] = ['general'],
+	selectedGroups: readonly ('general' | 'filters' | 'preset-favorites' | 'table-global')[] = ['general'],
 ): Promise<{
 	sourceJson: string;
 	plan: OperonSettingsBackupRestorePlanV1;
@@ -613,6 +614,34 @@ test('exact-plan retry remains idempotent after an unselected target setting cha
 	assert.deepEqual(harness.data.committed, beforeRetry);
 });
 
+test('exact-plan retry remains idempotent after target-preserved Table favorites change inside a selected group', async () => {
+	const target = baselineSettings();
+	const harness = await createHarness(canonicalPackage(target));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	changeLanguage(source);
+	const { sourceJson, plan } = await createPlan(harness.storage, source, ['general', 'preset-favorites']);
+	const first = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.ok(first.receipt);
+	assert.equal(harness.data.saveAttempts, 1);
+
+	await harness.storage.updateSettings({
+		presetFavorites: { ...source.presetFavorites, table: ['table-local'] },
+	});
+	assert.equal(harness.data.saveAttempts, 2);
+	const beforeRetry = clone(harness.data.committed);
+
+	const retry = await harness.storage.applySettingsBackupRestorePlanV1(
+		applyInput(sourceJson, plan, '2026-08-10T20:02:00.000Z'),
+	);
+	assert.ok(retry.receipt);
+	assert.equal(retry.receipt?.alreadyApplied, true);
+	assert.equal(retry.receipt?.canonicalWrite, 'not-attempted');
+	assert.notEqual(retry.receipt?.planId, plan.planId);
+	assert.equal(harness.data.saveAttempts, 2);
+	assert.deepEqual(harness.data.committed, beforeRetry);
+});
+
 test('already-applied admission rejects an equivalent swapped source and changed refreshed Vault checks without writing', async () => {
 	const target = baselineSettings();
 	const harness = await createHarness(canonicalPackage(target));
@@ -640,6 +669,41 @@ test('already-applied admission rejects an equivalent swapped source and changed
 	const changedChecks = await harness.storage.applySettingsBackupRestorePlanV1(changedChecksInput);
 	assert.equal(changedChecks.status, 'blocked');
 	assert.equal(changedChecks.blockedReason, 'vault-reference-changed');
+	assert.equal(harness.data.saveAttempts, 1);
+	assert.deepEqual(harness.data.committed, committed);
+});
+
+test('already-applied admission canonicalizes a recomputed plan with a tampered selected candidate without writing', async () => {
+	const target = baselineSettings();
+	const harness = await createHarness(canonicalPackage(target));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	changeLanguage(source);
+	const { sourceJson, plan } = await createPlan(harness.storage, source, ['general']);
+	const first = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.ok(first.receipt);
+	assert.equal(harness.data.saveAttempts, 1);
+	const committed = clone(harness.data.committed);
+	const freshCanonicalPlan = (await createPlan(harness.storage, source, ['general'])).plan;
+
+	const tamperedCandidate = clone(plan.candidateSettings);
+	changeLanguage(tamperedCandidate);
+	const tamperedPlan: OperonSettingsBackupRestorePlanV1 = {
+		...plan,
+		candidateSettings: tamperedCandidate,
+		candidateFingerprint: computeOperonSettingsBackupSettingsFingerprintV1(tamperedCandidate),
+	};
+	tamperedPlan.planId = computeOperonSettingsBackupApplyPlanIdV1(tamperedPlan);
+	const tampered = await harness.storage.applySettingsBackupRestorePlanV1(
+		applyInput(sourceJson, tamperedPlan, '2026-08-10T20:03:00.000Z'),
+	);
+	assert.ok(tampered.receipt);
+	assert.equal(tampered.receipt?.alreadyApplied, true);
+	assert.equal(tampered.receipt?.canonicalWrite, 'not-attempted');
+	assert.equal(tampered.receipt?.planId, freshCanonicalPlan.planId);
+	assert.equal(tampered.receipt?.candidateFingerprint, first.receipt?.candidateFingerprint);
+	assert.notEqual(tampered.receipt?.planId, tamperedPlan.planId);
+	assert.notEqual(tampered.receipt?.candidateFingerprint, tamperedPlan.candidateFingerprint);
 	assert.equal(harness.data.saveAttempts, 1);
 	assert.deepEqual(harness.data.committed, committed);
 });
