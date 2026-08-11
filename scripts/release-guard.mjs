@@ -96,6 +96,38 @@ function assertIncludes(relativePath, needle, label) {
 	}
 }
 
+function assertCssAtRuleContains(relativePath, atRule, requiredNeedles, forbiddenNeedles, label) {
+	const text = stripCssComments(readText(relativePath));
+	const blocks = [];
+	let searchIndex = 0;
+	while (searchIndex < text.length) {
+		const atRuleIndex = text.indexOf(atRule, searchIndex);
+		if (atRuleIndex < 0) break;
+		const bodyStart = text.indexOf('{', atRuleIndex + atRule.length);
+		if (bodyStart < 0) break;
+		let depth = 1;
+		let cursor = bodyStart + 1;
+		while (cursor < text.length && depth > 0) {
+			if (text[cursor] === '{') depth += 1;
+			if (text[cursor] === '}') depth -= 1;
+			cursor += 1;
+		}
+		if (depth === 0) blocks.push(text.slice(bodyStart + 1, cursor - 1));
+		searchIndex = cursor;
+	}
+
+	const matchingBlock = blocks.find(block => requiredNeedles.every(needle => block.includes(needle)));
+	if (!matchingBlock) {
+		fail(`${relativePath}: ${label}: ${atRule} must contain the required scoped rules`);
+		return;
+	}
+	for (const needle of forbiddenNeedles) {
+		if (matchingBlock.includes(needle)) {
+			fail(`${relativePath}: ${label}: ${atRule} must not contain ${needle}`);
+		}
+	}
+}
+
 function readWorkflow(relativePath) {
 	return parseYaml(readText(relativePath));
 }
@@ -1102,6 +1134,54 @@ function checkCssScorecard() {
 		'styles.css',
 		') > .view-content.operon-table-view .operon-table-export-button {\n\tdisplay: none;\n}',
 		'desktop sidebar Table leaves must hide Export only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-end {\n\tjustify-content: flex-start;\n\twidth: 100%;\n}',
+		'desktop sidebar Table controls must keep buttons aligned to the start edge',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-search-wrap {\n\tflex: 1 1 var(--operon-table-search-width);\n\twidth: auto;\n\tmin-width: 0;\n\tmax-width: var(--operon-table-search-width);\n\tmargin-inline-start: auto;\n}',
+		'desktop sidebar Table search must stay at the logical end and remain shrinkable',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) {\n\t\tbox-sizing: border-box;\n\t\theight: 16px;\n\t\tmin-height: 16px;\n\t\tmax-height: 16px;',
+		'sidebar Table toolbar must preserve hover, keyboard focus, and open popup expansion while using the 16px compact rail',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-end {\n\t\tbox-sizing: border-box;\n\t\theight: 4px;\n\t\tmin-height: 4px;\n\t\tmax-height: 4px;',
+		'sidebar Table toolbar compact state must render the 4px inner rail',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (hover: hover) and (pointer: fine)',
+		[
+			'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(',
+			'[data-type="operon-table-view"]',
+			'[data-type="operon-table-file-view"]',
+			'> .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"]))',
+			'height: 16px;',
+			'height: 4px;',
+			'opacity: 0;',
+		],
+		['.operon-table-embed-toolbar'],
+		'sidebar Table toolbar auto-collapse must stay fine-pointer, desktop, direct-leaf, and embed-safe',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (prefers-reduced-motion: reduce)',
+		[
+			'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(',
+			'[data-type="operon-table-view"]',
+			'[data-type="operon-table-file-view"]',
+			'> .view-content.operon-table-view .operon-table-toolbar-end > *',
+			'transition-duration: 0ms;',
+		],
+		['.operon-table-embed-toolbar'],
+		'sidebar Table toolbar reduced-motion override must stay desktop, direct-leaf, and embed-safe',
 	);
 	assertIncludes(
 		'src/ui/table/operon-table-view.ts',

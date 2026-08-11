@@ -29738,6 +29738,25 @@ body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 	[data-type="operon-table-view"],
 	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar-end {
+	justify-content: flex-start;
+	width: 100%;
+}
+
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-search-wrap {
+	flex: 1 1 var(--operon-table-search-width);
+	width: auto;
+	min-width: 0;
+	max-width: var(--operon-table-search-width);
+	margin-inline-start: auto;
+}
+
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
 ) > .view-content.operon-table-view .operon-table-toolbar-start,
 body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 	[data-type="operon-table-view"],
@@ -29756,6 +29775,83 @@ body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 	[data-type="operon-table-file-view"]
 ) > .view-content.operon-table-view .operon-table-export-button {
 	display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar,
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar-end,
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar-end > * {
+		transition:
+			height 110ms ease-out,
+			min-height 110ms ease-out,
+			max-height 110ms ease-out,
+			padding 110ms ease-out,
+			margin 110ms ease-out,
+			opacity 90ms ease-out,
+			background-color 110ms ease-out,
+			border-color 120ms ease,
+			color 120ms ease;
+	}
+
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) {
+		box-sizing: border-box;
+		height: 16px;
+		min-height: 16px;
+		max-height: 16px;
+		overflow: hidden;
+		padding-block: 6px;
+	}
+
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-end {
+		box-sizing: border-box;
+		height: 4px;
+		min-height: 4px;
+		max-height: 4px;
+		overflow: hidden;
+		padding-block: 0;
+		margin-block: 0;
+		border-radius: 999px;
+		background-color: var(--background-modifier-hover);
+	}
+
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-end > * {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar,
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar-end,
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar-end > * {
+		transition-duration: 0ms;
+	}
 }
 
 .operon-table-title-wrap {
