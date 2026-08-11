@@ -1148,6 +1148,55 @@ function checkCssScorecard() {
 		['max-width: min(100%, var(--operon-table-detailed-value-max-width));'],
 		'Table detailed datetime controls must consume the shared value width cap',
 	);
+	for (const selector of [
+		'button.operon-table-task-icon-button:not(:disabled):not(.is-readonly):hover',
+		'button.operon-table-task-type-button:hover',
+		'.operon-table-icon-only-button:hover',
+		'button.operon-table-duration-session-chip:hover',
+		'button.operon-table-source-button:hover',
+		'.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):hover',
+		'button.operon-table-task-icon-button:disabled:hover',
+		'.operon-table-root button.operon-table-file-property-checkbox:disabled:hover',
+	]) {
+		assertCssRuleContains(
+			'styles.css',
+			selector,
+			['box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px)'],
+			'Table bordered value controls must share the common hover/focus glow size',
+		);
+	}
+	assertIncludes(
+		'styles.css',
+		'.operon-table-root .operon-table-cell-chip:is(:hover, .is-operon-chip-hovered, :focus-visible)',
+		'Table detailed chips must use the shared hover/focus glow contract',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-progress-action-shell:not(.is-empty-mode):is(:hover, :focus-within)',
+		'Table progress surfaces must glow as one surrounding shell',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-progress-action-shell.is-empty-mode:focus-within',
+		['box-shadow: inset 0 0 0 var(--operon-table-chip-glow-size, 2px)'],
+		'empty Checkbox Progress controls must keep a visible keyboard focus ring without a progress graphic',
+	);
+	for (const selector of [
+		'.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-wrap',
+		'.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-ring',
+	]) {
+		assertIncludes(
+			'styles.css',
+			selector,
+			'Table readonly progress visuals must keep their visual-only hover glow',
+		);
+	}
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root .operon-table-progress-action-shell:focus-within',
+		['outline: 2px solid ButtonText;', 'box-shadow: none;'],
+		'Table progress controls must keep a forced-colors focus indicator',
+	);
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-table-root .operon-table-date-value-chip',

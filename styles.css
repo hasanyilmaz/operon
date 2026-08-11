@@ -31456,7 +31456,7 @@ button.operon-table-task-icon-button {
 button.operon-table-task-icon-button:not(:disabled):not(.is-readonly):hover,
 button.operon-table-task-icon-button:not(:disabled):not(.is-readonly):focus-visible {
 	border-color: currentColor;
-	box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, currentColor 18%, transparent);
 	background: transparent;
 	background-color: transparent;
 	outline: none;
@@ -31470,6 +31470,11 @@ button.operon-table-task-icon-button.is-readonly {
 	box-shadow: none;
 	background: transparent;
 	background-color: transparent;
+}
+
+button.operon-table-task-icon-button:disabled:hover,
+button.operon-table-task-icon-button.is-readonly:hover {
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, currentColor 18%, transparent);
 }
 
 button.operon-table-task-icon-button svg {
@@ -31497,7 +31502,7 @@ button.operon-table-task-type-button {
 button.operon-table-task-type-button:hover,
 button.operon-table-task-type-button:focus-visible {
 	border-color: currentColor;
-	box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, currentColor 18%, transparent);
 	background: transparent;
 	background-color: transparent;
 	color: var(--text-normal);
@@ -31567,7 +31572,9 @@ button.operon-table-duration-session-chip {
 button.operon-table-duration-session-chip:hover,
 button.operon-table-duration-session-chip:focus-visible {
 	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	color: var(--text-normal);
+	outline: none;
 }
 
 .operon-table-summary-cell {
@@ -31848,6 +31855,7 @@ button.operon-table-summary-picker-action:focus-visible {
 .operon-table-icon-only-button:hover,
 .operon-table-icon-only-button:focus-visible {
 	border-color: color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 52%, var(--background-modifier-border));
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-table-icon-only-color, var(--interactive-accent)) 22%, transparent);
 	background: transparent;
 	background-color: transparent;
 	color: var(--operon-table-icon-only-color, var(--text-normal));
@@ -31887,12 +31895,14 @@ button.operon-table-summary-picker-action:focus-visible {
 .operon-table-progress-action-shell.is-details-mode {
 	width: 100%;
 	justify-content: stretch;
+	border-radius: 5px;
 }
 
 .operon-table-progress-action-shell.is-icon-mode {
 	width: 28px;
 	height: 28px;
 	min-width: 28px;
+	border-radius: 999px;
 }
 
 .operon-table-progress-action-shell.is-empty-mode {
@@ -31950,7 +31960,21 @@ button.operon-table-progress-action:focus-visible {
 }
 
 button.operon-table-progress-action:focus-visible {
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--operon-task-progress-color) 38%, transparent);
+	box-shadow: none;
+}
+
+.operon-table-progress-action-shell:not(.is-empty-mode):is(:hover, :focus-within),
+.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-wrap,
+.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-ring {
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-task-progress-color) 28%, transparent);
+}
+
+.operon-table-progress-action-shell.is-empty-mode:focus-within {
+	box-shadow: inset 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--operon-task-progress-color) 38%, transparent);
+}
+
+.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-wrap {
+	border-radius: 5px;
 }
 
 .operon-table-progress-track {
@@ -32175,6 +32199,14 @@ button.operon-table-source-button {
 	white-space: nowrap;
 }
 
+.operon-table-root .operon-table-cell-chip:is(:hover, .is-operon-chip-hovered, :focus-visible) {
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(
+		in srgb,
+		var(--operon-table-field-accent, var(--interactive-accent)) 22%,
+		transparent
+	);
+}
+
 .operon-table-editable-chip {
 	--operon-task-chip-border: var(--background-modifier-border-hover);
 	border-color: var(--background-modifier-border-hover);
@@ -32189,6 +32221,7 @@ button.operon-table-source-button {
 .operon-table-cell.is-editable:focus-visible .operon-table-editable-chip,
 .operon-table-cell.is-editable:focus-within .operon-table-editable-chip {
 	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	color: var(--text-normal);
 }
 
@@ -32239,8 +32272,10 @@ button.operon-table-source-button {
 button.operon-table-source-button:hover,
 button.operon-table-source-button:focus-visible {
 	border-color: var(--operon-table-border-hover);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
+	outline: none;
 }
 
 .operon-table-source-icon {
@@ -32322,6 +32357,14 @@ button.operon-table-source-button:focus-visible {
 	color: var(--text-muted);
 }
 
+.operon-table-root button.operon-table-file-property-checkbox:disabled:hover {
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(
+		in srgb,
+		var(--operon-table-field-accent, var(--interactive-accent)) 18%,
+		transparent
+	);
+}
+
 .operon-table-file-property-checkbox-icon,
 .operon-table-file-property-icon {
 	display: inline-flex;
@@ -32352,6 +32395,14 @@ button.operon-table-source-button:focus-visible {
 }
 
 @media (forced-colors: active) {
+	.operon-table-root .operon-table-cell-chip:focus-visible,
+	.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-cell-chip,
+	.operon-table-root .operon-table-icon-only-button:focus-visible,
+	.operon-table-root button.operon-table-source-button:focus-visible,
+	.operon-table-root button.operon-table-duration-session-chip:focus-visible,
+	.operon-table-root button.operon-table-task-icon-button:focus-visible,
+	.operon-table-root button.operon-table-task-type-button:focus-visible,
+	.operon-table-root .operon-table-progress-action-shell:focus-within,
 	.operon-table-root .operon-table-date-value-chip:focus-visible,
 	.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-date-value-chip,
 	.operon-table-root .operon-table-list-value-chip:focus-visible,
