@@ -19,12 +19,20 @@ import {
 	type OperonSettingsBackupRestorePlanV1,
 } from '../src/core/settings-backup-preflight';
 import {
+	DYNAMIC_FILE_TASK_FILTER_ID,
+	DYNAMIC_FILE_TASK_FILTER_OPERON_ID_PLACEHOLDER,
+	DYNAMIC_SUBTASKS_FILTER_ID,
+	DYNAMIC_SUBTASKS_FILTER_OPERON_ID_PLACEHOLDER,
+	createDefaultDynamicFileTaskFilterSet,
+	createDefaultDynamicSubtasksFilterSet,
+} from '../src/core/dynamic-file-task-filter';
+import {
 	buildOperonDataPackageFromSettings,
 	composeOperonSettingsFromDataPackage,
 	type OperonDataPackageV1,
 } from '../src/storage/operon-data-package';
 import { OperonStorage } from '../src/storage/operon-storage';
-import { DEFAULT_SETTINGS, migrateSettings, type OperonSettings } from '../src/types/settings';
+import { DEFAULT_SETTINGS, migrateSettings, type FilterSet, type OperonSettings } from '../src/types/settings';
 
 const FIXTURE_DIR = path.resolve('scripts/settings-backup-fixtures');
 const EXPORTED_AT = '2026-08-10T18:00:00.000Z';
@@ -43,6 +51,79 @@ function changeLanguage(settings: OperonSettings): void {
 	if (settings.language !== 'en' && !settings.languagePackSubscriptions.includes(settings.language)) {
 		settings.languagePackSubscriptions = [...settings.languagePackSubscriptions, settings.language];
 	}
+}
+
+function dynamicTemplate(settings: OperonSettings, id: string): FilterSet {
+	const template = settings.filterSets.find(filterSet => filterSet.id === id);
+	assert.ok(template, `Missing dynamic filter template: ${id}`);
+	return template;
+}
+
+function dynamicTemplatePresentation(filterSet: FilterSet) {
+	return {
+		id: filterSet.id,
+		name: filterSet.name,
+		icon: filterSet.icon,
+		sorts: clone(filterSet.sorts),
+		groupBy: filterSet.groupBy,
+		groupOrder: filterSet.groupOrder,
+		subgroupBy: filterSet.subgroupBy,
+		subgroupOrder: filterSet.subgroupOrder,
+	};
+}
+
+function addCustomizedDynamicTemplates(settings: OperonSettings, label: string): void {
+	const fileTask = createDefaultDynamicFileTaskFilterSet();
+	fileTask.name = `${label} file-task template`;
+	fileTask.icon = 'file-key';
+	fileTask.sorts = [{ field: 'priority', order: 'desc' }];
+	fileTask.sortBy = 'priority';
+	fileTask.sortOrder = 'desc';
+	fileTask.groupBy = 'dateDue';
+	fileTask.groupOrder = 'desc';
+	fileTask.subgroupBy = 'priority';
+	fileTask.subgroupOrder = 'asc';
+
+	const subtasks = createDefaultDynamicSubtasksFilterSet();
+	subtasks.name = `${label} subtasks template`;
+	subtasks.icon = 'list-checks';
+	subtasks.sorts = [{ field: 'checkbox', order: 'desc' }, { field: 'priority', order: 'asc' }];
+	subtasks.sortBy = 'checkbox';
+	subtasks.sortOrder = 'desc';
+	subtasks.groupBy = 'priority';
+	subtasks.groupOrder = 'asc';
+	subtasks.subgroupBy = 'dateDue';
+	subtasks.subgroupOrder = 'desc';
+
+	settings.filterSets = [
+		...settings.filterSets.filter(filterSet => (
+			filterSet.id !== DYNAMIC_FILE_TASK_FILTER_ID && filterSet.id !== DYNAMIC_SUBTASKS_FILTER_ID
+		)),
+		fileTask,
+		subtasks,
+	];
+}
+
+function assertCanonicalDynamicLock(filterSet: FilterSet, placeholder: string): void {
+	assert.equal(filterSet.matchLogic, 'all');
+	assert.deepEqual(filterSet.rootGroup, {
+		id: 'fg_dynamic_file_task_root',
+		logic: 'all',
+		children: [{
+			id: 'cond_dynamic_file_task_operon_id',
+			field: 'operonId',
+			fieldType: 'text',
+			operator: 'is',
+			value: placeholder,
+		}],
+	});
+	assert.deepEqual(filterSet.conditions, [{
+		id: 'cond_dynamic_file_task_operon_id',
+		field: 'operonId',
+		fieldType: 'text',
+		operator: 'is',
+		value: placeholder,
+	}]);
 }
 
 function baselineSettings(): OperonSettings {
@@ -343,6 +424,88 @@ test('apply commits portable groups once, preserves protected domains, and redac
 	assert.equal(serialized.includes(SECRET_VAULT_ID), false);
 	assert.equal(serialized.includes(SECRET_TASK_ID), false);
 	assert.equal(serialized.includes(SECRET_CONSUMER_ID), false);
+});
+
+test('selected Filters restore and session Undo round-trip safe dynamic templates while preserving locked and protected state', async () => {
+	const target = baselineSettings();
+	addCustomizedDynamicTemplates(target, 'Target');
+	const initial = canonicalPackage(target);
+	initial.integrations.mobileNotifications.vaultId = SECRET_VAULT_ID;
+	initial.state.pinnedTasks.itemsById[SECRET_TASK_ID] = { pinned: true, updatedAt: APPLIED_AT };
+	initial.views.kanbanOrder.boards['private-board'] = { columns: [] };
+	initial.views.tablePresets.fileBindings = [{ id: 'table-private', path: 'Tables/Private.table' }];
+	initial.views.tablePresets.presetIds = ['table-private'];
+	initial.views.tablePresets.initialized = true;
+	initial.views.tablePresets.tableDefaultPresetId = 'table-private';
+	initial.ui.presetFavorites = {
+		...initial.ui.presetFavorites!,
+		table: ['table-private'],
+	};
+	const harness = await createHarness(initial);
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const targetFileTask = dynamicTemplatePresentation(dynamicTemplate(current, DYNAMIC_FILE_TASK_FILTER_ID));
+	const targetSubtasks = dynamicTemplatePresentation(dynamicTemplate(current, DYNAMIC_SUBTASKS_FILTER_ID));
+	const protectedBefore = clone(protectedProjection(harness.data.committed));
+
+	const source = clone(current);
+	addCustomizedDynamicTemplates(source, 'Source');
+	const sourceFileTask = dynamicTemplate(source, DYNAMIC_FILE_TASK_FILTER_ID);
+	const sourceSubtasks = dynamicTemplate(source, DYNAMIC_SUBTASKS_FILTER_ID);
+	const sourceFilePresentation = dynamicTemplatePresentation(sourceFileTask);
+	const sourceSubtasksPresentation = dynamicTemplatePresentation(sourceSubtasks);
+	// The portable projection must never trust source-controlled locked conditions.
+	sourceFileTask.matchLogic = 'any';
+	sourceFileTask.rootGroup.children[0] = {
+		id: 'attacker-condition',
+		field: 'description',
+		fieldType: 'text',
+		operator: 'contains',
+		value: 'attacker',
+	};
+	sourceFileTask.conditions = [clone(sourceFileTask.rootGroup.children[0])];
+	sourceSubtasks.rootGroup.children[0] = {
+		id: 'attacker-condition-2',
+		field: 'description',
+		fieldType: 'text',
+		operator: 'contains',
+		value: 'attacker',
+	};
+	sourceSubtasks.conditions = [clone(sourceSubtasks.rootGroup.children[0])];
+
+	const { sourceJson, plan } = await createPlan(harness.storage, source, ['filters']);
+	const candidateFileTask = dynamicTemplate(plan.candidateSettings, DYNAMIC_FILE_TASK_FILTER_ID);
+	const candidateSubtasks = dynamicTemplate(plan.candidateSettings, DYNAMIC_SUBTASKS_FILTER_ID);
+	assert.deepEqual(dynamicTemplatePresentation(candidateFileTask), sourceFilePresentation);
+	assert.deepEqual(dynamicTemplatePresentation(candidateSubtasks), sourceSubtasksPresentation);
+	assertCanonicalDynamicLock(candidateFileTask, DYNAMIC_FILE_TASK_FILTER_OPERON_ID_PLACEHOLDER);
+	assertCanonicalDynamicLock(candidateSubtasks, DYNAMIC_SUBTASKS_FILTER_OPERON_ID_PLACEHOLDER);
+
+	const applied = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.ok(applied.status === 'success' || applied.status === 'success-with-migrations');
+	assert.ok(applied.receipt);
+	const committed = await harness.storage.captureCommittedSettingsBackupSnapshot();
+	const committedFileTask = dynamicTemplate(committed.settings, DYNAMIC_FILE_TASK_FILTER_ID);
+	const committedSubtasks = dynamicTemplate(committed.settings, DYNAMIC_SUBTASKS_FILTER_ID);
+	assert.deepEqual(dynamicTemplatePresentation(committedFileTask), sourceFilePresentation);
+	assert.deepEqual(dynamicTemplatePresentation(committedSubtasks), sourceSubtasksPresentation);
+	assertCanonicalDynamicLock(committedFileTask, DYNAMIC_FILE_TASK_FILTER_OPERON_ID_PLACEHOLDER);
+	assertCanonicalDynamicLock(committedSubtasks, DYNAMIC_SUBTASKS_FILTER_OPERON_ID_PLACEHOLDER);
+	assert.deepEqual(protectedProjection(harness.data.committed), protectedBefore);
+
+	const token = applied.receipt.recovery.undoTokenId;
+	assert.ok(token);
+	const undone = await harness.storage.undoSettingsBackupRestoreV1(token as string, applied.receipt.receiptId);
+	assert.equal(undone.status, 'success');
+	const restored = await harness.storage.captureCommittedSettingsBackupSnapshot();
+	assert.deepEqual(
+		dynamicTemplatePresentation(dynamicTemplate(restored.settings, DYNAMIC_FILE_TASK_FILTER_ID)),
+		targetFileTask,
+	);
+	assert.deepEqual(
+		dynamicTemplatePresentation(dynamicTemplate(restored.settings, DYNAMIC_SUBTASKS_FILTER_ID)),
+		targetSubtasks,
+	);
+	assert.deepEqual(protectedProjection(harness.data.committed), protectedBefore);
 });
 
 test('staging failure returns a structured stage failure and performs zero writes', async () => {

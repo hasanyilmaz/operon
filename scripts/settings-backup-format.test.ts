@@ -228,6 +228,54 @@ test('group codecs reject duplicates, reserved filters, unknown fields and dangl
 	assert.equal(result.ok, false);
 	assert.ok(result.diagnostics.some(item => item.message.includes('Reserved dynamic filter')));
 
+	const dynamicTemplates = cloneBody(readBodyFixture('representative-body.json'));
+	const dynamicFilterData = dynamicTemplates.groups.filters?.data as {
+		filterSets: Array<Record<string, unknown>>;
+		dynamicTemplates?: Record<string, unknown>;
+	};
+	dynamicFilterData.dynamicTemplates = {
+		fileTask: {
+			name: 'File tasks', icon: 'file-check', sorts: [{ field: 'priority', order: 'desc' }],
+			groupBy: 'status', groupOrder: 'desc',
+		},
+		subtasks: {
+			name: 'Subtasks', icon: 'list-checks', sorts: [{ field: 'dateDue', order: 'asc' }],
+			subgroupBy: 'status', subgroupOrder: 'asc',
+		},
+	};
+	result = validateOperonSettingsBackupGroupsV1(dynamicTemplates.groups);
+	assert.equal(result.ok, true, result.diagnostics.map(item => item.message).join('\n'));
+
+	for (const [field, value] of Object.entries({
+		id: 'fs_dynamic_file_task',
+		rootGroup: {},
+		conditions: [],
+		matchLogic: 'all',
+		sortBy: 'priority',
+		sortOrder: 'asc',
+	})) {
+		const lockedDynamicField = cloneBody(dynamicTemplates);
+		const lockedPreferences = (
+			(lockedDynamicField.groups.filters?.data as { dynamicTemplates: { fileTask: Record<string, unknown> } })
+				.dynamicTemplates.fileTask
+		);
+		lockedPreferences[field] = value;
+		result = validateOperonSettingsBackupGroupsV1(lockedDynamicField.groups);
+		assert.equal(result.ok, false, field);
+		assert.ok(result.diagnostics.some(item => (
+			item.path.endsWith(`.dynamicTemplates.fileTask.${field}`) && item.code === 'unknown-field'
+		)), field);
+	}
+
+	const incompleteDynamicTemplates = cloneBody(dynamicTemplates);
+	delete (
+		(incompleteDynamicTemplates.groups.filters?.data as { dynamicTemplates: Record<string, unknown> })
+			.dynamicTemplates.subtasks
+	);
+	result = validateOperonSettingsBackupGroupsV1(incompleteDynamicTemplates.groups);
+	assert.equal(result.ok, false);
+	assert.ok(result.diagnostics.some(item => item.path.endsWith('.dynamicTemplates.subtasks') && item.code === 'required'));
+
 	const dangling = cloneBody(readBodyFixture('representative-body.json'));
 	(dangling.groups['custom-keys'].data as { customKeys: unknown[] }).customKeys = [];
 	result = validateOperonSettingsBackupGroupsV1(dangling.groups);

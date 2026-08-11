@@ -6,6 +6,10 @@ import {
 	type OperonSettings,
 } from '../types/settings';
 import {
+	applyDynamicFilterTemplatePreferences,
+	isSpecialDynamicFilterSet,
+} from './dynamic-file-task-filter';
+import {
 	SETTINGS_BACKUP_GROUPS,
 	SETTINGS_BACKUP_GROUP_CODEC_VERSION,
 	SETTINGS_BACKUP_VAULT_REFERENCE_KEYS,
@@ -629,7 +633,15 @@ function composeSelectedGroups(
 			...cloneJson(payloads['custom-keys'].customKeys),
 		];
 	}
-	if (selected.has('filters') && payloads.filters) candidate.filterSets = cloneJson(payloads.filters.filterSets);
+	if (selected.has('filters') && payloads.filters) {
+		const normalFilterSets = cloneJson(payloads.filters.filterSets);
+		candidate.filterSets = payloads.filters.dynamicTemplates
+			? applyDynamicFilterTemplatePreferences(normalFilterSets, cloneJson(payloads.filters.dynamicTemplates))
+			: [
+				...normalFilterSets,
+				...cloneJson(target.filterSets.filter(isSpecialDynamicFilterSet)),
+			];
+	}
 	if (selected.has('calendar') && payloads.calendar) {
 		const targetVisibility = new Map(target.calendarPresets.map(preset => [preset.id, preset.externalCalendarVisibility]));
 		candidate.calendarPresets = cloneJson(payloads.calendar.calendarPresets).map(preset => ({

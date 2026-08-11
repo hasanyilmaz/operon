@@ -5,6 +5,13 @@ import {
 	SETTINGS_BACKUP_GROUPS,
 	SETTINGS_BACKUP_VAULT_REFERENCE_KEYS,
 } from '../src/core/settings-backup-compatibility';
+import {
+	DYNAMIC_FILE_TASK_FILTER_ID,
+	DYNAMIC_SUBTASKS_FILTER_ID,
+	createDefaultDynamicFileTaskFilterSet,
+	createDefaultDynamicSubtasksFilterSet,
+	projectDynamicFilterTemplatePreferences,
+} from '../src/core/dynamic-file-task-filter';
 import { parseOperonSettingsBackupV1 } from '../src/core/settings-backup-format';
 import {
 	createOperonSettingsResetDefaultProfileV1,
@@ -34,9 +41,40 @@ function clone<T>(value: T): T {
 	return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function customizedDynamicTemplates() {
+	const fileTask = createDefaultDynamicFileTaskFilterSet();
+	fileTask.name = 'Private file-task template';
+	fileTask.icon = 'file-key';
+	fileTask.sorts = [{ field: 'priority', order: 'desc' }];
+	fileTask.sortBy = 'priority';
+	fileTask.sortOrder = 'desc';
+	fileTask.groupBy = 'dateDue';
+	fileTask.groupOrder = 'desc';
+	fileTask.subgroupBy = 'priority';
+	fileTask.subgroupOrder = 'asc';
+
+	const subtasks = createDefaultDynamicSubtasksFilterSet();
+	subtasks.name = 'Private subtasks template';
+	subtasks.icon = 'list-checks';
+	subtasks.sorts = [{ field: 'checkbox', order: 'desc' }];
+	subtasks.sortBy = 'checkbox';
+	subtasks.sortOrder = 'desc';
+	subtasks.groupBy = 'priority';
+	subtasks.groupOrder = 'asc';
+	return [fileTask, subtasks];
+}
+
+function defaultDynamicTemplatePreferences() {
+	return projectDynamicFilterTemplatePreferences([
+		createDefaultDynamicFileTaskFilterSet(),
+		createDefaultDynamicSubtasksFilterSet(),
+	]);
+}
+
 function changedTarget(): OperonSettings {
 	return migrateSettings({
 		...clone(DEFAULT_SETTINGS),
+		filterSets: [...clone(DEFAULT_SETTINGS.filterSets), ...customizedDynamicTemplates()],
 		language: 'de',
 		operonDocsFolder: 'Private/Docs',
 		fileTasksFolder: 'Private/Tasks',
@@ -103,6 +141,16 @@ test('reset preflight selects every group and applies default vault-bound and ex
 		assert.deepEqual(plan.candidateSettings[key], DEFAULT_SETTINGS[key]);
 	}
 	assert.deepEqual(plan.candidateSettings.externalCalendars, DEFAULT_SETTINGS.externalCalendars);
+	assert.deepEqual(
+		projectDynamicFilterTemplatePreferences(plan.candidateSettings.filterSets),
+		defaultDynamicTemplatePreferences(),
+	);
+	assert.notDeepEqual(
+		projectDynamicFilterTemplatePreferences(plan.candidateSettings.filterSets),
+		projectDynamicFilterTemplatePreferences(target.filterSets),
+	);
+	assert.ok(plan.candidateSettings.filterSets.some(filterSet => filterSet.id === DYNAMIC_FILE_TASK_FILTER_ID));
+	assert.ok(plan.candidateSettings.filterSets.some(filterSet => filterSet.id === DYNAMIC_SUBTASKS_FILTER_ID));
 	assert.deepEqual(plan.candidateSettings.tablePresetFileBindings, target.tablePresetFileBindings);
 	assert.deepEqual(plan.candidateSettings.tablePresetOrderIds, target.tablePresetOrderIds);
 	assert.equal(plan.candidateSettings.tableDefaultPresetId, target.tableDefaultPresetId);
@@ -160,4 +208,10 @@ test('existing JSON projection retains protected package authority for a reset c
 	assert.deepEqual(projected.integrations.mobileNotifications, current.integrations.mobileNotifications);
 	assert.deepEqual(projected.integrations.developerApi, current.integrations.developerApi);
 	assert.deepEqual(projected.state, current.state);
+	assert.deepEqual(
+		projectDynamicFilterTemplatePreferences(
+			Object.values(projected.views.filters.itemsById),
+		),
+		defaultDynamicTemplatePreferences(),
+	);
 });

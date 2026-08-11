@@ -3,6 +3,16 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { SETTINGS_BACKUP_GROUPS } from '../src/core/settings-backup-compatibility';
+import {
+	createDefaultDynamicFileTaskFilterSet,
+	createDefaultDynamicSubtasksFilterSet,
+	DYNAMIC_FILE_TASK_FILTER_ID,
+	DYNAMIC_FILE_TASK_FILTER_OPERON_ID_PLACEHOLDER,
+	DYNAMIC_SUBTASKS_FILTER_ID,
+	DYNAMIC_SUBTASKS_FILTER_OPERON_ID_PLACEHOLDER,
+	normalizeDynamicFileTaskFilterSet,
+	normalizeDynamicSubtasksFilterSet,
+} from '../src/core/dynamic-file-task-filter';
 import { exportOperonSettingsBackupJsonV1 } from '../src/core/settings-backup-export';
 import {
 	buildOperonSettingsBackupV1,
@@ -92,6 +102,30 @@ function selectedDefaultGroups() {
 	return SETTINGS_BACKUP_GROUPS.filter(group => group.defaultSelected).map(group => group.id);
 }
 
+function addCustomizedDynamicTemplates(settings: OperonSettings, label: string): void {
+	settings.filterSets = [
+		...settings.filterSets.filter(filter => filter.id !== DYNAMIC_FILE_TASK_FILTER_ID && filter.id !== DYNAMIC_SUBTASKS_FILTER_ID),
+		normalizeDynamicFileTaskFilterSet({
+			...createDefaultDynamicFileTaskFilterSet(),
+			name: `${label} file tasks`,
+			icon: 'file-stack',
+			sorts: [{ field: 'dateDue', order: 'desc' }],
+			groupBy: 'priority',
+			groupOrder: 'desc',
+			subgroupBy: 'tags',
+			subgroupOrder: 'asc',
+		}),
+		normalizeDynamicSubtasksFilterSet({
+			...createDefaultDynamicSubtasksFilterSet(),
+			name: `${label} subtasks`,
+			icon: 'list-checks',
+			sorts: [{ field: 'checkbox', order: 'asc' }],
+			groupBy: 'dateScheduled',
+			groupOrder: 'asc',
+		}),
+	];
+}
+
 test('exact preview is deterministic, immutable and preserves excluded Table favorites', () => {
 	const source = representativeSettings();
 	const target = clone(source);
@@ -125,6 +159,103 @@ test('exact preview is deterministic, immutable and preserves excluded Table fav
 	assert.equal(Object.isFrozen(first.restorePlan), true);
 	assert.equal(Object.isFrozen(first.restorePlan?.candidateSettings), true);
 	assert.equal(JSON.stringify(target), targetBefore);
+});
+
+test('selected Filters apply safe dynamic template preferences and reconstruct locked fields', () => {
+	const source = representativeSettings();
+	const target = clone(source);
+	addCustomizedDynamicTemplates(source, 'Source');
+	addCustomizedDynamicTemplates(target, 'Target');
+	const result = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: exportJson(source),
+		targetSnapshot: targetSnapshot(target),
+		selectedGroups: ['filters'],
+	});
+	assert.equal(result.ok, true);
+	if (!result.ok) return;
+	assert.equal(result.classification, 'ready', JSON.stringify(result.preview.issues));
+	const filters = result.restorePlan?.candidateSettings.filterSets ?? [];
+	const fileTask = filters.find(filter => filter.id === DYNAMIC_FILE_TASK_FILTER_ID);
+	const subtasks = filters.find(filter => filter.id === DYNAMIC_SUBTASKS_FILTER_ID);
+	assert.equal(fileTask?.name, 'Source file tasks');
+	assert.equal(fileTask?.icon, 'file-stack');
+	assert.deepEqual(fileTask?.sorts, [{ field: 'dateDue', order: 'desc' }]);
+	assert.equal(fileTask?.groupBy, 'priority');
+	assert.equal(fileTask?.subgroupBy, 'tags');
+	assert.equal(fileTask?.matchLogic, 'all');
+	assert.equal(fileTask?.conditions.length, 1);
+	assert.equal(fileTask?.conditions[0]?.value, DYNAMIC_FILE_TASK_FILTER_OPERON_ID_PLACEHOLDER);
+	assert.deepEqual(fileTask?.rootGroup.children, fileTask?.conditions);
+	assert.equal(subtasks?.name, 'Source subtasks');
+	assert.equal(subtasks?.matchLogic, 'all');
+	assert.equal(subtasks?.conditions.length, 1);
+	assert.equal(subtasks?.conditions[0]?.value, DYNAMIC_SUBTASKS_FILTER_OPERON_ID_PLACEHOLDER);
+	assert.deepEqual(subtasks?.rootGroup.children, subtasks?.conditions);
+	const filterRow = result.preview.groups.find(group => group.group === 'filters');
+	assert.ok((filterRow?.counts.changed ?? 0) >= 2);
+	assert.ok(result.preview.identity.candidateFingerprint);
+	assert.ok(result.preview.identity.planId);
+	const changedSource = clone(source);
+	const changedTemplate = changedSource.filterSets.find(filter => filter.id === DYNAMIC_FILE_TASK_FILTER_ID);
+	assert.ok(changedTemplate);
+	changedTemplate.name = 'Changed source file tasks';
+	const changed = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: exportJson(changedSource),
+		targetSnapshot: targetSnapshot(target),
+		selectedGroups: ['filters'],
+	});
+	assert.equal(changed.ok, true);
+	if (!changed.ok) return;
+	assert.notEqual(
+		changed.preview.identity.candidateFingerprint,
+		result.preview.identity.candidateFingerprint,
+	);
+});
+
+test('legacy Filters without dynamic projection preserve target templates', () => {
+	const source = representativeSettings();
+	const target = clone(source);
+	source.filterSets[0].name = 'Source normal filter';
+	addCustomizedDynamicTemplates(target, 'Target legacy');
+	const envelope = JSON.parse(exportJson(source)) as { body: OperonSettingsBackupBodyV1 };
+	const filtersGroup = envelope.body.groups.filters;
+	assert.ok(filtersGroup);
+	delete (filtersGroup.data as Record<string, unknown>).dynamicTemplates;
+	const legacyJson = serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(envelope.body));
+	const result = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: legacyJson,
+		targetSnapshot: targetSnapshot(target),
+		selectedGroups: ['filters'],
+	});
+	assert.equal(result.ok, true);
+	if (!result.ok) return;
+	assert.equal(result.classification, 'ready', JSON.stringify(result.preview.issues));
+	const filters = result.restorePlan?.candidateSettings.filterSets ?? [];
+	assert.equal(filters.find(filter => filter.id === source.filterSets[0].id)?.name, 'Source normal filter');
+	assert.deepEqual(
+		filters.find(filter => filter.id === DYNAMIC_FILE_TASK_FILTER_ID),
+		clone(target.filterSets.find(filter => filter.id === DYNAMIC_FILE_TASK_FILTER_ID)),
+	);
+	assert.deepEqual(
+		filters.find(filter => filter.id === DYNAMIC_SUBTASKS_FILTER_ID),
+		clone(target.filterSets.find(filter => filter.id === DYNAMIC_SUBTASKS_FILTER_ID)),
+	);
+});
+
+test('unselected Filters leave normal and dynamic target templates unchanged', () => {
+	const source = representativeSettings();
+	const target = clone(source);
+	addCustomizedDynamicTemplates(source, 'Source');
+	addCustomizedDynamicTemplates(target, 'Target');
+	const result = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: exportJson(source),
+		targetSnapshot: targetSnapshot(target),
+		selectedGroups: [],
+	});
+	assert.equal(result.ok, true);
+	if (!result.ok) return;
+	assert.equal(result.classification, 'ready', JSON.stringify(result.preview.issues));
+	assert.deepEqual(result.restorePlan?.candidateSettings.filterSets, clone(target.filterSets));
 });
 
 test('vault references require field-level decisions without discarding other General settings', () => {

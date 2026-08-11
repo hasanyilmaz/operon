@@ -1,6 +1,11 @@
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
 import type { OperonSettings } from '../types/settings';
 import {
+	getNormalFilterSets,
+	isSpecialDynamicFilterSet,
+	projectDynamicFilterTemplatePreferences,
+} from './dynamic-file-task-filter';
+import {
 	ALL_OPERON_SETTINGS_BACKUP_KEYS,
 	SETTINGS_BACKUP_COMPATIBILITY_BY_KEY,
 	SETTINGS_BACKUP_GROUP_CODEC_VERSION,
@@ -21,8 +26,6 @@ import {
 	type OperonSettingsBackupV1,
 } from './settings-backup-format';
 import { validateOperonSettingsBackupGroupsV1 } from './settings-backup-group-validation';
-
-const RESERVED_DYNAMIC_FILTER_IDS = new Set(['fs_dynamic_file_task', 'fs_dynamic_subtasks_filter']);
 
 export interface OperonSettingsBackupExportSourceV1 {
 	pluginVersion: string;
@@ -180,7 +183,8 @@ function buildGroups(
 		'system-key-mappings': versioned({ overrides: systemMappings }),
 		'custom-keys': versioned({ customKeys: settings.keyMappings.filter(mapping => mapping.isSystem === false) }),
 		filters: versioned({
-			filterSets: settings.filterSets.filter(filter => !RESERVED_DYNAMIC_FILTER_IDS.has(filter.id)),
+			filterSets: getNormalFilterSets(settings.filterSets),
+			dynamicTemplates: projectDynamicFilterTemplatePreferences(settings.filterSets),
 		}),
 		calendar: versioned({
 			calendarPresets: includeExternalCalendars
@@ -292,8 +296,8 @@ function createReport(
 			priorities: settings.priorities.length,
 			systemKeyOverrides: settings.keyMappings.filter(mapping => mapping.isSystem !== false).length,
 			customKeys: settings.keyMappings.filter(mapping => mapping.isSystem === false).length,
-			filters: settings.filterSets.filter(filter => !RESERVED_DYNAMIC_FILTER_IDS.has(filter.id)).length,
-			reservedFiltersOmitted: settings.filterSets.filter(filter => RESERVED_DYNAMIC_FILTER_IDS.has(filter.id)).length,
+			filters: getNormalFilterSets(settings.filterSets).length,
+			reservedFiltersOmitted: settings.filterSets.filter(isSpecialDynamicFilterSet).length,
 			calendarPresets: settings.calendarPresets.length,
 			kanbanPresets: settings.kanbanPresets.length,
 			presetFavorites: settings.presetFavorites.calendar.length

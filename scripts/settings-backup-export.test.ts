@@ -4,6 +4,13 @@ import path from 'node:path';
 import test from 'node:test';
 import type { App } from 'obsidian';
 import {
+	applyDynamicFilterTemplatePreferences,
+	DYNAMIC_FILE_TASK_FILTER_ID,
+	DYNAMIC_FILE_TASK_FILTER_OPERON_ID_PLACEHOLDER,
+	DYNAMIC_SUBTASKS_FILTER_ID,
+	DYNAMIC_SUBTASKS_FILTER_OPERON_ID_PLACEHOLDER,
+} from '../src/core/dynamic-file-task-filter';
+import {
 	exportOperonSettingsBackupJsonV1,
 	suggestOperonSettingsBackupFileNameV1,
 } from '../src/core/settings-backup-export';
@@ -105,7 +112,26 @@ async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = 30
 
 test('export is deterministic, parseable and does not mutate its committed snapshot', () => {
 	const settings = representativeSettings();
-	settings.filterSets.push({ ...clone(settings.filterSets[0]), id: 'fs_dynamic_file_task' });
+	settings.filterSets.push({
+		...clone(settings.filterSets[0]),
+		id: 'fs_dynamic_file_task',
+		name: 'My file tasks',
+		icon: 'file-check',
+		sorts: [{ field: 'priority', order: 'desc' }],
+		groupBy: 'status',
+		groupOrder: 'desc',
+	});
+	settings.filterSets.push({
+		...clone(settings.filterSets[0]),
+		id: 'fs_dynamic_subtasks_filter',
+		name: 'My subtasks',
+		icon: 'list-checks',
+		sorts: [{ field: 'dateDue', order: 'asc' }],
+		groupBy: 'priority',
+		groupOrder: 'asc',
+		subgroupBy: 'status',
+		subgroupOrder: 'desc',
+	});
 	deepFreeze(settings);
 	const first = exportOperonSettingsBackupJsonV1(exportInput(settings));
 	const second = exportOperonSettingsBackupJsonV1(exportInput(settings));
@@ -121,14 +147,49 @@ test('export is deterministic, parseable and does not mutate its committed snaps
 	assert.equal(decoded.ok, true);
 	assert.equal(decoded.payloads['custom-keys']?.customKeys[0]?.canonicalKey, 'client');
 	assert.equal(decoded.payloads.filters?.filterSets[0]?.id, 'filter-client');
+	assert.deepEqual(decoded.payloads.filters?.dynamicTemplates, {
+		fileTask: {
+			name: 'My file tasks',
+			icon: 'file-check',
+			sorts: [{ field: 'priority', order: 'desc' }],
+			groupBy: 'status',
+			groupOrder: 'desc',
+		},
+		subtasks: {
+			name: 'My subtasks',
+			icon: 'list-checks',
+			sorts: [{ field: 'dateDue', order: 'asc' }],
+			groupBy: 'priority',
+			groupOrder: 'asc',
+			subgroupBy: 'status',
+			subgroupOrder: 'desc',
+		},
+	});
+	const dynamicTemplatePreferences = decoded.payloads.filters?.dynamicTemplates;
+	assert.ok(dynamicTemplatePreferences);
+	if (!dynamicTemplatePreferences) return;
+	const hydratedDynamicTemplates = applyDynamicFilterTemplatePreferences(
+		decoded.payloads.filters?.filterSets ?? [],
+		dynamicTemplatePreferences,
+	);
+	const hydratedFileTask = hydratedDynamicTemplates.find(filter => filter.id === DYNAMIC_FILE_TASK_FILTER_ID);
+	const hydratedSubtasks = hydratedDynamicTemplates.find(filter => filter.id === DYNAMIC_SUBTASKS_FILTER_ID);
+	assert.equal(hydratedFileTask?.conditions[0]?.value, DYNAMIC_FILE_TASK_FILTER_OPERON_ID_PLACEHOLDER);
+	assert.equal(hydratedFileTask?.sortBy, 'priority');
+	assert.equal(hydratedSubtasks?.conditions[0]?.value, DYNAMIC_SUBTASKS_FILTER_OPERON_ID_PLACEHOLDER);
+	assert.equal(hydratedSubtasks?.sortBy, 'dateDue');
 	assert.equal(decoded.payloads.calendar?.calendarDefaultPresetId, 'calendar-client');
 	assert.equal(decoded.payloads.kanban?.kanbanDefaultPresetId, 'kanban-client');
 	assert.equal(first.json.includes('fs_dynamic_file_task'), false);
+	assert.equal(first.json.includes('fs_dynamic_subtasks_filter'), false);
+	assert.equal(first.json.includes('rootGroup'), true);
+	assert.equal(first.json.includes('{{currentFile.operonId}}'), false);
+	assert.equal(first.json.includes('{{currentTask.operonId}}'), false);
 	assert.equal(first.json.includes('private-update-cursor'), false);
 	assert.equal(first.json.includes('private-notification-cursor'), false);
 	assert.equal(first.report.recordCounts.customKeys, 1);
 	assert.equal(first.report.recordCounts.filters, 1);
-	assert.equal(first.report.recordCounts.reservedFiltersOmitted, 1);
+	assert.equal(first.report.recordCounts.reservedFiltersOmitted, 2);
 });
 
 test('default and pseudo-field Filter references export successfully', () => {

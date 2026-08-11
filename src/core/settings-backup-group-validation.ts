@@ -1,5 +1,10 @@
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
 import type { PresetFavorites } from './preset-favorites';
+import {
+	applyDynamicFilterTemplatePreferences,
+	projectDynamicFilterTemplatePreferences,
+	type DynamicFilterTemplatePreferencesProjection,
+} from './dynamic-file-task-filter';
 import { isFilePropertyColumnKey } from './raw-yaml-property';
 import { SETTINGS_BACKUP_GROUPS, type SettingsBackupProfileGroupId } from './settings-backup-compatibility';
 import {
@@ -51,6 +56,7 @@ export interface OperonSettingsBackupCustomKeysGroupV1 {
 
 export interface OperonSettingsBackupFiltersGroupV1 {
 	filterSets: FilterSet[];
+	dynamicTemplates?: DynamicFilterTemplatePreferencesProjection;
 }
 
 export interface OperonSettingsBackupCalendarGroupV1 {
@@ -337,7 +343,7 @@ function decodeCustomKeys(data: unknown, path: string, diagnostics: OperonSettin
 }
 
 function decodeFilters(data: unknown, path: string, diagnostics: OperonSettingsBackupDiagnostic[]): AnyObject | null {
-	const object = inspectObject(data, path, ['filterSets'], ['filterSets'], diagnostics);
+	const object = inspectObject(data, path, ['filterSets', 'dynamicTemplates'], ['filterSets'], diagnostics);
 	if (!object) return null;
 	const filters = inspectArray(object.filterSets, `${path}.filterSets`, diagnostics);
 	const ids = new Set<string>();
@@ -367,6 +373,55 @@ function decodeFilters(data: unknown, path: string, diagnostics: OperonSettingsB
 			const sortPath = `${itemPath}.sorts[${sortIndex}]`;
 			const sort = inspectObject(rawSort, sortPath, ['field', 'order'], ['field', 'order'], diagnostics);
 			if (sort) validateFieldTypes(sort, sortPath, { field: 'string', order: 'string' }, diagnostics);
+		}
+	}
+	if (object.dynamicTemplates !== undefined) {
+		decodeDynamicTemplates(object.dynamicTemplates, `${path}.dynamicTemplates`, diagnostics);
+	}
+	return object;
+}
+
+function decodeDynamicTemplates(
+	data: unknown,
+	path: string,
+	diagnostics: OperonSettingsBackupDiagnostic[],
+): AnyObject | null {
+	const object = inspectObject(data, path, ['fileTask', 'subtasks'], ['fileTask', 'subtasks'], diagnostics);
+	if (!object) return null;
+	for (const key of ['fileTask', 'subtasks'] as const) {
+		decodeDynamicTemplatePreferences(object[key], `${path}.${key}`, diagnostics);
+	}
+	return object;
+}
+
+function decodeDynamicTemplatePreferences(
+	data: unknown,
+	path: string,
+	diagnostics: OperonSettingsBackupDiagnostic[],
+): AnyObject | null {
+	const keys = ['name', 'icon', 'sorts', 'groupBy', 'groupOrder', 'subgroupBy', 'subgroupOrder'];
+	const object = inspectObject(data, path, keys, ['name', 'icon', 'sorts'], diagnostics);
+	if (!object) return null;
+	validateFieldTypes(object, path, {
+		name: 'string', icon: 'string', sorts: 'array', groupBy: 'string', groupOrder: 'string',
+		subgroupBy: 'string', subgroupOrder: 'string',
+	}, diagnostics);
+	requiredString(object.name, `${path}.name`, diagnostics);
+	requiredString(object.icon, `${path}.icon`, diagnostics);
+	for (const key of ['groupOrder', 'subgroupOrder'] as const) {
+		if (object[key] !== undefined && object[key] !== 'asc' && object[key] !== 'desc') {
+			diagnostics.push(error(`${path}.${key}`, 'value', `${key} must be asc or desc.`));
+		}
+	}
+	const sorts = inspectArray(object.sorts, `${path}.sorts`, diagnostics);
+	for (const [index, rawSort] of (sorts ?? []).entries()) {
+		const sortPath = `${path}.sorts[${index}]`;
+		const sort = inspectObject(rawSort, sortPath, ['field', 'order'], ['field', 'order'], diagnostics);
+		if (!sort) continue;
+		validateFieldTypes(sort, sortPath, { field: 'string', order: 'string' }, diagnostics);
+		requiredString(sort.field, `${sortPath}.field`, diagnostics);
+		if (sort.order !== 'asc' && sort.order !== 'desc') {
+			diagnostics.push(error(`${sortPath}.order`, 'value', 'Sort order must be asc or desc.'));
 		}
 	}
 	return object;
@@ -500,11 +555,19 @@ function validateReferences(
 
 	for (const [index, filter] of (payloads.filters?.filterSets ?? []).entries()) {
 		for (const reference of collectFilterFieldReferences(filter)) {
-			if (!BUILT_IN_FILTER_FIELDS.has(reference) && !isFilePropertyColumnKey(reference) && !customCanonicalKeys) {
-				diagnostics.push(error(`$.body.groups.filters.data.filterSets[${index}]`, 'required', `Filter Custom Key reference requires an imported Custom Keys group or target settings context: ${reference}.`));
-			} else if (customCanonicalKeys && !BUILT_IN_FILTER_FIELDS.has(reference) && !isFilePropertyColumnKey(reference) && !customCanonicalKeys.has(reference)) {
-				diagnostics.push(error(`$.body.groups.filters.data.filterSets[${index}]`, 'value', `Filter references missing Custom Key: ${reference}.`));
+			validateFilterFieldReference(reference, `$.body.groups.filters.data.filterSets[${index}]`, customCanonicalKeys, diagnostics);
+		}
+	}
+	const dynamicTemplates = payloads.filters?.dynamicTemplates;
+	if (dynamicTemplates) {
+		for (const key of ['fileTask', 'subtasks'] as const) {
+			const preferences = dynamicTemplates[key];
+			const base = `$.body.groups.filters.data.dynamicTemplates.${key}`;
+			for (const [index, sort] of preferences.sorts.entries()) {
+				validateFilterFieldReference(sort.field, `${base}.sorts[${index}].field`, customCanonicalKeys, diagnostics);
 			}
+			if (preferences.groupBy) validateFilterFieldReference(preferences.groupBy, `${base}.groupBy`, customCanonicalKeys, diagnostics);
+			if (preferences.subgroupBy) validateFilterFieldReference(preferences.subgroupBy, `${base}.subgroupBy`, customCanonicalKeys, diagnostics);
 		}
 	}
 	for (const [index, preset] of (payloads.calendar?.calendarPresets ?? []).entries()) {
@@ -533,6 +596,20 @@ function validateReferences(
 	}
 }
 
+function validateFilterFieldReference(
+	reference: string,
+	path: string,
+	customCanonicalKeys: ReadonlySet<string> | null,
+	diagnostics: OperonSettingsBackupDiagnostic[],
+): void {
+	if (BUILT_IN_FILTER_FIELDS.has(reference) || isFilePropertyColumnKey(reference)) return;
+	if (!customCanonicalKeys) {
+		diagnostics.push(error(path, 'required', `Filter Custom Key reference requires an imported Custom Keys group or target settings context: ${reference}.`));
+	} else if (!customCanonicalKeys.has(reference)) {
+		diagnostics.push(error(path, 'value', `Filter references missing Custom Key: ${reference}.`));
+	}
+}
+
 function validateCanonicalProjection(
 	payloads: Partial<OperonSettingsBackupGroupPayloadsV1>,
 	context: OperonSettingsBackupGroupValidationContextV1,
@@ -548,6 +625,11 @@ function validateCanonicalProjection(
 		.map(mapping => ({ ...mapping, ...(systemOverrides.get(mapping.canonicalKey) ?? {}) }));
 	const customMappings = payloads['custom-keys']?.customKeys
 		?? baseline.keyMappings.filter(mapping => mapping.isSystem === false);
+	const candidateFilterSets = payloads.filters
+		? payloads.filters.dynamicTemplates
+			? applyDynamicFilterTemplatePreferences(payloads.filters.filterSets, payloads.filters.dynamicTemplates)
+			: payloads.filters.filterSets
+		: baseline.filterSets;
 	const candidate = migrateSettings({
 		...baseline,
 		...general,
@@ -556,7 +638,7 @@ function validateCanonicalProjection(
 		priorities: payloads.priorities?.priorities ?? baseline.priorities,
 		defaultPriority: payloads.priorities?.defaultPriority ?? baseline.defaultPriority,
 		keyMappings: [...systemMappings, ...customMappings],
-		filterSets: payloads.filters?.filterSets ?? baseline.filterSets,
+		filterSets: candidateFilterSets,
 		calendarPresets: payloads.calendar?.calendarPresets ?? baseline.calendarPresets,
 		calendarDefaultPresetId: payloads.calendar?.calendarDefaultPresetId ?? baseline.calendarDefaultPresetId,
 		kanbanPresets: payloads.kanban?.kanbanPresets ?? baseline.kanbanPresets,
@@ -573,6 +655,13 @@ function validateCanonicalProjection(
 	if (payloads.priorities) assertCanonicalProjection(payloads.priorities, { priorities: candidate.priorities, defaultPriority: candidate.defaultPriority }, '$.body.groups.priorities.data', 'priorities', diagnostics);
 	if (payloads['custom-keys']) assertCanonicalProjection(payloads['custom-keys'].customKeys, candidate.keyMappings.filter(mapping => mapping.isSystem === false), '$.body.groups.custom-keys.data.customKeys', 'customKeys', diagnostics);
 	if (payloads.filters) assertCanonicalProjection(payloads.filters.filterSets, candidate.filterSets.filter(filter => !RESERVED_DYNAMIC_FILTER_IDS.has(filter.id)), '$.body.groups.filters.data.filterSets', 'filterSets', diagnostics);
+	if (payloads.filters?.dynamicTemplates) assertCanonicalProjection(
+		payloads.filters.dynamicTemplates,
+		projectDynamicFilterTemplatePreferences(candidate.filterSets),
+		'$.body.groups.filters.data.dynamicTemplates',
+		'dynamicTemplates',
+		diagnostics,
+	);
 	if (payloads.calendar) assertCanonicalProjection(payloads.calendar, {
 		calendarPresets: candidate.calendarPresets,
 		calendarDefaultPresetId: candidate.calendarDefaultPresetId,
