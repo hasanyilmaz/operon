@@ -16,7 +16,12 @@ import {
 import { OperonDataPackageStore } from '../src/storage/operon-data-package-store';
 import { buildOperonStoragePaths } from '../src/storage/operon-storage-paths';
 import { OperonStorage } from '../src/storage/operon-storage';
-import { DEFAULT_SETTINGS, migrateSettings, type OperonSettings } from '../src/types/settings';
+import {
+	DEFAULT_SETTINGS,
+	migrateSettings,
+	type FilterSetCondition,
+	type OperonSettings,
+} from '../src/types/settings';
 
 const CREATED_AT = '2026-08-11T09:30:45.000Z';
 const SECRET_URL = 'https://example.invalid/private-token.ics';
@@ -124,6 +129,64 @@ test('export is deterministic, parseable and does not mutate its committed snaps
 	assert.equal(first.report.recordCounts.customKeys, 1);
 	assert.equal(first.report.recordCounts.filters, 1);
 	assert.equal(first.report.recordCounts.reservedFiltersOmitted, 1);
+});
+
+test('default and pseudo-field Filter references export successfully', () => {
+	const settings = migrateSettings(clone(DEFAULT_SETTINGS));
+	const pseudoConditions: FilterSetCondition[] = [
+		{ id: 'pseudo-checkbox', field: 'checkbox', fieldType: 'checkbox', operator: 'isOpen' },
+		{ id: 'pseudo-tags', field: 'tags', fieldType: 'tags', operator: 'contains', value: 'test' },
+		{ id: 'pseudo-description', field: 'description', fieldType: 'text', operator: 'contains', value: 'test' },
+		{ id: 'pseudo-pinned', field: 'pinned', fieldType: 'pinned', operator: 'isPinned' },
+		{ id: 'pseudo-folders', field: 'folders', fieldType: 'folders', operator: 'isInFolderTree', value: 'Test' },
+		{ id: 'pseudo-project-tree', field: 'projectTree', fieldType: 'projectTree', operator: 'matchesTree', value: 'test' },
+		{ id: 'pseudo-project-serial', field: 'projectSerialScope', fieldType: 'projectSerialScope', operator: 'isAnyOf', values: ['test'] },
+		{ id: 'pseudo-happens-on', field: 'happensOn', fieldType: 'date', operator: 'isToday' },
+	];
+	settings.filterSets.push({
+		id: 'filter-pseudo-fields',
+		name: 'Pseudo fields',
+		rootGroup: { id: 'filter-pseudo-fields-root', logic: 'all', children: clone(pseudoConditions) },
+		sorts: [
+			{ field: 'checkbox', order: 'asc' },
+			{ field: 'happensOn', order: 'desc' },
+			{ field: 'projectSerialScope', order: 'asc' },
+		],
+		subgroupBy: 'happensOn',
+		subgroupOrder: 'asc',
+		matchLogic: 'all',
+		conditions: clone(pseudoConditions),
+		sortBy: 'happensOn',
+		sortOrder: 'desc',
+		groupBy: 'projectSerialScope',
+		groupOrder: 'desc',
+	});
+	const result = exportOperonSettingsBackupJsonV1(exportInput(settings));
+	assert.equal(result.ok, true, result.diagnostics.map(item => `${item.path}: ${item.message}`).join('\n'));
+	if (!result.ok) return;
+	const decoded = validateOperonSettingsBackupGroupsV1(result.backup.body.groups);
+	assert.equal(decoded.ok, true);
+	const exportedPreset = decoded.payloads.filters?.filterSets.find(
+		filterSet => filterSet.id === 'fs_7dopen',
+	);
+	assert.equal(exportedPreset?.groupBy, 'happensOn');
+	assert.ok(decoded.payloads.filters?.filterSets.some(
+		filterSet => filterSet.id === 'filter-pseudo-fields',
+	));
+});
+
+test('unknown Filter fields remain fail-closed as missing Custom Keys', () => {
+	const settings = migrateSettings(clone(DEFAULT_SETTINGS));
+	const filter = settings.filterSets[0];
+	assert.ok(filter);
+	if (!filter) return;
+	filter.groupBy = 'unknownPseudoField';
+	const result = exportOperonSettingsBackupJsonV1(exportInput(settings));
+	assert.equal(result.ok, false);
+	assert.ok(result.diagnostics.some(item => (
+		item.code === 'value'
+		&& item.message === 'Filter references missing Custom Key: unknownPseudoField.'
+	)));
 });
 
 test('export filename helper uses the exact UTC stamp and a safe fallback', () => {

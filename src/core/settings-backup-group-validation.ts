@@ -131,6 +131,7 @@ const BUILT_IN_FILTER_FIELDS = new Set([
 	'tags',
 	'description',
 	'pinned',
+	'happensOn',
 	'folders',
 	'projectTree',
 	'projectSerialScope',
