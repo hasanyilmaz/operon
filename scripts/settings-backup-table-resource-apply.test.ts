@@ -7,6 +7,7 @@ import {
 	type OperonSettingsBackupTableResourceApplyDependenciesV1,
 	type OperonSettingsBackupTableResourcePlanItemV1,
 } from '../src/core/settings-backup-table-resource-apply';
+import { canonicalizeOperonSettingsBackupJson } from '../src/core/settings-backup-format';
 import { computeOperonSettingsBackupTableResourcePlanIdV1 } from '../src/core/settings-backup-table-resource-preflight';
 
 const encoder = new TextEncoder();
@@ -52,6 +53,7 @@ function harness(initial: Readonly<Record<string, Uint8Array>> = {}) {
 		Object.entries(initial).map(([path, value]) => [path, new Uint8Array(value)]),
 	);
 	const events: string[] = [];
+	const directories = new Set<string>();
 	let canonicalResult: Awaited<ReturnType<OperonSettingsBackupTableResourceApplyDependenciesV1['commitCanonical']>> = {
 		state: 'committed',
 		currentFingerprint: 'current-fingerprint',
@@ -62,6 +64,20 @@ function harness(initial: Readonly<Record<string, Uint8Array>> = {}) {
 			events.push(`read:${path}`);
 			const value = files.get(path);
 			return value ? new Uint8Array(value) : null;
+		},
+		async ensureParentDirectories(path) {
+			const slash = path.lastIndexOf('/');
+			const parent = slash < 0 ? '' : path.slice(0, slash);
+			if (!parent) return [];
+			const created: string[] = [];
+			let current = '';
+			for (const segment of parent.split('/')) {
+				current = current ? `${current}/${segment}` : segment;
+				if (directories.has(current)) continue;
+				directories.add(current);
+				created.push(current);
+			}
+			return created;
 		},
 		async createFileExclusive(path, value) {
 			events.push(`create:${path}`);
@@ -80,6 +96,16 @@ function harness(initial: Readonly<Record<string, Uint8Array>> = {}) {
 			files.delete(path);
 			return 'removed';
 		},
+		async removeDirectoryIfEmpty(path) {
+			if (!directories.has(path)) return 'missing';
+			if ([...files.keys()].some(file => file.startsWith(`${path}/`))
+				|| [...directories].some(directory => directory !== path && directory.startsWith(`${path}/`))) {
+				return 'not-empty';
+			}
+			events.push(`remove-dir:${path}`);
+			directories.delete(path);
+			return 'removed';
+		},
 		digestBytes: digest,
 		async commitCanonical(installed) {
 			events.push(`canonical:${installed.map(value => value.id).join(',')}`);
@@ -93,6 +119,7 @@ function harness(initial: Readonly<Record<string, Uint8Array>> = {}) {
 		dependencies,
 		events,
 		files,
+		directories,
 		setCanonicalResult(value: typeof canonicalResult) {
 			canonicalResult = value;
 		},
@@ -121,6 +148,8 @@ test('installs exact reuse/create resources before canonical settings and omits 
 	assert.ok(result.sessionUndo);
 	assert.equal(result.sessionUndo?.receiptId, result.receipt.receiptId);
 	assert.equal(result.sessionUndo?.undoTokenId, result.receipt.recovery.undoTokenId);
+	const { receiptId, ...receiptBody } = result.receipt;
+	assert.equal(receiptId, digest(bytes(canonicalizeOperonSettingsBackupJson(receiptBody))));
 });
 
 test('rejects a create conflict before any resource or canonical write', async () => {
@@ -162,7 +191,7 @@ test('a create exception is treated as an uncertain retained write and never cle
 });
 
 test('failed-clean canonical write conditionally removes files created by this apply', async () => {
-	const planned = item('created', 'Tables/New.table', 'new', 'create');
+	const planned = item('created', 'Imported/Nested/New.table', 'new', 'create');
 	const state = harness();
 	state.setCanonicalResult({ state: 'failed-clean' });
 	const result = await applyOperonSettingsBackupTableResourcesV1(input([planned]), state.dependencies);
@@ -170,7 +199,13 @@ test('failed-clean canonical write conditionally removes files created by this a
 	assert.equal(result.receipt.status, 'failed');
 	assert.equal(result.receipt.canonicalWrite, 'failed-clean');
 	assert.equal(result.receipt.cleanup.removed, 1);
+	assert.equal(result.receipt.cleanup.removedDirectories, 2);
+	assert.deepEqual(state.events.filter(value => value.startsWith('remove-dir:')), [
+		'remove-dir:Imported/Nested',
+		'remove-dir:Imported',
+	]);
 	assert.equal(state.files.has(planned.path), false);
+	assert.equal(state.directories.size, 0);
 });
 
 test('changed created file is preserved when failed-clean canonical write triggers cleanup', async () => {
@@ -184,6 +219,8 @@ test('changed created file is preserved when failed-clean canonical write trigge
 
 	assert.equal(result.receipt.cleanup.removed, 0);
 	assert.equal(result.receipt.cleanup.retainedChanged, 1);
+	assert.equal(result.receipt.cleanup.retainedNonEmptyDirectories, 1);
+	assert.equal(result.receipt.recovery.mode, 'manual-backup-required');
 	assert.equal(new TextDecoder().decode(state.files.get(planned.path)), 'changed-after-create');
 });
 
@@ -225,6 +262,7 @@ test('session undo is receipt-bound and removes only unchanged, unreferenced cre
 	const undoDependencies = {
 		readFile: state.dependencies.readFile,
 		removeFileIfUnchanged: state.dependencies.removeFileIfUnchanged,
+		removeDirectoryIfEmpty: state.dependencies.removeDirectoryIfEmpty,
 		digestBytes: digest,
 		async undoCanonical() {
 			undoCalls++;
@@ -257,6 +295,10 @@ test('session undo is receipt-bound and removes only unchanged, unreferenced cre
 		retainedReferenced: 1,
 		retainedUnknown: 0,
 		failed: 0,
+		removedDirectories: 0,
+		alreadyMissingDirectories: 0,
+		retainedNonEmptyDirectories: 1,
+		failedDirectories: 0,
 	});
 	assert.equal(state.files.has(first.path), false);
 	assert.equal(state.files.has(second.path), true);
@@ -273,6 +315,7 @@ test('unknown canonical undo state never removes Table files', async () => {
 		{
 			readFile: state.dependencies.readFile,
 			removeFileIfUnchanged: state.dependencies.removeFileIfUnchanged,
+			removeDirectoryIfEmpty: state.dependencies.removeDirectoryIfEmpty,
 			digestBytes: digest,
 			async undoCanonical() {
 				return 'state-unknown';

@@ -2310,8 +2310,11 @@ export default class OperonPlugin extends Plugin {
 		file: SettingsBackupSelectedFile,
 		decisions: SettingsBackupPreviewDecisions,
 	): Promise<SettingsBackupUiPreparedRestore> {
-		const sourceJson = file.kind === 'zip'
-			? (await readOperonSettingsBackupTableBundleArchiveV1(file.bytes)).settingsText
+		const validatedBundle = file.kind === 'zip'
+			? await readOperonSettingsBackupTableBundleArchiveV1(file.bytes)
+			: null;
+		const sourceJson = validatedBundle
+			? validatedBundle.settingsText
 			: new TextDecoder('utf-8', { fatal: true }).decode(file.bytes);
 		const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
 		const selectedGroups = this.normalizeSettingsBackupUiGroups(decisions.selectedGroups);
@@ -2331,7 +2334,8 @@ export default class OperonPlugin extends Plugin {
 			? settingsPreflight.classification
 			: 'blocked';
 		if (file.kind === 'zip' && settingsPreflight.ok) {
-			bundle = await readOperonSettingsBackupTableBundleArchiveV1(file.bytes);
+			bundle = validatedBundle;
+			if (!bundle) throw new Error('Validated Table bundle is unavailable.');
 			const target = await this.captureSettingsBackupTargetTableSnapshotV1(committed.settings);
 			const tablePreflight = preflightOperonSettingsBackupTableResourcesV1({
 				bundle,
@@ -2647,18 +2651,10 @@ export default class OperonPlugin extends Plugin {
 				const file = this.app.vault.getAbstractFileByPath(path);
 				return file instanceof TFile ? new Uint8Array(await this.app.vault.readBinary(file)) : null;
 			},
+			ensureParentDirectories: path => this.ensureSettingsBackupParentDirectoriesV1(path),
 			createFileExclusive: async (path, bytes) => {
 				if (this.app.vault.getAbstractFileByPath(path)) throw new Error('create-conflict');
-				await this.ensureParentFolderPathExists(path);
-				const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-				const pathKey = getOperonTableFilePathKey(path);
-				this.expectedTableFileModifyHashes.set(pathKey, this.hashTableFileContent(text));
-				try {
-					await this.app.vault.createBinary(path, new Uint8Array(bytes).buffer);
-				} catch (error) {
-					this.expectedTableFileModifyHashes.delete(pathKey);
-					throw error;
-				}
+				await this.app.vault.createBinary(path, new Uint8Array(bytes).buffer);
 			},
 			removeFileIfUnchanged: async (path, expectedBytes, expectedSha256) => {
 				const file = this.app.vault.getAbstractFileByPath(path);
@@ -2666,16 +2662,10 @@ export default class OperonPlugin extends Plugin {
 				const current = new Uint8Array(await this.app.vault.readBinary(file));
 				if (await this.sha256SettingsBackupBytes(current) !== expectedSha256
 					|| !this.equalSettingsBackupBytes(current, expectedBytes)) return 'changed';
-				const pathKey = getOperonTableFilePathKey(path);
-				this.expectedTableFileDeletes.set(pathKey, 'settings-backup-restore');
-				try {
-					await this.app.fileManager.trashFile(file);
-				} catch (error) {
-					this.expectedTableFileDeletes.delete(pathKey);
-					throw error;
-				}
+				await this.app.fileManager.trashFile(file);
 				return 'removed';
 			},
+			removeDirectoryIfEmpty: path => this.removeSettingsBackupDirectoryIfEmptyV1(path),
 			digestBytes: bytes => this.sha256SettingsBackupBytes(bytes),
 			commitCanonical: async installed => {
 				if (!admittedPlan) return { state: 'failed-clean' };
@@ -2828,16 +2818,10 @@ export default class OperonPlugin extends Plugin {
 						const current = new Uint8Array(await this.app.vault.readBinary(file));
 						if (!this.equalSettingsBackupBytes(current, expectedBytes)
 							|| await this.sha256SettingsBackupBytes(current) !== expectedSha256) return 'changed';
-						const pathKey = getOperonTableFilePathKey(path);
-						this.expectedTableFileDeletes.set(pathKey, 'settings-backup-undo');
-						try {
-							await this.app.fileManager.trashFile(file);
-						} catch (error) {
-							this.expectedTableFileDeletes.delete(pathKey);
-							throw error;
-						}
+						await this.app.fileManager.trashFile(file);
 						return 'removed';
 					},
+					removeDirectoryIfEmpty: path => this.removeSettingsBackupDirectoryIfEmptyV1(path),
 					digestBytes: bytes => this.sha256SettingsBackupBytes(bytes),
 					undoCanonical: async request => {
 						const result = await this.storage.undoSettingsBackupTableResourceProjectionV1(request);
@@ -2883,6 +2867,36 @@ export default class OperonPlugin extends Plugin {
 		if (left.byteLength !== right.byteLength) return false;
 		for (let index = 0; index < left.byteLength; index++) if (left[index] !== right[index]) return false;
 		return true;
+	}
+
+	private async ensureSettingsBackupParentDirectoriesV1(filePath: string): Promise<readonly string[]> {
+		const lastSlash = filePath.lastIndexOf('/');
+		if (lastSlash < 0) return [];
+		const created: string[] = [];
+		let current = '';
+		for (const segment of filePath.slice(0, lastSlash).split('/').filter(Boolean)) {
+			current = current ? `${current}/${segment}` : segment;
+			const existing = this.app.vault.getAbstractFileByPath(current);
+			if (existing instanceof TFolder) continue;
+			if (existing) throw new Error('A file blocks the Table restore parent path.');
+			await this.app.vault.createFolder(current);
+			created.push(current);
+		}
+		return created;
+	}
+
+	private async removeSettingsBackupDirectoryIfEmptyV1(
+		path: string,
+	): Promise<'removed' | 'missing' | 'not-empty'> {
+		const existing = this.app.vault.getAbstractFileByPath(path);
+		if (!existing) return 'missing';
+		if (!(existing instanceof TFolder) || existing.children.length > 0) return 'not-empty';
+		try {
+			await this.app.vault.adapter.rmdir(path, false);
+		} catch {
+			return this.app.vault.getAbstractFileByPath(path) ? 'not-empty' : 'removed';
+		}
+		return 'removed';
 	}
 
 	private enqueueSettingsBackupRestoreOperation<T>(operation: () => Promise<T>): Promise<T> {

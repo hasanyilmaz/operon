@@ -1,6 +1,10 @@
 import { sha256HexV1 } from '../agent-runtime/contracts/v1/canonical';
 import { canonicalizeOperonSettingsBackupJson } from './settings-backup-format';
 import {
+	isSafeOperonSettingsBackupTablePathV1,
+	operonSettingsBackupTablePathCollisionKeyV1,
+} from './settings-backup-table-path';
+import {
 	computeOperonSettingsBackupTableResourcePlanIdV1,
 	type OperonSettingsBackupTableResourceRestorePlanV1,
 } from './settings-backup-table-resource-preflight';
@@ -34,6 +38,8 @@ export type OperonSettingsBackupCanonicalTableWriteResultV1 =
 
 export interface OperonSettingsBackupTableResourceApplyDependenciesV1 {
 	readFile(path: string): Promise<Uint8Array | null>;
+	/** Creates only missing parents and returns their exact paths in creation order. */
+	ensureParentDirectories(path: string): Promise<readonly string[]>;
 	/** Must fail when the target already exists and must never overwrite it. */
 	createFileExclusive(path: string, bytes: Uint8Array): Promise<void>;
 	/** Must compare again in the same serialized mutation before removing. */
@@ -42,6 +48,8 @@ export interface OperonSettingsBackupTableResourceApplyDependenciesV1 {
 		expectedBytes: Uint8Array,
 		expectedSha256: string,
 	): Promise<'removed' | 'missing' | 'changed'>;
+	/** Must be non-recursive and return not-empty rather than removing children. */
+	removeDirectoryIfEmpty(path: string): Promise<'removed' | 'missing' | 'not-empty'>;
 	digestBytes(bytes: Uint8Array): Promise<string> | string;
 	commitCanonical(
 		installed: readonly OperonSettingsBackupInstalledTableResourceV1[],
@@ -57,6 +65,10 @@ export interface OperonSettingsBackupTableResourceCleanupSummaryV1 {
 	retainedReferenced: number;
 	retainedUnknown: number;
 	failed: number;
+	removedDirectories: number;
+	alreadyMissingDirectories: number;
+	retainedNonEmptyDirectories: number;
+	failedDirectories: number;
 }
 
 export interface OperonSettingsBackupTableResourceReceiptV1 {
@@ -102,6 +114,7 @@ export interface OperonSettingsBackupTableResourceSessionUndoV1 {
 		sha256: string;
 		bytes: Uint8Array;
 	}>[];
+	createdDirectories: readonly string[];
 }
 
 export interface OperonSettingsBackupTableResourceApplyResultV1 {
@@ -129,6 +142,10 @@ const EMPTY_CLEANUP: OperonSettingsBackupTableResourceCleanupSummaryV1 = Object.
 	retainedReferenced: 0,
 	retainedUnknown: 0,
 	failed: 0,
+	removedDirectories: 0,
+	alreadyMissingDirectories: 0,
+	retainedNonEmptyDirectories: 0,
+	failedDirectories: 0,
 });
 
 /**
@@ -145,6 +162,8 @@ export async function applyOperonSettingsBackupTableResourcesV1(
 
 	const installed: OperonSettingsBackupInstalledTableResourceV1[] = [];
 	const created: CreatedResourceV1[] = [];
+	const createdDirectories: string[] = [];
+	const createdDirectoryKeys = new Set<string>();
 	let failureCode: OperonSettingsBackupTableResourceFailureCodeV1 | null = null;
 	let uncertainCreates = 0;
 
@@ -161,6 +180,14 @@ export async function applyOperonSettingsBackupTableResourcesV1(
 		}
 
 		try {
+			const directories = await dependencies.ensureParentDirectories(item.path);
+			for (const directory of directories) {
+				const key = portablePathKey(directory);
+				if (key && !createdDirectoryKeys.has(key)) {
+					createdDirectoryKeys.add(key);
+					createdDirectories.push(directory);
+				}
+			}
 			await dependencies.createFileExclusive(item.path, cloneBytes(item.bytes));
 		} catch {
 			uncertainCreates++;
@@ -177,7 +204,7 @@ export async function applyOperonSettingsBackupTableResourcesV1(
 	}
 
 	if (failureCode) {
-		const cleanup = await cleanupCreated(created, dependencies);
+		const cleanup = await cleanupCreated(created, createdDirectories, dependencies);
 		cleanup.retainedUnknown += uncertainCreates;
 		return failedResult(stableInput, failureCode, 'not-attempted', cleanup, installed);
 	}
@@ -199,7 +226,7 @@ export async function applyOperonSettingsBackupTableResourcesV1(
 		});
 	}
 	if (canonical.state === 'failed-clean') {
-		const cleanup = await cleanupCreated(created, dependencies);
+		const cleanup = await cleanupCreated(created, createdDirectories, dependencies);
 		return failedResult(stableInput, 'canonical-write-failed', 'failed-clean', cleanup, installed);
 	}
 
@@ -209,25 +236,26 @@ export async function applyOperonSettingsBackupTableResourcesV1(
 	} catch {
 		runtimeSettlement = 'degraded';
 	}
-	const receiptSeed = buildReceipt(stableInput, installed, {
+	const undoTokenId = fingerprint({
+		planId: stableInput.plan.planId,
+		appliedAt: stableInput.appliedAt,
+		canonicalUndoStateId: canonical.canonicalUndoStateId,
+		expectedCurrentFingerprint: canonical.currentFingerprint,
+		created: created.map(item => ({ path: item.path, sha256: item.sha256 })),
+		createdDirectories,
+	});
+	const receiptBody = buildReceipt(stableInput, installed, {
 		status: runtimeSettlement === 'settled' ? 'success' : 'runtime-degraded',
 		canonicalWrite: canonical.state,
 		runtimeSettlement,
 		cleanup: EMPTY_CLEANUP,
 		recoveryMode: 'session-conditional-undo',
 		failureCode: null,
-	}, null);
-	const receiptId = fingerprint(receiptSeed);
-	const undoTokenId = fingerprint({
-		receiptId,
-		canonicalUndoStateId: canonical.canonicalUndoStateId,
-		expectedCurrentFingerprint: canonical.currentFingerprint,
-		created: created.map(item => ({ path: item.path, sha256: item.sha256 })),
-	});
+	}, undoTokenId);
+	const receiptId = fingerprint(receiptBody);
 	const receipt = deepFreeze({
-		...receiptSeed,
+		...receiptBody,
 		receiptId,
-		recovery: { mode: 'session-conditional-undo' as const, undoAvailable: true, undoTokenId },
 	});
 	return {
 		receipt,
@@ -239,6 +267,7 @@ export async function applyOperonSettingsBackupTableResourcesV1(
 			canonicalUndoStateId: canonical.canonicalUndoStateId,
 			expectedCurrentFingerprint: canonical.currentFingerprint,
 			created: created.map(item => ({ ...item, bytes: cloneBytes(item.bytes) })),
+			createdDirectories: [...createdDirectories],
 		}),
 	};
 }
@@ -248,6 +277,7 @@ export interface OperonSettingsBackupTableResourceUndoDependenciesV1
 		OperonSettingsBackupTableResourceApplyDependenciesV1,
 		'readFile' | 'removeFileIfUnchanged' | 'digestBytes'
 	> {
+	removeDirectoryIfEmpty(path: string): Promise<'removed' | 'missing' | 'not-empty'>;
 	undoCanonical(input: {
 		canonicalUndoStateId: string;
 		expectedCurrentFingerprint: string;
@@ -284,10 +314,12 @@ export async function undoOperonSettingsBackupTableResourcesV1(
 	if (canonical === 'failed-clean') return { status: 'blocked', reason: 'canonical-undo-failed' };
 	const cleanup = await cleanupCreated(
 		session.created,
+		session.createdDirectories,
 		dependencies,
 		path => dependencies.isPathReferenced(path),
 	);
-	if (cleanup.retainedChanged || cleanup.retainedReferenced || cleanup.retainedUnknown || cleanup.failed) {
+	if (cleanup.retainedChanged || cleanup.retainedReferenced || cleanup.retainedUnknown || cleanup.failed
+		|| cleanup.retainedNonEmptyDirectories || cleanup.failedDirectories) {
 		return { status: 'manual-recovery-required', reason: 'resource-cleanup-incomplete', cleanup };
 	}
 	return { status: 'success', cleanup };
@@ -336,9 +368,10 @@ async function validatePlan(
 
 async function cleanupCreated(
 	created: readonly CreatedResourceV1[],
+	createdDirectories: readonly string[],
 	dependencies: Pick<
 		OperonSettingsBackupTableResourceApplyDependenciesV1,
-		'readFile' | 'removeFileIfUnchanged' | 'digestBytes'
+		'readFile' | 'removeFileIfUnchanged' | 'removeDirectoryIfEmpty' | 'digestBytes'
 	>,
 	isReferenced?: (path: string) => Promise<boolean>,
 ): Promise<OperonSettingsBackupTableResourceCleanupSummaryV1> {
@@ -349,6 +382,10 @@ async function cleanupCreated(
 		retainedReferenced: 0,
 		retainedUnknown: 0,
 		failed: 0,
+		removedDirectories: 0,
+		alreadyMissingDirectories: 0,
+		retainedNonEmptyDirectories: 0,
+		failedDirectories: 0,
 	};
 	for (const item of [...created].reverse()) {
 		try {
@@ -375,6 +412,16 @@ async function cleanupCreated(
 			else summary.retainedChanged++;
 		} catch {
 			summary.failed++;
+		}
+	}
+	for (const path of [...createdDirectories].reverse()) {
+		try {
+			const removal = await dependencies.removeDirectoryIfEmpty(path);
+			if (removal === 'removed') summary.removedDirectories++;
+			else if (removal === 'missing') summary.alreadyMissingDirectories++;
+			else summary.retainedNonEmptyDirectories++;
+		} catch {
+			summary.failedDirectories++;
 		}
 	}
 	return summary;
@@ -421,6 +468,7 @@ function failedResult(
 		runtimeSettlement: 'not-started',
 		cleanup,
 		recoveryMode: cleanup.retainedUnknown || cleanup.retainedChanged || cleanup.retainedReferenced || cleanup.failed
+			|| cleanup.retainedNonEmptyDirectories || cleanup.failedDirectories
 			? 'manual-backup-required'
 			: 'none',
 		failureCode,
@@ -511,34 +559,11 @@ function snapshotInput(
 }
 
 function isSafeTableResourcePath(path: string): boolean {
-	if (!path || path.includes('\\') || hasControlCharacter(path)) return false;
-	if (path.startsWith('/') || path.startsWith('//') || /^[A-Za-z]:/.test(path)) return false;
-	if (!path.toLowerCase().endsWith('.table')) return false;
-	const segments = path.split('/');
-	return segments.every(segment => segment !== '' && segment !== '.' && segment !== '..');
-}
-
-function hasControlCharacter(value: string): boolean {
-	for (let index = 0; index < value.length; index++) {
-		const code = value.charCodeAt(index);
-		if (code <= 0x1f || code === 0x7f) return true;
-	}
-	return false;
+	return isSafeOperonSettingsBackupTablePathV1(path);
 }
 
 function portablePathKey(path: string): string | null {
-	try {
-		const segments = path.normalize('NFC').split('/').map(segment => segment.replace(/[. ]+$/g, ''));
-		if (segments.some(segment => !segment || isWindowsDeviceName(segment))) return null;
-		return segments.join('/').toLowerCase();
-	} catch {
-		return null;
-	}
-}
-
-function isWindowsDeviceName(segment: string): boolean {
-	const stem = segment.split('.')[0].toLowerCase();
-	return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/.test(stem);
+	return operonSettingsBackupTablePathCollisionKeyV1(path);
 }
 
 function fingerprint(value: unknown): string {

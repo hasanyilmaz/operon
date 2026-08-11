@@ -7,6 +7,10 @@ import {
 } from '../types/table-file';
 import type { OperonSettingsBackupDiagnostic } from './settings-backup-format';
 import { parseOperonSettingsBackupV1 } from './settings-backup-format';
+import {
+	isSafeOperonSettingsBackupTablePathV1,
+	operonSettingsBackupTablePathCollisionKeyV1,
+} from './settings-backup-table-path';
 
 export const OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_FORMAT = 'operon-settings-backup-table-manifest' as const;
 export const OPERON_SETTINGS_BACKUP_TABLE_MANIFEST_VERSION = 1 as const;
@@ -392,7 +396,7 @@ function isSafeArchivePath(path: string, settings: boolean): boolean {
 }
 
 function isSafeOriginalTablePath(path: string): boolean {
-	return path.endsWith('.table') && isSafeRelativePath(path);
+	return isSafeOperonSettingsBackupTablePathV1(path);
 }
 
 function isSafeRelativePath(path: string): boolean {
@@ -402,10 +406,7 @@ function isSafeRelativePath(path: string): boolean {
 }
 
 function portablePathCollisionKey(path: string): string {
-	return path
-		.split('/')
-		.map(segment => segment.normalize('NFC').replace(/[. ]+$/u, '').toLocaleLowerCase('en-US'))
-		.join('/');
+	return operonSettingsBackupTablePathCollisionKeyV1(path) ?? `invalid:${path}`;
 }
 
 function isPortablePathSegment(segment: string): boolean {

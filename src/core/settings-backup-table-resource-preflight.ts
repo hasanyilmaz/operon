@@ -2,6 +2,7 @@ import { sha256HexV1 } from '../agent-runtime/contracts/v1/canonical';
 import { parseOperonTableFile } from '../storage/table-file';
 import type { TablePresetFileBinding } from '../types/table';
 import { canonicalizeOperonSettingsBackupJson, parseOperonSettingsBackupV1 } from './settings-backup-format';
+import { operonSettingsBackupTablePathCollisionKeyV1 } from './settings-backup-table-path';
 import {
 	validateOperonSettingsBackupTableManifestV1,
 	type OperonSettingsBackupTableManifestV1,
@@ -223,7 +224,9 @@ function projectTableResources(
 	const sourceFavorites = input.includeSourceTableFavorites
 		? readSourceTableFavoriteIds(input.bundle.settingsText).filter(id => activeIds.has(id))
 		: [];
-	const retainedFavorites = input.target.tableFavoriteIds.filter(id => !activeIds.has(id));
+	const retainedFavorites = input.includeSourceTableFavorites
+		? input.target.tableFavoriteIds.filter(id => !activeIds.has(id))
+		: input.target.tableFavoriteIds;
 	return deepFreeze({
 		tablePresetFileBindings: [...incomingBindings, ...retainedBindings],
 		tablePresetOrderIds: [...sourceOrder, ...retainedOrder],
@@ -315,7 +318,7 @@ function findFileAncestor(path: string, targets: readonly OperonSettingsBackupTa
 }
 
 function portablePathKey(path: string): string {
-	return path.split('/').map(segment => segment.normalize('NFC').replace(/[. ]+$/u, '').toLocaleLowerCase('en-US')).join('/');
+	return operonSettingsBackupTablePathCollisionKeyV1(path) ?? `invalid:${path}`;
 }
 
 function sortRecord<T>(record: Readonly<Record<string, T>>): Record<string, T> {

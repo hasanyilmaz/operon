@@ -25,6 +25,10 @@ import {
 	readOperonSettingsBackupArchiveV1,
 } from './settings-backup-archive';
 import type { OperonSettingsBackupValidatedTableBundleV1 } from './settings-backup-table-resource-preflight';
+import {
+	isSafeOperonSettingsBackupTablePathV1,
+	operonSettingsBackupTablePathCollisionKeyV1,
+} from './settings-backup-table-path';
 
 export interface OperonSettingsBackupTableBundleSourceFileV1 {
 	/** Exact authoritative vault path from the committed settings binding. */
@@ -68,7 +72,7 @@ export function exportOperonSettingsBackupTableBundleV1(
 	}
 	const sourceByPath = new Map<string, OperonSettingsBackupTableBundleSourceFileV1>();
 	for (const [index, source] of input.tableFiles.entries()) {
-		if (!isSafePortableTablePath(source.path)) {
+		if (!isSafeOperonSettingsBackupTablePathV1(source.path)) {
 			diagnostics.push(error(`$.tableFiles[${index}].path`, 'value', `Unsafe or non-portable Table path: ${source.path}.`));
 		}
 		if (sourceByPath.has(source.path)) {
@@ -251,7 +255,7 @@ function orderedBindings(
 	const bindings = settings.tablePresetFileBindings.map(binding => ({ ...binding }));
 	for (const [index, binding] of bindings.entries()) {
 		if (!isSafeTablePresetId(binding.id)) diagnostics.push(error(`$.bindings[${index}].id`, 'value', 'Table binding ID is unsafe.'));
-		if (!isSafePortableTablePath(binding.path)) diagnostics.push(error(`$.bindings[${index}].path`, 'value', 'Table binding path is unsafe or non-portable.'));
+		if (!isSafeOperonSettingsBackupTablePathV1(binding.path)) diagnostics.push(error(`$.bindings[${index}].path`, 'value', 'Table binding path is unsafe or non-portable.'));
 		if (ids.has(binding.id)) diagnostics.push(error(`$.bindings[${index}].id`, 'value', `Duplicate Table binding ID: ${binding.id}.`));
 		const pathKey = portablePathKey(binding.path);
 		if (paths.has(pathKey)) diagnostics.push(error(`$.bindings[${index}].path`, 'value', `Colliding Table binding path: ${binding.path}.`));
@@ -265,20 +269,8 @@ function orderedBindings(
 	));
 }
 
-function isSafePortableTablePath(path: string): boolean {
-	if (!path.endsWith('.table') || path !== path.normalize('NFC') || path.startsWith('/')
-		|| /^[A-Za-z]:/u.test(path) || path.includes('\\') || path.includes('\0')) return false;
-	return path.split('/').every(segment => {
-		if (!segment || segment === '.' || segment === '..') return false;
-		if ([...segment].some(character => character.charCodeAt(0) <= 0x1F || character.charCodeAt(0) === 0x7F)) return false;
-		if (/[<>:"|?*]/u.test(segment) || /[. ]$/u.test(segment)) return false;
-		const deviceStem = segment.split('.')[0]?.toLocaleLowerCase('en-US') ?? '';
-		return !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/u.test(deviceStem);
-	});
-}
-
 function portablePathKey(path: string): string {
-	return path.split('/').map(segment => segment.normalize('NFC').replace(/[. ]+$/u, '').toLocaleLowerCase('en-US')).join('/');
+	return operonSettingsBackupTablePathCollisionKeyV1(path) ?? `invalid:${path}`;
 }
 
 function compareCodeUnits(left: string, right: string): number {

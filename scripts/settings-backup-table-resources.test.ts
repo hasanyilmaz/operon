@@ -8,7 +8,10 @@ import {
 } from '../src/core/settings-backup-table-bundle';
 import { preflightOperonSettingsBackupTableResourcesV1 } from '../src/core/settings-backup-table-resource-preflight';
 import { coordinateOperonSettingsBackupTableResourceApplyV1 } from '../src/core/settings-backup-table-resource-coordinator';
-import { buildOperonSettingsBackupV1, serializeOperonSettingsBackupV1 } from '../src/core/settings-backup-format';
+import {
+	buildOperonSettingsBackupV1,
+	serializeOperonSettingsBackupV1,
+} from '../src/core/settings-backup-format';
 import { validateOperonSettingsBackupTableManifestV1 } from '../src/core/settings-backup-table-manifest';
 import { serializeOperonTableFile } from '../src/storage/table-file';
 import { createDefaultTablePreset } from '../src/types/table';
@@ -87,6 +90,14 @@ test('included bundle export binds deterministic order, default, hashes and logi
 		{ ...first.manifest, defaultPresetId: 'table-first' },
 		logical,
 	).ok, false);
+	for (const originalPath of ['Tables/Cafe\u0301.table', 'Tables/Bad\u007f.table']) {
+		assert.equal(validateOperonSettingsBackupTableManifestV1({
+			...first.manifest,
+			tableFiles: first.manifest.tableFiles.map((item, index) => (
+				index === 0 ? { ...item, originalPath } : item
+			)),
+		}, logical).ok, false);
+	}
 });
 
 test('logical bundle round-trips through the strict deterministic ZIP boundary', async () => {
@@ -164,6 +175,18 @@ test('resource preflight produces fingerprint-bound create/reuse plans and requi
 	const reuse = preflightOperonSettingsBackupTableResourcesV1({ ...baseInput, target: exactTarget });
 	assert.equal(reuse.classification, 'ready');
 	assert.equal(reuse.actions[0]?.kind, 'reuse');
+	const targetFavorites = ['table-first', 'target-only'];
+	const favoritesUnselected = preflightOperonSettingsBackupTableResourcesV1({
+		...baseInput,
+		includeSourceTableFavorites: false,
+		target: { ...exactTarget, tableFavoriteIds: targetFavorites },
+	});
+	assert.deepEqual(favoritesUnselected.plan?.projection.tableFavoriteIds, targetFavorites);
+	const favoritesSelected = preflightOperonSettingsBackupTableResourcesV1({
+		...baseInput,
+		target: { ...exactTarget, tableFavoriteIds: targetFavorites },
+	});
+	assert.deepEqual(favoritesSelected.plan?.projection.tableFavoriteIds, ['table-second', 'target-only']);
 
 	const conflictTarget = {
 		...baseInput.target,
@@ -180,6 +203,7 @@ test('resource preflight produces fingerprint-bound create/reuse plans and requi
 	assert.equal(skipped.classification, 'ready');
 	assert.equal(skipped.actions[0]?.kind, 'skip');
 	assert.equal(skipped.plan?.projection.tableDefaultPresetId, null);
+	assert.deepEqual(skipped.plan?.projection.tableFavoriteIds, []);
 	const canceled = preflightOperonSettingsBackupTableResourcesV1({
 		...baseInput,
 		target: conflictTarget,
@@ -214,8 +238,10 @@ test('coordinator re-preflights under one mutation lane and commits the sealed p
 			return { target: preflightInput.target, availableFilterSetIds: preflightInput.availableFilterSetIds };
 		},
 		async readFile(path) { return files.get(path) ?? null; },
+		async ensureParentDirectories() { return []; },
 		async createFileExclusive(path, value) { events.push(`create:${path}`); files.set(path, value); },
 		async removeFileIfUnchanged() { return 'removed'; },
+		async removeDirectoryIfEmpty() { return 'removed'; },
 		digestBytes(value) { return sha256HexV1(new TextDecoder().decode(value)); },
 		async commitCanonical(_installed, plan) {
 			events.push(`canonical:${plan.projection.tablePresetOrderIds.join(',')}`);
@@ -241,8 +267,10 @@ test('coordinator re-preflights under one mutation lane and commits the sealed p
 			};
 		},
 		async readFile() { return null; },
+		async ensureParentDirectories() { return []; },
 		async createFileExclusive() { staleEvents.push('create'); },
 		async removeFileIfUnchanged() { return 'removed'; },
+		async removeDirectoryIfEmpty() { return 'removed'; },
 		digestBytes(value) { return sha256HexV1(new TextDecoder().decode(value)); },
 		async commitCanonical() {
 			staleEvents.push('canonical');
