@@ -2,7 +2,12 @@ import type { RawYamlPropertyMutation } from '../../core/raw-yaml-property';
 
 export type TableTextEditRoute = 'picker' | 'popover';
 
-const DEDICATED_TASK_TEXT_FIELD_KEYS = new Set(['description', 'note']);
+const TASK_TEXT_POPOVER_EXCLUDED_KEYS = new Set([
+	'description',
+	'note',
+	'taskIcon',
+	'taskColor',
+]);
 const STRUCTURED_TASK_TEXT_FIELD_KEYS = new Set(['status', 'priority']);
 
 export function isTablePlainTextField(
@@ -28,7 +33,7 @@ export function resolveTableTaskTextEditRoute(
 		value,
 		isTablePlainTextField(field)
 			&& !!field
-			&& !DEDICATED_TASK_TEXT_FIELD_KEYS.has(field.key),
+			&& !TASK_TEXT_POPOVER_EXCLUDED_KEYS.has(field.key),
 	);
 }
 
