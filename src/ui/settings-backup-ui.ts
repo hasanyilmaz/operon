@@ -2,6 +2,8 @@ import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../core/i18n';
 import type { OperonSettingsBackupRecoveryCapabilitiesV1 } from '../core/settings-backup-recovery-state';
 import {
+	createSettingsBackupFilePickerRegistry,
+	createSettingsBackupFilePickerSettlement,
 	detectSettingsBackupFileKind,
 	isSettingsBackupFileSizeAllowed,
 	SettingsBackupFileAdmissionError,
@@ -108,27 +110,26 @@ export interface SettingsBackupUiIntegration {
 	}): Promise<SettingsBackupApplyResult>;
 }
 
+const settingsBackupFilePickerRegistry = createSettingsBackupFilePickerRegistry<Document>();
+
 export async function chooseSettingsBackupFile(ownerDocument: Document): Promise<SettingsBackupSelectedFile | null> {
 	const input = ownerDocument.win.createEl('input');
 	input.type = 'file';
 	input.accept = '.json,application/json';
 	input.hidden = true;
 	ownerDocument.body.appendChild(input);
+	let releasePendingPicker = (): void => {};
 	try {
 		const file = await new Promise<File | null>(resolve => {
-			let resolved = false;
-			const finish = (selected: File | null): void => {
-				if (resolved) return;
-				resolved = true;
-				ownerDocument.defaultView?.removeEventListener('focus', handleFocus);
+			const settlement = createSettingsBackupFilePickerSettlement<File>(selected => {
 				resolve(selected);
-			};
-			const handleFocus = (): void => {
-				ownerDocument.defaultView?.setTimeout(() => finish(input.files?.item(0) ?? null), 0);
-			};
-			input.addEventListener('change', () => finish(input.files?.item(0) ?? null), { once: true });
-			input.addEventListener('cancel', () => finish(null), { once: true });
-			ownerDocument.defaultView?.addEventListener('focus', handleFocus, { once: true });
+			});
+			releasePendingPicker = settingsBackupFilePickerRegistry.register(
+				ownerDocument,
+				() => settlement.settle(null),
+			);
+			input.addEventListener('change', () => settlement.settle(input.files?.item(0) ?? null), { once: true });
+			input.addEventListener('cancel', () => settlement.settle(null), { once: true });
 			input.click();
 		});
 		if (!file) return null;
@@ -148,6 +149,7 @@ export async function chooseSettingsBackupFile(ownerDocument: Document): Promise
 			throw new SettingsBackupFileAdmissionError('provider-read-failed');
 		}
 	} finally {
+		releasePendingPicker();
 		input.value = '';
 		input.remove();
 	}

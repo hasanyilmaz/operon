@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import {
+	createSettingsBackupFilePickerRegistry,
+	createSettingsBackupFilePickerSettlement,
 	detectSettingsBackupFileKind,
 	isSettingsBackupFileSizeAllowed,
 	SettingsBackupFileAdmissionError,
@@ -9,6 +11,56 @@ import {
 } from '../src/ui/settings-backup-file-admission';
 
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
+
+test('picker accepts a delayed valid change without inferring cancellation from focus', () => {
+	const selected: Array<object | null> = [];
+	const file = { name: 'operon-settings-backup.json' };
+	const settlement = createSettingsBackupFilePickerSettlement<object>(value => selected.push(value));
+	assert.deepEqual(selected, []);
+	assert.equal(settlement.settle(file), true);
+	assert.deepEqual(selected, [file]);
+});
+
+test('picker settles once for selection and explicit cancellation', () => {
+	const file = { name: 'operon-settings-backup.json' };
+	const selected: Array<object | null> = [];
+	const changed = createSettingsBackupFilePickerSettlement<object>(value => selected.push(value));
+	assert.equal(changed.settle(file), true);
+	assert.equal(changed.settle(null), false);
+	assert.deepEqual(selected, [file]);
+
+	const cancelledValues: Array<object | null> = [];
+	const cancelled = createSettingsBackupFilePickerSettlement<object>(value => cancelledValues.push(value));
+	assert.equal(cancelled.settle(null), true);
+	assert.equal(cancelled.settle(file), false);
+	assert.deepEqual(cancelledValues, [null]);
+});
+
+test('a new picker invocation cancels one stale provider without accumulating inputs', () => {
+	const registry = createSettingsBackupFilePickerRegistry<object>();
+	const documentKey = {};
+	const cancelled: string[] = [];
+	const releaseFirst = registry.register(documentKey, () => cancelled.push('first'));
+	const releaseSecond = registry.register(documentKey, () => cancelled.push('second'));
+	assert.deepEqual(cancelled, ['first']);
+	releaseFirst();
+	const releaseThird = registry.register(documentKey, () => cancelled.push('third'));
+	assert.deepEqual(cancelled, ['first', 'second']);
+	releaseSecond();
+	releaseThird();
+});
+
+test('picker settlement state is per invocation so the same file can be selected again', () => {
+	const file = { name: 'operon-settings-backup.json' };
+	const selected: object[] = [];
+	for (let invocation = 0; invocation < 2; invocation += 1) {
+		const settlement = createSettingsBackupFilePickerSettlement<object>(value => {
+			if (value) selected.push(value);
+		});
+		assert.equal(settlement.settle(file), true);
+	}
+	assert.deepEqual(selected, [file, file]);
+});
 
 test('file admission identifies JSON from bytes and rejects ZIP magic', () => {
 	assert.equal(detectSettingsBackupFileKind(encode('  {"format":"operon-settings"}')), 'json');
@@ -35,7 +87,9 @@ test('picker is transient, owner-document scoped, reset, and detached in finally
 	const source = readFileSync('src/ui/settings-backup-ui.ts', 'utf8');
 	assert.match(source, /ownerDocument\.win\.createEl\('input'\)/u);
 	assert.match(source, /input\.accept = '\.json,application\/json'/u);
-	assert.match(source, /finally \{\s*input\.value = '';\s*input\.remove\(\);/u);
+	assert.doesNotMatch(source, /addEventListener\('focus'/u);
+	assert.match(source, /settingsBackupFilePickerRegistry\.register/u);
+	assert.match(source, /finally \{\s*releasePendingPicker\(\);\s*input\.value = '';\s*input\.remove\(\);/u);
 	assert.doesNotMatch(source, /electron|showOpenDialog|require\(['"]fs/u);
 });
 

@@ -16,6 +16,42 @@ export class SettingsBackupFileAdmissionError extends Error {
 	}
 }
 
+export interface SettingsBackupFilePickerSettlement<T> {
+	settle(value: T | null): boolean;
+}
+
+export function createSettingsBackupFilePickerSettlement<T>(
+	onSettled: (value: T | null) => void,
+): SettingsBackupFilePickerSettlement<T> {
+	let settled = false;
+	const settle = (value: T | null): boolean => {
+		if (settled) return false;
+		settled = true;
+		onSettled(value);
+		return true;
+	};
+	return {
+		settle,
+	};
+}
+
+export interface SettingsBackupFilePickerRegistry<K extends object> {
+	register(key: K, cancelPending: () => void): () => void;
+}
+
+export function createSettingsBackupFilePickerRegistry<K extends object>(): SettingsBackupFilePickerRegistry<K> {
+	const pending = new WeakMap<K, () => void>();
+	return {
+		register(key, cancelPending) {
+			pending.get(key)?.();
+			pending.set(key, cancelPending);
+			return () => {
+				if (pending.get(key) === cancelPending) pending.delete(key);
+			};
+		},
+	};
+}
+
 export function detectSettingsBackupFileKind(head: Uint8Array): SettingsBackupFileKind | null {
 	const text = new TextDecoder('utf-8', { fatal: false }).decode(head).replace(/^\uFEFF/u, '').trimStart();
 	return text.startsWith('{') ? 'json' : null;
