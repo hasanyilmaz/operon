@@ -5,6 +5,7 @@ import test from 'node:test';
 import type { App } from 'obsidian';
 import { sha256HexV1 } from '../src/agent-runtime/contracts/v1/canonical';
 import {
+	computeOperonSettingsBackupSettingsFingerprintV1,
 	createOperonSettingsBackupApplyAcknowledgementV1,
 	projectOperonSettingsBackupApplyDataPackageV1,
 } from '../src/core/settings-backup-apply';
@@ -579,6 +580,37 @@ test('reapplying the same plan is idempotent and performs no second write', asyn
 	assert.equal(second.receipt?.canonicalWrite, 'not-attempted');
 	assert.equal(second.receipt?.currentTargetFingerprint, plan.candidateFingerprint);
 	assert.equal(harness.data.saveAttempts, 1);
+});
+
+test('exact-plan retry remains idempotent after an unselected target setting changes', async () => {
+	const target = baselineSettings();
+	const harness = await createHarness(canonicalPackage(target));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	changeLanguage(source);
+	const { sourceJson, plan } = await createPlan(harness.storage, source, ['general']);
+	const first = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.ok(first.receipt);
+	assert.equal(harness.data.saveAttempts, 1);
+
+	await harness.storage.updateSettings({ tableShowLineNumbers: !current.tableShowLineNumbers });
+	assert.equal(harness.data.saveAttempts, 2);
+	const beforeRetry = clone(harness.data.committed);
+	const currentAfterUnselectedChange = await harness.storage.captureCommittedSettingsBackupSnapshot();
+	const expectedCurrentFingerprint = computeOperonSettingsBackupSettingsFingerprintV1(
+		currentAfterUnselectedChange.settings,
+	);
+
+	const retry = await harness.storage.applySettingsBackupRestorePlanV1(
+		applyInput(sourceJson, plan, '2026-08-10T20:01:00.000Z'),
+	);
+	assert.ok(retry.receipt);
+	assert.equal(retry.receipt?.alreadyApplied, true);
+	assert.equal(retry.receipt?.canonicalWrite, 'not-attempted');
+	assert.equal(retry.receipt?.currentTargetFingerprint, expectedCurrentFingerprint);
+	assert.notEqual(retry.receipt?.currentTargetFingerprint, plan.candidateFingerprint);
+	assert.equal(harness.data.saveAttempts, 2);
+	assert.deepEqual(harness.data.committed, beforeRetry);
 });
 
 test('already-applied admission rejects an equivalent swapped source and changed refreshed Vault checks without writing', async () => {

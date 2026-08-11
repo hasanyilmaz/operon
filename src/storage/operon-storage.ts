@@ -160,14 +160,13 @@ function compareSettingsBackupRestorePlans(
 	return null;
 }
 
-function compareSettingsBackupRestoreContentIdentity(
+function compareSettingsBackupRestoreAdmissionIdentity(
 	expected: OperonSettingsBackupRestorePlanV1,
 	current: OperonSettingsBackupRestorePlanV1,
 ): OperonSettingsBackupApplyBlockedReasonV1 | null {
 	if (expected.sourceBodyChecksum !== current.sourceBodyChecksum) return 'source-mismatch';
 	if (!settingsBackupVaultReferenceChecksMatch(expected, current)) return 'vault-reference-changed';
 	if (expected.selectionFingerprint !== current.selectionFingerprint) return 'selection-mismatch';
-	if (expected.candidateFingerprint !== current.candidateFingerprint) return 'candidate-mismatch';
 	return null;
 }
 
@@ -862,6 +861,7 @@ export class OperonStorage {
 			let activeSummary: OperonSettingsBackupPreflightSummaryV1 | null = null;
 			let admissionResult: OperonSettingsBackupApplyResultV1 | null = null;
 			let alreadyApplied = false;
+			let admittedCurrentSettingsFingerprint: string | null = null;
 
 			let observed: Awaited<ReturnType<OperonDataPackageStore['updateDataPackageObserved']>>;
 			try {
@@ -891,12 +891,13 @@ export class OperonStorage {
 					return currentPackage;
 				}
 				activeSummary = fresh.preview.summary;
-				const contentMismatch = compareSettingsBackupRestoreContentIdentity(input.restorePlan, fresh.restorePlan);
-				if (contentMismatch) {
-					admissionResult = blockedSettingsBackupApply(contentMismatch);
+				const admissionMismatch = compareSettingsBackupRestoreAdmissionIdentity(input.restorePlan, fresh.restorePlan);
+				if (admissionMismatch) {
+					admissionResult = blockedSettingsBackupApply(admissionMismatch);
 					return currentPackage;
 				}
 				const currentSettingsFingerprint = computeOperonSettingsBackupSettingsFingerprintV1(currentSettings);
+				admittedCurrentSettingsFingerprint = currentSettingsFingerprint;
 				if (fresh.restorePlan.candidateFingerprint === currentSettingsFingerprint) {
 					alreadyApplied = true;
 					activePlan = input.restorePlan;
@@ -928,7 +929,7 @@ export class OperonStorage {
 					appliedAt: input.appliedAt,
 					plan: activePlan,
 					previousTargetFingerprint: activePlan.targetConfigurationFingerprint,
-					currentTargetFingerprint: activePlan.candidateFingerprint,
+					currentTargetFingerprint: admittedCurrentSettingsFingerprint ?? activePlan.candidateFingerprint,
 					counts,
 					recovery: {
 						mode: 'none', undoTokenId: null, expectedCurrentFingerprint: null,
