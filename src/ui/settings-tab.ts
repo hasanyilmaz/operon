@@ -3078,11 +3078,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private getSecondarySettingsTabs(): SettingsTabDefinition<OperonSettingsTabId>[] {
 		return [
 			{ id: 'coreGeneral', groupId: 'core', label: t('settings', 'tabGeneral') },
-			{ id: 'coreBackupRestore', groupId: 'core', label: settingsBackupT('settingsBackupPageTitle') },
 			{ id: 'corePipelines', groupId: 'core', label: t('settings', 'tabPipelines') },
 			{ id: 'corePriority', groupId: 'core', label: t('settings', 'tabPriority') },
 			{ id: 'coreKeymapping', groupId: 'core', label: t('settings', 'tabKeyMappings') },
 			{ id: 'coreCustomKeys', groupId: 'core', label: t('settings', 'tabCustomKeys') },
+			{ id: 'coreBackupRestore', groupId: 'core', label: settingsBackupT('settingsBackupPageTitle') },
 			{ id: 'tasksInlineTasks', groupId: 'tasks', label: t('settings', 'subtabInlineTasks') },
 			{ id: 'tasksFileTasks', groupId: 'tasks', label: t('settings', 'subtabFileTasks') },
 			{ id: 'tasksRelationships', groupId: 'tasks', label: t('settings', 'subtabRelationships') },

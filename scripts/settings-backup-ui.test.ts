@@ -105,6 +105,11 @@ test('Settings tab exports portable JSON without transient inclusion options', (
 	assert.match(source, /integration\.exportBackup\(\)/u);
 	assert.doesNotMatch(source, /includeExternalCalendarUrls|settingsBackupIncludeExternalCalendars/u);
 	assert.match(source, /id: 'coreBackupRestore', groupId: 'core'/u);
+	assert.ok(
+		source.indexOf("{ id: 'coreBackupRestore', groupId: 'core'")
+			> source.indexOf("{ id: 'coreCustomKeys', groupId: 'core'"),
+		'Backup & Restore must be the final Core settings page after Custom Keys.',
+	);
 	assert.doesNotMatch(source, /includeTablePresetFiles|settingsBackupIncludeTables/u);
 });
 
