@@ -257,6 +257,34 @@ test('unselected Filters leave normal and dynamic target templates unchanged', (
 	assert.deepEqual(result.restorePlan?.candidateSettings.filterSets, clone(target.filterSets));
 });
 
+test('Calendar restore accepts different valid mobile source presets across vaults', () => {
+	const source = clone(DEFAULT_SETTINGS);
+	const target = clone(DEFAULT_SETTINGS);
+	source.calendarMobileDefaultSourcePresetId = 'calendar-preset-1day';
+	source.calendarMobileAgendaSourcePresetId = 'calendar-preset-1day';
+	source.calendarMobileDaySourcePresetId = 'calendar-preset-1day';
+	source.calendarMobileTwoDaySourcePresetId = 'calendar-preset-1day';
+	source.calendarMobileThreeDaySourcePresetId = 'calendar-preset-1day';
+	target.calendarMobileDefaultSourcePresetId = 'calendar-preset-3day';
+	target.calendarMobileAgendaSourcePresetId = 'calendar-preset-3day';
+	target.calendarMobileDaySourcePresetId = 'calendar-preset-3day';
+	target.calendarMobileTwoDaySourcePresetId = 'calendar-preset-3day';
+	target.calendarMobileThreeDaySourcePresetId = 'calendar-preset-3day';
+	const result = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: exportJson(source),
+		targetSnapshot: targetSnapshot(target),
+		selectedGroups: ['calendar'],
+	});
+	assert.equal(result.ok, true);
+	if (!result.ok) return;
+	assert.equal(result.classification, 'ready', JSON.stringify(result.preview.issues));
+	assert.equal(result.restorePlan?.candidateSettings.calendarMobileDefaultSourcePresetId, 'calendar-preset-1day');
+	assert.equal(result.restorePlan?.candidateSettings.calendarMobileAgendaSourcePresetId, 'calendar-preset-1day');
+	assert.equal(result.restorePlan?.candidateSettings.calendarMobileDaySourcePresetId, 'calendar-preset-1day');
+	assert.equal(result.restorePlan?.candidateSettings.calendarMobileTwoDaySourcePresetId, 'calendar-preset-1day');
+	assert.equal(result.restorePlan?.candidateSettings.calendarMobileThreeDaySourcePresetId, 'calendar-preset-1day');
+});
+
 test('vault references require field-level decisions without discarding other General settings', () => {
 	const source = representativeSettings();
 	const target = clone(source);

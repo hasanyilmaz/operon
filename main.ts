@@ -2185,7 +2185,10 @@ export default class OperonPlugin extends Plugin {
 			const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
 			const undone = await this.storage.undoSettingsBackupRestoreV1(input.undoTokenId, input.receiptId);
 			if (undone.status === 'partial-user-decision-required') {
-				if (undone.failurePhase === 'commit-state-unknown') return undone;
+				if (undone.failurePhase === 'commit-state-unknown') {
+					this.pendingSettingsBackupRuntimeRecovery = null;
+					return undone;
+				}
 				this.pendingSettingsBackupRuntimeRecovery = {
 					receiptId: undone.receiptId,
 					undoTokenId: null,
@@ -2540,14 +2543,21 @@ export default class OperonPlugin extends Plugin {
 			undoTokenId: result.receipt.recovery.undoTokenId,
 			recoveryRequired: result.status === 'partial-user-decision-required',
 		};
-		if (uiResult.undoTokenId && uiResult.receiptId) this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+		if (uiResult.receiptId && uiResult.status === 'state-unknown') {
+			this.lastSettingsBackupUiRecovery = this.buildSettingsBackupManualRecoveryStateV1(
+				uiResult.receiptId,
+				'The restore commit state could not be verified. Manual recovery is required.',
+			);
+		} else if (uiResult.undoTokenId && uiResult.receiptId) {
+			this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
 				receiptId: uiResult.receiptId, undoTokenId: uiResult.undoTokenId,
 				message: uiResult.recoveryRequired
 					? 'Runtime refresh requires a recovery decision.'
 					: 'A conditional session undo remains available.',
 				runtimeRetryRequired: uiResult.recoveryRequired,
 				undoAvailable: true,
-		});
+			});
+		}
 		return uiResult;
 	}
 
@@ -2578,7 +2588,16 @@ export default class OperonPlugin extends Plugin {
 				recoveryRequired: result.status !== 'settled',
 			};
 		}
-		if (result.status === 'success') this.lastSettingsBackupUiRecovery = null;
+		if (result.status === 'partial-user-decision-required'
+			&& result.failurePhase === 'commit-state-unknown') {
+			this.pendingSettingsBackupRuntimeRecovery = null;
+			this.lastSettingsBackupUiRecovery = this.buildSettingsBackupManualRecoveryStateV1(
+				result.receiptId,
+				'The restore commit state could not be verified. Manual recovery is required.',
+			);
+		} else if (result.status === 'success') {
+			this.lastSettingsBackupUiRecovery = null;
+		}
 		return {
 			status: result.status === 'partial-user-decision-required' ? 'state-unknown'
 				: result.status === 'success' ? 'committed' : 'failed-clean',
@@ -2591,6 +2610,19 @@ export default class OperonPlugin extends Plugin {
 
 	private settingsBackupUiFailure(message: string): SettingsBackupApplyResult {
 		return { status: 'failed-clean', message, receiptId: null, undoTokenId: null, recoveryRequired: false };
+	}
+
+	private buildSettingsBackupManualRecoveryStateV1(
+		receiptId: string,
+		message: string,
+	): SettingsBackupPendingRecovery {
+		return buildOperonSettingsBackupRecoveryCapabilitiesV1({
+			receiptId,
+			undoTokenId: null,
+			message,
+			runtimeRetryRequired: false,
+			undoAvailable: false,
+		});
 	}
 
 	private enqueueSettingsBackupRestoreOperation<T>(operation: () => Promise<T>): Promise<T> {

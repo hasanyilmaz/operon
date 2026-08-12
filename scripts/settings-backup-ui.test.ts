@@ -9,6 +9,7 @@ import {
 	SettingsBackupFileAdmissionError,
 	SETTINGS_BACKUP_JSON_MAX_BYTES,
 } from '../src/ui/settings-backup-file-admission';
+import { buildOperonSettingsBackupRecoveryCapabilitiesV1 } from '../src/core/settings-backup-recovery-state';
 
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
 
@@ -157,6 +158,44 @@ test('recovery actions render only from exact capability flags', () => {
 	assert.match(source, /if \(recovery\.canKeep\)/u);
 	assert.match(source, /if \(recovery\.canRetryRuntimeRefresh\)/u);
 	assert.match(source, /if \(recovery\.canUndo\)/u);
+});
+
+test('manual recovery capabilities remain receipt-bound without unsupported actions', () => {
+	const recovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+		receiptId: 'receipt-state-unknown',
+		undoTokenId: null,
+		message: 'Manual recovery is required.',
+		runtimeRetryRequired: false,
+		undoAvailable: false,
+	});
+	assert.deepEqual(recovery, {
+		receiptId: 'receipt-state-unknown',
+		undoTokenId: null,
+		message: 'Manual recovery is required.',
+		canKeep: false,
+		canRetryRuntimeRefresh: false,
+		canUndo: false,
+	});
+});
+
+test('commit-state-unknown remains resumable as receipt-owned manual recovery', () => {
+	const source = readFileSync('main.ts', 'utf8');
+	assert.match(
+		source,
+		/uiResult\.receiptId && uiResult\.status === 'state-unknown'[\s\S]*buildSettingsBackupManualRecoveryStateV1/u,
+	);
+	assert.match(
+		source,
+		/undone\.failurePhase === 'commit-state-unknown'[\s\S]*pendingSettingsBackupRuntimeRecovery = null/u,
+	);
+	assert.match(
+		source,
+		/result\.failurePhase === 'commit-state-unknown'[\s\S]*lastSettingsBackupUiRecovery = this\.buildSettingsBackupManualRecoveryStateV1/u,
+	);
+	assert.match(
+		source,
+		/buildSettingsBackupManualRecoveryStateV1[\s\S]*undoTokenId: null[\s\S]*runtimeRetryRequired: false[\s\S]*undoAvailable: false/u,
+	);
 });
 
 test('restore admission binds both recovery acknowledgements and fresh Vault checks', () => {

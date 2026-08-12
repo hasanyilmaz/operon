@@ -641,6 +641,16 @@ function validateCanonicalProjection(
 		filterSets: candidateFilterSets,
 		calendarPresets: payloads.calendar?.calendarPresets ?? baseline.calendarPresets,
 		calendarDefaultPresetId: payloads.calendar?.calendarDefaultPresetId ?? baseline.calendarDefaultPresetId,
+		calendarMobileDefaultSourcePresetId: payloads.calendar?.calendarMobileDefaultSourcePresetId
+			?? baseline.calendarMobileDefaultSourcePresetId,
+		calendarMobileAgendaSourcePresetId: payloads.calendar?.calendarMobileAgendaSourcePresetId
+			?? baseline.calendarMobileAgendaSourcePresetId,
+		calendarMobileDaySourcePresetId: payloads.calendar?.calendarMobileDaySourcePresetId
+			?? baseline.calendarMobileDaySourcePresetId,
+		calendarMobileTwoDaySourcePresetId: payloads.calendar?.calendarMobileTwoDaySourcePresetId
+			?? baseline.calendarMobileTwoDaySourcePresetId,
+		calendarMobileThreeDaySourcePresetId: payloads.calendar?.calendarMobileThreeDaySourcePresetId
+			?? baseline.calendarMobileThreeDaySourcePresetId,
 		kanbanPresets: payloads.kanban?.kanbanPresets ?? baseline.kanbanPresets,
 		kanbanDefaultPresetId: payloads.kanban?.kanbanDefaultPresetId ?? baseline.kanbanDefaultPresetId,
 		presetFavorites: payloads['preset-favorites']?.presetFavorites ?? baseline.presetFavorites,
