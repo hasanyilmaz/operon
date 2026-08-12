@@ -374,10 +374,10 @@ test('real locale artifacts preserve English plus all nine keyed remote packs', 
 	const localeDirectory = path.join(repoRoot, 'i18n/locales');
 	const artifacts = buildLocaleArtifacts({ localeDirectory });
 	const pack = artifacts.embeddedPack;
-	assert.equal(pack.keyCount, 2_983);
+	assert.equal(pack.keyCount, 2_988);
 	assert.deepEqual(pack.languageOrder, ['en']);
 	assert.equal(artifacts.releaseAssets.length, 9);
-	assert.equal(pack.keyCount * (1 + artifacts.releaseAssets.length), 29_830);
+	assert.equal(pack.keyCount * (1 + artifacts.releaseAssets.length), 29_880);
 	assert.equal(serializeDenseLocalePack(pack), createDenseLocaleArtifact({ localeDirectory }));
 
 	for (const definition of LOCALE_DEFINITIONS) {

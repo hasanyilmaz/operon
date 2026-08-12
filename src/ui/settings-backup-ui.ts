@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../core/i18n';
+import type { SettingsBackupVaultReferenceKey } from '../core/settings-backup-compatibility';
 import type {
 	OperonSettingsBackupRecoveryCapabilitiesV1,
 	OperonSettingsBackupRuntimeRefreshStep,
@@ -62,12 +63,45 @@ export interface SettingsBackupPreviewGroup {
 }
 
 export interface SettingsBackupPreviewVaultReference {
-	key: string;
+	key: SettingsBackupVaultReferenceKey;
 	label: string;
 	path: string;
 	status: 'valid' | 'missing' | 'wrong-type' | 'unchecked';
 	decision: SettingsBackupVaultReferenceDecision | null;
 	required: boolean;
+}
+
+const SETTINGS_BACKUP_VAULT_REFERENCE_LABELS = {
+	taskFinderSelectedProjectId: { namespace: 'settings', key: 'settingsBackupVaultReferenceTaskFinderProject' },
+	operonDocsFolder: { namespace: 'settings', key: 'operonDocsFolder' },
+	fileTasksFolder: { namespace: 'settings', key: 'fileTasksFolder' },
+	fileTaskArchiveFolder: { namespace: 'settings', key: 'fileTaskArchiveFolder' },
+	inlineTaskTargetFile: { namespace: 'settings', key: 'inlineTaskTargetFile' },
+	projectSerialScopes: { namespace: 'settings', key: 'projectSerials' },
+	workspaceTweaksPropertiesExcludedFolders: { namespace: 'settings', key: 'workspaceTweaksPropertiesExcludedFolders' },
+	taskCreatorDefaultFileTemplateId: { namespace: 'settings', key: 'taskCreatorDefaultFileTemplate' },
+	fileTaskTemplateFolder: { namespace: 'settings', key: 'fileTaskTemplateFolder' },
+	excludedFolders: { namespace: 'settings', key: 'excludedFolders' },
+	fileRepeatCustomFolder: { namespace: 'settings', key: 'fileRepeatCustomFolder' },
+	reminderSoundFilePath: { namespace: 'settings', key: 'reminderSound' },
+} as const satisfies Record<SettingsBackupVaultReferenceKey, { namespace: 'settings'; key: string }>;
+
+const SETTINGS_BACKUP_VAULT_REFERENCE_STATUS_KEYS = {
+	valid: 'settingsBackupVaultReferenceStatusValid',
+	missing: 'settingsBackupVaultReferenceStatusMissing',
+	'wrong-type': 'settingsBackupVaultReferenceStatusWrongType',
+	unchecked: 'settingsBackupVaultReferenceStatusUnchecked',
+} as const satisfies Record<SettingsBackupPreviewVaultReference['status'], string>;
+
+export function settingsBackupVaultReferenceLabel(key: SettingsBackupVaultReferenceKey): string {
+	const ref = SETTINGS_BACKUP_VAULT_REFERENCE_LABELS[key];
+	return t(ref.namespace, ref.key);
+}
+
+export function settingsBackupVaultReferenceStatusLabel(
+	status: SettingsBackupPreviewVaultReference['status'],
+): string {
+	return settingsBackupT(SETTINGS_BACKUP_VAULT_REFERENCE_STATUS_KEYS[status]);
 }
 
 export interface SettingsBackupRestorePreview {
@@ -354,8 +388,8 @@ export class SettingsBackupRestoreModal extends Modal {
 		this.contentEl.createEl('h3', { text: settingsBackupT('settingsBackupVaultReferences') });
 		for (const reference of preview.vaultReferences) {
 			new Setting(this.contentEl)
-				.setName(reference.label)
-				.setDesc(`${reference.path} · ${reference.status}`)
+				.setName(settingsBackupVaultReferenceLabel(reference.key))
+				.setDesc(`${reference.path} · ${settingsBackupVaultReferenceStatusLabel(reference.status)}`)
 				.addDropdown(dropdown => {
 					dropdown.selectEl.dataset.operonSettingsBackupControl = `vault:${reference.key}`;
 					dropdown.addOption('', settingsBackupT('settingsBackupChooseDecision'))

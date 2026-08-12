@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 2983,
-  "keyFingerprint": "a6ad84d177a6b580954e9b535e8c7fa4d1656c88a2328ee6ce9d5164ea2b979f",
+  "keyCount": 2988,
+  "keyFingerprint": "ff9dfc8589bf9a71189b9710ca8d4e312c89f4c657925b72b1706451e8ef145a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2087,6 +2087,11 @@
       "settingsBackupUnavailable": "Backup and restore is not available until Operon finishes loading.",
       "settingsBackupUndo": "Undo restore",
       "settingsBackupUnsupportedFile": "Choose a valid Operon JSON backup.",
+      "settingsBackupVaultReferenceStatusMissing": "Not found in this vault",
+      "settingsBackupVaultReferenceStatusUnchecked": "Vault-specific value",
+      "settingsBackupVaultReferenceStatusValid": "Available in this vault",
+      "settingsBackupVaultReferenceStatusWrongType": "Different item type in this vault",
+      "settingsBackupVaultReferenceTaskFinderProject": "Selected Task Finder project",
       "settingsBackupVaultReferences": "Vault references",
       "settingsIconPickerCount": "{{total}} iconos",
       "settingsIconPickerCountPartial": "{{visible}} / {{total}} iconos",
@@ -3028,5 +3033,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "ed19f7778919ff46f646017d1672a8844367f6cb0be46b46ec240182cef28faa"
+  "sourceVersion": "db476672717d13a8fd8df137952522b7cbb082840e35ae137d73b2f2d1e5c2a5"
 }

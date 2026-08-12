@@ -13,6 +13,7 @@ import {
 	buildOperonSettingsBackupRecoveryCapabilitiesV1,
 	SETTINGS_BACKUP_RUNTIME_REFRESH_STEPS,
 } from '../src/core/settings-backup-recovery-state';
+import { SETTINGS_BACKUP_VAULT_REFERENCE_KEYS } from '../src/core/settings-backup-compatibility';
 
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
 
@@ -154,6 +155,40 @@ test('picker maps provider failures to safe copy and Resume renders its specific
 	assert.doesNotMatch(source, /new Notice\(error instanceof Error \? error\.message/u);
 	assert.match(source, /this\.renderRecoveryUnavailable\(\)/u);
 	assert.match(source, /text: settingsBackupT\('settingsBackupRecoveryUnavailable'\)/u);
+});
+
+test('vault-reference preview labels cover every supported key and localize every status', () => {
+	const source = readFileSync('src/ui/settings-backup-ui.ts', 'utf8');
+	const labels = source.slice(
+		source.indexOf('const SETTINGS_BACKUP_VAULT_REFERENCE_LABELS'),
+		source.indexOf('const SETTINGS_BACKUP_VAULT_REFERENCE_STATUS_KEYS'),
+	);
+	for (const key of SETTINGS_BACKUP_VAULT_REFERENCE_KEYS) {
+		assert.match(labels, new RegExp(`\\b${key}:`, 'u'), `Missing localized vault-reference label for ${key}`);
+	}
+	assert.match(source, /satisfies Record<SettingsBackupVaultReferenceKey/u);
+	assert.match(source, /setName\(settingsBackupVaultReferenceLabel\(reference\.key\)\)/u);
+	assert.match(source, /settingsBackupVaultReferenceStatusLabel\(reference\.status\)/u);
+	assert.doesNotMatch(source, /\.setName\(reference\.label\)|\$\{reference\.status\}/u);
+
+	const locale = JSON.parse(readFileSync('i18n/locales/en.json', 'utf8')) as {
+		settings: Record<string, string>;
+	};
+	assert.equal(locale.settings.settingsBackupVaultReferenceTaskFinderProject, 'Selected Task Finder project');
+	assert.deepEqual(
+		[
+			locale.settings.settingsBackupVaultReferenceStatusValid,
+			locale.settings.settingsBackupVaultReferenceStatusMissing,
+			locale.settings.settingsBackupVaultReferenceStatusWrongType,
+			locale.settings.settingsBackupVaultReferenceStatusUnchecked,
+		],
+		[
+			'Available in this vault',
+			'Not found in this vault',
+			'Different item type in this vault',
+			'Vault-specific value',
+		],
+	);
 });
 
 test('recovery actions render only from exact capability flags', () => {

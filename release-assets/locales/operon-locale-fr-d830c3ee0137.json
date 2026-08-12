@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 2983,
-  "keyFingerprint": "a6ad84d177a6b580954e9b535e8c7fa4d1656c88a2328ee6ce9d5164ea2b979f",
+  "keyCount": 2988,
+  "keyFingerprint": "ff9dfc8589bf9a71189b9710ca8d4e312c89f4c657925b72b1706451e8ef145a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2087,6 +2087,11 @@
       "settingsBackupUnavailable": "Backup and restore is not available until Operon finishes loading.",
       "settingsBackupUndo": "Undo restore",
       "settingsBackupUnsupportedFile": "Choose a valid Operon JSON backup.",
+      "settingsBackupVaultReferenceStatusMissing": "Not found in this vault",
+      "settingsBackupVaultReferenceStatusUnchecked": "Vault-specific value",
+      "settingsBackupVaultReferenceStatusValid": "Available in this vault",
+      "settingsBackupVaultReferenceStatusWrongType": "Different item type in this vault",
+      "settingsBackupVaultReferenceTaskFinderProject": "Selected Task Finder project",
       "settingsBackupVaultReferences": "Vault references",
       "settingsIconPickerCount": "{{total}} icônes",
       "settingsIconPickerCountPartial": "{{visible}} / {{total}} icônes",
@@ -3028,5 +3033,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "3fdd666d56fea756b08758774b374ab54c37881f8d127509e0a1d6d25567739b"
+  "sourceVersion": "e06ddd21d105be688fe4db84b4e4113286056007a9da1d4e6690f4cb6d76380f"
 }

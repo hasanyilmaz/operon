@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 2983,
-  "keyFingerprint": "a6ad84d177a6b580954e9b535e8c7fa4d1656c88a2328ee6ce9d5164ea2b979f",
+  "keyCount": 2988,
+  "keyFingerprint": "ff9dfc8589bf9a71189b9710ca8d4e312c89f4c657925b72b1706451e8ef145a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2087,6 +2087,11 @@
       "settingsBackupUnavailable": "Backup and restore is not available until Operon finishes loading.",
       "settingsBackupUndo": "Undo restore",
       "settingsBackupUnsupportedFile": "Choose a valid Operon JSON backup.",
+      "settingsBackupVaultReferenceStatusMissing": "Not found in this vault",
+      "settingsBackupVaultReferenceStatusUnchecked": "Vault-specific value",
+      "settingsBackupVaultReferenceStatusValid": "Available in this vault",
+      "settingsBackupVaultReferenceStatusWrongType": "Different item type in this vault",
+      "settingsBackupVaultReferenceTaskFinderProject": "Selected Task Finder project",
       "settingsBackupVaultReferences": "Vault references",
       "settingsIconPickerCount": "{{total}} icone",
       "settingsIconPickerCountPartial": "{{visible}} / {{total}} icone",
@@ -3028,5 +3033,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "577bc3a6621ea6a2bfd10da93b4d3c66578cd5b67fcbcc55130e63568606b96a"
+  "sourceVersion": "728a5f988346371517a5d84f40e4d628860714b860181cf8c85d0ded1a136601"
 }
