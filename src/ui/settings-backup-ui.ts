@@ -1,6 +1,6 @@
 import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../core/i18n';
-import type { SettingsBackupVaultReferenceKey } from '../core/settings-backup-compatibility';
+import type { SettingsBackupProfileGroupId, SettingsBackupVaultReferenceKey } from '../core/settings-backup-compatibility';
 import type {
 	OperonSettingsBackupRecoveryCapabilitiesV1,
 	OperonSettingsBackupRuntimeRefreshStep,
@@ -40,12 +40,12 @@ export interface SettingsBackupSelectedFile {
 }
 
 export interface SettingsBackupPreviewDecisions {
-	selectedGroups?: readonly string[];
+	selectedGroups?: readonly SettingsBackupProfileGroupId[];
 	vaultReferences?: Readonly<Record<string, SettingsBackupVaultReferenceDecision>>;
 }
 
 export interface SettingsBackupPreviewGroup {
-	id: string;
+	id: SettingsBackupProfileGroupId;
 	label: string;
 	status: 'apply-ready' | 'not-included' | 'skipped-unsupported' | 'blocked' | 'decision-required';
 	selected: boolean;
@@ -58,8 +58,31 @@ export interface SettingsBackupPreviewGroup {
 		changed: number;
 		unchanged: number;
 		conflicts: number;
+		unresolved: number;
 	};
 	issues: readonly string[];
+}
+
+const SETTINGS_BACKUP_GROUP_LABELS = {
+	general: { namespace: 'settings', key: 'tabGeneral' },
+	pipelines: { namespace: 'settings', key: 'tabPipelines' },
+	priorities: { namespace: 'settings', key: 'tabPriority' },
+	'system-key-mappings': { namespace: 'settings', key: 'tabKeyMappings' },
+	'custom-keys': { namespace: 'settings', key: 'tabCustomKeys' },
+	filters: { namespace: 'filterSets', key: 'tabLabel' },
+	calendar: { namespace: 'settings', key: 'tabCalendar' },
+	kanban: { namespace: 'settings', key: 'tabKanban' },
+	'preset-favorites': { namespace: 'settings', key: 'settingsBackupGroupPresetFavorites' },
+	'table-global': { namespace: 'settings', key: 'settingsBackupGroupTablePreferences' },
+	'external-calendars': { namespace: 'calendar', key: 'externalCalendarsSection' },
+} as const satisfies Record<SettingsBackupProfileGroupId, {
+	namespace: 'settings' | 'filterSets' | 'calendar';
+	key: string;
+}>;
+
+export function settingsBackupGroupLabel(group: SettingsBackupProfileGroupId): string {
+	const ref = SETTINGS_BACKUP_GROUP_LABELS[group];
+	return t(ref.namespace, ref.key);
 }
 
 export interface SettingsBackupPreviewVaultReference {
@@ -146,6 +169,12 @@ export interface SettingsBackupUiIntegration {
 
 const settingsBackupFilePickerRegistry = createSettingsBackupFilePickerRegistry<Document>();
 
+interface SettingsBackupDecisionViewport {
+	controlId: string;
+	scrollTop: number;
+	anchorOffset: number | null;
+}
+
 export async function chooseSettingsBackupFile(ownerDocument: Document): Promise<SettingsBackupSelectedFile | null> {
 	const input = ownerDocument.win.createEl('input');
 	input.type = 'file';
@@ -221,8 +250,9 @@ export class SettingsBackupRestoreModal extends Modal {
 	private preview: SettingsBackupRestorePreview | null = null;
 	private requestId = 0;
 	private running = false;
+	private previewRefreshing = false;
 	private acknowledged = false;
-	private pendingFocusId: string | null = null;
+	private pendingDecisionViewport: SettingsBackupDecisionViewport | null = null;
 
 	constructor(app: App, integration: SettingsBackupUiIntegration, file: SettingsBackupSelectedFile | null) {
 		super(app);
@@ -248,13 +278,18 @@ export class SettingsBackupRestoreModal extends Modal {
 
 	onClose(): void {
 		this.requestId += 1;
+		this.pendingDecisionViewport = null;
 		this.contentEl.empty();
 	}
 
 	private async refreshPreview(): Promise<void> {
 		if (!this.file) return;
 		const requestId = ++this.requestId;
-		this.renderLoading();
+		this.previewRefreshing = true;
+		const viewport = this.pendingDecisionViewport;
+		this.pendingDecisionViewport = null;
+		if (viewport) this.renderDecisionLoading();
+		else this.renderLoading();
 		try {
 			const preview = await this.integration.preflightRestore(this.file, this.decisions);
 			if (requestId !== this.requestId) return;
@@ -264,9 +299,11 @@ export class SettingsBackupRestoreModal extends Modal {
 				await this.refreshPreview();
 				return;
 			}
-			this.renderPreview(preview);
+			this.previewRefreshing = false;
+			this.renderPreview(preview, viewport, requestId);
 		} catch (error) {
 			if (requestId !== this.requestId) return;
+			this.previewRefreshing = false;
 			this.renderError(error);
 		}
 	}
@@ -284,7 +321,21 @@ export class SettingsBackupRestoreModal extends Modal {
 
 	private renderLoading(): void {
 		this.contentEl.empty();
+		this.contentEl.removeAttribute('aria-busy');
 		this.contentEl.createEl('p', {
+			text: settingsBackupT('settingsBackupPreparingPreview'),
+			attr: { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
+		});
+	}
+
+	private renderDecisionLoading(): void {
+		this.contentEl.setAttr('aria-busy', 'true');
+		this.contentEl.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>(
+			'input, select, button',
+		).forEach(control => { control.disabled = true; });
+		this.contentEl.querySelector('.operon-settings-backup-decision-loading')?.remove();
+		this.contentEl.createDiv({
+			cls: 'operon-settings-backup-decision-loading',
 			text: settingsBackupT('settingsBackupPreparingPreview'),
 			attr: { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
 		});
@@ -292,6 +343,7 @@ export class SettingsBackupRestoreModal extends Modal {
 
 	private renderRecoveryUnavailable(): void {
 		this.contentEl.empty();
+		this.contentEl.removeAttribute('aria-busy');
 		this.contentEl.createEl('p', {
 			text: settingsBackupT('settingsBackupRecoveryUnavailable'),
 			attr: { role: 'status', 'aria-live': 'polite' },
@@ -306,6 +358,7 @@ export class SettingsBackupRestoreModal extends Modal {
 	private renderError(error: unknown): void {
 		console.debug('Operon: settings backup UI operation failed', error);
 		this.contentEl.empty();
+		this.contentEl.removeAttribute('aria-busy');
 		this.contentEl.createEl('p', {
 			text: settingsBackupT('settingsBackupOperationFailed'),
 			cls: 'operon-settings-error',
@@ -318,8 +371,13 @@ export class SettingsBackupRestoreModal extends Modal {
 		this.focusFirstControl();
 	}
 
-	private renderPreview(preview: SettingsBackupRestorePreview): void {
+	private renderPreview(
+		preview: SettingsBackupRestorePreview,
+		viewport: SettingsBackupDecisionViewport | null = null,
+		requestId = this.requestId,
+	): void {
 		this.contentEl.empty();
+		this.contentEl.removeAttribute('aria-busy');
 		this.contentEl.createEl('p', {
 			text: settingsBackupT(preview.compatibility === 'exact'
 				? 'settingsBackupCompatibilityExact'
@@ -338,9 +396,10 @@ export class SettingsBackupRestoreModal extends Modal {
 			.addToggle(toggle => {
 				toggle.toggleEl.dataset.operonSettingsBackupControl = 'acknowledgement';
 				toggle.setValue(this.acknowledged).onChange(value => {
+					if (this.previewRefreshing) return;
 					this.acknowledged = value;
-					this.pendingFocusId = 'acknowledgement';
-					this.renderPreview(preview);
+					const acknowledgementViewport = this.captureDecisionViewport('acknowledgement');
+					this.renderPreview(preview, acknowledgementViewport, this.requestId);
 				});
 			});
 		const actions = new Setting(this.contentEl);
@@ -352,7 +411,7 @@ export class SettingsBackupRestoreModal extends Modal {
 				.onClick(() => { void this.apply(); });
 			button.buttonEl.dataset.operonSettingsBackupRestore = 'true';
 		});
-		this.restoreDecisionFocus();
+		this.restoreDecisionViewport(viewport, requestId);
 	}
 
 	private renderGroups(preview: SettingsBackupRestorePreview): void {
@@ -365,9 +424,10 @@ export class SettingsBackupRestoreModal extends Modal {
 				changed: String(group.counts.changed),
 				unchanged: String(group.counts.unchanged),
 			});
+			const summary = this.settingsBackupGroupSummary(group);
 			new Setting(this.contentEl)
-				.setName(group.label)
-				.setDesc(group.issues.length > 0 ? `${desc} · ${group.issues.join(' · ')}` : desc)
+				.setName(settingsBackupGroupLabel(group.id))
+				.setDesc(summary ? `${desc} · ${summary}` : desc)
 				.addToggle(toggle => {
 					toggle.toggleEl.dataset.operonSettingsBackupControl = `group:${group.id}`;
 					toggle.setValue(selected.has(group.id))
@@ -381,6 +441,16 @@ export class SettingsBackupRestoreModal extends Modal {
 					});
 				});
 		}
+	}
+
+	private settingsBackupGroupSummary(group: SettingsBackupPreviewGroup): string {
+		if (group.status === 'decision-required') {
+			return settingsBackupT('settingsBackupGroupRequiredChoices', { count: String(group.counts.unresolved) });
+		}
+		if (group.status === 'blocked') return settingsBackupT('settingsBackupGroupUnavailable');
+		if (group.status === 'skipped-unsupported') return settingsBackupT('settingsBackupGroupUnsupportedPreserved');
+		if (group.status === 'not-included') return settingsBackupT('settingsBackupGroupNotIncluded');
+		return '';
 	}
 
 	private renderVaultReferences(preview: SettingsBackupRestorePreview): void {
@@ -409,7 +479,8 @@ export class SettingsBackupRestoreModal extends Modal {
 	}
 
 	private canApply(preview: SettingsBackupRestorePreview): boolean {
-		return !this.running && this.acknowledged && preview.classification === 'ready' && preview.planId !== null;
+		return !this.running && !this.previewRefreshing && this.acknowledged
+			&& preview.classification === 'ready' && preview.planId !== null;
 	}
 
 	private async apply(): Promise<void> {
@@ -543,23 +614,44 @@ export class SettingsBackupRestoreModal extends Modal {
 
 	private beginDecisionChange(controlId: string): void {
 		this.acknowledged = false;
-		this.pendingFocusId = controlId;
+		this.pendingDecisionViewport = this.captureDecisionViewport(controlId);
 	}
 
-	private restoreDecisionFocus(): void {
-		const controlId = this.pendingFocusId;
-		this.pendingFocusId = null;
-		if (!controlId) {
+	private captureDecisionViewport(controlId: string): SettingsBackupDecisionViewport {
+		const target = this.findDecisionControl(controlId);
+		return {
+			controlId,
+			scrollTop: this.contentEl.scrollTop,
+			anchorOffset: target
+				? target.getBoundingClientRect().top - this.contentEl.getBoundingClientRect().top
+				: null,
+		};
+	}
+
+	private findDecisionControl(controlId: string): HTMLElement | null {
+		const controls = this.contentEl.querySelectorAll<HTMLElement>('[data-operon-settings-backup-control]');
+		return Array.from(controls).find(control => control.dataset.operonSettingsBackupControl === controlId) ?? null;
+	}
+
+	private restoreDecisionViewport(viewport: SettingsBackupDecisionViewport | null, requestId: number): void {
+		if (!viewport) {
 			this.focusFirstControl();
 			return;
 		}
-		this.contentEl.ownerDocument.defaultView?.setTimeout(() => {
-			const controls = this.contentEl.querySelectorAll<HTMLElement>('[data-operon-settings-backup-control]');
-			const target = Array.from(controls).find(control => control.dataset.operonSettingsBackupControl === controlId);
+		this.contentEl.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			if (requestId !== this.requestId) return;
+			this.contentEl.scrollTop = viewport.scrollTop;
+			const target = this.findDecisionControl(viewport.controlId);
+			if (target && viewport.anchorOffset !== null) {
+				const currentOffset = target.getBoundingClientRect().top - this.contentEl.getBoundingClientRect().top;
+				this.contentEl.scrollTop += currentOffset - viewport.anchorOffset;
+			}
+			const restoredScrollTop = this.contentEl.scrollTop;
 			(target ?? this.contentEl.querySelector<HTMLElement>(
 				'input:not([disabled]), select:not([disabled]), button:not([disabled])',
-			))?.focus();
-		}, 0);
+			))?.focus({ preventScroll: true });
+			this.contentEl.scrollTop = restoredScrollTop;
+		});
 	}
 
 	private renderRecoveryActions(recovery: SettingsBackupPendingRecovery, degraded = false): void {

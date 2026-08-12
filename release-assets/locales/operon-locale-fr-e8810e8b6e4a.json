@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 2988,
-  "keyFingerprint": "ff9dfc8589bf9a71189b9710ca8d4e312c89f4c657925b72b1706451e8ef145a",
+  "keyCount": 2994,
+  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2047,6 +2047,12 @@
       "settingsBackupExportReady": "Settings backup download started.",
       "settingsBackupExportTitle": "Export backup",
       "settingsBackupGroupCounts": "Added {{added}} · removed {{removed}} · changed {{changed}} · unchanged {{unchanged}}",
+      "settingsBackupGroupNotIncluded": "Not included in this backup",
+      "settingsBackupGroupPresetFavorites": "Preset favorites",
+      "settingsBackupGroupRequiredChoices": "Review {{count}} required choice(s) below",
+      "settingsBackupGroupTablePreferences": "Table preferences",
+      "settingsBackupGroupUnavailable": "This group cannot be restored",
+      "settingsBackupGroupUnsupportedPreserved": "Not supported by this Operon version; current settings will be kept",
       "settingsBackupGroups": "Settings groups",
       "settingsBackupJsonTooLarge": "The JSON backup exceeds the 10 MiB limit.",
       "settingsBackupKeep": "Keep restored settings",
@@ -3033,5 +3039,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "e06ddd21d105be688fe4db84b4e4113286056007a9da1d4e6690f4cb6d76380f"
+  "sourceVersion": "3facc6ab4d81fcc35274ea2933b09934c2d1a2047334ac2547b480c8ffcc5859"
 }

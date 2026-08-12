@@ -2472,7 +2472,7 @@ export default class OperonPlugin extends Plugin {
 				counts: {
 					added: group.counts.added, removed: group.counts.removed,
 					changed: group.counts.changed, unchanged: group.counts.unchanged,
-					conflicts: group.counts.conflicts,
+					conflicts: group.counts.conflicts, unresolved: group.counts.unresolved,
 				},
 				issues: group.issues,
 			})),

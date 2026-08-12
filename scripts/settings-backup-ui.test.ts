@@ -13,7 +13,10 @@ import {
 	buildOperonSettingsBackupRecoveryCapabilitiesV1,
 	SETTINGS_BACKUP_RUNTIME_REFRESH_STEPS,
 } from '../src/core/settings-backup-recovery-state';
-import { SETTINGS_BACKUP_VAULT_REFERENCE_KEYS } from '../src/core/settings-backup-compatibility';
+import {
+	SETTINGS_BACKUP_GROUPS,
+	SETTINGS_BACKUP_VAULT_REFERENCE_KEYS,
+} from '../src/core/settings-backup-compatibility';
 
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
 
@@ -141,12 +144,41 @@ test('initial decisions are re-preflighted and every mutable decision invalidate
 	assert.match(source, /this\.preview\.planId !== preview\.planId\) this\.acknowledged = false/u);
 });
 
-test('asynchronous preview announces loading and restores the changed control focus', () => {
+test('decision rerenders preserve viewport and focus without scroll jumps', () => {
 	const source = readFileSync('src/ui/settings-backup-ui.ts', 'utf8');
 	assert.match(source, /'aria-live': 'polite'/u);
+	assert.match(source, /renderDecisionLoading\(\)/u);
+	assert.match(source, /this\.contentEl\.setAttr\('aria-busy', 'true'\)/u);
+	assert.match(source, /captureDecisionViewport\(controlId/u);
+	assert.match(source, /scrollTop: this\.contentEl\.scrollTop/u);
+	assert.match(source, /requestId !== this\.requestId/u);
 	assert.match(source, /data-operon-settings-backup-control/u);
-	assert.match(source, /restoreDecisionFocus\(\)/u);
-	assert.match(source, /control\.dataset\.operonSettingsBackupControl === controlId/u);
+	assert.match(source, /restoreDecisionViewport\(viewport, requestId\)/u);
+	assert.match(source, /focus\(\{ preventScroll: true \}\)/u);
+	assert.doesNotMatch(source, /restoreDecisionFocus\(\)/u);
+});
+
+test('settings group preview uses exhaustive localized labels and never renders opaque issue ids', () => {
+	const source = readFileSync('src/ui/settings-backup-ui.ts', 'utf8');
+	const labels = source.slice(
+		source.indexOf('const SETTINGS_BACKUP_GROUP_LABELS'),
+		source.indexOf('export function settingsBackupGroupLabel'),
+	);
+	for (const group of SETTINGS_BACKUP_GROUPS) {
+		assert.match(labels, new RegExp(`(?:^|\\s|')${group.id}(?:'?:)`, 'mu'), `Missing localized group label for ${group.id}`);
+	}
+	assert.match(source, /satisfies Record<SettingsBackupProfileGroupId/u);
+	assert.match(source, /setName\(settingsBackupGroupLabel\(group\.id\)\)/u);
+	assert.doesNotMatch(source, /\.setName\(group\.label\)|group\.issues\.join/u);
+
+	const locale = JSON.parse(readFileSync('i18n/locales/en.json', 'utf8')) as {
+		settings: Record<string, string>;
+	};
+	assert.equal(locale.settings.settingsBackupGroupPresetFavorites, 'Preset favorites');
+	assert.equal(locale.settings.settingsBackupGroupTablePreferences, 'Table preferences');
+	assert.match(source, /group\.counts\.unresolved/u);
+	assert.match(source, /!this\.previewRefreshing/u);
+	assert.match(source, /control\.disabled = true/u);
 });
 
 test('picker maps provider failures to safe copy and Resume renders its specific unavailable state', () => {
