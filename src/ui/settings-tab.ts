@@ -748,6 +748,7 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 ]);
 
 const SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS: Partial<Record<OperonSettingsTabId, string>> = {
+	coreBackupRestore: 'DOCS-134 Backup and restore settings',
 	corePipelines: 'DOCS-037 Pipelines and statuses',
 	corePriority: 'DOCS-038 Task priorities',
 	tasksInlineTasks: 'DOCS-011 Inline tasks',

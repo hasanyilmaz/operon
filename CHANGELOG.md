@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Backup & Restore** in Core Settings. Operon can download portable JSON settings backups, preview compatible changes before restoring them, require explicit vault-reference decisions, offer receipt-bound session recovery, and reset portable settings to current defaults without deleting vault content or `.table` files.
+- Added the **Back up and restore settings** guide and its in-Settings documentation shortcut.
+
 ### Validation
 
 ## [3.2.1] - 2026-08-09

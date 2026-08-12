@@ -118,6 +118,7 @@ test('Settings tab exports portable JSON without transient inclusion options', (
 			> source.indexOf("{ id: 'coreCustomKeys', groupId: 'core'"),
 		'Backup & Restore must be the final Core settings page after Custom Keys.',
 	);
+	assert.match(source, /coreBackupRestore: 'DOCS-134 Backup and restore settings'/u);
 	assert.doesNotMatch(source, /includeTablePresetFiles|settingsBackupIncludeTables/u);
 });
 
