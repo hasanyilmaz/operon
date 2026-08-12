@@ -29766,6 +29766,15 @@ body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 	[data-type="operon-table-view"],
 	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar.has-favorite-presets {
+	grid-template-areas:
+		'end'
+		'center';
+}
+
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
 ) > .view-content.operon-table-view .operon-table-toolbar-end {
 	justify-content: flex-start;
 	width: 100%;
@@ -29789,10 +29798,6 @@ body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 	[data-type="operon-table-view"],
 	[data-type="operon-table-file-view"]
-) > .view-content.operon-table-view .operon-table-toolbar-center,
-body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
-	[data-type="operon-table-view"],
-	[data-type="operon-table-file-view"]
 ) > .view-content.operon-table-view .operon-table-group-sort-button,
 body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 	[data-type="operon-table-view"],
@@ -29803,6 +29808,15 @@ body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 	[data-type="operon-table-file-view"]
 ) > .view-content.operon-table-view .operon-table-export-button {
 	display: none;
+}
+
+body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+	[data-type="operon-table-view"],
+	[data-type="operon-table-file-view"]
+) > .view-content.operon-table-view .operon-table-toolbar-center {
+	width: 100%;
+	justify-content: center;
+	flex-wrap: wrap;
 }
 
 /* Keep mobile Table leaves compact without relying on hover-only controls. */
@@ -29869,6 +29883,10 @@ body.is-mobile .workspace-leaf-content:is(
 	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 		[data-type="operon-table-view"],
 		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar-center,
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
 	) > .view-content.operon-table-view .operon-table-toolbar-end > * {
 		transition:
 			height 110ms ease-out,
@@ -29880,6 +29898,13 @@ body.is-mobile .workspace-leaf-content:is(
 			background-color 110ms ease-out,
 			border-color 120ms ease,
 			color 120ms ease;
+	}
+
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar-center > * {
+		transition: opacity 90ms ease-out;
 	}
 
 	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
@@ -29912,7 +29937,19 @@ body.is-mobile .workspace-leaf-content:is(
 	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 		[data-type="operon-table-view"],
 		[data-type="operon-table-file-view"]
-	) > .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-end > * {
+	) > .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-center {
+		height: 0;
+		min-height: 0;
+		max-height: 0;
+		overflow: hidden;
+		padding-block: 0;
+		margin-block: 0;
+	}
+
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) :is(.operon-table-toolbar-end, .operon-table-toolbar-center) > * {
 		opacity: 0;
 	}
 }
@@ -29929,7 +29966,18 @@ body.is-mobile .workspace-leaf-content:is(
 	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
 		[data-type="operon-table-view"],
 		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar-center,
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
 	) > .view-content.operon-table-view .operon-table-toolbar-end > * {
+		transition-duration: 0ms;
+	}
+
+	body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(
+		[data-type="operon-table-view"],
+		[data-type="operon-table-file-view"]
+	) > .view-content.operon-table-view .operon-table-toolbar-center > * {
 		transition-duration: 0ms;
 	}
 }

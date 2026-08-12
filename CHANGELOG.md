@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved **Parent ID cells** so empty values retain the parent picker, assigned parents open their Task Editor on click, and Command-click on macOS or Ctrl-click elsewhere opens the parent task source in a new tab; hover tooltips now explain the platform-specific shortcut.
 - Standardized **Duration, Total Duration, Estimate, and Total Estimate cells** on the same neutral border and glow treatment used by other structured Table values.
 - Improved **Table hover and focus feedback** with consistent bordered-control glow, desktop row-wide value highlighting without opening sibling tooltips, individual 1 px glow around detailed progress segments, and subtler 1 px active-row rails.
-- Improved compact navigation surfaces: **Table toolbars in desktop sidebars** collapse to a hover or focus rail, Calendar and Filter sidebar toolbars use the same behavior, and mobile Tables retain a smaller always-accessible toolbar set.
+- Improved compact navigation surfaces: **Table toolbars in desktop sidebars** reveal starred preset shortcuts in a wrapping second row together with the hover or focus rail, Calendar and Filter sidebar toolbars use the same behavior, and mobile Tables retain a smaller always-accessible toolbar set.
 - Improved the Table preset Settings tooltip so it includes the **selected preset name**.
 
 ### Fixed

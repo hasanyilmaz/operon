@@ -1412,7 +1412,12 @@ function checkCssScorecard() {
 	assertIncludes(
 		'styles.css',
 		'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-toolbar {\n\tgrid-template-columns: minmax(0, 1fr);\n\tgrid-template-areas: \'end\';\n\talign-items: center;\n}',
-		'desktop sidebar Table leaves must keep only the end toolbar region',
+		'desktop sidebar Table leaves must keep a compact first toolbar row',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar.has-favorite-presets {\n\tgrid-template-areas:\n\t\t\'end\'\n\t\t\'center\';\n}',
+		'desktop sidebar Table leaves must place favorite presets in a second toolbar row only when present',
 	);
 	assertIncludes(
 		'styles.css',
@@ -1421,8 +1426,8 @@ function checkCssScorecard() {
 	);
 	assertIncludes(
 		'styles.css',
-		') > .view-content.operon-table-view .operon-table-toolbar-center,\nbody:not(.is-mobile) .mod-sidedock',
-		'desktop sidebar Table leaves must hide the favorite preset region only inside sidedocks',
+		') > .view-content.operon-table-view .operon-table-toolbar-center {\n\twidth: 100%;\n\tjustify-content: center;\n\tflex-wrap: wrap;\n}',
+		'desktop sidebar Table favorite presets must wrap within their own full-width second row',
 	);
 	assertIncludes(
 		'styles.css',
@@ -1499,6 +1504,11 @@ function checkCssScorecard() {
 		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-end {\n\t\tbox-sizing: border-box;\n\t\theight: 4px;\n\t\tmin-height: 4px;\n\t\tmax-height: 4px;',
 		'sidebar Table toolbar compact state must render the 4px inner rail',
 	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-center {\n\t\theight: 0;\n\t\tmin-height: 0;\n\t\tmax-height: 0;\n\t\toverflow: hidden;',
+		'sidebar Table compact rail must hide the favorite-preset second row without removing keyboard focus ownership',
+	);
 	assertCssAtRuleContains(
 		'styles.css',
 		'@media (hover: hover) and (pointer: fine)',
@@ -1509,6 +1519,7 @@ function checkCssScorecard() {
 			'> .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"]))',
 			'height: 16px;',
 			'height: 4px;',
+			'height: 0;',
 			'opacity: 0;',
 		],
 		['body.is-mobile', '.operon-table-embed-toolbar'],
