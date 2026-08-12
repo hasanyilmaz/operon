@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 2930,
-  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
+  "keyCount": 2931,
+  "keyFingerprint": "9d5452098e2824834038933032a57869ad3d1c25565b9276f2c16ef1c040cc60",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2399,6 +2399,7 @@
       "noSubgrouping": "Nessun sottoraggruppamento",
       "openSource": "Apri origine {{source}}",
       "parentSearchMoreResults": "{{count}} altri risultati. Continua a digitare per restringere.",
+      "parentTaskSourceTabHint": "{{modifier}}+clic per aprire l'origine dell'attività principale in una nuova scheda.",
       "pinColumn": "Fissa colonna",
       "presetActionFailed": "Azione della preimpostazione tabella non riuscita.",
       "presetFilter": "Filtro tabella",
@@ -2975,5 +2976,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "25d3df56335b9c05124c11b22d7e849778fda68f61126200472613814ad72bdd"
+  "sourceVersion": "98547c451a3730524988419cc57fcd8ed56e5558219657e98e84529fbfbaf5bc"
 }

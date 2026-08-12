@@ -61,8 +61,9 @@ import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, 
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table-description-cell';
 import { isCompactTaskMarkdownLinkEventTarget } from '../compact-task-markdown-renderer';
-import { isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
+import { getTaskSourceOpenModifierLabel, isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
 import { bindTableParentTaskCellActivation } from './table-parent-task-cell';
+import { formatTableParentTaskTooltipContent } from './table-parent-task-tooltip-content';
 import { createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './mobile-table-viewport';
 import { formatTableValueCacheStats, type TableValueResolver } from './table-value-cache';
@@ -2122,11 +2123,16 @@ export class OperonTableView extends FileView {
 			locationResolver: renderState.locationResolver,
 		});
 		const field = getTableTaskField(column.key, renderState.settings);
-		const content = field?.type === 'datetime'
+		const baseContent = field?.type === 'datetime'
 			? formatTableDetailedDatetimeValue(column.key, value, renderState.settings)
 			: locationVisual?.label
 			?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)
 			?? formatTableIconOnlyTooltipContent(value);
+		const rawParentTaskId = column.key === 'parentTask' ? (task.fieldValues['parentTask'] ?? '').trim() : '';
+		const canOpenParentTask = !!rawParentTaskId && !!renderState.valueResolver.taskLookup.getTask(rawParentTaskId);
+		const content = canOpenParentTask
+			? `${baseContent}\n${formatTableParentTaskTooltipContent(rawParentTaskId, getTaskSourceOpenModifierLabel())}`
+			: baseContent;
 		const fallbackIcon = field?.icon ?? 'text';
 		const isTaskIconColumn = column.key === 'taskIcon';
 		const isTaskTypeColumn = column.key === 'taskType';

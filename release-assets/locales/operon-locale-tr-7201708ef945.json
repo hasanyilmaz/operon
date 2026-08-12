@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 2930,
-  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
+  "keyCount": 2931,
+  "keyFingerprint": "9d5452098e2824834038933032a57869ad3d1c25565b9276f2c16ef1c040cc60",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2399,6 +2399,7 @@
       "noSubgrouping": "Alt gruplama yok",
       "openSource": "Kaynağı aç {{source}}",
       "parentSearchMoreResults": "{{count}} sonuç daha var. Daraltmak için yazmaya devam et.",
+      "parentTaskSourceTabHint": "Parent task kaynağını yeni sekmede açmak için {{modifier}}+tıklayın.",
       "pinColumn": "Sütunu sabitle",
       "presetActionFailed": "Tablo preset işlemi başarısız oldu.",
       "presetFilter": "Tablo filtresi",
@@ -2975,5 +2976,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "f55ad5527277d5d38a45e29100afd773cd0fd95d49e33ab51809ac5d48db0267"
+  "sourceVersion": "de32a600a9ded70c07d424de3f4b4b7098645c6ad5f29a5b3175bdc64e188910"
 }

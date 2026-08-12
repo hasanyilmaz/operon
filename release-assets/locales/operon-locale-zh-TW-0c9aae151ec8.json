@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 2930,
-  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
+  "keyCount": 2931,
+  "keyFingerprint": "9d5452098e2824834038933032a57869ad3d1c25565b9276f2c16ef1c040cc60",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2399,6 +2399,7 @@
       "noSubgrouping": "不子分組",
       "openSource": "開啟來源 {{source}}",
       "parentSearchMoreResults": "還有 {{count}} 個結果。繼續輸入以縮小範圍。",
+      "parentTaskSourceTabHint": "{{modifier}}+點擊可在新分頁中開啟父任務來源。",
       "pinColumn": "固定欄",
       "presetActionFailed": "表格預設操作失敗。",
       "presetFilter": "表格篩選器",
@@ -2975,5 +2976,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "f24b1590ff1c4dbb75952a3bb952f5aad685872783be05e393f0aceee9e03b82"
+  "sourceVersion": "a64d0cdebd1d32ce2593d5e6263d00467ea7a3b6adf91287c8a1c474ac1f0ee2"
 }

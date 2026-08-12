@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 2930,
-  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
+  "keyCount": 2931,
+  "keyFingerprint": "9d5452098e2824834038933032a57869ad3d1c25565b9276f2c16ef1c040cc60",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2399,6 +2399,7 @@
       "noSubgrouping": "不子分组",
       "openSource": "打开来源 {{source}}",
       "parentSearchMoreResults": "还有 {{count}} 个结果。继续输入以缩小范围。",
+      "parentTaskSourceTabHint": "{{modifier}}+单击可在新标签页中打开父任务源。",
       "pinColumn": "固定列",
       "presetActionFailed": "表格预设操作失败。",
       "presetFilter": "表格筛选器",
@@ -2975,5 +2976,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "6d8c02128ab3e595a6192bfc94020b52682f2e15192cb3a0882fdfca0865fed7"
+  "sourceVersion": "53968c7129a9eab3654373ec6099889c2a233941f8a85c7aedf237f8aa4c6093"
 }

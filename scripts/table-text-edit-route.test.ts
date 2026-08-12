@@ -9,6 +9,7 @@ import {
 	resolveTableTextEditRoute,
 } from '../src/ui/table/table-text-edit-route';
 import { bindTableParentTaskCellActivation } from '../src/ui/table/table-parent-task-cell';
+import { formatTableParentTaskTooltipContent } from '../src/ui/table/table-parent-task-tooltip-content';
 
 let assertions = 0;
 
@@ -142,18 +143,21 @@ async function run(): Promise<void> {
 	const ignoredHarness = bindParentHarness();
 	ignoredHarness.cell.dispatch('pointerdown', { button: 2 });
 	deepEqual(ignoredHarness.calls, []);
+	ok(formatTableParentTaskTooltipContent('parent-raw-id', '⌘').includes('parent-raw-id\n⌘+Click'));
+	ok(formatTableParentTaskTooltipContent('parent-raw-id', 'Ctrl').includes('parent-raw-id\nCtrl+Click'));
 
 	deepEqual(buildTableFilePropertyTextMutation(' Alpha '), { kind: 'set', value: 'Alpha' });
 	deepEqual(buildTableFilePropertyTextMutation(''), { kind: 'delete' });
 	deepEqual(buildTableFilePropertyTextMutation('  \n '), { kind: 'delete' });
 
 	const rootDir = process.cwd();
-	const [workspaceSource, embedSource, editorSource, popoverSource, pickerDispatchSource] = await Promise.all([
+	const [workspaceSource, embedSource, editorSource, popoverSource, pickerDispatchSource, cellChipSource] = await Promise.all([
 		readFile(path.join(rootDir, 'src/ui/table/operon-table-view.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/embed-table-processor.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/table/table-file-property-editor.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/text-field-popover.ts'), 'utf8'),
 		readFile(path.join(rootDir, 'src/ui/task-field-picker-dispatch.ts'), 'utf8'),
+		readFile(path.join(rootDir, 'src/ui/table/table-cell-chip.ts'), 'utf8'),
 	]);
 
 	for (const source of [workspaceSource, embedSource]) {
@@ -165,6 +169,8 @@ async function run(): Promise<void> {
 		ok(source.includes("key === 'parentTask' ? (task.fieldValues['parentTask'] ?? '').trim() : ''"));
 		ok(source.includes('isSourceModifier: isTaskSourceOpenModifierClick'));
 		ok(source.includes('bindTableParentTaskCellActivation(cell, {'));
+		ok(source.includes('!!renderState.valueResolver.taskLookup.getTask(rawParentTaskId)'));
+		ok(source.includes('formatTableParentTaskTooltipContent(rawParentTaskId, getTaskSourceOpenModifierLabel())'));
 		ok(source.includes("focusable: !editable && column.key !== 'parentTask'"));
 		ok(!source.includes("cell.setAttribute('role', 'button')"));
 	}
@@ -172,6 +178,8 @@ async function run(): Promise<void> {
 	ok(workspaceSource.includes('onOpenSource: id => this.callbacks.onOpenTaskSource?.(id)'));
 	ok(embedSource.includes('onOpenEditor: deps.openTaskEditor'));
 	ok(embedSource.includes('onOpenSource: deps.openTaskSource'));
+	ok(cellChipSource.includes('bindTableParentTaskTooltip('));
+	ok(cellChipSource.includes('options.taskLookup?.getTask(parentTaskId)'));
 	ok(workspaceSource.includes('this.openInlineTextPopover(cell, task, key, value, fieldLabel, cellKey, key, true)'));
 	ok(embedSource.includes('openEmbedTableInlineTextPopover(activeInstance, deps, cell, task, key, value, fieldLabel, cellKey, key, true)'));
 	ok(workspaceSource.includes('? renderState.getContextFilePropertyCandidates(column.key)'));

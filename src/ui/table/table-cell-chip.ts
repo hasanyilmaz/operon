@@ -22,6 +22,7 @@ import {
 import type { TableTaskLookup } from './table-value-adapter';
 import { formatTableDetailedDatetimeValue } from './table-datetime-format';
 import { isTableDurationLikeTaskField } from './table-display';
+import { bindTableParentTaskTooltip } from './table-parent-task-tooltip';
 
 export { formatTableDetailedDatetimeValue } from './table-datetime-format';
 
@@ -168,6 +169,15 @@ export function renderTableCellChipContent(
 	}
 	if (key !== 'taskIcon') {
 		chip.setText(displayValue);
+		const parentTaskId = key === 'parentTask' ? (options.accentValue ?? value).trim() : '';
+		if (parentTaskId && options.taskLookup?.getTask(parentTaskId)) {
+			bindTableParentTaskTooltip(
+				chip,
+				displayValue,
+				parentTaskId,
+				resolveTableCellChipAccent(key, value, options),
+			);
+		}
 		return;
 	}
 	renderTableTaskIconChipContent(chip, value);

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 2930,
-  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
+  "keyCount": 2931,
+  "keyFingerprint": "9d5452098e2824834038933032a57869ad3d1c25565b9276f2c16ef1c040cc60",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2399,6 +2399,7 @@
       "noSubgrouping": "Sin subagrupación",
       "openSource": "Abrir fuente {{source}}",
       "parentSearchMoreResults": "{{count}} resultados más. Sigue escribiendo para acotar.",
+      "parentTaskSourceTabHint": "{{modifier}}+clic abre el origen de la tarea principal en una pestaña nueva.",
       "pinColumn": "Fijar columna",
       "presetActionFailed": "Falló la acción del preset de tabla.",
       "presetFilter": "Filtro de tabla",
@@ -2975,5 +2976,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "8bf852f1b3ddffdafc32e07c97993ac820b318ee43024adf81419c4cedf2c1d1"
+  "sourceVersion": "30f0f76f749056c9971885fdc534a1796f9c810f16104232d121a7a0c70f823f"
 }

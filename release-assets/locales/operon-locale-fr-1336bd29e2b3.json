@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 2930,
-  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
+  "keyCount": 2931,
+  "keyFingerprint": "9d5452098e2824834038933032a57869ad3d1c25565b9276f2c16ef1c040cc60",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2399,6 +2399,7 @@
       "noSubgrouping": "Aucun sous-regroupement",
       "openSource": "Ouvrir la source {{source}}",
       "parentSearchMoreResults": "{{count}} résultats de plus. Continuez à saisir pour affiner.",
+      "parentTaskSourceTabHint": "{{modifier}}+clic ouvre la source de la tâche parente dans un nouvel onglet.",
       "pinColumn": "Épingler la colonne",
       "presetActionFailed": "Échec de l’action du préréglage de tableau.",
       "presetFilter": "Filtre de tableau",
@@ -2975,5 +2976,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "68f9f17b16ff5ed515f528a2e965f01445e8f762652e1eb404d476845af3bb70"
+  "sourceVersion": "480fc5d4f0365c17cdee4d20a55a995412db8a9bd457c16f55b080f5c5413d22"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 2930,
-  "keyFingerprint": "c8111b2c83b0133b66d707a0e95ba88bf71213970329f731cd8ba7c7a85c9937",
+  "keyCount": 2931,
+  "keyFingerprint": "9d5452098e2824834038933032a57869ad3d1c25565b9276f2c16ef1c040cc60",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2399,6 +2399,7 @@
       "noSubgrouping": "サブグループ化なし",
       "openSource": "ソースを開く {{source}}",
       "parentSearchMoreResults": "さらに {{count}} 件あります。入力を続けて絞り込んでください。",
+      "parentTaskSourceTabHint": "{{modifier}}+クリックで親タスクのソースを新しいタブに開きます。",
       "pinColumn": "列を固定",
       "presetActionFailed": "テーブルプリセット操作に失敗しました。",
       "presetFilter": "テーブルフィルター",
@@ -2975,5 +2976,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "e777dddb9699c3fa3fb000b398726938f97c9cad3b99eef0b047b4d653774b9c"
+  "sourceVersion": "db85637d2c37e4209466c77b0d528418e46faff72a5fe5ed6d3a0fd0844c43c7"
 }

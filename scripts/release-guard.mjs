@@ -1107,6 +1107,11 @@ function checkCssScorecard() {
 		'export function resolveTableParentTaskActivation(',
 		'Parent ID must retain its dedicated picker, editor, and source activation route',
 	);
+	assertIncludes(
+		'src/ui/table/table-parent-task-tooltip-content.ts',
+		"t('table', 'parentTaskSourceTabHint', {",
+		'Parent ID tooltips must explain the platform-specific source new-tab modifier',
+	);
 	for (const parentCellSurface of ['src/ui/table/operon-table-view.ts', 'src/ui/embed-table-processor.ts']) {
 		assertIncludes(
 			parentCellSurface,

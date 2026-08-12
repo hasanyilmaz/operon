@@ -2760,6 +2760,7 @@
 	"table": {
 		"title": "Operon Table",
 		"externalLinkWebViewerHint": "{{modifier}}+clic ouvre le lien dans un nouvel onglet Web Viewer.",
+		"parentTaskSourceTabHint": "{{modifier}}+clic ouvre la source de la tâche parente dans un nouvel onglet.",
 		"fileLoading": "Chargement de la Table...",
 		"fileOpenFailed": "Operon n’a pas pu ouvrir ce fichier Table.",
 		"fileNotAttached": "Aucun fichier Table n’est actuellement associé à cette vue.",
