@@ -26354,6 +26354,44 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	margin-left: auto;
 }
 
+.operon-settings-backup-runtime-failures {
+	margin: 8px 0 16px;
+	padding-inline-start: 24px;
+}
+
+.operon-settings-backup-recovery-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-top: 20px;
+}
+
+.operon-settings-backup-recovery-primary-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-left: auto;
+}
+
+@media (max-width: 560px) {
+	.operon-settings-backup-recovery-actions,
+	.operon-settings-backup-recovery-primary-actions {
+		align-items: stretch;
+		width: 100%;
+	}
+
+	.operon-settings-backup-recovery-actions {
+		flex-direction: column;
+	}
+
+	.operon-settings-backup-recovery-primary-actions {
+		flex-direction: column;
+		margin-left: 0;
+	}
+}
+
 .operon-settings-primary-button {
 	display: inline-flex;
 	align-items: center;

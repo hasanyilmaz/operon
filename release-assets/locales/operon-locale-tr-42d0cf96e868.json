@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 2973,
-  "keyFingerprint": "ef4949d62166fa6ce27979b74208124575113facb14b3301c2c3b19f70303888",
+  "keyCount": 2983,
+  "keyFingerprint": "a6ad84d177a6b580954e9b535e8c7fa4d1656c88a2328ee6ce9d5164ea2b979f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2074,6 +2074,16 @@
       "settingsBackupRetry": "Retry runtime refresh",
       "settingsBackupRollbackAcknowledge": "I understand the recovery limits",
       "settingsBackupRollbackWarning": "There is no crash-safe disk rollback. Undo is conditional and available only in this plugin session.",
+      "settingsBackupRuntimeDegradedBody": "Your settings were restored, but some Operon features could not refresh.",
+      "settingsBackupRuntimeDegradedTitle": "Settings restored — refresh incomplete",
+      "settingsBackupRuntimeFailedStepsTitle": "Couldn’t refresh",
+      "settingsBackupRuntimeRecoveryInstruction": "Retry the refresh, keep the restored settings, or undo the restore during this Obsidian session.",
+      "settingsBackupRuntimeStepAgentRuntime": "Agent Runtime",
+      "settingsBackupRuntimeStepExternalCalendars": "External Calendars",
+      "settingsBackupRuntimeStepLocale": "Language",
+      "settingsBackupRuntimeStepMobileNotifications": "Mobile notifications",
+      "settingsBackupRuntimeStepReindex": "Search and task index",
+      "settingsBackupRuntimeStepStandardRefresh": "Interface and views",
       "settingsBackupUnavailable": "Backup and restore is not available until Operon finishes loading.",
       "settingsBackupUndo": "Undo restore",
       "settingsBackupUnsupportedFile": "Choose a valid Operon JSON backup.",
@@ -3018,5 +3028,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "3440fa39bb77330b996034d420ef7535da2dfbe5acaa5fcb117d051f8cc7abd1"
+  "sourceVersion": "7c6ec3211aa1cf294694927ebf0322fc0291e51beb5326b2cd51eb5e4bc810f0"
 }

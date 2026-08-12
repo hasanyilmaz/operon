@@ -1,6 +1,9 @@
 import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../core/i18n';
-import type { OperonSettingsBackupRecoveryCapabilitiesV1 } from '../core/settings-backup-recovery-state';
+import type {
+	OperonSettingsBackupRecoveryCapabilitiesV1,
+	OperonSettingsBackupRuntimeRefreshStep,
+} from '../core/settings-backup-recovery-state';
 import {
 	createSettingsBackupFilePickerRegistry,
 	createSettingsBackupFilePickerSettlement,
@@ -203,9 +206,7 @@ export class SettingsBackupRestoreModal extends Modal {
 		}
 		const recovery = this.integration.getPendingRecovery();
 		if (recovery) {
-			this.contentEl.empty();
-			this.renderRecoveryActions(recovery);
-			this.focusFirstControl();
+			this.renderPendingRecovery(recovery);
 			return;
 		}
 		this.renderRecoveryUnavailable();
@@ -409,7 +410,10 @@ export class SettingsBackupRestoreModal extends Modal {
 		this.contentEl.createEl('p', { text: result.message });
 		if (result.recoveryRequired || result.undoTokenId !== null) {
 			const recovery = this.integration.getPendingRecovery();
-			if (recovery) this.renderRecoveryActions(recovery);
+			if (recovery) {
+				this.renderPendingRecovery(recovery);
+				return;
+			}
 		}
 		new Setting(this.contentEl).addButton(button => button
 			.setButtonText(t('buttons', 'close'))
@@ -447,6 +451,56 @@ export class SettingsBackupRestoreModal extends Modal {
 		}
 	}
 
+	private renderPendingRecovery(recovery: SettingsBackupPendingRecovery): void {
+		if (recovery.displayKind === 'conditional-undo') {
+			this.renderCommittedRestore();
+			return;
+		}
+		if (recovery.displayKind === 'runtime-refresh-incomplete') {
+			this.renderRuntimeRefreshIncomplete(recovery);
+			return;
+		}
+		this.contentEl.empty();
+		this.titleEl.setText(settingsBackupT('settingsBackupRecoveryTitle'));
+		this.contentEl.createEl('p', {
+			text: recovery.message,
+			attr: { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
+		});
+		this.renderRecoveryActions(recovery);
+		this.focusFirstControl();
+	}
+
+	private renderRuntimeRefreshIncomplete(recovery: SettingsBackupPendingRecovery): void {
+		this.contentEl.empty();
+		this.titleEl.setText(settingsBackupT('settingsBackupRuntimeDegradedTitle'));
+		const status = this.contentEl.createDiv({
+			cls: 'operon-settings-backup-runtime-status',
+			attr: { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
+		});
+		status.createEl('p', { text: settingsBackupT('settingsBackupRuntimeDegradedBody') });
+		if (recovery.failedRuntimeSteps?.length) {
+			status.createEl('h3', { text: settingsBackupT('settingsBackupRuntimeFailedStepsTitle') });
+			const list = status.createEl('ul', { cls: 'operon-settings-backup-runtime-failures' });
+			for (const step of recovery.failedRuntimeSteps) {
+				list.createEl('li', { text: this.runtimeRefreshStepLabel(step) });
+			}
+		}
+		status.createEl('p', { text: settingsBackupT('settingsBackupRuntimeRecoveryInstruction') });
+		this.renderRecoveryActions(recovery, true);
+	}
+
+	private runtimeRefreshStepLabel(step: OperonSettingsBackupRuntimeRefreshStep): string {
+		const keys: Record<OperonSettingsBackupRuntimeRefreshStep, string> = {
+			'standard-refresh': 'settingsBackupRuntimeStepStandardRefresh',
+			locale: 'settingsBackupRuntimeStepLocale',
+			'agent-runtime': 'settingsBackupRuntimeStepAgentRuntime',
+			reindex: 'settingsBackupRuntimeStepReindex',
+			'external-calendars': 'settingsBackupRuntimeStepExternalCalendars',
+			'mobile-notifications': 'settingsBackupRuntimeStepMobileNotifications',
+		};
+		return settingsBackupT(keys[step]);
+	}
+
 	private focusFirstControl(): void {
 		this.contentEl.ownerDocument.defaultView?.setTimeout(() => {
 			this.contentEl.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled]), button:not([disabled])')?.focus();
@@ -474,21 +528,33 @@ export class SettingsBackupRestoreModal extends Modal {
 		}, 0);
 	}
 
-	private renderRecoveryActions(recovery: SettingsBackupPendingRecovery): void {
-		this.contentEl.createEl('h3', { text: settingsBackupT('settingsBackupRecoveryTitle') });
-		this.contentEl.createEl('p', { text: recovery.message });
-		const setting = new Setting(this.contentEl);
-		if (recovery.canKeep) setting.addButton(button => button
-			.setButtonText(settingsBackupT('settingsBackupKeep'))
-			.onClick(() => { void this.resolveRecovery('keep', recovery); }));
-		if (recovery.canRetryRuntimeRefresh) setting.addButton(button => button
-			.setButtonText(settingsBackupT('settingsBackupRetry'))
-			.onClick(() => { void this.resolveRecovery('retry-runtime-refresh', recovery); }));
-		if (recovery.canUndo) setting.addButton(button => {
-			button.setButtonText(settingsBackupT('settingsBackupUndo'))
-				.onClick(() => { void this.resolveRecovery('undo', recovery); });
-			button.buttonEl.addClass('mod-warning');
-		});
+	private renderRecoveryActions(recovery: SettingsBackupPendingRecovery, degraded = false): void {
+		const actions = this.contentEl.createDiv('operon-settings-backup-recovery-actions');
+		if (recovery.canUndo) {
+			const undo = actions.createEl('button', {
+				text: settingsBackupT('settingsBackupUndo'),
+				attr: { type: 'button' },
+			});
+			undo.addClass('mod-warning');
+			undo.addEventListener('click', () => { void this.resolveRecovery('undo', recovery); });
+		}
+		const primaryActions = actions.createDiv('operon-settings-backup-recovery-primary-actions');
+		if (recovery.canKeep) {
+			const keep = primaryActions.createEl('button', {
+				text: settingsBackupT('settingsBackupKeep'),
+				attr: { type: 'button' },
+			});
+			keep.addEventListener('click', () => { void this.resolveRecovery('keep', recovery); });
+		}
+		if (recovery.canRetryRuntimeRefresh) {
+			const retry = primaryActions.createEl('button', {
+				text: settingsBackupT('settingsBackupRetry'),
+				attr: { type: 'button' },
+			});
+			retry.addClass('mod-cta');
+			retry.addEventListener('click', () => { void this.resolveRecovery('retry-runtime-refresh', recovery); });
+			if (degraded) this.contentEl.ownerDocument.defaultView?.setTimeout(() => retry.focus(), 0);
+		}
 	}
 
 	private async resolveRecovery(action: SettingsBackupRecoveryAction, recovery: SettingsBackupPendingRecovery): Promise<void> {

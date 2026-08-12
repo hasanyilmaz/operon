@@ -494,7 +494,9 @@ import type {
 import {
 	buildOperonSettingsBackupRecoveryCapabilitiesV1,
 	settleOperonSettingsBackupRecoveryRetryV1,
+	type OperonSettingsBackupRuntimeRefreshStep,
 } from './src/core/settings-backup-recovery-state';
+export type { OperonSettingsBackupRuntimeRefreshStep } from './src/core/settings-backup-recovery-state';
 import { exportOperonSettingsBackupJsonV1 } from './src/core/settings-backup-export';
 import {
 	createOperonSettingsResetDefaultProfileV1,
@@ -1113,14 +1115,6 @@ interface NativeFileTaskConversionMenuState {
 }
 
 type SettingsReindexReason = 'key-mappings' | 'workflow-semantics' | 'index-semantics';
-
-export type OperonSettingsBackupRuntimeRefreshStep =
-	| 'standard-refresh'
-	| 'locale'
-	| 'agent-runtime'
-	| 'reindex'
-	| 'external-calendars'
-	| 'mobile-notifications';
 
 export interface OperonSettingsBackupRuntimeRefreshResult {
 	status: 'settled' | 'degraded';
@@ -2255,6 +2249,8 @@ export default class OperonPlugin extends Plugin {
 					message: 'Runtime refresh requires a recovery decision.',
 					runtimeRetryRequired: true,
 					undoAvailable: pending.undoTokenId !== null,
+					displayKind: 'runtime-refresh-incomplete',
+					failedRuntimeSteps: pending.failedSteps,
 				});
 				return this.lastSettingsBackupUiRecovery;
 			},
@@ -2556,6 +2552,9 @@ export default class OperonPlugin extends Plugin {
 					: 'A conditional session undo remains available.',
 				runtimeRetryRequired: uiResult.recoveryRequired,
 				undoAvailable: true,
+				displayKind: uiResult.recoveryRequired
+					? 'runtime-refresh-incomplete'
+					: 'conditional-undo',
 			});
 		}
 		return uiResult;
@@ -2622,6 +2621,7 @@ export default class OperonPlugin extends Plugin {
 			message,
 			runtimeRetryRequired: false,
 			undoAvailable: false,
+			displayKind: 'manual-recovery',
 		});
 	}
 

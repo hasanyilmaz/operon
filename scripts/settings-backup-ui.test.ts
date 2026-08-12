@@ -9,7 +9,10 @@ import {
 	SettingsBackupFileAdmissionError,
 	SETTINGS_BACKUP_JSON_MAX_BYTES,
 } from '../src/ui/settings-backup-file-admission';
-import { buildOperonSettingsBackupRecoveryCapabilitiesV1 } from '../src/core/settings-backup-recovery-state';
+import {
+	buildOperonSettingsBackupRecoveryCapabilitiesV1,
+	SETTINGS_BACKUP_RUNTIME_REFRESH_STEPS,
+} from '../src/core/settings-backup-recovery-state';
 
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
 
@@ -176,6 +179,54 @@ test('manual recovery capabilities remain receipt-bound without unsupported acti
 		canRetryRuntimeRefresh: false,
 		canUndo: false,
 	});
+});
+
+test('runtime recovery exposes only ordered, deduplicated safe component identifiers', () => {
+	const recovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+		receiptId: 'receipt-runtime-degraded',
+		undoTokenId: 'undo-runtime-degraded',
+		message: 'Safe fallback copy.',
+		runtimeRetryRequired: true,
+		undoAvailable: true,
+		displayKind: 'runtime-refresh-incomplete',
+		failedRuntimeSteps: ['reindex', 'locale', 'reindex'],
+	});
+	assert.deepEqual(recovery.failedRuntimeSteps, ['locale', 'reindex']);
+	assert.deepEqual(SETTINGS_BACKUP_RUNTIME_REFRESH_STEPS, [
+		'standard-refresh', 'locale', 'agent-runtime', 'reindex', 'external-calendars', 'mobile-notifications',
+	]);
+});
+
+test('runtime-degraded recovery uses one localized status, safe component list and focused Retry action', () => {
+	const source = readFileSync('src/ui/settings-backup-ui.ts', 'utf8');
+	const degradedRenderer = source.slice(
+		source.indexOf('private renderRuntimeRefreshIncomplete'),
+		source.indexOf('private runtimeRefreshStepLabel'),
+	);
+	assert.match(degradedRenderer, /settingsBackupRuntimeDegradedTitle/u);
+	assert.match(degradedRenderer, /settingsBackupRuntimeDegradedBody/u);
+	assert.match(degradedRenderer, /settingsBackupRuntimeFailedStepsTitle/u);
+	assert.match(degradedRenderer, /failedRuntimeSteps/u);
+	assert.match(degradedRenderer, /const status = this\.contentEl\.createDiv[\s\S]*role: 'status', 'aria-live': 'polite'/u);
+	assert.match(degradedRenderer, /status\.createEl\('h3'/u);
+	assert.match(degradedRenderer, /status\.createEl\('ul'/u);
+	assert.match(degradedRenderer, /status\.createEl\('p', \{ text: settingsBackupT\('settingsBackupRuntimeRecoveryInstruction'\)/u);
+	assert.doesNotMatch(degradedRenderer, /recovery\.message|new Setting|buttons', 'close'/u);
+	assert.match(source, /operon-settings-backup-recovery-actions/u);
+	assert.match(source, /operon-settings-backup-recovery-primary-actions/u);
+	assert.match(source, /retry\.addClass\('mod-cta'\)/u);
+	assert.match(source, /setTimeout\(\(\) => retry\.focus\(\), 0\)/u);
+	for (const key of [
+		'settingsBackupRuntimeStepStandardRefresh',
+		'settingsBackupRuntimeStepLocale',
+		'settingsBackupRuntimeStepAgentRuntime',
+		'settingsBackupRuntimeStepReindex',
+		'settingsBackupRuntimeStepExternalCalendars',
+		'settingsBackupRuntimeStepMobileNotifications',
+	]) assert.match(source, new RegExp(key, 'u'));
+	const styles = readFileSync('styles.css', 'utf8');
+	assert.match(styles, /@media \(max-width: 560px\)[\s\S]*operon-settings-backup-recovery-actions \{\s*flex-direction: column;/u);
+	assert.doesNotMatch(styles, /operon-settings-backup-recovery-actions \{\s*flex-direction: column-reverse;/u);
 });
 
 test('commit-state-unknown remains resumable as receipt-owned manual recovery', () => {
