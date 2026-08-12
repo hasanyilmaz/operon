@@ -32367,12 +32367,32 @@ button.operon-table-source-button:focus-visible {
 	);
 }
 
+.operon-table-root .operon-table-parent-task-chip,
+.operon-table-root .operon-table-parent-task-chip:hover,
+.operon-table-root .operon-table-parent-task-chip:focus-visible,
+.operon-table-root .operon-table-cell:hover .operon-table-parent-task-chip,
+.operon-table-root .operon-table-cell:focus-within .operon-table-parent-task-chip {
+	--operon-task-chip-bg: transparent;
+	--operon-task-chip-hover-bg: transparent;
+	background: transparent;
+	background-color: transparent;
+}
+
+.operon-table-root .operon-table-parent-task-cell:focus-visible :is(.operon-table-parent-task-chip, .operon-table-icon-only-button) {
+	border-color: var(--operon-task-chip-hover-border, var(--interactive-accent));
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring, color-mix(in srgb, var(--interactive-accent) 22%, transparent));
+}
+
+.operon-table-parent-task-cell {
+	cursor: pointer;
+}
+
 @media (hover: hover) and (pointer: fine) {
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-description-text:not(.is-empty) {
 		color: var(--text-normal);
 	}
 
-	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox) {
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip) {
 		border-color: var(--operon-task-chip-hover-border);
 		background: var(--operon-task-chip-hover-bg);
 		background-color: var(--operon-task-chip-hover-bg);
@@ -32381,7 +32401,7 @@ button.operon-table-source-button:focus-visible {
 		outline: none;
 	}
 
-	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox),
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip),
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-type-button,
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-duration-session-chip,
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-source-button {
@@ -32402,6 +32422,16 @@ button.operon-table-source-button:focus-visible {
 		--operon-task-chip-hover-bg: transparent;
 		background: transparent;
 		background-color: transparent;
+	}
+
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-parent-task-chip {
+		border-color: var(--operon-task-chip-hover-border);
+		background: transparent;
+		background-color: transparent;
+		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
+		color: var(--text-normal);
+		filter: none;
+		outline: none;
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell.is-editable .operon-table-editable-chip:not(.operon-table-field-accent-chip) {
@@ -32511,6 +32541,7 @@ button.operon-table-source-button:focus-visible {
 	.operon-table-root button.operon-table-task-icon-button:focus-visible,
 	.operon-table-root button.operon-table-task-type-button:focus-visible,
 	.operon-table-root .operon-table-progress-action-shell:focus-within,
+	.operon-table-root .operon-table-parent-task-cell:focus-visible,
 	.operon-table-root .operon-table-date-value-chip:focus-visible,
 	.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-date-value-chip,
 	.operon-table-root .operon-table-list-value-chip:focus-visible,

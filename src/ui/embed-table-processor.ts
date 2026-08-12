@@ -53,6 +53,8 @@ import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, 
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table/table-description-cell';
 import { isCompactTaskMarkdownLinkEventTarget } from './compact-task-markdown-renderer';
+import { isTaskSourceOpenModifierClick } from './task-source-open-modifier';
+import { bindTableParentTaskCellActivation } from './table/table-parent-task-cell';
 import { createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './table/mobile-table-viewport';
 import {
@@ -152,7 +154,7 @@ import {
 } from './table/table-editing';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { showTextFieldPopover } from './text-field-popover';
-import { resolveTableTaskTextEditRoute } from './table/table-text-edit-route';
+import { resolveTableParentTaskActivation, resolveTableTaskTextEditRoute } from './table/table-text-edit-route';
 import { showTaskNotePopover } from './task-note-action';
 import {
 	buildTrackerSessionEditContext,
@@ -2861,7 +2863,9 @@ function renderEmbedTableCell(
 	const editable = isEditableTableTaskFieldKey(column.key, renderState.settings);
 	decorateEmbedTableEditableTaskCell(cell, task, column.key, displayValue, renderState, deps, editable);
 	if (shouldUseEmbedTableIconOnlyColumn(column, renderState.settings)) {
-		renderEmbedTableIconOnlyCell(cell, task, column, displayValue, renderState, deps, { focusable: !editable });
+		renderEmbedTableIconOnlyCell(cell, task, column, displayValue, renderState, deps, {
+			focusable: !editable && column.key !== 'parentTask',
+		});
 		return;
 	}
 	if (isTablePlainTextField(getTableTaskField(column.key, renderState.settings))) {
@@ -3309,23 +3313,40 @@ function decorateEmbedTableEditableTaskCell(
 	deps: EmbedTableDeps,
 	editable: boolean,
 ): void {
-	if (!editable || !canWriteEmbedTable(deps)) {
+	const canEdit = editable && canWriteEmbedTable(deps);
+	const parentTaskId = key === 'parentTask' ? (task.fieldValues['parentTask'] ?? '').trim() : '';
+	const parentExists = !!parentTaskId && !!deps.indexer.getTask(parentTaskId);
+	const canOpenParentTask = resolveTableParentTaskActivation({
+		parentTaskId,
+		parentExists,
+		canOpenEditor: true,
+		canOpenSource: true,
+		sourceModifier: false,
+	}) === 'editor';
+	if (!canEdit && !canOpenParentTask) {
 		cell.setAttribute('aria-readonly', 'true');
 		return;
 	}
 	const instance = findEmbedTableInstance(cell);
 	const cellKey = buildTableEditableCellKey(task, key);
-	cell.addClass('is-editable');
-	cell.dataset.editCellKey = cellKey;
+	if (canEdit) {
+		cell.addClass('is-editable');
+		cell.dataset.editCellKey = cellKey;
+	}
+	if (canOpenParentTask) {
+		cell.addClass('operon-table-parent-task-cell');
+	}
 	cell.tabIndex = 0;
 	const fieldLabel = getTableTaskFieldLabel(key, renderState.settings);
 	const valueLabel = value.trim();
 	const editCellLabel = t('table', 'editCellAria');
 	setAccessibleLabelWithoutTooltip(
 		cell,
-		valueLabel ? `${fieldLabel}: ${valueLabel}. ${editCellLabel}` : `${fieldLabel}. ${editCellLabel}`,
+		canOpenParentTask
+			? `${fieldLabel}: ${valueLabel}. ${t('tooltips', 'openTaskEditor')}`
+			: valueLabel ? `${fieldLabel}: ${valueLabel}. ${editCellLabel}` : `${fieldLabel}. ${editCellLabel}`,
 	);
-	syncEmbedTablePendingCellState(cell, cellKey, instance);
+	if (canEdit) syncEmbedTablePendingCellState(cell, cellKey, instance);
 	const field = getTableTaskField(key, renderState.settings);
 	const editRoute = resolveTableTaskTextEditRoute(field, value);
 	const openPicker = () => {
@@ -3369,6 +3390,20 @@ function decorateEmbedTableEditableTaskCell(
 		activeInstance.keepActivePickerOnRender = true;
 		activeInstance.activePickerClose = closePicker;
 	};
+	if (key === 'parentTask') {
+		bindTableParentTaskCellActivation(cell, {
+			parentTaskId,
+			parentExists,
+			canOpenEditor: true,
+			canOpenSource: true,
+			isSourceModifier: isTaskSourceOpenModifierClick,
+			shouldIgnoreTarget: target => isCompactTaskMarkdownLinkEventTarget(target, cell),
+			onOpenPicker: openPicker,
+			onOpenEditor: deps.openTaskEditor,
+			onOpenSource: deps.openTaskSource,
+		});
+		return;
+	}
 	let suppressPointerClick = false;
 	let suppressPointerClickToken = 0;
 	cell.addEventListener('pointerdown', event => {

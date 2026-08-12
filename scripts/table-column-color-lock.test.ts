@@ -68,6 +68,7 @@ async function run(): Promise<void> {
 	equal(isTableColumnColorModeEligible({ key: 'summary', kind: 'task' }, { key: 'summary', type: 'text' }), false);
 	equal(isTableColumnColorModeEligible({ key: 'status', kind: 'task' }, { key: 'status', type: 'text' }), true);
 	equal(isTableColumnColorModeEligible({ key: 'priority', kind: 'task' }, { key: 'priority', type: 'text' }), true);
+	equal(isTableColumnColorModeEligible({ key: 'parentTask', kind: 'task' }, { key: 'parentTask', type: 'text' }), true);
 	equal(isTableColumnColorModeEligible({ key: 'custom.list', kind: 'task' }, { key: 'custom.list', type: 'list' }), true);
 	equal(isTableColumnColorModeEligible(
 		{ key: 'file.property:summary', kind: 'task' },
@@ -82,6 +83,7 @@ async function run(): Promise<void> {
 	equal(isTablePlainTextField({ key: 'priority', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'taskIcon', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'taskColor', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'parentTask', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'contexts', type: 'list' }), false);
 
 	const preset = createDefaultTablePreset();

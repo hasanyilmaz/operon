@@ -7,7 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added a preset-wide **Table color mode**, allowing eligible visible columns to use Custom colors, No color, Task color, Priority color, or Status color while preserving supported per-column choices.
+- Added contextual **parent task rows** when Tables are grouped by Parent Task, including parent-scoped File Property values and consistent editing and focus behavior across workspace and embedded Tables.
+- Added a **Notes action to Add/Edit Session dialogs**, allowing task notes to be opened and edited directly while adding or adjusting tracked-time sessions across supported task surfaces.
+
+### Improved
+
+- Improved **Table text editing** so filled generic text and File Property text cells open directly in the compact Text pop-over, while empty values retain their existing picker and candidate flow; clearing a File Property text value removes that property.
+- Improved **Table list values** with readable wikilink labels, complete user-facing tooltips, bordered compact icons, stable ellipsis behavior, and unclipped detailed-chip glow.
+- Improved eligible **File Property columns** with consistent per-column color accents, detailed and compact rendering, accessibility, picker ownership, and workspace and embedded Table parity.
+- Improved **empty Table cells** by removing visible double-dash placeholders from body and summary cells while preserving click, keyboard, source, checkbox, and editing behavior.
+- Improved **Checkbox Progress cells** so empty editable cells remain visually blank but can still open the checkbox pop-over by click or keyboard, with desktop Table pop-overs anchored to their owning cells.
+- Improved **Parent ID cells** so empty values retain the parent picker, assigned parents open their Task Editor on click, and Command-click on macOS or Ctrl-click elsewhere opens the parent task source in a new tab; bordered color accents remain available with a neutral fill.
+- Improved **Table hover and focus feedback** with consistent bordered-control glow, desktop row-wide value highlighting without opening sibling tooltips, individual 1 px glow around detailed progress segments, and subtler 1 px active-row rails.
+- Improved compact navigation surfaces: **Table toolbars in desktop sidebars** collapse to a hover or focus rail, Calendar and Filter sidebar toolbars use the same behavior, and mobile Tables retain a smaller always-accessible toolbar set.
+- Improved the Table preset Settings tooltip so it includes the **selected preset name**.
+
+### Fixed
+
+- Fixed the **Task Color column** accepting incompatible color modes instead of always using the task's own color.
+- Fixed generic text routing overriding the specialized **Status, Priority, Task Icon, and Task Color** pickers and their detailed or compact icon and color presentation.
+- Fixed **Blocking and Blocked By columns** losing their dependency icons and semantic active or resolved colors.
+- Fixed **date and datetime chips** gaining colored fills in non-default color modes; their fills remain neutral while borders, icons, and glow retain the selected accent.
+- Fixed compact **File Property list columns** bypassing the shared bordered icon, tooltip, accessibility, and picker behavior.
+- Fixed bordered Table controls showing inconsistent, incomplete, or clipped glow across editable, readonly, disabled, detailed, and compact states.
+
 ### Validation
+
+- Validated with focused Table suites, 1,526/1,526 Phase 5 regression checks, strict lint, typecheck, production build, release guard, and multi-lens review; final candidate validation remains pending until the Unreleased workstream is frozen.
 
 ## [3.2.1] - 2026-08-09
 

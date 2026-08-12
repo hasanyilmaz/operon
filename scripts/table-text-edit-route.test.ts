@@ -4,9 +4,11 @@ import path from 'node:path';
 import {
 	buildTableFilePropertyTextMutation,
 	isTablePlainTextField,
+	resolveTableParentTaskActivation,
 	resolveTableTaskTextEditRoute,
 	resolveTableTextEditRoute,
 } from '../src/ui/table/table-text-edit-route';
+import { bindTableParentTaskCellActivation } from '../src/ui/table/table-parent-task-cell';
 
 let assertions = 0;
 
@@ -25,6 +27,55 @@ function ok(value: unknown, message?: string): asserts value {
 	assertions += 1;
 }
 
+class FakeParentCell {
+	private readonly listeners = new Map<string, Array<(event: any) => void>>();
+
+	addEventListener(type: string, listener: (event: any) => void): void {
+		const listeners = this.listeners.get(type) ?? [];
+		listeners.push(listener);
+		this.listeners.set(type, listeners);
+	}
+
+	dispatch(type: string, event: Record<string, unknown> = {}): { prevented: boolean; stopped: boolean } {
+		const state = { prevented: false, stopped: false };
+		const payload = {
+			button: 0,
+			detail: type === 'click' ? 1 : 0,
+			key: '',
+			metaKey: false,
+			ctrlKey: false,
+			target: this,
+			preventDefault: () => { state.prevented = true; },
+			stopPropagation: () => { state.stopped = true; },
+			...event,
+		};
+		for (const listener of this.listeners.get(type) ?? []) listener(payload);
+		return state;
+	}
+}
+
+function bindParentHarness(options: {
+	parentTaskId?: string;
+	parentExists?: boolean;
+	canOpenEditor?: boolean;
+	canOpenSource?: boolean;
+} = {}) {
+	const cell = new FakeParentCell();
+	const calls: Array<[string, string?]> = [];
+	bindTableParentTaskCellActivation(cell as unknown as HTMLElement, {
+		parentTaskId: options.parentTaskId ?? 'parent-raw-id',
+		parentExists: options.parentExists ?? true,
+		canOpenEditor: options.canOpenEditor ?? true,
+		canOpenSource: options.canOpenSource ?? true,
+		isSourceModifier: event => event.metaKey,
+		shouldIgnoreTarget: () => false,
+		onOpenPicker: () => { calls.push(['picker']); },
+		onOpenEditor: id => { calls.push(['editor', id]); },
+		onOpenSource: id => { calls.push(['source', id]); },
+	});
+	return { cell, calls };
+}
+
 async function run(): Promise<void> {
 	equal(resolveTableTextEditRoute('', true), 'picker');
 	equal(resolveTableTextEditRoute('   ', true), 'picker');
@@ -35,13 +86,62 @@ async function run(): Promise<void> {
 	equal(resolveTableTaskTextEditRoute(customText, ''), 'picker');
 	equal(resolveTableTaskTextEditRoute(customText, 'Alpha'), 'popover');
 	equal(resolveTableTaskTextEditRoute({ ...customText, unavailable: true }, 'Alpha'), 'picker');
-	for (const key of ['description', 'note', 'status', 'priority', 'taskIcon', 'taskColor']) {
+	for (const key of ['description', 'note', 'status', 'priority', 'parentTask', 'taskIcon', 'taskColor']) {
 		equal(resolveTableTaskTextEditRoute({ key, type: 'text' }, 'Alpha'), 'picker', `${key} must keep its special editor`);
 		equal(resolveTableTaskTextEditRoute({ key, type: 'text' }, ''), 'picker', `${key} must keep its special editor when empty`);
 	}
 	equal(isTablePlainTextField({ key: 'taskIcon', type: 'text' }), false);
 	equal(isTablePlainTextField({ key: 'taskColor', type: 'text' }), false);
+	equal(isTablePlainTextField({ key: 'parentTask', type: 'text' }), false);
 	equal(resolveTableTaskTextEditRoute({ key: 'contexts', type: 'list' }, 'Alpha'), 'picker');
+
+	const parentActivationBase = {
+		parentTaskId: 'parent-raw-id',
+		parentExists: true,
+		canOpenEditor: true,
+		canOpenSource: true,
+	};
+	equal(resolveTableParentTaskActivation({ ...parentActivationBase, sourceModifier: false }), 'editor');
+	equal(resolveTableParentTaskActivation({ ...parentActivationBase, sourceModifier: true }), 'source');
+	equal(resolveTableParentTaskActivation({ ...parentActivationBase, parentTaskId: '', sourceModifier: false }), 'picker');
+	equal(resolveTableParentTaskActivation({ ...parentActivationBase, parentExists: false, sourceModifier: false }), 'picker');
+	equal(resolveTableParentTaskActivation({ ...parentActivationBase, canOpenEditor: false, sourceModifier: false }), 'picker');
+	equal(resolveTableParentTaskActivation({ ...parentActivationBase, canOpenSource: false, sourceModifier: true }), 'editor');
+
+	const pointerHarness = bindParentHarness();
+	const pointerState = pointerHarness.cell.dispatch('pointerdown');
+	pointerHarness.cell.dispatch('click');
+	deepEqual(pointerHarness.calls, [['editor', 'parent-raw-id']]);
+	equal(pointerState.prevented, true);
+	equal(pointerState.stopped, true);
+
+	const clickOnlyHarness = bindParentHarness();
+	clickOnlyHarness.cell.dispatch('click');
+	deepEqual(clickOnlyHarness.calls, [['editor', 'parent-raw-id']]);
+
+	const modifierHarness = bindParentHarness();
+	modifierHarness.cell.dispatch('pointerdown', { metaKey: true });
+	modifierHarness.cell.dispatch('click', { metaKey: true });
+	deepEqual(modifierHarness.calls, [['source', 'parent-raw-id']]);
+
+	for (const key of ['Enter', ' ']) {
+		const keyboardHarness = bindParentHarness();
+		const keyboardState = keyboardHarness.cell.dispatch('keydown', { key });
+		deepEqual(keyboardHarness.calls, [['editor', 'parent-raw-id']]);
+		equal(keyboardState.prevented, true);
+		equal(keyboardState.stopped, true);
+	}
+
+	for (const parentOptions of [{ parentTaskId: '' }, { parentExists: false }]) {
+		const pickerHarness = bindParentHarness(parentOptions);
+		pickerHarness.cell.dispatch('pointerdown');
+		pickerHarness.cell.dispatch('click');
+		deepEqual(pickerHarness.calls, [['picker']]);
+	}
+
+	const ignoredHarness = bindParentHarness();
+	ignoredHarness.cell.dispatch('pointerdown', { button: 2 });
+	deepEqual(ignoredHarness.calls, []);
 
 	deepEqual(buildTableFilePropertyTextMutation(' Alpha '), { kind: 'set', value: 'Alpha' });
 	deepEqual(buildTableFilePropertyTextMutation(''), { kind: 'delete' });
@@ -62,7 +162,16 @@ async function run(): Promise<void> {
 		ok(source.includes("editRoute === 'popover'"));
 		ok(source.includes('isCompactTaskMarkdownLinkEventTarget(event.target, cell)'));
 		ok(source.includes("event.key !== 'Enter' && event.key !== ' '"));
+		ok(source.includes("key === 'parentTask' ? (task.fieldValues['parentTask'] ?? '').trim() : ''"));
+		ok(source.includes('isSourceModifier: isTaskSourceOpenModifierClick'));
+		ok(source.includes('bindTableParentTaskCellActivation(cell, {'));
+		ok(source.includes("focusable: !editable && column.key !== 'parentTask'"));
+		ok(!source.includes("cell.setAttribute('role', 'button')"));
 	}
+	ok(workspaceSource.includes('onOpenEditor: id => this.callbacks.onOpenTaskEditor?.(id)'));
+	ok(workspaceSource.includes('onOpenSource: id => this.callbacks.onOpenTaskSource?.(id)'));
+	ok(embedSource.includes('onOpenEditor: deps.openTaskEditor'));
+	ok(embedSource.includes('onOpenSource: deps.openTaskSource'));
 	ok(workspaceSource.includes('this.openInlineTextPopover(cell, task, key, value, fieldLabel, cellKey, key, true)'));
 	ok(embedSource.includes('openEmbedTableInlineTextPopover(activeInstance, deps, cell, task, key, value, fieldLabel, cellKey, key, true)'));
 	ok(workspaceSource.includes('? renderState.getContextFilePropertyCandidates(column.key)'));

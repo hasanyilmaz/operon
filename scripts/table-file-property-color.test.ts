@@ -913,7 +913,10 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('.operon-table-root .operon-table-progress-action-shell:focus-within,'));
 	ok(cssSource.includes('@media (hover: hover) and (pointer: fine) {'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-description-text:not(.is-empty)'));
-	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox)'));
+	ok(cssSource.includes('.operon-table-root .operon-table-parent-task-chip,'));
+	ok(cssSource.includes('.operon-table-root .operon-table-parent-task-cell:focus-visible :is(.operon-table-parent-task-chip, .operon-table-icon-only-button)'));
+	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip)'));
+	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-parent-task-chip'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-icon-only-button'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-file-property-checkbox'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-progress-action-shell.is-details-mode .operon-task-progress-segment'));
@@ -928,6 +931,7 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('padding: var(--operon-table-chip-glow-size);'));
 	ok(cssSource.includes('box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);'));
 	ok(cssSource.includes('@media (forced-colors: active) {'));
+	ok(cssSource.includes('.operon-table-root .operon-table-parent-task-cell:focus-visible,'));
 	ok(cssSource.includes('.operon-table-root .operon-table-list-value-chip:focus-visible,'));
 	ok(cssSource.includes('background-color: transparent;'));
 	ok(cssSource.includes('box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);'));

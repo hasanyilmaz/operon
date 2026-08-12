@@ -119,6 +119,7 @@ export function renderTableCellChipContent(
 	options: TableCellChipRenderOptions = {},
 ): void {
 	const field = options.settings ? getTableTaskField(key, options.settings) : null;
+	if (key === 'parentTask') chip.addClass('operon-table-parent-task-chip');
 	decorateTableDateValueChip(chip, field?.type);
 	applyTableCellChipAccent(chip, key, value, options);
 	const externalLink = resolveTableExternalLink(key, value, options);

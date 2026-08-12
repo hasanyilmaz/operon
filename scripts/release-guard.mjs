@@ -1097,6 +1097,33 @@ function checkCssScorecard() {
 		['cursor: pointer;', 'user-select: none;'],
 		'Table header cells must keep the interactive cursor contract',
 	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-root .operon-table-parent-task-cell:focus-visible :is(.operon-table-parent-task-chip, .operon-table-icon-only-button)',
+		'Parent ID cells must expose one visible detailed or compact keyboard focus target',
+	);
+	assertIncludes(
+		'src/ui/table/table-text-edit-route.ts',
+		'export function resolveTableParentTaskActivation(',
+		'Parent ID must retain its dedicated picker, editor, and source activation route',
+	);
+	for (const parentCellSurface of ['src/ui/table/operon-table-view.ts', 'src/ui/embed-table-processor.ts']) {
+		assertIncludes(
+			parentCellSurface,
+			"key === 'parentTask' ? (task.fieldValues['parentTask'] ?? '').trim() : ''",
+			'Parent ID navigation must use the stored raw parent identity instead of its display label',
+		);
+		assertIncludes(
+			parentCellSurface,
+			'bindTableParentTaskCellActivation(cell, {',
+			'Parent ID workspace and embedded cells must share the executable activation contract',
+		);
+		assertIncludes(
+			parentCellSurface,
+			"focusable: !editable && column.key !== 'parentTask'",
+			'Parent ID compact cells must keep the gridcell as their sole keyboard focus owner',
+		);
+	}
 
 	assertCssRuleContains(
 		'styles.css',
@@ -1211,7 +1238,8 @@ function checkCssScorecard() {
 		'@media (hover: hover) and (pointer: fine)',
 		[
 			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-description-text:not(.is-empty)',
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-parent-task-chip',
 			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-icon-only-button',
 			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-file-property-checkbox',
 			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-icon-button:disabled',

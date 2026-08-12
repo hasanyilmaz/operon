@@ -1,16 +1,27 @@
 import type { RawYamlPropertyMutation } from '../../core/raw-yaml-property';
 
 export type TableTextEditRoute = 'picker' | 'popover';
+export type TableParentTaskActivation = 'picker' | 'editor' | 'source';
+
+export interface TableParentTaskActivationOptions {
+	parentTaskId: string;
+	parentExists: boolean;
+	canOpenEditor: boolean;
+	canOpenSource: boolean;
+	sourceModifier: boolean;
+}
 
 const TASK_TEXT_POPOVER_EXCLUDED_KEYS = new Set([
 	'description',
 	'note',
+	'parentTask',
 	'taskIcon',
 	'taskColor',
 ]);
 const SPECIALIZED_TASK_TEXT_FIELD_KEYS = new Set([
 	'status',
 	'priority',
+	'parentTask',
 	'taskIcon',
 	'taskColor',
 ]);
@@ -40,6 +51,15 @@ export function resolveTableTaskTextEditRoute(
 			&& !!field
 			&& !TASK_TEXT_POPOVER_EXCLUDED_KEYS.has(field.key),
 	);
+}
+
+export function resolveTableParentTaskActivation(
+	options: TableParentTaskActivationOptions,
+): TableParentTaskActivation {
+	if (!options.parentTaskId.trim() || !options.parentExists) return 'picker';
+	if (options.sourceModifier && options.canOpenSource) return 'source';
+	if (options.canOpenEditor) return 'editor';
+	return 'picker';
 }
 
 export function buildTableFilePropertyTextMutation(value: string): RawYamlPropertyMutation {
