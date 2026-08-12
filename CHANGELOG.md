@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Validated with focused Table suites, 1,526/1,526 Phase 5 regression checks, strict lint, typecheck, production build, release guard, and multi-lens review; final candidate validation remains pending until the Unreleased workstream is frozen.
+- Validated on Node 24.18.0 / npm 11.12.1 with the complete `npm run check:local` candidate gate, focused Table and session suites, 1,526/1,526 Phase 5 regression checks, production build, release guard, and multi-lens review.
 
 ## [3.2.1] - 2026-08-09
 
