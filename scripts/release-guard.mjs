@@ -1178,15 +1178,32 @@ function checkCssScorecard() {
 			'--operon-table-row-highlight-size: 1px;',
 			'--operon-task-chip-bg: transparent;',
 			'--operon-task-chip-hover-bg: transparent;',
+			'--operon-task-chip-hover-accent: var(--operon-table-field-accent, var(--interactive-accent));',
+			'--operon-task-chip-hover-border: color-mix(in srgb, var(--operon-task-chip-hover-accent) 62%, var(--background-modifier-border));',
 		],
-		'Table values, progress segments, and active-row rails must share stable geometry tokens',
+		'Table values must share stable geometry and preserve the interactive-accent fallback for uncolored cells',
 	);
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-table-root .operon-table-cell-chip',
-		['background: var(--operon-task-chip-bg, transparent);', 'background-color: var(--operon-task-chip-bg, transparent);'],
-		'All bordered Table chips must keep a neutral resting fill in workspace and embedded surfaces',
+		[
+			'border-width: 1px;',
+			'border-style: solid;',
+			'background: var(--operon-task-chip-bg, transparent);',
+			'background-color: var(--operon-task-chip-bg, transparent);',
+		],
+		'All bordered Table chips must keep a fixed 1px border and neutral resting fill',
 	);
+	for (const declaration of [
+		"'--operon-task-chip-hover-border': 'color-mix(in srgb, var(--operon-table-field-accent) 62%, var(--background-modifier-border))'",
+		"'--operon-task-chip-focus-ring': 'color-mix(in srgb, var(--operon-task-chip-hover-border) 38%, transparent)'",
+	]) {
+		assertIncludes(
+			'src/ui/table/table-cell-chip.ts',
+			declaration,
+			'Colored Table chips must derive hover borders and glow from their resolved local field color',
+		);
+	}
 	assertIncludes(
 		'styles.css',
 		'.operon-table-root :is(.operon-table-list-value-chip, .operon-table-duration-like-chip):is(:hover, .is-operon-chip-hovered, :focus-visible)',
@@ -1278,7 +1295,7 @@ function checkCssScorecard() {
 		'@media (hover: hover) and (pointer: fine)',
 		[
 			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-description-text:not(.is-empty)',
-			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip):not(.operon-table-field-accent-chip)',
 			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-parent-task-chip',
 			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-icon-only-button',
 			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-file-property-checkbox',
@@ -1290,6 +1307,26 @@ function checkCssScorecard() {
 		['body.is-mobile', '.operon-table-progress-action-shell.is-empty-mode'],
 		'Table row-wide hover must remain desktop fine-pointer-only and leave empty progress visually blank',
 	);
+	assertCssRuleContains(
+		'styles.css',
+		'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-field-accent-chip:not(.operon-table-file-property-checkbox)',
+		[
+			'--operon-task-chip-border: color-mix(in srgb, var(--operon-table-field-accent) 62%, var(--background-modifier-border));',
+			'--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-border) 38%, transparent);',
+			'border-color: var(--operon-task-chip-border);',
+		],
+		'Colored Table row hover must use the resolved field color instead of the generic accent fallback',
+	);
+	for (const surfacePath of [
+		'src/ui/table/operon-table-view.ts',
+		'src/ui/embed-table-processor.ts',
+	]) {
+		assertIncludes(
+			surfacePath,
+			'renderTableCellChips(',
+			'Workspace and embedded detailed Table values must keep using the shared colored-chip renderer',
+		);
+	}
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-table-cell.is-active-cell::before',

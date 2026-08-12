@@ -71,6 +71,10 @@ class FakeElement {
 		this.classes.add(name);
 	}
 
+	setCssProps(properties: Record<string, string>): void {
+		for (const [name, value] of Object.entries(properties)) this.style.setProperty(name, value);
+	}
+
 	createSpan(value?: string | { cls?: string; text?: string }): FakeElement {
 		const child = new FakeElement('SPAN');
 		if (typeof value === 'string') child.addClasses(value);
@@ -217,6 +221,14 @@ function assertAccentContract(element: FakeElement, accent: string): void {
 	]) {
 		equal(element.style.values.get(variable), accent);
 	}
+	equal(
+		element.style.values.get('--operon-task-chip-hover-border'),
+		'color-mix(in srgb, var(--operon-table-field-accent) 62%, var(--background-modifier-border))',
+	);
+	equal(
+		element.style.values.get('--operon-task-chip-focus-ring'),
+		'color-mix(in srgb, var(--operon-task-chip-hover-border) 38%, transparent)',
+	);
 }
 
 function countInFunction(source: string, functionName: string, needle: string): number {
@@ -348,11 +360,15 @@ async function run(): Promise<void> {
 	ok(dependencyWrapper);
 	equal(findDescendantByClass(dependencyWrapper, 'operon-table-cell-chip-label')?.textContent, dependencyDescription);
 	ok(findDescendantByClass(dependencyWrapper, 'operon-table-cell-chip-icon'));
-	ok(findDescendantByClass(dependencyWrapper, 'operon-table-blocked-by-state-chip'));
+	const blockedByChip = findDescendantByClass(dependencyWrapper, 'operon-table-blocked-by-state-chip');
+	ok(blockedByChip);
+	assertAccentContract(blockedByChip, '#dc2626');
 
 	const blockingCell = new FakeElement('DIV');
 	renderTableCellChips(asHtmlElement(blockingCell), 'blocking', 'parent-1', {
 		chipClassName: 'operon-table-cell-chip',
+		column: { key: 'blocking', colorMode: 'taskColor' },
+		task,
 		settings,
 		taskLookup: {
 			getTask: () => ({
@@ -362,8 +378,23 @@ async function run(): Promise<void> {
 			}) as unknown as IndexedTask,
 		},
 	});
+	const blockingChip = findDescendantByClass(blockingCell, 'operon-table-cell-chip');
+	ok(blockingChip);
 	ok(findDescendantByClass(blockingCell, 'operon-table-cell-chip-icon'));
 	equal(findDescendantByClass(blockingCell, 'operon-table-cell-chip-label')?.textContent, dependencyDescription);
+	assertAccentContract(blockingChip, '#aa1122');
+
+	const overdueDueCell = new FakeElement('DIV');
+	renderTableCellChips(asHtmlElement(overdueDueCell), 'dateDue', '2000-01-01', {
+		chipClassName: 'operon-table-cell-chip',
+		column: { key: 'dateDue', colorMode: 'taskColor' },
+		task,
+		settings,
+	});
+	const overdueDueChip = findDescendantByClass(overdueDueCell, 'operon-table-date-state-chip');
+	ok(overdueDueChip);
+	equal(overdueDueChip.classes.has('is-overdue'), true);
+	assertAccentContract(overdueDueChip, '#dc2626');
 
 	const taskIconCell = new FakeElement('DIV');
 	renderTableCellChips(asHtmlElement(taskIconCell), 'taskIcon', 'github', {
@@ -951,7 +982,7 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-description-text:not(.is-empty)'));
 	ok(cssSource.includes('.operon-table-root .operon-table-parent-task-chip,'));
 	ok(cssSource.includes('.operon-table-root .operon-table-parent-task-cell:focus-visible :is(.operon-table-parent-task-chip, .operon-table-icon-only-button)'));
-	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip)'));
+	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip):not(.operon-table-field-accent-chip)'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-parent-task-chip'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-duration-like-chip'));
 	ok(!cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-source-button {\n\t\tbackground: var(--background-modifier-hover);'));

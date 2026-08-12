@@ -459,10 +459,14 @@ function resolveTableCellDateStateAccent(
 
 function applyTableCellAccentVariables(target: HTMLElement, accent: string, decorateAsChip = true): void {
 	if (decorateAsChip) target.addClass('operon-table-field-accent-chip');
-	target.style.setProperty('--operon-table-field-accent', accent);
-	target.style.setProperty('--operon-inline-chip-icon-color', accent);
-	target.style.setProperty('--operon-task-chip-hover-accent', accent);
-	target.style.setProperty('--operon-live-hover-border', accent);
+	target.setCssProps({
+		'--operon-table-field-accent': accent,
+		'--operon-inline-chip-icon-color': accent,
+		'--operon-task-chip-hover-accent': accent,
+		'--operon-task-chip-hover-border': 'color-mix(in srgb, var(--operon-table-field-accent) 62%, var(--background-modifier-border))',
+		'--operon-task-chip-focus-ring': 'color-mix(in srgb, var(--operon-task-chip-hover-border) 38%, transparent)',
+		'--operon-live-hover-border': accent,
+	});
 }
 
 export function applyTableColumnCellAccent(

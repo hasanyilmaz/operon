@@ -32421,7 +32421,7 @@ button.operon-table-source-button:focus-visible {
 		color: var(--text-normal);
 	}
 
-	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip) {
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip):not(.operon-table-field-accent-chip) {
 		border-color: var(--operon-task-chip-hover-border);
 		background: transparent;
 		background-color: transparent;

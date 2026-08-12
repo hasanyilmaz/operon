@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed **Blocking and Blocked By columns** losing their dependency icons and semantic active or resolved colors.
 - Fixed **date and datetime chips** gaining colored fills in non-default color modes; their fills remain neutral while borders, icons, and glow retain the selected accent.
 - Fixed bordered Table values gaining a colored fill when a column used **No color**, or when its selected Task, Status, or Priority color source was empty; the fill now stays neutral while border and glow feedback remains available.
+- Fixed colored Table values reverting to the generic accent border on hover; Task, Status, Priority, Random, date-state, and dependency colors now retain their own border semantics.
 - Fixed compact **File Property list columns** bypassing the shared bordered icon, tooltip, accessibility, and picker behavior.
 - Fixed bordered Table controls showing inconsistent, incomplete, or clipped glow across editable, readonly, disabled, detailed, and compact states.
 
