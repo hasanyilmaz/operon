@@ -2641,7 +2641,7 @@ export class OperonTableView extends FileView {
 		if (!value.trim()) {
 			return;
 		}
-		const chip = cell.createSpan('operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-chip-readonly');
+		const chip = cell.createSpan('operon-table-duration-like-chip operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-chip-readonly');
 		chip.setText(value);
 	}
 
@@ -2653,7 +2653,7 @@ export class OperonTableView extends FileView {
 		cellKey: string,
 	): void {
 		const chip = container.createEl('button', {
-			cls: 'operon-table-duration-session-chip operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-table-editable-chip',
+			cls: 'operon-table-duration-session-chip operon-table-duration-like-chip operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-table-editable-chip',
 			attr: {
 				type: 'button',
 			},

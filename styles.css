@@ -29654,6 +29654,11 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content:is(
 	--operon-table-chip-glow-size: 2px;
 	--operon-table-progress-segment-glow-size: 1px;
 	--operon-table-row-highlight-size: 1px;
+	--operon-task-chip-bg: transparent;
+	--operon-task-chip-hover-bg: transparent;
+	--operon-task-chip-hover-accent: var(--operon-table-field-accent, var(--interactive-accent));
+	--operon-task-chip-hover-border: color-mix(in srgb, var(--operon-task-chip-hover-accent) 62%, var(--background-modifier-border));
+	--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-hover-border) 38%, transparent);
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -31552,10 +31557,15 @@ button.operon-table-task-type-button svg {
 
 .operon-table-duration-session-list {
 	display: flex;
+	box-sizing: border-box;
+	width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));
+	margin: calc(-1 * var(--operon-table-chip-glow-size));
+	padding: var(--operon-table-chip-glow-size);
 	overflow: hidden;
 	align-items: center;
 	gap: 6px;
 	min-width: 0;
+	max-width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));
 }
 
 button.operon-table-duration-session-chip {
@@ -31565,7 +31575,7 @@ button.operon-table-duration-session-chip {
 	box-shadow: none;
 	font: inherit;
 	min-width: 0;
-	border-color: var(--background-modifier-border-hover);
+	border-color: var(--operon-task-chip-border, var(--background-modifier-border));
 	background: var(--operon-task-chip-bg, transparent);
 	background-color: var(--operon-task-chip-bg, transparent);
 	color: var(--operon-live-chip-color, var(--text-muted));
@@ -31573,8 +31583,10 @@ button.operon-table-duration-session-chip {
 
 button.operon-table-duration-session-chip:hover,
 button.operon-table-duration-session-chip:focus-visible {
-	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	border-color: var(--operon-task-chip-hover-border);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
+	background: transparent;
+	background-color: transparent;
 	color: var(--text-normal);
 	outline: none;
 }
@@ -32126,6 +32138,7 @@ button.operon-table-source-button {
 	white-space: nowrap;
 }
 
+.operon-table-root .operon-table-cell-chip,
 .operon-table-root.operon-table-embed .operon-table-cell-chip,
 .markdown-reading-view .operon-table-root .operon-table-cell-chip,
 .markdown-preview-view .operon-table-root .operon-table-cell-chip {
@@ -32202,6 +32215,8 @@ button.operon-table-source-button {
 }
 
 .operon-table-root .operon-table-cell-chip:is(:hover, .is-operon-chip-hovered, :focus-visible) {
+	background: transparent;
+	background-color: transparent;
 	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(
 		in srgb,
 		var(--operon-table-field-accent, var(--interactive-accent)) 22%,
@@ -32225,6 +32240,8 @@ button.operon-table-source-button {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	color: var(--text-normal);
+	background: transparent;
+	background-color: transparent;
 }
 
 .operon-table-cell.is-editable:hover .operon-table-field-accent-chip,
@@ -32273,9 +32290,10 @@ button.operon-table-source-button {
 
 button.operon-table-source-button:hover,
 button.operon-table-source-button:focus-visible {
-	border-color: var(--operon-table-border-hover);
-	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);
-	background: var(--background-modifier-hover);
+	border-color: var(--operon-task-chip-hover-border);
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
+	background: transparent;
+	background-color: transparent;
 	color: var(--text-normal);
 	outline: none;
 }
@@ -32383,6 +32401,17 @@ button.operon-table-source-button:focus-visible {
 	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring, color-mix(in srgb, var(--interactive-accent) 22%, transparent));
 }
 
+.operon-table-root :is(.operon-table-list-value-chip, .operon-table-duration-like-chip):is(:hover, .is-operon-chip-hovered, :focus-visible),
+.operon-table-root .operon-table-cell.is-editable:is(:hover, :focus-visible, :focus-within) .operon-table-duration-like-chip {
+	--operon-task-chip-border: color-mix(in srgb, var(--operon-table-field-accent, var(--interactive-accent)) 62%, var(--background-modifier-border));
+	--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-border) 38%, transparent);
+	border-color: var(--operon-task-chip-border);
+	background: transparent;
+	background-color: transparent;
+	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
+	color: var(--text-normal);
+}
+
 .operon-table-parent-task-cell {
 	cursor: pointer;
 }
@@ -32394,8 +32423,8 @@ button.operon-table-source-button:focus-visible {
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip) {
 		border-color: var(--operon-task-chip-hover-border);
-		background: var(--operon-task-chip-hover-bg);
-		background-color: var(--operon-task-chip-hover-bg);
+		background: transparent;
+		background-color: transparent;
 		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
 		filter: none;
 		outline: none;
@@ -32435,8 +32464,8 @@ button.operon-table-source-button:focus-visible {
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell.is-editable .operon-table-editable-chip:not(.operon-table-field-accent-chip) {
-		border-color: var(--interactive-accent);
-		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+		border-color: var(--operon-task-chip-hover-border);
+		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-field-accent-chip:not(.operon-table-file-property-checkbox) {
@@ -32480,7 +32509,17 @@ button.operon-table-source-button:focus-visible {
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-source-button {
-		background: var(--background-modifier-hover);
+		background: transparent;
+		background-color: transparent;
+	}
+
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-duration-like-chip {
+		--operon-task-chip-border: color-mix(in srgb, var(--operon-table-field-accent, var(--interactive-accent)) 62%, var(--background-modifier-border));
+		--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-border) 38%, transparent);
+		border-color: var(--operon-task-chip-border);
+		background: transparent;
+		background-color: transparent;
+		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-file-property-checkbox.operon-table-field-accent-chip:not(:disabled) {

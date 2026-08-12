@@ -21,6 +21,7 @@ import {
 } from '../../core/blocked-by-visual-state';
 import type { TableTaskLookup } from './table-value-adapter';
 import { formatTableDetailedDatetimeValue } from './table-datetime-format';
+import { isTableDurationLikeTaskField } from './table-display';
 
 export { formatTableDetailedDatetimeValue } from './table-datetime-format';
 
@@ -120,6 +121,9 @@ export function renderTableCellChipContent(
 ): void {
 	const field = options.settings ? getTableTaskField(key, options.settings) : null;
 	if (key === 'parentTask') chip.addClass('operon-table-parent-task-chip');
+	if (options.settings && isTableDurationLikeTaskField(key, options.settings)) {
+		chip.addClass('operon-table-duration-like-chip');
+	}
 	decorateTableDateValueChip(chip, field?.type);
 	applyTableCellChipAccent(chip, key, value, options);
 	const externalLink = resolveTableExternalLink(key, value, options);

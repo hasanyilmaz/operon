@@ -1171,8 +1171,43 @@ function checkCssScorecard() {
 			'--operon-table-chip-glow-size: 2px;',
 			'--operon-table-progress-segment-glow-size: 1px;',
 			'--operon-table-row-highlight-size: 1px;',
+			'--operon-task-chip-bg: transparent;',
+			'--operon-task-chip-hover-bg: transparent;',
 		],
 		'Table values, progress segments, and active-row rails must share stable geometry tokens',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root .operon-table-cell-chip',
+		['background: var(--operon-task-chip-bg, transparent);', 'background-color: var(--operon-task-chip-bg, transparent);'],
+		'All bordered Table chips must keep a neutral resting fill in workspace and embedded surfaces',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-root :is(.operon-table-list-value-chip, .operon-table-duration-like-chip):is(:hover, .is-operon-chip-hovered, :focus-visible)',
+		'Duration-like Table values must share the canonical Context border and glow contract',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-duration-session-list',
+		[
+			'width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));',
+			'margin: calc(-1 * var(--operon-table-chip-glow-size));',
+			'padding: var(--operon-table-chip-glow-size);',
+		],
+		'Duration session values must reserve the same unclipped glow gutter as Context lists',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'button.operon-table-source-button:hover',
+		['background: transparent;', 'background-color: transparent;'],
+		'Source controls must keep a neutral fill while using the shared bordered hover contract',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-source-button',
+		['background: transparent;', 'background-color: transparent;'],
+		'Source controls must stay neutral when row-wide Table hover is active',
 	);
 	assertCssRuleContains(
 		'styles.css',

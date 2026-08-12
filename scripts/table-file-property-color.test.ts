@@ -527,6 +527,35 @@ async function run(): Promise<void> {
 	), null);
 	equal(noColorElement.classes.size, 0);
 	equal(noColorElement.style.values.size, 0);
+	for (const key of ['estimate', 'totalEstimate', 'totalDuration']) {
+		const cell = new FakeElement('DIV');
+		renderTableCellChips(asHtmlElement(cell), key, '3600', {
+			chipClassName: 'operon-table-cell-chip operon-chip',
+			column: { key, colorMode: 'noColor' },
+			task,
+			settings,
+		});
+		equal(cell.children[0]?.classes.has('operon-table-duration-like-chip'), true, `${key} must use the shared duration-like visual contract`);
+	}
+
+	const missingColorTask = {
+		fieldValues: {
+			taskColor: '',
+			priority: 'uncolored-priority',
+			status: 'Flow.Uncolored',
+		},
+	} as unknown as IndexedTask;
+	for (const colorMode of ['taskColor', 'priorityColor', 'statusColor'] as const) {
+		const element = new FakeElement();
+		equal(applyTableColumnCellAccent(
+			asHtmlElement(element),
+			{ key: columnKey, colorMode },
+			'Alpha',
+			{ task: missingColorTask, settings },
+		), null, `${colorMode} without a source color must behave like noColor`);
+		equal(element.classes.size, 0);
+		equal(element.style.values.size, 0);
+	}
 
 	const randomAccents: string[] = [];
 	for (const value of ['Alpha', 'Beta']) {
@@ -894,6 +923,13 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('--operon-table-chip-glow-size: 2px;'));
 	ok(cssSource.includes('--operon-table-progress-segment-glow-size: 1px;'));
 	ok(cssSource.includes('--operon-table-row-highlight-size: 1px;'));
+	ok(cssSource.includes('--operon-task-chip-bg: transparent;'));
+	ok(cssSource.includes('--operon-task-chip-hover-bg: transparent;'));
+	ok(cssSource.includes('.operon-table-root .operon-table-cell-chip,'));
+	ok(cssSource.includes('.operon-table-duration-like-chip'));
+	ok(cssSource.includes('.operon-table-duration-session-list {\n\tdisplay: flex;'));
+	ok(cssSource.includes('button.operon-table-duration-session-chip:hover,\nbutton.operon-table-duration-session-chip:focus-visible {\n\tborder-color: var(--operon-task-chip-hover-border);'));
+	ok(cssSource.includes('button.operon-table-source-button:hover,\nbutton.operon-table-source-button:focus-visible {\n\tborder-color: var(--operon-task-chip-hover-border);'));
 	ok(cssSource.includes('.operon-table-root .operon-table-cell-chip:is(:hover, .is-operon-chip-hovered, :focus-visible)'));
 	ok(cssSource.includes('button.operon-table-task-icon-button:not(:disabled):not(.is-readonly):hover,'));
 	ok(cssSource.includes('button.operon-table-task-type-button:hover,'));
@@ -917,6 +953,8 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('.operon-table-root .operon-table-parent-task-cell:focus-visible :is(.operon-table-parent-task-chip, .operon-table-icon-only-button)'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip)'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-parent-task-chip'));
+	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-duration-like-chip'));
+	ok(!cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-source-button {\n\t\tbackground: var(--background-modifier-hover);'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-icon-only-button'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-file-property-checkbox'));
 	ok(cssSource.includes('body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-progress-action-shell.is-details-mode .operon-task-progress-segment'));
