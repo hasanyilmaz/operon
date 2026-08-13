@@ -1,4 +1,4 @@
-import { normalizeTableCollapsedGroupKeys } from '../types/table';
+import { isTableColumnColorModeLocked, normalizeTableCollapsedGroupKeys } from '../types/table';
 import type {
 	TableColumn,
 	TableColumnAlignment,
@@ -336,7 +336,7 @@ function readColumn(value: unknown, field: string, diagnostics: OperonTableFileD
 	if (hidden !== undefined) column.hidden = hidden;
 	if (align !== undefined) column.align = align;
 	if (pinned !== undefined) column.pinned = pinned;
-	if (colorMode !== undefined) column.colorMode = colorMode;
+	if (colorMode !== undefined && !isTableColumnColorModeLocked(key)) column.colorMode = colorMode;
 	if (durationDisplayMode !== undefined) column.durationDisplayMode = durationDisplayMode;
 	if (displayMode !== undefined) column.displayMode = displayMode;
 	return column;

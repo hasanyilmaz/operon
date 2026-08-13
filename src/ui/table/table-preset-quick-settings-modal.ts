@@ -21,12 +21,16 @@ import {
 } from './table-field-catalog';
 import { buildTableFieldPickerOptions, getTableFieldPickerLabel } from './table-field-picker-options';
 import { isTableFilePropertyColumnKey, type TableFilePropertyField } from './table-file-property';
+import { isTableFieldColorModeEligible } from './table-column-color';
 import {
 	filterCompatibleTableSummaryRules,
 	getTableSummaryFunctionsForField,
 } from './table-summary';
 import {
 	createTablePresetFromSource,
+	applyTablePresetColorMode,
+	deriveTablePresetColorMode,
+	hasTablePresetColorModeColumns,
 	filterTablePresetColumnsBySupportedKeys,
 	filterTablePresetGroupByBySupportedKeys,
 	filterTablePresetSortRulesBySupportedKeys,
@@ -39,6 +43,8 @@ import {
 	setTablePresetSubgroupBy,
 	setTablePresetSubgroupOrder,
 	setTablePresetColumnVisible,
+	TABLE_PRESET_COLOR_MODES,
+	type TablePresetColorMode,
 } from './table-preset-model';
 
 interface TablePresetQuickSettingsModalOptions {
@@ -173,7 +179,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 		this.renderGroupingSection(contentEl, preset, settings);
 		this.renderSortSection(contentEl, preset, settings);
 		this.renderSummariesSection(contentEl, preset, settings);
-		this.renderDisplaySection(contentEl, preset);
+		this.renderDisplaySection(contentEl, preset, settings);
 		this.renderColumnsSection(contentEl, preset, settings);
 		this.renderButtons(contentEl, preset);
 	}
@@ -266,20 +272,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 
 	private renderColumnsSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionColumns'));
-		const additionalFields = this.options.getAdditionalColumnFields?.(preset) ?? [];
-		const catalog = applyTablePresetFieldAliases(
-			buildEffectiveTableTaskFieldCatalog(
-				settings,
-				additionalFields,
-				preset.columns.map(column => column.key),
-			),
-			preset.columns,
-		);
-		const supportedKeys = new Set(catalog.map(field => field.key));
-		for (const column of preset.columns) {
-			if (isTableFilePropertyColumnKey(column.key)) supportedKeys.add(column.key);
-		}
-		const columnPreset = filterTablePresetColumnsBySupportedKeys(preset, supportedKeys);
+		const { additionalFields, catalog, columnPreset } = this.buildColumnUiState(preset, settings);
 		const visibleColumns = columnPreset.columns.filter(column => !column.hidden);
 		const visibleKeys = new Set(visibleColumns.map(column => column.key));
 		const listEl = card.createDiv('operon-table-preset-column-list');
@@ -326,6 +319,33 @@ export class TablePresetQuickSettingsModal extends Modal {
 					));
 				});
 			});
+	}
+
+	private buildColumnUiState(preset: TablePreset, settings: OperonSettings): {
+		additionalFields: readonly TableFilePropertyField[];
+		catalog: TableTaskField[];
+		supportedKeys: Set<string>;
+		columnPreset: TablePreset;
+	} {
+		const additionalFields = this.options.getAdditionalColumnFields?.(preset) ?? [];
+		const catalog = applyTablePresetFieldAliases(
+			buildEffectiveTableTaskFieldCatalog(
+				settings,
+				additionalFields,
+				preset.columns.map(column => column.key),
+			),
+			preset.columns,
+		);
+		const supportedKeys = new Set(catalog.map(field => field.key));
+		for (const column of preset.columns) {
+			if (isTableFilePropertyColumnKey(column.key)) supportedKeys.add(column.key);
+		}
+		return {
+			additionalFields,
+			catalog,
+			supportedKeys,
+			columnPreset: filterTablePresetColumnsBySupportedKeys(preset, supportedKeys),
+		};
 	}
 
 	private renderSortSection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
@@ -657,8 +677,27 @@ export class TablePresetQuickSettingsModal extends Modal {
 		});
 	}
 
-	private renderDisplaySection(container: HTMLElement, preset: TablePreset): void {
+	private renderDisplaySection(container: HTMLElement, preset: TablePreset, settings: OperonSettings): void {
 		const card = this.createSection(container, t('table', 'presetSectionDisplay'));
+		const { catalog } = this.buildColumnUiState(preset, settings);
+		const colorModeKeys = new Set(catalog
+			.filter(field => isTableFieldColorModeEligible(field))
+			.map(field => field.key));
+		new Setting(card)
+			.setName(t('table', 'colorMode'))
+			.addDropdown(dropdown => {
+				for (const mode of TABLE_PRESET_COLOR_MODES) {
+					dropdown.addOption(mode, getTablePresetColorModeLabel(mode));
+				}
+				const customOption = dropdown.selectEl.querySelector<HTMLOptionElement>('option[value="customColors"]');
+				if (customOption) customOption.disabled = true;
+				dropdown.selectEl.disabled = !hasTablePresetColorModeColumns(preset, colorModeKeys);
+				dropdown.setValue(deriveTablePresetColorMode(preset, colorModeKeys));
+				dropdown.onChange(value => {
+					if (value !== 'noColor' && value !== 'taskColor' && value !== 'priorityColor' && value !== 'statusColor') return;
+					this.updateColumns(applyTablePresetColorMode(preset, value, colorModeKeys));
+				});
+			});
 		new Setting(card)
 			.setName(t('table', 'density'))
 			.addDropdown(dropdown => {
@@ -1036,6 +1075,21 @@ function getFieldOptionLabel(field: TableTaskField): string {
 
 function getTableSummaryFunctionLabel(summaryFunction: TableSummaryFunction): string {
 	return t('table', `summary${summaryFunction}`);
+}
+
+function getTablePresetColorModeLabel(mode: TablePresetColorMode): string {
+	switch (mode) {
+		case 'customColors':
+			return t('table', 'colorModeCustomColors');
+		case 'noColor':
+			return t('table', 'colorModeNoColor');
+		case 'taskColor':
+			return t('table', 'colorModeTaskColor');
+		case 'priorityColor':
+			return t('table', 'colorModePriorityColor');
+		case 'statusColor':
+			return t('table', 'colorModeStatusColor');
+	}
 }
 
 function getTablePresetDirectionLabel(direction: TableSortDirection): string {

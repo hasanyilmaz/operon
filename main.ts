@@ -6,10 +6,20 @@
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
+import { Editor, EditorPosition, EditorSelection, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, apiVersion, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
-import { OperonStorage, type OperonStorageReloadSettingsResult } from './src/storage/operon-storage';
+import {
+	OperonStorage,
+	type OperonSettingsBackupUndoResultV1,
+	type OperonStorageReloadSettingsResult,
+} from './src/storage/operon-storage';
+import {
+	createOperonSettingsBackupApplyAcknowledgementV1,
+	finalizeOperonSettingsBackupApplyReceiptV1,
+	type OperonSettingsBackupApplyInputV1,
+	type OperonSettingsBackupApplyResultV1,
+} from './src/core/settings-backup-apply';
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
 	mergeTablePresetRegistryOrder,
@@ -198,7 +208,8 @@ import { getAvailableReminderRuleAnchors } from './src/core/reminder-rules';
 import { ReminderDeliveryController } from './src/systems/reminder-delivery';
 import { MobileNotificationsExporter } from './src/systems/mobile-notifications-exporter';
 import { buildOperonPluginStoragePath } from './src/storage/operon-storage-paths';
-import { resolveTaskColorSourceForTask } from './src/core/task-color-source';
+import { normalizeTaskFieldColor, resolveTaskColorSourceForTask } from './src/core/task-color-source';
+import { getConfiguredKeyMappingIcon } from './src/core/key-mapping-icons';
 import { asyncHandler, runAsyncAction } from './src/core/async-action';
 import {
 	registerTransportProbe,
@@ -473,6 +484,39 @@ import {
 	type DeveloperApiSettingsIntegration,
 	type TablePresetSettingsFileIntegration,
 } from './src/ui/settings-tab';
+import type {
+	SettingsBackupApplyResult,
+	SettingsBackupPendingRecovery,
+	SettingsBackupPreviewDecisions,
+	SettingsBackupRestorePreview,
+	SettingsBackupSelectedFile,
+	SettingsBackupUiIntegration,
+} from './src/ui/settings-backup-ui';
+import {
+	buildOperonSettingsBackupRecoveryCapabilitiesV1,
+	settleOperonSettingsBackupRecoveryRetryV1,
+	type OperonSettingsBackupRuntimeRefreshStep,
+} from './src/core/settings-backup-recovery-state';
+export type { OperonSettingsBackupRuntimeRefreshStep } from './src/core/settings-backup-recovery-state';
+import { exportOperonSettingsBackupJsonV1 } from './src/core/settings-backup-export';
+import {
+	createOperonSettingsResetDefaultProfileV1,
+	OPERON_SETTINGS_RESET_DEFAULT_GROUPS_V1,
+	OPERON_SETTINGS_RESET_DEFAULT_VAULT_REFERENCE_DECISIONS_V1,
+} from './src/core/settings-reset-default-profile';
+import {
+	preflightOperonSettingsBackupRestoreV1,
+	type OperonSettingsBackupPreflightResultV1,
+	type OperonSettingsBackupRestorePlanV1,
+	type OperonSettingsBackupVaultReferenceCheckV1,
+} from './src/core/settings-backup-preflight';
+import {
+	SETTINGS_BACKUP_GROUPS,
+	SETTINGS_BACKUP_VAULT_REFERENCE_KEYS,
+	type SettingsBackupProfileGroupId,
+	type SettingsBackupVaultReferenceKey,
+} from './src/core/settings-backup-compatibility';
+import { parseOperonSettingsBackupV1 } from './src/core/settings-backup-format';
 import { TimeSessionHistoryView, TIME_SESSION_HISTORY_VIEW_TYPE } from './src/ui/time-session-history-view';
 import { FlowTimeView, FLOW_TIME_VIEW_TYPE } from './src/ui/flow-time-view';
 import { TimeTrackerStatusBar } from './src/ui/time-tracker-status-bar';
@@ -652,6 +696,7 @@ import {
 	buildLocalePackReconcileOrder,
 	hasLocalePackIntentChanged,
 	shouldActivateReconciledLocale,
+	type LocalePackIntent,
 } from './src/core/locale-pack-orchestration';
 import { buildWorkflowStatusSemanticsSignature } from './src/core/workflow-status-semantics';
 import {
@@ -1072,6 +1117,34 @@ interface NativeFileTaskConversionMenuState {
 
 type SettingsReindexReason = 'key-mappings' | 'workflow-semantics' | 'index-semantics';
 
+export interface OperonSettingsBackupRuntimeRefreshResult {
+	status: 'settled' | 'degraded';
+	failedSteps: readonly OperonSettingsBackupRuntimeRefreshStep[];
+}
+
+export type OperonSettingsBackupLocaleIntent = LocalePackIntent;
+
+interface SettingsChangedSettlement {
+	externalCalendars: Promise<void>;
+	mobileNotifications: Promise<void>;
+	reindexReason: SettingsReindexReason | null;
+}
+
+interface PendingSettingsBackupRuntimeRecovery {
+	receiptId: string;
+	undoTokenId: string | null;
+	failedSteps: readonly OperonSettingsBackupRuntimeRefreshStep[];
+	localeIntentChanged: boolean;
+	reindexReason: SettingsReindexReason | null;
+	needsCanonicalReload: boolean;
+}
+
+interface SettingsBackupUiPreparedRestore {
+	preview: SettingsBackupRestorePreview;
+	settingsPreflight: OperonSettingsBackupPreflightResultV1;
+	settingsPlan: OperonSettingsBackupRestorePlanV1 | null;
+}
+
 interface CanonicalSettingsReloadResult extends OperonStorageReloadSettingsResult {
 	failed: boolean;
 	localeIntentChanged: boolean;
@@ -1196,6 +1269,9 @@ export default class OperonPlugin extends Plugin {
 	private pendingSettingsReindexReasons = new Set<SettingsReindexReason>();
 	private settingsReindexNoticePending = false;
 	private settingsReindexRetryAttempted = false;
+	private pendingSettingsBackupRuntimeRecovery: PendingSettingsBackupRuntimeRecovery | null = null;
+	private settingsBackupRestoreQueue: Promise<void> = Promise.resolve();
+	private lastSettingsBackupUiRecovery: SettingsBackupPendingRecovery | null = null;
 	private canonicalSettingsReloadTimer: WindowTimeoutHandle | null = null;
 	private canonicalSettingsReloadPromise: Promise<CanonicalSettingsReloadResult> | null = null;
 	private canonicalSettingsReloadLastCheckAt = 0;
@@ -1225,6 +1301,7 @@ export default class OperonPlugin extends Plugin {
 	private readonly expectedTableFileRenames = new Map<string, string>();
 	private readonly expectedTableFileDeletes = new Map<string, string>();
 	private tablePresetMaintenanceRunning = false;
+	private tablePresetWatcherDirtyDuringMaintenance = false;
 	private dynamicFileTaskFilterReadingTimers = new Map<string, WindowTimeoutHandle>();
 	private dynamicFileTaskFilterReadingHosts = new Set<HTMLElement>();
 	private dynamicFileTaskFilterReadingInstances = new WeakMap<HTMLElement, FilterSurfaceInstance>();
@@ -1916,7 +1993,721 @@ export default class OperonPlugin extends Plugin {
 		this.startupReleaseCheckTimer = null;
 	}
 
-	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): void {
+	/**
+	 * Settle the runtime-only consequences of a settings backup commit. The
+	 * returned result intentionally exposes step identifiers only; errors and
+	 * setting values remain in the owning runtime logs.
+	 */
+	private async settleSettingsBackupRuntimeRefresh(
+		previousLocaleIntent: OperonSettingsBackupLocaleIntent,
+		owner: { receiptId: string; undoTokenId: string | null },
+	): Promise<OperonSettingsBackupRuntimeRefreshResult> {
+		const localeIntentChanged = hasLocalePackIntentChanged(previousLocaleIntent, this.settings);
+		const failedSteps = new Set<OperonSettingsBackupRuntimeRefreshStep>();
+		let settlement: SettingsChangedSettlement | null = null;
+		try {
+			settlement = this.handleSettingsChanged({ notifyReindex: false });
+		} catch {
+			failedSteps.add('standard-refresh');
+		}
+
+		await Promise.all([
+			...(settlement ? [
+				this.captureSettingsBackupRefreshStep('external-calendars', settlement.externalCalendars, failedSteps),
+				this.captureSettingsBackupRefreshStep('mobile-notifications', settlement.mobileNotifications, failedSteps),
+			] : []),
+			...(localeIntentChanged ? [this.captureSettingsBackupRefreshStep(
+				'locale',
+				this.synchronizeLanguagePacksAfterLayoutStrict(),
+				failedSteps,
+			)] : []),
+			this.captureSettingsBackupRefreshStep(
+				'agent-runtime',
+				this.refreshAgentRuntimeSettingsBoundaryStrict(),
+				failedSteps,
+			),
+			this.captureSettingsBackupRefreshStep(
+				'reindex',
+				this.awaitAgentRuntimeSettlement({ mutationOwnedMaintenance: true }),
+				failedSteps,
+			),
+		]);
+
+		return this.finishSettingsBackupRuntimeRefresh(
+			failedSteps,
+			localeIntentChanged,
+			settlement?.reindexReason ?? null,
+			owner,
+		);
+	}
+
+	async applySettingsBackupRestorePlanV1(
+		input: OperonSettingsBackupApplyInputV1,
+	): Promise<OperonSettingsBackupApplyResultV1> {
+		return this.enqueueSettingsBackupRestoreOperation(
+			() => this.applySettingsBackupRestorePlanUnlockedV1(input),
+		);
+	}
+
+	private async applySettingsBackupRestorePlanUnlockedV1(
+		input: OperonSettingsBackupApplyInputV1,
+	): Promise<OperonSettingsBackupApplyResultV1> {
+		if (this.pendingSettingsBackupRuntimeRecovery) {
+			return {
+				status: 'blocked',
+				receipt: null,
+				blockedReason: 'user-decision-required',
+				failurePhase: null,
+			};
+		}
+		const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+		const storageResult = await this.storage.applySettingsBackupRestorePlanV1(
+			input,
+			async () => this.captureSettingsBackupVaultReferenceChecksV1(input.sourceJson),
+		);
+		if (storageResult.status !== 'success' && storageResult.status !== 'success-with-migrations') {
+			if (storageResult.status === 'partial-user-decision-required'
+				&& storageResult.failurePhase === 'runtime-commit'
+				&& storageResult.receipt) {
+				this.pendingSettingsBackupRuntimeRecovery = {
+					receiptId: storageResult.receipt.receiptId,
+					undoTokenId: storageResult.receipt.recovery.undoTokenId,
+					failedSteps: ['standard-refresh'],
+					localeIntentChanged: false,
+					reindexReason: null,
+					needsCanonicalReload: true,
+				};
+			}
+			return storageResult;
+		}
+		if (storageResult.receipt.alreadyApplied) return storageResult;
+		const runtimeOwner = {
+			receiptId: storageResult.receipt.receiptId,
+			undoTokenId: storageResult.receipt.recovery.undoTokenId,
+		};
+		const runtime = await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, runtimeOwner);
+		const finalizedReceipt = finalizeOperonSettingsBackupApplyReceiptV1(storageResult.receipt, {
+			status: runtime.status === 'degraded'
+				? 'runtime-degraded'
+				: storageResult.receipt.status,
+			runtimeSettlement: runtime.status,
+			warnings: runtime.status === 'degraded'
+				? ['One or more runtime refresh steps require an explicit retry or recovery decision.']
+				: [],
+			recovery: runtime.status === 'degraded'
+				? storageResult.receipt.recovery.undoTokenId
+					? {
+						...storageResult.receipt.recovery,
+						keepAvailable: true,
+						retryRuntimeRefreshAvailable: true,
+					}
+					: {
+						mode: 'reload-required', undoTokenId: null, expectedCurrentFingerprint: null,
+						keepAvailable: false, retryRuntimeRefreshAvailable: true, undoAvailable: false,
+					}
+				: storageResult.receipt.recovery,
+		});
+		const undoTokenId = finalizedReceipt.recovery.undoTokenId;
+		if (undoTokenId) {
+			this.storage.updateSettingsBackupUndoReceiptId(
+				undoTokenId,
+				storageResult.receipt.receiptId,
+				finalizedReceipt.receiptId,
+			);
+		}
+		this.rebindSettingsBackupRuntimeRecoveryReceipt(
+			storageResult.receipt.receiptId,
+			finalizedReceipt.receiptId,
+		);
+		if (runtime.status === 'degraded') {
+			return {
+				status: 'partial-user-decision-required',
+				receipt: finalizedReceipt,
+				blockedReason: null,
+				failurePhase: 'runtime-commit',
+			};
+		}
+		return {
+			...storageResult,
+			receipt: finalizedReceipt,
+		};
+	}
+
+	async resolveSettingsBackupRestoreRecoveryV1(input: {
+		action: 'keep' | 'retry-runtime-refresh' | 'undo';
+		receiptId: string;
+		undoTokenId: string | null;
+	}): Promise<OperonSettingsBackupRuntimeRefreshResult | OperonSettingsBackupUndoResultV1> {
+		return this.enqueueSettingsBackupRestoreOperation(
+			() => this.resolveSettingsBackupRestoreRecoveryUnlockedV1(input),
+		);
+	}
+
+	private async resolveSettingsBackupRestoreRecoveryUnlockedV1(input: {
+		action: 'keep' | 'retry-runtime-refresh' | 'undo';
+		receiptId: string;
+		undoTokenId: string | null;
+	}): Promise<OperonSettingsBackupRuntimeRefreshResult | OperonSettingsBackupUndoResultV1> {
+		const pending = this.pendingSettingsBackupRuntimeRecovery;
+		if (pending && pending.receiptId !== input.receiptId) {
+			return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
+		}
+		if (pending && pending.undoTokenId !== input.undoTokenId) {
+			return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
+		}
+		if (input.action === 'keep') {
+			if (!pending) {
+				if (input.undoTokenId
+					&& this.storage.discardSettingsBackupUndo(input.undoTokenId, input.receiptId)) {
+					return { status: 'settled', failedSteps: [] };
+				}
+				return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
+			}
+			if (pending?.needsCanonicalReload) {
+				const refreshed = await this.reloadSettingsBackupCanonicalRuntime(pending);
+				if (refreshed.status === 'degraded') return refreshed;
+			}
+			if (input.undoTokenId) {
+				this.storage.discardSettingsBackupUndo(input.undoTokenId, input.receiptId);
+			}
+			this.keepSettingsBackupRestore();
+			return { status: 'settled', failedSteps: [] };
+		}
+		if (input.action === 'undo') {
+			if (!input.undoTokenId) {
+				return { status: 'blocked', receiptId: '', blockedReason: 'not-available' };
+			}
+			const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+			const undone = await this.storage.undoSettingsBackupRestoreV1(input.undoTokenId, input.receiptId);
+			if (undone.status === 'partial-user-decision-required') {
+				if (undone.failurePhase === 'commit-state-unknown') {
+					this.pendingSettingsBackupRuntimeRecovery = null;
+					return undone;
+				}
+				this.pendingSettingsBackupRuntimeRecovery = {
+					receiptId: undone.receiptId,
+					undoTokenId: null,
+					failedSteps: ['standard-refresh'],
+					localeIntentChanged: false,
+					reindexReason: null,
+					needsCanonicalReload: true,
+				};
+				return undone;
+			}
+			if (undone.status !== 'success') return undone;
+			const runtime = await this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, {
+				receiptId: undone.receiptId,
+				undoTokenId: null,
+			});
+			if (runtime.status === 'degraded') return runtime;
+			return undone;
+		}
+		if (!pending) {
+			return { status: 'blocked', receiptId: input.receiptId, blockedReason: 'not-available' };
+		}
+		if (pending.needsCanonicalReload) return this.reloadSettingsBackupCanonicalRuntime(pending);
+		return this.retrySettingsBackupRuntimeRefresh();
+	}
+
+	private async reloadSettingsBackupCanonicalRuntime(
+		recovery: PendingSettingsBackupRuntimeRecovery,
+	): Promise<OperonSettingsBackupRuntimeRefreshResult> {
+		const previousLocaleIntent = this.captureSettingsBackupLocaleIntent();
+		try {
+			const result = await this.storage.reloadCanonicalSettingsPackage();
+			if (result.diagnostics.malformedPackage || result.diagnostics.pipelineTaxonomy.backupFailed) {
+				return { status: 'degraded', failedSteps: ['standard-refresh'] };
+			}
+		} catch {
+			return { status: 'degraded', failedSteps: ['standard-refresh'] };
+		}
+		recovery.needsCanonicalReload = false;
+		return this.settleSettingsBackupRuntimeRefresh(previousLocaleIntent, {
+			receiptId: recovery.receiptId,
+			undoTokenId: recovery.undoTokenId,
+		});
+	}
+
+	private captureSettingsBackupLocaleIntent(): OperonSettingsBackupLocaleIntent {
+		return {
+			language: this.settings.language,
+			languagePackSubscriptions: [...this.settings.languagePackSubscriptions],
+		};
+	}
+
+	private buildSettingsBackupUiIntegration(): SettingsBackupUiIntegration {
+		return {
+			exportBackup: () => this.exportSettingsBackupArtifactV1(),
+			resetSettings: () => this.resetSettingsToDefaultsFromUiV1(),
+			preflightRestore: (file, decisions) => this.prepareSettingsBackupRestoreForUiV1(file, decisions)
+				.then(result => result.preview),
+			applyRestore: input => this.applySettingsBackupRestoreFromUiV1(input),
+			getPendingRecovery: () => {
+				const pending = this.pendingSettingsBackupRuntimeRecovery;
+				if (pending) return buildOperonSettingsBackupRecoveryCapabilitiesV1({
+					receiptId: pending.receiptId,
+					undoTokenId: pending.undoTokenId,
+					message: 'Runtime refresh requires a recovery decision.',
+					runtimeRetryRequired: true,
+					undoAvailable: pending.undoTokenId !== null,
+					displayKind: 'runtime-refresh-incomplete',
+					failedRuntimeSteps: pending.failedSteps,
+				});
+				return this.lastSettingsBackupUiRecovery;
+			},
+			resolveRecovery: input => this.resolveSettingsBackupRecoveryFromUiV1(input),
+		};
+	}
+
+	private async resetSettingsToDefaultsFromUiV1(): Promise<SettingsBackupApplyResult> {
+		return this.enqueueSettingsBackupRestoreOperation(async () => {
+			if (this.pendingSettingsBackupRuntimeRecovery || this.lastSettingsBackupUiRecovery) {
+				return this.settingsBackupUiFailure('Resolve the pending settings recovery before resetting settings.');
+			}
+			const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
+			const createdAt = new Date().toISOString();
+			const profile = createOperonSettingsResetDefaultProfileV1({
+				source: {
+					pluginVersion: this.manifest.version,
+					obsidianVersion: apiVersion,
+					dataPackageSchemaVersion: committed.dataPackageSchemaVersion,
+				},
+				createdAt,
+			});
+			if (!profile.ok) return this.settingsBackupUiFailure('The default settings profile failed validation.');
+			const file: SettingsBackupSelectedFile = {
+				fileName: profile.suggestedFileName,
+				kind: 'json',
+				bytes: new TextEncoder().encode(profile.json),
+			};
+			const decisions: SettingsBackupPreviewDecisions = {
+				selectedGroups: OPERON_SETTINGS_RESET_DEFAULT_GROUPS_V1,
+				vaultReferences: OPERON_SETTINGS_RESET_DEFAULT_VAULT_REFERENCE_DECISIONS_V1,
+			};
+			const prepared = await this.prepareSettingsBackupRestoreForUiV1(file, decisions);
+			if (prepared.preview.classification !== 'ready' || !prepared.preview.planId) {
+				return this.settingsBackupUiFailure('The default settings reset plan is not ready.');
+			}
+			const applied = await this.applySettingsBackupRestoreFromUiV1({
+				file,
+				planId: prepared.preview.planId,
+				decisions,
+				acceptsNoCrashSafeRollback: true,
+				acceptsConditionalSessionOnlyUndo: true,
+			}, true, false);
+			return this.finalizeSettingsResetWithoutUndoV1(applied);
+		});
+	}
+
+	private finalizeSettingsResetWithoutUndoV1(result: SettingsBackupApplyResult): SettingsBackupApplyResult {
+		const { receiptId } = result;
+		if (receiptId && this.pendingSettingsBackupRuntimeRecovery?.receiptId === receiptId) {
+			this.lastSettingsBackupUiRecovery = null;
+			return { ...result, undoTokenId: null, recoveryRequired: true };
+		}
+		if (result.status === 'state-unknown' && receiptId) {
+			this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+				receiptId,
+				undoTokenId: null,
+				message: 'The reset commit state could not be verified. Manual recovery is required.',
+				runtimeRetryRequired: false,
+				undoAvailable: false,
+			});
+			return { ...result, undoTokenId: null, recoveryRequired: true };
+		}
+		this.lastSettingsBackupUiRecovery = null;
+		if (!result.recoveryRequired
+			&& (result.status === 'committed' || result.status === 'committed-after-error')) {
+			return { ...result, status: 'committed', undoTokenId: null };
+		}
+		return { ...result, undoTokenId: null };
+	}
+
+	private async exportSettingsBackupArtifactV1(): Promise<{ fileName: string; mimeType: string; bytes: Uint8Array }> {
+		const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
+		const exportInput = {
+			settings: committed.settings,
+			source: {
+				pluginVersion: this.manifest.version,
+				obsidianVersion: apiVersion,
+				dataPackageSchemaVersion: committed.dataPackageSchemaVersion,
+			},
+			createdAt: new Date().toISOString(),
+			canonicalWritesSuspended: committed.canonicalWritesSuspended,
+		};
+		const result = exportOperonSettingsBackupJsonV1(exportInput);
+		if (!result.ok) throw new Error('Operon settings backup export failed validation.');
+		return {
+			fileName: result.suggestedFileName,
+			mimeType: 'application/json',
+			bytes: new TextEncoder().encode(result.json),
+		};
+	}
+
+	private async prepareSettingsBackupRestoreForUiV1(
+		file: SettingsBackupSelectedFile,
+		decisions: SettingsBackupPreviewDecisions,
+	): Promise<SettingsBackupUiPreparedRestore> {
+		const sourceJson = new TextDecoder('utf-8', { fatal: true }).decode(file.bytes);
+		const committed = await this.storage.captureCommittedSettingsBackupSnapshot();
+		const selectedGroups = this.normalizeSettingsBackupUiGroups(decisions.selectedGroups);
+		const vaultReferenceDecisions = decisions.vaultReferences ?? {};
+		const vaultReferenceChecks = this.captureSettingsBackupVaultReferenceChecksV1(sourceJson);
+		const settingsPreflight = preflightOperonSettingsBackupRestoreV1({
+			sourceJson,
+			targetSnapshot: committed,
+			...(decisions.selectedGroups ? { selectedGroups } : {}),
+			vaultReferenceChecks,
+			vaultReferenceDecisions,
+		});
+		const classification: SettingsBackupRestorePreview['classification'] = settingsPreflight.ok
+			? settingsPreflight.classification
+			: 'blocked';
+		const preview = this.mapSettingsBackupPreviewForUiV1(
+			file.kind,
+			sourceJson,
+			settingsPreflight,
+			classification,
+			settingsPreflight.restorePlan?.planId ?? null,
+		);
+		return {
+			preview,
+			settingsPreflight,
+			settingsPlan: settingsPreflight.ok ? settingsPreflight.restorePlan : null,
+		};
+	}
+
+	private captureSettingsBackupVaultReferenceChecksV1(
+		sourceJson: string,
+	): Partial<Record<SettingsBackupVaultReferenceKey, OperonSettingsBackupVaultReferenceCheckV1>> {
+		const parsed = parseOperonSettingsBackupV1(sourceJson);
+		if (!parsed.ok) return {};
+		const general = parsed.value.body.groups.general?.data;
+		if (!general || typeof general !== 'object' || Array.isArray(general)) return {};
+		const values = general as Record<string, unknown>;
+		const checks: Partial<Record<SettingsBackupVaultReferenceKey, OperonSettingsBackupVaultReferenceCheckV1>> = {};
+		const folderKeys = new Set<SettingsBackupVaultReferenceKey>([
+			'operonDocsFolder', 'fileTasksFolder', 'fileTaskArchiveFolder', 'fileTaskTemplateFolder',
+			'fileRepeatCustomFolder', 'workspaceTweaksPropertiesExcludedFolders', 'excludedFolders',
+		]);
+		const fileKeys = new Set<SettingsBackupVaultReferenceKey>(['inlineTaskTargetFile', 'reminderSoundFilePath']);
+		for (const key of SETTINGS_BACKUP_VAULT_REFERENCE_KEYS) {
+			if (!(key in values)) continue;
+			const value = values[key];
+			if (folderKeys.has(key)) {
+				checks[key] = { status: this.classifySettingsBackupVaultPathsV1(value, 'folder') };
+			} else if (fileKeys.has(key)) {
+				checks[key] = { status: this.classifySettingsBackupVaultPathsV1(value, 'file') };
+			} else {
+				// These values are identity-bound rather than direct Vault paths. They
+				// remain explicit decisions and are sealed as unchecked at admission.
+				checks[key] = { status: 'unchecked' };
+			}
+		}
+		return checks;
+	}
+
+	private classifySettingsBackupVaultPathsV1(
+		value: unknown,
+		expected: 'file' | 'folder',
+	): OperonSettingsBackupVaultReferenceCheckV1['status'] {
+		const paths = typeof value === 'string'
+			? [value]
+			: Array.isArray(value) && value.every(item => typeof item === 'string')
+				? value
+				: null;
+		if (!paths) return 'wrong-type';
+		let status: OperonSettingsBackupVaultReferenceCheckV1['status'] = 'valid';
+		for (const rawPath of paths) {
+			const path = rawPath.trim();
+			if (!path) continue;
+			const item = this.app.vault.getAbstractFileByPath(path);
+			if (!item) return 'missing';
+			if ((expected === 'file' && !(item instanceof TFile))
+				|| (expected === 'folder' && !(item instanceof TFolder))) status = 'wrong-type';
+		}
+		return status;
+	}
+
+	private normalizeSettingsBackupUiGroups(groups: readonly string[] | undefined): SettingsBackupProfileGroupId[] {
+		if (!groups) return [];
+		const valid = new Set<string>(SETTINGS_BACKUP_GROUPS.map(group => group.id));
+		return [...new Set(groups.filter((group): group is SettingsBackupProfileGroupId => valid.has(group)))];
+	}
+
+	private mapSettingsBackupPreviewForUiV1(
+		kind: SettingsBackupSelectedFile['kind'],
+		sourceJson: string,
+		preflight: OperonSettingsBackupPreflightResultV1,
+		classification: SettingsBackupRestorePreview['classification'],
+		planId: string | null,
+	): SettingsBackupRestorePreview {
+		if (!preflight.ok) return {
+			kind,
+			classification: 'blocked',
+			compatibility: 'unsupported',
+			planId: null,
+			groups: [], vaultReferences: [],
+			diagnostics: ['The selected backup is invalid or unsupported.'],
+		};
+		const parsedSource = parseOperonSettingsBackupV1(sourceJson);
+		const generalData = parsedSource.ok && parsedSource.value.body.groups.general?.data
+			&& typeof parsedSource.value.body.groups.general.data === 'object'
+			&& !Array.isArray(parsedSource.value.body.groups.general.data)
+			? parsedSource.value.body.groups.general.data as Record<string, unknown>
+			: {};
+		return {
+			kind,
+			classification,
+			compatibility: preflight.preview.compatibility,
+			planId,
+			groups: preflight.preview.groups.map(group => ({
+				id: group.group,
+				label: group.group,
+				status: group.status === 'blocked-invalid' || group.status === 'blocked-dependency'
+					? 'blocked' : group.status,
+				selected: group.selected,
+				defaultSelected: group.defaultSelected,
+				selectable: group.selectable,
+				sensitive: group.sensitive,
+				counts: {
+					added: group.counts.added, removed: group.counts.removed,
+					changed: group.counts.changed, unchanged: group.counts.unchanged,
+					conflicts: group.counts.conflicts, unresolved: group.counts.unresolved,
+				},
+				issues: group.issues,
+			})),
+			vaultReferences: preflight.preview.issues.filter(issue => issue.kind === 'vault-reference').map(issue => {
+				const key = issue.id.replace(/^vault-reference-/u, '') as SettingsBackupVaultReferenceKey;
+				return {
+					key, label: key, path: this.describeSettingsBackupVaultReferenceValueV1(generalData[key]),
+					status: preflight.restorePlan?.vaultReferenceChecks[key]?.status ?? 'unchecked',
+					decision: issue.resolution,
+					required: !issue.resolved,
+				};
+			}),
+			diagnostics: preflight.diagnostics.map(() => 'One or more backup groups require compatibility handling.'),
+		};
+	}
+
+	private describeSettingsBackupVaultReferenceValueV1(value: unknown): string {
+		if (typeof value === 'string') return value || '(not set)';
+		if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
+			return value.length > 0 ? value.join(', ') : '(not set)';
+		}
+		return value == null ? '(not set)' : '(identity-bound value)';
+	}
+
+	private async applySettingsBackupRestoreFromUiV1(input: {
+		file: SettingsBackupSelectedFile;
+		planId: string;
+		decisions: SettingsBackupPreviewDecisions;
+		acceptsNoCrashSafeRollback: true;
+		acceptsConditionalSessionOnlyUndo: true;
+	}, restoreLaneOwned = false, retainSessionUndo = true): Promise<SettingsBackupApplyResult> {
+		if (input.acceptsNoCrashSafeRollback !== true
+			|| input.acceptsConditionalSessionOnlyUndo !== true) {
+			return this.settingsBackupUiFailure('The restore recovery limits must be acknowledged.');
+		}
+		if (!restoreLaneOwned) {
+			return this.enqueueSettingsBackupRestoreOperation(
+				() => this.applySettingsBackupRestoreFromUiV1(input, true, retainSessionUndo),
+			);
+		}
+		if (this.pendingSettingsBackupRuntimeRecovery || this.lastSettingsBackupUiRecovery) {
+			return this.settingsBackupUiFailure('Resolve the pending settings recovery before restoring another backup.');
+		}
+		const prepared = await this.prepareSettingsBackupRestoreForUiV1(input.file, input.decisions);
+		if (prepared.preview.classification !== 'ready' || prepared.preview.planId !== input.planId) {
+			return this.settingsBackupUiFailure('The restore preview is stale. Review the updated preview.');
+		}
+		if (!prepared.settingsPlan) return this.settingsBackupUiFailure('The JSON restore plan is not ready.');
+		const result = await this.applySettingsBackupRestorePlanUnlockedV1({
+			sourceJson: new TextDecoder('utf-8', { fatal: true }).decode(input.file.bytes),
+			restorePlan: prepared.settingsPlan,
+			refreshedVaultReferenceChecks: prepared.settingsPlan.vaultReferenceChecks,
+			acknowledgement: createOperonSettingsBackupApplyAcknowledgementV1(prepared.settingsPlan),
+			appliedAt: new Date().toISOString(),
+			retainSessionUndo,
+		});
+		if (!result.receipt) return this.settingsBackupUiFailure('The JSON restore was blocked.');
+		const uiResult: SettingsBackupApplyResult = {
+			status: result.receipt.canonicalWrite === 'state-unknown' ? 'state-unknown'
+				: result.receipt.canonicalWrite === 'committed-after-error' ? 'committed-after-error'
+					: 'committed',
+			message: result.status.startsWith('success') ? 'Settings restored.' : 'A recovery decision is required.',
+			receiptId: result.receipt.receiptId,
+			undoTokenId: result.receipt.recovery.undoTokenId,
+			recoveryRequired: result.status === 'partial-user-decision-required',
+		};
+		if (uiResult.receiptId && uiResult.status === 'state-unknown') {
+			this.lastSettingsBackupUiRecovery = this.buildSettingsBackupManualRecoveryStateV1(
+				uiResult.receiptId,
+				'The restore commit state could not be verified. Manual recovery is required.',
+			);
+		} else if (uiResult.undoTokenId && uiResult.receiptId) {
+			this.lastSettingsBackupUiRecovery = buildOperonSettingsBackupRecoveryCapabilitiesV1({
+				receiptId: uiResult.receiptId, undoTokenId: uiResult.undoTokenId,
+				message: uiResult.recoveryRequired
+					? 'Runtime refresh requires a recovery decision.'
+					: 'A conditional session undo remains available.',
+				runtimeRetryRequired: uiResult.recoveryRequired,
+				undoAvailable: true,
+				displayKind: uiResult.recoveryRequired
+					? 'runtime-refresh-incomplete'
+					: 'conditional-undo',
+			});
+		}
+		return uiResult;
+	}
+
+	private async resolveSettingsBackupRecoveryFromUiV1(input: {
+		action: 'keep' | 'retry-runtime-refresh' | 'undo';
+		receiptId: string;
+		undoTokenId: string | null;
+	}): Promise<SettingsBackupApplyResult> {
+		const result = await this.resolveSettingsBackupRestoreRecoveryV1(input);
+		if ('failedSteps' in result) {
+			if (result.status === 'settled') {
+				if (input.action === 'retry-runtime-refresh' && this.lastSettingsBackupUiRecovery
+					&& this.lastSettingsBackupUiRecovery.receiptId === input.receiptId
+					&& this.lastSettingsBackupUiRecovery.undoTokenId === input.undoTokenId) {
+					this.lastSettingsBackupUiRecovery = settleOperonSettingsBackupRecoveryRetryV1(
+						this.lastSettingsBackupUiRecovery,
+						'A conditional session undo remains available.',
+					);
+				} else {
+					this.lastSettingsBackupUiRecovery = null;
+				}
+			}
+			return {
+				status: result.status === 'settled' ? 'committed' : 'failed-clean',
+				message: result.status === 'settled' ? 'Runtime refresh completed.' : 'Runtime refresh remains incomplete.',
+				receiptId: input.receiptId,
+				undoTokenId: input.undoTokenId,
+				recoveryRequired: result.status !== 'settled',
+			};
+		}
+		if (result.status === 'partial-user-decision-required'
+			&& result.failurePhase === 'commit-state-unknown') {
+			this.pendingSettingsBackupRuntimeRecovery = null;
+			this.lastSettingsBackupUiRecovery = this.buildSettingsBackupManualRecoveryStateV1(
+				result.receiptId,
+				'The restore commit state could not be verified. Manual recovery is required.',
+			);
+		} else if (result.status === 'success') {
+			this.lastSettingsBackupUiRecovery = null;
+		}
+		return {
+			status: result.status === 'partial-user-decision-required' ? 'state-unknown'
+				: result.status === 'success' ? 'committed' : 'failed-clean',
+			message: result.status === 'success' ? 'Restore recovery completed.' : 'Restore recovery could not be completed.',
+			receiptId: result.receiptId,
+			undoTokenId: null,
+			recoveryRequired: result.status === 'partial-user-decision-required',
+		};
+	}
+
+	private settingsBackupUiFailure(message: string): SettingsBackupApplyResult {
+		return { status: 'failed-clean', message, receiptId: null, undoTokenId: null, recoveryRequired: false };
+	}
+
+	private buildSettingsBackupManualRecoveryStateV1(
+		receiptId: string,
+		message: string,
+	): SettingsBackupPendingRecovery {
+		return buildOperonSettingsBackupRecoveryCapabilitiesV1({
+			receiptId,
+			undoTokenId: null,
+			message,
+			runtimeRetryRequired: false,
+			undoAvailable: false,
+			displayKind: 'manual-recovery',
+		});
+	}
+
+	private enqueueSettingsBackupRestoreOperation<T>(operation: () => Promise<T>): Promise<T> {
+		const run = this.settingsBackupRestoreQueue.then(operation);
+		this.settingsBackupRestoreQueue = run.then(() => undefined, () => undefined);
+		return run;
+	}
+
+	private rebindSettingsBackupRuntimeRecoveryReceipt(previousReceiptId: string, receiptId: string): void {
+		if (this.pendingSettingsBackupRuntimeRecovery?.receiptId === previousReceiptId) {
+			this.pendingSettingsBackupRuntimeRecovery.receiptId = receiptId;
+		}
+	}
+
+	private async retrySettingsBackupRuntimeRefresh(): Promise<OperonSettingsBackupRuntimeRefreshResult> {
+		const recovery = this.pendingSettingsBackupRuntimeRecovery;
+		if (!recovery) return { status: 'settled', failedSteps: [] };
+		const retrySteps = new Set(recovery.failedSteps);
+		const failedSteps = new Set<OperonSettingsBackupRuntimeRefreshStep>();
+		let reindexReason = recovery.reindexReason;
+		let standardSettlement: SettingsChangedSettlement | null = null;
+		if (retrySteps.has('standard-refresh')) {
+			try {
+				standardSettlement = this.handleSettingsChanged({ notifyReindex: false });
+				reindexReason = standardSettlement.reindexReason ?? reindexReason;
+			} catch {
+				failedSteps.add('standard-refresh');
+			}
+		}
+
+		const retries: Promise<void>[] = [];
+		const externalCalendars = standardSettlement?.externalCalendars
+			?? (retrySteps.has('external-calendars')
+				? this.trackSettingsChangedPromise(
+					'external calendar settings reconciliation failed',
+					this.externalCalendarService?.applySettings(this.settings.externalCalendars) ?? Promise.resolve(),
+				)
+				: null);
+		if (externalCalendars) retries.push(this.captureSettingsBackupRefreshStep(
+			'external-calendars', externalCalendars, failedSteps,
+		));
+		const mobileNotifications = standardSettlement?.mobileNotifications
+			?? (retrySteps.has('mobile-notifications')
+				? this.trackSettingsChangedPromise(
+					'mobile notifications snapshot settings reconciliation failed',
+					this.mobileNotificationsExporter?.handleSettingsChanged() ?? Promise.resolve(),
+				)
+				: null);
+		if (mobileNotifications) retries.push(this.captureSettingsBackupRefreshStep(
+			'mobile-notifications', mobileNotifications, failedSteps,
+		));
+		if (retrySteps.has('locale') && recovery.localeIntentChanged) retries.push(
+			this.captureSettingsBackupRefreshStep(
+					'locale', this.synchronizeLanguagePacksAfterLayoutStrict(), failedSteps,
+			),
+		);
+		if (retrySteps.has('agent-runtime')) retries.push(this.captureSettingsBackupRefreshStep(
+			'agent-runtime', this.refreshAgentRuntimeSettingsBoundaryStrict(), failedSteps,
+		));
+		if (retrySteps.has('reindex')) {
+			if (reindexReason) {
+				this.scheduleSettingsReindex(reindexReason, { notify: false });
+			}
+			retries.push(this.captureSettingsBackupRefreshStep(
+				'reindex', this.awaitAgentRuntimeSettlement({ mutationOwnedMaintenance: true }), failedSteps,
+			));
+		}
+		await Promise.all(retries);
+		return this.finishSettingsBackupRuntimeRefresh(
+			failedSteps,
+			recovery.localeIntentChanged,
+			reindexReason,
+			{
+				receiptId: recovery.receiptId,
+				undoTokenId: recovery.undoTokenId,
+			},
+		);
+	}
+
+	private keepSettingsBackupRestore(): void {
+		this.pendingSettingsBackupRuntimeRecovery = null;
+	}
+
+	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): SettingsChangedSettlement {
 		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
 		this.writer.updateKeyMappings(this.settings.keyMappings);
 		const previousKeyMappingSignature = this.keyMappingSignature;
@@ -1933,21 +2724,26 @@ export default class OperonPlugin extends Plugin {
 		this.indexSemanticsSignature = buildIndexV8SemanticsSignature(this.settings);
 		const previousProjectSerialScopeSignature = this.projectSerialScopeSettingsSignature;
 		this.projectSerialScopeSettingsSignature = JSON.stringify(this.settings.projectSerialScopes);
+		let reindexReason: SettingsReindexReason | null = null;
 		if (previousIndexSemanticsSignature && previousIndexSemanticsSignature !== this.indexSemanticsSignature) {
-			const reason: SettingsReindexReason = previousKeyMappingSignature !== this.keyMappingSignature
+			reindexReason = previousKeyMappingSignature !== this.keyMappingSignature
 				? 'key-mappings'
 				: previousWorkflowStatusSemanticsSignature !== this.workflowStatusSemanticsSignature
 					? 'workflow-semantics'
 					: 'index-semantics';
-			this.scheduleSettingsReindex(reason, {
+			this.scheduleSettingsReindex(reindexReason, {
 				notify: options.notifyReindex !== false,
 			});
 		}
-		void this.externalCalendarService?.applySettings(this.settings.externalCalendars);
+		const externalCalendars = this.trackSettingsChangedPromise(
+			'external calendar settings reconciliation failed',
+			this.externalCalendarService?.applySettings(this.settings.externalCalendars) ?? Promise.resolve(),
+		);
 		this.reminderScheduler?.handleSettingsChanged();
-		runAsyncAction('mobile notifications snapshot settings reconciliation failed', async () => {
-			await this.mobileNotificationsExporter?.handleSettingsChanged();
-		});
+		const mobileNotifications = this.trackSettingsChangedPromise(
+			'mobile notifications snapshot settings reconciliation failed',
+			this.mobileNotificationsExporter?.handleSettingsChanged() ?? Promise.resolve(),
+		);
 		initI18n(undefined, this.settings.language);
 		if (
 			previousProjectSerialScopeSignature
@@ -1961,10 +2757,64 @@ export default class OperonPlugin extends Plugin {
 		this.refreshDuplicateAlertStatusBar();
 		this.mobileGlobalTaskFab?.refresh();
 		this.refreshViews();
+		return { externalCalendars, mobileNotifications, reindexReason };
 	}
 
-	private async synchronizeLanguagePacksAfterLayout(): Promise<void> {
-		if (!this.localePackManager) return;
+	private trackSettingsChangedPromise(label: string, operation: Promise<void>): Promise<void> {
+		const tracked = operation.catch(error => {
+			console.warn(`Operon: ${label}`, error);
+			throw error;
+		});
+		void tracked.catch(() => {});
+		return tracked;
+	}
+
+	private async captureSettingsBackupRefreshStep(
+		step: OperonSettingsBackupRuntimeRefreshStep,
+		operation: Promise<void>,
+		failedSteps: Set<OperonSettingsBackupRuntimeRefreshStep>,
+	): Promise<void> {
+		try {
+			await operation;
+		} catch {
+			failedSteps.add(step);
+		}
+	}
+
+	private finishSettingsBackupRuntimeRefresh(
+		failedSteps: ReadonlySet<OperonSettingsBackupRuntimeRefreshStep>,
+		localeIntentChanged: boolean,
+		reindexReason: SettingsReindexReason | null,
+		owner: { receiptId: string; undoTokenId: string | null },
+	): OperonSettingsBackupRuntimeRefreshResult {
+		const orderedSteps: readonly OperonSettingsBackupRuntimeRefreshStep[] = [
+			'standard-refresh',
+			'locale',
+			'agent-runtime',
+			'reindex',
+			'external-calendars',
+			'mobile-notifications',
+		];
+		const failed = orderedSteps.filter(step => failedSteps.has(step));
+		this.pendingSettingsBackupRuntimeRecovery = failed.length > 0
+			? {
+				receiptId: owner.receiptId,
+				undoTokenId: owner.undoTokenId,
+				failedSteps: failed,
+				localeIntentChanged,
+				reindexReason,
+				needsCanonicalReload: false,
+			}
+			: null;
+		return {
+			status: failed.length > 0 ? 'degraded' : 'settled',
+			failedSteps: failed,
+		};
+	}
+
+	private async synchronizeLanguagePacksAfterLayout(): Promise<boolean> {
+		if (!this.localePackManager) return true;
+		let succeeded = true;
 		const orderedLanguages = buildLocalePackReconcileOrder(this.settings);
 		for (const language of orderedLanguages) {
 			try {
@@ -1977,8 +2827,16 @@ export default class OperonPlugin extends Plugin {
 				this.mobileGlobalTaskFab?.refresh();
 				this.refreshViews();
 			} catch (error) {
+				succeeded = false;
 				console.warn(`Operon: language pack synchronization failed for ${language}`, error);
 			}
+		}
+		return succeeded;
+	}
+
+	private async synchronizeLanguagePacksAfterLayoutStrict(): Promise<void> {
+		if (!await this.synchronizeLanguagePacksAfterLayout()) {
+			throw new Error('Language pack reconciliation did not settle.');
 		}
 	}
 
@@ -11601,15 +12459,26 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async refreshAgentRuntimeSettingsBoundary(): Promise<void> {
-		if (!this.agentRuntimeSettingsFreshness) return;
+		await this.refreshAgentRuntimeSettingsBoundaryResult();
+	}
+
+	private async refreshAgentRuntimeSettingsBoundaryResult(): Promise<boolean> {
+		if (!this.agentRuntimeSettingsFreshness) return true;
 		const result = await this.agentRuntimeSettingsFreshness.refresh();
 		if (!result.ok) {
 			this.recordAgentRuntimeFreshnessFailure(result);
-			return;
+			return false;
 		}
 		this.agentRuntimeLifecycle.clearError('settings-freshness');
 		this.agentRuntimeSettingsFailureRelease?.();
 		this.agentRuntimeSettingsFailureRelease = null;
+		return true;
+	}
+
+	private async refreshAgentRuntimeSettingsBoundaryStrict(): Promise<void> {
+		if (!await this.refreshAgentRuntimeSettingsBoundaryResult()) {
+			throw new Error('Agent Runtime settings boundary did not settle.');
+		}
 	}
 
 	private recordAgentRuntimeFreshnessFailure(result: Extract<RuntimeSettingsFreshnessResultV1, { ok: false }>): void {
@@ -12290,8 +13159,11 @@ export default class OperonPlugin extends Plugin {
 
 	private registerTablePresetFileWatchers(): void {
 		this.registerEvent(this.app.vault.on('modify', file => {
-			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
+			if (this.tablePresetMaintenanceRunning) {
+				this.tablePresetWatcherDirtyDuringMaintenance = true;
+				return;
+			}
 			runAsyncAction('table file modify refresh failed', async () => {
 				const source = await this.app.vault.read(file);
 				const pathKey = getOperonTableFilePathKey(file.path);
@@ -12303,8 +13175,11 @@ export default class OperonPlugin extends Plugin {
 			});
 		}));
 		this.registerEvent(this.app.vault.on('create', file => {
-			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
+			if (this.tablePresetMaintenanceRunning) {
+				this.tablePresetWatcherDirtyDuringMaintenance = true;
+				return;
+			}
 			runAsyncAction('table file create refresh failed', async () => {
 				const source = await this.app.vault.read(file);
 				const pathKey = getOperonTableFilePathKey(file.path);
@@ -12316,13 +13191,19 @@ export default class OperonPlugin extends Plugin {
 			});
 		}));
 		this.registerEvent(this.app.vault.on('delete', file => {
-			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || !isOperonTableFilePath(file.path)) return;
+			if (this.tablePresetMaintenanceRunning) {
+				this.tablePresetWatcherDirtyDuringMaintenance = true;
+				return;
+			}
 			runAsyncAction('table file delete lifecycle failed', () => this.handleDeletedTableFile(file.path));
 		}));
 		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
-			if (this.tablePresetMaintenanceRunning) return;
 			if (!(file instanceof TFile) || (!isOperonTableFilePath(oldPath) && !isOperonTableFilePath(file.path))) return;
+			if (this.tablePresetMaintenanceRunning) {
+				this.tablePresetWatcherDirtyDuringMaintenance = true;
+				return;
+			}
 			runAsyncAction('table file rename synchronization failed', () => this.handleExternalTableFileRename(file, oldPath));
 		}));
 	}
@@ -12383,7 +13264,7 @@ export default class OperonPlugin extends Plugin {
 		}, 120);
 	}
 
-	private async refreshTablePresetRegistry(options: { adoptUnbound?: boolean; persistBindings?: boolean } = {}): Promise<void> {
+	private async refreshTablePresetRegistry(options: { adoptUnbound?: boolean; persistBindings?: boolean; reconcileFileNames?: boolean } = {}): Promise<void> {
 		const previousSnapshot = this.tablePresetRegistry.getSnapshot();
 		const previousOrderSignature = this.settings.tablePresetOrderIds.join('\u0000');
 		await this.tablePresetRegistry.refresh();
@@ -12405,7 +13286,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (bindingsChanged) await this.tablePresetRegistry.refresh();
 		this.syncTablePresetProjectionFromRegistry();
-		if (await this.reconcileBoundTableFileNames()) {
+		if (options.reconcileFileNames !== false && await this.reconcileBoundTableFileNames()) {
 			await this.tablePresetRegistry.refresh();
 			this.syncTablePresetProjectionFromRegistry();
 		}
@@ -13147,6 +14028,7 @@ export default class OperonPlugin extends Plugin {
 			() => this.reminderDeliveryController?.previewInOperon(),
 			async () => await this.reminderDeliveryController?.previewSystemNotification() ?? false,
 			this.buildDeveloperApiSettingsIntegration(),
+			this.buildSettingsBackupUiIntegration(),
 			);
 		this.addSettingTab(this.settingsTab);
 
@@ -13163,8 +14045,9 @@ export default class OperonPlugin extends Plugin {
 		// Run startup maintenance after layout is ready
 		this.app.workspace.onLayoutReady(() => {
 			if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('layout-ready');
-			runAsyncAction('startup locale pack synchronization failed', () =>
-				this.synchronizeLanguagePacksAfterLayout());
+			runAsyncAction('startup locale pack synchronization failed', async () => {
+				await this.synchronizeLanguagePacksAfterLayout();
+			});
 			const releaseCheckGeneration = ++this.releaseCheckGeneration;
 			this.startupReleaseCheckTimer = setWindowTimeout(() => {
 				this.startupReleaseCheckTimer = null;
@@ -13660,6 +14543,7 @@ export default class OperonPlugin extends Plugin {
 					getPipelines: () => this.settings.pipelines,
 					getSettings: () => this.settings,
 					startTimerForTask: (operonId, source) => this.startTimerForTask(operonId, source),
+					updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
 					onContextualAction: (
 						taskId: string,
 						actionId: ContextualMenuActionId,
@@ -13890,7 +14774,7 @@ export default class OperonPlugin extends Plugin {
 					onEditTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 					onDeleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
-					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
+					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect, false),
 					onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					getProjectSerialDisplay: (operonId, task) => task
 						? this.getReadingProjectSerialDisplayForTask(operonId, task)
@@ -13927,7 +14811,7 @@ export default class OperonPlugin extends Plugin {
 					onEditTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 					onDeleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 					onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
-					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
+					onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect, false),
 					onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 					getProjectSerialDisplay: (operonId, task) => task
 						? this.getReadingProjectSerialDisplayForTask(operonId, task)
@@ -14806,6 +15690,7 @@ export default class OperonPlugin extends Plugin {
 		taskId: string,
 		actionAnchor?: HTMLElement | null,
 		actionAnchorRect?: DOMRect | null,
+		centerOnDesktop = true,
 	): Promise<void> {
 		const indexedTask = this.indexer.getTask(taskId);
 		if (!indexedTask) {
@@ -14819,7 +15704,7 @@ export default class OperonPlugin extends Plugin {
 			keyMappings: this.settings.keyMappings,
 			taskColor: this.resolveCheckboxPopoverTaskColor(indexedTask),
 			seedEmptyDraft: (indexedTask.plainCheckboxProgress?.total ?? 0) <= 0,
-			centerOnDesktop: true,
+			centerOnDesktop,
 			onDispose: cleanup,
 		});
 	}
@@ -15108,6 +15993,15 @@ export default class OperonPlugin extends Plugin {
 
 		new TrackerSessionEditModal(this.app, {
 			title: t('taskEditor', 'editSession'),
+			taskNote: {
+				operonId: session.operonId,
+				sourcePath: task.primary.filePath,
+				initialValue: task.fieldValues['note'] ?? '',
+				taskDescription: task.description,
+				taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+				icon: getConfiguredKeyMappingIcon('note', this.settings.keyMappings) || 'notebook-pen',
+				onCommit: value => this.updateTableTaskFieldsAndRefresh(session.operonId, { note: value }),
+			},
 			...buildTrackerSessionEditContext({
 				taskLabel,
 				start: currentSession.start,
@@ -15626,6 +16520,10 @@ export default class OperonPlugin extends Plugin {
 			return await operation();
 		} finally {
 			this.tablePresetMaintenanceRunning = false;
+			if (this.tablePresetWatcherDirtyDuringMaintenance) {
+				this.tablePresetWatcherDirtyDuringMaintenance = false;
+				this.scheduleTablePresetRegistryRefresh();
+			}
 		}
 	}
 
@@ -18033,7 +18931,7 @@ export default class OperonPlugin extends Plugin {
 			editTaskSession: (session, start, end) => this.editTableTaskSessionAndRefresh(session, start, end),
 			deleteTaskSession: (session) => this.deleteTableTaskSessionAndRefresh(session),
 			onStatusIconClick: (taskId) => this.handleCalendarStatusIconClick(taskId),
-			onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect),
+			onOpenCheckboxes: (taskId, actionAnchor, actionAnchorRect) => this.openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect, false),
 			onContextualAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
 			onOpenPresetSettings: (presetId) => this.openTablePresetSettingsModal(presetId, () => this.resolveTablePresetSettingsLeafForEmbed()),
 			onSavePresetPatch: (patch) => this.queueTablePresetPatchAndRefresh(

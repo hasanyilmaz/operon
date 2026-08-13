@@ -430,7 +430,10 @@ function buildTableColumnHeaderMenu(
 			deferTableHeaderMenuAction(anchor, () => showTableAddColumnPicker(submenuPosition, column, 'right', options));
 		}));
 	menu.addSeparator();
-	if (isTableColumnColorModeEligible(column)) {
+	if (isTableColumnColorModeEligible(
+		column,
+		getEffectiveTableTaskField(column.key, renderState.settings, renderState.additionalFields),
+	)) {
 		addTableColumnColorMenuItems(menu, column, options);
 		menu.addSeparator();
 	}
@@ -672,7 +675,10 @@ function addTableColumnColorMenuItems(
 	options: TableHeaderInteractionOptions,
 ): void {
 	const renderState = options.getRenderState();
-	if (!renderState || !isTableColumnColorModeEligible(column)) return;
+	if (!renderState || !isTableColumnColorModeEligible(
+		column,
+		getEffectiveTableTaskField(column.key, renderState.settings, renderState.additionalFields),
+	)) return;
 	const currentMode = resolveEffectiveTableColumnColorMode(column);
 	for (const mode of TABLE_COLUMN_COLOR_MENU_MODES) {
 		menu.addItem(item => item

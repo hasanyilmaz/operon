@@ -17,7 +17,7 @@ export function isMobileTableTextInputFocused(root: HTMLElement): boolean {
 	const activeElement = root.ownerDocument.activeElement;
 	return activeElement instanceof HTMLInputElement
 		&& root.contains(activeElement)
-		&& activeElement.matches('.operon-table-search-input, .operon-table-description-input');
+		&& activeElement.matches('.operon-table-search-input');
 }
 
 export function bindMobileTableViewport(root: HTMLElement, onGeometryChange: () => void): () => void {
