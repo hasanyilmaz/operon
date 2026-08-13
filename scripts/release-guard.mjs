@@ -7,6 +7,15 @@ import { parse as parseYaml } from 'yaml';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
+const guardScope = parseGuardScope(process.argv.slice(2));
+
+function parseGuardScope(argv) {
+	if (argv.length === 0) return 'plugin';
+	if (argv.length === 2 && argv[0] === '--scope' && ['plugin', 'cli-compat'].includes(argv[1])) {
+		return argv[1];
+	}
+	throw new Error('OPERON_RELEASE_GUARD_SCOPE_INVALID');
+}
 
 function readText(relativePath) {
 	return fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
@@ -391,19 +400,45 @@ function checkContinuousIntegrationWorkflow() {
 	assertEqual('CI validation gate name', validation?.name, 'Validation gate');
 	const validationSteps = new Map((validation?.steps ?? []).map(step => [step.name, step]));
 	assertEqual('CI validation checkout history depth', validationSteps.get('Check out repository')?.with?.['fetch-depth'], 2);
-	assertEqual('CI main validation condition', validationSteps.get('Run validation')?.if, "github.event_name == 'push'");
-	assertEqual('CI main validation command', validationSteps.get('Run validation')?.run, 'npm run check');
-	assertEqual('CI PR validation condition', validationSteps.get('Run paired candidate validation')?.if, "github.event_name == 'pull_request'");
-	assertEqual('CI PR validation command', validationSteps.get('Run paired candidate validation')?.run, 'npm run check:candidate');
+	assertEqual('CI PR base fetch condition', validationSteps.get('Fetch pull-request base for validation classification')?.if, "github.event_name == 'pull_request'");
+	assertEqual('CI PR surface classifier condition', validationSteps.get('Classify pull-request validation surface')?.if, "github.event_name == 'pull_request'");
+	assertEqual('CI CLI compatibility review condition', validationSteps.get('Require explicit CLI compatibility review')?.if, "github.event_name == 'pull_request' && steps.pr-surface.outputs.cli_compat_review == 'true'");
+	assertEqual('CI main validation condition', validationSteps.get('Run main validation')?.if, "github.event_name == 'push'");
+	assertEqual('CI main validation command', validationSteps.get('Run main validation')?.run, 'npm run check:main');
+	assertEqual('CI PR validation condition', validationSteps.get('Run Plugin candidate validation')?.if, "github.event_name == 'pull_request'");
+	assertEqual('CI PR validation command', validationSteps.get('Run Plugin candidate validation')?.run, 'npm run check:plugin');
+	assertEqual('CI CLI impact command', validationSteps.get('Report non-blocking CLI impact')?.shell, 'bash');
+	if (!validationSteps.get('Report non-blocking CLI impact')?.run?.includes('npm run --silent agent-runtime:cli-impact')) {
+		fail('CI must write the non-blocking CLI impact summary.');
+	}
+	if (!validationSteps.get('Fetch pull-request base for validation classification')?.run?.includes('git fetch --no-tags --depth=1 origin "$BASE_SHA"')) {
+		fail('CI must fetch the exact pull-request base before classifying changed paths.');
+	}
+	if (!validationSteps.get('Classify pull-request validation surface')?.run?.includes('scripts/ci/classify-pr-validation-surface.mjs')) {
+		fail('CI must classify the pull-request validation surface without invoking CLI compatibility checks.');
+	}
+	const directReleaseGuardSteps = (validation?.steps ?? []).filter(step => (
+		step.run === 'npm run release:guard -- --scope plugin'
+	));
+	if (directReleaseGuardSteps.length !== 1) {
+		fail('CI must contain exactly one direct Plugin release guard step for release-sensitive pull requests.');
+	} else {
+		assertEqual(
+			'CI release-sensitive Plugin guard condition',
+			directReleaseGuardSteps[0].if,
+			"github.event_name == 'pull_request' && steps.pr-surface.outputs.plugin_release_guard == 'true'",
+		);
+	}
 	const windowsSteps = new Map((windows?.steps ?? []).map(step => [step.name, step]));
 	assertEqual('CI Windows checkout history depth', windowsSteps.get('Check out repository')?.with?.['fetch-depth'], 2);
-	assertEqual('Windows main validation condition', windowsSteps.get('Run validation')?.if, "github.event_name == 'push'");
-	assertEqual('Windows native transport condition', windowsSteps.get('Run required native transport validation')?.if, "github.event_name == 'push'");
-	assertEqual('Windows URL portability condition', windowsSteps.get('Verify tracked runner URL portability')?.if, "github.event_name == 'push'");
+	assertEqual('Windows Plugin validation condition', windowsSteps.get('Run canonical Windows Plugin validation')?.if, undefined);
+	assertEqual('Windows Plugin validation command', windowsSteps.get('Run canonical Windows Plugin validation')?.run, 'npm run validate:windows:plugin');
+	if (windowsSteps.has('Run validation') || windowsSteps.has('Run required native transport validation')) {
+		fail('Windows CI must use the single canonical platform validator instead of a broad or duplicate validation step.');
+	}
 	const installIndex = workflowText.indexOf('run: npm ci');
 	const auditPolicyIndex = workflowText.indexOf('run: npm run release:audit-policy');
-	const validationIndex = workflowText.indexOf('run: npm run check');
-	const releaseGuardIndex = workflowText.indexOf('run: npm run release:guard');
+	const validationIndex = workflowText.indexOf('run: npm run check:main');
 
 	assertIncludes(workflow, 'node-version: "24.18.0"', 'CI must use the exact canonical Node release baseline');
 	assertIncludes(workflow, 'npm install --global npm@11.12.1', 'CI must pin the canonical npm version');
@@ -432,7 +467,7 @@ function checkContinuousIntegrationWorkflow() {
 		/run:\s+npm audit(?:\s|$)/u,
 		'CI must not bypass the canonical dependency audit policy with raw npm audit',
 	);
-	if (!/- name: Run validation\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check/u.test(workflowText)) {
+	if (!/- name: Run Plugin candidate validation\s+if: github\.event_name == 'pull_request'\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check:plugin/u.test(workflowText)) {
 		fail('CI must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
 	}
 	assertNoMatch(workflow, /evidence-seal|hosted-evidence|candidate:freeze:check/u, 'CI must use one normal validation lane per commit');
@@ -445,9 +480,8 @@ function checkContinuousIntegrationWorkflow() {
 		installIndex < 0
 		|| validationIndex < installIndex
 		|| auditPolicyIndex < validationIndex
-		|| releaseGuardIndex < auditPolicyIndex
 	) {
-		fail('CI must run install, validation, production audit, and release guard in order');
+		fail('CI must run install, validation, and production audit in order');
 	}
 }
 
@@ -494,6 +528,13 @@ function checkReleaseWorkflow() {
 		previous = index;
 	}
 	const releaseSteps = new Map(steps.map(step => [step.name, step]));
+	const releaseAssetStep = releaseSteps.get('Verify release assets')?.run ?? '';
+	if (!releaseAssetStep.includes('test -f main.js && test -f manifest.json && test -f styles.css')) {
+		fail('release workflow must verify the three attested plugin artifacts exist');
+	}
+	if (/createHash|SHA-256|sha256|reminder-sound-pack-catalog/u.test(releaseAssetStep)) {
+		fail('release workflow must not repeat release-guard asset integrity checks');
+	}
 	assertEqual('release checkout history depth', releaseSteps.get('Check out repository')?.with?.['fetch-depth'], 0);
 	const installIndex = workflowText.indexOf('run: npm ci');
 	const buildIndex = workflowText.indexOf('run: npm run build');
@@ -669,9 +710,9 @@ function checkReleaseWorkflow() {
 	);
 }
 
-function checkWorkflowSecurityPolicy() {
+function checkWorkflowSecurityPolicy(scope = guardScope) {
 	const workflowRoot = path.join(rootDir, '.github/workflows');
-	const workflows = fs.readdirSync(workflowRoot)
+	const allWorkflows = fs.readdirSync(workflowRoot)
 		.filter(file => file.endsWith('.yml') || file.endsWith('.yaml'))
 		.sort();
 	const exactCodeqlRevision = 'bce182f857edf1feab116e9795a3393d21977282';
@@ -683,6 +724,11 @@ function checkWorkflowSecurityPolicy() {
 		['codeql.yml', ['contents: read', 'security-events: write']],
 		['release.yml', ['contents: write', 'checks: read', 'id-token: write', 'attestations: write']],
 	]);
+	const workflows = allWorkflows.filter(file => (
+		scope === 'cli-compat'
+			? file === 'cli-external-compatibility.yml'
+			: file !== 'cli-external-compatibility.yml'
+	));
 
 	for (const file of workflows) {
 		const relativePath = `.github/workflows/${file}`;
@@ -738,7 +784,9 @@ function checkWorkflowSecurityPolicy() {
 			}
 		}
 	}
-	if (exactWorkflowPermissions.size !== workflows.length) {
+	const expectedWorkflowCount = [...exactWorkflowPermissions.keys()]
+		.filter(file => workflows.includes(file)).length;
+	if (expectedWorkflowCount !== workflows.length) {
 		fail('workflow permission policy must cover every checked-in workflow');
 	}
 
@@ -750,9 +798,11 @@ function checkWorkflowSecurityPolicy() {
 		'.github/workflows/cli-release-ready.yml',
 		'packages/operon-cli',
 	];
-	for (const relativePath of retiredCliPaths) {
-		if (fs.existsSync(path.join(rootDir, relativePath))) {
-			fail(`${relativePath}: retired embedded CLI path must remain absent`);
+	if (scope === 'cli-compat') {
+		for (const relativePath of retiredCliPaths) {
+			if (fs.existsSync(path.join(rootDir, relativePath))) {
+				fail(`${relativePath}: retired embedded CLI path must remain absent`);
+			}
 		}
 	}
 }
@@ -856,7 +906,167 @@ function checkRepositoryIgnorePolicy() {
 	);
 }
 
-function checkReleaseAuditPolicy() {
+function checkPluginReleasePolicy() {
+	const packageManifest = readJson('package.json');
+	const scripts = packageManifest.scripts ?? {};
+	assertEqual('check alias', scripts.check, 'npm run check:plugin');
+	assertEqual('candidate check alias', scripts['check:candidate'], 'npm run check:plugin');
+	const pluginCheck = scripts['check:plugin'] ?? '';
+	const pluginCommands = pluginCheck.split('&&').map(command => command.trim());
+	if (pluginCommands.filter(command => command === 'npm run build').length !== 1) {
+		fail('check:plugin must build production artifacts exactly once');
+	}
+	for (const command of [
+		'npm run ci:pr-surface:test',
+		'npm run lint:strict',
+		'npm run lint:scorecard:strict',
+		'npm run agent-runtime:contracts:plugin',
+	]) {
+		if (!pluginCommands.includes(command)) fail(`check:plugin must run ${command}`);
+	}
+	for (const forbidden of [
+		'external-cli',
+		'cli-contracts',
+		'historical-freeze',
+		'cli-schemas',
+		'release:external-live',
+		'docs:public-v1',
+		'check:cli-compat',
+	]) {
+		if (pluginCheck.includes(forbidden)) {
+			fail(`check:plugin must not enter CLI compatibility work: ${forbidden}`);
+		}
+	}
+	const mainCheck = scripts['check:main'] ?? '';
+	for (const command of [
+		'npm run agent-runtime:schemas:check',
+		'npm run agent-runtime:runtime-baseline:check',
+		'npm run build',
+		'npm run release:guard -- --scope plugin',
+		'npm run agent-runtime:cli-impact',
+	]) {
+		if (!mainCheck.includes(command)) fail(`check:main must run ${command}`);
+	}
+	if (mainCheck.split('&&').filter(command => command.trim() === 'npm run build').length !== 1) {
+		fail('check:main must build production artifacts exactly once');
+	}
+	if (
+		scripts['lint:scorecard:strict']
+		!== 'eslint --config eslint.scorecard.config.mjs main.ts src --max-warnings 0'
+	) fail('strict scorecard lint must preserve the isolated type-aware source boundary');
+	if (!readText('package.json').includes('"release:audit-policy": "node scripts/check-release-audit-policy.mjs"')) {
+		fail('package scripts must expose the canonical release audit-policy check');
+	}
+	assertIncludes(
+		'scripts/check-release-audit-policy.mjs',
+		"['audit', '--omit=dev', '--json']",
+		'release audit policy must inspect production dependencies only',
+	);
+	assertIncludes(
+		'esbuild.config.mjs',
+		'build/release/main-metafile.json',
+		'production build must emit dependency evidence for the release audit',
+	);
+	assertIncludes(
+		'scripts/check-release-audit-policy.mjs',
+		"readJson('build/release/main-metafile.json')",
+		'release audit policy must inspect the exact production build dependency evidence',
+	);
+	assertNoMatch(
+		'scripts/check-release-audit-policy.mjs',
+		/spawnSync\('npm', \['audit', '--json'\]/u,
+		'release audit policy must not make development-only findings release blockers',
+	);
+	assertIncludes(
+		'package.json',
+		'"agent-runtime:runtime": "node scripts/agent-runtime/runtime/run-graph-transaction-executor-tests.mjs &&',
+		'normal Runtime validation must execute graph transaction recovery tests',
+	);
+	checkHistoricalCliEvidenceWasNotChanged();
+}
+
+function checkHistoricalCliEvidenceWasNotChanged() {
+	const historicalPrefixes = [
+		'contracts/agent-runtime/public-v1-freeze',
+		'contracts/agent-runtime/public-v1-release-freezes.json',
+		'contracts/agent-runtime/releases/',
+		'scripts/release/fixtures/legacy-cli-',
+	];
+	const changed = new Set();
+	for (const arguments_ of [
+		['diff', '--name-only'],
+		['diff', '--name-only', 'HEAD^', 'HEAD'],
+	]) {
+		try {
+			for (const file of execFileSync('git', arguments_, { cwd: rootDir, encoding: 'utf8' })
+				.split(/\r?\n/u).filter(Boolean)) changed.add(file);
+		} catch {
+			// A shallow first commit has no parent; the worktree diff still protects local edits.
+		}
+	}
+	for (const file of changed) {
+		if (historicalPrefixes.some(prefix => file.startsWith(prefix))) {
+			fail(`${file}: historical CLI evidence requires release:guard --scope cli-compat.`);
+		}
+	}
+}
+
+function checkCliCompatibilityEvidence() {
+	const packageManifest = readJson('package.json');
+	assertEqual(
+		'CLI compatibility command',
+		packageManifest.scripts?.['check:cli-compat'],
+		'node scripts/agent-runtime/cli/check-cli-compat.mjs',
+	);
+	const compatibilityContracts = packageManifest.scripts?.['agent-runtime:contracts:cli-compat'] ?? '';
+	for (const command of [
+		'npm run agent-runtime:schemas:cli-compat:test',
+		'npm run agent-runtime:external-cli:test',
+		'npm run agent-runtime:cli-contracts:check',
+		'npm run agent-runtime:compatibility:check',
+		'npm run agent-runtime:historical-freeze:test',
+		'npm run agent-runtime:historical-freeze:check',
+		'npm run agent-runtime:cli-schemas:test',
+	]) {
+		if (!compatibilityContracts.includes(command)) {
+			fail(`CLI compatibility validation must run ${command}`);
+		}
+	}
+	for (const file of [
+		'contracts/agent-runtime/public-v1-freeze.json',
+		'contracts/agent-runtime/public-v1-external-freeze.schema.json',
+		'contracts/agent-runtime/public-v1-release-freezes.json',
+		'scripts/release/fixtures/legacy-cli-1.0.8/published-cli-v1.json',
+		'scripts/release/fixtures/legacy-cli-1.0.8/published-cli-v1.schema.json',
+		'scripts/agent-runtime/cli/check-published-cli-binding.mjs',
+		'scripts/agent-runtime/cli/check-published-cli-artifact.mjs',
+		'scripts/agent-runtime/cli/check-published-cli-public-proof.mjs',
+	]) assertFileExists(file);
+	assertEqual(
+		'historical Public V1 freeze SHA-256',
+		createHash('sha256').update(fs.readFileSync(path.join(rootDir, 'contracts/agent-runtime/public-v1-freeze.json'))).digest('hex'),
+		'41c83bcbcbc8b8117c1e9989d7d430e03f2257c0004ba2af94363f203f4bf71b',
+	);
+	assertEqual(
+		'legacy CLI 1.0.8 binding fixture identity',
+		createHash('sha256').update(fs.readFileSync(path.join(rootDir, 'scripts/release/fixtures/legacy-cli-1.0.8/published-cli-v1.json'))).digest('hex'),
+		'b7b446d15218a78d8c696d7c3732461ccffad6c0af6069637a02452c9b3fef98',
+	);
+	assertEqual(
+		'legacy CLI 1.0.8 schema fixture identity',
+		createHash('sha256').update(fs.readFileSync(path.join(rootDir, 'scripts/release/fixtures/legacy-cli-1.0.8/published-cli-v1.schema.json'))).digest('hex'),
+		'62d8adbc7b736cd910c35db744cb70b4e2c03cc34c7d11a0e86d3a499cedb8e7',
+	);
+	const workflow = readText('.github/workflows/cli-external-compatibility.yml');
+	if (!workflow.includes('workflow_dispatch:') || /\bpull_request:|\bpush:/u.test(workflow)) {
+		fail('CLI external compatibility workflow must remain manual-only.');
+	}
+	if (!workflow.includes('agent-runtime:external-cli:public-proof')) {
+		fail('CLI external compatibility workflow must retain published-proof coverage.');
+	}
+}
+
+export function checkLegacyPairedReleaseEvidence() {
 	for (const file of [
 		'contracts/agent-runtime/public-v1-freeze.json',
 		'contracts/agent-runtime/public-v1-external-freeze.schema.json',
@@ -2188,21 +2398,26 @@ function checkCanonicalOnlyStorageContract() {
 	}
 }
 
-compareLocaleFiles();
-checkVersionAndAssets();
-checkReleaseAuditPolicy();
-checkRepositoryIgnorePolicy();
-checkContinuousIntegrationWorkflow();
-checkCodeqlWorkflow();
-checkReleaseWorkflow();
-checkWorkflowSecurityPolicy();
-checkPublicSourceHygiene();
-checkCssScorecard();
-checkCalendarHoverGuideContract();
-checkSettingsDescriptionTextareaGuards();
-checkAuditedRawStrings();
-checkTrackerSessionNoteActionContract();
-checkCanonicalOnlyStorageContract();
+if (guardScope === 'plugin') {
+	compareLocaleFiles();
+	checkVersionAndAssets();
+	checkPluginReleasePolicy();
+	checkRepositoryIgnorePolicy();
+	checkContinuousIntegrationWorkflow();
+	checkCodeqlWorkflow();
+	checkReleaseWorkflow();
+	checkWorkflowSecurityPolicy();
+	checkPublicSourceHygiene();
+	checkCssScorecard();
+	checkCalendarHoverGuideContract();
+	checkSettingsDescriptionTextareaGuards();
+	checkAuditedRawStrings();
+	checkTrackerSessionNoteActionContract();
+	checkCanonicalOnlyStorageContract();
+} else {
+	checkCliCompatibilityEvidence();
+	checkWorkflowSecurityPolicy();
+}
 
 if (failures.length > 0) {
 	console.error('Operon release guard failed:');
@@ -2212,4 +2427,4 @@ if (failures.length > 0) {
 	process.exit(1);
 }
 
-console.log('Operon release guard passed.');
+console.log(`Operon release guard passed (${guardScope}).`);
