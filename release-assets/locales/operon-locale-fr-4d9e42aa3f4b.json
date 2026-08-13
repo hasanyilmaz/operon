@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 2994,
-  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
+  "keyCount": 2998,
+  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2379,6 +2379,8 @@
       "clearAllSummaries": "Effacer tous les résumés",
       "clearSearch": "Effacer la recherche",
       "collapseGroup": "Réduire le groupe",
+      "colorMode": "Mode de couleur",
+      "colorModeCustomColors": "Couleurs personnalisées",
       "colorModeNoColor": "Aucune couleur",
       "colorModePriorityColor": "Couleur de priorité",
       "colorModeRandomColors": "Couleurs aléatoires",
@@ -2401,6 +2403,7 @@
       "duplicatePresetName": "Copie de {{name}}",
       "editCellAria": "Cliquez ou appuyez sur Entree, Espace ou F2 pour modifier.",
       "editPreset": "Modifier le préréglage de tableau",
+      "editPresetNamed": "Modifier le préréglage : {{name}}",
       "editSummary": "Modifier le résumé...",
       "embedCodeCopied": "Code d’intégration Table copié",
       "embedInvalidSyntax": "Syntaxe d’intégration Table invalide. Utilisez presetId: \"table-preset-id\".",
@@ -2463,6 +2466,7 @@
       "noSubgrouping": "Aucun sous-regroupement",
       "openSource": "Ouvrir la source {{source}}",
       "parentSearchMoreResults": "{{count}} résultats de plus. Continuez à saisir pour affiner.",
+      "parentTaskSourceTabHint": "{{modifier}}+clic ouvre la source de la tâche parente dans un nouvel onglet.",
       "pinColumn": "Épingler la colonne",
       "presetActionFailed": "Échec de l’action du préréglage de tableau.",
       "presetFilter": "Filtre de tableau",
@@ -3039,5 +3043,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "3facc6ab4d81fcc35274ea2933b09934c2d1a2047334ac2547b480c8ffcc5859"
+  "sourceVersion": "98e3bb062137609371a73f73457e98e24375e9f41a8e5acd858fdbbca614198b"
 }

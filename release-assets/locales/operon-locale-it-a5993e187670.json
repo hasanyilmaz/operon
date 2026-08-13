@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 2994,
-  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
+  "keyCount": 2998,
+  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2379,6 +2379,8 @@
       "clearAllSummaries": "Cancella tutti i riepiloghi",
       "clearSearch": "Cancella ricerca",
       "collapseGroup": "Comprimi gruppo",
+      "colorMode": "Modalità colore",
+      "colorModeCustomColors": "Colori personalizzati",
       "colorModeNoColor": "Nessun colore",
       "colorModePriorityColor": "Colore priorità",
       "colorModeRandomColors": "Colori casuali",
@@ -2401,6 +2403,7 @@
       "duplicatePresetName": "Copia di {{name}}",
       "editCellAria": "Fai clic, premi Invio, Spazio o F2 per modificare.",
       "editPreset": "Modifica preimpostazione tabella",
+      "editPresetNamed": "Modifica preimpostazione: {{name}}",
       "editSummary": "Modifica riepilogo...",
       "embedCodeCopied": "Codice di incorporamento Table copiato",
       "embedInvalidSyntax": "Sintassi di incorporamento Table non valida. Usa presetId: \"table-preset-id\".",
@@ -2463,6 +2466,7 @@
       "noSubgrouping": "Nessun sottoraggruppamento",
       "openSource": "Apri origine {{source}}",
       "parentSearchMoreResults": "{{count}} altri risultati. Continua a digitare per restringere.",
+      "parentTaskSourceTabHint": "{{modifier}}+clic per aprire l'origine dell'attività principale in una nuova scheda.",
       "pinColumn": "Fissa colonna",
       "presetActionFailed": "Azione della preimpostazione tabella non riuscita.",
       "presetFilter": "Filtro tabella",
@@ -3039,5 +3043,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "91567f8f0fffc47d60fe48775fe00c3738533cebee5b3f0440878e65e31e87ad"
+  "sourceVersion": "0764bc544f22f650c10df4683d58599fce88ea9f11f2eb78016a7d008f3df556"
 }

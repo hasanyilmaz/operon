@@ -508,6 +508,10 @@ export function getDefaultTableColumnColorMode(key: string): TableColumnColorMod
 	return 'noColor';
 }
 
+export function isTableColumnColorModeLocked(key: string): boolean {
+	return key === 'taskColor';
+}
+
 export function normalizeTableColumnColorMode(value: unknown, key: string): TableColumnColorMode | undefined {
 	if (typeof value !== 'string') return undefined;
 	if (!TABLE_COLUMN_COLOR_MODES.includes(value as TableColumnColorMode)) return undefined;

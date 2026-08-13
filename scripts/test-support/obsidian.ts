@@ -390,7 +390,12 @@ export function getIconIds(): string[] {
 	return ['alarm-clock', 'calendar', 'check', 'circle', 'pin', 'square-pen', 'timer'];
 }
 
-export function setIcon(_el: any, _iconId: string): void {}
+export function setIcon(el: any, iconId: string): void {
+	const testHook = (globalThis as typeof globalThis & {
+		__operonTestSetIcon?: (target: any, name: string) => void;
+	}).__operonTestSetIcon;
+	testHook?.(el, iconId);
+}
 
 export function setTooltip(_el: any, _tooltip: string): void {}
 

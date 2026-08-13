@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 2994,
-  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
+  "keyCount": 2998,
+  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2379,6 +2379,8 @@
       "clearAllSummaries": "すべてのサマリーをクリア",
       "clearSearch": "検索をクリア",
       "collapseGroup": "グループを折りたたむ",
+      "colorMode": "カラーモード",
+      "colorModeCustomColors": "カスタムカラー",
       "colorModeNoColor": "色なし",
       "colorModePriorityColor": "優先度の色",
       "colorModeRandomColors": "ランダムカラー",
@@ -2401,6 +2403,7 @@
       "duplicatePresetName": "{{name}} のコピー",
       "editCellAria": "クリック、Enter、Space、F2で編集します。",
       "editPreset": "テーブルプリセットを編集",
+      "editPresetNamed": "プリセットを編集: {{name}}",
       "editSummary": "集計を編集...",
       "embedCodeCopied": "Table 埋め込みコードをコピーしました",
       "embedInvalidSyntax": "Table 埋め込み構文が無効です。presetId: \"table-preset-id\" を使用してください。",
@@ -2463,6 +2466,7 @@
       "noSubgrouping": "サブグループ化なし",
       "openSource": "ソースを開く {{source}}",
       "parentSearchMoreResults": "さらに {{count}} 件あります。入力を続けて絞り込んでください。",
+      "parentTaskSourceTabHint": "{{modifier}}+クリックで親タスクのソースを新しいタブに開きます。",
       "pinColumn": "列を固定",
       "presetActionFailed": "テーブルプリセット操作に失敗しました。",
       "presetFilter": "テーブルフィルター",
@@ -3039,5 +3043,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "11e9db7eec773e9a941a3771c7450dbc43caed0f1bbc4e2b5ef56519646e658e"
+  "sourceVersion": "920f7edef8220857357cf5645bd06525f7d25170da1a35ad58ff175d5a88af96"
 }

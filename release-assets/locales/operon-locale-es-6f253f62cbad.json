@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 2994,
-  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
+  "keyCount": 2998,
+  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2379,6 +2379,8 @@
       "clearAllSummaries": "Borrar todos los resúmenes",
       "clearSearch": "Borrar búsqueda",
       "collapseGroup": "Contraer grupo",
+      "colorMode": "Modo de color",
+      "colorModeCustomColors": "Colores personalizados",
       "colorModeNoColor": "Sin color",
       "colorModePriorityColor": "Color de prioridad",
       "colorModeRandomColors": "Colores aleatorios",
@@ -2401,6 +2403,7 @@
       "duplicatePresetName": "{{name}} Copia",
       "editCellAria": "Haz clic o pulsa Enter, Espacio o F2 para editar.",
       "editPreset": "Editar preset de tabla",
+      "editPresetNamed": "Editar preajuste: {{name}}",
       "editSummary": "Editar resumen...",
       "embedCodeCopied": "Código incrustado de Table copiado",
       "embedInvalidSyntax": "Sintaxis de Table incrustada no válida. Usa presetId: \"table-preset-id\".",
@@ -2463,6 +2466,7 @@
       "noSubgrouping": "Sin subagrupación",
       "openSource": "Abrir fuente {{source}}",
       "parentSearchMoreResults": "{{count}} resultados más. Sigue escribiendo para acotar.",
+      "parentTaskSourceTabHint": "{{modifier}}+clic abre el origen de la tarea principal en una pestaña nueva.",
       "pinColumn": "Fijar columna",
       "presetActionFailed": "Falló la acción del preset de tabla.",
       "presetFilter": "Filtro de tabla",
@@ -3039,5 +3043,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "62633a23eaf1f9dc9558818e0b9854c4faf431d3fed4b01ca6ced65ff3d4bd1b"
+  "sourceVersion": "a5898d22a7733dad57be87ec20a55dccf13326a6bb2c77c0331e7d4dc7f1f7ac"
 }

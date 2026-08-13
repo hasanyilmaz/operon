@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 2994,
-  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
+  "keyCount": 2998,
+  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2379,6 +2379,8 @@
       "clearAllSummaries": "清除所有汇总",
       "clearSearch": "清除搜索",
       "collapseGroup": "折叠分组",
+      "colorMode": "颜色模式",
+      "colorModeCustomColors": "自定义颜色",
       "colorModeNoColor": "无颜色",
       "colorModePriorityColor": "优先级颜色",
       "colorModeRandomColors": "随机颜色",
@@ -2401,6 +2403,7 @@
       "duplicatePresetName": "{{name}} 副本",
       "editCellAria": "点击，或按 Enter、Space、F2 编辑。",
       "editPreset": "编辑表格预设",
+      "editPresetNamed": "编辑预设：{{name}}",
       "editSummary": "编辑汇总...",
       "embedCodeCopied": "已复制 Table 嵌入代码",
       "embedInvalidSyntax": "Table 嵌入语法无效。请使用 presetId: \"table-preset-id\"。",
@@ -2463,6 +2466,7 @@
       "noSubgrouping": "不子分组",
       "openSource": "打开来源 {{source}}",
       "parentSearchMoreResults": "还有 {{count}} 个结果。继续输入以缩小范围。",
+      "parentTaskSourceTabHint": "{{modifier}}+单击可在新标签页中打开父任务源。",
       "pinColumn": "固定列",
       "presetActionFailed": "表格预设操作失败。",
       "presetFilter": "表格筛选器",
@@ -3039,5 +3043,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "89782ef856fe60babcfcf70675ea931ba5f68c012a678e2806da0ae9ca4a7f7d"
+  "sourceVersion": "6555e15840b5fffec0ed5e18e7b2a549691e9d54928e560662d0cd476ec4986f"
 }

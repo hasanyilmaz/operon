@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### New
-
-- Added **Backup & Restore** in Core Settings, with portable JSON download, previewed restore and vault-reference choices, session recovery, reset to current defaults, and a linked **Back up and restore settings** guide. Vault content and `.table` files are preserved.
-
 ### Validation
 
 ## [3.2.1] - 2026-08-09

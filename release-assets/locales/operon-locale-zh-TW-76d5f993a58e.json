@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 2994,
-  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
+  "keyCount": 2998,
+  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2379,6 +2379,8 @@
       "clearAllSummaries": "清除所有摘要",
       "clearSearch": "清除搜尋",
       "collapseGroup": "摺疊分組",
+      "colorMode": "顏色模式",
+      "colorModeCustomColors": "自訂顏色",
       "colorModeNoColor": "無顏色",
       "colorModePriorityColor": "優先順序顏色",
       "colorModeRandomColors": "隨機顏色",
@@ -2401,6 +2403,7 @@
       "duplicatePresetName": "{{name}} 副本",
       "editCellAria": "點擊，或按 Enter、Space、F2 編輯。",
       "editPreset": "編輯表格預設",
+      "editPresetNamed": "編輯預設：{{name}}",
       "editSummary": "編輯彙總...",
       "embedCodeCopied": "已複製 Table 嵌入程式碼",
       "embedInvalidSyntax": "Table 嵌入語法無效。請使用 presetId: \"table-preset-id\"。",
@@ -2463,6 +2466,7 @@
       "noSubgrouping": "不子分組",
       "openSource": "開啟來源 {{source}}",
       "parentSearchMoreResults": "還有 {{count}} 個結果。繼續輸入以縮小範圍。",
+      "parentTaskSourceTabHint": "{{modifier}}+點擊可在新分頁中開啟父任務來源。",
       "pinColumn": "固定欄",
       "presetActionFailed": "表格預設操作失敗。",
       "presetFilter": "表格篩選器",
@@ -3039,5 +3043,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "76781a908cb10012e00681d3115464fd031a8523e7260d6b2ace7455788fa001"
+  "sourceVersion": "f0b318d6132196640cf917f32563950b77ad7ec7234576b89c005a0c33aaf550"
 }

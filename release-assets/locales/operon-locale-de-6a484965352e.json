@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 2994,
-  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
+  "keyCount": 2998,
+  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2379,6 +2379,8 @@
       "clearAllSummaries": "Alle Zusammenfassungen löschen",
       "clearSearch": "Suche leeren",
       "collapseGroup": "Gruppe einklappen",
+      "colorMode": "Farbmodus",
+      "colorModeCustomColors": "Benutzerdefinierte Farben",
       "colorModeNoColor": "Keine Farbe",
       "colorModePriorityColor": "Prioritätsfarbe",
       "colorModeRandomColors": "Zufällige Farben",
@@ -2401,6 +2403,7 @@
       "duplicatePresetName": "{{name}} Kopie",
       "editCellAria": "Zum Bearbeiten klicken oder Enter, Leertaste oder F2 drücken.",
       "editPreset": "Tabellenpreset bearbeiten",
+      "editPresetNamed": "Voreinstellung bearbeiten: {{name}}",
       "editSummary": "Zusammenfassung bearbeiten...",
       "embedCodeCopied": "Table-Einbettungscode kopiert",
       "embedInvalidSyntax": "Ungültige Table-Einbettungssyntax. Verwende presetId: \"table-preset-id\".",
@@ -2463,6 +2466,7 @@
       "noSubgrouping": "Keine Untergruppierung",
       "openSource": "Quelle öffnen {{source}}",
       "parentSearchMoreResults": "{{count}} weitere Ergebnisse. Tippe weiter, um einzugrenzen.",
+      "parentTaskSourceTabHint": "{{modifier}}+Klick öffnet die Quelle der übergeordneten Aufgabe in einem neuen Tab.",
       "pinColumn": "Spalte fixieren",
       "presetActionFailed": "Aktion für Tabellenpreset fehlgeschlagen.",
       "presetFilter": "Tabellenfilter",
@@ -3039,5 +3043,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "12feedf6bff10ce9275eafab6df554d772db2b79a965fa7351025713c1cc9982"
+  "sourceVersion": "84315ce642fad0a70e2eb67f13a79f3ff5d75f926bc2e9b21082a5f3a560d11a"
 }

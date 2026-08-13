@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 2994,
-  "keyFingerprint": "b3bcda379a529b4c457a779fd322a840de7083b79465d89d0b8cddcdf3790bbf",
+  "keyCount": 2998,
+  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2379,6 +2379,8 @@
       "clearAllSummaries": "Tüm özetleri temizle",
       "clearSearch": "Aramayı temizle",
       "collapseGroup": "Grubu daralt",
+      "colorMode": "Renk modu",
+      "colorModeCustomColors": "Özel renkler",
       "colorModeNoColor": "Renksiz",
       "colorModePriorityColor": "Öncelik rengi",
       "colorModeRandomColors": "Rastgele renkler",
@@ -2401,6 +2403,7 @@
       "duplicatePresetName": "{{name}} Kopya",
       "editCellAria": "Düzenlemek için tıkla ya da Enter, Space veya F2 tuşuna bas.",
       "editPreset": "Tablo preset'ini düzenle",
+      "editPresetNamed": "Ön ayarı düzenle: {{name}}",
       "editSummary": "Özeti düzenle...",
       "embedCodeCopied": "Table embed kodu kopyalandı",
       "embedInvalidSyntax": "Geçersiz table embed söz dizimi. presetId: \"table-preset-id\" kullanın.",
@@ -2463,6 +2466,7 @@
       "noSubgrouping": "Alt gruplama yok",
       "openSource": "Kaynağı aç {{source}}",
       "parentSearchMoreResults": "{{count}} sonuç daha var. Daraltmak için yazmaya devam et.",
+      "parentTaskSourceTabHint": "Parent task kaynağını yeni sekmede açmak için {{modifier}}+tıklayın.",
       "pinColumn": "Sütunu sabitle",
       "presetActionFailed": "Tablo preset işlemi başarısız oldu.",
       "presetFilter": "Tablo filtresi",
@@ -3039,5 +3043,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "77bb3690dd11eae8d2c3c7e5e5aa19c93f5b4d38ab3c70b30d767612fff19e3b"
+  "sourceVersion": "0dfae5b3f26c71bb8b56d7d81eabcf09131c6ea65f98263c7750bb97647abed0"
 }

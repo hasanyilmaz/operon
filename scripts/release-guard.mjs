@@ -96,6 +96,38 @@ function assertIncludes(relativePath, needle, label) {
 	}
 }
 
+function assertCssAtRuleContains(relativePath, atRule, requiredNeedles, forbiddenNeedles, label) {
+	const text = stripCssComments(readText(relativePath));
+	const blocks = [];
+	let searchIndex = 0;
+	while (searchIndex < text.length) {
+		const atRuleIndex = text.indexOf(atRule, searchIndex);
+		if (atRuleIndex < 0) break;
+		const bodyStart = text.indexOf('{', atRuleIndex + atRule.length);
+		if (bodyStart < 0) break;
+		let depth = 1;
+		let cursor = bodyStart + 1;
+		while (cursor < text.length && depth > 0) {
+			if (text[cursor] === '{') depth += 1;
+			if (text[cursor] === '}') depth -= 1;
+			cursor += 1;
+		}
+		if (depth === 0) blocks.push(text.slice(bodyStart + 1, cursor - 1));
+		searchIndex = cursor;
+	}
+
+	const matchingBlock = blocks.find(block => requiredNeedles.every(needle => block.includes(needle)));
+	if (!matchingBlock) {
+		fail(`${relativePath}: ${label}: ${atRule} must contain the required scoped rules`);
+		return;
+	}
+	for (const needle of forbiddenNeedles) {
+		if (matchingBlock.includes(needle)) {
+			fail(`${relativePath}: ${label}: ${atRule} must not contain ${needle}`);
+		}
+	}
+}
+
 function readWorkflow(relativePath) {
 	return parseYaml(readText(relativePath));
 }
@@ -1065,12 +1097,531 @@ function checkCssScorecard() {
 		['cursor: pointer;', 'user-select: none;'],
 		'Table header cells must keep the interactive cursor contract',
 	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-root .operon-table-parent-task-cell:focus-visible :is(.operon-table-parent-task-chip, .operon-table-icon-only-button)',
+		'Parent ID cells must expose one visible detailed or compact keyboard focus target',
+	);
+	assertIncludes(
+		'src/ui/table/table-text-edit-route.ts',
+		'export function resolveTableParentTaskActivation(',
+		'Parent ID must retain its dedicated picker, editor, and source activation route',
+	);
+	assertIncludes(
+		'src/ui/table/table-parent-task-tooltip-content.ts',
+		"t('table', 'parentTaskSourceTabHint', {",
+		'Parent ID tooltips must explain the platform-specific source new-tab modifier',
+	);
+	for (const parentCellSurface of ['src/ui/table/operon-table-view.ts', 'src/ui/embed-table-processor.ts']) {
+		assertIncludes(
+			parentCellSurface,
+			"key === 'parentTask' ? (task.fieldValues['parentTask'] ?? '').trim() : ''",
+			'Parent ID navigation must use the stored raw parent identity instead of its display label',
+		);
+		assertIncludes(
+			parentCellSurface,
+			'bindTableParentTaskCellActivation(cell, {',
+			'Parent ID workspace and embedded cells must share the executable activation contract',
+		);
+		assertIncludes(
+			parentCellSurface,
+			"focusable: !editable && column.key !== 'parentTask'",
+			'Parent ID compact cells must keep the gridcell as their sole keyboard focus owner',
+		);
+	}
 
 	assertCssRuleContains(
 		'styles.css',
 		'.operon-table-header-resize-handle',
 		['width: 7px;', 'cursor: col-resize;'],
 		'Table column resize handles must remain reachable',
+	);
+	for (const relativePath of [
+		'src/ui/table/operon-table-view.ts',
+		'src/ui/embed-table-processor.ts',
+		'src/ui/table/table-description-cell.ts',
+		'src/ui/table/table-file-property-editor.ts',
+		'src/ui/table/table-progress-cell.ts',
+		'styles.css',
+	]) {
+		assertNoMatch(
+			relativePath,
+			/operon-table-empty-value/u,
+			'Table empty cells must stay visually blank without removing their interaction owner',
+		);
+		if (relativePath !== 'styles.css') {
+			assertNoMatch(
+				relativePath,
+				/['"]--['"]/u,
+				'Table cell renderers must not reintroduce visible double-dash placeholders',
+			);
+		}
+	}
+	assertIncludes(
+		'src/ui/table/table-progress-cell.ts',
+		"const editable = kind === 'checkboxes' && !!options.onActivate;",
+		'empty Checkbox Progress cells must keep their shared activation target',
+	);
+	assertIncludes(
+		'main.ts',
+		'openCheckboxesForTaskId(taskId, actionAnchor, actionAnchorRect, false)',
+		'Table Checkbox Progress popovers must opt into cell-anchored desktop placement',
+	);
+
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root',
+		[
+			'--operon-table-detailed-value-max-width: 168px;',
+			'--operon-table-chip-glow-size: 2px;',
+			'--operon-table-progress-segment-glow-size: 1px;',
+			'--operon-table-row-highlight-size: 1px;',
+			'--operon-task-chip-bg: transparent;',
+			'--operon-task-chip-hover-bg: transparent;',
+			'--operon-task-chip-hover-accent: var(--operon-table-field-accent, var(--interactive-accent));',
+			'--operon-task-chip-hover-border: color-mix(in srgb, var(--operon-task-chip-hover-accent) 62%, var(--background-modifier-border));',
+		],
+		'Table values must share stable geometry and preserve the interactive-accent fallback for uncolored cells',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root .operon-table-cell-chip',
+		[
+			'border-width: 1px;',
+			'border-style: solid;',
+			'background: var(--operon-task-chip-bg, transparent);',
+			'background-color: var(--operon-task-chip-bg, transparent);',
+		],
+		'All bordered Table chips must keep a fixed 1px border and neutral resting fill',
+	);
+	for (const declaration of [
+		"'--operon-task-chip-hover-border': 'color-mix(in srgb, var(--operon-table-field-accent) 62%, var(--background-modifier-border))'",
+		"'--operon-task-chip-focus-ring': 'color-mix(in srgb, var(--operon-task-chip-hover-border) 38%, transparent)'",
+	]) {
+		assertIncludes(
+			'src/ui/table/table-cell-chip.ts',
+			declaration,
+			'Colored Table chips must derive hover borders and glow from their resolved local field color',
+		);
+	}
+	assertIncludes(
+		'styles.css',
+		'.operon-table-root :is(.operon-table-list-value-chip, .operon-table-duration-like-chip):is(:hover, .is-operon-chip-hovered, :focus-visible)',
+		'Duration-like Table values must share the canonical Context border and glow contract',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-duration-session-list',
+		[
+			'width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));',
+			'margin: calc(-1 * var(--operon-table-chip-glow-size));',
+			'padding: var(--operon-table-chip-glow-size);',
+		],
+		'Duration session values must reserve the same unclipped glow gutter as Context lists',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'button.operon-table-source-button:hover',
+		['background: transparent;', 'background-color: transparent;'],
+		'Source controls must keep a neutral fill while using the shared bordered hover contract',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-source-button',
+		['background: transparent;', 'background-color: transparent;'],
+		'Source controls must stay neutral when row-wide Table hover is active',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-icon-only-button.operon-table-compact-datetime',
+		['max-width: min(100%, var(--operon-table-detailed-value-max-width));'],
+		'Table detailed datetime controls must consume the shared value width cap',
+	);
+	for (const selector of [
+		'button.operon-table-task-icon-button:not(:disabled):not(.is-readonly):hover',
+		'button.operon-table-task-type-button:hover',
+		'.operon-table-icon-only-button:hover',
+		'button.operon-table-duration-session-chip:hover',
+		'button.operon-table-source-button:hover',
+		'.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):hover',
+		'button.operon-table-task-icon-button:disabled:hover',
+		'.operon-table-root button.operon-table-file-property-checkbox:disabled:hover',
+	]) {
+		assertCssRuleContains(
+			'styles.css',
+			selector,
+			['box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px)'],
+			'Table bordered value controls must share the common hover/focus glow size',
+		);
+	}
+	assertIncludes(
+		'styles.css',
+		'.operon-table-root .operon-table-cell-chip:is(:hover, .is-operon-chip-hovered, :focus-visible)',
+		'Table detailed chips must use the shared hover/focus glow contract',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-progress-action-shell.is-details-mode:is(:hover, :focus-within) .operon-task-progress-segment',
+		'Table detailed progress must glow each segment without a surrounding shell',
+	);
+	assertIncludes(
+		'styles.css',
+		'box-shadow: 0 0 0 var(--operon-table-progress-segment-glow-size, 1px) color-mix(in srgb, var(--operon-task-progress-color) 28%, transparent);',
+		'Table detailed progress segments must use the 1px segment glow token',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-progress-action-shell.is-icon-mode:is(:hover, :focus-within),',
+		'Table compact progress must retain its surrounding control glow',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-progress-action-shell.is-empty-mode:focus-within',
+		['box-shadow: inset 0 0 0 var(--operon-table-chip-glow-size, 2px)'],
+		'empty Checkbox Progress controls must keep a visible keyboard focus ring without a progress graphic',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-progress-cell.is-details-mode:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-wrap .operon-task-progress-segment',
+		'Table readonly detailed progress must keep per-segment visual-only hover glow',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-ring',
+		'Table readonly compact progress must keep its visual-only hover glow',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (hover: hover) and (pointer: fine)',
+		[
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-description-text:not(.is-empty)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip):not(.operon-table-field-accent-chip)',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-parent-task-chip',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-icon-only-button',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-file-property-checkbox',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-icon-button:disabled',
+			'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-progress-action-shell.is-details-mode .operon-task-progress-segment',
+			'background: var(--operon-task-chip-bg, transparent);',
+			'background: transparent;',
+		],
+		['body.is-mobile', '.operon-table-progress-action-shell.is-empty-mode'],
+		'Table row-wide hover must remain desktop fine-pointer-only and leave empty progress visually blank',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-field-accent-chip:not(.operon-table-file-property-checkbox)',
+		[
+			'--operon-task-chip-border: color-mix(in srgb, var(--operon-table-field-accent) 62%, var(--background-modifier-border));',
+			'--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-border) 38%, transparent);',
+			'border-color: var(--operon-task-chip-border);',
+		],
+		'Colored Table row hover must use the resolved field color instead of the generic accent fallback',
+	);
+	for (const surfacePath of [
+		'src/ui/table/operon-table-view.ts',
+		'src/ui/embed-table-processor.ts',
+	]) {
+		assertIncludes(
+			surfacePath,
+			'renderTableCellChips(',
+			'Workspace and embedded detailed Table values must keep using the shared colored-chip renderer',
+		);
+	}
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-cell.is-active-cell::before',
+		['height: var(--operon-table-row-highlight-size, 1px);'],
+		'Table active-cell rails must use the subtle 1px row highlight token',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root .operon-table-progress-action-shell:focus-within',
+		['outline: 2px solid ButtonText;', 'box-shadow: none;'],
+		'Table progress controls must keep a forced-colors focus indicator',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root .operon-table-date-value-chip',
+		[
+			'--operon-task-chip-bg: transparent;',
+			'--operon-task-chip-hover-bg: transparent;',
+			'background: transparent;',
+			'background-color: transparent;',
+		],
+		'Table date and datetime chips must keep a neutral fill in every color mode',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-root .operon-table-date-value-chip:focus-visible',
+		['outline: 2px solid ButtonText;', 'box-shadow: none;'],
+		'Table date and datetime chips must keep a forced-colors focus indicator',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-cell-chip-list',
+		[
+			'display: flex;',
+			'gap: 6px;',
+			'box-sizing: border-box;',
+			'width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));',
+			'margin: calc(-1 * var(--operon-table-chip-glow-size));',
+			'padding: var(--operon-table-chip-glow-size);',
+			'overflow: hidden;',
+			'min-width: 0;',
+			'max-width: calc(100% + var(--operon-table-chip-glow-size) + var(--operon-table-chip-glow-size));',
+		],
+		'Table list wrappers must reserve glow paint space while clipping non-shrinking sibling values inside the column',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-list-value-chip',
+		[
+			'flex: 0 0 auto;',
+			'width: max-content;',
+			'max-width: var(--operon-table-detailed-value-max-width);',
+			'overflow: hidden;',
+			'background-color: transparent;',
+			'text-overflow: ellipsis;',
+			'white-space: nowrap;',
+		],
+		'Table list values must retain their natural width, shared cap, neutral fill, and ellipsis',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-root .operon-table-list-value-chip:is(:hover, .is-operon-chip-hovered, :focus-visible),\n'
+			+ '.operon-table-root .operon-table-cell.is-editable:is(:focus-visible, :focus-within) .operon-table-list-value-chip {\n'
+			+ '\t--operon-task-chip-border: color-mix(\n'
+			+ '\t\tin srgb,\n'
+			+ '\t\tvar(--operon-table-field-accent, var(--interactive-accent)) 62%,\n'
+			+ '\t\tvar(--background-modifier-border)\n'
+			+ '\t);\n'
+			+ '\t--operon-task-chip-focus-ring: color-mix(in srgb, var(--operon-task-chip-border) 38%, transparent);\n'
+			+ '\tborder-color: var(--operon-task-chip-border);\n'
+			+ '\tbackground: transparent;\n'
+			+ '\tbackground-color: transparent;\n'
+			+ '\tbox-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) var(--operon-task-chip-focus-ring);',
+		'Table list hover and focus must use the shared border and glow treatment',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-table-plain-text-value',
+		['border: 0;', 'background-color: transparent;', 'box-shadow: none;'],
+		'Table scalar text values must stay borderless and neutral',
+	);
+
+	assertIncludes(
+		'styles.css',
+		'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-toolbar {\n\tgrid-template-columns: minmax(0, 1fr);\n\tgrid-template-areas: \'end\';\n\talign-items: center;\n}',
+		'desktop sidebar Table leaves must keep a compact first toolbar row',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar.has-favorite-presets {\n\tgrid-template-areas:\n\t\t\'end\'\n\t\t\'center\';\n}',
+		'desktop sidebar Table leaves must place favorite presets in a second toolbar row only when present',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-start,\nbody:not(.is-mobile) .mod-sidedock',
+		'desktop sidebar Table leaves must hide the title region only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-center {\n\twidth: 100%;\n\tjustify-content: center;\n\tflex-wrap: wrap;\n}',
+		'desktop sidebar Table favorite presets must wrap within their own full-width second row',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-group-sort-button,\nbody:not(.is-mobile) .mod-sidedock',
+		'desktop sidebar Table leaves must hide Group and Sort only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-filter-popover-host,\nbody:not(.is-mobile) .mod-sidedock',
+		'desktop sidebar Table leaves must hide Filter only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-export-button {\n\tdisplay: none;\n}',
+		'desktop sidebar Table leaves must hide Export only inside sidedocks',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-end {\n\tjustify-content: flex-start;\n\twidth: 100%;\n}',
+		'desktop sidebar Table controls must keep buttons aligned to the start edge',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-search-wrap {\n\tflex: 1 1 var(--operon-table-search-width);\n\twidth: auto;\n\tmin-width: 0;\n\tmax-width: var(--operon-table-search-width);\n\tmargin-inline-start: auto;\n}',
+		'desktop sidebar Table search must stay at the logical end and remain shrinkable',
+	);
+	assertIncludes(
+		'styles.css',
+		'body.is-mobile .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-toolbar {\n\tgrid-template-columns: minmax(0, 1fr);\n\tgrid-template-areas: \'end\';\n\talign-items: center;\n}',
+		'mobile Table leaves must keep only the end toolbar region regardless of workspace placement',
+	);
+	assertIncludes(
+		'styles.css',
+		'body.is-mobile .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-toolbar-end {\n\tjustify-content: flex-start;\n\twidth: 100%;\n}',
+		'mobile Table controls must keep preset buttons aligned to the start edge',
+	);
+	assertIncludes(
+		'styles.css',
+		'body.is-mobile .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-search-wrap {\n\tflex: 1 1 var(--operon-table-search-width);\n\twidth: auto;\n\tmin-width: 0;\n\tmax-width: var(--operon-table-search-width);\n\tmargin-inline-start: auto;\n}',
+		'mobile Table search must stay at the logical end and remain shrinkable',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-start,\nbody.is-mobile .workspace-leaf-content:is(',
+		'mobile Table leaves must hide the title region across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-toolbar-center,\nbody.is-mobile .workspace-leaf-content:is(',
+		'mobile Table leaves must hide favorite presets across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-group-sort-button,\nbody.is-mobile .workspace-leaf-content:is(',
+		'mobile Table leaves must hide Group and Sort across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		') > .view-content.operon-table-view .operon-table-filter-popover-host,\nbody.is-mobile .workspace-leaf-content:is(',
+		'mobile Table leaves must hide Filter across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		'body.is-mobile .workspace-leaf-content:is(\n\t[data-type="operon-table-view"],\n\t[data-type="operon-table-file-view"]\n) > .view-content.operon-table-view .operon-table-export-button {\n\tdisplay: none;\n}',
+		'mobile Table leaves must hide Export across mobile workspace placements',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) {\n\t\tbox-sizing: border-box;\n\t\theight: 16px;\n\t\tmin-height: 16px;\n\t\tmax-height: 16px;',
+		'sidebar Table toolbar must preserve hover, keyboard focus, and open popup expansion while using the 16px compact rail',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-end {\n\t\tbox-sizing: border-box;\n\t\theight: 4px;\n\t\tmin-height: 4px;\n\t\tmax-height: 4px;',
+		'sidebar Table toolbar compact state must render the 4px inner rail',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-center {\n\t\theight: 0;\n\t\tmin-height: 0;\n\t\tmax-height: 0;\n\t\toverflow: hidden;',
+		'sidebar Table compact rail must hide the favorite-preset second row without removing keyboard focus ownership',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (hover: hover) and (pointer: fine)',
+		[
+			'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(',
+			'[data-type="operon-table-view"]',
+			'[data-type="operon-table-file-view"]',
+			'> .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"]))',
+			'height: 16px;',
+			'height: 4px;',
+			'height: 0;',
+			'opacity: 0;',
+		],
+		['body.is-mobile', '.operon-table-embed-toolbar'],
+		'sidebar Table toolbar auto-collapse must stay fine-pointer, desktop, direct-leaf, and embed-safe',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (prefers-reduced-motion: reduce)',
+		[
+			'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(',
+			'[data-type="operon-table-view"]',
+			'[data-type="operon-table-file-view"]',
+			'> .view-content.operon-table-view .operon-table-toolbar-end > *',
+			'transition-duration: 0ms;',
+		],
+		['.operon-table-embed-toolbar'],
+		'sidebar Table toolbar reduced-motion override must stay desktop, direct-leaf, and embed-safe',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (hover: hover) and (pointer: fine)',
+		[
+			'body:not(.is-mobile) .mod-sidedock',
+			'[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar',
+			'[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header',
+			':not(:hover):not(:focus-within):not(:has([aria-expanded="true"]))',
+			'height: 16px;',
+			'height: 4px;',
+			'position: relative;',
+			'position: absolute;',
+			'top: 6px;',
+			'inset-inline: 8px;',
+			'opacity: 0;',
+			'opacity: 1;',
+			'pointer-events: none;',
+		],
+		[
+			'body.is-mobile',
+			'.operon-calendar-mobile-root',
+			'.operon-filter-surface--preview',
+			'.operon-filter-surface--dynamic-file-task',
+			'.operon-embed-filter',
+		],
+		'Calendar and Filter sidebar toolbar rails must stay desktop, fine-pointer, direct-leaf, and popup-safe',
+	);
+	assertCssAtRuleContains(
+		'styles.css',
+		'@media (prefers-reduced-motion: reduce)',
+		[
+			'body:not(.is-mobile) .mod-sidedock',
+			'[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar',
+			'[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header',
+			'transition-duration: 0ms;',
+		],
+		['.operon-calendar-mobile-root', '.operon-filter-surface--preview', '.operon-embed-filter'],
+		'Calendar and Filter sidebar toolbar rails must honor reduced motion without leaking into embedded surfaces',
+	);
+	assertCssRuleContains(
+		'styles.css',
+		'.operon-filter-surface--sidebar .operon-filter-header',
+		['position: sticky;', 'top: 0;', 'z-index: 20;'],
+		'Filter sidebar toolbar rail must preserve the sticky header positioning contract',
+	);
+	assertIncludes(
+		'styles.css',
+		')::after {\n\t\tcontent: \'\';\n\t\tposition: absolute;\n\t\ttop: 6px;\n\t\tinset-inline: 8px;\n\t\theight: 4px;\n\t\tborder-radius: 999px;',
+		'Calendar and Filter sidebar toolbar rails must keep their scoped pseudo-element geometry',
+	);
+	assertIncludes(
+		'src/ui/calendar/calendar-view.ts',
+		"button.setAttribute('aria-expanded', 'true');",
+		'Calendar sidebar toolbar collapse must remain open while the preset picker owns expansion',
+	);
+	assertIncludes(
+		'src/ui/calendar/calendar-view.ts',
+		"button.setAttribute('aria-expanded', 'false');",
+		'Calendar sidebar toolbar collapse must resume after the preset picker closes',
+	);
+	assertIncludes(
+		'src/ui/filter-view.ts',
+		"this.filterPickerButtonEl?.setAttribute('aria-expanded', open ? 'true' : 'false');",
+		'Filter sidebar toolbar collapse must remain open while the filter picker owns expansion',
+	);
+	assertIncludes(
+		'src/ui/related-views.ts',
+		"anchor.setAttribute('aria-expanded', 'true');",
+		'Calendar and Filter sidebar toolbar collapse must remain open while Related Views owns expansion',
+	);
+	assertIncludes(
+		'src/ui/related-views.ts',
+		"anchor.setAttribute('aria-expanded', 'false');",
+		'Calendar and Filter sidebar toolbar collapse must resume after Related Views closes',
+	);
+	assertIncludes(
+		'src/ui/table/operon-table-view.ts',
+		"cls: 'operon-table-toolbar-icon-button operon-table-preset-settings-button'",
+		'Table preset settings must keep a stable semantic toolbar class',
+	);
+	assertIncludes(
+		'src/ui/table/operon-table-view.ts',
+		"cls: 'operon-table-toolbar-icon-button operon-table-export-button'",
+		'Table export must keep a stable semantic toolbar class',
 	);
 
 	assertCssScopedRuleExcludes(
@@ -1572,6 +2123,29 @@ function checkAuditedRawStrings() {
 	assertNoMatch('src/ui/time-session-history-view.ts', /['"]Open task editor['"]/, 'time history editor action label bypasses i18n');
 }
 
+function checkTrackerSessionNoteActionContract() {
+	assertIncludes(
+		'styles.css',
+		'.operon-tracker-session-modal-actions-primary {\n\tdisplay: flex;\n\talign-items: center;\n\tmargin-inline-start: auto;',
+		'tracker session primary actions must stay right aligned',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-tracker-session-modal-actions {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: space-between;\n\tflex-wrap: wrap;',
+		'tracker session actions must wrap on narrow modal surfaces',
+	);
+	assertIncludes(
+		'styles.css',
+		'button.operon-tracker-session-modal-note {\n\tdisplay: inline-flex;',
+		'tracker session Note action must retain its visible icon control',
+	);
+	assertNoMatch(
+		'styles.css',
+		/\.operon-tracker-session-modal-note[^{}]*\{[^{}]*(?:display:\s*none|visibility:\s*hidden|opacity:\s*0(?![.\d]))/u,
+		'tracker session Note action must not be hidden',
+	);
+}
+
 function checkCanonicalOnlyStorageContract() {
 	const productionFiles = [
 		'main.ts',
@@ -1627,6 +2201,7 @@ checkCssScorecard();
 checkCalendarHoverGuideContract();
 checkSettingsDescriptionTextareaGuards();
 checkAuditedRawStrings();
+checkTrackerSessionNoteActionContract();
 checkCanonicalOnlyStorageContract();
 
 if (failures.length > 0) {
