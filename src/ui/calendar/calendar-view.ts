@@ -116,6 +116,7 @@ import type { RelatedFilterablePreset, RelatedViewCreateTarget, RelatedViewOpenT
 import { getCalendarPresetPickerLabel, showCalendarPresetPicker } from './calendar-preset-picker';
 import { getFavoriteCalendarPresets, isFavoriteCalendarPreset } from './calendar-preset-visibility';
 import { getTableFilePropertyIndex } from '../table/table-file-property';
+import { bindExpandedDescendantState } from '../expanded-descendant-state';
 
 export const CALENDAR_VIEW_TYPE = 'operon-calendar-view';
 const CALENDAR_SIDEBAR_SECTION_ORDER = ['calendars', 'taskPool'] as const;
@@ -8169,7 +8170,11 @@ export class CalendarView extends ItemView {
 		observer.observe(titleGroup);
 		observer.observe(navGroup);
 		observer.observe(controlsGroup);
-		this.toolbarLayoutCleanup = () => observer.disconnect();
+		const disposeExpandedState = bindExpandedDescendantState(toolbar);
+		this.toolbarLayoutCleanup = () => {
+			observer.disconnect();
+			disposeExpandedState();
+		};
 	}
 
 	private measureToolbarGroupWidth(group: HTMLElement): number {
