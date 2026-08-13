@@ -3,26 +3,20 @@
 ## 1. Authority and status
 
 This document is the normative product boundary and support matrix for the
-first public stable Operon Runtime and CLI release. When another architecture,
+stable Operon Runtime and its public consumers. When another architecture,
 evaluation, roadmap, package, or documentation source describes a conflicting
-future Public V1 boundary, this document takes precedence.
+Public V1 boundary, this document takes precedence.
 
 This document describes the accepted Public V1 boundary. Versioned manifests,
-schemas, published package metadata, Runtime discovery, the published CLI
-binding, and the accepted external-reference freeze remain the executable
-authorities for their exact release identities.
+schemas, Runtime discovery, and each release's own immutable evidence remain
+the executable authorities for exact release identities.
 
-Current accepted Public V1 release identities:
-
-- Operon `3.2.0`
-- `@stratejya/operon-cli@1.1.0`
-- Runtime API and contract version `1`
-
-The CLI is publicly installable from npm and maintained in the standalone
-[`hasanyilmaz/operon-cli`](https://github.com/hasanyilmaz/operon-cli) repository.
-Plugin releases consume its immutable published artifact through the
-hash-locked external binding; the plugin repository no longer builds or
-publishes a second CLI copy.
+The Plugin is the Runtime provider. The CLI is publicly installable from npm
+and maintained in the standalone
+[`hasanyilmaz/operon-cli`](https://github.com/hasanyilmaz/operon-cli) repository
+as an optional consumer. Plugin and CLI releases are independent: a Plugin
+release does not consume or wait for a CLI artifact, and a CLI release selects
+an already identified Runtime provider baseline.
 
 ## 2. Public product model
 
@@ -51,16 +45,16 @@ versioned Public V1 integration contract.
 
 | Area | Current implementation truth | Public V1 support commitment |
 | --- | --- | --- |
-| Operon release | Operon `3.2.0` carries Runtime API V1 and the append-only external CLI compatibility freeze registry | Compatible Operon `3.x` releases advertising Runtime API V1 |
-| CLI package | Public `@stratejya/operon-cli@1.1.0` from the standalone repository | Stable `1.x` releases preserving Runtime V1 compatibility |
+| Operon release | Plugin releases own their Runtime API, Plugin artifacts, and Plugin validation evidence | Compatible Operon releases advertising Runtime API V1 |
+| CLI package | The standalone CLI records the Runtime API versions and capabilities it supports | CLI releases may lag or be temporarily incompatible without blocking Plugin releases |
 | Runtime contract | Runtime API V1 exists and is exposed on the Operon plugin instance | Runtime API V1 is a supported, typed Developer API contract |
-| Public access channels | The published CLI and in-process Developer API both use Runtime V1 | CLI and in-process Developer API remain supported public channels |
+| Public access channels | The Runtime serves the CLI and in-process Developer API through capability discovery | Channel support is capability-specific; absence from one channel is unsupported there, not a Plugin release blocker |
 | macOS CLI | Supported by the current beta boundary | Supported |
 | Linux CLI | `acceptance-required` | Public beta and best-effort on native Linux |
 | Windows CLI | `acceptance-required` | Public beta and best-effort on Windows 11 |
 | WSL | `unsupported` | Outside Public V1 |
 | Mobile | Operon itself is not desktop-only, but Runtime mutation admission and the CLI are desktop-bound | Public CLI and Developer API are desktop-only |
-| npm | `@stratejya/operon-cli@1.1.0` is published with provenance from the standalone repository | Exact published artifacts and provenance are verified before plugin release acceptance |
+| npm | The CLI publishes from the standalone repository with its own provenance | CLI artifact integrity is verified in the CLI compatibility/release lane, not before Plugin release acceptance |
 
 For Linux and Windows, `acceptance-required` is an executable public-beta
 status, not a refusal. It means that the cross-platform implementation and
@@ -87,22 +81,11 @@ New Node major versions are unsupported until they pass hosted CI portability
 and package acceptance. Optional native certification remains separate. A broad
 `>=22` engine declaration alone is not a Public V1 support promise.
 
-Operon `3.0.0` remains the compatible Runtime API V1 floor. Operon `3.0.1`
-fixed platform-safe vault path admission for file and inline task writes;
-Operon `3.0.2` binds the published standalone CLI artifact and its historical
-plugin release assets through the original accepted external-reference freeze.
-Operon `3.1.0` adds a versioned paired-release record that binds the exact
-Plugin candidate, published CLI `1.0.9`, zero-skip Windows pair validation,
-and plugin-scoped manual acceptance. Operon `3.1.1` adds a release-only
-automated-validation record that binds the exact local candidate suite, hosted
-CI and CodeQL runs, zero-skip Windows pair, clean audit, and unchanged release
-artifact identities without asserting a new live deployment or manual
-acceptance. The evidence records that the
-published-CLI live mutation suite was not rerun and the CLI was not installed
-in the live vault. Operon `3.2.0` advances that boundary to the exact published
-CLI `1.1.0` artifact and records the release-only candidate, hosted CI, CodeQL,
-Windows pair, audit, and rebuilt plugin artifacts through an exact direct-child
-evidence seal without asserting a new live deployment or manual acceptance.
+Operon `3.0.0` remains the compatible Runtime API V1 floor. Earlier public
+releases include paired Plugin–CLI evidence records. Those records are
+immutable historical evidence for their own releases; they do not require
+future Plugin releases to reproduce a paired CLI artifact, package, or Windows
+integration result.
 
 ### 4.2 Desktop operating systems
 
@@ -143,7 +126,8 @@ stable V1 manifest only after the trust and portability gates have also passed.
 Optional post-release native certification can strengthen a platform support
 claim, but it does not change Runtime capability stability.
 
-Both public channels support the same production-gated Runtime families:
+The Runtime provider supports the following production-gated Runtime families.
+Each consumer advertises and uses only the capabilities it knows:
 
 - Runtime health, lifecycle, compatibility, diagnostics, and capabilities
 - Property Catalog and writable-policy discovery
@@ -165,7 +149,9 @@ Both public channels support the same production-gated Runtime families:
 Channel-specific presentation or convenience commands do not create additional
 Runtime capabilities. Capability discovery is mandatory; a consumer must not
 infer support from a package version, method presence, help text, or copied
-command list.
+command list. A CLI may remain `lagging` or `incompatible` while the Runtime
+provider and Developer API continue to publish their supported capability
+surface.
 
 ## 6. Lifecycle and availability contract
 
@@ -269,14 +255,14 @@ support, documentation, and release acceptance do not depend on that work.
 | Public commitment | Owning stage | Required evidence and completion checks |
 | --- | --- | --- |
 | Versioned schemas, manifest, errors, exit behavior, compatibility and deprecation rules | Stage 2 — Public contracts | [`contract-evolution-v1.md`](contract-evolution-v1.md), contract tests, schema/manifest parity, compatibility rules, and no unresolved breaking-change decision |
-| Typed in-process accessor and distributable TypeScript types | Stage 3 — Developer API | Consumer compile tests, lifecycle/accessor tests, frozen DTO boundary tests, CLI/API contract parity, and proof that Developer API writes remain unadvertised and fail closed until Stage 4 |
+| Typed in-process accessor and distributable TypeScript types | Stage 3 — Developer API | Consumer compile tests, lifecycle/accessor tests, frozen DTO boundary tests, and proof that Developer API writes remain unadvertised and fail closed until Stage 4 |
 | Consumer identity, authorization, consent, and audit | Stage 4 — Trust boundary | Scope-isolation, consent, destructive-operation, identity, and audit tests for both channels |
 | Complete minimum candidate capability set | Stage 5 — Functional closure | Every read and mutation family listed in Section 5 passes contract, postflight, recovery, and capability-admission tests |
 | Portable transport and platform security | Stage 6 — Cross-platform implementation | Platform-specific path, ownership, ACL/mode, symlink/reparse, IPC, shell, signal, Unicode, and interruption tests |
 | Cross-platform launch boundary, Node support, and beta disclosure | Stage 7 — Cross-platform readiness | Hosted portability and package tests pass on Node 22, 24, and 26 across macOS, Linux, and Windows; platform-specific transport-security, path, lifecycle, interruption, and recovery tests pass; macOS remains `supported`, Linux and Windows remain executable `acceptance-required` public-beta targets, and WSL remains `unsupported` |
 | Public integration guides and examples | Stage 8 — Packaging and documentation | Clean-room CLI and Developer API integration tests using only distributable artifacts and documentation |
-| Stable Runtime V1 and plugin release | External-reference freeze registry | Runtime digest, published CLI binding and tarball, exact plugin release assets, clean audit, prior behavioral acceptance, and exact automated release-composition evidence are bound by an append-only accepted freeze; live mutation claims are required only when that suite actually ran for the exact pair |
-| Public `@stratejya/operon-cli@1.1.0` | Standalone CLI release | Registry and immutable GitHub artifacts, provenance, hosted portability, package lifecycle, and plugin Runtime V1 compatibility match the published release bytes |
+| Stable Runtime V1 and Plugin release | Plugin release evidence | Runtime contract, Plugin artifacts, Plugin CI, audit, and acceptance evidence are bound to the exact Plugin release identity; CLI support status is informational only |
+| Public `@stratejya/operon-cli` | Standalone CLI release | CLI package, provenance, portability, and compatibility with its selected published Runtime provider baseline are verified by the CLI release |
 
 Failure of a required gate returns the work to its owning stage. Publication is
 not a substitute for contract, safety, package, or hosted portability evidence.

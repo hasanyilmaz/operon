@@ -155,25 +155,20 @@ test('candidate receipt is written atomically only outside the repository', () =
 	}
 });
 
-test('Windows PR workflow delegates candidate gates to the canonical runner', () => {
+test('Windows CI delegates platform checks to the Plugin-only runner', () => {
 	const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
 	assert.match(
 		workflow,
-		/- name: Run canonical Windows candidate validation\s+if: github\.event_name == 'pull_request'\s+run: npm run validate:windows:candidate/u,
+		/- name: Run canonical Windows Plugin validation\s+run: npm run validate:windows:plugin/u,
 	);
 	for (const stepName of [
+		'Run validation',
 		'Run required native transport validation',
 		'Verify tracked runner URL portability',
 		'Verify tracked worktree remains clean',
 	]) {
-		assert.match(
-			workflow,
-			new RegExp(`- name: ${stepName}\\s+if: github\\.event_name == 'push'`, 'u'),
-		);
+		assert.doesNotMatch(workflow, new RegExp(`- name: ${stepName}(?:\\s|$)`, 'u'));
 	}
 	const windowsJob = workflow.slice(workflow.indexOf('  windows-native:'));
-	assert.match(
-		windowsJob,
-		/- name: Install dependencies\s+if: github\.event_name == 'push'\s+run: npm ci/u,
-	);
+	assert.doesNotMatch(windowsJob, /run: npm run check(?:\s|$)/u);
 });

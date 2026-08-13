@@ -101,7 +101,7 @@ export async function buildRuntimeSchemaManifestV1(options = {}) {
 }
 
 export async function checkRuntimeSchemaManifestV1(options = {}) {
-	const target = options.manifestPath ?? manifestPath;
+	const target = options.manifestPath ?? path.join(options.canonicalRoot ?? canonicalRoot, 'schema-manifest.json');
 	const expected = await buildRuntimeSchemaManifestV1(options);
 	const actual = await readFile(target, 'utf8');
 	if (actual !== expected) throw new Error('OPERON_SCHEMA_MANIFEST_STALE');
@@ -109,7 +109,7 @@ export async function checkRuntimeSchemaManifestV1(options = {}) {
 }
 
 export async function writeRuntimeSchemaManifestV1(options = {}) {
-	const target = options.manifestPath ?? manifestPath;
+	const target = options.manifestPath ?? path.join(options.canonicalRoot ?? canonicalRoot, 'schema-manifest.json');
 	const output = await buildRuntimeSchemaManifestV1(options);
 	const temporary = `${target}.${process.pid}.tmp`;
 	await writeFile(temporary, output, { encoding: 'utf8', mode: 0o600 });
