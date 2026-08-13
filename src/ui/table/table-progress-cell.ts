@@ -2,6 +2,7 @@ import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
 import type { TableColumn } from '../../types/table';
 import { asyncHandler } from '../../core/async-action';
+import { t } from '../../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import {
@@ -19,7 +20,8 @@ type TableProgressCellSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappi
 
 export interface TableProgressCellActionInvocation {
 	task: IndexedTask;
-	track: TaskProgressTrack;
+	kind: TaskProgressTrackKind;
+	track: TaskProgressTrack | null;
 	trigger: HTMLElement;
 	actionAnchorRect: DOMRect;
 }
@@ -45,17 +47,29 @@ export function renderTableProgressCell(
 		onActivate?: TableProgressCellActionHandler;
 	},
 ): void {
+	const kind = getTableProgressTrackKindForColumn(options.column.key);
 	const track = options.valueResolver.getProgressTrack(
 		options.task,
-		getTableProgressTrackKindForColumn(options.column.key),
+		kind,
 	);
 	cell.addClass('operon-table-progress-cell');
 	cell.addClass(options.iconOnly ? 'is-icon-mode' : 'is-details-mode');
 	const fieldLabel = getTableTaskFieldLabel(options.column.key, options.settings);
 	if (!track) {
-		if (!options.iconOnly) {
-			setAccessibleLabelWithoutTooltip(cell, `${fieldLabel}: --`);
-			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
+		const editable = kind === 'checkboxes' && !!options.onActivate;
+		const ariaLabel = editable ? `${fieldLabel}. ${t('table', 'editCellAria')}` : fieldLabel;
+		setAccessibleLabelWithoutTooltip(cell, ariaLabel);
+		if (editable && options.onActivate) {
+			const actionShell = createTableProgressActionShell(cell, 'empty');
+			createTableProgressActionButton(
+				actionShell,
+				options.task,
+				kind,
+				null,
+				ariaLabel,
+				null,
+				options.onActivate,
+			);
 		}
 		return;
 	}
@@ -82,7 +96,7 @@ export function renderTableProgressCell(
 		applyTableProgressColor(ring, color);
 		applyTableProgressAccessibility(ring, track, ariaLabel);
 		const tooltipTarget = actionShell && actionHandler
-			? createTableProgressActionButton(actionShell, options.task, track, ariaLabel, ring, actionHandler)
+			? createTableProgressActionButton(actionShell, options.task, track.kind, track, ariaLabel, ring, actionHandler)
 			: ring;
 		bindOperonHoverTooltip(tooltipTarget, {
 			title: fieldLabel,
@@ -105,7 +119,7 @@ export function renderTableProgressCell(
 	});
 	applyTableProgressAccessibility(trackEl, track, ariaLabel);
 	const tooltipTarget = actionShell && actionHandler
-		? createTableProgressActionButton(actionShell, options.task, track, ariaLabel, trackEl, actionHandler)
+		? createTableProgressActionButton(actionShell, options.task, track.kind, track, ariaLabel, trackEl, actionHandler)
 		: trackEl;
 	bindOperonHoverTooltip(tooltipTarget, {
 		title: fieldLabel,
@@ -117,7 +131,7 @@ export function renderTableProgressCell(
 
 function createTableProgressActionShell(
 	cell: HTMLElement,
-	mode: 'details' | 'icon',
+	mode: 'details' | 'icon' | 'empty',
 ): HTMLElement {
 	return cell.createSpan(`operon-table-progress-action-shell is-${mode}-mode`);
 }
@@ -125,9 +139,10 @@ function createTableProgressActionShell(
 function createTableProgressActionButton(
 	shell: HTMLElement,
 	task: IndexedTask,
-	track: TaskProgressTrack,
+	kind: TaskProgressTrackKind,
+	track: TaskProgressTrack | null,
 	ariaLabel: string,
-	progressEl: HTMLElement,
+	progressEl: HTMLElement | null,
 	onActivate: TableProgressCellActionHandler,
 ): HTMLButtonElement {
 	const button = shell.createEl('button', {
@@ -135,18 +150,27 @@ function createTableProgressActionButton(
 		attr: { type: 'button' },
 	});
 	setAccessibleLabelWithoutTooltip(button, ariaLabel);
-	button.setAttribute('aria-describedby', ensureTableProgressElementId(progressEl));
+	button.setAttribute('aria-haspopup', 'dialog');
+	if (progressEl) button.setAttribute('aria-describedby', ensureTableProgressElementId(progressEl));
 	button.addEventListener('pointerdown', stopTableProgressActionEvent);
 	button.addEventListener('dblclick', stopTableProgressActionEvent);
+	let activationPending = false;
 	button.addEventListener('click', asyncHandler('table progress action failed', async event => {
 		event.preventDefault();
 		event.stopPropagation();
-		await onActivate({
-			task,
-			track,
-			trigger: button,
-			actionAnchorRect: button.getBoundingClientRect(),
-		});
+		if (activationPending) return;
+		activationPending = true;
+		try {
+			await onActivate({
+				task,
+				kind,
+				track,
+				trigger: button,
+				actionAnchorRect: button.getBoundingClientRect(),
+			});
+		} finally {
+			activationPending = false;
+		}
 	}));
 	return button;
 }

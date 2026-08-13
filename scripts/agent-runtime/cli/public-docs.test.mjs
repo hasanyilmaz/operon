@@ -116,7 +116,7 @@ async function publicSchemaValidators() {
 
 test('Public V1 integration docs follow the source conventions', async () => {
 	const files = await managedFiles(sourceRoot);
-	assert.equal(files.length, 133, 'Aşama 8 must finish with exactly DOCS-001 through DOCS-133.');
+	assert.equal(files.length, 134, 'Managed docs must finish with exactly DOCS-001 through DOCS-134.');
 	const selected = files.filter(file => publicIntegrationNumbers.has(docNumber(file)));
 	assert.equal(selected.length, publicIntegrationNumbers.size);
 

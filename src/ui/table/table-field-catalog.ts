@@ -10,6 +10,7 @@ import {
 } from '../../types/settings';
 import type { TableColumn } from '../../types/table';
 import { decodeTableFilePropertyColumnKey } from './table-file-property';
+export { isTablePlainTextField } from './table-text-edit-route';
 
 export type TableTaskFieldGroup =
 	| 'task'
