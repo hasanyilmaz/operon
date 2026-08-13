@@ -7,14 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.3.0] - 2026-08-13
+
 Operon 3.3.0 adds portable Backup & Restore and expands Table customization, context, editing, and visual feedback across workspace, embedded, sidebar, and mobile surfaces.
 
 ### New
 
 - Added **Backup & Restore** in Core Settings, with portable JSON download, previewed restore and vault-reference choices, session recovery, reset to current defaults, and a linked **Back up and restore settings** guide. Vault content and `.table` files are preserved.
 - Added a preset-wide **Table color mode**, allowing eligible visible columns to use Custom colors, No color, Task color, Priority color, or Status color while preserving supported per-column choices.
-- Added contextual **parent task rows** when Tables are grouped by Parent Task, including parent-scoped File Property values and consistent editing and focus behavior across workspace and embedded Tables.
-- Added a **Notes action to Add/Edit Session dialogs**, allowing task notes to be opened and edited directly while adding or adjusting tracked-time sessions across supported task surfaces.
+- Added contextual **parent task rows** for **Table Parent Task grouping**, including parent-scoped File Property values and consistent editing and focus behavior across workspace and embedded Tables.
+- Added a **Notes action** to **Time Tracker Add/Edit Session dialogs**, allowing task notes to be opened and edited directly while adding or adjusting tracked-time sessions across supported task surfaces.
 
 ### Improved
 
