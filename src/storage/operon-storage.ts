@@ -65,6 +65,25 @@ import {
 import { isSpecialDynamicFilterSetId } from '../core/dynamic-file-task-filter';
 import { cloneTablePreset, type TablePreset, type TablePresetProjectionSettings } from '../types/table';
 import { getAppLocale } from '../core/obsidian-app';
+import {
+	buildOperonSettingsBackupSelectedPatchV1,
+	computeOperonSettingsBackupSelectedSettingsFingerprintV1,
+	computeOperonSettingsBackupSettingsFingerprintV1,
+	createOperonSettingsBackupApplyReceiptV1,
+	projectOperonSettingsBackupApplyDataPackageV1,
+	validateOperonSettingsBackupApplyAcknowledgementV1,
+	type OperonSettingsBackupApplyInputV1,
+	type OperonSettingsBackupApplyBlockedReasonV1,
+	type OperonSettingsBackupApplyReceiptV1,
+	type OperonSettingsBackupApplyResultV1,
+} from '../core/settings-backup-apply';
+import {
+	preflightOperonSettingsBackupRestoreV1,
+	type OperonSettingsBackupPreflightSummaryV1,
+	type OperonSettingsBackupRestorePlanV1,
+} from '../core/settings-backup-preflight';
+import { sha256HexV1 } from '../agent-runtime/contracts/v1/canonical';
+import { canonicalizeOperonSettingsBackupJson } from '../core/settings-backup-format';
 
 export type IndexV8RecoveryMarkerStatus = 'missing' | 'required' | 'invalid' | 'io-error';
 
@@ -77,6 +96,111 @@ export interface OperonStorageOptions extends Partial<OperonPluginDataAccess> {
 export interface OperonStorageReloadSettingsResult {
 	changed: boolean;
 	diagnostics: OperonDataPackageReloadDiagnostics;
+}
+
+export interface OperonCommittedSettingsBackupSnapshot {
+	settings: OperonSettings;
+	dataPackageSchemaVersion: OperonDataPackageV1['schemaVersion'];
+	settingsVersion: number;
+	canonicalWritesSuspended: boolean;
+	canonicalWriteSuspensionReason: string | null;
+}
+
+export type OperonSettingsBackupUndoResultV1 =
+	| { status: 'success'; receiptId: string; blockedReason: null }
+	| {
+		status: 'partial-user-decision-required';
+		receiptId: string;
+		blockedReason: null;
+		failurePhase: 'runtime-commit' | 'commit-state-unknown';
+	}
+	| { status: 'blocked'; receiptId: string; blockedReason: 'not-available' | 'stale-target' | 'writes-suspended' }
+	| { status: 'failed'; receiptId: string; blockedReason: null };
+
+interface OperonSettingsBackupUndoEntryV1 {
+	receiptId: string;
+	selectedGroups: OperonSettingsBackupApplyReceiptV1['selectedGroups'];
+	previousSettings: OperonSettings;
+	expectedSelectedFingerprint: string;
+}
+
+function blockedSettingsBackupApply(
+	reason: OperonSettingsBackupApplyBlockedReasonV1,
+): OperonSettingsBackupApplyResultV1 {
+	return { status: 'blocked', receipt: null, blockedReason: reason, failurePhase: null };
+}
+
+function failedSettingsBackupApply(
+	phase: 'stage' | 'persist' | 'runtime-commit' | 'commit-state-unknown',
+): OperonSettingsBackupApplyResultV1 {
+	return { status: 'failed', receipt: null, blockedReason: null, failurePhase: phase };
+}
+
+function successfulSettingsBackupApply(
+	receipt: OperonSettingsBackupApplyReceiptV1,
+): OperonSettingsBackupApplyResultV1 {
+	return {
+		status: receipt.status === 'success-with-migrations' ? 'success-with-migrations' : 'success',
+		receipt,
+		blockedReason: null,
+		failurePhase: null,
+	};
+}
+
+function compareSettingsBackupRestorePlans(
+	expected: OperonSettingsBackupRestorePlanV1,
+	current: OperonSettingsBackupRestorePlanV1,
+): OperonSettingsBackupApplyBlockedReasonV1 | null {
+	if (expected.sourceBodyChecksum !== current.sourceBodyChecksum) return 'source-mismatch';
+	if (!settingsBackupVaultReferenceChecksMatch(expected, current)) return 'vault-reference-changed';
+	if (expected.targetConfigurationFingerprint !== current.targetConfigurationFingerprint) return 'stale-target';
+	if (expected.selectionFingerprint !== current.selectionFingerprint) return 'selection-mismatch';
+	if (expected.candidateFingerprint !== current.candidateFingerprint) return 'candidate-mismatch';
+	if (expected.planId !== current.planId) return 'acknowledgement-mismatch';
+	return null;
+}
+
+function compareSettingsBackupRestoreAdmissionIdentity(
+	expected: OperonSettingsBackupRestorePlanV1,
+	current: OperonSettingsBackupRestorePlanV1,
+): OperonSettingsBackupApplyBlockedReasonV1 | null {
+	if (expected.sourceBodyChecksum !== current.sourceBodyChecksum) return 'source-mismatch';
+	if (!settingsBackupVaultReferenceChecksMatch(expected, current)) return 'vault-reference-changed';
+	if (expected.selectionFingerprint !== current.selectionFingerprint) return 'selection-mismatch';
+	return null;
+}
+
+function settingsBackupVaultReferenceChecksMatch(
+	expected: OperonSettingsBackupRestorePlanV1,
+	current: OperonSettingsBackupRestorePlanV1,
+): boolean {
+	return sha256HexV1(canonicalizeOperonSettingsBackupJson(expected.vaultReferenceChecks))
+		=== sha256HexV1(canonicalizeOperonSettingsBackupJson(current.vaultReferenceChecks));
+}
+
+function pickSettingsBackupApplyCounts(
+	summary: OperonSettingsBackupPreflightSummaryV1 | null,
+): OperonSettingsBackupApplyReceiptV1['counts'] {
+	return {
+		added: summary?.added ?? 0,
+		removed: summary?.removed ?? 0,
+		changed: summary?.changed ?? 0,
+		unchanged: summary?.unchanged ?? 0,
+		migrated: summary?.migrated ?? 0,
+		skipped: summary?.skipped ?? 0,
+		conflicts: summary?.conflicts ?? 0,
+		unresolved: summary?.unresolved ?? 0,
+	};
+}
+
+function isCanonicalIsoTimestamp(value: string): boolean {
+	if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
+	const parsed = new Date(value);
+	return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
+}
+
+function buildSettingsBackupUndoTokenId(planId: string, appliedAt: string): string {
+	return sha256HexV1(`settings-backup-undo-v1\n${planId}\n${appliedAt}`);
 }
 
 function cloneOperonSettings(settings: OperonSettings): OperonSettings {
@@ -242,6 +366,7 @@ export class OperonStorage {
 	private projectSerialStore: ProjectSerialStore;
 	private unsupportedTablePresetPackage = false;
 	private fieldRenameJournalStore: FieldRenameJournalStore;
+	private settingsBackupUndoEntries = new Map<string, OperonSettingsBackupUndoEntryV1>();
 
 	constructor(app: App, options: OperonStorageOptions = {}) {
 		this.app = app;
@@ -689,6 +814,320 @@ export class OperonStorage {
 	}
 
 	/**
+	 * Capture a logical settings snapshot from the last successfully persisted
+	 * canonical package. This read participates in both settings and package
+	 * queues and intentionally does not overlay runtime Table preset contents.
+	 */
+	captureCommittedSettingsBackupSnapshot(): Promise<OperonCommittedSettingsBackupSnapshot> {
+		return this.enqueueSettingsTransaction(async () => {
+			const committed = await this.dataPackageStore.captureCommittedSettingsSnapshot(DEFAULT_SETTINGS);
+			const canonicalWritesSuspended = !this.dataPackageStore.canPersist();
+			return {
+				settings: committed.settings,
+				dataPackageSchemaVersion: committed.dataPackageSchemaVersion,
+				settingsVersion: committed.settings.settingsVersion,
+				canonicalWritesSuspended,
+				canonicalWriteSuspensionReason: canonicalWritesSuspended
+					? this.dataPackageStore.getWriteSuspensionReason() ?? 'Canonical settings writes are suspended'
+					: null,
+			};
+		});
+	}
+
+	async applySettingsBackupRestorePlanV1(
+		input: OperonSettingsBackupApplyInputV1,
+		refreshVaultReferenceChecks?: () => Promise<OperonSettingsBackupApplyInputV1['refreshedVaultReferenceChecks']>,
+	): Promise<OperonSettingsBackupApplyResultV1> {
+		return this.enqueueSettingsTransaction(async () => {
+			const acknowledgement = validateOperonSettingsBackupApplyAcknowledgementV1(
+				input.restorePlan,
+				input.acknowledgement,
+			);
+			if (!acknowledgement.ok) return blockedSettingsBackupApply(acknowledgement.reason);
+			if (!isCanonicalIsoTimestamp(input.appliedAt)) return blockedSettingsBackupApply('invalid-applied-at');
+			if (!this.dataPackageStore.canPersist()) return blockedSettingsBackupApply('writes-suspended');
+			let refreshedVaultReferenceChecks = input.refreshedVaultReferenceChecks;
+			if (refreshVaultReferenceChecks) {
+				try {
+					refreshedVaultReferenceChecks = await refreshVaultReferenceChecks();
+				} catch {
+					return blockedSettingsBackupApply('vault-reference-changed');
+				}
+			}
+
+			let staged: OperonDataPackageReloadStage | null = null;
+			let previousSettings: OperonSettings | null = null;
+			let activePlan = input.restorePlan;
+			let activeSummary: OperonSettingsBackupPreflightSummaryV1 | null = null;
+			let admissionResult: OperonSettingsBackupApplyResultV1 | null = null;
+			let alreadyApplied = false;
+			let admittedCurrentSettingsFingerprint: string | null = null;
+
+			let observed: Awaited<ReturnType<OperonDataPackageStore['updateDataPackageObserved']>>;
+			try {
+				observed = await this.dataPackageStore.updateDataPackageObserved(currentPackage => {
+				const currentSettings = composeOperonSettingsFromDataPackage(currentPackage, DEFAULT_SETTINGS);
+				const fresh = preflightOperonSettingsBackupRestoreV1({
+					sourceJson: input.sourceJson,
+					targetSnapshot: {
+						settings: currentSettings,
+						dataPackageSchemaVersion: currentPackage.schemaVersion,
+						settingsVersion: currentSettings.settingsVersion,
+						canonicalWritesSuspended: !this.dataPackageStore.canPersist(),
+						canonicalWriteSuspensionReason: this.dataPackageStore.getWriteSuspensionReason(),
+					},
+					selectedGroups: input.restorePlan.selectedGroups,
+					vaultReferenceChecks: refreshedVaultReferenceChecks,
+					vaultReferenceDecisions: input.restorePlan.vaultReferenceDecisions,
+				});
+				if (!fresh.ok) {
+					admissionResult = blockedSettingsBackupApply('source-mismatch');
+					return currentPackage;
+				}
+				if (fresh.classification !== 'ready' || !fresh.restorePlan) {
+					admissionResult = blockedSettingsBackupApply(
+						fresh.preview.canonicalWritesSuspended ? 'writes-suspended' : 'user-decision-required',
+					);
+					return currentPackage;
+				}
+				activeSummary = fresh.preview.summary;
+				const admissionMismatch = compareSettingsBackupRestoreAdmissionIdentity(input.restorePlan, fresh.restorePlan);
+				if (admissionMismatch) {
+					admissionResult = blockedSettingsBackupApply(admissionMismatch);
+					return currentPackage;
+				}
+				const currentSettingsFingerprint = computeOperonSettingsBackupSettingsFingerprintV1(currentSettings);
+				admittedCurrentSettingsFingerprint = currentSettingsFingerprint;
+				if (fresh.restorePlan.candidateFingerprint === currentSettingsFingerprint) {
+					alreadyApplied = true;
+					activePlan = fresh.restorePlan;
+					return currentPackage;
+				}
+				const staleReason = compareSettingsBackupRestorePlans(input.restorePlan, fresh.restorePlan);
+				if (staleReason) {
+					admissionResult = blockedSettingsBackupApply(staleReason);
+					return currentPackage;
+				}
+				activePlan = fresh.restorePlan;
+				previousSettings = cloneOperonSettings(currentSettings);
+				const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(
+					currentPackage,
+					fresh.restorePlan.candidateSettings,
+				);
+				staged = this.stageCanonicalDataPackageReload(candidatePackage);
+				return candidatePackage;
+				});
+			} catch {
+				return failedSettingsBackupApply('stage');
+			}
+
+			if (admissionResult) return admissionResult;
+			const counts = pickSettingsBackupApplyCounts(activeSummary);
+			if (alreadyApplied || observed.status === 'unchanged') {
+				const receipt = createOperonSettingsBackupApplyReceiptV1({
+					status: counts.migrated > 0 ? 'success-with-migrations' : 'success',
+					appliedAt: input.appliedAt,
+					plan: activePlan,
+					previousTargetFingerprint: activePlan.targetConfigurationFingerprint,
+					currentTargetFingerprint: admittedCurrentSettingsFingerprint ?? activePlan.candidateFingerprint,
+					counts,
+					recovery: {
+						mode: 'none', undoTokenId: null, expectedCurrentFingerprint: null,
+						keepAvailable: false, retryRuntimeRefreshAvailable: false, undoAvailable: false,
+					},
+					alreadyApplied: true,
+					canonicalWrite: 'not-attempted',
+					runtimeSettlement: 'settled',
+				});
+				return successfulSettingsBackupApply(receipt);
+			}
+			if (observed.status === 'failed-clean') return failedSettingsBackupApply('persist');
+			if (observed.status === 'commit-state-unknown') {
+				const receipt = createOperonSettingsBackupApplyReceiptV1({
+					status: 'commit-state-unknown',
+					appliedAt: input.appliedAt,
+					plan: activePlan,
+					previousTargetFingerprint: activePlan.targetConfigurationFingerprint,
+					currentTargetFingerprint: null,
+					counts,
+					recovery: {
+						mode: 'manual-backup-required', undoTokenId: null, expectedCurrentFingerprint: null,
+						keepAvailable: false, retryRuntimeRefreshAvailable: false, undoAvailable: false,
+					},
+					canonicalWrite: 'state-unknown',
+					runtimeSettlement: 'not-started',
+					warnings: ['Canonical settings commit state could not be verified.'],
+				});
+				return {
+					status: 'partial-user-decision-required',
+					receipt,
+					blockedReason: null,
+					failurePhase: 'commit-state-unknown',
+				};
+			}
+
+			let runtimeCommitFailed = false;
+			const stagedRuntime = staged as OperonDataPackageReloadStage | null;
+			try {
+				stagedRuntime?.commit();
+			} catch {
+				runtimeCommitFailed = true;
+				try {
+					stagedRuntime?.rollback();
+				} catch {
+					// The canonical package is already committed. Main owns explicit reload recovery.
+				}
+			}
+			const retainSessionUndo = input.retainSessionUndo !== false;
+			const recoveryTokenId = retainSessionUndo && (runtimeCommitFailed || previousSettings)
+				? buildSettingsBackupUndoTokenId(activePlan.planId, input.appliedAt)
+				: null;
+			const receipt = createOperonSettingsBackupApplyReceiptV1({
+				status: runtimeCommitFailed
+					? 'runtime-degraded'
+					: counts.migrated > 0 ? 'success-with-migrations' : 'success',
+				appliedAt: input.appliedAt,
+				plan: activePlan,
+				previousTargetFingerprint: activePlan.targetConfigurationFingerprint,
+				currentTargetFingerprint: activePlan.candidateFingerprint,
+				counts,
+				recovery: recoveryTokenId
+					? {
+						mode: 'session-conditional-undo',
+						undoTokenId: recoveryTokenId,
+						expectedCurrentFingerprint: computeOperonSettingsBackupSelectedSettingsFingerprintV1(
+							activePlan.candidateSettings,
+							activePlan.selectedGroups,
+						),
+						keepAvailable: true,
+						retryRuntimeRefreshAvailable: runtimeCommitFailed,
+						undoAvailable: true,
+					}
+					: runtimeCommitFailed
+						? {
+							mode: 'reload-required', undoTokenId: null, expectedCurrentFingerprint: null,
+							keepAvailable: false, retryRuntimeRefreshAvailable: true, undoAvailable: false,
+						}
+					: {
+						mode: 'none', undoTokenId: null, expectedCurrentFingerprint: null,
+						keepAvailable: false, retryRuntimeRefreshAvailable: false, undoAvailable: false,
+					},
+				canonicalWrite: observed.status === 'committed-after-error' ? 'committed-after-error' : 'committed',
+				runtimeSettlement: runtimeCommitFailed ? 'degraded' : 'not-started',
+				warnings: observed.status === 'committed-after-error'
+					? ['Canonical write acknowledgement failed, but committed data was verified.']
+					: [],
+			});
+			if (recoveryTokenId && previousSettings) {
+				this.settingsBackupUndoEntries.set(recoveryTokenId, {
+					receiptId: receipt.receiptId,
+					selectedGroups: receipt.selectedGroups,
+					previousSettings,
+					expectedSelectedFingerprint: computeOperonSettingsBackupSelectedSettingsFingerprintV1(
+						activePlan.candidateSettings,
+						activePlan.selectedGroups,
+					),
+				});
+			}
+			if (runtimeCommitFailed) {
+				return {
+					status: 'partial-user-decision-required',
+					receipt,
+					blockedReason: null,
+					failurePhase: 'runtime-commit',
+				};
+			}
+			return successfulSettingsBackupApply(receipt);
+		});
+	}
+
+	discardSettingsBackupUndo(undoTokenId: string, expectedReceiptId: string): boolean {
+		const entry = this.settingsBackupUndoEntries.get(undoTokenId);
+		if (!entry || entry.receiptId !== expectedReceiptId) return false;
+		return this.settingsBackupUndoEntries.delete(undoTokenId);
+	}
+
+	updateSettingsBackupUndoReceiptId(undoTokenId: string, expectedReceiptId: string, receiptId: string): void {
+		const entry = this.settingsBackupUndoEntries.get(undoTokenId);
+		if (entry?.receiptId === expectedReceiptId) entry.receiptId = receiptId;
+	}
+
+	async undoSettingsBackupRestoreV1(
+		undoTokenId: string,
+		expectedReceiptId: string,
+	): Promise<OperonSettingsBackupUndoResultV1> {
+		return this.enqueueSettingsTransaction(async () => {
+			const entry = this.settingsBackupUndoEntries.get(undoTokenId);
+			if (!entry) return { status: 'blocked', receiptId: undoTokenId, blockedReason: 'not-available' };
+			const { receiptId } = entry;
+			if (receiptId !== expectedReceiptId) {
+				return { status: 'blocked', receiptId: expectedReceiptId, blockedReason: 'not-available' };
+			}
+			if (!this.dataPackageStore.canPersist()) {
+				return { status: 'blocked', receiptId, blockedReason: 'writes-suspended' };
+			}
+			let staged: OperonDataPackageReloadStage | null = null;
+			let stale = false;
+			let observed: Awaited<ReturnType<OperonDataPackageStore['updateDataPackageObserved']>>;
+			try {
+				observed = await this.dataPackageStore.updateDataPackageObserved(currentPackage => {
+				const currentSettings = composeOperonSettingsFromDataPackage(currentPackage, DEFAULT_SETTINGS);
+				const currentSelectedFingerprint = computeOperonSettingsBackupSelectedSettingsFingerprintV1(
+					currentSettings,
+					entry.selectedGroups,
+				);
+				if (currentSelectedFingerprint !== entry.expectedSelectedFingerprint) {
+					stale = true;
+					return currentPackage;
+				}
+				const previousPatch = buildOperonSettingsBackupSelectedPatchV1({
+					selectedGroups: entry.selectedGroups,
+					candidateSettings: entry.previousSettings,
+				});
+				const candidateSettings = migrateSettings({ ...currentSettings, ...previousPatch });
+				const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(currentPackage, candidateSettings);
+				staged = this.stageCanonicalDataPackageReload(candidatePackage);
+				return candidatePackage;
+				});
+			} catch {
+				return { status: 'failed', receiptId, blockedReason: null };
+			}
+			if (stale) return { status: 'blocked', receiptId, blockedReason: 'stale-target' };
+			if (observed.status === 'failed-clean') {
+				return { status: 'failed', receiptId, blockedReason: null };
+			}
+			if (observed.status === 'commit-state-unknown') {
+				this.settingsBackupUndoEntries.delete(undoTokenId);
+				return {
+					status: 'partial-user-decision-required',
+					receiptId,
+					blockedReason: null,
+					failurePhase: 'commit-state-unknown',
+				};
+			}
+			const stagedRuntime = staged as OperonDataPackageReloadStage | null;
+			try {
+				stagedRuntime?.commit();
+			} catch {
+				try {
+					stagedRuntime?.rollback();
+				} catch {
+					// Leave the recovery token available for an explicit retry or manual recovery.
+				}
+				this.settingsBackupUndoEntries.delete(undoTokenId);
+				return {
+					status: 'partial-user-decision-required',
+					receiptId,
+					blockedReason: null,
+					failurePhase: 'runtime-commit',
+				};
+			}
+			this.settingsBackupUndoEntries.delete(undoTokenId);
+			return { status: 'success', receiptId, blockedReason: null };
+		});
+	}
+
+	/**
 	 * Update settings and persist.
 	 */
 	async updateSettings(partial: Partial<OperonSettings>): Promise<void> {
@@ -716,7 +1155,7 @@ export class OperonStorage {
 		// Reload occupies the settings mutex so a later save cannot build from a half-staged package.
 		const run = this.settingsSaveQueue.then(async () => {
 			const result = await this.dataPackageStore.reloadCanonicalDataPackage(DEFAULT_SETTINGS, {
-				stage: dataPackage => this.stageCanonicalDataPackageReload(dataPackage),
+				stage: async dataPackage => this.stageCanonicalDataPackageReload(dataPackage),
 			});
 			if (!result.dataPackage.ui.presetFavorites) {
 				await this.persistSettings({ forceRecoveredWrite: true });
@@ -794,9 +1233,9 @@ export class OperonStorage {
 		target.tableShowTaskTypeIcon = manifest.tableShowTaskTypeIcon;
 	}
 
-	private async stageCanonicalDataPackageReload(
+	private stageCanonicalDataPackageReload(
 		dataPackage: OperonDataPackageV1,
-	): Promise<OperonDataPackageReloadStage> {
+	): OperonDataPackageReloadStage {
 		if (isUnsupportedTablePresetPackage(dataPackage)) {
 			throw new Error('Unsupported Table preset package.');
 		}

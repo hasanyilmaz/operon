@@ -29,6 +29,7 @@ export interface ConfirmActionModalOptions {
 	dismissText?: string;
 	readOnly?: boolean;
 	danger?: boolean;
+	initialFocus?: 'confirm' | 'cancel';
 	detailsTable?: Array<{ label: string; before: string; after: string }>;
 	comparisonTable?: ConfirmActionComparisonTable;
 }
@@ -77,7 +78,7 @@ export class ConfirmActionModal extends Modal {
 			dismissButton.addEventListener('click', () => {
 				this.finish(false);
 			});
-			window.setTimeout(() => dismissButton.focus(), 0);
+			this.contentEl.ownerDocument.defaultView?.setTimeout(() => dismissButton.focus(), 0);
 			return;
 		}
 
@@ -91,7 +92,8 @@ export class ConfirmActionModal extends Modal {
 		confirmButton.addEventListener('click', () => {
 			this.finish(true);
 		});
-		window.setTimeout(() => confirmButton.focus(), 0);
+		const initialFocusButton = this.options.initialFocus === 'cancel' ? cancelButton : confirmButton;
+		this.contentEl.ownerDocument.defaultView?.setTimeout(() => initialFocusButton.focus(), 0);
 	}
 
 	onClose(): void {

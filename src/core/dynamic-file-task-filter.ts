@@ -30,6 +30,21 @@ interface DynamicFilterTemplateConfig {
 	placeholder: string;
 }
 
+export interface DynamicFilterTemplatePreferences {
+	name: string;
+	icon: string;
+	sorts: FilterSortSpec[];
+	groupBy?: string;
+	groupOrder?: 'asc' | 'desc';
+	subgroupBy?: string;
+	subgroupOrder?: 'asc' | 'desc';
+}
+
+export interface DynamicFilterTemplatePreferencesProjection {
+	fileTask: DynamicFilterTemplatePreferences;
+	subtasks: DynamicFilterTemplatePreferences;
+}
+
 const DYNAMIC_FILE_TASK_FILTER_CONFIG: DynamicFilterTemplateConfig = {
 	id: DYNAMIC_FILE_TASK_FILTER_ID,
 	name: DYNAMIC_FILE_TASK_FILTER_NAME,
@@ -70,6 +85,58 @@ export function isSpecialDynamicFilterSet(filterSet: Pick<FilterSet, 'id'> | nul
 
 export function getNormalFilterSets(filterSets: FilterSet[]): FilterSet[] {
 	return filterSets.filter(filterSet => !isSpecialDynamicFilterSet(filterSet));
+}
+
+export function projectDynamicFilterTemplatePreferences(
+	filterSets: FilterSet[],
+): DynamicFilterTemplatePreferencesProjection {
+	return {
+		fileTask: pickDynamicFilterTemplatePreferences(normalizeDynamicFileTaskFilterSet(
+			filterSets.find(isDynamicFileTaskFilterSet),
+		)),
+		subtasks: pickDynamicFilterTemplatePreferences(normalizeDynamicSubtasksFilterSet(
+			filterSets.find(isDynamicSubtasksFilterSet),
+		)),
+	};
+}
+
+export function applyDynamicFilterTemplatePreferences(
+	filterSets: FilterSet[],
+	preferences: DynamicFilterTemplatePreferencesProjection,
+): FilterSet[] {
+	const fileTask = normalizeDynamicFileTaskFilterSet({
+		...(filterSets.find(isDynamicFileTaskFilterSet) ?? createDefaultDynamicFileTaskFilterSet()),
+		name: preferences.fileTask.name,
+		icon: preferences.fileTask.icon,
+		sorts: cloneSorts(preferences.fileTask.sorts),
+		groupBy: preferences.fileTask.groupBy,
+		groupOrder: preferences.fileTask.groupOrder,
+		subgroupBy: preferences.fileTask.subgroupBy,
+		subgroupOrder: preferences.fileTask.subgroupOrder,
+	});
+	const subtasks = normalizeDynamicSubtasksFilterSet({
+		...(filterSets.find(isDynamicSubtasksFilterSet) ?? createDefaultDynamicSubtasksFilterSet()),
+		name: preferences.subtasks.name,
+		icon: preferences.subtasks.icon,
+		sorts: cloneSorts(preferences.subtasks.sorts),
+		groupBy: preferences.subtasks.groupBy,
+		groupOrder: preferences.subtasks.groupOrder,
+		subgroupBy: preferences.subtasks.subgroupBy,
+		subgroupOrder: preferences.subtasks.subgroupOrder,
+	});
+	return [...getNormalFilterSets(filterSets).map(cloneFilterSet), fileTask, subtasks];
+}
+
+function pickDynamicFilterTemplatePreferences(filterSet: FilterSet): DynamicFilterTemplatePreferences {
+	return {
+		name: filterSet.name,
+		icon: filterSet.icon ?? '',
+		sorts: cloneSorts(filterSet.sorts),
+		...(filterSet.groupBy !== undefined ? { groupBy: filterSet.groupBy } : {}),
+		...(filterSet.groupOrder !== undefined ? { groupOrder: filterSet.groupOrder } : {}),
+		...(filterSet.subgroupBy !== undefined ? { subgroupBy: filterSet.subgroupBy } : {}),
+		...(filterSet.subgroupOrder !== undefined ? { subgroupOrder: filterSet.subgroupOrder } : {}),
+	};
 }
 
 export function createDefaultDynamicFileTaskFilterSet(): FilterSet {
