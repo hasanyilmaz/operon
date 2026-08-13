@@ -32,12 +32,16 @@ export async function runCliCompatibilityCheck(options = {}) {
 		'scripts/agent-runtime/cli/run-meeting-agent-acceptance.test.mjs',
 		'scripts/release/run-published-cli-live-acceptance.test.mjs',
 		'scripts/release/run-published-cli-stage7-performance.test.mjs',
+		'scripts/release/check-accepted-freeze.test.mjs',
+		'scripts/release/check-release-freeze-registry.test.mjs',
 	);
 	await run([script('scripts/agent-runtime/cli/check-published-cli-binding.mjs')]);
 	await run([script('scripts/agent-runtime/cli/check-cli-cutover.mjs')]);
 	await run([script('scripts/agent-runtime/cli/check-package-contracts.mjs')]);
 	await run([script('scripts/agent-runtime/contracts/check-public-v1-baseline.mjs'), '--check']);
 	await run([script('scripts/agent-runtime/contracts/check-historical-public-v1-freeze.mjs')]);
+	await run([script('scripts/release/check-accepted-freeze.mjs')]);
+	await run([script('scripts/release/check-release-freeze-registry.mjs')]);
 	await run([
 		script('scripts/agent-runtime/cli/check-published-cli-artifact.mjs'),
 		'--tarball', arguments_.tarballPath,

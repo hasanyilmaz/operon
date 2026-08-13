@@ -214,6 +214,9 @@ historical external-reference freezes serve different purposes.
   lifetime of V1. It must not load, hash, or compare a CLI artifact during
   ordinary Plugin development, candidate validation, `main` validation, or
   Plugin release.
+- `public-v1-baseline.json` is immutable throughout V1 evolution. It is not
+  rewritten to absorb a Plugin change; a proposed rewrite requires an explicit
+  release-boundary or Runtime V2 decision.
 - Additive Runtime V1 work may publish a new capability, optional response
   field, error, deprecation, or entrypoint before CLI support exists. The
   Runtime advertises that surface; an older CLI continues only with capabilities

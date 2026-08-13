@@ -5,6 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
+import { classifyPullRequestValidationSurface } from './ci/classify-pr-validation-surface.mjs';
+
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
 const guardScope = parseGuardScope(process.argv.slice(2));
@@ -399,20 +401,19 @@ function checkContinuousIntegrationWorkflow() {
 	const windows = document.jobs?.['windows-native'];
 	assertEqual('CI validation gate name', validation?.name, 'Validation gate');
 	const validationSteps = new Map((validation?.steps ?? []).map(step => [step.name, step]));
-	assertEqual('CI validation checkout history depth', validationSteps.get('Check out repository')?.with?.['fetch-depth'], 2);
-	assertEqual('CI PR base fetch condition', validationSteps.get('Fetch pull-request base for validation classification')?.if, "github.event_name == 'pull_request'");
+	assertEqual('CI validation checkout history depth', validationSteps.get('Check out repository')?.with?.['fetch-depth'], 0);
 	assertEqual('CI PR surface classifier condition', validationSteps.get('Classify pull-request validation surface')?.if, "github.event_name == 'pull_request'");
+	assertEqual('CI Runtime baseline boundary condition', validationSteps.get('Require immutable Runtime V1 baseline')?.if, "github.event_name == 'pull_request' && steps.pr-surface.outputs.runtime_baseline_mutation == 'true'");
 	assertEqual('CI CLI compatibility review condition', validationSteps.get('Require explicit CLI compatibility review')?.if, "github.event_name == 'pull_request' && steps.pr-surface.outputs.cli_compat_review == 'true'");
 	assertEqual('CI main validation condition', validationSteps.get('Run main validation')?.if, "github.event_name == 'push'");
 	assertEqual('CI main validation command', validationSteps.get('Run main validation')?.run, 'npm run check:main');
+	assertEqual('CI main validation base identity', validationSteps.get('Run main validation')?.env?.OPERON_PUSH_BASE_SHA, '${{ github.event.before }}');
+	assertEqual('CI main validation head identity', validationSteps.get('Run main validation')?.env?.OPERON_PUSH_HEAD_SHA, '${{ github.sha }}');
 	assertEqual('CI PR validation condition', validationSteps.get('Run Plugin candidate validation')?.if, "github.event_name == 'pull_request'");
 	assertEqual('CI PR validation command', validationSteps.get('Run Plugin candidate validation')?.run, 'npm run check:plugin');
 	assertEqual('CI CLI impact command', validationSteps.get('Report non-blocking CLI impact')?.shell, 'bash');
 	if (!validationSteps.get('Report non-blocking CLI impact')?.run?.includes('npm run --silent agent-runtime:cli-impact')) {
 		fail('CI must write the non-blocking CLI impact summary.');
-	}
-	if (!validationSteps.get('Fetch pull-request base for validation classification')?.run?.includes('git fetch --no-tags --depth=1 origin "$BASE_SHA"')) {
-		fail('CI must fetch the exact pull-request base before classifying changed paths.');
 	}
 	if (!validationSteps.get('Classify pull-request validation surface')?.run?.includes('scripts/ci/classify-pr-validation-surface.mjs')) {
 		fail('CI must classify the pull-request validation surface without invoking CLI compatibility checks.');
@@ -982,21 +983,43 @@ function checkPluginReleasePolicy() {
 		'"agent-runtime:runtime": "node scripts/agent-runtime/runtime/run-graph-transaction-executor-tests.mjs &&',
 		'normal Runtime validation must execute graph transaction recovery tests',
 	);
+	checkRuntimeProviderBaselineWasNotChanged();
 	checkHistoricalCliEvidenceWasNotChanged();
 }
 
 function checkHistoricalCliEvidenceWasNotChanged() {
-	const historicalPrefixes = [
-		'contracts/agent-runtime/public-v1-freeze',
-		'contracts/agent-runtime/public-v1-release-freezes.json',
-		'contracts/agent-runtime/releases/',
-		'scripts/release/fixtures/legacy-cli-',
-	];
+	for (const file of changedPathsForPolicy()) {
+		if (classifyPullRequestValidationSurface([file]).cliCompatReview) {
+			fail(`${file}: historical CLI evidence requires release:guard --scope cli-compat.`);
+		}
+	}
+}
+
+function checkRuntimeProviderBaselineWasNotChanged() {
+	for (const file of changedPathsForPolicy()) {
+		if (classifyPullRequestValidationSurface([file]).runtimeBaselineMutation) {
+			fail(`${file}: Runtime V1 baseline is immutable outside an explicit release or Runtime-major boundary.`);
+		}
+	}
+}
+
+let cachedPolicyChangedPaths;
+
+function changedPathsForPolicy() {
+	if (cachedPolicyChangedPaths) return cachedPolicyChangedPaths;
 	const changed = new Set();
-	for (const arguments_ of [
+	const pushBase = process.env.OPERON_PUSH_BASE_SHA;
+	const pushHead = process.env.OPERON_PUSH_HEAD_SHA;
+	const hasPushRange = /^[0-9a-f]{40}$/u.test(pushBase ?? '')
+		&& /^[0-9a-f]{40}$/u.test(pushHead ?? '')
+		&& !/^0{40}$/u.test(pushBase);
+	const ranges = [
 		['diff', '--name-only'],
-		['diff', '--name-only', 'HEAD^', 'HEAD'],
-	]) {
+		hasPushRange
+			? ['diff', '--name-only', pushBase, pushHead]
+			: ['diff', '--name-only', 'HEAD^', 'HEAD'],
+	];
+	for (const arguments_ of ranges) {
 		try {
 			for (const file of execFileSync('git', arguments_, { cwd: rootDir, encoding: 'utf8' })
 				.split(/\r?\n/u).filter(Boolean)) changed.add(file);
@@ -1004,11 +1027,8 @@ function checkHistoricalCliEvidenceWasNotChanged() {
 			// A shallow first commit has no parent; the worktree diff still protects local edits.
 		}
 	}
-	for (const file of changed) {
-		if (historicalPrefixes.some(prefix => file.startsWith(prefix))) {
-			fail(`${file}: historical CLI evidence requires release:guard --scope cli-compat.`);
-		}
-	}
+	cachedPolicyChangedPaths = changed;
+	return cachedPolicyChangedPaths;
 }
 
 function checkCliCompatibilityEvidence() {
@@ -1034,14 +1054,28 @@ function checkCliCompatibilityEvidence() {
 	}
 	for (const file of [
 		'contracts/agent-runtime/public-v1-freeze.json',
+		'contracts/agent-runtime/public-v1-external-freeze.json',
 		'contracts/agent-runtime/public-v1-external-freeze.schema.json',
+		'contracts/agent-runtime/public-v1-live-acceptance.json',
 		'contracts/agent-runtime/public-v1-release-freezes.json',
+		'contracts/agent-runtime/cli-cutover-v1.json',
+		'contracts/agent-runtime/cli-cutover-v1.schema.json',
 		'scripts/release/fixtures/legacy-cli-1.0.8/published-cli-v1.json',
 		'scripts/release/fixtures/legacy-cli-1.0.8/published-cli-v1.schema.json',
 		'scripts/agent-runtime/cli/check-published-cli-binding.mjs',
 		'scripts/agent-runtime/cli/check-published-cli-artifact.mjs',
 		'scripts/agent-runtime/cli/check-published-cli-public-proof.mjs',
 	]) assertFileExists(file);
+	for (const command of [
+		'scripts/release/check-accepted-freeze.mjs',
+		'scripts/release/check-release-freeze-registry.mjs',
+	]) {
+		assertIncludes(
+			'scripts/agent-runtime/cli/check-cli-compat.mjs',
+			command,
+			'CLI compatibility lane must validate every current historical freeze record',
+		);
+	}
 	assertEqual(
 		'historical Public V1 freeze SHA-256',
 		createHash('sha256').update(fs.readFileSync(path.join(rootDir, 'contracts/agent-runtime/public-v1-freeze.json'))).digest('hex'),

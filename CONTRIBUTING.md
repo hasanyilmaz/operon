@@ -26,6 +26,12 @@ changes CLI integration support or when reviewing historical CLI compatibility
 evidence. It may read the published CLI evidence and network endpoints; a CLI
 follow-up never blocks a Plugin change or Plugin release.
 
+Pull requests that change release-sensitive files receive the focused Plugin
+release guard. Historical CLI freeze or cutover evidence belongs to the manual
+CLI compatibility lane; it is not checked or hashed for ordinary Plugin work.
+The Runtime V1 baseline is immutable during V1 evolution, so it cannot be
+rewritten to mask a breaking Runtime change.
+
 Use `npm run lint:report` to inspect the current Obsidian ESLint warning state.
 
 The maintainer vault may also include `npm run phase5:regression` for local validation. The Phase 5 harness is not part of the public source repo or release assets.

@@ -18,7 +18,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
@@ -28,13 +28,6 @@ jobs:
           expected="${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
           actual="$(git rev-parse HEAD)"
           test "$actual" = "$expected"
-
-      - name: Fetch pull-request base for validation classification
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: git fetch --no-tags --depth=1 origin "$BASE_SHA"
 
       - name: Classify pull-request validation surface
         id: pr-surface
@@ -47,6 +40,14 @@ jobs:
           node scripts/ci/classify-pr-validation-surface.mjs \
             --base "$BASE_SHA" \
             --head "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require immutable Runtime V1 baseline
+        if: github.event_name == 'pull_request' && steps.pr-surface.outputs.runtime_baseline_mutation == 'true'
+        shell: bash
+        run: |
+          echo "The Runtime V1 baseline is an immutable release boundary."
+          echo "Keep it unchanged for additive Plugin-first work; plan a separate Runtime-major or release-boundary update if needed."
+          exit 1
 
       - name: Require explicit CLI compatibility review
         if: github.event_name == 'pull_request' && steps.pr-surface.outputs.cli_compat_review == 'true'
@@ -71,6 +72,9 @@ jobs:
       - name: Run main validation
         run: npm run check:main
         if: github.event_name == 'push'
+        env:
+          OPERON_PUSH_BASE_SHA: ${{ github.event.before }}
+          OPERON_PUSH_HEAD_SHA: ${{ github.sha }}
 
       - name: Run Plugin candidate validation
         if: github.event_name == 'pull_request'
