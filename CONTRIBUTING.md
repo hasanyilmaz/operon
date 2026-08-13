@@ -10,13 +10,22 @@ You must have the right to submit the work you contribute. Do not submit code, a
 
 ## Development Checks
 
-Before submitting a change, run the public source checks from this directory:
+Before submitting a Plugin change, run the Plugin-only source checks from this directory:
 
 ```bash
 npm run check
 ```
 
-This runs strict ESLint validation and a production build. Use `npm run lint:report` to inspect the current Obsidian ESLint warning state.
+This runs strict ESLint validation, the Plugin Runtime contract checks, and one
+production build. It does not require an Operon CLI checkout, package, tarball,
+or published CLI binding.
+
+`npm run check:cli-compat` is a separate, manual compatibility lane. Run it
+only when the work explicitly changes CLI integration support or when reviewing
+historical CLI compatibility evidence. A CLI follow-up never blocks a Plugin
+change or Plugin release.
+
+Use `npm run lint:report` to inspect the current Obsidian ESLint warning state.
 
 The maintainer vault may also include `npm run phase5:regression` for local validation. The Phase 5 harness is not part of the public source repo or release assets.
 
