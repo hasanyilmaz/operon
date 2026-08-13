@@ -20,10 +20,11 @@ This runs strict ESLint validation, the Plugin Runtime contract checks, and one
 production build. It does not require an Operon CLI checkout, package, tarball,
 or published CLI binding.
 
-`npm run check:cli-compat` is a separate, manual compatibility lane. Run it
-only when the work explicitly changes CLI integration support or when reviewing
-historical CLI compatibility evidence. A CLI follow-up never blocks a Plugin
-change or Plugin release.
+`npm run check:cli-compat -- --tarball /absolute/path/to/operon-cli.tgz` is a
+separate, manual compatibility lane. Run it only when the work explicitly
+changes CLI integration support or when reviewing historical CLI compatibility
+evidence. It may read the published CLI evidence and network endpoints; a CLI
+follow-up never blocks a Plugin change or Plugin release.
 
 Use `npm run lint:report` to inspect the current Obsidian ESLint warning state.
 
