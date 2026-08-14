@@ -4,12 +4,16 @@ export interface InlineEditorSaveRetryOptions {
 	expectedContent: string;
 	save: () => Promise<void>;
 	readPersistedContent: () => Promise<string | null>;
-	requestSave: () => void;
+	fallback?: {
+		expectedPersistedContent: string;
+		writeExpectedContent: () => Promise<void>;
+	};
 }
 
 /**
  * Retry an editor save once after a committed transaction. A rejected save is
- * only accepted when the backing file already contains the exact new buffer.
+ * only accepted when the backing file already contains the exact new buffer,
+ * or a guarded fallback writes it from the unchanged pre-transaction source.
  */
 export async function retryInlineEditorSave(
 	options: InlineEditorSaveRetryOptions,
@@ -26,17 +30,20 @@ export async function retryInlineEditorSave(
 		await options.save();
 		return 'persisted';
 	} catch {
-		try {
-			if (await options.readPersistedContent() === options.expectedContent) {
+		const persistedContent = await options.readPersistedContent().catch(() => null);
+		if (persistedContent === options.expectedContent) return 'persisted';
+		if (
+			options.fallback
+			&& persistedContent === options.fallback.expectedPersistedContent
+		) {
+			try {
+				await options.fallback.writeExpectedContent();
 				return 'persisted';
+			} catch {
+				const afterFallbackContent = await options.readPersistedContent().catch(() => null);
+				if (afterFallbackContent === options.expectedContent) return 'persisted';
+				return 'failed';
 			}
-		} catch {
-			// Request the normal Obsidian save path below even if inspection fails.
-		}
-		try {
-			options.requestSave();
-		} catch {
-			// The caller remains fail-closed when the deferred request also fails.
 		}
 		return 'failed';
 	}

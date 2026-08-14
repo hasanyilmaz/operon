@@ -73,6 +73,11 @@ test('Task Editor conversion uses the live inline buffer and verifies editor per
 	assert.match(mainSource, /if \(openView\) \{\s*content = openView\.editor\.getValue\(\);/u);
 	assert.match(mainSource, /\{ expectedTaskLine: sourceTask\.rawLine, retryEditorSave: true \}/u);
 	assert.match(mainSource, /retryInlineEditorSave\(\{/u);
+	assert.match(mainSource, /expectedPersistedContent = sourceFile instanceof TFile/u);
+	assert.match(mainSource, /fallback: expectedPersistedContent === null \? undefined : \{/u);
+	assert.match(mainSource, /await this\.app\.vault\.process\(currentFile, currentContent => \{/u);
+	assert.match(mainSource, /if \(currentContent !== expectedPersistedContent\)/u);
+	assert.match(mainSource, /if \(editor\.getValue\(\) === expectedContent\) editor\.setValue\(content\);/u);
 	assert.match(mainSource, /if \(!options\.retryEditorSave\) \{/u);
 	assert.match(mainSource, /private async finishTaskEditorPlainConversion\(/u);
 	assert.match(mainSource, /converted task source but immediate reindex failed/u);

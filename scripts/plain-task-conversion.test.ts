@@ -31,6 +31,11 @@ async function run(): Promise<void> {
 		'- [-] Cancelled task #later',
 		'cancelled tasks retain their explicit cancelled checkbox marker',
 	);
+	equal(
+		convert('- [ ] öaea ieaiea #calendar #dependencies #task-finder {{operonId:: 6flhkzl}} {{status:: Project.Brainstorming}} {{priority:: C}} {{taskColor:: 2563EB}} {{datetimeCreated:: 2026-08-14T12:22:10}} {{datetimeModified:: 2026-08-14T12:22:59}}'),
+		'- [ ] öaea ieaiea #calendar #dependencies #task-finder',
+		'Unicode descriptions and multiple tags convert without retaining Operon metadata',
+	);
 	console.log(`Plain task conversion: ${assertions}/${assertions} passed`);
 }
 

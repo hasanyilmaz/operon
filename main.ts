@@ -26312,6 +26312,10 @@ export default class OperonPlugin extends Plugin {
 
 		const editor = view.editor;
 		const content = editor.getValue();
+		const sourceFile = this.app.vault.getAbstractFileByPath(filePath);
+		const expectedPersistedContent = sourceFile instanceof TFile
+			? await this.app.vault.cachedRead(sourceFile).catch(() => null)
+			: null;
 		const lines = content.split('\n');
 		const targetLine = this.findInlineTaskLineIndex(lines, filePath, operonId, lineHint);
 		if (targetLine === -1) return false;
@@ -26348,7 +26352,6 @@ export default class OperonPlugin extends Plugin {
 			return true;
 		}
 		const expectedContent = editor.getValue();
-		const savableView = view as MarkdownView & { requestSave?: () => void };
 		const persistence = await retryInlineEditorSave({
 			expectedContent,
 			save: async () => await this.persistMarkdownViewBuffer(view),
@@ -26356,9 +26359,25 @@ export default class OperonPlugin extends Plugin {
 				const currentFile = this.app.vault.getAbstractFileByPath(filePath);
 				return currentFile instanceof TFile ? await this.app.vault.cachedRead(currentFile) : null;
 			},
-			requestSave: () => savableView.requestSave?.(),
+			fallback: expectedPersistedContent === null ? undefined : {
+				expectedPersistedContent,
+				writeExpectedContent: async () => {
+					const currentFile = this.app.vault.getAbstractFileByPath(filePath);
+					if (!(currentFile instanceof TFile)) {
+						throw new Error('Operon: inline source file disappeared during save fallback.');
+					}
+					await this.app.vault.process(currentFile, currentContent => {
+						if (currentContent !== expectedPersistedContent) {
+							throw new Error('Operon: inline source changed during save fallback.');
+						}
+						this.markInternalTaskWrite(filePath);
+						return expectedContent;
+					});
+				},
+			},
 		});
 		if (persistence !== 'persisted') {
+			if (editor.getValue() === expectedContent) editor.setValue(content);
 			throw new Error('Operon: inline editor transaction could not be persisted.');
 		}
 		return true;
