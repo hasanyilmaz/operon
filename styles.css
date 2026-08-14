@@ -9387,7 +9387,8 @@ body .operon-task-editor button.operon-task-editor-title-file-toggle.is-active {
 	transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, transform 0.12s ease;
 }
 
-.operon-editor-core-checkbox-popover-action {
+.operon-editor-core-checkbox-popover-action,
+.operon-editor-core-subtask-action {
 	width: 34px;
 	padding: 0;
 }

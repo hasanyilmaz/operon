@@ -3456,7 +3456,7 @@ export class TaskEditorContent {
 
 		const subtaskLabel = t('buttons', resolveSubtaskActionLabelKeyForKind(this.subtaskActionKind));
 		const subtaskBtn = container.createEl('button', {
-			cls: 'operon-editor-core-action-btn',
+			cls: 'operon-editor-core-action-btn operon-editor-core-subtask-action',
 			attr: {
 				type: 'button',
 			},
@@ -3464,7 +3464,8 @@ export class TaskEditorContent {
 		const subtaskIcon = getIcon(resolveSubtaskActionIconForKind(this.subtaskActionKind)) ?? getIcon('plus');
 		if (subtaskIcon) subtaskBtn.appendChild(subtaskIcon);
 		else subtaskBtn.setText('+');
-		subtaskBtn.createSpan({ text: subtaskLabel });
+		setAccessibleLabelWithoutTooltip(subtaskBtn, subtaskLabel);
+		this.bindTaskEditorTooltip(subtaskBtn, subtaskLabel);
 		subtaskBtn.addEventListener('click', () => {
 			void this.requestSubtask();
 		});
