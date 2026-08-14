@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 2998,
-  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
+  "keyCount": 3023,
+  "keyFingerprint": "83cfd0ff890ca41f434dd3431affbf606dc6545710fd577c64b3a8558c2406d2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2625,6 +2625,31 @@
       "colorNameZinc": "Çinko",
       "colorToneStrip": "Renk ton şeridi",
       "contexts": "Bağlamlar",
+      "convertToPlain": "Sadeleştir",
+      "convertToPlainBlocked": "Önce şu Operon ilişkilerini veya task durumlarını kaldırın: {{items}}.",
+      "convertToPlainBlockerActiveTimer": "Aktif timer",
+      "convertToPlainBlockerBlockedBy": "Blocked-by bağımlılıkları",
+      "convertToPlainBlockerBlocking": "Blocking bağımlılıkları",
+      "convertToPlainBlockerChildren": "{{count}} subtask",
+      "convertToPlainBlockerParent": "Parent task",
+      "convertToPlainBlockerRecurrence": "Aktif recurrence",
+      "convertToPlainBlockerReminders": "Reminder tarihleri veya kuralları",
+      "convertToPlainCheckbox": "Normal checkbox'a dönüştür",
+      "convertToPlainCheckboxMessage": "Yalnız checkbox durumu, açıklama ve etiketler kalacak. Tüm Operon metadata'sı kalıcı olarak kaldırılacak.",
+      "convertToPlainCheckboxTitle": "Normal checkbox'a dönüştürülsün mü?",
+      "convertToPlainConfirm": "Sadeleştir",
+      "convertToPlainFailed": "Task sadeleştirilemedi.",
+      "convertToPlainFile": "Normal dosyaya dönüştür",
+      "convertToPlainFileDescription": "Bu dosyadan kaldırılacak Operon property'lerini seçin.",
+      "convertToPlainFileInternal": "Dahili",
+      "convertToPlainFileKeepDescription": "Not, içerik, etiketler, yönetilmeyen ve seçilmeyen property'ler korunur.",
+      "convertToPlainFileNoProperties": "Eşleşen Operon property yok.",
+      "convertToPlainFileRemoveSelected": "Seçilenleri kaldır",
+      "convertToPlainFileRequired": "Dosyayı Operon'dan ayırmak için zorunlu.",
+      "convertToPlainFileSearchPlaceholder": "Property ara",
+      "convertToPlainFileTitle": "Normal dosyaya dönüştür",
+      "convertToPlainSourceChanged": "Bu işlem açıkken task kaynağı değişti. İnceleyip tekrar deneyin.",
+      "convertToPlainUnavailable": "Bu task artık sadeleştirilemez.",
       "copyColorHex": "Renk hex kodunu kopyala",
       "copyMarkdownLink": "Markdown linki kopyala",
       "copyUrl": "URL'yi kopyala",
@@ -3043,5 +3068,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "0dfae5b3f26c71bb8b56d7d81eabcf09131c6ea65f98263c7750bb97647abed0"
+  "sourceVersion": "c0047c3e0eefc2ba6dc1df1ab8783c731b50ba6af4e7c388394431e476e8cd90"
 }

@@ -9388,8 +9388,26 @@ body .operon-task-editor button.operon-task-editor-title-file-toggle.is-active {
 }
 
 .operon-editor-core-checkbox-popover-action,
-.operon-editor-core-subtask-action {
+.operon-editor-core-subtask-action,
+.operon-editor-core-convert-to-plain-action,
+.operon-editor-terminal-action-cluster > .operon-editor-core-danger-btn {
 	width: 34px;
+	padding: 0;
+}
+
+.operon-editor-terminal-action-cluster {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	min-height: 100%;
+}
+
+.operon-editor-terminal-action-cluster > .operon-editor-core-action-btn {
+	width: 34px;
+	min-width: 34px;
+	height: 34px;
+	min-height: 34px;
 	padding: 0;
 }
 
@@ -9421,6 +9439,99 @@ body .operon-task-editor button.operon-task-editor-title-file-toggle.is-active {
 	border-color: color-mix(in srgb, var(--color-red) 52%, var(--background-modifier-border));
 	background: color-mix(in srgb, var(--color-red) 16%, var(--background-primary));
 	color: color-mix(in srgb, var(--color-red) 86%, var(--text-normal));
+}
+
+.operon-convert-to-plain-file-modal {
+	width: min(640px, calc(100vw - 32px));
+}
+
+.operon-convert-to-plain-file-intro p {
+	margin: 0 0 8px;
+	color: var(--text-muted);
+}
+
+.operon-convert-to-plain-file-search {
+	width: 100%;
+	margin: 8px 0 12px;
+}
+
+.operon-convert-to-plain-file-property-list {
+	max-height: min(46vh, 360px);
+	overflow: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--operon-task-editor-control-radius, 6px);
+}
+
+.operon-convert-to-plain-file-property {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: 10px;
+	align-items: start;
+	padding: 10px 12px;
+	cursor: pointer;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.operon-convert-to-plain-file-property:last-child {
+	border-bottom: 0;
+}
+
+.operon-convert-to-plain-file-property.is-locked {
+	cursor: default;
+	background: color-mix(in srgb, var(--interactive-accent) 6%, var(--background-primary));
+}
+
+.operon-convert-to-plain-file-property-copy {
+	min-width: 0;
+}
+
+.operon-convert-to-plain-file-property-name {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.operon-convert-to-plain-file-property-meta {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	margin-top: 2px;
+	font-size: var(--font-smaller);
+	color: var(--text-muted);
+}
+
+.operon-convert-to-plain-file-property-description {
+	margin-top: 3px;
+	font-size: var(--font-smaller);
+	color: var(--text-faint);
+}
+
+.operon-convert-to-plain-file-property-internal,
+.operon-convert-to-plain-file-property-required {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 1px 5px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 999px;
+	font-size: 0.9em;
+}
+
+.operon-convert-to-plain-file-property-required svg {
+	width: 12px;
+	height: 12px;
+}
+
+.operon-convert-to-plain-file-empty {
+	padding: 18px;
+	text-align: center;
+	color: var(--text-muted);
+}
+
+.operon-convert-to-plain-file-footer {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	margin-top: 14px;
 }
 
 .operon-editor-core-action-btn svg {

@@ -128,6 +128,10 @@ import {
 import {
 	OnSaveCallback,
 	TaskEditorContentOptions,
+	TaskEditorConvertToPlainBlocker,
+	TaskEditorConvertToPlainInspection,
+	TaskEditorConvertToPlainRequest,
+	TaskEditorConvertToPlainResult,
 	TaskEditorEstimateReallocationApplyResult,
 	TaskEditorEstimateReallocationRequest,
 	TaskEditorFileBodyContext,
@@ -528,6 +532,7 @@ import { formatDurationHuman, parseLocalDatetime } from './src/systems/tracker-u
 import { hasOperonFields, isTaskLineCandidate, parseListValue, parseTaskLine, resolveInlineTaskDescriptionCursorCh } from './src/core/parser';
 import { buildSubtaskExcludedIds } from './src/core/task-hierarchy';
 import { serializeTask } from './src/core/serializer';
+import { serializePlainCheckboxTask } from './src/core/plain-task-conversion';
 import { applyFieldRules } from './src/core/field-rules';
 import { normalizeTaskFieldPatch, type DependencyFieldKey } from './src/core/task-field-patch';
 import { convertTasksEmojiLineToOperon } from './src/core/tasks-emoji-to-operon';
@@ -18685,12 +18690,20 @@ export default class OperonPlugin extends Plugin {
 			return this.parsedTaskFromIndexed(task);
 		}
 
+		const openView = this.getMarkdownViewForPath(task.primary.filePath);
 		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
-		if (!(file instanceof TFile)) {
+		if (!openView && !(file instanceof TFile)) {
 			return this.parsedTaskFromIndexed(task);
 		}
 
-		const content = await this.app.vault.cachedRead(file);
+		let content: string;
+		if (openView) {
+			content = openView.editor.getValue();
+		} else if (file instanceof TFile) {
+			content = await this.app.vault.cachedRead(file);
+		} else {
+			return this.parsedTaskFromIndexed(task);
+		}
 		const lines = content.split('\n');
 		const hintedLine = task.primary.lineNumber;
 
@@ -20213,6 +20226,16 @@ export default class OperonPlugin extends Plugin {
 			onRequestDelete: async (parsedTask: ParsedTask): Promise<boolean> => {
 				return await this.deleteTaskFromEditor(parsedTask);
 			},
+			onInspectConvertToPlain: async (
+				parsedTask: ParsedTask,
+			): Promise<TaskEditorConvertToPlainInspection> => {
+				return await this.inspectTaskEditorConvertToPlain(parsedTask);
+			},
+			onConvertToPlain: async (
+				request: TaskEditorConvertToPlainRequest,
+			): Promise<TaskEditorConvertToPlainResult> => {
+				return await this.convertTaskEditorTaskToPlain(request);
+			},
 			getRepeatSkipDates: (repeatSeriesId: string) => this.storage.repeatSeries.getSkipDates(repeatSeriesId),
 			getRepeatSeriesInlineCompletionMode: (repeatSeriesId: string) => this.getRepeatSeriesInlineCompletionMode(repeatSeriesId),
 			onUpdateRepeatSkips: async (request: TaskEditorRepeatSkipUpdateRequest): Promise<TaskEditorRepeatSkipUpdateResult> => {
@@ -20258,6 +20281,133 @@ export default class OperonPlugin extends Plugin {
 		}
 		this.refreshViews();
 		return true;
+	}
+
+	private async inspectTaskEditorConvertToPlain(
+		task: ParsedTask,
+	): Promise<TaskEditorConvertToPlainInspection> {
+		const operonId = task.operonId?.trim();
+		if (!operonId || this.indexer.hasDuplicateOperonIdConflict(operonId)) {
+			return { status: 'unavailable' };
+		}
+		const indexedTask = this.indexer.getTask(operonId);
+		if (!indexedTask) return { status: 'unavailable' };
+		const blockers = this.getConvertToPlainBlockers(indexedTask);
+		if (blockers.length > 0) return { status: 'blocked', blockers };
+		if (indexedTask.primary.format === 'inline') {
+			return { status: 'ready', format: 'inline' };
+		}
+
+		const catalog = await this.writer.getPlainFileTaskPropertyCatalog(operonId);
+		if (catalog.outcome !== 'ready') return { status: 'unavailable' };
+		return {
+			status: 'ready',
+			format: 'yaml',
+			expectedContent: catalog.expectedContent,
+			properties: catalog.properties.map(property => ({ ...property })),
+		};
+	}
+
+	private getConvertToPlainBlockers(task: IndexedTask): TaskEditorConvertToPlainBlocker[] {
+		const blockers: TaskEditorConvertToPlainBlocker[] = [];
+		if ((task.fieldValues['parentTask'] ?? '').trim()) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerParent') });
+		}
+		const childCount = this.indexer.secondary.getChildIds(task.operonId).size;
+		if (childCount > 0) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerChildren', { count: String(childCount) }) });
+		}
+		if (parseDependencyIdList(task.fieldValues['blocking']).length > 0) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerBlocking') });
+		}
+		if (parseDependencyIdList(task.fieldValues['blockedBy']).length > 0) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerBlockedBy') });
+		}
+		if (this.timeTracker.isTimerRunning(task.operonId)) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerActiveTimer') });
+		}
+		if (
+			(task.fieldValues['repeat'] ?? '').trim()
+			|| (task.fieldValues['repeatSeriesId'] ?? '').trim()
+			|| (task.fieldValues['repeatOccurrenceDate'] ?? '').trim()
+		) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerRecurrence') });
+		}
+		if (
+			parseListValue(task.fieldValues['reminderDatetimes']).length > 0
+			|| parseListValue(task.fieldValues['reminderRules']).length > 0
+		) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerReminders') });
+		}
+		return blockers;
+	}
+
+	private async convertTaskEditorTaskToPlain(
+		request: TaskEditorConvertToPlainRequest,
+	): Promise<TaskEditorConvertToPlainResult> {
+		const operonId = request.task.operonId?.trim();
+		if (!operonId || this.indexer.hasDuplicateOperonIdConflict(operonId)) {
+			return { status: 'conflict' };
+		}
+		const indexedTask = this.indexer.getTask(operonId);
+		if (!indexedTask) return { status: 'conflict' };
+		const blockers = this.getConvertToPlainBlockers(indexedTask);
+		if (blockers.length > 0) return { status: 'blocked', blockers };
+
+		if (indexedTask.primary.format === 'yaml') {
+			if (!request.expectedContent) return { status: 'conflict' };
+			const result = await this.writer.detachYamlTaskProperties(
+				operonId,
+				request.expectedContent,
+				request.selectedCanonicalKeys ?? [],
+			);
+			if (result.outcome !== 'detached' || !result.file) {
+				return { status: result.outcome === 'conflict' ? 'conflict' : 'failed' };
+			}
+			await this.finishTaskEditorPlainConversion(operonId, indexedTask.primary.filePath, result.file);
+			return { status: 'converted' };
+		}
+
+		const sourceTask = await this.loadEditableParsedTask(indexedTask);
+		if (
+			sourceTask.operonId !== operonId
+			|| !this.parseInlineTaskLine(sourceTask.rawLine, sourceTask.lineNumber, sourceTask.filePath)
+		) {
+			return { status: 'conflict' };
+		}
+		const plainLine = serializePlainCheckboxTask(sourceTask, this.settings.keyMappings);
+		const replaced = await this.replaceInlineTaskById(
+			indexedTask.primary.filePath,
+			operonId,
+			plainLine,
+			indexedTask.primary.lineNumber,
+			{ expectedTaskLine: sourceTask.rawLine },
+		);
+		if (!replaced) return { status: 'conflict' };
+		await this.finishTaskEditorPlainConversion(operonId, indexedTask.primary.filePath);
+		return { status: 'converted' };
+	}
+
+	private async finishTaskEditorPlainConversion(
+		operonId: string,
+		filePath: string,
+		knownFile?: TFile,
+	): Promise<void> {
+		try {
+			if (knownFile) {
+				await this.indexer.forceReindexKnownFileAfterMutation(knownFile, { notify: false });
+			} else {
+				await this.indexer.reindexFilePath(filePath, { notify: false });
+			}
+		} catch (error) {
+			console.warn('Operon: converted task source but immediate reindex failed.', error);
+		}
+		try {
+			await this.pinnedCache?.unpin(operonId);
+		} catch (error) {
+			console.warn('Operon: converted task source but automatic unpin failed.', error);
+		}
+		this.refreshViews();
 	}
 
 	private async applyEditedTaskInstanceFromView(
@@ -26101,7 +26251,7 @@ export default class OperonPlugin extends Plugin {
 		operonId: string,
 		taskLine: string,
 		lineHint: number,
-		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[] } = {},
+		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[]; expectedTaskLine?: string } = {},
 	): Promise<boolean> {
 		const openView = this.getMarkdownViewForPath(filePath);
 		if (openView) {
@@ -26122,6 +26272,7 @@ export default class OperonPlugin extends Plugin {
 
 		const targetLine = this.findInlineTaskLineIndex(lines, filePath, operonId, lineHint);
 		if (targetLine === -1) return false;
+		if (options.expectedTaskLine !== undefined && lines[targetLine] !== options.expectedTaskLine) return false;
 
 		const removePlainCheckboxLines = options.removePlainCheckboxLines ?? [];
 		if (removePlainCheckboxLines.length > 0) {
@@ -26145,7 +26296,7 @@ export default class OperonPlugin extends Plugin {
 		operonId: string,
 		taskLine: string,
 		lineHint: number,
-		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[] } = {},
+		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[]; expectedTaskLine?: string } = {},
 	): Promise<boolean> {
 		const filePath = view.file?.path ?? '';
 		if (!filePath) return false;
@@ -26155,6 +26306,7 @@ export default class OperonPlugin extends Plugin {
 		const lines = content.split('\n');
 		const targetLine = this.findInlineTaskLineIndex(lines, filePath, operonId, lineHint);
 		if (targetLine === -1) return false;
+		if (options.expectedTaskLine !== undefined && lines[targetLine] !== options.expectedTaskLine) return false;
 
 		const removePlainCheckboxLines = options.removePlainCheckboxLines ?? [];
 		const changes = this.buildInlineToFileEditorChanges(

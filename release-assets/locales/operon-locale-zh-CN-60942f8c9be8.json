@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 2998,
-  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
+  "keyCount": 3023,
+  "keyFingerprint": "83cfd0ff890ca41f434dd3431affbf606dc6545710fd577c64b3a8558c2406d2",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2625,6 +2625,31 @@
       "colorNameZinc": "锌灰色",
       "colorToneStrip": "色调条",
       "contexts": "上下文",
+      "convertToPlain": "Convert to plain",
+      "convertToPlainBlocked": "Remove these Operon relationships or task states first: {{items}}.",
+      "convertToPlainBlockerActiveTimer": "Active timer",
+      "convertToPlainBlockerBlockedBy": "Blocked-by dependencies",
+      "convertToPlainBlockerBlocking": "Blocking dependencies",
+      "convertToPlainBlockerChildren": "{{count}} subtask(s)",
+      "convertToPlainBlockerParent": "Parent task",
+      "convertToPlainBlockerRecurrence": "Active recurrence",
+      "convertToPlainBlockerReminders": "Reminder dates or rules",
+      "convertToPlainCheckbox": "Convert to plain checkbox",
+      "convertToPlainCheckboxMessage": "Only the checkbox state, description, and tags will remain. All Operon metadata will be permanently removed.",
+      "convertToPlainCheckboxTitle": "Convert to plain checkbox?",
+      "convertToPlainConfirm": "Convert to plain",
+      "convertToPlainFailed": "Could not convert this task to plain.",
+      "convertToPlainFile": "Convert to plain file",
+      "convertToPlainFileDescription": "Select the Operon properties to remove from this file.",
+      "convertToPlainFileInternal": "Internal",
+      "convertToPlainFileKeepDescription": "The note, body, tags, unmanaged properties, and unselected properties will remain.",
+      "convertToPlainFileNoProperties": "No matching Operon properties.",
+      "convertToPlainFileRemoveSelected": "Remove selected",
+      "convertToPlainFileRequired": "Required to detach this file from Operon.",
+      "convertToPlainFileSearchPlaceholder": "Search properties",
+      "convertToPlainFileTitle": "Convert to plain file",
+      "convertToPlainSourceChanged": "The task source changed while this action was open. Review it and try again.",
+      "convertToPlainUnavailable": "This task can no longer be converted to plain.",
       "copyColorHex": "复制颜色十六进制值",
       "copyMarkdownLink": "复制 Markdown 链接",
       "copyUrl": "复制 URL",
@@ -3043,5 +3068,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "6555e15840b5fffec0ed5e18e7b2a549691e9d54928e560662d0cd476ec4986f"
+  "sourceVersion": "a86ab205131665784cc1254e8e3dc0c39c40a579cebef9ea7d7abdfc5999a248"
 }

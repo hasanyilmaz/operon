@@ -6419,8 +6419,18 @@ export class OperonSettingsTab extends PluginSettingTab {
 			getIcon: key => this.getTaskEditorMobileCoreToolIcon(key),
 			getCanonicalLabel: key => this.getTaskEditorMobileCoreToolCanonicalLabel(key),
 			getVisibilityToggleLabel: label => t('settings', 'compactChipVisibilityToggle', { label }),
-			canMoveUp: (item, index) => item.key !== 'goToSource' && item.key !== 'remove' && index > 1,
-			canMoveDown: (item, index, items) => item.key !== 'goToSource' && item.key !== 'remove' && index < items.length - 2,
+			canMoveUp: (item, index) => (
+				item.key !== 'goToSource'
+				&& item.key !== '__convertToPlain'
+				&& item.key !== 'remove'
+				&& index > 1
+			),
+			canMoveDown: (item, index, items) => (
+				item.key !== 'goToSource'
+				&& item.key !== '__convertToPlain'
+				&& item.key !== 'remove'
+				&& index < items.length - 3
+			),
 			save: () => this.saveSettings(),
 			visibilityErrorContext: 'settings task editor mobile core tool toggle failed',
 			iconOnlyErrorContext: 'settings task editor mobile core tool icon-only toggle failed',
@@ -6659,6 +6669,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'goToSource') return t('taskEditor', 'goToSource');
 		if (key === 'play') return t('taskEditor', 'trackerStartButton');
 		if (key === 'note') return t('taskEditor', 'notes');
+		if (key === '__convertToPlain') return t('taskEditor', 'convertToPlain');
 		if (key === 'remove') return t('buttons', 'remove');
 		if (key === 'dateStarted') return t('taskEditor', 'started');
 		if (key === 'dateScheduled') return t('taskEditor', 'scheduled');
@@ -6683,6 +6694,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getTaskEditorMobileCoreToolCanonicalLabel(key: string): string {
+		if (key === '__convertToPlain') return t('taskEditor', 'convertToPlain');
 		const mapping = this.settings.keyMappings.find(candidate => candidate.canonicalKey === key);
 		return mapping ? `{{${mapping.canonicalKey}:: }}` : key;
 	}

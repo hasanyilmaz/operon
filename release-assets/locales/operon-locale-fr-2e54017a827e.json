@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 2998,
-  "keyFingerprint": "8aca32f90da2cc03ad7ecd0bf64de0e194c56e298be96115967e48599a601ab4",
+  "keyCount": 3023,
+  "keyFingerprint": "83cfd0ff890ca41f434dd3431affbf606dc6545710fd577c64b3a8558c2406d2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2625,6 +2625,31 @@
       "colorNameZinc": "Zinc",
       "colorToneStrip": "Bande de nuances",
       "contexts": "Contextes",
+      "convertToPlain": "Convert to plain",
+      "convertToPlainBlocked": "Remove these Operon relationships or task states first: {{items}}.",
+      "convertToPlainBlockerActiveTimer": "Active timer",
+      "convertToPlainBlockerBlockedBy": "Blocked-by dependencies",
+      "convertToPlainBlockerBlocking": "Blocking dependencies",
+      "convertToPlainBlockerChildren": "{{count}} subtask(s)",
+      "convertToPlainBlockerParent": "Parent task",
+      "convertToPlainBlockerRecurrence": "Active recurrence",
+      "convertToPlainBlockerReminders": "Reminder dates or rules",
+      "convertToPlainCheckbox": "Convert to plain checkbox",
+      "convertToPlainCheckboxMessage": "Only the checkbox state, description, and tags will remain. All Operon metadata will be permanently removed.",
+      "convertToPlainCheckboxTitle": "Convert to plain checkbox?",
+      "convertToPlainConfirm": "Convert to plain",
+      "convertToPlainFailed": "Could not convert this task to plain.",
+      "convertToPlainFile": "Convert to plain file",
+      "convertToPlainFileDescription": "Select the Operon properties to remove from this file.",
+      "convertToPlainFileInternal": "Internal",
+      "convertToPlainFileKeepDescription": "The note, body, tags, unmanaged properties, and unselected properties will remain.",
+      "convertToPlainFileNoProperties": "No matching Operon properties.",
+      "convertToPlainFileRemoveSelected": "Remove selected",
+      "convertToPlainFileRequired": "Required to detach this file from Operon.",
+      "convertToPlainFileSearchPlaceholder": "Search properties",
+      "convertToPlainFileTitle": "Convert to plain file",
+      "convertToPlainSourceChanged": "The task source changed while this action was open. Review it and try again.",
+      "convertToPlainUnavailable": "This task can no longer be converted to plain.",
       "copyColorHex": "Copier le code hexadécimal",
       "copyMarkdownLink": "Copier le lien Markdown",
       "copyUrl": "Copier l'URL",
@@ -3043,5 +3068,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "98e3bb062137609371a73f73457e98e24375e9f41a8e5acd858fdbbca614198b"
+  "sourceVersion": "f71fa563bbd26cd7c4146977c8337001139c4be951c9e23b49bc7247c7bb2cbb"
 }

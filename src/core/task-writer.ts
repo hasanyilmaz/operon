@@ -20,11 +20,12 @@ import {
 	tryPatchAggregateYamlFrontmatter,
 	YamlFrontmatterFormattingPlan,
 } from './task-writer-yaml';
-import { getManagedYamlAliases } from './yaml-fields';
+import { getManagedYamlAliases, getVisiblePropertyName } from './yaml-fields';
 import { resolveYamlTaskCreatedBackfillValue } from './yaml-task-file-stat-sync';
 import { WriteQueue } from '../storage/write-queue';
 import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import { CANONICAL_KEY_MAP, CANONICAL_KEYS, isInternalCanonicalKey } from '../types/keys';
 import {
     isWritableRawYamlPropertyName,
     rawYamlPropertyExpectationsEqual,
@@ -46,6 +47,31 @@ export interface TaskWriterHooks {
 	validateWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
     onDuplicateConflict?: (operonId: string) => void;
 }
+
+export interface PlainFileTaskPropertyOption {
+    canonicalKey: string;
+    propertyName: string;
+    description: string;
+    internal: boolean;
+}
+
+export type PlainFileTaskCatalogResult =
+    | {
+        outcome: 'ready';
+        filePath: string;
+        expectedContent: string;
+        properties: PlainFileTaskPropertyOption[];
+    }
+    | {
+        outcome: 'missing' | 'unsupported' | 'conflict';
+        filePath: string | null;
+    };
+
+export type DetachYamlTaskPropertiesResult = {
+    outcome: 'detached' | 'missing' | 'unsupported' | 'conflict' | 'failed';
+    filePath: string | null;
+    file?: TFile;
+};
 
 export type TaskSourceMutation =
     | {
@@ -88,6 +114,8 @@ export interface GuardedTaskSourceRenderResult {
 }
 
 type YamlFastPathState = 'aggregate' | 'fallback' | 'none';
+
+const PLAIN_FILE_TASK_DETACH_ABORT = new Error('plain-file-task-detach-abort');
 
 interface TaskWriteResult {
     wrote: boolean;
@@ -377,6 +405,134 @@ export class TaskWriter {
     /** Update key mappings when settings change. */
     updateKeyMappings(keyMappings: KeyMapping[]): void {
         this.keyMappings = keyMappings;
+    }
+
+    /**
+     * Read the exact managed YAML properties that can be removed when a file
+     * task is converted back into a normal note. The returned source snapshot
+     * is deliberately carried into the destructive write as an optimistic
+     * concurrency guard; a picker must never clean a file that changed while
+     * it was open.
+     */
+    async getPlainFileTaskPropertyCatalog(operonId: string): Promise<PlainFileTaskCatalogResult> {
+        const task = this.indexer.getTask(operonId);
+        if (!task) return { outcome: 'missing', filePath: null };
+        if (this.blockDuplicateConflict(operonId)) {
+            return { outcome: 'conflict', filePath: task.primary.filePath };
+        }
+        if (task.primary.format !== 'yaml') {
+            return { outcome: 'unsupported', filePath: task.primary.filePath };
+        }
+        const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+        if (!(file instanceof TFile) || file.extension !== 'md') {
+            return { outcome: 'missing', filePath: task.primary.filePath };
+        }
+
+        return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+            const content = await this.app.vault.read(file);
+            const frontmatter = this.parseYamlFrontmatter(content);
+            if (!frontmatter || !this.frontmatterHasExactSingleOperonId(frontmatter, operonId)) {
+                return { outcome: 'conflict', filePath: file.path };
+            }
+            return {
+                outcome: 'ready',
+                filePath: file.path,
+                expectedContent: content,
+                properties: this.collectPlainFileTaskPropertyOptions(frontmatter),
+            };
+        });
+    }
+
+    /**
+     * Remove selected managed YAML keys in one frontmatter transaction. This
+     * is intentionally separate from normal task field writes: it removes the
+     * identity itself and must not attempt any task lookup after that point.
+     */
+    async detachYamlTaskProperties(
+        operonId: string,
+        expectedContent: string,
+        selectedCanonicalKeys: readonly string[],
+    ): Promise<DetachYamlTaskPropertiesResult> {
+        const task = this.indexer.getTask(operonId);
+        if (!task) return { outcome: 'missing', filePath: null };
+        if (this.blockDuplicateConflict(operonId)) {
+            return { outcome: 'conflict', filePath: task.primary.filePath };
+        }
+        if (task.primary.format !== 'yaml') {
+            return { outcome: 'unsupported', filePath: task.primary.filePath };
+        }
+        const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+        if (!(file instanceof TFile) || file.extension !== 'md') {
+            return { outcome: 'missing', filePath: task.primary.filePath };
+        }
+        const selected = new Set(selectedCanonicalKeys.map(key => key.trim()).filter(Boolean));
+        if (!selected.has('operonId')) {
+            return { outcome: 'unsupported', filePath: file.path };
+        }
+
+        try {
+            return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+                const currentContent = await this.app.vault.read(file);
+                if (currentContent !== expectedContent) {
+                    return { outcome: 'conflict', filePath: file.path };
+                }
+                const sourceFrontmatter = this.parseYamlFrontmatter(currentContent);
+                if (!sourceFrontmatter || !this.frontmatterHasExactSingleOperonId(sourceFrontmatter, operonId)) {
+                    return { outcome: 'conflict', filePath: file.path };
+                }
+                const available = new Set(
+                    this.collectPlainFileTaskPropertyOptions(sourceFrontmatter).map(option => option.canonicalKey),
+                );
+				if (Array.from(selected).some(key => !available.has(key))) {
+					return { outcome: 'conflict', filePath: file.path };
+				}
+				const expectedSelectedAliasSnapshot = this.getPlainFileTaskSelectedAliasSnapshot(
+					sourceFrontmatter,
+					selected,
+				);
+
+				let detached = false;
+				try {
+					await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+						if (!this.frontmatterHasExactSingleOperonId(frontmatter, operonId)) {
+							throw PLAIN_FILE_TASK_DETACH_ABORT;
+						}
+						if (this.getPlainFileTaskSelectedAliasSnapshot(frontmatter, selected) !== expectedSelectedAliasSnapshot) {
+							throw PLAIN_FILE_TASK_DETACH_ABORT;
+						}
+					const currentOptions = new Set(
+						this.collectPlainFileTaskPropertyOptions(frontmatter).map(option => option.canonicalKey),
+					);
+						if (Array.from(selected).some(key => !currentOptions.has(key))) {
+							throw PLAIN_FILE_TASK_DETACH_ABORT;
+						}
+
+						this.hooks.onBeforeWriteFile?.(file.path);
+						for (const canonicalKey of selected) {
+							for (const yamlKey of getManagedYamlAliases(canonicalKey, this.keyMappings)) {
+								delete frontmatter[yamlKey];
+							}
+						}
+						detached = true;
+					});
+				} catch (error) {
+					if (error === PLAIN_FILE_TASK_DETACH_ABORT) {
+						return { outcome: 'conflict', filePath: file.path };
+					}
+					throw error;
+				}
+
+                if (!detached) return { outcome: 'conflict', filePath: file.path };
+                return {
+                    outcome: 'detached',
+                    filePath: file.path,
+                    file,
+                };
+            });
+        } catch (error) {
+            console.error('Operon: file task conversion cleanup failed.', error);
+            return { outcome: 'failed', filePath: file.path };
+        }
     }
 
     /**
@@ -1458,6 +1614,68 @@ export class TaskWriter {
     private getFileWriteQueueKey(filePath: string): string {
         return `task-file:${filePath}`;
     }
+
+    private parseYamlFrontmatter(content: string): Record<string, unknown> | null {
+        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+        if (!match) return null;
+        try {
+            const parsed: unknown = parseYaml(match[1]);
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                ? parsed as Record<string, unknown>
+                : null;
+        } catch {
+            return null;
+        }
+    }
+
+    private frontmatterHasExactSingleOperonId(frontmatter: Record<string, unknown>, operonId: string): boolean {
+        const identityEntries = getManagedYamlAliases('operonId', this.keyMappings)
+            .filter(yamlKey => Object.prototype.hasOwnProperty.call(frontmatter, yamlKey))
+            .map(yamlKey => this.stringifyFrontmatterScalar(frontmatter[yamlKey]))
+            .filter((value): value is string => value !== null);
+        return identityEntries.length === 1 && identityEntries[0].trim() === operonId;
+    }
+
+	private collectPlainFileTaskPropertyOptions(
+        frontmatter: Record<string, unknown>,
+    ): PlainFileTaskPropertyOption[] {
+        const candidateKeys = new Set<string>([
+            ...CANONICAL_KEYS.map(key => key.name),
+            ...this.keyMappings.map(mapping => mapping.canonicalKey),
+        ]);
+        const options: PlainFileTaskPropertyOption[] = [];
+        for (const canonicalKey of candidateKeys) {
+            if (!isManagedTaskFieldCanonicalKey(canonicalKey, this.keyMappings)) continue;
+            const presentAliases = getManagedYamlAliases(canonicalKey, this.keyMappings)
+                .filter(yamlKey => Object.prototype.hasOwnProperty.call(frontmatter, yamlKey));
+            if (presentAliases.length === 0) continue;
+            const mapping = this.keyMappings.find(candidate => candidate.canonicalKey === canonicalKey);
+            const canonical = CANONICAL_KEY_MAP.get(canonicalKey);
+            options.push({
+                canonicalKey,
+                propertyName: presentAliases[0] ?? getVisiblePropertyName(canonicalKey, this.keyMappings),
+                description: mapping?.description?.trim() || canonical?.description || canonicalKey,
+                internal: mapping?.isInternal === true || isInternalCanonicalKey(canonicalKey),
+            });
+        }
+		return options.sort((left, right) => {
+            if (left.canonicalKey === 'operonId') return -1;
+            if (right.canonicalKey === 'operonId') return 1;
+            return left.propertyName.localeCompare(right.propertyName);
+		});
+	}
+
+	private getPlainFileTaskSelectedAliasSnapshot(
+		frontmatter: Record<string, unknown>,
+		selected: ReadonlySet<string>,
+	): string {
+		const entries = Array.from(selected)
+			.sort((left, right) => left.localeCompare(right))
+			.flatMap(canonicalKey => getManagedYamlAliases(canonicalKey, this.keyMappings)
+				.filter(yamlKey => Object.prototype.hasOwnProperty.call(frontmatter, yamlKey))
+				.map(yamlKey => [canonicalKey, yamlKey, frontmatter[yamlKey]]));
+		return JSON.stringify(entries);
+	}
 
     private blockDuplicateConflict(operonId: string): boolean {
         const indexer = this.indexer as OperonIndexer & {
