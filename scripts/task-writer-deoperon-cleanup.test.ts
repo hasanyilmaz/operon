@@ -30,7 +30,14 @@ class FakeApp {
 	readonly file = new FakeFile('Tasks/Plain file.md');
 	content: string;
 	processFrontMatterCalls = 0;
+	processCalls = 0;
 	throwProcessFrontMatter = false;
+	throwAfterProcessFrontMatter = false;
+	throwProcess = false;
+	throwAfterProcess = false;
+	throwRead = false;
+	throwReadAfterFrontmatter = false;
+	mutateBeforeProcessCallback: (() => void) | null = null;
 	mutateBeforeFrontmatterCallback: (() => void) | null = null;
 
 	constructor(content: string) {
@@ -39,7 +46,19 @@ class FakeApp {
 
 	readonly vault = {
 		getAbstractFileByPath: (path: string): TFile | null => path === this.file.path ? this.file : null,
-		read: async (_file: TFile): Promise<string> => this.content,
+		read: async (_file: TFile): Promise<string> => {
+			if (this.throwRead) throw new Error('read failed');
+			return this.content;
+		},
+		process: async (_file: TFile, mutate: (content: string) => string): Promise<string> => {
+			this.processCalls += 1;
+			if (this.throwProcess) throw new Error('process failed');
+			this.mutateBeforeProcessCallback?.();
+			this.mutateBeforeProcessCallback = null;
+			this.content = mutate(this.content);
+			if (this.throwAfterProcess) throw new Error('process acknowledgement lost');
+			return this.content;
+		},
 	};
 
 	readonly fileManager = {
@@ -53,6 +72,8 @@ class FakeApp {
 			const frontmatter = parseYaml(match[2]);
 			mutate(frontmatter);
 			this.content = `${match[1]}${stringifyYaml(frontmatter).trimEnd()}${match[3]}${match[4]}`;
+			if (this.throwReadAfterFrontmatter) this.throwRead = true;
+			if (this.throwAfterProcessFrontMatter) throw new Error('frontmatter acknowledgement lost');
 		},
 	};
 }
@@ -147,6 +168,24 @@ async function run(): Promise<void> {
 		ok(callbackRaceApp.content.includes('operonId: ABC1234'), 'identity is not partially removed');
 	}
 
+	const blockerRaceApp = new FakeApp(source);
+	const blockerRaceWriter = new TaskWriter(blockerRaceApp as any, createIndexer(), keyMappings);
+	const blockerRaceCatalog = await blockerRaceWriter.getPlainFileTaskPropertyCatalog('ABC1234');
+	ok(blockerRaceCatalog.outcome === 'ready');
+	if (blockerRaceCatalog.outcome === 'ready') {
+		blockerRaceApp.mutateBeforeFrontmatterCallback = () => {
+			blockerRaceApp.content = blockerRaceApp.content.replace('priority: high', 'priority: high\nparentTask: PARENT1');
+		};
+		const blockerRace = await blockerRaceWriter.detachYamlTaskProperties(
+			'ABC1234',
+			blockerRaceCatalog.expectedContent,
+			['operonId'],
+		);
+		equal(blockerRace.outcome, 'conflict', 'callback-time blocker additions fail closed');
+		ok(blockerRaceApp.content.includes('parentTask: PARENT1'), 'new blocker remains intact');
+		ok(blockerRaceApp.content.includes('operonId: ABC1234'), 'identity remains when a blocker races the cleanup');
+	}
+
 	const duplicateApp = new FakeApp(source);
 	const duplicateWriter = new TaskWriter(duplicateApp as any, createIndexer(true), keyMappings);
 	const duplicate = await duplicateWriter.detachYamlTaskProperties('ABC1234', source, ['operonId']);
@@ -162,6 +201,73 @@ async function run(): Promise<void> {
 	console.error = originalConsoleError;
 	equal(failed.outcome, 'failed', 'frontmatter failure is surfaced without a partial report');
 	equal(failureApp.content, source, 'failed transaction leaves source unchanged');
+
+	const acknowledgedLateApp = new FakeApp(source);
+	acknowledgedLateApp.throwAfterProcessFrontMatter = true;
+	const acknowledgedLateWriter = new TaskWriter(acknowledgedLateApp as any, createIndexer(), keyMappings);
+	console.error = () => undefined;
+	const acknowledgedLate = await acknowledgedLateWriter.detachYamlTaskProperties('ABC1234', source, ['operonId']);
+	console.error = originalConsoleError;
+	equal(acknowledgedLate.outcome, 'detached', 'committed YAML cleanup survives acknowledgement loss');
+	ok(!acknowledgedLateApp.content.includes('operonId:'), 'readback recognizes the committed cleanup');
+
+	const postReadFailureApp = new FakeApp(source);
+	postReadFailureApp.throwReadAfterFrontmatter = true;
+	const postReadFailureWriter = new TaskWriter(postReadFailureApp as any, createIndexer(), keyMappings);
+	const postReadFailure = await postReadFailureWriter.detachYamlTaskProperties('ABC1234', source, ['operonId']);
+	equal(postReadFailure.outcome, 'detached', 'post-commit read failure never reclassifies a committed YAML cleanup');
+	equal(postReadFailure.committedContent, undefined, 'unverified committed source is reported explicitly');
+
+	const inlineSource = '# Tasks\n- [ ] Task {{operonId:: ABC1234}}\n';
+	const exactApp = new FakeApp(inlineSource);
+	const exactWriter = new TaskWriter(exactApp as any, createIndexer(), keyMappings);
+	const exact = await exactWriter.applyExactMarkdownSourceMutation(
+		exactApp.file.path,
+		inlineSource,
+		'# Tasks\n- [ ] Task\n',
+	);
+	equal(exact.outcome, 'committed', 'exact Markdown source commits through one atomic process call');
+	equal(exactApp.processCalls, 1);
+	equal(exact.committedContent, '# Tasks\n- [ ] Task\n');
+
+	const racedApp = new FakeApp(inlineSource);
+	const racedWriter = new TaskWriter(racedApp as any, createIndexer(), keyMappings);
+	racedApp.mutateBeforeProcessCallback = () => {
+		racedApp.content = `${inlineSource}external change\n`;
+	};
+	const raced = await racedWriter.applyExactMarkdownSourceMutation(
+		racedApp.file.path,
+		inlineSource,
+		'# Tasks\n- [ ] Task\n',
+	);
+	equal(raced.outcome, 'conflict', 'callback-time source drift aborts atomically');
+	equal(racedApp.content, `${inlineSource}external change\n`, 'external source change is never overwritten');
+
+	const processFailureApp = new FakeApp(inlineSource);
+	processFailureApp.throwProcess = true;
+	const processFailureWriter = new TaskWriter(processFailureApp as any, createIndexer(), keyMappings);
+	console.error = () => undefined;
+	const processFailed = await processFailureWriter.applyExactMarkdownSourceMutation(
+		processFailureApp.file.path,
+		inlineSource,
+		'# Tasks\n- [ ] Task\n',
+	);
+	console.error = originalConsoleError;
+	equal(processFailed.outcome, 'failed', 'atomic process failures are surfaced');
+	equal(processFailureApp.content, inlineSource, 'failed atomic process keeps the original source');
+
+	const processAcknowledgedLateApp = new FakeApp(inlineSource);
+	processAcknowledgedLateApp.throwAfterProcess = true;
+	const processAcknowledgedLateWriter = new TaskWriter(processAcknowledgedLateApp as any, createIndexer(), keyMappings);
+	console.error = () => undefined;
+	const processAcknowledgedLate = await processAcknowledgedLateWriter.applyExactMarkdownSourceMutation(
+		processAcknowledgedLateApp.file.path,
+		inlineSource,
+		'# Tasks\n- [ ] Task\n',
+	);
+	console.error = originalConsoleError;
+	equal(processAcknowledgedLate.outcome, 'committed', 'atomic source mutation recognizes commit after acknowledgement loss');
+	equal(processAcknowledgedLate.committedContent, '# Tasks\n- [ ] Task\n');
 
 	console.log(`Task writer plain-file cleanup: ${assertions}/${assertions} passed`);
 }

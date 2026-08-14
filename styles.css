@@ -9389,7 +9389,6 @@ body .operon-task-editor button.operon-task-editor-title-file-toggle.is-active {
 
 .operon-editor-core-checkbox-popover-action,
 .operon-editor-core-subtask-action,
-.operon-editor-core-convert-to-plain-action,
 .operon-editor-terminal-action-cluster > .operon-editor-core-danger-btn {
 	width: 34px;
 	padding: 0;

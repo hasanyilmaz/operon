@@ -36,23 +36,20 @@ test('Task Editor subtask action stays icon-only with its localized accessible l
 test('Task Editor subtask action uses the compact icon-button geometry', () => {
 	assert.match(
 		styles,
-		/\.operon-editor-core-checkbox-popover-action,[\s\S]*?\.operon-editor-core-subtask-action,[\s\S]*?\.operon-editor-core-convert-to-plain-action,[\s\S]*?width: 34px;\s*padding: 0;\s*\}/u,
+		/\.operon-editor-core-checkbox-popover-action,[\s\S]*?\.operon-editor-core-subtask-action,[\s\S]*?width: 34px;\s*padding: 0;\s*\}/u,
 	);
 });
 
-test('Task Editor keeps Remove behavior separate while making Remove and conversion icon-only', () => {
+test('Task Editor keeps its icon-only Remove behavior and contains no conversion action', () => {
 	const removeControl = taskEditorSource.slice(
 		taskEditorSource.indexOf('\tprivate renderRemoveControl('),
-		taskEditorSource.indexOf('\n\tprivate getConvertToPlainLabel('),
+		taskEditorSource.indexOf('\n\tprivate async handleRemoveTaskClick('),
 	);
 	const removeHandler = taskEditorSource.slice(
 		taskEditorSource.indexOf('\tprivate async handleRemoveTaskClick('),
 		taskEditorSource.indexOf('\n\tprivate renderIconControl('),
 	);
-	assert.match(removeControl, /operon-editor-core-convert-to-plain-action/u);
-	assert.match(removeControl, /getIcon\('unlink'\)/u);
-	assert.match(removeControl, /setAccessibleLabelWithoutTooltip\(convertButton, convertLabel\);/u);
-	assert.match(removeControl, /this\.bindTaskEditorTooltip\(convertButton, convertLabel\);/u);
+	assert.doesNotMatch(removeControl, /unlink|convertToPlain/u);
 	assert.match(removeControl, /setAccessibleLabelWithoutTooltip\(button, t\('buttons', 'remove'\)\);/u);
 	assert.match(removeControl, /this\.bindTaskEditorTooltip\(button, t\('buttons', 'remove'\)\);/u);
 	assert.doesNotMatch(removeControl, /button\.createSpan/u, 'Remove must not regain visible button text');
@@ -60,26 +57,19 @@ test('Task Editor keeps Remove behavior separate while making Remove and convers
 	assert.match(removeHandler, /this\.requestEditorClose\('force-after-delete'\)/u);
 });
 
-test('Task Editor conversion has format-specific labels and stays immediately before mobile Remove', () => {
-	assert.match(taskEditorSource, /\? t\('taskEditor', 'convertToPlainFile'\)\s*:\s*t\('taskEditor', 'convertToPlainCheckbox'\)/u);
-	assert.match(taskEditorSource, /case '__convertToPlain':[\s\S]*?this\.renderMobileConvertToPlainButton\(container\);/u);
-	assert.match(settingsTypesSource, /'dateCancelled',\s*'__convertToPlain',\s*'remove'/u);
-	assert.match(settingsTypesSource, /const convertToPlain = items\.find\(item => item\.key === '__convertToPlain'\);/u);
-	assert.match(settingsTypesSource, /\.\.\.\(convertToPlain \? \[convertToPlain\] : \[\]\),\s*\.\.\.\(last \? \[last\] : \[\]\)/u);
+test('Task Editor desktop, mobile, settings, and close lifecycle contain no Convert to Plain route', () => {
+	assert.doesNotMatch(taskEditorSource, /__convertToPlain|ConvertToPlain|onConvertToPlain|onInspectConvertToPlain/u);
+	assert.doesNotMatch(settingsTypesSource, /__convertToPlain/u);
+	assert.doesNotMatch(styles, /operon-editor-core-convert-to-plain-action/u);
+	assert.doesNotMatch(read('src/ui/task-editor-modal.ts'), /force-after-convert-to-plain/u);
 });
 
-test('Task Editor conversion uses the live inline buffer and verifies editor persistence before cleanup', () => {
-	assert.match(mainSource, /const openView = this\.getMarkdownViewForPath\(task\.primary\.filePath\);/u);
-	assert.match(mainSource, /if \(openView\) \{\s*content = openView\.editor\.getValue\(\);/u);
-	assert.match(mainSource, /\{ expectedTaskLine: sourceTask\.rawLine, retryEditorSave: true \}/u);
-	assert.match(mainSource, /retryInlineEditorSave\(\{/u);
-	assert.match(mainSource, /expectedPersistedContent = sourceFile instanceof TFile/u);
-	assert.match(mainSource, /fallback: expectedPersistedContent === null \? undefined : \{/u);
-	assert.match(mainSource, /await this\.app\.vault\.process\(currentFile, currentContent => \{/u);
-	assert.match(mainSource, /if \(currentContent !== expectedPersistedContent\)/u);
-	assert.match(mainSource, /if \(editor\.getValue\(\) === expectedContent\) editor\.setValue\(content\);/u);
-	assert.match(mainSource, /if \(!options\.retryEditorSave\) \{/u);
-	assert.match(mainSource, /private async finishTaskEditorPlainConversion\(/u);
+test('Command-only conversion uses direct atomic source mutation and never Task Editor persistence', () => {
+	assert.match(mainSource, /id: 'convert-task-to-plain'/u);
+	assert.match(mainSource, /TASK_FINDER_SCOPE_CONVERT_TASK_TO_PLAIN/u);
+	assert.match(mainSource, /applyExactMarkdownSourceMutation\(/u);
+	assert.match(mainSource, /private async finishPlainTaskConversion\(/u);
+	assert.doesNotMatch(mainSource, /retryInlineEditorSave|retryEditorSave/u);
 	assert.match(mainSource, /converted task source but immediate reindex failed/u);
 	assert.match(mainSource, /converted task source but automatic unpin failed/u);
 	assert.match(
@@ -89,6 +79,7 @@ test('Task Editor conversion uses the live inline buffer and verifies editor per
 });
 
 test('File conversion modal locks every interactive control while its single apply is pending', () => {
+	assert.match(convertFileModalSource, /cleanupOperonHoverTooltips\(this\.contentEl\);/u);
 	assert.match(convertFileModalSource, /if \(!this\.completed && !this\.submitting\) this\.options\.onCancel\(\);/u);
 	assert.match(convertFileModalSource, /event\.key === 'Escape' && !this\.submitting/u);
 	assert.match(convertFileModalSource, /this\.setInteractiveControlsDisabled\(true\);/u);

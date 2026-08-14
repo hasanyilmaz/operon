@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { parseTaskLine } from '../src/core/parser';
-import { serializePlainCheckboxTask } from '../src/core/plain-task-conversion';
+import { planInlineTaskToPlain, serializePlainCheckboxTask } from '../src/core/plain-task-conversion';
 
 let assertions = 0;
 
@@ -35,6 +35,31 @@ async function run(): Promise<void> {
 		convert('- [ ] öaea ieaiea #calendar #dependencies #task-finder {{operonId:: 6flhkzl}} {{status:: Project.Brainstorming}} {{priority:: C}} {{taskColor:: 2563EB}} {{datetimeCreated:: 2026-08-14T12:22:10}} {{datetimeModified:: 2026-08-14T12:22:59}}'),
 		'- [ ] öaea ieaiea #calendar #dependencies #task-finder',
 		'Unicode descriptions and multiple tags convert without retaining Operon metadata',
+	);
+	const guardedSource = [
+		'# Tasks',
+		'  - [ ] 09:00 Plan launch #work {{operonId:: ABC1234}} {{status:: Core.Todo}}',
+		'After',
+	].join('\n');
+	const plan = planInlineTaskToPlain(
+		guardedSource,
+		'ABC1234',
+		'  - [ ] 09:00 Plan launch #work {{operonId:: ABC1234}} {{status:: Core.Todo}}',
+		[],
+	);
+	equal(plan.outcome, 'converted');
+	if (plan.outcome === 'converted') {
+		equal(plan.nextContent, '# Tasks\n  - [ ] Plan launch #work\nAfter');
+	}
+	equal(
+		planInlineTaskToPlain(guardedSource, 'ABC1234', 'stale line', []).outcome,
+		'conflict',
+		'stale line snapshots fail closed',
+	);
+	equal(
+		planInlineTaskToPlain(`${guardedSource}\n- [ ] Duplicate {{operonId:: ABC1234}}`, 'ABC1234', 'stale', []).outcome,
+		'conflict',
+		'duplicate inline identities fail closed',
 	);
 	console.log(`Plain task conversion: ${assertions}/${assertions} passed`);
 }

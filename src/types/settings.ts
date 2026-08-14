@@ -813,7 +813,6 @@ export const TASK_EDITOR_MOBILE_CORE_TOOL_ORDER = [
 	'repeat',
 	'dateCompleted',
 	'dateCancelled',
-	'__convertToPlain',
 	'remove',
 ] as const;
 
@@ -923,7 +922,6 @@ export const TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS: Record<TaskEditorMobileCore
 	repeat: 'repeat',
 	dateCompleted: 'calendar-check',
 	dateCancelled: 'calendar-x',
-	__convertToPlain: 'unlink',
 	remove: 'trash-2',
 };
 
@@ -4508,17 +4506,14 @@ export function normalizeTaskEditorMobileCoreTools(
 
 function orderTaskEditorMobileCoreTools(items: TaskEditorMobileCoreToolItem[]): TaskEditorMobileCoreToolItem[] {
 	const first = items.find(item => item.key === 'goToSource');
-	const convertToPlain = items.find(item => item.key === '__convertToPlain');
 	const last = items.find(item => item.key === 'remove');
 	const middle = items.filter(item => (
 		item.key !== 'goToSource'
-		&& item.key !== '__convertToPlain'
 		&& item.key !== 'remove'
 	));
 	return [
 		...(first ? [first] : []),
 		...middle,
-		...(convertToPlain ? [convertToPlain] : []),
 		...(last ? [last] : []),
 	];
 }

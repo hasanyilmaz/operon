@@ -19,9 +19,9 @@ async function run(): Promise<void> {
 		{ key: 'remove', visible: true },
 	]);
 	deepEqual(
-		legacy.slice(-2),
-		['__convertToPlain', 'remove'],
-		'legacy layouts gain the new built-in action exactly before Remove',
+		legacy.slice(-1),
+		['remove'],
+		'Remove remains the final built-in action',
 	);
 
 	const custom = keys([
@@ -34,7 +34,7 @@ async function run(): Promise<void> {
 	const priorityIndex = custom.indexOf('priority');
 	assert.ok(dateDueIndex >= 0 && priorityIndex > dateDueIndex, 'custom middle order remains intact');
 	assertions += 1;
-	deepEqual(custom.slice(-2), ['__convertToPlain', 'remove']);
+	deepEqual(custom.slice(-1), ['remove']);
 
 	const deduplicated = keys([
 		{ key: 'goToSource', visible: true },
@@ -45,10 +45,10 @@ async function run(): Promise<void> {
 	]);
 	deepEqual(
 		deduplicated.filter(key => key === '__convertToPlain'),
-		['__convertToPlain'],
-		'normalization never persists duplicate conversion actions',
+		[],
+		'normalization removes every retired conversion action',
 	);
-	deepEqual(deduplicated.slice(-2), ['__convertToPlain', 'remove']);
+	deepEqual(deduplicated.slice(-1), ['remove']);
 
 	const collisionPreserved = normalizeTaskEditorMobileCoreTools([
 		{ key: 'goToSource', visible: true },
@@ -67,7 +67,8 @@ async function run(): Promise<void> {
 		['convertToPlain'],
 		'legacy custom mappings named convertToPlain remain custom controls',
 	);
-	deepEqual(collisionPreserved.slice(-2).map(item => item.key), ['__convertToPlain', 'remove']);
+	deepEqual(collisionPreserved.filter(item => item.key === '__convertToPlain'), []);
+	deepEqual(collisionPreserved.slice(-1).map(item => item.key), ['remove']);
 
 	console.log(`Task Editor mobile core tools: ${assertions}/${assertions} passed`);
 }

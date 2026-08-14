@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3023,
-  "keyFingerprint": "83cfd0ff890ca41f434dd3431affbf606dc6545710fd577c64b3a8558c2406d2",
+  "keyCount": 3026,
+  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -279,6 +279,7 @@
       "addTaskWikilinkOverlay": "Añadir Task Wikilink Overlay",
       "convertFileTaskToInlineTask": "Convertir tarea de archivo a tarea en línea",
       "convertSelectionToOperonTasks": "Convertir selección a tareas de Operon",
+      "convertTaskToPlain": "Convert task to plain",
       "convertTasksEmojiLineToInlineTask": "Convertir línea emoji de Tasks a tarea en línea",
       "convertToInline": "Convertir tarea YAML a en línea (portapapeles)",
       "convertToYaml": "Convertir tarea a archivo YAML",
@@ -2625,7 +2626,6 @@
       "colorNameZinc": "Zinc",
       "colorToneStrip": "Franja de tonos de color",
       "contexts": "Contextos",
-      "convertToPlain": "Convert to plain",
       "convertToPlainBlocked": "Remove these Operon relationships or task states first: {{items}}.",
       "convertToPlainBlockerActiveTimer": "Active timer",
       "convertToPlainBlockerBlockedBy": "Blocked-by dependencies",
@@ -2634,12 +2634,12 @@
       "convertToPlainBlockerParent": "Parent task",
       "convertToPlainBlockerRecurrence": "Active recurrence",
       "convertToPlainBlockerReminders": "Reminder dates or rules",
-      "convertToPlainCheckbox": "Convert to plain checkbox",
       "convertToPlainCheckboxMessage": "Only the checkbox state, description, and tags will remain. All Operon metadata will be permanently removed.",
+      "convertToPlainCheckboxSuccess": "Task converted to a plain checkbox.",
       "convertToPlainCheckboxTitle": "Convert to plain checkbox?",
+      "convertToPlainCloseTaskEditor": "Close Task Editor before converting a task to plain.",
       "convertToPlainConfirm": "Convert to plain",
       "convertToPlainFailed": "Could not convert this task to plain.",
-      "convertToPlainFile": "Convert to plain file",
       "convertToPlainFileDescription": "Select the Operon properties to remove from this file.",
       "convertToPlainFileInternal": "Internal",
       "convertToPlainFileKeepDescription": "The note, body, tags, unmanaged properties, and unselected properties will remain.",
@@ -2647,8 +2647,11 @@
       "convertToPlainFileRemoveSelected": "Remove selected",
       "convertToPlainFileRequired": "Required to detach this file from Operon.",
       "convertToPlainFileSearchPlaceholder": "Search properties",
+      "convertToPlainFileSuccess": "File task converted to a plain file.",
       "convertToPlainFileTitle": "Convert to plain file",
       "convertToPlainSourceChanged": "The task source changed while this action was open. Review it and try again.",
+      "convertToPlainSourceDirty": "Save the source note before converting this task.",
+      "convertToPlainSourceSyncWarning": "The task was converted, but its open source note changed. Reload the note before editing it.",
       "convertToPlainUnavailable": "This task can no longer be converted to plain.",
       "copyColorHex": "Copiar hex del color",
       "copyMarkdownLink": "Copiar enlace Markdown",
@@ -3068,5 +3071,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "b3ba823155bd60711be71f2129a7986b6b40c9c0521850606555fb6725ef6582"
+  "sourceVersion": "d5fc0b656bd3453dbf07680b66506d7a375a76b0bffa98695ead05cc665fdccf"
 }

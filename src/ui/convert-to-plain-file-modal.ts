@@ -1,11 +1,11 @@
 import { App, Modal, getIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
-import { bindOperonHoverTooltip } from './operon-hover-tooltip';
-import type { TaskEditorConvertToPlainFileProperty } from './task-editor-content';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import type { PlainFileTaskPropertyOption } from '../core/task-writer';
 
 export interface ConvertToPlainFileModalOptions {
-	properties: readonly TaskEditorConvertToPlainFileProperty[];
+	properties: readonly PlainFileTaskPropertyOption[];
 	taskColor: string;
 	onSubmit: (selectedCanonicalKeys: string[]) => Promise<boolean>;
 	onCancel: () => void;
@@ -80,6 +80,7 @@ export class ConvertToPlainFileModal extends Modal {
 	}
 
 	onClose(): void {
+		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
 		if (!this.completed && !this.submitting) this.options.onCancel();
 	}
@@ -105,7 +106,7 @@ export class ConvertToPlainFileModal extends Modal {
 		}
 	}
 
-	private renderProperty(option: TaskEditorConvertToPlainFileProperty): void {
+	private renderProperty(option: PlainFileTaskPropertyOption): void {
 		if (!this.listEl) return;
 		const locked = option.canonicalKey === 'operonId';
 		const row = this.listEl.createEl('label', {
@@ -154,7 +155,7 @@ export class ConvertToPlainFileModal extends Modal {
 		});
 	}
 
-	private matches(option: TaskEditorConvertToPlainFileProperty): boolean {
+	private matches(option: PlainFileTaskPropertyOption): boolean {
 		if (!this.query) return true;
 		return [option.propertyName, option.canonicalKey, option.description]
 			.some(value => value.toLocaleLowerCase().includes(this.query));

@@ -72,7 +72,6 @@ import {
 	ConfirmActionComparisonTable,
 	ConfirmActionModal,
 } from './confirm-action-modal';
-import { ConvertToPlainFileModal } from './convert-to-plain-file-modal';
 import {
 	buildTrackerSessionEditContext,
 	TrackerSessionEditModal,
@@ -198,7 +197,7 @@ export type TaskEditorSaveOutcome =
 	};
 
 export interface TaskEditorCloseRequestDetail {
-	mode?: 'save' | 'force-after-delete' | 'force-after-convert-to-plain';
+	mode?: 'save' | 'force-after-delete';
 }
 
 export function scheduleTaskEditorReminderFocus(options: {
@@ -239,8 +238,6 @@ export interface TaskEditorContentOptions {
 	subtaskActionKind?: 'inline' | 'file';
 	onRequestSubtask?: (context: TaskEditorSubtaskRequest) => void | Promise<void>;
 	onRequestDelete?: (task: ParsedTask) => void | Promise<boolean | void>;
-	onInspectConvertToPlain?: (task: ParsedTask) => Promise<TaskEditorConvertToPlainInspection>;
-	onConvertToPlain?: (request: TaskEditorConvertToPlainRequest) => Promise<TaskEditorConvertToPlainResult>;
 	onOpenTask?: (operonId: string) => void;
 	onMarkSubtaskDone?: (operonId: string) => Promise<boolean>;
 	onUpdateExistingSubtaskParent?: (childId: string, parentId: string | null) => void | Promise<void>;
@@ -254,38 +251,6 @@ export interface TaskEditorContentOptions {
 	fileBody?: TaskEditorFileBodyContext | null;
 	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
 }
-
-export interface TaskEditorConvertToPlainBlocker {
-	label: string;
-}
-
-export interface TaskEditorConvertToPlainFileProperty {
-	canonicalKey: string;
-	propertyName: string;
-	description: string;
-	internal: boolean;
-}
-
-export type TaskEditorConvertToPlainInspection =
-	| {
-		status: 'ready';
-		format: 'inline' | 'yaml';
-		expectedContent?: string;
-		properties?: TaskEditorConvertToPlainFileProperty[];
-	}
-	| { status: 'blocked'; blockers: TaskEditorConvertToPlainBlocker[] }
-	| { status: 'unavailable' };
-
-export interface TaskEditorConvertToPlainRequest {
-	task: ParsedTask;
-	expectedContent?: string;
-	selectedCanonicalKeys?: string[];
-}
-
-export type TaskEditorConvertToPlainResult =
-	| { status: 'converted' }
-	| { status: 'blocked'; blockers: TaskEditorConvertToPlainBlocker[] }
-	| { status: 'conflict' | 'failed' };
 
 export interface TaskEditorFileBodyContext {
 	filePath: string;
@@ -476,14 +441,11 @@ export class TaskEditorContent {
 	private disposed = false;
 	private destroyCloseSaveInFlight = false;
 	private deleteInProgress = false;
-	private convertToPlainInProgress = false;
 	private hasBeenEdited = false;
 	private focusDescriptionOnMount = true;
 	private subtaskActionKind: 'inline' | 'file' = 'inline';
 	private onRequestSubtask: ((context: TaskEditorSubtaskRequest) => void | Promise<void>) | null = null;
 	private onRequestDelete: ((task: ParsedTask) => void | Promise<boolean | void>) | null = null;
-	private onInspectConvertToPlain: ((task: ParsedTask) => Promise<TaskEditorConvertToPlainInspection>) | null = null;
-	private onConvertToPlain: ((request: TaskEditorConvertToPlainRequest) => Promise<TaskEditorConvertToPlainResult>) | null = null;
 	private onOpenTask: ((operonId: string) => void) | null = null;
 	private onMarkSubtaskDone: ((operonId: string) => Promise<boolean>) | null = null;
 	private onUpdateExistingSubtaskParent: ((childId: string, parentId: string | null) => void | Promise<void>) | null = null;
@@ -598,8 +560,6 @@ export class TaskEditorContent {
 		this.subtaskActionKind = options.subtaskActionKind ?? 'inline';
 		this.onRequestSubtask = options.onRequestSubtask ?? null;
 		this.onRequestDelete = options.onRequestDelete ?? null;
-		this.onInspectConvertToPlain = options.onInspectConvertToPlain ?? null;
-		this.onConvertToPlain = options.onConvertToPlain ?? null;
 		this.onOpenTask = options.onOpenTask ?? null;
 		this.onMarkSubtaskDone = options.onMarkSubtaskDone ?? null;
 		this.onUpdateExistingSubtaskParent = options.onUpdateExistingSubtaskParent ?? null;
@@ -1380,9 +1340,6 @@ export class TaskEditorContent {
 			case 'dateCancelled':
 				this.renderMobileDateButton(container, 'dateCancelled', t('taskEditor', 'cancelled'), t('taskEditor', 'cancelledDatePlaceholder'));
 				break;
-			case '__convertToPlain':
-				this.renderMobileConvertToPlainButton(container);
-				break;
 			case 'remove':
 				this.renderMobileRemoveButton(container);
 				break;
@@ -1828,15 +1785,6 @@ export class TaskEditorContent {
 		button.addClass('is-danger');
 		this.setMobileCoreButtonIcon(button, 'trash-2');
 		this.setMobileCoreButtonState(button, true, 'var(--color-red)');
-	}
-
-	private renderMobileConvertToPlainButton(container: HTMLElement): void {
-		if (!this.existingTask || !this.onInspectConvertToPlain || !this.onConvertToPlain) return;
-		const label = this.getConvertToPlainLabel();
-		const button = this.createMobileCoreButton(container, label, '__convertToPlain', () => {
-			void this.handleConvertToPlainClick();
-		});
-		this.setMobileCoreButtonIcon(button, 'unlink');
 	}
 
 	private renderMobileCustomFieldButton(container: HTMLElement, mapping: KeyMapping): void {
@@ -5052,20 +5000,6 @@ export class TaskEditorContent {
 		const control = this.createInlineField(container, '');
 		control.parentElement?.addClass('operon-editor-remove-field');
 		control.addClass('operon-editor-terminal-action-cluster');
-		if (this.onInspectConvertToPlain && this.onConvertToPlain) {
-			const convertLabel = this.getConvertToPlainLabel();
-			const convertButton = control.createEl('button', {
-				cls: 'operon-editor-core-action-btn operon-editor-core-convert-to-plain-action operon-editor-picker-button',
-				attr: { type: 'button' },
-			});
-			const convertIcon = getIcon('unlink');
-			if (convertIcon) convertButton.appendChild(convertIcon);
-			setAccessibleLabelWithoutTooltip(convertButton, convertLabel);
-			this.bindTaskEditorTooltip(convertButton, convertLabel);
-			convertButton.addEventListener('click', () => {
-				void this.handleConvertToPlainClick();
-			});
-		}
 
 		const button = control.createEl('button', {
 			cls: 'operon-editor-core-action-btn operon-editor-core-danger-btn operon-editor-picker-button',
@@ -5081,123 +5015,6 @@ export class TaskEditorContent {
 		button.addEventListener('click', () => {
 			void this.handleRemoveTaskClick();
 		});
-	}
-
-	private getConvertToPlainLabel(): string {
-		return this.fileBodyContext?.format === 'yaml'
-			? t('taskEditor', 'convertToPlainFile')
-			: t('taskEditor', 'convertToPlainCheckbox');
-	}
-
-	private showConvertToPlainBlockers(blockers: TaskEditorConvertToPlainBlocker[]): void {
-		const labels = blockers.map(blocker => blocker.label).filter(Boolean);
-		new Notice(t('taskEditor', 'convertToPlainBlocked', {
-			items: labels.join(', ') || t('taskEditor', 'convertToPlainUnavailable'),
-		}));
-	}
-
-	private showConvertToPlainFailure(result: TaskEditorConvertToPlainResult): void {
-		if (result.status === 'blocked') {
-			this.showConvertToPlainBlockers(result.blockers);
-			return;
-		}
-		new Notice(result.status === 'conflict'
-			? t('taskEditor', 'convertToPlainSourceChanged')
-			: t('taskEditor', 'convertToPlainFailed'));
-	}
-
-	private async handleConvertToPlainClick(): Promise<void> {
-		if (
-			!this.existingTask
-			|| !this.onInspectConvertToPlain
-			|| !this.onConvertToPlain
-			|| this.convertToPlainInProgress
-		) return;
-
-		this.convertToPlainInProgress = true;
-		this.suspendAutoSave();
-		let converted = false;
-		let handedOffToFileModal = false;
-		try {
-			const saved = await this.flushPendingEditsOutcome('explicit-save');
-			if (!saved.ok) {
-				new Notice(t('notifications', 'taskSaveFailed'));
-				return;
-			}
-			const inspection = await this.onInspectConvertToPlain(this.existingTask);
-			if (inspection.status === 'blocked') {
-				this.showConvertToPlainBlockers(inspection.blockers);
-				return;
-			}
-			if (inspection.status !== 'ready') {
-				new Notice(t('taskEditor', 'convertToPlainUnavailable'));
-				return;
-			}
-
-			if (inspection.format === 'yaml') {
-				handedOffToFileModal = true;
-				new ConvertToPlainFileModal(this.app, {
-					properties: inspection.properties ?? [],
-					taskColor: this.getThemeColor(),
-					onSubmit: async selectedCanonicalKeys => {
-						const convert = this.onConvertToPlain;
-						if (!convert || !this.existingTask) return false;
-						let result: TaskEditorConvertToPlainResult;
-						try {
-							result = await convert({
-								task: this.existingTask,
-								expectedContent: inspection.expectedContent,
-								selectedCanonicalKeys,
-							});
-						} catch (error) {
-							console.error('Operon: file task conversion failed', error);
-							new Notice(t('taskEditor', 'convertToPlainFailed'));
-							return false;
-						}
-						if (result.status !== 'converted') {
-							this.showConvertToPlainFailure(result);
-							return false;
-						}
-						converted = true;
-						this.disposed = true;
-						this.requestEditorClose('force-after-convert-to-plain');
-						return true;
-					},
-					onCancel: () => {
-						if (converted) return;
-						this.convertToPlainInProgress = false;
-						this.resumeAutoSave();
-					},
-				}).open();
-				return;
-			}
-
-			const confirmed = await this.promptConfirmAction({
-				title: t('taskEditor', 'convertToPlainCheckboxTitle'),
-				message: t('taskEditor', 'convertToPlainCheckboxMessage'),
-				confirmText: t('taskEditor', 'convertToPlainConfirm'),
-				cancelText: t('buttons', 'cancel'),
-				danger: true,
-				initialFocus: 'cancel',
-			});
-			if (!confirmed) return;
-			const result = await this.onConvertToPlain({ task: this.existingTask });
-			if (result.status !== 'converted') {
-				this.showConvertToPlainFailure(result);
-				return;
-			}
-			converted = true;
-			this.disposed = true;
-			this.requestEditorClose('force-after-convert-to-plain');
-		} catch (error) {
-			console.error('Operon: convert task to plain failed', error);
-			new Notice(t('taskEditor', 'convertToPlainFailed'));
-		} finally {
-			if (!converted && !handedOffToFileModal) {
-				this.convertToPlainInProgress = false;
-				this.resumeAutoSave();
-			}
-		}
 	}
 
 	private async handleRemoveTaskClick(): Promise<void> {

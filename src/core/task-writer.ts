@@ -71,7 +71,17 @@ export type DetachYamlTaskPropertiesResult = {
     outcome: 'detached' | 'missing' | 'unsupported' | 'conflict' | 'failed';
     filePath: string | null;
     file?: TFile;
+    previousContent?: string;
+    committedContent?: string;
 };
+
+export interface ExactMarkdownSourceMutationResult {
+    outcome: 'committed' | 'conflict' | 'missing' | 'invalid-target' | 'failed';
+    filePath: string;
+    file?: TFile;
+    previousContent?: string;
+    committedContent?: string;
+}
 
 export type TaskSourceMutation =
     | {
@@ -116,6 +126,17 @@ export interface GuardedTaskSourceRenderResult {
 type YamlFastPathState = 'aggregate' | 'fallback' | 'none';
 
 const PLAIN_FILE_TASK_DETACH_ABORT = new Error('plain-file-task-detach-abort');
+const EXACT_MARKDOWN_SOURCE_MUTATION_ABORT = new Error('exact-markdown-source-mutation-abort');
+const PLAIN_CONVERSION_BLOCKER_KEYS = new Set([
+    'parentTask',
+    'blocking',
+    'blockedBy',
+    'repeat',
+    'repeatSeriesId',
+    'repeatOccurrenceDate',
+    'reminderDatetimes',
+    'reminderRules',
+]);
 
 interface TaskWriteResult {
     wrote: boolean;
@@ -490,6 +511,10 @@ export class TaskWriter {
 					sourceFrontmatter,
 					selected,
 				);
+				const expectedBlockerAliasSnapshot = this.getPlainFileTaskSelectedAliasSnapshot(
+					sourceFrontmatter,
+					PLAIN_CONVERSION_BLOCKER_KEYS,
+				);
 
 				let detached = false;
 				try {
@@ -498,6 +523,9 @@ export class TaskWriter {
 							throw PLAIN_FILE_TASK_DETACH_ABORT;
 						}
 						if (this.getPlainFileTaskSelectedAliasSnapshot(frontmatter, selected) !== expectedSelectedAliasSnapshot) {
+							throw PLAIN_FILE_TASK_DETACH_ABORT;
+						}
+						if (this.getPlainFileTaskSelectedAliasSnapshot(frontmatter, PLAIN_CONVERSION_BLOCKER_KEYS) !== expectedBlockerAliasSnapshot) {
 							throw PLAIN_FILE_TASK_DETACH_ABORT;
 						}
 					const currentOptions = new Set(
@@ -519,19 +547,105 @@ export class TaskWriter {
 					if (error === PLAIN_FILE_TASK_DETACH_ABORT) {
 						return { outcome: 'conflict', filePath: file.path };
 					}
-					throw error;
+					const persistedContent = await this.app.vault.read(file).catch(() => undefined);
+					if (persistedContent !== undefined) {
+						const persistedFrontmatter = this.parseYamlFrontmatter(persistedContent);
+						const selectedAreAbsent = persistedFrontmatter !== null && Array.from(selected).every(canonicalKey => (
+							getManagedYamlAliases(canonicalKey, this.keyMappings).every(yamlKey => (
+								!Object.prototype.hasOwnProperty.call(persistedFrontmatter, yamlKey)
+							))
+						));
+						if (selectedAreAbsent) {
+							return {
+								outcome: 'detached',
+								filePath: file.path,
+								file,
+								previousContent: expectedContent,
+								committedContent: persistedContent,
+							};
+						}
+						if (persistedContent !== expectedContent) {
+							return { outcome: 'conflict', filePath: file.path };
+						}
+					}
+					console.error('Operon: file task conversion cleanup failed.', error);
+					return { outcome: 'failed', filePath: file.path };
 				}
 
                 if (!detached) return { outcome: 'conflict', filePath: file.path };
+                const committedContent = await this.app.vault.read(file).catch(() => undefined);
                 return {
                     outcome: 'detached',
                     filePath: file.path,
                     file,
+                    previousContent: expectedContent,
+                    committedContent,
                 };
             });
         } catch (error) {
             console.error('Operon: file task conversion cleanup failed.', error);
             return { outcome: 'failed', filePath: file.path };
+        }
+    }
+
+    /** Atomically replace one Markdown file only when its full source matches. */
+    async applyExactMarkdownSourceMutation(
+        filePathInput: string,
+        expectedContent: string,
+        nextContent: string,
+    ): Promise<ExactMarkdownSourceMutationResult> {
+        const filePath = normalizePath(filePathInput);
+        if (!isSafeMarkdownTaskSourcePath(filePathInput, filePath)) {
+            return { outcome: 'invalid-target', filePath };
+        }
+        try {
+            return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(filePath), async () => {
+                if (this.hooks.validateWritePath && !(await this.hooks.validateWritePath(filePath, false))) {
+                    return { outcome: 'invalid-target', filePath };
+                }
+                const file = this.app.vault.getAbstractFileByPath(filePath);
+                if (!(file instanceof TFile) || file.extension !== 'md') {
+                    return { outcome: 'missing', filePath };
+                }
+                try {
+                    const committedContent = await this.app.vault.process(file, currentContent => {
+                        if (currentContent !== expectedContent) {
+                            throw EXACT_MARKDOWN_SOURCE_MUTATION_ABORT;
+                        }
+                        this.hooks.onBeforeWriteFile?.(file.path);
+                        return nextContent;
+                    });
+                    return {
+                        outcome: 'committed',
+                        filePath,
+                        file,
+                        previousContent: expectedContent,
+                        committedContent,
+                    };
+                } catch (error) {
+                    if (error === EXACT_MARKDOWN_SOURCE_MUTATION_ABORT) {
+                        return { outcome: 'conflict', filePath };
+                    }
+                    const persistedContent = await this.app.vault.read(file).catch(() => undefined);
+                    if (persistedContent === nextContent) {
+                        return {
+                            outcome: 'committed',
+                            filePath,
+                            file,
+                            previousContent: expectedContent,
+                            committedContent: persistedContent,
+                        };
+                    }
+                    if (persistedContent !== undefined && persistedContent !== expectedContent) {
+                        return { outcome: 'conflict', filePath, previousContent: persistedContent };
+                    }
+                    console.error('Operon: exact Markdown source mutation failed.', error);
+                    return { outcome: 'failed', filePath };
+                }
+            });
+        } catch (error) {
+            console.error('Operon: exact Markdown source mutation failed.', error);
+            return { outcome: 'failed', filePath };
         }
     }
 

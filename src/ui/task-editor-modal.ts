@@ -47,7 +47,7 @@ export class TaskEditorModal extends Modal {
 	};
 	private readonly handleEditorCloseRequest = (event: Event) => {
 		const detail = (event as CustomEvent<TaskEditorCloseRequestDetail>).detail;
-		if (detail?.mode === 'force-after-delete' || detail?.mode === 'force-after-convert-to-plain') {
+		if (detail?.mode === 'force-after-delete') {
 			this.forceClose();
 			return;
 		}
