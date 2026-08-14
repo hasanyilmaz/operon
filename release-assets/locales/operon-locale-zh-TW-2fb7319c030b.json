@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -354,12 +354,15 @@
       "addGroup": "+ 新增分組",
       "addSort": "+ 新增排序",
       "behaviorTitle": "篩選檢視行為",
+      "clipboardDoesNotContainGroup": "剪貼簿中沒有 Operon 篩選分組。",
       "collapseGroup": "摺疊分組",
       "conditionFieldNoMatches": "沒有匹配的欄位",
       "conditionFieldPickerLabel": "條件欄位",
       "conditionFieldSearchPlaceholder": "搜尋欄位……",
       "conditions": "條件",
       "copyEmbedCode": "複製嵌入程式碼",
+      "copyGroup": "複製分組",
+      "copyGroupFailed": "無法複製該分組。",
       "createDailyNote": "為 {{name}} 建立筆記",
       "datePlaceholder": "yyyy-mm-dd",
       "dayOfWeekPlaceholder": "0=週日 … 6=週六",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "資料夾名稱或路徑",
       "group": "分組",
       "groupBy": "分組依據",
+      "groupCopied": "已複製分組。",
       "groupEmpty": "（無值）",
       "groupNone": "無",
       "logic": "條件邏輯",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "本週",
       "operator_underDaysAgo": "不到 X 天前",
       "operator_underDaysAway": "不到 X 天後",
+      "pasteGroup": "貼上分組",
+      "pasteGroupLimitExceeded": "無法貼上分組，因為這會超出篩選群組限制。",
+      "pasteGroupMissingField": "欄位「{{field}}」無法使用，因此無法貼上分組。",
+      "pasteGroupMissingProjectScope": "專案範圍「{{scope}}」無法使用，因此無法貼上分組。",
       "presetFilterClear": "清除",
       "presetFilterClearTooltip": "從此預設草稿中移除該篩選器。",
       "presetFilterCreate": "建立",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "選擇專案序列群組",
       "projectSerialGroupPrefixPlaceholder": "序列群組前綴",
       "projectTreePlaceholder": "任務名稱或 operonId",
+      "readGroupClipboardFailed": "無法讀取剪貼簿。",
       "rootLogicSummary": "{{main}} 個主條件和 {{grouped}} 個分組條件",
       "rootLogicSummaryMainOnly": "{{main}} 個主條件",
       "searchTasksInFilter": "在篩選器中搜尋任務",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "d1b26376578a4fd09173544e5bcffcd3351346b774617890f3daa871b2a30702"
+  "sourceVersion": "5fe53ddc1b035d1219e5ffbfe6f5f3ca263f0e43983243e578cc7fb903d17013"
 }

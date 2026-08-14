@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -354,12 +354,15 @@
       "addGroup": "+ Gruppe hinzufügen",
       "addSort": "+ Sortierung hinzufügen",
       "behaviorTitle": "Verhalten der Filteransicht",
+      "clipboardDoesNotContainGroup": "Die Zwischenablage enthält keine Operon-Filtergruppe.",
       "collapseGroup": "Gruppe einklappen",
       "conditionFieldNoMatches": "Keine passenden Felder",
       "conditionFieldPickerLabel": "Bedingungsfeld",
       "conditionFieldSearchPlaceholder": "Felder suchen...",
       "conditions": "Bedingungen",
       "copyEmbedCode": "Einbettungscode kopieren",
+      "copyGroup": "Gruppe kopieren",
+      "copyGroupFailed": "Die Gruppe konnte nicht kopiert werden.",
       "createDailyNote": "Notiz für {{name}} erstellen",
       "datePlaceholder": "yyyy-mm-dd",
       "dayOfWeekPlaceholder": "0=So … 6=Sa",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "Ordnername oder Pfad",
       "group": "Gruppe",
       "groupBy": "Gruppieren nach",
+      "groupCopied": "Gruppe kopiert.",
       "groupEmpty": "(kein Wert)",
       "groupNone": "keine",
       "logic": "Bedingungslogik",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "diese Woche",
       "operator_underDaysAgo": "weniger als X Tage her",
       "operator_underDaysAway": "weniger als X Tage entfernt",
+      "pasteGroup": "Gruppe einfügen",
+      "pasteGroupLimitExceeded": "Die Gruppe kann nicht eingefügt werden, weil das Filtergruppenlimit überschritten würde.",
+      "pasteGroupMissingField": "Die Gruppe kann nicht eingefügt werden, da das Feld \"{{field}}\" nicht verfügbar ist.",
+      "pasteGroupMissingProjectScope": "Die Gruppe kann nicht eingefügt werden, da der Projektbereich \"{{scope}}\" nicht verfügbar ist.",
       "presetFilterClear": "Leeren",
       "presetFilterClearTooltip": "Entferne den Filter aus diesem Voreinstellungsentwurf.",
       "presetFilterCreate": "Erstellen",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "Project-Serial-Gruppen auswählen",
       "projectSerialGroupPrefixPlaceholder": "Präfix der Serial-Gruppe",
       "projectTreePlaceholder": "Aufgabenname oder operonId",
+      "readGroupClipboardFailed": "Die Zwischenablage konnte nicht gelesen werden.",
       "rootLogicSummary": "{{main}} Hauptbedingungen und {{grouped}} gruppierte Bedingungen",
       "rootLogicSummaryMainOnly": "{{main}} Hauptbedingungen",
       "searchTasksInFilter": "Aufgaben im Filter suchen",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "eec96d6c5687beca315288630066711abbdc4259c5cedd95685234be1d166110"
+  "sourceVersion": "0fcddb8f8be716f95c6670896493a9f2e671e9d8557bbbad64cbe88ec5e99c25"
 }

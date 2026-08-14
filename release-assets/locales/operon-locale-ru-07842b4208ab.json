@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -354,12 +354,15 @@
       "addGroup": "+ Добавить группу",
       "addSort": "+ Добавить сортировку",
       "behaviorTitle": "Поведение представления фильтра",
+      "clipboardDoesNotContainGroup": "В буфере обмена нет группы фильтров Operon.",
       "collapseGroup": "Свернуть группу",
       "conditionFieldNoMatches": "Совпадающих полей нет",
       "conditionFieldPickerLabel": "Поле условия",
       "conditionFieldSearchPlaceholder": "Поиск полей...",
       "conditions": "условия",
       "copyEmbedCode": "Скопировать код встраивания",
+      "copyGroup": "Копировать группу",
+      "copyGroupFailed": "Не удалось скопировать группу.",
       "createDailyNote": "Создать заметку для {{name}}",
       "datePlaceholder": "гггг-мм-дд",
       "dayOfWeekPlaceholder": "0=Вс … 6=Сб",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "название или путь папки",
       "group": "Группа",
       "groupBy": "Группировать по",
+      "groupCopied": "Группа скопирована.",
       "groupEmpty": "(нет значения)",
       "groupNone": "нет",
       "logic": "Логика условий",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "на этой неделе",
       "operator_underDaysAgo": "менее X дней назад",
       "operator_underDaysAway": "менее чем через X дней",
+      "pasteGroup": "Вставить группу",
+      "pasteGroupLimitExceeded": "Невозможно вставить группу: будет превышен лимит групп фильтра.",
+      "pasteGroupMissingField": "Невозможно вставить группу: поле «{{field}}» недоступно.",
+      "pasteGroupMissingProjectScope": "Невозможно вставить группу: область проекта «{{scope}}» недоступна.",
       "presetFilterClear": "Очистить",
       "presetFilterClearTooltip": "Удалить фильтр из черновика этого пресета.",
       "presetFilterCreate": "Создать",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "Выбрать группы серий проекта",
       "projectSerialGroupPrefixPlaceholder": "префикс группы серий",
       "projectTreePlaceholder": "название задачи или operonId",
+      "readGroupClipboardFailed": "Не удалось прочитать буфер обмена.",
       "rootLogicSummary": "{{main}} основных условий и {{grouped}} сгруппированных условий",
       "rootLogicSummaryMainOnly": "{{main}} основных условий",
       "searchTasksInFilter": "Поиск задач в фильтре",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "6764c202d8eb8cd4f397a5920eade721ff0db56d3d70d269db969d01bd68b8f1"
+  "sourceVersion": "2950ba9cfd6c8c2c3e5a7f4b4780350be507f9e190af2d755d1ccea3d73b2c76"
 }

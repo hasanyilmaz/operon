@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -354,12 +354,15 @@
       "addGroup": "+ Grup Ekle",
       "addSort": "+ Sıralama Ekle",
       "behaviorTitle": "Filtre Görünümü Davranışı",
+      "clipboardDoesNotContainGroup": "Panoda bir Operon filtre grubu bulunmuyor.",
       "collapseGroup": "Grubu daralt",
       "conditionFieldNoMatches": "Eşleşen alan yok",
       "conditionFieldPickerLabel": "Koşul alanı",
       "conditionFieldSearchPlaceholder": "Alanlarda ara...",
       "conditions": "koşul",
       "copyEmbedCode": "Gömme kodunu kopyala",
+      "copyGroup": "Grubu kopyala",
+      "copyGroupFailed": "Grup kopyalanamadı.",
       "createDailyNote": "{{name}} için not oluştur",
       "datePlaceholder": "yyyy-mm-dd",
       "dayOfWeekPlaceholder": "0=Paz … 6=Cmt",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "klasör adı veya yol",
       "group": "Grup",
       "groupBy": "Grupla",
+      "groupCopied": "Grup kopyalandı.",
       "groupEmpty": "(değer yok)",
       "groupNone": "yok",
       "logic": "Koşul Mantığı",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "bu hafta",
       "operator_underDaysAgo": "X günden az önce",
       "operator_underDaysAway": "X günden az sonra",
+      "pasteGroup": "Grubu yapıştır",
+      "pasteGroupLimitExceeded": "Filtre grubu sınırı aşılacağı için grup yapıştırılamıyor.",
+      "pasteGroupMissingField": "\"{{field}}\" alanı kullanılamadığı için grup yapıştırılamıyor.",
+      "pasteGroupMissingProjectScope": "\"{{scope}}\" proje kapsamı kullanılamadığı için grup yapıştırılamıyor.",
       "presetFilterClear": "Temizle",
       "presetFilterClearTooltip": "Filtreyi bu ön ayar taslağından kaldır.",
       "presetFilterCreate": "Oluştur",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "Project serial gruplarını seç",
       "projectSerialGroupPrefixPlaceholder": "seri grubu prefix'i",
       "projectTreePlaceholder": "görev adı veya operonId",
+      "readGroupClipboardFailed": "Pano okunamadı.",
       "rootLogicSummary": "{{main}} ana koşul ve {{grouped}} gruplanmış koşul",
       "rootLogicSummaryMainOnly": "{{main}} ana koşul",
       "searchTasksInFilter": "Filtre içinde görev ara",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "8a8a2163b5b1f4f98eae65a961be5be02f6fd0466aaac531867b146ce66aa0bd"
+  "sourceVersion": "3c1cdbdfbca7393231287ca9f51bded3645204e8ce9fa7d563eeff3a496f4118"
 }

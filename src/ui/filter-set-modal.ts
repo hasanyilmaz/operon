@@ -66,6 +66,12 @@ import type { TableFilePropertyField, TableFilePropertySnapshot } from './table/
 import { getFilterGroupDisplayLabel } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
+import {
+	decodeFilterGroupClipboard,
+	encodeFilterGroupClipboard,
+	findFilterGroupPasteCompatibilityIssue,
+	resolveFilterGroupPasteTarget,
+} from '../core/filter-group-clipboard';
 
 function generateConditionId(): string {
 	return 'cond_' + Math.random().toString(36).slice(2, 10);
@@ -330,6 +336,7 @@ export class FilterSetModal extends Modal {
 		private collapsedFilterGroupIds = new Set<string>();
 		private filePropertySnapshot: TableFilePropertySnapshot | null = null;
 		private invalidRawConditionIds = new Set<string>();
+		private filterGroupPasteInProgress = false;
 
 	constructor(
 		app: App,
@@ -1352,6 +1359,15 @@ export class FilterSetModal extends Modal {
 		const actions = header.createDiv('operon-filter-group-actions');
 
 		if (!isRoot && parentGroup) {
+			const copyBtn = actions.createEl('button');
+			copyBtn.type = 'button';
+			this.addClasses(copyBtn, 'operon-filter-modal-button', 'is-icon', 'operon-filter-group-copy-button');
+			setIcon(copyBtn, 'copy');
+			setAccessibleLabelWithoutTooltip(copyBtn, t('filterSets', 'copyGroup'));
+			bindOperonHoverTooltip(copyBtn, { content: t('filterSets', 'copyGroup'), taskColor: null });
+			copyBtn.addEventListener('click', () => {
+				void this.copyFilterGroupToClipboard(group);
+			});
 			this.renderNodeMoveButtons(actions, parentGroup, groupIndex);
 			const deleteBtn = actions.createEl('button');
 			deleteBtn.type = 'button';
@@ -1409,6 +1425,94 @@ export class FilterSetModal extends Modal {
 			});
 			this.syncMirroredFilterFields();
 			this.renderCurrentSurface();
+		});
+
+		const pasteGroupBtn = footer.createEl('button');
+		pasteGroupBtn.type = 'button';
+		this.addClasses(pasteGroupBtn, 'operon-filter-modal-button', 'is-icon', 'operon-filter-group-paste-button');
+		setIcon(pasteGroupBtn, 'clipboard-paste');
+		setAccessibleLabelWithoutTooltip(pasteGroupBtn, t('filterSets', 'pasteGroup'));
+		bindOperonHoverTooltip(pasteGroupBtn, { content: t('filterSets', 'pasteGroup'), taskColor: null });
+		pasteGroupBtn.addEventListener('click', () => {
+			pasteGroupBtn.disabled = true;
+			void this.pasteFilterGroupFromClipboard(group.id).finally(() => {
+				if (pasteGroupBtn.isConnected) pasteGroupBtn.disabled = false;
+			});
+		});
+	}
+
+	private async copyFilterGroupToClipboard(group: FilterGroup): Promise<void> {
+		try {
+			await navigator.clipboard.writeText(encodeFilterGroupClipboard(group));
+			new Notice(t('filterSets', 'groupCopied'));
+		} catch (error) {
+			console.warn('Operon: failed to copy filter group', error);
+			new Notice(t('filterSets', 'copyGroupFailed'));
+		}
+	}
+
+	private async pasteFilterGroupFromClipboard(targetGroupId: string): Promise<void> {
+		if (this.filterGroupPasteInProgress) return;
+		this.filterGroupPasteInProgress = true;
+		try {
+			let clipboardText: string;
+			try {
+				clipboardText = await navigator.clipboard.readText();
+			} catch (error) {
+				console.warn('Operon: failed to read filter group from clipboard', error);
+				new Notice(t('filterSets', 'readGroupClipboardFailed'));
+				return;
+			}
+			if (!this.hasConnectedSurface()) return;
+			const decoded = decodeFilterGroupClipboard(clipboardText, {
+				createGroupId: generateGroupId,
+				createConditionId: generateConditionId,
+				isOperatorAllowed: (field, fieldType, operator) => (
+					getOperatorsForField(field, fieldType).some(option => option.id === operator)
+				),
+			});
+			if (!decoded.ok) {
+				new Notice(t('filterSets', 'clipboardDoesNotContainGroup'));
+				return;
+			}
+			const compatibilityIssue = this.getFilterGroupPasteCompatibilityIssue(decoded.group);
+			if (compatibilityIssue?.kind === 'field') {
+				new Notice(t('filterSets', 'pasteGroupMissingField', { field: compatibilityIssue.value }));
+				return;
+			}
+			if (compatibilityIssue?.kind === 'projectScope') {
+				new Notice(t('filterSets', 'pasteGroupMissingProjectScope', { scope: compatibilityIssue.value }));
+				return;
+			}
+			if (!this.hasConnectedSurface()) return;
+			const pasteTarget = resolveFilterGroupPasteTarget(
+				this.filterSet.rootGroup,
+				targetGroupId,
+				decoded.group,
+			);
+			if (!pasteTarget.ok) {
+				if (pasteTarget.reason === 'limit') {
+					new Notice(t('filterSets', 'pasteGroupLimitExceeded'));
+				}
+				return;
+			}
+			pasteTarget.target.children.push(decoded.group);
+			this.syncMirroredFilterFields();
+			this.renderCurrentSurface();
+		} finally {
+			this.filterGroupPasteInProgress = false;
+		}
+	}
+
+	private getFilterGroupPasteCompatibilityIssue(
+		group: FilterGroup,
+	): { kind: 'field' | 'projectScope'; value: string } | null {
+		const availableFields = new Map(this.getFieldOptions(true).map(option => [option.field, option.type]));
+		const availableProjectScopes = new Set(this.getProjectSerialScopeOptions().map(option => option.value));
+		return findFilterGroupPasteCompatibilityIssue(group, {
+			getFieldType: field => availableFields.get(field) ?? null,
+			isRawFileProperty: isFilePropertyColumnKey,
+			isProjectScopeAvailable: scope => availableProjectScopes.has(scope),
 		});
 	}
 

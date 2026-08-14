@@ -15585,6 +15585,8 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 
 .operon-filter-group-footer {
 	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
 	gap: 8px;
 	margin-top: 12px;
 	padding-left: 8px;
@@ -16216,6 +16218,19 @@ body :is(
 }
 
 @media (max-width: 520px) {
+	.operon-filter-group-header {
+		flex-wrap: wrap;
+	}
+
+	.operon-filter-group-heading {
+		flex: 1 1 100%;
+		flex-wrap: wrap;
+	}
+
+	.operon-filter-group-actions {
+		margin-left: auto;
+	}
+
 	.operon-filter-sort-row {
 		grid-template-columns: minmax(0, 1fr) var(--input-height) var(--input-height) var(--input-height);
 	}

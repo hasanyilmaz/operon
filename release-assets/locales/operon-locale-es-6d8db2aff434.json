@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -354,12 +354,15 @@
       "addGroup": "+ Añadir grupo",
       "addSort": "+ Añadir orden",
       "behaviorTitle": "Comportamiento de la Vista de filtros",
+      "clipboardDoesNotContainGroup": "El portapapeles no contiene un grupo de filtros de Operon.",
       "collapseGroup": "Contraer grupo",
       "conditionFieldNoMatches": "No hay campos coincidentes",
       "conditionFieldPickerLabel": "Campo de condición",
       "conditionFieldSearchPlaceholder": "Buscar campos...",
       "conditions": "condiciones",
       "copyEmbedCode": "Copiar código de inserción",
+      "copyGroup": "Copiar grupo",
+      "copyGroupFailed": "No se pudo copiar el grupo.",
       "createDailyNote": "Crear nota para {{name}}",
       "datePlaceholder": "yyyy-mm-dd",
       "dayOfWeekPlaceholder": "0=Dom … 6=Sáb",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "nombre o ruta de carpeta",
       "group": "Grupo",
       "groupBy": "Agrupar por",
+      "groupCopied": "Grupo copiado.",
       "groupEmpty": "(sin valor)",
       "groupNone": "ninguno",
       "logic": "Lógica de condiciones",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "esta semana",
       "operator_underDaysAgo": "hace menos de X días",
       "operator_underDaysAway": "dentro de menos de X días",
+      "pasteGroup": "Pegar grupo",
+      "pasteGroupLimitExceeded": "No se puede pegar el grupo porque se superaría el límite de grupos de filtro.",
+      "pasteGroupMissingField": "No se puede pegar el grupo porque el campo \"{{field}}\" no está disponible.",
+      "pasteGroupMissingProjectScope": "No se puede pegar el grupo porque el ámbito de proyecto \"{{scope}}\" no está disponible.",
       "presetFilterClear": "Limpiar",
       "presetFilterClearTooltip": "Quitar el filtro de este borrador de preajuste.",
       "presetFilterCreate": "Crear",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "Elegir grupos de serial de proyecto",
       "projectSerialGroupPrefixPlaceholder": "prefijo del grupo de serial",
       "projectTreePlaceholder": "nombre de tarea u operonId",
+      "readGroupClipboardFailed": "No se pudo leer el portapapeles.",
       "rootLogicSummary": "{{main}} condiciones principales y {{grouped}} condiciones agrupadas",
       "rootLogicSummaryMainOnly": "{{main}} condiciones principales",
       "searchTasksInFilter": "Buscar tareas en el filtro",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d5fc0b656bd3453dbf07680b66506d7a375a76b0bffa98695ead05cc665fdccf"
+  "sourceVersion": "377bc177dcf179f9995e8dad2788f8d8c973dda82ac7f9801f6c8150d5750ebf"
 }

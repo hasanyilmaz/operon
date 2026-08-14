@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -354,12 +354,15 @@
       "addGroup": "+ Aggiungi gruppo",
       "addSort": "+ Aggiungi ordinamento",
       "behaviorTitle": "Comportamento della Vista filtro",
+      "clipboardDoesNotContainGroup": "Gli appunti non contengono un gruppo di filtri Operon.",
       "collapseGroup": "Comprimi gruppo",
       "conditionFieldNoMatches": "Nessun campo corrispondente",
       "conditionFieldPickerLabel": "Campo condizione",
       "conditionFieldSearchPlaceholder": "Cerca campi...",
       "conditions": "condizioni",
       "copyEmbedCode": "Copia codice di incorporamento",
+      "copyGroup": "Copia gruppo",
+      "copyGroupFailed": "Impossibile copiare il gruppo.",
       "createDailyNote": "Crea nota per {{name}}",
       "datePlaceholder": "yyyy-mm-dd",
       "dayOfWeekPlaceholder": "0=Dom … 6=Sab",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "nome o percorso cartella",
       "group": "Gruppo",
       "groupBy": "Raggruppa per",
+      "groupCopied": "Gruppo copiato.",
       "groupEmpty": "(nessun valore)",
       "groupNone": "nessuno",
       "logic": "Logica delle condizioni",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "questa settimana",
       "operator_underDaysAgo": "meno di X giorni fa",
       "operator_underDaysAway": "tra meno di X giorni",
+      "pasteGroup": "Incolla gruppo",
+      "pasteGroupLimitExceeded": "Impossibile incollare il gruppo perché verrebbe superato il limite dei gruppi filtro.",
+      "pasteGroupMissingField": "Impossibile incollare il gruppo perché il campo \"{{field}}\" non è disponibile.",
+      "pasteGroupMissingProjectScope": "Impossibile incollare il gruppo perché l’ambito del progetto \"{{scope}}\" non è disponibile.",
       "presetFilterClear": "Cancella",
       "presetFilterClearTooltip": "Rimuovi il filtro da questa bozza di preimpostazione.",
       "presetFilterCreate": "Crea",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "Scegli gruppi di serie di progetto",
       "projectSerialGroupPrefixPlaceholder": "prefisso gruppo di serie",
       "projectTreePlaceholder": "nome attività o operonId",
+      "readGroupClipboardFailed": "Impossibile leggere gli appunti.",
       "rootLogicSummary": "{{main}} condizioni principali e {{grouped}} condizioni raggruppate",
       "rootLogicSummaryMainOnly": "{{main}} condizioni principali",
       "searchTasksInFilter": "Cerca attività nel filtro",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "67cb2bd7e862111b145d69b1b7074ad60045dc19f474921d269878e46286e624"
+  "sourceVersion": "bb13d3117a471122444fcbf75a726298589d8fe717a83fb4622ec97f3fd0227b"
 }

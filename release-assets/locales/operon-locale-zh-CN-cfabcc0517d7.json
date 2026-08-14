@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -354,12 +354,15 @@
       "addGroup": "+ 添加分组",
       "addSort": "+ 添加排序",
       "behaviorTitle": "筛选视图行为",
+      "clipboardDoesNotContainGroup": "剪贴板中没有 Operon 筛选分组。",
       "collapseGroup": "折叠分组",
       "conditionFieldNoMatches": "没有匹配的字段",
       "conditionFieldPickerLabel": "条件字段",
       "conditionFieldSearchPlaceholder": "搜索字段……",
       "conditions": "条件",
       "copyEmbedCode": "复制嵌入代码",
+      "copyGroup": "复制分组",
+      "copyGroupFailed": "无法复制该分组。",
       "createDailyNote": "为 {{name}} 创建笔记",
       "datePlaceholder": "yyyy-mm-dd",
       "dayOfWeekPlaceholder": "0=周日 … 6=周六",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "文件夹名称或路径",
       "group": "分组",
       "groupBy": "分组依据",
+      "groupCopied": "已复制分组。",
       "groupEmpty": "（无值）",
       "groupNone": "无",
       "logic": "条件逻辑",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "本周",
       "operator_underDaysAgo": "不到 X 天前",
       "operator_underDaysAway": "不到 X 天后",
+      "pasteGroup": "粘贴分组",
+      "pasteGroupLimitExceeded": "无法粘贴分组，因为这会超出筛选分组限制。",
+      "pasteGroupMissingField": "字段“{{field}}”不可用，无法粘贴该分组。",
+      "pasteGroupMissingProjectScope": "项目范围“{{scope}}”不可用，无法粘贴该分组。",
       "presetFilterClear": "清除",
       "presetFilterClearTooltip": "从此预设草稿中移除该筛选器。",
       "presetFilterCreate": "创建",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "选择项目序列组",
       "projectSerialGroupPrefixPlaceholder": "序列组前缀",
       "projectTreePlaceholder": "任务名称或 operonId",
+      "readGroupClipboardFailed": "无法读取剪贴板。",
       "rootLogicSummary": "{{main}} 个主条件和 {{grouped}} 个分组条件",
       "rootLogicSummaryMainOnly": "{{main}} 个主条件",
       "searchTasksInFilter": "在筛选器中搜索任务",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "fe35672aec7791719b2f140c4f0114f9313bd6674ad6e437b265f05e617c497a"
+  "sourceVersion": "991942378069f8131f67ae9c6bc68a98b791a1ba27b065a300e1754e9c69838a"
 }

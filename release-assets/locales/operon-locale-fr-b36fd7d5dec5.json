@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -354,12 +354,15 @@
       "addGroup": "+ Ajouter un groupe",
       "addSort": "+ Ajouter un tri",
       "behaviorTitle": "Comportement de la vue de filtre",
+      "clipboardDoesNotContainGroup": "Le presse-papiers ne contient aucun groupe de filtres Operon.",
       "collapseGroup": "Réduire le groupe",
       "conditionFieldNoMatches": "Aucun champ correspondant",
       "conditionFieldPickerLabel": "Champ de condition",
       "conditionFieldSearchPlaceholder": "Rechercher des champs...",
       "conditions": "conditions",
       "copyEmbedCode": "Copier le code d’intégration",
+      "copyGroup": "Copier le groupe",
+      "copyGroupFailed": "Impossible de copier le groupe.",
       "createDailyNote": "Créer une note pour {{name}}",
       "datePlaceholder": "yyyy-mm-dd",
       "dayOfWeekPlaceholder": "0=Dim … 6=Sam",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "nom ou chemin du dossier",
       "group": "Groupe",
       "groupBy": "Grouper par",
+      "groupCopied": "Groupe copié.",
       "groupEmpty": "(aucune valeur)",
       "groupNone": "aucun",
       "logic": "Logique des conditions",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "cette semaine",
       "operator_underDaysAgo": "il y a moins de X jours",
       "operator_underDaysAway": "dans moins de X jours",
+      "pasteGroup": "Coller le groupe",
+      "pasteGroupLimitExceeded": "Impossible de coller le groupe, car la limite des groupes de filtre serait dépassée.",
+      "pasteGroupMissingField": "Impossible de coller le groupe, car le champ \"{{field}}\" n’est pas disponible.",
+      "pasteGroupMissingProjectScope": "Impossible de coller le groupe, car la portée de projet \"{{scope}}\" n’est pas disponible.",
       "presetFilterClear": "Effacer",
       "presetFilterClearTooltip": "Retirez le filtre de ce brouillon de préréglage.",
       "presetFilterCreate": "Créer",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "Choisir des groupes de serial de projet",
       "projectSerialGroupPrefixPlaceholder": "préfixe du groupe de serial",
       "projectTreePlaceholder": "nom de tâche ou operonId",
+      "readGroupClipboardFailed": "Impossible de lire le presse-papiers.",
       "rootLogicSummary": "{{main}} conditions principales et {{grouped}} conditions groupées",
       "rootLogicSummaryMainOnly": "{{main}} conditions principales",
       "searchTasksInFilter": "Rechercher des tâches dans le filtre",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7634ad2bf4cdc6d1e3861d02631eabff15e4beab2cb4546d6723f013696f37ea"
+  "sourceVersion": "ab78e2626ace000134ebed3f65ead73a2ad345cfa8b5c55f0e4eaac1c8433d3c"
 }

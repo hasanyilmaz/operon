@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3026,
-  "keyFingerprint": "dd82e29e21b5273513c51d04937d07ebd94f5e0841c5245f0db4c8b02ae21cf6",
+  "keyCount": 3035,
+  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -354,12 +354,15 @@
       "addGroup": "+ グループを追加",
       "addSort": "+ 並べ替えを追加",
       "behaviorTitle": "フィルタービューの動作",
+      "clipboardDoesNotContainGroup": "クリップボードに Operon フィルターグループがありません。",
       "collapseGroup": "グループを折りたたむ",
       "conditionFieldNoMatches": "一致するフィールドはありません",
       "conditionFieldPickerLabel": "条件フィールド",
       "conditionFieldSearchPlaceholder": "フィールドを検索...",
       "conditions": "条件",
       "copyEmbedCode": "埋め込みコードをコピー",
+      "copyGroup": "グループをコピー",
+      "copyGroupFailed": "グループをコピーできませんでした。",
       "createDailyNote": "{{name}} のノートを作成",
       "datePlaceholder": "yyyy-mm-dd",
       "dayOfWeekPlaceholder": "0=日 … 6=土",
@@ -424,6 +427,7 @@
       "foldersPlaceholder": "フォルダー名またはパス",
       "group": "グループ",
       "groupBy": "グループ化基準",
+      "groupCopied": "グループをコピーしました。",
       "groupEmpty": "（値なし）",
       "groupNone": "なし",
       "logic": "条件ロジック",
@@ -508,6 +512,10 @@
       "operator_thisWeek": "今週",
       "operator_underDaysAgo": "X 日以内前",
       "operator_underDaysAway": "X 日以内後",
+      "pasteGroup": "グループを貼り付け",
+      "pasteGroupLimitExceeded": "フィルターグループの上限を超えるため、グループを貼り付けられません。",
+      "pasteGroupMissingField": "フィールド「{{field}}」が利用できないため、グループを貼り付けられません。",
+      "pasteGroupMissingProjectScope": "プロジェクトスコープ「{{scope}}」が利用できないため、グループを貼り付けられません。",
       "presetFilterClear": "クリア",
       "presetFilterClearTooltip": "このプリセットの下書きからフィルターを削除します。",
       "presetFilterCreate": "作成",
@@ -521,6 +529,7 @@
       "projectSerialGroupPickerTitle": "プロジェクトシリアルグループを選択",
       "projectSerialGroupPrefixPlaceholder": "シリアルグループのプレフィックス",
       "projectTreePlaceholder": "タスク名または operonId",
+      "readGroupClipboardFailed": "クリップボードを読み取れませんでした。",
       "rootLogicSummary": "メイン条件 {{main}} 件、グループ化された条件 {{grouped}} 件",
       "rootLogicSummaryMainOnly": "メイン条件 {{main}} 件",
       "searchTasksInFilter": "フィルター内のタスクを検索",
@@ -3071,5 +3080,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "4c6ddcf325e48912600847d2522f5477dab85ce0475787559c0a578d0f4012ef"
+  "sourceVersion": "e8ea8189f32043ad7326ad109020357fccf2eeffff85df663aaad65f468a6af9"
 }
