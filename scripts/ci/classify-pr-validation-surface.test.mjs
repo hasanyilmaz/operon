@@ -101,6 +101,19 @@ test('CLI freeze, acceptance, and cutover evidence never enters the normal Plugi
 	);
 });
 
+test('public docs coverage can evolve with Plugin docs without changing historical CLI evidence', () => {
+	assert.deepEqual(
+		classifyPullRequestValidationSurface(['scripts/agent-runtime/cli/public-docs.test.mjs']),
+		{
+			classification: 'normal-plugin',
+			pluginReleaseGuard: false,
+			cliCompatReview: false,
+			runtimeContractReview: false,
+			runtimeBaselineMutation: false,
+		},
+	);
+});
+
 test('classifier parses only exact revision arguments and NUL-delimited Git paths', () => {
 	const baseSha = 'a'.repeat(40);
 	const headSha = 'b'.repeat(40);

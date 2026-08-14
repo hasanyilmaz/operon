@@ -24,6 +24,7 @@ test('Plugin validation graph never enters CLI compatibility work', () => {
 		'docs:public-v1:test',
 		'check:cli-compat',
 	]) assert.equal(pluginGraph.has(forbidden), false, `Plugin lane must not invoke ${forbidden}.`);
+	assert.equal(pluginGraph.has('docs:package:test'), true, 'Plugin lane must validate the generated docs package.');
 	assert.equal(scripts.check, 'npm run check:plugin');
 	assert.equal(scripts['check:candidate'], 'npm run check:plugin');
 	assert.equal(Object.hasOwn(scripts, 'agent-runtime:types:check'), false);

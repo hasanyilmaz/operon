@@ -921,6 +921,7 @@ function checkPluginReleasePolicy() {
 		'npm run ci:pr-surface:test',
 		'npm run lint:strict',
 		'npm run lint:scorecard:strict',
+		'npm run docs:package:test',
 		'npm run agent-runtime:contracts:plugin',
 	]) {
 		if (!pluginCommands.includes(command)) fail(`check:plugin must run ${command}`);
@@ -943,6 +944,7 @@ function checkPluginReleasePolicy() {
 		'npm run agent-runtime:schemas:check',
 		'npm run agent-runtime:runtime-baseline:check',
 		'npm run build',
+		'npm run docs:package:test',
 		'npm run release:guard -- --scope plugin',
 		'npm run agent-runtime:cli-impact',
 	]) {
