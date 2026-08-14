@@ -15602,14 +15602,16 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 .operon-filter-group-clipboard-actions > .operon-filter-modal-button.is-icon {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
-	background: var(--background-primary);
+	background: transparent;
+	color: var(--text-muted);
 }
 
 .operon-filter-group-clipboard-actions > .operon-filter-modal-button.is-icon:hover:not(:disabled),
 .operon-filter-group-clipboard-actions > .operon-filter-modal-button.is-icon:focus-visible {
-	border-color: color-mix(in srgb, var(--interactive-accent) 38%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-secondary));
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+	border-color: var(--background-modifier-border-hover);
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	box-shadow: none;
 }
 
 .operon-settings-list-card-chip,
