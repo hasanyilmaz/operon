@@ -2,14 +2,15 @@
 
 ## Authority
 
-This document is the normative evolution policy for Runtime API V1 and CLI
-contract V1. The Public V1 scope remains authoritative for product and platform
-commitments.
+This document is the normative evolution policy for Runtime API V1. It also
+defines how the optional standalone CLI consumes that Runtime. The Public V1
+scope remains authoritative for product and platform commitments.
 
-Operon `3.x` maintains Runtime API V1. `@stratejya/operon-cli` `1.x` maintains CLI
-contract V1. Runtime and CLI compatibility are negotiated by advertised
-contract ranges and capabilities, never by assuming that Operon and CLI
-package versions are equal.
+Operon Plugin, Runtime API, and `@stratejya/operon-cli` are independently
+versioned and released. Runtime and CLI compatibility are negotiated by
+advertised contract ranges and capabilities, never by assuming that Plugin and
+CLI package versions are equal. The Plugin is the Runtime provider; the CLI is
+an optional consumer that may lag or be temporarily incompatible.
 
 ## Directional compatibility
 
@@ -35,7 +36,7 @@ authoritative for those semantic constraints.
 
 ## Breaking changes
 
-Any of the following requires Runtime API V2 or CLI contract 2:
+Any of the following requires Runtime API V2:
 
 - Removing or renaming an existing public field, command, capability, error, or
   schema entrypoint.
@@ -47,7 +48,10 @@ Any of the following requires Runtime API V2 or CLI contract 2:
   idempotency, receipt, or recovery semantics.
 - Reclassifying a known failure in a way that changes safe caller behavior.
 
-The contract compatibility classifier and fixtures enforce this list.
+The contract compatibility classifier and fixtures enforce this list. A CLI
+contract major changes only when the CLI's own public command, output, profile,
+or local-plan contract breaks; a Runtime API V2 does not itself require a CLI
+release.
 
 ## Deprecation
 
@@ -192,10 +196,10 @@ schema, generated declarations, and package copies together. After the Stage 9
 freeze is accepted, these strict input shapes follow the normal V1
 breaking-change rules.
 
-## External-reference freeze and directional baseline
+## Provider baseline and historical CLI evidence
 
-The compatibility baseline and the accepted external-reference freeze serve different
-purposes.
+The Plugin provider baseline, the optional CLI compatibility lane, and accepted
+historical external-reference freezes serve different purposes.
 
 - The compatibility baseline classifies evolution across the lifetime of V1.
   Schema definitions reachable from request or input entrypoints remain
@@ -206,30 +210,26 @@ purposes.
   or using deprecation metadata to change an existing capability or error
   meaning is breaking. The manifest deprecation inventory is part of the
   baseline.
-- Accepted external-reference freezes are append-only, versioned evidence for
-  plugin releases. Every record binds the Runtime V1 digest, immutable
-  published CLI binding and tarball, exact `main.js`, `manifest.json`, and
-  `styles.css` identities, a clean dependency-audit result, and an explicit
-  acceptance mode. The registry preserves the byte identity and evidence scope
-  of every earlier accepted record.
-- A release may use exact-pair hosted validation plus scoped plugin manual
-  acceptance when the Runtime V1 digest is unchanged and the published CLI
-  package is byte-identical to the validated candidate. Such evidence must
-  state that the published-CLI live mutation suite was not rerun and that the
-  CLI was not installed in the live vault. It must not inherit or relabel
-  historical mutation-family results as current live acceptance.
-- A release-only packaging composition may instead use automated validation
-  when its diff introduces no new product behavior. This lane requires exact
-  canonical local validation, clean audits, exact-commit hosted CI and CodeQL,
-  and a zero-skip Windows Plugin-CLI pair bound to the same candidate and
-  artifact aggregate. It must omit deployment and maintainer-acceptance claims,
-  state that live deployment was not run, and make no new live-behavior claim.
-- The standalone CLI release independently binds its registry and immutable
-  GitHub artifacts, provenance, and hosted portability evidence. The plugin
-  freeze consumes that published identity without rebuilding or republishing
-  the CLI. Any change to a freeze-bound plugin asset or external CLI identity
-  requires a new evidence record with its actual scope and a newly accepted
-  external-reference freeze.
+- The Plugin provider baseline classifies its own Runtime evolution across the
+  lifetime of V1. It must not load, hash, or compare a CLI artifact during
+  ordinary Plugin development, candidate validation, `main` validation, or
+  Plugin release.
+- `public-v1-baseline.json` is immutable throughout V1 evolution. It is not
+  rewritten to absorb a Plugin change; a proposed rewrite requires an explicit
+  release-boundary or Runtime V2 decision.
+- Additive Runtime V1 work may publish a new capability, optional response
+  field, error, deprecation, or entrypoint before CLI support exists. The
+  Runtime advertises that surface; an older CLI continues only with capabilities
+  it knows and may not infer authority from an unknown capability.
+- A current Plugin release records only its Plugin and Runtime evidence. The
+  CLI support state (`current`, `lagging`, `incompatible`, or `unknown`) is
+  informational and never blocks Plugin integration or release.
+- Standalone CLI releases independently bind their selected Runtime provider
+  baseline, package artifacts, provenance, portability, and claimed capability
+  support. A later CLI catch-up release does not require a Plugin re-release.
+- Existing external-reference freezes and paired-release records are immutable
+  historical evidence. Their exact CLI identities remain verifiable in the
+  manual CLI compatibility lane, but they are not gates for future Plugin work.
 
 External integrator and plugin-developer feedback begins after release. It is
 not a substitute for the accepted freeze or published-artifact checks.

@@ -21,11 +21,12 @@ import {
 } from '../../core/blocked-by-visual-state';
 import type { TableTaskLookup } from './table-value-adapter';
 import { formatTableDetailedDatetimeValue } from './table-datetime-format';
+import { isTableDurationLikeTaskField } from './table-display';
+import { bindTableParentTaskTooltip } from './table-parent-task-tooltip';
 
 export { formatTableDetailedDatetimeValue } from './table-datetime-format';
 
 type TableCellChipSettings = Pick<OperonSettings, 'colorPalette' | 'keyMappings' | 'pipelines' | 'priorities' | 'timeFormat'>;
-const TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH = 37;
 
 export interface TableCellChipRenderOptions {
 	column?: Pick<TableColumn, 'key' | 'colorMode'>;
@@ -43,10 +44,21 @@ export interface TableCellChipGroupRenderOptions extends TableCellChipRenderOpti
 	chipClassName: string;
 }
 
+export function isTableDateLikeFieldType(type: string | null | undefined): boolean {
+	return type === 'date' || type === 'datetime';
+}
+
+export function decorateTableDateValueChip(chip: HTMLElement, type: string | null | undefined): void {
+	if (isTableDateLikeFieldType(type)) chip.addClass('operon-table-date-value-chip');
+}
+
 interface TableCellChipItem {
 	rawValue: string;
 	displayValue: string;
-	tooltipContent?: string;
+}
+
+interface TableListValueChipOptions {
+	tooltipMode?: 'overflow' | 'none';
 }
 
 export function renderTableCellChips(
@@ -55,8 +67,9 @@ export function renderTableCellChips(
 	value: string,
 	options: TableCellChipGroupRenderOptions,
 ): void {
+	const listField = isTableListChipField(key, options);
 	const items = getTableCellChipItems(key, value, options);
-	const chipParent = items.length > 1
+	const chipParent = listField
 		? container.createSpan('operon-table-cell-chip-list')
 		: container;
 	for (const item of items) {
@@ -65,14 +78,40 @@ export function renderTableCellChips(
 			...options,
 			accentValue: item.rawValue,
 		});
-		if (item.tooltipContent) {
-			bindOperonHoverTooltip(chip, {
-				content: item.tooltipContent,
-				taskColor: null,
-				preferredHorizontal: 'center',
+		if (listField) {
+			decorateTableListValueChip(chip, item.displayValue, {
+				tooltipMode: key === 'links' && options.onExternalLinkModifierActivate
+					? 'none'
+					: 'overflow',
 			});
 		}
 	}
+}
+
+export function decorateTableListValueChip(
+	chip: HTMLElement,
+	displayValue: string,
+	options: TableListValueChipOptions = {},
+): void {
+	chip.addClass('operon-table-list-value-chip');
+	const tooltipMode = options.tooltipMode ?? 'overflow';
+	if (tooltipMode === 'none' || !displayValue) return;
+	bindOperonHoverTooltip(chip, {
+		content: displayValue,
+		taskColor: null,
+		preferredHorizontal: 'center',
+		shouldOpen: () => isTableListValueChipOverflowing(chip),
+	});
+}
+
+export function isTableListValueChipOverflowing(chip: HTMLElement): boolean {
+	const overflowTarget = chip.querySelector<HTMLElement>('.operon-table-cell-chip-label') ?? chip;
+	if (overflowTarget.scrollWidth > overflowTarget.clientWidth + 1) return true;
+	const clippingParent = chip.closest<HTMLElement>('.operon-table-cell-chip-list');
+	if (!clippingParent) return false;
+	const chipRect = chip.getBoundingClientRect();
+	const parentRect = clippingParent.getBoundingClientRect();
+	return chipRect.left < parentRect.left - 1 || chipRect.right > parentRect.right + 1;
 }
 
 export function renderTableCellChipContent(
@@ -81,6 +120,12 @@ export function renderTableCellChipContent(
 	value: string,
 	options: TableCellChipRenderOptions = {},
 ): void {
+	const field = options.settings ? getTableTaskField(key, options.settings) : null;
+	if (key === 'parentTask') chip.addClass('operon-table-parent-task-chip');
+	if (options.settings && isTableDurationLikeTaskField(key, options.settings)) {
+		chip.addClass('operon-table-duration-like-chip');
+	}
+	decorateTableDateValueChip(chip, field?.type);
 	applyTableCellChipAccent(chip, key, value, options);
 	const externalLink = resolveTableExternalLink(key, value, options);
 	if (externalLink) {
@@ -88,6 +133,13 @@ export function renderTableCellChipContent(
 		return;
 	}
 	const displayValue = formatTableDetailedDatetimeValue(key, value, options.settings);
+	if (isTableListChipField(key, options) && !isTableDependencyField(key)) {
+		chip.createSpan({
+			cls: 'operon-table-cell-chip-label',
+			text: displayValue,
+		});
+		return;
+	}
 	const locationVisual = resolveTableLocationCellVisual(key, value, options);
 	if (locationVisual) {
 		renderTableLocationChipContent(
@@ -99,7 +151,6 @@ export function renderTableCellChipContent(
 		return;
 	}
 	if (isTableValueIconField(key, options)) {
-		const field = options.settings ? getTableTaskField(key, options.settings) : null;
 		const preserveDateIconSlot = field?.type === 'date' || field?.type === 'datetime';
 		renderTableValueIconChipContent(
 			chip,
@@ -118,6 +169,15 @@ export function renderTableCellChipContent(
 	}
 	if (key !== 'taskIcon') {
 		chip.setText(displayValue);
+		const parentTaskId = key === 'parentTask' ? (options.accentValue ?? value).trim() : '';
+		if (parentTaskId && options.taskLookup?.getTask(parentTaskId)) {
+			bindTableParentTaskTooltip(
+				chip,
+				displayValue,
+				parentTaskId,
+				resolveTableCellChipAccent(key, value, options),
+			);
+		}
 		return;
 	}
 	renderTableTaskIconChipContent(chip, value);
@@ -183,8 +243,7 @@ function getTableCellChipItems(
 			const description = resolveTableDependencyDescription(operonId, taskLookup);
 			return {
 				rawValue,
-				displayValue: truncateTableDependencyDescription(description),
-				tooltipContent: description,
+				displayValue: description,
 			};
 		});
 	}
@@ -217,11 +276,6 @@ function resolveTableDependencyDescription(operonId: string, taskLookup: TableTa
 	return taskLookup.getTask(operonId)?.description.trim() || operonId;
 }
 
-function truncateTableDependencyDescription(value: string): string {
-	if (value.length <= TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH) return value;
-	return `${value.slice(0, TABLE_DEPENDENCY_DESCRIPTION_MAX_LENGTH - 3).trimEnd()}...`;
-}
-
 function isTableListChipField(key: string, options: TableCellChipRenderOptions): boolean {
 	if (!options.settings) return false;
 	const field = getTableTaskField(key, options.settings);
@@ -236,7 +290,7 @@ function isTableValueIconField(key: string, options: TableCellChipRenderOptions)
 	return field?.type === 'date' || field?.type === 'datetime';
 }
 
-function formatTableCellListChipDisplayValue(rawValue: string): string {
+export function formatTableCellListChipDisplayValue(rawValue: string): string {
 	const trimmed = rawValue.trim();
 	const match = /^!?\[\[([^\]]+)\]\]$/u.exec(trimmed);
 	if (!match) return rawValue;
@@ -250,6 +304,14 @@ function formatTableCellListChipDisplayValue(rawValue: string): string {
 	const linkTarget = (pipeIndex >= 0 ? body.slice(0, pipeIndex) : body).trim();
 	if (!linkTarget) return rawValue;
 	return formatTableCellWikiLinkTargetLabel(linkTarget) || rawValue;
+}
+
+export function formatTableListIconOnlyTooltipContent(values: readonly string[]): string {
+	return values
+		.map(formatTableCellListChipDisplayValue)
+		.map(value => value.trim())
+		.filter(Boolean)
+		.join('\n');
 }
 
 function formatTableCellWikiLinkTargetLabel(linkTarget: string): string {
@@ -345,10 +407,7 @@ function applyTableCellChipAccent(
 	value: string,
 	options: TableCellChipRenderOptions,
 ): void {
-	const accent = resolveTableCellChipAccent(key, value, options);
-	if (accent) {
-		applyTableCellAccentVariables(chip, accent);
-	}
+	applyTableColumnCellAccent(chip, options.column ?? { key }, options.accentValue ?? value, options);
 	const blockedByStateAccent = resolveTableCellBlockedByStateAccent(key, value, options);
 	if (blockedByStateAccent) {
 		chip.addClass('operon-table-blocked-by-state-chip');
@@ -360,6 +419,14 @@ function applyTableCellChipAccent(
 	chip.addClass('operon-table-date-state-chip');
 	chip.addClass(dateStateAccent.tone === 'today' ? 'is-today' : 'is-overdue');
 	applyTableCellAccentVariables(chip, dateStateAccent.color);
+}
+
+function resolveTableCellChipAccent(
+	key: string,
+	value: string,
+	options: TableCellChipRenderOptions,
+): string | null {
+	return resolveTableColumnCellAccent(options.column ?? { key }, options.accentValue ?? value, options);
 }
 
 function resolveTableCellBlockedByStateAccent(
@@ -379,14 +446,6 @@ function resolveTableCellBlockedByStateAccent(
 	return resolveBlockedByVisualStateColor(state);
 }
 
-function resolveTableCellChipAccent(
-	key: string,
-	value: string,
-	options: TableCellChipRenderOptions,
-): string | null {
-	return resolveTableColumnCellAccent(options.column ?? { key }, options.accentValue ?? value, options);
-}
-
 function resolveTableCellDateStateAccent(
 	key: string,
 	value: string,
@@ -398,10 +457,30 @@ function resolveTableCellDateStateAccent(
 	return { tone, color };
 }
 
-function applyTableCellAccentVariables(chip: HTMLElement, accent: string): void {
-	chip.addClass('operon-table-field-accent-chip');
-	chip.style.setProperty('--operon-table-field-accent', accent);
-	chip.style.setProperty('--operon-inline-chip-icon-color', accent);
-	chip.style.setProperty('--operon-task-chip-hover-accent', accent);
-	chip.style.setProperty('--operon-live-hover-border', accent);
+function applyTableCellAccentVariables(target: HTMLElement, accent: string, decorateAsChip = true): void {
+	if (decorateAsChip) target.addClass('operon-table-field-accent-chip');
+	target.setCssProps({
+		'--operon-table-field-accent': accent,
+		'--operon-inline-chip-icon-color': accent,
+		'--operon-task-chip-hover-accent': accent,
+		'--operon-task-chip-hover-border': 'color-mix(in srgb, var(--operon-table-field-accent) 62%, var(--background-modifier-border))',
+		'--operon-task-chip-focus-ring': 'color-mix(in srgb, var(--operon-task-chip-hover-border) 38%, transparent)',
+		'--operon-live-hover-border': accent,
+	});
+}
+
+export function applyTableColumnCellAccent(
+	target: HTMLElement,
+	column: Pick<TableColumn, 'key' | 'colorMode'>,
+	value: string,
+	options: {
+		task?: IndexedTask;
+		settings?: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities'>;
+		workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
+		decorateAsChip?: boolean;
+	} = {},
+): string | null {
+	const accent = resolveTableColumnCellAccent(column, value, options);
+	if (accent) applyTableCellAccentVariables(target, accent, options.decorateAsChip);
+	return accent;
 }

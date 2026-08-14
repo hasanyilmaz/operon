@@ -18,6 +18,9 @@ Run from the Operon plugin root:
 node scripts/agent-runtime/contracts/run-contract-tests.mjs
 ```
 
-The package integration command is `agent-runtime:contracts`. It requires Ajv
-8 as an explicit development dependency. Ajv is test-only and is not imported
-by production Operon code.
+The Plugin-provider integration command is `agent-runtime:contracts:plugin`.
+`agent-runtime:contracts` remains a backwards-compatible alias for that
+Plugin-only lane. The exact published-CLI binding, tarball, and historical
+freeze checks live in the separate manual `check:cli-compat` lane and never
+block normal Plugin validation. Ajv 8 is an explicit development dependency;
+it is test-only and is not imported by production Operon code.

@@ -1,0 +1,32 @@
+{
+  "createdAt": "2026-08-10T16:30:00.000Z",
+  "source": {
+    "pluginVersion": "3.2.1",
+    "obsidianVersion": "1.13.0",
+    "dataPackageSchemaVersion": 2,
+    "settingsVersion": 111
+  },
+  "scope": {
+    "configuration": "portable",
+    "tableFiles": "excluded",
+    "externalCalendarUrls": "included",
+    "developerApiGrants": "excluded",
+    "mobileIdentity": "excluded",
+    "operationalState": "excluded",
+    "runtime": "excluded",
+    "cache": "excluded"
+  },
+  "groups": {
+    "general": { "codecVersion": 1, "data": { "fileTasksFolder": "Tasks", "language": "tr" } },
+    "pipelines": { "codecVersion": 1, "data": { "pipelines": [{ "id": "pipe-work", "name": "Work", "statuses": [{ "id": "status-open", "label": "Open", "color": "#336699", "isFinished": false, "isCancelled": false, "isScheduledTarget": false, "isTrackingTarget": false, "propertyMapping": null }] }], "defaultPipelineName": "Work" } },
+    "priorities": { "codecVersion": 1, "data": { "priorities": [{ "id": "priority-high", "label": "High", "color": "#cc0000" }], "defaultPriority": "High" } },
+    "system-key-mappings": { "codecVersion": 1, "data": { "overrides": [{ "canonicalKey": "status", "visiblePropertyName": "State", "icon": "circle", "hideInFileTaskView": false }] } },
+    "custom-keys": { "codecVersion": 1, "data": { "customKeys": [{ "canonicalKey": "client", "visiblePropertyName": "Client", "type": "text", "sync": "yes", "enabled": true, "isSystem": false, "customOrder": 0, "showInKanbanSwimlane": true }] } },
+    "filters": { "codecVersion": 1, "data": { "filterSets": [{ "id": "filter-client", "name": "Client A", "rootGroup": { "id": "group-client", "logic": "all", "children": [{ "id": "condition-client", "field": "client", "fieldType": "text", "operator": "is", "value": "A" }] }, "sorts": [], "matchLogic": "all", "conditions": [{ "id": "condition-client", "field": "client", "fieldType": "text", "operator": "is", "value": "A" }] }] } },
+    "calendar": { "codecVersion": 1, "data": { "calendarPresets": [{ "id": "calendar-client", "name": "Client calendar", "surfaceType": "timeGrid", "weekCount": 1, "focusedWeekNumber": 1, "dayCount": 7, "todayPosition": 1, "slotMinutes": 30, "filterSetId": "filter-client", "navigationMode": "toolbar", "showAllDayLane": true, "showDueMarkers": true, "showWeekends": true, "showProjectedOccurrences": true, "showExternalCalendars": true, "hiddenTimeStart": "00:00", "hiddenTimeEnd": "23:45", "colorSource": "taskColor", "appearanceModeLight": "theme", "appearanceModeDark": "theme", "externalCalendarVisibility": { "private-calendar": true } }], "calendarDefaultPresetId": "calendar-client", "calendarMobileDefaultSourcePresetId": "calendar-client", "calendarMobileAgendaSourcePresetId": "calendar-client", "calendarMobileDaySourcePresetId": "calendar-client", "calendarMobileTwoDaySourcePresetId": "calendar-client", "calendarMobileThreeDaySourcePresetId": "calendar-client" } },
+    "kanban": { "codecVersion": 1, "data": { "kanbanPresets": [{ "id": "kanban-client", "name": "Client board", "pipelineId": "pipe-work", "filterSetId": "filter-client", "swimlaneBy": "client", "colorSource": "taskColor", "appearanceModeLight": "theme", "appearanceModeDark": "theme", "collapseEmptyColumns": false, "collapseEmptySwimlanes": false, "autoCollapseFinishedColumns": false, "sortMode": "automatic", "sortRules": [{ "field": "client", "direction": "asc", "empty": "last" }] }], "kanbanDefaultPresetId": "kanban-client" } },
+    "preset-favorites": { "codecVersion": 1, "data": { "presetFavorites": { "calendar": ["calendar-client"], "kanban": ["kanban-client"], "filter": ["filter-client"], "table": [] } } },
+    "table-global": { "codecVersion": 1, "data": { "tableEmbedVisibleRows": 20, "tableShowLineNumbers": true, "tableShowTaskIcon": true, "tableShowTaskTypeIcon": false } },
+    "external-calendars": { "codecVersion": 1, "data": { "externalCalendars": [{ "id": "private-calendar", "type": "ics", "name": "Private", "url": "https://example.invalid/private-token.ics", "color": "#336699", "enabled": true, "hideCreatedEvents": false, "refreshIntervalHours": 6 }] } }
+  }
+}

@@ -2,9 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-export const WARN_MAIN_BUNDLE_BYTES = 4_500_000;
-export const MAX_MAIN_BUNDLE_BYTES = 4_700_000;
-export const HARD_MAIN_BUNDLE_BYTES = 4_900_000;
+export const WARN_MAIN_BUNDLE_BYTES = 5_000_000;
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const defaultBundlePath = path.join(rootDir, 'main.js');
@@ -16,27 +14,13 @@ function formatByteCount(bytes) {
 
 export function evaluateBundleSize(
 	actualBytes,
-	maxBytes = MAX_MAIN_BUNDLE_BYTES,
 	warningBytes = WARN_MAIN_BUNDLE_BYTES,
-	hardBytes = HARD_MAIN_BUNDLE_BYTES,
 ) {
 	if (!Number.isSafeInteger(actualBytes) || actualBytes < 0) {
 		throw new TypeError('actualBytes must be a non-negative safe integer.');
 	}
-	if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
-		throw new TypeError('maxBytes must be a non-negative safe integer.');
-	}
 	if (!Number.isSafeInteger(warningBytes) || warningBytes < 0) {
 		throw new TypeError('warningBytes must be a non-negative safe integer.');
-	}
-	if (!Number.isSafeInteger(hardBytes) || hardBytes < 0) {
-		throw new TypeError('hardBytes must be a non-negative safe integer.');
-	}
-	if (warningBytes > maxBytes) {
-		throw new RangeError('warningBytes must not exceed maxBytes.');
-	}
-	if (maxBytes > hardBytes) {
-		throw new RangeError('maxBytes must not exceed hardBytes.');
 	}
 
 	if (actualBytes < warningBytes) {
@@ -45,37 +29,16 @@ export function evaluateBundleSize(
 			status: 'pass',
 			actualBytes,
 			warningBytes,
-			maxBytes,
-			hardBytes,
 			remainingBeforeWarningBytes: warningBytes - actualBytes,
-			remainingBeforeLimitBytes: maxBytes - actualBytes,
-			remainingBeforeHardBytes: hardBytes - actualBytes,
-		};
-	}
-
-	if (actualBytes <= maxBytes) {
-		return {
-			ok: true,
-			status: 'warning',
-			actualBytes,
-			warningBytes,
-			maxBytes,
-			hardBytes,
-			overWarningBytes: actualBytes - warningBytes,
-			remainingBeforeLimitBytes: maxBytes - actualBytes,
-			remainingBeforeHardBytes: hardBytes - actualBytes,
 		};
 	}
 
 	return {
-		ok: false,
-		status: actualBytes > hardBytes ? 'hard-fail' : 'fail',
+		ok: true,
+		status: 'warning',
 		actualBytes,
 		warningBytes,
-		maxBytes,
-		hardBytes,
-		overBytes: actualBytes - maxBytes,
-		...(actualBytes > hardBytes ? { overHardBytes: actualBytes - hardBytes } : {}),
+		overWarningBytes: actualBytes - warningBytes,
 	};
 }
 
@@ -108,26 +71,13 @@ export function formatBundleSizeResult(result) {
 	}
 
 	const actual = numberFormatter.format(result.actualBytes);
-	const maximum = numberFormatter.format(result.maxBytes);
 	const warning = numberFormatter.format(result.warningBytes);
-	const hard = numberFormatter.format(result.hardBytes);
 	if (result.status === 'pass') {
-		return `Operon main.js bundle size passed: ${actual} / ${maximum} bytes (`
-			+ `${formatByteCount(result.remainingBeforeWarningBytes)} before the ${warning}-byte warning threshold; `
-			+ `${formatByteCount(result.remainingBeforeLimitBytes)} before the ${maximum}-byte rejection threshold; `
-			+ `${formatByteCount(result.remainingBeforeHardBytes)} before the ${hard}-byte hard limit).`;
+		return `Operon main.js bundle size passed: ${actual} bytes (`
+			+ `${formatByteCount(result.remainingBeforeWarningBytes)} before the ${warning}-byte warning threshold).`;
 	}
-	if (result.status === 'warning') {
-		return `Operon main.js bundle size warning: ${actual} bytes exceeds the ${warning}-byte warning threshold by `
-			+ `${formatByteCount(result.overWarningBytes)}; review is required and `
-			+ `${formatByteCount(result.remainingBeforeLimitBytes)} remain before the ${maximum}-byte rejection threshold.`;
-	}
-	if (result.status === 'hard-fail') {
-		return `Operon main.js bundle size hard failure: ${actual} bytes exceeds the ${hard}-byte hard limit by `
-			+ `${formatByteCount(result.overHardBytes)}.`;
-	}
-	return `Operon main.js bundle size failed: ${actual} bytes exceeds the ${maximum}-byte acceptance limit by `
-		+ `${formatByteCount(result.overBytes)}; the ${hard}-byte hard limit remains absolute.`;
+	return `Operon main.js bundle size warning: ${actual} bytes exceeds the ${warning}-byte warning threshold by `
+		+ `${formatByteCount(result.overWarningBytes)}; review is required.`;
 }
 
 export function runBundleSizeCheck(

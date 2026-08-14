@@ -9,7 +9,8 @@ import {
 	buildWorkflowStatusIdentityIndex,
 	type WorkflowStatusIdentityIndex,
 } from '../core/workflow-status-identity';
-import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
+import { normalizeTaskFieldColor, resolveTaskStatusIconColorForTask } from '../core/task-color-source';
+import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
 import { t } from '../core/i18n';
 import { formatTaskNotice } from '../core/task-notice';
@@ -29,6 +30,7 @@ interface TimeSessionHistoryViewCallbacks {
 	getPipelines: () => import('../types/pipeline').Pipeline[];
 	getSettings: () => OperonSettings;
 	startTimerForTask: (operonId: string, source: TrackerSource) => Promise<boolean>;
+	updateTaskFields: (operonId: string, payload: Record<string, string>) => Promise<boolean>;
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
@@ -220,8 +222,18 @@ export class TimeSessionHistoryView extends ItemView {
 		intervalButton.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
+			const task = this.indexer.getTask(session.operonId) ?? session.task;
 			new TrackerSessionEditModal(this.app, {
 				title: t('taskEditor', 'editSession'),
+				taskNote: {
+					operonId: session.operonId,
+					sourcePath: task.primary.filePath,
+					initialValue: task.fieldValues['note'] ?? '',
+					taskDescription: task.description,
+					taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+					icon: getConfiguredKeyMappingIcon('note', context.settings.keyMappings) || 'notebook-pen',
+					onCommit: value => this.callbacks.updateTaskFields(session.operonId, { note: value }),
+				},
 				...buildTrackerSessionEditContext({
 					taskLabel: formatTimeSessionHistoryTaskDescription(session.task),
 					start: session.start,

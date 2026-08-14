@@ -4,7 +4,7 @@ import { t } from '../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { snapshotFloatingRectAnchor } from './field-pickers/common';
 import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
-import { showTextFieldPopover } from './text-field-popover';
+import { showTextFieldPopover, type TextFieldPopoverCloseHandle } from './text-field-popover';
 
 export interface TaskNoteActionButtonOptions {
 	owner: Node;
@@ -69,7 +69,7 @@ export function createTaskNoteActionButton(options: TaskNoteActionButtonOptions)
  * Note drafts use compact single-line editing while preserving untouched
  * legacy source values, and reuse one active session key per task note.
  */
-export function showTaskNotePopover(options: TaskNotePopoverOptions): () => void {
+export function showTaskNotePopover(options: TaskNotePopoverOptions): TextFieldPopoverCloseHandle {
 	const operonId = options.operonId.trim();
 	const anchorEl = asHTMLElement(options.anchor);
 	const stableAnchor = anchorEl

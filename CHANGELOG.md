@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [3.3.0] - 2026-08-13
+
+Operon 3.3.0 adds portable Backup & Restore and expands Table customization, context, editing, and visual feedback across workspace, embedded, sidebar, and mobile surfaces.
+
+### New
+
+- Added **Backup & Restore** in Core Settings, with portable JSON download, previewed restore and vault-reference choices, session recovery, reset to current defaults, and a linked **Back up and restore settings** guide. Vault content and `.table` files are preserved.
+- Added a preset-wide **Table color mode**, allowing eligible visible columns to use Custom colors, No color, Task color, Priority color, or Status color while preserving supported per-column choices.
+- Added contextual **parent task rows** for **Table Parent Task grouping**, including parent-scoped File Property values and consistent editing and focus behavior across workspace and embedded Tables.
+- Added a **Notes action** to **Time Tracker Add/Edit Session dialogs**, allowing task notes to be opened and edited directly while adding or adjusting tracked-time sessions across supported task surfaces.
+
+### Improved
+
+- Improved **Table text editing** so filled generic text and File Property text cells open directly in the compact Text pop-over, while empty values retain their existing picker and candidate flow; clearing a File Property text value removes that property.
+- Improved **Table list values** with readable wikilink labels, complete user-facing tooltips, bordered compact icons, stable ellipsis behavior, and unclipped detailed-chip glow.
+- Improved eligible **File Property columns** with consistent per-column color accents, detailed and compact rendering, accessibility, picker ownership, and workspace and embedded Table parity.
+- Improved **empty Table cells** by removing visible double-dash placeholders from body and summary cells while preserving click, keyboard, source, checkbox, and editing behavior.
+- Improved **Checkbox Progress cells** so empty editable cells remain visually blank but can still open the checkbox pop-over by click or keyboard, with desktop Table pop-overs anchored to their owning cells.
+- Improved **Parent ID cells** so empty values retain the parent picker, assigned parents open their Task Editor on click, and Command-click on macOS or Ctrl-click elsewhere opens the parent task source in a new tab; hover tooltips now explain the platform-specific shortcut.
+- Standardized **Duration, Total Duration, Estimate, and Total Estimate cells** on the same neutral border and glow treatment used by other structured Table values.
+- Improved **Table hover and focus feedback** with consistent bordered-control glow, desktop row-wide value highlighting without opening sibling tooltips, individual 1 px glow around detailed progress segments, and subtler 1 px active-row rails.
+- Improved compact navigation surfaces: **Table toolbars in desktop sidebars** reveal starred preset shortcuts in a wrapping second row together with the hover or focus rail, Calendar and Filter sidebar toolbars use the same behavior, and mobile Tables retain a smaller always-accessible toolbar set.
+- Improved the Table preset Settings tooltip so it includes the **selected preset name**.
+
+### Fixed
+
+- Fixed the **Task Color column** accepting incompatible color modes instead of always using the task's own color.
+- Fixed generic text routing overriding the specialized **Status, Priority, Task Icon, and Task Color** pickers and their detailed or compact icon and color presentation.
+- Fixed **Blocking and Blocked By columns** losing their dependency icons and semantic active or resolved colors.
+- Fixed **date and datetime chips** gaining colored fills in non-default color modes; their fills remain neutral while borders, icons, and glow retain the selected accent.
+- Fixed bordered Table values gaining a colored fill when a column used **No color**, or when its selected Task, Status, or Priority color source was empty; the fill now stays neutral while border and glow feedback remains available.
+- Fixed colored Table values reverting to the generic accent border on hover; Task, Status, Priority, Random, date-state, and dependency colors now retain their own border semantics.
+- Fixed compact **File Property list columns** bypassing the shared bordered icon, tooltip, accessibility, and picker behavior.
+- Fixed bordered Table controls showing inconsistent, incomplete, or clipped glow across editable, readonly, disabled, detailed, and compact states.
+
+### Validation
+
+- Validated on Node 24.18.0 / npm 11.12.1 with the complete public `npm run check:local` gate, all six Backup & Restore suites (85 tests), focused Table and session suites, fresh 2,998-key and nine-pack i18n checks, production build, release guard, accepted-clean dependency audit, and persistence, Table, UI, and CSS review.
+
 ## [3.2.1] - 2026-08-09
 
 Operon 3.2.1 is a Plugin-only patch release. Operon CLI remains at 1.1.0 and the Runtime contract remains at V1.

@@ -2,7 +2,7 @@
 Notes: Where Operon keeps its settings, working state, and rebuildable index
 Icon: folder-cog
 Color: "#0891b2"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-12T17:21:45
 ---
 
 # Plugin data and state files
@@ -33,7 +33,7 @@ None of your tasks live in these files. They are in your Markdown notes. If thes
 
 **Will I lose tasks if I delete the plugin data?** No. Tasks are in your notes. You would lose settings and the index, which Operon rebuilds.
 
-**Do I need to back these up separately?** No. Backing up your vault captures the plugin folder along with your notes.
+**Do I need to back these up separately?** No. Backing up your vault captures the plugin folder along with your notes. Operon can also export a portable settings backup when you want to move configuration without copying the whole vault. See [[DOCS-134 Backup and restore settings|Back up and restore settings]].
 
 **Where are my settings stored?** In the plugin folder, `.obsidian/plugins/operon/`, not mixed into your notes.
 

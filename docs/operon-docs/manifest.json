@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-08-03T09:28:33.575Z",
+  "generatedAt": "2026-08-12T15:37:56.353Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -10,8 +10,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "f6ded2bcb036b06013288f6f9d3818f19933f5652c35c4e17799d8fef6ad3b33",
-      "bytes": 10454
+      "sha256": "491124e48c57ce73fdfdbf56eced4e803759439ed0c23e56e0965a5fe3f4ed71",
+      "bytes": 10526
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -225,8 +225,8 @@
     },
     {
       "path": "DOCS-044 Where Operon stores data.md",
-      "sha256": "bc954fb83ca573b78f66cd454ff3c092dc80c164bb913450e8bb066b207dc4ca",
-      "bytes": 2796
+      "sha256": "b11298c7d7f38bce3982bb60376f80a92a7d9f75af860422f87ebcbdb85cbcf3",
+      "bytes": 2928
     },
     {
       "path": "DOCS-045 Markdown task storage.md",
@@ -235,8 +235,8 @@
     },
     {
       "path": "DOCS-046 Plugin data and state files.md",
-      "sha256": "b3dac346872a0533d392cacdafbc6aa45924225b8605fadce2dcde1c97c179a0",
-      "bytes": 2936
+      "sha256": "b30ce270fc13d7efef51df60f1e9ca96f08cbbca9b9f2700b51c00be42e353e8",
+      "bytes": 3130
     },
     {
       "path": "DOCS-047 Sync conflict safety.md",
@@ -672,6 +672,11 @@
       "path": "DOCS-133 JSONL sessions for scripts and agents.md",
       "sha256": "fb0e5e7f9a5881270ae71bc8eeadd71e42520c3c269dc767395154e407dd002c",
       "bytes": 7141
+    },
+    {
+      "path": "DOCS-134 Backup and restore settings.md",
+      "sha256": "8512761ebaa89201549bc631fc2178c9f834e6ce84056eb63859b00bbd553395",
+      "bytes": 5599
     }
   ]
 }
