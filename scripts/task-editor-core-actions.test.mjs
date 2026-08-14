@@ -36,11 +36,11 @@ test('Task Editor subtask action stays icon-only with its localized accessible l
 test('Task Editor subtask action uses the compact icon-button geometry', () => {
 	assert.match(
 		styles,
-		/\.operon-editor-core-checkbox-popover-action,[\s\S]*?\.operon-editor-core-subtask-action,[\s\S]*?width: 34px;\s*padding: 0;\s*\}/u,
+		/\.operon-editor-core-checkbox-popover-action,\s*\.operon-editor-core-subtask-action \{\s*width: 34px;\s*padding: 0;\s*\}/u,
 	);
 });
 
-test('Task Editor keeps its icon-only Remove behavior and contains no conversion action', () => {
+test('Task Editor keeps its full-width Remove behavior and contains no conversion action', () => {
 	const removeControl = taskEditorSource.slice(
 		taskEditorSource.indexOf('\tprivate renderRemoveControl('),
 		taskEditorSource.indexOf('\n\tprivate async handleRemoveTaskClick('),
@@ -51,8 +51,8 @@ test('Task Editor keeps its icon-only Remove behavior and contains no conversion
 	);
 	assert.doesNotMatch(removeControl, /unlink|convertToPlain/u);
 	assert.match(removeControl, /setAccessibleLabelWithoutTooltip\(button, t\('buttons', 'remove'\)\);/u);
-	assert.match(removeControl, /this\.bindTaskEditorTooltip\(button, t\('buttons', 'remove'\)\);/u);
-	assert.doesNotMatch(removeControl, /button\.createSpan/u, 'Remove must not regain visible button text');
+	assert.match(removeControl, /button\.createSpan\(\{ text: t\('buttons', 'remove'\) \}\);/u);
+	assert.doesNotMatch(removeControl, /operon-editor-terminal-action-cluster|bindTaskEditorTooltip/u);
 	assert.match(removeHandler, /await this\.onRequestDelete\(this\.existingTask\)/u);
 	assert.match(removeHandler, /this\.requestEditorClose\('force-after-delete'\)/u);
 });
@@ -72,10 +72,7 @@ test('Command-only conversion uses direct atomic source mutation and never Task 
 	assert.doesNotMatch(mainSource, /retryInlineEditorSave|retryEditorSave/u);
 	assert.match(mainSource, /converted task source but immediate reindex failed/u);
 	assert.match(mainSource, /converted task source but automatic unpin failed/u);
-	assert.match(
-		styles,
-		/\.operon-editor-terminal-action-cluster > \.operon-editor-core-action-btn \{\s*width: 34px;\s*min-width: 34px;\s*height: 34px;\s*min-height: 34px;/u,
-	);
+	assert.doesNotMatch(styles, /operon-editor-terminal-action-cluster/u);
 });
 
 test('File conversion modal locks every interactive control while its single apply is pending', () => {

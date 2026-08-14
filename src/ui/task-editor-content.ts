@@ -4999,7 +4999,6 @@ export class TaskEditorContent {
 
 		const control = this.createInlineField(container, '');
 		control.parentElement?.addClass('operon-editor-remove-field');
-		control.addClass('operon-editor-terminal-action-cluster');
 
 		const button = control.createEl('button', {
 			cls: 'operon-editor-core-action-btn operon-editor-core-danger-btn operon-editor-picker-button',
@@ -5009,8 +5008,8 @@ export class TaskEditorContent {
 		});
 		const icon = getIcon('trash-2') ?? getIcon('trash');
 		if (icon) button.appendChild(icon);
+		button.createSpan({ text: t('buttons', 'remove') });
 		setAccessibleLabelWithoutTooltip(button, t('buttons', 'remove'));
-		this.bindTaskEditorTooltip(button, t('buttons', 'remove'));
 
 		button.addEventListener('click', () => {
 			void this.handleRemoveTaskClick();

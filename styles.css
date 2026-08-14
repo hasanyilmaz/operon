@@ -9388,25 +9388,8 @@ body .operon-task-editor button.operon-task-editor-title-file-toggle.is-active {
 }
 
 .operon-editor-core-checkbox-popover-action,
-.operon-editor-core-subtask-action,
-.operon-editor-terminal-action-cluster > .operon-editor-core-danger-btn {
+.operon-editor-core-subtask-action {
 	width: 34px;
-	padding: 0;
-}
-
-.operon-editor-terminal-action-cluster {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 8px;
-	min-height: 100%;
-}
-
-.operon-editor-terminal-action-cluster > .operon-editor-core-action-btn {
-	width: 34px;
-	min-width: 34px;
-	height: 34px;
-	min-height: 34px;
 	padding: 0;
 }
 
