@@ -18,6 +18,7 @@ test('named group footers expose icon-only Copy group with Operon tooltip and ac
 	);
 	assert.match(footerActions, /if \(!isRoot\) \{/u);
 	assert.match(footerActions, /operon-filter-group-copy-button/u);
+	assert.match(footerActions, /'operon-filter-modal-add-button',[\s\S]*?'operon-filter-group-clipboard-button'/u);
 	assert.match(footerActions, /setIcon\(copyBtn, 'copy'\)/u);
 	assert.match(footerActions, /setAccessibleLabelWithoutTooltip\(copyBtn, t\('filterSets', 'copyGroup'\)\)/u);
 	assert.match(footerActions, /bindOperonHoverTooltip\(copyBtn, \{ content: t\('filterSets', 'copyGroup'\)/u);
@@ -29,6 +30,11 @@ test('named group footers expose icon-only Copy group with Operon tooltip and ac
 test('every rendered group footer exposes icon-only Paste group without changing Add Group', () => {
 	assert.match(groupEditor, /addGroupBtn[\s\S]*?group\.children\.push\(\{\s*id: generateGroupId\(\),\s*logic: 'all',\s*children: \[\],/u);
 	assert.match(groupEditor, /operon-filter-group-paste-button/u);
+	assert.equal((groupEditor.match(/'operon-filter-modal-add-button'/g) ?? []).length, 4);
+	assert.doesNotMatch(
+		groupEditor,
+		/this\.addClasses\((?:copyBtn|pasteGroupBtn),[^;]*?'is-icon'[^;]*?\);/u,
+	);
 	assert.match(groupEditor, /const pasteGroupBtn = clipboardActions\.createEl\('button'\)/u);
 	assert.match(groupEditor, /setIcon\(pasteGroupBtn, 'clipboard-paste'\)/u);
 	assert.match(groupEditor, /setAccessibleLabelWithoutTooltip\(pasteGroupBtn, t\('filterSets', 'pasteGroup'\)\)/u);
@@ -57,7 +63,11 @@ test('group footer wraps icon actions on narrow surfaces', () => {
 	);
 	assert.match(
 		styles,
-		/\.operon-filter-group-clipboard-actions \{[\s\S]*?margin-left: auto;[\s\S]*?\.operon-filter-group-clipboard-actions > \.operon-filter-modal-button\.is-icon \{\s*border: 1px solid var\(--background-modifier-border\);[\s\S]*?background: var\(--interactive-normal\);/u,
+		/\.operon-filter-group-clipboard-actions \{[\s\S]*?margin-left: auto;[\s\S]*?\.operon-filter-group-clipboard-button \{\s*display: inline-flex;[\s\S]*?width: var\(--input-height\);[\s\S]*?padding: 0;/u,
+	);
+	assert.doesNotMatch(
+		styles,
+		/\.operon-filter-group-clipboard-actions > \.operon-filter-modal-button\.is-icon/u,
 	);
 	assert.match(
 		styles,

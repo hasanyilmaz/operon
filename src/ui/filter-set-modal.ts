@@ -1422,7 +1422,13 @@ export class FilterSetModal extends Modal {
 		if (!isRoot) {
 			const copyBtn = clipboardActions.createEl('button');
 			copyBtn.type = 'button';
-			this.addClasses(copyBtn, 'operon-filter-modal-button', 'is-icon', 'operon-filter-group-copy-button');
+			this.addClasses(
+				copyBtn,
+				'operon-filter-modal-button',
+				'operon-filter-modal-add-button',
+				'operon-filter-group-clipboard-button',
+				'operon-filter-group-copy-button',
+			);
 			setIcon(copyBtn, 'copy');
 			setAccessibleLabelWithoutTooltip(copyBtn, t('filterSets', 'copyGroup'));
 			bindOperonHoverTooltip(copyBtn, { content: t('filterSets', 'copyGroup'), taskColor: null });
@@ -1433,7 +1439,13 @@ export class FilterSetModal extends Modal {
 
 		const pasteGroupBtn = clipboardActions.createEl('button');
 		pasteGroupBtn.type = 'button';
-		this.addClasses(pasteGroupBtn, 'operon-filter-modal-button', 'is-icon', 'operon-filter-group-paste-button');
+		this.addClasses(
+			pasteGroupBtn,
+			'operon-filter-modal-button',
+			'operon-filter-modal-add-button',
+			'operon-filter-group-clipboard-button',
+			'operon-filter-group-paste-button',
+		);
 		setIcon(pasteGroupBtn, 'clipboard-paste');
 		setAccessibleLabelWithoutTooltip(pasteGroupBtn, t('filterSets', 'pasteGroup'));
 		bindOperonHoverTooltip(pasteGroupBtn, { content: t('filterSets', 'pasteGroup'), taskColor: null });
