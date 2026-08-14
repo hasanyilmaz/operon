@@ -533,6 +533,7 @@ import { hasOperonFields, isTaskLineCandidate, parseListValue, parseTaskLine, re
 import { buildSubtaskExcludedIds } from './src/core/task-hierarchy';
 import { serializeTask } from './src/core/serializer';
 import { serializePlainCheckboxTask } from './src/core/plain-task-conversion';
+import { retryInlineEditorSave } from './src/core/inline-editor-save-retry';
 import { applyFieldRules } from './src/core/field-rules';
 import { normalizeTaskFieldPatch, type DependencyFieldKey } from './src/core/task-field-patch';
 import { convertTasksEmojiLineToOperon } from './src/core/tasks-emoji-to-operon';
@@ -20381,7 +20382,7 @@ export default class OperonPlugin extends Plugin {
 			operonId,
 			plainLine,
 			indexedTask.primary.lineNumber,
-			{ expectedTaskLine: sourceTask.rawLine },
+			{ expectedTaskLine: sourceTask.rawLine, retryEditorSave: true },
 		);
 		if (!replaced) return { status: 'conflict' };
 		await this.finishTaskEditorPlainConversion(operonId, indexedTask.primary.filePath);
@@ -26251,7 +26252,11 @@ export default class OperonPlugin extends Plugin {
 		operonId: string,
 		taskLine: string,
 		lineHint: number,
-		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[]; expectedTaskLine?: string } = {},
+		options: {
+			removePlainCheckboxLines?: PlainCheckboxMoveLine[];
+			expectedTaskLine?: string;
+			retryEditorSave?: boolean;
+		} = {},
 	): Promise<boolean> {
 		const openView = this.getMarkdownViewForPath(filePath);
 		if (openView) {
@@ -26296,7 +26301,11 @@ export default class OperonPlugin extends Plugin {
 		operonId: string,
 		taskLine: string,
 		lineHint: number,
-		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[]; expectedTaskLine?: string } = {},
+		options: {
+			removePlainCheckboxLines?: PlainCheckboxMoveLine[];
+			expectedTaskLine?: string;
+			retryEditorSave?: boolean;
+		} = {},
 	): Promise<boolean> {
 		const filePath = view.file?.path ?? '';
 		if (!filePath) return false;
@@ -26334,7 +26343,24 @@ export default class OperonPlugin extends Plugin {
 			console.warn('Operon: inline-to-file editor transaction failed.', error);
 			return false;
 		}
-		await this.persistMarkdownViewBuffer(view);
+		if (!options.retryEditorSave) {
+			await this.persistMarkdownViewBuffer(view);
+			return true;
+		}
+		const expectedContent = editor.getValue();
+		const savableView = view as MarkdownView & { requestSave?: () => void };
+		const persistence = await retryInlineEditorSave({
+			expectedContent,
+			save: async () => await this.persistMarkdownViewBuffer(view),
+			readPersistedContent: async () => {
+				const currentFile = this.app.vault.getAbstractFileByPath(filePath);
+				return currentFile instanceof TFile ? await this.app.vault.cachedRead(currentFile) : null;
+			},
+			requestSave: () => savableView.requestSave?.(),
+		});
+		if (persistence !== 'persisted') {
+			throw new Error('Operon: inline editor transaction could not be persisted.');
+		}
 		return true;
 	}
 

@@ -68,10 +68,12 @@ test('Task Editor conversion has format-specific labels and stays immediately be
 	assert.match(settingsTypesSource, /\.\.\.\(convertToPlain \? \[convertToPlain\] : \[\]\),\s*\.\.\.\(last \? \[last\] : \[\]\)/u);
 });
 
-test('Task Editor conversion uses the live inline buffer and treats post-write cleanup as best effort', () => {
+test('Task Editor conversion uses the live inline buffer and verifies editor persistence before cleanup', () => {
 	assert.match(mainSource, /const openView = this\.getMarkdownViewForPath\(task\.primary\.filePath\);/u);
 	assert.match(mainSource, /if \(openView\) \{\s*content = openView\.editor\.getValue\(\);/u);
-	assert.match(mainSource, /\{ expectedTaskLine: sourceTask\.rawLine \}/u);
+	assert.match(mainSource, /\{ expectedTaskLine: sourceTask\.rawLine, retryEditorSave: true \}/u);
+	assert.match(mainSource, /retryInlineEditorSave\(\{/u);
+	assert.match(mainSource, /if \(!options\.retryEditorSave\) \{/u);
 	assert.match(mainSource, /private async finishTaskEditorPlainConversion\(/u);
 	assert.match(mainSource, /converted task source but immediate reindex failed/u);
 	assert.match(mainSource, /converted task source but automatic unpin failed/u);
