@@ -15602,7 +15602,7 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 .operon-filter-group-clipboard-actions > .operon-filter-modal-button.is-icon {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
-	background: var(--background-primary);
+	background: var(--interactive-normal);
 }
 
 .operon-filter-group-clipboard-actions > .operon-filter-modal-button.is-icon:hover:not(:disabled),

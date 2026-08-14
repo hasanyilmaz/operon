@@ -57,7 +57,7 @@ test('group footer wraps icon actions on narrow surfaces', () => {
 	);
 	assert.match(
 		styles,
-		/\.operon-filter-group-clipboard-actions \{[\s\S]*?margin-left: auto;[\s\S]*?\.operon-filter-group-clipboard-actions > \.operon-filter-modal-button\.is-icon \{\s*border: 1px solid var\(--background-modifier-border\);/u,
+		/\.operon-filter-group-clipboard-actions \{[\s\S]*?margin-left: auto;[\s\S]*?\.operon-filter-group-clipboard-actions > \.operon-filter-modal-button\.is-icon \{\s*border: 1px solid var\(--background-modifier-border\);[\s\S]*?background: var\(--interactive-normal\);/u,
 	);
 	assert.match(
 		styles,
