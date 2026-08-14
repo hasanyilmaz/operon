@@ -10,24 +10,26 @@ const groupEditorStart = modalSource.indexOf('\tprivate renderGroupEditor(');
 const groupEditorEnd = modalSource.indexOf('\n\tprivate renderNodeMoveButtons(', groupEditorStart);
 const groupEditor = modalSource.slice(groupEditorStart, groupEditorEnd);
 
-test('named group headers expose icon-only Copy group with Operon tooltip and accessibility', () => {
+test('named group footers expose icon-only Copy group with Operon tooltip and accessibility', () => {
 	assert.ok(groupEditorStart >= 0 && groupEditorEnd > groupEditorStart);
-	const nestedActions = groupEditor.slice(
-		groupEditor.indexOf('\t\tif (!isRoot && parentGroup) {'),
-		groupEditor.indexOf('\n\t\tif (collapsed) return;'),
+	const footerActions = groupEditor.slice(
+		groupEditor.indexOf("const clipboardActions = footer.createDiv('operon-filter-group-clipboard-actions');"),
+		groupEditor.indexOf("const pasteGroupBtn = clipboardActions.createEl('button');"),
 	);
-	assert.match(nestedActions, /operon-filter-group-copy-button/u);
-	assert.match(nestedActions, /setIcon\(copyBtn, 'copy'\)/u);
-	assert.match(nestedActions, /setAccessibleLabelWithoutTooltip\(copyBtn, t\('filterSets', 'copyGroup'\)\)/u);
-	assert.match(nestedActions, /bindOperonHoverTooltip\(copyBtn, \{ content: t\('filterSets', 'copyGroup'\)/u);
-	assert.match(nestedActions, /copyFilterGroupToClipboard\(group\)/u);
+	assert.match(footerActions, /if \(!isRoot\) \{/u);
+	assert.match(footerActions, /operon-filter-group-copy-button/u);
+	assert.match(footerActions, /setIcon\(copyBtn, 'copy'\)/u);
+	assert.match(footerActions, /setAccessibleLabelWithoutTooltip\(copyBtn, t\('filterSets', 'copyGroup'\)\)/u);
+	assert.match(footerActions, /bindOperonHoverTooltip\(copyBtn, \{ content: t\('filterSets', 'copyGroup'\)/u);
+	assert.match(footerActions, /copyFilterGroupToClipboard\(group\)/u);
 	assert.equal((groupEditor.match(/operon-filter-group-copy-button/g) ?? []).length, 1);
-	assert.ok(groupEditor.indexOf('operon-filter-group-copy-button') < groupEditor.indexOf('if (collapsed) return;'));
+	assert.ok(groupEditor.indexOf('operon-filter-group-copy-button') > groupEditor.indexOf("const footer = card.createDiv();"));
 });
 
 test('every rendered group footer exposes icon-only Paste group without changing Add Group', () => {
 	assert.match(groupEditor, /addGroupBtn[\s\S]*?group\.children\.push\(\{\s*id: generateGroupId\(\),\s*logic: 'all',\s*children: \[\],/u);
 	assert.match(groupEditor, /operon-filter-group-paste-button/u);
+	assert.match(groupEditor, /const pasteGroupBtn = clipboardActions\.createEl\('button'\)/u);
 	assert.match(groupEditor, /setIcon\(pasteGroupBtn, 'clipboard-paste'\)/u);
 	assert.match(groupEditor, /setAccessibleLabelWithoutTooltip\(pasteGroupBtn, t\('filterSets', 'pasteGroup'\)\)/u);
 	assert.match(groupEditor, /bindOperonHoverTooltip\(pasteGroupBtn, \{ content: t\('filterSets', 'pasteGroup'\)/u);
@@ -52,6 +54,10 @@ test('group footer wraps icon actions on narrow surfaces', () => {
 	assert.match(
 		styles,
 		/\.operon-filter-group-footer \{\s*display: flex;\s*align-items: center;\s*flex-wrap: wrap;/u,
+	);
+	assert.match(
+		styles,
+		/\.operon-filter-group-clipboard-actions \{[\s\S]*?margin-left: auto;[\s\S]*?\.operon-filter-group-clipboard-actions > \.operon-filter-modal-button\.is-icon \{\s*border: 1px solid var\(--background-modifier-border\);/u,
 	);
 	assert.match(
 		styles,
