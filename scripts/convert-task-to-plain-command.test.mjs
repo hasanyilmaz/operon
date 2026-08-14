@@ -39,7 +39,8 @@ test('blocker gate covers hierarchy, both dependency directions, timer, recurren
 	assert.match(source, /fieldValues\['blockedBy'\]/u);
 	assert.match(source, /timeTracker\.isTimerRunning\(task\.operonId\)/u);
 	assert.match(source, /fieldValues\['repeat'\][\s\S]*?fieldValues\['repeatSeriesId'\][\s\S]*?fieldValues\['repeatOccurrenceDate'\]/u);
-	assert.match(source, /fieldValues\['reminderDatetimes'\][\s\S]*?fieldValues\['reminderRules'\]/u);
+	assert.match(source, /parseListValue\(task\.fieldValues\['reminderDatetimes'\] \?\? ''\)/u);
+	assert.match(source, /parseListValue\(task\.fieldValues\['reminderRules'\] \?\? ''\)/u);
 });
 
 test('inline branch confirms then commits through whole-source atomic CAS without Task Editor save', () => {

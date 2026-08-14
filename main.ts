@@ -20591,8 +20591,8 @@ export default class OperonPlugin extends Plugin {
 			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerRecurrence') });
 		}
 		if (
-			parseListValue(task.fieldValues['reminderDatetimes']).length > 0
-			|| parseListValue(task.fieldValues['reminderRules']).length > 0
+			parseListValue(task.fieldValues['reminderDatetimes'] ?? '').length > 0
+			|| parseListValue(task.fieldValues['reminderRules'] ?? '').length > 0
 		) {
 			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerReminders') });
 		}
