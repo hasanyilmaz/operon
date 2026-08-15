@@ -36,6 +36,7 @@ export interface RuntimeSemanticTransitionStateRevisionsV1 {
 export interface RuntimeSemanticTransitionPlannerPortsV1 {
 	getTask(operonId: string): RuntimeExactTaskMutationSnapshotV1 | null;
 	isPinned(operonId: string): boolean;
+	hasProjectSerialScopes(): boolean;
 	stateRevisions(): RuntimeSemanticTransitionStateRevisionsV1;
 	planRecurrence?(
 		request: RuntimeSemanticTransitionRecurrencePlanningRequestV1,
@@ -429,14 +430,16 @@ export async function planRuntimeSemanticTransitionV1(
 			}],
 		}
 		: null;
-	const projectSerialGroup: AtomicResourceGroupV1 = {
-		groupId: 'project-serial:global',
-		order: 0,
-		resources: [{
-			resourceKind: 'project-serial',
-			resourceKey: 'global',
-		}],
-	};
+	const projectSerialGroup: AtomicResourceGroupV1 | null = ports.hasProjectSerialScopes()
+		? {
+			groupId: 'project-serial:global',
+			order: 0,
+			resources: [{
+				resourceKind: 'project-serial',
+				resourceKey: 'global',
+			}],
+		}
+		: null;
 
 	const atomicGroups: AtomicResourceGroupV1[] = [primaryGroup];
 	if (recurrence) {
@@ -481,7 +484,9 @@ export async function planRuntimeSemanticTransitionV1(
 	if (pinnedGroup) {
 		atomicGroups.push({ ...pinnedGroup, order: atomicGroups.length });
 	}
-	atomicGroups.push({ ...projectSerialGroup, order: atomicGroups.length });
+	if (projectSerialGroup) {
+		atomicGroups.push({ ...projectSerialGroup, order: atomicGroups.length });
+	}
 
 	const affectedResources = dedupeResourceRevisions([
 		...(prepared.transition.finalizeActiveTimer
@@ -541,11 +546,13 @@ export async function planRuntimeSemanticTransitionV1(
 				revision: revisions.pinned,
 			}]
 			: []),
-		{
-			resourceKind: 'project-serial' as const,
-			resourceKey: 'global',
-			revision: revisions.projectSerial,
-		},
+		...(projectSerialGroup
+			? [{
+				resourceKind: 'project-serial' as const,
+				resourceKey: 'global',
+				revision: revisions.projectSerial,
+			}]
+			: []),
 	]).sort(compareResourceReferences);
 	const recurrenceSourceAction: PredictedEffectV1['action'] = (
 		recurrence?.preview.disposition === 'materialize'
@@ -617,12 +624,14 @@ export async function planRuntimeSemanticTransitionV1(
 				summary: 'Remove the terminal task from pinned state.',
 			}]
 			: []),
-		{
-			resourceKind: 'project-serial' as const,
-			resourceKey: 'global',
-			action: 'state-change' as const,
-			summary: 'Settle project serial state after all task and hierarchy effects.',
-		},
+		...(projectSerialGroup
+			? [{
+				resourceKind: 'project-serial' as const,
+				resourceKey: 'global',
+				action: 'state-change' as const,
+				summary: 'Settle project serial state after all task and hierarchy effects.',
+			}]
+			: []),
 	].sort(compareResourceReferences);
 
 	return {
@@ -640,7 +649,9 @@ export async function planRuntimeSemanticTransitionV1(
 			pinnedGroup: pinnedGroup
 				? atomicGroups.find(group => group.groupId === pinnedGroup.groupId) ?? null
 				: null,
-			projectSerialGroup: atomicGroups[atomicGroups.length - 1] ?? null,
+			projectSerialGroup: projectSerialGroup
+				? atomicGroups.find(group => group.groupId === projectSerialGroup.groupId) ?? null
+				: null,
 			affectedResources,
 			atomicGroups,
 			predictedEffects,

@@ -95,6 +95,13 @@ test('verified settlement waits for RAM work but not V8 persistence idle', () =>
 	assert.equal(indexerSource.includes('entries and V8 idle/drain state are intentionally outside this barrier.'), true);
 });
 
+test('semantic transition planning derives project-serial eligibility from the sealed catalog', () => {
+	assert.match(
+		mainSource,
+		/hasProjectSerialScopes: \(\) => catalog\.value\.policies\.projectSerialScopes\.length > 0/u,
+	);
+});
+
 test('health/settings freshness does not parse task data', () => {
 	const freshness = methodBody(
 		mainSource,
