@@ -1361,7 +1361,7 @@
 		"tableFileConflictResolve": "Konflikt lösen",
 		"tableFileConflictResolvedNotice": "Der ID-Konflikt wurde gelöst und {{count}} unabhängige Table-Datei(en) wurden erstellt.",
 		"tableFileConflictPartialNotice": "Die Konfliktlösung erstellte {{succeeded}} Table-Datei(en); {{failed}} Datei(en) müssen noch geprüft werden.",
-		"tableFileUnsupportedPackageNotice": "Diese Operon-Version kann die gespeicherte Table-Konfiguration nicht öffnen. Es wurden keine Änderungen vorgenommen.",
+		"tableFileUnsupportedPackageNotice": "Operon konnte die gespeicherte Table-Konfiguration nicht sicher öffnen ({reason}). Schreibvorgänge für Einstellungen wurden blockiert. Installiere nicht neu und bearbeite data.json nicht; bewahre deine Dateien auf, prüfe den gemeldeten Grund und hole Hilfe zur Wiederherstellung.",
 		"tableGeneralSettings": "Allgemeine Table-Einstellungen",
 		"tableDefaultPreset": "Table-Standard-Voreinstellung",
 		"tableDefaultPresetDesc": "Neue Operon Table-Tabs starten mit dieser Voreinstellung, sofern der Tab nicht bereits einen eigenen gespeicherten Zustand hat.",

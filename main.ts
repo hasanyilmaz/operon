@@ -13697,8 +13697,10 @@ export default class OperonPlugin extends Plugin {
 		}
 		initI18n(undefined, this.settings.language);
 		if (this.storage.hasUnsupportedTablePresetPackage()) {
-			new Notice(t('settings', 'tableFileUnsupportedPackageNotice'), 10_000);
-			throw new Error('Unsupported Table preset package.');
+			const recovery = this.storage.getTablePresetRecoveryDiagnostics();
+			const reason = recovery.code ?? 'unsupported-table-manifest';
+			new Notice(t('settings', 'tableFileUnsupportedPackageNotice', { reason }), 15_000);
+			throw new Error(`Unsupported Table preset package (${reason}).`);
 		}
 		this.tableFilePropertyIndex = getTableFilePropertyIndex(this.app, {
 			typeResolver: this.tableFilePropertyTypeResolver,

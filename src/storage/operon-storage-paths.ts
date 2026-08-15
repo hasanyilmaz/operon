@@ -1,6 +1,7 @@
 export interface OperonStoragePaths {
 	pluginDir: string;
 	dataPackagePath: string;
+	tableManifestV2RecoveryPath: string;
 	state: {
 		reminderDeliveriesRootPath: string;
 		repeatSeriesPath: string;
@@ -36,6 +37,7 @@ export function buildOperonStoragePaths(
 	return {
 		pluginDir,
 		dataPackagePath: joinVaultPath(pluginDir, 'data.json'),
+		tableManifestV2RecoveryPath: joinVaultPath(pluginDir, 'data.json.table-manifest-v2-recovery.json'),
 		state: {
 			reminderDeliveriesRootPath: joinVaultPath(pluginDir, 'state', 'reminder-deliveries'),
 			repeatSeriesPath: joinVaultPath(pluginDir, 'state', 'repeat-series.json'),

@@ -1361,7 +1361,7 @@
 		"tableFileConflictResolve": "Resolve conflict",
 		"tableFileConflictResolvedNotice": "Resolved the ID conflict and created {{count}} independent Table file(s).",
 		"tableFileConflictPartialNotice": "Conflict resolution created {{succeeded}} Table file(s); {{failed}} file(s) still need review.",
-		"tableFileUnsupportedPackageNotice": "This Operon version cannot open the stored Table configuration. No changes were made.",
+		"tableFileUnsupportedPackageNotice": "Operon could not safely open the stored Table configuration ({reason}). Settings writes were blocked. Do not reinstall or edit data.json; preserve your files, inspect the reported reason, and seek recovery guidance.",
 		"tableGeneralSettings": "General Table Settings",
 		"tableDefaultPreset": "Table default preset",
 		"tableDefaultPresetDesc": "New Operon Table leaves start with this preset unless the leaf already has its own saved state.",

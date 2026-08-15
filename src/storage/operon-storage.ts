@@ -15,6 +15,11 @@ import { PipelineStore, PipelineStoreSettings } from './pipeline-store';
 import { CalendarPresetStore, CalendarPresetStoreSettings } from './calendar-preset-store';
 import { KanbanPresetStore, KanbanPresetStoreSettings } from './kanban-preset-store';
 import { pickTablePresetProjectionSettings } from './table-preset-manifest';
+import { discoverOperonTableFiles } from './table-file';
+import {
+	overlayKnownDataPackageFieldsPreservingUnknownV1,
+	readLooseTablePresetIdV1,
+} from './table-preset-manifest-recovery';
 import { KanbanOrderStore } from './kanban-order-store';
 import { KeyMappingStore } from './key-mapping-store';
 import { PriorityStore, PriorityStoreSettings } from './priority-store';
@@ -49,6 +54,7 @@ import {
 	type OperonDataPackageReloadDiagnostics,
 	type OperonPipelineTaxonomyDiagnostics,
 	type OperonPluginDataAccess,
+	type OperonTablePresetRecoveryDiagnostics,
 } from './operon-data-package-store';
 import {
 	buildOperonStoragePaths,
@@ -365,6 +371,11 @@ export class OperonStorage {
 	private activeTrackerStore: ActiveTrackerStore;
 	private projectSerialStore: ProjectSerialStore;
 	private unsupportedTablePresetPackage = false;
+	private tablePresetRecovery: OperonTablePresetRecoveryDiagnostics = {
+		status: 'not-needed',
+		code: null,
+		backupPath: null,
+	};
 	private fieldRenameJournalStore: FieldRenameJournalStore;
 	private settingsBackupUndoEntries = new Map<string, OperonSettingsBackupUndoEntryV1>();
 
@@ -379,6 +390,20 @@ export class OperonStorage {
 			this.app.vault.adapter,
 			this.storagePaths,
 			pluginData,
+			async () => {
+				const sourceByPath = new Map<string, string>();
+				const discovery = await discoverOperonTableFiles(this.app.vault.getFiles(), async file => {
+					const source = await this.app.vault.read(file);
+					sourceByPath.set(file.path, source);
+					return source;
+				});
+				return discovery.files.map(file => ({
+					path: file.path,
+					status: file.status,
+					presetId: file.preset?.id ?? null,
+					claimedPresetId: readLooseTablePresetIdV1(sourceByPath.get(file.descriptor.path) ?? ''),
+				}));
+			},
 		);
 		this.settings = { ...DEFAULT_SETTINGS };
 		this.pinnedCache = new PinnedCache(
@@ -535,11 +560,12 @@ export class OperonStorage {
 	 * Initialize storage: create plugin-config folders, load settings package, then load state/cache.
 	 */
 	async initialize(): Promise<void> {
-		const { dataPackage, loadedExistingPinnedTasksPackage, unsupportedTablePresetPackage } = await this.dataPackageStore.initialize(
+		const { dataPackage, loadedExistingPinnedTasksPackage, unsupportedTablePresetPackage, tablePresetRecovery } = await this.dataPackageStore.initialize(
 			DEFAULT_SETTINGS,
 			getAppLocale(this.app),
 		);
 		this.unsupportedTablePresetPackage = unsupportedTablePresetPackage;
+		this.tablePresetRecovery = tablePresetRecovery;
 		await this.hydrateFromDataPackage(dataPackage);
 		if (this.unsupportedTablePresetPackage) return;
 		await this.ensureCanonicalFolders();
@@ -790,7 +816,7 @@ export class OperonStorage {
 				new Date().toISOString(),
 				OPERON_PINNED_TASK_TOMBSTONE_RETENTION_MS,
 			);
-			return {
+			const nextPackage = {
 				...dataPackage,
 				integrations: {
 					...dataPackage.integrations,
@@ -802,6 +828,9 @@ export class OperonStorage {
 					pinnedTasks,
 				},
 			};
+			return this.tablePresetRecovery.status === 'recovered'
+				? overlayKnownDataPackageFieldsPreservingUnknownV1(currentPackage, nextPackage)
+				: nextPackage;
 		});
 		this.hydratePackageBackedSettingStores();
 	}
@@ -1537,6 +1566,11 @@ export class OperonStorage {
 	get calendarPresets(): CalendarPresetStore { return this.calendarPresetStore; }
 	get kanbanPresets(): KanbanPresetStore { return this.kanbanPresetStore; }
 	hasUnsupportedTablePresetPackage(): boolean { return this.unsupportedTablePresetPackage; }
+	getTablePresetRecoveryDiagnostics(): OperonTablePresetRecoveryDiagnostics {
+		return {
+			...this.tablePresetRecovery,
+		};
+	}
 	get kanbanOrder(): KanbanOrderStore { return this.kanbanOrderStore; }
 	get keyMappings(): KeyMappingStore { return this.keyMappingStore; }
 	get priorities(): PriorityStore { return this.priorityStore; }
