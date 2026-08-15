@@ -18,17 +18,17 @@ const mutableAliases = new Set([
 const registryBytes = await readRegularFileNoFollow(path.join(pluginRoot, registryRelativePath), pluginRoot);
 assert.equal(
 	sha256(registryBytes),
-	'15c3714c98e8d233af7ab5d5ed8ed2ac4dd331e1fd14103a0e527a5c61a81013',
+	'6bb087ff18b25860ad6829aefb8626eec5591dd9dcf81320bff2e7b365be6623',
 	'OPERON_PUBLIC_V1_CANDIDATE_REGISTRY_DRIFT',
 );
 const registry = JSON.parse(registryBytes.toString('utf8'));
 assert.deepEqual(Object.keys(registry).sort(), ['currentPluginVersion', 'kind', 'registryVersion', 'releases']);
 assert.equal(registry.registryVersion, 1);
 assert.equal(registry.kind, 'operon-public-v1-release-freeze-registry');
-assert.equal(registry.currentPluginVersion, '3.2.0');
+assert.equal(registry.currentPluginVersion, '3.2.1');
 assert.deepEqual(
 	registry.releases.map(release => release.pluginVersion),
-	['3.0.2', '3.1.0', '3.1.1', '3.2.0'],
+	['3.0.2', '3.1.0', '3.1.1', '3.2.0', '3.2.1'],
 );
 for (const release of registry.releases) {
 	assert.deepEqual(Object.keys(release).sort(), ['cliVersion', 'evidenceKind', 'files', 'pluginVersion']);
@@ -46,4 +46,4 @@ assert.equal(binding.package.version, '1.1.0');
 assert.equal(binding.source.tag, 'cli-v1.1.0');
 assert.equal(binding.provenance.publishRunAttempt, 2);
 
-console.log('Operon 3.2.0 / CLI 1.1.0 candidate evidence registry verified.');
+console.log('Operon 3.2.1 / CLI 1.1.0 candidate evidence registry verified.');
