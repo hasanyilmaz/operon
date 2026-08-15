@@ -27,6 +27,7 @@ This page is the index. The action commands link to a dedicated page with their 
 
 - [[DOCS-087 Edit or convert to file task|Edit or convert to file task]]: edits the current file task, or converts a normal note into one.
 - [[DOCS-088 Convert file task to inline task|Convert file task to inline task]]: collapses a file task back into a single inline task, then moves the old note to the Obsidian trash. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
+- [[DOCS-135 Convert task to plain|Convert task to plain]]: picks an inline or file task with Task Finder, then removes its Operon identity while keeping a plain checkbox or normal note.
 - **Convert Tasks emoji line to inline task**: migrates a line written in the Obsidian Tasks emoji format into an Operon inline task. See [[DOCS-049 Obsidian Tasks migration|Obsidian Tasks migration]].
 - **Convert Selection to Operon Tasks**: turns several selected lines into tasks at once. See [[DOCS-023 Create tasks from selected text|Create tasks from selected text]].
 

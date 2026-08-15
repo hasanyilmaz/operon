@@ -36,7 +36,7 @@ Because the `operonId` and fields survive, the task stays the same task in a lig
 
 ## When to use it
 
-Use it when a note no longer needs its own body, and the task would be easier to handle as a line again. If you only want to keep the note but stop treating it as a task, that is a different action; this command is specifically for collapsing back to inline.
+Use it when a note no longer needs its own body, and the task would be easier to handle as a line again. If you only want to keep the note but stop treating it as a task, use [[DOCS-135 Convert task to plain|Convert task to plain]] instead. This command is specifically for collapsing back to inline while preserving the same Operon task.
 
 ## Related
 
