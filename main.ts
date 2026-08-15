@@ -53,7 +53,7 @@ import {
 } from './src/indexer/persistence/index-v8-maintenance-scheduler';
 import type { ProjectSerialDisplay } from './src/core/project-serials';
 import { scanFileWithMappings } from './src/indexer/file-scanner';
-import { TaskWriter } from './src/core/task-writer';
+import { TaskWriter, type TaskWriterExclusiveMutationPermit } from './src/core/task-writer';
 import {
 	isWritableRawYamlPropertyName,
 	type RawYamlPropertyExpectation,
@@ -148,6 +148,7 @@ import {
 	TASK_FINDER_SCOPE_CALENDAR_SCHEDULE,
 	TASK_FINDER_SCOPE_CALENDAR_TRACKED_SESSION,
 	TASK_FINDER_SCOPE_CONVERT_FILE_TASK_TO_INLINE,
+	TASK_FINDER_SCOPE_CONVERT_TASK_TO_PLAIN,
 	TASK_FINDER_SCOPE_KANBAN_PLACE,
 	TASK_FINDER_SCOPE_TASK_WIKILINK_OVERLAY,
 } from './src/ui/task-finder-integrations';
@@ -198,6 +199,7 @@ import {
 	getActiveDocument,
 	getActiveWindow,
 	getOwnerWindow,
+	getWorkspaceWindows,
 	setWindowTimeout,
 } from './src/core/dom-compat';
 import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
@@ -528,6 +530,7 @@ import { formatDurationHuman, parseLocalDatetime } from './src/systems/tracker-u
 import { hasOperonFields, isTaskLineCandidate, parseListValue, parseTaskLine, resolveInlineTaskDescriptionCursorCh } from './src/core/parser';
 import { buildSubtaskExcludedIds } from './src/core/task-hierarchy';
 import { serializeTask } from './src/core/serializer';
+import { planInlineTaskToPlain } from './src/core/plain-task-conversion';
 import { applyFieldRules } from './src/core/field-rules';
 import { normalizeTaskFieldPatch, type DependencyFieldKey } from './src/core/task-field-patch';
 import { convertTasksEmojiLineToOperon } from './src/core/tasks-emoji-to-operon';
@@ -705,6 +708,7 @@ import {
 	resolveConfiguredStatusIdentity,
 } from './src/core/workflow-status-identity';
 import { ConfirmActionModal } from './src/ui/confirm-action-modal';
+import { ConvertToPlainFileModal } from './src/ui/convert-to-plain-file-modal';
 import { FileTaskTemplatePickerModal } from './src/ui/file-task-template-picker-modal';
 import { InlineTaskTargetFilePickerModal } from './src/ui/inline-task-target-file-picker-modal';
 import { FieldRenameProgressModal } from './src/ui/field-rename-progress-modal';
@@ -1197,6 +1201,15 @@ type PreparedTaskAdoptionResultV1 =
 		retryable?: boolean;
 	};
 
+type PlainConversionSourceSnapshot = {
+	task: IndexedTask;
+	file: TFile;
+	content: string;
+	views: MarkdownView[];
+};
+
+type PlainConversionViewSyncOutcome = 'synced' | 'rolled-back' | 'unknown';
+
 export default class OperonPlugin extends Plugin {
 	private agentRuntimeCore!: OperonAgentRuntimeCoreV1;
 	storage!: OperonStorage;
@@ -1342,6 +1355,7 @@ export default class OperonPlugin extends Plugin {
 	private taskCreatorModal: TaskCreatorModal | null = null;
 	private subtasksFilterModal: SubtasksFilterModal | null = null;
 	private pinnedCache: PinnedCache | null = null;
+	private convertTaskToPlainCommandInProgress = false;
 	private externalCalendarService: ExternalCalendarService | null = null;
 	private operonDocsSyncInFlight: Promise<OperonDocsSyncResult> | null = null;
 	private operonDocsOperationQueue: Promise<void> = Promise.resolve();
@@ -3070,7 +3084,9 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private isTaskEditorModalOpen(): boolean {
-		return asHTMLElement(getActiveDocument().body.querySelector('.operon-task-editor-modal')) !== null;
+		return getWorkspaceWindows(this.app).some(ownerWindow => (
+			asHTMLElement(ownerWindow.document.body?.querySelector('.operon-task-editor-modal')) !== null
+		));
 	}
 
 	private shouldFreezeCalendarRefresh(): boolean {
@@ -18685,12 +18701,20 @@ export default class OperonPlugin extends Plugin {
 			return this.parsedTaskFromIndexed(task);
 		}
 
+		const openView = this.getMarkdownViewForPath(task.primary.filePath);
 		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
-		if (!(file instanceof TFile)) {
+		if (!openView && !(file instanceof TFile)) {
 			return this.parsedTaskFromIndexed(task);
 		}
 
-		const content = await this.app.vault.cachedRead(file);
+		let content: string;
+		if (openView) {
+			content = openView.editor.getValue();
+		} else if (file instanceof TFile) {
+			content = await this.app.vault.cachedRead(file);
+		} else {
+			return this.parsedTaskFromIndexed(task);
+		}
 		const lines = content.split('\n');
 		const hintedLine = task.primary.lineNumber;
 
@@ -18978,6 +19002,12 @@ export default class OperonPlugin extends Plugin {
 			if (view.file?.path === filePath) return view;
 		}
 		return null;
+	}
+
+	private getMarkdownViewsForPath(filePath: string): MarkdownView[] {
+		return this.app.workspace.getLeavesOfType('markdown')
+			.map(leaf => leaf.view)
+			.filter((view): view is MarkdownView => view instanceof MarkdownView && view.file?.path === filePath);
 	}
 
 	private getFilePathForEditorView(editorView: EditorView): string {
@@ -20258,6 +20288,406 @@ export default class OperonPlugin extends Plugin {
 		}
 		this.refreshViews();
 		return true;
+	}
+
+	private async handleConvertTaskToPlainCommand(): Promise<void> {
+		if (this.convertTaskToPlainCommandInProgress) return;
+		if (this.isTaskEditorModalOpen()) {
+			new Notice(t('taskEditor', 'convertToPlainCloseTaskEditor'));
+			return;
+		}
+		this.convertTaskToPlainCommandInProgress = true;
+		let handedOffToFileModal = false;
+		try {
+			const selectedTask = await promptTaskFinderSelection(
+				this.app,
+				this.indexer,
+				() => this.settings,
+				TASK_FINDER_SCOPE_CONVERT_TASK_TO_PLAIN,
+				{
+					getProjectSerialDisplay: operonId => this.getProjectSerialDisplayForTask(operonId),
+				},
+			);
+			if (!selectedTask) return;
+			const indexedTask = this.getFreshTaskForPlainConversion(selectedTask.operonId);
+			if (!indexedTask) return;
+			const source = await this.getPlainConversionSourceSnapshot(indexedTask);
+			if (!source) return;
+			const blockers = this.getConvertToPlainBlockers(source.task);
+			if (blockers.length > 0) {
+				this.showConvertToPlainBlockers(blockers);
+				return;
+			}
+			if (source.task.primary.format === 'yaml') {
+				handedOffToFileModal = true;
+				this.openConvertToPlainFileCommandModal(source);
+				return;
+			}
+			await this.convertInlineTaskToPlainFromCommand(source);
+		} catch (error) {
+			console.error('Operon: convert task to plain command failed.', error);
+			new Notice(t('taskEditor', 'convertToPlainFailed'));
+		} finally {
+			if (!handedOffToFileModal) this.convertTaskToPlainCommandInProgress = false;
+		}
+	}
+
+	private getFreshTaskForPlainConversion(operonId: string): IndexedTask | null {
+		if (!operonId || this.indexer.hasDuplicateOperonIdConflict(operonId)) {
+			new Notice(t('taskEditor', 'convertToPlainUnavailable'));
+			return null;
+		}
+		const task = this.indexer.getTask(operonId);
+		if (!task) new Notice(t('taskEditor', 'convertToPlainUnavailable'));
+		return task ?? null;
+	}
+
+	private async getPlainConversionSourceSnapshot(task: IndexedTask): Promise<PlainConversionSourceSnapshot | null> {
+		if (this.isTaskEditorModalOpen()) {
+			new Notice(t('taskEditor', 'convertToPlainCloseTaskEditor'));
+			return null;
+		}
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile) || file.extension !== 'md') {
+			new Notice(t('taskEditor', 'convertToPlainUnavailable'));
+			return null;
+		}
+		let content: string;
+		try {
+			content = await this.app.vault.read(file);
+		} catch (error) {
+			console.error('Operon: convert task to plain could not read the source note.', error);
+			new Notice(t('taskEditor', 'convertToPlainFailed'));
+			return null;
+		}
+		const views = this.getMarkdownViewsForPath(file.path);
+		if (views.some(view => view.editor.getValue() !== content)) {
+			new Notice(t('taskEditor', 'convertToPlainSourceDirty'));
+			return null;
+		}
+		await this.indexer.forceReindexKnownFileAfterMutation(file, { notify: false }, content);
+		const refreshedTask = this.getFreshTaskForPlainConversion(task.operonId);
+		if (!refreshedTask || refreshedTask.primary.filePath !== file.path) return null;
+		return { task: refreshedTask, file, content, views };
+	}
+
+	private async convertInlineTaskToPlainFromCommand(initial: PlainConversionSourceSnapshot): Promise<void> {
+		const confirmed = await new Promise<boolean>(resolve => {
+			new ConfirmActionModal(this.app, {
+				title: t('taskEditor', 'convertToPlainCheckboxTitle'),
+				message: t('taskEditor', 'convertToPlainCheckboxMessage'),
+				confirmText: t('taskEditor', 'convertToPlainConfirm'),
+				cancelText: t('buttons', 'cancel'),
+				danger: true,
+				initialFocus: 'cancel',
+			}, resolve).open();
+		});
+		if (!confirmed) return;
+		await this.timeTracker.runWithTransitionLock(async () => {
+			await this.writer.runExclusiveTaskMutation(async permit => {
+				const indexedTask = this.getFreshTaskForPlainConversion(initial.task.operonId);
+				if (!indexedTask || indexedTask.primary.format !== 'inline') {
+					new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+					return;
+				}
+				const source = await this.getPlainConversionSourceSnapshot(indexedTask);
+				if (!source || source.task.primary.format !== 'inline') return;
+				const task = source.task;
+				const blockers = this.getConvertToPlainBlockers(task);
+				if (blockers.length > 0) {
+					this.showConvertToPlainBlockers(blockers);
+					return;
+				}
+				const matchingLines = source.content.split('\n').filter((line, lineNumber) => {
+					return this.parseInlineTaskLine(line, lineNumber, source.file.path)?.operonId === task.operonId;
+				});
+				if (matchingLines.length !== 1) {
+					new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+					return;
+				}
+				const plan = planInlineTaskToPlain(
+					source.content,
+					task.operonId,
+					matchingLines[0] ?? '',
+					this.settings.keyMappings,
+				);
+				if (plan.outcome !== 'converted') {
+					new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+					return;
+				}
+				const mutationGuard = this.createPlainConversionMutationGuard(task);
+				const result = await this.writer.applyExactMarkdownSourceMutation(
+					source.file.path,
+					source.content,
+					plan.nextContent,
+					mutationGuard,
+					permit,
+				);
+				if (result.outcome !== 'committed' || !result.file || result.committedContent === undefined) {
+					new Notice(result.outcome === 'conflict'
+						? t('taskEditor', 'convertToPlainSourceChanged')
+						: t('taskEditor', 'convertToPlainFailed'));
+					return;
+				}
+				const sync = await this.syncPlainConversionOpenViews(
+					result.file,
+					source.content,
+					result.committedContent,
+					task.operonId,
+					permit,
+				);
+				if (sync === 'rolled-back') {
+					new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+					return;
+				}
+				if (sync === 'unknown') {
+					new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+					return;
+				}
+				await this.finishPlainTaskConversion(task.operonId, source.file.path, result.file);
+				new Notice(t('taskEditor', 'convertToPlainCheckboxSuccess'));
+			});
+		});
+	}
+
+	private openConvertToPlainFileCommandModal(initial: PlainConversionSourceSnapshot): void {
+		void this.writer.getPlainFileTaskPropertyCatalog(initial.task.operonId).then(catalog => {
+			if (catalog.outcome !== 'ready' || catalog.expectedContent !== initial.content) {
+				new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+				this.convertTaskToPlainCommandInProgress = false;
+				return;
+			}
+			new ConvertToPlainFileModal(this.app, {
+				properties: catalog.properties,
+				taskColor: this.resolveCheckboxPopoverTaskColor(initial.task) ?? 'var(--interactive-accent)',
+				onSubmit: async selectedCanonicalKeys => {
+					try {
+						return await this.timeTracker.runWithTransitionLock(async () => (
+							await this.writer.runExclusiveTaskMutation(async permit => {
+								const indexedTask = this.getFreshTaskForPlainConversion(initial.task.operonId);
+								if (!indexedTask || indexedTask.primary.format !== 'yaml') {
+									new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+									this.convertTaskToPlainCommandInProgress = false;
+									return true;
+								}
+								const source = await this.getPlainConversionSourceSnapshot(indexedTask);
+								if (!source || source.task.primary.format !== 'yaml') return false;
+								const task = source.task;
+								const blockers = this.getConvertToPlainBlockers(task);
+								if (blockers.length > 0) {
+									this.showConvertToPlainBlockers(blockers);
+									return false;
+								}
+								if (source.content !== catalog.expectedContent) {
+									new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+									return false;
+								}
+								const mutationGuard = this.createPlainConversionMutationGuard(task);
+								const result = await this.writer.detachYamlTaskProperties(
+									task.operonId,
+									catalog.expectedContent,
+									selectedCanonicalKeys,
+									mutationGuard,
+									permit,
+								);
+								if (result.outcome !== 'detached' || !result.file) {
+									new Notice(result.outcome === 'conflict'
+										? t('taskEditor', 'convertToPlainSourceChanged')
+										: t('taskEditor', 'convertToPlainFailed'));
+									return false;
+								}
+								if (result.committedContent === undefined) {
+									new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+									this.convertTaskToPlainCommandInProgress = false;
+									return true;
+								}
+								const sync = await this.syncPlainConversionOpenViews(
+									result.file,
+									catalog.expectedContent,
+									result.committedContent,
+									task.operonId,
+									permit,
+								);
+								if (sync === 'rolled-back') {
+									new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+									return false;
+								}
+								if (sync === 'unknown') {
+									new Notice(t('taskEditor', 'convertToPlainSourceChanged'));
+									this.convertTaskToPlainCommandInProgress = false;
+									return true;
+								}
+								await this.finishPlainTaskConversion(task.operonId, source.file.path, result.file);
+								new Notice(t('taskEditor', 'convertToPlainFileSuccess'));
+								this.convertTaskToPlainCommandInProgress = false;
+								return true;
+							})
+						));
+					} catch (error) {
+						console.error('Operon: convert file task submit failed.', error);
+						new Notice(t('taskEditor', 'convertToPlainFailed'));
+						return false;
+					}
+				},
+				onCancel: () => {
+					this.convertTaskToPlainCommandInProgress = false;
+				},
+			}).open();
+		}).catch(error => {
+			console.error('Operon: convert file task catalog failed.', error);
+			new Notice(t('taskEditor', 'convertToPlainFailed'));
+			this.convertTaskToPlainCommandInProgress = false;
+		});
+	}
+
+	private async syncPlainConversionOpenViews(
+		file: TFile,
+		expectedContent: string,
+		committedContent: string,
+		operonId: string,
+		permit?: TaskWriterExclusiveMutationPermit,
+	): Promise<PlainConversionViewSyncOutcome> {
+		const views = this.getMarkdownViewsForPath(file.path);
+		const diverged = views.some(view => {
+			const content = view.editor.getValue();
+			return content !== expectedContent && content !== committedContent;
+		});
+		if (diverged) {
+			const rollback = await this.writer.applyExactMarkdownSourceMutation(
+				file.path,
+				committedContent,
+				expectedContent,
+				undefined,
+				permit,
+			);
+			if (rollback.outcome === 'committed') {
+				for (const view of views) {
+					if (view.editor.getValue() === committedContent) view.editor.setValue(expectedContent);
+				}
+				return 'rolled-back';
+			}
+			const persistedContent = await this.app.vault.read(file).catch(() => undefined);
+			if (persistedContent === committedContent) {
+				const retry = await this.writer.applyExactMarkdownSourceMutation(
+					file.path,
+					committedContent,
+					expectedContent,
+					undefined,
+					permit,
+				);
+				if (retry.outcome === 'committed') {
+					for (const view of views) {
+						if (view.editor.getValue() === committedContent) view.editor.setValue(expectedContent);
+					}
+					return 'rolled-back';
+				}
+				return 'unknown';
+			}
+			if (persistedContent === expectedContent) return 'rolled-back';
+			if (persistedContent !== undefined) {
+				await this.indexer.forceReindexKnownFileAfterMutation(file, { notify: false }, persistedContent)
+					.catch(() => undefined);
+				const restored = this.indexer.getTask(operonId);
+				if (restored?.primary.filePath === file.path) return 'rolled-back';
+			}
+			return 'unknown';
+		}
+		for (const view of views) {
+			if (view.editor.getValue() === expectedContent) view.editor.setValue(committedContent);
+		}
+		return 'synced';
+	}
+
+	private async reindexPlainConversionSource(file: TFile): Promise<void> {
+		try {
+			await this.indexer.forceReindexKnownFileAfterMutation(file, { notify: false });
+		} catch (error) {
+			console.warn('Operon: unresolved plain conversion source could not be reindexed.', error);
+		}
+		this.refreshViews();
+	}
+
+	private createPlainConversionMutationGuard(task: IndexedTask): () => boolean {
+		const indexGeneration = this.indexer.getGeneration();
+		const activeTrackerGeneration = this.storage.activeTrackers.getGeneration();
+		return () => {
+			if (this.indexer.getGeneration() !== indexGeneration) return false;
+			if (this.storage.activeTrackers.getGeneration() !== activeTrackerGeneration) return false;
+			const current = this.indexer.getTask(task.operonId);
+			if (
+				!current
+				|| current.primary.filePath !== task.primary.filePath
+				|| current.primary.format !== task.primary.format
+			) {
+				return false;
+			}
+			return this.getConvertToPlainBlockers(current).length === 0;
+		};
+	}
+
+	private getConvertToPlainBlockers(task: IndexedTask): Array<{ label: string }> {
+		const blockers: Array<{ label: string }> = [];
+		if (this.writer.hasUnsettledRelationshipReference(task.operonId)) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerChildren', { count: '1' }) });
+		}
+		if ((task.fieldValues['parentTask'] ?? '').trim()) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerParent') });
+		}
+		const childCount = this.indexer.secondary.getChildIds(task.operonId).size;
+		if (childCount > 0) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerChildren', { count: String(childCount) }) });
+		}
+		if (parseDependencyIdList(task.fieldValues['blocking']).length > 0) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerBlocking') });
+		}
+		if (parseDependencyIdList(task.fieldValues['blockedBy']).length > 0) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerBlockedBy') });
+		}
+		if (this.timeTracker.isTimerRunning(task.operonId)) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerActiveTimer') });
+		}
+		if (
+			(task.fieldValues['repeat'] ?? '').trim()
+			|| (task.fieldValues['repeatSeriesId'] ?? '').trim()
+			|| (task.fieldValues['repeatOccurrenceDate'] ?? '').trim()
+		) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerRecurrence') });
+		}
+		if (
+			parseListValue(task.fieldValues['reminderDatetimes'] ?? '').length > 0
+			|| parseListValue(task.fieldValues['reminderRules'] ?? '').length > 0
+		) {
+			blockers.push({ label: t('taskEditor', 'convertToPlainBlockerReminders') });
+		}
+		return blockers;
+	}
+
+	private showConvertToPlainBlockers(blockers: Array<{ label: string }>): void {
+		new Notice(t('taskEditor', 'convertToPlainBlocked', {
+			items: blockers.map(blocker => blocker.label).filter(Boolean).join(', '),
+		}));
+	}
+
+	private async finishPlainTaskConversion(
+		operonId: string,
+		filePath: string,
+		knownFile?: TFile,
+	): Promise<void> {
+		try {
+			if (knownFile) {
+				await this.indexer.forceReindexKnownFileAfterMutation(knownFile, { notify: false });
+			} else {
+				await this.indexer.reindexFilePath(filePath, { notify: false });
+			}
+		} catch (error) {
+			console.warn('Operon: converted task source but immediate reindex failed.', error);
+		}
+		try {
+			await this.pinnedCache?.unpin(operonId);
+		} catch (error) {
+			console.warn('Operon: converted task source but automatic unpin failed.', error);
+		}
+		this.refreshViews();
 	}
 
 	private async applyEditedTaskInstanceFromView(
@@ -26101,7 +26531,10 @@ export default class OperonPlugin extends Plugin {
 		operonId: string,
 		taskLine: string,
 		lineHint: number,
-		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[] } = {},
+		options: {
+			removePlainCheckboxLines?: PlainCheckboxMoveLine[];
+			expectedTaskLine?: string;
+		} = {},
 	): Promise<boolean> {
 		const openView = this.getMarkdownViewForPath(filePath);
 		if (openView) {
@@ -26122,6 +26555,7 @@ export default class OperonPlugin extends Plugin {
 
 		const targetLine = this.findInlineTaskLineIndex(lines, filePath, operonId, lineHint);
 		if (targetLine === -1) return false;
+		if (options.expectedTaskLine !== undefined && lines[targetLine] !== options.expectedTaskLine) return false;
 
 		const removePlainCheckboxLines = options.removePlainCheckboxLines ?? [];
 		if (removePlainCheckboxLines.length > 0) {
@@ -26145,7 +26579,10 @@ export default class OperonPlugin extends Plugin {
 		operonId: string,
 		taskLine: string,
 		lineHint: number,
-		options: { removePlainCheckboxLines?: PlainCheckboxMoveLine[] } = {},
+		options: {
+			removePlainCheckboxLines?: PlainCheckboxMoveLine[];
+			expectedTaskLine?: string;
+		} = {},
 	): Promise<boolean> {
 		const filePath = view.file?.path ?? '';
 		if (!filePath) return false;
@@ -26155,6 +26592,7 @@ export default class OperonPlugin extends Plugin {
 		const lines = content.split('\n');
 		const targetLine = this.findInlineTaskLineIndex(lines, filePath, operonId, lineHint);
 		if (targetLine === -1) return false;
+		if (options.expectedTaskLine !== undefined && lines[targetLine] !== options.expectedTaskLine) return false;
 
 		const removePlainCheckboxLines = options.removePlainCheckboxLines ?? [];
 		const changes = this.buildInlineToFileEditorChanges(
@@ -28327,6 +28765,14 @@ export default class OperonPlugin extends Plugin {
 				name: t('commands', 'convertFileTaskToInlineTask'),
 				callback: () => {
 					runAsyncAction('convert file task to inline task command failed', () => this.handleConvertFileTaskToInlineTaskCommand());
+				},
+			});
+
+			this.addCommand({
+				id: 'convert-task-to-plain',
+				name: t('commands', 'convertTaskToPlain'),
+				callback: () => {
+					runAsyncAction('convert task to plain command failed', () => this.handleConvertTaskToPlainCommand());
 				},
 			});
 

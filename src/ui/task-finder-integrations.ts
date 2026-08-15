@@ -70,6 +70,14 @@ export const TASK_FINDER_SCOPE_CONVERT_FILE_TASK_TO_INLINE: TaskFinderModalOptio
 	includeFinished: true,
 };
 
+export const TASK_FINDER_SCOPE_CONVERT_TASK_TO_PLAIN: TaskFinderModalOptions['initialScope'] = {
+	showRecentModified: false,
+	includeInline: true,
+	includeFile: true,
+	includeCancelled: true,
+	includeFinished: true,
+};
+
 export const TASK_FINDER_SCOPE_TIME_TRACKER: TaskFinderModalOptions['initialScope'] = {
 	showRecentModified: true,
 	includeInline: true,

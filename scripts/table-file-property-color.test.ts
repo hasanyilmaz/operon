@@ -972,8 +972,10 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('.operon-table-progress-action-shell.is-icon-mode:is(:hover, :focus-within)'));
 	ok(!cssSource.includes('.operon-table-progress-action-shell:not(.is-empty-mode):is(:hover, :focus-within)'));
 	ok(cssSource.includes('.operon-table-progress-action-shell.is-empty-mode:focus-within {\n\tbox-shadow: inset 0 0 0 var(--operon-table-chip-glow-size, 2px)'));
-	ok(cssSource.includes('.operon-table-progress-cell.is-details-mode:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-wrap .operon-task-progress-segment'));
-	ok(cssSource.includes('.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-ring'));
+	ok(cssSource.includes('.operon-table-progress-cell.is-details-mode:hover > .operon-table-progress-wrap .operon-task-progress-segment'));
+	ok(cssSource.includes('.operon-table-progress-cell:hover > .operon-table-progress-ring'));
+	ok(cssSource.includes('.operon-table-row:hover .operon-table-progress-cell.is-details-mode > .operon-table-progress-wrap .operon-task-progress-segment'));
+	ok(cssSource.includes('.operon-table-row:hover .operon-table-progress-cell > .operon-table-progress-ring'));
 	ok(cssSource.includes('.operon-table-root button.operon-table-file-property-checkbox:not(:disabled):hover,'));
 	ok(cssSource.includes('button.operon-table-task-icon-button:disabled:hover,'));
 	ok(cssSource.includes('.operon-table-root button.operon-table-file-property-checkbox:disabled:hover'));

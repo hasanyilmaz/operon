@@ -1528,13 +1528,23 @@ function checkCssScorecard() {
 	);
 	assertIncludes(
 		'styles.css',
-		'.operon-table-progress-cell.is-details-mode:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-wrap .operon-task-progress-segment',
+		'.operon-table-progress-cell.is-details-mode:hover > .operon-table-progress-wrap .operon-task-progress-segment',
 		'Table readonly detailed progress must keep per-segment visual-only hover glow',
 	);
 	assertIncludes(
 		'styles.css',
-		'.operon-table-progress-cell:not(:has(.operon-table-progress-action-shell)):hover > .operon-table-progress-ring',
+		'.operon-table-progress-cell:hover > .operon-table-progress-ring',
 		'Table readonly compact progress must keep its visual-only hover glow',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-row:hover .operon-table-progress-cell.is-details-mode > .operon-table-progress-wrap .operon-task-progress-segment',
+		'Table readonly detailed progress must keep its direct-child row-hover glow contract',
+	);
+	assertIncludes(
+		'styles.css',
+		'.operon-table-row:hover .operon-table-progress-cell > .operon-table-progress-ring',
+		'Table readonly compact progress must keep its direct-child row-hover glow contract',
 	);
 	assertCssAtRuleContains(
 		'styles.css',
@@ -1742,17 +1752,17 @@ function checkCssScorecard() {
 	);
 	assertIncludes(
 		'styles.css',
-		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) {\n\t\tbox-sizing: border-box;\n\t\theight: 16px;\n\t\tmin-height: 16px;\n\t\tmax-height: 16px;',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(.has-expanded-control) {\n\t\tbox-sizing: border-box;\n\t\theight: 16px;\n\t\tmin-height: 16px;\n\t\tmax-height: 16px;',
 		'sidebar Table toolbar must preserve hover, keyboard focus, and open popup expansion while using the 16px compact rail',
 	);
 	assertIncludes(
 		'styles.css',
-		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-end {\n\t\tbox-sizing: border-box;\n\t\theight: 4px;\n\t\tmin-height: 4px;\n\t\tmax-height: 4px;',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(.has-expanded-control) .operon-table-toolbar-end {\n\t\tbox-sizing: border-box;\n\t\theight: 4px;\n\t\tmin-height: 4px;\n\t\tmax-height: 4px;',
 		'sidebar Table toolbar compact state must render the 4px inner rail',
 	);
 	assertIncludes(
 		'styles.css',
-		'.operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"])) .operon-table-toolbar-center {\n\t\theight: 0;\n\t\tmin-height: 0;\n\t\tmax-height: 0;\n\t\toverflow: hidden;',
+		'.operon-table-toolbar:not(:hover):not(:focus-within):not(.has-expanded-control) .operon-table-toolbar-center {\n\t\theight: 0;\n\t\tmin-height: 0;\n\t\tmax-height: 0;\n\t\toverflow: hidden;',
 		'sidebar Table compact rail must hide the favorite-preset second row without removing keyboard focus ownership',
 	);
 	assertCssAtRuleContains(
@@ -1762,7 +1772,7 @@ function checkCssScorecard() {
 			'body:not(.is-mobile) .mod-sidedock .workspace-leaf-content:is(',
 			'[data-type="operon-table-view"]',
 			'[data-type="operon-table-file-view"]',
-			'> .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(:has([aria-expanded="true"]))',
+			'> .view-content.operon-table-view .operon-table-toolbar:not(:hover):not(:focus-within):not(.has-expanded-control)',
 			'height: 16px;',
 			'height: 4px;',
 			'height: 0;',
@@ -1791,7 +1801,7 @@ function checkCssScorecard() {
 			'body:not(.is-mobile) .mod-sidedock',
 			'[data-type="operon-calendar-view"] > .view-content.operon-calendar-view > .operon-calendar-root > .operon-calendar-toolbar',
 			'[data-type="operon-filter-view"] > .view-content.operon-filter-view > .operon-filter-surface--sidebar > .operon-filter-header',
-			':not(:hover):not(:focus-within):not(:has([aria-expanded="true"]))',
+			':not(:hover):not(:focus-within):not(.has-expanded-control)',
 			'height: 16px;',
 			'height: 4px;',
 			'position: relative;',
@@ -1833,6 +1843,31 @@ function checkCssScorecard() {
 		'styles.css',
 		')::after {\n\t\tcontent: \'\';\n\t\tposition: absolute;\n\t\ttop: 6px;\n\t\tinset-inline: 8px;\n\t\theight: 4px;\n\t\tborder-radius: 999px;',
 		'Calendar and Filter sidebar toolbar rails must keep their scoped pseudo-element geometry',
+	);
+	assertIncludes(
+		'src/ui/expanded-descendant-state.ts',
+		"export const EXPANDED_DESCENDANT_CLASS = 'has-expanded-control';",
+		'sidebar toolbar popup safety must use one explicit expanded-descendant state class',
+	);
+	assertIncludes(
+		'src/ui/expanded-descendant-state.ts',
+		"attributeFilter: ['aria-expanded']",
+		'sidebar toolbar popup safety observer must stay scoped to aria-expanded mutations',
+	);
+	assertIncludes(
+		'src/ui/table/table-toolbar-layout.ts',
+		'const disposeExpandedState = bindExpandedDescendantState(toolbar);',
+		'Table toolbar lifecycle must bind expanded-descendant state',
+	);
+	assertIncludes(
+		'src/ui/calendar/calendar-view.ts',
+		'const disposeExpandedState = bindExpandedDescendantState(toolbar);',
+		'Calendar toolbar lifecycle must bind expanded-descendant state',
+	);
+	assertIncludes(
+		'src/ui/filter-view.ts',
+		'this.headerExpandedStateCleanup = bindExpandedDescendantState(this.headerEl);',
+		'Filter header lifecycle must bind expanded-descendant state',
 	);
 	assertIncludes(
 		'src/ui/calendar/calendar-view.ts',
