@@ -66,6 +66,7 @@ import { getTableFilePropertyIndex } from './table/table-file-property';
 import { getFilterGroupDisplayLabel } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
+import { bindExpandedDescendantState } from './expanded-descendant-state';
 
 export const FILTER_VIEW_TYPE = 'operon-filter-view';
 const FILTER_PERF_DEBUG = false;
@@ -159,6 +160,7 @@ export class FilterView extends ItemView {
 	private visibleTaskLimit = FILTER_RENDER_BATCH_SIZE;
 	private lastPaginationSignature: string | null = null;
 	private lazyLoadObserver: IntersectionObserver | null = null;
+	private headerExpandedStateCleanup: (() => void) | null = null;
 	private readonly optimisticTaskPatches = new Map<string, FilterOptimisticTaskPatch>();
 	private optimisticPatchCleanupTimer: number | null = null;
 
@@ -672,6 +674,8 @@ export class FilterView extends ItemView {
 		cleanupOperonRenderRoot(this.contentEl);
 		this.lazyLoadObserver?.disconnect();
 		this.lazyLoadObserver = null;
+		this.headerExpandedStateCleanup?.();
+		this.headerExpandedStateCleanup = null;
 		this.clearOptimisticTaskPatches();
 	}
 
@@ -826,6 +830,8 @@ export class FilterView extends ItemView {
 	private ensureLayout(container: HTMLElement): void {
 		if (this.layoutRoot?.isConnected) return;
 
+		this.headerExpandedStateCleanup?.();
+		this.headerExpandedStateCleanup = null;
 		container.empty();
 		this.layoutRoot = container.createDiv('operon-embed operon-filter-surface operon-task-chip-surface operon-filter-surface--sidebar');
 		this.headerEl = this.layoutRoot.createDiv('operon-embed-header operon-filter-header');
@@ -857,6 +863,7 @@ export class FilterView extends ItemView {
 		setIcon(this.addFilterBtnEl, 'plus');
 		this.settingsBtnEl = this.headerEl.createEl('button', { cls: 'operon-filter-settings-btn operon-task-chip-action' });
 		setIcon(this.settingsBtnEl, 'settings-2');
+		this.headerExpandedStateCleanup = bindExpandedDescendantState(this.headerEl);
 		this.listEl = this.layoutRoot.createDiv('operon-embed-list operon-filter-list');
 		this.lastSelectOptionsSignature = null;
 	}

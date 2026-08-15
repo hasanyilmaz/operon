@@ -6419,8 +6419,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 			getIcon: key => this.getTaskEditorMobileCoreToolIcon(key),
 			getCanonicalLabel: key => this.getTaskEditorMobileCoreToolCanonicalLabel(key),
 			getVisibilityToggleLabel: label => t('settings', 'compactChipVisibilityToggle', { label }),
-			canMoveUp: (item, index) => item.key !== 'goToSource' && item.key !== 'remove' && index > 1,
-			canMoveDown: (item, index, items) => item.key !== 'goToSource' && item.key !== 'remove' && index < items.length - 2,
+			canMoveUp: (item, index) => (
+				item.key !== 'goToSource'
+				&& item.key !== 'remove'
+				&& index > 1
+			),
+			canMoveDown: (item, index, items) => (
+				item.key !== 'goToSource'
+				&& item.key !== 'remove'
+				&& index < items.length - 2
+			),
 			save: () => this.saveSettings(),
 			visibilityErrorContext: 'settings task editor mobile core tool toggle failed',
 			iconOnlyErrorContext: 'settings task editor mobile core tool icon-only toggle failed',

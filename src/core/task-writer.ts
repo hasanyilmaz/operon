@@ -20,11 +20,13 @@ import {
 	tryPatchAggregateYamlFrontmatter,
 	YamlFrontmatterFormattingPlan,
 } from './task-writer-yaml';
-import { getManagedYamlAliases } from './yaml-fields';
+import { getManagedYamlAliases, getVisiblePropertyName } from './yaml-fields';
 import { resolveYamlTaskCreatedBackfillValue } from './yaml-task-file-stat-sync';
 import { WriteQueue } from '../storage/write-queue';
 import { enginePerfLog, enginePerfNow } from './engine-perf';
 import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import { parseDependencyIdList } from './dependency-graph';
+import { CANONICAL_KEY_MAP, CANONICAL_KEYS, isInternalCanonicalKey } from '../types/keys';
 import {
     isWritableRawYamlPropertyName,
     rawYamlPropertyExpectationsEqual,
@@ -45,6 +47,51 @@ export interface TaskWriterHooks {
 	onBeforeWriteFile?: (filePath: string) => void;
 	validateWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
     onDuplicateConflict?: (operonId: string) => void;
+}
+
+export interface PlainFileTaskPropertyOption {
+    canonicalKey: string;
+    propertyName: string;
+    description: string;
+    internal: boolean;
+}
+
+export type PlainFileTaskCatalogResult =
+    | {
+        outcome: 'ready';
+        filePath: string;
+        expectedContent: string;
+        properties: PlainFileTaskPropertyOption[];
+    }
+    | {
+        outcome: 'missing' | 'unsupported' | 'conflict';
+        filePath: string | null;
+    };
+
+export type DetachYamlTaskPropertiesResult = {
+    outcome: 'detached' | 'missing' | 'unsupported' | 'conflict' | 'failed';
+    filePath: string | null;
+    file?: TFile;
+    previousContent?: string;
+    committedContent?: string;
+};
+
+export interface ExactMarkdownSourceMutationResult {
+    outcome: 'committed' | 'conflict' | 'missing' | 'invalid-target' | 'failed';
+    filePath: string;
+    file?: TFile;
+    previousContent?: string;
+    committedContent?: string;
+}
+
+export type TaskSourceMutationGuard = () => boolean;
+
+export interface TaskWriterExclusiveMutationPermit {
+    readonly token: symbol;
+}
+
+interface TaskWriterSharedMutationPermit {
+    readonly token: symbol;
 }
 
 export type TaskSourceMutation =
@@ -88,6 +135,65 @@ export interface GuardedTaskSourceRenderResult {
 }
 
 type YamlFastPathState = 'aggregate' | 'fallback' | 'none';
+
+class TaskWriterMutationGate {
+    private activeShared = 0;
+    private exclusiveActive = false;
+    private exclusiveWaiters: Array<() => void> = [];
+    private sharedWaiters: Array<() => void> = [];
+
+    async runShared<T>(operation: () => Promise<T>): Promise<T> {
+        await this.acquireShared();
+        try {
+            return await operation();
+        } finally {
+            this.activeShared -= 1;
+            this.dispatch();
+        }
+    }
+
+    async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+        await this.acquireExclusive();
+        try {
+            return await operation();
+        } finally {
+            this.exclusiveActive = false;
+            this.dispatch();
+        }
+    }
+
+    private async acquireShared(): Promise<void> {
+        if (!this.exclusiveActive && this.exclusiveWaiters.length === 0) {
+            this.activeShared += 1;
+            return;
+        }
+        await new Promise<void>(resolve => this.sharedWaiters.push(resolve));
+    }
+
+    private async acquireExclusive(): Promise<void> {
+        if (!this.exclusiveActive && this.activeShared === 0) {
+            this.exclusiveActive = true;
+            return;
+        }
+        await new Promise<void>(resolve => this.exclusiveWaiters.push(resolve));
+    }
+
+    private dispatch(): void {
+        if (this.exclusiveActive || this.activeShared > 0) return;
+        const exclusive = this.exclusiveWaiters.shift();
+        if (exclusive) {
+            this.exclusiveActive = true;
+            exclusive();
+            return;
+        }
+        const shared = this.sharedWaiters.splice(0);
+        this.activeShared += shared.length;
+        for (const resolve of shared) resolve();
+    }
+}
+
+const PLAIN_FILE_TASK_DETACH_ABORT = new Error('plain-file-task-detach-abort');
+const EXACT_MARKDOWN_SOURCE_MUTATION_ABORT = new Error('exact-markdown-source-mutation-abort');
 
 interface TaskWriteResult {
     wrote: boolean;
@@ -360,12 +466,63 @@ export function tryPatchYamlTaskContent(
     };
 }
 
+export function tryDetachYamlTaskPropertiesContent(
+    content: string,
+    operonId: string,
+    selectedCanonicalKeys: readonly string[],
+    keyMappings: KeyMapping[],
+): { ok: true; content: string } | { ok: false; content: string } {
+    const match = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---(?:\r?\n|$))/u);
+    if (!match) return { ok: false, content };
+    let frontmatter: unknown;
+    try {
+        frontmatter = parseYaml(match[2]);
+    } catch {
+        return { ok: false, content };
+    }
+    if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) {
+        return { ok: false, content };
+    }
+    const mutable = frontmatter as Record<string, unknown>;
+    const selected = new Set(selectedCanonicalKeys.map(key => key.trim()).filter(Boolean));
+    if (!selected.has('operonId')) return { ok: false, content };
+    const identityEntries = getManagedYamlAliases('operonId', keyMappings)
+        .filter(yamlKey => Object.prototype.hasOwnProperty.call(mutable, yamlKey))
+        .map(yamlKey => mutable[yamlKey])
+        .filter(value => typeof value === 'string' || typeof value === 'number')
+        .map(value => String(value).trim())
+        .filter(Boolean);
+    if (identityEntries.length !== 1 || identityEntries[0] !== operonId) {
+        return { ok: false, content };
+    }
+    for (const canonicalKey of selected) {
+        const aliases = getManagedYamlAliases(canonicalKey, keyMappings);
+        if (!aliases.some(yamlKey => Object.prototype.hasOwnProperty.call(mutable, yamlKey))) {
+            return { ok: false, content };
+        }
+    }
+    for (const canonicalKey of selected) {
+        for (const yamlKey of getManagedYamlAliases(canonicalKey, keyMappings)) {
+            delete mutable[yamlKey];
+        }
+    }
+    const serialized = stringifyYaml(mutable).trimEnd();
+    return {
+        ok: true,
+        content: `${match[1]}${serialized}${match[3]}${content.slice(match[0].length)}`,
+    };
+}
+
 export class TaskWriter {
     private app: App;
     private indexer: OperonIndexer;
     private keyMappings: KeyMapping[];
     private hooks: TaskWriterHooks;
     private fileWriteQueue = new WriteQueue();
+    private fileMutationGate = new TaskWriterMutationGate();
+    private activeExclusiveMutationToken: symbol | null = null;
+    private activeSharedMutationTokens = new Set<symbol>();
+    private unsettledRelationshipTargets = new Map<string, Set<string>>();
 
     constructor(app: App, indexer: OperonIndexer, keyMappings: KeyMapping[], hooks: TaskWriterHooks = {}) {
         this.app = app;
@@ -374,9 +531,234 @@ export class TaskWriter {
         this.hooks = hooks;
     }
 
+    async runExclusiveTaskMutation<T>(
+        operation: (permit: TaskWriterExclusiveMutationPermit) => Promise<T>,
+    ): Promise<T> {
+        return await this.fileMutationGate.runExclusive(async () => {
+            const token = Symbol('task-writer-exclusive-mutation');
+            this.activeExclusiveMutationToken = token;
+            try {
+                return await operation(Object.freeze({ token }));
+            } finally {
+                this.activeExclusiveMutationToken = null;
+            }
+        });
+    }
+
+    private async runSharedTaskMutation<T>(
+        operation: (permit: TaskWriterSharedMutationPermit) => Promise<T>,
+    ): Promise<T> {
+        return await this.fileMutationGate.runShared(async () => {
+            const token = Symbol('task-writer-shared-mutation');
+            this.activeSharedMutationTokens.add(token);
+            try {
+                return await operation(Object.freeze({ token }));
+            } finally {
+                this.activeSharedMutationTokens.delete(token);
+            }
+        });
+    }
+
+    private async enqueueFileMutation<T>(
+        key: string,
+        operation: () => Promise<T>,
+        permit?: TaskWriterExclusiveMutationPermit | TaskWriterSharedMutationPermit,
+    ): Promise<T> {
+        if (
+            permit?.token === this.activeExclusiveMutationToken
+            || (permit && this.activeSharedMutationTokens.has(permit.token))
+        ) {
+            return await this.fileWriteQueue.enqueue(key, operation);
+        }
+        return await this.fileMutationGate.runShared(async () => (
+            await this.fileWriteQueue.enqueue(key, operation)
+        ));
+    }
+
     /** Update key mappings when settings change. */
     updateKeyMappings(keyMappings: KeyMapping[]): void {
         this.keyMappings = keyMappings;
+    }
+
+    /**
+     * Read the exact managed YAML properties that can be removed when a file
+     * task is converted back into a normal note. The returned source snapshot
+     * is deliberately carried into the destructive write as an optimistic
+     * concurrency guard; a picker must never clean a file that changed while
+     * it was open.
+     */
+    async getPlainFileTaskPropertyCatalog(operonId: string): Promise<PlainFileTaskCatalogResult> {
+        const task = this.indexer.getTask(operonId);
+        if (!task) return { outcome: 'missing', filePath: null };
+        if (this.blockDuplicateConflict(operonId)) {
+            return { outcome: 'conflict', filePath: task.primary.filePath };
+        }
+        if (task.primary.format !== 'yaml') {
+            return { outcome: 'unsupported', filePath: task.primary.filePath };
+        }
+        const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+        if (!(file instanceof TFile) || file.extension !== 'md') {
+            return { outcome: 'missing', filePath: task.primary.filePath };
+        }
+
+        return await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
+            const content = await this.app.vault.read(file);
+            const frontmatter = this.parseYamlFrontmatter(content);
+            if (!frontmatter || !this.frontmatterHasExactSingleOperonId(frontmatter, operonId)) {
+                return { outcome: 'conflict', filePath: file.path };
+            }
+            return {
+                outcome: 'ready',
+                filePath: file.path,
+                expectedContent: content,
+                properties: this.collectPlainFileTaskPropertyOptions(frontmatter),
+            };
+        });
+    }
+
+    /**
+     * Remove selected managed YAML keys in one frontmatter transaction. This
+     * is intentionally separate from normal task field writes: it removes the
+     * identity itself and must not attempt any task lookup after that point.
+     */
+    async detachYamlTaskProperties(
+        operonId: string,
+        expectedContent: string,
+        selectedCanonicalKeys: readonly string[],
+        guard?: TaskSourceMutationGuard,
+        permit?: TaskWriterExclusiveMutationPermit,
+    ): Promise<DetachYamlTaskPropertiesResult> {
+        const task = this.indexer.getTask(operonId);
+        if (!task) return { outcome: 'missing', filePath: null };
+        if (this.blockDuplicateConflict(operonId)) {
+            return { outcome: 'conflict', filePath: task.primary.filePath };
+        }
+        if (task.primary.format !== 'yaml') {
+            return { outcome: 'unsupported', filePath: task.primary.filePath };
+        }
+        const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+        if (!(file instanceof TFile) || file.extension !== 'md') {
+            return { outcome: 'missing', filePath: task.primary.filePath };
+        }
+        const selected = new Set(selectedCanonicalKeys.map(key => key.trim()).filter(Boolean));
+        if (!selected.has('operonId')) {
+            return { outcome: 'unsupported', filePath: file.path };
+        }
+
+        try {
+            return await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
+                let plannedContent = '';
+                try {
+                    const committedContent = await this.app.vault.process(file, currentContent => {
+                        if (currentContent !== expectedContent || (guard && !guard())) {
+                            throw PLAIN_FILE_TASK_DETACH_ABORT;
+                        }
+                        const plan = tryDetachYamlTaskPropertiesContent(
+                            currentContent,
+                            operonId,
+                            selectedCanonicalKeys,
+                            this.keyMappings,
+                        );
+                        if (!plan.ok) throw PLAIN_FILE_TASK_DETACH_ABORT;
+                        plannedContent = plan.content;
+                        this.hooks.onBeforeWriteFile?.(file.path);
+                        return plan.content;
+                    });
+                    return {
+                        outcome: 'detached',
+                        filePath: file.path,
+                        file,
+                        previousContent: expectedContent,
+                        committedContent,
+                    };
+                } catch (error) {
+                    if (error === PLAIN_FILE_TASK_DETACH_ABORT) {
+                        return { outcome: 'conflict', filePath: file.path };
+                    }
+                    const persistedContent = await this.app.vault.read(file).catch(() => undefined);
+                    if (plannedContent && persistedContent === plannedContent) {
+                        return {
+                            outcome: 'detached',
+                            filePath: file.path,
+                            file,
+                            previousContent: expectedContent,
+                            committedContent: persistedContent,
+                        };
+                    }
+                    if (persistedContent !== undefined && persistedContent !== expectedContent) {
+                        return { outcome: 'conflict', filePath: file.path, previousContent: persistedContent };
+                    }
+                    console.error('Operon: file task conversion cleanup failed.', error);
+                    return { outcome: 'failed', filePath: file.path };
+                }
+            }, permit);
+        } catch (error) {
+            console.error('Operon: file task conversion cleanup failed.', error);
+            return { outcome: 'failed', filePath: file.path };
+        }
+    }
+
+    /** Atomically replace one Markdown file only when its full source matches. */
+    async applyExactMarkdownSourceMutation(
+        filePathInput: string,
+        expectedContent: string,
+        nextContent: string,
+        guard?: TaskSourceMutationGuard,
+        permit?: TaskWriterExclusiveMutationPermit,
+    ): Promise<ExactMarkdownSourceMutationResult> {
+        const filePath = normalizePath(filePathInput);
+        if (!isSafeMarkdownTaskSourcePath(filePathInput, filePath)) {
+            return { outcome: 'invalid-target', filePath };
+        }
+        try {
+            return await this.enqueueFileMutation(this.getFileWriteQueueKey(filePath), async () => {
+                if (this.hooks.validateWritePath && !(await this.hooks.validateWritePath(filePath, false))) {
+                    return { outcome: 'invalid-target', filePath };
+                }
+                const file = this.app.vault.getAbstractFileByPath(filePath);
+                if (!(file instanceof TFile) || file.extension !== 'md') {
+                    return { outcome: 'missing', filePath };
+                }
+                try {
+                    const committedContent = await this.app.vault.process(file, currentContent => {
+                        if (currentContent !== expectedContent || (guard && !guard())) {
+                            throw EXACT_MARKDOWN_SOURCE_MUTATION_ABORT;
+                        }
+                        this.hooks.onBeforeWriteFile?.(file.path);
+                        return nextContent;
+                    });
+                    return {
+                        outcome: 'committed',
+                        filePath,
+                        file,
+                        previousContent: expectedContent,
+                        committedContent,
+                    };
+                } catch (error) {
+                    if (error === EXACT_MARKDOWN_SOURCE_MUTATION_ABORT) {
+                        return { outcome: 'conflict', filePath };
+                    }
+                    const persistedContent = await this.app.vault.read(file).catch(() => undefined);
+                    if (persistedContent === nextContent) {
+                        return {
+                            outcome: 'committed',
+                            filePath,
+                            file,
+                            previousContent: expectedContent,
+                            committedContent: persistedContent,
+                        };
+                    }
+                    if (persistedContent !== undefined && persistedContent !== expectedContent) {
+                        return { outcome: 'conflict', filePath, previousContent: persistedContent };
+                    }
+                    console.error('Operon: exact Markdown source mutation failed.', error);
+                    return { outcome: 'failed', filePath };
+                }
+            }, permit);
+        } catch (error) {
+            console.error('Operon: exact Markdown source mutation failed.', error);
+            return { outcome: 'failed', filePath };
+        }
     }
 
     /**
@@ -389,7 +771,7 @@ export class TaskWriter {
         if (!isSafeMarkdownTaskSourcePath(mutation.filePath, filePath)) {
             return { outcome: 'invalid-target', filePath };
         }
-        return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(filePath), async () => {
+        return await this.enqueueFileMutation(this.getFileWriteQueueKey(filePath), async () => {
             if (
                 this.hooks.validateWritePath
                 && !(await this.hooks.validateWritePath(filePath, mutation.kind === 'create'))
@@ -399,6 +781,9 @@ export class TaskWriter {
             const current = this.app.vault.getAbstractFileByPath(filePath);
             if (mutation.kind === 'create') {
                 if (current) return { outcome: 'exists', filePath };
+                if (!this.sourceRelationshipTargetsExist(mutation.nextContent, filePath)) {
+                    return { outcome: 'conflict', filePath };
+                }
                 const slashIndex = filePath.lastIndexOf('/');
                 if (slashIndex >= 0) {
                     const parent = this.app.vault.getAbstractFileByPath(filePath.slice(0, slashIndex));
@@ -412,6 +797,7 @@ export class TaskWriter {
                 }
                 this.hooks.onBeforeWriteFile?.(filePath);
                 const createdFile = await this.app.vault.create(filePath, mutation.nextContent);
+                this.recordSourceRelationshipTargets(mutation.nextContent, filePath);
                 return {
                     outcome: 'committed',
                     filePath,
@@ -449,8 +835,12 @@ export class TaskWriter {
                     previousContent: validatedContent,
                 };
             }
+            if (!this.sourceRelationshipTargetsExist(mutation.nextContent, filePath)) {
+                return { outcome: 'conflict', filePath, previousContent: validatedContent };
+            }
             this.hooks.onBeforeWriteFile?.(filePath);
             await this.app.vault.modify(validatedCurrent, mutation.nextContent);
+            this.recordSourceRelationshipTargets(mutation.nextContent, filePath);
             return {
                 outcome: 'committed',
                 filePath,
@@ -477,7 +867,7 @@ export class TaskWriter {
         if (!isSafeMarkdownTaskSourcePath(mutation.filePath, filePath)) {
             return { outcome: 'invalid-target', filePath };
         }
-        return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(filePath), async () => {
+        return await this.enqueueFileMutation(this.getFileWriteQueueKey(filePath), async () => {
             if (
                 this.hooks.validateWritePath
                 && !(await this.hooks.validateWritePath(filePath, mutation.expectedContent === null))
@@ -651,46 +1041,75 @@ export class TaskWriter {
         options: TaskWriteOptions = {},
     ): Promise<boolean> {
         const startedAt = enginePerfNow();
-        const task = this.indexer.getTask(operonId);
-        if (!task) {
-            console.warn(`Operon TaskWriter [${operonId}]: task not found in index`);
-            return false;
-        }
-        if (this.blockDuplicateConflict(operonId)) {
-            console.warn(`Operon TaskWriter [${operonId}]: duplicate operonId conflict blocks direct write`);
-            return false;
-        }
+        const admitted = await this.runSharedTaskMutation(async permit => {
+            const task = this.indexer.getTask(operonId);
+            if (!task) {
+                console.warn(`Operon TaskWriter [${operonId}]: task not found in index`);
+                return null;
+            }
+            if (this.blockDuplicateConflict(operonId)) {
+                console.warn(`Operon TaskWriter [${operonId}]: duplicate operonId conflict blocks direct write`);
+                return null;
+            }
+            if (!this.taskRelationshipTargetsExist(fieldValues)) {
+                console.warn(`Operon TaskWriter [${operonId}]: relationship target no longer exists`);
+                return null;
+            }
 
-        const location = task.primary;
-        const file = this.app.vault.getAbstractFileByPath(location.filePath);
-        if (!(file instanceof TFile)) {
-            console.warn(`Operon TaskWriter [${operonId}]: file not found: ${location.filePath}`);
-            return false;
-        }
+            const location = task.primary;
+            const file = this.app.vault.getAbstractFileByPath(location.filePath);
+            if (!(file instanceof TFile)) {
+                console.warn(`Operon TaskWriter [${operonId}]: file not found: ${location.filePath}`);
+                return null;
+            }
 
-        const mode = options.mode ?? 'merge';
-        const modifiedTimestamp = (fieldValues['datetimeModified'] ?? '').trim();
-        const ancestorIds = modifiedTimestamp && options.touchAncestors !== false
-            ? this.collectAffectedAncestorIdsForWrite(task, fieldValues, mode)
-            : new Set<string>();
-
-        const writeResult = location.format === 'yaml'
-            ? await this.writeYamlTask(file, operonId, fieldValues, mode, options)
-            : {
-                wrote: await this.writeInlineTask(file, operonId, fieldValues, location.lineNumber, mode),
-                yamlFastPath: 'none' as const,
-                fallbackReason: 'none',
+            const mode = options.mode ?? 'merge';
+            const modifiedTimestamp = (fieldValues['datetimeModified'] ?? '').trim();
+            const ancestorIds = modifiedTimestamp && options.touchAncestors !== false
+                ? this.collectAffectedAncestorIdsForWrite(task, fieldValues, mode)
+                : new Set<string>();
+            const writeResult = location.format === 'yaml'
+                ? await this.writeYamlTask(file, operonId, fieldValues, mode, options, permit)
+                : {
+                    wrote: await this.writeInlineTask(
+                        file,
+                        operonId,
+                        fieldValues,
+                        location.lineNumber,
+                        mode,
+                        permit,
+                    ),
+                    yamlFastPath: 'none' as const,
+                    fallbackReason: 'none',
+                };
+            if (!writeResult.wrote) {
+                console.warn(`Operon TaskWriter [${operonId}]: task location could not be written: ${location.filePath}`);
+                return null;
+            }
+            const relationshipMutation = ['parentTask', 'blocking', 'blockedBy']
+                .some(key => Object.prototype.hasOwnProperty.call(fieldValues, key));
+            if (relationshipMutation && (options.reindex ?? 'scheduled') === 'scheduled') {
+                this.recordRelationshipTargets(operonId, fieldValues);
+                await this.indexer.reindexFilePath(location.filePath, { notify: false });
+                this.clearSettledRelationshipTargets(operonId);
+            }
+            return {
+                task,
+                location,
+                modifiedTimestamp,
+                ancestorIds,
+                writeResult,
+                relationshipMutation,
             };
-        if (!writeResult.wrote) {
-            console.warn(`Operon TaskWriter [${operonId}]: task location could not be written: ${location.filePath}`);
-            return false;
-        }
+        });
+        if (!admitted) return false;
+        const { location, modifiedTimestamp, ancestorIds, writeResult, relationshipMutation } = admitted;
 
         if (ancestorIds.size > 0 && modifiedTimestamp) {
             await this.touchAncestorModifiedTimestamps(ancestorIds, modifiedTimestamp);
         }
 
-        if ((options.reindex ?? 'scheduled') === 'scheduled') {
+        if ((options.reindex ?? 'scheduled') === 'scheduled' && !relationshipMutation) {
             this.indexer.scheduleReindex(location.filePath);
         }
         enginePerfLog(
@@ -703,6 +1122,130 @@ export class TaskWriter {
             `fallbackReason=${writeResult.fallbackReason}`,
         );
         return true;
+    }
+
+    private taskRelationshipTargetsExist(fieldValues: Record<string, string>): boolean {
+        return this.getRelationshipTargetIds(fieldValues)
+            .every(targetId => !!this.indexer.getTask(targetId));
+    }
+
+    private getRelationshipTargetIds(fieldValues: Record<string, string>): string[] {
+        const targetIds: string[] = [];
+        if (Object.prototype.hasOwnProperty.call(fieldValues, 'parentTask')) {
+            const parentId = (fieldValues['parentTask'] ?? '').trim();
+            if (parentId) targetIds.push(parentId);
+        }
+        for (const key of ['blocking', 'blockedBy'] as const) {
+            if (!Object.prototype.hasOwnProperty.call(fieldValues, key)) continue;
+            targetIds.push(...parseDependencyIdList(fieldValues[key] ?? ''));
+        }
+        return targetIds;
+    }
+
+    private recordRelationshipTargets(
+        operonId: string,
+        fieldValues: Record<string, string>,
+        replace = false,
+    ): void {
+        const targetIds = this.getRelationshipTargetIds(fieldValues);
+        if (replace) {
+            if (targetIds.length > 0) {
+                this.unsettledRelationshipTargets.set(operonId, new Set(targetIds));
+            } else {
+                this.unsettledRelationshipTargets.delete(operonId);
+            }
+            return;
+        }
+        if (targetIds.length === 0) return;
+        const pending = this.unsettledRelationshipTargets.get(operonId) ?? new Set<string>();
+        for (const targetId of targetIds) pending.add(targetId);
+        this.unsettledRelationshipTargets.set(operonId, pending);
+    }
+
+    private clearSettledRelationshipTargets(operonId: string): void {
+        const pending = this.unsettledRelationshipTargets.get(operonId);
+        if (!pending) return;
+        const indexed = this.indexer.getTask(operonId);
+        if (!indexed) return;
+        const current = new Set(this.getRelationshipTargetIds(indexed.fieldValues));
+        if ([...pending].every(targetId => current.has(targetId))) {
+            this.unsettledRelationshipTargets.delete(operonId);
+        }
+    }
+
+    hasUnsettledRelationshipReference(targetOperonId: string): boolean {
+        for (const [sourceOperonId, targets] of this.unsettledRelationshipTargets) {
+            const indexed = this.indexer.getTask(sourceOperonId);
+            const current = indexed
+                ? new Set(this.getRelationshipTargetIds(indexed.fieldValues))
+                : null;
+            if (current && targets.size === current.size && [...targets].every(targetId => current.has(targetId))) {
+                this.unsettledRelationshipTargets.delete(sourceOperonId);
+                continue;
+            }
+            if (targets.has(targetOperonId)) return true;
+        }
+        return false;
+    }
+
+    private sourceRelationshipTargetsExist(content: string, filePath: string): boolean {
+        for (const [lineNumber, line] of content.split('\n').entries()) {
+            const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
+            if (!task) continue;
+            const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
+            if (!this.taskRelationshipTargetsExist(fieldValues)) return false;
+        }
+        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+        if (!match) return true;
+        let parsed: unknown;
+        try {
+            parsed = parseYaml(match[1]);
+        } catch {
+            return true;
+        }
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return true;
+        const frontmatter = parsed as Record<string, unknown>;
+        const fieldValues: Record<string, string> = {};
+        for (const canonicalKey of ['parentTask', 'blocking', 'blockedBy'] as const) {
+            for (const yamlKey of getManagedYamlAliases(canonicalKey, this.keyMappings)) {
+                const raw = frontmatter[yamlKey];
+                if (typeof raw !== 'string' && typeof raw !== 'number') continue;
+                fieldValues[canonicalKey] = String(raw);
+                break;
+            }
+        }
+        return this.taskRelationshipTargetsExist(fieldValues);
+    }
+
+    private recordSourceRelationshipTargets(content: string, filePath: string): void {
+        for (const [lineNumber, line] of content.split('\n').entries()) {
+            const task = parseTaskLine(line, lineNumber, filePath, this.keyMappings);
+            if (!task) continue;
+            const fieldValues = Object.fromEntries(task.fields.map(field => [field.key, field.value]));
+            const operonId = (fieldValues['operonId'] ?? '').trim();
+            if (operonId) this.recordRelationshipTargets(operonId, fieldValues, true);
+        }
+        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+        if (!match) return;
+        let parsed: unknown;
+        try {
+            parsed = parseYaml(match[1]);
+        } catch {
+            return;
+        }
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+        const frontmatter = parsed as Record<string, unknown>;
+        const fieldValues: Record<string, string> = {};
+        for (const canonicalKey of ['operonId', 'parentTask', 'blocking', 'blockedBy'] as const) {
+            for (const yamlKey of getManagedYamlAliases(canonicalKey, this.keyMappings)) {
+                const raw = frontmatter[yamlKey];
+                if (typeof raw !== 'string' && typeof raw !== 'number') continue;
+                fieldValues[canonicalKey] = String(raw);
+                break;
+            }
+        }
+        const operonId = (fieldValues['operonId'] ?? '').trim();
+        if (operonId) this.recordRelationshipTargets(operonId, fieldValues, true);
     }
 
     /**
@@ -782,7 +1325,7 @@ export class TaskWriter {
         const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
         if (!(file instanceof TFile)) return false;
 
-        return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+        return await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             const content = await this.app.vault.read(file);
             if (task.primary.format === 'yaml') {
                 const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
@@ -846,7 +1389,7 @@ export class TaskWriter {
         }
 
         const modifiedTimestamp = options.modifiedTimestamp?.trim() ?? '';
-        const result = await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+        const result = await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             let output: RawYamlPropertyWriteResult = {
                 outcome: 'missing',
                 filePath: file.path,
@@ -929,7 +1472,7 @@ export class TaskWriter {
         }
 
         const mode = options.mode ?? 'merge';
-        const result = await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+        const result = await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             const content = await this.app.vault.read(file);
             const inlinePatch = tryPatchInlineTaskLineContent(
                 content,
@@ -1015,7 +1558,7 @@ export class TaskWriter {
         }
 
         if (inlineEntries.length > 0 || yamlEntries.length > 0) {
-            await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(filePath), async () => {
+            await this.enqueueFileMutation(this.getFileWriteQueueKey(filePath), async () => {
                 const original = await this.app.vault.read(file);
                 let content = original;
                 for (const entry of inlineEntries) {
@@ -1208,8 +1751,9 @@ export class TaskWriter {
         fieldValues: Record<string, string>,
         mode: 'merge' | 'replace',
         options: TaskWriteOptions,
+        permit?: TaskWriterSharedMutationPermit,
     ): Promise<TaskWriteResult> {
-        return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+        return await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             let yamlFastPath: YamlFastPathState = 'none';
             let fallbackReason = 'none';
             if (options.yamlAggregateFastPath && mode === 'merge') {
@@ -1270,7 +1814,7 @@ export class TaskWriter {
                 }
             }
             return { wrote: true, yamlFastPath, fallbackReason };
-        });
+        }, permit);
     }
 
     /**
@@ -1282,8 +1826,9 @@ export class TaskWriter {
         fieldValues: Record<string, string>,
         lineHint: number,
         mode: 'merge' | 'replace',
+        permit?: TaskWriterSharedMutationPermit,
     ): Promise<boolean> {
-        return await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+        return await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             const content = await this.app.vault.read(file);
             const patch = tryPatchInlineTaskLineContent(
                 content,
@@ -1300,7 +1845,7 @@ export class TaskWriter {
 				await this.app.vault.modify(file, patch.content);
 			}
             return true;
-        });
+        }, permit);
     }
 
     private async writeYamlTaskFieldIfCurrent(
@@ -1311,7 +1856,7 @@ export class TaskWriter {
         nextValue: string,
         additionalExpectedValues: Record<string, string> = {},
     ): Promise<ConditionalTaskFieldWriteOutcome> {
-        return this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+        return this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             let outcome: ConditionalTaskFieldWriteOutcome = 'missing';
             let didUpdate = false;
             let formattingPlan: YamlFrontmatterFormattingPlan = {
@@ -1376,7 +1921,7 @@ export class TaskWriter {
         lineHint: number,
         additionalExpectedValues: Record<string, string> = {},
     ): Promise<ConditionalTaskFieldWriteOutcome> {
-        return this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(file.path), async () => {
+        return this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             let outcome: ConditionalTaskFieldWriteOutcome = 'missing';
 			this.hooks.onBeforeWriteFile?.(file.path);
 			await this.app.vault.process(file, content => {
@@ -1458,6 +2003,56 @@ export class TaskWriter {
     private getFileWriteQueueKey(filePath: string): string {
         return `task-file:${filePath}`;
     }
+
+    private parseYamlFrontmatter(content: string): Record<string, unknown> | null {
+        const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+        if (!match) return null;
+        try {
+            const parsed: unknown = parseYaml(match[1]);
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                ? parsed as Record<string, unknown>
+                : null;
+        } catch {
+            return null;
+        }
+    }
+
+    private frontmatterHasExactSingleOperonId(frontmatter: Record<string, unknown>, operonId: string): boolean {
+        const identityEntries = getManagedYamlAliases('operonId', this.keyMappings)
+            .filter(yamlKey => Object.prototype.hasOwnProperty.call(frontmatter, yamlKey))
+            .map(yamlKey => this.stringifyFrontmatterScalar(frontmatter[yamlKey]))
+            .filter((value): value is string => value !== null);
+        return identityEntries.length === 1 && identityEntries[0].trim() === operonId;
+    }
+
+	private collectPlainFileTaskPropertyOptions(
+        frontmatter: Record<string, unknown>,
+    ): PlainFileTaskPropertyOption[] {
+        const candidateKeys = new Set<string>([
+            ...CANONICAL_KEYS.map(key => key.name),
+            ...this.keyMappings.map(mapping => mapping.canonicalKey),
+        ]);
+        const options: PlainFileTaskPropertyOption[] = [];
+        for (const canonicalKey of candidateKeys) {
+            if (!isManagedTaskFieldCanonicalKey(canonicalKey, this.keyMappings)) continue;
+            const presentAliases = getManagedYamlAliases(canonicalKey, this.keyMappings)
+                .filter(yamlKey => Object.prototype.hasOwnProperty.call(frontmatter, yamlKey));
+            if (presentAliases.length === 0) continue;
+            const mapping = this.keyMappings.find(candidate => candidate.canonicalKey === canonicalKey);
+            const canonical = CANONICAL_KEY_MAP.get(canonicalKey);
+            options.push({
+                canonicalKey,
+                propertyName: presentAliases[0] ?? getVisiblePropertyName(canonicalKey, this.keyMappings),
+                description: mapping?.description?.trim() || canonical?.description || canonicalKey,
+                internal: mapping?.isInternal === true || isInternalCanonicalKey(canonicalKey),
+            });
+        }
+		return options.sort((left, right) => {
+            if (left.canonicalKey === 'operonId') return -1;
+            if (right.canonicalKey === 'operonId') return 1;
+            return left.propertyName.localeCompare(right.propertyName);
+		});
+	}
 
     private blockDuplicateConflict(operonId: string): boolean {
         const indexer = this.indexer as OperonIndexer & {
