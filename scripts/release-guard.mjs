@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
 import { classifyPullRequestValidationSurface } from './ci/classify-pr-validation-surface.mjs';
+import {
+	checkProductionProcessLaunchPolicy,
+	formatProcessLaunchFindings,
+} from './release/process-launch-policy.mjs';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
@@ -921,6 +925,7 @@ function checkPluginReleasePolicy() {
 		'npm run ci:pr-surface:test',
 		'npm run lint:strict',
 		'npm run lint:scorecard:strict',
+		'npm run release:process-launch:test',
 		'npm run docs:package:test',
 		'npm run agent-runtime:contracts:plugin',
 	]) {
@@ -959,6 +964,26 @@ function checkPluginReleasePolicy() {
 	) fail('strict scorecard lint must preserve the isolated type-aware source boundary');
 	if (!readText('package.json').includes('"release:audit-policy": "node scripts/check-release-audit-policy.mjs"')) {
 		fail('package scripts must expose the canonical release audit-policy check');
+	}
+	assertEqual(
+		'process-launch check script',
+		scripts['release:process-launch:check'],
+		'node scripts/check-process-launch-policy.mjs',
+	);
+	assertEqual(
+		'process-launch policy test script',
+		scripts['release:process-launch:test'],
+		'node --test scripts/release/process-launch-policy.test.mjs',
+	);
+	const buildCommands = (scripts.build ?? '').split('&&').map(command => command.trim());
+	const productionBuildIndex = buildCommands.indexOf('node esbuild.config.mjs production');
+	const processLaunchIndex = buildCommands.indexOf('npm run release:process-launch:check');
+	if (productionBuildIndex < 0 || processLaunchIndex !== buildCommands.length - 1) {
+		fail('build must run the production process-launch check after every production build step');
+	}
+	const processLaunchFindings = checkProductionProcessLaunchPolicy(rootDir);
+	if (processLaunchFindings.length > 0) {
+		fail(`Plugin production process-launch policy failed:\n${formatProcessLaunchFindings(processLaunchFindings)}`);
 	}
 	assertIncludes(
 		'scripts/check-release-audit-policy.mjs',

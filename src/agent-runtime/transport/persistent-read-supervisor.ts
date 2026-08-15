@@ -1,5 +1,6 @@
 import type {
 	AgentRuntimePersistentReadServerHandleV1,
+	PersistentReadDescriptorV1,
 } from './persistent-read-server';
 
 const DEFAULT_RESTART_DELAYS_MS_V1 = [250, 1_000, 5_000, 15_000, 60_000] as const;
@@ -72,6 +73,11 @@ export class AgentRuntimePersistentReadSupervisorV1 {
 			consecutiveFailures: this.consecutiveFailures,
 			...(this.nextRetryAt !== undefined ? { nextRetryAt: this.nextRetryAt } : {}),
 		};
+	}
+
+	bootstrapDescriptor(): PersistentReadDescriptorV1 | null {
+		if (this.state !== 'available' || this.currentHandle?.available !== true) return null;
+		return this.currentHandle.bootstrapDescriptor();
 	}
 
 	start(): Promise<void> {

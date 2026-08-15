@@ -14844,9 +14844,22 @@ export default class OperonPlugin extends Plugin {
 		const result = registerAgentRuntimeCliHandlersV1(
 			this,
 			this.agentRuntimeCore,
-			...(this.agentRuntimeTimingProbe
-				? [{ timingSink: this.agentRuntimeTimingProbe }]
-				: []),
+			{
+				...(this.agentRuntimeTimingProbe
+					? { timingSink: this.agentRuntimeTimingProbe }
+					: {}),
+				persistentReadBootstrap: () => {
+					const supervisor = this.agentRuntimePersistentReadSupervisor;
+					return {
+						supervisor: supervisor?.snapshot() ?? {
+							state: 'idle',
+							available: false,
+							consecutiveFailures: 0,
+						},
+						descriptor: supervisor?.bootstrapDescriptor() ?? null,
+					};
+				},
+			},
 		);
 		this.agentRuntimeCliTransportAvailable = result.registered;
 		this.agentRuntimeCliTransportFailureReason = result.registered

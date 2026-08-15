@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { createHash, createHmac } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { createConnection, type Socket } from 'node:net';
@@ -40,10 +39,12 @@ import type { RuntimeTimingSpanV1 } from '../../../src/agent-runtime/runtime/tim
 import { createAgentRuntimeDesktopNodeApiLoaderV1 } from '../../../src/agent-runtime/transport/desktop-node-api';
 import { dispatchAgentRuntimeCliV1 } from '../../../src/agent-runtime/transport/dispatcher';
 import {
+	handleAgentRuntimeWindowsBootstrapV1,
 	registerAgentRuntimeCliHandlersV1,
 } from '../../../src/agent-runtime/transport/native-cli';
 import {
 	startAgentRuntimePersistentReadServerV1,
+	persistentReadDescriptorStorageV1,
 	type AgentRuntimePersistentReadServerHandleV1,
 } from '../../../src/agent-runtime/transport/persistent-read-server';
 import {
@@ -217,6 +218,123 @@ test('native CLI registration retries only handlers missing from a partial attem
 	assert.equal([...attempts.values()].filter(count => count > 1).length, 1);
 });
 
+test('Windows bootstrap registration failure stays retryable and retries only bootstrap', () => {
+	const attempts = new Map<string, number>();
+	let failBootstrapOnce = true;
+	const plugin = {
+		manifest: { id: 'operon', version: '3.3.1', minAppVersion: '1.7.2' },
+		registerCliHandler(command: string) {
+			attempts.set(command, (attempts.get(command) ?? 0) + 1);
+			if (command === 'operon:transport-bootstrap' && failBootstrapOnce) {
+				failBootstrapOnce = false;
+				throw new Error('synthetic bootstrap registration failure');
+			}
+		},
+	};
+	const options = {
+		platformIsWindows: true,
+		persistentReadBootstrap: () => ({
+			supervisor: { state: 'starting' as const, available: false, consecutiveFailures: 0 },
+			descriptor: null,
+		}),
+	};
+	const first = registerAgentRuntimeCliHandlersV1(plugin as never, createRuntime(), options);
+	assert.equal(first.registered, false);
+	assert.equal(first.retryable, true);
+	assert.deepEqual(first.missingCommands, ['operon:transport-bootstrap']);
+	const second = registerAgentRuntimeCliHandlersV1(plugin as never, createRuntime(), options);
+	assert.equal(second.registered, true);
+	assert.equal(second.retryable, false);
+	assert.equal(second.missingCommands.length, 0);
+	assert.equal(attempts.get('operon:transport-bootstrap'), 2);
+	assert.equal([...attempts.entries()].filter(([command]) => command !== 'operon:transport-bootstrap')
+		.every(([, count]) => count === 1), true);
+});
+
+test('Windows bootstrap provider failure preserves the validated request nonce', () => {
+	let bootstrapHandler: ((params: Record<string, string>) => string) | undefined;
+	const plugin = {
+		manifest: { id: 'operon', version: '3.3.1', minAppVersion: '1.7.2' },
+		registerCliHandler(command: string, _description: string, _flags: unknown, handler: unknown) {
+			if (command === 'operon:transport-bootstrap') {
+				bootstrapHandler = handler as typeof bootstrapHandler;
+			}
+		},
+	};
+	const registration = registerAgentRuntimeCliHandlersV1(
+		plugin as never,
+		createRuntime(),
+		{
+			platformIsWindows: true,
+			persistentReadBootstrap: () => { throw new Error('synthetic provider failure'); },
+		},
+	);
+	assert.equal(registration.registered, true);
+	assert.ok(bootstrapHandler);
+	const clientNonce = 'd'.repeat(32);
+	const response = JSON.parse(bootstrapHandler({
+		bootstrapVersion: '1',
+		expectedVaultSha256: 'a'.repeat(64),
+		clientNonce,
+	})) as Record<string, unknown>;
+	assert.equal(response.ok, false);
+	assert.equal(response.code, 'unavailable');
+	assert.equal(response.retryable, true);
+	assert.equal(response.clientNonce, clientNonce);
+	assert.equal(Object.prototype.hasOwnProperty.call(response, 'authSecret'), false);
+});
+
+test('Windows bootstrap response is exact, vault-bound and secret-free on failure', () => {
+	const clientNonce = 'n'.repeat(32);
+	const vaultSha256 = 'a'.repeat(64);
+	const descriptor = {
+		protocolVersion: 1 as const,
+		serverInstanceId: 'b'.repeat(64),
+		vaultSha256,
+		endpointKind: 'windows-named-pipe' as const,
+		endpoint: `\\\\.\\pipe\\operon-${'b'.repeat(64)}`,
+		authSecret: 'c'.repeat(64),
+		expiresAt: Date.now() + 60_000,
+		pluginVersion: '3.3.1',
+		apiVersion: 1 as const,
+	};
+	const params = { bootstrapVersion: '1', expectedVaultSha256: vaultSha256, clientNonce };
+	const success = JSON.parse(handleAgentRuntimeWindowsBootstrapV1({
+		params,
+		windows: true,
+		supervisor: { state: 'available', available: true, consecutiveFailures: 0 },
+		descriptor,
+	})) as Record<string, unknown>;
+	assert.deepEqual(Object.keys(success).sort(), [
+		'apiVersion', 'authSecret', 'bootstrapVersion', 'clientNonce', 'endpoint', 'endpointKind',
+		'expiresAt', 'kind', 'ok', 'pluginVersion', 'protocolVersion', 'serverInstanceId',
+		'vaultSha256',
+	].sort());
+	assert.equal(success['authSecret'], descriptor.authSecret);
+
+	const mismatchRaw = handleAgentRuntimeWindowsBootstrapV1({
+		params: { ...params, expectedVaultSha256: 'd'.repeat(64) },
+		windows: true,
+		supervisor: { state: 'available', available: true, consecutiveFailures: 0 },
+		descriptor,
+	});
+	const mismatch = JSON.parse(mismatchRaw) as Record<string, unknown>;
+	assert.deepEqual(Object.keys(mismatch).sort(), [
+		'apiVersion', 'bootstrapVersion', 'clientNonce', 'code', 'kind', 'ok', 'retryable',
+	].sort());
+	assert.equal(mismatch['code'], 'vault-mismatch');
+	assert.equal(mismatchRaw.includes(descriptor.authSecret), false);
+
+	const starting = JSON.parse(handleAgentRuntimeWindowsBootstrapV1({
+		params,
+		windows: true,
+		supervisor: { state: 'starting', available: false, consecutiveFailures: 0 },
+		descriptor: null,
+	})) as Record<string, unknown>;
+	assert.equal(starting['code'], 'starting');
+	assert.equal(starting['retryable'], true);
+});
+
 test('persistent read supervisor restarts late failures and reports truthful state', async () => {
 	const scheduler = createSupervisorScheduler();
 	const handles: TestPersistentHandle[] = [];
@@ -372,6 +490,12 @@ test('Runtime vault identity normalizes Windows case, Unicode and extended paths
 		digest,
 		createHash('sha256').update('c:\\vaults\\café\\türkçe\\😀').digest('hex'),
 	);
+});
+
+test('Windows persistent transport keeps descriptor authority in memory', () => {
+	assert.equal(persistentReadDescriptorStorageV1('win32'), 'memory-bootstrap');
+	assert.equal(persistentReadDescriptorStorageV1('darwin'), 'filesystem');
+	assert.equal(persistentReadDescriptorStorageV1('linux'), 'filesystem');
 });
 
 test('Windows broker staging is one-shot, bounded and expires fail-closed', () => {
@@ -1021,6 +1145,7 @@ test('persistent read server rejects a replayed sequence without consuming the n
 	}
 });
 
+if (process.platform !== 'win32') {
 test('persistent read startup and close preserve a successor descriptor', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-successor-vault-'));
 	installPersistentReadTestWindow();
@@ -1116,41 +1241,60 @@ test('persistent read startup and close preserve a successor descriptor', async 
 	}
 	await unlink(descriptorPath);
 });
+}
 
 if (process.platform === 'win32') {
-test('persistent read rejects a broad existing descriptor ACL', async () => {
-	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-broad-acl-vault-'));
+test('persistent read keeps the Windows descriptor in memory and authenticates the pipe', async context => {
+	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-memory-bootstrap-vault-'));
 	installPersistentReadTestWindow();
 	const plugin = persistentReadTestPlugin(vault);
-	let firstHandle: AgentRuntimePersistentReadServerHandleV1 | undefined;
-	let descriptorPath: string | undefined;
+	let handle: AgentRuntimePersistentReadServerHandleV1 | undefined;
+	let socket: Socket | undefined;
 	try {
-		firstHandle = await startAgentRuntimePersistentReadServerV1(
+		handle = await startAgentRuntimePersistentReadServerV1(
 			plugin as never,
 			createRuntime(),
 			{ runtimeMetadata: persistentReadTestMetadata() },
 		);
-		assert.equal(firstHandle.available, true, firstHandle.reason);
-		const vaultSha256 = await computeRunningVaultSha256V1(nodeApi, plugin.app.vault.adapter);
-		descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
-		const descriptorBeforeTamper = await readFileUtf8(descriptorPath);
-		broadenWindowsAclForTest(descriptorPath, 'file');
-		const refused = await startAgentRuntimePersistentReadServerV1(
-			plugin as never,
-			createRuntime(),
-			{ runtimeMetadata: persistentReadTestMetadata() },
+		if (!handle.available && handle.reason === 'persistent-read-server-listen-denied') {
+			skipUnavailableNativeTransport(context);
+			return;
+		}
+		assert.equal(handle.available, true, handle.reason);
+		const descriptor = handle.bootstrapDescriptor();
+		assert.ok(descriptor);
+		assert.equal(descriptor.endpointKind, 'windows-named-pipe');
+		const descriptorPath = join(
+			persistentEndpointRootV1(),
+			`persistent-read-${descriptor.vaultSha256}.json`,
 		);
-		assert.equal(refused.available, false);
-		assert.equal(refused.reason, 'windows-owner-only-acl-required');
-		assert.equal(await readFileUtf8(descriptorPath), descriptorBeforeTamper);
+		await assert.rejects(lstat(descriptorPath));
+		socket = createConnection(descriptor.endpoint);
+		const readFrame = createFrameReader(socket);
+		await new Promise<void>((resolveConnection, rejectConnection) => {
+			socket?.once('connect', resolveConnection);
+			socket?.once('error', rejectConnection);
+		});
+		writeTestFrame(socket, authenticateTestFrame({
+			type: 'hello',
+			protocolVersion: 1,
+			serverInstanceId: descriptor.serverInstanceId,
+			vaultSha256: descriptor.vaultSha256,
+			connectionNonce: 'd'.repeat(64),
+		}, descriptor.authSecret));
+		assert.equal((await readFrame() as { type?: string }).type, 'hello-ack');
+		await handle.close();
+		assert.equal(handle.bootstrapDescriptor(), null);
+		await assert.rejects(lstat(descriptorPath));
 	} finally {
-		await firstHandle?.close().catch(() => undefined);
-		if (descriptorPath) await unlink(descriptorPath).catch(() => undefined);
+		socket?.destroy();
+		await handle?.close().catch(() => undefined);
 		await rm(vault, { recursive: true, force: true });
 	}
 });
 }
 
+if (process.platform !== 'win32') {
 test('persistent read close waits for and cancels an in-flight descriptor refresh', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-refresh-close-vault-'));
 	installPersistentReadTestWindow();
@@ -1207,6 +1351,7 @@ test('persistent read close waits for and cancels an in-flight descriptor refres
 	assert.equal(await readFileUtf8(descriptorPath), descriptorBeforeRefresh);
 	await unlink(descriptorPath);
 });
+}
 
 test('persistent read replay-cache exhaustion rotates the server handle', async context => {
 	const vault = await mkdtemp(join(tmpdir(), 'operon-persistent-replay-limit-vault-'));
@@ -1239,14 +1384,24 @@ test('persistent read replay-cache exhaustion rotates the server handle', async 
 		return;
 	}
 	assert.equal(handle.available, true, handle.reason);
-	const vaultSha256 = await computeRunningVaultSha256V1(nodeApi, plugin.app.vault.adapter);
-	descriptorPath = join(persistentEndpointRootV1(), `persistent-read-${vaultSha256}.json`);
-	const descriptor = JSON.parse(await readFileUtf8(descriptorPath)) as {
+	let descriptor: {
 		serverInstanceId: string;
 		vaultSha256: string;
 		endpoint: string;
 		authSecret: string;
 	};
+	if (process.platform === 'win32') {
+		const bootstrapDescriptor = handle.bootstrapDescriptor();
+		assert.ok(bootstrapDescriptor);
+		descriptor = bootstrapDescriptor;
+	} else {
+		const vaultSha256 = await computeRunningVaultSha256V1(nodeApi, plugin.app.vault.adapter);
+		descriptorPath = join(
+			persistentEndpointRootV1(),
+			`persistent-read-${vaultSha256}.json`,
+		);
+		descriptor = JSON.parse(await readFileUtf8(descriptorPath)) as typeof descriptor;
+	}
 	firstSocket = createConnection(descriptor.endpoint);
 	const firstReadFrame = createFrameReader(firstSocket);
 	await new Promise<void>((resolveConnection, rejectConnection) => {
@@ -1285,8 +1440,10 @@ test('persistent read replay-cache exhaustion rotates the server handle', async 
 	firstSocket.destroy();
 	secondSocket.destroy();
 	await handle.close();
-	assert.equal((await lstat(descriptorPath)).isFile(), true);
-	await unlink(descriptorPath);
+	if (descriptorPath) {
+		assert.equal((await lstat(descriptorPath)).isFile(), true);
+		await unlink(descriptorPath);
+	}
 });
 
 if (process.platform !== 'win32') {
@@ -2350,63 +2507,6 @@ async function withTestTimeout<T>(promise: Promise<T>, message: string): Promise
 	}
 }
 
-function broadenWindowsAclForTest(
-	target: string,
-	kind: 'file' | 'directory',
-): void {
-	const systemRoot = process.env.SystemRoot;
-	const windowsDirectory = process.env.WINDIR;
-	if (!systemRoot || !windowsDirectory) throw new Error('windows-system-root-unavailable');
-	const normalizedRoot = systemRoot.replace(/\//gu, '\\').replace(/\\+$/u, '');
-	const normalizedWindowsDirectory = windowsDirectory.replace(/\//gu, '\\').replace(/\\+$/u, '');
-	if (normalizedRoot.toLowerCase() !== normalizedWindowsDirectory.toLowerCase()) {
-		throw new Error('windows-system-root-mismatch');
-	}
-	const powershell = join(
-		normalizedRoot,
-		'System32',
-		'WindowsPowerShell',
-		'v1.0',
-		'powershell.exe',
-	);
-	const getAccessControl = kind === 'directory'
-		? '[IO.Directory]::GetAccessControl($p)'
-		: '[IO.File]::GetAccessControl($p)';
-	const setAccessControl = kind === 'directory'
-		? '[IO.Directory]::SetAccessControl($p,$acl)'
-		: '[IO.File]::SetAccessControl($p,$acl)';
-	const inheritance = kind === 'directory'
-		? 'ContainerInherit,ObjectInherit'
-		: 'None';
-	const script = [
-		'$ErrorActionPreference="Stop"',
-		'$p=[Environment]::GetEnvironmentVariable("OPERON_TEST_SECURITY_PATH","Process")',
-		`$acl=${getAccessControl}`,
-		'$users=[Security.Principal.SecurityIdentifier]::new("S-1-5-32-545")',
-		`$rule=[Security.AccessControl.FileSystemAccessRule]::new($users,[Security.AccessControl.FileSystemRights]::ReadAndExecute,[Security.AccessControl.InheritanceFlags]"${inheritance}",[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)`,
-		'[void]$acl.AddAccessRule($rule)',
-		setAccessControl,
-	].join(';');
-	execFileSync(powershell, [
-		'-NoLogo',
-		'-NoProfile',
-		'-NonInteractive',
-		'-ExecutionPolicy',
-		'Bypass',
-		'-Command',
-		script,
-	], {
-		env: {
-			SystemRoot: normalizedRoot,
-			WINDIR: normalizedRoot,
-			OPERON_TEST_SECURITY_PATH: target,
-		},
-		stdio: 'ignore',
-		windowsHide: true,
-		timeout: 15_000,
-	});
-}
-
 async function readFileUtf8(filePath: string): Promise<string> {
 	const handle = await open(filePath, fsConstants.O_RDONLY);
 	try {
@@ -2511,6 +2611,10 @@ class TestPersistentHandle implements AgentRuntimePersistentReadServerHandleV1 {
 		readonly available: boolean,
 		readonly reason?: string,
 	) {}
+
+	bootstrapDescriptor(): null {
+		return null;
+	}
 
 	onUnavailable(listener: (reason: string) => void): () => void {
 		this.listeners.add(listener);
