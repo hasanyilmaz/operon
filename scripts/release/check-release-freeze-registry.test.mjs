@@ -16,6 +16,7 @@ import {
 	readReleaseArtifactIdentity,
 	RELEASE_FREEZE_STALE,
 } from './check-release-freeze-registry.mjs';
+import { symlinkCapabilityUnavailableReason } from '../test-symlink-capability.mjs';
 
 test('automated release evidence binds one exact local, hosted, and Windows identity without live claims', () => {
 	const candidateCommit = 'a'.repeat(40);
@@ -242,7 +243,7 @@ test('release artifact comparison accepts exact identity and rejects every artif
 	}
 });
 
-test('release artifact reader enforces no-follow identity for every working artifact', async () => {
+test('release artifact reader enforces no-follow identity for every working artifact', async t => {
 	const root = await mkdtemp(path.join(await realpath(os.tmpdir()), 'operon-release-artifact-reader-'));
 	try {
 		const contents = {
@@ -278,11 +279,15 @@ test('release artifact reader enforces no-follow identity for every working arti
 		await rm(path.join(root, 'styles.css'));
 		await assert.rejects(readReleaseArtifactIdentity(root, frozen));
 		await writeFile(path.join(root, 'styles.css'), contents['styles.css']);
-		await rm(path.join(root, 'manifest.json'));
-		const validManifestTarget = path.join(root, 'manifest-target.json');
-		await writeFile(validManifestTarget, contents['manifest.json']);
-		await symlink(validManifestTarget, path.join(root, 'manifest.json'));
-		await assert.rejects(readReleaseArtifactIdentity(root, frozen));
+		await t.test('release artifact reader rejects a symlinked artifact', {
+			skip: symlinkCapabilityUnavailableReason(),
+		}, async () => {
+			await rm(path.join(root, 'manifest.json'));
+			const validManifestTarget = path.join(root, 'manifest-target.json');
+			await writeFile(validManifestTarget, contents['manifest.json']);
+			await symlink(validManifestTarget, path.join(root, 'manifest.json'));
+			await assert.rejects(readReleaseArtifactIdentity(root, frozen));
+		});
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
@@ -331,7 +336,9 @@ test('release registry rejects self-consistent current evidence and registry dri
 	}
 });
 
-test('release registry rejects symlinked current binding input', async () => {
+test('release registry rejects symlinked current binding input', {
+	skip: symlinkCapabilityUnavailableReason(),
+}, async () => {
 	const root = await createFixture();
 	try {
 		const relativePath = 'contracts/agent-runtime/releases/3.1.0/published-cli-v1.json';

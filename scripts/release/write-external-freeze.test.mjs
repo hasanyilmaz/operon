@@ -27,6 +27,7 @@ import {
 	sanitizePublishedLiveEvidence,
 	writeExternalFreeze,
 } from './write-external-freeze.mjs';
+import { symlinkCapabilityUnavailableReason } from '../test-symlink-capability.mjs';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const acceptedAuditResult = Object.freeze({
@@ -346,7 +347,7 @@ test('writer fails closed before output for identity, family, audit, and accepta
 	}
 });
 
-test('writer rejects relative and symlink live evidence paths', async () => {
+test('writer rejects relative and symlink live evidence paths', async t => {
 	const fixture = await createFixture();
 	try {
 		await assert.rejects(
@@ -357,30 +358,35 @@ test('writer rejects relative and symlink live evidence paths', async () => {
 			}, { pluginRoot: fixture.root, auditResult: acceptedAuditResult }),
 			/OPERON_EXTERNAL_FREEZE_LIVE_EVIDENCE_PATH_INVALID/u,
 		);
-		const linkPath = path.join(fixture.root, 'source-link.json');
-		await symlink(fixture.sourcePath, linkPath);
-		await assert.rejects(
-			writeExternalFreeze({
-				liveEvidencePath: linkPath,
-				acceptedBy: 'Hasan Yilmaz',
-				acceptedAt: '2026-08-03T12:03:38.000Z',
-			}, { pluginRoot: fixture.root, auditResult: acceptedAuditResult }),
-			/OPERON_EXTERNAL_FREEZE_LIVE_EVIDENCE_INVALID/u,
-		);
-		const parentLink = path.join(await realpath(os.tmpdir()), `operon-freeze-parent-link-${process.pid}`);
-		await symlink(fixture.root, parentLink);
-		try {
+		await assertMissingOutputs(fixture.root);
+		await t.test('writer rejects file and parent-directory symlink evidence', {
+			skip: symlinkCapabilityUnavailableReason(),
+		}, async () => {
+			const linkPath = path.join(fixture.root, 'source-link.json');
+			await symlink(fixture.sourcePath, linkPath);
 			await assert.rejects(
 				writeExternalFreeze({
-					liveEvidencePath: path.join(parentLink, path.basename(fixture.sourcePath)),
+					liveEvidencePath: linkPath,
 					acceptedBy: 'Hasan Yilmaz',
 					acceptedAt: '2026-08-03T12:03:38.000Z',
 				}, { pluginRoot: fixture.root, auditResult: acceptedAuditResult }),
 				/OPERON_EXTERNAL_FREEZE_LIVE_EVIDENCE_INVALID/u,
 			);
-		} finally {
-			await rm(parentLink);
-		}
+			const parentLink = path.join(await realpath(os.tmpdir()), `operon-freeze-parent-link-${process.pid}`);
+			await symlink(fixture.root, parentLink);
+			try {
+				await assert.rejects(
+					writeExternalFreeze({
+						liveEvidencePath: path.join(parentLink, path.basename(fixture.sourcePath)),
+						acceptedBy: 'Hasan Yilmaz',
+						acceptedAt: '2026-08-03T12:03:38.000Z',
+					}, { pluginRoot: fixture.root, auditResult: acceptedAuditResult }),
+					/OPERON_EXTERNAL_FREEZE_LIVE_EVIDENCE_INVALID/u,
+				);
+			} finally {
+				await rm(parentLink);
+			}
+		});
 		await assertMissingOutputs(fixture.root);
 	} finally {
 		await rm(fixture.root, { recursive: true, force: true });

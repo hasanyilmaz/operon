@@ -24,6 +24,7 @@ import {
 	readPluginArtifactIdentity,
 } from './check-accepted-freeze.mjs';
 import { writeExternalFreeze } from './write-external-freeze.mjs';
+import { symlinkCapabilityUnavailableReason } from '../test-symlink-capability.mjs';
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const auditResult = Object.freeze({
@@ -103,7 +104,7 @@ test('checker rejects evidence byte drift and semantic family drift with only th
 	}
 });
 
-test('checker rejects binding-byte drift, symlink inputs, and missing artifacts with stale code', async () => {
+test('checker rejects binding-byte drift, symlink inputs, and missing artifacts with stale code', async t => {
 	const pluginArtifactDrift = await createAcceptedFixture();
 	try {
 		await appendFile(path.join(pluginArtifactDrift.root, 'main.js'), 'drift', 'utf8');
@@ -120,26 +121,31 @@ test('checker rejects binding-byte drift, symlink inputs, and missing artifacts 
 		await rm(bindingDrift.root, { recursive: true, force: true });
 	}
 
-	const symlinkFixture = await createAcceptedFixture();
-	try {
-		const realFreeze = `${symlinkFixture.freezePath}.real`;
-		await copyFile(symlinkFixture.freezePath, realFreeze);
-		await rm(symlinkFixture.freezePath);
-		await symlink(realFreeze, symlinkFixture.freezePath);
-		await assertStale(checkAcceptedReleaseFreeze({ pluginRoot: symlinkFixture.root }));
-	} finally {
-		await rm(symlinkFixture.root, { recursive: true, force: true });
-	}
+	const symlinkUnavailable = symlinkCapabilityUnavailableReason();
+	await t.test('checker rejects file and parent-directory symlink inputs', {
+		skip: symlinkUnavailable,
+	}, async () => {
+		const symlinkFixture = await createAcceptedFixture();
+		try {
+			const realFreeze = `${symlinkFixture.freezePath}.real`;
+			await copyFile(symlinkFixture.freezePath, realFreeze);
+			await rm(symlinkFixture.freezePath);
+			await symlink(realFreeze, symlinkFixture.freezePath);
+			await assertStale(checkAcceptedReleaseFreeze({ pluginRoot: symlinkFixture.root }));
+		} finally {
+			await rm(symlinkFixture.root, { recursive: true, force: true });
+		}
 
-	const parentSymlinkFixture = await createAcceptedFixture();
-	const linkedRoot = `${parentSymlinkFixture.root}-link`;
-	try {
-		await symlink(parentSymlinkFixture.root, linkedRoot);
-		await assertStale(checkAcceptedReleaseFreeze({ pluginRoot: linkedRoot }));
-	} finally {
-		await rm(linkedRoot, { force: true });
-		await rm(parentSymlinkFixture.root, { recursive: true, force: true });
-	}
+		const parentSymlinkFixture = await createAcceptedFixture();
+		const linkedRoot = `${parentSymlinkFixture.root}-link`;
+		try {
+			await symlink(parentSymlinkFixture.root, linkedRoot);
+			await assertStale(checkAcceptedReleaseFreeze({ pluginRoot: linkedRoot }));
+		} finally {
+			await rm(linkedRoot, { force: true });
+			await rm(parentSymlinkFixture.root, { recursive: true, force: true });
+		}
+	});
 
 	const missingRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-freeze-missing-'));
 	try {

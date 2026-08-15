@@ -18,6 +18,7 @@ import {
 	withVerifiedPublishedCli,
 } from './published-cli-v1.mjs';
 import { readArtifactArguments } from './check-published-cli-artifact.mjs';
+import { symlinkCapabilityUnavailableReason } from '../../test-symlink-capability.mjs';
 import { fetchPublicProofBytes, publicProofRequest, verifyGithubTagIdentity } from './check-published-cli-public-proof.mjs';
 
 test('accepted binding validates and canonical plugin inputs match', async () => {
@@ -121,7 +122,7 @@ test('public proof refuses GitHub API redirects without following the location',
 	assert.equal(requests, 1);
 });
 
-test('canonical plugin inputs ignore only POSIX mode on Windows', async t => {
+test('canonical plugin inputs ignore only POSIX mode on Windows while preserving size and hash checks', async () => {
 	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-canonical-input-platform-'));
 	const relativePath = 'contracts/agent-runtime/synthetic-canonical.json';
 	const target = path.join(temporaryRoot, relativePath);
@@ -173,23 +174,35 @@ test('canonical plugin inputs ignore only POSIX mode on Windows', async t => {
 			/OPERON_PUBLISHED_CLI_CANONICAL_HASH_MISMATCH/u,
 		);
 
-		const realTarget = `${target}.real`;
+	} finally {
+		await rm(temporaryRoot, { recursive: true, force: true });
+	}
+});
+
+test('canonical plugin input verification rejects a symlink', {
+	skip: symlinkCapabilityUnavailableReason(),
+}, async () => {
+	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-canonical-input-symlink-'));
+	const relativePath = 'contracts/agent-runtime/synthetic-canonical.json';
+	const target = path.join(temporaryRoot, relativePath);
+	const realTarget = `${target}.real`;
+	const bytes = Buffer.from('{"contractVersion":1}\n', 'utf8');
+	try {
+		await mkdir(path.dirname(target), { recursive: true });
 		await writeFile(realTarget, bytes);
-		await rm(target);
-		try {
-			await symlink(realTarget, target);
-		} catch (error) {
-			const code = error && typeof error === 'object' && 'code' in error
-				? error.code
-				: undefined;
-			if (process.platform === 'win32' && ['EACCES', 'ENOSYS', 'EPERM'].includes(code)) {
-				t.diagnostic(`Symlink rejection assertion skipped: capability unavailable (${code}).`);
-				return;
-			}
-			throw error;
-		}
+		await symlink(realTarget, target);
 		await assert.rejects(
-			verifyCanonicalPluginInputs(binding, { pluginRoot: temporaryRoot, platform: 'win32' }),
+			verifyCanonicalPluginInputs({
+				runtime: {
+					canonicalSchemas: [{
+						path: relativePath,
+						bytes: bytes.byteLength,
+						sha256: sha256(bytes),
+						mode: 0o600,
+					}],
+					canonicalTypeSources: [],
+				},
+			}, { pluginRoot: temporaryRoot, platform: 'win32' }),
 			/OPERON_PUBLISHED_CLI_CANONICAL_FILE_INVALID/u,
 		);
 	} finally {
@@ -260,12 +273,18 @@ test('binding schema rejects an unknown top-level field', async () => {
 	}
 });
 
-test('tarball verification rejects relative and symlink paths before reading bytes', async () => {
+test('tarball verification rejects a relative path before reading bytes', async () => {
 	const { binding } = await loadPublishedCliBinding();
 	await assert.rejects(
 		verifyTarballIdentity('candidate.tgz', binding),
 		/OPERON_PUBLISHED_CLI_TARBALL_PATH_INVALID/u,
 	);
+});
+
+test('tarball verification rejects a symlink before reading bytes', {
+	skip: symlinkCapabilityUnavailableReason(),
+}, async () => {
+	const { binding } = await loadPublishedCliBinding();
 	const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'operon-tarball-negative-'));
 	try {
 		const real = path.join(temporaryRoot, 'real.tgz');

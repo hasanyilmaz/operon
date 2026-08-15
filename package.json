@@ -57,7 +57,7 @@
 		"agent-runtime:transport:native:test": "node scripts/agent-runtime/cli-transport/run-native-transport-tests.mjs",
 		"ci:pr-surface:test": "node --test scripts/ci/classify-pr-validation-surface.test.mjs",
 		"validate:windows:plugin": "node scripts/validate-windows-plugin.mjs",
-		"validate:windows:plugin:test": "node --test scripts/validate-windows-plugin.test.mjs",
+		"validate:windows:plugin:test": "node --test scripts/validate-windows-plugin.test.mjs scripts/test-symlink-capability.test.mjs",
 		"validate:windows:candidate": "node scripts/validate-windows-candidate.mjs",
 		"validate:windows:candidate:test": "node --test scripts/validate-windows-candidate.test.mjs",
 		"agent-runtime:vault:create": "node scripts/agent-runtime/create-sanitized-vault.mjs",
