@@ -95,6 +95,129 @@ test('general update resolves stable priority identity and rejects semantic fiel
 	if (!rejected.ok) assert.equal(rejected.code, 'field-not-writable');
 });
 
+test('File Task description changes fail closed without affecting supported update paths', () => {
+	const fileLocator = { representation: 'file' as const, filePath: 'Tasks/Adapter fixture.md' };
+	const fileTask: RuntimeExactTaskMutationSnapshotV1 = {
+		...task,
+		locator: fileLocator,
+		description: 'Adapter fixture',
+		sourceContent: [
+			'---',
+			'operonId: abc1234',
+			`priority: ${task.fieldValues.priority}`,
+			'---',
+			'',
+		].join('\n'),
+	};
+	const originalFileTask = structuredClone(fileTask);
+	const fileRequest = (
+		mutationKind: MutationPreviewRequestV1['mutationKind'],
+		capability: MutationPreviewRequestV1['capability'],
+		spec: MutationPreviewRequestV1['spec'],
+	): MutationPreviewRequestV1 => ({
+		...request(mutationKind, capability, spec),
+		target: { operonId: fileTask.operonId, locator: fileLocator },
+	});
+	const ports = { catalog, getTask: () => fileTask };
+
+	const changedDescription = prepareRuntimeTaskFieldMutationV1(
+		fileRequest('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [{ field: 'description', valueType: 'text', value: 'Renamed fixture' }],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		ports,
+	);
+	assert.equal(changedDescription.ok, false);
+	if (!changedDescription.ok) {
+		assert.equal(changedDescription.code, 'field-not-writable');
+		assert.match(changedDescription.reason, /explicit rename contract/u);
+	}
+	assert.deepEqual(fileTask, originalFileTask, 'preview preparation must not mutate the File Task snapshot');
+
+	const unchangedDescription = prepareRuntimeTaskFieldMutationV1(
+		fileRequest('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [{ field: 'description', valueType: 'text', value: fileTask.description }],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		ports,
+	);
+	assert.equal(unchangedDescription.ok, true);
+	if (unchangedDescription.ok) {
+		assert.equal(unchangedDescription.value.noChange, true);
+		assert.deepEqual(unchangedDescription.value.fieldValues, {});
+	}
+
+	const priority = catalog.taxonomy.priorities.at(-1);
+	assert.ok(priority);
+	const supportedFileField = prepareRuntimeTaskFieldMutationV1(
+		fileRequest('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [
+				{ field: 'description', valueType: 'text', value: fileTask.description },
+				{ field: 'priority', valueType: 'text', value: priority.id },
+			],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		ports,
+	);
+	assert.equal(supportedFileField.ok, true);
+	if (supportedFileField.ok) {
+		assert.equal(supportedFileField.value.noChange, false);
+		assert.equal(supportedFileField.value.fieldValues['priority'], priority.label);
+		assert.equal(supportedFileField.value.fieldValues['_description'], fileTask.description);
+		assert.equal(typeof supportedFileField.value.fieldValues['datetimeModified'], 'string');
+	}
+
+	for (const changes of [
+		[
+			{ field: 'priority' as const, valueType: 'text' as const, value: priority.id },
+			{ field: 'description' as const, valueType: 'text' as const, value: 'Renamed fixture' },
+		],
+		[
+			{ field: 'description' as const, valueType: 'text' as const, value: 'Renamed fixture' },
+			{ field: 'priority' as const, valueType: 'text' as const, value: priority.id },
+		],
+	]) {
+		const mixed = prepareRuntimeTaskFieldMutationV1(
+			fileRequest('task.update', 'tasks.update.preview', { operation: 'update', changes }),
+			'2026-07-24T12:00:00.000Z',
+			ports,
+		);
+		assert.equal(mixed.ok, false, 'a refused rename must reject the complete update atomically');
+		if (!mixed.ok) assert.equal(mixed.code, 'field-not-writable');
+	}
+
+	const invalidDescription = prepareRuntimeTaskFieldMutationV1(
+		fileRequest('task.update', 'tasks.update.preview', {
+			operation: 'update',
+			changes: [{ field: 'description', valueType: 'text', value: 'Invalid\nrename' }],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		ports,
+	);
+	assert.equal(invalidDescription.ok, false);
+	if (!invalidDescription.ok) assert.equal(invalidDescription.code, 'invalid-request');
+
+	const terminal = catalog.taxonomy.pipelines
+		.flatMap(pipeline => pipeline.statuses)
+		.find(status => status.isFinished);
+	assert.ok(terminal);
+	const transitionRename = prepareRuntimeTaskFieldMutationV1(
+		fileRequest('task.transition', 'tasks.transition.preview', {
+			operation: 'transition',
+			targetStatusId: terminal.id,
+			changes: [{ field: 'description', valueType: 'text', value: 'Renamed fixture' }],
+		}),
+		'2026-07-24T12:00:00.000Z',
+		ports,
+	);
+	assert.equal(transitionRename.ok, false);
+	if (!transitionRename.ok) assert.equal(transitionRename.code, 'field-not-writable');
+	assert.deepEqual(fileTask, originalFileTask);
+});
+
 test('conversion ancestor effects exclude source groups and coalesce shared ancestor files', () => {
 	const effects = buildRuntimeConversionAncestorPredictedEffectsV1(
 		['Daily/Today.md', 'Converted/Task.md'],
