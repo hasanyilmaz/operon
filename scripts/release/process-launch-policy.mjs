@@ -172,7 +172,7 @@ export function inspectProductionBundleText(bundleText, file = 'main.js') {
 function walkProductionSources(absoluteDir, relativeDir, files) {
 	if (!fs.existsSync(absoluteDir)) return;
 	for (const entry of fs.readdirSync(absoluteDir, { withFileTypes: true })) {
-		const relativePath = path.join(relativeDir, entry.name);
+		const relativePath = path.posix.join(relativeDir, entry.name);
 		const absolutePath = path.join(absoluteDir, entry.name);
 		if (entry.isDirectory()) {
 			if (!TEST_SOURCE_PATTERN.test(relativePath)) walkProductionSources(absolutePath, relativePath, files);
