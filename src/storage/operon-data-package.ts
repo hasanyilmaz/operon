@@ -638,6 +638,13 @@ export function hasRetiredOperonDataPackageSettings(
 	return RETIRED_DATA_PACKAGE_SETTINGS_KEYS.some(key => Object.prototype.hasOwnProperty.call(dataPackage.settings, key));
 }
 
+export function removeRetiredOperonDataPackageSettings<T>(settings: T): T {
+	const cleaned = cloneUnknown<T>(settings);
+	if (!isRecord(cleaned)) return cleaned;
+	for (const key of RETIRED_DATA_PACKAGE_SETTINGS_KEYS) delete cleaned[key];
+	return cleaned;
+}
+
 export function createEmptyPinnedTasksPackage(): OperonPinnedTasksPackageV1 {
 	return {
 		version: OPERON_PINNED_TASKS_PACKAGE_VERSION,
@@ -906,11 +913,7 @@ function cloneSettingsPackageWithoutRetiredKeys(
 	existing: unknown,
 	fallback: OperonDataPackageSettings,
 ): OperonDataPackageSettings {
-	const settings = cloneExistingDomain(existing, fallback);
-	for (const key of RETIRED_DATA_PACKAGE_SETTINGS_KEYS) {
-		delete (settings as Record<string, unknown>)[key];
-	}
-	return settings;
+	return removeRetiredOperonDataPackageSettings(cloneExistingDomain(existing, fallback));
 }
 
 function buildStatePackage(

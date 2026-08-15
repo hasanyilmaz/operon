@@ -2191,7 +2191,7 @@
       "tableFileConflictResolveMessage": "¿Conservar {{path}} con el ID existente? Operon reescribirá {{count}} archivo(s) válido(s) con nuevos ID:\n{{paths}}",
       "tableFileConflictResolveTitle": "Resolver conflicto de ID de Table",
       "tableFileConflictResolvedNotice": "Se resolvió el conflicto de ID y se crearon {{count}} archivo(s) Table independiente(s).",
-      "tableFileUnsupportedPackageNotice": "Esta versión de Operon no puede abrir la configuración de Table guardada. No se realizó ningún cambio.",
+      "tableFileUnsupportedPackageNotice": "Operon no pudo abrir de forma segura la configuración de Table guardada ({reason}). Se bloquearon las escrituras de ajustes. No reinstales ni edites data.json; conserva tus archivos, revisa el motivo indicado y busca ayuda de recuperación.",
       "tableGeneralSettings": "Configuración general de Table",
       "tablePresetConflict": "Conflicto de ID",
       "tablePresetFileMissingNotice": "Falta el archivo Table: {{path}}",
@@ -3080,5 +3080,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "064df96a7ae877c1668fc586cadf0ba81eb9ceae299d4e546e2acfeeeb7100b2"
+  "sourceVersion": "3a999c125318bb9b78ab4d1108565e409a74ae97009af171ab290fa0744e0349"
 }

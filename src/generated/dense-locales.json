@@ -5237,7 +5237,7 @@
       "Keep {{path}} on the existing ID? Operon will rewrite {{count}} other valid file(s) with new IDs:\n{{paths}}",
       "Resolve Table ID conflict",
       "Resolved the ID conflict and created {{count}} independent Table file(s).",
-      "This Operon version cannot open the stored Table configuration. No changes were made.",
+      "Operon could not safely open the stored Table configuration ({reason}). Settings writes were blocked. Do not reinstall or edit data.json; preserve your files, inspect the reported reason, and seek recovery guidance.",
       "General Table Settings",
       "ID conflict",
       "Table file is missing: {{path}}",

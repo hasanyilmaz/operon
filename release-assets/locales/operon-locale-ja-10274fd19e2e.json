@@ -2191,7 +2191,7 @@
       "tableFileConflictResolveMessage": "{{path}} に現在の ID を保持しますか？ Operon は他の有効な {{count}} 件のファイルを新しい ID で書き換えます:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table ID の競合を解決",
       "tableFileConflictResolvedNotice": "ID 競合を解決し、{{count}} 件の独立した Table ファイルを作成しました。",
-      "tableFileUnsupportedPackageNotice": "このバージョンの Operon では、保存されている Table 設定を開けません。変更は行われませんでした。",
+      "tableFileUnsupportedPackageNotice": "Operon は保存された Table 設定を安全に開けませんでした（{reason}）。設定の書き込みは停止されました。再インストールや data.json の編集は行わず、ファイルを保持し、報告された理由を確認して復旧支援を受けてください。",
       "tableGeneralSettings": "Table の一般設定",
       "tablePresetConflict": "ID の競合",
       "tablePresetFileMissingNotice": "Table ファイルが見つかりません: {{path}}",
@@ -3080,5 +3080,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "37e59a9f3dd8d38d2fbad58357b3adb118fce910b604601791a9e581e4c55914"
+  "sourceVersion": "77a92388f5ab351cf6eb157896278024d238f62869ca7d28ba349600986896f7"
 }

@@ -2191,7 +2191,7 @@
       "tableFileConflictResolveMessage": "Сохранить текущий ID для {{path}}? Operon перезапишет ещё {{count}} допустимых файла(ов) с новыми ID:\n{{paths}}",
       "tableFileConflictResolveTitle": "Разрешить конфликт ID Table",
       "tableFileConflictResolvedNotice": "Конфликт ID разрешён; создано независимых файлов Table: {{count}}.",
-      "tableFileUnsupportedPackageNotice": "Эта версия Operon не может открыть сохранённую конфигурацию Table. Изменения не вносились.",
+      "tableFileUnsupportedPackageNotice": "Operon не удалось безопасно открыть сохранённую конфигурацию Table ({reason}). Запись настроек заблокирована. Не переустанавливайте плагин и не редактируйте data.json; сохраните файлы, проверьте указанную причину и обратитесь за помощью по восстановлению.",
       "tableGeneralSettings": "Общие настройки Table",
       "tablePresetConflict": "Конфликт ID",
       "tablePresetFileMissingNotice": "Файл Table отсутствует: {{path}}",
@@ -3080,5 +3080,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "70bd6f0f8442c7d0a7c430d6dfe8b109683d9c3ce55080a8a2e3c3c78a4fa9a3"
+  "sourceVersion": "e747e8008a4f3f674de2c6650887f4b7f0cb7afefc483b1d750897bd0bf64f07"
 }

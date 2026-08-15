@@ -1,0 +1,170 @@
+{
+  "format": "operon-table",
+  "version": 2,
+  "id": "table-preset-my-first-table",
+  "name": "My First Table",
+  "filterSetId": null,
+  "columns": [
+    {
+      "key": "taskType",
+      "kind": "task",
+      "align": "center",
+      "displayMode": "icon"
+    },
+    {
+      "key": "taskIcon",
+      "kind": "task",
+      "align": "center",
+      "displayMode": "icon"
+    },
+    {
+      "key": "taskColor",
+      "kind": "task",
+      "align": "center",
+      "displayMode": "icon"
+    },
+    {
+      "key": "description",
+      "kind": "task",
+      "widthPx": 296
+    },
+    {
+      "key": "note",
+      "kind": "task",
+      "displayMode": "icon"
+    },
+    {
+      "key": "priority",
+      "kind": "task",
+      "widthPx": 100,
+      "align": "center"
+    },
+    {
+      "key": "status",
+      "kind": "task",
+      "widthPx": 201
+    },
+    {
+      "key": "progress",
+      "kind": "task",
+      "widthPx": 177,
+      "align": "center"
+    },
+    {
+      "key": "dateScheduled",
+      "kind": "task",
+      "align": "center"
+    },
+    {
+      "key": "dateDue",
+      "kind": "task",
+      "align": "center"
+    },
+    {
+      "key": "totalDuration",
+      "kind": "task",
+      "hidden": true,
+      "align": "right"
+    },
+    {
+      "key": "duration",
+      "kind": "task",
+      "widthPx": 145,
+      "hidden": true,
+      "align": "right"
+    },
+    {
+      "key": "estimate",
+      "kind": "task",
+      "widthPx": 177,
+      "hidden": true,
+      "align": "right"
+    },
+    {
+      "key": "checkboxProgress",
+      "kind": "task",
+      "widthPx": 179,
+      "hidden": true,
+      "align": "center"
+    },
+    {
+      "key": "location",
+      "kind": "task",
+      "widthPx": 237,
+      "hidden": true,
+      "colorMode": "taskColor"
+    },
+    {
+      "key": "parentTask",
+      "kind": "task",
+      "widthPx": 290,
+      "hidden": true
+    },
+    {
+      "key": "source",
+      "kind": "task",
+      "hidden": true
+    },
+    {
+      "key": "trackers",
+      "kind": "task",
+      "widthPx": 369,
+      "hidden": true
+    },
+    {
+      "key": "totalEstimate",
+      "kind": "task",
+      "hidden": true,
+      "align": "right"
+    },
+    {
+      "key": "tags",
+      "kind": "task",
+      "widthPx": 229,
+      "hidden": true,
+      "colorMode": "randomColors"
+    },
+    {
+      "key": "sourceFormat",
+      "kind": "task",
+      "hidden": true
+    },
+    {
+      "key": "sourceLine",
+      "kind": "task",
+      "hidden": true,
+      "align": "right"
+    },
+    {
+      "key": "checkbox",
+      "kind": "task",
+      "hidden": true,
+      "align": "center",
+      "displayMode": "icon"
+    }
+  ],
+  "sortRules": [],
+  "groupBy": null,
+  "groupOrder": "asc",
+  "subgroupBy": null,
+  "subgroupOrder": "asc",
+  "collapsedGroupKeys": [],
+  "summaries": [],
+  "display": {
+    "showSource": true,
+    "density": "compact"
+  },
+  "search": {
+    "scope": {
+      "projectMode": null,
+      "showOverdue": false,
+      "showHappensToday": false,
+      "showRecentModified": false,
+      "includeInline": true,
+      "includeFile": true,
+      "includeCancelled": true,
+      "includeFinished": true
+    },
+    "parent": null
+  }
+}

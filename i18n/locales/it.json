@@ -1361,7 +1361,7 @@
 		"tableFileConflictResolve": "Risolvi conflitto",
 		"tableFileConflictResolvedNotice": "Conflitto ID risolto; creati {{count}} file Table indipendenti.",
 		"tableFileConflictPartialNotice": "La risoluzione del conflitto ha creato {{succeeded}} file Table; {{failed}} file richiedono ancora revisione.",
-		"tableFileUnsupportedPackageNotice": "Questa versione di Operon non può aprire la configurazione Table salvata. Nessuna modifica è stata apportata.",
+		"tableFileUnsupportedPackageNotice": "Operon non ha potuto aprire in sicurezza la configurazione Table salvata ({reason}). Le scritture delle impostazioni sono state bloccate. Non reinstallare né modificare data.json; conserva i file, esamina il motivo segnalato e richiedi assistenza per il recupero.",
 		"tableGeneralSettings": "Impostazioni generali Table",
 		"tableDefaultPreset": "Preimpostazione Table predefinita",
 		"tableDefaultPresetDesc": "I nuovi riquadri Operon Table iniziano con questa preimpostazione a meno che il riquadro non abbia già un proprio stato salvato.",

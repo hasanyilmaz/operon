@@ -24,6 +24,14 @@ import {
 	isUnsupportedDeveloperApiGrantPackage,
 	normalizeDeveloperApiGrantPackage,
 } from '../agent-runtime/developer-api/grants';
+import { sha256HexForStorage } from './storage-sha256';
+import {
+	buildRecoveredTablePresetDataPackageV1,
+	overlayKnownDataPackageFieldsPreservingUnknownV1,
+	preflightTablePresetManifestRecoveryV1,
+	type TablePresetManifestRecoveryBlockCode,
+	type TablePresetManifestRecoveryFileEvidence,
+} from './table-preset-manifest-recovery';
 
 export interface OperonPluginDataAccess {
 	loadData(): Promise<unknown>;
@@ -33,9 +41,26 @@ export interface OperonPluginDataAccess {
 export interface OperonDataPackageStoreInitResult {
 	dataPackage: OperonDataPackageV1;
 	unsupportedTablePresetPackage: boolean;
+	tablePresetRecovery: OperonTablePresetRecoveryDiagnostics;
 	loadedExistingPinnedTasksPackage: boolean;
 	pipelineTaxonomyDiagnostics: OperonPipelineTaxonomyDiagnostics;
 }
+
+export type OperonTablePresetRecoveryStatus =
+	| 'not-needed'
+	| 'recovered'
+	| 'blocked'
+	| 'failed-clean'
+	| 'commit-state-unknown';
+
+export interface OperonTablePresetRecoveryDiagnostics {
+	status: OperonTablePresetRecoveryStatus;
+	code: TablePresetManifestRecoveryBlockCode | 'backup-failed' | 'marker-invalid' | 'marker-write-failed'
+		| 'marker-finalization-failed' | 'canonical-read-drift' | 'canonical-write-failed' | 'canonical-state-unknown' | null;
+	backupPath: string | null;
+}
+
+export type OperonTablePresetRecoveryDiscovery = () => Promise<TablePresetManifestRecoveryFileEvidence[]>;
 
 export interface OperonCommittedSettingsDataPackageSnapshot {
 	settings: OperonSettings;
@@ -84,6 +109,26 @@ export type OperonDataPackageObservedReplaceResult =
 type PluginDataAccess = OperonPluginDataAccess | null | undefined;
 type OperonDataPackageDomain = Exclude<keyof OperonDataPackageV1, 'schemaVersion'>;
 
+interface OperonTableManifestV2RecoveryMarkerV1 {
+	version: 1;
+	phase: 'prepared' | 'committed';
+	sourceSha256: string;
+	candidateSha256: string;
+	backupPath: string;
+	presetIds: string[];
+	bindings: Array<{ id: string; path: string }>;
+}
+
+type TableRecoveryMarkerReadResult =
+	| { status: 'missing' }
+	| { status: 'valid'; marker: OperonTableManifestV2RecoveryMarkerV1 }
+	| { status: 'invalid' };
+
+interface TableRecoveryAttemptResult {
+	dataPackage: Partial<OperonDataPackageV1>;
+	diagnostics: OperonTablePresetRecoveryDiagnostics;
+}
+
 const DATA_PACKAGE_DOMAINS: readonly OperonDataPackageDomain[] = [
 	'settings',
 	'taxonomy',
@@ -113,23 +158,35 @@ export class OperonDataPackageStore {
 		private readonly adapter: Pick<DataAdapter, 'exists' | 'read' | 'write' | 'remove'> & Partial<Pick<DataAdapter, 'process' | 'rename'>>,
 		private readonly paths: OperonStoragePaths,
 		private readonly pluginData: PluginDataAccess,
+		private readonly discoverTableRecoveryFiles?: OperonTablePresetRecoveryDiscovery,
 	) {}
 
 	async initialize(
 		defaults: OperonSettings,
 		obsidianLocale?: string,
 	): Promise<OperonDataPackageStoreInitResult> {
-		const existingPackage = await this.loadExistingPackage();
+		let existingPackage = await this.loadExistingPackage();
+		let tablePresetRecovery = createTablePresetRecoveryDiagnostics();
 		const existingDeveloperApiGrantPackage = existingPackage?.integrations?.developerApi;
 		const unsupportedDeveloperApiGrantPackage = isUnsupportedDeveloperApiGrantPackage(
 			existingDeveloperApiGrantPackage,
 		);
+		if (unsupportedDeveloperApiGrantPackage) this.suspendForUnsupportedDeveloperApiGrantPackage();
+		if (existingPackage && !unsupportedDeveloperApiGrantPackage) {
+			const recovery = await this.enqueueMutation(() => this.recoverTablePresetManifestV2Now(existingPackage!));
+			existingPackage = recovery.dataPackage;
+			tablePresetRecovery = recovery.diagnostics;
+		}
 		const recoverableDeveloperApiGrantPackageDrift = !unsupportedDeveloperApiGrantPackage
 			&& isRecord(existingDeveloperApiGrantPackage)
 			&& buildStableJsonSignature(existingDeveloperApiGrantPackage)
 				!== buildStableJsonSignature(normalizeDeveloperApiGrantPackage(existingDeveloperApiGrantPackage));
-		if (unsupportedDeveloperApiGrantPackage) this.suspendForUnsupportedDeveloperApiGrantPackage();
-		const unsupportedTablePresetPackage = existingPackage ? isUnsupportedTablePresetPackage(existingPackage) : false;
+		const unsupportedTablePresetPackage = existingPackage
+			? tablePresetRecovery.status === 'blocked'
+				|| tablePresetRecovery.status === 'failed-clean'
+				|| tablePresetRecovery.status === 'commit-state-unknown'
+				|| (tablePresetRecovery.status !== 'recovered' && isUnsupportedTablePresetPackage(existingPackage))
+			: false;
 		this.startupPipelineTaxonomyDiagnostics = existingPackage && !unsupportedTablePresetPackage
 			? await this.inspectPipelineTaxonomy(existingPackage)
 			: createPipelineTaxonomyDiagnostics();
@@ -138,9 +195,12 @@ export class OperonDataPackageStore {
 			: null;
 		const hasRetiredSettings = hasRetiredOperonDataPackageSettings(existingPackage);
 		const mergedPackage = mergeOperonDataPackage(migratedExistingPackage, buildFallbackDataPackage(defaults));
-		const dataPackage = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
+		const normalizedPackage = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
 			? normalizePipelineTaxonomySlice(mergedPackage, defaults)
 			: mergedPackage;
+		const dataPackage = tablePresetRecovery.status === 'recovered' && existingPackage
+			? overlayKnownDataPackageFieldsPreservingUnknownV1(existingPackage, normalizedPackage)
+			: normalizedPackage;
 		if (existingPackage && !unsupportedTablePresetPackage && !unsupportedDeveloperApiGrantPackage
 			&& (
 				shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
@@ -156,6 +216,7 @@ export class OperonDataPackageStore {
 		return {
 			dataPackage: this.cloneDataPackage(dataPackage),
 			unsupportedTablePresetPackage,
+			tablePresetRecovery,
 			loadedExistingPinnedTasksPackage: hasPinnedTasksPackage(existingPackage),
 			pipelineTaxonomyDiagnostics: clonePipelineTaxonomyDiagnostics(this.startupPipelineTaxonomyDiagnostics),
 		};
@@ -389,6 +450,243 @@ export class OperonDataPackageStore {
 		}
 	}
 
+	private async recoverTablePresetManifestV2Now(
+		existingPackage: Partial<OperonDataPackageV1>,
+	): Promise<TableRecoveryAttemptResult> {
+		const markerRead = await this.readTableManifestV2RecoveryMarker();
+		if (markerRead.status === 'invalid') {
+			this.suspendWrites('Table manifest v2 recovery marker is invalid');
+			return this.blockTableRecovery(existingPackage, 'marker-invalid', null, 'commit-state-unknown');
+		}
+		if (markerRead.status === 'missing' && !isUnsupportedTablePresetPackage(existingPackage)) {
+			return { dataPackage: existingPackage, diagnostics: createTablePresetRecoveryDiagnostics() };
+		}
+		let rawSource: string;
+		let parsedSource: unknown;
+		try {
+			rawSource = await this.readCanonicalBackupSource(existingPackage);
+			parsedSource = JSON.parse(rawSource) as unknown;
+		} catch {
+			this.suspendWrites('Table manifest v2 recovery could not read canonical data.json');
+			return this.blockTableRecovery(existingPackage, 'canonical-read-drift', null, 'commit-state-unknown');
+		}
+		if (!isRecord(parsedSource)
+			|| buildStableJsonSignature(parsedSource) !== buildStableJsonSignature(existingPackage)) {
+			this.suspendWrites('Table manifest v2 recovery source changed during startup');
+			return this.blockTableRecovery(existingPackage, 'canonical-read-drift', null, 'commit-state-unknown');
+		}
+		if (parsedSource.schemaVersion !== OPERON_DATA_PACKAGE_SCHEMA_VERSION) {
+			return { dataPackage: existingPackage, diagnostics: createTablePresetRecoveryDiagnostics() };
+		}
+		const sourceSha256 = await sha256HexForStorage(rawSource);
+		if (markerRead.status === 'valid') {
+			const marker = markerRead.marker;
+			const expectedBackupPath = this.getTableRecoveryBackupPath(marker.sourceSha256);
+			if (marker.backupPath !== expectedBackupPath) {
+				this.suspendWrites('Table manifest v2 recovery marker references an unexpected backup path');
+				return this.blockTableRecovery(existingPackage, 'marker-invalid', null, 'commit-state-unknown');
+			}
+			if (!await this.verifyImmutableTableRecoveryBackup(marker.backupPath, marker.sourceSha256)) {
+				this.suspendWrites('Table manifest v2 recovery backup is unavailable or invalid');
+				return this.blockTableRecovery(existingPackage, 'backup-failed', marker.backupPath, 'commit-state-unknown');
+			}
+			if (marker.phase === 'committed') {
+				const current = preflightTablePresetManifestRecoveryV1(parsedSource, []);
+				if (current.status !== 'not-needed' || current.reason !== 'current') {
+					this.suspendWrites('Committed Table manifest recovery no longer has a current v3 canonical package');
+					return this.blockTableRecovery(existingPackage, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+				}
+				return {
+					dataPackage: parsedSource,
+					diagnostics: { status: 'recovered', code: null, backupPath: marker.backupPath },
+				};
+			}
+			if (await getTableRecoveryCandidateSha256(parsedSource) === marker.candidateSha256) {
+				if (!await this.writeTableManifestV2RecoveryMarkerObserved({ ...marker, phase: 'committed' })) {
+					this.suspendWrites('Table manifest v2 recovery marker could not be finalized');
+					return this.blockTableRecovery(existingPackage, 'marker-finalization-failed', marker.backupPath, 'blocked');
+				}
+				return {
+					dataPackage: parsedSource,
+					diagnostics: { status: 'recovered', code: null, backupPath: marker.backupPath },
+				};
+			}
+			if (sourceSha256 !== marker.sourceSha256) {
+				this.suspendWrites('Table manifest v2 recovery canonical state does not match the prepared transaction');
+				return this.blockTableRecovery(existingPackage, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+			}
+			if (!await this.verifyImmutableTableRecoveryBackup(marker.backupPath, marker.sourceSha256, rawSource)) {
+				this.suspendWrites('Table manifest v2 recovery backup is unavailable or invalid');
+				return this.blockTableRecovery(existingPackage, 'backup-failed', marker.backupPath, 'commit-state-unknown');
+			}
+			const resumed = await this.buildTableRecoveryCandidate(parsedSource);
+			if (resumed.status !== 'recoverable') {
+				this.suspendWrites('Table manifest v2 recovery evidence no longer matches the prepared transaction');
+				return this.blockTableRecovery(
+					existingPackage,
+					resumed.status === 'blocked' ? resumed.code : 'canonical-state-unknown',
+					marker.backupPath,
+					'commit-state-unknown',
+				);
+			}
+			const candidate = buildRecoveredTablePresetDataPackageV1(parsedSource, resumed);
+			if (await getTableRecoveryCandidateSha256(candidate) !== marker.candidateSha256
+				|| buildStableJsonSignature(resumed.presetIds) !== buildStableJsonSignature(marker.presetIds)
+				|| buildStableJsonSignature(resumed.bindings) !== buildStableJsonSignature(marker.bindings)) {
+				this.suspendWrites('Table manifest v2 recovery candidate changed after preparation');
+				return this.blockTableRecovery(existingPackage, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+			}
+			return await this.commitTableRecoveryCandidate(parsedSource, candidate, marker);
+		}
+
+		const preflight = await this.buildTableRecoveryCandidate(parsedSource);
+		if (preflight.status === 'not-needed') {
+			return { dataPackage: existingPackage, diagnostics: createTablePresetRecoveryDiagnostics() };
+		}
+		if (preflight.status === 'blocked') {
+			return this.blockTableRecovery(existingPackage, preflight.code, null, 'blocked');
+		}
+		const candidate = buildRecoveredTablePresetDataPackageV1(parsedSource, preflight);
+		const backupPath = this.getTableRecoveryBackupPath(sourceSha256);
+		try {
+			await this.writeImmutableTableRecoveryBackup(backupPath, rawSource);
+		} catch {
+			this.suspendWrites('Table manifest v2 recovery backup could not be created');
+			return this.blockTableRecovery(existingPackage, 'backup-failed', backupPath, 'blocked');
+		}
+		const marker: OperonTableManifestV2RecoveryMarkerV1 = {
+			version: 1,
+			phase: 'prepared',
+			sourceSha256,
+			candidateSha256: await getTableRecoveryCandidateSha256(candidate),
+			backupPath,
+			presetIds: [...preflight.presetIds],
+			bindings: preflight.bindings.map(binding => ({ ...binding })),
+		};
+		if (!await this.writeTableManifestV2RecoveryMarkerObserved(marker)) {
+			this.suspendWrites('Table manifest v2 recovery marker could not be persisted');
+			return this.blockTableRecovery(existingPackage, 'marker-write-failed', backupPath, 'blocked');
+		}
+		return await this.commitTableRecoveryCandidate(parsedSource, candidate, marker);
+	}
+
+	private async buildTableRecoveryCandidate(dataPackage: unknown) {
+		const withoutFiles = preflightTablePresetManifestRecoveryV1(dataPackage, []);
+		if (withoutFiles.status !== 'blocked' || withoutFiles.code !== 'table-file-missing') return withoutFiles;
+		if (!this.discoverTableRecoveryFiles) return withoutFiles;
+		try {
+			return preflightTablePresetManifestRecoveryV1(dataPackage, await this.discoverTableRecoveryFiles());
+		} catch {
+			return { status: 'blocked' as const, code: 'table-file-invalid' as const };
+		}
+	}
+
+	private async commitTableRecoveryCandidate(
+		previous: unknown,
+		candidate: unknown,
+		marker: OperonTableManifestV2RecoveryMarkerV1,
+	): Promise<TableRecoveryAttemptResult> {
+		try {
+			await this.persistCandidate(candidate as OperonDataPackageV1);
+		} catch {
+			// The observed canonical state below owns acknowledgement classification.
+		}
+		const observed = await this.readCanonicalDataPackageForObservation();
+		const previousSignature = buildStableJsonSignature(previous);
+		const candidateSignature = buildStableJsonSignature(candidate);
+		if (observed && buildStableJsonSignature(observed) === candidateSignature) {
+			if (!await this.writeTableManifestV2RecoveryMarkerObserved({ ...marker, phase: 'committed' })) {
+				this.suspendWrites('Table manifest v2 recovery marker could not be finalized');
+				return this.blockTableRecovery(observed, 'marker-finalization-failed', marker.backupPath, 'blocked');
+			}
+			return {
+				dataPackage: observed,
+				diagnostics: { status: 'recovered', code: null, backupPath: marker.backupPath },
+			};
+		}
+		if (observed && buildStableJsonSignature(observed) === previousSignature) {
+			return this.blockTableRecovery(previous as Partial<OperonDataPackageV1>, 'canonical-write-failed', marker.backupPath, 'failed-clean');
+		}
+		this.suspendWrites('Table manifest v2 recovery canonical commit state could not be verified');
+		return this.blockTableRecovery(previous as Partial<OperonDataPackageV1>, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+	}
+
+	private blockTableRecovery(
+		dataPackage: Partial<OperonDataPackageV1>,
+		code: NonNullable<OperonTablePresetRecoveryDiagnostics['code']>,
+		backupPath: string | null,
+		status: 'blocked' | 'failed-clean' | 'commit-state-unknown',
+	): TableRecoveryAttemptResult {
+		this.suspendWrites(`Table manifest v2 recovery is blocked (${code})`);
+		return { dataPackage, diagnostics: { status, code, backupPath } };
+	}
+
+	private async writeImmutableTableRecoveryBackup(path: string, source: string): Promise<void> {
+		if (await this.adapter.exists(path)) {
+			if (await this.adapter.read(path) !== source) throw new Error('Existing Table recovery backup does not match source.');
+			return;
+		}
+		try {
+			await writeTextSafely(this.adapter, path, source, { forceAtomicReplacement: true });
+			if (await this.adapter.read(path) !== source) throw new Error('Table recovery backup verification failed.');
+		} catch (error) {
+			try {
+				if (await this.adapter.exists(path)) await this.adapter.remove(path);
+			} catch {
+				// Preserve the original verification failure; an orphan is reported by the blocked recovery state.
+			}
+			throw error;
+		}
+	}
+
+	private getTableRecoveryBackupPath(sourceSha256: string): string {
+		return `${this.paths.dataPackagePath}.table-manifest-v2-${sourceSha256}.bak`;
+	}
+
+	private async verifyImmutableTableRecoveryBackup(path: string, sourceSha256: string, expectedSource?: string): Promise<boolean> {
+		try {
+			if (!(await this.adapter.exists(path))) return false;
+			const source = await this.adapter.read(path);
+			return await sha256HexForStorage(source) === sourceSha256
+				&& (expectedSource === undefined || source === expectedSource);
+		} catch {
+			return false;
+		}
+	}
+
+	private async readTableManifestV2RecoveryMarker(): Promise<TableRecoveryMarkerReadResult> {
+		try {
+			if (!(await this.adapter.exists(this.paths.tableManifestV2RecoveryPath))) return { status: 'missing' };
+			const parsed: unknown = JSON.parse(await this.adapter.read(this.paths.tableManifestV2RecoveryPath));
+			return isTableManifestV2RecoveryMarker(parsed)
+				? { status: 'valid', marker: parsed }
+				: { status: 'invalid' };
+		} catch {
+			return { status: 'invalid' };
+		}
+	}
+
+	private async writeTableManifestV2RecoveryMarker(marker: OperonTableManifestV2RecoveryMarkerV1): Promise<void> {
+		const serialized = JSON.stringify(marker, null, '\t');
+		await writeTextSafely(this.adapter, this.paths.tableManifestV2RecoveryPath, serialized, { forceAtomicReplacement: true });
+		if (await this.adapter.read(this.paths.tableManifestV2RecoveryPath) !== serialized) {
+			throw new Error('Table manifest v2 recovery marker verification failed.');
+		}
+	}
+
+	private async writeTableManifestV2RecoveryMarkerObserved(
+		marker: OperonTableManifestV2RecoveryMarkerV1,
+	): Promise<boolean> {
+		try {
+			await this.writeTableManifestV2RecoveryMarker(marker);
+			return true;
+		} catch {
+			const observed = await this.readTableManifestV2RecoveryMarker();
+			return observed.status === 'valid'
+				&& buildStableJsonSignature(observed.marker) === buildStableJsonSignature(marker);
+		}
+	}
+
 	private async loadExistingPackage(): Promise<Partial<OperonDataPackageV1> | null> {
 		try {
 			const raw = this.pluginData
@@ -566,6 +864,36 @@ export class OperonDataPackageStore {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function createTablePresetRecoveryDiagnostics(): OperonTablePresetRecoveryDiagnostics {
+	return { status: 'not-needed', code: null, backupPath: null };
+}
+
+async function getTableRecoveryCandidateSha256(value: unknown): Promise<string> {
+	return await sha256HexForStorage(buildStableJsonSignature(value));
+}
+
+function isTableManifestV2RecoveryMarker(value: unknown): value is OperonTableManifestV2RecoveryMarkerV1 {
+	if (!isRecord(value)
+		|| value.version !== 1
+		|| (value.phase !== 'prepared' && value.phase !== 'committed')
+		|| !isSha256(value.sourceSha256)
+		|| !isSha256(value.candidateSha256)
+		|| typeof value.backupPath !== 'string'
+		|| !value.backupPath
+		|| !Array.isArray(value.presetIds)
+		|| !Array.isArray(value.bindings)) return false;
+	if (!value.presetIds.every(id => typeof id === 'string' && id.length > 0)) return false;
+	return value.bindings.every(binding => isRecord(binding)
+		&& typeof binding.id === 'string'
+		&& binding.id.length > 0
+		&& typeof binding.path === 'string'
+		&& binding.path.length > 0);
+}
+
+function isSha256(value: unknown): value is string {
+	return typeof value === 'string' && /^[0-9a-f]{64}$/u.test(value);
 }
 
 function isCompleteDataPackage(value: unknown): value is OperonDataPackageV1 {
