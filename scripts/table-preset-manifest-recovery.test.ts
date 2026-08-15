@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import test from 'node:test';
 import { buildOperonDataPackageFromSettings } from '../src/storage/operon-data-package';
@@ -440,7 +441,7 @@ test('invalid or divergent prepared recovery state suspends writes without repla
 });
 
 test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and restores the source snapshot', async () => {
-	const root = await mkdtemp('/private/tmp/operon-table-v2-recovery-');
+	const root = await mkdtemp(resolve(tmpdir(), 'operon-table-v2-recovery-'));
 	try {
 		const adapter = new RecoveryDiskAdapter(root);
 		const paths = buildOperonStoragePaths('.obsidian');
