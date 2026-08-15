@@ -47,7 +47,6 @@ const CLI_COMPATIBILITY_PREFIXES = [
 	'scripts/agent-runtime/cli/cli-cutover-v1',
 	'scripts/agent-runtime/cli/external-cli-workflow',
 	'scripts/agent-runtime/cli/published-cli-v1',
-	'scripts/agent-runtime/cli/public-docs',
 	'scripts/agent-runtime/cli/run-meeting-agent-acceptance',
 	'scripts/agent-runtime/cli/schema-entrypoints',
 	'scripts/release/fixtures/legacy-cli-',
