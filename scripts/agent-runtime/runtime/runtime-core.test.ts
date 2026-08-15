@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import type { OperonSettings } from '../../../src/types/settings';
-import { canonicalJsonV1, sha256HexV1, toJsonValueV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
+import {
+	canonicalJsonV1,
+	canonicalPlanHashV1,
+	computeReceiptTargetDigestV1,
+	sha256HexV1,
+	toJsonValueV1,
+} from '../../../src/agent-runtime/contracts/v1/canonical';
 import { decodeCapabilityAdvertisementsV1 } from '../../../src/agent-runtime/contracts/v1/decode';
 import {
 	computeContextSettingsFingerprintV1,
@@ -11,10 +17,14 @@ import {
 	RuntimeLifecycleCoordinatorV1,
 	RuntimeSettlementBarrierV1,
 	RuntimeSettingsFreshnessCoordinatorV1,
+	buildIdentityPlaceholderCreateEffectsV1,
+	compareRebuiltIdentityPlaceholderPlanV1,
+	sealIdentityPlaceholderPreviewResultV1,
 	savedFilterQueryDigestV1,
 	SealedIndexRevisionV1,
 	SingleFlightRuntimeBarrierV1,
 	type RuntimeRevisionSnapshotV1,
+	type UnsealedIdentityPlaceholderPreviewResultV1,
 } from '../../../src/agent-runtime/runtime';
 import {
 	TaskWorkflowGatewayV1,
@@ -38,6 +48,7 @@ globalThis.__operonAgentRuntimeCoreTestRun = run();
 async function run(): Promise<void> {
 	testLifecycleAndAdmission();
 	await testFrozenFacadeAndHealth();
+	await testIdentityPlaceholderPreviewSealing();
 	await testTaskWorkflowGatewayIsolation();
 	await testHealthRevisionIsolationAndPerformance();
 	testSettingsFingerprintBoundary();
@@ -58,6 +69,180 @@ async function run(): Promise<void> {
 	await testDeadlineAndAbort();
 	await testSettingsFreshnessCoordinator();
 	console.log('Agent Runtime core tests passed');
+}
+
+async function testIdentityPlaceholderPreviewSealing(): Promise<void> {
+	const request: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }> = {
+		contractVersion: 1,
+		requestId: '15315315-3153-4153-8153-153153153153',
+		kind: 'mutation-preview',
+		clientInstanceId: 'issue-153-regression',
+		idempotencyKey: 'issue-153-file-create',
+		capability: 'tasks.create.identity-placeholders',
+		mutationKind: 'task.create',
+		spec: {
+			operation: 'create',
+			items: [{
+				itemRef: 'item-1',
+				description: 'No-variable template',
+				target: {
+					representation: 'file',
+					mode: 'configured-default',
+					identityPlaceholderPolicy: 'resolve-operon-id-v1',
+				},
+				fields: [],
+			}],
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	const baseCreateEffect = {
+		itemRef: 'item-1',
+		operonId: 'abc1234',
+		locator: { representation: 'file' as const, filePath: 'Tasks/Issue 153.md' },
+		renderedTaskDigest: '1'.repeat(64),
+		plannedSourceDigest: '2'.repeat(64),
+		expectedAbsence: true as const,
+		resolvedRelatedOperonIds: [],
+	};
+	const createEffects = buildIdentityPlaceholderCreateEffectsV1(
+		[baseCreateEffect],
+		new Map([['Tasks/Issue 153.md', {
+			content: '# No-variable template',
+			digest: '6'.repeat(64),
+		}]]),
+	);
+	const createEffect = createEffects[0]!;
+	assert.deepEqual(createEffect.templateIdentityAllocations, []);
+	const allocatedEffects = buildIdentityPlaceholderCreateEffectsV1(
+		[{
+			...baseCreateEffect,
+			templateIdentityAllocations: [{ occurrence: 0, suffix: 'A', operonId: 'def5678' }],
+		}],
+		new Map(),
+	);
+	assert.deepEqual(allocatedEffects[0]?.templateIdentityAllocations, [
+		{ occurrence: 0, suffix: 'A', operonId: 'def5678' },
+	]);
+	const targets = [{
+		operonId: createEffect.operonId,
+		locator: createEffect.locator,
+		targetDigest: sha256HexV1(canonicalJsonV1(toJsonValueV1(createEffect))),
+	}];
+	const candidate: UnsealedIdentityPlaceholderPreviewResultV1 = {
+		contractVersion: 1,
+		requestId: request.requestId,
+		kind: 'mutation-preview-result',
+		ok: true,
+		warnings: [],
+		plan: {
+			contractVersion: 1,
+			planId: '15315315-3153-4153-8153-153153153154',
+			clientInstanceId: request.clientInstanceId,
+			correlationId: request.requestId,
+			idempotencyKeyHash: sha256HexV1(request.idempotencyKey),
+			receiptTargetDigest: computeReceiptTargetDigestV1(targets),
+			capability: request.capability,
+			mutationKind: request.mutationKind,
+			createdAt: '2026-08-15T18:00:00.000Z',
+			expiresAt: '2026-08-15T18:05:00.000Z',
+			targets,
+			contextRevision: {
+				index: { sessionId: 'session-153', ramGeneration: 1, durable: { status: 'missing' } },
+				settingsFingerprint: '3'.repeat(64),
+				pinnedGeneration: 0,
+				activeTrackerGeneration: 0,
+				repeatSeriesRevision: 1,
+				projectSerialGeneration: 0,
+				projectSerialSignature: '4'.repeat(64),
+			},
+			affectedResources: [{
+				resourceKind: 'task-source',
+				resourceKey: 'Tasks/Issue 153.md',
+				revision: '5'.repeat(64),
+			}],
+			atomicGroups: [{
+				groupId: 'task-source:Tasks/Issue 153.md',
+				order: 0,
+				resources: [{ resourceKind: 'task-source', resourceKey: 'Tasks/Issue 153.md' }],
+			}],
+			predictedEffects: [{
+				resourceKind: 'task-source',
+				resourceKey: 'Tasks/Issue 153.md',
+				action: 'create',
+				summary: 'Create Operon task source Tasks/Issue 153.md.',
+			}],
+			riskLevel: 'routine',
+			requiresConfirmation: false,
+			requiredAcknowledgements: [],
+			warnings: [],
+			spec: request.spec,
+			createEffects: [createEffect],
+		},
+	};
+
+	assert.equal(decodeTaskWorkflowPreviewResultExtensionV1({
+		...candidate,
+		plan: { ...candidate.plan, planHash: '0'.repeat(64) },
+	}).ok, false, 'the production decoder must continue rejecting the former placeholder hash');
+
+	const sealed = sealIdentityPlaceholderPreviewResultV1(candidate);
+	if (!sealed.ok || !sealed.value.ok) throw new Error(JSON.stringify(sealed));
+	assert.match(sealed.value.plan.planHash, /^[a-f0-9]{64}$/u);
+	assert.notEqual(sealed.value.plan.planHash, '0'.repeat(64));
+	const { planHash: _sealedPlanHash, ...sealedPlanMaterial } = sealed.value.plan;
+	assert.equal(
+		sealed.value.plan.planHash,
+		canonicalPlanHashV1(toJsonValueV1(sealedPlanMaterial)),
+	);
+	assert.deepEqual(sealed.value.plan.createEffects[0]?.templateIdentityAllocations, []);
+	assert.equal(decodeTaskWorkflowPreviewResultExtensionV1(sealed.value).ok, true);
+	assert.deepEqual(
+		sealIdentityPlaceholderPreviewResultV1(candidate),
+		sealed,
+		'sealing the same canonical material must be deterministic',
+	);
+	const malformedCandidate = {
+		...candidate,
+		plan: { ...candidate.plan, createdAt: Number.NaN },
+	} as unknown as UnsealedIdentityPlaceholderPreviewResultV1;
+	assert.equal(sealIdentityPlaceholderPreviewResultV1(malformedCandidate).ok, false);
+
+	const gateway = new TaskWorkflowGatewayV1({
+		isReady: () => true,
+		nowEpochMs: () => Date.parse(candidate.plan.createdAt),
+		preview: async () => {
+			const runtimeSealed = sealIdentityPlaceholderPreviewResultV1(candidate);
+			if (!runtimeSealed.ok || !runtimeSealed.value.ok) throw new Error(JSON.stringify(runtimeSealed));
+			return runtimeSealed.value;
+		},
+		apply: async () => { throw new Error('Apply is outside this preview regression.'); },
+		auditDispatched: async () => {},
+		auditCompleted: async () => {},
+	});
+	const gatewayResult = await gateway.preview(request);
+	assert.equal(gatewayResult.ok, true);
+	if (!gatewayResult.ok) throw new Error(JSON.stringify(gatewayResult));
+	assert.equal(gatewayResult.requestId, request.requestId);
+	assert.equal(gatewayResult.plan.capability, request.capability);
+	assert.equal(gatewayResult.plan.mutationKind, request.mutationKind);
+
+	const tampered = structuredClone(sealed.value);
+	if (!tampered.ok) throw new Error('Expected a successful sealed fixture.');
+	tampered.plan.createEffects[0]!.plannedSourceDigest = '9'.repeat(64);
+	assert.equal(decodeTaskWorkflowPreviewResultExtensionV1(tampered).ok, false);
+
+	const selfConsistentTamperedPlan = structuredClone(sealed.value.plan);
+	selfConsistentTamperedPlan.createEffects[0]!.plannedSourceDigest = '8'.repeat(64);
+	const { planHash: _tamperedPlanHash, ...tamperedPlanMaterial } = selfConsistentTamperedPlan;
+	selfConsistentTamperedPlan.planHash = canonicalPlanHashV1(toJsonValueV1(tamperedPlanMaterial));
+	assert.equal(decodeTaskWorkflowPreviewResultExtensionV1({
+		...sealed.value,
+		plan: selfConsistentTamperedPlan,
+	}).ok, true, 'a self-consistent plan still requires authoritative apply-side comparison');
+	const rebuilt = compareRebuiltIdentityPlaceholderPlanV1(candidate, selfConsistentTamperedPlan);
+	assert.equal(rebuilt.ok, true);
+	if (!rebuilt.ok) throw new Error(JSON.stringify(rebuilt));
+	assert.equal(rebuilt.matches, false);
 }
 
 async function testTaskWorkflowGatewayIsolation(): Promise<void> {

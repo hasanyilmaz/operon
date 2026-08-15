@@ -323,6 +323,10 @@ import {
 	type RuntimeTimerMutationPreparationV1,
 	type RuntimeSourceTransitionPreparationV1,
 	type RuntimeTaskCreationPreparationV1,
+	buildIdentityPlaceholderCreateEffectsV1,
+	compareRebuiltIdentityPlaceholderPlanV1,
+	sealIdentityPlaceholderPreviewResultV1,
+	type UnsealedIdentityPlaceholderPreviewResultV1,
 	type GraphTransactionJournalStepV1,
 	type GraphTransactionJournalV1,
 	type RuntimeGraphTransactionRecoveryV1,
@@ -381,7 +385,6 @@ import {
 	type AdoptTaskPreviewIntentV1,
 	type AdoptTaskSealedPlanV1,
 	type AdoptTaskSpecV1,
-	decodeTaskWorkflowPreviewResultExtensionV1,
 	type IdentityPlaceholderCreateSpecV1,
 	type IdentityPlaceholderSealedPlanV1,
 	type TemplateIdentityAllocationV1,
@@ -11280,7 +11283,7 @@ export default class OperonPlugin extends Plugin {
 				getActiveWindow().crypto.randomUUID(),
 				graph.steps,
 			);
-			const admitted = decodeTaskWorkflowPreviewResultExtensionV1(candidate);
+			const admitted = sealIdentityPlaceholderPreviewResultV1(candidate);
 			if (!admitted.ok || !admitted.value.ok) {
 				return this.agentRuntimeTaskWorkflowPreviewFailure(
 					request.requestId,
@@ -11288,21 +11291,7 @@ export default class OperonPlugin extends Plugin {
 					'The identity-placeholder executor did not seal every allocation.',
 				);
 			}
-			const plan = {
-				...admitted.value.plan,
-				planHash: this.computeTaskWorkflowPlanHash(admitted.value.plan),
-			};
-			const finalResult = decodeTaskWorkflowPreviewResultExtensionV1({
-				...admitted.value,
-				plan,
-			});
-			return finalResult.ok
-				? finalResult.value
-				: this.agentRuntimeTaskWorkflowPreviewFailure(
-					request.requestId,
-					'internal-error',
-					'The identity-placeholder plan hash could not be sealed.',
-				);
+			return admitted.value;
 		}
 		return this.agentRuntimeTaskWorkflowPreviewFailure(
 			request.requestId,
@@ -11319,7 +11308,7 @@ export default class OperonPlugin extends Plugin {
 		createdAt: string,
 		planId: string,
 		graphSteps?: readonly GraphTransactionJournalStepV1[],
-	): unknown {
+	): UnsealedIdentityPlaceholderPreviewResultV1 {
 		const resourceCandidates = [
 			...prepared.plan.sourceGroups.map(group => ({
 				resourceKind: 'task-source' as const,
@@ -11345,19 +11334,10 @@ export default class OperonPlugin extends Plugin {
 			|| left.resourceKey.localeCompare(right.resourceKey)
 		));
 		const finalSources = new Map((graphSteps ?? []).filter(step => step.resourceKind === 'task-source').map(step => [step.resourceKey, step.after]));
-		const createEffects = prepared.createEffects.map(effect => {
-			const source = finalSources.get(effect.locator.filePath);
-			const rendered = source?.content === null || source?.content === undefined
-				? undefined
-				: effect.locator.representation === 'file'
-					? source.content
-					: source.content.split(/\r?\n/u)[effect.locator.lineNumber];
-			return {
-				...effect,
-				plannedSourceDigest: source?.digest ?? effect.plannedSourceDigest,
-				renderedTaskDigest: rendered === undefined ? effect.renderedTaskDigest : sha256HexV1(rendered),
-			};
-		});
+		const createEffects = buildIdentityPlaceholderCreateEffectsV1(
+			prepared.createEffects,
+			finalSources,
+		);
 		const targets = createEffects.map(effect => ({
 			operonId: effect.operonId,
 			locator: effect.locator,
@@ -11391,7 +11371,6 @@ export default class OperonPlugin extends Plugin {
 			plan: {
 				contractVersion: 1,
 				planId,
-				planHash: '0'.repeat(64),
 				clientInstanceId: request.clientInstanceId,
 				correlationId: request.correlationId ?? request.requestId,
 				idempotencyKeyHash: sha256HexV1(request.idempotencyKey),
@@ -11634,7 +11613,7 @@ export default class OperonPlugin extends Plugin {
 					spec: plan.spec,
 					authorization: request.authorization,
 				};
-				const rebuilt = decodeTaskWorkflowPreviewResultExtensionV1(
+				const rebuilt = compareRebuiltIdentityPlaceholderPlanV1(
 					this.buildAgentRuntimeIdentityPlanCandidate(
 						previewRequest,
 						prepared,
@@ -11643,19 +11622,16 @@ export default class OperonPlugin extends Plugin {
 						plan.planId,
 						graph.steps,
 					),
+					plan,
 				);
-				if (!rebuilt.ok || !rebuilt.value.ok) {
+				if (!rebuilt.ok) {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
 						'internal-error',
 						'Identity-placeholder apply could not rebuild its sealed plan.',
 					);
 				}
-				const rebuiltPlan = {
-					...rebuilt.value.plan,
-					planHash: this.computeTaskWorkflowPlanHash(rebuilt.value.plan),
-				};
-				if (canonicalJsonV1(toJsonValueV1(rebuiltPlan)) !== canonicalJsonV1(toJsonValueV1(plan))) {
+				if (!rebuilt.matches) {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
 						'stale-source',
