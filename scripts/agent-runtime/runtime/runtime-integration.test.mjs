@@ -177,6 +177,28 @@ test('typed create postflight seals exact inline locators and exact File bodies'
 	assert.doesNotMatch(identityApply, /\.at\(/u);
 });
 
+test('identity preview and apply rebuild seal the complete builder candidate before decoding', () => {
+	const preview = methodBody(
+		mainSource,
+		'\tprivate async previewAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate buildAgentRuntimeIdentityPlanCandidate',
+	);
+	const builder = methodBody(
+		mainSource,
+		'\tprivate buildAgentRuntimeIdentityPlanCandidate(',
+		'\n\n\tprivate async applyAgentRuntimeIdentityCreation',
+	);
+	const apply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	assert.match(preview, /sealIdentityPlaceholderPreviewResultV1\(candidate\)/u);
+	assert.match(apply, /compareRebuiltIdentityPlaceholderPlanV1\(\s*this\.buildAgentRuntimeIdentityPlanCandidate/u);
+	assert.doesNotMatch(builder, /planHash/u);
+	assert.match(builder, /buildIdentityPlaceholderCreateEffectsV1/u);
+});
+
 test('file and inline Runtime mutations use the platform-safe canonical vault fence', () => {
 	const containment = methodBody(
 		mainSource,
