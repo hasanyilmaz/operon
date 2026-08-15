@@ -49,8 +49,6 @@ const DESCRIPTOR_TTL_MS_V1 = 24 * 60 * 60 * 1_000;
 const DESCRIPTOR_REFRESH_MS_V1 = 12 * 60 * 60 * 1_000;
 const HANDSHAKE_DEADLINE_MS_V1 = 5_000;
 const SERVER_REPLAY_CACHE_LIMIT_V1 = 65_536;
-const WINDOWS_ACL_TIMEOUT_MS_V1 = 30_000;
-const WINDOWS_ACL_RESULT_LIMIT_V1 = 16_384;
 
 interface PersistentReadNodeBufferV1 extends Uint8Array {
 	readUInt32BE(offset: number): number;
@@ -99,11 +97,6 @@ interface PersistentReadNodeModulesV1 {
 			O_WRONLY: number;
 		};
 		chmodSync(path: string, mode: number): void;
-		lstatSync(path: string): {
-			isFile(): boolean;
-			isSymbolicLink(): boolean;
-		};
-		writeFileSync(path: string, value: Uint8Array, options: { flag: 'wx'; mode: number }): void;
 		renameSync(oldPath: string, newPath: string): void;
 	};
 	readonly fsp: {
@@ -137,20 +130,9 @@ interface PersistentReadNodeModulesV1 {
 	readonly os: {
 		release(): string;
 	};
-	readonly childProcess: {
-		spawnSync(command: string, args: readonly string[], options: {
-			encoding: 'utf8';
-			env: Record<string, string>;
-			shell: false;
-			windowsHide: true;
-			timeout: number;
-			maxBuffer: number;
-			killSignal: 'SIGKILL';
-		}): { status: number | null; stdout: string; stderr: string; error?: Error };
-	};
 }
 
-interface PersistentReadDescriptorV1 {
+export interface PersistentReadDescriptorV1 {
 	readonly protocolVersion: 1;
 	readonly serverInstanceId: string;
 	readonly vaultSha256: string;
@@ -218,8 +200,15 @@ export interface AgentRuntimePersistentReadServerOptionsV1 {
 export interface AgentRuntimePersistentReadServerHandleV1 {
 	readonly available: boolean;
 	readonly reason?: string;
+	bootstrapDescriptor(): PersistentReadDescriptorV1 | null;
 	onUnavailable(listener: (reason: string) => void): () => void;
 	close(): Promise<void>;
+}
+
+export function persistentReadDescriptorStorageV1(
+	platform: string,
+): 'memory-bootstrap' | 'filesystem' {
+	return platform === 'win32' ? 'memory-bootstrap' : 'filesystem';
 }
 
 interface OwnedPathV1 {
@@ -262,11 +251,13 @@ async function startAgentRuntimePersistentReadServerInternalV1(
 	) return unavailableHandle('wsl-unsupported');
 	const uid = nodeApi.getuid();
 	if (platform !== 'win32' && uid === null) return unavailableHandle('owner-identity-unavailable');
-	const requestRoot = resolvePersistentEndpointRootV1(modules, nodeApi, uid);
-	await nodeApi.mkdir(requestRoot, { recursive: true, mode: 0o700 });
-	if (platform === 'win32') {
-		applyAndVerifyWindowsOwnerOnlyPathV1(modules, requestRoot, true);
-	} else {
+	const descriptorStorage = persistentReadDescriptorStorageV1(platform);
+	const requestRoot = descriptorStorage === 'memory-bootstrap'
+		? null
+		: resolvePersistentEndpointRootV1(modules, nodeApi, uid);
+	let rootPath: string | null = null;
+	if (requestRoot !== null) {
+		await nodeApi.mkdir(requestRoot, { recursive: true, mode: 0o700 });
 		const rootStat = await modules.fsp.lstat(requestRoot);
 		if (
 			rootStat.isSymbolicLink()
@@ -276,8 +267,8 @@ async function startAgentRuntimePersistentReadServerInternalV1(
 		) {
 			return unavailableHandle('request-root-not-secure');
 		}
+		rootPath = await modules.fsp.realpath(requestRoot);
 	}
-	const rootPath = await modules.fsp.realpath(requestRoot);
 	const vaultSha256 = await computeRunningVaultSha256V1(nodeApi, plugin.app.vault.adapter);
 	const serverInstanceId = modules.crypto.randomBytes(32).toString('hex');
 	const authSecret = modules.crypto.randomBytes(32).toString('hex');
@@ -285,13 +276,17 @@ async function startAgentRuntimePersistentReadServerInternalV1(
 	const endpointKind = platform === 'win32' ? 'windows-named-pipe' : 'unix-domain-socket';
 	const endpoint = platform === 'win32'
 		? `\\\\.\\pipe\\operon-${serverInstanceId}`
-		: nodeApi.resolve(rootPath, `read-${modules.crypto.randomBytes(24).toString('hex')}.sock`);
+		: nodeApi.resolve(rootPath as string, `read-${modules.crypto.randomBytes(24).toString('hex')}.sock`);
 	const socketPath = endpoint;
-	const descriptorPath = nodeApi.resolve(rootPath, `persistent-read-${vaultSha256}.json`);
-	if (
-		(endpointKind === 'unix-domain-socket' && nodeApi.dirname(socketPath) !== rootPath)
+	const descriptorPath = rootPath === null
+		? null
+		: nodeApi.resolve(rootPath, `persistent-read-${vaultSha256}.json`);
+	if (endpointKind === 'unix-domain-socket' && (
+		rootPath === null
+		|| descriptorPath === null
+		|| nodeApi.dirname(socketPath) !== rootPath
 		|| nodeApi.dirname(descriptorPath) !== rootPath
-	) {
+	)) {
 		return unavailableHandle('persistent-read-path-escape');
 	}
 
@@ -390,6 +385,12 @@ async function startAgentRuntimePersistentReadServerInternalV1(
 		}
 		const publishCurrentDescriptor = (): Promise<void> => {
 			if (descriptorPublication) return descriptorPublication;
+			if (
+				endpointKind !== 'unix-domain-socket'
+				|| rootPath === null
+				|| descriptorPath === null
+				|| uid === null
+			) return Promise.reject(new Error('persistent-read-descriptor-platform-invalid'));
 			const generation = descriptorPublicationGeneration;
 			const publication = descriptorPublicationSequence + 1;
 			descriptorPublicationSequence = publication;
@@ -408,25 +409,15 @@ async function startAgentRuntimePersistentReadServerInternalV1(
 					pluginVersion: plugin.manifest.version,
 					apiVersion: 1,
 				};
-				if (endpointKind === 'windows-named-pipe') {
-					await publishWindowsDescriptorV1(
-						modules,
-						descriptorPath,
-						descriptor,
-						() => options.beforeDescriptorCommit?.(publication) ?? Promise.resolve(),
-						() => canPublishDescriptor(generation),
-					);
-				} else {
-					await publishDescriptorV1(
-						modules,
-						rootPath,
-						descriptorPath,
-						descriptor,
-						uid as number,
-						() => options.beforeDescriptorCommit?.(publication) ?? Promise.resolve(),
-						() => canPublishDescriptor(generation),
-					);
-				}
+				await publishDescriptorV1(
+					modules,
+					rootPath,
+					descriptorPath,
+					descriptor,
+					uid,
+					() => options.beforeDescriptorCommit?.(publication) ?? Promise.resolve(),
+					() => canPublishDescriptor(generation),
+				);
 			})();
 			descriptorPublication = pending;
 			void pending.then(
@@ -439,20 +430,41 @@ async function startAgentRuntimePersistentReadServerInternalV1(
 			);
 			return pending;
 		};
-		await publishCurrentDescriptor();
-		if (endpointKind === 'windows-named-pipe') registerWindowsBrokerScopeV1(brokerScope);
-		descriptorRefreshTimer = window.setInterval(() => {
-			if (closing) return;
-			void publishCurrentDescriptor().catch(() => {
-				if (!closing) void fail('persistent-read-descriptor-refresh-failed');
-			});
-		}, Math.max(1, options.descriptorRefreshMs ?? DESCRIPTOR_REFRESH_MS_V1));
+		if (endpointKind === 'windows-named-pipe') {
+			registerWindowsBrokerScopeV1(brokerScope);
+		} else {
+			await publishCurrentDescriptor();
+			descriptorRefreshTimer = window.setInterval(() => {
+				if (closing) return;
+				void publishCurrentDescriptor().catch(() => {
+					if (!closing) void fail('persistent-read-descriptor-refresh-failed');
+				});
+			}, Math.max(1, options.descriptorRefreshMs ?? DESCRIPTOR_REFRESH_MS_V1));
+		}
 		return {
 			get available() {
 				return !closing && terminalFailureReason === null;
 			},
 			get reason() {
 				return terminalFailureReason ?? undefined;
+			},
+			bootstrapDescriptor() {
+				if (
+					closing
+					|| terminalFailureReason !== null
+					|| endpointKind !== 'windows-named-pipe'
+				) return null;
+				return {
+					protocolVersion: PROTOCOL_VERSION_V1,
+					serverInstanceId,
+					vaultSha256,
+					endpointKind,
+					endpoint,
+					authSecret,
+					expiresAt: Date.now() + DESCRIPTOR_TTL_MS_V1,
+					pluginVersion: plugin.manifest.version,
+					apiVersion: 1,
+				};
 			},
 			onUnavailable(listener) {
 				if (terminalFailureReason !== null) {
@@ -976,11 +988,6 @@ function resolvePersistentEndpointRootV1(
 	nodeApi: Awaited<ReturnType<ReturnType<typeof createAgentRuntimeDesktopNodeApiLoaderV1>>>,
 	uid: number | null,
 ): string {
-	if (modules.process.platform === 'win32') {
-		const localAppData = modules.process.env['LOCALAPPDATA'];
-		if (!localAppData) throw new Error('local-app-data-unavailable');
-		return nodeApi.join(localAppData, 'Operon', 'runtime');
-	}
 	if (modules.process.platform === 'linux' && uid !== null) {
 		const runtimeRoot = `/run/user/${uid}`;
 		try {
@@ -1006,201 +1013,6 @@ function resolvePersistentEndpointRootV1(
 		modules.process.platform === 'darwin' ? '/private/tmp' : '/tmp',
 		`operon-agent-runtime-uid-${uid ?? 'unavailable'}`,
 	);
-}
-
-async function publishWindowsDescriptorV1(
-	modules: PersistentReadNodeModulesV1,
-	descriptorPath: string,
-	descriptor: PersistentReadDescriptorV1,
-	beforeCommit: () => Promise<void>,
-	canCommit: () => boolean,
-): Promise<OwnedPathV1> {
-	const temporaryPath = `${descriptorPath}.${modules.crypto.randomBytes(16).toString('hex')}.tmp`;
-	modules.fs.writeFileSync(
-		temporaryPath,
-		modules.buffer.from(`${JSON.stringify(descriptor)}\n`, 'utf8'),
-		{ flag: 'wx', mode: 0o600 },
-	);
-	try {
-		applyAndVerifyWindowsOwnerOnlyPathV1(modules, temporaryPath, false);
-		const existing = await modules.fsp.lstat(descriptorPath).catch(() => null);
-			if (existing) {
-				if (existing.isSymbolicLink() || !existing.isFile()) {
-					throw new Error('windows-descriptor-target-not-regular');
-				}
-				assertWindowsOwnerOnlyPathV1(modules, descriptorPath, false);
-			}
-			await beforeCommit();
-			if (!canCommit()) {
-				throw new Error('persistent-read-descriptor-publication-cancelled');
-			}
-			modules.fs.renameSync(temporaryPath, descriptorPath);
-		assertWindowsOwnerOnlyPathV1(modules, descriptorPath, false);
-		const stat = await modules.fsp.lstat(descriptorPath);
-		return { path: descriptorPath, dev: stat.dev, ino: stat.ino };
-	} catch (error) {
-		await modules.fsp.unlink(temporaryPath).catch(() => undefined);
-		throw error;
-	}
-}
-
-function applyAndVerifyWindowsOwnerOnlyPathV1(
-	modules: PersistentReadNodeModulesV1,
-	path: string,
-	directory: boolean,
-): void {
-	const { executable, environment } = resolveWindowsPowerShellV1(modules);
-	const rights = directory ? 'FullControl' : 'Read,Write,Delete';
-	const inheritance = directory ? 'ContainerInherit,ObjectInherit' : 'None';
-	const setAccessControl = directory
-		? '[IO.Directory]::SetAccessControl($p,$acl)'
-		: '[IO.File]::SetAccessControl($p,$acl)';
-	const getAccessControl = directory
-		? '[IO.Directory]::GetAccessControl($p)'
-		: '[IO.File]::GetAccessControl($p)';
-	const securityDescriptor = directory
-		? '[Security.AccessControl.DirectorySecurity]::new()'
-		: '[Security.AccessControl.FileSecurity]::new()';
-	const script = [
-		'$ErrorActionPreference="Stop"',
-		`$p=[System.IO.Path]::GetFullPath(${powershellLiteralV1(path)})`,
-		`$exists=${directory ? '[IO.Directory]::Exists($p)' : '[IO.File]::Exists($p)'}`,
-		'if (-not $exists) { throw "path-kind-mismatch" }',
-		'if (([IO.File]::GetAttributes($p) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }',
-		`$cursor=${directory ? '[IO.DirectoryInfo]::new($p)' : '([IO.FileInfo]::new($p)).Directory'}`,
-		'while($null -ne $cursor){ if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }; $cursor=$cursor.Parent }',
-		'$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User',
-		`$acl=${securityDescriptor}`,
-		'$acl.SetOwner($sid)',
-		'$acl.SetAccessRuleProtection($true,$false)',
-		`$rule=[Security.AccessControl.FileSystemAccessRule]::new($sid,[Security.AccessControl.FileSystemRights]"${rights}",[Security.AccessControl.InheritanceFlags]"${inheritance}",[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)`,
-		'[void]$acl.AddAccessRule($rule)',
-		setAccessControl,
-		`$actual=${getAccessControl}`,
-		'$owner=$actual.GetOwner([Security.Principal.SecurityIdentifier]).Value',
-		'if ($owner -ne $sid.Value) { throw "owner-mismatch" }',
-		'if (-not $actual.AreAccessRulesProtected) { throw "acl-inherited" }',
-		'$rules=$actual.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])',
-		'foreach($access in $rules){ if($access.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or $access.IdentityReference.Value -ne $sid.Value){ throw "acl-too-broad" } }',
-		'if ($rules.Count -eq 0) { throw "acl-too-broad" }',
-		`[Console]::Out.Write('{"ok":true,"directory":${directory ? 'true' : 'false'}}')`,
-	].join(';');
-	const result = modules.childProcess.spawnSync(
-		executable,
-		['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
-		{
-			encoding: 'utf8',
-			env: environment,
-			shell: false,
-			windowsHide: true,
-			timeout: WINDOWS_ACL_TIMEOUT_MS_V1,
-			maxBuffer: WINDOWS_ACL_RESULT_LIMIT_V1,
-			killSignal: 'SIGKILL',
-		},
-	);
-	if (result.error || result.status !== 0) {
-		throw new Error('windows-owner-only-acl-setup-failed');
-	}
-	if (result.stdout !== `{"ok":true,"directory":${directory ? 'true' : 'false'}}`) {
-		throw new Error('windows-owner-only-acl-required');
-	}
-}
-
-function assertWindowsOwnerOnlyPathV1(
-	modules: PersistentReadNodeModulesV1,
-	path: string,
-	directory: boolean,
-): void {
-	const { executable, environment } = resolveWindowsPowerShellV1(modules);
-	const getAccessControl = directory
-		? '[IO.Directory]::GetAccessControl($p)'
-		: '[IO.File]::GetAccessControl($p)';
-	const script = [
-		'$ErrorActionPreference="Stop"',
-		`$p=[System.IO.Path]::GetFullPath(${powershellLiteralV1(path)})`,
-		`$exists=${directory ? '[IO.Directory]::Exists($p)' : '[IO.File]::Exists($p)'}`,
-		'if (-not $exists) { throw "path-kind-mismatch" }',
-		'if (([IO.File]::GetAttributes($p) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }',
-		`$cursor=${directory ? '[IO.DirectoryInfo]::new($p)' : '([IO.FileInfo]::new($p)).Directory'}`,
-		'while($null -ne $cursor){ if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "reparse-point" }; $cursor=$cursor.Parent }',
-		'$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User',
-		`$acl=${getAccessControl}`,
-		'$owner=$acl.GetOwner([Security.Principal.SecurityIdentifier]).Value',
-		'if ($owner -ne $sid.Value) { throw "owner-mismatch" }',
-		'if (-not $acl.AreAccessRulesProtected) { throw "acl-inherited" }',
-		'$rules=$acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])',
-		'foreach($access in $rules){ if($access.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or $access.IdentityReference.Value -ne $sid.Value){ throw "acl-too-broad" } }',
-		'if ($rules.Count -eq 0) { throw "acl-too-broad" }',
-		`[Console]::Out.Write('{"ok":true,"directory":${directory ? 'true' : 'false'}}')`,
-	].join(';');
-	const result = modules.childProcess.spawnSync(
-		executable,
-		['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
-		{
-			encoding: 'utf8',
-			env: environment,
-			shell: false,
-			windowsHide: true,
-			timeout: WINDOWS_ACL_TIMEOUT_MS_V1,
-			maxBuffer: WINDOWS_ACL_RESULT_LIMIT_V1,
-			killSignal: 'SIGKILL',
-		},
-	);
-	if (
-		result.error
-		|| result.status !== 0
-		|| result.stdout !== `{"ok":true,"directory":${directory ? 'true' : 'false'}}`
-	) {
-		throw new Error('windows-owner-only-acl-required');
-	}
-}
-
-function resolveWindowsPowerShellV1(modules: PersistentReadNodeModulesV1): {
-	readonly executable: string;
-	readonly environment: Record<string, string>;
-} {
-	const systemRoot = modules.process.env.SystemRoot;
-	const windowsDirectory = modules.process.env.WINDIR;
-	if (
-		!systemRoot
-		|| !windowsDirectory
-		|| systemRoot.includes('\0')
-		|| windowsDirectory.includes('\0')
-		|| !/^[A-Za-z]:[\\/]/u.test(systemRoot)
-		|| !/^[A-Za-z]:[\\/]/u.test(windowsDirectory)
-	) throw new Error('windows-powershell-unavailable');
-	const normalize = (value: string): string => value.replace(/\//gu, '\\').replace(/\\+$/u, '');
-	const normalizedRoot = normalize(systemRoot);
-	if (normalizedRoot.toLocaleLowerCase('en-US') !== normalize(windowsDirectory).toLocaleLowerCase('en-US')) {
-		throw new Error('windows-powershell-unavailable');
-	}
-	const executable = `${normalizedRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
-	let cursor = executable;
-	while (true) {
-		let stat: ReturnType<PersistentReadNodeModulesV1['fs']['lstatSync']>;
-		try {
-			stat = modules.fs.lstatSync(cursor);
-		} catch {
-			throw new Error('windows-powershell-unavailable');
-		}
-		if (stat.isSymbolicLink() || (cursor === executable && !stat.isFile())) {
-			throw new Error('windows-powershell-unavailable');
-		}
-		const separator = cursor.lastIndexOf('\\');
-		if (separator <= 2) break;
-		cursor = cursor.slice(0, separator);
-	}
-	return {
-		executable,
-		environment: {
-			SystemRoot: normalizedRoot,
-			WINDIR: normalizedRoot,
-		},
-	};
-}
-
-function powershellLiteralV1(value: string): string {
-	return `'${value.replace(/'/gu, "''")}'`;
 }
 
 function runtimeRequireV1(moduleId: string): unknown {
@@ -1233,21 +1045,13 @@ function unavailableHandle(reason: string): AgentRuntimePersistentReadServerHand
 	return {
 		available: false,
 		reason,
+		bootstrapDescriptor: () => null,
 		onUnavailable: () => () => undefined,
 		close: () => Promise.resolve(),
 	};
 }
 
 function classifyPersistentReadServerStartFailureV1(error: unknown): string {
-	if (
-		error instanceof Error
-		&& [
-			'local-app-data-unavailable',
-			'windows-owner-only-acl-setup-failed',
-			'windows-owner-only-acl-required',
-			'windows-powershell-unavailable',
-		].includes(error.message)
-	) return error.message;
 	if (
 		error
 		&& typeof error === 'object'
@@ -1277,6 +1081,5 @@ function loadPersistentReadNodeModulesV1(): PersistentReadNodeModulesV1 {
 		net: runtimeRequire('node:net') as PersistentReadNodeModulesV1['net'],
 		process: runtimeRequire('node:process') as PersistentReadNodeModulesV1['process'],
 		os: runtimeRequire('node:os') as PersistentReadNodeModulesV1['os'],
-		childProcess: runtimeRequire('node:child_process') as PersistentReadNodeModulesV1['childProcess'],
 	};
 }
