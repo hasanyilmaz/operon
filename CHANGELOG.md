@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added a **Convert task to plain** command that uses Task Finder to select an inline or File Task. Inline tasks can be converted to plain Markdown checkboxes after confirmation, while File Tasks provide a managed-property picker for removing Operon metadata without deleting the note.
+- Added recursive **Copy Group** and **Paste Group** actions to the Filter Editor, allowing complete condition groups—including their logic, conditions, values, ordering, and nested groups—to be copied through the clipboard and inserted at the root or inside another group.
+
+### Improved
+
+- Simplified the Task Editor's **Add Inline Subtask** and **Add File Subtask** actions to compact icon buttons while preserving localized Operon tooltips and accessible labels.
+
+### Fixed
+
+- Removed CSS `:has()` dependencies from sidebar toolbar and Table progress styling while preserving popup-open toolbar behavior and read-only progress feedback, and added Release Guard coverage to prevent future `:has()` selectors.
+
 ### Validation
 
 ## [3.3.0] - 2026-08-13
