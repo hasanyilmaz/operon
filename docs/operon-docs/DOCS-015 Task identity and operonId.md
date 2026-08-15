@@ -54,6 +54,8 @@ Treat `operonId` as read-only in normal use:
 - **Do not edit it.** Changing it makes Operon see a different task.
 - **Do not delete it.** Removing it strips the task of its durable identity.
 
+There is one deliberate exception: [[DOCS-135 Convert task to plain|Convert task to plain]] removes an `operonId` through a confirmed command when you want to keep the Markdown content but stop treating it as an Operon task. Do not imitate that operation by deleting the field by hand.
+
 Copying is the interesting case. If you copy a task line, you copy its id too, and now two lines claim one identity. You are allowed to do this; it is not a trap. The moment it happens, Operon detects the clash and the **Operon ID Conflict** manager steps in so the duplication never quietly corrupts your data. From the manager you give one copy a fresh id (or delete it), and the conflict is resolved. So if you simply want a second task, let Operon create it and it starts with its own id; if you deliberately copy one, expect the manager and use it to split the two apart. See [[DOCS-055 Duplicate IDs|Duplicate IDs]].
 
 ## FAQ

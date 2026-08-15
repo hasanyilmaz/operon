@@ -82,6 +82,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-086 Create file task|Create file task]]
 - [[DOCS-087 Edit or convert to file task|Edit or convert to file task]]
 - [[DOCS-088 Convert file task to inline task|Convert file task to inline task]]
+- [[DOCS-135 Convert task to plain|Convert task to plain]]
 - [[DOCS-089 Move an inline task here|Move an inline task here]]
 - [[DOCS-090 Toggle task completion|Toggle task completion]]
 - [[DOCS-091 Rebuild full index|Rebuild full index]]

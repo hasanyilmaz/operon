@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-08-12T15:37:56.353Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -10,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "491124e48c57ce73fdfdbf56eced4e803759439ed0c23e56e0965a5fe3f4ed71",
-      "bytes": 10526
+      "sha256": "52d83da1a3a3526d99603f7005301097e4c53c426400de6f3f4e48ea004df008",
+      "bytes": 10585
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -80,8 +79,8 @@
     },
     {
       "path": "DOCS-015 Task identity and operonId.md",
-      "sha256": "8105b91283b94260693bde125c912f09753e995f2d49e3b766d47f0e2a69f461",
-      "bytes": 4330
+      "sha256": "a4de277049c676da95b396e0e7945534bb217bb5c8ddea1ccc0697260a3d032c",
+      "bytes": 4617
     },
     {
       "path": "DOCS-016 Parent and sub-tasks.md",
@@ -100,8 +99,8 @@
     },
     {
       "path": "DOCS-019 Converting inline and file tasks.md",
-      "sha256": "a8db08af71f3b260d4cad8729be9e0c353051ebf2206595cd54e50dc38addf0e",
-      "bytes": 4898
+      "sha256": "6e1facc61ee37585c8c98dfc02292fb7f66321eba0da0e73fd40ae8b2003b00d",
+      "bytes": 5505
     },
     {
       "path": "DOCS-020 Task Creator.md",
@@ -115,8 +114,8 @@
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "612c2bc98cd2b713154d962cdb419981d94c3bac38f06a01d39e83a716e414e0",
-      "bytes": 5332
+      "sha256": "5531b4f88c7b12b7a5a6163ec5e7b0ddd7cbf8e3c361d8673d31cdab8d0f6ec1",
+      "bytes": 5519
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
@@ -445,8 +444,8 @@
     },
     {
       "path": "DOCS-088 Convert file task to inline task.md",
-      "sha256": "86b5c37228645a0078dd4fb3888005c669d651bd07d82c2ff7440735b027aa81",
-      "bytes": 2415
+      "sha256": "2e83bc82ce192621f52ec5cbfcffa7ab70e748246661ac872e053f20e2f4ed8a",
+      "bytes": 2495
     },
     {
       "path": "DOCS-089 Move an inline task here.md",
@@ -677,6 +676,12 @@
       "path": "DOCS-134 Backup and restore settings.md",
       "sha256": "8512761ebaa89201549bc631fc2178c9f834e6ce84056eb63859b00bbd553395",
       "bytes": 5599
+    },
+    {
+      "path": "DOCS-135 Convert task to plain.md",
+      "sha256": "17c473d6d10557a41cb3c0c7378bb49085c59278b14d329e2e5c0ebf09555db2",
+      "bytes": 6058
     }
-  ]
+  ],
+  "generatedAt": "2026-08-15T08:58:44.665Z"
 }
