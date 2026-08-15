@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.3.1] - 2026-08-15
+
 ### New
 
 - Added a **Convert task to plain** command that uses Task Finder to select an inline or File Task. Inline tasks can be converted to plain Markdown checkboxes after confirmation, while File Tasks provide a managed-property picker for removing Operon metadata without deleting the note.
@@ -17,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Simplified the Task Editor's **Add Inline Subtask** and **Add File Subtask** actions to compact icon buttons while preserving localized Operon tooltips and accessible labels.
 
 ### Validation
+
+- Passed the complete candidate gate and the full Phase 5 regression suite (1,526/1,526).
 
 ## [3.3.0] - 2026-08-13
 
