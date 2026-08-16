@@ -63,6 +63,9 @@ function prepared(
 		recurrence?: boolean;
 		autoUnpin?: boolean;
 		timer?: boolean;
+		fromStatusId?: string;
+		toStatusId?: string;
+		terminal?: boolean;
 	} = { from: 'open', to: 'done' },
 ): RuntimeTaskFieldMutationPreparationV1 {
 	const noChange = options.noChange ?? false;
@@ -87,11 +90,13 @@ function prepared(
 			? { parentOperonId: source.fieldValues['parentTask'] }
 			: {}),
 		transition: {
-			fromStatusId: options.from === 'open' ? 'status-open' : `status-${options.from}`,
-			toStatusId: options.to === 'open' ? 'status-open' : `status-${options.to}`,
+			fromStatusId: options.fromStatusId
+				?? (options.from === 'open' ? 'status-open' : `status-${options.from}`),
+			toStatusId: options.toStatusId
+				?? (options.to === 'open' ? 'status-open' : `status-${options.to}`),
 			fromCheckbox: options.from,
 			toCheckbox: options.to,
-			terminal: options.to !== 'open',
+			terminal: options.terminal ?? options.to !== 'open',
 			finalizeActiveTimer: options.timer ?? false,
 			materializeRecurrence: options.recurrence ?? false,
 			autoUnpin: options.autoUnpin ?? false,
@@ -107,11 +112,13 @@ function plannerPorts(
 	) => Promise<RuntimeSemanticTransitionRecurrencePlanningResultV1> = (
 		createFixtureRecurrencePlannerV1()
 	),
+	projectSerialScopes = true,
 ): RuntimeSemanticTransitionPlannerPortsV1 {
 	const byId = new Map(tasks.map(item => [item.operonId, item]));
 	return {
 		getTask: operonId => byId.get(operonId) ?? null,
 		isPinned: () => pinned,
+		hasProjectSerialScopes: () => projectSerialScopes,
 		stateRevisions: () => ({
 			activeTracker: 'tracker-rev',
 			repeatSeries: 'repeat-rev',
@@ -329,6 +336,124 @@ test('planner seals recurrence, two ancestors, pinned cleanup, and project-seria
 	assert.equal(
 		plan.affectedResources.some(resource => resource.resourceKind === 'repeat-series'),
 		true,
+	);
+});
+
+test('unscoped non-terminal transition omits project serial and cannot wait on its settlement', async () => {
+	const source = task('tsk0001', 'Tasks.md');
+	const transition = prepared(source, {
+		from: 'open',
+		to: 'open',
+		fromStatusId: 'status-backlog',
+		toStatusId: 'status-in-progress',
+		terminal: false,
+	});
+	const unscoped = requirePlan(await planRuntimeSemanticTransitionV1(
+		transition,
+		EFFECTIVE_AT,
+		plannerPorts([source], false, createFixtureRecurrencePlannerV1(), false),
+	));
+	assert.equal(unscoped.projectSerialGroup, null);
+	assert.deepEqual(runtimeSemanticTransitionStepIdsV1(unscoped), ['primary']);
+	assert.equal(
+		unscoped.atomicGroups.some(group => group.groupId === 'project-serial:global'),
+		false,
+	);
+	assert.equal(
+		unscoped.affectedResources.some(resource => resource.resourceKind === 'project-serial'),
+		false,
+	);
+	assert.equal(
+		unscoped.predictedEffects.some(effect => effect.resourceKind === 'project-serial'),
+		false,
+	);
+
+	const calls: string[] = [];
+	let projectSerialCalls = 0;
+	const coordinator = coordinatorPorts(calls);
+	const neverSettles = new Promise<RuntimeSemanticTransitionStepResultV1>(() => undefined);
+	const timeoutMarker = Symbol('timeout');
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	const bounded = new Promise<typeof timeoutMarker>(resolve => {
+		timeout = setTimeout(() => resolve(timeoutMarker), 250);
+	});
+	const execution = executeRuntimeSemanticTransitionV1(unscoped, {
+		...coordinator,
+		settleProjectSerial: () => {
+			projectSerialCalls += 1;
+			return neverSettles;
+		},
+	});
+	const result = await Promise.race([execution, bounded]);
+	if (timeout) clearTimeout(timeout);
+	assert.notEqual(result, timeoutMarker, 'unscoped transition must not await project-serial settlement');
+	if (result === timeoutMarker) return;
+	assert.equal(result.status, 'committed');
+	assert.deepEqual(calls, ['task-transition:tsk0001']);
+	assert.equal(projectSerialCalls, 0);
+
+	const scoped = requirePlan(await planRuntimeSemanticTransitionV1(
+		transition,
+		EFFECTIVE_AT,
+		plannerPorts([source]),
+	));
+	assert.equal(scoped.projectSerialGroup?.groupId, 'project-serial:global');
+	assert.deepEqual(runtimeSemanticTransitionStepIdsV1(scoped), ['primary', 'project-serial']);
+	const scopedCalls: string[] = [];
+	const scopedResult = await executeRuntimeSemanticTransitionV1(scoped, coordinatorPorts(scopedCalls));
+	assert.equal(scopedResult.status, 'committed');
+	assert.deepEqual(scopedCalls, ['task-transition:tsk0001', 'project-serial:global']);
+});
+
+test('empty scopes omit only project serial from terminal and compound transition plans', async () => {
+	const terminalSource = task('tsk0001', 'Terminal.md');
+	const terminal = requirePlan(await planRuntimeSemanticTransitionV1(
+		prepared(terminalSource, { from: 'open', to: 'done' }),
+		EFFECTIVE_AT,
+		plannerPorts([terminalSource], false, createFixtureRecurrencePlannerV1(), false),
+	));
+	assert.equal(terminal.projectSerialGroup, null);
+	assert.equal(
+		terminal.predictedEffects.some(effect => effect.resourceKind === 'project-serial'),
+		false,
+	);
+
+	const compound = requirePlan(await planRuntimeSemanticTransitionV1(
+		(await fullPlan()).prepared,
+		EFFECTIVE_AT,
+		plannerPorts(
+			[
+				task('tsk0001', 'Tasks.md', 'par0001', {
+					repeat: 'FREQ=WEEKLY',
+					repeatSeriesId: 'series-a',
+					activeTimerStart: '2026-07-24T11:00:00',
+				}),
+				task('par0001', 'Projects/Parent.md', 'gra0001'),
+				task('gra0001', 'Projects/Grandparent.md'),
+			],
+			true,
+			createFixtureRecurrencePlannerV1(),
+			false,
+		),
+	));
+	assert.equal(compound.projectSerialGroup, null);
+	assert.deepEqual(
+		compound.atomicGroups.map(group => group.groupId),
+		[
+			'task-transition:tsk0001',
+			'repeat-series:tsk0001',
+			'ancestor-source:Projects/Parent.md',
+			'ancestor-source:Projects/Grandparent.md',
+			'pinned:tsk0001',
+		],
+	);
+	assert.equal(
+		compound.affectedResources.some(resource => resource.resourceKind === 'project-serial'),
+		false,
+	);
+	assert.equal(
+		compound.predictedEffects.some(effect => effect.resourceKind === 'project-serial'),
+		false,
 	);
 });
 
@@ -720,6 +845,36 @@ test('postflight requires primary, recurrence, every ancestor, unpin, and projec
 		committedProjectSerialRevision: 'a'.repeat(64),
 	});
 	assert.deepEqual(complete, { ok: true, failures: [] });
+
+	const unscopedPlan = {
+		...plan,
+		projectSerialGroup: null,
+		atomicGroups: plan.atomicGroups.filter(group => group.groupId !== 'project-serial:global'),
+		affectedResources: plan.affectedResources.filter(resource => resource.resourceKind !== 'project-serial'),
+		predictedEffects: plan.predictedEffects.filter(effect => effect.resourceKind !== 'project-serial'),
+	};
+	assert.deepEqual(
+		verifyRuntimeSemanticTransitionPostflightV1(unscopedPlan, {
+			primaryVerified: true,
+			timer: complete.ok ? {
+				activeTrackerCleared: true,
+				sessionStateVerified: true,
+				activeTrackerRevision: 'tracker-final',
+				committedActiveTrackerRevision: 'tracker-final',
+			} : undefined,
+			recurrence: {
+				disposition: 'created',
+				nextOperonId: plan.recurrence.preview.nextOperonId,
+				nextLocator: plan.recurrence.preview.nextLocator,
+				sourceRevision: plan.recurrence.preview.plannedSourceRevision,
+				committedSourceRevision: plan.recurrence.preview.plannedSourceRevision,
+				stateVerified: true,
+			},
+			verifiedAncestorOperonIds: ['par0001', 'gra0001'],
+			pinned: false,
+		}),
+		{ ok: true, failures: [] },
+	);
 
 	const incomplete = verifyRuntimeSemanticTransitionPostflightV1(plan, {
 		primaryVerified: false,

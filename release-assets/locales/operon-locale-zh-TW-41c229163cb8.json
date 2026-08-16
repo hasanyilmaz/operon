@@ -2191,7 +2191,7 @@
       "tableFileConflictResolveMessage": "是否為 {{path}} 保留現有 ID？Operon 將使用新 ID 重寫其他 {{count}} 個有效檔案：\n{{paths}}",
       "tableFileConflictResolveTitle": "解決 Table ID 衝突",
       "tableFileConflictResolvedNotice": "已解決 ID 衝突並建立 {{count}} 個獨立的 Table 檔案。",
-      "tableFileUnsupportedPackageNotice": "此版本的 Operon 無法開啟已儲存的 Table 設定。未進行任何變更。",
+      "tableFileUnsupportedPackageNotice": "Operon 無法安全開啟已儲存的 Table 設定（{reason}）。設定寫入已被阻止。請勿重新安裝或編輯 data.json；請保留檔案，檢查回報的原因並尋求復原指引。",
       "tableGeneralSettings": "Table 常規設定",
       "tablePresetConflict": "ID 衝突",
       "tablePresetFileMissingNotice": "Table 檔案遺失：{{path}}",
@@ -3080,5 +3080,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "51ec71f551ab899a2449faa3fea651b4a9df59c95b13def95eddebf8ae4655e4"
+  "sourceVersion": "a6ebe4a9bb29bd51b1e138fa8f8ad9112e14991fde50529400ffbefa99ca465f"
 }

@@ -2191,7 +2191,7 @@
       "tableFileConflictResolveMessage": "{{path}} mevcut ID üzerinde korunsun mu? Operon diğer {{count}} geçerli dosyayı yeni ID numaralarıyla yeniden yazacak:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table ID çakışmasını çöz",
       "tableFileConflictResolvedNotice": "ID çakışması çözüldü ve {{count}} bağımsız Table dosyası oluşturuldu.",
-      "tableFileUnsupportedPackageNotice": "Bu Operon sürümü kayıtlı Table yapılandırmasını açamıyor. Hiçbir değişiklik yapılmadı.",
+      "tableFileUnsupportedPackageNotice": "Operon kayıtlı Table yapılandırmasını güvenle açamadı ({reason}). Ayar yazmaları engellendi. Yeniden kurmayın veya data.json dosyasını düzenlemeyin; dosyalarınızı koruyun, bildirilen nedeni inceleyin ve kurtarma desteği alın.",
       "tableGeneralSettings": "Genel Table Ayarları",
       "tablePresetConflict": "ID çakışması",
       "tablePresetFileMissingNotice": "Table dosyası eksik: {{path}}",
@@ -3080,5 +3080,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "92108ea97fe5658fa911e06687c7f38db08d4fa383f7ebe4ce5aee1fdf335c0c"
+  "sourceVersion": "a43bad14f364516292b8096186f52f0199f55162f4ebacfad0f87fa00490b39a"
 }

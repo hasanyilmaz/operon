@@ -1,0 +1,2512 @@
+{
+	"schemaVersion": 2,
+	"settings": {
+		"settingsVersion": 111,
+		"filterShowSubtasks": true,
+		"filterSubtaskAutoExpandLimit": 10,
+		"filterShowOnlyOpenSubtasks": false,
+		"dynamicFileTaskFilterEnabled": true,
+		"dynamicFileTaskFilterPlacement": "body-top",
+		"dynamicFileTaskFilterSubtaskAutoExpandLimit": 10,
+		"dynamicFileTaskFilterShowOnlyOpenSubtasks": false,
+		"dynamicSubtasksFilterSubtaskAutoExpandLimit": 10,
+		"dynamicSubtasksFilterShowOnlyOpenSubtasks": false,
+		"language": "en",
+		"languagePackSubscriptions": [],
+		"timeFormat": "24h",
+		"demoWorkspacePromptDismissed": false,
+		"releaseNotesShowOnUpdate": true,
+		"releaseNotesLastShownVersion": "",
+		"checkForUpdatesOnStartup": true,
+		"lastNotifiedReleaseVersion": "",
+		"operonDocsFolder": "Operon/Docs",
+		"operonDocsAutoUpdateEnabled": false,
+		"operonDocsLastAutoUpdateVersion": "",
+		"colorPalette": [
+			{
+				"id": "burgundy",
+				"name": "Burgundy",
+				"hex": "#9F1239"
+			},
+			{
+				"id": "red",
+				"name": "Red",
+				"hex": "#DC2626"
+			},
+			{
+				"id": "rose",
+				"name": "Rose",
+				"hex": "#E11D48"
+			},
+			{
+				"id": "pink",
+				"name": "Pink",
+				"hex": "#DB2777"
+			},
+			{
+				"id": "fuchsia",
+				"name": "Fuchsia",
+				"hex": "#C026D3"
+			},
+			{
+				"id": "purple",
+				"name": "Purple",
+				"hex": "#9333EA"
+			},
+			{
+				"id": "violet",
+				"name": "Violet",
+				"hex": "#7C3AED"
+			},
+			{
+				"id": "indigo",
+				"name": "Indigo",
+				"hex": "#4F46E5"
+			},
+			{
+				"id": "blue",
+				"name": "Blue",
+				"hex": "#2563EB"
+			},
+			{
+				"id": "sky",
+				"name": "Sky",
+				"hex": "#0284C7"
+			},
+			{
+				"id": "cyan",
+				"name": "Cyan",
+				"hex": "#0891B2"
+			},
+			{
+				"id": "teal",
+				"name": "Teal",
+				"hex": "#0F766E"
+			},
+			{
+				"id": "emerald",
+				"name": "Emerald",
+				"hex": "#059669"
+			},
+			{
+				"id": "green",
+				"name": "Green",
+				"hex": "#16A34A"
+			},
+			{
+				"id": "lime",
+				"name": "Lime",
+				"hex": "#65A30D"
+			},
+			{
+				"id": "olive",
+				"name": "Olive",
+				"hex": "#4D7C0F"
+			},
+			{
+				"id": "yellow",
+				"name": "Yellow",
+				"hex": "#CA8A04"
+			},
+			{
+				"id": "amber",
+				"name": "Amber",
+				"hex": "#D97706"
+			},
+			{
+				"id": "orange",
+				"name": "Orange",
+				"hex": "#EA580C"
+			},
+			{
+				"id": "coral",
+				"name": "Coral",
+				"hex": "#F97316"
+			},
+			{
+				"id": "sand",
+				"name": "Sand",
+				"hex": "#A16207"
+			},
+			{
+				"id": "brown",
+				"name": "Brown",
+				"hex": "#7C4A2D"
+			},
+			{
+				"id": "taupe",
+				"name": "Taupe",
+				"hex": "#78716C"
+			},
+			{
+				"id": "zinc",
+				"name": "Zinc",
+				"hex": "#575653"
+			},
+			{
+				"id": "slate",
+				"name": "Slate",
+				"hex": "#475569"
+			},
+			{
+				"id": "steel",
+				"name": "Steel",
+				"hex": "#334155"
+			},
+			{
+				"id": "charcoal",
+				"name": "Charcoal",
+				"hex": "#282726"
+			},
+			{
+				"id": "black",
+				"name": "Black",
+				"hex": "#100F0F"
+			}
+		],
+		"taskCreateDebounceMs": 750,
+		"projectSerialScopes": [],
+		"taskFinderShowRecentModifiedOnOpen": true,
+		"taskFinderRecentModifiedDays": 3,
+		"taskFinderVisibleResultCount": 5,
+		"inlineTaskShowTasksEmojiConvertIcon": true,
+		"inlineTaskShowPlainCheckboxConvertIcon": true,
+		"locationMapsAlwaysLightMode": true,
+		"locationPlaceIconPropertyName": "",
+		"locationPlaceColorPropertyName": "",
+		"locationPickerMapDefaultCenter": "",
+		"locationPickerMapDefaultZoom": 7,
+		"locationPreviewWidth": 600,
+		"locationPreviewHeight": 400,
+		"locationPreviewDefaultZoom": 15,
+		"locationPreviewMinZoom": 12,
+		"locationPreviewMaxZoom": 18,
+		"dockHoverOpenDelayMs": 200,
+		"floatingAutoCloseSec": 60,
+		"inlineRowWidth": 560,
+		"inlineRowDefaultMode": "compact",
+		"inlineExpandedMetadataDensity": "medium",
+		"inlineBackgroundIntensity": 0.18,
+		"pinnedTasksDesktopSurface": "floating",
+		"pinnedTasksSidebarSide": "left",
+		"pinnedTaskItemWidth": 240,
+		"pinnedDockPosition": "bottom-center",
+		"pinnedDockX": null,
+		"pinnedDockY": null,
+		"pinnedDockVisible": false,
+		"pinnedDockCollapsed": false,
+		"pinnedDockLayout": "vertical",
+		"pinnedDockGridCols": 2,
+		"pinnedDockDisableOnMobile": true,
+		"mobileGlobalTaskFabEnabled": true,
+		"mobileGlobalTaskFabHideInCalendar": false,
+		"mobileGlobalTaskFabHideInKanban": false,
+		"mobileGlobalTaskFabPosition": null,
+		"pinnedDockAutoCloseEnabled": true,
+		"pinnedDockAutoPin": true,
+		"pinnedDockAutoUnpinFinished": true,
+		"pinnedDockColorSource": "noColor",
+		"leftRailDefaultView": "filters",
+		"leftRailDefaultFilterViewId": null,
+		"leftRailMaxTabs": 5,
+		"rightRailMaxTabs": 5,
+		"leftRailViewOrder": [],
+		"rightRailViewOrder": [],
+		"calendarWeekStart": "monday",
+		"calendarShowHoverAddButton": true,
+		"calendarShowAllDayLane": true,
+		"calendarShowDueMarkers": true,
+		"calendarDefaultScrollHour": 8,
+		"calendarInitialScrollMode": "autoNow",
+		"calendarDayTitleAction": "create-open-daily-note",
+		"calendarAutoScrollPastRatio": 0.2,
+		"calendarTimeGridScale": 2,
+		"calendarSidebarWidthPx": 320,
+		"calendarSidebarCalendarsDefaultExpanded": true,
+		"calendarSidebarShowWeekNumbers": true,
+		"calendarShowWeekLabelOnFirstDay": true,
+		"calendarSidebarTaskPoolDefaultExpanded": true,
+		"calendarSidebarFinishedTasksDefaultExpanded": false,
+		"calendarTouchTimeGridTaskMoveEnabled": true,
+		"calendarTouchDragLongPressMs": 260,
+		"calendarTouchDragCancelDistancePx": 10,
+		"calendarMobileEnabled": true,
+		"calendarMobileMaxWidthPx": 720,
+		"calendarMobileDefaultView": "agenda",
+		"calendarMobileDefaultSourcePresetId": "calendar-preset-3day",
+		"calendarMobileAgendaEnabled": true,
+		"calendarMobileDayEnabled": true,
+		"calendarMobileTwoDayEnabled": true,
+		"calendarMobileThreeDayEnabled": true,
+		"calendarMobileAgendaSourcePresetId": "calendar-preset-3day",
+		"calendarMobileDaySourcePresetId": "calendar-preset-3day",
+		"calendarMobileTwoDaySourcePresetId": "calendar-preset-3day",
+		"calendarMobileThreeDaySourcePresetId": "calendar-preset-3day",
+		"calendarMobileSlotMinutes": 30,
+		"calendarMobileShowProjectedOccurrences": true,
+		"calendarMobileShowExternalCalendars": true,
+		"calendarMobileColorSource": "taskColor",
+		"calendarMobileShowDueMarkers": true,
+		"calendarMobileShowAllDayItems": true,
+		"calendarMobileAgendaPastDays": 3,
+		"calendarMobileAgendaFutureDays": 14,
+		"calendarMobileAgendaShowCompletedItems": false,
+		"calendarMobileAllDayVisibleTaskLimit": "all",
+		"calendarMobileShowCompletedItems": false,
+		"kanbanExpandedColumnWidthPx": 320,
+		"kanbanMaxVisibleTasksPerCell": 7,
+		"kanbanShowHoverAddButton": true,
+		"kanbanTaskShowNotesPreview": false,
+		"kanbanTaskShowSubtaskProgress": true,
+		"kanbanTaskShowPlainCheckboxProgress": true,
+		"kanbanMobileLayoutChromeEnabled": true,
+		"kanbanMobileLayoutMaxWidthPx": 900,
+		"kanbanMobileCompactSwimlaneWidthPx": 6,
+		"kanbanMobileSwimlaneRailAlwaysVisible": true,
+		"kanbanMobileHorizontalStatusSnapEnabled": true,
+		"indexEventDebounceMs": 250,
+		"fullReindexOnStartup": false,
+		"duplicateAlertAutoOpenManager": false,
+		"duplicateAlertDelaySeconds": 10,
+		"taskStatsBackfillVersion": 0,
+		"excludedFolders": [],
+		"lastUsedFileTaskTemplateId": null,
+		"trackerHistoryDays": 7,
+		"trackerShowStatusBarTimer": true,
+		"trackerTaskDescriptionClickAction": "openTaskEditor",
+		"flowTimeMode": "tracktime",
+		"flowTimeSessionMinutes": 25,
+		"flowTimePauseMinutes": 5,
+		"flowTimeUseLastSelectedDuration": false,
+		"flowTimeDefaultSessionMinutes": 25,
+		"flowTimeShowNumericTimer": true,
+		"flowTimeNotifyOnTargetReached": true,
+		"taskBarSubtasksDefaultExpanded": true,
+		"fallbackTaskIconSource": "pipelineStatusIcon",
+		"taskStatusIconColorSource": "statusColor",
+		"fallbackStateIcons": {
+			"open": "obsidian",
+			"done": "circle-check-big",
+			"cancelled": "square-x"
+		},
+		"tablePresets": [],
+		"tablePresetOrderIds": [
+			"table-preset-my-first-table"
+		],
+		"tablePresetFileBindings": [],
+		"tablePresetFileMigrationVersion": 1,
+		"tablePresetFileMigrationFinalizedVersion": 1
+	},
+	"taxonomy": {
+		"keyMappings": {
+			"version": 1,
+			"system": [
+				{
+					"canonicalKey": "operonId",
+					"visiblePropertyName": "operonId",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "fingerprint",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "status",
+					"visiblePropertyName": "status",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "align-start-horizontal",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "priority",
+					"visiblePropertyName": "priority",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "flag",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "dateDue",
+					"visiblePropertyName": "dateDue",
+					"type": "date",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "calendar-clock",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "dateScheduled",
+					"visiblePropertyName": "dateScheduled",
+					"type": "date",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "calendar-cog",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "dateStarted",
+					"visiblePropertyName": "dateStarted",
+					"type": "date",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "plane-takeoff",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "datetimeCreated",
+					"visiblePropertyName": "datetimeCreated",
+					"type": "datetime",
+					"sync": "no",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "calendar-plus-2",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "dateCompleted",
+					"visiblePropertyName": "dateCompleted",
+					"type": "date",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "calendar-check",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "dateCancelled",
+					"visiblePropertyName": "dateCancelled",
+					"type": "date",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "calendar-x",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "datetimeStart",
+					"visiblePropertyName": "datetimeStart",
+					"type": "datetime",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "between-horizontal-start",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "datetimeEnd",
+					"visiblePropertyName": "datetimeEnd",
+					"type": "datetime",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "between-horizontal-end",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "estimate",
+					"visiblePropertyName": "estimate",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "equal-approximately",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "duration",
+					"visiblePropertyName": "duration",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "timer",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "totalEstimate",
+					"visiblePropertyName": "totalEstimate",
+					"type": "number",
+					"sync": "auto",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "target",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "totalDuration",
+					"visiblePropertyName": "totalDuration",
+					"type": "number",
+					"sync": "auto",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "clipboard-clock",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "repeat",
+					"visiblePropertyName": "repeat",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "repeat",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "repeatSeriesId",
+					"visiblePropertyName": "repeatSeriesId",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": true,
+					"icon": "",
+					"isSystem": true,
+					"isInternal": true
+				},
+				{
+					"canonicalKey": "repeatOccurrenceDate",
+					"visiblePropertyName": "repeatOccurrenceDate",
+					"type": "date",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": true,
+					"icon": "",
+					"isSystem": true,
+					"isInternal": true
+				},
+				{
+					"canonicalKey": "datetimeRepeatEnd",
+					"visiblePropertyName": "datetimeRepeatEnd",
+					"type": "datetime",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "calendar-off",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "parentTask",
+					"visiblePropertyName": "parentTask",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "workflow",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "blocking",
+					"visiblePropertyName": "blocking",
+					"type": "list",
+					"sync": "auto",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "circle-stop",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "blockedBy",
+					"visiblePropertyName": "blockedBy",
+					"type": "list",
+					"sync": "auto",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "circle-pause",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "assignees",
+					"visiblePropertyName": "assignees",
+					"type": "list",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "users",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "contexts",
+					"visiblePropertyName": "contexts",
+					"type": "list",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "compass",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "progress",
+					"visiblePropertyName": "progress",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "percent",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "directSubtaskCount",
+					"visiblePropertyName": "directSubtaskCount",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "directDoneSubtaskCount",
+					"visiblePropertyName": "directDoneSubtaskCount",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "directOpenSubtaskCount",
+					"visiblePropertyName": "directOpenSubtaskCount",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "treeDescendantCount",
+					"visiblePropertyName": "treeDescendantCount",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "treeDoneDescendantCount",
+					"visiblePropertyName": "treeDoneDescendantCount",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "treeOpenDescendantCount",
+					"visiblePropertyName": "treeOpenDescendantCount",
+					"type": "number",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "reminderDatetimes",
+					"visiblePropertyName": "ReminderDatetimes",
+					"type": "list",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "alarm-clock",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "reminderRules",
+					"visiblePropertyName": "ReminderRules",
+					"type": "list",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "bell-ring",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "timezone",
+					"visiblePropertyName": "timezone",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": true,
+					"icon": "globe-2",
+					"isSystem": true,
+					"isInternal": true
+				},
+				{
+					"canonicalKey": "trackers",
+					"visiblePropertyName": "trackers",
+					"type": "list",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "history",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "activeTracker",
+					"visiblePropertyName": "activeTracker",
+					"type": "datetime",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": true,
+					"icon": "play",
+					"isSystem": true,
+					"isInternal": true
+				},
+				{
+					"canonicalKey": "taskIcon",
+					"visiblePropertyName": "taskIcon",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "shapes",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "taskColor",
+					"visiblePropertyName": "taskColor",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "palette",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "note",
+					"visiblePropertyName": "note",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "notebook-pen",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "location",
+					"visiblePropertyName": "location",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "map-pin",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "links",
+					"visiblePropertyName": "Links",
+					"type": "list",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "link",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "datetimeModified",
+					"visiblePropertyName": "datetimeModified",
+					"type": "datetime",
+					"sync": "auto",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "file-cog",
+					"isSystem": true,
+					"isInternal": false
+				}
+			],
+			"custom": []
+		},
+		"priorities": {
+			"version": 1,
+			"priorities": [
+				{
+					"id": "pr_s",
+					"label": "S",
+					"color": "#e41a1b",
+					"description": "Highest-impact or urgent work. Use when delay creates meaningful cost, blocks a release, or affects users now."
+				},
+				{
+					"id": "pr_a",
+					"label": "A",
+					"color": "#ff7124",
+					"description": "Important committed work. Use when humans and agents should plan or execute it soon."
+				},
+				{
+					"id": "pr_b",
+					"label": "B",
+					"color": "#a1b752",
+					"description": "Valuable planned work. Use when it matters, but can follow S and A priorities."
+				},
+				{
+					"id": "pr_c",
+					"label": "C",
+					"color": "#3f84a8",
+					"description": "Normal operational work. Use for useful tasks without urgent timing or high leverage."
+				},
+				{
+					"id": "pr_d",
+					"label": "D",
+					"color": "#0e6175",
+					"description": "Low-priority maintenance or cleanup. Use when helpful, but easy to defer."
+				},
+				{
+					"id": "pr_e",
+					"label": "E",
+					"color": "#024959",
+					"description": "Backlog or someday work. Use when worth keeping, but not actively planned."
+				},
+				{
+					"id": "pr_f",
+					"label": "F",
+					"color": "#504e4e",
+					"description": "Lowest-priority or reference work. Use for parked, optional, or administrative tasks with no current pressure."
+				}
+			],
+			"defaultPriority": "C"
+		},
+		"pipelines": {
+			"version": 1,
+			"pipelines": [
+				{
+					"id": "pl_project",
+					"name": "Project",
+					"statuses": [
+						{
+							"id": "st_project_brainstorming",
+							"label": "Brainstorming",
+							"color": "#239eaf",
+							"isFinished": false,
+							"isCancelled": false,
+							"isScheduledTarget": false,
+							"isTrackingTarget": false,
+							"propertyMapping": null
+						},
+						{
+							"id": "st_project_planned",
+							"label": "Planned",
+							"color": "#ff7b0f",
+							"isFinished": false,
+							"isCancelled": false,
+							"isScheduledTarget": true,
+							"isTrackingTarget": false,
+							"propertyMapping": null
+						},
+						{
+							"id": "st_project_in_progress",
+							"label": "InProgress",
+							"color": "#f31212",
+							"isFinished": false,
+							"isCancelled": false,
+							"isScheduledTarget": false,
+							"isTrackingTarget": true,
+							"propertyMapping": null
+						},
+						{
+							"id": "st_project_finished",
+							"label": "Finished",
+							"color": "#787878",
+							"isFinished": true,
+							"isCancelled": false,
+							"isScheduledTarget": false,
+							"isTrackingTarget": false,
+							"propertyMapping": null
+						},
+						{
+							"id": "st_project_paused",
+							"label": "Paused",
+							"color": "#1a7ebc",
+							"isFinished": false,
+							"isCancelled": false,
+							"isScheduledTarget": false,
+							"isTrackingTarget": false,
+							"propertyMapping": null
+						},
+						{
+							"id": "st_project_dropped",
+							"label": "Dropped",
+							"color": "#1f1f1f",
+							"isFinished": false,
+							"isCancelled": true,
+							"isScheduledTarget": false,
+							"isTrackingTarget": false,
+							"propertyMapping": null
+						}
+					],
+					"description": "Use this pipeline for outcome-based work with a clear deliverable. Brainstorming is for shaping rough ideas, Planned is for committed work, InProgress is for active execution, Paused is for blocked or intentionally deferred work, Finished is for completed deliverables, and Dropped is for work that was intentionally abandoned."
+				}
+			],
+			"defaultPipelineName": "Project"
+		}
+	},
+	"views": {
+		"filters": {
+			"version": 1,
+			"filterIds": [
+				"fs_3n8dail",
+				"fs_7dopen"
+			],
+			"itemsById": {
+				"fs_3n8dail": {
+					"id": "fs_3n8dail",
+					"name": "Daily ToDo",
+					"icon": "calendar-day",
+					"rootGroup": {
+						"id": "fg_fs_3n8dail",
+						"logic": "all",
+						"children": [
+							{
+								"id": "cond_4h2today",
+								"field": "dateScheduled",
+								"fieldType": "date",
+								"operator": "isToday"
+							},
+							{
+								"id": "grp_j7nolog",
+								"logic": "all",
+								"children": [
+									{
+										"id": "cond_9z8nolog",
+										"field": "status",
+										"fieldType": "text",
+										"operator": "notContains",
+										"value": "log"
+									}
+								]
+							}
+						]
+					},
+					"sorts": [
+						{
+							"field": "checkbox",
+							"order": "asc"
+						},
+						{
+							"field": "priority",
+							"order": "asc"
+						}
+					],
+					"matchLogic": "all",
+					"conditions": [
+						{
+							"id": "cond_4h2today",
+							"field": "dateScheduled",
+							"fieldType": "date",
+							"operator": "isToday"
+						},
+						{
+							"id": "cond_9z8nolog",
+							"field": "status",
+							"fieldType": "text",
+							"operator": "notContains",
+							"value": "log"
+						}
+					],
+					"sortBy": "checkbox",
+					"sortOrder": "asc",
+					"groupBy": "dateScheduled",
+					"groupOrder": "desc"
+				},
+				"fs_7dopen": {
+					"id": "fs_7dopen",
+					"name": "Last Seven Days Open",
+					"icon": "calendar-week",
+					"rootGroup": {
+						"id": "fg_fs_7dopen",
+						"logic": "all",
+						"children": [
+							{
+								"id": "cond_2xisopen",
+								"field": "checkbox",
+								"fieldType": "checkbox",
+								"operator": "isOpen"
+							},
+							{
+								"id": "cond_7daysago",
+								"field": "dateScheduled",
+								"fieldType": "date",
+								"operator": "underDaysAgo",
+								"value": "7"
+							}
+						]
+					},
+					"sorts": [
+						{
+							"field": "priority",
+							"order": "asc"
+						}
+					],
+					"matchLogic": "all",
+					"conditions": [
+						{
+							"id": "cond_2xisopen",
+							"field": "checkbox",
+							"fieldType": "checkbox",
+							"operator": "isOpen"
+						},
+						{
+							"id": "cond_7daysago",
+							"field": "dateScheduled",
+							"fieldType": "date",
+							"operator": "underDaysAgo",
+							"value": "7"
+						}
+					],
+					"sortBy": "priority",
+					"sortOrder": "asc",
+					"groupBy": "happensOn",
+					"groupOrder": "desc"
+				}
+			}
+		},
+		"calendarPresets": {
+			"version": 1,
+			"calendarPresets": [
+				{
+					"id": "calendar-preset-1day",
+					"name": "1 Day",
+					"surfaceType": "timeGrid",
+					"weekCount": 2,
+					"focusedWeekNumber": 1,
+					"dayCount": 1,
+					"todayPosition": 1,
+					"slotMinutes": 15,
+					"filterSetId": null,
+					"navigationMode": "toolbar",
+					"showAllDayLane": true,
+					"showDueMarkers": true,
+					"showWeekends": true,
+					"showProjectedOccurrences": true,
+					"showExternalCalendars": true,
+					"hiddenTimeStart": "00:00",
+					"hiddenTimeEnd": "06:00",
+					"colorSource": "taskColor",
+					"appearanceModeLight": "theme",
+					"appearanceModeDark": "theme",
+					"externalCalendarVisibility": {}
+				},
+				{
+					"id": "calendar-preset-3day",
+					"name": "3 Days",
+					"surfaceType": "timeGrid",
+					"weekCount": 2,
+					"focusedWeekNumber": 1,
+					"dayCount": 3,
+					"todayPosition": 1,
+					"slotMinutes": 15,
+					"filterSetId": null,
+					"navigationMode": "toolbar",
+					"showAllDayLane": true,
+					"showDueMarkers": true,
+					"showWeekends": true,
+					"showProjectedOccurrences": true,
+					"showExternalCalendars": true,
+					"hiddenTimeStart": "00:00",
+					"hiddenTimeEnd": "06:00",
+					"colorSource": "taskColor",
+					"appearanceModeLight": "theme",
+					"appearanceModeDark": "theme",
+					"externalCalendarVisibility": {}
+				},
+				{
+					"id": "calendar-preset-7day",
+					"name": "7 Days Multi Week",
+					"surfaceType": "multiWeek",
+					"weekCount": 4,
+					"focusedWeekNumber": 1,
+					"dayCount": 7,
+					"todayPosition": 1,
+					"slotMinutes": 15,
+					"filterSetId": null,
+					"navigationMode": "toolbar",
+					"showAllDayLane": true,
+					"showDueMarkers": true,
+					"showWeekends": true,
+					"showProjectedOccurrences": true,
+					"showExternalCalendars": true,
+					"hiddenTimeStart": "00:00",
+					"hiddenTimeEnd": "06:00",
+					"colorSource": "taskColor",
+					"appearanceModeLight": "theme",
+					"appearanceModeDark": "theme",
+					"externalCalendarVisibility": {}
+				},
+				{
+					"id": "calendar-preset-10day",
+					"name": "10 Days",
+					"surfaceType": "timeGrid",
+					"weekCount": 2,
+					"focusedWeekNumber": 1,
+					"dayCount": 10,
+					"todayPosition": 1,
+					"slotMinutes": 15,
+					"filterSetId": null,
+					"navigationMode": "toolbar",
+					"showAllDayLane": true,
+					"showDueMarkers": true,
+					"showWeekends": true,
+					"showProjectedOccurrences": true,
+					"showExternalCalendars": true,
+					"hiddenTimeStart": "00:00",
+					"hiddenTimeEnd": "06:00",
+					"colorSource": "taskColor",
+					"appearanceModeLight": "theme",
+					"appearanceModeDark": "theme",
+					"externalCalendarVisibility": {}
+				}
+			],
+			"calendarDefaultPresetId": "calendar-preset-3day"
+		},
+		"kanbanPresets": {
+			"version": 1,
+			"kanbanPresets": [
+				{
+					"id": "kanban-preset-default",
+					"name": "My First Kanban Board",
+					"pipelineId": "pl_project",
+					"filterSetId": null,
+					"swimlaneBy": "priority",
+					"colorSource": "noColor",
+					"appearanceModeLight": "theme",
+					"appearanceModeDark": "theme",
+					"collapseEmptyColumns": true,
+					"collapseEmptySwimlanes": true,
+					"autoCollapseFinishedColumns": false,
+					"sortMode": "automatic",
+					"sortRules": [
+						{
+							"field": "datetimeModified",
+							"direction": "desc",
+							"empty": "last"
+						}
+					]
+				}
+			],
+			"kanbanDefaultPresetId": "kanban-preset-default"
+		},
+		"tablePresets": {
+			"version": 3,
+			"presetIds": [
+				"table-preset-my-first-table"
+			],
+			"fileBindings": [
+				{
+					"id": "table-preset-my-first-table",
+					"path": "Tables/Default.table"
+				}
+			],
+			"tableDefaultPresetId": "table-preset-my-first-table",
+			"tableEmbedVisibleRows": 20,
+			"tableShowLineNumbers": true,
+			"tableShowTaskIcon": false,
+			"tableShowTaskTypeIcon": false,
+			"initialized": true
+		},
+		"kanbanOrder": {
+			"version": 1,
+			"boards": {}
+		}
+	},
+	"ui": {
+		"contextualMenu": {
+			"version": 1,
+			"contextualMenuActionAllowlist": [
+				"markDone",
+				"startTimer",
+				"setAsTracked",
+				"pinToggle",
+				"unschedule",
+				"clearDueDate",
+				"fixedReminder",
+				"relativeReminder",
+				"openEditor",
+				"convertInlineToFileTask",
+				"convertFileToInlineTask",
+				"subtasks",
+				"createSubtask",
+				"checkboxes",
+				"jumpToSource",
+				"taskStatus",
+				"cancelTask"
+			],
+			"contextualMenuSurfaceActionMatrix": {
+				"readingRow": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"livePreviewTask": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"taskWikilinkOverlay": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"pinnedTask": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"cancelTask",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"trackerTask": [
+					"markDone",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"unschedule",
+					"setAsTracked",
+					"clearDueDate"
+				],
+				"flowTimeTask": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"filterTask": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"tableTask": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"cancelTask",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"kanbanCard": [
+					"pinToggle",
+					"startTimer",
+					"markDone",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"unschedule",
+					"jumpToSource",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"calendarTimedItem": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"cancelTask",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"calendarAllDayScheduledItem": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"calendarDueMarker": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"calendarFinishedMarker": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate"
+				],
+				"calendarSidebarTaskPoolTask": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"cancelTask",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate",
+					"fixedReminder",
+					"relativeReminder"
+				],
+				"calendarProjectedOccurrence": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate"
+				],
+				"calendarExternalItem": [
+					"taskStatus",
+					"pinToggle",
+					"openEditor",
+					"convertInlineToFileTask",
+					"convertFileToInlineTask",
+					"subtasks",
+					"createSubtask",
+					"checkboxes",
+					"startTimer",
+					"markDone",
+					"unschedule",
+					"jumpToSource",
+					"setAsTracked",
+					"clearDueDate"
+				]
+			},
+			"contextualMenuOpenDelayMs": 100,
+			"contextualMenuMobileEnabled": true,
+			"contextualMenuMobileLongPressMs": 320,
+			"contextualMenuMobileTransitionGraceMs": 450,
+			"contextualMenuMobileAutoHideMs": 7000
+		},
+		"taskUiPreferences": {
+			"version": 1,
+			"taskCreatorToolbar": [
+				{
+					"key": "taskIcon",
+					"visible": true
+				},
+				{
+					"key": "taskColor",
+					"visible": true
+				},
+				{
+					"key": "priority",
+					"visible": true
+				},
+				{
+					"key": "status",
+					"visible": true
+				},
+				{
+					"key": "parentTask",
+					"visible": true
+				},
+				{
+					"key": "contexts",
+					"visible": true
+				},
+				{
+					"key": "location",
+					"visible": true
+				},
+				{
+					"key": "links",
+					"visible": false
+				},
+				{
+					"key": "dateStarted",
+					"visible": false
+				},
+				{
+					"key": "dateScheduled",
+					"visible": true
+				},
+				{
+					"key": "dateDue",
+					"visible": true
+				},
+				{
+					"key": "dateCompleted",
+					"visible": false
+				},
+				{
+					"key": "dateCancelled",
+					"visible": false
+				},
+				{
+					"key": "pinned",
+					"visible": true
+				},
+				{
+					"key": "datetimeStart",
+					"visible": false
+				},
+				{
+					"key": "datetimeEnd",
+					"visible": false
+				},
+				{
+					"key": "estimate",
+					"visible": true
+				},
+				{
+					"key": "repeat",
+					"visible": true
+				},
+				{
+					"key": "reminderDatetimes",
+					"visible": false
+				},
+				{
+					"key": "reminderRules",
+					"visible": false
+				},
+				{
+					"key": "subtasks",
+					"visible": false
+				},
+				{
+					"key": "blocking",
+					"visible": false
+				},
+				{
+					"key": "blockedBy",
+					"visible": false
+				},
+				{
+					"key": "tags",
+					"visible": false
+				},
+				{
+					"key": "assignees",
+					"visible": true
+				},
+				{
+					"key": "note",
+					"visible": true
+				}
+			],
+			"taskEditorShowLineNumbers": false,
+			"taskEditorWorkflowPickers": [
+				{
+					"key": "contexts",
+					"visible": true
+				},
+				{
+					"key": "tags",
+					"visible": true
+				},
+				{
+					"key": "assignees",
+					"visible": true
+				},
+				{
+					"key": "location",
+					"visible": true
+				},
+				{
+					"key": "links",
+					"visible": true
+				},
+				{
+					"key": "reminderDatetimes",
+					"visible": true
+				},
+				{
+					"key": "reminderRules",
+					"visible": true
+				},
+				{
+					"key": "parentTask",
+					"visible": true
+				},
+				{
+					"key": "subtasks",
+					"visible": true
+				},
+				{
+					"key": "blocking",
+					"visible": false
+				},
+				{
+					"key": "blockedBy",
+					"visible": false
+				}
+			],
+			"taskEditorMobileCoreTools": [
+				{
+					"key": "goToSource",
+					"visible": true
+				},
+				{
+					"key": "play",
+					"visible": true
+				},
+				{
+					"key": "note",
+					"visible": true
+				},
+				{
+					"key": "taskIcon",
+					"visible": true
+				},
+				{
+					"key": "taskColor",
+					"visible": true
+				},
+				{
+					"key": "priority",
+					"visible": true
+				},
+				{
+					"key": "status",
+					"visible": true
+				},
+				{
+					"key": "blocking",
+					"visible": false
+				},
+				{
+					"key": "blockedBy",
+					"visible": false
+				},
+				{
+					"key": "dateStarted",
+					"visible": true
+				},
+				{
+					"key": "dateScheduled",
+					"visible": true
+				},
+				{
+					"key": "dateDue",
+					"visible": true
+				},
+				{
+					"key": "datetimeStart",
+					"visible": true
+				},
+				{
+					"key": "estimate",
+					"visible": true
+				},
+				{
+					"key": "datetimeEnd",
+					"visible": true
+				},
+				{
+					"key": "repeat",
+					"visible": true
+				},
+				{
+					"key": "dateCompleted",
+					"visible": true
+				},
+				{
+					"key": "dateCancelled",
+					"visible": true
+				},
+				{
+					"key": "remove",
+					"visible": true
+				}
+			],
+			"inlineExpandedTaskChips": {
+				"priority": true,
+				"dateDue": true,
+				"dateScheduled": false,
+				"dateStarted": false,
+				"assignees": true,
+				"duration": true,
+				"estimate": true,
+				"tags": true,
+				"status": false
+			},
+			"inlineTaskCompactChips": [
+				{
+					"key": "priority",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "status",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "parentTask",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "blocking",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "blockedBy",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateStarted",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateScheduled",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateDue",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "datetimeStart",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "datetimeEnd",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "repeat",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderDatetimes",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderRules",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "assignees",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "contexts",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "location",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "links",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "tags",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "estimate",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "duration",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "dateCompleted",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateCancelled",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "totalDuration",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "totalEstimate",
+					"visible": false,
+					"iconOnly": false
+				}
+			],
+			"filterTaskCompactChips": [
+				{
+					"key": "priority",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "status",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "parentTask",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "blocking",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "blockedBy",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateScheduled",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateDue",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateStarted",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateCompleted",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateCancelled",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "datetimeStart",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "datetimeEnd",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "repeat",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderDatetimes",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderRules",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "assignees",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "contexts",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "location",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "links",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "duration",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "estimate",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "tags",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "totalDuration",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "totalEstimate",
+					"visible": false,
+					"iconOnly": false
+				}
+			],
+			"kanbanTaskCompactChips": [
+				{
+					"key": "priority",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "status",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "parentTask",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "blocking",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "blockedBy",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateScheduled",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "dateDue",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "dateStarted",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateCompleted",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "dateCancelled",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "datetimeStart",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "datetimeEnd",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "repeat",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderDatetimes",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderRules",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "assignees",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "contexts",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "location",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "links",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "duration",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "estimate",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "tags",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "totalDuration",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "totalEstimate",
+					"visible": false,
+					"iconOnly": false
+				}
+			],
+			"kanbanTaskShowPlayAction": false,
+			"kanbanTaskShowPinAction": false,
+			"kanbanTaskShowNoteAction": true,
+			"kanbanTaskShowSubtaskAction": false,
+			"kanbanTaskShowPlainCheckboxAction": false,
+			"taskFinderCompactChips": [
+				{
+					"key": "priority",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "status",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "parentTask",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "blocking",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "blockedBy",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateScheduled",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateDue",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateStarted",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateCompleted",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateCancelled",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "datetimeStart",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "datetimeEnd",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "repeat",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderDatetimes",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderRules",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "assignees",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "contexts",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "location",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "links",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "duration",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "totalDuration",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "estimate",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "totalEstimate",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "tags",
+					"visible": false,
+					"iconOnly": false
+				}
+			],
+			"taskFinderDefaultScope": [
+				{
+					"key": "projectTasks",
+					"visible": false
+				},
+				{
+					"key": "projectTree",
+					"visible": false
+				},
+				{
+					"key": "overdue",
+					"visible": false
+				},
+				{
+					"key": "happensToday",
+					"visible": false
+				},
+				{
+					"key": "recentModified",
+					"visible": false
+				},
+				{
+					"key": "includeInline",
+					"visible": true
+				},
+				{
+					"key": "includeFile",
+					"visible": true
+				},
+				{
+					"key": "includeCancelled",
+					"visible": false
+				},
+				{
+					"key": "includeFinished",
+					"visible": false
+				}
+			],
+			"taskFinderRememberLastScopes": true,
+			"taskFinderSelectedProjectId": "",
+			"taskFinderShortcuts": [
+				{
+					"key": "projectTasks",
+					"shortcut": "1"
+				},
+				{
+					"key": "projectTree",
+					"shortcut": "2"
+				},
+				{
+					"key": "overdue",
+					"shortcut": "3"
+				},
+				{
+					"key": "happensToday",
+					"shortcut": "4"
+				},
+				{
+					"key": "recentModified",
+					"shortcut": "5"
+				},
+				{
+					"key": "includeInline",
+					"shortcut": "6"
+				},
+				{
+					"key": "includeFile",
+					"shortcut": "7"
+				},
+				{
+					"key": "includeCancelled",
+					"shortcut": "8"
+				},
+				{
+					"key": "includeFinished",
+					"shortcut": "9"
+				}
+			],
+			"taskWikilinkOverlayCompactChips": [
+				{
+					"key": "priority",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "status",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "parentTask",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "blocking",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "blockedBy",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateScheduled",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateDue",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateStarted",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateCompleted",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "dateCancelled",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "datetimeStart",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "datetimeEnd",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "repeat",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderDatetimes",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "reminderRules",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "assignees",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "contexts",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "location",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "links",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "duration",
+					"visible": true,
+					"iconOnly": true
+				},
+				{
+					"key": "totalDuration",
+					"visible": true,
+					"iconOnly": false
+				},
+				{
+					"key": "estimate",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "totalEstimate",
+					"visible": false,
+					"iconOnly": false
+				},
+				{
+					"key": "tags",
+					"visible": false,
+					"iconOnly": false
+				}
+			],
+			"taskWikilinkOverlayShowPlayAction": false,
+			"taskWikilinkOverlayShowPinAction": false,
+			"taskWikilinkOverlayShowNoteAction": true,
+			"taskWikilinkOverlayShowSubtaskAction": false,
+			"taskWikilinkOverlayShowPlainCheckboxAction": true,
+			"inlineTaskShowPlayAction": true,
+			"inlineTaskShowPinAction": false,
+			"inlineTaskShowNoteAction": true,
+			"inlineTaskShowSubtaskAction": true,
+			"filterTaskShowPlayAction": true,
+			"filterTaskShowPinAction": false,
+			"filterTaskShowNoteAction": true,
+			"filterTaskShowSubtaskAction": true,
+			"filterTaskShowPlainCheckboxAction": true
+		},
+		"taskCreationProfile": {
+			"version": 1,
+			"taskDescriptionRequired": true,
+			"assigneesRequired": false,
+			"fileTasksFolder": "Operon/Tasks",
+			"inlineTaskSaveMode": "daily-notes",
+			"inlineTaskUseDailyNote": true,
+			"inlineTaskTargetFile": "Operon/Tasks/Operon Inbox.md",
+			"inlineTaskHeading": "",
+			"fileTaskParentInlineTargetMode": "same-folder",
+			"fileTaskParentFileTargetMode": "same-folder",
+			"inlineToFileTaskMovePlainCheckboxes": true,
+			"inlineTaskParentInlineTargetMode": "below-parent",
+			"inlineTaskParentFileTargetMode": "inside-parent-file",
+			"inlineTaskParentFileHeadingKeyword": "Backlog",
+			"inlineTaskDailyNoteAddStartDate": false,
+			"inlineTaskDailyNoteAddScheduledDate": false,
+			"calendarInlineTaskHeading": "",
+			"autoParentFileTask": true,
+			"autoParentLinkedFileSubtasks": true,
+			"childTaskInheritanceFields": [
+				"status",
+				"priority",
+				"taskIcon",
+				"taskColor"
+			],
+			"childTaskInheritanceStatusPipelineSource": "parent",
+			"taskCreatorDefaultToFileTask": false,
+			"taskCreatorDefaultFileTemplateId": null,
+			"fileTaskTemplateFolder": "",
+			"createDailyNotesAsOperonTask": false,
+			"defaultEstimateMinutes": 30
+		},
+		"workspaceTweaks": {
+			"version": 1,
+			"workspaceTweaksHideScrollbars": false,
+			"workspaceTweaksCollapseProperties": false,
+			"workspaceTweaksPropertiesScope": "operon-file-tasks",
+			"workspaceTweaksPropertiesExcludedFolders": [],
+			"workspaceTweaksCompactSidebarTabIcons": false
+		},
+		"presetFavorites": {
+			"version": 1,
+			"table": [
+				"table-preset-my-first-table"
+			],
+			"calendar": [
+				"calendar-preset-3day"
+			],
+			"kanban": [
+				"kanban-preset-default"
+			],
+			"filter": []
+		}
+	},
+	"automation": {
+		"taskAutomationPolicy": {
+			"version": 1,
+			"autoCompleteParentWhenAllChildrenTerminal": false,
+			"cascadeCancelToDescendants": true,
+			"newOccurrencePosition": "above",
+			"fileTaskAutoArchiveEnabled": false,
+			"fileTaskArchiveFolder": "Operon/Archives",
+			"fileTaskArchiveDelaySeconds": 30,
+			"fileTaskArchiveOnlyFromFileTasksFolder": true,
+			"fileRepeatDestination": "same-folder",
+			"fileRepeatCustomFolder": "",
+			"estimateAutoReallocation": false,
+			"trackerSplitSessionsAtMidnight": false,
+			"reminderCatchUpWindowMinutes": 60,
+			"reminderNoticeDurationSeconds": 15,
+			"reminderAutoPinDueTasks": false,
+			"reminderSystemNotificationsEnabled": false,
+			"reminderSoundFilePath": ""
+		}
+	},
+	"integrations": {
+		"externalCalendarSources": {
+			"version": 1,
+			"sources": []
+		},
+		"mobileNotifications": {
+			"version": 1,
+			"snapshotEnabled": false,
+			"cancelPending": false,
+			"vaultId": null,
+			"lastGeneratedAtEpochMs": null
+		}
+	},
+	"state": {
+		"pinnedTasks": {
+			"version": 1,
+			"itemsById": {}
+		}
+	}
+}

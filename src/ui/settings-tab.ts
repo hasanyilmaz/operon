@@ -74,6 +74,7 @@ import { getCurrentLang, installI18nLocale, t } from '../core/i18n';
 import type { LocalePackManager } from '../core/locale-pack-manager';
 import { buildLanguagePackDropdownOptions } from './language-pack-options';
 import { buildCoreGeneralSettingsPlan } from './settings/core-general-settings-plan';
+import { mountDeveloperApiDeclarativeSettingsEntryV1 } from './settings/developer-api-settings-route';
 import { getReleaseNotesForManualView } from '../core/release-notes';
 import { asHTMLElement } from '../core/dom-compat';
 import { getAppLocale, isDailyNotesCoreAvailable } from '../core/obsidian-app';
@@ -2252,6 +2253,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderSettingsSearchCustomEntry(entry: OperonSettingsSearchEntry, setting: Setting): void {
 		setting.setName(this.getSettingsSearchText(entry.name));
 		setting.setDesc(this.getSettingsSearchText(entry.desc));
+
+		if (mountDeveloperApiDeclarativeSettingsEntryV1(
+			entry.id,
+			setting.settingEl,
+			host => this.renderDeveloperApiIntegrations(host),
+		)) return;
 
 		if (entry.key === 'language') {
 			this.configureLanguageDropdownSetting(setting);

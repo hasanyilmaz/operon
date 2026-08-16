@@ -4,8 +4,19 @@ import type {
 	CreateTaskSpecV1,
 	SealedCreateEffectV1,
 } from '../contracts/v1/mutation';
-import type { IdentityPlaceholderSealedCreateEffectV1 } from '../extensions/task-workflows-v1';
-import { sha256HexV1 } from '../contracts/v1/canonical';
+import type {
+	IdentityPlaceholderSealedCreateEffectV1,
+	IdentityPlaceholderSealedPlanV1,
+	TaskWorkflowPreviewResultV1,
+} from '../extensions/task-workflows-v1/contracts';
+import { decodeTaskWorkflowPreviewResultExtensionV1 } from '../extensions/task-workflows-v1/decode';
+import {
+	canonicalJsonV1,
+	canonicalPlanHashV1,
+	sha256HexV1,
+	toJsonValueV1,
+} from '../contracts/v1/canonical';
+import type { DecodeResultV1 } from '../contracts/v1/decode';
 import {
 	normalizeInlineTaskParentFileHeadingKeyword,
 	type OperonSettings,
@@ -55,6 +66,112 @@ import type { RepeatTemporalTemplate } from '../../storage/repeat-series-store';
 import { isBlankMarkdownBodyLine } from '../../core/markdown-body';
 
 const ABSENT_SOURCE_PREFIX = 'operon-absent-source-v1:';
+
+export type RuntimeTaskCreationSealedEffectV1 = SealedCreateEffectV1 & Partial<
+	Pick<IdentityPlaceholderSealedCreateEffectV1, 'templateIdentityAllocations'>
+>;
+
+type SuccessfulTaskWorkflowPreviewResultV1 = Extract<
+	TaskWorkflowPreviewResultV1,
+	{ ok: true }
+>;
+
+export type SealedIdentityPlaceholderPreviewResultV1 = Omit<
+	SuccessfulTaskWorkflowPreviewResultV1,
+	'plan'
+> & {
+	plan: IdentityPlaceholderSealedPlanV1;
+};
+
+export type UnsealedIdentityPlaceholderPlanV1 = Omit<
+	IdentityPlaceholderSealedPlanV1,
+	'planHash'
+>;
+
+export type UnsealedIdentityPlaceholderPreviewResultV1 = Omit<
+	SuccessfulTaskWorkflowPreviewResultV1,
+	'plan'
+> & {
+	plan: UnsealedIdentityPlaceholderPlanV1;
+};
+
+export function sealIdentityPlaceholderPreviewResultV1(
+	candidate: UnsealedIdentityPlaceholderPreviewResultV1,
+): DecodeResultV1<SealedIdentityPlaceholderPreviewResultV1> {
+	try {
+		const decoded = decodeTaskWorkflowPreviewResultExtensionV1({
+			...candidate,
+			plan: {
+				...candidate.plan,
+				planHash: canonicalPlanHashV1(toJsonValueV1(candidate.plan)),
+			},
+		});
+		if (!decoded.ok) return decoded;
+		if (!decoded.value.ok || decoded.value.plan.mutationKind !== 'task.create') {
+			return {
+				ok: false,
+				issues: [{
+					path: '/plan/mutationKind',
+					code: 'value',
+					message: 'Identity-placeholder sealing produced the wrong preview result kind.',
+				}],
+			};
+		}
+		return {
+			ok: true,
+			value: {
+				...decoded.value,
+				plan: decoded.value.plan,
+			},
+		};
+	} catch {
+		return {
+			ok: false,
+			issues: [{
+				path: '/plan/planHash',
+				code: 'value',
+				message: 'Identity-placeholder plan hash material is not canonical JSON.',
+			}],
+		};
+	}
+}
+
+export function compareRebuiltIdentityPlaceholderPlanV1(
+	candidate: UnsealedIdentityPlaceholderPreviewResultV1,
+	expectedPlan: IdentityPlaceholderSealedPlanV1,
+) {
+	const decoded = sealIdentityPlaceholderPreviewResultV1(candidate);
+	if (!decoded.ok || !decoded.value.ok) return { ok: false as const, decoded };
+	return {
+		ok: true as const,
+		plan: decoded.value.plan,
+		matches: canonicalJsonV1(toJsonValueV1(decoded.value.plan))
+			=== canonicalJsonV1(toJsonValueV1(expectedPlan)),
+	};
+}
+
+export function buildIdentityPlaceholderCreateEffectsV1(
+	effects: readonly RuntimeTaskCreationSealedEffectV1[],
+	finalSources: ReadonlyMap<string, { content: string | null; digest: string }>,
+): IdentityPlaceholderSealedCreateEffectV1[] {
+	return effects.map(effect => {
+		const source = finalSources.get(effect.locator.filePath);
+		const rendered = source?.content === null || source?.content === undefined
+			? undefined
+			: effect.locator.representation === 'file'
+				? source.content
+				: source.content.split(/\r?\n/u)[effect.locator.lineNumber];
+		return {
+			...effect,
+			templateIdentityAllocations: effect.templateIdentityAllocations?.map(
+				allocation => ({ ...allocation }),
+			) ?? [],
+			plannedSourceDigest: source?.digest ?? effect.plannedSourceDigest,
+			renderedTaskDigest: rendered === undefined ? effect.renderedTaskDigest : sha256HexV1(rendered),
+		};
+	});
+}
+
 const CONFIGURED_TEMPORAL_CREATION_FIELDS = new Set([
 	'reminderDatetimes',
 	'reminderRules',
@@ -140,7 +257,7 @@ export type RuntimeTaskCreationPreparationV1 =
 	| {
 		ok: true;
 		plan: PreparedCanonicalTaskCreationPlan;
-		createEffects: SealedCreateEffectV1[];
+		createEffects: RuntimeTaskCreationSealedEffectV1[];
 		parentResources: Array<{
 			operonId: string;
 			filePath: string;
@@ -637,7 +754,7 @@ function buildCanonicalParentFirstOrderV1(
 
 function createSealedEffects(
 	plan: PreparedCanonicalTaskCreationPlan,
-): SealedCreateEffectV1[] {
+): RuntimeTaskCreationSealedEffectV1[] {
 	const sourceGroups = new Map(plan.sourceGroups.map(group => [group.filePath, group]));
 	const plannedSourceDigests = new Map(plan.sourceGroups.map(group => [
 		group.filePath,
@@ -1070,7 +1187,7 @@ function createSealedEffect(
 	task: PreparedCanonicalTaskCreationPlan['tasks'][number],
 	sourceGroup: PreparedCanonicalTaskCreationPlan['sourceGroups'][number],
 	plannedSourceDigest: string,
-): SealedCreateEffectV1 | IdentityPlaceholderSealedCreateEffectV1 {
+): RuntimeTaskCreationSealedEffectV1 {
 	const locator = task.representation === 'inline'
 		? {
 			representation: 'inline' as const,

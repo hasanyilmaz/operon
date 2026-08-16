@@ -1361,7 +1361,7 @@
 		"tableFileConflictResolve": "Разрешить конфликт",
 		"tableFileConflictResolvedNotice": "Конфликт ID разрешён; создано независимых файлов Table: {{count}}.",
 		"tableFileConflictPartialNotice": "Создано файлов Table: {{succeeded}}; ещё требуют проверки: {{failed}}.",
-		"tableFileUnsupportedPackageNotice": "Эта версия Operon не может открыть сохранённую конфигурацию Table. Изменения не вносились.",
+		"tableFileUnsupportedPackageNotice": "Operon не удалось безопасно открыть сохранённую конфигурацию Table ({reason}). Запись настроек заблокирована. Не переустанавливайте плагин и не редактируйте data.json; сохраните файлы, проверьте указанную причину и обратитесь за помощью по восстановлению.",
 		"tableGeneralSettings": "Общие настройки Table",
 		"tableDefaultPreset": "Пресет Table по умолчанию",
 		"tableDefaultPresetDesc": "Новые вкладки Operon Table начинаются с этого пресета, если у вкладки ещё нет собственного сохранённого состояния.",
