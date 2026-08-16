@@ -13,6 +13,41 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.3.2',
+		date: '2026-08-16',
+		title: 'Operon 3.3.2 - Runtime Recovery and Safer Windows Transport',
+		showOnUpdate: true,
+		body: `
+Operon 3.3.2 restores Developer API management, repairs Runtime and legacy Table recovery paths, and removes process-launch capability from the Plugin. Windows Runtime users must update Operon and Operon CLI 1.1.2 together.
+
+### Improved
+- Improved **Windows Runtime transport security**: the Plugin now keeps bootstrap credentials in memory, while Operon CLI 1.1.2 writes and verifies the owner-only descriptor. The Plugin no longer launches PowerShell or any external process.
+
+### Fixed
+- Restored the full **Developer API grant and audit controls** inside searchable Settings.
+- Fixed Runtime **File Task creation with identity placeholders** by sealing preview and apply plans before strict validation.
+- Prevented File Task description updates from implicitly renaming notes; unsupported rename attempts now fail closed without mutation.
+- Prevented transition plans from scheduling **Project Serial settlement** when no Project Serial scopes are configured.
+- Added backup-first recovery for eligible legacy **Table manifest v2** state when every declared preset is verified by a valid \`.table\` file; ambiguous state remains unchanged and fails closed.
+`.trim(),
+	},
+	{
+		version: '3.3.1',
+		date: '2026-08-15',
+		title: 'Operon 3.3.1 - Task Conversion and Filter Group Clipboard',
+		showOnUpdate: true,
+		body: `
+Operon 3.3.1 adds safe task conversion, reusable Filter groups, and more compact Task Editor subtask actions.
+
+### New
+- Added a **Convert task to plain** command for safely converting inline tasks to Markdown checkboxes or removing selected Operon properties from File Tasks without deleting their notes.
+- Added recursive **Copy Group** and **Paste Group** actions to the Filter Editor, preserving nested conditions, logic, values, and ordering.
+
+### Improved
+- Simplified the Task Editor's **Add Inline Subtask** and **Add File Subtask** actions to compact icon buttons with localized tooltips and accessible labels.
+`.trim(),
+	},
+	{
 		version: '3.3.0',
 		date: '2026-08-13',
 		title: 'Operon 3.3.0 - Backup, Restore, and Flexible Tables',
