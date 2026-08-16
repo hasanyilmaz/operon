@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [3.3.2] - 2026-08-16
+
+Operon 3.3.2 restores Developer API management, repairs Runtime and legacy Table recovery paths, and removes process-launch capability from the Plugin. Windows Runtime users must update Operon and Operon CLI together.
+
+### Improved
+
+- Improved **Windows Runtime transport security**: the Plugin now keeps bootstrap credentials in memory, while Operon CLI 1.1.2 writes and verifies the owner-only descriptor. The Plugin no longer launches PowerShell or any external process.
+
+### Fixed
+
+- Restored the full **Developer API grant and audit controls** inside searchable Settings.
+- Fixed Runtime **File Task creation with identity placeholders** by sealing preview and apply plans before strict validation.
+- Prevented File Task description updates from implicitly renaming notes; unsupported rename attempts now fail closed without mutation.
+- Prevented transition plans from scheduling **Project Serial settlement** when no Project Serial scopes are configured.
+- Added backup-first recovery for eligible legacy **Table manifest v2** state when every declared preset is verified by a valid `.table` file; ambiguous state remains unchanged and fails closed.
+
+### Validation
+
+- Validated the Runtime, storage migration, Developer API Settings, Windows memory-bootstrap transport, production process-launch policy, production build, Plugin Release Guard, and exact paired Plugin/CLI Windows workflow.
+
 ## [3.3.1] - 2026-08-15
 
 ### New
