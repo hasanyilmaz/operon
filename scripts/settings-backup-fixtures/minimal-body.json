@@ -1,0 +1,31 @@
+{
+  "createdAt": "2026-08-10T16:00:00.000Z",
+  "source": {
+    "pluginVersion": "3.2.1",
+    "obsidianVersion": "1.13.0",
+    "dataPackageSchemaVersion": 2,
+    "settingsVersion": 111
+  },
+  "scope": {
+    "configuration": "portable",
+    "tableFiles": "excluded",
+    "externalCalendarUrls": "excluded",
+    "developerApiGrants": "excluded",
+    "mobileIdentity": "excluded",
+    "operationalState": "excluded",
+    "runtime": "excluded",
+    "cache": "excluded"
+  },
+  "groups": {
+    "general": { "codecVersion": 1, "data": {} },
+    "pipelines": { "codecVersion": 1, "data": { "pipelines": [], "defaultPipelineName": "" } },
+    "priorities": { "codecVersion": 1, "data": { "priorities": [], "defaultPriority": "" } },
+    "system-key-mappings": { "codecVersion": 1, "data": { "overrides": [] } },
+    "custom-keys": { "codecVersion": 1, "data": { "customKeys": [] } },
+    "filters": { "codecVersion": 1, "data": { "filterSets": [] } },
+    "calendar": { "codecVersion": 1, "data": { "calendarPresets": [], "calendarDefaultPresetId": null, "calendarMobileDefaultSourcePresetId": null, "calendarMobileAgendaSourcePresetId": null, "calendarMobileDaySourcePresetId": null, "calendarMobileTwoDaySourcePresetId": null, "calendarMobileThreeDaySourcePresetId": null } },
+    "kanban": { "codecVersion": 1, "data": { "kanbanPresets": [], "kanbanDefaultPresetId": null } },
+    "preset-favorites": { "codecVersion": 1, "data": { "presetFavorites": { "calendar": [], "kanban": [], "filter": [], "table": [] } } },
+    "table-global": { "codecVersion": 1, "data": { "tableEmbedVisibleRows": 10, "tableShowLineNumbers": false, "tableShowTaskIcon": true, "tableShowTaskTypeIcon": true } }
+  }
+}

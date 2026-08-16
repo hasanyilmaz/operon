@@ -1,6 +1,8 @@
 import { App, Menu, Notice, setIcon } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
+import type { TableColumn } from '../../types/table';
+import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import { t } from '../../core/i18n';
 import {
 	isSupportedRawYamlPropertyValue,
@@ -16,6 +18,19 @@ import {
 	showCustomTextFieldPicker,
 } from '../field-pickers/custom';
 import type { TableFilePropertyCellValue, TableFilePropertyField } from './table-file-property';
+import {
+	applyTableColumnCellAccent,
+	decorateTableDateValueChip,
+	decorateTableListValueChip,
+	formatTableCellListChipDisplayValue,
+	formatTableListIconOnlyTooltipContent,
+} from './table-cell-chip';
+import { resolveTableColumnCellAccent } from './table-column-color';
+import { renderTableTextValueDisplay } from './table-description-cell';
+import { formatTableIconOnlyTooltipContent, renderTableIconOnlyCell } from './table-icon-only-cell';
+import { createCompactTaskMarkdownTooltipContent } from '../operon-hover-tooltip';
+import { showTextFieldPopover } from '../text-field-popover';
+import { buildTableFilePropertyTextMutation, resolveTableTextEditRoute } from './table-text-edit-route';
 
 export interface TableFilePropertyUpdateRequest {
 	propertyName: string;
@@ -61,6 +76,9 @@ export function openTableFilePropertyPicker(options: {
 	candidates: readonly string[];
 	settings: Pick<OperonSettings, 'timeFormat' | 'calendarWeekStart' | 'calendarSidebarShowWeekNumbers'>;
 	sourcePath: string;
+	lifecycleOwner?: Node;
+	sessionKey?: string;
+	onFocusReturn?: () => void;
 	onMutation: (mutation: RawYamlPropertyMutation) => void;
 	onClose?: () => void;
 }): (() => void) | null {
@@ -121,6 +139,26 @@ export function openTableFilePropertyPicker(options: {
 			});
 		case 'text':
 		default:
+			if (resolveTableTextEditRoute(normalizedValue, true) === 'popover') {
+				return showTextFieldPopover({
+					app: options.app,
+					anchor: options.anchor,
+					title: options.label,
+					initialValue: normalizedValue,
+					allowEmptyCommit: true,
+					sessionKey: options.sessionKey,
+					lifecycleOwner: options.lifecycleOwner,
+					onFocusReturn: options.onFocusReturn,
+					editor: {
+						kind: 'compact-markdown',
+						sourcePath: options.sourcePath,
+					},
+					onCommit: value => {
+						options.onMutation(buildTableFilePropertyTextMutation(value));
+					},
+					onClose: options.onClose,
+				});
+			}
 			return showCustomTextFieldPicker(options.anchor, {
 				...common,
 				type: 'text',
@@ -139,7 +177,7 @@ export function renderTableFilePropertyCheckbox(options: {
 	compact: boolean;
 	editable: boolean;
 	onToggle: (mutation: RawYamlPropertyMutation) => void;
-}): void {
+}): HTMLButtonElement {
 	const { cell, cellValue } = options;
 	const rawValue = cellValue.rawValue;
 	const validBoolean = typeof rawValue === 'boolean';
@@ -160,20 +198,127 @@ export function renderTableFilePropertyCheckbox(options: {
 	setAccessibleLabelWithoutTooltip(button, `${options.label}: ${stateText}`);
 	const icon = button.createSpan('operon-table-file-property-checkbox-icon operon-inline-compact-chip-icon operon-table-cell-chip-icon');
 	setIcon(icon, validBoolean ? (rawValue ? 'square-check-big' : 'square') : 'square-dashed');
-	if (!options.compact) button.createSpan({
+	if (!options.compact && validBoolean) button.createSpan({
 		cls: 'operon-table-file-property-checkbox-label operon-inline-compact-chip-label operon-table-cell-chip-label',
-		text: validBoolean ? String(rawValue) : '--',
+		text: String(rawValue),
 	});
 	if (invalid) {
 		button.addEventListener('click', () => new Notice(t('table', 'filePropertyInvalidBoolean', { property: options.field.propertyName })));
-		return;
+		return button;
 	}
-	if (!options.editable) return;
+	if (!options.editable) return button;
 	button.addEventListener('click', event => {
 		event.preventDefault();
 		event.stopPropagation();
 		options.onToggle({ kind: 'set', value: validBoolean ? !rawValue : true });
 	});
+	return button;
+}
+
+export function renderTableFilePropertyValue(options: {
+	cell: HTMLElement;
+	field: TableFilePropertyField | null;
+	label: string;
+	cellValue: TableFilePropertyCellValue;
+	column: TableColumn;
+	task: IndexedTask;
+	settings: Pick<OperonSettings, 'colorPalette' | 'pipelines' | 'priorities'>;
+	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
+	app?: App;
+	sourcePath?: string;
+	editable: boolean;
+	onToggle: (mutation: RawYamlPropertyMutation) => void;
+}): boolean {
+	const isTextField = options.field?.type === 'text' && options.field.unavailable !== true;
+	const accentOptions = {
+		task: options.task,
+		settings: options.settings,
+		workflowStatusIdentityIndex: options.workflowStatusIdentityIndex,
+	};
+	if (options.field?.type === 'checkbox') {
+		const checkbox = renderTableFilePropertyCheckbox({
+			cell: options.cell,
+			field: options.field,
+			label: options.label,
+			cellValue: options.cellValue,
+			compact: options.column.displayMode === 'icon',
+			editable: options.editable,
+			onToggle: options.onToggle,
+		});
+		applyTableColumnCellAccent(checkbox, options.column, options.cellValue.normalizedValue, accentOptions);
+		return true;
+	}
+	const renderValues = Array.isArray(options.cellValue.rawValue)
+		? options.cellValue.rawValue.filter(value => value !== null).map(String)
+		: (options.cellValue.normalizedValue.trim() ? [options.cellValue.normalizedValue] : []);
+	const listValue = options.field?.type === 'list' || Array.isArray(options.cellValue.rawValue);
+	if (isTextField && options.column.displayMode !== 'icon') {
+		renderTableTextValueDisplay(options.cell, {
+			value: options.cellValue.normalizedValue,
+			...(options.app && options.sourcePath
+				? { wikilinks: { app: options.app, sourcePath: options.sourcePath } }
+				: {}),
+		});
+	} else if (isTextField && options.column.displayMode === 'icon') {
+		if (!options.cellValue.normalizedValue.trim()) return false;
+		const content = formatTableIconOnlyTooltipContent(options.cellValue.normalizedValue);
+		renderTableIconOnlyCell(options.cell, {
+			icon: options.field?.icon ?? 'text',
+			color: null,
+			title: options.label,
+			content,
+			...(options.app
+				? { contentEl: createCompactTaskMarkdownTooltipContent(options.cell, options.cellValue.normalizedValue) }
+				: {}),
+			ariaLabel: `${options.label}: ${content}`,
+			focusable: !options.editable,
+		});
+	} else if (listValue && options.column.displayMode === 'icon') {
+		const content = formatTableListIconOnlyTooltipContent(renderValues);
+		if (!content) return false;
+		renderTableIconOnlyCell(options.cell, {
+			icon: options.field?.icon ?? 'text',
+			color: resolveTableColumnCellAccent(
+				options.column,
+				options.cellValue.normalizedValue,
+				accentOptions,
+			),
+			title: options.label,
+			content,
+			ariaLabel: `${options.label}: ${content}`,
+			focusable: !options.editable,
+		});
+	} else if (options.column.displayMode === 'icon') {
+		const icon = options.cell.createSpan('operon-table-file-property-icon');
+		setIcon(icon, options.field?.icon ?? 'text');
+		applyTableColumnCellAccent(icon, options.column, options.cellValue.normalizedValue, {
+			...accentOptions,
+			decorateAsChip: false,
+		});
+		setAccessibleLabelWithoutTooltip(
+			options.cell,
+			`${options.label}: ${options.cellValue.normalizedValue || t('table', 'filePropertyNotSet')}`,
+		);
+	} else if (renderValues.length > 0) {
+		const chipParent = listValue
+			? options.cell.createSpan('operon-table-cell-chip-list')
+			: options.cell;
+		for (const value of renderValues) {
+			const displayValue = listValue ? formatTableCellListChipDisplayValue(value) : value;
+			const chip = chipParent.createSpan({
+				cls: `operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip${options.editable ? ' operon-table-editable-chip' : ' operon-chip-readonly'}`,
+			});
+			decorateTableDateValueChip(chip, options.field?.type);
+			if (listValue) {
+				chip.createSpan({ cls: 'operon-table-cell-chip-label', text: displayValue });
+			} else {
+				chip.setText(displayValue);
+			}
+			applyTableColumnCellAccent(chip, options.column, value, accentOptions);
+			if (listValue) decorateTableListValueChip(chip, displayValue);
+		}
+	}
+	return false;
 }
 
 export function bindTableFilePropertyRemovalMenu(options: {

@@ -1188,6 +1188,10 @@ export class TimeTracker {
 		await this.transitionQueue;
 	}
 
+	runWithTransitionLock<T>(operation: () => Promise<T>): Promise<T> {
+		return this.enqueueTransition(operation);
+	}
+
 	destroy(): void {
 		this.stopTicker();
 		this.listeners.clear();

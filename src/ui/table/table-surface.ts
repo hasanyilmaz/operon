@@ -13,9 +13,14 @@ import {
 import type { OperonSettings } from '../../types/settings';
 import { createTableGroupPathKey, type TableQueryGroup, type TableQuerySubgroup } from '../../systems/table-query';
 import { t } from '../../core/i18n';
-import { buildTableTaskFieldCatalog, getTableTaskField } from './table-field-catalog';
+import { buildTableTaskFieldCatalog, getTableTaskField, type TableTaskField } from './table-field-catalog';
 import { orderTablePresetColumnsByPinState } from './table-preset-model';
-import { isTableFilePropertyColumnKey } from './table-file-property';
+import {
+	isTableFilePropertyColumnKey,
+	type TableFilePropertyCellValue,
+	type TableFilePropertySnapshot,
+} from './table-file-property';
+import type { TableTaskLookup } from './table-value-adapter';
 
 export const TABLE_ROW_HEIGHT = 38;
 export const TABLE_COMFORTABLE_ROW_HEIGHT = 44;
@@ -29,8 +34,11 @@ export const TABLE_SUBGROUP_PARENT_LABEL_MAX_LENGTH = 15;
 export type TableRenderItem =
 	| { kind: 'group'; group: TableQueryGroup | TableQuerySubgroup; groupKey: string; depth: number; parentGroup?: TableQueryGroup }
 	| { kind: 'task'; task: IndexedTask; groupKey: string | null; ordinalKey: string }
+	| { kind: 'parentContext'; task: IndexedTask; groupKey: string; occurrenceKey: string }
 	| { kind: 'groupSummary'; group: TableQueryGroup | TableQuerySubgroup; groupKey: string; depth: number }
 	| { kind: 'summary' };
+
+export type TableRowOrdinal = number | 'P' | null;
 
 export const DEFAULT_TABLE_COLUMN_WIDTHS: Record<string, number> = {
 	[TABLE_LINE_NUMBER_COLUMN_KEY]: 45,
@@ -87,6 +95,7 @@ export function buildTableRenderItems(
 	groups: readonly TableQueryGroup[],
 	collapsedGroupKeys: readonly string[],
 	hasSummaryRow: boolean,
+	parentTaskLookup?: TableTaskLookup,
 ): TableRenderItem[] {
 	const taskOccurrenceCounts = new Map<string, number>();
 	const createTaskItem = (task: IndexedTask, groupKey: string | null): TableRenderItem => {
@@ -104,6 +113,23 @@ export function buildTableRenderItems(
 		if (hasSummaryRow) items.push({ kind: 'summary' });
 		return items;
 	};
+	const createParentContextItem = (
+		group: TableQueryGroup | TableQuerySubgroup,
+		groupKey: string,
+	): TableRenderItem | null => {
+		if (!parentTaskLookup || group.fieldKey !== 'parentTask' || group.isNoValue || group.isUnsupportedValue) return null;
+		const parentId = group.value.trim();
+		if (!parentId) return null;
+		const parentTask = parentTaskLookup.getTask(parentId);
+		if (!parentTask || parentTask.operonId !== parentId) return null;
+		if ((parentTask.fieldValues['parentTask'] ?? '').trim() === parentTask.operonId) return null;
+		return {
+			kind: 'parentContext',
+			task: parentTask,
+			groupKey,
+			occurrenceKey: `${groupKey}\u0000parentContext\u0000${parentTask.operonId}`,
+		};
+	};
 	if (groups.length === 0) {
 		return appendSummary(rows.map(task => createTaskItem(task, null)));
 	}
@@ -112,11 +138,15 @@ export function buildTableRenderItems(
 	for (const group of groups) {
 		items.push({ kind: 'group', group, groupKey: group.key, depth: 0 });
 		if (collapsed.has(group.key)) continue;
+		const groupParentContext = createParentContextItem(group, group.key);
+		if (groupParentContext) items.push(groupParentContext);
 		if (group.subgroups?.length) {
 			for (const subgroup of group.subgroups) {
 				const subgroupKey = createTableGroupPathKey(group.key, subgroup.key);
 				items.push({ kind: 'group', group: subgroup, groupKey: subgroupKey, depth: 1, parentGroup: group });
 				if (collapsed.has(subgroupKey)) continue;
+				const subgroupParentContext = createParentContextItem(subgroup, subgroupKey);
+				if (subgroupParentContext) items.push(subgroupParentContext);
 				for (const task of subgroup.rows) {
 					items.push(createTaskItem(task, subgroupKey));
 				}
@@ -317,6 +347,84 @@ export function buildTableTaskOrdinalMap(items: readonly TableRenderItem[]): Map
 		ordinals.set(item.ordinalKey, ordinal);
 	}
 	return ordinals;
+}
+
+export function collectTableParentContextTasks(items: readonly TableRenderItem[]): IndexedTask[] {
+	const tasks = new Map<string, IndexedTask>();
+	for (const item of items) {
+		if (item.kind !== 'parentContext' || tasks.has(item.task.operonId)) continue;
+		tasks.set(item.task.operonId, item.task);
+	}
+	return Array.from(tasks.values());
+}
+
+export function mergeTableContextAdditionalFields(
+	primaryFields: readonly TableTaskField[],
+	contextFields: readonly TableTaskField[],
+	columns: readonly TableColumn[],
+): TableTaskField[] {
+	const visibleFilePropertyKeys = new Set(columns
+		.filter(column => column.hidden !== true && isTableFilePropertyColumnKey(column.key))
+		.map(column => column.key));
+	const merged = new Map(primaryFields.map(field => [field.key, field] as const));
+	for (const field of contextFields) {
+		if (!visibleFilePropertyKeys.has(field.key) || merged.has(field.key)) continue;
+		merged.set(field.key, field);
+	}
+	return Array.from(merged.values());
+}
+
+export function mergeTableFilePropertyCandidates(
+	primaryCandidates: readonly string[],
+	contextCandidates: readonly string[],
+): string[] {
+	return Array.from(new Set([...primaryCandidates, ...contextCandidates]));
+}
+
+export interface TableFilePropertyRenderProjection {
+	fields: readonly TableTaskField[];
+	signature: string;
+	getCell(task: IndexedTask, columnKey: string, isParentContext: boolean): TableFilePropertyCellValue;
+	getCandidates(columnKey: string, isParentContext: boolean): readonly string[];
+}
+
+export function createTableFilePropertyRenderProjection(
+	primarySnapshot: TableFilePropertySnapshot,
+	contextSnapshot: TableFilePropertySnapshot,
+	columns: readonly TableColumn[],
+): TableFilePropertyRenderProjection {
+	const contextCandidates = new Map<string, readonly string[]>();
+	return {
+		fields: mergeTableContextAdditionalFields(primarySnapshot.fields, contextSnapshot.fields, columns),
+		signature: `${primarySnapshot.signature}|context=${contextSnapshot.signature}`,
+		getCell: (task, columnKey, isParentContext) => (isParentContext ? contextSnapshot : primarySnapshot).getCell(task, columnKey),
+		getCandidates: (columnKey, isParentContext) => {
+			if (!isParentContext) return primarySnapshot.getCandidates(columnKey);
+			const cached = contextCandidates.get(columnKey);
+			if (cached) return cached;
+			const merged = mergeTableFilePropertyCandidates(
+				primarySnapshot.getCandidates(columnKey),
+				contextSnapshot.getCandidates(columnKey),
+			);
+			contextCandidates.set(columnKey, merged);
+			return merged;
+		},
+	};
+}
+
+export function buildTableEditableCellFocusKey(cellKey: string, occurrenceKey: string | null): string {
+	return occurrenceKey ? `${occurrenceKey}\u0000${cellKey}` : cellKey;
+}
+
+export function findTableEditableCellByFocusKey<T extends { dataset: DOMStringMap }>(
+	cells: readonly T[],
+	focusKey: string,
+): T | null {
+	return cells.find(cell => (cell.dataset.editFocusKey ?? cell.dataset.editCellKey) === focusKey) ?? null;
+}
+
+export function formatTableRowOrdinal(ordinal: TableRowOrdinal): string {
+	return ordinal === null ? '' : String(ordinal);
 }
 
 export function resolveTableGroupDisplayLabel(group: TableQueryGroup | TableQuerySubgroup): string {

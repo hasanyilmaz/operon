@@ -38,6 +38,12 @@ The reason conversion is safe is the `operonId`. Both directions keep it, so the
 
 So the conversion is about the task's *container*, not its meaning.
 
+## Leave Operon instead of changing shape
+
+[[DOCS-135 Convert task to plain|Convert task to plain]] is a different action. It does not move the same task between inline and file containers. Instead, it removes the `operonId` and ends the task's Operon identity: an inline task becomes a plain checkbox, while a File Task can become a normal note with only the managed properties you select removed.
+
+Use it when you want to keep the Markdown content but stop managing the task in Operon. It has its own confirmation, property picker, and safety checks for relationships, timers, recurrence, and reminders.
+
 ## FAQ
 
 **Will I lose my fields when converting?** No. Operon carries the canonical fields across both directions. Only the container changes.

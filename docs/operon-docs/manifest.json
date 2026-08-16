@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
   "packageId": "operon-docs",
-  "generatedAt": "2026-08-03T09:28:33.575Z",
   "source": {
     "branch": "main",
     "docsBasePath": "docs/operon-docs",
@@ -10,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "f6ded2bcb036b06013288f6f9d3818f19933f5652c35c4e17799d8fef6ad3b33",
-      "bytes": 10454
+      "sha256": "52d83da1a3a3526d99603f7005301097e4c53c426400de6f3f4e48ea004df008",
+      "bytes": 10585
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -80,8 +79,8 @@
     },
     {
       "path": "DOCS-015 Task identity and operonId.md",
-      "sha256": "8105b91283b94260693bde125c912f09753e995f2d49e3b766d47f0e2a69f461",
-      "bytes": 4330
+      "sha256": "a4de277049c676da95b396e0e7945534bb217bb5c8ddea1ccc0697260a3d032c",
+      "bytes": 4617
     },
     {
       "path": "DOCS-016 Parent and sub-tasks.md",
@@ -100,8 +99,8 @@
     },
     {
       "path": "DOCS-019 Converting inline and file tasks.md",
-      "sha256": "a8db08af71f3b260d4cad8729be9e0c353051ebf2206595cd54e50dc38addf0e",
-      "bytes": 4898
+      "sha256": "6e1facc61ee37585c8c98dfc02292fb7f66321eba0da0e73fd40ae8b2003b00d",
+      "bytes": 5505
     },
     {
       "path": "DOCS-020 Task Creator.md",
@@ -115,8 +114,8 @@
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "612c2bc98cd2b713154d962cdb419981d94c3bac38f06a01d39e83a716e414e0",
-      "bytes": 5332
+      "sha256": "5531b4f88c7b12b7a5a6163ec5e7b0ddd7cbf8e3c361d8673d31cdab8d0f6ec1",
+      "bytes": 5519
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
@@ -225,8 +224,8 @@
     },
     {
       "path": "DOCS-044 Where Operon stores data.md",
-      "sha256": "bc954fb83ca573b78f66cd454ff3c092dc80c164bb913450e8bb066b207dc4ca",
-      "bytes": 2796
+      "sha256": "b11298c7d7f38bce3982bb60376f80a92a7d9f75af860422f87ebcbdb85cbcf3",
+      "bytes": 2928
     },
     {
       "path": "DOCS-045 Markdown task storage.md",
@@ -235,8 +234,8 @@
     },
     {
       "path": "DOCS-046 Plugin data and state files.md",
-      "sha256": "b3dac346872a0533d392cacdafbc6aa45924225b8605fadce2dcde1c97c179a0",
-      "bytes": 2936
+      "sha256": "b30ce270fc13d7efef51df60f1e9ca96f08cbbca9b9f2700b51c00be42e353e8",
+      "bytes": 3130
     },
     {
       "path": "DOCS-047 Sync conflict safety.md",
@@ -445,8 +444,8 @@
     },
     {
       "path": "DOCS-088 Convert file task to inline task.md",
-      "sha256": "86b5c37228645a0078dd4fb3888005c669d651bd07d82c2ff7440735b027aa81",
-      "bytes": 2415
+      "sha256": "2e83bc82ce192621f52ec5cbfcffa7ab70e748246661ac872e053f20e2f4ed8a",
+      "bytes": 2495
     },
     {
       "path": "DOCS-089 Move an inline task here.md",
@@ -672,6 +671,17 @@
       "path": "DOCS-133 JSONL sessions for scripts and agents.md",
       "sha256": "fb0e5e7f9a5881270ae71bc8eeadd71e42520c3c269dc767395154e407dd002c",
       "bytes": 7141
+    },
+    {
+      "path": "DOCS-134 Backup and restore settings.md",
+      "sha256": "8512761ebaa89201549bc631fc2178c9f834e6ce84056eb63859b00bbd553395",
+      "bytes": 5599
+    },
+    {
+      "path": "DOCS-135 Convert task to plain.md",
+      "sha256": "17c473d6d10557a41cb3c0c7378bb49085c59278b14d329e2e5c0ebf09555db2",
+      "bytes": 6058
     }
-  ]
+  ],
+  "generatedAt": "2026-08-15T08:58:44.665Z"
 }

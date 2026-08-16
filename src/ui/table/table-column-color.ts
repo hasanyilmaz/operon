@@ -10,6 +10,7 @@ import { findStatusDef } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
 import {
 	getDefaultTableColumnColorMode,
+	isTableColumnColorModeLocked,
 	type TableColumn,
 	type TableColumnColorMode,
 } from '../../types/table';
@@ -20,6 +21,7 @@ import {
 	resolveBlockedByVisualStateColor,
 } from '../../core/blocked-by-visual-state';
 import type { TableTaskLookup } from './table-value-adapter';
+import { isTablePlainTextField } from './table-field-catalog';
 
 export const TABLE_COLUMN_COLOR_MENU_MODES: readonly TableColumnColorMode[] = [
 	'noColor',
@@ -33,11 +35,30 @@ type TableColumnColorSettings = Pick<OperonSettings, 'colorPalette' | 'pipelines
 
 const TABLE_COLUMN_COLOR_INELIGIBLE_KEYS = new Set(['description', 'source', 'duration']);
 
-export function isTableColumnColorModeEligible(column: TableColumn): boolean {
-	return column.kind === 'task' && !TABLE_COLUMN_COLOR_INELIGIBLE_KEYS.has(column.key);
+export interface TableColumnColorField {
+	key: string;
+	type: string;
+	unavailable?: boolean;
+}
+
+export function isTableFieldColorModeEligible(field?: TableColumnColorField | null): boolean {
+	return !isTablePlainTextField(field);
+}
+
+export function isTableColumnColorModeEligible(
+	column: TableColumn,
+	field?: TableColumnColorField | null,
+): boolean {
+	return column.kind === 'task'
+		&& !isTableColumnColorModeLocked(column.key)
+		&& !TABLE_COLUMN_COLOR_INELIGIBLE_KEYS.has(column.key)
+		&& (column.key === 'status'
+			|| column.key === 'priority'
+			|| isTableFieldColorModeEligible(field));
 }
 
 export function resolveEffectiveTableColumnColorMode(column: Pick<TableColumn, 'key' | 'colorMode'>): TableColumnColorMode {
+	if (isTableColumnColorModeLocked(column.key)) return getDefaultTableColumnColorMode(column.key);
 	return column.colorMode ?? getDefaultTableColumnColorMode(column.key);
 }
 

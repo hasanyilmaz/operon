@@ -51,6 +51,8 @@ export interface TableFilePropertyField {
 	propertyName: string;
 	sourceType: ObsidianPropertyTypeId;
 	sourceFileCount: number;
+	/** The key is preserved but its current File Property type is not available. */
+	unavailable?: boolean;
 }
 
 export type TableFilePropertyCellValue = FilePropertyCellValue;

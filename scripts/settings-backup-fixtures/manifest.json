@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "algorithm": "sha256",
+  "files": {
+    "future-format.json": "dc51adfa440c946e36ed574b0c31f85cd1446d1c2a7496ee48c591e8c1c07d50",
+    "malformed.json": "bfe6bfa13fb4f3565ff28df1bfb6ccd9bd3735f282876119f1919430c2f4a8dd",
+    "minimal-body.json": "346d680dc13d0cc7c2327341b3cf59f24830e1907b46268f919a97295aba4b6b",
+    "representative-body.json": "cb667882505eb1b01914e998e5f5ec2a929a3f02eae6eb705503c16fabc080c0"
+  }
+}

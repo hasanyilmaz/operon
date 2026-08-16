@@ -2,7 +2,7 @@
 Notes: The two places Operon keeps data, all inside your vault
 Icon: database
 Color: "#0891b2"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-12T17:21:45
 ---
 
 # Where Operon stores data
@@ -25,7 +25,7 @@ Operon's own configuration and working state (key mappings, pipelines, prioritie
 
 ## Why the split matters
 
-- **Backups.** Backing up your vault backs up both stores.
+- **Backups.** Backing up your vault backs up both stores. To move Operon settings without copying the whole vault, see [[DOCS-134 Backup and restore settings|Back up and restore settings]].
 - **Sync.** Tasks sync as ordinary Markdown; settings sync with the rest of your `.obsidian` folder if you sync it. See [[DOCS-047 Sync conflict safety|Sync conflict safety]].
 - **Portability.** Your tasks travel as plain files, readable with or without Operon.
 

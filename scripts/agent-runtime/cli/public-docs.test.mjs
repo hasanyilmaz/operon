@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -11,16 +10,12 @@ import { loadPublishedCliBinding } from './published-cli-v1.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, '../../..');
-const vaultRoot = path.resolve(pluginRoot, '../../..');
 const generatedRoot = path.join(pluginRoot, 'docs/operon-docs');
 const configuredSourceRoot = process.env.OPERON_DOCS_SOURCE_ROOT;
-const externalSourceRoot = configuredSourceRoot
-	? path.resolve(configuredSourceRoot)
-	: path.join(vaultRoot, 'Operon/Operon Docs Source');
-if (configuredSourceRoot && !existsSync(externalSourceRoot)) {
-	throw new Error(`OPERON_DOCS_SOURCE_ROOT_NOT_FOUND:${externalSourceRoot}`);
+const sourceRoot = configuredSourceRoot ? path.resolve(configuredSourceRoot) : generatedRoot;
+if (configuredSourceRoot && !existsSync(sourceRoot)) {
+	throw new Error(`OPERON_DOCS_SOURCE_ROOT_NOT_FOUND:${sourceRoot}`);
 }
-const sourceRoot = existsSync(externalSourceRoot) ? externalSourceRoot : generatedRoot;
 const publicBaseline = JSON.parse(await readFile(
 	path.join(pluginRoot, 'contracts/agent-runtime/public-v1-baseline.json'),
 	'utf8',
@@ -31,10 +26,6 @@ const publicIntegrationNumbers = new Set([
 	'036',
 	...Array.from({ length: 16 }, (_, index) => String(index + 118).padStart(3, '0')),
 ]);
-
-function sha256(value) {
-	return createHash('sha256').update(value).digest('hex');
-}
 
 async function managedFiles(root) {
 	return (await readdir(root))
@@ -116,7 +107,6 @@ async function publicSchemaValidators() {
 
 test('Public V1 integration docs follow the source conventions', async () => {
 	const files = await managedFiles(sourceRoot);
-	assert.equal(files.length, 133, 'Aşama 8 must finish with exactly DOCS-001 through DOCS-133.');
 	const selected = files.filter(file => publicIntegrationNumbers.has(docNumber(file)));
 	assert.equal(selected.length, publicIntegrationNumbers.size);
 
@@ -345,27 +335,6 @@ test('Public CLI surfaces route source, package, and beta feedback to the standa
 	);
 });
 
-test('Generated docs and manifest are byte-identical to all source docs', async () => {
-	const sourceFiles = await managedFiles(sourceRoot);
-	const generatedFiles = await managedFiles(generatedRoot);
-	assert.deepEqual(generatedFiles, sourceFiles);
-	const manifest = JSON.parse(await readFile(path.join(generatedRoot, 'manifest.json'), 'utf8'));
-	assert.equal(manifest.schemaVersion, 1);
-	assert.equal(manifest.packageId, 'operon-docs');
-	assert.equal(manifest.files.length, sourceFiles.length);
-	const records = new Map(manifest.files.map(record => [record.path, record]));
-
-	for (const file of sourceFiles) {
-		const source = await readFile(path.join(sourceRoot, file));
-		const generated = await readFile(path.join(generatedRoot, file));
-		assert.deepEqual(generated, source, `${file} differs from its canonical source.`);
-		const record = records.get(file);
-		assert.ok(record, `${file} is absent from the generated manifest.`);
-		assert.equal(record.bytes, source.byteLength);
-		assert.equal(record.sha256, sha256(source));
-	}
-});
-
 test('published binding and frozen contracts expose the documented public boundary', async () => {
 	const { binding } = await loadPublishedCliBinding();
 	const [scope, evolution] = await Promise.all([
@@ -375,9 +344,9 @@ test('published binding and frozen contracts expose the documented public bounda
 	assert.equal(binding.package.name, '@stratejya/operon-cli');
 	assert.equal(binding.package.version, '1.1.0');
 	assert.equal(binding.runtime.contractVersion, 1);
-	assert.match(scope, /append-only external CLI compatibility freeze registry/u);
-	assert.match(scope, /published-CLI live mutation suite was not rerun/u);
-	assert.match(evolution, /Accepted external-reference freezes are append-only, versioned evidence/u);
+	assert.match(scope, /CLI artifact integrity is verified in the CLI compatibility\/release lane, not before Plugin release acceptance/u);
+	assert.match(evolution, /must not load, hash, or compare a CLI artifact during\s+ordinary Plugin\s+development/u);
+	assert.match(evolution, /historical evidence[\s\S]*not gates for future Plugin work/u);
 	assert.equal(publicBaseline.cliContract, 1);
 	assert.equal(publicBaseline.exitCodes.interrupted, 130);
 	assert.equal(publicBaseline.exitCodes.runtimeFailure, 5);

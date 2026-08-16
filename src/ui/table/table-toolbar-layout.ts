@@ -1,4 +1,5 @@
 import { getOwnerWindow } from '../../core/dom-compat';
+import { bindExpandedDescendantState } from '../expanded-descendant-state';
 
 interface TableToolbarResizeObserverLike {
 	observe(target: Element): void;
@@ -63,10 +64,12 @@ export function bindTableToolbarLayout(
 	observer?.observe(start);
 	observer?.observe(center);
 	observer?.observe(end);
+	const disposeExpandedState = bindExpandedDescendantState(toolbar);
 
 	return () => {
 		disposed = true;
 		observer?.disconnect();
+		disposeExpandedState();
 		ownerWindow.cancelAnimationFrame(animationFrame);
 		ownerWindow.clearTimeout(lateUpdateTimer);
 	};

@@ -4507,7 +4507,10 @@ export function normalizeTaskEditorMobileCoreTools(
 function orderTaskEditorMobileCoreTools(items: TaskEditorMobileCoreToolItem[]): TaskEditorMobileCoreToolItem[] {
 	const first = items.find(item => item.key === 'goToSource');
 	const last = items.find(item => item.key === 'remove');
-	const middle = items.filter(item => item.key !== 'goToSource' && item.key !== 'remove');
+	const middle = items.filter(item => (
+		item.key !== 'goToSource'
+		&& item.key !== 'remove'
+	));
 	return [
 		...(first ? [first] : []),
 		...middle,

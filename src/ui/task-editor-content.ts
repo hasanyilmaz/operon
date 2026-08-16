@@ -72,7 +72,11 @@ import {
 	ConfirmActionComparisonTable,
 	ConfirmActionModal,
 } from './confirm-action-modal';
-import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
+import {
+	buildTrackerSessionEditContext,
+	TrackerSessionEditModal,
+	type TrackerSessionTaskNoteOptions,
+} from './tracker-session-edit-modal';
 import { formatTrackerDayHeader } from './tracker-time-labels';
 import { EmbeddedMarkdownSourceEditor } from './embedded-markdown-source-editor';
 import {
@@ -3452,7 +3456,7 @@ export class TaskEditorContent {
 
 		const subtaskLabel = t('buttons', resolveSubtaskActionLabelKeyForKind(this.subtaskActionKind));
 		const subtaskBtn = container.createEl('button', {
-			cls: 'operon-editor-core-action-btn',
+			cls: 'operon-editor-core-action-btn operon-editor-core-subtask-action',
 			attr: {
 				type: 'button',
 			},
@@ -3460,7 +3464,8 @@ export class TaskEditorContent {
 		const subtaskIcon = getIcon(resolveSubtaskActionIconForKind(this.subtaskActionKind)) ?? getIcon('plus');
 		if (subtaskIcon) subtaskBtn.appendChild(subtaskIcon);
 		else subtaskBtn.setText('+');
-		subtaskBtn.createSpan({ text: subtaskLabel });
+		setAccessibleLabelWithoutTooltip(subtaskBtn, subtaskLabel);
+		this.bindTaskEditorTooltip(subtaskBtn, subtaskLabel);
 		subtaskBtn.addEventListener('click', () => {
 			void this.requestSubtask();
 		});
@@ -4823,6 +4828,7 @@ export class TaskEditorContent {
 			if (!operonId) return;
 			new TrackerSessionEditModal(this.app, {
 				title: t('taskEditor', 'addSession'),
+				taskNote: this.buildTrackerSessionTaskNoteOptions(operonId),
 				onSave: async (start, end) => {
 					const added = await this.timeTracker.addSession(operonId, start, end);
 					if (!added) {
@@ -4880,6 +4886,7 @@ export class TaskEditorContent {
 		edit.addEventListener('click', () => {
 			new TrackerSessionEditModal(this.app, {
 				title: t('taskEditor', 'editSession'),
+				taskNote: this.buildTrackerSessionTaskNoteOptions(session.operonId),
 				...buildTrackerSessionEditContext({
 					taskLabel: session.task.description || this.description || session.operonId,
 					start: session.start,
@@ -4956,11 +4963,43 @@ export class TaskEditorContent {
 		});
 	}
 
+	private buildTrackerSessionTaskNoteOptions(operonId: string): TrackerSessionTaskNoteOptions {
+		return {
+			operonId,
+			sourcePath: this.getCompactTextSourcePath(),
+			initialValue: this.fieldValues['note'] ?? '',
+			taskDescription: this.description,
+			taskColor: this.fieldValues['taskColor'] ?? null,
+			icon: getConfiguredKeyMappingIcon('note', this.settings.keyMappings) || 'notebook-pen',
+			onCommit: async value => {
+				const previous = this.fieldValues['note'] ?? '';
+				if (value !== previous) {
+					if (value.trim()) {
+						this.fieldValues['note'] = value;
+					} else {
+						delete this.fieldValues['note'];
+					}
+					this.noteCompactEditor?.setSourceValue(value, this.getCompactTextSourcePath());
+					if (this.noteInputEl) {
+						this.noteInputEl.value = value;
+						this.autoSizeMobileTextarea(this.noteInputEl, 44);
+					}
+					this.updateMobileNoteVisibility();
+					this.refreshMobileCoreButtons();
+					this.markEdited();
+				}
+				const outcome = await this.flushPendingEditsOutcome('explicit-save');
+				return outcome.ok && outcome.clean;
+			},
+		};
+	}
+
 	private renderRemoveControl(container: HTMLElement): void {
 		if (!this.existingTask || !this.onRequestDelete) return;
 
 		const control = this.createInlineField(container, '');
 		control.parentElement?.addClass('operon-editor-remove-field');
+
 		const button = control.createEl('button', {
 			cls: 'operon-editor-core-action-btn operon-editor-core-danger-btn operon-editor-picker-button',
 			attr: {

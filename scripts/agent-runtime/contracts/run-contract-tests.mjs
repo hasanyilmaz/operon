@@ -15,6 +15,11 @@ const fixturePath = path.join(scriptDirectory, 'fixtures/cases.json');
 const sourceRoot = path.join(pluginRoot, 'src/agent-runtime/contracts/v1');
 const productionContractImporters = new Set([
 	'main.ts',
+	'src/core/settings-backup-apply.ts',
+	'src/core/settings-backup-export.ts',
+	'src/core/settings-backup-format.ts',
+	'src/core/settings-backup-group-validation.ts',
+	'src/core/settings-backup-preflight.ts',
 	'src/agent-runtime/developer-api/grant-controller.ts',
 	'src/agent-runtime/developer-api/grants.ts',
 	'src/agent-runtime/developer-api/runtime.ts',
@@ -58,6 +63,7 @@ const productionContractImporters = new Set([
 	'src/agent-runtime/transport/persistent-read-server.ts',
 	'src/agent-runtime/transport/secure-request-file.ts',
 	'src/agent-runtime/transport/windows-broker-state.ts',
+	'src/storage/operon-storage.ts',
 ]);
 
 const manifest = await readJson(path.join(schemaRoot, 'schema-manifest.json'));

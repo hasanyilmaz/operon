@@ -74,6 +74,7 @@ import { getCurrentLang, installI18nLocale, t } from '../core/i18n';
 import type { LocalePackManager } from '../core/locale-pack-manager';
 import { buildLanguagePackDropdownOptions } from './language-pack-options';
 import { buildCoreGeneralSettingsPlan } from './settings/core-general-settings-plan';
+import { mountDeveloperApiDeclarativeSettingsEntryV1 } from './settings/developer-api-settings-route';
 import { getReleaseNotesForManualView } from '../core/release-notes';
 import { asHTMLElement } from '../core/dom-compat';
 import { getAppLocale, isDailyNotesCoreAvailable } from '../core/obsidian-app';
@@ -219,6 +220,20 @@ import type { DeveloperApiGrantRecordV1 } from '../agent-runtime/developer-api';
 import type { SecurityAuditEventV1 } from '../agent-runtime/runtime';
 import { renderSettingsTabFramework, type SettingsTabDefinition } from './settings/settings-tab-framework';
 import {
+	downloadSettingsBackupArtifact,
+	openSettingsBackupRestorePicker,
+	settingsBackupT,
+	SettingsBackupRestoreModal,
+	type SettingsBackupUiIntegration,
+} from './settings-backup-ui';
+export type {
+	SettingsBackupUiIntegration,
+	SettingsBackupApplyResult,
+	SettingsBackupPreviewDecisions,
+	SettingsBackupRestorePreview,
+	SettingsBackupSelectedFile,
+} from './settings-backup-ui';
+import {
 	maybeCopyKanbanManualOrderForPresetDuplicate,
 	removeKanbanManualOrderForPresetDelete,
 } from '../systems/kanban-manual-order-runtime';
@@ -301,6 +316,7 @@ type OperonSettingsPrimaryTabId = 'core' | 'tasks' | 'views' | 'interface' | 'mo
 
 type OperonSettingsSecondaryTabId =
 	| 'coreGeneral'
+	| 'coreBackupRestore'
 	| 'corePipelines'
 	| 'corePriority'
 	| 'coreKeymapping'
@@ -712,6 +728,7 @@ const SETTINGS_SEARCH_NATIVE_TAB_IDS = new Set<OperonSettingsTabId>([
 ]);
 
 const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
+	'coreBackupRestore',
 	'corePipelines',
 	'corePriority',
 	'coreKeymapping',
@@ -732,6 +749,7 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 ]);
 
 const SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS: Partial<Record<OperonSettingsTabId, string>> = {
+	coreBackupRestore: 'DOCS-134 Backup and restore settings',
 	corePipelines: 'DOCS-037 Pipelines and statuses',
 	corePriority: 'DOCS-038 Task priorities',
 	tasksInlineTasks: 'DOCS-011 Inline tasks',
@@ -746,7 +764,7 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS: Partial<Record<OperonSetting
 	interfaceColorPalette: 'DOCS-067 Color picker',
 };
 
-const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Record<OperonSettingsSecondaryTabId, OperonSettingsSearchTextKey> = {
+const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Partial<Record<OperonSettingsSecondaryTabId, OperonSettingsSearchTextKey>> = {
 	coreGeneral: { namespace: 'settings', key: 'settingsPageCoreGeneralDesc' },
 	corePipelines: { namespace: 'settings', key: 'pipelinesDesc' },
 	corePriority: { namespace: 'settings', key: 'priorityDesc' },
@@ -907,6 +925,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private previewReminderInOperon: () => void;
 	private previewReminderSystemNotification: () => Promise<boolean>;
 	private developerApiIntegration: DeveloperApiSettingsIntegration | null;
+	private settingsBackupUiIntegration: SettingsBackupUiIntegration | null;
 	private committedWorkflowSettingsSnapshot!: {
 		pipelines: Pipeline[];
 		defaultPipelineName: string;
@@ -958,6 +977,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		previewReminderInOperon?: () => void,
 		previewReminderSystemNotification?: () => Promise<boolean>,
 		developerApiIntegration?: DeveloperApiSettingsIntegration,
+		settingsBackupUiIntegration?: SettingsBackupUiIntegration,
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
@@ -1018,6 +1038,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.previewReminderInOperon = previewReminderInOperon ?? (() => { });
 		this.previewReminderSystemNotification = previewReminderSystemNotification ?? (async () => false);
 		this.developerApiIntegration = developerApiIntegration ?? null;
+		this.settingsBackupUiIntegration = settingsBackupUiIntegration ?? null;
 		if (this.localePackManager) {
 			plugin.register(this.localePackManager.subscribe(() => {
 				this.updateNativeSettingsDefinitions();
@@ -2127,7 +2148,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private getSettingsSearchTabDescription(tabId: OperonSettingsTabId): string {
 		if (!this.isSecondarySettingsTabId(tabId)) return '';
-		return this.getSettingsSearchText(SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS[tabId]);
+		if (tabId === 'coreBackupRestore') return settingsBackupT('settingsBackupPageDesc');
+		const descriptionKey = SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS[tabId];
+		return descriptionKey ? this.getSettingsSearchText(descriptionKey) : '';
 	}
 
 	private getSettingsSearchTabPageName(tab: SettingsTabDefinition<OperonSettingsTabId>): string {
@@ -2230,6 +2253,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderSettingsSearchCustomEntry(entry: OperonSettingsSearchEntry, setting: Setting): void {
 		setting.setName(this.getSettingsSearchText(entry.name));
 		setting.setDesc(this.getSettingsSearchText(entry.desc));
+
+		if (mountDeveloperApiDeclarativeSettingsEntryV1(
+			entry.id,
+			setting.settingEl,
+			host => this.renderDeveloperApiIntegrations(host),
+		)) return;
 
 		if (entry.key === 'language') {
 			this.configureLanguageDropdownSetting(setting);
@@ -3061,6 +3090,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ id: 'corePriority', groupId: 'core', label: t('settings', 'tabPriority') },
 			{ id: 'coreKeymapping', groupId: 'core', label: t('settings', 'tabKeyMappings') },
 			{ id: 'coreCustomKeys', groupId: 'core', label: t('settings', 'tabCustomKeys') },
+			{ id: 'coreBackupRestore', groupId: 'core', label: settingsBackupT('settingsBackupPageTitle') },
 			{ id: 'tasksInlineTasks', groupId: 'tasks', label: t('settings', 'subtabInlineTasks') },
 			{ id: 'tasksFileTasks', groupId: 'tasks', label: t('settings', 'subtabFileTasks') },
 			{ id: 'tasksRelationships', groupId: 'tasks', label: t('settings', 'subtabRelationships') },
@@ -3091,6 +3121,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (tabId !== 'tasksReminders') this.disposeReminderSoundPreview();
 		if (tabId === 'core' || tabId === 'coreGeneral') {
 			this.renderCoreGeneralTab(contentEl);
+		} else if (tabId === 'coreBackupRestore') {
+			this.renderBackupRestoreTab(contentEl);
 		} else if (tabId === 'corePipelines') {
 			this.renderPipelinesTab(contentEl);
 		} else if (tabId === 'corePriority') {
@@ -3169,6 +3201,137 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.renderGeneralSystemTab(containerEl);
 		this.renderUpdateCheckSetting(containerEl);
 		this.renderDeveloperApiIntegrations(containerEl);
+	}
+
+	private renderBackupRestoreTab(containerEl: HTMLElement): void {
+		const integration = this.settingsBackupUiIntegration;
+		if (!integration) {
+			containerEl.createEl('p', {
+				text: settingsBackupT('settingsBackupUnavailable'),
+				cls: 'operon-settings-muted-block',
+			});
+			return;
+		}
+
+		const exportSection = renderNativeSettingsGroupedSection(
+			containerEl,
+			settingsBackupT('settingsBackupExportTitle'),
+		);
+		exportSection.addClass('operon-settings-backup-section-card');
+		exportSection.createEl('p', {
+			text: settingsBackupT('settingsBackupExportDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		new Setting(exportSection)
+			.setName(settingsBackupT('settingsBackupExportAction'))
+			.setDesc(settingsBackupT('settingsBackupExportActionDesc'))
+			.addButton(button => button
+				.setButtonText(settingsBackupT('settingsBackupDownload'))
+				.setCta()
+				.onClick(settingsAsyncHandler('settings backup export failed', async () => {
+					button.setDisabled(true);
+					try {
+						try {
+							const artifact = await integration.exportBackup();
+							downloadSettingsBackupArtifact(containerEl.ownerDocument, artifact);
+							new Notice(settingsBackupT('settingsBackupExportReady'));
+						} catch (error) {
+							console.debug('Operon: settings backup export failed', error);
+							new Notice(settingsBackupT('settingsBackupOperationFailed'));
+						}
+					} finally {
+						button.setDisabled(false);
+					}
+				})));
+
+		const restoreSection = renderNativeSettingsGroupedSection(
+			containerEl,
+			settingsBackupT('settingsBackupRestoreTitle'),
+		);
+		restoreSection.addClass('operon-settings-backup-section-card');
+		restoreSection.createEl('p', {
+			text: settingsBackupT('settingsBackupRestoreDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		new Setting(restoreSection)
+			.setName(settingsBackupT('settingsBackupChooseFile'))
+			.setDesc(settingsBackupT('settingsBackupChooseFileDesc'))
+			.addButton(button => button
+				.setButtonText(settingsBackupT('settingsBackupChooseFile'))
+				.setCta()
+				.onClick(() => {
+					void openSettingsBackupRestorePicker(this.app, containerEl.ownerDocument, integration);
+				}));
+
+		const pending = integration.getPendingRecovery();
+		new Setting(restoreSection)
+			.setName(settingsBackupT('settingsBackupResumeRecovery'))
+			.setDesc(pending?.message ?? settingsBackupT('settingsBackupRecoveryUnavailable'))
+			.addButton(button => {
+				button.setButtonText(settingsBackupT('settingsBackupResumeRecovery'))
+					.onClick(() => {
+						// The row remains available while the page is open so a modal result
+						// can be resumed without navigating away and back.
+						new SettingsBackupRestoreModal(this.app, integration, null).open();
+					});
+				if (pending) button.buttonEl.addClass('mod-warning');
+				});
+
+		const resetSection = renderNativeSettingsGroupedSection(
+			containerEl,
+			settingsBackupT('settingsBackupResetTitle'),
+		);
+		resetSection.addClass('operon-settings-backup-section-card');
+		resetSection.createEl('p', {
+			text: settingsBackupT('settingsBackupResetDesc'),
+			cls: 'operon-settings-muted-block',
+		});
+		let resetRunning = false;
+		new Setting(resetSection)
+			.setName(settingsBackupT('settingsBackupResetAction'))
+			.setDesc(settingsBackupT('settingsBackupResetActionDesc'))
+			.addButton(button => {
+				button.setButtonText(settingsBackupT('settingsBackupResetAction'))
+					.onClick(() => {
+						if (resetRunning) return;
+						resetRunning = true;
+						button.setDisabled(true);
+						new ConfirmActionModal(this.app, {
+							title: settingsBackupT('settingsBackupResetConfirmTitle'),
+							message: settingsBackupT('settingsBackupResetConfirmMessage'),
+							confirmText: settingsBackupT('settingsBackupResetConfirm'),
+							cancelText: t('buttons', 'cancel'),
+							danger: true,
+							initialFocus: 'cancel',
+						}, confirmed => {
+							if (!confirmed) {
+								resetRunning = false;
+								button.setDisabled(false);
+								return;
+							}
+							void integration.resetSettings().then(result => {
+								if (result.status === 'committed' && !result.recoveryRequired) {
+									new Notice(settingsBackupT('settingsBackupResetSuccess'));
+									this.redisplayPreservingScroll();
+									return;
+								}
+								if (result.recoveryRequired || result.status === 'state-unknown'
+									|| result.status === 'committed-after-error') {
+									new SettingsBackupRestoreModal(this.app, integration, null).open();
+									return;
+								}
+								new Notice(settingsBackupT('settingsBackupOperationFailed'));
+							}).catch(error => {
+								console.debug('Operon: settings reset failed', error);
+								new Notice(settingsBackupT('settingsBackupOperationFailed'));
+							}).finally(() => {
+								resetRunning = false;
+								button.setDisabled(false);
+							});
+						}).open();
+					});
+				button.buttonEl.addClass('mod-warning');
+			});
 	}
 
 	private renderDeveloperApiIntegrations(containerEl: HTMLElement): void {
@@ -6263,8 +6426,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 			getIcon: key => this.getTaskEditorMobileCoreToolIcon(key),
 			getCanonicalLabel: key => this.getTaskEditorMobileCoreToolCanonicalLabel(key),
 			getVisibilityToggleLabel: label => t('settings', 'compactChipVisibilityToggle', { label }),
-			canMoveUp: (item, index) => item.key !== 'goToSource' && item.key !== 'remove' && index > 1,
-			canMoveDown: (item, index, items) => item.key !== 'goToSource' && item.key !== 'remove' && index < items.length - 2,
+			canMoveUp: (item, index) => (
+				item.key !== 'goToSource'
+				&& item.key !== 'remove'
+				&& index > 1
+			),
+			canMoveDown: (item, index, items) => (
+				item.key !== 'goToSource'
+				&& item.key !== 'remove'
+				&& index < items.length - 2
+			),
 			save: () => this.saveSettings(),
 			visibilityErrorContext: 'settings task editor mobile core tool toggle failed',
 			iconOnlyErrorContext: 'settings task editor mobile core tool icon-only toggle failed',

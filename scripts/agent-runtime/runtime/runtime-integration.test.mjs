@@ -95,6 +95,13 @@ test('verified settlement waits for RAM work but not V8 persistence idle', () =>
 	assert.equal(indexerSource.includes('entries and V8 idle/drain state are intentionally outside this barrier.'), true);
 });
 
+test('semantic transition planning derives project-serial eligibility from the sealed catalog', () => {
+	assert.match(
+		mainSource,
+		/hasProjectSerialScopes: \(\) => catalog\.value\.policies\.projectSerialScopes\.length > 0/u,
+	);
+});
+
 test('health/settings freshness does not parse task data', () => {
 	const freshness = methodBody(
 		mainSource,
@@ -175,6 +182,28 @@ test('typed create postflight seals exact inline locators and exact File bodies'
 		/plan\.atomicGroups\[plan\.atomicGroups\.length - 1\]\?\.groupId/u,
 	);
 	assert.doesNotMatch(identityApply, /\.at\(/u);
+});
+
+test('identity preview and apply rebuild seal the complete builder candidate before decoding', () => {
+	const preview = methodBody(
+		mainSource,
+		'\tprivate async previewAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate buildAgentRuntimeIdentityPlanCandidate',
+	);
+	const builder = methodBody(
+		mainSource,
+		'\tprivate buildAgentRuntimeIdentityPlanCandidate(',
+		'\n\n\tprivate async applyAgentRuntimeIdentityCreation',
+	);
+	const apply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	assert.match(preview, /sealIdentityPlaceholderPreviewResultV1\(candidate\)/u);
+	assert.match(apply, /compareRebuiltIdentityPlaceholderPlanV1\(\s*this\.buildAgentRuntimeIdentityPlanCandidate/u);
+	assert.doesNotMatch(builder, /planHash/u);
+	assert.match(builder, /buildIdentityPlaceholderCreateEffectsV1/u);
 });
 
 test('file and inline Runtime mutations use the platform-safe canonical vault fence', () => {

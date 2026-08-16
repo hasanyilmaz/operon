@@ -33,13 +33,16 @@ import {
 	type RuntimeTaskCreationPreparationV1,
 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
 import {
+	prepareRuntimeTaskFieldMutationV1,
 	buildRuntimeConversionAncestorPredictedEffectsV1,
 	refreshRuntimeInlineTaskUpdateSettlementEvidenceV1,
 	resolveRuntimeInlineTaskUpdateSettlementEvidenceV1,
 	resolveRuntimeTaskFieldMutationPostflightEvidenceV1,
 	type RuntimeTaskFieldMutationPreparationV1,
+	type RuntimeExactTaskMutationSnapshotV1,
 	verifyRuntimeTaskFieldMutationPrimaryPostflightV1,
 } from '../../../src/agent-runtime/runtime/task-mutation-adapter';
+import { buildLivePropertyCatalogV1 } from '../../../src/agent-runtime/runtime/catalog-builder';
 import type { RuntimeSemanticTransitionPlanV1 } from '../../../src/agent-runtime/runtime/semantic-transition';
 import {
 	GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1,
@@ -190,6 +193,84 @@ test('creation capability refusal preserves structured adapter details', async (
 		requiredScope: 'single-task-source',
 	});
 	assert.equal(decodeMutationPreviewResultV1(preview).ok, true);
+});
+
+test('File Task description refusal returns no plan and reaches no mutation write surface', async () => {
+	const catalogResult = buildLivePropertyCatalogV1(structuredClone(DEFAULT_SETTINGS));
+	assert.equal(catalogResult.ok, true);
+	if (!catalogResult.ok) return;
+	const fileLocator = { representation: 'file' as const, filePath: 'Tasks/Gateway fixture.md' };
+	const fileTask: RuntimeExactTaskMutationSnapshotV1 = {
+		operonId: 'abc1234',
+		locator: fileLocator,
+		description: 'Gateway fixture',
+		checkbox: 'open',
+		fieldValues: {},
+		tags: [],
+		sourceContent: '---\noperonId: abc1234\n---\n',
+		duplicate: false,
+	};
+	const updateRequest: MutationPreviewRequestV1 = {
+		contractVersion: 1,
+		requestId: 'file-description-refusal',
+		kind: 'mutation-preview',
+		clientInstanceId: 'test-client',
+		idempotencyKey: 'file-description-refusal-key',
+		capability: 'tasks.update.preview',
+		mutationKind: 'task.update',
+		target: { operonId: fileTask.operonId, locator: fileLocator },
+		spec: {
+			operation: 'update',
+			changes: [{ field: 'description', valueType: 'text', value: 'Renamed gateway fixture' }],
+		},
+		authorization: { basis: 'user-explicit-request' },
+	};
+	let prepareCalls = 0;
+	let commitCalls = 0;
+	let reindexCalls = 0;
+	let receiptStoreCalls = 0;
+	const gateway = new RuntimeMutationGatewayV1({
+		isReady: () => true,
+		sampleContextRevision: () => revision,
+		prepareCreation: async () => preparation(),
+		commitCreation: async () => ({ status: 'failed', groups: [], remainingGroupIds: [] }),
+		reindexAffectedSources: async () => { reindexCalls += 1; },
+		settleAfterMutation: async () => undefined,
+		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+		verifyCreatedTasks: async () => false,
+		prepareMutation: async candidate => {
+			prepareCalls += 1;
+			const prepared = prepareRuntimeTaskFieldMutationV1(
+				candidate,
+				'2026-07-24T08:00:00.000Z',
+				{ catalog: catalogResult.value, getTask: () => fileTask },
+			);
+			if (prepared.ok) throw new Error('File Task rename refusal unexpectedly prepared a plan.');
+			return prepared;
+		},
+		commitMutation: async () => {
+			commitCalls += 1;
+			return { status: 'failed', groupResults: [], affectedFilePaths: [] };
+		},
+		verifyMutation: async () => false,
+		receiptStore: () => {
+			receiptStoreCalls += 1;
+			return null;
+		},
+		vaultIdentityHash: async () => 'c'.repeat(64),
+		nowEpochMs: () => Date.parse('2026-07-24T08:00:00.000Z'),
+		randomId: () => 'unused-file-description-plan',
+	});
+	const preview = await gateway.preview(updateRequest);
+	assert.equal(preview.ok, false);
+	if (preview.ok) return;
+	assert.equal(preview.error.code, 'field-not-writable');
+	assert.match(preview.error.reason, /explicit rename contract/u);
+	assert.equal(decodeMutationPreviewResultV1(preview).ok, true);
+	assert.equal(prepareCalls, 1);
+	assert.equal(commitCalls, 0);
+	assert.equal(reindexCalls, 0);
+	assert.equal(receiptStoreCalls, 0);
 });
 
 test('mutation preview timing is request-linked and diagnostic-only', async () => {

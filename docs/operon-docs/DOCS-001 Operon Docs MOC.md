@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-07-30T11:46:56
+Updated: 2026-08-12T17:21:45
 ---
 
 # Operon Docs
@@ -82,6 +82,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-086 Create file task|Create file task]]
 - [[DOCS-087 Edit or convert to file task|Edit or convert to file task]]
 - [[DOCS-088 Convert file task to inline task|Convert file task to inline task]]
+- [[DOCS-135 Convert task to plain|Convert task to plain]]
 - [[DOCS-089 Move an inline task here|Move an inline task here]]
 - [[DOCS-090 Toggle task completion|Toggle task completion]]
 - [[DOCS-091 Rebuild full index|Rebuild full index]]
@@ -154,6 +155,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-044 Where Operon stores data|Where Operon stores data]]
 - [[DOCS-045 Markdown task storage|Markdown task storage]]
 - [[DOCS-046 Plugin data and state files|Plugin data and state files]]
+- [[DOCS-134 Backup and restore settings|Back up and restore settings]]
 - [[DOCS-047 Sync conflict safety|Sync conflict safety]]
 
 ### Integrations and migration

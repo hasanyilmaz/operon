@@ -1,0 +1,43 @@
+{
+  "fixtureVersion": 1,
+  "fixtureKind": "synthetic-issue-shaped-reproduction",
+  "sourceRelease": "2.6.0",
+  "sourceCommit": "66308fe992890373765d50d17aeed1a8bc32b227",
+  "provenance": "Built with the Operon 2.6.0 data-package builder and Table serializer. The default preset was materialized as a .table file while the v2 manifest retained finalized migration counters, empty bindings, and no embedded presets to reproduce issue #106.",
+  "generationRecipe": [
+    "Extract sourceCommit with git archive.",
+    "Build buildOperonDataPackageFromSettings(DEFAULT_SETTINGS) and serializeOperonTableFile(DEFAULT_SETTINGS.tablePresets[0]) from that extracted tree.",
+    "Set the v2 manifest migration counters to 1, retain empty fileBindings, remove embedded Table presets, and preserve the materialized preset ID/order/default.",
+    "Project expected-migration-candidate.json through the current recovery projector; capture expected-final-v3.json after the real store initialization and existing retired-setting normalization."
+  ],
+  "presetId": "table-preset-my-first-table",
+  "tablePath": "Tables/Default.table",
+  "files": {
+    "source-v2.json": {
+      "sha256": "c973f195f4b46e55eab28ffe46a770956780edcce2e38f1904b319c53054c67f",
+      "bytes": 65440
+    },
+    "Default.table": {
+      "sha256": "921ce1a92a59a223ebbe5fb8380907810bf159a4a23d9e66da636e80e5c3cb48",
+      "bytes": 3146
+    },
+    "expected-migration-candidate.json": {
+      "sha256": "acf705676c3bded8bed475f3b1117e27bdcb68356a17d03d0875a80fe8ed08de",
+      "bytes": 65507
+    },
+    "expected-final-v3.json": {
+      "sha256": "10ad2354c0233afe055ecd78c85afb45f0bb516b53c7bcb4c7ca3f9505a8c9e6",
+      "bytes": 54381
+    }
+  },
+  "allowedDurableWrites": [
+    ".obsidian/plugins/operon/data.json",
+    ".obsidian/plugins/operon/data.json.table-manifest-v2-recovery.json",
+    ".obsidian/plugins/operon/data.json.table-manifest-v2-<source-sha256>.bak"
+  ],
+  "preservation": [
+    "The .table file remains byte-identical.",
+    "All non-Table data-package semantic values remain preserved.",
+    "The second initialization performs no semantic Table migration."
+  ]
+}

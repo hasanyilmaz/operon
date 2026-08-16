@@ -26,12 +26,14 @@ import { filterTasksForCalendar } from '../systems/calendar-filter-materializati
 import { t } from '../core/i18n';
 import { localNow } from '../core/local-time';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
+import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import {
 	PROJECT_SERIAL_TABLE_FIELD_KEY,
 	getTableTaskField,
 	getTableTaskFieldLabel,
 	getTableColumnLabel,
 	isEditableTableTaskFieldKey,
+	isTablePlainTextField,
 	type TableTaskField,
 } from './table/table-field-catalog';
 import { getTableFilePropertyIndex, isTableFilePropertyColumnKey, type TableFilePropertyCellValue, type TableFilePropertyField, type TableFilePropertySnapshot } from './table/table-file-property';
@@ -39,7 +41,7 @@ import {
 	bindTableFilePropertyRemovalMenu,
 	canEditTableFilePropertyCell,
 	openTableFilePropertyPicker,
-	renderTableFilePropertyCheckbox,
+	renderTableFilePropertyValue,
 	toRawYamlPropertyExpectation,
 	type TableFilePropertyUpdateRequest,
 	type TableFilePropertyUpdateResult,
@@ -49,7 +51,12 @@ import {
 } from './table/table-value-adapter';
 import { formatTableDependencyTooltipContent, formatTableDetailedDatetimeValue, renderTableCellChips } from './table/table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table/table-column-color';
-import { renderTableDescriptionCellContent, type TableInlineEditSession } from './table/table-description-cell';
+import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table/table-description-cell';
+import { isCompactTaskMarkdownLinkEventTarget } from './compact-task-markdown-renderer';
+import { getTaskSourceOpenModifierLabel, isTaskSourceOpenModifierClick } from './task-source-open-modifier';
+import { bindTableParentTaskCellActivation } from './table/table-parent-task-cell';
+import { formatTableParentTaskTooltipContent } from './table/table-parent-task-tooltip-content';
+import { createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { bindMobileTableViewport, isMobileTableTextInputFocused } from './table/mobile-table-viewport';
 import {
 	formatTableIconOnlyTooltipContent,
@@ -112,8 +119,13 @@ import {
 	applyTableColumnGeometryClass,
 	buildTableColumnGeometry,
 	buildTableEditableCellKey,
+	buildTableEditableCellFocusKey,
 	buildTableRenderItems,
 	buildTableTaskOrdinalMap,
+	collectTableParentContextTasks,
+	createTableFilePropertyRenderProjection,
+	findTableEditableCellByFocusKey,
+	formatTableRowOrdinal,
 	formatTableTaskCount,
 	formatTableSearchPlaceholder,
 	hasVisibleTableSummaryRule,
@@ -125,6 +137,7 @@ import {
 	truncateTableSubgroupParentLabel,
 	type TableColumnGeometry,
 	type TableRenderItem,
+	type TableRowOrdinal,
 } from './table/table-surface';
 import {
 	applyInteractiveTableColumnTemplate,
@@ -142,8 +155,13 @@ import {
 } from './table/table-editing';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { showTextFieldPopover } from './text-field-popover';
+import { resolveTableParentTaskActivation, resolveTableTaskTextEditRoute } from './table/table-text-edit-route';
 import { showTaskNotePopover } from './task-note-action';
-import { buildTrackerSessionEditContext, TrackerSessionEditModal } from './tracker-session-edit-modal';
+import {
+	buildTrackerSessionEditContext,
+	TrackerSessionEditModal,
+	type TrackerSessionTaskNoteOptions,
+} from './tracker-session-edit-modal';
 import { formatDurationHuman } from '../systems/tracker-utils';
 import {
 	closeFloatingPanelsForRoot,
@@ -245,7 +263,6 @@ interface EmbedTableInstance {
 	parentSearchHighlightedIndex: number;
 	parentSearchDismissed: boolean;
 	pendingSearchFocus: { start: number; end: number } | null;
-	activeMobileInlineEdit: TableInlineEditSession | null;
 	pendingMobileTextInputRender: boolean;
 	mobileViewportCleanup: (() => void) | null;
 	mobileScrollGestureUntil: number;
@@ -296,9 +313,12 @@ interface EmbeddedTableRenderState {
 	settings: OperonSettings;
 	allTasks: IndexedTask[];
 	additionalFields: readonly TableTaskField[];
+	contextRenderFields: readonly TableTaskField[];
 	filePropertySignature: string;
 	getFilePropertyCell: (task: IndexedTask, columnKey: string) => TableFilePropertyCellValue;
 	getFilePropertyCandidates: (columnKey: string) => readonly string[];
+	getContextFilePropertyCell: (task: IndexedTask, columnKey: string) => TableFilePropertyCellValue;
+	getContextFilePropertyCandidates: (columnKey: string) => readonly string[];
 	valueResolver: TableValueResolver;
 	locationResolver: TableLocationCellResolver | null;
 	locationIndexSignature: string;
@@ -563,7 +583,6 @@ function createEmbedTableInstance(
 		parentSearchHighlightedIndex: 0,
 		parentSearchDismissed: false,
 		pendingSearchFocus: null,
-		activeMobileInlineEdit: null,
 		pendingMobileTextInputRender: false,
 		mobileViewportCleanup: null,
 		mobileScrollGestureUntil: 0,
@@ -604,8 +623,6 @@ function createEmbedTableInstance(
 function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	instance.pendingMobileTextInputRender = false;
 	instance.mobileScrollGestureUntil = 0;
-	finishEmbedTableMobileInlineEdit(instance, false);
-	instance.activeMobileInlineEdit = null;
 	closeEmbedTableTransientUi(instance.el);
 	closeEmbedTableActivePicker(instance);
 	cancelEmbedTableSearchDebounce(instance);
@@ -665,7 +682,6 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 }
 
 function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
-	finishEmbedTableMobileInlineEdit(instance, true);
 	const renderStartedAt = enginePerfNow();
 	const settings = deps.getSettings();
 	const preset = resolveEmbedTablePreset(deps, instance.presetId);
@@ -825,15 +841,33 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 	const tableWidthPx = columnGeometry.tableWidthPx;
 	const scrollbarGutterPx = measureTableScrollbarGutterPx(instance.el.ownerDocument);
 	const collapsedGroupKeys = result.preset.collapsedGroupKeys;
-	const items = buildTableRenderItems(
+	const ordinalItems = buildTableRenderItems(
 		result.rows,
 		result.groups,
-		collapsedGroupKeys,
+		[],
 		hasSummaryRow,
+		result.valueResolver.taskLookup,
 	);
-	const ordinalItems = collapsedGroupKeys.length === 0
-		? items
-		: buildTableRenderItems(result.rows, result.groups, [], hasSummaryRow);
+	const items = collapsedGroupKeys.length === 0
+		? ordinalItems
+		: buildTableRenderItems(
+			result.rows,
+			result.groups,
+			collapsedGroupKeys,
+			hasSummaryRow,
+			result.valueResolver.taskLookup,
+		);
+	const contextParentTasks = collectTableParentContextTasks(ordinalItems);
+	const contextFilePropertySnapshot = getTableFilePropertyIndex(deps.app).getSnapshot(
+		contextParentTasks,
+		deps.indexer.getGeneration(),
+		{ keyMappings: settings.keyMappings },
+	);
+	const filePropertyRenderProjection = createTableFilePropertyRenderProjection(
+		filePropertySnapshot,
+		contextFilePropertySnapshot,
+		columns,
+	);
 	const renderSignature = buildEmbedTableRenderSignature(
 		instance,
 		deps,
@@ -844,7 +878,7 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		result.groups,
 		items,
 		locationIndexSignature,
-		filePropertySnapshot.signature,
+		filePropertyRenderProjection.signature,
 		filterFilePropertyContext.signature,
 	);
 	instance.lastQuerySignature = querySignature;
@@ -868,9 +902,12 @@ function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): v
 		settings,
 		allTasks,
 		additionalFields: filePropertySnapshot.fields,
-		filePropertySignature: filePropertySnapshot.signature,
-		getFilePropertyCell: (task, columnKey) => filePropertySnapshot.getCell(task, columnKey),
-		getFilePropertyCandidates: columnKey => filePropertySnapshot.getCandidates(columnKey),
+		contextRenderFields: filePropertyRenderProjection.fields,
+		filePropertySignature: filePropertyRenderProjection.signature,
+		getFilePropertyCell: (task, columnKey) => filePropertyRenderProjection.getCell(task, columnKey, false),
+		getFilePropertyCandidates: columnKey => filePropertyRenderProjection.getCandidates(columnKey, false),
+		getContextFilePropertyCell: (task, columnKey) => filePropertyRenderProjection.getCell(task, columnKey, true),
+		getContextFilePropertyCandidates: columnKey => filePropertyRenderProjection.getCandidates(columnKey, true),
 		valueResolver: result.valueResolver,
 		locationResolver,
 		locationIndexSignature,
@@ -959,6 +996,8 @@ function buildEmbedTableRenderSignature(
 	filePropertySignature: string,
 	filterFilePropertySignature: string,
 ): string {
+	const sessionTasks = new Map(rows.map(task => [task.operonId, task] as const));
+	for (const task of collectTableParentContextTasks(items)) sessionTasks.set(task.operonId, task);
 	return [
 		deps.indexer.getGeneration(),
 		deps.getPinnedCache()?.getGeneration() ?? 0,
@@ -971,10 +1010,12 @@ function buildEmbedTableRenderSignature(
 		columnGeometry.signature,
 		columns.map(column => `${column.key}:${column.widthPx ?? ''}:${column.hidden === true ? 'hidden' : 'visible'}:${column.pinned === true ? 'pinned' : 'unpinned'}`).join(','),
 		rows.map(task => task.operonId).join(','),
-		buildEmbedTableSessionSignature(deps, rows),
+		buildEmbedTableSessionSignature(deps, Array.from(sessionTasks.values())),
 		groups.map(group => `${group.key}:${group.count}`).join(','),
 		items.map(item => item.kind === 'task'
-			? item.task.operonId
+			? `task:${item.ordinalKey}:${item.task.operonId}`
+			: item.kind === 'parentContext'
+				? `parentContext:${item.occurrenceKey}:${item.task.operonId}:${item.task.datetimeModified}`
 			: item.kind === 'group' || item.kind === 'groupSummary'
 				? `${item.kind}:${item.groupKey}:${item.depth}`
 				: 'summary').join(','),
@@ -1287,16 +1328,19 @@ function renderEmbedTablePresetPickerButton(
 
 function renderEmbedTablePresetSettingsButton(controls: HTMLElement, preset: TablePreset, deps: EmbedTableDeps): void {
 	if (!deps.onOpenPresetSettings) return;
+	const editPresetLabel = t('table', 'editPresetNamed', {
+		name: getTablePresetPickerLabel(preset),
+	});
 	const button = controls.createEl('button', {
 		cls: 'operon-table-toolbar-icon-button',
 		attr: {
 			type: 'button',
 		},
 	});
-	setAccessibleLabelWithoutTooltip(button, t('table', 'editPreset'));
+	setAccessibleLabelWithoutTooltip(button, editPresetLabel);
 	setIcon(button, 'settings-2');
 	bindOperonHoverTooltip(button, {
-		content: t('table', 'editPreset'),
+		content: editPresetLabel,
 		taskColor: null,
 		preferredVertical: 'above',
 	});
@@ -1570,9 +1614,6 @@ function renderEmbedTableShell(
 		canvas.style.setProperty('--operon-table-group-scroll-left', `${bodyScroller.scrollLeft}px`);
 		instance.scrollTop = bodyScroller.scrollTop;
 		instance.scrollLeft = bodyScroller.scrollLeft;
-		if (!Platform.isPhone || Date.now() < instance.mobileScrollGestureUntil) {
-			finishEmbedTableMobileInlineEdit(instance, true);
-		}
 		scheduleEmbedTableVisibleRowsRender(instance, deps);
 	});
 }
@@ -1851,9 +1892,6 @@ function applyEmbedTableColumnTemplate(instance: EmbedTableInstance, columns: re
 
 function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTableDeps, force = false): void {
 	const startedAt = enginePerfNow();
-	if (force && hasActiveEmbedTableMobileInlineEdit(instance)) {
-		finishEmbedTableMobileInlineEdit(instance, true);
-	}
 	const renderState = instance.currentRenderState;
 	const scroller = instance.bodyScrollerEl;
 	const canvas = instance.bodyCanvasEl;
@@ -1907,7 +1945,9 @@ function renderEmbedTableVisibleRows(instance: EmbedTableInstance, deps: EmbedTa
 				renderState.groupSummaries.get(item.groupKey) ?? new Map<string, TableSummaryCell>(),
 				true,
 			);
-		} else {
+		} else if (item.kind === 'parentContext') {
+			renderEmbedTableTaskRow(canvas, item.task, index, columnTemplate, renderState, deps, 'P', item.occurrenceKey);
+		} else if (item.kind === 'task') {
 			renderEmbedTableTaskRow(canvas, item.task, index, columnTemplate, renderState, deps, renderState.taskOrdinals.get(item.ordinalKey) ?? null);
 		}
 	}
@@ -1997,6 +2037,7 @@ function renderEmbedTableGroupRow(
 				instance.currentRenderState.groups,
 				nextCollapsedGroupKeys,
 				hasSummaryRow,
+				instance.currentRenderState.valueResolver.taskLookup,
 			);
 			const ordinalItems = nextCollapsedGroupKeys.length === 0
 				? items
@@ -2005,6 +2046,7 @@ function renderEmbedTableGroupRow(
 					instance.currentRenderState.groups,
 					[],
 					hasSummaryRow,
+					instance.currentRenderState.valueResolver.taskLookup,
 				);
 			instance.currentRenderState = {
 				...instance.currentRenderState,
@@ -2650,21 +2692,31 @@ function renderEmbedTableTaskRow(
 	columnTemplate: string,
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
-	rowOrdinal: number | null,
+	rowOrdinal: TableRowOrdinal,
+	parentContextOccurrenceKey: string | null = null,
 ): void {
 	const row = canvas.createDiv('operon-table-row');
+	row.classList.toggle('operon-table-parent-context-row', parentContextOccurrenceKey !== null);
 	row.setAttribute('role', 'row');
 	row.setAttribute('aria-rowindex', String(index + 2));
 	row.style.gridTemplateColumns = columnTemplate;
 	row.style.width = `${renderState.tableWidthPx}px`;
 	row.style.transform = `translateY(${index * renderState.rowHeight}px)`;
 	row.dataset.operonId = task.operonId;
+	if (parentContextOccurrenceKey) row.dataset.occurrenceKey = parentContextOccurrenceKey;
 	row.addEventListener('dblclick', () => {
 		deps.openTaskEditor(task.operonId);
 	});
 
 	for (const [columnIndex, column] of renderState.columns.entries()) {
-		renderEmbedTableCell(row, task, column, renderState, columnIndex, deps, rowOrdinal);
+		renderEmbedTableCell(row, task, column, renderState, columnIndex, deps, rowOrdinal, parentContextOccurrenceKey !== null);
+		const renderedCell = row.lastElementChild as HTMLElement | null;
+		if (parentContextOccurrenceKey && renderedCell?.dataset.editCellKey) {
+			renderedCell.dataset.editFocusKey = buildTableEditableCellFocusKey(
+				renderedCell.dataset.editCellKey,
+				parentContextOccurrenceKey,
+			);
+		}
 	}
 }
 
@@ -2708,10 +2760,7 @@ function renderEmbedTableSummaryRow(
 			});
 			continue;
 		}
-		if (!summary) {
-			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
-			continue;
-		}
+		if (!summary) continue;
 		cell.createSpan({
 			cls: 'operon-table-summary-label',
 			text: t('table', `summary${summary.function}`),
@@ -2721,8 +2770,6 @@ function renderEmbedTableSummaryRow(
 				cls: 'operon-table-summary-value',
 				text: summary.value,
 			});
-		} else {
-			cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 		}
 	}
 }
@@ -2741,7 +2788,8 @@ function renderEmbedTableCell(
 	renderState: EmbeddedTableRenderState,
 	columnIndex: number,
 	deps: EmbedTableDeps,
-	rowOrdinal: number | null,
+	rowOrdinal: TableRowOrdinal,
+	isParentContext: boolean,
 ): void {
 	const cell = row.createDiv('operon-table-cell');
 	cell.setAttribute('role', 'gridcell');
@@ -2755,7 +2803,7 @@ function renderEmbedTableCell(
 	applyTableColumnAlignmentClass(cell, column);
 	const displayValue = renderState.valueResolver.getDisplayValue(task, column.key);
 	if (isTableFilePropertyColumnKey(column.key)) {
-		renderEmbedTableFilePropertyCell(cell, task, column, renderState, deps);
+		renderEmbedTableFilePropertyCell(cell, task, column, renderState, deps, isParentContext);
 		return;
 	}
 
@@ -2779,8 +2827,8 @@ function renderEmbedTableCell(
 			valueResolver: renderState.valueResolver,
 			iconOnly: shouldUseEmbedTableIconOnlyColumn(column, renderState.settings),
 		onActivate: canWriteEmbedTable(deps) && (deps.onContextualAction || deps.onOpenCheckboxes)
-			? ({ task: progressTask, track, trigger, actionAnchorRect }) => {
-				if (track.kind === 'checkboxes' && deps.onOpenCheckboxes) {
+			? ({ task: progressTask, kind, trigger, actionAnchorRect }) => {
+				if (kind === 'checkboxes' && deps.onOpenCheckboxes) {
 					return deps.onOpenCheckboxes(
 						progressTask.operonId,
 						trigger,
@@ -2789,14 +2837,14 @@ function renderEmbedTableCell(
 				}
 				return deps.onContextualAction?.(
 					progressTask.operonId,
-					track.kind === 'subtasks' ? 'subtasks' : 'checkboxes',
+					kind === 'subtasks' ? 'subtasks' : 'checkboxes',
 					{
 						surface: 'tableTask',
 						taskId: progressTask.operonId,
 						task: progressTask,
 						now: localNow(),
 						isPinned: deps.isTaskPinned?.(progressTask.operonId) === true,
-						hasSubtasks: track.kind === 'subtasks'
+						hasSubtasks: kind === 'subtasks'
 							? true
 							: deps.hasSubtasks?.(progressTask.operonId) === true,
 					},
@@ -2816,11 +2864,19 @@ function renderEmbedTableCell(
 	const editable = isEditableTableTaskFieldKey(column.key, renderState.settings);
 	decorateEmbedTableEditableTaskCell(cell, task, column.key, displayValue, renderState, deps, editable);
 	if (shouldUseEmbedTableIconOnlyColumn(column, renderState.settings)) {
-		renderEmbedTableIconOnlyCell(cell, task, column, displayValue, renderState, deps, { focusable: !editable });
+		renderEmbedTableIconOnlyCell(cell, task, column, displayValue, renderState, deps, {
+			focusable: !editable && column.key !== 'parentTask',
+		});
+		return;
+	}
+	if (isTablePlainTextField(getTableTaskField(column.key, renderState.settings))) {
+		renderTableTextValueDisplay(cell, {
+			value: displayValue,
+			wikilinks: { app: deps.app, sourcePath: task.primary.filePath },
+		});
 		return;
 	}
 	if (!displayValue.trim()) {
-		cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 		return;
 	}
 	const chipClass = editable ? 'operon-table-editable-chip' : 'operon-chip-readonly';
@@ -2842,12 +2898,16 @@ function renderEmbedTableFilePropertyCell(
 	column: TableColumn,
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
+	isParentContext: boolean,
 ): void {
-	const field = (renderState.additionalFields.find(entry => entry.key === column.key && entry.group === 'fileProperty')
+	const availableFields = isParentContext ? renderState.contextRenderFields : renderState.additionalFields;
+	const field = (availableFields.find(entry => entry.key === column.key && entry.group === 'fileProperty')
 		?? null) as TableFilePropertyField | null;
-	const cellValue = renderState.getFilePropertyCell(task, column.key);
+	const cellValue = isParentContext
+		? renderState.getContextFilePropertyCell(task, column.key)
+		: renderState.getFilePropertyCell(task, column.key);
 	const editable = canEditTableFilePropertyCell(task, field, cellValue, canWriteEmbedFileProperty(deps));
-	const label = getTableColumnLabel(column, renderState.settings, renderState.additionalFields);
+	const label = getTableColumnLabel(column, renderState.settings, availableFields);
 	const cellKey = buildTableEditableCellKey(task, column.key);
 	const instance = findEmbedTableInstance(cell);
 	if (editable) {
@@ -2860,24 +2920,20 @@ function renderEmbedTableFilePropertyCell(
 		if (instance && field) void commitEmbedTableFilePropertyUpdate(instance, deps, cell, task, field, cellValue, cellKey, mutation);
 	};
 	if (field) bindTableFilePropertyRemovalMenu({ cell, field, cellValue, editable, onRemove: () => commit({ kind: 'delete' }) });
-	if (field?.type === 'checkbox') {
-		renderTableFilePropertyCheckbox({
-			cell, field, label, cellValue, compact: column.displayMode === 'icon', editable, onToggle: commit,
-		});
-		return;
-	}
-	const renderValues = Array.isArray(cellValue.rawValue)
-		? cellValue.rawValue.filter(value => value !== null).map(String)
-		: (cellValue.normalizedValue.trim() ? [cellValue.normalizedValue] : []);
-	if (column.displayMode === 'icon') {
-		const icon = cell.createSpan('operon-table-file-property-icon');
-		setIcon(icon, field?.icon ?? 'text');
-		setAccessibleLabelWithoutTooltip(cell, `${label}: ${cellValue.normalizedValue || t('table', 'filePropertyNotSet')}`);
-	} else if (renderValues.length === 0) cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
-	else for (const value of renderValues) cell.createSpan({
-		cls: `operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip${editable ? ' operon-table-editable-chip' : ' operon-chip-readonly'}`,
-		text: value,
-	});
+	if (renderTableFilePropertyValue({
+		cell,
+		field,
+		label,
+		cellValue,
+		column,
+		task,
+		settings: renderState.settings,
+		workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
+		app: deps.app,
+		sourcePath: task.primary.filePath,
+		editable,
+		onToggle: commit,
+	})) return;
 	if (!editable || !field || !instance) return;
 	setAccessibleLabelWithoutTooltip(cell, `${label}: ${cellValue.normalizedValue || t('table', 'filePropertyNotSet')}. ${t('table', 'editCellAria')}`);
 	const openPicker = (): void => {
@@ -2890,9 +2946,16 @@ function renderEmbedTableFilePropertyCell(
 			field,
 			label,
 			cellValue,
-			candidates: renderState.getFilePropertyCandidates(column.key),
+			candidates: isParentContext
+				? renderState.getContextFilePropertyCandidates(column.key)
+				: renderState.getFilePropertyCandidates(column.key),
 			settings: renderState.settings,
 			sourcePath: task.primary.filePath,
+			lifecycleOwner: instance.el,
+			sessionKey: `embed-table-file-property:${task.operonId}:${field.propertyName}`,
+			onFocusReturn: () => {
+				if (cell.isConnected) cell.focus();
+			},
 			onMutation: commit,
 			onClose: () => {
 				if (instance.activePickerClose === closePicker) instance.activePickerClose = null;
@@ -2904,6 +2967,7 @@ function renderEmbedTableFilePropertyCell(
 		instance.activePickerClose = closePicker;
 	};
 	cell.addEventListener('click', event => {
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		openPicker();
@@ -2911,6 +2975,7 @@ function renderEmbedTableFilePropertyCell(
 	cell.addEventListener('dblclick', event => event.stopPropagation());
 	cell.addEventListener('keydown', event => {
 		if (event.key !== 'Enter' && event.key !== ' ') return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		openPicker();
@@ -2930,7 +2995,7 @@ async function commitEmbedTableFilePropertyUpdate(
 	const expected = toRawYamlPropertyExpectation(cellValue);
 	if (!expected || !deps.updateFileProperty || instance.pendingCellKey !== null) return false;
 	instance.pendingCellKey = cellKey;
-	instance.pendingFocusKey = cellKey;
+	instance.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 	syncEmbedTablePendingCellState(cell, cellKey, instance);
 	closeEmbedTableActivePicker(instance);
 	let success = false;
@@ -2973,11 +3038,16 @@ function renderEmbedTableIconOnlyCell(
 		locationResolver: renderState.locationResolver,
 	});
 	const field = getTableTaskField(column.key, renderState.settings);
-	const content = field?.type === 'datetime'
+	const baseContent = field?.type === 'datetime'
 		? formatTableDetailedDatetimeValue(column.key, value, renderState.settings)
 		: locationVisual?.label
 		?? formatTableDependencyTooltipContent(column.key, value, renderState.valueResolver.taskLookup)
 		?? formatTableIconOnlyTooltipContent(value);
+	const rawParentTaskId = column.key === 'parentTask' ? (task.fieldValues['parentTask'] ?? '').trim() : '';
+	const canOpenParentTask = !!rawParentTaskId && !!renderState.valueResolver.taskLookup.getTask(rawParentTaskId);
+	const content = canOpenParentTask
+		? `${baseContent}\n${formatTableParentTaskTooltipContent(rawParentTaskId, getTaskSourceOpenModifierLabel())}`
+		: baseContent;
 	const fallbackIcon = field?.icon ?? 'text';
 	const isTaskIconColumn = column.key === 'taskIcon';
 	const isTaskTypeColumn = column.key === 'taskType';
@@ -3012,8 +3082,11 @@ function renderEmbedTableIconOnlyCell(
 		),
 		title: fieldLabel,
 		content,
+		...(isTablePlainTextField(field)
+			? { contentEl: createCompactTaskMarkdownTooltipContent(cell, value) }
+			: {}),
 		ariaLabel: `${fieldLabel}: ${content}`,
-		color: resolveTableIconOnlyCellAccent(column, value, {
+		color: isTablePlainTextField(field) ? null : resolveTableIconOnlyCellAccent(column, value, {
 			task,
 			settings: renderState.settings,
 			taskLookup: renderState.valueResolver.taskLookup,
@@ -3093,14 +3166,17 @@ function renderEmbedTableAdminCell(
 	column: TableColumn,
 	renderState: EmbeddedTableRenderState,
 	deps: EmbedTableDeps,
-	rowOrdinal: number | null,
+	rowOrdinal: TableRowOrdinal,
 ): void {
 	cell.addClass('operon-table-admin-cell');
 	if (column.key === TABLE_LINE_NUMBER_COLUMN_KEY) {
 		cell.addClass('operon-table-line-number-cell');
+		if (rowOrdinal === 'P') {
+			setAccessibleLabelWithoutTooltip(cell, getTableTaskFieldLabel('parentTask', renderState.settings));
+		}
 		cell.createSpan({
 			cls: 'operon-table-line-number',
-			text: rowOrdinal === null ? '' : String(rowOrdinal),
+			text: formatTableRowOrdinal(rowOrdinal),
 		});
 		return;
 	}
@@ -3202,10 +3278,9 @@ function renderEmbedTableDurationFallbackValue(
 	renderState: EmbeddedTableRenderState,
 ): void {
 	if (!value.trim()) {
-		cell.createSpan({ cls: 'operon-table-empty-value', text: '--' });
 		return;
 	}
-	const chip = cell.createSpan('operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-chip-readonly');
+	const chip = cell.createSpan('operon-table-duration-like-chip operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-chip-readonly');
 	chip.setText(value);
 }
 
@@ -3218,7 +3293,7 @@ function renderEmbedTableDurationSessionChip(
 	deps: EmbedTableDeps,
 ): void {
 	const chip = container.createEl('button', {
-		cls: 'operon-table-duration-session-chip operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-table-editable-chip',
+		cls: 'operon-table-duration-session-chip operon-table-duration-like-chip operon-table-cell-chip operon-chip operon-live-preview-chip operon-inline-compact-chip operon-task-chip operon-table-editable-chip',
 		attr: {
 			type: 'button',
 		},
@@ -3244,26 +3319,49 @@ function decorateEmbedTableEditableTaskCell(
 	deps: EmbedTableDeps,
 	editable: boolean,
 ): void {
-	if (!editable || !canWriteEmbedTable(deps)) {
+	const canEdit = editable && canWriteEmbedTable(deps);
+	const parentTaskId = key === 'parentTask' ? (task.fieldValues['parentTask'] ?? '').trim() : '';
+	const parentExists = !!parentTaskId && !!deps.indexer.getTask(parentTaskId);
+	const canOpenParentTask = resolveTableParentTaskActivation({
+		parentTaskId,
+		parentExists,
+		canOpenEditor: true,
+		canOpenSource: true,
+		sourceModifier: false,
+	}) === 'editor';
+	if (!canEdit && !canOpenParentTask) {
 		cell.setAttribute('aria-readonly', 'true');
 		return;
 	}
 	const instance = findEmbedTableInstance(cell);
 	const cellKey = buildTableEditableCellKey(task, key);
-	cell.addClass('is-editable');
-	cell.dataset.editCellKey = cellKey;
+	if (canEdit) {
+		cell.addClass('is-editable');
+		cell.dataset.editCellKey = cellKey;
+	}
+	if (canOpenParentTask) {
+		cell.addClass('operon-table-parent-task-cell');
+	}
 	cell.tabIndex = 0;
 	const fieldLabel = getTableTaskFieldLabel(key, renderState.settings);
 	const valueLabel = value.trim();
 	const editCellLabel = t('table', 'editCellAria');
 	setAccessibleLabelWithoutTooltip(
 		cell,
-		valueLabel ? `${fieldLabel}: ${valueLabel}. ${editCellLabel}` : `${fieldLabel}. ${editCellLabel}`,
+		canOpenParentTask
+			? `${fieldLabel}: ${valueLabel}. ${t('tooltips', 'openTaskEditor')}`
+			: valueLabel ? `${fieldLabel}: ${valueLabel}. ${editCellLabel}` : `${fieldLabel}. ${editCellLabel}`,
 	);
-	syncEmbedTablePendingCellState(cell, cellKey, instance);
+	if (canEdit) syncEmbedTablePendingCellState(cell, cellKey, instance);
+	const field = getTableTaskField(key, renderState.settings);
+	const editRoute = resolveTableTaskTextEditRoute(field, value);
 	const openPicker = () => {
 		const activeInstance = findEmbedTableInstance(cell);
 		if (!activeInstance || activeInstance.pendingCellKey !== null) return;
+		if (editRoute === 'popover') {
+			openEmbedTableInlineTextPopover(activeInstance, deps, cell, task, key, value, fieldLabel, cellKey, key, true);
+			return;
+		}
 		closeEmbedTableActivePicker(activeInstance);
 		const allTasks = deps.indexer.getAllTasks();
 		const closePicker = openTaskFieldPicker({
@@ -3298,10 +3396,25 @@ function decorateEmbedTableEditableTaskCell(
 		activeInstance.keepActivePickerOnRender = true;
 		activeInstance.activePickerClose = closePicker;
 	};
+	if (key === 'parentTask') {
+		bindTableParentTaskCellActivation(cell, {
+			parentTaskId,
+			parentExists,
+			canOpenEditor: true,
+			canOpenSource: true,
+			isSourceModifier: isTaskSourceOpenModifierClick,
+			shouldIgnoreTarget: target => isCompactTaskMarkdownLinkEventTarget(target, cell),
+			onOpenPicker: openPicker,
+			onOpenEditor: deps.openTaskEditor,
+			onOpenSource: deps.openTaskSource,
+		});
+		return;
+	}
 	let suppressPointerClick = false;
 	let suppressPointerClickToken = 0;
 	cell.addEventListener('pointerdown', event => {
 		if (event.button !== 0) return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		suppressPointerClick = true;
 		const token = suppressPointerClickToken + 1;
 		suppressPointerClickToken = token;
@@ -3315,6 +3428,7 @@ function decorateEmbedTableEditableTaskCell(
 		}, 2000);
 	});
 	cell.addEventListener('click', event => {
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		if (suppressPointerClick && event.detail > 0) {
@@ -3328,6 +3442,7 @@ function decorateEmbedTableEditableTaskCell(
 	});
 	cell.addEventListener('keydown', event => {
 		if (event.key !== 'Enter' && event.key !== ' ') return;
+		if (isCompactTaskMarkdownLinkEventTarget(event.target, cell)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		openPicker();
@@ -3348,7 +3463,7 @@ async function commitEmbedTableCellUpdate(
 	if (!canWriteEmbedTable(deps)) return false;
 	if (instance.pendingCellKey !== null) return false;
 	instance.pendingCellKey = cellKey;
-	instance.pendingFocusKey = cellKey;
+	instance.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 	syncEmbedTablePendingCellState(cell, cellKey, instance);
 	closeEmbedTableActivePicker(instance);
 	let success = false;
@@ -3386,6 +3501,7 @@ function openEmbedTableAddTaskSessionModal(
 	new TrackerSessionEditModal(deps.app, {
 		title: t('taskEditor', 'addSession'),
 		contextTitle: task.description || task.operonId,
+		taskNote: buildEmbedTrackerSessionTaskNoteOptions(deps, task),
 		onSave: async (start, end) => {
 			await commitEmbedTableSessionCellUpdate(instance, deps, cell, cellKey, async () => {
 				const wrote = await deps.addTaskSession?.(task.operonId, start, end);
@@ -3405,6 +3521,7 @@ function openEmbedTableEditTaskSessionModal(
 ): void {
 	new TrackerSessionEditModal(deps.app, {
 		title: t('taskEditor', 'editSession'),
+		taskNote: buildEmbedTrackerSessionTaskNoteOptions(deps, task),
 		...buildTrackerSessionEditContext({
 			taskLabel: task.description || session.task.description || session.operonId,
 			start: session.start,
@@ -3429,6 +3546,22 @@ function openEmbedTableEditTaskSessionModal(
 	}).open();
 }
 
+function buildEmbedTrackerSessionTaskNoteOptions(
+	deps: EmbedTableDeps,
+	task: IndexedTask,
+): TrackerSessionTaskNoteOptions {
+	const settings = deps.getSettings();
+	return {
+		operonId: task.operonId,
+		sourcePath: task.primary.filePath,
+		initialValue: task.fieldValues['note'] ?? '',
+		taskDescription: task.description,
+		taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
+		icon: getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen',
+		onCommit: value => deps.updateTaskFields?.(task.operonId, { note: value }) ?? false,
+	};
+}
+
 async function commitEmbedTableSessionCellUpdate(
 	instance: EmbedTableInstance,
 	deps: EmbedTableDeps,
@@ -3439,7 +3572,7 @@ async function commitEmbedTableSessionCellUpdate(
 	if (!canWriteEmbedTable(deps)) return;
 	if (instance.pendingCellKey !== null) return;
 	instance.pendingCellKey = cellKey;
-	instance.pendingFocusKey = cellKey;
+	instance.pendingFocusKey = cell.dataset.editFocusKey ?? cellKey;
 	syncEmbedTablePendingCellState(cell, cellKey, instance);
 	try {
 		const wrote = await operation();
@@ -3497,8 +3630,10 @@ function restoreEmbedTablePendingCellFocus(instance: EmbedTableInstance): void {
 	const cellKey = instance.pendingFocusKey;
 	if (!cellKey) return;
 	instance.pendingFocusKey = null;
-	const cell = Array.from(instance.el.querySelectorAll<HTMLElement>('.operon-table-cell.is-editable'))
-		.find(candidate => candidate.dataset.editCellKey === cellKey);
+	const cell = findTableEditableCellByFocusKey(
+		Array.from(instance.el.querySelectorAll<HTMLElement>('.operon-table-cell.is-editable')),
+		cellKey,
+	);
 	(cell?.querySelector<HTMLElement>('.operon-table-file-property-checkbox') ?? cell ?? instance.bodyScrollerEl)?.focus();
 }
 
@@ -3543,8 +3678,8 @@ function renderEmbedTableInlineTextCell(
 	const cellKey = buildTableEditableCellKey(task, key);
 	const payloadKey = key === 'description' ? '_description' : key;
 	const showIconOnly = shouldUseEmbedTableIconOnlyColumn(column, renderState.settings);
-	const canOpenIconOnlyTextPopover = editable && showIconOnly && !!instance;
-	if ((editable && !showIconOnly) || canOpenIconOnlyTextPopover) {
+	const canOpenTextPopover = editable && !!instance;
+	if (canOpenTextPopover) {
 		cell.addClass('is-editable');
 		cell.dataset.editCellKey = cellKey;
 		cell.tabIndex = 0;
@@ -3555,7 +3690,7 @@ function renderEmbedTableInlineTextCell(
 		cell.removeAttribute('tabindex');
 	}
 	const fieldLabel = getTableTaskFieldLabel(key, renderState.settings);
-	const iconColor = showIconOnly
+	const iconColor = showIconOnly && getTableTaskField(key, renderState.settings)?.type !== 'text'
 		? resolveTableColumnCellAccent(column, value, {
 			task,
 			settings: renderState.settings,
@@ -3565,7 +3700,6 @@ function renderEmbedTableInlineTextCell(
 	const iconContent = formatTableIconOnlyTooltipContent(value);
 	renderTableDescriptionCellContent(cell, {
 		value,
-		editable: editable && !showIconOnly,
 		fieldLabel,
 		editLabel: t('table', 'editCellAria'),
 		...(key === 'note' ? { cellClassName: 'operon-table-note-cell' } : {}),
@@ -3584,18 +3718,9 @@ function renderEmbedTableInlineTextCell(
 			app: deps.app,
 			sourcePath: task.primary.filePath,
 		},
-		onIconOnlyOpen: canOpenIconOnlyTextPopover && instance
-			? () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column, value, fieldLabel, cellKey, payloadKey)
+		onOpen: canOpenTextPopover && instance
+			? () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column.key, value, fieldLabel, cellKey, payloadKey)
 			: undefined,
-		onCommit: editable && !showIconOnly && instance
-			? nextValue => commitEmbedTableCellUpdate(instance, deps, cell, task, key, cellKey, { [payloadKey]: nextValue })
-			: undefined,
-		...(Platform.isPhone && instance
-			? {
-				onInlineEditStart: (session: TableInlineEditSession) => beginEmbedTableMobileInlineEdit(instance, session),
-				onInlineEditFinish: (session: TableInlineEditSession) => endEmbedTableMobileInlineEdit(instance, session, deps),
-			}
-			: {}),
 	});
 }
 
@@ -3604,11 +3729,12 @@ function openEmbedTableInlineTextPopover(
 	deps: EmbedTableDeps,
 	cell: HTMLElement,
 	task: IndexedTask,
-	column: TableColumn,
+	key: string,
 	value: string,
 	fieldLabel: string,
 	cellKey: string,
 	payloadKey: string,
+	allowEmptyCommit = false,
 ): void {
 	if (instance.pendingCellKey !== null) return;
 	closeEmbedTableActivePicker(instance);
@@ -3621,7 +3747,7 @@ function openEmbedTableInlineTextPopover(
 	};
 	const commitValue = async (nextValue: string): Promise<boolean> => {
 			const owned = releaseTextPopoverOwnership();
-			const success = await commitEmbedTableCellUpdate(instance, deps, cell, task, column.key, cellKey, { [payloadKey]: nextValue }, {
+		const success = await commitEmbedTableCellUpdate(instance, deps, cell, task, key, cellKey, { [payloadKey]: nextValue }, {
 				showFailureNotice: false,
 			});
 			if (success === false && closeTextPopover && owned) {
@@ -3631,7 +3757,7 @@ function openEmbedTableInlineTextPopover(
 			return success;
 		};
 	const stableAnchor = snapshotFloatingRectAnchor(cell);
-	closeTextPopover = column.key === 'note'
+	closeTextPopover = key === 'note'
 		? showTaskNotePopover({
 			app: deps.app,
 			anchor: stableAnchor,
@@ -3654,14 +3780,19 @@ function openEmbedTableInlineTextPopover(
 			subtitle: task.description || formatTableTaskSource(task),
 			subtitlePresentation: 'compact-markdown',
 			initialValue: value,
+			allowEmptyCommit,
 			taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
-			sessionKey: `table-text:${task.operonId}:description`,
+			sessionKey: `embed-table-text:${task.operonId}:${key}`,
+			lifecycleOwner: instance.el,
 			editor: {
 				kind: 'compact-markdown',
 				sourcePath: task.primary.filePath,
 			},
 			onCommit: commitValue,
 			onClose: releaseTextPopoverOwnership,
+			onFocusReturn: () => {
+				if (cell.isConnected) cell.focus();
+			},
 		});
 	instance.activePickerClose = closeTextPopover;
 	instance.keepActivePickerOnRender = true;
@@ -3702,7 +3833,7 @@ function renderEmbedTableSourceCell(
 	setAccessibleLabelWithoutTooltip(button, t('table', 'openSource', { source: fullSource }));
 	const iconEl = button.createSpan('operon-table-source-icon');
 	setIcon(iconEl, task.primary.format === 'inline' ? 'text-cursor-input' : 'file-text');
-	button.createSpan({ cls: 'operon-table-source-label', text: value || '--' });
+	button.createSpan({ cls: 'operon-table-source-label', text: value });
 	button.addEventListener('click', event => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -3730,36 +3861,8 @@ function scheduleEmbedTableVisibleRowsRender(instance: EmbedTableInstance, deps:
 	});
 }
 
-function hasActiveEmbedTableMobileInlineEdit(instance: EmbedTableInstance): boolean {
-	return Platform.isPhone && instance.activeMobileInlineEdit !== null;
-}
-
 function shouldDeferEmbedMobileVisibleRows(instance: EmbedTableInstance): boolean {
-	return hasActiveEmbedTableMobileInlineEdit(instance)
-		|| isMobileTableTextInputFocused(instance.el);
-}
-
-function beginEmbedTableMobileInlineEdit(instance: EmbedTableInstance, session: TableInlineEditSession): void {
-	if (!Platform.isPhone) return;
-	finishEmbedTableMobileInlineEdit(instance, true);
-	instance.activeMobileInlineEdit = session;
-	instance.pendingSearchFocus = null;
-}
-
-function endEmbedTableMobileInlineEdit(
-	instance: EmbedTableInstance,
-	session: TableInlineEditSession,
-	deps: EmbedTableDeps,
-): void {
-	if (instance.activeMobileInlineEdit !== session) return;
-	instance.activeMobileInlineEdit = null;
-	flushEmbedMobileDeferredVisibleRows(instance, deps);
-}
-
-function finishEmbedTableMobileInlineEdit(instance: EmbedTableInstance, commit: boolean): void {
-	const session = instance.activeMobileInlineEdit;
-	if (!session) return;
-	session.finish(commit);
+	return isMobileTableTextInputFocused(instance.el);
 }
 
 function bindEmbedMobileViewport(instance: EmbedTableInstance, deps: EmbedTableDeps, root: HTMLElement): void {
@@ -3849,10 +3952,6 @@ function restoreEmbedTableSearchFocus(
 	selectionStart: number | null,
 	selectionEnd: number | null,
 ): void {
-	if (hasActiveEmbedTableMobileInlineEdit(instance)) {
-		instance.pendingSearchFocus = null;
-		return;
-	}
 	const pending = instance.pendingSearchFocus;
 	if (!shouldRestore && !pending) return;
 	const searchInput = input?.isConnected
