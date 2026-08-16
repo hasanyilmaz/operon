@@ -2375,11 +2375,7 @@ async function createAuthenticatedPersistentReadHarness(
 			return null;
 		}
 		assert.equal(handle.available, true, handle.reason);
-		descriptorPath = join(
-			persistentEndpointRootV1(),
-			`persistent-read-${expectedVaultSha256}.json`,
-		);
-		const descriptor = JSON.parse(await readFileUtf8(descriptorPath)) as {
+		let descriptor: {
 			protocolVersion: 1;
 			serverInstanceId: string;
 			vaultSha256: string;
@@ -2387,6 +2383,17 @@ async function createAuthenticatedPersistentReadHarness(
 			endpoint: string;
 			authSecret: string;
 		};
+		if (process.platform === 'win32') {
+			const bootstrapDescriptor = handle.bootstrapDescriptor();
+			assert.ok(bootstrapDescriptor);
+			descriptor = bootstrapDescriptor;
+		} else {
+			descriptorPath = join(
+				persistentEndpointRootV1(),
+				`persistent-read-${expectedVaultSha256}.json`,
+			);
+			descriptor = JSON.parse(await readFileUtf8(descriptorPath)) as typeof descriptor;
+		}
 		assert.equal(
 			descriptor.endpointKind,
 			process.platform === 'win32' ? 'windows-named-pipe' : 'unix-domain-socket',
@@ -2418,7 +2425,7 @@ async function createAuthenticatedPersistentReadHarness(
 			cleanup: async (): Promise<void> => {
 				activeSocket.destroy();
 				await activeHandle.close();
-				await unlink(activeDescriptorPath).catch(() => undefined);
+				if (activeDescriptorPath) await unlink(activeDescriptorPath).catch(() => undefined);
 				await rm(vault, { recursive: true, force: true });
 				if (process.platform === 'win32') clearWindowsBrokerStagesForTestsV1();
 			},
