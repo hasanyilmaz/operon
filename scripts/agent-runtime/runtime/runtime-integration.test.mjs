@@ -4,6 +4,14 @@ import test from 'node:test';
 
 const mainSource = await readFile(new URL('../../../main.ts', import.meta.url), 'utf8');
 const indexerSource = await readFile(new URL('../../../src/indexer/indexer.ts', import.meta.url), 'utf8');
+const identityJournalSource = await readFile(
+	new URL('../../../src/agent-runtime/runtime/identity-placeholder-journal.ts', import.meta.url),
+	'utf8',
+);
+const taskWorkflowGatewaySource = await readFile(
+	new URL('../../../src/agent-runtime/extensions/task-workflows-v1/gateway.ts', import.meta.url),
+	'utf8',
+);
 
 function methodBody(source, signature, nextSignature) {
 	const start = source.indexOf(signature);
@@ -206,6 +214,66 @@ test('identity preview and apply rebuild seal the complete builder candidate bef
 	assert.match(builder, /buildIdentityPlaceholderCreateEffectsV1/u);
 });
 
+test('identity apply seals and verifies a bounded durable journal before its first source write', () => {
+	const apply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	const journalBuildIndex = apply.indexOf('buildIdentityPlaceholderJournalV1(');
+	const sizeCheckIndex = apply.indexOf('identityPlaceholderJournalByteLengthV1(journal)');
+	const acquireIndex = apply.indexOf('receiptStore.acquireJournal(journal, leaseOwner)');
+	const readbackIndex = apply.indexOf('receiptStore.lookupJournal(scope)');
+	const alteredFenceCleanupIndex = apply.indexOf('receiptStore.deleteJournal(\n\t\t\t\t\t\t\tscope,\n\t\t\t\t\t\t\tpersistedJournal,');
+	const writerIndex = apply.indexOf('executeRuntimeGraphTransactionCommitV1(');
+	assert.ok(journalBuildIndex >= 0);
+	assert.ok(sizeCheckIndex > journalBuildIndex);
+	assert.ok(acquireIndex > sizeCheckIndex);
+	assert.ok(readbackIndex > acquireIndex);
+	assert.ok(alteredFenceCleanupIndex > readbackIndex);
+	assert.ok(writerIndex > readbackIndex);
+	assert.ok(writerIndex > alteredFenceCleanupIndex);
+	assert.match(apply, /const applyStartedAt = new Date\(\)\.toISOString\(\);/u);
+	assert.match(apply, /effectiveAt: receiptEffectiveAt/u);
+	assert.match(apply, /Identity graph journal readback did not match the sealed pre-write fence/u);
+	assert.match(apply, /Identity graph journal readback differed and exact cleanup could not be verified/u);
+	assert.match(apply, /Identity graph journal readback failed, so its durable recovery fence could not be verified/u);
+	assert.match(apply, /Another Runtime may hold the identity graph journal/u);
+	assert.match(identityJournalSource, /createdAt: plan\.createdAt/u);
+	assert.match(identityJournalSource, /effectiveAt,/u);
+	assert.match(identityJournalSource, /new TextEncoder\(\)\.encode\(value\)\.byteLength/u);
+});
+
+test('task-workflow recovery admission preserves expired same-plan recovery and separates recovery audits', () => {
+	const binding = methodBody(
+		mainSource,
+		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
+		'\n\n\tprivate async prepareAgentRuntimeSourceTransition',
+	);
+	const identityApply = methodBody(
+		mainSource,
+		'\tprivate async applyAgentRuntimeIdentityCreation(',
+		'\n\n\tprivate taskWorkflowIdentityReceipt',
+	);
+	const recoveryEvidence = methodBody(
+		mainSource,
+		'\tprivate async hasSamePlanAgentRuntimeTaskWorkflowRecoveryEvidence(',
+		'\n\n\tprivate async previewAgentRuntimeTaskWorkflowExecution',
+	);
+	assert.match(binding, /hasSamePlanRecoveryEvidence: request => this\.hasSamePlanAgentRuntimeTaskWorkflowRecoveryEvidence\(request\)/u);
+	assert.match(binding, /auditDispatched: \(event, request\) => this\.recordTaskWorkflowSecurityAudit\(event, request\)/u);
+	assert.match(binding, /auditCompleted: \(event, request, result\) => this\.recordTaskWorkflowSecurityAudit\(event, request, result\)/u);
+	assert.match(recoveryEvidence, /admission\.receipt\.planHash === request\.plan\.planHash/u);
+	assert.match(recoveryEvidence, /admission\.journal !== null/u);
+	assert.match(recoveryEvidence, /this\.agentRuntimeIdentityJournalMatchesPlan\(/u);
+	assert.match(identityApply, /if \(execution\.recoveryOnly && !receiptMatchesPlan && !journalMatchesPlan\)/u);
+	assert.match(identityApply, /journalMatchesPlan \? 'recovery-dispatched' : 'apply-dispatched'/u);
+	assert.match(taskWorkflowGatewaySource, /hasOnlyExpiredPlanIssue\(admission\.issues\)/u);
+	assert.match(taskWorkflowGatewaySource, /hasSamePlanRecoveryEvidence\(decoded\.value\)/u);
+	assert.match(taskWorkflowGatewaySource, /recoveryOnly = true/u);
+	assert.match(taskWorkflowGatewaySource, /'recovery-completed'/u);
+});
+
 test('file and inline Runtime mutations use the platform-safe canonical vault fence', () => {
 	const containment = methodBody(
 		mainSource,
@@ -245,7 +313,7 @@ test('identity apply refuses unreceipted after-state convergence before creating
 		'\tprivate async applyAgentRuntimeIdentityCreation(',
 		'\n\n\tprivate taskWorkflowIdentityReceipt',
 	);
-	const convergenceIndex = applyIdentity.indexOf('const afterStateAlreadyPresent =');
+	const convergenceIndex = applyIdentity.indexOf('if (await this.verifyAgentRuntimeIdentityPlanAfterState(plan))');
 	const refusalIndex = applyIdentity.indexOf("'Identity-placeholder after-state exists without the sealed receipt; preview again.'");
 	const receiptIndex = applyIdentity.indexOf('const receipt: TaskWorkflowMutationReceiptV1');
 	assert.ok(convergenceIndex >= 0);
@@ -253,6 +321,6 @@ test('identity apply refuses unreceipted after-state convergence before creating
 	assert.ok(receiptIndex > refusalIndex);
 	assert.match(
 		applyIdentity.slice(convergenceIndex, receiptIndex),
-		/if \(afterStateAlreadyPresent\) \{[\s\S]*?'stale-source'/u,
+		/if \(await this\.verifyAgentRuntimeIdentityPlanAfterState\(plan\)\) \{[\s\S]*?'stale-source'/u,
 	);
 });

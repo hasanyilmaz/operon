@@ -2,6 +2,7 @@ import { structuredErrorV1 } from '../../contracts/v1/primitives';
 import type { RuntimeInvocationContextV1 } from '../../runtime/types';
 import {
 	admitTaskWorkflowApplyRequestExtensionV1,
+	decodeTaskWorkflowApplyRequestExtensionV1,
 	decodeTaskWorkflowMutationResultExtensionV1,
 	decodeTaskWorkflowPreviewRequestExtensionV1,
 	decodeTaskWorkflowPreviewResultExtensionV1,
@@ -20,9 +21,33 @@ export interface TaskWorkflowGatewayPortsV1 {
 		request: TaskWorkflowPreviewRequestV1,
 		context?: RuntimeInvocationContextV1,
 	): Promise<TaskWorkflowPreviewResultV1>;
-	apply(request: TaskWorkflowApplyRequestV1): Promise<TaskWorkflowMutationResultV1>;
-	auditDispatched(request: TaskWorkflowApplyRequestV1): Promise<void>;
-	auditCompleted(request: TaskWorkflowApplyRequestV1, result: TaskWorkflowMutationResultV1): Promise<void>;
+	/**
+	 * A plan past its five-minute freshness window may enter only the bounded
+	 * same-plan receipt/journal recovery path. This is intentionally a private
+	 * gateway port rather than a public contract relaxation.
+	 */
+	hasSamePlanRecoveryEvidence(request: TaskWorkflowApplyRequestV1): Promise<boolean>;
+	apply(
+		request: TaskWorkflowApplyRequestV1,
+		execution: TaskWorkflowApplyExecutionV1,
+	): Promise<TaskWorkflowMutationResultV1>;
+	auditDispatched(
+		event: TaskWorkflowDispatchAuditEventV1,
+		request: TaskWorkflowApplyRequestV1,
+	): Promise<void>;
+	auditCompleted(
+		event: TaskWorkflowTerminalAuditEventV1,
+		request: TaskWorkflowApplyRequestV1,
+		result: TaskWorkflowMutationResultV1,
+	): Promise<void>;
+}
+
+type TaskWorkflowDispatchAuditEventV1 = 'apply-dispatched' | 'recovery-dispatched';
+type TaskWorkflowTerminalAuditEventV1 = 'apply-completed' | 'recovery-completed';
+
+interface TaskWorkflowApplyExecutionV1 {
+	readonly recoveryOnly: boolean;
+	dispatch(event: TaskWorkflowDispatchAuditEventV1): Promise<void>;
 }
 
 export function taskWorkflowTerminalAuditFieldsV1(
@@ -75,17 +100,36 @@ export class TaskWorkflowGatewayV1 {
 	}
 
 	async apply(value: unknown): Promise<TaskWorkflowMutationResultV1> {
-		const decoded = admitTaskWorkflowApplyRequestExtensionV1(value, this.ports.nowEpochMs());
+		const decoded = decodeTaskWorkflowApplyRequestExtensionV1(value);
 		if (!decoded.ok) return applyFailure(requestId(value), 'invalid-request', 'The task-workflow apply request is invalid.');
-		if (!this.ports.isReady()) return applyFailure(decoded.value.requestId, 'live-settling', 'Runtime is not ready for task-workflow apply.', true);
-		try {
-			await this.ports.auditDispatched(decoded.value);
-		} catch {
-			return applyFailure(decoded.value.requestId, 'audit-unavailable', 'The security audit admission record could not be persisted.');
+		const admission = admitTaskWorkflowApplyRequestExtensionV1(decoded.value, this.ports.nowEpochMs());
+		let recoveryOnly = false;
+		if (!admission.ok) {
+			if (!hasOnlyExpiredPlanIssue(admission.issues)) {
+				return applyFailure(decoded.value.requestId, 'invalid-request', 'The task-workflow apply request is invalid.');
+			}
+			try {
+				if (!await this.ports.hasSamePlanRecoveryEvidence(decoded.value)) {
+					return applyFailure(decoded.value.requestId, 'plan-expired', 'The sealed task-workflow plan has expired.');
+				}
+			} catch {
+				return applyFailure(decoded.value.requestId, 'plan-expired', 'The sealed task-workflow plan has expired.');
+			}
+			recoveryOnly = true;
 		}
+		if (!this.ports.isReady()) return applyFailure(decoded.value.requestId, 'live-settling', 'Runtime is not ready for task-workflow apply.', true);
+		let dispatchedEvent: TaskWorkflowDispatchAuditEventV1 | null = null;
+		const dispatch = async (event: TaskWorkflowDispatchAuditEventV1): Promise<void> => {
+			if (dispatchedEvent) {
+				if (dispatchedEvent !== event) throw new Error('Task-workflow apply cannot change audit mode after dispatch.');
+				return;
+			}
+			await this.ports.auditDispatched(event, decoded.value);
+			dispatchedEvent = event;
+		};
 		try {
 			const output = decodeTaskWorkflowMutationResultExtensionV1(
-				await this.ports.apply(decoded.value),
+				await this.ports.apply(decoded.value, { recoveryOnly, dispatch }),
 			);
 			const result = output.ok && output.value.requestId === decoded.value.requestId
 				? output.value
@@ -93,17 +137,33 @@ export class TaskWorkflowGatewayV1 {
 					decoded.value,
 					'Task-workflow execution produced an invalid extension result; same-plan recovery is required.',
 				);
-			try {
-				await this.ports.auditCompleted(decoded.value, result);
-			} catch {
-				return applyOutcomeUnknown(decoded.value, 'Task-workflow execution completed, but its terminal security audit could not be persisted.');
+			if (dispatchedEvent) {
+				try {
+					await this.ports.auditCompleted(
+						dispatchedEvent === 'recovery-dispatched'
+							? 'recovery-completed'
+							: 'apply-completed',
+						decoded.value,
+						result,
+					);
+				} catch {
+					return applyOutcomeUnknown(decoded.value, 'Task-workflow execution completed, but its terminal security audit could not be persisted.');
+				}
 			}
 			return result;
 		} catch {
-			try {
-				await this.ports.auditCompleted(decoded.value, applyOutcomeUnknown(decoded.value, 'Task-workflow execution stopped after dispatch.'));
-			} catch {
-				// The dominant outcome is already uncertain; preserve same-plan recovery.
+			if (dispatchedEvent) {
+				try {
+					await this.ports.auditCompleted(
+						dispatchedEvent === 'recovery-dispatched'
+							? 'recovery-completed'
+							: 'apply-completed',
+						decoded.value,
+						applyOutcomeUnknown(decoded.value, 'Task-workflow execution stopped after dispatch.'),
+					);
+				} catch {
+					// The dominant outcome is already uncertain; preserve same-plan recovery.
+				}
 			}
 			return applyOutcomeUnknown(
 				decoded.value,
@@ -111,6 +171,12 @@ export class TaskWorkflowGatewayV1 {
 			);
 		}
 	}
+}
+
+function hasOnlyExpiredPlanIssue(
+	issues: ReadonlyArray<{ readonly path: string }>,
+): boolean {
+	return issues.length === 1 && issues[0]?.path === '/plan/expiresAt';
 }
 
 function previewFailure(

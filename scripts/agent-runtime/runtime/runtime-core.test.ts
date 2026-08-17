@@ -216,6 +216,7 @@ async function testIdentityPlaceholderPreviewSealing(): Promise<void> {
 			return runtimeSealed.value;
 		},
 		apply: async () => { throw new Error('Apply is outside this preview regression.'); },
+		hasSamePlanRecoveryEvidence: async () => false,
 		auditDispatched: async () => {},
 		auditCompleted: async () => {},
 	});
@@ -363,12 +364,17 @@ async function testTaskWorkflowGatewayIsolation(): Promise<void> {
 	let applyCalls = 0;
 	let dispatchAudits = 0;
 	let terminalAudits = 0;
+	let nowEpochMs = Date.parse('2026-08-09T00:00:00.000Z');
+	let recoveryEvidence: 'none' | 'receipt' | 'journal' = 'none';
 	let previewOutputMode: 'valid' | 'invalid-output' | 'wrong-request' = 'valid';
-	let applyMode: 'invalid-output' | 'wrong-request' | 'throw' = 'invalid-output';
+	let applyMode: 'invalid-output' | 'wrong-request' | 'throw' | 'valid' = 'invalid-output';
+	const dispatchedEvents: Array<'apply-dispatched' | 'recovery-dispatched'> = [];
+	const completedEvents: Array<'apply-completed' | 'recovery-completed'> = [];
+	const recoveryOnlyCalls: boolean[] = [];
 	const terminalAuditResults: import('../../../src/agent-runtime/extensions/task-workflows-v1').TaskWorkflowMutationResultV1[] = [];
 	const gateway = new TaskWorkflowGatewayV1({
 		isReady: () => true,
-		nowEpochMs: () => Date.parse('2026-08-09T00:00:00.000Z'),
+		nowEpochMs: () => nowEpochMs,
 		preview: async request => {
 			previewCalls += 1;
 			if (previewOutputMode === 'invalid-output') {
@@ -389,8 +395,13 @@ async function testTaskWorkflowGatewayIsolation(): Promise<void> {
 				},
 			};
 		},
-		apply: async request => {
+		hasSamePlanRecoveryEvidence: async () => recoveryEvidence !== 'none',
+		apply: async (request, execution) => {
 			applyCalls += 1;
+			recoveryOnlyCalls.push(execution.recoveryOnly);
+			await execution.dispatch(
+				recoveryEvidence === 'journal' ? 'recovery-dispatched' : 'apply-dispatched',
+			);
 			if (applyMode === 'throw') throw new Error(request.requestId);
 			if (applyMode === 'wrong-request') {
 				return {
@@ -410,11 +421,68 @@ async function testTaskWorkflowGatewayIsolation(): Promise<void> {
 					},
 				};
 			}
+			if (applyMode === 'valid') {
+				const completedAt = '2026-08-09T00:03:00.000Z';
+				const receipt = {
+					contractVersion: 1 as const,
+					vaultIdentityHash: 'a'.repeat(64),
+					clientInstanceId: request.plan.clientInstanceId,
+					idempotencyKeyHash: request.plan.idempotencyKeyHash,
+					planHash: request.plan.planHash,
+					mutationKind: request.plan.mutationKind,
+					targetDigest: request.plan.receiptTargetDigest,
+					terminalOutcome: recoveryEvidence === 'receipt'
+						? 'already-applied' as const
+						: 'applied' as const,
+					effectiveAt: request.plan.createdAt,
+					completedAt,
+					expiresAt: '2026-08-10T00:03:00.000Z',
+				};
+				return recoveryEvidence === 'receipt'
+					? {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-result',
+						status: 'already-applied',
+						mutationMayHaveApplied: true,
+						retryAllowed: false,
+						groupResults: [],
+						receipt,
+						postflight: { status: 'receipt-replay' as const },
+					}
+					: {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-result',
+						status: 'applied',
+						mutationMayHaveApplied: true,
+						retryAllowed: false,
+						groupResults: [{
+							groupId: request.plan.atomicGroups[0]!.groupId,
+							status: 'committed' as const,
+							resourceRevisions: [{
+								resourceKind: 'task-source' as const,
+								resourceKey: 'Tasks/Task.md',
+								revision: 'b'.repeat(64),
+							}],
+						}],
+						receipt,
+						postflight: {
+							status: 'verified' as const,
+							observedAt: completedAt,
+							contextRevision: request.plan.contextRevision,
+						},
+					};
+			}
 			return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-result', status: 'applied' } as unknown as import('../../../src/agent-runtime/extensions/task-workflows-v1').TaskWorkflowMutationResultV1;
 		},
-		auditDispatched: async () => { dispatchAudits += 1; },
-		auditCompleted: async (_request, result) => {
+		auditDispatched: async (event) => {
+			dispatchAudits += 1;
+			dispatchedEvents.push(event);
+		},
+		auditCompleted: async (event, _request, result) => {
 			terminalAudits += 1;
+			completedEvents.push(event);
 			terminalAuditResults.push(result);
 		},
 	});
@@ -537,6 +605,31 @@ async function testTaskWorkflowGatewayIsolation(): Promise<void> {
 	assert.equal(dispatchAudits, 3);
 	assert.equal(terminalAudits, 3);
 	assert.equal(terminalAuditResults.at(-1)?.status, 'outcome-unknown');
+
+	nowEpochMs = Date.parse(apply.plan.expiresAt) + 1;
+	const callsBeforeExpiredAdmission = applyCalls;
+	const auditsBeforeExpiredAdmission = dispatchAudits + terminalAudits;
+	const expired = await gateway.apply(apply);
+	assert.equal(expired.status, 'failed');
+	assert.equal(expired.mutationMayHaveApplied, false);
+	assert.equal(expired.error?.code, 'plan-expired');
+	assert.equal(applyCalls, callsBeforeExpiredAdmission, 'an expired plan without durable evidence cannot reach a writer');
+	assert.equal(dispatchAudits + terminalAudits, auditsBeforeExpiredAdmission, 'a rejected expired plan does not create apply audit events');
+
+	recoveryEvidence = 'receipt';
+	applyMode = 'valid';
+	const receiptReplay = await gateway.apply(apply);
+	assert.equal(receiptReplay.status, 'already-applied');
+	assert.equal(recoveryOnlyCalls.at(-1), true);
+	assert.equal(dispatchedEvents.at(-1), 'apply-dispatched');
+	assert.equal(completedEvents.at(-1), 'apply-completed');
+
+	recoveryEvidence = 'journal';
+	const journalRecovery = await gateway.apply(apply);
+	assert.equal(journalRecovery.status, 'applied');
+	assert.equal(recoveryOnlyCalls.at(-1), true);
+	assert.equal(dispatchedEvents.at(-1), 'recovery-dispatched');
+	assert.equal(completedEvents.at(-1), 'recovery-completed');
 }
 
 function testLifecycleAndAdmission(): void {
