@@ -252,7 +252,13 @@ function deriveCalendarItemsForTask(
 	}
 
 	if (!hasTimedBlock) {
-		const allDayRange = resolveAllDayCalendarRange(dateScheduled, dateStarted, dateDue);
+		const allDayRange = resolveAllDayCalendarRange(
+			dateScheduled,
+			dateStarted,
+			dateDue,
+			hasNonBlankValue(fieldValues['dateScheduled']),
+			hasNonBlankValue(fieldValues['dateDue']),
+		);
 		if (allDayRange && intersectsDateRange(allDayRange.startDate, allDayRange.endDate, rangeStart, rangeEnd)) {
 			items.push({
 				taskId: task.operonId,
@@ -336,6 +342,8 @@ function resolveAllDayCalendarRange(
 	dateScheduled: string,
 	dateStarted: string,
 	dateDue: string,
+	hasDateScheduledValue: boolean,
+	hasDateDueValue: boolean,
 ): { startDate: string; endDate: string } | null {
 	if (dateStarted && dateDue && dateDue >= dateStarted) {
 		return {
@@ -343,11 +351,23 @@ function resolveAllDayCalendarRange(
 			endDate: dateDue,
 		};
 	}
-	if (!dateScheduled) return null;
-	return {
-		startDate: dateScheduled,
-		endDate: dateScheduled,
-	};
+	if (dateScheduled) {
+		return {
+			startDate: dateScheduled,
+			endDate: dateScheduled,
+		};
+	}
+	if (dateStarted && !hasDateScheduledValue && !hasDateDueValue) {
+		return {
+			startDate: dateStarted,
+			endDate: dateStarted,
+		};
+	}
+	return null;
+}
+
+function hasNonBlankValue(value: string | undefined | null): boolean {
+	return !!(value ?? '').trim();
 }
 
 function normalizeDate(value: string | undefined | null): string {

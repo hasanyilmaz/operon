@@ -7,10 +7,25 @@ export interface AnchoredAllDayMoveRange {
 }
 
 export function canEditAllDayCalendarItemPlacement(
-	item: Pick<CalendarItem, 'origin' | 'repeatRef'>,
+	item: Pick<CalendarItem, 'kind' | 'origin' | 'repeatRef'> & {
+		renderSnapshot: Pick<CalendarItem['renderSnapshot'], 'fieldValues'>;
+	},
 ): boolean {
 	return item.origin !== 'external'
-		&& item.repeatRef?.projectionKind !== 'doneRolling';
+		&& item.repeatRef?.projectionKind !== 'doneRolling'
+		&& !isStartedOnlyAllDayItem(item);
+}
+
+function isStartedOnlyAllDayItem(
+	item: Pick<CalendarItem, 'kind'> & {
+		renderSnapshot: Pick<CalendarItem['renderSnapshot'], 'fieldValues'>;
+	},
+): boolean {
+	if (item.kind !== 'allDayScheduled') return false;
+	const fields = item.renderSnapshot.fieldValues;
+	return !!fields['dateStarted']?.trim()
+		&& !fields['dateScheduled']?.trim()
+		&& !fields['dateDue']?.trim();
 }
 
 export function canEditFinishedCalendarItemPlacement(
