@@ -44,6 +44,34 @@ function escapeValue(value: string): string {
 }
 
 /**
+ * Notes use the compact, human-readable `\\n` representation for visual
+ * line breaks. Other inline fields retain the historic `\\u000A` escape.
+ */
+function escapeTaskNoteValue(value: string): string {
+	let result = '';
+	for (let i = 0; i < value.length; i++) {
+		const ch = value[i];
+		if (ch === '\\') {
+			result += '\\\\';
+		} else if (ch === '\r') {
+			if (i + 1 < value.length && value[i + 1] === '\n') {
+				i++;
+			}
+			result += '\\n';
+		} else if (ch === '\n') {
+			result += '\\n';
+		} else if (ch === '}' && i + 1 < value.length && value[i + 1] === '}') {
+			result += '\\}';
+		} else if (ch === '{' && i + 1 < value.length && value[i + 1] === '{') {
+			result += '\\{';
+		} else {
+			result += ch;
+		}
+	}
+	return result;
+}
+
+/**
  * Get the canonical sort position for a field key.
  * Known canonical keys get their defined position.
  * Unknown unmanaged keys keep the legacy fallback bucket.
@@ -129,7 +157,9 @@ export function serializeField(field: OperonField, keyMappings: KeyMapping[] = [
 			: field.key === 'taskColor'
 				? normalizeTaskColorValue(field.value)
 			: field.value;
-	const escapedValue = escapeValue(normalizedValue);
+	const escapedValue = field.key === 'note'
+		? escapeTaskNoteValue(normalizedValue)
+		: escapeValue(normalizedValue);
 	const keyName = getSerializedKeyName(field, keyMappings);
 	if (!escapedValue) {
 		return `{{${keyName}::}}`;

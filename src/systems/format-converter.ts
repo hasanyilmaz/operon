@@ -91,10 +91,10 @@ export class FormatConverter {
 				yamlLines.push(`${yamlKey}:`);
 				const items = value.split(';').map(s => s.trim()).filter(Boolean);
 				for (const item of items) {
-					yamlLines.push(`  - "${item.replace(/"/g, '\\"')}"`);
+					yamlLines.push(`  - ${JSON.stringify(item)}`);
 				}
 			} else {
-				yamlLines.push(`${yamlKey}: "${value.replace(/"/g, '\\"')}"`);
+				yamlLines.push(`${yamlKey}: ${JSON.stringify(value)}`);
 			}
 		}
 

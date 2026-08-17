@@ -23,7 +23,7 @@
         "datetimeCreated": "2026-01-15T10:20:30",
         "datetimeModified": "2026-01-15T10:20:30"
       },
-      "expected": "- [ ] Türkçe görev ve English context #phase-one #çokdilli {{operonId:: abc1234}} {{status:: Work.Active}} {{priority:: P1}} {{reminderDatetimes:: 2026-01-16T09:00:00; 2026-01-17T10:30:00}} {{reminderRules:: dateDue.30m}} {{taskIcon:: circle-check}} {{taskColor:: 336699}} {{note:: First line\\u000ASecond \\{{literal\\}}}} {{fixtureTopic:: Architecture}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{datetimeModified:: 2026-01-15T10:20:30}}"
+      "expected": "- [ ] Türkçe görev ve English context #phase-one #çokdilli {{operonId:: abc1234}} {{status:: Work.Active}} {{priority:: P1}} {{reminderDatetimes:: 2026-01-16T09:00:00; 2026-01-17T10:30:00}} {{reminderRules:: dateDue.30m}} {{taskIcon:: circle-check}} {{taskColor:: 336699}} {{note:: First line\\nSecond \\{{literal\\}}}} {{fixtureTopic:: Architecture}} {{datetimeCreated:: 2026-01-15T10:20:30}} {{datetimeModified:: 2026-01-15T10:20:30}}"
     },
     "checkboxes": [
       {

@@ -5,6 +5,7 @@ import {
 	normalizeCompactTaskText,
 	projectCompactTaskTextForEditing,
 	resolveCompactTaskTextCommit,
+	type CompactTaskTextPolicy,
 	type CompactTaskTextCommit,
 	type CompactTaskTextDraft,
 } from '../core/compact-task-text';
@@ -27,8 +28,11 @@ export class CompactMarkdownEditorController {
 	private compositionActive = false;
 	private compositionStartDisplayValue = '';
 
-	constructor(sourceValue: string) {
-		this.draft = createCompactTaskTextDraft(sourceValue);
+	constructor(
+		sourceValue: string,
+		private readonly textPolicy: CompactTaskTextPolicy = 'single-line',
+	) {
+		this.draft = createCompactTaskTextDraft(sourceValue, this.textPolicy);
 	}
 
 	getDraft(): CompactTaskTextDraft {
@@ -60,7 +64,7 @@ export class CompactMarkdownEditorController {
 		selection: CompactTextSelection,
 	): CompactTextInputResult | null {
 		this.compositionActive = false;
-		if (projectCompactTaskTextForEditing(value) === this.compositionStartDisplayValue) {
+		if (projectCompactTaskTextForEditing(value, this.textPolicy) === this.compositionStartDisplayValue) {
 			return null;
 		}
 		return this.applyCompletedUserInput(value, selection);
@@ -75,12 +79,12 @@ export class CompactMarkdownEditorController {
 			if (sourceValue !== this.draft.sourceValue) return 'conflict';
 			return 'applied';
 		}
-		this.draft = createCompactTaskTextDraft(sourceValue);
+		this.draft = createCompactTaskTextDraft(sourceValue, this.textPolicy);
 		return 'applied';
 	}
 
 	acceptCommittedValue(value: string): void {
-		this.draft = createCompactTaskTextDraft(normalizeCompactTaskText(value));
+		this.draft = createCompactTaskTextDraft(normalizeCompactTaskText(value, this.textPolicy), this.textPolicy);
 		this.compositionActive = false;
 	}
 
@@ -88,11 +92,11 @@ export class CompactMarkdownEditorController {
 		value: string,
 		selection: CompactTextSelection,
 	): CompactTextInputResult {
-		this.draft = applyCompactTaskTextUserEdit(this.draft, value);
+		this.draft = applyCompactTaskTextUserEdit(this.draft, value, this.textPolicy);
 		return {
 			draft: this.draft,
 			displayValue: this.draft.displayValue,
-			selection: normalizeCompactTextSelection(value, selection, false),
+			selection: normalizeCompactTextSelection(value, selection, false, this.textPolicy),
 		};
 	}
 }
@@ -101,10 +105,11 @@ export function normalizeCompactTextSelection(
 	value: string,
 	selection: CompactTextSelection,
 	trimOuterWhitespace = true,
+	textPolicy: CompactTaskTextPolicy = 'single-line',
 ): CompactTextSelection {
 	return {
-		anchor: normalizeCompactTextOffset(value, selection.anchor, trimOuterWhitespace),
-		head: normalizeCompactTextOffset(value, selection.head, trimOuterWhitespace),
+		anchor: normalizeCompactTextOffset(value, selection.anchor, trimOuterWhitespace, textPolicy),
+		head: normalizeCompactTextOffset(value, selection.head, trimOuterWhitespace, textPolicy),
 	};
 }
 
@@ -112,6 +117,7 @@ function normalizeCompactTextOffset(
 	value: string,
 	offset: number,
 	trimOuterWhitespace: boolean,
+	textPolicy: CompactTaskTextPolicy,
 ): number {
-	return mapCompactTaskTextOffset(value, offset, trimOuterWhitespace);
+	return mapCompactTaskTextOffset(value, offset, trimOuterWhitespace, textPolicy);
 }

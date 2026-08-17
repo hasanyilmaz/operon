@@ -7,7 +7,10 @@ import {
 } from '../src/ui/text-field-popover';
 import type { FloatingPanelOptions } from '../src/ui/field-pickers/common';
 import { TrackerSessionEditModal } from '../src/ui/tracker-session-edit-modal';
-import type { CompactMarkdownEditorSurface } from '../src/ui/compact-markdown-editor-surface';
+import type {
+	CompactMarkdownEditorSurface,
+	CompactMarkdownEditorSurfaceOptions,
+} from '../src/ui/compact-markdown-editor-surface';
 
 class FakeStyle {
 	readonly values = new Map<string, string>();
@@ -287,6 +290,56 @@ async function runTextFieldPopoverBehaviorTests(): Promise<void> {
 		} finally {
 			console.error = originalConsoleError;
 		}
+	}
+
+	{
+		const capturedOptions = { current: null as CompactMarkdownEditorSurfaceOptions | null };
+		let committedValue = '';
+		let closeCalls = 0;
+		const dependencies: TextFieldPopoverDependencies = {
+			createCompactEditorSurface: (_container, options) => {
+				capturedOptions.current = options;
+				return {
+					getCommit: () => ({ shouldCommit: true, value: 'First\nSecond' }),
+					focusEnd: () => undefined,
+					refreshLayout: () => undefined,
+					destroy: () => undefined,
+				} as unknown as CompactMarkdownEditorSurface;
+			},
+			createPanel: (_anchor, _className, onClose) => {
+				const panel = new FakeElement();
+				return {
+					panel: panel as unknown as HTMLElement,
+					close: () => {
+						if (!panel.isConnected) return;
+						panel.isConnected = false;
+						closeCalls += 1;
+						onClose?.();
+					},
+				};
+			},
+		};
+		const handle = showTextFieldPopover({
+			app: new App(),
+			anchor: {} as DOMRect,
+			title: 'Notes',
+			initialValue: 'First',
+			editor: {
+				kind: 'compact-markdown',
+				sourcePath: 'Task.md',
+				textPolicy: 'task-note',
+			},
+			onCommit: value => {
+				committedValue = value;
+				return false;
+			},
+		}, dependencies);
+		assert.ok(capturedOptions.current);
+		assertions += 1;
+		equal(capturedOptions.current.textPolicy, 'task-note');
+		equal(await handle.requestCloseAndWait(), false, 'failed multiline note commit must retain popover');
+		equal(committedValue, 'First\nSecond');
+		equal(closeCalls, 0);
 	}
 
 	{

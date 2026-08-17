@@ -234,6 +234,21 @@ function run(): void {
 		),
 		true,
 	);
+	const multilineTooltip = createContainer();
+	const multilineTooltipResult = renderCompactTaskMarkdown(
+		multilineTooltip as unknown as HTMLElement,
+		{
+			value: 'First\n\n[[Note|Second]]',
+			mode: 'tooltip',
+		},
+	);
+	deepEqual(multilineTooltipResult, { formatted: true, hasLinks: true });
+	equal(
+		multilineTooltip.children.map(child => child.textContent).join(''),
+		'First\n\nSecond',
+		'tooltip DOM must retain note lines and blank lines',
+	);
+	equal(multilineTooltip.children.some(child => child.tagName === 'A'), false);
 
 	const visualOnly = createContainer();
 	renderCompactTaskMarkdown(visualOnly as unknown as HTMLElement, {

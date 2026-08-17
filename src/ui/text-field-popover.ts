@@ -9,6 +9,7 @@ import {
 	type CompactMarkdownEditorSurface,
 	type CompactMarkdownEditorSurfaceOptions,
 } from './compact-markdown-editor-surface';
+import type { CompactTaskTextPolicy } from '../core/compact-task-text';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
 export interface TextFieldPopoverOptions {
@@ -30,6 +31,7 @@ export interface TextFieldPopoverOptions {
 	editor?: {
 		kind: 'compact-markdown';
 		sourcePath: string;
+		textPolicy?: CompactTaskTextPolicy;
 	};
 }
 
@@ -379,6 +381,7 @@ function createCompactTextFieldEditorSurface(
 		sourcePath: editorOptions.sourcePath,
 		placeholder: options.placeholder,
 		ariaLabel: options.title,
+		textPolicy: editorOptions.textPolicy,
 		onIntent: intent => {
 			if (intent === 'focus-next' || intent === 'focus-previous') {
 				closeButton.focus();

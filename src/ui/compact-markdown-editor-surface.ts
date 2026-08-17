@@ -4,6 +4,7 @@ import { EditorView } from '@codemirror/view';
 import type {
 	CompactTaskTextCommit,
 	CompactTaskTextDraft,
+	CompactTaskTextPolicy,
 } from '../core/compact-task-text';
 import { getOwnerWindow } from '../core/dom-compat';
 import {
@@ -27,8 +28,10 @@ export interface CompactMarkdownEditorSurfaceOptions {
 	sourcePath?: string;
 	placeholder?: string;
 	ariaLabel: string;
+	/** Defaults to the existing compact single-line behavior. */
+	textPolicy?: CompactTaskTextPolicy;
 	onUserChange?: (draft: CompactTaskTextDraft) => void;
-	onIntent: (intent: Exclude<CompactEditorKeyIntent, 'none'>) => void;
+	onIntent: (intent: Exclude<CompactEditorKeyIntent, 'none' | 'insert-line-break'>) => void;
 }
 
 export interface CompactMarkdownEditorSurface {
@@ -86,7 +89,8 @@ export function createCompactMarkdownEditorSurface(
 	options: CompactMarkdownEditorSurfaceOptions,
 	dependencies: CompactMarkdownEditorSurfaceDependencies = DEFAULT_DEPENDENCIES,
 ): CompactMarkdownEditorSurface {
-	const controller = new CompactMarkdownEditorController(options.sourceValue);
+	const textPolicy = options.textPolicy ?? 'single-line';
+	const controller = new CompactMarkdownEditorController(options.sourceValue, textPolicy);
 	let sourcePath = normalizeSourcePath(options.sourcePath);
 	let backend: CompactEditorBackend | null = null;
 	let suppressInput = false;
@@ -126,8 +130,10 @@ export function createCompactMarkdownEditorSurface(
 				isComposing: event.isComposing,
 				localCompositionActive: controller.isCompositionActive(),
 				keyCode: getLegacyKeyboardEventKeyCode(event),
+				textPolicy,
 			});
 			if (intent === 'none') return false;
+			if (intent === 'insert-line-break') return false;
 			event.preventDefault();
 			event.stopPropagation();
 			options.onIntent(intent);
@@ -255,7 +261,7 @@ function createEmbeddedBackend(input: CompactEditorBackendInput): CompactEditorB
 			showLineNumbers: false,
 			showActiveLine: false,
 			ariaLabel: input.options.ariaLabel,
-			ariaMultiline: false,
+			ariaMultiline: input.options.textPolicy === 'task-note',
 			additionalExtensions: [
 				compactEditorSurfaceScopeExtension,
 				compactMarkdownUnderlineExtension,
@@ -329,8 +335,8 @@ function createTextareaBackend(input: CompactEditorBackendInput): CompactEditorB
 			rows: '1',
 			spellcheck: 'true',
 			placeholder: input.options.placeholder ?? '',
-			'aria-multiline': 'false',
-			enterkeyhint: 'done',
+			'aria-multiline': input.options.textPolicy === 'task-note' ? 'true' : 'false',
+			enterkeyhint: input.options.textPolicy === 'task-note' ? 'enter' : 'done',
 		},
 	});
 	let compositionEndTimer: number | null = null;

@@ -1,4 +1,11 @@
 const LOGICAL_LINE_BREAK_CLUSTER = /[ \t]*(?:(?:\r\n|[\r\n\u2028\u2029])[ \t]*)+/gu;
+const TASK_NOTE_LINE_BREAK = /\r\n|[\r\u2028\u2029]/gu;
+
+/**
+ * Compact text is single-line by default. Notes are the sole compact surface
+ * that may preserve visual line breaks while still using the same draft API.
+ */
+export type CompactTaskTextPolicy = 'single-line' | 'task-note';
 
 export interface CompactTaskTextDraft {
 	readonly sourceValue: string;
@@ -12,20 +19,51 @@ export interface CompactTaskTextCommit {
 	readonly value: string;
 }
 
-/**
- * Canonicalizes compact task text to one logical line without collapsing
- * ordinary inner spacing.
- */
-export function normalizeCompactTaskText(value: string): string {
-	return projectCompactTaskTextForEditing(value).trim();
+export interface CompactTaskTextLineBreakInsertion {
+	readonly displayValue: string;
+	readonly selectionOffset: number;
 }
 
 /**
- * Produces the live single-line editor projection while preserving temporary
- * edge whitespace so the user can continue typing the next word.
+ * Canonicalizes compact task text for its requested editing policy without
+ * collapsing ordinary inner spacing.
  */
-export function projectCompactTaskTextForEditing(value: string): string {
+export function normalizeCompactTaskText(
+	value: string,
+	policy: CompactTaskTextPolicy = 'single-line',
+): string {
+	return projectCompactTaskTextForEditing(value, policy).trim();
+}
+
+/**
+ * Produces the live compact editor projection while preserving temporary edge
+ * whitespace so the user can continue typing the next word.
+ */
+export function projectCompactTaskTextForEditing(
+	value: string,
+	policy: CompactTaskTextPolicy = 'single-line',
+): string {
+	if (policy === 'task-note') return value.replace(TASK_NOTE_LINE_BREAK, '\n');
 	return value.replace(LOGICAL_LINE_BREAK_CLUSTER, ' ');
+}
+
+/**
+ * Applies the historical single-line Enter projection while preserving its
+ * caret mapping. This avoids adding a second separator when Enter is pressed
+ * next to existing horizontal whitespace.
+ */
+export function projectCompactTaskTextSingleLineBreakInsertion(
+	value: string,
+	selectionStart: number,
+	selectionEnd: number,
+): CompactTaskTextLineBreakInsertion {
+	const safeStart = Math.max(0, Math.min(selectionStart, selectionEnd, value.length));
+	const safeEnd = Math.max(safeStart, Math.min(Math.max(selectionStart, selectionEnd), value.length));
+	const sourceValue = `${value.slice(0, safeStart)}\n${value.slice(safeEnd)}`;
+	return {
+		displayValue: projectCompactTaskTextForEditing(sourceValue),
+		selectionOffset: mapCompactTaskTextOffset(sourceValue, safeStart + 1, false),
+	};
 }
 
 /**
@@ -36,7 +74,11 @@ export function mapCompactTaskTextOffset(
 	value: string,
 	offset: number,
 	trimOuterWhitespace = true,
+	policy: CompactTaskTextPolicy = 'single-line',
 ): number {
+	if (policy === 'task-note') {
+		return mapTaskNoteTextOffset(value, offset, trimOuterWhitespace);
+	}
 	const safeOffset = Math.max(0, Math.min(offset, value.length));
 	const boundaryMap = new Array<number>(value.length + 1);
 	let projectedValue = '';
@@ -93,10 +135,13 @@ export function mapCompactTaskTextOffset(
  * Creates a lossless draft for legacy values. The display projection may be
  * single-line while the persistable value remains byte-for-byte unchanged.
  */
-export function createCompactTaskTextDraft(sourceValue: string): CompactTaskTextDraft {
+export function createCompactTaskTextDraft(
+	sourceValue: string,
+	policy: CompactTaskTextPolicy = 'single-line',
+): CompactTaskTextDraft {
 	return {
 		sourceValue,
-		displayValue: normalizeCompactTaskText(sourceValue),
+		displayValue: normalizeCompactTaskText(sourceValue, policy),
 		userEdited: false,
 		persistableValue: sourceValue,
 	};
@@ -109,14 +154,54 @@ export function createCompactTaskTextDraft(sourceValue: string): CompactTaskText
 export function applyCompactTaskTextUserEdit(
 	draft: CompactTaskTextDraft,
 	value: string,
+	policy: CompactTaskTextPolicy = 'single-line',
 ): CompactTaskTextDraft {
-	const displayValue = projectCompactTaskTextForEditing(value);
+	const displayValue = projectCompactTaskTextForEditing(value, policy);
 	return {
 		sourceValue: draft.sourceValue,
 		displayValue,
 		userEdited: true,
 		persistableValue: displayValue.trim(),
 	};
+}
+
+function mapTaskNoteTextOffset(
+	value: string,
+	offset: number,
+	trimOuterWhitespace: boolean,
+): number {
+	const safeOffset = Math.max(0, Math.min(offset, value.length));
+	const boundaryMap = new Array<number>(value.length + 1);
+	let projectedValue = '';
+	let sourceCursor = 0;
+	let projectedCursor = 0;
+
+	while (sourceCursor < value.length) {
+		boundaryMap[sourceCursor] = projectedCursor;
+		if (value[sourceCursor] === '\r' && value[sourceCursor + 1] === '\n') {
+			boundaryMap[sourceCursor + 1] = projectedCursor;
+			projectedValue += '\n';
+			projectedCursor += 1;
+			sourceCursor += 2;
+			boundaryMap[sourceCursor] = projectedCursor;
+			continue;
+		}
+		const character = value[sourceCursor];
+		projectedValue += character === '\r' || character === '\u2028' || character === '\u2029'
+			? '\n'
+			: character;
+		projectedCursor += 1;
+		sourceCursor += 1;
+		boundaryMap[sourceCursor] = projectedCursor;
+	}
+
+	const projectedOffset = boundaryMap[safeOffset] ?? projectedCursor;
+	if (!trimOuterWhitespace) {
+		return Math.max(0, Math.min(projectedOffset, projectedValue.length));
+	}
+	const trimStartLength = projectedValue.length - projectedValue.trimStart().length;
+	const normalizedLength = projectedValue.trim().length;
+	return Math.max(0, Math.min(projectedOffset - trimStartLength, normalizedLength));
 }
 
 /**
