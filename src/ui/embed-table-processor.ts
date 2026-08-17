@@ -12,6 +12,7 @@ import {
 	TABLE_TASK_TYPE_COLUMN_KEY,
 	cloneTablePreset,
 	cloneTablePresetSearchState,
+	normalizeTableEmbedDefaultWidthPercent,
 	normalizeTableEmbedVisibleRows,
 	resolveTableDurationDisplayMode,
 	resolveTablePresetFilterSet,
@@ -250,6 +251,8 @@ interface EmbedTableInstance {
 	presetId: string;
 	visibleRowsOverride: TableEmbedVisibleRowsOverride | null;
 	widthPercent: EmbedWidthPercent | null;
+	boundWidthPercent: EmbedWidthPercent | null;
+	hasWidthBinding: boolean;
 	widthCleanup: (() => void) | null;
 	sourceContext: TableEmbedSourceContext | null;
 	sourceContextResolver: (() => TableEmbedSourceContext | null) | null;
@@ -398,7 +401,7 @@ export function parseTableEmbedReference(source: string): TableEmbedReference | 
 		const rowsMatch = trimmed.match(/^rows:\s*(.+?)\s*$/i);
 		if (rowsMatch) rows = parseTableEmbedRowsValue(rowsMatch[1]);
 		const widthMatch = trimmed.match(/^width:\s*(.+?)\s*$/i);
-		if (widthMatch) widthPercent = parseEmbedWidthPercent(widthMatch[1]);
+		if (widthMatch) widthPercent = parseEmbedWidthPercent(widthMatch[1], 50);
 	}
 	return presetId ? { presetId, rows, widthPercent } : null;
 }
@@ -518,9 +521,6 @@ export function registerEmbedTableProcessor(
 
 		const sourceContextResolver = (): TableEmbedSourceContext | null => resolveTableEmbedSourceContext(el, ctx);
 		const instance = createEmbedTableInstance(el, tableRef.presetId, tableRef.rows, tableRef.widthPercent, sourceContextResolver);
-		instance.widthCleanup = bindEmbedPercentWidth(instance.el, instance.widthPercent, {
-			onGeometryChange: () => handleEmbedTableWidthGeometryChange(instance, deps),
-		});
 		activeTableEmbeds.add(instance);
 		ctx.addChild(new EmbedTableRenderChild(el, instance));
 		renderEmbedTable(instance, deps);
@@ -558,6 +558,37 @@ export function refreshEmbedTables(deps: EmbedTableDeps, presetId?: string): voi
 	}
 }
 
+export function resolveTableEmbedWidthPercent(
+	explicitWidthPercent: EmbedWidthPercent | null,
+	settings: Pick<OperonSettings, 'tableEmbedDefaultWidthPercent'>,
+): EmbedWidthPercent {
+	return explicitWidthPercent
+		?? normalizeTableEmbedDefaultWidthPercent(settings.tableEmbedDefaultWidthPercent);
+}
+
+export function shouldRebindTableEmbedWidth(
+	hasWidthBinding: boolean,
+	boundWidthPercent: EmbedWidthPercent | null,
+	nextWidthPercent: EmbedWidthPercent,
+): boolean {
+	return !hasWidthBinding || boundWidthPercent !== nextWidthPercent;
+}
+
+function syncEmbedTableWidthBinding(
+	instance: EmbedTableInstance,
+	settings: Pick<OperonSettings, 'tableEmbedDefaultWidthPercent'>,
+	deps: EmbedTableDeps,
+): void {
+	const nextWidthPercent = resolveTableEmbedWidthPercent(instance.widthPercent, settings);
+	if (!shouldRebindTableEmbedWidth(instance.hasWidthBinding, instance.boundWidthPercent, nextWidthPercent)) return;
+	instance.widthCleanup?.();
+	instance.widthCleanup = bindEmbedPercentWidth(instance.el, nextWidthPercent, {
+		onGeometryChange: () => handleEmbedTableWidthGeometryChange(instance, deps),
+	});
+	instance.boundWidthPercent = nextWidthPercent;
+	instance.hasWidthBinding = true;
+}
+
 function createEmbedTableInstance(
 	el: HTMLElement,
 	presetId: string,
@@ -570,6 +601,8 @@ function createEmbedTableInstance(
 		presetId,
 		visibleRowsOverride,
 		widthPercent,
+		boundWidthPercent: null,
+		hasWidthBinding: false,
 		widthCleanup: null,
 		sourceContext: sourceContextResolver?.() ?? null,
 		sourceContextResolver,
@@ -639,6 +672,8 @@ function destroyEmbedTableInstance(instance: EmbedTableInstance): void {
 	cleanupOperonHoverTooltips(instance.el);
 	instance.widthCleanup?.();
 	instance.widthCleanup = null;
+	instance.boundWidthPercent = null;
+	instance.hasWidthBinding = false;
 	if (instance.visibleRowsFrame !== null) {
 		window.cancelAnimationFrame(instance.visibleRowsFrame);
 		instance.visibleRowsFrame = null;
@@ -684,6 +719,7 @@ class EmbedTableRenderChild extends MarkdownRenderChild {
 function renderEmbedTable(instance: EmbedTableInstance, deps: EmbedTableDeps): void {
 	const renderStartedAt = enginePerfNow();
 	const settings = deps.getSettings();
+	syncEmbedTableWidthBinding(instance, settings, deps);
 	const preset = resolveEmbedTablePreset(deps, instance.presetId);
 	if (!preset) {
 		closeEmbedTableTransientUi(instance.el);

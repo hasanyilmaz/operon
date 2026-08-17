@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3038,
-  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
+  "keyCount": 3040,
+  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2184,6 +2184,8 @@
       "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table-Standard-Voreinstellung",
       "tableDefaultPresetDesc": "Neue Operon Table-Tabs starten mit dieser Voreinstellung, sofern der Tab nicht bereits einen eigenen gespeicherten Zustand hat.",
+      "tableEmbedDefaultWidthPercent": "Standardbreite eingebetteter Tabellen",
+      "tableEmbedDefaultWidthPercentDesc": "Legt die Standardbreite eingebetteter Operon Tables ohne width:-Wert fest. Ein gültiger width:-Wert im Embed überschreibt diese Einstellung.",
       "tableEmbedVisibleRows": "Maximal sichtbare Zeilen in eingebetteten Tabellen",
       "tableEmbedVisibleRowsDesc": "Legt die Standardhöhe eingebetteter Operon Tables fest. Zusätzliche Zeilen bleiben per Scrollen verfügbar.",
       "tableEmbedVisibleRowsOption": "{{rows}} Zeilen",
@@ -3083,5 +3085,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "a3b3cd3322115655d22d81a24c92b92488b27f3c76d09da6665eb61cc5585a5e"
+  "sourceVersion": "87b5065878fb86b4ce906631ad0d2eafa250a8aa87d6568e3e725192ee960435"
 }

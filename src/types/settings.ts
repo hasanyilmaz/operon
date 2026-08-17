@@ -42,13 +42,16 @@ import {
 	normalizeBuiltInKanbanPreset,
 } from './kanban';
 import {
+	DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
 	DEFAULT_TABLE_EMBED_VISIBLE_ROWS,
 	DEFAULT_TABLE_PRESET_ID,
+	type TableEmbedDefaultWidthPercent,
 	type TableEmbedVisibleRows,
 	type TablePresetFileBinding,
 	TablePreset,
 	cloneDefaultTablePresets,
 	normalizeTableEmbedVisibleRows,
+	normalizeTableEmbedDefaultWidthPercent,
 	normalizeTablePresets,
 	isSafeTablePresetId,
 } from './table';
@@ -1732,6 +1735,7 @@ export interface OperonSettings {
 	tableDefaultPresetId: string | null;
 	tableDefaultFolder: string;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
+	tableEmbedDefaultWidthPercent: TableEmbedDefaultWidthPercent;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskTypeIcon: boolean;
@@ -2186,6 +2190,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tableDefaultPresetId: DEFAULT_TABLE_PRESET_ID,
 	tableDefaultFolder: 'Operon/Tables',
 	tableEmbedVisibleRows: DEFAULT_TABLE_EMBED_VISIBLE_ROWS,
+	tableEmbedDefaultWidthPercent: DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
 	tableShowLineNumbers: true,
 	tableShowTaskIcon: false,
 	tableShowTaskTypeIcon: false,
@@ -4156,6 +4161,10 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? src.tableShowTaskTypeIcon
 		: DEFAULT_SETTINGS.tableShowTaskTypeIcon;
 	out.tableEmbedVisibleRows = normalizeTableEmbedVisibleRows(src.tableEmbedVisibleRows, DEFAULT_SETTINGS.tableEmbedVisibleRows);
+	out.tableEmbedDefaultWidthPercent = normalizeTableEmbedDefaultWidthPercent(
+		src.tableEmbedDefaultWidthPercent,
+		DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent,
+	);
 	out.presetFavorites = normalizePresetFavorites(
 		src.presetFavorites,
 		createDefaultPresetFavorites({

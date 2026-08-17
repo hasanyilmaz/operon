@@ -54,7 +54,11 @@ const EMBED_WIDTH_STYLE_PROPERTIES = [
 ] as const;
 const activeBindings = new Set<EmbedPercentWidthBinding>();
 
-export function parseEmbedWidthPercent(value: string | undefined): EmbedWidthPercent | null {
+export function parseEmbedWidthPercent(
+	value: string | undefined,
+	minimumPercent = 100,
+): EmbedWidthPercent | null {
+	if (!Number.isSafeInteger(minimumPercent) || minimumPercent < 1) return null;
 	let normalized = value?.trim() ?? '';
 	if (!normalized) return null;
 	if (
@@ -66,7 +70,7 @@ export function parseEmbedWidthPercent(value: string | undefined): EmbedWidthPer
 	const match = normalized.match(/^([1-9]\d*)%$/u);
 	if (!match) return null;
 	const parsed = Number(match[1]);
-	return Number.isSafeInteger(parsed) && parsed >= 100 ? parsed : null;
+	return Number.isSafeInteger(parsed) && parsed >= minimumPercent ? parsed : null;
 }
 
 export function resolveEmbedPercentWidthGeometry(
@@ -84,7 +88,7 @@ export function resolveEmbedPercentWidthGeometry(
 		|| lineWidthPx <= 0
 		|| paneRightPx <= paneLeftPx
 		|| !Number.isSafeInteger(widthPercent)
-		|| widthPercent < 100
+		|| widthPercent < 50
 	) {
 		return null;
 	}
@@ -94,13 +98,20 @@ export function resolveEmbedPercentWidthGeometry(
 		lineCenterPx - paneLeftPx,
 		paneRightPx - lineCenterPx,
 	);
+	const requestedWidthPx = lineWidthPx * (widthPercent / 100);
+	if (widthPercent < 100) {
+		const widthPx = Math.max(1, Math.round(Math.min(requestedWidthPx, symmetricCapacityPx)));
+		return {
+			widthPx,
+			offsetXPx: Math.round((lineWidthPx - widthPx) / 2),
+		};
+	}
 	if (symmetricCapacityPx <= lineWidthPx) {
 		return {
 			widthPx: Math.max(1, Math.round(lineWidthPx)),
 			offsetXPx: 0,
 		};
 	}
-	const requestedWidthPx = lineWidthPx * (widthPercent / 100);
 	const widthPx = Math.max(1, Math.round(Math.min(requestedWidthPx, symmetricCapacityPx)));
 	return {
 		widthPx,

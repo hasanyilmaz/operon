@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "Gömülü tablolarda maksimum görünür satır",
 		"tableEmbedVisibleRowsDesc": "Gömülü Operon Table'ların varsayılan yüksekliğini belirler. Ek satırlar kaydırarak erişilebilir kalır.",
 		"tableEmbedVisibleRowsOption": "{{rows}} satır",
+		"tableEmbedDefaultWidthPercent": "Gömülü tabloların varsayılan genişliği",
+		"tableEmbedDefaultWidthPercentDesc": "width: değeri olmayan gömülü Operon Table'ların varsayılan genişliğini belirler. Embed içindeki geçerli bir width: değeri bu ayarı geçersiz kılar.",
 		"tableShowLineNumbers": "Satır numaralarını göster",
 		"tableShowLineNumbersDesc": "Operon Table başında görünür sıra numarası sütunu göster.",
 		"tableShowTaskIcon": "Görev ikonunu göster",

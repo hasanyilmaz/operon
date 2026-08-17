@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3038,
-  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
+  "keyCount": 3040,
+  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2184,6 +2184,8 @@
       "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table のデフォルトプリセット",
       "tableDefaultPresetDesc": "新しい Operon Table は、すでに独自の保存状態がない限り、このプリセットで開始します。",
+      "tableEmbedDefaultWidthPercent": "埋め込みテーブルのデフォルト幅",
+      "tableEmbedDefaultWidthPercentDesc": "width: 値がない埋め込み Operon Table のデフォルト幅を設定します。埋め込み内の有効な width: 値はこの設定を上書きします。",
       "tableEmbedVisibleRows": "埋め込みテーブルの最大表示行数",
       "tableEmbedVisibleRowsDesc": "埋め込み Operon Table のデフォルトの高さを設定します。追加の行はスクロールで引き続き表示できます。",
       "tableEmbedVisibleRowsOption": "{{rows}} 行",
@@ -3083,5 +3085,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "05c5f4d1ef79cfa5aaa45d2e5a91744518c238c90535f15fd44fcd83ced4b77f"
+  "sourceVersion": "2849f428b9c33276aa760693d7eecc671c240c53155eda333a4f3a39d8aec789"
 }

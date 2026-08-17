@@ -199,6 +199,7 @@ function buildGroups(settings: Readonly<OperonSettings>): OperonSettingsBackupGr
 		'table-global': versioned({
 			tableDefaultFolder: settings.tableDefaultFolder,
 			tableEmbedVisibleRows: settings.tableEmbedVisibleRows,
+			tableEmbedDefaultWidthPercent: settings.tableEmbedDefaultWidthPercent,
 			tableShowLineNumbers: settings.tableShowLineNumbers,
 			tableShowTaskIcon: settings.tableShowTaskIcon,
 			tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,

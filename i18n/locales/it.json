@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "Righe visibili massime nelle tabelle incorporate",
 		"tableEmbedVisibleRowsDesc": "Imposta l'altezza predefinita delle Operon Table incorporate. Le righe aggiuntive restano disponibili scorrendo.",
 		"tableEmbedVisibleRowsOption": "{{rows}} righe",
+		"tableEmbedDefaultWidthPercent": "Larghezza predefinita delle tabelle incorporate",
+		"tableEmbedDefaultWidthPercentDesc": "Imposta la larghezza predefinita delle Operon Table incorporate senza un valore width:. Un valore width: valido nell'incorporamento sostituisce questa impostazione.",
 		"tableShowLineNumbers": "Mostra numeri di riga",
 		"tableShowLineNumbersDesc": "Mostra una colonna di numeri di riga visibile all'inizio delle Operon Table.",
 		"tableShowTaskIcon": "Mostra icona attività",

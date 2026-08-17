@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "Nombre maximal de lignes visibles dans les tableaux intégrés",
 		"tableEmbedVisibleRowsDesc": "Définit la hauteur par défaut des Operon Tables intégrées. Les lignes supplémentaires restent accessibles par défilement.",
 		"tableEmbedVisibleRowsOption": "{{rows}} lignes",
+		"tableEmbedDefaultWidthPercent": "Largeur par défaut des tableaux intégrés",
+		"tableEmbedDefaultWidthPercentDesc": "Définit la largeur par défaut des Operon Tables intégrées sans valeur width:. Une valeur width: valide dans un embed remplace ce réglage.",
 		"tableShowLineNumbers": "Afficher les numéros de ligne",
 		"tableShowLineNumbersDesc": "Affiche une colonne de numéros de ligne visible au début des Operon Tables.",
 		"tableShowTaskIcon": "Afficher l'icône de tâche",

@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "Maximum visible rows in embedded tables",
 		"tableEmbedVisibleRowsDesc": "Sets the default height of embedded Operon Tables. Additional rows remain available by scrolling.",
 		"tableEmbedVisibleRowsOption": "{{rows}} rows",
+		"tableEmbedDefaultWidthPercent": "Default width of embedded tables",
+		"tableEmbedDefaultWidthPercentDesc": "Sets the default width of embedded Operon Tables without a width: value. A valid width: value in an embed overrides this setting.",
 		"tableShowLineNumbers": "Show line numbers",
 		"tableShowLineNumbersDesc": "Show a visible row-number column at the start of Operon Tables.",
 		"tableShowTaskIcon": "Show task icon",

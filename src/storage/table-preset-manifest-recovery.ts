@@ -1,5 +1,5 @@
 import type { DiscoveredOperonTableFile } from '../types/table-file';
-import { isSafeTablePresetId, isTableEmbedVisibleRows } from '../types/table';
+import { isSafeTablePresetId, isTableEmbedDefaultWidthPercent, isTableEmbedVisibleRows } from '../types/table';
 import { getOperonTableFilePathKey, normalizeOperonTableFilePath } from './table-file';
 import { TABLE_PRESET_MANIFEST_VERSION } from './table-preset-manifest';
 import { removeRetiredOperonDataPackageSettings } from './operon-data-package';
@@ -89,6 +89,9 @@ export function preflightTablePresetManifestRecoveryV1(
 	}
 	if (typeof tableManifest.tableEmbedVisibleRows !== 'number'
 		|| !isTableEmbedVisibleRows(tableManifest.tableEmbedVisibleRows)
+		|| (tableManifest.tableEmbedDefaultWidthPercent !== undefined
+			&& (typeof tableManifest.tableEmbedDefaultWidthPercent !== 'number'
+				|| !isTableEmbedDefaultWidthPercent(tableManifest.tableEmbedDefaultWidthPercent)))
 		|| typeof tableManifest.tableShowLineNumbers !== 'boolean'
 		|| typeof tableManifest.tableShowTaskIcon !== 'boolean'
 		|| typeof tableManifest.tableShowTaskTypeIcon !== 'boolean') {

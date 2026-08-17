@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3038,
-  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
+  "keyCount": 3040,
+  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2184,6 +2184,8 @@
       "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Preimpostazione Table predefinita",
       "tableDefaultPresetDesc": "I nuovi riquadri Operon Table iniziano con questa preimpostazione a meno che il riquadro non abbia già un proprio stato salvato.",
+      "tableEmbedDefaultWidthPercent": "Larghezza predefinita delle tabelle incorporate",
+      "tableEmbedDefaultWidthPercentDesc": "Imposta la larghezza predefinita delle Operon Table incorporate senza un valore width:. Un valore width: valido nell'incorporamento sostituisce questa impostazione.",
       "tableEmbedVisibleRows": "Righe visibili massime nelle tabelle incorporate",
       "tableEmbedVisibleRowsDesc": "Imposta l'altezza predefinita delle Operon Table incorporate. Le righe aggiuntive restano disponibili scorrendo.",
       "tableEmbedVisibleRowsOption": "{{rows}} righe",
@@ -3083,5 +3085,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "44046c144538ad0384f2cc65dc814d119fcf6e17e2dd8fda6253c5c97c7786ab"
+  "sourceVersion": "2c524b55c72c28e20290cdaee1e24385a48d5a70470e7db9a7cd2b62b8b3458d"
 }

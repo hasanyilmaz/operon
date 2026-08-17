@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3038,
-  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
+  "keyCount": 3040,
+  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2184,6 +2184,8 @@
       "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table 預設預設",
       "tableDefaultPresetDesc": "新的 Operon Table 視窗將以此預設開始，除非該視窗已有自己儲存的狀態。",
+      "tableEmbedDefaultWidthPercent": "嵌入表格的預設寬度",
+      "tableEmbedDefaultWidthPercentDesc": "設定未提供 width: 值的嵌入式 Operon Table 的預設寬度。嵌入中的有效 width: 值會覆寫此設定。",
       "tableEmbedVisibleRows": "嵌入表格中的最大可見行數",
       "tableEmbedVisibleRowsDesc": "設定嵌入式 Operon Table 的預設高度。額外行仍可透過捲動存取。",
       "tableEmbedVisibleRowsOption": "{{rows}} 行",
@@ -3083,5 +3085,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "f041d966cfe41fc61ba0651d5979d5858b00ad0bd035953ebb26542e7fa4573b"
+  "sourceVersion": "c41e8f48d006a297bcb578d391a24b871ef8efcfe864950426001e9b2a2586e4"
 }

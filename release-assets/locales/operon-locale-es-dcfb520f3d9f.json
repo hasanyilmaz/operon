@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3038,
-  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
+  "keyCount": 3040,
+  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2184,6 +2184,8 @@
       "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Preajuste predeterminado de Table",
       "tableDefaultPresetDesc": "Las nuevas hojas de Operon Table empiezan con este preajuste a menos que la hoja ya tenga su propio estado guardado.",
+      "tableEmbedDefaultWidthPercent": "Ancho predeterminado de las tablas incrustadas",
+      "tableEmbedDefaultWidthPercentDesc": "Define el ancho predeterminado de las Operon Tables incrustadas sin un valor width:. Un valor width: válido en una incrustación anula este ajuste.",
       "tableEmbedVisibleRows": "Filas visibles máximas en tablas incrustadas",
       "tableEmbedVisibleRowsDesc": "Define la altura predeterminada de las Operon Tables incrustadas. Las filas adicionales siguen disponibles al desplazarse.",
       "tableEmbedVisibleRowsOption": "{{rows}} filas",
@@ -3083,5 +3085,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "36f3cc9c1bc5d1ad8f92ef436b48bb7c923a819130ce077df80fa22798934261"
+  "sourceVersion": "b919c18179362bef8ffef517b95f793a0ddde4cee3c0aa2f0c754cfeffd0cd64"
 }

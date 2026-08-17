@@ -247,6 +247,7 @@ export function projectOperonSettingsBackupApplyDataPackageV1(
 		...cloneJson(current.views.tablePresets),
 		tableDefaultFolder: projected.views.tablePresets.tableDefaultFolder,
 		tableEmbedVisibleRows: projected.views.tablePresets.tableEmbedVisibleRows,
+		tableEmbedDefaultWidthPercent: projected.views.tablePresets.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: projected.views.tablePresets.tableShowLineNumbers,
 		tableShowTaskIcon: projected.views.tablePresets.tableShowTaskIcon,
 		tableShowTaskTypeIcon: projected.views.tablePresets.tableShowTaskTypeIcon,

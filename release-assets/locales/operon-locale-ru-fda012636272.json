@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3038,
-  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
+  "keyCount": 3040,
+  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2184,6 +2184,8 @@
       "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Пресет Table по умолчанию",
       "tableDefaultPresetDesc": "Новые вкладки Operon Table начинаются с этого пресета, если у вкладки ещё нет собственного сохранённого состояния.",
+      "tableEmbedDefaultWidthPercent": "Ширина встроенных таблиц по умолчанию",
+      "tableEmbedDefaultWidthPercentDesc": "Задаёт ширину по умолчанию для встроенных Operon Tables без значения width:. Допустимое значение width: во встраивании переопределяет этот параметр.",
       "tableEmbedVisibleRows": "Максимум видимых строк во встроенных таблицах",
       "tableEmbedVisibleRowsDesc": "Задаёт высоту по умолчанию для встроенных Operon Tables. Дополнительные строки остаются доступными через прокрутку.",
       "tableEmbedVisibleRowsOption": "{{rows}} строк",
@@ -3083,5 +3085,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "5fdfea6bb7b09f405e6fdf915035a2b496e4f68708194a468bc91a04913f9f57"
+  "sourceVersion": "51579121f56776dce56170504a7a52e2593bf6945e8cea9bc5b2968097d84ed1"
 }

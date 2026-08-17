@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3038,
-  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
+  "keyCount": 3040,
+  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2184,6 +2184,8 @@
       "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Préréglage Table par défaut",
       "tableDefaultPresetDesc": "Les nouveaux volets Operon Table démarrent avec ce préréglage, sauf si le volet possède déjà son propre état enregistré.",
+      "tableEmbedDefaultWidthPercent": "Largeur par défaut des tableaux intégrés",
+      "tableEmbedDefaultWidthPercentDesc": "Définit la largeur par défaut des Operon Tables intégrées sans valeur width:. Une valeur width: valide dans un embed remplace ce réglage.",
       "tableEmbedVisibleRows": "Nombre maximal de lignes visibles dans les tableaux intégrés",
       "tableEmbedVisibleRowsDesc": "Définit la hauteur par défaut des Operon Tables intégrées. Les lignes supplémentaires restent accessibles par défilement.",
       "tableEmbedVisibleRowsOption": "{{rows}} lignes",
@@ -3083,5 +3085,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "57b90f796e4eca5bc71a358371840d8211f4c7bf69299fbafd29835d5715e19e"
+  "sourceVersion": "ed530d666edcb2a56141bb21bcf6aaa41048f5739c7d689a3e4110afbe27ba19"
 }

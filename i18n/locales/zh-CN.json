@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "嵌入表格中的最大可见行数",
 		"tableEmbedVisibleRowsDesc": "设置嵌入式 Operon Table 的默认高度。额外行仍可通过滚动访问。",
 		"tableEmbedVisibleRowsOption": "{{rows}} 行",
+		"tableEmbedDefaultWidthPercent": "嵌入表格的默认宽度",
+		"tableEmbedDefaultWidthPercentDesc": "设置未提供 width: 值的嵌入式 Operon Table 的默认宽度。嵌入中的有效 width: 值会覆盖此设置。",
 		"tableShowLineNumbers": "显示行号",
 		"tableShowLineNumbersDesc": "在 Operon Table 开头显示可见的行号列。",
 		"tableShowTaskIcon": "显示任务图标",

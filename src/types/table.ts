@@ -26,6 +26,12 @@ export const DEFAULT_TABLE_EMBED_VISIBLE_ROWS: TableEmbedVisibleRows = 20;
 export function isTableEmbedVisibleRows(value: number): value is TableEmbedVisibleRows {
 	return TABLE_EMBED_VISIBLE_ROW_OPTIONS.includes(value as TableEmbedVisibleRows);
 }
+export const TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS = [50, 75, 100, 125, 150, 175, 200, 225, 250] as const;
+export type TableEmbedDefaultWidthPercent = typeof TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS[number];
+export const DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT: TableEmbedDefaultWidthPercent = 175;
+export function isTableEmbedDefaultWidthPercent(value: number): value is TableEmbedDefaultWidthPercent {
+	return TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS.includes(value as TableEmbedDefaultWidthPercent);
+}
 export type TableSummaryFunction =
 	| 'Count'
 	| 'Filled'
@@ -163,6 +169,7 @@ export interface TablePresetProjectionSettings {
 	tableDefaultPresetId: string | null;
 	tableDefaultFolder: string;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
+	tableEmbedDefaultWidthPercent: TableEmbedDefaultWidthPercent;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskTypeIcon: boolean;
@@ -175,6 +182,8 @@ export interface TablePresetPackageSettings {
 	tableDefaultPresetId: string | null;
 	tableDefaultFolder?: string;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
+	/** Optional so Table manifests written before this preference remain readable. */
+	tableEmbedDefaultWidthPercent?: TableEmbedDefaultWidthPercent;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskTypeIcon: boolean;
@@ -310,6 +319,20 @@ export function normalizeTableEmbedVisibleRows(value: unknown, fallback: TableEm
 			? Number(value.trim())
 			: Number.NaN;
 	return isTableEmbedVisibleRows(parsed)
+		? parsed
+		: fallback;
+}
+
+export function normalizeTableEmbedDefaultWidthPercent(
+	value: unknown,
+	fallback: TableEmbedDefaultWidthPercent = DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
+): TableEmbedDefaultWidthPercent {
+	const parsed = typeof value === 'number'
+		? value
+		: typeof value === 'string' && value.trim()
+			? Number(value.trim())
+			: Number.NaN;
+	return isTableEmbedDefaultWidthPercent(parsed)
 		? parsed
 		: fallback;
 }

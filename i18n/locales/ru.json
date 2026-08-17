@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "Максимум видимых строк во встроенных таблицах",
 		"tableEmbedVisibleRowsDesc": "Задаёт высоту по умолчанию для встроенных Operon Tables. Дополнительные строки остаются доступными через прокрутку.",
 		"tableEmbedVisibleRowsOption": "{{rows}} строк",
+		"tableEmbedDefaultWidthPercent": "Ширина встроенных таблиц по умолчанию",
+		"tableEmbedDefaultWidthPercentDesc": "Задаёт ширину по умолчанию для встроенных Operon Tables без значения width:. Допустимое значение width: во встраивании переопределяет этот параметр.",
 		"tableShowLineNumbers": "Показывать номера строк",
 		"tableShowLineNumbersDesc": "Показывает видимый столбец с номерами строк в начале Operon Tables.",
 		"tableShowTaskIcon": "Показывать значок задачи",

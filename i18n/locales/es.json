@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "Filas visibles máximas en tablas incrustadas",
 		"tableEmbedVisibleRowsDesc": "Define la altura predeterminada de las Operon Tables incrustadas. Las filas adicionales siguen disponibles al desplazarse.",
 		"tableEmbedVisibleRowsOption": "{{rows}} filas",
+		"tableEmbedDefaultWidthPercent": "Ancho predeterminado de las tablas incrustadas",
+		"tableEmbedDefaultWidthPercentDesc": "Define el ancho predeterminado de las Operon Tables incrustadas sin un valor width:. Un valor width: válido en una incrustación anula este ajuste.",
 		"tableShowLineNumbers": "Mostrar números de fila",
 		"tableShowLineNumbersDesc": "Muestra una columna de numeración visible al inicio de Operon Tables.",
 		"tableShowTaskIcon": "Mostrar icono de tarea",

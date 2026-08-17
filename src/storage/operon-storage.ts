@@ -1258,6 +1258,7 @@ export class OperonStorage {
 		target.tableDefaultPresetId = manifest.tableDefaultPresetId;
 		target.tableDefaultFolder = manifest.tableDefaultFolder;
 		target.tableEmbedVisibleRows = manifest.tableEmbedVisibleRows;
+		target.tableEmbedDefaultWidthPercent = manifest.tableEmbedDefaultWidthPercent;
 		target.tableShowLineNumbers = manifest.tableShowLineNumbers;
 		target.tableShowTaskIcon = manifest.tableShowTaskIcon;
 		target.tableShowTaskTypeIcon = manifest.tableShowTaskTypeIcon;

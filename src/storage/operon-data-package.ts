@@ -85,6 +85,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tableDefaultPresetId',
 	'tableDefaultFolder',
 	'tableEmbedVisibleRows',
+	'tableEmbedDefaultWidthPercent',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
 	'tableShowTaskTypeIcon',
@@ -381,6 +382,10 @@ export function composeOperonSettingsFromDataPackage(
 		tableEmbedVisibleRows: readNumber(
 			dataPackage.views.tablePresets?.tableEmbedVisibleRows,
 			defaults.tableEmbedVisibleRows,
+		),
+		tableEmbedDefaultWidthPercent: readNumber(
+			dataPackage.views.tablePresets?.tableEmbedDefaultWidthPercent,
+			defaults.tableEmbedDefaultWidthPercent,
 		),
 		tableShowLineNumbers: readBoolean(
 			dataPackage.views.tablePresets?.tableShowLineNumbers,

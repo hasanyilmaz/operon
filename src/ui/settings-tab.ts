@@ -35,9 +35,12 @@ import { validatePipelineTaxonomy } from '../core/pipeline-taxonomy-validation';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
 import {
+	TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS,
 	TABLE_EMBED_VISIBLE_ROW_OPTIONS,
 	cloneTablePreset,
+	normalizeTableEmbedDefaultWidthPercent,
 	normalizeTableEmbedVisibleRows,
+	type TableEmbedDefaultWidthPercent,
 	type TableEmbedVisibleRows,
 	type TablePreset,
 	type TablePresetPatch,
@@ -870,6 +873,7 @@ const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
 	'calendarMobileSlotMinutes',
 	'calendarMobileAgendaPastDays',
 	'calendarMobileAgendaFutureDays',
+	'tableEmbedDefaultWidthPercent',
 	'dynamicFileTaskFilterSubtaskAutoExpandLimit',
 	'dynamicSubtasksFilterSubtaskAutoExpandLimit',
 	'filterSubtaskAutoExpandLimit',
@@ -2432,6 +2436,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'calendarMobileAgendaPastDays') return [...CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS];
 		if (key === 'calendarMobileAgendaFutureDays') return [...CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS];
 		if (key === 'tableEmbedVisibleRows') return [...TABLE_EMBED_VISIBLE_ROW_OPTIONS];
+		if (key === 'tableEmbedDefaultWidthPercent') return [...TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS];
 		if (key === 'dynamicFileTaskFilterSubtaskAutoExpandLimit' || key === 'dynamicSubtasksFilterSubtaskAutoExpandLimit' || key === 'filterSubtaskAutoExpandLimit') {
 			return [...DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS];
 		}
@@ -2557,6 +2562,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (key === 'tableEmbedVisibleRows') {
 			return normalizeTableEmbedVisibleRows(text, DEFAULT_SETTINGS.tableEmbedVisibleRows);
+		}
+		if (key === 'tableEmbedDefaultWidthPercent') {
+			return normalizeTableEmbedDefaultWidthPercent(text, DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent);
 		}
 		return text;
 	}
@@ -2832,6 +2840,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 				t('settings', 'tableEmbedVisibleRowsOption', { rows: String(rows) }),
 			]));
 		}
+		if (key === 'tableEmbedDefaultWidthPercent') {
+			return Object.fromEntries(TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS.map(width => [
+				String(width),
+				`${String(width)}%`,
+			]));
+		}
 		if (key === 'kanbanDefaultPresetId') {
 			return this.settings.kanbanPresets.length > 0
 				? Object.fromEntries(this.settings.kanbanPresets.map(preset => [preset.id, preset.name]))
@@ -2965,7 +2979,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'kanbanTaskShowNotesPreview') {
 			this.applyPendingSettingsChange();
 		}
-		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskTypeIcon') {
+		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskTypeIcon') {
 			this.applyPendingSettingsChange();
 		}
 		if (key === 'timeFormat' || key === 'reminderSoundFilePath') {
@@ -7850,6 +7864,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 				label: t('settings', 'tableEmbedVisibleRowsOption', { rows: String(rows) }),
 			})),
 			normalize: value => normalizeTableEmbedVisibleRows(value, DEFAULT_SETTINGS.tableEmbedVisibleRows),
+			onAfterChange: () => this.applyPendingSettingsChange(),
+		});
+		this.renderBoundDropdownSetting(generalSection, t('settings', 'tableEmbedDefaultWidthPercent'), t('settings', 'tableEmbedDefaultWidthPercentDesc'), 'tableEmbedDefaultWidthPercent', {
+			value: String(this.settings.tableEmbedDefaultWidthPercent) as `${TableEmbedDefaultWidthPercent}`,
+			dropdownOptions: TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS.map(width => ({
+				value: String(width) as `${TableEmbedDefaultWidthPercent}`,
+				label: `${String(width)}%`,
+			})),
+			normalize: value => normalizeTableEmbedDefaultWidthPercent(value, DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent),
 			onAfterChange: () => this.applyPendingSettingsChange(),
 		});
 		this.renderBoundToggleSetting(

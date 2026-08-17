@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "Maximal sichtbare Zeilen in eingebetteten Tabellen",
 		"tableEmbedVisibleRowsDesc": "Legt die Standardhöhe eingebetteter Operon Tables fest. Zusätzliche Zeilen bleiben per Scrollen verfügbar.",
 		"tableEmbedVisibleRowsOption": "{{rows}} Zeilen",
+		"tableEmbedDefaultWidthPercent": "Standardbreite eingebetteter Tabellen",
+		"tableEmbedDefaultWidthPercentDesc": "Legt die Standardbreite eingebetteter Operon Tables ohne width:-Wert fest. Ein gültiger width:-Wert im Embed überschreibt diese Einstellung.",
 		"tableShowLineNumbers": "Zeilennummern anzeigen",
 		"tableShowLineNumbersDesc": "Zeigt am Anfang von Operon Tables eine sichtbare Zeilennummernspalte an.",
 		"tableShowTaskIcon": "Aufgabensymbol anzeigen",

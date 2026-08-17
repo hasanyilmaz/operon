@@ -1371,6 +1371,8 @@
 		"tableEmbedVisibleRows": "埋め込みテーブルの最大表示行数",
 		"tableEmbedVisibleRowsDesc": "埋め込み Operon Table のデフォルトの高さを設定します。追加の行はスクロールで引き続き表示できます。",
 		"tableEmbedVisibleRowsOption": "{{rows}} 行",
+		"tableEmbedDefaultWidthPercent": "埋め込みテーブルのデフォルト幅",
+		"tableEmbedDefaultWidthPercentDesc": "width: 値がない埋め込み Operon Table のデフォルト幅を設定します。埋め込み内の有効な width: 値はこの設定を上書きします。",
 		"tableShowLineNumbers": "行番号を表示",
 		"tableShowLineNumbersDesc": "Operon Table の先頭に表示行番号の列を表示します。",
 		"tableShowTaskIcon": "タスクアイコンを表示",

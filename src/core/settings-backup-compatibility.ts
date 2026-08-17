@@ -271,6 +271,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'tableDefaultPresetId',
 	'tableDefaultFolder',
 	'tableEmbedVisibleRows',
+	'tableEmbedDefaultWidthPercent',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
 	'tableShowTaskTypeIcon',
@@ -371,6 +372,7 @@ const FAVORITE_KEYS = ['presetFavorites'] as const satisfies readonly (keyof Ope
 const TABLE_GLOBAL_KEYS = [
 	'tableDefaultFolder',
 	'tableEmbedVisibleRows',
+	'tableEmbedDefaultWidthPercent',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
 	'tableShowTaskTypeIcon',
