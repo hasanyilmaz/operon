@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3040,
-  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
+  "keyCount": 3042,
+  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "Показывать небольшое уведомление, когда обратный отсчёт FlowTime достигает нуля.",
       "flowTimePauseDuration": "Длительность паузы FlowTime",
       "flowTimePauseDurationDesc": "Длительность перерывов в FlowTime.",
+      "flowTimePlayReminderSoundOnTargetReached": "Воспроизводить звук напоминания, когда FlowTime достигает нуля",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "Воспроизводит аудиофайл, выбранный в Напоминания → Звук напоминания, когда сессия или перерыв FlowTime достигает нуля.",
       "flowTimeShowNumericTimer": "Показывать числовой таймер TrackTime/FlowTime",
       "flowTimeShowNumericTimerDesc": "Показывать числовое прошедшее или оставшееся время на боковой панели TrackTime и FlowTime.",
       "flowTimeUseLastSelectedDuration": "Использовать последнюю выбранную длительность как значение FlowTime по умолчанию",
@@ -3085,5 +3087,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "51579121f56776dce56170504a7a52e2593bf6945e8cea9bc5b2968097d84ed1"
+  "sourceVersion": "a1d28e19fad18bdf43fae624792ad2685f2da19aa366fa86f564f8ef298463df"
 }

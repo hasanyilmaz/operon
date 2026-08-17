@@ -1323,6 +1323,8 @@
 		"flowTimeShowNumericTimerDesc": "Die numerische verstrichene oder verbleibende Zeit in der TrackTime- & FlowTime-Seitenleiste anzeigen.",
 		"flowTimeNotifyOnTargetReached": "Benachrichtigen, wenn FlowTime null erreicht",
 		"flowTimeNotifyOnTargetReachedDesc": "Einen kleinen Hinweis anzeigen, wenn der FlowTime-Countdown null erreicht.",
+		"flowTimePlayReminderSoundOnTargetReached": "Erinnerungston abspielen, wenn FlowTime null erreicht",
+		"flowTimePlayReminderSoundOnTargetReachedDesc": "Die unter Erinnerungen → Erinnerungston ausgewählte Audiodatei abspielen, wenn eine FlowTime-Sitzung oder Pause null erreicht.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Konfiguriere swimlane-orientierte Kanban-Voreinstellungen, die Standard-Board-Auswahl und die gemeinsame Spaltengröße.",
 		"kanbanGeneralSettings": "Allgemeine Kanban-Einstellungen",

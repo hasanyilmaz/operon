@@ -1716,6 +1716,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					this.buildSettingsSearchSettingDefinition(entries, 'flowTimeDefaultSessionMinutes'),
 					this.buildSettingsSearchSettingDefinition(entries, 'flowTimeShowNumericTimer'),
 					this.buildSettingsSearchSettingDefinition(entries, 'flowTimeNotifyOnTargetReached'),
+					this.buildSettingsSearchSettingDefinition(entries, 'flowTimePlayReminderSoundOnTargetReached'),
 				]),
 			},
 		];
@@ -6859,6 +6860,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		this.renderBoundToggleSetting(flowTimeSection, t('settings', 'flowTimeShowNumericTimer'), t('settings', 'flowTimeShowNumericTimerDesc'), 'flowTimeShowNumericTimer');
 		this.renderBoundToggleSetting(flowTimeSection, t('settings', 'flowTimeNotifyOnTargetReached'), t('settings', 'flowTimeNotifyOnTargetReachedDesc'), 'flowTimeNotifyOnTargetReached');
+		this.renderBoundToggleSetting(flowTimeSection, t('settings', 'flowTimePlayReminderSoundOnTargetReached'), t('settings', 'flowTimePlayReminderSoundOnTargetReachedDesc'), 'flowTimePlayReminderSoundOnTargetReached');
 	}
 
 	private addTrackerTaskDescriptionClickActionOptions(

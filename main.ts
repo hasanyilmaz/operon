@@ -14686,6 +14686,7 @@ export default class OperonPlugin extends Plugin {
 					getPipelines: () => this.settings.pipelines,
 					getSettings: () => this.settings,
 					saveSettings: () => this.storage.saveSettings(),
+					playReminderSound: () => this.reminderDeliveryController?.playReminderSound() ?? Promise.resolve(),
 					createInlineTaskFromQuickInput: (draft) => this.createInlineTaskFromCreatorDraftResult(draft),
 					shouldPromptForInlineTaskTarget: () => this.resolveEffectiveInlineTaskSaveMode() === 'ask-every-time',
 					startTimerForTask: (operonId, source, startOverride) => this.startTimerForTask(operonId, source, startOverride),

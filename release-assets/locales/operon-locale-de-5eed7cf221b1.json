@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3040,
-  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
+  "keyCount": 3042,
+  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "Einen kleinen Hinweis anzeigen, wenn der FlowTime-Countdown null erreicht.",
       "flowTimePauseDuration": "FlowTime-Pausendauer",
       "flowTimePauseDurationDesc": "Länge der Pausen in FlowTime.",
+      "flowTimePlayReminderSoundOnTargetReached": "Erinnerungston abspielen, wenn FlowTime null erreicht",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "Die unter Erinnerungen → Erinnerungston ausgewählte Audiodatei abspielen, wenn eine FlowTime-Sitzung oder Pause null erreicht.",
       "flowTimeShowNumericTimer": "Numerischen TrackTime/FlowTime-Timer anzeigen",
       "flowTimeShowNumericTimerDesc": "Die numerische verstrichene oder verbleibende Zeit in der TrackTime- & FlowTime-Seitenleiste anzeigen.",
       "flowTimeUseLastSelectedDuration": "Zuletzt gewählte Dauer als FlowTime-Standard verwenden",
@@ -3085,5 +3087,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "87b5065878fb86b4ce906631ad0d2eafa250a8aa87d6568e3e725192ee960435"
+  "sourceVersion": "21d82e6a1fe48ba19a3eddb35eb871c36dd25e67b059ae5a90734aec7ca6919f"
 }

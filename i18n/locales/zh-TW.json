@@ -1323,6 +1323,8 @@
 		"flowTimeShowNumericTimerDesc": "在 TrackTime 與 FlowTime 側邊欄中顯示已用或剩餘的數字時間。",
 		"flowTimeNotifyOnTargetReached": "FlowTime 歸零時通知",
 		"flowTimeNotifyOnTargetReachedDesc": "當 FlowTime 倒計時歸零時顯示一個小通知。",
+		"flowTimePlayReminderSoundOnTargetReached": "當 FlowTime 歸零時播放提醒音效",
+		"flowTimePlayReminderSoundOnTargetReachedDesc": "當 FlowTime 工作階段或休息歸零時，播放在提醒 → 提醒音效中選取的音訊檔案。",
 		"kanbanTitle": "看板",
 		"kanbanSettingsDesc": "配置泳道優先的看板預設、預設看板選擇和共享列尺寸。",
 		"kanbanGeneralSettings": "看板常規設定",

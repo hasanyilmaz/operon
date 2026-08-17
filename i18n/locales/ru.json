@@ -1323,6 +1323,8 @@
 		"flowTimeShowNumericTimerDesc": "Показывать числовое прошедшее или оставшееся время на боковой панели TrackTime и FlowTime.",
 		"flowTimeNotifyOnTargetReached": "Уведомлять при достижении нуля FlowTime",
 		"flowTimeNotifyOnTargetReachedDesc": "Показывать небольшое уведомление, когда обратный отсчёт FlowTime достигает нуля.",
+		"flowTimePlayReminderSoundOnTargetReached": "Воспроизводить звук напоминания, когда FlowTime достигает нуля",
+		"flowTimePlayReminderSoundOnTargetReachedDesc": "Воспроизводит аудиофайл, выбранный в Напоминания → Звук напоминания, когда сессия или перерыв FlowTime достигает нуля.",
 		"kanbanTitle": "Канбан",
 		"kanbanSettingsDesc": "Настройте пресеты канбана с приоритетом дорожек, выбор доски по умолчанию и общий размер столбцов.",
 		"kanbanGeneralSettings": "Общие настройки канбана",

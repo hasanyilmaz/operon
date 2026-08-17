@@ -1323,6 +1323,8 @@
 		"flowTimeShowNumericTimerDesc": "TrackTime & FlowTime yan paneli içinde geçen veya kalan süreyi sayı olarak göster.",
 		"flowTimeNotifyOnTargetReached": "FlowTime sıfıra ulaşınca uyar",
 		"flowTimeNotifyOnTargetReachedDesc": "FlowTime geri sayımı sıfıra ulaştığında küçük bir uyarı göster.",
+		"flowTimePlayReminderSoundOnTargetReached": "FlowTime sıfıra ulaştığında hatırlatıcı sesini çal",
+		"flowTimePlayReminderSoundOnTargetReachedDesc": "Bir FlowTime oturumu veya molası sıfıra ulaştığında Hatırlatıcılar → Hatırlatıcı sesi altında seçilen ses dosyasını çal.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Kulvar odaklı kanban ön ayarlarını, varsayılan pano seçimini ve ortak sütun boyutlandırmayı ayarlayın.",
 		"kanbanGeneralSettings": "Genel Kanban Ayarları",

@@ -1323,6 +1323,8 @@
 		"flowTimeShowNumericTimerDesc": "Show the numeric elapsed or remaining time in the TrackTime & FlowTime sidebar.",
 		"flowTimeNotifyOnTargetReached": "Notify when FlowTime reaches zero",
 		"flowTimeNotifyOnTargetReachedDesc": "Show a small notice when the FlowTime countdown reaches zero.",
+		"flowTimePlayReminderSoundOnTargetReached": "Play reminder sound when FlowTime reaches zero",
+		"flowTimePlayReminderSoundOnTargetReachedDesc": "Play the audio file selected under Reminders → Reminder sound when a FlowTime session or break reaches zero.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Configure swimlane-first kanban presets, default board selection, and shared column sizing.",
 		"kanbanGeneralSettings": "General Kanban Settings",

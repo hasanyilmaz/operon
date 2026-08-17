@@ -1774,6 +1774,8 @@ export interface OperonSettings {
 	flowTimeDefaultSessionMinutes: number;
 	flowTimeShowNumericTimer: boolean;
 	flowTimeNotifyOnTargetReached: boolean;
+	/** Play the configured reminder sound when a FlowTime session or break reaches zero. */
+	flowTimePlayReminderSoundOnTargetReached: boolean;
 
 	// Recurrence
 	newOccurrencePosition: 'above' | 'below';
@@ -2217,9 +2219,10 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 				flowTimeSessionMinutes: 25,
 				flowTimePauseMinutes: 5,
 					flowTimeUseLastSelectedDuration: false,
-					flowTimeDefaultSessionMinutes: 25,
-					flowTimeShowNumericTimer: true,
-					flowTimeNotifyOnTargetReached: true,
+				flowTimeDefaultSessionMinutes: 25,
+				flowTimeShowNumericTimer: true,
+				flowTimeNotifyOnTargetReached: true,
+				flowTimePlayReminderSoundOnTargetReached: false,
 
 	newOccurrencePosition: 'above',
 	fileRepeatDestination: 'same-folder',
@@ -4390,6 +4393,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.flowTimeMode = src.flowTimeMode === 'flowtime'
 		? 'flowtime'
 		: DEFAULT_SETTINGS.flowTimeMode;
+	out.flowTimePlayReminderSoundOnTargetReached = src.flowTimePlayReminderSoundOnTargetReached === true;
 	out.duplicateAlertDelaySeconds = normalizeAllowedNumber(
 		Math.floor(out.duplicateAlertDelaySeconds),
 		DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS,

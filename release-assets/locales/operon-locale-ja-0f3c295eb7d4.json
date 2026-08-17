@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3040,
-  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
+  "keyCount": 3042,
+  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "FlowTime のカウントダウンがゼロになったときに小さな通知を表示します。",
       "flowTimePauseDuration": "FlowTime の休憩時間",
       "flowTimePauseDurationDesc": "FlowTime で取る休憩の長さ。",
+      "flowTimePlayReminderSoundOnTargetReached": "FlowTime がゼロになったらリマインダー音を再生",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "FlowTime セッションまたは休憩がゼロになったときに、リマインダー → リマインダー音で選択した音声ファイルを再生します。",
       "flowTimeShowNumericTimer": "TrackTime/FlowTime の数値タイマーを表示",
       "flowTimeShowNumericTimerDesc": "TrackTime と FlowTime のサイドバーに、経過時間または残り時間を数値で表示します。",
       "flowTimeUseLastSelectedDuration": "最後に選択した時間を FlowTime のデフォルトとして使用",
@@ -3085,5 +3087,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "2849f428b9c33276aa760693d7eecc671c240c53155eda333a4f3a39d8aec789"
+  "sourceVersion": "7047ec183606503bf017575c32b6806059c61792bc18a31a3fedd176e6a6cc7c"
 }

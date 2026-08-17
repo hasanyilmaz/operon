@@ -1323,6 +1323,8 @@
 		"flowTimeShowNumericTimerDesc": "Mostrar el tiempo numérico transcurrido o restante en la barra lateral de TrackTime y FlowTime.",
 		"flowTimeNotifyOnTargetReached": "Notificar cuando FlowTime llega a cero",
 		"flowTimeNotifyOnTargetReachedDesc": "Mostrar un pequeño aviso cuando la cuenta atrás de FlowTime llega a cero.",
+		"flowTimePlayReminderSoundOnTargetReached": "Reproducir el sonido de recordatorio cuando FlowTime llega a cero",
+		"flowTimePlayReminderSoundOnTargetReachedDesc": "Reproducir el archivo de audio seleccionado en Recordatorios → Sonido de recordatorio cuando una sesión o pausa de FlowTime llega a cero.",
 		"kanbanTitle": "Kanban",
 		"kanbanSettingsDesc": "Configurar los preajustes de kanban centrados en carriles, la selección de tablero predeterminada y el tamaño de columna compartido.",
 		"kanbanGeneralSettings": "Configuración general de Kanban",

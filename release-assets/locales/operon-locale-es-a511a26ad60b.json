@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3040,
-  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
+  "keyCount": 3042,
+  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "Mostrar un pequeño aviso cuando la cuenta atrás de FlowTime llega a cero.",
       "flowTimePauseDuration": "Duración de la pausa de FlowTime",
       "flowTimePauseDurationDesc": "Duración de los descansos tomados en FlowTime.",
+      "flowTimePlayReminderSoundOnTargetReached": "Reproducir el sonido de recordatorio cuando FlowTime llega a cero",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "Reproducir el archivo de audio seleccionado en Recordatorios → Sonido de recordatorio cuando una sesión o pausa de FlowTime llega a cero.",
       "flowTimeShowNumericTimer": "Mostrar el temporizador numérico de TrackTime/FlowTime",
       "flowTimeShowNumericTimerDesc": "Mostrar el tiempo numérico transcurrido o restante en la barra lateral de TrackTime y FlowTime.",
       "flowTimeUseLastSelectedDuration": "Usar la última duración seleccionada como predeterminada de FlowTime",
@@ -3085,5 +3087,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "b919c18179362bef8ffef517b95f793a0ddde4cee3c0aa2f0c754cfeffd0cd64"
+  "sourceVersion": "f9f76e5ded0f0474951706ecce78b67936214c68587a5429e979cf21c4f807f4"
 }

@@ -150,6 +150,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('automation', 'tasksTracker', 'flowTimeDefaultSessionMinutes', 'settings', 'flowTimeDefaultSessionMinutes', 'flowTimeDefaultSessionMinutesDesc', 'dropdown', ['time tracking', 'timer', 'FlowTime', 'default session', 'countdown']),
 	e('ui', 'tasksTracker', 'flowTimeShowNumericTimer', 'settings', 'flowTimeShowNumericTimer', 'flowTimeShowNumericTimerDesc', 'toggle', ['time tracking', 'timer', 'TrackTime', 'FlowTime', 'numeric timer', 'countdown']),
 	e('automation', 'tasksTracker', 'flowTimeNotifyOnTargetReached', 'settings', 'flowTimeNotifyOnTargetReached', 'flowTimeNotifyOnTargetReachedDesc', 'toggle', ['time tracking', 'timer', 'FlowTime', 'notification', 'countdown']),
+	e('automation', 'tasksTracker', 'flowTimePlayReminderSoundOnTargetReached', 'settings', 'flowTimePlayReminderSoundOnTargetReached', 'flowTimePlayReminderSoundOnTargetReachedDesc', 'toggle', ['time tracking', 'timer', 'FlowTime', 'reminder', 'sound', 'audio', 'countdown']),
 
 	e('views', 'viewsCalendar', 'calendarDefaultPresetId', 'calendar', 'defaultPreset', 'defaultPresetDesc', 'dropdown', ['calendar', 'calendar default preset', 'calendar preset', 'preset']),
 	e('views', 'viewsCalendar', 'calendarWeekStart', 'calendar', 'weekStart', 'weekStartDesc', 'dropdown', ['calendar', 'week start']),

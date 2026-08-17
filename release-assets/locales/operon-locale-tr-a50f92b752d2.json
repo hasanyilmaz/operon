@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3040,
-  "keyFingerprint": "56bb4d0a0b28b85e995ddd7a89f10550aebe9bd946e5ca7d48a066e705afae95",
+  "keyCount": 3042,
+  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "FlowTime geri sayımı sıfıra ulaştığında küçük bir uyarı göster.",
       "flowTimePauseDuration": "FlowTime mola süresi",
       "flowTimePauseDurationDesc": "FlowTime'da alınan molaların süresi.",
+      "flowTimePlayReminderSoundOnTargetReached": "FlowTime sıfıra ulaştığında hatırlatıcı sesini çal",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "Bir FlowTime oturumu veya molası sıfıra ulaştığında Hatırlatıcılar → Hatırlatıcı sesi altında seçilen ses dosyasını çal.",
       "flowTimeShowNumericTimer": "TrackTime/FlowTime sayısal zamanlayıcıyı göster",
       "flowTimeShowNumericTimerDesc": "TrackTime & FlowTime yan paneli içinde geçen veya kalan süreyi sayı olarak göster.",
       "flowTimeUseLastSelectedDuration": "Varsayılan FlowTime süresini son seçilen süre yap",
@@ -3085,5 +3087,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "71432a0969f3eb0f449265f64151a0b6a2d88d833668a5121a548313f4f0cfd7"
+  "sourceVersion": "9d229e048dc085e3bffadbe1f75344c393d4072970b4c0046d65275e31f3810b"
 }

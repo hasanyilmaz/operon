@@ -1323,6 +1323,8 @@
 		"flowTimeShowNumericTimerDesc": "TrackTime と FlowTime のサイドバーに、経過時間または残り時間を数値で表示します。",
 		"flowTimeNotifyOnTargetReached": "FlowTime がゼロになったら通知",
 		"flowTimeNotifyOnTargetReachedDesc": "FlowTime のカウントダウンがゼロになったときに小さな通知を表示します。",
+		"flowTimePlayReminderSoundOnTargetReached": "FlowTime がゼロになったらリマインダー音を再生",
+		"flowTimePlayReminderSoundOnTargetReachedDesc": "FlowTime セッションまたは休憩がゼロになったときに、リマインダー → リマインダー音で選択した音声ファイルを再生します。",
 		"kanbanTitle": "カンバン",
 		"kanbanSettingsDesc": "スイムレーン優先のカンバンプリセット、デフォルトのボード選択、共通の列サイズを設定します。",
 		"kanbanGeneralSettings": "カンバンの一般設定",
