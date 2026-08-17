@@ -271,6 +271,9 @@ import {
 	resolveRuntimeTaskFieldMutationPostflightEvidenceV1,
 	runtimeInlineTaskUpdateSettlementEvidenceSourceV1,
 	verifyRuntimeTaskFieldMutationPrimaryPostflightV1,
+	verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1,
+	verifyRuntimeMaterializedRecurrenceSeriesStatePostflightV1,
+	classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1,
 	guardRuntimeTimerControlV1,
 	guardRuntimeInlineRelocationV1,
 	analyzeRuntimeFileToInlineLossV1,
@@ -320,6 +323,7 @@ import {
 	type RuntimeSemanticTransitionPlanV1,
 	type RuntimeSemanticTransitionExecutionOptionsV1,
 	type RuntimeSemanticTransitionPostflightEvidenceV1,
+	type RuntimeMaterializedRecurrenceSuccessorV1,
 	type RuntimeTimerMutationPreparationV1,
 	type RuntimeSourceTransitionPreparationV1,
 	type RuntimeTaskCreationPreparationV1,
@@ -4158,6 +4162,36 @@ export default class OperonPlugin extends Plugin {
 				await semanticTransitionCommitEvidence(plan),
 			);
 		};
+		const semanticTransitionMaterializedRecurrenceStateMatches = (
+			plan: RuntimeSemanticTransitionPlanV1,
+		): boolean => {
+			if (plan.recurrence?.preview.disposition !== 'materialize') return false;
+			const seriesId = plan.recurrence.seriesId;
+			if (!seriesId) return false;
+			const entry = this.storage.repeatSeries.getEntry(seriesId);
+			const sealedRepeatSeriesRevision = plan.affectedResources.find(resource => (
+				resource.resourceKind === 'repeat-series'
+					&& resource.resourceKey === seriesId
+			))?.revision ?? null;
+			return verifyRuntimeMaterializedRecurrenceSeriesStatePostflightV1({
+				expectedSourceTaskId: plan.prepared.task.operonId,
+				expectedSourceFormat: plan.prepared.task.locator.representation === 'file'
+					? 'yaml'
+					: 'inline',
+				effectiveAt: toLocalDatetime(new Date(plan.effectiveAt)),
+				sealedRepeatSeriesRevision,
+				currentRepeatSeriesRevision: sha256HexV1(
+					String(this.storage.repeatSeries.getRevision()),
+				),
+				entry: entry
+					? {
+						sourceTaskId: entry.sourceTaskId,
+						sourceFormat: entry.sourceFormat,
+						updatedAt: entry.updatedAt,
+					}
+					: null,
+			});
+		};
 		const semanticTransitionStepState = async (
 			plan: RuntimeSemanticTransitionPlanV1,
 			stepId: string,
@@ -4182,7 +4216,7 @@ export default class OperonPlugin extends Plugin {
 					&& reference.resourceKey === resource.resourceKey
 				)))
 				: [];
-			if (
+			const sealedResourcesMatchBefore = (
 				sealedResources.length > 0
 				&& (await Promise.all(sealedResources.map(async resource => (
 					await currentMutationResourceRevision(
@@ -4190,7 +4224,62 @@ export default class OperonPlugin extends Plugin {
 						resource.resourceKey,
 					) === resource.revision
 				)))).every(Boolean)
-			) return 'before';
+			);
+			if (
+				stepId === 'recurrence'
+				&& plan.recurrence?.preview.disposition === 'materialize'
+			) {
+				const preview = plan.recurrence.preview;
+				const next = await this.readAgentRuntimeMutationSource(
+					preview.nextLocator.filePath,
+				);
+				const archiveMatches = !preview.archiveSource
+					|| (await this.readAgentRuntimeMutationSource(
+						preview.archiveSource.locator.filePath,
+					)).content === preview.archiveSource.plannedSourceContent;
+				const sourceMatches = next.content === preview.plannedSourceContent;
+				if (sourceMatches && archiveMatches) {
+					try {
+						await this.indexer.forceReindexFilePathAfterMutation(
+							preview.nextLocator.filePath,
+							{ notify: false },
+						);
+					} catch {
+						return 'other';
+					}
+					const successorTask = this.indexer.getTaskSnapshot(preview.nextOperonId);
+					const successorStatus = successorTask
+						? resolveConfiguredStatusIdentity(
+							successorTask.fieldValues['status'],
+							buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+						)
+						: null;
+					const successorStatusIsOpen = successorStatus?.kind === 'configured'
+						? !successorStatus.status.isFinished && !successorStatus.status.isCancelled
+						: successorStatus?.kind === 'unknown';
+					return classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1({
+						sourceMatches,
+						archiveMatches,
+						expectedOperonId: preview.nextOperonId,
+						expectedLocator: preview.nextLocator,
+						successor: successorTask
+							? {
+								operonId: successorTask.operonId,
+								locator: this.agentRuntimeTaskLocator(successorTask),
+								checkbox: successorTask.checkbox,
+							}
+							: null,
+						hasDuplicateOperonIdConflict: this.indexer
+							.hasDuplicateOperonIdConflict(preview.nextOperonId),
+						statusIsOpen: successorStatusIsOpen,
+						repeatSeriesStateVerified:
+							semanticTransitionMaterializedRecurrenceStateMatches(plan),
+					});
+				}
+				if (!archiveMatches) return 'other';
+				return sealedResourcesMatchBefore ? 'before' : 'other';
+			}
+			if (sealedResourcesMatchBefore) return 'before';
 			if (stepId === 'primary') {
 				const task = this.indexer.getTaskSnapshot(plan.prepared.task.operonId);
 				const expectedCheckbox = plan.prepared.fieldValues['_checkbox'];
@@ -4215,16 +4304,7 @@ export default class OperonPlugin extends Plugin {
 						? 'other'
 						: 'after';
 				}
-				const next = await this.readAgentRuntimeMutationSource(
-					preview.nextLocator.filePath,
-				);
-				const archiveMatches = !preview.archiveSource
-					|| (await this.readAgentRuntimeMutationSource(
-						preview.archiveSource.locator.filePath,
-					)).content === preview.archiveSource.plannedSourceContent;
-				return next.content === preview.plannedSourceContent && archiveMatches
-					? 'after'
-					: 'other';
+				return 'other';
 			}
 			if (stepId === 'pinned') {
 				return this.pinnedCache?.isPinned(plan.prepared.task.operonId) === false
@@ -9546,11 +9626,34 @@ export default class OperonPlugin extends Plugin {
 							}
 						}
 					}
-					if (!nextTask && !preview.sourceTaskRetained) {
+					const successorStatus = nextTask
+						? resolveConfiguredStatusIdentity(
+							nextTask.fieldValues['status'],
+							buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+						)
+						: null;
+					const successorStatusIsOpen = successorStatus?.kind === 'configured'
+						? !successorStatus.status.isFinished && !successorStatus.status.isCancelled
+						: successorStatus?.kind === 'unknown';
+					const successorVerified = verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({
+						expectedOperonId: preview.nextOperonId,
+						expectedLocator: preview.nextLocator,
+						successor: nextTask
+							? {
+								operonId: nextTask.operonId,
+								locator: this.agentRuntimeTaskLocator(nextTask),
+								checkbox: nextTask.checkbox,
+							}
+							: null,
+						hasDuplicateOperonIdConflict: this.indexer
+							.hasDuplicateOperonIdConflict(preview.nextOperonId),
+						statusIsOpen: successorStatusIsOpen,
+					});
+					if (!successorVerified) {
 						return {
 							ok: false,
 							outcomeUnknown: true,
-							reason: 'The replacing recurrence source committed without a unique indexed task.',
+							reason: 'The recurrence source committed without a unique open indexed successor.',
 						};
 					}
 					const recurrenceSourceTask = preview.sourceTaskFinalLocator
@@ -10408,6 +10511,9 @@ export default class OperonPlugin extends Plugin {
 					disposition: 'created';
 					nextOperonId: string;
 					nextLocator: import('./src/agent-runtime/contracts/v1/identity').TaskSourceLocatorV1;
+					successor: RuntimeMaterializedRecurrenceSuccessorV1;
+					hasDuplicateSuccessorOperonIdConflict: boolean;
+					successorStatusIsOpen: boolean;
 					sourceRevision: string;
 					committedSourceRevision: string;
 					archiveSourceRevision?: string;
@@ -10423,6 +10529,15 @@ export default class OperonPlugin extends Plugin {
 			} else if (plan.recurrence?.preview.disposition === 'materialize') {
 				const preview = plan.recurrence.preview;
 				const nextTask = this.indexer.getTaskSnapshot(preview.nextOperonId);
+				const successorStatus = nextTask
+					? resolveConfiguredStatusIdentity(
+						nextTask.fieldValues['status'],
+						buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+					)
+					: null;
+				const successorStatusIsOpen = successorStatus?.kind === 'configured'
+					? !successorStatus.status.isFinished && !successorStatus.status.isCancelled
+					: successorStatus?.kind === 'unknown';
 				const nextSource = await this.readAgentRuntimeMutationSource(preview.nextLocator.filePath);
 				const committedSourceRevision = [...commit.groupResults]
 					.reverse()
@@ -10447,6 +10562,14 @@ export default class OperonPlugin extends Plugin {
 								filePath: nextTask.primary.filePath,
 								lineNumber: nextTask.primary.lineNumber,
 							},
+						successor: {
+							operonId: nextTask.operonId,
+							locator: this.agentRuntimeTaskLocator(nextTask),
+							checkbox: nextTask.checkbox,
+						},
+						hasDuplicateSuccessorOperonIdConflict: this.indexer
+							.hasDuplicateOperonIdConflict(preview.nextOperonId),
+						successorStatusIsOpen,
 						sourceRevision: sha256HexV1(nextSource.content),
 						committedSourceRevision,
 						...(archiveSource && archiveSource.content !== null

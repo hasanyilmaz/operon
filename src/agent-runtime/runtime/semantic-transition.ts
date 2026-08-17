@@ -102,6 +102,100 @@ export interface RuntimeSemanticTransitionRecurrenceMaterializationPreviewV1 {
 	readonly coalescedWithPrimarySource: boolean;
 }
 
+/**
+ * The minimum indexed evidence required after a recurrence source has been
+ * written. A source write alone is not a successful recurrence transition:
+ * Calendar and repeat-series state both depend on the successor being present
+ * exactly once in the RAM index as an open task.
+ */
+export interface RuntimeMaterializedRecurrenceSuccessorV1 {
+	readonly operonId: string;
+	readonly locator: TaskSourceLocatorV1;
+	readonly checkbox: 'open' | 'done' | 'cancelled';
+}
+
+export interface RuntimeMaterializedRecurrenceSuccessorPostflightInputV1 {
+	readonly expectedOperonId: string;
+	readonly expectedLocator: TaskSourceLocatorV1;
+	readonly successor: RuntimeMaterializedRecurrenceSuccessorV1 | null | undefined;
+	readonly hasDuplicateOperonIdConflict: boolean;
+	/**
+	 * `true` for a resolved non-terminal configured status and for a preserved
+	 * legacy/unknown status; false for ambiguous or terminal configured status.
+	 */
+	readonly statusIsOpen: boolean;
+}
+
+export function verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1(
+	input: RuntimeMaterializedRecurrenceSuccessorPostflightInputV1,
+): boolean {
+	const successor = input.successor;
+	return !!successor
+		&& !input.hasDuplicateOperonIdConflict
+		&& successor.operonId === input.expectedOperonId
+		&& successor.checkbox === 'open'
+		&& input.statusIsOpen
+		&& sameTaskSourceLocatorV1(successor.locator, input.expectedLocator);
+}
+
+export interface RuntimeMaterializedRecurrenceSeriesStateEvidenceV1 {
+	readonly sourceTaskId: string;
+	readonly sourceFormat: 'inline' | 'yaml';
+	readonly updatedAt: string;
+}
+
+/**
+ * A recurrence recovery checkpoint needs evidence that this transition—not
+ * merely a pre-existing series—updated repeat-series state. The store revision
+ * is global, so source ownership and the effective updated timestamp remain
+ * part of the bounded semantic proof.
+ */
+export interface RuntimeMaterializedRecurrenceSeriesStatePostflightInputV1 {
+	readonly expectedSourceTaskId: string;
+	readonly expectedSourceFormat: 'inline' | 'yaml';
+	readonly effectiveAt: string;
+	readonly sealedRepeatSeriesRevision: string | null;
+	readonly currentRepeatSeriesRevision: string;
+	readonly entry: RuntimeMaterializedRecurrenceSeriesStateEvidenceV1 | null;
+}
+
+export function verifyRuntimeMaterializedRecurrenceSeriesStatePostflightV1(
+	input: RuntimeMaterializedRecurrenceSeriesStatePostflightInputV1,
+): boolean {
+	const entry = input.entry;
+	return !!entry
+		&& input.sealedRepeatSeriesRevision !== null
+		&& input.currentRepeatSeriesRevision !== input.sealedRepeatSeriesRevision
+		&& entry.sourceTaskId === input.expectedSourceTaskId
+		&& entry.sourceFormat === input.expectedSourceFormat
+		&& entry.updatedAt >= input.effectiveAt;
+}
+
+/**
+ * Recovery may only checkpoint a materialized recurrence after the committed
+ * source, its indexed successor, and repeat-series state agree. In
+ * particular, a source write is not enough to classify the recurrence step as
+ * already applied: the index can still be stale and the series state can still
+ * be absent.
+ */
+export interface RuntimeMaterializedRecurrenceRecoveryPostflightInputV1
+	extends RuntimeMaterializedRecurrenceSuccessorPostflightInputV1 {
+	readonly sourceMatches: boolean;
+	readonly archiveMatches: boolean;
+	readonly repeatSeriesStateVerified: boolean;
+}
+
+export function classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1(
+	input: RuntimeMaterializedRecurrenceRecoveryPostflightInputV1,
+): 'after' | 'other' {
+	return input.sourceMatches
+		&& input.archiveMatches
+		&& input.repeatSeriesStateVerified
+		&& verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1(input)
+		? 'after'
+		: 'other';
+}
+
 export interface RuntimeSemanticTransitionRecurrenceEndedPreviewV1 {
 	readonly disposition: 'ended';
 	readonly seriesId: string | null;
@@ -255,6 +349,9 @@ export interface RuntimeSemanticTransitionPostflightEvidenceV1 {
 		readonly disposition: RuntimeSemanticTransitionRecurrenceDispositionV1;
 		readonly nextOperonId?: string;
 		readonly nextLocator?: TaskSourceLocatorV1;
+		readonly successor?: RuntimeMaterializedRecurrenceSuccessorV1 | null;
+		readonly hasDuplicateSuccessorOperonIdConflict?: boolean;
+		readonly successorStatusIsOpen?: boolean;
 		readonly sourceRevision?: string;
 		readonly committedSourceRevision?: string;
 		readonly archiveSourceRevision?: string;
@@ -958,6 +1055,16 @@ export function verifyRuntimeSemanticTransitionPostflightV1(
 				evidence.recurrence.nextLocator,
 				plan.recurrence.preview.nextLocator,
 			)
+			|| evidence.recurrence.hasDuplicateSuccessorOperonIdConflict !== false
+			|| evidence.recurrence.successorStatusIsOpen !== true
+			|| !verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({
+				expectedOperonId: plan.recurrence.preview.nextOperonId,
+				expectedLocator: plan.recurrence.preview.nextLocator,
+				successor: evidence.recurrence.successor,
+				hasDuplicateOperonIdConflict: evidence.recurrence
+					.hasDuplicateSuccessorOperonIdConflict,
+				statusIsOpen: evidence.recurrence.successorStatusIsOpen,
+			})
 			|| !evidence.recurrence.stateVerified
 			|| evidence.recurrence.sourceRevision
 				!== evidence.recurrence.committedSourceRevision

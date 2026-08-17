@@ -227,6 +227,65 @@ async function run(): Promise<void> {
 		],
 	);
 
+	const timedSeriesId = 'rsn0hm4';
+	const timedRecurrence = query([
+		task('meditate-completed', {
+			status: 'Task.Done',
+			dateCompleted: '2026-08-17',
+			dateScheduled: '2026-08-17',
+			datetimeStart: '2026-08-17T08:45:00',
+			datetimeEnd: '2026-08-17T09:00:00',
+			repeat: 'mode=done|freq=day|interval=1',
+			repeatSeriesId: timedSeriesId,
+			repeatOccurrenceDate: '2026-08-17',
+		}, 'done'),
+		task('359cc8d', {
+			status: 'Task.Open',
+			dateScheduled: '2026-08-18',
+			datetimeStart: '2026-08-18T08:45:00',
+			datetimeEnd: '2026-08-18T09:00:00',
+			estimate: '900',
+			repeat: 'mode=done|freq=day|interval=1',
+			repeatSeriesId: timedSeriesId,
+			repeatOccurrenceDate: '2026-08-18',
+		}),
+	], [seriesEntry(timedSeriesId, 'meditate-completed', {
+		mode: 'timed',
+		dateShiftDays: 0,
+		startDateShiftDays: 0,
+		endDateShiftDays: 0,
+		startTime: '08:45:00',
+		endTime: '09:00:00',
+		estimate: '900',
+	})]);
+	const timedRecurrenceItems = itemsOfKind(timedRecurrence.items, 'timed');
+	deepEqual(
+		timedRecurrenceItems
+			.filter(item => item.origin === 'projected' || item.sourceTask?.checkbox === 'open')
+			.map(item => [
+			item.startDateTime,
+			item.origin,
+			item.repeatRef?.occurrenceDate,
+			]),
+		[
+			['2026-08-18T08:45:00', 'materialized', '2026-08-18'],
+			['2026-08-19T08:45:00', 'projected', '2026-08-19'],
+			['2026-08-20T08:45:00', 'projected', '2026-08-20'],
+			['2026-08-21T08:45:00', 'projected', '2026-08-21'],
+		],
+		'The uniquely indexed timed successor must materialize once and drive later projections.',
+	);
+	equal(
+		timedRecurrenceItems.find(item => item.startDate === '2026-08-18')?.sourceTask?.checkbox,
+		'open',
+		'The materialized timed successor must be open.',
+	);
+	equal(
+		timedRecurrenceItems.filter(item => item.startDate === '2026-08-18').length,
+		1,
+		'The materialized timed successor must not be duplicated.',
+	);
+
 	const timed = query([
 		task('359cc8d', {
 			dateScheduled: '2026-08-18',
