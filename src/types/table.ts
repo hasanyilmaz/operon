@@ -161,6 +161,7 @@ export interface TablePresetProjectionSettings {
 	tablePresetFileBindings?: TablePresetFileBinding[];
 	tablePresetFileInitialized: boolean;
 	tableDefaultPresetId: string | null;
+	tableDefaultFolder: string;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
@@ -172,6 +173,7 @@ export interface TablePresetPackageSettings {
 	fileBindings?: TablePresetFileBinding[];
 	initialized?: boolean;
 	tableDefaultPresetId: string | null;
+	tableDefaultFolder?: string;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;

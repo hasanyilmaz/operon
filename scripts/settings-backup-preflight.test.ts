@@ -149,6 +149,7 @@ test('exact preview is deterministic, immutable and preserves excluded Table fav
 	assert.deepEqual(first.restorePlan?.candidateSettings.tablePresetOrderIds, target.tablePresetOrderIds);
 	assert.deepEqual(first.restorePlan?.candidateSettings.tablePresetFileBindings, target.tablePresetFileBindings);
 	assert.equal(first.restorePlan?.candidateSettings.tableDefaultPresetId, target.tableDefaultPresetId);
+	assert.equal(first.restorePlan?.candidateSettings.tableDefaultFolder, source.tableDefaultFolder);
 	assert.equal(first.restorePlan?.candidateSettings.tableEmbedVisibleRows, source.tableEmbedVisibleRows);
 	assert.equal(first.restorePlan?.candidateSettings.tableShowLineNumbers, source.tableShowLineNumbers);
 	assert.equal(first.restorePlan?.candidateSettings.tableShowTaskIcon, source.tableShowTaskIcon);

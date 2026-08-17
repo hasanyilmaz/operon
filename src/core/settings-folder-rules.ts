@@ -3,6 +3,28 @@ export function normalizeSettingsFolderPath(value: string | null | undefined): s
 	return value.trim().replace(/^\/+|\/+$/g, '');
 }
 
+/**
+ * Checks the normalized form that can safely be passed to Obsidian as a
+ * vault-relative folder path. Callers may intentionally handle an empty value
+ * separately as the vault root.
+ */
+export function isSafeVaultRelativeFolderPath(value: string): boolean {
+	if (
+		value.length === 0
+		|| value !== value.trim()
+		|| value.startsWith('/')
+		|| value.startsWith('\\')
+		|| /^[a-zA-Z]:/u.test(value)
+		|| value.includes('\\')
+		|| value.includes('\0')
+	) return false;
+	for (let index = 0; index < value.length; index += 1) {
+		const code = value.charCodeAt(index);
+		if (code <= 31 || code === 127) return false;
+	}
+	return !value.split('/').some(segment => segment.length === 0 || segment === '.' || segment === '..');
+}
+
 function isSameOrParentFolder(candidateFolder: string, childFolder: string): boolean {
 	const candidate = normalizeSettingsFolderPath(candidateFolder).toLowerCase();
 	const child = normalizeSettingsFolderPath(childFolder).toLowerCase();

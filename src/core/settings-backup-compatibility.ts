@@ -269,6 +269,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'tablePresetFileBindings',
 	'tablePresetFileInitialized',
 	'tableDefaultPresetId',
+	'tableDefaultFolder',
 	'tableEmbedVisibleRows',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
@@ -368,6 +369,7 @@ const KEY_MAPPING_KEYS = ['keyMappings'] as const satisfies readonly (keyof Oper
 const FILTER_KEYS = ['filterSets'] as const satisfies readonly (keyof OperonSettings)[];
 const FAVORITE_KEYS = ['presetFavorites'] as const satisfies readonly (keyof OperonSettings)[];
 const TABLE_GLOBAL_KEYS = [
+	'tableDefaultFolder',
 	'tableEmbedVisibleRows',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',

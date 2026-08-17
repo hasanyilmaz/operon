@@ -83,6 +83,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tablePresetFileBindings',
 	'tablePresetFileInitialized',
 	'tableDefaultPresetId',
+	'tableDefaultFolder',
 	'tableEmbedVisibleRows',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
@@ -372,6 +373,10 @@ export function composeOperonSettingsFromDataPackage(
 		tableDefaultPresetId: readNullableString(
 			dataPackage.views.tablePresets?.tableDefaultPresetId,
 			defaults.tableDefaultPresetId,
+		),
+		tableDefaultFolder: readString(
+			dataPackage.views.tablePresets?.tableDefaultFolder,
+			defaults.tableDefaultFolder,
 		),
 		tableEmbedVisibleRows: readNumber(
 			dataPackage.views.tablePresets?.tableEmbedVisibleRows,

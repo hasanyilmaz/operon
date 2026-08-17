@@ -857,6 +857,7 @@ const SETTINGS_SEARCH_FOLDER_KEYS = new Set<OperonSettingSearchKey>([
 	'fileTaskTemplateFolder',
 	'fileTaskArchiveFolder',
 	'fileRepeatCustomFolder',
+	'tableDefaultFolder',
 ]);
 
 const SETTINGS_SEARCH_OPTION_NUMBER_KEYS = new Set<OperonSettingSearchKey>([
@@ -2584,6 +2585,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'fileTaskTemplateFolder') return t('settings', 'fileTaskTemplateFolderPlaceholder');
 		if (key === 'fileTaskArchiveFolder') return t('settings', 'fileTaskArchiveFolderPlaceholder');
 		if (key === 'fileRepeatCustomFolder') return t('settings', 'fileRepeatCustomFolderPlaceholder');
+		if (key === 'tableDefaultFolder') return t('settings', 'tableDefaultFolderPlaceholder');
 		return '';
 	}
 
@@ -7823,6 +7825,24 @@ export class OperonSettingsTab extends PluginSettingTab {
 				});
 			}),
 		}), 'tableDefaultPresetId');
+		this.renderBoundTextSetting(
+			generalSection,
+			t('settings', 'tableDefaultFolder'),
+			t('settings', 'tableDefaultFolderDesc'),
+			'tableDefaultFolder',
+			{
+				placeholder: t('settings', 'tableDefaultFolderPlaceholder'),
+				settingClass: 'operon-settings-long-text-setting',
+				controlClass: 'operon-settings-input-long',
+				normalize: normalizeSettingsFolderPath,
+				configure: text => {
+					new FolderSuggest(this.app, text.inputEl, settingsAsyncHandler('settings table default folder selection failed', async folder => {
+						this.settings.tableDefaultFolder = normalizeSettingsFolderPath(folder.path);
+						await this.saveSettings();
+					}));
+				},
+			},
+		);
 		this.renderBoundDropdownSetting(generalSection, t('settings', 'tableEmbedVisibleRows'), t('settings', 'tableEmbedVisibleRowsDesc'), 'tableEmbedVisibleRows', {
 			value: String(this.settings.tableEmbedVisibleRows) as `${TableEmbedVisibleRows}`,
 			dropdownOptions: TABLE_EMBED_VISIBLE_ROW_OPTIONS.map(rows => ({

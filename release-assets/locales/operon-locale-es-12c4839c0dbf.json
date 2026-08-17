@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3038,
+  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2179,6 +2179,9 @@
       "tabViews": "Vistas",
       "tableAddPresetButton": "+ Añadir preajuste de Table",
       "tableAtLeastOnePresetRequired": "Se requiere al menos un preajuste de Table.",
+      "tableDefaultFolder": "Carpeta predeterminada para nuevos archivos Table",
+      "tableDefaultFolderDesc": "Los nuevos archivos Table se crean aquí. Déjalo vacío para crearlos en la raíz del vault. Cambiar este ajuste nunca mueve archivos Table existentes.",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Preajuste predeterminado de Table",
       "tableDefaultPresetDesc": "Las nuevas hojas de Operon Table empiezan con este preajuste a menos que la hoja ya tenga su propio estado guardado.",
       "tableEmbedVisibleRows": "Filas visibles máximas en tablas incrustadas",
@@ -3080,5 +3083,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "3a999c125318bb9b78ab4d1108565e409a74ae97009af171ab290fa0744e0349"
+  "sourceVersion": "36f3cc9c1bc5d1ad8f92ef436b48bb7c923a819130ce077df80fa22798934261"
 }

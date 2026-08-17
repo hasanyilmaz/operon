@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3038,
+  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2179,6 +2179,9 @@
       "tabViews": "Viste",
       "tableAddPresetButton": "+ Aggiungi preimpostazione Table",
       "tableAtLeastOnePresetRequired": "È richiesta almeno una preimpostazione tabella.",
+      "tableDefaultFolder": "Cartella predefinita per i nuovi file Table",
+      "tableDefaultFolderDesc": "I nuovi file Table vengono creati qui. Lascia vuoto per crearli nella radice del vault. La modifica di questa impostazione non sposta mai i file Table esistenti.",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Preimpostazione Table predefinita",
       "tableDefaultPresetDesc": "I nuovi riquadri Operon Table iniziano con questa preimpostazione a meno che il riquadro non abbia già un proprio stato salvato.",
       "tableEmbedVisibleRows": "Righe visibili massime nelle tabelle incorporate",
@@ -3080,5 +3083,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "94971814cd5c3c1c523dc9655f7147f6046375382e326507291a7b4279768b7e"
+  "sourceVersion": "44046c144538ad0384f2cc65dc814d119fcf6e17e2dd8fda6253c5c97c7786ab"
 }

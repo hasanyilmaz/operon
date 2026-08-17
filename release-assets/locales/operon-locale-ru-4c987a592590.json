@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3038,
+  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2179,6 +2179,9 @@
       "tabViews": "Представления",
       "tableAddPresetButton": "+ Добавить пресет Table",
       "tableAtLeastOnePresetRequired": "Требуется хотя бы один пресет Table.",
+      "tableDefaultFolder": "Папка по умолчанию для новых файлов Table",
+      "tableDefaultFolderDesc": "Новые файлы Table создаются здесь. Оставьте пустым, чтобы создавать их в корне vault. Изменение этого параметра никогда не перемещает существующие файлы Table.",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Пресет Table по умолчанию",
       "tableDefaultPresetDesc": "Новые вкладки Operon Table начинаются с этого пресета, если у вкладки ещё нет собственного сохранённого состояния.",
       "tableEmbedVisibleRows": "Максимум видимых строк во встроенных таблицах",
@@ -3080,5 +3083,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "e747e8008a4f3f674de2c6650887f4b7f0cb7afefc483b1d750897bd0bf64f07"
+  "sourceVersion": "5fdfea6bb7b09f405e6fdf915035a2b496e4f68708194a468bc91a04913f9f57"
 }

@@ -34,6 +34,7 @@ import {
 	getOperonTableFilePathKey,
 	isOperonTableFilePath,
 	parseOperonTableFile,
+	resolveOperonTableCreationFolder,
 	serializeOperonTableFile,
 } from './src/storage/table-file';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
@@ -16531,9 +16532,10 @@ export default class OperonPlugin extends Plugin {
 			if (this.tablePresetRegistry.get(preset.id) || this.settings.tablePresets.some(entry => entry.id === preset.id)) {
 				throw new Error(`Table preset id "${preset.id}" already exists.`);
 			}
-			await this.ensureVaultFolder('Operon/Tables');
+			const folder = resolveOperonTableCreationFolder(this.settings.tableDefaultFolder);
+			await this.ensureVaultFolder(folder);
 			const path = buildUniqueOperonTableFilePath(
-				'Operon/Tables',
+				folder,
 				preset.name,
 				this.app.vault.getFiles().map(file => file.path),
 			);

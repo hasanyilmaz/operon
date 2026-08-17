@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3038,
+  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2179,6 +2179,9 @@
       "tabViews": "Görünümler",
       "tableAddPresetButton": "+ Table Ön Ayarı Ekle",
       "tableAtLeastOnePresetRequired": "En az bir table ön ayarı gerekli.",
+      "tableDefaultFolder": "Yeni Table dosyaları için varsayılan klasör",
+      "tableDefaultFolderDesc": "Yeni Table dosyaları burada oluşturulur. Vault kökünde oluşturmak için boş bırakın. Bu ayarı değiştirmek mevcut Table dosyalarını asla taşımaz.",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table varsayılan ön ayarı",
       "tableDefaultPresetDesc": "Yeni Operon Table sekmeleri, sekmenin kendi kayıtlı durumu yoksa bu ön ayar ile başlar.",
       "tableEmbedVisibleRows": "Gömülü tablolarda maksimum görünür satır",
@@ -3080,5 +3083,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a43bad14f364516292b8096186f52f0199f55162f4ebacfad0f87fa00490b39a"
+  "sourceVersion": "3e3590cd7ebb704e0751085d67bbd3f7b140b001dfede1481554d475beeca7a2"
 }

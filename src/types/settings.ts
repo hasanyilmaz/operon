@@ -1730,6 +1730,7 @@ export interface OperonSettings {
 	tablePresetFileBindings: TablePresetFileBinding[];
 	tablePresetFileInitialized: boolean;
 	tableDefaultPresetId: string | null;
+	tableDefaultFolder: string;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
@@ -2183,6 +2184,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tablePresetFileBindings: [],
 	tablePresetFileInitialized: false,
 	tableDefaultPresetId: DEFAULT_TABLE_PRESET_ID,
+	tableDefaultFolder: 'Operon/Tables',
 	tableEmbedVisibleRows: DEFAULT_TABLE_EMBED_VISIBLE_ROWS,
 	tableShowLineNumbers: true,
 	tableShowTaskIcon: false,
@@ -4141,6 +4143,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: out.tablePresets.find(preset => preset.id === DEFAULT_TABLE_PRESET_ID)?.id
 			?? out.tablePresets[0]?.id
 			?? null;
+	out.tableDefaultFolder = typeof src.tableDefaultFolder === 'string'
+		? normalizeSettingsFolderPath(src.tableDefaultFolder)
+		: DEFAULT_SETTINGS.tableDefaultFolder;
 	out.tableShowLineNumbers = typeof src.tableShowLineNumbers === 'boolean'
 		? src.tableShowLineNumbers
 		: DEFAULT_SETTINGS.tableShowLineNumbers;

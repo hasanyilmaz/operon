@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3038,
+  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2179,6 +2179,9 @@
       "tabViews": "ビュー",
       "tableAddPresetButton": "+ Table プリセットを追加",
       "tableAtLeastOnePresetRequired": "少なくとも 1 つの Table プリセットが必要です。",
+      "tableDefaultFolder": "新しい Table ファイルのデフォルトフォルダー",
+      "tableDefaultFolderDesc": "新しい Table ファイルはここに作成されます。vault のルートに作成するには空欄のままにしてください。この設定を変更しても既存の Table ファイルは移動されません。",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table のデフォルトプリセット",
       "tableDefaultPresetDesc": "新しい Operon Table は、すでに独自の保存状態がない限り、このプリセットで開始します。",
       "tableEmbedVisibleRows": "埋め込みテーブルの最大表示行数",
@@ -3080,5 +3083,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "77a92388f5ab351cf6eb157896278024d238f62869ca7d28ba349600986896f7"
+  "sourceVersion": "05c5f4d1ef79cfa5aaa45d2e5a91744518c238c90535f15fd44fcd83ced4b77f"
 }

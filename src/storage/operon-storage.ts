@@ -1256,6 +1256,7 @@ export class OperonStorage {
 		target.tablePresetFileBindings = (manifest.tablePresetFileBindings ?? []).map(binding => ({ ...binding }));
 		target.tablePresetFileInitialized = manifest.tablePresetFileInitialized;
 		target.tableDefaultPresetId = manifest.tableDefaultPresetId;
+		target.tableDefaultFolder = manifest.tableDefaultFolder;
 		target.tableEmbedVisibleRows = manifest.tableEmbedVisibleRows;
 		target.tableShowLineNumbers = manifest.tableShowLineNumbers;
 		target.tableShowTaskIcon = manifest.tableShowTaskIcon;

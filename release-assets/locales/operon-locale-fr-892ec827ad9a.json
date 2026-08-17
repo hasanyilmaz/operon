@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3038,
+  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2179,6 +2179,9 @@
       "tabViews": "Vues",
       "tableAddPresetButton": "+ Ajouter un préréglage Table",
       "tableAtLeastOnePresetRequired": "Au moins un préréglage Table est requis.",
+      "tableDefaultFolder": "Dossier par défaut des nouveaux fichiers Table",
+      "tableDefaultFolderDesc": "Les nouveaux fichiers Table sont créés ici. Laissez vide pour les créer à la racine du vault. Modifier ce paramètre ne déplace jamais les fichiers Table existants.",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Préréglage Table par défaut",
       "tableDefaultPresetDesc": "Les nouveaux volets Operon Table démarrent avec ce préréglage, sauf si le volet possède déjà son propre état enregistré.",
       "tableEmbedVisibleRows": "Nombre maximal de lignes visibles dans les tableaux intégrés",
@@ -3080,5 +3083,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "9b5c7205143c3de94f662e3e2310a6825c773a61ff30bca36d313a07f894b657"
+  "sourceVersion": "57b90f796e4eca5bc71a358371840d8211f4c7bf69299fbafd29835d5715e19e"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3038,
+  "keyFingerprint": "cb60b87f9c462d1ede353798d0c9f43363acb4005817136d05821f737be16b7b",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2179,6 +2179,9 @@
       "tabViews": "视图",
       "tableAddPresetButton": "+ 添加 Table 预设",
       "tableAtLeastOnePresetRequired": "至少需要一个 Table 预设。",
+      "tableDefaultFolder": "新建 Table 文件的默认文件夹",
+      "tableDefaultFolderDesc": "新的 Table 文件会在此处创建。留空可在 vault 根目录创建。更改此设置绝不会移动现有的 Table 文件。",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table 默认预设",
       "tableDefaultPresetDesc": "新的 Operon Table 窗口将以此预设开始，除非该窗口已有自己保存的状态。",
       "tableEmbedVisibleRows": "嵌入表格中的最大可见行数",
@@ -3080,5 +3083,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "7d44b30730d8257f6cead80a6e16d34c47f53ef1a423c45b199a682cab6973c0"
+  "sourceVersion": "83bf7694eedab37a3507b5532441d83d25c73081d728e40fe659c3b2f6fd4ca0"
 }
