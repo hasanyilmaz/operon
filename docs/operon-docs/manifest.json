@@ -39,8 +39,8 @@
     },
     {
       "path": "DOCS-007 Install and enable Operon.md",
-      "sha256": "46312e06b926945d60e933d1acaa95041bb93e0af70c0e4fec77a90e388fc813",
-      "bytes": 4039
+      "sha256": "6819f60c0040f25ce2eea175bdc19fd84e1983570a4235cde3b7ee2c0ae48375",
+      "bytes": 5104
     },
     {
       "path": "DOCS-008 Essential settings to configure first.md",
@@ -64,8 +64,8 @@
     },
     {
       "path": "DOCS-012 Inline task syntax.md",
-      "sha256": "69ee5cf49f282a681c4f149b9ca1b8c8d98aea6a1c2aa78bc9de493b565fe2e1",
-      "bytes": 13976
+      "sha256": "5c8f0142f676a95556b2117b08fa3cc79c1cf41434d3b9975b29a87e176d222c",
+      "bytes": 15147
     },
     {
       "path": "DOCS-013 File tasks.md",
@@ -109,8 +109,8 @@
     },
     {
       "path": "DOCS-021 Task Editor.md",
-      "sha256": "62b38eabad87d42a5b9c5106a436bc48c63230afe9588d0f9065e4e9c543196b",
-      "bytes": 6437
+      "sha256": "19ea6dada318b869fb0b46eca58d229fe987b3ff96a4c30c9ee79b3cfff8803a",
+      "bytes": 7556
     },
     {
       "path": "DOCS-022 Command palette reference.md",
@@ -179,8 +179,8 @@
     },
     {
       "path": "DOCS-035 FlowTime focus sessions.md",
-      "sha256": "f7fb98818126bcd0927790975a6b78318c82dcd27682921c86f3f14597f04eed",
-      "bytes": 4692
+      "sha256": "3f14f86d6b870ce5b6abdd939ac3b45a0a50241d70e2dcfdfcb312e34cb1403b",
+      "bytes": 5818
     },
     {
       "path": "DOCS-036 Agent-friendly workflows.md",
@@ -234,8 +234,8 @@
     },
     {
       "path": "DOCS-046 Plugin data and state files.md",
-      "sha256": "b30ce270fc13d7efef51df60f1e9ca96f08cbbca9b9f2700b51c00be42e353e8",
-      "bytes": 3130
+      "sha256": "6d0a477cfa4964cdfd91b9a5248d9389e2f872c9524b81e8435b946a230e57f3",
+      "bytes": 3436
     },
     {
       "path": "DOCS-047 Sync conflict safety.md",
@@ -319,8 +319,8 @@
     },
     {
       "path": "DOCS-063 Date and time picker.md",
-      "sha256": "7dba4e3c3770aa702f819b2a6f740a9a3111591f11fcd4e1371508d2332f59ac",
-      "bytes": 5156
+      "sha256": "4266a1d7e3e9ef61db523695e5fa509af2e4821b108f85d74a09cfe52dca817c",
+      "bytes": 6127
     },
     {
       "path": "DOCS-064 Recurrence picker.md",
@@ -529,8 +529,8 @@
     },
     {
       "path": "DOCS-105 Table overview.md",
-      "sha256": "4ca740566bc48991d96a5d3e64f1561850dfa24f12b9b2799e020561604d4ed7",
-      "bytes": 10537
+      "sha256": "12649bda5fdc38ecc7856a1c415851e75e5b1d5cbf3d85498a5aca6eee199458",
+      "bytes": 11224
     },
     {
       "path": "DOCS-106 Table columns.md",
@@ -549,13 +549,13 @@
     },
     {
       "path": "DOCS-109 Table presets.md",
-      "sha256": "540c96307c3008bb9b2c0ea5313f16a3a8d74ac062cbe00c9b14097aea715ca3",
-      "bytes": 8123
+      "sha256": "b2e5d53edf2b0c86db97f9c098e6ba49d235c02825d7b2f83e65cca011c0c546",
+      "bytes": 8634
     },
     {
       "path": "DOCS-110 Embed a table in a note.md",
-      "sha256": "85ff3bade81c6ea17feafc0ea25d2e44c739c493087f27fc06c3c159e54503bb",
-      "bytes": 8046
+      "sha256": "6b4d60ed61ccf0490cd7ab4048fbdcd379e0606ad9cb9b0168ff443902e202d9",
+      "bytes": 9309
     },
     {
       "path": "DOCS-111 Export a table.md",
@@ -564,18 +564,18 @@
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "425252c4b2260b0f23c5a679353e6cc3632665f5b7db646ca1ba4b9079a451c2",
-      "bytes": 12246
+      "sha256": "3399d8a54e931570d727a1fdacb62ec8cd730e99b47134b85b351b7c2fd177b8",
+      "bytes": 12376
     },
     {
       "path": "DOCS-113 Text field editor popover.md",
-      "sha256": "eb30eff37fcab9920a277cb2fbc6b064ef0ba13c23e295a677aa7e2250c61cd5",
-      "bytes": 4118
+      "sha256": "686e318575c486ebb6c03d6d2226b38eefff7cb1a815c5da1b6e41b593ee2348",
+      "bytes": 4516
     },
     {
       "path": "DOCS-114 Table files.md",
-      "sha256": "48db95e3b8322887785418f4287e666366ae7a44e1e8313827d9a6bb0f52fe98",
-      "bytes": 10981
+      "sha256": "b74316e67809b26850f27a8ec36ed907274bc6fd329ee0cdc93065d27942a7f3",
+      "bytes": 11477
     },
     {
       "path": "DOCS-115 File task property columns.md",
@@ -584,8 +584,8 @@
     },
     {
       "path": "DOCS-116 Reminders.md",
-      "sha256": "75c757a4adad5d99fbf3890adabf96ff48ba27d5b8f5a3d53d9be8032acff493",
-      "bytes": 16369
+      "sha256": "458cd42e2dc95fe79e39c45c8cff6bb323458a009ae9ed267ca76db799bf84d4",
+      "bytes": 16972
     },
     {
       "path": "DOCS-117 Reminder rules.md",
@@ -649,23 +649,23 @@
     },
     {
       "path": "DOCS-129 In-process Developer API overview.md",
-      "sha256": "cdf2ea3a8da1173c02b02541155ef758ced2accb9dd8b5bc26eccb2202471872",
-      "bytes": 6681
+      "sha256": "0d5c6e2787e62cfed7cf5d79eb9a05248d378bcf16d5d8f61686b93a8844e1ed",
+      "bytes": 8357
     },
     {
       "path": "DOCS-130 Developer API identity and capability grants.md",
-      "sha256": "82124d4e158c33ca6c5c99f0271d22a499f63b5a79b22c4ff9a6e00eed92b467",
-      "bytes": 6592
+      "sha256": "6377128a276937c3b5655cca2e102c2bd65f93fad59f8552a60763a27774d2e1",
+      "bytes": 8041
     },
     {
       "path": "DOCS-131 Developer API reads and typed mutations.md",
-      "sha256": "86881537c30657c268b0b53c3b79bad02a72c12338c60971698402e9e11a3410",
-      "bytes": 6360
+      "sha256": "4fef69bd51829805cc0b2782806790a29b245b4505e2e63389dfdb5772d821d9",
+      "bytes": 8390
     },
     {
       "path": "DOCS-132 Developer API recovery, errors and audit.md",
-      "sha256": "a9ec89ff2bba962fa84c8a3f48f9447437863fda60fcd28eb161e9f2ee16d214",
-      "bytes": 6427
+      "sha256": "f1200cc488541c13c1ae1e6ed3b1dfcf53f4e7c93d891ad4e9f6265217e51136",
+      "bytes": 8202
     },
     {
       "path": "DOCS-133 JSONL sessions for scripts and agents.md",
@@ -683,5 +683,5 @@
       "bytes": 6058
     }
   ],
-  "generatedAt": "2026-08-15T08:58:44.665Z"
+  "generatedAt": "2026-08-18T16:46:22.632Z"
 }

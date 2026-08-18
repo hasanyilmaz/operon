@@ -2,7 +2,7 @@
 Notes: Set dates and times by typing them in words or picking from a calendar
 Icon: calendar-days
 Color: "#db2777"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Date and time picker
@@ -32,6 +32,12 @@ The suggestions are intentionally broad while you are still typing, so a short q
 
 The placeholder itself reminds you of the idea: "Type a date like next tuesday." Pick a suggestion to set the field.
 
+## Brazilian Portuguese dates
+
+When the interface language is **Brazilian Portuguese** (`pt-BR`), the picker uses its own Portuguese grammar. Verified examples include `Hoje`, `Amanhã`, `terça-feira`, `daqui a 3 dias`, `15 agosto`, and `15/08/2026`. Accents and letter case in supported Portuguese words are accepted, and `15 de agosto` is also valid.
+
+This grammar fails closed. An unrecognized English phrase such as `next Tuesday` or `august 15`, and incomplete or unsupported Portuguese such as `há 3 sem`, produces no date suggestion. Operon does not fall back to English parsing or `nldates` for `pt-BR`; that avoids silently interpreting a phrase from the wrong language.
+
 ## Or pick from the calendar
 
 If you would rather see the month, the picker also shows a calendar grid. Move by month or year, click a day, and use **Today** to jump to the current day or **Clear** to empty the field. Typing and clicking are two ways into the same control; use whichever is faster for the date you want.
@@ -57,6 +63,8 @@ A date field can be emptied. When a field already has a value, the picker offers
 **Why doesn't `aug 3` work?** The day always comes before the month, so write `3 aug`, not `aug 3`. Operon reads a typed date number-first, even though the suggestion it shows may read month-first.
 
 **Why does `3 m` show months and calendar dates together?** While you type, Operon reads a short query both ways: `3 m` as an offset (3 months) and as a day with a month starting with m (March 3, May 3). Type more, such as `3 march`, to narrow it to one.
+
+**Which Portuguese date phrases work?** With Brazilian Portuguese selected, use complete Portuguese forms such as `Hoje`, `Amanhã`, `terça-feira`, `daqui a 3 dias`, `15 agosto`, or `15/08/2026`. Unsupported or partial phrases are rejected instead of being interpreted through English.
 
 **Why can't I set an end time?** A timed end needs a start first. Set `datetimeStart`, then the end.
 

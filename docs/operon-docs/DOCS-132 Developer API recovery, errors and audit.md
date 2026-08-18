@@ -2,7 +2,7 @@
 Notes: Recover only the same dispatched mutation and interpret Developer API errors, receipts, and redacted audit records
 Icon: shield-alert
 Color: "#059669"
-Updated: 2026-07-30T19:58:24
+Updated: 2026-08-18T18:18:29
 ---
 
 # Developer API recovery, errors and audit
@@ -38,6 +38,35 @@ if (pending.ok) {
 
 The `recoveryRef` is not authority, not a sealed plan, and not the CLI's `planRef`. It is bound to the private plan digest, consumer identity, and host-owned idempotency state.
 
+## Task-workflow adoption recovery
+
+Inline-task adoption uses the same rule through its separate task-workflow accessor: recover the **same** opaque adoption plan, never a replacement preview. In the session that made the preview, keep and pass the original handle:
+
+```ts
+const recovered = await workflow.tasks.adopt.recover({
+  plan: preview.plan,
+});
+```
+
+After Operon or the consumer plugin reloads, the session-bound handle cannot be reused. Reacquire Operon, open a new `getTaskWorkflowDeveloperApiV1()` session with the required adoption grants, then recover with the original plan's `recoveryRef`:
+
+```ts
+const reopened = operon.getTaskWorkflowDeveloperApiV1(this, {
+  contractVersion: 1,
+  runtimeApi: { min: 1, max: 1 },
+  requestedCapabilities: ["tasks.adopt.apply"],
+});
+
+if (reopened.ok) {
+  const recovered = await reopened.api.tasks.adopt.recover({
+    recoveryRef: preview.plan.recoveryRef,
+  });
+  console.log(recovered.status);
+}
+```
+
+`recoveryRef` is only a reference to the original plan's recovery evidence. It is bound to the same registry-verified consumer and cannot authorize a different target, a modified `expectedLine`, or a new adoption. Use `workflow.tasks.adopt.pendingRecoveries()` to list the current consumer's dispatched unresolved adoption operations.
+
 ## When recovery is required
 
 A result with status `partial` or `outcome-unknown` reports:
@@ -49,6 +78,8 @@ A result with status `partial` or `outcome-unknown` reports:
 - recovery metadata for the same plan.
 
 Do not re-preview, call ordinary apply again, change the target, or mint a new idempotency value. Use `recover({ plan })` or `recover({ recoveryRef })` for that exact operation. If recovery still cannot verify the outcome, keep the operation uncertain.
+
+For inline adoption, those calls are `workflow.tasks.adopt.recover({ plan })` or `workflow.tasks.adopt.recover({ recoveryRef })`. Do not switch to a base-API mutation method or create a new adoption preview.
 
 Recovery evidence is retained for 24 hours, up to 256 protected records. Capacity pressure refuses a new dispatch rather than deleting unresolved evidence. An expired reference returns `plan-expired`.
 
@@ -91,6 +122,8 @@ The Developer API intentionally provides no audit-reading method. Audit inspecti
 **Can I read the audit from the API?** No, and that is deliberate. There is no audit-reading method; inspecting and clearing the redacted view are user actions in Operon's settings. Clearing leaves a marker that it happened and never removes protected recovery evidence.
 
 **What happens to my writes if the audit cannot be recorded?** They stop. A write needs its durable redacted record before dispatch, so an unavailable audit store is an environment problem to fix rather than something to retry around. If the audit and receipt cannot be finalized together, the result stays uncertain rather than being reported as success.
+
+**Can I recover an adoption after reload?** Yes, only for the same registry-verified consumer and only with that preview's `recoveryRef`, through a newly opened task-workflow Developer API session. It resumes the same plan; it is not permission to preview or apply a new one.
 
 ## Related
 

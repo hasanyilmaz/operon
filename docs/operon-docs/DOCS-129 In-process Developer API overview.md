@@ -2,7 +2,7 @@
 Notes: Connect an Obsidian plugin to Operon's typed in-process API and choose it instead of the CLI when appropriate
 Icon: plug-zap
 Color: "#059669"
-Updated: 2026-08-03T10:31:15
+Updated: 2026-08-18T18:18:29
 ---
 
 # In-process Developer API overview
@@ -46,6 +46,33 @@ if (!operon || typeof operon.getDeveloperApiV1 !== "function") {
 ```
 
 The consumer passed to the accessor must be your actual plugin instance. A copied object with the same manifest fields is not accepted as identity proof.
+
+## Task workflow extension
+
+The base `getDeveloperApiV1()` accessor remains frozen. It does not accept task-workflow extension capabilities, and its existing read and mutation examples stay on that base surface. For saved-filter reads and inline-task adoption, use the separate, additive `getTaskWorkflowDeveloperApiV1()` accessor on the same verified Operon plugin instance:
+
+```ts
+interface OperonTaskWorkflowDeveloperApiAccessorV1 {
+  getTaskWorkflowDeveloperApiV1(
+    consumerPlugin: object,
+    request: {
+      contractVersion: 1;
+      runtimeApi: { min: 1; max: 1 };
+      requestedCapabilities: readonly string[];
+    },
+  ): unknown;
+}
+
+const workflowOperon = hostApp.plugins.getPlugin("operon") as
+  | OperonTaskWorkflowDeveloperApiAccessorV1
+  | undefined;
+
+if (!workflowOperon || typeof workflowOperon.getTaskWorkflowDeveloperApiV1 !== "function") {
+  throw new Error("Operon's task-workflow extension is unavailable.");
+}
+```
+
+This extension has its own narrow, capability-projected API. Its exact grants are `tasks.filter-query`, `tasks.adopt.preview`, and `tasks.adopt.apply`; requesting one capability does not expose the others. See [[DOCS-130 Developer API identity and capability grants|Developer API identity and capability grants]] and [[DOCS-131 Developer API reads and typed mutations|Developer API reads and typed mutations]].
 
 ## Open a discovery-only session
 
@@ -96,6 +123,8 @@ The Developer API is desktop-only and local to the current Obsidian process. It 
 **What invalidates a session?** Reloading either plugin, because the instance epoch changes and the retained session becomes stale. Grant changes do too: a grant that is not active, one whose revision moved, or a capability that is no longer granted all close further work. Reacquire the instance and open a new session rather than holding one across a reload.
 
 **Can I use this from mobile, or from outside Obsidian?** No. It is desktop-only and local to the current Obsidian process. It is not a remote API, an HTTP or MCP server, a mobile API, or a sandbox for untrusted plugins. For anything outside the app, use `operon-cli`.
+
+**Why is there a second accessor for task workflows?** It keeps the established Developer API V1 surface unchanged while adding a separately granted extension for saved-filter reads and inline-task adoption. Do not send extension capability names to `getDeveloperApiV1()`; call `getTaskWorkflowDeveloperApiV1()` instead.
 
 ## Related
 

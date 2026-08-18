@@ -2,7 +2,7 @@
 Notes: Where Operon keeps its settings, working state, and rebuildable index
 Icon: folder-cog
 Color: "#0891b2"
-Updated: 2026-08-12T17:21:45
+Updated: 2026-08-18T18:18:29
 ---
 
 # Plugin data and state files
@@ -13,7 +13,7 @@ Apart from your tasks, which live in your Markdown, Operon keeps its own configu
 
 The plugin's main data file holds your Operon configuration: [[DOCS-039 Key mappings|key mappings]], [[DOCS-037 Pipelines and statuses|pipelines]], [[DOCS-038 Task priorities|priorities]], saved [[DOCS-025 Filter View|filters]], Calendar and Kanban presets, contextual menu setup, and the rest of your settings.
 
-**Table presets are the exception.** Each one lives as its own `.table` file in your vault, by default under `Operon/Tables`, rather than inside the plugin's data. The plugin's data still records small bookkeeping about them, such as their order and which one is the default, but the preset itself is the vault file. See [[DOCS-114 Table files|Table files]].
+**Table presets are the exception.** Each one lives as its own `.table` file in your vault rather than inside the plugin's data. **Settings → Operon → Views → Tables → Table default folder** chooses where *new* Table files are created. The historical default is `Operon/Tables`; choose another vault-relative folder to organize new files elsewhere, or leave the setting blank to create them at the vault root. Changing it never moves existing `.table` files. The plugin's data still records small bookkeeping about presets, such as their order and which one is the default, but the preset itself is the vault file. See [[DOCS-114 Table files|Table files]].
 
 Alongside it, Operon keeps working state and caches in subfolders:
 

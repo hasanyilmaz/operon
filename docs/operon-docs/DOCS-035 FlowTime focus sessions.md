@@ -2,7 +2,7 @@
 Notes: Run a countdown focus session on a task, with breaks and overtime
 Icon: hourglass
 Color: "#9333ea"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # FlowTime focus sessions
@@ -23,7 +23,7 @@ A session is not all-or-nothing. You can **Start break** to pause the focus cloc
 
 ## Reaching zero, and overtime
 
-When the countdown hits zero, FlowTime marks the **target reached** and can show a small notice, so you know the planned time is up without staring at the timer. It does not cut you off: it rolls into **Overtime** and keeps counting, so if you are in flow you can keep going and still see how far past your target you have gone.
+When the countdown hits zero, FlowTime marks the **target reached** and can show a small notice, so you know the planned time is up without staring at the timer. It does not cut you off: it rolls into **Overtime** and keeps counting, so if you are in flow you can keep going and still see how far past your target you have gone. The notice is independent of the optional completion sound described below.
 
 > **MEDIA-DOCS-035-2:** FlowTime in overtime after the countdown reached zero, with a break control available.
 
@@ -47,6 +47,12 @@ So the length you set is a soft target, not a deadline. If you want no target at
 
 Both record to the same task, so the choice is about how you want to work, not where the time lands. To review what you recorded, open the [[DOCS-053 Time session history|Time session history]].
 
+## Completion sound
+
+**Play reminder sound when FlowTime reaches zero** is off by default. When you turn it on, FlowTime plays the vault audio file selected under **Settings → Operon → Tasks → Reminders → Reminder sound** once when either a focus session or an active break reaches zero. It does not replay in overtime, when you open an already-elapsed timer, or when you enable the setting after the boundary has passed.
+
+This sound setting is separate from **Notify when FlowTime reaches zero**: you can use the notice, the sound, both, or neither. It applies only to FlowTime focus and break completions; it does not change TrackTime's count-up behavior.
+
 ## FAQ
 
 **Does FlowTime stop me when the timer ends?** No. It marks the target reached and continues into overtime, so you decide when to stop.
@@ -55,11 +61,13 @@ Both record to the same task, so the choice is about how you want to work, not w
 
 **Can I take breaks?** Yes. Start and end breaks from the panel; the focus clock pauses while a break is active.
 
+**Can FlowTime play a sound when time is up?** Yes. Turn on **Play reminder sound when FlowTime reaches zero**. It uses the audio file selected under **Reminders → Reminder sound** and plays once for a FlowTime focus or break completion.
+
 **Is there a Pomodoro timer?** No. Operon has no fixed Pomodoro cycle. FlowTime is a flexible focus session instead: set your own length, take breaks on demand, and continue into overtime past the target. Use TrackTime when you just want to count up.
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Tracker**, in the TrackTime & FlowTime section: the default session length, the break (pause) duration, whether to reuse your last chosen length, the numeric timer, and the notice when the countdown reaches zero.
+Operon settings for this live in **Settings → Operon → Tasks → Tracker**, in the TrackTime & FlowTime section: the default session length, the break (pause) duration, whether to reuse your last chosen length, the numeric timer, the notice when the countdown reaches zero, and the optional FlowTime completion sound. The sound uses **Settings → Operon → Tasks → Reminders → Reminder sound** as its file source.
 
 ## Related
 

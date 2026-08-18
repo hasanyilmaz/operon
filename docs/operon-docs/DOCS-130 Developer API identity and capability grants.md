@@ -2,7 +2,7 @@
 Notes: Understand registry-derived plugin identity, exact capability requests, user approval, suspension, and revocation
 Icon: key-round
 Color: "#059669"
-Updated: 2026-07-30T19:55:17
+Updated: 2026-08-18T18:18:29
 ---
 
 # Developer API identity and capability grants
@@ -30,6 +30,30 @@ const access = operon.getDeveloperApiV1(this, {
 The public consumer type contains only `manifest.id`, `manifest.name`, and `manifest.version`, but those strings are metadata. Operon verifies that the object itself is the current instance in Obsidian's enabled plugin registry. A fabricated object, a disabled instance, or an instance left over from a reload is refused.
 
 The persistent consumer identity is the plugin ID. Operon also creates a new instance epoch for each plugin load and a new session ID for each successful connection. Callers cannot supply or override any of these values.
+
+## Task workflow extension grants
+
+Saved-filter reads and inline-task adoption are on the additive `getTaskWorkflowDeveloperApiV1()` accessor, not the frozen base `getDeveloperApiV1()` accessor. Ask that accessor for exactly the task-workflow capabilities your feature needs:
+
+```ts
+const workflowAccess = operon.getTaskWorkflowDeveloperApiV1(this, {
+  contractVersion: 1,
+  runtimeApi: { min: 1, max: 1 },
+  requestedCapabilities: [
+    "tasks.filter-query",
+    "tasks.adopt.preview",
+    "tasks.adopt.apply",
+  ],
+});
+```
+
+| Capability | Allows |
+| --- | --- |
+| `tasks.filter-query` | Evaluate one saved FilterSet against the live task index. |
+| `tasks.adopt.preview` | Preview adoption of one exact inline source line. |
+| `tasks.adopt.apply` | Apply or recover the sealed adoption plan from that preview. |
+
+The capability names, order, and uniqueness are exact. A request for any unsupported name, duplicate, or out-of-order subset is refused. The user reviews the same exact requested set in **Settings → Operon → Core → General → Developer API Integrations**. Base Developer API grants do not imply these extension grants, and extension grants do not widen the base API.
 
 ## Exact capability grants
 
@@ -78,6 +102,8 @@ Developer API access and mutation preview, apply, and recovery inputs must not a
 **What happens to work in flight when a grant is revoked?** The grant revision changes, and sessions and plan handles that have not reached dispatch become invalid at once. A mutation that had already been dispatched keeps its recovery evidence, and only the same registry-verified consumer may continue that one operation. That is a way to finish something uncertain, not a way to start something new.
 
 **Can I supply my own identity, consent, or idempotency values?** No. Those fields belong to Operon, and mutation input containing host-owned fields is rejected as an invalid request rather than being ignored. The one identifier you generate is the `requestId` on Runtime read DTOs, which is a correlation value and not a claim of authority.
+
+**Can I ask `getDeveloperApiV1()` for `tasks.adopt.preview`?** No. The base accessor remains unchanged and rejects task-workflow extension capabilities. Request `tasks.adopt.preview` and `tasks.adopt.apply` through `getTaskWorkflowDeveloperApiV1()` instead.
 
 ## Related
 

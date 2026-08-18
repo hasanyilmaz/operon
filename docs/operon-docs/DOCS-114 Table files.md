@@ -2,7 +2,7 @@
 Notes: How a saved table lives as its own portable .table file in your vault
 Icon: file-cog
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Table files
@@ -21,12 +21,12 @@ Because the format is versioned and validated, Operon is strict about what it ac
 
 ## Where Table files live
 
-New Table files are created in an **Operon/Tables** folder at the root of your vault. This happens automatically whenever Operon needs to create one:
+New Table files use the configurable **Table default folder** in **Settings → Operon → Views → Tables**. The historical default is `Operon/Tables` at the root of your vault. Choose any canonical vault-relative folder when new presets belong somewhere else, or leave the setting blank to create new `.table` files directly at the vault root. This destination applies only when Operon creates a new file; it does **not** move, rename, or reorganize existing Table files. Creation happens automatically whenever Operon needs a new file:
 
 - **New** or **Duplicate** from a preset's settings.
 - A **related view** created from a Calendar, Kanban, or Filter View that spins up a new Table preset. See [[DOCS-025 Filter View|Filter View]].
 
-`Operon/Tables` is a starting point, not a cage. Once a file exists, you can move it anywhere in the vault, rename it, or organize it alongside the project it belongs to, and Operon keeps tracking the same preset at its new location.
+The configured folder is a starting point, not a cage. Once a file exists, you can move it anywhere in the vault, rename it, or organize it alongside the project it belongs to, and Operon keeps tracking the same preset at its new location.
 
 ## Opening a Table file
 
@@ -90,8 +90,8 @@ A `.table` file is an ordinary vault file as far as Obsidian's linking is concer
 
 ## Tips
 
-> [!tip] Treat Operon/Tables like any other vault folder
-> Because a Table file is a real file, everything you already do with vault files works on it: move it into the project folder it belongs to, rename it to match your own naming convention, back it up, or version it alongside your notes. Nothing about editing the table, its presets, or its embeds depends on the file living in any particular folder.
+> [!tip] Treat the Table default folder like any other vault folder
+> The setting chooses where *new* Table files begin, not where every Table file must stay. Because a Table file is a real file, everything you already do with vault files works on it: move it into the project folder it belongs to, rename it to match your own naming convention, back it up, or version it alongside your notes. Nothing about editing the table, its presets, or its embeds depends on the file living in any particular folder.
 
 ## FAQ
 
