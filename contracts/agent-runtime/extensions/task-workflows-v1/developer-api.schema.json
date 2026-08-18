@@ -21,9 +21,16 @@
         "requestedCapabilities": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 1,
-          "prefixItems": [{ "const": "tasks.filter-query" }],
-          "items": false
+          "maxItems": 3,
+          "oneOf": [
+            { "minItems": 1, "maxItems": 1, "prefixItems": [{ "const": "tasks.filter-query" }], "items": false },
+            { "minItems": 1, "maxItems": 1, "prefixItems": [{ "const": "tasks.adopt.preview" }], "items": false },
+            { "minItems": 1, "maxItems": 1, "prefixItems": [{ "const": "tasks.adopt.apply" }], "items": false },
+            { "minItems": 2, "maxItems": 2, "prefixItems": [{ "const": "tasks.filter-query" }, { "const": "tasks.adopt.preview" }], "items": false },
+            { "minItems": 2, "maxItems": 2, "prefixItems": [{ "const": "tasks.filter-query" }, { "const": "tasks.adopt.apply" }], "items": false },
+            { "minItems": 2, "maxItems": 2, "prefixItems": [{ "const": "tasks.adopt.preview" }, { "const": "tasks.adopt.apply" }], "items": false },
+            { "minItems": 3, "maxItems": 3, "prefixItems": [{ "const": "tasks.filter-query" }, { "const": "tasks.adopt.preview" }, { "const": "tasks.adopt.apply" }], "items": false }
+          ]
         }
       }
     },

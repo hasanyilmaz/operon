@@ -18,7 +18,7 @@
     {
       "file": "developer-api.schema.json",
       "id": "urn:operon:schema:runtime:v1:extension:task-workflows:developer-api",
-      "sha256": "f6ba37ec2064b1018cff60ac013f2cf7563f459ad4b2fb9c4483590e22a324e0"
+      "sha256": "0c0cd35f7d2b43ae602236794c1ace42c62737ab640d1af6871539448eafb1d9"
     },
     {
       "file": "mutation.schema.json",
@@ -57,14 +57,14 @@
       "schemaId": "task-workflow-developer-api-access-request",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:developer-api#/$defs/accessRequest",
       "file": "developer-api.schema.json",
-      "sha256": "f6ba37ec2064b1018cff60ac013f2cf7563f459ad4b2fb9c4483590e22a324e0",
+      "sha256": "0c0cd35f7d2b43ae602236794c1ace42c62737ab640d1af6871539448eafb1d9",
       "direction": "input"
     },
     {
       "schemaId": "task-workflow-developer-api-access-result",
       "ref": "urn:operon:schema:runtime:v1:extension:task-workflows:developer-api#/$defs/accessResult",
       "file": "developer-api.schema.json",
-      "sha256": "f6ba37ec2064b1018cff60ac013f2cf7563f459ad4b2fb9c4483590e22a324e0",
+      "sha256": "0c0cd35f7d2b43ae602236794c1ace42c62737ab640d1af6871539448eafb1d9",
       "direction": "response"
     },
     {
@@ -165,5 +165,5 @@
     "tasks.adopt.preview",
     "tasks.adopt.apply"
   ],
-  "aggregateSha256": "5a5a4c18a225b693054988615f0565f92293f7489b46563aaa1e107118c6fc1c"
+  "aggregateSha256": "60ce473acde1195e7c1c5b7e24ff862796a304695d06f83762aa200cea0c24f7"
 }

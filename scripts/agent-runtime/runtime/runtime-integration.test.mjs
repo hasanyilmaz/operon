@@ -270,7 +270,8 @@ test('task-workflow recovery admission preserves expired same-plan recovery and 
 	assert.match(identityApply, /journalMatchesPlan \? 'recovery-dispatched' : 'apply-dispatched'/u);
 	assert.match(taskWorkflowGatewaySource, /hasOnlyExpiredPlanIssue\(admission\.issues\)/u);
 	assert.match(taskWorkflowGatewaySource, /hasSamePlanRecoveryEvidence\(decoded\.value\)/u);
-	assert.match(taskWorkflowGatewaySource, /recoveryOnly = true/u);
+	assert.match(taskWorkflowGatewaySource, /const recoveryOnly = expired/u);
+	assert.match(taskWorkflowGatewaySource, /recoveryIntent \? 'recovery-dispatched' : event/u);
 	assert.match(taskWorkflowGatewaySource, /'recovery-completed'/u);
 });
 

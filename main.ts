@@ -403,6 +403,9 @@ import {
 	type TaskWorkflowCapabilityIdV1,
 	type TaskWorkflowDeveloperApiAccessRequestV1,
 	type TaskWorkflowDeveloperApiAccessResultV1,
+	type TaskWorkflowDeveloperCapabilityAccessRequestV1,
+	type TaskWorkflowDeveloperCapabilityAccessResultV1,
+	type TaskWorkflowDeveloperCapabilitySubsetV1,
 	type TaskWorkflowMutationResultV1,
 	type TaskWorkflowMutationReceiptV1,
 	type TaskWorkflowPreviewRequestV1,
@@ -1418,15 +1421,32 @@ export default class OperonPlugin extends Plugin {
 	getTaskWorkflowDeveloperApiV1(
 		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
 		request: TaskWorkflowDeveloperApiAccessRequestV1,
-	): TaskWorkflowDeveloperApiAccessResultV1 {
+	): TaskWorkflowDeveloperApiAccessResultV1;
+	getTaskWorkflowDeveloperApiV1<
+		TCapabilities extends TaskWorkflowDeveloperCapabilitySubsetV1,
+	>(
+		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
+		request: TaskWorkflowDeveloperCapabilityAccessRequestV1<TCapabilities>,
+	): TaskWorkflowDeveloperCapabilityAccessResultV1<TCapabilities>;
+	getTaskWorkflowDeveloperApiV1(
+		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
+		request: unknown,
+	): TaskWorkflowDeveloperCapabilityAccessResultV1<TaskWorkflowDeveloperCapabilitySubsetV1> {
 		const core = this.agentRuntimeCore ?? null;
-		return getOperonTaskWorkflowDeveloperApiV1(core, consumerPlugin, request, {
+		return getOperonTaskWorkflowDeveloperApiV1(
+			core,
+			consumerPlugin,
+			request as TaskWorkflowDeveloperCapabilityAccessRequestV1<TaskWorkflowDeveloperCapabilitySubsetV1>,
+			{
 			isDesktopAvailable: () => Platform.isDesktopApp,
 			isHostVersionSupported: () => requireApiVersion('1.12.2'),
 			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
 			isCoreActive: candidate => this.agentRuntimeCore === candidate && this.agentRuntimeLifecycle?.getPhase() !== 'unloading',
 			grantController: this.developerApiGrantController,
-		});
+			mutationSecurityPolicy: this.developerApiMutationSecurityPolicy,
+			recoverTaskWorkflowMutation: request => this.recoverAgentRuntimeTaskWorkflowMutation(request),
+			},
+		);
 	}
 
 	private verifyDeveloperApiConsumer(
@@ -11241,6 +11261,18 @@ export default class OperonPlugin extends Plugin {
 	): Promise<TaskWorkflowMutationResultV1> {
 		return this.agentRuntimeTaskWorkflowGateway
 			? await this.agentRuntimeTaskWorkflowGateway.apply(request)
+			: this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'capability-unavailable',
+				'The task-workflow extension Gateway is unavailable.',
+			);
+	}
+
+	private async recoverAgentRuntimeTaskWorkflowMutation(
+		request: TaskWorkflowApplyRequestV1,
+	): Promise<TaskWorkflowMutationResultV1> {
+		return this.agentRuntimeTaskWorkflowGateway
+			? await this.agentRuntimeTaskWorkflowGateway.recover(request)
 			: this.agentRuntimeTaskWorkflowApplyFailure(
 				request.requestId,
 				'capability-unavailable',

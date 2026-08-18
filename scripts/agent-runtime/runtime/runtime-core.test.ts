@@ -606,6 +606,14 @@ async function testTaskWorkflowGatewayIsolation(): Promise<void> {
 	assert.equal(terminalAudits, 3);
 	assert.equal(terminalAuditResults.at(-1)?.status, 'outcome-unknown');
 
+	applyMode = 'valid';
+	const unexpiredRecovery = await gateway.recover(apply);
+	assert.equal(unexpiredRecovery.status, 'applied');
+	assert.equal(recoveryEvidence, 'none', 'unexpired host-authorized recovery does not require Gateway receipt or journal evidence');
+	assert.equal(recoveryOnlyCalls.at(-1), false, 'unexpired recovery retains normal executor admission semantics');
+	assert.equal(dispatchedEvents.at(-1), 'recovery-dispatched');
+	assert.equal(completedEvents.at(-1), 'recovery-completed');
+
 	nowEpochMs = Date.parse(apply.plan.expiresAt) + 1;
 	const callsBeforeExpiredAdmission = applyCalls;
 	const auditsBeforeExpiredAdmission = dispatchAudits + terminalAudits;

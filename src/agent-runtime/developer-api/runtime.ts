@@ -70,6 +70,7 @@ import type {
 } from './grants';
 import type {
 	DeveloperCapabilityGrantV1,
+	DeveloperMutationSealedPlanV1,
 	DeveloperPlanSecurityBindingV1,
 	DeveloperSecurityDenialV1,
 	DeveloperSecuritySessionV1,
@@ -902,6 +903,15 @@ function createDeveloperApiSession(
 						),
 					));
 				}
+				if (!isBaseDeveloperMutationPlan(record.sealed)) {
+					return cloneOutput(mutationExecutionFailure(
+						requestId,
+						structuredErrorV1(
+							'invalid-request',
+							'The recovery reference belongs to another Developer API plan family.',
+						),
+					));
+				}
 				handle = createDeveloperPlanHandle(record.sealed, record.recoveryRef);
 				bound = {
 					recoveryRef: record.recoveryRef,
@@ -995,12 +1005,12 @@ function createDeveloperApiSession(
 				});
 			}
 			try {
-				const records = await recoveryStore.list(consumer.id);
+				const records = (await recoveryStore.list(consumer.id)).filter(isBaseRecoveryRecord);
 				return cloneOutput({
 					contractVersion: CONTRACT_VERSION_V1,
 					kind: 'developer-mutation-pending-recoveries-result',
 					ok: true,
-					recoveries: records.map(record => ({
+					recoveries: records.filter(record => isBaseDeveloperMutationPlan(record.sealed)).map(record => ({
 						recoveryRef: record.recoveryRef,
 						planDigest: record.planDigest,
 						mutationKind: record.sealed.mutationKind,
@@ -1534,6 +1544,18 @@ function currentSecurityGrant(
 			)),
 		),
 	};
+}
+
+function isBaseDeveloperMutationPlan(
+	plan: DeveloperMutationSealedPlanV1,
+): plan is SealedMutationPlanV1 {
+	return plan.mutationKind !== 'task.adopt' && isCapabilityIdV1(plan.capability);
+}
+
+function isBaseRecoveryRecord(
+	record: DeveloperMutationRecoveryRecordV1,
+): record is DeveloperMutationRecoveryRecordV1 & { readonly sealed: SealedMutationPlanV1 } {
+	return isBaseDeveloperMutationPlan(record.sealed);
 }
 
 function createDeveloperPlanHandle(

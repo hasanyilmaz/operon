@@ -100,32 +100,55 @@ export class TaskWorkflowGatewayV1 {
 	}
 
 	async apply(value: unknown): Promise<TaskWorkflowMutationResultV1> {
+		return this.executeApply(value, false);
+	}
+
+	/** Host-internal same-plan recovery entrypoint; never exposed by Runtime V1. */
+	async recover(value: unknown): Promise<TaskWorkflowMutationResultV1> {
+		return this.executeApply(value, true);
+	}
+
+	private async executeApply(
+		value: unknown,
+		recoveryIntent: boolean,
+	): Promise<TaskWorkflowMutationResultV1> {
 		const decoded = decodeTaskWorkflowApplyRequestExtensionV1(value);
 		if (!decoded.ok) return applyFailure(requestId(value), 'invalid-request', 'The task-workflow apply request is invalid.');
 		const admission = admitTaskWorkflowApplyRequestExtensionV1(decoded.value, this.ports.nowEpochMs());
-		let recoveryOnly = false;
+		const expired = !admission.ok && hasOnlyExpiredPlanIssue(admission.issues);
 		if (!admission.ok) {
-			if (!hasOnlyExpiredPlanIssue(admission.issues)) {
+			if (!expired) {
 				return applyFailure(decoded.value.requestId, 'invalid-request', 'The task-workflow apply request is invalid.');
 			}
+		}
+		if (expired) {
 			try {
 				if (!await this.ports.hasSamePlanRecoveryEvidence(decoded.value)) {
-					return applyFailure(decoded.value.requestId, 'plan-expired', 'The sealed task-workflow plan has expired.');
+					return applyFailure(
+						decoded.value.requestId,
+						'plan-expired',
+						'The sealed task-workflow plan has expired.',
+					);
 				}
 			} catch {
-				return applyFailure(decoded.value.requestId, 'plan-expired', 'The sealed task-workflow plan has expired.');
+				return applyFailure(
+					decoded.value.requestId,
+					'plan-expired',
+					'The sealed task-workflow plan has expired.',
+				);
 			}
-			recoveryOnly = true;
 		}
+		const recoveryOnly = expired;
 		if (!this.ports.isReady()) return applyFailure(decoded.value.requestId, 'live-settling', 'Runtime is not ready for task-workflow apply.', true);
 		let dispatchedEvent: TaskWorkflowDispatchAuditEventV1 | null = null;
 		const dispatch = async (event: TaskWorkflowDispatchAuditEventV1): Promise<void> => {
+			const effectiveEvent = recoveryIntent ? 'recovery-dispatched' : event;
 			if (dispatchedEvent) {
-				if (dispatchedEvent !== event) throw new Error('Task-workflow apply cannot change audit mode after dispatch.');
+				if (dispatchedEvent !== effectiveEvent) throw new Error('Task-workflow apply cannot change audit mode after dispatch.');
 				return;
 			}
-			await this.ports.auditDispatched(event, decoded.value);
-			dispatchedEvent = event;
+			await this.ports.auditDispatched(effectiveEvent, decoded.value);
+			dispatchedEvent = effectiveEvent;
 		};
 		try {
 			const output = decodeTaskWorkflowMutationResultExtensionV1(

@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the **Task Adoption Developer API** for companion plugins, with exact capability grants, opaque session-bound plans, durable same-plan recovery, and the existing fail-closed Runtime adoption path.
+
 ### Fixed
 
 - Fixed identity-placeholder **File Task** apply stopping before its first source write because creation journals used invalid timestamp ordering.
 
 ### Validation
 
+- Validated companion-plugin adoption preview/apply, opaque-handle and recovery isolation, stale-source fail-closed behavior, replay, receipt-store persistence, and unchanged CLI impact.
 - Validated real receipt-store journal admission and replay, apply error boundaries, the 8 MiB limit, and unchanged Runtime V1 / CLI impact.
 
 ## [3.3.2] - 2026-08-16
