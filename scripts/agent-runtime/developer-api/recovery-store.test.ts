@@ -7,6 +7,7 @@ import {
 	computeSealedMutationPlanHashV1,
 	type SealedMutationPlanV1,
 } from '../../../src/agent-runtime/contracts/v1';
+import type { AdoptTaskSealedPlanV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1';
 import {
 	DEVELOPER_RECOVERY_MAX_RECORDS_V1,
 	DEVELOPER_RECOVERY_RETENTION_MS_V1,
@@ -68,7 +69,7 @@ test('production recovery store accepts host confirmation bound to the sealed ta
 	const factory = new FakeIndexedDbFactory();
 	const store = createStore(factory);
 	const base = recoveryRecord(77);
-	const sealed = structuredClone(base.sealed);
+	const sealed = structuredClone(base.sealed) as SealedMutationPlanV1;
 	sealed.riskLevel = 'elevated';
 	sealed.requiresConfirmation = true;
 	sealed.requiredAcknowledgements = ['terminal-transition'];
@@ -102,6 +103,27 @@ test('production recovery store accepts host confirmation bound to the sealed ta
 	};
 	await assert.rejects(
 		store.putPrepared(aggregateBound),
+		(error: unknown) => (
+			error instanceof DeveloperMutationRecoveryStoreErrorV1
+			&& error.code === 'recovery-store-corrupt'
+		),
+	);
+});
+
+test('production recovery store admits canonical task-adoption records and rejects a corrupt capability family', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = createStore(factory);
+	const record = adoptionRecoveryRecord(88);
+	await store.putPrepared(record);
+	await store.markDispatched(record.consumerId, record.recoveryRef);
+	assert.equal((await store.get(record.consumerId, record.recoveryRef))?.sealed.mutationKind, 'task.adopt');
+
+	const corrupt = {
+		...adoptionRecoveryRecord(89),
+		sealed: { ...adoptionRecoveryRecord(89).sealed, capability: 'tasks.adopt.apply' },
+	};
+	await assert.rejects(
+		store.putPrepared(corrupt as unknown as DeveloperMutationRecoveryRecordV1),
 		(error: unknown) => (
 			error instanceof DeveloperMutationRecoveryStoreErrorV1
 			&& error.code === 'recovery-store-corrupt'
@@ -258,6 +280,40 @@ function recoveryRecord(
 		expiresAt: new Date(
 			createdAtMs + DEVELOPER_RECOVERY_RETENTION_MS_V1,
 		).toISOString(),
+	};
+}
+
+function adoptionRecoveryRecord(
+	id: number,
+	createdAtMs: number = BASE_TIME,
+): DeveloperMutationRecoveryRecordV1 {
+	const base = recoveryRecord(id, createdAtMs);
+	const sealed = {
+		...structuredClone(base.sealed),
+		planHash: '',
+		capability: 'tasks.adopt.preview',
+		mutationKind: 'task.adopt',
+		expiresAt: new Date(createdAtMs + 300_000).toISOString(),
+		spec: {
+			operation: 'adopt-inline',
+			source: { filePath: 'Tasks.md', lineNumber: 0, expectedLine: '- [ ] Plain task' },
+			operonId: 'abc1234',
+			resultingLine: '- [ ] Plain task {{operonId:: abc1234}}',
+			sourceDigest: 'a'.repeat(64),
+			resultDigest: 'b'.repeat(64),
+			locator: { representation: 'inline', filePath: 'Tasks.md', lineNumber: 0 },
+		},
+	} as unknown as AdoptTaskSealedPlanV1;
+	sealed.planHash = computeSealedMutationPlanHashV1(sealed as unknown as SealedMutationPlanV1);
+	return {
+		...base,
+		planDigest: sealed.planHash,
+		sealed,
+		binding: {
+			...base.binding,
+			capability: 'tasks.adopt.preview',
+			planHash: sealed.planHash,
+		},
 	};
 }
 

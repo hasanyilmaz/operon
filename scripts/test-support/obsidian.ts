@@ -354,6 +354,14 @@ export function parseYaml(source: string): Record<string, unknown> {
 		if (separatorIndex === -1) continue;
 		const key = line.slice(0, separatorIndex).trim();
 		const value = line.slice(separatorIndex + 1).trim();
+		if (value.startsWith('"')) {
+			try {
+				result[key] = JSON.parse(value);
+				continue;
+			} catch {
+				// Fall back to the deliberately small fixture parser below.
+			}
+		}
 		result[key] = value.replace(/^["']|["']$/gu, '');
 	}
 	return result;

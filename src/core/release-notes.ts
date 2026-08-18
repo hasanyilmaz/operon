@@ -13,6 +13,36 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.4.0',
+		date: '2026-08-18',
+		title: 'Operon 3.4.0 - Flexible Tables, Task Notes, and Developer Adoption',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-4-0-tasknote-multiline-support.png',
+		body: `
+### New
+- Added Brazilian Portuguese (\`pt-BR\`) localization, including a dedicated fail-closed natural-language date parser and downloadable locale pack.
+- Added a configurable **default folder for new Operon Table files**, while preserving existing Table locations and allowing the vault root to be selected.
+- Added a **default width for embedded Tables**, with 50%–250% choices and explicit \`width:\` values continuing to override the global setting.
+- Added **multiline Task Notes editing** in Task Editor and the shared Notes pop-over: Shift+Enter inserts line breaks while inline tasks remain stored on one physical Markdown line.
+- Added an opt-in **FlowTime completion sound** that uses the configured Reminder sound when a focus session or break reaches zero.
+- Added the **Task Adoption Developer API** for companion plugins, with exact capability grants, opaque session-bound plans, durable same-plan recovery, and the existing fail-closed Runtime adoption path.
+
+### Fixed
+- Fixed incompatible legacy Table preset sidecar authority blocking startup when no usable \`.table\` file exists.
+- Fixed \`dateStarted\`-only recurring tasks disappearing from the Calendar's All Day row when their materialized occurrence suppressed the corresponding projected occurrence.
+- Fixed recurring task transitions being reported as successful before a unique open successor was verified in the index, preventing intermittent loss of timed Calendar recurrences after completion.
+- Fixed identity-placeholder **File Task** apply stopping before its first source write because creation journals used invalid timestamp ordering.
+
+### Updated Docs
+- [[DOCS-007 Install and enable Operon|Install and enable Operon]]
+- [[DOCS-012 Inline task syntax|Inline task syntax]]
+- [[DOCS-021 Task Editor|Task Editor]]
+- [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]]
+- [[DOCS-046 Plugin data and state files|Plugin data and state files]]
+- And 12 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.3.2',
 		date: '2026-08-16',
 		title: 'Operon 3.3.2 - Runtime Recovery and Safer Windows Transport',

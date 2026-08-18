@@ -6,6 +6,13 @@ import {
 	sha256HexV1,
 	type MutationReceiptV1,
 } from '../../../src/agent-runtime/contracts/v1';
+import type { IdentityPlaceholderSealedPlanV1 } from '../../../src/agent-runtime/extensions/task-workflows-v1/contracts';
+import {
+	buildIdentityPlaceholderJournalV1,
+	identityPlaceholderJournalByteLengthV1,
+	identityPlaceholderJournalsEqualV1,
+	utf8ByteLengthV1,
+} from '../../../src/agent-runtime/runtime/identity-placeholder-journal';
 import {
 	IndexedDbMutationReceiptStoreV1,
 	IndexedDbSecurityAuditStoreV1,
@@ -110,6 +117,46 @@ function journal(
 	};
 }
 
+function identityPlaceholderPlan(id: number): IdentityPlaceholderSealedPlanV1 {
+	const value = receipt(id);
+	return {
+		contractVersion: 1,
+		planId: `identity-plan-${id}`,
+		planHash: value.planHash,
+		clientInstanceId: value.clientInstanceId,
+		correlationId: `identity-correlation-${id}`,
+		idempotencyKeyHash: value.idempotencyKeyHash,
+		receiptTargetDigest: value.targetDigest,
+		capability: 'tasks.create.identity-placeholders',
+		mutationKind: 'task.create',
+		createdAt: '2026-07-24T10:00:00.000Z',
+		expiresAt: '2026-07-24T10:05:00.000Z',
+		targets: [],
+		contextRevision: {
+			index: {
+				sessionId: 'identity-journal-test',
+				ramGeneration: 1,
+				durable: { status: 'missing' },
+			},
+			settingsFingerprint: sha256(50_000 + id),
+			pinnedGeneration: 0,
+			activeTrackerGeneration: 0,
+			repeatSeriesRevision: 0,
+			projectSerialGeneration: 0,
+			projectSerialSignature: sha256(60_000 + id),
+		},
+		affectedResources: [],
+		atomicGroups: [],
+		predictedEffects: [],
+		riskLevel: 'routine',
+		requiresConfirmation: false,
+		requiredAcknowledgements: [],
+		warnings: [],
+		spec: { operation: 'create', items: [] },
+		createEffects: [],
+	} as IdentityPlaceholderSealedPlanV1;
+}
+
 function auditEvent(
 	id: number,
 	occurredAtMs: number = BASE_TIME,
@@ -150,6 +197,131 @@ test('health fails closed when IndexedDB is unavailable', async () => {
 		(error: unknown) => error instanceof MutationReceiptStoreErrorV1
 			&& error.code === 'receipt-store-unavailable',
 	);
+});
+
+test('identity placeholder journals retain preview creation time, use apply time, and admit durable exact readback', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-identity-journal-readback',
+	});
+	const plan = identityPlaceholderPlan(160);
+	const value = buildIdentityPlaceholderJournalV1(
+		plan,
+		sha256(1),
+		'2026-07-24T10:01:00.000Z',
+		[{
+			stepId: 'source:Identity.md',
+			groupId: 'task-source:Identity.md',
+			resourceKind: 'task-source',
+			resourceKey: 'Identity.md',
+			operation: 'create',
+			before: { state: 'absent', digest: sha256HexV1(''), content: null },
+			after: { state: 'present', digest: sha256HexV1('# Identity\n'), content: '# Identity\n' },
+		}],
+	);
+	assert.equal(value.createdAt, plan.createdAt);
+	assert.equal(value.effectiveAt, '2026-07-24T10:01:00.000Z');
+	assert.equal(utf8ByteLengthV1('ö'), 2);
+	assert.equal(await store.acquireJournal(value, LEASE_OWNER), true);
+	const persisted = await store.lookupJournal({
+		vaultIdentityHash: value.vaultIdentityHash,
+		clientInstanceId: value.clientInstanceId,
+		idempotencyKeyHash: value.idempotencyKeyHash,
+		mutationKind: value.mutationKind,
+	});
+	assert.ok(persisted);
+	if (!persisted) throw new Error('Expected the acquired identity journal to be readable.');
+	assert.equal(identityPlaceholderJournalsEqualV1(persisted, value), true);
+});
+
+test('an owned journal can remove the exact altered readback before any recovery can reuse it', async () => {
+	const factory = new FakeIndexedDbFactory();
+	const store = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: factory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-owned-altered-journal-cleanup',
+	});
+	const original = journal(162);
+	const receiptScope: MutationReceiptScopeV1 = {
+		vaultIdentityHash: original.vaultIdentityHash,
+		clientInstanceId: original.clientInstanceId,
+		idempotencyKeyHash: original.idempotencyKeyHash,
+		mutationKind: original.mutationKind,
+	};
+	assert.equal(await store.acquireJournal(original, LEASE_OWNER), true);
+	const key = [...factory.journals.keys()][0];
+	assert.ok(key);
+	const alteredStored = structuredClone(factory.journals.get(key)) as {
+		journal: GraphTransactionJournalV1;
+	};
+	const alteredContent = '# Altered after-state\n';
+	alteredStored.journal.steps[0]!.after = {
+		state: 'present',
+		digest: sha256HexV1(alteredContent),
+		content: alteredContent,
+	};
+	factory.journals.set(key, alteredStored);
+
+	const persisted = await store.lookupJournal(receiptScope);
+	assert.ok(persisted);
+	if (!persisted) throw new Error('Expected the altered journal readback.');
+	assert.equal(identityPlaceholderJournalsEqualV1(persisted, original), false);
+	assert.equal(await store.deleteJournal(receiptScope, original, LEASE_OWNER), false);
+	assert.equal(await store.deleteJournal(receiptScope, persisted, LEASE_OWNER), true);
+	assert.equal(await store.lookupJournal(receiptScope), null);
+});
+
+test('identity placeholder journal byte limit admits exactly 8 MiB and rejects the next byte without a journal write', async () => {
+	const plan = identityPlaceholderPlan(161);
+	const createJournal = () => buildIdentityPlaceholderJournalV1(
+		plan,
+		sha256(1),
+		'2026-07-24T10:01:00.000Z',
+		[{
+			stepId: 'source:Large.md',
+			groupId: 'task-source:Large.md',
+			resourceKind: 'task-source',
+			resourceKey: 'Large.md',
+			operation: 'create',
+			before: { state: 'absent', digest: sha256HexV1(''), content: null },
+			after: { state: 'present', digest: sha256HexV1(''), content: '' },
+		}],
+	);
+	const exact = createJournal();
+	const paddingLength = GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1
+		- identityPlaceholderJournalByteLengthV1(exact);
+	exact.steps[0].after.content = 'x'.repeat(paddingLength);
+	exact.steps[0].after.digest = sha256HexV1(exact.steps[0].after.content);
+	assert.equal(identityPlaceholderJournalByteLengthV1(exact), GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1);
+
+	const exactFactory = new FakeIndexedDbFactory();
+	const exactStore = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: exactFactory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-identity-journal-exact-limit',
+	});
+	assert.equal(await exactStore.acquireJournal(exact, LEASE_OWNER), true);
+	assert.equal(exactFactory.journals.size, 1);
+
+	const oversized = structuredClone(exact);
+	const oversizedContent = `${oversized.steps[0].after.content ?? ''}x`;
+	oversized.steps[0].after.content = oversizedContent;
+	oversized.steps[0].after.digest = sha256HexV1(oversizedContent);
+	assert.equal(identityPlaceholderJournalByteLengthV1(oversized), GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1 + 1);
+	const oversizedFactory = new FakeIndexedDbFactory();
+	const oversizedStore = new IndexedDbMutationReceiptStoreV1({
+		indexedDBFactory: oversizedFactory as unknown as IDBFactory,
+		now: () => BASE_TIME,
+		databaseName: 'receipt-test-identity-journal-over-limit',
+	});
+	await assert.rejects(
+		oversizedStore.acquireJournal(oversized, LEASE_OWNER),
+		(error: unknown) => error instanceof MutationReceiptStoreErrorV1
+			&& error.code === 'receipt-store-invalid-receipt',
+	);
+	assert.equal(oversizedFactory.journals.size, 0);
 });
 
 test('database version 2 upgrades an existing receipt-only store in place', async () => {

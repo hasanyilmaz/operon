@@ -198,6 +198,121 @@ async function run(): Promise<void> {
 	});
 	fallbackSurface.destroy();
 
+	let taskNoteValue = '';
+	let taskNoteChanges = 0;
+	const taskNoteInput = {
+		current: null as Parameters<CompactMarkdownEditorSurfaceDependencies['createTextareaBackend']>[0] | null,
+	};
+	const taskNoteSurface = createCompactMarkdownEditorSurface(container, {
+		app: {} as App,
+		sourceValue: 'First\nSecond',
+		ariaLabel: 'Notes',
+		textPolicy: 'task-note',
+		onIntent: () => undefined,
+		onUserChange: () => {
+			taskNoteChanges += 1;
+		},
+	}, {
+		isPhone: () => true,
+		createEmbeddedBackend: () => {
+			throw new Error('phone must not construct embedded editor');
+		},
+		createTextareaBackend: input => {
+			taskNoteInput.current = input;
+			taskNoteValue = input.displayValue;
+			return {
+				getValue: () => taskNoteValue,
+				getSelection: () => ({ anchor: taskNoteValue.length, head: taskNoteValue.length }),
+				setValue: value => {
+					taskNoteValue = value;
+				},
+				focus: () => undefined,
+				focusEnd: () => undefined,
+				selectAll: () => undefined,
+				refreshLayout: () => undefined,
+				destroy: () => undefined,
+			};
+		},
+	});
+	equal(taskNoteValue, 'First\nSecond', 'task notes must retain source line breaks in the editor');
+	assert.ok(taskNoteInput.current);
+	assertions += 1;
+	let softBreakPrevented = false;
+	let softBreakStopped = false;
+	equal(taskNoteInput.current.callbacks.onKeyDown({
+		key: 'Enter',
+		shiftKey: true,
+		metaKey: false,
+		ctrlKey: false,
+		isComposing: false,
+		preventDefault: () => {
+			softBreakPrevented = true;
+		},
+		stopPropagation: () => {
+			softBreakStopped = true;
+		},
+	} as unknown as KeyboardEvent), false, 'Shift+Enter must be left to the native multiline editor');
+	equal(softBreakPrevented, false);
+	equal(softBreakStopped, false);
+	taskNoteInput.current.callbacks.onInput('First\n\nSecond', { anchor: 13, head: 13 });
+	equal(taskNoteValue, 'First\n\nSecond');
+	equal(taskNoteChanges, 1);
+	deepEqual(taskNoteSurface.getCommit(), {
+		shouldCommit: true,
+		value: 'First\n\nSecond',
+	});
+	taskNoteSurface.destroy();
+
+	let embeddedTaskNoteValue = '';
+	let embeddedTextareaCalls = 0;
+	const embeddedTaskNoteInput = {
+		current: null as Parameters<CompactMarkdownEditorSurfaceDependencies['createEmbeddedBackend']>[0] | null,
+	};
+	const embeddedTaskNoteSurface = createCompactMarkdownEditorSurface(container, {
+		app: {} as App,
+		sourceValue: 'Embedded\nNote',
+		ariaLabel: 'Notes',
+		textPolicy: 'task-note',
+		onIntent: () => undefined,
+	}, {
+		isPhone: () => false,
+		createEmbeddedBackend: input => {
+			embeddedTaskNoteInput.current = input;
+			embeddedTaskNoteValue = input.displayValue;
+			return {
+				getValue: () => embeddedTaskNoteValue,
+				getSelection: () => ({ anchor: embeddedTaskNoteValue.length, head: embeddedTaskNoteValue.length }),
+				setValue: value => { embeddedTaskNoteValue = value; },
+				focus: () => undefined,
+				focusEnd: () => undefined,
+				selectAll: () => undefined,
+				refreshLayout: () => undefined,
+				destroy: () => undefined,
+			};
+		},
+		createTextareaBackend: () => {
+			embeddedTextareaCalls += 1;
+			throw new Error('embedded task-note backend must not fall back');
+		},
+	});
+	assert.ok(embeddedTaskNoteInput.current);
+	assertions += 1;
+	equal(embeddedTaskNoteInput.current.options.textPolicy, 'task-note');
+	equal(embeddedTaskNoteInput.current.displayValue, 'Embedded\nNote');
+	equal(embeddedTextareaCalls, 0);
+	let embeddedSoftBreakPrevented = false;
+	equal(embeddedTaskNoteInput.current.callbacks.onKeyDown({
+		key: 'Enter',
+		shiftKey: true,
+		metaKey: false,
+		ctrlKey: false,
+		isComposing: false,
+		preventDefault: () => { embeddedSoftBreakPrevented = true; },
+		stopPropagation: () => undefined,
+	} as unknown as KeyboardEvent), false);
+	equal(embeddedSoftBreakPrevented, false);
+	embeddedTaskNoteSurface.destroy();
+
 	console.log(`Compact Markdown editor surface tests passed: ${assertions} assertions`);
 }
 

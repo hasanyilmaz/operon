@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -23,7 +23,7 @@
       "done": "Fertig",
       "edit": "Bearbeiten",
       "file": "Datei",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "Inline",
       "kanbanNoValue": "Kein Wert",
       "keepAsIs": "Unverändert lassen",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "Einen kleinen Hinweis anzeigen, wenn der FlowTime-Countdown null erreicht.",
       "flowTimePauseDuration": "FlowTime-Pausendauer",
       "flowTimePauseDurationDesc": "Länge der Pausen in FlowTime.",
+      "flowTimePlayReminderSoundOnTargetReached": "Erinnerungston abspielen, wenn FlowTime null erreicht",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "Die unter Erinnerungen → Erinnerungston ausgewählte Audiodatei abspielen, wenn eine FlowTime-Sitzung oder Pause null erreicht.",
       "flowTimeShowNumericTimer": "Numerischen TrackTime/FlowTime-Timer anzeigen",
       "flowTimeShowNumericTimerDesc": "Die numerische verstrichene oder verbleibende Zeit in der TrackTime- & FlowTime-Seitenleiste anzeigen.",
       "flowTimeUseLastSelectedDuration": "Zuletzt gewählte Dauer als FlowTime-Standard verwenden",
@@ -1736,6 +1738,7 @@
       "languagePackDownloading": "Wird heruntergeladen…",
       "languagePackUpdate": "Aktualisieren",
       "languagePackUpdating": "Wird aktualisiert…",
+      "languagePortugueseBrazilian": "Brasilianisches Portugiesisch",
       "languageRussian": "Russisch",
       "languageSpanish": "Spanisch",
       "languageTurkish": "Türkisch",
@@ -2179,8 +2182,13 @@
       "tabViews": "Ansichten",
       "tableAddPresetButton": "+ Table-Voreinstellung hinzufügen",
       "tableAtLeastOnePresetRequired": "Mindestens eine Table-Voreinstellung ist erforderlich.",
+      "tableDefaultFolder": "Standardordner für neue Table-Dateien",
+      "tableDefaultFolderDesc": "Neue Table-Dateien werden hier erstellt. Leer lassen, um sie im Vault-Stammordner zu erstellen. Das Ändern dieser Einstellung verschiebt niemals bestehende Table-Dateien.",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table-Standard-Voreinstellung",
       "tableDefaultPresetDesc": "Neue Operon Table-Tabs starten mit dieser Voreinstellung, sofern der Tab nicht bereits einen eigenen gespeicherten Zustand hat.",
+      "tableEmbedDefaultWidthPercent": "Standardbreite eingebetteter Tabellen",
+      "tableEmbedDefaultWidthPercentDesc": "Legt die Standardbreite eingebetteter Operon Tables ohne width:-Wert fest. Ein gültiger width:-Wert im Embed überschreibt diese Einstellung.",
       "tableEmbedVisibleRows": "Maximal sichtbare Zeilen in eingebetteten Tabellen",
       "tableEmbedVisibleRowsDesc": "Legt die Standardhöhe eingebetteter Operon Tables fest. Zusätzliche Zeilen bleiben per Scrollen verfügbar.",
       "tableEmbedVisibleRowsOption": "{{rows}} Zeilen",
@@ -2191,7 +2199,8 @@
       "tableFileConflictResolveMessage": "{{path}} mit der bestehenden ID behalten? Operon schreibt {{count}} andere gültige Datei(en) mit neuen IDs neu:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table-ID-Konflikt lösen",
       "tableFileConflictResolvedNotice": "Der ID-Konflikt wurde gelöst und {{count}} unabhängige Table-Datei(en) wurden erstellt.",
-      "tableFileUnsupportedPackageNotice": "Operon konnte die gespeicherte Table-Konfiguration nicht sicher öffnen ({reason}). Schreibvorgänge für Einstellungen wurden blockiert. Installiere nicht neu und bearbeite data.json nicht; bewahre deine Dateien auf, prüfe den gemeldeten Grund und hole Hilfe zur Wiederherstellung.",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "Inkompatible alte Table-Voreinstellungen wurden zurückgesetzt. Vorhandene .table-Dateien wurden beibehalten und werden automatisch übernommen.",
+      "tableFileUnsupportedPackageNotice": "Operon konnte die gespeicherte Table-Konfiguration nicht sicher öffnen ({{reason}}). Schreibvorgänge für Einstellungen wurden blockiert. Installiere nicht neu und bearbeite data.json nicht; bewahre deine Dateien auf, prüfe den gemeldeten Grund und hole Hilfe zur Wiederherstellung.",
       "tableGeneralSettings": "Allgemeine Table-Einstellungen",
       "tablePresetConflict": "ID-Konflikt",
       "tablePresetFileMissingNotice": "Table-Datei fehlt: {{path}}",
@@ -3080,5 +3089,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "ff0da36c52139d2f0961144a11def5502873bc72f5ac06e09e4278ece03b628b"
+  "sourceVersion": "ff9d483b370b21b71e3b13f9033d84cd6c1d61bfc2a9870761dfd273c0690b7f"
 }

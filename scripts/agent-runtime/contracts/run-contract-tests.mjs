@@ -29,6 +29,7 @@ const productionContractImporters = new Set([
 	'src/agent-runtime/extensions/task-workflows-v1/contracts.ts',
 	'src/agent-runtime/extensions/task-workflows-v1/decode.ts',
 	'src/agent-runtime/extensions/task-workflows-v1/developer-api.ts',
+	'src/agent-runtime/extensions/task-workflows-v1/task-workflow-mutation-session.ts',
 	'src/agent-runtime/extensions/task-workflows-v1/gateway.ts',
 	'src/agent-runtime/runtime/types.ts',
 	'src/agent-runtime/runtime/catalog-builder.ts',

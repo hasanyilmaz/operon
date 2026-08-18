@@ -384,7 +384,7 @@ test('committed package capture waits for prior publication and performs no extr
 	await store.initialize(DEFAULT_SETTINGS, 'en');
 	const update = store.updateDataPackage(current => ({
 		...current,
-		settings: { ...current.settings, language: 'tr' },
+		settings: { ...current.settings, language: 'pt-BR', languagePackSubscriptions: ['pt-BR'] },
 	}));
 	await withTimeout(saveStarted, 'package save start');
 	let captureSettled = false;
@@ -397,10 +397,11 @@ test('committed package capture waits for prior publication and performs no extr
 	releaseSave();
 	await withTimeout(update, 'package update');
 	const snapshot = await withTimeout(capture, 'package committed snapshot capture');
-	assert.equal(snapshot.settings.language, 'tr');
+	assert.equal(snapshot.settings.language, 'pt-BR');
+	assert.deepEqual(snapshot.settings.languagePackSubscriptions, ['pt-BR']);
 	assert.equal(saveCount, 1);
 	snapshot.settings.language = 'de';
-	assert.equal(store.getDataPackage().settings.language, 'tr');
+	assert.equal(store.getDataPackage().settings.language, 'pt-BR');
 });
 
 test('OperonStorage committed snapshot capture is zero-write and reports suspension safely', async () => {

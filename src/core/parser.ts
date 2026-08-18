@@ -162,6 +162,37 @@ function unescapeValue(value: string): string {
 }
 
 /**
+ * Note fields accept the compact `\\n` line-break escape in addition to the
+ * legacy `\\u000A` form. Escaped backslashes remain literal, so `\\\\n`
+ * continues to mean the visible characters "\\n".
+ */
+function unescapeTaskNoteValue(value: string): string {
+	let result = '';
+	for (let i = 0; i < value.length; i++) {
+		if (value[i] === '\\' && i + 1 < value.length) {
+			const next = value[i + 1];
+			if (next === 'n') {
+				result += '\n';
+				i++;
+				continue;
+			}
+			if (value.slice(i + 1, i + 6).toLowerCase() === 'u000a') {
+				result += '\n';
+				i += 5;
+				continue;
+			}
+			if (next === '}' || next === '{' || next === ';' || next === '\\') {
+				result += next;
+				i++;
+				continue;
+			}
+		}
+		result += value[i];
+	}
+	return result;
+}
+
+/**
  * Parse inline fields from a task line.
  * Extracts all {{key:: value}} containers, handling:
  * - Nested WikiLinks [[Note|Alias]]
@@ -269,8 +300,10 @@ function parseFieldContent(
 		valueOffset += 1;
 	}
 
-	let value = unescapeValue(rawValue);
 	const key = reverseMap.get(sourceKey) ?? sourceKey;
+	let value = key === 'note'
+		? unescapeTaskNoteValue(rawValue)
+		: unescapeValue(rawValue);
 	if (key === 'taskColor') {
 		value = normalizeTaskColorValue(value);
 	} else if (key === 'taskIcon') {

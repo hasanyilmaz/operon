@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -23,7 +23,7 @@
       "done": "Bitti",
       "edit": "Düzenle",
       "file": "Dosya",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "Satır içi",
       "kanbanNoValue": "Değer yok",
       "keepAsIs": "Olduğu gibi bırak",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "FlowTime geri sayımı sıfıra ulaştığında küçük bir uyarı göster.",
       "flowTimePauseDuration": "FlowTime mola süresi",
       "flowTimePauseDurationDesc": "FlowTime'da alınan molaların süresi.",
+      "flowTimePlayReminderSoundOnTargetReached": "FlowTime sıfıra ulaştığında hatırlatıcı sesini çal",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "Bir FlowTime oturumu veya molası sıfıra ulaştığında Hatırlatıcılar → Hatırlatıcı sesi altında seçilen ses dosyasını çal.",
       "flowTimeShowNumericTimer": "TrackTime/FlowTime sayısal zamanlayıcıyı göster",
       "flowTimeShowNumericTimerDesc": "TrackTime & FlowTime yan paneli içinde geçen veya kalan süreyi sayı olarak göster.",
       "flowTimeUseLastSelectedDuration": "Varsayılan FlowTime süresini son seçilen süre yap",
@@ -1736,6 +1738,7 @@
       "languagePackDownloading": "İndiriliyor…",
       "languagePackUpdate": "Güncelle",
       "languagePackUpdating": "Güncelleniyor…",
+      "languagePortugueseBrazilian": "Brezilya Portekizcesi",
       "languageRussian": "Rusça",
       "languageSpanish": "İspanyolca",
       "languageTurkish": "Türkçe",
@@ -2179,8 +2182,13 @@
       "tabViews": "Görünümler",
       "tableAddPresetButton": "+ Table Ön Ayarı Ekle",
       "tableAtLeastOnePresetRequired": "En az bir table ön ayarı gerekli.",
+      "tableDefaultFolder": "Yeni Table dosyaları için varsayılan klasör",
+      "tableDefaultFolderDesc": "Yeni Table dosyaları burada oluşturulur. Vault kökünde oluşturmak için boş bırakın. Bu ayarı değiştirmek mevcut Table dosyalarını asla taşımaz.",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table varsayılan ön ayarı",
       "tableDefaultPresetDesc": "Yeni Operon Table sekmeleri, sekmenin kendi kayıtlı durumu yoksa bu ön ayar ile başlar.",
+      "tableEmbedDefaultWidthPercent": "Gömülü tabloların varsayılan genişliği",
+      "tableEmbedDefaultWidthPercentDesc": "width: değeri olmayan gömülü Operon Table'ların varsayılan genişliğini belirler. Embed içindeki geçerli bir width: değeri bu ayarı geçersiz kılar.",
       "tableEmbedVisibleRows": "Gömülü tablolarda maksimum görünür satır",
       "tableEmbedVisibleRowsDesc": "Gömülü Operon Table'ların varsayılan yüksekliğini belirler. Ek satırlar kaydırarak erişilebilir kalır.",
       "tableEmbedVisibleRowsOption": "{{rows}} satır",
@@ -2191,7 +2199,8 @@
       "tableFileConflictResolveMessage": "{{path}} mevcut ID üzerinde korunsun mu? Operon diğer {{count}} geçerli dosyayı yeni ID numaralarıyla yeniden yazacak:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table ID çakışmasını çöz",
       "tableFileConflictResolvedNotice": "ID çakışması çözüldü ve {{count}} bağımsız Table dosyası oluşturuldu.",
-      "tableFileUnsupportedPackageNotice": "Operon kayıtlı Table yapılandırmasını güvenle açamadı ({reason}). Ayar yazmaları engellendi. Yeniden kurmayın veya data.json dosyasını düzenlemeyin; dosyalarınızı koruyun, bildirilen nedeni inceleyin ve kurtarma desteği alın.",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "Uyumsuz eski Table ön ayarı ayarları sıfırlandı. Mevcut .table dosyaları korundu ve otomatik olarak benimsenecek.",
+      "tableFileUnsupportedPackageNotice": "Operon kayıtlı Table yapılandırmasını güvenle açamadı ({{reason}}). Ayar yazmaları engellendi. Yeniden kurmayın veya data.json dosyasını düzenlemeyin; dosyalarınızı koruyun, bildirilen nedeni inceleyin ve kurtarma desteği alın.",
       "tableGeneralSettings": "Genel Table Ayarları",
       "tablePresetConflict": "ID çakışması",
       "tablePresetFileMissingNotice": "Table dosyası eksik: {{path}}",
@@ -3080,5 +3089,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a43bad14f364516292b8096186f52f0199f55162f4ebacfad0f87fa00490b39a"
+  "sourceVersion": "6e5abee93c58a6bde663c35b228632e57c1cb1d01c1507223c9029a2d0eeefdc"
 }

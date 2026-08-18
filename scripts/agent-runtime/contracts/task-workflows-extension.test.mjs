@@ -121,6 +121,10 @@ test('task-workflows-v1 leaf schemas remain strict and feature-specific', async 
 	assert.equal(combined(advertisements.slice(0, -1)), false, 'combined advertisement requires every extension capability');
 	const developerAccess = ajv.getSchema('urn:operon:schema:runtime:v1:extension:task-workflows:developer-api#/$defs/accessRequest');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.filter-query'] }), true, JSON.stringify(developerAccess.errors));
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.preview', 'tasks.adopt.apply'] }), true, JSON.stringify(developerAccess.errors));
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.apply', 'tasks.adopt.preview'] }), false, 'access capability subsets are canonical-order only');
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.adopt.preview', 'tasks.adopt.preview'] }), false, 'access capability subsets reject duplicates');
+	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.create.identity-placeholders'] }), false, 'identity creation remains outside the Developer API extension accessor');
 	assert.equal(developerAccess({ contractVersion: 1, runtimeApi: { min: 1, max: 1 }, requestedCapabilities: ['tasks.query'] }), false, 'base capability cannot enter the extension accessor');
 });
 

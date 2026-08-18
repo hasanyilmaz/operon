@@ -27,7 +27,9 @@ export function buildTablePresetPackageManifest(
 		fileBindings: (settings.tablePresetFileBindings ?? []).map(binding => ({ ...binding })),
 		initialized: settings.tablePresetFileInitialized,
 		tableDefaultPresetId: settings.tableDefaultPresetId,
+		tableDefaultFolder: settings.tableDefaultFolder,
 		tableEmbedVisibleRows: settings.tableEmbedVisibleRows,
+		tableEmbedDefaultWidthPercent: settings.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: settings.tableShowLineNumbers,
 		tableShowTaskIcon: settings.tableShowTaskIcon,
 		tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,
@@ -43,7 +45,9 @@ export function pickTablePresetProjectionSettings(
 		tablePresetFileBindings: (settings.tablePresetFileBindings ?? []).map(binding => ({ ...binding })),
 		tablePresetFileInitialized: settings.tablePresetFileInitialized,
 		tableDefaultPresetId: settings.tableDefaultPresetId,
+		tableDefaultFolder: settings.tableDefaultFolder,
 		tableEmbedVisibleRows: settings.tableEmbedVisibleRows,
+		tableEmbedDefaultWidthPercent: settings.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: settings.tableShowLineNumbers,
 		tableShowTaskIcon: settings.tableShowTaskIcon,
 		tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,
@@ -75,6 +79,20 @@ export function mergeTablePresetRegistryOrder(
 		nextOrder.push(normalized);
 	}
 	return nextOrder;
+}
+
+/** Keep an adopted file-backed Table usable when old authority had no default. */
+export function resolveTablePresetDefaultAfterRegistrySync(
+	currentDefaultId: string | null,
+	orderedPresetIds: readonly string[],
+	availablePresetIds: readonly string[],
+): string | null {
+	const available = new Set(availablePresetIds);
+	if (currentDefaultId && available.has(currentDefaultId)) return currentDefaultId;
+	for (const presetId of orderedPresetIds) {
+		if (available.has(presetId)) return presetId;
+	}
+	return availablePresetIds[0] ?? null;
 }
 
 function normalizePresetIds(value: unknown): string[] {

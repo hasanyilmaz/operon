@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+## [3.4.0] - 2026-08-18
+
+### New
+
+- Added Brazilian Portuguese (`pt-BR`) localization, including a dedicated fail-closed natural-language date parser and downloadable locale pack.
+- Added a configurable **default folder for new Operon Table files**, while preserving existing Table locations and allowing the vault root to be selected.
+- Added a **default width for embedded Tables**, with 50%–250% choices and explicit `width:` values continuing to override the global setting.
+- Added **multiline Task Notes editing** in Task Editor and the shared Notes pop-over: Shift+Enter inserts line breaks while inline tasks remain stored on one physical Markdown line.
+- Added an opt-in **FlowTime completion sound** that uses the configured Reminder sound when a focus session or break reaches zero.
+- Added the **Task Adoption Developer API** for companion plugins, with exact capability grants, opaque session-bound plans, durable same-plan recovery, and the existing fail-closed Runtime adoption path.
+
+### Fixed
+
+- Fixed incompatible legacy Table preset sidecar authority blocking startup when no usable `.table` file exists.
+- Fixed `dateStarted`-only recurring tasks disappearing from the Calendar's All Day row when their materialized occurrence suppressed the corresponding projected occurrence.
+- Fixed recurring task transitions being reported as successful before a unique open successor was verified in the index, preventing intermittent loss of timed Calendar recurrences after completion.
+- Fixed identity-placeholder **File Task** apply stopping before its first source write because creation journals used invalid timestamp ordering.
+
+### Validation
+
+- Passed the complete Plugin validation and Phase 5 regression suite (1,527/1,527).
+
 ## [3.3.2] - 2026-08-16
 
 Operon 3.3.2 restores Developer API management, repairs Runtime and legacy Table recovery paths, and removes process-launch capability from the Plugin. Windows Runtime users must update Operon and Operon CLI together.

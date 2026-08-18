@@ -1,3 +1,4 @@
+import { isSafeVaultRelativeFolderPath, normalizeSettingsFolderPath } from '../core/settings-folder-rules';
 import { isTableColumnColorModeLocked, normalizeTableCollapsedGroupKeys } from '../types/table';
 import type {
 	TableColumn,
@@ -167,6 +168,20 @@ export function buildOperonTableFilePath(folderPath: string, displayName: string
 	const folder = normalizeOperonTableFilePath(folderPath);
 	const filename = `${sanitizeOperonTableFileStem(displayName)}${OPERON_TABLE_FILE_EXTENSION}`;
 	return folder ? `${folder}/${filename}` : filename;
+}
+
+/**
+ * Normalizes a user-configured Table destination folder and rejects paths that
+ * cannot safely resolve inside the vault. An empty value deliberately means
+ * the vault root.
+ */
+export function resolveOperonTableCreationFolder(configuredFolder: string): string {
+	const folder = normalizeSettingsFolderPath(configuredFolder);
+	if (!folder) return '';
+	if (!isSafeVaultRelativeFolderPath(folder)) {
+		throw new Error('Table default folder must be a canonical vault-relative path.');
+	}
+	return folder;
 }
 
 export function buildUniqueOperonTableFilePath(

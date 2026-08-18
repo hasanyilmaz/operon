@@ -32,6 +32,8 @@ const obsidianRecommended = obsidianmd.configs.recommended.map((config) => {
 export default defineConfig([
 	{
 		ignores: [
+			".codex/cache/**",
+			".codex/tools/**",
 			"eslint.config.mjs",
 			"eslint.scorecard.config.mjs",
 			"esbuild.config.mjs",

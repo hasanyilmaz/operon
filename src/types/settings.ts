@@ -42,13 +42,16 @@ import {
 	normalizeBuiltInKanbanPreset,
 } from './kanban';
 import {
+	DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
 	DEFAULT_TABLE_EMBED_VISIBLE_ROWS,
 	DEFAULT_TABLE_PRESET_ID,
+	type TableEmbedDefaultWidthPercent,
 	type TableEmbedVisibleRows,
 	type TablePresetFileBinding,
 	TablePreset,
 	cloneDefaultTablePresets,
 	normalizeTableEmbedVisibleRows,
+	normalizeTableEmbedDefaultWidthPercent,
 	normalizeTablePresets,
 	isSafeTablePresetId,
 } from './table';
@@ -94,9 +97,9 @@ import type { PinnedTaskSortMode } from '../core/pinned-task-query';
 export const CURRENT_SETTINGS_VERSION = 111;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
-export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it'] as const;
+export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
-export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it'] as const;
+export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type NonEnglishOperonLanguage = typeof NON_ENGLISH_LANGUAGE_OPTIONS[number];
 export const DEFAULT_CHILD_TASK_INHERITANCE_FIELDS = ['status', 'priority', 'taskIcon', 'taskColor'] as const;
 export const CHILD_TASK_INHERITANCE_TAGS_KEY = 'tags';
@@ -123,6 +126,9 @@ export function resolveSupportedLanguageFromLocale(rawLocale: string | null | un
 	}
 	if (lower.startsWith('zh-tw') || lower.startsWith('zh-hant') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')) {
 		return 'zh-TW';
+	}
+	if (lower === 'pt' || lower === 'pt-br' || lower.startsWith('pt-br-')) {
+		return 'pt-BR';
 	}
 	const short = lower.slice(0, 2);
 	return isSupportedLanguage(short) ? short : null;
@@ -1730,7 +1736,9 @@ export interface OperonSettings {
 	tablePresetFileBindings: TablePresetFileBinding[];
 	tablePresetFileInitialized: boolean;
 	tableDefaultPresetId: string | null;
+	tableDefaultFolder: string;
 	tableEmbedVisibleRows: TableEmbedVisibleRows;
+	tableEmbedDefaultWidthPercent: TableEmbedDefaultWidthPercent;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskTypeIcon: boolean;
@@ -1769,6 +1777,8 @@ export interface OperonSettings {
 	flowTimeDefaultSessionMinutes: number;
 	flowTimeShowNumericTimer: boolean;
 	flowTimeNotifyOnTargetReached: boolean;
+	/** Play the configured reminder sound when a FlowTime session or break reaches zero. */
+	flowTimePlayReminderSoundOnTargetReached: boolean;
 
 	// Recurrence
 	newOccurrencePosition: 'above' | 'below';
@@ -2183,7 +2193,9 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tablePresetFileBindings: [],
 	tablePresetFileInitialized: false,
 	tableDefaultPresetId: DEFAULT_TABLE_PRESET_ID,
+	tableDefaultFolder: 'Operon/Tables',
 	tableEmbedVisibleRows: DEFAULT_TABLE_EMBED_VISIBLE_ROWS,
+	tableEmbedDefaultWidthPercent: DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
 	tableShowLineNumbers: true,
 	tableShowTaskIcon: false,
 	tableShowTaskTypeIcon: false,
@@ -2210,9 +2222,10 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 				flowTimeSessionMinutes: 25,
 				flowTimePauseMinutes: 5,
 					flowTimeUseLastSelectedDuration: false,
-					flowTimeDefaultSessionMinutes: 25,
-					flowTimeShowNumericTimer: true,
-					flowTimeNotifyOnTargetReached: true,
+				flowTimeDefaultSessionMinutes: 25,
+				flowTimeShowNumericTimer: true,
+				flowTimeNotifyOnTargetReached: true,
+				flowTimePlayReminderSoundOnTargetReached: false,
 
 	newOccurrencePosition: 'above',
 	fileRepeatDestination: 'same-folder',
@@ -4124,7 +4137,15 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.tablePresetFileInitialized = true;
 	}
 	const allowEmptyFileBackedTablePresets = (out.tablePresetFileBindings.length > 0
-		|| out.tablePresetFileInitialized)
+		|| out.tablePresetFileInitialized
+		// A canonical v3 manifest can deliberately remain empty and uninitialized
+		// until startup bootstrap creates its first .table file. Keep that state
+		// distinct from legacy in-memory settings that omitted Table presets.
+		|| (
+			Array.isArray(src.tablePresetOrderIds)
+			&& src.tablePresetOrderIds.length === 0
+			&& src.tableDefaultPresetId === null
+		))
 		&& Array.isArray(src.tablePresets)
 		&& src.tablePresets.length === 0;
 	out.tablePresets = allowEmptyFileBackedTablePresets
@@ -4141,6 +4162,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: out.tablePresets.find(preset => preset.id === DEFAULT_TABLE_PRESET_ID)?.id
 			?? out.tablePresets[0]?.id
 			?? null;
+	out.tableDefaultFolder = typeof src.tableDefaultFolder === 'string'
+		? normalizeSettingsFolderPath(src.tableDefaultFolder)
+		: DEFAULT_SETTINGS.tableDefaultFolder;
 	out.tableShowLineNumbers = typeof src.tableShowLineNumbers === 'boolean'
 		? src.tableShowLineNumbers
 		: DEFAULT_SETTINGS.tableShowLineNumbers;
@@ -4151,6 +4175,10 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? src.tableShowTaskTypeIcon
 		: DEFAULT_SETTINGS.tableShowTaskTypeIcon;
 	out.tableEmbedVisibleRows = normalizeTableEmbedVisibleRows(src.tableEmbedVisibleRows, DEFAULT_SETTINGS.tableEmbedVisibleRows);
+	out.tableEmbedDefaultWidthPercent = normalizeTableEmbedDefaultWidthPercent(
+		src.tableEmbedDefaultWidthPercent,
+		DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent,
+	);
 	out.presetFavorites = normalizePresetFavorites(
 		src.presetFavorites,
 		createDefaultPresetFavorites({
@@ -4376,6 +4404,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.flowTimeMode = src.flowTimeMode === 'flowtime'
 		? 'flowtime'
 		: DEFAULT_SETTINGS.flowTimeMode;
+	out.flowTimePlayReminderSoundOnTargetReached = src.flowTimePlayReminderSoundOnTargetReached === true;
 	out.duplicateAlertDelaySeconds = normalizeAllowedNumber(
 		Math.floor(out.duplicateAlertDelaySeconds),
 		DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS,

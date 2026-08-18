@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -23,7 +23,7 @@
       "done": "完了",
       "edit": "編集",
       "file": "ファイル",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "インライン",
       "kanbanNoValue": "値なし",
       "keepAsIs": "そのまま保持",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "FlowTime のカウントダウンがゼロになったときに小さな通知を表示します。",
       "flowTimePauseDuration": "FlowTime の休憩時間",
       "flowTimePauseDurationDesc": "FlowTime で取る休憩の長さ。",
+      "flowTimePlayReminderSoundOnTargetReached": "FlowTime がゼロになったらリマインダー音を再生",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "FlowTime セッションまたは休憩がゼロになったときに、リマインダー → リマインダー音で選択した音声ファイルを再生します。",
       "flowTimeShowNumericTimer": "TrackTime/FlowTime の数値タイマーを表示",
       "flowTimeShowNumericTimerDesc": "TrackTime と FlowTime のサイドバーに、経過時間または残り時間を数値で表示します。",
       "flowTimeUseLastSelectedDuration": "最後に選択した時間を FlowTime のデフォルトとして使用",
@@ -1736,6 +1738,7 @@
       "languagePackDownloading": "ダウンロード中…",
       "languagePackUpdate": "更新",
       "languagePackUpdating": "更新中…",
+      "languagePortugueseBrazilian": "ブラジルポルトガル語",
       "languageRussian": "ロシア語",
       "languageSpanish": "スペイン語",
       "languageTurkish": "トルコ語",
@@ -2179,8 +2182,13 @@
       "tabViews": "ビュー",
       "tableAddPresetButton": "+ Table プリセットを追加",
       "tableAtLeastOnePresetRequired": "少なくとも 1 つの Table プリセットが必要です。",
+      "tableDefaultFolder": "新しい Table ファイルのデフォルトフォルダー",
+      "tableDefaultFolderDesc": "新しい Table ファイルはここに作成されます。vault のルートに作成するには空欄のままにしてください。この設定を変更しても既存の Table ファイルは移動されません。",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table のデフォルトプリセット",
       "tableDefaultPresetDesc": "新しい Operon Table は、すでに独自の保存状態がない限り、このプリセットで開始します。",
+      "tableEmbedDefaultWidthPercent": "埋め込みテーブルのデフォルト幅",
+      "tableEmbedDefaultWidthPercentDesc": "width: 値がない埋め込み Operon Table のデフォルト幅を設定します。埋め込み内の有効な width: 値はこの設定を上書きします。",
       "tableEmbedVisibleRows": "埋め込みテーブルの最大表示行数",
       "tableEmbedVisibleRowsDesc": "埋め込み Operon Table のデフォルトの高さを設定します。追加の行はスクロールで引き続き表示できます。",
       "tableEmbedVisibleRowsOption": "{{rows}} 行",
@@ -2191,7 +2199,8 @@
       "tableFileConflictResolveMessage": "{{path}} に現在の ID を保持しますか？ Operon は他の有効な {{count}} 件のファイルを新しい ID で書き換えます:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table ID の競合を解決",
       "tableFileConflictResolvedNotice": "ID 競合を解決し、{{count}} 件の独立した Table ファイルを作成しました。",
-      "tableFileUnsupportedPackageNotice": "Operon は保存された Table 設定を安全に開けませんでした（{reason}）。設定の書き込みは停止されました。再インストールや data.json の編集は行わず、ファイルを保持し、報告された理由を確認して復旧支援を受けてください。",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "互換性のない以前の Table プリセット設定をリセットしました。既存の .table ファイルは保持され、自動的に採用されます。",
+      "tableFileUnsupportedPackageNotice": "Operon は保存された Table 設定を安全に開けませんでした（{{reason}}）。設定の書き込みは停止されました。再インストールや data.json の編集は行わず、ファイルを保持し、報告された理由を確認して復旧支援を受けてください。",
       "tableGeneralSettings": "Table の一般設定",
       "tablePresetConflict": "ID の競合",
       "tablePresetFileMissingNotice": "Table ファイルが見つかりません: {{path}}",
@@ -3080,5 +3089,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "77a92388f5ab351cf6eb157896278024d238f62869ca7d28ba349600986896f7"
+  "sourceVersion": "e9cdd78c2e7370cf70730c2b239ec134ead4c32c1c69e4e90931066bfb74c72b"
 }
