@@ -2,7 +2,7 @@
 Notes: Install the plugin and turn it on
 Icon: download
 Color: "#16a34a"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:41:15
 ---
 
 # Install and enable Operon
@@ -37,6 +37,23 @@ For a gentle first action, create one small inline task. A real workflow can wai
 
 Operon can check GitHub for a newer compatible release once each time it starts, and shows a notice pointing you to Community Plugins when one is available. This is on by default; turn it off in **Settings → Operon → Core → General** if you would rather update on your own schedule. The check itself never installs anything, it only tells you an update exists.
 
+## Language packs
+
+English is built into Operon and is available immediately. The following interface languages are available as downloadable packs from **Settings → Operon → Core → General → Language**:
+
+- Turkish
+- German
+- French
+- Spanish
+- Simplified Chinese
+- Traditional Chinese
+- Japanese
+- Russian
+- Italian
+- Brazilian Portuguese
+
+Operon downloads, validates, and caches the selected pack before changing the interface. If that download or validation fails, the previous active language and its saved selection stay in place; Operon does not switch you to a partial or fallback interface. A cached pack can be used again without downloading it first.
+
 ## Compatibility
 
 Operon does not require another community plugin. Some workflows lean on Obsidian core features: Daily Notes can support date-based capture, and Page Preview improves hover previews when task titles or wikilinks are shown.
@@ -54,6 +71,8 @@ The main compatibility risk is another task plugin that also rewrites checkbox l
 **Do I need another plugin?** No. Operon stands on its own. It can optionally use Obsidian core features like Daily Notes and Page Preview, and the community **Maps** plugin, which adds a visual map preview to location chips.
 
 **Does Operon update itself?** No. It can check GitHub on startup and notify you when a newer compatible release is out, but you still update it yourself through Community Plugins. See **Settings → Operon → Core → General** to turn the check off.
+
+**Which interface languages are available?** English is built in. Downloadable packs are available for Turkish, German, French, Spanish, Simplified Chinese, Traditional Chinese, Japanese, Russian, Italian, and Brazilian Portuguese. Select one in **Settings → Operon → Core → General → Language**. If its pack cannot be downloaded or validated, Operon keeps the language already active.
 
 ## Next step
 

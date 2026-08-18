@@ -2,7 +2,7 @@
 Notes: See tasks as rows and columns on the Operon Table
 Icon: table
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Table overview
@@ -61,6 +61,7 @@ A table does not have to stay in its own tab:
 
 - **Embed a table in a note** with an `operon-table` code block, so a live, editable table renders inside a daily note, a project page, or a dashboard. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 - An embedded table can switch presets from its toolbar, and its visible row count can come from the global Table setting or a local `rows` value in the code block.
+- An embedded table uses the global default width unless its code block supplies a valid local `width:` percentage. The global default is `175%`; a local width always wins. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 - **Export the table** as a Markdown table or CSV, or copy the embed code, from the export control in the toolbar. See [[DOCS-111 Export a table|Export a table]].
 
 ## When the table fits
@@ -100,7 +101,7 @@ If your work is mostly date-driven, the [[DOCS-028 Calendar overview|Calendar]] 
 
 ## Settings
 
-Operon settings for the Table live in **Settings → Operon → Views → Tables**, where you set the default preset, the maximum visible rows for embedded tables, and whether rows show the global line number, task icon helper, and task type helper columns. Each preset's own filter, columns, grouping, sorting, and summaries are edited from the table itself. See [[DOCS-109 Table presets|Table presets]].
+Operon settings for the Table live in **Settings → Operon → Views → Tables**, where you set the default preset; the destination for new Table files; the maximum visible rows; and the default embedded-table width. New files start in `Operon/Tables` unless you choose another vault-relative folder; leave that folder blank to create new files at the vault root. The folder setting never moves existing Table files. Embedded tables default to `175%` width, with `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%` choices; a valid local `width:` in an embed takes precedence. You also choose whether rows show the global line number, task icon helper, and task type helper columns. Each preset's own filter, columns, grouping, sorting, and summaries are edited from the table itself. See [[DOCS-109 Table presets|Table presets]].
 
 ## Related
 

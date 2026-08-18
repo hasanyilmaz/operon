@@ -2,14 +2,14 @@
 Notes: Save a table as a preset and switch between several tables
 Icon: table-2
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Table presets
 
 A preset saves a table layout and scope. It bundles which tasks appear, which task-field columns show and in what order, how the rows are grouped and sorted, which summaries roll up, how dense the rows are, and which search scopes are saved with the preset, all under a name. Presets are what let you keep several tables for different questions and switch between them from the toolbar, and the **default preset** is the one a new table opens with or the **Insert Operon Table embed** command uses.
 
-Each preset is also a real file in your vault, with a `.table` extension. Editing a preset here writes straight to that file. See [[DOCS-114 Table files|Table files]] for the file itself: where it lives, what happens when you rename or move it, and what a broken or duplicate file looks like.
+Each preset is also a real file in your vault, with a `.table` extension. Editing a preset here writes straight to that file. New files use the configurable **Table default folder** in **Settings → Operon → Views → Tables**: `Operon/Tables` is the historical default, and a blank setting means the vault root. Changing that destination affects only files created afterward; it does not move any existing preset. See [[DOCS-114 Table files|Table files]] for the file itself: where it lives, what happens when you rename or move it, and what a broken or duplicate file looks like.
 
 > **MEDIA-DOCS-109-1:** The table preset settings, with the Filtering, Grouping, Sort, Summaries, Display, and Columns sections.
 
@@ -94,7 +94,7 @@ The **default preset** is chosen in **Settings → Operon → Views → Tables**
 
 ## Settings
 
-Table presets and the default preset live in **Settings → Operon → Views → Tables**, alongside the maximum visible rows setting for embedded tables and the toggles for the line number, task icon, and task type columns. Each preset's own filter, columns, grouping, sorting, summaries, and density are edited from the preset settings, reached with **Edit preset**.
+Table presets and the default preset live in **Settings → Operon → Views → Tables**, alongside the destination for new Table files, the maximum visible rows and default width for embedded tables, and the toggles for the line number, task icon, and task type columns. The Table-file destination is applied only when Operon creates a new `.table` file; leave it blank for the vault root, and changing it never relocates an existing preset. Each preset's own filter, columns, grouping, sorting, summaries, and density are edited from the preset settings, reached with **Edit preset**.
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: Complete reference for inline task field syntax and property types, with copy-paste ready examples
 Icon: braces
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Inline task syntax
@@ -80,7 +80,7 @@ These are the fields you choose and edit, directly or through the Task Creator a
 | `contexts` | List | Environment or condition. | `[[Home]]` |
 | `taskIcon` | Text | Icon name (Lucide). | `flag` |
 | `taskColor` | Text | Hex color, without the `#`. | `4987a7` |
-| `note` | Text | A short annotation. | `waiting on review` |
+| `note` | Text | An annotation that can contain multiple lines. | `waiting on review` |
 | `location` | Text | Coordinates as latitude, longitude. See [[DOCS-041 Task chips display and behavior\|Task chips]]. | `52.52, 13.40` |
 | `links` | List | External web links. | `https://example.com` |
 
@@ -122,6 +122,18 @@ The last several (`repeatSeriesId`, `repeatOccurrenceDate`, `timezone`, `activeT
 - **Time fields** (`estimate`, `duration`, and the totals) are stored in seconds, but you normally set them through the Task Editor rather than typing seconds.
 - **List fields** (`assignees`, `contexts`, `links`, `blocking`, `blockedBy`) hold one or more values separated by a semicolon and a space (`; `). To keep a literal semicolon inside a single value, escape it as `\;`.
 - **Task links** (`parentTask`, `blocking`, `blockedBy`) reference other tasks by their `operonId`, not by title or path.
+
+## Notes: multiline text on one task line
+
+The task **description** is the one-line readable text after the checkbox. The separate `note` field is the place for a longer, multiline annotation. Even when a note has several visual lines, an inline task remains **one physical Markdown line**. Operon stores each note line break as the two-character escape `\n` inside the field:
+
+```md
+- [ ] Review the proposal {{operonId:: {{operonId}}}} {{note:: Check the budget\nAsk for the revised timeline\n\nShare the decision with the team}}
+```
+
+When Operon reads that task, the note has three text lines: “Check the budget”, “Ask for the revised timeline”, and “Share the decision with the team”, with a blank line before the last. If you need the visible characters `\n` in the note instead of a line break, write `\\n`; the doubled backslash keeps it literal.
+
+Use the [[DOCS-021 Task Editor|Task Editor]] or the shared [[DOCS-113 Text field editor popover|text field editor popover]] for normal editing. They accept **Shift+Enter** and multiline paste for Notes, including empty lines. The description remains a single-line task field.
 
 ## Copy-paste ready examples
 

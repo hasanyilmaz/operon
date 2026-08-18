@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Task Editor
@@ -36,7 +36,7 @@ The Task Editor exposes the canonical fields as proper controls:
 - Reminders, both kinds. See [[DOCS-116 Reminders|Reminders]].
 - Pinning. See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
 - Time tracking, including session history. See [[DOCS-034 Time tracking|Time tracking]].
-- Icon, color, and a short note.
+- Icon, color, and a Note that can contain multiple lines.
 
 For a file task, the editor can also show the Markdown body alongside the fields, so you edit the work and its metadata together. For an inline task, it can reveal the source note when you need the surrounding context. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
 
@@ -67,6 +67,12 @@ Both rows are **hidden by default.** Turn them on in **Settings → Operon → I
 
 The Task Editor autosaves your changes two seconds after your last edit, so you do not press a save button while working through a task's fields. Closing the editor, with its close control, a keyboard shortcut, or the backdrop, saves any pending change immediately rather than waiting out that two seconds. This timing is fixed and not a setting.
 
+## Description and Notes
+
+The **Description** is the task's one-line title. **Notes** are a separate multiline field for the detail that belongs with the task but does not belong in its title. In the Notes control, use **Shift+Enter** to insert a line break; pasted multiline text and intentional blank lines are kept. Normal **Enter** keeps the existing action for the surface instead of becoming a second line-break command. In the mobile Task Editor, normal Enter keeps its one-line behavior by inserting a space, while Shift+Enter inserts a note line break.
+
+For an inline task, those visual line breaks are stored as `\n` escapes inside the `note` field, keeping the entire task on one physical Markdown line. A literal `\n` is written as `\\n`. See [[DOCS-012 Inline task syntax|Inline task syntax]] for the on-disk form and [[DOCS-113 Text field editor popover|Text field editor popover]] for the shared compact editor.
+
 ## Why edit here instead of in Markdown
 
 You can always edit the raw `{{key:: value}}` text, and Operon will read it. But the Task Editor is safer: it writes fields in the right format, keeps `operonId` intact, and updates rollups and links for you. Hand-editing is best for quick text tweaks; the editor is best for anything structural. See [[DOCS-015 Task identity and operonId|Task identity and operonId]].
@@ -82,6 +88,8 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 **Why can I not add a reminder rule to this task?** A rule counts back from one of the task's dates, and this task has none yet. Add a due, scheduled, or start date, or a timed block, first.
 
 **I do not see reminder rows in the editor.** They are hidden by default. Turn them on under **Settings → Operon → Interface → Task Editor**, in **Workflow Pickers**.
+
+**Can I write a multiline description?** No. The Description remains the task's one-line title. Use Notes for line breaks, paragraphs, and pasted multiline detail.
 
 ## Settings
 

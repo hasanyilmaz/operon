@@ -2,7 +2,7 @@
 Notes: Get notified about a task, either at a fixed moment or at an offset from one of its dates
 Icon: alarm-clock
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Reminders
@@ -140,6 +140,8 @@ Operon can play an audio file from your vault when reminders are delivered. Poin
 
 The sound plays **once per batch**, not once per reminder, so three reminders arriving together do not stack three overlapping sounds. Playback stops after ten seconds, so a long file cannot keep going.
 
+The same **Reminder sound** file can also be used by FlowTime, but it is a separate setting. **Play reminder sound when FlowTime reaches zero** is off by default under **Settings → Operon → Tasks → Tracker**. When enabled, it plays this file once when a FlowTime focus session or break reaches zero. It is independent of FlowTime's target-reached notice and does not affect TrackTime. See [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]].
+
 ## Pinning a task when its reminder arrives
 
 Reminder settings carries one optional automation: **Pin task when its reminder time arrives** adds the task to your [[DOCS-032 Pinned Task Dock|Pinned Task Dock]] as Operon processes its due reminder. It applies to open tasks only and never pins a task twice.
@@ -182,7 +184,7 @@ Both use your real notification and sound settings, and neither creates or opens
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Reminders**: the missed-reminder catch-up window, how long an in-app notification stays visible, the pin-on-reminder automation, system notifications, the mobile notification snapshot, reminder sound, and the two test notifications.
+Operon settings for this live in **Settings → Operon → Tasks → Reminders**: the missed-reminder catch-up window, how long an in-app notification stays visible, the pin-on-reminder automation, system notifications, the mobile notification snapshot, reminder sound, and the two test notifications. FlowTime's optional completion-sound toggle is separate, under **Settings → Operon → Tasks → Tracker**, but uses this Reminder sound file.
 
 Where reminders are *shown* is configured separately, under **Settings → Operon → Interface**, in **Task Editor** for the editor's picker rows and **Task Chips** for every chip surface. The two fields' property names and icons are set in **Settings → Operon → Core → Keymapping**. See [[DOCS-039 Key mappings|Key mappings]].
 

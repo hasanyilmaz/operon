@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Table cells: display and behavior
@@ -87,9 +87,9 @@ From the keyboard, focus an editable picker cell and press **Enter** or **Space*
 
 ## Editing text in compact cells
 
-A text field behaves a little differently when it is collapsed to a compact icon. When the **description** or a **note** column is in compact cell mode, clicking its cell does not open a field picker; it opens a **text editor popover**, a small floating panel for editing that field's text in place. The panel carries the field's name and the task's description as a heading, and it saves what you type when you dismiss it, by clicking away, pressing **Escape**, or using its close button. In Table and embedded Table cells, saved line breaks are normalized to spaces.
+A text field behaves a little differently when it is collapsed to a compact icon. When a **description** or a **note** column is in compact cell mode, clicking its cell does not open a field picker; it opens a **text editor popover**, a small floating panel for editing that field's text in place. The panel carries the field's name and the task's description as a heading, and it saves what you type when you dismiss it, by clicking away, pressing **Escape**, or using its close button.
 
-This is how you keep a wordy column, such as description or note, collapsed to a narrow icon yet still edit its full text without widening the column or opening the Task Editor. The same popover opens for text cells in an [[DOCS-110 Embed a table in a note|embedded table]] and on the [[DOCS-030 Kanban overview|Kanban]]. See [[DOCS-113 Text field editor popover|Text field editor popover]] for the control itself.
+The two text fields have deliberately different policies. A **description** is the task's single-line title. A **note** can contain several visual lines: use **Shift+Enter** to add a line break, or paste multiline text including blank lines. For an inline task, Operon serializes those note breaks as `\n` inside the `note` field, so editing never splits the physical Markdown task line. The same popover behavior is available in an [[DOCS-110 Embed a table in a note|embedded table]] and on the [[DOCS-030 Kanban overview|Kanban]]. See [[DOCS-113 Text field editor popover|Text field editor popover]] for the control itself.
 
 > **MEDIA-DOCS-112-4:** The text editor popover open over a compact description cell, with its multi-line editor.
 

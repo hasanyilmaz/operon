@@ -2,7 +2,7 @@
 Notes: Use capability-gated reads and the typed preview, apply, receipt, and replay mutation flow
 Icon: code-xml
 Color: "#059669"
-Updated: 2026-07-30T19:55:17
+Updated: 2026-08-18T18:18:29
 ---
 
 # Developer API reads and typed mutations
@@ -44,6 +44,58 @@ if (!result.ok) {
 
 console.log(result.task.description, result.task.locator);
 ```
+
+## Saved-filter reads and inline-task adoption
+
+The task-workflow extension is a separate capability-projected API. Open it with `getTaskWorkflowDeveloperApiV1()` and request only the grants required by the operation:
+
+```ts
+const workflowAccess = operon.getTaskWorkflowDeveloperApiV1(this, {
+  contractVersion: 1,
+  runtimeApi: { min: 1, max: 1 },
+  requestedCapabilities: [
+    "tasks.filter-query",
+    "tasks.adopt.preview",
+    "tasks.adopt.apply",
+  ],
+});
+
+if (!workflowAccess.ok) {
+  console.error(workflowAccess.error.code);
+  return;
+}
+
+const workflow = workflowAccess.api;
+const matches = await workflow.tasks.filterQuery({
+  contractVersion: 1,
+  requestId: crypto.randomUUID(),
+  kind: "task-filter-query",
+  consistency: "live-verified",
+  filterSetId: "active-projects",
+});
+```
+
+To adopt a plain inline checkbox, preview the exact source first. `lineNumber` is **zero-based**, and `expectedLine` is the complete line currently at that path and line. It is a source precondition, not text to search for elsewhere in the file:
+
+```ts
+const preview = await workflow.tasks.adopt.preview({
+  operation: "adopt-inline",
+  source: {
+    filePath: "Projects/Launch.md",
+    lineNumber: 0,
+    expectedLine: "- [ ] Review the launch checklist",
+  },
+});
+
+if (!preview.ok) {
+  console.error(preview.error.code);
+  return;
+}
+
+const execution = await workflow.tasks.adopt.apply({ plan: preview.plan });
+```
+
+Preview produces a session-bound, opaque plan handle. Apply only that unchanged handle: do not clone it, reconstruct it from fields, pass it to another session or consumer, or make a fresh preview as a retry. If the file, line number, or expected line changes before apply, Operon fails closed before writing. A successful replay returns `already-applied` without another source write.
 
 ## Preview a typed mutation
 
@@ -108,6 +160,8 @@ If the result is `partial` or `outcome-unknown`, ordinary apply and replacement 
 **When does `recoveryRef` become useful?** Only after the apply has been durably dispatched. Before that point there is nothing uncertain to recover, so treat the reference as a way back to an operation already in flight rather than as a token you hold from the start.
 
 **An apply failed. Can I preview the same change again?** Not as a retry. A failure is a result, not an invitation to reissue: if dispatch may have occurred, continue with the same plan through recovery. Creating a fresh preview would risk applying the same change twice.
+
+**How do I adopt an inline task at line 1?** Use `lineNumber: 0`; task-workflow source line numbers are zero-based. Supply the complete current line in `expectedLine`, preview it, and apply that preview's unchanged opaque handle.
 
 ## Related
 

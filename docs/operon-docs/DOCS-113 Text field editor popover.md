@@ -2,7 +2,7 @@
 Notes: A floating editor for a single free-text field, opened in place across surfaces
 Icon: square-pen
 Color: "#db2777"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-08-18T18:18:29
 ---
 
 # Text field editor popover
@@ -18,7 +18,7 @@ The text field editor popover is a small floating panel for editing a task's **d
 The popover is a compact panel with three parts:
 
 - A **heading** with the field's name and, beneath it, the task's description so you know which task you are editing.
-- A **multi-line editor** for the text, focused and ready to type, with the cursor at the end of the current value.
+- An editor for the text, focused and ready to type, with the cursor at the end of the current value. Notes can use several lines; descriptions remain one-line task titles.
 - A **close** control in the corner.
 
 It picks up the task's color as an accent, and it floats above the surface you opened it from, so the table or board stays in place behind it.
@@ -37,10 +37,10 @@ Because it is one control, learning the panel once covers the places it appears.
 
 The popover is built for a quick edit and out:
 
-- Type freely; the editor accepts multiple lines while it is open.
+- The **Note** editor accepts multiple lines. Use **Shift+Enter** for a line break, and paste multiline text when that is faster; intentional blank lines are preserved. The **Description** remains a single-line task title.
 - It **saves when you dismiss it**, by clicking away, pressing **Escape**, or using the close control. There is no separate save step; closing commits your text.
-- In the Table and embedded Table, saved line breaks are normalized to spaces before the change is written back. On the Kanban, internal line breaks can be preserved.
-- The change is written straight back to the task's Markdown, the same as any other edit, so it shows everywhere the task appears.
+- Normal **Enter** keeps the existing submit or save behavior of the surface; it is not a second line-break command. In the mobile Task Editor, normal Enter retains its one-line behavior by inserting a space, while Shift+Enter inserts a Note line break.
+- The change is written straight back to the task's Markdown, the same as any other edit, so it shows everywhere the task appears. For inline tasks, a Note's line breaks are stored as `\n` escapes inside the field, which keeps the whole task on one physical Markdown line. To store the visible characters `\n`, write `\\n`.
 
 ## When to use it
 
@@ -58,9 +58,9 @@ When you need to change several fields at once, or work with the note as a full 
 
 **How do I save?** Just close the popover, by clicking away, pressing Escape, or using the close control. Closing saves what you typed.
 
-**Is it the same on the Table and the Kanban?** It is the same shared control, but the saved text is normalized by the surface that opened it. Table and embedded Table turn saved line breaks into spaces; Kanban can preserve internal line breaks.
+**Is it the same on the Table and the Kanban?** It is the same shared control. Notes preserve their line breaks across those surfaces; Descriptions remain one-line task titles.
 
-**Can I write more than one line?** You can type more than one line in the editor. In the Table and embedded Table, those lines save back as one line with spaces between them.
+**Can I write more than one line?** Yes, in Notes. Press Shift+Enter or paste multiline text, including blank lines. Descriptions remain single-line.
 
 ## Related
 
