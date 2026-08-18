@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3043,
-  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2199,7 +2199,8 @@
       "tableFileConflictResolveMessage": "¿Conservar {{path}} con el ID existente? Operon reescribirá {{count}} archivo(s) válido(s) con nuevos ID:\n{{paths}}",
       "tableFileConflictResolveTitle": "Resolver conflicto de ID de Table",
       "tableFileConflictResolvedNotice": "Se resolvió el conflicto de ID y se crearon {{count}} archivo(s) Table independiente(s).",
-      "tableFileUnsupportedPackageNotice": "Operon no pudo abrir de forma segura la configuración de Table guardada ({reason}). Se bloquearon las escrituras de ajustes. No reinstales ni edites data.json; conserva tus archivos, revisa el motivo indicado y busca ayuda de recuperación.",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "Se restablecieron los ajustes incompatibles de los preajustes Table heredados. Los archivos .table existentes se conservaron y se adoptarán automáticamente.",
+      "tableFileUnsupportedPackageNotice": "Operon no pudo abrir de forma segura la configuración de Table guardada ({{reason}}). Se bloquearon las escrituras de ajustes. No reinstales ni edites data.json; conserva tus archivos, revisa el motivo indicado y busca ayuda de recuperación.",
       "tableGeneralSettings": "Configuración general de Table",
       "tablePresetConflict": "Conflicto de ID",
       "tablePresetFileMissingNotice": "Falta el archivo Table: {{path}}",
@@ -3088,5 +3089,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "c76c964f7e1901872162d51a1a150a59a9687a2f7f82ade2bda84ae8497f6798"
+  "sourceVersion": "bcccdd04db1ff1c3245f437f091623783272f054d107630f415e4b9ff90cad32"
 }

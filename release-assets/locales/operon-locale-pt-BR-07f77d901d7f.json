@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3043,
-  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2199,7 +2199,8 @@
       "tableFileConflictResolveMessage": "Manter {{path}} com o ID existente? O Operon reescreverá {{count}} outro(s) arquivo(s) válido(s) com novos IDs:\n{{paths}}",
       "tableFileConflictResolveTitle": "Resolver conflito de ID da Tabela",
       "tableFileConflictResolvedNotice": "O conflito de ID foi resolvido; foram criados {{count}} arquivos de Tabela independentes.",
-      "tableFileUnsupportedPackageNotice": "Esta versão do Operon não conseguiu abrir com segurança a configuração de Tabela armazenada ({reason}). As gravações de configurações foram bloqueadas. Não reinstale nem edite data.json; preserve seus arquivos, examine o motivo informado e busque orientação de recuperação.",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "As configurações incompatíveis de predefinições antigas de Tabela foram redefinidas. Os arquivos .table existentes foram preservados e serão adotados automaticamente.",
+      "tableFileUnsupportedPackageNotice": "Esta versão do Operon não conseguiu abrir com segurança a configuração de Tabela armazenada ({{reason}}). As gravações de configurações foram bloqueadas. Não reinstale nem edite data.json; preserve seus arquivos, examine o motivo informado e busque orientação de recuperação.",
       "tableGeneralSettings": "Configurações Gerais da Tabela",
       "tablePresetConflict": "Conflito de ID",
       "tablePresetFileMissingNotice": "O arquivo da tabela está faltando: {{path}}",
@@ -3088,5 +3089,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "d8e296d6ebad41aab83ab40abe8db290be51634f2d3ee5d0f3bfab81ef0ab76a"
+  "sourceVersion": "f77fadc7c3dd6a309081ed0c6d244cca926c3c181e531d9a3c7ae2172c76b8ec"
 }

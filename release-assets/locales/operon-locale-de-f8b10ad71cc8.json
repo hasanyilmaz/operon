@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3043,
-  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2199,7 +2199,8 @@
       "tableFileConflictResolveMessage": "{{path}} mit der bestehenden ID behalten? Operon schreibt {{count}} andere gültige Datei(en) mit neuen IDs neu:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table-ID-Konflikt lösen",
       "tableFileConflictResolvedNotice": "Der ID-Konflikt wurde gelöst und {{count}} unabhängige Table-Datei(en) wurden erstellt.",
-      "tableFileUnsupportedPackageNotice": "Operon konnte die gespeicherte Table-Konfiguration nicht sicher öffnen ({reason}). Schreibvorgänge für Einstellungen wurden blockiert. Installiere nicht neu und bearbeite data.json nicht; bewahre deine Dateien auf, prüfe den gemeldeten Grund und hole Hilfe zur Wiederherstellung.",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "Inkompatible alte Table-Voreinstellungen wurden zurückgesetzt. Vorhandene .table-Dateien wurden beibehalten und werden automatisch übernommen.",
+      "tableFileUnsupportedPackageNotice": "Operon konnte die gespeicherte Table-Konfiguration nicht sicher öffnen ({{reason}}). Schreibvorgänge für Einstellungen wurden blockiert. Installiere nicht neu und bearbeite data.json nicht; bewahre deine Dateien auf, prüfe den gemeldeten Grund und hole Hilfe zur Wiederherstellung.",
       "tableGeneralSettings": "Allgemeine Table-Einstellungen",
       "tablePresetConflict": "ID-Konflikt",
       "tablePresetFileMissingNotice": "Table-Datei fehlt: {{path}}",
@@ -3088,5 +3089,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1f402600733cb7bfacfd8438e444d4449986a12e45cf6eef96c18f8f77084228"
+  "sourceVersion": "2c6fef08162d6c0d50d18a4c42e4a779ee1d6f53a0589dc9834cae9cb1802df8"
 }

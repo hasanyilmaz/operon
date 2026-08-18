@@ -4137,7 +4137,15 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.tablePresetFileInitialized = true;
 	}
 	const allowEmptyFileBackedTablePresets = (out.tablePresetFileBindings.length > 0
-		|| out.tablePresetFileInitialized)
+		|| out.tablePresetFileInitialized
+		// A canonical v3 manifest can deliberately remain empty and uninitialized
+		// until startup bootstrap creates its first .table file. Keep that state
+		// distinct from legacy in-memory settings that omitted Table presets.
+		|| (
+			Array.isArray(src.tablePresetOrderIds)
+			&& src.tablePresetOrderIds.length === 0
+			&& src.tableDefaultPresetId === null
+		))
 		&& Array.isArray(src.tablePresets)
 		&& src.tablePresets.length === 0;
 	out.tablePresets = allowEmptyFileBackedTablePresets

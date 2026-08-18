@@ -59,7 +59,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 
 	assert.deepEqual(densePack.languageOrder, ['en']);
 	assert.deepEqual(Object.keys(densePack.locales), ['en']);
-	assert.equal(densePack.keyCount, 3_043);
+	assert.equal(densePack.keyCount, 3_044);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);
@@ -88,6 +88,15 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 				assert.equal(runtime.t(category, key), expected, `${definition.code}:${category}.${key}`);
 			}
 		}
+	}
+	for (const definition of LOCALE_DEFINITIONS) {
+		runtime.initI18n(undefined, definition.code);
+		const notice = runtime.t('settings', 'tableFileUnsupportedPackageNotice', {
+			reason: 'table-file-missing',
+		});
+		assert.ok(notice.includes('table-file-missing'), `${definition.code}: reason must interpolate at runtime`);
+		assert.equal(notice.includes('{reason}'), false, `${definition.code}: literal single-brace reason is invalid`);
+		assert.equal(notice.includes('{{reason}}'), false, `${definition.code}: unresolved reason is invalid`);
 	}
 
 	runtime.initI18n(undefined, 'pt-BR');

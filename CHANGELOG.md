@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed incompatible legacy Table preset sidecar authority blocking startup when no usable `.table` file exists.
 - Fixed identity-placeholder **File Task** apply stopping before its first source write because creation journals used invalid timestamp ordering.
 
 ### Validation

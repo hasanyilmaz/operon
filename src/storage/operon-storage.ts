@@ -375,6 +375,8 @@ export class OperonStorage {
 		status: 'not-needed',
 		code: null,
 		backupPath: null,
+		strategy: null,
+		completedLegacySidecarRetirementThisStartup: false,
 	};
 	private fieldRenameJournalStore: FieldRenameJournalStore;
 	private settingsBackupUndoEntries = new Map<string, OperonSettingsBackupUndoEntryV1>();

@@ -23,6 +23,7 @@ import {
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
 	mergeTablePresetRegistryOrder,
+	resolveTablePresetDefaultAfterRegistrySync,
 	resolveTablePresetBootstrapAction,
 } from './src/storage/table-preset-manifest';
 import type { TablePresetRegistryEntry, TablePresetRegistryPatchControl } from './src/types/table-preset-registry';
@@ -13645,13 +13646,13 @@ export default class OperonPlugin extends Plugin {
 			}
 		}
 		if (bindingsChanged) await this.tablePresetRegistry.refresh();
-		this.syncTablePresetProjectionFromRegistry();
+		let defaultChanged = this.syncTablePresetProjectionFromRegistry();
 		if (options.reconcileFileNames !== false && await this.reconcileBoundTableFileNames()) {
 			await this.tablePresetRegistry.refresh();
-			this.syncTablePresetProjectionFromRegistry();
+			defaultChanged = this.syncTablePresetProjectionFromRegistry() || defaultChanged;
 		}
 		const orderChanged = previousOrderSignature !== this.settings.tablePresetOrderIds.join('\u0000');
-		if ((bindingsChanged || orderChanged) && options.persistBindings) await this.storage.saveSettings();
+		if ((bindingsChanged || orderChanged || defaultChanged) && options.persistBindings) await this.storage.saveSettings();
 		const nextSnapshot = this.tablePresetRegistry.getSnapshot();
 		const newlySubscribedIds = this.syncTablePresetRegistrySubscriptions();
 		const changedPresetIds = new Set([...previousSnapshot.entries.keys(), ...nextSnapshot.entries.keys()]);
@@ -13722,7 +13723,8 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
-	private syncTablePresetProjectionFromRegistry(): void {
+	private syncTablePresetProjectionFromRegistry(): boolean {
+		const previousDefaultPresetId = this.settings.tableDefaultPresetId;
 		const snapshot = this.tablePresetRegistry.getSnapshot();
 		const currentOrder = this.settings.tablePresetOrderIds;
 		const availableById = new Map<string, TablePreset>();
@@ -13744,9 +13746,12 @@ export default class OperonPlugin extends Plugin {
 			return preset ? [cloneTablePreset(preset)] : [];
 		});
 		this.settings.tablePresets.splice(0, this.settings.tablePresets.length, ...next);
-		if (this.settings.tableDefaultPresetId && !nextOrder.includes(this.settings.tableDefaultPresetId)) {
-			this.settings.tableDefaultPresetId = this.resolveEffectiveTablePresetId();
-		}
+		this.settings.tableDefaultPresetId = resolveTablePresetDefaultAfterRegistrySync(
+			this.settings.tableDefaultPresetId,
+			nextOrder,
+			next.map(preset => preset.id),
+		);
+		return previousDefaultPresetId !== this.settings.tableDefaultPresetId;
 	}
 
 	private resolveTablePresetForSurface(presetId: string): TablePreset | null {
@@ -14063,9 +14068,9 @@ export default class OperonPlugin extends Plugin {
 			if (cachedLocale) installI18nLocale(this.settings.language, cachedLocale.translations);
 		}
 		initI18n(undefined, this.settings.language);
+		const tablePresetRecovery = this.storage.getTablePresetRecoveryDiagnostics();
 		if (this.storage.hasUnsupportedTablePresetPackage()) {
-			const recovery = this.storage.getTablePresetRecoveryDiagnostics();
-			const reason = recovery.code ?? 'unsupported-table-manifest';
+			const reason = tablePresetRecovery.code ?? 'unsupported-table-manifest';
 			new Notice(t('settings', 'tableFileUnsupportedPackageNotice', { reason }), 15_000);
 			throw new Error(`Unsupported Table preset package (${reason}).`);
 		}
@@ -14074,6 +14079,9 @@ export default class OperonPlugin extends Plugin {
 		});
 		await this.refreshTableFilePropertyTypes(true, false);
 		await this.initializeTablePresetRegistry();
+		if (tablePresetRecovery.completedLegacySidecarRetirementThisStartup) {
+			new Notice(t('settings', 'tableFileLegacyPresetAuthorityRetiredNotice'), 12_000);
+		}
 		this.pinnedCache = this.storage.pinned;
 		this.unsubscribePinnedCache = this.pinnedCache.subscribe(() => {
 			if (!this.startupReady) return;

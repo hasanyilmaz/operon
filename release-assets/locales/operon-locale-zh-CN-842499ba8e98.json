@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3043,
-  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2199,7 +2199,8 @@
       "tableFileConflictResolveMessage": "是否为 {{path}} 保留现有 ID？Operon 将使用新 ID 重写其他 {{count}} 个有效文件：\n{{paths}}",
       "tableFileConflictResolveTitle": "解决 Table ID 冲突",
       "tableFileConflictResolvedNotice": "已解决 ID 冲突并创建 {{count}} 个独立的 Table 文件。",
-      "tableFileUnsupportedPackageNotice": "Operon 无法安全打开已存储的 Table 配置（{reason}）。设置写入已被阻止。请勿重新安装或编辑 data.json；请保留文件，检查报告的原因并寻求恢复指导。",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "不兼容的旧 Table 预设设置已重置。现有 .table 文件已保留，并会自动采用。",
+      "tableFileUnsupportedPackageNotice": "Operon 无法安全打开已存储的 Table 配置（{{reason}}）。设置写入已被阻止。请勿重新安装或编辑 data.json；请保留文件，检查报告的原因并寻求恢复指导。",
       "tableGeneralSettings": "Table 常规设置",
       "tablePresetConflict": "ID 冲突",
       "tablePresetFileMissingNotice": "Table 文件缺失：{{path}}",
@@ -3088,5 +3089,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "55cc3cb33b6b450af3490d326a2c47c8e760dc48be8a4502788c552729d3247f"
+  "sourceVersion": "dede1ab1a67f3b06a9d4ac825b7ccb4129cc7b6ad7ce66a1ad71e3b35c797b46"
 }

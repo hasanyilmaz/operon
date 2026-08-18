@@ -4,6 +4,7 @@ import {
 	composeOperonSettingsFromDataPackage,
 	hasPinnedTasksPackage,
 	hasRetiredOperonDataPackageSettings,
+	isStructurallyCompleteOperonDataPackageV1,
 	isUnsupportedTablePresetPackage,
 	mergeOperonDataPackage,
 	OPERON_DATA_PACKAGE_SCHEMA_VERSION,
@@ -26,10 +27,14 @@ import {
 } from '../agent-runtime/developer-api/grants';
 import { sha256HexForStorage } from './storage-sha256';
 import {
+	buildRetiredLegacyTablePresetDataPackageV1,
 	buildRecoveredTablePresetDataPackageV1,
 	overlayKnownDataPackageFieldsPreservingUnknownV1,
+	preflightLegacyTablePresetSidecarRetirementV1,
 	preflightTablePresetManifestRecoveryV1,
-	type TablePresetManifestRecoveryBlockCode,
+	type TablePresetLegacySidecarEvidenceV1,
+	type TablePresetLegacySidecarRetirementBlockCode,
+	type TablePresetLegacySidecarRetirementPreflight,
 	type TablePresetManifestRecoveryFileEvidence,
 } from './table-preset-manifest-recovery';
 
@@ -55,9 +60,12 @@ export type OperonTablePresetRecoveryStatus =
 
 export interface OperonTablePresetRecoveryDiagnostics {
 	status: OperonTablePresetRecoveryStatus;
-	code: TablePresetManifestRecoveryBlockCode | 'backup-failed' | 'marker-invalid' | 'marker-write-failed'
+	code: TablePresetLegacySidecarRetirementBlockCode | 'backup-failed' | 'marker-invalid' | 'marker-write-failed'
 		| 'marker-finalization-failed' | 'canonical-read-drift' | 'canonical-write-failed' | 'canonical-state-unknown' | null;
 	backupPath: string | null;
+	strategy: 'retire-legacy-sidecar-authority' | null;
+	/** True only when this startup completed the legacy-authority retirement. */
+	completedLegacySidecarRetirementThisStartup: boolean;
 }
 
 export type OperonTablePresetRecoveryDiscovery = () => Promise<TablePresetManifestRecoveryFileEvidence[]>;
@@ -119,9 +127,24 @@ interface OperonTableManifestV2RecoveryMarkerV1 {
 	bindings: Array<{ id: string; path: string }>;
 }
 
+interface OperonTableManifestV2RecoveryMarkerV2 {
+	version: 2;
+	strategy: 'retire-legacy-sidecar-authority';
+	phase: 'prepared' | 'committed';
+	sourceSha256: string;
+	candidateSha256: string;
+	backupPath: string;
+	legacySidecars: {
+		index: { path: string; sha256: string };
+		presets: Array<{ id: string; path: string; sha256: string }>;
+	};
+}
+
+type OperonTableManifestV2RecoveryMarker = OperonTableManifestV2RecoveryMarkerV1 | OperonTableManifestV2RecoveryMarkerV2;
+
 type TableRecoveryMarkerReadResult =
 	| { status: 'missing' }
-	| { status: 'valid'; marker: OperonTableManifestV2RecoveryMarkerV1 }
+	| { status: 'valid'; marker: OperonTableManifestV2RecoveryMarker }
 	| { status: 'invalid' };
 
 interface TableRecoveryAttemptResult {
@@ -459,6 +482,10 @@ export class OperonDataPackageStore {
 			return this.blockTableRecovery(existingPackage, 'marker-invalid', null, 'commit-state-unknown');
 		}
 		if (markerRead.status === 'missing' && !isUnsupportedTablePresetPackage(existingPackage)) {
+			const preflight = preflightTablePresetManifestRecoveryV1(existingPackage, []);
+			if (preflight.status === 'blocked' && preflight.code === 'binding-partial') {
+				return this.blockTableRecovery(existingPackage, preflight.code, null, 'blocked');
+			}
 			return { dataPackage: existingPackage, diagnostics: createTablePresetRecoveryDiagnostics() };
 		}
 		let rawSource: string;
@@ -481,6 +508,15 @@ export class OperonDataPackageStore {
 		const sourceSha256 = await sha256HexForStorage(rawSource);
 		if (markerRead.status === 'valid') {
 			const marker = markerRead.marker;
+			if (marker.version === 2) {
+				return await this.resumeLegacyTablePresetSidecarRetirement(
+					existingPackage,
+					rawSource,
+					parsedSource,
+					sourceSha256,
+					marker,
+				);
+			}
 			const expectedBackupPath = this.getTableRecoveryBackupPath(marker.sourceSha256);
 			if (marker.backupPath !== expectedBackupPath) {
 				this.suspendWrites('Table manifest v2 recovery marker references an unexpected backup path');
@@ -498,7 +534,7 @@ export class OperonDataPackageStore {
 				}
 				return {
 					dataPackage: parsedSource,
-					diagnostics: { status: 'recovered', code: null, backupPath: marker.backupPath },
+					diagnostics: createRecoveredTablePresetRecoveryDiagnostics(marker.backupPath),
 				};
 			}
 			if (await getTableRecoveryCandidateSha256(parsedSource) === marker.candidateSha256) {
@@ -508,7 +544,7 @@ export class OperonDataPackageStore {
 				}
 				return {
 					dataPackage: parsedSource,
-					diagnostics: { status: 'recovered', code: null, backupPath: marker.backupPath },
+					diagnostics: createRecoveredTablePresetRecoveryDiagnostics(marker.backupPath),
 				};
 			}
 			if (sourceSha256 !== marker.sourceSha256) {
@@ -544,6 +580,20 @@ export class OperonDataPackageStore {
 			return { dataPackage: existingPackage, diagnostics: createTablePresetRecoveryDiagnostics() };
 		}
 		if (preflight.status === 'blocked') {
+			if (preflight.code === 'table-file-missing') {
+				const legacy = await this.buildLegacyTablePresetSidecarRetirementCandidate(parsedSource);
+				const legacyPreflight = legacy.preflight;
+				if (legacyPreflight.status === 'recoverable') {
+					return await this.beginLegacyTablePresetSidecarRetirement(
+						existingPackage,
+						rawSource,
+						parsedSource,
+						sourceSha256,
+						{ evidence: legacy.evidence, preflight: legacyPreflight },
+					);
+				}
+				return this.blockTableRecovery(existingPackage, legacyPreflight.code, null, 'blocked');
+			}
 			return this.blockTableRecovery(existingPackage, preflight.code, null, 'blocked');
 		}
 		const candidate = buildRecoveredTablePresetDataPackageV1(parsedSource, preflight);
@@ -581,10 +631,194 @@ export class OperonDataPackageStore {
 		}
 	}
 
+	private async buildLegacyTablePresetSidecarRetirementCandidate(dataPackage: unknown): Promise<{
+		evidence: TablePresetLegacySidecarEvidenceV1;
+		preflight: TablePresetLegacySidecarRetirementPreflight;
+	}> {
+		const evidence = await this.readLegacyTablePresetSidecarEvidence(dataPackage);
+		return {
+			evidence,
+			preflight: preflightLegacyTablePresetSidecarRetirementV1(dataPackage, evidence),
+		};
+	}
+
+	private async readLegacyTablePresetSidecarEvidence(dataPackage: unknown): Promise<TablePresetLegacySidecarEvidenceV1> {
+		const rootPath = `${this.paths.pluginDir}/data/table-presets`;
+		const indexPath = `${rootPath}/index.json`;
+		const presetIds = isRecord(dataPackage)
+			&& isRecord(dataPackage.views)
+			&& isRecord(dataPackage.views.tablePresets)
+			&& Array.isArray(dataPackage.views.tablePresets.presetIds)
+			? dataPackage.views.tablePresets.presetIds.filter((value): value is string => typeof value === 'string')
+			: [];
+		return {
+			index: { path: indexPath, source: await this.readOptionalLegacyTableSidecar(indexPath) },
+			presets: await Promise.all(presetIds.map(async id => {
+				const path = `${rootPath}/${encodeURIComponent(id)}.json`;
+				return { id, path, source: await this.readOptionalLegacyTableSidecar(path) };
+			})),
+		};
+	}
+
+	private async readOptionalLegacyTableSidecar(path: string): Promise<string | null> {
+		try {
+			if (!(await this.adapter.exists(path))) return null;
+			return await this.adapter.read(path);
+		} catch {
+			return null;
+		}
+	}
+
+	private async beginLegacyTablePresetSidecarRetirement(
+		existingPackage: Partial<OperonDataPackageV1>,
+		rawSource: string,
+		parsedSource: unknown,
+		sourceSha256: string,
+		legacy: {
+			evidence: TablePresetLegacySidecarEvidenceV1;
+			preflight: Extract<TablePresetLegacySidecarRetirementPreflight, { status: 'recoverable' }>;
+		},
+	): Promise<TableRecoveryAttemptResult> {
+		const candidate = buildRetiredLegacyTablePresetDataPackageV1(parsedSource, legacy.preflight);
+		const backupPath = this.getTableRecoveryBackupPath(sourceSha256);
+		try {
+			await this.writeImmutableTableRecoveryBackup(backupPath, rawSource);
+		} catch {
+			this.suspendWrites('Legacy Table sidecar retirement backup could not be created');
+			return this.blockTableRecovery(existingPackage, 'backup-failed', backupPath, 'blocked');
+		}
+		const sidecars = await this.getLegacySidecarMarkerEvidence(legacy.evidence, legacy.preflight);
+		if (!sidecars) {
+			this.suspendWrites('Legacy Table sidecar retirement evidence could not be sealed');
+			return this.blockTableRecovery(existingPackage, 'canonical-state-unknown', backupPath, 'blocked');
+		}
+		const marker: OperonTableManifestV2RecoveryMarkerV2 = {
+			version: 2,
+			strategy: 'retire-legacy-sidecar-authority',
+			phase: 'prepared',
+			sourceSha256,
+			candidateSha256: await getTableRecoveryCandidateSha256(candidate),
+			backupPath,
+			legacySidecars: sidecars,
+		};
+		if (!await this.writeTableManifestV2RecoveryMarkerObserved(marker)) {
+			this.suspendWrites('Legacy Table sidecar retirement marker could not be persisted');
+			return this.blockTableRecovery(existingPackage, 'marker-write-failed', backupPath, 'blocked');
+		}
+		return await this.commitTableRecoveryCandidate(
+			parsedSource,
+			candidate,
+			marker,
+			'retire-legacy-sidecar-authority',
+			true,
+		);
+	}
+
+	private async resumeLegacyTablePresetSidecarRetirement(
+		existingPackage: Partial<OperonDataPackageV1>,
+		rawSource: string,
+		parsedSource: unknown,
+		sourceSha256: string,
+		marker: OperonTableManifestV2RecoveryMarkerV2,
+	): Promise<TableRecoveryAttemptResult> {
+		const expectedBackupPath = this.getTableRecoveryBackupPath(marker.sourceSha256);
+		if (marker.backupPath !== expectedBackupPath) {
+			this.suspendWrites('Legacy Table sidecar retirement marker references an unexpected backup path');
+			return this.blockTableRecovery(existingPackage, 'marker-invalid', null, 'commit-state-unknown');
+		}
+		if (!await this.verifyImmutableTableRecoveryBackup(marker.backupPath, marker.sourceSha256)) {
+			this.suspendWrites('Legacy Table sidecar retirement backup is unavailable or invalid');
+			return this.blockTableRecovery(existingPackage, 'backup-failed', marker.backupPath, 'commit-state-unknown');
+		}
+		if (marker.phase === 'committed') {
+			const current = preflightTablePresetManifestRecoveryV1(parsedSource, []);
+			if (current.status !== 'not-needed' || current.reason !== 'current') {
+				this.suspendWrites('Committed legacy Table sidecar retirement no longer has a current v3 canonical package');
+				return this.blockTableRecovery(existingPackage, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+			}
+			return {
+				dataPackage: parsedSource as Partial<OperonDataPackageV1>,
+				diagnostics: createRecoveredTablePresetRecoveryDiagnostics(
+					marker.backupPath,
+					'retire-legacy-sidecar-authority',
+				),
+			};
+		}
+		if (await getTableRecoveryCandidateSha256(parsedSource) === marker.candidateSha256) {
+			if (!await this.writeTableManifestV2RecoveryMarkerObserved({ ...marker, phase: 'committed' })) {
+				this.suspendWrites('Legacy Table sidecar retirement marker could not be finalized');
+				return this.blockTableRecovery(existingPackage, 'marker-finalization-failed', marker.backupPath, 'blocked');
+			}
+			return {
+				dataPackage: parsedSource as Partial<OperonDataPackageV1>,
+				diagnostics: createRecoveredTablePresetRecoveryDiagnostics(
+					marker.backupPath,
+					'retire-legacy-sidecar-authority',
+					true,
+				),
+			};
+		}
+		if (sourceSha256 !== marker.sourceSha256) {
+			this.suspendWrites('Legacy Table sidecar retirement canonical state does not match the prepared transaction');
+			return this.blockTableRecovery(existingPackage, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+		}
+		if (!await this.verifyImmutableTableRecoveryBackup(marker.backupPath, marker.sourceSha256, rawSource)) {
+			this.suspendWrites('Legacy Table sidecar retirement backup is unavailable or invalid');
+			return this.blockTableRecovery(existingPackage, 'backup-failed', marker.backupPath, 'commit-state-unknown');
+		}
+		const legacy = await this.buildLegacyTablePresetSidecarRetirementCandidate(parsedSource);
+		if (legacy.preflight.status !== 'recoverable'
+			|| !await this.matchesLegacySidecarMarkerEvidence(legacy.evidence, legacy.preflight, marker.legacySidecars)) {
+			this.suspendWrites('Legacy Table sidecar retirement evidence no longer matches the prepared transaction');
+			return this.blockTableRecovery(existingPackage, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+		}
+		const candidate = buildRetiredLegacyTablePresetDataPackageV1(parsedSource, legacy.preflight);
+		if (await getTableRecoveryCandidateSha256(candidate) !== marker.candidateSha256) {
+			this.suspendWrites('Legacy Table sidecar retirement candidate changed after preparation');
+			return this.blockTableRecovery(existingPackage, 'canonical-state-unknown', marker.backupPath, 'commit-state-unknown');
+		}
+		return await this.commitTableRecoveryCandidate(
+			parsedSource,
+			candidate,
+			marker,
+			'retire-legacy-sidecar-authority',
+			true,
+		);
+	}
+
+	private async getLegacySidecarMarkerEvidence(
+		evidence: TablePresetLegacySidecarEvidenceV1,
+		preflight: Extract<TablePresetLegacySidecarRetirementPreflight, { status: 'recoverable' }>,
+	): Promise<OperonTableManifestV2RecoveryMarkerV2['legacySidecars'] | null> {
+		if (evidence.index.source === null) return null;
+		const sidecars = new Map(evidence.presets.map(entry => [entry.id, entry]));
+		const presets: Array<{ id: string; path: string; sha256: string }> = [];
+		for (const entry of preflight.presetPaths) {
+			const source = sidecars.get(entry.id)?.source;
+			if (source === null || source === undefined) return null;
+			presets.push({ id: entry.id, path: entry.path, sha256: await sha256HexForStorage(source) });
+		}
+		return {
+			index: { path: evidence.index.path, sha256: await sha256HexForStorage(evidence.index.source) },
+			presets,
+		};
+	}
+
+	private async matchesLegacySidecarMarkerEvidence(
+		evidence: TablePresetLegacySidecarEvidenceV1,
+		preflight: Extract<TablePresetLegacySidecarRetirementPreflight, { status: 'recoverable' }>,
+		expected: OperonTableManifestV2RecoveryMarkerV2['legacySidecars'],
+	): Promise<boolean> {
+		const observed = await this.getLegacySidecarMarkerEvidence(evidence, preflight);
+		return observed !== null && buildStableJsonSignature(observed) === buildStableJsonSignature(expected);
+	}
+
 	private async commitTableRecoveryCandidate(
 		previous: unknown,
 		candidate: unknown,
-		marker: OperonTableManifestV2RecoveryMarkerV1,
+		marker: OperonTableManifestV2RecoveryMarker,
+		strategy: OperonTablePresetRecoveryDiagnostics['strategy'] = null,
+		completedLegacySidecarRetirementThisStartup = false,
 	): Promise<TableRecoveryAttemptResult> {
 		try {
 			await this.persistCandidate(candidate as OperonDataPackageV1);
@@ -601,7 +835,11 @@ export class OperonDataPackageStore {
 			}
 			return {
 				dataPackage: observed,
-				diagnostics: { status: 'recovered', code: null, backupPath: marker.backupPath },
+				diagnostics: createRecoveredTablePresetRecoveryDiagnostics(
+					marker.backupPath,
+					strategy,
+					completedLegacySidecarRetirementThisStartup,
+				),
 			};
 		}
 		if (observed && buildStableJsonSignature(observed) === previousSignature) {
@@ -618,7 +856,16 @@ export class OperonDataPackageStore {
 		status: 'blocked' | 'failed-clean' | 'commit-state-unknown',
 	): TableRecoveryAttemptResult {
 		this.suspendWrites(`Table manifest v2 recovery is blocked (${code})`);
-		return { dataPackage, diagnostics: { status, code, backupPath } };
+		return {
+			dataPackage,
+			diagnostics: {
+				status,
+				code,
+				backupPath,
+				strategy: null,
+				completedLegacySidecarRetirementThisStartup: false,
+			},
+		};
 	}
 
 	private async writeImmutableTableRecoveryBackup(path: string, source: string): Promise<void> {
@@ -666,7 +913,7 @@ export class OperonDataPackageStore {
 		}
 	}
 
-	private async writeTableManifestV2RecoveryMarker(marker: OperonTableManifestV2RecoveryMarkerV1): Promise<void> {
+	private async writeTableManifestV2RecoveryMarker(marker: OperonTableManifestV2RecoveryMarker): Promise<void> {
 		const serialized = JSON.stringify(marker, null, '\t');
 		await writeTextSafely(this.adapter, this.paths.tableManifestV2RecoveryPath, serialized, { forceAtomicReplacement: true });
 		if (await this.adapter.read(this.paths.tableManifestV2RecoveryPath) !== serialized) {
@@ -675,7 +922,7 @@ export class OperonDataPackageStore {
 	}
 
 	private async writeTableManifestV2RecoveryMarkerObserved(
-		marker: OperonTableManifestV2RecoveryMarkerV1,
+		marker: OperonTableManifestV2RecoveryMarker,
 	): Promise<boolean> {
 		try {
 			await this.writeTableManifestV2RecoveryMarker(marker);
@@ -867,14 +1114,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function createTablePresetRecoveryDiagnostics(): OperonTablePresetRecoveryDiagnostics {
-	return { status: 'not-needed', code: null, backupPath: null };
+	return {
+		status: 'not-needed',
+		code: null,
+		backupPath: null,
+		strategy: null,
+		completedLegacySidecarRetirementThisStartup: false,
+	};
+}
+
+function createRecoveredTablePresetRecoveryDiagnostics(
+	backupPath: string,
+	strategy: OperonTablePresetRecoveryDiagnostics['strategy'] = null,
+	completedLegacySidecarRetirementThisStartup = false,
+): OperonTablePresetRecoveryDiagnostics {
+	return {
+		status: 'recovered',
+		code: null,
+		backupPath,
+		strategy,
+		completedLegacySidecarRetirementThisStartup,
+	};
 }
 
 async function getTableRecoveryCandidateSha256(value: unknown): Promise<string> {
 	return await sha256HexForStorage(buildStableJsonSignature(value));
 }
 
-function isTableManifestV2RecoveryMarker(value: unknown): value is OperonTableManifestV2RecoveryMarkerV1 {
+function isTableManifestV2RecoveryMarker(value: unknown): value is OperonTableManifestV2RecoveryMarker {
+	return isTableManifestV2RecoveryMarkerV1(value) || isTableManifestV2RecoveryMarkerV2(value);
+}
+
+function isTableManifestV2RecoveryMarkerV1(value: unknown): value is OperonTableManifestV2RecoveryMarkerV1 {
 	if (!isRecord(value)
 		|| value.version !== 1
 		|| (value.phase !== 'prepared' && value.phase !== 'committed')
@@ -892,14 +1163,41 @@ function isTableManifestV2RecoveryMarker(value: unknown): value is OperonTableMa
 		&& binding.path.length > 0);
 }
 
+function isTableManifestV2RecoveryMarkerV2(value: unknown): value is OperonTableManifestV2RecoveryMarkerV2 {
+	if (!isRecord(value)
+		|| value.version !== 2
+		|| value.strategy !== 'retire-legacy-sidecar-authority'
+		|| (value.phase !== 'prepared' && value.phase !== 'committed')
+		|| !isSha256(value.sourceSha256)
+		|| !isSha256(value.candidateSha256)
+		|| typeof value.backupPath !== 'string'
+		|| !value.backupPath
+		|| !isRecord(value.legacySidecars)
+		|| !isRecord(value.legacySidecars.index)
+		|| typeof value.legacySidecars.index.path !== 'string'
+		|| !value.legacySidecars.index.path
+		|| !isSha256(value.legacySidecars.index.sha256)
+		|| !Array.isArray(value.legacySidecars.presets)) return false;
+	const seenIds = new Set<string>();
+	return value.legacySidecars.presets.every(preset => {
+		if (!isRecord(preset)
+			|| typeof preset.id !== 'string'
+			|| !preset.id
+			|| seenIds.has(preset.id)
+			|| typeof preset.path !== 'string'
+			|| !preset.path
+			|| !isSha256(preset.sha256)) return false;
+		seenIds.add(preset.id);
+		return true;
+	});
+}
+
 function isSha256(value: unknown): value is string {
 	return typeof value === 'string' && /^[0-9a-f]{64}$/u.test(value);
 }
 
 function isCompleteDataPackage(value: unknown): value is OperonDataPackageV1 {
-	if (!isRecord(value)) return false;
-	if (value.schemaVersion !== OPERON_DATA_PACKAGE_SCHEMA_VERSION) return false;
-	return DATA_PACKAGE_DOMAINS.every(domain => isValidDataPackageDomain(domain, value[domain]));
+	return isStructurallyCompleteOperonDataPackageV1(value);
 }
 
 function createReloadDiagnostics(): OperonDataPackageReloadDiagnostics {

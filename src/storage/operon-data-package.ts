@@ -316,6 +316,23 @@ export interface OperonDataPackageV1 {
 	state: OperonStatePackageV1;
 }
 
+/**
+ * The minimal structural contract required before startup recovery can mutate
+ * a canonical data package. Keep this shared with canonical observation so a
+ * recovery candidate can never be admitted under looser rules than its
+ * post-write readback.
+ */
+export function isStructurallyCompleteOperonDataPackageV1(value: unknown): value is OperonDataPackageV1 {
+	if (!isRecord(value) || value.schemaVersion !== OPERON_DATA_PACKAGE_SCHEMA_VERSION) return false;
+	return isValidDataPackageSettingsDomain(value.settings)
+		&& isValidDataPackageTaxonomyDomain(value.taxonomy)
+		&& isValidDataPackageViewsDomain(value.views)
+		&& isValidDataPackageUiDomain(value.ui)
+		&& isValidDataPackageAutomationDomain(value.automation)
+		&& isValidDataPackageIntegrationsDomain(value.integrations)
+		&& isValidDataPackageStateDomain(value.state);
+}
+
 export interface BuildOperonDataPackageOptions {
 	filterSets?: FilterSet[];
 	kanbanOrderBoards?: Record<string, KanbanManualOrderBoard>;
@@ -909,6 +926,49 @@ function isKeyMapping(value: unknown): value is KeyMapping {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isValidDataPackageSettingsDomain(value: unknown): boolean {
+	return isRecord(value);
+}
+
+function isValidDataPackageTaxonomyDomain(value: unknown): boolean {
+	return isRecord(value)
+		&& isRecord(value.keyMappings)
+		&& isRecord(value.priorities)
+		&& isRecord(value.pipelines);
+}
+
+function isValidDataPackageViewsDomain(value: unknown): boolean {
+	return isRecord(value)
+		&& isRecord(value.filters)
+		&& isRecord(value.calendarPresets)
+		&& isRecord(value.kanbanPresets)
+		&& (!Object.prototype.hasOwnProperty.call(value, 'tablePresets') || isRecord(value.tablePresets))
+		&& isRecord(value.kanbanOrder);
+}
+
+function isValidDataPackageUiDomain(value: unknown): boolean {
+	return isRecord(value)
+		&& isRecord(value.contextualMenu)
+		&& isRecord(value.taskUiPreferences)
+		&& isRecord(value.taskCreationProfile)
+		&& (!Object.prototype.hasOwnProperty.call(value, 'presetFavorites') || isRecord(value.presetFavorites))
+		&& (!Object.prototype.hasOwnProperty.call(value, 'workspaceTweaks') || isRecord(value.workspaceTweaks));
+}
+
+function isValidDataPackageAutomationDomain(value: unknown): boolean {
+	return isRecord(value) && isRecord(value.taskAutomationPolicy);
+}
+
+function isValidDataPackageIntegrationsDomain(value: unknown): boolean {
+	return isRecord(value)
+		&& isRecord(value.externalCalendarSources)
+		&& (!Object.prototype.hasOwnProperty.call(value, 'mobileNotifications') || isRecord(value.mobileNotifications));
+}
+
+function isValidDataPackageStateDomain(value: unknown): boolean {
+	return isRecord(value) && isRecord(value.pinnedTasks);
 }
 
 function cloneExistingDomain<T>(

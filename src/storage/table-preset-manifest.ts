@@ -81,6 +81,20 @@ export function mergeTablePresetRegistryOrder(
 	return nextOrder;
 }
 
+/** Keep an adopted file-backed Table usable when old authority had no default. */
+export function resolveTablePresetDefaultAfterRegistrySync(
+	currentDefaultId: string | null,
+	orderedPresetIds: readonly string[],
+	availablePresetIds: readonly string[],
+): string | null {
+	const available = new Set(availablePresetIds);
+	if (currentDefaultId && available.has(currentDefaultId)) return currentDefaultId;
+	for (const presetId of orderedPresetIds) {
+		if (available.has(presetId)) return presetId;
+	}
+	return availablePresetIds[0] ?? null;
+}
+
 function normalizePresetIds(value: unknown): string[] {
 	if (!Array.isArray(value)) return [];
 	const seen = new Set<string>();

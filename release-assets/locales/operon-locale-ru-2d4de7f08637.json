@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3043,
-  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2199,7 +2199,8 @@
       "tableFileConflictResolveMessage": "Сохранить текущий ID для {{path}}? Operon перезапишет ещё {{count}} допустимых файла(ов) с новыми ID:\n{{paths}}",
       "tableFileConflictResolveTitle": "Разрешить конфликт ID Table",
       "tableFileConflictResolvedNotice": "Конфликт ID разрешён; создано независимых файлов Table: {{count}}.",
-      "tableFileUnsupportedPackageNotice": "Operon не удалось безопасно открыть сохранённую конфигурацию Table ({reason}). Запись настроек заблокирована. Не переустанавливайте плагин и не редактируйте data.json; сохраните файлы, проверьте указанную причину и обратитесь за помощью по восстановлению.",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "Несовместимые старые настройки пресетов Table были сброшены. Существующие файлы .table сохранены и будут приняты автоматически.",
+      "tableFileUnsupportedPackageNotice": "Operon не удалось безопасно открыть сохранённую конфигурацию Table ({{reason}}). Запись настроек заблокирована. Не переустанавливайте плагин и не редактируйте data.json; сохраните файлы, проверьте указанную причину и обратитесь за помощью по восстановлению.",
       "tableGeneralSettings": "Общие настройки Table",
       "tablePresetConflict": "Конфликт ID",
       "tablePresetFileMissingNotice": "Файл Table отсутствует: {{path}}",
@@ -3088,5 +3089,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "70222e019a3b22c6c0687779f212d7e75f1161d5cbc0e76b7a955d68a5abb5d2"
+  "sourceVersion": "9b610ae12fa0ce3a8591f09b599b44e8e07fc63c01e8e2337fe62b5acfb9e33a"
 }

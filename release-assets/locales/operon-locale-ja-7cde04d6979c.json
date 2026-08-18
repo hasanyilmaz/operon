@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3043,
-  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2199,7 +2199,8 @@
       "tableFileConflictResolveMessage": "{{path}} に現在の ID を保持しますか？ Operon は他の有効な {{count}} 件のファイルを新しい ID で書き換えます:\n{{paths}}",
       "tableFileConflictResolveTitle": "Table ID の競合を解決",
       "tableFileConflictResolvedNotice": "ID 競合を解決し、{{count}} 件の独立した Table ファイルを作成しました。",
-      "tableFileUnsupportedPackageNotice": "Operon は保存された Table 設定を安全に開けませんでした（{reason}）。設定の書き込みは停止されました。再インストールや data.json の編集は行わず、ファイルを保持し、報告された理由を確認して復旧支援を受けてください。",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "互換性のない以前の Table プリセット設定をリセットしました。既存の .table ファイルは保持され、自動的に採用されます。",
+      "tableFileUnsupportedPackageNotice": "Operon は保存された Table 設定を安全に開けませんでした（{{reason}}）。設定の書き込みは停止されました。再インストールや data.json の編集は行わず、ファイルを保持し、報告された理由を確認して復旧支援を受けてください。",
       "tableGeneralSettings": "Table の一般設定",
       "tablePresetConflict": "ID の競合",
       "tablePresetFileMissingNotice": "Table ファイルが見つかりません: {{path}}",
@@ -3088,5 +3089,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "5c36f0b960ff6b5ff37fb126e6e4e40070c464356a08bdb1f485a4d1ed9db1cd"
+  "sourceVersion": "71de5de8be5eb6b877809b1d54fe04430a5b19bbedd3030b0d5460e36faa82a5"
 }

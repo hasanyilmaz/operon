@@ -59,6 +59,7 @@ const defaultCompatibilityAliasesPath = path.join(scriptRoot, 'src/generated/loc
 const defaultReleaseAssetDirectory = path.join(scriptRoot, 'release-assets/locales');
 const defaultManifestPath = path.join(scriptRoot, 'manifest.json');
 const placeholderPattern = /\{\{([A-Za-z0-9_]+)\}\}/gu;
+const singleBracePlaceholderPattern = /(?<!\{)\{([A-Za-z0-9_]+)\}(?!\})/gu;
 const rawRepositoryBaseUrl = 'https://raw.githubusercontent.com/hasanyilmaz/operon';
 
 export class DenseLocaleError extends Error {
@@ -110,6 +111,12 @@ function flattenLocale(locale, code) {
 			const value = categoryValue[key];
 			if (typeof value !== 'string') {
 				throw new DenseLocaleError(`${code} locale value ${category}.${key} must be a string.`);
+			}
+			const singleBracePlaceholder = value.match(singleBracePlaceholderPattern)?.[0];
+			if (singleBracePlaceholder) {
+				throw new DenseLocaleError(
+					`${code} locale key ${category}.${key} uses unsupported single-brace placeholder ${singleBracePlaceholder}.`,
+				);
 			}
 			leaves.set(`${category}\u0000${key}`, { category, key, value });
 		}
