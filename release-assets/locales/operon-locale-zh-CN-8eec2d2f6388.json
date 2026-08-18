@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3042,
-  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
+  "keyCount": 3043,
+  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1738,6 +1738,7 @@
       "languagePackDownloading": "正在下载…",
       "languagePackUpdate": "更新",
       "languagePackUpdating": "正在更新…",
+      "languagePortugueseBrazilian": "巴西葡萄牙语",
       "languageRussian": "俄语",
       "languageSpanish": "西班牙语",
       "languageTurkish": "土耳其语",
@@ -3087,5 +3088,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "5fe386732ca7e6ffed83d7a87d7866b0dc6bc0d1fdf61015d72ac16eb49e506b"
+  "sourceVersion": "55cc3cb33b6b450af3490d326a2c47c8e760dc48be8a4502788c552729d3247f"
 }

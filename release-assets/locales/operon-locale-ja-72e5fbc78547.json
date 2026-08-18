@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3042,
-  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
+  "keyCount": 3043,
+  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1738,6 +1738,7 @@
       "languagePackDownloading": "ダウンロード中…",
       "languagePackUpdate": "更新",
       "languagePackUpdating": "更新中…",
+      "languagePortugueseBrazilian": "ブラジルポルトガル語",
       "languageRussian": "ロシア語",
       "languageSpanish": "スペイン語",
       "languageTurkish": "トルコ語",
@@ -3087,5 +3088,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "7047ec183606503bf017575c32b6806059c61792bc18a31a3fedd176e6a6cc7c"
+  "sourceVersion": "5c36f0b960ff6b5ff37fb126e6e4e40070c464356a08bdb1f485a4d1ed9db1cd"
 }

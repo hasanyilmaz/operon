@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3042,
-  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
+  "keyCount": 3043,
+  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1738,6 +1738,7 @@
       "languagePackDownloading": "İndiriliyor…",
       "languagePackUpdate": "Güncelle",
       "languagePackUpdating": "Güncelleniyor…",
+      "languagePortugueseBrazilian": "Brezilya Portekizcesi",
       "languageRussian": "Rusça",
       "languageSpanish": "İspanyolca",
       "languageTurkish": "Türkçe",
@@ -3087,5 +3088,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "9d229e048dc085e3bffadbe1f75344c393d4072970b4c0046d65275e31f3810b"
+  "sourceVersion": "3faca0ad3a932b3f627b74b6b61b8355d5132780605ff80014f3f8f20291218b"
 }

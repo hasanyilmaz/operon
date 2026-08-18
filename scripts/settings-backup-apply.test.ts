@@ -404,7 +404,8 @@ test('apply commits portable groups once, preserves protected domains, and redac
 	const current = (await storage.captureCommittedSettingsBackupSnapshot()).settings;
 	const protectedBefore = clone(protectedProjection(data.committed));
 	const source = clone(current);
-	changeLanguage(source);
+	source.language = 'pt-BR';
+	source.languagePackSubscriptions = ['pt-BR'];
 	assert.ok(source.filterSets[0]);
 	source.filterSets[0].name = 'Imported filter';
 	source.tableShowLineNumbers = !current.tableShowLineNumbers;
@@ -420,6 +421,7 @@ test('apply commits portable groups once, preserves protected domains, and redac
 	assert.equal(adapter.mutations, 0);
 	const committed = await storage.captureCommittedSettingsBackupSnapshot();
 	assert.equal(committed.settings.language, source.language);
+	assert.deepEqual(committed.settings.languagePackSubscriptions, ['pt-BR']);
 	assert.equal(committed.settings.filterSets[0]?.name, 'Imported filter');
 	assert.equal(committed.settings.tableShowLineNumbers, source.tableShowLineNumbers);
 	assert.deepEqual(protectedProjection(data.committed), protectedBefore);

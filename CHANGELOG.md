@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added Brazilian Portuguese (`pt-BR`) localization, including a dedicated fail-closed natural-language date parser and downloadable locale pack.
 - Added the **Task Adoption Developer API** for companion plugins, with exact capability grants, opaque session-bound plans, durable same-plan recovery, and the existing fail-closed Runtime adoption path.
 
 ### Fixed
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Validated pt-BR locale parity, recurrence text, Date-NLP grammar and fallback isolation, generated-pack integrity, settings and backup behavior, strict lint, production build, Plugin Release Guard, and the complete local Plugin check.
 - Validated companion-plugin adoption preview/apply, opaque-handle and recovery isolation, stale-source fail-closed behavior, replay, receipt-store persistence, and unchanged CLI impact.
 - Validated real receipt-store journal admission and replay, apply error boundaries, the 8 MiB limit, and unchanged Runtime V1 / CLI impact.
 

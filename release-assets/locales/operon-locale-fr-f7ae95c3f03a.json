@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3042,
-  "keyFingerprint": "66cbcc25372bcde3f69256c48d381c6b80fc581ca978316d80cbe6dd4baca143",
+  "keyCount": 3043,
+  "keyFingerprint": "2110330a18026a2c05878571dd2459db747a9485277e18d1599163fa01211742",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1738,6 +1738,7 @@
       "languagePackDownloading": "Téléchargement…",
       "languagePackUpdate": "Mettre à jour",
       "languagePackUpdating": "Mise à jour…",
+      "languagePortugueseBrazilian": "Portugais (Brésil)",
       "languageRussian": "Russe",
       "languageSpanish": "Espagnol",
       "languageTurkish": "Turc",
@@ -3087,5 +3088,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "c655d48ffa1a7c5d3749749d5cf69701439396dcf7df1317511f3d550e39513c"
+  "sourceVersion": "3f70340daf26f240ba1c870c61f4397e4bf62c4f8d0b61933c6995b6eeef3729"
 }

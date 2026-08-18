@@ -97,9 +97,9 @@ import type { PinnedTaskSortMode } from '../core/pinned-task-query';
 export const CURRENT_SETTINGS_VERSION = 111;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
-export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it'] as const;
+export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
-export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it'] as const;
+export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type NonEnglishOperonLanguage = typeof NON_ENGLISH_LANGUAGE_OPTIONS[number];
 export const DEFAULT_CHILD_TASK_INHERITANCE_FIELDS = ['status', 'priority', 'taskIcon', 'taskColor'] as const;
 export const CHILD_TASK_INHERITANCE_TAGS_KEY = 'tags';
@@ -126,6 +126,9 @@ export function resolveSupportedLanguageFromLocale(rawLocale: string | null | un
 	}
 	if (lower.startsWith('zh-tw') || lower.startsWith('zh-hant') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')) {
 		return 'zh-TW';
+	}
+	if (lower === 'pt' || lower === 'pt-br' || lower.startsWith('pt-br-')) {
+		return 'pt-BR';
 	}
 	const short = lower.slice(0, 2);
 	return isSupportedLanguage(short) ? short : null;

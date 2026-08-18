@@ -4,6 +4,8 @@ import { queryCalendarItemsForVisibleDates } from '../src/systems/calendar-query
 import type { CalendarItem } from '../src/types/calendar';
 import type { IndexedTask } from '../src/types/fields';
 import { canEditAllDayCalendarItemPlacement } from '../src/ui/calendar/all-day-drag';
+import { activateI18nLocale, installI18nLocale, resetI18nToEnglish, t } from '../src/core/i18n';
+import ptBrLocale from '../i18n/locales/pt-BR.json';
 
 let assertions = 0;
 
@@ -91,6 +93,28 @@ function assertSingletonRange(
 }
 
 async function run(): Promise<void> {
+	installI18nLocale('pt-BR', ptBrLocale);
+	equal(activateI18nLocale('pt-BR'), true);
+	equal(
+		t('calendar', 'taskPoolSummary', {
+			visible: '3',
+			total: '8',
+			mode: t('calendar', 'open'),
+			taskWord: t('calendar', 'taskPlural'),
+		}),
+		'Modificadas recentemente: 3 de 8 tarefas · Em aberto',
+	);
+	equal(
+		t('calendar', 'taskPoolFinishedSummary', {
+			visible: '1',
+			total: '1',
+			date: '18 de março',
+			taskWord: t('calendar', 'taskSingular'),
+		}),
+		'Conclusão em 18 de março: 1 de 1 tarefa',
+	);
+	resetI18nToEnglish();
+
 	const scheduledOnly = itemsOfKind(query([
 		task('scheduled-1', { dateScheduled: '2026-08-18' }),
 	]).items, 'allDayScheduled');
