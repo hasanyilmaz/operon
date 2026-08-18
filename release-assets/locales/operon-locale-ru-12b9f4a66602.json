@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -23,7 +23,7 @@
       "done": "Готово",
       "edit": "Редактировать",
       "file": "Файл",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "Встроенная",
       "kanbanNoValue": "Нет значения",
       "keepAsIs": "Оставить как есть",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "Показывать небольшое уведомление, когда обратный отсчёт FlowTime достигает нуля.",
       "flowTimePauseDuration": "Длительность паузы FlowTime",
       "flowTimePauseDurationDesc": "Длительность перерывов в FlowTime.",
+      "flowTimePlayReminderSoundOnTargetReached": "Воспроизводить звук напоминания, когда FlowTime достигает нуля",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "Воспроизводит аудиофайл, выбранный в Напоминания → Звук напоминания, когда сессия или перерыв FlowTime достигает нуля.",
       "flowTimeShowNumericTimer": "Показывать числовой таймер TrackTime/FlowTime",
       "flowTimeShowNumericTimerDesc": "Показывать числовое прошедшее или оставшееся время на боковой панели TrackTime и FlowTime.",
       "flowTimeUseLastSelectedDuration": "Использовать последнюю выбранную длительность как значение FlowTime по умолчанию",
@@ -1736,6 +1738,7 @@
       "languagePackDownloading": "Загрузка…",
       "languagePackUpdate": "Обновить",
       "languagePackUpdating": "Обновление…",
+      "languagePortugueseBrazilian": "Бразильский португальский",
       "languageRussian": "Русский",
       "languageSpanish": "Испанский",
       "languageTurkish": "Турецкий",
@@ -2179,8 +2182,13 @@
       "tabViews": "Представления",
       "tableAddPresetButton": "+ Добавить пресет Table",
       "tableAtLeastOnePresetRequired": "Требуется хотя бы один пресет Table.",
+      "tableDefaultFolder": "Папка по умолчанию для новых файлов Table",
+      "tableDefaultFolderDesc": "Новые файлы Table создаются здесь. Оставьте пустым, чтобы создавать их в корне vault. Изменение этого параметра никогда не перемещает существующие файлы Table.",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Пресет Table по умолчанию",
       "tableDefaultPresetDesc": "Новые вкладки Operon Table начинаются с этого пресета, если у вкладки ещё нет собственного сохранённого состояния.",
+      "tableEmbedDefaultWidthPercent": "Ширина встроенных таблиц по умолчанию",
+      "tableEmbedDefaultWidthPercentDesc": "Задаёт ширину по умолчанию для встроенных Operon Tables без значения width:. Допустимое значение width: во встраивании переопределяет этот параметр.",
       "tableEmbedVisibleRows": "Максимум видимых строк во встроенных таблицах",
       "tableEmbedVisibleRowsDesc": "Задаёт высоту по умолчанию для встроенных Operon Tables. Дополнительные строки остаются доступными через прокрутку.",
       "tableEmbedVisibleRowsOption": "{{rows}} строк",
@@ -2191,7 +2199,8 @@
       "tableFileConflictResolveMessage": "Сохранить текущий ID для {{path}}? Operon перезапишет ещё {{count}} допустимых файла(ов) с новыми ID:\n{{paths}}",
       "tableFileConflictResolveTitle": "Разрешить конфликт ID Table",
       "tableFileConflictResolvedNotice": "Конфликт ID разрешён; создано независимых файлов Table: {{count}}.",
-      "tableFileUnsupportedPackageNotice": "Operon не удалось безопасно открыть сохранённую конфигурацию Table ({reason}). Запись настроек заблокирована. Не переустанавливайте плагин и не редактируйте data.json; сохраните файлы, проверьте указанную причину и обратитесь за помощью по восстановлению.",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "Несовместимые старые настройки пресетов Table были сброшены. Существующие файлы .table сохранены и будут приняты автоматически.",
+      "tableFileUnsupportedPackageNotice": "Operon не удалось безопасно открыть сохранённую конфигурацию Table ({{reason}}). Запись настроек заблокирована. Не переустанавливайте плагин и не редактируйте data.json; сохраните файлы, проверьте указанную причину и обратитесь за помощью по восстановлению.",
       "tableGeneralSettings": "Общие настройки Table",
       "tablePresetConflict": "Конфликт ID",
       "tablePresetFileMissingNotice": "Файл Table отсутствует: {{path}}",
@@ -3080,5 +3089,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "e747e8008a4f3f674de2c6650887f4b7f0cb7afefc483b1d750897bd0bf64f07"
+  "sourceVersion": "c2a6478a0ad9a38e46255f98c9f93697437cf3cfbb354a00e950bcd59aefebb6"
 }

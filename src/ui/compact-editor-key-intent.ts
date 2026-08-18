@@ -1,5 +1,8 @@
+import type { CompactTaskTextPolicy } from '../core/compact-task-text';
+
 export type CompactEditorKeyIntent =
 	| 'none'
+	| 'insert-line-break'
 	| 'submit'
 	| 'explicit-submit'
 	| 'escape'
@@ -14,6 +17,7 @@ export interface CompactEditorKeyIntentInput {
 	readonly isComposing?: boolean;
 	readonly localCompositionActive?: boolean;
 	readonly keyCode?: number;
+	readonly textPolicy?: CompactTaskTextPolicy;
 }
 
 export function resolveCompactEditorKeyIntent(
@@ -24,7 +28,9 @@ export function resolveCompactEditorKeyIntent(
 	}
 
 	if (input.key === 'Enter') {
-		return input.metaKey || input.ctrlKey ? 'explicit-submit' : 'submit';
+		if (input.metaKey || input.ctrlKey) return 'explicit-submit';
+		if (input.shiftKey && input.textPolicy === 'task-note') return 'insert-line-break';
+		return 'submit';
 	}
 	if (input.key === 'Escape') return 'escape';
 	if (input.key === 'Tab') return input.shiftKey ? 'focus-previous' : 'focus-next';

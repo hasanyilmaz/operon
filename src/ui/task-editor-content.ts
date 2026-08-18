@@ -21,6 +21,10 @@ import {
 	shouldTriggerOneShotAutomation,
 } from '../types/pipeline';
 import { serializeTask } from '../core/serializer';
+import {
+	projectCompactTaskTextForEditing,
+	projectCompactTaskTextSingleLineBreakInsertion,
+} from '../core/compact-task-text';
 import { applyFieldRules } from '../core/field-rules';
 import { deriveCountModeRepeatEndFromFieldValues } from '../core/task-field-patch';
 import { t } from '../core/i18n';
@@ -1234,9 +1238,8 @@ export class TaskEditorContent {
 		textarea.value = this.fieldValues['note'] ?? '';
 		this.noteInputEl = textarea;
 		const resize = () => this.autoSizeMobileTextarea(textarea, 44);
-		resize();
-		textarea.addEventListener('input', () => {
-			const normalized = this.normalizeInlineTextFieldValue(textarea.value);
+		const applyInput = () => {
+			const normalized = projectCompactTaskTextForEditing(textarea.value, 'task-note');
 			if (normalized !== textarea.value) {
 				textarea.value = normalized;
 			}
@@ -1248,6 +1251,24 @@ export class TaskEditorContent {
 			resize();
 			this.markEdited();
 			this.refreshMobileCoreButtons();
+		};
+		resize();
+		textarea.addEventListener('input', applyInput);
+		textarea.addEventListener('keydown', event => {
+			const legacyKeyCode = (event as unknown as { keyCode?: number }).keyCode;
+			if (event.isComposing || legacyKeyCode === 229) return;
+			if (event.key !== 'Enter' || event.shiftKey) return;
+			event.preventDefault();
+			const start = textarea.selectionStart ?? textarea.value.length;
+			const end = textarea.selectionEnd ?? start;
+			const projected = projectCompactTaskTextSingleLineBreakInsertion(
+				textarea.value,
+				start,
+				end,
+			);
+			textarea.value = projected.displayValue;
+			textarea.setSelectionRange(projected.selectionOffset, projected.selectionOffset);
+			applyInput();
 		});
 		this.updateMobileNoteVisibility();
 	}
@@ -2851,10 +2872,6 @@ export class TaskEditorContent {
 		if (!showLabel) setting.settingEl.addClass('operon-editor-text-field-setting');
 	}
 
-	private normalizeInlineTextFieldValue(value: string): string {
-		return value.replace(/\s*\r?\n+\s*/g, ' ');
-	}
-
 	private setDelimitedFieldValue(fieldKey: string, values: string[]): void {
 		const normalized = normalizeListValues(values);
 		if (normalized.length > 0) {
@@ -3071,6 +3088,7 @@ export class TaskEditorContent {
 			sourcePath: this.getCompactTextSourcePath(),
 			placeholder: t('taskEditor', 'notesPlaceholder'),
 			ariaLabel: t('taskEditor', 'notes'),
+			textPolicy: 'task-note',
 			onUserChange: draft => {
 				const value = draft.persistableValue;
 				const previous = this.fieldValues['note'] ?? '';

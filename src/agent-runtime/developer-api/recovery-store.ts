@@ -1,9 +1,12 @@
 import type {
 	MutationAcknowledgementV1,
 	MutationAuthorizationV1,
-	SealedMutationPlanV1,
 } from '../contracts/v1/mutation';
 import { decodeMutationApplyRequestV1 } from '../contracts/v1/decode';
+import {
+	decodeTaskWorkflowApplyRequestExtensionV1,
+	type AdoptTaskSealedPlanV1,
+} from '../extensions/task-workflows-v1';
 import {
 	indexedDbRequestResultV1,
 	indexedDbTransactionCompletionV1,
@@ -14,7 +17,10 @@ import {
 	RECOVERY_MAX_RECORDS_V1,
 	RECOVERY_RETENTION_MS_V1,
 } from '../internal/recovery-policy';
-import type { DeveloperPlanSecurityBindingV1 } from './security';
+import type {
+	DeveloperMutationSealedPlanV1,
+	DeveloperPlanSecurityBindingV1,
+} from './security';
 
 export const DEVELOPER_RECOVERY_RETENTION_MS_V1 = RECOVERY_RETENTION_MS_V1;
 export const DEVELOPER_RECOVERY_MAX_RECORDS_V1 = RECOVERY_MAX_RECORDS_V1;
@@ -27,7 +33,7 @@ export interface DeveloperMutationRecoveryRecordV1 {
 	readonly recoveryRef: string;
 	readonly consumerId: string;
 	readonly planDigest: string;
-	readonly sealed: SealedMutationPlanV1;
+	readonly sealed: DeveloperMutationSealedPlanV1;
 	readonly binding: DeveloperPlanSecurityBindingV1;
 	readonly idempotencyKey: string;
 	readonly authorization: MutationAuthorizationV1;
@@ -469,15 +475,25 @@ function assertRecoveryRecord(record: DeveloperMutationRecoveryRecordV1): void {
 			'The Developer API recovery store contains an invalid record.',
 		);
 	}
-	const decodedApply = decodeMutationApplyRequestV1({
-		contractVersion: 1,
-		requestId: 'developer-recovery-validation',
-		kind: 'mutation-apply',
-		plan: record.sealed,
-		authorization: record.authorization,
-		idempotencyKey: record.idempotencyKey,
-		acknowledgements: record.acknowledgements,
-	});
+	const decodedApply = isAdoptTaskPlan(record.sealed)
+		? decodeTaskWorkflowApplyRequestExtensionV1({
+			contractVersion: 1,
+			requestId: 'developer-recovery-validation',
+			kind: 'mutation-apply',
+			plan: record.sealed,
+			authorization: record.authorization,
+			idempotencyKey: record.idempotencyKey,
+			acknowledgements: record.acknowledgements,
+		})
+		: decodeMutationApplyRequestV1({
+			contractVersion: 1,
+			requestId: 'developer-recovery-validation',
+			kind: 'mutation-apply',
+			plan: record.sealed,
+			authorization: record.authorization,
+			idempotencyKey: record.idempotencyKey,
+			acknowledgements: record.acknowledgements,
+		});
 	if (
 		!decodedApply.ok
 		|| record.binding.instanceEpoch.length === 0
@@ -491,4 +507,11 @@ function assertRecoveryRecord(record: DeveloperMutationRecoveryRecordV1): void {
 			'The Developer API recovery record failed canonical apply validation.',
 		);
 	}
+}
+
+function isAdoptTaskPlan(
+	plan: DeveloperMutationSealedPlanV1,
+): plan is AdoptTaskSealedPlanV1 {
+	return plan.mutationKind === 'task.adopt'
+		&& plan.capability === 'tasks.adopt.preview';
 }

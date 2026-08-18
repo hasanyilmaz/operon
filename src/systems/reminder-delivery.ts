@@ -268,6 +268,15 @@ export class ReminderDeliveryController implements ReminderDeliveryPort {
 		});
 	}
 
+	/**
+	 * Play the configured reminder audio without delivering a reminder notice.
+	 * FlowTime uses this shared channel so alert sounds never overlap.
+	 */
+	async playReminderSound(): Promise<void> {
+		if (this.destroyed) return;
+		await this.playConfiguredSound();
+	}
+
 	async previewSystemNotification(): Promise<boolean> {
 		if (this.destroyed || !(this.options.isDesktopApp?.() ?? Platform.isDesktopApp)
 			|| !this.options.getSystemNotificationsEnabled()) return false;

@@ -1,4 +1,5 @@
-import type { CapabilityIdV1 } from '../../contracts/v1/capabilities';
+import type { DeveloperApiGrantCapabilityV1 } from '../grants';
+import type { AdoptTaskSealedPlanV1 } from '../../extensions/task-workflows-v1/contracts';
 import type {
 	MutationAcknowledgementV1,
 	MutationAuthorizationV1,
@@ -6,6 +7,10 @@ import type {
 	RiskLevelV1,
 	SealedMutationPlanV1,
 } from '../../contracts/v1/mutation';
+
+/** Shared host-only plan family for base and task-workflow mutation sessions. */
+export type DeveloperMutationSealedPlanV1 = SealedMutationPlanV1 | AdoptTaskSealedPlanV1;
+export type DeveloperMutationCapabilityV1 = DeveloperApiGrantCapabilityV1;
 
 export type DeveloperGrantStateV1 = 'pending' | 'active' | 'suspended' | 'revoked';
 
@@ -24,7 +29,7 @@ export interface DeveloperCapabilityGrantV1 {
 	readonly consumerId: string;
 	readonly state: DeveloperGrantStateV1;
 	readonly revision: number;
-	readonly capabilities: ReadonlySet<CapabilityIdV1>;
+	readonly capabilities: ReadonlySet<DeveloperMutationCapabilityV1>;
 }
 
 export interface DeveloperPlanSecurityBindingV1 {
@@ -32,7 +37,7 @@ export interface DeveloperPlanSecurityBindingV1 {
 	readonly instanceEpoch: string;
 	readonly sessionId: string;
 	readonly grantRevision: number;
-	readonly capability: CapabilityIdV1;
+	readonly capability: DeveloperMutationCapabilityV1;
 	readonly planHash: string;
 	readonly targetDigest: string;
 }
@@ -94,8 +99,8 @@ export interface DeveloperRecoveryAdmissionV1 {
 
 export interface DeveloperConsentPromptV1 {
 	readonly consumerId: string;
-	readonly capability: CapabilityIdV1;
-	readonly mutationKind: SealedMutationPlanV1['mutationKind'];
+	readonly capability: DeveloperMutationCapabilityV1;
+	readonly mutationKind: DeveloperMutationSealedPlanV1['mutationKind'];
 	readonly riskLevel: Exclude<RiskLevelV1, 'none' | 'routine'>;
 	readonly planHash: string;
 	readonly targetDigest: string;

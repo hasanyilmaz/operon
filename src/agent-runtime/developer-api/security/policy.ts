@@ -1,15 +1,15 @@
 import {
 	MUTATION_CAPABILITY_MAP_V1,
-	type CapabilityIdV1,
 } from '../../contracts/v1/capabilities';
 import type {
 	MutationAuthorizationV1,
-	SealedMutationPlanV1,
 } from '../../contracts/v1/mutation';
 import type {
 	DeveloperApplyAdmissionV1,
 	DeveloperApplyDispatchClaimV1,
 	DeveloperCapabilityGrantV1,
+	DeveloperMutationCapabilityV1,
+	DeveloperMutationSealedPlanV1,
 	DeveloperPlanBindingAdmissionV1,
 	DeveloperPlanDispatchStateV1,
 	DeveloperPlanSecurityBindingV1,
@@ -33,7 +33,7 @@ export class DeveloperMutationSecurityPolicyV1 {
 	admitPreview(input: {
 		session: DeveloperSecuritySessionV1;
 		grant: DeveloperCapabilityGrantV1;
-		capability: CapabilityIdV1;
+		capability: DeveloperMutationCapabilityV1;
 	}): AdmissionResultV1<DeveloperPreviewAdmissionV1> {
 		const denial = this.admitGrant(input.session, input.grant, input.capability);
 		if (denial) return denial;
@@ -46,7 +46,7 @@ export class DeveloperMutationSecurityPolicyV1 {
 	bindPlan(input: {
 		session: DeveloperSecuritySessionV1;
 		grant: DeveloperCapabilityGrantV1;
-		plan: SealedMutationPlanV1;
+		plan: DeveloperMutationSealedPlanV1;
 	}): AdmissionResultV1<DeveloperPlanBindingAdmissionV1> {
 		const denial = this.admitGrant(input.session, input.grant, input.plan.capability);
 		if (denial) return denial;
@@ -68,11 +68,11 @@ export class DeveloperMutationSecurityPolicyV1 {
 		session: DeveloperSecuritySessionV1;
 		grant: DeveloperCapabilityGrantV1;
 		binding: DeveloperPlanSecurityBindingV1;
-		plan: SealedMutationPlanV1;
+		plan: DeveloperMutationSealedPlanV1;
 	}): Promise<AdmissionResultV1<DeveloperApplyAdmissionV1>> {
 		const denial = this.admitBoundPlan(input);
 		if (denial) return denial;
-		const applyCapability = MUTATION_CAPABILITY_MAP_V1[input.plan.mutationKind].apply;
+		const applyCapability = resolveApplyCapability(input.plan);
 
 		if (input.plan.riskLevel === 'none' || input.plan.riskLevel === 'routine') {
 			return {
@@ -171,7 +171,7 @@ export class DeveloperMutationSecurityPolicyV1 {
 		session: DeveloperSecuritySessionV1;
 		grant: DeveloperCapabilityGrantV1;
 		binding: DeveloperPlanSecurityBindingV1;
-		plan: SealedMutationPlanV1;
+		plan: DeveloperMutationSealedPlanV1;
 	}): AdmissionResultV1<DeveloperApplyDispatchClaimV1> {
 		const denial = this.admitBoundPlan(input);
 		if (denial) return denial;
@@ -193,7 +193,7 @@ export class DeveloperMutationSecurityPolicyV1 {
 	 */
 	releaseApplyDispatchClaim(input: {
 		session: DeveloperSecuritySessionV1;
-		plan: SealedMutationPlanV1;
+		plan: DeveloperMutationSealedPlanV1;
 	}): void {
 		this.claimedApplyPlans.delete(planKey(
 			input.session.consumerId,
@@ -203,7 +203,7 @@ export class DeveloperMutationSecurityPolicyV1 {
 
 	admitRecovery(input: {
 		session: DeveloperSecuritySessionV1;
-		plan: SealedMutationPlanV1;
+		plan: DeveloperMutationSealedPlanV1;
 		dispatch: DeveloperPlanDispatchStateV1;
 	}): AdmissionResultV1<DeveloperRecoveryAdmissionV1> {
 		if (!this.ports.isSessionCurrent(input.session)) {
@@ -239,9 +239,9 @@ export class DeveloperMutationSecurityPolicyV1 {
 		session: DeveloperSecuritySessionV1;
 		grant: DeveloperCapabilityGrantV1;
 		binding: DeveloperPlanSecurityBindingV1;
-		plan: SealedMutationPlanV1;
+		plan: DeveloperMutationSealedPlanV1;
 	}): DeveloperSecurityDenialV1 | undefined {
-		const applyCapability = MUTATION_CAPABILITY_MAP_V1[input.plan.mutationKind].apply;
+		const applyCapability = resolveApplyCapability(input.plan);
 		const grantDenial = this.admitGrant(input.session, input.grant, applyCapability);
 		if (grantDenial) return grantDenial;
 		if (
@@ -271,7 +271,7 @@ export class DeveloperMutationSecurityPolicyV1 {
 	private admitGrant(
 		session: DeveloperSecuritySessionV1,
 		grant: DeveloperCapabilityGrantV1,
-		capability: CapabilityIdV1,
+		capability: DeveloperMutationCapabilityV1,
 	): DeveloperSecurityDenialV1 | undefined {
 		if (!this.ports.isSessionCurrent(session)) {
 			return denialResult(
@@ -312,13 +312,28 @@ export class DeveloperMutationSecurityPolicyV1 {
 	}
 }
 
-function routineAuthorization(plan: SealedMutationPlanV1): MutationAuthorizationV1 {
+function routineAuthorization(plan: DeveloperMutationSealedPlanV1): MutationAuthorizationV1 {
 	// The existing Runtime V1 create gate specifically requires this basis.
 	return hostAuthorization(
 		plan.mutationKind === 'task.create'
 			? 'user-explicit-request'
 			: 'user-standing-instruction',
 	);
+}
+
+/** Base capabilities are frozen; task adoption is an additive extension. */
+export function resolveDeveloperMutationApplyCapabilityV1(
+	plan: DeveloperMutationSealedPlanV1,
+): DeveloperMutationCapabilityV1 {
+	return plan.mutationKind === 'task.adopt'
+		? 'tasks.adopt.apply'
+		: MUTATION_CAPABILITY_MAP_V1[plan.mutationKind].apply;
+}
+
+function resolveApplyCapability(
+	plan: DeveloperMutationSealedPlanV1,
+): DeveloperMutationCapabilityV1 {
+	return resolveDeveloperMutationApplyCapabilityV1(plan);
 }
 
 function hostAuthorization(

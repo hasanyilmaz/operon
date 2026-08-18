@@ -2,6 +2,7 @@ import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { OperonIndexer } from '../indexer/indexer';
 import { TimeTracker } from '../systems/time-tracker';
+import { FlowTimeCompletionAlertTracker } from '../systems/flow-time-completion-alerts';
 import {
 	FlowTimePendingDraft,
 	FlowTimeRenderedState,
@@ -43,6 +44,7 @@ interface FlowTimeViewCallbacks {
 	getPipelines: () => Pipeline[];
 	getSettings: () => OperonSettings;
 	saveSettings: () => Promise<void>;
+	playReminderSound: () => Promise<void>;
 	createInlineTaskFromQuickInput: (draft: TaskCreatorDraft) => Promise<QuickInlineTaskCreationResult | null>;
 	shouldPromptForInlineTaskTarget: () => boolean;
 	startTimerForTask: (operonId: string, source: TrackerSource, startOverride?: string | null) => Promise<boolean>;
@@ -83,6 +85,9 @@ export class FlowTimeView extends ItemView {
 	private pendingTaskId: string | null = null;
 	private notifiedTargetKey: string | null = null;
 	private lastTargetReachedState: { activeStart: string; overtime: boolean } | null = null;
+	private readonly completionAlertTracker = new FlowTimeCompletionAlertTracker();
+	private lastFlowTimeSoundEnabled: boolean | null = null;
+	private lastFlowTimeSoundMode: FlowTimeMode | null = null;
 	private isDialDragging = false;
 	private cleanupDialDrag: (() => void) | null = null;
 	private breakState: FlowTimeBreakState | null = null;
@@ -162,6 +167,7 @@ export class FlowTimeView extends ItemView {
 				String(settings.flowTimeDefaultSessionMinutes),
 				String(settings.flowTimeShowNumericTimer),
 				String(settings.flowTimeNotifyOnTargetReached),
+				String(settings.flowTimePlayReminderSoundOnTargetReached),
 				settings.fallbackTaskIconSource,
 				settings.taskStatusIconColorSource,
 				`${settings.fallbackStateIcons.open}:${settings.fallbackStateIcons.done}:${settings.fallbackStateIcons.cancelled}`,
@@ -499,6 +505,7 @@ export class FlowTimeView extends ItemView {
 			overtimeLabel.setText(state.overtime ? t('taskEditor', 'flowTimeOvertime') : '');
 		}
 		this.notifyIfTargetReached(settings, active);
+		this.playReminderSoundIfTargetReached(settings, active);
 	}
 
 	private updateDialGeometry(container: HTMLElement, state: DialState): void {
@@ -891,6 +898,7 @@ export class FlowTimeView extends ItemView {
 		};
 		this.notifiedTargetKey = null;
 		this.lastTargetReachedState = null;
+		this.completionAlertTracker.reset();
 		this.lastRenderSignature = null;
 		this.startBreakTicker();
 		this.render();
@@ -916,6 +924,7 @@ export class FlowTimeView extends ItemView {
 	private clearBreakState(render = true): void {
 		if (!this.breakState) return;
 		this.breakState = null;
+		this.completionAlertTracker.reset('break');
 		this.stopBreakTicker();
 		if (render) {
 			this.lastRenderSignature = null;
@@ -1050,6 +1059,62 @@ export class FlowTimeView extends ItemView {
 		this.lastTargetReachedState = { activeStart, overtime: isOvertime };
 	}
 
+	private playReminderSoundIfTargetReached(settings: OperonSettings, active: ActiveTrackerState | null): void {
+		const enabled = settings.flowTimePlayReminderSoundOnTargetReached;
+		const modeChanged = this.lastFlowTimeSoundMode !== settings.flowTimeMode;
+		this.lastFlowTimeSoundMode = settings.flowTimeMode;
+		if (active) {
+			this.completionAlertTracker.reset('break');
+			if (settings.flowTimeMode !== 'flowtime') {
+				this.lastFlowTimeSoundEnabled = enabled;
+				this.completionAlertTracker.reset('focus');
+				return;
+			}
+			this.observeReminderSoundCompletion({
+				kind: 'focus',
+				occurrenceKey: active.start,
+				elapsedSeconds: active.elapsedSeconds,
+				targetSeconds: Math.max(60, settings.flowTimeSessionMinutes * 60),
+				enabled,
+			}, modeChanged);
+			return;
+		}
+
+		if (!this.breakState) {
+			this.completionAlertTracker.reset();
+			this.lastFlowTimeSoundEnabled = enabled;
+			return;
+		}
+
+		this.completionAlertTracker.reset('focus');
+		this.observeReminderSoundCompletion({
+			kind: 'break',
+			occurrenceKey: `${this.breakState.taskId}:${this.breakState.startMs}`,
+			elapsedSeconds: this.getBreakElapsedSeconds(),
+			targetSeconds: this.breakState.targetSeconds,
+			enabled,
+		}, modeChanged);
+	}
+
+	private observeReminderSoundCompletion(input: {
+		kind: 'focus' | 'break';
+		occurrenceKey: string;
+		elapsedSeconds: number;
+		targetSeconds: number;
+		enabled: boolean;
+	}, suppressAlert = false): void {
+		const soundEnabledChanged = this.lastFlowTimeSoundEnabled !== input.enabled;
+		this.lastFlowTimeSoundEnabled = input.enabled;
+		if (soundEnabledChanged || suppressAlert) {
+			this.completionAlertTracker.sync(input);
+			return;
+		}
+		if (!this.completionAlertTracker.observe(input)) return;
+		void this.callbacks.playReminderSound().catch(error => {
+			console.warn('Operon: FlowTime reminder sound playback failed unexpectedly', error);
+		});
+	}
+
 	private syncTargetReachedStateAfterDurationChange(settings: OperonSettings): void {
 		const active = this.timeTracker.getActiveState();
 		if (!active || settings.flowTimeMode !== 'flowtime') {
@@ -1065,6 +1130,13 @@ export class FlowTimeView extends ItemView {
 		if (isOvertime) {
 			this.notifiedTargetKey = active.start;
 		}
+		this.completionAlertTracker.sync({
+			kind: 'focus',
+			occurrenceKey: active.start,
+			elapsedSeconds: elapsed,
+			targetSeconds,
+			enabled: settings.flowTimePlayReminderSoundOnTargetReached,
+		});
 	}
 
 	private getRenderedState(): FlowTimeRenderedState {

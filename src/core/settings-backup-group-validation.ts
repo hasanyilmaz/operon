@@ -79,7 +79,9 @@ export interface OperonSettingsBackupPresetFavoritesGroupV1 {
 }
 
 export interface OperonSettingsBackupTableGlobalGroupV1 {
+	tableDefaultFolder?: string;
 	tableEmbedVisibleRows: OperonSettings['tableEmbedVisibleRows'];
+	tableEmbedDefaultWidthPercent?: OperonSettings['tableEmbedDefaultWidthPercent'];
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
 	tableShowTaskTypeIcon: boolean;
@@ -495,11 +497,18 @@ function decodeFavorites(data: unknown, path: string, diagnostics: OperonSetting
 }
 
 function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSettingsBackupDiagnostic[]): AnyObject | null {
-	const keys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon'];
-	const object = inspectObject(data, path, keys, keys, diagnostics);
+	const keys = ['tableDefaultFolder', 'tableEmbedVisibleRows', 'tableEmbedDefaultWidthPercent', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon'];
+	const requiredKeys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon'];
+	const object = inspectObject(data, path, keys, requiredKeys, diagnostics);
 	if (!object) return null;
+	if ('tableDefaultFolder' in object && typeof object.tableDefaultFolder !== 'string') {
+		diagnostics.push(error(`${path}.tableDefaultFolder`, 'type', 'tableDefaultFolder must be a string.'));
+	}
 	if (typeof object.tableEmbedVisibleRows !== 'number' || !Number.isFinite(object.tableEmbedVisibleRows)) diagnostics.push(error(`${path}.tableEmbedVisibleRows`, 'type', 'tableEmbedVisibleRows must be a finite number.'));
-	for (const key of keys.slice(1)) if (typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
+	if ('tableEmbedDefaultWidthPercent' in object && (typeof object.tableEmbedDefaultWidthPercent !== 'number' || !Number.isFinite(object.tableEmbedDefaultWidthPercent))) {
+		diagnostics.push(error(`${path}.tableEmbedDefaultWidthPercent`, 'type', 'tableEmbedDefaultWidthPercent must be a finite number.'));
+	}
+	for (const key of ['tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon']) if (typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
 	return object;
 }
 
@@ -684,7 +693,9 @@ function validateCanonicalProjection(
 	if (payloads.kanban) assertCanonicalProjection(payloads.kanban, { kanbanPresets: candidate.kanbanPresets, kanbanDefaultPresetId: candidate.kanbanDefaultPresetId }, '$.body.groups.kanban.data', 'kanban', diagnostics);
 	if (payloads['preset-favorites']) assertCanonicalProjection(payloads['preset-favorites'].presetFavorites, candidate.presetFavorites, '$.body.groups.preset-favorites.data.presetFavorites', 'presetFavorites', diagnostics);
 	if (payloads['table-global']) assertCanonicalProjection(payloads['table-global'], {
+		tableDefaultFolder: candidate.tableDefaultFolder,
 		tableEmbedVisibleRows: candidate.tableEmbedVisibleRows,
+		tableEmbedDefaultWidthPercent: candidate.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: candidate.tableShowLineNumbers,
 		tableShowTaskIcon: candidate.tableShowTaskIcon,
 		tableShowTaskTypeIcon: candidate.tableShowTaskTypeIcon,

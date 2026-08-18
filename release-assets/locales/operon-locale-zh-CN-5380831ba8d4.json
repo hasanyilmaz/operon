@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3035,
-  "keyFingerprint": "dbd8d94b4f6fc469e86af73a3dc4ba58281dd48143be964f091ed5c65a3059bd",
+  "keyCount": 3044,
+  "keyFingerprint": "aee2a01d997239df8fec4dd172624a2ca5fbd1de7c00a6104952fae9ff04a05d",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -23,7 +23,7 @@
       "done": "完成",
       "edit": "编辑",
       "file": "文件",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "行内",
       "kanbanNoValue": "无值",
       "keepAsIs": "保持原样",
@@ -1424,6 +1424,8 @@
       "flowTimeNotifyOnTargetReachedDesc": "当 FlowTime 倒计时归零时显示一个小通知。",
       "flowTimePauseDuration": "FlowTime 暂停时长",
       "flowTimePauseDurationDesc": "在 FlowTime 中所做休息的时长。",
+      "flowTimePlayReminderSoundOnTargetReached": "当 FlowTime 归零时播放提醒声音",
+      "flowTimePlayReminderSoundOnTargetReachedDesc": "当 FlowTime 会话或休息归零时，播放在提醒 → 提醒声音中选择的音频文件。",
       "flowTimeShowNumericTimer": "显示 TrackTime/FlowTime 数字计时器",
       "flowTimeShowNumericTimerDesc": "在 TrackTime 与 FlowTime 侧边栏中显示已用或剩余的数字时间。",
       "flowTimeUseLastSelectedDuration": "将上次选择的时长用作 FlowTime 默认值",
@@ -1736,6 +1738,7 @@
       "languagePackDownloading": "正在下载…",
       "languagePackUpdate": "更新",
       "languagePackUpdating": "正在更新…",
+      "languagePortugueseBrazilian": "巴西葡萄牙语",
       "languageRussian": "俄语",
       "languageSpanish": "西班牙语",
       "languageTurkish": "土耳其语",
@@ -2179,8 +2182,13 @@
       "tabViews": "视图",
       "tableAddPresetButton": "+ 添加 Table 预设",
       "tableAtLeastOnePresetRequired": "至少需要一个 Table 预设。",
+      "tableDefaultFolder": "新建 Table 文件的默认文件夹",
+      "tableDefaultFolderDesc": "新的 Table 文件会在此处创建。留空可在 vault 根目录创建。更改此设置绝不会移动现有的 Table 文件。",
+      "tableDefaultFolderPlaceholder": "Operon/Tables",
       "tableDefaultPreset": "Table 默认预设",
       "tableDefaultPresetDesc": "新的 Operon Table 窗口将以此预设开始，除非该窗口已有自己保存的状态。",
+      "tableEmbedDefaultWidthPercent": "嵌入表格的默认宽度",
+      "tableEmbedDefaultWidthPercentDesc": "设置未提供 width: 值的嵌入式 Operon Table 的默认宽度。嵌入中的有效 width: 值会覆盖此设置。",
       "tableEmbedVisibleRows": "嵌入表格中的最大可见行数",
       "tableEmbedVisibleRowsDesc": "设置嵌入式 Operon Table 的默认高度。额外行仍可通过滚动访问。",
       "tableEmbedVisibleRowsOption": "{{rows}} 行",
@@ -2191,7 +2199,8 @@
       "tableFileConflictResolveMessage": "是否为 {{path}} 保留现有 ID？Operon 将使用新 ID 重写其他 {{count}} 个有效文件：\n{{paths}}",
       "tableFileConflictResolveTitle": "解决 Table ID 冲突",
       "tableFileConflictResolvedNotice": "已解决 ID 冲突并创建 {{count}} 个独立的 Table 文件。",
-      "tableFileUnsupportedPackageNotice": "Operon 无法安全打开已存储的 Table 配置（{reason}）。设置写入已被阻止。请勿重新安装或编辑 data.json；请保留文件，检查报告的原因并寻求恢复指导。",
+      "tableFileLegacyPresetAuthorityRetiredNotice": "不兼容的旧 Table 预设设置已重置。现有 .table 文件已保留，并会自动采用。",
+      "tableFileUnsupportedPackageNotice": "Operon 无法安全打开已存储的 Table 配置（{{reason}}）。设置写入已被阻止。请勿重新安装或编辑 data.json；请保留文件，检查报告的原因并寻求恢复指导。",
       "tableGeneralSettings": "Table 常规设置",
       "tablePresetConflict": "ID 冲突",
       "tablePresetFileMissingNotice": "Table 文件缺失：{{path}}",
@@ -3080,5 +3089,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "7d44b30730d8257f6cead80a6e16d34c47f53ef1a423c45b199a682cab6973c0"
+  "sourceVersion": "6c05114de9838712543c19d4c59096082be82a05787431900c052531c6602e96"
 }

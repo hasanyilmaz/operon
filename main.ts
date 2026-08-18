@@ -23,6 +23,7 @@ import {
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
 	mergeTablePresetRegistryOrder,
+	resolveTablePresetDefaultAfterRegistrySync,
 	resolveTablePresetBootstrapAction,
 } from './src/storage/table-preset-manifest';
 import type { TablePresetRegistryEntry, TablePresetRegistryPatchControl } from './src/types/table-preset-registry';
@@ -34,6 +35,7 @@ import {
 	getOperonTableFilePathKey,
 	isOperonTableFilePath,
 	parseOperonTableFile,
+	resolveOperonTableCreationFolder,
 	serializeOperonTableFile,
 } from './src/storage/table-file';
 import { OperonIndexer, type IndexedTaskDelta } from './src/indexer/indexer';
@@ -224,6 +226,12 @@ import {
 	toJsonValueV1,
 } from './src/agent-runtime/contracts/v1/canonical';
 import {
+	buildIdentityPlaceholderJournalV1,
+	identityPlaceholderJournalByteLengthV1,
+	identityPlaceholderJournalsEqualV1,
+} from './src/agent-runtime/runtime/identity-placeholder-journal';
+import { GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1 } from './src/agent-runtime/runtime/receipts/graph-transaction-journal';
+import {
 	buildLivePropertyCatalogV1,
 	computeContextSettingsFingerprintV1,
 	createAgentRuntimeSessionId,
@@ -271,6 +279,9 @@ import {
 	resolveRuntimeTaskFieldMutationPostflightEvidenceV1,
 	runtimeInlineTaskUpdateSettlementEvidenceSourceV1,
 	verifyRuntimeTaskFieldMutationPrimaryPostflightV1,
+	verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1,
+	verifyRuntimeMaterializedRecurrenceSeriesStatePostflightV1,
+	classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1,
 	guardRuntimeTimerControlV1,
 	guardRuntimeInlineRelocationV1,
 	analyzeRuntimeFileToInlineLossV1,
@@ -320,6 +331,7 @@ import {
 	type RuntimeSemanticTransitionPlanV1,
 	type RuntimeSemanticTransitionExecutionOptionsV1,
 	type RuntimeSemanticTransitionPostflightEvidenceV1,
+	type RuntimeMaterializedRecurrenceSuccessorV1,
 	type RuntimeTimerMutationPreparationV1,
 	type RuntimeSourceTransitionPreparationV1,
 	type RuntimeTaskCreationPreparationV1,
@@ -392,6 +404,9 @@ import {
 	type TaskWorkflowCapabilityIdV1,
 	type TaskWorkflowDeveloperApiAccessRequestV1,
 	type TaskWorkflowDeveloperApiAccessResultV1,
+	type TaskWorkflowDeveloperCapabilityAccessRequestV1,
+	type TaskWorkflowDeveloperCapabilityAccessResultV1,
+	type TaskWorkflowDeveloperCapabilitySubsetV1,
 	type TaskWorkflowMutationResultV1,
 	type TaskWorkflowMutationReceiptV1,
 	type TaskWorkflowPreviewRequestV1,
@@ -1407,15 +1422,32 @@ export default class OperonPlugin extends Plugin {
 	getTaskWorkflowDeveloperApiV1(
 		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
 		request: TaskWorkflowDeveloperApiAccessRequestV1,
-	): TaskWorkflowDeveloperApiAccessResultV1 {
+	): TaskWorkflowDeveloperApiAccessResultV1;
+	getTaskWorkflowDeveloperApiV1<
+		TCapabilities extends TaskWorkflowDeveloperCapabilitySubsetV1,
+	>(
+		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
+		request: TaskWorkflowDeveloperCapabilityAccessRequestV1<TCapabilities>,
+	): TaskWorkflowDeveloperCapabilityAccessResultV1<TCapabilities>;
+	getTaskWorkflowDeveloperApiV1(
+		consumerPlugin: OperonDeveloperApiConsumerPluginV1,
+		request: unknown,
+	): TaskWorkflowDeveloperCapabilityAccessResultV1<TaskWorkflowDeveloperCapabilitySubsetV1> {
 		const core = this.agentRuntimeCore ?? null;
-		return getOperonTaskWorkflowDeveloperApiV1(core, consumerPlugin, request, {
+		return getOperonTaskWorkflowDeveloperApiV1(
+			core,
+			consumerPlugin,
+			request as TaskWorkflowDeveloperCapabilityAccessRequestV1<TaskWorkflowDeveloperCapabilitySubsetV1>,
+			{
 			isDesktopAvailable: () => Platform.isDesktopApp,
 			isHostVersionSupported: () => requireApiVersion('1.12.2'),
 			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
 			isCoreActive: candidate => this.agentRuntimeCore === candidate && this.agentRuntimeLifecycle?.getPhase() !== 'unloading',
 			grantController: this.developerApiGrantController,
-		});
+			mutationSecurityPolicy: this.developerApiMutationSecurityPolicy,
+			recoverTaskWorkflowMutation: request => this.recoverAgentRuntimeTaskWorkflowMutation(request),
+			},
+		);
 	}
 
 	private verifyDeveloperApiConsumer(
@@ -1542,7 +1574,11 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async recordTaskWorkflowSecurityAudit(
-		event: 'apply-dispatched' | 'apply-completed',
+		event:
+			| 'apply-dispatched'
+			| 'apply-completed'
+			| 'recovery-dispatched'
+			| 'recovery-completed',
 		request: TaskWorkflowApplyRequestV1,
 		result?: TaskWorkflowMutationResultV1,
 	): Promise<void> {
@@ -4158,6 +4194,36 @@ export default class OperonPlugin extends Plugin {
 				await semanticTransitionCommitEvidence(plan),
 			);
 		};
+		const semanticTransitionMaterializedRecurrenceStateMatches = (
+			plan: RuntimeSemanticTransitionPlanV1,
+		): boolean => {
+			if (plan.recurrence?.preview.disposition !== 'materialize') return false;
+			const seriesId = plan.recurrence.seriesId;
+			if (!seriesId) return false;
+			const entry = this.storage.repeatSeries.getEntry(seriesId);
+			const sealedRepeatSeriesRevision = plan.affectedResources.find(resource => (
+				resource.resourceKind === 'repeat-series'
+					&& resource.resourceKey === seriesId
+			))?.revision ?? null;
+			return verifyRuntimeMaterializedRecurrenceSeriesStatePostflightV1({
+				expectedSourceTaskId: plan.prepared.task.operonId,
+				expectedSourceFormat: plan.prepared.task.locator.representation === 'file'
+					? 'yaml'
+					: 'inline',
+				effectiveAt: toLocalDatetime(new Date(plan.effectiveAt)),
+				sealedRepeatSeriesRevision,
+				currentRepeatSeriesRevision: sha256HexV1(
+					String(this.storage.repeatSeries.getRevision()),
+				),
+				entry: entry
+					? {
+						sourceTaskId: entry.sourceTaskId,
+						sourceFormat: entry.sourceFormat,
+						updatedAt: entry.updatedAt,
+					}
+					: null,
+			});
+		};
 		const semanticTransitionStepState = async (
 			plan: RuntimeSemanticTransitionPlanV1,
 			stepId: string,
@@ -4182,7 +4248,7 @@ export default class OperonPlugin extends Plugin {
 					&& reference.resourceKey === resource.resourceKey
 				)))
 				: [];
-			if (
+			const sealedResourcesMatchBefore = (
 				sealedResources.length > 0
 				&& (await Promise.all(sealedResources.map(async resource => (
 					await currentMutationResourceRevision(
@@ -4190,7 +4256,62 @@ export default class OperonPlugin extends Plugin {
 						resource.resourceKey,
 					) === resource.revision
 				)))).every(Boolean)
-			) return 'before';
+			);
+			if (
+				stepId === 'recurrence'
+				&& plan.recurrence?.preview.disposition === 'materialize'
+			) {
+				const preview = plan.recurrence.preview;
+				const next = await this.readAgentRuntimeMutationSource(
+					preview.nextLocator.filePath,
+				);
+				const archiveMatches = !preview.archiveSource
+					|| (await this.readAgentRuntimeMutationSource(
+						preview.archiveSource.locator.filePath,
+					)).content === preview.archiveSource.plannedSourceContent;
+				const sourceMatches = next.content === preview.plannedSourceContent;
+				if (sourceMatches && archiveMatches) {
+					try {
+						await this.indexer.forceReindexFilePathAfterMutation(
+							preview.nextLocator.filePath,
+							{ notify: false },
+						);
+					} catch {
+						return 'other';
+					}
+					const successorTask = this.indexer.getTaskSnapshot(preview.nextOperonId);
+					const successorStatus = successorTask
+						? resolveConfiguredStatusIdentity(
+							successorTask.fieldValues['status'],
+							buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+						)
+						: null;
+					const successorStatusIsOpen = successorStatus?.kind === 'configured'
+						? !successorStatus.status.isFinished && !successorStatus.status.isCancelled
+						: successorStatus?.kind === 'unknown';
+					return classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1({
+						sourceMatches,
+						archiveMatches,
+						expectedOperonId: preview.nextOperonId,
+						expectedLocator: preview.nextLocator,
+						successor: successorTask
+							? {
+								operonId: successorTask.operonId,
+								locator: this.agentRuntimeTaskLocator(successorTask),
+								checkbox: successorTask.checkbox,
+							}
+							: null,
+						hasDuplicateOperonIdConflict: this.indexer
+							.hasDuplicateOperonIdConflict(preview.nextOperonId),
+						statusIsOpen: successorStatusIsOpen,
+						repeatSeriesStateVerified:
+							semanticTransitionMaterializedRecurrenceStateMatches(plan),
+					});
+				}
+				if (!archiveMatches) return 'other';
+				return sealedResourcesMatchBefore ? 'before' : 'other';
+			}
+			if (sealedResourcesMatchBefore) return 'before';
 			if (stepId === 'primary') {
 				const task = this.indexer.getTaskSnapshot(plan.prepared.task.operonId);
 				const expectedCheckbox = plan.prepared.fieldValues['_checkbox'];
@@ -4215,16 +4336,7 @@ export default class OperonPlugin extends Plugin {
 						? 'other'
 						: 'after';
 				}
-				const next = await this.readAgentRuntimeMutationSource(
-					preview.nextLocator.filePath,
-				);
-				const archiveMatches = !preview.archiveSource
-					|| (await this.readAgentRuntimeMutationSource(
-						preview.archiveSource.locator.filePath,
-					)).content === preview.archiveSource.plannedSourceContent;
-				return next.content === preview.plannedSourceContent && archiveMatches
-					? 'after'
-					: 'other';
+				return 'other';
 			}
 			if (stepId === 'pinned') {
 				return this.pinnedCache?.isPinned(plan.prepared.task.operonId) === false
@@ -6897,9 +7009,10 @@ export default class OperonPlugin extends Plugin {
 			isReady: () => this.agentRuntimeLifecycle.getPhase() === 'ready',
 			nowEpochMs: () => Date.now(),
 			preview: (request, context) => this.previewAgentRuntimeTaskWorkflowExecution(request, context),
-			apply: request => this.applyAgentRuntimeTaskWorkflowExecution(request),
-			auditDispatched: request => this.recordTaskWorkflowSecurityAudit('apply-dispatched', request),
-			auditCompleted: (request, result) => this.recordTaskWorkflowSecurityAudit('apply-completed', request, result),
+			hasSamePlanRecoveryEvidence: request => this.hasSamePlanAgentRuntimeTaskWorkflowRecoveryEvidence(request),
+			apply: (request, execution) => this.applyAgentRuntimeTaskWorkflowExecution(request, execution),
+			auditDispatched: (event, request) => this.recordTaskWorkflowSecurityAudit(event, request),
+			auditCompleted: (event, request, result) => this.recordTaskWorkflowSecurityAudit(event, request, result),
 		});
 		this.agentRuntimeGatewayStartupFailureReason = null;
 	}
@@ -7855,6 +7968,10 @@ export default class OperonPlugin extends Plugin {
 
 	private async applyAgentRuntimeTaskAdoption(
 		request: TaskWorkflowApplyRequestV1 & { plan: AdoptTaskSealedPlanV1 },
+		execution: {
+			recoveryOnly: boolean;
+			dispatch(event: 'apply-dispatched' | 'recovery-dispatched'): Promise<void>;
+		},
 	): Promise<TaskWorkflowMutationResultV1> {
 		const plan = request.plan;
 		if (
@@ -7904,11 +8021,27 @@ export default class OperonPlugin extends Plugin {
 					true,
 				);
 			}
+			const receiptMatchesPlan = admission.receipt !== null
+				&& admission.receipt.planHash === plan.planHash
+				&& admission.receipt.targetDigest === plan.receiptTargetDigest;
+			if (execution.recoveryOnly && !receiptMatchesPlan) {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'plan-expired',
+					'The sealed task-adoption plan expired before its same-plan receipt could be recovered.',
+				);
+			}
+			try {
+				await execution.dispatch('apply-dispatched');
+			} catch {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'audit-unavailable',
+					'The security audit admission record could not be persisted.',
+				);
+			}
 			if (admission.receipt) {
-				if (
-					admission.receipt.planHash !== plan.planHash
-					|| admission.receipt.targetDigest !== plan.receiptTargetDigest
-				) {
+				if (!receiptMatchesPlan) {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
 						'stale-plan',
@@ -9546,11 +9679,34 @@ export default class OperonPlugin extends Plugin {
 							}
 						}
 					}
-					if (!nextTask && !preview.sourceTaskRetained) {
+					const successorStatus = nextTask
+						? resolveConfiguredStatusIdentity(
+							nextTask.fieldValues['status'],
+							buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+						)
+						: null;
+					const successorStatusIsOpen = successorStatus?.kind === 'configured'
+						? !successorStatus.status.isFinished && !successorStatus.status.isCancelled
+						: successorStatus?.kind === 'unknown';
+					const successorVerified = verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({
+						expectedOperonId: preview.nextOperonId,
+						expectedLocator: preview.nextLocator,
+						successor: nextTask
+							? {
+								operonId: nextTask.operonId,
+								locator: this.agentRuntimeTaskLocator(nextTask),
+								checkbox: nextTask.checkbox,
+							}
+							: null,
+						hasDuplicateOperonIdConflict: this.indexer
+							.hasDuplicateOperonIdConflict(preview.nextOperonId),
+						statusIsOpen: successorStatusIsOpen,
+					});
+					if (!successorVerified) {
 						return {
 							ok: false,
 							outcomeUnknown: true,
-							reason: 'The replacing recurrence source committed without a unique indexed task.',
+							reason: 'The recurrence source committed without a unique open indexed successor.',
 						};
 					}
 					const recurrenceSourceTask = preview.sourceTaskFinalLocator
@@ -10408,6 +10564,9 @@ export default class OperonPlugin extends Plugin {
 					disposition: 'created';
 					nextOperonId: string;
 					nextLocator: import('./src/agent-runtime/contracts/v1/identity').TaskSourceLocatorV1;
+					successor: RuntimeMaterializedRecurrenceSuccessorV1;
+					hasDuplicateSuccessorOperonIdConflict: boolean;
+					successorStatusIsOpen: boolean;
 					sourceRevision: string;
 					committedSourceRevision: string;
 					archiveSourceRevision?: string;
@@ -10423,6 +10582,15 @@ export default class OperonPlugin extends Plugin {
 			} else if (plan.recurrence?.preview.disposition === 'materialize') {
 				const preview = plan.recurrence.preview;
 				const nextTask = this.indexer.getTaskSnapshot(preview.nextOperonId);
+				const successorStatus = nextTask
+					? resolveConfiguredStatusIdentity(
+						nextTask.fieldValues['status'],
+						buildWorkflowStatusIdentityIndex(this.settings.pipelines),
+					)
+					: null;
+				const successorStatusIsOpen = successorStatus?.kind === 'configured'
+					? !successorStatus.status.isFinished && !successorStatus.status.isCancelled
+					: successorStatus?.kind === 'unknown';
 				const nextSource = await this.readAgentRuntimeMutationSource(preview.nextLocator.filePath);
 				const committedSourceRevision = [...commit.groupResults]
 					.reverse()
@@ -10447,6 +10615,14 @@ export default class OperonPlugin extends Plugin {
 								filePath: nextTask.primary.filePath,
 								lineNumber: nextTask.primary.lineNumber,
 							},
+						successor: {
+							operonId: nextTask.operonId,
+							locator: this.agentRuntimeTaskLocator(nextTask),
+							checkbox: nextTask.checkbox,
+						},
+						hasDuplicateSuccessorOperonIdConflict: this.indexer
+							.hasDuplicateOperonIdConflict(preview.nextOperonId),
+						successorStatusIsOpen,
 						sourceRevision: sha256HexV1(nextSource.content),
 						committedSourceRevision,
 						...(archiveSource && archiveSource.content !== null
@@ -11093,6 +11269,53 @@ export default class OperonPlugin extends Plugin {
 			);
 	}
 
+	private async recoverAgentRuntimeTaskWorkflowMutation(
+		request: TaskWorkflowApplyRequestV1,
+	): Promise<TaskWorkflowMutationResultV1> {
+		return this.agentRuntimeTaskWorkflowGateway
+			? await this.agentRuntimeTaskWorkflowGateway.recover(request)
+			: this.agentRuntimeTaskWorkflowApplyFailure(
+				request.requestId,
+				'capability-unavailable',
+				'The task-workflow extension Gateway is unavailable.',
+			);
+	}
+
+	private async hasSamePlanAgentRuntimeTaskWorkflowRecoveryEvidence(
+		request: TaskWorkflowApplyRequestV1,
+	): Promise<boolean> {
+		const receiptStore = this.agentRuntimeReceiptStore;
+		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
+		if (!receiptStore || !vaultIdentityHash) return false;
+		const isAdoption = request.plan.mutationKind === 'task.adopt';
+		const scope = {
+			vaultIdentityHash,
+			clientInstanceId: request.plan.clientInstanceId,
+			idempotencyKeyHash: isAdoption
+				? sha256HexV1(`task-adopt\0${request.idempotencyKey}`)
+				: request.plan.idempotencyKeyHash,
+			mutationKind: isAdoption ? 'task.update' as const : 'task.create' as const,
+		};
+		try {
+			const admission = await receiptStore.lookupForApplyAdmission(scope);
+			if (!admission.health.healthy) return false;
+			if (
+				admission.receipt
+				&& admission.receipt.planHash === request.plan.planHash
+				&& admission.receipt.targetDigest === request.plan.receiptTargetDigest
+			) return true;
+			return request.plan.mutationKind === 'task.create'
+				&& admission.journal !== null
+				&& this.agentRuntimeIdentityJournalMatchesPlan(
+					admission.journal,
+					request.plan,
+					vaultIdentityHash,
+				);
+		} catch {
+			return false;
+		}
+	}
+
 	private async previewAgentRuntimeTaskWorkflowExecution(
 		request: TaskWorkflowPreviewRequestV1,
 		_context?: RuntimeInvocationContextV1,
@@ -11173,11 +11396,18 @@ export default class OperonPlugin extends Plugin {
 
 	private async applyAgentRuntimeTaskWorkflowExecution(
 		request: TaskWorkflowApplyRequestV1,
+		execution: {
+			recoveryOnly: boolean;
+			dispatch(event: 'apply-dispatched' | 'recovery-dispatched'): Promise<void>;
+		},
 	): Promise<TaskWorkflowMutationResultV1> {
 		if (request.plan.mutationKind === 'task.create') {
-			return await this.applyAgentRuntimeIdentityCreation({ ...request, plan: request.plan });
+			return await this.applyAgentRuntimeIdentityCreation(
+				{ ...request, plan: request.plan },
+				execution,
+			);
 		}
-		return await this.applyAgentRuntimeTaskAdoption({ ...request, plan: request.plan });
+		return await this.applyAgentRuntimeTaskAdoption({ ...request, plan: request.plan }, execution);
 	}
 
 	private async prepareAgentRuntimeIdentityCreation(
@@ -11404,6 +11634,10 @@ export default class OperonPlugin extends Plugin {
 
 	private async applyAgentRuntimeIdentityCreation(
 		request: TaskWorkflowApplyRequestV1 & { plan: IdentityPlaceholderSealedPlanV1 },
+		execution: {
+			recoveryOnly: boolean;
+			dispatch(event: 'apply-dispatched' | 'recovery-dispatched'): Promise<void>;
+		},
 	): Promise<TaskWorkflowMutationResultV1> {
 		const plan = request.plan;
 		if (
@@ -11445,12 +11679,23 @@ export default class OperonPlugin extends Plugin {
 		const receiptStore = this.agentRuntimeReceiptStore;
 		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
 		return await withRuntimeVaultMutationLockV1(vaultIdentityHash, async () => {
-			const admission = await receiptStore.lookupForApplyAdmission({
+			const scope = {
 				vaultIdentityHash,
 				clientInstanceId: plan.clientInstanceId,
 				idempotencyKeyHash: plan.idempotencyKeyHash,
-				mutationKind: 'task.create',
-			});
+				mutationKind: 'task.create' as const,
+			};
+			let admission: Awaited<ReturnType<IndexedDbMutationReceiptStoreV1['lookupForApplyAdmission']>>;
+			try {
+				admission = await receiptStore.lookupForApplyAdmission(scope);
+			} catch {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'receipt-store-unavailable',
+					'The durable receipt store could not admit identity-placeholder apply.',
+					true,
+				);
+			}
 			if (!admission.health.healthy) {
 				return this.agentRuntimeTaskWorkflowApplyFailure(
 					request.requestId,
@@ -11459,11 +11704,35 @@ export default class OperonPlugin extends Plugin {
 					true,
 				);
 			}
+			const receiptMatchesPlan = admission.receipt !== null
+				&& admission.receipt.planHash === plan.planHash
+				&& admission.receipt.targetDigest === plan.receiptTargetDigest;
+			const journalMatchesPlan = admission.journal !== null
+				&& this.agentRuntimeIdentityJournalMatchesPlan(
+					admission.journal,
+					plan,
+					vaultIdentityHash,
+				);
+			if (execution.recoveryOnly && !receiptMatchesPlan && !journalMatchesPlan) {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'plan-expired',
+					'The sealed identity-placeholder plan expired before its same-plan recovery state could be read.',
+				);
+			}
+			try {
+				await execution.dispatch(
+					journalMatchesPlan ? 'recovery-dispatched' : 'apply-dispatched',
+				);
+			} catch {
+				return this.agentRuntimeTaskWorkflowApplyFailure(
+					request.requestId,
+					'audit-unavailable',
+					'The security audit admission record could not be persisted.',
+				);
+			}
 			if (admission.receipt) {
-				if (
-					admission.receipt.planHash !== plan.planHash
-					|| admission.receipt.targetDigest !== plan.receiptTargetDigest
-				) {
+				if (!receiptMatchesPlan) {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
 						'stale-plan',
@@ -11497,39 +11766,60 @@ export default class OperonPlugin extends Plugin {
 				await receiptStore.persistJournal(journal, leaseOwner);
 			};
 			if (journal) {
-				if (!this.agentRuntimeIdentityJournalMatchesPlan(journal, plan, vaultIdentityHash)) {
+				if (!journalMatchesPlan) {
 					return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-plan', 'The unresolved identity graph journal belongs to a different sealed plan.');
 				}
-				journalOwned = await receiptStore.claimJournal({
-					vaultIdentityHash,
-					clientInstanceId: plan.clientInstanceId,
-					idempotencyKeyHash: plan.idempotencyKeyHash,
-					mutationKind: 'task.create',
-				}, journal, leaseOwner);
-				if (!journalOwned) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'conflict', 'The identity graph recovery journal is already leased.', true);
-				const recovered = await executeRuntimeGraphTransactionRecoveryV1(journal, {
-					readState: step => this.readAgentRuntimeIdentityGraphState(step),
-					statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
-					applyForward: async step => {
-						if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Identity graph forward CAS failed.');
-					},
-					applyCompensation: async step => {
-						if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'reverse')) throw new Error('Identity graph reverse CAS failed.');
-					},
-					checkpoint,
-					verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
-					verifyForward: async () => {
-						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
-						await this.awaitAgentRuntimeSettlement({ requestId: request.requestId, mutationOwnedMaintenance: true });
-						return await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal!.steps);
-					},
-					verifyCompensation: async () => {
-						await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
-						return true;
-					},
-				});
+				let recovered: Awaited<ReturnType<typeof executeRuntimeGraphTransactionRecoveryV1>>;
+				try {
+					journalOwned = await receiptStore.claimJournal(scope, journal, leaseOwner);
+					if (!journalOwned) {
+						return this.agentRuntimeIdentityOutcomeUnknown(
+							request.requestId,
+							[],
+							'The unresolved identity graph journal is owned by another Runtime.',
+							plan.atomicGroups[0]?.groupId,
+						);
+					}
+					recovered = await executeRuntimeGraphTransactionRecoveryV1(journal, {
+						readState: step => this.readAgentRuntimeIdentityGraphState(step),
+						statesMatch: (left, right) => this.agentRuntimeIdentityGraphStatesMatch(left, right),
+						applyForward: async step => {
+							if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'forward')) throw new Error('Identity graph forward CAS failed.');
+						},
+						applyCompensation: async step => {
+							if (!await this.applyAgentRuntimeIdentityGraphStep(step, 'reverse')) throw new Error('Identity graph reverse CAS failed.');
+						},
+						checkpoint,
+						verifyState: expected => this.verifyAgentRuntimeIdentityGraphSteps(journal!.steps, expected),
+						verifyForward: async () => {
+							await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
+							await this.awaitAgentRuntimeSettlement({ requestId: request.requestId, mutationOwnedMaintenance: true });
+							return await this.verifyAgentRuntimeIdentityPlanAfterState(plan, journal!.steps);
+						},
+						verifyCompensation: async () => {
+							await this.indexer.reindexAffectedSources(affectedFilePaths, { notify: false });
+							return true;
+						},
+					});
+				} catch {
+					return this.agentRuntimeIdentityOutcomeUnknown(
+						request.requestId,
+						[],
+						'Identity graph recovery could not prove a safe terminal state.',
+						plan.atomicGroups[0]?.groupId,
+					);
+				}
 				if (recovered.status === 'compensated') {
-					await receiptStore.deleteJournal({ vaultIdentityHash, clientInstanceId: plan.clientInstanceId, idempotencyKeyHash: plan.idempotencyKeyHash, mutationKind: 'task.create' }, journal, leaseOwner);
+					try {
+						if (!await receiptStore.deleteJournal(scope, journal, leaseOwner)) throw new Error('Identity recovery journal cleanup was not verified.');
+					} catch {
+						return this.agentRuntimeIdentityOutcomeUnknown(
+							request.requestId,
+							[],
+							'Identity graph compensation completed, but journal cleanup was not verified.',
+							plan.atomicGroups[0]?.groupId,
+						);
+					}
 					return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'The interrupted identity graph was safely compensated; preview again.', true);
 				}
 				if (recovered.status !== 'forward-completed') {
@@ -11539,140 +11829,200 @@ export default class OperonPlugin extends Plugin {
 				groupResults = await this.agentRuntimeIdentityGroupResults(journal);
 			}
 			if (!journal) {
-				const liveContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
-				if (
-					canonicalJsonV1(toJsonValueV1(liveContextRevision))
-					!== canonicalJsonV1(toJsonValueV1(plan.contextRevision))
-				) {
-					return this.agentRuntimeTaskWorkflowApplyFailure(
+				const applyStartedAt = new Date().toISOString();
+				let graph: Extract<Awaited<ReturnType<OperonPlugin['prepareAgentRuntimeIdentityGraphSteps']>>, { ok: true }>;
+				try {
+					const liveContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
+					if (
+						canonicalJsonV1(toJsonValueV1(liveContextRevision))
+						!== canonicalJsonV1(toJsonValueV1(plan.contextRevision))
+					) {
+						return this.agentRuntimeTaskWorkflowApplyFailure(
+							request.requestId,
+							'stale-context',
+							'Runtime context changed after identity-placeholder preview. Create a fresh plan.',
+						);
+					}
+					if (await this.verifyAgentRuntimeIdentityPlanAfterState(plan)) {
+						return this.agentRuntimeTaskWorkflowApplyFailure(
+							request.requestId,
+							'stale-source',
+							'Identity-placeholder after-state exists without the sealed receipt; preview again.',
+						);
+					}
+					const sealedIds = new Map(plan.createEffects.map(effect => [effect.itemRef, effect.operonId]));
+					const sealedSeriesIds = new Map(plan.createEffects.flatMap(effect => (
+						effect.repeatSeriesId ? [[effect.itemRef, effect.repeatSeriesId] as const] : []
+					)));
+					const sealedAllocations = new Map(plan.createEffects.map(effect => [
+						effect.itemRef,
+						effect.templateIdentityAllocations,
+					] as const));
+					const preparation = await this.prepareAgentRuntimeIdentityCreation(
 						request.requestId,
-						'stale-context',
-						'Runtime context changed after identity-placeholder preview. Create a fresh plan.',
-					);
-				}
-			}
-
-			const afterStateAlreadyPresent = !journal && await this.verifyAgentRuntimeIdentityPlanAfterState(plan);
-			if (afterStateAlreadyPresent) {
-				return this.agentRuntimeTaskWorkflowApplyFailure(
-					request.requestId,
-					'stale-source',
-					'Identity-placeholder after-state exists without the sealed receipt; preview again.',
-				);
-			}
-			const sealedIds = new Map(plan.createEffects.map(effect => [effect.itemRef, effect.operonId]));
-			const sealedSeriesIds = new Map(plan.createEffects.flatMap(effect => (
-				effect.repeatSeriesId ? [[effect.itemRef, effect.repeatSeriesId] as const] : []
-			)));
-			const sealedAllocations = new Map(plan.createEffects.map(effect => [
-				effect.itemRef,
-				effect.templateIdentityAllocations,
-			] as const));
-			let prepared: Extract<RuntimeTaskCreationPreparationV1, { ok: true }> | null = null;
-			let preparedGraph: Extract<Awaited<ReturnType<OperonPlugin['prepareAgentRuntimeIdentityGraphSteps']>>, { ok: true }> | null = null;
-			if (!afterStateAlreadyPresent) {
-				const preparation = await this.prepareAgentRuntimeIdentityCreation(
-					request.requestId,
-					plan.spec,
-					plan.createdAt,
-					sealedIds,
-					new Set(plan.createEffects.map(effect => effect.itemRef)),
-					sealedSeriesIds,
-					sealedAllocations,
-				);
-				if (!preparation.ok) {
-					return this.agentRuntimeTaskWorkflowApplyFailure(
-						request.requestId,
-						preparation.code,
-						preparation.reason,
-					);
-				}
-				prepared = preparation;
-				const graph = await this.prepareAgentRuntimeIdentityGraphSteps(prepared, plan.createdAt);
-				if (!graph.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', graph.reason);
-				preparedGraph = graph;
-				const preparedContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
-				if (
-					canonicalJsonV1(toJsonValueV1(preparedContextRevision))
-					!== canonicalJsonV1(toJsonValueV1(plan.contextRevision))
-				) {
-					return this.agentRuntimeTaskWorkflowApplyFailure(
-						request.requestId,
-						'stale-context',
-						'Runtime context changed while identity-placeholder apply values were prepared.',
-					);
-				}
-				const previewRequest: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }> = {
-					contractVersion: 1,
-					requestId: request.requestId,
-					kind: 'mutation-preview',
-					clientInstanceId: plan.clientInstanceId,
-					idempotencyKey: request.idempotencyKey,
-					correlationId: plan.correlationId,
-					capability: 'tasks.create.identity-placeholders',
-					mutationKind: 'task.create',
-					spec: plan.spec,
-					authorization: request.authorization,
-				};
-				const rebuilt = compareRebuiltIdentityPlaceholderPlanV1(
-					this.buildAgentRuntimeIdentityPlanCandidate(
-						previewRequest,
-						prepared,
-						plan.contextRevision,
+						plan.spec,
 						plan.createdAt,
-						plan.planId,
-						graph.steps,
-					),
-					plan,
-				);
-				if (!rebuilt.ok) {
+						sealedIds,
+						new Set(plan.createEffects.map(effect => effect.itemRef)),
+						sealedSeriesIds,
+						sealedAllocations,
+					);
+					if (!preparation.ok) {
+						return this.agentRuntimeTaskWorkflowApplyFailure(
+							request.requestId,
+							preparation.code,
+							preparation.reason,
+						);
+					}
+					const preparedGraph = await this.prepareAgentRuntimeIdentityGraphSteps(preparation, plan.createdAt);
+					if (!preparedGraph.ok) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', preparedGraph.reason);
+					graph = preparedGraph;
+					const preparedContextRevision = this.sampleAgentRuntimeRevision().contextRevision;
+					if (
+						canonicalJsonV1(toJsonValueV1(preparedContextRevision))
+						!== canonicalJsonV1(toJsonValueV1(plan.contextRevision))
+					) {
+						return this.agentRuntimeTaskWorkflowApplyFailure(
+							request.requestId,
+							'stale-context',
+							'Runtime context changed while identity-placeholder apply values were prepared.',
+						);
+					}
+					const previewRequest: Extract<TaskWorkflowPreviewRequestV1, { mutationKind: 'task.create' }> = {
+						contractVersion: 1,
+						requestId: request.requestId,
+						kind: 'mutation-preview',
+						clientInstanceId: plan.clientInstanceId,
+						idempotencyKey: request.idempotencyKey,
+						correlationId: plan.correlationId,
+						capability: 'tasks.create.identity-placeholders',
+						mutationKind: 'task.create',
+						spec: plan.spec,
+						authorization: request.authorization,
+					};
+					const rebuilt = compareRebuiltIdentityPlaceholderPlanV1(
+						this.buildAgentRuntimeIdentityPlanCandidate(
+							previewRequest,
+							preparation,
+							plan.contextRevision,
+							plan.createdAt,
+							plan.planId,
+							graph.steps,
+						),
+						plan,
+					);
+					if (!rebuilt.ok) {
+						return this.agentRuntimeTaskWorkflowApplyFailure(
+							request.requestId,
+							'internal-error',
+							'Identity-placeholder apply could not rebuild its sealed plan.',
+						);
+					}
+					if (!rebuilt.matches) {
+						return this.agentRuntimeTaskWorkflowApplyFailure(
+							request.requestId,
+							'stale-source',
+							'Identity-placeholder source or allocation state changed after preview.',
+						);
+					}
+					journal = buildIdentityPlaceholderJournalV1(plan, vaultIdentityHash, applyStartedAt, graph.steps);
+					if (identityPlaceholderJournalByteLengthV1(journal) > GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1) {
+						return this.agentRuntimeTaskWorkflowApplyFailure(
+							request.requestId,
+							'payload-too-large',
+							`Identity graph journal exceeds ${GRAPH_TRANSACTION_JOURNAL_MAX_BYTES_V1} bytes.`,
+						);
+					}
+				} catch {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
 						'internal-error',
-						'Identity-placeholder apply could not rebuild its sealed plan.',
+						'Identity-placeholder apply stopped before its first source write.',
 					);
 				}
-				if (!rebuilt.matches) {
+				try {
+					journalOwned = await receiptStore.acquireJournal(journal, leaseOwner);
+				} catch {
 					return this.agentRuntimeTaskWorkflowApplyFailure(
 						request.requestId,
-						'stale-source',
-						'Identity-placeholder source or allocation state changed after preview.',
+						'receipt-store-unavailable',
+						'Identity graph journal persistence failed before source write.',
+						true,
 					);
 				}
-			}
-
-			if (prepared) {
-				const graph = preparedGraph;
-				if (!graph) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'internal-error', 'Identity graph preparation was not retained.');
-				journal = {
-					contractVersion: 1,
-					vaultIdentityHash,
-					clientInstanceId: plan.clientInstanceId,
-					idempotencyKeyHash: plan.idempotencyKeyHash,
-					mutationKind: 'task.create',
-					planHash: plan.planHash,
-					targetDigest: plan.receiptTargetDigest,
-					planId: plan.planId,
-					effectiveAt: plan.createdAt,
-					createdAt: new Date().toISOString(),
-					phase: 'prepared',
-					completedStepCount: 0,
-					steps: graph.steps,
-				};
-				journalOwned = await receiptStore.acquireJournal(journal, leaseOwner);
-				if (!journalOwned) return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'conflict', 'An identity graph journal already exists.', true);
-				const execution = await executeRuntimeGraphTransactionCommitV1(
-					journal,
-					(step) => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
-					checkpoint,
-				);
-				if (execution.status === 'failed') {
-					await receiptStore.deleteJournal({ vaultIdentityHash, clientInstanceId: plan.clientInstanceId, idempotencyKeyHash: plan.idempotencyKeyHash, mutationKind: 'task.create' }, journal, leaseOwner);
-					return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'Identity graph source changed before the first commit.');
+				if (!journalOwned) {
+					return this.agentRuntimeIdentityOutcomeUnknown(
+						request.requestId,
+						[],
+						'Another Runtime may hold the identity graph journal.',
+						plan.atomicGroups[0]?.groupId,
+					);
 				}
-				if (execution.status !== 'committed') return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph commit stopped after a durable prefix.', plan.atomicGroups[0]?.groupId);
-				appliedThisAttempt = true;
-				groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+				let persistedJournal: GraphTransactionJournalV1 | null;
+				try {
+					persistedJournal = await receiptStore.lookupJournal(scope);
+				} catch {
+					return this.agentRuntimeIdentityOutcomeUnknown(
+						request.requestId,
+						[],
+						'Identity graph journal readback failed, so its durable recovery fence could not be verified.',
+						plan.atomicGroups[0]?.groupId,
+					);
+				}
+				if (!persistedJournal || !identityPlaceholderJournalsEqualV1(persistedJournal, journal)) {
+					try {
+						if (!persistedJournal || !await receiptStore.deleteJournal(
+							scope,
+							persistedJournal,
+							leaseOwner,
+						)) {
+							throw new Error('Identity graph journal cleanup was not verified.');
+						}
+					} catch {
+						return this.agentRuntimeIdentityOutcomeUnknown(
+							request.requestId,
+							[],
+							'Identity graph journal readback differed and exact cleanup could not be verified.',
+							plan.atomicGroups[0]?.groupId,
+						);
+					}
+					return this.agentRuntimeTaskWorkflowApplyFailure(
+						request.requestId,
+						'receipt-store-unavailable',
+						'Identity graph journal readback did not match the sealed pre-write fence; the altered fence was removed.',
+						true,
+					);
+				}
+				try {
+					const execution = await executeRuntimeGraphTransactionCommitV1(
+						journal,
+						step => this.applyAgentRuntimeIdentityGraphStep(step, 'forward'),
+						checkpoint,
+					);
+					if (execution.status === 'failed') {
+						try {
+							if (!await receiptStore.deleteJournal(scope, journal, leaseOwner)) throw new Error('Identity graph journal cleanup was not verified.');
+						} catch {
+							return this.agentRuntimeIdentityOutcomeUnknown(
+								request.requestId,
+								[],
+								'Identity graph source conflict could not verify journal cleanup.',
+								plan.atomicGroups[0]?.groupId,
+							);
+						}
+						return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'Identity graph source changed before the first commit.');
+					}
+					if (execution.status !== 'committed') return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph commit stopped after a durable prefix.', plan.atomicGroups[0]?.groupId);
+					appliedThisAttempt = true;
+					groupResults = await this.agentRuntimeIdentityGroupResults(journal);
+				} catch {
+					return this.agentRuntimeIdentityOutcomeUnknown(
+						request.requestId,
+						groupResults,
+						'Identity graph execution stopped after its first source-write attempt.',
+						plan.atomicGroups[0]?.groupId,
+					);
+				}
 			}
 
 			try {
@@ -11697,6 +12047,15 @@ export default class OperonPlugin extends Plugin {
 				);
 			}
 
+			const receiptEffectiveAt = journal?.effectiveAt;
+			if (!receiptEffectiveAt) {
+				return this.agentRuntimeIdentityOutcomeUnknown(
+					request.requestId,
+					groupResults,
+					'Identity-placeholder creation completed without a durable journal timestamp.',
+					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
+				);
+			}
 			const completedAt = new Date().toISOString();
 			const receipt: TaskWorkflowMutationReceiptV1 & { mutationKind: 'task.create' } = {
 				contractVersion: 1,
@@ -11707,18 +12066,27 @@ export default class OperonPlugin extends Plugin {
 				mutationKind: 'task.create',
 				targetDigest: plan.receiptTargetDigest,
 				terminalOutcome: appliedThisAttempt ? 'applied' : 'already-applied',
-				effectiveAt: plan.createdAt,
+				effectiveAt: receiptEffectiveAt,
 				completedAt,
 				expiresAt: new Date(Date.parse(completedAt) + 24 * 60 * 60_000).toISOString(),
 			};
-			if (journal && journalOwned && admission.admissionToken) {
-				await receiptStore.finalizeReceiptAfterApplyAdmission(receipt, journal, leaseOwner, admission.admissionToken);
-			} else if (journal && journalOwned) {
-				await receiptStore.finalizeReceipt(receipt, journal, leaseOwner);
-			} else if (admission.admissionToken) {
-				await receiptStore.persistAfterApplyAdmission(receipt, admission.admissionToken);
-			} else {
-				await receiptStore.persist(receipt);
+			try {
+				if (journal && journalOwned && admission.admissionToken) {
+					await receiptStore.finalizeReceiptAfterApplyAdmission(receipt, journal, leaseOwner, admission.admissionToken);
+				} else if (journal && journalOwned) {
+					await receiptStore.finalizeReceipt(receipt, journal, leaseOwner);
+				} else if (admission.admissionToken) {
+					await receiptStore.persistAfterApplyAdmission(receipt, admission.admissionToken);
+				} else {
+					await receiptStore.persist(receipt);
+				}
+			} catch {
+				return this.agentRuntimeIdentityOutcomeUnknown(
+					request.requestId,
+					groupResults,
+					'Identity-placeholder creation was verified, but its terminal receipt could not be persisted.',
+					plan.atomicGroups[plan.atomicGroups.length - 1]?.groupId,
+				);
 			}
 			return {
 				contractVersion: 1,
@@ -13278,13 +13646,13 @@ export default class OperonPlugin extends Plugin {
 			}
 		}
 		if (bindingsChanged) await this.tablePresetRegistry.refresh();
-		this.syncTablePresetProjectionFromRegistry();
+		let defaultChanged = this.syncTablePresetProjectionFromRegistry();
 		if (options.reconcileFileNames !== false && await this.reconcileBoundTableFileNames()) {
 			await this.tablePresetRegistry.refresh();
-			this.syncTablePresetProjectionFromRegistry();
+			defaultChanged = this.syncTablePresetProjectionFromRegistry() || defaultChanged;
 		}
 		const orderChanged = previousOrderSignature !== this.settings.tablePresetOrderIds.join('\u0000');
-		if ((bindingsChanged || orderChanged) && options.persistBindings) await this.storage.saveSettings();
+		if ((bindingsChanged || orderChanged || defaultChanged) && options.persistBindings) await this.storage.saveSettings();
 		const nextSnapshot = this.tablePresetRegistry.getSnapshot();
 		const newlySubscribedIds = this.syncTablePresetRegistrySubscriptions();
 		const changedPresetIds = new Set([...previousSnapshot.entries.keys(), ...nextSnapshot.entries.keys()]);
@@ -13355,7 +13723,8 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
-	private syncTablePresetProjectionFromRegistry(): void {
+	private syncTablePresetProjectionFromRegistry(): boolean {
+		const previousDefaultPresetId = this.settings.tableDefaultPresetId;
 		const snapshot = this.tablePresetRegistry.getSnapshot();
 		const currentOrder = this.settings.tablePresetOrderIds;
 		const availableById = new Map<string, TablePreset>();
@@ -13377,9 +13746,12 @@ export default class OperonPlugin extends Plugin {
 			return preset ? [cloneTablePreset(preset)] : [];
 		});
 		this.settings.tablePresets.splice(0, this.settings.tablePresets.length, ...next);
-		if (this.settings.tableDefaultPresetId && !nextOrder.includes(this.settings.tableDefaultPresetId)) {
-			this.settings.tableDefaultPresetId = this.resolveEffectiveTablePresetId();
-		}
+		this.settings.tableDefaultPresetId = resolveTablePresetDefaultAfterRegistrySync(
+			this.settings.tableDefaultPresetId,
+			nextOrder,
+			next.map(preset => preset.id),
+		);
+		return previousDefaultPresetId !== this.settings.tableDefaultPresetId;
 	}
 
 	private resolveTablePresetForSurface(presetId: string): TablePreset | null {
@@ -13696,9 +14068,9 @@ export default class OperonPlugin extends Plugin {
 			if (cachedLocale) installI18nLocale(this.settings.language, cachedLocale.translations);
 		}
 		initI18n(undefined, this.settings.language);
+		const tablePresetRecovery = this.storage.getTablePresetRecoveryDiagnostics();
 		if (this.storage.hasUnsupportedTablePresetPackage()) {
-			const recovery = this.storage.getTablePresetRecoveryDiagnostics();
-			const reason = recovery.code ?? 'unsupported-table-manifest';
+			const reason = tablePresetRecovery.code ?? 'unsupported-table-manifest';
 			new Notice(t('settings', 'tableFileUnsupportedPackageNotice', { reason }), 15_000);
 			throw new Error(`Unsupported Table preset package (${reason}).`);
 		}
@@ -13707,6 +14079,9 @@ export default class OperonPlugin extends Plugin {
 		});
 		await this.refreshTableFilePropertyTypes(true, false);
 		await this.initializeTablePresetRegistry();
+		if (tablePresetRecovery.completedLegacySidecarRetirementThisStartup) {
+			new Notice(t('settings', 'tableFileLegacyPresetAuthorityRetiredNotice'), 12_000);
+		}
 		this.pinnedCache = this.storage.pinned;
 		this.unsubscribePinnedCache = this.pinnedCache.subscribe(() => {
 			if (!this.startupReady) return;
@@ -14562,6 +14937,7 @@ export default class OperonPlugin extends Plugin {
 					getPipelines: () => this.settings.pipelines,
 					getSettings: () => this.settings,
 					saveSettings: () => this.storage.saveSettings(),
+					playReminderSound: () => this.reminderDeliveryController?.playReminderSound() ?? Promise.resolve(),
 					createInlineTaskFromQuickInput: (draft) => this.createInlineTaskFromCreatorDraftResult(draft),
 					shouldPromptForInlineTaskTarget: () => this.resolveEffectiveInlineTaskSaveMode() === 'ask-every-time',
 					startTimerForTask: (operonId, source, startOverride) => this.startTimerForTask(operonId, source, startOverride),
@@ -16408,9 +16784,10 @@ export default class OperonPlugin extends Plugin {
 			if (this.tablePresetRegistry.get(preset.id) || this.settings.tablePresets.some(entry => entry.id === preset.id)) {
 				throw new Error(`Table preset id "${preset.id}" already exists.`);
 			}
-			await this.ensureVaultFolder('Operon/Tables');
+			const folder = resolveOperonTableCreationFolder(this.settings.tableDefaultFolder);
+			await this.ensureVaultFolder(folder);
 			const path = buildUniqueOperonTableFilePath(
-				'Operon/Tables',
+				folder,
 				preset.name,
 				this.app.vault.getFiles().map(file => file.path),
 			);

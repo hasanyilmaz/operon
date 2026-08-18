@@ -27,6 +27,7 @@ async function loadDenseRuntime(t) {
 		stdin: {
 			contents: [
 				"export { activateI18nLocale, getCurrentLang, getTranslations, initI18n, installI18nLocale, resolveSupportedLocale, t } from './src/core/i18n';",
+				"export { formatRepeatRuleSummaryI18n } from './src/core/repeat-rule-i18n';",
 				"export { normalizeColorPalette } from './src/core/color-palette';",
 				"export { default as densePack } from './src/generated/dense-locales.json';",
 			].join('\n'),
@@ -51,6 +52,22 @@ function expectedTranslations(locales, category, key) {
 	return [...new Set(values)];
 }
 
+test('release notes and Settings share the exact Buy me a coffee action copy', () => {
+	const locales = readLocales();
+	for (const definition of LOCALE_DEFINITIONS) {
+		assert.equal(
+			locales[definition.code].buttons.fillOperonsCoffeeJar,
+			'Buy me a coffee',
+			definition.code,
+		);
+	}
+
+	const releaseNotesSource = fs.readFileSync(path.join(repoRoot, 'src/ui/release-notes-modal.ts'), 'utf8');
+	const settingsSource = fs.readFileSync(path.join(repoRoot, 'src/ui/settings-tab.ts'), 'utf8');
+	assert.ok(releaseNotesSource.includes("text: t('buttons', 'fillOperonsCoffeeJar')"));
+	assert.ok(settingsSource.includes(".setButtonText(t('buttons', 'fillOperonsCoffeeJar'))"));
+});
+
 test('English-only runtime installs keyed language packs and preserves i18n behavior', async t => {
 	const runtime = await loadDenseRuntime(t);
 	const locales = readLocales();
@@ -58,7 +75,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 
 	assert.deepEqual(densePack.languageOrder, ['en']);
 	assert.deepEqual(Object.keys(densePack.locales), ['en']);
-	assert.equal(densePack.keyCount, 3_035);
+	assert.equal(densePack.keyCount, 3_044);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);
@@ -88,6 +105,37 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 			}
 		}
 	}
+	for (const definition of LOCALE_DEFINITIONS) {
+		runtime.initI18n(undefined, definition.code);
+		const notice = runtime.t('settings', 'tableFileUnsupportedPackageNotice', {
+			reason: 'table-file-missing',
+		});
+		assert.ok(notice.includes('table-file-missing'), `${definition.code}: reason must interpolate at runtime`);
+		assert.equal(notice.includes('{reason}'), false, `${definition.code}: literal single-brace reason is invalid`);
+		assert.equal(notice.includes('{{reason}}'), false, `${definition.code}: unresolved reason is invalid`);
+	}
+
+	runtime.initI18n(undefined, 'pt-BR');
+	assert.equal(
+		runtime.t('tooltips', 'kanbanPlainCheckboxProgressTooltip', { done: '2', total: '5', percent: '40' }),
+		'2 concluídas / 5 caixas de seleção · 40%',
+	);
+	assert.equal(
+		runtime.formatRepeatRuleSummaryI18n({ mode: 'done', freq: 'day', interval: 1 }),
+		'Todo dia após a conclusão',
+	);
+	assert.equal(
+		runtime.formatRepeatRuleSummaryI18n({ mode: 'schedule', freq: 'week', interval: 1, days: ['mo', 'tu', 'su'] }),
+		'Toda semana em segunda-feira, terça-feira, e domingo',
+	);
+	assert.equal(
+		runtime.formatRepeatRuleSummaryI18n({ mode: 'schedule', freq: 'month', interval: 1, days: ['mo'], setpos: 1 }),
+		'Todo mês em segunda-feira (primeira ocorrência)',
+	);
+	assert.equal(
+		runtime.formatRepeatRuleSummaryI18n({ mode: 'schedule', freq: 'year', interval: 1, month: 8, monthdays: [1] }),
+		'Todo ano em Agosto 1',
+	);
 
 	runtime.initI18n(undefined, 'en');
 	for (const [category, entries] of Object.entries(locales.en)) {
@@ -123,12 +171,18 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 		runtime.initI18n(locale, undefined);
 		assert.equal(runtime.getCurrentLang(), 'zh-TW', locale);
 	}
+	for (const locale of ['pt', 'pt-BR', 'pt-BR-x-private']) {
+		assert.equal(runtime.resolveSupportedLocale(locale), 'pt-BR', locale);
+		runtime.initI18n(locale, undefined);
+		assert.equal(runtime.getCurrentLang(), 'pt-BR', locale);
+	}
+	assert.equal(runtime.resolveSupportedLocale('pt-PT'), null);
 	runtime.initI18n('zh-HK', 'zh-CN');
 	assert.equal(runtime.getCurrentLang(), 'zh-CN');
 	runtime.initI18n('xx-XX', 'unsupported');
 	assert.equal(runtime.getCurrentLang(), 'en');
 	assert.equal(runtime.resolveSupportedLocale('xx-XX'), null);
-	for (const language of ['en', 'tr', 'zh-TW', 'en']) {
+	for (const language of ['en', 'tr', 'zh-TW', 'pt-BR', 'en']) {
 		runtime.initI18n(undefined, language);
 		assert.equal(runtime.getCurrentLang(), language);
 	}

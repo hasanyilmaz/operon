@@ -11220,6 +11220,10 @@ export class CalendarView extends ItemView {
 	}
 
 	private canEditCalendarItemPlacement(item: CalendarItem): boolean {
+		if (item.kind === 'allDayScheduled') {
+			return canEditAllDayCalendarItemPlacement(item)
+				&& item.startDate === item.endDate;
+		}
 		return item.origin !== 'external'
 			&& item.repeatRef?.projectionKind !== 'doneRolling'
 			&& item.startDate === item.endDate;

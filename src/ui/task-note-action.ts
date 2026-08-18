@@ -66,8 +66,8 @@ export function createTaskNoteActionButton(options: TaskNoteActionButtonOptions)
 
 /**
  * Opens the shared text-field editor with the task-note editing contract.
- * Note drafts use compact single-line editing while preserving untouched
- * legacy source values, and reuse one active session key per task note.
+ * Note drafts preserve visual line breaks while reusing one active session
+ * key per task note.
  */
 export function showTaskNotePopover(options: TaskNotePopoverOptions): TextFieldPopoverCloseHandle {
 	const operonId = options.operonId.trim();
@@ -89,6 +89,7 @@ export function showTaskNotePopover(options: TaskNotePopoverOptions): TextFieldP
 		editor: {
 			kind: 'compact-markdown',
 			sourcePath: options.sourcePath,
+			textPolicy: 'task-note',
 		},
 		onCommit: options.onCommit,
 		onClose: options.onClose,

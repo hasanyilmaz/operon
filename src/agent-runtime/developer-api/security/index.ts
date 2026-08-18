@@ -1,8 +1,13 @@
-export { DeveloperMutationSecurityPolicyV1 } from './policy';
+export {
+	DeveloperMutationSecurityPolicyV1,
+	resolveDeveloperMutationApplyCapabilityV1,
+} from './policy';
 export type {
 	DeveloperApplyAdmissionV1,
 	DeveloperApplyDispatchClaimV1,
 	DeveloperCapabilityGrantV1,
+	DeveloperMutationCapabilityV1,
+	DeveloperMutationSealedPlanV1,
 	DeveloperConsentDecisionV1,
 	DeveloperConsentPortV1,
 	DeveloperConsentPromptV1,

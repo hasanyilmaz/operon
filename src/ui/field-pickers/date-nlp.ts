@@ -4,7 +4,7 @@ import { getCommunityPlugin } from '../../core/obsidian-app';
 import { isRecord, isUnknownFunction } from '../../core/unknown-value';
 import { getDatePickerStrings, getQuickDateCandidates, parseFallbackDateCandidates } from './date-nlp-fallback';
 
-export type DatePickerLang = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru' | 'it';
+export type DatePickerLang = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru' | 'it' | 'pt-BR';
 
 export interface DateParseContext {
 	fieldKey: string;
@@ -47,8 +47,9 @@ export function resolveDatePickerLanguage(language?: string): DatePickerLang {
 	if (language === 'ja') return 'ja';
 	if (language === 'ru') return 'ru';
 	if (language === 'it') return 'it';
+	if (language === 'pt-BR') return 'pt-BR';
 	if (language === 'en') return 'en';
-	// Date-picker natural-language parsing supports en/tr/de/fr/es/zh-CN/zh-TW/ja/ru/it.
+	// Date-picker natural-language parsing supports en/tr/de/fr/es/zh-CN/zh-TW/ja/ru/it/pt-BR.
 	// Other UI locales fall back to English date phrases.
 	const current = getCurrentLang();
 	if (current === 'tr') return 'tr';
@@ -60,6 +61,7 @@ export function resolveDatePickerLanguage(language?: string): DatePickerLang {
 	if (current === 'ja') return 'ja';
 	if (current === 'ru') return 'ru';
 	if (current === 'it') return 'it';
+	if (current === 'pt-BR') return 'pt-BR';
 	return 'en';
 }
 
@@ -80,7 +82,7 @@ export function buildDatePickerCandidates(
 
 	if (deterministic.length > 0) {
 		parsed.push(...deterministic);
-	} else if (trimmed) {
+	} else if (trimmed && context.language !== 'pt-BR') {
 		const nldatesCandidate = parseWithNldates(app, trimmed, context);
 		if (nldatesCandidate) parsed.push(nldatesCandidate);
 		const fallback = parseFallbackDateCandidates(trimmed, context);
@@ -199,5 +201,6 @@ function datePickerLocale(language: DatePickerLang): string {
 	if (language === 'ja') return 'ja-JP';
 	if (language === 'ru') return 'ru-RU';
 	if (language === 'it') return 'it-IT';
+	if (language === 'pt-BR') return 'pt-BR';
 	return 'en-US';
 }

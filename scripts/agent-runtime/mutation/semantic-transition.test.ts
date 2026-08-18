@@ -6,6 +6,9 @@ import {
 	executeRuntimeSemanticTransitionV1,
 	planRuntimeSemanticTransitionV1,
 	runtimeSemanticTransitionStepIdsV1,
+	classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1,
+	verifyRuntimeMaterializedRecurrenceSeriesStatePostflightV1,
+	verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1,
 	verifyRuntimeSemanticTransitionPostflightV1,
 	type RuntimeSemanticTransitionCoordinatorPortsV1,
 	type RuntimeSemanticTransitionPlanV1,
@@ -19,9 +22,52 @@ import type {
 	RuntimeTaskFieldMutationPreparationV1,
 } from '../../../src/agent-runtime/runtime/task-mutation-adapter';
 import { sourceRevisionForTaskCreationV1 } from '../../../src/agent-runtime/runtime/task-creation-adapter';
+import {
+	buildWorkflowStatusIdentityIndex,
+	resolveConfiguredStatusIdentity,
+} from '../../../src/core/workflow-status-identity';
+import { calculateNextRepeatDate, parseRepeatRule } from '../../../src/core/repeat-rule';
+import type { Pipeline } from '../../../src/types/pipeline';
 import { createFixtureRecurrencePlannerV1 } from './fixture-recurrence-planner';
 
 const EFFECTIVE_AT = '2026-07-24T12:00:00.000Z';
+
+const TASK_PIPELINE: Pipeline = {
+	id: 'pipeline-task',
+	name: 'Task',
+	statuses: [
+		{
+			id: 'status-open',
+			label: 'Open',
+			color: '#32AE60',
+			isFinished: false,
+			isCancelled: false,
+			isScheduledTarget: false,
+			isTrackingTarget: false,
+			propertyMapping: null,
+		},
+		{
+			id: 'status-done',
+			label: 'Done',
+			color: '#777777',
+			isFinished: true,
+			isCancelled: false,
+			isScheduledTarget: false,
+			isTrackingTarget: false,
+			propertyMapping: null,
+		},
+	],
+};
+
+function successorStatusIsOpen(value: string, pipelines: readonly Pipeline[] = [TASK_PIPELINE]): boolean {
+	const identity = resolveConfiguredStatusIdentity(
+		value,
+		buildWorkflowStatusIdentityIndex(pipelines),
+	);
+	return identity.kind === 'configured'
+		? !identity.status.isFinished && !identity.status.isCancelled
+		: identity.kind === 'unknown';
+}
 
 function task(
 	operonId: string,
@@ -817,13 +863,247 @@ test('coordinator stops at a fault in every compound-effect group and reports po
 	}
 });
 
+test('timed done recurrence requires an exact open successor before repeat state or success-refresh eligibility', async () => {
+	const meditate = {
+		operonId: '359cc8d',
+		fieldValues: {
+			status: 'Task.Open',
+			dateScheduled: '2026-08-16',
+			datetimeStart: '2026-08-16T08:45:00',
+			datetimeEnd: '2026-08-16T09:00:00',
+			estimate: '900',
+			repeat: 'mode=done|freq=day|interval=1',
+			repeatSeriesId: 'rsn0hm4',
+			repeatOccurrenceDate: '2026-08-16',
+		},
+	};
+	const expectedSuccessor = {
+		operonId: 'nxt0001',
+		locator: {
+			representation: 'inline' as const,
+			filePath: 'Daily/2026-08-16.md',
+			lineNumber: 43,
+		},
+		checkbox: 'open' as const,
+	};
+	assert.equal(meditate.fieldValues.status, 'Task.Open');
+	assert.equal(meditate.fieldValues.datetimeStart, '2026-08-16T08:45:00');
+	assert.equal(meditate.fieldValues.datetimeEnd, '2026-08-16T09:00:00');
+	assert.equal(meditate.fieldValues.repeat, 'mode=done|freq=day|interval=1');
+	assert.equal(successorStatusIsOpen(meditate.fieldValues.status), true);
+
+	const doneRule = parseRepeatRule(meditate.fieldValues.repeat);
+	assert.ok(doneRule);
+	assert.equal(
+		calculateNextRepeatDate(doneRule, { anchorDate: meditate.fieldValues.repeatOccurrenceDate }),
+		'2026-08-17',
+		'An early completion must retain the occurrence-date anchor for a done-mode daily recurrence.',
+	);
+
+	for (const { completionMode, newOccurrencePosition, lineNumber } of [
+		{ completionMode: 'keep-completed', newOccurrencePosition: 'below', lineNumber: 43 },
+		{ completionMode: 'keep-completed', newOccurrencePosition: 'above', lineNumber: 42 },
+		{ completionMode: 'replace-completed', newOccurrencePosition: 'below', lineNumber: 42 },
+	] as const) {
+		const expected = {
+			...expectedSuccessor,
+			locator: { ...expectedSuccessor.locator, lineNumber },
+		};
+		assert.equal(
+			verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({
+				expectedOperonId: expected.operonId,
+				expectedLocator: expected.locator,
+				successor: expected,
+				hasDuplicateOperonIdConflict: false,
+				statusIsOpen: successorStatusIsOpen('Task.Open'),
+			}),
+			true,
+			`${completionMode}/${newOccurrencePosition} must accept the exact same-file successor locator.`,
+		);
+	}
+
+	assert.equal(successorStatusIsOpen('Legacy.Open'), true, 'Legacy status values remain valid when the checkbox is open.');
+	assert.equal(successorStatusIsOpen('Task.Done'), false, 'Configured terminal status cannot certify an open successor.');
+	assert.equal(
+		successorStatusIsOpen('Task.Open', [TASK_PIPELINE, { ...TASK_PIPELINE, id: 'pipeline-task-copy' }]),
+		false,
+		'Ambiguous configured status must fail closed.',
+	);
+	assert.equal(
+		verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({
+			expectedOperonId: expectedSuccessor.operonId,
+			expectedLocator: expectedSuccessor.locator,
+			successor: null,
+			hasDuplicateOperonIdConflict: false,
+			statusIsOpen: true,
+		}),
+		false,
+		'A forced index-resolution miss must not be treated as recurrence success.',
+	);
+	assert.equal(
+		verifyRuntimeMaterializedRecurrenceSuccessorPostflightV1({
+			expectedOperonId: expectedSuccessor.operonId,
+			expectedLocator: expectedSuccessor.locator,
+			successor: expectedSuccessor,
+			hasDuplicateOperonIdConflict: true,
+			statusIsOpen: true,
+		}),
+		false,
+		'A duplicate successor identity must not be treated as a unique indexed task.',
+	);
+
+	const plan = await fullPlan();
+	const calls: string[] = [];
+	const result = await executeRuntimeSemanticTransitionV1(plan, {
+		...coordinatorPorts(calls),
+		materializeRecurrence: async effect => {
+			calls.push(effect.groupId);
+			return {
+				ok: false,
+				outcomeUnknown: true,
+				reason: 'Forced successor index-resolution miss.',
+			};
+		},
+	});
+	assert.equal(result.status, 'outcome-unknown');
+	assert.deepEqual(calls, ['task-transition:tsk0001', 'repeat-series:tsk0001']);
+	const successfulCalendarRefreshEligible = (status: string): boolean => status === 'committed';
+	assert.equal(
+		successfulCalendarRefreshEligible(result.status),
+		false,
+		'A forced successor miss must not become eligible for a successful Calendar refresh.',
+	);
+});
+
+test('recurrence recovery refuses a source-written materialization without indexed successor or repeat state', async () => {
+	const plan = await fullPlan();
+	assert.equal(plan.recurrence?.preview.disposition, 'materialize');
+	if (plan.recurrence?.preview.disposition !== 'materialize') {
+		throw new Error('Materialized recurrence preview is required.');
+	}
+	const preview = plan.recurrence.preview;
+	const successor = {
+		operonId: preview.nextOperonId,
+		locator: preview.nextLocator,
+		checkbox: 'open' as const,
+	};
+	const existingSeriesStateIsNotAfter = verifyRuntimeMaterializedRecurrenceSeriesStatePostflightV1({
+		expectedSourceTaskId: plan.prepared.task.operonId,
+		expectedSourceFormat: 'inline',
+		effectiveAt: '2026-07-24T12:00:00',
+		sealedRepeatSeriesRevision: 'repeat-before',
+		currentRepeatSeriesRevision: 'repeat-before',
+		entry: {
+			sourceTaskId: plan.prepared.task.operonId,
+			sourceFormat: 'inline',
+			updatedAt: '2026-07-24T12:00:01',
+		},
+	});
+	assert.equal(
+		existingSeriesStateIsNotAfter,
+		false,
+		'An existing series with matching ownership is still pre-state until its sealed revision changes.',
+	);
+	const committedSeriesStateIsAfter = verifyRuntimeMaterializedRecurrenceSeriesStatePostflightV1({
+		expectedSourceTaskId: plan.prepared.task.operonId,
+		expectedSourceFormat: 'inline',
+		effectiveAt: '2026-07-24T12:00:00',
+		sealedRepeatSeriesRevision: 'repeat-before',
+		currentRepeatSeriesRevision: 'repeat-after',
+		entry: {
+			sourceTaskId: plan.prepared.task.operonId,
+			sourceFormat: 'inline',
+			updatedAt: '2026-07-24T12:00:01',
+		},
+	});
+	assert.equal(committedSeriesStateIsAfter, true);
+	assert.equal(
+		classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1({
+			sourceMatches: true,
+			archiveMatches: true,
+			expectedOperonId: preview.nextOperonId,
+			expectedLocator: preview.nextLocator,
+			successor: null,
+			hasDuplicateOperonIdConflict: false,
+			statusIsOpen: true,
+			repeatSeriesStateVerified: true,
+		}),
+		'other',
+		'A source-written index miss must not classify the recurrence step as after.',
+	);
+	const sourceWrittenStateMissing = classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1({
+			sourceMatches: true,
+			archiveMatches: true,
+			expectedOperonId: preview.nextOperonId,
+			expectedLocator: preview.nextLocator,
+			successor,
+			hasDuplicateOperonIdConflict: false,
+			statusIsOpen: true,
+			repeatSeriesStateVerified: existingSeriesStateIsNotAfter,
+		});
+	assert.equal(
+		sourceWrittenStateMissing,
+		'other',
+		'A source-written recurrence with an unchanged existing-series revision must not checkpoint as after.',
+	);
+	assert.equal(
+		classifyRuntimeMaterializedRecurrenceRecoveryPostflightV1({
+			sourceMatches: true,
+			archiveMatches: true,
+			expectedOperonId: preview.nextOperonId,
+			expectedLocator: preview.nextLocator,
+			successor,
+			hasDuplicateOperonIdConflict: false,
+			statusIsOpen: true,
+			repeatSeriesStateVerified: committedSeriesStateIsAfter,
+		}),
+		'after',
+		'Only the exact indexed open successor with repeat-series state can checkpoint recovery.',
+	);
+
+	const calls: string[] = [];
+	const checkpoints: string[] = [];
+	const recovered = await executeRuntimeSemanticTransitionV1(
+		plan,
+		coordinatorPorts(calls),
+		{
+			completedStepIds: ['primary'],
+			classifyUncheckpointedStep: stepId => Promise.resolve(
+				stepId === 'recurrence' ? sourceWrittenStateMissing : 'before',
+			),
+			onStepCommitted: stepId => {
+				checkpoints.push(stepId);
+				return Promise.resolve();
+			},
+		},
+	);
+	assert.equal(recovered.status, 'outcome-unknown');
+	assert.deepEqual(calls, []);
+	assert.deepEqual(checkpoints, []);
+});
+
 test('postflight requires primary, recurrence, every ancestor, unpin, and project-serial evidence', async () => {
 	const plan = await fullPlan();
 	assert.equal(plan.recurrence?.preview.disposition, 'materialize');
 	if (plan.recurrence?.preview.disposition !== 'materialize') {
 		throw new Error('Materialized recurrence preview is required.');
 	}
-	const complete = verifyRuntimeSemanticTransitionPostflightV1(plan, {
+	const materializedRecurrenceEvidence = {
+		disposition: 'created' as const,
+		nextOperonId: plan.recurrence.preview.nextOperonId,
+		nextLocator: plan.recurrence.preview.nextLocator,
+		successor: {
+			operonId: plan.recurrence.preview.nextOperonId,
+			locator: plan.recurrence.preview.nextLocator,
+			checkbox: 'open' as const,
+		},
+		hasDuplicateSuccessorOperonIdConflict: false,
+		successorStatusIsOpen: true,
+		sourceRevision: plan.recurrence.preview.plannedSourceRevision,
+		committedSourceRevision: plan.recurrence.preview.plannedSourceRevision,
+		stateVerified: true,
+	};
+	const completeEvidence = {
 		primaryVerified: true,
 		timer: {
 			activeTrackerCleared: true,
@@ -831,20 +1111,22 @@ test('postflight requires primary, recurrence, every ancestor, unpin, and projec
 			activeTrackerRevision: 'tracker-final',
 			committedActiveTrackerRevision: 'tracker-final',
 		},
-		recurrence: {
-			disposition: 'created',
-			nextOperonId: plan.recurrence.preview.nextOperonId,
-			nextLocator: plan.recurrence.preview.nextLocator,
-			sourceRevision: plan.recurrence.preview.plannedSourceRevision,
-			committedSourceRevision: plan.recurrence.preview.plannedSourceRevision,
-			stateVerified: true,
-		},
+		recurrence: materializedRecurrenceEvidence,
 		verifiedAncestorOperonIds: ['par0001', 'gra0001'],
 		pinned: false,
 		projectSerialRevision: 'a'.repeat(64),
 		committedProjectSerialRevision: 'a'.repeat(64),
-	});
+	};
+	const complete = verifyRuntimeSemanticTransitionPostflightV1(plan, completeEvidence);
 	assert.deepEqual(complete, { ok: true, failures: [] });
+	assert.deepEqual(
+		verifyRuntimeSemanticTransitionPostflightV1(plan, {
+			...completeEvidence,
+			recurrence: { ...materializedRecurrenceEvidence, successor: null },
+		}),
+		{ ok: false, failures: ['recurrence'] },
+		'Final postflight must refuse a missing indexed successor even when repeat-series revision/state is valid.',
+	);
 
 	const unscopedPlan = {
 		...plan,
@@ -866,6 +1148,13 @@ test('postflight requires primary, recurrence, every ancestor, unpin, and projec
 				disposition: 'created',
 				nextOperonId: plan.recurrence.preview.nextOperonId,
 				nextLocator: plan.recurrence.preview.nextLocator,
+				successor: {
+					operonId: plan.recurrence.preview.nextOperonId,
+					locator: plan.recurrence.preview.nextLocator,
+					checkbox: 'open',
+				},
+				hasDuplicateSuccessorOperonIdConflict: false,
+				successorStatusIsOpen: true,
 				sourceRevision: plan.recurrence.preview.plannedSourceRevision,
 				committedSourceRevision: plan.recurrence.preview.plannedSourceRevision,
 				stateVerified: true,

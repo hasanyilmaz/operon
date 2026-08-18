@@ -294,6 +294,32 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		nextWeekdayLabel: name => (name === 'domenica' ? `${name} prossima` : `${name} prossimo`),
 		lastWeekdayLabel: name => (name === 'domenica' ? `${name} scorsa` : `${name} scorso`),
 	},
+	'pt-BR': {
+		searchPlaceholder: 'Digite uma data, como próxima terça-feira',
+		clear: 'Limpar',
+		apply: 'Aplicar',
+		manualDate: 'Escolher uma data',
+		parsedFrom: input => `Interpretado de "${input}"`,
+		quickSuggestions: 'Sugestões',
+		today: 'Hoje',
+		tomorrow: 'Amanhã',
+		yesterday: 'Ontem',
+		thisWeek: 'Esta semana',
+		nextWeek: 'Próxima semana',
+		lastWeek: 'Semana passada',
+		thisWeekend: 'Este fim de semana',
+		nextWeekend: 'Próximo fim de semana',
+		lastWeekend: 'Fim de semana passado',
+		daysAgo: count => `há ${count} ${count === 1 ? 'dia' : 'dias'}`,
+		daysFromNow: count => `daqui a ${count} ${count === 1 ? 'dia' : 'dias'}`,
+		weeksAgo: count => `há ${count} ${count === 1 ? 'semana' : 'semanas'}`,
+		weeksFromNow: count => `daqui a ${count} ${count === 1 ? 'semana' : 'semanas'}`,
+		monthsAgo: count => `há ${count} ${count === 1 ? 'mês' : 'meses'}`,
+		monthsFromNow: count => `daqui a ${count} ${count === 1 ? 'mês' : 'meses'}`,
+		weekdayNames: ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'],
+		nextWeekdayLabel: name => (name === 'domingo' || name === 'sábado' ? `próximo ${name}` : `próxima ${name}`),
+		lastWeekdayLabel: name => (name === 'domingo' || name === 'sábado' ? `${name} passado` : `${name} passada`),
+	},
 };
 
 const ENGLISH_PHRASES: Record<string, (reference: Date) => Date> = {
@@ -497,6 +523,36 @@ const ITALIAN_WEEKDAYS = new Map<string, number>([
 	['venerdi', 5],
 	['venerdì', 5],
 	['sabato', 6],
+]);
+
+// Keys are normalizeInput()-form: accents are optional, but words and grammar stay pt-BR.
+const BRAZILIAN_PORTUGUESE_PHRASES: Record<string, (reference: Date) => Date> = {
+	'hoje': reference => cloneDate(reference),
+	'amanha': reference => addDays(reference, 1),
+	'ontem': reference => addDays(reference, -1),
+	'esta semana': reference => startOfWeek(reference),
+	'proxima semana': reference => addDays(startOfWeek(reference), 7),
+	'semana passada': reference => addDays(startOfWeek(reference), -7),
+	'este fim de semana': reference => saturdayOfWeek(reference),
+	'proximo fim de semana': reference => addDays(saturdayOfWeek(reference), 7),
+	'fim de semana passado': reference => addDays(saturdayOfWeek(reference), -7),
+};
+
+const BRAZILIAN_PORTUGUESE_WEEKDAYS = new Map<string, number>([
+	['domingo', 0],
+	['dom', 0],
+	['segunda-feira', 1],
+	['seg', 1],
+	['terca-feira', 2],
+	['ter', 2],
+	['quarta-feira', 3],
+	['qua', 3],
+	['quinta-feira', 4],
+	['qui', 4],
+	['sexta-feira', 5],
+	['sex', 5],
+	['sabado', 6],
+	['sab', 6],
 ]);
 
 // Chinese relative-date phrases. Keys cover both Simplified and Traditional
@@ -716,6 +772,20 @@ const MONTH_ALIASES: Record<DatePickerLang, MonthAlias[]> = {
 		{ month: 11, aliases: ['novembre', 'nov'] },
 		{ month: 12, aliases: ['dicembre', 'dic'] },
 	],
+	'pt-BR': [
+		{ month: 1, aliases: ['janeiro', 'jan'] },
+		{ month: 2, aliases: ['fevereiro', 'fev'] },
+		{ month: 3, aliases: ['marco', 'março', 'mar'] },
+		{ month: 4, aliases: ['abril', 'abr'] },
+		{ month: 5, aliases: ['maio', 'mai'] },
+		{ month: 6, aliases: ['junho', 'jun'] },
+		{ month: 7, aliases: ['julho', 'jul'] },
+		{ month: 8, aliases: ['agosto', 'ago'] },
+		{ month: 9, aliases: ['setembro', 'set'] },
+		{ month: 10, aliases: ['outubro', 'out'] },
+		{ month: 11, aliases: ['novembro', 'nov'] },
+		{ month: 12, aliases: ['dezembro', 'dez'] },
+	],
 };
 
 export function getDatePickerStrings(language: DatePickerLang): DatePickerStrings {
@@ -797,6 +867,13 @@ export function parseFallbackDateCandidates(input: string, context: DateParseCon
 		return [];
 	}
 
+	// Brazilian Portuguese deliberately has an isolated deterministic grammar. Do not
+	// route unrecognized text through the generic Latin parser, which admits English
+	// month aliases for other non-English locales.
+	if (context.language === 'pt-BR') {
+		return parseBrazilianPortugueseCandidates(normalized, input.trim(), strings, context, reference);
+	}
+
 	const numeric = parseNumericRelativeCandidates(normalized, strings, context, reference);
 	const dayMonth = parseDayMonthCandidates(normalized, strings, context, reference);
 	if (numeric.length > 0 || dayMonth.length > 0) {
@@ -819,6 +896,147 @@ export function parseFallbackDateCandidates(input: string, context: DateParseCon
 	}
 
 	return [];
+}
+
+function parseBrazilianPortugueseCandidates(
+	normalized: string,
+	originalInput: string,
+	strings: DatePickerStrings,
+	context: DateParseContext,
+	reference: Date,
+): DateParseCandidate[] {
+	const direct = parsePhraseDate(normalized, 'pt-BR', reference);
+	if (direct) return [buildBrazilianPortugueseNlpCandidate(direct, originalInput, strings, context)];
+
+	const relative = parseBrazilianPortugueseRelativeCandidates(normalized, strings, context, reference);
+	if (relative.length > 0) return relative;
+
+	const slashDate = parseBrazilianPortugueseSlashDate(normalized, originalInput, strings, context);
+	if (slashDate) return [slashDate];
+
+	const dayMonth = parseBrazilianPortugueseDayMonthCandidates(normalized, originalInput, strings, context, reference);
+	if (dayMonth.length > 0) return dayMonth;
+
+	const absolute = parseAbsoluteDate(normalized, context);
+	return absolute ? [absolute] : [];
+}
+
+function buildBrazilianPortugueseNlpCandidate(
+	date: Date,
+	originalInput: string,
+	strings: DatePickerStrings,
+	context: DateParseContext,
+	confidence = 0.96,
+): DateParseCandidate {
+	return {
+		isoDate: toIsoDate(date),
+		primaryLabel: formatLongDate(date, context.language),
+		secondaryLabel: strings.parsedFrom(originalInput),
+		source: 'fallback',
+		confidence,
+		kind: 'nlp',
+	};
+}
+
+function parseBrazilianPortugueseRelativeCandidates(
+	input: string,
+	strings: DatePickerStrings,
+	context: DateParseContext,
+	reference: Date,
+): DateParseCandidate[] {
+	const future = /^daqui a (\d{1,3}) (dia|dias|semana|semanas|mes|meses)$/.exec(input);
+	const pastPrefix = /^ha (\d{1,3}) (dia|dias|semana|semanas|mes|meses)$/.exec(input);
+	const pastSuffix = /^(\d{1,3}) (dia|dias|semana|semanas|mes|meses) atras$/.exec(input);
+	const unsigned = /^(\d{1,3}) (dia|dias|semana|semanas|mes|meses)$/.exec(input);
+	const match = future ?? pastPrefix ?? pastSuffix ?? unsigned;
+	if (!match) return [];
+
+	const amount = Number(match[1]);
+	if (!Number.isFinite(amount) || amount <= 0) return [];
+	const unit = match[2] ?? '';
+	const kind = unit.startsWith('dia') ? 'days' : unit.startsWith('semana') ? 'weeks' : 'months';
+	const shift = (sign: number): Date => kind === 'days'
+		? addDays(reference, sign * amount)
+		: kind === 'weeks'
+		? addDays(reference, sign * amount * 7)
+		: addMonths(reference, sign * amount);
+	const futureLabel = kind === 'days' ? strings.daysFromNow(amount)
+		: kind === 'weeks' ? strings.weeksFromNow(amount)
+		: strings.monthsFromNow(amount);
+	const pastLabel = kind === 'days' ? strings.daysAgo(amount)
+		: kind === 'weeks' ? strings.weeksAgo(amount)
+		: strings.monthsAgo(amount);
+
+	if (future) return [buildRelativeCandidate(futureLabel, shift(1), context)];
+	if (pastPrefix || pastSuffix) return [buildRelativeCandidate(pastLabel, shift(-1), context)];
+	return [
+		buildRelativeCandidate(futureLabel, shift(1), context),
+		buildRelativeCandidate(pastLabel, shift(-1), context),
+	];
+}
+
+function parseBrazilianPortugueseSlashDate(
+	input: string,
+	originalInput: string,
+	strings: DatePickerStrings,
+	context: DateParseContext,
+): DateParseCandidate | null {
+	const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(input);
+	if (!match) return null;
+	const day = Number(match[1]);
+	const month = Number(match[2]);
+	const year = Number(match[3]);
+	const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+	if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+	return buildBrazilianPortugueseNlpCandidate(date, originalInput, strings, context, 0.98);
+}
+
+function parseBrazilianPortugueseDayMonthCandidates(
+	input: string,
+	originalInput: string,
+	strings: DatePickerStrings,
+	context: DateParseContext,
+	reference: Date,
+): DateParseCandidate[] {
+	const match = /^(\d{1,2})(?: de)? ([a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]+)(?: de (\d{4}))?$/.exec(input);
+	if (!match) return [];
+	const day = Number(match[1]);
+	const monthToken = match[2] ?? '';
+	const explicitYear = match[3] ? Number(match[3]) : null;
+	if (!Number.isFinite(day) || day <= 0 || day > 31 || (explicitYear !== null && !Number.isFinite(explicitYear))) return [];
+	const months = resolveBrazilianPortugueseMonthNumbers(monthToken);
+	// Day/month input intentionally has no time component. Compare normalized
+	// local calendar days so a same-day entry remains valid after noon and the
+	// documented closed 365-day boundary remains inclusive.
+	const lowerBound = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
+	const limit = addDays(lowerBound, 365);
+	const candidates: DateParseCandidate[] = [];
+	for (const month of months) {
+		const years = explicitYear === null ? [reference.getFullYear(), reference.getFullYear() + 1] : [explicitYear];
+		for (const year of years) {
+			const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+			if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) continue;
+			const candidateDay = new Date(year, month - 1, day);
+			if (explicitYear === null && (candidateDay.getTime() < lowerBound.getTime() || candidateDay.getTime() > limit.getTime())) continue;
+			candidates.push(buildBrazilianPortugueseNlpCandidate(date, originalInput, strings, context, 0.97));
+		}
+	}
+	// Yearless pt-BR input denotes the first valid matching calendar date, even
+	// when the following year's same date happens to be the inclusive boundary.
+	return dedupeDateCandidates(candidates)
+		.sort((left, right) => left.isoDate.localeCompare(right.isoDate))
+		.slice(0, 1);
+}
+
+// pt-BR accepts only the documented complete month names and abbreviations.
+// Unlike the shared legacy resolver, a prefix such as `d` must not turn an
+// otherwise invalid relative expression into a December date.
+function resolveBrazilianPortugueseMonthNumbers(monthToken: string): number[] {
+	const normalizedToken = normalizeInput(monthToken);
+	if (!normalizedToken) return [];
+	return MONTH_ALIASES['pt-BR']
+		.filter(entry => entry.aliases.some(alias => normalizeInput(alias) === normalizedToken))
+		.map(entry => entry.month);
 }
 
 function parseChineseCandidates(
@@ -1060,6 +1278,8 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		? RUSSIAN_PHRASES
 		: language === 'it'
 		? ITALIAN_PHRASES
+		: language === 'pt-BR'
+		? BRAZILIAN_PORTUGUESE_PHRASES
 		: ENGLISH_PHRASES;
 	const direct = phrases[input];
 	if (direct) return direct(reference);
@@ -1076,10 +1296,59 @@ function parsePhraseDate(input: string, language: DatePickerLang, reference: Dat
 		? RUSSIAN_WEEKDAYS
 		: language === 'it'
 		? ITALIAN_WEEKDAYS
+		: language === 'pt-BR'
+		? BRAZILIAN_PORTUGUESE_WEEKDAYS
 		: ENGLISH_WEEKDAYS;
 
 	if (weekdays.has(input)) {
 		return nextWeekday(reference, weekdays.get(input)!);
+	}
+
+	// Brazilian Portuguese weekday modifiers agree with gender: Sunday and Saturday
+	// are masculine; Monday through Friday are feminine. Accept prefix and suffix forms.
+	if (language === 'pt-BR') {
+		const resolveQualifiedWeekday = (
+			weekday: string,
+			feminineQualifier: boolean,
+			direction: 'next' | 'last',
+		): Date | null => {
+			const weekdayNumber = weekdays.get(weekday);
+			if (weekdayNumber === undefined) return null;
+			const feminineWeekday = weekdayNumber >= 1 && weekdayNumber <= 5;
+			if (feminineWeekday !== feminineQualifier) return null;
+			return direction === 'next'
+				? nextWeekday(reference, weekdayNumber)
+				: previousWeekday(reference, weekdayNumber);
+		};
+		const prefixes = [
+			{ token: 'proximo ', feminine: false, direction: 'next' as const },
+			{ token: 'proxima ', feminine: true, direction: 'next' as const },
+			{ token: 'passado ', feminine: false, direction: 'last' as const },
+			{ token: 'passada ', feminine: true, direction: 'last' as const },
+		];
+		const suffixes = [
+			{ token: ' proximo', feminine: false, direction: 'next' as const },
+			{ token: ' proxima', feminine: true, direction: 'next' as const },
+			{ token: ' passado', feminine: false, direction: 'last' as const },
+			{ token: ' passada', feminine: true, direction: 'last' as const },
+		];
+		for (const qualifier of prefixes) {
+			if (!input.startsWith(qualifier.token)) continue;
+			return resolveQualifiedWeekday(
+				input.slice(qualifier.token.length).trim(),
+				qualifier.feminine,
+				qualifier.direction,
+			);
+		}
+		for (const qualifier of suffixes) {
+			if (!input.endsWith(qualifier.token)) continue;
+			return resolveQualifiedWeekday(
+				input.slice(0, -qualifier.token.length).trim(),
+				qualifier.feminine,
+				qualifier.direction,
+			);
+		}
+		return null;
 	}
 
 	// French places the qualifier after the weekday ('mardi prochain'/'mardi dernier').
@@ -1252,8 +1521,8 @@ function parseDayMonthCandidates(
 }
 
 function resolveMonthNumbers(monthToken: string, language: DatePickerLang): number[] {
-	const languageAliases = language === 'en'
-		? MONTH_ALIASES.en
+	const languageAliases = language === 'en' || language === 'pt-BR'
+		? MONTH_ALIASES[language]
 		: [...MONTH_ALIASES[language], ...MONTH_ALIASES.en];
 	const months = new Set<number>();
 
@@ -1493,6 +1762,7 @@ function datePickerLocaleTag(language: DatePickerLang): string {
 	if (language === 'ja') return 'ja-JP';
 	if (language === 'ru') return 'ru-RU';
 	if (language === 'it') return 'it-IT';
+	if (language === 'pt-BR') return 'pt-BR';
 	return 'en-US';
 }
 

@@ -404,7 +404,8 @@ test('apply commits portable groups once, preserves protected domains, and redac
 	const current = (await storage.captureCommittedSettingsBackupSnapshot()).settings;
 	const protectedBefore = clone(protectedProjection(data.committed));
 	const source = clone(current);
-	changeLanguage(source);
+	source.language = 'pt-BR';
+	source.languagePackSubscriptions = ['pt-BR'];
 	assert.ok(source.filterSets[0]);
 	source.filterSets[0].name = 'Imported filter';
 	source.tableShowLineNumbers = !current.tableShowLineNumbers;
@@ -420,6 +421,7 @@ test('apply commits portable groups once, preserves protected domains, and redac
 	assert.equal(adapter.mutations, 0);
 	const committed = await storage.captureCommittedSettingsBackupSnapshot();
 	assert.equal(committed.settings.language, source.language);
+	assert.deepEqual(committed.settings.languagePackSubscriptions, ['pt-BR']);
 	assert.equal(committed.settings.filterSets[0]?.name, 'Imported filter');
 	assert.equal(committed.settings.tableShowLineNumbers, source.tableShowLineNumbers);
 	assert.deepEqual(protectedProjection(data.committed), protectedBefore);
@@ -959,7 +961,7 @@ test('session undo restores selected groups once and rejects stale-target undo w
 	assert.equal(JSON.stringify(staleUndo).includes(SECRET_URL), false);
 });
 
-test('JSON projection preserves Table authority while applying four global preferences', () => {
+test('JSON projection preserves Table authority while applying Table-global preferences', () => {
 	const current = canonicalPackage(baselineSettings());
 	const candidate = composeOperonSettingsFromDataPackage(current, DEFAULT_SETTINGS);
 	changeLanguage(candidate);
@@ -969,6 +971,7 @@ test('JSON projection preserves Table authority while applying four global prefe
 	candidate.tablePresetFileInitialized = true;
 	candidate.tablePresets = [];
 	candidate.presetFavorites = { ...candidate.presetFavorites, table: ['table-imported'] };
+	candidate.tableDefaultFolder = 'Imported/Tables';
 	candidate.tableEmbedVisibleRows = candidate.tableEmbedVisibleRows === 20 ? 30 : 20;
 	candidate.tableShowLineNumbers = !candidate.tableShowLineNumbers;
 	candidate.tableShowTaskIcon = !candidate.tableShowTaskIcon;
@@ -976,6 +979,7 @@ test('JSON projection preserves Table authority while applying four global prefe
 	const jsonOnly = projectOperonSettingsBackupApplyDataPackageV1(current, candidate);
 	assert.deepEqual(jsonOnly.views.tablePresets, {
 		...current.views.tablePresets,
+		tableDefaultFolder: candidate.tableDefaultFolder,
 		tableEmbedVisibleRows: candidate.tableEmbedVisibleRows,
 		tableShowLineNumbers: candidate.tableShowLineNumbers,
 		tableShowTaskIcon: candidate.tableShowTaskIcon,

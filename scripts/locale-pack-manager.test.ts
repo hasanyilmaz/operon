@@ -75,7 +75,7 @@ class MemoryAdapter {
 	}
 }
 
-function buildPack(locale: 'tr' | 'de', value: string): string {
+function buildPack(locale: 'tr' | 'de' | 'pt-BR', value: string): string {
 	return JSON.stringify({
 		schemaVersion: 1,
 		locale,
@@ -86,7 +86,7 @@ function buildPack(locale: 'tr' | 'de', value: string): string {
 	});
 }
 
-function buildCatalog(locale: 'tr' | 'de', raw: string): LocalePackCatalog {
+function buildCatalog(locale: 'tr' | 'de' | 'pt-BR', raw: string): LocalePackCatalog {
 	const sha256 = createHash('sha256').update(raw).digest('hex');
 	return {
 		schemaVersion: 1,
@@ -106,10 +106,10 @@ function buildCatalog(locale: 'tr' | 'de', raw: string): LocalePackCatalog {
 	};
 }
 
-test('downloads, validates, caches, and reuses a current locale without network', async () => {
+test('downloads, validates, caches, and reuses the Brazilian Portuguese locale without network', async () => {
 	const adapter = new MemoryAdapter();
-	const raw = buildPack('tr', 'Kaydet');
-	const catalog = buildCatalog('tr', raw);
+	const raw = buildPack('pt-BR', 'Salvar');
+	const catalog = buildCatalog('pt-BR', raw);
 	let fetchCount = 0;
 	const manager = new LocalePackManager({
 		adapter,
@@ -120,10 +120,10 @@ test('downloads, validates, caches, and reuses a current locale without network'
 			return { status: 200, text: raw };
 		},
 	});
-	const downloaded = await manager.ensureLocale('tr');
-	assert.equal(downloaded.translations.buttons?.save, 'Kaydet');
-	assert.equal(manager.getStatus('tr').installed, true);
-	assert.equal(manager.getStatus('tr').updateAvailable, false);
+	const downloaded = await manager.ensureLocale('pt-BR');
+	assert.equal(downloaded.translations.buttons?.save, 'Salvar');
+	assert.equal(manager.getStatus('pt-BR').installed, true);
+	assert.equal(manager.getStatus('pt-BR').updateAvailable, false);
 	assert.equal(fetchCount, 1);
 
 	const restarted = new LocalePackManager({
@@ -135,7 +135,7 @@ test('downloads, validates, caches, and reuses a current locale without network'
 			throw new Error('network must not be used');
 		},
 	});
-	assert.equal((await restarted.ensureLocale('tr')).translations.buttons?.save, 'Kaydet');
+	assert.equal((await restarted.ensureLocale('pt-BR')).translations.buttons?.save, 'Salvar');
 	assert.equal(fetchCount, 1);
 });
 
