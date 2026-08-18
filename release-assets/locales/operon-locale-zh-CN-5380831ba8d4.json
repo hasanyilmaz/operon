@@ -23,7 +23,7 @@
       "done": "完成",
       "edit": "编辑",
       "file": "文件",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "行内",
       "kanbanNoValue": "无值",
       "keepAsIs": "保持原样",
@@ -3089,5 +3089,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "dede1ab1a67f3b06a9d4ac825b7ccb4129cc7b6ad7ce66a1ad71e3b35c797b46"
+  "sourceVersion": "6c05114de9838712543c19d4c59096082be82a05787431900c052531c6602e96"
 }

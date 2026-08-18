@@ -23,7 +23,7 @@
       "done": "Fertig",
       "edit": "Bearbeiten",
       "file": "Datei",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "Inline",
       "kanbanNoValue": "Kein Wert",
       "keepAsIs": "Unverändert lassen",
@@ -3089,5 +3089,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "2c6fef08162d6c0d50d18a4c42e4a779ee1d6f53a0589dc9834cae9cb1802df8"
+  "sourceVersion": "ff9d483b370b21b71e3b13f9033d84cd6c1d61bfc2a9870761dfd273c0690b7f"
 }

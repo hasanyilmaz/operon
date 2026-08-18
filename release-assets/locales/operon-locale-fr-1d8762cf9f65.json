@@ -23,7 +23,7 @@
       "done": "Terminé",
       "edit": "Modifier",
       "file": "Fichier",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "En ligne",
       "kanbanNoValue": "Aucune valeur",
       "keepAsIs": "Conserver tel quel",
@@ -3089,5 +3089,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "d8b5eb710f349db5be86281955ec6057962b2aff00e3f69c907092c7dae97491"
+  "sourceVersion": "b48efd76a4845413804680f72816ae26ac8ed7ff0bf2e5ae80611f70714179dc"
 }

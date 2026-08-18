@@ -52,6 +52,22 @@ function expectedTranslations(locales, category, key) {
 	return [...new Set(values)];
 }
 
+test('release notes and Settings share the exact Buy me a coffee action copy', () => {
+	const locales = readLocales();
+	for (const definition of LOCALE_DEFINITIONS) {
+		assert.equal(
+			locales[definition.code].buttons.fillOperonsCoffeeJar,
+			'Buy me a coffee',
+			definition.code,
+		);
+	}
+
+	const releaseNotesSource = fs.readFileSync(path.join(repoRoot, 'src/ui/release-notes-modal.ts'), 'utf8');
+	const settingsSource = fs.readFileSync(path.join(repoRoot, 'src/ui/settings-tab.ts'), 'utf8');
+	assert.ok(releaseNotesSource.includes("text: t('buttons', 'fillOperonsCoffeeJar')"));
+	assert.ok(settingsSource.includes(".setButtonText(t('buttons', 'fillOperonsCoffeeJar'))"));
+});
+
 test('English-only runtime installs keyed language packs and preserves i18n behavior', async t => {
 	const runtime = await loadDenseRuntime(t);
 	const locales = readLocales();

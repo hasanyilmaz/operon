@@ -23,7 +23,7 @@
       "done": "Готово",
       "edit": "Редактировать",
       "file": "Файл",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "Встроенная",
       "kanbanNoValue": "Нет значения",
       "keepAsIs": "Оставить как есть",
@@ -3089,5 +3089,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "9b610ae12fa0ce3a8591f09b599b44e8e07fc63c01e8e2337fe62b5acfb9e33a"
+  "sourceVersion": "c2a6478a0ad9a38e46255f98c9f93697437cf3cfbb354a00e950bcd59aefebb6"
 }

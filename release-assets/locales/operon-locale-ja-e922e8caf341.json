@@ -23,7 +23,7 @@
       "done": "完了",
       "edit": "編集",
       "file": "ファイル",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "インライン",
       "kanbanNoValue": "値なし",
       "keepAsIs": "そのまま保持",
@@ -3089,5 +3089,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "71de5de8be5eb6b877809b1d54fe04430a5b19bbedd3030b0d5460e36faa82a5"
+  "sourceVersion": "e9cdd78c2e7370cf70730c2b239ec134ead4c32c1c69e4e90931066bfb74c72b"
 }

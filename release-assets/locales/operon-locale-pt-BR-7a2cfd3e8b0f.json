@@ -23,7 +23,7 @@
       "done": "Concluído",
       "edit": "Editar",
       "file": "Arquivo",
-      "fillOperonsCoffeeJar": "Encha o pote de café do Operon :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "Tarefa inline",
       "kanbanNoValue": "Sem valor",
       "keepAsIs": "Manter como está",
@@ -3089,5 +3089,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "f77fadc7c3dd6a309081ed0c6d244cca926c3c181e531d9a3c7ae2172c76b8ec"
+  "sourceVersion": "c8c0cd786d65f1a987acf4186dd57526202f8d299a71ab64d66b72cc3c96be3d"
 }

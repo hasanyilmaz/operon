@@ -23,7 +23,7 @@
       "done": "Bitti",
       "edit": "Düzenle",
       "file": "Dosya",
-      "fillOperonsCoffeeJar": "Fill Operon’s coffee jar :)",
+      "fillOperonsCoffeeJar": "Buy me a coffee",
       "inline": "Satır içi",
       "kanbanNoValue": "Değer yok",
       "keepAsIs": "Olduğu gibi bırak",
@@ -3089,5 +3089,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "1a825e75ce9e31dab21f4b29d470908c802b42e4c0ec72d92db8ebd79859cfb3"
+  "sourceVersion": "6e5abee93c58a6bde663c35b228632e57c1cb1d01c1507223c9029a2d0eeefdc"
 }
