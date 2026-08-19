@@ -18,16 +18,11 @@ const ROUTER_SETTING_IDS = [
 	'fileTasksFolder',
 	'fileTaskParentInlineTargetMode',
 	'fileTaskParentFileTargetMode',
-	'fileTaskAutoArchiveEnabled',
 	'fileTaskArchiveFolder',
-	'fileTaskArchiveDelaySeconds',
-	'fileTaskArchiveOnlyFromFileTasksFolder',
+	'fileTaskArchivePipelineLocations',
 ];
 
-const ROUTER_DESCRIPTOR_SNAPSHOT = `e('automation', '<tab>', 'fileTaskArchiveDelaySeconds', 'settings', 'fileTaskArchiveDelaySeconds', 'fileTaskArchiveDelaySecondsDesc', 'number', ['file task', 'archive', 'archive delay', 'file task archive']),
-e('automation', '<tab>', 'fileTaskArchiveFolder', 'settings', 'fileTaskArchiveFolder', 'fileTaskArchiveFolderDesc', 'folder', ['file task', 'archive', 'archive folder', 'file task archive']),
-e('automation', '<tab>', 'fileTaskArchiveOnlyFromFileTasksFolder', 'settings', 'fileTaskArchiveOnlyFromFileTasksFolder', 'fileTaskArchiveOnlyFromFileTasksFolderDesc', 'toggle', ['file task', 'archive', 'archive scope', 'file task archive']),
-e('automation', '<tab>', 'fileTaskAutoArchiveEnabled', 'settings', 'fileTaskAutoArchiveEnabled', 'fileTaskAutoArchiveEnabledDesc', 'toggle', ['file task', 'archive', 'auto archive', 'file task archive']),
+const ROUTER_DESCRIPTOR_SNAPSHOT = `e('automation', '<tab>', 'fileTaskArchiveFolder', 'settings', 'fileTaskArchiveFolder', 'fileTaskArchiveFolderDesc', 'folder', ['file task', 'archive', 'archive folder', 'fallback archive', 'finished task', 'cancelled task']),
 e('automation', '<tab>', 'fileTaskParentFileTargetMode', 'settings', 'fileTaskFileParentTargetMode', 'fileTaskFileParentTargetModeDesc', 'dropdown', ['new task', 'task creator', 'file task', 'parent', 'parent placement']),
 e('automation', '<tab>', 'fileTaskParentInlineTargetMode', 'settings', 'fileTaskInlineParentTargetMode', 'fileTaskInlineParentTargetModeDesc', 'dropdown', ['new task', 'task creator', 'file task', 'inline task', 'parent', 'parent placement']),
 e('automation', '<tab>', 'fileTasksFolder', 'settings', 'fileTasksFolder', 'fileTasksFolderDesc', 'folder', ['new task', 'task creator', 'file task', 'file task folder']),
@@ -36,7 +31,8 @@ e('automation', '<tab>', 'inlineTaskParentFileHeadingKeyword', 'settings', 'pare
 e('automation', '<tab>', 'inlineTaskParentFileTargetMode', 'settings', 'fileParentTaskTargetMode', 'fileParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'file task', 'parent', 'parent placement']),
 e('automation', '<tab>', 'inlineTaskParentInlineTargetMode', 'settings', 'inlineParentTaskTargetMode', 'inlineParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'parent', 'parent placement', 'inline parent']),
 e('automation', '<tab>', 'inlineTaskSaveMode', 'settings', 'inlineTaskDefaultSavePath', 'inlineTaskDefaultSavePathDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'inline save path', 'active file']),
-e('automation', '<tab>', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileSearchDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),`;
+e('automation', '<tab>', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileSearchDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),
+section('automation', '<tab>', 'fileTaskArchivePipelineLocations', 'settings', 'fileTaskArchivePipelineLocations', 'fileTaskArchivePipelineLocationsDesc', ['file task', 'archive', 'archive folder', 'archive pipeline', 'finished task', 'cancelled task']),`;
 
 function extractMethod(source, methodName, nextMethodName) {
 	const start = source.indexOf(`\tprivate ${methodName}`);
@@ -59,8 +55,8 @@ test('Task Router is the third Tasks page and has native Settings Search wiring'
 	assert.match(settingsTabSource, /tabId === 'tasksTaskRouter'[\s\S]*?this\.renderTasksTaskRouterTab\(contentEl\)/);
 });
 
-test('exactly the 13 existing routing settings belong to Task Router search', () => {
-	const routerEntries = [...registrySource.matchAll(/e\('[^']+', 'tasksTaskRouter', '([^']+)'/g)]
+test('exactly the 11 routing settings belong to Task Router search', () => {
+	const routerEntries = [...registrySource.matchAll(/(?:e|section)\('[^']+', 'tasksTaskRouter', '([^']+)'/g)]
 		.map(match => match[1])
 		.filter(id => ROUTER_SETTING_IDS.includes(id));
 	assert.deepEqual(routerEntries.sort(), [...ROUTER_SETTING_IDS].sort());
@@ -78,6 +74,11 @@ test('exactly the 13 existing routing settings belong to Task Router search', ()
 			`${id} should have exactly one Settings Search entry`,
 		);
 	}
+	for (const retiredId of [
+		'fileTaskAutoArchiveEnabled',
+		'fileTaskArchiveDelaySeconds',
+		'fileTaskArchiveOnlyFromFileTasksFolder',
+	]) assert.doesNotMatch(registrySource, new RegExp(`'${retiredId}'`));
 
 	for (const id of [
 		'inlineTaskDailyNoteAddStartDate',
@@ -189,16 +190,23 @@ test('Task Router preserves the intended docs targets', () => {
 });
 
 test('Pipeline Locations uses labeled native controls with a neutral add action', () => {
-	const routingMethod = extractMethod(settingsTabSource, 'renderFileTaskRoutingSettings', 'renderInlineTaskRoutingSettings');
+	const sharedRenderer = extractMethod(settingsTabSource, 'renderPipelineFolderRuleList', 'renderFileTaskArchiveSettings');
+	const routingMethod = extractMethod(settingsTabSource, 'renderFileTaskRoutingSettings', 'renderTasksFileTasksTab');
+	const archiveMethod = extractMethod(settingsTabSource, 'renderFileTaskArchiveSettings', 'renderWorkspaceTweaksExcludedFolderSettings');
 
-	assert.match(routingMethod, /createDiv\('operon-file-task-pipeline-location-row'\)/);
-	assert.match(routingMethod, /new Obsidian\.DropdownComponent\(rowEl\)/);
-	assert.match(routingMethod, /new Obsidian\.TextComponent\(rowEl\)/);
-	assert.match(routingMethod, /fileTaskPipelineLocationPipeline/);
-	assert.match(routingMethod, /fileTaskPipelineLocationFolder/);
-	assert.match(routingMethod, /createSettingsAddButton\(addRowEl, t\('settings', 'addFileTaskPipelineLocation'\)\)/);
-	assert.match(routingMethod, /operon-file-task-pipeline-location-add-button/);
-	assert.doesNotMatch(routingMethod, /\.setCta\(\)/);
+	assert.match(sharedRenderer, /createDiv\('operon-file-task-pipeline-location-row'\)/);
+	assert.match(sharedRenderer, /new Obsidian\.DropdownComponent\(rowEl\)/);
+	assert.match(sharedRenderer, /new Obsidian\.TextComponent\(rowEl\)/);
+	assert.match(sharedRenderer, /fileTaskPipelineLocationPipeline/);
+	assert.match(sharedRenderer, /fileTaskPipelineLocationFolder/);
+	assert.match(sharedRenderer, /createSettingsAddButton\(options\.addRowEl, options\.addLabel\)/);
+	assert.match(sharedRenderer, /operon-file-task-pipeline-location-add-button/);
+	assert.match(sharedRenderer, /const pipelineId = `\$\{options\.idPrefix\}-\$\{draft \? 'draft' : rule\.pipelineId\}`/);
+	assert.match(sharedRenderer, /const folderId = `\$\{pipelineId\}-folder`/);
+	assert.doesNotMatch(sharedRenderer, /\.setCta\(\)/);
+	assert.match(routingMethod, /renderPipelineFolderRuleList\([\s\S]*?allowIncompleteRules: true[\s\S]*?idPrefix: 'operon-file-task-pipeline-location-creation'/);
+	assert.match(archiveMethod, /renderPipelineFolderRuleList\([\s\S]*?allowIncompleteRules: false[\s\S]*?idPrefix: 'operon-file-task-pipeline-location-archive'/);
+	assert.doesNotMatch(archiveMethod, /fileTaskAutoArchiveEnabled|fileTaskArchiveDelaySeconds|fileTaskArchiveOnlyFromFileTasksFolder/);
 	assert.match(settingsUiSource, /setIcon\(iconEl, 'plus'\)/);
 	assert.match(stylesSource, /\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 24px;/);
 	assert.match(stylesSource, /\.operon-file-task-pipeline-location-row \{[\s\S]*?grid-template-columns: max-content minmax\(180px, 1fr\) max-content minmax\(180px, 1fr\) auto;/);
@@ -211,5 +219,7 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	assert.match(stylesSource, /@media \(max-width: 480px\) \{[\s\S]*?\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding-inline: 12px;/);
 	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /New File Tasks are created/);
 	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /about 30 seconds/);
+	assert.match(englishLocale.settings.fileTaskArchiveFolderDesc, /Leave empty/);
+	assert.match(englishLocale.settings.fileTaskArchivePipelineLocationsDesc, /about 30 seconds/);
 	assert.equal(englishLocale.settings.fileTaskPipelineLocationFolder, 'Folder');
 });

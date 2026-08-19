@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "es",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "Elegir dónde se crean las nuevas ocurrencias de tareas de archivo recurrentes.",
       "fileRepeatDestinationSameFolder": "Misma carpeta que el origen",
       "fileTaskArchive": "Archivar tareas de archivo finalizadas/canceladas",
-      "fileTaskArchiveDelaySeconds": "Retardo de archivado, segundos",
-      "fileTaskArchiveDelaySecondsDesc": "Segundos a esperar después de que una tarea de archivo se finalice o cancele antes de moverla.",
       "fileTaskArchiveFolder": "Carpeta de archivado",
-      "fileTaskArchiveFolderDesc": "Carpeta para las tareas de archivo archivadas. El valor predeterminado es Operon/Archives.",
+      "fileTaskArchiveFolderDesc": "Carpeta de reserva para tareas de archivo terminadas. Déjela vacía para mantener las tareas sin coincidencia en su lugar.",
       "fileTaskArchiveFolderPlaceholder": "p. ej. Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "Archivar solo las tareas dentro de la carpeta de tareas de archivo",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Cuando está activado, Operon solo archiva las tareas de archivo que están actualmente dentro de la carpeta de tareas de archivo configurada.",
+      "fileTaskArchivePipelineLocations": "Ubicaciones de canalización de archivado",
+      "fileTaskArchivePipelineLocationsDesc": "Una ubicación de canalización coincidente tiene prioridad sobre la carpeta de archivado de reserva. Las tareas terminadas se mueven después de unos 30 segundos.",
       "fileTaskAutoArchiveEnabled": "Archivar automáticamente las tareas de archivo finalizadas/canceladas",
       "fileTaskAutoArchiveEnabledDesc": "Cuando está activado, Operon mueve las tareas de archivo finalizadas o canceladas a la carpeta de archivado después del retardo configurado.",
       "fileTaskConversion": "Conversión de tareas de archivo",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "a060b6248c3d69cb868e0d699a87142db1756d2f1acddc4261f123417cf91b10"
+  "sourceVersion": "e9412a9ec85727da8ed03ed70bf00295d459854d153cb9913e11f237b71c86da"
 }

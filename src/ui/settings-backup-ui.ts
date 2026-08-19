@@ -100,6 +100,7 @@ const SETTINGS_BACKUP_VAULT_REFERENCE_LABELS = {
 	fileTasksFolder: { namespace: 'settings', key: 'fileTasksFolder' },
 	fileTaskPipelineLocations: { namespace: 'settings', key: 'fileTaskPipelineLocations' },
 	fileTaskArchiveFolder: { namespace: 'settings', key: 'fileTaskArchiveFolder' },
+	fileTaskArchivePipelineLocations: { namespace: 'settings', key: 'fileTaskArchivePipelineLocations' },
 	inlineTaskTargetFile: { namespace: 'settings', key: 'inlineTaskTargetFile' },
 	projectSerialScopes: { namespace: 'settings', key: 'projectSerials' },
 	workspaceTweaksPropertiesExcludedFolders: { namespace: 'settings', key: 'workspaceTweaksPropertiesExcludedFolders' },

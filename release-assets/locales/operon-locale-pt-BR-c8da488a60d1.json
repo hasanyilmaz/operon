@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "pt-BR",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "Escolha onde as novas ocorrências de tarefas em arquivo recorrentes serão criadas.",
       "fileRepeatDestinationSameFolder": "Mesma pasta da origem",
       "fileTaskArchive": "Arquivar tarefas em arquivo concluídas ou canceladas",
-      "fileTaskArchiveDelaySeconds": "Atraso do arquivo, segundos",
-      "fileTaskArchiveDelaySecondsDesc": "Segundos para esperar após uma tarefa em arquivo ser concluída ou cancelada antes de movê-la.",
       "fileTaskArchiveFolder": "Pasta de arquivo",
-      "fileTaskArchiveFolderDesc": "Pasta para tarefas em arquivo arquivadas. O padrão é Operon/Archives.",
+      "fileTaskArchiveFolderDesc": "Pasta de fallback para tarefas em arquivo concluídas. Deixe vazia para manter tarefas sem correspondência no lugar.",
       "fileTaskArchiveFolderPlaceholder": "Ex.: Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "Arquivar apenas tarefas dentro da pasta Tarefas em Arquivo",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Ao ser ativado, Operon só arquiva tarefas em arquivo que estão atualmente dentro da pasta de Tarefas em Arquivo configurada.",
+      "fileTaskArchivePipelineLocations": "Locais do pipeline de arquivamento",
+      "fileTaskArchivePipelineLocationsDesc": "Um local de pipeline correspondente tem prioridade sobre a pasta de arquivamento de fallback. As tarefas concluídas são movidas após cerca de 30 segundos.",
       "fileTaskAutoArchiveEnabled": "Arquivar automaticamente tarefas em arquivo concluídas ou canceladas",
       "fileTaskAutoArchiveEnabledDesc": "Quando ativado, o Operon move as tarefas em arquivo concluídas ou canceladas para a pasta de arquivo após o atraso configurado.",
       "fileTaskConversion": "Conversão de Tarefa em Arquivo",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "d8845faeebbf344d9beefa972b9d912ee833c452f0c9bba47563c683ba9e287e"
+  "sourceVersion": "b006676e238cfd03070fc1d679a07bba186b0c73be795a25d572ddef686fcc7b"
 }

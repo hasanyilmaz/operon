@@ -7,6 +7,7 @@ import {
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import { buildOperonPluginStoragePath } from './operon-storage-paths';
+import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 
 const TASK_AUTOMATION_POLICY_FILE_NAME = 'task-automation-policy.json';
 const TASK_AUTOMATION_POLICY_STORE_VERSION = 1;
@@ -18,6 +19,7 @@ export type TaskAutomationPolicyStoreSettings = Pick<
 	| 'newOccurrencePosition'
 	| 'fileTaskAutoArchiveEnabled'
 	| 'fileTaskArchiveFolder'
+	| 'fileTaskArchivePipelineLocations'
 	| 'fileTaskArchiveDelaySeconds'
 	| 'fileTaskArchiveOnlyFromFileTasksFolder'
 	| 'fileRepeatDestination'
@@ -41,6 +43,7 @@ const TASK_AUTOMATION_POLICY_STORE_SETTING_KEYS = [
 	'newOccurrencePosition',
 	'fileTaskAutoArchiveEnabled',
 	'fileTaskArchiveFolder',
+	'fileTaskArchivePipelineLocations',
 	'fileTaskArchiveDelaySeconds',
 	'fileTaskArchiveOnlyFromFileTasksFolder',
 	'fileRepeatDestination',
@@ -57,6 +60,7 @@ const TASK_AUTOMATION_POLICY_STORE_SETTING_KEYS = [
 function cloneSettings(settings: TaskAutomationPolicyStoreSettings): TaskAutomationPolicyStoreSettings {
 	return {
 		...settings,
+		fileTaskArchivePipelineLocations: settings.fileTaskArchivePipelineLocations.map(rule => ({ ...rule })),
 		estimateAutoReallocation: false,
 	};
 }
@@ -93,6 +97,14 @@ function readStoreData(
 		newOccurrencePosition: readString(raw.newOccurrencePosition, fallback.newOccurrencePosition) as TaskAutomationPolicyStoreSettings['newOccurrencePosition'],
 		fileTaskAutoArchiveEnabled: readBoolean(raw.fileTaskAutoArchiveEnabled, fallback.fileTaskAutoArchiveEnabled),
 		fileTaskArchiveFolder: readString(raw.fileTaskArchiveFolder, fallback.fileTaskArchiveFolder),
+		fileTaskArchivePipelineLocations: Array.isArray(raw.fileTaskArchivePipelineLocations)
+			? raw.fileTaskArchivePipelineLocations
+				.filter((item): item is { pipelineId: string; folder: string } => !!item && typeof item === 'object'
+					&& typeof (item as { pipelineId?: unknown }).pipelineId === 'string'
+					&& typeof (item as { folder?: unknown }).folder === 'string')
+				.map(item => ({ pipelineId: item.pipelineId.trim(), folder: item.folder.trim() }))
+				.filter(item => !!item.pipelineId && isSafeVaultRelativePath(item.folder))
+			: fallback.fileTaskArchivePipelineLocations.map(rule => ({ ...rule })),
 		fileTaskArchiveDelaySeconds: readNumber(raw.fileTaskArchiveDelaySeconds, fallback.fileTaskArchiveDelaySeconds),
 		fileTaskArchiveOnlyFromFileTasksFolder: readBoolean(raw.fileTaskArchiveOnlyFromFileTasksFolder, fallback.fileTaskArchiveOnlyFromFileTasksFolder),
 		fileRepeatDestination: readString(raw.fileRepeatDestination, fallback.fileRepeatDestination) as TaskAutomationPolicyStoreSettings['fileRepeatDestination'],

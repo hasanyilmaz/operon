@@ -1,7 +1,7 @@
 import type { DataAdapter } from 'obsidian';
 
 type StorageAdapter = Pick<DataAdapter, 'exists' | 'write' | 'remove'>
-	& Partial<Pick<DataAdapter, 'process' | 'rename'>>;
+	& Partial<Pick<DataAdapter, 'process' | 'read' | 'rename'>>;
 
 export interface RecoveredStoreWriteOptions {
 	forceRecoveredWrite?: boolean;
@@ -9,6 +9,7 @@ export interface RecoveredStoreWriteOptions {
 
 export interface SafeTextWriteOptions {
 	forceAtomicReplacement?: boolean;
+	verifyAtomicReplacement?: boolean;
 }
 
 function buildTempPath(path: string): string {
@@ -37,6 +38,9 @@ export async function writeTextSafely(
 		await adapter.write(path, data);
 		return;
 	}
+	if (options.verifyAtomicReplacement === true && typeof adapter.read !== 'function') {
+		throw new Error('Verified atomic replacement requires adapter read support');
+	}
 
 	const tempPath = buildTempPath(path);
 	const backupPath = buildTempPath(`${path}.replace-backup`);
@@ -45,12 +49,18 @@ export async function writeTextSafely(
 	try {
 		await adapter.write(tempPath, data);
 		tempWritten = true;
+		if (options.verifyAtomicReplacement === true && await adapter.read!(tempPath) !== data) {
+			throw new Error('Atomic replacement temporary write was not observed exactly');
+		}
 		if (await adapter.exists(path)) {
 			await adapter.rename(path, backupPath);
 			originalMoved = true;
 		}
 		await adapter.rename(tempPath, path);
 		tempWritten = false;
+		if (options.verifyAtomicReplacement === true && await adapter.read!(path) !== data) {
+			throw new Error('Atomic replacement target write was not observed exactly');
+		}
 		if (originalMoved) {
 			try {
 				await adapter.remove(backupPath);
@@ -62,7 +72,8 @@ export async function writeTextSafely(
 	} catch (error) {
 		if (originalMoved) {
 			try {
-				if (!await adapter.exists(path) && await adapter.exists(backupPath)) {
+				if (await adapter.exists(backupPath)) {
+					if (await adapter.exists(path)) await adapter.remove(path);
 					await adapter.rename(backupPath, path);
 					originalMoved = false;
 				}

@@ -65,15 +65,17 @@ class MemoryPluginData {
 class MemoryStorageAdapter {
 	readonly files = new Map<string, string>();
 	failBackupWrite = false;
+	corruptBackupRead = false;
 
 	async exists(path: string): Promise<boolean> { return this.files.has(path); }
 	async read(path: string): Promise<string> {
 		const value = this.files.get(path);
 		if (value === undefined) throw new Error('MISSING');
+		if (this.corruptBackupRead && path.includes('.bak')) return `${value}\nCORRUPTED`;
 		return value;
 	}
 	async write(path: string, value: string): Promise<void> {
-		if (this.failBackupWrite && path.includes('.task-creation-profile-v2-') && path.includes('.bak')) {
+		if (this.failBackupWrite && path.includes('.bak')) {
 			throw new Error('INJECTED_BACKUP_FAILURE');
 		}
 		this.files.set(path, value);
@@ -96,6 +98,13 @@ class MemoryStorageAdapter {
 function legacyPeriodicSettingsPackage(): OperonDataPackageV1 {
 	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
 	dataPackage.settings.settingsVersion = 111;
+	Object.assign(dataPackage.automation.taskAutomationPolicy, {
+		fileTaskAutoArchiveEnabled: true,
+		fileTaskArchiveFolder: 'Legacy/Archive',
+		fileTaskArchivePipelineLocations: [{ pipelineId: 'legacy-pipeline', folder: 'Legacy/Pipeline archive' }],
+		fileTaskArchiveDelaySeconds: 45,
+		fileTaskArchiveOnlyFromFileTasksFolder: true,
+	});
 	dataPackage.ui.taskCreationProfile.version = 1;
 	for (const key of [
 		'manageDailyNotesWithOperon', 'dailyNoteFormat', 'dailyNoteTemplate', 'dailyNoteFolder',
@@ -105,6 +114,133 @@ function legacyPeriodicSettingsPackage(): OperonDataPackageV1 {
 		delete (dataPackage.ui.taskCreationProfile as unknown as Record<string, unknown>)[key];
 	}
 	return dataPackage;
+}
+
+function legacyArchiveVersionGatedPackage(): OperonDataPackageV1 {
+	const dataPackage = legacyPeriodicSettingsPackage();
+	dataPackage.settings.settingsVersion = 100;
+	dataPackage.ui.contextualMenu.contextualMenuActionAllowlist = dataPackage.ui.contextualMenu.contextualMenuActionAllowlist
+		.filter(actionId => actionId !== 'fixedReminder' && actionId !== 'relativeReminder');
+	const legacyReminderMapping = dataPackage.taxonomy.keyMappings.system
+		.find(mapping => mapping.canonicalKey === 'reminderDatetimes');
+	if (!legacyReminderMapping) throw new Error('Legacy fixture needs the reminderDatetimes system mapping.');
+	legacyReminderMapping.hideInFileTaskView = true;
+	return dataPackage;
+}
+
+function legacyArchiveOnlyPackage(): OperonDataPackageV1 {
+	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS);
+	dataPackage.settings.settingsVersion = 113;
+	Object.assign(dataPackage.automation.taskAutomationPolicy, {
+		fileTaskAutoArchiveEnabled: true,
+		fileTaskArchiveFolder: 'Legacy/Archive',
+		fileTaskArchivePipelineLocations: [{ pipelineId: 'pl_project', folder: 'Legacy/Project archive' }],
+		fileTaskArchiveDelaySeconds: 45,
+		fileTaskArchiveOnlyFromFileTasksFolder: true,
+	});
+	return dataPackage;
+}
+
+function assertArchiveRoutingMigrated(packageValue: unknown): void {
+	const dataPackage = packageValue as OperonDataPackageV1;
+	assert.equal(dataPackage.settings.settingsVersion, 114);
+	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskArchiveFolder, '');
+	assert.deepEqual(dataPackage.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations, []);
+	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskAutoArchiveEnabled, false);
+	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskArchiveDelaySeconds, 30);
+	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskArchiveOnlyFromFileTasksFolder, false);
+}
+
+async function assertArchiveOnlyStartupMigrationFailureMatrix(): Promise<void> {
+	const paths = buildOperonStoragePaths('.obsidian');
+	const source = legacyArchiveOnlyPackage();
+	const previousWarn = console.warn;
+	console.warn = () => {};
+	try {
+	const pluginData = new MemoryPluginData(source);
+	const adapter = new MemoryStorageAdapter();
+	const firstStore = new OperonDataPackageStore(adapter, paths, pluginData);
+	await firstStore.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(pluginData.saveCalls, 1, 'direct v113 archive migration must publish one canonical candidate');
+	assert.equal(adapter.backupEntries().length, 1, 'direct archive migration must retain one immutable source backup');
+	assert.deepEqual(JSON.parse(adapter.backupEntries()[0][1]), source, 'archive-only backup must retain the exact v113 source');
+	assertArchiveRoutingMigrated(pluginData.value);
+	const firstCanonical = clone(pluginData.value);
+	const secondStore = new OperonDataPackageStore(adapter, paths, pluginData);
+	await secondStore.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(pluginData.saveCalls, 1, 'v114 archive migration must be idempotent on the second ordinary startup');
+	assert.deepEqual(pluginData.value, firstCanonical, 'second ordinary startup must preserve the v114 archive policy');
+
+	const backupFailureData = new MemoryPluginData(source);
+	const backupFailureAdapter = new MemoryStorageAdapter();
+	backupFailureAdapter.failBackupWrite = true;
+	const backupFailureStore = new OperonDataPackageStore(backupFailureAdapter, paths, backupFailureData);
+	await backupFailureStore.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(backupFailureData.saveCalls, 0, 'archive backup failure must prevent its canonical write');
+	assert.equal(backupFailureStore.canPersist(), false, 'archive backup failure must fail closed');
+	assert.deepEqual(backupFailureData.value, source);
+
+	const backupVerifyFailureData = new MemoryPluginData(source);
+	const backupVerifyFailureAdapter = new MemoryStorageAdapter();
+	backupVerifyFailureAdapter.corruptBackupRead = true;
+	const backupVerifyFailureStore = new OperonDataPackageStore(backupVerifyFailureAdapter, paths, backupVerifyFailureData);
+	await backupVerifyFailureStore.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(backupVerifyFailureData.saveCalls, 0, 'archive backup readback failure must prevent its canonical write');
+	assert.equal(backupVerifyFailureStore.canPersist(), false, 'archive backup readback failure must fail closed');
+	assert.deepEqual(backupVerifyFailureData.value, source);
+
+	for (const saveMode of ['throw-before', 'resolve-without-write'] as const) {
+		const failedData = new MemoryPluginData(source);
+		failedData.saveMode = saveMode;
+		const failedAdapter = new MemoryStorageAdapter();
+		const failedStore = new OperonDataPackageStore(failedAdapter, paths, failedData);
+		await failedStore.initialize(DEFAULT_SETTINGS, 'en');
+		assert.equal(failedData.saveCalls, 1, `${saveMode} archive write must be attempted once after backup`);
+		assert.equal(failedStore.canPersist(), false, `${saveMode} archive write must fail closed`);
+		assert.deepEqual(failedData.value, source, `${saveMode} archive write must preserve the old canonical source`);
+		assert.equal(failedAdapter.backupEntries().length, 1, `${saveMode} archive write must retain exact recovery evidence`);
+	}
+
+	const acknowledgedLossData = new MemoryPluginData(source);
+	acknowledgedLossData.saveMode = 'commit-then-throw';
+	const acknowledgedLossAdapter = new MemoryStorageAdapter();
+	const acknowledgedLossStore = new OperonDataPackageStore(acknowledgedLossAdapter, paths, acknowledgedLossData);
+	await acknowledgedLossStore.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(acknowledgedLossStore.canPersist(), true, 'observed archive candidate survives acknowledgement loss');
+	assertArchiveRoutingMigrated(acknowledgedLossData.value);
+	await new OperonDataPackageStore(acknowledgedLossAdapter, paths, acknowledgedLossData).initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(acknowledgedLossData.saveCalls, 1, 'observed archive candidate is idempotent on the second startup');
+
+	const observationFailureData = new MemoryPluginData(source);
+	observationFailureData.throwOnLoadCall = 2;
+	const observationFailureAdapter = new MemoryStorageAdapter();
+	const observationFailureStore = new OperonDataPackageStore(observationFailureAdapter, paths, observationFailureData);
+	await observationFailureStore.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(observationFailureStore.canPersist(), false, 'unreadable post-write archive candidate must fail closed in the first process');
+	assert.match(observationFailureStore.getWriteSuspensionReason() ?? '', /could not be verified/u);
+	assert.equal(observationFailureData.saveCalls, 1, 'unreadable post-write observation must not replay its canonical write');
+	assertArchiveRoutingMigrated(observationFailureData.value);
+	observationFailureData.throwOnLoadCall = null;
+	const observationFailureRestart = new OperonDataPackageStore(observationFailureAdapter, paths, observationFailureData);
+	await observationFailureRestart.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(observationFailureRestart.canPersist(), true, 'restart must observe the already committed v114 archive candidate');
+	assert.equal(observationFailureData.saveCalls, 1, 'restart must not duplicate an already committed archive migration write');
+	assertArchiveRoutingMigrated(observationFailureData.value);
+
+	const ambiguousData = new MemoryPluginData(source);
+	ambiguousData.saveMode = 'ambiguous';
+	const ambiguousAdapter = new MemoryStorageAdapter();
+	const ambiguousStore = new OperonDataPackageStore(ambiguousAdapter, paths, ambiguousData);
+	await ambiguousStore.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(ambiguousStore.canPersist(), false, 'partial archive write must retain fail-closed recovery evidence');
+	assert.equal(ambiguousAdapter.backupEntries().length, 1, 'partial archive write must retain its immutable source backup');
+	const ambiguousRestart = new OperonDataPackageStore(ambiguousAdapter, paths, ambiguousData);
+	await ambiguousRestart.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(ambiguousRestart.canPersist(), false, 'partial archive write must remain fail-closed after restart');
+	assert.equal(ambiguousData.saveCalls, 1, 'partial archive restart must not replace ambiguous canonical data');
+	} finally {
+		console.warn = previousWarn;
+	}
 }
 
 async function assertStartupMigrationLane(): Promise<void> {
@@ -151,6 +287,13 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const preservedOutsideProfile = clone(legacy) as unknown as Record<string, unknown>;
 	delete (preservedOutsideProfile.settings as Record<string, unknown>).settingsVersion;
 	delete (preservedOutsideProfile.ui as Record<string, unknown>).taskCreationProfile;
+	for (const key of [
+		'fileTaskAutoArchiveEnabled',
+		'fileTaskArchiveFolder',
+		'fileTaskArchivePipelineLocations',
+		'fileTaskArchiveDelaySeconds',
+		'fileTaskArchiveOnlyFromFileTasksFolder',
+	]) delete ((preservedOutsideProfile.automation as Record<string, unknown>).taskAutomationPolicy as Record<string, unknown>)[key];
 	const pluginData = new MemoryPluginData(legacy);
 	const adapter = new MemoryStorageAdapter();
 	const firstStore = new OperonDataPackageStore(adapter, paths, pluginData);
@@ -163,7 +306,12 @@ async function assertStartupMigrationLane(): Promise<void> {
 		'backup must contain the exact pre-migration package',
 	);
 	const firstCanonical = clone(pluginData.value) as OperonDataPackageV1;
-	assert.equal(firstCanonical.settings.settingsVersion, 113);
+	assert.equal(firstCanonical.settings.settingsVersion, 114);
+	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskArchiveFolder, '');
+	assert.deepEqual(firstCanonical.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations, []);
+	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskAutoArchiveEnabled, false);
+	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskArchiveDelaySeconds, 30);
+	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskArchiveOnlyFromFileTasksFolder, false);
 	assert.equal(firstCanonical.ui.taskCreationProfile.version, 3);
 	assert.equal(firstCanonical.ui.taskCreationProfile.manageDailyNotesWithOperon, false);
 	assert.equal(firstCanonical.ui.taskCreationProfile.weeklyNoteFormat, 'GGGG-[W]WW');
@@ -187,6 +335,13 @@ async function assertStartupMigrationLane(): Promise<void> {
 	const canonicalOutsideProfile = clone(firstCanonical) as unknown as Record<string, unknown>;
 	delete (canonicalOutsideProfile.settings as Record<string, unknown>).settingsVersion;
 	delete (canonicalOutsideProfile.ui as Record<string, unknown>).taskCreationProfile;
+	for (const key of [
+		'fileTaskAutoArchiveEnabled',
+		'fileTaskArchiveFolder',
+		'fileTaskArchivePipelineLocations',
+		'fileTaskArchiveDelaySeconds',
+		'fileTaskArchiveOnlyFromFileTasksFolder',
+	]) delete ((canonicalOutsideProfile.automation as Record<string, unknown>).taskAutomationPolicy as Record<string, unknown>)[key];
 	assert.deepEqual(
 		canonicalOutsideProfile,
 		preservedOutsideProfile,
@@ -415,10 +570,79 @@ async function assertStartupMigrationLane(): Promise<void> {
 	assert.equal(futureData.saveCalls, 0, 'destructive resume attempts must never rewrite a future profile');
 }
 
+async function assertLegacyArchiveVersionMigrationLane(): Promise<void> {
+	const pluginData = new MemoryPluginData(legacyArchiveVersionGatedPackage());
+	const store = new OperonDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData);
+	await store.initialize(DEFAULT_SETTINGS, 'en');
+	const migrated = clone(pluginData.value) as OperonDataPackageV1;
+	assert.equal(migrated.settings.settingsVersion, 114);
+	assert.equal(migrated.automation.taskAutomationPolicy.fileTaskArchiveFolder, '');
+	assert.deepEqual(migrated.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations, []);
+	assert.equal(
+		migrated.ui.contextualMenu.contextualMenuActionAllowlist.includes('fixedReminder'),
+		true,
+		'a v100 source must still receive the v111 contextual-menu migration before it is stamped v114',
+	);
+	assert.equal(
+		migrated.taxonomy.keyMappings.system.find(mapping => mapping.canonicalKey === 'reminderDatetimes')?.hideInFileTaskView,
+		false,
+		'a v100 source must still receive the v108 reminder visibility migration before it is stamped v114',
+	);
+	const writesAfterFirstStartup = pluginData.saveCalls;
+	await new OperonDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData)
+		.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(pluginData.saveCalls, writesAfterFirstStartup, 'the normalized v114 candidate must not rerun legacy migration');
+}
+
+async function assertLegacyArchiveReloadMigrationLane(): Promise<void> {
+	const pipelineId = DEFAULT_SETTINGS.pipelines[0]?.id;
+	assert.ok(pipelineId, 'reload fixture requires a default pipeline ID');
+	const currentSettings = migrateSettings({
+		...DEFAULT_SETTINGS,
+		fileTaskArchiveFolder: 'Current/Archive',
+		fileTaskArchivePipelineLocations: [{ pipelineId, folder: 'Current/Pipeline archive' }],
+	});
+	const currentPackage = buildOperonDataPackageFromSettings(currentSettings);
+	const pluginData = new MemoryPluginData(currentPackage);
+	const store = new OperonDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData);
+	await store.initialize(DEFAULT_SETTINGS, 'en');
+	assert.equal(pluginData.saveCalls, 0, 'a current fixture must not write before the delayed reload');
+
+	const delayedLegacyPackage = legacyArchiveVersionGatedPackage();
+	pluginData.value = clone(delayedLegacyPackage);
+	const result = await store.reloadCanonicalDataPackage(DEFAULT_SETTINGS);
+	assert.equal(result.changed, true, 'the delayed legacy package must publish one normalized canonical candidate');
+	assert.equal(pluginData.saveCalls, 1, 'the delayed legacy package must be canonicalized exactly once');
+	const reloaded = clone(pluginData.value) as OperonDataPackageV1;
+	assert.equal(reloaded.settings.settingsVersion, 114);
+	assert.equal(reloaded.automation.taskAutomationPolicy.fileTaskArchiveFolder, 'Current/Archive');
+	assert.deepEqual(
+		reloaded.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations,
+		[{ pipelineId, folder: 'Current/Pipeline archive' }],
+		'a delayed pre-v114 package must preserve the current v114 archive policy',
+	);
+	assert.equal(
+		reloaded.ui.contextualMenu.contextualMenuActionAllowlist.includes('fixedReminder'),
+		true,
+		'a delayed v100 package must receive the v111 contextual-menu migration before archive policy restoration',
+	);
+	assert.equal(
+		reloaded.taxonomy.keyMappings.system.find(mapping => mapping.canonicalKey === 'reminderDatetimes')?.hideInFileTaskView,
+		false,
+		'a delayed v100 package must receive the v108 reminder visibility migration before archive policy restoration',
+	);
+	const runtimeSettings = store.getSettings(DEFAULT_SETTINGS);
+	assert.equal(runtimeSettings.fileTaskArchiveFolder, 'Current/Archive');
+	assert.deepEqual(runtimeSettings.fileTaskArchivePipelineLocations, [{ pipelineId, folder: 'Current/Pipeline archive' }]);
+}
+
 async function run(): Promise<void> {
-	assert.equal(CURRENT_SETTINGS_VERSION, 113);
+	assert.equal(CURRENT_SETTINGS_VERSION, 114);
 	assert.deepEqual({
 		fileTaskPipelineLocations: DEFAULT_SETTINGS.fileTaskPipelineLocations,
+		fileTaskArchiveFolder: DEFAULT_SETTINGS.fileTaskArchiveFolder,
+		fileTaskArchivePipelineLocations: DEFAULT_SETTINGS.fileTaskArchivePipelineLocations,
+		fileTaskArchiveDelaySeconds: DEFAULT_SETTINGS.fileTaskArchiveDelaySeconds,
 		moveConvertedNotesToPipelineLocation: DEFAULT_SETTINGS.moveConvertedNotesToPipelineLocation,
 		manageDailyNotesWithOperon: DEFAULT_SETTINGS.manageDailyNotesWithOperon,
 		dailyNoteFormat: DEFAULT_SETTINGS.dailyNoteFormat,
@@ -432,6 +656,9 @@ async function run(): Promise<void> {
 		createWeeklyNotesAsOperonTask: DEFAULT_SETTINGS.createWeeklyNotesAsOperonTask,
 	}, {
 		fileTaskPipelineLocations: [],
+		fileTaskArchiveFolder: '',
+		fileTaskArchivePipelineLocations: [],
+		fileTaskArchiveDelaySeconds: 30,
 		moveConvertedNotesToPipelineLocation: false,
 		manageDailyNotesWithOperon: false,
 		dailyNoteFormat: 'YYYY-MM-DD',
@@ -446,7 +673,12 @@ async function run(): Promise<void> {
 	});
 
 	const migratedLegacy = migrateSettings({ settingsVersion: 111 });
-	assert.equal(migratedLegacy.settingsVersion, 113);
+	assert.equal(migratedLegacy.settingsVersion, 114);
+	assert.equal(migratedLegacy.fileTaskArchiveFolder, '');
+	assert.deepEqual(migratedLegacy.fileTaskArchivePipelineLocations, []);
+	assert.equal(migratedLegacy.fileTaskAutoArchiveEnabled, false);
+	assert.equal(migratedLegacy.fileTaskArchiveDelaySeconds, 30);
+	assert.equal(migratedLegacy.fileTaskArchiveOnlyFromFileTasksFolder, false);
 	assert.equal(migratedLegacy.manageDailyNotesWithOperon, false);
 	assert.equal(migratedLegacy.dailyNoteFormat, 'YYYY-MM-DD');
 	assert.equal(migratedLegacy.manageWeeklyNotesWithOperon, false);
@@ -549,6 +781,9 @@ async function run(): Promise<void> {
 	}
 
 	await assertStartupMigrationLane();
+	await assertArchiveOnlyStartupMigrationFailureMatrix();
+	await assertLegacyArchiveVersionMigrationLane();
+	await assertLegacyArchiveReloadMigrationLane();
 
 	console.log('Periodic Note settings persistence: passed');
 }

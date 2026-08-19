@@ -5159,123 +5159,28 @@ export class OperonSettingsTab extends PluginSettingTab {
 			.setDesc(t('settings', 'fileTaskPipelineLocationsDesc'));
 		pipelineLocationsHeading.settingEl.addClass('operon-settings-subsection-heading');
 		const pipelineRowsEl = defaultLocationSection.createDiv('operon-file-task-pipeline-location-rows');
-		let draftRowOpen = false;
+		const addRowEl = defaultLocationSection.createDiv('operon-file-task-pipeline-location-add-row');
+		addRowEl.addClass('operon-settings-add-row');
+		let draft: FileTaskPipelineLocationRule | null = null;
 		const saveLocations = async (): Promise<void> => {
 			pruneExcludedFolderConflicts();
 			await this.saveSettings();
 			this.applyPendingSettingsChange();
 			await reindexAfterExcludedFolderPrune();
 		};
-		const renderPipelineRows = (): void => {
-			pipelineRowsEl.empty();
-			const usedIds = new Set(this.settings.fileTaskPipelineLocations.map(rule => rule.pipelineId));
-			const rules: Array<FileTaskPipelineLocationRule | null> = [
-				...this.settings.fileTaskPipelineLocations,
-				...(draftRowOpen ? [null] : []),
-			];
-			for (const rule of rules) {
-				const rowEl = pipelineRowsEl.createDiv('operon-file-task-pipeline-location-row');
-				if (!rule) rowEl.addClass('is-draft');
-				const pipelineId = `operon-file-task-pipeline-location-${rule?.pipelineId ?? 'draft'}`;
-				rowEl.createEl('label', {
-					text: `${t('settings', 'fileTaskPipelineLocationPipeline')}:`,
-					cls: 'operon-file-task-pipeline-location-label operon-file-task-pipeline-location-pipeline-label',
-					attr: { for: pipelineId },
-				});
-				const pipelineDropdown = new Obsidian.DropdownComponent(rowEl);
-				pipelineDropdown.selectEl.id = pipelineId;
-				pipelineDropdown.selectEl.addClass('operon-file-task-pipeline-location-select');
-				pipelineDropdown.addOption('', t('settings', 'fileTaskPipelineLocationSelectPipeline'));
-				for (const pipeline of this.settings.pipelines) {
-					if (!rule && usedIds.has(pipeline.id)) continue;
-					if (rule && usedIds.has(pipeline.id) && pipeline.id !== rule.pipelineId) continue;
-					pipelineDropdown.addOption(pipeline.id, pipeline.name);
-				}
-				pipelineDropdown.setValue(rule?.pipelineId ?? '');
-				pipelineDropdown.onChange(settingsAsyncHandler('settings pipeline file task location selection failed', async pipelineId => {
-					if (!pipelineId) return;
-					if (rule) {
-						this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
-							candidate.pipelineId === rule.pipelineId ? { ...candidate, pipelineId } : candidate,
-						);
-					} else {
-						this.settings.fileTaskPipelineLocations = [
-							...this.settings.fileTaskPipelineLocations,
-							{ pipelineId, folder: '' },
-						];
-						draftRowOpen = false;
-					}
-					await saveLocations();
-					renderPipelineRows();
-				}));
-				if (rule) {
-					const folderId = `${pipelineId}-folder`;
-					rowEl.createEl('label', {
-						text: `${t('settings', 'fileTaskPipelineLocationFolder')}:`,
-						cls: 'operon-file-task-pipeline-location-label operon-file-task-pipeline-location-folder-label',
-						attr: { for: folderId },
-					});
-					const folderText = new Obsidian.TextComponent(rowEl);
-					folderText.inputEl.id = folderId;
-					folderText.inputEl.addClass('operon-file-task-pipeline-location-folder');
-					folderText.setPlaceholder(t('settings', 'fileTasksFolderPlaceholder'));
-					folderText.setValue(rule.folder);
-					const commit = settingsAsyncHandler('settings pipeline file task folder save failed', async () => {
-						const folder = folderText.getValue().trim();
-						if (folder && !isSafeVaultRelativePath(folder)) {
-							new Notice(t('settings', 'fileTaskPipelineLocationFolderInvalid'));
-							folderText.setValue(rule.folder);
-							return;
-						}
-						if (folder === rule.folder) return;
-						this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
-							candidate.pipelineId === rule.pipelineId ? { ...candidate, folder } : candidate,
-						);
-						await saveLocations();
-					});
-					folderText.inputEl.addEventListener('blur', commit);
-					folderText.inputEl.addEventListener('keydown', event => {
-						if (event.key === 'Enter') {
-							event.preventDefault();
-							void commit();
-						}
-					});
-					new FolderSuggest(this.app, folderText.inputEl, settingsAsyncHandler('settings pipeline file task folder selection failed', async folder => {
-						folderText.setValue(folder.path);
-						this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
-							candidate.pipelineId === rule.pipelineId ? { ...candidate, folder: folder.path } : candidate,
-						);
-						await saveLocations();
-					}));
-				}
-				const removeButton = rowEl.createEl('button', {
-					cls: 'clickable-icon operon-file-task-pipeline-location-remove',
-					attr: {
-						type: 'button',
-						'aria-label': t('settings', 'fileTaskPipelineLocationRemove'),
-					},
-				});
-				setIcon(removeButton, rule ? 'trash-2' : 'x');
-				setTooltip(removeButton, t('settings', 'fileTaskPipelineLocationRemove'));
-				removeButton.addEventListener('click', settingsAsyncHandler('settings pipeline file task location removal failed', async () => {
-					if (rule) {
-						this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.filter(candidate => candidate.pipelineId !== rule.pipelineId);
-						await saveLocations();
-					} else {
-						draftRowOpen = false;
-					}
-					renderPipelineRows();
-				}));
-			}
-		};
-		const addRowEl = defaultLocationSection.createDiv('operon-file-task-pipeline-location-add-row');
-		const addButton = createSettingsAddButton(addRowEl, t('settings', 'addFileTaskPipelineLocation'));
-		addButton.addClass('operon-file-task-pipeline-location-add-button');
-		addButton.addEventListener('click', () => {
-			draftRowOpen = true;
-			renderPipelineRows();
+		this.renderPipelineFolderRuleList({
+			rowsEl: pipelineRowsEl,
+			addRowEl,
+			getRules: () => this.settings.fileTaskPipelineLocations,
+			setRules: rules => { this.settings.fileTaskPipelineLocations = rules; },
+			getDraft: () => draft,
+			setDraft: next => { draft = next; },
+			allowIncompleteRules: true,
+			idPrefix: 'operon-file-task-pipeline-location-creation',
+			folderPlaceholder: t('settings', 'fileTasksFolderPlaceholder'),
+			addLabel: t('settings', 'addFileTaskPipelineLocation'),
+			save: saveLocations,
 		});
-		renderPipelineRows();
 		this.renderBoundToggleSetting(
 			defaultLocationSection,
 			t('settings', 'moveConvertedNotesToPipelineLocation'),
@@ -12919,6 +12824,152 @@ export class OperonSettingsTab extends PluginSettingTab {
 		updatePreview(String(this.settings[key] ?? ''));
 	}
 
+	private renderPipelineFolderRuleList(options: {
+		rowsEl: HTMLElement;
+		addRowEl: HTMLElement;
+		getRules: () => readonly FileTaskPipelineLocationRule[];
+		setRules: (rules: FileTaskPipelineLocationRule[]) => void;
+		getDraft: () => FileTaskPipelineLocationRule | null;
+		setDraft: (draft: FileTaskPipelineLocationRule | null) => void;
+		allowIncompleteRules: boolean;
+		idPrefix: string;
+		folderPlaceholder: string;
+		addLabel: string;
+		save: () => Promise<void>;
+	}): void {
+		const render = (): void => {
+			options.rowsEl.empty();
+			options.addRowEl.empty();
+			const rules = options.getRules().map(rule => ({ ...rule }));
+			const usedIds = new Set(rules.map(rule => rule.pipelineId));
+			const entries: Array<{ rule: FileTaskPipelineLocationRule; draft: boolean }> = [
+				...rules.map(rule => ({ rule, draft: false })),
+				...(options.getDraft() ? [{ rule: options.getDraft()!, draft: true }] : []),
+			];
+
+			for (const entry of entries) {
+				const { rule, draft } = entry;
+				const rowEl = options.rowsEl.createDiv('operon-file-task-pipeline-location-row');
+				if (draft) rowEl.addClass('is-draft');
+				const pipelineId = `${options.idPrefix}-${draft ? 'draft' : rule.pipelineId}`;
+				rowEl.createEl('label', {
+					text: `${t('settings', 'fileTaskPipelineLocationPipeline')}:`,
+					cls: 'operon-file-task-pipeline-location-label operon-file-task-pipeline-location-pipeline-label',
+					attr: { for: pipelineId },
+				});
+				const pipelineDropdown = new Obsidian.DropdownComponent(rowEl);
+				pipelineDropdown.selectEl.id = pipelineId;
+				pipelineDropdown.selectEl.addClass('operon-file-task-pipeline-location-select');
+				pipelineDropdown.addOption('', t('settings', 'fileTaskPipelineLocationSelectPipeline'));
+				for (const pipeline of this.settings.pipelines) {
+					if (draft && usedIds.has(pipeline.id)) continue;
+					if (!draft && usedIds.has(pipeline.id) && pipeline.id !== rule.pipelineId) continue;
+					pipelineDropdown.addOption(pipeline.id, pipeline.name);
+				}
+				pipelineDropdown.setValue(rule.pipelineId);
+				pipelineDropdown.onChange(settingsAsyncHandler('settings pipeline folder selection failed', async nextPipelineId => {
+					if (!nextPipelineId) return;
+					if (!draft) {
+						options.setRules(rules.map(candidate => candidate.pipelineId === rule.pipelineId
+							? { ...candidate, pipelineId: nextPipelineId }
+							: candidate));
+						await options.save();
+						render();
+						return;
+					}
+					const next = { ...rule, pipelineId: nextPipelineId };
+					if (options.allowIncompleteRules || !!next.folder.trim()) {
+						options.setRules([...rules, next]);
+						options.setDraft(null);
+						await options.save();
+					} else {
+						options.setDraft(next);
+					}
+					render();
+				}));
+
+				const folderId = `${pipelineId}-folder`;
+				rowEl.createEl('label', {
+					text: `${t('settings', 'fileTaskPipelineLocationFolder')}:`,
+					cls: 'operon-file-task-pipeline-location-label operon-file-task-pipeline-location-folder-label',
+					attr: { for: folderId },
+				});
+				const folderText = new Obsidian.TextComponent(rowEl);
+				folderText.inputEl.id = folderId;
+				folderText.inputEl.addClass('operon-file-task-pipeline-location-folder');
+				folderText.setPlaceholder(options.folderPlaceholder);
+				folderText.setValue(rule.folder);
+				const commitFolder = settingsAsyncHandler('settings pipeline folder save failed', async () => {
+					const folder = folderText.getValue().trim();
+					if (folder && !isSafeVaultRelativePath(folder)) {
+						new Notice(t('settings', 'fileTaskPipelineLocationFolderInvalid'));
+						folderText.setValue(rule.folder);
+						return;
+					}
+					if (folder === rule.folder) return;
+					if (draft) {
+						const next = { ...rule, folder };
+						if (next.pipelineId && (options.allowIncompleteRules || !!next.folder)) {
+							options.setRules([...rules, next]);
+							options.setDraft(null);
+							await options.save();
+						} else {
+							options.setDraft(next);
+						}
+						render();
+						return;
+					}
+					if (!folder && !options.allowIncompleteRules) {
+						options.setRules(rules.filter(candidate => candidate.pipelineId !== rule.pipelineId));
+						options.setDraft({ pipelineId: rule.pipelineId, folder: '' });
+					} else {
+						options.setRules(rules.map(candidate => candidate.pipelineId === rule.pipelineId
+							? { ...candidate, folder }
+							: candidate));
+					}
+					await options.save();
+					render();
+				});
+				folderText.inputEl.addEventListener('blur', commitFolder);
+				folderText.inputEl.addEventListener('keydown', event => {
+					if (event.key !== 'Enter') return;
+					event.preventDefault();
+					void commitFolder();
+				});
+				new FolderSuggest(this.app, folderText.inputEl, settingsAsyncHandler('settings pipeline folder suggestion failed', async folder => {
+					folderText.setValue(folder.path);
+					commitFolder();
+				}));
+
+				const removeButton = rowEl.createEl('button', {
+					cls: 'clickable-icon operon-file-task-pipeline-location-remove',
+					attr: { type: 'button', 'aria-label': t('settings', 'fileTaskPipelineLocationRemove') },
+				});
+				setIcon(removeButton, draft ? 'x' : 'trash-2');
+				setTooltip(removeButton, t('settings', 'fileTaskPipelineLocationRemove'));
+				removeButton.addEventListener('click', settingsAsyncHandler('settings pipeline folder removal failed', async () => {
+					if (draft) {
+						options.setDraft(null);
+					} else {
+						options.setRules(rules.filter(candidate => candidate.pipelineId !== rule.pipelineId));
+						await options.save();
+					}
+					render();
+				}));
+			}
+
+			if (!options.getDraft()) {
+				const addButton = createSettingsAddButton(options.addRowEl, options.addLabel);
+				addButton.addClass('operon-file-task-pipeline-location-add-button');
+				addButton.addEventListener('click', () => {
+					options.setDraft({ pipelineId: '', folder: '' });
+					render();
+				});
+			}
+		};
+		render();
+	}
+
 	private renderFileTaskArchiveSettings(containerEl: HTMLElement): void {
 		const wrapper = containerEl.createDiv({ cls: 'operon-file-task-archive-setting' });
 		const title = t('settings', 'fileTaskArchive');
@@ -12929,33 +12980,45 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.buildNativeSettingsDocsAction(title, 'DOCS-052 Completed task review'),
 		);
 
-		this.renderBoundToggleSetting(
-			sectionEl,
-			t('settings', 'fileTaskAutoArchiveEnabled'),
-			t('settings', 'fileTaskAutoArchiveEnabledDesc'),
-			'fileTaskAutoArchiveEnabled',
-		);
-
 		this.renderBoundTextSetting(sectionEl, t('settings', 'fileTaskArchiveFolder'), t('settings', 'fileTaskArchiveFolderDesc'), 'fileTaskArchiveFolder', {
 			placeholder: t('settings', 'fileTaskArchiveFolderPlaceholder'),
 			settingClass: 'operon-settings-long-text-setting',
 			controlClass: 'operon-settings-input-long',
-			normalize: value => normalizeSettingsFolderPath(value) || DEFAULT_SETTINGS.fileTaskArchiveFolder,
+			normalize: normalizeSettingsFolderPath,
+			onAfterChange: () => this.applyPendingSettingsChange(),
 			configure: text => {
 				new FolderSuggest(this.app, text.inputEl, settingsAsyncHandler('settings file task archive folder selection failed', async (folder) => {
-					this.settings.fileTaskArchiveFolder = normalizeSettingsFolderPath(folder.path) || DEFAULT_SETTINGS.fileTaskArchiveFolder;
+					this.settings.fileTaskArchiveFolder = normalizeSettingsFolderPath(folder.path);
 					await this.saveSettings();
+					this.applyPendingSettingsChange();
 				}));
 			},
 		});
 
-		this.addNumericSetting(sectionEl, t('settings', 'fileTaskArchiveDelaySeconds'), t('settings', 'fileTaskArchiveDelaySecondsDesc'), 'fileTaskArchiveDelaySeconds');
-		this.renderBoundToggleSetting(
-			sectionEl,
-			t('settings', 'fileTaskArchiveOnlyFromFileTasksFolder'),
-			t('settings', 'fileTaskArchiveOnlyFromFileTasksFolderDesc'),
-			'fileTaskArchiveOnlyFromFileTasksFolder',
-		);
+		const heading = new Setting(sectionEl)
+			.setName(t('settings', 'fileTaskArchivePipelineLocations'))
+			.setDesc(t('settings', 'fileTaskArchivePipelineLocationsDesc'));
+		heading.settingEl.addClass('operon-settings-subsection-heading');
+		const rowsEl = sectionEl.createDiv('operon-file-task-pipeline-location-rows');
+		const addRowEl = sectionEl.createDiv('operon-file-task-pipeline-location-add-row');
+		addRowEl.addClass('operon-settings-add-row');
+		let draft: FileTaskPipelineLocationRule | null = null;
+		this.renderPipelineFolderRuleList({
+			rowsEl,
+			addRowEl,
+			getRules: () => this.settings.fileTaskArchivePipelineLocations,
+			setRules: rules => { this.settings.fileTaskArchivePipelineLocations = rules; },
+			getDraft: () => draft,
+			setDraft: next => { draft = next; },
+			allowIncompleteRules: false,
+			idPrefix: 'operon-file-task-pipeline-location-archive',
+			folderPlaceholder: t('settings', 'fileTaskArchiveFolderPlaceholder'),
+			addLabel: t('settings', 'addFileTaskPipelineLocation'),
+			save: async () => {
+				await this.saveSettings();
+				this.applyPendingSettingsChange();
+			},
+		});
 	}
 
 	private renderWorkspaceTweaksExcludedFolderSettings(containerEl: HTMLElement): void {

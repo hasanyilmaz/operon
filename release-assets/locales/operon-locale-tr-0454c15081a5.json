@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "tr",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "Yeni yinelenen dosya görevi oluşumlarının nerede oluşturulacağını seç.",
       "fileRepeatDestinationSameFolder": "Kaynakla aynı klasör",
       "fileTaskArchive": "Biten/İptal Edilen Dosya Görevlerini Arşivle",
-      "fileTaskArchiveDelaySeconds": "Arşiv gecikmesi, saniye",
-      "fileTaskArchiveDelaySecondsDesc": "Bir dosya görevi bittiğinde veya iptal edildiğinde taşımadan önce beklenecek saniye.",
       "fileTaskArchiveFolder": "Arşiv klasörü",
-      "fileTaskArchiveFolderDesc": "Arşivlenen dosya görevleri için klasör. Varsayılan Operon/Archives.",
+      "fileTaskArchiveFolderDesc": "Biten dosya görevleri için geri dönüş klasörü. Boş bırakırsanız eşleşmeyen görevler yerinde kalır.",
       "fileTaskArchiveFolderPlaceholder": "ör. Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "Yalnızca Dosya görevi klasörü içindeki görevleri arşivle",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Açık olduğunda Operon yalnızca ayarlanan Dosya görevi klasörü içindeki dosya görevlerini arşivler.",
+      "fileTaskArchivePipelineLocations": "Arşiv pipeline konumları",
+      "fileTaskArchivePipelineLocationsDesc": "Eşleşen bir pipeline konumu, geri dönüş arşiv klasöründen önceliklidir. Biten görevler yaklaşık 30 saniye sonra taşınır.",
       "fileTaskAutoArchiveEnabled": "Biten/iptal edilen dosya görevlerini otomatik arşivle",
       "fileTaskAutoArchiveEnabledDesc": "Açık olduğunda Operon biten veya iptal edilen dosya görevlerini ayarlanan gecikmeden sonra arşiv klasörüne taşır.",
       "fileTaskConversion": "Dosya Görevi Dönüşümü",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "147b4d4c1e9e3cf39691c5f289ff53c3c1c3216219e4b34482157c228bb69c9e"
+  "sourceVersion": "655ede614659e4a2e5e8efeb258aa659f38f315c4c2690e608479639f55df757"
 }

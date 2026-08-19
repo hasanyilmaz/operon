@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "ru",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "Выберите, где создаются новые повторения файловой задачи.",
       "fileRepeatDestinationSameFolder": "Та же папка, что и источник",
       "fileTaskArchive": "Архивировать завершённые/отменённые файловые задачи",
-      "fileTaskArchiveDelaySeconds": "Задержка архивирования, секунды",
-      "fileTaskArchiveDelaySecondsDesc": "Количество секунд ожидания после того, как файловая задача становится завершённой или отменённой, перед её перемещением.",
       "fileTaskArchiveFolder": "Папка архива",
-      "fileTaskArchiveFolderDesc": "Папка для архивированных файловых задач. По умолчанию — Operon/Archives.",
+      "fileTaskArchiveFolderDesc": "Резервная папка для завершённых файловых задач. Оставьте пустой, чтобы задачи без совпадения остались на месте.",
       "fileTaskArchiveFolderPlaceholder": "напр. Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "Архивировать только задачи внутри папки файловых задач",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Если включено, Operon архивирует только файловые задачи, находящиеся внутри настроенной папки файловых задач.",
+      "fileTaskArchivePipelineLocations": "Расположения конвейера архива",
+      "fileTaskArchivePipelineLocationsDesc": "Подходящее расположение конвейера имеет приоритет над резервной папкой архива. Завершённые задачи перемещаются примерно через 30 секунд.",
       "fileTaskAutoArchiveEnabled": "Автоматически архивировать завершённые/отменённые файловые задачи",
       "fileTaskAutoArchiveEnabledDesc": "Если включено, Operon перемещает завершённые или отменённые файловые задачи в папку архива после настроенной задержки.",
       "fileTaskConversion": "Преобразование файловых задач",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "b0153dce10ed6a9160a8e41c333b2d2ab1a60ee0bf2b1581c6194405b8c3926b"
+  "sourceVersion": "d30450a628fc17c9b5964e49b6374612fa1f896c0a392e8ecbc476242cb83a40"
 }

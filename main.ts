@@ -634,6 +634,7 @@ import {
 	type PeriodicParentIntent,
 } from './src/core/periodic-note-parent-realignment';
 import {
+	buildFileTaskArchiveReconciliationSignature,
 	resolveFileTaskPipelineLocation,
 } from './src/core/file-task-pipeline-location';
 import { resolveCoreTemplateVariables } from './src/core/core-template-variables';
@@ -1343,6 +1344,7 @@ export default class OperonPlugin extends Plugin {
 	private indexSemanticsSignature = '';
 	private projectSerialScopeSettingsSignature = '';
 	private fileTaskPipelineLocationSettingsSignature = '';
+	private fileTaskArchiveSettingsSignature = '';
 	private indexV8ManifestFingerprint: string | null = null;
 	private indexV8ManifestCheckPromise: Promise<void> | null = null;
 	private settingsReindexTimer: WindowTimeoutHandle | null = null;
@@ -2861,6 +2863,8 @@ export default class OperonPlugin extends Plugin {
 			fileTasksFolder: this.settings.fileTasksFolder,
 			fileTaskPipelineLocations: this.settings.fileTaskPipelineLocations,
 		});
+		const previousFileTaskArchiveSettingsSignature = this.fileTaskArchiveSettingsSignature;
+		this.fileTaskArchiveSettingsSignature = buildFileTaskArchiveReconciliationSignature(this.settings);
 		let reindexReason: SettingsReindexReason | null = null;
 		if (previousIndexSemanticsSignature && previousIndexSemanticsSignature !== this.indexSemanticsSignature) {
 			reindexReason = previousKeyMappingSignature !== this.keyMappingSignature
@@ -2893,6 +2897,9 @@ export default class OperonPlugin extends Plugin {
 			&& previousFileTaskPipelineLocationSettingsSignature !== this.fileTaskPipelineLocationSettingsSignature
 		) {
 			void this.fileTaskPipelineMover?.requestSettingsReconcileAll();
+		}
+		if (previousFileTaskArchiveSettingsSignature !== this.fileTaskArchiveSettingsSignature) {
+			void this.fileTaskArchiver?.requestSettingsReconcileAll();
 		}
 		this.applyWorkspaceTweaks();
 		this.scheduleWorkspacePropertiesCollapseForAllViews();
@@ -14218,6 +14225,7 @@ export default class OperonPlugin extends Plugin {
 			fileTasksFolder: this.settings.fileTasksFolder,
 			fileTaskPipelineLocations: this.settings.fileTaskPipelineLocations,
 		});
+		this.fileTaskArchiveSettingsSignature = buildFileTaskArchiveReconciliationSignature(this.settings);
 
 		this.reportStartupPipelineTaxonomyDiagnostics();
 		this.applyWorkspaceTweaks();
@@ -14601,6 +14609,9 @@ export default class OperonPlugin extends Plugin {
 			this.indexer.recoverStartupV8IfNeeded(cacheLoad.status === 'loaded' || cacheLoad.status === 'missing'
 				? cacheLoad.fallbackReason
 				: undefined);
+			// Archive recovery depends only on the indexed File Task corpus, so a
+			// periodic-container registry failure must not defer its durable marker.
+			await this.fileTaskArchiver?.resumePendingReconciliation();
 
 				try {
 					const renameRecovery = await this.workflowFieldRenameCoordinator.resume();

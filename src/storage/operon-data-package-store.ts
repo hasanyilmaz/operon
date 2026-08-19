@@ -14,6 +14,8 @@ import {
 import type { OperonStoragePaths } from './operon-storage-paths';
 import { preserveInvalidJsonFile, writeTextSafely } from './storage-file-ops';
 import {
+	FILE_TASK_ARCHIVE_DELAY_SECONDS,
+	FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION,
 	migrateLegacyLanguageSettings,
 	preserveCanonicalLanguageForLegacyReload,
 	type OperonSettings,
@@ -210,6 +212,11 @@ export class OperonDataPackageStore {
 		obsidianLocale?: string,
 	): Promise<OperonDataPackageStoreInitResult> {
 		let existingPackage = await this.loadExistingPackage();
+		const existingCanonicalPackageUnrecognizable = !!existingPackage
+			&& isUnrecognizableCanonicalDataPackage(existingPackage);
+		if (existingCanonicalPackageUnrecognizable) {
+			this.suspendWrites('Canonical data package has no recognizable package envelope; manual recovery is required');
+		}
 		if (existingPackage) existingPackage = await this.reconcileTaskCreationProfileV2Recovery(existingPackage);
 		let tablePresetRecovery = createTablePresetRecoveryDiagnostics();
 		const unsupportedTaskCreationProfilePackage = hasUnsupportedFutureTaskCreationProfilePackage(existingPackage);
@@ -221,7 +228,8 @@ export class OperonDataPackageStore {
 			existingDeveloperApiGrantPackage,
 		);
 		if (unsupportedDeveloperApiGrantPackage) this.suspendForUnsupportedDeveloperApiGrantPackage();
-		if (existingPackage && !unsupportedDeveloperApiGrantPackage && !unsupportedTaskCreationProfilePackage) {
+		if (existingPackage && !existingCanonicalPackageUnrecognizable
+			&& !unsupportedDeveloperApiGrantPackage && !unsupportedTaskCreationProfilePackage) {
 			const recovery = await this.enqueueMutation(() => this.recoverTablePresetManifestV2Now(existingPackage!));
 			existingPackage = recovery.dataPackage;
 			tablePresetRecovery = recovery.diagnostics;
@@ -242,8 +250,10 @@ export class OperonDataPackageStore {
 			? await this.inspectPipelineTaxonomy(existingPackage)
 			: createPipelineTaxonomyDiagnostics();
 		const migratedExistingPackage = existingPackage
-			? migrateLegacyLanguagePackage(existingPackage, obsidianLocale)
+			? migrateLegacySettingsPackage(existingPackage, obsidianLocale)
 			: null;
+		const archiveRoutingMigrationRequired = !!existingPackage
+			&& isLegacyArchiveRoutingSettings(existingPackage.settings);
 		const hasRetiredSettings = hasRetiredOperonDataPackageSettings(existingPackage);
 		const mergedPackage = mergeOperonDataPackage(migratedExistingPackage, buildFallbackDataPackage(defaults));
 		const normalizedPackage = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
@@ -255,20 +265,27 @@ export class OperonDataPackageStore {
 		const taskCreationProfileMigrationRequired = !!existingPackage
 			&& !unsupportedTaskCreationProfilePackage
 			&& requiresTaskCreationProfilePackageMigration(existingPackage);
+		const canonicalMigrationBase = existingPackage && isCompleteDataPackage(existingPackage)
+			? existingPackage
+			: baseDataPackage;
 		const migrationCandidate = taskCreationProfileMigrationRequired && existingPackage
 			? buildTaskCreationProfileV2MigrationCandidate(
-				isCompleteDataPackage(existingPackage) ? existingPackage : baseDataPackage,
+				canonicalMigrationBase,
 				baseDataPackage,
 				defaults,
+				archiveRoutingMigrationRequired,
 			)
-			: baseDataPackage;
+			: archiveRoutingMigrationRequired
+				? buildNormalizedSettingsMigrationCandidate(canonicalMigrationBase, baseDataPackage, defaults)
+				: baseDataPackage;
 		let dataPackage = baseDataPackage;
-		if (existingPackage && !unsupportedTablePresetPackage && !unsupportedDeveloperApiGrantPackage
+		if (existingPackage && !this.writesSuspended && !unsupportedTablePresetPackage && !unsupportedDeveloperApiGrantPackage
 			&& !unsupportedTaskCreationProfilePackage
 			&& (
 				shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
 					|| hasRetiredSettings
 					|| recoverableDeveloperApiGrantPackageDrift
+					|| archiveRoutingMigrationRequired
 					|| taskCreationProfileMigrationRequired
 			)) {
 			if (taskCreationProfileMigrationRequired) {
@@ -283,7 +300,8 @@ export class OperonDataPackageStore {
 				}
 			} else {
 				let backupReady = true;
-				if (recoverableDeveloperApiGrantPackageDrift && !this.startupPipelineTaxonomyDiagnostics.backupPath) {
+				if ((recoverableDeveloperApiGrantPackageDrift || archiveRoutingMigrationRequired)
+					&& !this.startupPipelineTaxonomyDiagnostics.backupPath) {
 					try {
 						await this.backupCanonicalDataPackageNow(existingPackage);
 					} catch (error) {
@@ -585,11 +603,15 @@ export class OperonDataPackageStore {
 			}
 
 			const fallback = this.dataPackage ?? buildFallbackDataPackage(defaults);
-			const languageSafeExternalPackage = preserveLegacyReloadLanguageIntent(externalPackage, current);
-			const mergedPackage = mergeOperonDataPackage(languageSafeExternalPackage, fallback);
-			const dataPackage = shouldNormalizePipelineTaxonomy(pipelineTaxonomy)
-				? normalizePipelineTaxonomySlice(mergedPackage, defaults)
+			const legacyArchiveReload = isLegacyArchiveRoutingSettings(externalPackage.settings);
+			const compatibilitySafeExternalPackage = preserveLegacyReloadSettingsIntent(externalPackage, current);
+			const mergedPackage = mergeOperonDataPackage(compatibilitySafeExternalPackage, fallback);
+			const migrationSafePackage = legacyArchiveReload
+				? buildLegacyArchiveReloadMigrationCandidate(mergedPackage, current, defaults)
 				: mergedPackage;
+			const dataPackage = shouldNormalizePipelineTaxonomy(pipelineTaxonomy)
+				? normalizePipelineTaxonomySlice(migrationSafePackage, defaults)
+				: migrationSafePackage;
 			const nextSignature = buildStableJsonSignature(dataPackage);
 			const externalSignature = buildStableJsonSignature(externalPackage);
 			if (!this.writeSuspensionRequiresExplicitRecovery) {
@@ -1445,10 +1467,15 @@ function buildTaskCreationProfileV2MigrationCandidate(
 	canonicalBase: OperonDataPackageV1,
 	normalizationSource: OperonDataPackageV1,
 	defaults: OperonSettings,
+	normalizeAllSettings = false,
 ): OperonDataPackageV1 {
-	const normalizedProfile = buildOperonDataPackageFromSettings(
+	if (normalizeAllSettings) {
+		return buildNormalizedSettingsMigrationCandidate(canonicalBase, normalizationSource, defaults);
+	}
+	const normalizedPackage = buildOperonDataPackageFromSettings(
 		composeOperonSettingsFromDataPackage(normalizationSource, defaults),
-	).ui.taskCreationProfile;
+	);
+	const normalizedProfile = normalizedPackage.ui.taskCreationProfile;
 	const normalizedKeys = new Set(Object.keys(normalizedProfile));
 	const unknownProfileFields = Object.fromEntries(
 		Object.entries(canonicalBase.ui.taskCreationProfile).filter(([key]) => !normalizedKeys.has(key)),
@@ -1464,6 +1491,13 @@ function buildTaskCreationProfileV2MigrationCandidate(
 			taskCreationProfile: {
 				...normalizedProfile,
 				...unknownProfileFields,
+			},
+		},
+		automation: {
+			...canonicalBase.automation,
+			taskAutomationPolicy: {
+				...canonicalBase.automation.taskAutomationPolicy,
+				...normalizedPackage.automation.taskAutomationPolicy,
 			},
 		},
 	};
@@ -1598,6 +1632,13 @@ function isCompleteDataPackage(value: unknown): value is OperonDataPackageV1 {
 	return isStructurallyCompleteOperonDataPackageV1(value);
 }
 
+function isUnrecognizableCanonicalDataPackage(value: unknown): boolean {
+	if (!isRecord(value) || isCompleteDataPackage(value)) return false;
+	return !Object.prototype.hasOwnProperty.call(value, 'schemaVersion')
+		&& !Object.prototype.hasOwnProperty.call(value, 'settings')
+		&& !Object.prototype.hasOwnProperty.call(value, 'settingsVersion');
+}
+
 function createReloadDiagnostics(): OperonDataPackageReloadDiagnostics {
 	return {
 		malformedPackage: false,
@@ -1686,30 +1727,170 @@ function buildFallbackDataPackage(defaults: OperonSettings): OperonDataPackageV1
 	return buildOperonDataPackageFromSettings(defaults);
 }
 
-function migrateLegacyLanguagePackage(
+function migrateLegacySettingsPackage(
 	dataPackage: Partial<OperonDataPackageV1>,
 	obsidianLocale?: string,
 ): Partial<OperonDataPackageV1> {
+	const languageMigrated = migrateLegacyLanguageSettings(
+		dataPackage.settings,
+		obsidianLocale,
+	);
+	const legacyArchiveRouting = isLegacyArchiveRoutingSettings(dataPackage.settings);
 	return {
 		...dataPackage,
-		settings: migrateLegacyLanguageSettings(
-			dataPackage.settings,
-			obsidianLocale,
-		) as OperonDataPackageV1['settings'],
+		// Keep the source version until ordinary settings normalization has run.
+		// Advancing it here would skip unrelated version-gated migrations.
+		settings: languageMigrated as OperonDataPackageV1['settings'],
+		automation: legacyArchiveRouting
+			? {
+				...dataPackage.automation,
+				taskAutomationPolicy: migrateLegacyArchiveRoutingPolicy(dataPackage.automation?.taskAutomationPolicy),
+			}
+			: dataPackage.automation,
 	};
 }
 
-function preserveLegacyReloadLanguageIntent(
+function preserveLegacyReloadSettingsIntent(
 	incoming: Partial<OperonDataPackageV1>,
 	current: OperonDataPackageV1,
 ): Partial<OperonDataPackageV1> {
+	const languageSafeSettings = preserveCanonicalLanguageForLegacyReload(
+		incoming.settings,
+		current.settings,
+	);
+	const legacyArchiveRouting = isLegacyArchiveRoutingSettings(incoming.settings);
 	return {
 		...incoming,
-		settings: preserveCanonicalLanguageForLegacyReload(
-			incoming.settings,
-			current.settings,
-		) as OperonDataPackageV1['settings'],
+		// A delayed legacy package must retain its source version long enough for
+		// every historic migration to run. Its archive policy is restored below
+		// only after that normalization has completed.
+		settings: languageSafeSettings as OperonDataPackageV1['settings'],
+		automation: legacyArchiveRouting
+			? {
+				...incoming.automation,
+				taskAutomationPolicy: preserveCanonicalArchiveRoutingPolicy(
+					incoming.automation?.taskAutomationPolicy,
+					current.automation.taskAutomationPolicy,
+				),
+			}
+			: incoming.automation,
 	};
+}
+
+/**
+ * Canonicalize all settings-backed domains without replacing package-owned
+ * runtime state or unknown fields. This is the point at which a legacy source
+ * can legitimately become the current settings version.
+ */
+function buildNormalizedSettingsMigrationCandidate(
+	canonicalBase: OperonDataPackageV1,
+	normalizationSource: OperonDataPackageV1,
+	defaults: OperonSettings,
+): OperonDataPackageV1 {
+	const normalizedSettings = composeOperonSettingsFromDataPackage(normalizationSource, defaults);
+	return buildSettingsMigrationCandidateFromNormalizedSettings(canonicalBase, normalizedSettings);
+}
+
+function buildLegacyArchiveReloadMigrationCandidate(
+	canonicalBase: OperonDataPackageV1,
+	current: OperonDataPackageV1,
+	defaults: OperonSettings,
+): OperonDataPackageV1 {
+	// Compose the old source first so unrelated version gates run. `migrateSettings`
+	// intentionally clears pre-v114 archive targets, so restore the already-canonical
+	// target policy only after that pass.
+	const normalizedSettings = composeOperonSettingsFromDataPackage(canonicalBase, defaults);
+	const currentSettings = composeOperonSettingsFromDataPackage(current, defaults);
+	normalizedSettings.fileTaskArchiveFolder = currentSettings.fileTaskArchiveFolder;
+	normalizedSettings.fileTaskArchivePipelineLocations = currentSettings.fileTaskArchivePipelineLocations
+		.map(rule => ({ ...rule }));
+	normalizedSettings.fileTaskAutoArchiveEnabled = currentSettings.fileTaskAutoArchiveEnabled;
+	normalizedSettings.fileTaskArchiveDelaySeconds = currentSettings.fileTaskArchiveDelaySeconds;
+	normalizedSettings.fileTaskArchiveOnlyFromFileTasksFolder = currentSettings.fileTaskArchiveOnlyFromFileTasksFolder;
+	return buildSettingsMigrationCandidateFromNormalizedSettings(canonicalBase, normalizedSettings);
+}
+
+function buildSettingsMigrationCandidateFromNormalizedSettings(
+	canonicalBase: OperonDataPackageV1,
+	normalizedSettings: OperonSettings,
+): OperonDataPackageV1 {
+	const normalizedPackage = buildOperonDataPackageFromSettings(normalizedSettings);
+	const { presetFavorites: _unusedPresetFavorites, ...uiWithoutPresetFavorites } = normalizedPackage.ui;
+	const normalizedUi = canonicalBase.ui.presetFavorites
+		? normalizedPackage.ui
+		: uiWithoutPresetFavorites;
+	const normalizedIntegrations = { ...normalizedPackage.integrations };
+	// Optional integration slices did not exist in every supported source
+	// package. Keep their absence intact so the generic overlay never attempts
+	// to JSON-clone an undefined placeholder.
+	if (Object.prototype.hasOwnProperty.call(canonicalBase.integrations, 'mobileNotifications')) {
+		normalizedIntegrations.mobileNotifications = canonicalBase.integrations.mobileNotifications;
+	} else {
+		delete (normalizedIntegrations as Record<string, unknown>).mobileNotifications;
+	}
+	if (Object.prototype.hasOwnProperty.call(canonicalBase.integrations, 'developerApi')) {
+		normalizedIntegrations.developerApi = canonicalBase.integrations.developerApi;
+	} else {
+		delete (normalizedIntegrations as Record<string, unknown>).developerApi;
+	}
+	return overlayKnownDataPackageFieldsPreservingUnknownV1(canonicalBase, {
+		...normalizedPackage,
+		views: {
+			...normalizedPackage.views,
+			kanbanOrder: canonicalBase.views.kanbanOrder,
+		},
+		ui: normalizedUi,
+		integrations: normalizedIntegrations,
+		state: {
+			...normalizedPackage.state,
+			pinnedTasks: canonicalBase.state.pinnedTasks,
+		},
+	});
+}
+
+function isLegacyArchiveRoutingSettings(value: unknown): boolean {
+	if (!isRecord(value)) return true;
+	const version = typeof value.settingsVersion === 'number' && Number.isFinite(value.settingsVersion)
+		? Math.floor(value.settingsVersion)
+		: 0;
+	return version < FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION;
+}
+
+function migrateLegacyArchiveRoutingPolicy(
+	value: unknown,
+): OperonDataPackageV1['automation']['taskAutomationPolicy'] {
+	const rawPolicy = value && typeof value === 'object' && !Array.isArray(value)
+		? value as Record<string, unknown>
+		: {};
+	const policy = rawPolicy as Partial<OperonDataPackageV1['automation']['taskAutomationPolicy']>;
+	return {
+		...rawPolicy,
+		version: typeof policy.version === 'number' && Number.isFinite(policy.version) ? policy.version : 1,
+		fileTaskAutoArchiveEnabled: false,
+		fileTaskArchiveFolder: '',
+		fileTaskArchivePipelineLocations: [],
+		fileTaskArchiveDelaySeconds: FILE_TASK_ARCHIVE_DELAY_SECONDS,
+		fileTaskArchiveOnlyFromFileTasksFolder: false,
+	} as unknown as OperonDataPackageV1['automation']['taskAutomationPolicy'];
+}
+
+function preserveCanonicalArchiveRoutingPolicy(
+	incoming: unknown,
+	current: OperonDataPackageV1['automation']['taskAutomationPolicy'],
+): OperonDataPackageV1['automation']['taskAutomationPolicy'] {
+	const rawPolicy = incoming && typeof incoming === 'object' && !Array.isArray(incoming)
+		? incoming as Record<string, unknown>
+		: {};
+	const policy = rawPolicy as Partial<OperonDataPackageV1['automation']['taskAutomationPolicy']>;
+	return {
+		...rawPolicy,
+		version: typeof policy.version === 'number' && Number.isFinite(policy.version) ? policy.version : current.version,
+		fileTaskAutoArchiveEnabled: current.fileTaskAutoArchiveEnabled,
+		fileTaskArchiveFolder: current.fileTaskArchiveFolder,
+		fileTaskArchivePipelineLocations: current.fileTaskArchivePipelineLocations.map(rule => ({ ...rule })),
+		fileTaskArchiveDelaySeconds: current.fileTaskArchiveDelaySeconds,
+		fileTaskArchiveOnlyFromFileTasksFolder: current.fileTaskArchiveOnlyFromFileTasksFolder,
+	} as OperonDataPackageV1['automation']['taskAutomationPolicy'];
 }
 
 function shouldNormalizePipelineTaxonomy(

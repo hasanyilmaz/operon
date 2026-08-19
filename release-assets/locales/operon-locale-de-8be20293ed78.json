@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "de",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "Wähle, wo neue Instanzen wiederkehrender Datei-Aufgaben erstellt werden.",
       "fileRepeatDestinationSameFolder": "Gleicher Ordner wie die Quelle",
       "fileTaskArchive": "Erledigte/abgebrochene Datei-Aufgaben archivieren",
-      "fileTaskArchiveDelaySeconds": "Archivierungsverzögerung, Sekunden",
-      "fileTaskArchiveDelaySecondsDesc": "Sekunden, die nach dem Erledigen oder Abbrechen einer Datei-Aufgabe gewartet wird, bevor sie verschoben wird.",
       "fileTaskArchiveFolder": "Archivordner",
-      "fileTaskArchiveFolderDesc": "Ordner für archivierte Datei-Aufgaben. Standard ist Operon/Archives.",
+      "fileTaskArchiveFolderDesc": "Fallback-Ordner für abgeschlossene Datei-Aufgaben. Leer lassen, damit nicht zugeordnete Aufgaben am Ort bleiben.",
       "fileTaskArchiveFolderPlaceholder": "z. B. Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "Nur Aufgaben im Ordner für Datei-Aufgaben archivieren",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Wenn aktiviert, archiviert Operon nur Datei-Aufgaben, die sich aktuell im konfigurierten Ordner für Datei-Aufgaben befinden.",
+      "fileTaskArchivePipelineLocations": "Archiv-Pipeline-Orte",
+      "fileTaskArchivePipelineLocationsDesc": "Ein passender Pipeline-Ort hat Vorrang vor dem Fallback-Archivordner. Abgeschlossene Aufgaben werden nach etwa 30 Sekunden verschoben.",
       "fileTaskAutoArchiveEnabled": "Erledigte/abgebrochene Datei-Aufgaben automatisch archivieren",
       "fileTaskAutoArchiveEnabledDesc": "Wenn aktiviert, verschiebt Operon erledigte oder abgebrochene Datei-Aufgaben nach der konfigurierten Verzögerung in den Archivordner.",
       "fileTaskConversion": "Datei-Aufgaben-Umwandlung",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "f95b98160a5efefd1a19a0503e02912501a879ae19f7e25ea1bab42884e7a782"
+  "sourceVersion": "7f1d50e8e7e13996cdc22d7ab5a103e245b9f4db7df058c6363a4a4d4e095258"
 }

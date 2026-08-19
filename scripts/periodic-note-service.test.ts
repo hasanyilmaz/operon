@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { App, TFile } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
 import type { PeriodicNoteEffectiveConfig } from '../src/core/periodic-note-config';
 import {
 	PeriodicNoteService,
@@ -21,6 +21,15 @@ import {
 	FileTaskPipelineMover,
 	parseFileTaskPipelineReconciliationMarkerV1,
 } from '../src/systems/file-task-pipeline-mover';
+import {
+	FILE_TASK_ARCHIVE_DELAY_MS,
+	FileTaskArchiver,
+	parseFileTaskArchiveReconciliationMarkerV1,
+} from '../src/systems/file-task-archiver';
+import {
+	buildFileTaskArchiveReconciliationSignature,
+	resolveFileTaskArchiveLocation,
+} from '../src/core/file-task-pipeline-location';
 import { DEFAULT_SETTINGS, migrateSettings, type OperonSettings } from '../src/types/settings';
 import type { IndexedTask } from '../src/types/fields';
 import type { OperonIndexer } from '../src/indexer/indexer';
@@ -958,6 +967,357 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 	}
 }
 
+async function fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation(): Promise<void> {
+	assert.equal(FILE_TASK_ARCHIVE_DELAY_MS, 30_000);
+	const configuredSettings = migrateSettings({
+		...DEFAULT_SETTINGS,
+		fileTaskArchiveFolder: 'Archive/Fallback',
+		fileTaskArchivePipelineLocations: [{ pipelineId: 'pl_project', folder: 'Archive/Project' }],
+	});
+	const archiveSignature = buildFileTaskArchiveReconciliationSignature(configuredSettings);
+	const presentationOnly = {
+		...configuredSettings,
+		pipelines: configuredSettings.pipelines.map(pipeline => ({
+			...pipeline,
+			statuses: pipeline.statuses.map(status => ({ ...status, color: '#ffffff' })),
+		})),
+	};
+	assert.equal(
+		buildFileTaskArchiveReconciliationSignature(presentationOnly),
+		archiveSignature,
+		'presentation-only pipeline edits must not schedule archive reconciliation',
+	);
+	const reroutedPipeline = {
+		...configuredSettings,
+		pipelines: configuredSettings.pipelines.map(pipeline => ({
+			...pipeline,
+			name: pipeline.id === 'pl_project' ? 'Renamed Project' : pipeline.name,
+			statuses: pipeline.statuses.map(status => ({ ...status })),
+		})),
+	};
+	assert.notEqual(
+		buildFileTaskArchiveReconciliationSignature(reroutedPipeline),
+		archiveSignature,
+		'pipeline/status resolution changes must request archive reconciliation for existing terminal tasks',
+	);
+	const terminalSemanticsChanged = {
+		...configuredSettings,
+		pipelines: configuredSettings.pipelines.map(pipeline => ({
+			...pipeline,
+			statuses: pipeline.statuses.map(status => (
+				status.label === 'Finished' ? { ...status, isFinished: false } : { ...status }
+			)),
+		})),
+	};
+	assert.notEqual(
+		buildFileTaskArchiveReconciliationSignature(terminalSemanticsChanged),
+		archiveSignature,
+		'terminal status semantics must request archive reconciliation for existing tasks',
+	);
+	assert.deepEqual(resolveFileTaskArchiveLocation(configuredSettings, { status: 'Project.Finished' }), {
+		pipelineId: 'pl_project', folder: 'Archive/Project', kind: 'pipeline-rule',
+	});
+	assert.deepEqual(resolveFileTaskArchiveLocation(configuredSettings, { status: 'Unknown.Finished' }), {
+		pipelineId: null, folder: 'Archive/Fallback', kind: 'general-fallback',
+	});
+	assert.deepEqual(resolveFileTaskArchiveLocation(migrateSettings({ ...DEFAULT_SETTINGS }), { status: 'Project.Finished' }), {
+		pipelineId: 'pl_project', folder: null, kind: 'unconfigured',
+	});
+	configuredSettings.fileTaskArchivePipelineLocations = [{ pipelineId: 'pl_project', folder: '../unsafe' }];
+	assert.deepEqual(resolveFileTaskArchiveLocation(configuredSettings, { status: 'Project.Finished' }), {
+		pipelineId: 'pl_project', folder: null, kind: 'unsafe-rule',
+	});
+	configuredSettings.fileTaskArchivePipelineLocations = [{ pipelineId: 'pl_project', folder: 'Archive/Project' }];
+
+	const previousActiveWindow = Reflect.get(globalThis, 'activeWindow');
+	const timers = new Map<number, () => void>();
+	let timerId = 0;
+	Reflect.set(globalThis, 'activeWindow', {
+		setTimeout: (callback: () => void, delayMs: number) => {
+			assert.equal(delayMs, FILE_TASK_ARCHIVE_DELAY_MS, 'archiver must always use the fixed 30-second delay');
+			timerId += 1;
+			timers.set(timerId, callback);
+			return timerId;
+		},
+		clearTimeout: (id: number) => { timers.delete(id); },
+	});
+	const flush = async (): Promise<void> => {
+		while (timers.size > 0) {
+			const callbacks = [...timers.values()];
+			timers.clear();
+			for (const callback of callbacks) callback();
+			for (let index = 0; index < 20; index += 1) await Promise.resolve();
+		}
+	};
+	const markerFolder = '.obsidian/plugins/operon/state';
+	const markerPath = `${markerFolder}/file-task-archive-reconcile.json`;
+	const entries = new Map<string, TFile | TFolder>();
+	const markerFiles = new Map<string, string>();
+	const storageFolders = new Set<string>();
+	const movedPaths: string[] = [];
+	const tasks: IndexedTask[] = [];
+	let markerWriteMode: 'normal' | 'throw-before' | 'resolve-without-write' | 'partial' = 'normal';
+	let markerRemoveMode: 'normal' | 'resolve-without-remove' = 'normal';
+	let markerReadMode: 'normal' | 'corrupt-final-replacement' = 'normal';
+	const makeTask = (operonId: string, path: string, fieldValues: Record<string, string> = { status: 'Project.Finished' }): IndexedTask => ({
+		operonId,
+		description: operonId,
+		checkbox: 'done',
+		fieldValues,
+		tags: [],
+		primary: { format: 'yaml', filePath: path, lineNumber: 0 },
+		datetimeModified: '2026-08-19T12:00:00.000Z',
+		tier: 'warm',
+	});
+	const addFile = (path: string): TFile => {
+		const file = new (TFile as unknown as { new(path: string): TFile })(path);
+		entries.set(path, file);
+		return file;
+	};
+	const renameFile = async (file: TFile, targetPath: string): Promise<void> => {
+		movedPaths.push(targetPath);
+		const indexedTask = tasks.find(task => task.primary.filePath === file.path);
+		if (indexedTask) indexedTask.primary.filePath = targetPath;
+		entries.delete(file.path);
+		file.path = targetPath;
+		file.name = targetPath.split('/').pop() ?? targetPath;
+		file.basename = file.name.replace(/\.[^.]+$/u, '');
+		file.extension = 'md';
+		entries.set(targetPath, file);
+	};
+	const app = {
+		vault: {
+			configDir: '.obsidian',
+			getAbstractFileByPath: (path: string) => entries.get(path) ?? null,
+			createFolder: async (path: string) => { entries.set(path, new (TFolder as unknown as { new(path: string): TFolder })(path)); },
+			adapter: {
+				exists: async (path: string) => entries.has(path) || markerFiles.has(path) || storageFolders.has(path),
+				read: async (path: string) => {
+					if (markerReadMode === 'corrupt-final-replacement' && path === markerPath) return '{';
+					return markerFiles.get(path) ?? '';
+				},
+				write: async (path: string, value: string) => {
+					if (path.includes('file-task-archive-reconcile.json')) {
+						if (markerWriteMode === 'throw-before') throw new Error('INJECTED_MARKER_WRITE_FAILURE');
+						if (markerWriteMode === 'resolve-without-write') return;
+						if (markerWriteMode === 'partial') {
+							markerFiles.set(path, '{');
+							return;
+						}
+					}
+					markerFiles.set(path, value);
+				},
+				mkdir: async (path: string) => { storageFolders.add(path); },
+				remove: async (path: string) => {
+					if (path === markerPath && markerRemoveMode === 'resolve-without-remove') return;
+					markerFiles.delete(path);
+				},
+				rename: async (from: string, to: string) => {
+					const value = markerFiles.get(from);
+					if (value === undefined) throw new Error('MISSING_MARKER_RENAME_SOURCE');
+					markerFiles.set(to, value);
+					markerFiles.delete(from);
+				},
+			},
+		},
+		fileManager: { renameFile },
+	} as unknown as App;
+	const activeTaskIds = new Set<string>();
+	const duplicateTaskIds = new Set<string>();
+	const indexer = {
+		getAllTasks: () => [...tasks],
+		getTask: (operonId: string) => tasks.find(task => task.operonId === operonId) ?? null,
+		hasDuplicateOperonIdConflict: (operonId: string) => duplicateTaskIds.has(operonId),
+	} as unknown as OperonIndexer;
+	const archiver = new FileTaskArchiver(app, indexer, () => configuredSettings, {
+		isTaskActive: operonId => activeTaskIds.has(operonId),
+	});
+	const previousWarn = console.warn;
+	console.warn = () => {};
+	try {
+		const pipelineTask = makeTask('pipeline', 'Operon/Tasks/Finished.md');
+		const fallbackTask = makeTask('fallback', 'Operon/Tasks/Unknown.md', { status: 'Unknown.Finished' });
+		const alreadyArchived = makeTask('already-archived', 'Archive/Project/In place.md');
+		const nestedAlreadyArchived = makeTask('nested-already-archived', 'archive/project/Subtask/In place.md');
+		const completedByDate = makeTask('completed-date', 'Operon/Tasks/Completed by date.md', {
+			status: 'Project.Finished', dateCompleted: '2026-08-19',
+		});
+		completedByDate.checkbox = 'open';
+		const activeTask = makeTask('active', 'Operon/Tasks/Active.md');
+		const duplicateTask = makeTask('duplicate', 'Operon/Tasks/Duplicate.md');
+		tasks.push(pipelineTask, fallbackTask, alreadyArchived, nestedAlreadyArchived, completedByDate);
+		addFile(pipelineTask.primary.filePath);
+		addFile(fallbackTask.primary.filePath);
+		addFile(alreadyArchived.primary.filePath);
+		addFile(nestedAlreadyArchived.primary.filePath);
+		addFile(completedByDate.primary.filePath);
+		addFile(activeTask.primary.filePath);
+		addFile(duplicateTask.primary.filePath);
+		addFile('Archive/Project/Finished.md');
+		activeTaskIds.add(activeTask.operonId);
+		duplicateTaskIds.add(duplicateTask.operonId);
+
+		await archiver.requestSettingsReconcileAll();
+		assert.ok(markerFiles.has(markerPath), 'bulk reconciliation must persist its restart marker before scheduling moves');
+		assert.deepEqual(parseFileTaskArchiveReconciliationMarkerV1(markerFiles.get(markerPath) ?? ''), {
+			version: 1,
+			requestedAt: JSON.parse(markerFiles.get(markerPath) ?? '{}').requestedAt,
+		});
+		await flush();
+		assert.deepEqual([...movedPaths].sort(), [
+			'Archive/Project/Finished (1).md',
+			'Archive/Fallback/Unknown.md',
+			'Archive/Project/Completed by date.md',
+		].sort(), 'pipeline rules win over fallback, collisions are unique, and terminal date fields are eligible');
+		assert.equal(markerFiles.has(markerPath), false, 'a fully reconciled generation removes its marker');
+		assert.ok(entries.has('Archive/Project/In place.md'), 'tasks already at their target stay in place');
+		assert.ok(entries.has('archive/project/Subtask/In place.md'), 'nested target paths stay in place case-insensitively');
+		assert.ok(entries.has('Operon/Tasks/Active.md'), 'active timers block archive moves');
+		archiver.scheduleForIndexedChange(null, activeTask);
+		await flush();
+		assert.ok(entries.has('Operon/Tasks/Active.md'), 'active timers block archive moves');
+		tasks.splice(0, tasks.length, duplicateTask);
+		archiver.scheduleForIndexedChange(null, duplicateTask);
+		await flush();
+		assert.ok(entries.has('Operon/Tasks/Duplicate.md'), 'duplicate IDs block archive moves');
+
+		const failingTask = makeTask('failing', 'Operon/Tasks/Retry.md');
+		tasks.splice(0, tasks.length, failingTask);
+		addFile(failingTask.primary.filePath);
+		const originalRename = app.fileManager.renameFile;
+		app.fileManager.renameFile = async () => { throw new Error('simulated move failure'); };
+		await archiver.requestSettingsReconcileAll();
+		await flush();
+		assert.ok(markerFiles.has(markerPath), 'failed moves retain recovery evidence for restart');
+		archiver.destroy();
+		app.fileManager.renameFile = originalRename;
+		const resumed = new FileTaskArchiver(app, indexer, () => configuredSettings);
+		try {
+			await resumed.resumePendingReconciliation();
+			await flush();
+			assert.equal(markerFiles.has(markerPath), false, 'restart resumes a valid marker and removes it only after success');
+			assert.ok(entries.has('Archive/Project/Retry.md'));
+		} finally {
+			resumed.destroy();
+		}
+
+		const latestTask = makeTask('latest-generation', 'Operon/Tasks/Latest generation.md');
+		tasks.splice(0, tasks.length, latestTask);
+		addFile(latestTask.primary.filePath);
+		const latest = new FileTaskArchiver(app, indexer, () => configuredSettings);
+		try {
+			await latest.requestSettingsReconcileAll();
+			const staleCallback = [...timers.values()][0];
+			assert.ok(staleCallback, 'the first reconciliation generation must schedule work');
+			timers.clear();
+			staleCallback();
+			await latest.requestSettingsReconcileAll();
+			await flush();
+			assert.equal(
+				movedPaths.filter(path => path === 'Archive/Project/Latest generation.md').length,
+				1,
+				'a newer settings generation suppresses queued stale work instead of moving twice',
+			);
+			assert.equal(markerFiles.has(markerPath), false, 'only the newest completed generation may clear its marker');
+		} finally {
+			latest.destroy();
+		}
+
+		for (const markerFailure of ['throw-before', 'resolve-without-write', 'partial'] as const) {
+			const markerFailureTask = makeTask(`marker-${markerFailure}`, `Operon/Tasks/Marker ${markerFailure}.md`);
+			tasks.splice(0, tasks.length, markerFailureTask);
+			addFile(markerFailureTask.primary.filePath);
+			markerFiles.clear();
+			markerWriteMode = markerFailure;
+			const moveCount = movedPaths.length;
+			const markerFailureArchiver = new FileTaskArchiver(app, indexer, () => configuredSettings);
+			try {
+				await markerFailureArchiver.requestSettingsReconcileAll();
+				assert.equal(timers.size, 0, `${markerFailure} marker write must not schedule a move`);
+				assert.equal(movedPaths.length, moveCount, `${markerFailure} marker write must not move a task`);
+				if (markerFailure === 'partial') {
+					assert.equal(markerFiles.has(markerPath), false, 'partial marker temp data is never promoted as recovery evidence');
+					await markerFailureArchiver.resumePendingReconciliation();
+					assert.equal(timers.size, 0, 'partial marker write never claims restart-safe reconciliation');
+				}
+			} finally {
+				markerFailureArchiver.destroy();
+				markerWriteMode = 'normal';
+			}
+		}
+
+		const priorMarker = JSON.stringify({ version: 1, requestedAt: '2026-08-19T12:00:00.000Z' });
+		const priorMarkerTask = makeTask('prior-marker', 'Operon/Tasks/Prior marker.md');
+		tasks.splice(0, tasks.length, priorMarkerTask);
+		addFile(priorMarkerTask.primary.filePath);
+		markerFiles.clear();
+		markerFiles.set(markerPath, priorMarker);
+		markerReadMode = 'corrupt-final-replacement';
+		const priorMarkerMoveCount = movedPaths.length;
+		const replacementFailureArchiver = new FileTaskArchiver(app, indexer, () => configuredSettings);
+		try {
+			await replacementFailureArchiver.requestSettingsReconcileAll();
+			assert.equal(timers.size, 0, 'a corrupt replacement must not schedule moves');
+			assert.equal(movedPaths.length, priorMarkerMoveCount, 'a corrupt replacement must not move a task');
+		} finally {
+			replacementFailureArchiver.destroy();
+			markerReadMode = 'normal';
+		}
+		assert.equal(markerFiles.get(markerPath), priorMarker, 'a corrupt replacement restores the prior valid marker exactly');
+		const restoredMarkerArchiver = new FileTaskArchiver(app, indexer, () => configuredSettings);
+		try {
+			await restoredMarkerArchiver.resumePendingReconciliation();
+			assert.equal(timers.size, 1, 'the restored valid marker remains safely resumable after restart');
+		} finally {
+			restoredMarkerArchiver.destroy();
+		}
+
+		const clearFailureTask = makeTask('marker-clear-failure', 'Operon/Tasks/Marker clear failure.md');
+		tasks.splice(0, tasks.length, clearFailureTask);
+		addFile(clearFailureTask.primary.filePath);
+		markerFiles.clear();
+		markerRemoveMode = 'resolve-without-remove';
+		const clearFailureArchiver = new FileTaskArchiver(app, indexer, () => configuredSettings);
+		try {
+			await clearFailureArchiver.requestSettingsReconcileAll();
+			await flush();
+			assert.ok(markerFiles.has(markerPath), 'unobserved marker removal retains recovery evidence after completed moves');
+			assert.ok(entries.has('Archive/Project/Marker clear failure.md'));
+		} finally {
+			clearFailureArchiver.destroy();
+			markerRemoveMode = 'normal';
+		}
+		const clearFailureResumed = new FileTaskArchiver(app, indexer, () => configuredSettings);
+		try {
+			await clearFailureResumed.resumePendingReconciliation();
+			await flush();
+			assert.equal(markerFiles.has(markerPath), false, 'restart clears only a successfully observed reconciliation marker removal');
+			assert.equal(
+				movedPaths.filter(path => path === 'Archive/Project/Marker clear failure.md').length,
+				1,
+				'recovered marker reconciliation is idempotent for an already archived file',
+			);
+		} finally {
+			clearFailureResumed.destroy();
+		}
+
+		markerFiles.set(markerPath, '{');
+		const corrupted = new FileTaskArchiver(app, indexer, () => configuredSettings);
+		try {
+			await corrupted.resumePendingReconciliation();
+			assert.equal(timers.size, 0, 'invalid recovery evidence must not schedule a best-effort move');
+			assert.equal(markerFiles.get(markerPath), '{', 'invalid recovery evidence is retained for diagnosis');
+		} finally {
+			corrupted.destroy();
+		}
+	} finally {
+		console.warn = previousWarn;
+		archiver.destroy();
+		if (previousActiveWindow === undefined) Reflect.deleteProperty(globalThis, 'activeWindow');
+		else Reflect.set(globalThis, 'activeWindow', previousActiveWindow);
+	}
+}
+
 async function run(): Promise<void> {
 	await existingFileShortCircuitsEveryPreparationPort();
 	await deterministicLanePreparesInMemoryBeforeWriting();
@@ -991,6 +1351,7 @@ async function run(): Promise<void> {
 	await pipelineMoverRejectsEveryUnsafeDestinationSource();
 	await pipelineMoverResumeRequiresAValidVersionOneMarker();
 	await pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealthy();
+	await fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation();
 }
 
 globalThis.__operonPeriodicNoteServiceTestRun = run();

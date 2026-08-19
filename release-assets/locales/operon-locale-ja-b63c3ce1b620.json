@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "ja",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "新しい繰り返しファイルタスクの回が作成される場所を選択します。",
       "fileRepeatDestinationSameFolder": "ソースと同じフォルダー",
       "fileTaskArchive": "完了/キャンセルしたファイルタスクをアーカイブ",
-      "fileTaskArchiveDelaySeconds": "アーカイブの遅延（秒）",
-      "fileTaskArchiveDelaySecondsDesc": "ファイルタスクが完了またはキャンセルになってから移動するまでに待機する秒数。",
       "fileTaskArchiveFolder": "アーカイブフォルダー",
-      "fileTaskArchiveFolderDesc": "アーカイブされたファイルタスクのフォルダー。デフォルトは Operon/Archives です。",
+      "fileTaskArchiveFolderDesc": "完了したファイルタスクのフォールバックフォルダー。空欄にすると、一致しないタスクは現在の場所に残ります。",
       "fileTaskArchiveFolderPlaceholder": "例: Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "ファイルタスクフォルダー内のタスクのみアーカイブ",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "有効にすると、Operon は現在設定されたファイルタスクフォルダー内にあるファイルタスクのみをアーカイブします。",
+      "fileTaskArchivePipelineLocations": "アーカイブパイプラインの場所",
+      "fileTaskArchivePipelineLocationsDesc": "一致するパイプラインの場所はフォールバックのアーカイブフォルダーより優先されます。完了したタスクは約30秒後に移動します。",
       "fileTaskAutoArchiveEnabled": "完了/キャンセルしたファイルタスクを自動的にアーカイブ",
       "fileTaskAutoArchiveEnabledDesc": "有効にすると、Operon は設定された遅延の後、完了またはキャンセルしたファイルタスクをアーカイブフォルダーに移動します。",
       "fileTaskConversion": "ファイルタスクの変換",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "3e323147882aed0ac1b7bf393eeddeb5ccbd08e28db95d96131780e880746f46"
+  "sourceVersion": "407f51a6d87e0e4dbbaf6b9baac423511d7a05ae71d105302bef7f7afa86d96b"
 }

@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 2,
 	"settings": {
-		"settingsVersion": 113,
+		"settingsVersion": 114,
 		"filterShowSubtasks": true,
 		"filterSubtaskAutoExpandLimit": 10,
 		"filterShowOnlyOpenSubtasks": false,
@@ -295,7 +295,9 @@
 		],
 		"tablePresetFileBindings": [],
 		"tablePresetFileMigrationVersion": 1,
-		"tablePresetFileMigrationFinalizedVersion": 1
+		"tablePresetFileMigrationFinalizedVersion": 1,
+		"pinnedTaskSortMode": "priority",
+		"flowTimePlayReminderSoundOnTargetReached": false
 	},
 	"taxonomy": {
 		"keyMappings": {
@@ -1149,7 +1151,9 @@
 			"tableShowLineNumbers": true,
 			"tableShowTaskIcon": false,
 			"tableShowTaskTypeIcon": false,
-			"initialized": true
+			"initialized": true,
+			"tableDefaultFolder": "Operon/Tables",
+			"tableEmbedDefaultWidthPercent": 175
 		},
 		"kanbanOrder": {
 			"version": 1,
@@ -2419,8 +2423,6 @@
 			"taskDescriptionRequired": true,
 			"assigneesRequired": false,
 			"fileTasksFolder": "Operon/Tasks",
-			"fileTaskPipelineLocations": [],
-			"moveConvertedNotesToPipelineLocation": false,
 			"inlineTaskSaveMode": "daily-notes",
 			"inlineTaskUseDailyNote": true,
 			"inlineTaskTargetFile": "Operon/Tasks/Operon Inbox.md",
@@ -2446,17 +2448,19 @@
 			"taskCreatorDefaultToFileTask": false,
 			"taskCreatorDefaultFileTemplateId": null,
 			"fileTaskTemplateFolder": "",
+			"createDailyNotesAsOperonTask": false,
+			"defaultEstimateMinutes": 30,
+			"fileTaskPipelineLocations": [],
+			"moveConvertedNotesToPipelineLocation": false,
 			"manageDailyNotesWithOperon": false,
 			"dailyNoteFormat": "YYYY-MM-DD",
 			"dailyNoteTemplate": "",
 			"dailyNoteFolder": "",
-			"createDailyNotesAsOperonTask": false,
 			"manageWeeklyNotesWithOperon": false,
 			"weeklyNoteFormat": "GGGG-[W]WW",
 			"weeklyNoteTemplate": "",
 			"weeklyNoteFolder": "",
-			"createWeeklyNotesAsOperonTask": false,
-			"defaultEstimateMinutes": 30
+			"createWeeklyNotesAsOperonTask": false
 		},
 		"workspaceTweaks": {
 			"version": 1,
@@ -2487,9 +2491,9 @@
 			"cascadeCancelToDescendants": true,
 			"newOccurrencePosition": "above",
 			"fileTaskAutoArchiveEnabled": false,
-			"fileTaskArchiveFolder": "Operon/Archives",
+			"fileTaskArchiveFolder": "",
 			"fileTaskArchiveDelaySeconds": 30,
-			"fileTaskArchiveOnlyFromFileTasksFolder": true,
+			"fileTaskArchiveOnlyFromFileTasksFolder": false,
 			"fileRepeatDestination": "same-folder",
 			"fileRepeatCustomFolder": "",
 			"estimateAutoReallocation": false,
@@ -2498,7 +2502,8 @@
 			"reminderNoticeDurationSeconds": 15,
 			"reminderAutoPinDueTasks": false,
 			"reminderSystemNotificationsEnabled": false,
-			"reminderSoundFilePath": ""
+			"reminderSoundFilePath": "",
+			"fileTaskArchivePipelineLocations": []
 		}
 	},
 	"integrations": {

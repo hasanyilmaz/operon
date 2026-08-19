@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "it",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "Scegli dove vengono create le nuove occorrenze di attività-file ricorrenti.",
       "fileRepeatDestinationSameFolder": "Stessa cartella dell'origine",
       "fileTaskArchive": "Archivia attività-file completate/annullate",
-      "fileTaskArchiveDelaySeconds": "Ritardo archiviazione, secondi",
-      "fileTaskArchiveDelaySecondsDesc": "Secondi da attendere dopo che un'attività-file diventa completata o annullata prima di spostarla.",
       "fileTaskArchiveFolder": "Cartella archivio",
-      "fileTaskArchiveFolderDesc": "Cartella per le attività-file archiviate. Il valore predefinito è Operon/Archives.",
+      "fileTaskArchiveFolderDesc": "Cartella di fallback per le attività-file terminate. Lascia vuoto per mantenere in posizione le attività senza corrispondenza.",
       "fileTaskArchiveFolderPlaceholder": "es. Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "Archivia solo le attività dentro la cartella attività-file",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Quando attivo, Operon archivia solo le attività-file attualmente all'interno della cartella attività-file configurata.",
+      "fileTaskArchivePipelineLocations": "Posizioni della pipeline di archiviazione",
+      "fileTaskArchivePipelineLocationsDesc": "Una posizione della pipeline corrispondente ha priorità sulla cartella di archiviazione di fallback. Le attività terminate vengono spostate dopo circa 30 secondi.",
       "fileTaskAutoArchiveEnabled": "Archivia automaticamente attività-file completate/annullate",
       "fileTaskAutoArchiveEnabledDesc": "Quando attivo, Operon sposta le attività-file completate o annullate nella cartella di archivio dopo il ritardo configurato.",
       "fileTaskConversion": "Conversione attività-file",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "906bbed0a7f031af517366cce3fc107f76019b353dd1d196a5fa1729d198b9b8"
+  "sourceVersion": "9adc40523d1034f7eecbcfa90a81b7b63bc5578f4a3103f11337fc29d717c8db"
 }

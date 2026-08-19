@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "zh-TW",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "選擇新的重複檔案任務發生在何處建立。",
       "fileRepeatDestinationSameFolder": "與源相同的資料夾",
       "fileTaskArchive": "歸檔已完成/已取消的檔案任務",
-      "fileTaskArchiveDelaySeconds": "歸檔延遲（秒）",
-      "fileTaskArchiveDelaySecondsDesc": "檔案任務變為已完成或已取消後，移動它之前等待的秒數。",
       "fileTaskArchiveFolder": "歸檔資料夾",
-      "fileTaskArchiveFolderDesc": "已歸檔檔案任務的資料夾。預設為 Operon/Archives。",
+      "fileTaskArchiveFolderDesc": "已結束檔案任務的備用資料夾。留空可讓未符合的任務保留在原處。",
       "fileTaskArchiveFolderPlaceholder": "例如 Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "僅歸檔檔案任務資料夾內的任務",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "啟用後，Operon 僅歸檔當前位於配置的檔案任務資料夾內的檔案任務。",
+      "fileTaskArchivePipelineLocations": "歸檔管線位置",
+      "fileTaskArchivePipelineLocationsDesc": "符合的管線位置優先於備用歸檔資料夾。已結束任務會在約 30 秒後移動。",
       "fileTaskAutoArchiveEnabled": "自動歸檔已完成/已取消的檔案任務",
       "fileTaskAutoArchiveEnabledDesc": "啟用後，Operon 會在配置的延遲之後將已完成或已取消的檔案任務移至歸檔資料夾。",
       "fileTaskConversion": "檔案任務轉換",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "2f45ca90c0c2fe613fb7d99f2e9e0cdff26048e19151caae02fb7d89ff159ce8"
+  "sourceVersion": "c28630b3ffab0f80fbc7caa38a750edddeafa2d536f1603604a3eea7f6cce10d"
 }

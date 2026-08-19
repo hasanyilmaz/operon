@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "zh-CN",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "选择新的重复文件任务发生在何处创建。",
       "fileRepeatDestinationSameFolder": "与源相同的文件夹",
       "fileTaskArchive": "归档已完成/已取消的文件任务",
-      "fileTaskArchiveDelaySeconds": "归档延迟（秒）",
-      "fileTaskArchiveDelaySecondsDesc": "文件任务变为已完成或已取消后，移动它之前等待的秒数。",
       "fileTaskArchiveFolder": "归档文件夹",
-      "fileTaskArchiveFolderDesc": "已归档文件任务的文件夹。默认为 Operon/Archives。",
+      "fileTaskArchiveFolderDesc": "已结束文件任务的后备文件夹。留空可让未匹配的任务保留在原处。",
       "fileTaskArchiveFolderPlaceholder": "例如 Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "仅归档文件任务文件夹内的任务",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "启用后，Operon 仅归档当前位于配置的文件任务文件夹内的文件任务。",
+      "fileTaskArchivePipelineLocations": "归档管道位置",
+      "fileTaskArchivePipelineLocationsDesc": "匹配的管道位置优先于后备归档文件夹。已结束任务会在约 30 秒后移动。",
       "fileTaskAutoArchiveEnabled": "自动归档已完成/已取消的文件任务",
       "fileTaskAutoArchiveEnabledDesc": "启用后，Operon 会在配置的延迟之后将已完成或已取消的文件任务移至归档文件夹。",
       "fileTaskConversion": "文件任务转换",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "d0587ff7a5336a9f04d86236a7e528d66ff377bf17d9f37065edcb9c5bff69ea"
+  "sourceVersion": "01f95f55ce49bf3b156f1864f50bf6b2d5992588253d544bdfb01beded19f922"
 }

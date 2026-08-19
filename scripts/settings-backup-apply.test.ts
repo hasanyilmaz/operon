@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import type { App } from 'obsidian';
 import { sha256HexV1 } from '../src/agent-runtime/contracts/v1/canonical';
+import type { JsonValue } from '../src/agent-runtime/contracts/v1/primitives';
 import {
 	computeOperonSettingsBackupApplyPlanIdV1,
 	computeOperonSettingsBackupSettingsFingerprintV1,
@@ -12,7 +13,9 @@ import {
 } from '../src/core/settings-backup-apply';
 import { exportOperonSettingsBackupJsonV1 } from '../src/core/settings-backup-export';
 import {
+	buildOperonSettingsBackupV1,
 	canonicalizeOperonSettingsBackupJson,
+	serializeOperonSettingsBackupV1,
 	type OperonSettingsBackupBodyV1,
 } from '../src/core/settings-backup-format';
 import { validateOperonSettingsBackupGroupsV1 } from '../src/core/settings-backup-group-validation';
@@ -274,6 +277,31 @@ function exportJson(
 	assert.equal(result.ok, true, result.diagnostics.map(item => item.message).join('\n'));
 	if (!result.ok) throw new Error('Expected export to succeed.');
 	return result.json;
+}
+
+function exportLegacyArchiveJson(settings: OperonSettings): string {
+	const current = JSON.parse(exportJson(settings)) as { body: OperonSettingsBackupBodyV1 };
+	const general = current.body.groups.general;
+	assert.ok(general, 'current backup must contain its General group');
+	const generalData = general.data as Record<string, JsonValue>;
+	return serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1({
+		...current.body,
+		source: { ...current.body.source, settingsVersion: 113 },
+		groups: {
+			...current.body.groups,
+			general: {
+				...general,
+				data: {
+					...generalData,
+					fileTaskAutoArchiveEnabled: false,
+					fileTaskArchiveFolder: 'Legacy/Archive',
+					fileTaskArchivePipelineLocations: [{ pipelineId: 'legacy-pipeline', folder: 'Legacy/Pipeline archive' }] as JsonValue,
+					fileTaskArchiveDelaySeconds: 1,
+					fileTaskArchiveOnlyFromFileTasksFolder: true,
+				},
+			},
+		},
+	}));
 }
 
 async function createPlan(
@@ -666,6 +694,129 @@ test('periodic and pipeline-location settings export, preflight, and apply all t
 	assert.equal(second.receipt?.alreadyApplied, true);
 	assert.equal(second.receipt?.canonicalWrite, 'not-attempted');
 	assert.equal(harness.data.saveAttempts, 1, 'second apply must not write again');
+});
+
+test('legacy archive backups preserve the target policy while v114 backups carry pipeline archive rules', async () => {
+	const target = baselineSettings();
+	const pipelineId = target.pipelines[0]?.id;
+	assert.ok(pipelineId, 'backup fixture must retain one stable pipeline ID');
+	Object.assign(target, {
+		fileTaskArchiveFolder: 'Target/Archive',
+		fileTaskArchivePipelineLocations: [{ pipelineId, folder: 'Target/Pipeline archive' }],
+		fileTaskAutoArchiveEnabled: true,
+		fileTaskArchiveDelaySeconds: 30,
+		fileTaskArchiveOnlyFromFileTasksFolder: false,
+	});
+	const harness = await createHarness(canonicalPackage(target));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+
+	const legacy = clone(current);
+	legacy.language = 'de';
+	const legacyJson = exportLegacyArchiveJson(legacy);
+	const legacyPreflight = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: legacyJson,
+		targetSnapshot: await harness.storage.captureCommittedSettingsBackupSnapshot(),
+		selectedGroups: ['general'],
+	});
+	assert.equal(legacyPreflight.ok, true);
+	if (!legacyPreflight.ok || !legacyPreflight.restorePlan) throw new Error('Expected legacy archive backup preflight to succeed.');
+	assert.equal(legacyPreflight.classification, 'ready');
+	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskArchiveFolder, current.fileTaskArchiveFolder);
+	assert.deepEqual(legacyPreflight.restorePlan.candidateSettings.fileTaskArchivePipelineLocations, current.fileTaskArchivePipelineLocations);
+	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskAutoArchiveEnabled, true);
+	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskArchiveDelaySeconds, 30);
+	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskArchiveOnlyFromFileTasksFolder, false);
+	const legacyApplied = await harness.storage.applySettingsBackupRestorePlanV1(
+		applyInput(legacyJson, legacyPreflight.restorePlan),
+	);
+	assert.ok(legacyApplied.status === 'success' || legacyApplied.status === 'success-with-migrations');
+	const afterLegacy = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	assert.equal(afterLegacy.language, 'de');
+	assert.equal(afterLegacy.fileTaskArchiveFolder, current.fileTaskArchiveFolder);
+	assert.deepEqual(afterLegacy.fileTaskArchivePipelineLocations, current.fileTaskArchivePipelineLocations);
+
+	const sourcePipeline = clone(afterLegacy.pipelines[0]);
+	assert.ok(sourcePipeline, 'backup fixture must retain a source pipeline');
+	sourcePipeline.id = 'legacy-only-pipeline';
+	sourcePipeline.name = 'Legacy-only pipeline';
+	const legacyBody = JSON.parse(exportLegacyArchiveJson(afterLegacy)) as { body: OperonSettingsBackupBodyV1 };
+	const legacyPipelineGroup = legacyBody.body.groups.pipelines;
+	assert.ok(legacyPipelineGroup, 'legacy backup fixture must include its Pipelines group');
+	const legacyPipelineJson = serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1({
+		...legacyBody.body,
+		groups: {
+			...legacyBody.body.groups,
+			pipelines: {
+				...legacyPipelineGroup,
+				data: {
+					...(legacyPipelineGroup.data as Record<string, JsonValue>),
+					pipelines: [sourcePipeline] as unknown as JsonValue,
+					defaultPipelineName: sourcePipeline.name,
+				},
+			},
+		},
+	}));
+	const legacyPipelinePreflight = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: legacyPipelineJson,
+		targetSnapshot: await harness.storage.captureCommittedSettingsBackupSnapshot(),
+		selectedGroups: ['pipelines'],
+	});
+	assert.equal(legacyPipelinePreflight.ok, true);
+	if (!legacyPipelinePreflight.ok) throw new Error('Expected legacy pipeline preflight to parse.');
+	assert.equal(legacyPipelinePreflight.classification, 'blocked');
+	assert.equal(legacyPipelinePreflight.restorePlan, null);
+	assert.ok(legacyPipelinePreflight.preview.issues.some(issue => (
+		issue.id === 'legacy-archive-pipeline-conflict'
+		&& issue.group === 'pipelines'
+		&& issue.severity === 'error'
+	)), 'legacy Pipelines must be blocked before they can silently drop the current archive route');
+	const afterBlockedLegacyPipeline = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	assert.deepEqual(
+		afterBlockedLegacyPipeline.fileTaskArchivePipelineLocations,
+		current.fileTaskArchivePipelineLocations,
+		'blocked legacy pipeline restore must preserve the current archive routing policy',
+	);
+
+	const v114 = clone(afterLegacy);
+	Object.assign(v114, {
+		language: 'fr',
+		languagePackSubscriptions: ['fr'],
+		fileTaskArchiveFolder: 'Imported/Archive',
+		fileTaskArchivePipelineLocations: [{ pipelineId, folder: 'Imported/Pipeline archive' }],
+		fileTaskAutoArchiveEnabled: true,
+		fileTaskArchiveDelaySeconds: 30,
+		fileTaskArchiveOnlyFromFileTasksFolder: false,
+	});
+	const v114Json = exportJson(v114, '2026-08-10T18:01:00.000Z');
+	const v114Preflight = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: v114Json,
+		targetSnapshot: await harness.storage.captureCommittedSettingsBackupSnapshot(),
+		selectedGroups: ['general'],
+		vaultReferenceChecks: {
+			fileTaskArchiveFolder: { status: 'valid' },
+			fileTaskArchivePipelineLocations: { status: 'valid' },
+		},
+		vaultReferenceDecisions: {
+			fileTaskArchiveFolder: 'apply-source',
+			fileTaskArchivePipelineLocations: 'apply-source',
+		},
+	});
+	assert.equal(v114Preflight.ok, true);
+	if (!v114Preflight.ok || !v114Preflight.restorePlan) throw new Error('Expected v114 archive backup preflight to succeed.');
+	assert.equal(v114Preflight.classification, 'ready');
+	assert.equal(v114Preflight.restorePlan.candidateSettings.fileTaskArchiveFolder, 'Imported/Archive');
+	assert.deepEqual(v114Preflight.restorePlan.candidateSettings.fileTaskArchivePipelineLocations, [{
+		pipelineId,
+		folder: 'Imported/Pipeline archive',
+	}]);
+	const v114Applied = await harness.storage.applySettingsBackupRestorePlanV1(
+		applyInput(v114Json, v114Preflight.restorePlan, '2026-08-10T20:02:00.000Z'),
+	);
+	assert.ok(v114Applied.status === 'success' || v114Applied.status === 'success-with-migrations');
+	const afterV114 = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	assert.equal(afterV114.language, 'fr');
+	assert.equal(afterV114.fileTaskArchiveFolder, 'Imported/Archive');
+	assert.deepEqual(afterV114.fileTaskArchivePipelineLocations, [{ pipelineId, folder: 'Imported/Pipeline archive' }]);
 });
 
 test('exact-plan retry remains idempotent after an unselected target setting changes', async () => {

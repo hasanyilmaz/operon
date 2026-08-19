@@ -95,7 +95,9 @@ import {
 import type { PinnedTaskSortMode } from '../core/pinned-task-query';
 import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 
-export const CURRENT_SETTINGS_VERSION = 113;
+export const CURRENT_SETTINGS_VERSION = 114;
+export const FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION = 114;
+export const FILE_TASK_ARCHIVE_DELAY_SECONDS = 30;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
@@ -1491,6 +1493,8 @@ export interface OperonSettings {
 	fileTaskAutoArchiveEnabled: boolean;
 	/** Folder where finished/cancelled file tasks are moved. */
 	fileTaskArchiveFolder: string;
+	/** Optional pipeline-specific archive destinations for finished/cancelled File Tasks. */
+	fileTaskArchivePipelineLocations: FileTaskPipelineLocationRule[];
 	/** Seconds to wait before moving an eligible finished/cancelled file task. */
 	fileTaskArchiveDelaySeconds: number;
 	/** If true, only file tasks currently inside fileTasksFolder are auto-archived. */
@@ -2034,9 +2038,10 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	fileTaskPipelineLocations: [],
 	moveConvertedNotesToPipelineLocation: false,
 	fileTaskAutoArchiveEnabled: false,
-	fileTaskArchiveFolder: 'Operon/Archives',
-	fileTaskArchiveDelaySeconds: 30,
-	fileTaskArchiveOnlyFromFileTasksFolder: true,
+	fileTaskArchiveFolder: '',
+	fileTaskArchivePipelineLocations: [],
+	fileTaskArchiveDelaySeconds: FILE_TASK_ARCHIVE_DELAY_SECONDS,
+	fileTaskArchiveOnlyFromFileTasksFolder: false,
 	fileTaskParentInlineTargetMode: 'same-folder',
 	fileTaskParentFileTargetMode: 'same-folder',
 	inlineToFileTaskMovePlainCheckboxes: true,
@@ -2324,7 +2329,6 @@ export const NUMERIC_CONSTRAINTS = {
 	kanbanMobileCompactSwimlaneWidthPx: { min: KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, max: KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX },
 	taskFinderRecentModifiedDays: { min: 1, max: 7 },
 	taskFinderVisibleResultCount: { min: 3, max: 9 },
-	fileTaskArchiveDelaySeconds: { min: 0, max: 3600 },
 		indexEventDebounceMs: { min: 0, max: 2000 },
 		defaultEstimateMinutes: { min: 5, max: 480 },
 				trackerHistoryDays: { min: 1, max: 365 },
@@ -2444,6 +2448,77 @@ export function normalizeFileTaskPipelineLocations(
 		rules.push({ pipelineId, folder });
 	}
 	return rules;
+}
+
+/**
+ * Archive routes are intentionally stricter than creation routes: an incomplete
+ * row is a UI draft, never a stored policy that could alter archive fallback.
+ */
+export function normalizeFileTaskArchivePipelineLocations(
+	value: unknown,
+	pipelines: readonly Pipeline[],
+): FileTaskPipelineLocationRule[] {
+	if (!Array.isArray(value)) return [];
+	const validPipelineIds = new Set(pipelines.map(pipeline => pipeline.id.trim()).filter(Boolean));
+	const seen = new Set<string>();
+	const rules: FileTaskPipelineLocationRule[] = [];
+	for (const item of value) {
+		if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+		const raw = item as Record<string, unknown>;
+		const pipelineId = typeof raw.pipelineId === 'string' ? raw.pipelineId.trim() : '';
+		const folder = typeof raw.folder === 'string' ? normalizeSettingsFolderPath(raw.folder) : '';
+		if (!pipelineId || !folder || !validPipelineIds.has(pipelineId) || seen.has(pipelineId)) continue;
+		if (!isSafeVaultRelativePath(folder)) continue;
+		seen.add(pipelineId);
+		rules.push({ pipelineId, folder });
+	}
+	return rules;
+}
+
+export function hasEffectiveFileTaskArchiveTarget(settings: Pick<
+	OperonSettings,
+	'fileTaskArchiveFolder' | 'fileTaskArchivePipelineLocations'
+>): boolean {
+	const fallback = normalizeSettingsFolderPath(settings.fileTaskArchiveFolder);
+	return (!!fallback && isSafeVaultRelativePath(fallback))
+		|| settings.fileTaskArchivePipelineLocations.some(rule => {
+			const folder = normalizeSettingsFolderPath(rule.folder);
+			return !!folder && isSafeVaultRelativePath(folder);
+		});
+}
+
+/**
+ * Legacy snapshots predate pipeline archive routes. Keep a newer canonical
+ * archive policy authoritative when such a snapshot is reloaded or restored.
+ */
+export function preserveCanonicalArchiveRoutingForLegacySource(
+	incoming: unknown,
+	current: Pick<
+		OperonSettings,
+		| 'fileTaskAutoArchiveEnabled'
+		| 'fileTaskArchiveFolder'
+		| 'fileTaskArchivePipelineLocations'
+		| 'fileTaskArchiveDelaySeconds'
+		| 'fileTaskArchiveOnlyFromFileTasksFolder'
+	>,
+	sourceVersion?: number,
+): Record<string, unknown> {
+	const source = incoming && typeof incoming === 'object' && !Array.isArray(incoming)
+		? incoming as Record<string, unknown>
+		: {};
+	const version = sourceVersion ?? (typeof source.settingsVersion === 'number' && Number.isFinite(source.settingsVersion)
+		? Math.floor(source.settingsVersion)
+		: 0);
+	if (version >= FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION) return { ...source };
+	return {
+		...source,
+		settingsVersion: FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION,
+		fileTaskAutoArchiveEnabled: current.fileTaskAutoArchiveEnabled,
+		fileTaskArchiveFolder: current.fileTaskArchiveFolder,
+		fileTaskArchivePipelineLocations: current.fileTaskArchivePipelineLocations.map(rule => ({ ...rule })),
+		fileTaskArchiveDelaySeconds: current.fileTaskArchiveDelaySeconds,
+		fileTaskArchiveOnlyFromFileTasksFolder: current.fileTaskArchiveOnlyFromFileTasksFolder,
+	};
 }
 
 function normalizeExternalCalendarColor(value: unknown): string {
@@ -4395,10 +4470,19 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? src.moveConvertedNotesToPipelineLocation
 		: DEFAULT_SETTINGS.moveConvertedNotesToPipelineLocation;
 	out.fileTaskArchiveFolder = normalizeSettingsFolderPath(out.fileTaskArchiveFolder);
-	if (!out.fileTaskArchiveFolder) {
-		out.fileTaskArchiveFolder = DEFAULT_SETTINGS.fileTaskArchiveFolder;
+	out.fileTaskArchivePipelineLocations = normalizeFileTaskArchivePipelineLocations(
+		src.fileTaskArchivePipelineLocations,
+		out.pipelines,
+	);
+	if (sourceSettingsVersion < FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION) {
+		out.fileTaskArchiveFolder = '';
+		out.fileTaskArchivePipelineLocations = [];
 	}
-	out.fileTaskArchiveDelaySeconds = Math.round(clamp(out.fileTaskArchiveDelaySeconds, 'fileTaskArchiveDelaySeconds'));
+	// Runtime V1 still exposes the legacy archive fields. They describe the
+	// effective internal policy and are no longer independent user preferences.
+	out.fileTaskAutoArchiveEnabled = hasEffectiveFileTaskArchiveTarget(out);
+	out.fileTaskArchiveDelaySeconds = FILE_TASK_ARCHIVE_DELAY_SECONDS;
+	out.fileTaskArchiveOnlyFromFileTasksFolder = false;
 	out.taskCreatorDefaultFileTemplateId = normalizeStoredFileTaskTemplateId(
 		src.taskCreatorDefaultFileTemplateId,
 		out.pipelines,

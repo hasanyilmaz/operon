@@ -345,6 +345,7 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 		newOccurrencePosition: settings.newOccurrencePosition,
 		fileTaskAutoArchiveEnabled: settings.fileTaskAutoArchiveEnabled,
 		fileTaskArchiveFolder: settings.fileTaskArchiveFolder,
+		fileTaskArchivePipelineLocations: settings.fileTaskArchivePipelineLocations.map(rule => ({ ...rule })),
 		fileTaskArchiveDelaySeconds: settings.fileTaskArchiveDelaySeconds,
 		fileTaskArchiveOnlyFromFileTasksFolder: settings.fileTaskArchiveOnlyFromFileTasksFolder,
 		fileRepeatDestination: settings.fileRepeatDestination,

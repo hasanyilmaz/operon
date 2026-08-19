@@ -182,6 +182,24 @@ test('durable periodic container identities survive config changes and fail clos
 	assert.match(mainSource, /rollbackPeriodicNoteCreatedFileSnapshot\([\s\S]*?deletePeriodicNoteIfContentMatches\(path, expectedContent\)/);
 	assert.match(mainSource, /async backfillPeriodicNoteContainerRegistry\([\s\S]*?backfillPeriodicNoteContainersBeforePipelineResume\([\s\S]*?resolveHistoricalPeriodicParentConfigs/);
 	assert.match(mainSource, /await this\.backfillPeriodicNoteContainerRegistry\(\);/);
+	const archiveResumeIndex = mainSource.indexOf('await this.fileTaskArchiver?.resumePendingReconciliation();');
+	const periodicBackfillIndex = mainSource.indexOf('await this.backfillPeriodicNoteContainerRegistry();');
+	assert.ok(
+		archiveResumeIndex >= 0 && archiveResumeIndex < periodicBackfillIndex,
+		'archive marker recovery must run after the index is ready and before periodic registry backfill',
+	);
+	const periodicBackfill = method(
+		mainSource,
+		'async backfillPeriodicNoteContainerRegistry(',
+		'async recordPeriodicContainerVerifiedRename(',
+	);
+	assert.match(periodicBackfill, /await this\.fileTaskPipelineMover\?\.resumePendingReconciliation\(\);/);
+	assert.doesNotMatch(
+		periodicBackfill,
+		/fileTaskArchiver\?\.resumePendingReconciliation/,
+		'periodic registry success may gate only the pipeline mover, never archive recovery',
+	);
+	assert.match(mainSource, /buildFileTaskArchiveReconciliationSignature\(this\.settings\)/);
 	assert.match(mainSource, /this\.startupReady = true;/);
 	assert.match(mainSource, /markPipelineReconciliationReady: \(\) => \{[\s\S]*?periodicContainerRegistryReadyForMover = true/);
 	assert.match(mainSource, /periodicContainerRegistryReadyForMover[\s\S]*?&& this\.storage\.periodicNoteContainers\.isHealthy\(\)/);

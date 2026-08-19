@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "fr",
   "keyCount": 3092,
-  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
+  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1348,13 +1348,13 @@
       "fileRepeatDestinationDesc": "Choisissez où les nouvelles occurrences de tâches-fichiers récurrentes sont créées.",
       "fileRepeatDestinationSameFolder": "Même dossier que la source",
       "fileTaskArchive": "Archiver les tâches-fichiers terminées/annulées",
-      "fileTaskArchiveDelaySeconds": "Délai d'archivage, secondes",
-      "fileTaskArchiveDelaySecondsDesc": "Secondes à attendre après qu'une tâche-fichier devient terminée ou annulée avant de la déplacer.",
       "fileTaskArchiveFolder": "Dossier d'archives",
-      "fileTaskArchiveFolderDesc": "Dossier pour les tâches-fichiers archivées. La valeur par défaut est Operon/Archives.",
+      "fileTaskArchiveFolderDesc": "Dossier de secours pour les tâches-fichiers terminées. Laissez vide pour garder les tâches sans correspondance à leur emplacement.",
       "fileTaskArchiveFolderPlaceholder": "p. ex. Operon/Archives",
       "fileTaskArchiveOnlyFromFileTasksFolder": "Archiver uniquement les tâches dans le dossier des tâches-fichiers",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Lorsque cette option est activée, Operon n'archive que les tâches-fichiers actuellement situées dans le dossier des tâches-fichiers configuré.",
+      "fileTaskArchivePipelineLocations": "Emplacements de pipeline d'archivage",
+      "fileTaskArchivePipelineLocationsDesc": "Un emplacement de pipeline correspondant est prioritaire sur le dossier d'archives de secours. Les tâches terminées sont déplacées après environ 30 secondes.",
       "fileTaskAutoArchiveEnabled": "Archiver automatiquement les tâches-fichiers terminées/annulées",
       "fileTaskAutoArchiveEnabledDesc": "Lorsque cette option est activée, Operon déplace les tâches-fichiers terminées ou annulées vers le dossier d'archives après le délai configuré.",
       "fileTaskConversion": "Conversion des tâches-fichiers",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "0d45f19a43db23bfae101ee39e0ed680e01723485976ce36c454c19ef9c66112"
+  "sourceVersion": "e5976c2e19fea91e654c845f1f331ee6bbe0bac081ad1f0ec449e89c04dea74c"
 }

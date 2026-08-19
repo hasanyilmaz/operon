@@ -23,7 +23,11 @@ import { CANONICAL_KEYS } from '../types/keys';
 import type { KanbanPreset } from '../types/kanban';
 import type { Pipeline } from '../types/pipeline';
 import type { PriorityDefinition } from '../types/priority';
-import { DEFAULT_SETTINGS, migrateSettings } from '../types/settings';
+import {
+	DEFAULT_SETTINGS,
+	FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION,
+	migrateSettings,
+} from '../types/settings';
 
 export interface OperonSettingsBackupGeneralGroupV1 {
 	readonly [key: string]: JsonValue;
@@ -107,6 +111,8 @@ export interface OperonSettingsBackupGroupPayloadsV1 {
 
 export interface OperonSettingsBackupGroupValidationContextV1 {
 	targetSettings?: OperonSettings;
+	/** Source provenance controls narrow compatibility validation for retired archive controls. */
+	sourceSettingsVersion?: number;
 	/** JSON-only restore keeps target Table favorites and treats source Table references as advisory. */
 	ignoreTableFavoriteReferences?: boolean;
 }
@@ -133,6 +139,13 @@ const RESERVED_DYNAMIC_FILTER_IDS = new Set(['fs_dynamic_file_task', 'fs_dynamic
 const GENERAL_KEYS = new Set(
 	SETTINGS_BACKUP_GROUPS.find(group => group.id === 'general')?.settingKeys.map(String) ?? [],
 );
+const LEGACY_ARCHIVE_ROUTING_KEYS = new Set([
+	'fileTaskAutoArchiveEnabled',
+	'fileTaskArchiveFolder',
+	'fileTaskArchivePipelineLocations',
+	'fileTaskArchiveDelaySeconds',
+	'fileTaskArchiveOnlyFromFileTasksFolder',
+]);
 const BUILT_IN_FILTER_FIELDS = new Set([
 	...CANONICAL_KEYS.map(key => key.name),
 	'checkbox',
@@ -667,6 +680,11 @@ function validateCanonicalProjection(
 		externalCalendars: payloads['external-calendars']?.externalCalendars ?? baseline.externalCalendars,
 	});
 	for (const [key, value] of Object.entries(general ?? {})) {
+		if (
+			context.sourceSettingsVersion !== undefined
+			&& context.sourceSettingsVersion < FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION
+			&& LEGACY_ARCHIVE_ROUTING_KEYS.has(key)
+		) continue;
 		const normalized = candidate[key as keyof OperonSettings];
 		assertCanonicalProjection(value, normalized, `$.body.groups.general.data.${key}`, key, diagnostics);
 	}

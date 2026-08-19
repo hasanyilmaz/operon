@@ -128,10 +128,8 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('automation', 'tasksFileTasks', 'weeklyNoteTemplate', 'settings', 'weeklyNoteTemplate', 'weeklyNoteTemplateDesc', 'file', ['weekly notes', 'periodic notes', 'template']),
 	e('automation', 'tasksFileTasks', 'weeklyNoteFolder', 'settings', 'weeklyNoteFolder', 'weeklyNoteFolderDesc', 'folder', ['weekly notes', 'periodic notes', 'folder']),
 	e('automation', 'tasksFileTasks', 'createWeeklyNotesAsOperonTask', 'settings', 'createWeeklyNotesAsOperonTask', 'createWeeklyNotesAsOperonTaskDesc', 'toggle', ['weekly notes', 'file task', 'new task']),
-	e('automation', 'tasksTaskRouter', 'fileTaskArchiveFolder', 'settings', 'fileTaskArchiveFolder', 'fileTaskArchiveFolderDesc', 'folder', ['file task', 'archive', 'archive folder', 'file task archive']),
-	e('automation', 'tasksTaskRouter', 'fileTaskArchiveDelaySeconds', 'settings', 'fileTaskArchiveDelaySeconds', 'fileTaskArchiveDelaySecondsDesc', 'number', ['file task', 'archive', 'archive delay', 'file task archive']),
-	e('automation', 'tasksTaskRouter', 'fileTaskAutoArchiveEnabled', 'settings', 'fileTaskAutoArchiveEnabled', 'fileTaskAutoArchiveEnabledDesc', 'toggle', ['file task', 'archive', 'auto archive', 'file task archive']),
-	e('automation', 'tasksTaskRouter', 'fileTaskArchiveOnlyFromFileTasksFolder', 'settings', 'fileTaskArchiveOnlyFromFileTasksFolder', 'fileTaskArchiveOnlyFromFileTasksFolderDesc', 'toggle', ['file task', 'archive', 'archive scope', 'file task archive']),
+	e('automation', 'tasksTaskRouter', 'fileTaskArchiveFolder', 'settings', 'fileTaskArchiveFolder', 'fileTaskArchiveFolderDesc', 'folder', ['file task', 'archive', 'archive folder', 'fallback archive', 'finished task', 'cancelled task']),
+	section('automation', 'tasksTaskRouter', 'fileTaskArchivePipelineLocations', 'settings', 'fileTaskArchivePipelineLocations', 'fileTaskArchivePipelineLocationsDesc', ['file task', 'archive', 'archive folder', 'archive pipeline', 'finished task', 'cancelled task']),
 	section('automation', 'tasksFileTasks', 'excludedFolders', 'settings', 'excludedFolders', 'excludedFoldersDesc', ['excluded folders', 'exclude folder', 'global index', 'placeholder normalization', 'template folder']),
 	section('automation', 'tasksFileTasks', 'fileTaskMigration', 'settings', 'fileTaskMigrationTitle', 'fileTaskMigrationDesc', ['migration', 'convert notes', 'convert files', 'note conversion', 'frontmatter', 'file task migration']),
 
