@@ -29562,6 +29562,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
+	padding-inline: 24px;
 }
 
 .operon-file-task-pipeline-location-row {
@@ -29594,6 +29595,11 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	min-width: 0;
 }
 
+.operon-file-task-pipeline-location-select {
+	text-align: start;
+	text-align-last: start;
+}
+
 .operon-file-task-pipeline-location-remove {
 	justify-self: end;
 }
@@ -29605,7 +29611,7 @@ button.operon-kanban-descendant-toggle:focus-visible {
 .operon-file-task-pipeline-location-add-row {
 	display: flex;
 	justify-content: flex-start;
-	padding-top: 12px;
+	padding: 12px 24px 0;
 }
 
 .operon-file-task-pipeline-location-add-button {
@@ -29626,8 +29632,16 @@ button.operon-kanban-descendant-toggle:focus-visible {
 }
 
 @media (max-width: 720px) {
+	.operon-file-task-pipeline-location-rows {
+		padding-inline: 16px;
+	}
+
 	.operon-file-task-pipeline-location-row {
 		grid-template-columns: max-content minmax(0, 1fr) auto;
+	}
+
+	.operon-file-task-pipeline-location-add-row {
+		padding-inline: 16px;
 	}
 
 	.operon-file-task-pipeline-location-pipeline-label,
@@ -29651,8 +29665,16 @@ button.operon-kanban-descendant-toggle:focus-visible {
 }
 
 @media (max-width: 480px) {
+	.operon-file-task-pipeline-location-rows {
+		padding-inline: 12px;
+	}
+
 	.operon-file-task-pipeline-location-row {
 		grid-template-columns: max-content minmax(0, 1fr);
+	}
+
+	.operon-file-task-pipeline-location-add-row {
+		padding-inline: 12px;
 	}
 
 	.operon-file-task-pipeline-location-remove,

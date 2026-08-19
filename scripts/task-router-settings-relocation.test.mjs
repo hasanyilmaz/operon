@@ -200,9 +200,15 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	assert.match(routingMethod, /operon-file-task-pipeline-location-add-button/);
 	assert.doesNotMatch(routingMethod, /\.setCta\(\)/);
 	assert.match(settingsUiSource, /setIcon\(iconEl, 'plus'\)/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 24px;/);
 	assert.match(stylesSource, /\.operon-file-task-pipeline-location-row \{[\s\S]*?grid-template-columns: max-content minmax\(180px, 1fr\) max-content minmax\(180px, 1fr\) auto;/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-select \{[\s\S]*?text-align: start;[\s\S]*?text-align-last: start;/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding: 12px 24px 0;/);
 	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-button \{[\s\S]*?background: transparent;/);
-	assert.match(stylesSource, /@media \(max-width: 720px\) \{[\s\S]*?\.operon-file-task-pipeline-location-row \{/);
+	assert.match(stylesSource, /@media \(max-width: 720px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 16px;/);
+	assert.match(stylesSource, /@media \(max-width: 720px\) \{[\s\S]*?\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding-inline: 16px;/);
+	assert.match(stylesSource, /@media \(max-width: 480px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 12px;/);
+	assert.match(stylesSource, /@media \(max-width: 480px\) \{[\s\S]*?\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding-inline: 12px;/);
 	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /New File Tasks are created/);
 	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /about 30 seconds/);
 	assert.equal(englishLocale.settings.fileTaskPipelineLocationFolder, 'Folder');
