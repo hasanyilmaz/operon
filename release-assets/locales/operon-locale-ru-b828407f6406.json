@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "ru",
   "keyCount": 3092,
-  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
+  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2251,11 +2251,11 @@
       "tableSettingsDesc": "Управляйте переиспользуемыми пресетами Operon Table, выбором таблицы по умолчанию и настройками табличного представления.",
       "tableShowLineNumbers": "Показывать номера строк",
       "tableShowLineNumbersDesc": "Показывает видимый столбец с номерами строк в начале Operon Tables.",
+      "tableShowTaskDataTypeIcon": "Показывать значок типа данных задачи",
+      "tableShowTaskDataTypeIconDesc": "Показывает столбец Task Data Type со значками inline/file задач, открывающими Task Editor.",
       "tableShowTaskIcon": "Показывать значок задачи",
       "tableShowTaskIconDesc": "Показывает столбец значков задач в стиле канбана с переключением статуса и контекстным меню задачи.",
-      "tableShowTaskTypeIcon": "Показывать значок типа задачи",
-      "tableShowTaskTypeIconDesc": "Показывает столбец Type со значками inline/file задач, открывающими Task Editor.",
-      "tableTaskTypeColumn": "Type",
+      "tableTaskDataTypeColumn": "Task Data Type",
       "taskBarChipsDesc": "Выберите, какие чипы полей отображаются на панелях задач.",
       "taskBarChipsTitle": "Видимые чипы",
       "taskBarTab": "Панель задачи",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "ac8b6b484e8eba1bf9584b7006082f9a82fddc1a3f616dc2fc23ce07b3f25d09"
+  "sourceVersion": "5226d16d713fbd20e368a9c2115e48d32449bd29e2ca9654e4aa81af7eb49d20"
 }

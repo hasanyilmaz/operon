@@ -30,6 +30,21 @@ export const TASK_STATS_CANONICAL_KEYS = [
 export type TaskStatsCanonicalKey = typeof TASK_STATS_CANONICAL_KEYS[number];
 
 /**
+ * User-owned task data fields introduced ahead of their staged parser, Runtime,
+ * Table, and chip integrations. Keep this identity exact so each subsystem can
+ * deliberately opt in at its assigned implementation stage.
+ */
+export const TASK_DATA_CANONICAL_KEYS = [
+	'taskType',
+	'taskImage',
+	'taskGallery',
+] as const;
+
+export type TaskDataCanonicalKey = typeof TASK_DATA_CANONICAL_KEYS[number];
+
+export const TASK_DATA_CANONICAL_KEY_SET: ReadonlySet<string> = new Set(TASK_DATA_CANONICAL_KEYS);
+
+/**
  * All canonical keys, ordered by canonical position.
  */
 export const CANONICAL_KEYS: CanonicalKeyDef[] = [
@@ -37,6 +52,7 @@ export const CANONICAL_KEYS: CanonicalKeyDef[] = [
 	{ name: 'operonId', type: 'text', sync: 'yes', group: 'core', position: 1, description: 'Unique 7-char alphanumeric identifier' },
 	// Workflow
 	{ name: 'status', type: 'text', sync: 'yes', group: 'workflow', position: 2, description: 'Workflow status in Pipeline.Status format' },
+	{ name: 'taskType', type: 'text', sync: 'yes', group: 'workflow', position: 2.5, description: 'User-managed task classification' },
 	// Core — Priority
 	{ name: 'priority', type: 'text', sync: 'yes', group: 'core', position: 3, description: 'Task importance level' },
 	// Core — Dates
@@ -88,6 +104,8 @@ export const CANONICAL_KEYS: CanonicalKeyDef[] = [
 	{ name: 'note', type: 'text', sync: 'yes', group: 'workflow', position: 32.5, description: 'Short annotation or comment' },
 	{ name: 'location', type: 'text', sync: 'yes', group: 'workflow', position: 32.6, description: 'Location coordinates in latitude, longitude format' },
 	{ name: 'links', type: 'list', sync: 'yes', group: 'workflow', position: 32.75, description: 'External web links' },
+	{ name: 'taskImage', type: 'text', sync: 'yes', group: 'workflow', position: 32.8, description: 'Single task media reference' },
+	{ name: 'taskGallery', type: 'list', sync: 'yes', group: 'workflow', position: 32.85, description: 'Ordered task media references' },
 	// Scheduling — Auto
 	{ name: 'datetimeModified', type: 'datetime', sync: 'auto', group: 'scheduling', position: 34, description: 'Task modification timestamp (auto-updated)' },
 ];

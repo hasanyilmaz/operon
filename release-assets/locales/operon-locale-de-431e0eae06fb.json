@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "de",
   "keyCount": 3092,
-  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
+  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2251,11 +2251,11 @@
       "tableSettingsDesc": "Wiederverwendbare Operon Table-Voreinstellungen, die Standardtabellenauswahl und die Tabellenansicht-Konfiguration verwalten.",
       "tableShowLineNumbers": "Zeilennummern anzeigen",
       "tableShowLineNumbersDesc": "Zeigt am Anfang von Operon Tables eine sichtbare Zeilennummernspalte an.",
+      "tableShowTaskDataTypeIcon": "Aufgabendatentyp-Symbol anzeigen",
+      "tableShowTaskDataTypeIconDesc": "Zeigt eine Task-Data-Type-Spalte mit Inline-/Dateiaufgabensymbolen, die den Aufgaben-Editor öffnen.",
       "tableShowTaskIcon": "Aufgabensymbol anzeigen",
       "tableShowTaskIconDesc": "Zeigt eine Kanban-artige Aufgabensymbolspalte mit Statuswechsel und Aufgaben-Kontextmenü an.",
-      "tableShowTaskTypeIcon": "Aufgabentypsymbol anzeigen",
-      "tableShowTaskTypeIconDesc": "Zeigt eine Type-Spalte mit Inline-/Dateiaufgabensymbolen, die den Aufgaben-Editor öffnen.",
-      "tableTaskTypeColumn": "Type",
+      "tableTaskDataTypeColumn": "Task Data Type",
       "taskBarChipsDesc": "Wähle, welche Feld-Chips auf Aufgabenleisten erscheinen.",
       "taskBarChipsTitle": "Sichtbare Chips",
       "taskBarTab": "Aufgabenleiste",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1b932725099a7b89c375ccb46576bc76556609a6141d951c0baddbe5ce8397a1"
+  "sourceVersion": "e4e3e74e6339bfab8ab0780e661b3f1e9585875a5789a83f8bcf748ea2eb80a8"
 }

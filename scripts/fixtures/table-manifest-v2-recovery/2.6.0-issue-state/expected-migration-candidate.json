@@ -1134,7 +1134,7 @@
       "kanbanDefaultPresetId": "kanban-preset-default"
     },
     "tablePresets": {
-      "version": 3,
+      "version": 4,
       "presetIds": [
         "table-preset-my-first-table"
       ],
@@ -1148,8 +1148,8 @@
       "tableEmbedVisibleRows": 20,
       "tableShowLineNumbers": true,
       "tableShowTaskIcon": false,
-      "tableShowTaskTypeIcon": false,
-      "initialized": true
+      "initialized": true,
+      "tableShowTaskDataTypeIcon": false
     },
     "kanbanOrder": {
       "version": 1,

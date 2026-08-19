@@ -1291,7 +1291,7 @@ export class OperonStorage {
 		target.tableEmbedDefaultWidthPercent = manifest.tableEmbedDefaultWidthPercent;
 		target.tableShowLineNumbers = manifest.tableShowLineNumbers;
 		target.tableShowTaskIcon = manifest.tableShowTaskIcon;
-		target.tableShowTaskTypeIcon = manifest.tableShowTaskTypeIcon;
+		target.tableShowTaskDataTypeIcon = manifest.tableShowTaskDataTypeIcon;
 	}
 
 	private stageCanonicalDataPackageReload(

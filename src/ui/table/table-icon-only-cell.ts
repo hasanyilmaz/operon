@@ -7,6 +7,7 @@ import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
 import { formatTableCompactDatetimeValue } from './table-datetime-format';
+import { TABLE_TASK_DATA_TYPE_COLUMN_KEY } from '../../types/table';
 
 export { formatTableCompactDatetimeValue } from './table-datetime-format';
 
@@ -73,10 +74,10 @@ export function resolveTableValueCellIcon(
 }
 
 export function resolveTableIconOnlyCellIcon(key: string, value: string, fallbackIcon: string): string {
-	if (key === 'taskType') {
-		const taskType = value.trim();
-		if (taskType === 'inline' || taskType === 'file') {
-			return resolveSubtaskActionIconForKind(taskType);
+	if (key === TABLE_TASK_DATA_TYPE_COLUMN_KEY) {
+		const taskDataType = value.trim();
+		if (taskDataType === 'inline' || taskDataType === 'file') {
+			return resolveSubtaskActionIconForKind(taskDataType);
 		}
 		return fallbackIcon;
 	}

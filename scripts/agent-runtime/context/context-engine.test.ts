@@ -423,6 +423,9 @@ async function testWritableFieldHydration(fixture: Fixture): Promise<void> {
 	assert.equal(byKey.get('dateDue')?.present, false);
 	assert.equal(byKey.has('status'), false);
 	assert.equal(byKey.has('reminderRules'), false);
+	assert.equal(byKey.has('taskType'), false);
+	assert.equal(byKey.has('taskImage'), false);
+	assert.equal(byKey.has('taskGallery'), false);
 	assert.equal(decodeTaskGetResultV1(result).ok, true);
 
 	const invalid = structuredClone(result);

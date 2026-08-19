@@ -5,7 +5,7 @@
 
 import { clonePipeline, createPipelineId, createStatusId, findStatusDef, Pipeline, DEFAULT_PIPELINES, StatusDefinition } from './pipeline';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId, sanitizePriorityDefinitions } from './priority';
-import { CANONICAL_KEYS, isReminderStorageKey } from './keys';
+import { CANONICAL_KEYS, TASK_DATA_CANONICAL_KEY_SET, isReminderStorageKey } from './keys';
 import { FILE_PROPERTY_COLUMN_PREFIX, isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import type { WorkflowStatusIdentityIndex } from '../core/workflow-status-identity';
 import {
@@ -95,8 +95,9 @@ import {
 import type { PinnedTaskSortMode } from '../core/pinned-task-query';
 import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 
-export const CURRENT_SETTINGS_VERSION = 114;
+export const CURRENT_SETTINGS_VERSION = 115;
 export const FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION = 114;
+const TASK_DATA_TYPE_SETTINGS_VERSION = 115;
 /** Effective fixed delay reported by the retained Runtime V1 compatibility field. */
 export const FILE_TASK_ARCHIVE_DELAY_SECONDS = 5;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
@@ -552,7 +553,7 @@ export interface KeyMapping {
 	hideInFileTaskView?: boolean;
 	/** Optional centralized icon override for this canonical key. */
 	icon?: string;
-	/** True for the 32 built-in canonical keys; false for user-defined custom keys */
+	/** True for built-in canonical keys; false for user-defined custom keys */
 	isSystem: boolean;
 	/** Hidden internal keys stay functional but are omitted from user-facing mapping UI. */
 	isInternal?: boolean;
@@ -1259,6 +1260,7 @@ export function createExternalCalendarSourceId(): string {
 const DEFAULT_KEY_MAPPING_ICONS: Record<string, string> = {
 	operonId: 'fingerprint',
 	status: 'align-start-horizontal',
+	taskType: 'shapes',
 	priority: 'flag',
 	dateDue: 'calendar-clock',
 	dateScheduled: 'calendar-cog',
@@ -1299,6 +1301,8 @@ const DEFAULT_KEY_MAPPING_ICONS: Record<string, string> = {
 	note: 'notebook-pen',
 	location: 'map-pin',
 	links: 'link',
+	taskImage: 'image',
+	taskGallery: 'images',
 	datetimeModified: 'file-cog',
 };
 
@@ -1326,6 +1330,7 @@ export function isChildTaskInheritanceEligibleFieldKey(
 		: undefined;
 	if (
 		!normalizedKey
+		|| TASK_DATA_CANONICAL_KEY_SET.has(normalizedKey)
 		|| (CHILD_TASK_INHERITANCE_BLOCKED_FIELD_KEYS.has(normalizedKey) && !collidingCustomReminderMapping)
 		|| isRetiredKeyMapping(normalizedKey)
 	) {
@@ -1358,7 +1363,14 @@ export function normalizeChildTaskInheritanceFields(
 	for (const value of raw) {
 		if (typeof value !== 'string') continue;
 		const key = value.trim();
-		if (!isChildTaskInheritanceEligibleFieldKey(key, keyMappings) || seen.has(key)) continue;
+		// Existing deferred task-data selections remain stored until Stage 3
+		// exposes parser-backed inheritance. They are intentionally absent from
+		// selection/presentation while preserving user settings without loss.
+		if (
+			(!TASK_DATA_CANONICAL_KEY_SET.has(key)
+				&& !isChildTaskInheritanceEligibleFieldKey(key, keyMappings))
+			|| seen.has(key)
+		) continue;
 		seen.add(key);
 		fields.push(key);
 	}
@@ -1383,6 +1395,14 @@ const DEFAULT_KEY_MAPPING_VISIBLE_NAMES: Record<string, string> = {
 	reminderRules: 'ReminderRules',
 };
 
+const SYSTEM_MAPPING_VISIBLE_NAME_FALLBACKS: Record<string, string> = {
+	taskType: 'OperonTaskType',
+	taskImage: 'OperonTaskImage',
+	taskGallery: 'OperonTaskGallery',
+};
+
+const SYSTEM_TAKEOVER_CANONICAL_KEYS = new Set(Object.keys(SYSTEM_MAPPING_VISIBLE_NAME_FALLBACKS));
+
 function getDefaultKeyMappingVisibleName(canonicalKey: string): string {
 	return DEFAULT_KEY_MAPPING_VISIBLE_NAMES[canonicalKey] ?? canonicalKey;
 }
@@ -1393,9 +1413,10 @@ function getAvailableDefaultKeyMappingVisibleName(
 ): string {
 	const preferred = getDefaultKeyMappingVisibleName(canonicalKey);
 	if (!hasDuplicateKeyMappingVisiblePropertyName(preferred, mappings)) return preferred;
-	if (!isReminderStorageKey(canonicalKey)) return preferred;
+	const configuredFallbackBase = SYSTEM_MAPPING_VISIBLE_NAME_FALLBACKS[canonicalKey];
+	if (!isReminderStorageKey(canonicalKey) && !configuredFallbackBase) return preferred;
 
-	const fallbackBase = `Operon${preferred}`;
+	const fallbackBase = configuredFallbackBase ?? `Operon${preferred}`;
 	let suffix = 1;
 	let candidate = fallbackBase;
 	while (
@@ -1406,6 +1427,39 @@ function getAvailableDefaultKeyMappingVisibleName(
 		candidate = `${fallbackBase}${suffix}`;
 	}
 	return candidate;
+}
+
+function takeOverSystemCanonicalKeyCollisions(mappings: KeyMapping[]): KeyMapping[] {
+	const takenOverMappings = [...mappings];
+	for (const canonicalKey of SYSTEM_TAKEOVER_CANONICAL_KEYS) {
+		const comparableKey = normalizeKeyMappingComparableName(canonicalKey);
+		const customIndex = takenOverMappings.findIndex(mapping =>
+			mapping.isSystem === false
+			&& normalizeKeyMappingComparableName(mapping.canonicalKey) === comparableKey
+		);
+		if (customIndex < 0) continue;
+		const canonical = CANONICAL_KEYS.find(key => key.name === canonicalKey);
+		if (!canonical) continue;
+		const custom = takenOverMappings[customIndex];
+		takenOverMappings[customIndex] = {
+			...custom,
+			canonicalKey,
+			type: canonical.type,
+			sync: canonical.sync,
+			enabled: true,
+			hideInFileTaskView: canonical.internal === true,
+			icon: getDefaultKeyMappingIcon(canonicalKey),
+			isSystem: true,
+			isInternal: canonical.internal === true,
+		};
+		for (let index = takenOverMappings.length - 1; index >= 0; index -= 1) {
+			if (index === customIndex) continue;
+			if (normalizeKeyMappingComparableName(takenOverMappings[index].canonicalKey) === comparableKey) {
+				takenOverMappings.splice(index, 1);
+			}
+		}
+	}
+	return takenOverMappings;
 }
 
 /** Generate default key mappings from all canonical keys */
@@ -1756,7 +1810,7 @@ export interface OperonSettings {
 	tableEmbedDefaultWidthPercent: TableEmbedDefaultWidthPercent;
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
-	tableShowTaskTypeIcon: boolean;
+	tableShowTaskDataTypeIcon: boolean;
 
 	// Indexer
 	indexEventDebounceMs: number;
@@ -2234,7 +2288,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	tableEmbedDefaultWidthPercent: DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
 	tableShowLineNumbers: true,
 	tableShowTaskIcon: false,
-	tableShowTaskTypeIcon: false,
+	tableShowTaskDataTypeIcon: false,
 
 	indexEventDebounceMs: 250,
 	fullReindexOnStartup: false,
@@ -3666,6 +3720,63 @@ export function normalizeStoredFileTaskTemplateId(
 	return normalized;
 }
 
+function migrateLegacyTableDataTypeReference(value: unknown): unknown {
+	return value === 'taskType' || value === '__taskType' ? '__taskDataType' : value;
+}
+
+function readLegacyTableDataTypeString(value: unknown): string {
+	return typeof value === 'string' ? value : '';
+}
+
+function migrateLegacyTableDataTypeKeyedEntries(value: unknown, dedupeBy: (entry: Record<string, unknown>) => string): unknown {
+	if (!Array.isArray(value)) return value;
+	const seen = new Set<string>();
+	const migrated: unknown[] = [];
+	for (const entry of value) {
+		if (typeof entry === 'string') {
+			const key = migrateLegacyTableDataTypeReference(entry);
+			if (typeof key === 'string' && !seen.has(key)) {
+				seen.add(key);
+				migrated.push(key);
+			}
+			continue;
+		}
+		if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+			migrated.push(entry);
+			continue;
+		}
+		const record = entry as Record<string, unknown>;
+		const key = migrateLegacyTableDataTypeReference(record.key);
+		const next = key === record.key ? record : { ...record, key };
+		const identity = dedupeBy(next);
+		if (!seen.has(identity)) {
+			seen.add(identity);
+			migrated.push(next);
+		}
+	}
+	return migrated;
+}
+
+function migrateLegacyTablePresetDataTypeReferences(value: unknown): unknown {
+	if (!Array.isArray(value)) return value;
+	const entries = value as unknown[];
+	return entries.map(entry => {
+		if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
+		const preset = entry as Record<string, unknown>;
+		return {
+			...preset,
+			columns: migrateLegacyTableDataTypeKeyedEntries(preset.columns, record => readLegacyTableDataTypeString(record.key)),
+			sortRules: migrateLegacyTableDataTypeKeyedEntries(preset.sortRules, record => readLegacyTableDataTypeString(record.key)),
+			groupBy: migrateLegacyTableDataTypeReference(preset.groupBy),
+			subgroupBy: migrateLegacyTableDataTypeReference(preset.subgroupBy),
+			summaries: migrateLegacyTableDataTypeKeyedEntries(
+				preset.summaries,
+				record => `${readLegacyTableDataTypeString(record.key)}\u0000${readLegacyTableDataTypeString(record.function)}`,
+			),
+		};
+	});
+}
+
 /**
  * Migrate and normalize raw settings data to current schema version.
  * Handles missing keys, invalid types, and out-of-range values.
@@ -3676,6 +3787,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? Math.floor(src.settingsVersion)
 		: 0;
 	const out = { ...DEFAULT_SETTINGS };
+	const tablePresetsSource = sourceSettingsVersion < TASK_DATA_TYPE_SETTINGS_VERSION
+		? migrateLegacyTablePresetDataTypeReferences(src.tablePresets)
+		: src.tablePresets;
 
 	// Copy known keys, validate types
 	for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof OperonSettings)[]) {
@@ -4284,11 +4398,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			&& src.tablePresetOrderIds.length === 0
 			&& src.tableDefaultPresetId === null
 		))
-		&& Array.isArray(src.tablePresets)
-		&& src.tablePresets.length === 0;
+		&& Array.isArray(tablePresetsSource)
+		&& tablePresetsSource.length === 0;
 	out.tablePresets = allowEmptyFileBackedTablePresets
 		? []
-		: normalizeTablePresets(src.tablePresets, {
+		: normalizeTablePresets(tablePresetsSource, {
 			availableFilterSetIds: out.filterSets.map(filterSet => filterSet.id),
 		});
 	out.tablePresetOrderIds = normalizeTablePresetOrderIds(src.tablePresetOrderIds, out.tablePresets);
@@ -4309,9 +4423,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.tableShowTaskIcon = typeof src.tableShowTaskIcon === 'boolean'
 		? src.tableShowTaskIcon
 		: DEFAULT_SETTINGS.tableShowTaskIcon;
-	out.tableShowTaskTypeIcon = typeof src.tableShowTaskTypeIcon === 'boolean'
-		? src.tableShowTaskTypeIcon
-		: DEFAULT_SETTINGS.tableShowTaskTypeIcon;
+	out.tableShowTaskDataTypeIcon = typeof src.tableShowTaskDataTypeIcon === 'boolean'
+		? src.tableShowTaskDataTypeIcon
+		: sourceSettingsVersion < TASK_DATA_TYPE_SETTINGS_VERSION && typeof src.tableShowTaskTypeIcon === 'boolean'
+			? src.tableShowTaskTypeIcon
+			: DEFAULT_SETTINGS.tableShowTaskDataTypeIcon;
 	out.tableEmbedVisibleRows = normalizeTableEmbedVisibleRows(src.tableEmbedVisibleRows, DEFAULT_SETTINGS.tableEmbedVisibleRows);
 	out.tableEmbedDefaultWidthPercent = normalizeTableEmbedDefaultWidthPercent(
 		src.tableEmbedDefaultWidthPercent,
@@ -4371,6 +4487,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	if (out.keyMappings.length === 0) {
 		out.keyMappings = buildDefaultKeyMappings();
 	} else {
+		out.keyMappings = takeOverSystemCanonicalKeyCollisions(out.keyMappings);
 		// A custom field may already own one of the newly reserved reminder names.
 		// Keep that mapping authoritative until the user renames or removes it;
 		// silently converting arbitrary custom values into reminder data is unsafe.
@@ -4388,8 +4505,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 					m.visiblePropertyName = 'datetimeCreated';
 				}
 			}
-			const canonical = CANONICAL_KEYS.find(k => k.name === m.canonicalKey);
+			const canonical = CANONICAL_KEYS.find(k =>
+				normalizeKeyMappingComparableName(k.name) === normalizeKeyMappingComparableName(m.canonicalKey)
+			);
 			if (canonical && m.isSystem !== false) {
+				m.canonicalKey = canonical.name;
 				m.type = canonical.type;
 				m.sync = canonical.sync;
 				m.isSystem = true;
@@ -4414,7 +4534,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 			}
 			mapping.icon = normalizeTaskIconValue(mapping.icon);
 			if (mapping.isSystem === undefined) {
-				const isCanonical = CANONICAL_KEYS.some(k => k.name === m.canonicalKey);
+				const isCanonical = CANONICAL_KEYS.some(k =>
+					normalizeKeyMappingComparableName(k.name) === normalizeKeyMappingComparableName(m.canonicalKey)
+				);
 				mapping.isSystem = isCanonical;
 			}
 			if (mapping.isInternal === undefined) {
@@ -4425,7 +4547,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		// longer exist in CANONICAL_KEYS (e.g. 'icon' and 'color' were renamed).
 		out.keyMappings = out.keyMappings.filter(m =>
 			!isRetiredKeyMapping(m.canonicalKey)
-			&& (!m.isSystem || CANONICAL_KEYS.some(k => k.name === m.canonicalKey))
+			&& (!m.isSystem || CANONICAL_KEYS.some(k =>
+				normalizeKeyMappingComparableName(k.name) === normalizeKeyMappingComparableName(m.canonicalKey)
+			))
 		);
 		if (customReminderCanonicalCollisions.size > 0) {
 			out.keyMappings = out.keyMappings.filter(mapping => !(
@@ -4438,7 +4562,10 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		for (const k of CANONICAL_KEYS) {
 			if (isRetiredKeyMapping(k.name)) continue;
 			if (customReminderCanonicalCollisions.has(normalizeKeyMappingComparableName(k.name))) continue;
-			if (!out.keyMappings.some(m => m.isSystem !== false && m.canonicalKey === k.name)) {
+			if (!out.keyMappings.some(m =>
+				m.isSystem !== false
+				&& normalizeKeyMappingComparableName(m.canonicalKey) === normalizeKeyMappingComparableName(k.name)
+			)) {
 				out.keyMappings.push({
 					canonicalKey: k.name,
 					visiblePropertyName: getAvailableDefaultKeyMappingVisibleName(k.name, out.keyMappings),

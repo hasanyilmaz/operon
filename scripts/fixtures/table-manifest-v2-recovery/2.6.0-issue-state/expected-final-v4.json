@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 2,
 	"settings": {
-		"settingsVersion": 114,
+		"settingsVersion": 115,
 		"filterShowSubtasks": true,
 		"filterSubtaskAutoExpandLimit": 10,
 		"filterShowOnlyOpenSubtasks": false,
@@ -322,6 +322,17 @@
 					"enabled": true,
 					"hideInFileTaskView": false,
 					"icon": "align-start-horizontal",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "taskType",
+					"visiblePropertyName": "taskType",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "shapes",
 					"isSystem": true,
 					"isInternal": false
 				},
@@ -755,6 +766,28 @@
 					"isInternal": false
 				},
 				{
+					"canonicalKey": "taskImage",
+					"visiblePropertyName": "taskImage",
+					"type": "text",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "image",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
+					"canonicalKey": "taskGallery",
+					"visiblePropertyName": "taskGallery",
+					"type": "list",
+					"sync": "yes",
+					"enabled": true,
+					"hideInFileTaskView": false,
+					"icon": "images",
+					"isSystem": true,
+					"isInternal": false
+				},
+				{
 					"canonicalKey": "datetimeModified",
 					"visiblePropertyName": "datetimeModified",
 					"type": "datetime",
@@ -1136,7 +1169,7 @@
 			"kanbanDefaultPresetId": "kanban-preset-default"
 		},
 		"tablePresets": {
-			"version": 3,
+			"version": 4,
 			"presetIds": [
 				"table-preset-my-first-table"
 			],
@@ -1150,8 +1183,8 @@
 			"tableEmbedVisibleRows": 20,
 			"tableShowLineNumbers": true,
 			"tableShowTaskIcon": false,
-			"tableShowTaskTypeIcon": false,
 			"initialized": true,
+			"tableShowTaskDataTypeIcon": false,
 			"tableDefaultFolder": "Operon/Tables",
 			"tableEmbedDefaultWidthPercent": 175
 		},

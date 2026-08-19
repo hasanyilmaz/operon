@@ -211,7 +211,9 @@ function resolveManagedCanonicalKey(
 	}
 	const mappedKey = reverseMap.get(yamlKey);
 	if (mappedKey) {
-		return isRetiredKeyMapping(mappedKey) ? null : mappedKey;
+		return isRetiredKeyMapping(mappedKey) || !isManagedYamlCanonicalKey(mappedKey, keyMappings)
+			? null
+			: mappedKey;
 	}
 	return isManagedYamlCanonicalKey(yamlKey, keyMappings) ? yamlKey : null;
 }

@@ -11,7 +11,7 @@ import {
 	OPERON_TABLE_FILE_VIEW_TYPE,
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
-	TABLE_TASK_TYPE_COLUMN_KEY,
+	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
 	type TableColumn,
 	type TableLeafState,
 	type TablePreset,
@@ -176,7 +176,7 @@ import {
 	showPresetFilterPopover,
 } from '../preset-filter-popover';
 import { bindTableTaskContextualHoverMenu, renderTableTaskIconButton } from './table-task-icon-button';
-import { bindTableTaskTypeEditorOpen, renderTableTaskTypeButton } from './table-task-type-button';
+import { bindTableTaskDataTypeEditorOpen, renderTableTaskDataTypeButton } from './table-task-data-type-button';
 import {
 	formatTableIconOnlyTooltipContent,
 	renderTableCompactDatetimeCell,
@@ -2035,9 +2035,9 @@ export class OperonTableView extends FileView {
 			});
 			return;
 		}
-		if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) {
-			cell.addClass('operon-table-task-type-cell');
-			renderTableTaskTypeButton(cell, {
+		if (column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY) {
+			cell.addClass('operon-table-task-data-type-cell');
+			renderTableTaskDataTypeButton(cell, {
 				task,
 				onOpenTaskEditor: this.callbacks.onOpenTaskEditor,
 				onOpenTaskSource: this.callbacks.onOpenTaskSource,
@@ -2135,7 +2135,7 @@ export class OperonTableView extends FileView {
 			: baseContent;
 		const fallbackIcon = field?.icon ?? 'text';
 		const isTaskIconColumn = column.key === 'taskIcon';
-		const isTaskTypeColumn = column.key === 'taskType';
+		const isTaskDataTypeColumn = column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY;
 		if (field?.type === 'datetime') {
 			renderTableCompactDatetimeCell(cell, {
 				value,
@@ -2178,12 +2178,12 @@ export class OperonTableView extends FileView {
 				workflowStatusIdentityIndex: renderState.valueResolver.workflowStatusIdentityIndex,
 			}),
 			focusable: options.focusable,
-			showTooltip: !isTaskIconColumn && !isTaskTypeColumn,
+			showTooltip: !isTaskIconColumn && !isTaskDataTypeColumn,
 		});
 		if (locationVisual) {
 			this.bindLocationMapPreviewTrigger(icon, task, locationVisual, renderState);
 		}
-		if ((isTaskIconColumn || isTaskTypeColumn) && this.callbacks.onContextualAction) {
+		if ((isTaskIconColumn || isTaskDataTypeColumn) && this.callbacks.onContextualAction) {
 			bindTableTaskContextualHoverMenu(icon, {
 				task,
 				settings: renderState.settings,
@@ -2192,8 +2192,8 @@ export class OperonTableView extends FileView {
 				hasSubtasks: this.callbacks.hasSubtasks,
 			});
 		}
-		if (isTaskTypeColumn) {
-			bindTableTaskTypeEditorOpen(icon, {
+		if (isTaskDataTypeColumn) {
+			bindTableTaskDataTypeEditorOpen(icon, {
 				task,
 				onOpenTaskEditor: this.callbacks.onOpenTaskEditor,
 				onOpenTaskSource: this.callbacks.onOpenTaskSource,

@@ -277,7 +277,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'tableEmbedDefaultWidthPercent',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
-	'tableShowTaskTypeIcon',
+	'tableShowTaskDataTypeIcon',
 	'indexEventDebounceMs',
 	'fullReindexOnStartup',
 	'duplicateAlertAutoOpenManager',
@@ -394,7 +394,7 @@ const TABLE_GLOBAL_KEYS = [
 	'tableEmbedDefaultWidthPercent',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
-	'tableShowTaskTypeIcon',
+	'tableShowTaskDataTypeIcon',
 ] as const satisfies readonly (keyof OperonSettings)[];
 const CALENDAR_KEYS = [
 	'calendarPresets',

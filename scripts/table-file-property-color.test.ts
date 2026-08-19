@@ -963,7 +963,7 @@ async function run(): Promise<void> {
 	ok(cssSource.includes('button.operon-table-source-button:hover,\nbutton.operon-table-source-button:focus-visible {\n\tborder-color: var(--operon-task-chip-hover-border);'));
 	ok(cssSource.includes('.operon-table-root .operon-table-cell-chip:is(:hover, .is-operon-chip-hovered, :focus-visible)'));
 	ok(cssSource.includes('button.operon-table-task-icon-button:not(:disabled):not(.is-readonly):hover,'));
-	ok(cssSource.includes('button.operon-table-task-type-button:hover,'));
+	ok(cssSource.includes('button.operon-table-task-data-type-button:hover,'));
 	ok(cssSource.includes('.operon-table-icon-only-button:hover,\n.operon-table-icon-only-button:focus-visible {'));
 	ok(cssSource.includes('button.operon-table-duration-session-chip:hover,\nbutton.operon-table-duration-session-chip:focus-visible {'));
 	ok(cssSource.includes('button.operon-table-source-button:hover,\nbutton.operon-table-source-button:focus-visible {'));

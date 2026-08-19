@@ -45,6 +45,17 @@ function testDefaultCatalog(): void {
 	assert.equal(catalog.taxonomy.priorities[0]?.id, 'pr_s');
 	assert.equal(catalog.taxonomy.defaultPriority.status, 'resolved');
 	assert.equal(catalog.fields.some(field => field.canonicalKey === 'reminders'), false);
+	for (const key of ['taskType', 'taskImage', 'taskGallery']) {
+		assert.equal(catalog.fields.some(field => field.canonicalKey === key), false);
+		assert.equal(catalog.policies.taskUpdate.writableKeys.includes(key), false);
+	}
+	const storedDeferredInheritance = settings();
+	storedDeferredInheritance.childTaskInheritanceFields = ['status', 'taskType', 'taskImage', 'taskGallery'];
+	const deferredInheritanceCatalog = buildLivePropertyCatalogV1(storedDeferredInheritance);
+	assert.equal(deferredInheritanceCatalog.ok, true);
+	if (deferredInheritanceCatalog.ok) {
+		assert.deepEqual(deferredInheritanceCatalog.value.policies.inheritance.fields, ['status']);
+	}
 	for (const key of ['description', 'checkbox', 'tags', 'representation', 'locator', 'pinned', 'related']) {
 		assert.equal(catalog.fields.filter(field => field.canonicalKey === key).length, 1);
 	}

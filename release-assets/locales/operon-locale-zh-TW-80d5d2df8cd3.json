@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "zh-TW",
   "keyCount": 3092,
-  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
+  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2251,11 +2251,11 @@
       "tableSettingsDesc": "管理可複用的 Operon Table 預設、預設表格選擇和表格檢視配置。",
       "tableShowLineNumbers": "顯示列號",
       "tableShowLineNumbersDesc": "在 Operon Table 開頭顯示可見的列號欄。",
+      "tableShowTaskDataTypeIcon": "顯示任務資料類型圖示",
+      "tableShowTaskDataTypeIconDesc": "顯示 Task Data Type 欄，使用 inline/file 任務圖示並開啟 Task Editor。",
       "tableShowTaskIcon": "顯示任務圖示",
       "tableShowTaskIconDesc": "顯示 Kanban 風格的任務圖示欄，支援狀態切換與任務內容選單。",
-      "tableShowTaskTypeIcon": "顯示任務類型圖示",
-      "tableShowTaskTypeIconDesc": "顯示 Type 欄，使用 inline/file 任務圖示並開啟 Task Editor。",
-      "tableTaskTypeColumn": "Type",
+      "tableTaskDataTypeColumn": "Task Data Type",
       "taskBarChipsDesc": "選擇哪些欄位標籤出現在工作列上。",
       "taskBarChipsTitle": "可見標籤",
       "taskBarTab": "工作列",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "45e1fc2fc290fc55ccadf0b3d5779b72b0199aac1ea302ac81d6655fd6d0dd90"
+  "sourceVersion": "c7e65c84d78907162cf8f5903a658dad543300460216d30d231c4bb7c9a16f9c"
 }

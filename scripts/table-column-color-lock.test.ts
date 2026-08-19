@@ -15,7 +15,8 @@ import {
 	replaceTablePresetColumns,
 	setTablePresetColumnColorMode,
 } from '../src/ui/table/table-preset-model';
-import { isTablePlainTextField } from '../src/ui/table/table-field-catalog';
+import { getTableTaskField, isTablePlainTextField } from '../src/ui/table/table-field-catalog';
+import { DEFAULT_SETTINGS } from '../src/types/settings';
 import {
 	parseOperonTableFile,
 	serializeOperonTableFile,
@@ -45,6 +46,11 @@ function getSerializedTaskColorMode(source: string): string | undefined {
 }
 
 async function run(): Promise<void> {
+	for (const key of ['taskType', 'taskImage', 'taskGallery']) {
+		equal(DEFAULT_SETTINGS.keyMappings.some(mapping => mapping.canonicalKey === key && mapping.isSystem === true), true);
+		equal(getTableTaskField(key, DEFAULT_SETTINGS), null, `${key} must remain unavailable until Stage 5`);
+	}
+
 	const modes: readonly TableColumnColorMode[] = [
 		'noColor',
 		'taskColor',

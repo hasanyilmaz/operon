@@ -11,8 +11,7 @@ import { PinnedCache } from '../storage/pinned-cache';
 
 import { IndexedTask, ParsedTask, OperonField } from '../types/fields';
 import type { ProjectSerialDisplay } from '../core/project-serials';
-import { CANONICAL_KEY_MAP } from '../types/keys';
-import { OperonSettings } from '../types/settings';
+import { OperonSettings, type KeyMapping } from '../types/settings';
 import { generateOperonId, generateRepeatSeriesId } from '../core/id-generator';
 import {
 	resolveAutomationWorkflowStatus,
@@ -21,6 +20,10 @@ import {
 	shouldTriggerOneShotAutomation,
 } from '../types/pipeline';
 import { serializeTask } from '../core/serializer';
+import {
+	getManagedTaskFieldType,
+	isManagedTaskFieldCanonicalKey,
+} from '../core/managed-task-fields';
 import {
 	projectCompactTaskTextForEditing,
 	projectCompactTaskTextSingleLineBreakInsertion,
@@ -108,7 +111,7 @@ import { resolveTaskEditorProgressFromStats } from '../core/task-stats-read-mode
 import { resolveSubtaskActionIconForKind, resolveSubtaskActionLabelKeyForKind } from '../core/subtask-action';
 import { createInlineTaskCompactChipElement, InlineTaskCompactChipEntry } from './compact-task-layout';
 import { createProjectSerialChipElement } from './project-serial-chip';
-import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, KeyMapping, TASK_CREATOR_FALLBACK_FIELD_ICONS, TaskEditorWorkflowPickerItem } from '../types/settings';
+import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, TASK_CREATOR_FALLBACK_FIELD_ICONS, TaskEditorWorkflowPickerItem } from '../types/settings';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { formatReminderDisplayItem } from './reminder-display';
 import type { ReminderPickerFieldKey } from '../core/reminder-list-mutation';
@@ -157,6 +160,29 @@ export interface TaskEditorCanonicalState {
 	checkbox: ParsedTask['checkbox'];
 	tags: string[];
 	fieldValues: Record<string, string>;
+}
+
+/**
+ * Rebuilds editor fields using the same staged managed-field admission as the
+ * parser. Stage 2 task-data mappings therefore remain raw source fields until
+ * their Stage 3 parser/writer support is available.
+ */
+export function buildTaskEditorOperonField(
+	key: string,
+	value: string,
+	keyMappings: readonly KeyMapping[],
+	existingField?: Pick<OperonField, 'sourceKey'>,
+): OperonField {
+	return {
+		sourceKey: existingField?.sourceKey || key,
+		key,
+		value,
+		rawValue: value,
+		type: getManagedTaskFieldType(key, keyMappings) ?? 'text',
+		isCanonical: isManagedTaskFieldCanonicalKey(key, keyMappings),
+		containerRange: { from: 0, to: 0 },
+		valueRange: { from: 0, to: 0 },
+	};
 }
 
 export function shouldUseTaskEditorSemanticTransition(options: {
@@ -6028,17 +6054,7 @@ export class TaskEditorContent {
 			return;
 		}
 
-		const def = CANONICAL_KEY_MAP.get(key);
-		this.existingTask.fields.push({
-			sourceKey: key,
-			key,
-			value,
-			rawValue: value,
-			type: def?.type ?? 'text',
-			isCanonical: !!def,
-			containerRange: { from: 0, to: 0 },
-			valueRange: { from: 0, to: 0 },
-		});
+		this.existingTask.fields.push(buildTaskEditorOperonField(key, value, this.settings.keyMappings));
 	}
 
 	private syncExistingTaskCanonicalState(state: TaskEditorCanonicalState): void {
@@ -6428,23 +6444,14 @@ export class TaskEditorContent {
 			const now = localNow();
 			this.fieldValues['datetimeModified'] = now;
 
-			const fields: OperonField[] = [];
-			for (const [key, value] of Object.entries(this.fieldValues)) {
-				if (!value) continue;
-				if (key === 'pinned') continue;
-				const def = CANONICAL_KEY_MAP.get(key);
-				const existingField = this.existingTask?.fields.find(f => f.key === key);
-				fields.push({
-					sourceKey: existingField?.sourceKey || key,
+			const fields = Object.entries(this.fieldValues)
+				.filter(([key, value]) => !!value && key !== 'pinned')
+				.map(([key, value]) => buildTaskEditorOperonField(
 					key,
 					value,
-					rawValue: value,
-					type: def?.type ?? 'text',
-					isCanonical: !!def,
-					containerRange: { from: 0, to: 0 },
-					valueRange: { from: 0, to: 0 },
-				});
-			}
+					this.settings.keyMappings,
+					this.existingTask?.fields.find(field => field.key === key),
+				));
 
 			const task: ParsedTask = {
 				lineNumber: this.existingTask?.lineNumber ?? 0,

@@ -86,7 +86,7 @@ async function run(): Promise<void> {
 				tableEmbedVisibleRows: 20,
 				tableShowLineNumbers: true,
 				tableShowTaskIcon: false,
-				tableShowTaskTypeIcon: false,
+				tableShowTaskDataTypeIcon: false,
 			},
 		},
 	};

@@ -1511,7 +1511,7 @@ function checkCssScorecard() {
 	);
 	for (const selector of [
 		'button.operon-table-task-icon-button:not(:disabled):not(.is-readonly):hover',
-		'button.operon-table-task-type-button:hover',
+		'button.operon-table-task-data-type-button:hover',
 		'.operon-table-icon-only-button:hover',
 		'button.operon-table-duration-session-chip:hover',
 		'button.operon-table-source-button:hover',

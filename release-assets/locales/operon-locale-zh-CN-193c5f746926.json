@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "zh-CN",
   "keyCount": 3092,
-  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
+  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2251,11 +2251,11 @@
       "tableSettingsDesc": "管理可复用的 Operon Table 预设、默认表格选择和表格视图配置。",
       "tableShowLineNumbers": "显示行号",
       "tableShowLineNumbersDesc": "在 Operon Table 开头显示可见的行号列。",
+      "tableShowTaskDataTypeIcon": "显示任务数据类型图标",
+      "tableShowTaskDataTypeIconDesc": "显示 Task Data Type 列，使用 inline/file 任务图标并打开 Task Editor。",
       "tableShowTaskIcon": "显示任务图标",
       "tableShowTaskIconDesc": "显示 Kanban 风格的任务图标列，支持状态切换和任务上下文菜单。",
-      "tableShowTaskTypeIcon": "显示任务类型图标",
-      "tableShowTaskTypeIconDesc": "显示 Type 列，使用 inline/file 任务图标并打开 Task Editor。",
-      "tableTaskTypeColumn": "Type",
+      "tableTaskDataTypeColumn": "Task Data Type",
       "taskBarChipsDesc": "选择哪些字段标签出现在任务栏上。",
       "taskBarChipsTitle": "可见标签",
       "taskBarTab": "任务栏",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "56ceba50e22eb3365e4c216cbd400ff0b07dbc66a5cb6da79eb257592f363617"
+  "sourceVersion": "70806e4f913082863c0fd1cfbc408b5cf34fd899f7d87ca0f0592c6510b1011f"
 }

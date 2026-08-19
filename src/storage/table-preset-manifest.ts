@@ -5,7 +5,7 @@ import {
 	type TablePresetProjectionSettings,
 } from '../types/table';
 
-export const TABLE_PRESET_MANIFEST_VERSION = 3;
+export const TABLE_PRESET_MANIFEST_VERSION = 4;
 export type TablePresetBootstrapAction = 'none' | 'adopt-existing' | 'seed-default';
 
 export function resolveTablePresetBootstrapAction(input: {
@@ -32,7 +32,7 @@ export function buildTablePresetPackageManifest(
 		tableEmbedDefaultWidthPercent: settings.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: settings.tableShowLineNumbers,
 		tableShowTaskIcon: settings.tableShowTaskIcon,
-		tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: settings.tableShowTaskDataTypeIcon,
 	};
 }
 
@@ -50,7 +50,7 @@ export function pickTablePresetProjectionSettings(
 		tableEmbedDefaultWidthPercent: settings.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: settings.tableShowLineNumbers,
 		tableShowTaskIcon: settings.tableShowTaskIcon,
-		tableShowTaskTypeIcon: settings.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: settings.tableShowTaskDataTypeIcon,
 	};
 }
 

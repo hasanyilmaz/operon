@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "tr",
   "keyCount": 3092,
-  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
+  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2251,11 +2251,11 @@
       "tableSettingsDesc": "Tekrar kullanılabilir Operon Table ön ayarlarını, varsayılan tablo seçimini ve tablo görünümü yapılandırmasını yönetin.",
       "tableShowLineNumbers": "Satır numaralarını göster",
       "tableShowLineNumbersDesc": "Operon Table başında görünür sıra numarası sütunu göster.",
+      "tableShowTaskDataTypeIcon": "Görev veri tipi ikonunu göster",
+      "tableShowTaskDataTypeIconDesc": "Task Editor açan inline/file görev ikonlarıyla Görev Veri Tipi sütunu göster.",
       "tableShowTaskIcon": "Görev ikonunu göster",
       "tableShowTaskIconDesc": "Durum döngüsü ve görev bağlam menüsü olan Kanban tarzı görev ikonu sütunu göster.",
-      "tableShowTaskTypeIcon": "Görev tipi ikonunu göster",
-      "tableShowTaskTypeIconDesc": "Task Editor açan inline/file görev ikonlarıyla Type sütunu göster.",
-      "tableTaskTypeColumn": "Type",
+      "tableTaskDataTypeColumn": "Görev Veri Tipi",
       "taskBarChipsDesc": "Görev çubuğunda hangi alan simgelerinin gösterileceğini seç.",
       "taskBarChipsTitle": "Görünür Simgeler",
       "taskBarTab": "Görev Çubuğu",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "cd68c2c10382e6829c5a75b503d57ed907ef1846e6f98c7610275a0d9284630e"
+  "sourceVersion": "a6d885669d6e13b47b41c37c5fa9a6dfa182be46b69731d1fe8f31e97fd3f8c5"
 }

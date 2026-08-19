@@ -1211,7 +1211,7 @@ test('JSON projection preserves Table authority while applying Table-global pref
 	candidate.tableEmbedVisibleRows = candidate.tableEmbedVisibleRows === 20 ? 30 : 20;
 	candidate.tableShowLineNumbers = !candidate.tableShowLineNumbers;
 	candidate.tableShowTaskIcon = !candidate.tableShowTaskIcon;
-	candidate.tableShowTaskTypeIcon = !candidate.tableShowTaskTypeIcon;
+	candidate.tableShowTaskDataTypeIcon = !candidate.tableShowTaskDataTypeIcon;
 	const jsonOnly = projectOperonSettingsBackupApplyDataPackageV1(current, candidate);
 	assert.deepEqual(jsonOnly.views.tablePresets, {
 		...current.views.tablePresets,
@@ -1219,7 +1219,7 @@ test('JSON projection preserves Table authority while applying Table-global pref
 		tableEmbedVisibleRows: candidate.tableEmbedVisibleRows,
 		tableShowLineNumbers: candidate.tableShowLineNumbers,
 		tableShowTaskIcon: candidate.tableShowTaskIcon,
-		tableShowTaskTypeIcon: candidate.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: candidate.tableShowTaskDataTypeIcon,
 	});
 	assert.deepEqual(jsonOnly.ui.presetFavorites?.table, current.ui.presetFavorites?.table);
 	assert.deepEqual(jsonOnly.state, current.state);

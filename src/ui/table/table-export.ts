@@ -4,7 +4,7 @@ import { resolveTaskDisplayIcon, type OperonSettings } from '../../types/setting
 import {
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
-	TABLE_TASK_TYPE_COLUMN_KEY,
+	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
 	type TableColumn,
 	type TablePreset,
 } from '../../types/table';
@@ -68,7 +68,7 @@ function getTableExportHeader(column: TableColumn, settings: Pick<OperonSettings
 	if (column.label?.trim()) return column.label.trim();
 	if (column.key === TABLE_LINE_NUMBER_COLUMN_KEY) return t('settings', 'tableShowLineNumbers');
 	if (column.key === TABLE_TASK_ICON_COLUMN_KEY) return t('settings', 'tableShowTaskIcon');
-	if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) return t('settings', 'tableTaskTypeColumn');
+	if (column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY) return t('settings', 'tableTaskDataTypeColumn');
 	return getTableColumnLabel(column, settings);
 }
 
@@ -76,7 +76,7 @@ function getTableExportCell(source: TableExportSource, task: IndexedTask, rowInd
 	if (column.key === TABLE_LINE_NUMBER_COLUMN_KEY) {
 		return String(rowIndex + 1);
 	}
-	if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) {
+	if (column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY) {
 		return task.primary.format === 'inline' ? 'inline' : 'file';
 	}
 	if (column.key === TABLE_TASK_ICON_COLUMN_KEY) {

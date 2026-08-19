@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "ja",
   "keyCount": 3092,
-  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
+  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2251,11 +2251,11 @@
       "tableSettingsDesc": "再利用可能な Operon Table プリセット、デフォルトのテーブル選択、テーブルビュー設定を管理します。",
       "tableShowLineNumbers": "行番号を表示",
       "tableShowLineNumbersDesc": "Operon Table の先頭に表示行番号の列を表示します。",
+      "tableShowTaskDataTypeIcon": "タスクデータタイプアイコンを表示",
+      "tableShowTaskDataTypeIconDesc": "Task Editor を開くインライン/ファイルタスクアイコンの Task Data Type 列を表示します。",
       "tableShowTaskIcon": "タスクアイコンを表示",
       "tableShowTaskIconDesc": "ステータス切り替えとタスクのコンテキストメニューを備えた Kanban 風のタスクアイコン列を表示します。",
-      "tableShowTaskTypeIcon": "タスクタイプアイコンを表示",
-      "tableShowTaskTypeIconDesc": "Task Editor を開くインライン/ファイルタスクアイコンの Type 列を表示します。",
-      "tableTaskTypeColumn": "Type",
+      "tableTaskDataTypeColumn": "Task Data Type",
       "taskBarChipsDesc": "タスクバーに表示するフィールドチップを選択します。",
       "taskBarChipsTitle": "表示するチップ",
       "taskBarTab": "タスクバー",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "20a5a2f25c56644a5d5a5ef01afcf1fec635fdc067344ce7e4c0706361c1bd47"
+  "sourceVersion": "3f38f321b318b1a87b61c4efe802575ae6286becf647692ffa6d9660e5ff5c9b"
 }

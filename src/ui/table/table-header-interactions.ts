@@ -4,7 +4,7 @@ import type { OperonSettings } from '../../types/settings';
 import {
 	TABLE_LINE_NUMBER_COLUMN_KEY,
 	TABLE_TASK_ICON_COLUMN_KEY,
-	TABLE_TASK_TYPE_COLUMN_KEY,
+	TABLE_TASK_DATA_TYPE_COLUMN_KEY,
 	resolveTableColumnDisplayMode,
 	resolveTableDurationDisplayMode,
 	type TableColumn,
@@ -303,9 +303,9 @@ function renderTableAdminHeaderCell(cell: HTMLElement, column: TableColumn, sett
 		cell.createSpan({ cls: 'operon-table-header-label', text: t('settings', 'tableShowTaskIcon') });
 		return;
 	}
-	if (column.key === TABLE_TASK_TYPE_COLUMN_KEY) {
-		cell.addClass('operon-table-task-type-header-cell');
-		setAccessibleLabelWithoutTooltip(cell, t('settings', 'tableTaskTypeColumn'));
+	if (column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY) {
+		cell.addClass('operon-table-task-data-type-header-cell');
+		setAccessibleLabelWithoutTooltip(cell, t('settings', 'tableTaskDataTypeColumn'));
 		setIcon(iconEl, 'database');
 		return;
 	}

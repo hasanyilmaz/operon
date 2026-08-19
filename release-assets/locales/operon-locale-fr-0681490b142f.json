@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "fr",
   "keyCount": 3092,
-  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
+  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2251,11 +2251,11 @@
       "tableSettingsDesc": "Gérez les préréglages Operon Table réutilisables, le tableau par défaut et la configuration de la vue tableau.",
       "tableShowLineNumbers": "Afficher les numéros de ligne",
       "tableShowLineNumbersDesc": "Affiche une colonne de numéros de ligne visible au début des Operon Tables.",
+      "tableShowTaskDataTypeIcon": "Afficher l'icône de type de données de tâche",
+      "tableShowTaskDataTypeIconDesc": "Affiche une colonne Task Data Type avec des icônes de tâche inline/fichier qui ouvrent Task Editor.",
       "tableShowTaskIcon": "Afficher l'icône de tâche",
       "tableShowTaskIconDesc": "Affiche une colonne d'icône de tâche de style Kanban avec changement de statut et menu contextuel de tâche.",
-      "tableShowTaskTypeIcon": "Afficher l'icône de type de tâche",
-      "tableShowTaskTypeIconDesc": "Affiche une colonne Type avec des icônes de tâche inline/fichier qui ouvrent Task Editor.",
-      "tableTaskTypeColumn": "Type",
+      "tableTaskDataTypeColumn": "Task Data Type",
       "taskBarChipsDesc": "Choisissez quelles puces de champ apparaissent sur les barres de tâches.",
       "taskBarChipsTitle": "Puces visibles",
       "taskBarTab": "Barre des tâches",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "861e8df7dba044c36e4b588a08d46053a1005b7f32b700b4d956a4792b3d1b76"
+  "sourceVersion": "2cd73f5f6ead9ab6da039dfe234dcef1e47140b60df6fd70251d7083d68226d5"
 }

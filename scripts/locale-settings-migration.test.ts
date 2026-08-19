@@ -13,6 +13,10 @@ import {
 	hasLocalePackIntentChanged,
 	shouldActivateReconciledLocale,
 } from '../src/core/locale-pack-orchestration';
+import {
+	isTableAdminColumnKey,
+	isTablePersistedColumnReservedKey,
+} from '../src/types/table';
 
 let assertions = 0;
 
@@ -161,6 +165,154 @@ async function run(): Promise<void> {
 		'Spanish — Downloading…',
 		'Turkish — Updating…',
 	], 'pure option builder sorts base labels and exposes every pack state');
+
+	const legacySystemMappings = JSON.parse(JSON.stringify(
+		DEFAULT_SETTINGS.keyMappings.filter(mapping => !['taskType', 'taskImage', 'taskGallery'].includes(mapping.canonicalKey)),
+	));
+	const normalSettingsInitialization = migrateSettings({
+		...DEFAULT_SETTINGS,
+		settingsVersion: 114,
+		keyMappings: legacySystemMappings,
+	});
+	equal(normalSettingsInitialization.settingsVersion, CURRENT_SETTINGS_VERSION, 'normal settings initialization advances the settings version once');
+	deepEqual(
+		normalSettingsInitialization.keyMappings
+			.filter(mapping => ['taskType', 'taskImage', 'taskGallery'].includes(mapping.canonicalKey))
+			.map(mapping => ({ canonicalKey: mapping.canonicalKey, type: mapping.type, sync: mapping.sync, isSystem: mapping.isSystem })),
+		[
+			{ canonicalKey: 'taskType', type: 'text', sync: 'yes', isSystem: true },
+			{ canonicalKey: 'taskImage', type: 'text', sync: 'yes', isSystem: true },
+			{ canonicalKey: 'taskGallery', type: 'list', sync: 'yes', isSystem: true },
+		],
+		'normal settings initialization adds the three canonical system mappings with their declared value types',
+	);
+	const exactCollision = migrateSettings({
+		...DEFAULT_SETTINGS,
+		settingsVersion: 114,
+		keyMappings: [
+			...legacySystemMappings,
+			{
+				canonicalKey: 'TASKTYPE',
+				visiblePropertyName: 'UserTaskClassification',
+				type: 'list',
+				sync: 'no',
+				enabled: true,
+				isSystem: false,
+			},
+			{
+				canonicalKey: 'TASKIMAGE',
+				visiblePropertyName: 'UserTaskCover',
+				type: 'list',
+				sync: 'no',
+				enabled: true,
+				isSystem: false,
+			},
+			{
+				canonicalKey: 'TASKGALLERY',
+				visiblePropertyName: 'UserTaskMedia',
+				type: 'text',
+				sync: 'no',
+				enabled: true,
+				isSystem: false,
+			},
+		],
+	});
+	deepEqual(
+		exactCollision.keyMappings
+			.filter(mapping => ['taskType', 'taskImage', 'taskGallery'].includes(mapping.canonicalKey))
+			.map(mapping => ({
+				canonicalKey: mapping.canonicalKey,
+				visiblePropertyName: mapping.visiblePropertyName,
+				type: mapping.type,
+				sync: mapping.sync,
+				isSystem: mapping.isSystem,
+			})),
+		[
+			{ canonicalKey: 'taskType', visiblePropertyName: 'UserTaskClassification', type: 'text', sync: 'yes', isSystem: true },
+			{ canonicalKey: 'taskImage', visiblePropertyName: 'UserTaskCover', type: 'text', sync: 'yes', isSystem: true },
+			{ canonicalKey: 'taskGallery', visiblePropertyName: 'UserTaskMedia', type: 'list', sync: 'yes', isSystem: true },
+		],
+		'exact canonical collisions hand each user property name to one system mapping with its declared type',
+	);
+
+	const visibleCollision = migrateSettings({
+		...DEFAULT_SETTINGS,
+		settingsVersion: 114,
+		keyMappings: [
+			...legacySystemMappings,
+			{ canonicalKey: 'customType', visiblePropertyName: 'TASKTYPE', type: 'text', sync: 'yes', enabled: true, isSystem: false },
+			{ canonicalKey: 'customOperonType', visiblePropertyName: 'operontasktype', type: 'text', sync: 'yes', enabled: true, isSystem: false },
+			{ canonicalKey: 'customImage', visiblePropertyName: 'TASKIMAGE', type: 'text', sync: 'yes', enabled: true, isSystem: false },
+			{ canonicalKey: 'customGallery', visiblePropertyName: 'TASKGALLERY', type: 'text', sync: 'yes', enabled: true, isSystem: false },
+			{ canonicalKey: 'customOperonGallery', visiblePropertyName: 'operontaskgallery', type: 'text', sync: 'yes', enabled: true, isSystem: false },
+		],
+	});
+	equal(visibleCollision.keyMappings.find(mapping => mapping.canonicalKey === 'customType')?.isSystem, false, 'visible-only collision preserves the custom mapping');
+	equal(visibleCollision.keyMappings.find(mapping => mapping.canonicalKey === 'taskType')?.visiblePropertyName, 'OperonTaskType2', 'visible-only collision assigns the first case-insensitive free Operon fallback');
+	equal(visibleCollision.keyMappings.find(mapping => mapping.canonicalKey === 'taskImage')?.visiblePropertyName, 'OperonTaskImage', 'taskImage visible-only collision assigns its deterministic Operon fallback');
+	equal(visibleCollision.keyMappings.find(mapping => mapping.canonicalKey === 'taskGallery')?.visiblePropertyName, 'OperonTaskGallery2', 'taskGallery visible-only collision assigns the first case-insensitive free suffix');
+
+	const preservedFilter = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.filterSets[0]));
+	const filterCondition = { id: 'cond_task_type_preserved', field: 'taskType', fieldType: 'text', operator: 'is', value: 'Research' };
+	preservedFilter.rootGroup.children.push(filterCondition);
+	preservedFilter.conditions.push(filterCondition);
+	const migratedTableReferences = migrateSettings({
+		...DEFAULT_SETTINGS,
+		settingsVersion: 114,
+		keyMappings: legacySystemMappings,
+		filterSets: [preservedFilter],
+		tablePresets: [{
+			...DEFAULT_SETTINGS.tablePresets[0],
+			columns: [{ key: 'taskType', kind: 'task' }, { key: '__taskType', kind: 'task' }, { key: '__taskDataType', kind: 'task' }, { key: 'description', kind: 'task' }],
+			sortRules: [{ key: 'taskType', direction: 'asc', empty: 'last' }, { key: '__taskType', direction: 'desc', empty: 'first' }],
+			groupBy: 'taskType',
+			subgroupBy: 'status',
+			summaries: [{ key: 'taskType', function: 'Count' }, { key: '__taskType', function: 'Count' }],
+		}],
+	});
+	const migratedTable = migratedTableReferences.tablePresets[0]!;
+	deepEqual(migratedTable.columns.map(column => column.key), ['__taskDataType', 'description'], 'legacy Table columns migrate and dedupe to Task Data Type');
+	deepEqual(migratedTable.sortRules.map(rule => rule.key), ['__taskDataType'], 'legacy Table sort rules migrate and dedupe to Task Data Type');
+	equal(migratedTable.groupBy, '__taskDataType', 'legacy Table group migrates to Task Data Type');
+	equal(migratedTable.subgroupBy, 'status', 'unrelated Table subgroup remains intact when Task Data Type becomes the group');
+	deepEqual(migratedTable.summaries.map(summary => summary.key), ['__taskDataType'], 'legacy Table summaries migrate and dedupe to Task Data Type');
+	equal(isTableAdminColumnKey('__taskDataType'), true, 'Task Data Type remains valid for its injected admin-column path');
+	equal(isTablePersistedColumnReservedKey('__taskDataType'), false, 'Task Data Type remains eligible for persisted Table columns and rules');
+	equal(
+		migratedTableReferences.filterSets[0]?.conditions.find(condition => condition.id === filterCondition.id)?.field,
+		'taskType',
+		'generic FilterSet conditions remain untouched',
+	);
+	deepEqual(migratedTableReferences.filterSets[0]?.conditions, preservedFilter.conditions, 'generic FilterSet condition payloads remain byte-for-byte equivalent as parsed JSON');
+	const subgroupMigration = migrateSettings({
+		...DEFAULT_SETTINGS,
+		settingsVersion: 114,
+		keyMappings: legacySystemMappings,
+		tablePresets: [{
+			...DEFAULT_SETTINGS.tablePresets[0],
+			groupBy: 'status',
+			subgroupBy: '__taskType',
+		}],
+	});
+	equal(subgroupMigration.tablePresets[0]?.subgroupBy, '__taskDataType', 'legacy Table subgroup migrates to Task Data Type when it is distinct from the group');
+
+	const currentSettingsTable = migrateSettings({
+		...DEFAULT_SETTINGS,
+		settingsVersion: CURRENT_SETTINGS_VERSION,
+		tablePresets: [{
+			...DEFAULT_SETTINGS.tablePresets[0],
+			columns: [{ key: 'taskType', kind: 'task' }, { key: '__taskDataType', kind: 'task' }],
+			sortRules: [{ key: 'taskType', direction: 'asc', empty: 'last' }],
+			groupBy: 'taskType',
+			subgroupBy: '__taskDataType',
+			summaries: [{ key: 'taskType', function: 'Count' }],
+		}],
+	});
+	const currentTable = currentSettingsTable.tablePresets[0]!;
+	deepEqual(currentTable.columns.map(column => column.key), ['taskType', '__taskDataType'], 'current settings preserve the real writable taskType column');
+	equal(currentTable.groupBy, 'taskType', 'current settings preserve real taskType grouping');
+	deepEqual(currentTable.sortRules.map(rule => rule.key), ['taskType'], 'current settings preserve real taskType sorting');
+	deepEqual(currentTable.summaries.map(summary => summary.key), ['taskType'], 'current settings preserve real taskType summaries');
 	console.log(`Locale settings migration tests passed: ${assertions} assertions`);
 }
 

@@ -2,8 +2,18 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseTaskLine } from '../src/core/parser';
-import { serializeField } from '../src/core/serializer';
-import { inlineToYamlValue, readYamlFields } from '../src/core/yaml-fields';
+import { normalizeTaskLine, serializeField, serializeTask } from '../src/core/serializer';
+import {
+	buildReverseMapping,
+	inlineToYamlValue,
+	isManagedYamlCanonicalKey,
+	readYamlFields,
+} from '../src/core/yaml-fields';
+import { applyYamlTaskFieldValues } from '../src/core/task-writer-yaml';
+import {
+	getManagedTaskFieldType,
+	isManagedTaskFieldCanonicalKey,
+} from '../src/core/managed-task-fields';
 import {
 	applyCompactTaskTextUserEdit,
 	createCompactTaskTextDraft,
@@ -14,10 +24,19 @@ import {
 import { CompactMarkdownEditorController } from '../src/ui/compact-markdown-editor-controller';
 import { resolveCompactEditorKeyIntent } from '../src/ui/compact-editor-key-intent';
 import { parseCompactTaskMarkdown } from '../src/ui/compact-task-markdown-renderer';
+import { getFilterSetFieldPickerMappingCandidates } from '../src/ui/filter-set-modal';
+import { buildTaskEditorOperonField } from '../src/ui/task-editor-content';
+import { resolveSubtaskInitialFieldsFromParentValues } from '../src/core/subtask-inheritance';
+import { transformRecurringFileBody } from '../src/systems/recurrence-service';
 import { matchesTaskSearchQueryText } from '../src/systems/task-search';
 import { FormatConverter } from '../src/systems/format-converter';
 import type { OperonIndexer } from '../src/indexer/indexer';
-import type { OperonSettings } from '../src/types/settings';
+import {
+	DEFAULT_SETTINGS,
+	isChildTaskInheritanceEligibleFieldKey,
+	normalizeChildTaskInheritanceFields,
+	type OperonSettings,
+} from '../src/types/settings';
 import { parseYaml, type App } from 'obsidian';
 import type { KeyMapping } from '../src/types/settings';
 
@@ -44,6 +63,125 @@ function noteField(source: string, keyMappings: KeyMapping[] = []) {
 }
 
 async function run(): Promise<void> {
+	const stage2Mappings = structuredClone(DEFAULT_SETTINGS.keyMappings);
+	const stage2ReverseMap = buildReverseMapping(stage2Mappings);
+	for (const key of ['taskType', 'taskImage', 'taskGallery']) {
+		equal(stage2Mappings.some(mapping => mapping.canonicalKey === key && mapping.isSystem === true), true);
+		equal(isManagedTaskFieldCanonicalKey(key, stage2Mappings), false);
+		equal(isManagedYamlCanonicalKey(key, stage2Mappings), false);
+		equal(getManagedTaskFieldType(key, stage2Mappings), null);
+		equal(stage2ReverseMap.has(key), false);
+		const parsed = parseTaskLine(`- [ ] Deferred ${key} {{${key}:: value}}`, 0, 'Tasks/Notes.md', stage2Mappings);
+		assert.ok(parsed);
+		assertions += 1;
+		equal(parsed.fields.find(field => field.key === key)?.isCanonical, false);
+	}
+	const editorDeferredFields = [
+		buildTaskEditorOperonField('taskImage', 'Assets/cover.png', stage2Mappings),
+		buildTaskEditorOperonField('taskType', 'Project', stage2Mappings),
+		buildTaskEditorOperonField('taskGallery', 'Assets/one.png; Assets/two.png', stage2Mappings),
+	];
+	for (const field of editorDeferredFields) {
+		equal(field.type, 'text', `Task Editor must preserve ${field.key} as a raw text field until Stage 3`);
+		equal(field.isCanonical, false, `Task Editor must not re-canonicalize ${field.key} before Stage 3`);
+	}
+	const editorBase = parseTaskLine('- [ ] Editor producer', 0, 'Tasks/Notes.md', stage2Mappings);
+	assert.ok(editorBase);
+	assertions += 1;
+	equal(
+		serializeTask({ ...editorBase, fields: editorDeferredFields }, stage2Mappings),
+		'- [ ] Editor producer {{taskImage:: Assets/cover.png}} {{taskType:: Project}} {{taskGallery:: Assets/one.png; Assets/two.png}}',
+		'Task Editor reconstruction must preserve raw deferred-field order.',
+	);
+	const recurringClone = transformRecurringFileBody({
+		sourceBody: '- [ ] Recurring child {{operonId:: child-old}} {{parentTask:: root-old}} {{repeatSeriesId:: series-child}} {{taskImage:: Assets/cover.png}} {{taskType:: Project}} {{taskGallery:: Assets/one.png; Assets/two.png}}',
+		sourceFilePath: 'Tasks/Recurring.md',
+		oldRootOperonId: 'root-old',
+		newRootOperonId: 'root-new',
+		oldRootFieldValues: {},
+		newRootFieldValues: {},
+		rootSeriesId: 'series-root',
+		keyMappings: stage2Mappings,
+		pipelines: structuredClone(DEFAULT_SETTINGS.pipelines),
+		defaultPipelineName: DEFAULT_SETTINGS.defaultPipelineName,
+		now: '2026-08-20T10:00:00',
+		generateOperonId: () => 'child-new',
+	});
+	equal(recurringClone.clonedSubtaskCount, 1);
+	for (const key of ['taskImage', 'taskType', 'taskGallery']) {
+		equal(parseTaskLine(recurringClone.body, 0, 'Tasks/Recurring.md', stage2Mappings)?.fields.find(field => field.key === key)?.isCanonical, false);
+	}
+	const recurringImageIndex = recurringClone.body.indexOf('{{taskImage::');
+	const recurringTypeIndex = recurringClone.body.indexOf('{{taskType::');
+	const recurringGalleryIndex = recurringClone.body.indexOf('{{taskGallery::');
+	equal(recurringImageIndex >= 0 && recurringImageIndex < recurringTypeIndex && recurringTypeIndex < recurringGalleryIndex, true, 'Recurring clone must preserve raw deferred-field order.');
+	const storedDeferredInheritanceFields = ['taskType', 'taskImage', 'taskGallery'];
+	deepEqual(
+		normalizeChildTaskInheritanceFields(storedDeferredInheritanceFields, stage2Mappings),
+		storedDeferredInheritanceFields,
+		'Stored deferred inheritance selections must survive Stage 2 normalization unchanged.',
+	);
+	for (const key of storedDeferredInheritanceFields) {
+		equal(isChildTaskInheritanceEligibleFieldKey(key, stage2Mappings), false, `${key} must remain absent from inheritance selection surfaces until Stage 3`);
+	}
+	deepEqual(
+		resolveSubtaskInitialFieldsFromParentValues(
+			'parent-001',
+			{ taskType: 'Project', taskImage: 'Assets/cover.png', taskGallery: 'Assets/one.png; Assets/two.png' },
+			{
+				...structuredClone(DEFAULT_SETTINGS),
+				childTaskInheritanceFields: storedDeferredInheritanceFields,
+			} as OperonSettings,
+		),
+		{ parentTask: 'parent-001' },
+		'Deferred stored inheritance selections must not activate data propagation before Stage 3.',
+	);
+	deepEqual(readYamlFields({ taskType: 'Project', taskImage: 'Assets/cover.png', taskGallery: ['Assets/one.png'] }, stage2Mappings), {});
+	const deferredFrontmatter = {
+		taskType: 'Project',
+		taskImage: 'Assets/cover.png',
+		taskGallery: ['Assets/one.png'],
+	};
+	applyYamlTaskFieldValues(deferredFrontmatter, {
+		taskType: 'Updated',
+		taskImage: 'Assets/updated.png',
+		taskGallery: 'Assets/two.png',
+	}, 'replace', stage2Mappings);
+	deepEqual(deferredFrontmatter, {
+		taskType: 'Project',
+		taskImage: 'Assets/cover.png',
+		taskGallery: ['Assets/one.png'],
+	});
+	const rawDeferredLine = '- [ ] Deferred {{taskImage:: Assets/cover.png}} {{taskType:: Project}} {{taskGallery:: Assets/one.png; Assets/two.png}}';
+	equal(
+		normalizeTaskLine(rawDeferredLine, 0, 'Tasks/Notes.md', stage2Mappings),
+		rawDeferredLine,
+		'raw deferred fields must preserve their source order until Stage 3 makes them managed',
+	);
+	equal(
+		normalizeTaskLine('- [ ] Ordered {{priority:: C}} {{status:: Project.Inbox}}', 0, 'Tasks/Notes.md', stage2Mappings),
+		'- [ ] Ordered {{status:: Project.Inbox}} {{priority:: C}}',
+		'existing managed canonical fields must retain canonical ordering',
+	);
+	const customMapping: KeyMapping = {
+		canonicalKey: 'clientReference',
+		visiblePropertyName: 'Client',
+		type: 'text',
+		sync: 'yes',
+		enabled: true,
+		isSystem: false,
+	};
+	const filterPickerCandidates = getFilterSetFieldPickerMappingCandidates([
+		...stage2Mappings,
+		customMapping,
+	]);
+	const filterPickerFields = filterPickerCandidates.map(candidate => candidate.mapping.canonicalKey);
+	for (const key of ['taskType', 'taskImage', 'taskGallery']) {
+		equal(filterPickerFields.includes(key), false, `${key} must remain unavailable in FilterSet pickers until Stage 3`);
+	}
+	equal(filterPickerFields.includes('status'), true, 'unrelated system mappings must remain available');
+	equal(filterPickerCandidates.find(candidate => candidate.mapping.canonicalKey === 'clientReference')?.kind, 'custom');
+
 	const taskNoteController = new CompactMarkdownEditorController('First line', 'task-note');
 	const firstBreak = taskNoteController.applyUserInput('First line\nSecond line', {
 		anchor: 23,

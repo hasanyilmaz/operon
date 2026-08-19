@@ -247,6 +247,7 @@ export function buildReverseMapping(mappings: KeyMapping[]): Map<string, string>
 
 	for (const key of CANONICAL_KEYS) {
 		if (isRetiredKeyMapping(key.name)) continue;
+		if (!isManagedYamlCanonicalKey(key.name, mappings)) continue;
 		if (getManagedCustomKeyMapping(key.name, mappings)?.isSystem === false) continue;
 		setIfAbsent(key.name, key.name);
 	}
@@ -258,6 +259,7 @@ export function buildReverseMapping(mappings: KeyMapping[]): Map<string, string>
 	}
 	for (const m of mappings) {
 		if (isRetiredKeyMapping(m.canonicalKey)) continue;
+		if (!isManagedYamlCanonicalKey(m.canonicalKey, mappings)) continue;
 		setIfAbsent(m.canonicalKey, m.canonicalKey);
 		if (m.visiblePropertyName) {
 			setIfAbsent(m.visiblePropertyName, m.canonicalKey);

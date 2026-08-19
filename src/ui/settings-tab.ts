@@ -3015,7 +3015,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'kanbanTaskShowNotesPreview') {
 			this.applyPendingSettingsChange();
 		}
-		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskTypeIcon') {
+		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskDataTypeIcon') {
 			this.applyPendingSettingsChange();
 		}
 		if (key === 'timeFormat' || key === 'reminderSoundFilePath') {
@@ -8003,9 +8003,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		);
 		this.renderBoundToggleSetting(
 			generalSection,
-			t('settings', 'tableShowTaskTypeIcon'),
-			t('settings', 'tableShowTaskTypeIconDesc'),
-			'tableShowTaskTypeIcon',
+			t('settings', 'tableShowTaskDataTypeIcon'),
+			t('settings', 'tableShowTaskDataTypeIconDesc'),
+			'tableShowTaskDataTypeIcon',
 			{ onAfterChange: () => this.applyPendingSettingsChange() },
 		);
 

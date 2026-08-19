@@ -88,7 +88,7 @@ export interface OperonSettingsBackupTableGlobalGroupV1 {
 	tableEmbedDefaultWidthPercent?: OperonSettings['tableEmbedDefaultWidthPercent'];
 	tableShowLineNumbers: boolean;
 	tableShowTaskIcon: boolean;
-	tableShowTaskTypeIcon: boolean;
+	tableShowTaskDataTypeIcon: boolean;
 }
 
 export interface OperonSettingsBackupExternalCalendarsGroupV1 {
@@ -510,8 +510,8 @@ function decodeFavorites(data: unknown, path: string, diagnostics: OperonSetting
 }
 
 function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSettingsBackupDiagnostic[]): AnyObject | null {
-	const keys = ['tableDefaultFolder', 'tableEmbedVisibleRows', 'tableEmbedDefaultWidthPercent', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon'];
-	const requiredKeys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon'];
+	const keys = ['tableDefaultFolder', 'tableEmbedVisibleRows', 'tableEmbedDefaultWidthPercent', 'tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskDataTypeIcon', 'tableShowTaskTypeIcon'];
+	const requiredKeys = ['tableEmbedVisibleRows', 'tableShowLineNumbers', 'tableShowTaskIcon'];
 	const object = inspectObject(data, path, keys, requiredKeys, diagnostics);
 	if (!object) return null;
 	if ('tableDefaultFolder' in object && typeof object.tableDefaultFolder !== 'string') {
@@ -521,7 +521,13 @@ function decodeTableGlobal(data: unknown, path: string, diagnostics: OperonSetti
 	if ('tableEmbedDefaultWidthPercent' in object && (typeof object.tableEmbedDefaultWidthPercent !== 'number' || !Number.isFinite(object.tableEmbedDefaultWidthPercent))) {
 		diagnostics.push(error(`${path}.tableEmbedDefaultWidthPercent`, 'type', 'tableEmbedDefaultWidthPercent must be a finite number.'));
 	}
-	for (const key of ['tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskTypeIcon']) if (typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
+	for (const key of ['tableShowLineNumbers', 'tableShowTaskIcon']) if (typeof object[key] !== 'boolean') diagnostics.push(error(`${path}.${key}`, 'type', `${key} must be a boolean.`));
+	if (typeof object.tableShowTaskDataTypeIcon !== 'boolean' && typeof object.tableShowTaskTypeIcon !== 'boolean') {
+		diagnostics.push(error(`${path}.tableShowTaskDataTypeIcon`, 'type', 'tableShowTaskDataTypeIcon must be a boolean.'));
+	} else if (typeof object.tableShowTaskDataTypeIcon !== 'boolean') {
+		object.tableShowTaskDataTypeIcon = object.tableShowTaskTypeIcon;
+	}
+	delete object.tableShowTaskTypeIcon;
 	return object;
 }
 
@@ -716,7 +722,7 @@ function validateCanonicalProjection(
 		tableEmbedDefaultWidthPercent: candidate.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: candidate.tableShowLineNumbers,
 		tableShowTaskIcon: candidate.tableShowTaskIcon,
-		tableShowTaskTypeIcon: candidate.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: candidate.tableShowTaskDataTypeIcon,
 	}, '$.body.groups.table-global.data', 'table-global', diagnostics);
 	if (payloads['external-calendars']) assertCanonicalProjection(payloads['external-calendars'].externalCalendars, candidate.externalCalendars, '$.body.groups.external-calendars.data.externalCalendars', 'externalCalendars', diagnostics);
 	for (const [index, override] of (payloads['system-key-mappings']?.overrides ?? []).entries()) {

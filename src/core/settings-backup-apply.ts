@@ -250,7 +250,7 @@ export function projectOperonSettingsBackupApplyDataPackageV1(
 		tableEmbedDefaultWidthPercent: projected.views.tablePresets.tableEmbedDefaultWidthPercent,
 		tableShowLineNumbers: projected.views.tablePresets.tableShowLineNumbers,
 		tableShowTaskIcon: projected.views.tablePresets.tableShowTaskIcon,
-		tableShowTaskTypeIcon: projected.views.tablePresets.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: projected.views.tablePresets.tableShowTaskDataTypeIcon,
 	};
 	const projectedFavorites = projected.ui.presetFavorites!;
 	projected.ui.presetFavorites = {

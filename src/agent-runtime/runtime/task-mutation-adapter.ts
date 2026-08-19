@@ -30,7 +30,7 @@ import { composeStatusValue } from '../../core/workflow-status-value';
 import { canonicalizeLocalDatetime } from '../../core/local-time';
 import { parseTaskLine } from '../../core/parser';
 import { getManagedYamlAliases } from '../../core/yaml-fields';
-import { CANONICAL_KEYS } from '../../types/keys';
+import { CANONICAL_KEYS, TASK_DATA_CANONICAL_KEY_SET } from '../../types/keys';
 import type { KeyMapping } from '../../types/settings';
 import type {
 	RuntimeMutationSettlementWindowV1,
@@ -100,8 +100,12 @@ function resolveBoundedModifiedTimeFrontmatterDriftV1(
 		new Date(settlementWindow.settlementObservedAtEpochMs).toISOString(),
 	);
 	const managedCanonicalKeys = new Set([
-		...CANONICAL_KEYS.map(key => key.name),
-		...keyMappings.map(mapping => mapping.canonicalKey),
+		...CANONICAL_KEYS
+			.map(key => key.name)
+			.filter(key => !TASK_DATA_CANONICAL_KEY_SET.has(key)),
+		...keyMappings
+			.map(mapping => mapping.canonicalKey)
+			.filter(key => !TASK_DATA_CANONICAL_KEY_SET.has(key)),
 	]);
 	const managedTaskKeys = new Set([
 		'tags',

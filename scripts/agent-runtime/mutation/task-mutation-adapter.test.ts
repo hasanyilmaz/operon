@@ -93,6 +93,23 @@ test('general update resolves stable priority identity and rejects semantic fiel
 	);
 	assert.equal(rejected.ok, false);
 	if (!rejected.ok) assert.equal(rejected.code, 'field-not-writable');
+
+	for (const change of [
+		{ field: 'taskType', valueType: 'text' as const, value: 'Project' },
+		{ field: 'taskImage', valueType: 'text' as const, value: 'https://example.test/task.png' },
+		{ field: 'taskGallery', valueType: 'list' as const, value: ['https://example.test/one.png'] },
+	]) {
+		const pendingPublication = prepareRuntimeTaskFieldMutationV1(
+			request('task.update', 'tasks.update.preview', {
+				operation: 'update',
+				changes: [change],
+			}),
+			'2026-07-24T12:00:00.000Z',
+			{ catalog, getTask: () => task },
+		);
+		assert.equal(pendingPublication.ok, false);
+		if (!pendingPublication.ok) assert.equal(pendingPublication.code, 'field-not-writable');
+	}
 });
 
 test('File Task description changes fail closed without affecting supported update paths', () => {
@@ -1607,6 +1624,40 @@ test('File Task settlement accepts only one bounded configured modified-time fro
 		),
 		null,
 		'A plugin property that collides with an Operon-managed File Task key must not be admitted.',
+	);
+	const deferredTaskTypeContent = committedContent.replace(
+		'modification: 2026-07-24T11:59',
+		'taskType: 2026-07-24T11:59',
+	);
+	const deferredTaskTypeSettledContent = deferredTaskTypeContent.replace(
+		'taskType: 2026-07-24T11:59',
+		'taskType: 2026-07-24T12:00',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			deferredTaskTypeContent,
+			sha256HexV1(deferredTaskTypeContent),
+			deferredTaskTypeSettledContent,
+			DEFAULT_SETTINGS.keyMappings,
+			['taskType'],
+			settlementWindow,
+		),
+		sha256HexV1(deferredTaskTypeSettledContent),
+		'A deferred task-data key remains raw frontmatter until the Runtime contract publishes it in Stage 4.',
+	);
+	assert.equal(
+		resolveRuntimeInlineTaskUpdateSettlementRevisionV1(
+			prepared,
+			deferredTaskTypeContent,
+			sha256HexV1(deferredTaskTypeContent),
+			deferredTaskTypeSettledContent.replace('priority: F', 'priority: A'),
+			DEFAULT_SETTINGS.keyMappings,
+			['taskType'],
+			settlementWindow,
+		),
+		null,
+		'Concurrent source drift remains fail-closed when a deferred raw frontmatter key settles.',
 	);
 	const mappedSettings = {
 		...DEFAULT_SETTINGS,

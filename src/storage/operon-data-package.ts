@@ -89,7 +89,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tableEmbedDefaultWidthPercent',
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
-	'tableShowTaskTypeIcon',
+	'tableShowTaskDataTypeIcon',
 	'presetFavorites',
 	'contextualMenuActionAllowlist',
 	'contextualMenuSurfaceActionMatrix',
@@ -437,9 +437,9 @@ export function composeOperonSettingsFromDataPackage(
 			dataPackage.views.tablePresets?.tableShowTaskIcon,
 			defaults.tableShowTaskIcon,
 		),
-		tableShowTaskTypeIcon: readBoolean(
-			dataPackage.views.tablePresets?.tableShowTaskTypeIcon,
-			defaults.tableShowTaskTypeIcon,
+		tableShowTaskDataTypeIcon: readBoolean(
+			dataPackage.views.tablePresets?.tableShowTaskDataTypeIcon,
+			defaults.tableShowTaskDataTypeIcon,
 		),
 		contextualMenuActionAllowlist: readArray(
 			dataPackage.ui.contextualMenu.contextualMenuActionAllowlist,
@@ -482,9 +482,8 @@ export function composeOperonSettingsFromDataPackage(
 export function isUnsupportedTablePresetPackage(dataPackage: Partial<OperonDataPackageV1>): boolean {
 	const tablePackage = dataPackage.views?.tablePresets;
 	const version = readNumber(tablePackage?.version, 0);
-	if (version === 3) return false;
-	if (version > 3) return true;
-	if (readArray(tablePackage?.fileBindings, []).length > 0) return false;
+	if (version === 4) return false;
+	if (version > 4) return true;
 	return true;
 }
 

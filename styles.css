@@ -31336,7 +31336,7 @@ button.operon-table-search-selected-parent-clear svg {
 	color: color-mix(in srgb, var(--text-normal) 82%, var(--text-muted));
 }
 
-.operon-table-admin-header-cell:not(.operon-table-task-type-header-cell) .operon-table-header-label {
+.operon-table-admin-header-cell:not(.operon-table-task-data-type-header-cell) .operon-table-header-label {
 	position: absolute;
 	overflow: hidden;
 	width: 1px;
@@ -31348,12 +31348,12 @@ button.operon-table-search-selected-parent-clear svg {
 	white-space: nowrap;
 }
 
-.operon-table-task-type-header-cell {
+.operon-table-task-data-type-header-cell {
 	justify-content: center;
 	padding: 0 8px;
 }
 
-.operon-table-task-type-header-cell .operon-table-header-label {
+.operon-table-task-data-type-header-cell .operon-table-header-label {
 	color: var(--text-muted);
 	font-weight: 600;
 	text-align: center;
@@ -31810,7 +31810,7 @@ button.operon-table-group-toggle:focus-visible {
 	padding: 0 8px;
 }
 
-.operon-table-task-type-cell {
+.operon-table-task-data-type-cell {
 	justify-content: center;
 	padding: 0 8px;
 	color: var(--text-muted);
@@ -31883,7 +31883,7 @@ button.operon-table-task-icon-button svg {
 	height: var(--operon-table-cell-icon-size);
 }
 
-button.operon-table-task-type-button {
+button.operon-table-task-data-type-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -31900,8 +31900,8 @@ button.operon-table-task-type-button {
 	transition: border-color 0.1s ease, box-shadow 0.1s ease, background 0.1s ease, color 0.1s ease;
 }
 
-button.operon-table-task-type-button:hover,
-button.operon-table-task-type-button:focus-visible {
+button.operon-table-task-data-type-button:hover,
+button.operon-table-task-data-type-button:focus-visible {
 	border-color: currentColor;
 	box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, currentColor 18%, transparent);
 	background: transparent;
@@ -31910,7 +31910,7 @@ button.operon-table-task-type-button:focus-visible {
 	outline: none;
 }
 
-button.operon-table-task-type-button svg {
+button.operon-table-task-data-type-button svg {
 	width: var(--operon-table-cell-icon-size);
 	height: var(--operon-table-cell-icon-size);
 }
@@ -32235,7 +32235,7 @@ button.operon-table-summary-picker-action:focus-visible {
 	font: inherit;
 }
 
-.operon-table-icon-only-button.is-task-type-editor-trigger {
+.operon-table-icon-only-button.is-task-data-type-editor-trigger {
 	cursor: pointer;
 }
 
@@ -32825,7 +32825,7 @@ button.operon-table-source-button:focus-visible {
 	}
 
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover .operon-table-cell-chip:not(.operon-table-file-property-checkbox):not(.operon-table-parent-task-chip),
-	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-type-button,
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-data-type-button,
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-duration-session-chip,
 	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-source-button {
 		color: var(--text-normal);
@@ -32881,7 +32881,7 @@ button.operon-table-source-button:focus-visible {
 		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, currentColor 18%, transparent);
 	}
 
-	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-type-button {
+	body:not(.is-mobile) .operon-table-root .operon-table-row:hover button.operon-table-task-data-type-button {
 		border-color: currentColor;
 		box-shadow: 0 0 0 var(--operon-table-chip-glow-size, 2px) color-mix(in srgb, currentColor 18%, transparent);
 	}
@@ -32972,7 +32972,7 @@ button.operon-table-source-button:focus-visible {
 	.operon-table-root button.operon-table-source-button:focus-visible,
 	.operon-table-root button.operon-table-duration-session-chip:focus-visible,
 	.operon-table-root button.operon-table-task-icon-button:focus-visible,
-	.operon-table-root button.operon-table-task-type-button:focus-visible,
+	.operon-table-root button.operon-table-task-data-type-button:focus-visible,
 	.operon-table-root .operon-table-progress-action-shell:focus-within,
 	.operon-table-root .operon-table-parent-task-cell:focus-visible,
 	.operon-table-root .operon-table-date-value-chip:focus-visible,

@@ -143,7 +143,7 @@ function legacyArchiveOnlyPackage(): OperonDataPackageV1 {
 
 function assertArchiveRoutingMigrated(packageValue: unknown): void {
 	const dataPackage = packageValue as OperonDataPackageV1;
-	assert.equal(dataPackage.settings.settingsVersion, 114);
+	assert.equal(dataPackage.settings.settingsVersion, 115);
 	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskArchiveFolder, '');
 	assert.deepEqual(dataPackage.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations, []);
 	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskAutoArchiveEnabled, false);
@@ -306,7 +306,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 		'backup must contain the exact pre-migration package',
 	);
 	const firstCanonical = clone(pluginData.value) as OperonDataPackageV1;
-	assert.equal(firstCanonical.settings.settingsVersion, 114);
+	assert.equal(firstCanonical.settings.settingsVersion, 115);
 	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskArchiveFolder, '');
 	assert.deepEqual(firstCanonical.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations, []);
 	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskAutoArchiveEnabled, false);
@@ -575,7 +575,7 @@ async function assertLegacyArchiveVersionMigrationLane(): Promise<void> {
 	const store = new OperonDataPackageStore(new MemoryStorageAdapter(), buildOperonStoragePaths('.obsidian'), pluginData);
 	await store.initialize(DEFAULT_SETTINGS, 'en');
 	const migrated = clone(pluginData.value) as OperonDataPackageV1;
-	assert.equal(migrated.settings.settingsVersion, 114);
+	assert.equal(migrated.settings.settingsVersion, 115);
 	assert.equal(migrated.automation.taskAutomationPolicy.fileTaskArchiveFolder, '');
 	assert.deepEqual(migrated.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations, []);
 	assert.equal(
@@ -614,7 +614,7 @@ async function assertLegacyArchiveReloadMigrationLane(): Promise<void> {
 	assert.equal(result.changed, true, 'the delayed legacy package must publish one normalized canonical candidate');
 	assert.equal(pluginData.saveCalls, 1, 'the delayed legacy package must be canonicalized exactly once');
 	const reloaded = clone(pluginData.value) as OperonDataPackageV1;
-	assert.equal(reloaded.settings.settingsVersion, 114);
+	assert.equal(reloaded.settings.settingsVersion, 115);
 	assert.equal(reloaded.automation.taskAutomationPolicy.fileTaskArchiveFolder, 'Current/Archive');
 	assert.deepEqual(
 		reloaded.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations,
@@ -637,7 +637,7 @@ async function assertLegacyArchiveReloadMigrationLane(): Promise<void> {
 }
 
 async function run(): Promise<void> {
-	assert.equal(CURRENT_SETTINGS_VERSION, 114);
+	assert.equal(CURRENT_SETTINGS_VERSION, 115);
 	assert.deepEqual({
 		fileTaskPipelineLocations: DEFAULT_SETTINGS.fileTaskPipelineLocations,
 		fileTaskArchiveFolder: DEFAULT_SETTINGS.fileTaskArchiveFolder,
@@ -673,7 +673,7 @@ async function run(): Promise<void> {
 	});
 
 	const migratedLegacy = migrateSettings({ settingsVersion: 111 });
-	assert.equal(migratedLegacy.settingsVersion, 114);
+	assert.equal(migratedLegacy.settingsVersion, 115);
 	assert.equal(migratedLegacy.fileTaskArchiveFolder, '');
 	assert.deepEqual(migratedLegacy.fileTaskArchivePipelineLocations, []);
 	assert.equal(migratedLegacy.fileTaskAutoArchiveEnabled, false);

@@ -1,14 +1,14 @@
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
 import { t } from '../../core/i18n';
 import { getManagedCustomFieldMappings, getManagedCustomKeyMapping } from '../../core/managed-task-fields';
-import { CANONICAL_KEYS, type ValueType } from '../../types/keys';
+import { CANONICAL_KEYS, TASK_DATA_CANONICAL_KEY_SET, type ValueType } from '../../types/keys';
 import { CHECKBOX_PROGRESS_COLUMN_KEY } from '../task-progress-tracks';
 import {
 	isRetiredKeyMapping,
 	type FilterFieldType,
 	type OperonSettings,
 } from '../../types/settings';
-import type { TableColumn } from '../../types/table';
+import { TABLE_TASK_DATA_TYPE_COLUMN_KEY, type TableColumn } from '../../types/table';
 import { decodeTableFilePropertyColumnKey } from './table-file-property';
 export { isTablePlainTextField } from './table-text-edit-route';
 
@@ -73,7 +73,7 @@ export const TABLE_EDITABLE_TASK_FIELD_KEYS = new Set([
 ]);
 
 const SYNTHETIC_TABLE_FIELDS: Array<Omit<TableTaskField, 'aliases'>> = [
-	{ key: 'taskType', label: 'Task Type', type: 'text', group: 'source', icon: 'database', readonly: true },
+	{ key: TABLE_TASK_DATA_TYPE_COLUMN_KEY, label: 'Task Data Type', type: 'text', group: 'source', icon: 'database', readonly: true },
 	{ key: PROJECT_SERIAL_TABLE_FIELD_KEY, label: 'Project Serial', type: 'text', group: 'identity', icon: 'fingerprint', readonly: true },
 	{ key: 'description', label: 'Task', type: 'text', group: 'task', icon: 'list-todo', readonly: false },
 	{ key: 'checkbox', label: 'Checkbox', type: 'checkbox', group: 'workflow', icon: 'square-check-big', readonly: true },
@@ -231,6 +231,8 @@ function buildTableTaskFieldCatalogUncached(settings: TableTaskFieldCatalogSetti
 
 	for (const canonical of CANONICAL_KEYS) {
 		if (canonical.internal === true || isRetiredKeyMapping(canonical.name)) continue;
+		// Settings owns these mappings in Stage 2; Table support is added in Stage 5.
+		if (TASK_DATA_CANONICAL_KEY_SET.has(canonical.name)) continue;
 		if (getManagedCustomKeyMapping(canonical.name, keyMappings)?.isSystem === false) continue;
 		const mapping = keyMappings.find(entry => entry.canonicalKey === canonical.name);
 		const customLabel = mapping?.visiblePropertyName?.trim();

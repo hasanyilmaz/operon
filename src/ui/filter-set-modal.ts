@@ -51,7 +51,7 @@ import { showFilterConditionPicker } from './field-pickers/filter-condition-pick
 import { showSearchableMultiOptionPicker, type SearchableMultiOption } from './field-pickers/list-picker';
 import { showSearchableFieldPicker, type SearchableFieldPickerOption } from './field-pickers/searchable-field-picker';
 import { getManagedCustomFieldOptions } from '../core/managed-task-fields';
-import { CANONICAL_KEY_MAP } from '../types/keys';
+import { CANONICAL_KEY_MAP, TASK_DATA_CANONICAL_KEY_SET } from '../types/keys';
 import { isPresetFavorite } from '../core/preset-favorites';
 import { createPresetFavoriteButton } from './preset-favorite-button';
 import { runSettingsAsync } from './settings/async-settings-action';
@@ -148,6 +148,31 @@ interface FilterFieldPickerOption extends SearchableFieldPickerOption {
 	sourceType?: TableFilePropertyField['sourceType'];
 	unavailable?: boolean;
 	typeDriftFrom?: FilterFieldType;
+}
+
+export interface FilterSetFieldPickerMappingCandidate {
+	kind: 'builtIn' | 'custom';
+	mapping: KeyMapping;
+}
+
+/**
+ * The mapping-backed portion of the FilterSet field picker. Task data mappings
+ * are persisted in Stage 2 but remain unavailable here until their source data
+ * paths are implemented in Stage 3.
+ */
+export function getFilterSetFieldPickerMappingCandidates(
+	keyMappings: readonly KeyMapping[],
+): FilterSetFieldPickerMappingCandidate[] {
+	const builtIn = keyMappings
+		.filter(mapping => (
+			mapping.isSystem !== false
+			&& !mapping.isInternal
+			&& !TASK_DATA_CANONICAL_KEY_SET.has(mapping.canonicalKey)
+		))
+		.map(mapping => ({ kind: 'builtIn' as const, mapping }));
+	const custom = getManagedCustomFieldOptions(keyMappings)
+		.map(option => ({ kind: 'custom' as const, mapping: option.mapping }));
+	return [...builtIn, ...custom];
 }
 
 const FILTER_FIELD_GROUP_ORDER: FilterFieldPickerGroup[] = [
@@ -909,22 +934,25 @@ export class FilterSetModal extends Modal {
 			pseudoFields.push(buildFilterFieldPickerOption('folders', t('filterSets', 'fieldFolders'), 'folders', 'source', 'folder'));
 		}
 
-		const builtInMappings = this.keyMappings
-			.filter(mapping => mapping.isSystem !== false && !mapping.isInternal)
-			.map(mapping => buildFilterFieldPickerOption(
+		const mappingCandidates = getFilterSetFieldPickerMappingCandidates(this.keyMappings);
+		const builtInMappings = mappingCandidates
+			.filter(candidate => candidate.kind === 'builtIn')
+			.map(({ mapping }) => buildFilterFieldPickerOption(
 				mapping.canonicalKey,
 				mapping.visiblePropertyName,
 				mapping.type,
 				resolveFilterFieldGroupForMapping(mapping),
 				getConfiguredKeyMappingIcon(mapping.canonicalKey, this.keyMappings) || getFilterFieldTypeIcon(mapping.type),
 			));
-		const customMappings = getManagedCustomFieldOptions(this.keyMappings).map(option => buildFilterFieldPickerOption(
-			option.field,
-			option.label,
-			option.type,
-			'custom',
-			getConfiguredKeyMappingIcon(option.field, this.keyMappings) || getFilterFieldTypeIcon(option.type),
-		));
+		const customMappings = mappingCandidates
+			.filter(candidate => candidate.kind === 'custom')
+			.map(({ mapping }) => buildFilterFieldPickerOption(
+				mapping.canonicalKey,
+				mapping.visiblePropertyName,
+				mapping.type,
+				'custom',
+				getConfiguredKeyMappingIcon(mapping.canonicalKey, this.keyMappings) || getFilterFieldTypeIcon(mapping.type),
+			));
 		const filePropertyFields = this.getFilePropertyFieldOptions();
 
 		return [...pseudoFields, ...builtInMappings, ...customMappings, ...filePropertyFields].sort(compareFilterFieldPickerOptions);

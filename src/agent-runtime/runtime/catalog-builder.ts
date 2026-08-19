@@ -41,7 +41,12 @@ import {
 	normalizeKeyMappingComparableName,
 	type OperonSettings,
 } from '../../types/settings';
-import { CANONICAL_KEYS, type CanonicalKeyDef } from '../../types/keys';
+import {
+	CANONICAL_KEYS,
+	TASK_DATA_CANONICAL_KEYS,
+	TASK_DATA_CANONICAL_KEY_SET,
+	type CanonicalKeyDef,
+} from '../../types/keys';
 import { computeContextSettingsFingerprintV1 } from './settings-fingerprint';
 
 export interface CatalogProjectionV1 {
@@ -135,6 +140,9 @@ const VIRTUAL_FIELDS: ReadonlyArray<{
 const VIRTUAL_FIELD_NAMES = new Set(VIRTUAL_FIELDS.map(field => comparable(field.canonicalKey)));
 const BUILT_IN_CANONICAL_NAMES = new Set(CANONICAL_KEYS.map(field => comparable(field.name)));
 const GENERAL_UPDATE_KEYS = new Set<string>(GENERAL_UPDATE_BUILT_IN_KEYS_V1);
+// Settings ownership ships before the Runtime V1 mutation contract. Stage 4
+// removes this gate once create/update/read parity is implemented and tested.
+const PENDING_RUNTIME_V1_PUBLICATION_KEYS = new Set(TASK_DATA_CANONICAL_KEYS.map(comparable));
 
 export function buildLivePropertyCatalogV1(
 	settings: Readonly<OperonSettings>,
@@ -286,7 +294,10 @@ function buildFields(
 	keyMappings: readonly KeyMapping[],
 	warnings: ContractWarningV1[],
 ): FieldDescriptorV1[] {
-	const candidateMappings = keyMappings.filter(mapping => !RETIRED_OR_STALE_KEYS.has(mapping.canonicalKey));
+	const candidateMappings = keyMappings.filter(mapping => (
+		!RETIRED_OR_STALE_KEYS.has(mapping.canonicalKey)
+		&& !PENDING_RUNTIME_V1_PUBLICATION_KEYS.has(comparable(mapping.canonicalKey))
+	));
 	const invalidCustomMappings = candidateMappings.filter(mapping => (
 		mapping.isSystem === false
 		&& (!isManagedCustomFieldMapping(mapping) || !isSafeCustomCanonicalKey(mapping.canonicalKey))
@@ -325,7 +336,10 @@ function buildFields(
 	}
 
 	for (const definition of CANONICAL_KEYS) {
-		if (RETIRED_OR_STALE_KEYS.has(definition.name)) continue;
+		if (
+			RETIRED_OR_STALE_KEYS.has(definition.name)
+			|| PENDING_RUNTIME_V1_PUBLICATION_KEYS.has(comparable(definition.name))
+		) continue;
 		const key = comparable(definition.name);
 		const collidingCustom = customByComparable.get(key);
 		const mapping = collidingCustom ? undefined : activeMappings.find(candidate => (
@@ -504,7 +518,7 @@ function buildPolicies(
 			graphTransactionFeatures: [...GRAPH_TRANSACTION_FEATURES_V1],
 		},
 		inheritance: {
-			fields: [...settings.childTaskInheritanceFields],
+			fields: settings.childTaskInheritanceFields.filter(key => !TASK_DATA_CANONICAL_KEY_SET.has(key)),
 			statusPipelineSource: settings.childTaskInheritanceStatusPipelineSource,
 			autoParentFileTask: settings.autoParentFileTask,
 			autoParentLinkedFileSubtasks: settings.autoParentLinkedFileSubtasks,

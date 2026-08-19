@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "pt-BR",
   "keyCount": 3092,
-  "keyFingerprint": "e49b4b857b151a95a5541a599e82395fb378af37c874940fcf55e6e047cf6ecb",
+  "keyFingerprint": "e79e84218a87895c35e5987349c17579059ddcceb8b3c6d587a3e884aadd6451",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2251,11 +2251,11 @@
       "tableSettingsDesc": "Gerencie predefinições reutilizáveis da Tabela Operon, a seleção da tabela padrão e a configuração da visualização de tabela.",
       "tableShowLineNumbers": "Mostrar números de linha",
       "tableShowLineNumbersDesc": "Mostra uma coluna visível de número de linha no início das tabelas Operon.",
+      "tableShowTaskDataTypeIcon": "Mostrar ícone do tipo de dados da tarefa",
+      "tableShowTaskDataTypeIconDesc": "Mostra uma coluna Task Data Type com ícones de tarefas inline e em arquivo que abrem o Editor de Tarefa.",
       "tableShowTaskIcon": "Mostrar ícone de tarefa",
       "tableShowTaskIconDesc": "Mostra uma coluna de ícone de tarefa estilo Kanban com ciclo de status e menu de contexto da tarefa.",
-      "tableShowTaskTypeIcon": "Mostrar ícone do tipo de tarefa",
-      "tableShowTaskTypeIconDesc": "Mostra uma coluna Tipo com ícones de tarefas inline e em arquivo que abrem o Editor de Tarefa.",
-      "tableTaskTypeColumn": "Tipo",
+      "tableTaskDataTypeColumn": "Task Data Type",
       "taskBarChipsDesc": "Escolha quais chips de campo aparecerão nas barras de tarefas.",
       "taskBarChipsTitle": "Chips Visíveis",
       "taskBarTab": "Barra de Tarefas",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "15688c9faf244821d3a848fd7caad869bb48b4b201b7af73fb9f8b68e216cb31"
+  "sourceVersion": "cf1030333f1190fb6f0cb2c338fb00aad0617893cb1b3c862fd63049aac2c33c"
 }
