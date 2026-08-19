@@ -21,6 +21,7 @@ import {
 } from '../core/repeat-rule';
 import { InlineRepeatCompletionMode, RepeatSeriesEntry, RepeatTemporalTemplate } from '../storage/repeat-series-store';
 import { resolveFileTaskDefaults } from '../core/file-task-defaults';
+import { resolveRecurringFileTaskFolder } from '../core/file-task-pipeline-location';
 import {
 	applyRawYamlValueRemovals,
 	buildMergedFileTaskDraft,
@@ -922,7 +923,7 @@ export class RecurrenceService {
 
 		const sourceFile = this.app.vault.getAbstractFileByPath(completedTask.primary.filePath);
 		if (!(sourceFile instanceof TFile)) return null;
-		const folder = this.resolveRepeatFolder(sourceFile);
+		const folder = this.resolveRepeatFolder(sourceFile, planned.fieldValues);
 		if (folder && !(this.app.vault.getAbstractFileByPath(folder) instanceof TFolder)) return null;
 		const naming = resolveLatestRepeatSeriesNamingConfig(
 			this.getFileBaseName(sourceFile.path),
@@ -1408,7 +1409,7 @@ export class RecurrenceService {
 		const sourceFile = this.app.vault.getAbstractFileByPath(plan.sourceTask.primary.filePath);
 		if (!(sourceFile instanceof TFile)) return null;
 
-		const folder = await this.ensureRepeatFolder(this.resolveRepeatFolder(sourceFile));
+		const folder = await this.ensureRepeatFolder(this.resolveRepeatFolder(sourceFile, plan.fieldValues));
 		const naming = resolveLatestRepeatSeriesNamingConfig(this.getFileBaseName(sourceFile.path), plan.naming);
 		const currentDisplayDate = resolveRecurringFileDisplayDate(plan.sourceTask.fieldValues);
 		const nextDisplayDate = resolveRecurringFileDisplayDate(plan.fieldValues);
@@ -1567,12 +1568,15 @@ export class RecurrenceService {
 		return folder;
 	}
 
-	private resolveRepeatFolder(sourceFile: TFile): string {
-		const settings = this.getSettings();
-		if (settings.fileRepeatDestination === 'custom-folder' && settings.fileRepeatCustomFolder.trim()) {
-			return settings.fileRepeatCustomFolder.trim();
-		}
-		return sourceFile.parent?.path ?? '';
+	private resolveRepeatFolder(
+		sourceFile: TFile,
+		finalFieldValues: Readonly<Record<string, string>>,
+	): string {
+		return resolveRecurringFileTaskFolder(
+			this.getSettings(),
+			finalFieldValues,
+			sourceFile.parent?.path ?? '',
+		);
 	}
 
 	private getUniqueRepeatFilePath(folder: string, baseName: string): string {

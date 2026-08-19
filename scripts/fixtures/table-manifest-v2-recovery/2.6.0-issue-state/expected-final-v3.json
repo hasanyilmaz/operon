@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 2,
 	"settings": {
-		"settingsVersion": 111,
+		"settingsVersion": 113,
 		"filterShowSubtasks": true,
 		"filterSubtaskAutoExpandLimit": 10,
 		"filterShowOnlyOpenSubtasks": false,
@@ -2415,10 +2415,12 @@
 			"filterTaskShowPlainCheckboxAction": true
 		},
 		"taskCreationProfile": {
-			"version": 1,
+			"version": 3,
 			"taskDescriptionRequired": true,
 			"assigneesRequired": false,
 			"fileTasksFolder": "Operon/Tasks",
+			"fileTaskPipelineLocations": [],
+			"moveConvertedNotesToPipelineLocation": false,
 			"inlineTaskSaveMode": "daily-notes",
 			"inlineTaskUseDailyNote": true,
 			"inlineTaskTargetFile": "Operon/Tasks/Operon Inbox.md",
@@ -2444,7 +2446,16 @@
 			"taskCreatorDefaultToFileTask": false,
 			"taskCreatorDefaultFileTemplateId": null,
 			"fileTaskTemplateFolder": "",
+			"manageDailyNotesWithOperon": false,
+			"dailyNoteFormat": "YYYY-MM-DD",
+			"dailyNoteTemplate": "",
+			"dailyNoteFolder": "",
 			"createDailyNotesAsOperonTask": false,
+			"manageWeeklyNotesWithOperon": false,
+			"weeklyNoteFormat": "GGGG-[W]WW",
+			"weeklyNoteTemplate": "",
+			"weeklyNoteFolder": "",
+			"createWeeklyNotesAsOperonTask": false,
 			"defaultEstimateMinutes": 30
 		},
 		"workspaceTweaks": {

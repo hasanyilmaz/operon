@@ -479,7 +479,12 @@ function buildPolicies(
 			...(settings.taskCreatorDefaultFileTemplateId
 				? { defaultFileTemplateId: settings.taskCreatorDefaultFileTemplateId }
 				: {}),
-			inlineTaskSaveMode: settings.inlineTaskSaveMode,
+			// Runtime V1 does not yet own Weekly Notes creation. Project the Plugin-only
+			// destination to its existing explicit-target mode instead of exposing a
+			// catalog value the frozen V1 decoder cannot understand.
+			inlineTaskSaveMode: settings.inlineTaskSaveMode === 'weekly-notes'
+				? 'ask-every-time'
+				: settings.inlineTaskSaveMode,
 			inlineTaskTargetFile: settings.inlineTaskTargetFile,
 			inlineTaskHeading: settings.inlineTaskHeading,
 			dailyNoteAddsStartDate: settings.inlineTaskDailyNoteAddStartDate,

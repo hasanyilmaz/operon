@@ -211,6 +211,7 @@ export interface RuntimeTaskCreationAdapterPortsV1 {
 	resolveConfiguredFilePath(
 		description: string,
 		parent: RuntimeTaskCreationParentTargetV1 | null,
+		finalFields?: Readonly<Record<string, string>>,
 	): Promise<string>;
 	readTemplate(templateId: string): Promise<DeterministicFileTaskTemplate | null>;
 	creationFieldCatalog(): readonly FieldDescriptorV1[];
@@ -455,13 +456,14 @@ export async function prepareRuntimeTaskCreationV1(
 	const prepareCanonical = (
 		canonicalItems: readonly CanonicalTaskCreationItem[],
 		ids: ReadonlyMap<string, string> | undefined,
+		templateIdentityAllocations = sealedTemplateIdentityAllocations,
 	) => {
 		const sealedIdQueue = ids
 			? [
 				...itemsForPreparation.map(item => ids.get(item.itemRef) ?? ''),
 				...sealedTemplateIdentityGenerationQueueV1(
 					canonicalItems,
-					sealedTemplateIdentityAllocations,
+					templateIdentityAllocations,
 				),
 			]
 			: [];
@@ -544,6 +546,97 @@ export async function prepareRuntimeTaskCreationV1(
 		});
 		const sealedTaskIds = new Map(result.plan.tasks.map(task => [task.itemKey, task.operonId]));
 		result = prepareCanonical(items, sealedTaskIds);
+		if (!result.ok) {
+			const fieldBlocker = result.blockers.find(blocker => blocker.code === 'field-not-allowed');
+			return {
+				ok: false,
+				code: fieldBlocker ? 'field-not-writable' : 'invalid-request',
+				reason: result.blockers.map(blocker => blocker.message).join(' '),
+				details: { blockerCount: result.blockers.length },
+			};
+		}
+	}
+	// Configured File Task targets depend on fields that are only known after the
+	// deterministic template merge and recurrence identity allocation.  Rebuild
+	// their source snapshots from those final fields without changing the public
+	// Runtime V1 request shape.
+	const finalTasksByItemRef = new Map(result.plan.tasks.map(task => [task.itemKey, task]));
+	const reroutedByItemRef = new Map<string, CanonicalTaskCreationItem>();
+	let didFinalizeConfiguredFileTarget = false;
+	try {
+		while (reroutedByItemRef.size < items.length) {
+			let progressed = false;
+			for (const canonicalItem of items) {
+				if (reroutedByItemRef.has(canonicalItem.itemKey)) continue;
+				const inputItem = itemsByRef.get(canonicalItem.itemKey);
+				const finalTask = finalTasksByItemRef.get(canonicalItem.itemKey);
+				if (!inputItem || !finalTask) {
+					throw new CreationAdapterError('stale-source', 'Configured File Task routing became incomplete.');
+				}
+				let parent: RuntimeTaskCreationParentTargetV1 | null = null;
+				if (inputItem.parent?.kind === 'existing') {
+					const existingParent = ports.getExistingTask(inputItem.parent.operonId);
+					if (!existingParent || existingParent.duplicate) {
+						throw new CreationAdapterError(
+							'stale-source',
+							`Existing parent became unavailable while routing: ${inputItem.parent.operonId}`,
+						);
+					}
+					parent = existingParent;
+				} else if (inputItem.parent?.kind === 'created') {
+					const localParent = reroutedByItemRef.get(inputItem.parent.itemRef);
+					if (!localParent) continue;
+					parent = {
+						filePath: localParent.target.source.filePath,
+						representation: localParent.target.representation,
+					};
+				}
+				let reroutedItem = canonicalItem;
+				if (
+					canonicalItem.target.representation === 'file'
+					&& inputItem.target.mode === 'configured-default'
+				) {
+					const finalPath = await ports.resolveConfiguredFilePath(
+						canonicalItem.description,
+						parent,
+						finalTask.fieldValues,
+					);
+					// The initial configured-default source is intentionally an absent
+					// placeholder: template and recurrence fields can still move this task.
+					// Always replace it with the final source snapshot before validation,
+					// even when the resolved path happens to be unchanged.
+					reroutedItem = {
+						...canonicalItem,
+						target: {
+							...canonicalItem.target,
+							source: await readSourceSnapshot(finalPath),
+						},
+					};
+					didFinalizeConfiguredFileTarget = true;
+				}
+				reroutedByItemRef.set(canonicalItem.itemKey, reroutedItem);
+				progressed = true;
+			}
+			if (!progressed) {
+				throw new CreationAdapterError('invalid-request', 'Create parent references are missing or cyclic.');
+			}
+		}
+	} catch (error) {
+		return {
+			ok: false,
+			code: error instanceof CreationAdapterError ? error.code : 'stale-source',
+			reason: error instanceof Error ? error.message : 'Configured File Task routing could not be resolved.',
+		};
+	}
+	if (didFinalizeConfiguredFileTarget) {
+		items = items.map(item => reroutedByItemRef.get(item.itemKey) ?? item);
+		const stableTaskIds = new Map(result.plan.tasks.map(task => [task.itemKey, task.operonId]));
+		const stableTemplateIdentityAllocations = new Map(result.plan.tasks.flatMap(task => (
+			task.templateIdentityAllocations
+				? [[task.itemKey, task.templateIdentityAllocations] as const]
+				: []
+		)));
+		result = prepareCanonical(items, stableTaskIds, stableTemplateIdentityAllocations);
 		if (!result.ok) {
 			const fieldBlocker = result.blockers.find(blocker => blocker.code === 'field-not-allowed');
 			return {
@@ -1276,47 +1369,6 @@ async function adaptCreateItem(
 		&& item.target.representation === 'inline'
 		? item.target.lineNumber
 		: undefined;
-	const filePath = item.target.mode === 'exact-path'
-		? item.target.filePath
-		: representation === 'inline'
-			? configuredInline?.filePath ?? ''
-			: await ports.resolveConfiguredFilePath(item.description, resolvedParent);
-	if (representation === 'file' && item.target.mode === 'exact-path') {
-		const canonicalDescriptionPath = await ports.resolveConfiguredFilePath(item.description, resolvedParent);
-		if (fileTaskBasename(canonicalDescriptionPath) !== fileTaskBasename(filePath)) {
-			throw new CreationAdapterError(
-				'invalid-request',
-				'An exact File Task target filename must match the canonical task description filename.',
-			);
-		}
-	}
-	const snapshot = readSourceSnapshot
-		? await readSourceSnapshot(filePath)
-		: await ports.readSource(filePath).then(source => {
-			if (source.filePath !== filePath) {
-				throw new CreationAdapterError(
-					'stale-source',
-					'The canonical source path changed while preparing task creation.',
-				);
-			}
-			return {
-				filePath,
-				content: source.content,
-				revision: sourceRevisionForTaskCreationV1(filePath, source.content),
-			};
-		});
-	if (
-		exactInlineLine !== undefined
-		&& (
-			snapshot.content === null
-			|| !isBlankMarkdownBodyLine(snapshot.content, exactInlineLine)
-		)
-	) {
-		throw new CreationAdapterError(
-			'stale-source',
-			'The exact inline line is not a current blank-body placement candidate.',
-		);
-	}
 	const fieldCatalog = ports.creationFieldCatalog();
 	const configuredFields = splitConfiguredCreationFields(
 		configuredInline?.defaultFields,
@@ -1347,6 +1399,47 @@ async function adaptCreateItem(
 			throw new CreationAdapterError('invalid-request', `File task template is unavailable: ${templateId}`);
 		}
 		template = resolved;
+	}
+	const filePath = item.target.mode === 'exact-path'
+		? item.target.filePath
+		: representation === 'inline'
+			? configuredInline?.filePath ?? ''
+			: await ports.resolveConfiguredFilePath(item.description, resolvedParent, fields);
+	if (representation === 'file' && item.target.mode === 'exact-path') {
+		const canonicalDescriptionPath = await ports.resolveConfiguredFilePath(item.description, resolvedParent, fields);
+		if (fileTaskBasename(canonicalDescriptionPath) !== fileTaskBasename(filePath)) {
+			throw new CreationAdapterError(
+				'invalid-request',
+				'An exact File Task target filename must match the canonical task description filename.',
+			);
+		}
+	}
+	// A configured file location can depend on deterministic template fields and
+	// recurrence values that are not available yet. Do not reject an occupied
+	// provisional fallback before final routing; the caller snapshots the final
+	// path and revalidates it after those fields are resolved.
+	const deferConfiguredFileSource = representation === 'file' && item.target.mode === 'configured-default';
+	const provisionalConfiguredFilePath = `__operon_runtime_preview__/${item.itemRef}.md`;
+	const snapshot = deferConfiguredFileSource
+		// Each configured-default item gets its own zero-write preview source. Two
+		// equal descriptions can then derive different template/pipeline targets
+		// without a provisional cross-item collision; final paths are re-snapshotted
+		// and collision-checked below with stable IDs.
+		? {
+			filePath: provisionalConfiguredFilePath,
+			content: null,
+			revision: sourceRevisionForTaskCreationV1(provisionalConfiguredFilePath, null),
+		}
+		: readSourceSnapshot
+			? await readSourceSnapshot(filePath)
+			: await ports.readSource(filePath).then(source => {
+			if (source.filePath !== filePath) {
+				throw new CreationAdapterError('stale-source', 'The canonical source path changed while preparing task creation.');
+			}
+			return { filePath, content: source.content, revision: sourceRevisionForTaskCreationV1(filePath, source.content) };
+			});
+	if (exactInlineLine !== undefined && (snapshot.content === null || !isBlankMarkdownBodyLine(snapshot.content, exactInlineLine))) {
+		throw new CreationAdapterError('stale-source', 'The exact inline line is not a current blank-body placement candidate.');
 	}
 	return {
 		itemKey: item.itemRef,

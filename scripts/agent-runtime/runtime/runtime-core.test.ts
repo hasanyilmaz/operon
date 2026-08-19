@@ -936,6 +936,21 @@ function testSettingsFingerprintBoundary(): void {
 	creationChange.fileTasksFolder = 'Another Tasks';
 	assert.notEqual(computeContextSettingsFingerprintV1(creationChange), baseline);
 
+	for (const [key, value] of [
+		['manageDailyNotesWithOperon', true],
+		['dailyNoteFormat', 'YYYY/MM/DD'],
+		['dailyNoteTemplate', 'Templates/Runtime Daily.md'],
+		['dailyNoteFolder', 'Runtime/Daily'],
+	] as const) {
+		const dailyCreationChange = createSettingsFixture();
+		Object.assign(dailyCreationChange, { [key]: value });
+		assert.notEqual(
+			computeContextSettingsFingerprintV1(dailyCreationChange),
+			baseline,
+			`Runtime configured Daily target setting must invalidate the fingerprint: ${key}`,
+		);
+	}
+
 	const policyChange = createSettingsFixture();
 	policyChange.trackerSplitSessionsAtMidnight = true;
 	assert.notEqual(computeContextSettingsFingerprintV1(policyChange), baseline);

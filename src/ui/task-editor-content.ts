@@ -138,6 +138,10 @@ import {
 export interface TaskEditorSaveRequest {
 	taskLine: string;
 	isNew: boolean;
+	/** Distinguishes a deliberate clear from an omitted serialized field. */
+	parentTaskIntent?: 'unchanged' | 'explicitly-set' | 'explicitly-cleared';
+	/** Distinguishes a deliberate scheduled-date clear from an omitted field. */
+	dateScheduledIntent?: 'unchanged' | 'explicitly-set' | 'explicitly-cleared';
 	inlineCompletionMode: InlineRepeatCompletionMode;
 	fileBody: {
 		filePath: string;
@@ -6460,6 +6464,18 @@ export class TaskEditorContent {
 			};
 
 			const taskLine = serializeTask(task, this.settings.keyMappings);
+			const existingParentTaskId = (
+				this.existingTask?.fields.find(field => field.key === 'parentTask')?.value ?? ''
+			).trim();
+			const nextParentTaskId = (this.fieldValues['parentTask'] ?? '').trim();
+			const existingScheduledDate = (
+				this.existingTask?.fields.find(field => field.key === 'dateScheduled')?.value ?? ''
+			).trim();
+			const nextScheduledDate = (this.fieldValues['dateScheduled'] ?? '').trim();
+			const resolveIntent = (before: string, after: string): 'unchanged' | 'explicitly-set' | 'explicitly-cleared' => {
+				if (before === after) return 'unchanged';
+				return after ? 'explicitly-set' : 'explicitly-cleared';
+			};
 			const savedDescription = this.description;
 			const savedCheckbox = this.checkbox;
 			const savedTags = [...this.tags];
@@ -6480,6 +6496,8 @@ export class TaskEditorContent {
 				saveResult = await this.onSave({
 					taskLine,
 					isNew: this.isNewTask,
+					parentTaskIntent: resolveIntent(existingParentTaskId, nextParentTaskId),
+					dateScheduledIntent: resolveIntent(existingScheduledDate, nextScheduledDate),
 					inlineCompletionMode: savedInlineCompletionMode,
 					fileBody: this.fileBodyContext
 						? {

@@ -110,6 +110,24 @@ test('semantic transition planning derives project-serial eligibility from the s
 	);
 });
 
+test('semantic Runtime commits hand off a pipeline A-to-B change after their authoritative reindex', () => {
+	const semanticStart = mainSource.indexOf("(preparedMutation.token as { kind?: unknown }).kind === 'semantic-transition-plan'");
+	const semanticEnd = mainSource.indexOf("(preparedMutation.token as { kind?: unknown }).kind === 'timer'", semanticStart);
+	assert.ok(semanticStart >= 0);
+	assert.ok(semanticEnd > semanticStart);
+	const semanticCommit = mainSource.slice(semanticStart, semanticEnd);
+	const archiver = 'this.fileTaskArchiver?.scheduleForIndexedChange(beforeTask ?? null, aggregateAfterTask);';
+	const mover = 'this.fileTaskPipelineMover?.scheduleForIndexedChange(beforeTask ?? null, aggregateAfterTask);';
+	assert.ok(semanticCommit.includes('await this.indexer.forceReindexFilePathAfterMutation('));
+	assert.ok(semanticCommit.includes('{ notify: false }'));
+	assert.ok(semanticCommit.includes(archiver));
+	assert.ok(semanticCommit.includes(mover));
+	assert.ok(
+		semanticCommit.indexOf(archiver) < semanticCommit.indexOf(mover),
+		'pipeline A-to-B reconciliation follows the terminal archiver after Runtime semantic reindexing',
+	);
+});
+
 test('health/settings freshness does not parse task data', () => {
 	const freshness = methodBody(
 		mainSource,

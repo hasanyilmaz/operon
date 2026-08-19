@@ -26,14 +26,16 @@
       "bytes": 65507
     },
     "expected-final-v3.json": {
-      "sha256": "10ad2354c0233afe055ecd78c85afb45f0bb516b53c7bcb4c7ca3f9505a8c9e6",
-      "bytes": 54381
+      "sha256": "bb4e4579acfe32eba7f08bd36cdad567b039772aed8675e33e682112bdbb89e6",
+      "bytes": 54774
     }
   },
   "allowedDurableWrites": [
     ".obsidian/plugins/operon/data.json",
     ".obsidian/plugins/operon/data.json.table-manifest-v2-recovery.json",
-    ".obsidian/plugins/operon/data.json.table-manifest-v2-<source-sha256>.bak"
+    ".obsidian/plugins/operon/data.json.table-manifest-v2-<source-sha256>.bak",
+    ".obsidian/plugins/operon/data.json.task-creation-profile-v2-bb8f543ff78903847a6ccbe031738c43042d80e858cbc625c9216ffe57a34757.bak",
+    ".obsidian/plugins/operon/data.json.task-creation-profile-v2-recovery.json"
   ],
   "preservation": [
     "The .table file remains byte-identical.",

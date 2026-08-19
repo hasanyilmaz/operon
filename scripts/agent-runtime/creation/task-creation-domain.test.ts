@@ -1377,6 +1377,212 @@ async function runCommitPortTests(): Promise<void> {
 		assert.equal(configuredDefault.plan.tasks[0].representation, 'file');
 		assert.equal(configuredDefault.plan.tasks[0].filePath, 'Tasks/Configured default.md');
 	}
+	const configuredFinalRouteCalls: Array<Readonly<Record<string, string>>> = [];
+	const configuredTemplatePipelineAndRecurrence = await prepareRuntimeTaskCreationV1(
+		'runtime-configured-template-pipeline-recurrence',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'configured-template-repeat',
+				description: 'Configured template repeat',
+				target: {
+					representation: 'file',
+					mode: 'configured-default',
+					templateId: 'pipeline-template',
+				},
+				fields: [],
+			}],
+		},
+		{
+			...runtimePorts,
+			settings: () => ({
+				...runtimeSettings,
+				fileTaskPipelineLocations: [{ pipelineId: 'pl_project', folder: 'Pipeline/Tasks' }],
+			}),
+			resolveConfiguredFilePath: async (description, _parent, finalFields = {}) => {
+				configuredFinalRouteCalls.push({ ...finalFields });
+				const folder = finalFields['status'] === 'Project.Brainstorming'
+					&& finalFields['repeat']
+					&& finalFields['repeatSeriesId']
+					&& finalFields['dateScheduled'] === '2026-07-30'
+					? 'Pipeline/Tasks'
+					: 'Operon/Tasks';
+				return `${folder}/${description}.md`;
+			},
+			readTemplate: async templateId => templateId === 'pipeline-template'
+				? {
+					templateId,
+					content: [
+						'---',
+						`${visibleTemplateKey('repeat')}: mode=schedule|freq=week|interval=1`,
+						`${visibleTemplateKey('dateScheduled')}: 2026-07-30`,
+						'---',
+						'',
+					].join('\n'),
+					revision: 'template:pipeline-template',
+				}
+				: null,
+		},
+	);
+	assert.equal(
+		configuredTemplatePipelineAndRecurrence.ok,
+		true,
+		JSON.stringify(configuredTemplatePipelineAndRecurrence),
+	);
+	if (configuredTemplatePipelineAndRecurrence.ok) {
+		const finalRouteFields = configuredFinalRouteCalls.at(-1);
+		assert.equal(
+			finalRouteFields?.['status'],
+			'Project.Brainstorming',
+		);
+		assert.equal(finalRouteFields?.['repeat'], 'mode=schedule|freq=week|interval=1');
+		assert.equal(finalRouteFields?.['repeatSeriesId'], 'series-2');
+		assert.equal(finalRouteFields?.['dateScheduled'], '2026-07-30');
+		assert.equal(
+			configuredTemplatePipelineAndRecurrence.plan.tasks[0].filePath,
+			'Pipeline/Tasks/Configured template repeat.md',
+			'configured Runtime File Tasks must route after template and recurrence fields are final',
+		);
+	}
+	const provisionalReads: string[] = [];
+	const configuredFinalRouteAvoidsProvisionalCollision = await prepareRuntimeTaskCreationV1(
+		'runtime-configured-final-route-avoids-provisional-collision',
+		{
+			operation: 'create',
+			items: [{
+				itemRef: 'configured-final-route',
+				description: 'Configured final route',
+				target: {
+					representation: 'file',
+					mode: 'configured-default',
+					templateId: 'final-route-template',
+				},
+				fields: [],
+			}],
+		},
+		{
+			...runtimePorts,
+			resolveConfiguredFilePath: async (description, _parent, finalFields = {}) => {
+				const folder = finalFields['status'] === 'Project.Brainstorming'
+					&& finalFields['repeat']
+					&& finalFields['repeatSeriesId']
+					&& finalFields['dateScheduled'] === '2026-07-30'
+					? 'Pipeline/Tasks'
+					: 'Operon/Tasks';
+				return `${folder}/${description}.md`;
+			},
+			readSource: async filePath => {
+				provisionalReads.push(filePath);
+				return {
+					filePath,
+					content: filePath === 'Operon/Tasks/Configured final route.md'
+						? '---\noperonId: occupied\n---\n'
+						: null,
+				};
+			},
+			readTemplate: async templateId => templateId === 'final-route-template'
+				? {
+					templateId,
+					content: [
+						'---',
+						`${visibleTemplateKey('repeat')}: mode=schedule|freq=week|interval=1`,
+						`${visibleTemplateKey('dateScheduled')}: 2026-07-30`,
+						'---',
+						'',
+					].join('\n'),
+					revision: 'template:final-route-template',
+				}
+				: null,
+		},
+	);
+	assert.equal(
+		configuredFinalRouteAvoidsProvisionalCollision.ok,
+		true,
+		JSON.stringify(configuredFinalRouteAvoidsProvisionalCollision),
+	);
+	if (configuredFinalRouteAvoidsProvisionalCollision.ok) {
+		assert.equal(
+			configuredFinalRouteAvoidsProvisionalCollision.plan.tasks[0].filePath,
+			'Pipeline/Tasks/Configured final route.md',
+		);
+		assert.equal(
+			provisionalReads.includes('Operon/Tasks/Configured final route.md'),
+			false,
+			'an occupied provisional fallback must not reject the final template/recurrence pipeline route',
+		);
+		assert.equal(provisionalReads.includes('Pipeline/Tasks/Configured final route.md'), true);
+	}
+	const twoItemFinalRouteFields: Array<Readonly<Record<string, string>>> = [];
+	const configuredTwoItemPipelineRoutes = await prepareRuntimeTaskCreationV1(
+		'runtime-configured-two-item-final-pipeline-routes',
+		{
+			operation: 'create',
+			items: [
+				{
+					itemRef: 'pipeline-a',
+					description: 'Same description',
+					target: { representation: 'file', mode: 'configured-default', templateId: 'pipeline-a-template' },
+					fields: [],
+				},
+				{
+					itemRef: 'pipeline-b',
+					description: 'Same description',
+					target: { representation: 'file', mode: 'configured-default', templateId: 'pipeline-b-template' },
+					fields: [],
+				},
+			],
+		},
+		{
+			...runtimePorts,
+		generateOperonId: (() => {
+			let cursor = 0;
+			return () => `rt${String(++cursor).padStart(5, '0')}`;
+		})(),
+		resolveConfiguredFilePath: async (description, _parent, finalFields = {}) => {
+			twoItemFinalRouteFields.push({ ...finalFields });
+			const folder = finalFields['dateScheduled'] === '2026-07-30'
+				? 'Pipeline/A'
+				: finalFields['dateScheduled'] === '2026-08-06'
+					? 'Pipeline/B'
+						: 'Operon/Tasks';
+				return `${folder}/${description}.md`;
+		},
+		readTemplate: async templateId => {
+			const dateScheduled = templateId === 'pipeline-a-template'
+					? '2026-07-30'
+					: templateId === 'pipeline-b-template'
+						? '2026-08-06'
+						: null;
+				return dateScheduled
+					? {
+						templateId,
+						content: `---\n${visibleTemplateKey('dateScheduled')}: ${dateScheduled}\n---\n`,
+						revision: `template:${templateId}`,
+					}
+					: null;
+			},
+		},
+	);
+	assert.equal(
+		configuredTwoItemPipelineRoutes.ok,
+		true,
+		`${JSON.stringify(configuredTwoItemPipelineRoutes)} ${JSON.stringify(twoItemFinalRouteFields)}`,
+	);
+	if (configuredTwoItemPipelineRoutes.ok) {
+		assert.deepEqual(
+			configuredTwoItemPipelineRoutes.plan.tasks.map(task => [task.itemKey, task.filePath]),
+			[
+				['pipeline-a', 'Pipeline/A/Same description.md'],
+				['pipeline-b', 'Pipeline/B/Same description.md'],
+			],
+			'equal configured-default descriptions may share a provisional fallback only after final template routes diverge',
+		);
+		assert.deepEqual(
+			twoItemFinalRouteFields.slice(-2).map(fields => fields['dateScheduled']),
+			['2026-07-30', '2026-08-06'],
+			'each final route receives its template-derived field values',
+		);
+	}
 	const configuredDatetimeDefault = await prepareRuntimeTaskCreationV1(
 		'runtime-configured-datetime-default',
 		{

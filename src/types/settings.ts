@@ -93,14 +93,20 @@ import {
 	resolvePipelineMinimalFileTaskTemplateStatusById,
 } from '../core/file-task-template-identity';
 import type { PinnedTaskSortMode } from '../core/pinned-task-query';
+import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 
-export const CURRENT_SETTINGS_VERSION = 111;
+export const CURRENT_SETTINGS_VERSION = 113;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
 export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
 export type NonEnglishOperonLanguage = typeof NON_ENGLISH_LANGUAGE_OPTIONS[number];
+/** A stable pipeline-to-folder routing override for File Tasks. */
+export interface FileTaskPipelineLocationRule {
+	pipelineId: string;
+	folder: string;
+}
 export const DEFAULT_CHILD_TASK_INHERITANCE_FIELDS = ['status', 'priority', 'taskIcon', 'taskColor'] as const;
 export const CHILD_TASK_INHERITANCE_TAGS_KEY = 'tags';
 export type ChildTaskInheritanceStatusPipelineSource = 'parent' | 'default';
@@ -423,7 +429,7 @@ export const KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX = 48;
 export const DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS = [10, 30, 60, 120] as const;
 export type TrackerTaskDescriptionClickAction = 'jumpToSource' | 'openTaskEditor';
 export type FlowTimeMode = 'tracktime' | 'flowtime';
-export type InlineTaskSaveMode = 'daily-notes' | 'specific-file' | 'active-file' | 'ask-every-time';
+export type InlineTaskSaveMode = 'daily-notes' | 'weekly-notes' | 'specific-file' | 'active-file' | 'ask-every-time';
 export type InlineTaskParentInlineTargetMode = 'default' | 'below-parent';
 export type InlineTaskParentFileTargetMode = 'default' | 'inside-parent-file';
 export type FileTaskParentInlineTargetMode = 'default' | 'same-folder';
@@ -1477,6 +1483,10 @@ export interface OperonSettings {
 
 	/** Default folder for new file tasks. Empty = vault root. */
 	fileTasksFolder: string;
+	/** Optional pipeline-specific destination folders for File Tasks. */
+	fileTaskPipelineLocations: FileTaskPipelineLocationRule[];
+	/** Move existing notes after they are converted into a File Task. */
+	moveConvertedNotesToPipelineLocation: boolean;
 	/** If true, finished/cancelled file tasks are moved to the archive folder after a delay. */
 	fileTaskAutoArchiveEnabled: boolean;
 	/** Folder where finished/cancelled file tasks are moved. */
@@ -1759,8 +1769,26 @@ export interface OperonSettings {
 	fileTaskTemplateFolder: string;
 	/** Additional vault folders excluded from Operon's global task index. */
 	excludedFolders: string[];
+	/** If true, Operon owns Daily Note format, folder, template, and creation. */
+	manageDailyNotesWithOperon: boolean;
+	/** Moment format used for Daily Note paths managed by Operon. */
+	dailyNoteFormat: string;
+	/** Optional markdown template used for Daily Notes managed by Operon. */
+	dailyNoteTemplate: string;
+	/** Vault-relative folder used for Daily Notes managed by Operon. Empty = vault root. */
+	dailyNoteFolder: string;
 	/** If true, daily notes created by Operon are initialized as minimal Operon file tasks. */
 	createDailyNotesAsOperonTask: boolean;
+	/** If true, Operon owns Weekly Note format, folder, template, and creation. */
+	manageWeeklyNotesWithOperon: boolean;
+	/** Moment format used for Weekly Note paths managed by Operon. */
+	weeklyNoteFormat: string;
+	/** Optional markdown template used for Weekly Notes managed by Operon. */
+	weeklyNoteTemplate: string;
+	/** Vault-relative folder used for Weekly Notes managed by Operon. Empty = vault root. */
+	weeklyNoteFolder: string;
+	/** If true, weekly notes created by Operon are initialized as minimal Operon file tasks. */
+	createWeeklyNotesAsOperonTask: boolean;
 	/** Most recently used template for Create File Task picker ordering. */
 	lastUsedFileTaskTemplateId: string | null;
 
@@ -2003,6 +2031,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskDescriptionRequired: true,
 	assigneesRequired: false,
 	fileTasksFolder: 'Operon/Tasks',
+	fileTaskPipelineLocations: [],
+	moveConvertedNotesToPipelineLocation: false,
 	fileTaskAutoArchiveEnabled: false,
 	fileTaskArchiveFolder: 'Operon/Archives',
 	fileTaskArchiveDelaySeconds: 30,
@@ -2210,7 +2240,16 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskCreatorDefaultFileTemplateId: null,
 	fileTaskTemplateFolder: '',
 	excludedFolders: [],
+	manageDailyNotesWithOperon: false,
+	dailyNoteFormat: 'YYYY-MM-DD',
+	dailyNoteTemplate: '',
+	dailyNoteFolder: '',
 	createDailyNotesAsOperonTask: false,
+	manageWeeklyNotesWithOperon: false,
+	weeklyNoteFormat: 'GGGG-[W]WW',
+	weeklyNoteTemplate: '',
+	weeklyNoteFolder: '',
+	createWeeklyNotesAsOperonTask: false,
 	lastUsedFileTaskTemplateId: null,
 
 		defaultEstimateMinutes: 30,
@@ -2383,6 +2422,28 @@ function normalizeFolderPathList(value: unknown): string[] {
 		folders.push(normalized);
 	}
 	return folders;
+}
+
+/** Keeps only one safe routing rule for each currently configured pipeline. */
+export function normalizeFileTaskPipelineLocations(
+	value: unknown,
+	pipelines: readonly Pipeline[],
+): FileTaskPipelineLocationRule[] {
+	if (!Array.isArray(value)) return [];
+	const validPipelineIds = new Set(pipelines.map(pipeline => pipeline.id.trim()).filter(Boolean));
+	const seen = new Set<string>();
+	const rules: FileTaskPipelineLocationRule[] = [];
+	for (const item of value) {
+		if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+		const raw = item as Record<string, unknown>;
+		const pipelineId = typeof raw.pipelineId === 'string' ? raw.pipelineId.trim() : '';
+		if (!pipelineId || !validPipelineIds.has(pipelineId) || seen.has(pipelineId)) continue;
+		seen.add(pipelineId);
+		const folder = typeof raw.folder === 'string' ? raw.folder.trim() : '';
+		if (folder && !isSafeVaultRelativePath(folder)) continue;
+		rules.push({ pipelineId, folder });
+	}
+	return rules;
 }
 
 function normalizeExternalCalendarColor(value: unknown): string {
@@ -3490,6 +3551,7 @@ function normalizeTaskStatsBackfillVersion(raw: unknown): number {
 
 function normalizeInlineTaskSaveMode(raw: unknown, fallback: InlineTaskSaveMode): InlineTaskSaveMode {
 	return raw === 'daily-notes'
+		|| raw === 'weekly-notes'
 		|| raw === 'specific-file'
 		|| raw === 'active-file'
 		|| raw === 'ask-every-time'
@@ -4325,6 +4387,13 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	normalizeSurfaceOrderingSettings(out, src);
 
 	out.fileTasksFolder = normalizeSettingsFolderPath(out.fileTasksFolder);
+	out.fileTaskPipelineLocations = normalizeFileTaskPipelineLocations(
+		src.fileTaskPipelineLocations,
+		out.pipelines,
+	);
+	out.moveConvertedNotesToPipelineLocation = typeof src.moveConvertedNotesToPipelineLocation === 'boolean'
+		? src.moveConvertedNotesToPipelineLocation
+		: DEFAULT_SETTINGS.moveConvertedNotesToPipelineLocation;
 	out.fileTaskArchiveFolder = normalizeSettingsFolderPath(out.fileTaskArchiveFolder);
 	if (!out.fileTaskArchiveFolder) {
 		out.fileTaskArchiveFolder = DEFAULT_SETTINGS.fileTaskArchiveFolder;
@@ -4344,6 +4413,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.excludedFolders = sanitizeExcludedFoldersForFileTasksFolder(
 		normalizeFolderPathList(src.excludedFolders),
 		out.fileTasksFolder,
+		out.fileTaskPipelineLocations.map(rule => rule.folder),
 	);
 	out.locationPickerMapDefaultCenter = typeof src.locationPickerMapDefaultCenter === 'string'
 		? src.locationPickerMapDefaultCenter.trim()
@@ -4397,7 +4467,28 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		),
 		out.locationPreviewMaxZoom,
 	);
+	out.manageDailyNotesWithOperon = src.manageDailyNotesWithOperon === true;
+	out.dailyNoteFormat = typeof src.dailyNoteFormat === 'string' && src.dailyNoteFormat.trim()
+		? src.dailyNoteFormat.trim()
+		: DEFAULT_SETTINGS.dailyNoteFormat;
+	out.dailyNoteTemplate = typeof src.dailyNoteTemplate === 'string'
+		? src.dailyNoteTemplate.trim()
+		: DEFAULT_SETTINGS.dailyNoteTemplate;
+	out.dailyNoteFolder = typeof src.dailyNoteFolder === 'string'
+		? src.dailyNoteFolder.trim()
+		: DEFAULT_SETTINGS.dailyNoteFolder;
 	out.createDailyNotesAsOperonTask = src.createDailyNotesAsOperonTask === true;
+	out.manageWeeklyNotesWithOperon = src.manageWeeklyNotesWithOperon === true;
+	out.weeklyNoteFormat = typeof src.weeklyNoteFormat === 'string' && src.weeklyNoteFormat.trim()
+		? src.weeklyNoteFormat.trim()
+		: DEFAULT_SETTINGS.weeklyNoteFormat;
+	out.weeklyNoteTemplate = typeof src.weeklyNoteTemplate === 'string'
+		? src.weeklyNoteTemplate.trim()
+		: DEFAULT_SETTINGS.weeklyNoteTemplate;
+	out.weeklyNoteFolder = typeof src.weeklyNoteFolder === 'string'
+		? src.weeklyNoteFolder.trim()
+		: DEFAULT_SETTINGS.weeklyNoteFolder;
+	out.createWeeklyNotesAsOperonTask = src.createWeeklyNotesAsOperonTask === true;
 	out.trackerTaskDescriptionClickAction = src.trackerTaskDescriptionClickAction === 'openTaskEditor'
 		? 'openTaskEditor'
 		: DEFAULT_SETTINGS.trackerTaskDescriptionClickAction;

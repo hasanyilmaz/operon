@@ -920,6 +920,7 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 			'.obsidian/plugins/operon/data.json',
 			`.obsidian/plugins/operon/data.json.table-manifest-v2-${sourceHash}.bak`,
 			'.obsidian/plugins/operon/data.json.table-manifest-v2-recovery.json',
+			'.obsidian/plugins/operon/data.json.task-creation-profile-v2-bb8f543ff78903847a6ccbe031738c43042d80e858cbc625c9216ffe57a34757.bak',
 			'Tables/Default.table',
 		]);
 		await adapter.write(paths.dataPackagePath, await adapter.read(first.tablePresetRecovery.backupPath!));

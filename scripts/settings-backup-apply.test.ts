@@ -583,6 +583,91 @@ test('reapplying the same plan is idempotent and performs no second write', asyn
 	assert.equal(harness.data.saveAttempts, 1);
 });
 
+test('periodic and pipeline-location settings export, preflight, and apply all twelve fields with typed Vault references idempotently', async () => {
+	const target = baselineSettings();
+	const harness = await createHarness(canonicalPackage(target));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	const source = clone(current);
+	const pipelineId = source.pipelines[0]?.id;
+	assert.ok(pipelineId, 'backup fixture must retain one stable pipeline ID');
+	Object.assign(source, {
+		manageDailyNotesWithOperon: true,
+		dailyNoteFormat: 'YYYY/MM/DD',
+		dailyNoteTemplate: 'Templates/Periodic/Daily.md',
+		dailyNoteFolder: 'Journal/Daily',
+		createDailyNotesAsOperonTask: true,
+		manageWeeklyNotesWithOperon: true,
+		weeklyNoteFormat: 'GGGG/[W]WW',
+		weeklyNoteTemplate: 'Templates/Periodic/Weekly.md',
+		weeklyNoteFolder: 'Journal/Weekly',
+		createWeeklyNotesAsOperonTask: true,
+		fileTaskPipelineLocations: [{ pipelineId, folder: 'Projects/Tasks' }],
+		moveConvertedNotesToPipelineLocation: true,
+	});
+
+	const sourceJson = exportJson(source);
+	const exported = JSON.parse(sourceJson) as {
+		body: { groups: { general: { data: Partial<OperonSettings> } } };
+	};
+	const periodicKeys = [
+		'manageDailyNotesWithOperon', 'dailyNoteFormat', 'dailyNoteTemplate', 'dailyNoteFolder',
+		'createDailyNotesAsOperonTask', 'manageWeeklyNotesWithOperon', 'weeklyNoteFormat',
+		'weeklyNoteTemplate', 'weeklyNoteFolder', 'createWeeklyNotesAsOperonTask',
+		'fileTaskPipelineLocations', 'moveConvertedNotesToPipelineLocation',
+	] as const;
+	for (const key of periodicKeys) {
+		assert.deepEqual(exported.body.groups.general.data[key], source[key], `export must include ${key}`);
+	}
+
+	const targetSnapshot = await harness.storage.captureCommittedSettingsBackupSnapshot();
+	const vaultReferenceChecks = {
+		dailyNoteTemplate: { status: 'valid' as const },
+		dailyNoteFolder: { status: 'valid' as const },
+		weeklyNoteTemplate: { status: 'valid' as const },
+		weeklyNoteFolder: { status: 'valid' as const },
+		fileTaskPipelineLocations: { status: 'valid' as const },
+	};
+	const vaultReferenceDecisions = {
+		dailyNoteTemplate: 'apply-source' as const,
+		dailyNoteFolder: 'apply-source' as const,
+		weeklyNoteTemplate: 'apply-source' as const,
+		weeklyNoteFolder: 'apply-source' as const,
+		fileTaskPipelineLocations: 'apply-source' as const,
+	};
+	const preflight = preflightOperonSettingsBackupRestoreV1({
+		sourceJson,
+		targetSnapshot,
+		selectedGroups: ['general'],
+		vaultReferenceChecks,
+		vaultReferenceDecisions,
+	});
+	assert.equal(preflight.ok, true);
+	if (!preflight.ok) throw new Error('Expected periodic settings preflight to succeed.');
+	assert.equal(preflight.classification, 'ready', JSON.stringify(preflight.preview.issues, null, 2));
+	assert.ok(preflight.restorePlan);
+	const plan = preflight.restorePlan as OperonSettingsBackupRestorePlanV1;
+	assert.deepEqual(plan.vaultReferenceChecks, vaultReferenceChecks);
+	assert.deepEqual(plan.vaultReferenceDecisions, vaultReferenceDecisions);
+	for (const key of periodicKeys) {
+		assert.deepEqual(plan.candidateSettings[key], source[key], `preflight candidate must include ${key}`);
+	}
+
+	const first = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.ok(first.status === 'success' || first.status === 'success-with-migrations');
+	assert.equal(harness.data.saveAttempts, 1);
+	const committed = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	for (const key of periodicKeys) {
+		assert.deepEqual(committed[key], source[key], `apply must commit ${key}`);
+	}
+
+	const second = await harness.storage.applySettingsBackupRestorePlanV1(
+		applyInput(sourceJson, plan, '2026-08-10T20:01:00.000Z'),
+	);
+	assert.equal(second.receipt?.alreadyApplied, true);
+	assert.equal(second.receipt?.canonicalWrite, 'not-attempted');
+	assert.equal(harness.data.saveAttempts, 1, 'second apply must not write again');
+});
+
 test('exact-plan retry remains idempotent after an unselected target setting changes', async () => {
 	const target = baselineSettings();
 	const harness = await createHarness(canonicalPackage(target));
