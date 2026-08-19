@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#projeto",
       "fileTaskMigrationTitle": "Converter notas em tarefas em arquivo",
       "fileTaskParentTargetDefault": "Pasta padrão para tarefas em arquivo",
+      "fileTaskPipelineLocationFolder": "Pasta",
       "fileTaskPipelineLocationFolderInvalid": "Escolha um caminho de pasta seguro relativo ao cofre.",
       "fileTaskPipelineLocationPipeline": "Pipeline",
       "fileTaskPipelineLocationRemove": "Remover local por pipeline",
       "fileTaskPipelineLocationSelectPipeline": "Selecione um pipeline",
       "fileTaskPipelineLocations": "Locais por Pipeline",
-      "fileTaskPipelineLocationsDesc": "Escolha uma pasta para tarefas em arquivo criadas em cada pipeline. Isso substitui o posicionamento pelo pai e a pasta padrão.",
+      "fileTaskPipelineLocationsDesc": "As novas tarefas em arquivo são criadas na pasta configurada para seu pipeline. Isso substitui o posicionamento pelo pai e a pasta padrão. Quando uma tarefa muda de pipeline ou você altera uma regra de localização, as tarefas em arquivo abertas elegíveis são movidas para a pasta correspondente em cerca de 30 segundos.",
       "fileTaskTemplateFolder": "Pasta de templates",
       "fileTaskTemplateFolderDesc": "Os arquivos Markdown de nível superior nesta pasta são listados após as opções mínimas específicas do pipeline incorporadas para Tarefa em Arquivo. Deixe vazio para mostrar apenas as opções incorporadas.",
       "fileTaskTemplateFolderPlaceholder": "Ex: 10 Horizon/Templates",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "00ab88dfb5686ced49b76d56bd44391458ad6dda199c10ae4feb708c838c842e"
+  "sourceVersion": "d8845faeebbf344d9beefa972b9d912ee833c452f0c9bba47563c683ba9e287e"
 }

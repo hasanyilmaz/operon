@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#project",
       "fileTaskMigrationTitle": "Convertir notas en tareas de archivo",
       "fileTaskParentTargetDefault": "Carpeta de tareas de archivo predeterminada",
+      "fileTaskPipelineLocationFolder": "Carpeta",
       "fileTaskPipelineLocationFolderInvalid": "Elige una ruta de carpeta segura relativa a la bóveda.",
       "fileTaskPipelineLocationPipeline": "Pipeline",
       "fileTaskPipelineLocationRemove": "Eliminar ubicación de pipeline",
       "fileTaskPipelineLocationSelectPipeline": "Seleccionar un pipeline",
       "fileTaskPipelineLocations": "Ubicaciones de pipeline",
-      "fileTaskPipelineLocationsDesc": "Elige una carpeta para las tareas de archivo creadas en cada pipeline. Esto reemplaza la ubicación por padre y la carpeta predeterminada.",
+      "fileTaskPipelineLocationsDesc": "Las nuevas tareas de archivo se crean en la carpeta configurada para su pipeline. Esto reemplaza la ubicación por padre y la carpeta predeterminada. Cuando una tarea cambia de pipeline o modificas una regla de ubicación, las tareas de archivo abiertas correspondientes se mueven a la carpeta adecuada en unos 30 segundos.",
       "fileTaskTemplateFolder": "Carpeta de plantillas",
       "fileTaskTemplateFolderDesc": "Los archivos markdown de nivel superior de esta carpeta aparecen después de las opciones integradas de tarea de archivo mínima para cada pipeline. Dejar vacío para mostrar solo las opciones integradas.",
       "fileTaskTemplateFolderPlaceholder": "p. ej. 10 Horizon/Templates",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "e5cb83e4ecdc16ecbd113d37e655a0308250f5472dcd7b763416a8c73c7a8de7"
+  "sourceVersion": "a060b6248c3d69cb868e0d699a87142db1756d2f1acddc4261f123417cf91b10"
 }

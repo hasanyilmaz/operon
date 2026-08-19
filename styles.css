@@ -29558,6 +29558,110 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	line-height: 1.2;
 }
 
+.operon-file-task-pipeline-location-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.operon-file-task-pipeline-location-row {
+	display: grid;
+	grid-template-columns: max-content minmax(180px, 1fr) max-content minmax(180px, 1fr) auto;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-primary);
+}
+
+.operon-file-task-pipeline-location-row:hover,
+.operon-file-task-pipeline-location-row:focus-within {
+	border-color: var(--background-modifier-border-hover);
+	background: var(--background-primary-alt);
+}
+
+.operon-file-task-pipeline-location-label {
+	color: var(--text-normal);
+	font-weight: var(--font-semibold, 600);
+	white-space: nowrap;
+}
+
+.operon-file-task-pipeline-location-select,
+.operon-file-task-pipeline-location-folder {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+}
+
+.operon-file-task-pipeline-location-remove {
+	justify-self: end;
+}
+
+.operon-file-task-pipeline-location-row.is-draft {
+	grid-template-columns: max-content minmax(180px, 1fr) auto;
+}
+
+.operon-file-task-pipeline-location-add-row {
+	display: flex;
+	justify-content: flex-start;
+	padding-top: 12px;
+}
+
+.operon-file-task-pipeline-location-add-button {
+	border-color: var(--background-modifier-border);
+	background: transparent;
+	color: var(--text-normal);
+}
+
+.operon-file-task-pipeline-location-add-button:hover,
+.operon-file-task-pipeline-location-add-button:focus-visible {
+	border-color: var(--background-modifier-border-hover);
+	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+	color: var(--text-normal);
+}
+
+.operon-file-task-pipeline-location-add-button:focus-visible {
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+}
+
+@media (max-width: 720px) {
+	.operon-file-task-pipeline-location-row {
+		grid-template-columns: max-content minmax(0, 1fr) auto;
+	}
+
+	.operon-file-task-pipeline-location-pipeline-label,
+	.operon-file-task-pipeline-location-folder-label {
+		grid-column: 1;
+	}
+
+	.operon-file-task-pipeline-location-select,
+	.operon-file-task-pipeline-location-folder {
+		grid-column: 2;
+	}
+
+	.operon-file-task-pipeline-location-remove {
+		grid-column: 3;
+		grid-row: 1 / span 2;
+	}
+
+	.operon-file-task-pipeline-location-row.is-draft .operon-file-task-pipeline-location-remove {
+		grid-row: 1;
+	}
+}
+
+@media (max-width: 480px) {
+	.operon-file-task-pipeline-location-row {
+		grid-template-columns: max-content minmax(0, 1fr);
+	}
+
+	.operon-file-task-pipeline-location-remove,
+	.operon-file-task-pipeline-location-row.is-draft .operon-file-task-pipeline-location-remove {
+		grid-column: 2;
+		grid-row: auto;
+	}
+}
+
 /* Static-style cleanup helpers */
 .operon-rendered-inline-task-list-item {
 	box-sizing: border-box;

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#project",
       "fileTaskMigrationTitle": "將筆記轉換為檔案任務",
       "fileTaskParentTargetDefault": "預設檔案任務資料夾",
+      "fileTaskPipelineLocationFolder": "資料夾",
       "fileTaskPipelineLocationFolderInvalid": "請選取安全且相對於資料庫的資料夾路徑。",
       "fileTaskPipelineLocationPipeline": "管線",
       "fileTaskPipelineLocationRemove": "移除管線位置",
       "fileTaskPipelineLocationSelectPipeline": "選取管線",
       "fileTaskPipelineLocations": "管線位置",
-      "fileTaskPipelineLocationsDesc": "為每個管線中建立的檔案任務選擇資料夾。此設定會覆寫父任務放置規則和預設資料夾。",
+      "fileTaskPipelineLocationsDesc": "新的檔案任務會建立在其管線設定的資料夾中。這會覆寫父任務放置規則和預設資料夾。當任務變更管線或你修改位置規則時，符合條件的開放檔案任務會在約 30 秒內移至相符的資料夾。",
       "fileTaskTemplateFolder": "模板資料夾",
       "fileTaskTemplateFolderDesc": "此資料夾中的頂級 Markdown 檔案會列在各 pipeline 的內建最簡檔案任務選項之後。留空則僅顯示內建選項。",
       "fileTaskTemplateFolderPlaceholder": "例如 10 Horizon/Templates",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "a2e742070e1ec2dc4344f1b0e397b8bf66ebb202f82968043999c7c8cf10d179"
+  "sourceVersion": "2f45ca90c0c2fe613fb7d99f2e9e0cdff26048e19151caae02fb7d89ff159ce8"
 }

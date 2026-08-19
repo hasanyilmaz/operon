@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#project",
       "fileTaskMigrationTitle": "Converti note in attività-file",
       "fileTaskParentTargetDefault": "Cartella attività-file predefinita",
+      "fileTaskPipelineLocationFolder": "Cartella",
       "fileTaskPipelineLocationFolderInvalid": "Scegli un percorso di cartella sicuro relativo al vault.",
       "fileTaskPipelineLocationPipeline": "Pipeline",
       "fileTaskPipelineLocationRemove": "Rimuovi posizione della pipeline",
       "fileTaskPipelineLocationSelectPipeline": "Seleziona una pipeline",
       "fileTaskPipelineLocations": "Posizioni della pipeline",
-      "fileTaskPipelineLocationsDesc": "Scegli una cartella per le attività-file create in ogni pipeline. Questa impostazione prevale sul posizionamento per padre e sulla cartella predefinita.",
+      "fileTaskPipelineLocationsDesc": "Le nuove attività-file vengono create nella cartella configurata per la loro pipeline. Questa impostazione prevale sul posizionamento per padre e sulla cartella predefinita. Quando un’attività cambia pipeline o modifichi una regola di posizione, le attività-file aperte idonee vengono spostate nella cartella corrispondente entro circa 30 secondi.",
       "fileTaskTemplateFolder": "Cartella modelli",
       "fileTaskTemplateFolderDesc": "I file markdown di primo livello in questa cartella sono elencati dopo le opzioni integrate di attività-file minima specifiche per pipeline. Lascia vuoto per mostrare solo le opzioni integrate.",
       "fileTaskTemplateFolderPlaceholder": "es. 10 Horizon/Templates",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "5903d9cf15de7fe018f55f9d71768f422c8677cfdc689084e5b7bd9a01d284c4"
+  "sourceVersion": "906bbed0a7f031af517366cce3fc107f76019b353dd1d196a5fa1729d198b9b8"
 }

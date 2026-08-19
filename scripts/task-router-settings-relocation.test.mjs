@@ -4,6 +4,9 @@ import test from 'node:test';
 
 const settingsTabSource = await readFile(new URL('../src/ui/settings-tab.ts', import.meta.url), 'utf8');
 const registrySource = await readFile(new URL('../src/ui/settings/settings-search-registry.ts', import.meta.url), 'utf8');
+const settingsUiSource = await readFile(new URL('../src/ui/settings/settings-ui.ts', import.meta.url), 'utf8');
+const stylesSource = await readFile(new URL('../styles.css', import.meta.url), 'utf8');
+const englishLocale = JSON.parse(await readFile(new URL('../i18n/locales/en.json', import.meta.url), 'utf8'));
 
 const ROUTER_SETTING_IDS = [
 	'inlineTaskSaveMode',
@@ -183,4 +186,24 @@ test('Task Router preserves the intended docs targets', () => {
 	assert.match(settingsTabSource, /placementTitle, 'DOCS-094 How to create a task with Task Creator'/);
 	assert.match(settingsTabSource, /defaultLocationTitle, 'DOCS-013 File tasks'/);
 	assert.match(settingsTabSource, /title, 'DOCS-052 Completed task review'/);
+});
+
+test('Pipeline Locations uses labeled native controls with a neutral add action', () => {
+	const routingMethod = extractMethod(settingsTabSource, 'renderFileTaskRoutingSettings', 'renderInlineTaskRoutingSettings');
+
+	assert.match(routingMethod, /createDiv\('operon-file-task-pipeline-location-row'\)/);
+	assert.match(routingMethod, /new Obsidian\.DropdownComponent\(rowEl\)/);
+	assert.match(routingMethod, /new Obsidian\.TextComponent\(rowEl\)/);
+	assert.match(routingMethod, /fileTaskPipelineLocationPipeline/);
+	assert.match(routingMethod, /fileTaskPipelineLocationFolder/);
+	assert.match(routingMethod, /createSettingsAddButton\(addRowEl, t\('settings', 'addFileTaskPipelineLocation'\)\)/);
+	assert.match(routingMethod, /operon-file-task-pipeline-location-add-button/);
+	assert.doesNotMatch(routingMethod, /\.setCta\(\)/);
+	assert.match(settingsUiSource, /setIcon\(iconEl, 'plus'\)/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-row \{[\s\S]*?grid-template-columns: max-content minmax\(180px, 1fr\) max-content minmax\(180px, 1fr\) auto;/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-button \{[\s\S]*?background: transparent;/);
+	assert.match(stylesSource, /@media \(max-width: 720px\) \{[\s\S]*?\.operon-file-task-pipeline-location-row \{/);
+	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /New File Tasks are created/);
+	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /about 30 seconds/);
+	assert.equal(englishLocale.settings.fileTaskPipelineLocationFolder, 'Folder');
 });

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#project",
       "fileTaskMigrationTitle": "将笔记转换为文件任务",
       "fileTaskParentTargetDefault": "默认文件任务文件夹",
+      "fileTaskPipelineLocationFolder": "文件夹",
       "fileTaskPipelineLocationFolderInvalid": "请选择安全的、相对于仓库的文件夹路径。",
       "fileTaskPipelineLocationPipeline": "管道",
       "fileTaskPipelineLocationRemove": "移除管道位置",
       "fileTaskPipelineLocationSelectPipeline": "选择管道",
       "fileTaskPipelineLocations": "管道位置",
-      "fileTaskPipelineLocationsDesc": "为每个管道中创建的文件任务选择文件夹。此设置会覆盖父任务放置规则和默认文件夹。",
+      "fileTaskPipelineLocationsDesc": "新的文件任务会创建在其管道配置的文件夹中。这会覆盖父任务放置规则和默认文件夹。当任务更改管道或你修改位置规则时，符合条件的开放文件任务会在约 30 秒内移至匹配的文件夹。",
       "fileTaskTemplateFolder": "模板文件夹",
       "fileTaskTemplateFolderDesc": "此文件夹中的顶级 Markdown 文件会列在各 pipeline 的内置最简文件任务选项之后。留空则仅显示内置选项。",
       "fileTaskTemplateFolderPlaceholder": "例如 10 Horizon/Templates",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "6acda3c7f5bd609f3ef344aedc65202d693634d7ef82b73b6ccea2e74d7a885a"
+  "sourceVersion": "d0587ff7a5336a9f04d86236a7e528d66ff377bf17d9f37065edcb9c5bff69ea"
 }

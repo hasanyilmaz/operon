@@ -11,7 +11,7 @@
  */
 
 import * as Obsidian from 'obsidian';
-import { AbstractInputSuggest, App, Notice, Platform, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon } from 'obsidian';
+import { AbstractInputSuggest, App, Notice, Platform, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, requireApiVersion, setIcon, setTooltip } from 'obsidian';
 import type { DropdownComponent, ExtraButtonComponent, SettingControl, SettingDefinition, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
 import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MIN, CALENDAR_MOBILE_LAYOUT_MAX_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN, KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MAX, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MIN, KANBAN_MOBILE_COMPACT_SWIMLANE_WIDTH_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TrackerTaskDescriptionClickAction, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeTaskStatusIconColorSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, normalizeStoredFileTaskTemplateId, resolveEnabledCalendarMobileViewModes, setNumericSetting, isSupportedLanguage, type CalendarDayTitleAction, type CalendarMobileAgendaFutureDays, type CalendarMobileAgendaPastDays, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type FileTaskPipelineLocationRule, type OperonLanguage, type ReminderCatchUpWindowMinutes, type WorkspaceTweaksPropertiesScope } from '../types/settings';
 import type { ProjectSerialScope } from '../types/settings';
@@ -5174,92 +5174,107 @@ export class OperonSettingsTab extends PluginSettingTab {
 				...(draftRowOpen ? [null] : []),
 			];
 			for (const rule of rules) {
-				const row = new Setting(pipelineRowsEl);
-				row.setName(t('settings', 'fileTaskPipelineLocationPipeline'));
-				row.addDropdown(dropdown => {
-					dropdown.addOption('', t('settings', 'fileTaskPipelineLocationSelectPipeline'));
-					for (const pipeline of this.settings.pipelines) {
-						if (!rule && usedIds.has(pipeline.id)) continue;
-						if (rule && usedIds.has(pipeline.id) && pipeline.id !== rule.pipelineId) continue;
-						dropdown.addOption(pipeline.id, pipeline.name);
-					}
-					dropdown.setValue(rule?.pipelineId ?? '');
-					dropdown.onChange(settingsAsyncHandler('settings pipeline file task location selection failed', async pipelineId => {
-						if (!pipelineId) return;
-						if (rule) {
-							this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
-								candidate.pipelineId === rule.pipelineId ? { ...candidate, pipelineId } : candidate,
-							);
-						} else {
-							this.settings.fileTaskPipelineLocations = [
-								...this.settings.fileTaskPipelineLocations,
-								{ pipelineId, folder: '' },
-							];
-							draftRowOpen = false;
-						}
-						await saveLocations();
-						renderPipelineRows();
-					}));
+				const rowEl = pipelineRowsEl.createDiv('operon-file-task-pipeline-location-row');
+				if (!rule) rowEl.addClass('is-draft');
+				const pipelineId = `operon-file-task-pipeline-location-${rule?.pipelineId ?? 'draft'}`;
+				rowEl.createEl('label', {
+					text: `${t('settings', 'fileTaskPipelineLocationPipeline')}:`,
+					cls: 'operon-file-task-pipeline-location-label operon-file-task-pipeline-location-pipeline-label',
+					attr: { for: pipelineId },
 				});
-				if (rule) {
-					row.addText(text => {
-						text.setPlaceholder(t('settings', 'fileTasksFolderPlaceholder'));
-						text.setValue(rule.folder);
-						const commit = settingsAsyncHandler('settings pipeline file task folder save failed', async () => {
-							const folder = text.getValue().trim();
-							if (folder && !isSafeVaultRelativePath(folder)) {
-								new Notice(t('settings', 'fileTaskPipelineLocationFolderInvalid'));
-								text.setValue(rule.folder);
-								return;
-							}
-							if (folder === rule.folder) return;
-							this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
-								candidate.pipelineId === rule.pipelineId ? { ...candidate, folder } : candidate,
-							);
-							await saveLocations();
-						});
-						text.inputEl.addEventListener('blur', commit);
-						text.inputEl.addEventListener('keydown', event => {
-							if (event.key === 'Enter') {
-								event.preventDefault();
-								void commit();
-							}
-						});
-						new FolderSuggest(this.app, text.inputEl, settingsAsyncHandler('settings pipeline file task folder selection failed', async folder => {
-							text.setValue(folder.path);
-							this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
-								candidate.pipelineId === rule.pipelineId ? { ...candidate, folder: folder.path } : candidate,
-							);
-							await saveLocations();
-						}));
-					});
-					row.addExtraButton(button => button
-						.setIcon('trash-2')
-						.setTooltip(t('settings', 'fileTaskPipelineLocationRemove'))
-						.onClick(settingsAsyncHandler('settings pipeline file task location removal failed', async () => {
-							this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.filter(candidate => candidate.pipelineId !== rule.pipelineId);
-							await saveLocations();
-							renderPipelineRows();
-						})));
-				} else {
-					row.addExtraButton(button => button
-						.setIcon('x')
-						.setTooltip(t('settings', 'fileTaskPipelineLocationRemove'))
-						.onClick(() => {
-							draftRowOpen = false;
-							renderPipelineRows();
-						}));
+				const pipelineDropdown = new Obsidian.DropdownComponent(rowEl);
+				pipelineDropdown.selectEl.id = pipelineId;
+				pipelineDropdown.selectEl.addClass('operon-file-task-pipeline-location-select');
+				pipelineDropdown.addOption('', t('settings', 'fileTaskPipelineLocationSelectPipeline'));
+				for (const pipeline of this.settings.pipelines) {
+					if (!rule && usedIds.has(pipeline.id)) continue;
+					if (rule && usedIds.has(pipeline.id) && pipeline.id !== rule.pipelineId) continue;
+					pipelineDropdown.addOption(pipeline.id, pipeline.name);
 				}
+				pipelineDropdown.setValue(rule?.pipelineId ?? '');
+				pipelineDropdown.onChange(settingsAsyncHandler('settings pipeline file task location selection failed', async pipelineId => {
+					if (!pipelineId) return;
+					if (rule) {
+						this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
+							candidate.pipelineId === rule.pipelineId ? { ...candidate, pipelineId } : candidate,
+						);
+					} else {
+						this.settings.fileTaskPipelineLocations = [
+							...this.settings.fileTaskPipelineLocations,
+							{ pipelineId, folder: '' },
+						];
+						draftRowOpen = false;
+					}
+					await saveLocations();
+					renderPipelineRows();
+				}));
+				if (rule) {
+					const folderId = `${pipelineId}-folder`;
+					rowEl.createEl('label', {
+						text: `${t('settings', 'fileTaskPipelineLocationFolder')}:`,
+						cls: 'operon-file-task-pipeline-location-label operon-file-task-pipeline-location-folder-label',
+						attr: { for: folderId },
+					});
+					const folderText = new Obsidian.TextComponent(rowEl);
+					folderText.inputEl.id = folderId;
+					folderText.inputEl.addClass('operon-file-task-pipeline-location-folder');
+					folderText.setPlaceholder(t('settings', 'fileTasksFolderPlaceholder'));
+					folderText.setValue(rule.folder);
+					const commit = settingsAsyncHandler('settings pipeline file task folder save failed', async () => {
+						const folder = folderText.getValue().trim();
+						if (folder && !isSafeVaultRelativePath(folder)) {
+							new Notice(t('settings', 'fileTaskPipelineLocationFolderInvalid'));
+							folderText.setValue(rule.folder);
+							return;
+						}
+						if (folder === rule.folder) return;
+						this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
+							candidate.pipelineId === rule.pipelineId ? { ...candidate, folder } : candidate,
+						);
+						await saveLocations();
+					});
+					folderText.inputEl.addEventListener('blur', commit);
+					folderText.inputEl.addEventListener('keydown', event => {
+						if (event.key === 'Enter') {
+							event.preventDefault();
+							void commit();
+						}
+					});
+					new FolderSuggest(this.app, folderText.inputEl, settingsAsyncHandler('settings pipeline file task folder selection failed', async folder => {
+						folderText.setValue(folder.path);
+						this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.map(candidate =>
+							candidate.pipelineId === rule.pipelineId ? { ...candidate, folder: folder.path } : candidate,
+						);
+						await saveLocations();
+					}));
+				}
+				const removeButton = rowEl.createEl('button', {
+					cls: 'clickable-icon operon-file-task-pipeline-location-remove',
+					attr: {
+						type: 'button',
+						'aria-label': t('settings', 'fileTaskPipelineLocationRemove'),
+					},
+				});
+				setIcon(removeButton, rule ? 'trash-2' : 'x');
+				setTooltip(removeButton, t('settings', 'fileTaskPipelineLocationRemove'));
+				removeButton.addEventListener('click', settingsAsyncHandler('settings pipeline file task location removal failed', async () => {
+					if (rule) {
+						this.settings.fileTaskPipelineLocations = this.settings.fileTaskPipelineLocations.filter(candidate => candidate.pipelineId !== rule.pipelineId);
+						await saveLocations();
+					} else {
+						draftRowOpen = false;
+					}
+					renderPipelineRows();
+				}));
 			}
 		};
-		const addPipelineLocation = new Setting(defaultLocationSection);
-		addPipelineLocation.addButton(button => button
-			.setButtonText(t('settings', 'addFileTaskPipelineLocation'))
-			.setCta()
-			.onClick(() => {
-				draftRowOpen = true;
-				renderPipelineRows();
-			}));
+		const addRowEl = defaultLocationSection.createDiv('operon-file-task-pipeline-location-add-row');
+		const addButton = createSettingsAddButton(addRowEl, t('settings', 'addFileTaskPipelineLocation'));
+		addButton.addClass('operon-file-task-pipeline-location-add-button');
+		addButton.addEventListener('click', () => {
+			draftRowOpen = true;
+			renderPipelineRows();
+		});
 		renderPipelineRows();
 		this.renderBoundToggleSetting(
 			defaultLocationSection,

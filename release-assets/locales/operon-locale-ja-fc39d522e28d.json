@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#project",
       "fileTaskMigrationTitle": "ノートをファイルタスクに変換",
       "fileTaskParentTargetDefault": "デフォルトのファイルタスクフォルダー",
+      "fileTaskPipelineLocationFolder": "フォルダー",
       "fileTaskPipelineLocationFolderInvalid": "保管庫を基準とする安全なフォルダーのパスを選択してください。",
       "fileTaskPipelineLocationPipeline": "パイプライン",
       "fileTaskPipelineLocationRemove": "パイプラインの場所を削除",
       "fileTaskPipelineLocationSelectPipeline": "パイプラインを選択",
       "fileTaskPipelineLocations": "パイプラインの場所",
-      "fileTaskPipelineLocationsDesc": "各パイプラインで作成するファイルタスクのフォルダーを選択します。親タスクに基づく配置と既定のフォルダーより優先されます。",
+      "fileTaskPipelineLocationsDesc": "新しいファイルタスクは、各パイプラインに設定したフォルダーに作成されます。これは親タスクに基づく配置と既定のフォルダーより優先されます。タスクのパイプラインを変更したとき、または場所のルールを変更したときは、対象となる未完了のファイルタスクが約30秒以内に一致するフォルダーへ移動します。",
       "fileTaskTemplateFolder": "テンプレートフォルダー",
       "fileTaskTemplateFolderDesc": "このフォルダー内のトップレベルの Markdown ファイルは、パイプライン別の組み込み最小ファイルタスクオプションの後に表示されます。組み込みオプションのみを表示するには空のままにします。",
       "fileTaskTemplateFolderPlaceholder": "例: 10 Horizon/Templates",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "6b0edea3a2551abd39ef37d6239728201ac8f02bf88652fd8e23ec37afc09fb3"
+  "sourceVersion": "3e323147882aed0ac1b7bf393eeddeb5ccbd08e28db95d96131780e880746f46"
 }

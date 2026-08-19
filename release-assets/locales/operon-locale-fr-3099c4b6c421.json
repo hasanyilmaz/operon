@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#project",
       "fileTaskMigrationTitle": "Convertir des notes en tâches-fichiers",
       "fileTaskParentTargetDefault": "Dossier de tâches-fichiers par défaut",
+      "fileTaskPipelineLocationFolder": "Dossier",
       "fileTaskPipelineLocationFolderInvalid": "Choisissez un chemin de dossier sûr, relatif au coffre.",
       "fileTaskPipelineLocationPipeline": "Pipeline",
       "fileTaskPipelineLocationRemove": "Supprimer l’emplacement de pipeline",
       "fileTaskPipelineLocationSelectPipeline": "Sélectionner un pipeline",
       "fileTaskPipelineLocations": "Emplacements de pipeline",
-      "fileTaskPipelineLocationsDesc": "Choisissez un dossier pour les tâches-fichiers créées dans chaque pipeline. Ce réglage remplace le placement par parent et le dossier par défaut.",
+      "fileTaskPipelineLocationsDesc": "Les nouvelles tâches-fichiers sont créées dans le dossier configuré pour leur pipeline. Ce réglage remplace le placement par parent et le dossier par défaut. Lorsqu’une tâche change de pipeline ou qu’une règle d’emplacement est modifiée, les tâches-fichiers ouvertes concernées sont déplacées vers le dossier correspondant en environ 30 secondes.",
       "fileTaskTemplateFolder": "Dossier des modèles",
       "fileTaskTemplateFolderDesc": "Les fichiers Markdown de premier niveau de ce dossier sont listés après les options intégrées de tâche fichier minimale propres à chaque pipeline. Laissez vide pour n'afficher que les options intégrées.",
       "fileTaskTemplateFolderPlaceholder": "p. ex. 10 Horizon/Templates",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "9c9e272cdd7dcb39df164c542528d909763d4ce3d1e008ad46c3f6939742881f"
+  "sourceVersion": "0d45f19a43db23bfae101ee39e0ed680e01723485976ce36c454c19ef9c66112"
 }

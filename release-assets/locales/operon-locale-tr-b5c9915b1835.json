@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#project",
       "fileTaskMigrationTitle": "Notları dosya görevlerine dönüştür",
       "fileTaskParentTargetDefault": "Varsayılan dosya görevi klasörü",
+      "fileTaskPipelineLocationFolder": "Klasör",
       "fileTaskPipelineLocationFolderInvalid": "Güvenli, kasa içi göreli bir klasör yolu seçin.",
       "fileTaskPipelineLocationPipeline": "Pipeline",
       "fileTaskPipelineLocationRemove": "Pipeline konumunu kaldır",
       "fileTaskPipelineLocationSelectPipeline": "Bir pipeline seçin",
       "fileTaskPipelineLocations": "Pipeline Konumları",
-      "fileTaskPipelineLocationsDesc": "Her pipeline’da oluşturulan dosya görevleri için bir klasör seçin. Bu ayar üst görev yerleşimini ve varsayılan klasörü geçersiz kılar.",
+      "fileTaskPipelineLocationsDesc": "Yeni Dosya Görevleri, pipeline’ları için yapılandırılan klasörde oluşturulur. Bu ayar üst görev yerleşimini ve varsayılan klasörü geçersiz kılar. Bir görevin pipeline’ı veya bir konum kuralı değiştiğinde, uygun açık Dosya Görevleri yaklaşık 30 saniye içinde eşleşen klasöre taşınır.",
       "fileTaskTemplateFolder": "Şablon klasörü",
       "fileTaskTemplateFolderDesc": "Bu klasördeki üst düzey markdown dosyaları, yerleşik pipeline bazlı minimal Dosya Görevi seçeneklerinden sonra listelenir. Yalnızca yerleşik seçenekleri göstermek için boş bırak.",
       "fileTaskTemplateFolderPlaceholder": "ör. 10 Horizon/Şablonlar",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "b41c46da7a451f9347d1b22f51a7e25ce06ae6430e69d6bd87187879c053e5ba"
+  "sourceVersion": "147b4d4c1e9e3cf39691c5f289ff53c3c1c3216219e4b34482157c228bb69c9e"
 }

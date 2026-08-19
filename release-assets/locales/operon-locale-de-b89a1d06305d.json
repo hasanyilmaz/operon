@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3091,
-  "keyFingerprint": "41af9107c53b29e7d1e31c097d2175c3afaa80fbf411fde153d302d6a68eb930",
+  "keyCount": 3092,
+  "keyFingerprint": "9e947d3fc13629ff99080e0e6805f4e376e6c6b694cf5b0120146a1cf83f1746",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1404,12 +1404,13 @@
       "fileTaskMigrationTagPlaceholder": "#project",
       "fileTaskMigrationTitle": "Notizen in Datei-Aufgaben umwandeln",
       "fileTaskParentTargetDefault": "Standardordner für Datei-Aufgaben",
+      "fileTaskPipelineLocationFolder": "Ordner",
       "fileTaskPipelineLocationFolderInvalid": "Wähle einen sicheren, relativ zum Tresor angegebenen Ordnerpfad.",
       "fileTaskPipelineLocationPipeline": "Pipeline",
       "fileTaskPipelineLocationRemove": "Pipeline-Speicherort entfernen",
       "fileTaskPipelineLocationSelectPipeline": "Pipeline auswählen",
       "fileTaskPipelineLocations": "Pipeline-Speicherorte",
-      "fileTaskPipelineLocationsDesc": "Wähle einen Ordner für Datei-Aufgaben jeder Pipeline. Dies überschreibt die Platzierung bei übergeordneten Aufgaben und den Standardordner.",
+      "fileTaskPipelineLocationsDesc": "Neue Datei-Aufgaben werden im für ihre Pipeline festgelegten Ordner erstellt. Dies überschreibt die Platzierung bei übergeordneten Aufgaben und den Standardordner. Wenn eine Aufgabe ihre Pipeline wechselt oder du eine Standortregel änderst, werden geeignete offene Datei-Aufgaben innerhalb von etwa 30 Sekunden in den passenden Ordner verschoben.",
       "fileTaskTemplateFolder": "Vorlagenordner",
       "fileTaskTemplateFolderDesc": "Markdown-Dateien der obersten Ebene in diesem Ordner werden nach den integrierten pipelinespezifischen minimalen Datei-Aufgaben aufgelistet. Leer lassen, um nur die integrierten Optionen anzuzeigen.",
       "fileTaskTemplateFolderPlaceholder": "z. B. 10 Horizon/Templates",
@@ -3136,5 +3137,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "4cbb66ffc90631001275973c5e9b05700ff68ab96350cbb83aeaa5c072c64758"
+  "sourceVersion": "f95b98160a5efefd1a19a0503e02912501a879ae19f7e25ea1bab42884e7a782"
 }
