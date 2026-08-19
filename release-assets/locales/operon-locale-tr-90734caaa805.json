@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "Yalnızca Dosya görevi klasörü içindeki görevleri arşivle",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Açık olduğunda Operon yalnızca ayarlanan Dosya görevi klasörü içindeki dosya görevlerini arşivler.",
       "fileTaskArchivePipelineLocations": "Arşiv pipeline konumları",
-      "fileTaskArchivePipelineLocationsDesc": "Eşleşen bir pipeline konumu, geri dönüş arşiv klasöründen önceliklidir. Biten görevler yaklaşık 30 saniye sonra taşınır.",
+      "fileTaskArchivePipelineLocationsDesc": "Eşleşen bir pipeline konumu, geri dönüş arşiv klasöründen önceliklidir. Biten görevler yaklaşık 5 saniye sonra taşınır.",
       "fileTaskAutoArchiveEnabled": "Biten/iptal edilen dosya görevlerini otomatik arşivle",
       "fileTaskAutoArchiveEnabledDesc": "Açık olduğunda Operon biten veya iptal edilen dosya görevlerini ayarlanan gecikmeden sonra arşiv klasörüne taşır.",
       "fileTaskConversion": "Dosya Görevi Dönüşümü",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "Pipeline konumunu kaldır",
       "fileTaskPipelineLocationSelectPipeline": "Bir pipeline seçin",
       "fileTaskPipelineLocations": "Pipeline Konumları",
-      "fileTaskPipelineLocationsDesc": "Yeni Dosya Görevleri, pipeline’ları için yapılandırılan klasörde oluşturulur. Bu ayar üst görev yerleşimini ve varsayılan klasörü geçersiz kılar. Bir görevin pipeline’ı veya bir konum kuralı değiştiğinde, uygun açık Dosya Görevleri yaklaşık 30 saniye içinde eşleşen klasöre taşınır.",
+      "fileTaskPipelineLocationsDesc": "Yeni Dosya Görevleri, pipeline’ları için yapılandırılan klasörde oluşturulur. Bu ayar üst görev yerleşimini ve varsayılan klasörü geçersiz kılar. Bir görevin pipeline’ı veya bir konum kuralı değiştiğinde, uygun açık Dosya Görevleri yaklaşık 5 saniye içinde eşleşen klasöre taşınır.",
       "fileTaskTemplateFolder": "Şablon klasörü",
       "fileTaskTemplateFolderDesc": "Bu klasördeki üst düzey markdown dosyaları, yerleşik pipeline bazlı minimal Dosya Görevi seçeneklerinden sonra listelenir. Yalnızca yerleşik seçenekleri göstermek için boş bırak.",
       "fileTaskTemplateFolderPlaceholder": "ör. 10 Horizon/Şablonlar",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Görev Editörü",
       "moveConvertedNotesToPipelineLocation": "Dönüştürülen notları pipeline konumuna taşı",
-      "moveConvertedNotesToPipelineLocationDesc": "Açıkken dönüştürülen notlar 30 saniye sonra pipeline klasörüne veya varsayılan Dosya Görevleri klasörüne taşınır.",
+      "moveConvertedNotesToPipelineLocationDesc": "Açıkken dönüştürülen notlar 5 saniye sonra pipeline klasörüne veya varsayılan Dosya Görevleri klasörüne taşınır.",
       "moveDown": "Aşağı taşı",
       "moveTablePresetToTrash": "Çöp kutusuna taşı",
       "moveUp": "Yukarı taşı",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "655ede614659e4a2e5e8efeb258aa659f38f315c4c2690e608479639f55df757"
+  "sourceVersion": "cd68c2c10382e6829c5a75b503d57ed907ef1846e6f98c7610275a0d9284630e"
 }

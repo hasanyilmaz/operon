@@ -8,7 +8,7 @@ import { buildOperonPluginStoragePath } from '../storage/operon-storage-paths';
 import type { IndexedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
 
-export const FILE_TASK_ARCHIVE_DELAY_MS = 30_000;
+export const FILE_TASK_ARCHIVE_DELAY_MS = 5_000;
 export const FILE_TASK_ARCHIVE_MAX_CONCURRENT_MOVES = 4;
 const FILE_TASK_ARCHIVE_RECONCILE_MARKER_FILE_NAME = 'file-task-archive-reconcile.json';
 
@@ -94,7 +94,7 @@ export class FileTaskArchiver {
 		this.schedule(afterTask.operonId, trigger);
 	}
 
-	/** Persist a settings-triggered bulk request before its fixed 30-second delay. */
+	/** Persist a settings-triggered bulk request before its fixed 5-second delay. */
 	async requestSettingsReconcileAll(): Promise<void> {
 		const generation = this.claimSettingsReconciliationGeneration();
 		try {

@@ -1495,7 +1495,7 @@ function createSettingsFixture(): OperonSettings {
 		newOccurrencePosition: 'below',
 		fileTaskAutoArchiveEnabled: true,
 		fileTaskArchiveFolder: 'Archive',
-		fileTaskArchiveDelaySeconds: 30,
+		fileTaskArchiveDelaySeconds: 5,
 		fileTaskArchiveOnlyFromFileTasksFolder: true,
 		fileRepeatDestination: 'same-folder',
 		fileRepeatCustomFolder: '',

@@ -7,6 +7,11 @@ const registrySource = await readFile(new URL('../src/ui/settings/settings-searc
 const settingsUiSource = await readFile(new URL('../src/ui/settings/settings-ui.ts', import.meta.url), 'utf8');
 const stylesSource = await readFile(new URL('../styles.css', import.meta.url), 'utf8');
 const englishLocale = JSON.parse(await readFile(new URL('../i18n/locales/en.json', import.meta.url), 'utf8'));
+const ROUTER_LOCALE_CODES = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'];
+const routerLocales = await Promise.all(ROUTER_LOCALE_CODES.map(async code => ({
+	code,
+	locale: JSON.parse(await readFile(new URL(`../i18n/locales/${code}.json`, import.meta.url), 'utf8')),
+})));
 
 const ROUTER_SETTING_IDS = [
 	'inlineTaskSaveMode',
@@ -193,6 +198,9 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	const sharedRenderer = extractMethod(settingsTabSource, 'renderPipelineFolderRuleList', 'renderFileTaskArchiveSettings');
 	const routingMethod = extractMethod(settingsTabSource, 'renderFileTaskRoutingSettings', 'renderTasksFileTasksTab');
 	const archiveMethod = extractMethod(settingsTabSource, 'renderFileTaskArchiveSettings', 'renderWorkspaceTweaksExcludedFolderSettings');
+	const pipelineCssStart = stylesSource.indexOf('.operon-file-task-pipeline-location-rows');
+	const pipelineCssEnd = stylesSource.indexOf('/* Static-style cleanup helpers */', pipelineCssStart);
+	const pipelineCss = stylesSource.slice(pipelineCssStart, pipelineCssEnd);
 
 	assert.match(sharedRenderer, /createDiv\('operon-file-task-pipeline-location-row'\)/);
 	assert.match(sharedRenderer, /new Obsidian\.DropdownComponent\(rowEl\)/);
@@ -201,6 +209,9 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	assert.match(sharedRenderer, /fileTaskPipelineLocationFolder/);
 	assert.match(sharedRenderer, /createSettingsAddButton\(options\.addRowEl, options\.addLabel\)/);
 	assert.match(sharedRenderer, /operon-file-task-pipeline-location-add-button/);
+	assert.match(sharedRenderer, /const hasDraft = options\.getDraft\(\) !== null;/);
+	assert.match(sharedRenderer, /addButton\.disabled = hasDraft;/);
+	assert.match(sharedRenderer, /addButton\.setAttribute\('aria-disabled', hasDraft \? 'true' : 'false'\)/);
 	assert.match(sharedRenderer, /const pipelineId = `\$\{options\.idPrefix\}-\$\{draft \? 'draft' : rule\.pipelineId\}`/);
 	assert.match(sharedRenderer, /const folderId = `\$\{pipelineId\}-folder`/);
 	assert.doesNotMatch(sharedRenderer, /\.setCta\(\)/);
@@ -208,18 +219,38 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	assert.match(archiveMethod, /renderPipelineFolderRuleList\([\s\S]*?allowIncompleteRules: false[\s\S]*?idPrefix: 'operon-file-task-pipeline-location-archive'/);
 	assert.doesNotMatch(archiveMethod, /fileTaskAutoArchiveEnabled|fileTaskArchiveDelaySeconds|fileTaskArchiveOnlyFromFileTasksFolder/);
 	assert.match(settingsUiSource, /setIcon\(iconEl, 'plus'\)/);
+	assert.match(routingMethod, /defaultLocationSection\.addClass\('operon-file-task-pipeline-location-container'\)/);
+	assert.match(archiveMethod, /sectionEl\.addClass\('operon-file-task-pipeline-location-container'\)/);
 	assert.match(stylesSource, /\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 24px;/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-row \{[\s\S]*?grid-template-columns: max-content minmax\(180px, 1fr\) max-content minmax\(180px, 1fr\) auto;/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-container \{[\s\S]*?container-name: operon-file-task-pipeline-locations;[\s\S]*?container-type: inline-size;/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-row \{[\s\S]*?grid-template-columns: max-content minmax\(0, 1fr\) max-content minmax\(0, 1fr\) auto;/);
 	assert.match(stylesSource, /\.operon-file-task-pipeline-location-select \{[\s\S]*?text-align: start;[\s\S]*?text-align-last: start;/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding: 12px 24px 0;/);
+	assert.doesNotMatch(stylesSource, /\.operon-file-task-pipeline-location-row\.is-draft \{/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding: 12px 24px 18px;[\s\S]*?border-top: 0;/);
+	assert.match(stylesSource, /\.operon-settings-native-page-root \.operon-file-task-pipeline-location-container > \.operon-file-task-pipeline-location-add-row \{[\s\S]*?border-top: 0;/);
 	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-button \{[\s\S]*?background: transparent;/);
-	assert.match(stylesSource, /@media \(max-width: 720px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 16px;/);
-	assert.match(stylesSource, /@media \(max-width: 720px\) \{[\s\S]*?\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding-inline: 16px;/);
-	assert.match(stylesSource, /@media \(max-width: 480px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 12px;/);
-	assert.match(stylesSource, /@media \(max-width: 480px\) \{[\s\S]*?\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding-inline: 12px;/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-button:not\(:disabled\):hover,[\s\S]*?\.operon-file-task-pipeline-location-add-button:not\(:disabled\):focus-visible/);
+	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-button:disabled \{[\s\S]*?opacity: 0\.55;[\s\S]*?cursor: not-allowed;/);
+	assert.match(stylesSource, /@container operon-file-task-pipeline-locations \(max-width: 680px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 16px;/);
+	assert.match(stylesSource, /@container operon-file-task-pipeline-locations \(max-width: 680px\) \{[\s\S]*?\.operon-file-task-pipeline-location-remove \{[\s\S]*?grid-row: 3;/);
+	assert.match(stylesSource, /@container operon-file-task-pipeline-locations \(max-width: 440px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 12px;/);
+	assert.doesNotMatch(pipelineCss, /@media \(max-width:/);
 	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /New File Tasks are created/);
-	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /about 30 seconds/);
+	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /about 5 seconds/);
 	assert.match(englishLocale.settings.fileTaskArchiveFolderDesc, /Leave empty/);
-	assert.match(englishLocale.settings.fileTaskArchivePipelineLocationsDesc, /about 30 seconds/);
+	assert.match(englishLocale.settings.fileTaskArchivePipelineLocationsDesc, /about 5 seconds/);
 	assert.equal(englishLocale.settings.fileTaskPipelineLocationFolder, 'Folder');
+});
+
+test('all Task Router locales describe the fixed five-second move delay', () => {
+	for (const { code, locale } of routerLocales) {
+		for (const key of [
+			'fileTaskPipelineLocationsDesc',
+			'moveConvertedNotesToPipelineLocationDesc',
+			'fileTaskArchivePipelineLocationsDesc',
+		]) {
+			assert.match(locale.settings[key], /5/u, `${code} ${key} should describe the five-second delay`);
+			assert.doesNotMatch(locale.settings[key], /30/u, `${code} ${key} must not describe the retired delay`);
+		}
+	}
 });

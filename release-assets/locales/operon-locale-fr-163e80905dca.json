@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "Archiver uniquement les tâches dans le dossier des tâches-fichiers",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Lorsque cette option est activée, Operon n'archive que les tâches-fichiers actuellement situées dans le dossier des tâches-fichiers configuré.",
       "fileTaskArchivePipelineLocations": "Emplacements de pipeline d'archivage",
-      "fileTaskArchivePipelineLocationsDesc": "Un emplacement de pipeline correspondant est prioritaire sur le dossier d'archives de secours. Les tâches terminées sont déplacées après environ 30 secondes.",
+      "fileTaskArchivePipelineLocationsDesc": "Un emplacement de pipeline correspondant est prioritaire sur le dossier d'archives de secours. Les tâches terminées sont déplacées après environ 5 secondes.",
       "fileTaskAutoArchiveEnabled": "Archiver automatiquement les tâches-fichiers terminées/annulées",
       "fileTaskAutoArchiveEnabledDesc": "Lorsque cette option est activée, Operon déplace les tâches-fichiers terminées ou annulées vers le dossier d'archives après le délai configuré.",
       "fileTaskConversion": "Conversion des tâches-fichiers",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "Supprimer l’emplacement de pipeline",
       "fileTaskPipelineLocationSelectPipeline": "Sélectionner un pipeline",
       "fileTaskPipelineLocations": "Emplacements de pipeline",
-      "fileTaskPipelineLocationsDesc": "Les nouvelles tâches-fichiers sont créées dans le dossier configuré pour leur pipeline. Ce réglage remplace le placement par parent et le dossier par défaut. Lorsqu’une tâche change de pipeline ou qu’une règle d’emplacement est modifiée, les tâches-fichiers ouvertes concernées sont déplacées vers le dossier correspondant en environ 30 secondes.",
+      "fileTaskPipelineLocationsDesc": "Les nouvelles tâches-fichiers sont créées dans le dossier configuré pour leur pipeline. Ce réglage remplace le placement par parent et le dossier par défaut. Lorsqu’une tâche change de pipeline ou qu’une règle d’emplacement est modifiée, les tâches-fichiers ouvertes concernées sont déplacées vers le dossier correspondant en environ 5 secondes.",
       "fileTaskTemplateFolder": "Dossier des modèles",
       "fileTaskTemplateFolderDesc": "Les fichiers Markdown de premier niveau de ce dossier sont listés après les options intégrées de tâche fichier minimale propres à chaque pipeline. Laissez vide pour n'afficher que les options intégrées.",
       "fileTaskTemplateFolderPlaceholder": "p. ex. 10 Horizon/Templates",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Éditeur de tâche",
       "moveConvertedNotesToPipelineLocation": "Déplacer les notes converties vers leur emplacement de pipeline",
-      "moveConvertedNotesToPipelineLocationDesc": "Lorsqu’il est activé, les notes converties sont déplacées après 30 secondes vers leur dossier de pipeline ou le dossier par défaut des tâches-fichiers.",
+      "moveConvertedNotesToPipelineLocationDesc": "Lorsqu’il est activé, les notes converties sont déplacées après 5 secondes vers leur dossier de pipeline ou le dossier par défaut des tâches-fichiers.",
       "moveDown": "Déplacer vers le bas",
       "moveTablePresetToTrash": "Déplacer vers la corbeille",
       "moveUp": "Déplacer vers le haut",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "e5976c2e19fea91e654c845f1f331ee6bbe0bac081ad1f0ec449e89c04dea74c"
+  "sourceVersion": "861e8df7dba044c36e4b588a08d46053a1005b7f32b700b4d956a4792b3d1b76"
 }

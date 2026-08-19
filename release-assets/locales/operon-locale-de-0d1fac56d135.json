@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "Nur Aufgaben im Ordner für Datei-Aufgaben archivieren",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Wenn aktiviert, archiviert Operon nur Datei-Aufgaben, die sich aktuell im konfigurierten Ordner für Datei-Aufgaben befinden.",
       "fileTaskArchivePipelineLocations": "Archiv-Pipeline-Orte",
-      "fileTaskArchivePipelineLocationsDesc": "Ein passender Pipeline-Ort hat Vorrang vor dem Fallback-Archivordner. Abgeschlossene Aufgaben werden nach etwa 30 Sekunden verschoben.",
+      "fileTaskArchivePipelineLocationsDesc": "Ein passender Pipeline-Ort hat Vorrang vor dem Fallback-Archivordner. Abgeschlossene Aufgaben werden nach etwa 5 Sekunden verschoben.",
       "fileTaskAutoArchiveEnabled": "Erledigte/abgebrochene Datei-Aufgaben automatisch archivieren",
       "fileTaskAutoArchiveEnabledDesc": "Wenn aktiviert, verschiebt Operon erledigte oder abgebrochene Datei-Aufgaben nach der konfigurierten Verzögerung in den Archivordner.",
       "fileTaskConversion": "Datei-Aufgaben-Umwandlung",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "Pipeline-Speicherort entfernen",
       "fileTaskPipelineLocationSelectPipeline": "Pipeline auswählen",
       "fileTaskPipelineLocations": "Pipeline-Speicherorte",
-      "fileTaskPipelineLocationsDesc": "Neue Datei-Aufgaben werden im für ihre Pipeline festgelegten Ordner erstellt. Dies überschreibt die Platzierung bei übergeordneten Aufgaben und den Standardordner. Wenn eine Aufgabe ihre Pipeline wechselt oder du eine Standortregel änderst, werden geeignete offene Datei-Aufgaben innerhalb von etwa 30 Sekunden in den passenden Ordner verschoben.",
+      "fileTaskPipelineLocationsDesc": "Neue Datei-Aufgaben werden im für ihre Pipeline festgelegten Ordner erstellt. Dies überschreibt die Platzierung bei übergeordneten Aufgaben und den Standardordner. Wenn eine Aufgabe ihre Pipeline wechselt oder du eine Standortregel änderst, werden geeignete offene Datei-Aufgaben innerhalb von etwa 5 Sekunden in den passenden Ordner verschoben.",
       "fileTaskTemplateFolder": "Vorlagenordner",
       "fileTaskTemplateFolderDesc": "Markdown-Dateien der obersten Ebene in diesem Ordner werden nach den integrierten pipelinespezifischen minimalen Datei-Aufgaben aufgelistet. Leer lassen, um nur die integrierten Optionen anzuzeigen.",
       "fileTaskTemplateFolderPlaceholder": "z. B. 10 Horizon/Templates",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Aufgaben-Editor",
       "moveConvertedNotesToPipelineLocation": "Umgewandelte Notizen an ihren Pipeline-Speicherort verschieben",
-      "moveConvertedNotesToPipelineLocationDesc": "Wenn aktiviert, werden umgewandelte Notizen nach 30 Sekunden in ihren Pipeline-Ordner oder den Standardordner für Datei-Aufgaben verschoben.",
+      "moveConvertedNotesToPipelineLocationDesc": "Wenn aktiviert, werden umgewandelte Notizen nach 5 Sekunden in ihren Pipeline-Ordner oder den Standardordner für Datei-Aufgaben verschoben.",
       "moveDown": "Nach unten",
       "moveTablePresetToTrash": "In den Papierkorb verschieben",
       "moveUp": "Nach oben",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "7f1d50e8e7e13996cdc22d7ab5a103e245b9f4db7df058c6363a4a4d4e095258"
+  "sourceVersion": "1b932725099a7b89c375ccb46576bc76556609a6141d951c0baddbe5ce8397a1"
 }

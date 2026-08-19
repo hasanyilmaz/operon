@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "Archivia solo le attività dentro la cartella attività-file",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Quando attivo, Operon archivia solo le attività-file attualmente all'interno della cartella attività-file configurata.",
       "fileTaskArchivePipelineLocations": "Posizioni della pipeline di archiviazione",
-      "fileTaskArchivePipelineLocationsDesc": "Una posizione della pipeline corrispondente ha priorità sulla cartella di archiviazione di fallback. Le attività terminate vengono spostate dopo circa 30 secondi.",
+      "fileTaskArchivePipelineLocationsDesc": "Una posizione della pipeline corrispondente ha priorità sulla cartella di archiviazione di fallback. Le attività terminate vengono spostate dopo circa 5 secondi.",
       "fileTaskAutoArchiveEnabled": "Archivia automaticamente attività-file completate/annullate",
       "fileTaskAutoArchiveEnabledDesc": "Quando attivo, Operon sposta le attività-file completate o annullate nella cartella di archivio dopo il ritardo configurato.",
       "fileTaskConversion": "Conversione attività-file",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "Rimuovi posizione della pipeline",
       "fileTaskPipelineLocationSelectPipeline": "Seleziona una pipeline",
       "fileTaskPipelineLocations": "Posizioni della pipeline",
-      "fileTaskPipelineLocationsDesc": "Le nuove attività-file vengono create nella cartella configurata per la loro pipeline. Questa impostazione prevale sul posizionamento per padre e sulla cartella predefinita. Quando un’attività cambia pipeline o modifichi una regola di posizione, le attività-file aperte idonee vengono spostate nella cartella corrispondente entro circa 30 secondi.",
+      "fileTaskPipelineLocationsDesc": "Le nuove attività-file vengono create nella cartella configurata per la loro pipeline. Questa impostazione prevale sul posizionamento per padre e sulla cartella predefinita. Quando un’attività cambia pipeline o modifichi una regola di posizione, le attività-file aperte idonee vengono spostate nella cartella corrispondente entro circa 5 secondi.",
       "fileTaskTemplateFolder": "Cartella modelli",
       "fileTaskTemplateFolderDesc": "I file markdown di primo livello in questa cartella sono elencati dopo le opzioni integrate di attività-file minima specifiche per pipeline. Lascia vuoto per mostrare solo le opzioni integrate.",
       "fileTaskTemplateFolderPlaceholder": "es. 10 Horizon/Templates",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Editor attività",
       "moveConvertedNotesToPipelineLocation": "Sposta le note convertite nella loro posizione della pipeline",
-      "moveConvertedNotesToPipelineLocationDesc": "Quando attivata, le note convertite vengono spostate dopo 30 secondi nella cartella della pipeline o nella cartella predefinita delle attività-file.",
+      "moveConvertedNotesToPipelineLocationDesc": "Quando attivata, le note convertite vengono spostate dopo 5 secondi nella cartella della pipeline o nella cartella predefinita delle attività-file.",
       "moveDown": "Sposta in basso",
       "moveTablePresetToTrash": "Sposta nel cestino",
       "moveUp": "Sposta in alto",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "9adc40523d1034f7eecbcfa90a81b7b63bc5578f4a3103f11337fc29d717c8db"
+  "sourceVersion": "5cd35b1d133055f5ea95fb3d4c0af5f92447b794962ca151aacf777222cf0a9c"
 }

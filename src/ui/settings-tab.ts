@@ -5158,6 +5158,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			.setName(t('settings', 'fileTaskPipelineLocations'))
 			.setDesc(t('settings', 'fileTaskPipelineLocationsDesc'));
 		pipelineLocationsHeading.settingEl.addClass('operon-settings-subsection-heading');
+		defaultLocationSection.addClass('operon-file-task-pipeline-location-container');
 		const pipelineRowsEl = defaultLocationSection.createDiv('operon-file-task-pipeline-location-rows');
 		const addRowEl = defaultLocationSection.createDiv('operon-file-task-pipeline-location-add-row');
 		addRowEl.addClass('operon-settings-add-row');
@@ -12958,14 +12959,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 				}));
 			}
 
-			if (!options.getDraft()) {
-				const addButton = createSettingsAddButton(options.addRowEl, options.addLabel);
-				addButton.addClass('operon-file-task-pipeline-location-add-button');
-				addButton.addEventListener('click', () => {
-					options.setDraft({ pipelineId: '', folder: '' });
-					render();
-				});
-			}
+			const hasDraft = options.getDraft() !== null;
+			const addButton = createSettingsAddButton(options.addRowEl, options.addLabel);
+			addButton.addClass('operon-file-task-pipeline-location-add-button');
+			addButton.disabled = hasDraft;
+			addButton.setAttribute('aria-disabled', hasDraft ? 'true' : 'false');
+			addButton.addEventListener('click', () => {
+				if (hasDraft) return;
+				options.setDraft({ pipelineId: '', folder: '' });
+				render();
+			});
 		};
 		render();
 	}
@@ -12979,6 +12982,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			undefined,
 			this.buildNativeSettingsDocsAction(title, 'DOCS-052 Completed task review'),
 		);
+		sectionEl.addClass('operon-file-task-pipeline-location-container');
 
 		this.renderBoundTextSetting(sectionEl, t('settings', 'fileTaskArchiveFolder'), t('settings', 'fileTaskArchiveFolderDesc'), 'fileTaskArchiveFolder', {
 			placeholder: t('settings', 'fileTaskArchiveFolderPlaceholder'),

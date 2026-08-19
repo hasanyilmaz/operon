@@ -18,6 +18,7 @@ import {
 	rollbackPeriodicNoteCreatedFileSnapshot,
 } from '../src/core/periodic-note-container-registration';
 import {
+	FILE_TASK_PIPELINE_MOVE_DELAY_MS,
 	FileTaskPipelineMover,
 	parseFileTaskPipelineReconciliationMarkerV1,
 } from '../src/systems/file-task-pipeline-mover';
@@ -30,6 +31,7 @@ import {
 	buildFileTaskArchiveReconciliationSignature,
 	resolveFileTaskArchiveLocation,
 } from '../src/core/file-task-pipeline-location';
+import { writeTextSafely } from '../src/storage/storage-file-ops';
 import { DEFAULT_SETTINGS, migrateSettings, type OperonSettings } from '../src/types/settings';
 import type { IndexedTask } from '../src/types/fields';
 import type { OperonIndexer } from '../src/indexer/indexer';
@@ -968,7 +970,8 @@ async function pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealt
 }
 
 async function fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation(): Promise<void> {
-	assert.equal(FILE_TASK_ARCHIVE_DELAY_MS, 30_000);
+	assert.equal(FILE_TASK_PIPELINE_MOVE_DELAY_MS, 5_000);
+	assert.equal(FILE_TASK_ARCHIVE_DELAY_MS, 5_000);
 	const configuredSettings = migrateSettings({
 		...DEFAULT_SETTINGS,
 		fileTaskArchiveFolder: 'Archive/Fallback',
@@ -1034,7 +1037,7 @@ async function fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation()
 	let timerId = 0;
 	Reflect.set(globalThis, 'activeWindow', {
 		setTimeout: (callback: () => void, delayMs: number) => {
-			assert.equal(delayMs, FILE_TASK_ARCHIVE_DELAY_MS, 'archiver must always use the fixed 30-second delay');
+			assert.equal(delayMs, FILE_TASK_ARCHIVE_DELAY_MS, 'archiver must always use the fixed 5-second delay');
 			timerId += 1;
 			timers.set(timerId, callback);
 			return timerId;
@@ -1318,6 +1321,134 @@ async function fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation()
 	}
 }
 
+async function writeTextSafelyRecoversAcknowledgementLossWithoutDiscardingVerifiedData(): Promise<void> {
+	type Mode = 'verified-exact' | 'verified-read-failure' | 'unverified-exact' | 'missing-target' | 'verified-corrupt' | 'restore-failure' | 'backup-remove-failure';
+	const priorBytes = 'old-marker\nlegacy-byte=✓';
+	const replacementBytes = 'new-marker\ncurrent-byte=✓';
+	const createAdapter = (mode: Mode) => {
+		const targetPath = 'state/marker.json';
+		const files = new Map<string, string>([[targetPath, priorBytes]]);
+		const adapter = {
+			exists: async (path: string) => files.has(path),
+			read: async (path: string) => {
+				if (mode === 'verified-read-failure' && path === targetPath) {
+					throw new Error('TARGET_READ_UNAVAILABLE');
+				}
+				const value = files.get(path);
+				if (value === undefined) throw new Error(`Missing storage path: ${path}`);
+				return value;
+			},
+			write: async (path: string, value: string) => { files.set(path, value); },
+			remove: async (path: string) => {
+				if (mode === 'backup-remove-failure' && path.startsWith(`${targetPath}.replace-backup.tmp-`)) {
+					throw new Error('BACKUP_REMOVE_FAILED');
+				}
+				files.delete(path);
+			},
+			rename: async (from: string, to: string) => {
+				const value = files.get(from);
+				if (value === undefined) throw new Error(`Missing rename source: ${from}`);
+				const isReplacement = from.startsWith(`${targetPath}.tmp-`) && to === targetPath;
+				const isBackupRestore = from.startsWith(`${targetPath}.replace-backup.tmp-`) && to === targetPath;
+				if (mode === 'restore-failure' && isBackupRestore) {
+					throw new Error('RESTORE_FAILED');
+				}
+				if (mode === 'missing-target' && isReplacement) {
+					files.delete(from);
+					throw new Error('RENAME_ACK_LOST');
+				}
+				files.set(to, (mode === 'verified-corrupt' || mode === 'restore-failure') && isReplacement ? '{' : value);
+				files.delete(from);
+				if (isReplacement && (
+					mode === 'verified-exact'
+					|| mode === 'verified-read-failure'
+					|| mode === 'unverified-exact'
+					|| mode === 'backup-remove-failure'
+				)) {
+					throw new Error('RENAME_ACK_LOST');
+				}
+			},
+		};
+		return { adapter, files, targetPath };
+	};
+	const backupEntries = (files: Map<string, string>, targetPath: string): [string, string][] => (
+		[...files.entries()].filter(([path]) => path.startsWith(`${targetPath}.replace-backup.tmp-`))
+	);
+
+	const verifiedExact = createAdapter('verified-exact');
+	await writeTextSafely(verifiedExact.adapter, verifiedExact.targetPath, replacementBytes, {
+		forceAtomicReplacement: true,
+		verifyAtomicReplacement: true,
+	});
+	assert.equal(verifiedExact.files.get(verifiedExact.targetPath), replacementBytes);
+	assert.deepEqual(backupEntries(verifiedExact.files, verifiedExact.targetPath), []);
+
+	const verifiedReadFailure = createAdapter('verified-read-failure');
+	await assert.rejects(
+		writeTextSafely(verifiedReadFailure.adapter, verifiedReadFailure.targetPath, replacementBytes, {
+			forceAtomicReplacement: true,
+			verifyAtomicReplacement: true,
+		}),
+		/RENAME_ACK_LOST/u,
+	);
+	assert.equal(verifiedReadFailure.files.get(verifiedReadFailure.targetPath), replacementBytes, 'an unavailable verification read must retain the exact new target');
+	assert.deepEqual(backupEntries(verifiedReadFailure.files, verifiedReadFailure.targetPath).map(([, bytes]) => bytes), [priorBytes], 'an unavailable verification read must retain exact prior backup evidence');
+
+	const unverifiedExact = createAdapter('unverified-exact');
+	await assert.rejects(
+		writeTextSafely(unverifiedExact.adapter, unverifiedExact.targetPath, replacementBytes, {
+			forceAtomicReplacement: true,
+		}),
+		/RENAME_ACK_LOST/u,
+	);
+	assert.equal(unverifiedExact.files.get(unverifiedExact.targetPath), replacementBytes, 'an unverified acknowledgement loss must retain the exact new target');
+	assert.deepEqual(backupEntries(unverifiedExact.files, unverifiedExact.targetPath).map(([, bytes]) => bytes), [priorBytes], 'an unverified acknowledgement loss must retain exact prior backup evidence');
+
+	const missingTarget = createAdapter('missing-target');
+	await assert.rejects(
+		writeTextSafely(missingTarget.adapter, missingTarget.targetPath, replacementBytes, {
+			forceAtomicReplacement: true,
+			verifyAtomicReplacement: true,
+		}),
+		/RENAME_ACK_LOST/u,
+	);
+	assert.equal(missingTarget.files.get(missingTarget.targetPath), priorBytes, 'a missing replacement target must restore exact prior bytes');
+	assert.deepEqual(backupEntries(missingTarget.files, missingTarget.targetPath), []);
+
+	const verifiedCorrupt = createAdapter('verified-corrupt');
+	await assert.rejects(
+		writeTextSafely(verifiedCorrupt.adapter, verifiedCorrupt.targetPath, replacementBytes, {
+			forceAtomicReplacement: true,
+			verifyAtomicReplacement: true,
+		}),
+		/Atomic replacement target write was not observed exactly/u,
+	);
+	assert.equal(verifiedCorrupt.files.get(verifiedCorrupt.targetPath), priorBytes, 'a corrupted replacement target must restore exact prior bytes');
+	assert.deepEqual(backupEntries(verifiedCorrupt.files, verifiedCorrupt.targetPath), []);
+
+	const backupRemoveFailure = createAdapter('backup-remove-failure');
+	await writeTextSafely(backupRemoveFailure.adapter, backupRemoveFailure.targetPath, replacementBytes, {
+		forceAtomicReplacement: true,
+		verifyAtomicReplacement: true,
+	});
+	assert.equal(backupRemoveFailure.files.get(backupRemoveFailure.targetPath), replacementBytes, 'a verified replacement remains successful when only cleanup fails');
+	assert.deepEqual(backupEntries(backupRemoveFailure.files, backupRemoveFailure.targetPath).map(([, bytes]) => bytes), [priorBytes], 'a cleanup orphan must retain exact prior bytes');
+
+	const restoreFailure = createAdapter('restore-failure');
+	await assert.rejects(
+		writeTextSafely(restoreFailure.adapter, restoreFailure.targetPath, replacementBytes, {
+			forceAtomicReplacement: true,
+			verifyAtomicReplacement: true,
+		}),
+		/Atomic replacement target write was not observed exactly/u,
+	);
+	assert.ok(
+		restoreFailure.files.get(restoreFailure.targetPath) === priorBytes
+			|| backupEntries(restoreFailure.files, restoreFailure.targetPath).some(([, bytes]) => bytes === priorBytes),
+		'a failed restoration must retain exact prior bytes at the target or its backup',
+	);
+}
+
 async function run(): Promise<void> {
 	await existingFileShortCircuitsEveryPreparationPort();
 	await deterministicLanePreparesInMemoryBeforeWriting();
@@ -1352,6 +1483,7 @@ async function run(): Promise<void> {
 	await pipelineMoverResumeRequiresAValidVersionOneMarker();
 	await pipelineMoverSuspendsEveryEntrypointWhenPeriodicIdentityIsUnhealthy();
 	await fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation();
+	await writeTextSafelyRecoversAcknowledgementLossWithoutDiscardingVerifiedData();
 }
 
 globalThis.__operonPeriodicNoteServiceTestRun = run();

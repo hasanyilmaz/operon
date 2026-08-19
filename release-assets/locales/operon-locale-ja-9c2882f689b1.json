@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "ファイルタスクフォルダー内のタスクのみアーカイブ",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "有効にすると、Operon は現在設定されたファイルタスクフォルダー内にあるファイルタスクのみをアーカイブします。",
       "fileTaskArchivePipelineLocations": "アーカイブパイプラインの場所",
-      "fileTaskArchivePipelineLocationsDesc": "一致するパイプラインの場所はフォールバックのアーカイブフォルダーより優先されます。完了したタスクは約30秒後に移動します。",
+      "fileTaskArchivePipelineLocationsDesc": "一致するパイプラインの場所はフォールバックのアーカイブフォルダーより優先されます。完了したタスクは約5秒後に移動します。",
       "fileTaskAutoArchiveEnabled": "完了/キャンセルしたファイルタスクを自動的にアーカイブ",
       "fileTaskAutoArchiveEnabledDesc": "有効にすると、Operon は設定された遅延の後、完了またはキャンセルしたファイルタスクをアーカイブフォルダーに移動します。",
       "fileTaskConversion": "ファイルタスクの変換",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "パイプラインの場所を削除",
       "fileTaskPipelineLocationSelectPipeline": "パイプラインを選択",
       "fileTaskPipelineLocations": "パイプラインの場所",
-      "fileTaskPipelineLocationsDesc": "新しいファイルタスクは、各パイプラインに設定したフォルダーに作成されます。これは親タスクに基づく配置と既定のフォルダーより優先されます。タスクのパイプラインを変更したとき、または場所のルールを変更したときは、対象となる未完了のファイルタスクが約30秒以内に一致するフォルダーへ移動します。",
+      "fileTaskPipelineLocationsDesc": "新しいファイルタスクは、各パイプラインに設定したフォルダーに作成されます。これは親タスクに基づく配置と既定のフォルダーより優先されます。タスクのパイプラインを変更したとき、または場所のルールを変更したときは、対象となる未完了のファイルタスクが約5秒以内に一致するフォルダーへ移動します。",
       "fileTaskTemplateFolder": "テンプレートフォルダー",
       "fileTaskTemplateFolderDesc": "このフォルダー内のトップレベルの Markdown ファイルは、パイプライン別の組み込み最小ファイルタスクオプションの後に表示されます。組み込みオプションのみを表示するには空のままにします。",
       "fileTaskTemplateFolderPlaceholder": "例: 10 Horizon/Templates",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "カンバン",
       "mobileSubtabTaskEditor": "タスクエディター",
       "moveConvertedNotesToPipelineLocation": "変換したノートをパイプラインの場所へ移動",
-      "moveConvertedNotesToPipelineLocationDesc": "有効にすると、変換したノートは30秒後にパイプラインのフォルダー、または既定のファイルタスクフォルダーへ移動します。",
+      "moveConvertedNotesToPipelineLocationDesc": "有効にすると、変換したノートは5秒後にパイプラインのフォルダー、または既定のファイルタスクフォルダーへ移動します。",
       "moveDown": "下へ移動",
       "moveTablePresetToTrash": "ゴミ箱に移動",
       "moveUp": "上へ移動",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "407f51a6d87e0e4dbbaf6b9baac423511d7a05ae71d105302bef7f7afa86d96b"
+  "sourceVersion": "20a5a2f25c56644a5d5a5ef01afcf1fec635fdc067344ce7e4c0706361c1bd47"
 }

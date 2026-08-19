@@ -2492,7 +2492,7 @@
 			"newOccurrencePosition": "above",
 			"fileTaskAutoArchiveEnabled": false,
 			"fileTaskArchiveFolder": "",
-			"fileTaskArchiveDelaySeconds": 30,
+			"fileTaskArchiveDelaySeconds": 5,
 			"fileTaskArchiveOnlyFromFileTasksFolder": false,
 			"fileRepeatDestination": "same-folder",
 			"fileRepeatCustomFolder": "",

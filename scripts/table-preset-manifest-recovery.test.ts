@@ -858,7 +858,10 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 		const fixtureManifest = JSON.parse(await readFile(`${fixtureRoot}/fixture-manifest.json`, 'utf8'));
 		const source = await readFile(`${fixtureRoot}/source-v2.json`, 'utf8');
 		const expectedCandidate = await readFile(`${fixtureRoot}/expected-migration-candidate.json`, 'utf8');
-		const expectedFinal = await readFile(`${fixtureRoot}/expected-final-v3.json`, 'utf8');
+		const expectedFinalFixture = await readFile(`${fixtureRoot}/expected-final-v3.json`, 'utf8');
+		const expectedFinal = expectedFinalFixture.endsWith('\n')
+			? expectedFinalFixture.slice(0, -1)
+			: expectedFinalFixture;
 		const tableSource = await readFile(`${fixtureRoot}/Default.table`, 'utf8');
 		const sourceHash = fixtureManifest.files['source-v2.json'].sha256;
 		const presetId = fixtureManifest.presetId;
@@ -872,8 +875,8 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 		assert.equal(Buffer.byteLength(tableSource), fixtureManifest.files['Default.table'].bytes);
 		assert.equal(sha256(expectedCandidate), fixtureManifest.files['expected-migration-candidate.json'].sha256);
 		assert.equal(Buffer.byteLength(expectedCandidate), fixtureManifest.files['expected-migration-candidate.json'].bytes);
-		assert.equal(sha256(expectedFinal), fixtureManifest.files['expected-final-v3.json'].sha256);
-		assert.equal(Buffer.byteLength(expectedFinal), fixtureManifest.files['expected-final-v3.json'].bytes);
+		assert.equal(sha256(expectedFinalFixture), fixtureManifest.files['expected-final-v3.json'].sha256);
+		assert.equal(Buffer.byteLength(expectedFinalFixture), fixtureManifest.files['expected-final-v3.json'].bytes);
 		const discovery = await discoverOperonTableFiles([{ path: tablePath }], async () => tableSource);
 		const evidence = discovery.files.map(file => ({
 			path: file.path,
@@ -896,6 +899,7 @@ test('sealed 2.6.0 private-tmp fixture migrates once, preserves bytes, and resto
 		assert.equal(await adapter.read(tablePath), tableSource);
 		const candidate = await adapter.read(paths.dataPackagePath);
 		assert.notEqual(sha256(candidate), sourceHash);
+		assert.equal(candidate.endsWith('\n'), false, 'canonical data-package writes must retain their no-final-newline bytes');
 		assert.equal(candidate, expectedFinal);
 		const parsedCandidate = JSON.parse(candidate);
 		assert.equal(parsedCandidate.views.tablePresets.version, 3);

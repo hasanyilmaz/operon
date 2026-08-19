@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "Archivar solo las tareas dentro de la carpeta de tareas de archivo",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Cuando está activado, Operon solo archiva las tareas de archivo que están actualmente dentro de la carpeta de tareas de archivo configurada.",
       "fileTaskArchivePipelineLocations": "Ubicaciones de canalización de archivado",
-      "fileTaskArchivePipelineLocationsDesc": "Una ubicación de canalización coincidente tiene prioridad sobre la carpeta de archivado de reserva. Las tareas terminadas se mueven después de unos 30 segundos.",
+      "fileTaskArchivePipelineLocationsDesc": "Una ubicación de canalización coincidente tiene prioridad sobre la carpeta de archivado de reserva. Las tareas terminadas se mueven después de unos 5 segundos.",
       "fileTaskAutoArchiveEnabled": "Archivar automáticamente las tareas de archivo finalizadas/canceladas",
       "fileTaskAutoArchiveEnabledDesc": "Cuando está activado, Operon mueve las tareas de archivo finalizadas o canceladas a la carpeta de archivado después del retardo configurado.",
       "fileTaskConversion": "Conversión de tareas de archivo",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "Eliminar ubicación de pipeline",
       "fileTaskPipelineLocationSelectPipeline": "Seleccionar un pipeline",
       "fileTaskPipelineLocations": "Ubicaciones de pipeline",
-      "fileTaskPipelineLocationsDesc": "Las nuevas tareas de archivo se crean en la carpeta configurada para su pipeline. Esto reemplaza la ubicación por padre y la carpeta predeterminada. Cuando una tarea cambia de pipeline o modificas una regla de ubicación, las tareas de archivo abiertas correspondientes se mueven a la carpeta adecuada en unos 30 segundos.",
+      "fileTaskPipelineLocationsDesc": "Las nuevas tareas de archivo se crean en la carpeta configurada para su pipeline. Esto reemplaza la ubicación por padre y la carpeta predeterminada. Cuando una tarea cambia de pipeline o modificas una regla de ubicación, las tareas de archivo abiertas correspondientes se mueven a la carpeta adecuada en unos 5 segundos.",
       "fileTaskTemplateFolder": "Carpeta de plantillas",
       "fileTaskTemplateFolderDesc": "Los archivos markdown de nivel superior de esta carpeta aparecen después de las opciones integradas de tarea de archivo mínima para cada pipeline. Dejar vacío para mostrar solo las opciones integradas.",
       "fileTaskTemplateFolderPlaceholder": "p. ej. 10 Horizon/Templates",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Editor de tareas",
       "moveConvertedNotesToPipelineLocation": "Mover las notas convertidas a su ubicación de pipeline",
-      "moveConvertedNotesToPipelineLocationDesc": "Cuando se activa, las notas convertidas se mueven después de 30 segundos a su carpeta de pipeline o a la carpeta predeterminada de tareas de archivo.",
+      "moveConvertedNotesToPipelineLocationDesc": "Cuando se activa, las notas convertidas se mueven después de 5 segundos a su carpeta de pipeline o a la carpeta predeterminada de tareas de archivo.",
       "moveDown": "Mover hacia abajo",
       "moveTablePresetToTrash": "Mover a la papelera",
       "moveUp": "Mover hacia arriba",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "e9412a9ec85727da8ed03ed70bf00295d459854d153cb9913e11f237b71c86da"
+  "sourceVersion": "91cbc220b51debc16d91e94ce442338f5d2ff8d9a07ae59599dacc5f7ef32d51"
 }

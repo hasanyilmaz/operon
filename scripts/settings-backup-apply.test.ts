@@ -704,7 +704,7 @@ test('legacy archive backups preserve the target policy while v114 backups carry
 		fileTaskArchiveFolder: 'Target/Archive',
 		fileTaskArchivePipelineLocations: [{ pipelineId, folder: 'Target/Pipeline archive' }],
 		fileTaskAutoArchiveEnabled: true,
-		fileTaskArchiveDelaySeconds: 30,
+		fileTaskArchiveDelaySeconds: 5,
 		fileTaskArchiveOnlyFromFileTasksFolder: false,
 	});
 	const harness = await createHarness(canonicalPackage(target));
@@ -724,7 +724,7 @@ test('legacy archive backups preserve the target policy while v114 backups carry
 	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskArchiveFolder, current.fileTaskArchiveFolder);
 	assert.deepEqual(legacyPreflight.restorePlan.candidateSettings.fileTaskArchivePipelineLocations, current.fileTaskArchivePipelineLocations);
 	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskAutoArchiveEnabled, true);
-	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskArchiveDelaySeconds, 30);
+	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskArchiveDelaySeconds, 5);
 	assert.equal(legacyPreflight.restorePlan.candidateSettings.fileTaskArchiveOnlyFromFileTasksFolder, false);
 	const legacyApplied = await harness.storage.applySettingsBackupRestorePlanV1(
 		applyInput(legacyJson, legacyPreflight.restorePlan),
@@ -784,7 +784,7 @@ test('legacy archive backups preserve the target policy while v114 backups carry
 		fileTaskArchiveFolder: 'Imported/Archive',
 		fileTaskArchivePipelineLocations: [{ pipelineId, folder: 'Imported/Pipeline archive' }],
 		fileTaskAutoArchiveEnabled: true,
-		fileTaskArchiveDelaySeconds: 30,
+		fileTaskArchiveDelaySeconds: 5,
 		fileTaskArchiveOnlyFromFileTasksFolder: false,
 	});
 	const v114Json = exportJson(v114, '2026-08-10T18:01:00.000Z');

@@ -62,6 +62,7 @@ function testDefaultCatalog(): void {
 	assert.equal(catalog.policies.creation.builtInTemplateCandidates[0]?.pipelineId, 'pl_project');
 	assert.equal(catalog.policies.creation.builtInTemplateCandidates[0]?.initialStatusId, 'st_project_brainstorming');
 	assert.equal(catalog.policies.creation.fileTaskTemplateFolder, '');
+	assert.equal(catalog.policies.automation.fileTaskArchiveDelaySeconds, 5);
 	assert.equal(catalog.policies.creation.typedCreateVersion, 1);
 	assert.deepEqual(catalog.policies.creation.typedCreateFeatures, [
 		'exact-inline-placement',

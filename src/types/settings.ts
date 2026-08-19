@@ -97,7 +97,8 @@ import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 
 export const CURRENT_SETTINGS_VERSION = 114;
 export const FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION = 114;
-export const FILE_TASK_ARCHIVE_DELAY_SECONDS = 30;
+/** Effective fixed delay reported by the retained Runtime V1 compatibility field. */
+export const FILE_TASK_ARCHIVE_DELAY_SECONDS = 5;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
 export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;

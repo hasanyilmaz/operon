@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "仅归档文件任务文件夹内的任务",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "启用后，Operon 仅归档当前位于配置的文件任务文件夹内的文件任务。",
       "fileTaskArchivePipelineLocations": "归档管道位置",
-      "fileTaskArchivePipelineLocationsDesc": "匹配的管道位置优先于后备归档文件夹。已结束任务会在约 30 秒后移动。",
+      "fileTaskArchivePipelineLocationsDesc": "匹配的管道位置优先于后备归档文件夹。已结束任务会在约 5 秒后移动。",
       "fileTaskAutoArchiveEnabled": "自动归档已完成/已取消的文件任务",
       "fileTaskAutoArchiveEnabledDesc": "启用后，Operon 会在配置的延迟之后将已完成或已取消的文件任务移至归档文件夹。",
       "fileTaskConversion": "文件任务转换",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "移除管道位置",
       "fileTaskPipelineLocationSelectPipeline": "选择管道",
       "fileTaskPipelineLocations": "管道位置",
-      "fileTaskPipelineLocationsDesc": "新的文件任务会创建在其管道配置的文件夹中。这会覆盖父任务放置规则和默认文件夹。当任务更改管道或你修改位置规则时，符合条件的开放文件任务会在约 30 秒内移至匹配的文件夹。",
+      "fileTaskPipelineLocationsDesc": "新的文件任务会创建在其管道配置的文件夹中。这会覆盖父任务放置规则和默认文件夹。当任务更改管道或你修改位置规则时，符合条件的开放文件任务会在约 5 秒内移至匹配的文件夹。",
       "fileTaskTemplateFolder": "模板文件夹",
       "fileTaskTemplateFolderDesc": "此文件夹中的顶级 Markdown 文件会列在各 pipeline 的内置最简文件任务选项之后。留空则仅显示内置选项。",
       "fileTaskTemplateFolderPlaceholder": "例如 10 Horizon/Templates",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "看板",
       "mobileSubtabTaskEditor": "任务编辑器",
       "moveConvertedNotesToPipelineLocation": "将转换的笔记移动到其管道位置",
-      "moveConvertedNotesToPipelineLocationDesc": "启用后，转换的笔记会在30秒后移动到其管道文件夹，或默认文件任务文件夹。",
+      "moveConvertedNotesToPipelineLocationDesc": "启用后，转换的笔记会在5秒后移动到其管道文件夹，或默认文件任务文件夹。",
       "moveDown": "下移",
       "moveTablePresetToTrash": "移至回收站",
       "moveUp": "上移",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "01f95f55ce49bf3b156f1864f50bf6b2d5992588253d544bdfb01beded19f922"
+  "sourceVersion": "56ceba50e22eb3365e4c216cbd400ff0b07dbc66a5cb6da79eb257592f363617"
 }

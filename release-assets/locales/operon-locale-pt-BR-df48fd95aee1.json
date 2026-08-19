@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "Arquivar apenas tarefas dentro da pasta Tarefas em Arquivo",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "Ao ser ativado, Operon só arquiva tarefas em arquivo que estão atualmente dentro da pasta de Tarefas em Arquivo configurada.",
       "fileTaskArchivePipelineLocations": "Locais do pipeline de arquivamento",
-      "fileTaskArchivePipelineLocationsDesc": "Um local de pipeline correspondente tem prioridade sobre a pasta de arquivamento de fallback. As tarefas concluídas são movidas após cerca de 30 segundos.",
+      "fileTaskArchivePipelineLocationsDesc": "Um local de pipeline correspondente tem prioridade sobre a pasta de arquivamento de fallback. As tarefas concluídas são movidas após cerca de 5 segundos.",
       "fileTaskAutoArchiveEnabled": "Arquivar automaticamente tarefas em arquivo concluídas ou canceladas",
       "fileTaskAutoArchiveEnabledDesc": "Quando ativado, o Operon move as tarefas em arquivo concluídas ou canceladas para a pasta de arquivo após o atraso configurado.",
       "fileTaskConversion": "Conversão de Tarefa em Arquivo",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "Remover local por pipeline",
       "fileTaskPipelineLocationSelectPipeline": "Selecione um pipeline",
       "fileTaskPipelineLocations": "Locais por Pipeline",
-      "fileTaskPipelineLocationsDesc": "As novas tarefas em arquivo são criadas na pasta configurada para seu pipeline. Isso substitui o posicionamento pelo pai e a pasta padrão. Quando uma tarefa muda de pipeline ou você altera uma regra de localização, as tarefas em arquivo abertas elegíveis são movidas para a pasta correspondente em cerca de 30 segundos.",
+      "fileTaskPipelineLocationsDesc": "As novas tarefas em arquivo são criadas na pasta configurada para seu pipeline. Isso substitui o posicionamento pelo pai e a pasta padrão. Quando uma tarefa muda de pipeline ou você altera uma regra de localização, as tarefas em arquivo abertas elegíveis são movidas para a pasta correspondente em cerca de 5 segundos.",
       "fileTaskTemplateFolder": "Pasta de templates",
       "fileTaskTemplateFolderDesc": "Os arquivos Markdown de nível superior nesta pasta são listados após as opções mínimas específicas do pipeline incorporadas para Tarefa em Arquivo. Deixe vazio para mostrar apenas as opções incorporadas.",
       "fileTaskTemplateFolderPlaceholder": "Ex: 10 Horizon/Templates",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Editor de Tarefa",
       "moveConvertedNotesToPipelineLocation": "Mover notas convertidas para o local do pipeline",
-      "moveConvertedNotesToPipelineLocationDesc": "Quando ativado, as notas convertidas são movidas para a pasta do pipeline ou para a pasta padrão de Tarefas em Arquivo após 30 segundos.",
+      "moveConvertedNotesToPipelineLocationDesc": "Quando ativado, as notas convertidas são movidas para a pasta do pipeline ou para a pasta padrão de Tarefas em Arquivo após 5 segundos.",
       "moveDown": "Mover para baixo",
       "moveTablePresetToTrash": "Mover para lixeira",
       "moveUp": "Mover para cima",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "b006676e238cfd03070fc1d679a07bba186b0c73be795a25d572ddef686fcc7b"
+  "sourceVersion": "15688c9faf244821d3a848fd7caad869bb48b4b201b7af73fb9f8b68e216cb31"
 }

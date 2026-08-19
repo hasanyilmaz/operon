@@ -8,7 +8,7 @@ import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 import { clearWindowTimeout, setWindowTimeout, type WindowTimeoutHandle } from '../core/dom-compat';
 import { buildOperonPluginStoragePath } from '../storage/operon-storage-paths';
 
-export const FILE_TASK_PIPELINE_MOVE_DELAY_MS = 30_000;
+export const FILE_TASK_PIPELINE_MOVE_DELAY_MS = 5_000;
 export const FILE_TASK_PIPELINE_MAX_CONCURRENT_MOVES = 4;
 const FILE_TASK_PIPELINE_RECONCILE_MARKER_FILE_NAME = 'file-task-pipeline-location-reconcile.json';
 

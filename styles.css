@@ -29565,11 +29565,17 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	padding-inline: 24px;
 }
 
+.operon-file-task-pipeline-location-container {
+	container-name: operon-file-task-pipeline-locations;
+	container-type: inline-size;
+}
+
 .operon-file-task-pipeline-location-row {
 	display: grid;
-	grid-template-columns: max-content minmax(180px, 1fr) max-content minmax(180px, 1fr) auto;
+	grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr) auto;
 	align-items: center;
 	gap: 12px;
+	min-width: 0;
 	padding: 12px 14px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
@@ -29604,14 +29610,16 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	justify-self: end;
 }
 
-.operon-file-task-pipeline-location-row.is-draft {
-	grid-template-columns: max-content minmax(180px, 1fr) auto;
-}
-
 .operon-file-task-pipeline-location-add-row {
 	display: flex;
 	justify-content: flex-start;
-	padding: 12px 24px 0;
+	padding: 12px 24px 18px;
+	border-top: 0;
+}
+
+.operon-settings-native-page-root .operon-file-task-pipeline-location-container > .operon-file-task-pipeline-location-add-row {
+	padding: 12px 24px 18px;
+	border-top: 0;
 }
 
 .operon-file-task-pipeline-location-add-button {
@@ -29620,28 +29628,33 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	color: var(--text-normal);
 }
 
-.operon-file-task-pipeline-location-add-button:hover,
-.operon-file-task-pipeline-location-add-button:focus-visible {
+.operon-file-task-pipeline-location-add-button:not(:disabled):hover,
+.operon-file-task-pipeline-location-add-button:not(:disabled):focus-visible {
 	border-color: var(--background-modifier-border-hover);
 	background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
 	color: var(--text-normal);
 }
 
-.operon-file-task-pipeline-location-add-button:focus-visible {
+.operon-file-task-pipeline-location-add-button:not(:disabled):focus-visible {
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
 }
 
-@media (max-width: 720px) {
+.operon-file-task-pipeline-location-add-button:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+@container operon-file-task-pipeline-locations (max-width: 680px) {
 	.operon-file-task-pipeline-location-rows {
 		padding-inline: 16px;
 	}
 
 	.operon-file-task-pipeline-location-row {
-		grid-template-columns: max-content minmax(0, 1fr) auto;
+		grid-template-columns: max-content minmax(0, 1fr);
 	}
 
 	.operon-file-task-pipeline-location-add-row {
-		padding-inline: 16px;
+		padding: 12px 16px 18px;
 	}
 
 	.operon-file-task-pipeline-location-pipeline-label,
@@ -29655,32 +29668,37 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	}
 
 	.operon-file-task-pipeline-location-remove {
-		grid-column: 3;
-		grid-row: 1 / span 2;
-	}
-
-	.operon-file-task-pipeline-location-row.is-draft .operon-file-task-pipeline-location-remove {
-		grid-row: 1;
+		grid-column: 2;
+		grid-row: 3;
+		justify-self: start;
 	}
 }
 
-@media (max-width: 480px) {
+@container operon-file-task-pipeline-locations (max-width: 440px) {
 	.operon-file-task-pipeline-location-rows {
 		padding-inline: 12px;
 	}
 
 	.operon-file-task-pipeline-location-row {
-		grid-template-columns: max-content minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr);
+		gap: 8px;
 	}
 
 	.operon-file-task-pipeline-location-add-row {
-		padding-inline: 12px;
+		padding: 12px 12px 18px;
 	}
 
-	.operon-file-task-pipeline-location-remove,
-	.operon-file-task-pipeline-location-row.is-draft .operon-file-task-pipeline-location-remove {
-		grid-column: 2;
+	.operon-file-task-pipeline-location-pipeline-label,
+	.operon-file-task-pipeline-location-select,
+	.operon-file-task-pipeline-location-folder-label,
+	.operon-file-task-pipeline-location-folder,
+	.operon-file-task-pipeline-location-remove {
+		grid-column: 1;
+	}
+
+	.operon-file-task-pipeline-location-remove {
 		grid-row: auto;
+		justify-self: end;
 	}
 }
 

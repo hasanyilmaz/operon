@@ -73,9 +73,37 @@ export async function writeTextSafely(
 		if (originalMoved) {
 			try {
 				if (await adapter.exists(backupPath)) {
-					if (await adapter.exists(path)) await adapter.remove(path);
-					await adapter.rename(backupPath, path);
-					originalMoved = false;
+					if (options.verifyAtomicReplacement === true) {
+						if (await adapter.exists(path)) {
+							let observedTarget: string | null = null;
+							try {
+								observedTarget = await adapter.read!(path);
+							} catch {
+								// A target that cannot be observed may be valid; preserve it and the backup for recovery.
+							}
+							if (observedTarget === data) {
+								try {
+									await adapter.remove(backupPath);
+									originalMoved = false;
+								} catch {
+									// The verified target is authoritative; an orphaned backup is safer than failing the write.
+								}
+								tempWritten = false;
+								return;
+							}
+							if (observedTarget !== null) {
+								await adapter.remove(path);
+								await adapter.rename(backupPath, path);
+								originalMoved = false;
+							}
+						} else {
+							await adapter.rename(backupPath, path);
+							originalMoved = false;
+						}
+					} else if (!await adapter.exists(path)) {
+						await adapter.rename(backupPath, path);
+						originalMoved = false;
+					}
 				}
 			} catch {
 				// Preserve the backup in place when restoration is unavailable.

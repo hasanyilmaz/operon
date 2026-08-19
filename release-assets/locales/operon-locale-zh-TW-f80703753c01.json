@@ -1354,7 +1354,7 @@
       "fileTaskArchiveOnlyFromFileTasksFolder": "僅歸檔檔案任務資料夾內的任務",
       "fileTaskArchiveOnlyFromFileTasksFolderDesc": "啟用後，Operon 僅歸檔當前位於配置的檔案任務資料夾內的檔案任務。",
       "fileTaskArchivePipelineLocations": "歸檔管線位置",
-      "fileTaskArchivePipelineLocationsDesc": "符合的管線位置優先於備用歸檔資料夾。已結束任務會在約 30 秒後移動。",
+      "fileTaskArchivePipelineLocationsDesc": "符合的管線位置優先於備用歸檔資料夾。已結束任務會在約 5 秒後移動。",
       "fileTaskAutoArchiveEnabled": "自動歸檔已完成/已取消的檔案任務",
       "fileTaskAutoArchiveEnabledDesc": "啟用後，Operon 會在配置的延遲之後將已完成或已取消的檔案任務移至歸檔資料夾。",
       "fileTaskConversion": "檔案任務轉換",
@@ -1410,7 +1410,7 @@
       "fileTaskPipelineLocationRemove": "移除管線位置",
       "fileTaskPipelineLocationSelectPipeline": "選取管線",
       "fileTaskPipelineLocations": "管線位置",
-      "fileTaskPipelineLocationsDesc": "新的檔案任務會建立在其管線設定的資料夾中。這會覆寫父任務放置規則和預設資料夾。當任務變更管線或你修改位置規則時，符合條件的開放檔案任務會在約 30 秒內移至相符的資料夾。",
+      "fileTaskPipelineLocationsDesc": "新的檔案任務會建立在其管線設定的資料夾中。這會覆寫父任務放置規則和預設資料夾。當任務變更管線或你修改位置規則時，符合條件的開放檔案任務會在約 5 秒內移至相符的資料夾。",
       "fileTaskTemplateFolder": "模板資料夾",
       "fileTaskTemplateFolderDesc": "此資料夾中的頂級 Markdown 檔案會列在各 pipeline 的內建最簡檔案任務選項之後。留空則僅顯示內建選項。",
       "fileTaskTemplateFolderPlaceholder": "例如 10 Horizon/Templates",
@@ -1815,7 +1815,7 @@
       "mobileSubtabKanban": "看板",
       "mobileSubtabTaskEditor": "任務編輯器",
       "moveConvertedNotesToPipelineLocation": "將轉換的筆記移至其管線位置",
-      "moveConvertedNotesToPipelineLocationDesc": "啟用後，轉換的筆記會在30 秒後移至其管線資料夾，或預設檔案任務資料夾。",
+      "moveConvertedNotesToPipelineLocationDesc": "啟用後，轉換的筆記會在5 秒後移至其管線資料夾，或預設檔案任務資料夾。",
       "moveDown": "下移",
       "moveTablePresetToTrash": "移至垃圾桶",
       "moveUp": "上移",
@@ -3137,5 +3137,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "c28630b3ffab0f80fbc7caa38a750edddeafa2d536f1603604a3eea7f6cce10d"
+  "sourceVersion": "45e1fc2fc290fc55ccadf0b3d5779b72b0199aac1ea302ac81d6655fd6d0dd90"
 }

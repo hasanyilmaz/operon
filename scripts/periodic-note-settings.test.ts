@@ -147,7 +147,7 @@ function assertArchiveRoutingMigrated(packageValue: unknown): void {
 	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskArchiveFolder, '');
 	assert.deepEqual(dataPackage.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations, []);
 	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskAutoArchiveEnabled, false);
-	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskArchiveDelaySeconds, 30);
+	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskArchiveDelaySeconds, 5);
 	assert.equal(dataPackage.automation.taskAutomationPolicy.fileTaskArchiveOnlyFromFileTasksFolder, false);
 }
 
@@ -310,7 +310,7 @@ async function assertStartupMigrationLane(): Promise<void> {
 	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskArchiveFolder, '');
 	assert.deepEqual(firstCanonical.automation.taskAutomationPolicy.fileTaskArchivePipelineLocations, []);
 	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskAutoArchiveEnabled, false);
-	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskArchiveDelaySeconds, 30);
+	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskArchiveDelaySeconds, 5);
 	assert.equal(firstCanonical.automation.taskAutomationPolicy.fileTaskArchiveOnlyFromFileTasksFolder, false);
 	assert.equal(firstCanonical.ui.taskCreationProfile.version, 3);
 	assert.equal(firstCanonical.ui.taskCreationProfile.manageDailyNotesWithOperon, false);
@@ -658,7 +658,7 @@ async function run(): Promise<void> {
 		fileTaskPipelineLocations: [],
 		fileTaskArchiveFolder: '',
 		fileTaskArchivePipelineLocations: [],
-		fileTaskArchiveDelaySeconds: 30,
+		fileTaskArchiveDelaySeconds: 5,
 		moveConvertedNotesToPipelineLocation: false,
 		manageDailyNotesWithOperon: false,
 		dailyNoteFormat: 'YYYY-MM-DD',
@@ -677,7 +677,7 @@ async function run(): Promise<void> {
 	assert.equal(migratedLegacy.fileTaskArchiveFolder, '');
 	assert.deepEqual(migratedLegacy.fileTaskArchivePipelineLocations, []);
 	assert.equal(migratedLegacy.fileTaskAutoArchiveEnabled, false);
-	assert.equal(migratedLegacy.fileTaskArchiveDelaySeconds, 30);
+	assert.equal(migratedLegacy.fileTaskArchiveDelaySeconds, 5);
 	assert.equal(migratedLegacy.fileTaskArchiveOnlyFromFileTasksFolder, false);
 	assert.equal(migratedLegacy.manageDailyNotesWithOperon, false);
 	assert.equal(migratedLegacy.dailyNoteFormat, 'YYYY-MM-DD');
