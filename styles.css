@@ -5684,26 +5684,20 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 .operon-task-media-hover-preview {
 	position: fixed;
 	z-index: 10060;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-sizing: border-box;
-	width: min(320px, calc(100vw - 16px));
-	min-height: 80px;
-	max-height: min(280px, calc(100vh - 16px));
-	padding: 8px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 10px;
-	background: var(--background-primary);
-	box-shadow: var(--shadow-s);
+	width: min(var(--popover-width, 450px), calc(100vw - 16px));
+	max-height: min(var(--popover-max-height, 70vh), calc(100vh - 16px));
+	pointer-events: auto;
 }
 
 .operon-task-media-hover-preview img {
 	display: block;
+	width: auto;
 	max-width: 100%;
-	max-height: min(264px, calc(100vh - 32px));
+	max-height: min(var(--popover-max-height, 70vh), calc(100vh - 16px));
+	margin: 0 auto;
 	object-fit: contain;
-	border-radius: 6px;
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
 }
 
 .cm-content .operon-live-preview-action.is-active,

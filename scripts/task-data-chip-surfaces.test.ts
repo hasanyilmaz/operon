@@ -135,6 +135,7 @@ function run(): void {
 	const stylesSource = readFileSync(resolve(process.cwd(), 'styles.css'), 'utf8');
 	const mediaPreviewSource = readFileSync(resolve(process.cwd(), 'src/ui/compact-chip-link-preview.ts'), 'utf8');
 	const taskFinderSource = readFileSync(resolve(process.cwd(), 'src/ui/task-finder-modal.ts'), 'utf8');
+	const mainSource = readFileSync(resolve(process.cwd(), 'main.ts'), 'utf8');
 	assert.match(taskCreatorSource, /createCompactMarkdownEditorSurface\(this\.descriptionHostEl/u);
 	assert.match(taskCreatorSource, /createCompactMarkdownEditorSurface\(this\.noteHostEl/u);
 	assert.match(taskCreatorSource, /textPolicy: 'task-note'/u);
@@ -178,7 +179,15 @@ function run(): void {
 		'Task Finder must retain its visual-only behavior without media hover preview.',
 	);
 	assert.match(stylesSource, /\.operon-task-media-hover-preview \{/u);
-	assertions += 4;
+	assert.match(
+		mainSource,
+		/registerHoverLinkSource\(OPERON_TASK_MEDIA_HOVER_SOURCE, \{\n\t\t\tdisplay: 'Operon',\n\t\t\tdefaultMod: false,/u,
+		'Obsidian Page Preview must accept direct task-media hover without Command or Ctrl.',
+	);
+	assert.match(stylesSource, /width: min\(var\(--popover-width, 450px\), calc\(100vw - 16px\)\);/u);
+	const remoteMediaPreviewCss = stylesSource.match(/\.operon-task-media-hover-preview \{([^}]*)\}/u)?.[1] ?? '';
+	assert.doesNotMatch(remoteMediaPreviewCss, /(?:padding|border|background):/u, 'HTTP media preview shell must remain frameless.');
+	assertions += 7;
 	for (const locale of ['en', 'tr', 'de', 'fr', 'es', 'it', 'pt-BR', 'ru', 'ja', 'zh-CN', 'zh-TW']) {
 		const parsed = JSON.parse(readFileSync(resolve(process.cwd(), `i18n/locales/${locale}.json`), 'utf8')) as {
 			settings?: Record<string, string>;

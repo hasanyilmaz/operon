@@ -192,6 +192,7 @@ import { MobileGlobalTaskFab } from './src/ui/mobile-global-task-fab';
 import {
 	OPERON_COMPACT_CHIP_HOVER_SOURCE,
 	OPERON_TASK_DESCRIPTION_WIKILINK_HOVER_SOURCE,
+	OPERON_TASK_MEDIA_HOVER_SOURCE,
 	OPERON_TASK_TITLE_HOVER_SOURCE,
 } from './src/ui/compact-chip-link-preview';
 import { cleanupOperonRenderRoot } from './src/ui/render-root-cleanup';
@@ -14352,6 +14353,10 @@ export default class OperonPlugin extends Plugin {
 				defaultMod: true,
 			});
 		}
+		this.registerHoverLinkSource(OPERON_TASK_MEDIA_HOVER_SOURCE, {
+			display: 'Operon',
+			defaultMod: false,
+		});
 
 		// Initialize indexer, task writer, and core systems
 		const indexV8Store = new IndexV8Store(this.app.vault.adapter, this.storage.indexV8Paths);
