@@ -23,6 +23,7 @@ import {
 import { TablePresetRegistry } from './src/storage/table-preset-registry';
 import {
 	collectDeletedTablePresetBindings,
+	collectMissingTablePresetIds,
 	type DeletedTablePresetPathKind,
 } from './src/storage/table-preset-delete-cleanup';
 import {
@@ -13604,6 +13605,7 @@ export default class OperonPlugin extends Plugin {
 		}, async () => {
 			await this.refreshTablePresetRegistry({ adoptUnbound: true, persistBindings: true });
 		});
+		await this.cleanupMissingTablePresetReferences();
 		await this.ensureCanonicalTablePresetBootstrap();
 		this.registerTablePresetFileWatchers();
 		this.register(() => {
@@ -13614,6 +13616,30 @@ export default class OperonPlugin extends Plugin {
 			for (const unsubscribe of this.tablePresetRegistrySubscriptions.values()) unsubscribe();
 			this.tablePresetRegistrySubscriptions.clear();
 		});
+	}
+
+	private async cleanupMissingTablePresetReferences(): Promise<void> {
+		const missingPresetIds = collectMissingTablePresetIds(
+			this.settings.tablePresetFileBindings,
+			presetId => this.tablePresetRegistry.getSource(presetId)?.kind,
+			path => this.app.vault.getAbstractFileByPath(path) instanceof TFile,
+		);
+		if (missingPresetIds.length === 0) return;
+		const workspaceLeaves = new Map(missingPresetIds.map(presetId => [
+			presetId,
+			this.getTableWorkspaceLeavesForPreset(presetId),
+		]));
+		const fallbackPresetId = await this.removeTablePresetReferences(missingPresetIds);
+		for (const presetId of missingPresetIds) {
+			const leaves = workspaceLeaves.get(presetId) ?? [];
+			if (fallbackPresetId) {
+				await this.transitionDeletedTableWorkspaceLeaves(presetId, fallbackPresetId, leaves);
+			} else {
+				this.closeTableWorkspaceLeaves(presetId, leaves);
+			}
+			this.refreshTablePresetSurfaces(presetId);
+		}
+		this.settingsTab?.refreshTablePresetFileState();
 	}
 
 	private async ensureCanonicalTablePresetBootstrap(): Promise<void> {
