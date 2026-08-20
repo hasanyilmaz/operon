@@ -24877,6 +24877,10 @@ body.operon-kanban-touch-drag-active {
 	gap: 8px;
 }
 
+.operon-kanban-lane-label:not(.is-collapsed) .operon-kanban-lane-title {
+	text-align: center;
+}
+
 .operon-kanban-lane-label.is-axis-active {
 	border-color: color-mix(in srgb, var(--operon-kanban-lane-color, var(--interactive-accent)) 40%, var(--operon-kanban-surface-border));
 	background: transparent;

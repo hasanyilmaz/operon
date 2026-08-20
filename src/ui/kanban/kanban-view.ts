@@ -214,6 +214,20 @@ function formatKanbanSwimlaneDisplayLabel(rawLabel: string): string {
 	return formatKanbanWikiLinkTargetLabel(linkTarget) || rawLabel;
 }
 
+function renderKanbanSwimlaneTitle(title: HTMLElement, label: string): void {
+	const ownerDocument = getOwnerDocument(title);
+	let segmentStart = 0;
+	for (let index = 0; index < label.length; index++) {
+		if (label[index] !== '/') continue;
+		title.appendChild(ownerDocument.createTextNode(label.slice(segmentStart, index + 1)));
+		title.appendChild(ownerDocument.win.createEl('wbr'));
+		segmentStart = index + 1;
+	}
+	if (segmentStart < label.length) {
+		title.appendChild(ownerDocument.createTextNode(label.slice(segmentStart)));
+	}
+}
+
 function formatKanbanWikiLinkTargetLabel(linkTarget: string): string {
 	const lastSegment = linkTarget.split('/').pop()?.trim() ?? linkTarget.trim();
 	return lastSegment.replace(/\.md(?=($|[#^]))/i, '');
@@ -1564,7 +1578,8 @@ export class KanbanView extends ItemView {
 					laneLabel.style.setProperty('--operon-kanban-lane-color', lane.color);
 				}
 				const laneDisplayLabel = formatKanbanSwimlaneDisplayLabel(lane.label);
-				const laneTitle = laneLabel.createDiv({ text: laneDisplayLabel, cls: 'operon-kanban-lane-title' });
+				const laneTitle = laneLabel.createDiv('operon-kanban-lane-title');
+				renderKanbanSwimlaneTitle(laneTitle, laneDisplayLabel);
 				const laneToggle = laneLabel.createEl('button', {
 					cls: 'operon-kanban-lane-count-button',
 					text: String(lane.count),

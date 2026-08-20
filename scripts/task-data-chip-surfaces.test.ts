@@ -472,16 +472,20 @@ function run(): void {
 		'Reduced-motion users must not receive the animated image transition.',
 	);
 	const expandedLaneCss = stylesSource.match(/\.operon-kanban-lane-label:not\(\.is-collapsed\) \{([^}]*)\}/u)?.[1] ?? '';
-	const laneTitleCss = stylesSource.match(/\.operon-kanban-lane-title \{([^}]*)\}/u)?.[1] ?? '';
+	const laneTitleCss = stylesSource.match(/(?:^|\n)\.operon-kanban-lane-title \{([^}]*)\}/u)?.[1] ?? '';
 	assert.match(expandedLaneCss, /grid-template-columns: minmax\(0, 1fr\);/u);
 	assert.match(expandedLaneCss, /grid-template-rows: auto auto;/u);
 	assert.match(expandedLaneCss, /align-content: center;/u);
+	assert.match(stylesSource, /\.operon-kanban-lane-label:not\(\.is-collapsed\) \.operon-kanban-lane-title \{\s*text-align: center;/u);
 	assert.match(stylesSource, /\.operon-kanban-lane-label:not\(\.is-collapsed\) button\.operon-kanban-lane-count-button \{\s*justify-self: center;/u);
 	assert.match(laneTitleCss, /overflow-wrap: break-word;/u);
 	assert.match(laneTitleCss, /word-break: normal;/u);
 	assert.doesNotMatch(laneTitleCss, /overflow-wrap: anywhere;/u);
 	assert.match(kanbanViewSource, /const contentWidth = metrics\.collapsed\s*\? titleWidth \+ countWidth \+ metrics\.gap\s*:\s*Math\.max\(titleWidth, countWidth\);/u);
-	assertions += 22;
+	assert.match(kanbanViewSource, /if \(label\[index\] !== '\/'\) continue;/u);
+	assert.match(kanbanViewSource, /ownerDocument\.win\.createEl\('wbr'\)/u);
+	assert.match(kanbanViewSource, /renderKanbanSwimlaneTitle\(laneTitle, laneDisplayLabel\);/u);
+	assertions += 26;
 
 	console.log(`Task data chip surfaces: ${assertions} assertions passed`);
 }
